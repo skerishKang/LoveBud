@@ -59,11 +59,11 @@ test('Browse summary must not include viewCount in payload', () => {
   // (browse_latest.py handles both latest and growing via imports)
 });
 
-test('Browse/Search sort must not support sort=views', () => {
-  // Catch-all route falls back to latest for unsupported sorts
-  assert.match(catchAllRoute, /searchParams\.get\('sort'\) === 'popular' \? 'popular' : 'latest'/);
-  assert.doesNotMatch(catchAllRoute, /sort'\) === 'views'/);
-  assert.doesNotMatch(catchAllRoute, /sort'\) === 'likes'/);
+test('Browse/Search sort supports latest/popular/likes; sort=views still falls back', () => {
+  // sort=views must still be unsupported
+  assert.doesNotMatch(catchAllRoute, /sort'\)\s*===\s*'views'/);
+  // sort=likes is now supported (Unit C, multiline ternary)
+  assert.match(catchAllRoute, /'likes'\s*\?\s*'likes'/);
 });
 
 test('Public tree detail boundary: private trees must not leak viewCount', () => {

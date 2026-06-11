@@ -83,10 +83,11 @@ test('Cloudflare tree like route proxies only authenticated GET and POST to Moda
   assert.doesNotMatch(cloudflareRoute, /sort=views/);
 });
 
-test('Unit A3 does not enable Browse sort or public Browse count payloads', () => {
-  assert.match(catchAllRoute, /searchParams\.get\('sort'\) === 'popular' \? 'popular' : 'latest'/);
-  assert.doesNotMatch(catchAllRoute, /sort'\) === 'likes'/);
-  assert.doesNotMatch(catchAllRoute, /sort'\) === 'views'/);
-  assert.doesNotMatch(browseSnapshot, /likeCount/);
+test('Unit A3 enables likeCount in latest Browse summary; sort=likes is now supported (Unit C)', () => {
+  // sort=likes is now supported in router (Unit C runtime slice, multiline ternary)
+  assert.match(catchAllRoute, /'likes'\s*\?\s*'likes'/);
+  // sort=views remains unsupported
+  assert.doesNotMatch(catchAllRoute, /sort'\)\s*===\s*'views'/);
+  // viewCount still forbidden in Browse summary (Unit B policy)
   assert.doesNotMatch(browseSnapshot, /viewCount/);
 });

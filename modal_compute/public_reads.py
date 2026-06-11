@@ -165,17 +165,22 @@ def _normalize_legacy_memory_row(node: dict[str, Any], tree_id: str, row: dict[s
 def fetch_latest_public_tree_snapshots(limit: int = 12, sort: str = "latest") -> list[dict[str, Any]]:
     """Fetch the latest public tree snapshots using a robust join-lateral query.
     Falls back to legacy trees.payload format if memories table is missing.
+    Supports sort="latest" (created_at DESC), sort="popular" (memory_count DESC),
+    and sort="likes" (like_count DESC).
     """
 
     order_clause = "t.created_at DESC"
     if sort == "popular":
         order_clause = "c.memory_count DESC, t.created_at DESC"
+    elif sort == "likes":
+        order_clause = "s.like_count DESC, t.updated_at DESC, t.created_at DESC, t.id ASC"
 
     modern_query = """
         SELECT
             t.id, t.title, t.visibility, t.created_at, t.updated_at,
             c.memory_count,
             c.all_tags,
+            s.like_count,
             m.thumbnail as raw_thumbnail,
             m.source_url as raw_source_url
         FROM trees t
@@ -190,6 +195,11 @@ def fetch_latest_public_tree_snapshots(limit: int = 12, sort: str = "latest") ->
             GROUP BY tree_id
             HAVING count(*) >= 3
         ) c ON t.id = c.tree_id
+        LEFT JOIN (
+            -- Social counts: like_count
+            SELECT tree_id, like_count
+            FROM tree_social_counts
+        ) s ON t.id = s.tree_id
         LEFT JOIN LATERAL (
             -- Representative Snapshot: Latest memory with visual data
             SELECT thumbnail, source_url
@@ -220,7 +230,7 @@ def fetch_latest_public_tree_snapshots(limit: int = 12, sort: str = "latest") ->
                     rows = cur.fetchall()
                     q_duration = (time.time() - q_start) * 1000
                     print(f"[LoveBudModal] Latest browse query took {q_duration:.2f}ms (limit={limit})")
-                    return [normalize_row(row) for row in rows]
+                    return [normalize_row(row, include_like_count=True) for row in rows]
 
                 # Fallback: legacy schema (name/is_public/payload)
                 has_name = _table_has_column(cur, "trees", "name")
@@ -337,12 +347,7 @@ def fetch_growing_public_tree_snapshots(limit: int = 6) -> list[dict[str, Any]]:
                     rows = cur.fetchall()
                     q_duration = (time.time() - q_start) * 1000
                     print(f"[LoveBudModal] [TIMING] SQL execution took {q_duration:.2f}ms (limit={limit})")
-                    
-                    map_start = time.time()
-                    res = [normalize_row(row, stage_override="growing") for row in rows]
-                    map_duration = (time.time() - map_start) * 1000
-                    print(f"[LoveBudModal] [TIMING] Result mapping/normalization took {map_duration:.2f}ms")
-                    return res
+                    return [normalize_row(row, stage_override="growing") for row in rows]
 
                 # Fallback: legacy schema (name/is_public/payload)
                 has_name = _table_has_column(cur, "trees", "name")

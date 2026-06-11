@@ -35,12 +35,15 @@ test('tree social counts migration creates aggregate counts table', () => {
   assert.match(sql, /updated_at\s+TIMESTAMP\s+WITH\s+TIME\s+ZONE\s+NOT\s+NULL\s+DEFAULT\s+NOW\(\)/i);
 });
 
-test('tree social counts migration prepares future count indexes without changing router behavior', () => {
+test('tree social counts migration prepares count indexes (sort=likes is now supported as Unit C)', () => {
   assert.match(sql, /idx_tree_social_counts_like_count/i);
   assert.match(sql, /ON\s+tree_social_counts\(like_count\s+DESC,\s*updated_at\s+DESC\)/i);
   assert.match(sql, /idx_tree_social_counts_view_count/i);
   assert.match(sql, /ON\s+tree_social_counts\(view_count\s+DESC,\s*updated_at\s+DESC\)/i);
-  assert.match(router, /url\.searchParams\.get\('sort'\) === 'popular' \? 'popular' : 'latest'/);
+  // sort=likes is now supported in router (Unit C runtime slice, multiline ternary)
+  assert.match(router, /'likes'\s*\?\s*'likes'/);
+  // sort=views must remain unsupported
+  assert.doesNotMatch(router, /sort'\)\s*===\s*'views'/);
 });
 
 test('tree social counts migration keeps scope narrow', () => {

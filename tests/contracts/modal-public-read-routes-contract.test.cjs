@@ -72,7 +72,8 @@ test('modal public read handlers call their current helper functions', () => {
 
   const latestHandler = extractDecoratedHandler(content, '@web_app.get("/modal/browse/latest")', 'get_latest_browse_snapshot');
   assert.ok(hasString(latestHandler, 'fetch_latest_public_tree_snapshots(limit=limit, sort=safe_sort)'));
-  assert.ok(hasString(latestHandler, 'safe_sort = sort if sort in {"latest", "popular"} else "latest"'));
+  // safe_sort must accept latest, popular, and likes (Unit C)
+  assert.ok(hasString(latestHandler, 'safe_sort = sort if sort in {"latest", "popular", "likes"} else "latest"'));
 
   const growingHandler = extractDecoratedHandler(content, '@web_app.get("/modal/browse/growing")', 'get_growing_browse_snapshot');
   assert.ok(hasString(growingHandler, 'fetch_growing_public_tree_snapshots(limit=limit)'));
@@ -98,7 +99,9 @@ test('modal public read helpers preserve public visibility filters and normaliza
   const latestHelper = extractPythonFunction(content, 'fetch_latest_public_tree_snapshots');
   assert.ok(hasString(latestHelper, "t.visibility = 'public'"));
   assert.ok(hasString(latestHelper, "WHERE visibility = 'public'"));
-  assert.ok(hasString(latestHelper, 'normalize_row(row)'));
+  // latest Browse summary: likeCount opt-in, viewCount forbidden
+  assert.ok(hasString(latestHelper, 'normalize_row(row, include_like_count=True)'));
+  assert.ok(!hasString(latestHelper, '"viewCount"'), 'latest helper must not emit viewCount in payload');
   assert.ok(hasString(latestHelper, 'HAVING count(*) >= 3'));
   assert.ok(hasString(latestHelper, 'has_memories'));
   assert.ok(hasString(latestHelper, '_table_exists(cur, "memories")'));
@@ -108,7 +111,11 @@ test('modal public read helpers preserve public visibility filters and normaliza
   const growingHelper = extractPythonFunction(content, 'fetch_growing_public_tree_snapshots');
   assert.ok(hasString(growingHelper, "t.visibility = 'public'"));
   assert.ok(hasString(growingHelper, "WHERE visibility = 'public'"));
+  // growing Browse summary: must NOT include social counts (Unit C scope discipline)
   assert.ok(hasString(growingHelper, 'normalize_row(row, stage_override="growing")'));
+  assert.ok(!hasString(growingHelper, 'include_like_count'), 'growing helper must not include likeCount');
+  assert.ok(!hasString(growingHelper, 's.like_count'), 'growing helper must not join like_count');
+  assert.ok(!hasString(growingHelper, 's.view_count'), 'growing helper must not join view_count');
   assert.ok(hasString(growingHelper, 'HAVING count(*) BETWEEN 1 AND 2'));
   assert.ok(hasString(growingHelper, 'has_memories'));
   assert.ok(hasString(growingHelper, '_table_exists'));

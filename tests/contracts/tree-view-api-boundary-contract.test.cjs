@@ -60,9 +60,11 @@ test('Cloudflare tree view route proxies POST only to Modal public route without
   assert.doesNotMatch(cloudflareRoute, /sort=views/);
 });
 
-test('Unit B2 still does not enable Browse sort or public Browse viewCount payload', () => {
-  assert.match(catchAllRoute, /searchParams\.get\('sort'\) === 'popular' \? 'popular' : 'latest'/);
-  assert.doesNotMatch(catchAllRoute, /sort'\) === 'views'/);
-  assert.doesNotMatch(catchAllRoute, /sort'\) === 'likes'/);
+test('Unit B2 still does not enable sort=views or public Browse viewCount payload (sort=likes is now supported as Unit C)', () => {
+  // sort=views still forbidden (Unit B policy boundary)
+  assert.doesNotMatch(catchAllRoute, /sort'\)\s*===\s*'views'/);
+  // sort=likes is now supported (Unit C runtime slice, multiline ternary)
+  assert.match(catchAllRoute, /'likes'\s*\?\s*'likes'/);
+  // viewCount still forbidden in Browse summary (Unit B policy boundary)
   assert.doesNotMatch(browseSnapshot, /"viewCount"/);
 });

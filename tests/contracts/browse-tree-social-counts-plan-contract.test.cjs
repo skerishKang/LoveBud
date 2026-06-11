@@ -76,12 +76,15 @@ test('browse tree social counts plan splits follow-up units and preserves UI/API
   assert.match(content, /This planning slice does not close #1661/);
 });
 
-test('current router still only permits latest or popular summary sort', () => {
+test('current router accepts latest, popular, and likes summary sort (views still falls back)', () => {
   const router = read(routerPath);
 
-  assert.match(router, /url\.searchParams\.get\('sort'\) === 'popular' \? 'popular' : 'latest'/);
-  assert.doesNotMatch(router, /sort'\) === 'views'/);
-  assert.doesNotMatch(router, /sort'\) === 'likes'/);
+  // sort=likes is now supported as a summary sort (multiline ternary)
+  assert.match(router, /'likes'\s*\?\s*'likes'\s*:\s*'latest'/);
+  // sort=popular still supported
+  assert.match(router, /'popular'\s*\?\s*'popular'/);
+  // sort=views must NOT be accepted; it must fall back
+  assert.doesNotMatch(router, /sort'\)\s*===\s*'views'/);
 });
 
 test('current browse snapshot remains memory-count centered without tree social counts', () => {

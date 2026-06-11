@@ -53,13 +53,15 @@ test('public tree viewer sends public_tree_detail event once per loaded tree', (
   assert.match(recordBlock, /\.catch\(\(error\)\s*=>\s*\{/);
 });
 
-test('public tree view event endpoint is not wired to Browse or Search sort', () => {
+test('public tree view event endpoint is wired (sort=likes is supported, sort=views is not)', () => {
   const endpointBlock = getFunctionBlock(viewer, 'buildTreeViewEndpoint');
   assert.match(endpointBlock, /'\/api\/trees\/'\s*\+/);
   assert.match(endpointBlock, /encodeURIComponent\(treeId\)/);
   assert.match(endpointBlock, /\+\s*'\/views'/);
-  assert.match(catchAllRoute, /searchParams\.get\('sort'\) === 'popular' \? 'popular' : 'latest'/);
-  assert.doesNotMatch(catchAllRoute, /sort'\) === 'views'/);
-  assert.doesNotMatch(catchAllRoute, /sort'\) === 'likes'/);
+  // sort=likes is now supported in router (Unit C, multiline ternary)
+  assert.match(catchAllRoute, /'likes'\s*\?\s*'likes'/);
+  // sort=views remains unsupported
+  assert.doesNotMatch(catchAllRoute, /sort'\)\s*===\s*'views'/);
+  // viewCount still forbidden in Browse summary
   assert.doesNotMatch(browseSnapshot, /"viewCount"/);
 });

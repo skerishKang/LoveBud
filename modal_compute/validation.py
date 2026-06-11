@@ -114,7 +114,7 @@ def normalize_tree_row(
     return tree
 
 
-def normalize_row(row: dict[str, Any], *, stage_override: str | None = None) -> dict[str, Any]:
+def normalize_row(row: dict[str, Any], *, stage_override: str | None = None, include_like_count: bool = False) -> dict[str, Any]:
     """Normalize a combined DB row into a browse-friendly snapshot."""
     memory_count = row.get("memory_count", 0) or 0
     emotion_tags = parse_tags(row.get("all_tags"))
@@ -126,7 +126,7 @@ def normalize_row(row: dict[str, Any], *, stage_override: str | None = None) -> 
     created_at = _to_isoformat(row.get("created_at"))
     updated_at = _to_isoformat(row.get("updated_at"))
 
-    return {
+    result = {
         "id": str(row["id"]),
         "title": row.get("title") or "나의 Lovetree",
         "visibility": row.get("visibility") or "public",
@@ -140,6 +140,9 @@ def normalize_row(row: dict[str, Any], *, stage_override: str | None = None) -> 
         "timeRange": "",
         "representativeMemorySourceUrl": raw_source_url or "",
     }
+    if include_like_count:
+        result["likeCount"] = row.get("like_count", 0) or 0
+    return result
 
 
 def validate_visibility(value: Any, default: str = "private") -> str:
