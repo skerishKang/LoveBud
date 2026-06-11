@@ -54,8 +54,10 @@ test('public tree viewer sends public_tree_detail event once per loaded tree', (
 });
 
 test('public tree view event endpoint is not wired to Browse or Search sort', () => {
-  assert.match(viewer, /function\s+buildTreeViewEndpoint\(treeId\)/);
-  assert.match(viewer, /\/api\/trees\/[^']*\/views/);
+  const endpointBlock = getFunctionBlock(viewer, 'buildTreeViewEndpoint');
+  assert.match(endpointBlock, /'\/api\/trees\/'\s*\+/);
+  assert.match(endpointBlock, /encodeURIComponent\(treeId\)/);
+  assert.match(endpointBlock, /\+\s*'\/views'/);
   assert.match(catchAllRoute, /searchParams\.get\('sort'\) === 'popular' \? 'popular' : 'latest'/);
   assert.doesNotMatch(catchAllRoute, /sort'\) === 'views'/);
   assert.doesNotMatch(catchAllRoute, /sort'\) === 'likes'/);
