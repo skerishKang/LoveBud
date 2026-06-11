@@ -52,6 +52,7 @@ Browse sort/social count 판단이 필요하면 아래를 추가로 읽습니다
 
 - `./product/BROWSE_POPULAR_SORT_SEMANTICS.md`
 - `./product/lovebud-browse-tree-social-counts-plan.md`
+- `./product/lovebud-browse-tree-view-count-policy.md`
 
 Prototype/reference/demo/variant 폴더 정리, 보존, repo hygiene 판단이 필요하면 아래를 추가로 읽습니다.
 
@@ -116,6 +117,7 @@ Global focus/visibility hardening 판단이 필요하면 아래를 추가로 읽
 - [PUBLICATION_AND_PRIVACY_UX_POLICY.md](./product/PUBLICATION_AND_PRIVACY_UX_POLICY.md) - public-first visibility, Plus private storage, memory visibility inheritance, anonymous public exposure, Browse/Search eligibility 정책
 - [BROWSE_POPULAR_SORT_SEMANTICS.md](./product/BROWSE_POPULAR_SORT_SEMANTICS.md) - Browse `popular` sort의 현재 memory-count proxy 의미와 v0.1 표시 정책 방향
 - [lovebud-browse-tree-social-counts-plan.md](./product/lovebud-browse-tree-social-counts-plan.md) - #1661 tree-level Browse social counts foundation plan
+- [lovebud-browse-tree-view-count-policy.md](./product/lovebud-browse-tree-view-count-policy.md) - #1661 Unit B tree-level view count policy
 - [UI_COPY_DIET_GUIDE.md](./product/UI_COPY_DIET_GUIDE.md) - UI 카피 다이어트 운영 기준
 - [MVP_SCOPE.md](./product/MVP_SCOPE.md) - MVP 범위
 - [USER_FLOW.md](./product/USER_FLOW.md) - 사용자 흐름
