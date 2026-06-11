@@ -68,6 +68,9 @@
         const redirectToEditorLogin = editorPageHelpers.redirectToEditorLogin;
         if (typeof redirectToEditorLogin !== 'function') return stopMissing(windowRef, 'LoveBudEditorPageHelpers.redirectToEditorLogin');
 
+        const registerEditorAuthStart = editorPageHelpers.registerEditorAuthStart;
+        if (typeof registerEditorAuthStart !== 'function') return stopMissing(windowRef, 'LoveBudEditorPageHelpers.registerEditorAuthStart');
+
         const safeI18nText = editorHelpers.safeI18nText;
         const resolveHintText = editorHelpers.resolveHintText;
         const resolveTreeTitleText = editorHelpers.resolveTreeTitleText;
@@ -164,6 +167,7 @@
                 i18n,
                 getEditorBasePath,
                 redirectToEditorLogin,
+                registerEditorAuthStart,
                 safeI18nText,
                 resolveHintText,
                 resolveTreeTitleText,
