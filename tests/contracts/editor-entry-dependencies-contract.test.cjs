@@ -69,6 +69,14 @@ test('editor entry delegates dependency resolution to helper', () => {
   assert.match(editor, /createEditorStartDependencyChecker\s*=\s*deps\.shellHelpers\.createEditorStartDependencyChecker/);
 });
 
+test('entry dependencies helper wires registerEditorAuthStart required by editor entry', () => {
+  const helper = read('js/editor/editor-entry-dependencies.js');
+
+  assert.match(helper, /const\s+registerEditorAuthStart\s*=\s*editorPageHelpers\.registerEditorAuthStart/);
+  assert.match(helper, /typeof\s+registerEditorAuthStart\s*!==\s*'function'\)\s*return\s+stopMissing\(windowRef,\s*'LoveBudEditorPageHelpers\.registerEditorAuthStart'\)/);
+  assert.match(helper, /redirectToEditorLogin,\s*\n\s*registerEditorAuthStart,\s*\n\s*safeI18nText/);
+});
+
 test('entry dependencies helper preserves bootstrap missing-helper messages', () => {
   const helper = read('js/editor/editor-entry-dependencies.js');
 
@@ -76,6 +84,7 @@ test('entry dependencies helper preserves bootstrap missing-helper messages', ()
     'LoveBudEditorUtils.findRootMemory',
     'LoveBudEditorHelpers.safeI18nText',
     'LoveBudEditorHelpers.escapeHtml',
+    'LoveBudEditorPageHelpers.registerEditorAuthStart',
     'LoveBudEditorPageHelpers.renderTreeLoadError',
     'LoveBudEditorPageHelpers.buildTreeLoadErrorCopy',
     'LoveBudEditorShellHelpers.applyEditorShellCopy',
