@@ -124,6 +124,44 @@ def _normalize_view_source(source: str) -> str:
     return normalized
 
 
+def fetch_public_tree_view_count(tree_id: str) -> int:
+    """Read the public tree-level view count without creating aggregate rows.
+
+    Missing tree_social_counts remains a safe zero-count fallback so public tree detail
+    reads keep working before the migration is applied in a runtime environment.
+    """
+
+    def operation() -> dict[str, Any] | None:
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                tree = _fetch_public_tree_for_view_count(cur, tree_id)
+                if not tree:
+                    return None
+
+                if not _table_exists(cur, "tree_social_counts"):
+                    return {"view_count": 0}
+
+                if not _table_has_column(cur, "tree_social_counts", "view_count"):
+                    return {"view_count": 0}
+
+                cur.execute(
+                    """
+                    SELECT view_count
+                    FROM tree_social_counts
+                    WHERE tree_id = %s
+                    LIMIT 1
+                    """,
+                    (tree_id,),
+                )
+                row = cur.fetchone()
+                return {"view_count": int(row.get("view_count") or 0) if row else 0}
+
+    result = run_db_with_retry(operation)
+    if result is None:
+        raise HTTPException(status_code=404, detail="Tree not found")
+    return int(result.get("view_count") or 0)
+
+
 def record_public_tree_view(
     tree_id: str,
     actor_key: str,
