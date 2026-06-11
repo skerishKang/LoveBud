@@ -23,20 +23,20 @@
       en: 'LoveTree connects the first scene, heart notes, and moments worth revisiting<br class="pc-only">into one emotional path.'
     },
     'intro.heroTitle1': {
-      ko: '<span class="title-line">첫 순간이 하나의</span><span class="title-line title-accent">러브트리로</span><span class="title-line">이어져요</span>',
-      en: '<span class="title-line">The first spark</span><span class="title-line title-accent">connects into</span><span class="title-line">one LoveTree</span>'
+      ko: '<span class="title-line">러브트리는</span><span class="title-line title-accent">마음이 자라는</span><span class="title-line">기록 공간이에요</span>',
+      en: '<span class="title-line">LoveTree is</span><span class="title-line title-accent">a growing record</span><span class="title-line">of your feelings</span>'
     },
     'intro.heroLead1': {
-      ko: '반했던 장면과 오래 남은 마음을,<br class="pc-only">감정이 이어진 경로로 천천히 남겨 보세요.',
-      en: 'Slowly document your cherished scenes and lasting thoughts along an emotional path.'
+      ko: '좋아하게 된 순간을 하나씩 이어 붙이며, <br class="pc-only">내 마음이 깊어진 경로를 천천히 보여줍니다.',
+      en: 'Connect the moments you came to love, one by one, and slowly see how your feelings deepened.'
     },
     'intro.heroTitle2': {
-      ko: '<span class="title-line">다시 보고 싶은 장면이</span><span class="title-line title-accent">마음의 가지로</span><span class="title-line">자라나요</span>',
-      en: '<span class="title-line">Scenes you want to revisit</span><span class="title-line title-accent">grow into branches</span><span class="title-line">of the heart</span>'
+      ko: '<span class="title-line">흩어진 순간을</span><span class="title-line title-accent">감정의 가지로</span><span class="title-line">이어 보여줘요</span>',
+      en: '<span class="title-line">Scattered moments</span><span class="title-line title-accent">connect as branches</span><span class="title-line">of feeling</span>'
     },
     'intro.heroLead2': {
-      ko: '스쳐간 순간 하나가 오래 머무는 마음이 되도록,<br class="pc-only">나만의 러브트리에 담아 보세요.',
-      en: 'Capture fleeting moments into your own LoveTree, letting them linger in your heart.'
+      ko: '첫 장면과 마음 메모, 다시 보고 싶은 순간을 <br class="pc-only">하나의 러브트리 안에서 차분히 따라가요.',
+      en: 'Follow first scenes, heart notes, and moments worth revisiting inside one LoveTree.'
     },
     'intro.heroPrimaryCta': {
       ko: '내 러브트리 시작하기',
