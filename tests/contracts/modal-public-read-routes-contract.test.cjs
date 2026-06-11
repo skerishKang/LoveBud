@@ -72,8 +72,8 @@ test('modal public read handlers call their current helper functions', () => {
 
   const latestHandler = extractDecoratedHandler(content, '@web_app.get("/modal/browse/latest")', 'get_latest_browse_snapshot');
   assert.ok(hasString(latestHandler, 'fetch_latest_public_tree_snapshots(limit=limit, sort=safe_sort)'));
-  // safe_sort must accept latest, popular, and likes (Unit C)
-  assert.ok(hasString(latestHandler, 'safe_sort = sort if sort in {"latest", "popular", "likes"} else "latest"'));
+  // safe_sort must accept latest, popular, likes, and views (Unit C)
+  assert.ok(hasString(latestHandler, 'safe_sort = sort if sort in {"latest", "popular", "likes", "views"} else "latest"'));
 
   const growingHandler = extractDecoratedHandler(content, '@web_app.get("/modal/browse/growing")', 'get_growing_browse_snapshot');
   assert.ok(hasString(growingHandler, 'fetch_growing_public_tree_snapshots(limit=limit)'));

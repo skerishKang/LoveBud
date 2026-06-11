@@ -22,8 +22,9 @@ test('Catch-all route accepts sort=likes and maps to modal', () => {
   assert.match(catchAllRoute, /\?\s*['"]likes['"]/);
 
   // buildModalUrl handles likes for community/trees - ternary with nested ternary
-  assert.match(catchAllRoute, /sourceUrl\.searchParams\.get\(["']sort["']\).*===.*popular/);
-  assert.match(catchAllRoute, /sourceUrl\.searchParams\.get\(["']sort["']\).*===.*likes/);
+  // (uses requestedSort helper variable, also used for buildBrowseCacheRequest)
+  assert.match(catchAllRoute, /requestedSort\s*===\s*['"]popular['"]/);
+  assert.match(catchAllRoute, /requestedSort\s*===\s*['"]likes['"]/);
   assert.match(catchAllRoute, /\?\s*['"]popular['"]/);
   assert.match(catchAllRoute, /\?\s*['"]likes['"]/);
 
@@ -49,15 +50,14 @@ test('Public reads fetch_latest_public_tree_snapshots supports sort=likes', () =
   assert.match(publicReads, /t\.created_at\s+DESC/);
   assert.match(publicReads, /t\.id\s+ASC/);
 
-  // Join with tree_social_counts (only like_count)
+  // Join with tree_social_counts (likes subquery covers like_count)
   assert.match(publicReads, /LEFT JOIN\s+\(\s*--\s*Social counts/);
-  assert.match(publicReads, /SELECT\s+tree_id,\s+like_count/);
+  assert.match(publicReads, /SELECT\s+tree_id,\s+like_count,\s+view_count/);
   assert.match(publicReads, /FROM\s+tree_social_counts/);
   assert.match(publicReads, /s\s+ON\s+t\.id\s*=\s*s\.tree_id/);
 
-  // Select like_count but NOT view_count in modern query
+  // Select like_count in modern query
   assert.match(publicReads, /s\.like_count,/);
-  assert.doesNotMatch(publicReads, /s\.view_count,/);
 });
 
 test('Normalize row includes likeCount from modern query but NOT viewCount', () => {
@@ -89,17 +89,14 @@ test('Growing public tree snapshots does NOT include social counts join', () => 
   assert.doesNotMatch(growingSection, /"viewCount":\s*0,/);
 });
 
-test('Browse sort=views remains unsupported (falls back to latest)', () => {
-  // Catch-all still only accepts popular and likes as non-latest
-  assert.match(catchAllRoute, /===.*popular/);
-  assert.match(catchAllRoute, /===.*likes/);
+test('Browse sort=views is now enabled (delegated to views contract)', () => {
+  // Router now accepts sort=views (Unit C runtime slice). The actual
+  // behavior contract is locked by browse-sort-views-backend-contract.
+  assert.match(catchAllRoute, /===.*views/);
+  assert.match(catchAllRoute, /\?\s*['"]views['"]/);
 
-  // No views handling
-  assert.doesNotMatch(catchAllRoute, /===.*views/);
-  assert.doesNotMatch(catchAllRoute, /\?\s*['"]views['"]/);
-
-  // Modal app still rejects views
-  assert.doesNotMatch(modalApp, /["']views["']/);
+  // Modal app includes "views" in safe_sort set
+  assert.match(modalApp, /["']views["']/);
 });
 
 test('Popular sort behavior preserved (memory_count)', () => {
