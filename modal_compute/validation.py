@@ -139,6 +139,8 @@ def normalize_row(row: dict[str, Any], *, stage_override: str | None = None) -> 
         "theme": "LoveTree",
         "timeRange": "",
         "representativeMemorySourceUrl": raw_source_url or "",
+        "likeCount": row.get("like_count", 0) or 0,
+        "viewCount": row.get("view_count", 0) or 0,
     }
 
 

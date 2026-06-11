@@ -165,17 +165,23 @@ def _normalize_legacy_memory_row(node: dict[str, Any], tree_id: str, row: dict[s
 def fetch_latest_public_tree_snapshots(limit: int = 12, sort: str = "latest") -> list[dict[str, Any]]:
     """Fetch the latest public tree snapshots using a robust join-lateral query.
     Falls back to legacy trees.payload format if memories table is missing.
+    Supports sort="latest" (created_at DESC), sort="popular" (memory_count DESC),
+    and sort="likes" (like_count DESC).
     """
 
     order_clause = "t.created_at DESC"
     if sort == "popular":
         order_clause = "c.memory_count DESC, t.created_at DESC"
+    elif sort == "likes":
+        order_clause = "s.like_count DESC, t.updated_at DESC, t.created_at DESC, t.id ASC"
 
     modern_query = """
         SELECT
             t.id, t.title, t.visibility, t.created_at, t.updated_at,
             c.memory_count,
             c.all_tags,
+            s.like_count,
+            s.view_count,
             m.thumbnail as raw_thumbnail,
             m.source_url as raw_source_url
         FROM trees t
@@ -190,6 +196,11 @@ def fetch_latest_public_tree_snapshots(limit: int = 12, sort: str = "latest") ->
             GROUP BY tree_id
             HAVING count(*) >= 3
         ) c ON t.id = c.tree_id
+        LEFT JOIN (
+            -- Social counts: like_count, view_count
+            SELECT tree_id, like_count, view_count
+            FROM tree_social_counts
+        ) s ON t.id = s.tree_id
         LEFT JOIN LATERAL (
             -- Representative Snapshot: Latest memory with visual data
             SELECT thumbnail, source_url
@@ -274,6 +285,8 @@ def fetch_latest_public_tree_snapshots(limit: int = 12, sort: str = "latest") ->
                         "theme": "LoveTree",
                         "timeRange": "",
                         "representativeMemorySourceUrl": rep_source_url or "",
+                        "likeCount": 0,
+                        "viewCount": 0,
                     })
                     if len(result) >= limit:
                         break
@@ -292,6 +305,8 @@ def fetch_growing_public_tree_snapshots(limit: int = 6) -> list[dict[str, Any]]:
             t.id, t.title, t.visibility, t.created_at, t.updated_at,
             c.memory_count,
             c.all_tags,
+            s.like_count,
+            s.view_count,
             m.thumbnail as raw_thumbnail,
             m.source_url as raw_source_url
         FROM trees t
@@ -305,6 +320,11 @@ def fetch_growing_public_tree_snapshots(limit: int = 6) -> list[dict[str, Any]]:
             GROUP BY tree_id
             HAVING count(*) BETWEEN 1 AND 2
         ) c ON t.id = c.tree_id
+        LEFT JOIN (
+            -- Social counts: like_count, view_count
+            SELECT tree_id, like_count, view_count
+            FROM tree_social_counts
+        ) s ON t.id = s.tree_id
         LEFT JOIN LATERAL (
             SELECT thumbnail, source_url
             FROM memories
@@ -401,6 +421,8 @@ def fetch_growing_public_tree_snapshots(limit: int = 6) -> list[dict[str, Any]]:
                         "theme": "LoveTree",
                         "timeRange": "",
                         "representativeMemorySourceUrl": rep_source_url or "",
+                        "likeCount": 0,
+                        "viewCount": 0,
                     })
                     if len(result) >= limit:
                         break
