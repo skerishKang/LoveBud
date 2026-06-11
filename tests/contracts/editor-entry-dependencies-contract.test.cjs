@@ -19,6 +19,82 @@ function sourceIndex(sources, needle) {
   return sources.findIndex((src) => src.includes(needle));
 }
 
+function loadEntryDependencies() {
+  const context = { window: {}, console: { error() {} }, Object };
+  vm.createContext(context);
+  vm.runInContext(read('js/editor/editor-entry-dependencies.js'), context);
+  return context.window.LoveBudEditorEntryDependencies.resolveEditorEntryDependencies;
+}
+
+function createReadyWindow() {
+  const noop = function() {};
+  return {
+    LoveBudEditorDataLoaderFallbacks: {},
+    LoveBudEditorEntryFallbacks: {},
+    LoveBudEditorShellHelpers: {
+      createInlineShowToastFallback: () => noop,
+      getI18n: () => ((key) => key),
+      getEditorBasePath: noop,
+      getYouTubeInputErrorMessageFallback: noop,
+      applyEditorShellCopy: noop,
+      createEditorDebugReporter: noop,
+      getHttpStatus: noop,
+      markEditorReady: noop,
+      applyEditorEditabilityState: noop,
+      createEditorStartupDependencyWaiter: noop,
+      exposeCanvasEmptyGuideUpdater: noop,
+      exposeDetailPanelUpdater: noop,
+      createSelectedMomentFocusHandler: noop,
+      createSidebarTreeActionsUpdater: noop,
+      createMemoryActionsReadinessWrapper: noop,
+      createCurrentMomentDetailOpener: noop,
+      createSaveStatusOrchestrationFallback: noop,
+      exposeRefreshMemoriesBridge: noop,
+      resolveSaveStatusTimeFormatter: noop,
+    },
+    LoveBudEditorUtils: {
+      findRootMemory: noop,
+      getCanonicalRootId: noop,
+      isRootMemory: noop,
+    },
+    LoveBudEditorHelpers: {
+      safeI18nText: noop,
+      resolveHintText: noop,
+      resolveTreeTitleText: noop,
+      resolveInfoText: noop,
+      escapeHtml: noop,
+      safeUrl: noop,
+      resolveMemoryThumbnail: noop,
+    },
+    LoveBudEditorSaveStatus: {},
+    LoveBudEditorPageHelpers: {
+      redirectToEditorLogin: noop,
+      getMyTreesHref: noop,
+      renderTreeLoadError: noop,
+      buildTreeLoadErrorCopy: noop,
+      registerEditorAuthStart: noop,
+    },
+    LoveBudEditorTreeHelpers: {
+      syncCurrentTreeData: noop,
+      resolveParentIdForCreate: noop,
+      nextMemoryIdFromMemories: noop,
+    },
+    LoveBudEditorSelectionUI: {},
+    LoveBudEditorBindings: {},
+    LoveBudEditorPageEventBindings: { bindEditorPageEvents: noop },
+    LoveBudEditorDataLoader: {},
+    LoveBudEditorInitialLoadFlow: { runEditorInitialLoadFlow: noop },
+    LoveBudEditorRefreshSaveRuntime: { createEditorRefreshSaveRuntime: noop },
+    LoveBudEditorStartupContext: { createEditorStartupContext: noop },
+    LoveBudEditorAuthHelpers: {
+      readConfirmedAuthCache: () => ({ uid: 'u1' }),
+      hasConfirmedSessionUser: () => true,
+    },
+    LoveBudEditorShellCopyApplier: { createPrepareEditorShell: noop },
+    LoveBudEditorDomRefsBuilder: { createEditorDomRefs: noop },
+  };
+}
+
 test('editor entry dependencies helper loads before editor entry', () => {
   const sources = scriptSources();
   const dependencyHelper = sourceIndex(sources, 'js/editor/editor-entry-dependencies.js');
@@ -78,6 +154,7 @@ test('entry dependencies helper preserves bootstrap missing-helper messages', ()
     'LoveBudEditorHelpers.escapeHtml',
     'LoveBudEditorPageHelpers.renderTreeLoadError',
     'LoveBudEditorPageHelpers.buildTreeLoadErrorCopy',
+    'LoveBudEditorPageHelpers.registerEditorAuthStart',
     'LoveBudEditorShellHelpers.applyEditorShellCopy',
     'LoveBudEditorShellCopyApplier.createPrepareEditorShell',
     'LoveBudEditorShellHelpers.createEditorDebugReporter'
@@ -99,4 +176,33 @@ test('entry dependencies helper preserves shell copy side effect before prepare 
   assert.notEqual(applyIndex, -1, 'applyEditorShellCopy side effect must remain');
   assert.notEqual(prepareIndex, -1, 'prepareEditorShell creation must remain');
   assert.ok(applyIndex < prepareIndex, 'shell copy must apply before prepareEditorShell is returned');
+});
+
+test('entry dependency resolver exposes auth start helper required by editor entry', () => {
+  const resolveEditorEntryDependencies = loadEntryDependencies();
+  const windowRef = createReadyWindow();
+  const result = resolveEditorEntryDependencies({ windowRef });
+
+  assert.equal(result.status, 'ready');
+  assert.equal(
+    result.deps.registerEditorAuthStart,
+    windowRef.LoveBudEditorPageHelpers.registerEditorAuthStart,
+    'resolver must pass through LoveBudEditorPageHelpers.registerEditorAuthStart'
+  );
+});
+
+test('entry dependency resolver stops with auth start helper message when missing', () => {
+  const resolveEditorEntryDependencies = loadEntryDependencies();
+  const windowRef = createReadyWindow();
+  delete windowRef.LoveBudEditorPageHelpers.registerEditorAuthStart;
+
+  const result = resolveEditorEntryDependencies({ windowRef });
+
+  assert.equal(result.status, 'stopped');
+  assert.deepEqual(windowRef.LoveBudEditorDebug.errors, [
+    {
+      msg: 'LoveBudEditorPageHelpers.registerEditorAuthStart missing',
+      error: 'LoveBudEditorPageHelpers.registerEditorAuthStart missing',
+    },
+  ]);
 });
