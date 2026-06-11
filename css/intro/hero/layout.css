@@ -1,6 +1,6 @@
 .intro-hero h1 {
   font-size: clamp(3.45rem, 5.8vw, 5.15rem);
-  font-weight: 900;
+  font-weight: 700;
   color: var(--on-surface);
   margin: 20px 0 14px;
   line-height: 0.99;
@@ -15,25 +15,24 @@
 .intro-hero h1 .title-line:nth-child(1) {
   color: var(--on-surface-variant);
   font-weight: 700;
-  opacity: 0.9;
 }
 
 .intro-hero h1 .title-accent {
   color: var(--primary);
-  font-weight: 900;
-  letter-spacing: -0.03em;
+  font-weight: 780;
+  letter-spacing: -0.052em;
 }
 
 .intro-hero h1 .title-line:nth-child(3) {
-  color: #5f504a;
-  font-weight: 800;
+  color: #b85c66;
+  font-weight: 700;
 }
 
 .intro-hero .lead {
   font-size: 1.02rem;
   color: var(--on-surface-variant);
   line-height: 1.78;
-  margin: 0 0 1.45rem;
+  margin: 0;
   max-width: 520px;
 }
 

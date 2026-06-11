@@ -3,7 +3,12 @@
   .intro-hero {
     grid-template-columns: 1fr;
     min-height: auto;
-    padding-top: 36px;
+    width: min(1120px, calc(100% - 40px));
+    padding-top: 18px;
+  }
+
+  .intro-hero-copy {
+    max-width: 680px;
   }
 }
 
@@ -15,7 +20,13 @@
 
 @media (max-width: 640px) {
   .intro-hero {
-    padding: 24px var(--page-pad-mobile, 16px) 12px;
+    gap: 22px;
+    width: min(100%, calc(100% - 24px));
+    padding: 12px 0 8px;
+  }
+
+  .intro-hero-copy {
+    padding-bottom: 4px;
   }
 
   .intro-hero h1 {
@@ -40,6 +51,10 @@
   .intro-hero-actions .btn-round {
     width: 100%;
     min-height: 54px;
+  }
+
+  .intro-cta-link {
+    width: 100%;
   }
 
   .intro-hero-visual {
