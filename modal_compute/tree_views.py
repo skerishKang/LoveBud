@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import uuid
 from typing import Any
 
 from fastapi import HTTPException
@@ -157,7 +158,7 @@ def record_public_tree_view(
                         created_at
                     )
                     VALUES (
-                        gen_random_uuid(),
+                        %s,
                         %s,
                         %s,
                         %s,
@@ -168,7 +169,7 @@ def record_public_tree_view(
                     ON CONFLICT (tree_id, actor_key, counted_window_start) DO NOTHING
                     RETURNING id
                     """,
-                    (safe_tree_id, safe_actor_key, safe_actor_kind, safe_source),
+                    (str(uuid.uuid4()), safe_tree_id, safe_actor_key, safe_actor_kind, safe_source),
                 )
                 inserted = cur.fetchone() is not None
 
