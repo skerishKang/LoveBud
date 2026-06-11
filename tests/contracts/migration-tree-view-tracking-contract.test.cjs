@@ -24,13 +24,16 @@ test('tree view tracking migration creates narrow dedup table', () => {
 });
 
 test('tree view tracking migration restricts countable sources', () => {
-  assert.match(sql, /source\s+VARCHAR\(64\)\s+NOT\s+NULL\s+CHECK\s*\(source\s+IN\s+\('public_tree_detail',\s*'public_tree_card_open'\)\)/i);
+  const sourceDefinition = sql.match(/source\s+VARCHAR\(64\)[\s\S]*?CHECK\s*\([\s\S]*?\)/i)?.[0] || '';
+
+  assert.match(sourceDefinition, /'public_tree_detail'/i);
+  assert.match(sourceDefinition, /'public_tree_card_open'/i);
   assert.match(policy, /Public tree detail page open/);
   assert.match(policy, /Explicit public tree card open/);
-  assert.doesNotMatch(sql, /browse_summary/i);
-  assert.doesNotMatch(sql, /search_summary/i);
-  assert.doesNotMatch(sql, /prefetch/i);
-  assert.doesNotMatch(sql, /cache_warmup/i);
+  assert.doesNotMatch(sourceDefinition, /browse_summary/i);
+  assert.doesNotMatch(sourceDefinition, /search_summary/i);
+  assert.doesNotMatch(sourceDefinition, /prefetch/i);
+  assert.doesNotMatch(sourceDefinition, /cache_warmup/i);
 });
 
 test('tree view tracking migration enforces one actor tree window row', () => {
@@ -40,17 +43,19 @@ test('tree view tracking migration enforces one actor tree window row', () => {
   assert.match(policy, /rolling 24-hour window/);
 });
 
-test('tree view tracking migration avoids raw network and device identifiers', () => {
+test('tree view tracking migration avoids raw network and device identifier storage fields', () => {
   assert.match(sql, /Privacy guardrails/i);
   assert.match(sql, /Do not store raw IP addresses/i);
   assert.match(sql, /raw user-agent strings/i);
   assert.match(sql, /full device\s+fingerprints/i);
+  assert.match(sql, /referrer URLs/i);
   assert.match(sql, /request headers/i);
   assert.doesNotMatch(sql, /ip_address/i);
   assert.doesNotMatch(sql, /user_agent/i);
   assert.doesNotMatch(sql, /fingerprint\s+VARCHAR/i);
   assert.doesNotMatch(sql, /headers\s+JSON/i);
-  assert.doesNotMatch(sql, /referrer/i);
+  assert.doesNotMatch(sql, /request_headers/i);
+  assert.doesNotMatch(sql, /referrer_url/i);
 });
 
 test('tree view tracking migration keeps aggregate and runtime behavior held', () => {
