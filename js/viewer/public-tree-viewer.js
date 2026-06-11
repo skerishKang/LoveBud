@@ -14,6 +14,8 @@
     if (window[MARKER]) return;
     window[MARKER] = true;
 
+    const VIEW_ACTOR_KEY_STORAGE = 'lovebud_public_tree_view_actor_key_v1';
+
     // Selectors
     const SEL = {
         treeShell: '#viewerTreeShell',
@@ -43,6 +45,7 @@
     let currentTree = null;
     let currentMemories = [];
     let selectedMemoryId = null;
+    let viewEventSentForTreeId = null;
 
     // i18n helper
     function t(key, fallbackKo, fallbackEn) {
@@ -89,6 +92,52 @@
     function getCurrentLocale() {
         const locale = window.i18n?.currentLang || 'ko';
         return String(locale).toLowerCase().startsWith('en') ? 'en' : 'ko';
+    }
+
+    function createRandomViewActorKey() {
+        if (window.crypto && typeof window.crypto.randomUUID === 'function') {
+            return 'anon-' + window.crypto.randomUUID();
+        }
+        return 'anon-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2);
+    }
+
+    function getOrCreateViewActorKey() {
+        try {
+            const stored = window.localStorage?.getItem(VIEW_ACTOR_KEY_STORAGE);
+            if (stored) return stored;
+            const created = createRandomViewActorKey();
+            window.localStorage?.setItem(VIEW_ACTOR_KEY_STORAGE, created);
+            return created;
+        } catch (error) {
+            return createRandomViewActorKey();
+        }
+    }
+
+    function buildTreeViewEndpoint(treeId) {
+        return '/api/trees/' + encodeURIComponent(treeId) + '/views';
+    }
+
+    function recordPublicTreeView(treeId) {
+        if (!treeId || viewEventSentForTreeId === treeId) return;
+        viewEventSentForTreeId = treeId;
+
+        const actorKey = getOrCreateViewActorKey();
+        const payload = JSON.stringify({
+            actorKey,
+            actorKind: 'anonymous',
+            source: 'public_tree_detail'
+        });
+
+        fetch(buildTreeViewEndpoint(treeId), {
+            method: 'POST',
+            headers: {
+                'content-type': 'application/json'
+            },
+            body: payload,
+            keepalive: true
+        }).catch((error) => {
+            console.warn('[viewer] tree view count failed:', error);
+        });
     }
 
     // Render helpers
@@ -158,6 +207,7 @@
 
             renderTree();
             renderPreview(); // show first moment
+            recordPublicTreeView(treeId);
         } catch (error) {
             console.error('[viewer] load failed:', error);
             renderError();
