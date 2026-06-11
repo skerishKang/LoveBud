@@ -141,6 +141,9 @@ def fetch_public_tree_view_count(tree_id: str) -> int:
                 if not _table_exists(cur, "tree_social_counts"):
                     return {"view_count": 0}
 
+                if not _table_has_column(cur, "tree_social_counts", "view_count"):
+                    return {"view_count": 0}
+
                 cur.execute(
                     """
                     SELECT view_count

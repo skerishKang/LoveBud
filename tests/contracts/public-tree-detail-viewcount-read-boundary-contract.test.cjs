@@ -15,15 +15,38 @@ function compact(value) {
   return value.replace(/\s+/g, '').toLowerCase();
 }
 
-test('Public tree detail read boundary: viewCount allowed in detail, not in Browse summary', () => {
+test('Public tree detail read boundary: viewCount implemented in detail, not in Browse summary', () => {
+  // modal_app imports fetch_public_tree_view_count
+  assert.match(modalApp, /from\s+modal_compute\.tree_views\s+import\s+[^\n]*fetch_public_tree_view_count/);
+
   // Detail endpoint exists and returns likeCount (pattern for viewCount)
   assert.match(modalApp, /@web_app\.get\("\/modal\/trees\/\{tree_id\}"\)/);
   assert.match(modalApp, /fetch_public_tree_like_count/);
   assert.match(modalApp, /tree\["likeCount"\]\s*=\s*fetch_public_tree_like_count/);
 
-  // Public reads fetches tree and normalizes - future PR should add viewCount here
-  assert.match(publicReads, /def\s+fetch_public_tree\(/);
-  assert.match(publicReads, /normalize_tree_row/);
+  // Public detail route now sets tree["viewCount"] = fetch_public_tree_view_count(safe_tree_id)
+  assert.match(modalApp, /tree\["viewCount"\]\s*=\s*fetch_public_tree_view_count/);
+});
+
+test('fetch_public_tree_view_count helper exists with table and column missing fallbacks', () => {
+  // Helper function exists
+  assert.match(treeViews, /def\s+fetch_public_tree_view_count\(/);
+
+  // Helper checks _table_exists(cur, "tree_social_counts")
+  assert.match(treeViews, /_table_exists\(cur,\s*["']tree_social_counts["']\)/);
+
+  // Helper checks _table_has_column(cur, "tree_social_counts", "view_count")
+  assert.match(treeViews, /_table_has_column\(cur,\s*["']tree_social_counts["'],\s*["']view_count["']\)/);
+
+  // Helper returns safe zero when table missing
+  assert.match(treeViews, /if not _table_exists.*tree_social_counts[\s\S]*?return\s*\{\s*["']view_count["']\s*:\s*0\s*\}/);
+
+  // Helper returns safe zero when column missing
+  assert.match(treeViews, /if not _table_has_column.*view_count[\s\S]*?return\s*\{\s*["']view_count["']\s*:\s*0\s*\}/);
+
+  // Helper validates public tree boundary
+  assert.match(treeViews, /_fetch_public_tree_for_view_count/);
+  assert.match(treeViews, /visibility\s*=\s*'public'/);
 });
 
 test('Browse summary must not include viewCount in payload', () => {
@@ -57,7 +80,7 @@ test('Public tree detail boundary: private trees must not leak viewCount', () =>
   assert.match(treeViews, /is_public\s*=\s*%s/);
 });
 
-test('View count infrastructure exists for future detail read exposure', () => {
+test('View count infrastructure exists for detail read exposure', () => {
   // Aggregate table column exists in tree_views
   assert.match(treeViews, /tree_social_counts/);
   assert.match(treeViews, /view_count/);
