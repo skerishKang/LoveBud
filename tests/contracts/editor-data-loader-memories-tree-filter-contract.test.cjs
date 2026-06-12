@@ -271,6 +271,75 @@ test('isCanonicalRootPlaceholder detects all five root variants', () => {
   assert.equal(isCanonicalRootPlaceholder(null), false, 'null');
 });
 
+test('filterMemoriesForTree drops stale real memory with parentId null and mismatched treeId', () => {
+  const dataLoader = loadDataLoader();
+  const filterMemoriesForTree = dataLoader.filterMemoriesForTree;
+
+  // 핵심 regression boundary: parentId: null이어도 treeId가 다르면 stale.
+  // 이전 (PR #2447) 로직은 isCanonicalRootPlaceholder 통과로 살려뒀음.
+  // 이 케이스에서 싸이 memory 같은 stale real moment가 새 트리에 섞이는 게 가능했음.
+  const input = [
+    { id: 'psy-stale', parentId: null, treeId: 'tree-A', sourceUrl: 'https://youtube.com/psy' },
+    { id: 'root', parentId: null, treeId: 'tree-A' },  // legacy 'root'만 예외 통과
+  ];
+  const filtered = filterMemoriesForTree(input, 'tree-B');
+  const ids = filtered.map((m) => m.id);
+  assert.deepEqual(ids, ['root'], 'only legacy root should survive; parentId:null stale must drop');
+});
+
+test('filterMemoriesForTree drops uuid root placeholder when its treeId mismatches', () => {
+  const dataLoader = loadDataLoader();
+  const filterMemoriesForTree = dataLoader.filterMemoriesForTree;
+
+  // uuid root placeholder (id !== 'root', parentId === '')도 treeId mismatch면 drop.
+  // 'root' id만 universal, 그 외 root placeholder는 자기 tree에만 valid.
+  const input = [
+    { id: 'tree-root-A', parentId: '', treeId: 'tree-A' },
+    { id: 'tree-root-B', parentId: '', treeId: 'tree-B' },
+  ];
+  const filtered = filterMemoriesForTree(input, 'tree-B');
+  const ids = filtered.map((m) => m.id);
+  assert.deepEqual(ids, ['tree-root-B']);
+});
+
+test('filterMemoriesForTree keeps legacy id=root across mismatched treeId (universal exception)', () => {
+  const dataLoader = loadDataLoader();
+  const filterMemoriesForTree = dataLoader.filterMemoriesForTree;
+
+  // legacy 'root'만 universal. treeId가 달라도 통과.
+  const filtered = filterMemoriesForTree([
+    { id: 'root', parentId: null, treeId: 'tree-A' },
+  ], 'tree-B');
+  assert.equal(filtered.length, 1);
+  assert.equal(filtered[0].id, 'root');
+});
+
+test('loadEditorMemories: stale real moment with parentId null + mismatched treeId is dropped', async () => {
+  const dataLoader = loadDataLoader();
+  const cache = createMemoryCache();
+  const apiClient = createApiClient([]);
+
+  // 이전 트리의 real moment가 parentId: null 형태로 캐시에 남은 경우
+  // (root placeholder가 아니라 real moment인데 parentId가 누락된 edge case)
+  cache.set('memories_tree-B', [
+    { id: 'psy-moment', parentId: null, treeId: 'tree-A', sourceUrl: 'https://youtube.com/psy' },
+    { id: 'root', parentId: null, treeId: 'tree-A' },
+  ]);
+
+  const result = await dataLoader.loadEditorMemories({
+    treeId: 'tree-B',
+    cache,
+    cacheKey: 'memories_tree-B',
+    apiClient,
+    normalizeMemory: dataLoader.createNormalizeMemory(),
+  });
+
+  // psy-moment drop, root만 통과 → API [] → cache clear + root도 drop → []
+  const ids = result.memories.map((m) => m.id);
+  assert.equal(ids.includes('psy-moment'), false, 'stale parentId:null real moment must not leak');
+  assert.deepEqual(ids, []);
+});
+
 test('editor page cache-busts data loader scripts for the stale cache filter', () => {
   const editorPage = fs.readFileSync('pages/editor.html', 'utf8');
 

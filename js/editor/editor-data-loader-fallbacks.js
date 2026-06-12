@@ -14,6 +14,9 @@
 
     /**
      * 메모리가 canonical root placeholder인지 판정 (inline fallback).
+     *
+     * 참고: inlineFilterMemoriesForTree()는 이 helper를 직접 사용하지 않는다.
+     * treeId 매칭이 우선이며, id === 'root' (legacy universal root)만 예외.
      */
     function inlineIsCanonicalRootPlaceholder(memory) {
         if (!memory) return false;
@@ -27,6 +30,9 @@
     /**
      * 메모리 배열을 current treeId 기준으로 필터링 (inline fallback).
      * LoveBudEditorDataLoader.filterMemoriesForTree와 같은 기준.
+     *
+     * 핵심 원칙: treeId가 다르면 root-like보다 먼저 drop한다.
+     * 단, id === 'root' (legacy universal root)만 예외로 통과.
      */
     function inlineFilterMemoriesForTree(memories, treeId) {
         if (!Array.isArray(memories)) return [];
@@ -34,10 +40,15 @@
 
         return memories.filter((m) => {
             if (!m) return false;
-            if (inlineIsCanonicalRootPlaceholder(m)) return true;
             const memTreeId = m.treeId || m.tree_id || null;
-            if (memTreeId && memTreeId === treeId) return true;
-            return false;
+
+            if (memTreeId && memTreeId !== treeId) {
+                return m.id === 'root';
+            }
+
+            if (memTreeId === treeId) return true;
+
+            return m.id === 'root';
         });
     }
 

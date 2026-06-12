@@ -44,8 +44,12 @@
      * 메모리가 canonical root placeholder인지 판정.
      * (root-like: id='root' 또는 parentId null/undefined/''/==id)
      * legacy root + uuid root placeholder 모두 포함.
-     * root placeholder는 어떤 tree의 root로도 동작 가능하므로
-     * treeId 필터에서 제외한다.
+     *
+     * 참고: filterMemoriesForTree()는 이 helper를 직접 사용하지 않는다.
+     * parentId만으로 root로 분류하면, 다른 트리에서 캐시된
+     * "parentId: null인 real moment"가 stale로 새 트리에 섞일 수 있다.
+     * filterMemoriesForTree는 treeId 매칭을 먼저 본 뒤,
+     * 예외적으로 id === 'root' (legacy universal root)만 통과시킨다.
      */
     function isCanonicalRootPlaceholder(memory) {
         if (!memory) return false;
@@ -59,15 +63,18 @@
     /**
      * 메모리 배열을 current treeId 기준으로 필터링.
      *
+     * 핵심 원칙: treeId가 다르면 root-like보다 먼저 drop한다.
+     * 단, id === 'root' (legacy universal root)만 예외로 통과.
+     *
      * 규칙:
-     * - canonical root placeholder는 항상 유지 (어떤 tree의 root로도 동작 가능)
-     * - memory.treeId === current treeId → 유지
-     * - memory.treeId가 current treeId와 다른 값 → drop (stale)
-     * - current treeId가 있고, memory.treeId가 없는 경우 → drop
-     *   (server-loaded real tree의 메모리는 treeId를 가져야 함.
-     *    treeId 없는 메모리는 다른 tree의 stale로 간주)
-     * - current treeId가 없는 경우 (legacy default) → 모든 메모리 유지
-     *   (필터링 불가. 기존 동작 보존)
+     * 1) current treeId가 없는 경우 (legacy default) → 모든 메모리 유지
+     * 2) memory.treeId가 current treeId와 다른 값 → drop.
+     *    예외: memory.id === 'root' (legacy universal root)만 통과.
+     * 3) memory.treeId === current treeId → 유지
+     * 4) memory.treeId가 없고 current treeId가 있는 경우 →
+     *    memory.id === 'root' (legacy universal root)만 통과.
+     *    (server-loaded real tree의 메모리는 treeId를 가져야 한다.
+     *     parentId: null이라도 treeId가 없는 메모리는 stale로 간주)
      */
     function filterMemoriesForTree(memories, treeId) {
         if (!Array.isArray(memories)) return [];
@@ -75,10 +82,15 @@
 
         return memories.filter((m) => {
             if (!m) return false;
-            if (isCanonicalRootPlaceholder(m)) return true;
             const memTreeId = m.treeId || m.tree_id || null;
-            if (memTreeId && memTreeId === treeId) return true;
-            return false;
+
+            if (memTreeId && memTreeId !== treeId) {
+                return m.id === 'root';
+            }
+
+            if (memTreeId === treeId) return true;
+
+            return m.id === 'root';
         });
     }
 
