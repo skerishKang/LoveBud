@@ -42,6 +42,7 @@ test('root helpers export root utilities and editor utils preserve the namespace
   assert.equal(typeof context.window.LoveBudEditorUtils.getRootId, 'function');
   assert.equal(typeof context.window.LoveBudEditorUtils.getCanonicalRootId, 'function');
   assert.equal(typeof context.window.LoveBudEditorUtils.isRootMemory, 'function');
+  assert.equal(typeof context.window.LoveBudEditorUtils.isRootLikeMemory, 'function');
 
   const rootFindRootMemory = context.window.LoveBudEditorUtils.findRootMemory;
   vm.runInContext(read('js/editor/editor-utils.js'), context);
@@ -52,6 +53,92 @@ test('root helpers export root utilities and editor utils preserve the namespace
   const editorUtils = read('js/editor/editor-utils.js');
   assert.match(editorUtils, /const\s+utils\s*=\s*window\.LoveBudEditorUtils\s*\|\|\s*\{\}/);
   assert.match(editorUtils, /window\.LoveBudEditorUtils\s*=\s*utils/);
+});
+
+test('root helper isRootLikeMemory covers all five root placeholder variants', () => {
+  const context = { window: {} };
+  vm.createContext(context);
+  vm.runInContext(read('js/editor/editor-root-helpers.js'), context);
+  const isRootLike = context.window.LoveBudEditorUtils.isRootLikeMemory;
+
+  // 5가지 root-like variant — 모두 true
+  assert.equal(isRootLike({ id: 'root', parentId: null }), true, 'legacy root');
+  assert.equal(isRootLike({ id: 'tree-root-id', parentId: null }), true, 'parentId null');
+  assert.equal(isRootLike({ id: 'tree-root-id', parentId: undefined }), true, 'parentId undefined');
+  assert.equal(isRootLike({ id: 'tree-root-id', parentId: '' }), true, 'parentId blank');
+  assert.equal(isRootLike({ id: 'tree-root-id', parentId: 'tree-root-id' }), true, 'self-parent');
+
+  // non-root는 false
+  assert.equal(isRootLike({ id: 'moment-1', parentId: 'root' }), false, 'real child of root');
+  assert.equal(isRootLike({ id: 'moment-1', parentId: 'tree-root-id' }), false, 'real child of uuid root');
+  assert.equal(isRootLike(null), false, 'null is not root-like');
+  assert.equal(isRootLike(undefined), false, 'undefined is not root-like');
+  // 빈 객체는 parentId === undefined로 root-like (지시서 3번 케이스)
+  assert.equal(isRootLike({ id: 'tree-root-id' }), true, 'parentId undefined is root-like');
+});
+
+test('root helper findRootMemory aligns with isRootLikeMemory for all placeholder variants', () => {
+  const context = { window: {} };
+  vm.createContext(context);
+  vm.runInContext(read('js/editor/editor-root-helpers.js'), context);
+  const { findRootMemory, getCanonicalRootId } = context.window.LoveBudEditorUtils;
+
+  // 5가지 root-only 케이스 — 각자 자신이 root
+  assert.equal(findRootMemory([{ id: 'root', parentId: null }])?.id, 'root');
+  assert.equal(findRootMemory([{ id: 'tree-root-id', parentId: null }])?.id, 'tree-root-id');
+  assert.equal(findRootMemory([{ id: 'tree-root-id', parentId: undefined }])?.id, 'tree-root-id');
+  assert.equal(findRootMemory([{ id: 'tree-root-id', parentId: '' }])?.id, 'tree-root-id');
+  assert.equal(findRootMemory([{ id: 'tree-root-id', parentId: 'tree-root-id' }])?.id, 'tree-root-id');
+
+  // getCanonicalRootId도 같은 root를 가리킴
+  assert.equal(getCanonicalRootId([{ id: 'tree-root-id', parentId: '' }]), 'tree-root-id');
+  assert.equal(getCanonicalRootId([{ id: 'tree-root-id', parentId: 'tree-root-id' }]), 'tree-root-id');
+});
+
+test('root helper findRootMemory prefers legacy root over real child with parentId null', () => {
+  const context = { window: {} };
+  vm.createContext(context);
+  vm.runInContext(read('js/editor/editor-root-helpers.js'), context);
+  const { findRootMemory, getCanonicalRootId } = context.window.LoveBudEditorUtils;
+
+  // memories에 { id: 'root' }가 있고, real child가 parentId: null인 경우
+  // → legacy 'root'가 canonical root. real child를 root로 오인하면 안 됨.
+  const memories = [
+    { id: 'root', parentId: null, title: 'LoveTree' },
+    { id: 'real-child', parentId: null, title: 'First real moment' },
+  ];
+  const root = findRootMemory(memories);
+  assert.equal(root?.id, 'root', 'legacy root must win over real child with parentId null');
+  assert.equal(getCanonicalRootId(memories), 'root');
+});
+
+test('root helper findRootMemory returns null for memories with no root-like node', () => {
+  const context = { window: {} };
+  vm.createContext(context);
+  vm.runInContext(read('js/editor/editor-root-helpers.js'), context);
+  const { findRootMemory } = context.window.LoveBudEditorUtils;
+
+  // 모든 메모리가 실제 child (parentId가 다른 노드) — root-like 없음
+  assert.equal(findRootMemory([
+    { id: 'moment-1', parentId: 'root' },
+    { id: 'moment-2', parentId: 'root' },
+  ]), null);
+
+  // 빈 배열
+  assert.equal(findRootMemory([]), null);
+  // 비-배열
+  assert.equal(findRootMemory(null), null);
+  assert.equal(findRootMemory(undefined), null);
+});
+
+test('root helpers load before editor empty guide UI script', () => {
+  const sources = scriptSources();
+  const rootHelpers = sourceIndex(sources, 'js/editor/editor-root-helpers.js');
+  const emptyGuideUI = sourceIndex(sources, 'js/editor/editor-empty-guide-ui.js');
+
+  assert.notEqual(rootHelpers, -1, 'editor-root-helpers.js must be loaded');
+  assert.notEqual(emptyGuideUI, -1, 'editor-empty-guide-ui.js must be loaded');
+  assert.ok(rootHelpers < emptyGuideUI, 'root helpers must load before empty guide UI');
 });
 
 test('editor entry requires preloaded root helper utilities through deps without inline fallbacks', () => {

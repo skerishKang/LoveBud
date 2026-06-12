@@ -1,11 +1,22 @@
 (function () {
     const emptyGuideUI = window.LoveBudEditorEmptyGuideUI || {};
 
+    // Root helper 공통 predicate를 우선 사용 (editor-root-helpers.js)
+    // fallback은 root helper와 같은 기준 (5가지 케이스)
+    const rootUtils = (typeof window !== 'undefined' && window.LoveBudEditorUtils) || {};
+    const sharedIsRootLikeMemory = typeof rootUtils.isRootLikeMemory === 'function'
+        ? rootUtils.isRootLikeMemory
+        : null;
+
     emptyGuideUI.createCanvasEmptyGuideUpdater = function(options) {
         const getTreeMemories = options && options.getTreeMemories;
         const log = options && options.log;
 
+        // local fallback — root helper와 같은 기준 (5가지 케이스)
         function isRootLikeMemory(memory) {
+            if (sharedIsRootLikeMemory) {
+                return sharedIsRootLikeMemory(memory);
+            }
             if (!memory) return false;
             const parentId = memory.parentId;
             return memory.id === 'root'
