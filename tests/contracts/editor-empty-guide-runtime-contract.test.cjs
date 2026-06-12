@@ -29,7 +29,7 @@ function createGuide() {
   };
 }
 
-test('empty guide runtime shows guide for root-only tree memories', () => {
+function assertGuideVisibleFor(memories) {
   const guide = createGuide();
   const documentRef = {
     getElementById(id) {
@@ -38,31 +38,29 @@ test('empty guide runtime shows guide for root-only tree memories', () => {
   };
   const emptyGuideUI = loadEmptyGuideUI(documentRef);
   const updateCanvasEmptyGuide = emptyGuideUI.createCanvasEmptyGuideUpdater({
-    getTreeMemories: () => [{ id: 'root', parentId: null, title: 'LoveTree' }],
+    getTreeMemories: () => memories,
     log() {},
   });
 
   updateCanvasEmptyGuide();
 
   assert.equal(guide.classList.contains('editor-canvas-empty-guide-hidden'), false);
+}
+
+test('empty guide runtime shows guide for root-only tree memories', () => {
+  assertGuideVisibleFor([{ id: 'root', parentId: null, title: 'LoveTree' }]);
 });
 
 test('empty guide runtime shows guide for uuid root-only tree memories', () => {
-  const guide = createGuide();
-  const documentRef = {
-    getElementById(id) {
-      return id === 'canvasEmptyGuide' ? guide : null;
-    },
-  };
-  const emptyGuideUI = loadEmptyGuideUI(documentRef);
-  const updateCanvasEmptyGuide = emptyGuideUI.createCanvasEmptyGuideUpdater({
-    getTreeMemories: () => [{ id: 'tree-root-id', parentId: null, title: 'LoveTree' }],
-    log() {},
-  });
+  assertGuideVisibleFor([{ id: 'tree-root-id', parentId: null, title: 'LoveTree' }]);
+});
 
-  updateCanvasEmptyGuide();
+test('empty guide runtime shows guide for blank-parent root placeholder', () => {
+  assertGuideVisibleFor([{ id: 'tree-root-id', parentId: '', title: 'LoveTree' }]);
+});
 
-  assert.equal(guide.classList.contains('editor-canvas-empty-guide-hidden'), false);
+test('empty guide runtime shows guide for self-parent root placeholder', () => {
+  assertGuideVisibleFor([{ id: 'tree-root-id', parentId: 'tree-root-id', title: 'LoveTree' }]);
 });
 
 test('empty guide runtime hides guide when a non-root moment exists', () => {
