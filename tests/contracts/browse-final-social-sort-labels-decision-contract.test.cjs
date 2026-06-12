@@ -109,25 +109,33 @@ test('Decision document records closure note for #1661 and #608', () => {
 });
 
 // Runtime locking assertions — these must fail if the codebase drifts
-test('Runtime locking: visitor-viewer-panels.js does not yet have 조회순/좋아요순', () => {
+test('Runtime locking: visitor-viewer-panels.js tree-comments sort (인기순/최신순) is separate from Browse sort', () => {
   const filePath = path.join(__dirname, '..', '..', 'js', 'visitor-viewer', 'visitor-viewer-panels.js');
   const content = fs.readFileSync(filePath, 'utf8');
-  // 조회순 and 좋아요순 should NOT be present yet (this is a pre-UI decision contract)
+  // visitor-viewer-panels.js has comment sorting, not Browse tree sorting.
+  // Browse sort labels (조회순/좋아요순) must NOT be in visitor-viewer.
   assert.doesNotMatch(content, /조회순/);
   assert.doesNotMatch(content, /좋아요순/);
-  // 인기순 and 최신순 should still be present (current baseline)
+  // 인기순 and 최신순 should still be present (tree-comments sort, separate)
   assert.match(content, /인기순/);
   assert.match(content, /최신순/);
+  // These must NOT have data-browse-sort attributes
+  assert.doesNotMatch(content, /data-browse-sort/);
 });
 
-test('Runtime locking: search-ui.js does not yet have 조회순/좋아요순', () => {
+test('Runtime locking: search-ui.js now has 조회순/좋아요순 (Unit D implementation)', () => {
   const filePath = path.join(__dirname, '..', '..', 'js', 'search', 'search-ui.js');
   const content = fs.readFileSync(filePath, 'utf8');
-  // 조회순 and 좋아요순 should NOT be present yet
-  assert.doesNotMatch(content, /조회순/);
-  assert.doesNotMatch(content, /좋아요순/);
-  // 최신순 should be present
+  // 조회순 and 좋아요순 must now be present (Unit D implementation)
+  assert.match(content, /조회순/);
+  assert.match(content, /좋아요순/);
+  // 최신순 should still be present
   assert.match(content, /최신순/);
+  // popular button must be removed from visible controls
+  assert.doesNotMatch(content, /data-browse-sort="popular"/);
+  // English labels must exist
+  assert.match(content, /Views/);
+  assert.match(content, /Likes/);
 });
 
 test('Runtime locking: catch-all route still accepts popular and maps unsupported to latest', () => {

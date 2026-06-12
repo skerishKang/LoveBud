@@ -29,6 +29,14 @@
       ko: '많이 감상한 러브트리',
       en: 'Popular LoveTrees'
     },
+    'search.resultsViewsHeading': {
+      ko: '많이 본 러브트리',
+      en: 'Most Viewed LoveTrees'
+    },
+    'search.resultsLikesHeading': {
+      ko: '많이 좋아한 러브트리',
+      en: 'Most Liked LoveTrees'
+    },
     'search.intentNote': {
       ko: '트리를 고르면 열려요.',
       en: 'Choose a tree to open it.'
