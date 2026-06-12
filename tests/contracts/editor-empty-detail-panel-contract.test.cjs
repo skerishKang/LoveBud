@@ -4,6 +4,7 @@ const path = require('node:path');
 const test = require('node:test');
 
 const detailUiPath = path.join(__dirname, '..', '..', 'js', 'editor', 'editor-detail-ui.js');
+const editorPagePath = path.join(__dirname, '..', '..', 'pages', 'editor.html');
 
 test('editor detail panel hides selected-memory UI when no memory is selected', () => {
   const source = fs.readFileSync(detailUiPath, 'utf8');
@@ -17,4 +18,11 @@ test('editor detail panel hides selected-memory UI when no memory is selected', 
   assert.match(source, /const thumbnail = resolveMemoryThumbnail\(data\);[\s\S]*?if \(thumbnail\) \{[\s\S]*?\} else \{[\s\S]*?clearDetailMedia\(\);[\s\S]*?\}/);
   assert.match(source, /id="detailEmptyStartBtn"/);
   assert.match(source, /formatI18nText\('create_first_moment', '첫 순간 만들기'\)/);
+});
+
+test('editor page cache-busts the empty detail panel UI script', () => {
+  const editorPage = fs.readFileSync(editorPagePath, 'utf8');
+
+  assert.match(editorPage, /\.\.\/js\/editor\/editor-detail-ui\.js\?v=20260612-2400/);
+  assert.doesNotMatch(editorPage, /\.\.\/js\/editor\/editor-detail-ui\.js\?v=20260504-627/);
 });
