@@ -6,7 +6,13 @@
         const log = options && options.log;
 
         function isRootLikeMemory(memory) {
-            return !!(memory && (memory.id === 'root' || memory.parentId === null || memory.parentId === undefined));
+            if (!memory) return false;
+            const parentId = memory.parentId;
+            return memory.id === 'root'
+                || parentId === null
+                || parentId === undefined
+                || parentId === ''
+                || parentId === memory.id;
         }
 
         function hasVisibleMoment(memories) {
