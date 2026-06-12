@@ -85,3 +85,10 @@ test('empty guide runtime hides guide when a non-root moment exists', () => {
 
   assert.equal(guide.classList.contains('editor-canvas-empty-guide-hidden'), true);
 });
+
+test('editor page cache-busts empty guide runtime script', () => {
+  const editorPage = fs.readFileSync('pages/editor.html', 'utf8');
+
+  assert.match(editorPage, /\.\.\/js\/editor\/editor-empty-guide-ui\.js\?v=20260612-2441/);
+  assert.doesNotMatch(editorPage, /\.\.\/js\/editor\/editor-empty-guide-ui\.js\?v=20260523-1276/);
+});
