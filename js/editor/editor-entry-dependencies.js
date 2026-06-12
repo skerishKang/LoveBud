@@ -166,6 +166,7 @@
                 showToast,
                 i18n,
                 getEditorBasePath,
+                getMyTreesHref,
                 redirectToEditorLogin,
                 registerEditorAuthStart,
                 safeI18nText,

@@ -77,6 +77,16 @@ test('entry dependencies helper wires registerEditorAuthStart required by editor
   assert.match(helper, /redirectToEditorLogin,\s*\n\s*registerEditorAuthStart,\s*\n\s*safeI18nText/);
 });
 
+test('entry dependencies helper wires getMyTreesHref required by prepare editor shell', () => {
+  const helper = read('js/editor/editor-entry-dependencies.js');
+  const editor = read('js/editor.js');
+
+  assert.match(editor, /getMyTreesHref:\s*deps\.getMyTreesHref/);
+  assert.match(helper, /const\s+getMyTreesHref\s*=\s*editorPageHelpers\.getMyTreesHref/);
+  assert.match(helper, /typeof\s+getMyTreesHref\s*!==\s*'function'\)\s*return\s+stopMissing\(windowRef,\s*'LoveBudEditorPageHelpers\.getMyTreesHref'\)/);
+  assert.match(helper, /getEditorBasePath,\s*\n\s*getMyTreesHref,\s*\n\s*redirectToEditorLogin/);
+});
+
 test('entry dependencies helper preserves bootstrap missing-helper messages', () => {
   const helper = read('js/editor/editor-entry-dependencies.js');
 
@@ -84,6 +94,7 @@ test('entry dependencies helper preserves bootstrap missing-helper messages', ()
     'LoveBudEditorUtils.findRootMemory',
     'LoveBudEditorHelpers.safeI18nText',
     'LoveBudEditorHelpers.escapeHtml',
+    'LoveBudEditorPageHelpers.getMyTreesHref',
     'LoveBudEditorPageHelpers.registerEditorAuthStart',
     'LoveBudEditorPageHelpers.renderTreeLoadError',
     'LoveBudEditorPageHelpers.buildTreeLoadErrorCopy',
