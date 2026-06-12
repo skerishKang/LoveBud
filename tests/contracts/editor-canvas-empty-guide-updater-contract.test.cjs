@@ -5,6 +5,7 @@ const test = require('node:test');
 const editorSource = fs.readFileSync('js/editor.js', 'utf8');
 const shellHelpersSource = fs.readFileSync('js/editor/editor-shell-helpers.js', 'utf8');
 const shellCanvasUISource = fs.readFileSync('js/editor/editor-shell-canvas-ui.js', 'utf8');
+const emptyGuideUISource = fs.readFileSync('js/editor/editor-empty-guide-ui.js', 'utf8');
 
 test('canvas ui fix editor shell helpers expose canvas empty guide updater factory', () => {
   assert.match(shellCanvasUISource, /createEditorCanvasEmptyGuideUpdater:\s*function\(options\)/);
@@ -15,6 +16,15 @@ test('canvas ui fix canvas empty guide updater preserves helper call', () => {
   assert.match(shellCanvasUISource, /return emptyGuideUIHelper\.createCanvasEmptyGuideUpdater\({/);
   assert.match(shellCanvasUISource, /getTreeMemories:\s*getTreeMemories/);
   assert.match(shellCanvasUISource, /log:\s*log/);
+});
+
+test('canvas empty guide updater counts only non-root moments as visible moments', () => {
+  assert.match(emptyGuideUISource, /function isRootLikeMemory\(memory\)/);
+  assert.match(emptyGuideUISource, /memory\.id === 'root' \|\| memory\.parentId === null \|\| memory\.parentId === undefined/);
+  assert.match(emptyGuideUISource, /function hasVisibleMoment\(memories\)/);
+  assert.match(emptyGuideUISource, /memories\.some\(\(memory\) => memory && !isRootLikeMemory\(memory\)\)/);
+  assert.match(emptyGuideUISource, /const hasMoments = hasVisibleMoment\(memories\);/);
+  assert.doesNotMatch(emptyGuideUISource, /const hasMoments = memories\.length > 0;/);
 });
 
 test('canvas ui fix canvas empty guide updater preserves warning fallback', () => {

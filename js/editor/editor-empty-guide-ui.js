@@ -5,6 +5,14 @@
         const getTreeMemories = options && options.getTreeMemories;
         const log = options && options.log;
 
+        function isRootLikeMemory(memory) {
+            return !!(memory && (memory.id === 'root' || memory.parentId === null || memory.parentId === undefined));
+        }
+
+        function hasVisibleMoment(memories) {
+            return Array.isArray(memories) && memories.some((memory) => memory && !isRootLikeMemory(memory));
+        }
+
         return function updateCanvasEmptyGuide() {
             const guide = document.getElementById('canvasEmptyGuide');
             if (!guide) {
@@ -15,7 +23,7 @@
             }
 
             const memories = typeof getTreeMemories === 'function' ? getTreeMemories() : [];
-            const hasMoments = memories.length > 0;
+            const hasMoments = hasVisibleMoment(memories);
 
             if (typeof log === 'function') {
                 log(`Updating empty guide visibility. hasMoments=${hasMoments}`);
