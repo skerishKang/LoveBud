@@ -12,6 +12,46 @@
         console.log.apply(console, arguments);
     }
 
+    /**
+     * 메모리가 canonical root placeholder인지 판정 (inline fallback).
+     *
+     * 참고: inlineFilterMemoriesForTree()는 이 helper를 직접 사용하지 않는다.
+     * treeId 매칭이 우선이며, id === 'root' (legacy universal root)만 예외.
+     */
+    function inlineIsCanonicalRootPlaceholder(memory) {
+        if (!memory) return false;
+        if (memory.id === 'root') return true;
+        const parentId = memory.parentId;
+        if (parentId === null || parentId === undefined || parentId === '') return true;
+        if (typeof parentId === 'string' && parentId === memory.id) return true;
+        return false;
+    }
+
+    /**
+     * 메모리 배열을 current treeId 기준으로 필터링 (inline fallback).
+     * LoveBudEditorDataLoader.filterMemoriesForTree와 같은 기준.
+     *
+     * 핵심 원칙: treeId가 다르면 root-like보다 먼저 drop한다.
+     * 단, id === 'root' (legacy universal root)만 예외로 통과.
+     */
+    function inlineFilterMemoriesForTree(memories, treeId) {
+        if (!Array.isArray(memories)) return [];
+        if (!treeId) return memories.slice();
+
+        return memories.filter((m) => {
+            if (!m) return false;
+            const memTreeId = m.treeId || m.tree_id || null;
+
+            if (memTreeId && memTreeId !== treeId) {
+                return m.id === 'root';
+            }
+
+            if (memTreeId === treeId) return true;
+
+            return m.id === 'root';
+        });
+    }
+
     window.LoveBudEditorDataLoaderFallbacks = {
     createInlineNormalizeMemoryFallback: () => (mem) => {
         if (!window.__editorNormalizeWarningShown) {
@@ -136,31 +176,45 @@
 
     createInlineLoadEditorMemoriesFallback: () => async (options) => {
         const opts = options || {};
-        const treeId = opts.treeId;
+        const treeId = opts.treeId || null;
         const cache = opts.cache || null;
         const cacheKey = opts.cacheKey || 'memories_default';
         const apiClient = opts.apiClient || null;
         const showToast = opts.showToast || function() {};
         const i18n = opts.i18n || function(key) { return key; };
         const normalizeMemory = opts.normalizeMemory || ((mem) => mem);
+        const cacheTtlMs = 2 * 60 * 1000;
 
         let memories = [];
         const cachedMemories = cache ? cache.get(cacheKey) : null;
 
+        // 1) cache hit: treeId 필터를 거친 cached memories만 사용
         if (cachedMemories && Array.isArray(cachedMemories)) {
             editorDebugLog('[editor] Using cached memories:', cachedMemories.length);
-            memories = cachedMemories;
+            memories = inlineFilterMemoriesForTree(cachedMemories, treeId);
             window.currentTreeMemories = memories.map(normalizeMemory).filter(Boolean);
         }
 
+        // 2) API 호출. API 응답이 source of truth (빈 배열 포함).
         try {
             if (apiClient && apiClient.getMemoriesByTree) {
                 const apiMemories = await apiClient.getMemoriesByTree(treeId);
                 if (Array.isArray(apiMemories)) {
-                    memories = apiMemories;
-                    editorDebugLog('[editor] API memories loaded:', apiMemories.length);
+                    const normalizedApi = apiMemories.map(normalizeMemory).filter(Boolean);
+                    const filteredApi = inlineFilterMemoriesForTree(normalizedApi, treeId);
+                    memories = filteredApi;
+                    editorDebugLog('[editor] API memories loaded (filtered):', filteredApi.length);
                     if (cache) {
-                        cache.set(cacheKey, memories, 2 * 60 * 1000);
+                        if (filteredApi.length === 0) {
+                            // API []: cache clear
+                            if (typeof cache.delete === 'function') {
+                                cache.delete(cacheKey);
+                            } else if (typeof cache.set === 'function') {
+                                cache.set(cacheKey, [], cacheTtlMs);
+                            }
+                        } else {
+                            cache.set(cacheKey, filteredApi, cacheTtlMs);
+                        }
                     }
                 }
             }
@@ -171,11 +225,13 @@
             }
         }
 
-        window.currentTreeMemories = memories.map(normalizeMemory).filter(Boolean);
+        // 3) 최종 할당. memories는 이미 filter 거침.
+        const finalMemories = memories.map(normalizeMemory).filter(Boolean);
+        window.currentTreeMemories = finalMemories;
 
         return {
-            memories,
-            normalizedMemories: window.currentTreeMemories,
+            memories: finalMemories,
+            normalizedMemories: finalMemories,
             cachedMemories
         };
     },
@@ -236,9 +292,11 @@
             if (apiClient && apiClient.getMemoriesByTree) {
                 const apiMemories = await apiClient.getMemoriesByTree(treeId);
                 if (Array.isArray(apiMemories)) {
-                    window.currentTreeMemories = apiMemories.map(normalizeMemory).filter(Boolean);
-                    editorDebugLog('[editor] Memories refreshed:', window.currentTreeMemories.length);
-                    onMemoriesUpdated(window.currentTreeMemories);
+                    const normalizedApi = apiMemories.map(normalizeMemory).filter(Boolean);
+                    const filteredApi = inlineFilterMemoriesForTree(normalizedApi, treeId);
+                    window.currentTreeMemories = filteredApi;
+                    editorDebugLog('[editor] Memories refreshed (filtered):', filteredApi.length);
+                    onMemoriesUpdated(filteredApi);
                 }
             }
         } catch (e) {

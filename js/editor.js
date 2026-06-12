@@ -221,7 +221,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const treeId = initialLoadResult.treeId;
             const normalizeMemory = initialLoadResult.normalizeMemory;
             const treeMemories = initialLoadResult.treeMemories;
-            
+
             const canonicalRootId = deps.getCanonicalRootId(treeMemories());
             let selectedNodeId = canonicalRootId;
             let currentEditingMemory = null;
@@ -281,7 +281,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 getTreeMemories: () => treeMemories(),
                 log
             });
-            
+
             // Bridge this back to LoveBudEditor so canvas can call it
             const checkEditorCanvasEmptyGuideBridgeDependencies = createEditorStartDependencyChecker({
                 ensureStartEditorDependency,
@@ -618,10 +618,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const applyEditorInitialSelection = createEditorInitialSelectionApplier({
                 getTreeMemories: () => treeMemories(),
                 getSelectedNodeId: () => selectedNodeId,
+                setSelectedNodeId: (value) => { selectedNodeId = value; },
                 createInitialMemory,
                 isRootMemory: deps.isRootMemory,
                 getCanonicalRootId: () => canonicalRootId,
                 setCurrentEditingMemory: (value) => { currentEditingMemory = value; },
+                setDetailEmptyState: callSetDetailEmptyState,
                 log
             });
 
