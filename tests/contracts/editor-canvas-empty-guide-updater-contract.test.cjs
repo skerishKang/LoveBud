@@ -20,7 +20,7 @@ test('canvas ui fix canvas empty guide updater preserves helper call', () => {
 
 test('canvas empty guide updater counts only non-root moments as visible moments', () => {
   assert.match(emptyGuideUISource, /function isRootLikeMemory\(memory\)/);
-  assert.match(emptyGuideUISource, /memory\.id === 'root' \|\| memory\.parentId === null \|\| memory\.parentId === undefined/);
+  assert.match(emptyGuideUISource, /memory\.id === 'root'\s*\|\|\s*parentId === null\s*\|\|\s*parentId === undefined/);
   assert.match(emptyGuideUISource, /function hasVisibleMoment\(memories\)/);
   assert.match(emptyGuideUISource, /memories\.some\(\(memory\) => memory && !isRootLikeMemory\(memory\)\)/);
   assert.match(emptyGuideUISource, /const hasMoments = hasVisibleMoment\(memories\);/);
