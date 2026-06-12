@@ -1,6 +1,6 @@
 export function buildDetailEditModeTemplate() {
     return `
-            <div id="detailEditMode" class="editor-hidden-initial">
+            <div id="detailEditMode" class="editor-hidden-initial" style="display: none;">
                 <div class="editor-form-stack editor-form-stack-compact">
                     <label id="editTitleLabel" class="editor-form-label">...</label>
                     <input type="text" id="editTitleInput" class="editor-form-input" placeholder="...">

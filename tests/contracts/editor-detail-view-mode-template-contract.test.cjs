@@ -23,6 +23,7 @@ test('Detail View Mode template helper exists and contains markup', () => {
     assert.ok(helperCode.includes('id="lastSavedTime"'), 'must include last saved time id');
     
     assert.ok(helperCode.includes('class="editor-hidden-initial"'), 'must include editor-hidden-initial class');
+    assert.match(helperCode, /id="detailViewMode"[^>]*style="display:\s*none;"/, 'detail view mode root must be initially hidden');
     assert.ok(helperCode.includes('class="editor-current-moment-card"'), 'must include editor-current-moment-card class');
     assert.ok(helperCode.includes('class="editor-moment-actions-card"'), 'must include editor-moment-actions-card class');
     assert.ok(helperCode.includes('class="editor-moment-info-card"'), 'must include editor-moment-info-card class');

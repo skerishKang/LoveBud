@@ -19,6 +19,7 @@ test('Detail Edit Mode template helper exists and contains markup', () => {
     assert.ok(helperCode.includes('id="deleteMemoryBtn"'), 'must include delete btn id');
 
     assert.ok(helperCode.includes('editor-hidden-initial'), 'must include editor-hidden-initial class');
+    assert.match(helperCode, /id="detailEditMode"[^>]*style="display:\s*none;"/, 'detail edit mode root must be initially hidden');
     assert.ok(helperCode.includes('editor-form-stack'), 'must include editor-form-stack class');
     assert.ok(helperCode.includes('editor-form-input'), 'must include editor-form-input class');
     assert.ok(helperCode.includes('editor-form-textarea'), 'must include editor-form-textarea class');
