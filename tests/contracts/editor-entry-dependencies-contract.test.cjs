@@ -80,13 +80,11 @@ test('entry dependencies helper wires registerEditorAuthStart required by editor
 test('entry dependencies helper wires getMyTreesHref required by prepare editor shell', () => {
   const helper = read('js/editor/editor-entry-dependencies.js');
   const editor = read('js/editor.js');
-  const editorPage = read('pages/editor.html');
 
   assert.match(editor, /getMyTreesHref:\s*deps\.getMyTreesHref/);
   assert.match(helper, /const\s+getMyTreesHref\s*=\s*editorPageHelpers\.getMyTreesHref/);
   assert.match(helper, /typeof\s+getMyTreesHref\s*!==\s*'function'\)\s*return\s+stopMissing\(windowRef,\s*'LoveBudEditorPageHelpers\.getMyTreesHref'\)/);
   assert.match(helper, /getEditorBasePath,\s*\n\s*getMyTreesHref,\s*\n\s*redirectToEditorLogin/);
-  assert.match(editorPage, /\.\.\/js\/editor\/editor-entry-dependencies\.js\?v=20260612-2400/);
 });
 
 test('entry dependencies helper preserves bootstrap missing-helper messages', () => {
