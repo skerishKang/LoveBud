@@ -35,18 +35,19 @@ test('editor no longer owns inline sidebar tree actions wrapper', () => {
   const start = editorSource.indexOf('const sidebarUIHelper = window.LoveBudEditorSidebarUI || {};');
   assert.notEqual(start, -1, 'sidebarUIHelper setup must exist');
 
-  const end = editorSource.indexOf('const updateSidebarStatus =', start);
-  assert.notEqual(end, -1, 'updateSidebarStatus must follow sidebar tree actions setup');
+  const end = editorSource.indexOf("log('Creating Editor Canvas Instance...')", start);
+  assert.notEqual(end, -1, 'canvas creation log must follow sidebar status setup');
 
   const block = editorSource.slice(start, end);
   assert.match(block, /createSidebarTreeActionsUpdater\(\{/);
+  assert.match(block, /updateSidebarStatus\s*=\s*createEditorSidebarStatusUpdater\(\{/);
   assert.doesNotMatch(block, /const updateSidebarTreeActions\s*=\s*\(\)\s*=>\s*\{/);
   assert.doesNotMatch(block, /sidebarUIHelper\.updateSidebarTreeActions\(\{\s*i18n,\s*safeI18nText,\s*getTreeId:\s*\(\)\s*=>\s*treeId\s*\}\)/);
 });
 
 test('editor keeps updateSidebarStatus orchestration intact via factory delegation', () => {
-  const start = editorSource.indexOf('const updateSidebarStatus =');
-  assert.notEqual(start, -1, 'updateSidebarStatus must exist');
+  const start = editorSource.indexOf('updateSidebarStatus = createEditorSidebarStatusUpdater(');
+  assert.notEqual(start, -1, 'updateSidebarStatus assignment must exist');
 
   const end = editorSource.indexOf("log('Creating Editor Canvas Instance...')", start);
   assert.notEqual(end, -1, 'canvas creation log must follow sidebar status setup');

@@ -120,3 +120,105 @@ test('entry dependencies helper preserves shell copy side effect before prepare 
   assert.notEqual(prepareIndex, -1, 'prepareEditorShell creation must remain');
   assert.ok(applyIndex < prepareIndex, 'shell copy must apply before prepareEditorShell is returned');
 });
+
+test('startEditor declares lazy let stubs for detail updaters before wiring selectNode', () => {
+  const editor = read('js/editor.js');
+  const lazyStubsIndex = editor.indexOf('let setDetailEmptyState = () => {};');
+  const selectNodeIndex = editor.indexOf('const selectNode = createEditorSelectNodeHandler(');
+
+  assert.notEqual(lazyStubsIndex, -1, 'lazy let stubs for setDetailEmptyState must be declared');
+  assert.match(editor, /let\s+setDetailEmptyState\s*=\s*\(\)\s*=>\s*\{\};/);
+  assert.match(editor, /let\s+updateFocusSelectedBtn\s*=\s*\(\)\s*=>\s*\{\};/);
+  assert.match(editor, /let\s+updateDetailPanel\s*=\s*\(\)\s*=>\s*\{\};/);
+  assert.match(editor, /let\s+updateSidebarStatus\s*=\s*\(\)\s*=>\s*\{\};/);
+  assert.ok(
+    lazyStubsIndex < selectNodeIndex,
+    'lazy let stubs must be declared before createEditorSelectNodeHandler is invoked'
+  );
+});
+
+test('startEditor wraps detail updaters through lazy callXxx functions', () => {
+  const editor = read('js/editor.js');
+
+  assert.match(editor, /const\s+callSetDetailEmptyState\s*=\s*\(\.\.\.args\)\s*=>\s*setDetailEmptyState\(\.\.\.args\);/);
+  assert.match(editor, /const\s+callUpdateFocusSelectedBtn\s*=\s*\(\.\.\.args\)\s*=>\s*updateFocusSelectedBtn\(\.\.\.args\);/);
+  assert.match(editor, /const\s+callUpdateDetailPanel\s*=\s*\(\.\.\.args\)\s*=>\s*updateDetailPanel\(\.\.\.args\);/);
+  assert.match(editor, /const\s+callUpdateSidebarStatus\s*=\s*\(\.\.\.args\)\s*=>\s*updateSidebarStatus\(\.\.\.args\);/);
+});
+
+test('createEditorSelectNodeHandler receives callXxx wrappers, not direct let bindings', () => {
+  const editor = read('js/editor.js');
+  const callIndex = editor.indexOf('const selectNode = createEditorSelectNodeHandler(');
+  const endIndex = editor.indexOf('});', callIndex);
+  const selectNodeCall = editor.slice(callIndex, endIndex);
+
+  assert.notEqual(callIndex, -1, 'createEditorSelectNodeHandler call must exist');
+  assert.match(selectNodeCall, /updateDetailPanel:\s*callUpdateDetailPanel/);
+  assert.match(selectNodeCall, /updateFocusSelectedBtn:\s*callUpdateFocusSelectedBtn/);
+  assert.match(selectNodeCall, /setDetailEmptyState:\s*callSetDetailEmptyState/);
+  // Bare shorthand references are forbidden inside the selectNode call.
+  assert.doesNotMatch(selectNodeCall, /^\s*updateDetailPanel\s*,/m);
+  assert.doesNotMatch(selectNodeCall, /^\s*updateFocusSelectedBtn\s*,/m);
+  assert.doesNotMatch(selectNodeCall, /^\s*setDetailEmptyState\s*,/m);
+});
+
+test('createTreeVisibilityUpdater receives callXxx wrappers, not direct let bindings', () => {
+  const editor = read('js/editor.js');
+  const callIndex = editor.indexOf('deps.editorTreeHelpers.createTreeVisibilityUpdater(');
+  const endIndex = editor.indexOf('});', callIndex);
+  const updaterCall = editor.slice(callIndex, endIndex);
+
+  assert.notEqual(callIndex, -1, 'createTreeVisibilityUpdater call must exist');
+  assert.match(updaterCall, /updateSidebarStatus:\s*callUpdateSidebarStatus/);
+  assert.match(updaterCall, /updateDetailPanel:\s*callUpdateDetailPanel/);
+  assert.doesNotMatch(updaterCall, /^\s*updateSidebarStatus\s*,/m);
+  assert.doesNotMatch(updaterCall, /^\s*updateDetailPanel\s*,/m);
+});
+
+test('detailUI wiring assigns to existing let stubs instead of redeclaring consts', () => {
+  const editor = read('js/editor.js');
+
+  // The destructuring that previously declared the four consts must be gone.
+  assert.doesNotMatch(
+    editor,
+    /const\s*\{\s*setDetailEmptyState,\s*updateFocusSelectedBtn,\s*updateSidebarStatus:\s*updateSidebarStatusBase,\s*updateDetailPanel\s*\}\s*=\s*detailUI;/
+  );
+  assert.match(editor, /setDetailEmptyState\s*=\s*detailUI\.setDetailEmptyState;/);
+  assert.match(editor, /updateFocusSelectedBtn\s*=\s*detailUI\.updateFocusSelectedBtn;/);
+  assert.match(editor, /updateDetailPanel\s*=\s*detailUI\.updateDetailPanel;/);
+  assert.match(editor, /const\s+updateSidebarStatusBase\s*=\s*detailUI\.updateSidebarStatus;/);
+});
+
+test('updateSidebarStatus is assigned to the let stub from createEditorSidebarStatusUpdater', () => {
+  const editor = read('js/editor.js');
+
+  // The `const updateSidebarStatus = createEditorSidebarStatusUpdater(...)` form is forbidden
+  // because it would re-declare the lazy stub.
+  assert.doesNotMatch(
+    editor,
+    /const\s+updateSidebarStatus\s*=\s*createEditorSidebarStatusUpdater\(\{/
+  );
+  assert.match(
+    editor,
+    /updateSidebarStatus\s*=\s*createEditorSidebarStatusUpdater\(\{[\s\S]*?updateSidebarStatusBase,[\s\S]*?updateCanvasEmptyGuide,[\s\S]*?updateSidebarTreeActions[\s\S]*?\}\);/
+  );
+});
+
+test('lazy let stubs are declared strictly before detailUI wiring', () => {
+  const editor = read('js/editor.js');
+  const stubsIndex = editor.indexOf('let setDetailEmptyState = () => {};');
+  const detailUiIndex = editor.indexOf('window.createEditorDetailUI(');
+  const assignIndex = editor.indexOf('setDetailEmptyState = detailUI.setDetailEmptyState;');
+  const sidebarIndex = editor.indexOf('updateSidebarStatus = createEditorSidebarStatusUpdater(');
+
+  assert.ok(stubsIndex < detailUiIndex, 'lazy stubs must be declared before createEditorDetailUI is called');
+  assert.ok(stubsIndex < assignIndex, 'lazy stubs must be declared before detailUI wiring assignments');
+  assert.ok(assignIndex < sidebarIndex, 'detailUI wiring must finish before updateSidebarStatus is reassigned');
+});
+
+test('editor page cache-busts editor.js for the lazy wrapper fix', () => {
+  const editorPage = read('pages/editor.html');
+
+  assert.match(editorPage, /\.\.\/js\/editor\.js\?v=20260612-2400/);
+  assert.doesNotMatch(editorPage, /\.\.\/js\/editor\.js\?v=20260502-1/);
+});
