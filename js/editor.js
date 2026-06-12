@@ -297,6 +297,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
             exposeCanvasEmptyGuideUpdater({ updateCanvasEmptyGuide });
 
+            // Lazy stubs for detail updaters. The real implementations are
+            // assigned after `detailUI` and `updateSidebarStatus` are created
+            // further below. These wrappers are captured by `selectNode` and
+            // `updateTreeVisibility` so that they can be wired before the
+            // detail UI is constructed without throwing a temporal dead zone
+            // ReferenceError at `startEditor` startup.
+            let setDetailEmptyState = () => {};
+            let updateFocusSelectedBtn = () => {};
+            let updateDetailPanel = () => {};
+            let updateSidebarStatus = () => {};
+
+            const callSetDetailEmptyState = (...args) => setDetailEmptyState(...args);
+            const callUpdateFocusSelectedBtn = (...args) => updateFocusSelectedBtn(...args);
+            const callUpdateDetailPanel = (...args) => updateDetailPanel(...args);
+            const callUpdateSidebarStatus = (...args) => updateSidebarStatus(...args);
+
             const selectNode = createEditorSelectNodeHandler({
                 getEditorCanvas: () => editorCanvas,
                 getSaveStatusData: () => saveStatusData,
@@ -304,9 +320,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 editorSaveStatus: deps.editorSaveStatus,
                 setSelectedNodeId: (value) => { selectedNodeId = value; },
                 setCurrentEditingMemory: (value) => { currentEditingMemory = value; },
-                updateDetailPanel,
-                updateFocusSelectedBtn,
-                setDetailEmptyState,
+                updateDetailPanel: callUpdateDetailPanel,
+                updateFocusSelectedBtn: callUpdateFocusSelectedBtn,
+                setDetailEmptyState: callSetDetailEmptyState,
                 reportError
             });
 
@@ -357,9 +373,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 getApiClient: () => window.apiClient,
                 applyUpdatedTreeVisibility: deps.editorTreeHelpers.applyUpdatedTreeVisibility,
                 getCurrentTreeData: () => window.currentTreeData || {},
-                updateSidebarStatus,
+                updateSidebarStatus: callUpdateSidebarStatus,
                 getCurrentEditingMemory: () => currentEditingMemory,
-                updateDetailPanel,
+                updateDetailPanel: callUpdateDetailPanel,
                 reportError
             });
 
@@ -385,7 +401,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 updateSelectedMemoryFields
             });
 
-            const { setDetailEmptyState, updateFocusSelectedBtn, updateSidebarStatus: updateSidebarStatusBase, updateDetailPanel } = detailUI;
+            // Wire the lazy stubs with the real detail UI handlers. The
+            // wrappers captured by `selectNode` and `updateTreeVisibility`
+            // earlier now resolve to these implementations.
+            setDetailEmptyState = detailUI.setDetailEmptyState;
+            updateFocusSelectedBtn = detailUI.updateFocusSelectedBtn;
+            updateDetailPanel = detailUI.updateDetailPanel;
+            const updateSidebarStatusBase = detailUI.updateSidebarStatus;
             const checkEditorDetailPanelExposureDependencies = createEditorStartDependencyChecker({
                 ensureStartEditorDependency,
                 dependencies: [
@@ -420,7 +442,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 getTreeId: () => treeId
             });
 
-            const updateSidebarStatus = createEditorSidebarStatusUpdater({
+            updateSidebarStatus = createEditorSidebarStatusUpdater({
                 updateSidebarStatusBase,
                 updateCanvasEmptyGuide,
                 updateSidebarTreeActions

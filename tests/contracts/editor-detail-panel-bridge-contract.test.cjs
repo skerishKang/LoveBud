@@ -40,14 +40,16 @@ test('editor delegates detail panel bridge through required shell helper', () =>
   });
 
 test('editor no longer assigns detail panel bridge inline', () => {
-    const start = editorSource.indexOf('const { setDetailEmptyState, updateFocusSelectedBtn');
-    assert.notEqual(start, -1, 'detailUI destructuring must exist');
+    const start = editorSource.indexOf('let setDetailEmptyState = () => {};');
+    assert.notEqual(start, -1, 'lazy let stubs for detail updaters must exist');
 
     const end = editorSource.indexOf('const sidebarUIHelper =', start);
     assert.notEqual(end, -1, 'sidebar helper setup must follow detail bridge setup');
 
     const block = editorSource.slice(start, end);
     assert.match(block, /exposeDetailPanelUpdater\(\{\s*updateDetailPanel\s*\}/);
+    assert.match(block, /setDetailEmptyState\s*=\s*detailUI\.setDetailEmptyState;/);
+    assert.match(block, /updateDetailPanel\s*=\s*detailUI\.updateDetailPanel;/);
     assert.doesNotMatch(block, /window\.updateDetailPanel\s*=\s*updateDetailPanel/);
     assert.doesNotMatch(block, /windowRef\.updateDetailPanel\s*=/);
   });
@@ -64,7 +66,15 @@ test('editor guards missing detail panel bridge before exposure', () => {
 test('editor keeps detail panel destructuring and canvas injection intact', () => {
   assert.match(
     editorSource,
-    /const \{\s*setDetailEmptyState,\s*updateFocusSelectedBtn,\s*updateSidebarStatus:\s*updateSidebarStatusBase,\s*updateDetailPanel\s*\}\s*=\s*detailUI/
+    /setDetailEmptyState\s*=\s*detailUI\.setDetailEmptyState;/
+  );
+  assert.match(
+    editorSource,
+    /updateDetailPanel\s*=\s*detailUI\.updateDetailPanel;/
+  );
+  assert.match(
+    editorSource,
+    /const\s+updateSidebarStatusBase\s*=\s*detailUI\.updateSidebarStatus;/
   );
   assert.match(editorSource, /window\.createEditorCanvas\(\{/);
   assert.match(editorSource, /updateDetailPanel,\s*setDetailEmptyState/);

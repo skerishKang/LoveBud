@@ -33,10 +33,9 @@ test('editor no longer owns inline detail panel exposure dependency check', () =
 
 test('detail panel exposure dependency delegation preserves detail UI construction path', () => {
   assert.match(editorSource, /const detailUI\s*=\s*window\.createEditorDetailUI\(\{/);
-  assert.match(
-    editorSource,
-    /const \{ setDetailEmptyState, updateFocusSelectedBtn, updateSidebarStatus: updateSidebarStatusBase, updateDetailPanel \}\s*=\s*detailUI;/
-  );
+  assert.match(editorSource, /setDetailEmptyState\s*=\s*detailUI\.setDetailEmptyState;/);
+  assert.match(editorSource, /updateDetailPanel\s*=\s*detailUI\.updateDetailPanel;/);
+  assert.match(editorSource, /const\s+updateSidebarStatusBase\s*=\s*detailUI\.updateSidebarStatus;/);
   assert.match(editorSource, /exposeDetailPanelUpdater\(\{ updateDetailPanel \}\);/);
 });
 
