@@ -51,8 +51,11 @@
             latest: {
                 title: () => getSearchCopy('search.resultsHeading', '둘러볼 러브트리', 'LoveTrees to browse')
             },
-            popular: {
-                title: () => getSearchCopy('search.resultsPopularHeading', '많이 감상한 러브트리', 'Popular LoveTrees')
+            views: {
+                title: () => getSearchCopy('search.resultsViewsHeading', '많이 본 러브트리', 'Most Viewed LoveTrees')
+            },
+            likes: {
+                title: () => getSearchCopy('search.resultsLikesHeading', '많이 좋아한 러브트리', 'Most Liked LoveTrees')
             }
         };
 
@@ -254,7 +257,8 @@
             controls.innerHTML = `
                 <div style="display:flex; gap:8px; flex-wrap:wrap;">
                     <button type="button" class="tag-chip" data-browse-sort="latest">${getCurrentLocale() === 'en' ? 'Latest' : '최신순'}</button>
-                    <button type="button" class="tag-chip" data-browse-sort="popular">${getCurrentLocale() === 'en' ? 'Popular' : '많은 순간순'}</button>
+                    <button type="button" class="tag-chip" data-browse-sort="views">${getCurrentLocale() === 'en' ? 'Views' : '조회순'}</button>
+                    <button type="button" class="tag-chip" data-browse-sort="likes">${getCurrentLocale() === 'en' ? 'Likes' : '좋아요순'}</button>
                 </div>
             `;
 
