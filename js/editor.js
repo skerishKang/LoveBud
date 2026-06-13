@@ -542,6 +542,47 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const { showAddMemoryForm, hideAddMemoryForm, addMemoryFromForm, addMemoryFromScoutPayload } = memoryForm;
 
+            const createRelationshipHintsUIController = window.LoveBudRelationshipHintsUIController && typeof window.LoveBudRelationshipHintsUIController.createRelationshipHintsUIController === 'function'
+                ? window.LoveBudRelationshipHintsUIController.createRelationshipHintsUIController
+                : null;
+            const createRelationshipHintStateMachine = window.LoveBudRelationshipHintStateMachine && typeof window.LoveBudRelationshipHintStateMachine.createRelationshipHintStateMachine === 'function'
+                ? window.LoveBudRelationshipHintStateMachine.createRelationshipHintStateMachine
+                : null;
+            let relationshipHintsUIController = null;
+            if (createRelationshipHintsUIController && createRelationshipHintStateMachine) {
+                try {
+                    relationshipHintsUIController = createRelationshipHintsUIController({
+                        documentRef: document,
+                        stateMachineFactory: createRelationshipHintStateMachine,
+                        i18n: deps.i18n,
+                        getTreeId: () => treeId,
+                        getSelectedNodeId: () => selectedNodeId,
+                        getTreeMemories: () => treeMemories(),
+                        getCurrentEditingMemory: () => currentEditingMemory,
+                        showToast: deps.showToast,
+                        reportError,
+                        onPresent: function (hint, transitionResult) {
+                            log('relationship hint presented for review; no persistence in this slice', hint, transitionResult);
+                        },
+                        onAccept: function (hint, transitionResult) {
+                            log('relationship hint accepted for review; no saved relationship created', hint, transitionResult);
+                        },
+                        onDismiss: function (hint, transitionResult) {
+                            log('relationship hint dismissed without persistence', hint, transitionResult);
+                        },
+                        onHide: function (hint, transitionResult) {
+                            log('relationship hint hidden without persistence', hint, transitionResult);
+                        },
+                        onRetry: function (hint, transitionResult) {
+                            log('relationship hint retry requested without network work', hint, transitionResult);
+                        }
+                    });
+                    window.LoveBudRelationshipHintsUI = relationshipHintsUIController;
+                } catch (error) {
+                    reportError('Failed to create relationship hints UI controller', error);
+                }
+            }
+
             // Initialize Scout Draft UI singleton with onDraftSave callback
             if (
                 window.LoveBudScoutDraftUI &&
