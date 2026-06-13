@@ -92,23 +92,31 @@
         };
     };
 
+    /**
+     * PR #2449 (UX): 빈 가이드 CTA 단순화
+     *
+     * - video/text/YouTube 직접 입력 경로 제거
+     * - primary CTA 1개: #canvasEmptyStartBtn → showAddMemoryForm()
+     * - 영상/텍스트/YouTube 입력은 add-memory form 안에서 선택 (기존 경로)
+     *
+     * 하위 호환:
+     * - createMemoryFromQuickYoutube / fetchYoutubeTitle / isYoutubeUrl 함수 정의와
+     *   export(return)는 유지. 다른 entry에서 사용할 가능성과 기존 contract test 호환
+     *   (editor-empty-guide-oembed-title-xss-contract.test.cjs)을 위해.
+     */
     emptyGuideUI.bindEmptyGuideEvents = function(options) {
-        const getEditorCanvas = options.getEditorCanvas;
-        const showAddMemoryForm = options.showAddMemoryForm;
-        const addMemoryFromForm = options.addMemoryFromForm;
-        const getTreeMemories = options.getTreeMemories;
-        const showToast = options.showToast;
-        const i18n = options.i18n;
+        const showAddMemoryForm = options && options.showAddMemoryForm;
+        const panelHistory = options && options.panelHistory;
+        const addMemoryFromForm = options && options.addMemoryFromForm;
+        const getTreeMemories = options && options.getTreeMemories;
+        const showToast = options && options.showToast;
+        const i18n = options && options.i18n;
+        const getEditorCanvas = options && options.getEditorCanvas;
 
-        const canvasEmptyVideoBtn = document.getElementById('canvasEmptyVideoBtn');
-        const canvasEmptyTextBtn = document.getElementById('canvasEmptyTextBtn');
-        const canvasEmptyQuickInput = document.getElementById('canvasEmptyQuickInput');
+        const canvasEmptyStartBtn = document.getElementById('canvasEmptyStartBtn');
 
-        const memoryUrlInput = document.getElementById('memoryUrlInput');
-        const memoryTitleInput = document.getElementById('memoryTitleInput');
-        const memoryModeLinkBtn = document.getElementById('memoryModeLinkBtn');
-        const memoryModeTextBtn = document.getElementById('memoryModeTextBtn');
-
+        // 보존: 다른 entry에서 사용할 가능성과 기존 contract test 호환을 위해
+        // function 정의는 유지 (UI에서 더 이상 binding은 없음)
         function isYoutubeUrl(url) {
             return /(youtube\.com|youtu\.be|youtube\.com\/shorts\/)/i.test(url || '');
         }
@@ -141,6 +149,12 @@
             }
 
             const title = await fetchYoutubeTitle(url);
+
+            if (typeof showAddMemoryForm === 'function') showAddMemoryForm();
+            const memoryModeLinkBtn = document.getElementById('memoryModeLinkBtn');
+            const memoryUrlInput = document.getElementById('memoryUrlInput');
+            const memoryTitleInput = document.getElementById('memoryTitleInput');
+
             if (memoryModeLinkBtn) memoryModeLinkBtn.click();
             if (memoryUrlInput) {
                 memoryUrlInput.value = url;
@@ -163,40 +177,16 @@
                 if (typeof editorCanvas.initCanvas === 'function') editorCanvas.initCanvas();
                 if (typeof editorCanvas.focusNodeById === 'function') editorCanvas.focusNodeById(createdMemory.id);
             }
-
-            if (canvasEmptyQuickInput) canvasEmptyQuickInput.value = '';
         }
 
-        if (canvasEmptyVideoBtn && canvasEmptyVideoBtn.dataset.bound !== '1') {
-            canvasEmptyVideoBtn.dataset.bound = '1';
-            canvasEmptyVideoBtn.addEventListener('click', () => {
+        // Primary CTA: 첫 순간 만들기
+        if (canvasEmptyStartBtn && canvasEmptyStartBtn.dataset.bound !== '1') {
+            canvasEmptyStartBtn.dataset.bound = '1';
+            canvasEmptyStartBtn.addEventListener('click', () => {
                 if (typeof showAddMemoryForm === 'function') showAddMemoryForm();
-                if (memoryModeLinkBtn) memoryModeLinkBtn.click();
-            });
-        }
-
-        if (canvasEmptyTextBtn && canvasEmptyTextBtn.dataset.bound !== '1') {
-            canvasEmptyTextBtn.dataset.bound = '1';
-            canvasEmptyTextBtn.addEventListener('click', () => {
-                if (typeof showAddMemoryForm === 'function') showAddMemoryForm();
-                if (memoryModeTextBtn) memoryModeTextBtn.click();
-            });
-        }
-
-        if (canvasEmptyQuickInput && canvasEmptyQuickInput.dataset.bound !== '1') {
-            canvasEmptyQuickInput.dataset.bound = '1';
-            canvasEmptyQuickInput.addEventListener('paste', (event) => {
-                const clipboard = event.clipboardData || window.clipboardData;
-                const pastedText = clipboard ? clipboard.getData('text') : '';
-                if (!pastedText) return;
-                event.preventDefault();
-                canvasEmptyQuickInput.value = pastedText.trim();
-                createMemoryFromQuickYoutube(pastedText);
-            });
-            canvasEmptyQuickInput.addEventListener('keydown', (event) => {
-                if (event.key !== 'Enter') return;
-                event.preventDefault();
-                createMemoryFromQuickYoutube(canvasEmptyQuickInput.value);
+                if (panelHistory && typeof panelHistory.pushOnOpen === 'function') {
+                    panelHistory.pushOnOpen('add-memory');
+                }
             });
         }
 

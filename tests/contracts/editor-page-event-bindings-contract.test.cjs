@@ -92,6 +92,12 @@ test('bindEditorPageEvents calls all editable event binding groups with preserve
   const helper = loadHelper();
   const calls = createCalls();
   const options = createBaseOptions(calls, true);
+  // PR #2449: page-event-bindings가 show/hideAddMemoryForm을 wrap해서 panel history 통합.
+  // wrap이 options의 original show/hide를 호출하는지 카운터로 검증.
+  let showCalls = 0;
+  let hideCalls = 0;
+  options.showAddMemoryForm = () => { showCalls += 1; };
+  options.hideAddMemoryForm = () => { hideCalls += 1; };
   const result = helper.bindEditorPageEvents(options);
 
   assert.deepEqual(calls.map((call) => call.name), [
@@ -119,24 +125,29 @@ test('bindEditorPageEvents calls all editable event binding groups with preserve
   assert.equal(sidebarPayload.getHttpStatus, options.getHttpStatus);
   assert.equal(sidebarPayload.updateSidebarStatus, options.updateSidebarStatus);
 
+  // PR #2449: show/hide는 wrap되어 전달됨. wrap이 original을 호출하는지 검증.
   const createPayload = calls.find((call) => call.name === 'bindMemoryCreateControlsFromDom').payload;
-  assert.equal(createPayload.showAddMemoryForm, options.showAddMemoryForm);
-  assert.equal(createPayload.hideAddMemoryForm, options.hideAddMemoryForm);
-  assert.equal(createPayload.addMemoryFromForm, options.addMemoryFromForm);
-  assert.equal(createPayload.updateSaveStatus, options.updateSaveStatus);
-  assert.equal(createPayload.showToast, options.showToast);
-  assert.equal(createPayload.i18n, options.i18n);
+  assert.equal(typeof createPayload.showAddMemoryForm, 'function', 'wrap function for show');
+  assert.equal(typeof createPayload.hideAddMemoryForm, 'function', 'wrap function for hide');
+  createPayload.showAddMemoryForm();
+  createPayload.hideAddMemoryForm();
+  assert.equal(showCalls, 1, 'PR #2449: wrap should call original showAddMemoryForm');
+  assert.equal(hideCalls, 1, 'PR #2449: wrap should call original hideAddMemoryForm');
 
   const emptyStartPayload = calls.find((call) => call.name === 'bindDetailEmptyStartButton').payload;
-  assert.equal(emptyStartPayload.showAddMemoryForm, options.showAddMemoryForm);
+  assert.equal(typeof emptyStartPayload.showAddMemoryForm, 'function', 'wrap function for detail start');
+  emptyStartPayload.showAddMemoryForm();
+  assert.equal(showCalls, 2, 'PR #2449: detail start wrap should call original showAddMemoryForm');
 
   const emptyGuidePayload = calls.find((call) => call.name === 'bindEmptyGuideEvents').payload;
   assert.equal(emptyGuidePayload.getEditorCanvas, options.getEditorCanvas);
-  assert.equal(emptyGuidePayload.showAddMemoryForm, options.showAddMemoryForm);
+  assert.equal(typeof emptyGuidePayload.showAddMemoryForm, 'function', 'wrap function for empty guide');
   assert.equal(emptyGuidePayload.addMemoryFromForm, options.addMemoryFromForm);
   assert.equal(emptyGuidePayload.getTreeMemories, options.getTreeMemories);
   assert.equal(emptyGuidePayload.showToast, options.showToast);
   assert.equal(emptyGuidePayload.i18n, options.i18n);
+  emptyGuidePayload.showAddMemoryForm();
+  assert.equal(showCalls, 3, 'PR #2449: empty guide wrap should call original showAddMemoryForm');
 
   const detailActionsPayload = calls.find((call) => call.name === 'bindDetailActionButtons').payload;
   assert.equal(detailActionsPayload.enterEditMode, options.enterEditMode);

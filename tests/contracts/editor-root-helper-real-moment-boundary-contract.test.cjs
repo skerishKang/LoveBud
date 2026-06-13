@@ -193,22 +193,31 @@ test('editor-data-loader.js filterMemoriesForTree does NOT use isRootLikeMemory 
   }
 });
 
-test('editor page cache-busts root helpers to PR #2448 version', () => {
+test('editor page cache-busts root helpers and CTA files to PR #2448/#2449', () => {
   const editorPage = read('pages/editor.html');
   const publicCanvas = read('pages/public-canvas.html');
   const viewPage = read('pages/view.html');
 
-  // 셋 다 editor-root-helpers.js?v=20260613-2448 이상
+  // PR #2448: 셋 다 editor-root-helpers.js?v=20260613-2448 이상
   assert.match(editorPage, /\.\.\/js\/editor\/editor-root-helpers\.js\?v=20260613-2448/);
   assert.match(publicCanvas, /\.\.\/js\/editor\/editor-root-helpers\.js\?v=20260613-2448/);
   assert.match(viewPage, /\.\.\/js\/editor\/editor-root-helpers\.js\?v=20260613-2448/);
 
-  // editor.html: editor-shell-canvas-ui도 PR #2448로 bust (PR #2447 누락 보강)
+  // PR #2448: editor.html: editor-shell-canvas-ui/memory/helpers + editor.js도 2448 이상
   assert.match(editorPage, /\.\.\/js\/editor\/editor-shell-canvas-ui\.js\?v=20260613-2448/);
   assert.match(editorPage, /\.\.\/js\/editor\/editor-shell-memory\.js\?v=20260613-2448/);
   assert.match(editorPage, /\.\.\/js\/editor\/editor-shell-helpers\.js\?v=20260613-2448/);
   assert.match(editorPage, /\.\.\/js\/editor\.js\?v=20260613-2448/);
-  assert.match(editorPage, /\.\.\/js\/editor\/editor-empty-guide-ui\.js\?v=20260613-2448/);
+
+  // PR #2449: editor-empty-guide-ui.js + editor-page-event-bindings.js + editor-empty-guide-template.js
+  // + editor-panel-history.js 모두 ?v=20260613-2449로 bust
+  assert.match(editorPage, /\.\.\/js\/editor\/editor-empty-guide-ui\.js\?v=20260613-2449/);
+  assert.match(editorPage, /\.\.\/js\/editor\/editor-page-event-bindings\.js\?v=20260613-2449/);
+  assert.match(
+    editorPage,
+    /\.\.\/js\/editor\/templates\/editor-empty-guide-template\.js\?v=20260613-2449/,
+  );
+  assert.match(editorPage, /\.\.\/js\/editor\/editor-panel-history\.js\?v=20260613-2449/);
 
   // 2446 stale 못 들어가게
   assert.doesNotMatch(editorPage, /editor-root-helpers\.js\?v=20260613-2446/);

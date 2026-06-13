@@ -275,6 +275,7 @@ test('empty guide UI does not redefine its own local isRootLikeMemory when root 
 test('editor page cache-busts empty guide runtime script', () => {
   const editorPage = fs.readFileSync('pages/editor.html', 'utf8');
 
-  assert.match(editorPage, /\.\.\/js\/editor\/editor-empty-guide-ui\.js\?v=20260613-2448/);
+  // PR #2449 cache-bust 갱신
+  assert.match(editorPage, /\.\.\/js\/editor\/editor-empty-guide-ui\.js\?v=20260613-2449/);
   assert.doesNotMatch(editorPage, /\.\.\/js\/editor\/editor-empty-guide-ui\.js\?v=20260612-2441/);
 });
