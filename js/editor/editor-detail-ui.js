@@ -25,7 +25,7 @@ function createEditorDetailUI(deps) {
         if (!text || text === key) text = fallback;
         if (replacements && typeof replacements === 'object') {
             Object.keys(replacements).forEach((name) => {
-                text = text.replace(new RegExp(`\\{${name}\\}`, 'g'), String(replacements[name] ?? ''));
+                text = text.replace(new RegExp(`\{${name}\}`, 'g'), String(replacements[name] ?? ''));
             });
         }
         return text;
@@ -78,15 +78,127 @@ function createEditorDetailUI(deps) {
     const createTitleEditBoundary = inlineEditHelper.createTitleEditBoundary;
     const createMemoEditBoundary = inlineEditHelper.createMemoEditBoundary;
 
+    const clearDetailPlayer = (mediaWrap) => {
+        const wrap = mediaWrap || detailPanel.querySelector('.detail-video');
+        if (!wrap) return;
+        const existingPlayer = wrap.querySelector('[data-editor-detail-player="1"]');
+        if (existingPlayer) existingPlayer.remove();
+        wrap.classList.remove('is-playing');
+        const overlay = wrap.querySelector('.memory-preview-overlay');
+        if (overlay) overlay.hidden = false;
+        const imgEl = wrap.querySelector('img');
+        if (imgEl) imgEl.style.display = '';
+    };
+
     const clearDetailMedia = () => {
         const mediaWrap = detailPanel.querySelector('.detail-video');
         const imgEl = detailPanel.querySelector('.detail-video img');
+        clearDetailPlayer(mediaWrap);
         if (imgEl) {
             imgEl.removeAttribute('src');
             imgEl.src = '';
             imgEl.alt = '';
         }
         if (mediaWrap) mediaWrap.style.display = 'none';
+    };
+
+    const getMemoryPlaybackUrl = (data) => {
+        if (!data) return '';
+        return String(
+            data.sourceUrl ||
+            data.source_url ||
+            data.videoUrl ||
+            data.video_url ||
+            data.url ||
+            data.linkUrl ||
+            data.link_url ||
+            ''
+        ).trim();
+    };
+
+    const getYouTubeVideoId = (rawUrl) => {
+        if (!rawUrl) return '';
+        try {
+            const url = new URL(rawUrl, window.location.origin);
+            const host = url.hostname.replace(/^www\./, '');
+            if (host === 'youtu.be') {
+                return url.pathname.split('/').filter(Boolean)[0] || '';
+            }
+            if (host === 'youtube.com' || host === 'm.youtube.com' || host === 'music.youtube.com') {
+                if (url.pathname.startsWith('/embed/')) return url.pathname.split('/').filter(Boolean)[1] || '';
+                if (url.pathname.startsWith('/shorts/')) return url.pathname.split('/').filter(Boolean)[1] || '';
+                return url.searchParams.get('v') || '';
+            }
+        } catch (error) {}
+        return '';
+    };
+
+    const buildYouTubeEmbedUrl = (data) => {
+        const rawUrl = getMemoryPlaybackUrl(data);
+        const videoId = getYouTubeVideoId(rawUrl);
+        if (!videoId) return '';
+        const params = new URLSearchParams();
+        params.set('autoplay', '1');
+        params.set('rel', '0');
+        const startValue = data && (data.startTime || data.start_time || data.startSeconds || data.start_seconds);
+        const startSeconds = Number(startValue || 0);
+        if (Number.isFinite(startSeconds) && startSeconds > 0) params.set('start', String(Math.floor(startSeconds)));
+        return 'https://www.youtube-nocookie.com/embed/' + encodeURIComponent(videoId) + '?' + params.toString();
+    };
+
+    const buildInlinePlayerElement = (data) => {
+        const youtubeEmbedUrl = buildYouTubeEmbedUrl(data);
+        if (youtubeEmbedUrl) {
+            const iframe = document.createElement('iframe');
+            iframe.dataset.editorDetailPlayer = '1';
+            iframe.className = 'detail-video-player';
+            iframe.src = youtubeEmbedUrl;
+            iframe.title = data && data.title ? data.title : formatI18nText('selected_moment_video', '선택된 순간 영상');
+            iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share';
+            iframe.allowFullscreen = true;
+            iframe.referrerPolicy = 'strict-origin-when-cross-origin';
+            return iframe;
+        }
+
+        const rawUrl = getMemoryPlaybackUrl(data);
+        if (/\.(mp4|webm|ogg)(\?|#|$)/i.test(rawUrl)) {
+            const video = document.createElement('video');
+            video.dataset.editorDetailPlayer = '1';
+            video.className = 'detail-video-player';
+            video.src = rawUrl;
+            video.controls = true;
+            video.autoplay = true;
+            video.playsInline = true;
+            return video;
+        }
+
+        return null;
+    };
+
+    const bindDetailMediaPlayback = (data, mediaWrap) => {
+        if (!mediaWrap) return;
+        const playBtn = mediaWrap.querySelector('.play-btn');
+        if (!playBtn) return;
+        playBtn.hidden = false;
+        playBtn.onclick = (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            const player = buildInlinePlayerElement(data);
+            if (!player) {
+                if (showToast) showToast(formatI18nText('moment_inline_player_unavailable', '재생 가능한 영상 링크가 없어요.'), 'warn');
+                return;
+            }
+            clearDetailPlayer(mediaWrap);
+            const imgEl = mediaWrap.querySelector('img');
+            const overlay = mediaWrap.querySelector('.memory-preview-overlay');
+            if (imgEl) imgEl.style.display = 'none';
+            if (overlay) overlay.hidden = true;
+            mediaWrap.classList.add('is-playing');
+            mediaWrap.appendChild(player);
+            if (typeof player.play === 'function') {
+                player.play().catch(() => {});
+            }
+        };
     };
 
     const resetDetailViewState = () => {
@@ -325,11 +437,13 @@ function createEditorDetailUI(deps) {
         }
 
         if (imgEl) {
+            clearDetailPlayer(mediaWrap);
             const thumbnail = resolveMemoryThumbnail(data);
             if (thumbnail) {
                 imgEl.src = thumbnail;
                 imgEl.alt = data.title || '';
                 if (mediaWrap) mediaWrap.style.display = '';
+                bindDetailMediaPlayback(data, mediaWrap);
             } else {
                 clearDetailMedia();
             }
