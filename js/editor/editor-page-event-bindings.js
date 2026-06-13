@@ -55,9 +55,12 @@
     // wrap show/hide with panel history
     var originalShow = opts.showAddMemoryForm;
     var originalHide = opts.hideAddMemoryForm;
+    // PR #2449 (Codex P2 fix): pushOnOpen을 originalShow 전에 호출.
+    // originalShow가 form을 동기적으로 열면 isPanelOpen()이 true가 되어
+    // pushOnOpen이 skip될 수 있음. push를 먼저 해야 Back이 panel만 닫음.
     var wrappedShowAddMemoryForm = function () {
-      if (typeof originalShow === 'function') originalShow();
       if (panelHistory) panelHistory.pushOnOpen();
+      if (typeof originalShow === 'function') originalShow();
     };
     var wrappedHideAddMemoryForm = function () {
       if (typeof originalHide === 'function') originalHide();
