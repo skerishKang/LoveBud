@@ -71,28 +71,65 @@ function assertGuideHiddenFor(memories) {
 }
 
 test('empty guide runtime shows guide for root-only tree memories', () => {
-  assertGuideVisibleFor([{ id: 'root', parentId: null, title: 'LoveTree' }]);
+  // id === 'root' 이므로 무조건 root-like, 가이드 visible.
+  // (PR #2448: title은 root-like 판정에 무관 — id='root'가 hard-coded root)
+  assertGuideVisibleFor([{ id: 'root', parentId: null }]);
 });
 
 test('empty guide runtime shows guide for uuid root-only tree memories', () => {
-  assertGuideVisibleFor([{ id: 'tree-root-id', parentId: null, title: 'LoveTree' }]);
+  // parentId: null + content 없음 → root-like (legacy placeholder) → 가이드 visible
+  assertGuideVisibleFor([{ id: 'tree-root-id', parentId: null }]);
 });
 
 test('empty guide runtime shows guide for blank-parent root placeholder', () => {
-  assertGuideVisibleFor([{ id: 'tree-root-id', parentId: '', title: 'LoveTree' }]);
+  assertGuideVisibleFor([{ id: 'tree-root-id', parentId: '' }]);
 });
 
 test('empty guide runtime shows guide for self-parent root placeholder', () => {
-  assertGuideVisibleFor([{ id: 'tree-root-id', parentId: 'tree-root-id', title: 'LoveTree' }]);
+  assertGuideVisibleFor([{ id: 'tree-root-id', parentId: 'tree-root-id' }]);
 });
 
-test('empty guide runtime shows guide when only legacy root exists with real child having parentId null', () => {
-  // legacy { id: 'root' } + real child whose parentId === null
-  // real child는 root-like로 분류되지만, legacy root가 canonical root.
-  // real child는 root-like 이므로 가이드는 여전히 visible (real moment 아님).
+test('empty guide runtime shows guide when only legacy root exists with placeholder child having parentId null', () => {
+  // legacy { id: 'root' } + child whose parentId === null
+  // child는 real moment content가 없으므로 placeholder로 간주되어 root-like.
+  // legacy root가 canonical root이고, child도 root-like이므로 가이드는 visible.
+  // (PR #2448: child에 real moment content가 있으면 real moment로 분류되어 hidden — 별도 test로 lock)
   assertGuideVisibleFor([
-    { id: 'root', parentId: null, title: 'LoveTree' },
+    { id: 'root', parentId: null },
+    { id: 'real-child', parentId: null },
+  ]);
+});
+
+test('empty guide runtime hides guide when real child with title/content exists alongside legacy root', () => {
+  // PR #2448 핵심 회귀 방지: real child가 real moment content (title)를 가지면
+  // parentId: null이라도 root placeholder로 오인하면 안 됨.
+  // → legacy root + real child(with title) → real child는 visible moment → 가이드 hidden
+  assertGuideHiddenFor([
+    { id: 'root', parentId: null },
     { id: 'real-child', parentId: null, title: 'First real moment' },
+  ]);
+});
+
+test('empty guide runtime hides guide for PSY-like real moment with parentId null (production case)', () => {
+  // production에서 발견된 케이스:
+  // 트리에 PSY memory 1개 (parentId:null + sourceUrl + thumbnail + title)
+  // → root placeholder가 아닌 real moment → 가이드 hidden
+  assertGuideHiddenFor([
+    {
+      id: '19ad873f-53f1-4ad8-8317-69219b9e2199',
+      parentId: null,
+      title: 'PSY - GANGNAM STYLE(강남스타일) M/V',
+      source: 'YouTube',
+      sourceUrl: 'https://www.youtube.com/embed/9bZkp7q19f0',
+      thumbnail: 'https://img.youtube.com/vi/9bZkp7q19f0/mqdefault.jpg',
+    },
+  ]);
+});
+
+test('empty guide runtime shows guide for empty root placeholder with no real content', () => {
+  // 모든 content 필드가 비어있는 root placeholder는 그대로 root로 본다.
+  assertGuideVisibleFor([
+    { id: 'tree-root-id', parentId: null },
   ]);
 });
 
@@ -194,6 +231,7 @@ test('root helper isRootLikeMemory agrees with empty guide isRootLikeMemory fall
   assert.equal(guide.classList.contains('editor-canvas-empty-guide-hidden'), false);
 
   // real child 추가 시 가이드 hidden — root helper의 hasVisibleMoment과 같은 결과
+  // (PR #2448: real child는 real moment content가 있어야 visible로 인정)
   const guide2 = createGuide();
   const docRef2 = { getElementById(id) { return id === 'canvasEmptyGuide' ? guide2 : null; } };
   const ctx2 = { window: {}, document: docRef2, console: { warn() {} } };
@@ -203,7 +241,7 @@ test('root helper isRootLikeMemory agrees with empty guide isRootLikeMemory fall
   const update2 = ctx2.window.LoveBudEditorEmptyGuideUI.createCanvasEmptyGuideUpdater({
     getTreeMemories: () => [
       { id: 'root', parentId: null },
-      { id: 'real-child', parentId: 'root' },  // parentId: 'root' → not root-like
+      { id: 'real-child', parentId: 'root', title: 'First real moment' },  // parentId: 'root' + title → real
     ],
     log() {},
   });
@@ -237,6 +275,6 @@ test('empty guide UI does not redefine its own local isRootLikeMemory when root 
 test('editor page cache-busts empty guide runtime script', () => {
   const editorPage = fs.readFileSync('pages/editor.html', 'utf8');
 
-  assert.match(editorPage, /\.\.\/js\/editor\/editor-empty-guide-ui\.js\?v=20260613-2446/);
+  assert.match(editorPage, /\.\.\/js\/editor\/editor-empty-guide-ui\.js\?v=20260613-2448/);
   assert.doesNotMatch(editorPage, /\.\.\/js\/editor\/editor-empty-guide-ui\.js\?v=20260612-2441/);
 });

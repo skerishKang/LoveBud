@@ -18,13 +18,26 @@ test('canvas ui fix canvas empty guide updater preserves helper call', () => {
   assert.match(shellCanvasUISource, /log:\s*log/);
 });
 
-test('canvas empty guide updater counts only non-root moments as visible moments', () => {
+test('canvas empty guide updater counts list-aware real moments as visible moments (PR #2448)', () => {
+  // PR #2448: hard-coded root placeholder (id='root', parentId='', parentId===id) 제외 후
+  // hasRealMomentContent로 content-aware 판정
   assert.match(emptyGuideUISource, /function isRootLikeMemory\(memory\)/);
-  assert.match(emptyGuideUISource, /memory\.id === 'root'\s*\|\|\s*parentId === null\s*\|\|\s*parentId === undefined/);
+  assert.match(emptyGuideUISource, /function hasRealMomentContent\(memory\)/);
+  // hard-coded root placeholder 분기
+  assert.match(emptyGuideUISource, /memory\.id === 'root'/);
+  assert.match(emptyGuideUISource, /memory\.parentId === ''/);
+  assert.match(emptyGuideUISource, /memory\.parentId === memory\.id/);
+  // parentId null/undefined + real content-aware 분기
+  assert.match(emptyGuideUISource, /parentId === null \|\| parentId === undefined/);
+  assert.match(emptyGuideUISource, /return !hasRealMomentContent\(memory\)/);
   assert.match(emptyGuideUISource, /function hasVisibleMoment\(memories\)/);
-  assert.match(emptyGuideUISource, /memories\.some\(\(memory\) => memory && !isRootLikeMemory\(memory\)\)/);
   assert.match(emptyGuideUISource, /const hasMoments = hasVisibleMoment\(memories\);/);
   assert.doesNotMatch(emptyGuideUISource, /const hasMoments = memories\.length > 0;/);
+  // PR #2446의 단순 !isRootLikeMemory 단독 체크는 사라짐
+  assert.doesNotMatch(
+    emptyGuideUISource,
+    /memories\.some\(\(memory\) => memory && !isRootLikeMemory\(memory\)\)/,
+  );
 });
 
 test('canvas ui fix canvas empty guide updater preserves warning fallback', () => {

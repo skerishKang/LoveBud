@@ -219,6 +219,7 @@ test('lazy let stubs are declared strictly before detailUI wiring', () => {
 test('editor page cache-busts editor.js for the lazy wrapper fix', () => {
   const editorPage = read('pages/editor.html');
 
-  assert.match(editorPage, /\.\.\/js\/editor\.js\?v=20260612-2400/);
+  // PR #2448: editor.js cache-bust 갱신
+  assert.match(editorPage, /\.\.\/js\/editor\.js\?v=20260613-2448/);
   assert.doesNotMatch(editorPage, /\.\.\/js\/editor\.js\?v=20260502-1/);
 });
