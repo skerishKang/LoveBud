@@ -31,9 +31,10 @@ export function buildCanvasTopbarTemplate() {
                         </button>
                     </div>
                     <div class="editor-canvas-toolbar-separator" aria-hidden="true"></div>
-                    <div class="editor-canvas-toolbar-group" aria-label="툴바 표시 모드">
-                        <button type="button" class="editor-canvas-tool-btn" id="compactModeToggleBtn" aria-label="간략 모드 전환" title="간략 모드 전환">
+                    <div class="editor-canvas-toolbar-group" aria-label="표시 옵션">
+                        <button type="button" class="editor-canvas-tool-btn editor-canvas-tool-btn-wide" id="compactModeToggleBtn" aria-label="간략 보기 전환" title="간략 보기 전환">
                             <span class="material-symbols-outlined" aria-hidden="true">unfold_more</span>
+                            <span class="editor-canvas-tool-label" id="compactModeToggleLabel">간략 보기</span>
                         </button>
                     </div>
                 </div>
