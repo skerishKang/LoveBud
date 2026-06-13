@@ -22,6 +22,18 @@ test('Floating Toolbar template helper exists and contains markup', () => {
     assert.ok(helperCode.includes('class="editor-floating-quick-add'), 'must include quick add classes');
 });
 
+test('Floating Toolbar branch controls stay out of the default action row', () => {
+    const helperCode = fs.readFileSync('js/editor/templates/editor-floating-toolbar-template.js', 'utf8');
+
+    assert.ok(helperCode.includes('id="ftbMoreBtn"'), 'more menu must remain the intentional overflow affordance');
+    assert.ok(helperCode.includes('id="ftbBranchBtn"'), 'branch button must remain available for deliberate flows');
+    assert.ok(helperCode.includes('id="ftbForkBtn"'), 'fork button must remain available for deliberate flows');
+    assert.ok(helperCode.includes('class="editor-floating-toolbar-btn editor-ftb-branch-btn" id="ftbBranchBtn"'), 'branch button must be scoped as a branch action');
+    assert.ok(helperCode.includes('class="editor-floating-toolbar-btn editor-ftb-branch-btn" id="ftbForkBtn"'), 'fork button must be scoped as a branch action');
+    assert.ok(helperCode.includes('id="ftbBranchBtn" aria-label="가지 만들기" title="가지 만들기" style="display:none;"'), 'branch button must stay hidden by default');
+    assert.ok(helperCode.includes('id="ftbForkBtn" aria-label="분기하기" title="분기하기" style="display:none;"'), 'fork button must stay hidden by default');
+});
+
 test('editor.html uses template mount and removes raw floating toolbar markup', () => {
     const html = fs.readFileSync('pages/editor.html', 'utf8');
 

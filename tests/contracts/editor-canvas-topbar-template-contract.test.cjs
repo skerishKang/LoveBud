@@ -17,14 +17,20 @@ test('Canvas Topbar template helper exists and contains markup', () => {
     assert.ok(helperCode.includes('id="compactModeToggleBtn"'), 'must preserve compact mode toggle button');
 });
 
+test('Canvas Topbar compact display toggle has clear visible copy', () => {
+    const helperCode = fs.readFileSync('js/editor/templates/editor-canvas-topbar-template.js', 'utf8');
+
+    assert.ok(helperCode.includes('aria-label="표시 옵션"'), 'display option group must be clearly named');
+    assert.ok(helperCode.includes('aria-label="간략 보기 전환"'), 'compact toggle must explain the action');
+    assert.ok(helperCode.includes('id="compactModeToggleLabel"'), 'compact toggle must expose a label element');
+    assert.ok(helperCode.includes('>간략 보기</span>'), 'compact toggle must have visible text');
+});
+
 test('editor.html uses template mount and removes raw canvas topbar markup', () => {
     const html = fs.readFileSync('pages/editor.html', 'utf8');
 
-    // Should have the mount anchor
     assert.ok(html.includes('id="editorCanvasTopbarTemplateMount"'), 'must have mount anchor');
-
-    // Should not have the inner contents like layoutModeToggleBtn in the raw HTML anymore
-    assert.ok(!html.includes('id="layoutModeToggleBtn"'), 'raw HTML should not contain canvas topbar inner contents');
+    assert.ok(!html.includes('id="layoutModeToggleBtn"'), 'page shell should not contain canvas topbar inner contents');
 });
 
 test('editor.html loads template helper before editor runtime in correct order', () => {
