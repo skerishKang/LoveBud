@@ -319,8 +319,8 @@
     setText('cancelEditBtn', 'editor_cancel', '취소');
     setText('saveEditBtn', 'editor_save', '저장하기');
 
-    setAttr('renameTreeBtn', 'aria-label', 'rename_tree_prompt', '새 트리 제목을 입력해 주세요.');
-    setAttr('renameTreeBtn', 'title', 'rename_tree_prompt', '새 트리 제목을 입력해 주세요.');
+    setAttr('renameTreeBtn', 'aria-label', 'editor_rename_tree', '트리 제목 수정');
+    setAttr('renameTreeBtn', 'title', 'editor_rename_tree', '트리 제목 수정');
 
     var playBtn = document.querySelector('.play-btn');
     if (playBtn) {
