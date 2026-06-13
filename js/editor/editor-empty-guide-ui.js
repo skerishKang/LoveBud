@@ -2,32 +2,74 @@
     const emptyGuideUI = window.LoveBudEditorEmptyGuideUI || {};
 
     // Root helper 공통 predicate를 우선 사용 (editor-root-helpers.js)
-    // fallback은 root helper와 같은 기준 (5가지 케이스)
+    // fallback은 root helper와 같은 기준 (PR #2448 정밀화: real content-aware)
     const rootUtils = (typeof window !== 'undefined' && window.LoveBudEditorUtils) || {};
     const sharedIsRootLikeMemory = typeof rootUtils.isRootLikeMemory === 'function'
         ? rootUtils.isRootLikeMemory
         : null;
+    const sharedHasRealMomentContent = typeof rootUtils.hasRealMomentContent === 'function'
+        ? rootUtils.hasRealMomentContent
+        : null;
+
+    // inline fallback — root helper와 같은 ROOT_PLACEHOLDER_TITLES 집합
+    const ROOT_PLACEHOLDER_TITLES = new Set([
+        'root', 'Root', 'ROOT',
+        '루트',
+        '새 트리', '새 러브트리', '새 트리입니다', '새 러브트리입니다',
+        'untitled', 'Untitled', 'UNTITLED',
+        '새 moment', '새 순간', 'root placeholder'
+    ]);
 
     emptyGuideUI.createCanvasEmptyGuideUpdater = function(options) {
         const getTreeMemories = options && options.getTreeMemories;
         const log = options && options.log;
 
-        // local fallback — root helper와 같은 기준 (5가지 케이스)
+        // local fallback — root helper와 같은 기준 (PR #2448 정밀화)
+        function hasRealMomentContent(memory) {
+            if (sharedHasRealMomentContent) {
+                return sharedHasRealMomentContent(memory);
+            }
+            if (!memory) return false;
+            if (memory.sourceUrl && String(memory.sourceUrl).trim()) return true;
+            if (memory.source && String(memory.source).trim()) return true;
+            if (memory.thumbnail && String(memory.thumbnail).trim()) return true;
+            if (memory.memo && String(memory.memo).trim()) return true;
+            if (memory.quote && String(memory.quote).trim()) return true;
+            if (Array.isArray(memory.emotionTags) && memory.emotionTags.length > 0) return true;
+            const title = memory.title ? String(memory.title).trim() : '';
+            if (title && !ROOT_PLACEHOLDER_TITLES.has(title)) return true;
+            return false;
+        }
+
         function isRootLikeMemory(memory) {
             if (sharedIsRootLikeMemory) {
                 return sharedIsRootLikeMemory(memory);
             }
             if (!memory) return false;
             const parentId = memory.parentId;
-            return memory.id === 'root'
-                || parentId === null
-                || parentId === undefined
-                || parentId === ''
-                || parentId === memory.id;
+            if (memory.id === 'root') return true;
+            if (parentId === '') return true;
+            if (parentId === memory.id) return true;
+            if (parentId === null || parentId === undefined) {
+                return !hasRealMomentContent(memory);
+            }
+            return false;
         }
 
         function hasVisibleMoment(memories) {
-            return Array.isArray(memories) && memories.some((memory) => memory && !isRootLikeMemory(memory));
+            if (!Array.isArray(memories)) return false;
+            return memories.some((memory) => {
+                if (!memory) return false;
+                // hard-coded root placeholder는 real content가 있어도 root
+                // (PR #2448: id='root', parentId='', parentId===id)
+                if (memory.id === 'root') return false;
+                if (memory.parentId === '') return false;
+                if (memory.parentId === memory.id) return false;
+                // 그 외 (parentId null/undefined 또는 parentId가 다른 노드):
+                // real content가 있으면 visible moment
+                if (hasRealMomentContent(memory)) return true;
+                return false;
+            });
         }
 
         return function updateCanvasEmptyGuide() {
