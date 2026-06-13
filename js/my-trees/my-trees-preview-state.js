@@ -41,13 +41,22 @@
     var Utils = window.LoveBudMyTreesUtils;
     if (Utils && typeof Utils.getTreeMomentCount === 'function') return Utils.getTreeMomentCount(tree);
     if (!tree) return 0;
-    var count = tree.memoryCount ??
-      tree.memory_count ??
-      tree.nodeCount ??
-      tree.node_count ??
-      (Array.isArray(tree.memories) ? tree.memories.length : undefined) ??
-      (Array.isArray(tree.nodes) ? tree.nodes.length : undefined) ??
-      0;
+    var count;
+    if (tree.memoryCount != null) {
+      count = tree.memoryCount;
+    } else if (tree.memory_count != null) {
+      count = tree.memory_count;
+    } else if (tree.nodeCount != null) {
+      count = tree.nodeCount;
+    } else if (tree.node_count != null) {
+      count = tree.node_count;
+    } else if (Array.isArray(tree.memories)) {
+      count = tree.memories.length;
+    } else if (Array.isArray(tree.nodes)) {
+      count = tree.nodes.length;
+    } else {
+      count = 0;
+    }
     count = Number(count);
     return Number.isFinite(count) ? count : 0;
   }
