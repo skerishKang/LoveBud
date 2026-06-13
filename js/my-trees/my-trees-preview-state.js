@@ -131,6 +131,12 @@
     }
   }
 
+  function shouldUseCachedMemories(tree, cachedMemories) {
+    if (!Array.isArray(cachedMemories)) return false;
+    if (cachedMemories.length > 0) return true;
+    return getTreeMomentCount(tree) <= 0;
+  }
+
   function writeTreeMemoriesCache(treeId, memories) {
     if (!treeId || !Array.isArray(memories)) return;
     try {
@@ -168,7 +174,7 @@
     }
 
     var cachedMemories = readTreeMemoriesCache(treeId);
-    if (Array.isArray(cachedMemories)) {
+    if (shouldUseCachedMemories(tree, cachedMemories)) {
       return deriveCreatedMomentMeta(tree, cachedMemories);
     }
 
