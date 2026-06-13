@@ -266,7 +266,7 @@ test('editor title rename modal contract: sidebar copy and cache-bust', () => {
   assert.doesNotMatch(sidebar, /Our LoveTree/, 'old English sidebar badge should be removed');
   assert.match(sidebar, />수정<\/button>/, 'rename button text should be short');
 
-  assert.match(editorHtml, /editor\.css\?v=20260614-2464/, 'editor.css cache-bust should reflect #2464');
+  assert.match(editorHtml, /editor\.css\?v=20260614-(?:2464|2465)/, 'editor.css cache-bust should reflect #2464 or a later editor CSS polish bump');
   assert.match(editorHtml, /editor-sidebar-template\.js\?v=20260614-2464/, 'sidebar template cache-bust should reflect #2464');
   assert.match(editorHtml, /editor-rename-ui\.js\?v=20260614-2464/, 'rename UI cache-bust should reflect #2464');
   assert.match(editorHtml, /editor-i18n-refresh\.js\?v=20260614-2464/, 'i18n refresh cache-bust should reflect #2464');

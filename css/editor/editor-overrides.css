@@ -384,6 +384,57 @@ body .editor-memory-mode-chip.is-active {
     margin-right: auto;
 }
 
+/* Editor selected moment social footer — soft inline like/comment actions */
+.editor-moment-reactions-card {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 30px;
+    margin: 14px 4px 0;
+    padding: 0 4px;
+    border: 0;
+    background: transparent;
+    color: var(--on-surface-soft);
+    font-size: 13px;
+    line-height: 1.4;
+}
+
+.editor-moment-reaction {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    min-height: 28px;
+    padding: 0 2px;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: inherit;
+    font-weight: 800;
+    cursor: pointer;
+    transition: background-color 0.18s ease, color 0.18s ease, transform 0.18s ease;
+}
+
+.editor-moment-reaction:hover,
+.editor-moment-reaction:focus-visible {
+    background: rgba(144, 73, 81, 0.08);
+    color: var(--primary);
+}
+
+.editor-moment-reaction:active {
+    transform: translateY(1px);
+}
+
+.editor-reaction-label {
+    font-weight: 900;
+}
+
+.editor-reaction-like-count,
+.editor-reaction-comment-count {
+    min-width: 1ch;
+    font-variant-numeric: tabular-nums;
+    text-align: left;
+}
+
 /* Editor tree rename modal — replaces native window.prompt */
 body.editor-rename-modal-open {
     overflow: hidden;
