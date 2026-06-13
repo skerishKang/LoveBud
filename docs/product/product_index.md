@@ -30,6 +30,7 @@
 | [READ_ONLY_LOVETREE_VIEWER_PLAN.md](READ_ONLY_LOVETREE_VIEWER_PLAN.md) | read-only LoveTree viewer의 route, public-safe data, viewer/editor separation, interaction, privacy guardrail 계획 |
 | [lovebud-relationship-hints-review-before-save-plan.md](lovebud-relationship-hints-review-before-save-plan.md) | #2454 editor/canvas relationship hints review-before-save boundary — manual editing source of truth, suggested vs saved links, accept/dismiss, no hidden edges, no Scout/live work |
 | [lovebud-relationship-hints-ux-prototype-plan.md](lovebud-relationship-hints-ux-prototype-plan.md) | #2456 editor/canvas relationship hints UX prototype plan — non-saving prototype, suggested-link visual language, future accept/dismiss placement, no-runtime boundary |
+| [lovebud-relationship-hints-state-machine-contract.md](lovebud-relationship-hints-state-machine-contract.md) | #2458 editor/canvas relationship hints state machine contract — exact states, allowed/forbidden transitions, non-saved suggestion states, explicit save/confirm boundary |
 | [VERTICAL_TREE_LAYOUT_DECISION.md](VERTICAL_TREE_LAYOUT_DECISION.md) | Editor와 read-only viewer의 세로형 tree-growth layout 채택 결정, desktop/mobile 원칙, phased rollout 기준 |
 | [BROWSE_TREE_FIRST_DISCOVERY_PLAN.md](BROWSE_TREE_FIRST_DISCOVERY_PLAN.md) | Browse를 tree-first public LoveTree discovery로 발전시키기 위한 card/감상허브/viewer route semantics 계획 |
 | [PUBLIC_VIEWER_SOCIAL_PLACEHOLDER_PLAN.md](PUBLIC_VIEWER_SOCIAL_PLACEHOLDER_PLAN.md) | public LoveTree viewer에서 tree-level / moment-level social placeholder 배치 방향, desktop/mobile placement, empty-state copy, write affordance 분리 기준 |
@@ -85,7 +86,7 @@ Editor and read-only viewer layout direction is vertical tree-growth, not a plai
 
 ## Relationship hints highlights
 
-Relationship hints are optional review-before-save suggestions, not automatic hidden edges. Manual tree/canvas editing remains the source of truth; suggested links must be visually distinct from saved links; users must accept or dismiss hints explicitly; dismissed hints must not become saved relationships; and this planning slice includes no Scout/live AI/provider/fetch/network work. The #2456 UX prototype plan defines a non-saving prototype with dashed/dotted/provisional visual language, future accept/dismiss affordance placement, and no-runtime/no-live-provider boundaries.
+Relationship hints are optional review-before-save suggestions, not automatic hidden edges. Manual tree/canvas editing remains the source of truth; suggested links must be visually distinct from saved links; users must accept or dismiss hints explicitly; dismissed hints must not become saved relationships; and this planning slice includes no Scout/live AI/provider/fetch/network work. The #2456 UX prototype plan defines a non-saving prototype with dashed/dotted/provisional visual language, future accept/dismiss affordance placement, and no-runtime/no-live-provider boundaries. The #2458 state machine contract locks the exact hint states, allowed/forbidden transitions, non-saved suggestion states, and explicit save/confirm boundary.
 
 ## Social model highlights
 
@@ -142,24 +143,25 @@ Strong primary CTAs require Ready status and valid runtime verification when Aut
 13. **VERTICAL_TREE_LAYOUT_DECISION.md** — 세로형 tree-growth layout 채택 결정
 14. **lovebud-relationship-hints-review-before-save-plan.md** — #2454 editor/canvas relationship hints review-before-save boundary
 15. **lovebud-relationship-hints-ux-prototype-plan.md** — #2456 non-saving relationship hints UX prototype plan
-16. **BROWSE_TREE_FIRST_DISCOVERY_PLAN.md** — Browse tree-first discovery와 viewer route semantics 계획
-17. **PUBLIC_VIEWER_SOCIAL_PLACEHOLDER_PLAN.md** — public viewer social placeholder 배치 및 phasing 계획
-18. **TREE_MOMENT_SOCIAL_MODEL.md** — tree-level / moment-level social scope, permissions, moderation, data model planning
-19. **TREE_LEVEL_COMMENTS_READ_CONTRACT.md** — tree-level comments read scope, parent-tree guard, public-safe response, empty/error state contract
-20. **MOMENT_LEVEL_COMMENTS_READ_CONTRACT.md** — moment-level comments read scope, parent-tree guard, target-moment guard, public-safe response, empty/error state contract
-21. **V01_CTA_EXPOSURE_POLICY.md** — v0.1 unfinished/partial action 노출 기준과 CTA readiness 분류 정책
-22. **MOMENT_TIMELINE_PLAN.md** — cue-based Moment Timeline 계획
-23. **YOUTUBE_SEGMENT_PLAYER_POC_SCOPE.md** — YouTube segment player PoC scope and verification criteria
-24. **YOUTUBE_SEGMENT_PLAYER_POC_TEST_MATRIX.md** — YouTube segment player PoC test matrix and browser verification requirements
-25. **YOUTUBE_SEGMENT_PLAYER_POC_RUNTIME_NOTES.md** — YouTube segment player PoC runtime observations and limitations
-26. **YOUTUBE_SEGMENT_PLAYER_POC_BROWSER_VERIFICATION.md** — YouTube segment player PoC browser verification evidence and feasibility decision
-27. **MOMENT_CAPTURE_UI_DESIGN.md** — Moment capture UI flow 설계
-28. **MOMENT_TIMELINE_REORDER_DESIGN.md** — Moment Timeline reorder / sequence editor 설계
-29. **UI_COPY_DIET_GUIDE.md** — 전역 UI 카피 다이어트 기준
-30. **MVP_SCOPE.md** — MVP 범위 및 In/Out of Scope
-31. **USER_FLOW.md** — 사용자 여정 및 핵심 플로우
-32. **PRODUCT_BRIEF.md** — 현재 실행 기준 요약
-33. **필요시 DATA_NAMING_RULE.md, READONLY_SHARE_SCOPE.md**
+16. **lovebud-relationship-hints-state-machine-contract.md** — #2458 relationship hints state machine contract
+17. **BROWSE_TREE_FIRST_DISCOVERY_PLAN.md** — Browse tree-first discovery와 viewer route semantics 계획
+18. **PUBLIC_VIEWER_SOCIAL_PLACEHOLDER_PLAN.md** — public viewer social placeholder 배치 및 phasing 계획
+19. **TREE_MOMENT_SOCIAL_MODEL.md** — tree-level / moment-level social scope, permissions, moderation, data model planning
+20. **TREE_LEVEL_COMMENTS_READ_CONTRACT.md** — tree-level comments read scope, parent-tree guard, public-safe response, empty/error state contract
+21. **MOMENT_LEVEL_COMMENTS_READ_CONTRACT.md** — moment-level comments read scope, parent-tree guard, target-moment guard, public-safe response, empty/error state contract
+22. **V01_CTA_EXPOSURE_POLICY.md** — v0.1 unfinished/partial action 노출 기준과 CTA readiness 분류 정책
+23. **MOMENT_TIMELINE_PLAN.md** — cue-based Moment Timeline 계획
+24. **YOUTUBE_SEGMENT_PLAYER_POC_SCOPE.md** — YouTube segment player PoC scope and verification criteria
+25. **YOUTUBE_SEGMENT_PLAYER_POC_TEST_MATRIX.md** — YouTube segment player PoC test matrix and browser verification requirements
+26. **YOUTUBE_SEGMENT_PLAYER_POC_RUNTIME_NOTES.md** — YouTube segment player PoC runtime observations and limitations
+27. **YOUTUBE_SEGMENT_PLAYER_POC_BROWSER_VERIFICATION.md** — YouTube segment player PoC browser verification evidence and feasibility decision
+28. **MOMENT_CAPTURE_UI_DESIGN.md** — Moment capture UI flow 설계
+29. **MOMENT_TIMELINE_REORDER_DESIGN.md** — Moment Timeline reorder / sequence editor 설계
+30. **UI_COPY_DIET_GUIDE.md** — 전역 UI 카피 다이어트 기준
+31. **MVP_SCOPE.md** — MVP 범위 및 In/Out of Scope
+32. **USER_FLOW.md** — 사용자 여정 및 핵심 플로우
+33. **PRODUCT_BRIEF.md** — 현재 실행 기준 요약
+34. **필요시 DATA_NAMING_RULE.md, READONLY_SHARE_SCOPE.md**
 
 ## 참조
 - 전체 문서 인덱스: `../doc_index.md`
