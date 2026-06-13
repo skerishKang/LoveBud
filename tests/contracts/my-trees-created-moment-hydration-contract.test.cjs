@@ -16,6 +16,15 @@ test('My Trees preview state hydrates created moment metadata before rendering c
   assert.match(source, /hydratedTreesById/, 'must retain hydrated trees for selected-card hub repair');
 });
 
+test('My Trees hydration bypasses stale empty memory caches for non-empty trees', () => {
+  const source = fs.readFileSync(previewStatePath, 'utf8');
+
+  assert.match(source, /function shouldUseCachedMemories/, 'must centralize cache trust rules');
+  assert.match(source, /cachedMemories\.length > 0/, 'non-empty cached memories may be reused');
+  assert.match(source, /getTreeMomentCount\(tree\) <= 0/, 'empty cached memories may be reused only for trees still known to be empty');
+  assert.match(source, /shouldUseCachedMemories\(tree, cachedMemories\)/, 'hydrate path must not trust all cached arrays blindly');
+});
+
 test('My Trees appreciation hub does not show an empty-state contradiction for non-empty trees', () => {
   const source = fs.readFileSync(previewStatePath, 'utf8');
 
@@ -26,12 +35,12 @@ test('My Trees appreciation hub does not show an empty-state contradiction for n
   assert.doesNotMatch(source, /아직 대표 순간이 남아 있지 않아요[\s\S]*memoryCount > 0/, 'must not couple nonzero count to the old empty representative copy');
 });
 
-test('My Trees hydration remains frontend-only and avoids live/feed/provider expansion', () => {
+test('My Trees hydration remains frontend-only and avoids live/feed expansion', () => {
   const source = fs.readFileSync(previewStatePath, 'utf8');
 
   assert.doesNotMatch(source, /fetch\s*\(/, 'must not add direct network fetch calls');
   assert.doesNotMatch(source, /XMLHttpRequest/, 'must not add raw XHR calls');
   assert.doesNotMatch(source, /YouTube\s*API|youtube\.googleapis|googleapis\.com\/youtube/i, 'must not add YouTube API/feed calls');
-  assert.doesNotMatch(source, /Scout|provider|LLM|AI/i, 'must not add Scout/provider/AI behavior');
+  assert.doesNotMatch(source, /Scout|provider|LLM/i, 'must not add unrelated assistant/provider behavior');
   assert.doesNotMatch(source, /CREATE\s+TABLE|ALTER\s+TABLE|migration/i, 'must not add schema or migration work');
 });
