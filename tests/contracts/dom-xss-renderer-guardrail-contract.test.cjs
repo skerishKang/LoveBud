@@ -231,6 +231,10 @@ const FILE_ALLOWLIST = {
     count: 2, classification: 'safe',
     reason: 'material-icon + i18n tText; panel array join of option HTML with safe text'
   },
+  'js/editor/editor-rename-ui.js': {
+    count: 1, classification: 'safe',
+    reason: 'In-app rename modal uses static modal HTML only; current title is assigned to input.value, not innerHTML'
+  },
   'js/editor/editor-memory-actions.js': {
     count: 1, classification: 'safe',
     reason: 'field.innerHTML — template literal with escapeHtml for user content'

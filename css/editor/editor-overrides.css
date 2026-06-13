@@ -383,3 +383,150 @@ body .editor-memory-mode-chip.is-active {
     margin-left: auto;
     margin-right: auto;
 }
+
+/* Editor tree rename modal — replaces native window.prompt */
+body.editor-rename-modal-open {
+    overflow: hidden;
+}
+
+.editor-rename-modal[hidden] {
+    display: none !important;
+}
+
+.editor-rename-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: grid;
+    place-items: center;
+    padding: 20px;
+    background: rgba(49, 33, 27, 0.36);
+    backdrop-filter: blur(6px);
+}
+
+.editor-rename-modal-card {
+    width: min(430px, 100%);
+    border-radius: 28px;
+    background: rgba(255, 253, 249, 0.98);
+    border: 1px solid rgba(197, 146, 128, 0.28);
+    box-shadow: 0 24px 80px rgba(49, 33, 27, 0.24);
+    padding: 24px;
+}
+
+.editor-rename-modal-kicker {
+    display: inline-flex;
+    align-items: center;
+    min-height: 24px;
+    padding: 0 10px;
+    border-radius: 999px;
+    background: rgba(144, 73, 81, 0.08);
+    color: var(--primary);
+    font-size: 12px;
+    font-weight: 900;
+    letter-spacing: -0.01em;
+}
+
+.editor-rename-modal-header h2 {
+    margin: 12px 0 6px;
+    color: var(--on-background);
+    font-size: 24px;
+    line-height: 1.2;
+    letter-spacing: -0.04em;
+}
+
+.editor-rename-modal-header p {
+    margin: 0;
+    color: var(--on-surface-note);
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+.editor-rename-modal-label {
+    display: block;
+    margin-top: 20px;
+    margin-bottom: 8px;
+    color: var(--on-surface);
+    font-size: 13px;
+    font-weight: 900;
+}
+
+.editor-rename-modal-input {
+    width: 100%;
+    min-height: 48px;
+    box-sizing: border-box;
+    border-radius: 16px;
+    border: 1px solid rgba(197, 146, 128, 0.34);
+    background: rgba(255, 255, 255, 0.86);
+    color: var(--on-background);
+    padding: 0 14px;
+    font-size: 16px;
+    outline: none;
+    transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+}
+
+.editor-rename-modal-input:focus {
+    border-color: rgba(144, 73, 81, 0.48);
+    box-shadow: 0 0 0 4px rgba(144, 73, 81, 0.10);
+    background: #fff;
+}
+
+.editor-rename-modal-error {
+    margin: 8px 0 0;
+    color: var(--danger);
+    font-size: 13px;
+    font-weight: 800;
+}
+
+.editor-rename-modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 22px;
+}
+
+.editor-rename-modal-btn {
+    min-height: 42px;
+    border-radius: 999px;
+    border: 1px solid rgba(197, 146, 128, 0.32);
+    padding: 0 16px;
+    font-size: 14px;
+    font-weight: 900;
+    cursor: pointer;
+}
+
+.editor-rename-modal-btn:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+.editor-rename-modal-btn-secondary {
+    background: rgba(255, 255, 255, 0.72);
+    color: var(--on-surface);
+}
+
+.editor-rename-modal-btn-primary {
+    background: var(--primary);
+    border-color: transparent;
+    color: white;
+    box-shadow: 0 8px 18px rgba(144, 73, 81, 0.18);
+}
+
+@media (max-width: 480px) {
+    .editor-rename-modal {
+        padding: 14px;
+        align-items: end;
+    }
+
+    .editor-rename-modal-card {
+        border-radius: 24px 24px 18px 18px;
+        padding: 20px;
+    }
+
+    .editor-rename-modal-actions {
+        flex-direction: column-reverse;
+    }
+
+    .editor-rename-modal-btn {
+        width: 100%;
+    }
+}

@@ -11,10 +11,10 @@ export function buildSidebarTemplate() {
                 <h3 id="editorFlowHeading">러브트리</h3>
                 <p id="editorFlowLead" class="editor-flow-lead">...</p>
                 <div class="editor-status-card">
-                    <div class="editor-reference-kicker" aria-hidden="true">✿ Our LoveTree</div>
+                    <div class="editor-reference-kicker" aria-hidden="true">내가 키우는 러브트리</div>
                     <div class="editor-space-between-row">
                     <strong id="sidebarTreeTitle">러브트리</strong>
-                    <button type="button" id="renameTreeBtn" class="icon-menu-btn editor-rename-btn" aria-label="트리 제목 수정" title="트리 제목 수정">제목 수정</button>
+                    <button type="button" id="renameTreeBtn" class="icon-menu-btn editor-rename-btn" aria-label="트리 제목 수정" title="트리 제목 수정">수정</button>
                     </div>
                     <p id="sidebarFlowSummary" class="editor-flow-summary"></p>
                 </div>
