@@ -62,7 +62,7 @@
 
 .editor-status-card {
     background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(250,246,244,0.96));
-    box-shadow: 0 8px 20px rgba(75,64,57,0.05);
+    box-shadow: 0 8px 20px rgba(75, 64, 57, 0.05);
 }
 
 .editor-status-card,
@@ -85,7 +85,7 @@
     user-select: none;
 }
 
-/* ===========================================================================
+/* ==========================================================================
    Editor paper tone pass 3
    Goal: Scrapbook/Paper texture unification & tone polish
    ========================================================================== */
@@ -160,61 +160,6 @@ body .editor-save-status-card {
     box-shadow: 0 2px 8px rgba(75, 64, 57, 0.02);
 }
 
-body .editor-moment-reactions-card {
-    display: inline-flex;
-    align-items: center;
-    align-self: flex-start;
-    gap: 6px;
-    padding: 8px 10px;
-    border-radius: 999px;
-    background: rgba(255,253,249,0.52);
-    border: 1px solid rgba(144, 73, 81, 0.06);
-    box-shadow: 0 2px 8px rgba(75, 64, 57, 0.02);
-}
-
-body .editor-moment-reaction {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    min-height: 28px;
-    padding: 0 8px;
-    border: 0;
-    border-radius: 999px;
-    background: transparent;
-    color: var(--on-surface-variant);
-    font: inherit;
-    font-size: 12px;
-    font-weight: 800;
-    line-height: 1;
-    cursor: pointer;
-    box-shadow: none;
-}
-
-body .editor-moment-reaction:hover,
-body .editor-moment-reaction:focus-visible {
-    background: rgba(144, 73, 81, 0.07);
-    color: var(--primary);
-    outline: none;
-}
-
-body .editor-reaction-like-icon,
-body .editor-reaction-comment-icon {
-    font-size: 14px;
-    line-height: 1;
-}
-
-body .editor-reaction-label {
-    color: inherit;
-    letter-spacing: -0.01em;
-}
-
-body .editor-reaction-like-count,
-body .editor-reaction-comment-count {
-    min-width: 1ch;
-    color: var(--on-surface);
-    font-variant-numeric: tabular-nums;
-}
-
 body .editor-moment-info-card {
     background: rgba(255, 255, 255, 0.6);
 }
@@ -270,10 +215,6 @@ body .editor-memory-mode-chip.is-active {
         font-size: 1.35rem;
     }
 
-    body .editor-moment-reactions-card {
-        width: 100%;
-        justify-content: space-between;
-    }
 }
 
 /* Editor page presentation overrides extracted from pages/editor.html */
@@ -317,4 +258,326 @@ body .editor-memory-mode-chip.is-active {
     background: radial-gradient(circle at 50% 28%,rgba(255,255,255,0.36),transparent 34%);
     pointer-events: none;
     z-index: 0;
+}
+
+.canvas-svg,
+.memory-node,
+#canvasEmptyGuide,
+#addMemoryForm {
+    z-index: 2;
+}
+
+.editor-reference-kicker {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    width: max-content;
+    max-width: 100%;
+    min-height: 30px;
+    padding: 0 12px;
+    border-radius: 999px;
+    background: rgba(255,248,242,0.90);
+    border: 1px solid rgba(233,213,199,0.86);
+    color: var(--on-surface-soft);
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.01em;
+}
+
+.editor-status-card {
+    position: relative;
+    padding: 24px 20px 20px;
+    border-radius: 28px;
+    background: linear-gradient(180deg,rgba(255,253,249,0.96),rgba(255,246,239,0.88));
+    border: 1px solid rgba(233,215,201,0.82);
+    box-shadow: 0 18px 40px rgba(161,119,96,0.10);
+    margin-top: 0;
+}
+
+.editor-status-card .editor-reference-kicker {
+    margin-bottom: 14px;
+}
+
+.editor-status-card strong {
+    font-size: 1.62rem;
+    color: var(--on-surface);
+}
+
+.editor-rename-btn {
+    align-self: flex-start;
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    width: auto;
+    min-height: 32px;
+    padding: 0 11px;
+    margin-top: 2px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.78);
+    border-color: rgba(197,146,128,0.30);
+    color: var(--on-surface-soft);
+    font-size: 11px;
+    font-weight: 900;
+    line-height: 1;
+    white-space: nowrap;
+    box-shadow: 0 8px 18px rgba(165,124,101,0.08);
+}
+
+.editor-tree-visibility-pill {
+    min-height: 34px;
+    padding: 0 14px;
+    margin-top: 14px;
+    font-size: 12px;
+    border-radius: 999px;
+}
+
+.editor-title-settings-panel {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 10px;
+    margin-top: 14px;
+    width: 100% !important;
+    align-items: stretch !important;
+    justify-content: stretch !important;
+    pointer-events: auto !important;
+}
+
+.editor-mini-setting-btn {
+    display: inline-flex !important;
+    width: 100%;
+    min-height: 48px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.70);
+    border-color: rgba(221,198,184,0.84);
+    color: var(--on-surface-soft);
+    font-weight: 800;
+    box-shadow: 0 8px 16px rgba(165,124,101,0.06);
+}
+
+.editor-status-card #sidebarVisibilityToggleBtn.editor-mini-setting-btn {
+    display: inline-flex !important;
+}
+
+.editor-tree-quiet-note {
+    margin: 20px 0 0;
+    padding-top: 18px;
+    border-top: 1px dashed rgba(190,147,127,0.36);
+    color: var(--on-surface-note);
+    font-size: 13px;
+    line-height: 1.7;
+    text-align: center;
+}
+
+.editor-status-section > h3,
+.editor-flow-lead,
+#sidebarMomentCount,
+.editor-add-section-bottom,
+.editor-tree-meta-section,
+#detailEmptyStartBtn {
+    display: none !important;
+}
+
+.editor-canvas-empty-guide__desc {
+    max-width: 260px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* Editor selected moment social footer — soft inline like/comment actions */
+.editor-moment-reactions-card {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 30px;
+    margin: 14px 4px 0;
+    padding: 0 4px;
+    border: 0;
+    background: transparent;
+    color: var(--on-surface-soft);
+    font-size: 13px;
+    line-height: 1.4;
+}
+
+.editor-moment-reaction {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    min-height: 28px;
+    padding: 0 2px;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: inherit;
+    font-weight: 800;
+    cursor: pointer;
+    transition: background-color 0.18s ease, color 0.18s ease, transform 0.18s ease;
+}
+
+.editor-moment-reaction:hover,
+.editor-moment-reaction:focus-visible {
+    background: rgba(144, 73, 81, 0.08);
+    color: var(--primary);
+}
+
+.editor-moment-reaction:active {
+    transform: translateY(1px);
+}
+
+.editor-reaction-label {
+    font-weight: 900;
+}
+
+.editor-reaction-like-count,
+.editor-reaction-comment-count {
+    min-width: 1ch;
+    font-variant-numeric: tabular-nums;
+    text-align: left;
+}
+
+/* Editor tree rename modal — replaces native window.prompt */
+body.editor-rename-modal-open {
+    overflow: hidden;
+}
+
+.editor-rename-modal[hidden] {
+    display: none !important;
+}
+
+.editor-rename-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: grid;
+    place-items: center;
+    padding: 20px;
+    background: rgba(49, 33, 27, 0.36);
+    backdrop-filter: blur(6px);
+}
+
+.editor-rename-modal-card {
+    width: min(430px, 100%);
+    border-radius: 28px;
+    background: rgba(255, 253, 249, 0.98);
+    border: 1px solid rgba(197, 146, 128, 0.28);
+    box-shadow: 0 24px 80px rgba(49, 33, 27, 0.24);
+    padding: 24px;
+}
+
+.editor-rename-modal-kicker {
+    display: inline-flex;
+    align-items: center;
+    min-height: 24px;
+    padding: 0 10px;
+    border-radius: 999px;
+    background: rgba(144, 73, 81, 0.08);
+    color: var(--primary);
+    font-size: 12px;
+    font-weight: 900;
+    letter-spacing: -0.01em;
+}
+
+.editor-rename-modal-header h2 {
+    margin: 12px 0 6px;
+    color: var(--on-background);
+    font-size: 24px;
+    line-height: 1.2;
+    letter-spacing: -0.04em;
+}
+
+.editor-rename-modal-header p {
+    margin: 0;
+    color: var(--on-surface-note);
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+.editor-rename-modal-label {
+    display: block;
+    margin-top: 20px;
+    margin-bottom: 8px;
+    color: var(--on-surface);
+    font-size: 13px;
+    font-weight: 900;
+}
+
+.editor-rename-modal-input {
+    width: 100%;
+    min-height: 48px;
+    box-sizing: border-box;
+    border-radius: 16px;
+    border: 1px solid rgba(197, 146, 128, 0.34);
+    background: rgba(255, 255, 255, 0.86);
+    color: var(--on-background);
+    padding: 0 14px;
+    font-size: 16px;
+    outline: none;
+    transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+}
+
+.editor-rename-modal-input:focus {
+    border-color: rgba(144, 73, 81, 0.48);
+    box-shadow: 0 0 0 4px rgba(144, 73, 81, 0.10);
+    background: #fff;
+}
+
+.editor-rename-modal-error {
+    margin: 8px 0 0;
+    color: var(--danger);
+    font-size: 13px;
+    font-weight: 800;
+}
+
+.editor-rename-modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 22px;
+}
+
+.editor-rename-modal-btn {
+    min-height: 42px;
+    border-radius: 999px;
+    border: 1px solid rgba(197, 146, 128, 0.32);
+    padding: 0 16px;
+    font-size: 14px;
+    font-weight: 900;
+    cursor: pointer;
+}
+
+.editor-rename-modal-btn:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+.editor-rename-modal-btn-secondary {
+    background: rgba(255, 255, 255, 0.72);
+    color: var(--on-surface);
+}
+
+.editor-rename-modal-btn-primary {
+    background: var(--primary);
+    border-color: transparent;
+    color: white;
+    box-shadow: 0 8px 18px rgba(144, 73, 81, 0.18);
+}
+
+@media (max-width: 480px) {
+    .editor-rename-modal {
+        padding: 14px;
+        align-items: end;
+    }
+
+    .editor-rename-modal-card {
+        border-radius: 24px 24px 18px 18px;
+        padding: 20px;
+    }
+
+    .editor-rename-modal-actions {
+        flex-direction: column-reverse;
+    }
+
+    .editor-rename-modal-btn {
+        width: 100%;
+    }
 }
