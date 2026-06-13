@@ -25,7 +25,7 @@ test('selected moment view supports user-initiated inline playback from stored m
   assert.match(source, /www\.youtube-nocookie\.com\/embed/, 'YouTube playback must use the privacy-enhanced embed host');
   assert.match(source, /data\.sourceUrl \|\|\s*\n\s*data\.source_url/, 'playback must prefer existing memory source URL fields');
   assert.match(source, /data-editor-detail-player/, 'inserted players must be identifiable and removable on selection change');
-  assert.match(source, /autoplay'\);/, 'autoplay may be set only after the user presses play');
+  assert.match(source, /params\.set\('autoplay', '1'\)/, 'autoplay must be attached only inside the user-triggered player builder');
   assert.match(source, /moment_inline_player_unavailable/, 'missing or unsupported media URLs must fail safely');
 });
 
