@@ -159,6 +159,10 @@ const FILE_ALLOWLIST = {
     count: 11, classification: 'safe',
     reason: 'buildFlowStages template uses escapeHtml; material-icon badges with escapeHtml for count; i18n safeText; clear-container; static toggle buttons'
   },
+  'js/my-trees/my-trees-preview-state.js': {
+    count: 3, classification: 'safe',
+    reason: 'Created moment preview hydration uses escapeHtml for hydrated memory labels, hidden count text, and tree title/count empty-state markup'
+  },
   'js/my-trees/my-trees-ui.js': {
     count: 3, classification: 'safe',
     reason: 'card.innerHTML from buildTreeCard — approved template renderer with escapeHtml; 2 clear-container'

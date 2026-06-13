@@ -5,6 +5,8 @@
   var expandedFlowKey = null;
   var stateModule = null;
   var treeGridContainer = null;
+  var hydratedTreesById = Object.create(null);
+  var hydrationRenderSeq = 0;
 
   function getTreeKey(tree) {
     if (!tree) return '';
@@ -14,6 +16,289 @@
     var title = String(tree.title || '').trim();
     var memoryCount = Array.isArray(tree.memories) ? tree.memories.length : Number(tree.memoryCount || 0);
     return title + ':' + memoryCount;
+  }
+
+  function getTreeId(tree) {
+    if (!tree) return '';
+    if (tree.id != null && tree.id !== '') return String(tree.id);
+    if (tree.treeId != null && tree.treeId !== '') return String(tree.treeId);
+    if (tree.tree_id != null && tree.tree_id !== '') return String(tree.tree_id);
+    return '';
+  }
+
+  function escapeHtml(value) {
+    var Utils = window.LoveBudMyTreesUtils;
+    if (Utils && typeof Utils.escapeHtml === 'function') return Utils.escapeHtml(value);
+    return String(value == null ? '' : value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function getTreeMomentCount(tree) {
+    var Utils = window.LoveBudMyTreesUtils;
+    if (Utils && typeof Utils.getTreeMomentCount === 'function') return Utils.getTreeMomentCount(tree);
+    if (!tree) return 0;
+    var count;
+    if (tree.memoryCount != null) {
+      count = tree.memoryCount;
+    } else if (tree.memory_count != null) {
+      count = tree.memory_count;
+    } else if (tree.nodeCount != null) {
+      count = tree.nodeCount;
+    } else if (tree.node_count != null) {
+      count = tree.node_count;
+    } else if (Array.isArray(tree.memories)) {
+      count = tree.memories.length;
+    } else if (Array.isArray(tree.nodes)) {
+      count = tree.nodes.length;
+    } else {
+      count = 0;
+    }
+    count = Number(count);
+    return Number.isFinite(count) ? count : 0;
+  }
+
+  function normalizeMemory(memory) {
+    if (!memory) return null;
+    if (window.LoveBudNormalize && typeof window.LoveBudNormalize.normalizeMemory === 'function') {
+      return window.LoveBudNormalize.normalizeMemory(memory);
+    }
+    return memory;
+  }
+
+  function getMemoryList(tree) {
+    if (!tree) return [];
+    if (Array.isArray(tree.memories)) return tree.memories;
+    if (Array.isArray(tree.nodes)) return tree.nodes;
+    return [];
+  }
+
+  function sortMemoriesByFirstMoment(memories) {
+    return (Array.isArray(memories) ? memories.slice() : []).map(function (memory) {
+      return normalizeMemory(memory) || memory;
+    }).filter(Boolean).sort(function (a, b) {
+      var left = new Date((a && (a.createdAt || a.created_at || a.timestamp)) || 0).getTime();
+      var right = new Date((b && (b.createdAt || b.created_at || b.timestamp)) || 0).getTime();
+      return left - right;
+    });
+  }
+
+  function getMemoryThumbnail(memory) {
+    if (!memory) return '';
+    return String(memory.thumbnail ||
+      memory.thumbnailUrl ||
+      memory.thumbnail_url ||
+      memory.imageUrl ||
+      memory.image_url ||
+      memory.coverUrl ||
+      memory.cover_url ||
+      memory.posterUrl ||
+      memory.poster_url ||
+      '').trim();
+  }
+
+  function getRepresentativeThumbnail(tree) {
+    if (!tree) return '';
+    return String(tree.representativeThumbnail || tree.representative_thumbnail || tree.thumbnail || '').trim();
+  }
+
+  function getRepresentativeTitle(tree) {
+    if (!tree) return '';
+    return String(tree.representativeTitle || tree.representative_title || '').trim();
+  }
+
+  function getRepresentativeMemo(tree) {
+    if (!tree) return '';
+    return String(tree.representativeMemo || tree.representative_memo || '').trim();
+  }
+
+  function rememberHydratedTree(tree) {
+    var treeId = getTreeId(tree);
+    if (treeId) hydratedTreesById[treeId] = tree;
+    return tree;
+  }
+
+  function getHydratedTree(tree) {
+    var treeId = getTreeId(tree);
+    return treeId && hydratedTreesById[treeId] ? hydratedTreesById[treeId] : tree;
+  }
+
+  function readTreeMemoriesCache(treeId) {
+    if (!treeId) return null;
+    try {
+      var keyPrefix = (window.LoveBudMyTreesData && window.LoveBudMyTreesData.TREE_MEMORIES_CACHE_KEY) || 'tree_memories_';
+      var raw = localStorage.getItem(keyPrefix + treeId);
+      if (!raw) return null;
+      var parsed = JSON.parse(raw);
+      if (!parsed || !Array.isArray(parsed.data)) return null;
+      return parsed.data;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function shouldUseCachedMemories(tree, cachedMemories) {
+    if (!Array.isArray(cachedMemories)) return false;
+    if (cachedMemories.length > 0) return true;
+    return getTreeMomentCount(tree) <= 0;
+  }
+
+  function writeTreeMemoriesCache(treeId, memories) {
+    if (!treeId || !Array.isArray(memories)) return;
+    try {
+      var keyPrefix = (window.LoveBudMyTreesData && window.LoveBudMyTreesData.TREE_MEMORIES_CACHE_KEY) || 'tree_memories_';
+      localStorage.setItem(keyPrefix + treeId, JSON.stringify({
+        data: memories,
+        timestamp: Date.now()
+      }));
+    } catch (e) {}
+  }
+
+  function deriveCreatedMomentMeta(tree, memories) {
+    var ordered = sortMemoriesByFirstMoment(memories);
+    var firstMoment = ordered[0] || null;
+    var firstThumbnailMoment = ordered.find(function (memory) {
+      return !!getMemoryThumbnail(memory);
+    }) || firstMoment;
+    var knownCount = getTreeMomentCount(tree);
+    var memoryCount = Math.max(knownCount, ordered.length);
+
+    var enriched = Object.assign({}, tree || {});
+    enriched.memoryCount = memoryCount;
+    enriched.representativeThumbnail = getRepresentativeThumbnail(enriched) || getMemoryThumbnail(firstThumbnailMoment) || '';
+    enriched.representativeTitle = getRepresentativeTitle(enriched) || (firstMoment && String(firstMoment.title || '').trim()) || '';
+    enriched.representativeMemo = getRepresentativeMemo(enriched) || (firstMoment && String(firstMoment.memo || firstMoment.description || '').trim()) || '';
+    enriched.memories = ordered.length ? ordered : getMemoryList(tree);
+    return rememberHydratedTree(enriched);
+  }
+
+  async function hydrateTreeWithCreatedMoments(tree) {
+    var treeId = getTreeId(tree);
+    var existingMemories = getMemoryList(tree);
+    if (existingMemories.length > 0) {
+      return deriveCreatedMomentMeta(tree, existingMemories);
+    }
+
+    var cachedMemories = readTreeMemoriesCache(treeId);
+    if (shouldUseCachedMemories(tree, cachedMemories)) {
+      return deriveCreatedMomentMeta(tree, cachedMemories);
+    }
+
+    if (!treeId || !window.apiClient || typeof window.apiClient.getMemoriesByTree !== 'function') {
+      return deriveCreatedMomentMeta(tree, []);
+    }
+
+    try {
+      var fetchedMemories = await window.apiClient.getMemoriesByTree(treeId);
+      if (Array.isArray(fetchedMemories)) {
+        writeTreeMemoriesCache(treeId, fetchedMemories);
+        return deriveCreatedMomentMeta(tree, fetchedMemories);
+      }
+    } catch (e) {}
+
+    return deriveCreatedMomentMeta(tree, []);
+  }
+
+  async function hydrateTreesWithCreatedMoments(trees) {
+    if (!Array.isArray(trees) || trees.length === 0) return Array.isArray(trees) ? trees : [];
+    return Promise.all(trees.map(function (tree) {
+      return hydrateTreeWithCreatedMoments(tree);
+    }));
+  }
+
+  function getMomentLabel(memory, fallback) {
+    if (!memory) return fallback || '시작 순간';
+    var title = String(memory.title || '').trim();
+    if (title) return title.replace(/\s*-\s*.*$/, '').trim() || title;
+    var memo = String(memory.memo || memory.description || '').trim();
+    if (memo) return memo.slice(0, 32);
+    return fallback || '시작 순간';
+  }
+
+  function buildHydratedFlowStages(memories) {
+    var icons = ['🌱', '🌿', '🌳', '🌸'];
+    return memories.slice(0, 4).map(function (memory, index) {
+      var label = getMomentLabel(memory, index === 0 ? '시작 순간' : '이어진 순간');
+      return '<div class="my-trees-hub-flow-stage" title="' + escapeHtml(label) + '">' +
+        '<span class="my-trees-hub-flow-stage-icon">' + icons[index % icons.length] + '</span>' +
+        '<span class="my-trees-hub-flow-stage-label">' + escapeHtml(label) + '</span>' +
+        '</div>';
+    }).join('');
+  }
+
+  function patchHubForCreatedMoments(tree) {
+    var hydratedTree = getHydratedTree(tree);
+    var memoryCount = Math.max(getTreeMomentCount(tree), getTreeMomentCount(hydratedTree));
+    if (memoryCount <= 0) return;
+
+    var noMoments = document.getElementById('myTreesHubNoMoments');
+    var flowSection = document.getElementById('myTreesHubFlow');
+    var flowList = document.getElementById('myTreesHubFlowList');
+    var flowControls = document.getElementById('myTreesHubFlowControls');
+    var repBlock = document.getElementById('myTreesHubRep');
+    var memories = getMemoryList(hydratedTree).length ? getMemoryList(hydratedTree) : getMemoryList(tree);
+
+    if (memories.length > 0) {
+      if (noMoments) noMoments.hidden = true;
+      if (flowSection) flowSection.hidden = false;
+      if (flowList) flowList.innerHTML = buildHydratedFlowStages(memories);
+      if (flowControls) {
+        var hiddenCount = Math.max(0, memories.length - 4);
+        flowControls.innerHTML = hiddenCount > 0
+          ? '<span class="my-trees-hub-flow-toggle is-static">' + escapeHtml('외 ' + hiddenCount + '개 순간') + '</span>'
+          : '';
+      }
+      return;
+    }
+
+    if (repBlock && !repBlock.hidden && String(repBlock.textContent || '').trim()) {
+      if (noMoments) noMoments.hidden = true;
+      return;
+    }
+
+    if (noMoments) {
+      var titleText = String((hydratedTree && hydratedTree.title) || (tree && tree.title) || '나의 러브트리').trim();
+      noMoments.hidden = false;
+      noMoments.innerHTML = '<span class="material-symbols-outlined">auto_stories</span>' +
+        '<strong>' + escapeHtml(titleText) + '</strong>' +
+        '<p>' + escapeHtml(memoryCount + '개의 순간이 있어요. 트리를 열면 이어진 흐름을 확인할 수 있어요.') + '</p>';
+    }
+  }
+
+  function patchDataLoader(dataModule) {
+    if (!dataModule || dataModule.__createdMomentHydrationPatched) return dataModule;
+    var originalLoadTrees = dataModule.loadTrees;
+    if (typeof originalLoadTrees !== 'function') return dataModule;
+
+    dataModule.loadTrees = function (options) {
+      options = options || {};
+      var originalRenderTrees = options.renderTrees;
+      if (typeof originalRenderTrees !== 'function') {
+        return originalLoadTrees.call(dataModule, options);
+      }
+
+      var wrappedOptions = Object.assign({}, options, {
+        renderTrees: function (trees) {
+          var renderSeq = ++hydrationRenderSeq;
+          return hydrateTreesWithCreatedMoments(trees).then(function (hydratedTrees) {
+            if (renderSeq !== hydrationRenderSeq) return;
+            originalRenderTrees(hydratedTrees);
+          }).catch(function () {
+            if (renderSeq !== hydrationRenderSeq) return;
+            originalRenderTrees(trees);
+          });
+        }
+      });
+
+      return originalLoadTrees.call(dataModule, wrappedOptions);
+    };
+
+    dataModule.__createdMomentHydrationPatched = true;
+    dataModule.hydrateTreesWithCreatedMoments = hydrateTreesWithCreatedMoments;
+    return dataModule;
   }
 
   function setTreeGridContainer(selectorOrEl) {
@@ -122,7 +407,9 @@
     if (typeof originalShowContent === 'function') {
       hub.showContent = function (tree) {
         setSelectedTree(tree);
-        return originalShowContent.call(hub, tree);
+        var result = originalShowContent.call(hub, tree);
+        patchHubForCreatedMoments(tree);
+        return result;
       };
     }
 
@@ -140,7 +427,9 @@
           markSelectedCard(tree.id);
           syncSelectedTreeId(tree.id);
         }
-        return originalOnCardClick.call(hub, tree, event);
+        var result = originalOnCardClick.call(hub, tree, event);
+        patchHubForCreatedMoments(tree);
+        return result;
       };
     }
 
@@ -171,10 +460,13 @@
     toggleFlowExpanded: toggleFlowExpanded,
     syncSelectedTreeId: syncSelectedTreeId,
     markSelectedCard: markSelectedCard,
+    hydrateTreesWithCreatedMoments: hydrateTreesWithCreatedMoments,
+    patchDataLoader: patchDataLoader,
     patchPreviewHub: patchPreviewHub
   };
 
   window.LoveBudMyTreesPreviewState = api;
+  patchDataLoader(window.LoveBudMyTreesData);
   patchPreviewHub(window.LoveBudMyTreesPreviewHub);
   patchPreviewHub(window.LoveTreeMyTreesPreviewHub);
 })();
