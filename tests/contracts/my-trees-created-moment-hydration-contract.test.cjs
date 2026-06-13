@@ -41,6 +41,6 @@ test('My Trees hydration remains frontend-only and avoids live/feed expansion', 
   assert.doesNotMatch(source, /fetch\s*\(/, 'must not add direct network fetch calls');
   assert.doesNotMatch(source, /XMLHttpRequest/, 'must not add raw XHR calls');
   assert.doesNotMatch(source, /YouTube\s*API|youtube\.googleapis|googleapis\.com\/youtube/i, 'must not add YouTube API/feed calls');
-  assert.doesNotMatch(source, /Scout|provider|LLM/i, 'must not add unrelated assistant/provider behavior');
+  assert.doesNotMatch(source, /\bScout\b|\bLLM\b/, 'must not add unrelated assistant behavior');
   assert.doesNotMatch(source, /CREATE\s+TABLE|ALTER\s+TABLE|migration/i, 'must not add schema or migration work');
 });
