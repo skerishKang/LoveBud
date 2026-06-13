@@ -164,6 +164,89 @@
     return editDeleteBtn;
   }
 
+  function shouldIgnoreDirectEditTarget(event) {
+    return !!(event && event.target && event.target.closest && event.target.closest('button, a, input, textarea, select, [contenteditable="true"]'));
+  }
+
+  function requestDirectNodeEdit(nodeEl, enterEditMode) {
+    if (!nodeEl || typeof enterEditMode !== 'function') return;
+    if (nodeEl.dataset.directEditLock === '1') return;
+    nodeEl.dataset.directEditLock = '1';
+
+    try {
+      nodeEl.click();
+    } catch (error) {}
+
+    setTimeout(function() {
+      try {
+        enterEditMode({ type: 'directNodeEdit', target: nodeEl });
+      } finally {
+        nodeEl.dataset.directEditLock = '';
+      }
+    }, 0);
+  }
+
+  function bindCanvasNodeDirectEdit(options) {
+    var enterEditMode = options && options.enterEditMode;
+    if (typeof enterEditMode !== 'function') return false;
+    if (document.documentElement.dataset.editorNodeDirectEditBound === '1') return false;
+    document.documentElement.dataset.editorNodeDirectEditBound = '1';
+
+    var tapThreshold = 10;
+    var doubleTapDelay = 360;
+    var touchStartPoint = null;
+    var lastTap = { time: 0, node: null };
+
+    document.addEventListener('dblclick', function(event) {
+      if (shouldIgnoreDirectEditTarget(event)) return;
+      var nodeEl = event.target && event.target.closest && event.target.closest('.memory-node');
+      if (!nodeEl) return;
+      event.preventDefault();
+      event.stopPropagation();
+      requestDirectNodeEdit(nodeEl, enterEditMode);
+    }, true);
+
+    document.addEventListener('touchstart', function(event) {
+      if (shouldIgnoreDirectEditTarget(event)) return;
+      var nodeEl = event.target && event.target.closest && event.target.closest('.memory-node');
+      if (!nodeEl) return;
+      var touch = event.changedTouches && event.changedTouches[0];
+      if (!touch) return;
+      touchStartPoint = { x: touch.clientX, y: touch.clientY, node: nodeEl };
+    }, { passive: true, capture: true });
+
+    document.addEventListener('touchend', function(event) {
+      if (!touchStartPoint || shouldIgnoreDirectEditTarget(event)) return;
+      var nodeEl = event.target && event.target.closest && event.target.closest('.memory-node');
+      var touch = event.changedTouches && event.changedTouches[0];
+      if (!nodeEl || !touch || nodeEl !== touchStartPoint.node) {
+        touchStartPoint = null;
+        return;
+      }
+
+      var dx = touch.clientX - touchStartPoint.x;
+      var dy = touch.clientY - touchStartPoint.y;
+      touchStartPoint = null;
+      if (Math.abs(dx) > tapThreshold || Math.abs(dy) > tapThreshold) return;
+
+      var now = Date.now();
+      var isDoubleTap = lastTap.node === nodeEl && (now - lastTap.time) <= doubleTapDelay;
+      lastTap = { time: now, node: nodeEl };
+      if (!isDoubleTap) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+      requestDirectNodeEdit(nodeEl, enterEditMode);
+      lastTap = { time: 0, node: null };
+    }, { passive: false, capture: true });
+
+    document.addEventListener('touchcancel', function() {
+      touchStartPoint = null;
+    }, { passive: true, capture: true });
+
+    return true;
+  }
+
   function bindCurrentDetailActionButtons(options) {
     var detailPanel = options && options.detailPanel;
     var enterEditMode = options && options.enterEditMode;
@@ -189,6 +272,7 @@
     bindButtonOnce(deleteMemoryBtn, 'deleteBound', deleteMemory);
     bindButtonOnce(cancelEditBtn, 'cancelBound', exitEditMode);
     bindButtonOnce(saveEditBtn, 'saveBound', saveMemoryEdit);
+    bindCanvasNodeDirectEdit({ enterEditMode: enterEditMode });
   }
 
   function watchCurrentMemoryViewModeActions(options) {
