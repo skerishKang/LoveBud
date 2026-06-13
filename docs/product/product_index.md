@@ -28,6 +28,7 @@
 | [lovebud-browse-final-social-sort-labels-decision.md](lovebud-browse-final-social-sort-labels-decision.md) | #1661 Unit D final Browse social sort labels decision — `최신순` / `조회순` / `좋아요순`, `인기순` disposition |
 | [lovebud-browse-tree-social-counts-completion-audit.md](lovebud-browse-tree-social-counts-completion-audit.md) | #2451 closure audit for #1661 — final tree-level social counts completion gate, Browse/Search sort/UI/payload boundaries, and closure recommendation |
 | [READ_ONLY_LOVETREE_VIEWER_PLAN.md](READ_ONLY_LOVETREE_VIEWER_PLAN.md) | read-only LoveTree viewer의 route, public-safe data, viewer/editor separation, interaction, privacy guardrail 계획 |
+| [lovebud-relationship-hints-review-before-save-plan.md](lovebud-relationship-hints-review-before-save-plan.md) | #2454 editor/canvas relationship hints review-before-save boundary — manual editing source of truth, suggested vs saved links, accept/dismiss, no hidden edges, no Scout/live work |
 | [VERTICAL_TREE_LAYOUT_DECISION.md](VERTICAL_TREE_LAYOUT_DECISION.md) | Editor와 read-only viewer의 세로형 tree-growth layout 채택 결정, desktop/mobile 원칙, phased rollout 기준 |
 | [BROWSE_TREE_FIRST_DISCOVERY_PLAN.md](BROWSE_TREE_FIRST_DISCOVERY_PLAN.md) | Browse를 tree-first public LoveTree discovery로 발전시키기 위한 card/감상허브/viewer route semantics 계획 |
 | [PUBLIC_VIEWER_SOCIAL_PLACEHOLDER_PLAN.md](PUBLIC_VIEWER_SOCIAL_PLACEHOLDER_PLAN.md) | public LoveTree viewer에서 tree-level / moment-level social placeholder 배치 방향, desktop/mobile placement, empty-state copy, write affordance 분리 기준 |
@@ -80,6 +81,10 @@ The read-only LoveTree viewer is the planned full-tree public viewing surface. I
 ## Vertical tree layout highlights
 
 Editor and read-only viewer layout direction is vertical tree-growth, not a plain vertical list. The first/root moment should sit closer to the lower root area, while later connected moments grow upward through visible branches. Runtime implementation should proceed in phases and use screenshot-based review when visual quality is in scope.
+
+## Relationship hints highlights
+
+Relationship hints are optional review-before-save suggestions, not automatic hidden edges. Manual tree/canvas editing remains the source of truth; suggested links must be visually distinct from saved links; users must accept or dismiss hints explicitly; dismissed hints must not become saved relationships; and this planning slice includes no Scout/live AI/provider/fetch/network work.
 
 ## Social model highlights
 
@@ -134,24 +139,25 @@ Strong primary CTAs require Ready status and valid runtime verification when Aut
 11. **lovebud-browse-tree-social-counts-completion-audit.md** — #2451 closure audit for #1661 — final tree-level social counts completion gate and closure recommendation
 12. **READ_ONLY_LOVETREE_VIEWER_PLAN.md** — read-only LoveTree viewer route/data/viewer-editor separation 계획
 13. **VERTICAL_TREE_LAYOUT_DECISION.md** — 세로형 tree-growth layout 채택 결정
-14. **BROWSE_TREE_FIRST_DISCOVERY_PLAN.md** — Browse tree-first discovery와 viewer route semantics 계획
-15. **PUBLIC_VIEWER_SOCIAL_PLACEHOLDER_PLAN.md** — public viewer social placeholder 배치 및 phasing 계획
-16. **TREE_MOMENT_SOCIAL_MODEL.md** — tree-level / moment-level social scope, permissions, moderation, data model planning
-17. **TREE_LEVEL_COMMENTS_READ_CONTRACT.md** — tree-level comments read scope, parent-tree guard, public-safe response, empty/error state contract
-18. **MOMENT_LEVEL_COMMENTS_READ_CONTRACT.md** — moment-level comments read scope, parent-tree guard, target-moment guard, public-safe response, empty/error state contract
-19. **V01_CTA_EXPOSURE_POLICY.md** — v0.1 unfinished/partial action 노출 기준과 CTA readiness 분류 정책
-20. **MOMENT_TIMELINE_PLAN.md** — cue-based Moment Timeline 계획
-21. **YOUTUBE_SEGMENT_PLAYER_POC_SCOPE.md** — YouTube segment player PoC scope and verification criteria
-22. **YOUTUBE_SEGMENT_PLAYER_POC_TEST_MATRIX.md** — YouTube segment player PoC test matrix and browser verification requirements
-23. **YOUTUBE_SEGMENT_PLAYER_POC_RUNTIME_NOTES.md** — YouTube segment player PoC runtime observations and limitations
-24. **YOUTUBE_SEGMENT_PLAYER_POC_BROWSER_VERIFICATION.md** — YouTube segment player PoC browser verification evidence and feasibility decision
-25. **MOMENT_CAPTURE_UI_DESIGN.md** — Moment capture UI flow 설계
-26. **MOMENT_TIMELINE_REORDER_DESIGN.md** — Moment Timeline reorder / sequence editor 설계
-27. **UI_COPY_DIET_GUIDE.md** — 전역 UI 카피 다이어트 기준
-28. **MVP_SCOPE.md** — MVP 범위 및 In/Out of Scope
-29. **USER_FLOW.md** — 사용자 여정 및 핵심 플로우
-30. **PRODUCT_BRIEF.md** — 현재 실행 기준 요약
-31. **필요시 DATA_NAMING_RULE.md, READONLY_SHARE_SCOPE.md**
+14. **lovebud-relationship-hints-review-before-save-plan.md** — #2454 editor/canvas relationship hints review-before-save boundary
+15. **BROWSE_TREE_FIRST_DISCOVERY_PLAN.md** — Browse tree-first discovery와 viewer route semantics 계획
+16. **PUBLIC_VIEWER_SOCIAL_PLACEHOLDER_PLAN.md** — public viewer social placeholder 배치 및 phasing 계획
+17. **TREE_MOMENT_SOCIAL_MODEL.md** — tree-level / moment-level social scope, permissions, moderation, data model planning
+18. **TREE_LEVEL_COMMENTS_READ_CONTRACT.md** — tree-level comments read scope, parent-tree guard, public-safe response, empty/error state contract
+19. **MOMENT_LEVEL_COMMENTS_READ_CONTRACT.md** — moment-level comments read scope, parent-tree guard, target-moment guard, public-safe response, empty/error state contract
+20. **V01_CTA_EXPOSURE_POLICY.md** — v0.1 unfinished/partial action 노출 기준과 CTA readiness 분류 정책
+21. **MOMENT_TIMELINE_PLAN.md** — cue-based Moment Timeline 계획
+22. **YOUTUBE_SEGMENT_PLAYER_POC_SCOPE.md** — YouTube segment player PoC scope and verification criteria
+23. **YOUTUBE_SEGMENT_PLAYER_POC_TEST_MATRIX.md** — YouTube segment player PoC test matrix and browser verification requirements
+24. **YOUTUBE_SEGMENT_PLAYER_POC_RUNTIME_NOTES.md** — YouTube segment player PoC runtime observations and limitations
+25. **YOUTUBE_SEGMENT_PLAYER_POC_BROWSER_VERIFICATION.md** — YouTube segment player PoC browser verification evidence and feasibility decision
+26. **MOMENT_CAPTURE_UI_DESIGN.md** — Moment capture UI flow 설계
+27. **MOMENT_TIMELINE_REORDER_DESIGN.md** — Moment Timeline reorder / sequence editor 설계
+28. **UI_COPY_DIET_GUIDE.md** — 전역 UI 카피 다이어트 기준
+29. **MVP_SCOPE.md** — MVP 범위 및 In/Out of Scope
+30. **USER_FLOW.md** — 사용자 여정 및 핵심 플로우
+31. **PRODUCT_BRIEF.md** — 현재 실행 기준 요약
+32. **필요시 DATA_NAMING_RULE.md, READONLY_SHARE_SCOPE.md**
 
 ## 참조
 - 전체 문서 인덱스: `../doc_index.md`
