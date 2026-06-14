@@ -23,6 +23,6 @@ test('editor detail panel hides selected-memory UI when no memory is selected', 
 test('editor page cache-busts the empty detail panel UI script', () => {
   const editorPage = fs.readFileSync(editorPagePath, 'utf8');
 
-  assert.match(editorPage, /\.\.\/js\/editor\/editor-detail-ui\.js\?v=20260612-2400/);
-  assert.doesNotMatch(editorPage, /\.\.\/js\/editor\/editor-detail-ui\.js\?v=20260504-627/);
+  assert.match(editorPage, /\.\.\/js\/editor\/editor-detail-ui\.js\?v=20260615-2501/);
+  assert.doesNotMatch(editorPage, /\.\.\/js\/editor\/editor-detail-ui\.js\?v=20260612-2400/);
 });

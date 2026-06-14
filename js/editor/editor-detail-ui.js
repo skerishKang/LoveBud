@@ -38,6 +38,11 @@ function createEditorDetailUI(deps) {
         getMemoFallbackText
     } = createEditorDetailUIBuilders({ formatI18nText });
 
+    const createEditorMemoryAtlasPreviewPanel = window.createEditorMemoryAtlasPreviewPanel;
+    const atlasPreviewPanel = typeof createEditorMemoryAtlasPreviewPanel === 'function'
+        ? createEditorMemoryAtlasPreviewPanel({})
+        : null;
+
     const treeMetaBoundary = window.createEditorDetailTreeMetaBoundary({
         i18n,
         formatI18nText,
@@ -212,6 +217,12 @@ function createEditorDetailUI(deps) {
         const treeMetaMount = document.getElementById('detailTreeMetaMount');
         if (treeMetaMount) treeMetaMount.innerHTML = '';
 
+        const atlasPreviewMount = document.getElementById('detailAtlasPreviewMount');
+        if (atlasPreviewMount) {
+            atlasPreviewMount.textContent = '';
+            atlasPreviewMount.hidden = true;
+        }
+
         const dateEl = document.getElementById('detailDateText');
         if (dateEl) dateEl.textContent = '';
 
@@ -372,6 +383,7 @@ function createEditorDetailUI(deps) {
         const noteEl = document.querySelector('.diary-note');
         const memoEditButtonMount = prepareMemoHeadingActionSlot();
         const memoryActions = detailPanel.querySelector('.memory-actions');
+        const atlasPreviewMount = document.getElementById('detailAtlasPreviewMount');
 
         if (isEmptyState) {
             if (badgeEl) badgeEl.textContent = formatI18nText('waiting_first_moment', '첫 순간을 기다리고 있어요');
@@ -380,6 +392,7 @@ function createEditorDetailUI(deps) {
                 hintEl.textContent = '';
                 hintEl.hidden = true;
             }
+            if (atlasPreviewPanel && atlasPreviewMount) atlasPreviewPanel.render(atlasPreviewMount, null);
             setDetailEmptyState(true);
             updateFocusSelectedBtn();
             return;
@@ -507,6 +520,10 @@ function createEditorDetailUI(deps) {
             }
         }
 
+        if (atlasPreviewPanel && atlasPreviewMount) {
+            atlasPreviewPanel.render(atlasPreviewMount, data);
+        }
+
         const reactionsCard = document.getElementById('momentReactionsCard');
         if (reactionsCard) {
             if (isEmptyState || !data?.id || isRootMemory(data, canonicalRootId)) {
@@ -620,5 +637,6 @@ function createEditorDetailUI(deps) {
     };
 }
 
-window.createEditorDetailUI = createEditorDetailUI;
-// cache bust
+if (typeof window !== 'undefined') {
+    window.createEditorDetailUI = createEditorDetailUI;
+}

@@ -30,7 +30,7 @@ test('editor page cache-busts the social footer template and stylesheet entrypoi
   const source = fs.readFileSync(editorPagePath, 'utf8');
 
   assert.match(source, /editor\.css\?v=20260614-2465/, 'editor stylesheet entrypoint must be cache-busted for footer style changes');
-  assert.match(source, /editor-detail-view-mode-template\.js\?v=20260614-2465/, 'detail view template must be cache-busted for reaction footer markup changes');
+  assert.match(source, /editor-detail-view-mode-template\.js\?v=20260615-2501/, 'detail view template must be cache-busted for selected moment atlas preview markup changes');
 });
 
 test('editor social footer polish stays frontend-only and does not expand canvas scope', () => {
