@@ -146,6 +146,30 @@ test('preserves public visibility only when connected preview evidence is public
   assert.equal(groupByType(result, 'topic').items[0].visibility, 'public');
 });
 
+test('ignores unrelated private evidence when previewing a public selected memory', () => {
+  const { createMemoryAtlasPreview } = loadPreview();
+  const result = normalize(createMemoryAtlasPreview({
+    nodes: [
+      { id: 'memory:public', type: 'memory', label: 'Public memory', visibility: 'public' },
+      { id: 'memory:private', type: 'memory', label: 'Private memory', visibility: 'private' },
+      { id: 'topic:public', type: 'topic', label: 'Public topic', visibility: 'public' },
+      { id: 'topic:private', type: 'topic', label: 'Private topic', visibility: 'private' },
+    ],
+    edges: [
+      { id: 'edge:public', from: 'memory:public', to: 'topic:public', type: 'about', visibility: 'public' },
+      { id: 'edge:private', from: 'memory:private', to: 'topic:private', type: 'about', visibility: 'private' },
+    ],
+    evidence: [
+      { id: 'e-public', targetId: 'topic:public', visibility: 'public' },
+      { id: 'e-private-node', targetId: 'topic:private', visibility: 'private' },
+      { id: 'e-private-edge', targetId: 'edge:private', visibility: 'private' },
+    ],
+  }, { memoryNodeId: 'memory:public' }));
+
+  assert.equal(result.visibility, 'public');
+  assert.deepEqual(groupByType(result, 'topic').items.map((item) => item.label), ['Public topic']);
+});
+
 test('does not include forbidden persisted, AI, publication, or public graph copy', () => {
   const source = previewSource;
 
@@ -158,6 +182,7 @@ test('does not include forbidden persisted, AI, publication, or public graph cop
 test('keeps the preview helper pure, local, and non-persistent', () => {
   assert.match(previewSource, /createMemoryAtlasPreview/);
   assert.match(previewSource, /Preview only/);
+  assert.match(previewSource, /collectPreviewTargetIds/);
   assert.doesNotMatch(previewSource, /fetch\s*\(/);
   assert.doesNotMatch(previewSource, /XMLHttpRequest/);
   assert.doesNotMatch(previewSource, /localStorage/);
