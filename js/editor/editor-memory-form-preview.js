@@ -1,6 +1,38 @@
 (function() {
     'use strict';
 
+    const DEFAULT_START_TIME_HINT = '순간의 시작과 끝 시간을 입력하세요.';
+    const SOURCE_PREVIEW_START_TIME_HINT = '채널은 영상 순간의 출처로만 미리 볼 수 있어요.';
+    const SOURCE_PREVIEW_CONFIRM_TEXT = '출처 미리보기 중';
+
+    function setPreviewConfirmState(refs, isSourcePreview) {
+        const confirmBtn = refs?.confirmBtn;
+        if (!confirmBtn) return;
+
+        if (isSourcePreview) {
+            if (!confirmBtn.dataset.sourcePreviewPreviousText) {
+                confirmBtn.dataset.sourcePreviewPreviousText = confirmBtn.textContent || '';
+            }
+            confirmBtn.textContent = SOURCE_PREVIEW_CONFIRM_TEXT;
+            confirmBtn.disabled = true;
+            confirmBtn.setAttribute('aria-disabled', 'true');
+            confirmBtn.classList.add('is-source-record-preview-disabled');
+            return;
+        }
+
+        if (confirmBtn.dataset.sourcePreviewPreviousText) {
+            confirmBtn.textContent = confirmBtn.dataset.sourcePreviewPreviousText;
+            delete confirmBtn.dataset.sourcePreviewPreviousText;
+        }
+        confirmBtn.disabled = false;
+        confirmBtn.removeAttribute('aria-disabled');
+        confirmBtn.classList.remove('is-source-record-preview-disabled');
+    }
+
+    function restoreStartTimeHint(refs) {
+        if (refs?.startTimeHint) refs.startTimeHint.textContent = DEFAULT_START_TIME_HINT;
+    }
+
     function applyPreviewStyles(refs) {
         const preview = refs?.preview || document.getElementById('memoryLinkPreview');
         if (!preview) return;
@@ -14,6 +46,8 @@
         preview.style.background = 'rgba(144, 73, 81, 0.04)';
         preview.style.border = '1px solid rgba(144,73,81,0.075)';
         preview.style.marginTop = '0';
+        setPreviewConfirmState(refs, false);
+        restoreStartTimeHint(refs);
 
         const thumbWrap = refs?.thumbWrap || preview.querySelector('.memory-link-preview__thumb-wrap');
         if (thumbWrap) {
@@ -93,6 +127,8 @@
         preview.classList.add('is-hidden');
         preview.classList.remove('is-enhanced');
         preview.classList.remove('is-source-record-preview');
+        setPreviewConfirmState(refs, false);
+        restoreStartTimeHint(refs);
     }
 
     function resolveChannelPreviewLabel(url, media) {
@@ -135,6 +171,7 @@
         if (refs?.thumbWrap) refs.thumbWrap.style.display = 'none';
         if (refs?.thumb) refs.thumb.style.display = 'none';
         if (refs?.playIcon) refs.playIcon.style.display = 'none';
+        setPreviewConfirmState(refs, true);
 
         if (refs?.badge) {
             refs.badge.style.display = 'inline-flex';
@@ -150,7 +187,7 @@
         }
 
         if (refs?.startTimeHint) {
-            refs.startTimeHint.textContent = '채널은 영상 순간의 출처로만 미리 볼 수 있어요.';
+            refs.startTimeHint.textContent = SOURCE_PREVIEW_START_TIME_HINT;
         }
     }
 
@@ -210,13 +247,15 @@
         }
 
         if (refs?.startTimeHint) {
-            refs.startTimeHint.textContent = '순간의 시작과 끝 시간을 입력하세요.';
+            refs.startTimeHint.textContent = DEFAULT_START_TIME_HINT;
         }
     }
 
     window.LoveBudEditorMemoryFormPreview = {
         applyPreviewStyles,
         hide,
+        setPreviewConfirmState,
+        restoreStartTimeHint,
         resolveChannelPreviewLabel,
         buildPreviewHintText,
         resolveSourceRecordPreviewTitle,
