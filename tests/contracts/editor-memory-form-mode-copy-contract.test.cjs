@@ -35,10 +35,13 @@ function makeModeButton(labelTarget) {
   return element;
 }
 
-function loadMode() {
+function loadMode(options = {}) {
   const sandbox = {
     window: {}
   };
+  if (options.lang) {
+    sandbox.window.getCurrentLang = () => options.lang;
+  }
   vm.runInNewContext(modeSource, sandbox, { filename: 'editor-memory-form-mode.js' });
   return sandbox.window.LoveBudEditorMemoryFormMode;
 }
@@ -85,6 +88,31 @@ test('link mode copy explains video or channel input', () => {
   );
   assert.equal(refs.confirmBtn.textContent, '첫 순간 심기');
   assert.equal(refs.videoSegmentGrid.style.display, 'grid');
+});
+
+test('link mode copy stays English when new i18n keys are missing', () => {
+  const mode = loadMode({ lang: 'en' });
+  const refs = makeRefs();
+  const missingKeyI18n = (key) => key;
+
+  const currentMode = mode.setInputMode({
+    mode: 'link',
+    isFirstMoment: false,
+    refs,
+    i18n: missingKeyI18n,
+    hidePreview: () => assert.fail('link mode must not hide preview')
+  });
+
+  assert.equal(currentMode, 'link');
+  assert.equal(refs.linkModeLabel.textContent, 'Start with video or channel');
+  assert.equal(refs.textModeLabel.textContent, 'Start with text');
+  assert.equal(refs.urlInput.placeholder, 'Paste a YouTube video or channel link');
+  assert.equal(refs.urlLabel.textContent, 'YouTube video or channel link');
+  assert.equal(
+    refs.supportNoteText.textContent,
+    'Video links open a moment preview, while channel links open a source preview. Please refine the title and note yourself.'
+  );
+  assert.equal(refs.confirmBtn.textContent, 'Continue this moment');
 });
 
 test('link mode copy can still be localized by i18n keys', () => {
