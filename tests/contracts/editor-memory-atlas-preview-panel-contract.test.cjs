@@ -165,7 +165,7 @@ test('exports deterministic editor Memory Atlas preview panel APIs', () => {
   assert.equal(typeof panel.buildEditorMemoryAtlasPreviewModel, 'function');
   assert.equal(typeof panel.renderEditorMemoryAtlasPreview, 'function');
   assert.equal(panel.PANEL_COPY.title, 'Atlas preview');
-  assert.equal(panel.PANEL_COPY.status, 'Preview only — no relationships are saved.');
+  assert.equal(panel.PANEL_COPY.status, 'Preview only — these relationships are not saved.');
 });
 
 test('renders grouped preview HTML into a supplied container without app bootstrap side effects', () => {
@@ -189,7 +189,7 @@ test('renders grouped preview HTML into a supplied container without app bootstr
   assert.equal(container.hidden, false);
   assert.match(container.innerHTML, /data-memory-atlas-preview="1"/);
   assert.match(container.innerHTML, /Atlas preview/);
-  assert.match(container.innerHTML, /Preview only — no relationships are saved\./);
+  assert.match(container.innerHTML, /Preview only — these relationships are not saved\./);
   assert.match(container.innerHTML, /UIUC/);
   assert.match(container.innerHTML, /hope/);
 });

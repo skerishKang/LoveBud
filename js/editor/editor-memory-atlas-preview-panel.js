@@ -14,10 +14,20 @@
 
   const PANEL_COPY = Object.freeze({
     title: 'Atlas preview',
-    status: 'Preview only — no relationships are saved.',
-    basis: "Based on this memory's existing fields.",
+    status: 'Preview only — these relationships are not saved.',
+    basis: 'Based on existing memory evidence.',
+    review: 'Review before saving any future relationship.',
     empty: 'No atlas connections to preview yet.',
     visibilityLabel: 'Visibility',
+  });
+
+  const SUGGESTION_COPY = Object.freeze({
+    title: 'Suggested connections',
+    status: 'Preview only — these relationships are not saved.',
+    basis: 'Based on existing memory evidence.',
+    review: 'Review before saving any future relationship.',
+    empty: 'No suggested connections to preview yet.',
+    label: 'Suggested connection',
   });
 
   function createEditorMemoryAtlasPreviewPanel(deps) {
@@ -29,8 +39,14 @@
       buildModel(memory) {
         return buildEditorMemoryAtlasPreviewModel(memory, { projectionApi, previewApi });
       },
+      buildSuggestionModel(memory, projection) {
+        return buildEditorMemoryAtlasSuggestionPreviewModel(memory, { projection, projectionApi, previewApi });
+      },
       render(container, memory) {
         return renderEditorMemoryAtlasPreview(container, memory, { projectionApi, previewApi });
+      },
+      renderSuggestions(container, memory, projection) {
+        return renderEditorMemoryAtlasSuggestionPreview(container, memory, projection, { suggestionsApi: root.LoveBudMemoryAtlasRelationshipSuggestions || null, projectionApi, previewApi });
       },
     };
   }
@@ -50,10 +66,26 @@
     return model;
   }
 
+  function renderEditorMemoryAtlasSuggestionPreview(container, memory, projection, options) {
+    if (!container) return null;
+    const model = buildEditorMemoryAtlasSuggestionPreviewModel(memory, Object.assign({}, options || {}, { projection }));
+    if (!model.available || model.empty) {
+      clearElement(container);
+      container.hidden = true;
+      return model;
+    }
+
+    container.hidden = false;
+    clearElement(container);
+    renderEditorMemoryAtlasSuggestionPreviewDom(container, model);
+    return model;
+  }
+
   function buildEditorMemoryAtlasPreviewModel(memory, options) {
     const settings = isPlainObject(options) ? options : {};
     const projectionApi = settings.projectionApi || root.LoveBudMemoryAtlasProjection || null;
     const previewApi = settings.previewApi || root.LoveBudMemoryAtlasPreview || null;
+    const suggestionsApi = settings.suggestionsApi || root.LoveBudMemoryAtlasRelationshipSuggestions || null;
 
     if (!projectionApi || typeof projectionApi.projectMemoryAtlas !== 'function') {
       return createUnavailableModel(memory);
@@ -71,6 +103,13 @@
     const visibleGroups = Array.isArray(preview.groups)
       ? preview.groups.filter((group) => Array.isArray(group.items) && group.items.length > 0)
       : [];
+    const suggestions = buildEditorMemoryAtlasSuggestionPreviewModel(memory, {
+      projection,
+      projectionApi,
+      previewApi,
+      suggestionsApi,
+      viewerVisibility: normalizeVisibility(memory.visibility || memory.visibilityScope || (memory.isPublic || memory.public ? 'public' : 'private')),
+    });
 
     return {
       available: true,
@@ -84,8 +123,73 @@
       visibility: normalizeVisibility(preview.visibility),
       empty: !!preview.empty,
       emptyMessage: preview.emptyMessage || PANEL_COPY.empty,
-      counts: preview.counts || { groups: 0, nodes: 0, edges: 0, evidence: 0 },
+      counts: Object.assign({ groups: 0, nodes: 0, edges: 0, evidence: 0 }, preview.counts || {}, suggestions.counts || {}),
       groups: visibleGroups,
+      suggestions: suggestions.suggestions || [],
+    };
+  }
+
+  function buildEditorMemoryAtlasSuggestionPreviewModel(memory, options) {
+    const settings = isPlainObject(options) ? options : {};
+    const projection = isPlainObject(settings.projection) ? settings.projection : null;
+    const projectionApi = settings.projectionApi || root.LoveBudMemoryAtlasProjection || null;
+    const suggestionsApi = settings.suggestionsApi || root.LoveBudMemoryAtlasRelationshipSuggestions || null;
+    const selectedMemoryId = normalizeMemoryId(isPlainObject(memory) ? memory.id : null);
+    const viewerVisibility = normalizeVisibility(settings.viewerVisibility || (isPlainObject(memory) && (memory.visibility || memory.visibilityScope || (memory.isPublic || memory.public ? 'public' : 'private'))));
+
+    if (!selectedMemoryId || !projectionApi || typeof projectionApi.projectMemoryAtlas !== 'function') {
+      return createUnavailableSuggestionModel();
+    }
+    if (!suggestionsApi || typeof suggestionsApi.createMemoryAtlasRelationshipSuggestions !== 'function') {
+      return createUnavailableSuggestionModel();
+    }
+
+    const safeProjection = projection || projectionApi.projectMemoryAtlas([normalizeMemoryForAtlasPreview(memory)]);
+    const evidenceRecords = Array.isArray(safeProjection.evidence) ? safeProjection.evidence : [];
+    const hasSelectedMemoryEvidence = evidenceRecords.some((evidence) => normalizeMemoryId(evidence.memoryId || evidence.sourceMemoryId || evidence.memoryNodeId || evidence.memory) === selectedMemoryId);
+    if (!hasSelectedMemoryEvidence) {
+      return {
+        available: true,
+        previewOnly: true,
+        copy: SUGGESTION_COPY,
+        selectedMemoryId,
+        suggestions: [],
+        counts: { suggestions: 0 },
+        empty: true,
+        emptyMessage: SUGGESTION_COPY.empty,
+      };
+    }
+
+    const generatedSuggestions = suggestionsApi.createMemoryAtlasRelationshipSuggestions(safeProjection, {
+      selectedMemoryId,
+      defaultState: 'previewed',
+      viewerVisibility,
+    });
+    const suggestions = Array.isArray(generatedSuggestions) ? generatedSuggestions : [];
+    const visibleSuggestions = suggestions.filter((suggestion) => isPreviewOnlySuggestion(suggestion, selectedMemoryId));
+
+    return {
+      available: true,
+      previewOnly: true,
+      copy: SUGGESTION_COPY,
+      selectedMemoryId,
+      suggestions: visibleSuggestions,
+      counts: { suggestions: visibleSuggestions.length },
+      empty: visibleSuggestions.length === 0,
+      emptyMessage: SUGGESTION_COPY.empty,
+    };
+  }
+
+  function createUnavailableSuggestionModel() {
+    return {
+      available: false,
+      previewOnly: true,
+      copy: SUGGESTION_COPY,
+      selectedMemoryId: '',
+      suggestions: [],
+      counts: { suggestions: 0 },
+      empty: true,
+      emptyMessage: SUGGESTION_COPY.empty,
     };
   }
 
@@ -136,6 +240,15 @@
     return atlasInput;
   }
 
+  function isPreviewOnlySuggestion(suggestion, selectedMemoryId) {
+    if (!isPlainObject(suggestion)) return false;
+    if (suggestion.previewOnly === false) return false;
+    if (suggestion.state === 'saved') return false;
+    if (!Array.isArray(suggestion.evidenceRefs) || suggestion.evidenceRefs.length === 0) return false;
+    if (selectedMemoryId && suggestion.sourceMemoryId !== selectedMemoryId && suggestion.targetMemoryId !== selectedMemoryId) return false;
+    return true;
+  }
+
   function renderEditorMemoryAtlasPreviewDom(container, model) {
     const section = createPanelElement(container, 'section', 'editor-memory-atlas-preview-card');
     section.setAttribute('data-memory-atlas-preview', '1');
@@ -151,8 +264,9 @@
     visibility.textContent = model.visibility;
 
     createPanelElement(section, 'p', 'editor-memory-atlas-preview-basis', PANEL_COPY.basis);
+    createPanelElement(section, 'p', 'editor-memory-atlas-preview-review', PANEL_COPY.review);
 
-    if (model.empty) {
+    if (model.empty && (!Array.isArray(model.suggestions) || model.suggestions.length === 0)) {
       createPanelElement(section, 'p', 'editor-memory-atlas-preview-empty', model.emptyMessage || PANEL_COPY.empty);
       return;
     }
@@ -171,6 +285,36 @@
         chip.setAttribute('data-visibility', normalizeVisibility(item.visibility));
         chip.textContent = item.label || item.id || 'Untitled';
       });
+    });
+
+    renderEditorMemoryAtlasSuggestionPreviewDom(section, model);
+  }
+
+  function renderEditorMemoryAtlasSuggestionPreviewDom(parent, model) {
+    const suggestions = Array.isArray(model.suggestions) ? model.suggestions : [];
+    if (suggestions.length === 0) return;
+
+    const section = createPanelElement(parent, 'div', 'editor-memory-atlas-suggestion-section');
+    section.setAttribute('data-memory-atlas-suggestion-preview', '1');
+    section.setAttribute('aria-label', 'Suggested connections');
+
+    const head = createPanelElement(section, 'div', 'editor-memory-atlas-suggestion-head');
+    createPanelElement(head, 'div', 'editor-section-eyebrow', SUGGESTION_COPY.title);
+    createPanelElement(head, 'p', 'editor-memory-atlas-suggestion-status', SUGGESTION_COPY.status);
+    createPanelElement(section, 'p', 'editor-memory-atlas-suggestion-basis', SUGGESTION_COPY.basis);
+    createPanelElement(section, 'p', 'editor-memory-atlas-suggestion-review', SUGGESTION_COPY.review);
+
+    const list = createPanelElement(section, 'div', 'editor-memory-atlas-suggestion-list');
+    suggestions.forEach((suggestion) => {
+      const item = createPanelElement(list, 'div', 'editor-memory-atlas-suggestion-item');
+      item.setAttribute('data-suggestion-id', suggestion.id || '');
+      item.setAttribute('data-suggestion-type', suggestion.type || '');
+      item.setAttribute('data-visibility', normalizeVisibility(suggestion.visibility));
+      item.setAttribute('data-preview-only', 'true');
+      item.setAttribute('data-evidence-count', String(Array.isArray(suggestion.evidenceRefs) ? suggestion.evidenceRefs.length : 0));
+      createPanelElement(item, 'span', 'editor-memory-atlas-suggestion-label', SUGGESTION_COPY.label);
+      createPanelElement(item, 'span', 'editor-memory-atlas-suggestion-reason', suggestion.reasonCode || suggestion.type || '');
+      createPanelElement(item, 'span', 'editor-memory-atlas-suggestion-visibility', normalizeVisibility(suggestion.visibility));
     });
   }
 
@@ -216,6 +360,7 @@
     const groupHtml = model.empty
       ? '<p class="editor-memory-atlas-preview-empty">' + escapeHtml(model.emptyMessage || PANEL_COPY.empty) + '</p>'
       : model.groups.map(renderGroupHtml).join('');
+    const suggestionHtml = renderSuggestionPreviewHtml(model.suggestions || []);
 
     return [
       '<section class="editor-memory-atlas-preview-card" data-memory-atlas-preview="1" aria-label="Atlas preview">',
@@ -227,8 +372,39 @@
       '<span class="editor-memory-atlas-preview-visibility" data-visibility="' + escapeHtml(model.visibility) + '">' + escapeHtml(model.visibility) + '</span>',
       '</div>',
       '<p class="editor-memory-atlas-preview-basis">' + escapeHtml(PANEL_COPY.basis) + '</p>',
+      '<p class="editor-memory-atlas-preview-review">' + escapeHtml(PANEL_COPY.review) + '</p>',
       groupHtml,
+      suggestionHtml,
       '</section>',
+    ].join('');
+  }
+
+  function renderSuggestionPreviewHtml(suggestions) {
+    if (!Array.isArray(suggestions) || suggestions.length === 0) return '';
+
+    return [
+      '<div class="editor-memory-atlas-suggestion-section" data-memory-atlas-suggestion-preview="1" aria-label="Suggested connections">',
+      '<div class="editor-memory-atlas-suggestion-head">',
+      '<div class="editor-section-eyebrow">' + escapeHtml(SUGGESTION_COPY.title) + '</div>',
+      '<p class="editor-memory-atlas-suggestion-status">' + escapeHtml(SUGGESTION_COPY.status) + '</p>',
+      '</div>',
+      '<p class="editor-memory-atlas-suggestion-basis">' + escapeHtml(SUGGESTION_COPY.basis) + '</p>',
+      '<p class="editor-memory-atlas-suggestion-review">' + escapeHtml(SUGGESTION_COPY.review) + '</p>',
+      '<div class="editor-memory-atlas-suggestion-list">',
+      suggestions.map(renderSuggestionItemHtml).join(''),
+      '</div>',
+      '</div>',
+    ].join('');
+  }
+
+  function renderSuggestionItemHtml(suggestion) {
+    const evidenceCount = Array.isArray(suggestion.evidenceRefs) ? suggestion.evidenceRefs.length : 0;
+    return [
+      '<div class="editor-memory-atlas-suggestion-item" data-suggestion-id="' + escapeHtml(suggestion.id || '') + '" data-suggestion-type="' + escapeHtml(suggestion.type || '') + '" data-visibility="' + escapeHtml(normalizeVisibility(suggestion.visibility)) + '" data-preview-only="true" data-evidence-count="' + evidenceCount + '">',
+      '<span class="editor-memory-atlas-suggestion-label">' + escapeHtml(SUGGESTION_COPY.label) + '</span>',
+      '<span class="editor-memory-atlas-suggestion-reason">' + escapeHtml(suggestion.reasonCode || suggestion.type || '') + '</span>',
+      '<span class="editor-memory-atlas-suggestion-visibility">' + escapeHtml(normalizeVisibility(suggestion.visibility)) + '</span>',
+      '</div>',
     ].join('');
   }
 
@@ -292,6 +468,12 @@
     return firstString(value, 'Untitled');
   }
 
+  function normalizeMemoryId(value) {
+    if (value === undefined || value === null) return '';
+    const text = String(value).trim();
+    return text || '';
+  }
+
   function normalizeVisibility(value) {
     return value === 'public' ? 'public' : 'private';
   }
@@ -311,8 +493,11 @@
 
   return {
     PANEL_COPY,
+    SUGGESTION_COPY,
     buildEditorMemoryAtlasPreviewModel,
+    buildEditorMemoryAtlasSuggestionPreviewModel,
     renderEditorMemoryAtlasPreview,
+    renderEditorMemoryAtlasSuggestionPreview,
     createEditorMemoryAtlasPreviewPanel,
   };
 });
