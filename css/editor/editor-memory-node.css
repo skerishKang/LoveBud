@@ -133,11 +133,16 @@
     opacity: 0.3;
 }
 
-.memory-node:hover .node-card,
+.memory-node:hover .node-card {
+    transform: scale(1.02);
+    border-color: rgba(144, 73, 81, 0.34);
+    box-shadow: 0 12px 28px rgba(144, 73, 81, 0.10);
+}
+
 .memory-node.selected .node-card {
-    transform: scale(1.03);
-    border-color: rgba(144, 73, 81, 0.4);
-    box-shadow: 0 18px 40px rgba(144, 73, 81, 0.12);
+    transform: scale(1.01);
+    border-color: rgba(144, 73, 81, 0.30);
+    box-shadow: 0 10px 24px rgba(144, 73, 81, 0.09);
 }
 
 .new-node-highlight .node-card {
