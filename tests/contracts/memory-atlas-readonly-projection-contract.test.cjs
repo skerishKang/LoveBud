@@ -188,7 +188,7 @@ test('returns empty projection for empty or invalid input without throwing', () 
   assert.deepEqual(normalizeProjectionResult(projectMemoryAtlas({ memories: [null, 'bad', 12] })), emptyProjection);
 });
 
-test('keeps the helper local and read-only', () => {
+test('keeps the helper local, read-only, and separate from Scout/provider code', () => {
   assert.match(projectionSource, /projectMemoryAtlas/);
   assert.match(projectionSource, /PROJECTED_NODE_TYPES/);
   assert.match(projectionSource, /PROJECTED_EDGE_TYPES/);
@@ -199,6 +199,8 @@ test('keeps the helper local and read-only', () => {
   assert.doesNotMatch(projectionSource, /indexedDB/);
   assert.doesNotMatch(projectionSource, /document\./);
   assert.doesNotMatch(projectionSource, /apiClient/);
+  assert.doesNotMatch(projectionSource, /Scout/);
+  assert.doesNotMatch(projectionSource, /provider/i);
   assert.doesNotMatch(projectionSource, /createMemory\s*\(/);
   assert.doesNotMatch(projectionSource, /saveRelationship/);
 });
