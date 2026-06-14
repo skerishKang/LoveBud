@@ -67,7 +67,7 @@ test('returns a safe empty preview state for missing or empty projection input',
 
 test('summarizes memory-connected atlas nodes by preview groups', () => {
   const { createMemoryAtlasPreview } = loadPreview();
-  const result = createMemoryAtlasPreview({
+  const result = normalize(createMemoryAtlasPreview({
     nodes: [
       { id: 'memory:m1', type: 'memory', label: 'My memory', visibility: 'private' },
       { id: 'topic:uiuc', type: 'topic', label: 'UIUC', visibility: 'private', evidenceIds: ['e1'] },
@@ -89,7 +89,7 @@ test('summarizes memory-connected atlas nodes by preview groups', () => {
       { id: 'e4', targetId: 'time:2026-06', visibility: 'private' },
       { id: 'e5', targetId: 'topic:unrelated', visibility: 'private' },
     ],
-  });
+  }));
 
   assert.equal(result.empty, false);
   assert.equal(result.memory.label, 'My memory');
@@ -108,7 +108,7 @@ test('summarizes memory-connected atlas nodes by preview groups', () => {
 
 test('selects an explicit memory node when a projection contains multiple memories', () => {
   const { createMemoryAtlasPreview } = loadPreview();
-  const result = createMemoryAtlasPreview({
+  const result = normalize(createMemoryAtlasPreview({
     nodes: [
       { id: 'memory:first', type: 'memory', label: 'First memory', visibility: 'public' },
       { id: 'memory:second', type: 'memory', label: 'Second memory', visibility: 'private' },
@@ -120,7 +120,7 @@ test('selects an explicit memory node when a projection contains multiple memori
       { id: 'edge:second', from: 'memory:second', to: 'topic:second', type: 'about', visibility: 'private' },
     ],
     evidence: [],
-  }, { memoryNodeId: 'memory:second' });
+  }, { memoryNodeId: 'memory:second' }));
 
   assert.equal(result.memory.label, 'Second memory');
   assert.equal(result.visibility, 'private');
@@ -129,7 +129,7 @@ test('selects an explicit memory node when a projection contains multiple memori
 
 test('preserves public visibility only when connected preview evidence is public', () => {
   const { createMemoryAtlasPreview } = loadPreview();
-  const result = createMemoryAtlasPreview({
+  const result = normalize(createMemoryAtlasPreview({
     nodes: [
       { id: 'memory:m1', type: 'memory', label: 'Public memory', visibility: 'public' },
       { id: 'topic:public', type: 'topic', label: 'Public topic', visibility: 'public' },
@@ -140,7 +140,7 @@ test('preserves public visibility only when connected preview evidence is public
     evidence: [
       { id: 'e1', targetId: 'topic:public', visibility: 'public' },
     ],
-  });
+  }));
 
   assert.equal(result.visibility, 'public');
   assert.equal(groupByType(result, 'topic').items[0].visibility, 'public');
