@@ -237,7 +237,8 @@ test('editor detail template exposes a stable Atlas preview mount', () => {
 
 test('editor detail UI wires the Atlas preview renderer only for selected memory context', () => {
   assert.match(detailUiSource, /createEditorMemoryAtlasPreviewPanel/);
-  assert.match(detailUiSource, /atlasPreviewPanel\.render\(atlasPreviewMount, data\)/);
+  assert.match(detailUiSource, /atlasPreviewPanel\.render\(atlasPreviewMount, data, \{/);
+  assert.match(detailUiSource, /treeMemories: treeState\.treeMemories/);
   assert.match(detailUiSource, /atlasPreviewPanel\.render\(atlasPreviewMount, null\)/);
   assert.match(detailUiSource, /detailAtlasPreviewMount/);
 });
