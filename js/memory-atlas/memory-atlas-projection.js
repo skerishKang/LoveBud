@@ -237,7 +237,7 @@
     if (!node || !node.id) return;
     const existingNode = state.nodes.find((item) => item.id === node.id);
     if (existingNode) {
-      existingNode.visibility = getStrictestVisibility(existingNode.visibility, node.visibility);
+      applyNodeStrictestVisibility(state, existingNode, node.visibility);
       return;
     }
 
@@ -250,7 +250,7 @@
     const evidence = addEvidence(state, evidenceContext, 'node', node.id);
     const existingNode = state.nodes.find((item) => item.id === node.id);
     if (existingNode) {
-      existingNode.visibility = getStrictestVisibility(existingNode.visibility, node.visibility);
+      applyNodeStrictestVisibility(state, existingNode, node.visibility);
     }
     if (existingNode && evidence && !existingNode.evidenceIds.includes(evidence.id)) {
       existingNode.evidenceIds.push(evidence.id);
@@ -261,11 +261,13 @@
     if (!edge || !edge.from || !edge.to || !edge.type) return;
     const edgeId = edge.id || makeEdgeId(edge.from, edge.type, edge.to);
     const evidence = addEvidence(state, evidenceContext, 'edge', edgeId);
+    const endpointVisibility = getEndpointStrictestVisibility(state, edge);
+    const incomingVisibility = getStrictestVisibility(edge.visibility, endpointVisibility);
 
     if (state.edgeIds.has(edgeId)) {
       const existingEdge = state.edges.find((item) => item.id === edgeId);
       if (existingEdge) {
-        existingEdge.visibility = getStrictestVisibility(existingEdge.visibility, edge.visibility);
+        existingEdge.visibility = getStrictestVisibility(existingEdge.visibility, incomingVisibility);
       }
       if (existingEdge && evidence && !existingEdge.evidenceIds.includes(evidence.id)) {
         existingEdge.evidenceIds.push(evidence.id);
@@ -274,7 +276,11 @@
     }
 
     state.edgeIds.add(edgeId);
-    state.edges.push(Object.assign({ id: edgeId, evidenceIds: evidence ? [evidence.id] : [] }, edge));
+    state.edges.push(Object.assign({
+      id: edgeId,
+      evidenceIds: evidence ? [evidence.id] : [],
+      visibility: incomingVisibility,
+    }, edge, { visibility: incomingVisibility }));
   }
 
   function addEvidence(state, context, targetType, targetId) {
@@ -356,6 +362,32 @@
     if (record && record.isPublic === true) return 'public';
     if (record && record.public === true) return 'public';
     return 'private';
+  }
+
+  function applyNodeStrictestVisibility(state, node, incomingVisibility) {
+    if (!node) return;
+    const previousVisibility = node.visibility;
+    node.visibility = getStrictestVisibility(node.visibility, incomingVisibility);
+    if (node.visibility !== previousVisibility) {
+      downgradeIncidentEdgesForNode(state, node.id, node.visibility);
+    }
+  }
+
+  function downgradeIncidentEdgesForNode(state, nodeId, visibility) {
+    state.edges.forEach((edge) => {
+      if (edge.from === nodeId || edge.to === nodeId) {
+        edge.visibility = getStrictestVisibility(edge.visibility, visibility);
+      }
+    });
+  }
+
+  function getEndpointStrictestVisibility(state, edge) {
+    return getStrictestVisibility(getNodeVisibility(state, edge.from), getNodeVisibility(state, edge.to));
+  }
+
+  function getNodeVisibility(state, nodeId) {
+    const node = state.nodes.find((item) => item.id === nodeId);
+    return node ? node.visibility : 'private';
   }
 
   function getStrictestVisibility(currentVisibility, incomingVisibility) {
