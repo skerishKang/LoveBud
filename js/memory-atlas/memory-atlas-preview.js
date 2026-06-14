@@ -167,6 +167,8 @@
 
   function collectPreviewVisibility(memoryNode, groups, edges, evidenceRecords) {
     let visibility = normalizeVisibility(memoryNode.visibility);
+    const previewTargetIds = collectPreviewTargetIds(memoryNode, groups, edges);
+
     groups.forEach((group) => {
       group.items.forEach((item) => {
         visibility = getStrictestVisibility(visibility, item.visibility);
@@ -175,10 +177,23 @@
     edges.forEach((edge) => {
       visibility = getStrictestVisibility(visibility, normalizeVisibility(edge.visibility));
     });
-    evidenceRecords.forEach((evidence) => {
-      visibility = getStrictestVisibility(visibility, normalizeVisibility(evidence.visibility));
-    });
+    evidenceRecords
+      .filter((evidence) => previewTargetIds.has(evidence.targetId))
+      .forEach((evidence) => {
+        visibility = getStrictestVisibility(visibility, normalizeVisibility(evidence.visibility));
+      });
     return visibility;
+  }
+
+  function collectPreviewTargetIds(memoryNode, groups, edges) {
+    const targetIds = new Set([memoryNode.id]);
+    groups.forEach((group) => {
+      group.items.forEach((item) => targetIds.add(item.id));
+    });
+    edges.forEach((edge) => {
+      if (edge.id) targetIds.add(edge.id);
+    });
+    return targetIds;
   }
 
   function getGroupLabel(type) {
