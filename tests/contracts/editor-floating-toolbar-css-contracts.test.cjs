@@ -80,6 +80,19 @@ test('quick-add.css — .editor-floating-quick-add.is-visible preserved', () => 
   assert.match(quickAdd, /\.editor-floating-quick-add\.is-visible/);
 });
 
+test('quick-add.css — default visible state stays visually soft', () => {
+  assert.match(quickAdd, /\.editor-floating-quick-add\.is-visible\s*\{[\s\S]*?opacity:\s*0\.68/);
+  assert.match(quickAdd, /\.editor-floating-quick-add\.is-visible\s*\{[\s\S]*?transform:\s*scale\(0\.92\)/);
+  assert.match(quickAdd, /background:\s*rgba\(144,73,81,0\.14\)/);
+  assert.match(quickAdd, /border:\s*1px solid rgba\(144,73,81,0\.22\)/);
+});
+
+test('quick-add.css — hover and focus restore clear action emphasis', () => {
+  assert.match(quickAdd, /\.editor-floating-quick-add:hover,[\s\S]*?\.editor-floating-quick-add:focus-visible\s*\{[\s\S]*?background:\s*rgba\(144,73,81,0\.88\)/);
+  assert.match(quickAdd, /\.editor-floating-quick-add:hover,[\s\S]*?\.editor-floating-quick-add:focus-visible\s*\{[\s\S]*?color:\s*#fff/);
+  assert.match(quickAdd, /\.editor-floating-quick-add:hover,[\s\S]*?\.editor-floating-quick-add:focus-visible\s*\{[\s\S]*?transform:\s*scale\(1\.08\)/);
+});
+
 // ---------------------------------------------------------------------------
 // 4. tooltip.css selectors
 // ---------------------------------------------------------------------------
