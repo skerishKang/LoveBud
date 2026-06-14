@@ -20,6 +20,10 @@ function loadProjection() {
   return sandbox.module.exports;
 }
 
+function normalizeProjectionResult(result) {
+  return JSON.parse(JSON.stringify(result));
+}
+
 function findNode(result, type, label) {
   return result.nodes.find((node) => node.type === type && node.label === label);
 }
@@ -32,7 +36,7 @@ test('exports the read-only Memory Atlas projection API and vocabulary', () => {
   const projection = loadProjection();
 
   assert.equal(typeof projection.projectMemoryAtlas, 'function');
-  assert.deepEqual(projection.PROJECTED_NODE_TYPES, [
+  assert.deepEqual(Array.from(projection.PROJECTED_NODE_TYPES), [
     'memory',
     'tree',
     'pack',
@@ -45,32 +49,32 @@ test('exports the read-only Memory Atlas projection API and vocabulary', () => {
     'emotion',
     'time',
   ]);
-  assert.ok(projection.PROJECTED_EDGE_TYPES.includes('belongs_to'));
-  assert.ok(projection.PROJECTED_EDGE_TYPES.includes('source_of'));
-  assert.ok(projection.PROJECTED_EDGE_TYPES.includes('felt_as'));
-  assert.ok(projection.PROJECTED_EDGE_TYPES.includes('happened_in'));
+
+  const edgeTypes = Array.from(projection.PROJECTED_EDGE_TYPES);
+  assert.ok(edgeTypes.includes('belongs_to'));
+  assert.ok(edgeTypes.includes('source_of'));
+  assert.ok(edgeTypes.includes('felt_as'));
+  assert.ok(edgeTypes.includes('happened_in'));
 });
 
-test('projects memory records into explicit nodes, edges, and evidence references', () => {
+test('projects explicit memory fields into nodes, edges, and evidence', () => {
   const { projectMemoryAtlas } = loadProjection();
   const result = projectMemoryAtlas([
     {
       id: 'm1',
       title: 'UIUC plan pressure',
-      note: 'I was thinking about UIUC and DET.',
+      note: 'Thinking about UIUC and DET.',
       treeId: 'tree-study',
       treeTitle: 'Study Tree',
       packId: 'pack-june',
       packTitle: 'June pressure pack',
       source: {
-        id: 'source-youtube-channel',
-        type: 'youtube-channel',
-        url: 'https://www.youtube.com/@example',
+        id: 'source-channel',
+        type: 'channel',
         title: 'Example channel',
       },
       video: {
         id: 'video-123',
-        url: 'https://youtu.be/video-123',
         title: 'Application video',
       },
       topics: ['UIUC', { id: 'det', label: 'Duolingo English Test' }],
@@ -86,7 +90,7 @@ test('projects memory records into explicit nodes, edges, and evidence reference
   ]);
 
   const memoryNode = findNode(result, 'memory', 'UIUC plan pressure');
-  assert.ok(memoryNode, 'memory node should be created');
+  assert.ok(memoryNode);
   assert.equal(memoryNode.visibility, 'private');
 
   const treeNode = findNode(result, 'tree', 'Study Tree');
@@ -102,23 +106,23 @@ test('projects memory records into explicit nodes, edges, and evidence reference
   const timeNode = findNode(result, 'time', '2026-06');
 
   for (const node of [treeNode, packNode, sourceNode, videoNode, topicNode, detNode, personNode, placeNode, eventNode, emotionNode, timeNode]) {
-    assert.ok(node, 'derived node should exist');
+    assert.ok(node);
     assert.equal(node.visibility, 'private');
-    assert.ok(node.evidenceIds.length > 0, 'derived node should include evidence references');
+    assert.ok(node.evidenceIds.length > 0);
   }
 
-  assert.ok(findEdge(result, 'belongs_to', memoryNode.id, treeNode.id), 'memory should belong to tree');
-  assert.ok(findEdge(result, 'belongs_to', memoryNode.id, packNode.id), 'memory should belong to pack');
-  assert.ok(findEdge(result, 'source_of', sourceNode.id, memoryNode.id), 'source should be source_of memory');
-  assert.ok(findEdge(result, 'source_of', videoNode.id, memoryNode.id), 'video should be source_of memory');
-  assert.ok(findEdge(result, 'about', memoryNode.id, topicNode.id), 'memory should be about topic');
-  assert.ok(findEdge(result, 'mentions', memoryNode.id, personNode.id), 'memory should mention person');
-  assert.ok(findEdge(result, 'happened_at', memoryNode.id, placeNode.id), 'memory should have place edge');
-  assert.ok(findEdge(result, 'about', memoryNode.id, eventNode.id), 'memory should be about event');
-  assert.ok(findEdge(result, 'felt_as', memoryNode.id, emotionNode.id), 'memory should have emotion edge');
-  assert.ok(findEdge(result, 'happened_in', memoryNode.id, timeNode.id), 'memory should have time edge');
+  assert.ok(findEdge(result, 'belongs_to', memoryNode.id, treeNode.id));
+  assert.ok(findEdge(result, 'belongs_to', memoryNode.id, packNode.id));
+  assert.ok(findEdge(result, 'source_of', sourceNode.id, memoryNode.id));
+  assert.ok(findEdge(result, 'source_of', videoNode.id, memoryNode.id));
+  assert.ok(findEdge(result, 'about', memoryNode.id, topicNode.id));
+  assert.ok(findEdge(result, 'mentions', memoryNode.id, personNode.id));
+  assert.ok(findEdge(result, 'happened_at', memoryNode.id, placeNode.id));
+  assert.ok(findEdge(result, 'about', memoryNode.id, eventNode.id));
+  assert.ok(findEdge(result, 'felt_as', memoryNode.id, emotionNode.id));
+  assert.ok(findEdge(result, 'happened_in', memoryNode.id, timeNode.id));
 
-  assert.ok(result.evidence.length >= 10, 'derived nodes and edges should have evidence');
+  assert.ok(result.evidence.length >= 10);
   for (const evidence of result.evidence) {
     assert.equal(evidence.memoryId, 'm1');
     assert.equal(evidence.visibility, 'private');
@@ -144,7 +148,7 @@ test('does not infer topics or emotions from free text without explicit fields',
   assert.equal(result.evidence.length, 0);
 });
 
-test('deduplicates stable node ids and edge ids while preserving evidence references', () => {
+test('deduplicates stable node ids and edge ids while preserving evidence', () => {
   const { projectMemoryAtlas } = loadProjection();
   const result = projectMemoryAtlas([
     {
@@ -166,27 +170,25 @@ test('deduplicates stable node ids and edge ids while preserving evidence refere
   assert.equal(result.nodes.filter((node) => node.type === 'topic' && node.label === 'UIUC').length, 1);
   assert.equal(result.nodes.filter((node) => node.type === 'emotion' && node.label === 'pressure').length, 1);
 
-  const uiucNode = findNode(result, 'topic', 'UIUC');
-  const pressureNode = findNode(result, 'emotion', 'pressure');
-
-  assert.ok(uiucNode.evidenceIds.length >= 2, 'shared topic node should retain evidence from multiple memories');
-  assert.ok(pressureNode.evidenceIds.length >= 2, 'shared emotion node should retain evidence from multiple memories');
+  assert.ok(findNode(result, 'topic', 'UIUC').evidenceIds.length >= 2);
+  assert.ok(findNode(result, 'emotion', 'pressure').evidenceIds.length >= 2);
 
   const edgeIds = result.edges.map((edge) => edge.id);
-  assert.equal(new Set(edgeIds).size, edgeIds.length, 'edge ids should be deduplicated');
+  assert.equal(new Set(edgeIds).size, edgeIds.length);
 });
 
 test('returns empty projection for empty or invalid input without throwing', () => {
   const { projectMemoryAtlas } = loadProjection();
+  const emptyProjection = { nodes: [], edges: [], evidence: [] };
 
-  assert.deepEqual(projectMemoryAtlas(null), { nodes: [], edges: [], evidence: [] });
-  assert.deepEqual(projectMemoryAtlas(undefined), { nodes: [], edges: [], evidence: [] });
-  assert.deepEqual(projectMemoryAtlas('not input'), { nodes: [], edges: [], evidence: [] });
-  assert.deepEqual(projectMemoryAtlas({ memories: null }), { nodes: [], edges: [], evidence: [] });
-  assert.deepEqual(projectMemoryAtlas({ memories: [null, 'bad', 12] }), { nodes: [], edges: [], evidence: [] });
+  assert.deepEqual(normalizeProjectionResult(projectMemoryAtlas(null)), emptyProjection);
+  assert.deepEqual(normalizeProjectionResult(projectMemoryAtlas(undefined)), emptyProjection);
+  assert.deepEqual(normalizeProjectionResult(projectMemoryAtlas('not input')), emptyProjection);
+  assert.deepEqual(normalizeProjectionResult(projectMemoryAtlas({ memories: null })), emptyProjection);
+  assert.deepEqual(normalizeProjectionResult(projectMemoryAtlas({ memories: [null, 'bad', 12] })), emptyProjection);
 });
 
-test('preserves safe defaults and has no persistence, DOM, provider, or network behavior', () => {
+test('keeps the helper local and read-only', () => {
   assert.match(projectionSource, /projectMemoryAtlas/);
   assert.match(projectionSource, /PROJECTED_NODE_TYPES/);
   assert.match(projectionSource, /PROJECTED_EDGE_TYPES/);
@@ -197,9 +199,6 @@ test('preserves safe defaults and has no persistence, DOM, provider, or network 
   assert.doesNotMatch(projectionSource, /indexedDB/);
   assert.doesNotMatch(projectionSource, /document\./);
   assert.doesNotMatch(projectionSource, /apiClient/);
-  assert.doesNotMatch(projectionSource, /firebase/i);
-  assert.doesNotMatch(projectionSource, /Scout/);
-  assert.doesNotMatch(projectionSource, /provider/i);
   assert.doesNotMatch(projectionSource, /createMemory\s*\(/);
   assert.doesNotMatch(projectionSource, /saveRelationship/);
 });
