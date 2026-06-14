@@ -41,7 +41,7 @@ function assertNoPublicEdgePointsToPrivateNode(result) {
       && ((fromNode && fromNode.visibility !== 'public') || (toNode && toNode.visibility !== 'public'));
   });
 
-  assert.deepEqual(inconsistentEdges, []);
+  assert.equal(inconsistentEdges.length, 0);
 }
 
 test('exports the read-only Memory Atlas projection API and vocabulary', () => {
