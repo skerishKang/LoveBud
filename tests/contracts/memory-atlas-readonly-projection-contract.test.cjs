@@ -177,6 +177,32 @@ test('deduplicates stable node ids and edge ids while preserving evidence', () =
   assert.equal(new Set(edgeIds).size, edgeIds.length);
 });
 
+test('downgrades shared derived nodes to strictest visibility', () => {
+  const { projectMemoryAtlas } = loadProjection();
+  const result = projectMemoryAtlas([
+    {
+      id: 'public-memory',
+      title: 'Public memory',
+      topics: ['Shared topic'],
+      emotion: ['Shared emotion'],
+      source: { id: 'shared-source', title: 'Shared source' },
+      visibility: 'public',
+    },
+    {
+      id: 'private-memory',
+      title: 'Private memory',
+      topics: ['Shared topic'],
+      emotion: ['Shared emotion'],
+      source: { id: 'shared-source', title: 'Shared source' },
+      visibility: 'private',
+    },
+  ]);
+
+  assert.equal(findNode(result, 'topic', 'Shared topic').visibility, 'private');
+  assert.equal(findNode(result, 'emotion', 'Shared emotion').visibility, 'private');
+  assert.equal(findNode(result, 'source', 'Shared source').visibility, 'private');
+});
+
 test('returns empty projection for empty or invalid input without throwing', () => {
   const { projectMemoryAtlas } = loadProjection();
   const emptyProjection = { nodes: [], edges: [], evidence: [] };
@@ -192,6 +218,7 @@ test('keeps the helper local, read-only, and separate from Scout/provider code',
   assert.match(projectionSource, /projectMemoryAtlas/);
   assert.match(projectionSource, /PROJECTED_NODE_TYPES/);
   assert.match(projectionSource, /PROJECTED_EDGE_TYPES/);
+  assert.match(projectionSource, /getStrictestVisibility/);
   assert.doesNotMatch(projectionSource, /fetch\s*\(/);
   assert.doesNotMatch(projectionSource, /XMLHttpRequest/);
   assert.doesNotMatch(projectionSource, /localStorage/);
