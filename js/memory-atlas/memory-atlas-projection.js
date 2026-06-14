@@ -234,7 +234,13 @@
   }
 
   function addNode(state, node) {
-    if (!node || !node.id || state.nodeIds.has(node.id)) return;
+    if (!node || !node.id) return;
+    const existingNode = state.nodes.find((item) => item.id === node.id);
+    if (existingNode) {
+      existingNode.visibility = getStrictestVisibility(existingNode.visibility, node.visibility);
+      return;
+    }
+
     state.nodeIds.add(node.id);
     state.nodes.push(Object.assign({ evidenceIds: [] }, node));
   }
@@ -243,6 +249,9 @@
     addNode(state, node);
     const evidence = addEvidence(state, evidenceContext, 'node', node.id);
     const existingNode = state.nodes.find((item) => item.id === node.id);
+    if (existingNode) {
+      existingNode.visibility = getStrictestVisibility(existingNode.visibility, node.visibility);
+    }
     if (existingNode && evidence && !existingNode.evidenceIds.includes(evidence.id)) {
       existingNode.evidenceIds.push(evidence.id);
     }
@@ -255,6 +264,9 @@
 
     if (state.edgeIds.has(edgeId)) {
       const existingEdge = state.edges.find((item) => item.id === edgeId);
+      if (existingEdge) {
+        existingEdge.visibility = getStrictestVisibility(existingEdge.visibility, edge.visibility);
+      }
       if (existingEdge && evidence && !existingEdge.evidenceIds.includes(evidence.id)) {
         existingEdge.evidenceIds.push(evidence.id);
       }
@@ -344,6 +356,10 @@
     if (record && record.isPublic === true) return 'public';
     if (record && record.public === true) return 'public';
     return 'private';
+  }
+
+  function getStrictestVisibility(currentVisibility, incomingVisibility) {
+    return currentVisibility === 'public' && incomingVisibility === 'public' ? 'public' : 'private';
   }
 
   function makeNodeId(type, key) {
