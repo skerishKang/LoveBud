@@ -32,6 +32,18 @@ function findEdge(result, type, from, to) {
   return result.edges.find((edge) => edge.type === type && edge.from === from && edge.to === to);
 }
 
+function assertNoPublicEdgePointsToPrivateNode(result) {
+  const nodeById = new Map(result.nodes.map((node) => [node.id, node]));
+  const inconsistentEdges = result.edges.filter((edge) => {
+    const fromNode = nodeById.get(edge.from);
+    const toNode = nodeById.get(edge.to);
+    return edge.visibility === 'public'
+      && ((fromNode && fromNode.visibility !== 'public') || (toNode && toNode.visibility !== 'public'));
+  });
+
+  assert.deepEqual(inconsistentEdges, []);
+}
+
 test('exports the read-only Memory Atlas projection API and vocabulary', () => {
   const projection = loadProjection();
 
@@ -177,7 +189,7 @@ test('deduplicates stable node ids and edge ids while preserving evidence', () =
   assert.equal(new Set(edgeIds).size, edgeIds.length);
 });
 
-test('downgrades shared derived nodes to strictest visibility', () => {
+test('downgrades shared derived nodes and incident edges to strictest visibility', () => {
   const { projectMemoryAtlas } = loadProjection();
   const result = projectMemoryAtlas([
     {
@@ -198,9 +210,19 @@ test('downgrades shared derived nodes to strictest visibility', () => {
     },
   ]);
 
-  assert.equal(findNode(result, 'topic', 'Shared topic').visibility, 'private');
-  assert.equal(findNode(result, 'emotion', 'Shared emotion').visibility, 'private');
-  assert.equal(findNode(result, 'source', 'Shared source').visibility, 'private');
+  const sharedTopicNode = findNode(result, 'topic', 'Shared topic');
+  const sharedEmotionNode = findNode(result, 'emotion', 'Shared emotion');
+  const sharedSourceNode = findNode(result, 'source', 'Shared source');
+
+  assert.equal(sharedTopicNode.visibility, 'private');
+  assert.equal(sharedEmotionNode.visibility, 'private');
+  assert.equal(sharedSourceNode.visibility, 'private');
+
+  for (const edge of result.edges.filter((item) => [sharedTopicNode.id, sharedEmotionNode.id, sharedSourceNode.id].includes(item.from) || [sharedTopicNode.id, sharedEmotionNode.id, sharedSourceNode.id].includes(item.to))) {
+    assert.equal(edge.visibility, 'private');
+  }
+
+  assertNoPublicEdgePointsToPrivateNode(result);
 });
 
 test('returns empty projection for empty or invalid input without throwing', () => {
@@ -219,6 +241,7 @@ test('keeps the helper local, read-only, and separate from Scout/provider code',
   assert.match(projectionSource, /PROJECTED_NODE_TYPES/);
   assert.match(projectionSource, /PROJECTED_EDGE_TYPES/);
   assert.match(projectionSource, /getStrictestVisibility/);
+  assert.match(projectionSource, /downgradeIncidentEdgesForNode/);
   assert.doesNotMatch(projectionSource, /fetch\s*\(/);
   assert.doesNotMatch(projectionSource, /XMLHttpRequest/);
   assert.doesNotMatch(projectionSource, /localStorage/);
