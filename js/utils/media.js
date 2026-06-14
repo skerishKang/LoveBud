@@ -39,12 +39,28 @@
         }
     }
 
-    function normalizeYouTubeChannelUrl(channelId) {
+    function normalizeYouTubeChannelUrl(channelId, sourceKind) {
         if (!channelId) return '';
         if (String(channelId).startsWith('@')) {
             return `https://www.youtube.com/${channelId}`;
         }
+        if (sourceKind === 'custom') {
+            return `https://www.youtube.com/c/${channelId}`;
+        }
+        if (sourceKind === 'user') {
+            return `https://www.youtube.com/user/${channelId}`;
+        }
         return `https://www.youtube.com/channel/${channelId}`;
+    }
+
+    function getYouTubePathSegments(url) {
+        const parsed = new URL(String(url || '').trim());
+        const host = normalizeYouTubeHost(parsed.hostname);
+        if (host !== 'youtube.com') return null;
+        return parsed.pathname
+            .split('/')
+            .map(safeDecodePathSegment)
+            .filter(Boolean);
     }
 
     /**
@@ -53,30 +69,26 @@
      * 네트워크/oEmbed 호출 없이 URL 자체에 드러난 채널 정보만 반환한다.
      * 예: https://www.youtube.com/@woowayoung/shorts/{videoId}
      * 예: https://www.youtube.com/channel/UCxxxx
+     * 예: https://www.youtube.com/c/SomeChannel
+     * 예: https://www.youtube.com/user/SomeChannel
      *
      * 일반 watch URL은 채널 정보가 URL에 없으므로 null을 반환한다.
      * @param {string} url - YouTube URL
-     * @returns {{channelId: string, channelName: string, channelUrl: string}|null}
+     * @returns {{channelId: string, channelName: string, channelUrl: string, sourceKind: string}|null}
      */
     function extractYouTubeChannelInfo(url) {
         if (!url || typeof url !== 'string') return null;
         try {
-            const parsed = new URL(url.trim());
-            const host = normalizeYouTubeHost(parsed.hostname);
-            if (host !== 'youtube.com') return null;
-
-            const segments = parsed.pathname
-                .split('/')
-                .map(safeDecodePathSegment)
-                .filter(Boolean);
-            if (!segments.length) return null;
+            const segments = getYouTubePathSegments(url);
+            if (!segments || !segments.length) return null;
 
             const first = segments[0];
             if (/^@[0-9A-Za-z._-]{3,100}$/.test(first)) {
                 return {
                     channelId: first,
                     channelName: first,
-                    channelUrl: normalizeYouTubeChannelUrl(first)
+                    channelUrl: normalizeYouTubeChannelUrl(first),
+                    sourceKind: 'handle'
                 };
             }
 
@@ -85,13 +97,81 @@
                 return {
                     channelId,
                     channelName: '',
-                    channelUrl: normalizeYouTubeChannelUrl(channelId)
+                    channelUrl: normalizeYouTubeChannelUrl(channelId),
+                    sourceKind: 'channel'
+                };
+            }
+
+            if (first === 'c' && segments[1] && /^[0-9A-Za-z._-]{2,100}$/.test(segments[1])) {
+                const channelId = segments[1];
+                return {
+                    channelId,
+                    channelName: channelId,
+                    channelUrl: normalizeYouTubeChannelUrl(channelId, 'custom'),
+                    sourceKind: 'custom'
+                };
+            }
+
+            if (first === 'user' && segments[1] && /^[0-9A-Za-z._-]{2,100}$/.test(segments[1])) {
+                const channelId = segments[1];
+                return {
+                    channelId,
+                    channelName: channelId,
+                    channelUrl: normalizeYouTubeChannelUrl(channelId, 'user'),
+                    sourceKind: 'user'
                 };
             }
         } catch (e) {
             return null;
         }
         return null;
+    }
+
+    function classifyYouTubeUrl(url) {
+        if (!url || typeof url !== 'string') {
+            return { kind: 'unknown', sourceType: 'unknown' };
+        }
+
+        const videoId = extractYouTubeId(url);
+        if (videoId) {
+            return {
+                kind: 'video',
+                sourceType: 'youtube',
+                videoId
+            };
+        }
+
+        const channelInfo = extractYouTubeChannelInfo(url);
+        if (channelInfo) {
+            return {
+                kind: 'channel',
+                sourceType: 'channel',
+                provider: 'youtube',
+                channelInfo
+            };
+        }
+
+        return { kind: 'unknown', sourceType: 'unknown' };
+    }
+
+    function isYouTubeChannelUrl(url) {
+        return classifyYouTubeUrl(url).kind === 'channel';
+    }
+
+    function createYouTubeChannelSourceRecord(url) {
+        const classification = classifyYouTubeUrl(url);
+        if (classification.kind !== 'channel' || !classification.channelInfo) return null;
+
+        const channelInfo = classification.channelInfo;
+        const sourceHandle = channelInfo.channelName || channelInfo.channelId || '';
+        return {
+            sourceType: 'channel',
+            provider: 'youtube',
+            source: 'YouTube',
+            sourceUrl: channelInfo.channelUrl || String(url || '').trim(),
+            sourceHandle,
+            sourceTitle: sourceHandle
+        };
     }
 
     /**
@@ -252,6 +332,9 @@
     window.LoveBudMedia = {
         extractYouTubeId,
         extractYouTubeChannelInfo,
+        classifyYouTubeUrl,
+        isYouTubeChannelUrl,
+        createYouTubeChannelSourceRecord,
         parseYouTubeTimeToSeconds,
         extractYouTubeStartSeconds,
         formatYouTubeStartTime,
