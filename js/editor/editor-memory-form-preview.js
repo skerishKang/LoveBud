@@ -5,6 +5,7 @@
         const preview = refs?.preview || document.getElementById('memoryLinkPreview');
         if (!preview) return;
         preview.classList.add('is-enhanced');
+        preview.classList.remove('is-source-record-preview');
         preview.style.display = 'flex';
         preview.style.alignItems = 'center';
         preview.style.gap = '9px';
@@ -16,6 +17,7 @@
 
         const thumbWrap = refs?.thumbWrap || preview.querySelector('.memory-link-preview__thumb-wrap');
         if (thumbWrap) {
+            thumbWrap.style.display = 'block';
             thumbWrap.style.position = 'relative';
             thumbWrap.style.width = '52px';
             thumbWrap.style.minWidth = '52px';
@@ -27,6 +29,7 @@
         }
 
         if (refs?.thumb) {
+            refs.thumb.style.display = 'block';
             refs.thumb.style.width = '100%';
             refs.thumb.style.height = '100%';
             refs.thumb.style.objectFit = 'cover';
@@ -34,6 +37,7 @@
 
         const playIcon = refs?.playIcon || preview.querySelector('.memory-link-preview__play-icon');
         if (playIcon) {
+            playIcon.style.display = 'block';
             playIcon.style.position = 'absolute';
             playIcon.style.top = '50%';
             playIcon.style.left = '50%';
@@ -88,6 +92,7 @@
         if (!preview) return;
         preview.classList.add('is-hidden');
         preview.classList.remove('is-enhanced');
+        preview.classList.remove('is-source-record-preview');
     }
 
     function resolveChannelPreviewLabel(url, media) {
@@ -105,6 +110,48 @@
             ? `${formatted}부터 재생돼요. 제목과 메모를 다듬어 주세요.`
             : '제목과 메모를 다듬어 주세요.';
         return channelLabel ? `${channelLabel} · ${baseText}` : baseText;
+    }
+
+    function resolveSourceRecordPreviewTitle(sourceRecord) {
+        return String(
+            sourceRecord?.sourceHandle ||
+            sourceRecord?.sourceTitle ||
+            sourceRecord?.sourceUrl ||
+            'YouTube 채널'
+        ).trim();
+    }
+
+    function buildSourceRecordPreviewHint(sourceRecord) {
+        const provider = String(sourceRecord?.provider || sourceRecord?.source || 'YouTube').trim();
+        const providerLabel = /youtube/i.test(provider) ? 'YouTube 채널' : `${provider} 출처`;
+        return `${providerLabel} · 아직 심은 순간이 없어요`;
+    }
+
+    function updateSourceRecordPreview(refs, sourceRecord) {
+        if (refs?.preview) refs.preview.classList.remove('is-hidden');
+        applyPreviewStyles(refs);
+
+        if (refs?.preview) refs.preview.classList.add('is-source-record-preview');
+        if (refs?.thumbWrap) refs.thumbWrap.style.display = 'none';
+        if (refs?.thumb) refs.thumb.style.display = 'none';
+        if (refs?.playIcon) refs.playIcon.style.display = 'none';
+
+        if (refs?.badge) {
+            refs.badge.style.display = 'inline-flex';
+            refs.badge.textContent = '순간의 출처';
+        }
+
+        if (refs?.previewTitle) {
+            refs.previewTitle.textContent = resolveSourceRecordPreviewTitle(sourceRecord);
+        }
+
+        if (refs?.previewHint) {
+            refs.previewHint.textContent = buildSourceRecordPreviewHint(sourceRecord);
+        }
+
+        if (refs?.startTimeHint) {
+            refs.startTimeHint.textContent = '채널은 영상 순간의 출처로만 미리 볼 수 있어요.';
+        }
     }
 
     function update(options) {
@@ -125,6 +172,13 @@
             : '';
 
         if (!videoId) {
+            const sourceRecord = typeof media.createYouTubeChannelSourceRecord === 'function'
+                ? media.createYouTubeChannelSourceRecord(url)
+                : null;
+            if (sourceRecord) {
+                updateSourceRecordPreview(refs, sourceRecord);
+                return;
+            }
             hide(refs);
             return;
         }
@@ -165,6 +219,9 @@
         hide,
         resolveChannelPreviewLabel,
         buildPreviewHintText,
+        resolveSourceRecordPreviewTitle,
+        buildSourceRecordPreviewHint,
+        updateSourceRecordPreview,
         update
     };
 })();
