@@ -180,7 +180,20 @@
             if (!imgEl) return;
 
             var isEmptyState = !!(data && data.isNewTree);
-            imgEl.src = resolveMemoryThumbnail(data);
+            var thumb = resolveMemoryThumbnail(data);
+            if (thumb) {
+                imgEl.src = thumb;
+                var container = imgEl.closest('.detail-video') || imgEl.parentElement;
+                if (container) {
+                    container.classList.remove('is-empty');
+                }
+            } else {
+                imgEl.removeAttribute('src');
+                var container = imgEl.closest('.detail-video') || imgEl.parentElement;
+                if (container) {
+                    container.classList.add('is-empty');
+                }
+            }
             imgEl.alt = isEmptyState ? '' : ((data && data.title) || '');
         };
     }
@@ -328,15 +341,38 @@
             ? deps.getCanonicalRootId
             : function() { return null; };
 
-        function resetSummary(likeBtn, likeCount, commentCount) {
+        var reactionSummaryCache = Object.create(null);
+        var reactionSummaryInFlight = Object.create(null);
+        var reactionSummaryAuthFailures = Object.create(null);
+
+        function isAuthFailure(error) {
+            if (!error) return false;
+            var status = error.status || error.statusCode;
+            return status === 401 || status === 403;
+        }
+
+        function applyReadOnlyReactionFallback(likeBtn, likeCount, commentCount, commentBtn, reactionsCard) {
             if (likeBtn) {
                 likeBtn.dataset.reacted = 'false';
                 var icon = likeBtn.querySelector('.editor-reaction-like-icon');
                 if (icon) icon.textContent = '🤍';
                 likeBtn.onclick = null;
+                likeBtn.disabled = true;
+                likeBtn.setAttribute('aria-disabled', 'true');
+                likeBtn.title = "공개 감상에서는 읽기 전용으로 표시돼요";
+            }
+            if (commentBtn) {
+                commentBtn.onclick = null;
+                commentBtn.disabled = true;
+                commentBtn.setAttribute('aria-disabled', 'true');
+                commentBtn.title = "공개 감상에서는 읽기 전용으로 표시돼요";
             }
             if (likeCount) likeCount.textContent = '0';
             if (commentCount) commentCount.textContent = '0';
+            if (reactionsCard) {
+                reactionsCard.classList.add('is-public-readonly');
+                reactionsCard.setAttribute('data-read-only-fallback', 'true');
+            }
         }
 
         return function updatePublicViewerReadOnlyReactionSummary(data) {
@@ -356,26 +392,69 @@
             var commentCount = document.getElementById('momentCommentCount');
             var commentBtn = document.getElementById('momentCommentBtn');
 
-            resetSummary(likeBtn, likeCount, commentCount);
-            if (commentBtn) commentBtn.onclick = null;
+            applyReadOnlyReactionFallback(likeBtn, likeCount, commentCount, commentBtn, reactionsCard);
 
-            if (!data.id || !window.apiClient || typeof window.apiClient.fetchReactionSummary !== 'function') {
+            if (!data.id) {
                 return;
             }
 
-            window.apiClient.fetchReactionSummary(data.id)
+            if (reactionSummaryCache[data.id]) {
+                var cached = reactionSummaryCache[data.id];
+                if (likeCount) likeCount.textContent = cached.likeCount;
+                if (commentCount) commentCount.textContent = cached.commentCount;
+                if (likeBtn) {
+                    likeBtn.dataset.reacted = cached.userReacted ? 'true' : 'false';
+                    var icon = likeBtn.querySelector('.editor-reaction-like-icon');
+                    if (icon) icon.textContent = cached.userReacted ? '❤️' : '🤍';
+                }
+                return;
+            }
+
+            if (reactionSummaryAuthFailures[data.id]) {
+                return;
+            }
+
+            if (reactionSummaryInFlight[data.id]) {
+                return;
+            }
+
+            if (!window.apiClient || typeof window.apiClient.fetchReactionSummary !== 'function') {
+                return;
+            }
+
+            reactionSummaryInFlight[data.id] = window.apiClient.fetchReactionSummary(data.id)
                 .then(function(summary) {
+                    delete reactionSummaryInFlight[data.id];
                     if (!summary) return;
-                    if (likeCount) likeCount.textContent = summary.like_count ?? summary.likeCount ?? 0;
-                    if (commentCount) commentCount.textContent = summary.comment_count ?? summary.commentCount ?? 0;
-                    var userReacted = summary.user_reacted ?? summary.userReacted ?? false;
-                    if (likeBtn) {
-                        likeBtn.dataset.reacted = userReacted ? 'true' : 'false';
-                        var icon = likeBtn.querySelector('.editor-reaction-like-icon');
-                        if (icon) icon.textContent = userReacted ? '❤️' : '🤍';
+                    var res = {
+                        likeCount: summary.like_count ?? summary.likeCount ?? 0,
+                        commentCount: summary.comment_count ?? summary.commentCount ?? 0,
+                        userReacted: summary.user_reacted ?? summary.userReacted ?? false
+                    };
+                    reactionSummaryCache[data.id] = res;
+
+                    var currentSelectedId = (deps && typeof deps.getSelectedNodeId === 'function') ? deps.getSelectedNodeId() : null;
+                    if (currentSelectedId === data.id) {
+                        if (likeCount) likeCount.textContent = res.likeCount;
+                        if (commentCount) commentCount.textContent = res.commentCount;
+                        if (likeBtn) {
+                            likeBtn.dataset.reacted = res.userReacted ? 'true' : 'false';
+                            var icon = likeBtn.querySelector('.editor-reaction-like-icon');
+                            if (icon) icon.textContent = res.userReacted ? '❤️' : '🤍';
+                        }
                     }
                 })
-                .catch(function() {});
+                .catch(function(error) {
+                    delete reactionSummaryInFlight[data.id];
+                    if (isAuthFailure(error)) {
+                        reactionSummaryAuthFailures[data.id] = true;
+                    }
+                    reactionSummaryCache[data.id] = {
+                        likeCount: 0,
+                        commentCount: 0,
+                        userReacted: false
+                    };
+                });
         };
     }
 
@@ -530,7 +609,25 @@
         detailUI.updateFocusSelectedBtn = createPublicViewerUpdateFocusSelectedBtn(deps);
         detailUI.updateSidebarStatus = updatePublicViewerSidebarStatus;
         detailUI.setDetailEmptyState = createPublicViewerSetDetailEmptyState(deps);
+
+        var lastDetailKey = null;
+        var lastDetailAt = 0;
+
         detailUI.updateDetailPanel = function updatePublicViewerDetailPanel(data) {
+            var now = Date.now();
+            var memoryId = data ? data.id : null;
+            if (memoryId && lastDetailKey === memoryId && (now - lastDetailAt) < 150) {
+                updateReadOnlyReactionSummary(data);
+                return;
+            }
+            if (memoryId) {
+                lastDetailKey = memoryId;
+                lastDetailAt = now;
+            } else {
+                lastDetailKey = null;
+                lastDetailAt = 0;
+            }
+
             updateDetailHeading();
             updateTreeMeta(data);
             updateCurrentMomentBadge(data);
