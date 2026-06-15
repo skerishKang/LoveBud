@@ -147,7 +147,7 @@ test('public-viewer-detail-tree-meta runtime async owner verification checks', a
       replaceChildren() { children.length = 0; },
       addEventListener() {},
       querySelector(sel) {
-        if (sel === 'div:last-child') {
+        if (sel === '.tree-meta-actions-row') {
           return this;
         }
         return null;
@@ -341,4 +341,18 @@ test('My LoveTrees routing contract for public and private trees', () => {
     visibility: 'unlisted'
   });
   assert.ok(unlistedOpenHref.includes('editor?treeId=tree-unlisted-1'), 'Unlisted tree view link must target editor');
+
+  const unknownCard = UI.buildTreeCard({
+    id: 'tree-unknown-1',
+    title: 'Unknown Tree',
+    visibility: null,
+    stage: 0
+  }, { i18n });
+
+  const unknownOpenHref = CardEvents.resolveOpenHref(unknownCard, {
+    id: 'tree-unknown-1',
+    visibility: null
+  });
+  assert.ok(unknownOpenHref.includes('editor?treeId=tree-unknown-1'), 'Null visibility tree view link must target editor');
+  assert.equal(unknownOpenHref.includes('view.html'), false, 'Null visibility tree view link must NOT target view.html');
 });

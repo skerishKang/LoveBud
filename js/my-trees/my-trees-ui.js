@@ -226,7 +226,7 @@
       normalizedTree = {
         id: tree && tree.id,
         title: (tree && tree.title) || '나의 러브트리',
-        visibility: (tree && tree.visibility) || 'public',
+        visibility: (tree && tree.visibility) || '',
         updatedAt: (tree && (tree.updatedAt || tree.createdAt)) || null,
         memoryCount: getTreeMomentCount(tree),
         representativeThumbnail: getRepresentativeThumbnail(tree),

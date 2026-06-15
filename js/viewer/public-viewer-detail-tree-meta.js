@@ -170,6 +170,7 @@
             }
 
             const actionsRow = document.createElement('div');
+            actionsRow.className = 'tree-meta-actions-row';
             actionsRow.style.display = 'flex';
             actionsRow.style.alignItems = 'center';
             actionsRow.style.gap = '8px';
@@ -179,9 +180,7 @@
             if (shareButtonEl) actionsRow.appendChild(shareButtonEl);
             if (editButtonEl) actionsRow.appendChild(editButtonEl);
 
-            if (actionsRow.children.length > 0) {
-                wrap.appendChild(actionsRow);
-            }
+            wrap.appendChild(actionsRow);
 
             return wrap;
         };
@@ -274,7 +273,7 @@
                         .then(tree => {
                             const ownerId = tree && (tree.ownerId || tree.owner_id);
                             if (ownerId && ownerId === currentUserId) {
-                                const actionsRow = block.querySelector('div:last-child');
+                                const actionsRow = block.querySelector('.tree-meta-actions-row');
                                 if (actionsRow) {
                                     // Check if edit button was already added dynamically to prevent duplicate appends
                                     if (actionsRow.querySelector('.vv-edit-btn-dynamic')) return;
