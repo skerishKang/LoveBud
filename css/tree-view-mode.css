@@ -1,0 +1,160 @@
+/* LoveBud Tree View Mode Switcher
+ * Three user-selectable layouts for both Browse (#resultsList) and
+ * My LoveTree (.trees-grid): large, compact, list.
+ *
+ * Base styles live in css/search/* and css/my-trees/* — this file only
+ * overrides per-mode without removing the existing default columns.
+ */
+
+/* ── Control UI ───────────────────────────────────────────────────── */
+.tree-view-mode-control {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px;
+    border-radius: 999px;
+    background: rgba(255, 248, 245, 0.86);
+    border: 1px solid rgba(144, 73, 81, 0.16);
+    box-shadow: 0 6px 18px rgba(75, 64, 57, 0.05);
+    backdrop-filter: blur(6px);
+    flex-wrap: wrap;
+}
+
+.tree-view-mode-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: transparent;
+    border: 0;
+    color: var(--on-surface-variant, #5b4b40);
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.12s ease, color 0.12s ease, box-shadow 0.12s ease;
+    line-height: 1.2;
+}
+
+.tree-view-mode-btn .material-symbols-outlined {
+    font-size: 18px;
+    line-height: 1;
+}
+
+.tree-view-mode-btn:hover,
+.tree-view-mode-btn:focus-visible {
+    background: rgba(255, 255, 255, 0.7);
+    color: var(--on-surface, #2a211c);
+    outline: none;
+}
+
+.tree-view-mode-btn.is-active {
+    background: var(--primary, #904951);
+    color: #fff;
+    box-shadow: 0 4px 12px rgba(144, 73, 81, 0.22);
+}
+
+.tree-view-mode-btn.is-active .material-symbols-outlined {
+    color: #fff;
+}
+
+@media (max-width: 640px) {
+    .tree-view-mode-label {
+        display: none;
+    }
+    .tree-view-mode-btn {
+        padding: 6px 10px;
+    }
+}
+
+/* ── Browse (#resultsList) — default 3-col, data-attr overrides ──── */
+#resultsList[data-tree-view-mode="large"] {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 26px;
+}
+
+#resultsList[data-tree-view-mode="large"] .tree-card-featured {
+    grid-column: 1 / -1;
+}
+
+#resultsList[data-tree-view-mode="compact"] {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 20px;
+}
+
+#resultsList[data-tree-view-mode="list"] {
+    grid-template-columns: 1fr;
+    gap: 14px;
+}
+
+#resultsList[data-tree-view-mode="list"] .tree-card {
+    display: grid;
+    grid-template-columns: 160px minmax(0, 1fr);
+    align-items: stretch;
+    padding: 0;
+}
+
+#resultsList[data-tree-view-mode="list"] .tree-card-media,
+#resultsList[data-tree-view-mode="list"] .tree-card-thumb {
+    height: 110px;
+    width: 100%;
+}
+
+@media (max-width: 768px) {
+    #resultsList[data-tree-view-mode="list"] .tree-card {
+        grid-template-columns: 110px minmax(0, 1fr);
+    }
+}
+
+/* ── My LoveTree (.trees-grid) — default 2-col, data-attr overrides ─ */
+.trees-grid[data-tree-view-mode="large"] {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 24px;
+}
+
+.trees-grid[data-tree-view-mode="compact"] {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 18px;
+}
+
+.trees-grid[data-tree-view-mode="list"] {
+    grid-template-columns: 1fr;
+    gap: 14px;
+}
+
+.trees-grid[data-tree-view-mode="list"] .tree-card {
+    display: grid;
+    grid-template-columns: 160px minmax(0, 1fr);
+    align-items: stretch;
+    padding: 0;
+}
+
+.trees-grid[data-tree-view-mode="list"] .tree-card-thumb {
+    height: 110px;
+    width: 100%;
+}
+
+.trees-grid[data-tree-view-mode="compact"] .tree-card-info,
+.trees-grid[data-tree-view-mode="compact"] .tree-card-thumb {
+    padding: 12px;
+}
+
+.trees-grid[data-tree-view-mode="compact"] .tree-card-thumb {
+    height: 140px;
+}
+
+.trees-grid[data-tree-view-mode="compact"] .tree-card-title {
+    font-size: 0.95rem;
+}
+
+@media (max-width: 900px) {
+    .trees-grid[data-tree-view-mode="compact"] {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 600px) {
+    .trees-grid[data-tree-view-mode="list"] .tree-card {
+        grid-template-columns: 110px minmax(0, 1fr);
+    }
+}

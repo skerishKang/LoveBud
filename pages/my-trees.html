@@ -9,6 +9,7 @@
   <link rel="icon" href="/favicon.ico" sizes="32x32">
   <link rel="stylesheet" href="../css/global.css?v=20260509-994-1">
   <link rel="stylesheet" href="../css/my-trees.css?v=20260514-1134-1">
+  <link rel="stylesheet" href="../css/tree-view-mode.css?v=20260616-2533-1">
   <link rel="stylesheet" href="../css/page-transitions.css?v=20260430-1">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" />
 </head>
@@ -31,6 +32,7 @@
               <option id="sortNameOption" value="name">이름순</option>
             </select>
           </div>
+          <div id="myTreesViewModeMount" class="my-trees-view-mode-mount"></div>
           <button class="btn-header-create" id="headerCreateTreeBtn">
             <span class="material-symbols-outlined">add</span>
             <span id="headerCreateTreeBtnLabel">새 트리</span>
@@ -215,6 +217,7 @@
     <script src="../js/my-trees/my-trees-preview-state.js?v=20260520-1285-5"></script>
     <script src="../js/my-trees.js?v=20260421-6"></script>
   <script src="../js/my-trees/my-trees-i18n-refresh.js?v=20260509-910-1"></script>
+  <script src="../js/tree-view-mode-switcher.js?v=20260616-2533-1"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
   <script src="../js/firebase-config.js?v=20260417-31"></script>
@@ -241,5 +244,23 @@
   <script src="../js/auth/auth-protected-route.js?v=20260505-828"></script>
   <script src="../js/page-transitions.js?v=20260430-1"></script>
   <script>renderSharedHeader();</script>
+  <script>
+    (function () {
+      if (!window.LoveBudTreeViewModeSwitcher) return;
+      var ready = function () {
+        window.LoveBudTreeViewModeSwitcher.init({
+          storageKey: 'lovebud:myTrees:viewMode',
+          defaultMode: 'large',
+          mount: '#myTreesViewModeMount',
+          target: '#trees-grid'
+        });
+      };
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', ready);
+      } else {
+        ready();
+      }
+    })();
+  </script>
 </body>
 </html>
