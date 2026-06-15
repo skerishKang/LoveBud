@@ -1,9 +1,13 @@
+'use strict';
+
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
 
 const templatePath = 'js/editor/templates/editor-detail-view-mode-template.js';
+const toolbarTemplatePath = 'js/editor/templates/editor-floating-toolbar-template.js';
 const editorPagePath = 'pages/editor.html';
+const cssOverridePath = 'css/editor/editor-overrides.css';
 
 test('editor selected moment reactions render as labeled inline footer actions', () => {
   const source = fs.readFileSync(templatePath, 'utf8');
@@ -17,20 +21,30 @@ test('editor selected moment reactions render as labeled inline footer actions',
   assert.match(source, /aria-hidden="true">💬<\/span>/, 'decorative comment icon must not be the only accessible text');
 });
 
-test('editor selected moment reaction footer styling avoids boxed button chrome', () => {
-  const source = fs.readFileSync(templatePath, 'utf8');
+test('editor selected moment reaction footer uses soft card-like styling', () => {
+  const css = fs.readFileSync(cssOverridePath, 'utf8');
 
-  assert.match(source, /style="display:inline-flex;/, 'reaction footer should render as a compact inline group');
-  assert.match(source, /border:0;/, 'reaction actions should not keep default boxed button borders');
-  assert.match(source, /background:transparent;/, 'reaction actions should not look like separate box buttons by default');
-  assert.match(source, /font-variant-numeric:tabular-nums;/, 'counts should remain stable as they update');
+  assert.match(css, /\.editor-moment-reactions-card\s*\{/, 'reactions card CSS class must be defined');
+  assert.match(css, /border-radius:\s*14px/, 'reactions card must have soft rounded corners');
+  assert.match(css, /background:\s*var\(--surface-variant/, 'reactions card must have a subtle background');
+  assert.match(css, /gap:\s*6px/, 'reaction buttons must be tightly spaced');
 });
 
-test('editor page cache-busts the social footer template and stylesheet entrypoint', () => {
+test('editor page cache-busts the social footer stylesheet and template', () => {
   const source = fs.readFileSync(editorPagePath, 'utf8');
 
-  assert.match(source, /editor\.css\?v=20260614-2465/, 'editor stylesheet entrypoint must be cache-busted for footer style changes');
-  assert.match(source, /editor-detail-view-mode-template\.js\?v=20260615-2501/, 'detail view template must be cache-busted for selected moment atlas preview markup changes');
+  assert.match(source, /editor\.css\?v=20260614-2465/, 'editor stylesheet entrypoint must be cache-busted for this slice');
+  assert.match(source, /editor-detail-view-mode-template\.js\?v=20260615-2501/, 'detail view template must be cache-busted');
+});
+
+test('editor branch creation affordance remains in floating toolbar without being a primary visible CTA', () => {
+  const toolbarSource = fs.readFileSync(toolbarTemplatePath, 'utf8');
+  const css = fs.readFileSync(cssOverridePath, 'utf8');
+
+  assert.match(toolbarSource, /id="ftbBranchBtn"/, 'branch creation button must remain available');
+  assert.match(toolbarSource, /id="ftbForkBtn"/, 'fork button must remain available');
+  assert.match(toolbarSource, /style="display:none;"/, 'branch buttons must stay hidden by default');
+  assert.doesNotMatch(toolbarSource, /editor-ftb-branch-btn[^>]*style="display:(inline|flex|block)/, 'branch buttons must not be primary visible CTAs');
 });
 
 test('editor social footer polish stays frontend-only and does not expand canvas scope', () => {
@@ -39,4 +53,16 @@ test('editor social footer polish stays frontend-only and does not expand canvas
   assert.doesNotMatch(source, /apiClient\.updateTree|apiClient\.create|ALTER\s+TABLE|CREATE\s+TABLE/i, 'must not add persistence or schema work');
   assert.doesNotMatch(source, /Scout|LLM|provider/i, 'must not add Scout/provider behavior');
   assert.doesNotMatch(source, /branch-port|rethread|relationship-hint/i, 'must not mix in branch/rethread controls');
+});
+
+test('editor social footer and branch control polish do not introduce relationship graph or DB/API changes', () => {
+  const templateSource = fs.readFileSync(templatePath, 'utf8');
+  const toolbarSource = fs.readFileSync(toolbarTemplatePath, 'utf8');
+  const css = fs.readFileSync(cssOverridePath, 'utf8');
+
+  for (const source of [templateSource, toolbarSource, css]) {
+    assert.doesNotMatch(source, /relationship.graph|Obsidian|wiki/i, 'must not add relationship graph or Obsidian-style features');
+    assert.doesNotMatch(source, /localStorage|sessionStorage|indexedDB/i, 'must not add client persistence');
+    assert.doesNotMatch(source, /#2418|#1882/i, 'must not reference closed issues');
+  }
 });
