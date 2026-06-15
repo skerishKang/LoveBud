@@ -1,6 +1,6 @@
 /**
  * LoveBud Search Page Orchestrator
- * v20260429-2
+ * v20260616-2539-1
  *
  * Search page orchestration:
  * - Fast list-first loading for public trees
@@ -23,8 +23,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         searchInput: document.getElementById('searchInput'),
         tagChips: document.querySelectorAll('.tag-chip'),
         resultsHead: document.querySelector('.browse-results-head'),
-        growingSection: document.getElementById('growingTreesSection'),
-        growingList: document.getElementById('growingTreesList'),
         mobilePreviewMediaQuery: window.matchMedia('(max-width: 768px)')
     };
     refs.resultsTitle = refs.resultsHead?.querySelector('h3');
@@ -51,7 +49,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const state = {
         allTrees: [],
-        growingTrees: [],
         loadError: null,
         isFromCache: false,
         apiTreesLoaded: false,
@@ -126,13 +123,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             } catch (e) {
                 selector = `.tree-card[data-tree-id="${treeId.replace(/"/g, '\\"')}"]`;
             }
-
-            const allCardContainers = [refs.resultsList, refs.growingList].filter(Boolean);
-            for (const container of allCardContainers) {
-                const activeCard = container.querySelector(selector);
-                if (activeCard) return activeCard;
-            }
-            return null;
+            return refs.resultsList ? refs.resultsList.querySelector(selector) : null;
         };
 
         const selectTree = (tree, activeCard, options = {}) => {
@@ -159,7 +150,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const treeId = readSelectedTreeFromUrl();
             if (!treeId) return;
 
-            const targetTree = state.allTrees.find(t => t.id === treeId) || state.growingTrees.find(t => t.id === treeId);
+            const targetTree = state.allTrees.find(t => t.id === treeId);
             if (!targetTree) return;
 
             selectTree(targetTree, findRenderedTreeCard(treeId), { openMobilePreview: false });
@@ -240,58 +231,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         } catch (e) {
             selector = `.tree-card[data-tree-id="${treeId.replace(/"/g, '\\"')}"]`;
         }
-
-        const allCardContainers = [refs.resultsList, refs.growingList].filter(Boolean);
-        for (const container of allCardContainers) {
-            const activeCard = container.querySelector(selector);
-            if (activeCard) return activeCard;
-        }
-        return null;
-    }
-
-
-    function renderGrowingResults() {
-        if (!refs.growingSection || !refs.growingList) return;
-
-        if (!state.growingTrees || state.growingTrees.length === 0) {
-            refs.growingSection.hidden = true;
-            refs.growingList.innerHTML = '';
-            return;
-        }
-
-        // Show error fallback if error state exists
-        const errorEl = document.getElementById('growingTreesError');
-        if (errorEl) errorEl.hidden = true;
-
-        refs.growingSection.hidden = false;
-        refs.growingList.innerHTML = state.growingTrees
-            .slice(0, 3)
-            .map((tree, index) => CardRenderer.renderTreeCard(tree, index + 1))
-            .join('');
-
-        ui.attachCardEvents(refs.growingList, state.growingTrees);
-        ui.syncActiveCard();
-    }
-
-    function renderGrowingLoading() {
-        if (!refs.growingSection || !refs.growingList) return;
-        // Show skeleton cards (already in HTML) while loading
-        refs.growingSection.hidden = false;
-    }
-
-    function renderGrowingError() {
-        if (!refs.growingSection) return;
-        const errorEl = document.getElementById('growingTreesError');
-        if (errorEl) errorEl.hidden = false;
-        refs.growingList.innerHTML = '';
+        return refs.resultsList ? refs.resultsList.querySelector(selector) : null;
     }
 
     callbacks.selectTree = previewController.selectTree;
     callbacks.loadPublicTrees = dataApi.loadPublicTrees;
     callbacks.renderResults = renderResults;
-    callbacks.renderGrowingResults = renderGrowingResults;
-    callbacks.renderGrowingLoading = renderGrowingLoading;
-    callbacks.renderGrowingError = renderGrowingError;
     callbacks.updateUrlState = urlState.updateUrlState;
 
     callbacks.loadMorePublicTrees = async () => {
@@ -341,13 +286,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     refs.resultsList.innerHTML = CardRenderer.renderLoading();
     ui.clearSelectedPreview();
-    
+
     urlState.restoreStateFromUrl();
-    
-    await Promise.allSettled([
-        dataApi.loadPublicTrees({ resetSelection: true }),
-        dataApi.loadGrowingTrees()
-    ]);
+
+    await dataApi.loadPublicTrees({ resetSelection: true });
 
     await previewController.applySelectedTreeFromUrl();
     state.urlStateReady = true;
