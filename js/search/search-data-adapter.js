@@ -1,6 +1,6 @@
 /**
  * LoveBud Search Data Adapter
- * v20260512-1058-2
+ * v20260616-2534-1
  *
  * Data processing layer: transforms raw memories/trees into tree view models.
  * UI-agnostic - focuses on data transformation only.
@@ -8,6 +8,10 @@
 
 (function() {
     'use strict';
+
+    function getPublicTreeAdapter() {
+        return window.LoveTreePublicTreeAdapter || null;
+    }
 
     function firstStringValue(source, keys) {
         if (!source) return '';
@@ -35,23 +39,51 @@
         return '';
     }
 
+    function canonicalizeSourceUrl(sourceUrl) {
+        const Adapter = getPublicTreeAdapter();
+        if (Adapter && typeof Adapter.canonicalizeYouTubeSourceUrl === 'function') {
+            return Adapter.canonicalizeYouTubeSourceUrl(sourceUrl) || '';
+        }
+        return String(sourceUrl || '').trim();
+    }
+
+    function canonicalizeThumbnailUrl(thumbnailUrl, fallbackSourceUrl) {
+        const Adapter = getPublicTreeAdapter();
+        if (Adapter && typeof Adapter.canonicalizeYouTubeThumbnailUrl === 'function') {
+            return Adapter.canonicalizeYouTubeThumbnailUrl(thumbnailUrl, fallbackSourceUrl) || '';
+        }
+        return String(thumbnailUrl || '').trim();
+    }
+
     function normalizePublicMemory(memory) {
         if (!memory || typeof memory !== 'object') return memory;
         const explicitSourceUrl = firstStringValue(memory, [
             'sourceUrl',
             'sourceURL',
+            'source_url',
             'videoUrl',
             'videoURL',
+            'video_url',
             'mediaUrl',
             'mediaURL',
+            'media_url',
             'url',
             'linkUrl',
-            'linkURL'
+            'linkURL',
+            'link_url'
         ]);
-        const thumbnail = firstStringValue(memory, ['thumbnail', 'thumbnailUrl', 'thumbnailURL', 'imageUrl', 'imageURL']);
-        const youtubeId = getYouTubeIdFromThumbnail(thumbnail);
-        const sourceUrl = explicitSourceUrl || (youtubeId ? `https://www.youtube.com/watch?v=${encodeURIComponent(youtubeId)}` : '');
-        return sourceUrl ? { ...memory, sourceUrl } : memory;
+        const rawThumbnail = firstStringValue(memory, ['thumbnail', 'thumbnailUrl', 'thumbnailURL', 'thumbnail_url', 'imageUrl', 'imageURL', 'image_url']);
+        const youtubeId = getYouTubeIdFromThumbnail(rawThumbnail);
+        const inferredSourceUrl = youtubeId ? `https://www.youtube.com/watch?v=${encodeURIComponent(youtubeId)}` : '';
+        const sourceUrl = canonicalizeSourceUrl(explicitSourceUrl || inferredSourceUrl);
+        const thumbnail = canonicalizeThumbnailUrl(rawThumbnail, sourceUrl);
+
+        if (!sourceUrl && !thumbnail) return memory;
+        return {
+            ...memory,
+            sourceUrl,
+            thumbnail
+        };
     }
 
     function filterPublicMemories(memories) {
@@ -105,6 +137,19 @@
         return [...new Set(allTags)].slice(0, 3);
     }
 
+    function getRepresentativeMedia(tree, firstMemory) {
+        const rawThumbnail = firstStringValue(firstMemory, ['thumbnail', 'thumbnailUrl', 'thumbnailURL', 'thumbnail_url']) ||
+            firstStringValue(tree, ['representativeThumbnail', 'representative_thumbnail', 'thumbnail', 'thumbnailUrl', 'thumbnail_url']);
+        const rawSourceUrl = firstStringValue(firstMemory, ['sourceUrl', 'sourceURL', 'source_url', 'videoUrl', 'video_url', 'url']) ||
+            firstStringValue(tree, ['representativeSourceUrl', 'representative_source_url', 'representativeMemorySourceUrl', 'representative_memory_source_url', 'sourceUrl', 'source_url']);
+
+        const sourceUrl = canonicalizeSourceUrl(rawSourceUrl);
+        return {
+            thumbnail: canonicalizeThumbnailUrl(rawThumbnail, sourceUrl),
+            sourceUrl
+        };
+    }
+
     function buildTreeData(memories, trees) {
         if (!Array.isArray(trees)) return [];
         const validMemories = filterPublicMemories(memories);
@@ -122,14 +167,15 @@
             const timeRange = calculateTimeRange(sortedMems);
             const theme = extractTheme(sortedMems);
             const stage = estimateStage(memoryCount);
+            const representativeMedia = getRepresentativeMedia(tree, sortedMems[0]);
             return {
                 ...tree,
                 memories: sortedMems,
                 memoryCount: memoryCount,
                 emotionTags: emotionTags,
                 timeRange: timeRange,
-                representativeThumbnail: sortedMems[0]?.thumbnail || '',
-                representativeSourceUrl: sortedMems[0]?.sourceUrl || '',
+                representativeThumbnail: representativeMedia.thumbnail,
+                representativeSourceUrl: representativeMedia.sourceUrl,
                 theme: theme,
                 stage: stage
             };
@@ -165,7 +211,10 @@
         _calculateTimeRange: calculateTimeRange,
         _collectEmotionTags: collectEmotionTags,
         _normalizePublicMemory: normalizePublicMemory,
-        _getYouTubeIdFromThumbnail: getYouTubeIdFromThumbnail
+        _getRepresentativeMedia: getRepresentativeMedia,
+        _getYouTubeIdFromThumbnail: getYouTubeIdFromThumbnail,
+        _canonicalizeThumbnailUrl: canonicalizeThumbnailUrl,
+        _canonicalizeSourceUrl: canonicalizeSourceUrl
     };
 
 })();
