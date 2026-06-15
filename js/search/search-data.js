@@ -1,14 +1,12 @@
 /**
  * LoveBud Search Data Loading Module
- * v20260513-1143-2
+ * v20260616-2539-1
  *
  * Extracted from js/search.js (orchestrator).
- * Owns: loadPublicTrees, loadGrowingTrees, hydrateSelectedTreePreview
+ * Owns: loadPublicTrees, hydrateSelectedTreePreview
  *
  * Contract:
  * - window.apiClient.getPublicTrees / getPublicTreePreview
- * - window.LoveTreeBaseApiFetch.apiFetch
- * - window.LoveTreePublicTreeAdapter.buildPublicTreeSummaryModels
  * - window.LoveBudCache (optional)
  *
  * None of the above contracts are modified here.
@@ -190,48 +188,10 @@
             }
         }
 
-        // ── Load growing trees (secondary section) ─────────────────────────────
-        async function loadGrowingTrees() {
-            if (!window.LoveTreeBaseApiFetch || typeof window.LoveTreeBaseApiFetch.apiFetch !== 'function') return;
-
-            // Show loading state immediately
-            state.growingLoading = true;
-            state.growingError = null;
-            if (callbacks.renderGrowingLoading) callbacks.renderGrowingLoading();
-
-            try {
-                const apiResponse = await window.LoveTreeBaseApiFetch.apiFetch('/community/growing-trees?limit=3');
-                const rawTrees = Array.isArray(apiResponse)
-                    ? apiResponse
-                    : (apiResponse?.data || []);
-                const baseModels = window.LoveTreePublicTreeAdapter.buildPublicTreeSummaryModels(rawTrees);
-                state.growingTrees = baseModels.map((tree, index) => {
-                    const raw = rawTrees[index]?.data || rawTrees[index] || {};
-                    const rawEmotionTags = Array.isArray(raw.emotionTags)
-                        ? raw.emotionTags
-                        : (Array.isArray(raw.emotion_tags) ? raw.emotion_tags : []);
-                    return {
-                        ...tree,
-                        emotionTags: rawEmotionTags.filter(Boolean).slice(0, 3),
-                        timeRange: raw.timeRange || raw.time_range || tree.timeRange
-                    };
-                });
-
-                state.growingLoading = false;
-                callbacks.renderGrowingResults();
-            } catch (error) {
-                state.growingLoading = false;
-                state.growingError = error;
-                console.warn('[search/data] growing trees load failed:', error.message);
-                if (callbacks.renderGrowingError) callbacks.renderGrowingError();
-            }
-        }
-
         return {
             dedupeTreesById,
             hydrateSelectedTreePreview,
-            loadPublicTrees,
-            loadGrowingTrees
+            loadPublicTrees
         };
     }
 
