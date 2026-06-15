@@ -94,6 +94,7 @@
             summary: document.getElementById('myTreesHubSummary'),
             actions: document.getElementById('myTreesHubActions'),
             openBtn: document.getElementById('myTreesHubOpenBtn'),
+            editBtn: document.getElementById('myTreesHubEditBtn'),
             noMoments: document.getElementById('myTreesHubNoMoments')
         };
     }
@@ -224,15 +225,19 @@
                 : i18nHub('', '트리', 'Tree');
         }
 
-        /* ── Update open button href ── */
+        /* ── Update action buttons href ── */
+        var basePath = '';
+        if (typeof window.LoveBudPath !== 'undefined' && window.LoveBudPath.getBasePath) {
+            basePath = window.LoveBudPath.getBasePath();
+        } else {
+            basePath = window.location.pathname.indexOf('/pages/') !== -1 ? '' : 'pages/';
+        }
+
         if (els.openBtn && tree && tree.id) {
-            var basePath = '';
-            if (typeof window.LoveBudPath !== 'undefined' && window.LoveBudPath.getBasePath) {
-                basePath = window.LoveBudPath.getBasePath();
-            } else {
-                basePath = window.location.pathname.indexOf('/pages/') !== -1 ? '' : 'pages/';
-            }
-            els.openBtn.href = basePath + 'editor?treeId=' + encodeURIComponent(tree.id);
+            els.openBtn.href = basePath + 'view.html?treeId=' + encodeURIComponent(tree.id) + '&from=my-trees';
+        }
+        if (els.editBtn && tree && tree.id) {
+            els.editBtn.href = basePath + 'editor?treeId=' + encodeURIComponent(tree.id) + '&from=my-trees';
         }
 
         /* ── Tree title ── */
@@ -322,15 +327,14 @@
         if (els.actions) {
             els.actions.hidden = false;
             if (els.openBtn && tree && tree.id) {
-                var basePath = '';
-                if (typeof window.LoveBudPath !== 'undefined' && window.LoveBudPath.getBasePath) {
-                    basePath = window.LoveBudPath.getBasePath();
-                } else {
-                    basePath = window.location.pathname.indexOf('/pages/') !== -1 ? '' : 'pages/';
-                }
-                els.openBtn.href = basePath + 'editor?treeId=' + encodeURIComponent(tree.id);
-                els.openBtn.innerHTML = '<span class="material-symbols-outlined">account_tree</span> ' +
-                    escapeHtml(i18nHub('', '트리 열기', 'Open tree'));
+                els.openBtn.href = basePath + 'view.html?treeId=' + encodeURIComponent(tree.id) + '&from=my-trees';
+                els.openBtn.innerHTML = '<span class="material-symbols-outlined">visibility</span> ' +
+                    escapeHtml(i18nHub('', '감상하기', 'View'));
+            }
+            if (els.editBtn && tree && tree.id) {
+                els.editBtn.href = basePath + 'editor?treeId=' + encodeURIComponent(tree.id) + '&from=my-trees';
+                els.editBtn.innerHTML = '<span class="material-symbols-outlined">edit</span> ' +
+                    escapeHtml(i18nHub('', '편집하기', 'Edit'));
             }
         }
     }
@@ -380,16 +384,21 @@
 
         if (els.actions) {
             els.actions.hidden = false;
+            var basePath = '';
+            if (typeof window.LoveBudPath !== 'undefined' && window.LoveBudPath.getBasePath) {
+                basePath = window.LoveBudPath.getBasePath();
+            } else {
+                basePath = window.location.pathname.indexOf('/pages/') !== -1 ? '' : 'pages/';
+            }
             if (els.openBtn && tree && tree.id) {
-                var basePath = '';
-                if (typeof window.LoveBudPath !== 'undefined' && window.LoveBudPath.getBasePath) {
-                    basePath = window.LoveBudPath.getBasePath();
-                } else {
-                    basePath = window.location.pathname.indexOf('/pages/') !== -1 ? '' : 'pages/';
-                }
-                els.openBtn.href = basePath + 'editor?treeId=' + encodeURIComponent(tree.id);
-                els.openBtn.innerHTML = '<span class="material-symbols-outlined">account_tree</span> ' +
-                    escapeHtml(i18nHub('', '트리 열기', 'Open tree'));
+                els.openBtn.href = basePath + 'view.html?treeId=' + encodeURIComponent(tree.id) + '&from=my-trees';
+                els.openBtn.innerHTML = '<span class="material-symbols-outlined">visibility</span> ' +
+                    escapeHtml(i18nHub('', '감상하기', 'View'));
+            }
+            if (els.editBtn && tree && tree.id) {
+                els.editBtn.href = basePath + 'editor?treeId=' + encodeURIComponent(tree.id) + '&from=my-trees';
+                els.editBtn.innerHTML = '<span class="material-symbols-outlined">edit</span> ' +
+                    escapeHtml(i18nHub('', '편집하기', 'Edit'));
             }
         }
     }

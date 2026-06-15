@@ -2,6 +2,9 @@
 
 .my-trees-hub-actions {
     margin-top: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
 }
 
 .my-trees-hub-open-btn {
@@ -10,7 +13,6 @@
     justify-content: center;
     width: 100%;
     min-height: 54px;
-    margin-top: 20px;
     border: 1px solid rgba(144, 73, 81, 0.16);
     box-shadow: 0 16px 28px rgba(144, 73, 81, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.28);
     padding: 14px 24px;
@@ -35,5 +37,38 @@
 }
 
 .my-trees-hub-open-btn .material-symbols-outlined {
+    font-size: 16px;
+}
+
+.my-trees-hub-edit-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-height: 54px;
+    border: 1px solid var(--primary);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    padding: 14px 24px;
+    background: transparent;
+    color: var(--primary);
+    border-radius: 999px;
+    font-weight: 800;
+    font-size: 14px;
+    cursor: pointer;
+    text-decoration: none;
+    gap: 8px;
+    transition: background 0.2s ease, transform 0.15s ease, color 0.2s ease;
+}
+
+.my-trees-hub-edit-btn:hover {
+    background: rgba(144, 73, 81, 0.05);
+    transform: translateY(-1px);
+}
+
+.my-trees-hub-edit-btn:active {
+    transform: translateY(0);
+}
+
+.my-trees-hub-edit-btn .material-symbols-outlined {
     font-size: 16px;
 }

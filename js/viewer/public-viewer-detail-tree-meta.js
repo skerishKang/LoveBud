@@ -8,6 +8,16 @@
             showToast
         } = deps;
 
+        const getCurrentUserId = () => {
+            if (window.firebase && firebase.auth && firebase.auth().currentUser) {
+                return firebase.auth().currentUser.uid;
+            }
+            const cached = window.LoveTreeBaseApiFetch && typeof window.LoveTreeBaseApiFetch.getCachedTokenRecord === 'function'
+                ? window.LoveTreeBaseApiFetch.getCachedTokenRecord()
+                : null;
+            return cached ? cached.uid : null;
+        };
+
         const createPillButton = ({ label, icon, tone = 'soft' }) => {
             const btn = document.createElement('button');
             btn.type = 'button';
@@ -74,7 +84,8 @@
             visInfo,
             isPublic,
             countLabel,
-            shareButtonEl = null
+            shareButtonEl = null,
+            editButtonEl = null
         }) => {
             const wrap = document.createElement('div');
             wrap.style.padding = '20px 20px 18px';
@@ -166,6 +177,7 @@
             actionsRow.style.paddingTop = '2px';
 
             if (shareButtonEl) actionsRow.appendChild(shareButtonEl);
+            if (editButtonEl) actionsRow.appendChild(editButtonEl);
 
             if (actionsRow.children.length > 0) {
                 wrap.appendChild(actionsRow);
@@ -200,6 +212,22 @@
                 shareBtn = createShareTreeButton();
             }
 
+            let editBtn = null;
+            const currentUserId = getCurrentUserId();
+            const ownerId = currentTree.ownerId || currentTree.owner_id;
+            const isEditorPage = window.location.pathname.indexOf('editor') !== -1;
+            if (ownerId && currentUserId && ownerId === currentUserId && !isEditorPage) {
+                editBtn = createPillButton({
+                    label: formatI18nText('edit_tree', '내 트리 편집'),
+                    icon: 'edit',
+                    tone: 'primary'
+                });
+                editBtn.addEventListener('click', () => {
+                    var basePath = window.location.pathname.indexOf('/pages/') !== -1 ? '' : 'pages/';
+                    window.location.href = window.location.origin + '/' + basePath + 'editor?treeId=' + encodeURIComponent(currentTree.id) + '&from=view';
+                });
+            }
+
             return {
                 displayTreeTitle,
                 visIcon,
@@ -208,7 +236,8 @@
                 isPublic,
                 countLabel: localBadgeText ? `${treeCountLabel} · ${localBadgeText}` : treeCountLabel,
                 shareButtonEl: shareBtn,
-                shareBtn
+                shareBtn,
+                editButtonEl: editBtn
             };
         };
 
@@ -223,7 +252,8 @@
                 visInfo: model.visInfo,
                 isPublic: model.isPublic,
                 countLabel: model.countLabel,
-                shareButtonEl: model.shareButtonEl
+                shareButtonEl: model.shareButtonEl,
+                editButtonEl: model.editButtonEl
             }));
 
             if (model.shareBtn) {
