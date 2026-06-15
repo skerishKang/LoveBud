@@ -112,7 +112,11 @@
     const states = isPlainObject(initialState.states) ? initialState.states : initialState.byId;
     if (isPlainObject(states)) {
       return Object.keys(states)
-        .map((id) => normalizeAction({ suggestionId: id, state: states[id] }))
+        .map((id) => {
+          const rawState = states[id];
+          const stateValue = isPlainObject(rawState) ? (rawState.state || rawState.reviewState || '') : rawState;
+          return normalizeAction({ suggestionId: id, state: stateValue });
+        })
         .filter(Boolean);
     }
 

@@ -179,6 +179,54 @@ test('state is JSON-serializable plain data', () => {
   assert.equal(JSON.stringify(roundTripped.byId.s1.suggestion.evidenceRefs[0]), JSON.stringify(state.byId.s1.suggestion.evidenceRefs[0]));
 });
 
+test('rehydrate from previous full state preserves accepted/dismissed decisions', () => {
+  const suggestions = sampleSuggestions();
+  const state = helper.createMemoryAtlasSuggestionReviewState(suggestions);
+  const afterAccept = helper.applyMemoryAtlasSuggestionReviewAction(state, { suggestionId: 's1', type: 'accept' });
+  const afterDismiss = helper.applyMemoryAtlasSuggestionReviewAction(afterAccept, { suggestionId: 's2', type: 'dismiss' });
+
+  const rehydrated = helper.createMemoryAtlasSuggestionReviewState(suggestions, afterDismiss);
+  const visible = helper.getVisibleMemoryAtlasSuggestions(rehydrated);
+
+  assert.equal(rehydrated.byId.s1.state, 'accepted', 'accepted preserved');
+  assert.equal(rehydrated.byId.s2.state, 'dismissed', 'dismissed preserved');
+  assert.equal(JSON.stringify(visible.map((item) => item.id)), JSON.stringify(['s1']));
+  assert.equal(helper.summarizeMemoryAtlasSuggestionReviewState(rehydrated).accepted, 1);
+  assert.equal(helper.summarizeMemoryAtlasSuggestionReviewState(rehydrated).dismissed, 1);
+});
+
+test('rehydrate from string-only initialState still works', () => {
+  const suggestions = sampleSuggestions();
+  const state = helper.createMemoryAtlasSuggestionReviewState(suggestions, { states: { s1: 'accepted', s2: 'dismissed' } });
+
+  assert.equal(state.byId.s1.state, 'accepted');
+  assert.equal(state.byId.s2.state, 'dismissed');
+
+  const visible = helper.getVisibleMemoryAtlasSuggestions(state);
+  assert.equal(JSON.stringify(visible.map((item) => item.id)), JSON.stringify(['s1']));
+});
+
+test('rehydrate with unknown object shape falls back to previewed', () => {
+  const suggestions = sampleSuggestions();
+  const state = helper.createMemoryAtlasSuggestionReviewState(suggestions, { byId: { s1: { unknown: true }, s2: { reviewState: 'accepted' } } });
+
+  assert.equal(state.byId.s1.state, 'previewed', 'unknown shape falls back');
+  assert.equal(state.byId.s2.state, 'accepted', 'reviewState extracted from object');
+});
+
+test('rehydrate does not mutate original suggestions or initialState', () => {
+  const suggestions = sampleSuggestions();
+  const state = helper.createMemoryAtlasSuggestionReviewState(suggestions);
+  const after = helper.applyMemoryAtlasSuggestionReviewAction(state, { suggestionId: 's1', type: 'accept' });
+  const beforeSuggestions = clone(suggestions);
+  const beforeState = clone(after);
+
+  helper.createMemoryAtlasSuggestionReviewState(sampleSuggestions(), after);
+
+  assert.deepEqual(suggestions, beforeSuggestions, 'original suggestions not mutated');
+  assert.equal(JSON.stringify(after), JSON.stringify(beforeState), 'previous state not mutated');
+});
+
 test('helper source stays pure and avoids persistence, network, provider, and publication markers', () => {
   assert.doesNotMatch(helperSource, /localStorage/);
   assert.doesNotMatch(helperSource, /sessionStorage/);
