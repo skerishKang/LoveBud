@@ -55,6 +55,7 @@
 | [SELECTED_MOMENT_REACTION_PLACEMENT_CONTRACT.md](SELECTED_MOMENT_REACTION_PLACEMENT_CONTRACT.md) | Editor detail panel selected moment reaction summary placement 및 data grammar 계약 (#1047) |
 | [SHARED_TREE_SUMMARY_CONTRACT.md](SHARED_TREE_SUMMARY_CONTRACT.md) | Browse/My Trees/Editor/Public Viewer/Tree Insights 간 shared Tree Summary grammar 및 data boundary 계약 (#1048) |
 | [VISIBILITY_AND_PRIVATE_STORAGE_POLICY_REVIEW.md](VISIBILITY_AND_PRIVATE_STORAGE_POLICY_REVIEW.md) | visibility/private storage 정책 검토 |
+| [lovebud-editor-arrange-rethread-product-contract.md](lovebud-editor-arrange-rethread-product-contract.md) | #2471 editor canvas arrange/rethread product boundary — arrange는 visual-only saved edge 불변, rethread는 destructive preview/confirm 필수, UX policy, implementation gate |
 
 ## Canonical policy highlights
 
@@ -87,6 +88,10 @@ Editor and read-only viewer layout direction is vertical tree-growth, not a plai
 ## Relationship hints highlights
 
 Relationship hints are optional review-before-save suggestions, not automatic hidden edges. Manual tree/canvas editing remains the source of truth; suggested links must be visually distinct from saved links; users must accept or dismiss hints explicitly; dismissed hints must not become saved relationships; and this planning slice includes no Scout/live AI/provider/fetch/network work. The #2456 UX prototype plan defines a non-saving prototype with dashed/dotted/provisional visual language, future accept/dismiss affordance placement, and no-runtime/no-live-provider boundaries. The #2458 state machine contract locks the exact hint states, allowed/forbidden transitions, non-saved suggestion states, and explicit save/confirm boundary.
+
+## Arrange/rethread highlights
+
+Arrange and rethread are two distinct families of editor moment-order controls. Arrange is visual-only canvas layout that must not mutate saved parent/child edges. Rethread modifies saved LoveTree flow/edge structure and requires preview and explicit confirmation. The #2471 product contract locks this boundary: arrange is safe and reversible, rethread is destructive and structural. No runtime arrange/rethread UI may be implemented without this contract. "날짜순으로 다시 잇기" requires preview-before-apply.
 
 ## Social model highlights
 
@@ -144,24 +149,25 @@ Strong primary CTAs require Ready status and valid runtime verification when Aut
 14. **lovebud-relationship-hints-review-before-save-plan.md** — #2454 editor/canvas relationship hints review-before-save boundary
 15. **lovebud-relationship-hints-ux-prototype-plan.md** — #2456 non-saving relationship hints UX prototype plan
 16. **lovebud-relationship-hints-state-machine-contract.md** — #2458 relationship hints state machine contract
-17. **BROWSE_TREE_FIRST_DISCOVERY_PLAN.md** — Browse tree-first discovery와 viewer route semantics 계획
-18. **PUBLIC_VIEWER_SOCIAL_PLACEHOLDER_PLAN.md** — public viewer social placeholder 배치 및 phasing 계획
-19. **TREE_MOMENT_SOCIAL_MODEL.md** — tree-level / moment-level social scope, permissions, moderation, data model planning
-20. **TREE_LEVEL_COMMENTS_READ_CONTRACT.md** — tree-level comments read scope, parent-tree guard, public-safe response, empty/error state contract
-21. **MOMENT_LEVEL_COMMENTS_READ_CONTRACT.md** — moment-level comments read scope, parent-tree guard, target-moment guard, public-safe response, empty/error state contract
-22. **V01_CTA_EXPOSURE_POLICY.md** — v0.1 unfinished/partial action 노출 기준과 CTA readiness 분류 정책
-23. **MOMENT_TIMELINE_PLAN.md** — cue-based Moment Timeline 계획
-24. **YOUTUBE_SEGMENT_PLAYER_POC_SCOPE.md** — YouTube segment player PoC scope and verification criteria
-25. **YOUTUBE_SEGMENT_PLAYER_POC_TEST_MATRIX.md** — YouTube segment player PoC test matrix and browser verification requirements
-26. **YOUTUBE_SEGMENT_PLAYER_POC_RUNTIME_NOTES.md** — YouTube segment player PoC runtime observations and limitations
-27. **YOUTUBE_SEGMENT_PLAYER_POC_BROWSER_VERIFICATION.md** — YouTube segment player PoC browser verification evidence and feasibility decision
-28. **MOMENT_CAPTURE_UI_DESIGN.md** — Moment capture UI flow 설계
-29. **MOMENT_TIMELINE_REORDER_DESIGN.md** — Moment Timeline reorder / sequence editor 설계
-30. **UI_COPY_DIET_GUIDE.md** — 전역 UI 카피 다이어트 기준
-31. **MVP_SCOPE.md** — MVP 범위 및 In/Out of Scope
-32. **USER_FLOW.md** — 사용자 여정 및 핵심 플로우
-33. **PRODUCT_BRIEF.md** — 현재 실행 기준 요약
-34. **필요시 DATA_NAMING_RULE.md, READONLY_SHARE_SCOPE.md**
+17. **lovebud-editor-arrange-rethread-product-contract.md** — #2471 editor canvas arrange/rethread product boundary — arrange vs rethread 정의, saved edge boundary, preview/confirm policy, implementation gate
+18. **BROWSE_TREE_FIRST_DISCOVERY_PLAN.md** — Browse tree-first discovery와 viewer route semantics 계획
+19. **PUBLIC_VIEWER_SOCIAL_PLACEHOLDER_PLAN.md** — public viewer social placeholder 배치 및 phasing 계획
+20. **TREE_MOMENT_SOCIAL_MODEL.md** — tree-level / moment-level social scope, permissions, moderation, data model planning
+21. **TREE_LEVEL_COMMENTS_READ_CONTRACT.md** — tree-level comments read scope, parent-tree guard, public-safe response, empty/error state contract
+22. **MOMENT_LEVEL_COMMENTS_READ_CONTRACT.md** — moment-level comments read scope, parent-tree guard, target-moment guard, public-safe response, empty/error state contract
+23. **V01_CTA_EXPOSURE_POLICY.md** — v0.1 unfinished/partial action 노출 기준과 CTA readiness 분류 정책
+24. **MOMENT_TIMELINE_PLAN.md** — cue-based Moment Timeline 계획
+25. **YOUTUBE_SEGMENT_PLAYER_POC_SCOPE.md** — YouTube segment player PoC scope and verification criteria
+26. **YOUTUBE_SEGMENT_PLAYER_POC_TEST_MATRIX.md** — YouTube segment player PoC test matrix and browser verification requirements
+27. **YOUTUBE_SEGMENT_PLAYER_POC_RUNTIME_NOTES.md** — YouTube segment player PoC runtime observations and limitations
+28. **YOUTUBE_SEGMENT_PLAYER_POC_BROWSER_VERIFICATION.md** — YouTube segment player PoC browser verification evidence and feasibility decision
+29. **MOMENT_CAPTURE_UI_DESIGN.md** — Moment capture UI flow 설계
+30. **MOMENT_TIMELINE_REORDER_DESIGN.md** — Moment Timeline reorder / sequence editor 설계
+31. **UI_COPY_DIET_GUIDE.md** — 전역 UI 카피 다이어트 기준
+32. **MVP_SCOPE.md** — MVP 범위 및 In/Out of Scope
+33. **USER_FLOW.md** — 사용자 여정 및 핵심 플로우
+34. **PRODUCT_BRIEF.md** — 현재 실행 기준 요약
+35. **필요시 DATA_NAMING_RULE.md, READONLY_SHARE_SCOPE.md**
 
 ## 참조
 - 전체 문서 인덱스: `../doc_index.md`
