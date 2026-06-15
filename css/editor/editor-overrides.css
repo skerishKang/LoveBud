@@ -384,16 +384,14 @@ body .editor-memory-mode-chip.is-active {
     margin-right: auto;
 }
 
-/* Editor selected moment social footer — soft inline like/comment actions */
+/* Editor selected moment social footer — soft card-like inline footer */
 .editor-moment-reactions-card {
     display: inline-flex;
     align-items: center;
-    gap: 10px;
-    min-height: 30px;
-    margin: 14px 4px 0;
-    padding: 0 4px;
-    border: 0;
-    background: transparent;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: 14px;
+    background: var(--surface-variant, #f5eae4);
     color: var(--on-surface-soft);
     font-size: 13px;
     line-height: 1.4;
@@ -402,21 +400,21 @@ body .editor-memory-mode-chip.is-active {
 .editor-moment-reaction {
     display: inline-flex;
     align-items: center;
-    gap: 5px;
-    min-height: 28px;
-    padding: 0 2px;
+    gap: 4px;
+    min-height: 26px;
+    padding: 4px 8px;
     border: 0;
     border-radius: 999px;
     background: transparent;
     color: inherit;
-    font-weight: 800;
+    font-weight: 500;
     cursor: pointer;
     transition: background-color 0.18s ease, color 0.18s ease, transform 0.18s ease;
 }
 
 .editor-moment-reaction:hover,
 .editor-moment-reaction:focus-visible {
-    background: rgba(144, 73, 81, 0.08);
+    background: rgba(144, 73, 81, 0.10);
     color: var(--primary);
 }
 
@@ -425,7 +423,7 @@ body .editor-memory-mode-chip.is-active {
 }
 
 .editor-reaction-label {
-    font-weight: 900;
+    font-weight: 600;
 }
 
 .editor-reaction-like-count,

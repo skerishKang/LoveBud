@@ -58,7 +58,7 @@ export function buildDetailViewModeTemplate() {
 
                 <div id="detailAtlasPreviewMount" class="editor-memory-atlas-preview-mount" hidden></div>
 
-                <div class="editor-moment-reactions-card" id="momentReactionsCard" aria-label="순간 반응" style="display:inline-flex;align-items:center;gap:10px;border:0;background:transparent;font-variant-numeric:tabular-nums;">
+                <div class="editor-moment-reactions-card" id="momentReactionsCard" aria-label="순간 반응" style="font-variant-numeric:tabular-nums;">
                     <button
                         type="button"
                         class="editor-moment-reaction editor-reaction-like-btn"
