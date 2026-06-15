@@ -49,7 +49,7 @@ test('tree like toggle updates active row and aggregate count safely', () => {
 });
 
 test('public tree detail can read likeCount without enabling Browse counts or sort', () => {
-  const publicLikeCountFunction = treeLikes.match(/def\s+fetch_public_tree_like_count[\s\S]*?\n\ndef\s+fetch_tree_like_summary/)[0];
+  const publicLikeCountFunction = treeLikes.match(/def\s+fetch_public_tree_like_count[\s\S]*?return\s+int\(result\.get\("like_count"\)\s+or\s+0\)/)[0];
   assert.match(modalApp, /fetch_public_tree_like_count/);
   assert.match(modalApp, /@web_app\.get\("\/modal\/trees\/\{tree_id\}"\)/);
   assert.match(modalApp, /tree\["likeCount"\]\s*=\s*fetch_public_tree_like_count\(safe_tree_id\)/);
@@ -60,7 +60,7 @@ test('public tree detail can read likeCount without enabling Browse counts or so
 });
 
 test('public like count read remains tree-level public-only read data', () => {
-  const publicLikeReadSurface = treeLikes.match(/def\s+_fetch_public_tree_for_like_count[\s\S]*?\n\ndef\s+fetch_tree_like_summary/)[0];
+  const publicLikeReadSurface = treeLikes.match(/def\s+_fetch_public_tree_for_like_count[\s\S]*?return\s+int\(result\.get\("like_count"\)\s+or\s+0\)/)[0];
   assert.match(publicLikeReadSurface, /FROM\s+trees/i);
   assert.match(publicLikeReadSurface, /visibility\s*=\s*'public'/i);
   assert.match(publicLikeReadSurface, /is_public\s*=\s+%s/i);

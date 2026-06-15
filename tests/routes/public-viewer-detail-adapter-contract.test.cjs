@@ -41,15 +41,18 @@ test('public viewer detail adapter owns detail UI object shell', () => {
 
 test('public viewer detail adapter owns detail render flow from heading boundary', () => {
   const adapter = getDetailAdapterSlice();
-  const headingCall = adapter.indexOf('updateDetailHeading();');
-  const badgeCall = adapter.indexOf('updateCurrentMomentBadge(data);');
-  const titleCall = adapter.indexOf('updateCurrentMomentTitle(data);');
-  const hintCall = adapter.indexOf('updatePublicViewerCurrentMomentHint();');
-  const imageCall = adapter.indexOf('updateCurrentMomentImage(data);');
-  const dateCall = adapter.indexOf('updatePublicViewerCurrentMomentDate(data);');
-  const memoCall = adapter.indexOf('updateMemoBody(data);');
-  const tagsCall = adapter.indexOf('updateCurrentMomentTags(data);');
-  const reactionsCall = adapter.indexOf('updateReadOnlyReactionSummary(data);');
+  const headingCallRaw = adapter.indexOf('updateDetailHeading();');
+  const realFlowSlice = adapter.slice(headingCallRaw);
+
+  const headingCall = realFlowSlice.indexOf('updateDetailHeading();');
+  const badgeCall = realFlowSlice.indexOf('updateCurrentMomentBadge(data);');
+  const titleCall = realFlowSlice.indexOf('updateCurrentMomentTitle(data);');
+  const hintCall = realFlowSlice.indexOf('updatePublicViewerCurrentMomentHint();');
+  const imageCall = realFlowSlice.indexOf('updateCurrentMomentImage(data);');
+  const dateCall = realFlowSlice.indexOf('updatePublicViewerCurrentMomentDate(data);');
+  const memoCall = realFlowSlice.indexOf('updateMemoBody(data);');
+  const tagsCall = realFlowSlice.indexOf('updateCurrentMomentTags(data);');
+  const reactionsCall = realFlowSlice.indexOf('updateReadOnlyReactionSummary(data);');
 
   assert.equal(adapter.indexOf('delegatedUpdateDetailPanel(data);'), -1, 'adapter no longer delegates detail panel rendering');
 

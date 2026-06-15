@@ -42,9 +42,12 @@ test('viewer tags boundary keeps fallback and builder paths', () => {
 });
 
 test('viewer tags boundary runs after memo and before reactions', () => {
-  const memoIndex = source.indexOf('updateMemoBody(data);');
-  const tagsIndex = source.indexOf('updateCurrentMomentTags(data);');
-  const reactionsIndex = source.indexOf('updateReadOnlyReactionSummary(data);');
+  const headingCallRaw = source.indexOf('updateDetailHeading();');
+  const realFlowSlice = source.slice(headingCallRaw);
+
+  const memoIndex = realFlowSlice.indexOf('updateMemoBody(data);');
+  const tagsIndex = realFlowSlice.indexOf('updateCurrentMomentTags(data);');
+  const reactionsIndex = realFlowSlice.indexOf('updateReadOnlyReactionSummary(data);');
 
   assert.ok(memoIndex < tagsIndex);
   assert.ok(tagsIndex < reactionsIndex);

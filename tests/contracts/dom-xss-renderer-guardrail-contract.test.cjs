@@ -156,8 +156,8 @@ const FILE_ALLOWLIST = {
     reason: 'Static i18n heading text + material icons; outerHTML read for icon preservation'
   },
   'js/my-trees/my-trees-preview-hub.js': {
-    count: 11, classification: 'safe',
-    reason: 'buildFlowStages template uses escapeHtml; material-icon badges with escapeHtml for count; i18n safeText; clear-container; static toggle buttons'
+    count: 13, classification: 'safe',
+    reason: 'buildFlowStages template uses escapeHtml; material-icon badges with escapeHtml for count; i18n safeText; clear-container; static toggle buttons; view and edit action buttons'
   },
   'js/my-trees/my-trees-preview-state.js': {
     count: 3, classification: 'safe',
@@ -178,7 +178,7 @@ const FILE_ALLOWLIST = {
     reason: 'CardRenderer.* and state.growingTrees use approved template renderers with escapeHtml; clear-container'
   },
   'js/search/index.js': {
-    count: 7, classification: 'safe',
+    count: 4, classification: 'safe',
     reason: 'CardRenderer.* and state.growingTrees use approved template renderers with escapeHtml; renderGrowingError clear-container innerHTML'
   },
   'js/search.js': {

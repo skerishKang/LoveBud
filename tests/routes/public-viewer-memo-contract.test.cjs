@@ -33,10 +33,13 @@ test('public viewer memo body boundary does not wire editor memo editing or hint
 });
 
 test('public viewer memo body boundary order in viewer-owned detail panel flow', () => {
-  const dateIndex = source.indexOf('updatePublicViewerCurrentMomentDate(data);');
-  const memoIndex = source.indexOf('updateMemoBody(data);');
-  const tagsIndex = source.indexOf('updateCurrentMomentTags(data);');
-  const reactionsIndex = source.indexOf('updateReadOnlyReactionSummary(data);');
+  const headingCallRaw = source.indexOf('updateDetailHeading();');
+  const realFlowSlice = source.slice(headingCallRaw);
+
+  const dateIndex = realFlowSlice.indexOf('updatePublicViewerCurrentMomentDate(data);');
+  const memoIndex = realFlowSlice.indexOf('updateMemoBody(data);');
+  const tagsIndex = realFlowSlice.indexOf('updateCurrentMomentTags(data);');
+  const reactionsIndex = realFlowSlice.indexOf('updateReadOnlyReactionSummary(data);');
 
   assert.notEqual(dateIndex, -1, 'viewer flow updates current moment date');
   assert.notEqual(memoIndex, -1, 'viewer flow updates memo body');

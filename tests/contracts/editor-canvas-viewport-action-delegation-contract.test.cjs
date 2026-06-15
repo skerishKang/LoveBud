@@ -2,8 +2,8 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const test = require('node:test');
 
-const canvasSource = fs.readFileSync('js/editor/editor-canvas.js', 'utf8');
-const viewportSource = fs.readFileSync('js/editor/editor-canvas-viewport.js', 'utf8');
+const canvasSource = fs.readFileSync('js/editor/editor-canvas.js', 'utf8').replace(/\r\n/g, '\n');
+const viewportSource = fs.readFileSync('js/editor/editor-canvas-viewport.js', 'utf8').replace(/\r\n/g, '\n');
 
 function indexOfRequired(source, needle) {
   const index = source.indexOf(needle);

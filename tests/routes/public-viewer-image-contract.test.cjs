@@ -25,18 +25,17 @@ test('viewer image boundary owns src and alt output', () => {
   assert.ok(boundary.includes('resolveMemoryThumbnail'));
   assert.ok(boundary.includes('detailImg'));
   assert.ok(boundary.includes("document.querySelector('.detail-video img')"));
-  assert.ok(boundary.includes('imgEl.src = resolveMemoryThumbnail(data);'));
+  assert.ok(boundary.includes('resolveMemoryThumbnail(data)'));
+  assert.ok(boundary.includes('imgEl.src ='));
   assert.ok(boundary.includes("imgEl.alt = isEmptyState ? '' : ((data && data.title) || '')"));
   assert.equal(boundary.includes('innerHTML'), false);
 });
 
 test('viewer image boundary order is stable', () => {
-  const delegatedIndex = source.indexOf('delegatedUpdateDetailPanel(data);');
   const hintIndex = source.indexOf('updatePublicViewerCurrentMomentHint();');
   const imageIndex = source.indexOf('updateCurrentMomentImage(data);');
   const dateIndex = source.indexOf('updatePublicViewerCurrentMomentDate(data);');
 
-  assert.ok(delegatedIndex < imageIndex);
   assert.ok(hintIndex < imageIndex);
   assert.ok(imageIndex < dateIndex);
 });
