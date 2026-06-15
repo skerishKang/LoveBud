@@ -126,3 +126,219 @@ test('public-viewer-detail-tree-meta runtime owner edit button checks', () => {
 
   assert.equal(modelC.editButtonEl, null, 'Logged-out visitor must NOT see edit button');
 });
+
+test('public-viewer-detail-tree-meta runtime async owner verification checks', async () => {
+  const metaSource = read('js/viewer/public-viewer-detail-tree-meta.js');
+
+  function createMockElement(tagName = 'div') {
+    const children = [];
+    const classList = {
+      add: () => {},
+      remove: () => {}
+    };
+    const dataset = {};
+    return {
+      tagName: tagName.toUpperCase(),
+      style: {},
+      children,
+      classList,
+      dataset,
+      appendChild(c) { children.push(c); },
+      replaceChildren() { children.length = 0; },
+      addEventListener() {},
+      querySelector(sel) {
+        if (sel === 'div:last-child') {
+          return this;
+        }
+        return null;
+      }
+    };
+  }
+
+  let apiFetchUrlCalled = null;
+  let apiFetchResolveValue = null;
+
+  const context = {
+    window: {},
+    document: {
+      createElement(tag) { return createMockElement(tag); },
+      createTextNode(txt) { return { text: txt }; }
+    },
+    LoveTreeBaseApiFetch: {
+      getCachedTokenRecord() {
+        return { uid: 'user-owner' };
+      },
+      apiFetch(url) {
+        apiFetchUrlCalled = url;
+        return Promise.resolve(apiFetchResolveValue);
+      }
+    },
+    location: {
+      pathname: '/pages/view.html',
+      origin: 'http://localhost'
+    }
+  };
+  context.window = context;
+
+  vm.createContext(context);
+  vm.runInContext(metaSource, context);
+
+  const factory = context.createPublicViewerDetailTreeMetaBoundary || context.window.createPublicViewerDetailTreeMetaBoundary;
+  const deps = {
+    i18n: (k) => k,
+    formatI18nText: (k, fallback) => fallback,
+    resolveTreeTitleText: (t) => t || 'LoveTree',
+    createInlineIcon: () => createMockElement('span'),
+    showToast: () => {}
+  };
+
+  const boundary = factory(deps);
+
+  apiFetchResolveValue = { id: 'tree-1', ownerId: 'user-owner' };
+
+  const modelA = boundary.buildTreeMetaRenderModel({
+    currentTree: { id: 'tree-1', title: 'My Tree' },
+    treeState: { totalMomentCount: 5, hasMoments: true },
+    data: { id: 'tree-1' },
+    isEmptyState: false,
+    localSaveMode: false
+  });
+
+  assert.equal(modelA.editButtonEl, null, 'editButtonEl must be null initially since ownerId is missing in publicRead');
+
+  const mountA = createMockElement('div');
+  boundary.renderTreeMetaBoundary(mountA, modelA, 'tree-1', { id: 'tree-1' });
+
+  assert.equal(apiFetchUrlCalled, '/trees/tree-1');
+
+  await new Promise(resolve => setTimeout(resolve, 0));
+
+  const block = mountA.children[0];
+  assert.ok(block.children.some(c => c.className === 'vv-edit-btn-dynamic'), 'Dynamic edit button must be appended on successful verification');
+
+  apiFetchUrlCalled = null;
+  apiFetchResolveValue = { id: 'tree-1', ownerId: 'user-other' };
+
+  const modelB = boundary.buildTreeMetaRenderModel({
+    currentTree: { id: 'tree-1', title: 'My Tree' },
+    treeState: { totalMomentCount: 5, hasMoments: true },
+    data: { id: 'tree-1' },
+    isEmptyState: false,
+    localSaveMode: false
+  });
+
+  const mountB = createMockElement('div');
+  boundary.renderTreeMetaBoundary(mountB, modelB, 'tree-1', { id: 'tree-1' });
+
+  await new Promise(resolve => setTimeout(resolve, 0));
+
+  const blockB = mountB.children[0];
+  assert.equal(blockB.children.some(c => c.className === 'vv-edit-btn-dynamic'), false, 'Non-owner must not see dynamic edit button');
+});
+
+test('My LoveTrees routing contract for public and private trees', () => {
+  const uiSource = read('js/my-trees/my-trees-ui.js');
+  const eventsSource = read('js/my-trees/my-trees-card-events.js');
+
+  function createMockElement(tagName = 'div') {
+    const attrs = {};
+    const dataset = {};
+    const listeners = {};
+    const children = [];
+    return {
+      tagName: tagName.toUpperCase(),
+      style: {},
+      attrs,
+      dataset,
+      listeners,
+      children,
+      setAttribute(k, v) { attrs[k] = v; },
+      getAttribute(k) { return attrs[k]; },
+      addEventListener(name, fn) {
+        if (!listeners[name]) listeners[name] = [];
+        listeners[name].push(fn);
+      },
+      appendChild(c) { children.push(c); },
+      replaceChildren() { children.length = 0; },
+      querySelector(sel) {
+        if (sel === '.tree-card-open-link') {
+          return {
+            getAttribute(k) { return attrs[k] || this[k]; },
+            addEventListener() {}
+          };
+        }
+        return null;
+      }
+    };
+  }
+
+  const context = {
+    window: {},
+    document: {
+      createElement(tag) { return createMockElement(tag); },
+      createTextNode(txt) { return { text: txt }; },
+      getElementById() { return createMockElement('div'); }
+    },
+    LoveBudPath: {
+      getBasePath() { return 'pages/'; }
+    },
+    LoveTreeBaseApiFetch: {
+      getCachedTokenRecord() { return null; }
+    },
+    location: {
+      pathname: '/pages/my-trees.html',
+      origin: 'http://localhost'
+    }
+  };
+  context.window = context;
+
+  vm.createContext(context);
+  vm.runInContext(uiSource, context);
+  vm.runInContext(eventsSource, context);
+
+  const UI = context.window.LoveBudMyTreesUI || context.LoveBudMyTreesUI;
+  assert.ok(UI && typeof UI.buildTreeCard === 'function');
+
+  const i18n = (k) => k;
+
+  const publicCard = UI.buildTreeCard({
+    id: 'tree-public-1',
+    title: 'Public Tree',
+    visibility: 'public',
+    stage: 0
+  }, { i18n });
+
+  const CardEvents = context.window.LoveBudMyTreesCardEvents;
+  const publicOpenHref = CardEvents.resolveOpenHref(publicCard, {
+    id: 'tree-public-1',
+    visibility: 'public'
+  });
+  assert.ok(publicOpenHref.includes('view.html?treeId=tree-public-1'), 'Public tree view link must target view.html');
+
+  const privateCard = UI.buildTreeCard({
+    id: 'tree-private-1',
+    title: 'Private Tree',
+    visibility: 'private',
+    stage: 0
+  }, { i18n });
+
+  const privateOpenHref = CardEvents.resolveOpenHref(privateCard, {
+    id: 'tree-private-1',
+    visibility: 'private'
+  });
+  assert.ok(privateOpenHref.includes('editor?treeId=tree-private-1'), 'Private tree view link must target editor');
+  assert.equal(privateOpenHref.includes('view.html'), false, 'Private tree view link must NOT target view.html');
+
+  const unlistedCard = UI.buildTreeCard({
+    id: 'tree-unlisted-1',
+    title: 'Unlisted Tree',
+    visibility: 'unlisted',
+    stage: 0
+  }, { i18n });
+
+  const unlistedOpenHref = CardEvents.resolveOpenHref(unlistedCard, {
+    id: 'tree-unlisted-1',
+    visibility: 'unlisted'
+  });
+  assert.ok(unlistedOpenHref.includes('editor?treeId=tree-unlisted-1'), 'Unlisted tree view link must target editor');
+});

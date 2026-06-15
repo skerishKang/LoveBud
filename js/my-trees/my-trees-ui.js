@@ -252,7 +252,10 @@
       : ((typeof window.LoveBudPath !== 'undefined' && window.LoveBudPath.getBasePath)
         ? window.LoveBudPath.getBasePath()
         : (window.location.pathname.indexOf('/pages/') !== -1 ? '' : 'pages/'));
-    var viewHref = basePath + 'view.html?treeId=' + encodeURIComponent(normalizedTree.id || '') + '&from=my-trees';
+    var isPublicTree = (normalizedTree.visibility === 'public');
+    var viewHref = isPublicTree
+      ? (basePath + 'view.html?treeId=' + encodeURIComponent(normalizedTree.id || '') + '&from=my-trees')
+      : (basePath + 'editor?treeId=' + encodeURIComponent(normalizedTree.id || '') + '&from=my-trees');
     var editHref = basePath + 'editor?treeId=' + encodeURIComponent(normalizedTree.id || '') + '&from=my-trees';
 
     var card = document.createElement('div');

@@ -234,7 +234,10 @@
         }
 
         if (els.openBtn && tree && tree.id) {
-            els.openBtn.href = basePath + 'view.html?treeId=' + encodeURIComponent(tree.id) + '&from=my-trees';
+            var isPublicTree = (tree.visibility === 'public');
+            els.openBtn.href = isPublicTree
+                ? basePath + 'view.html?treeId=' + encodeURIComponent(tree.id) + '&from=my-trees'
+                : basePath + 'editor?treeId=' + encodeURIComponent(tree.id) + '&from=my-trees';
         }
         if (els.editBtn && tree && tree.id) {
             els.editBtn.href = basePath + 'editor?treeId=' + encodeURIComponent(tree.id) + '&from=my-trees';
@@ -327,7 +330,10 @@
         if (els.actions) {
             els.actions.hidden = false;
             if (els.openBtn && tree && tree.id) {
-                els.openBtn.href = basePath + 'view.html?treeId=' + encodeURIComponent(tree.id) + '&from=my-trees';
+                var isPublicTree = (tree.visibility === 'public');
+                els.openBtn.href = isPublicTree
+                    ? basePath + 'view.html?treeId=' + encodeURIComponent(tree.id) + '&from=my-trees'
+                    : basePath + 'editor?treeId=' + encodeURIComponent(tree.id) + '&from=my-trees';
                 els.openBtn.innerHTML = '<span class="material-symbols-outlined">visibility</span> ' +
                     escapeHtml(i18nHub('', '감상하기', 'View'));
             }
@@ -391,7 +397,10 @@
                 basePath = window.location.pathname.indexOf('/pages/') !== -1 ? '' : 'pages/';
             }
             if (els.openBtn && tree && tree.id) {
-                els.openBtn.href = basePath + 'view.html?treeId=' + encodeURIComponent(tree.id) + '&from=my-trees';
+                var isPublicTree = (tree.visibility === 'public');
+                els.openBtn.href = isPublicTree
+                    ? basePath + 'view.html?treeId=' + encodeURIComponent(tree.id) + '&from=my-trees'
+                    : basePath + 'editor?treeId=' + encodeURIComponent(tree.id) + '&from=my-trees';
                 els.openBtn.innerHTML = '<span class="material-symbols-outlined">visibility</span> ' +
                     escapeHtml(i18nHub('', '감상하기', 'View'));
             }

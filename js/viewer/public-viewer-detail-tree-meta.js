@@ -245,7 +245,7 @@
             if (!treeMetaMount) return;
 
             treeMetaMount.replaceChildren();
-            treeMetaMount.appendChild(createTreeMetaBlock({
+            const block = createTreeMetaBlock({
                 displayTreeTitle: model.displayTreeTitle,
                 visIcon: model.visIcon,
                 visLabel: model.visLabel,
@@ -254,7 +254,8 @@
                 countLabel: model.countLabel,
                 shareButtonEl: model.shareButtonEl,
                 editButtonEl: model.editButtonEl
-            }));
+            });
+            treeMetaMount.appendChild(block);
 
             if (model.shareBtn) {
                 bindShareButton({
@@ -262,6 +263,39 @@
                     data,
                     treeId
                 });
+            }
+
+            const currentUserId = getCurrentUserId();
+            const isEditorPage = window.location.pathname.indexOf('editor') !== -1;
+            if (!model.editButtonEl && currentUserId && treeId && !isEditorPage) {
+                const apiFetch = window.LoveTreeBaseApiFetch && window.LoveTreeBaseApiFetch.apiFetch;
+                if (typeof apiFetch === 'function') {
+                    apiFetch('/trees/' + encodeURIComponent(treeId))
+                        .then(tree => {
+                            const ownerId = tree && (tree.ownerId || tree.owner_id);
+                            if (ownerId && ownerId === currentUserId) {
+                                const actionsRow = block.querySelector('div:last-child');
+                                if (actionsRow) {
+                                    // Check if edit button was already added dynamically to prevent duplicate appends
+                                    if (actionsRow.querySelector('.vv-edit-btn-dynamic')) return;
+                                    const editBtn = createPillButton({
+                                        label: formatI18nText('edit_tree', '내 트리 편집'),
+                                        icon: 'edit',
+                                        tone: 'primary'
+                                    });
+                                    editBtn.className = 'vv-edit-btn-dynamic';
+                                    editBtn.addEventListener('click', () => {
+                                        var basePath = window.location.pathname.indexOf('/pages/') !== -1 ? '' : 'pages/';
+                                        window.location.href = window.location.origin + '/' + basePath + 'editor?treeId=' + encodeURIComponent(treeId) + '&from=view';
+                                    });
+                                    actionsRow.appendChild(editBtn);
+                                }
+                            }
+                        })
+                        .catch(err => {
+                            console.warn('[public-viewer-detail-tree-meta] owner check failed:', err);
+                        });
+                }
             }
         };
 
