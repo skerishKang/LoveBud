@@ -39,7 +39,7 @@
 .trees-skeleton-grid {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 24px;
+    gap: 20px;
     width: 100%;
 }
 
@@ -50,7 +50,7 @@
 
 .tree-skeleton-thumb {
     position: relative;
-    height: 184px;
+    height: 168px;
     overflow: hidden;
     background:
         radial-gradient(circle at 24% 68%, rgba(144, 73, 81, 0.10), transparent 28%),
@@ -106,11 +106,11 @@
 }
 
 .tree-skeleton-info {
-    padding: 18px 18px 22px;
+    padding: 16px 16px 18px;
     display: flex;
     flex-direction: column;
     gap: 10px;
-    min-height: 114px;
+    min-height: 104px;
 }
 
 .tree-skeleton-line {
