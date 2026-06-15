@@ -62,6 +62,34 @@
     return text.slice(0, maxLength).trim() + '\u2026';
   }
 
+  function firstStringValue(source, keys) {
+    if (!source) return '';
+    for (var i = 0; i < keys.length; i++) {
+      var value = source[keys[i]];
+      if (typeof value === 'string' && value.trim()) return value.trim();
+    }
+    return '';
+  }
+
+  function getFirstMemory(tree) {
+    if (!tree) return null;
+    var list = Array.isArray(tree.memories) ? tree.memories : (Array.isArray(tree.nodes) ? tree.nodes : []);
+    if (!list.length) return null;
+    return list.slice().sort(function (a, b) {
+      var left = new Date((a && (a.createdAt || a.created_at || a.timestamp)) || 0).getTime();
+      var right = new Date((b && (b.createdAt || b.created_at || b.timestamp)) || 0).getTime();
+      return left - right;
+    })[0] || null;
+  }
+
+  function canonicalizeThumbnailUrl(thumbnailUrl, fallbackSourceUrl) {
+    var Adapter = window.LoveTreePublicTreeAdapter;
+    if (Adapter && typeof Adapter.canonicalizeYouTubeThumbnailUrl === 'function') {
+      return Adapter.canonicalizeYouTubeThumbnailUrl(thumbnailUrl, fallbackSourceUrl) || '';
+    }
+    return String(thumbnailUrl || '').trim();
+  }
+
   function getVisibilityActionLabel(tree, i18n) {
     return tree && tree.visibility === 'public'
       ? (i18n('visibility_make_private') || '비공개로 전환')
@@ -155,7 +183,12 @@
 
   function getRepresentativeThumbnail(tree) {
     if (!tree) return '';
-    return tree.representativeThumbnail || tree.representative_thumbnail || tree.thumbnail || '';
+    var firstMemory = getFirstMemory(tree);
+    var rawThumbnail = firstStringValue(tree, ['representativeThumbnail', 'representative_thumbnail', 'thumbnail', 'thumbnailUrl', 'thumbnail_url']) ||
+      firstStringValue(firstMemory, ['thumbnail', 'thumbnailUrl', 'thumbnail_url', 'imageUrl', 'image_url']);
+    var rawSourceUrl = firstStringValue(tree, ['representativeSourceUrl', 'representative_source_url', 'representativeMemorySourceUrl', 'representative_memory_source_url', 'sourceUrl', 'source_url']) ||
+      firstStringValue(firstMemory, ['sourceUrl', 'sourceURL', 'source_url', 'videoUrl', 'video_url', 'url']);
+    return canonicalizeThumbnailUrl(rawThumbnail, rawSourceUrl);
   }
 
   function getRepresentativeTextMeta(tree, i18n) {
@@ -296,6 +329,7 @@
     getRepresentativeThumbnail: getRepresentativeThumbnail,
     getRepresentativeTextMeta: getRepresentativeTextMeta,
     buildRepresentativeTextVisual: buildRepresentativeTextVisual,
-    buildTreeThumbVisual: buildTreeThumbVisual
+    buildTreeThumbVisual: buildTreeThumbVisual,
+    _canonicalizeThumbnailUrl: canonicalizeThumbnailUrl
   };
 })();
