@@ -60,6 +60,7 @@
             title: tree.title || '',
             visibility: 'public',
             stage: tree.stage || '',
+            ownerId: tree.ownerId || tree.owner_id || '',
             memoryCount: Array.isArray(rawMemories) ? rawMemories.length : 0
         };
 

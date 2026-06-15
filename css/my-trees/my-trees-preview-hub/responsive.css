@@ -114,9 +114,10 @@
         font-size: 12px;
     }
 
-    .my-trees-hub-open-btn {
+    .my-trees-hub-open-btn,
+    .my-trees-hub-edit-btn {
         min-height: 48px;
-        margin-top: 16px;
+        margin-top: 0;
         font-size: 13px;
     }
 }

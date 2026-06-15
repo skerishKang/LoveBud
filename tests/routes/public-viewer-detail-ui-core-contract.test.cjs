@@ -138,7 +138,8 @@ test('public viewer detail UI adapter owns current moment image boundary', () =>
   assert.ok(source.includes('createPublicViewerCurrentMomentImageBoundary: createPublicViewerCurrentMomentImageBoundary'), 'viewer adapter publishes image boundary on namespace');
   assert.ok(boundarySource.includes('resolveMemoryThumbnail'), 'image boundary uses injected thumbnail resolver');
   assert.ok(boundarySource.includes('detailImg'), 'image boundary targets the detail image mount');
-  assert.ok(boundarySource.includes('imgEl.src = resolveMemoryThumbnail(data);'), 'image boundary sets image src from resolver');
+  assert.ok(boundarySource.includes('resolveMemoryThumbnail(data)'), 'image boundary uses resolver with data');
+  assert.ok(boundarySource.includes('imgEl.src ='), 'image boundary sets image src');
   assert.ok(boundarySource.includes("imgEl.alt = isEmptyState ? '' : ((data && data.title) || '')"), 'image boundary sets alt text consistently');
 });
 

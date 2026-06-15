@@ -36,6 +36,13 @@
       });
     }
 
+    var editLink = card.querySelector('.tree-card-edit-link');
+    if (editLink) {
+      editLink.addEventListener('click', function (event) {
+        event.stopPropagation();
+      });
+    }
+
     return openLink;
   }
 
@@ -48,7 +55,13 @@
     var basePath = (typeof window.LoveBudPath !== 'undefined' && window.LoveBudPath.getBasePath)
       ? window.LoveBudPath.getBasePath()
       : (window.location.pathname.indexOf('/pages/') !== -1 ? '' : 'pages/');
-    return basePath + 'editor?treeId=' + encodeURIComponent((tree && tree.id) || '');
+
+    var isPublicTree = tree && (tree.visibility === 'public');
+    if (isPublicTree) {
+      return basePath + 'view.html?treeId=' + encodeURIComponent((tree && tree.id) || '') + '&from=my-trees';
+    } else {
+      return basePath + 'editor?treeId=' + encodeURIComponent((tree && tree.id) || '') + '&from=my-trees';
+    }
   }
 
   function cloneCardWithoutListeners(card) {

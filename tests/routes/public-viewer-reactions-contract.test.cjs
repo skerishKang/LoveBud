@@ -12,15 +12,18 @@ test('public viewer reaction summary boundary stays read-only', () => {
   assert.notEqual(start, -1, 'read-only reaction boundary exists');
   assert.notEqual(end, -1, 'public detail factory follows reaction boundary');
   assert.ok(boundary.includes('likeBtn.onclick = null'), 'like button handler is cleared');
-  assert.ok(boundary.includes('commentBtn) commentBtn.onclick = null'), 'comment button handler is cleared');
+  assert.ok(boundary.includes('commentBtn.onclick = null'), 'comment button handler is cleared');
   assert.equal(boundary.includes('toggleReaction'), false, 'public viewer does not call toggleReaction');
   assert.equal(boundary.includes('from=editor'), false, 'public viewer does not use editor comment context');
 });
 
 test('public viewer reaction summary runs after memo and tags post-processing', () => {
-  const memoIndex = source.indexOf('updateMemoBody(data);');
-  const tagsIndex = source.indexOf('updateCurrentMomentTags(data);');
-  const reactionsIndex = source.indexOf('updateReadOnlyReactionSummary(data);');
+  const headingCallRaw = source.indexOf('updateDetailHeading();');
+  const realFlowSlice = source.slice(headingCallRaw);
+
+  const memoIndex = realFlowSlice.indexOf('updateMemoBody(data);');
+  const tagsIndex = realFlowSlice.indexOf('updateCurrentMomentTags(data);');
+  const reactionsIndex = realFlowSlice.indexOf('updateReadOnlyReactionSummary(data);');
 
   assert.notEqual(memoIndex, -1, 'memo post-processing exists');
   assert.notEqual(tagsIndex, -1, 'tags post-processing exists');

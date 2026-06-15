@@ -226,7 +226,7 @@
       normalizedTree = {
         id: tree && tree.id,
         title: (tree && tree.title) || '나의 러브트리',
-        visibility: (tree && tree.visibility) || 'public',
+        visibility: (tree && tree.visibility) || '',
         updatedAt: (tree && (tree.updatedAt || tree.createdAt)) || null,
         memoryCount: getTreeMomentCount(tree),
         representativeThumbnail: getRepresentativeThumbnail(tree),
@@ -252,7 +252,11 @@
       : ((typeof window.LoveBudPath !== 'undefined' && window.LoveBudPath.getBasePath)
         ? window.LoveBudPath.getBasePath()
         : (window.location.pathname.indexOf('/pages/') !== -1 ? '' : 'pages/'));
-    var openHref = basePath + 'editor?treeId=' + encodeURIComponent(normalizedTree.id || '');
+    var isPublicTree = (normalizedTree.visibility === 'public');
+    var viewHref = isPublicTree
+      ? (basePath + 'view.html?treeId=' + encodeURIComponent(normalizedTree.id || '') + '&from=my-trees')
+      : (basePath + 'editor?treeId=' + encodeURIComponent(normalizedTree.id || '') + '&from=my-trees');
+    var editHref = basePath + 'editor?treeId=' + encodeURIComponent(normalizedTree.id || '') + '&from=my-trees';
 
     var card = document.createElement('div');
     card.className = 'tree-card' + selectedClass;
@@ -269,11 +273,11 @@
     };
 
     card.addEventListener('click', function (e) {
-      if (e.target.closest('.tree-card-open-link, .tree-card-footer a, button, a[href]')) {
+      if (e.target.closest('.tree-card-open-link, .tree-card-edit-link, .tree-card-footer a, button, a[href]')) {
         return;
       }
       if (window.innerWidth < 480) {
-        window.location.href = openHref;
+        window.location.href = viewHref;
         return;
       }
       handleCardSelect();
@@ -283,7 +287,7 @@
       if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
         if (window.innerWidth < 480) {
-          window.location.href = openHref;
+          window.location.href = viewHref;
           return;
         }
         handleCardSelect();
@@ -313,10 +317,14 @@
             '</span>',
           '</div>',
         '</div>',
-        '<div class="tree-card-footer-right">',
-          '<a class="tree-card-open-link" href="' + escapeHtml(openHref) + '" target="_self">',
-            '<span class="material-symbols-outlined" aria-hidden="true">account_tree</span>',
-            (i18n('myTrees.card_open') || '트리 열기'),
+        '<div class="tree-card-footer-right" style="display: flex; gap: 6px;">',
+          '<a class="tree-card-open-link" href="' + escapeHtml(viewHref) + '" target="_self">',
+            '<span class="material-symbols-outlined" aria-hidden="true">visibility</span>',
+            (i18n('myTrees.card_view') || '감상하기'),
+          '</a>',
+          '<a class="tree-card-edit-link" href="' + escapeHtml(editHref) + '" target="_self">',
+            '<span class="material-symbols-outlined" aria-hidden="true">edit</span>',
+            (i18n('myTrees.card_edit') || '편집하기'),
           '</a>',
         '</div>',
       '</div>'
@@ -325,6 +333,12 @@
     var openLink = card.querySelector('.tree-card-open-link');
     if (openLink) {
       openLink.addEventListener('click', function (e) {
+        e.stopPropagation();
+      });
+    }
+    var editLink = card.querySelector('.tree-card-edit-link');
+    if (editLink) {
+      editLink.addEventListener('click', function (e) {
         e.stopPropagation();
       });
     }
