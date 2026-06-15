@@ -351,7 +351,7 @@
     const sourceTitle = firstString(memory.sourceTitle, memory.source_title, memory.videoTitle, memory.video_title, memory.title, sourceUrl);
     const timeValue = firstString(memory.timeBucket, memory.time_bucket, memory.timestamp, memory.createdAt, memory.created_at, memory.date);
     const tags = collectList(memory.topics, memory.topic, memory.tags, memory.explicitTopics);
-    const emotions = collectList(memory.emotions, memory.emotion, memory.mood, memory.explicitEmotions);
+    const emotions = collectList(memory.emotions, memory.emotion, memory.mood, memory.explicitEmotions, memory.emotionTags, memory.emotion_tags);
 
     const atlasInput = {
       id: String(memory.id),

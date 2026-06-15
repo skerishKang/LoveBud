@@ -339,6 +339,43 @@ test('uses same-tree candidate memories and adapted projection evidence for real
   assert.match(container.innerHTML, /data-suggestion-type="emotion_match"/);
 });
 
+test('emotionTags-only memories still produce emotion_match suggestions', () => {
+  const projectionApi = loadProjectionHelper();
+  const calls = [];
+  const selected = {
+    id: 'm1',
+    title: 'Memory 1',
+    visibility: 'private',
+    treeId: 'tree-a',
+    topics: ['Seoul'],
+    emotionTags: ['hopeful'],
+    sourceUrl: 'https://youtube.com/watch?v=abc',
+    sourceTitle: 'Video A',
+  };
+  const treeMemories = [
+    selected,
+    { id: 'm2', title: 'Memory 2', visibility: 'private', treeId: 'tree-a', topics: ['London'], emotionTags: ['hopeful'] },
+    { id: 'm3', title: 'Memory 3', visibility: 'private', treeId: 'tree-a', topics: ['Seoul'], emotions: ['hopeful'] },
+  ];
+  const panel = loadPanel({
+    LoveBudMemoryAtlasProjection: {
+      projectMemoryAtlas(records) {
+        calls.push(records.map((record) => record.id));
+        return projectionApi.projectMemoryAtlas(records);
+      },
+    },
+  });
+  const renderer = panel.createEditorMemoryAtlasPreviewPanel();
+  const container = makeRenderContainer();
+  const model = renderer.render(container, selected, { treeMemories });
+
+  assert.ok(model.suggestions.some((s) => s.type === 'emotion_match' && s.targetMemoryId === 'm2'), 'emotion_match via emotionTags only');
+  assert.ok(model.suggestions.some((s) => s.type === 'emotion_match' && s.targetMemoryId === 'm3'), 'emotion_match via emotions + emotionTags');
+  assert.ok(model.suggestions.every((s) => s.sourceMemoryId === 'm1'));
+  assert.ok(model.suggestions.every((s) => Array.isArray(s.evidenceRefs) && s.evidenceRefs.length > 0));
+  assert.match(container.innerHTML, /data-suggestion-type="emotion_match"/);
+});
+
 test('editor page loads memory-atlas-suggestions before the consuming preview panel', () => {
   const suggestionsIndex = editorHtml.indexOf('js/memory-atlas/memory-atlas-suggestions.js');
   const panelIndex = editorHtml.indexOf('js/editor/editor-memory-atlas-preview-panel.js');
