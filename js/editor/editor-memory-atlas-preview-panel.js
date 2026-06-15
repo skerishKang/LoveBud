@@ -1,15 +1,15 @@
 (function attachEditorMemoryAtlasPreviewPanel(root, factory) {
-  const api = factory(root || {});
+  const exports = factory(root || {});
 
   if (typeof module !== 'undefined' && module.exports) {
-    module.exports = api;
+    module.exports = exports;
   }
 
   if (root) {
-    root.createEditorMemoryAtlasPreviewPanel = api.createEditorMemoryAtlasPreviewPanel;
-    root.LoveBudEditorMemoryAtlasPreviewPanel = api;
+    root.createEditorMemoryAtlasPreviewPanel = exports.createEditorMemoryAtlasPreviewPanel;
+    root.LoveBudEditorMemoryAtlasPreviewPanel = exports;
   }
-})(typeof globalThis !== 'undefined' ? globalThis : this, function createEditorMemoryAtlasPreviewPanelApi(root) {
+})(typeof globalThis !== 'undefined' ? globalThis : this, function createEditorMemoryAtlasPreviewPanelModule(root) {
   'use strict';
 
   const PANEL_COPY = Object.freeze({
@@ -30,23 +30,44 @@
     label: 'Suggested connection',
   });
 
+  const SUGGESTION_TYPE_BY_TARGET_TYPE = Object.freeze({
+    topic: 'topic_match',
+    source: 'source_match',
+    video: 'source_match',
+    emotion: 'emotion_match',
+    time: 'time_match',
+    tree: 'tree_context',
+    pack: 'tree_context',
+  });
+
+  const SUGGESTION_TYPE_BY_EDGE_TYPE = Object.freeze({
+    about: 'topic_match',
+    felt_as: 'emotion_match',
+    happened_in: 'time_match',
+    belongs_to: 'tree_context',
+    source_of: 'source_match',
+    follows_from: 'follows_from_candidate',
+    contrasts_with: 'contrasts_with_candidate',
+  });
+
   function createEditorMemoryAtlasPreviewPanel(deps) {
     const settings = isPlainObject(deps) ? deps : {};
-    const projectionApi = settings.projectionApi || root.LoveBudMemoryAtlasProjection || null;
-    const previewApi = settings.previewApi || root.LoveBudMemoryAtlasPreview || null;
+    const projectionAdapter = settings.projectionAdapter || root.LoveBudMemoryAtlasProjection || null;
+    const previewAdapter = settings.previewAdapter || root.LoveBudMemoryAtlasPreview || null;
+    const suggestionAdapter = settings.suggestionAdapter || root.LoveBudMemoryAtlasRelationshipSuggestions || null;
 
     return {
-      buildModel(memory) {
-        return buildEditorMemoryAtlasPreviewModel(memory, { projectionApi, previewApi });
+      buildModel(memory, options) {
+        return buildEditorMemoryAtlasPreviewModel(memory, Object.assign({}, options || {}, { projectionAdapter, previewAdapter }));
       },
-      buildSuggestionModel(memory, projection) {
-        return buildEditorMemoryAtlasSuggestionPreviewModel(memory, { projection, projectionApi, previewApi });
+      buildSuggestionModel(memory, projection, options) {
+        return buildEditorMemoryAtlasSuggestionPreviewModel(memory, Object.assign({}, options || {}, { projection, projectionAdapter, previewAdapter }));
       },
-      render(container, memory) {
-        return renderEditorMemoryAtlasPreview(container, memory, { projectionApi, previewApi });
+      render(container, memory, options) {
+        return renderEditorMemoryAtlasPreview(container, memory, Object.assign({}, options || {}, { projectionAdapter, previewAdapter }));
       },
-      renderSuggestions(container, memory, projection) {
-        return renderEditorMemoryAtlasSuggestionPreview(container, memory, projection, { suggestionsApi: root.LoveBudMemoryAtlasRelationshipSuggestions || null, projectionApi, previewApi });
+      renderSuggestions(container, memory, projection, options) {
+        return renderEditorMemoryAtlasSuggestionPreview(container, memory, projection, Object.assign({}, options || {}, { suggestionAdapter, projectionAdapter, previewAdapter }));
       },
     };
   }
@@ -83,14 +104,14 @@
 
   function buildEditorMemoryAtlasPreviewModel(memory, options) {
     const settings = isPlainObject(options) ? options : {};
-    const projectionApi = settings.projectionApi || root.LoveBudMemoryAtlasProjection || null;
-    const previewApi = settings.previewApi || root.LoveBudMemoryAtlasPreview || null;
-    const suggestionsApi = settings.suggestionsApi || root.LoveBudMemoryAtlasRelationshipSuggestions || null;
+    const projectionAdapter = settings.projectionAdapter || root.LoveBudMemoryAtlasProjection || null;
+    const previewAdapter = settings.previewAdapter || root.LoveBudMemoryAtlasPreview || null;
+    const suggestionAdapter = settings.suggestionAdapter || root.LoveBudMemoryAtlasRelationshipSuggestions || null;
 
-    if (!projectionApi || typeof projectionApi.projectMemoryAtlas !== 'function') {
+    if (!projectionAdapter || typeof projectionAdapter.projectMemoryAtlas !== 'function') {
       return createUnavailableModel(memory);
     }
-    if (!previewApi || typeof previewApi.createMemoryAtlasPreview !== 'function') {
+    if (!previewAdapter || typeof previewAdapter.createMemoryAtlasPreview !== 'function') {
       return createUnavailableModel(memory);
     }
     if (!isPlainObject(memory) || !memory.id) {
@@ -98,16 +119,22 @@
     }
 
     const atlasInput = normalizeMemoryForAtlasPreview(memory);
-    const projection = projectionApi.projectMemoryAtlas([atlasInput]);
-    const preview = previewApi.createMemoryAtlasPreview(projection);
+    const previewProjection = projectionAdapter.projectMemoryAtlas([atlasInput]);
+    const preview = previewAdapter.createMemoryAtlasPreview(previewProjection);
     const visibleGroups = Array.isArray(preview.groups)
       ? preview.groups.filter((group) => Array.isArray(group.items) && group.items.length > 0)
       : [];
+    const suggestionProjection = buildSuggestionProjectionInput(memory, {
+      projection: previewProjection,
+      projectionAdapter,
+      treeMemories: settings.treeMemories,
+    });
     const suggestions = buildEditorMemoryAtlasSuggestionPreviewModel(memory, {
-      projection,
-      projectionApi,
-      previewApi,
-      suggestionsApi,
+      projection: suggestionProjection,
+      projectionAdapter,
+      previewAdapter,
+      suggestionAdapter,
+      treeMemories: settings.treeMemories,
       viewerVisibility: normalizeVisibility(memory.visibility || memory.visibilityScope || (memory.isPublic || memory.public ? 'public' : 'private')),
     });
 
@@ -132,19 +159,20 @@
   function buildEditorMemoryAtlasSuggestionPreviewModel(memory, options) {
     const settings = isPlainObject(options) ? options : {};
     const projection = isPlainObject(settings.projection) ? settings.projection : null;
-    const projectionApi = settings.projectionApi || root.LoveBudMemoryAtlasProjection || null;
-    const suggestionsApi = settings.suggestionsApi || root.LoveBudMemoryAtlasRelationshipSuggestions || null;
+    const projectionAdapter = settings.projectionAdapter || root.LoveBudMemoryAtlasProjection || null;
+    const suggestionAdapter = settings.suggestionAdapter || root.LoveBudMemoryAtlasRelationshipSuggestions || null;
     const selectedMemoryId = normalizeMemoryId(isPlainObject(memory) ? memory.id : null);
     const viewerVisibility = normalizeVisibility(settings.viewerVisibility || (isPlainObject(memory) && (memory.visibility || memory.visibilityScope || (memory.isPublic || memory.public ? 'public' : 'private'))));
 
-    if (!selectedMemoryId || !projectionApi || typeof projectionApi.projectMemoryAtlas !== 'function') {
+    if (!selectedMemoryId || !projectionAdapter || typeof projectionAdapter.projectMemoryAtlas !== 'function') {
       return createUnavailableSuggestionModel();
     }
-    if (!suggestionsApi || typeof suggestionsApi.createMemoryAtlasRelationshipSuggestions !== 'function') {
+    if (!suggestionAdapter || typeof suggestionAdapter.createMemoryAtlasRelationshipSuggestions !== 'function') {
       return createUnavailableSuggestionModel();
     }
 
-    const safeProjection = projection || projectionApi.projectMemoryAtlas([normalizeMemoryForAtlasPreview(memory)]);
+    const projectionInput = Array.isArray(settings.projection) ? settings.projection : buildSuggestionProjectionInput(memory, settings);
+    const safeProjection = adaptProjectionForSuggestions(projection || projectionAdapter.projectMemoryAtlas(projectionInput));
     const evidenceRecords = Array.isArray(safeProjection.evidence) ? safeProjection.evidence : [];
     const hasSelectedMemoryEvidence = evidenceRecords.some((evidence) => normalizeMemoryId(evidence.memoryId || evidence.sourceMemoryId || evidence.memoryNodeId || evidence.memory) === selectedMemoryId);
     if (!hasSelectedMemoryEvidence) {
@@ -160,7 +188,7 @@
       };
     }
 
-    const generatedSuggestions = suggestionsApi.createMemoryAtlasRelationshipSuggestions(safeProjection, {
+    const generatedSuggestions = suggestionAdapter.createMemoryAtlasRelationshipSuggestions(safeProjection, {
       selectedMemoryId,
       defaultState: 'previewed',
       viewerVisibility,
@@ -193,6 +221,113 @@
     };
   }
 
+  function buildSuggestionProjectionInput(selectedMemory, options) {
+    const settings = isPlainObject(options) ? options : {};
+    const selectedInput = normalizeMemoryForAtlasPreview(selectedMemory);
+    const candidates = collectCandidateMemories(selectedMemory, settings.treeMemories).map(normalizeMemoryForAtlasPreview);
+    const inputs = [selectedInput].concat(candidates);
+    return inputs;
+  }
+
+  function collectCandidateMemories(selectedMemory, treeMemories) {
+    const selectedId = normalizeMemoryId(isPlainObject(selectedMemory) ? selectedMemory.id : null);
+    const selectedTreeId = normalizeMemoryId(isPlainObject(selectedMemory) ? selectedMemory.treeId : null);
+    const seen = new Set([selectedId]);
+    const candidates = [];
+
+    if (!Array.isArray(treeMemories)) return candidates;
+    treeMemories.forEach((memory) => {
+      if (!isPlainObject(memory)) return;
+      const memoryId = normalizeMemoryId(memory.id || memory.memoryId || memory.momentId);
+      if (!memoryId || seen.has(memoryId)) return;
+      if (memory.isNewTree || memory.isNew) return;
+      if (selectedTreeId && normalizeMemoryId(memory.treeId) && normalizeMemoryId(memory.treeId) !== selectedTreeId) return;
+      seen.add(memoryId);
+      candidates.push(memory);
+    });
+    return candidates;
+  }
+
+  function adaptProjectionForSuggestions(projection) {
+    if (!isPlainObject(projection)) return { nodes: [], edges: [], evidence: [] };
+    const nodeTypesById = new Map();
+    (Array.isArray(projection.nodes) ? projection.nodes : []).forEach((node) => {
+      if (isPlainObject(node) && node.id) nodeTypesById.set(String(node.id), String(node.type || ''));
+    });
+    const adaptedEvidence = (Array.isArray(projection.evidence) ? projection.evidence : [])
+      .map((evidence) => adaptProjectionEvidenceForSuggestions(evidence, nodeTypesById))
+      .filter(Boolean);
+    return {
+      nodes: Array.isArray(projection.nodes) ? projection.nodes.map(clonePlainObject).filter(Boolean) : [],
+      edges: Array.isArray(projection.edges) ? projection.edges.map(adaptProjectionEdgeForSuggestions).filter(Boolean) : [],
+      evidence: filterShareableSuggestionEvidence(adaptedEvidence),
+    };
+  }
+
+  function filterShareableSuggestionEvidence(evidenceRecords) {
+    const memoryIdsByGroup = new Map();
+    evidenceRecords.forEach((evidence) => {
+      const key = `${evidence.sourceType}::${evidence.targetId}`;
+      if (!memoryIdsByGroup.has(key)) memoryIdsByGroup.set(key, new Set());
+      memoryIdsByGroup.get(key).add(String(evidence.memoryId));
+    });
+    return evidenceRecords.filter((evidence) => {
+      const key = `${evidence.sourceType}::${evidence.targetId}`;
+      return (memoryIdsByGroup.get(key) || new Set()).size > 1;
+    });
+  }
+
+  function adaptProjectionEvidenceForSuggestions(evidence, nodeTypesById) {
+    if (!isPlainObject(evidence)) return null;
+    const edgeType = normalizeType(evidence.edgeType || evidence.type || inferEdgeTypeFromTargetId(evidence.targetId));
+    if (normalizeType(evidence.targetType) === 'edge' && edgeType !== 'follows_from' && edgeType !== 'contrasts_with') return null;
+    const sourceType = normalizeSuggestionSourceType(evidence, nodeTypesById);
+    if (!sourceType) return null;
+    return Object.assign({}, clonePlainObject(evidence), {
+      sourceType,
+      targetType: String(evidence.targetType || ''),
+    });
+  }
+
+  function adaptProjectionEdgeForSuggestions(edge) {
+    if (!isPlainObject(edge)) return null;
+    const suggestionType = normalizeType(edge.type || edge.suggestionType);
+    if (!suggestionType) return clonePlainObject(edge);
+    return Object.assign({}, clonePlainObject(edge), {
+      suggestionType,
+      type: suggestionType,
+    });
+  }
+
+  function normalizeSuggestionSourceType(evidence, nodeTypesById) {
+    const direct = normalizeType(evidence.sourceType);
+    if (direct && direct !== 'memory-source') return direct;
+    const targetType = normalizeType(evidence.targetType);
+    if (targetType && targetType !== 'node' && targetType !== 'edge') return SUGGESTION_TYPE_BY_TARGET_TYPE[targetType] || targetType;
+    const targetNodeType = normalizeType(nodeTypesById && nodeTypesById.get(String(evidence.targetId || '')));
+    if (targetNodeType) return SUGGESTION_TYPE_BY_TARGET_TYPE[targetNodeType] || targetNodeType;
+    const edgeType = normalizeType(evidence.edgeType || evidence.type || inferEdgeTypeFromTargetId(evidence.targetId));
+    return SUGGESTION_TYPE_BY_EDGE_TYPE[edgeType] || '';
+  }
+
+  function inferEdgeTypeFromTargetId(targetId) {
+    const text = normalizeType(targetId);
+    if (text.indexOf('edge:') !== 0) return '';
+    const parts = text.split(':');
+    return parts[2] || '';
+  }
+
+  function normalizeType(value) {
+    if (value === undefined || value === null) return '';
+    const text = String(value).trim();
+    return text || '';
+  }
+
+  function clonePlainObject(value) {
+    if (!isPlainObject(value)) return null;
+    return JSON.parse(JSON.stringify(value));
+  }
+
   function createUnavailableModel(memory) {
     return {
       available: false,
@@ -216,7 +351,7 @@
     const sourceTitle = firstString(memory.sourceTitle, memory.source_title, memory.videoTitle, memory.video_title, memory.title, sourceUrl);
     const timeValue = firstString(memory.timeBucket, memory.time_bucket, memory.timestamp, memory.createdAt, memory.created_at, memory.date);
     const tags = collectList(memory.topics, memory.topic, memory.tags, memory.explicitTopics);
-    const emotions = collectList(memory.emotions, memory.emotion, memory.mood, memory.explicitEmotions);
+    const emotions = collectList(memory.emotions, memory.emotion, memory.mood, memory.explicitEmotions, memory.emotionTags, memory.emotion_tags);
 
     const atlasInput = {
       id: String(memory.id),

@@ -521,7 +521,10 @@ function createEditorDetailUI(deps) {
         }
 
         if (atlasPreviewPanel && atlasPreviewMount) {
-            atlasPreviewPanel.render(atlasPreviewMount, data);
+            const treeState = getTreeState();
+            atlasPreviewPanel.render(atlasPreviewMount, data, {
+                treeMemories: treeState.treeMemories
+            });
         }
 
         const reactionsCard = document.getElementById('momentReactionsCard');

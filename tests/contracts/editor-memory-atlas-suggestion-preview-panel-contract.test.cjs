@@ -9,10 +9,14 @@ const vm = require('node:vm');
 const ROOT = path.resolve(__dirname, '..', '..');
 const PANEL_PATH = path.join(ROOT, 'js/editor/editor-memory-atlas-preview-panel.js');
 const SUGGESTIONS_PATH = path.join(ROOT, 'js/memory-atlas/memory-atlas-suggestions.js');
+const PROJECTION_PATH = path.join(ROOT, 'js/memory-atlas/memory-atlas-projection.js');
+const EDITOR_DETAIL_UI_PATH = path.join(ROOT, 'js/editor/editor-detail-ui.js');
 const EDITOR_HTML_PATH = path.join(ROOT, 'pages/editor.html');
 
 const panelSource = fs.readFileSync(PANEL_PATH, 'utf8');
 const suggestionSource = fs.readFileSync(SUGGESTIONS_PATH, 'utf8');
+const projectionSource = fs.readFileSync(PROJECTION_PATH, 'utf8');
+const editorDetailUISource = fs.readFileSync(EDITOR_DETAIL_UI_PATH, 'utf8');
 const editorHtml = fs.readFileSync(EDITOR_HTML_PATH, 'utf8');
 
 function loadPanel(overrides) {
@@ -37,6 +41,16 @@ function loadSuggestionHelper() {
     globalThis: {},
   };
   vm.runInNewContext(suggestionSource, sandbox, { filename: 'memory-atlas-suggestions.js' });
+  return sandbox.module.exports;
+}
+
+function loadProjectionHelper() {
+  const sandbox = {
+    module: { exports: {} },
+    exports: {},
+    globalThis: {},
+  };
+  vm.runInNewContext(projectionSource, sandbox, { filename: 'memory-atlas-projection.js' });
   return sandbox.module.exports;
 }
 
@@ -163,6 +177,10 @@ function createUnrelatedSuggestionProjection() {
   };
 }
 
+function createProjectionFromRawMemories(records) {
+  return loadProjectionHelper().projectMemoryAtlas(records);
+}
+
 test('exports deterministic editor Memory Atlas suggestion preview APIs', () => {
   const panel = loadPanel();
 
@@ -217,6 +235,12 @@ test('renders preview-only suggestion section for selected memory context', () =
   assert.doesNotMatch(container.innerHTML, /dismiss/i);
 });
 
+test('editor detail UI passes tree memories into atlas preview renderer', () => {
+  assert.match(editorDetailUISource, /atlasPreviewPanel\.render\(atlasPreviewMount, data, \{/);
+  assert.match(editorDetailUISource, /treeMemories: treeState\.treeMemories/);
+  assert.match(editorDetailUISource, /const treeState = getTreeState\(\);/);
+});
+
 test('hides saved-looking suggestions when evidence is absent', () => {
   const panel = loadPanel();
   const model = panel.buildEditorMemoryAtlasSuggestionPreviewModel({ id: 'm1' }, {
@@ -248,8 +272,8 @@ test('uses selectedMemoryId scoping and does not mix unrelated memories', () => 
   let capturedOptions = null;
   const model = panel.buildEditorMemoryAtlasSuggestionPreviewModel({ id: 'm1' }, {
     projection: createUnrelatedSuggestionProjection(),
-    projectionApi: { projectMemoryAtlas: () => createUnrelatedSuggestionProjection() },
-    suggestionsApi: {
+    projectionAdapter: { projectMemoryAtlas: () => createUnrelatedSuggestionProjection() },
+    suggestionAdapter: {
       createMemoryAtlasRelationshipSuggestions(projection, options) {
         capturedOptions = options;
         return loadSuggestionHelper().createMemoryAtlasRelationshipSuggestions(projection, options);
@@ -263,6 +287,93 @@ test('uses selectedMemoryId scoping and does not mix unrelated memories', () => 
   assert.equal(model.suggestions.length, 2);
   assert.ok(model.suggestions.every((suggestion) => suggestion.sourceMemoryId === 'm1'));
   assert.ok(model.suggestions.every((suggestion) => suggestion.targetMemoryId !== 'm1'));
+});
+
+test('uses same-tree candidate memories and adapted projection evidence for real suggestions', () => {
+  const projectionApi = loadProjectionHelper();
+  const calls = [];
+  const selected = {
+    id: 'm1',
+    title: 'Memory 1',
+    visibility: 'private',
+    treeId: 'tree-a',
+    topics: ['UIUC'],
+    emotions: ['hopeful'],
+    sourceUrl: 'https://youtube.com/watch?v=abc',
+    sourceTitle: 'Video A',
+  };
+  const treeMemories = [
+    selected,
+    { id: 'm2', title: 'Memory 2', visibility: 'private', treeId: 'tree-a', topics: ['UIUC'], emotions: ['calm'], sourceUrl: 'https://youtube.com/watch?v=abc', sourceTitle: 'Video A' },
+    { id: 'm3', title: 'Memory 3', visibility: 'private', treeId: 'tree-a', topics: ['Seoul'], emotions: ['hopeful'] },
+    { id: 'global-1', title: 'Global', treeId: 'tree-b', topics: ['UIUC'] },
+    { id: 'new-1', title: 'New', treeId: 'tree-a', isNewTree: true, topics: ['UIUC'] },
+    { id: 'm2', title: 'Duplicate', treeId: 'tree-a', topics: ['UIUC'] },
+  ];
+  const panel = loadPanel({
+    LoveBudMemoryAtlasProjection: {
+      projectMemoryAtlas(records) {
+        calls.push(records.map((record) => record.id));
+        return projectionApi.projectMemoryAtlas(records);
+      },
+    },
+  });
+  const renderer = panel.createEditorMemoryAtlasPreviewPanel();
+  const container = makeRenderContainer();
+
+  const model = renderer.render(container, selected, { treeMemories });
+  const suggestionCall = calls.find((recordIds) => recordIds.includes('m2') && recordIds.includes('m3'));
+
+  assert.ok(calls.some((recordIds) => recordIds.length === 1 && recordIds[0] === 'm1'));
+  assert.ok(suggestionCall);
+  assert.equal(JSON.stringify(suggestionCall), JSON.stringify(['m1', 'm2', 'm3']));
+  assert.equal(model.suggestions.length, 3);
+  assert.ok(model.suggestions.some((suggestion) => suggestion.type === 'topic_match' && suggestion.targetMemoryId === 'm2'));
+  assert.ok(model.suggestions.some((suggestion) => suggestion.type === 'source_match' && suggestion.targetMemoryId === 'm2'));
+  assert.ok(model.suggestions.some((suggestion) => suggestion.type === 'emotion_match' && suggestion.targetMemoryId === 'm3'));
+  assert.ok(model.suggestions.every((suggestion) => suggestion.sourceMemoryId === 'm1'));
+  assert.ok(model.suggestions.every((suggestion) => Array.isArray(suggestion.evidenceRefs) && suggestion.evidenceRefs.length > 0));
+  assert.match(container.innerHTML, /data-memory-atlas-suggestion-preview="1"/);
+  assert.match(container.innerHTML, /data-suggestion-type="topic_match"/);
+  assert.match(container.innerHTML, /data-suggestion-type="source_match"/);
+  assert.match(container.innerHTML, /data-suggestion-type="emotion_match"/);
+});
+
+test('emotionTags-only memories still produce emotion_match suggestions', () => {
+  const projectionApi = loadProjectionHelper();
+  const calls = [];
+  const selected = {
+    id: 'm1',
+    title: 'Memory 1',
+    visibility: 'private',
+    treeId: 'tree-a',
+    topics: ['Seoul'],
+    emotionTags: ['hopeful'],
+    sourceUrl: 'https://youtube.com/watch?v=abc',
+    sourceTitle: 'Video A',
+  };
+  const treeMemories = [
+    selected,
+    { id: 'm2', title: 'Memory 2', visibility: 'private', treeId: 'tree-a', topics: ['London'], emotionTags: ['hopeful'] },
+    { id: 'm3', title: 'Memory 3', visibility: 'private', treeId: 'tree-a', topics: ['Seoul'], emotions: ['hopeful'] },
+  ];
+  const panel = loadPanel({
+    LoveBudMemoryAtlasProjection: {
+      projectMemoryAtlas(records) {
+        calls.push(records.map((record) => record.id));
+        return projectionApi.projectMemoryAtlas(records);
+      },
+    },
+  });
+  const renderer = panel.createEditorMemoryAtlasPreviewPanel();
+  const container = makeRenderContainer();
+  const model = renderer.render(container, selected, { treeMemories });
+
+  assert.ok(model.suggestions.some((s) => s.type === 'emotion_match' && s.targetMemoryId === 'm2'), 'emotion_match via emotionTags only');
+  assert.ok(model.suggestions.some((s) => s.type === 'emotion_match' && s.targetMemoryId === 'm3'), 'emotion_match via emotions + emotionTags');
+  assert.ok(model.suggestions.every((s) => s.sourceMemoryId === 'm1'));
+  assert.ok(model.suggestions.every((s) => Array.isArray(s.evidenceRefs) && s.evidenceRefs.length > 0));
+  assert.match(container.innerHTML, /data-suggestion-type="emotion_match"/);
 });
 
 test('editor page loads memory-atlas-suggestions before the consuming preview panel', () => {
@@ -296,6 +407,9 @@ test('keeps suggestion preview panel local, non-persistent, and provider-free', 
   assert.doesNotMatch(panelSource, /indexedDB/);
   assert.doesNotMatch(panelSource, /Scout/);
   assert.doesNotMatch(panelSource, /provider/i);
+  assert.doesNotMatch(panelSource, /api/i);
+  assert.doesNotMatch(panelSource, /schema/);
+  assert.doesNotMatch(panelSource, /\bDB\b/);
   assert.doesNotMatch(panelSource, /saveRelationship/);
   assert.doesNotMatch(panelSource, /Browse/);
   assert.doesNotMatch(panelSource, /Search/);
