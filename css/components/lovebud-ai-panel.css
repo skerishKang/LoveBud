@@ -1,0 +1,563 @@
+/*
+ * LoveBud Components: AI Side Panel Stylesheet
+ * v20260616-ai-panel-1
+ *
+ * Design token compliance:
+ * - Base: --color-bg-base (#FDFBF7)
+ * - Primary: --color-primary (#C27C7E)
+ * - Secondary: --color-secondary (#A8A39C)
+ * - Text Main: --color-text-main (#3E342F)
+ * - Text Muted: --color-text-muted (#8C827A)
+ */
+
+/* Header Trigger Button */
+.header-ai-trigger {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    height: 36px;
+    padding: 0 14px;
+    font-size: 14px;
+    font-family: inherit;
+    font-weight: 500;
+    color: var(--color-primary);
+    background-color: transparent;
+    border: 1px dashed var(--color-primary);
+    border-radius: 18px;
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+}
+
+.header-ai-trigger:hover {
+    background-color: rgba(194, 124, 126, 0.08);
+    border-style: solid;
+    transform: translateY(-1px);
+}
+
+.header-ai-trigger span.material-symbols-outlined {
+    font-size: 18px;
+}
+
+@media (max-width: 768px) {
+    .header-ai-trigger-text {
+        display: none;
+    }
+    .header-ai-trigger {
+        padding: 0;
+        width: 36px;
+        height: 36px;
+        justify-content: center;
+        border-radius: 50%;
+    }
+}
+
+/* Floating Action Button (FAB) */
+.lovebud-ai-fab {
+    position: fixed;
+    right: 24px;
+    bottom: 24px;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background-color: var(--color-primary);
+    color: #FFFFFF;
+    border: none;
+    box-shadow: 0 6px 20px rgba(194, 124, 126, 0.35);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 1000;
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.lovebud-ai-fab:hover {
+    transform: scale(1.08) translateY(-2px);
+    box-shadow: 0 8px 24px rgba(194, 124, 126, 0.5);
+    background-color: #B56D70;
+}
+
+.lovebud-ai-fab span.material-symbols-outlined {
+    font-size: 28px;
+}
+
+/* Mobile viewport adjustments for FAB */
+@media (max-width: 480px) {
+    .lovebud-ai-fab {
+        right: 16px;
+        bottom: 80px; /* Avoid mobile bottom navigation / tabs overlap */
+        width: 48px;
+        height: 48px;
+    }
+    .lovebud-ai-fab span.material-symbols-outlined {
+        font-size: 24px;
+    }
+}
+
+/* Side Panel Layout & Backdrop */
+.lovebud-ai-panel-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 2000;
+    pointer-events: none;
+    font-family: 'Outfit', 'Noto Sans KR', sans-serif;
+}
+
+.lovebud-ai-panel-container.active {
+    pointer-events: auto;
+}
+
+/* Backdrop Blur */
+.lovebud-ai-panel-backdrop {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(62, 52, 47, 0.3);
+    backdrop-filter: blur(4px);
+    opacity: 0;
+    transition: opacity 0.35s ease;
+    pointer-events: none;
+}
+
+.lovebud-ai-panel-container.active .lovebud-ai-panel-backdrop {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+/* Panel Sheet Drawer (Right side panel) */
+.lovebud-ai-panel-sheet {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 400px;
+    height: 100%;
+    background-color: var(--color-bg-base);
+    box-shadow: -10px 0 30px rgba(62, 52, 47, 0.15);
+    display: flex;
+    flex-direction: column;
+    transform: translateX(100%);
+    transition: transform 0.38s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.lovebud-ai-panel-container.active .lovebud-ai-panel-sheet {
+    transform: translateX(0);
+}
+
+/* Body class styles: lock body scroll and interaction when open */
+body.lovebud-ai-panel-open {
+    overflow: hidden;
+}
+
+@media (max-width: 480px) {
+    .lovebud-ai-panel-sheet {
+        width: 100%;
+    }
+}
+
+/* Panel Header */
+.lovebud-ai-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 20px;
+    border-bottom: 1px solid rgba(194, 124, 126, 0.12);
+    background-color: rgba(255, 255, 255, 0.6);
+    backdrop-filter: blur(10px);
+}
+
+.lovebud-ai-panel-header-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--color-text-main);
+}
+
+.lovebud-ai-panel-header-title span.material-symbols-outlined {
+    font-size: 22px;
+    color: var(--color-primary);
+}
+
+.lovebud-ai-panel-header-title h2 {
+    font-size: 18px;
+    font-weight: 600;
+    margin: 0;
+}
+
+.lovebud-ai-panel-close-btn {
+    background: none;
+    border: none;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    transition: background-color 0.2s;
+}
+
+.lovebud-ai-panel-close-btn:hover {
+    background-color: rgba(140, 130, 122, 0.12);
+    color: var(--color-text-main);
+}
+
+/* Content Area */
+.lovebud-ai-panel-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    background-image: radial-gradient(rgba(194, 124, 126, 0.03) 1px, transparent 0);
+    background-size: 16px 16px;
+}
+
+/* Welcome Screen */
+.lovebud-ai-panel-welcome {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 24px 10px;
+    animation: fadeIn 0.4s ease;
+}
+
+.lovebud-ai-panel-welcome-icon {
+    font-size: 44px;
+    margin-bottom: 12px;
+    filter: drop-shadow(0 4px 8px rgba(194, 124, 126, 0.2));
+}
+
+.lovebud-ai-panel-welcome h3 {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--color-text-main);
+    margin: 0 0 10px 0;
+}
+
+.lovebud-ai-panel-welcome p {
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--color-text-muted);
+    margin: 0 0 24px 0;
+}
+
+.lovebud-ai-panel-suggest-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 100%;
+}
+
+.lovebud-ai-panel-suggest-card {
+    background-color: rgba(255, 255, 255, 0.7);
+    border: 1px solid rgba(194, 124, 126, 0.12);
+    border-radius: 12px;
+    padding: 14px 16px;
+    text-align: left;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    grid-template-rows: auto auto;
+    column-gap: 12px;
+    row-gap: 2px;
+}
+
+.lovebud-ai-panel-suggest-card:hover {
+    transform: translateY(-2px);
+    border-color: var(--color-primary);
+    background-color: #FFFFFF;
+    box-shadow: 0 6px 16px rgba(194, 124, 126, 0.08);
+}
+
+.lovebud-ai-panel-suggest-card span.material-symbols-outlined {
+    grid-row: 1 / span 2;
+    align-self: center;
+    font-size: 22px;
+    color: var(--color-primary);
+    background-color: rgba(194, 124, 126, 0.1);
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.lovebud-ai-panel-suggest-card strong {
+    font-size: 14px;
+    color: var(--color-text-main);
+}
+
+.lovebud-ai-panel-suggest-card span:not(.material-symbols-outlined) {
+    font-size: 12px;
+    color: var(--color-text-muted);
+}
+
+/* Chat Messages */
+.lovebud-ai-panel-chat-area {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    flex: 1;
+}
+
+.lovebud-ai-messages-list {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+/* Message Bubbles */
+.lovebud-ai-msg {
+    max-width: 85%;
+    padding: 12px 14px;
+    border-radius: 16px;
+    font-size: 14px;
+    line-height: 1.5;
+    animation: slideUp 0.3s ease;
+    word-break: break-word;
+}
+
+.lovebud-ai-msg.user {
+    align-self: flex-end;
+    background-color: var(--color-primary);
+    color: #FFFFFF;
+    border-bottom-right-radius: 4px;
+    box-shadow: 0 3px 10px rgba(194, 124, 126, 0.2);
+}
+
+.lovebud-ai-msg.assistant {
+    align-self: flex-start;
+    background-color: rgba(255, 255, 255, 0.85);
+    color: var(--color-text-main);
+    border: 1px solid rgba(194, 124, 126, 0.08);
+    border-bottom-left-radius: 4px;
+    box-shadow: 0 2px 8px rgba(62, 52, 47, 0.04);
+}
+
+/* Rich structured content inside message */
+.lovebud-ai-structured {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.lovebud-ai-structured-title {
+    font-weight: 600;
+    font-size: 15px;
+    border-bottom: 1px dashed rgba(194, 124, 126, 0.2);
+    padding-bottom: 6px;
+    color: var(--color-text-main);
+}
+
+.lovebud-ai-structured-field {
+    margin-bottom: 4px;
+}
+
+.lovebud-ai-structured-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--color-primary);
+    display: block;
+    margin-bottom: 2px;
+    text-transform: uppercase;
+}
+
+.lovebud-ai-tags-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 6px;
+}
+
+.lovebud-ai-tag-chip {
+    font-size: 12px;
+    background-color: rgba(194, 124, 126, 0.08);
+    border: 1px solid rgba(194, 124, 126, 0.2);
+    color: var(--color-primary);
+    padding: 4px 10px;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.lovebud-ai-tag-chip:hover {
+    background-color: var(--color-primary);
+    color: #FFFFFF;
+}
+
+.lovebud-ai-action-btn {
+    margin-top: 10px;
+    width: 100%;
+    height: 38px;
+    border-radius: 10px;
+    background-color: var(--color-primary);
+    color: #FFFFFF;
+    border: none;
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: background-color 0.2s;
+}
+
+.lovebud-ai-action-btn:hover {
+    background-color: #B56D70;
+}
+
+.lovebud-ai-action-btn span.material-symbols-outlined {
+    font-size: 16px;
+}
+
+/* Loader */
+.lovebud-ai-panel-loader {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 24px 0;
+    color: var(--color-text-muted);
+}
+
+.lovebud-ai-spinner {
+    animation: spin 1.2s linear infinite;
+    color: var(--color-primary);
+    display: flex;
+}
+
+.lovebud-ai-spinner span.material-symbols-outlined {
+    font-size: 28px;
+}
+
+.lovebud-ai-loader-text {
+    font-size: 13px;
+}
+
+/* Input container */
+.lovebud-ai-panel-input-container {
+    padding: 16px 20px;
+    border-top: 1px solid rgba(194, 124, 126, 0.12);
+    background-color: rgba(255, 255, 255, 0.6);
+    backdrop-filter: blur(10px);
+}
+
+.lovebud-ai-panel-input-wrapper {
+    display: flex;
+    align-items: flex-end;
+    gap: 10px;
+    background-color: #FFFFFF;
+    border: 1px solid rgba(194, 124, 126, 0.2);
+    border-radius: 20px;
+    padding: 8px 10px 8px 16px;
+    box-shadow: 0 2px 8px rgba(62, 52, 47, 0.03);
+    transition: border-color 0.2s;
+}
+
+.lovebud-ai-panel-input-wrapper:focus-within {
+    border-color: var(--color-primary);
+}
+
+.lovebud-ai-panel-input {
+    flex: 1;
+    border: none;
+    background: none;
+    font-family: inherit;
+    font-size: 14px;
+    color: var(--color-text-main);
+    resize: none;
+    max-height: 80px;
+    padding: 4px 0;
+    line-height: 1.4;
+    outline: none;
+}
+
+.lovebud-ai-panel-input::placeholder {
+    color: var(--color-text-muted);
+    opacity: 0.8;
+}
+
+.lovebud-ai-panel-send-btn {
+    background-color: var(--color-primary);
+    color: #FFFFFF;
+    border: none;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: opacity 0.2s, background-color 0.2s;
+}
+
+.lovebud-ai-panel-send-btn:disabled {
+    background-color: var(--color-secondary);
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.lovebud-ai-panel-send-btn span.material-symbols-outlined {
+    font-size: 16px;
+}
+
+.lovebud-ai-panel-footer-note {
+    font-size: 10px;
+    line-height: 1.4;
+    color: var(--color-text-muted);
+    margin-top: 8px;
+    text-align: center;
+}
+
+/* Animations */
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideUp {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Simple Glass Toast overlay if needed */
+.lovebud-ai-toast {
+    position: fixed;
+    top: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-20px);
+    background-color: rgba(253, 251, 247, 0.9);
+    border: 1px solid var(--color-primary);
+    box-shadow: 0 4px 16px rgba(194, 124, 126, 0.15);
+    backdrop-filter: blur(10px);
+    color: var(--color-text-main);
+    padding: 12px 24px;
+    border-radius: 12px;
+    z-index: 3000;
+    font-size: 14px;
+    font-weight: 500;
+    opacity: 0;
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    pointer-events: none;
+}
+
+.lovebud-ai-toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+}

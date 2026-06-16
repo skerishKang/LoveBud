@@ -242,6 +242,15 @@
         ].join('');
     }
 
+    function buildAIPanelTriggerHTML() {
+        return [
+            '<button type="button" class="btn-round btn-outline header-ai-trigger" data-lovebud-ai-trigger="true" id="headerAIPanelTrigger" aria-controls="lovebud-ai-side-panel" aria-expanded="false" title="AI 어시스턴트 열기" aria-label="AI 어시스턴트 열기">',
+                '<span class="material-symbols-outlined">smart_toy</span>',
+                '<span class="header-ai-trigger-text">Scout AI</span>',
+            '</button>'
+        ].join('');
+    }
+
     // 헤더 HTML 생성
     function buildHeaderHTML() {
         var contextType = getContextType();
@@ -329,6 +338,7 @@
                             navLinksHTML,
                         '</div>',
                         '<div class="nav-actions">',
+                            buildAIPanelTriggerHTML(),
                             buildLangToggleHTML(isLoggedIn),
                             authHTML,
                         '</div>',
