@@ -250,11 +250,12 @@
             select.id = 'browseSortSelect';
             select.className = 'summary-sort-control';
             select.innerHTML = `
-                <option value="latest">${isEn ? 'Latest' : '최신순'}</option>
-                <option value="views">${isEn ? 'Views' : '조회순'}</option>
-                <option value="likes">${isEn ? 'Likes' : '좋아요순'}</option>
+                <option value="latest" data-browse-sort="latest">${isEn ? 'Latest' : '최신순'}</option>
+                <option value="views" data-browse-sort="views">${isEn ? 'Views' : '조회순'}</option>
+                <option value="likes" data-browse-sort="likes">${isEn ? 'Likes' : '좋아요순'}</option>
             `;
             select.addEventListener('change', async () => {
+                // Legacy button.dataset.browseSort compat
                 const nextSort = select.value || 'latest';
                 if (nextSort === state.currentSort) return;
                 state.currentSort = nextSort;

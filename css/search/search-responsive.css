@@ -5,22 +5,3 @@
 @import url('search-responsive/tree-cards.css');
 @import url('search-responsive/mobile-preview.css');
 @import url('search-responsive/browse.css');
-
-@media (max-width: 768px) {
-  .search-panel-header h1,
-  .search-panel-header h2 {
-    font-size: clamp(2.25rem, 10vw, 2.72rem);
-    line-height: 1.06;
-    margin: 12px 0 10px;
-  }
-
-  .search-panel-eyebrow {
-    min-height: 24px;
-    padding: 0;
-    background: transparent;
-    border-radius: 0;
-    font-size: 0.83rem;
-    margin-bottom: 10px;
-  }
-}
-
