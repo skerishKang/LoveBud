@@ -17,7 +17,7 @@
  *   (VERIFIER_MOCK_DISABLED, VERIFIER_NOT_IMPLEMENTED,
  *   VERIFIER_PAYLOAD_PROHIBITED, VERIFIER_FIREBASE_DISABLED,
  *   VERIFIER_CONFIG_MISSING, VERIFIER_FIREBASE_RUNTIME_DISABLED,
- *   VERIFIER_FIREBASE_RUNTIME_FAILED)
+ *   VERIFIER_FIREBASE_RUNTIME_FAILED, VERIFIER_FIREBASE_RUNTIME_VERIFIED)
  * - SCOUT_LIVE_AUTH_VERIFIER_PAYLOAD_ALLOWED_FIELDS: allowlist for
  *   future-safe fields that may be present in a verifier payload
  * - SCOUT_LIVE_AUTH_VERIFIER_PAYLOAD_PROHIBITED_FIELDS: denylist for
@@ -63,7 +63,10 @@
  * - sanitizes the success response: only a `userKeyHash` derived from
  *   the verifier's returned identifier is kept; raw UID, raw email,
  *   raw decoded token, raw claims, and raw service account data are
- *   dropped;
+ *   dropped. The success path returns
+ *   `code: VERIFIER_FIREBASE_RUNTIME_VERIFIED` (NOT any disabled or
+ *   failed code) so that downstream mapping cannot interpret a
+ *   successful verification as a disabled or failed state;
  * - safe-fails (returns `allowed: false` with
  *   `VERIFIER_FIREBASE_RUNTIME_FAILED`) on any thrown or rejected
  *   verifier error, never throwing through the endpoint boundary;
@@ -112,6 +115,7 @@ export const SCOUT_LIVE_AUTH_VERIFIER_ADAPTER_CODES = Object.freeze({
   VERIFIER_CONFIG_MISSING: 'VERIFIER_CONFIG_MISSING',
   VERIFIER_FIREBASE_RUNTIME_DISABLED: 'VERIFIER_FIREBASE_RUNTIME_DISABLED',
   VERIFIER_FIREBASE_RUNTIME_FAILED: 'VERIFIER_FIREBASE_RUNTIME_FAILED',
+  VERIFIER_FIREBASE_RUNTIME_VERIFIED: 'VERIFIER_FIREBASE_RUNTIME_VERIFIED',
 });
 
 // ─── Payload Policy ─────────────────────────────────────────────────────────
@@ -480,10 +484,7 @@ export function createScoutLiveAuthVerifierAdapter(options) {
         }
         return Object.freeze({
           allowed: true,
-          code: SCOUT_LIVE_AUTH_VERIFIER_ADAPTER_CODES.VERIFIER_FIREBASE_RUNTIME_DISABLED,
-          // The success code uses the runtime-disabled code as a stable
-          // marker that this came from the runtime branch, while
-          // `allowed: true` signals the verifier accepted the token.
+          code: SCOUT_LIVE_AUTH_VERIFIER_ADAPTER_CODES.VERIFIER_FIREBASE_RUNTIME_VERIFIED,
           reason: 'Firebase auth verifier runtime accepted the token; only a sanitized userKeyHash is returned.',
           userKey: null,
           userKeyHash,

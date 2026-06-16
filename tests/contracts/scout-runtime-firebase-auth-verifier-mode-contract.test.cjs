@@ -263,6 +263,52 @@ tests.push({
 });
 
 tests.push({
+  name: 'FIREBASE_RUNTIME success code is the dedicated VERIFIED code (not DISABLED / FAILED / etc.)',
+  fn: async () => {
+    const mod = await loadVerifierModule();
+    const C = mod.SCOUT_LIVE_AUTH_VERIFIER_ADAPTER_CODES;
+    const forbiddenOnSuccess = [
+      C.VERIFIER_MOCK_DISABLED,
+      C.VERIFIER_NOT_IMPLEMENTED,
+      C.VERIFIER_PAYLOAD_PROHIBITED,
+      C.VERIFIER_FIREBASE_DISABLED,
+      C.VERIFIER_CONFIG_MISSING,
+      C.VERIFIER_FIREBASE_RUNTIME_DISABLED,
+      C.VERIFIER_FIREBASE_RUNTIME_FAILED,
+    ];
+    const successCode = C.VERIFIER_FIREBASE_RUNTIME_VERIFIED;
+    assert.strictEqual(
+      typeof successCode,
+      'string',
+      'a dedicated VERIFIED success code must exist'
+    );
+    for (const code of forbiddenOnSuccess) {
+      assert.notStrictEqual(successCode, code, `success code must not equal ${code}`);
+    }
+    const adapter = mod.createScoutLiveAuthVerifierAdapter({
+      mockDisabled: false,
+      verifierMode: mod.SCOUT_LIVE_AUTH_VERIFIER_ADAPTER_MODES.FIREBASE_RUNTIME,
+      firebaseConfig: { projectId: 'p' },
+      firebaseVerifier: async () => ({ uid: 'u-1' }),
+    });
+    const result = await adapter.verifyToken({ idToken: 'tok' });
+    assert.strictEqual(result.allowed, true);
+    assert.strictEqual(
+      result.code,
+      successCode,
+      'success path must use the dedicated VERIFIED code'
+    );
+    for (const code of forbiddenOnSuccess) {
+      assert.notStrictEqual(
+        result.code,
+        code,
+        `success response must not use forbidden code ${code}`
+      );
+    }
+  },
+});
+
+tests.push({
   name: 'FIREBASE_RUNTIME injected verifier failure safe-fails without throwing',
   fn: async () => {
     const mod = await loadVerifierModule();
@@ -436,6 +482,28 @@ tests.push({
       typeof mod.SCOUT_LIVE_AUTH_VERIFIER_ADAPTER_CODES.VERIFIER_FIREBASE_RUNTIME_FAILED,
       'string'
     );
+    assert.strictEqual(
+      typeof mod.SCOUT_LIVE_AUTH_VERIFIER_ADAPTER_CODES.VERIFIER_FIREBASE_RUNTIME_VERIFIED,
+      'string'
+    );
+    // The success code must be distinct from every safe-fail / error code.
+    const C = mod.SCOUT_LIVE_AUTH_VERIFIER_ADAPTER_CODES;
+    const allOthers = [
+      C.VERIFIER_MOCK_DISABLED,
+      C.VERIFIER_NOT_IMPLEMENTED,
+      C.VERIFIER_PAYLOAD_PROHIBITED,
+      C.VERIFIER_FIREBASE_DISABLED,
+      C.VERIFIER_CONFIG_MISSING,
+      C.VERIFIER_FIREBASE_RUNTIME_DISABLED,
+      C.VERIFIER_FIREBASE_RUNTIME_FAILED,
+    ];
+    for (const code of allOthers) {
+      assert.notStrictEqual(
+        C.VERIFIER_FIREBASE_RUNTIME_VERIFIED,
+        code,
+        'success code must be distinct from safe-fail codes'
+      );
+    }
     // Version was bumped for this slice.
     assert.match(
       mod.SCOUT_LIVE_AUTH_VERIFIER_ADAPTER_VERSION,
