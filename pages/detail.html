@@ -12,37 +12,138 @@
     <link rel="stylesheet" href="../css/page-transitions.css?v=20260430-1">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" />
 </head>
-<body class="bokeh-bg">
+<body class="paper-grain">
     <div class="noise-overlay"></div>
     <div id="shared-header"></div>
 
-    <main id="detailMain" class="detail-main page-transition-enter">
-        <!-- JS로 렌더링 -->
-    </main>
+    <div class="detail-page-shell page-transition-enter">
+        <div class="detail-topbar">
+            <a id="backButton" class="detail-back-link" href="search">
+                <span class="material-symbols-outlined">arrow_back</span>
+                <span>둘러보기로 돌아가기</span>
+            </a>
+            <div class="detail-view-chip">
+                <span class="material-symbols-outlined">visibility</span>
+                <span id="detailViewChipLabel">순간 준비 중</span>
+            </div>
+        </div>
 
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-    <script src="../js/firebase-config.js?v=20260417-31"></script>
-    <script src="../js/i18n/i18n-core.js?v=20260421-1"></script>
-    <script src="../js/i18n/i18n-shared.js?v=20260421-4"></script>
-    <script src="../js/i18n/i18n-login.js?v=20260419-2"></script>
-    <script src="../js/i18n/i18n-detail.js?v=20260421-5"></script>
-    <script src="../js/i18n/i18n-search.js?v=20260421-1"></script>
-    <script src="../js/i18n/i18n-editor.js?v=20260421-9"></script>
-    <script src="../js/i18n/i18n-my-trees.js?v=20260421-5"></script>
-    <script src="../js/i18n/i18n-index.js?v=20260421-1"></script>
-    <script src="../js/i18n.js?v=20260419-2"></script>
-    <script src="../js/shared-header.js?v=20260421-2"></script>
-    <script src="../js/auth/auth-state.js?v=20260417-31"></script>
-    <script src="../js/auth/auth-callbacks.js?v=20260417-31"></script>
-    <script src="../js/auth/auth-cache.js?v=20260417-31"></script>
-    <script src="../js/auth/auth-ui.js?v=20260421-2"></script>
-    <script src="../js/auth/auth-session.js?v=20260417-31"></script>
-    <script src="../js/auth/auth-firebase.js?v=20260420-1"></script>
-    <script src="../js/auth/auth-ui-templates.js?v=20260522-1283"></script>
-    <script src="../js/auth.js?v=20260422-3"></script>
-    <script src="../js/page-transitions.js?v=20260430-1"></script>
-    <script src="../js/detail/detail-page-init.js?v=20260505-646"></script>
+        <section id="detailHero" class="detail-hero reveal-scale reveal-up">
+            <div id="detailHeroKicker" class="detail-hero-kicker">현재 순간 준비 중</div>
+            <h2 id="detailHeroTitle" class="headline detail-hero-title">남겨진 순간을 불러오고 있어요</h2>
+            <p id="detailHeroDesc" class="detail-hero-desc">순간이 열리면 이어진 흐름은 따로 불러올게요.</p>
+            <div id="treeContext"></div>
+        </section>
+
+        <main class="detail-layout reveal-fade">
+            <section class="detail-primary-stack">
+                <section class="detail-main-media">
+                    <div id="videoMain" class="video-main">
+                        <div class="detail-media-loading" role="status" aria-live="polite">
+                            <span class="material-symbols-outlined">hourglass_top</span>
+                            <span>대표 장면을 준비하고 있어요</span>
+                        </div>
+                    </div>
+                    <div class="detail-memory-meta">
+                        <span class="detail-meta-pill">
+                            <span class="material-symbols-outlined">artist</span>
+                            <span id="detailArtist">&nbsp;</span>
+                        </span>
+                        <span class="detail-meta-pill">
+                            <span class="material-symbols-outlined">calendar_today</span>
+                            <span id="detailDate">&nbsp;</span>
+                        </span>
+                        <span class="detail-meta-pill" id="detailChannelPill" style="display:none;">
+                            <span class="material-symbols-outlined">smart_display</span>
+                            <span id="detailChannel">&nbsp;</span>
+                        </span>
+                    </div>
+                </section>
+
+                <section class="diary-section">
+                    <div class="detail-title-block">
+                        <p id="detailSubtitle" class="detail-side-kicker">그때의 마음</p>
+                        <h1 class="headline detail-title-main" id="memoryTitle">&nbsp;</h1>
+                        <div class="detail-tag-row">
+                            <div class="tags-container" id="tagsContainer"></div>
+                        </div>
+                    </div>
+
+                    <div class="diary-container">
+                        <p id="diaryQuote" class="detail-diary-quote">&nbsp;</p>
+                        <div id="diaryContent" class="detail-diary-content">&nbsp;</div>
+                    </div>
+                </section>
+            </section>
+
+            <aside class="detail-secondary-stack">
+                <div class="detail-reactions-bar" id="detailReactionsBar" style="display:none;">
+                  <button
+                    class="detail-reaction-like-btn"
+                    id="detailLikeBtn"
+                    aria-label="좋아요"
+                    data-reacted="false"
+                    disabled
+                  >
+                    <span class="detail-reaction-like-icon">🤍</span>
+                    <span class="detail-reaction-like-count" id="detailLikeCount">0</span>
+                  </button>
+                  <div class="detail-reaction-comment-count-wrap">
+                    <span class="detail-reaction-comment-icon">💬</span>
+                    <span id="detailCommentCount">0</span>
+                  </div>
+                </div>
+
+                <div class="connected-section">
+                    <div class="connected-heading">
+                        <span id="connectedKicker" class="connected-kicker">&nbsp;</span>
+                        <h3 id="connectedTitle" class="headline">이어진 흐름 준비 중</h3>
+                        <p id="connectedSummary" class="connected-summary">현재 순간이 열리면 연결된 기억을 이어서 불러올게요.</p>
+                    </div>
+                    <div id="connectedFragments" class="connected-fragments-grid"></div>
+                </div>
+
+                <div class="growth-visualization">
+                    <div class="growth-line"></div>
+                    <div class="growth-dot"></div>
+                    <p id="growthLabel" class="growth-label">이어진 흐름 준비 중</p>
+                </div>
+            </aside>
+        </main>
+    </div>
+
+<script src="../js/cache-utils.js?v=20260418-1"></script>
+<script src="../js/utils/normalize.js?v=20260422-1"></script>
+<script src="../js/api/auth-policy.js?v=20260420-1"></script>
+<script src="../js/api/base-api-fetch.js?v=20260420-1"></script>
+<script src="../js/postgres-client.js?v=20260422-1"></script>
+<script src="../js/detail/detail-utils.js?v=20260427-1"></script>
+<script src="../js/detail/detail-video.js?v=20260427-1"></script>
+<script src="../js/detail/detail-copy.js?v=20260427-1"></script>
+<script src="../js/detail/detail-render.js?v=20260505-646"></script>
+<script src="../js/detail/detail-connected.js?v=20260505-645"></script>
+<script src="../js/detail/detail-reactions.js?v=20260505-645"></script>
+<script src="../js/detail/detail-page.js?v=20260505-646"></script>
+<script src="../js/i18n/i18n-core.js?v=20260421-1"></script>
+<script src="../js/i18n/i18n-shared.js?v=20260421-4"></script>
+<script src="../js/i18n/i18n-detail.js?v=20260421-5"></script>
+<script src="../js/i18n/i18n-search.js?v=20260421-1"></script>
+<script src="../js/i18n/i18n-editor.js?v=20260421-9"></script>
+<script src="../js/i18n/i18n-my-trees.js?v=20260421-5"></script>
+<script src="../js/i18n/i18n-index.js?v=20260421-1"></script>
+<script src="../js/i18n.js?v=20260419-2"></script>
+<script src="../js/shared-header.js?v=20260421-2"></script>
+<script src="../js/auth/auth-state.js?v=20260417-31"></script>
+<script src="../js/auth/auth-callbacks.js?v=20260417-31"></script>
+<script src="../js/auth/auth-cache.js?v=20260417-31"></script>
+<script src="../js/auth/auth-ui.js?v=20260421-2"></script>
+<script src="../js/auth/auth-session.js?v=20260417-31"></script>
+<script src="../js/auth/auth-firebase.js?v=20260420-2"></script>
+<script src="../js/auth/auth-ui-templates.js?v=20260522-1283"></script>
+<script src="../js/auth.js?v=20260422-3"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+<script src="../js/firebase-config.js?v=20260417-31"></script>
+<script src="../js/page-transitions.js?v=20260430-1"></script>
 </body>
 </html>
