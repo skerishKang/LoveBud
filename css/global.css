@@ -575,7 +575,7 @@ body .tag-chip:focus-visible {
   opacity: 0.5;
 }
 .page-hero-section {
-  padding-top: 48px;
+  padding-top: 0;
 }
 .page-hero-h1 {
   font-size: clamp(2.8rem, 8vw, 5.15rem);
@@ -594,7 +594,7 @@ body .tag-chip:focus-visible {
 
 @media (max-width: 768px) {
   .page-hero-section {
-    padding-top: 28px;
+    padding-top: 0;
   }
   .page-hero-h1 {
     font-size: clamp(2.25rem, 10vw, 2.72rem);
