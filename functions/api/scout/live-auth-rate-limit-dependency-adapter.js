@@ -1,6 +1,6 @@
 /**
  * Scout Live Auth / Rate-Limit Dependency Adapter Skeleton
- * v20260607-1
+ * v20260616-runtime-mapping-1
  *
  * Mock-disabled dependency adapter skeleton for the Scout live provider path.
  * Provides a factory that returns default implementations of `verifyToken`,
@@ -21,9 +21,12 @@
  * (no raw token / authorization header / API key / firebaseToken / prompt
  * / excerpt / sourceUrl). Verifier results are mapped back to
  * dependency-adapter safe-fail shapes (`VERIFY_NOT_IMPLEMENTED`,
- * `VERIFY_PAYLOAD_PROHIBITED`, `VERIFY_UNAVAILABLE`). The verifier adapter
- * itself is mock-disabled and does NOT access any real Firebase Admin SDK,
- * `getAuth`, `verifyIdToken`, external auth service, or network call.
+ * `VERIFY_PAYLOAD_PROHIBITED`, `VERIFY_UNAVAILABLE`, or the dedicated
+ * success code `VERIFY_RUNTIME_VERIFIED` when the verifier adapter
+ * returns `VERIFIER_FIREBASE_RUNTIME_VERIFIED` with a sanitized
+ * `userKeyHash`). The verifier adapter itself is mock-disabled and does
+ * NOT access any real Firebase Admin SDK, `getAuth`, `verifyIdToken`,
+ * external auth service, or network call.
  *
  * `checkRateLimit` routes through an internal storage adapter seam. The
  * default storage dependency is `createScoutLiveRateLimitStorageAdapter`
@@ -44,6 +47,17 @@
  *   (`isMockDisabled`, `mode`, `version`, `storageAdapterKind`,
  *   `verifierAdapterKind`).
  *
+ * Issue #2569 mapping: the verifier-result mapper now recognizes
+ * `VERIFIER_FIREBASE_RUNTIME_VERIFIED` and converts it into a dependency
+ * success response with `allowed: true`, the dedicated
+ * `VERIFY_RUNTIME_VERIFIED` code, `userKey: null`, and a propagated
+ * sanitized `userKeyHash`. The Firebase runtime disabled / failed codes
+ * map to existing safe-fail shapes:
+ * - `VERIFIER_FIREBASE_RUNTIME_DISABLED` → `VERIFY_NOT_IMPLEMENTED`
+ *   (the runtime is not configured in this context);
+ * - `VERIFIER_FIREBASE_RUNTIME_FAILED` → `VERIFY_UNAVAILABLE`
+ *   (the runtime was invoked but safe-failed).
+ *
  * This module is a **mock-disabled skeleton + factory**. No real Firebase
  * Admin SDK import, no real token verification, no real persistent storage
  * call, no fetch, no provider API call.
@@ -57,6 +71,8 @@
  * - No persistent rate-limit storage call
  * - No external URL fetch
  * - No auto-save or persistence
+ * - No raw token handoff from boundary to verifier
+ *   (separate slice)
  * - No wiring into suggest.js LIVE branch (separate slice)
  */
 
@@ -67,7 +83,7 @@ import { createScoutLiveAuthVerifierAdapter } from './live-auth-verifier-adapter
 
 // ─── Version ────────────────────────────────────────────────────────────────
 
-export const SCOUT_LIVE_DEPENDENCY_ADAPTER_VERSION = '20260607-1';
+export const SCOUT_LIVE_DEPENDENCY_ADAPTER_VERSION = '20260616-runtime-mapping-1';
 
 // ─── Mode Constants ─────────────────────────────────────────────────────────
 
@@ -82,6 +98,7 @@ export const SCOUT_LIVE_DEPENDENCY_ADAPTER_CODES = Object.freeze({
   VERIFY_NOT_IMPLEMENTED: 'VERIFY_NOT_IMPLEMENTED',
   VERIFY_PAYLOAD_PROHIBITED: 'VERIFY_PAYLOAD_PROHIBITED',
   VERIFY_UNAVAILABLE: 'VERIFY_UNAVAILABLE',
+  VERIFY_RUNTIME_VERIFIED: 'VERIFY_RUNTIME_VERIFIED',
   RATE_LIMIT_NOT_IMPLEMENTED: 'RATE_LIMIT_NOT_IMPLEMENTED',
   RATE_LIMIT_PAYLOAD_PROHIBITED: 'RATE_LIMIT_PAYLOAD_PROHIBITED',
   RATE_LIMIT_STORAGE_UNAVAILABLE: 'RATE_LIMIT_STORAGE_UNAVAILABLE',
@@ -301,16 +318,33 @@ function buildStorageRoutedCheckRateLimit(storageAdapter) {
 // ─── Verifier-to-Dependency Response Mapping ───────────────────────────────
 
 /**
+ * Sanitized `userKeyHash` shape lock. The dependency adapter only
+ * propagates a `userKeyHash` when it is a non-empty string of exactly 16
+ * lowercase hex characters (matching the verifier adapter's
+ * `deriveUserKeyHash` output). Any other shape is treated as invalid and
+ * safe-fails the response.
+ */
+function isValidSanitizedUserKeyHash(value) {
+  if (typeof value !== 'string') return false;
+  return /^[0-9a-f]{16}$/.test(value);
+}
+
+/**
  * Map a verifier adapter result to a dependency-adapter safe-fail shape.
  * Verifier result codes are translated to dependency-adapter codes so
  * the caller (boundary / endpoint) can reason about the decision
- * consistently. The userKey / userKeyHash from a (theoretical) successful
- * verification are stripped to null in this skeleton; the dependency
- * adapter does not propagate raw user identifiers from the verifier in
- * this slice.
+ * consistently. The dedicated success path is entered ONLY when the
+ * verifier returns `VERIFIER_FIREBASE_RUNTIME_VERIFIED` with a valid
+ * sanitized `userKeyHash`. All other paths remain safe-fail.
+ *
+ * Issue #2569: the Firebase runtime verified code is mapped to a
+ * dedicated dependency success code `VERIFY_RUNTIME_VERIFIED` with
+ * `allowed: true`, `userKey: null`, and the propagated `userKeyHash`.
+ * No raw UID / email / token / claims / service account data is ever
+ * propagated.
  *
  * @param {Object} verifierResult - result from verifierAdapter.verifyToken
- * @returns {Object} dependency-adapter safe-fail response
+ * @returns {Object} dependency-adapter response (success or safe-fail)
  */
 function mapVerifierResultToDependencyResponse(verifierResult) {
   const res = (verifierResult && typeof verifierResult === 'object') ? verifierResult : {};
@@ -326,7 +360,12 @@ function mapVerifierResultToDependencyResponse(verifierResult) {
       userKeyHash: null,
     };
   }
-  if (code === 'VERIFIER_FIREBASE_DISABLED' || code === 'VERIFIER_MOCK_DISABLED' || code === 'VERIFIER_NOT_IMPLEMENTED') {
+  if (
+    code === 'VERIFIER_FIREBASE_DISABLED' ||
+    code === 'VERIFIER_MOCK_DISABLED' ||
+    code === 'VERIFIER_NOT_IMPLEMENTED' ||
+    code === 'VERIFIER_FIREBASE_RUNTIME_DISABLED'
+  ) {
     return {
       allowed: false,
       code: SCOUT_LIVE_DEPENDENCY_ADAPTER_CODES.VERIFY_NOT_IMPLEMENTED,
@@ -337,15 +376,41 @@ function mapVerifierResultToDependencyResponse(verifierResult) {
       userKeyHash: null,
     };
   }
-  if (code === 'VERIFIER_CONFIG_MISSING') {
+  if (
+    code === 'VERIFIER_CONFIG_MISSING' ||
+    code === 'VERIFIER_FIREBASE_RUNTIME_FAILED'
+  ) {
     return {
       allowed: false,
       code: SCOUT_LIVE_DEPENDENCY_ADAPTER_CODES.VERIFY_UNAVAILABLE,
       reason: typeof res.reason === 'string' && res.reason.length > 0
         ? res.reason
-        : 'auth verifier configuration is missing',
+        : 'auth verifier configuration is missing or runtime failed',
       userKey: null,
       userKeyHash: null,
+    };
+  }
+  if (code === 'VERIFIER_FIREBASE_RUNTIME_VERIFIED') {
+    const candidateHash = res.userKeyHash;
+    if (!isValidSanitizedUserKeyHash(candidateHash)) {
+      // A success code without a valid sanitized hash is treated as
+      // an unknown / unsafe result and safe-fails.
+      return {
+        allowed: false,
+        code: SCOUT_LIVE_DEPENDENCY_ADAPTER_CODES.VERIFY_UNAVAILABLE,
+        reason: 'verifier success result did not include a valid sanitized userKeyHash',
+        userKey: null,
+        userKeyHash: null,
+      };
+    }
+    return {
+      allowed: true,
+      code: SCOUT_LIVE_DEPENDENCY_ADAPTER_CODES.VERIFY_RUNTIME_VERIFIED,
+      reason: typeof res.reason === 'string' && res.reason.length > 0
+        ? res.reason
+        : 'auth verifier runtime accepted the token; only a sanitized userKeyHash is propagated',
+      userKey: null,
+      userKeyHash: candidateHash,
     };
   }
   // Unknown / missing code → generic verifier-unavailable safe-fail
