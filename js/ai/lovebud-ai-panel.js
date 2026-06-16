@@ -495,6 +495,41 @@
       structuredContainer.appendChild(tagsContainer);
     }
 
+    // 4.5 Send to editor review action (only in editor page context)
+    var isEditorPage = (window.location.pathname.indexOf('/pages/editor') !== -1 || document.querySelector('.editor-layout') !== null);
+    if (isEditorPage) {
+      var actionBtn = document.createElement('button');
+      actionBtn.type = 'button';
+      actionBtn.className = 'lovebud-ai-action-btn';
+      actionBtn.setAttribute('data-lovebud-ai-send-to-editor-review', 'true');
+
+      var actionIcon = document.createElement('span');
+      actionIcon.className = 'material-symbols-outlined';
+      actionIcon.textContent = 'send_to_mobile';
+      actionBtn.appendChild(actionIcon);
+
+      var actionText = document.createTextNode(' 에디터 검토함으로 보내기');
+      actionBtn.appendChild(actionText);
+
+      actionBtn.addEventListener('click', function () {
+        var eventDetail = {
+          title: reply.title || '',
+          memo: reply.memo || reply.text || reply.summary || '',
+          tags: Array.isArray(reply.tags) ? reply.tags.join(' ') : (reply.tags || ''),
+          sourceUrl: reply.sourceUrl || '',
+          disclaimer: reply.disclaimer || '',
+          kind: reply.kind || ''
+        };
+
+        var customEvent = new CustomEvent('lovebud-ai-local-draft-review-requested', {
+          detail: eventDetail,
+          bubbles: true
+        });
+        window.dispatchEvent(customEvent);
+      });
+      structuredContainer.appendChild(actionBtn);
+    }
+
     // 5. Safety Warning Disclaimer
     if (reply.disclaimer) {
       var warningField = document.createElement('div');

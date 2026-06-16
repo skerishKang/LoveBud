@@ -1,0 +1,187 @@
+/*
+ * LoveBud Editor: AI Suggestion Review Tray Stylesheet
+ * v20260616-ai-editor-review-1
+ *
+ * Design token compliance:
+ * - Base bg: --color-bg-base (#FDFBF7)
+ * - Primary: --color-primary (#C27C7E)
+ * - Secondary: --color-secondary (#A8A39C)
+ * - Text Main: --color-text-main (#3E342F)
+ * - Text Muted: --color-text-muted (#8C827A)
+ */
+
+.lovebud-ai-review-tray {
+    position: fixed;
+    bottom: 24px;
+    left: 24px;
+    width: 350px;
+    max-width: calc(100vw - 48px);
+    z-index: 990;
+    display: none; /* Controlled by active class in JS */
+    background: rgba(253, 251, 247, 0.9);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(194, 124, 126, 0.25);
+    border-radius: 16px;
+    box-shadow: 0 10px 40px rgba(62, 52, 47, 0.1);
+    padding: 16px;
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    animation: lovebud-ai-review-slide-in 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.lovebud-ai-review-tray.active {
+    display: block;
+}
+
+@keyframes lovebud-ai-review-slide-in {
+    from {
+        transform: translateY(20px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.lovebud-ai-review-tray-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 6px;
+}
+
+.lovebud-ai-review-tray-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--color-primary);
+    font-family: inherit;
+}
+
+.lovebud-ai-review-tray-badge {
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--color-primary);
+    background-color: rgba(194, 124, 126, 0.1);
+    padding: 2px 8px;
+    border-radius: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.lovebud-ai-review-tray-warning {
+    font-size: 11px;
+    color: var(--color-text-muted);
+    margin-bottom: 12px;
+    font-style: italic;
+    border-bottom: 1px dashed rgba(140, 130, 122, 0.2);
+    padding-bottom: 8px;
+}
+
+.lovebud-ai-review-cards-container {
+    max-height: 280px;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+
+.lovebud-ai-review-cards-container::-webkit-scrollbar {
+    width: 4px;
+}
+
+.lovebud-ai-review-cards-container::-webkit-scrollbar-thumb {
+    background: rgba(140, 130, 122, 0.3);
+    border-radius: 2px;
+}
+
+.lovebud-ai-review-card {
+    background: rgba(255, 255, 255, 0.6);
+    border: 1px solid rgba(168, 163, 156, 0.15);
+    border-radius: 12px;
+    padding: 12px;
+    margin-bottom: 8px;
+    font-family: inherit;
+}
+
+.lovebud-ai-review-card-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--color-text-main);
+    margin-bottom: 6px;
+}
+
+.lovebud-ai-review-card-memo {
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--color-text-main);
+    margin-bottom: 8px;
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
+.lovebud-ai-review-card-link {
+    font-size: 11px;
+    color: var(--color-text-muted);
+    margin-bottom: 8px;
+    word-break: break-all;
+}
+
+.lovebud-ai-review-card-link a {
+    color: var(--color-primary);
+    text-decoration: underline;
+}
+
+.lovebud-ai-review-card-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-bottom: 10px;
+}
+
+.lovebud-ai-review-tag-chip {
+    font-size: 10px;
+    color: var(--color-primary);
+    background: rgba(194, 124, 126, 0.08);
+    padding: 2px 6px;
+    border-radius: 6px;
+    border: 1px solid rgba(194, 124, 126, 0.12);
+}
+
+.lovebud-ai-review-card-disclaimer {
+    font-size: 10px;
+    color: var(--color-primary);
+    font-style: italic;
+    margin-bottom: 12px;
+    line-height: 1.4;
+}
+
+.lovebud-ai-review-dismiss-btn {
+    display: block;
+    width: 100%;
+    padding: 8px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--color-text-muted);
+    background: transparent;
+    border: 1px solid rgba(168, 163, 156, 0.3);
+    border-radius: 8px;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.2s ease-in-out;
+}
+
+.lovebud-ai-review-dismiss-btn:hover {
+    color: var(--color-primary);
+    border-color: var(--color-primary);
+    background: rgba(194, 124, 126, 0.05);
+}
+
+/* Mobile responsive styles */
+@media (max-width: 768px) {
+    .lovebud-ai-review-tray {
+        left: 16px;
+        right: 16px;
+        bottom: 88px; /* Lift above mobile bottom bars */
+        width: auto;
+        max-width: none;
+    }
+}
