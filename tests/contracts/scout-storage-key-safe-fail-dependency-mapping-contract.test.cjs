@@ -58,8 +58,11 @@ push('Dependency mapping doc exists with issue references and status', () => {
   assert.ok(doc.includes('Depends on: #2343'));
 });
 
-push('Dependency adapter version remains stable while mapping boundary is extended', () => {
-  assert.ok(depAdapter.includes("SCOUT_LIVE_DEPENDENCY_ADAPTER_VERSION = '20260607-1'"));
+push('Dependency adapter version is bumped for the Firebase runtime success mapping slice', () => {
+  // Issue #2569: this slice adds the Firebase runtime verified mapping
+  // and bumps the dependency adapter version to
+  // 20260616-runtime-mapping-1.
+  assert.ok(depAdapter.includes("SCOUT_LIVE_DEPENDENCY_ADAPTER_VERSION = '20260616-runtime-mapping-1'"));
 });
 
 push('Dependency adapter maps storage key builder disabled to storage unavailable', () => {
