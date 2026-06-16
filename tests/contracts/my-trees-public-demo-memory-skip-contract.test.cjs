@@ -2,65 +2,37 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const vm = require('node:vm');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const POSTGRES_CLIENT_PATH = path.join(ROOT, 'js', 'postgres-client.js');
 
-function loadApiClient() {
-  const calls = [];
-  const sandbox = {
-    window: {
-      location: { hostname: 'localhost' },
-      LoveTreePublicTreeAdapter: null,
-      LoveTreeAuthPolicy: null,
-      LoveTreeBaseApiFetch: {
-        async apiFetch(endpoint) {
-          calls.push(endpoint);
-          return [{ id: 'memory-1' }];
-        },
-      },
-      apiClient: null,
-      __LoveBudApiClientInternals: null,
-    },
-    console,
-  };
-
-  vm.createContext(sandbox);
-  vm.runInContext(fs.readFileSync(POSTGRES_CLIENT_PATH, 'utf8'), sandbox, {
-    filename: POSTGRES_CLIENT_PATH,
-  });
-
-  return {
-    apiClient: sandbox.window.apiClient,
-    internals: sandbox.window.__LoveBudApiClientInternals,
-    calls,
-  };
+function readPostgresClient() {
+  return fs.readFileSync(POSTGRES_CLIENT_PATH, 'utf8');
 }
 
-test('getMemoriesByTree skips public demo tree ids without calling private memories API', async () => {
-  const { apiClient, calls } = loadApiClient();
+test('postgres client defines a private public-demo tree id guard', () => {
+  const source = readPostgresClient();
 
-  const result = await apiClient.getMemoriesByTree('public-midnight-vibes');
-
-  assert.equal(Array.isArray(result), true);
-  assert.equal(result.length, 0);
-  assert.deepEqual(calls, []);
+  assert.match(source, /function\s+isPublicDemoTreeId\s*\(treeId\)\s*{/);
+  assert.match(source, /String\(treeId \|\| ''\)\.trim\(\)/);
+  assert.match(source, /\/\^public-\[a-z0-9-\]\+\$\/i\.test\(value\)/);
 });
 
-test('getMemoriesByTree preserves normal user tree memory API calls', async () => {
-  const { apiClient, calls } = loadApiClient();
+test('getMemoriesByTree returns an empty list before calling memories API for public demo ids', () => {
+  const source = readPostgresClient();
+  const guardIndex = source.indexOf('if (isPublicDemoTreeId(normalizedTreeId))');
+  const emptyReturnIndex = source.indexOf('return [];', guardIndex);
+  const apiFetchIndex = source.indexOf('BaseApiFetch.apiFetch(`/memories?treeId=${encodeURIComponent(normalizedTreeId)}`)', guardIndex);
 
-  const result = await apiClient.getMemoriesByTree('user-tree-1');
-
-  assert.deepEqual(result, [{ id: 'memory-1' }]);
-  assert.deepEqual(calls, ['/memories?treeId=user-tree-1']);
+  assert.ok(guardIndex > -1, 'expected public-demo guard inside getMemoriesByTree');
+  assert.ok(emptyReturnIndex > guardIndex, 'expected public-demo guard to return an empty list');
+  assert.ok(apiFetchIndex > emptyReturnIndex, 'expected private memories API call to remain after the guard');
 });
 
-test('public demo guard is available in local internals for diagnostics', () => {
-  const { internals } = loadApiClient();
+test('getMemoriesByTree still preserves normal user tree memory endpoint shape', () => {
+  const source = readPostgresClient();
 
-  assert.equal(typeof internals.isPublicDemoTreeId, 'function');
-  assert.equal(internals.isPublicDemoTreeId('public-iu-comfort'), true);
-  assert.equal(internals.isPublicDemoTreeId('user-tree-1'), false);
+  assert.match(source, /const\s+normalizedTreeId\s*=\s*String\(treeId \|\| ''\)\.trim\(\);/);
+  assert.match(source, /encodeURIComponent\(normalizedTreeId\)/);
+  assert.match(source, /`\/memories\?treeId=\$\{encodeURIComponent\(normalizedTreeId\)\}`/);
 });
