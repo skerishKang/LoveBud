@@ -8,15 +8,17 @@
 
     function markActiveCard(activeCard, refs) {
         getCardContainers(refs).forEach(function (container) {
-            container.querySelectorAll('.tree-card.is-active').forEach(function (card) {
+            container.querySelectorAll('.tree-card').forEach(function (card) {
                 card.classList.remove('is-active');
                 card.setAttribute('aria-pressed', 'false');
+                card.removeAttribute('data-selected-tree-card');
             });
         });
 
         if (activeCard) {
             activeCard.classList.add('is-active');
             activeCard.setAttribute('aria-pressed', 'true');
+            activeCard.setAttribute('data-selected-tree-card', 'true');
         }
     }
 
