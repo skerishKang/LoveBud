@@ -46,6 +46,14 @@
       ko: '이메일로 로그인',
       en: 'Log in with email'
     },
+    'or_email_signup': {
+      ko: '또는 이메일로 회원가입',
+      en: 'Or sign up with email'
+    },
+    'email_signup': {
+      ko: '이메일로 회원가입',
+      en: 'Sign up with email'
+    },
 
     // 회원가입 섹션 안내
     'signup_intro_badge': {
