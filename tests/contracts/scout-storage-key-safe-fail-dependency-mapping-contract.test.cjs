@@ -58,12 +58,14 @@ push('Dependency mapping doc exists with issue references and status', () => {
   assert.ok(doc.includes('Depends on: #2343'));
 });
 
-push('Dependency adapter version is bumped for the Firebase runtime success mapping slice', () => {
+push('Dependency adapter version is bumped for the runtime-key scaffold mapping slice', () => {
   // Issue #2569: this slice added the Firebase runtime verified mapping
   // at version 20260616-runtime-mapping-1. Issue #2571 then bumped the
   // version to 20260616-bearer-handoff-1 to add the guarded raw token
-  // handoff option.
-  assert.ok(depAdapter.includes("SCOUT_LIVE_DEPENDENCY_ADAPTER_VERSION = '20260616-bearer-handoff-1'"));
+  // handoff option. Issue #2577 then bumped the version to
+  // 20260616-runtime-key-mapping-1 to add the STORAGE_KEY_BUILT safe-fail
+  // mapping.
+  assert.ok(depAdapter.includes("SCOUT_LIVE_DEPENDENCY_ADAPTER_VERSION = '20260616-runtime-key-mapping-1'"));
 });
 
 push('Dependency adapter maps storage key builder disabled to storage unavailable', () => {

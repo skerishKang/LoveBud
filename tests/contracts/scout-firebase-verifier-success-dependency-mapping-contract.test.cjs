@@ -500,9 +500,15 @@ tests.push({
   name: 'Dependency adapter version was bumped for this slice',
   fn: async () => {
     const mod = await loadDependencyAdapterModule();
+    // #2577 (runtime-key scaffold mapping) bumped the dependency adapter
+    // version to 20260616-runtime-key-mapping-1. This test, written for
+    // #2571 (bearer-token handoff), allows the dep adapter to be at either
+    // the bearer-handoff-1 version or the newer runtime-key-mapping-1
+    // version, so this test remains a regression anchor without
+    // blocking the #2577 slice.
     assert.match(
       mod.SCOUT_LIVE_DEPENDENCY_ADAPTER_VERSION,
-      /^20260616-bearer-handoff-1$/
+      /^20260616-(bearer-handoff-1|runtime-key-mapping-1)$/
     );
   },
 });

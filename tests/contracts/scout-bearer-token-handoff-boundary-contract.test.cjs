@@ -422,10 +422,14 @@ tests.push({
     const depMod = await loadDependencyAdapterModule();
     // The boundary file's version comment uses the v-prefix convention.
     assert.match(boundaryCode, /v20260616-bearer-handoff-1/);
-    // The dependency adapter's exported version.
+    // The dependency adapter's exported version. The version was bumped
+    // by #2577 to 20260616-runtime-key-mapping-1, but the boundary file
+    // version remains at the #2571 handoff version. The dependency
+    // adapter is allowed to advance to a newer version; we just verify
+    // it is a known 20260616-* family version.
     assert.match(
       depMod.SCOUT_LIVE_DEPENDENCY_ADAPTER_VERSION,
-      /^20260616-bearer-handoff-1$/
+      /^20260616-(bearer-handoff-1|runtime-key-mapping-1)$/
     );
   },
 });

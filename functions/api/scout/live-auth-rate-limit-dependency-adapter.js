@@ -1,6 +1,9 @@
 /**
  * Scout Live Auth / Rate-Limit Dependency Adapter Skeleton
- * v20260616-bearer-handoff-1
+ * v20260616-runtime-key-mapping-1
+ *
+ * Slice issue: #2577
+ * Parent issue: #1882 (must remain OPEN; never auto-close)
  *
  * Mock-disabled dependency adapter skeleton for the Scout live provider path.
  * Provides a factory that returns default implementations of `verifyToken`,
@@ -66,6 +69,15 @@
  * `idToken` and forwards derived fields only. The raw auth-header token
  * never reaches the verifier seam without the explicit opt-in.
  *
+ * Issue #2577 runtime-key scaffold mapping: the dependency adapter
+ * explicitly recognizes `STORAGE_KEY_BUILT` from the storage adapter
+ * and maps it to `RATE_LIMIT_STORAGE_UNAVAILABLE`. The runtime key
+ * output is sanitized scaffold metadata only and MUST NOT be
+ * interpreted as a quota allow decision. The dependency adapter also
+ * does not surface `storageKey`, `keyPreview`, or any other runtime
+ * key builder field in its response — those stay on the storage
+ * adapter side.
+ *
  * This module is a **mock-disabled skeleton + factory**. No real Firebase
  * Admin SDK import, no real token verification, no real persistent storage
  * call, no fetch, no provider API call.
@@ -91,7 +103,7 @@ import { createScoutLiveAuthVerifierAdapter } from './live-auth-verifier-adapter
 
 // ─── Version ────────────────────────────────────────────────────────────────
 
-export const SCOUT_LIVE_DEPENDENCY_ADAPTER_VERSION = '20260616-bearer-handoff-1';
+export const SCOUT_LIVE_DEPENDENCY_ADAPTER_VERSION = '20260616-runtime-key-mapping-1';
 
 // ─── Mode Constants ─────────────────────────────────────────────────────────
 
@@ -292,7 +304,8 @@ function mapStorageResultToDependencyResponse(storageResult) {
     code === 'STORAGE_D1_DISABLED' ||
     code === 'STORAGE_CONFIG_MISSING' ||
     code === 'STORAGE_KEY_BUILDER_DISABLED' ||
-    code === 'STORAGE_KEY_PAYLOAD_PROHIBITED'
+    code === 'STORAGE_KEY_PAYLOAD_PROHIBITED' ||
+    code === 'STORAGE_KEY_BUILT'
   ) {
     return {
       allowed: false,

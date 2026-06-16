@@ -148,9 +148,12 @@ push('Audit recommends the next disabled scaffold contract', () => {
 push('Runtime files retain expected storage safety boundaries', () => {
   // Issue #2569: dependency adapter version was bumped to
   // 20260616-bearer-handoff-1 to add the guarded raw token handoff
-  // option (issue #2571). The storage safety boundary markers
+  // option (issue #2571). Slice #2577 then bumped the version to
+  // 20260616-runtime-key-mapping-1 to add the explicit STORAGE_KEY_BUILT
+  // safe-fail mapping. The storage safety boundary markers
   // (STORAGE_KEY_BUILDER_DISABLED / STORAGE_KEY_PAYLOAD_PROHIBITED /
-  // RATE_LIMIT_STORAGE_UNAVAILABLE) must remain present.
+  // STORAGE_KEY_BUILT / RATE_LIMIT_STORAGE_UNAVAILABLE) must remain
+  // present.
   //
   // Slice #2573 (runtime mode opt-in): key builder version was bumped to
   // 20260616-runtime-mode-1 to add the explicit STORAGE_RUNTIME mode with
@@ -163,9 +166,10 @@ push('Runtime files retain expected storage safety boundaries', () => {
   // Default mock-disabled behavior is preserved. The `buildKey()` path
   // remains in the source for the default scaffold branch; the runtime key
   // builder is only invoked when `runtimeKey: true` is explicitly set.
-  assert.ok(depAdapter.includes("SCOUT_LIVE_DEPENDENCY_ADAPTER_VERSION = '20260616-bearer-handoff-1'"));
+  assert.ok(depAdapter.includes("SCOUT_LIVE_DEPENDENCY_ADAPTER_VERSION = '20260616-runtime-key-mapping-1'"));
   assert.ok(depAdapter.includes("code === 'STORAGE_KEY_BUILDER_DISABLED'"));
   assert.ok(depAdapter.includes("code === 'STORAGE_KEY_PAYLOAD_PROHIBITED'"));
+  assert.ok(depAdapter.includes("code === 'STORAGE_KEY_BUILT'"));
   assert.ok(depAdapter.includes('RATE_LIMIT_STORAGE_UNAVAILABLE'));
   assert.ok(storageAdapter.includes("SCOUT_LIVE_RATE_LIMIT_STORAGE_ADAPTER_VERSION = '20260616-runtime-output-1'"));
   assert.ok(storageAdapter.includes('useRuntimeKeyBuilder'));
