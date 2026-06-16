@@ -1,11 +1,21 @@
 /**
- * Scout Live Rate-Limit Storage Adapter Skeleton
- * v20260607-3
+ * Scout Live Rate-Limit Storage Adapter Skeleton + Runtime Key Output Scaffold
+ * v20260616-runtime-output-1
+ *
+ * Slice issue: #2575
+ * Parent issue: #1882 (must remain OPEN; never auto-close)
  *
  * Mock-disabled storage adapter skeleton for the Scout live provider path.
  * Provides a future interface for persistent rate-limit quota state
  * (KV / Durable Object / D1) without actually accessing any external
  * storage in this slice.
+ *
+ * Slice #2575 binds the non-default runtime scaffold path to the key
+ * builder's runtime key output. The default path remains mock_disabled
+ * and never calls the runtime key builder. The explicit runtime scaffold
+ * path may opt into the runtime key builder via `runtimeKey: true`, in
+ * which case the adapter propagates successful STORAGE_KEY_BUILT results
+ * as sanitized adapter metadata only — never as a quota allow decision.
  *
  * Provides:
  * - SCOUT_LIVE_RATE_LIMIT_STORAGE_ADAPTER_VERSION: skeleton version
@@ -34,6 +44,9 @@
  * - No auto-save or persistence
  * - No env storage binding access
  * - No wiring into suggest.js LIVE branch (separate slice)
+ * - No real quota persistence
+ * - No real allow/deny decision backed by storage
+ * - No closing of #1882
  */
 
 'use strict';
@@ -45,7 +58,7 @@ import {
 
 // ─── Version ────────────────────────────────────────────────────────────────
 
-export const SCOUT_LIVE_RATE_LIMIT_STORAGE_ADAPTER_VERSION = '20260607-3';
+export const SCOUT_LIVE_RATE_LIMIT_STORAGE_ADAPTER_VERSION = '20260616-runtime-output-1';
 
 // ─── Storage Mode Constants ────────────────────────────────────────────────
 
@@ -123,6 +136,8 @@ const DEFAULT_OPTIONS = Object.freeze({
   mockDisabled: true,
   storageMode: null,
   storageKeyBuilder: null,
+  runtimeKey: false,
+  runtimeKeyKind: null,
   onProhibitedField: 'drop', // 'drop' | 'reject'
 });
 
@@ -251,6 +266,19 @@ function resolveDisabledStorageKeyBuilder(options) {
     return injectedBuilder;
   }
 
+  // Slice #2575: when the adapter is explicitly opted into the runtime key
+  // builder (runtimeKey: true), the resolved builder is created with
+  // runtime mode enabled. Default is runtimeKey: false, which preserves
+  // the existing disabled buildKey() path.
+  if (options && options.runtimeKey === true) {
+    return createScoutLiveRateLimitStorageKeyBuilder({
+      disabled: false,
+      runtime: true,
+      kind: options.runtimeKeyKind || null,
+      onProhibitedField: options && options.onProhibitedField,
+    });
+  }
+
   return createScoutLiveRateLimitStorageKeyBuilder({
     disabled: true,
     onProhibitedField: options && options.onProhibitedField,
@@ -260,13 +288,29 @@ function resolveDisabledStorageKeyBuilder(options) {
 function normalizeStorageKeyBuilderResult(result) {
   const src = result && typeof result === 'object' ? result : {};
   const code = src.code || SCOUT_LIVE_RATE_LIMIT_STORAGE_KEY_BUILDER_CODES.STORAGE_KEY_BUILDER_DISABLED;
+  const isBuilt = code === SCOUT_LIVE_RATE_LIMIT_STORAGE_KEY_BUILDER_CODES.STORAGE_KEY_BUILT;
 
+  // Legacy safe-fail response shape (preserved for the disabled / non-built
+  // path): ok: false, disabled: true, storageKey: null, keyPreview: null.
+  if (!isBuilt) {
+    return {
+      ok: false,
+      disabled: true,
+      code,
+      storageKey: null,
+      keyPreview: null,
+      rejectedFields: Array.isArray(src.rejectedFields) ? src.rejectedFields : [],
+    };
+  }
+
+  // STORAGE_KEY_BUILT path (slice #2575): propagate sanitized key builder
+  // output. The adapter still does NOT treat this as a quota allow.
   return {
-    ok: false,
-    disabled: true,
+    ok: true,
+    disabled: false,
     code,
-    storageKey: null,
-    keyPreview: null,
+    storageKey: typeof src.storageKey === 'string' ? src.storageKey : null,
+    keyPreview: typeof src.keyPreview === 'string' ? src.keyPreview : null,
     rejectedFields: Array.isArray(src.rejectedFields) ? src.rejectedFields : [],
   };
 }
@@ -340,6 +384,7 @@ function isRuntimeScaffoldMode(mode) {
 
 function createRuntimeScaffoldAdapter(opts, mode) {
   const storageKeyBuilder = resolveDisabledStorageKeyBuilder(opts);
+  const useRuntimeKey = opts.runtimeKey === true;
 
   return Object.freeze({
     kind: 'scout_live_rate_limit_storage_adapter',
@@ -350,20 +395,27 @@ function createRuntimeScaffoldAdapter(opts, mode) {
     isMockDisabled: false,
     isRuntimeScaffold: true,
     hasStorageKeyBuilder: true,
+    useRuntimeKeyBuilder: useRuntimeKey,
     onProhibitedField: opts.onProhibitedField,
 
     async checkQuota(payload) {
-      const keyBuilderResult = storageKeyBuilder.buildKey(payload);
+      const keyBuilderResult = useRuntimeKey
+        ? storageKeyBuilder.buildKeyInRuntimeMode(payload)
+        : storageKeyBuilder.buildKey(payload);
       return buildRuntimeScaffoldCheckResponse(mode, keyBuilderResult);
     },
 
     async consumeQuota(payload) {
-      const keyBuilderResult = storageKeyBuilder.buildKey(payload);
+      const keyBuilderResult = useRuntimeKey
+        ? storageKeyBuilder.buildKeyInRuntimeMode(payload)
+        : storageKeyBuilder.buildKey(payload);
       return buildRuntimeScaffoldConsumeResponse(mode, keyBuilderResult);
     },
 
     async releaseQuota(payload) {
-      const keyBuilderResult = storageKeyBuilder.buildKey(payload);
+      const keyBuilderResult = useRuntimeKey
+        ? storageKeyBuilder.buildKeyInRuntimeMode(payload)
+        : storageKeyBuilder.buildKey(payload);
       return buildRuntimeScaffoldReleaseResponse(mode, keyBuilderResult);
     },
 
