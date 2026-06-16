@@ -86,6 +86,37 @@
     box-sizing: border-box;
 }
 
+/* 둘러볼 러브트리 헤더: 제목 좌측 / 정렬+뷰모드 우측 */
+.browse-results-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin: 0 0 16px;
+    min-width: 0;
+}
+
+.browse-results-label {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--on-surface);
+    white-space: nowrap;
+}
+
+.browse-results-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+#browseViewModeMount {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+}
+
 #browseSortControls {
     max-width: 100%;
     min-width: 0;
@@ -200,5 +231,10 @@
     .search-icon {
         left: 12px;
         font-size: 18px;
+    }
+
+    .browse-results-head {
+        flex-wrap: wrap;
+        gap: 8px;
     }
 }
