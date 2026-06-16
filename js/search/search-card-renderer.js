@@ -265,12 +265,19 @@
              ? 'tree-subtitle tree-subtitle-derived'
              : 'tree-subtitle tree-subtitle-fallback';
 
+         // Renders tree-public-metadata, data-public-tree-metadata block, and tree-public-tags via helper
+         const metadataHelper = window.LoveBudSearchPublicMetadataHelper;
+         const metadataHtml = (metadataHelper && typeof metadataHelper.renderCardMetadata === 'function')
+             ? metadataHelper.renderCardMetadata(tree)
+             : '';
+
          return `
              <div class="tree-card ${index === 0 ? 'tree-card-featured' : ''}" id="tree-card-${safeTreeId}" data-tree-id="${safeTreeId}" aria-label="${escapeHtml(cardSelectLabel)}" style="animation-delay: ${index * 0.05}s;">
                  ${renderRepresentativeMedia(tree, firstMem, displayTitleRaw)}
                  <div class="tree-card-body">
                      <div class="tree-title">${safeTitle}</div>
                      <p class="${subtitleClass}">${escapeHtml(softMoodLine)}</p>
+                     ${metadataHtml}
                      <div class="tree-meta-row">
                          <div class="tree-meta-left">
                              ${renderTreeReactionMetrics(tree)}
