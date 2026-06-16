@@ -1,6 +1,5 @@
 const fs = require('fs');
 const path = require('path');
-const assert = require('assert');
 
 const targetPages = [
   'index.html',
@@ -32,12 +31,12 @@ targetPages.forEach(pagePath => {
   }
   const content = fs.readFileSync(fullPath, 'utf8');
 
-  // Check 1: Exactly one #shared-header
+  // Check 1: Exactly one #shared-header host per page.
   const matches = content.match(/id="shared-header"/g);
   check(`${pagePath} has exactly one #shared-header`, matches && matches.length === 1);
 
-  // Check 2: No raw header nav markup
-  check(`${pagePath} does not have raw header markup`, !content.includes('<header class="shared-header"'));
+  // Check 2: No raw header markup is duplicated in page HTML.
+  check(`${pagePath} does not duplicate raw nav-bar header markup`, !content.includes('<header class="nav-bar">'));
 
   // Check 3: Position in document.
   let wrapperClass = '';
@@ -48,7 +47,7 @@ targetPages.forEach(pagePath => {
   else if (pagePath.includes('settings')) wrapperClass = 'settings-layout';
 
   const headerIdx = content.indexOf('id="shared-header"');
-  // Handle case where wrapper class might be combined with other classes
+  // Handle case where wrapper class might be combined with other classes.
   const match = content.match(new RegExp(`class="[^"]*\\b${wrapperClass}\\b[^"]*"`));
   const wrapperIdx = match ? match.index : -1;
 
@@ -62,7 +61,7 @@ targetPages.forEach(pagePath => {
 const sharedHeaderJsPath = path.join(__dirname, '../../js/shared-header.js');
 if (fs.existsSync(sharedHeaderJsPath)) {
   const jsContent = fs.readFileSync(sharedHeaderJsPath, 'utf8');
-  check('js/shared-header.js handles the markup rendering', jsContent.includes('window.renderSharedHeader = function'));
+  check('js/shared-header.js handles the markup rendering', jsContent.includes('<header class="nav-bar">'));
 }
 
 if (failed) {
