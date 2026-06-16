@@ -26,6 +26,14 @@
     return '';
   }
 
+  function isPublicDemoTreeId(treeId) {
+    var value = String(treeId || '').trim().toLowerCase();
+    if (value.indexOf('public-') !== 0) return false;
+    return value.split('').every(function (character) {
+      return 'abcdefghijklmnopqrstuvwxyz0123456789-'.indexOf(character) > -1;
+    });
+  }
+
   function escapeHtml(value) {
     var Utils = window.LoveBudMyTreesUtils;
     if (Utils && typeof Utils.escapeHtml === 'function') return Utils.escapeHtml(value);
@@ -185,6 +193,10 @@
     var cachedMemories = readTreeMemoriesCache(treeId);
     if (shouldUseCachedMemories(tree, cachedMemories)) {
       return deriveCreatedMomentMeta(tree, cachedMemories);
+    }
+
+    if (isPublicDemoTreeId(treeId)) {
+      return deriveCreatedMomentMeta(tree, []);
     }
 
     if (!treeId || !window.apiClient || typeof window.apiClient.getMemoriesByTree !== 'function') {
