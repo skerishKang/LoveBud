@@ -187,7 +187,7 @@
       return deriveCreatedMomentMeta(tree, cachedMemories);
     }
 
-    if (!treeId || !window.apiClient || typeof window.apiClient.getMemoriesByTree !== 'function') {
+    if (!treeId || String(treeId).trim().toLowerCase().indexOf('public-') === 0 || !window.apiClient || typeof window.apiClient.getMemoriesByTree !== 'function') {
       return deriveCreatedMomentMeta(tree, []);
     }
 
