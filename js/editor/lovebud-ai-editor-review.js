@@ -1,6 +1,6 @@
 /**
  * LoveBud AI Editor Suggestion Review Flow
- * v20260616-ai-editor-review-1
+ * v20260616-ai-editor-review-2
  *
  * Requirements:
  * - window.LoveBudAIEditorReview export
@@ -10,6 +10,9 @@
  * - No innerHTML used (createElement / textContent only)
  * - Safety copy: 'AI 제안 검토', 'local_stub', '자동 저장되지 않음', '저장 전 직접 확인 필요'
  * - Dismiss button with data-lovebud-ai-draft-review-dismiss marker
+ * - Explicit "copy to draft fields" button with data-lovebud-ai-copy-to-draft-fields marker
+ * - Copy is triggered ONLY by user click on the copy button
+ * - Copy uses allowlisted draft field selectors (DRAFT_FIELD_SELECTORS)
  * - No memory mutations, auto-saves, or live networks
  */
 
@@ -21,6 +24,40 @@
   }
 
   var trayEl = null;
+
+  // Allowlisted draft field selectors for the explicit user-triggered copy action.
+  // Copying from a review card into editor draft fields is only allowed for these
+  // exact selector strings. Do NOT add broad or wildcard selectors here.
+  // The actual repo selectors are listed first; generic/legacy fallbacks follow.
+  var DRAFT_FIELD_SELECTORS = {
+    title: [
+      '#memoryTitleInput',
+      '[data-memory-title-input]',
+      '[data-editor-memory-title]',
+      '#memoryTitle',
+      '#momentTitle'
+    ],
+    memo: [
+      '#memoryMemoInput',
+      '[data-memory-memo-input]',
+      '[data-editor-memory-memo]',
+      '#memoryMemo',
+      '#momentMemo'
+    ],
+    tags: [
+      '[data-memory-tags-input]',
+      '[data-editor-memory-tags]',
+      '#memoryTags',
+      '#momentTags'
+    ],
+    sourceUrl: [
+      '#memoryUrlInput',
+      '[data-memory-source-url-input]',
+      '[data-editor-memory-source-url]',
+      '#memorySourceUrl',
+      '#momentSourceUrl'
+    ]
+  };
 
   var LoveBudAIEditorReview = {
     init: function () {
@@ -121,6 +158,21 @@
         card.appendChild(discDiv);
       }
 
+      // Copy to draft fields Button (explicit user-triggered copy only)
+      var copyBtn = document.createElement('button');
+      copyBtn.type = 'button';
+      copyBtn.className = 'lovebud-ai-review-copy-to-draft-btn';
+      copyBtn.setAttribute('data-lovebud-ai-copy-to-draft-fields', 'true');
+      copyBtn.textContent = '초안 입력칸에 복사';
+      copyBtn.addEventListener('click', function (ev) {
+        if (ev && typeof ev.preventDefault === 'function') {
+          ev.preventDefault();
+        }
+        // Only this user click triggers the copy; never auto-fire.
+        LoveBudAIEditorReview.copySuggestionToDraftFields(suggestion);
+      });
+      card.appendChild(copyBtn);
+
       // Dismiss Button
       var dismissBtn = document.createElement('button');
       dismissBtn.type = 'button';
@@ -151,7 +203,85 @@
             container.removeChild(container.firstChild);
           }
         }
+        var notice = trayEl.querySelector('.lovebud-ai-review-copy-notice');
+        if (notice && notice.parentNode) {
+          notice.parentNode.removeChild(notice);
+        }
       }
+    },
+    findFirstDraftField: function (selectors) {
+      if (!Array.isArray(selectors)) return null;
+      for (var i = 0; i < selectors.length; i++) {
+        var sel = selectors[i];
+        if (typeof sel === 'string' && sel.length > 0) {
+          try {
+            var el = document.querySelector(sel);
+            if (el) return el;
+          } catch (err) {
+            // ignore invalid selector and continue
+          }
+        }
+      }
+      return null;
+    },
+    setDraftFieldValue: function (field, value) {
+      if (!field) return false;
+      var stringValue;
+      if (typeof value === 'string') {
+        stringValue = value;
+      } else if (Array.isArray(value)) {
+        stringValue = value
+          .filter(function (t) { return t != null && t !== ''; })
+          .map(function (t) { return String(t); })
+          .join(', ');
+      } else if (value == null) {
+        stringValue = '';
+      } else {
+        stringValue = String(value);
+      }
+      try {
+        field.value = stringValue;
+        field.dispatchEvent(new Event('input', { bubbles: true }));
+        field.dispatchEvent(new Event('change', { bubbles: true }));
+        return true;
+      } catch (err) {
+        return false;
+      }
+    },
+    showCopyNotice: function (message) {
+      if (!trayEl) return;
+      var existing = trayEl.querySelector('.lovebud-ai-review-copy-notice');
+      if (existing && existing.parentNode) {
+        existing.parentNode.removeChild(existing);
+      }
+      var notice = document.createElement('div');
+      notice.className = 'lovebud-ai-review-copy-notice';
+      notice.setAttribute('data-lovebud-ai-review-copy-notice', 'true');
+      notice.textContent = message || '초안 입력칸에 복사되었습니다. 저장 전 직접 확인해 주세요.';
+      trayEl.appendChild(notice);
+    },
+    copySuggestionToDraftFields: function (suggestion) {
+      var normalized = this.normalizeSuggestion(suggestion);
+      if (!normalized) {
+        this.showCopyNotice('복사할 수 있는 제안이 없습니다.');
+        return { title: false, memo: false, tags: false, sourceUrl: false };
+      }
+      var results = { title: false, memo: false, tags: false, sourceUrl: false };
+      var keys = ['title', 'memo', 'tags', 'sourceUrl'];
+      for (var i = 0; i < keys.length; i++) {
+        var key = keys[i];
+        var raw = normalized[key];
+        if (raw == null) continue;
+        if (typeof raw === 'string' && raw.length === 0) continue;
+        if (Array.isArray(raw) && raw.length === 0) continue;
+        var selectors = DRAFT_FIELD_SELECTORS[key];
+        var field = this.findFirstDraftField(selectors);
+        if (field) {
+          results[key] = this.setDraftFieldValue(field, raw);
+        }
+      }
+      this.showCopyNotice('초안 입력칸에 복사되었습니다. 저장 전 직접 확인해 주세요.');
+      return results;
     }
   };
 

@@ -83,8 +83,8 @@ test('4. Review tray, card, dismiss markers and safety copy', () => {
 
 test('5. pages/editor.html loads new editor review assets with cache-bust', () => {
   const html = read('pages/editor.html');
-  const scriptTag = '<script src="../js/editor/lovebud-ai-editor-review.js?v=20260616-ai-editor-review-1"';
-  const cssTag = '<link rel="stylesheet" href="../css/editor/lovebud-ai-editor-review.css?v=20260616-ai-editor-review-1"';
+  const scriptTag = '<script src="../js/editor/lovebud-ai-editor-review.js?v=20260616-ai-editor-review-2"';
+  const cssTag = '<link rel="stylesheet" href="../css/editor/lovebud-ai-editor-review.css?v=20260616-ai-editor-review-2"';
 
   assert.ok(html.includes(scriptTag) || html.includes(scriptTag + '>'), 'editor.html must load lovebud-ai-editor-review.js with cache-bust');
   assert.ok(html.includes(cssTag) || html.includes(cssTag + '>'), 'editor.html must load lovebud-ai-editor-review.css with cache-bust');
