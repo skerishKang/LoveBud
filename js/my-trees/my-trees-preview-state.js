@@ -370,11 +370,13 @@
     var cards = targetGrid.querySelectorAll('.tree-card');
     cards.forEach(function (card) {
       card.classList.remove('is-selected');
+      card.removeAttribute('data-selected-tree-card');
     });
 
     cards.forEach(function (card) {
       if (card.dataset && card.dataset.treeId === String(treeId)) {
         card.classList.add('is-selected');
+        card.setAttribute('data-selected-tree-card', 'true');
       }
     });
   }

@@ -68,12 +68,14 @@
 }
 
 .tree-card:hover .tree-card-media::before,
-.tree-card.is-active .tree-card-media::before {
+.tree-card.is-active .tree-card-media::before,
+.tree-card[data-selected-tree-card="true"] .tree-card-media::before {
     opacity: 0.9;
     transform: translateY(-1px);
 }
 
-.tree-card.is-active {
+.tree-card.is-active,
+.tree-card[data-selected-tree-card="true"] {
     background:
         radial-gradient(circle at 30% 20%, rgba(255, 248, 245, 0.96), transparent 52%),
         linear-gradient(145deg, rgba(255, 255, 255, 0.90), rgba(255, 246, 243, 0.76)),
@@ -85,18 +87,21 @@
         0 0 0 3px rgba(200, 116, 128, 0.10);
 }
 
-.tree-card.is-active::after {
+.tree-card.is-active::after,
+.tree-card[data-selected-tree-card="true"]::after {
     opacity: 1;
     transform: translateX(0);
 }
 
-.tree-card.is-active .tree-card-open-link {
+.tree-card.is-active .tree-card-open-link,
+.tree-card[data-selected-tree-card="true"] .tree-card-open-link {
     background: rgba(144, 73, 81, 0.92);
     border-color: rgba(144, 73, 81, 0.22);
     color: var(--surface-container-lowest);
 }
 
 .tree-card:hover::before,
-.tree-card.is-active::before {
+.tree-card.is-active::before,
+.tree-card[data-selected-tree-card="true"]::before {
     opacity: 1;
 }

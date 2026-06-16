@@ -263,8 +263,11 @@
     card.style.cursor = 'pointer';
     card.setAttribute('role', 'button');
     card.setAttribute('tabindex', '0');
-        card.dataset.treeId = String(normalizedTree.id || '');
+    card.dataset.treeId = String(normalizedTree.id || '');
     card.dataset.visibility = normalizedTree.visibility;
+    if (selectedClass) {
+      card.setAttribute('data-selected-tree-card', 'true');
+    }
 
     var handleCardSelect = function () {
       if (typeof onSelect === 'function') {

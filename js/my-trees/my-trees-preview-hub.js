@@ -197,7 +197,7 @@
         els.panel.classList.remove('is-loaded');
         if (els.placeholder) els.placeholder.hidden = false;
         if (els.content) els.content.hidden = true;
-        if (els.badge) els.badge.textContent = i18nHub('', '내 러브트리', 'My LoveTrees');
+        if (els.badge) els.badge.textContent = i18nHub('', '선택한 내 트리', 'Selected Tree');
         _selectedTree = null;
         _expandedFlowKey = null;
     }
@@ -220,9 +220,7 @@
         if (els.content) els.content.hidden = false;
 
         if (els.badge) {
-            els.badge.textContent = hasMemories
-                ? i18nHub('', '내 러브트리', 'My LoveTrees')
-                : i18nHub('', '트리', 'Tree');
+            els.badge.textContent = i18nHub('', '선택한 내 트리', 'Selected Tree');
         }
 
         /* ── Update action buttons href ── */
@@ -436,11 +434,13 @@
             var cards = grid.querySelectorAll('.tree-card');
             cards.forEach(function (card) {
                 card.classList.remove('is-selected');
+                card.removeAttribute('data-selected-tree-card');
             });
             // Find and mark selected card
             cards.forEach(function (card) {
                 if (card.dataset && card.dataset.treeId === String(tree.id)) {
                     card.classList.add('is-selected');
+                    card.setAttribute('data-selected-tree-card', 'true');
                 }
             });
         }
