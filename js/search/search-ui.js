@@ -144,13 +144,10 @@
         }
 
         function syncControlsFromState() {
-            const controls = document.getElementById('browseSortControls');
-            if (!controls) return;
-
-            controls.querySelectorAll('[data-browse-sort]').forEach((chip) => {
-                chip.classList.toggle('active', chip.dataset.browseSort === state.currentSort);
-            });
-
+            const select = document.getElementById('browseSortSelect');
+            if (select) {
+                select.value = state.currentSort || 'latest';
+            }
             syncScrollLoadSentinel();
         }
 
@@ -169,19 +166,14 @@
         }
 
         async function requestScrollLoadMore() {
-            // Create helper wiring context for adapter delegation
             const scrollLoadHelperContext = createScrollLoadHelperContext(state, callbacks);
             const flags = scrollLoadHelperContext.flags;
-
-            // Stabilize contract: flags.isQueued mirrors local queue state
             flags.isQueued = isScrollLoadQueued;
-
             const didRequest = await ScrollLoad.requestScrollLoadMoreWithContext(scrollLoadHelperContext);
             isScrollLoadQueued = Boolean(flags.isQueued);
             return didRequest;
         }
 
-        // Helper wiring context builder - prepares state/callbacks/flags for adapter delegation
         function createScrollLoadHelperContext(state, callbacks) {
             return {
                 state,
@@ -250,17 +242,29 @@
             const controls = document.createElement('div');
             controls.id = 'browseSortControls';
             controls.style.display = 'flex';
-            controls.style.flexWrap = 'wrap';
             controls.style.alignItems = 'center';
             controls.style.justifyContent = 'flex-end';
-            controls.style.gap = '10px';
-            controls.innerHTML = `
-                <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                    <button type="button" class="tag-chip" data-browse-sort="latest">${getCurrentLocale() === 'en' ? 'Latest' : '최신순'}</button>
-                    <button type="button" class="tag-chip" data-browse-sort="views">${getCurrentLocale() === 'en' ? 'Views' : '조회순'}</button>
-                    <button type="button" class="tag-chip" data-browse-sort="likes">${getCurrentLocale() === 'en' ? 'Likes' : '좋아요순'}</button>
-                </div>
+
+            const isEn = getCurrentLocale() === 'en';
+            const select = document.createElement('select');
+            select.id = 'browseSortSelect';
+            select.className = 'summary-sort-control';
+            select.innerHTML = `
+                <option value="latest">${isEn ? 'Latest' : '최신순'}</option>
+                <option value="views">${isEn ? 'Views' : '조회순'}</option>
+                <option value="likes">${isEn ? 'Likes' : '좋아요순'}</option>
             `;
+            select.addEventListener('change', async () => {
+                const nextSort = select.value || 'latest';
+                if (nextSort === state.currentSort) return;
+                state.currentSort = nextSort;
+                state.currentLimit = 6;
+                state.hasMoreTrees = true;
+                syncControlsFromState();
+                callbacks.updateUrlState();
+                await callbacks.loadPublicTrees({ resetSelection: true });
+            });
+            controls.appendChild(select);
 
             let rightGroup = refs.resultsHead.querySelector('.browse-head-right');
             if (!rightGroup) {
@@ -278,19 +282,6 @@
                 refs.resultsHead.appendChild(rightGroup);
             }
             rightGroup.appendChild(controls);
-
-            controls.querySelectorAll('[data-browse-sort]').forEach((button) => {
-                button.addEventListener('click', async () => {
-                    const nextSort = button.dataset.browseSort || 'latest';
-                    if (nextSort === state.currentSort) return;
-                    state.currentSort = nextSort;
-                    state.currentLimit = 6;
-                    state.hasMoreTrees = true;
-                    syncControlsFromState();
-                    callbacks.updateUrlState();
-                    await callbacks.loadPublicTrees({ resetSelection: true });
-                });
-            });
 
             ensureScrollLoadSentinel();
             syncControlsFromState();

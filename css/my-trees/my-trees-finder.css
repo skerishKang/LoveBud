@@ -1,26 +1,12 @@
 /* LoveBud - My Trees Finder Section Styles
-   Glassmorphism, clean input layout, responsive styling and warm aesthetics. */
+   검색창 + 필터칩을 한 줄 flex 배치 (둘러보기 스타일과 통일) */
 
 .my-trees-finder {
   display: flex;
-  flex-direction: column;
-  gap: 16px;
-  margin-bottom: 24px;
-  padding: 20px;
-  background: rgba(255, 255, 255, 0.45);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(144, 73, 81, 0.08);
-  border-radius: var(--lovetree-card-radius);
-  box-shadow: var(--lovetree-card-shadow);
-  transition: all 0.3s ease;
-}
-
-/* Glassmorphism subtle hover glow */
-.my-trees-finder:hover {
-  background: rgba(255, 255, 255, 0.65);
-  border-color: rgba(144, 73, 81, 0.12);
-  box-shadow: 0 8px 30px rgba(75, 64, 57, 0.08);
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
 }
 
 /* Search input container with material symbol */
@@ -28,7 +14,8 @@
   position: relative;
   display: flex;
   align-items: center;
-  width: 100%;
+  flex: 1;
+  min-width: 200px;
 }
 
 .my-trees-search-box .material-symbols-outlined {
@@ -42,14 +29,14 @@
 
 .my-trees-search-input {
   width: 100%;
-  height: 48px;
+  height: 40px;
   padding: 0 16px 0 48px;
   border-radius: var(--radius-full);
   border: 1px solid rgba(144, 73, 81, 0.12);
   background: rgba(255, 255, 255, 0.9);
   color: var(--on-surface);
   font-family: var(--font-body);
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 500;
   outline: none;
   box-sizing: border-box;
@@ -67,29 +54,26 @@
   box-shadow: 0 0 0 4px rgba(144, 73, 81, 0.08);
 }
 
-.my-trees-search-input:focus + .material-symbols-outlined {
-  color: var(--primary);
-}
-
-/* Filter Chips Section */
+/* Filter Chips */
 .my-trees-filter-chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px;
+  align-items: center;
 }
 
 .my-trees-filter-chip {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 38px;
-  padding: 0 16px;
+  min-height: 34px;
+  padding: 0 14px;
   border-radius: var(--radius-full);
   background: var(--lovetree-chip-bg);
   border: 1px solid var(--lovetree-chip-border);
   color: var(--lovetree-chip-text);
   font-family: var(--font-body);
-  font-size: 13.5px;
+  font-size: 13px;
   font-weight: 700;
   cursor: pointer;
   transition: all 0.2s ease;
