@@ -244,7 +244,6 @@
             normalizeBrowseTreeRecord: PublicTreeAdapter?.normalizeBrowseTreeRecord,
             normalizeBrowseMemoryRecord: PublicTreeAdapter?.normalizeBrowseMemoryRecord,
             normalizeChannelMetadata,
-            isPublicDemoTreeId,
         };
     }
 })();
