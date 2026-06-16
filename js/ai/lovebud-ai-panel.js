@@ -149,9 +149,10 @@
     suggestCards.className = 'lovebud-ai-panel-suggest-cards';
 
     var cardActionData = [
-      { action: 'analyse-link', icon: 'link', title: '링크 분석하기', desc: 'YouTube나 뉴스 기사 링크 분석' },
-      { action: 'suggest-tags', icon: 'sell', title: '감정 태그 추천', desc: '기록에 어울리는 감정 추천' },
-      { action: 'new-tree', icon: 'add_circle', title: '새 트리 아이디어', desc: '러브트리 컨셉 시작하기' }
+      { action: 'refine-memo', icon: 'edit_note', title: '메모 다듬기', desc: '작성 중인 메모를 아름답게 정돈합니다.' },
+      { action: 'suggest-tags', icon: 'sell', title: '감정 태그 추천', desc: '이 순간에 어울리는 감정 분석 및 추천' },
+      { action: 'draft-from-link', icon: 'link', title: '링크로 순간 초안 만들기', desc: '외부 URL 분석 예시 초안 생성' },
+      { action: 'summarize-tree-flow', icon: 'account_tree', title: '이 트리 흐름 요약', desc: '전체적인 감정적 연결 구조 요약' }
     ];
 
     cardActionData.forEach(function (data) {
@@ -222,7 +223,7 @@
     inputEl = document.createElement('textarea');
     inputEl.className = 'lovebud-ai-panel-input';
     inputEl.id = 'lovebudAIPanelInput';
-    inputEl.placeholder = '메시지 또는 링크를 입력하세요...';
+    inputEl.placeholder = 'AI에게 부탁하기...';
     inputEl.setAttribute('rows', '1');
     inputEl.setAttribute('aria-label', '메시지 입력');
     inputWrapper.appendChild(inputEl);
@@ -244,7 +245,7 @@
 
     var footerNote = document.createElement('div');
     footerNote.className = 'lovebud-ai-panel-footer-note';
-    footerNote.textContent = 'LoveBud Scout은 실시간 답변 및 제안을 제공하며, 결과는 저장하기 전 언제든 편집할 수 있습니다.';
+    footerNote.textContent = 'LoveBud AI는 현재 local_stub 미리보기입니다. 결과는 자동 저장되지 않으며, 저장 전 직접 확인해 주세요.';
     inputContainer.appendChild(footerNote);
 
     sheet.appendChild(inputContainer);
@@ -315,12 +316,14 @@
       card.addEventListener('click', function () {
         var action = card.getAttribute('data-action');
         var text = '';
-        if (action === 'analyse-link') {
-          text = '[링크 분석] https://youtube.com/watch?v=';
+        if (action === 'refine-memo') {
+          text = '메모 다듬기';
         } else if (action === 'suggest-tags') {
-          text = '[태그 추천] 이 순간에 어울리는 태그 추천 요청';
-        } else if (action === 'new-tree') {
-          text = '[트리 제안] 새로운 러브트리 아이디어 추천 요청';
+          text = '감정 태그 추천';
+        } else if (action === 'draft-from-link') {
+          text = '링크로 순간 초안 만들기';
+        } else if (action === 'summarize-tree-flow') {
+          text = '이 트리 흐름 요약';
         }
 
         if (inputEl) {
@@ -417,9 +420,20 @@
 
   function fetchStubResponse(userInput) {
     var stub = window.LoveBudAILocalStub;
-    var isLink = userInput.toLowerCase().indexOf('http') !== -1 || userInput.toLowerCase().indexOf('youtube') !== -1 || userInput.toLowerCase().indexOf('링크') !== -1;
+    var cleanInput = userInput.trim();
+    if (cleanInput === '메모 다듬기') {
+      return stub.refineMemo('');
+    } else if (cleanInput === '감정 태그 추천') {
+      return stub.suggestTags('');
+    } else if (cleanInput === '링크로 순간 초안 만들기') {
+      return stub.createDraftFromLink('https://youtube.com/watch?v=mock');
+    } else if (cleanInput === '이 트리 흐름 요약') {
+      return stub.summarizeTreeFlow();
+    }
+
+    var isLink = userInput.toLowerCase().indexOf('http') !== -1 || userInput.toLowerCase().indexOf('youtube') !== -1;
     var isTags = userInput.indexOf('태그') !== -1 || userInput.indexOf('추천') !== -1;
-    var isTree = userInput.indexOf('트리') !== -1 || userInput.indexOf('제안') !== -1;
+    var isTree = userInput.indexOf('트리') !== -1 || userInput.indexOf('요약') !== -1;
 
     if (isLink) {
       return stub.createDraftFromLink('https://youtube.com/watch?v=mock');
@@ -465,7 +479,7 @@
     if (reply.tags) {
       var tagLabel = document.createElement('span');
       tagLabel.className = 'lovebud-ai-structured-label';
-      tagLabel.textContent = '제안 감정 태그 (클릭하여 선택)';
+      tagLabel.textContent = '제안 감정 태그';
       structuredContainer.appendChild(tagLabel);
 
       var tagsContainer = document.createElement('div');
@@ -476,45 +490,12 @@
         var chip = document.createElement('span');
         chip.className = 'lovebud-ai-tag-chip';
         chip.textContent = tagName;
-        chip.addEventListener('click', function () {
-          showToast('감정 태그 "' + tagName + '"가 복사되었습니다!');
-        });
         tagsContainer.appendChild(chip);
       });
       structuredContainer.appendChild(tagsContainer);
     }
 
-    // 5. Action Button (fills editor if editor exists)
-    if (reply.title || reply.tags) {
-      var actionBtn = document.createElement('button');
-      actionBtn.type = 'button';
-      actionBtn.className = 'lovebud-ai-action-btn';
-
-      var actionIcon = document.createElement('span');
-      actionIcon.className = 'material-symbols-outlined';
-      actionIcon.textContent = 'auto_stories';
-      actionBtn.appendChild(actionIcon);
-
-      var actionText = document.createTextNode(' 내 에디터/트리에 제안 적용하기');
-      actionBtn.appendChild(actionText);
-
-      actionBtn.addEventListener('click', function () {
-        if (window.LoveTreeEditor && typeof window.LoveTreeEditor.fillMomentDraft === 'function') {
-          window.LoveTreeEditor.fillMomentDraft({
-            title: reply.title || '제안된 순간',
-            memo: reply.memo || reply.text || '',
-            tags: Array.isArray(reply.tags) ? reply.tags.join(' ') : (reply.tags || ''),
-            sourceUrl: reply.sourceUrl || ''
-          });
-          showToast('에디터에 AI 제안이 적용되었습니다!');
-        } else {
-          showToast('클립보드에 제안 내용이 복사되었습니다! 에디터 페이지로 이동해 입력해 보세요.');
-        }
-      });
-      structuredContainer.appendChild(actionBtn);
-    }
-
-    // 6. Safety Warning Disclaimer
+    // 5. Safety Warning Disclaimer
     if (reply.disclaimer) {
       var warningField = document.createElement('div');
       warningField.style.fontSize = '11px';
@@ -552,23 +533,6 @@
         contentEl.scrollTop = contentEl.scrollHeight;
       }, 50);
     }
-  }
-
-  function showToast(message) {
-    var toast = document.getElementById('lovebud-ai-dynamic-toast');
-    if (!toast) {
-      toast = document.createElement('div');
-      toast.id = 'lovebud-ai-dynamic-toast';
-      toast.className = 'lovebud-ai-toast';
-      document.body.appendChild(toast);
-    }
-
-    toast.textContent = message;
-    toast.classList.add('show');
-
-    setTimeout(function () {
-      toast.classList.remove('show');
-    }, 2500);
   }
 
   // Auto-run DOM initializer on ready

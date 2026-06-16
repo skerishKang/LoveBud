@@ -19,7 +19,7 @@
 
   if (typeof window === 'undefined') return;
 
-  var safetyDisclaimer = '[안내] 이 결과는 AI가 제안한 임시 초안이며, 자동 저장되지 않습니다. 저장하기 전에 반드시 직접 확인하고 수정해주세요.';
+  var safetyDisclaimer = '[안내] 이 결과는 AI가 제안한 임시 초안이며, 자동 저장되지 않음. 저장 전 직접 확인 필요.';
 
   var LoveBudAILocalStub = {
     getSafetyDisclaimer: function () {
@@ -27,31 +27,29 @@
     },
     refineMemo: function (memoText) {
       return {
-        text: '진의 컴백 카운트다운 라이브 프리뷰를 시청했습니다. ' +
-              '희망적이고 밝은 록-어쿠스틱 사운드로 가득 찬 무대는 따뜻한 골드 톤 조명 아래에서 진행되었으며, ' +
-              '어려운 시기를 함께 견뎌준 팬들에게 감사와 신뢰를 전하는 가사는 깊은 여운을 선사합니다.',
+        text: '이 순간의 감정을 조금 더 부드럽게 정리해볼 수 있어요. 저장 전 직접 확인해 주세요.',
         disclaimer: safetyDisclaimer
       };
     },
     suggestTags: function (contentText) {
       return {
-        tags: ['#설렘', '#벅참', '#위로', '#따뜻함'],
+        tags: ['설렘', '기대', '응원'],
         disclaimer: safetyDisclaimer
       };
     },
     createDraftFromLink: function (url) {
       var cleanUrl = url || '';
       return {
-        title: '진 (Jin) 컴백 라이브 카운트다운 무대 프리뷰',
-        memo: '진의 솔로 앨범 타이틀곡 컴백 무대 라이브 프리뷰 분석입니다. 밝고 희망찬 밴드 사운드와 팬들을 향한 따뜻한 위로의 가사가 돋보입니다.',
-        tags: '#설렘 #벅참 #위로 #따뜻함',
+        title: '링크 분석 초안',
+        memo: '현재 버전은 외부 링크를 읽지 않습니다. 링크를 직접 확인한 뒤 순간으로 남겨보세요.',
+        tags: ['설렘', '기대', '응원'],
         sourceUrl: cleanUrl,
         disclaimer: safetyDisclaimer
       };
     },
     summarizeTreeFlow: function () {
       return {
-        summary: '현재 작성된 순간들은 첫 입덕의 설렘에서 시작하여, 위로를 주었던 밤의 멜로디, 그리고 함께 걷는 타임라인으로 감정이 조화롭게 이어지고 있습니다.',
+        summary: '현재 트리 흐름 요약은 local_stub preview입니다. 저장 전 직접 확인해 주세요.',
         disclaimer: safetyDisclaimer
       };
     }

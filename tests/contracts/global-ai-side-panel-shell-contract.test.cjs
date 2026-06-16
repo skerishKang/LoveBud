@@ -138,6 +138,17 @@ test('2. LoveBudAIPanel is exported and functions exist with proper DOM markers'
   assert.ok(panelSource.includes('data-lovebud-ai-trigger'), 'should contain data-lovebud-ai-trigger marker');
   assert.ok(panelSource.includes('lovebud-ai-panel-open'), 'should contain lovebud-ai-panel-open body class transition');
   assert.ok(panelSource.includes('Escape'), 'should contain Escape key close detection');
+
+  // Verify new constraints:
+  assert.ok(!panelSource.includes('LoveTreeEditor'), 'lovebud-ai-panel.js must not reference LoveTreeEditor');
+  assert.ok(!panelSource.includes('fillMomentDraft'), 'lovebud-ai-panel.js must not reference fillMomentDraft');
+  assert.ok(!panelSource.includes('내 에디터/트리에 제안 적용하기'), 'lovebud-ai-panel.js must not render edit apply button');
+  assert.ok(panelSource.includes('LoveBud AI는 현재 local_stub 미리보기입니다. 결과는 자동 저장되지 않으며, 저장 전 직접 확인해 주세요.'), 'lovebud-ai-panel.js must have the correct footer note');
+  assert.ok(panelSource.includes('AI에게 부탁하기...'), 'lovebud-ai-panel.js must use placeholder "AI에게 부탁하기..."');
+  assert.ok(panelSource.includes('메모 다듬기'));
+  assert.ok(panelSource.includes('감정 태그 추천'));
+  assert.ok(panelSource.includes('링크로 순간 초안 만들기'));
+  assert.ok(panelSource.includes('이 트리 흐름 요약'));
 });
 
 test('3. LoveBudAILocalStub exists and contains safety warnings and actions', () => {
@@ -170,6 +181,10 @@ test('3. LoveBudAILocalStub exists and contains safety warnings and actions', ()
 
   const draftRes = stub.createDraftFromLink('https://youtube.com/watch?v=123');
   assert.equal(draftRes.sourceUrl, 'https://youtube.com/watch?v=123', 'createDraftFromLink should preserve URL');
+
+  assert.ok(stubSource.includes('현재 버전은 외부 링크를 읽지 않습니다'));
+  assert.ok(stubSource.includes('자동 저장되지 않음'));
+  assert.ok(stubSource.includes('직접 확인 필요'));
 });
 
 test('4. Target HTML files load CSS/JS with cache-bust parameter', () => {
@@ -212,6 +227,11 @@ test('5. No network, fetch, SDK, secrets or memory mutations allowed in new code
     // Prohibit mutations / memory creation APIs
     assert.ok(!code.includes('saveMemory'), `${file} must not call saveMemory`);
     assert.ok(!code.includes('createMemory'), `${file} must not call createMemory`);
+
+    assert.ok(!code.includes('LoveTreeEditor'), `${file} must not access LoveTreeEditor`);
+    assert.ok(!code.includes('fillMomentDraft'), `${file} must not fill editor drafts`);
+    assert.ok(!code.includes('내 에디터/트리에 제안 적용하기'), `${file} must not expose editor apply action`);
+    assert.ok(!code.includes('실시간 답변'), `${file} must not claim live responses`);
   });
 });
 
