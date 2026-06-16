@@ -554,3 +554,56 @@ body .tag-chip:focus-visible {
         padding: 3px 8px;
     }
 }
+
+/* ── Page Hero — 공통 모바일 토큰 ── */
+.page-hero-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 24px;
+  margin-bottom: 12px;
+  color: var(--primary);
+  font-size: 0.83rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+.page-hero-eyebrow::before {
+  content: "";
+  width: 28px;
+  height: 1px;
+  background: var(--eyebrow-line-color, var(--primary));
+  opacity: 0.5;
+}
+.page-hero-section {
+  padding-top: 48px;
+}
+.page-hero-h1 {
+  font-size: clamp(2.8rem, 8vw, 5.15rem);
+  font-weight: 900;
+  line-height: 1.0;
+  letter-spacing: -0.05em;
+  margin: 16px 0 14px;
+}
+.page-hero-desc {
+  font-size: 1rem;
+  line-height: 1.75;
+  color: var(--on-surface-variant);
+  opacity: 0.82;
+  max-width: 520px;
+}
+
+@media (max-width: 768px) {
+  .page-hero-section {
+    padding-top: 28px;
+  }
+  .page-hero-h1 {
+    font-size: clamp(2.25rem, 10vw, 2.72rem);
+    line-height: 1.06;
+    margin: 12px 0 10px;
+  }
+  .page-hero-desc {
+    font-size: 0.94rem;
+    line-height: 1.55;
+  }
+}
+
