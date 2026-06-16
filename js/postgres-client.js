@@ -32,21 +32,10 @@
         };
     }
 
-    function isPublicDemoTreeId(treeId) {
-        const value = String(treeId || '').trim();
-        return /^public-[a-z0-9-]+$/i.test(value);
-    }
-
     function createMemoryApi() {
         return {
             getMemory: async (memoryId) => BaseApiFetch.apiFetch(`/memories/${memoryId}`),
-            getMemoriesByTree: async (treeId) => {
-                const normalizedTreeId = String(treeId || '').trim();
-                if (isPublicDemoTreeId(normalizedTreeId)) {
-                    return [];
-                }
-                return BaseApiFetch.apiFetch(`/memories?treeId=${encodeURIComponent(treeId)}`);
-            },
+            getMemoriesByTree: async (treeId) => BaseApiFetch.apiFetch(`/memories?treeId=${encodeURIComponent(treeId)}`),
             createMemory: async (payload) => BaseApiFetch.apiFetch('/memories', { method: 'POST', body: JSON.stringify(payload) }),
             updateMemory: async (memoryId, payload) => BaseApiFetch.apiFetch(`/memories/${memoryId}`, { method: 'PUT', body: JSON.stringify(payload) }),
             deleteMemory: async (memoryId) => BaseApiFetch.apiFetch(`/memories/${memoryId}`, { method: 'DELETE' }),
