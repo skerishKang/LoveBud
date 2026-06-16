@@ -300,6 +300,7 @@ function mapStorageResultToDependencyResponse(storageResult) {
   }
   if (
     code === 'STORAGE_KV_DISABLED' ||
+    code === 'STORAGE_KV_SKELETON' ||
     code === 'STORAGE_DURABLE_OBJECT_DISABLED' ||
     code === 'STORAGE_D1_DISABLED' ||
     code === 'STORAGE_CONFIG_MISSING' ||
