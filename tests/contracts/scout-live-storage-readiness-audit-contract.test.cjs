@@ -151,6 +151,11 @@ push('Runtime files retain expected storage safety boundaries', () => {
   // option (issue #2571). The storage safety boundary markers
   // (STORAGE_KEY_BUILDER_DISABLED / STORAGE_KEY_PAYLOAD_PROHIBITED /
   // RATE_LIMIT_STORAGE_UNAVAILABLE) must remain present.
+  //
+  // Slice #2573 (runtime mode opt-in): key builder version was bumped to
+  // 20260616-runtime-mode-1 to add the explicit STORAGE_RUNTIME mode with
+  // STORAGE_KEY_BUILT success code. Default disabled behavior is preserved
+  // (storageKey: null, keyPreview: null, disabled: true).
   assert.ok(depAdapter.includes("SCOUT_LIVE_DEPENDENCY_ADAPTER_VERSION = '20260616-bearer-handoff-1'"));
   assert.ok(depAdapter.includes("code === 'STORAGE_KEY_BUILDER_DISABLED'"));
   assert.ok(depAdapter.includes("code === 'STORAGE_KEY_PAYLOAD_PROHIBITED'"));
@@ -158,7 +163,9 @@ push('Runtime files retain expected storage safety boundaries', () => {
   assert.ok(storageAdapter.includes("SCOUT_LIVE_RATE_LIMIT_STORAGE_ADAPTER_VERSION = '20260607-3'"));
   assert.ok(storageAdapter.includes('STORAGE_KEY_BUILDER_DISABLED'));
   assert.ok(storageAdapter.includes('STORAGE_KEY_PAYLOAD_PROHIBITED'));
-  assert.ok(keyBuilder.includes("SCOUT_LIVE_RATE_LIMIT_STORAGE_KEY_BUILDER_VERSION = '20260607-1'"));
+  assert.ok(keyBuilder.includes("SCOUT_LIVE_RATE_LIMIT_STORAGE_KEY_BUILDER_VERSION = '20260616-runtime-mode-1'"));
+  assert.ok(keyBuilder.includes("RUNTIME: 'runtime'"));
+  assert.ok(keyBuilder.includes("STORAGE_KEY_BUILT: 'STORAGE_KEY_BUILT'"));
   assert.ok(keyBuilder.includes('storageKey: null'));
   assert.ok(keyBuilder.includes('keyPreview: null'));
   assert.ok(keyBuilder.includes('disabled: true'));
