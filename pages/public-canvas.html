@@ -7,122 +7,41 @@
     <link rel="icon" href="/assets/favicon/favicon.svg" type="image/svg+xml">
     <link rel="icon" href="/favicon.ico" sizes="32x32">
     <link rel="stylesheet" href="../css/global.css?v=20260509-994-1">
+    <link rel="stylesheet" href="../css/components/lovebud-ai-panel.css?v=20260616-ai-panel-1">
     <link rel="stylesheet" href="../css/editor.css?v=20260510-1006">
     <link rel="stylesheet" href="../css/page-transitions.css?v=20260430-1">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" />
-    <style>
-        /* Public canvas: ensure canvas fills viewport */
-        body { min-height: 100vh; display: flex; flex-direction: column; overflow-x: hidden; }
-        .editor-layout { flex: 1; }
-    </style>
 </head>
-<body class="editor-preload">
+<body class="bokeh-bg">
     <div class="noise-overlay"></div>
-
     <div id="shared-header"></div>
 
-    <div class="editor-layout page-transition-enter">
-        <main class="canvas-area reveal-scale reveal-up" id="canvasArea">
-            <div id="editorCanvasTopbarTemplateMount"></div>
-            <svg class="canvas-svg" id="canvasSvg"></svg>
-            <div id="editorFloatingToolbarTemplateMount"></div>
-            <div id="editorEmptyGuideTemplateMount"></div>
-        </main>
-        <div id="editorDetailPanelShellTemplateMount"></div>
+    <div id="canvas-shell" class="editor-shell page-transition-enter">
+        <!-- Public canvas content rendered by JS -->
     </div>
 
-    <!-- Utility scripts -->
-    <script src="../js/cache-utils.js?v=20260418-1"></script>
-    <script src="../js/utils/normalize.js?v=20260422-1"></script>
-    <script src="../js/utils/path.js?v=20260418-1"></script>
-    <script src="../js/utils/ui.js?v=20260418-1"></script>
-    <script src="../js/utils/media.js?v=20260418-1"></script>
-
-    <!-- Editor templates (view-mode only, no edit/add forms) -->
-    <script src="../js/editor/templates/editor-sidebar-template.js?v=20260525-1280"></script>
-    <script src="../js/editor/templates/editor-canvas-topbar-template.js?v=20260525-1280"></script>
-    <script src="../js/editor/templates/editor-empty-guide-template.js?v=20260525-1280"></script>
-    <script src="../js/editor/templates/editor-floating-toolbar-template.js?v=20260525-1280"></script>
-    <script src="../js/editor/templates/editor-detail-panel-shell-template.js?v=20260525-1280"></script>
-    <script src="../js/editor/templates/editor-detail-empty-state-template.js?v=20260525-1280"></script>
-    <script src="../js/editor/templates/editor-detail-view-mode-template.js?v=20260525-1280"></script>
-
-    <!-- Canvas core modules -->
-    <script src="../js/editor/editor-dom-selectors.js?v=20260428-1"></script>
-    <script src="../js/editor/editor-root-helpers.js?v=20260613-2448"></script>
-    <script src="../js/editor/editor-canvas-layout.js?v=20260507-655"></script>
-    <script src="../js/editor/editor-canvas-layout-helpers.js?v=20260503-1"></script>
-    <script src="../js/editor/editor-canvas-node.js?v=20260420-1"></script>
-    <script src="../js/editor/editor-canvas-interaction.js?v=20260507-655"></script>
-    <script src="../js/editor/editor-canvas-viewport.js?v=20260524-1505"></script>
-    <script src="../js/editor/editor-canvas-viewport-scale.js?v=20260524-1505"></script>
-    <script src="../js/editor/editor-canvas-viewport-projection.js?v=20260524-1505"></script>
-    <script src="../js/editor/editor-canvas-viewport-targets.js?v=20260524-1505"></script>
-    <script src="../js/editor/editor-canvas-viewport-feedback.js?v=20260524-1505"></script>
-    <script src="../js/editor/editor-canvas-viewport-state.js?v=20260524-1505"></script>
-    <script src="../js/editor/editor-canvas-viewport-fit.js?v=20260524-1505"></script>
-    <script src="../js/editor/editor-canvas-viewport-initial.js?v=20260524-1505"></script>
-    <script src="../js/editor/editor-canvas-viewport-branches.js?v=20260523-1505"></script>
-    <script src="../js/editor/editor-canvas-viewport-actions.js?v=20260523-1505"></script>
-    <script src="../js/editor/editor-canvas-viewport-controls.js?v=20260523-1505"></script>
-    <script src="../js/editor/editor-canvas-edges.js?v=20260502-1"></script>
-    <script src="../js/editor/editor-canvas-state-boundary.js?v=20260503-1"></script>
-    <script src="../js/editor/editor-canvas-growth-affordance.js?v=20260503-1"></script>
-    <script src="../js/editor/editor-canvas-branch-ports.js?v=20260518-1"></script>
-
-    <!-- Floating toolbar -->
-    <script src="../js/editor/editor-floating-toolbar-actions.js?v=20260519-1275"></script>
-    <script src="../js/editor/editor-floating-toolbar-keyboard.js?v=20260519-1275"></script>
-    <script src="../js/editor/editor-floating-toolbar-tooltip.js?v=20260519-1275"></script>
-    <script src="../js/editor/editor-floating-toolbar-dropdown.js?v=20260519-1275"></script>
-    <script src="../js/editor/editor-floating-toolbar-positioning.js?v=20260519-1275"></script>
-    <script src="../js/editor/editor-floating-toolbar-affordance.js?v=20260519-1275"></script>
-    <script src="../js/editor/editor-floating-toolbar-visibility.js?v=20260519-1275"></script>
-    <script src="../js/editor/editor-floating-toolbar-events.js?v=20260519-1275"></script>
-    <script src="../js/editor/editor-floating-toolbar-selection.js?v=20260519-1275"></script>
-    <script src="../js/editor/editor-floating-toolbar-elements.js?v=20260519-1275"></script>
-    <script src="../js/editor/editor-floating-toolbar.js?v=20260519-1275"></script>
-
-    <!-- Canvas support -->
-    <script src="../js/editor/editor-mobile-bottom-bar.js?v=20260518-1"></script>
-    <script src="../js/editor/editor-url-drop.js?v=20260518-1"></script>
-    <script src="../js/editor/editor-utils.js?v=20260522-1276"></script>
-    <script src="../js/editor/editor-save-status-ui.js?v=20260523-1276"></script>
-    <script src="../js/editor/editor-sidebar-ui.js?v=20260523-1276"></script>
-    <script src="../js/editor/editor-empty-guide-ui.js?v=20260523-1276"></script>
-    <script src="../js/editor/editor-canvas-geometry.js?v=20260502-1"></script>
-    <script src="../js/editor/editor-canvas-layout-storage.js?v=20260522-1277"></script>
-    <script src="../js/editor/editor-canvas-layout-transition.js?v=20260524-1"></script>
-    <script type="module" src="../js/editor/editor-canvas.js?v=20260507-655"></script>
-
-    <!-- Detail panel -->
-    <script src="../js/editor/editor-detail-tree-meta.js?v=20260502-1"></script>
-    <script src="../js/editor/editor-detail-inline-edit.js?v=20260504-627"></script>
-    <script src="../js/editor/editor-detail-sidebar-status-boundary.js?v=20260504-772"></script>
-    <script src="../js/editor/editor-detail-ui-builders.js?v=20260503-1"></script>
-    <script src="../js/editor/editor-detail-ui.js?v=20260504-627"></script>
-    <script src="../js/editor/editor-detail-channel-link.js?v=20260517-1"></script>
-
-    <!-- API scripts (no Firebase/ auth) -->
-    <script src="../js/api/auth-policy.js?v=20260420-1"></script>
-    <script src="../js/api/base-api-fetch.js?v=20260420-1"></script>
-    <script src="../js/postgres-client.js?v=20260422-1"></script>
-
-    <!-- i18n -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="../js/firebase-config.js?v=20260417-31"></script>
     <script src="../js/i18n/i18n-core.js?v=20260421-1"></script>
     <script src="../js/i18n/i18n-shared.js?v=20260421-4"></script>
-    <script src="../js/i18n/i18n-editor.js?v=20260504-633"></script>
-    <script src="../js/i18n/i18n-search.js?v=20260421-1"></script>
     <script src="../js/i18n/i18n-detail.js?v=20260421-5"></script>
+    <script src="../js/i18n/i18n-search.js?v=20260421-1"></script>
+    <script src="../js/i18n/i18n-editor.js?v=20260421-9"></script>
+    <script src="../js/i18n/i18n-my-trees.js?v=20260421-5"></script>
+    <script src="../js/i18n/i18n-index.js?v=20260421-1"></script>
     <script src="../js/i18n.js?v=20260419-2"></script>
-
-    <!-- Shared header (no auth scripts — lightweight) -->
     <script src="../js/shared-header.js?v=20260421-2"></script>
-
-    <!-- Public canvas bridge -->
-    <script src="../js/viewer/public-canvas-bridge.js?v=20260525-1"></script>
-
-    <!-- Public canvas init -->
-    <script src="../js/viewer/public-canvas-init.js?v=20260525-1"></script>
+    <script src="../js/auth/auth-state.js?v=20260417-31"></script>
+    <script src="../js/auth/auth-callbacks.js?v=20260417-31"></script>
+    <script src="../js/auth/auth-cache.js?v=20260417-31"></script>
+    <script src="../js/auth/auth-ui.js?v=20260421-2"></script>
+    <script src="../js/auth/auth-session.js?v=20260417-31"></script>
+    <script src="../js/auth/auth-firebase.js?v=20260420-1"></script>
+    <script src="../js/auth/auth-ui-templates.js?v=20260522-1283"></script>
+    <script src="../js/auth.js?v=20260422-3"></script>
+    <script src="../js/page-transitions.js?v=20260430-1"></script>
+    <script src="../js/public-canvas.js?v=20260508-911"></script>
 </body>
 </html>

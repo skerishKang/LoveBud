@@ -7,6 +7,7 @@
     <link rel="icon" href="/assets/favicon/favicon.svg" type="image/svg+xml">
     <link rel="icon" href="/favicon.ico" sizes="32x32">
     <link rel="stylesheet" href="../css/global.css?v=20260509-994-1">
+    <link rel="stylesheet" href="../css/components/lovebud-ai-panel.css?v=20260616-ai-panel-1">
     <link rel="stylesheet" href="../css/login.css?v=20260504-642">
     <link rel="stylesheet" href="../css/page-transitions.css?v=20260430-1">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" />
@@ -33,27 +34,14 @@
                     <path fill="#FBBC05" d="M9.84,26.68c-1.56-2.92-2.4-6.08-2.4-9.48c0-3.4,0.84-6.56,2.4-9.48L3.2,12.08C1.24,16.52,0.04,21.48,0.04,26.32C0.04,31.16,1.24,36.12,3.2,40.56L9.84,26.68z"/>
                     <path fill="#EA4335" d="M19.12,12.32c4.76,0,8.24,1.92,10.04,3.56l7.24-7.16C34.76,5.92,29.32,4.8,23.72,4.8c-7.4,0-14,4.4-17.6,10.96l7.76,6.44C15.48,16.84,18.32,12.32,19.12,12.32z"/>
                 </svg>
-                <span data-i18n="google_signup_prompt">Google로 시작하기</span>
+                <span data-i18n="google_signup">Google로 회원가입</span>
             </button>
 
-            <div class="login-divider" data-i18n="signup_or_email">또는 이메일로 계정 만들기</div>
+            <div class="login-divider" data-i18n="or_email_signup">또는 이메일로 회원가입</div>
 
-            <form id="signup-form" class="login-form" novalidate>
-                <div class="login-form-group-large">
-                    <label for="signup-display-name" class="login-form-label" data-i18n="display_name_label">닉네임</label>
-                    <input type="text" id="signup-display-name" maxlength="30" placeholder="예: XG Alpha" data-i18n-placeholder="display_name_placeholder" class="login-form-input">
-                </div>
-                <div class="login-form-group-large">
-                    <label for="signup-email" class="login-form-label" data-i18n="email_label">이메일</label>
-                    <input type="email" id="signup-email" required class="login-form-input" aria-describedby="signup-error">
-                </div>
-                <div class="login-form-group-xl">
-                    <label for="signup-password" class="login-form-label" data-i18n="password_label">비밀번호</label>
-                    <input type="password" id="signup-password" required class="login-form-input" aria-describedby="signup-error">
-                </div>
-                <p id="signup-error" class="login-form-error" role="alert" aria-live="polite" aria-hidden="true" hidden></p>
-                <button type="submit" id="signup-submit" class="login-submit-button login-submit-button-primary" data-i18n="signup_submit">이메일로 계정 만들기</button>
-            </form>
+            <button id="signup-btn-email" class="btn-round btn-outline login-email-button" data-i18n="email_signup">
+                이메일로 회원가입
+            </button>
 
             <div class="badge-group">
                 <span class="badge" data-i18n="badge_first_moment">첫 순간 기록</span>
@@ -61,7 +49,10 @@
                 <span class="badge" data-i18n="badge_safe">안전한 보관</span>
             </div>
 
-            <p class="login-first-time-note"><span data-i18n="already_have_account_question">이미 계정이 있나요?</span> <a href="login" class="login-signup-link" data-i18n="login_link_label">로그인하기</a></p>
+            <p class="login-first-time-note">
+                <span data-i18n="already_have_account">이미 계정이 있나요?</span>
+                <a href="login.html" class="login-signup-link" data-i18n="login_link_label">로그인하기</a>
+            </p>
 
             <a href="../index.html" class="login-later-link" data-i18n="later">
                 나중에 시작하기
@@ -69,34 +60,28 @@
         </div>
     </div>
 
-    <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
-<script src="../js/firebase-config.js?v=20260417-31"></script>
-
+    <script src="../js/firebase-config.js?v=20260417-31"></script>
     <script src="../js/i18n/i18n-core.js?v=20260421-1"></script>
     <script src="../js/i18n/i18n-shared.js?v=20260421-4"></script>
     <script src="../js/i18n/i18n-login.js?v=20260504-642"></script>
     <script src="../js/i18n/i18n-intro.js?v=20260421-2"></script>
-    <script src="../js/i18n/i18n-search.js?v=20260421-1"></script>
-    <script src="../js/i18n/i18n-detail.js?v=20260421-5"></script>
-    <script src="../js/i18n/i18n-editor.js?v=20260421-9"></script>
-    <script src="../js/i18n/i18n-my-trees.js?v=20260421-5"></script>
     <script src="../js/i18n/i18n-index.js?v=20260421-1"></script>
     <script src="../js/i18n.js?v=20260419-2"></script>
     <script src="../js/shared-header.js?v=20260421-2"></script>
-     <script src="../js/auth/auth-state.js?v=20260417-31"></script>
-     <script src="../js/auth/auth-callbacks.js?v=20260417-31"></script>
-     <script src="../js/auth/auth-cache.js?v=20260417-31"></script>
-     <script src="../js/auth/auth-ui.js?v=20260421-2"></script>
-     <script src="../js/auth/auth-session.js?v=20260417-31"></script>
-     <script src="../js/auth/auth-firebase.js?v=20260420-2"></script>
-     <script src="../js/login/login-dom.js?v=20260427-1"></script>
-     <script src="../js/login/login-page.js?v=20260427-1"></script>
-     <script src="../js/auth/auth-login-page.js?v=20260427-1"></script>
-     <script src="../js/auth/auth-ui-templates.js?v=20260522-1283"></script>
-     <script src="../js/auth.js?v=20260422-3"></script>
-    <script src="../js/login-page.js?v=20260427-1"></script>
+    <script src="../js/auth/auth-state.js?v=20260417-31"></script>
+    <script src="../js/auth/auth-callbacks.js?v=20260417-31"></script>
+    <script src="../js/auth/auth-cache.js?v=20260417-31"></script>
+    <script src="../js/auth/auth-ui.js?v=20260421-2"></script>
+    <script src="../js/auth/auth-session.js?v=20260417-31"></script>
+    <script src="../js/auth/auth-firebase.js?v=20260420-2"></script>
+    <script src="../js/login/login-dom.js?v=20260427-1"></script>
+    <script src="../js/login/login-page.js?v=20260427-1"></script>
+    <script src="../js/auth/auth-login-page.js?v=20260427-1"></script>
+    <script src="../js/auth/auth-ui-templates.js?v=20260522-1283"></script>
+    <script src="../js/auth.js?v=20260422-3"></script>
+    <script src="../js/signup-page.js?v=20260427-1"></script>
     <script src="../js/page-transitions.js?v=20260430-1"></script>
 </body>
 </html>
