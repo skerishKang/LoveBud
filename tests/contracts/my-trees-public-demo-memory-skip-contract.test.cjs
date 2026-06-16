@@ -43,7 +43,8 @@ test('getMemoriesByTree skips public demo tree ids without calling private memor
 
   const result = await apiClient.getMemoriesByTree('public-midnight-vibes');
 
-  assert.deepEqual(result, []);
+  assert.equal(Array.isArray(result), true);
+  assert.equal(result.length, 0);
   assert.deepEqual(calls, []);
 });
 
