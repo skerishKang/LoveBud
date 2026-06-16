@@ -306,7 +306,11 @@ function mapStorageResultToDependencyResponse(storageResult) {
     code === 'STORAGE_CONFIG_MISSING' ||
     code === 'STORAGE_KEY_BUILDER_DISABLED' ||
     code === 'STORAGE_KEY_PAYLOAD_PROHIBITED' ||
-    code === 'STORAGE_KEY_BUILT'
+    code === 'STORAGE_KEY_BUILT' ||
+    code === 'KV_ADAPTER_DISABLED' ||
+    code === 'KV_ADAPTER_NOT_IMPLEMENTED' ||
+    code === 'KV_ADAPTER_BINDING_UNAVAILABLE' ||
+    code === 'KV_ADAPTER_UNTRUSTED_STATE'
   ) {
     return {
       allowed: false,
