@@ -156,13 +156,27 @@ push('Runtime files retain expected storage safety boundaries', () => {
   // 20260616-runtime-mode-1 to add the explicit STORAGE_RUNTIME mode with
   // STORAGE_KEY_BUILT success code. Default disabled behavior is preserved
   // (storageKey: null, keyPreview: null, disabled: true).
+  //
+  // Slice #2575 (adapter runtime key output): storage adapter version was
+  // bumped to 20260616-runtime-output-1 to bind the non-default runtime
+  // scaffold path to the key builder runtime output via `runtimeKey: true`.
+  // Default mock-disabled behavior is preserved. The `buildKey()` path
+  // remains in the source for the default scaffold branch; the runtime key
+  // builder is only invoked when `runtimeKey: true` is explicitly set.
   assert.ok(depAdapter.includes("SCOUT_LIVE_DEPENDENCY_ADAPTER_VERSION = '20260616-bearer-handoff-1'"));
   assert.ok(depAdapter.includes("code === 'STORAGE_KEY_BUILDER_DISABLED'"));
   assert.ok(depAdapter.includes("code === 'STORAGE_KEY_PAYLOAD_PROHIBITED'"));
   assert.ok(depAdapter.includes('RATE_LIMIT_STORAGE_UNAVAILABLE'));
-  assert.ok(storageAdapter.includes("SCOUT_LIVE_RATE_LIMIT_STORAGE_ADAPTER_VERSION = '20260607-3'"));
+  assert.ok(storageAdapter.includes("SCOUT_LIVE_RATE_LIMIT_STORAGE_ADAPTER_VERSION = '20260616-runtime-output-1'"));
+  assert.ok(storageAdapter.includes('useRuntimeKeyBuilder'));
+  assert.ok(storageAdapter.includes('runtimeKey: false'));
   assert.ok(storageAdapter.includes('STORAGE_KEY_BUILDER_DISABLED'));
   assert.ok(storageAdapter.includes('STORAGE_KEY_PAYLOAD_PROHIBITED'));
+  assert.ok(storageAdapter.includes("storageKeyBuilder.buildKey(payload)"));
+  assert.ok(storageAdapter.includes('storageKey: null'));
+  assert.ok(storageAdapter.includes('keyPreview: null'));
+  assert.ok(storageAdapter.includes('ok: false'));
+  assert.ok(storageAdapter.includes('disabled: true'));
   assert.ok(keyBuilder.includes("SCOUT_LIVE_RATE_LIMIT_STORAGE_KEY_BUILDER_VERSION = '20260616-runtime-mode-1'"));
   assert.ok(keyBuilder.includes("RUNTIME: 'runtime'"));
   assert.ok(keyBuilder.includes("STORAGE_KEY_BUILT: 'STORAGE_KEY_BUILT'"));

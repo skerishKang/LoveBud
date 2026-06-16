@@ -344,14 +344,17 @@ export function buildScoutLiveRateLimitStorageKeyInRuntimeMode(payload, options)
 
 export function createScoutLiveRateLimitStorageKeyBuilder(options) {
   const opts = normalizeOptions(options);
+  const resolvedMode = opts.disabled
+    ? SCOUT_LIVE_RATE_LIMIT_STORAGE_KEY_BUILDER_MODES.DISABLED
+    : opts.runtime
+      ? SCOUT_LIVE_RATE_LIMIT_STORAGE_KEY_BUILDER_MODES.RUNTIME
+      : SCOUT_LIVE_RATE_LIMIT_STORAGE_KEY_BUILDER_MODES.NOT_IMPLEMENTED;
 
   return Object.freeze({
     kind: 'scout_live_rate_limit_storage_key_builder',
     version: SCOUT_LIVE_RATE_LIMIT_STORAGE_KEY_BUILDER_VERSION,
-    mode: opts.disabled
-      ? SCOUT_LIVE_RATE_LIMIT_STORAGE_KEY_BUILDER_MODES.DISABLED
-      : SCOUT_LIVE_RATE_LIMIT_STORAGE_KEY_BUILDER_MODES.NOT_IMPLEMENTED,
-    disabled: true,
+    mode: resolvedMode,
+    disabled: opts.disabled !== false,
     allowedInputs: SCOUT_LIVE_RATE_LIMIT_STORAGE_KEY_ALLOWED_INPUTS,
     prohibitedInputs: SCOUT_LIVE_RATE_LIMIT_STORAGE_KEY_PROHIBITED_INPUTS,
     buildKey: (payload) => buildScoutLiveRateLimitStorageKey(payload, opts),
