@@ -1,6 +1,7 @@
 .home-v3-shell {
     position: relative;
     overflow: hidden;
+    min-height: calc(100vh + 1px);
 }
 
 .home-v3-shell::before,
