@@ -1,6 +1,6 @@
 /*
  * LoveBud Editor: AI Suggestion Review Tray Stylesheet
- * v20260616-ai-editor-review-1
+ * v20260616-ai-editor-review-2
  *
  * Design token compliance:
  * - Base bg: --color-bg-base (#FDFBF7)
@@ -173,6 +173,44 @@
     color: var(--color-primary);
     border-color: var(--color-primary);
     background: rgba(194, 124, 126, 0.05);
+}
+
+.lovebud-ai-review-copy-to-draft-btn {
+    display: block;
+    width: 100%;
+    padding: 8px;
+    margin-bottom: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #ffffff;
+    background: var(--color-primary);
+    border: 1px solid var(--color-primary);
+    border-radius: 8px;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.2s ease-in-out;
+}
+
+.lovebud-ai-review-copy-to-draft-btn:hover {
+    background: #b06d6f;
+    border-color: #b06d6f;
+}
+
+.lovebud-ai-review-copy-to-draft-btn:focus {
+    outline: 2px solid rgba(194, 124, 126, 0.4);
+    outline-offset: 2px;
+}
+
+.lovebud-ai-review-copy-notice {
+    margin-top: 10px;
+    margin-bottom: 8px;
+    padding: 8px 10px;
+    font-size: 11px;
+    line-height: 1.4;
+    color: var(--color-primary);
+    background: rgba(194, 124, 126, 0.08);
+    border: 1px solid rgba(194, 124, 126, 0.2);
+    border-radius: 8px;
 }
 
 /* Mobile responsive styles */
