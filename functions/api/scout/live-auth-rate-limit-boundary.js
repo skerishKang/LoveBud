@@ -162,6 +162,64 @@ const AUTH_VERIFIER_PAYLOAD_ALLOWED_FIELDS = Object.freeze([
 ]);
 
 /**
+ * Select a non-sensitive identifier for the boundary's `userKey` field
+ * from a verifier (or dependency-adapter) result. The selection must
+ * NEVER echo the parsed raw Bearer token as the boundary's userKey.
+ *
+ * Selection rules (in priority order):
+ * 1. If the result has the dependency-adapter success shape
+ *    (`allowed === true` AND a non-empty `userKeyHash`), prefer
+ *    `userKeyHash` as a safe derived identifier. The verifier's
+ *    `userKey` field is intentionally NOT trusted for the
+ *    dependency-adapter success shape because it can be a leak
+ *    surface for raw token material.
+ * 2. Otherwise, walk through the candidate fields in priority order
+ *    (`uid`, `userId`, `subject`, `userKey`) and pick the first
+ *    non-empty string that does NOT equal the parsed token.
+ * 3. If no candidate is safe, fall back to `'anon'`.
+ *
+ * @param {Object} verifierResult - the verifier / dependency-adapter result
+ * @param {string} parsedToken - the parsed raw Bearer token (or empty)
+ * @returns {string} a safe non-token user identifier
+ */
+function safeChooseBoundaryUserId(verifierResult, parsedToken) {
+  const res = (verifierResult && typeof verifierResult === 'object') ? verifierResult : {};
+  const tokenStr = (typeof parsedToken === 'string') ? parsedToken : '';
+  const isLeaky = (value) => (
+    typeof value === 'string' &&
+    value.length > 0 &&
+    tokenStr.length > 0 &&
+    value === tokenStr
+  );
+
+  // Dependency-adapter success shape: trust userKeyHash (sanitized hash)
+  // and never use the verifier's userKey as the boundary's userKey.
+  if (
+    res.allowed === true &&
+    typeof res.userKeyHash === 'string' &&
+    res.userKeyHash.length > 0 &&
+    !isLeaky(res.userKeyHash)
+  ) {
+    return res.userKeyHash;
+  }
+
+  // Legacy / mock verifier shape: walk the candidate fields in
+  // priority order and skip any candidate that equals the parsed
+  // token.
+  const candidates = [res.uid, res.userId, res.subject, res.userKey];
+  for (const candidate of candidates) {
+    if (
+      typeof candidate === 'string' &&
+      candidate.length > 0 &&
+      !isLeaky(candidate)
+    ) {
+      return candidate;
+    }
+  }
+  return 'anon';
+}
+
+/**
  * Build a safe verifier payload from a parsed Bearer token and a
  * request context. The `idToken` field is included ONLY when
  * `includeIdToken` is true (the explicit guarded opt-in from issue
@@ -345,17 +403,24 @@ export function createScoutLiveAuthBoundary(options = {}) {
 
       // Build a sanitized userKey from non-sensitive identifiers only.
       // The raw token is never copied to userKey / userKeyHash.
-      const userId = (
-        (typeof verifierResult.uid === 'string' && verifierResult.uid.length > 0)
-          ? verifierResult.uid
-          : (typeof verifierResult.userId === 'string' && verifierResult.userId.length > 0)
-              ? verifierResult.userId
-              : (typeof verifierResult.subject === 'string' && verifierResult.subject.length > 0)
-                  ? verifierResult.subject
-                  : (typeof verifierResult.userKey === 'string' && verifierResult.userKey.length > 0)
-                      ? verifierResult.userKey
-                      : 'anon'
-      );
+      //
+      // The selection logic must:
+      // 1. NEVER echo the parsed raw token as the boundary's userKey.
+      //    A verifier (or its mock seam) that returns
+      //    `{ ok: true, userKey: <parsed raw token> }` MUST NOT cause
+      //    the boundary to surface that raw token in `result.userKey`.
+      //    If the only available candidate equals the parsed token,
+      //    fall back to 'anon' (the recommended behavior in this slice).
+      // 2. For the dependency-adapter success shape
+      //    (`{ allowed: true, userKey, userKeyHash, ... }`), the
+      //    boundary trusts the sanitized `userKeyHash` for downstream
+      //    quota accounting but does NOT use the verifier's `userKey`
+      //    field for the boundary's response `userKey`. The
+      //    dependency-adapter success path leaves `userKey: null` and
+      //    only the `userKeyHash` is a safe identifier.
+      // 3. Skip any candidate that equals the parsed token, regardless
+      //    of which field it came from.
+      const userId = safeChooseBoundaryUserId(verifierResult, parsed.token);
       return {
         ok: true,
         status: SCOUT_LIVE_AUTH_RATE_LIMIT_STATUS.AUTHENTICATED,

@@ -495,6 +495,209 @@ tests.push({
   },
 });
 
+tests.push({
+  name: 'Legacy verifier result with raw token as userKey does NOT leak to boundary response.userKey',
+  fn: async () => {
+    // Edge case: a legacy / mock verifier returns
+    //   { ok: true, userKey: <parsed raw token> }
+    // The boundary MUST NOT echo the raw token as its own `userKey`.
+    // The boundary's success path is the only place this leak can
+    // happen, so the contract test locks it.
+    const mod = await loadBoundaryModule();
+    const secret = 'leaky-userKey-token-9876';
+    const boundary = mod.createScoutLiveAuthBoundary({
+      includeIdTokenForVerifier: true,
+      verifyToken: async () => ({ ok: true, userKey: secret }),
+    });
+    const r = await boundary.authenticate(
+      { headers: { authorization: `Bearer ${secret}` } },
+      {}
+    );
+    assert.strictEqual(r.ok, true);
+    assert.strictEqual(r.status, 'authenticated');
+    assert.notStrictEqual(
+      r.userKey,
+      secret,
+      'boundary response.userKey must not equal the raw token'
+    );
+    // The response must not echo the raw token anywhere.
+    const serialized = JSON.stringify(r);
+    assert.ok(
+      !serialized.includes(secret),
+      `boundary response must not include the raw token. Got: ${serialized}`
+    );
+    // Recommended fallback when the only candidate equals the parsed
+    // token is the 'anon' identifier.
+    assert.strictEqual(r.userKey, 'anon');
+  },
+});
+
+tests.push({
+  name: 'Dependency-adapter success with raw token in userKey + safe userKeyHash uses userKeyHash',
+  fn: async () => {
+    // Edge case: a dependency-adapter result returns
+    //   { allowed: true, userKey: <raw token>, userKeyHash: '0123456789abcdef' }
+    // The boundary trusts the sanitized `userKeyHash` and does NOT
+    // surface the raw token in its own `userKey`.
+    const mod = await loadBoundaryModule();
+    const secret = 'leaky-dep-adapter-token-AA-BB';
+    const safeHash = '0123456789abcdef';
+    const boundary = mod.createScoutLiveAuthBoundary({
+      includeIdTokenForVerifier: true,
+      verifyToken: async () => ({
+        allowed: true,
+        code: 'VERIFY_RUNTIME_VERIFIED',
+        userKey: secret, // intentionally leaky
+        userKeyHash: safeHash,
+      }),
+    });
+    const r = await boundary.authenticate(
+      { headers: { authorization: `Bearer ${secret}` } },
+      {}
+    );
+    assert.strictEqual(r.ok, true);
+    assert.strictEqual(r.status, 'authenticated');
+    assert.strictEqual(
+      r.userKey,
+      safeHash,
+      'boundary must prefer the sanitized userKeyHash for the response userKey'
+    );
+    const serialized = JSON.stringify(r);
+    assert.ok(
+      !serialized.includes(secret),
+      `boundary response must not include the raw token. Got: ${serialized}`
+    );
+  },
+});
+
+tests.push({
+  name: 'uid / userId / subject missing + leaky userKey falls back to anon',
+  fn: async () => {
+    // Edge case: a legacy verifier returns ONLY `userKey` (no
+    // uid / userId / subject), and the `userKey` equals the parsed
+    // raw token. The boundary MUST fall back to 'anon' rather than
+    // echo the raw token.
+    const mod = await loadBoundaryModule();
+    const secret = 'only-userKey-leak-CC-DD';
+    const boundary = mod.createScoutLiveAuthBoundary({
+      includeIdTokenForVerifier: true,
+      verifyToken: async () => ({ ok: true, userKey: secret }),
+    });
+    const r = await boundary.authenticate(
+      { headers: { authorization: `Bearer ${secret}` } },
+      {}
+    );
+    assert.strictEqual(r.ok, true);
+    assert.notStrictEqual(r.userKey, secret);
+    assert.strictEqual(r.userKey, 'anon');
+    const serialized = JSON.stringify(r);
+    assert.ok(!serialized.includes(secret));
+  },
+});
+
+tests.push({
+  name: 'All four candidate identifiers leaky falls back to anon (defense in depth)',
+  fn: async () => {
+    // Edge case: every candidate (`uid`, `userId`, `subject`,
+    // `userKey`) equals the parsed raw token. The boundary must
+    // fall back to 'anon'.
+    const mod = await loadBoundaryModule();
+    const secret = 'all-candidates-leak-EE-FF';
+    const boundary = mod.createScoutLiveAuthBoundary({
+      includeIdTokenForVerifier: true,
+      verifyToken: async () => ({
+        ok: true,
+        uid: secret,
+        userId: secret,
+        subject: secret,
+        userKey: secret,
+      }),
+    });
+    const r = await boundary.authenticate(
+      { headers: { authorization: `Bearer ${secret}` } },
+      {}
+    );
+    assert.strictEqual(r.ok, true);
+    assert.strictEqual(r.userKey, 'anon');
+    const serialized = JSON.stringify(r);
+    assert.ok(
+      !serialized.includes(secret),
+      `boundary response must not echo the raw token. Got: ${serialized}`
+    );
+  },
+});
+
+tests.push({
+  name: 'uid / userId / subject fields themselves are also token-leak-checked',
+  fn: async () => {
+    // Edge case: the legacy verifier returns only `uid` (no
+    // userKey), and the `uid` equals the parsed raw token. The
+    // boundary must treat `uid` as leaky and fall back to 'anon'.
+    const mod = await loadBoundaryModule();
+    const secret = 'uid-leak-token-GG-HH';
+    const boundary = mod.createScoutLiveAuthBoundary({
+      includeIdTokenForVerifier: true,
+      verifyToken: async () => ({ ok: true, uid: secret }),
+    });
+    const r = await boundary.authenticate(
+      { headers: { authorization: `Bearer ${secret}` } },
+      {}
+    );
+    assert.strictEqual(r.ok, true);
+    assert.strictEqual(r.userKey, 'anon');
+    const serialized = JSON.stringify(r);
+    assert.ok(!serialized.includes(secret));
+  },
+});
+
+tests.push({
+  name: 'Dependency-adapter success with userKeyHash equal to raw token falls back to anon',
+  fn: async () => {
+    // Edge case: extreme — the dependency-adapter result has
+    //   { allowed: true, userKey: <raw>, userKeyHash: <raw> }
+    // The boundary must not surface the raw token in its own
+    // userKey. The fallback is 'anon'.
+    const mod = await loadBoundaryModule();
+    const secret = 'both-fields-leak-II-JJ';
+    const boundary = mod.createScoutLiveAuthBoundary({
+      includeIdTokenForVerifier: true,
+      verifyToken: async () => ({
+        allowed: true,
+        userKey: secret,
+        userKeyHash: secret,
+      }),
+    });
+    const r = await boundary.authenticate(
+      { headers: { authorization: `Bearer ${secret}` } },
+      {}
+    );
+    assert.strictEqual(r.ok, true);
+    assert.strictEqual(r.userKey, 'anon');
+    const serialized = JSON.stringify(r);
+    assert.ok(!serialized.includes(secret));
+  },
+});
+
+tests.push({
+  name: 'Safe uid is still honored (no false positive for non-token candidates)',
+  fn: async () => {
+    // Regression check: a non-token `uid` is still used as the
+    // boundary's userKey. The leak-check must not falsely reject
+    // safe identifiers.
+    const mod = await loadBoundaryModule();
+    const boundary = mod.createScoutLiveAuthBoundary({
+      includeIdTokenForVerifier: true,
+      verifyToken: async () => ({ ok: true, uid: 'safe-real-uid' }),
+    });
+    const r = await boundary.authenticate(
+      { headers: { authorization: 'Bearer some-token' } },
+      {}
+    );
+    assert.strictEqual(r.ok, true);
+    assert.strictEqual(r.userKey, 'safe-real-uid');
+  },
+});
+
 (async () => {
   let passed = 0;
   let failed = 0;
