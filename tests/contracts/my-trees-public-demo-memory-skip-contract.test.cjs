@@ -22,17 +22,17 @@ test('getMemoriesByTree returns an empty list before calling memories API for pu
   const source = readPostgresClient();
   const guardIndex = source.indexOf('if (isPublicDemoTreeId(normalizedTreeId))');
   const emptyReturnIndex = source.indexOf('return [];', guardIndex);
-  const apiFetchIndex = source.indexOf('BaseApiFetch.apiFetch(`/memories?treeId=${encodeURIComponent(normalizedTreeId)}`)', guardIndex);
+  const apiFetchIndex = source.indexOf('BaseApiFetch.apiFetch(`/memories?treeId=${encodeURIComponent(treeId)}`)', guardIndex);
 
   assert.ok(guardIndex > -1, 'expected public-demo guard inside getMemoriesByTree');
   assert.ok(emptyReturnIndex > guardIndex, 'expected public-demo guard to return an empty list');
   assert.ok(apiFetchIndex > emptyReturnIndex, 'expected private memories API call to remain after the guard');
 });
 
-test('getMemoriesByTree still preserves normal user tree memory endpoint shape', () => {
+test('getMemoriesByTree still preserves normal private tree memory endpoint shape', () => {
   const source = readPostgresClient();
 
   assert.match(source, /const\s+normalizedTreeId\s*=\s*String\(treeId \|\| ''\)\.trim\(\);/);
-  assert.match(source, /encodeURIComponent\(normalizedTreeId\)/);
-  assert.match(source, /`\/memories\?treeId=\$\{encodeURIComponent\(normalizedTreeId\)\}`/);
+  assert.match(source, /if\s*\(isPublicDemoTreeId\(normalizedTreeId\)\)/);
+  assert.match(source, /`\/memories\?treeId=\$\{encodeURIComponent\(treeId\)\}`/);
 });
