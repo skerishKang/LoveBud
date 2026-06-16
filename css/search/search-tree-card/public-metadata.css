@@ -1,0 +1,103 @@
+/* Browse Card Public Metadata Styles */
+
+.tree-public-metadata {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 10px 0;
+  padding: 8px 12px;
+  background: rgba(144, 73, 81, 0.03);
+  border-left: 2px solid var(--primary-soft);
+  border-radius: 4px;
+  font-family: var(--font-body);
+}
+
+.tree-public-metadata-topic {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--primary);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.tree-public-metadata-desc {
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--on-surface-variant);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tree-public-metadata-uploader {
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--on-surface-note);
+  text-align: right;
+  margin-top: 2px;
+}
+
+.tree-public-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.tree-public-tags span {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--secondary);
+  background: rgba(122, 139, 110, 0.08);
+  padding: 3px 8px;
+  border-radius: var(--radius-full);
+  transition: all 0.2s ease;
+}
+
+.tree-public-tags span:hover {
+  background: rgba(122, 139, 110, 0.15);
+  color: #5c6c52;
+  transform: translateY(-1px);
+}
+
+/* Hub/Sidebar Public Metadata Styles */
+
+.hub-public-metadata-block {
+  margin-bottom: 20px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(144, 73, 81, 0.08);
+  border-radius: 1rem;
+  box-shadow: 0 4px 20px rgba(75, 64, 57, 0.03);
+}
+
+.hub-public-metadata-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-family: var(--font-body);
+  font-size: 13.5px;
+  line-height: 1.6;
+  margin-bottom: 8px;
+}
+
+.hub-public-metadata-row:last-child {
+  margin-bottom: 0;
+}
+
+.hub-public-metadata-label {
+  font-weight: 700;
+  color: var(--on-surface-variant);
+  min-width: 76px;
+  flex-shrink: 0;
+}
+
+.hub-public-metadata-val {
+  color: var(--on-surface);
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}

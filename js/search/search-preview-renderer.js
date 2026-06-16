@@ -454,6 +454,12 @@
 
         if (_dom.previewDesc) {
             _dom.previewDesc.hidden = false;
+
+            const metadataHelper = window.LoveBudSearchPublicMetadataHelper;
+            const hubMetadataHtml = (metadataHelper && typeof metadataHelper.renderHubMetadata === 'function')
+                ? metadataHelper.renderHubMetadata(tree)
+                : '';
+
             if (!hasMemories) {
                 const noRecordsLine = formatSearchCopy(
                     'search.previewNoRecordsLine',
@@ -465,7 +471,7 @@
                     '{countLabel} {followup}'
                 );
 
-                _dom.previewDesc.innerHTML = `
+                _dom.previewDesc.innerHTML = hubMetadataHtml + `
                     <div class="preview-focus-flow-card preview-focus-flow-card-empty" style="background:var(--surface-container-low);padding:20px;border-radius:1rem;margin-bottom:16px;">
                         ${renderSectionHeading('route', getSearchCopy('search.previewTimelineHeading', '이 트리는 어디서 시작될까요?', 'Where will this tree begin?'))}
                         <div style="font-size:14px;line-height:1.7;color:var(--on-surface-variant);">
@@ -493,7 +499,7 @@
                 const lastMomentLabel = getMomentLabel(memories[memories.length - 1], '최근에 남은 순간', 'Latest saved moment');
 
                 _dom.previewDesc.hidden = false;
-                _dom.previewDesc.innerHTML = `
+                _dom.previewDesc.innerHTML = hubMetadataHtml + `
                     <div class="preview-focus-flow-card" style="background:var(--surface-container-low);padding:20px;border-radius:1rem;margin-bottom:16px;">
                         ${renderSectionHeading('route', getSearchCopy('search.previewTimelineHeading', '대표 순간에서 이어진 흐름', 'Flow connected from the featured moment'))}
                         <div class="preview-flow-list">
