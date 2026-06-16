@@ -147,11 +147,11 @@ push('Audit recommends the next disabled scaffold contract', () => {
 
 push('Runtime files retain expected storage safety boundaries', () => {
   // Issue #2569: dependency adapter version was bumped to
-  // 20260616-runtime-mapping-1 to add the Firebase runtime verified
-  // mapping. The storage safety boundary markers (STORAGE_KEY_BUILDER_DISABLED
-  // / STORAGE_KEY_PAYLOAD_PROHIBITED / RATE_LIMIT_STORAGE_UNAVAILABLE) must
-  // remain present.
-  assert.ok(depAdapter.includes("SCOUT_LIVE_DEPENDENCY_ADAPTER_VERSION = '20260616-runtime-mapping-1'"));
+  // 20260616-bearer-handoff-1 to add the guarded raw token handoff
+  // option (issue #2571). The storage safety boundary markers
+  // (STORAGE_KEY_BUILDER_DISABLED / STORAGE_KEY_PAYLOAD_PROHIBITED /
+  // RATE_LIMIT_STORAGE_UNAVAILABLE) must remain present.
+  assert.ok(depAdapter.includes("SCOUT_LIVE_DEPENDENCY_ADAPTER_VERSION = '20260616-bearer-handoff-1'"));
   assert.ok(depAdapter.includes("code === 'STORAGE_KEY_BUILDER_DISABLED'"));
   assert.ok(depAdapter.includes("code === 'STORAGE_KEY_PAYLOAD_PROHIBITED'"));
   assert.ok(depAdapter.includes('RATE_LIMIT_STORAGE_UNAVAILABLE'));

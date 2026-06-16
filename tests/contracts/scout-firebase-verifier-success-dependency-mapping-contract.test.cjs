@@ -502,7 +502,7 @@ tests.push({
     const mod = await loadDependencyAdapterModule();
     assert.match(
       mod.SCOUT_LIVE_DEPENDENCY_ADAPTER_VERSION,
-      /^20260616-runtime-mapping-1$/
+      /^20260616-bearer-handoff-1$/
     );
   },
 });

@@ -192,8 +192,20 @@ tests.push({
   name: 'Injected mock verifier can authenticate a mock user',
   fn: async () => {
     const mod = await getBoundaryMod();
-    const mockVerify = async (token) => {
-      assert.strictEqual(token, 'mock-token-123');
+    // Issue #2571: by default the boundary calls the verifier with a
+    // safe payload (derived fields only, no idToken). The mock seam
+    // now receives a payload object instead of a raw token string.
+    const mockVerify = async (payload) => {
+      assert.strictEqual(typeof payload, 'object');
+      assert.ok(payload !== null);
+      // Default path must NOT include idToken.
+      assert.strictEqual(
+        Object.prototype.hasOwnProperty.call(payload, 'idToken'),
+        false,
+        'default boundary must not include idToken in verifier payload'
+      );
+      // authorizationScheme is always 'Bearer' when we reach this point.
+      assert.strictEqual(payload.authorizationScheme, 'Bearer');
       return { ok: true, uid: 'mock-user-abc' };
     };
     const result = await mod.verifyScoutLiveAuthBoundary(
