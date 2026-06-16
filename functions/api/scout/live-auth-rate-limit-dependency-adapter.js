@@ -1,6 +1,6 @@
 /**
  * Scout Live Auth / Rate-Limit Dependency Adapter Skeleton
- * v20260616-runtime-mapping-1
+ * v20260616-bearer-handoff-1
  *
  * Mock-disabled dependency adapter skeleton for the Scout live provider path.
  * Provides a factory that returns default implementations of `verifyToken`,
@@ -58,6 +58,14 @@
  * - `VERIFIER_FIREBASE_RUNTIME_FAILED` → `VERIFY_UNAVAILABLE`
  *   (the runtime was invoked but safe-failed).
  *
+ * Issue #2571 guarded raw auth-header token handoff: the dependency
+ * adapter accepts a guarded factory option `allowRawTokenHandoff: true`.
+ * When set, an `idToken` field present in the dependency-adapter
+ * verifyToken input is forwarded to the verifier adapter payload. When
+ * false or omitted (the default), the dependency adapter strips any
+ * `idToken` and forwards derived fields only. The raw auth-header token
+ * never reaches the verifier seam without the explicit opt-in.
+ *
  * This module is a **mock-disabled skeleton + factory**. No real Firebase
  * Admin SDK import, no real token verification, no real persistent storage
  * call, no fetch, no provider API call.
@@ -83,7 +91,7 @@ import { createScoutLiveAuthVerifierAdapter } from './live-auth-verifier-adapter
 
 // ─── Version ────────────────────────────────────────────────────────────────
 
-export const SCOUT_LIVE_DEPENDENCY_ADAPTER_VERSION = '20260616-runtime-mapping-1';
+export const SCOUT_LIVE_DEPENDENCY_ADAPTER_VERSION = '20260616-bearer-handoff-1';
 
 // ─── Mode Constants ─────────────────────────────────────────────────────────
 
@@ -142,11 +150,13 @@ function buildSafeStoragePayload(input) {
 // ─── Verifier Payload Allowlist (mirror of verifier adapter) ───────────────
 
 // The dependency adapter's verifyToken builds a verifier payload using
-// ONLY these future-safe derived fields. No raw token / authorization
-// header / API key / firebaseToken / session cookie / password / prompt
-// / excerpt / sourceUrl / raw request body ever enters the verifier
-// payload. This allowlist is the single source of truth for safe payload
-// fields at the dependency-adapter to verifier-adapter seam.
+// ONLY these future-safe derived fields, plus an opt-in `idToken` when
+// the factory option `allowRawTokenHandoff` is true. No raw token /
+// authorization header / API key / firebaseToken / session cookie /
+// password / prompt / excerpt / sourceUrl / raw request body ever
+// enters the verifier payload. This allowlist is the single source of
+// truth for safe payload fields at the dependency-adapter to
+// verifier-adapter seam.
 const AUTH_VERIFIER_PAYLOAD_ALLOWED_FIELDS = Object.freeze([
   'requestId',
   'tokenHash',
@@ -154,12 +164,28 @@ const AUTH_VERIFIER_PAYLOAD_ALLOWED_FIELDS = Object.freeze([
   'providerMode',
   'endpointPath',
   'nowMs',
+  'idToken', // guarded: included ONLY when allowRawTokenHandoff is true
 ]);
 
-function buildSafeVerifierPayload(input) {
+function buildSafeVerifierPayload(input, options) {
   const src = (input && typeof input === 'object') ? input : {};
+  const opts = (options && typeof options === 'object') ? options : {};
+  const allowRawTokenHandoff = opts.allowRawTokenHandoff === true;
   const out = {};
   for (const key of AUTH_VERIFIER_PAYLOAD_ALLOWED_FIELDS) {
+    if (key === 'idToken') {
+      // Guarded: only include idToken when the explicit opt-in is set
+      // and the source actually provides one.
+      if (
+        allowRawTokenHandoff &&
+        Object.prototype.hasOwnProperty.call(src, 'idToken') &&
+        typeof src.idToken === 'string' &&
+        src.idToken.length > 0
+      ) {
+        out.idToken = src.idToken;
+      }
+      continue;
+    }
     if (Object.prototype.hasOwnProperty.call(src, key) && src[key] !== undefined) {
       out[key] = src[key];
     }
@@ -435,9 +461,11 @@ function mapVerifierResultToDependencyResponse(verifierResult) {
  * @param {Object} verifierAdapter - verifier adapter (must have verifyToken)
  * @returns {Function} async verifyToken function
  */
-function buildVerifierRoutedVerifyToken(verifierAdapter) {
+function buildVerifierRoutedVerifyToken(verifierAdapter, options) {
+  const opts = (options && typeof options === 'object') ? options : {};
+  const allowRawTokenHandoff = opts.allowRawTokenHandoff === true;
   return async function verifyToken(payload) {
-    const safePayload = buildSafeVerifierPayload(payload);
+    const safePayload = buildSafeVerifierPayload(payload, { allowRawTokenHandoff });
     let verifierResult;
     try {
       verifierResult = await verifierAdapter.verifyToken(safePayload);
@@ -479,6 +507,11 @@ function buildVerifierRoutedVerifyToken(verifierAdapter) {
  *   used as the default. The verifier adapter itself is mock-disabled
  *   and does NOT access any real Firebase Admin SDK, `getAuth`,
  *   `verifyIdToken`, external auth service, or network call.
+ * @param {boolean} [options.allowRawTokenHandoff] - guarded opt-in
+ *   (issue #2571). When true, an `idToken` field present in the
+ *   dependency-adapter verifyToken input is forwarded to the verifier
+ *   adapter payload. When false or omitted (default), the dependency
+ *   adapter strips any `idToken` and forwards derived fields only.
  * @returns {Object} adapter with verifyToken, checkRateLimit, requestId, and
  *   metadata (isMockDisabled, mode, version, storageAdapterKind,
  *   verifierAdapterKind).
@@ -486,6 +519,7 @@ function buildVerifierRoutedVerifyToken(verifierAdapter) {
 export function createScoutLiveDependencyAdapter(options) {
   const opts = Object.assign({}, DEFAULT_OPTIONS, options || {});
   const mockDisabled = opts.mockDisabled !== false;
+  const allowRawTokenHandoff = opts.allowRawTokenHandoff === true;
   const storageAdapter = (opts.storageAdapter && typeof opts.storageAdapter.checkQuota === 'function')
     ? opts.storageAdapter
     : createScoutLiveRateLimitStorageAdapter({ mockDisabled: true });
@@ -493,7 +527,7 @@ export function createScoutLiveDependencyAdapter(options) {
   const verifierAdapter = (opts.verifierAdapter && typeof opts.verifierAdapter.verifyToken === 'function')
     ? opts.verifierAdapter
     : createScoutLiveAuthVerifierAdapter({ mockDisabled: true });
-  const verifyTokenFn = buildVerifierRoutedVerifyToken(verifierAdapter);
+  const verifyTokenFn = buildVerifierRoutedVerifyToken(verifierAdapter, { allowRawTokenHandoff });
 
   if (mockDisabled) {
     return Object.freeze({

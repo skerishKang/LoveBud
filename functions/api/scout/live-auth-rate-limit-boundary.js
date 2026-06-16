@@ -1,6 +1,6 @@
 /**
  * Scout Live Auth / Rate-Limit Runtime Boundary Skeleton
- * v20260607-1
+ * v20260616-bearer-handoff-1
  *
  * Runtime boundary skeleton for the Scout live provider path.
  * Provides a dependency-injection seam and safe-fail defaults for
@@ -23,6 +23,20 @@
  * Admin SDK import, no real token verification, no real persistent storage
  * call, no fetch, no provider API call.
  *
+ * Issue #2571 guarded Bearer token handoff:
+ * - The default boundary NEVER includes the raw parsed Bearer token in
+ *   the verifier payload.
+ * - The boundary accepts an explicit non-default factory option
+ *   `includeIdTokenForVerifier: true`. When set, the boundary builds a
+ *   payload that includes the parsed token as `idToken` and forwards
+ *   the payload to the verifier.
+ * - The boundary still sanitizes the verifier response. The raw token
+ *   never appears in the boundary response, userKey, userKeyHash,
+ *   reason, rate-limit payload, request ids, logs, or error objects.
+ * - The boundary continues to safe-fail on missing / malformed / empty
+ *   / too-long Authorization headers before calling the verifier.
+ * - Verifier exceptions continue to safe-fail without throw-through.
+ *
  * Non-goals:
  * - No real LLM provider call
  * - No provider SDK import
@@ -32,6 +46,7 @@
  * - No persistent rate-limit storage call
  * - No external URL fetch
  * - No auto-save or persistence
+ * - No live provider execution
  */
 
 'use strict';
@@ -135,6 +150,71 @@ function buildRateLimitQuotaBucket(request, authResult) {
 
 // ─── Auth Boundary Factory ────────────────────────────────────────────────────
 
+// Allowlisted, derived verifier payload fields. The boundary only
+// forwards these to the verifier, plus an opt-in `idToken` when the
+// factory option `includeIdTokenForVerifier` is true.
+const AUTH_VERIFIER_PAYLOAD_ALLOWED_FIELDS = Object.freeze([
+  'requestId',
+  'authorizationScheme',
+  'providerMode',
+  'endpointPath',
+  'nowMs',
+]);
+
+/**
+ * Build a safe verifier payload from a parsed Bearer token and a
+ * request context. The `idToken` field is included ONLY when
+ * `includeIdToken` is true (the explicit guarded opt-in from issue
+ * #2571). The raw token is never copied to any other field.
+ *
+ * @param {Object} parsed - { ok, token } from parseAuthorizationHeader
+ * @param {Object} context - request context
+ * @param {Object} [options]
+ * @param {boolean} [options.includeIdToken] - guarded opt-in
+ * @returns {Object} safe payload
+ */
+function buildAuthVerifierPayload(parsed, context, options) {
+  const opts = (options && typeof options === 'object') ? options : {};
+  const includeIdToken = opts.includeIdToken === true;
+  const ctx = (context && typeof context === 'object') ? context : {};
+  const out = {};
+  // requestId
+  if (typeof ctx.requestId === 'string' && ctx.requestId.length > 0) {
+    out.requestId = ctx.requestId;
+  }
+  // authorizationScheme (always 'Bearer' when we reach this point)
+  out.authorizationScheme = 'Bearer';
+  // providerMode
+  if (typeof ctx.providerMode === 'string' && ctx.providerMode.length > 0) {
+    out.providerMode = ctx.providerMode;
+  } else if (ctx.request && typeof ctx.request.providerMode === 'string') {
+    out.providerMode = ctx.request.providerMode;
+  }
+  // endpointPath
+  if (typeof ctx.endpointPath === 'string' && ctx.endpointPath.length > 0) {
+    out.endpointPath = ctx.endpointPath;
+  } else if (ctx.request && typeof ctx.request.endpointPath === 'string') {
+    out.endpointPath = ctx.request.endpointPath;
+  }
+  // nowMs
+  if (Number.isFinite(ctx.nowMs)) {
+    out.nowMs = ctx.nowMs;
+  } else if (Number.isFinite(Date.now())) {
+    out.nowMs = Date.now();
+  }
+  // idToken — only with the explicit opt-in
+  if (includeIdToken && parsed && parsed.ok === true && typeof parsed.token === 'string') {
+    out.idToken = parsed.token;
+  }
+  // Sanity: drop anything that is not in the allowlist (defense in depth).
+  for (const key of Object.keys(out)) {
+    if (!AUTH_VERIFIER_PAYLOAD_ALLOWED_FIELDS.includes(key) && key !== 'idToken') {
+      delete out[key];
+    }
+  }
+  return out;
+}
+
 /**
  * Creates a Scout live auth boundary.
  *
@@ -143,17 +223,27 @@ function buildRateLimitQuotaBucket(request, authResult) {
  * provided (e.g. a mock verifier for tests), the boundary calls it.
  * Otherwise the boundary returns safe AUTH_REQUIRED / AUTH_INVALID results.
  *
+ * Issue #2571: the boundary accepts a guarded factory option
+ * `includeIdTokenForVerifier: true`. When set, the parsed Bearer token
+ * is forwarded to the verifier as `idToken` in a safe payload. When
+ * unset (the default), the verifier is called with derived fields only
+ * and the raw token never reaches the verifier seam.
+ *
  * @param {Object} [options={}] - factory options
  * @param {Function} [options.verifyToken] - optional injected mock verifier
+ * @param {boolean} [options.includeIdTokenForVerifier] - guarded opt-in to
+ *   forward the parsed Bearer token to the verifier as `idToken`
  * @returns {Object} boundary
  */
 export function createScoutLiveAuthBoundary(options = {}) {
   const opts = (options && typeof options === 'object') ? options : {};
   const injectedVerifyToken = (typeof opts.verifyToken === 'function') ? opts.verifyToken : null;
+  const includeIdTokenForVerifier = opts.includeIdTokenForVerifier === true;
 
   return {
     kind: 'scout_live_auth_boundary',
     hasInjectedVerifier: injectedVerifyToken !== null,
+    includeIdTokenForVerifier,
 
     async authenticate(request, context = {}) {
       const ctx = (context && typeof context === 'object') ? context : {};
@@ -200,9 +290,17 @@ export function createScoutLiveAuthBoundary(options = {}) {
         };
       }
 
+      // Build the safe verifier payload. The `idToken` field is included
+      // ONLY when the explicit guarded opt-in was set on the factory.
+      const safePayload = buildAuthVerifierPayload(
+        parsed,
+        Object.assign({}, ctx, { request }),
+        { includeIdToken: includeIdTokenForVerifier }
+      );
+
       let verifierResult;
       try {
-        verifierResult = await verifier(parsed.token, ctx);
+        verifierResult = await verifier(safePayload, ctx);
       } catch {
         return {
           ok: false,
@@ -215,7 +313,25 @@ export function createScoutLiveAuthBoundary(options = {}) {
         };
       }
 
-      if (!verifierResult || typeof verifierResult !== 'object' || verifierResult.ok !== true) {
+      if (!verifierResult || typeof verifierResult !== 'object') {
+        return {
+          ok: false,
+          status: SCOUT_LIVE_AUTH_RATE_LIMIT_STATUS.AUTH_INVALID,
+          userKey: 'anon',
+          error: {
+            code: SCOUT_LIVE_AUTH_RATE_LIMIT_ERROR_CODES.AUTH_INVALID,
+            message: 'Scout live auth verifier returned an invalid result.',
+          },
+        };
+      }
+
+      // Support both legacy verifier shape ({ok, uid, ...}) and the new
+      // dependency-adapter shape ({allowed, code, userKey, userKeyHash, ...}).
+      const isSuccess = (
+        verifierResult.ok === true ||
+        verifierResult.allowed === true
+      );
+      if (!isSuccess) {
         return {
           ok: false,
           status: SCOUT_LIVE_AUTH_RATE_LIMIT_STATUS.AUTH_INVALID,
@@ -227,7 +343,19 @@ export function createScoutLiveAuthBoundary(options = {}) {
         };
       }
 
-      const userId = verifierResult.uid || verifierResult.userId || verifierResult.subject || 'anon';
+      // Build a sanitized userKey from non-sensitive identifiers only.
+      // The raw token is never copied to userKey / userKeyHash.
+      const userId = (
+        (typeof verifierResult.uid === 'string' && verifierResult.uid.length > 0)
+          ? verifierResult.uid
+          : (typeof verifierResult.userId === 'string' && verifierResult.userId.length > 0)
+              ? verifierResult.userId
+              : (typeof verifierResult.subject === 'string' && verifierResult.subject.length > 0)
+                  ? verifierResult.subject
+                  : (typeof verifierResult.userKey === 'string' && verifierResult.userKey.length > 0)
+                      ? verifierResult.userKey
+                      : 'anon'
+      );
       return {
         ok: true,
         status: SCOUT_LIVE_AUTH_RATE_LIMIT_STATUS.AUTHENTICATED,
@@ -371,12 +499,19 @@ export function createScoutLiveRateLimitBoundary(options = {}) {
  * Verifies a Scout live auth boundary. Wraps `createScoutLiveAuthBoundary` for
  * one-shot use. The injected verifier (if any) is taken from `context.verifyToken`.
  *
+ * Issue #2571: callers that need the guarded Bearer token handoff must use
+ * the `createScoutLiveAuthBoundary` factory directly with the
+ * `includeIdTokenForVerifier: true` option, because this one-shot wrapper
+ * defaults to the safe (no-handoff) behavior.
+ *
  * @param {Object} request - request-like object with `headers.authorization`
  * @param {Object} [context={}] - context (may include `verifyToken`)
  * @returns {Promise<Object>} { ok, status, userKey, error }
  */
 export async function verifyScoutLiveAuthBoundary(request, context = {}) {
   const ctx = (context && typeof context === 'object') ? context : {};
+  // Default: includeIdTokenForVerifier is false. The one-shot wrapper
+  // intentionally does NOT forward a guarded handoff option.
   const boundary = createScoutLiveAuthBoundary({});
   return boundary.authenticate(request, ctx);
 }
