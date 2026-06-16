@@ -9,6 +9,7 @@
   <link rel="icon" href="/favicon.ico" sizes="32x32">
   <link rel="stylesheet" href="../css/global.css?v=20260509-994-1">
   <link rel="stylesheet" href="../css/my-trees.css?v=20260514-1134-1">
+  <link rel="stylesheet" href="../css/my-trees/my-trees-finder.css?v=20260616-2535-1">
   <link rel="stylesheet" href="../css/tree-view-mode.css?v=20260616-2533-1">
   <link rel="stylesheet" href="../css/page-transitions.css?v=20260430-1">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" />
@@ -39,6 +40,27 @@
           </button>
         </div>
       </div>
+
+      <section class="my-trees-finder" id="myTreesFinder" aria-label="내 러브트리 찾기">
+        <div class="my-trees-search-box">
+          <span class="material-symbols-outlined" aria-hidden="true">search</span>
+          <input
+            id="myTreesSearchInput"
+            class="my-trees-search-input"
+            type="search"
+            placeholder="내 트리, 순간, 메모로 찾아보기"
+            autocomplete="off"
+          />
+        </div>
+
+        <div class="my-trees-filter-chips" id="myTreesFilterChips" aria-label="내 러브트리 필터">
+          <button type="button" class="my-trees-filter-chip is-active" data-filter="all">전체</button>
+          <button type="button" class="my-trees-filter-chip" data-filter="public">공개</button>
+          <button type="button" class="my-trees-filter-chip" data-filter="private">비공개</button>
+          <button type="button" class="my-trees-filter-chip" data-filter="has-moments">순간 있음</button>
+          <button type="button" class="my-trees-filter-chip" data-filter="empty">첫 순간 전</button>
+        </div>
+      </section>
 
       <div class="my-trees-dashboard-grid-shell">
       <section class="dashboard-main reveal-fade my-trees-dashboard-container">
@@ -219,7 +241,8 @@
     <script src="../js/my-trees/my-trees-render.js?v=20260504-1"></script>
     <script src="../js/my-trees/my-trees-preview-hub.js?v=20260514-1"></script>
     <script src="../js/my-trees/my-trees-preview-state.js?v=20260520-1285-5"></script>
-    <script src="../js/my-trees.js?v=20260421-6"></script>
+    <script src="../js/my-trees/my-trees-filter.js?v=20260616-2535-1"></script>
+    <script src="../js/my-trees.js?v=20260616-2535-1"></script>
   <script src="../js/my-trees/my-trees-i18n-refresh.js?v=20260509-910-1"></script>
   <script src="../js/tree-view-mode-switcher.js?v=20260616-2533-1"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>

@@ -171,7 +171,47 @@
     }, 0);
   }
 
-  function renderTrees(trees) {
+  function renderTrees(trees, isFiltered) {
+    if (!isFiltered) {
+      lastTreesData = Array.isArray(trees) ? trees : [];
+      renderCurrentTrees();
+      return;
+    }
+
+    var container = document.getElementById('state-loaded');
+    if (container && lastTreesData.length > 0 && trees.length === 0) {
+      if (myTreesPage && typeof myTreesPage.setState === 'function') {
+        myTreesPage.setState(myTreesPage.STATE.LOADED);
+      }
+      container.replaceChildren();
+
+      var emptyDiv = document.createElement('div');
+      emptyDiv.className = 'my-trees-search-empty';
+
+      var iconSpan = document.createElement('span');
+      iconSpan.className = 'material-symbols-outlined search-empty-icon';
+      iconSpan.textContent = 'search_off';
+
+      var textP = document.createElement('p');
+      textP.className = 'search-empty-text';
+      textP.textContent = '조건에 맞는 러브트리가 없어요.';
+
+      var subtextP = document.createElement('p');
+      subtextP.className = 'search-empty-subtext';
+      subtextP.textContent = '검색어를 지우거나 필터를 전체로 바꿔보세요.';
+
+      emptyDiv.appendChild(iconSpan);
+      emptyDiv.appendChild(textP);
+      emptyDiv.appendChild(subtextP);
+
+      container.appendChild(emptyDiv);
+
+      if (window.LoveBudMyTreesPreviewHub && typeof window.LoveBudMyTreesPreviewHub.showPlaceholder === 'function') {
+        window.LoveBudMyTreesPreviewHub.showPlaceholder();
+      }
+      return;
+    }
+
     if (myTreesRender && typeof myTreesRender.renderTrees === 'function') {
       myTreesRender.renderTrees(trees, {
         uiModule: myTreesUI,
@@ -188,7 +228,7 @@
           }
         },
         setLastTreesData: function(data) {
-          lastTreesData = data;
+          // Do not overwrite our raw lastTreesData closure variable here when rendering filtered list
         }
       });
       autoSelectFirstTree(trees);
@@ -196,8 +236,8 @@
     }
 
     // Fallback: minimal rendering if render module unavailable
-    var container = document.getElementById('state-loaded');
-    if (!container) return;
+    var containerFallback = document.getElementById('state-loaded');
+    if (!containerFallback) return;
 
     if (!trees || trees.length === 0) {
       if (myTreesPage && typeof myTreesPage.setState === 'function') {
@@ -216,8 +256,8 @@
       grid.appendChild(card);
     });
 
-    container.innerHTML = '';
-    container.appendChild(grid);
+    containerFallback.innerHTML = '';
+    containerFallback.appendChild(grid);
     if (myTreesPage && typeof myTreesPage.setState === 'function') {
       myTreesPage.setState(myTreesPage.STATE.LOADED);
     }
@@ -280,6 +320,27 @@
   var myTreesStarted = false;
   var myTreesBootedFromCache = false;
   var lastTreesData = [];
+  var currentSearchQuery = '';
+  var currentFilter = 'all';
+
+  function getCurrentSortValue() {
+    var sortSelect = document.getElementById('sortTreesSelect');
+    return sortSelect ? sortSelect.value : 'recent';
+  }
+
+  function getVisibleTrees() {
+    var source = Array.isArray(lastTreesData) ? lastTreesData : [];
+    var filtered = window.LoveBudMyTreesFilter.applyFilters(source, {
+      query: currentSearchQuery,
+      filter: currentFilter
+    });
+    if (filtered.length === 0) return [];
+    return sortTrees(filtered, getCurrentSortValue());
+  }
+
+  function renderCurrentTrees() {
+    renderTrees(getVisibleTrees(), true);
+  }
 
   function bootMyTrees(user, options) {
     if (myTreesStarted) return;
@@ -313,8 +374,20 @@
     var sortSelect = document.getElementById('sortTreesSelect');
     if (sortSelect) {
       sortSelect.addEventListener('change', function() {
-        var sorted = sortTrees(lastTreesData, this.value);
-        renderTrees(sorted);
+        renderCurrentTrees();
+      });
+    }
+
+    if (window.LoveBudMyTreesFilter && typeof window.LoveBudMyTreesFilter.bindFinderControls === 'function') {
+      window.LoveBudMyTreesFilter.bindFinderControls({
+        onInput: function(val) {
+          currentSearchQuery = val;
+          renderCurrentTrees();
+        },
+        onFilterChange: function(filterVal) {
+          currentFilter = filterVal;
+          renderCurrentTrees();
+        }
       });
     }
   }

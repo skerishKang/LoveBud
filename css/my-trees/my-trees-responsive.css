@@ -25,6 +25,22 @@
 .create-tree-visibility { grid-template-columns: 1fr; }
 .create-tree-modal-actions { flex-direction: column-reverse; }
 .create-tree-modal-btn { width: 100%; justify-content: center; }
+
+/* Finder search/filter responsive adjustment */
+.my-trees-finder {
+  padding: 16px;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.my-trees-search-input {
+  height: 44px;
+  font-size: 14px;
+}
+.my-trees-filter-chip {
+  min-height: 36px;
+  padding: 0 14px;
+  font-size: 12.5px;
+}
 }
 @media (max-width: 420px) {
 .tree-card-date { display: none; }
