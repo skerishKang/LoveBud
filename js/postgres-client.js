@@ -45,7 +45,7 @@
                 if (isPublicDemoTreeId(normalizedTreeId)) {
                     return [];
                 }
-                return BaseApiFetch.apiFetch(`/memories?treeId=${encodeURIComponent(normalizedTreeId)}`);
+                return BaseApiFetch.apiFetch(`/memories?treeId=${encodeURIComponent(treeId)}`);
             },
             createMemory: async (payload) => BaseApiFetch.apiFetch('/memories', { method: 'POST', body: JSON.stringify(payload) }),
             updateMemory: async (memoryId, payload) => BaseApiFetch.apiFetch(`/memories/${memoryId}`, { method: 'PUT', body: JSON.stringify(payload) }),
