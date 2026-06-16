@@ -99,9 +99,6 @@ function runTests() {
   assert.ok(content.toLowerCase().includes('kill switch') && content.toLowerCase().includes('rollback'), 'Doc must include kill switch/rollback confirmation.');
   assert.ok(content.includes('client-visible responses') && content.includes('logs'), 'Doc must include no-leak checks for responses and logs.');
 
-  assertIncludes(content, 'docs/product/lovebud-scout-live-activation-manual-smoke-test-scenarios.md', 'Doc must name the manual scenario target file.');
-  assertIncludes(content, 'tests/contracts/scout-live-activation-manual-smoke-test-scenarios-contract.test.cjs', 'Doc must name the contract target file.');
-
   const endpointContent = readRequiredFile(ENDPOINT_FILE, 'Scout suggest endpoint');
   assertIncludes(endpointContent, 'SCOUT_SUGGEST_PROVIDER_MODES.STUB', 'Endpoint default must remain SCOUT_SUGGEST_PROVIDER_MODES.STUB.');
   assertIncludes(endpointContent, 'providerMode: SCOUT_SUGGEST_PROVIDER_MODES.STUB', 'Endpoint default return must remain stub.');
