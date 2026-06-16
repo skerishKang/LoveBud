@@ -76,3 +76,11 @@ white-space: nowrap;
 .btn-header-create:hover { background: var(--primary-vibrant); transform: translateY(-2px); box-shadow: 0 8px 20px rgba(144, 73, 81, 0.3); }
 .btn-header-create:active { transform: translateY(0); }
 .btn-header-create:disabled { opacity: 0.6; cursor: not-allowed; transform: none; box-shadow: none; }
+
+@media (max-width: 640px) {
+    .my-trees-header h1 {
+        font-size: clamp(2.25rem, 10vw, 2.8rem);
+        line-height: 1.04;
+        margin-top: 16px;
+    }
+}
