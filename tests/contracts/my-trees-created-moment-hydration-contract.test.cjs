@@ -25,6 +25,16 @@ test('My Trees hydration bypasses stale empty memory caches for non-empty trees'
   assert.match(source, /shouldUseCachedMemories\(tree, cachedMemories\)/, 'hydrate path must not trust all cached arrays blindly');
 });
 
+test('My Trees hydration skips public demo ids before private memory API calls', () => {
+  const source = fs.readFileSync(previewStatePath, 'utf8');
+  const publicDemoSkipIndex = source.indexOf("String(treeId).trim().toLowerCase().indexOf('public-') === 0");
+  const apiCallIndex = source.indexOf('window.apiClient.getMemoriesByTree(treeId)');
+
+  assert.ok(publicDemoSkipIndex > -1, 'must detect public demo tree ids in the hydration guard');
+  assert.ok(apiCallIndex > -1, 'must keep normal private tree memory hydration path');
+  assert.ok(publicDemoSkipIndex < apiCallIndex, 'public demo ids must be skipped before calling the private memories API');
+});
+
 test('My Trees appreciation hub does not show an empty-state contradiction for non-empty trees', () => {
   const source = fs.readFileSync(previewStatePath, 'utf8');
 
