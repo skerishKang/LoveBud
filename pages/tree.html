@@ -12,32 +12,76 @@
     <link rel="stylesheet" href="../css/visitor-viewer.css?v=20260509-976-2">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" />
 </head>
-<body>
+<body class="paper-grain viewer-body">
+    <div class="noise-overlay"></div>
     <div id="shared-header"></div>
-    <div id="tree-viewer-root"></div>
-
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-    <script src="../js/firebase-config.js?v=20260417-31"></script>
+    <div class="viewer-page-shell page-transition-enter">
+        <div class="viewer-topbar">
+            <a id="backButton" class="viewer-back-link" href="../pages/search">
+                <span class="material-symbols-outlined">arrow_back</span>
+                <span data-i18n="viewer.backToBrowse">둘러보기로 돌아가기</span>
+            </a>
+            <div class="viewer-badge">
+                <span class="material-symbols-outlined">public</span>
+                <span data-i18n="viewer.public">공개</span>
+            </div>
+        </div>
+        <main class="viewer-layout">
+            <div id="viewerTreeShell" class="viewer-tree-shell">
+                <div id="viewerLoadingState" class="viewer-state" hidden>
+                    <div class="viewer-state-content">
+                        <span class="material-symbols-outlined refresh-symbol">progress_activity</span>
+                        <p data-i18n="viewer.loading">러브트리를 불러오는 중이에요</p>
+                    </div>
+                </div>
+                <div id="viewerEmptyState" class="viewer-state" hidden>
+                    <div class="viewer-state-content">
+                        <span class="material-symbols-outlined">sentiment_dissatisfied</span>
+                        <p data-i18n="viewer.empty">아직 공개된 순간이 없어요</p>
+                    </div>
+                </div>
+                <div id="viewerErrorState" class="viewer-state" hidden>
+                    <div class="viewer-state-content">
+                        <span class="material-symbols-outlined">error_outline</span>
+                        <p data-i18n="viewer.error">러브트리를 불러오지 못했어요. 다시 시도해 주세요.</p>
+                        <button type="button" id="viewerRetryBtn" class="btn-round btn-outline" data-i18n="viewer.retry">다시 시도</button>
+                    </div>
+                </div>
+                <div id="viewerTreeContainer" class="viewer-tree-container" hidden>
+                    <div class="viewer-tree-header">
+                        <h2 id="viewerTreeTitle" class="viewer-tree-title"></h2>
+                        <div id="viewerTreeMeta" class="viewer-tree-meta"></div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    <script src="../js/cache-utils.js?v=20260418-1"></script>
+    <script src="../js/utils/normalize.js?v=20260422-1"></script>
+    <script src="../js/api/auth-policy.js?v=20260420-1"></script>
+    <script src="../js/api/base-api-fetch.js?v=20260420-1"></script>
+    <script src="../js/postgres-client.js?v=20260422-1"></script>
+    <script src="../js/visitor-viewer/visitor-viewer-render-tree.js?v=20260509-976-2"></script>
+    <script src="../js/visitor-viewer/visitor-viewer-panels.js?v=20260509-957-1"></script>
     <script src="../js/i18n/i18n-core.js?v=20260421-1"></script>
-    <script src="../js/i18n/i18n-shared.js?v=20260421-4"></script>
-    <script src="../js/i18n/i18n-detail.js?v=20260421-5"></script>
     <script src="../js/i18n/i18n-search.js?v=20260421-1"></script>
-    <script src="../js/i18n/i18n-editor.js?v=20260421-9"></script>
-    <script src="../js/i18n/i18n-my-trees.js?v=20260421-5"></script>
-    <script src="../js/i18n/i18n-index.js?v=20260421-1"></script>
+    <script src="../js/i18n/i18n-viewer.js?v=20260508-923-1"></script>
     <script src="../js/i18n.js?v=20260419-2"></script>
-    <script src="../js/shared-header.js?v=20260421-2"></script>
-    <script src="../js/auth/auth-state.js?v=20260417-31"></script>
-    <script src="../js/auth/auth-callbacks.js?v=20260417-31"></script>
-    <script src="../js/auth/auth-cache.js?v=20260417-31"></script>
-    <script src="../js/auth/auth-ui.js?v=20260421-2"></script>
-    <script src="../js/auth/auth-session.js?v=20260417-31"></script>
-    <script src="../js/auth/auth-firebase.js?v=20260420-1"></script>
-    <script src="../js/auth/auth-ui-templates.js?v=20260522-1283"></script>
-    <script src="../js/auth.js?v=20260422-3"></script>
-    <script src="../js/viewer/public-tree-viewer.js?v=20260509-975"></script>
-    <script src="../js/visitor-viewer.js?v=20260509-976-2"></script>
+    <script src="../js/viewer/share-actions.js?v=20260509-957-1"></script>
+    <script src="../js/viewer/viewer-route.js?v=20260520-1282-4"></script>
+    <script src="../js/viewer/viewer-data-transform.js?v=20260520-1282-1"></script>
+    <script src="../js/viewer/viewer-data-loader.js?v=20260522-1282-1"></script>
+    <script src="../js/viewer/viewer-render-state.js?v=20260520-1282-2"></script>
+    <script src="../js/viewer/viewer-shell-render.js?v=20260520-1282-3"></script>
+    <script src="../js/viewer/viewer-state.js?v=20260519-1282-2"></script>
+    <script src="../js/viewer/viewer-share-status-ui.js?v=20260522-1282-1"></script>
+    <script src="../js/viewer/viewer-share-export-actions.js?v=20260519-1282-1"></script>
+    <script src="../js/viewer/viewer-retry-setup.js?v=20260522-1282-1"></script>
+    <script src="../js/viewer/viewer-test-hooks.js?v=20260522-1282-1"></script>
+    <script src="../js/viewer/viewer-click-actions.js?v=20260522-1282-1"></script>
+    <script src="../js/viewer/viewer-handler-factory.js?v=20260522-1282-1"></script>
+    <script src="../js/viewer/viewer-share-export-bridge.js?v=20260522-1282-1"></script>
+    <script src="../js/viewer/viewer-init-flow.js?v=20260522-1282-1"></script>
+    <script src="../js/viewer/tree-viewer.js?v=20260519-1282-1"></script>
 </body>
 </html>
