@@ -308,7 +308,7 @@ test('observer re-applies the latest user-selected mode when the target is re-re
     sandbox.window.localStorage = {
         getItem: (k) => (store.has(k) ? store.get(k) : null),
         setItem: (k, v) => store.set(k, String(v)),
-        removeItem: (k) => delete store.delete(k)
+        removeItem: (k) => store.delete(k)
     };
 
     let observerCallback = null;
