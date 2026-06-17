@@ -55,7 +55,7 @@ curl -v -X POST "$STAGING_URL/api/scout/suggest" \
   -d '{
     "excerpt": "Went to the park and fed the ducks.",
     "requestedLanguage": "en",
-    "desiredTone": "warm",
+    "desiredTone": "polite",
     "maxOutputLength": 80
   }'
 ```
@@ -67,19 +67,18 @@ The `excerpt` value must be short, public, fan-safe text only. No secrets, no PI
 ```json
 {
   "ok": true,
+  "providerMode": "live_api_key",
   "suggestion": {
     "content": "…",
     "provider": "openai-compatible",
     "model": "<model-name>"
-  },
-  "providerMode": "live_api_key",
-  "requestId": "req-…",
-  "usedSuggestion": true
+  }
 }
 ```
 
 - `suggestion.content` must not contain API keys, bearer tokens, raw provider output, or any prohibited fields.
 - `providerMode` must be `live_api_key`.
+- The request id is returned in the `x-lovebud-request-id` response header, not in the JSON body.
 
 ## Expected safe-fail responses
 
@@ -95,7 +94,7 @@ The `excerpt` value must be short, public, fan-safe text only. No secrets, no PI
 | Network error / provider down | `PROVIDER_ERROR` | Sanitized — no raw error text |
 | Malformed provider response | `PROVIDER_ERROR` | Sanitized — no raw response |
 
-All safe-fail responses return `{ "ok": false, "error": { "code": "…", "message": "…" }, "requestId": "…" }` with no raw provider output, API key, or prompt text.
+All safe-fail responses return `{ "ok": false, "error": { "code": "…", "message": "…" } }` with no raw provider output, API key, or prompt text. The request id is returned in the `x-lovebud-request-id` response header, not in the JSON body.
 
 ## Log and privacy rules
 

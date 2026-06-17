@@ -25,6 +25,28 @@ function readFileSafe(p) {
 
 const runbookContent = readFileSafe(RUNBOOK_PATH);
 
+function extractFencedCodeBlock(content, language) {
+  const escapedLanguage = language.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const match = content.match(new RegExp('```' + escapedLanguage + '\\s*\\n([\\s\\S]*?)\\n```'));
+  return match ? match[1] : '';
+}
+
+function parseJsonBlock(block) {
+  try {
+    return JSON.parse(block);
+  } catch {
+    return null;
+  }
+}
+
+const manualSmokeBlock = extractFencedCodeBlock(runbookContent, 'bash');
+const successResponseBlock = extractFencedCodeBlock(runbookContent, 'json');
+const successResponseBody = parseJsonBlock(successResponseBlock);
+const safeFailSection = runbookContent.slice(
+  runbookContent.indexOf('## Expected safe-fail responses'),
+  runbookContent.indexOf('## Log and privacy rules')
+);
+
 const tests = [
   // ── Document existence ──────────────────────────────────────────────────
   {
@@ -273,6 +295,67 @@ const tests = [
     name: 'Includes a verification checklist',
     fn: () => {
       assert.ok(runbookContent.includes('## Verification checklist') || runbookContent.includes('Checklist'), 'Should have a verification section');
+    }
+  },
+
+  // ── Smoke request contract ────────────────────────────────────────────
+  {
+    name: 'Smoke request desiredTone uses endpoint-allowed value',
+    fn: () => {
+      const toneMatch = manualSmokeBlock.match(/"desiredTone"\s*:\s*"([^"]+)"/);
+      assert.ok(toneMatch, 'Smoke request should include desiredTone');
+      assert.ok(
+        ['casual', 'polite', 'emotional'].includes(toneMatch[1]),
+        'desiredTone should be one of casual, polite, emotional'
+      );
+    }
+  },
+
+  // ── Expected success response shape ───────────────────────────────────
+  {
+    name: 'Success response example does not include usedSuggestion in body',
+    fn: () => {
+      assert.ok(successResponseBody, 'Success response example should be valid JSON');
+      assert.ok(
+        !Object.prototype.hasOwnProperty.call(successResponseBody, 'usedSuggestion'),
+        'Success response body should not include usedSuggestion'
+      );
+    }
+  },
+  {
+    name: 'Success response example does not include body-level requestId',
+    fn: () => {
+      assert.ok(successResponseBody, 'Success response example should be valid JSON');
+      assert.ok(
+        !Object.prototype.hasOwnProperty.call(successResponseBody, 'requestId'),
+        'Success response body should not include requestId'
+      );
+    }
+  },
+  {
+    name: 'Success response explains requestId is returned in header',
+    fn: () => {
+      assert.ok(
+        runbookContent.includes('The request id is returned in the `x-lovebud-request-id` response header, not in the JSON body.'),
+        'Success response should explain requestId is returned in the response header'
+      );
+    }
+  },
+
+  // ── Expected safe-fail response shape ─────────────────────────────────
+  {
+    name: 'Safe-fail response explanation does not include body-level requestId',
+    fn: () => {
+      assert.ok(!/\brequestId\b/.test(safeFailSection), 'Safe-fail response explanation should not mention body-level requestId');
+    }
+  },
+  {
+    name: 'Safe-fail response explanation says requestId is returned in header',
+    fn: () => {
+      assert.ok(
+        safeFailSection.includes('The request id is returned in the `x-lovebud-request-id` response header, not in the JSON body.'),
+        'Safe-fail response should explain requestId is returned in the response header'
+      );
     }
   },
 ];
