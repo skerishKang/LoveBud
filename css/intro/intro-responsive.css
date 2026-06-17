@@ -26,11 +26,6 @@
     padding: 60px var(--lovetree-page-pad-mobile) 36px;
   }
 
-  .intro-hero h1 {
-    font-size: clamp(2.2rem, 9.2vw, 2.8rem);
-    max-width: 100%;
-  }
-
   .intro-hero-visual {
     padding: 16px;
   }

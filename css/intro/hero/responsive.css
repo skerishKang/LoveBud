@@ -13,7 +13,7 @@
 }
 
 @media (max-width: 920px) {
-  .intro-hero h1 {
+  body .intro-hero h1 {
     font-size: clamp(2.95rem, 10vw, 4.3rem);
   }
 }
@@ -29,12 +29,17 @@
     padding-bottom: 4px;
   }
 
-  .intro-hero h1 {
+  body .intro-hero-eyebrow {
+    margin-bottom: 0;
+  }
+
+  body .intro-hero h1 {
     margin-top: 16px;
     font-size: clamp(2.25rem, 10vw, 2.8rem);
     line-height: 1.04;
     max-width: 100%;
     overflow-wrap: anywhere;
+    word-break: keep-all;
   }
 
   .intro-hero .lead {
