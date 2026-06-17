@@ -29,19 +29,6 @@
     padding-bottom: 4px;
   }
 
-  body .intro-hero-eyebrow {
-    margin-bottom: 0;
-  }
-
-  body .intro-hero h1 {
-    margin-top: 16px;
-    font-size: clamp(2.25rem, 10vw, 2.8rem);
-    line-height: 1.04;
-    max-width: 100%;
-    overflow-wrap: anywhere;
-    word-break: keep-all;
-  }
-
   .intro-hero .lead {
     font-size: 0.96rem;
     line-height: 1.72;
