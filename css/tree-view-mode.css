@@ -67,38 +67,11 @@
     }
 }
 
-/* ── Sort select styling ──────────────────────────────────── */
-.browse-sort-select {
-    appearance: none;
-    -webkit-appearance: none;
-    padding: 6px 28px 6px 12px;
-    border-radius: 999px;
-    border: 1px solid rgba(144, 73, 81, 0.14);
-    background-color: rgba(255, 248, 245, 0.86);
-    color: var(--on-surface, #2a211c);
-    font-size: 12px;
-    font-weight: 700;
-    font-family: var(--font-body, inherit);
-    cursor: pointer;
-    box-shadow: 0 4px 12px rgba(75, 64, 57, 0.04);
-    outline: none;
-    transition: border-color 0.15s, box-shadow 0.15s;
-    min-width: 80px;
-}
-
-.browse-sort-select:focus-visible {
-    border-color: rgba(144, 73, 81, 0.32);
-    box-shadow: 0 0 0 2px rgba(144, 73, 81, 0.12);
-}
 
 /* ── Browse (#resultsList) — default 3-col, data-attr overrides ──── */
 #resultsList[data-tree-view-mode="large"] {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 26px;
-}
-
-#resultsList[data-tree-view-mode="large"] .tree-card-featured {
-    grid-column: 1 / -1;
 }
 
 #resultsList[data-tree-view-mode="compact"] {

@@ -30,20 +30,6 @@
           </h1>
           <p id="myTreesPageDesc">첫 순간과 이어진 마음을 이어보고 관리해요.</p>
         </div>
-        <div class="header-actions">
-          <div class="sort-control">
-            <select id="sortTreesSelect" class="summary-sort-control">
-              <option id="sortRecentOption" value="recent">최근 수정순</option>
-              <option id="sortOldestOption" value="oldest">생성순</option>
-              <option id="sortNameOption" value="name">이름순</option>
-            </select>
-          </div>
-          <div id="myTreesViewModeMount" class="my-trees-view-mode-mount"></div>
-          <button class="btn-header-create" id="headerCreateTreeBtn">
-            <span class="material-symbols-outlined">add</span>
-            <span id="headerCreateTreeBtnLabel">새 트리</span>
-          </button>
-        </div>
       </div>
 
       <section class="my-trees-finder" id="myTreesFinder" aria-label="내 러브트리 찾기">
@@ -66,6 +52,25 @@
           <button type="button" class="my-trees-filter-chip" data-filter="empty">첫 순간 전</button>
         </div>
       </section>
+
+      <div class="my-trees-results-head">
+        <span class="my-trees-results-label">내 러브트리</span>
+        <div class="my-trees-results-controls">
+          <div class="sort-control">
+            <select id="sortTreesSelect" class="summary-sort-control">
+              <option id="sortRecentOption" value="recent">최근 수정순</option>
+              <option id="sortOldestOption" value="oldest">생성순</option>
+              <option id="sortNameOption" value="name">이름순</option>
+            </select>
+          </div>
+          <div id="myTreesViewModeMount" class="my-trees-view-mode-mount"></div>
+          <button class="btn-header-create" id="headerCreateTreeBtn">
+            <span class="material-symbols-outlined">add</span>
+            <span id="headerCreateTreeBtnLabel">새 트리</span>
+          </button>
+        </div>
+      </div>
+
 
       <div class="my-trees-dashboard-grid-shell">
       <section class="dashboard-main reveal-fade my-trees-dashboard-container">
