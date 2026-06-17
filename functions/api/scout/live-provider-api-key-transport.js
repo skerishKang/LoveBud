@@ -78,9 +78,7 @@ const SCOUT_LIVE_PROVIDER_TRANSPORT_ALLOWED_STAGES = Object.freeze(
 );
 
 // The LLM provider identifier that is the only one currently allowed.
-// The identifier is constructed to be descriptive without embedding
-// any third-party vendor name as a standalone token.
-const SCOUT_LIVE_PROVIDER_TRANSPORT_ALLOWED_PROVIDER = 'chat-completions-v1';
+const SCOUT_LIVE_PROVIDER_TRANSPORT_ALLOWED_PROVIDER = 'openai-compatible';
 
 // Default request timeout in milliseconds.
 const SCOUT_LIVE_PROVIDER_TRANSPORT_DEFAULT_TIMEOUT_MS = 8000;

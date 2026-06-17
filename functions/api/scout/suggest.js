@@ -72,6 +72,7 @@ import {
 } from "./live-provider-adapter.js";
 import {
   createScoutLiveProviderTransport,
+  SCOUT_LIVE_PROVIDER_TRANSPORT_ALLOWED_PROVIDER,
 } from "./live-provider-api-key-transport.js";
 import {
   verifyScoutLiveAuthBoundary,
@@ -410,7 +411,7 @@ export async function onRequestPost(context) {
     const stageOk = stage === 'staging' || stage === 'test';
     const transportGateOk = transportMode === 'api_key'
       && stageOk
-      && llmProvider === 'openai-compatible'
+      && llmProvider === SCOUT_LIVE_PROVIDER_TRANSPORT_ALLOWED_PROVIDER
       && model.length > 0
       && hasApiKey;
 

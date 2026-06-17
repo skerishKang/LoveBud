@@ -44,7 +44,7 @@ test('suggest.js gate check includes all required conditions', () => {
   // provider === openai-compatible, model present, API key present
   assert.match(suggestCode, /transportMode\s*===\s*['"]api_key['"]/);
   assert.match(suggestCode, /staging['"].*test['"]|test['"].*staging['"]/);
-  assert.match(suggestCode, /openai-compatible/);
+  assert.match(suggestCode, /SCOUT_LIVE_PROVIDER_TRANSPORT_ALLOWED_PROVIDER/);
   assert.match(suggestCode, /SCOUT_SUGGEST_MODEL/);
   assert.match(suggestCode, /SCOUT_SUGGEST_LLM_API_KEY/);
 });
@@ -139,4 +139,128 @@ test('transport module exists and has gate logic', () => {
 test('adapter module accepts apiKeyTransport injection', () => {
   const adapterCode = fs.readFileSync(ADAPTER_PATH, 'utf8');
   assert.match(adapterCode, /apiKeyTransport/);
+});
+
+// Helper for dynamic request tests
+function createMockRequest(options = {}) {
+  const method = options.method || 'POST';
+  const headers = new Map();
+  headers.set('content-type', 'application/json');
+  if (options.headers) {
+    for (const [k, v] of Object.entries(options.headers)) {
+      headers.set(k.toLowerCase(), v);
+    }
+  }
+  return {
+    method,
+    headers: {
+      get: (name) => headers.get(name.toLowerCase()) || null,
+    },
+    text: async () => JSON.stringify(options.body || {}),
+  };
+}
+
+async function getOnRequestPost() {
+  const mod = await import('file://' + SUGGEST_PATH.replace(/\\/g, '/'));
+  return mod.onRequestPost;
+}
+
+test('endpoint gate provider value === transport allowed provider value', async () => {
+  const transportMod = await import('file://' + TRANSPORT_PATH.replace(/\\/g, '/'));
+  assert.equal(transportMod.SCOUT_LIVE_PROVIDER_TRANSPORT_ALLOWED_PROVIDER, 'openai-compatible');
+  assert.match(suggestCode, /llmProvider\s*===\s*SCOUT_LIVE_PROVIDER_TRANSPORT_ALLOWED_PROVIDER/);
+});
+
+test('all gates + auth ok + rate-limit ok + injected fetch executes transport READY path', async () => {
+  const onRequestPost = await getOnRequestPost();
+  const req = createMockRequest({
+    headers: { Authorization: 'Bearer dummy-token' },
+    body: { excerpt: 'Hello World', requestedLanguage: 'en', desiredTone: 'casual' }
+  });
+
+  let fetchCalled = false;
+  const mockFetch = async (url, init) => {
+    fetchCalled = true;
+    return {
+      ok: true,
+      json: async () => ({
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                titleSuggestion: 'Wiring Success Title',
+                summarySuggestion: 'Wiring Success Summary',
+                translationSuggestion: 'Wiring Success Translation',
+                emotionTags: ['success'],
+                memoSuggestion: 'Wiring Success Memo',
+                safetyNote: 'Wiring Success Safety Note'
+              })
+            }
+          }
+        ]
+      })
+    };
+  };
+
+  const res = await onRequestPost({
+    request: req,
+    env: {
+      SCOUT_SUGGEST_PROVIDER_MODE: 'live',
+      SCOUT_SUGGEST_LIVE_ADAPTER_ENABLED: 'true',
+      SCOUT_SUGGEST_PROVIDER_TRANSPORT_MODE: 'api_key',
+      SCOUT_SUGGEST_PROVIDER_STAGE: 'staging',
+      SCOUT_SUGGEST_LLM_PROVIDER: 'openai-compatible',
+      SCOUT_SUGGEST_MODEL: 'gpt-4',
+      SCOUT_SUGGEST_LLM_API_KEY: 'placeholder-key',
+      SCOUT_SUGGEST_LLM_BASE_URL: 'https://example.com/v1',
+    },
+    verifyToken: async () => ({ ok: true, uid: 'user-123' }),
+    checkRateLimit: async () => ({ allowed: true }),
+    fetch: mockFetch,
+  });
+
+  assert.equal(res.status, 200);
+  const data = JSON.parse(await res.text());
+  assert.equal(data.ok, true);
+  assert.equal(data.providerMode, 'live_api_key');
+  assert.equal(fetchCalled, true);
+  const parsedContent = JSON.parse(data.suggestion.content);
+  assert.equal(parsedContent.titleSuggestion, 'Wiring Success Title');
+});
+
+test('provider identifier mismatch leads to no fetch / safe-fail', async () => {
+  const onRequestPost = await getOnRequestPost();
+  const req = createMockRequest({
+    headers: { Authorization: 'Bearer dummy-token' },
+    body: { excerpt: 'Hello World', requestedLanguage: 'en', desiredTone: 'casual' }
+  });
+
+  let fetchCalled = false;
+  const mockFetch = async () => {
+    fetchCalled = true;
+    return { ok: true };
+  };
+
+  const res = await onRequestPost({
+    request: req,
+    env: {
+      SCOUT_SUGGEST_PROVIDER_MODE: 'live',
+      SCOUT_SUGGEST_LIVE_ADAPTER_ENABLED: 'true',
+      SCOUT_SUGGEST_PROVIDER_TRANSPORT_MODE: 'api_key',
+      SCOUT_SUGGEST_PROVIDER_STAGE: 'staging',
+      SCOUT_SUGGEST_LLM_PROVIDER: 'mismatched-provider',
+      SCOUT_SUGGEST_MODEL: 'gpt-4',
+      SCOUT_SUGGEST_LLM_API_KEY: 'placeholder-key',
+      SCOUT_SUGGEST_LLM_BASE_URL: 'https://example.com/v1',
+    },
+    verifyToken: async () => ({ ok: true, uid: 'user-123' }),
+    checkRateLimit: async () => ({ allowed: true }),
+    fetch: mockFetch,
+  });
+
+  assert.equal(res.status, 503);
+  const data = JSON.parse(await res.text());
+  assert.equal(data.ok, false);
+  assert.equal(data.error.code, 'PROVIDER_UNAVAILABLE');
+  assert.equal(fetchCalled, false);
 });
