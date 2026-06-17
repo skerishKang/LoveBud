@@ -868,3 +868,40 @@ A subsequent slice (PR #2324) has wired the disabled Firebase auth verifier scaf
 - Endpoint default remains `stub`; explicit `stub` preserved
 - Frontend default remains `local_stub`; endpoint client default remains disabled
 
+
+## Provider Transport Seam and Local Model Smoke Gate Status (#2624)
+
+A provider transport seam and fixture-based local model smoke gate have been added as a
+pre-activation, injection-only slice (v20260617-1, transport/smoke slice, no real provider
+call, no real API key, no external network in normal CI):
+
+- New transport seam: `functions/api/scout/live-provider-transport.js`
+  (`createScoutLiveProviderTransport` / `createScoutDisabledProviderTransport` /
+  `createScoutInjectedProviderTransport`)
+- Default mode: **disabled** — all calls return `TRANSPORT_DISABLED` with no network activity
+- Injected mode: delegates to the injected `execute` function (test/local only)
+- No direct `fetch()` call in the module; no provider SDK import; no env secret read
+- Transport errors are sanitized — raw error messages never propagated to callers
+- Return object is frozen (immutable)
+- New local-only dev smoke harness: `scripts/scout-local-model-smoke.mjs`
+- Requires explicit opt-in: `SCOUT_LOCAL_MODEL_SMOKE=1` or `--local-model` flag
+- Exits early if opt-in not set; uses fixture-based mock transport only
+- Not imported by any runtime module; not run by normal CI
+- No provider SDK, no Firebase Admin SDK, no API key literal, no real fetch
+- Contract tests added:
+  - `tests/contracts/scout-live-provider-transport-contract.test.cjs`
+  - `tests/contracts/scout-suggest-local-model-smoke-gate-contract.test.cjs`
+- All previous defaults preserved:
+  - endpoint default `providerMode: "stub"` / explicit stub path / frontend `local_stub` /
+    endpoint client disabled / verifier+storage mock-disabled / staging+production blocked /
+    `suggest.js` unchanged (no new runtime import)
+- What remains before real staging activation:
+  1. Real provider API key setup (Cloudflare secret, never committed)
+  2. Real transport implementation (staging-only env gate)
+  3. Firebase auth verifier real implementation
+  4. KV / DO / D1 rate-limit storage real implementation
+  5. External observability backend (staging-only, independent kill-switch)
+  6. Staging soak test and rollback drill
+  7. Explicit CTO sign-off before `production_live`
+- Verdict: transport seam: **Yes** (injection-only, disabled default); smoke gate: **Yes**
+  (opt-in, fixture-only); real provider call: **No**; staging/production: **No** (all blocked)
