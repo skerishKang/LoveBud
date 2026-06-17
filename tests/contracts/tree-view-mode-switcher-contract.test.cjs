@@ -222,10 +222,168 @@ test('observer callback source reads the latest mode from getMode or currentMode
     const body = stripJsComments(m[1]);
     const readsLatest =
         /getMode\s*\(\s*storageKey\s*,\s*defaultMode\s*\)/.test(body) ||
-        /currentMode/.test(body);
+        /\bcurrentMode\b/.test(body);
     assert.equal(
         readsLatest,
         true,
-        'observer callback must read the latest stored/current mode, not reuse a stale initial mode'
+        'observer callback must read the latest mode via getMode(storageKey, defaultMode) or currentMode'
+    );
+});
+
+test('source does not contain the stale applyMode(..., initial) pattern', () => {
+    const body = stripJsComments(helperSource);
+    const stalePattern = /applyMode\s*\(\s*(?:node|target)\s*,\s*initial\s*\)/;
+    assert.equal(
+        stalePattern.test(body),
+        false,
+        'source (excluding comments) must not contain the stale applyMode(..., initial) pattern'
+    );
+});
+
+test('observer re-applies the latest user-selected mode when the target is re-rendered', () => {
+    // Mock DOM with mutable target node so we can simulate re-render
+    const store = new Map();
+    function makeNode(tag) {
+        const listeners = {};
+        const children = [];
+        const classSet = new Set();
+        const node = {
+            tagName: tag,
+            __attrs: {},
+            __children: children,
+            __listeners: listeners,
+            parentNode: null,
+            setAttribute(name, value) {
+                this.__attrs[name] = String(value);
+            },
+            getAttribute(name) {
+                return Object.prototype.hasOwnProperty.call(this.__attrs, name)
+                    ? this.__attrs[name]
+                    : null;
+            },
+            appendChild(child) {
+                children.push(child);
+                child.parentNode = node;
+                return child;
+            },
+            removeChild(child) {
+                const i = children.indexOf(child);
+                if (i >= 0) children.splice(i, 1);
+                return child;
+            },
+            addEventListener(type, handler) {
+                listeners[type] = handler;
+            },
+            classList: {
+                add: (c) => classSet.add(c),
+                remove: (c) => classSet.delete(c),
+                contains: (c) => classSet.has(c)
+            },
+            textContent: ''
+        };
+        return node;
+    }
+
+    let currentNode = makeNode('div');
+    currentNode.setAttribute('id', 'trees-grid');
+    currentNode.setAttribute('class', 'trees-grid');
+
+    const mountNode = makeNode('div');
+    mountNode.setAttribute('id', 'myTreesViewModeMount');
+
+    const sandbox = {};
+    sandbox.document = {
+        createElement: (tag) => makeNode(tag),
+        querySelector: (sel) => {
+            if (sel === '#trees-grid') return currentNode;
+            if (sel === '#myTreesViewModeMount') return mountNode;
+            return null;
+        },
+        documentElement: makeNode('html'),
+        addEventListener: () => {},
+        removeEventListener: () => {}
+    };
+    sandbox.window = sandbox;
+    sandbox.globalThis = sandbox;
+    sandbox.window.localStorage = {
+        getItem: (k) => (store.has(k) ? store.get(k) : null),
+        setItem: (k, v) => store.set(k, String(v)),
+        removeItem: (k) => delete store.delete(k)
+    };
+
+    let observerCallback = null;
+    const MockMutationObserver = function (cb) {
+        observerCallback = cb;
+        return { observe: () => {}, disconnect: () => {} };
+    };
+    sandbox.window.MutationObserver = MockMutationObserver;
+
+    const fn = new Function(
+        'window', 'globalThis', 'document', 'MutationObserver',
+        helperSource
+    );
+    fn(sandbox.window, sandbox.globalThis, sandbox.document, MockMutationObserver);
+    const api = sandbox.globalThis.LoveBudTreeViewModeSwitcher;
+
+    // Init with default 'large' (matches My LoveTree spec)
+    const result = api.init({
+        storageKey: 'lovebud:myTrees:viewMode',
+        defaultMode: 'large',
+        mount: '#myTreesViewModeMount',
+        target: '#trees-grid'
+    });
+    assert.ok(result, 'init should return a result');
+    assert.equal(
+        currentNode.getAttribute('data-tree-view-mode'),
+        'large',
+        'initial mode must be applied to the target'
+    );
+    assert.equal(result.getCurrentMode(), 'large');
+
+    // Simulate the user clicking the 'compact' button
+    const controlEl = mountNode.__children[0];
+    assert.ok(controlEl, 'control must be mounted');
+    const compactBtn = controlEl.__children[1]; // [0]=large, [1]=compact, [2]=list
+    assert.equal(compactBtn.getAttribute('data-mode'), 'compact');
+    compactBtn.__listeners.click({ preventDefault: () => {} });
+    assert.equal(
+        currentNode.getAttribute('data-tree-view-mode'),
+        'compact',
+        'click should set target to compact'
+    );
+    assert.equal(store.get('lovebud:myTrees:viewMode'), 'compact');
+    assert.equal(result.getCurrentMode(), 'compact');
+
+    // Simulate My LoveTree re-rendering the .trees-grid (e.g. after sort)
+    const newTarget = makeNode('div');
+    newTarget.setAttribute('id', 'trees-grid');
+    newTarget.setAttribute('class', 'trees-grid');
+    currentNode = newTarget;
+
+    // Fire the observer (as if a DOM mutation happened)
+    assert.ok(observerCallback, 'observer should have been wired');
+    observerCallback();
+
+    // The new node MUST receive the latest user-selected mode ('compact'),
+    // NOT the captured initial ('large').
+    assert.equal(
+        newTarget.getAttribute('data-tree-view-mode'),
+        'compact',
+        're-rendered target must receive the latest user-selected mode, not the captured initial'
+    );
+
+    // Switch to 'list' and re-render again
+    const listBtn = controlEl.__children[2];
+    listBtn.__listeners.click({ preventDefault: () => {} });
+    assert.equal(currentNode.getAttribute('data-tree-view-mode'), 'list');
+
+    const newTarget2 = makeNode('div');
+    newTarget2.setAttribute('id', 'trees-grid');
+    currentNode = newTarget2;
+    observerCallback();
+    assert.equal(
+        newTarget2.getAttribute('data-tree-view-mode'),
+        'list',
+        'second re-render must also receive the latest user-selected mode'
     );
 });
