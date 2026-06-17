@@ -263,3 +263,173 @@ test('provider identifier mismatch leads to no fetch / safe-fail', async () => {
   assert.equal(data.error.code, 'PROVIDER_UNAVAILABLE');
   assert.equal(fetchCalled, false);
 });
+
+test('Test A — English + casual preserved in provider prompt', async () => {
+  const onRequestPost = await getOnRequestPost();
+  const req = createMockRequest({
+    headers: { Authorization: 'Bearer dummy-token' },
+    body: { excerpt: 'A short public fan-safe text.', requestedLanguage: 'en', desiredTone: 'casual', maxOutputLength: 120 }
+  });
+
+  let capturedPrompt = '';
+  const mockFetch = async (url, init) => {
+    const body = JSON.parse(init.body);
+    capturedPrompt = body.messages[0].content;
+
+    return {
+      ok: true,
+      json: async () => ({
+        choices: [{
+          message: {
+            content: JSON.stringify({
+              titleSuggestion: 'English Casual Title',
+              summarySuggestion: 'English casual summary',
+              translationSuggestion: 'English casual translation',
+              emotionTags: ['casual'],
+              memoSuggestion: 'English casual memo',
+              safetyNote: 'Review before saving.'
+            })
+          }
+        }]
+      })
+    };
+  };
+
+  const res = await onRequestPost({
+    request: req,
+    env: {
+      SCOUT_SUGGEST_PROVIDER_MODE: 'live',
+      SCOUT_SUGGEST_LIVE_ADAPTER_ENABLED: 'true',
+      SCOUT_SUGGEST_PROVIDER_TRANSPORT_MODE: 'api_key',
+      SCOUT_SUGGEST_PROVIDER_STAGE: 'staging',
+      SCOUT_SUGGEST_LLM_PROVIDER: 'openai-compatible',
+      SCOUT_SUGGEST_MODEL: 'gpt-4',
+      SCOUT_SUGGEST_LLM_API_KEY: 'placeholder-key',
+      SCOUT_SUGGEST_LLM_BASE_URL: 'https://example.com/v1',
+    },
+    verifyToken: async () => ({ ok: true, uid: 'user-123' }),
+    checkRateLimit: async () => ({ allowed: true }),
+    fetch: mockFetch,
+  });
+
+  assert.equal(res.status, 200);
+
+  // Assert prompt content
+  assert.match(capturedPrompt, /Language:\s*en/i);
+  assert.match(capturedPrompt, /Tone:\s*casual/i);
+  assert.doesNotMatch(capturedPrompt, /Language:\s*ko/i);
+  assert.doesNotMatch(capturedPrompt, /Tone:\s*polite/i);
+
+  // Assert response content (does not leak prompt)
+  const responseText = await res.text();
+  assert.doesNotMatch(responseText, /Language:\s*en/i);
+  assert.doesNotMatch(responseText, /Tone:\s*casual/i);
+  assert.doesNotMatch(responseText, /A short public fan-safe text/);
+});
+
+test('Test B — English + emotional preserved in provider prompt', async () => {
+  const onRequestPost = await getOnRequestPost();
+  const req = createMockRequest({
+    headers: { Authorization: 'Bearer dummy-token' },
+    body: { excerpt: 'Another short public fan-safe text.', requestedLanguage: 'en', desiredTone: 'emotional', maxOutputLength: 120 }
+  });
+
+  let capturedPrompt = '';
+  const mockFetch = async (url, init) => {
+    const body = JSON.parse(init.body);
+    capturedPrompt = body.messages[0].content;
+
+    return {
+      ok: true,
+      json: async () => ({
+        choices: [{
+          message: {
+            content: JSON.stringify({
+              titleSuggestion: 'English Emotional Title',
+              summarySuggestion: 'English emotional summary',
+              translationSuggestion: 'English emotional translation',
+              emotionTags: ['emotional'],
+              memoSuggestion: 'English emotional memo',
+              safetyNote: 'Review before saving.'
+            })
+          }
+        }]
+      })
+    };
+  };
+
+  const res = await onRequestPost({
+    request: req,
+    env: {
+      SCOUT_SUGGEST_PROVIDER_MODE: 'live',
+      SCOUT_SUGGEST_LIVE_ADAPTER_ENABLED: 'true',
+      SCOUT_SUGGEST_PROVIDER_TRANSPORT_MODE: 'api_key',
+      SCOUT_SUGGEST_PROVIDER_STAGE: 'staging',
+      SCOUT_SUGGEST_LLM_PROVIDER: 'openai-compatible',
+      SCOUT_SUGGEST_MODEL: 'gpt-4',
+      SCOUT_SUGGEST_LLM_API_KEY: 'placeholder-key',
+      SCOUT_SUGGEST_LLM_BASE_URL: 'https://example.com/v1',
+    },
+    verifyToken: async () => ({ ok: true, uid: 'user-123' }),
+    checkRateLimit: async () => ({ allowed: true }),
+    fetch: mockFetch,
+  });
+
+  assert.equal(res.status, 200);
+  assert.match(capturedPrompt, /Language:\s*en/i);
+  assert.match(capturedPrompt, /Tone:\s*emotional/i);
+  assert.doesNotMatch(capturedPrompt, /Tone:\s*polite/i);
+});
+
+test('Test C — invalid/missing values fallback safely', async () => {
+  const onRequestPost = await getOnRequestPost();
+  const req = createMockRequest({
+    headers: { Authorization: 'Bearer dummy-token' },
+    body: { excerpt: 'Safe fallback text.' } // Omitting requestedLanguage and desiredTone to trigger fallback
+  });
+
+  let capturedPrompt = '';
+  const mockFetch = async (url, init) => {
+    const body = JSON.parse(init.body);
+    capturedPrompt = body.messages[0].content;
+
+    return {
+      ok: true,
+      json: async () => ({
+        choices: [{
+          message: {
+            content: JSON.stringify({
+              titleSuggestion: 'Fallback Title',
+              summarySuggestion: 'Fallback summary',
+              translationSuggestion: 'Fallback translation',
+              emotionTags: ['polite'],
+              memoSuggestion: 'Fallback memo',
+              safetyNote: 'Review before saving.'
+            })
+          }
+        }]
+      })
+    };
+  };
+
+  const res = await onRequestPost({
+    request: req,
+    env: {
+      SCOUT_SUGGEST_PROVIDER_MODE: 'live',
+      SCOUT_SUGGEST_LIVE_ADAPTER_ENABLED: 'true',
+      SCOUT_SUGGEST_PROVIDER_TRANSPORT_MODE: 'api_key',
+      SCOUT_SUGGEST_PROVIDER_STAGE: 'staging',
+      SCOUT_SUGGEST_LLM_PROVIDER: 'openai-compatible',
+      SCOUT_SUGGEST_MODEL: 'gpt-4',
+      SCOUT_SUGGEST_LLM_API_KEY: 'placeholder-key',
+      SCOUT_SUGGEST_LLM_BASE_URL: 'https://example.com/v1',
+    },
+    verifyToken: async () => ({ ok: true, uid: 'user-123' }),
+    checkRateLimit: async () => ({ allowed: true }),
+    fetch: mockFetch,
+  });
+
+  assert.equal(res.status, 200);
+  assert.match(capturedPrompt, /Language:\s*ko/i);
+  assert.match(capturedPrompt, /Tone:\s*polite/i);
+});
