@@ -1108,6 +1108,69 @@ function createScoutRealProviderAdapterInterface(envOrConfig) {
     typeof envOrConfig.mockProviderTransport === 'function' ? envOrConfig.mockProviderTransport : null
   ));
 
+  // #2629 wiring: API-key provider transport injection point.
+  // The transport factory (live-provider-api-key-transport.js) is responsible
+  // for its own gate logic (stage, API key presence, injected fetch).
+  // When injected, we use it directly. The response is sanitized to strip
+  // any sensitive fields (api key, authorization, rawProviderResponse, prompt,
+  // excerpt, sourceUrl) before returning.
+  const apiKeyTransport = (envOrConfig && typeof envOrConfig.apiKeyTransport === 'function')
+    ? envOrConfig.apiKeyTransport
+    : null;
+
+  if (apiKeyTransport) {
+    return {
+      status: config.status,
+      config: {
+        provider: config.provider,
+        model: config.model,
+        hasApiKey: config.hasApiKey,
+        baseUrl: config.baseUrl,
+        timeoutMs: config.timeoutMs,
+        maxRetries: config.maxRetries,
+      },
+      suggest: async (input) => {
+        let result;
+        try {
+          result = await apiKeyTransport(input);
+        } catch (err) {
+          return {
+            ok: false,
+            error: {
+              code: 'PROVIDER_ERROR',
+              message: 'Scout API-key provider transport threw an exception.',
+            },
+          };
+        }
+        if (!result || typeof result !== 'object') {
+          return {
+            ok: false,
+            error: {
+              code: 'PROVIDER_ERROR',
+              message: 'Scout API-key provider transport returned a non-object result.',
+            },
+          };
+        }
+        // Sanitize: strip any sensitive fields that must never leak to the caller.
+        const sanitized = { ...result };
+        const prohibitedKeys = [
+          'apiKey', 'api_key', 'API_KEY',
+          'authorization', 'Authorization',
+          'bearer', 'Bearer',
+          'rawProviderResponse', 'rawModelOutput', 'rawResponse',
+          'prompt', 'excerpt', 'sourceUrl', 'sourceURL',
+          'token', 'session', 'cookie', 'secret',
+        ];
+        for (const k of prohibitedKeys) {
+          if (k in sanitized) {
+            sanitized[k] = '[REDACTED]';
+          }
+        }
+        return sanitized;
+      },
+    };
+  }
+
   if (!executor && !providerExecutorTransport) {
     // No executor and no transport injected — safe-fail (no real provider call)
     return {
