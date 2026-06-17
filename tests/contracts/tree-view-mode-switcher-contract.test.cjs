@@ -34,10 +34,6 @@ const myTreesHtml = fs.readFileSync(
     path.join(ROOT, 'pages/my-trees.html'),
     'utf8'
 );
-const myTreesPageBootstrapSource = fs.existsSync(path.join(ROOT, 'js/my-trees/my-trees-page-bootstrap.js'))
-    ? fs.readFileSync(path.join(ROOT, 'js/my-trees/my-trees-page-bootstrap.js'), 'utf8')
-    : '';
-const myTreesViewModeWiringSource = `${myTreesHtml}\n${myTreesPageBootstrapSource}`;
 const myTreesCardsCss = fs.readFileSync(
     path.join(ROOT, 'css/my-trees/my-trees-cards.css'),
     'utf8'
@@ -103,10 +99,10 @@ test('My LoveTree page has view mode control mount point', () => {
 });
 
 test('My LoveTree page initializes the switcher with myTrees storage key and default large', () => {
-    assert.match(myTreesViewModeWiringSource, /lovebud:myTrees:viewMode/);
-    assert.match(myTreesViewModeWiringSource, /defaultMode:\s*['"]large['"]/);
-    assert.match(myTreesViewModeWiringSource, /mount:\s*['"]#myTreesViewModeMount['"]/);
-    assert.match(myTreesViewModeWiringSource, /target:\s*['"]#trees-grid['"]/);
+    assert.match(myTreesHtml, /lovebud:myTrees:viewMode/);
+    assert.match(myTreesHtml, /defaultMode:\s*['"]large['"]/);
+    assert.match(myTreesHtml, /mount:\s*['"]#myTreesViewModeMount['"]/);
+    assert.match(myTreesHtml, /target:\s*['"]#trees-grid['"]/);
 });
 
 // ── 4) CSS selectors for all modes on both pages ────────────────────
