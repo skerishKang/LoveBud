@@ -392,8 +392,17 @@ export async function onRequestPost(context) {
       return buildErrorResponse(providerConfig.error.code, providerConfig.error.message, requestId, 503);
     }
     // Live mode: real provider adapter interface provides structured state
-    // DISABLED → PROVIDER_UNAVAILABLE, CONFIG_MISSING → CONFIG_MISSING, READY_FOR_ADAPTER → safe-fail
-    const realAdapterInterface = createScoutRealProviderAdapterInterface(env);
+    // DISABLED → PROVIDER_UNAVAILABLE, CONFIG_MISSING → CONFIG_MISSING, READY_FOR_ADAPTER → call suggest
+    const combinedConfig = {
+      ...env,
+      executor: context?.executor || context?.liveAdapter?.executor || context?.liveDependencies?.executor,
+      providerExecutorTransport: context?.providerExecutorTransport || context?.liveAdapter?.providerExecutorTransport || context?.liveDependencies?.providerExecutorTransport,
+      executorTransport: context?.executorTransport || context?.liveAdapter?.executorTransport || context?.liveDependencies?.executorTransport,
+      mockProviderTransport: context?.mockProviderTransport || context?.liveAdapter?.mockProviderTransport || context?.liveDependencies?.mockProviderTransport,
+      logger: context?.logger || context?.liveAdapter?.logger || context?.liveDependencies?.logger,
+      requestId,
+    };
+    const realAdapterInterface = createScoutRealProviderAdapterInterface(combinedConfig);
 
     if (realAdapterInterface.status === SCOUT_LIVE_PROVIDER_INTERFACE_STATUS.DISABLED) {
       return buildErrorResponse('PROVIDER_UNAVAILABLE', 'Scout live provider adapter is disabled.', requestId, 503);
@@ -403,9 +412,14 @@ export async function onRequestPost(context) {
       return buildErrorResponse('CONFIG_MISSING', 'Scout live suggestion provider is not configured.', requestId, 503);
     }
 
-    // READY_FOR_ADAPTER — this slice safe-fails without a real provider call
-    // Future integration slice will wire createScoutLiveProviderAdapter mock executor path here
-    return buildErrorResponse('PROVIDER_UNAVAILABLE', 'Scout live provider adapter is not yet connected.', requestId, 503);
+    const suggestRes = await realAdapterInterface.suggest(validation.normalized);
+    if (!suggestRes.ok) {
+      const code = suggestRes.error?.code || 'PROVIDER_UNAVAILABLE';
+      const msg = suggestRes.error?.message || 'Scout live provider adapter is not yet connected.';
+      return buildErrorResponse(code, msg, requestId, 503);
+    }
+
+    return buildSuccessResponse(suggestRes.suggestion, suggestRes.providerMode || 'live_mock', requestId);
   }
 
   // ─── Live provider integration — placeholder for Phase D ──────────────────
