@@ -11,22 +11,6 @@
         margin-bottom: 8px;
     }
 
-    .search-panel-header h1,
-    .search-panel-header h2 {
-        font-size: clamp(2.25rem, 10vw, 2.8rem);
-        line-height: 1.04;
-        margin: 16px 0 10px;
-    }
-
-    .search-panel-eyebrow {
-        min-height: 24px;
-        padding: 0;
-        background: transparent;
-        border-radius: 0;
-        font-size: 0.83rem;
-        margin-bottom: 10px;
-    }
-
     .search-panel-header p {
         font-size: 0.96rem;
         line-height: 1.72;

@@ -51,14 +51,6 @@
         max-width: 100%;
     }
 
-    .home-v3-title {
-        margin-top: 16px;
-        font-size: clamp(2.25rem, 10vw, 2.8rem);
-        line-height: 1.04;
-        max-width: 100%;
-        overflow-wrap: anywhere;
-    }
-
     .home-v3-actions {
         flex-direction: column;
         margin-top: 20px;
