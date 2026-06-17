@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>내 러브트리 | LoveTree</title>
-  <script>(function(){try{if('scrollRestoration' in history)history.scrollRestoration='manual'}catch(e){}try{window.scrollTo(0,0)}catch(e){}})()</script>
+  <script src="../js/my-trees/my-trees-scroll-bootstrap.js?v=20260617-1"></script>
   <link rel="icon" href="/assets/favicon/favicon.svg" type="image/svg+xml">
   <link rel="icon" href="/favicon.ico" sizes="32x32">
   <link rel="stylesheet" href="../css/global.css?v=20260509-994-1">
@@ -276,24 +276,6 @@
   <script src="../js/auth.js?v=20260422-3"></script>
   <script src="../js/auth/auth-protected-route.js?v=20260505-828"></script>
   <script src="../js/page-transitions.js?v=20260430-1"></script>
-  <script>renderSharedHeader();</script>
-  <script>
-    (function () {
-      if (!window.LoveBudTreeViewModeSwitcher) return;
-      var ready = function () {
-        window.LoveBudTreeViewModeSwitcher.init({
-          storageKey: 'lovebud:myTrees:viewMode',
-          defaultMode: 'large',
-          mount: '#myTreesViewModeMount',
-          target: '#trees-grid'
-        });
-      };
-      if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', ready);
-      } else {
-        ready();
-      }
-    })();
-  </script>
+  <script src="../js/my-trees/my-trees-page-bootstrap.js?v=20260617-1"></script>
 </body>
 </html>
