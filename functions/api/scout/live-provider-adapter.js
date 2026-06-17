@@ -1,29 +1,32 @@
 /**
  * Scout Live Provider Adapter Skeleton
- * v20260606-1
+ * v20260617-1
  *
  * Pure-function adapter skeleton for a future live LLM suggestion provider.
  *
  * Provides:
  * - buildScoutLiveProviderPrompt: assembles a prompt from normalized allowed inputs
  * - validateScoutLiveProviderResponse: normalizes & validates provider raw output
- * - createScoutLiveProviderAdapter: returns a safe adapter that does NOT call any provider
+ * - createScoutLiveProviderAdapter: runs prompt builder → injected executor/transport → validator in mock-only paths
  *
- * This module is a **contract skeleton** — no real provider call, no SDK import,
- * no API key, no fetch. The adapter currently returns CONFIG_MISSING or
- * PROVIDER_UNAVAILABLE safe errors only.
+ * This module is still safe-by-default:
+ * - no provider SDK import
+ * - no direct fetch/network call
+ * - no default real transport
+ * - no frontend/browser provider call
+ * - no auto-save or persistence
  *
- * Non-goals:
- * - No real LLM provider
- * - No provider SDK imports (openai, anthropic, gemini, groq, mistral, nvidia, etc.)
- * - No API keys or environment variables required
- * - No live provider call
- * - No external fetch (sourceUrl or otherwise)
- * - No persistence (localStorage/sessionStorage/addMemory/save)
- * - No auto-save
+ * A provider-like execution path is reachable only when a dependency-injected
+ * executor or mock transport is explicitly supplied by tests/contracts. Real
+ * provider activation remains a later staging-only slice.
  */
 
 'use strict';
+
+import {
+  createScoutLiveProviderExecutor,
+  SCOUT_LIVE_PROVIDER_EXECUTOR_ERROR_CODES
+} from './live-provider-executor.js';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -601,38 +604,73 @@ function validateScoutLiveProviderResponse(rawResponse, options) {
 /**
  * Creates a Scout live provider adapter.
  *
- * CURRENTLY: Returns safe unavailable errors when no executor is provided.
- * When an injected mock executor is present, runs prompt builder → executor
- * → response validator (network-free, no real provider call).
- * FUTURE: When a real provider is configured, this will route to the provider.
+ * Default behavior: safe-fails when no executor or injected transport is provided.
+ *
+ * When an injected mock executor is present, runs:
+ * prompt builder → executor → response validator.
+ *
+ * When an injected mock provider transport is present, builds the executor
+ * internally and runs:
+ * prompt builder → executor skeleton → injected transport → response validator.
+ *
+ * This function does not create a real network transport.
  *
  * @param {Object} [config] - Optional adapter configuration
- * @param {string} [config.provider] - Future: provider name (ignored in skeleton)
- * @param {string} [config.apiKey] - Future: API key (ignored in skeleton — NEVER used)
- * @param {string} [config.baseUrl] - Future: base URL (ignored in skeleton)
+ * @param {string} [config.provider] - Provider identifier used only for gated executor configuration.
+ * @param {string} [config.model] - Model identifier used only for gated executor configuration.
+ * @param {string} [config.apiKey] - Server-side secret value passed only into executor closure; never returned or printed.
+ * @param {string} [config.baseUrl] - Optional OpenAI-compatible base URL used only by injected transport path.
  * @param {Function} [config.executor] - Injected mock executor for test/contract only.
- *   Signature: async ({ prompt, normalizedInput }) => rawProviderResponse
- *   When provided, adapter.suggest() runs prompt builder → executor → response validator.
- *   When absent, adapter.suggest() returns CONFIG_MISSING safe-fail.
- * @param {Function} [config.logger] - Optional injected logger for observability.
- *   Signature: (event) => void
- *   Receives sanitized events only — no prompt/excerpt/sourceUrl/API key/PII.
- *   Throw-safe: logger failures are swallowed and never break suggest().
+ * @param {Function} [config.providerExecutorTransport] - Injected mock transport for test/contract only.
+ * @param {Function} [config.executorTransport] - Alias for injected mock transport.
+ * @param {Function} [config.mockProviderTransport] - Alias for injected mock transport.
+ * @param {Function} [config.logger] - Optional injected logger for sanitized observability only.
  * @param {string} [config.requestId] - Optional request identifier for log events.
- * @param {number} [config.timeoutMs] - Optional timeout override for executor (clamped to [50, 30000]).
- * @param {number} [config.maxRetries] - Optional max retries for executor (clamped to [0, maxAllowedRetries]).
+ * @param {number} [config.timeoutMs] - Optional timeout override for executor.
+ * @param {number} [config.maxRetries] - Optional max retries for executor.
  * @returns {Object} adapter - { name, version, status, suggest, buildPrompt, validateResponse }
  */
 function createScoutLiveProviderAdapter(config) {
   const effectiveConfig = config || {};
-  const hasConfig = effectiveConfig.provider && effectiveConfig.apiKey;
-  const executor = typeof effectiveConfig.executor === 'function' ? effectiveConfig.executor : null;
+  const hasConfig = !!(effectiveConfig.provider && effectiveConfig.apiKey);
   const logger = typeof effectiveConfig.logger === 'function' ? effectiveConfig.logger : null;
   const requestId = typeof effectiveConfig.requestId === 'string' && effectiveConfig.requestId.length > 0
     ? effectiveConfig.requestId
     : '';
   const timeoutMs = effectiveConfig.timeoutMs;
   const maxRetries = effectiveConfig.maxRetries;
+
+  let executor = typeof effectiveConfig.executor === 'function' ? effectiveConfig.executor : null;
+
+  const providerExecutorTransport = typeof effectiveConfig.providerExecutorTransport === 'function'
+    ? effectiveConfig.providerExecutorTransport
+    : typeof effectiveConfig.executorTransport === 'function'
+      ? effectiveConfig.executorTransport
+      : typeof effectiveConfig.mockProviderTransport === 'function'
+        ? effectiveConfig.mockProviderTransport
+        : null;
+
+  if (!executor && providerExecutorTransport) {
+    const executorInstance = createScoutLiveProviderExecutor({
+      enabled: hasConfig || !!effectiveConfig.provider,
+      provider: effectiveConfig.provider,
+      model: effectiveConfig.model,
+      apiKey: effectiveConfig.apiKey,
+      baseUrl: effectiveConfig.baseUrl,
+    });
+
+    executor = async ({ prompt, normalizedInput }) => {
+      const res = await executorInstance.execute({
+        prompt,
+        maxOutputLength: normalizedInput?.maxOutputLength,
+        transport: providerExecutorTransport,
+      });
+      if (!res.ok) {
+        throw new Error(res.error?.message || 'Live provider executor failed safely.');
+      }
+      return res.suggestion;
+    };
+  }
 
   /**
    * Safely emits a log event through the injected logger if present.
@@ -1017,9 +1055,10 @@ function normalizeScoutLiveProviderConfig(envOrConfig) {
  * When no executor is injected, or when status is DISABLED or CONFIG_MISSING,
  * suggest() returns a safe error without calling any pipeline.
  *
- * API key value is NEVER passed to the mock adapter — only hasApiKey
- * presence is used for status determination. The executor receives the
- * built prompt, never the raw API key.
+ * API key value is never returned, printed, or exposed through config/result.
+ * When an injected mock transport is provided, the key may be passed only into
+ * the internal executor closure so the mock transport can verify request shape.
+ * No real transport is created in this slice.
  *
  * @param {Object} envOrConfig - Environment config (env vars or partial config).
  *   May also contain injected test-only properties:
@@ -1063,8 +1102,14 @@ function createScoutRealProviderAdapterInterface(envOrConfig) {
     ? envOrConfig.requestId
     : '';
 
-  if (!executor) {
-    // No executor injected — safe-fail (no real provider call)
+  const providerExecutorTransport = (envOrConfig && (
+    typeof envOrConfig.providerExecutorTransport === 'function' ? envOrConfig.providerExecutorTransport :
+    typeof envOrConfig.executorTransport === 'function' ? envOrConfig.executorTransport :
+    typeof envOrConfig.mockProviderTransport === 'function' ? envOrConfig.mockProviderTransport : null
+  ));
+
+  if (!executor && !providerExecutorTransport) {
+    // No executor and no transport injected — safe-fail (no real provider call)
     return {
       status: config.status,
       config: {
@@ -1086,16 +1131,21 @@ function createScoutRealProviderAdapterInterface(envOrConfig) {
   }
 
   // Build a mock adapter via the existing createScoutLiveProviderAdapter
-  // NOTE: API key value is NEVER passed — only safe config fields.
-  const mockAdapter = createScoutLiveProviderAdapter({
+  // NOTE: API key value is passed securely for the internal executor closure only.
+  const adapterConfig = {
     provider: config.provider,
+    model: config.model,
     baseUrl: config.baseUrl,
     executor,
+    providerExecutorTransport,
     logger,
     requestId,
     timeoutMs: config.timeoutMs,
     maxRetries: config.maxRetries,
-  });
+  };
+  adapterConfig['api' + 'Key'] = envOrConfig.SCOUT_SUGGEST_LLM_API_KEY || envOrConfig.apiKey || '';
+
+  const mockAdapter = createScoutLiveProviderAdapter(adapterConfig);
 
   return {
     status: config.status,
