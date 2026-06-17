@@ -71,6 +71,9 @@ import {
   SCOUT_LIVE_PROVIDER_INTERFACE_STATUS,
 } from "./live-provider-adapter.js";
 import {
+  createScoutLiveProviderTransport,
+} from "./live-provider-api-key-transport.js";
+import {
   verifyScoutLiveAuthBoundary,
   checkScoutLiveRateLimitBoundary,
 } from "./live-auth-rate-limit-boundary.js";
@@ -393,12 +396,90 @@ export async function onRequestPost(context) {
     }
     // Live mode: real provider adapter interface provides structured state
     // DISABLED → PROVIDER_UNAVAILABLE, CONFIG_MISSING → CONFIG_MISSING, READY_FOR_ADAPTER → call suggest
+    // #2630 endpoint wiring: when the staging/test gate + api_key transport
+    // mode + openai-compatible provider are all explicitly enabled, and
+    // an API key is present, construct the API-key provider transport
+    // and inject it as apiKeyTransport. The transport factory itself
+    // enforces its own gates (stage in {staging,test}, no production).
+    const transportMode = String(env.SCOUT_SUGGEST_PROVIDER_TRANSPORT_MODE || '').trim();
+    const stage = String(env.SCOUT_SUGGEST_PROVIDER_STAGE || '').trim();
+    const llmProvider = String(env.SCOUT_SUGGEST_LLM_PROVIDER || '').trim();
+    const model = String(env.SCOUT_SUGGEST_MODEL || '').trim();
+    const apiKey = env.SCOUT_SUGGEST_LLM_API_KEY || env.apiKey || '';
+    const hasApiKey = typeof apiKey === 'string' && apiKey.length > 0;
+    const stageOk = stage === 'staging' || stage === 'test';
+    const transportGateOk = transportMode === 'api_key'
+      && stageOk
+      && llmProvider === 'openai-compatible'
+      && model.length > 0
+      && hasApiKey;
+
+    // Allow injected fetch from context (for tests) or runtime global fetch (for staging).
+    // The transport factory accepts an injected fetch; we pass it through.
+    const injectedFetch = (context && typeof context.fetch === 'function')
+      ? context.fetch
+      : null;
+
+    let apiKeyTransportFn = null;
+    if (transportGateOk) {
+      try {
+        const transport = createScoutLiveProviderTransport(
+          {
+            SCOUT_SUGGEST_PROVIDER_MODE: env.SCOUT_SUGGEST_PROVIDER_MODE,
+            SCOUT_SUGGEST_LIVE_ADAPTER_ENABLED: env.SCOUT_SUGGEST_LIVE_ADAPTER_ENABLED,
+            SCOUT_SUGGEST_PROVIDER_TRANSPORT_MODE: transportMode,
+            SCOUT_SUGGEST_PROVIDER_STAGE: stage,
+            SCOUT_SUGGEST_LLM_PROVIDER: llmProvider,
+            SCOUT_SUGGEST_MODEL: model,
+            SCOUT_SUGGEST_LLM_API_KEY: apiKey,
+            SCOUT_SUGGEST_LLM_BASE_URL: env.SCOUT_SUGGEST_LLM_BASE_URL,
+          },
+          { fetch: injectedFetch }
+        );
+        // The transport is only useful if it's in READY_FOR_ADAPTER state.
+        if (transport && transport.status === 'READY_FOR_ADAPTER' && typeof transport.execute === 'function') {
+          apiKeyTransportFn = async (input) => {
+            // Build a simple prompt from the validated input.
+            const excerpt = (input && typeof input.excerpt === 'string') ? input.excerpt : '';
+            const lang = (input && typeof input.lang === 'string') ? input.lang : 'ko';
+            const tone = (input && typeof input.tone === 'string') ? input.tone : 'polite';
+            const prompt = `Language: ${lang}\nTone: ${tone}\nExcerpt: ${excerpt}\n\nSuggest a memory moment.`;
+            let res;
+            try {
+              res = await transport.execute(prompt, { requestId });
+            } catch (err) {
+              return { ok: false, error: { code: 'PROVIDER_ERROR', message: 'Scout API-key transport threw an exception.' } };
+            }
+            if (!res || typeof res !== 'object') {
+              return { ok: false, error: { code: 'PROVIDER_ERROR', message: 'Scout API-key transport returned a non-object result.' } };
+            }
+            if (!res.ok) {
+              return { ok: false, error: res.error || { code: 'PROVIDER_ERROR', message: 'Scout API-key transport failed.' } };
+            }
+            // Normalize to the adapter's expected shape.
+            const content = (res.response && typeof res.response.content === 'string')
+              ? res.response.content
+              : '';
+            return {
+              ok: true,
+              suggestion: { content, provider: res.response?.provider, model: res.response?.model },
+              providerMode: 'live_api_key',
+            };
+          };
+        }
+      } catch (err) {
+        // Transport creation failed — fall through to no apiKeyTransport injection.
+        apiKeyTransportFn = null;
+      }
+    }
+
     const combinedConfig = {
       ...env,
       executor: context?.executor || context?.liveAdapter?.executor || context?.liveDependencies?.executor,
       providerExecutorTransport: context?.providerExecutorTransport || context?.liveAdapter?.providerExecutorTransport || context?.liveDependencies?.providerExecutorTransport,
       executorTransport: context?.executorTransport || context?.liveAdapter?.executorTransport || context?.liveDependencies?.executorTransport,
       mockProviderTransport: context?.mockProviderTransport || context?.liveAdapter?.mockProviderTransport || context?.liveDependencies?.mockProviderTransport,
+      apiKeyTransport: apiKeyTransportFn || context?.apiKeyTransport,
       logger: context?.logger || context?.liveAdapter?.logger || context?.liveDependencies?.logger,
       requestId,
     };
