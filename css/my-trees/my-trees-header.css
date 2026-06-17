@@ -84,3 +84,45 @@ white-space: nowrap;
         margin-top: 16px;
     }
 }
+
+/* ── My Trees Results Head (controls row below search) ── */
+.my-trees-results-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin: 24px 0 16px;
+    min-width: 0;
+}
+
+.my-trees-results-label {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--on-surface);
+    white-space: nowrap;
+}
+
+.my-trees-results-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+    flex-wrap: wrap;
+}
+
+@media (max-width: 768px) {
+    .my-trees-results-head {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+        width: 100%;
+        margin-top: 16px;
+    }
+    .my-trees-results-controls {
+        width: 100%;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+        gap: 10px;
+    }
+}
+

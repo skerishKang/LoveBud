@@ -263,3 +263,45 @@
         flex-shrink: 0;
     }
 }
+
+/* ── Unified Sort select styling matching summary-sort-control ── */
+.browse-sort-select {
+    box-sizing: border-box;
+    min-height: 44px;
+    padding: 0 38px 0 16px;
+    border-radius: 999px;
+    border: 1px solid var(--lovetree-chip-border);
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1;
+    cursor: pointer;
+    background: var(--lovetree-chip-bg);
+    color: var(--lovetree-chip-text);
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' height='20' viewBox='0 -960 960 960' width='20'%3E%3Cpath d='M480-345 240-585l56-56 184 184 184-184 56 56-240 240Z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    transition: all 0.2s ease;
+    outline: none;
+}
+
+.browse-sort-select:hover {
+    border-color: var(--lovetree-pill-border);
+    background-color: var(--lovetree-pill-hover-bg);
+    color: var(--lovetree-pill-text);
+}
+
+.browse-sort-select:focus-visible {
+    border-color: rgba(144, 73, 81, 0.32);
+    box-shadow: 0 0 0 2px rgba(144, 73, 81, 0.12);
+}
+
+@media (max-width: 640px) {
+    .browse-sort-select {
+        min-height: 40px;
+        font-size: 13px;
+        width: 100%;
+    }
+}
+
