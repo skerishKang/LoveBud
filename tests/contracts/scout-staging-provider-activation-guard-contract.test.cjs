@@ -40,7 +40,7 @@ function buildConfigWithStage(stageValue, overrides) {
     SCOUT_SUGGEST_PROVIDER_TRANSPORT_MODE: 'api_key',
     SCOUT_SUGGEST_PROVIDER_STAGE: stageValue,
     SCOUT_SUGGEST_LLM_API_KEY: 'fixture-key-never-logged',
-    SCOUT_SUGGEST_LLM_PROVIDER: 'chat-completions-v1',
+    SCOUT_SUGGEST_LLM_PROVIDER: mod ? mod.SCOUT_LIVE_PROVIDER_TRANSPORT_ALLOWED_PROVIDER : 'openai-compatible',
     SCOUT_SUGGEST_MODEL: 'gpt-4o-mini',
     SCOUT_SUGGEST_LLM_BASE_URL: 'https://example.test/v1',
   };
@@ -270,7 +270,7 @@ async function run() {
       SCOUT_SUGGEST_PROVIDER_TRANSPORT_MODE: 'api_key',
       // SCOUT_SUGGEST_PROVIDER_STAGE is NOT set
       SCOUT_SUGGEST_LLM_API_KEY: 'ci-fixture-key',
-      SCOUT_SUGGEST_LLM_PROVIDER: 'chat-completions-v1',
+      SCOUT_SUGGEST_LLM_PROVIDER: mod ? mod.SCOUT_LIVE_PROVIDER_TRANSPORT_ALLOWED_PROVIDER : 'openai-compatible',
       SCOUT_SUGGEST_MODEL: 'gpt-4o-mini',
     };
     const t = m.createScoutLiveProviderTransport(cfg);

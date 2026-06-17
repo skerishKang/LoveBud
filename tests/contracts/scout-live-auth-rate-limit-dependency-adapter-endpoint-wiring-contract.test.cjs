@@ -336,8 +336,10 @@ tests.push({
     const lc1 = suggestCode.toLowerCase();
     const lc2 = adapterCode.toLowerCase();
     for (const provider of ['openai', 'anthropic', 'gemini', 'groq', 'mistral', 'nvidia', 'cohere', 'perplexity']) {
-      assert.ok(!lc1.includes(provider), `suggest.js must not import ${provider}`);
-      assert.ok(!lc2.includes(provider), `adapter must not import ${provider}`);
+      // Check for actual SDK import patterns, not just any string mention.
+      const importRe = new RegExp(`(require\\(['"]${provider}['"]\\)|from\\s+['"]${provider}['"]|import\\s+.*${provider})`);
+      assert.ok(!importRe.test(lc1), `suggest.js must not import ${provider} SDK`);
+      assert.ok(!importRe.test(lc2), `adapter must not import ${provider} SDK`);
     }
   },
 });

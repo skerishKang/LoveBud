@@ -212,12 +212,21 @@ const tests = [
             if (trimmed.startsWith('//') || trimmed.startsWith('*') || trimmed.startsWith('/**') ||
                 trimmed.startsWith('/*')) continue;
 
-            if (line.toLowerCase().includes(provider) &&
+            // Check for actual SDK import patterns, not just any string mention.
+            // A gate check like `provider === 'openai-compatible'` is legitimate
+            // and should not trigger this check.
+            const importPatterns = [
+              new RegExp(`require\\(['"]${provider}['"]\\)`),
+              new RegExp(`from ['"]${provider}['"]`),
+              new RegExp(`import.*${provider}`),
+            ];
+            const hasImport = importPatterns.some(re => re.test(line));
+            if (hasImport &&
                 !line.includes('400-ai-finder') &&
                 !line.includes('Non-goals') &&
                 !line.includes('금지') &&
                 !line.includes('non-goal')) {
-              assert.fail(`${file.name} contains non-comment reference to "${provider}" at line ${i + 1}: ${trimmed}`);
+              assert.fail(`${file.name} contains SDK import reference to "${provider}" at line ${i + 1}: ${trimmed}`);
             }
           }
         }

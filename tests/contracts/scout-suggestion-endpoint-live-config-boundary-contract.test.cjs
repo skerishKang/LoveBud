@@ -97,7 +97,10 @@ const tests = [
       const content = readFileSafe(ENDPOINT_PATH);
       const forbidden = ['openai', 'anthropic', 'gemini', 'groq', 'mistral', 'nvidia', '@google/generative-ai', 'google-generativeai', 'cohere', 'huggingface'];
       for (const f of forbidden) {
-        assert.ok(!content.toLowerCase().includes(f.toLowerCase()), `Should not reference ${f}`);
+        // Check for actual SDK import patterns, not just any string mention.
+        // A gate check like `provider === 'openai-compatible'` is legitimate.
+        const importRe = new RegExp(`(require\\(['"]${f}['"]\\)|from\\s+['"]${f}['"]|import\\s+.*${f})`, 'i');
+        assert.ok(!importRe.test(content), `Should not import ${f} SDK`);
       }
     }
   },

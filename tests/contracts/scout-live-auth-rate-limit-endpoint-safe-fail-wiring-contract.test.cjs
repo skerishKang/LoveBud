@@ -359,7 +359,13 @@ tests.push({
   name: 'No sourceUrl fetch',
   fn: () => {
     const cleanSuggest = cleanSource(suggestCode);
-    assert.strictEqual(cleanSuggest.includes('sourceUrl') && cleanSuggest.includes('fetch'), false);
+    // Check for actual fetch(sourceUrl) patterns, not just the strings
+    // 'sourceUrl' and 'fetch' appearing anywhere. The endpoint validates
+    // sourceUrl as a URL but does NOT fetch it. The API-key transport
+    // uses fetch for provider calls, not for sourceUrl.
+    const sourceUrlFetchRe = /fetch\s*\(\s*[^)]*sourceUrl/i;
+    assert.strictEqual(sourceUrlFetchRe.test(cleanSuggest), false,
+      'suggest.js must not fetch sourceUrl');
   }
 });
 
