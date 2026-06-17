@@ -557,6 +557,10 @@ body .tag-chip:focus-visible {
 
 /* ── Page Hero — 공통 모바일 토큰 ── */
 @media (max-width: 640px) {
+    .shared-mobile-hero-container {
+        width: min(100%, calc(100% - 24px));
+        padding: 36px 0 80px;
+    }
     .shared-mobile-hero-title {
         font-size: clamp(2.25rem, 10vw, 2.8rem) !important;
         line-height: 1.04 !important;

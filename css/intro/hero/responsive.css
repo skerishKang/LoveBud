@@ -19,10 +19,10 @@
 }
 
 @media (max-width: 640px) {
-  .intro-hero {
+  body .intro-hero {
     gap: 22px;
     width: min(100%, calc(100% - 24px));
-    padding: 12px 0 8px;
+    padding: 36px 0 80px;
   }
 
   .intro-hero-copy {
