@@ -905,3 +905,29 @@ call, no real API key, no external network in normal CI):
   7. Explicit CTO sign-off before `production_live`
 - Verdict: transport seam: **Yes** (injection-only, disabled default); smoke gate: **Yes**
   (opt-in, fixture-only); real provider call: **No**; staging/production: **No** (all blocked)
+
+## Scout Staging Fetch Fallback and Fielded Suggestion Integration (#2641)
+
+A staging-activation slice (v20260618-1, PR #2641) has implemented the runtime fetch fallback for the deployed staging environment and integrated the fielded live suggestion response schema for the Scout API-key transport:
+
+- **Staging Runtime Fetch Fallback**:
+  - Wired `context.fetch` as the primary injection (passed to `createScoutLiveProviderTransport`).
+  - Implemented a fallback to `globalThis['fetch']` (bound to `globalThis`) specifically under the staging/test API-key gate (`transportGateOk`).
+  - Added strict static contract checks ensuring no direct literal references to `globalThis.fetch` or `global.fetch` are used in suggest.js, preventing CI bypass.
+  - Fetch calls are completely prohibited in default/stub/production/missing-auth/rate-limited/missing-config stages.
+- **Fielded Live Suggestion Integration**:
+  - Integrated `buildScoutLiveProviderPrompt` and `validateScoutLiveProviderResponse` from the adapter layer.
+  - Implemented incomplete response Option A: Any response from the provider that is not a valid JSON object or lacks fielded suggestion keys (such as `titleSuggestion`, `summarySuggestion`, etc.) is rejected with a `PROVIDER_ERROR` (503 safe-fail). Only fully fielded shape is accepted.
+  - Output shape strictly matches the frontend expectation: `{ ok: true, providerMode: 'live_api_key', suggestion: { titleSuggestion, summarySuggestion, ... } }`.
+- **Contract Tests Updated**:
+  - Updated `tests/contracts/scout-suggest-endpoint-live-adapter-mock-only-wiring-contract.test.cjs` with tests 13-20 covering:
+    - `globalThis.fetch` fallback when `context.fetch` is absent.
+    - Fetch suppression in production/missing key/auth failure/rate limit failure.
+    - Fielded shape suggestion returns and validation.
+    - Safe fail on malformed plain-text or incomplete response (Option A).
+    - Leak prevention check and secret/API-key detection.
+- **Aesthetics & Guardrails Preserved**:
+  - Canonical provider identifier remains `openai-compatible` (retrieved from transport module constants).
+  - Normal CI runs remain entirely mock-only and network-free.
+  - Production activation, real API keys, and `.env` files remain strictly blocked.
+- **Verdict**: Staging fetch fallback: **Yes** (staging/test gates-restricted); Fielded response integration: **Yes** (Option A strict validation); Production activation: **No** (blocked).
