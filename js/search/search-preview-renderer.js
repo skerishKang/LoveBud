@@ -275,7 +275,7 @@
         return window.LoveBudSearchPreviewMediaHelper?.renderPreviewThumbnailMedia(thumbnailUrl, mediaTitle, treeTitle)
             || `
             <div class="preview-media-frame preview-media-frame-thumbnail" style="position:relative;width:100%;height:100%;border-radius:1rem;overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,0.12);">
-                <img src="${thumbnailUrl}" alt="${mediaTitle}" loading="lazy" data-preview-thumbnail-image="" style="width:100%;height:100%;object-fit:cover;display:block;">
+                <img src="${thumbnailUrl}" alt="${mediaTitle}" loading="lazy" data-preview-thumbnail-image="" onerror="if(!this.dataset.ytFallback&&this.src.indexOf('hqdefault.jpg')!==-1){this.dataset.ytFallback='1';this.src=this.src.replace('hqdefault.jpg','mqdefault.jpg');}" style="width:100%;height:100%;object-fit:cover;display:block;">
                 <div data-preview-thumbnail-fallback hidden style="position:absolute;inset:0;">${renderPreviewThumbnailFallback(
                     treeTitle,
                     getSearchCopy('search.previewNoMomentBody', '시작 순간이 더해지면 이 감상 허브에서 가장 먼저 열어볼 수 있어요.', 'Once the starting moment is added, you will be able to open it here first.')

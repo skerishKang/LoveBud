@@ -87,7 +87,7 @@
                     const href = buildDetailHref(moment.id, treeId, sourceContext);
                     const relationLabel = getConnectedRelationLabel(moment, memory);
                     const thumbnailMarkup = moment.thumbnail
-                        ? `<img src="${escapeHtml(moment.thumbnail)}" alt="${escapeHtml(moment.title || '')}" style="width: 76px; height: 76px; border-radius: 1rem; object-fit: cover;">`
+                        ? `<img src="${escapeHtml(moment.thumbnail)}" alt="${escapeHtml(moment.title || '')}" onerror="if(!this.dataset.ytFallback&&this.src.indexOf('hqdefault.jpg')!==-1){this.dataset.ytFallback='1';this.src=this.src.replace('hqdefault.jpg','mqdefault.jpg');}" style="width: 76px; height: 76px; border-radius: 1rem; object-fit: cover;">`
                         : `<div style="width:76px;height:76px;border-radius:1rem;display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg, rgba(250,246,243,0.98), rgba(255,255,255,0.98));border:1px solid rgba(144,73,81,0.08);color:var(--primary);flex-shrink:0;">
                                 <span class="material-symbols-outlined" style="font-size:28px;">favorite</span>
                            </div>`;
