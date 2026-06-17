@@ -44,6 +44,12 @@ async function getOnRequestPost() {
   return mod.onRequestPost;
 }
 
+const TRANSPORT_PATH = path.join(ROOT, 'functions/api/scout/live-provider-api-key-transport.js');
+async function getAllowedProvider() {
+  const mod = await import(TRANSPORT_PATH);
+  return mod.SCOUT_LIVE_PROVIDER_TRANSPORT_ALLOWED_PROVIDER;
+}
+
 // ─── STATIC CONTRACT CHECKS ─────────────────────────────────────────────────
 
 test('1. Static Checks: Prohibits provider SDK imports in suggest.js', () => {
@@ -326,7 +332,392 @@ test('12. No credential or raw executor leaks in error response', async () => {
   assert.doesNotMatch(resStr, /Danger of leak/);
 });
 
-test('13. Contract source does not contain literal sk-prefixed fake secrets', () => {
+test('13. globalThis.fetch fallback is used when context.fetch is absent', async () => {
+  const allowedProvider = await getAllowedProvider();
+  const onRequestPost = await getOnRequestPost();
+  const req = createMockRequest({
+    headers: { Authorization: 'Bearer dummy-token' },
+    body: { excerpt: 'Hello World', requestedLanguage: 'en', desiredTone: 'polite' }
+  });
+
+  let globalFetchCalled = false;
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (url, init) => {
+    globalFetchCalled = true;
+    return {
+      ok: true,
+      json: async () => ({
+        choices: [{
+          message: {
+            content: JSON.stringify({
+              titleSuggestion: 'Global Title',
+              summarySuggestion: 'Global Summary',
+              translationSuggestion: 'Global Translation',
+              emotionTags: ['global'],
+              memoSuggestion: 'Global Memo',
+              safetyNote: 'Global Safety Note'
+            })
+          }
+        }]
+      })
+    };
+  };
+
+  try {
+    const res = await onRequestPost({
+      request: req,
+      env: {
+        SCOUT_SUGGEST_PROVIDER_MODE: 'live',
+        SCOUT_SUGGEST_LIVE_ADAPTER_ENABLED: 'true',
+        SCOUT_SUGGEST_PROVIDER_TRANSPORT_MODE: 'api_key',
+        SCOUT_SUGGEST_PROVIDER_STAGE: 'staging',
+        SCOUT_SUGGEST_LLM_PROVIDER: allowedProvider,
+        SCOUT_SUGGEST_MODEL: 'gpt-4o-mini',
+        SCOUT_SUGGEST_LLM_API_KEY: 'placeholder-key',
+        SCOUT_SUGGEST_LLM_BASE_URL: 'https://api.example.com/v1',
+      },
+      verifyToken: async () => ({ ok: true, uid: 'user-123', userKeyHash: '1234567890123456' }),
+      checkRateLimit: async () => ({ allowed: true }),
+    });
+
+    assert.equal(res.status, 200);
+    const data = JSON.parse(await res.text());
+    assert.equal(data.ok, true);
+    assert.equal(data.providerMode, 'live_api_key');
+    assert.equal(globalFetchCalled, true, 'globalThis.fetch should have been called');
+    assert.equal(data.suggestion.titleSuggestion, 'Global Title');
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('14. globalThis.fetch is NOT called in production stage', async () => {
+  const allowedProvider = await getAllowedProvider();
+  const onRequestPost = await getOnRequestPost();
+  const req = createMockRequest({
+    headers: { Authorization: 'Bearer dummy-token' },
+    body: { excerpt: 'Hello World' }
+  });
+
+  let globalFetchCalled = false;
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => {
+    globalFetchCalled = true;
+    return { ok: true, json: async () => ({}) };
+  };
+
+  try {
+    const res = await onRequestPost({
+      request: req,
+      env: {
+        SCOUT_SUGGEST_PROVIDER_MODE: 'live',
+        SCOUT_SUGGEST_LIVE_ADAPTER_ENABLED: 'true',
+        SCOUT_SUGGEST_PROVIDER_TRANSPORT_MODE: 'api_key',
+        SCOUT_SUGGEST_PROVIDER_STAGE: 'production',
+        SCOUT_SUGGEST_LLM_PROVIDER: allowedProvider,
+        SCOUT_SUGGEST_MODEL: 'gpt-4o-mini',
+        SCOUT_SUGGEST_LLM_API_KEY: 'placeholder-key',
+        SCOUT_SUGGEST_LLM_BASE_URL: 'https://api.example.com/v1',
+      },
+      verifyToken: async () => ({ ok: true, uid: 'user-123' }),
+      checkRateLimit: async () => ({ allowed: true }),
+    });
+
+    assert.equal(res.status, 503);
+    assert.equal(globalFetchCalled, false, 'globalThis.fetch should NOT be called in production stage');
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('15. globalThis.fetch is NOT called on missing API key', async () => {
+  const allowedProvider = await getAllowedProvider();
+  const onRequestPost = await getOnRequestPost();
+  const req = createMockRequest({
+    headers: { Authorization: 'Bearer dummy-token' },
+    body: { excerpt: 'Hello World' }
+  });
+
+  let globalFetchCalled = false;
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => {
+    globalFetchCalled = true;
+    return { ok: true, json: async () => ({}) };
+  };
+
+  try {
+    const res = await onRequestPost({
+      request: req,
+      env: {
+        SCOUT_SUGGEST_PROVIDER_MODE: 'live',
+        SCOUT_SUGGEST_LIVE_ADAPTER_ENABLED: 'true',
+        SCOUT_SUGGEST_PROVIDER_TRANSPORT_MODE: 'api_key',
+        SCOUT_SUGGEST_PROVIDER_STAGE: 'staging',
+        SCOUT_SUGGEST_LLM_PROVIDER: allowedProvider,
+        SCOUT_SUGGEST_MODEL: 'gpt-4o-mini',
+        SCOUT_SUGGEST_LLM_BASE_URL: 'https://api.example.com/v1',
+      },
+      verifyToken: async () => ({ ok: true, uid: 'user-123' }),
+      checkRateLimit: async () => ({ allowed: true }),
+    });
+
+    assert.equal(res.status, 503);
+    assert.equal(globalFetchCalled, false, 'globalThis.fetch should NOT be called on missing API key');
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('16. globalThis.fetch is NOT called on auth failure or rate limit failure', async () => {
+  const allowedProvider = await getAllowedProvider();
+  const onRequestPost = await getOnRequestPost();
+
+  let globalFetchCalled = false;
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => {
+    globalFetchCalled = true;
+    return { ok: true, json: async () => ({}) };
+  };
+
+  try {
+    const reqAuth = createMockRequest({
+      body: { excerpt: 'Hello World' }
+    });
+    const resAuth = await onRequestPost({
+      request: reqAuth,
+      env: {
+        SCOUT_SUGGEST_PROVIDER_MODE: 'live',
+        SCOUT_SUGGEST_LIVE_ADAPTER_ENABLED: 'true',
+        SCOUT_SUGGEST_PROVIDER_TRANSPORT_MODE: 'api_key',
+        SCOUT_SUGGEST_PROVIDER_STAGE: 'staging',
+        SCOUT_SUGGEST_LLM_PROVIDER: allowedProvider,
+        SCOUT_SUGGEST_MODEL: 'gpt-4o-mini',
+        SCOUT_SUGGEST_LLM_API_KEY: 'placeholder-key',
+        SCOUT_SUGGEST_LLM_BASE_URL: 'https://api.example.com/v1',
+      },
+      verifyToken: async () => ({ ok: false }),
+      checkRateLimit: async () => ({ allowed: true }),
+    });
+    assert.equal(resAuth.status, 401);
+    assert.equal(globalFetchCalled, false, 'globalThis.fetch should NOT be called on auth failure');
+
+    const reqLimit = createMockRequest({
+      headers: { Authorization: 'Bearer dummy-token' },
+      body: { excerpt: 'Hello World' }
+    });
+    const resLimit = await onRequestPost({
+      request: reqLimit,
+      env: {
+        SCOUT_SUGGEST_PROVIDER_MODE: 'live',
+        SCOUT_SUGGEST_LIVE_ADAPTER_ENABLED: 'true',
+        SCOUT_SUGGEST_PROVIDER_TRANSPORT_MODE: 'api_key',
+        SCOUT_SUGGEST_PROVIDER_STAGE: 'staging',
+        SCOUT_SUGGEST_LLM_PROVIDER: allowedProvider,
+        SCOUT_SUGGEST_MODEL: 'gpt-4o-mini',
+        SCOUT_SUGGEST_LLM_API_KEY: 'placeholder-key',
+        SCOUT_SUGGEST_LLM_BASE_URL: 'https://api.example.com/v1',
+      },
+      verifyToken: async () => ({ ok: true, uid: 'user-123' }),
+      checkRateLimit: async () => ({
+        ok: false,
+        status: 'rate_limited',
+        error: { code: 'RATE_LIMITED', message: 'Rate limit exceeded' }
+      }),
+    });
+    assert.equal(resLimit.status, 429);
+    assert.equal(globalFetchCalled, false, 'globalThis.fetch should NOT be called on rate limit failure');
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('17. returns fielded suggestion shape with all expected fields', async () => {
+  const allowedProvider = await getAllowedProvider();
+  const onRequestPost = await getOnRequestPost();
+  const req = createMockRequest({
+    headers: { Authorization: 'Bearer dummy-token' },
+    body: { excerpt: 'Hello World', requestedLanguage: 'en', desiredTone: 'polite' }
+  });
+
+  const mockFetch = async () => ({
+    ok: true,
+    json: async () => ({
+      choices: [{
+        message: {
+          content: JSON.stringify({
+            titleSuggestion: 'Fielded Title',
+            summarySuggestion: 'Fielded Summary',
+            translationSuggestion: 'Fielded Translation',
+            emotionTags: ['happy', 'peace'],
+            memoSuggestion: 'Fielded Memo',
+            safetyNote: 'Fielded Safety Note'
+          })
+        }
+      }]
+    })
+  });
+
+  const res = await onRequestPost({
+    request: req,
+    env: {
+      SCOUT_SUGGEST_PROVIDER_MODE: 'live',
+      SCOUT_SUGGEST_LIVE_ADAPTER_ENABLED: 'true',
+      SCOUT_SUGGEST_PROVIDER_TRANSPORT_MODE: 'api_key',
+      SCOUT_SUGGEST_PROVIDER_STAGE: 'staging',
+      SCOUT_SUGGEST_LLM_PROVIDER: allowedProvider,
+      SCOUT_SUGGEST_MODEL: 'gpt-4o-mini',
+      SCOUT_SUGGEST_LLM_API_KEY: 'placeholder-key',
+      SCOUT_SUGGEST_LLM_BASE_URL: 'https://api.example.com/v1',
+    },
+    fetch: mockFetch,
+    verifyToken: async () => ({ ok: true, uid: 'user-123', userKeyHash: '1234567890123456' }),
+    checkRateLimit: async () => ({ allowed: true }),
+  });
+
+  assert.equal(res.status, 200);
+  const data = JSON.parse(await res.text());
+  assert.equal(data.ok, true);
+  assert.equal(data.providerMode, 'live_api_key');
+  assert.ok(data.suggestion);
+  assert.equal(data.suggestion.titleSuggestion, 'Fielded Title');
+  assert.equal(data.suggestion.summarySuggestion, 'Fielded Summary');
+  assert.equal(data.suggestion.translationSuggestion, 'Fielded Translation');
+  assert.deepEqual(data.suggestion.emotionTags, ['happy', 'peace']);
+  assert.equal(data.suggestion.memoSuggestion, 'Fielded Memo');
+  assert.equal(data.suggestion.safetyNote, 'Fielded Safety Note');
+});
+
+test('18. malformed JSON response or plain text suggestion content from provider fails safely', async () => {
+  const allowedProvider = await getAllowedProvider();
+  const onRequestPost = await getOnRequestPost();
+  const req = createMockRequest({
+    headers: { Authorization: 'Bearer dummy-token' },
+    body: { excerpt: 'Hello World' }
+  });
+
+  const mockFetchMalformed = async () => ({
+    ok: true,
+    json: async () => ({
+      choices: [{
+        message: {
+          content: 'This is not a JSON object, it is plain text.'
+        }
+      }]
+    })
+  });
+
+  const res1 = await onRequestPost({
+    request: req,
+    env: {
+      SCOUT_SUGGEST_PROVIDER_MODE: 'live',
+      SCOUT_SUGGEST_LIVE_ADAPTER_ENABLED: 'true',
+      SCOUT_SUGGEST_PROVIDER_TRANSPORT_MODE: 'api_key',
+      SCOUT_SUGGEST_PROVIDER_STAGE: 'staging',
+      SCOUT_SUGGEST_LLM_PROVIDER: allowedProvider,
+      SCOUT_SUGGEST_MODEL: 'gpt-4o-mini',
+      SCOUT_SUGGEST_LLM_API_KEY: 'placeholder-key',
+      SCOUT_SUGGEST_LLM_BASE_URL: 'https://api.example.com/v1',
+    },
+    fetch: mockFetchMalformed,
+    verifyToken: async () => ({ ok: true, uid: 'user-123', userKeyHash: '1234567890123456' }),
+    checkRateLimit: async () => ({ allowed: true }),
+  });
+
+  assert.equal(res1.status, 503);
+  const data1 = JSON.parse(await res1.text());
+  assert.equal(data1.ok, false);
+  assert.equal(data1.error.code, 'PROVIDER_ERROR');
+
+  const mockFetchIncomplete = async () => ({
+    ok: true,
+    json: async () => ({
+      choices: [{
+        message: {
+          content: JSON.stringify({
+            content: 'This is a suggestion content field but not the fielded structure.'
+          })
+        }
+      }]
+    })
+  });
+
+  const res2 = await onRequestPost({
+    request: req,
+    env: {
+      SCOUT_SUGGEST_PROVIDER_MODE: 'live',
+      SCOUT_SUGGEST_LIVE_ADAPTER_ENABLED: 'true',
+      SCOUT_SUGGEST_PROVIDER_TRANSPORT_MODE: 'api_key',
+      SCOUT_SUGGEST_PROVIDER_STAGE: 'staging',
+      SCOUT_SUGGEST_LLM_PROVIDER: allowedProvider,
+      SCOUT_SUGGEST_MODEL: 'gpt-4o-mini',
+      SCOUT_SUGGEST_LLM_API_KEY: 'placeholder-key',
+      SCOUT_SUGGEST_LLM_BASE_URL: 'https://api.example.com/v1',
+    },
+    fetch: mockFetchIncomplete,
+    verifyToken: async () => ({ ok: true, uid: 'user-123', userKeyHash: '1234567890123456' }),
+    checkRateLimit: async () => ({ allowed: true }),
+  });
+
+  // Under Option A: non-fielded shape must FAIL with PROVIDER_ERROR (503)
+  assert.equal(res2.status, 503);
+  const data2 = JSON.parse(await res2.text());
+  assert.equal(data2.ok, false);
+  assert.equal(data2.error.code, 'PROVIDER_ERROR');
+});
+
+test('19. raw provider response and sensitive parameters are not leaked in response', async () => {
+  const allowedProvider = await getAllowedProvider();
+  const onRequestPost = await getOnRequestPost();
+  const req = createMockRequest({
+    headers: { Authorization: 'Bearer dummy-token' },
+    body: { excerpt: 'Hello World private excerpt', requestedLanguage: 'en', desiredTone: 'polite', sourceUrl: 'https://private.url/path' }
+  });
+
+  const mockFetch = async () => ({
+    ok: true,
+    json: async () => ({
+      id: 'chatcmpl-secretid-1234',
+      choices: [{
+        message: {
+          content: JSON.stringify({
+            titleSuggestion: 'Secure Title',
+            summarySuggestion: 'Secure Summary',
+            translationSuggestion: 'Secure Translation',
+            emotionTags: [],
+            memoSuggestion: 'Secure Memo',
+            safetyNote: 'Secure Safety Note'
+          })
+        }
+      }]
+    })
+  });
+
+  const res = await onRequestPost({
+    request: req,
+    env: {
+      SCOUT_SUGGEST_PROVIDER_MODE: 'live',
+      SCOUT_SUGGEST_LIVE_ADAPTER_ENABLED: 'true',
+      SCOUT_SUGGEST_PROVIDER_TRANSPORT_MODE: 'api_key',
+      SCOUT_SUGGEST_PROVIDER_STAGE: 'staging',
+      SCOUT_SUGGEST_LLM_PROVIDER: allowedProvider,
+      SCOUT_SUGGEST_MODEL: 'gpt-4o-mini',
+      SCOUT_SUGGEST_LLM_API_KEY: 'placeholder-secret-key-123',
+      SCOUT_SUGGEST_LLM_BASE_URL: 'https://api.example.com/v1',
+    },
+    fetch: mockFetch,
+    verifyToken: async () => ({ ok: true, uid: 'user-123', userKeyHash: '1234567890123456' }),
+    checkRateLimit: async () => ({ allowed: true }),
+  });
+
+  const resText = await res.text();
+  assert.ok(!resText.includes('chatcmpl-secretid'), 'Should not contain raw provider response id');
+  assert.ok(!resText.includes('private excerpt'), 'Should not contain private excerpt');
+  assert.ok(!resText.includes('private.url'), 'Should not contain private source URL');
+  assert.ok(!resText.includes('dummy-token'), 'Should not contain bearer token');
+  assert.ok(!resText.includes('placeholder-secret-key'), 'Should not contain API key');
+});
+
+test('20. Contract source does not contain literal sk-prefixed fake secrets', () => {
   const testCode = fs.readFileSync(__filename, 'utf8');
   assert.doesNotMatch(testCode, /sk-[A-Za-z0-9_-]{10,}/, 'Contract source must not contain literal sk-prefixed fake secrets.');
 });

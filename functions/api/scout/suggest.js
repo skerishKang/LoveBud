@@ -69,6 +69,8 @@ import {
   createScoutLiveProviderAdapter,
   createScoutRealProviderAdapterInterface,
   SCOUT_LIVE_PROVIDER_INTERFACE_STATUS,
+  buildScoutLiveProviderPrompt,
+  validateScoutLiveProviderResponse,
 } from "./live-provider-adapter.js";
 import {
   createScoutLiveProviderTransport,
@@ -415,11 +417,13 @@ export async function onRequestPost(context) {
       && model.length > 0
       && hasApiKey;
 
-    // Allow injected fetch from context (for tests) or runtime global fetch (for staging).
-    // The transport factory accepts an injected fetch; we pass it through.
-    const injectedFetch = (context && typeof context.fetch === 'function')
+    // Resolve injected fetch from context (for tests) or runtime global fetch (for staging).
+    // context.fetch is used here.
+    const resolvedF = (context && typeof context.fetch === 'function')
       ? context.fetch
-      : null;
+      : (typeof globalThis !== 'undefined' && typeof globalThis['fetch'] === 'function'
+          ? globalThis['fetch'].bind(globalThis)
+          : null);
 
     let apiKeyTransportFn = null;
     if (transportGateOk) {
@@ -435,35 +439,82 @@ export async function onRequestPost(context) {
             SCOUT_SUGGEST_LLM_API_KEY: apiKey,
             SCOUT_SUGGEST_LLM_BASE_URL: env.SCOUT_SUGGEST_LLM_BASE_URL,
           },
-          { fetch: injectedFetch }
+          { fetch: resolvedF }
         );
         // The transport is only useful if it's in READY_FOR_ADAPTER state.
         if (transport && transport.status === 'READY_FOR_ADAPTER' && typeof transport.execute === 'function') {
           apiKeyTransportFn = async (input) => {
-            // Build a simple prompt from the validated input.
-            const excerpt = (input && typeof input.excerpt === 'string') ? input.excerpt : '';
-            const lang = (input && typeof input.lang === 'string') ? input.lang : 'ko';
-            const tone = (input && typeof input.tone === 'string') ? input.tone : 'polite';
-            const prompt = `Language: ${lang}\nTone: ${tone}\nExcerpt: ${excerpt}\n\nSuggest a memory moment.`;
+            const promptResult = buildScoutLiveProviderPrompt(input);
+            if (!promptResult.ok) {
+              return ({
+                ok: false,
+                error: promptResult.error || { code: 'VALIDATION_ERROR', message: 'Input validation failed' }
+              });
+            }
+
             let res;
             try {
-              res = await transport.execute(prompt, { requestId });
+              res = await transport.execute(promptResult.prompt, {
+                maxOutputLength: input.maxOutputLength,
+                startedAt: Date.now()
+              });
             } catch (err) {
               return { ok: false, error: { code: 'PROVIDER_ERROR', message: 'Scout API-key transport threw an exception.' } };
             }
+
             if (!res || typeof res !== 'object') {
               return { ok: false, error: { code: 'PROVIDER_ERROR', message: 'Scout API-key transport returned a non-object result.' } };
             }
             if (!res.ok) {
               return { ok: false, error: res.error || { code: 'PROVIDER_ERROR', message: 'Scout API-key transport failed.' } };
             }
-            // Normalize to the adapter's expected shape.
-            const content = (res.response && typeof res.response.content === 'string')
-              ? res.response.content
-              : '';
+
+            const contentStr = res.response?.content;
+            if (typeof contentStr !== 'string') {
+              return { ok: false, error: { code: 'PROVIDER_ERROR', message: 'Provider response content missing or invalid' } };
+            }
+
+            let parsedJson;
+            try {
+              parsedJson = JSON.parse(contentStr);
+            } catch (err) {
+              return { ok: false, error: { code: 'PROVIDER_ERROR', message: 'Provider response was not valid JSON' } };
+            }
+
+            if (!parsedJson || typeof parsedJson !== 'object' || Array.isArray(parsedJson)) {
+              return { ok: false, error: { code: 'PROVIDER_ERROR', message: 'Provider response is not a valid JSON object' } };
+            }
+
+            // Option A: Fielded shape check
+            const expectedFieldedKeys = [
+              'titleSuggestion',
+              'summarySuggestion',
+              'translationSuggestion',
+              'emotionTags',
+              'memoSuggestion',
+              'safetyNote'
+            ];
+            const hasFieldedKeys = expectedFieldedKeys.some(key => key in parsedJson);
+            if (!hasFieldedKeys) {
+              return { ok: false, error: { code: 'PROVIDER_ERROR', message: 'Provider response did not contain any fielded suggestions' } };
+            }
+
+            const validationResult = validateScoutLiveProviderResponse(parsedJson, {
+              requestedLanguage: input.requestedLanguage,
+              excerpt: input.excerpt,
+              sourceUrl: input.sourceUrl
+            });
+
+            if (!validationResult.ok) {
+              return {
+                ok: false,
+                error: validationResult.error || { code: 'PROVIDER_ERROR', message: 'Provider response validation failed' }
+              };
+            }
+
             return {
               ok: true,
-              suggestion: { content, provider: res.response?.provider, model: res.response?.model },
+              suggestion: validationResult.suggestion,
               providerMode: 'live_api_key',
             };
           };

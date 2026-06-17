@@ -224,8 +224,7 @@ test('all gates + auth ok + rate-limit ok + injected fetch executes transport RE
   assert.equal(data.ok, true);
   assert.equal(data.providerMode, 'live_api_key');
   assert.equal(fetchCalled, true);
-  const parsedContent = JSON.parse(data.suggestion.content);
-  assert.equal(parsedContent.titleSuggestion, 'Wiring Success Title');
+  assert.equal(data.suggestion.titleSuggestion, 'Wiring Success Title');
 });
 
 test('provider identifier mismatch leads to no fetch / safe-fail', async () => {
