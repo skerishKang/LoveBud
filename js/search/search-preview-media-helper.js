@@ -99,7 +99,7 @@
 
         return `
             <div class="preview-media-frame preview-media-frame-thumbnail" style="position:relative;width:100%;height:100%;border-radius:1rem;overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,0.12);">
-                <img src="${thumbnailUrl}" alt="${mediaTitle}" loading="lazy" data-preview-thumbnail-image="" style="width:100%;height:100%;object-fit:cover;display:block;">
+                <img src="${thumbnailUrl}" alt="${mediaTitle}" loading="lazy" data-preview-thumbnail-image="" onerror="if(!this.dataset.ytFallback&&this.src.indexOf('hqdefault.jpg')!==-1){this.dataset.ytFallback='1';this.src=this.src.replace('hqdefault.jpg','mqdefault.jpg');}" style="width:100%;height:100%;object-fit:cover;display:block;">
                 <div data-preview-thumbnail-fallback hidden style="position:absolute;inset:0;">${fallbackHtml}</div>
                 <div data-preview-overlay style="position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,0.72),rgba(0,0,0,0.04) 58%);"></div>
                 <div data-preview-overlay style="position:absolute;left:18px;right:18px;bottom:18px;color:white;">

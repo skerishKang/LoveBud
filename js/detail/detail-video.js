@@ -20,7 +20,7 @@
 
             return `
                 <div style="position:relative;width:100%;height:100%;overflow:hidden;background:linear-gradient(180deg, rgba(255,255,255,0.1), rgba(35,28,29,0.18));">
-                    <img src="${escapeHtml(thumbnail)}" alt="${title}" style="width:100%;height:100%;object-fit:cover;display:block;">
+                    <img src="${escapeHtml(thumbnail)}" alt="${title}" onerror="if(!this.dataset.ytFallback&&this.src.indexOf('hqdefault.jpg')!==-1){this.dataset.ytFallback='1';this.src=this.src.replace('hqdefault.jpg','mqdefault.jpg');}" style="width:100%;height:100%;object-fit:cover;display:block;">
                     <div style="position:absolute;inset:auto 18px 18px 18px;padding:14px 16px;border-radius:1.1rem;background:rgba(23,17,18,0.42);border:1px solid rgba(255,255,255,0.12);color:#fff;backdrop-filter:blur(12px);">
                         <div style="font-size:11px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;opacity:0.8;margin-bottom:6px;">${tText('image_only_moment_kicker', '대표 장면')}</div>
                         <div style="font-size:1rem;font-weight:800;line-height:1.45;margin-bottom:4px;">${title}</div>

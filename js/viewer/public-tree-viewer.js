@@ -398,12 +398,12 @@
                     var safeTitle = escapeHtml(memory.title || 'moment video');
                     mediaContainer.innerHTML = '<iframe src="' + escapeHtml(safeEmbedUrl) + '" class="viewer-preview-video" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen loading="lazy" title="' + safeTitle + '"></iframe>';
                 } else if (safeThumb) {
-                    mediaContainer.innerHTML = '<img src="' + escapeHtml(safeThumb) + '" alt="' + escapeHtml(memory.title || '') + '" class="viewer-preview-image" loading="lazy" />';
+                    mediaContainer.innerHTML = '<img src="' + escapeHtml(safeThumb) + '" alt="' + escapeHtml(memory.title || '') + '" class="viewer-preview-image" loading="lazy" onerror="if(!this.dataset.ytFallback&&this.src.indexOf(\'hqdefault.jpg\')!==-1){this.dataset.ytFallback=\'1\';this.src=this.src.replace(\'hqdefault.jpg\',\'mqdefault.jpg\');}" />';
                 } else {
                     mediaContainer.innerHTML = '<div class="viewer-preview-no-media"><span class="material-symbols-outlined">image</span></div>';
                 }
             } else if (safeThumb) {
-                mediaContainer.innerHTML = `<img src="${escapeHtml(safeThumb)}" alt="${escapeHtml(memory.title || '')}" class="viewer-preview-image" loading="lazy" />`;
+                mediaContainer.innerHTML = `<img src="${escapeHtml(safeThumb)}" alt="${escapeHtml(memory.title || '')}" class="viewer-preview-image" loading="lazy" onerror="if(!this.dataset.ytFallback&&this.src.indexOf('hqdefault.jpg')!==-1){this.dataset.ytFallback='1';this.src=this.src.replace('hqdefault.jpg','mqdefault.jpg');}" />`;
             } else {
                 mediaContainer.innerHTML = `<div class="viewer-preview-no-media"><span class="material-symbols-outlined">image</span></div>`;
             }
