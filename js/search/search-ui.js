@@ -234,21 +234,20 @@
 
         function ensureBrowseControls() {
             ensureResultsHead();
-            if (document.getElementById('browseSortControls')) {
+
+            // Check if #browseSortControls already exists (pre-rendered HTML placeholder)
+            let controls = document.getElementById('browseSortControls');
+            const alreadyHasSelect = controls && document.getElementById('browseSortSelect');
+            if (alreadyHasSelect) {
                 ensureScrollLoadSentinel();
                 return;
             }
 
-            const controls = document.createElement('div');
-            controls.id = 'browseSortControls';
-            controls.style.display = 'flex';
-            controls.style.alignItems = 'center';
-            controls.style.justifyContent = 'flex-end';
-
             const isEn = getCurrentLocale() === 'en';
             const select = document.createElement('select');
             select.id = 'browseSortSelect';
-            select.className = 'summary-sort-control';
+            select.className = 'summary-sort-control browse-sort-select';
+            select.setAttribute('aria-label', isEn ? 'Sort order' : '정렬 기준');
             select.innerHTML = `
                 <option value="latest" data-browse-sort="latest">${isEn ? 'Latest' : '최신순'}</option>
                 <option value="views" data-browse-sort="views">${isEn ? 'Views' : '조회순'}</option>
@@ -265,24 +264,39 @@
                 callbacks.updateUrlState();
                 await callbacks.loadPublicTrees({ resetSelection: true });
             });
-            controls.appendChild(select);
 
-            let rightGroup = refs.resultsHead.querySelector('.browse-head-right');
-            if (!rightGroup) {
-                rightGroup = document.createElement('div');
-                rightGroup.className = 'browse-head-right';
-                rightGroup.style.display = 'flex';
-                rightGroup.style.flexDirection = 'column';
-                rightGroup.style.alignItems = 'flex-end';
-                rightGroup.style.gap = '12px';
+            if (controls) {
+                // Populate existing HTML placeholder div
+                controls.style.display = 'flex';
+                controls.style.alignItems = 'center';
+                controls.style.justifyContent = 'flex-end';
+                controls.appendChild(select);
+            } else {
+                // Create and insert into resultsHead (fallback: no HTML placeholder)
+                controls = document.createElement('div');
+                controls.id = 'browseSortControls';
+                controls.style.display = 'flex';
+                controls.style.alignItems = 'center';
+                controls.style.justifyContent = 'flex-end';
+                controls.appendChild(select);
 
-                if (refs.resultsBadge && refs.resultsBadge.parentNode === refs.resultsHead) {
-                    refs.resultsHead.removeChild(refs.resultsBadge);
-                    rightGroup.appendChild(refs.resultsBadge);
+                let rightGroup = refs.resultsHead.querySelector('.browse-head-right');
+                if (!rightGroup) {
+                    rightGroup = document.createElement('div');
+                    rightGroup.className = 'browse-head-right';
+                    rightGroup.style.display = 'flex';
+                    rightGroup.style.flexDirection = 'column';
+                    rightGroup.style.alignItems = 'flex-end';
+                    rightGroup.style.gap = '12px';
+
+                    if (refs.resultsBadge && refs.resultsBadge.parentNode === refs.resultsHead) {
+                        refs.resultsHead.removeChild(refs.resultsBadge);
+                        rightGroup.appendChild(refs.resultsBadge);
+                    }
+                    refs.resultsHead.appendChild(rightGroup);
                 }
-                refs.resultsHead.appendChild(rightGroup);
+                rightGroup.appendChild(controls);
             }
-            rightGroup.appendChild(controls);
 
             ensureScrollLoadSentinel();
             syncControlsFromState();
