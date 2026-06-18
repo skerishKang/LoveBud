@@ -56,6 +56,7 @@
     --lovetree-card-shadow-active: 0 26px 60px rgba(144, 73, 81, 0.13), 0 0 0 1px rgba(255, 255, 255, 0.52) inset;
     --lovetree-card-ring-active: 0 0 0 3px rgba(200, 116, 128, 0.10);
     --lovetree-card-border-hover: var(--primary-soft);
+    --lovetree-card-border-active: rgba(144, 73, 81, 0.22);
 
     --lovetree-pill-bg: rgba(144, 73, 81, 0.08);
     --lovetree-pill-border: rgba(144, 73, 81, 0.22);

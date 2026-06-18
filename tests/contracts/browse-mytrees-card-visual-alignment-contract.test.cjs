@@ -101,6 +101,15 @@ tests.push({
     },
 });
 
+tests.push({
+    name: 'Card token --lovetree-card-border-active exists with correct value',
+    fn: () => {
+        const val = readCssVar(TOKENS_CSS, 'lovetree-card-border-active');
+        assert.ok(val !== null && val.length > 0, 'Missing --lovetree-card-border-active token');
+        assert.ok(val === 'rgba(144, 73, 81, 0.22)', `Expected rgba(144, 73, 81, 0.22), got ${val}`);
+    },
+});
+
 // ── 2. Browse .tree-card uses card tokens ─────────────────────────────────────
 tests.push({
     name: 'Browse .tree-card uses --lovetree-card-surface-browse for background',
@@ -171,6 +180,18 @@ tests.push({
         const block = match[1];
         assert.ok(block.includes('var(--lovetree-card-shadow-active)'), 'tree-card.is-active box-shadow must use --lovetree-card-shadow-active');
         assert.ok(block.includes('var(--lovetree-card-ring-active)'), 'tree-card.is-active box-shadow must use --lovetree-card-ring-active');
+    },
+});
+
+tests.push({
+    name: 'Browse .tree-card.is-active uses --lovetree-card-border-active and NOT hardcoded rgba(144, 73, 81, 0.22)',
+    fn: () => {
+        const re = /\.tree-card\.is-active,\s*\n\s*\.tree-card\[data-selected-tree-card="true"\]\s*{([^}]*)}/m;
+        const match = SEARCH_TREE_CARD_CSS.match(re);
+        assert.ok(match, 'tree-card.is-active block must exist');
+        const block = match[1];
+        assert.ok(block.includes('var(--lovetree-card-border-active)'), 'tree-card.is-active border-color must use --lovetree-card-border-active');
+        assert.ok(!block.includes('rgba(144, 73, 81, 0.22)'), 'tree-card.is-active must NOT have hardcoded rgba(144, 73, 81, 0.22)');
     },
 });
 
