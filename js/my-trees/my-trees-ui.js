@@ -53,23 +53,44 @@
     return String(count);
   }
 
+  /**
+   * i18n fallback helper.
+   * Treats key-echo (i18n returning the key itself) as a missing translation
+   * and returns the Korean fallback instead.
+   */
+  function getI18nText(i18n, key, fallback) {
+    var value = typeof i18n === 'function' ? i18n(key) : '';
+    if (!value || value === key || String(value).toLowerCase() === String(key).toLowerCase()) {
+      return fallback;
+    }
+    return value;
+  }
+
   function getVisibilityActionLabel(tree, i18n) {
     var Visuals = window.LoveBudMyTreesCardVisuals;
     if (Visuals && typeof Visuals.getVisibilityActionLabel === 'function') return Visuals.getVisibilityActionLabel(tree, i18n);
-    return tree && tree.visibility === 'public' ? (i18n('visibility_make_private') || '비공개로 전환') : (i18n('visibility_make_public') || '공개로 전환');
+    return tree && tree.visibility === 'public'
+      ? getI18nText(i18n, 'visibility_make_private', '비공개로 전환')
+      : getI18nText(i18n, 'visibility_make_public', '공개로 전환');
   }
 
   function getTreeCardMeta(tree, i18n) {
     var Visuals = window.LoveBudMyTreesCardVisuals;
     if (Visuals && typeof Visuals.getTreeCardMeta === 'function') return Visuals.getTreeCardMeta(tree, i18n);
     var visibility = tree && tree.visibility === 'public' ? 'public' : 'private';
-    var visibilityLabel = visibility === 'public' ? (i18n('myTrees.summary_public') || '공개') : (i18n('myTrees.summary_private') || '비공개');
+    var visibilityLabel = visibility === 'public'
+      ? getI18nText(i18n, 'myTrees.summary_public', '공개')
+      : getI18nText(i18n, 'myTrees.summary_private', '비공개');
     return {
       visibilityIcon: visibility === 'public' ? 'lock' : 'public',
       visibilityActionLabel: getVisibilityActionLabel(tree, i18n),
       title: tree && tree.title,
-      mood: getTreeMomentCount(tree) > 0 ? (i18n('myTrees.card_growing') || '차곡차곡 자라는 중') : (i18n('myTrees.card_waiting') || '첫 순간을 기다리는 중'),
-      privateBadgeHtml: visibility === 'private' ? '<div class="tree-card-meta"><span class="tree-card-visibility private"><span class="material-symbols-outlined" style="font-size:12px;">lock</span>' + visibilityLabel + '</span></div>' : ''
+      mood: getTreeMomentCount(tree) > 0
+        ? getI18nText(i18n, 'myTrees.card_growing', '차곳차곳 자라는 중')
+        : getI18nText(i18n, 'myTrees.card_waiting', '첫 순간을 기다리는 중'),
+      privateBadgeHtml: visibility === 'private'
+        ? '<div class="tree-card-meta"><span class="tree-card-visibility private"><span class="material-symbols-outlined" style="font-size:12px;">lock</span>' + visibilityLabel + '</span></div>'
+        : ''
     };
   }
 
@@ -136,8 +157,8 @@
     if (!repTitle && !repMemo) return null;
 
     return {
-      title: repTitle || (i18n('editor_default_first_title') || '첫 순간'),
-      memo: repMemo || (i18n('myTrees.card_text_fallback') || '처음 남긴 마음이 이 트리의 시작이 되었어요.')
+      title: repTitle || getI18nText(i18n, 'editor_default_first_title', '첫 순간'),
+      memo: repMemo || getI18nText(i18n, 'myTrees.card_text_fallback', '처음 남긴 마음이 이 트리의 시작이 되었어요.')
     };
   }
 
@@ -150,7 +171,7 @@
     if (!textMeta) return '';
 
     return '<div class="tree-card-text-visual" style="border-color:' + palette.leafSoft + ';background:rgba(255,255,255,0.84);">' +
-      '<div class="tree-card-text-kicker" style="color:' + palette.accent + ';">' + escapeHtml(i18n('myTrees.card_first_moment') || '첫 순간 기록') + '</div>' +
+      '<div class="tree-card-text-kicker" style="color:' + palette.accent + ';">' + escapeHtml(getI18nText(i18n, 'myTrees.card_first_moment', '첫 순간 기록')) + '</div>' +
       '<div class="tree-card-text-title">' + escapeHtml(textMeta.title) + '</div>' +
       '<div class="tree-card-text-memo">' + escapeHtml(textMeta.memo) + '</div>' +
       '</div>';
@@ -163,11 +184,11 @@
     }
     var palette = getTreeMoodPalette(tree);
     var momentCount = getTreeMomentCount(tree);
-    var title = (tree && tree.title) || (i18n('default_tree_title') || '나의 러브트리');
+    var title = (tree && tree.title) || getI18nText(i18n, 'default_tree_title', '나의 러브트리');
     var initial = escapeHtml(title.charAt(0).toUpperCase());
     var moodLabel = momentCount > 1
-      ? (i18n('myTrees.card_growing') || '차곡차곡 자라는 중')
-      : (i18n('myTrees.card_waiting') || '첫 순간을 기다리는 중');
+      ? getI18nText(i18n, 'myTrees.card_growing', '차곳차곳 자라는 중')
+      : getI18nText(i18n, 'myTrees.card_waiting', '첫 순간을 기다리는 중');
     var thumbnail = getRepresentativeThumbnail(tree);
 
     var isEnglish = String(window.i18n?.currentLang || '').toLowerCase().startsWith('en');
@@ -200,7 +221,7 @@
       '<div class="tree-card-thumb-art">' +
       (thumbnail ? '<img class="tree-card-thumb-image" src="' + escapeHtml(thumbnail) + '" alt="' + escapeHtml(title) + '">' : fallbackHtml) +
       '</div>' +
-      (momentCount > 0 ? '<div class="tree-card-thumb-topline"><span class="tree-card-moment-badge" data-count="' + momentCount + '">' + (i18n('myTrees.moment_count_compact') || '순간 {count}개').replace('{count}', String(momentCount)) + '</span></div>' : '') +
+      (momentCount > 0 ? '<div class="tree-card-thumb-topline"><span class="tree-card-moment-badge" data-count="' + momentCount + '">' + (getI18nText(i18n, 'myTrees.moment_count_compact', '순간 {count}개')).replace('{count}', String(momentCount)) + '</span></div>' : '') +
       (momentCount > 0 ? '<div class="tree-card-thumb-caption">' + moodLabel + '</div>' : '') +
       '</div>';
   }
@@ -276,7 +297,7 @@
     };
 
     card.addEventListener('click', function (e) {
-      if (e.target.closest('.tree-card-open-link, .tree-card-edit-link, .tree-card-footer a, button, a[href]')) {
+      if (e.target.closest('.tree-card-open-link, .tree-card-edit-link, .tree-card-footer a, .tree-card-list-open, button, a[href]')) {
         return;
       }
       if (window.innerWidth < 480) {
@@ -306,15 +327,20 @@
         '<div class="tree-card-subcopy">' + cardMeta.mood + '</div>',
         cardMeta.privateBadgeHtml,
       '</div>',
+      // list-open: rendered in grid-column 3 on mobile list mode (footer is hidden)
+      '<a class="tree-card-list-open" href="' + escapeHtml(viewHref) + '" target="_self" aria-label="' + escapeHtml(getI18nText(i18n, 'myTrees.card_view', '\uac10\uc0c1\ud558\uae30')) + '">',
+        '<span class="material-symbols-outlined" aria-hidden="true">chevron_right</span>',
+        '<span>\ud2b8\ub9ac \uc5f4\uae30</span>',
+      '</a>',
       '<div class="tree-card-footer">',
         '<div class="tree-card-footer-left">',
           // Issue #1488 #1490: 조회수→좋아요 순서, 순간수 제거
           '<div class="tree-card-footer-metrics">',
-            '<span class="tree-card-footer-metric" title="' + escapeHtml((i18n('myTrees.view_count') || '조회수') + ' ' + formatCompactCount(viewCount)) + '">',
+            '<span class="tree-card-footer-metric" title="' + escapeHtml(getI18nText(i18n, 'myTrees.view_count', '\uc870\ud68c\uc218') + ' ' + formatCompactCount(viewCount)) + '">',
               '<span class="material-symbols-outlined" aria-hidden="true">visibility</span>',
               '<span>' + formatCompactCount(viewCount) + '</span>',
             '</span>',
-            '<span class="tree-card-footer-metric" title="' + escapeHtml((i18n('myTrees.like_count') || '좋아요') + ' ' + formatCompactCount(likeCount)) + '">',
+            '<span class="tree-card-footer-metric" title="' + escapeHtml(getI18nText(i18n, 'myTrees.like_count', '\uc88b\uc544\uc694') + ' ' + formatCompactCount(likeCount)) + '">',
               '<span class="material-symbols-outlined" aria-hidden="true">favorite</span>',
               '<span>' + formatCompactCount(likeCount) + '</span>',
             '</span>',
@@ -323,11 +349,11 @@
         '<div class="tree-card-footer-right" style="display: flex; gap: 6px;">',
           '<a class="tree-card-open-link" href="' + escapeHtml(viewHref) + '" target="_self">',
             '<span class="material-symbols-outlined" aria-hidden="true">visibility</span>',
-            (i18n('myTrees.card_view') || '감상하기'),
+            getI18nText(i18n, 'myTrees.card_view', '\uac10\uc0c1\ud558\uae30'),
           '</a>',
           '<a class="tree-card-edit-link" href="' + escapeHtml(editHref) + '" target="_self">',
             '<span class="material-symbols-outlined" aria-hidden="true">edit</span>',
-            (i18n('myTrees.card_edit') || '편집하기'),
+            getI18nText(i18n, 'myTrees.card_edit', '\ud3b8\uc9d1\ud558\uae30'),
           '</a>',
         '</div>',
       '</div>'
@@ -342,6 +368,12 @@
     var editLink = card.querySelector('.tree-card-edit-link');
     if (editLink) {
       editLink.addEventListener('click', function (e) {
+        e.stopPropagation();
+      });
+    }
+    var listOpenLink = card.querySelector('.tree-card-list-open');
+    if (listOpenLink) {
+      listOpenLink.addEventListener('click', function (e) {
         e.stopPropagation();
       });
     }
@@ -434,7 +466,7 @@
     var summary = document.getElementById('trees-manage-summary');
     if (summary) {
       var i18n = window.i18nMyTrees || {};
-      var countText = (i18n.myTrees_count || '총 {count}개').replace('{count}', String(totalTreesCount));
+      var countText = (i18n.myTrees_count || '영 {count}개').replace('{count}', String(totalTreesCount));
       summary.textContent = countText;
     }
   }
@@ -499,6 +531,7 @@
 
   var api = {
     escapeHtml: escapeHtml,
+    getI18nText: getI18nText,
     buildMiniTreeSVG: buildMiniTreeSVG,
     getTreeMomentCount: getTreeMomentCount,
     getTreeViewCount: getTreeViewCount,
