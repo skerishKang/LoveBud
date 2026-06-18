@@ -7,7 +7,7 @@
 .my-trees-content { padding: 24px var(--lovetree-page-pad-mobile) 36px; }
 .my-trees-header { flex-direction: column; align-items: flex-start; gap: 16px; margin-bottom: 30px; padding-bottom: 18px; }
 .header-content { width: 100%; }
-.my-trees-header p { font-size: 0.94rem; line-height: 1.55; max-width: 26rem; }
+.my-trees-header p { font-size: 0.96rem; line-height: 1.72; max-width: 100%; }
 .header-actions { width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .summary-sort-control { width: 100%; min-height: 40px; font-size: 13px; }
 .btn-header-create { width: 100%; min-height: 40px; padding: 10px 14px; font-size: 13px; }
