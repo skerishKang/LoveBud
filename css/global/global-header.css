@@ -642,7 +642,7 @@ html:not(.material-symbols-ready) .mobile-nav-toggle .material-symbols-outlined 
     #auth-nav,
     #auth-nav-container {
         flex: 0 0 auto;
-        min-width: 88px !important;
+        min-width: 100px;
         max-width: 168px;
         overflow: visible;
     }

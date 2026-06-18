@@ -118,33 +118,3 @@
 .home-intro-entry:hover::after {
     transform: translateX(4px);
 }
-
-/* Issue #1107: root homepage profile affordance visibility. */
-#shared-header #auth-nav,
-#shared-header #auth-nav-container {
-    min-width: 46px !important;
-}
-
-#shared-header .user-dropdown-trigger-icon {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    border-color: rgba(144, 73, 81, 0.26);
-    background: linear-gradient(135deg, rgba(144, 73, 81, 0.18), rgba(122, 139, 110, 0.18));
-    box-shadow: 0 9px 22px rgba(75, 64, 57, 0.13), inset 0 0 0 1px rgba(255,255,255,0.52);
-    color: var(--primary);
-}
-
-#shared-header .user-avatar-shell {
-    background: linear-gradient(135deg, rgba(144, 73, 81, 0.18), rgba(244, 231, 226, 0.96));
-    box-shadow: inset 0 0 0 1px rgba(144, 73, 81, 0.10);
-}
-
-#shared-header .cached-avatar-initial {
-    width: 36px;
-    height: 36px;
-    background: var(--primary);
-    color: #fff;
-    font-weight: 800;
-    box-shadow: 0 8px 18px rgba(144, 73, 81, 0.22);
-}
