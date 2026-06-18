@@ -103,6 +103,8 @@ test('Shared Page Shell Contract Verification', async (t) => {
     assert.ok(searchHtml.includes('lovetree-calm-two-column-shell'), 'search.html must include class lovetree-calm-two-column-shell');
     assert.ok(searchHtml.includes('lovetree-calm-main-column'), 'search.html must include class lovetree-calm-main-column');
     assert.ok(searchHtml.includes('lovetree-calm-right-rail'), 'search.html must include class lovetree-calm-right-rail');
+    assert.ok(searchHtml.includes('browse-utility-row lovetree-calm-utility-row'), 'search.html must contain browse-utility-row lovetree-calm-utility-row');
+    assert.ok(searchHtml.includes('browse-results-head lovetree-calm-results-head'), 'search.html must contain browse-results-head lovetree-calm-results-head');
   });
 
   await t.test('pages/my-trees.html includes shared calm shell classes', () => {
@@ -110,5 +112,15 @@ test('Shared Page Shell Contract Verification', async (t) => {
     assert.ok(myTreesHtml.includes('lovetree-calm-two-column-shell'), 'my-trees.html must include class lovetree-calm-two-column-shell');
     assert.ok(myTreesHtml.includes('lovetree-calm-main-column'), 'my-trees.html must include class lovetree-calm-main-column');
     assert.ok(myTreesHtml.includes('lovetree-calm-right-rail'), 'my-trees.html must include class lovetree-calm-right-rail');
+    assert.ok(myTreesHtml.includes('my-trees-finder lovetree-calm-utility-row'), 'my-trees.html must contain my-trees-finder lovetree-calm-utility-row');
+    assert.ok(myTreesHtml.includes('my-trees-results-head lovetree-calm-results-head'), 'my-trees.html must contain my-trees-results-head lovetree-calm-results-head');
+    assert.ok(myTreesHtml.includes('my-trees-results-title-row'), 'my-trees.html must retain my-trees-results-title-row');
+    assert.ok(myTreesHtml.includes('my-trees-results-controls'), 'my-trees.html must retain my-trees-results-controls');
+  });
+
+  await t.test('Verify calm page shell css defines row baseline classes', () => {
+    const calmCss = read('css/global/lovetree-calm-page-shell.css');
+    assert.ok(calmCss.includes('.lovetree-calm-utility-row'), 'calm page shell CSS must define lovetree-calm-utility-row');
+    assert.ok(calmCss.includes('.lovetree-calm-results-head'), 'calm page shell CSS must define lovetree-calm-results-head');
   });
 });
