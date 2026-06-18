@@ -18,8 +18,9 @@
   <div class="noise-overlay"></div>
   <div id="shared-header"></div>
 
-  <main class="my-trees-container lovetree-calm-two-column-shell page-transition-enter">
-    <section class="lovetree-calm-main-column my-trees-main-column reveal-scale reveal-up">
+  <main class="my-trees-container my-trees-layout page-transition-enter">
+    <div class="my-trees-content my-trees-with-hub lovetree-calm-two-column-shell">
+      <section class="lovetree-calm-main-column my-trees-main-column reveal-scale reveal-up">
 
       <!-- 히어로 헤더 (Browse와 동일하게 main-column 안으로 이동) -->
       <div class="browse-curation-shell reveal-up">
@@ -35,7 +36,7 @@
       </div>
 
       <!-- 검색 + 필터 (Browse의 browse-utility-row 패턴과 동일) -->
-      <div class="my-trees-finder browse-utility-row lovetree-calm-utility-row reveal-up" id="myTreesFinder" aria-label="내 러브트리 찾기">
+      <div class="my-trees-finder lovetree-calm-utility-row reveal-up" id="myTreesFinder" aria-label="내 러브트리 찾기">
         <div class="search-input-wrapper my-trees-search-box">
           <span class="material-symbols-outlined search-icon" aria-hidden="true">search</span>
           <input
@@ -48,21 +49,23 @@
         </div>
 
         <div class="filter-row my-trees-filter-chips" id="myTreesFilterChips" aria-label="내 러브트리 필터">
-          <button type="button" class="tag-chip active" data-filter="all">전체</button>
-          <button type="button" class="tag-chip" data-filter="public">공개</button>
-          <button type="button" class="tag-chip" data-filter="private">비공개</button>
-          <button type="button" class="tag-chip" data-filter="has-moments">순간 있음</button>
+          <button type="button" class="my-trees-filter-chip tag-chip active" data-filter="all">전체</button>
+          <button type="button" class="my-trees-filter-chip tag-chip" data-filter="public">공개</button>
+          <button type="button" class="my-trees-filter-chip tag-chip" data-filter="private">비공개</button>
+          <button type="button" class="my-trees-filter-chip tag-chip" data-filter="has-moments">순간 있음</button>
         </div>
       </div>
 
       <!-- 결과 헤더 (Browse의 browse-results-head 패턴과 동일한 단일 flex row) -->
-      <div class="my-trees-results-head lovetree-calm-results-head browse-results-head reveal-up">
-        <span class="browse-results-label my-trees-results-label">내 러브트리</span>
-        <div class="browse-results-controls my-trees-results-controls">
+      <div class="my-trees-results-head lovetree-calm-results-head reveal-up">
+        <div class="my-trees-results-title-row">
+          <span class="browse-results-label my-trees-results-label">내 러브트리</span>
           <button class="btn-header-create" id="headerCreateTreeBtn">
             <span class="material-symbols-outlined">add</span>
             <span id="headerCreateTreeBtnLabel">새 러브트리</span>
           </button>
+        </div>
+        <div class="my-trees-results-controls">
           <div class="sort-control">
             <select id="sortTreesSelect" class="summary-sort-control">
               <option id="sortRecentOption" value="recent">최신순</option>
@@ -188,6 +191,7 @@
         </a>
       </div>
     </aside>
+    </div>
   </main>
 
   <div class="create-tree-modal-backdrop" id="createTreeModalBackdrop" aria-hidden="true">
