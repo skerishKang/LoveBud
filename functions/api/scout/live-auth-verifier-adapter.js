@@ -12,12 +12,13 @@
  * - SCOUT_LIVE_AUTH_VERIFIER_ADAPTER_VERSION: skeleton version
  * - SCOUT_LIVE_AUTH_VERIFIER_ADAPTER_MODES: status / mode constants
  *   (MOCK_DISABLED, NOT_IMPLEMENTED, FIREBASE_DISABLED,
- *   FIREBASE_CONFIG_MISSING, FIREBASE_RUNTIME)
+ *   FIREBASE_CONFIG_MISSING, FIREBASE_RUNTIME, STAGING)
  * - SCOUT_LIVE_AUTH_VERIFIER_ADAPTER_CODES: response code constants
  *   (VERIFIER_MOCK_DISABLED, VERIFIER_NOT_IMPLEMENTED,
  *   VERIFIER_PAYLOAD_PROHIBITED, VERIFIER_FIREBASE_DISABLED,
  *   VERIFIER_CONFIG_MISSING, VERIFIER_FIREBASE_RUNTIME_DISABLED,
- *   VERIFIER_FIREBASE_RUNTIME_FAILED, VERIFIER_FIREBASE_RUNTIME_VERIFIED)
+ *   VERIFIER_FIREBASE_RUNTIME_FAILED, VERIFIER_FIREBASE_RUNTIME_VERIFIED,
+ *   VERIFIER_STAGING_MOCK_VERIFIED)
  * - SCOUT_LIVE_AUTH_VERIFIER_PAYLOAD_ALLOWED_FIELDS: allowlist for
  *   future-safe fields that may be present in a verifier payload
  * - SCOUT_LIVE_AUTH_VERIFIER_PAYLOAD_PROHIBITED_FIELDS: denylist for
@@ -74,6 +75,35 @@
  *   Authorization header, raw decoded token, raw Firebase claims, raw
  *   email, or raw service account key.
  *
+ * Staging verifier mode (contract-only): when the factory is called with
+ * `{ mockDisabled: false, verifierMode: "staging", stagingVerifier: fn }`,
+ * it returns a staging adapter that:
+ * - is **disabled-by-default** (only entered when both `mockDisabled: false`
+ *   AND an explicit `stagingVerifier` function are provided);
+ * - does **not** import any auth SDK;
+ * - does **not** initialize any auth service at module import time or
+ *   at factory construction time;
+ * - does **not** verify tokens at import time;
+ * - requires an explicit `stagingVerifier` async function to be supplied
+ *   via options. If missing, the adapter safe-fails with `VERIFIER_NOT_IMPLEMENTED`;
+ * - lazily calls the injected `stagingVerifier(idToken)` only when
+ *   `verifyToken` is invoked;
+ * - sanitizes the success response identically to the Firebase runtime branch:
+ *   only a `userKeyHash` derived from the verifier's returned identifier is
+ *   kept; raw UID, raw email, raw decoded token, raw claims are dropped.
+ *   The success path returns
+ *   `code: VERIFIER_STAGING_MOCK_VERIFIED`;
+ * - safe-fails (returns `allowed: false` with
+ *   `VERIFIER_FIREBASE_RUNTIME_FAILED`) on any thrown or rejected
+ *   verifier error, never throwing through the endpoint boundary;
+ * - never logs, returns, persists, or echoes the raw token, raw
+ *   Authorization header, raw decoded token, raw claims, or raw
+ *   verifier payload.
+ * - **No Cloudflare env flag activates this mode**. The staging mode is
+ *   exclusively for DI-based testing and contract verification. Production
+ *   runtime activation requires a separate slice with a real verifier
+ *   implementation and explicit production guard.
+ *
  * Non-goals:
  * - No real LLM provider call
  * - No provider SDK import
@@ -103,6 +133,7 @@ export const SCOUT_LIVE_AUTH_VERIFIER_ADAPTER_MODES = Object.freeze({
   FIREBASE_DISABLED: 'firebase_disabled',
   FIREBASE_CONFIG_MISSING: 'firebase_config_missing',
   FIREBASE_RUNTIME: 'firebase',
+  STAGING: 'staging',
 });
 
 // ─── Response Codes ─────────────────────────────────────────────────────────
@@ -116,6 +147,7 @@ export const SCOUT_LIVE_AUTH_VERIFIER_ADAPTER_CODES = Object.freeze({
   VERIFIER_FIREBASE_RUNTIME_DISABLED: 'VERIFIER_FIREBASE_RUNTIME_DISABLED',
   VERIFIER_FIREBASE_RUNTIME_FAILED: 'VERIFIER_FIREBASE_RUNTIME_FAILED',
   VERIFIER_FIREBASE_RUNTIME_VERIFIED: 'VERIFIER_FIREBASE_RUNTIME_VERIFIED',
+  VERIFIER_STAGING_MOCK_VERIFIED: 'VERIFIER_STAGING_MOCK_VERIFIED',
 });
 
 // ─── Payload Policy ─────────────────────────────────────────────────────────
@@ -268,6 +300,16 @@ function buildFirebaseRuntimeFailedVerifyResponse(reason) {
   };
 }
 
+function buildStagingMockVerifiedVerifyResponse(userKeyHash) {
+  return {
+    allowed: true,
+    code: SCOUT_LIVE_AUTH_VERIFIER_ADAPTER_CODES.VERIFIER_STAGING_MOCK_VERIFIED,
+    reason: 'Staging mock verifier accepted the token; only a sanitized userKeyHash is returned.',
+    userKey: null,
+    userKeyHash,
+  };
+}
+
 // ─── Sanitized Identifier Derivation ───────────────────────────────────────
 
 /**
@@ -326,6 +368,9 @@ function resolveVerifierMode(opts) {
   if (opts.verifierMode === SCOUT_LIVE_AUTH_VERIFIER_ADAPTER_MODES.FIREBASE_CONFIG_MISSING) {
     return SCOUT_LIVE_AUTH_VERIFIER_ADAPTER_MODES.FIREBASE_CONFIG_MISSING;
   }
+  if (opts.verifierMode === SCOUT_LIVE_AUTH_VERIFIER_ADAPTER_MODES.STAGING) {
+    return SCOUT_LIVE_AUTH_VERIFIER_ADAPTER_MODES.STAGING;
+  }
   return SCOUT_LIVE_AUTH_VERIFIER_ADAPTER_MODES.NOT_IMPLEMENTED;
 }
 
@@ -335,13 +380,14 @@ function resolveVerifierMode(opts) {
  * @param {Object} [options]
  * @param {boolean} [options.mockDisabled=true] when true (default), returns
  *   safe mock-disabled responses from verifyToken. When false, returns
- *   "not implemented" responses (or Firebase scaffold responses if
+ *   "not implemented" responses (or Firebase/staging scaffold responses if
  *   `verifierMode` is also provided).
  * @param {string} [options.verifierMode] - optional explicit mode. When
  *   `mockDisabled: false` AND `verifierMode` is one of
  *   `SCOUT_LIVE_AUTH_VERIFIER_ADAPTER_MODES.FIREBASE_DISABLED`,
  *   `SCOUT_LIVE_AUTH_VERIFIER_ADAPTER_MODES.FIREBASE_CONFIG_MISSING`,
- *   or `SCOUT_LIVE_AUTH_VERIFIER_ADAPTER_MODES.FIREBASE_RUNTIME`, the
+ *   `SCOUT_LIVE_AUTH_VERIFIER_ADAPTER_MODES.FIREBASE_RUNTIME`,
+ *   or `SCOUT_LIVE_AUTH_VERIFIER_ADAPTER_MODES.STAGING`, the
  *   factory returns the corresponding adapter. Any other value (or no
  *   value) keeps the existing not-implemented behavior.
  * @param {string} [options.onProhibitedField='drop'] - 'drop' or 'reject'
@@ -352,6 +398,11 @@ function resolveVerifierMode(opts) {
  *   `(idToken, firebaseConfig) => { uid?, userKey? }`. Required only for
  *   FIREBASE_RUNTIME mode. Injected for testability; the factory itself
  *   does not import the Firebase Admin SDK and does not bind to env.
+ * @param {Function} [options.stagingVerifier] - async
+ *   `(idToken) => { uid?, userKey? }`. Required only for STAGING mode.
+ *   Injected for testability; the factory itself does not import any
+ *   auth SDK and does not bind to env. When stagingVerifier is not
+ *   provided, the staging adapter safe-fails with NOT_IMPLEMENTED.
  * @returns {Object} frozen adapter
  */
 export function createScoutLiveAuthVerifierAdapter(options) {
@@ -489,6 +540,96 @@ export function createScoutLiveAuthVerifierAdapter(options) {
           userKey: null,
           userKeyHash,
         });
+      },
+
+      sanitizePayload: sanitizeScoutLiveAuthVerifierPayload,
+    });
+  }
+
+  if (resolvedMode === SCOUT_LIVE_AUTH_VERIFIER_ADAPTER_MODES.STAGING) {
+    const stagingVerifier = opts.stagingVerifier;
+    const hasStagingVerifier = typeof stagingVerifier === 'function';
+
+    // If no explicit stagingVerifier is provided, safe-fail to NOT_IMPLEMENTED
+    // (mirrors the behavior when mockDisabled: false but no verifierMode is given)
+    if (!hasStagingVerifier) {
+      return Object.freeze({
+        kind: 'scout_live_auth_verifier_adapter',
+        version: SCOUT_LIVE_AUTH_VERIFIER_ADAPTER_VERSION,
+        mode: SCOUT_LIVE_AUTH_VERIFIER_ADAPTER_MODES.NOT_IMPLEMENTED,
+        mockDisabled: false,
+        isMockDisabled: false,
+        verifierMode: SCOUT_LIVE_AUTH_VERIFIER_ADAPTER_MODES.NOT_IMPLEMENTED,
+        onProhibitedField: opts.onProhibitedField,
+        hasStagingVerifier: false,
+
+        async verifyToken(_payload) {
+          return buildNotImplementedVerifyResponse();
+        },
+
+        sanitizePayload: sanitizeScoutLiveAuthVerifierPayload,
+      });
+    }
+
+    // stagingVerifier provided - create STAGING mode adapter
+    return Object.freeze({
+      kind: 'scout_live_auth_verifier_adapter',
+      version: SCOUT_LIVE_AUTH_VERIFIER_ADAPTER_VERSION,
+      mode: SCOUT_LIVE_AUTH_VERIFIER_ADAPTER_MODES.STAGING,
+      mockDisabled: false,
+      isMockDisabled: false,
+      verifierMode: SCOUT_LIVE_AUTH_VERIFIER_ADAPTER_MODES.STAGING,
+      onProhibitedField: opts.onProhibitedField,
+      hasStagingVerifier,
+
+      async verifyToken(payload) {
+        if (!hasStagingVerifier) {
+          return buildNotImplementedVerifyResponse();
+        }
+        // Reject up-front if the payload contains any prohibited field.
+        // The staging branch is strict and refuses to verify when raw sensitive
+        // material is present, mirroring the Firebase runtime branch policy.
+        const sanitization = sanitizeScoutLiveAuthVerifierPayload(
+          payload,
+          { onProhibitedField: 'reject' }
+        );
+        if (sanitization.rejected) {
+          return buildFirebaseRuntimeFailedVerifyResponse(
+            'Verifier payload contains prohibited fields; refusing to verify.'
+          );
+        }
+        // Pull the idToken from the input payload directly. We never
+        // echo the idToken (or any other raw field) back in the response.
+        const src = (payload && typeof payload === 'object') ? payload : {};
+        const idTokenCandidate = src.idToken;
+        if (typeof idTokenCandidate !== 'string' || idTokenCandidate.length === 0) {
+          return buildFirebaseRuntimeFailedVerifyResponse(
+            'Verifier payload does not contain a non-empty idToken string.'
+          );
+        }
+        let verified;
+        try {
+          verified = await stagingVerifier(idTokenCandidate);
+        } catch (_err) {
+          return buildFirebaseRuntimeFailedVerifyResponse();
+        }
+        if (!verified || typeof verified !== 'object') {
+          return buildFirebaseRuntimeFailedVerifyResponse();
+        }
+        // Pull only the safe, derived identifier. We never copy uid,
+        // email, claims, or any other field from the verifier result.
+        const rawIdentifier = (typeof verified.uid === 'string' && verified.uid.length > 0)
+          ? verified.uid
+          : (typeof verified.userKey === 'string' && verified.userKey.length > 0
+              ? verified.userKey
+              : null);
+        const userKeyHash = deriveUserKeyHash(rawIdentifier);
+        if (!userKeyHash) {
+          return buildFirebaseRuntimeFailedVerifyResponse(
+            'Staging verifier returned no usable identifier; refusing to mint userKeyHash.'
+          );
+        }
+        return buildStagingMockVerifiedVerifyResponse(userKeyHash);
       },
 
       sanitizePayload: sanitizeScoutLiveAuthVerifierPayload,
