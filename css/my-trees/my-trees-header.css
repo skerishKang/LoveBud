@@ -107,6 +107,22 @@ white-space: nowrap;
     flex-wrap: wrap;
 }
 
+/* ── View mode mount: shrink-to-fit (desktop) ── */
+.my-trees-view-mode-mount {
+    display: inline-flex;
+    align-items: center;
+    flex: 0 0 auto;
+    width: auto;
+}
+
+.my-trees-view-mode-mount > * {
+    display: inline-flex;
+    align-items: center;
+    flex: 0 0 auto;
+    width: auto;
+    justify-content: center;
+}
+
 @media (max-width: 768px) {
     .my-trees-results-head {
         margin-top: 0;
@@ -116,11 +132,28 @@ white-space: nowrap;
     .my-trees-results-title-row {
         flex-wrap: nowrap;
     }
+    /* Sort select takes remaining space; view mode shrinks to icon-count width */
     .my-trees-results-controls {
         width: 100%;
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-        gap: 10px;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: center;
+        column-gap: 12px;
+        row-gap: 10px;
+    }
+    /* View mode mount: icon-count width only, no full-bleed stretch */
+    .my-trees-view-mode-mount {
+        justify-self: end;
+        width: auto;
+        max-width: max-content;
+        flex: 0 0 auto;
+    }
+    .my-trees-view-mode-mount > * {
+        width: auto;
+        max-width: max-content;
+        flex: 0 0 auto;
+        display: inline-flex;
+        justify-content: center;
     }
     /* Compact create CTA in title row on mobile */
     .my-trees-results-title-row .btn-header-create {
@@ -128,7 +161,7 @@ white-space: nowrap;
         width: auto;
         min-width: 132px;
         max-width: 156px;
-        padding-inline: 18px;
+        padding-inline: 16px;
         white-space: nowrap;
     }
 }
