@@ -25,17 +25,19 @@ test('Browse and My Trees Card Density & Empty-State Rhythm Invariant Checks', a
 
   await t.test('My Trees cards CSS utilizes shared tokens and grid layouts', () => {
     const cardsCss = read('css/my-trees/my-trees-cards.css');
-    assert.match(cardsCss, /\.trees-grid\s*{[^}]*display:\s*grid;[^}]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\);[^}]*gap:\s*24px;[^}]*}/);
+    assert.match(cardsCss, /\.trees-grid\s*{[^}]*display:\s*grid;[^}]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\);[^}]*gap:\s*var\(--lovetree-card-grid-gap\);[^}]*}/);
     assert.match(cardsCss, /border-radius:\s*var\(--lovetree-card-radius\)/);
     assert.match(cardsCss, /box-shadow:\s*var\(--lovetree-card-shadow\)/);
     assert.match(cardsCss, /box-shadow:\s*var\(--lovetree-card-shadow-hover\)/);
     assert.match(cardsCss, /box-shadow:\s*var\(--lovetree-card-ring-active\),\s*var\(--lovetree-card-shadow-active\)/);
+    assert.match(cardsCss, /height:\s*var\(--lovetree-card-media-height-mytrees\)/);
   });
 
   await t.test('Browse tree card layout CSS utilizes shared tokens', () => {
     const browseCardCss = read('css/search/search-tree-card/layout.css');
     assert.match(browseCardCss, /border-radius:\s*var\(--lovetree-card-radius-lg\)/);
-    assert.match(browseCardCss, /height:\s*336px/);
+    assert.match(browseCardCss, /padding:\s*var\(--lovetree-card-content-pad-compact\)/);
+    assert.match(browseCardCss, /height:\s*var\(--lovetree-card-media-height-browse\)/);
   });
 
   await t.test('Browse search-empty-state.css utilizes empty state tokens', () => {
@@ -52,6 +54,15 @@ test('Browse and My Trees Card Density & Empty-State Rhythm Invariant Checks', a
     assert.match(myTreesStatesCss, /border-radius:\s*var\(--lovetree-empty-state-radius\)/);
     assert.match(myTreesStatesCss, /border:\s*1px solid var\(--lovetree-empty-state-border\)/);
     assert.match(myTreesStatesCss, /box-shadow:\s*var\(--lovetree-empty-state-shadow\)/);
+  });
+
+  await t.test('css/global/tokens.css defines shared card density tokens', () => {
+    const tokens = read('css/global/tokens.css');
+    assert.match(tokens, /--lovetree-card-grid-gap:\s*24px;/);
+    assert.match(tokens, /--lovetree-card-content-pad:\s*18px;/);
+    assert.match(tokens, /--lovetree-card-content-pad-compact:\s*14px;/);
+    assert.match(tokens, /--lovetree-card-media-height-browse:\s*336px;/);
+    assert.match(tokens, /--lovetree-card-media-height-mytrees:\s*184px;/);
   });
 
   await t.test('No 3D orbit viewer code is introduced and Scout is untouched', () => {

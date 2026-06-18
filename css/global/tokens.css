@@ -90,6 +90,13 @@
     --lovetree-empty-state-error-border: rgba(198, 40, 40, 0.2);
     --lovetree-empty-state-error-icon: #c62828;
 
+    /* Card Density Spacing Tokens */
+    --lovetree-card-grid-gap: 24px;
+    --lovetree-card-content-pad: 18px;
+    --lovetree-card-content-pad-compact: 14px;
+    --lovetree-card-media-height-browse: 336px;
+    --lovetree-card-media-height-mytrees: 184px;
+
     /* Page width rhythm */
     --page-brand-max: 1280px;
     --page-work-max: 1440px;

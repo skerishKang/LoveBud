@@ -4,7 +4,7 @@
     width: 100%;
     max-width: 100%;
     box-sizing: border-box;
-    padding: 14px;
+    padding: var(--lovetree-card-content-pad-compact);
     background: var(--lovetree-card-surface-browse);
     border-radius: var(--lovetree-card-radius-lg);
     border: 1px solid var(--lovetree-soft-surface-border);
@@ -17,7 +17,7 @@
         0 20px 48px rgba(75, 64, 57, 0.1),
         0 0 0 1px rgba(255, 255, 255, 0.62) inset;
     min-width: 0;
-    height: 336px;
+    height: var(--lovetree-card-media-height-browse);
 }
 
 .tree-card::before {
