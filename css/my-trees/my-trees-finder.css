@@ -95,7 +95,7 @@
   background: var(--lovetree-chip-active-bg);
   color: var(--lovetree-chip-active-text);
   border-color: var(--lovetree-chip-active-border);
-  box-shadow: 0 4px 12px rgba(144, 73, 81, 0.05);
+  box-shadow: var(--lovetree-chip-active-shadow);
 }
 
 /* Search empty state */
