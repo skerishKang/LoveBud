@@ -132,6 +132,25 @@ test('4h. My LoveTree + new tree CTA lives in title row, not in results controls
   assert.ok(!controlsBlock.includes('id="headerCreateTreeBtn"'), 'create CTA must NOT live inside .my-trees-results-controls');
 });
 
+test('4i. My LoveTree mobile title-row CTA is compact and view-mode control shrinks to fit', () => {
+  const headerCss = read('css/my-trees/my-trees-header.css');
+  // Title-row create CTA must use compact sizing on mobile so it does not dominate the row.
+  const mobileTitleCta = headerCss.match(
+    /@media\s*\(max-width:\s*768px\)\s*{[\s\S]*?\.my-trees-results-title-row\s+\.btn-header-create\s*{([^}]*)}/
+  );
+  assert.ok(mobileTitleCta, 'My LoveTree mobile title-row .btn-header-create rule must exist inside @media (max-width:768px)');
+  const ctaBody = mobileTitleCta[1];
+  assert.match(ctaBody, /min-height:\s*36px/, 'mobile title-row CTA must use min-height: 36px');
+  assert.match(ctaBody, /padding:\s*0\s+12px/, 'mobile title-row CTA must use padding: 0 12px');
+  assert.match(ctaBody, /width:\s*auto/, 'mobile title-row CTA must use width: auto (not full-width)');
+  // View-mode segmented control must stay shrink-to-fit (flex: 0 0 auto) on mobile.
+  assert.match(
+    headerCss,
+    /@media\s*\(max-width:\s*768px\)\s*{[\s\S]*?\.my-trees-results-controls\s+\.my-trees-view-mode-mount\s*{[^}]*flex:\s*0\s+0\s+auto;[^}]*}/,
+    'My LoveTree mobile view-mode control must stay shrink-to-fit (flex: 0 0 auto) on mobile so sort and view-mode do not stretch to equal widths',
+  );
+});
+
 test('5. search-preview-state.js sets/removes data-selected-tree-card marker', () => {
   const source = read('js/search/search-preview-state.js');
   assert.ok(source.includes('data-selected-tree-card'), 'search-preview-state.js must reference data-selected-tree-card');
@@ -239,8 +258,8 @@ test('14. Runtime cache-busts updated for changed JS/CSS', () => {
   assert.match(myTreesHtml, /my-trees-preview-state\.js\?v=20260616-2532-1/);
   assert.match(myTreesHtml, /my-trees-i18n-refresh\.js\?v=20260618-2664-1/);
   assert.match(myTreesHtml, /i18n-my-trees\.js\?v=20260618-2664-1/);
-  assert.match(myTreesHtml, /my-trees\.css\?v=20260618-2670-1/);
-  assert.match(myTreesCss, /my-trees-header\.css\?v=20260618-2670-1/);
+  assert.match(myTreesHtml, /my-trees\.css\?v=20260618-2676-1/);
+  assert.match(myTreesCss, /my-trees-header\.css\?v=20260618-2676-1/);
   assert.ok(!/my-trees-finder\.css\?v=/.test(myTreesHtml), 'pages/my-trees.html must NOT directly link my-trees-finder.css (bundle owns finder import)');
   assert.match(searchHtml, /search\.css\?v=20260616-2532-1/);
 });
