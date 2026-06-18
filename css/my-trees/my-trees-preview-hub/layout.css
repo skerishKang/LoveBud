@@ -1,15 +1,25 @@
-/* ── Hub layout wrapper ── */
+/* ── Hub two-column shell
+   Mirrors Browse .search-container rhythm:
+     left: minmax(0, 1fr)  right: minmax(360px, 400px)
+     gap: 28px  align: start
+   ── */
 
 .my-trees-with-hub {
     display: grid;
-    grid-template-columns: 1fr 400px;
-    gap: 32px;
+    grid-template-columns: minmax(0, 1fr) minmax(360px, 400px);
+    gap: 28px;
     align-items: start;
 }
 
+.my-trees-with-hub > * {
+    min-width: 0;
+}
+
+/* ── Hub panel — mirrors .preview-sidebar visual language ── */
+
 .my-trees-hub-panel {
     position: sticky;
-    top: 96px;
+    top: 133px;
     height: fit-content;
     width: 100%;
     max-width: 100%;
