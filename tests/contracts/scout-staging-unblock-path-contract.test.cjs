@@ -139,7 +139,7 @@ test('frontend source selector and endpoint client defaults remain disabled/loca
 test('dependency adapter keeps explicit DI staging verifier route but no env activation', () => {
   assert.match(depAdapterCode, /staging verifier/i);
   assert.match(depAdapterCode, /explicitly injected via the `verifierAdapter`/);
-  assert.match(depAdapterCode, /cannot(?:\*\*)? be activated by any\s*Cloudflare env flag/i);
+  assert.match(depAdapterCode, /cannot[\s\S]*?be activated by any[\s\S]*?Cloudflare env flag/i);
   assert.match(depAdapterCode, /VERIFY_RUNTIME_VERIFIED/);
   assert.match(depAdapterCode, /production activation remains blocked/i);
 });
