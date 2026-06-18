@@ -3,9 +3,9 @@ display: flex;
 align-items: flex-end;
 justify-content: space-between;
 gap: 24px;
-margin-bottom: 48px;
-padding-bottom: 24px;
-border-bottom: 1px solid var(--lovetree-soft-surface-border);
+margin-bottom: 12px;
+padding-bottom: 0;
+border-bottom: 0;
 }
 .header-content { flex: 1; min-width: 0; }
 .my-trees-eyebrow {
@@ -80,7 +80,7 @@ white-space: nowrap;
     align-items: center;
     justify-content: space-between;
     gap: 12px;
-    margin: 24px 0 16px;
+    margin: 0 0 16px;
     min-width: 0;
 }
 
@@ -105,7 +105,7 @@ white-space: nowrap;
         align-items: flex-start;
         gap: 12px;
         width: 100%;
-        margin-top: 16px;
+        margin-top: 0;
     }
     .my-trees-results-controls {
         width: 100%;

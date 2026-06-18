@@ -20,13 +20,16 @@ test('2. pages/my-trees.html heading uses multi-line rhythm class', () => {
   assert.ok(html.includes('my-trees-title-accent'), 'my-trees.html must use my-trees-title-accent');
 });
 
-test('3. My LoveTree description uses personal continuation tone', () => {
+test('3. My LoveTree description uses distinct personal archive copy', () => {
   const html = read('pages/my-trees.html');
   const i18n = read('js/i18n/i18n-my-trees.js');
   const refresh = read('js/my-trees/my-trees-i18n-refresh.js');
-  const expectedText = '첫 순간과 이어진 마음을 이어보고 관리해요.';
-  const ok = html.includes(expectedText) || i18n.includes(expectedText) || refresh.includes(expectedText);
-  assert.ok(ok, `My LoveTree description should contain: "${expectedText}"`);
+  const expectedLead = '기록해 둔 나의 순간,';
+  const expectedDetail = '소중한 마음의 결을 천천히 꺼내보세요.';
+  const combined = [html, i18n, refresh].join('\n');
+  assert.ok(combined.includes(expectedLead), `My LoveTree description should contain: "${expectedLead}"`);
+  assert.ok(combined.includes(expectedDetail), `My LoveTree description should contain: "${expectedDetail}"`);
+  assert.ok(!html.includes('첫 순간과 이어진 마음을 이어보고 관리해요.'), 'My Trees stale one-line description must be removed from initial HTML');
 });
 
 test('4. Browse hero copy is preserved', () => {
@@ -64,6 +67,33 @@ test('4c. My LoveTree hub panel id remains stable', () => {
   const html = read('pages/my-trees.html');
   assert.ok(html.includes('id="myTreesHubPanel"'), 'My Trees hub panel id must remain camelCase stable');
   assert.ok(!html.includes('id="MyTreesHubPanel"'), 'My Trees hub panel id must not change casing');
+});
+
+test('4d. My LoveTree search panel follows Browse utility panel visual structure', () => {
+  const finderCss = read('css/my-trees/my-trees-finder.css');
+  const headerCss = read('css/my-trees/my-trees-header.css');
+  const responsiveCss = read('css/my-trees/my-trees-responsive.css');
+
+  assert.match(finderCss, /\.my-trees-finder\s*{[^}]*justify-content:\s*space-between;[^}]*padding:\s*14px;[^}]*border-radius:\s*24px;[^}]*background:\s*rgba\(255, 255, 255, 0\.48\);[^}]*box-shadow:\s*0 14px 32px rgba\(75, 64, 57, 0\.035\);/s);
+  assert.match(finderCss, /\.my-trees-search-box\s*{[^}]*max-width:\s*420px;[^}]*}/s);
+  assert.match(finderCss, /\.my-trees-search-input\s*{[^}]*padding:\s*15px 18px 15px 48px;[^}]*border-radius:\s*999px;[^}]*background:\s*rgba\(255, 255, 255, 0\.82\);/s);
+  assert.match(finderCss, /\.my-trees-filter-chips\s*{[^}]*justify-content:\s*flex-end;[^}]*}/s);
+  assert.match(finderCss, /\.my-trees-filter-chip\s*{[^}]*background:\s*var\(--lovetree-chip-bg\);[^}]*border:\s*1px solid var\(--lovetree-chip-border\);[^}]*color:\s*var\(--lovetree-chip-text\);[^}]*}/s);
+  assert.match(finderCss, /\.my-trees-filter-chip\.is-active\s*{[^}]*background:\s*var\(--lovetree-chip-active-bg\);[^}]*color:\s*var\(--lovetree-chip-active-text\);[^}]*border-color:\s*var\(--lovetree-chip-active-border\);[^}]*}/s);
+  assert.match(headerCss, /\.my-trees-header\s*{[^}]*margin-bottom:\s*12px;[^}]*padding-bottom:\s*0;[^}]*border-bottom:\s*0;[^}]*}/s);
+  assert.match(responsiveCss, /\.my-trees-finder\s*{[^}]*padding:\s*10px;[^}]*border-radius:\s*18px;[^}]*background:\s*rgba\(255, 255, 255, 0\.34\);[^}]*box-shadow:\s*none;[^}]*}/s);
+});
+
+test('4e. My LoveTree top finder keeps four chips for Browse parity', () => {
+  const html = read('pages/my-trees.html');
+  const finderSection = html.slice(html.indexOf('id="myTreesFilterChips"'), html.indexOf('</section>', html.indexOf('id="myTreesFilterChips"')));
+  const chips = finderSection.match(/class="my-trees-filter-chip/g) || [];
+  assert.equal(chips.length, 4, 'My Trees finder must show four top chips like Browse mobile density');
+  assert.ok(finderSection.includes('data-filter="all"'), 'all filter must remain');
+  assert.ok(finderSection.includes('data-filter="public"'), 'public filter must remain');
+  assert.ok(finderSection.includes('data-filter="private"'), 'private filter must remain');
+  assert.ok(finderSection.includes('data-filter="has-moments"'), 'has-moments filter must remain');
+  assert.ok(!finderSection.includes('data-filter="empty"'), 'fifth empty-state filter must be removed from the top finder');
 });
 
 test('5. search-preview-state.js sets/removes data-selected-tree-card marker', () => {
@@ -170,8 +200,9 @@ test('14. Runtime cache-busts updated for changed JS/CSS', () => {
   assert.match(myTreesHtml, /my-trees-ui\.js\?v=20260616-2532-1/);
   assert.match(myTreesHtml, /my-trees-preview-hub\.js\?v=20260616-2532-1/);
   assert.match(myTreesHtml, /my-trees-preview-state\.js\?v=20260616-2532-1/);
-  assert.match(myTreesHtml, /my-trees-i18n-refresh\.js\?v=20260616-2532-1/);
-  assert.match(myTreesHtml, /i18n-my-trees\.js\?v=20260616-2532-1/);
-  assert.match(myTreesHtml, /my-trees\.css\?v=20260616-2532-1/);
+  assert.match(myTreesHtml, /my-trees-i18n-refresh\.js\?v=20260618-2664-1/);
+  assert.match(myTreesHtml, /i18n-my-trees\.js\?v=20260618-2664-1/);
+  assert.match(myTreesHtml, /my-trees\.css\?v=20260618-2664-1/);
+  assert.match(myTreesHtml, /my-trees-finder\.css\?v=20260618-2664-1/);
   assert.match(searchHtml, /search\.css\?v=20260616-2532-1/);
 });

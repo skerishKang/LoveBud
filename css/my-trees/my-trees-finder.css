@@ -1,45 +1,57 @@
 /* LoveBud - My Trees Finder Section Styles
-   검색창 + 필터칩을 한 줄 flex 배치 (둘러보기 스타일과 통일) */
+   검색창 + 필터칩을 둘러보기 검색 패널 패턴과 통일 */
 
 .my-trees-finder {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 16px;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 0 0 18px;
+  padding: 14px;
+  border: 1px solid rgba(144, 73, 81, 0.08);
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.48);
+  box-shadow: 0 14px 32px rgba(75, 64, 57, 0.035);
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
-/* Search input container with material symbol */
 .my-trees-search-box {
   position: relative;
   display: flex;
   align-items: center;
-  flex: 1;
-  min-width: 200px;
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 420px;
 }
 
 .my-trees-search-box .material-symbols-outlined {
   position: absolute;
   left: 16px;
-  color: var(--on-surface-variant);
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--primary);
   font-size: 20px;
+  opacity: 0.72;
   pointer-events: none;
   transition: color 0.2s ease;
 }
 
 .my-trees-search-input {
   width: 100%;
-  height: 40px;
-  padding: 0 16px 0 48px;
-  border-radius: var(--radius-full);
-  border: 1px solid rgba(144, 73, 81, 0.12);
-  background: rgba(255, 255, 255, 0.9);
+  box-sizing: border-box;
+  padding: 15px 18px 15px 48px;
+  border-radius: 999px;
+  border: 1px solid rgba(144, 73, 81, 0.09);
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.022);
   color: var(--on-surface);
   font-family: var(--font-body);
-  font-size: 14px;
+  font-size: 0.96rem;
   font-weight: 500;
   outline: none;
-  box-sizing: border-box;
   transition: all 0.25s ease;
 }
 
@@ -50,24 +62,27 @@
 
 .my-trees-search-input:focus {
   background: #ffffff;
-  border-color: var(--primary);
-  box-shadow: 0 0 0 4px rgba(144, 73, 81, 0.08);
+  border-color: rgba(144, 73, 81, 0.18);
+  box-shadow: 0 12px 28px rgba(141, 71, 79, 0.06);
 }
 
-/* Filter Chips */
 .my-trees-filter-chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 8px;
   align-items: center;
+  justify-content: flex-end;
+  min-width: 0;
 }
 
 .my-trees-filter-chip {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  box-sizing: border-box;
+  max-width: 100%;
   min-height: 34px;
-  padding: 0 14px;
+  padding: 8px 14px;
   border-radius: var(--radius-full);
   background: var(--lovetree-chip-bg);
   border: 1px solid var(--lovetree-chip-border);
@@ -75,6 +90,7 @@
   font-family: var(--font-body);
   font-size: 13px;
   font-weight: 700;
+  line-height: 1;
   cursor: pointer;
   transition: all 0.2s ease;
   user-select: none;
@@ -82,9 +98,9 @@
 }
 
 .my-trees-filter-chip:hover {
-  background: rgba(144, 73, 81, 0.04);
-  border-color: rgba(144, 73, 81, 0.2);
-  color: var(--primary);
+  background: var(--lovetree-chip-hover-bg);
+  border-color: var(--lovetree-chip-hover-border);
+  color: var(--lovetree-chip-hover-text);
 }
 
 .my-trees-filter-chip:active {
