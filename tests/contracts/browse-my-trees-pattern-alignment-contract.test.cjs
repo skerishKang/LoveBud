@@ -77,6 +77,9 @@ test('4d. My LoveTree search panel follows Browse utility panel visual structure
   assert.match(finderCss, /\.my-trees-finder\s*{[^}]*justify-content:\s*space-between;[^}]*padding:\s*14px;[^}]*border-radius:\s*24px;[^}]*background:\s*rgba\(255, 255, 255, 0\.48\);[^}]*box-shadow:\s*0 14px 32px rgba\(75, 64, 57, 0\.035\);/s);
   assert.match(finderCss, /\.my-trees-search-box\s*{[^}]*max-width:\s*420px;[^}]*}/s);
   assert.match(finderCss, /\.my-trees-search-input\s*{[^}]*padding:\s*15px 18px 15px 48px;[^}]*border-radius:\s*999px;[^}]*background:\s*rgba\(255, 255, 255, 0\.82\);/s);
+  assert.match(finderCss, /\.my-trees-search-input\s*{[^}]*line-height:\s*1\.15;[^}]*}/s);
+  assert.match(finderCss, /\.my-trees-search-input\s*{[^}]*appearance:\s*none;[^}]*-webkit-appearance:\s*none;[^}]*}/s);
+  assert.match(finderCss, /\.my-trees-search-input::-webkit-search-decoration,\s*\.my-trees-search-input::-webkit-search-cancel-button,\s*\.my-trees-search-input::-webkit-search-results-button,\s*\.my-trees-search-input::-webkit-search-results-decoration\s*{\s*display:\s*none;\s*}/s);
   assert.match(finderCss, /\.my-trees-filter-chips\s*{[^}]*justify-content:\s*flex-end;[^}]*}/s);
   assert.match(finderCss, /\.my-trees-filter-chip\s*{[^}]*background:\s*var\(--lovetree-chip-bg\);[^}]*border:\s*1px solid var\(--lovetree-chip-border\);[^}]*color:\s*var\(--lovetree-chip-text\);[^}]*}/s);
   assert.match(finderCss, /\.my-trees-filter-chip\.is-active\s*{[^}]*background:\s*var\(--lovetree-chip-active-bg\);[^}]*color:\s*var\(--lovetree-chip-active-text\);[^}]*border-color:\s*var\(--lovetree-chip-active-border\);[^}]*}/s);
@@ -205,6 +208,6 @@ test('14. Runtime cache-busts updated for changed JS/CSS', () => {
   assert.match(myTreesHtml, /my-trees-i18n-refresh\.js\?v=20260618-2664-1/);
   assert.match(myTreesHtml, /i18n-my-trees\.js\?v=20260618-2664-1/);
   assert.match(myTreesHtml, /my-trees\.css\?v=20260618-2665-1/);
-  assert.match(myTreesHtml, /my-trees-finder\.css\?v=20260618-2665-1/);
+  assert.match(myTreesHtml, /my-trees-finder\.css\?v=20260618-2667-1/);
   assert.match(searchHtml, /search\.css\?v=20260616-2532-1/);
 });
