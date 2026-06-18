@@ -85,6 +85,17 @@
     --hero-soft-color: var(--on-surface-variant);
     --eyebrow-color: var(--primary);
     --eyebrow-line-color: rgba(144, 73, 81, 0.42);
+    --eyebrow-bg: rgba(144, 73, 81, 0.08);
+    --eyebrow-border: none;
+    --eyebrow-radius: var(--radius-full);
+    --eyebrow-padding-x: 14px;
+    --eyebrow-padding-y: 0;
+    --eyebrow-min-height: 34px;
+    --eyebrow-gap: 8px;
+    --eyebrow-font-size: 12px;
+    --eyebrow-font-weight: 900;
+    --eyebrow-letter-spacing: 0.02em;
+    --eyebrow-text-transform: none;
     --body-muted-color: var(--on-surface-variant);
     --body-note-color: var(--on-surface-note);
 }

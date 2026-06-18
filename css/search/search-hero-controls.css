@@ -18,14 +18,15 @@
 .search-panel-eyebrow {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
-    min-height: 34px;
-    padding: 0 14px;
-    border-radius: 999px;
-    background: rgba(144, 73, 81, 0.08);
-    color: var(--primary);
-    font-size: 12px;
-    font-weight: 900;
+    gap: var(--eyebrow-gap);
+    min-height: var(--eyebrow-min-height);
+    padding: var(--eyebrow-padding-y) var(--eyebrow-padding-x);
+    border-radius: var(--eyebrow-radius);
+    background: var(--eyebrow-bg);
+    color: var(--eyebrow-color);
+    font-size: var(--eyebrow-font-size);
+    font-weight: var(--eyebrow-font-weight);
+    letter-spacing: var(--eyebrow-letter-spacing);
     margin-bottom: 14px;
 }
 
