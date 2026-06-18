@@ -1,0 +1,88 @@
+/* ── Shared Calm Page Shell CSS ──
+   Provides layout alignment properties for Browse (Search) and My Trees.
+   Does not replace existing page-specific styles, but mirrors them.
+   ───────────────────────────────────────────────────────────── */
+
+.lovetree-calm-page-shell {
+    max-width: var(--lovetree-page-shell-max);
+    margin: 0 auto;
+    padding: 0 var(--lovetree-page-pad-desktop);
+    box-sizing: border-box;
+}
+
+@media (max-width: 1024px) {
+    .lovetree-calm-page-shell {
+        padding: 0 var(--lovetree-page-pad-tablet);
+    }
+}
+
+@media (max-width: 480px) {
+    .lovetree-calm-page-shell {
+        padding: 0 var(--lovetree-page-pad-mobile);
+    }
+}
+
+/* Desktop 2-column grid layout */
+.lovetree-calm-two-column-shell {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(360px, 400px);
+    gap: 28px;
+    align-items: start;
+}
+
+.lovetree-calm-two-column-shell > * {
+    min-width: 0;
+}
+
+/* Columns */
+.lovetree-calm-main-column {
+    min-width: 0;
+}
+
+.lovetree-calm-right-rail {
+    position: sticky;
+    top: 133px;
+    height: fit-content;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+/* Mobile responsive collapses */
+@media (max-width: 1024px) {
+    .lovetree-calm-two-column-shell {
+        grid-template-columns: minmax(0, 1fr) 340px;
+        gap: 24px;
+    }
+}
+
+@media (max-width: 768px) {
+    .lovetree-calm-two-column-shell {
+        grid-template-columns: 1fr;
+    }
+
+    .lovetree-calm-right-rail {
+        position: static;
+        top: auto;
+        margin-top: 20px;
+    }
+}
+
+/* Horizontal rows */
+.lovetree-calm-utility-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.lovetree-calm-results-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    box-sizing: border-box;
+}

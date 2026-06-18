@@ -84,4 +84,31 @@ test('Shared Page Shell Contract Verification', async (t) => {
     assert.ok(!gitDiff.includes('orbit-viewer-canvas'), 'No 3D orbit component styling or integration');
     assert.ok(!gitDiff.includes('THREE.OrbitControls'), 'No 3D Three.js orbit component');
   });
+
+  await t.test('shared CSS file exists and defines .lovetree-calm-two-column-shell', () => {
+    const filePath = 'css/global/lovetree-calm-page-shell.css';
+    const content = read(filePath);
+    assert.ok(content.length > 200, 'Shared CSS should be populated');
+    assert.match(content, /\.lovetree-calm-two-column-shell/, 'Must define lovetree-calm-two-column-shell class');
+    assert.match(content, /grid-template-columns:\s*minmax\(0,\s*1fr\)\s+minmax\(360px,\s*400px\)/, 'Shared CSS must define the correct columns');
+  });
+
+  await t.test('css/global.css imports shared calm page shell CSS', () => {
+    const globalCss = read('css/global.css');
+    assert.match(globalCss, /@import url\(['"]\.\/global\/lovetree-calm-page-shell\.css['"]\);/, 'global.css must import lovetree-calm-page-shell.css');
+  });
+
+  await t.test('pages/search.html includes shared calm shell classes', () => {
+    const searchHtml = read('pages/search.html');
+    assert.ok(searchHtml.includes('lovetree-calm-two-column-shell'), 'search.html must include class lovetree-calm-two-column-shell');
+    assert.ok(searchHtml.includes('lovetree-calm-main-column'), 'search.html must include class lovetree-calm-main-column');
+    assert.ok(searchHtml.includes('lovetree-calm-right-rail'), 'search.html must include class lovetree-calm-right-rail');
+  });
+
+  await t.test('pages/my-trees.html includes shared calm shell classes', () => {
+    const myTreesHtml = read('pages/my-trees.html');
+    assert.ok(myTreesHtml.includes('lovetree-calm-two-column-shell'), 'my-trees.html must include class lovetree-calm-two-column-shell');
+    assert.ok(myTreesHtml.includes('lovetree-calm-main-column'), 'my-trees.html must include class lovetree-calm-main-column');
+    assert.ok(myTreesHtml.includes('lovetree-calm-right-rail'), 'my-trees.html must include class lovetree-calm-right-rail');
+  });
 });

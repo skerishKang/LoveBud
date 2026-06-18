@@ -12,8 +12,8 @@ function read(file) {
 test('My Trees Browse Hub Structure Alignment Invariant Tests', async (t) => {
   await t.test('my-trees.html wraps left column in .my-trees-main-column and uses .my-trees-with-hub', () => {
     const html = read('pages/my-trees.html');
-    assert.ok(html.includes('class="my-trees-with-hub"'), 'Must contain my-trees-with-hub container');
-    assert.ok(html.includes('class="my-trees-main-column"'), 'Must contain my-trees-main-column for the left column');
+    assert.ok(html.includes('my-trees-with-hub'), 'Must contain my-trees-with-hub container');
+    assert.ok(html.includes('my-trees-main-column'), 'Must contain my-trees-main-column for the left column');
     assert.ok(!html.includes('class="my-trees-dashboard-grid-shell"'), 'Old dashboard grid shell must be removed');
   });
 
