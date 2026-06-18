@@ -41,6 +41,13 @@
         padding: 12px 0 8px;
     }
 
+    .home-v3-title {
+        font-size: clamp(2.25rem, 10vw, 2.8rem);
+        line-height: 1.04;
+        margin-top: 16px;
+        word-break: keep-all;
+    }
+
     .home-v3-copy {
         padding-bottom: 4px;
     }
