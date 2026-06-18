@@ -31,7 +31,7 @@ function readCssVar(css, varName) {
 
 function cssBlock(css, selector) {
     const escapedSelector = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const blockPattern = new RegExp(`(^|})\\s*${escapedSelector}\\s*{([^}]*)}`, 'm');
+    const blockPattern = new RegExp(`(^|})\\s*${escapedSelector}\\s*{([^}]*)}`);
     const match = css.match(blockPattern);
     return match ? match[2] : null;
 }
