@@ -5,6 +5,15 @@
     return window.LoveBudMyTreesUtils || {};
   }
 
+  function getI18nText(i18n, key, fallback) {
+    if (typeof i18n !== 'function') return fallback;
+    var value = i18n(key);
+    if (!value || value === key || String(value).toLowerCase() === String(key).toLowerCase()) {
+      return fallback;
+    }
+    return value;
+  }
+
   function escapeHtml(str) {
     var Utils = getUtils();
     if (typeof Utils.escapeHtml === 'function') {
@@ -92,19 +101,23 @@
 
   function getVisibilityActionLabel(tree, i18n) {
     return tree && tree.visibility === 'public'
-      ? (i18n('visibility_make_private') || '비공개로 전환')
-      : (i18n('visibility_make_public') || '공개로 전환');
+      ? getI18nText(i18n, 'visibility_make_private', '비공개로 전환')
+      : getI18nText(i18n, 'visibility_make_public', '공개로 전환');
   }
 
   function getTreeCardMeta(tree, i18n) {
     var visibility = tree && tree.visibility === 'public' ? 'public' : 'private';
-    var visibilityLabel = visibility === 'public' ? (i18n('myTrees.summary_public') || '공개') : (i18n('myTrees.summary_private') || '비공개');
+    var visibilityLabel = visibility === 'public'
+      ? getI18nText(i18n, 'myTrees.summary_public', '공개')
+      : getI18nText(i18n, 'myTrees.summary_private', '비공개');
 
     return {
       visibilityIcon: visibility === 'public' ? 'lock' : 'public',
       visibilityActionLabel: getVisibilityActionLabel(tree, i18n),
       title: tree && tree.title,
-      mood: getTreeMomentCount(tree) > 0 ? (i18n('myTrees.card_growing') || '차곡차곡 자라는 중') : (i18n('myTrees.card_waiting') || '첫 순간을 기다리는 중'),
+      mood: getTreeMomentCount(tree) > 0
+        ? getI18nText(i18n, 'myTrees.card_growing', '차곡차곡 자라는 중')
+        : getI18nText(i18n, 'myTrees.card_waiting', '첫 순간을 기다리는 중'),
       privateBadgeHtml: visibility === 'private' ? '<div class="tree-card-meta"><span class="tree-card-visibility private"><span class="material-symbols-outlined" style="font-size:12px;">lock</span>' + visibilityLabel + '</span></div>' : ''
     };
   }
@@ -200,8 +213,8 @@
     if (!repTitle && !repMemo) return null;
 
     return {
-      title: repTitle || (i18n('editor_default_first_title') || '첫 순간'),
-      memo: repMemo || (i18n('myTrees.card_text_fallback') || '처음 남긴 마음이 이 트리의 시작이 되었어요.')
+      title: repTitle || getI18nText(i18n, 'editor_default_first_title', '첫 순간'),
+      memo: repMemo || getI18nText(i18n, 'myTrees.card_text_fallback', '처음 남긴 마음이 이 트리의 시작이 되었어요.')
     };
   }
 
@@ -211,7 +224,7 @@
 
     return [
       '<div class="tree-card-text-visual" style="border-color:' + palette.leafSoft + ';background:rgba(255,255,255,0.84);">',
-        '<div class="tree-card-text-kicker" style="color:' + palette.accent + ';">' + escapeHtml(i18n('myTrees.card_first_moment') || '첫 순간 기록') + '</div>',
+        '<div class="tree-card-text-kicker" style="color:' + palette.accent + ';">' + escapeHtml(getI18nText(i18n, 'myTrees.card_first_moment', '첫 순간 기록')) + '</div>',
         '<div class="tree-card-text-title">' + escapeHtml(textMeta.title) + '</div>',
         '<div class="tree-card-text-memo">' + escapeHtml(textMeta.memo) + '</div>',
       '</div>'
@@ -279,11 +292,11 @@
   function buildTreeThumbVisual(tree, i18n) {
     var palette = getTreeMoodPalette(tree);
     var momentCount = getTreeMomentCount(tree);
-    var title = (tree && tree.title) || (i18n('default_tree_title') || '나의 러브트리');
+    var title = (tree && tree.title) || getI18nText(i18n, 'default_tree_title', '나의 러브트리');
     var initial = escapeHtml(title.charAt(0).toUpperCase());
     var moodLabel = momentCount > 1
-      ? (i18n('myTrees.card_growing') || '차곡차곡 자라는 중')
-      : (i18n('myTrees.card_waiting') || '첫 순간을 기다리는 중');
+      ? getI18nText(i18n, 'myTrees.card_growing', '차곡차곡 자라는 중')
+      : getI18nText(i18n, 'myTrees.card_waiting', '첫 순간을 기다리는 중');
     var thumbnail = getRepresentativeThumbnail(tree);
 
     var isEnglish = String(window.i18n?.currentLang || '').toLowerCase().startsWith('en');
@@ -314,13 +327,14 @@
             ? '<img class="tree-card-thumb-image" src="' + escapeHtml(thumbnail) + '" alt="' + escapeHtml(title) + '">'
             : fallbackHtml,
         '</div>',
-        (momentCount > 0 ? '<div class="tree-card-thumb-topline"><span class="tree-card-moment-badge" data-count="' + momentCount + '">' + (i18n('myTrees.moment_count_compact') || '순간 {count}개').replace('{count}', String(momentCount)) + '</span></div>' : ''),
+        (momentCount > 0 ? '<div class="tree-card-thumb-topline"><span class="tree-card-moment-badge" data-count="' + momentCount + '">' + getI18nText(i18n, 'myTrees.moment_count_compact', '순간 {count}개').replace('{count}', String(momentCount)) + '</span></div>' : ''),
         (momentCount > 0 ? '<div class="tree-card-thumb-caption">' + moodLabel + '</div>' : ''),
       '</div>'
     ].join('');
   }
 
   window.LoveBudMyTreesCardVisuals = {
+    getI18nText: getI18nText,
     getVisibilityActionLabel: getVisibilityActionLabel,
     getTreeCardMeta: getTreeCardMeta,
     getTreeMoodPalette: getTreeMoodPalette,
