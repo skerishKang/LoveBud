@@ -458,16 +458,15 @@
             return false;
         }
 
+        img.addEventListener('error', function onViewerImageError() {
+            tryYoutubeFallback(this);
+        });
+
         if (img.complete) {
             if (img.naturalWidth === 0) {
                 tryYoutubeFallback(img);
             }
-            return;
         }
-
-        img.addEventListener('error', function onViewerImageError() {
-            tryYoutubeFallback(this);
-        });
     }
 
     // Error retry

@@ -444,17 +444,6 @@
                 return false;
             }
 
-            if (img.complete) {
-                if (img.naturalWidth === 0) {
-                    if (!tryYoutubeFallback(img)) {
-                        showImageFallback(img);
-                    }
-                } else {
-                    handleImageLoad(img);
-                }
-                return;
-            }
-
             img.addEventListener('error', function onCardImageError() {
                 if (!tryYoutubeFallback(this)) {
                     showImageFallback(this);
@@ -463,6 +452,16 @@
             img.addEventListener('load', function onCardImageLoad() {
                 handleImageLoad(this);
             });
+
+            if (img.complete) {
+                if (img.naturalWidth === 0) {
+                    if (!tryYoutubeFallback(img)) {
+                        showImageFallback(img);
+                    }
+                } else {
+                    handleImageLoad(img);
+                }
+            }
         });
     }
 
