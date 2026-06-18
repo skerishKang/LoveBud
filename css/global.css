@@ -324,7 +324,7 @@ html.material-symbols-ready .material-symbols-outlined {
    ───────────────────────────────────────────────────────────── */
 
 body .intro-hero-eyebrow,
-body .search-panel-eyebrow {
+body .intro-what-eyebrow {
     gap: 8px;
     min-height: 24px;
     padding: 0;
@@ -339,12 +339,34 @@ body .search-panel-eyebrow {
 }
 
 body .intro-hero-eyebrow::before,
-body .search-panel-eyebrow::before {
+body .intro-what-eyebrow::before {
     content: "";
     width: 28px;
     height: 1px;
     flex: 0 0 auto;
     background: var(--eyebrow-line-color);
+}
+
+/* ─────────────────────────────────────────────────────────────
+   LoveTree Shared Eyebrow (Pill Style)
+   Used by Browse (search-panel-eyebrow) and My Trees (my-trees-eyebrow)
+   ───────────────────────────────────────────────────────────── */
+
+.lovetree-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--eyebrow-gap);
+    min-height: var(--eyebrow-min-height);
+    padding: var(--eyebrow-padding-y) var(--eyebrow-padding-x);
+    border-radius: var(--eyebrow-radius);
+    background: var(--eyebrow-bg);
+    border: var(--eyebrow-border);
+    box-shadow: none;
+    color: var(--eyebrow-color);
+    font-size: var(--eyebrow-font-size);
+    font-weight: var(--eyebrow-font-weight);
+    letter-spacing: var(--eyebrow-letter-spacing);
+    text-transform: var(--eyebrow-text-transform);
 }
 
 body .intro-hero h1 {
