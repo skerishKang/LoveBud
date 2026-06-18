@@ -122,5 +122,13 @@ white-space: nowrap;
         grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
         gap: 10px;
     }
+    /* Compact create CTA in title row on mobile */
+    .my-trees-results-title-row .btn-header-create {
+        flex: 0 0 auto;
+        width: auto;
+        min-width: 132px;
+        max-width: 156px;
+        padding-inline: 18px;
+        white-space: nowrap;
+    }
 }
-

@@ -125,3 +125,27 @@ test('11. pages/my-trees.html has cache-bust link and script', () => {
   assert.ok(!/my-trees-finder\.css\?v=/.test(html), 'pages/my-trees.html must NOT directly link my-trees-finder.css (bundle owns finder import)');
   assert.match(html, /my-trees-filter\.js\?v=\d+/);
 });
+
+test('12. my-trees-header.css mobile compact CTA rule exists and max-width is 160px or less', () => {
+  const css = read('css/my-trees/my-trees-header.css');
+  assert.match(
+    css,
+    /\.my-trees-results-title-row\s+\.btn-header-create/,
+    '.my-trees-results-title-row .btn-header-create mobile rule must exist'
+  );
+  const maxWidthMatch = css.match(/\.my-trees-results-title-row\s+\.btn-header-create[\s\S]*?max-width:\s*(\d+)px/);
+  assert.ok(maxWidthMatch, 'max-width px value must be present in the compact CTA rule');
+  const maxWidthValue = parseInt(maxWidthMatch[1], 10);
+  assert.ok(
+    maxWidthValue <= 160,
+    `max-width must be 160px or less for compact mobile CTA, got ${maxWidthValue}px`
+  );
+});
+
+test('13. create CTA is in title row, not in results controls', () => {
+  const html = read('pages/my-trees.html');
+  const titleRowMatch = html.match(/my-trees-results-title-row[\s\S]*?btn-header-create/);
+  const controlsMatch = html.match(/my-trees-results-controls[\s\S]*?btn-header-create/);
+  assert.ok(titleRowMatch, 'btn-header-create must appear inside my-trees-results-title-row');
+  assert.ok(!controlsMatch, 'btn-header-create must NOT appear inside my-trees-results-controls');
+});
