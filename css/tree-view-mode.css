@@ -6,7 +6,7 @@
  * overrides per-mode without removing the existing default columns.
  */
 
-/* ── Control UI ───────────────────────────────────────────────────── */
+/* ── Control UI ─────────────────────────────────────────────────── */
 .tree-view-mode-control {
     display: inline-flex;
     align-items: center;
@@ -170,7 +170,16 @@
     }
 }
 
-/* ── My LoveTree (.trees-grid) — default 2-col, data-attr overrides ─ */
+/* =====================================================================
+ * My LoveTree (.trees-grid)
+ * Desktop: large=2col, compact=3col, list=1col horizontal
+ * Mobile (≤768px):
+ *   large   → 1-col full-width  (이미지 + 텍스트 여유 있게)
+ *   compact → 2-col small grid (현재 기본 밀도)
+ *   list    → compact list rows (주파니얼 | 제목+상태 | 트리 열기)
+ * ===================================================================== */
+
+/* ── Desktop base ───────────────────────────────────────────── */
 .trees-grid[data-tree-view-mode="large"] {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 24px;
@@ -186,6 +195,7 @@
     gap: 14px;
 }
 
+/* Desktop list: thumbnail left + info right */
 .trees-grid[data-tree-view-mode="list"] .tree-card {
     display: grid;
     grid-template-columns: 160px minmax(0, 1fr);
@@ -199,8 +209,24 @@
     height: 100%;
     min-height: 110px;
     width: 100%;
+    border-radius: calc(var(--lovetree-card-radius, 1.85rem) * 1) 0 0 calc(var(--lovetree-card-radius, 1.85rem) * 1);
+    overflow: hidden;
 }
 
+.trees-grid[data-tree-view-mode="list"] .tree-card-info {
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-height: 0;
+    gap: 6px;
+}
+
+.trees-grid[data-tree-view-mode="list"] .tree-card-footer {
+    padding: 0 16px 12px;
+}
+
+/* Compact: smaller thumb + tighter info */
 .trees-grid[data-tree-view-mode="compact"] .tree-card-info,
 .trees-grid[data-tree-view-mode="compact"] .tree-card-thumb {
     padding: 12px;
@@ -214,14 +240,155 @@
     font-size: 0.95rem;
 }
 
+/* ── Tablet breakpoint (901–900px) ────────────────────────── */
 @media (max-width: 900px) {
+    /* compact falls to 2-col on tablet — already a denser grid */
     .trees-grid[data-tree-view-mode="compact"] {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 }
 
-@media (max-width: 600px) {
+/* ── Mobile (≤768px): three DISTINCT density tiers ─────────────── */
+@media (max-width: 768px) {
+    /* large: 1-col full-width — image 미려워, 텍스트 여유 있게 */
+    .trees-grid[data-tree-view-mode="large"] {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+
+    .trees-grid[data-tree-view-mode="large"] .tree-card-thumb {
+        height: 220px;
+    }
+
+    /* compact: 2-col small cards — 지금과 같은 밀도 */
+    .trees-grid[data-tree-view-mode="compact"] {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+    }
+
+    .trees-grid[data-tree-view-mode="compact"] .tree-card-thumb {
+        height: 120px;
+    }
+
+    /* list: compact row — 주파니얼 + 제목/상태 + 트리 열기
+     *  ┌──────────────────────────────────────────────────┐
+     *  │ [thumb 88px]  제목                  트리 열기 │
+     *  │               상태/시간                        │
+     *  └──────────────────────────────────────────────────┘
+     */
+    .trees-grid[data-tree-view-mode="list"] {
+        gap: 8px;
+    }
+
     .trees-grid[data-tree-view-mode="list"] .tree-card {
-        grid-template-columns: 110px minmax(0, 1fr);
+        grid-template-columns: 88px 1fr auto;
+        grid-template-rows: 1fr;
+        min-height: 72px;
+        height: auto;
+        align-items: center;
+        padding: 0;
+    }
+
+    .trees-grid[data-tree-view-mode="list"] .tree-card-thumb {
+        grid-column: 1;
+        grid-row: 1;
+        height: 72px;
+        min-height: 72px;
+        width: 88px;
+        border-radius: var(--lovetree-card-radius, 1.85rem) 0 0 var(--lovetree-card-radius, 1.85rem);
+        overflow: hidden;
+        flex-shrink: 0;
+    }
+
+    .trees-grid[data-tree-view-mode="list"] .tree-card-info {
+        grid-column: 2;
+        grid-row: 1;
+        padding: 10px 10px 10px 12px;
+        min-height: 0;
+        gap: 3px;
+        justify-content: center;
+    }
+
+    .trees-grid[data-tree-view-mode="list"] .tree-card-title {
+        font-size: 0.9rem;
+        line-height: 1.3;
+        display: -webkit-box;
+        -webkit-line-clamp: 1;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
+    .trees-grid[data-tree-view-mode="list"] .tree-card-subcopy {
+        font-size: 11px;
+        line-height: 1.4;
+        display: -webkit-box;
+        -webkit-line-clamp: 1;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
+    /* Hide heavy elements in list row to keep height compact */
+    .trees-grid[data-tree-view-mode="list"] .tree-card-meta,
+    .trees-grid[data-tree-view-mode="list"] .tree-card-footer {
+        display: none;
+    }
+
+    /* Open button replaces footer in list row */
+    .trees-grid[data-tree-view-mode="list"] .tree-card-info::after {
+        display: none; /* no pseudo-element badge needed */
+    }
+
+    .trees-grid[data-tree-view-mode="list"] .tree-card-list-open {
+        grid-column: 3;
+        grid-row: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0 12px 0 8px;
+        height: 100%;
+        color: var(--primary, #904951);
+        font-size: 11px;
+        font-weight: 700;
+        white-space: nowrap;
+        text-decoration: none;
+        gap: 3px;
+        flex-shrink: 0;
+    }
+
+    .trees-grid[data-tree-view-mode="list"] .tree-card-list-open .material-symbols-outlined {
+        font-size: 15px;
+    }
+}
+
+/* ── Very small screens (≤480px) ───────────────────────────── */
+@media (max-width: 480px) {
+    /* large: keep 1-col, slightly shorter thumb */
+    .trees-grid[data-tree-view-mode="large"] .tree-card-thumb {
+        height: 196px;
+    }
+
+    /* compact: 2-col, even tighter */
+    .trees-grid[data-tree-view-mode="compact"] {
+        gap: 10px;
+    }
+
+    .trees-grid[data-tree-view-mode="compact"] .tree-card-thumb {
+        height: 108px;
+    }
+
+    /* list: slightly narrower thumb on very small screens */
+    .trees-grid[data-tree-view-mode="list"] .tree-card {
+        grid-template-columns: 76px 1fr auto;
+    }
+
+    .trees-grid[data-tree-view-mode="list"] .tree-card-thumb {
+        width: 76px;
+    }
+}
+
+/* ── list-open button: hidden on desktop (footer handles actions) ── */
+@media (min-width: 769px) {
+    .tree-card-list-open {
+        display: none;
     }
 }
