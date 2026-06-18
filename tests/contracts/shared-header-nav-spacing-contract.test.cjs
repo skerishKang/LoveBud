@@ -251,3 +251,47 @@ test('shared-header: hamburger menu on mobile includes Scout AI button', () => {
   const panelBlock = js.match(/main-nav-panel[\s\S]*?buildAIPanelTriggerHTML/);
   assert.ok(panelBlock, 'AI trigger HTML must be inside the .main-nav-panel so the hamburger menu reveals it on mobile');
 });
+
+// ── 11. No inline style min-width:36px overrides in JS auth files ──
+
+test('auth-ui-js: no inline style overrides for min-width:36px', () => {
+  const jsAuth = readFile(path.join(ROOT, 'js/auth.js'));
+  const jsAuthUi = readFile(path.join(ROOT, 'js/auth/auth-ui.js'));
+  const jsAuthFirebase = readFile(path.join(ROOT, 'js/auth/auth-firebase.js'));
+
+  // Ensure 'min-width:36px' or 'min-width: 36px' does not exist in these files for inline style cssText assignment
+  const inlineMinWidthRe = /min-width\s*:\s*36px/;
+
+  assert.ok(!inlineMinWidthRe.test(jsAuth), 'js/auth.js must not hardcode inline min-width:36px');
+  assert.ok(!inlineMinWidthRe.test(jsAuthUi), 'js/auth/auth-ui.js must not hardcode inline min-width:36px');
+  assert.ok(!inlineMinWidthRe.test(jsAuthFirebase), 'js/auth/auth-firebase.js must not hardcode inline min-width:36px');
+});
+
+// ── 12. Desktop #auth-nav reservation is 100px and auth boot does not override it ──
+
+test('shared-header: auth boot keeps desktop #auth-nav reservation at 100px', () => {
+  // Desktop reservation check
+  const css = readFile(path.join(ROOT, 'css/global/global-header.css'));
+  const mediaRe = /@media\s*\(\s*min-width:\s*769px\s*\)\s*\{([\s\S]*?)\n\}/;
+  const m = css.match(mediaRe);
+  assert.ok(m, 'global-header.css must contain @media (min-width:769px) block');
+  const block = m[1];
+
+  // Find #auth-nav and #auth-nav-container rule inside media block
+  const authRe = /#auth-nav[\s\S]*?\{([^}]*)\}/;
+  const am = block.match(authRe);
+  assert.ok(am, '@media (min-width:769px) must contain #auth-nav rule');
+  const decls = am[1];
+  const minWidthMatch = decls.match(/min-width:\s*(\d+)px/);
+  assert.ok(minWidthMatch, '#auth-nav must have min-width');
+  assert.strictEqual(minWidthMatch[1], '100', `#auth-nav min-width must be 100px (got ${minWidthMatch[1]}px)`);
+
+  // Verify that auth-nav is configured with a base min-width: 36px in CSS for mobile
+  const baseAuthRe = /#auth-nav,\s*#auth-nav-container\s*\{([^}]*)\}/;
+  const baseMatch = css.match(baseAuthRe);
+  assert.ok(baseMatch, 'global-header.css must define base #auth-nav, #auth-nav-container');
+  const baseDecls = baseMatch[1];
+  const baseMinWidthMatch = baseDecls.match(/min-width:\s*(\d+)px/);
+  assert.ok(baseMinWidthMatch, 'base #auth-nav must have a min-width configured in CSS');
+  assert.strictEqual(baseMinWidthMatch[1], '36', `base #auth-nav min-width in CSS must be 36px (got ${baseMinWidthMatch[1]}px)`);
+});
