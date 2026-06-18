@@ -19,7 +19,7 @@ The production CSP policy is set to `Content-Security-Policy-Report-Only` withou
 The audit has identified the following three violations in the codebase:
 
 ### A) Inline script block in `pages/search.html`
-* **File Location:** [pages/search.html:L197-214](file:///mnt/g/Ddrive/BatangD/task/workdiary/LoveBud/pages/search.html#L197-L214)
+* **File Location:** pages/search.html:L197-L214
 * **Code Block:**
   ```html
   <script>
@@ -44,7 +44,7 @@ The audit has identified the following three violations in the codebase:
 * **Impact:** Violates the `script-src` directive because it is inline code.
 
 ### B) Inline `onerror` handler in `js/search/search-card-fallback.js`
-* **File Location:** [js/search/search-card-fallback.js:L144](file:///mnt/g/Ddrive/BatangD/task/workdiary/LoveBud/js/search/search-card-fallback.js#L144)
+* **File Location:** js/search/search-card-fallback.js:L144
 * **Code Block:**
   ```javascript
   var onerrorAttr = isYouTubeHq
@@ -54,7 +54,7 @@ The audit has identified the following three violations in the codebase:
 * **Impact:** Triggers an inline event handler violation when standard YouTube thumbnails fail to load and switch to medium-quality fallbacks.
 
 ### C) Inline `onerror` handlers in `js/viewer/public-tree-viewer.js`
-* **File Location:** [js/viewer/public-tree-viewer.js:L401, 406](file:///mnt/g/Ddrive/BatangD/task/workdiary/LoveBud/js/viewer/public-tree-viewer.js#L401)
+* **File Location:** js/viewer/public-tree-viewer.js:L401, L406
 * **Code Block:**
   ```javascript
   // L401
@@ -71,8 +71,8 @@ The audit has identified the following three violations in the codebase:
 
 A separate branch and PR (`security/search-csp-inline-cleanup`) should be created to apply the following fixes:
 
-1. **Extract Switcher Script**: Move the `LoveBudTreeViewModeSwitcher` initialization from [pages/search.html](file:///mnt/g/Ddrive/BatangD/task/workdiary/LoveBud/pages/search.html) into the existing [js/search/search-page-shell-init.js](file:///mnt/g/Ddrive/BatangD/task/workdiary/LoveBud/js/search/search-page-shell-init.js).
-2. **Refactor Search Card Thumbnail Errors**: Remove the inline `onerrorAttr` in `js/search/search-card-fallback.js`. In [js/search/search-card-renderer.js](file:///mnt/g/Ddrive/BatangD/task/workdiary/LoveBud/js/search/search-card-renderer.js#L431), enhance `bindCardImageHandlers` to capture YouTube thumbnail loading failures via standard `addEventListener('error', ...)` and perform the `mqdefault.jpg` fallback logic dynamically.
+1. **Extract Switcher Script**: Move the `LoveBudTreeViewModeSwitcher` initialization from pages/search.html into the existing js/search/search-page-shell-init.js.
+2. **Refactor Search Card Thumbnail Errors**: Remove the inline `onerrorAttr` in `js/search/search-card-fallback.js`. In js/search/search-card-renderer.js:L431, enhance `bindCardImageHandlers` to capture YouTube thumbnail loading failures via standard `addEventListener('error', ...)` and perform the `mqdefault.jpg` fallback logic dynamically.
 3. **Refactor Tree Viewer Thumbnail Errors**: Remove inline `onerror` attributes from `js/viewer/public-tree-viewer.js`. Implement a clean image loading error binder that attaches standard event listeners to images dynamically loaded within the modal preview container.
 4. **Validation**: Confirm using clean profile browsing that CSP warnings drop to 0.
 
