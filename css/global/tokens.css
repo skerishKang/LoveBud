@@ -70,6 +70,7 @@
     --lovetree-chip-active-bg: var(--lovetree-pill-bg);
     --lovetree-chip-active-text: var(--primary);
     --lovetree-chip-active-border: var(--lovetree-pill-border);
+    --lovetree-chip-active-shadow: 0 4px 12px rgba(144, 73, 81, 0.05);
 
     /* Page width rhythm */
     --page-brand-max: 1280px;

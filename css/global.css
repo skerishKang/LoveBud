@@ -100,7 +100,7 @@
     background: var(--lovetree-chip-active-bg);
     color: var(--lovetree-chip-active-text);
     border-color: var(--lovetree-chip-active-border);
-    box-shadow: 0 8px 20px rgba(75, 64, 57, 0.05);
+    box-shadow: var(--lovetree-chip-active-shadow);
 }
 
 
