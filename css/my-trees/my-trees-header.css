@@ -116,11 +116,43 @@ white-space: nowrap;
     .my-trees-results-title-row {
         flex-wrap: nowrap;
     }
+    /* Compact the title-row create CTA so it does not dominate the mobile row.
+       Higher specificity (0,2,0) overrides the responsive.css .btn-header-create (0,1,0) rule. */
+    .my-trees-results-title-row .btn-header-create {
+        width: auto;
+        min-height: 36px;
+        padding: 0 12px;
+        font-size: 12px;
+        gap: 4px;
+        box-shadow: 0 2px 8px rgba(144, 73, 81, 0.18);
+    }
+    .my-trees-results-title-row .btn-header-create .material-symbols-outlined {
+        font-size: 16px;
+    }
+    /* Switch results controls from stretching grid to flex:
+       sort select grows, view-mode segmented control shrinks to fit. */
     .my-trees-results-controls {
         width: 100%;
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-        gap: 10px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: nowrap;
+    }
+    .my-trees-results-controls .sort-control {
+        flex: 1 1 auto;
+        min-width: 0;
+    }
+    .my-trees-results-controls .summary-sort-control {
+        width: 100%;
+        min-height: 40px;
+        font-size: 13px;
+    }
+    .my-trees-results-controls .my-trees-view-mode-mount {
+        flex: 0 0 auto;
+    }
+    /* view-mode segmented control stays shrink-to-fit on mobile */
+    .my-trees-view-mode-mount .tree-view-mode-control {
+        flex-wrap: nowrap;
     }
 }
 
