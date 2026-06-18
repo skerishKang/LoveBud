@@ -125,3 +125,61 @@ test('11. pages/my-trees.html has cache-bust link and script', () => {
   assert.ok(!/my-trees-finder\.css\?v=/.test(html), 'pages/my-trees.html must NOT directly link my-trees-finder.css (bundle owns finder import)');
   assert.match(html, /my-trees-filter\.js\?v=\d+/);
 });
+
+// ── i18n key-leak guard tests ──────────────────────────────────────────────
+
+test('12. my-trees-ui.js exports getI18nText helper on LoveBudMyTreesUI', () => {
+  const source = read('js/my-trees/my-trees-ui.js');
+  // Minimal browser globals needed to execute the module
+  const context = {
+    window: {},
+    document: { getElementById: () => null, createElement: () => ({ style: {}, classList: { add: () => {} }, dataset: {}, setAttribute: () => {}, addEventListener: () => {}, innerHTML: '', appendChild: () => {}, querySelector: () => null }) },
+    IntersectionObserver: function() { return { observe: () => {} }; }
+  };
+  vm.createContext(context);
+  vm.runInContext(source, context);
+  const ui = context.window.LoveBudMyTreesUI;
+  assert.ok(ui, 'LoveBudMyTreesUI must be exported');
+  assert.strictEqual(typeof ui.getI18nText, 'function', 'getI18nText must be a function on LoveBudMyTreesUI');
+});
+
+test('13. getI18nText returns fallback when i18n echoes the key', () => {
+  const source = read('js/my-trees/my-trees-ui.js');
+  const context = {
+    window: {},
+    document: { getElementById: () => null, createElement: () => ({ style: {}, classList: { add: () => {} }, dataset: {}, setAttribute: () => {}, addEventListener: () => {}, innerHTML: '', appendChild: () => {}, querySelector: () => null }) },
+    IntersectionObserver: function() { return { observe: () => {} }; }
+  };
+  vm.createContext(context);
+  vm.runInContext(source, context);
+  const { getI18nText } = context.window.LoveBudMyTreesUI;
+
+  // When i18n returns the key itself (key-echo), fallback must be used
+  const echoI18n = (k) => k;
+  assert.strictEqual(getI18nText(echoI18n, 'myTrees.card_edit', '편집하기'), '편집하기',
+    'Must return fallback when i18n returns the key string');
+  assert.strictEqual(getI18nText(echoI18n, 'myTrees.card_view', '감상하기'), '감상하기',
+    'Must return fallback when i18n returns the key string');
+
+  // When i18n returns a proper translation, use it
+  const realI18n = (k) => k === 'myTrees.card_edit' ? '수정' : k;
+  assert.strictEqual(getI18nText(realI18n, 'myTrees.card_edit', '편집하기'), '수정',
+    'Must return translated value when i18n returns a real translation');
+
+  // When i18n is not a function, fallback must be used
+  assert.strictEqual(getI18nText(null, 'myTrees.card_edit', '편집하기'), '편집하기',
+    'Must return fallback when i18n is null');
+});
+
+test('14. my-trees-ui.js source does not use bare (i18n(key) || fallback) for card_edit or card_view', () => {
+  const source = read('js/my-trees/my-trees-ui.js');
+  // The old pattern that could leak keys
+  assert.ok(
+    !source.includes("i18n('myTrees.card_edit') ||"),
+    'Should not use bare (i18n(key) || fallback) for card_edit'
+  );
+  assert.ok(
+    !source.includes("i18n('myTrees.card_view') ||"),
+    'Should not use bare (i18n(key) || fallback) for card_view'
+  );
+});
