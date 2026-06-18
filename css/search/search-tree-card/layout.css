@@ -5,12 +5,9 @@
     max-width: 100%;
     box-sizing: border-box;
     padding: 14px;
-    background:
-        radial-gradient(circle at 30% 20%, rgba(255, 248, 245, 0.92), transparent 52%),
-        linear-gradient(145deg, rgba(255, 255, 255, 0.86), rgba(255, 248, 245, 0.64)),
-        rgba(255, 255, 255, 0.82);
-    border-radius: 1.85rem;
-    border: 1px solid rgba(144, 73, 81, 0.08);
+    background: var(--lovetree-card-surface-browse);
+    border-radius: var(--lovetree-card-radius-lg);
+    border: 1px solid var(--lovetree-soft-surface-border);
     margin-bottom: 0;
     transition: all 0.3s cubic-bezier(0.165, 0.84, 0.44, 1);
     cursor: pointer;
@@ -55,9 +52,9 @@
 
 .tree-card:hover {
     transform: translateY(-3px);
-    border-color: rgba(144,73,81,0.16);
+    border-color: var(--lovetree-card-border-hover);
     box-shadow:
-        0 24px 56px rgba(75, 64, 57, 0.14),
+        var(--lovetree-card-shadow-hover),
         0 0 0 1px rgba(255, 255, 255, 0.82) inset;
 }
 
@@ -80,11 +77,10 @@
         radial-gradient(circle at 30% 20%, rgba(255, 248, 245, 0.96), transparent 52%),
         linear-gradient(145deg, rgba(255, 255, 255, 0.90), rgba(255, 246, 243, 0.76)),
         rgba(255, 255, 255, 0.86);
-    border-color: rgba(144, 73, 81, 0.22);
+    border-color: var(--lovetree-card-border-active);
     box-shadow:
-        0 26px 60px rgba(144, 73, 81, 0.13),
-        0 0 0 1px rgba(255, 255, 255, 0.52) inset,
-        0 0 0 3px rgba(200, 116, 128, 0.10);
+        var(--lovetree-card-shadow-active),
+        var(--lovetree-card-ring-active);
 }
 
 .tree-card.is-active::after,

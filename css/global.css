@@ -42,6 +42,18 @@
     border-radius: var(--lovetree-card-radius);
     box-shadow: var(--lovetree-card-shadow);
     padding: 20px;
+    transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.lovetree-card:hover {
+    box-shadow: var(--lovetree-card-shadow-hover);
+    border-color: var(--lovetree-card-border-hover);
+}
+
+.lovetree-card.is-active,
+.lovetree-card.is-selected,
+.lovetree-card[data-selected-tree-card="true"] {
+    box-shadow: var(--lovetree-card-shadow-active), var(--lovetree-card-ring-active);
 }
 
 .lovetree-pill {
