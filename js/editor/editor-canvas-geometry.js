@@ -35,12 +35,26 @@
         return Math.max(130, Math.min(190, Math.round(metrics.width * 0.14)));
     }
 
-    function distributeAngles(count, baseAngle = -10) {
+    function distributeAngles(count, baseAngle) {
+        if (baseAngle === undefined) baseAngle = -10;
         if (count <= 0) return [baseAngle];
         if (count === 1) return [baseAngle];
         const totalSpread = Math.min(220, Math.max(90, (count - 1) * 36));
         const startAngle = baseAngle - totalSpread / 2;
         return Array.from({ length: count }, (_, i) => startAngle + (totalSpread * i / (count - 1)));
+    }
+
+    /**
+     * Returns true only when the stored position has meaningful, non-zero
+     * coordinates.  An object like {x:0, y:0} is truthy in JS but placing
+     * every un-positioned node at world (0,0) causes them all to collapse
+     * to the same screen point.
+     */
+    function hasValidStoredPosition(pos) {
+        if (!pos) return false;
+        var x = Number(pos.x);
+        var y = Number(pos.y);
+        return isFinite(x) && isFinite(y) && (x !== 0 || y !== 0);
     }
 
     function getWorldPosition(mem, viewportState, getCanonicalRootId, getTreeMemories, isRootMemory, getMetricsSnapshot) {
@@ -50,16 +64,20 @@
             ? getMetricsSnapshot
             : () => getMetrics({ clientWidth: 0, clientHeight: 0 });
 
-        function recurse(node, visited = new Set()) {
+        function recurse(node, visited) {
+            if (visited === undefined) visited = new Set();
             const metrics = readMetrics();
             if (!node) {
                 return getRootBasePosition(metrics);
             }
 
-            if (viewportState.positions[node.id]) {
+            // Only trust stored position when coords are genuinely non-zero.
+            // A stored {x:0, y:0} is truthy but invalid — it causes every
+            // un-positioned node to stack at the same screen location.
+            if (hasValidStoredPosition(viewportState.positions[node.id])) {
                 return {
-                    x: Number(viewportState.positions[node.id].x) || 0,
-                    y: Number(viewportState.positions[node.id].y) || 0
+                    x: Number(viewportState.positions[node.id].x),
+                    y: Number(viewportState.positions[node.id].y)
                 };
             }
 
@@ -73,10 +91,10 @@
             visited.add(node.id);
 
             const parentId = node.parentId || canonicalRootId;
-            const siblings = treeMemories.filter((memory) => (
-                (memory.parentId || canonicalRootId) === parentId && !isRootMemory(memory, canonicalRootId)
-            ));
-            const idx = Math.max(0, siblings.findIndex((memory) => memory.id === node.id));
+            const siblings = treeMemories.filter(function(memory) {
+                return (memory.parentId || canonicalRootId) === parentId && !isRootMemory(memory, canonicalRootId);
+            });
+            const idx = Math.max(0, siblings.findIndex(function(memory) { return memory.id === node.id; }));
             const count = Math.max(1, siblings.length);
 
             if (parentId === canonicalRootId) {
@@ -90,7 +108,7 @@
                 };
             }
 
-            const parent = treeMemories.find((memory) => memory.id === parentId);
+            const parent = treeMemories.find(function(memory) { return memory.id === parentId; });
             const parentPos = parent ? recurse(parent, visited) : getRootBasePosition(metrics);
             const childAngles = distributeAngles(count, 0);
             const childAngle = childAngles[idx] !== undefined ? childAngles[idx] : 0;
@@ -117,35 +135,31 @@
             ? getMetricsSnapshot
             : () => getMetrics({ clientWidth: 0, clientHeight: 0 });
 
-        function getDepth(node, visited = new Set()) {
+        function getDepth(node, visited) {
+            if (visited === undefined) visited = new Set();
             if (!node || isRootMemory(node, canonicalRootId)) return 0;
             if (visited.has(node.id)) return 0;
             visited.add(node.id);
             const parentId = node.parentId || canonicalRootId;
-            const parent = treeMemories.find((m) => m.id === parentId);
+            const parent = treeMemories.find(function(m) { return m.id === parentId; });
             return 1 + getDepth(parent, visited);
         }
 
-        /**
-         * Build sub-tree width for a given node, used to spread siblings.
-         * Returns the horizontal span this subtree takes.
-         */
-        function getSubtreeWidth(node, visited = new Set()) {
+        function getSubtreeWidth(node, visited) {
+            if (visited === undefined) visited = new Set();
             if (!node) return 1;
             if (visited.has(node.id)) return 1;
             visited.add(node.id);
-            const children = treeMemories.filter((m) => {
+            const children = treeMemories.filter(function(m) {
                 const pid = m.parentId || canonicalRootId;
                 return pid === node.id && !isRootMemory(m, canonicalRootId);
             });
             if (children.length === 0) return 1;
-            return children.reduce((sum, child) => sum + getSubtreeWidth(child, visited), 0);
+            return children.reduce(function(sum, child) { return sum + getSubtreeWidth(child, visited); }, 0);
         }
 
-        /**
-         * Compute position recursively using depth, sibling index, and subtree width.
-         */
-        function computePosition(node, depth, offsetX, parentWidth, siblingIdx, siblingCount, visited = new Set()) {
+        function computePosition(node, depth, offsetX, parentWidth, siblingIdx, siblingCount, visited) {
+            if (visited === undefined) visited = new Set();
             const metrics = readMetrics();
             if (!node || visited.has(node.id)) {
                 return { x: metrics.width / 2, y: getRootY(metrics) };
@@ -165,7 +179,6 @@
                 x = offsetX + slotWidth * (siblingIdx + 0.5);
             }
 
-            // Clamp x within canvas bounds
             x = Math.max(NODE_WIDTH, Math.min(x, metrics.width - NODE_WIDTH));
 
             return { x: Math.round(x), y: Math.round(y) };
@@ -175,11 +188,9 @@
             return Math.round(Math.min(metrics.height * STRUCTURED_ROOT_Y_FRAC, metrics.height - ROOT_BOTTOM_GUTTER));
         }
 
-        // Find root
-        const rootMemory = treeMemories.find((m) => isRootMemory(m, canonicalRootId));
+        const rootMemory = treeMemories.find(function(m) { return isRootMemory(m, canonicalRootId); });
 
         if (!rootMemory) {
-            // No root — position at center
             const metrics = readMetrics();
             return { x: Math.round(metrics.width / 2), y: getRootY(metrics) };
         }
@@ -189,7 +200,6 @@
             return { x: Math.round(metrics.width / 2), y: getRootY(metrics) };
         }
 
-        // Build a lookup map of all nodes with their positions
         const structuredPositions = new Map();
         const allVisited = new Set();
 
@@ -200,21 +210,19 @@
             const pos = computePosition(node, depth, offsetX, parentWidth, sIdx, sCount);
             structuredPositions.set(node.id, pos);
 
-            const children = treeMemories.filter((m) => {
+            const children = treeMemories.filter(function(m) {
                 const pid = m.parentId || canonicalRootId;
                 return pid === node.id && !isRootMemory(m, canonicalRootId);
             });
 
             if (children.length === 0) return;
 
-            // Compute total subtree width for this node
-            const nodeVisited = new Set();
-            const totalSubWidth = children.reduce((sum, child) => {
+            const totalSubWidth = children.reduce(function(sum, child) {
                 return sum + getSubtreeWidth(child, new Set());
             }, 0);
 
             let childOffsetX = pos.x - (totalSubWidth * STRUCTURED_SIBLING_SPACING) / 2;
-            children.forEach((child) => {
+            children.forEach(function(child) {
                 const childWidth = getSubtreeWidth(child, new Set());
                 const childSlotWidth = childWidth * STRUCTURED_SIBLING_SPACING;
                 placeSubtree(child, depth + 1, childOffsetX, childSlotWidth, 0, 1);
@@ -222,21 +230,20 @@
             });
         }
 
-        // Start placement from root
         const rootPos = computePosition(rootMemory, 0, 0, 0, 0, 1);
         structuredPositions.set(rootMemory.id, rootPos);
 
-        const rootChildren = treeMemories.filter((m) => {
+        const rootChildren = treeMemories.filter(function(m) {
             const pid = m.parentId || canonicalRootId;
             return pid === rootMemory.id && !isRootMemory(m, canonicalRootId);
         });
 
         if (rootChildren.length > 0) {
-            const totalWidth = rootChildren.reduce((sum, child) => {
+            const totalWidth = rootChildren.reduce(function(sum, child) {
                 return sum + getSubtreeWidth(child, new Set());
             }, 0);
             let offsetX = rootPos.x - (totalWidth * STRUCTURED_SIBLING_SPACING) / 2;
-            rootChildren.forEach((child) => {
+            rootChildren.forEach(function(child) {
                 const childWidth = getSubtreeWidth(child, new Set());
                 const slotWidth = childWidth * STRUCTURED_SIBLING_SPACING;
                 placeSubtree(child, 1, offsetX, slotWidth, 0, 1);
@@ -244,12 +251,10 @@
             });
         }
 
-        // If the requested node has a structured position, return it
         if (structuredPositions.has(mem.id)) {
             return structuredPositions.get(mem.id);
         }
 
-        // Fallback: compute depth-based position
         const depth = getDepth(mem);
         const metrics = readMetrics();
         return {
