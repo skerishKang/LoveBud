@@ -18,10 +18,10 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const ROOT = path.resolve(__dirname, '..', '..');
-const TOKENS_CSS = fs.readFileSync(path.join(ROOT, 'css', 'global', 'tokens.css'), 'utf8');
-const SEARCH_EMPTY_CSS = fs.readFileSync(path.join(ROOT, 'css', 'search', 'search-empty-state.css'), 'utf8');
-const PREVIEW_STATES_CSS = fs.readFileSync(path.join(ROOT, 'css', 'search', 'search-preview-sidebar', 'states.css'), 'utf8');
-const MY_TREES_STATES_CSS = fs.readFileSync(path.join(ROOT, 'css', 'my-trees', 'my-trees-states.css'), 'utf8');
+const TOKENS_CSS = fs.readFileSync(path.join(ROOT, 'css', 'global', 'tokens.css'), 'utf8').replace(/\r\n/g, '\n');
+const SEARCH_EMPTY_CSS = fs.readFileSync(path.join(ROOT, 'css', 'search', 'search-empty-state.css'), 'utf8').replace(/\r\n/g, '\n');
+const PREVIEW_STATES_CSS = fs.readFileSync(path.join(ROOT, 'css', 'search', 'search-preview-sidebar', 'states.css'), 'utf8').replace(/\r\n/g, '\n');
+const MY_TREES_STATES_CSS = fs.readFileSync(path.join(ROOT, 'css', 'my-trees', 'my-trees-states.css'), 'utf8').replace(/\r\n/g, '\n');
 
 function readCssVar(css, varName) {
     const pattern = new RegExp(`--${varName.replace(/-/g, '\\-')}\\s*:\\s*([^;]+);`, 'm');

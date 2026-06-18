@@ -434,21 +434,34 @@
             if (img.dataset.searchCardImageHandlerBound === 'true') return;
             img.dataset.searchCardImageHandlerBound = 'true';
 
-            if (img.complete) {
-                if (img.naturalWidth === 0) {
-                    showImageFallback(img);
-                } else {
-                    handleImageLoad(img);
+            function tryYoutubeFallback(el) {
+                var isYtHq = el.dataset.ytHqThumbnail === 'true' || (el.src && el.src.indexOf('hqdefault.jpg') !== -1);
+                if (isYtHq && !el.dataset.ytFallback) {
+                    el.dataset.ytFallback = '1';
+                    el.src = el.src.replace('hqdefault.jpg', 'mqdefault.jpg');
+                    return true;
                 }
-                return;
+                return false;
             }
 
             img.addEventListener('error', function onCardImageError() {
-                showImageFallback(this);
+                if (!tryYoutubeFallback(this)) {
+                    showImageFallback(this);
+                }
             });
             img.addEventListener('load', function onCardImageLoad() {
                 handleImageLoad(this);
             });
+
+            if (img.complete) {
+                if (img.naturalWidth === 0) {
+                    if (!tryYoutubeFallback(img)) {
+                        showImageFallback(img);
+                    }
+                } else {
+                    handleImageLoad(img);
+                }
+            }
         });
     }
 

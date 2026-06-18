@@ -144,8 +144,8 @@
     <script src="../js/search/search-data-adapter.js?v=20260616-2534-1"></script>
     <script src="../js/tree-view-mode-switcher.js?v=20260616-2533-1"></script>
     <script src="../js/search/search-shared-utils.js?v=20260428-1"></script>
-    <script src="../js/search/search-card-fallback.js?v=1"></script>
-    <script src="../js/search/search-card-renderer.js?v=20260616-2536-1"></script>
+    <script src="../js/search/search-card-fallback.js?v=20260618-2689-1"></script>
+    <script src="../js/search/search-card-renderer.js?v=20260618-2689-1"></script>
     <script src="../js/search/search-preview-media-helper.js?v=20260503-594"></script>
     <script src="../js/search/search-preview-media-embed-patch.js?v=20260512-1058-2"></script>
     <script src="../js/search/search-preview-copy-helper.js?v=20260501-1"></script>
@@ -193,24 +193,6 @@
      <script src="../js/auth/auth-ui-templates.js?v=20260522-1283"></script>
      <script src="../js/auth.js?v=20260422-3"></script>
      <script src="../js/page-transitions.js?v=20260430-1"></script>
-     <script src="../js/search/search-page-shell-init.js?v=20260525-1629"></script>
-     <script>
-         (function () {
-             if (!window.LoveBudTreeViewModeSwitcher) return;
-             var ready = function () {
-                 window.LoveBudTreeViewModeSwitcher.init({
-                     storageKey: 'lovebud:browse:viewMode',
-                     defaultMode: 'compact',
-                     mount: '#browseViewModeMount',
-                     target: '#resultsList'
-                 });
-             };
-             if (document.readyState === 'loading') {
-                 document.addEventListener('DOMContentLoaded', ready);
-             } else {
-                 ready();
-             }
-         })();
-     </script>
+     <script src="../js/search/search-page-shell-init.js?v=20260618-2689-1"></script>
 </body>
 </html>

@@ -138,13 +138,11 @@
         if (!src) {
             return renderMediaFallback(tree, titleText);
         }
-        // onerror: hqdefault.jpg 로드 실패 시 mqdefault.jpg 로 대체 (단계적 표준 화질 템플릿 fallback)
+        // hqdefault.jpg 로드 실패 시 mqdefault.jpg 로 대체 처리를 위해 data 속성 부여
         var isYouTubeHq = src && (src.includes('ytimg.com/vi/') || src.includes('img.youtube.com/vi/'));
-        var onerrorAttr = isYouTubeHq
-            ? ' onerror="if(!this.dataset.ytFallback){this.dataset.ytFallback=\'1\';this.src=this.src.replace(\'hqdefault.jpg\',\'mqdefault.jpg\');}"'
-            : '';
+        var ytAttr = isYouTubeHq ? ' data-yt-hq-thumbnail="true"' : '';
         return `
-            <img src="${src}" alt="${alt}" loading="lazy" data-search-card-image=""${onerrorAttr} style="width:100%;height:100%;object-fit:cover;">
+            <img src="${src}" alt="${alt}" loading="lazy" data-search-card-image=""${ytAttr} style="width:100%;height:100%;object-fit:cover;">
             <div data-fallback-container hidden style="width:100%;height:100%;position:absolute;inset:0;">
                 ${renderMediaFallback(tree, titleText)}
             </div>
