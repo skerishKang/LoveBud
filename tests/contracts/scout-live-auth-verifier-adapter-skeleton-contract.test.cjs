@@ -99,6 +99,17 @@ tests.push({
     assert.strictEqual(typeof mod.sanitizeScoutLiveAuthVerifierPayload, 'function', 'sanitizePayload must be exported');
     const v = mod.SCOUT_LIVE_AUTH_VERIFIER_ADAPTER_VERSION.replace(/^v/, '');
     assert.ok(/^2026\d{4}-/.test(v), 'version must be a YYYYMMDD-N style string');
+    // STAGING mode and code (contract slice v20260618-staging-verifier-contract-1)
+    assert.strictEqual(
+      mod.SCOUT_LIVE_AUTH_VERIFIER_ADAPTER_MODES.STAGING,
+      'staging',
+      'MODES must include STAGING: "staging"'
+    );
+    assert.strictEqual(
+      mod.SCOUT_LIVE_AUTH_VERIFIER_ADAPTER_CODES.VERIFIER_STAGING_MOCK_VERIFIED,
+      'VERIFIER_STAGING_MOCK_VERIFIED',
+      'CODES must include VERIFIER_STAGING_MOCK_VERIFIED'
+    );
   },
 });
 

@@ -31,6 +31,23 @@
  * NOT access any real Firebase Admin SDK, `getAuth`, `verifyIdToken`,
  * external auth service, or network call.
  *
+ * Staging verifier contract (see `live-auth-verifier-adapter.js` STAGING
+ * mode): the dependency adapter can route through a staging verifier
+ * adapter when one is explicitly injected via the `verifierAdapter`
+ * factory option. The staging verifier requires an explicit
+ * `stagingVerifier` DI function and **cannot** be activated by any
+ * Cloudflare env flag. When a staging verifier adapter returns
+ * `VERIFIER_STAGING_MOCK_VERIFIED` with a valid sanitized `userKeyHash`,
+ * the dependency adapter maps it to `VERIFY_RUNTIME_VERIFIED` (the same
+ * success code used for Firebase runtime) with `allowed: true` and the
+ * propagated `userKeyHash`. This mapping is intentional: the downstream
+ * boundary (`live-auth-rate-limit-boundary.js`) treats any
+ * `VERIFY_RUNTIME_VERIFIED` result as an authenticated success and
+ * proceeds to the provider path. No production guard is added here —
+ * production activation remains blocked by the default mock-disabled
+ * verifier in `suggest.js` and the absence of a real verifier
+ * implementation.
+ *
  * `checkRateLimit` routes through an internal storage adapter seam. The
  * default storage dependency is `createScoutLiveRateLimitStorageAdapter`
  * from `live-rate-limit-storage-adapter.js` (mock-disabled by default). The
@@ -378,14 +395,17 @@ function isValidSanitizedUserKeyHash(value) {
  * Verifier result codes are translated to dependency-adapter codes so
  * the caller (boundary / endpoint) can reason about the decision
  * consistently. The dedicated success path is entered ONLY when the
- * verifier returns `VERIFIER_FIREBASE_RUNTIME_VERIFIED` with a valid
- * sanitized `userKeyHash`. All other paths remain safe-fail.
+ * verifier returns `VERIFIER_FIREBASE_RUNTIME_VERIFIED` OR
+ * `VERIFIER_STAGING_MOCK_VERIFIED` with a valid sanitized `userKeyHash`.
+ * All other paths remain safe-fail.
  *
  * Issue #2569: the Firebase runtime verified code is mapped to a
  * dedicated dependency success code `VERIFY_RUNTIME_VERIFIED` with
  * `allowed: true`, `userKey: null`, and the propagated `userKeyHash`.
- * No raw UID / email / token / claims / service account data is ever
- * propagated.
+ * The staging verifier (contract-only) maps to the SAME success code
+ * `VERIFY_RUNTIME_VERIFIED` so the downstream boundary treats both
+ * identically. No raw UID / email / token / claims / service account
+ * data is ever propagated.
  *
  * @param {Object} verifierResult - result from verifierAdapter.verifyToken
  * @returns {Object} dependency-adapter response (success or safe-fail)
@@ -434,7 +454,7 @@ function mapVerifierResultToDependencyResponse(verifierResult) {
       userKeyHash: null,
     };
   }
-  if (code === 'VERIFIER_FIREBASE_RUNTIME_VERIFIED') {
+  if (code === 'VERIFIER_FIREBASE_RUNTIME_VERIFIED' || code === 'VERIFIER_STAGING_MOCK_VERIFIED') {
     const candidateHash = res.userKeyHash;
     if (!isValidSanitizedUserKeyHash(candidateHash)) {
       // A success code without a valid sanitized hash is treated as
@@ -525,6 +545,15 @@ function buildVerifierRoutedVerifyToken(verifierAdapter, options) {
  *   used as the default. The verifier adapter itself is mock-disabled
  *   and does NOT access any real Firebase Admin SDK, `getAuth`,
  *   `verifyIdToken`, external auth service, or network call.
+ *   Staging verifier usage: to enable the staging verifier contract
+ *   (see `live-auth-verifier-adapter.js` STAGING mode), inject a
+ *   verifier adapter created with
+ *   `createScoutLiveAuthVerifierAdapter({
+ *     mockDisabled: false,
+ *     verifierMode: SCOUT_LIVE_AUTH_VERIFIER_ADAPTER_MODES.STAGING,
+ *     stagingVerifier: async (idToken) => ({ uid: 'staging-user' })
+ *   })`. The verifier adapter DI is the ONLY way to activate staging
+ *   mode — no Cloudflare env flag, no production auto-activation.
  * @param {boolean} [options.allowRawTokenHandoff] - guarded opt-in
  *   (issue #2571). When true, an `idToken` field present in the
  *   dependency-adapter verifyToken input is forwarded to the verifier
