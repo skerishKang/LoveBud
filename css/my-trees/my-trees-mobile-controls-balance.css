@@ -1,0 +1,18 @@
+@media (max-width: 768px) {
+    .my-trees-results-controls {
+        gap: 14px;
+    }
+
+    .my-trees-results-controls .sort-control {
+        flex: 0 1 68%;
+        max-width: 260px;
+    }
+
+    .my-trees-results-controls .summary-sort-control {
+        width: 100%;
+    }
+
+    .my-trees-results-controls .my-trees-view-mode-mount {
+        margin-left: auto;
+    }
+}
