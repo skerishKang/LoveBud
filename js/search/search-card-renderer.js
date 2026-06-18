@@ -434,9 +434,21 @@
             if (img.dataset.searchCardImageHandlerBound === 'true') return;
             img.dataset.searchCardImageHandlerBound = 'true';
 
+            function tryYoutubeFallback(el) {
+                var isYtHq = el.dataset.ytHqThumbnail === 'true' || (el.src && el.src.indexOf('hqdefault.jpg') !== -1);
+                if (isYtHq && !el.dataset.ytFallback) {
+                    el.dataset.ytFallback = '1';
+                    el.src = el.src.replace('hqdefault.jpg', 'mqdefault.jpg');
+                    return true;
+                }
+                return false;
+            }
+
             if (img.complete) {
                 if (img.naturalWidth === 0) {
-                    showImageFallback(img);
+                    if (!tryYoutubeFallback(img)) {
+                        showImageFallback(img);
+                    }
                 } else {
                     handleImageLoad(img);
                 }
@@ -444,7 +456,9 @@
             }
 
             img.addEventListener('error', function onCardImageError() {
-                showImageFallback(this);
+                if (!tryYoutubeFallback(this)) {
+                    showImageFallback(this);
+                }
             });
             img.addEventListener('load', function onCardImageLoad() {
                 handleImageLoad(this);

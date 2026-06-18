@@ -194,23 +194,5 @@
      <script src="../js/auth.js?v=20260422-3"></script>
      <script src="../js/page-transitions.js?v=20260430-1"></script>
      <script src="../js/search/search-page-shell-init.js?v=20260525-1629"></script>
-     <script>
-         (function () {
-             if (!window.LoveBudTreeViewModeSwitcher) return;
-             var ready = function () {
-                 window.LoveBudTreeViewModeSwitcher.init({
-                     storageKey: 'lovebud:browse:viewMode',
-                     defaultMode: 'compact',
-                     mount: '#browseViewModeMount',
-                     target: '#resultsList'
-                 });
-             };
-             if (document.readyState === 'loading') {
-                 document.addEventListener('DOMContentLoaded', ready);
-             } else {
-                 ready();
-             }
-         })();
-     </script>
 </body>
 </html>

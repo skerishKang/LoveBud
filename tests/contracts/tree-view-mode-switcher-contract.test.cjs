@@ -30,6 +30,10 @@ const searchHtml = fs.readFileSync(
     path.join(ROOT, 'pages/search.html'),
     'utf8'
 );
+const searchPageShellInitJs = fs.readFileSync(
+    path.join(ROOT, 'js/search/search-page-shell-init.js'),
+    'utf8'
+);
 const myTreesHtml = fs.readFileSync(
     path.join(ROOT, 'pages/my-trees.html'),
     'utf8'
@@ -80,10 +84,10 @@ test('Browse page has view mode control mount point', () => {
 });
 
 test('Browse page initializes the switcher with browse storage key and default compact', () => {
-    assert.match(searchHtml, /lovebud:browse:viewMode/);
-    assert.match(searchHtml, /defaultMode:\s*['"]compact['"]/);
-    assert.match(searchHtml, /mount:\s*['"]#browseViewModeMount['"]/);
-    assert.match(searchHtml, /target:\s*['"]#resultsList['"]/);
+    assert.match(searchPageShellInitJs, /lovebud:browse:viewMode/);
+    assert.match(searchPageShellInitJs, /defaultMode:\s*['"]compact['"]/);
+    assert.match(searchPageShellInitJs, /mount:\s*['"]#browseViewModeMount['"]/);
+    assert.match(searchPageShellInitJs, /target:\s*['"]#resultsList['"]/);
 });
 
 // ── 3) My LoveTree page wiring ───────────────────────────────────────
