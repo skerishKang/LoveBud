@@ -5,7 +5,7 @@
 }
 @media (max-width: 768px) {
 .my-trees-content { padding: 24px var(--lovetree-page-pad-mobile) 36px; }
-.my-trees-header { flex-direction: column; align-items: flex-start; gap: 16px; margin-bottom: 30px; padding-bottom: 18px; }
+.my-trees-header { flex-direction: column; align-items: flex-start; gap: 16px; margin-bottom: 12px; padding-bottom: 0; border-bottom: 0; }
 .header-content { width: 100%; }
 .my-trees-header p { font-size: 0.96rem; line-height: 1.72; max-width: 100%; }
 .header-actions { width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
@@ -26,18 +26,45 @@
 
 /* Finder search/filter responsive adjustment */
 .my-trees-finder {
-  padding: 16px;
-  gap: 12px;
-  margin-bottom: 20px;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 10px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.34);
+  box-shadow: none;
+}
+.my-trees-search-box {
+  flex: 1 1 100%;
+  max-width: 100%;
 }
 .my-trees-search-input {
-  height: 44px;
-  font-size: 14px;
+  min-height: 40px;
+  padding: 10px 12px 10px 38px;
+  font-size: 0.86rem;
+}
+.my-trees-search-box .material-symbols-outlined {
+  left: 12px;
+  font-size: 18px;
+}
+.my-trees-filter-chips {
+  width: 100%;
+  gap: 5px;
+  justify-content: flex-start;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding-bottom: 0;
+}
+.my-trees-filter-chips::-webkit-scrollbar {
+  display: none;
 }
 .my-trees-filter-chip {
-  min-height: 36px;
-  padding: 0 14px;
-  font-size: 12.5px;
+  min-height: 26px;
+  padding: 4px 8px;
+  font-size: 10.5px;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 }
 @media (max-width: 420px) {

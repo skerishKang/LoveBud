@@ -32,11 +32,38 @@
                    '<span class="my-trees-title-line">다시 열어보세요</span>';
   }
 
+  function setDescMarkup() {
+    var el = document.getElementById('myTreesPageDesc');
+    if (!el) return;
+
+    var locale = window.i18n?.currentLang || document.documentElement?.lang || 'ko';
+    var isEnglish = String(locale).toLowerCase().startsWith('en');
+
+    var firstLine = isEnglish
+      ? 'Reopen the moments you saved,'
+      : '기록해 둔 나의 순간,';
+    var secondLine = isEnglish
+      ? 'and gently revisit your favorite feelings.'
+      : '소중한 마음의 결을 천천히 꺼내보세요.';
+
+    while (el.firstChild) {
+      el.removeChild(el.firstChild);
+    }
+
+    el.appendChild(document.createTextNode(firstLine));
+
+    var br = document.createElement('br');
+    br.className = 'pc-only';
+    el.appendChild(br);
+
+    el.appendChild(document.createTextNode(secondLine));
+  }
+
   function applyMyTreesShellCopy() {
     document.title = tText('nav.myTrees', '내 러브트리') + ' | LoveTree';
     setText('myTreesPageEyebrow', 'myTrees.page_eyebrow', '내가 키우는 러브트리');
     setTitleMarkup();
-    setText('myTreesPageDesc', 'myTrees.page_desc', '첫 순간과 이어진 마음을 이어보고 관리해요.');
+    setDescMarkup();
     setText('headerCreateTreeBtnLabel', 'myTrees.header_create', '새 러브트리');
     setText('summaryTotalSuffix', 'myTrees.summary_total_suffix', '개의 트리');
     setText('summaryPublicLabel', 'myTrees.summary_public', '공개');

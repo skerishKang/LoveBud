@@ -31,7 +31,7 @@
     'myTrees.load_failed': { ko: '트리 목록을 불러오는데 실패했습니다', en: 'Failed to load trees' },
     'myTrees.page_title': { ko: '내 러브트리', en: 'My LoveTrees' },
     'myTrees.page_eyebrow': { ko: '내가 키우는 러브트리', en: 'Growing LoveTrees' },
-    'myTrees.page_desc': { ko: '첫 순간과 이어진 마음을 이어보고 관리해요.', en: 'Keep track of and manage your first moments and connected hearts.' },
+    'myTrees.page_desc': { ko: '기록해 둔 나의 순간, 소중한 마음의 결을 천천히 꺼내보세요.', en: 'Reopen the moments you saved, and gently revisit your favorite feelings.' },
     'myTrees.header_create': { ko: '새 러브트리', en: 'New LoveTree' },
     'myTrees.summary_total_suffix': { ko: '개의 트리', en: ' trees' },
     'myTrees.summary_public': { ko: '공개', en: 'Public' },
