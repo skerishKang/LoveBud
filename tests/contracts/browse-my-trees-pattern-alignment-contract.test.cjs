@@ -261,5 +261,5 @@ test('14. Runtime cache-busts updated for changed JS/CSS', () => {
   assert.match(myTreesHtml, /my-trees\.css\?v=20260618-2683-1/);
   assert.match(myTreesCss, /my-trees-header\.css\?v=20260618-2676-1/);
   assert.ok(!/my-trees-finder\.css\?v=/.test(myTreesHtml), 'pages/my-trees.html must NOT directly link my-trees-finder.css (bundle owns finder import)');
-  assert.match(searchHtml, /search\.css\?v=20260616-2532-1/);
+  assert.match(searchHtml, /search\.css\?v=20260618-2690-1/);
 });

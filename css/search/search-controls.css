@@ -170,8 +170,41 @@
     opacity: 0;
 }
 
-/* Issue #911: Mobile filter density reduction */
-@media (max-width: 480px) {
+/* ── Unified Sort select styling matching summary-sort-control ── */
+.browse-sort-select {
+    box-sizing: border-box;
+    min-height: 44px;
+    padding: 0 38px 0 16px;
+    border-radius: 999px;
+    border: 1px solid var(--lovetree-chip-border);
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1;
+    cursor: pointer;
+    background: var(--lovetree-chip-bg);
+    color: var(--lovetree-chip-text);
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' height='20' viewBox='0 -960 960 960' width='20'%3E%3Cpath d='M480-345 240-585l56-56 184 184 184-184 56 56-240 240Z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    transition: all 0.2s ease;
+    outline: none;
+}
+
+.browse-sort-select:hover {
+    border-color: var(--lovetree-pill-border);
+    background-color: var(--lovetree-pill-hover-bg);
+    color: var(--lovetree-pill-text);
+}
+
+.browse-sort-select:focus-visible {
+    border-color: rgba(144, 73, 81, 0.32);
+    box-shadow: 0 0 0 2px rgba(144, 73, 81, 0.12);
+}
+
+/* Mobile: browse results head & controls - visual rhythm aligned with My Trees */
+@media (max-width: 768px) {
     .filter-row {
         width: 100%;
         gap: 5px;
@@ -226,9 +259,12 @@
     }
 
     .search-input {
+        height: 40px;
         min-height: 40px;
+        max-height: 40px;
         padding: 10px 12px 10px 38px;
         font-size: 0.86rem;
+        line-height: 1.15;
     }
 
     .search-icon {
@@ -238,66 +274,28 @@
 
     .browse-results-head {
         flex-wrap: wrap;
-        gap: 8px;
-    }
-}
-
-/* Mobile: browse results head -- wrap controls row on small screens */
-@media (max-width: 640px) {
-    .browse-results-head {
-        flex-wrap: wrap;
-        gap: 8px;
+        gap: 12px;
+        margin-bottom: 16px;
     }
 
     .browse-results-controls {
-        flex-wrap: wrap;
+        display: flex;
+        align-items: center;
+        flex-wrap: nowrap;
         width: 100%;
-        gap: 6px;
+        gap: 18px;
     }
 
     #browseSortControls {
-        flex: 1 1 auto;
+        flex: 0 1 50%;
+        max-width: 180px;
     }
 
     #browseViewModeMount {
-        flex-shrink: 0;
+        flex: 0 0 auto;
+        margin-left: auto;
     }
-}
 
-/* ── Unified Sort select styling matching summary-sort-control ── */
-.browse-sort-select {
-    box-sizing: border-box;
-    min-height: 44px;
-    padding: 0 38px 0 16px;
-    border-radius: 999px;
-    border: 1px solid var(--lovetree-chip-border);
-    font-size: 14px;
-    font-weight: 700;
-    line-height: 1;
-    cursor: pointer;
-    background: var(--lovetree-chip-bg);
-    color: var(--lovetree-chip-text);
-    appearance: none;
-    -webkit-appearance: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' height='20' viewBox='0 -960 960 960' width='20'%3E%3Cpath d='M480-345 240-585l56-56 184 184 184-184 56 56-240 240Z'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: right 12px center;
-    transition: all 0.2s ease;
-    outline: none;
-}
-
-.browse-sort-select:hover {
-    border-color: var(--lovetree-pill-border);
-    background-color: var(--lovetree-pill-hover-bg);
-    color: var(--lovetree-pill-text);
-}
-
-.browse-sort-select:focus-visible {
-    border-color: rgba(144, 73, 81, 0.32);
-    box-shadow: 0 0 0 2px rgba(144, 73, 81, 0.12);
-}
-
-@media (max-width: 640px) {
     .browse-sort-select {
         min-height: 40px;
         font-size: 13px;
