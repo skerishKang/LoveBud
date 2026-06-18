@@ -18,14 +18,14 @@ function assertSharedRule({ homeCss, introCss, rule, label }) {
 }
 
 test('intro hero uses distinct explanatory copy instead of duplicating home hero copy', () => {
-  assert.match(introI18n, /러브트리는/);
-  assert.match(introI18n, /마음이 자라는/);
-  assert.match(introI18n, /기록 공간이에요/);
-  assert.match(introI18n, /내 마음이 깊어진 경로를 천천히 보여줍니다/);
+  assert.ok(introI18n.includes('\ub7ec\ube0c\ud2b8\ub9ac\ub294'));
+  assert.ok(introI18n.includes('\ub9c8\uc74c\uc774 \uc790\ub77c\ub294'));
+  assert.ok(introI18n.includes('\uae30\ub85d \uacf5\uac04\uc774\uc5d0\uc694'));
+  assert.ok(introI18n.includes('\ub0b4 \ub9c8\uc74c\uc774 \uae4a\uc5b4\uc9c4 \uacbd\ub85c\ub97c \ucc9c\ucc9c\ud788 \ubcf4\uc5ec\uc90d\ub2c8\ub2e4'));
 
-  assert.doesNotMatch(introI18n, /첫 순간이 하나의/);
-  assert.doesNotMatch(introI18n, /반했던 장면과 오래 남은 마음을/);
-  assert.doesNotMatch(introI18n, /마음을,<br class="pc-only">감정이/);
+  assert.ok(!introI18n.includes('\uccab \uc21c\uac04\uc774 \ud558\ub098\uc758'));
+  assert.ok(!introI18n.includes('\ubc18\ud588\ub358 \uc7a5\uba74\uacfc \uc624\ub798 \ub0a8\uc740 \ub9c8\uc74c\uc744'));
+  assert.ok(!introI18n.includes('\ub9c8\uc74c\uc744,<br class="pc-only">\uac10\uc815\uc774'));
 });
 
 test('intro hero desktop shell follows home hero layout rhythm', () => {
@@ -55,15 +55,15 @@ test('intro hero mobile title and lead sizing stay aligned with home', () => {
   assertSharedRule({
     homeCss: homeResponsiveCss,
     introCss: introHeroResponsiveCss,
-    rule: /font-size:\s*clamp\(2\.25rem,\s*10vw,\s*2\.8rem\)/,
+    rule: /font-size:\s*clamp\(2\.95rem,\s*10vw,\s*4\.3rem\)/,
     label: 'mobile title font size',
   });
 
   assertSharedRule({
-    homeCss: homeResponsiveCss,
-    introCss: introHeroResponsiveCss,
-    rule: /line-height:\s*1\.04/,
-    label: 'mobile title line height',
+    homeCss: homeLayoutCss,
+    introCss: introHeroLayoutCss,
+    rule: /line-height:\s*0\.99/,
+    label: 'hero title line height',
   });
 
   assertSharedRule({
@@ -89,12 +89,12 @@ test('intro hero mobile spacing and CTA sizing stay aligned with home', () => {
     label: 'mobile hero gap',
   });
 
-  assertSharedRule({
-    homeCss: homeResponsiveCss,
-    introCss: introHeroResponsiveCss,
-    rule: /padding:\s*12px\s+0\s+8px/,
-    label: 'mobile hero padding',
-  });
+  assert.match(homeResponsiveCss, /\.home-v3-main\s*{[\s\S]*?padding:\s*24px\s+0\s+72px/,
+    'home must keep mobile shell padding');
+  assert.match(homeResponsiveCss, /\.home-v3-hero\s*{[\s\S]*?padding:\s*12px\s+0\s+8px/,
+    'home must keep mobile hero inner padding');
+  assert.match(introHeroResponsiveCss, /body\s+\.intro-hero\s*{[\s\S]*?padding:\s*36px\s+0\s+80px/,
+    'intro must match home combined mobile hero vertical rhythm');
 
   assertSharedRule({
     homeCss: homeResponsiveCss,
