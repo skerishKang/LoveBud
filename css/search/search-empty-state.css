@@ -2,7 +2,7 @@
     grid-column: 1 / -1;
     padding: clamp(44px, 6vw, 64px) 24px;
     text-align: center;
-    color: var(--on-surface-variant);
+    color: var(--lovetree-empty-state-text);
 }
 
 .search-empty-icon,
@@ -11,31 +11,31 @@
     margin: 0 auto 16px;
     font-size: 48px;
     line-height: 1;
-    opacity: 0.42;
+    opacity: var(--lovetree-empty-state-icon-opacity);
 }
 
 .search-empty-icon {
-    color: var(--primary);
+    color: var(--lovetree-empty-state-icon-color);
 }
 
 .search-error-icon {
-    color: var(--on-surface-variant);
+    color: var(--lovetree-empty-state-text);
 }
 
 .search-empty-heading {
     margin: 0 0 8px;
-    color: var(--on-surface);
+    color: var(--lovetree-empty-state-heading-text);
     font-size: 1.08rem;
-    font-weight: 800;
+    font-weight: var(--lovetree-empty-state-heading-weight);
     letter-spacing: -0.02em;
 }
 
 .search-empty-body {
     max-width: 420px;
     margin: 0 auto;
-    color: var(--on-surface-variant);
+    color: var(--lovetree-empty-state-text);
     font-size: 0.94rem;
-    line-height: 1.6;
+    line-height: var(--lovetree-empty-state-body-line-height);
 }
 
 .search-empty-actions {
