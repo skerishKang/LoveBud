@@ -369,6 +369,26 @@ body .intro-what-eyebrow::before {
     text-transform: var(--eyebrow-text-transform);
 }
 
+/* ─────────────────────────────────────────────────────────────
+   LoveTree Shared Eyebrow — Pseudo-element Reset
+   Disables inherited ::before line decorators from page-hero-eyebrow
+   and other eyebrow classes so the pill style stays clean.
+   ───────────────────────────────────────────────────────────── */
+
+.page-hero-eyebrow.lovetree-eyebrow::before,
+.my-trees-eyebrow.lovetree-eyebrow::before,
+.search-panel-eyebrow.lovetree-eyebrow::before {
+    content: none;
+    display: none;
+    width: 0;
+    height: 0;
+    margin: 0;
+    padding: 0;
+    background: none;
+    border: none;
+    flex: none;
+}
+
 body .intro-hero h1 {
     font-size: var(--hero-title-size);
     line-height: var(--hero-title-line-height);

@@ -270,7 +270,45 @@ tests.push({
     },
 });
 
-// ── 6. Pre-existing home/intro failure isolation note ────────────────────────
+// ── 6. Pseudo-element reset for inherited ::before line decorators ────────────
+tests.push({
+    name: 'Global .lovetree-eyebrow has pseudo-element reset for page-hero-eyebrow combo',
+    fn: () => {
+        // The three selectors are comma-grouped; check the group block exists with content: none and display: none
+        const re = /\.page-hero-eyebrow\.lovetree-eyebrow::before[\s\S]*?\{([^}]*)\}/m;
+        const match = GLOBAL_CSS.match(re);
+        assert.ok(match, '.page-hero-eyebrow.lovetree-eyebrow::before reset rule must exist in global.css');
+        const block = match[1];
+        assert.ok(block.includes('content: none'), 'must have content: none');
+        assert.ok(block.includes('display: none'), 'must have display: none');
+    },
+});
+
+tests.push({
+    name: 'Global .lovetree-eyebrow has pseudo-element reset for my-trees-eyebrow combo',
+    fn: () => {
+        const re = /\.my-trees-eyebrow\.lovetree-eyebrow::before[\s\S]*?\{([^}]*)\}/m;
+        const match = GLOBAL_CSS.match(re);
+        assert.ok(match, '.my-trees-eyebrow.lovetree-eyebrow::before reset rule must exist in global.css');
+        const block = match[1];
+        assert.ok(block.includes('content: none'), 'must have content: none');
+        assert.ok(block.includes('display: none'), 'must have display: none');
+    },
+});
+
+tests.push({
+    name: 'Global .lovetree-eyebrow has pseudo-element reset for search-panel-eyebrow combo',
+    fn: () => {
+        const re = /\.search-panel-eyebrow\.lovetree-eyebrow::before[\s\S]*?\{([^}]*)\}/m;
+        const match = GLOBAL_CSS.match(re);
+        assert.ok(match, '.search-panel-eyebrow.lovetree-eyebrow::before reset rule must exist in global.css');
+        const block = match[1];
+        assert.ok(block.includes('content: none'), 'must have content: none');
+        assert.ok(block.includes('display: none'), 'must have display: none');
+    },
+});
+
+// ── 7. Pre-existing home/intro failure isolation note ────────────────────────
 tests.push({
     name: 'Test documents that pre-existing home/intro failures are separate from this change',
     fn: () => {
