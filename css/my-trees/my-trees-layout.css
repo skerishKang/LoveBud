@@ -1,30 +1,19 @@
+/* LoveBud – My Trees page-level layout shell
+   Desktop two-column (left content + right hub) is owned by
+   .my-trees-with-hub inside my-trees-preview-hub/layout.css.
+   This file handles only the outer page wrapper. */
+
 .my-trees-layout { min-height: 100vh; display: flex; flex-direction: column; }
 body.my-trees-auth-pending .my-trees-content { visibility: hidden; }
-.my-trees-content { flex: 1; width: min(100%, var(--lovetree-page-shell-max)); margin: 0 auto; padding: 48px var(--lovetree-page-pad-desktop) 80px; }
 
-/* 2컬럼 레이아웃: 카드 그리드 + 이어보기 허브 sticky 패널 */
-.my-trees-dashboard-grid-shell {
-  display: grid;
-  grid-template-columns: 1fr 340px;
-  gap: 24px;
-  align-items: start;
+.my-trees-content {
+  flex: 1;
+  width: min(100%, var(--lovetree-page-shell-max));
+  max-width: var(--lovetree-page-shell-max);
+  margin: 0 auto;
+  padding: 48px var(--lovetree-page-pad-desktop) 80px;
+  box-sizing: border-box;
 }
 
-.my-trees-hub-panel {
-  position: sticky;
-  top: 80px;
-  max-height: calc(100vh - 100px);
-  overflow-y: auto;
-}
-
-/* 모바일: 1컬럼 폴백 */
-@media (max-width: 1024px) {
-  .my-trees-dashboard-grid-shell {
-    grid-template-columns: 1fr;
-  }
-  .my-trees-hub-panel {
-    position: static;
-    max-height: none;
-    overflow-y: visible;
-  }
-}
+/* Removed: .my-trees-dashboard-grid-shell — superseded by
+   .my-trees-with-hub in my-trees-preview-hub/layout.css */

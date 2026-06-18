@@ -1,8 +1,10 @@
-/* ── Responsive: tablet ── */
+/* ── Responsive: tablet (≤1024px) ──
+   Keep two-column but narrow the right rail to 340px,
+   matching Browse's comfortable tablet rhythm. ── */
 
 @media (max-width: 1024px) {
     .my-trees-with-hub {
-        grid-template-columns: 1fr 340px;
+        grid-template-columns: minmax(0, 1fr) 340px;
         gap: 24px;
     }
 
@@ -24,7 +26,9 @@
     }
 }
 
-/* ── Responsive: mobile ── */
+/* ── Responsive: mobile (≤768px) ──
+   Collapse to single column; hub moves below content (static).
+   Mobile search-input height / chip density unchanged from #2664–#2669. ── */
 
 @media (max-width: 768px) {
     .my-trees-with-hub {
@@ -32,7 +36,7 @@
     }
 
     .my-trees-hub-panel {
-        position: relative;
+        position: static;
         top: auto;
         margin-top: 20px;
         padding: 20px 16px;

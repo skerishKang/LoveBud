@@ -1,5 +1,8 @@
 /* LoveBud - My Trees Finder Section Styles
-   검색창 + 필터칩을 둘러보기 검색 패널 패턴과 통일 */
+   검색창 + 필터칩을 둘러보기 검색 패널 패턴과 통일.
+   Desktop: finder is constrained to the left grid cell (minmax(0,1fr))
+   — no max-width override needed; the grid cell handles containment.
+   Mobile: responsive overrides in my-trees-responsive.css. */
 
 .my-trees-finder {
   display: flex;
@@ -14,6 +17,7 @@
   background: rgba(255, 255, 255, 0.48);
   box-shadow: 0 14px 32px rgba(75, 64, 57, 0.035);
   min-width: 0;
+  width: 100%;
   max-width: 100%;
   box-sizing: border-box;
 }
