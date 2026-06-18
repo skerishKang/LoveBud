@@ -1,11 +1,11 @@
 @media (max-width: 768px) {
     .my-trees-results-controls {
-        gap: 14px;
+        gap: 16px;
     }
 
     .my-trees-results-controls .sort-control {
-        flex: 0 1 68%;
-        max-width: 260px;
+        flex: 0 1 56%;
+        max-width: 220px;
     }
 
     .my-trees-results-controls .summary-sort-control {
