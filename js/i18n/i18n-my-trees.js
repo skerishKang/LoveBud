@@ -37,7 +37,7 @@
     'myTrees.summary_public': { ko: '공개', en: 'Public' },
     'myTrees.summary_private': { ko: '비공개', en: 'Private' },
     'myTrees.summary_moments_suffix': { ko: '개의 순간', en: ' moments' },
-    'myTrees.sort_recent': { ko: '최근 수정순', en: 'Recently updated' },
+    'myTrees.sort_recent': { ko: '최신순', en: 'Latest' },
     'myTrees.sort_oldest': { ko: '생성순', en: 'Oldest first' },
     'myTrees.sort_name': { ko: '이름순', en: 'Name' },
     'myTrees.manage_label': { ko: '현재 트리', en: 'Current tree' },
