@@ -118,6 +118,20 @@ test('4g. My LoveTree CSS bundle keeps finder import before responsive import (p
   assert.ok(finderIdx < responsiveIdx, 'css/my-trees.css must import my-trees-finder.css BEFORE my-trees-responsive.css so the mobile 40px responsive rule wins the cascade');
 });
 
+test('4h. My LoveTree + new tree CTA lives in title row, not in results controls', () => {
+  const html = read('pages/my-trees.html');
+  const titleRowStart = html.indexOf('class="my-trees-results-title-row"');
+  const titleRowEnd = html.indexOf('</div>', titleRowStart);
+  const controlsStart = html.indexOf('class="my-trees-results-controls"');
+  const controlsEnd = controlsStart > 0 ? html.indexOf('</div>', controlsStart) : -1;
+  assert.ok(titleRowStart > 0, 'pages/my-trees.html must wrap the results label and create CTA in .my-trees-results-title-row');
+  assert.ok(controlsStart > 0, 'pages/my-trees.html must keep .my-trees-results-controls for sort + view mode only');
+  const titleRowBlock = html.slice(titleRowStart, titleRowEnd);
+  const controlsBlock = controlsEnd > 0 ? html.slice(controlsStart, controlsEnd) : '';
+  assert.ok(titleRowBlock.includes('id="headerCreateTreeBtn"'), 'create CTA must live inside the title row');
+  assert.ok(!controlsBlock.includes('id="headerCreateTreeBtn"'), 'create CTA must NOT live inside .my-trees-results-controls');
+});
+
 test('5. search-preview-state.js sets/removes data-selected-tree-card marker', () => {
   const source = read('js/search/search-preview-state.js');
   assert.ok(source.includes('data-selected-tree-card'), 'search-preview-state.js must reference data-selected-tree-card');
@@ -218,13 +232,15 @@ test('13. Existing open/edit/create href generation strings remain present', () 
 test('14. Runtime cache-busts updated for changed JS/CSS', () => {
   const searchHtml = read('pages/search.html');
   const myTreesHtml = read('pages/my-trees.html');
+  const myTreesCss = read('css/my-trees.css');
   assert.match(searchHtml, /search-preview-state\.js\?v=20260616-2532-1/);
   assert.match(myTreesHtml, /my-trees-ui\.js\?v=20260616-2532-1/);
   assert.match(myTreesHtml, /my-trees-preview-hub\.js\?v=20260616-2532-1/);
   assert.match(myTreesHtml, /my-trees-preview-state\.js\?v=20260616-2532-1/);
   assert.match(myTreesHtml, /my-trees-i18n-refresh\.js\?v=20260618-2664-1/);
   assert.match(myTreesHtml, /i18n-my-trees\.js\?v=20260618-2664-1/);
-  assert.match(myTreesHtml, /my-trees\.css\?v=20260618-2668-1/);
+  assert.match(myTreesHtml, /my-trees\.css\?v=20260618-2670-1/);
+  assert.match(myTreesCss, /my-trees-header\.css\?v=20260618-2670-1/);
   assert.ok(!/my-trees-finder\.css\?v=/.test(myTreesHtml), 'pages/my-trees.html must NOT directly link my-trees-finder.css (bundle owns finder import)');
   assert.match(searchHtml, /search\.css\?v=20260616-2532-1/);
 });
