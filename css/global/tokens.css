@@ -72,6 +72,24 @@
     --lovetree-chip-active-border: var(--lovetree-pill-border);
     --lovetree-chip-active-shadow: 0 4px 12px rgba(144, 73, 81, 0.05);
 
+    /* LoveTree Empty State Visual Tokens — PR 4 (Browse ↔ My Trees alignment)
+       Keeps page-specific layout while sharing surface, tone, copy, and action depth. */
+    --lovetree-empty-state-surface: var(--lovetree-soft-surface);
+    --lovetree-empty-state-border: var(--lovetree-soft-surface-border);
+    --lovetree-empty-state-radius: var(--lovetree-card-radius);
+    --lovetree-empty-state-shadow: var(--lovetree-card-shadow);
+    --lovetree-empty-state-text: var(--on-surface-variant);
+    --lovetree-empty-state-heading-text: var(--on-surface);
+    --lovetree-empty-state-heading-weight: 800;
+    --lovetree-empty-state-icon-color: var(--primary);
+    --lovetree-empty-state-icon-opacity: 0.42;
+    --lovetree-empty-state-body-line-height: 1.6;
+    --lovetree-empty-state-preview-bg: radial-gradient(circle at 50% 50%, rgba(255, 248, 245, 0.42), transparent 70%);
+    --lovetree-empty-state-action-shadow: 0 4px 12px rgba(144, 73, 81, 0.2);
+    --lovetree-empty-state-action-shadow-hover: 0 8px 20px rgba(144, 73, 81, 0.3);
+    --lovetree-empty-state-error-border: rgba(198, 40, 40, 0.2);
+    --lovetree-empty-state-error-icon: #c62828;
+
     /* Page width rhythm */
     --page-brand-max: 1280px;
     --page-work-max: 1440px;
