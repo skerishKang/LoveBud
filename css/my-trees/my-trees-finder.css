@@ -51,8 +51,18 @@
   font-family: var(--font-body);
   font-size: 0.96rem;
   font-weight: 500;
+  line-height: 1.15;
   outline: none;
+  appearance: none;
+  -webkit-appearance: none;
   transition: all 0.25s ease;
+}
+
+.my-trees-search-input::-webkit-search-decoration,
+.my-trees-search-input::-webkit-search-cancel-button,
+.my-trees-search-input::-webkit-search-results-button,
+.my-trees-search-input::-webkit-search-results-decoration {
+  display: none;
 }
 
 .my-trees-search-input::placeholder {
