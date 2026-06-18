@@ -432,6 +432,7 @@ html:not(.material-symbols-ready) .mobile-nav-toggle .material-symbols-outlined 
 /* Auth nav loading state - smooth transition */
 #auth-nav, #auth-nav-container {
   transition: none;
+  min-width: 36px;
 }
 
 /* Material Symbols font loading: hide icons until font loads to prevent FOUC */
@@ -642,7 +643,7 @@ html:not(.material-symbols-ready) .mobile-nav-toggle .material-symbols-outlined 
     #auth-nav,
     #auth-nav-container {
         flex: 0 0 auto;
-        min-width: 88px !important;
+        min-width: 100px;
         max-width: 168px;
         overflow: visible;
     }

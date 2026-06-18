@@ -85,7 +85,7 @@
       var cachedUser = typeof getCachedAuthUser === 'function' ? getCachedAuthUser() : null;
       if (cachedUser) {
         authNav.innerHTML = (typeof buildUserDropdown === 'function' ? buildUserDropdown(cachedUser) : '');
-        authNav.style.cssText = 'pointer-events:auto;opacity:1;transition:opacity 0.2s ease;min-width:36px;height:36px;display:flex;align-items:center;justify-content:flex-end;user-select:auto;';
+        authNav.style.cssText = 'pointer-events:auto;opacity:1;transition:opacity 0.2s ease;height:36px;display:flex;align-items:center;justify-content:flex-end;user-select:auto;';
         authNav.classList.add('auth-ready');
         return true;
       }

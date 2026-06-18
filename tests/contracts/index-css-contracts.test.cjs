@@ -41,8 +41,8 @@ test('index.html references the original index.css file and version query parame
   // Check exact link reference tag
   assert.match(
     html,
-    /href="css\/index\.css\?v=20260426-1"/,
-    'index.html must continue to load css/index.css?v=20260426-1'
+    /href="css\/index\.css\?v=20260618-2700-1"/,
+    'index.html must continue to load css/index.css?v=20260618-2700-1'
   );
 });
 

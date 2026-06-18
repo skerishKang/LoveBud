@@ -347,7 +347,7 @@ function markAuthLoading() {
   }
   var authNav = document.getElementById('auth-nav');
   var authContainer = document.getElementById('auth-nav-container');
-  var loadingStyle = 'pointer-events:none;opacity:0.6;transition:opacity 0.2s ease;min-width:36px;height:36px;display:flex;align-items:center;justify-content:flex-end;user-select:none;';
+  var loadingStyle = 'pointer-events:none;opacity:0.6;transition:opacity 0.2s ease;height:36px;display:flex;align-items:center;justify-content:flex-end;user-select:none;';
   if (authNav) {
     authNav.style.cssText = loadingStyle;
   }
@@ -365,7 +365,7 @@ function markAuthReady() {
   var authNav = document.getElementById('auth-nav');
   var authContainer = document.getElementById('auth-nav-container');
   // Ready 후: 스피너 제거 + pointer-events 복원 + 부드럽게 표시
-  var visibleStyle = 'pointer-events:auto;opacity:1;transition:opacity 0.2s ease;min-width:36px;height:36px;display:flex;align-items:center;justify-content:flex-end;user-select:auto;';
+  var visibleStyle = 'pointer-events:auto;opacity:1;transition:opacity 0.2s ease;height:36px;display:flex;align-items:center;justify-content:flex-end;user-select:auto;';
   if (authNav) {
     // 로딩 스피너 제거 (index.html의 초기 스피너)
     var spinner = authNav.querySelector('.material-symbols-outlined');

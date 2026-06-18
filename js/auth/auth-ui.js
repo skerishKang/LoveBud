@@ -1,4 +1,4 @@
-﻿/**
+/**
  * LoveBud auth UI module
  * Pure UI builders and auth-nav rendering helpers.
  */
@@ -9,7 +9,7 @@
     var authNav = document.getElementById("auth-nav");
     var authContainer = document.getElementById("auth-nav-container");
     var loadingStyle =
-      "pointer-events:none;opacity:0.6;transition:opacity 0.2s ease;min-width:36px;height:36px;display:flex;align-items:center;justify-content:flex-end;user-select:none;";
+      "pointer-events:none;opacity:0.6;transition:opacity 0.2s ease;height:36px;display:flex;align-items:center;justify-content:flex-end;user-select:none;";
     if (authNav) authNav.style.cssText = loadingStyle;
     if (authContainer) authContainer.style.cssText = loadingStyle;
   }
@@ -20,7 +20,7 @@
     var authNav = document.getElementById("auth-nav");
     var authContainer = document.getElementById("auth-nav-container");
     var visibleStyle =
-      "pointer-events:auto;opacity:1;transition:opacity 0.2s ease;min-width:36px;height:36px;display:flex;align-items:center;justify-content:flex-end;user-select:auto;";
+      "pointer-events:auto;opacity:1;transition:opacity 0.2s ease;height:36px;display:flex;align-items:center;justify-content:flex-end;user-select:auto;";
 
     if (authNav) {
       var navSpinner = authNav.querySelector(".material-symbols-outlined");
