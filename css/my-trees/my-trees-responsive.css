@@ -39,9 +39,12 @@
   max-width: 100%;
 }
 .my-trees-search-input {
+  height: 40px;
   min-height: 40px;
+  max-height: 40px;
   padding: 10px 12px 10px 38px;
   font-size: 0.86rem;
+  line-height: 1.15;
 }
 .my-trees-search-box .material-symbols-outlined {
   left: 12px;

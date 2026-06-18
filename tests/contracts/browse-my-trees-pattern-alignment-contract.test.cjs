@@ -87,6 +87,7 @@ test('4d. My LoveTree search panel follows Browse utility panel visual structure
   assert.match(headerCss, /\.my-trees-results-head\s*{[^}]*margin:\s*0 0 16px;[^}]*padding-top:\s*18px;[^}]*border-top:\s*1px solid rgba\(144, 73, 81, 0\.09\);[^}]*}/s);
   assert.match(headerCss, /@media\s*\(max-width:\s*768px\)\s*{[\s\S]*?\.my-trees-results-head\s*{[^}]*margin-top:\s*0;[^}]*padding-top:\s*14px;[^}]*border-top:\s*1px solid rgba\(144, 73, 81, 0\.09\);[^}]*}/);
   assert.match(responsiveCss, /\.my-trees-finder\s*{[^}]*padding:\s*10px;[^}]*border-radius:\s*18px;[^}]*background:\s*rgba\(255, 255, 255, 0\.34\);[^}]*box-shadow:\s*none;[^}]*}/s);
+  assert.match(responsiveCss, /@media\s*\(max-width:\s*768px\)\s*{[\s\S]*?\.my-trees-search-input\s*{[^}]*height:\s*40px;[^}]*min-height:\s*40px;[^}]*max-height:\s*40px;[^}]*line-height:\s*1\.15;[^}]*}/);
 });
 
 test('4e. My LoveTree top finder keeps four chips for Browse parity', () => {
@@ -99,6 +100,13 @@ test('4e. My LoveTree top finder keeps four chips for Browse parity', () => {
   assert.ok(finderSection.includes('data-filter="private"'), 'private filter must remain');
   assert.ok(finderSection.includes('data-filter="has-moments"'), 'has-moments filter must remain');
   assert.ok(!finderSection.includes('data-filter="empty"'), 'fifth empty-state filter must be removed from the top finder');
+});
+
+test('4f. My LoveTree search input uses type="text" to match Browse mobile rendering', () => {
+  const html = read('pages/my-trees.html');
+  const searchInputBlock = html.slice(html.indexOf('id="myTreesSearchInput"'), html.indexOf('/>', html.indexOf('id="myTreesSearchInput"')) + 2);
+  assert.ok(searchInputBlock.includes('type="text"'), 'My Trees search input must use type="text" for consistent mobile rendering with Browse');
+  assert.ok(!searchInputBlock.includes('type="search"'), 'My Trees search input must NOT use type="search" (causes WebKit native decoration and height differences)');
 });
 
 test('5. search-preview-state.js sets/removes data-selected-tree-card marker', () => {
@@ -207,7 +215,7 @@ test('14. Runtime cache-busts updated for changed JS/CSS', () => {
   assert.match(myTreesHtml, /my-trees-preview-state\.js\?v=20260616-2532-1/);
   assert.match(myTreesHtml, /my-trees-i18n-refresh\.js\?v=20260618-2664-1/);
   assert.match(myTreesHtml, /i18n-my-trees\.js\?v=20260618-2664-1/);
-  assert.match(myTreesHtml, /my-trees\.css\?v=20260618-2665-1/);
+  assert.match(myTreesHtml, /my-trees\.css\?v=20260618-2668-1/);
   assert.match(myTreesHtml, /my-trees-finder\.css\?v=20260618-2667-1/);
   assert.match(searchHtml, /search\.css\?v=20260616-2532-1/);
 });
