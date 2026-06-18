@@ -6,10 +6,10 @@
     align-items: center;
     justify-content: center;
     text-align: center;
-    color: var(--on-surface-variant);
+    color: var(--lovetree-empty-state-text);
     font-size: 14px;
     padding: 20px;
-    background: radial-gradient(circle at 50% 50%, rgba(255, 248, 245, 0.42), transparent 70%);
+    background: var(--lovetree-empty-state-preview-bg);
 }
 
 .preview-empty-state p {
@@ -26,7 +26,7 @@
     justify-content: center;
     gap: 4px;
     padding: 22px;
-    color: var(--on-surface-variant);
+    color: var(--lovetree-empty-state-text);
     font-size: 14px;
     line-height: 1.65;
     text-align: center;
@@ -38,12 +38,12 @@
 }
 
 .preview-empty-guide p:first-child {
-    color: var(--on-surface);
-    font-weight: 800;
+    color: var(--lovetree-empty-state-heading-text);
+    font-weight: var(--lovetree-empty-state-heading-weight);
 }
 
 .preview-empty-description {
-    color: var(--on-surface-variant);
+    color: var(--lovetree-empty-state-text);
     font-size: 14px;
     line-height: 1.65;
 }
