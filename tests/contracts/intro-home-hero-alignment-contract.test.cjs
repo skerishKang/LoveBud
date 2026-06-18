@@ -81,6 +81,20 @@ test('intro hero mobile title and lead sizing stay aligned with home', () => {
   });
 });
 
+test('home and intro rotating hero titles share the 640px mobile title size', () => {
+  assert.match(
+    homeResponsiveCss,
+    /@media \(max-width:\s*640px\)\s*{[\s\S]*?\.home-v3-title\s*{[\s\S]*?font-size:\s*clamp\(2\.25rem,\s*10vw,\s*2\.8rem\);[\s\S]*?line-height:\s*1\.04;[\s\S]*?}/,
+    'home rotating hero title sets must share the compact 640px title size'
+  );
+
+  assert.match(
+    introHeroResponsiveCss,
+    /@media \(max-width:\s*640px\)\s*{[\s\S]*?body\s+\.intro-hero h1\s*{[\s\S]*?font-size:\s*clamp\(2\.25rem,\s*10vw,\s*2\.8rem\);[\s\S]*?line-height:\s*1\.04;[\s\S]*?}/,
+    'intro rotating hero title sets must share the compact 640px title size'
+  );
+});
+
 test('intro hero mobile spacing and CTA sizing stay aligned with home', () => {
   assertSharedRule({
     homeCss: homeResponsiveCss,
