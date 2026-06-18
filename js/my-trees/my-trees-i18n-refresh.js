@@ -69,7 +69,7 @@
     setText('summaryPublicLabel', 'myTrees.summary_public', '공개');
     setText('summaryPrivateLabel', 'myTrees.summary_private', '비공개');
     setText('summaryMomentsSuffix', 'myTrees.summary_moments_suffix', '개의 순간');
-    setText('sortRecentOption', 'myTrees.sort_recent', '최근 수정순');
+    setText('sortRecentOption', 'myTrees.sort_recent', '최신순');
     setText('sortOldestOption', 'myTrees.sort_oldest', '생성순');
     setText('sortNameOption', 'myTrees.sort_name', '이름순');
     setText('manageSelectedTreeLabel', 'myTrees.manage_label', '지금 돌보는 트리');
