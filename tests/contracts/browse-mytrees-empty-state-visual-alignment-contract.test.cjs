@@ -31,9 +31,9 @@ function readCssVar(css, varName) {
 
 function cssBlock(css, selector) {
     const escapedSelector = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const blockPattern = new RegExp(`${escapedSelector}\\s*{([^}]*)}`, 'm');
+    const blockPattern = new RegExp(`(^|})\\s*${escapedSelector}\\s*{([^}]*)}`, 'm');
     const match = css.match(blockPattern);
-    return match ? match[1] : null;
+    return match ? match[2] : null;
 }
 
 function cssHasDeclaration(css, selector, property, expectedValue) {
@@ -228,7 +228,7 @@ tests.push({
         const files = [
             'tests/contracts/browse-mytrees-chip-visual-alignment-contract.test.cjs',
             'tests/contracts/browse-mytrees-card-visual-alignment-contract.test.cjs',
-            'tests/contracts/browse-mytrees-eyebrow-visual-alignment-contract.test.cjs',
+            'tests/contracts/browse-mytrees-visual-alignment-contract.test.cjs',
         ];
         for (const file of files) {
             const fullPath = path.join(ROOT, file);
