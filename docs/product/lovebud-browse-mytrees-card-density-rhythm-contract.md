@@ -13,8 +13,9 @@ Browse cards are designed as "Appreciation/Discovery Cards", while My Trees card
 ## 2. Grid & Density Constants
 
 Browse and My Trees align card grid layouts on desktop using the following parameters:
-* **My Trees `.trees-grid`**: Arranged as a 2-column desktop grid with a `gap: 24px` layout rhythm.
+* **My Trees `.trees-grid`**: Arranged as a 2-column desktop grid with a `gap: var(--lovetree-card-grid-gap)` (24px) layout rhythm.
 * **Browse List Layout**: Utilizes its own list density layout rules.
+* **Hardcoded density values**: Hardcoded density parameters (e.g. My Trees grid gap, Browse card height/padding) are now routed through shared density tokens defined in `css/global/tokens.css`.
 * **Card Corner Radius**:
   * My Trees uses `--lovetree-card-radius` (16px) or `--radius-default` (1rem).
   * Browse uses `--lovetree-card-radius-lg` (1.85rem) or `--radius-lg` (2rem).

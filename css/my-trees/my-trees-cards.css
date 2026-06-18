@@ -1,9 +1,9 @@
-.trees-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; }
+.trees-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--lovetree-card-grid-gap); }
 .tree-card { display: block; position: relative; background: var(--lovetree-soft-surface); border-radius: var(--lovetree-card-radius); padding: 0; box-shadow: var(--lovetree-card-shadow); border: 1px solid var(--lovetree-soft-surface-border); overflow: hidden; cursor: pointer; transition: border-color 0.12s ease, box-shadow 0.12s ease; text-decoration: none; color: inherit; }
 .tree-card:hover { box-shadow: var(--lovetree-card-shadow-hover); border-color: var(--lovetree-card-border-hover); }
 .tree-card.is-selected,
 .tree-card[data-selected-tree-card="true"] { border-color: var(--primary); box-shadow: var(--lovetree-card-ring-active), var(--lovetree-card-shadow-active); }
-.tree-card-thumb { width: 100%; height: 184px; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; padding: 18px; }
+.tree-card-thumb { width: 100%; height: var(--lovetree-card-media-height-mytrees); display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; padding: var(--lovetree-card-content-pad); }
 .tree-card-thumb::after { content: ""; position: absolute; inset: auto 0 0; height: 44%; background: linear-gradient(to top, rgba(75,64,57,0.18), transparent); pointer-events: none; z-index: 1; }
 .tree-card-thumb-glow { position: absolute; inset: auto auto 18px 18px; width: 128px; height: 128px; border-radius: 50%; filter: blur(10px); }
 .tree-card-thumb-initial { position: absolute; top: 16px; left: 16px; width: 42px; height: 42px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 17px; font-weight: 800; background: rgba(255,255,255,0.72); border: 1px solid rgba(255,255,255,0.55); backdrop-filter: blur(6px); z-index: 2; }
