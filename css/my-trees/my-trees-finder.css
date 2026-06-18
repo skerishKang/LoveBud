@@ -1,132 +1,24 @@
 /* LoveBud - My Trees Finder Section Styles
-   검색창 + 필터칩을 둘러보기 검색 패널 패턴과 통일.
-   Desktop: finder is constrained to the left grid cell (minmax(0,1fr))
-   — no max-width override needed; the grid cell handles containment.
-   Mobile: responsive overrides in my-trees-responsive.css. */
+   검색창 + 필터칩을 Browse(search.html)의 browse-utility-row 패턴과 완전히 통일.
+   HTML에서 .browse-utility-row / .search-input-wrapper / .filter-row / .tag-chip 공유 클래스를 사용하므로
+   여기서는 my-trees 전용 override만 최소한으로 유지합니다. */
 
+/* my-trees-finder는 browse-utility-row와 동일한 레이아웃을 상속받음 */
 .my-trees-finder {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  margin: 0 0 18px;
-  padding: 14px;
-  border: 1px solid rgba(144, 73, 81, 0.08);
-  border-radius: 24px;
-  background: rgba(255, 255, 255, 0.48);
-  box-shadow: 0 14px 32px rgba(75, 64, 57, 0.035);
   min-width: 0;
   width: 100%;
   max-width: 100%;
   box-sizing: border-box;
 }
 
+/* my-trees 검색 인풋은 search-input 공유 스타일 그대로 사용.
+   placeholder 텍스트만 my-trees 전용 */
 .my-trees-search-box {
-  position: relative;
-  display: flex;
-  align-items: center;
-  flex: 1 1 auto;
-  min-width: 0;
-  max-width: 420px;
-}
-
-.my-trees-search-box .material-symbols-outlined {
-  position: absolute;
-  left: 16px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: var(--primary);
-  font-size: 20px;
-  opacity: 0.72;
-  pointer-events: none;
-  transition: color 0.2s ease;
-}
-
-.my-trees-search-input {
-  width: 100%;
-  box-sizing: border-box;
-  padding: 15px 18px 15px 48px;
-  border-radius: 999px;
-  border: 1px solid rgba(144, 73, 81, 0.09);
-  background: rgba(255, 255, 255, 0.82);
-  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.022);
-  color: var(--on-surface);
-  font-family: var(--font-body);
-  font-size: 0.96rem;
-  font-weight: 500;
-  line-height: 1.15;
-  outline: none;
-  appearance: none;
-  -webkit-appearance: none;
-  transition: all 0.25s ease;
-}
-
-.my-trees-search-input::-webkit-search-decoration,
-.my-trees-search-input::-webkit-search-cancel-button,
-.my-trees-search-input::-webkit-search-results-button,
-.my-trees-search-input::-webkit-search-results-decoration {
-  display: none;
-}
-
-.my-trees-search-input::placeholder {
-  color: var(--on-surface-note);
-  font-weight: 400;
-}
-
-.my-trees-search-input:focus {
-  background: #ffffff;
-  border-color: rgba(144, 73, 81, 0.18);
-  box-shadow: 0 12px 28px rgba(141, 71, 79, 0.06);
-}
-
-.my-trees-filter-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  align-items: center;
-  justify-content: flex-end;
   min-width: 0;
 }
 
-.my-trees-filter-chip {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  box-sizing: border-box;
-  max-width: 100%;
-  min-height: 34px;
-  padding: 8px 14px;
-  border-radius: var(--radius-full);
-  background: var(--lovetree-chip-bg);
-  border: 1px solid var(--lovetree-chip-border);
-  color: var(--lovetree-chip-text);
-  font-family: var(--font-body);
-  font-size: 13px;
-  font-weight: 700;
-  line-height: 1;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  user-select: none;
-  outline: none;
-}
-
-.my-trees-filter-chip:hover {
-  background: var(--lovetree-chip-hover-bg);
-  border-color: var(--lovetree-chip-hover-border);
-  color: var(--lovetree-chip-hover-text);
-}
-
-.my-trees-filter-chip:active {
-  transform: scale(0.97);
-}
-
-.my-trees-filter-chip.is-active {
-  background: var(--lovetree-chip-active-bg);
-  color: var(--lovetree-chip-active-text);
-  border-color: var(--lovetree-chip-active-border);
-  box-shadow: var(--lovetree-chip-active-shadow);
-}
+/* filter-row 안의 tag-chip은 search-controls.css의 공유 스타일 사용.
+   my-trees 전용 오버라이드 없음 — 클래스를 통일했으므로 자동 적용 */
 
 /* Search empty state */
 .my-trees-search-empty {
