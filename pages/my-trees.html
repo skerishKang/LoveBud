@@ -31,159 +31,162 @@
         </div>
       </div>
 
-      <section class="my-trees-finder" id="myTreesFinder" aria-label="내 러브트리 찾기">
-        <div class="my-trees-search-box">
-          <span class="material-symbols-outlined" aria-hidden="true">search</span>
-          <input
-            id="myTreesSearchInput"
-            class="my-trees-search-input"
-            type="text"
-            placeholder="내 트리, 순간, 메모로 찾아보기"
-            autocomplete="off"
-          />
-        </div>
-
-        <div class="my-trees-filter-chips" id="myTreesFilterChips" aria-label="내 러브트리 필터">
-          <button type="button" class="my-trees-filter-chip is-active" data-filter="all">전체</button>
-          <button type="button" class="my-trees-filter-chip" data-filter="public">공개</button>
-          <button type="button" class="my-trees-filter-chip" data-filter="private">비공개</button>
-          <button type="button" class="my-trees-filter-chip" data-filter="has-moments">순간 있음</button>
-        </div>
-      </section>
-
-      <div class="my-trees-results-head">
-        <div class="my-trees-results-title-row">
-          <span class="my-trees-results-label">내 러브트리</span>
-          <button class="btn-header-create" id="headerCreateTreeBtn">
-            <span class="material-symbols-outlined">add</span>
-            <span id="headerCreateTreeBtnLabel">새 트리</span>
-          </button>
-        </div>
-        <div class="my-trees-results-controls">
-          <div class="sort-control">
-            <select id="sortTreesSelect" class="summary-sort-control">
-              <option id="sortRecentOption" value="recent">최신순</option>
-              <option id="sortOldestOption" value="oldest">생성순</option>
-              <option id="sortNameOption" value="name">이름순</option>
-            </select>
-          </div>
-          <div id="myTreesViewModeMount" class="my-trees-view-mode-mount"></div>
-        </div>
-      </div>
-
-      <div class="my-trees-dashboard-grid-shell">
-      <section class="dashboard-main reveal-fade my-trees-dashboard-container">
-        <div id="treesContainer">
-          <div id="state-loading" class="trees-loading">
-            <div class="trees-loading-head">
-              <div class="spinner"></div>
-              <span class="loading-text" data-i18n="myTrees.loading">러브트리 목록을 불러오는 중...</span>
+      <div class="my-trees-with-hub">
+        <section class="my-trees-main-column">
+          <section class="my-trees-finder" id="myTreesFinder" aria-label="내 러브트리 찾기">
+            <div class="my-trees-search-box">
+              <span class="material-symbols-outlined" aria-hidden="true">search</span>
+              <input
+                id="myTreesSearchInput"
+                class="my-trees-search-input"
+                type="text"
+                placeholder="내 트리, 순간, 메모로 찾아보기"
+                autocomplete="off"
+              />
             </div>
-            <div class="trees-skeleton-grid" aria-hidden="true">
-              <div class="tree-card tree-card-skeleton">
-                <div class="tree-skeleton-thumb">
-                  <span class="tree-skeleton-avatar"></span>
-                  <span class="tree-skeleton-pill"></span>
-                  <span class="tree-skeleton-branch tree-skeleton-branch-main"></span>
-                  <span class="tree-skeleton-branch tree-skeleton-branch-side"></span>
+
+            <div class="my-trees-filter-chips" id="myTreesFilterChips" aria-label="내 러브트리 필터">
+              <button type="button" class="my-trees-filter-chip is-active" data-filter="all">전체</button>
+              <button type="button" class="my-trees-filter-chip" data-filter="public">공개</button>
+              <button type="button" class="my-trees-filter-chip" data-filter="private">비공개</button>
+              <button type="button" class="my-trees-filter-chip" data-filter="has-moments">순간 있음</button>
+            </div>
+          </section>
+
+          <div class="my-trees-results-head">
+            <div class="my-trees-results-title-row">
+              <span class="my-trees-results-label">내 러브트리</span>
+              <button class="btn-header-create" id="headerCreateTreeBtn">
+                <span class="material-symbols-outlined">add</span>
+                <span id="headerCreateTreeBtnLabel">새 트리</span>
+              </button>
+            </div>
+            <div class="my-trees-results-controls">
+              <div class="sort-control">
+                <select id="sortTreesSelect" class="summary-sort-control">
+                  <option id="sortRecentOption" value="recent">최신순</option>
+                  <option id="sortOldestOption" value="oldest">생성순</option>
+                  <option id="sortNameOption" value="name">이름순</option>
+                </select>
+              </div>
+              <div id="myTreesViewModeMount" class="my-trees-view-mode-mount"></div>
+            </div>
+          </div>
+
+          <div class="my-trees-dashboard-container reveal-fade">
+            <div id="treesContainer">
+              <div id="state-loading" class="trees-loading">
+                <div class="trees-loading-head">
+                  <div class="spinner"></div>
+                  <span class="loading-text" data-i18n="myTrees.loading">러브트리 목록을 불러오는 중...</span>
                 </div>
-                <div class="tree-skeleton-info">
-                  <span class="tree-skeleton-line tree-skeleton-title"></span>
-                  <span class="tree-skeleton-line tree-skeleton-status"></span>
-                  <span class="tree-skeleton-line tree-skeleton-meta"></span>
+                <div class="trees-skeleton-grid" aria-hidden="true">
+                  <div class="tree-card tree-card-skeleton">
+                    <div class="tree-skeleton-thumb">
+                      <span class="tree-skeleton-avatar"></span>
+                      <span class="tree-skeleton-pill"></span>
+                      <span class="tree-skeleton-branch tree-skeleton-branch-main"></span>
+                      <span class="tree-skeleton-branch tree-skeleton-branch-side"></span>
+                    </div>
+                    <div class="tree-skeleton-info">
+                      <span class="tree-skeleton-line tree-skeleton-title"></span>
+                      <span class="tree-skeleton-line tree-skeleton-status"></span>
+                      <span class="tree-skeleton-line tree-skeleton-meta"></span>
+                    </div>
+                  </div>
+                  <div class="tree-card tree-card-skeleton">
+                    <div class="tree-skeleton-thumb">
+                      <span class="tree-skeleton-avatar"></span>
+                      <span class="tree-skeleton-pill"></span>
+                      <span class="tree-skeleton-branch tree-skeleton-branch-main"></span>
+                      <span class="tree-skeleton-branch tree-skeleton-branch-side"></span>
+                    </div>
+                    <div class="tree-skeleton-info">
+                      <span class="tree-skeleton-line tree-skeleton-title"></span>
+                      <span class="tree-skeleton-line tree-skeleton-status"></span>
+                      <span class="tree-skeleton-line tree-skeleton-meta"></span>
+                    </div>
+                  </div>
+                  <div class="tree-card tree-card-skeleton">
+                    <div class="tree-skeleton-thumb">
+                      <span class="tree-skeleton-avatar"></span>
+                      <span class="tree-skeleton-pill"></span>
+                      <span class="tree-skeleton-branch tree-skeleton-branch-main"></span>
+                      <span class="tree-skeleton-branch tree-skeleton-branch-side"></span>
+                    </div>
+                    <div class="tree-skeleton-info">
+                      <span class="tree-skeleton-line tree-skeleton-title"></span>
+                      <span class="tree-skeleton-line tree-skeleton-status"></span>
+                      <span class="tree-skeleton-line tree-skeleton-meta"></span>
+                    </div>
+                  </div>
                 </div>
               </div>
-              <div class="tree-card tree-card-skeleton">
-                <div class="tree-skeleton-thumb">
-                  <span class="tree-skeleton-avatar"></span>
-                  <span class="tree-skeleton-pill"></span>
-                  <span class="tree-skeleton-branch tree-skeleton-branch-main"></span>
-                  <span class="tree-skeleton-branch tree-skeleton-branch-side"></span>
-                </div>
-                <div class="tree-skeleton-info">
-                  <span class="tree-skeleton-line tree-skeleton-title"></span>
-                  <span class="tree-skeleton-line tree-skeleton-status"></span>
-                  <span class="tree-skeleton-line tree-skeleton-meta"></span>
-                </div>
+              <div id="state-error" class="error-state"><span class="material-symbols-outlined error-state-icon">error</span><h2 data-i18n="myTrees.error_title">불러오기에 실패했습니다</h2><p data-i18n="myTrees.error_desc">네트워크 연결을 확인하고 다시 시도해주세요.</p><button class="btn-round btn-primary" id="retryLoadBtn" data-i18n="myTrees.retry">다시 시도</button></div>
+              <div id="state-empty" class="empty-state"><span class="material-symbols-outlined empty-state-icon">account_tree</span><h2 data-i18n="empty_state_title">아직 러브트리가 없어요</h2><p data-i18n="empty_state_desc">첫 러브트리를 만들어 시작해보세요.</p><button class="btn-create-tree" id="createTreeBtn"><span class="material-symbols-outlined my-trees-create-icon">add_circle</span><span data-i18n="create_tree_btn">새 러브트리 만들기</span></button></div>
+              <div id="state-loaded"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- My Trees Appreciation Hub -->
+        <aside class="my-trees-hub-panel is-empty" id="myTreesHubPanel">
+          <div class="my-trees-hub-header">
+            <div class="my-trees-hub-title-group">
+              <h3>이어보기 허브</h3>
+              <span class="my-trees-hub-badge" id="myTreesHubBadge">선택한 내 트리</span>
+            </div>
+          </div>
+
+          <!-- Placeholder (no tree selected) -->
+          <div class="my-trees-hub-placeholder" id="myTreesHubPlaceholder">
+            <p>왼쪽에서 내 러브트리를 고르면 이어진 순간과 관리 흐름이 여기에 열려요.</p>
+          </div>
+
+          <!-- Hub content (tree selected) -->
+          <div class="my-trees-hub-content" id="myTreesHubContent" hidden>
+            <div class="my-trees-hub-tree-title" id="myTreesHubTreeTitle"></div>
+            <div class="my-trees-hub-meta-badge" id="myTreesHubMetaBadge"></div>
+
+            <!-- Representative moment block -->
+            <div class="my-trees-hub-rep" id="myTreesHubRep" hidden>
+              <div class="my-trees-hub-rep-label">
+                <span class="material-symbols-outlined">favorite</span>
+                <span>첫 순간 기록</span>
               </div>
-              <div class="tree-card tree-card-skeleton">
-                <div class="tree-skeleton-thumb">
-                  <span class="tree-skeleton-avatar"></span>
-                  <span class="tree-skeleton-pill"></span>
-                  <span class="tree-skeleton-branch tree-skeleton-branch-main"></span>
-                  <span class="tree-skeleton-branch tree-skeleton-branch-side"></span>
-                </div>
-                <div class="tree-skeleton-info">
-                  <span class="tree-skeleton-line tree-skeleton-title"></span>
-                  <span class="tree-skeleton-line tree-skeleton-status"></span>
-                  <span class="tree-skeleton-line tree-skeleton-meta"></span>
-                </div>
+              <div class="my-trees-hub-rep-title" id="myTreesHubRepTitle"></div>
+              <div class="my-trees-hub-rep-memo" id="myTreesHubRepMemo"></div>
+            </div>
+
+            <!-- Flow preview -->
+            <div class="my-trees-hub-flow" id="myTreesHubFlow" hidden>
+              <div class="my-trees-hub-flow-label">
+                <span class="material-symbols-outlined">route</span>
+                <span>이어진 순간 흐름</span>
               </div>
+              <div class="my-trees-hub-flow-list" id="myTreesHubFlowList"></div>
+              <div class="my-trees-hub-flow-controls" id="myTreesHubFlowControls"></div>
             </div>
-          </div>
-          <div id="state-error" class="error-state"><span class="material-symbols-outlined error-state-icon">error</span><h2 data-i18n="myTrees.error_title">불러오기에 실패했습니다</h2><p data-i18n="myTrees.error_desc">네트워크 연결을 확인하고 다시 시도해주세요.</p><button class="btn-round btn-primary" id="retryLoadBtn" data-i18n="myTrees.retry">다시 시도</button></div>
-          <div id="state-empty" class="empty-state"><span class="material-symbols-outlined empty-state-icon">account_tree</span><h2 data-i18n="empty_state_title">아직 러브트리가 없어요</h2><p data-i18n="empty_state_desc">첫 러브트리를 만들어 시작해보세요.</p><button class="btn-create-tree" id="createTreeBtn"><span class="material-symbols-outlined my-trees-create-icon">add_circle</span><span data-i18n="create_tree_btn">새 러브트리 만들기</span></button></div>
-          <div id="state-loaded"></div>
-        </div>
-      </section>
-      <!-- My Trees Appreciation Hub -->
-      <aside class="my-trees-hub-panel is-empty" id="myTreesHubPanel">
-        <div class="my-trees-hub-header">
-          <div class="my-trees-hub-title-group">
-            <h3>이어보기 허브</h3>
-            <span class="my-trees-hub-badge" id="myTreesHubBadge">선택한 내 트리</span>
-          </div>
-        </div>
 
-        <!-- Placeholder (no tree selected) -->
-        <div class="my-trees-hub-placeholder" id="myTreesHubPlaceholder">
-          <p>왼쪽에서 내 러브트리를 고르면 이어진 순간과 관리 흐름이 여기에 열려요.</p>
-        </div>
+            <!-- No moments state -->
+            <div class="my-trees-hub-no-moments" id="myTreesHubNoMoments" hidden></div>
 
-        <!-- Hub content (tree selected) -->
-        <div class="my-trees-hub-content" id="myTreesHubContent" hidden>
-          <div class="my-trees-hub-tree-title" id="myTreesHubTreeTitle"></div>
-          <div class="my-trees-hub-meta-badge" id="myTreesHubMetaBadge"></div>
-
-          <!-- Representative moment block -->
-          <div class="my-trees-hub-rep" id="myTreesHubRep" hidden>
-            <div class="my-trees-hub-rep-label">
-              <span class="material-symbols-outlined">favorite</span>
-              <span>첫 순간 기록</span>
-            </div>
-            <div class="my-trees-hub-rep-title" id="myTreesHubRepTitle"></div>
-            <div class="my-trees-hub-rep-memo" id="myTreesHubRepMemo"></div>
+            <!-- Summary line -->
+            <div class="my-trees-hub-summary" id="myTreesHubSummary"></div>
           </div>
 
-          <!-- Flow preview -->
-          <div class="my-trees-hub-flow" id="myTreesHubFlow" hidden>
-            <div class="my-trees-hub-flow-label">
-              <span class="material-symbols-outlined">route</span>
-              <span>이어진 순간 흐름</span>
-            </div>
-            <div class="my-trees-hub-flow-list" id="myTreesHubFlowList"></div>
-            <div class="my-trees-hub-flow-controls" id="myTreesHubFlowControls"></div>
+          <!-- Actions -->
+          <div class="my-trees-hub-actions" id="myTreesHubActions" hidden>
+            <a href="#" class="my-trees-hub-open-btn" id="myTreesHubOpenBtn">
+              <span class="material-symbols-outlined">visibility</span>
+              감상하기
+            </a>
+            <a href="#" class="my-trees-hub-edit-btn" id="myTreesHubEditBtn">
+              <span class="material-symbols-outlined">edit</span>
+              편집하기
+            </a>
           </div>
-
-          <!-- No moments state -->
-          <div class="my-trees-hub-no-moments" id="myTreesHubNoMoments" hidden></div>
-
-          <!-- Summary line -->
-          <div class="my-trees-hub-summary" id="myTreesHubSummary"></div>
-        </div>
-
-        <!-- Actions -->
-        <div class="my-trees-hub-actions" id="myTreesHubActions" hidden>
-          <a href="#" class="my-trees-hub-open-btn" id="myTreesHubOpenBtn">
-            <span class="material-symbols-outlined">visibility</span>
-            감상하기
-          </a>
-          <a href="#" class="my-trees-hub-edit-btn" id="myTreesHubEditBtn">
-            <span class="material-symbols-outlined">edit</span>
-            편집하기
-          </a>
-        </div>
-      </aside>
+        </aside>
       </div>
     </main>
   </div>
