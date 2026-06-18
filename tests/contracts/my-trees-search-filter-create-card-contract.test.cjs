@@ -121,6 +121,7 @@ test('9 & 10. No DB/API/fetch changes or Scout/AI/provider related strings added
 
 test('11. pages/my-trees.html has cache-bust link and script', () => {
   const html = read('pages/my-trees.html');
-  assert.match(html, /my-trees-finder\.css\?v=\d+/);
+  assert.match(html, /my-trees\.css\?v=\d+/);
+  assert.ok(!/my-trees-finder\.css\?v=/.test(html), 'pages/my-trees.html must NOT directly link my-trees-finder.css (bundle owns finder import)');
   assert.match(html, /my-trees-filter\.js\?v=\d+/);
 });

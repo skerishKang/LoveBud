@@ -109,6 +109,15 @@ test('4f. My LoveTree search input uses type="text" to match Browse mobile rende
   assert.ok(!searchInputBlock.includes('type="search"'), 'My Trees search input must NOT use type="search" (causes WebKit native decoration and height differences)');
 });
 
+test('4g. My LoveTree CSS bundle keeps finder import before responsive import (preserves mobile override)', () => {
+  const bundleCss = read('css/my-trees.css');
+  const finderIdx = bundleCss.indexOf('my-trees-finder.css');
+  const responsiveIdx = bundleCss.indexOf('my-trees-responsive.css');
+  assert.ok(finderIdx > 0, 'css/my-trees.css must import my-trees-finder.css');
+  assert.ok(responsiveIdx > 0, 'css/my-trees.css must import my-trees-responsive.css');
+  assert.ok(finderIdx < responsiveIdx, 'css/my-trees.css must import my-trees-finder.css BEFORE my-trees-responsive.css so the mobile 40px responsive rule wins the cascade');
+});
+
 test('5. search-preview-state.js sets/removes data-selected-tree-card marker', () => {
   const source = read('js/search/search-preview-state.js');
   assert.ok(source.includes('data-selected-tree-card'), 'search-preview-state.js must reference data-selected-tree-card');
@@ -216,6 +225,6 @@ test('14. Runtime cache-busts updated for changed JS/CSS', () => {
   assert.match(myTreesHtml, /my-trees-i18n-refresh\.js\?v=20260618-2664-1/);
   assert.match(myTreesHtml, /i18n-my-trees\.js\?v=20260618-2664-1/);
   assert.match(myTreesHtml, /my-trees\.css\?v=20260618-2668-1/);
-  assert.match(myTreesHtml, /my-trees-finder\.css\?v=20260618-2667-1/);
+  assert.ok(!/my-trees-finder\.css\?v=/.test(myTreesHtml), 'pages/my-trees.html must NOT directly link my-trees-finder.css (bundle owns finder import)');
   assert.match(searchHtml, /search\.css\?v=20260616-2532-1/);
 });
