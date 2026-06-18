@@ -256,7 +256,7 @@
     }
 
     #browseSortControls {
-        flex: 1 1 auto;
+        flex: 0 0 auto;
     }
 
     #browseViewModeMount {
@@ -301,7 +301,8 @@
     .browse-sort-select {
         min-height: 40px;
         font-size: 13px;
-        width: 100%;
+        width: auto;
+        min-width: 112px;
+        max-width: 160px;
     }
 }
-
