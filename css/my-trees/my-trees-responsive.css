@@ -1,10 +1,8 @@
 @media (max-width: 1024px) {
-.my-trees-content { padding: 40px var(--lovetree-page-pad-tablet) 56px; }
 .trees-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
 .trees-skeleton-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
 }
 @media (max-width: 768px) {
-.my-trees-content { padding: 24px var(--lovetree-page-pad-mobile) 36px; }
 .my-trees-header { flex-direction: column; align-items: flex-start; gap: 16px; margin-bottom: 12px; padding-bottom: 0; border-bottom: 0; }
 .header-content { width: 100%; }
 .my-trees-header p { font-size: 0.96rem; line-height: 1.72; max-width: 100%; }
