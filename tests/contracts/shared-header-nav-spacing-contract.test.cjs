@@ -37,6 +37,7 @@ const IN_SCOPE_PAGES = [
 // Shared header cache version (bumped on each shared-header change)
 const SHARED_HEADER_JS_VERSION = '20260421-2';
 const GLOBAL_CSS_VERSION = '20260618-2700-1';
+const MY_TREES_GLOBAL_CSS_VERSION = '20260619-2710-1';
 const INDEX_CSS_VERSION = '20260618-2700-1';
 
 function readFile(p) {
@@ -158,18 +159,22 @@ test('shared-header: shared-header.js cache version is consistent across Home/In
   assert.ok(versions.has(SHARED_HEADER_JS_VERSION), `shared-header.js version must be ${SHARED_HEADER_JS_VERSION}; got ${[...versions][0]}`);
 });
 
-// ── 5. Global CSS cache version is consistent across in-scope pages ──
+// ── 5. Global CSS cache version is locked per page scope ──
 
-test('shared-header: global.css cache version is consistent across in-scope pages', () => {
-  const versions = new Set();
+test('shared-header: global.css cache version is locked per page scope', () => {
+  const expectedByPage = {
+    'index.html': GLOBAL_CSS_VERSION,
+    'pages/intro.html': GLOBAL_CSS_VERSION,
+    'pages/search.html': GLOBAL_CSS_VERSION,
+    'pages/my-trees.html': MY_TREES_GLOBAL_CSS_VERSION,
+    'pages/settings.html': GLOBAL_CSS_VERSION,
+  };
   for (const rel of IN_SCOPE_PAGES) {
     const html = readFile(path.join(ROOT, rel));
     const m = html.match(/global\.css\?v=([\w-]+)/);
     assert.ok(m, `${rel} must include global.css?v=...`);
-    versions.add(m[1]);
+    assert.strictEqual(m[1], expectedByPage[rel], `${rel} global.css version must be ${expectedByPage[rel]} (got ${m[1]})`);
   }
-  assert.strictEqual(versions.size, 1, `global.css version must be the same across all in-scope pages; got ${[...versions].join(', ')}`);
-  assert.ok(versions.has(GLOBAL_CSS_VERSION), `global.css version must be ${GLOBAL_CSS_VERSION}; got ${[...versions][0]}`);
 });
 
 // ── 6. Index CSS cache version is locked to the shared-header change ──
