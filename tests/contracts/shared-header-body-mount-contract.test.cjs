@@ -43,7 +43,7 @@ targetPages.forEach(pagePath => {
   if (pagePath === 'index.html') wrapperClass = 'home-v3-shell';
   else if (pagePath.includes('intro')) wrapperClass = 'intro-wrapper';
   else if (pagePath.includes('search')) wrapperClass = 'search-container';
-  else if (pagePath.includes('my-trees')) wrapperClass = 'my-trees-layout';
+  else if (pagePath.includes('my-trees')) wrapperClass = 'my-trees-container';
   else if (pagePath.includes('settings')) wrapperClass = 'settings-layout';
 
   const headerIdx = content.indexOf('id="shared-header"');

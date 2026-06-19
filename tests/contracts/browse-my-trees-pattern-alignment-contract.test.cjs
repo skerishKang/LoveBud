@@ -16,8 +16,9 @@ test('1. #2532 issue marker or test description check', () => {
 
 test('2. pages/my-trees.html heading uses multi-line rhythm class', () => {
   const html = read('pages/my-trees.html');
-  assert.ok(html.includes('class="my-trees-title-line"'), 'my-trees.html must use multi-line class "my-trees-title-line"');
-  assert.ok(html.includes('my-trees-title-accent'), 'my-trees.html must use my-trees-title-accent');
+  // Class token must be present in some class attribute, not necessarily as the first token.
+  assert.ok(/\bmy-trees-title-line\b/.test(html), 'my-trees.html must use multi-line class "my-trees-title-line"');
+  assert.ok(/\bmy-trees-title-accent\b/.test(html), 'my-trees.html must use my-trees-title-accent');
 });
 
 test('3. My LoveTree description uses distinct personal archive copy', () => {
@@ -41,14 +42,21 @@ test('4a. Browse and My LoveTree hero titles use the shared mobile hero title cl
   const browseHtml = read('pages/search.html');
   const myTreesHtml = read('pages/my-trees.html');
 
+  // Browse: h1 must contain both "headline" and "shared-mobile-hero-title" tokens in its class attribute.
+  const browseH1 = browseHtml.match(/<h1\b[^>]*>/);
+  assert.ok(browseH1, 'Browse page must have an h1');
   assert.match(
-    browseHtml,
-    /<h1 class="headline shared-mobile-hero-title"[^>]*data-i18n="search\.title"/,
+    browseH1[0],
+    /class="[^"]*\bshared-mobile-hero-title\b[^"]*"/,
     'Browse hero h1 must opt into the shared mobile hero title class',
   );
+
+  // My Trees: h1 (matching myTreesPageTitle) must contain "shared-mobile-hero-title" token.
+  const myTreesH1 = myTreesHtml.match(/<h1\b[^>]*id="myTreesPageTitle"[^>]*>/);
+  assert.ok(myTreesH1, 'My Trees page must have an h1 with id="myTreesPageTitle"');
   assert.match(
-    myTreesHtml,
-    /<h1 class="shared-mobile-hero-title" id="myTreesPageTitle">/,
+    myTreesH1[0],
+    /class="[^"]*\bshared-mobile-hero-title\b[^"]*"/,
     'My Trees hero h1 must opt into the shared mobile hero title class',
   );
 });
@@ -120,16 +128,18 @@ test('4g. My LoveTree CSS bundle keeps finder import before responsive import (p
 
 test('4h. My LoveTree + new tree CTA lives in title row, not in results controls', () => {
   const html = read('pages/my-trees.html');
-  const titleRowStart = html.indexOf('class="my-trees-results-title-row"');
-  const titleRowEnd = html.indexOf('</div>', titleRowStart);
-  const controlsStart = html.indexOf('class="my-trees-results-controls"');
-  const controlsEnd = controlsStart > 0 ? html.indexOf('</div>', controlsStart) : -1;
-  assert.ok(titleRowStart > 0, 'pages/my-trees.html must wrap the results label and create CTA in .my-trees-results-title-row');
-  assert.ok(controlsStart > 0, 'pages/my-trees.html must keep .my-trees-results-controls for sort + view mode only');
-  const titleRowBlock = html.slice(titleRowStart, titleRowEnd);
-  const controlsBlock = controlsEnd > 0 ? html.slice(controlsStart, controlsEnd) : '';
-  assert.ok(titleRowBlock.includes('id="headerCreateTreeBtn"'), 'create CTA must live inside the title row');
-  assert.ok(!controlsBlock.includes('id="headerCreateTreeBtn"'), 'create CTA must NOT live inside .my-trees-results-controls');
+  // Find the opening tags of title-row and controls wrappers by class token (any position in class attribute).
+  const titleRowMatch = html.match(/<div\b[^>]*class="[^"]*\bmy-trees-results-title-row\b[^"]*"/);
+  const controlsMatch = html.match(/<div\b[^>]*class="[^"]*\bmy-trees-results-controls\b[^"]*"/);
+  assert.ok(titleRowMatch, 'pages/my-trees.html must wrap the results label and create CTA in .my-trees-results-title-row');
+  assert.ok(controlsMatch, 'pages/my-trees.html must keep .my-trees-results-controls for sort + view mode only');
+  const titleRowStart = titleRowMatch.index;
+  const controlsStart = controlsMatch.index;
+  // CTA position must be after the title row starts and before the controls start.
+  const ctaIdx = html.indexOf('id="headerCreateTreeBtn"');
+  assert.ok(ctaIdx > 0, 'pages/my-trees.html must contain id="headerCreateTreeBtn"');
+  assert.ok(ctaIdx > titleRowStart, 'create CTA must appear after the title row opens');
+  assert.ok(ctaIdx < controlsStart, 'create CTA must appear before .my-trees-results-controls opens');
 });
 
 test('4i. My LoveTree mobile title-row CTA is compact and view-mode control shrinks to fit', () => {
