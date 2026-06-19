@@ -18,25 +18,24 @@
   <div class="noise-overlay"></div>
   <div id="shared-header"></div>
 
-  <main class="my-trees-container my-trees-layout page-transition-enter">
-    <div class="my-trees-content my-trees-with-hub lovetree-calm-two-column-shell">
-      <section class="lovetree-calm-main-column my-trees-main-column reveal-scale reveal-up">
+  <main class="my-trees-container my-trees-layout lovetree-calm-two-column-shell page-transition-enter">
+    <section class="lovetree-calm-main-column my-trees-main-column reveal-scale reveal-up">
 
       <!-- 히어로 헤더 (Browse와 동일하게 main-column 안으로 이동) -->
       <div class="browse-curation-shell reveal-up">
         <div class="search-panel-header my-trees-header-block">
-          <div class="my-trees-eyebrow page-hero-eyebrow shared-mobile-hero-eyebrow" id="myTreesPageEyebrow">내가 키우는 러브트리</div>
-          <h1 class="shared-mobile-hero-title" id="myTreesPageTitle">
-            <span class="my-trees-title-line">내가 키운</span>
-            <span class="my-trees-title-line my-trees-title-accent">러브트리를</span>
-            <span class="my-trees-title-line">다시 열어보세요</span>
+          <div class="search-panel-eyebrow my-trees-eyebrow page-hero-eyebrow shared-mobile-hero-eyebrow" id="myTreesPageEyebrow">내가 키우는 러브트리</div>
+          <h1 class="headline shared-mobile-hero-title" id="myTreesPageTitle">
+            <span class="title-line my-trees-title-line">내가 키운</span>
+            <span class="title-line title-accent my-trees-title-line my-trees-title-accent">러브트리를</span>
+            <span class="title-line my-trees-title-line">다시 열어보세요</span>
           </h1>
           <p id="myTreesPageDesc">기록해 둔 나의 순간,<br class="pc-only">소중한 마음의 결을 천천히 꺼내보세요.</p>
         </div>
       </div>
 
       <!-- 검색 + 필터 (Browse의 browse-utility-row 패턴과 동일) -->
-      <div class="my-trees-finder lovetree-calm-utility-row reveal-up" id="myTreesFinder" aria-label="내 러브트리 찾기">
+      <div class="browse-utility-row my-trees-finder lovetree-calm-utility-row reveal-up" id="myTreesFinder" aria-label="내 러브트리 찾기">
         <div class="search-input-wrapper my-trees-search-box">
           <span class="material-symbols-outlined search-icon" aria-hidden="true">search</span>
           <input
@@ -57,7 +56,7 @@
       </div>
 
       <!-- 결과 헤더 (Browse의 browse-results-head 패턴과 동일한 단일 flex row) -->
-      <div class="my-trees-results-head lovetree-calm-results-head reveal-up">
+      <div class="browse-results-head my-trees-results-head lovetree-calm-results-head reveal-up">
         <div class="my-trees-results-title-row">
           <span class="browse-results-label my-trees-results-label">내 러브트리</span>
           <button class="btn-header-create" id="headerCreateTreeBtn">
@@ -65,7 +64,7 @@
             <span id="headerCreateTreeBtnLabel">새 러브트리</span>
           </button>
         </div>
-        <div class="my-trees-results-controls">
+        <div class="browse-results-controls my-trees-results-controls">
           <div class="sort-control">
             <select id="sortTreesSelect" class="summary-sort-control">
               <option id="sortRecentOption" value="recent">최신순</option>
@@ -77,64 +76,57 @@
         </div>
       </div>
 
-      <div class="my-trees-dashboard-container reveal-fade">
-        <div id="treesContainer">
-          <div id="state-loading" class="trees-loading">
-            <div class="trees-loading-head">
-              <div class="spinner"></div>
-              <span class="loading-text" data-i18n="myTrees.loading">러브트리 목록을 불러오는 중...</span>
+      <!-- 카드 grid (Browse의 #resultsList 패턴과 동일: reveal-up 직접 적용, JS 주입) -->
+      <div id="treesContainer" class="reveal-up">
+        <div id="state-loading" class="trees-loading">
+          <div class="trees-loading-head">
+            <div class="spinner"></div>
+            <span class="loading-text" data-i18n="myTrees.loading">러브트리 목록을 불러오는 중...</span>
+          </div>
+          <div class="trees-skeleton-grid" aria-hidden="true">
+            <div class="tree-card search-skeleton-card" aria-hidden="true">
+              <div class="tree-card-media search-skeleton-block"></div>
+              <div class="tree-card-body">
+                <div class="search-skeleton-line search-skeleton-title"></div>
+                <div class="search-skeleton-line search-skeleton-copy"></div>
+                <div class="tree-meta-row">
+                  <div class="tree-meta-left"><span class="tree-meta-chip search-skeleton-chip"></span></div>
+                  <div class="tree-meta-right"><span class="search-skeleton-line search-skeleton-count"></span></div>
+                </div>
+              </div>
             </div>
-            <div class="trees-skeleton-grid" aria-hidden="true">
-              <div class="tree-card tree-card-skeleton">
-                <div class="tree-skeleton-thumb">
-                  <span class="tree-skeleton-avatar"></span>
-                  <span class="tree-skeleton-pill"></span>
-                  <span class="tree-skeleton-branch tree-skeleton-branch-main"></span>
-                  <span class="tree-skeleton-branch tree-skeleton-branch-side"></span>
-                </div>
-                <div class="tree-skeleton-info">
-                  <span class="tree-skeleton-line tree-skeleton-title"></span>
-                  <span class="tree-skeleton-line tree-skeleton-status"></span>
-                  <span class="tree-skeleton-line tree-skeleton-meta"></span>
+            <div class="tree-card search-skeleton-card" aria-hidden="true">
+              <div class="tree-card-media search-skeleton-block"></div>
+              <div class="tree-card-body">
+                <div class="search-skeleton-line search-skeleton-title"></div>
+                <div class="search-skeleton-line search-skeleton-copy"></div>
+                <div class="tree-meta-row">
+                  <div class="tree-meta-left"><span class="tree-meta-chip search-skeleton-chip"></span></div>
+                  <div class="tree-meta-right"><span class="search-skeleton-line search-skeleton-count"></span></div>
                 </div>
               </div>
-              <div class="tree-card tree-card-skeleton">
-                <div class="tree-skeleton-thumb">
-                  <span class="tree-skeleton-avatar"></span>
-                  <span class="tree-skeleton-pill"></span>
-                  <span class="tree-skeleton-branch tree-skeleton-branch-main"></span>
-                  <span class="tree-skeleton-branch tree-skeleton-branch-side"></span>
-                </div>
-                <div class="tree-skeleton-info">
-                  <span class="tree-skeleton-line tree-skeleton-title"></span>
-                  <span class="tree-skeleton-line tree-skeleton-status"></span>
-                  <span class="tree-skeleton-line tree-skeleton-meta"></span>
-                </div>
-              </div>
-              <div class="tree-card tree-card-skeleton">
-                <div class="tree-skeleton-thumb">
-                  <span class="tree-skeleton-avatar"></span>
-                  <span class="tree-skeleton-pill"></span>
-                  <span class="tree-skeleton-branch tree-skeleton-branch-main"></span>
-                  <span class="tree-skeleton-branch tree-skeleton-branch-side"></span>
-                </div>
-                <div class="tree-skeleton-info">
-                  <span class="tree-skeleton-line tree-skeleton-title"></span>
-                  <span class="tree-skeleton-line tree-skeleton-status"></span>
-                  <span class="tree-skeleton-line tree-skeleton-meta"></span>
+            </div>
+            <div class="tree-card search-skeleton-card" aria-hidden="true">
+              <div class="tree-card-media search-skeleton-block"></div>
+              <div class="tree-card-body">
+                <div class="search-skeleton-line search-skeleton-title"></div>
+                <div class="search-skeleton-line search-skeleton-copy"></div>
+                <div class="tree-meta-row">
+                  <div class="tree-meta-left"><span class="tree-meta-chip search-skeleton-chip"></span></div>
+                  <div class="tree-meta-right"><span class="search-skeleton-line search-skeleton-count"></span></div>
                 </div>
               </div>
             </div>
           </div>
-          <div id="state-error" class="error-state"><span class="material-symbols-outlined error-state-icon">error</span><h2 data-i18n="myTrees.error_title">불러오기에 실패했습니다</h2><p data-i18n="myTrees.error_desc">네트워크 연결을 확인하고 다시 시도해주세요.</p><button class="btn-round btn-primary" id="retryLoadBtn" data-i18n="myTrees.retry">다시 시도</button></div>
-          <div id="state-empty" class="empty-state"><span class="material-symbols-outlined empty-state-icon">account_tree</span><h2 data-i18n="empty_state_title">아직 러브트리가 없어요</h2><p data-i18n="empty_state_desc">첫 러브트리를 만들어 시작해보세요.</p><button class="btn-create-tree" id="createTreeBtn"><span class="material-symbols-outlined my-trees-create-icon">add_circle</span><span data-i18n="create_tree_btn">새 러브트리 만들기</span></button></div>
-          <div id="state-loaded"></div>
         </div>
+        <div id="state-error" class="error-state"><span class="material-symbols-outlined error-state-icon">error</span><h2 data-i18n="myTrees.error_title">불러오기에 실패했습니다</h2><p data-i18n="myTrees.error_desc">네트워크 연결을 확인하고 다시 시도해주세요.</p><button class="btn-round btn-primary" id="retryLoadBtn" data-i18n="myTrees.retry">다시 시도</button></div>
+        <div id="state-empty" class="empty-state"><span class="material-symbols-outlined empty-state-icon">account_tree</span><h2 data-i18n="empty_state_title">아직 러브트리가 없어요</h2><p data-i18n="empty_state_desc">첫 러브트리를 만들어 시작해보세요.</p><button class="btn-create-tree" id="createTreeBtn"><span class="material-symbols-outlined my-trees-create-icon">add_circle</span><span data-i18n="create_tree_btn">새 러브트리 만들기</span></button></div>
+        <div id="state-loaded"></div>
       </div>
     </section>
 
     <!-- My Trees Hub (Browse의 preview-sidebar 패턴과 동일한 위치) -->
-    <aside class="my-trees-hub-panel preview-sidebar lovetree-calm-right-rail reveal-fade is-empty" id="myTreesHubPanel">
+    <aside class="my-trees-hub-panel preview-sidebar lovetree-calm-right-rail reveal-fade is-empty preview-state-empty" id="myTreesHubPanel">
       <div class="my-trees-hub-header preview-panel-header">
         <div class="my-trees-hub-title-group preview-panel-title-group">
           <h3>이어보기 허브</h3>
@@ -142,9 +134,11 @@
         </div>
       </div>
 
-      <!-- Placeholder (no tree selected) -->
-      <div class="my-trees-hub-placeholder" id="myTreesHubPlaceholder">
-        <p>왼쪽에서 내 러브트리를 고르면 이어진 순간과 관리 흐름이 여기에 열려요.</p>
+      <!-- Placeholder (no tree selected) — Browse의 video-container > preview-empty-state 패턴과 동일 -->
+      <div id="myTreesHubVideoContainer" class="video-container">
+        <div class="my-trees-hub-placeholder preview-empty-state" id="myTreesHubPlaceholder">
+          <p>왼쪽에서 내 러브트리를 고르면 이어진 순간과 관리 흐름이 여기에 열려요.</p>
+        </div>
       </div>
 
       <!-- Hub content (tree selected) -->
@@ -191,7 +185,6 @@
         </a>
       </div>
     </aside>
-    </div>
   </main>
 
   <div class="create-tree-modal-backdrop" id="createTreeModalBackdrop" aria-hidden="true">

@@ -1,18 +1,9 @@
-/* ── Responsive: tablet (≤1024px) ──
-   Keep two-column but narrow the right rail to 340px,
-   matching Browse's comfortable tablet rhythm. ── */
+/* ── Responsive: tablet (≤1024px) and mobile (≤768px) for the hub panel
+   Grid columns and right-rail sticky/static are owned by
+   .lovetree-calm-two-column-shell / .lovetree-calm-right-rail (shared).
+   This file keeps only my-trees-specific content density deltas. ── */
 
 @media (max-width: 1024px) {
-    .my-trees-with-hub {
-        grid-template-columns: minmax(0, 1fr) 340px;
-        gap: 24px;
-    }
-
-    .my-trees-hub-panel {
-        padding: 24px 20px;
-        border-radius: 2rem;
-    }
-
     .my-trees-hub-header h3 {
         font-size: 1.42rem;
     }
@@ -26,23 +17,7 @@
     }
 }
 
-/* ── Responsive: mobile (≤768px) ──
-   Collapse to single column; hub moves below content (static).
-   Mobile search-input height / chip density unchanged from #2664–#2669. ── */
-
 @media (max-width: 768px) {
-    .my-trees-with-hub {
-        grid-template-columns: 1fr;
-    }
-
-    .my-trees-hub-panel {
-        position: static;
-        top: auto;
-        margin-top: 20px;
-        padding: 20px 16px;
-        border-radius: 1.5rem;
-    }
-
     .my-trees-hub-header h3 {
         font-size: 1.34rem;
     }
@@ -72,14 +47,7 @@
     }
 }
 
-/* ── Responsive: 375px ── */
-
 @media (max-width: 375px) {
-    .my-trees-hub-panel {
-        padding: 16px 14px;
-        border-radius: 1.25rem;
-    }
-
     .my-trees-hub-header h3 {
         font-size: 1.2rem;
     }
