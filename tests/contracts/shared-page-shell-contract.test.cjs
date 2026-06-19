@@ -33,11 +33,14 @@ test('Shared Page Shell Contract Verification', async (t) => {
 
   await t.test('pages/my-trees.html contains My Trees page structure alignment target elements', () => {
     const myTreesHtml = read('pages/my-trees.html');
-    assert.ok(myTreesHtml.includes('my-trees-with-hub'), 'my-trees.html must contain my-trees-with-hub');
-    assert.ok(myTreesHtml.includes('my-trees-main-column'), 'my-trees.html must contain my-trees-main-column');
+    assert.ok(myTreesHtml.includes('my-trees-container'), 'my-trees.html must contain my-trees-container');
+    assert.ok(myTreesHtml.includes('lovetree-calm-two-column-shell'), 'my-trees.html must opt into shared .lovetree-calm-two-column-shell');
+    assert.ok(myTreesHtml.includes('lovetree-calm-main-column'), 'my-trees.html must contain .lovetree-calm-main-column');
+    assert.ok(myTreesHtml.includes('lovetree-calm-right-rail'), 'my-trees.html must contain .lovetree-calm-right-rail');
     assert.ok(myTreesHtml.includes('myTreesFinder'), 'my-trees.html must contain myTreesFinder');
     assert.ok(myTreesHtml.includes('my-trees-results-head'), 'my-trees.html must contain my-trees-results-head');
     assert.ok(myTreesHtml.includes('my-trees-hub-panel'), 'my-trees.html must contain my-trees-hub-panel');
+    assert.ok(!myTreesHtml.includes('my-trees-with-hub'), 'Obsolete my-trees-with-hub wrapper must be removed');
     assert.ok(!myTreesHtml.includes('my-trees-dashboard-grid-shell'), 'Old grid shell my-trees-dashboard-grid-shell must not exist');
   });
 
@@ -73,10 +76,18 @@ test('Shared Page Shell Contract Verification', async (t) => {
     assert.match(searchBaseCss, /grid-template-columns:\s*minmax\(0,\s*1fr\)\s+minmax\(360px,\s*400px\)/, 'search-base.css grid layout column layout must align');
   });
 
-  await t.test('css/my-trees/my-trees-preview-hub/layout.css defines .my-trees-with-hub with desktop 2-column grid rhythm', () => {
+  await t.test('css/my-trees/my-trees-preview-hub/layout.css keeps hub empty/loaded state toggles', () => {
     const hubLayoutCss = read('css/my-trees/my-trees-preview-hub/layout.css');
-    assert.ok(hubLayoutCss.includes('.my-trees-with-hub'), 'layout.css must define .my-trees-with-hub');
-    assert.match(hubLayoutCss, /grid-template-columns:\s*minmax\(0,\s*1fr\)\s+minmax\(360px,\s*400px\)/, 'layout.css grid layout column layout must align');
+    assert.match(
+      hubLayoutCss,
+      /\.my-trees-hub-panel\.is-empty\s+\.my-trees-hub-content/,
+      'layout.css must hide hub content when empty'
+    );
+    assert.match(
+      hubLayoutCss,
+      /\.my-trees-hub-panel:not\(\.is-empty\)\s+\.my-trees-hub-placeholder/,
+      'layout.css must hide hub placeholder when loaded'
+    );
   });
 
   await t.test('Verify no 3D orbit implementation is introduced and Scout is untouched', () => {

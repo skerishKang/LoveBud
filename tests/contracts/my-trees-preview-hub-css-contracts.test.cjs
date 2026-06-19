@@ -31,7 +31,7 @@ test('my-trees-preview-hub css — manifest contains expected imports', () => {
 
 test('my-trees-preview-hub css — split files exist and contain core selectors', () => {
     const files = {
-        'layout.css': ['.my-trees-with-hub', '.my-trees-hub-panel'],
+        'layout.css': ['.my-trees-hub-panel.is-empty', '.my-trees-hub-panel:not(.is-empty) .my-trees-hub-placeholder'],
         'content.css': ['.my-trees-hub-tree-title', '.my-trees-hub-rep'],
         'flow.css': ['.my-trees-hub-flow-list', '.my-trees-hub-flow-toggle'],
         'states.css': ['.my-trees-hub-placeholder', '.my-trees-hub-no-moments'],

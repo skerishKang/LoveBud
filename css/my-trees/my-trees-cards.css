@@ -1,4 +1,4 @@
-.trees-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--lovetree-card-grid-gap); }
+.trees-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--lovetree-card-grid-gap); }
 .tree-card { display: block; position: relative; background: var(--lovetree-soft-surface); border-radius: var(--lovetree-card-radius); padding: 0; box-shadow: var(--lovetree-card-shadow); border: 1px solid var(--lovetree-soft-surface-border); overflow: hidden; cursor: pointer; transition: border-color 0.12s ease, box-shadow 0.12s ease; text-decoration: none; color: inherit; }
 .tree-card:hover { box-shadow: var(--lovetree-card-shadow-hover); border-color: var(--lovetree-card-border-hover); }
 .tree-card.is-selected,
