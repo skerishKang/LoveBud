@@ -4,6 +4,13 @@
 
 문서 작업, 코드 작업, 검증 작업 모두 **현재 GitHub `main` 기준 확인**을 먼저 수행해야 합니다.
 
+> **Agent guidance hierarchy**
+>
+> - `AGENTS.md`는 LoveBud 저장소의 **repository-wide canonical agent guidance**다.
+> - 별도 tool-specific instruction file은 **꼭 필요할 때만** 추가한다 (예: 특정 도구의 실제 설정/실행 방법이 필요한 경우).
+> - tool-specific 문서는 본 문서의 안전·범위·검증 원칙을 약화시키거나 덮어쓸 수 없다. 충돌 시 본 문서가 우선한다.
+> - 현재 `CLAUDE.md`, `CODEX.md`는 **canonical repository instruction source가 아니다**. 새 agent 문서가 필요하면 본 문서 또는 `docs/ops/AGENT_INSTRUCTION_POLICY.md`를 갱신한다.
+
 ---
 
 ## 1. 최상위 원칙
