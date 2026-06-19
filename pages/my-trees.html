@@ -77,59 +77,52 @@
         </div>
       </div>
 
-      <div class="my-trees-dashboard-container reveal-fade">
-        <div id="treesContainer">
-          <div id="state-loading" class="trees-loading">
-            <div class="trees-loading-head">
-              <div class="spinner"></div>
-              <span class="loading-text" data-i18n="myTrees.loading">러브트리 목록을 불러오는 중...</span>
+      <!-- 카드 grid (Browse의 #resultsList 패턴과 동일: reveal-up 직접 적용, JS 주입) -->
+      <div id="treesContainer" class="reveal-up">
+        <div id="state-loading" class="trees-loading">
+          <div class="trees-loading-head">
+            <div class="spinner"></div>
+            <span class="loading-text" data-i18n="myTrees.loading">러브트리 목록을 불러오는 중...</span>
+          </div>
+          <div class="trees-skeleton-grid" aria-hidden="true">
+            <div class="tree-card search-skeleton-card" aria-hidden="true">
+              <div class="tree-card-media search-skeleton-block"></div>
+              <div class="tree-card-body">
+                <div class="search-skeleton-line search-skeleton-title"></div>
+                <div class="search-skeleton-line search-skeleton-copy"></div>
+                <div class="tree-meta-row">
+                  <div class="tree-meta-left"><span class="tree-meta-chip search-skeleton-chip"></span></div>
+                  <div class="tree-meta-right"><span class="search-skeleton-line search-skeleton-count"></span></div>
+                </div>
+              </div>
             </div>
-            <div class="trees-skeleton-grid" aria-hidden="true">
-              <div class="tree-card tree-card-skeleton">
-                <div class="tree-skeleton-thumb">
-                  <span class="tree-skeleton-avatar"></span>
-                  <span class="tree-skeleton-pill"></span>
-                  <span class="tree-skeleton-branch tree-skeleton-branch-main"></span>
-                  <span class="tree-skeleton-branch tree-skeleton-branch-side"></span>
-                </div>
-                <div class="tree-skeleton-info">
-                  <span class="tree-skeleton-line tree-skeleton-title"></span>
-                  <span class="tree-skeleton-line tree-skeleton-status"></span>
-                  <span class="tree-skeleton-line tree-skeleton-meta"></span>
+            <div class="tree-card search-skeleton-card" aria-hidden="true">
+              <div class="tree-card-media search-skeleton-block"></div>
+              <div class="tree-card-body">
+                <div class="search-skeleton-line search-skeleton-title"></div>
+                <div class="search-skeleton-line search-skeleton-copy"></div>
+                <div class="tree-meta-row">
+                  <div class="tree-meta-left"><span class="tree-meta-chip search-skeleton-chip"></span></div>
+                  <div class="tree-meta-right"><span class="search-skeleton-line search-skeleton-count"></span></div>
                 </div>
               </div>
-              <div class="tree-card tree-card-skeleton">
-                <div class="tree-skeleton-thumb">
-                  <span class="tree-skeleton-avatar"></span>
-                  <span class="tree-skeleton-pill"></span>
-                  <span class="tree-skeleton-branch tree-skeleton-branch-main"></span>
-                  <span class="tree-skeleton-branch tree-skeleton-branch-side"></span>
-                </div>
-                <div class="tree-skeleton-info">
-                  <span class="tree-skeleton-line tree-skeleton-title"></span>
-                  <span class="tree-skeleton-line tree-skeleton-status"></span>
-                  <span class="tree-skeleton-line tree-skeleton-meta"></span>
-                </div>
-              </div>
-              <div class="tree-card tree-card-skeleton">
-                <div class="tree-skeleton-thumb">
-                  <span class="tree-skeleton-avatar"></span>
-                  <span class="tree-skeleton-pill"></span>
-                  <span class="tree-skeleton-branch tree-skeleton-branch-main"></span>
-                  <span class="tree-skeleton-branch tree-skeleton-branch-side"></span>
-                </div>
-                <div class="tree-skeleton-info">
-                  <span class="tree-skeleton-line tree-skeleton-title"></span>
-                  <span class="tree-skeleton-line tree-skeleton-status"></span>
-                  <span class="tree-skeleton-line tree-skeleton-meta"></span>
+            </div>
+            <div class="tree-card search-skeleton-card" aria-hidden="true">
+              <div class="tree-card-media search-skeleton-block"></div>
+              <div class="tree-card-body">
+                <div class="search-skeleton-line search-skeleton-title"></div>
+                <div class="search-skeleton-line search-skeleton-copy"></div>
+                <div class="tree-meta-row">
+                  <div class="tree-meta-left"><span class="tree-meta-chip search-skeleton-chip"></span></div>
+                  <div class="tree-meta-right"><span class="search-skeleton-line search-skeleton-count"></span></div>
                 </div>
               </div>
             </div>
           </div>
-          <div id="state-error" class="error-state"><span class="material-symbols-outlined error-state-icon">error</span><h2 data-i18n="myTrees.error_title">불러오기에 실패했습니다</h2><p data-i18n="myTrees.error_desc">네트워크 연결을 확인하고 다시 시도해주세요.</p><button class="btn-round btn-primary" id="retryLoadBtn" data-i18n="myTrees.retry">다시 시도</button></div>
-          <div id="state-empty" class="empty-state"><span class="material-symbols-outlined empty-state-icon">account_tree</span><h2 data-i18n="empty_state_title">아직 러브트리가 없어요</h2><p data-i18n="empty_state_desc">첫 러브트리를 만들어 시작해보세요.</p><button class="btn-create-tree" id="createTreeBtn"><span class="material-symbols-outlined my-trees-create-icon">add_circle</span><span data-i18n="create_tree_btn">새 러브트리 만들기</span></button></div>
-          <div id="state-loaded"></div>
         </div>
+        <div id="state-error" class="error-state"><span class="material-symbols-outlined error-state-icon">error</span><h2 data-i18n="myTrees.error_title">불러오기에 실패했습니다</h2><p data-i18n="myTrees.error_desc">네트워크 연결을 확인하고 다시 시도해주세요.</p><button class="btn-round btn-primary" id="retryLoadBtn" data-i18n="myTrees.retry">다시 시도</button></div>
+        <div id="state-empty" class="empty-state"><span class="material-symbols-outlined empty-state-icon">account_tree</span><h2 data-i18n="empty_state_title">아직 러브트리가 없어요</h2><p data-i18n="empty_state_desc">첫 러브트리를 만들어 시작해보세요.</p><button class="btn-create-tree" id="createTreeBtn"><span class="material-symbols-outlined my-trees-create-icon">add_circle</span><span data-i18n="create_tree_btn">새 러브트리 만들기</span></button></div>
+        <div id="state-loaded"></div>
       </div>
     </section>
 
@@ -143,7 +136,7 @@
       </div>
 
       <!-- Placeholder (no tree selected) -->
-      <div class="my-trees-hub-placeholder" id="myTreesHubPlaceholder">
+      <div class="my-trees-hub-placeholder preview-empty-state" id="myTreesHubPlaceholder">
         <p>왼쪽에서 내 러브트리를 고르면 이어진 순간과 관리 흐름이 여기에 열려요.</p>
       </div>
 
