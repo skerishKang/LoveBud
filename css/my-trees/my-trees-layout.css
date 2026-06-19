@@ -1,13 +1,35 @@
 /* LoveBud – My Trees page-level layout shell
    Desktop two-column (left content + right hub) is owned by
    .lovetree-calm-two-column-shell on <main> (shared with Browse).
-   This file handles only the outer page wrapper and the
-   auth-pending visibility gate. */
+   Page width / max-width / padding is owned by
+   .lovetree-calm-page-shell on <main> (also shared with Browse).
+   This file only owns the .my-trees-container min-height, vertical
+   rhythm, and the auth-pending visibility gate. */
 
-.my-trees-layout { min-height: 100vh; display: flex; flex-direction: column; }
-body.my-trees-auth-pending .my-trees-content { visibility: hidden; }
+/* Vertical min-height + top/bottom rhythm for the My Trees shell.
+   Horizontal width / padding is owned by .lovetree-calm-page-shell. */
+.my-trees-container {
+  min-height: 100vh;
+  padding-top: 48px;
+  padding-bottom: 80px;
+}
 
-/* .my-trees-content kept as a JS hook only — width/max-width/margin/padding
-   removed so it does not re-create a page shell that duplicates
-   .lovetree-calm-page-shell / .lovetree-calm-two-column-shell. */
-.my-trees-content { display: contents; }
+@media (max-width: 1024px) {
+  .my-trees-container {
+    padding-top: 40px;
+    padding-bottom: 56px;
+  }
+}
+
+@media (max-width: 768px) {
+  .my-trees-container {
+    padding-top: 24px;
+    padding-bottom: 36px;
+  }
+}
+
+/* Auth-pending visibility gate. Targets .my-trees-container directly so
+   it does not depend on any inner wrapper element. */
+body.my-trees-auth-pending .my-trees-container {
+  visibility: hidden;
+}
