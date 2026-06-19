@@ -1,13 +1,28 @@
 /* LoveBud – My Trees page-level layout shell
-   Desktop two-column (left content + right hub) is owned by
-   .lovetree-calm-two-column-shell on <main> (shared with Browse).
-   This file handles only the outer page wrapper and the
-   auth-pending visibility gate. */
+   Width/margin/padding and desktop two-column grid are owned by
+   .lovetree-calm-page-shell + .lovetree-calm-two-column-shell
+   on <main> (shared with Browse). */
 
-.my-trees-layout { min-height: 100vh; display: flex; flex-direction: column; }
-body.my-trees-auth-pending .my-trees-content { visibility: hidden; }
+.my-trees-container {
+  min-height: 100vh;
+  padding-top: 48px;
+  padding-bottom: 80px;
+}
 
-/* .my-trees-content kept as a JS hook only — width/max-width/margin/padding
-   removed so it does not re-create a page shell that duplicates
-   .lovetree-calm-page-shell / .lovetree-calm-two-column-shell. */
-.my-trees-content { display: contents; }
+body.my-trees-auth-pending .my-trees-container {
+  visibility: hidden;
+}
+
+@media (max-width: 1024px) {
+  .my-trees-container {
+    padding-top: 40px;
+    padding-bottom: 56px;
+  }
+}
+
+@media (max-width: 768px) {
+  .my-trees-container {
+    padding-top: 24px;
+    padding-bottom: 36px;
+  }
+}
