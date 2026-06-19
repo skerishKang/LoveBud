@@ -268,8 +268,10 @@ test('14. Runtime cache-busts updated for changed JS/CSS', () => {
   assert.match(myTreesHtml, /my-trees-preview-state\.js\?v=20260616-2532-1/);
   assert.match(myTreesHtml, /my-trees-i18n-refresh\.js\?v=20260618-2664-1/);
   assert.match(myTreesHtml, /i18n-my-trees\.js\?v=20260619-2710-1/);
-  assert.match(myTreesHtml, /my-trees\.css\?v=20260619-2719-2/);
+  assert.match(myTreesHtml, /my-trees\.css\?v=20260619-2722-1/);
   assert.match(myTreesCss, /my-trees-header\.css\?v=20260618-2676-1/);
+  assert.match(myTreesCss, /search\/search-controls\.css/);
+  assert.match(myTreesCss, /search\/search-preview-sidebar\.css/);
   assert.ok(!/my-trees-finder\.css\?v=/.test(myTreesHtml), 'pages/my-trees.html must NOT directly link my-trees-finder.css (bundle owns finder import)');
   assert.match(searchHtml, /search\.css\?v=20260618-2690-1/);
 });
