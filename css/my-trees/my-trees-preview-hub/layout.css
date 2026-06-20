@@ -7,10 +7,13 @@
    content markup (my-trees-hub-content, my-trees-hub-actions,
    my-trees-hub-placeholder) is owner-side, not a public preview. */
 .my-trees-hub-panel.is-empty .my-trees-hub-content,
-.my-trees-hub-panel.is-empty .my-trees-hub-actions {
+.my-trees-hub-panel.is-empty .my-trees-hub-actions,
+.preview-sidebar.preview-state-empty #myTreesHubContent,
+.preview-sidebar.preview-state-empty #myTreesHubActions {
     display: none;
 }
 
-.my-trees-hub-panel:not(.is-empty) .my-trees-hub-placeholder {
+.my-trees-hub-panel:not(.is-empty) .my-trees-hub-placeholder,
+.preview-sidebar:not(.preview-state-empty) #myTreesHubPlaceholder {
     display: none;
 }

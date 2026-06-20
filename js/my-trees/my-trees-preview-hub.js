@@ -201,6 +201,8 @@
         if (!els) return;
         els.panel.classList.add('is-empty');
         els.panel.classList.remove('is-loaded');
+        els.panel.classList.add('preview-state-empty');
+        els.panel.classList.remove('preview-state-thumbnail', 'preview-state-media', 'preview-state-no-moments');
         if (els.placeholder) els.placeholder.hidden = false;
         if (els.content) els.content.hidden = true;
         if (els.badge) els.badge.textContent = i18nHub('myTrees.hub_badge', '선택한 내 트리', 'Selected tree');
@@ -222,6 +224,16 @@
 
         els.panel.classList.remove('is-empty');
         els.panel.classList.add('is-loaded');
+        els.panel.classList.remove('preview-state-empty');
+        
+        var hasMedia = !!(tree && (tree.representativeThumbnail || tree.representative_thumbnail || tree.thumbnail));
+        if (hasMedia) {
+            els.panel.classList.add('preview-state-thumbnail');
+            els.panel.classList.remove('preview-state-no-moments');
+        } else {
+            els.panel.classList.remove('preview-state-thumbnail', 'preview-state-media');
+        }
+
         if (els.placeholder) els.placeholder.hidden = true;
         if (els.content) els.content.hidden = false;
         if (els.badge) {
@@ -337,12 +349,12 @@
                 els.openBtn.href = isPublicTree
                     ? basePath + 'view.html?treeId=' + encodeURIComponent(tree.id) + '&from=my-trees'
                     : basePath + 'editor?treeId=' + encodeURIComponent(tree.id) + '&from=my-trees';
-                els.openBtn.innerHTML = '<span class="material-symbols-outlined">visibility</span> ' +
+                els.openBtn.innerHTML = '<span class="material-symbols-outlined">visibility</span>' +
                     escapeHtml(i18nHub('', '감상하기', 'View'));
             }
             if (els.editBtn && tree && tree.id) {
                 els.editBtn.href = basePath + 'editor?treeId=' + encodeURIComponent(tree.id) + '&from=my-trees';
-                els.editBtn.innerHTML = '<span class="material-symbols-outlined">edit</span> ' +
+                els.editBtn.innerHTML = '<span class="material-symbols-outlined">edit</span>' +
                     escapeHtml(i18nHub('', '편집하기', 'Edit'));
             }
         }

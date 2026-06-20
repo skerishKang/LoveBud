@@ -27,8 +27,8 @@ test('1. Browse/My Trees outer shell grid uses same shared tokens', () => {
 test('2. My Trees HTML maintains shared hero/control classes', () => {
   const html = read('pages/my-trees.html');
 
-  assert.ok(html.includes('class="search-panel-header my-trees-header-block"'), 'Must keep search-panel-header class');
-  assert.ok(html.includes('class="search-panel-eyebrow my-trees-eyebrow page-hero-eyebrow shared-mobile-hero-eyebrow"'), 'Must keep eyebrow classes');
+  assert.ok(html.includes('class="search-panel-header"'), 'Must keep search-panel-header class');
+  assert.ok(html.includes('class="search-panel-eyebrow page-hero-eyebrow shared-mobile-hero-eyebrow"'), 'Must keep eyebrow classes');
   assert.ok(html.includes('class="headline shared-mobile-hero-title"'), 'Must keep headline class');
   assert.ok(html.includes('class="browse-utility-row my-trees-finder lovetree-calm-utility-row reveal-up"'), 'Must keep browse-utility-row class');
   assert.ok(html.includes('class="search-input-wrapper my-trees-search-box"'), 'Must keep search-input-wrapper class');

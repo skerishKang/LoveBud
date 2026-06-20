@@ -21,8 +21,8 @@
   <main class="my-trees-container lovetree-calm-two-column-shell page-transition-enter">
     <section class="lovetree-calm-main-column my-trees-main-column reveal-scale reveal-up">
       <div class="browse-curation-shell reveal-up">
-        <div class="search-panel-header my-trees-header-block">
-          <div class="search-panel-eyebrow my-trees-eyebrow page-hero-eyebrow shared-mobile-hero-eyebrow" id="myTreesPageEyebrow">내가 키우는 러브트리</div>
+        <div class="search-panel-header">
+          <div class="search-panel-eyebrow page-hero-eyebrow shared-mobile-hero-eyebrow" id="myTreesPageEyebrow">내가 키우는 러브트리</div>
           <h1 class="headline shared-mobile-hero-title" id="myTreesPageTitle">
             <span class="title-line my-trees-title-line">내가 키운</span>
             <span class="title-line title-accent my-trees-title-line my-trees-title-accent">러브트리를</span>
@@ -85,25 +85,30 @@
         <div class="my-trees-hub-placeholder preview-empty-state" id="myTreesHubPlaceholder"><p>왼쪽에서 내 러브트리를 고르면 이어진 순간과 관리 흐름이 여기에 열려요.</p></div>
         <div class="my-trees-hub-media" id="myTreesHubMedia" hidden></div>
       </div>
-      <div class="my-trees-hub-content" id="myTreesHubContent" hidden>
+      <div class="my-trees-hub-content preview-details" id="myTreesHubContent" hidden>
         <div id="myTreesHubDetails">
-          <div class="my-trees-hub-tree-title" id="myTreesHubTreeTitle"></div>
-          <div class="my-trees-hub-meta-badge" id="myTreesHubMetaBadge"></div>
-          <div class="my-trees-hub-rep" id="myTreesHubRep" hidden>
-            <div class="my-trees-hub-rep-label"><span class="material-symbols-outlined">favorite</span><span>첫 순간 기록</span></div>
-            <div class="my-trees-hub-rep-title" id="myTreesHubRepTitle"></div>
-            <div class="my-trees-hub-rep-memo" id="myTreesHubRepMemo"></div>
+          <div class="preview-focus-title-block" style="padding: 2px 2px 0;">
+            <div class="my-trees-hub-tree-title preview-focus-title" id="myTreesHubTreeTitle" style="font-size: 1.34rem; font-weight: 900; line-height: 1.18;"></div>
+            <div class="my-trees-hub-meta-badge preview-focus-title-meta" id="myTreesHubMetaBadge" style="margin-top: 8px;"></div>
           </div>
-          <div class="my-trees-hub-flow" id="myTreesHubFlow" hidden>
-            <div class="my-trees-hub-flow-label"><span class="material-symbols-outlined">route</span><span>이어진 순간 흐름</span></div>
-            <div class="my-trees-hub-flow-list" id="myTreesHubFlowList"></div>
-            <div class="my-trees-hub-flow-controls" id="myTreesHubFlowControls"></div>
+          <div class="my-trees-hub-rep preview-focus-flow-card" id="myTreesHubRep" hidden style="margin-top: 16px; display: flex; flex-direction: column; gap: 8px; padding: 18px; border-radius: 16px;">
+            <div class="my-trees-hub-rep-label" style="font-size: 12px; font-weight: 800; color: var(--on-surface-variant); display: flex; align-items: center; gap: 4px;"><span class="material-symbols-outlined" style="font-size: 14px;">favorite</span><span>첫 순간 기록</span></div>
+            <div class="preview-focus-title" id="myTreesHubRepTitle" style="font-size: 15px; font-weight: 800; line-height: 1.4;"></div>
+            <div class="preview-focus-copy" id="myTreesHubRepMemo" style="font-size: 13px; line-height: 1.55; color: var(--on-surface-variant); padding: 0;"></div>
           </div>
-          <div class="my-trees-hub-no-moments" id="myTreesHubNoMoments" hidden></div>
-          <div class="my-trees-hub-summary" id="myTreesHubSummary"></div>
+          <div class="my-trees-hub-flow preview-flow-section" id="myTreesHubFlow" hidden style="margin-top: 16px;">
+            <div class="my-trees-hub-flow-label" style="font-size: 12px; font-weight: 800; color: var(--on-surface-variant); margin-bottom: 10px; display: flex; align-items: center; gap: 4px;"><span class="material-symbols-outlined" style="font-size: 14px;">route</span><span>이어진 순간 흐름</span></div>
+            <div class="my-trees-hub-flow-list preview-flow-list" id="myTreesHubFlowList"></div>
+            <div class="my-trees-hub-flow-controls preview-flow-controls" id="myTreesHubFlowControls"></div>
+          </div>
+          <div class="my-trees-hub-no-moments preview-focus-flow-card-empty" id="myTreesHubNoMoments" hidden style="display: flex; flex-direction: column; align-items: center; text-align: center; padding: 20px; background: linear-gradient(135deg, var(--surface-container-low), white); border-radius: 1rem; color: var(--on-surface-variant); gap: 8px; margin-top: 16px;"></div>
+          <div class="my-trees-hub-summary preview-focus-copy" id="myTreesHubSummary" style="font-size: 14px; color: var(--on-surface-variant); line-height: 1.6; padding: 0 4px; margin-top: 14px;"></div>
         </div>
       </div>
-      <div class="my-trees-hub-actions" id="myTreesHubActions" hidden><a href="#" class="my-trees-hub-open-btn" id="myTreesHubOpenBtn"><span class="material-symbols-outlined">visibility</span>감상하기</a><a href="#" class="my-trees-hub-edit-btn" id="myTreesHubEditBtn"><span class="material-symbols-outlined">edit</span>편집하기</a></div>
+      <div class="my-trees-hub-actions preview-actions" id="myTreesHubActions" hidden style="margin-top: 18px; display: flex; flex-direction: column; gap: 10px;">
+        <a href="#" class="my-trees-hub-open-btn preview-primary-action" id="myTreesHubOpenBtn" style="display: flex; align-items: center; justify-content: center; width: 100%; text-decoration: none; gap: 8px;"><span class="material-symbols-outlined">visibility</span>감상하기</a>
+        <a href="#" class="my-trees-hub-edit-btn preview-secondary-action" id="myTreesHubEditBtn" style="display: flex; align-items: center; justify-content: center; width: 100%; text-decoration: none; gap: 6px; background: transparent; border: 1.5px solid rgba(144, 73, 81, 0.24); color: var(--primary); border-radius: 999px; font-weight: 800; font-size: 14px; min-height: 48px; box-shadow: none;"><span class="material-symbols-outlined">edit</span>편집하기</a>
+      </div>
     </aside>
   </main>
 

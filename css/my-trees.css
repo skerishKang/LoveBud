@@ -19,3 +19,7 @@
 #myTreesHubPanel.is-loaded.has-media #myTreesHubVideoContainer {
   display: block;
 }
+
+.preview-sidebar.preview-state-thumbnail #myTreesHubVideoContainer {
+  display: block;
+}
