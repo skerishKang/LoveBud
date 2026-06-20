@@ -13,7 +13,7 @@
     justify-content: center;
     width: 100%;
     min-height: 54px;
-    border: 1px solid rgba(144, 73, 81, 0.16);
+    border: none;
     box-shadow: 0 16px 28px rgba(144, 73, 81, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.28);
     padding: 14px 24px;
     background: var(--primary);
@@ -24,12 +24,13 @@
     cursor: pointer;
     text-decoration: none;
     gap: 8px;
-    transition: background 0.2s ease, transform 0.15s ease;
+    transition: background 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
 }
 
 .my-trees-hub-open-btn:hover {
     background: var(--primary-vibrant);
     transform: translateY(-1px);
+    box-shadow: 0 20px 32px rgba(144, 73, 81, 0.24);
 }
 
 .my-trees-hub-open-btn:active {
@@ -45,23 +46,24 @@
     align-items: center;
     justify-content: center;
     width: 100%;
-    min-height: 42px;
-    border: 1px solid rgba(144, 73, 81, 0.16);
+    min-height: 48px;
+    border: 1.5px solid rgba(144, 73, 81, 0.24);
     box-shadow: none;
-    padding: 10px 20px;
+    padding: 12px 24px;
     background: transparent;
     color: var(--primary);
     border-radius: 999px;
     font-weight: 800;
-    font-size: 13px;
+    font-size: 14px;
     cursor: pointer;
     text-decoration: none;
     gap: 6px;
-    transition: background 0.2s ease, transform 0.15s ease, color 0.2s ease;
+    transition: background 0.2s ease, transform 0.15s ease, color 0.2s ease, border-color 0.2s ease;
 }
 
 .my-trees-hub-edit-btn:hover {
-    background: rgba(144, 73, 81, 0.05);
+    background: rgba(144, 73, 81, 0.04);
+    border-color: var(--primary);
     transform: translateY(-1px);
 }
 

@@ -67,18 +67,16 @@
     font-size: 14px;
 }
 
-/* ── Hub representative block ── */
-
 .my-trees-hub-rep {
     display: flex;
     flex-direction: column;
     gap: 8px;
     margin-top: 16px;
-    padding: 16px 18px;
-    border-radius: 1.55rem;
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.66), rgba(255, 248, 245, 0.52));
-    border: 1px solid rgba(144, 73, 81, 0.10);
-    box-shadow: 0 14px 28px rgba(75, 64, 57, 0.07), inset 0 1px 0 rgba(255, 255, 255, 0.78);
+    padding: 0;
+    border-radius: 0;
+    background: transparent;
+    border: none;
+    box-shadow: none;
 }
 
 .my-trees-hub-rep-label {

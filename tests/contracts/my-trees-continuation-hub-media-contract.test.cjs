@@ -73,3 +73,37 @@ test('My Trees hub removes non-functional media overlays', () => {
   assert.match(content, /#myTreesHubMedia\s+\.preview-media-frame-thumbnail\s+\[data-preview-overlay\]\s*\{\s*display:\s*none\s*!important;?\s*\}/s, 'My Trees hub thumbnail overlay must be display: none !important');
   assert.match(content, /#myTreesHubMedia\s+\.preview-media-frame-iframe\s*>\s*div\s*\{\s*display:\s*none\s*!important;?\s*\}/s, 'My Trees hub iframe overlay div must be display: none !important');
 });
+
+test('My Trees hub uses localized 내 트리 미리보기 and Selected tree tags', () => {
+  const i18n = read('js/i18n/i18n-my-trees.js');
+  const refresh = read('js/my-trees/my-trees-i18n-refresh.js');
+  const html = read('pages/my-trees.html');
+  const hub = read('js/my-trees/my-trees-preview-hub.js');
+
+  assert.match(i18n, /'myTrees\.hub_title':\s*\{\s*ko:\s*'내 트리 미리보기',\s*en:\s*'My Tree Preview'\s*\}/, 'hub_title must be in i18n-my-trees.js');
+  assert.match(i18n, /'myTrees\.hub_badge':\s*\{\s*ko:\s*'선택한 내 트리',\s*en:\s*'Selected tree'\s*\}/, 'hub_badge must be in i18n-my-trees.js');
+  assert.match(refresh, /setText\('myTreesHubTitle',\s*'myTrees\.hub_title',\s*'내 트리 미리보기'\);/, 'refresh script must update myTreesHubTitle');
+  assert.match(refresh, /setText\('myTreesHubBadge',\s*'myTrees\.hub_badge',\s*'선택한 내 트리'\);/, 'refresh script must update myTreesHubBadge');
+  assert.match(html, /id="myTreesHubTitle"\s+data-i18n="myTrees\.hub_title"/, 'HTML must have data-i18n attribute for hub title');
+  assert.match(html, /id="myTreesHubBadge"\s+data-i18n="myTrees\.hub_badge"/, 'HTML must have data-i18n attribute for hub badge');
+
+  assert.match(hub, /showPlaceholder\(\)[\s\S]*?i18nHub\('myTrees\.hub_badge'/, 'showPlaceholder must update badge using myTrees.hub_badge key');
+  assert.match(hub, /showContent\([\s\S]*?i18nHub\('myTrees\.hub_badge'/, 'showContent must update badge using myTrees.hub_badge key');
+
+  // Verify no empty string keys are used for the hub badge in runtime rendering
+  const lines = hub.split('\n');
+  for (const line of lines) {
+    if (line.includes('els.badge.textContent') && line.includes('i18nHub')) {
+      assert.ok(line.includes("'myTrees.hub_badge'"), `Badge update line "${line.trim()}" must use 'myTrees.hub_badge' key`);
+    }
+  }
+});
+
+test('My Trees hub visually simplifies representative blocks and differentiates actions', () => {
+  const content = read('css/my-trees/my-trees-preview-hub/content.css');
+  const actions = read('css/my-trees/my-trees-preview-hub/actions.css');
+
+  assert.match(content, /\.my-trees-hub-rep\s*\{\s*display:\s*flex;\s*flex-direction:\s*column;\s*gap:\s*8px;\s*margin-top:\s*16px;\s*padding:\s*0;\s*border-radius:\s*0;\s*background:\s*transparent;\s*border:\s*none;\s*box-shadow:\s*none;\s*\}/s, 'representative block card decorations must be removed');
+  assert.match(actions, /\.my-trees-hub-open-btn\s*\{[^}]*background:\s*var\(--primary\);[^}]*color:\s*white;[^}]*\}/s, '감상하기 (openBtn) must be primary colored');
+  assert.match(actions, /\.my-trees-hub-edit-btn\s*\{[^}]*background:\s*transparent;[^}]*color:\s*var\(--primary\);/s, '편집하기 (editBtn) must be styled as secondary outline');
+});

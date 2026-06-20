@@ -48,6 +48,12 @@
     }
 
     function i18nHub(key, fallbackKo, fallbackEn) {
+        if (key && typeof window.t === 'function') {
+            var val = window.t(key);
+            if (typeof val === 'string' && val.trim() && val !== key) {
+                return val;
+            }
+        }
         return getLocale() === 'en' ? fallbackEn : fallbackKo;
     }
 
@@ -197,7 +203,7 @@
         els.panel.classList.remove('is-loaded');
         if (els.placeholder) els.placeholder.hidden = false;
         if (els.content) els.content.hidden = true;
-        if (els.badge) els.badge.textContent = i18nHub('', '선택한 내 트리', 'Selected Tree');
+        if (els.badge) els.badge.textContent = i18nHub('myTrees.hub_badge', '선택한 내 트리', 'Selected tree');
         _selectedTree = null;
         _expandedFlowKey = null;
     }
@@ -218,9 +224,8 @@
         els.panel.classList.add('is-loaded');
         if (els.placeholder) els.placeholder.hidden = true;
         if (els.content) els.content.hidden = false;
-
         if (els.badge) {
-            els.badge.textContent = i18nHub('', '선택한 내 트리', 'Selected Tree');
+            els.badge.textContent = i18nHub('myTrees.hub_badge', '선택한 내 트리', 'Selected tree');
         }
 
         /* ── Update action buttons href ── */
