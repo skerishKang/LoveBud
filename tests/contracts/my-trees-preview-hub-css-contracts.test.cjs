@@ -53,5 +53,6 @@ test('my-trees-preview-hub css — split files exist and contain core selectors'
 
 test('my-trees-preview-hub css — parent manifest reference is preserved', () => {
     const parentContent = fs.readFileSync(PARENT_MANIFEST_PATH, 'utf8');
-    assert.match(parentContent, /@import url\(['"]\.\/my-trees\/my-trees-preview-hub\.css['"]\);/, 'Parent manifest must still import the hub manifest');
+    // Cache-bust query string on the hub manifest import is allowed.
+    assert.match(parentContent, /@import url\(['"]\.\/my-trees\/my-trees-preview-hub\.css(?:\?[^'"]*)?['"]\);/, 'Parent manifest must still import the hub manifest (cache-bust query string allowed)');
 });
