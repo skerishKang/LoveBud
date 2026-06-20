@@ -75,20 +75,26 @@ white-space: nowrap;
 .btn-header-create:disabled { opacity: 0.6; cursor: not-allowed; transform: none; box-shadow: none; }
 
 /* ── My Trees Results Head (controls row below search) ── */
+/*
+.my-trees-results-head {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin: 0 0 16px;
+}
+*/
+
 .my-trees-results-head {
     margin: 0 0 16px;
     padding-top: 18px;
     border-top: 1px solid rgba(144, 73, 81, 0.09);
     min-width: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
 }
 
 .my-trees-results-title-row {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: flex-start;
     gap: 12px;
 }
 
@@ -104,7 +110,8 @@ white-space: nowrap;
     align-items: center;
     gap: 8px;
     flex-shrink: 0;
-    flex-wrap: wrap;
+    margin-left: auto;
+    flex-wrap: nowrap;
 }
 
 @media (max-width: 768px) {
