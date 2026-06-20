@@ -100,6 +100,7 @@
 | [QA_CREDENTIALS.txt](QA_CREDENTIALS.txt) | QA credentials 한국어 요약 및 현재 상태 |
 | [qa-credential-bundle/README.md](qa-credential-bundle/README.md) | Persistent encrypted bundle commit status and path |
 | [../migration/VERCEL_MODAL_MIGRATION_RUNBOOK.md](../migration/VERCEL_MODAL_MIGRATION_RUNBOOK.md) | Cloudflare Pages / Modal 전환 문서 |
+| [DEPLOYMENT_TARGET_PAGE_OWNERSHIP_AUDIT.md](DEPLOYMENT_TARGET_PAGE_OWNERSHIP_AUDIT.md) | Issue #2715 deployment target and page ownership audit: Cloudflare Pages/Modal active boundary, Vercel/Netlify legacy/transitional posture, detail.html vs view.html ownership, no-removal guardrails |
 
 ## 정책 / 아키텍처 (Architecture)
 
