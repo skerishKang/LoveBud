@@ -72,18 +72,36 @@
     </section>
 
     <aside class="my-trees-hub-panel preview-sidebar lovetree-calm-right-rail reveal-fade is-empty preview-state-empty" id="myTreesHubPanel">
-      <div class="my-trees-hub-header preview-panel-header"><div class="my-trees-hub-title-group preview-panel-title-group"><h3 id="myTreesHubTitle" data-i18n="myTrees.hub_title">내 트리 미리보기</h3><span class="my-trees-hub-badge preview-badge" id="myTreesHubBadge" data-i18n="myTrees.hub_badge">선택한 내 트리</span></div></div>
+      <div class="my-trees-hub-header preview-panel-header">
+        <div class="my-trees-hub-title-group preview-panel-title-group">
+          <h3 id="myTreesHubTitle" data-i18n="myTrees.hub_title">내 트리 미리보기</h3>
+          <span class="my-trees-hub-badge preview-badge" id="myTreesHubBadge" data-i18n="myTrees.hub_badge">선택한 내 트리</span>
+        </div>
+        <button type="button" class="preview-mobile-close" id="myTreesHubClose" aria-label="닫기">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
       <div id="myTreesHubVideoContainer" class="video-container">
         <div class="my-trees-hub-placeholder preview-empty-state" id="myTreesHubPlaceholder"><p>왼쪽에서 내 러브트리를 고르면 이어진 순간과 관리 흐름이 여기에 열려요.</p></div>
         <div class="my-trees-hub-media" id="myTreesHubMedia" hidden></div>
       </div>
       <div class="my-trees-hub-content" id="myTreesHubContent" hidden>
-        <div class="my-trees-hub-tree-title" id="myTreesHubTreeTitle"></div>
-        <div class="my-trees-hub-meta-badge" id="myTreesHubMetaBadge"></div>
-        <div class="my-trees-hub-rep" id="myTreesHubRep" hidden><div class="my-trees-hub-rep-label"><span class="material-symbols-outlined">favorite</span><span>첫 순간 기록</span></div><div class="my-trees-hub-rep-title" id="myTreesHubRepTitle"></div><div class="my-trees-hub-rep-memo" id="myTreesHubRepMemo"></div></div>
-        <div class="my-trees-hub-flow" id="myTreesHubFlow" hidden><div class="my-trees-hub-flow-label"><span class="material-symbols-outlined">route</span><span>이어진 순간 흐름</span></div><div class="my-trees-hub-flow-list" id="myTreesHubFlowList"></div><div class="my-trees-hub-flow-controls" id="myTreesHubFlowControls"></div></div>
-        <div class="my-trees-hub-no-moments" id="myTreesHubNoMoments" hidden></div>
-        <div class="my-trees-hub-summary" id="myTreesHubSummary"></div>
+        <div id="myTreesHubDetails">
+          <div class="my-trees-hub-tree-title" id="myTreesHubTreeTitle"></div>
+          <div class="my-trees-hub-meta-badge" id="myTreesHubMetaBadge"></div>
+          <div class="my-trees-hub-rep" id="myTreesHubRep" hidden>
+            <div class="my-trees-hub-rep-label"><span class="material-symbols-outlined">favorite</span><span>첫 순간 기록</span></div>
+            <div class="my-trees-hub-rep-title" id="myTreesHubRepTitle"></div>
+            <div class="my-trees-hub-rep-memo" id="myTreesHubRepMemo"></div>
+          </div>
+          <div class="my-trees-hub-flow" id="myTreesHubFlow" hidden>
+            <div class="my-trees-hub-flow-label"><span class="material-symbols-outlined">route</span><span>이어진 순간 흐름</span></div>
+            <div class="my-trees-hub-flow-list" id="myTreesHubFlowList"></div>
+            <div class="my-trees-hub-flow-controls" id="myTreesHubFlowControls"></div>
+          </div>
+          <div class="my-trees-hub-no-moments" id="myTreesHubNoMoments" hidden></div>
+          <div class="my-trees-hub-summary" id="myTreesHubSummary"></div>
+        </div>
       </div>
       <div class="my-trees-hub-actions" id="myTreesHubActions" hidden><a href="#" class="my-trees-hub-open-btn" id="myTreesHubOpenBtn"><span class="material-symbols-outlined">visibility</span>감상하기</a><a href="#" class="my-trees-hub-edit-btn" id="myTreesHubEditBtn"><span class="material-symbols-outlined">edit</span>편집하기</a></div>
     </aside>

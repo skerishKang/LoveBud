@@ -72,3 +72,46 @@ test('My Trees hub keeps its non-media focus surface and shared visual rhythm', 
     assert.ok(!read(file).includes('aspect-ratio'), `${file} must not introduce an artificial media frame`);
   }
 });
+
+test('My Trees hub keeps its multi-line hero original styling and hierarchy', () => {
+  const html = read('pages/my-trees.html');
+  const header = read('css/my-trees/my-trees-header.css');
+
+  // Verify multi-line structure is intact
+  assert.match(html, /<h1 class="headline shared-mobile-hero-title" id="myTreesPageTitle">/);
+  // Verify original classes styling in css/my-trees/my-trees-header.css is restored (original color, font-weight, margin)
+  assert.match(header, /\.my-trees-header h1\s*\{\s*font-size:\s*clamp\(3\.45rem,\s*5\.8vw,\s*5\.15rem\);/);
+  assert.match(header, /\.my-trees-title-line\s*\{\s*display:\s*block;\s*\}/);
+  assert.match(header, /\.my-trees-title-line:nth-child\(1\)\s*\{\s*color:\s*var\(--on-surface-variant\);\s*font-weight:\s*700;\s*opacity:\s*0\.9;\s*\}/);
+  assert.match(header, /\.my-trees-title-accent\s*\{\s*color:\s*var\(--hero-warm-color,\s*var\(--primary\)\);\s*font-weight:\s*780;\s*letter-spacing:\s*-0\.03em;\s*\}/);
+  assert.match(header, /\.my-trees-title-line:nth-child\(3\)\s*\{\s*color:\s*#b85c66;\s*font-weight:\s*900;\s*\}/);
+});
+
+test('My Trees hub HTML structure hierarchy follows Browse parity', () => {
+  const html = read('pages/my-trees.html');
+
+  // Order assertion: header -> videoContainer -> content (inside has details/title/badge/rep/flow/no-moments/summary) -> actions
+  const idxHeader = html.indexOf('class="my-trees-hub-header');
+  const idxVideo = html.indexOf('id="myTreesHubVideoContainer"');
+  const idxContent = html.indexOf('id="myTreesHubContent"');
+  const idxDetails = html.indexOf('id="myTreesHubDetails"');
+  const idxTitle = html.indexOf('id="myTreesHubTreeTitle"');
+  const idxMetaBadge = html.indexOf('id="myTreesHubMetaBadge"');
+  const idxRep = html.indexOf('id="myTreesHubRep"');
+  const idxFlow = html.indexOf('id="myTreesHubFlow"');
+  const idxNoMoments = html.indexOf('id="myTreesHubNoMoments"');
+  const idxSummary = html.indexOf('id="myTreesHubSummary"');
+  const idxActions = html.indexOf('id="myTreesHubActions"');
+
+  assert.ok(idxHeader !== -1, 'hub header must exist');
+  assert.ok(idxVideo > idxHeader, 'video container must be after header');
+  assert.ok(idxContent > idxVideo, 'content container must be after video container');
+  assert.ok(idxDetails > idxContent, 'details wrapper must be inside content container');
+  assert.ok(idxTitle > idxDetails, 'tree title must be inside details');
+  assert.ok(idxMetaBadge > idxTitle, 'meta badge must be after tree title');
+  assert.ok(idxRep > idxMetaBadge, 'focus surface/rep moment must be after meta badge');
+  assert.ok(idxFlow > idxRep, 'flow must be after focus surface/rep moment');
+  assert.ok(idxNoMoments > idxFlow, 'no-moments block must be after flow');
+  assert.ok(idxSummary > idxNoMoments, 'summary must be after no-moments');
+  assert.ok(idxActions > idxContent, 'actions block must be after content');
+});
