@@ -78,6 +78,7 @@ test('My Trees hub uses localized 내 트리 미리보기 and Selected tree tags
   const i18n = read('js/i18n/i18n-my-trees.js');
   const refresh = read('js/my-trees/my-trees-i18n-refresh.js');
   const html = read('pages/my-trees.html');
+  const hub = read('js/my-trees/my-trees-preview-hub.js');
 
   assert.match(i18n, /'myTrees\.hub_title':\s*\{\s*ko:\s*'내 트리 미리보기',\s*en:\s*'My Tree Preview'\s*\}/, 'hub_title must be in i18n-my-trees.js');
   assert.match(i18n, /'myTrees\.hub_badge':\s*\{\s*ko:\s*'선택한 내 트리',\s*en:\s*'Selected tree'\s*\}/, 'hub_badge must be in i18n-my-trees.js');
@@ -85,6 +86,17 @@ test('My Trees hub uses localized 내 트리 미리보기 and Selected tree tags
   assert.match(refresh, /setText\('myTreesHubBadge',\s*'myTrees\.hub_badge',\s*'선택한 내 트리'\);/, 'refresh script must update myTreesHubBadge');
   assert.match(html, /id="myTreesHubTitle"\s+data-i18n="myTrees\.hub_title"/, 'HTML must have data-i18n attribute for hub title');
   assert.match(html, /id="myTreesHubBadge"\s+data-i18n="myTrees\.hub_badge"/, 'HTML must have data-i18n attribute for hub badge');
+
+  assert.match(hub, /showPlaceholder\(\)[\s\S]*?i18nHub\('myTrees\.hub_badge'/, 'showPlaceholder must update badge using myTrees.hub_badge key');
+  assert.match(hub, /showContent\([\s\S]*?i18nHub\('myTrees\.hub_badge'/, 'showContent must update badge using myTrees.hub_badge key');
+
+  // Verify no empty string keys are used for the hub badge in runtime rendering
+  const lines = hub.split('\n');
+  for (const line of lines) {
+    if (line.includes('els.badge.textContent') && line.includes('i18nHub')) {
+      assert.ok(line.includes("'myTrees.hub_badge'"), `Badge update line "${line.trim()}" must use 'myTrees.hub_badge' key`);
+    }
+  }
 });
 
 test('My Trees hub visually simplifies representative blocks and differentiates actions', () => {
