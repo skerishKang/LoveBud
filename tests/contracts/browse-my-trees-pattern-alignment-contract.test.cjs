@@ -263,12 +263,12 @@ test('14. Runtime cache-busts updated for changed JS/CSS', () => {
   const myTreesHtml = read('pages/my-trees.html');
   const myTreesCss = read('css/my-trees.css');
   assert.match(searchHtml, /search-preview-state\.js\?v=20260616-2532-1/);
-  assert.match(myTreesHtml, /my-trees-ui\.js\?v=20260620-2750-1/);
-  assert.match(myTreesHtml, /my-trees-preview-hub\.js\?v=20260620-2750-1/);
+  assert.match(myTreesHtml, /my-trees-ui\.js\?v=20260620-2751-1/);
+  assert.match(myTreesHtml, /my-trees-preview-hub\.js\?v=20260620-2751-1/);
   assert.match(myTreesHtml, /my-trees-preview-state\.js\?v=20260616-2532-1/);
   assert.match(myTreesHtml, /my-trees-i18n-refresh\.js\?v=20260618-2664-1/);
   assert.match(myTreesHtml, /i18n-my-trees\.js\?v=20260619-2710-1/);
-  assert.match(myTreesHtml, /my-trees\.css\?v=20260620-2722-2/);
+  assert.match(myTreesHtml, /my-trees\.css\?v=20260620-2751-1/);
   assert.match(myTreesCss, /my-trees-header\.css\?v=20260618-2676-1/);
   assert.match(myTreesCss, /search\/search-controls\.css/);
   assert.match(myTreesCss, /search\/search-preview-sidebar\.css/);
