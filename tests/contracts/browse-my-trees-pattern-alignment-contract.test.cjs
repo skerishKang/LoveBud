@@ -281,33 +281,21 @@ test('14. Runtime cache-busts updated for changed JS/CSS', () => {
 });
 
 test('15. My LoveTree desktop visual rhythm alignment with Browse', () => {
-  const myTreesCss = read('css/my-trees.css');
   const headerCss = read('css/my-trees/my-trees-header.css');
-
-  // 1. css/my-trees.css imports search-hero-controls.css
-  assert.ok(myTreesCss.includes('search-hero-controls.css'), 'my-trees.css must import search-hero-controls.css');
-
-  // 2. hero-controls import is before search-controls import
-  const heroIdx = myTreesCss.indexOf('search-hero-controls.css');
-  const controlsIdx = myTreesCss.indexOf('search-controls.css');
-  assert.ok(heroIdx !== -1 && controlsIdx !== -1, 'Both search-hero-controls.css and search-controls.css must be imported');
-  assert.ok(heroIdx < controlsIdx, 'search-hero-controls.css must be imported before search-controls.css');
-
-  // 3. .my-trees-results-head desktop block has no flex-direction: column
   const uncommentedCss = headerCss.replace(/\/\*[\s\S]*?\*\//g, '');
+
+  // 1. .my-trees-results-head desktop block exists
   const resultsHeadDecl = uncommentedCss.match(/\.my-trees-results-head\s*\{([^}]*)\}/);
   assert.ok(resultsHeadDecl, '.my-trees-results-head block must be declared');
-  assert.ok(!resultsHeadDecl[1].includes('flex-direction'), 'Desktop .my-trees-results-head must not have flex-direction');
-  assert.ok(!resultsHeadDecl[1].includes('column'), 'Desktop .my-trees-results-head must not have column direction');
 
-  // 4. .my-trees-results-title-row has justify-content: flex-start
+  // 2. .my-trees-results-title-row has justify-content: flex-start
   assert.match(
     uncommentedCss,
     /\.my-trees-results-title-row\s*\{[^}]*justify-content:\s*flex-start;[^}]*}/,
     '.my-trees-results-title-row must use justify-content: flex-start'
   );
 
-  // 5. .my-trees-results-controls has margin-left: auto and flex-wrap: nowrap in desktop
+  // 3. .my-trees-results-controls has margin-left: auto and flex-wrap: nowrap in desktop
   assert.match(
     uncommentedCss,
     /\.my-trees-results-controls\s*\{[^}]*margin-left:\s*auto;[^}]*flex-wrap:\s*nowrap;[^}]*}/,

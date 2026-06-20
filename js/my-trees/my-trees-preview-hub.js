@@ -492,6 +492,13 @@
 
         bindFlowToggle();
 
+        var closeBtn = document.getElementById('myTreesHubClose');
+        if (closeBtn) {
+            closeBtn.addEventListener('click', function () {
+                showPlaceholder();
+            });
+        }
+
         // Show placeholder initially
         showPlaceholder();
     }
