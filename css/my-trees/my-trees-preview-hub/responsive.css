@@ -39,6 +39,10 @@
         font-size: 12px !important;
     }
 
+    .my-trees-hub-flow {
+        padding: 16px !important;
+    }
+
     .my-trees-hub-goto-btn {
         min-height: 48px;
         font-size: 15px;
@@ -72,6 +76,10 @@
 
     .my-trees-hub-flow-list {
         gap: 5px;
+    }
+
+    .my-trees-hub-flow {
+        padding: 12px !important;
     }
 
     .my-trees-hub-flow-controls {
