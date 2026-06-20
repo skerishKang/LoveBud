@@ -30,17 +30,6 @@
     return getLocale() === 'en' ? en : ko;
   }
 
-  function escapeHtml(value) {
-    var sec = window.LoveBudSecurity;
-    if (sec && typeof sec.escapeHtml === 'function') return sec.escapeHtml(value);
-    return String(value == null ? '' : value)
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#39;');
-  }
-
   function getMemories(tree) {
     if (Array.isArray(tree && tree.memories)) return tree.memories;
     if (Array.isArray(tree && tree.nodes)) return tree.nodes;
@@ -66,6 +55,15 @@
     return title ? title.replace(/\s*-\s*.*/, '').trim() || title : copy('대표 순간', 'Featured moment');
   }
 
+  function replaceMediaMarkup(media, markup) {
+    if (!media) return;
+    media.replaceChildren();
+    if (!markup) return;
+    var range = document.createRange();
+    range.selectNodeContents(media);
+    media.appendChild(range.createContextualFragment(markup));
+  }
+
   function clearMedia() {
     var els = getEls();
     if (!els.container) return;
@@ -73,7 +71,7 @@
       els.panel.classList.remove('has-media', 'preview-state-media', 'preview-state-thumbnail');
     }
     if (els.media) {
-      els.media.innerHTML = '';
+      replaceMediaMarkup(els.media, '');
       els.media.hidden = true;
     }
     els.container.hidden = true;
@@ -87,7 +85,7 @@
       els.panel.classList.add('preview-state-empty');
     }
     if (els.media) {
-      els.media.innerHTML = '';
+      replaceMediaMarkup(els.media, '');
       els.media.hidden = true;
     }
     if (els.placeholder) els.placeholder.hidden = false;
@@ -120,7 +118,7 @@
       state = markup ? 'media' : '';
     }
     if (!markup && thumbnail && typeof helper.renderPreviewThumbnailMedia === 'function') {
-      markup = helper.renderPreviewThumbnailMedia(thumbnail, escapeHtml(mediaTitle), escapeHtml(displayTitle));
+      markup = helper.renderPreviewThumbnailMedia(thumbnail, mediaTitle, displayTitle);
       state = markup ? 'thumbnail' : '';
     }
     if (!markup) {
@@ -128,7 +126,7 @@
       return;
     }
 
-    els.media.innerHTML = markup;
+    replaceMediaMarkup(els.media, markup);
     els.media.hidden = false;
     if (els.placeholder) els.placeholder.hidden = true;
     els.container.hidden = false;
