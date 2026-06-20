@@ -16,7 +16,6 @@ test('My Trees hub preserves its runtime ids and owner actions', () => {
   const requiredIds = [
     'myTreesHubPanel',
     'myTreesHubContent',
-    'myTreesHubRep',
     'myTreesHubFlow',
     'myTreesHubSummary',
     'myTreesHubOpenBtn',
@@ -29,6 +28,16 @@ test('My Trees hub preserves its runtime ids and owner actions', () => {
 
   assert.match(html, /id=["']myTreesHubOpenBtn["'][^>]*>\s*[\s\S]*?감상하기/, 'primary owner action must remain 감상하기');
   assert.match(html, /id=["']myTreesHubEditBtn["'][^>]*>\s*[\s\S]*?편집하기/, 'secondary owner action must remain 편집하기');
+
+  // Verify rep block removal
+  assert.ok(!html.includes('id="myTreesHubRep"'), 'myTreesHubRep must be removed from the HTML');
+  assert.ok(!html.includes('myTreesHubRepTitle'), 'myTreesHubRepTitle must be removed from the HTML');
+  assert.ok(!html.includes('myTreesHubRepMemo'), 'myTreesHubRepMemo must be removed from the HTML');
+  assert.ok(!html.includes('첫 순간 기록'), '“첫 순간 기록” label must be removed from the HTML');
+
+  // Verify getRepTextMeta is not in the js codebase
+  const js = read('js/my-trees/my-trees-preview-hub.js');
+  assert.ok(!js.includes('getRepTextMeta'), 'getRepTextMeta must not be used or defined');
 });
 
 test('My Trees continuation flow uses Browse-like two-column desktop rhythm', () => {
@@ -90,14 +99,13 @@ test('My Trees hub keeps its multi-line hero original styling and hierarchy', ()
 test('My Trees hub HTML structure hierarchy follows Browse parity', () => {
   const html = read('pages/my-trees.html');
 
-  // Order assertion: header -> videoContainer -> content (inside has details/title/badge/rep/flow/no-moments/summary) -> actions
+  // Order assertion: header -> videoContainer -> content (inside has details/title/badge/flow/no-moments/summary) -> actions
   const idxHeader = html.indexOf('class="my-trees-hub-header');
   const idxVideo = html.indexOf('id="myTreesHubVideoContainer"');
   const idxContent = html.indexOf('id="myTreesHubContent"');
   const idxDetails = html.indexOf('id="myTreesHubDetails"');
   const idxTitle = html.indexOf('id="myTreesHubTreeTitle"');
   const idxMetaBadge = html.indexOf('id="myTreesHubMetaBadge"');
-  const idxRep = html.indexOf('id="myTreesHubRep"');
   const idxFlow = html.indexOf('id="myTreesHubFlow"');
   const idxNoMoments = html.indexOf('id="myTreesHubNoMoments"');
   const idxSummary = html.indexOf('id="myTreesHubSummary"');
@@ -109,8 +117,7 @@ test('My Trees hub HTML structure hierarchy follows Browse parity', () => {
   assert.ok(idxDetails > idxContent, 'details wrapper must be inside content container');
   assert.ok(idxTitle > idxDetails, 'tree title must be inside details');
   assert.ok(idxMetaBadge > idxTitle, 'meta badge must be after tree title');
-  assert.ok(idxRep > idxMetaBadge, 'focus surface/rep moment must be after meta badge');
-  assert.ok(idxFlow > idxRep, 'flow must be after focus surface/rep moment');
+  assert.ok(idxFlow > idxMetaBadge, 'flow must be after meta badge');
   assert.ok(idxNoMoments > idxFlow, 'no-moments block must be after flow');
   assert.ok(idxSummary > idxNoMoments, 'summary must be after no-moments');
   assert.ok(idxActions > idxContent, 'actions block must be after content');

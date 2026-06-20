@@ -79,38 +79,6 @@
     box-shadow: none;
 }
 
-.my-trees-hub-rep-label {
-    font-size: 12px;
-    font-weight: 800;
-    color: var(--on-surface-variant);
-    display: flex;
-    align-items: center;
-    gap: 4px;
-}
-
-.my-trees-hub-rep-label .material-symbols-outlined {
-    font-size: 14px;
-}
-
-.my-trees-hub-rep-title {
-    font-size: 15px;
-    font-weight: 800;
-    color: var(--on-surface);
-    line-height: 1.4;
-    overflow-wrap: anywhere;
-}
-
-.my-trees-hub-rep-memo {
-    font-size: 13px;
-    line-height: 1.55;
-    color: var(--on-surface-variant);
-    display: -webkit-box;
-    -webkit-line-clamp: 3;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-    word-break: keep-all;
-}
-
 /* ── Hub summary line ── */
 
 .my-trees-hub-summary {

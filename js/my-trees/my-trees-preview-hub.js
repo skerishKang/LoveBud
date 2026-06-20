@@ -89,10 +89,6 @@
             content: document.getElementById('myTreesHubContent'),
             treeTitle: document.getElementById('myTreesHubTreeTitle'),
             metaBadge: document.getElementById('myTreesHubMetaBadge'),
-            repBlock: document.getElementById('myTreesHubRep'),
-            repLabel: document.getElementById('myTreesHubRepLabel'),
-            repTitle: document.getElementById('myTreesHubRepTitle'),
-            repMemo: document.getElementById('myTreesHubRepMemo'),
             flowSection: document.getElementById('myTreesHubFlow'),
             flowLabel: document.getElementById('myTreesHubFlowLabel'),
             flowList: document.getElementById('myTreesHubFlowList'),
@@ -132,18 +128,7 @@
         return Number.isFinite(count) ? count : 0;
     }
 
-    /* ── Get representative text meta ── */
 
-    function getRepTextMeta(tree) {
-        if (!tree) return null;
-        var repTitle = String(tree.representativeTitle || tree.representative_title || '').trim();
-        var repMemo = String(tree.representativeMemo || tree.representative_memo || '').trim();
-        if (!repTitle && !repMemo) return null;
-        return {
-            title: repTitle || t('editor_default_first_title', '첫 순간'),
-            memo: repMemo || t('myTrees.card_text_fallback', '처음 남긴 마음이 이 트리의 시작이 되었어요.')
-        };
-    }
 
     /* ── Get moment label ── */
 
@@ -194,8 +179,6 @@
             '</button>';
     }
 
-    /* ── Show hub (placeholder/content) ── */
-
     function showPlaceholder() {
         var els = getEls();
         if (!els) return;
@@ -220,7 +203,6 @@
         var memories = Array.isArray(tree && tree.memories) ? tree.memories : [];
         var memoryCount = Math.max(getTreeMomentCount(tree), memories.length);
         var hasMemories = memories.length > 0 || memoryCount > 0;
-        var repMeta = getRepTextMeta(tree);
 
         els.panel.classList.remove('is-empty');
         els.panel.classList.add('is-loaded');
@@ -272,17 +254,6 @@
             els.metaBadge.innerHTML = '<span class="material-symbols-outlined">auto_stories</span> ' + escapeHtml(countStr);
         }
 
-        /* ── Representative block ── */
-        if (els.repBlock) {
-            if (repMeta) {
-                els.repBlock.hidden = false;
-                if (els.repTitle) els.repTitle.textContent = repMeta.title;
-                if (els.repMemo) els.repMemo.textContent = repMeta.memo;
-            } else {
-                els.repBlock.hidden = true;
-            }
-        }
-
         /* ── Flow section ── */
         if (hasMemories && memories.length > 0) {
             if (els.noMoments) els.noMoments.hidden = true;
@@ -328,16 +299,14 @@
         /* ── Summary ── */
         if (els.summary) {
             if (hasMemories) {
+                els.summary.hidden = false;
                 var displayTitle = String(tree && tree.title || '').trim() || t('default_tree_title', '나의 러브트리');
                 els.summary.innerHTML = i18nHub('',
                     '<strong style="color:var(--on-surface);">' + escapeHtml(displayTitle) + '</strong>에 담긴 <span style="color:var(--primary);font-weight:700;">' + memoryCount + '개의 순간</span>이 이어졌어요.',
                     '<strong style="color:var(--on-surface);">' + memoryCount + ' moments</strong> in <strong style="color:var(--on-surface);">' + escapeHtml(displayTitle) + '</strong> are connected.'
                 );
             } else {
-                els.summary.textContent = i18nHub('',
-                    '트리를 열어 첫 순간을 남기면 이곳에서 흐름을 확인할 수 있어요.',
-                    'Open the tree to add the first moment and preview the flow here.'
-                );
+                els.summary.hidden = true;
             }
         }
 
@@ -392,11 +361,11 @@
                 escapeHtml(i18nHub('', '불러오는 중…', 'Loading…'));
         }
 
-        if (els.repBlock) els.repBlock.hidden = true;
         if (els.flowSection) els.flowSection.hidden = true;
         if (els.noMoments) els.noMoments.hidden = true;
 
         if (els.summary) {
+            els.summary.hidden = false;
             els.summary.textContent = i18nHub('',
                 '이 트리의 대표 순간과 이어진 감정을 불러오는 중이에요.',
                 'Loading the featured moment and connected feelings of this tree.'
