@@ -1,3 +1,35 @@
+/* ── Hub selected media ── */
+
+.my-trees-hub-panel.is-loaded:not(.has-media) #myTreesHubVideoContainer {
+    display: none;
+}
+
+.my-trees-hub-panel.has-media #myTreesHubVideoContainer {
+    display: block;
+    margin-top: 16px;
+    margin-bottom: 20px;
+}
+
+#myTreesHubVideoContainer[hidden],
+#myTreesHubMedia[hidden] {
+    display: none !important;
+}
+
+.my-trees-hub-media {
+    width: 100%;
+    height: 100%;
+}
+
+.my-trees-hub-media .preview-media-frame {
+    width: 100%;
+    height: 100%;
+}
+
+.my-trees-hub-media .preview-media-frame-iframe iframe {
+    width: 100%;
+    height: 100%;
+}
+
 /* ── Hub tree title ── */
 
 .my-trees-hub-tree-title {
