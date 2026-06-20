@@ -122,3 +122,16 @@
     padding: 0 4px;
     margin-top: 14px;
 }
+
+/* Refs #2733: remove non-functional My Trees media overlays */
+#myTreesHubVideoContainer::before {
+    content: none;
+}
+
+#myTreesHubMedia .preview-media-frame-thumbnail [data-preview-overlay] {
+    display: none !important;
+}
+
+#myTreesHubMedia .preview-media-frame-iframe > div {
+    display: none !important;
+}
