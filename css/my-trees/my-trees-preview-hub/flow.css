@@ -18,9 +18,11 @@
     font-size: 14px;
 }
 
+/* Desktop mirrors Browse's compact, scannable moment rhythm.
+   Narrow layouts return to a single column in responsive.css. */
 .my-trees-hub-flow-list {
     display: grid;
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 7px;
     min-width: 0;
     max-width: 100%;
