@@ -40,13 +40,14 @@ test('My Trees hub preserves its runtime ids and owner actions', () => {
   assert.ok(!js.includes('getRepTextMeta'), 'getRepTextMeta must not be used or defined');
 });
 
-test('My Trees continuation flow uses Browse-like two-column desktop rhythm', () => {
+test('My Trees continuation flow uses Browse-like single-column desktop rhythm', () => {
   const flow = read('css/my-trees/my-trees-preview-hub/flow.css');
 
+  // PR #2750: realign desktop flow to match Browse's .preview-flow-list (single column).
   assert.match(
     flow,
-    /\.my-trees-hub-flow-list\s*\{[^}]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\);[^}]*\}/,
-    'desktop continuation flow must use a compact two-column grid'
+    /\.my-trees-hub-flow-list\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\);[^}]*\}/,
+    'desktop continuation flow must use a single-column grid matching Browse'
   );
   assert.match(flow, /\.my-trees-hub-flow-stage\s*\{[^}]*min-height:\s*42px\s*!important;[^}]*border-radius:\s*12px\s*!important;/, 'flow stages must retain Browse-like compact card density');
 });
@@ -74,8 +75,8 @@ test('My Trees hub keeps its non-media focus surface and shared visual rhythm', 
   ];
 
   assert.match(content, /\.my-trees-hub-rep\s*\{\s*display:\s*flex;\s*flex-direction:\s*column;\s*gap:\s*8px;\s*margin-top:\s*16px;\s*padding:\s*0;\s*border-radius:\s*0;\s*background:\s*transparent;\s*border:\s*none;\s*box-shadow:\s*none;\s*\}/s, 'first-moment block card decorations must be removed for a unified focus surface');
-  assert.match(actions, /\.my-trees-hub-open-btn\s*\{[^}]*min-height:\s*54px;[^}]*border-radius:\s*999px;/s, '감상하기 must retain the primary Browse action rhythm');
-  assert.match(actions, /\.my-trees-hub-edit-btn\s*\{[^}]*min-height:\s*48px;[^}]*border-radius:\s*999px;/s, '편집하기 must retain the secondary Browse action rhythm');
+  assert.match(actions, /\.my-trees-hub-open-btn\s*\{[^}]*min-height:\s*48px;[^}]*border-radius:\s*999px;/s, '감상하기 primary action rhythm');
+  assert.match(actions, /\.my-trees-hub-edit-btn\s*\{[^}]*min-height:\s*36px;[^}]*border-radius:\s*999px;/s, '편집하기 secondary action rhythm (Browse auxiliary)');
 
   for (const file of cssFiles) {
     assert.ok(!read(file).includes('aspect-ratio'), `${file} must not introduce an artificial media frame`);

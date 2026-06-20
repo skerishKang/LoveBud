@@ -1,10 +1,13 @@
 /* ── Hub actions ── */
+/* Hierarchy: primary (감상 열기) is the full surface the user is
+   nudged toward; secondary (편집하기) is a smaller auxiliary link
+   so the panel reads as a preview, not a management console. */
 
 .my-trees-hub-actions {
-    margin-top: 18px;
+    margin-top: 14px;
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 6px;
 }
 
 .my-trees-hub-open-btn {
@@ -12,15 +15,15 @@
     align-items: center;
     justify-content: center;
     width: 100%;
-    min-height: 54px;
+    min-height: 48px;
     border: none;
-    box-shadow: 0 16px 28px rgba(144, 73, 81, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.28);
-    padding: 14px 24px;
+    box-shadow: 0 12px 24px rgba(75, 64, 57, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.28);
+    padding: 12px 22px;
     background: var(--primary);
     color: white;
     border-radius: 999px;
     font-weight: 800;
-    font-size: 14px;
+    font-size: 13.5px;
     cursor: pointer;
     text-decoration: none;
     gap: 8px;
@@ -30,7 +33,7 @@
 .my-trees-hub-open-btn:hover {
     background: var(--primary-vibrant);
     transform: translateY(-1px);
-    box-shadow: 0 20px 32px rgba(144, 73, 81, 0.24);
+    box-shadow: 0 16px 28px rgba(144, 73, 81, 0.22);
 }
 
 .my-trees-hub-open-btn:active {
@@ -38,7 +41,7 @@
 }
 
 .my-trees-hub-open-btn .material-symbols-outlined {
-    font-size: 16px;
+    font-size: 15px;
 }
 
 .my-trees-hub-edit-btn {
@@ -46,31 +49,30 @@
     align-items: center;
     justify-content: center;
     width: 100%;
-    min-height: 48px;
-    border: 1.5px solid rgba(144, 73, 81, 0.24);
+    min-height: 36px;
+    border: none;
     box-shadow: none;
-    padding: 12px 24px;
+    padding: 8px 16px;
     background: transparent;
-    color: var(--primary);
+    color: var(--on-surface-variant);
     border-radius: 999px;
-    font-weight: 800;
-    font-size: 14px;
+    font-weight: 700;
+    font-size: 12.5px;
     cursor: pointer;
     text-decoration: none;
     gap: 6px;
-    transition: background 0.2s ease, transform 0.15s ease, color 0.2s ease, border-color 0.2s ease;
+    transition: background 0.2s ease, color 0.2s ease;
 }
 
 .my-trees-hub-edit-btn:hover {
     background: rgba(144, 73, 81, 0.04);
-    border-color: var(--primary);
-    transform: translateY(-1px);
+    color: var(--primary);
 }
 
 .my-trees-hub-edit-btn:active {
-    transform: translateY(0);
+    background: rgba(144, 73, 81, 0.08);
 }
 
 .my-trees-hub-edit-btn .material-symbols-outlined {
-    font-size: 16px;
+    font-size: 14px;
 }

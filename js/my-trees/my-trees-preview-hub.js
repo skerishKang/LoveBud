@@ -143,25 +143,21 @@
         return i18nHub('', fallbackKo, fallbackEn);
     }
 
-    /* ── Get tree icon for flow ── */
-
-    function getTreeIcon(stage) {
-        var icons = ['🌱', '🌿', '🌳', '🌸', '🍃', '✨', '💫', '🌟'];
-        var index = typeof stage === 'number' ? stage % icons.length : 0;
-        return icons[index];
-    }
-
     /* ── Build flow stages HTML ── */
+    // Renders each moment stage as a compact, scannable card with a
+    // numeric index (1-based) on the left and the moment label on the
+    // right. Matches Browse's .preview-flow-stage rhythm (no emoji icon).
 
     function buildFlowStages(memories, startIndex) {
         if (!Array.isArray(memories) || memories.length === 0) return '';
+        var offset = typeof startIndex === 'number' && startIndex > 0 ? startIndex : 0;
         var html = '';
         for (var i = 0; i < memories.length; i++) {
             var mem = memories[i];
             var label = getMomentLabel(mem, '시작 순간', 'Starting moment');
-            var icon = getTreeIcon(startIndex + i);
+            var stageIndex = offset + i + 1;
             html += '<div class="my-trees-hub-flow-stage" title="' + escapeHtml(label) + '">' +
-                '<span class="my-trees-hub-flow-stage-icon">' + icon + '</span>' +
+                '<span class="my-trees-hub-flow-stage-index">' + stageIndex + '</span>' +
                 '<span class="my-trees-hub-flow-stage-label">' + escapeHtml(label) + '</span>' +
                 '</div>';
         }

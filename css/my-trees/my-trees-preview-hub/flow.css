@@ -24,11 +24,13 @@
     font-size: 14px;
 }
 
-/* Desktop mirrors Browse's compact, scannable moment rhythm.
-   Narrow layouts return to a single column in responsive.css. */
+/* Desktop mirrors Browse's compact, scannable moment rhythm: single
+   column so each stage gets full width and the visual rhythm matches
+   .preview-flow-list. Narrow layouts already return to a single column
+   in responsive.css, so this is desktop-safe. */
 .my-trees-hub-flow-list {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: minmax(0, 1fr);
     gap: 7px;
     min-width: 0;
     max-width: 100%;
@@ -55,9 +57,20 @@
     line-height: 1.35;
 }
 
-.my-trees-hub-flow-stage-icon {
-    font-size: 14px;
+.my-trees-hub-flow-stage-index {
+    font-size: 12px;
+    font-weight: 800;
+    color: var(--primary);
     flex: 0 0 auto;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 4px;
+    border-radius: 999px;
+    background: rgba(144, 73, 81, 0.10);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
 }
 
 .my-trees-hub-flow-stage-label {
