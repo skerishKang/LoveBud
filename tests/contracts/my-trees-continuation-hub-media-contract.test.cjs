@@ -65,3 +65,11 @@ test('My Trees hub does not leave an empty selected media frame', () => {
   assert.match(media, /els\.container\.hidden = true;/, 'no-media selected state must hide the media container');
   assert.match(media, /function showPlaceholder\(\)[\s\S]*?els\.container\.hidden = false;/, 'unselected state must restore only the intentional placeholder');
 });
+
+test('My Trees hub removes non-functional media overlays', () => {
+  const content = read('css/my-trees/my-trees-preview-hub/content.css');
+
+  assert.match(content, /#myTreesHubVideoContainer::before\s*\{\s*content:\s*none;?\s*\}/s, 'My Trees hub video container must have content: none override');
+  assert.match(content, /#myTreesHubMedia\s+\.preview-media-frame-thumbnail\s+\[data-preview-overlay\]\s*\{\s*display:\s*none\s*!important;?\s*\}/s, 'My Trees hub thumbnail overlay must be display: none !important');
+  assert.match(content, /#myTreesHubMedia\s+\.preview-media-frame-iframe\s*>\s*div\s*\{\s*display:\s*none\s*!important;?\s*\}/s, 'My Trees hub iframe overlay div must be display: none !important');
+});
