@@ -25,16 +25,8 @@
     line-height: 1.7;
 }
 
-/* ── Hub loaded state ── */
-.my-trees-hub-panel.is-loaded,
-.preview-sidebar.preview-state-thumbnail {
-    background:
-        radial-gradient(circle at 24% 8%, rgba(255, 255, 255, 0.92), transparent 34%),
-        radial-gradient(circle at 80% 18%, rgba(200, 116, 128, 0.16), transparent 30%),
-        linear-gradient(180deg, rgba(255, 250, 247, 0.98), rgba(244, 248, 238, 0.96)) !important;
-    border-color: rgba(144, 73, 81, 0.14) !important;
-    box-shadow: 0 28px 70px rgba(75, 64, 57, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.94) !important;
-}
+/* ── Hub loaded state delegated to Browse search-preview.css ── */
+
 
 /* ── Hub empty/no-moments state ── */
 
