@@ -30,6 +30,12 @@
     return getLocale() === 'en' ? en : ko;
   }
 
+  function sanitizeUrl(value) {
+    var security = window.LoveBudSecurity;
+    if (!security || typeof security.sanitizeUrl !== 'function') return '';
+    return security.sanitizeUrl(value || '');
+  }
+
   function getMemories(tree) {
     if (Array.isArray(tree && tree.memories)) return tree.memories;
     if (Array.isArray(tree && tree.nodes)) return tree.nodes;
@@ -67,9 +73,7 @@
   function clearMedia() {
     var els = getEls();
     if (!els.container) return;
-    if (els.panel) {
-      els.panel.classList.remove('has-media', 'preview-state-media', 'preview-state-thumbnail');
-    }
+    if (els.panel) els.panel.classList.remove('has-media', 'preview-state-media', 'preview-state-thumbnail');
     if (els.media) {
       replaceMediaMarkup(els.media, '');
       els.media.hidden = true;
@@ -108,8 +112,8 @@
 
     var displayTitle = String(tree && tree.title || '').trim() || copy('나의 러브트리', 'My LoveTree');
     var mediaTitle = getMomentTitle(mediaMemory);
-    var sourceUrl = String(mediaMemory.sourceUrl || '').trim();
-    var thumbnail = String(mediaMemory.thumbnail || '').trim();
+    var sourceUrl = sanitizeUrl(mediaMemory.sourceUrl);
+    var thumbnail = sanitizeUrl(mediaMemory.thumbnail);
     var markup = '';
     var state = '';
 
@@ -135,15 +139,12 @@
       els.panel.classList.add('has-media', state === 'media' ? 'preview-state-media' : 'preview-state-thumbnail');
     }
 
-    if (typeof helper.bindPreviewThumbnailHandlers === 'function') {
-      helper.bindPreviewThumbnailHandlers(els.media);
-    }
+    if (typeof helper.bindPreviewThumbnailHandlers === 'function') helper.bindPreviewThumbnailHandlers(els.media);
   }
 
   function patchHub() {
     var hub = getHub();
     if (!hub || hub.__playableMediaPatched) return;
-
     var originalInit = hub.init;
     var originalShowPlaceholder = hub.showPlaceholder;
     var originalShowContent = hub.showContent;
@@ -157,7 +158,6 @@
         return result;
       };
     }
-
     if (typeof originalShowPlaceholder === 'function') {
       hub.showPlaceholder = function () {
         var result = originalShowPlaceholder.call(hub);
@@ -165,7 +165,6 @@
         return result;
       };
     }
-
     if (typeof originalShowContent === 'function') {
       hub.showContent = function (tree) {
         var result = originalShowContent.call(hub, tree);
@@ -173,7 +172,6 @@
         return result;
       };
     }
-
     if (typeof originalShowLoading === 'function') {
       hub.showLoading = function (tree) {
         var result = originalShowLoading.call(hub, tree);
@@ -181,7 +179,6 @@
         return result;
       };
     }
-
     if (typeof originalOnCardClick === 'function') {
       hub.onCardClick = function (tree, options) {
         var result = originalOnCardClick.call(hub, tree, options);
@@ -189,15 +186,40 @@
         return result;
       };
     }
-
     hub.__playableMediaPatched = true;
   }
 
+  function patchRendererSelection() {
+    var renderer = window.LoveBudMyTreesRender || window.LoveTreeMyTreesRender;
+    if (!renderer || typeof renderer.renderTrees !== 'function' || renderer.__playableMediaSelectionPatched) return;
+    var originalRenderTrees = renderer.renderTrees;
+
+    renderer.renderTrees = function (trees, options) {
+      var rawById = Object.create(null);
+      (Array.isArray(trees) ? trees : []).forEach(function (tree) {
+        if (tree && tree.id != null) rawById[String(tree.id)] = tree;
+      });
+      var originalOnSelect = options && options.onSelect;
+      var patchedOptions = Object.assign({}, options || {}, {
+        onSelect: function (selectedTree) {
+          var selectedId = selectedTree && selectedTree.id != null ? String(selectedTree.id) : '';
+          return typeof originalOnSelect === 'function'
+            ? originalOnSelect(rawById[selectedId] || selectedTree)
+            : undefined;
+        }
+      });
+      return originalRenderTrees.call(renderer, trees, patchedOptions);
+    };
+    renderer.__playableMediaSelectionPatched = true;
+  }
+
   patchHub();
+  patchRendererSelection();
   window.LoveBudMyTreesPreviewMedia = {
     renderMedia: renderMedia,
     clearMedia: clearMedia,
     showPlaceholder: showPlaceholder,
-    patchHub: patchHub
+    patchHub: patchHub,
+    patchRendererSelection: patchRendererSelection
   };
 })();
