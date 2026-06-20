@@ -64,9 +64,9 @@ test('My Trees hub keeps its non-media focus surface and shared visual rhythm', 
     'css/my-trees/my-trees-preview-hub/responsive.css',
   ];
 
-  assert.match(content, /\.my-trees-hub-rep\s*\{[^}]*border-radius:\s*1\.55rem;[^}]*background:\s*linear-gradient\(180deg, rgba\(255, 255, 255, 0\.66\), rgba\(255, 248, 245, 0\.52\)\);/s, 'first-moment block must remain the calm focus card');
+  assert.match(content, /\.my-trees-hub-rep\s*\{\s*display:\s*flex;\s*flex-direction:\s*column;\s*gap:\s*8px;\s*margin-top:\s*16px;\s*padding:\s*0;\s*border-radius:\s*0;\s*background:\s*transparent;\s*border:\s*none;\s*box-shadow:\s*none;\s*\}/s, 'first-moment block card decorations must be removed for a unified focus surface');
   assert.match(actions, /\.my-trees-hub-open-btn\s*\{[^}]*min-height:\s*54px;[^}]*border-radius:\s*999px;/s, '감상하기 must retain the primary Browse action rhythm');
-  assert.match(actions, /\.my-trees-hub-edit-btn\s*\{[^}]*min-height:\s*42px;[^}]*border-radius:\s*999px;/s, '편집하기 must retain the secondary Browse action rhythm');
+  assert.match(actions, /\.my-trees-hub-edit-btn\s*\{[^}]*min-height:\s*48px;[^}]*border-radius:\s*999px;/s, '편집하기 must retain the secondary Browse action rhythm');
 
   for (const file of cssFiles) {
     assert.ok(!read(file).includes('aspect-ratio'), `${file} must not introduce an artificial media frame`);
