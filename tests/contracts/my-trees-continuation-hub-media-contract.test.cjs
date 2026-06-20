@@ -41,7 +41,8 @@ test('My Trees hub does not leave an empty selected media frame', () => {
   const content = read('css/my-trees/my-trees-preview-hub/content.css');
   const media = read('js/my-trees/my-trees-preview-media.js');
 
-  assert.doesNotMatch(css, /#myTreesHubPanel\.is-loaded\s+#myTreesHubVideoContainer\s*\{\s*display:\s*none;/s, 'loaded state must not blanket-hide real media');
+  assert.match(css, /#myTreesHubPanel\.is-loaded\s+#myTreesHubVideoContainer\s*\{\s*display:\s*none;/s, 'loaded state keeps the compact no-media default');
+  assert.match(css, /#myTreesHubPanel\.is-loaded\.has-media\s+#myTreesHubVideoContainer\s*\{\s*display:\s*block;/s, 'selected trees with actual media must opt back into the visible frame');
   assert.match(content, /\.my-trees-hub-panel\.is-loaded:not\(\.has-media\)\s+#myTreesHubVideoContainer\s*\{\s*display:\s*none;/s, 'no-media selected state must hide its media region');
   assert.match(media, /function clearMedia\(\)[\s\S]*?els\.media\.innerHTML = '';/, 'switching/no-media paths must clear prior markup');
   assert.match(media, /els\.container\.hidden = true;/, 'no-media selected state must hide the media container');
