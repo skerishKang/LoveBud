@@ -21,8 +21,8 @@
   <main class="my-trees-container lovetree-calm-two-column-shell page-transition-enter">
     <section class="lovetree-calm-main-column my-trees-main-column reveal-scale reveal-up">
       <div class="browse-curation-shell reveal-up">
-        <div class="search-panel-header my-trees-header-block">
-          <div class="search-panel-eyebrow my-trees-eyebrow page-hero-eyebrow shared-mobile-hero-eyebrow" id="myTreesPageEyebrow">내가 키우는 러브트리</div>
+        <div class="search-panel-header">
+          <div class="search-panel-eyebrow page-hero-eyebrow shared-mobile-hero-eyebrow" id="myTreesPageEyebrow">내가 키우는 러브트리</div>
           <h1 class="headline shared-mobile-hero-title" id="myTreesPageTitle">
             <span class="title-line my-trees-title-line">내가 키운</span>
             <span class="title-line title-accent my-trees-title-line my-trees-title-accent">러브트리를</span>
@@ -85,25 +85,30 @@
         <div class="my-trees-hub-placeholder preview-empty-state" id="myTreesHubPlaceholder"><p>왼쪽에서 내 러브트리를 고르면 이어진 순간과 관리 흐름이 여기에 열려요.</p></div>
         <div class="my-trees-hub-media" id="myTreesHubMedia" hidden></div>
       </div>
-      <div class="my-trees-hub-content" id="myTreesHubContent" hidden>
+      <div class="my-trees-hub-content preview-details" id="myTreesHubContent" hidden>
         <div id="myTreesHubDetails">
-          <div class="my-trees-hub-tree-title" id="myTreesHubTreeTitle"></div>
-          <div class="my-trees-hub-meta-badge" id="myTreesHubMetaBadge"></div>
-          <div class="my-trees-hub-rep" id="myTreesHubRep" hidden>
+          <div class="preview-focus-title-block">
+            <div class="my-trees-hub-tree-title preview-focus-title" id="myTreesHubTreeTitle"></div>
+            <div class="my-trees-hub-meta-badge preview-focus-title-meta" id="myTreesHubMetaBadge"></div>
+          </div>
+          <div class="my-trees-hub-rep preview-focus-flow-card" id="myTreesHubRep" hidden>
             <div class="my-trees-hub-rep-label"><span class="material-symbols-outlined">favorite</span><span>첫 순간 기록</span></div>
-            <div class="my-trees-hub-rep-title" id="myTreesHubRepTitle"></div>
-            <div class="my-trees-hub-rep-memo" id="myTreesHubRepMemo"></div>
+            <div class="preview-focus-title" id="myTreesHubRepTitle"></div>
+            <div class="preview-focus-copy" id="myTreesHubRepMemo"></div>
           </div>
-          <div class="my-trees-hub-flow" id="myTreesHubFlow" hidden>
+          <div class="my-trees-hub-flow preview-flow-section" id="myTreesHubFlow" hidden>
             <div class="my-trees-hub-flow-label"><span class="material-symbols-outlined">route</span><span>이어진 순간 흐름</span></div>
-            <div class="my-trees-hub-flow-list" id="myTreesHubFlowList"></div>
-            <div class="my-trees-hub-flow-controls" id="myTreesHubFlowControls"></div>
+            <div class="my-trees-hub-flow-list preview-flow-list" id="myTreesHubFlowList"></div>
+            <div class="my-trees-hub-flow-controls preview-flow-controls" id="myTreesHubFlowControls"></div>
           </div>
-          <div class="my-trees-hub-no-moments" id="myTreesHubNoMoments" hidden></div>
-          <div class="my-trees-hub-summary" id="myTreesHubSummary"></div>
+          <div class="my-trees-hub-no-moments preview-focus-flow-card-empty" id="myTreesHubNoMoments" hidden></div>
+          <div class="my-trees-hub-summary preview-focus-copy" id="myTreesHubSummary"></div>
         </div>
       </div>
-      <div class="my-trees-hub-actions" id="myTreesHubActions" hidden><a href="#" class="my-trees-hub-open-btn" id="myTreesHubOpenBtn"><span class="material-symbols-outlined">visibility</span>감상하기</a><a href="#" class="my-trees-hub-edit-btn" id="myTreesHubEditBtn"><span class="material-symbols-outlined">edit</span>편집하기</a></div>
+      <div class="my-trees-hub-actions preview-actions" id="myTreesHubActions" hidden>
+        <a href="#" class="my-trees-hub-open-btn preview-primary-action" id="myTreesHubOpenBtn"><span class="material-symbols-outlined">visibility</span>감상하기</a>
+        <a href="#" class="my-trees-hub-edit-btn preview-secondary-action" id="myTreesHubEditBtn"><span class="material-symbols-outlined">edit</span>편집하기</a>
+      </div>
     </aside>
   </main>
 
