@@ -27,9 +27,14 @@ test('Browse and My Trees Card Density & Empty-State Rhythm Invariant Checks', a
     const cardsCss = read('css/my-trees/my-trees-cards.css');
     assert.match(cardsCss, /\.trees-grid\s*{[^}]*display:\s*grid;[^}]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\);[^}]*gap:\s*var\(--lovetree-card-grid-gap\);[^}]*}/);
     assert.match(cardsCss, /border-radius:\s*var\(--lovetree-card-radius-lg\)/);
-    assert.match(cardsCss, /box-shadow:\s*var\(--lovetree-card-shadow\)/);
+    // Step 4 follow-up: My Trees card now uses the Browse surface token for
+    // background parity (warm gradient) and the Browse-style heavy box-shadow
+    // (raised card). The legacy lighter --lovetree-card-shadow default is
+    // retained for empty-state / hub usage but no longer used on cards.
+    assert.match(cardsCss, /background:\s*var\(--lovetree-card-surface-browse\)/);
+    assert.match(cardsCss, /box-shadow:\s*0\s+20px\s+48px\s+rgba\(75,\s*64,\s*57,\s*0\.1\)/);
     assert.match(cardsCss, /box-shadow:\s*var\(--lovetree-card-shadow-hover\)/);
-    assert.match(cardsCss, /box-shadow:\s*var\(--lovetree-card-ring-active\),\s*var\(--lovetree-card-shadow-active\)/);
+    assert.match(cardsCss, /box-shadow:[^;]*var\(--lovetree-card-shadow-active\)[^;]*var\(--lovetree-card-ring-active\)/s);
     assert.match(cardsCss, /height:\s*var\(--lovetree-card-image-height\)/);
   });
 

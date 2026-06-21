@@ -46,7 +46,11 @@
 
     /* LoveTree Card Visual Tokens — PR 2 (Browse ↔ My Trees alignment)
        Common radius, surface, hover/active shadow, ring, and border tokens.
-       Browse keeps its warm gradient feel. My Trees keeps its stable surface. */
+       Both Browse and My Trees share --lovetree-card-surface-browse for the
+       card surface (warm gradient + raised box-shadow + accent ::before /
+       ::after bars + lift on hover). The lighter --lovetree-card-shadow
+       is retained for empty-state and hub usage where a flatter surface
+       is preferred. */
     --lovetree-card-radius-lg: 1.85rem;
     --lovetree-card-surface-browse:
         radial-gradient(circle at 30% 20%, rgba(255, 248, 245, 0.92), transparent 52%),

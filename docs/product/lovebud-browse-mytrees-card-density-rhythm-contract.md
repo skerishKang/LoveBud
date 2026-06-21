@@ -91,3 +91,28 @@ visual outcome is identical:
   { height: 140px; padding: 12px }`, `.tree-card-info { padding: 12px }`,
   `.tree-card-title { font-size: 0.95rem }`). Browse compact inherits base
   card sizing. This is documented as an intentional asymmetry in §1.
+
+## 6. Card Surface Parity (Step 4 follow-up)
+
+After Step 4, both Browse and My Trees cards share the same surface
+treatment (warm gradient + heavy raised box-shadow + accent ::before /
+::after bars + lift on hover). The legacy divergence ("Browse keeps its
+warm gradient feel. My Trees keeps its stable surface") is retired.
+
+Locked by `tests/contracts/card-surface-parity-contract.test.cjs`:
+
+* **Surface**: Both pages use `var(--lovetree-card-surface-browse)` (warm
+  radial+linear gradient) for the base card background. My Trees must
+  **not** use `var(--lovetree-soft-surface)` for the card itself.
+* **Box-shadow**: Both pages use the same heavy raised box-shadow
+  (`0 20px 48px rgba(75, 64, 57, 0.1)` + inset) for the base card.
+  The lighter `var(--lovetree-card-shadow)` token is retained for
+  empty-state and hub usage where a flatter surface is preferred.
+* **Accent bars**: Both pages define `.tree-card::before` (top accent)
+  and `.tree-card::after` (right accent), visible on hover/selected.
+* **Hover**: Both pages lift the card by `translateY(-3px)` and switch
+  to the Browse-style hover shadow + inset ring.
+* **Selected state**: Both pages use the same active gradient background
+  + active shadow + ring, and the open-link button darkens to
+  `rgba(144, 73, 81, 0.92)` background with `--surface-container-lowest`
+  text.

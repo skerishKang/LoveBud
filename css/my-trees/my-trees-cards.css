@@ -1,8 +1,106 @@
 .trees-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--lovetree-card-grid-gap); }
-.tree-card { display: flex; flex-direction: column; position: relative; background: var(--lovetree-soft-surface); border-radius: var(--lovetree-card-radius-lg); padding: var(--lovetree-card-content-pad-compact); box-shadow: var(--lovetree-card-shadow); border: 1px solid var(--lovetree-soft-surface-border); overflow: hidden; cursor: pointer; transition: border-color 0.12s ease, box-shadow 0.12s ease; text-decoration: none; color: inherit; height: var(--lovetree-card-media-height-browse); }
-.tree-card:hover { box-shadow: var(--lovetree-card-shadow-hover); border-color: var(--lovetree-card-border-hover); }
+.tree-card {
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    background: var(--lovetree-card-surface-browse);
+    border-radius: var(--lovetree-card-radius-lg);
+    padding: var(--lovetree-card-content-pad-compact);
+    box-shadow:
+        0 20px 48px rgba(75, 64, 57, 0.1),
+        0 0 0 1px rgba(255, 255, 255, 0.62) inset;
+    border: 1px solid var(--lovetree-soft-surface-border);
+    overflow: hidden;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.165, 0.84, 0.44, 1);
+    text-decoration: none;
+    color: inherit;
+    min-width: 0;
+    height: var(--lovetree-card-media-height-browse);
+}
+
+/* Accent bars (top + right) — parity with Browse ::before / ::after.
+   Only visible on hover or when the card is selected. */
+.tree-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, rgba(200, 116, 128, 0.6), rgba(240, 193, 198, 0.6));
+    opacity: 0;
+    transition: opacity 0.3s;
+    pointer-events: none;
+    z-index: 2;
+}
+
+.tree-card::after {
+    content: '';
+    position: absolute;
+    top: 26px;
+    right: 0;
+    bottom: 26px;
+    width: 4px;
+    border-radius: 999px 0 0 999px;
+    background: linear-gradient(180deg, rgba(144, 73, 81, 0.80), rgba(122, 139, 110, 0.68));
+    box-shadow:
+        -10px 0 22px rgba(144, 73, 81, 0.12),
+        -4px 0 12px rgba(122, 139, 110, 0.10);
+    opacity: 0;
+    pointer-events: none;
+    transform: translateX(4px);
+    transition: opacity 0.24s ease, transform 0.24s ease;
+    z-index: 2;
+}
+
+.tree-card:hover {
+    transform: translateY(-3px);
+    border-color: var(--lovetree-card-border-hover);
+    box-shadow:
+        var(--lovetree-card-shadow-hover),
+        0 0 0 1px rgba(255, 255, 255, 0.82) inset;
+}
+
+.tree-card:focus-visible {
+    outline: 2px solid rgba(122, 139, 110, 0.48);
+    outline-offset: 4px;
+    border-color: rgba(122, 139, 110, 0.24);
+}
+
 .tree-card.is-selected,
-.tree-card[data-selected-tree-card="true"] { border-color: var(--lovetree-card-border-active); box-shadow: var(--lovetree-card-ring-active), var(--lovetree-card-shadow-active); }
+.tree-card[data-selected-tree-card="true"] {
+    background:
+        radial-gradient(circle at 30% 20%, rgba(255, 248, 245, 0.96), transparent 52%),
+        linear-gradient(145deg, rgba(255, 255, 255, 0.90), rgba(255, 246, 243, 0.76)),
+        rgba(255, 255, 255, 0.86);
+    border-color: var(--lovetree-card-border-active);
+    box-shadow:
+        var(--lovetree-card-shadow-active),
+        var(--lovetree-card-ring-active);
+}
+
+.tree-card:hover::before,
+.tree-card.is-selected::before,
+.tree-card[data-selected-tree-card="true"]::before {
+    opacity: 1;
+}
+
+.tree-card.is-selected::after,
+.tree-card[data-selected-tree-card="true"]::after {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+.tree-card.is-selected .tree-card-open-link,
+.tree-card[data-selected-tree-card="true"] .tree-card-open-link {
+    background: rgba(144, 73, 81, 0.92);
+    border-color: rgba(144, 73, 81, 0.22);
+    color: var(--surface-container-lowest);
+}
 .tree-card-thumb {
     width: 100%;
     height: var(--lovetree-card-image-height);
