@@ -428,8 +428,23 @@
        implementation fire-and-forgot persistConfirmedAuthSession and
        navigated immediately, which caused this loop. */
     if (typeof firebase.auth().getRedirectResult === 'function') {
+      var debugEnabled = false;
+      try {
+        var params = new URLSearchParams(window.location.search || '');
+        if (params.get('authDebug') === '1') {
+          debugEnabled = true;
+        }
+      } catch (e) {}
+
+      if (debugEnabled) {
+        console.info('[auth.redirect] start');
+      }
+
       firebase.auth().getRedirectResult().then(async function(result) {
         if (result && result.user) {
+          if (debugEnabled) {
+            console.info('[auth.redirect] user-present');
+          }
           var redirectDest = typeof getRedirectTarget === 'function'
             ? getRedirectTarget()
             : 'pages/my-trees.html';
@@ -437,32 +452,51 @@
           if (typeof persistConfirmedAuthSession === 'function') {
             try {
               await persistConfirmedAuthSession(result.user);
+              if (debugEnabled) {
+                console.info('[auth.redirect] persist-success');
+              }
             } catch (persistError) {
-              console.warn('Persist confirmed auth session failed after Google redirect:', persistError);
-              var friendlyPersist = typeof getFriendlyErrorMessage === 'function'
-                ? getFriendlyErrorMessage(persistError, true)
-                : null;
+              console.warn('[auth.redirect] persist-failed code=' + (persistError && (persistError.code || persistError.name) || 'unknown'));
+              var friendlyPersist = null;
+              if (typeof getFriendlyErrorMessage === 'function') {
+                var safePersistError = {
+                  code: persistError && persistError.code || '',
+                  name: persistError && persistError.name || '',
+                  message: ''
+                };
+                friendlyPersist = getFriendlyErrorMessage(safePersistError, true);
+              }
               if (!friendlyPersist) {
                 friendlyPersist = '로그인 정보를 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.';
               }
               try { alert(friendlyPersist); } catch (e) {}
-              // Do NOT navigate — onAuthStateChanged below will still
-              // set the Firebase session, but skipping the redirect
-              // here prevents the auth-check race in protected routes.
               return;
             }
           }
 
           if (typeof isLoginPage === 'function' && isLoginPage()) {
+            if (debugEnabled) {
+              console.info('[auth.redirect] navigating target-present=' + (!!redirectDest));
+            }
             window.location.replace(redirectDest);
+          }
+        } else {
+          if (debugEnabled) {
+            console.info('[auth.redirect] no-result');
           }
         }
       }).catch(function(redirectError) {
         if (redirectError && redirectError.code !== 'auth/no-auth-event') {
-          console.warn('Google redirect result error:', redirectError);
-          var friendly = typeof getFriendlyErrorMessage === 'function'
-            ? getFriendlyErrorMessage(redirectError, true)
-            : null;
+          console.warn('[auth.redirect] result-error code=' + (redirectError.code || redirectError.name || 'unknown'));
+          var friendly = null;
+          if (typeof getFriendlyErrorMessage === 'function') {
+            var safeRedirectError = {
+              code: redirectError.code || '',
+              name: redirectError.name || '',
+              message: ''
+            };
+            friendly = getFriendlyErrorMessage(safeRedirectError, true);
+          }
           if (friendly) {
             try { alert(friendly); } catch (e) {}
           }

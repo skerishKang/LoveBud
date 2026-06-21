@@ -122,8 +122,8 @@ test('getRedirectResult surfaces friendly error message on redirect failure', ()
     );
     assert.match(
         authFirebaseJs,
-        /getFriendlyErrorMessage\(\s*redirectError\s*,\s*true\s*\)/,
-        'Redirect error catch handler must format a friendly message'
+        /getFriendlyErrorMessage\(\s*safeRedirectError\s*,\s*true\s*\)/,
+        'Redirect error catch handler must format a friendly message using a safe wrapper'
     );
 });
 
@@ -173,7 +173,7 @@ test('getRedirectResult does NOT navigate when persistConfirmedAuthSession rejec
     // empty cache and bounce the user back to /pages/login, looking
     // like the redirect sign-in never happened.
     const persistCatchBlock = authFirebaseJs.match(
-        /catch\s*\(\s*persistError\s*\)\s*\{([\s\S]*?)\}\s*\}/m
+        /catch\s*\(\s*persistError\s*\)\s*\{([\s\S]*?return\s*;[\s\S]*?)\}/m
     );
     assert.ok(persistCatchBlock, 'must find a persist catch block');
     const persistBody = persistCatchBlock[1];
@@ -187,5 +187,26 @@ test('getRedirectResult does NOT navigate when persistConfirmedAuthSession rejec
         persistBody,
         /return\s*;/,
         'persist catch block must return early so window.location.replace is skipped'
+    );
+});
+
+test('getRedirectResult and persist failure paths do NOT pass raw error objects to getFriendlyErrorMessage', () => {
+    // Check that redirectError is wrapped in safeRedirectError
+    assert.match(
+        authFirebaseJs,
+        /var\s+safeRedirectError\s*=\s*\{\s*code:\s*redirectError\.code\s*||\s*['"]['"]\s*,\s*name:\s*redirectError\.name\s*||\s*['"]['"]\s*,\s*message:\s*['"]['"]\s*\};/,
+        'Redirect path must construct safeRedirectError wrapper'
+    );
+    // Check that persistError is wrapped in safePersistError
+    assert.match(
+        authFirebaseJs,
+        /var\s+safePersistError\s*=\s*\{\s*code:\s*persistError\s*&&\s*persistError\.code\s*||\s*['"]['"]\s*,\s*name:\s*persistError\s*&&\s*persistError\.name\s*||\s*['"]['"]\s*,\s*message:\s*['"]['"]\s*\};/,
+        'Persist path must construct safePersistError wrapper'
+    );
+    // Check that getFriendlyErrorMessage is called with safe wrapper
+    assert.match(
+        authFirebaseJs,
+        /friendlyPersist\s*=\s*getFriendlyErrorMessage\(\s*safePersistError\s*,\s*true\s*\)/,
+        'Persist error catch must format friendly message using safe wrapper'
     );
 });
