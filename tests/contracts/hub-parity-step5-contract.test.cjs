@@ -209,10 +209,12 @@ test('My Trees hub renders .preview-social-shell (owner passive) BELOW action bu
     );
 });
 
-test('My Trees hub social bar renders all four Browse-parity stat items', () => {
-    const shellBlockRe = /data-my-trees-social-shell[\s\S]*?preview-social-bar[\s\S]*?(좋아요|댓글|공유|조회수)/g;
+test('My Trees hub social bar renders the 3 Browse-parity stat items', () => {
+    // Step 9: Browse has 3 stats (좋아요 / 댓글 / 조회수). My Trees now
+    // matches. The legacy "공유" stat is retired — Browse doesn't have it.
+    const shellBlockRe = /data-my-trees-social-shell[\s\S]*?preview-social-bar[\s\S]*?(좋아요|댓글|조회수)/g;
     assert.match(myTreesHubJs, shellBlockRe);
-    const expectedLabels = ['좋아요', '댓글', '공유', '조회수'];
+    const expectedLabels = ['좋아요', '댓글', '조회수'];
     for (const label of expectedLabels) {
         assert.match(
             myTreesHubJs,
@@ -220,6 +222,11 @@ test('My Trees hub social bar renders all four Browse-parity stat items', () => 
             `My Trees social shell must include "${label}" stat`
         );
     }
+    // The legacy "공유" stat must NOT return.
+    assert.ok(
+        !/<span>공유<\/span>/.test(myTreesHubJs),
+        'Legacy "공유" stat must not return in My Trees social shell (Browse parity)'
+    );
 });
 
 test('My Trees hub does not keep the legacy duplicate static meta row', () => {
@@ -236,10 +243,11 @@ test('My Trees hub does not keep the legacy duplicate static meta row', () => {
 });
 
 test('My Trees social shell uses Browse parity class .preview-social-stat', () => {
-    // All four stats must be tagged with the shared .preview-social-stat class
+    // Step 9: Browse has 3 stats (조회수 / 좋아요 / 댓글). My Trees now
+    // matches. All stats must be tagged with the shared .preview-social-stat class.
     const occurrences = (myTreesHubJs.match(/preview-social-stat/g) || []).length;
     assert.ok(
-        occurrences >= 4,
+        occurrences >= 3,
         `My Trees social shell must tag all 4 stats with .preview-social-stat (got ${occurrences})`
     );
 });

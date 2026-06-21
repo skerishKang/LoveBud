@@ -136,14 +136,14 @@ test('My Trees flow stage index keeps only color + font-weight + flex', () => {
 
 // ── 5) Stage HTML element parity (span, not div) ──────────────────────
 test('My Trees hub renderer emits <span> for the flow stage (not <div>)', () => {
-    // Step 8 follow-up: stage now starts with data-my-trees-moment-index
-    // (Browse parity); title and aria-label moved to the label.
+    // Step 9: stage now starts with role="button" tabindex="0" + dynamic
+    // is-active class via `+ activeClass +` (Browse parity).
     // The JS uses string concatenation, so the regex matches the literal
-    // source pattern (`..."' + stageIndex`) not a resolved digit.
+    // source pattern, not a resolved value.
     assert.match(
         myTreesHubJs,
-        /<span class="my-trees-hub-flow-stage" data-my-trees-moment-index="'\s*\+\s*\w+/,
-        'my-trees-preview-hub.js must emit <span class="my-trees-hub-flow-stage" data-my-trees-moment-index="...">'
+        /activeClass\s*\+\s*'"\s*role="button" tabindex="0"/,
+        'my-trees-preview-hub.js must emit <span class="my-trees-hub-flow-stage ..." role="button" tabindex="0"> with dynamic is-active class'
     );
     assert.ok(
         !/<div class="my-trees-hub-flow-stage"/.test(myTreesHubJs),
@@ -154,8 +154,8 @@ test('My Trees hub renderer emits <span> for the flow stage (not <div>)', () => 
 test('My Trees hydrated flow stages also use <span> (not <div>)', () => {
     assert.match(
         myTreesStateJs,
-        /<span class="my-trees-hub-flow-stage" data-my-trees-moment-index="'\s*\+\s*\w+/,
-        'my-trees-preview-state.js must emit <span class="my-trees-hub-flow-stage" data-my-trees-moment-index="...">'
+        /activeClass\s*\+\s*'"\s*role="button" tabindex="0"/,
+        'my-trees-preview-state.js must emit <span class="my-trees-hub-flow-stage ..." role="button" tabindex="0">'
     );
     assert.ok(
         !/<div class="my-trees-hub-flow-stage"/.test(myTreesStateJs),

@@ -76,6 +76,19 @@
     min-width: 0;
     max-width: 100%;
     overflow: hidden;
+    /* Step 9 follow-up: hover + active states for visual affordance.
+       The .is-active class is set/cleared by the hub renderer
+       (my-trees-preview-hub.js) to indicate the currently shown
+       moment in the video iframe. */
+    cursor: pointer;
+}
+
+.my-trees-hub-flow-stage:hover {
+    background: rgba(144, 73, 81, 0.10);
+}
+
+.my-trees-hub-flow-stage.is-active {
+    background: rgba(144, 73, 81, 0.14);
 }
 
 .my-trees-hub-flow-stage-index {

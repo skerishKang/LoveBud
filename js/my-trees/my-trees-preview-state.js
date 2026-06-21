@@ -227,7 +227,11 @@
     return visible.map(function (memory, index) {
       var label = getMomentLabel(memory, index === 0 ? '시작 순간' : '이어진 순간');
       var stageIndex = index + 1;
-      return '<span class="my-trees-hub-flow-stage" data-my-trees-moment-index="' + stageIndex + '">' +
+      // Step 9: full Browse parity — role="button" + tabindex="0" make
+      // the stage keyboard-focusable; is-active on the first stage marks
+      // the moment currently shown in the video iframe.
+      var activeClass = (index === 0) ? ' is-active' : '';
+      return '<span class="my-trees-hub-flow-stage' + activeClass + '" role="button" tabindex="0" data-my-trees-moment-index="' + stageIndex + '">' +
         '<span class="my-trees-hub-flow-stage-index">' + stageIndex + '</span>' +
         '<span class="my-trees-hub-flow-stage-label" title="' + escapeHtml(label) + '" aria-label="' + escapeHtml(label) + '">' + escapeHtml(label) + '</span>' +
         '</span>';
