@@ -418,16 +418,41 @@
        redirect completes, but getRedirectResult() surfaces any error
        that occurred during the redirect flow (e.g. auth/internal-error,
        auth/network-request-failed). Without this call the user sees the
-       redirect succeed but no session, with no error message. */
+       redirect succeed but no session, with no error message.
+
+       Race-condition guard: the persisted session cache must be
+       written BEFORE we navigate, otherwise protected routes (e.g.
+       my-trees) read an empty cache, treat the user as anonymous, and
+       bounce them back to /pages/login?redirect=my-trees — looking
+       exactly like the redirect sign-in never happened. The previous
+       implementation fire-and-forgot persistConfirmedAuthSession and
+       navigated immediately, which caused this loop. */
     if (typeof firebase.auth().getRedirectResult === 'function') {
-      firebase.auth().getRedirectResult().then(function(result) {
+      firebase.auth().getRedirectResult().then(async function(result) {
         if (result && result.user) {
-          if (typeof persistConfirmedAuthSession === 'function') {
-            persistConfirmedAuthSession(result.user).catch(function() {});
-          }
           var redirectDest = typeof getRedirectTarget === 'function'
             ? getRedirectTarget()
             : 'pages/my-trees.html';
+
+          if (typeof persistConfirmedAuthSession === 'function') {
+            try {
+              await persistConfirmedAuthSession(result.user);
+            } catch (persistError) {
+              console.warn('Persist confirmed auth session failed after Google redirect:', persistError);
+              var friendlyPersist = typeof getFriendlyErrorMessage === 'function'
+                ? getFriendlyErrorMessage(persistError, true)
+                : null;
+              if (!friendlyPersist) {
+                friendlyPersist = '로그인 정보를 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.';
+              }
+              try { alert(friendlyPersist); } catch (e) {}
+              // Do NOT navigate — onAuthStateChanged below will still
+              // set the Firebase session, but skipping the redirect
+              // here prevents the auth-check race in protected routes.
+              return;
+            }
+          }
+
           if (typeof isLoginPage === 'function' && isLoginPage()) {
             window.location.replace(redirectDest);
           }
