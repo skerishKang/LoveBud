@@ -176,72 +176,31 @@
     var provider = new firebase.auth.GoogleAuthProvider();
     try { provider.setCustomParameters({ prompt: 'select_account' }); } catch (e) {}
 
-    var embedded = isEmbeddedBrowser();
     var redirectTarget = typeof getRedirectTarget === 'function' ? getRedirectTarget() : 'pages/my-trees.html';
 
-    /* Embedded browsers (preview iframes, in-app web views, sandboxed
-       WebViews) cannot show OAuth popups — the popup fails silently
-       and the user is left staring at about:blank. Skip the popup
-       entirely on embedded environments and go straight to
-       signInWithRedirect, which uses the same tab for navigation. */
-    if (embedded) {
-      try {
-        if (typeof preloadRedirectTargetData === 'function') {
-          preloadRedirectTargetData();
-        }
-        await firebase.auth().signInWithRedirect(provider);
-        return;
-      } catch (redirectError) {
-        console.error('Google redirect (embedded) failed:', redirectError);
-        var embeddedMessage = getFriendlyErrorMessage(redirectError, true);
-        if (embeddedMessage) alert(embeddedMessage);
-        return;
-      }
-    }
-
+    /* Always use signInWithRedirect for Google login. Rationale:
+       - Embedded browsers (preview iframes, in-app web views, sandboxed
+         WebViews) cannot show OAuth popups — signInWithPopup fails
+         silently with about:blank.
+       - Desktop browsers sometimes block popups (privacy settings,
+         extensions) — signInWithRedirect works regardless.
+       - The redirect flow uses the same tab for OAuth navigation,
+         so the user lands back on the original page after auth.
+       - Behavior is identical across all environments.
+       Previous implementation tried popup first on desktop and only
+       fell back to redirect on popup error, which left users on
+       environments with browser-level popup blocking silently failing. */
     try {
-      var authResult = await firebase.auth().signInWithPopup(provider);
-      var authUser = authResult && authResult.user ? authResult.user : firebase.auth().currentUser;
-
-      if (typeof persistConfirmedAuthSession === 'function') {
-        await persistConfirmedAuthSession(authUser);
-      }
       if (typeof preloadRedirectTargetData === 'function') {
         preloadRedirectTargetData();
       }
-      window.location.href = redirectTarget;
-    } catch (error) {
-      console.error('Google login failed:', error);
-
-      // All popup errors on non-embedded pages now fall back to
-      // signInWithRedirect (previously this only ran on the login page).
-      var popupFallbackCodes = {
-        'auth/popup-blocked': true,
-        'auth/web-storage-unsupported': true,
-        'auth/cancelled-popup-request': true,
-        'auth/popup-closed-by-user': true,
-        'auth/internal-error': true
-      };
-
-      var shouldTryRedirectFallback = popupFallbackCodes[error && error.code];
-
-      if (shouldTryRedirectFallback) {
-        try {
-          if (typeof preloadRedirectTargetData === 'function') {
-            preloadRedirectTargetData();
-          }
-          await firebase.auth().signInWithRedirect(provider);
-          return;
-        } catch (redirectError) {
-          console.error('Google redirect fallback failed:', redirectError);
-          var redirectMessage = getFriendlyErrorMessage(redirectError, true);
-          if (redirectMessage) alert(redirectMessage);
-          return;
-        }
-      }
-
-      var friendlyMessage = getFriendlyErrorMessage(error, true);
-      if (friendlyMessage) alert(friendlyMessage);
+      await firebase.auth().signInWithRedirect(provider);
+      return;
+    } catch (redirectError) {
+      console.error('Google redirect sign-in failed:', redirectError);
+      var redirectMessage = getFriendlyErrorMessage(redirectError, true);
+      if (redirectMessage) alert(redirectMessage);
+      return;
     }
   }
 

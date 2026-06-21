@@ -8,18 +8,13 @@
  *      and (b) common WebView markers (wv / webview / inapp /
  *      app_webview) in the user agent.
  *
- *   2. signInWithGoogle uses signInWithRedirect as the primary path
- *      when isEmbeddedBrowser() returns true. The legacy signInWithPopup
- *      path must NOT be reached on embedded environments.
+ *   2. signInWithGoogle ALWAYS uses signInWithRedirect — there is no
+ *      signInWithPopup branch anymore. This guarantees the login flow
+ *      works in embedded browsers, with popup blockers, and in any
+ *      other environment that suppresses popups. Behavior is identical
+ *      across all environments.
  *
- *   3. signInWithGoogle still tries signInWithPopup first on regular
- *      browsers, but the redirect fallback (signInWithRedirect) now
- *      runs on ALL pages, not just the login page.
- *
- *   4. The popup-fallback error code list is broadened to cover more
- *      failure modes (auth/popup-closed-by-user, auth/internal-error).
- *
- *   5. initAuth() calls firebase.auth().getRedirectResult() so any
+ *   3. initAuth() calls firebase.auth().getRedirectResult() so any
  *      error from a signInWithRedirect flow (e.g. auth/internal-error,
  *      auth/network-request-failed) surfaces a friendly message
  *      instead of leaving the user staring at a logged-in UI that
@@ -55,7 +50,6 @@ test('isEmbeddedBrowser() detects running inside a frame (self !== top)', () => 
 });
 
 test('isEmbeddedBrowser() detects cross-origin frame access as embedded', () => {
-    // When window.top access throws (cross-origin), treat as embedded
     assert.match(
         authFirebaseJs,
         /cross-?origin\s+frame\s+access/i,
@@ -64,7 +58,6 @@ test('isEmbeddedBrowser() detects cross-origin frame access as embedded', () => 
 });
 
 test('isEmbeddedBrowser() detects common WebView markers in UA', () => {
-    // WebView, wv, inapp, app_webview
     assert.match(
         authFirebaseJs,
         /['"]wv['"]/,
@@ -82,55 +75,33 @@ test('isEmbeddedBrowser() detects common WebView markers in UA', () => {
     );
 });
 
-// ── 2) signInWithGoogle uses redirect as primary on embedded ─────────
-test('signInWithGoogle routes embedded browsers straight to signInWithRedirect', () => {
-    assert.match(
-        authFirebaseJs,
-        /var\s+embedded\s*=\s*isEmbeddedBrowser\(\)/,
-        'signInWithGoogle must call isEmbeddedBrowser() into a local var'
-    );
-    assert.match(
-        authFirebaseJs,
-        /if\s*\(\s*embedded\s*\)\s*\{[\s\S]*?signInWithRedirect\s*\(\s*provider\s*\)/,
-        'signInWithGoogle must call signInWithRedirect(provider) when embedded is true'
-    );
-});
-
-test('signInWithGoogle does NOT call signInWithPopup in the embedded branch', () => {
-    const embeddedBranchMatch = authFirebaseJs.match(
-        /if\s*\(\s*embedded\s*\)\s*\{([\s\S]*?)\}/
-    );
-    assert.ok(embeddedBranchMatch, 'must find embedded branch block');
-    const embeddedBranch = embeddedBranchMatch[1];
+// ── 2) signInWithGoogle ALWAYS uses signInWithRedirect ───────────────
+test('signInWithGoogle does NOT call signInWithPopup anywhere', () => {
     assert.ok(
-        !/signInWithPopup\s*\(\s*provider\s*\)/.test(embeddedBranch),
-        'Embedded branch must NOT call signInWithPopup (the popup fails silently on embedded browsers)'
+        !/firebase\.auth\(\)\.signInWithPopup\s*\(\s*provider\s*\)/.test(authFirebaseJs),
+        'signInWithGoogle must NOT call signInWithPopup anywhere — always use signInWithRedirect'
     );
 });
 
-// ── 3) Popup fallback now works on ALL pages, not just login ──────────
-test('Popup-to-redirect fallback no longer requires login page', () => {
+test('signInWithGoogle always calls signInWithRedirect', () => {
+    assert.match(
+        authFirebaseJs,
+        /await\s+firebase\.auth\(\)\.signInWithRedirect\s*\(\s*provider\s*\)/,
+        'signInWithGoogle must call signInWithRedirect(provider) — always'
+    );
+});
+
+// ── 3) Popup-fallback error code list is retired ─────────────────────
+test('Popup-fallback error code list is retired', () => {
+    // The legacy popupFallbackCodes object must be gone since popup
+    // is no longer used as a path.
     assert.ok(
-        !/shouldTryRedirectFallback\s*=\s*loginPage\s*&&\s*popupFallbackCodes/.test(authFirebaseJs),
-        'Legacy loginPage-AND fallback must be retired (popup errors on non-login pages now also fall back)'
+        !/popupFallbackCodes/.test(authFirebaseJs),
+        'Legacy popupFallbackCodes must not appear after popup is retired'
     );
-    assert.match(
-        authFirebaseJs,
-        /shouldTryRedirectFallback\s*=\s*popupFallbackCodes\s*\[\s*error\s*&&\s*error\.code\s*\]/,
-        'Popup-to-redirect fallback must now be: popupFallbackCodes[error && error.code]'
-    );
-});
-
-test('Popup-fallback error code list is broadened', () => {
-    assert.match(
-        authFirebaseJs,
-        /['"]auth\/popup-closed-by-user['"]/,
-        'popup-closed-by-user must be in the fallback list'
-    );
-    assert.match(
-        authFirebaseJs,
-        /['"]auth\/internal-error['"]/,
-        'auth/internal-error must be in the fallback list (covers unknown popup errors)'
+    assert.ok(
+        !/shouldTryRedirectFallback/.test(authFirebaseJs),
+        'Legacy shouldTryRedirectFallback guard must not appear'
     );
 });
 
