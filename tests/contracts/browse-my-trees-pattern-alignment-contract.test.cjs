@@ -216,7 +216,7 @@ test('9. Browse card order: media -> title -> subtitle -> public metadata -> met
   assert.ok(idxMeta < idxMetaRow, 'metadata must be before meta row');
 });
 
-test('10. My LoveTree card order: thumb -> info/title/subcopy/meta/action', () => {
+test('10. My LoveTree card order: thumb -> body/title/subcopy/meta-row/action (Browse parity)', () => {
   const source = read('js/my-trees/my-trees-ui.js');
   const cardFnStart = source.indexOf('function buildTreeCard');
   assert.ok(cardFnStart !== -1, 'buildTreeCard function must exist');
@@ -225,21 +225,37 @@ test('10. My LoveTree card order: thumb -> info/title/subcopy/meta/action', () =
   assert.ok(templateStart !== -1, 'innerHTML block must exist');
   const templateSection = cardFnSection.slice(templateStart);
   const idxThumb = templateSection.indexOf('buildTreeThumbVisual');
-  const idxInfo = templateSection.indexOf('tree-card-info');
+  const idxBody = templateSection.indexOf('tree-card-body');
   const idxTitle = templateSection.indexOf('tree-card-title');
   const idxSubcopy = templateSection.indexOf('tree-card-subcopy');
   const idxMeta = templateSection.indexOf('cardMeta.privateBadgeHtml');
-  const idxFooter = templateSection.indexOf('tree-card-footer');
+  const idxMetaRow = templateSection.indexOf('tree-meta-row');
+  const idxReaction = templateSection.indexOf('tree-card-reaction-metrics');
+  const idxOpen = templateSection.indexOf('tree-card-open-link');
   assert.ok(idxThumb !== -1, 'Thumb template helper must exist');
-  assert.ok(idxInfo !== -1, 'Info container must exist');
+  assert.ok(idxBody !== -1, 'Single tree-card-body container must exist (Browse parity)');
   assert.ok(idxTitle !== -1, 'Title class must exist');
   assert.ok(idxSubcopy !== -1, 'Subcopy class must exist');
   assert.ok(idxMeta !== -1, 'Private badge template must exist');
-  assert.ok(idxFooter !== -1, 'Footer must exist');
-  assert.ok(idxThumb < idxInfo, 'thumb must be before info');
-  assert.ok(idxInfo < idxFooter, 'info must be before footer');
+  assert.ok(idxMetaRow !== -1, 'tree-meta-row wrapper must exist');
+  assert.ok(idxReaction !== -1, 'tree-card-reaction-metrics must exist (Browse parity)');
+  assert.ok(idxOpen !== -1, 'Open link class must exist');
+  assert.ok(idxThumb < idxBody, 'thumb must be before body');
+  assert.ok(idxBody < idxMetaRow, 'body must contain the meta-row');
   assert.ok(idxTitle < idxSubcopy, 'title must be before subcopy');
   assert.ok(idxSubcopy < idxMeta, 'subcopy must be before privateBadgeHtml');
+  assert.ok(idxMetaRow < idxOpen, 'meta-row must be before open link');
+  // Step 3 follow-up: the legacy two-block split (info + footer) must not return.
+  assert.equal(
+    templateSection.indexOf('tree-card-info'),
+    -1,
+    'Legacy .tree-card-info block must not return after Step 3 unification'
+  );
+  assert.equal(
+    templateSection.indexOf('tree-card-footer'),
+    -1,
+    'Legacy .tree-card-footer block must not return after Step 3 unification'
+  );
 });
 
 test('11. No backend/editor/Scout changes', () => {

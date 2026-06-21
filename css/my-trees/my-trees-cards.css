@@ -45,7 +45,30 @@
 .tree-card-flow-node-root { background: #904951; }
 .tree-card-flow-node-end { background: #7a8b6e; box-shadow: 0 0 0 4px rgba(122,139,110,0.12); }
 .tree-card-flow-count-1 .tree-card-flow-line { right: 50%; opacity: 0.28; }
-.tree-card-info { padding: 4px 6px 6px; display: flex; flex-direction: column; gap: 9px; min-height: 0; }
+.tree-card-info,
+.tree-card-footer,
+.tree-card-footer-left,
+.tree-card-footer-right,
+.tree-card-footer-metrics,
+.tree-card-footer-metric {
+    /* Step 3 follow-up: unified single-block card structure parity with Browse.
+       The legacy two-block (.tree-card-info + .tree-card-footer) split is
+       replaced by a single .tree-card-body container. The selectors above
+       remain as no-op rules so any stale DOM or cached paint does not break. */
+}
+.tree-card-body {
+    display: grid;
+    grid-template-rows: 2.98rem 2.46rem auto;
+    row-gap: 9px;
+    padding: 4px 6px 6px;
+    flex: 1;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
+}
 .tree-card-title-row { display: flex; align-items: flex-start; gap: 10px; justify-content: space-between; }
 .tree-card-title {
     font-size: 1.36rem;
@@ -89,6 +112,69 @@
 .tree-card-visibility { display: flex; align-items: center; gap: 4px; font-size: 12px; padding: 4px 10px; border-radius: 99px; background: var(--lovetree-chip-bg); border: 1px solid var(--lovetree-chip-border); color: var(--lovetree-chip-text); }
 .tree-card-visibility.public { background: rgba(122, 139, 110, 0.1); color: var(--secondary); }
 .tree-card-visibility.private { background: var(--lovetree-pill-bg); color: var(--lovetree-pill-text); }
+
+/* Step 3 follow-up: meta-row + reaction metrics shared with Browse.
+   Locks parity of the inner card body across both pages so the cards
+   read as one block, not two stacked sections. */
+.tree-meta-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(144, 73, 81, 0.08);
+    font-size: 13px;
+    color: var(--on-surface-variant);
+    margin-top: auto;
+    min-width: 0;
+}
+
+.tree-meta-left,
+.tree-meta-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+}
+
+.tree-meta-right {
+    justify-content: flex-end;
+    overflow: hidden;
+    flex: 1 1 auto;
+    gap: 6px;
+}
+
+.tree-card .tree-meta-left {
+    flex: 1 1 auto;
+    overflow: hidden;
+}
+
+.tree-card .tree-meta-right {
+    flex: 0 0 auto;
+}
+
+.tree-card-reaction-metrics {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    color: var(--primary);
+    font-size: 12px;
+    font-weight: 820;
+    white-space: nowrap;
+}
+
+.tree-card-reaction-metric {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    min-width: 0;
+}
+
+.tree-card-reaction-metric .material-symbols-outlined {
+    font-size: 14px;
+    line-height: 1;
+}
 
 /* Issue #1125: keep owner cards focused on representative cover content. */
 .tree-card-thumb-initial,

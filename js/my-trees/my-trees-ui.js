@@ -296,7 +296,7 @@
     };
 
     card.addEventListener('click', function (e) {
-      if (e.target.closest('.tree-card-open-link, .tree-card-edit-link, .tree-card-footer a, button, a[href]')) {
+      if (e.target.closest('.tree-card-open-link, .tree-card-edit-link, button, a[href]')) {
         return;
       }
       if (window.innerWidth < 480) {
@@ -329,40 +329,40 @@
 
     card.innerHTML = [
       buildTreeThumbVisual(normalizedTree, i18n),
-      '<div class="tree-card-info">',
+      '<div class="tree-card-body">',
         '<div class="tree-card-title-row">',
           '<div class="tree-card-title">' + escapeHtml(title) + '</div>',
         '</div>',
         '<div class="tree-card-subcopy">' + cardMeta.mood + '</div>',
         cardMeta.privateBadgeHtml,
-      '</div>',
-      '<div class="tree-card-footer">',
-        '<div class="tree-card-footer-left">',
-          // Issue #1488 #1490: 조회수→좋아요 순서, 순간수 제거
-          '<div class="tree-card-footer-metrics">',
-            '<span class="tree-card-footer-metric" title="' + escapeHtml(viewCountLabel + ' ' + formatCompactCount(viewCount)) + '">',
-              '<span class="material-symbols-outlined" aria-hidden="true">visibility</span>',
-              '<span>' + formatCompactCount(viewCount) + '</span>',
-            '</span>',
-            '<span class="tree-card-footer-metric" title="' + escapeHtml(likeCountLabel + ' ' + formatCompactCount(likeCount)) + '">',
-              '<span class="material-symbols-outlined" aria-hidden="true">favorite</span>',
-              '<span>' + formatCompactCount(likeCount) + '</span>',
-            '</span>',
-            '<span class="tree-card-footer-metric" title="' + escapeHtml(commentCountLabel + ' ' + formatCompactCount(commentCount)) + '">',
-              '<span class="material-symbols-outlined" aria-hidden="true">chat_bubble</span>',
-              '<span>' + formatCompactCount(commentCount) + '</span>',
-            '</span>',
-            '<span class="tree-card-footer-metric" title="' + escapeHtml(shareCountLabel + ' ' + formatCompactCount(shareCount)) + '">',
-              '<span class="material-symbols-outlined" aria-hidden="true">share</span>',
-              '<span>' + formatCompactCount(shareCount) + '</span>',
-            '</span>',
+        '<div class="tree-meta-row">',
+          '<div class="tree-meta-left">',
+            // Issue #1488 #1490: 조회수→좋아요 순서, 순간수 제거
+            '<div class="tree-card-reaction-metrics">',
+              '<span class="tree-card-reaction-metric" title="' + escapeHtml(viewCountLabel + ' ' + formatCompactCount(viewCount)) + '">',
+                '<span class="material-symbols-outlined" aria-hidden="true">visibility</span>',
+                '<span>' + formatCompactCount(viewCount) + '</span>',
+              '</span>',
+              '<span class="tree-card-reaction-metric" title="' + escapeHtml(likeCountLabel + ' ' + formatCompactCount(likeCount)) + '">',
+                '<span class="material-symbols-outlined" aria-hidden="true">favorite</span>',
+                '<span>' + formatCompactCount(likeCount) + '</span>',
+              '</span>',
+              '<span class="tree-card-reaction-metric" title="' + escapeHtml(commentCountLabel + ' ' + formatCompactCount(commentCount)) + '">',
+                '<span class="material-symbols-outlined" aria-hidden="true">chat_bubble</span>',
+                '<span>' + formatCompactCount(commentCount) + '</span>',
+              '</span>',
+              '<span class="tree-card-reaction-metric" title="' + escapeHtml(shareCountLabel + ' ' + formatCompactCount(shareCount)) + '">',
+                '<span class="material-symbols-outlined" aria-hidden="true">share</span>',
+                '<span>' + formatCompactCount(shareCount) + '</span>',
+              '</span>',
+            '</div>',
           '</div>',
-        '</div>',
-        '<div class="tree-card-footer-right">',
-          '<a class="tree-card-open-link" href="' + escapeHtml(viewHref) + '" target="_self">',
-            '<span class="material-symbols-outlined" aria-hidden="true">visibility</span>',
-            viewLabel,
-          '</a>',
+          '<div class="tree-meta-right">',
+            '<a class="tree-card-open-link" href="' + escapeHtml(viewHref) + '" target="_self">',
+              '<span class="material-symbols-outlined" aria-hidden="true">visibility</span>',
+              viewLabel,
+            '</a>',
+          '</div>',
         '</div>',
       '</div>'
     ].join('');
