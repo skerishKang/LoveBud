@@ -142,3 +142,50 @@ test('getRedirectResult persists the auth session on success', () => {
         'getRedirectResult success path must call persistConfirmedAuthSession'
     );
 });
+
+// ── 5) Race-condition guard: persist BEFORE redirect ────────────────
+test('getRedirectResult callback is an async function (allows await)', () => {
+    assert.match(
+        authFirebaseJs,
+        /\.getRedirectResult\(\)\.then\(async function/,
+        'getRedirectResult callback must be async so it can await persistConfirmedAuthSession'
+    );
+});
+
+test('getRedirectResult awaits persistConfirmedAuthSession before navigating', () => {
+    // The persist call must be `await`ed, not fire-and-forgotten.
+    // The old (buggy) form was: persistConfirmedAuthSession(result.user).catch(function() {});
+    // The new form must be: await persistConfirmedAuthSession(result.user);
+    assert.ok(
+        !/persistConfirmedAuthSession\(\s*result\.user\s*\)\.catch\(\s*function\s*\(\s*\)\s*\{/.test(authFirebaseJs),
+        'Legacy fire-and-forget persistConfirmedAuthSession(...).catch(function(){}) must not return (caused the redirect race)'
+    );
+    assert.match(
+        authFirebaseJs,
+        /await\s+persistConfirmedAuthSession\(\s*result\.user\s*\)/,
+        'persistConfirmedAuthSession must be awaited before redirect navigation'
+    );
+});
+
+test('getRedirectResult does NOT navigate when persistConfirmedAuthSession rejects', () => {
+    // If persist fails, we must surface the error to the user and skip
+    // the window.location.replace — otherwise protected routes read an
+    // empty cache and bounce the user back to /pages/login, looking
+    // like the redirect sign-in never happened.
+    const persistCatchBlock = authFirebaseJs.match(
+        /catch\s*\(\s*persistError\s*\)\s*\{([\s\S]*?)\}\s*\}/m
+    );
+    assert.ok(persistCatchBlock, 'must find a persist catch block');
+    const persistBody = persistCatchBlock[1];
+    // Must alert or otherwise surface the failure (not silently swallow)
+    assert.match(
+        persistBody,
+        /alert\s*\(/,
+        'persist catch block must alert the user (no silent failure)'
+    );
+    assert.match(
+        persistBody,
+        /return\s*;/,
+        'persist catch block must return early so window.location.replace is skipped'
+    );
+});
