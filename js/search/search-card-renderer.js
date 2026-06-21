@@ -160,16 +160,24 @@
                 'openCount',
                 'opensCount',
                 'open_count'
-            ])
+            ]),
+            comments: getFirstFiniteCount(tree, ['commentCount', 'commentsCount', 'comments', 'comment_count']),
+            shares: getFirstFiniteCount(tree, ['shareCount', 'sharesCount', 'shares', 'share_count'])
         };
     }
 
-    // Issue #1488 #1490: 조회수 → 좋아요 순서로 통일 (댓글·공유 제거)
+    // PR #2760: restore 댓글·공유 metric alongside 조회/좋아요 so the card
+    // reaction row is symmetric with the hub pill row (4 metrics). The
+    // earlier Issue #1488 #1490 removal of 댓글·공유 predated the hub
+    // pill parity work; restoring them here keeps Browse ↔ My Trees
+    // cards visually identical.
     function renderTreeReactionMetrics(tree) {
         const counts = getTreeReactionCounts(tree);
         const metrics = [
             { icon: 'visibility', label: '조회수', value: counts.views },
-            { icon: 'favorite', label: '좋아요', value: counts.likes }
+            { icon: 'favorite', label: '좋아요', value: counts.likes },
+            { icon: 'chat_bubble', label: '댓글', value: counts.comments },
+            { icon: 'share', label: '공유', value: counts.shares }
         ];
 
         return `

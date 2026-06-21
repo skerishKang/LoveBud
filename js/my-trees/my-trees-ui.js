@@ -324,6 +324,8 @@
     var likeCountLabel = getI18nText(i18n, 'myTrees.like_count', '좋아요');
     var commentCountLabel = getI18nText(i18n, 'myTrees.comment_count', '댓글');
     var commentCount = Number(normalizedTree.commentCount || normalizedTree.comment_count || 0);
+    var shareCountLabel = getI18nText(i18n, 'myTrees.share_count', '공유');
+    var shareCount = Number(normalizedTree.shareCount || normalizedTree.share_count || 0);
 
     card.innerHTML = [
       buildTreeThumbVisual(normalizedTree, i18n),
@@ -349,6 +351,10 @@
             '<span class="tree-card-footer-metric" title="' + escapeHtml(commentCountLabel + ' ' + formatCompactCount(commentCount)) + '">',
               '<span class="material-symbols-outlined" aria-hidden="true">chat_bubble</span>',
               '<span>' + formatCompactCount(commentCount) + '</span>',
+            '</span>',
+            '<span class="tree-card-footer-metric" title="' + escapeHtml(shareCountLabel + ' ' + formatCompactCount(shareCount)) + '">',
+              '<span class="material-symbols-outlined" aria-hidden="true">share</span>',
+              '<span>' + formatCompactCount(shareCount) + '</span>',
             '</span>',
           '</div>',
         '</div>',

@@ -61,6 +61,7 @@
     'myTrees.view_count': { ko: '조회수', en: '조회수' },
     'myTrees.like_count': { ko: '좋아요', en: '좋아요' },
     'myTrees.comment_count': { ko: '댓글', en: '댓글' },
+    'myTrees.share_count': { ko: '공유', en: 'Share' },
     'myTrees.create_modal_kicker': { ko: '새 러브트리 시작', en: 'Start a new LoveTree' },
     'myTrees.create_modal_title': { ko: '어떤 러브트리를 남길까요?', en: 'What kind of LoveTree would you like to start?' },
     'myTrees.create_modal_desc': { ko: '이름을 정하고 첫 순간을 남겨요.', en: 'Set a name, then save your first moment.' },
