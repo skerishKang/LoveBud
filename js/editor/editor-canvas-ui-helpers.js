@@ -6,6 +6,12 @@
 /**
  * Updates the layout toggle button UI based on the current layout mode.
  */
+function resolveLayoutLabel(i18n, key, fallback) {
+    if (typeof i18n !== 'function') return fallback;
+    const value = i18n(key);
+    return value && value !== key ? value : fallback;
+}
+
 export function updateLayoutToggleUI(layoutMode, i18n) {
     const toggleBtn = document.getElementById('layoutModeToggleBtn');
     const toggleLabel = document.getElementById('layoutModeToggleLabel');
@@ -17,8 +23,8 @@ export function updateLayoutToggleUI(layoutMode, i18n) {
     
     if (toggleLabel) {
         toggleLabel.textContent = isStructured
-            ? (i18n('editor_layout_structured') || '정리된 트리')
-            : (i18n('editor_layout_free') || '자유 배치');
+            ? resolveLayoutLabel(i18n, 'editor_layout_structured', '정리된 트리')
+            : resolveLayoutLabel(i18n, 'editor_layout_free', '자유 배치');
     }
     if (toggleIcon) {
         toggleIcon.textContent = isStructured ? 'account_tree' : 'auto_awesome';

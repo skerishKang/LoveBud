@@ -2,7 +2,7 @@ import * as utils from './editor-canvas-utils.js';
 import * as panzoomUtils from './editor-canvas-panzoom.js';
 import * as selectionUtils from './editor-canvas-selection.js';
 import * as renderUtils from './editor-canvas-renderer.js';
-import * as uiHelpers from './editor-canvas-ui-helpers.js';
+import * as uiHelpers from './editor-canvas-ui-helpers.js?v=20260622-layout-label-1';
 
 function createEditorCanvas(deps) {
     const {

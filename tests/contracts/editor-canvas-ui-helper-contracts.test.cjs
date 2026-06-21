@@ -173,3 +173,34 @@ test('showMovedToast — displays movedToast and hides on timeout', async () => 
     delete globalThis.document;
   }
 });
+
+test('updateLayoutToggleUI falls back when i18n returns raw layout key', async () => {
+  const { updateLayoutToggleUI } = await import('../../js/editor/editor-canvas-ui-helpers.js');
+  const toggleBtn = fakeElement();
+  toggleBtn.classList.toggle = (name, force) => {
+    if (force) toggleBtn.classList.add(name);
+    else toggleBtn.classList.remove(name);
+  };
+  const toggleLabel = { textContent: '' };
+  const toggleIcon = { textContent: '' };
+  const doc = fakeDocument();
+  doc._set('layoutModeToggleBtn', toggleBtn);
+  doc._set('layoutModeToggleLabel', toggleLabel);
+  doc._set('layoutModeToggleIcon', toggleIcon);
+  const originalDocument = globalThis.document;
+  globalThis.document = doc;
+
+  updateLayoutToggleUI('free', (key) => key);
+  assert.equal(toggleLabel.textContent, '자유 배치');
+  assert.equal(toggleIcon.textContent, 'auto_awesome');
+
+  updateLayoutToggleUI('structured', (key) => key);
+  assert.equal(toggleLabel.textContent, '정리된 트리');
+  assert.equal(toggleIcon.textContent, 'account_tree');
+
+  if (originalDocument) {
+    globalThis.document = originalDocument;
+  } else {
+    delete globalThis.document;
+  }
+});

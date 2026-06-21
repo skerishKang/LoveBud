@@ -284,9 +284,9 @@ test('14. Runtime cache-busts updated for changed JS/CSS', () => {
   assert.match(myTreesHtml, /my-trees-preview-state\.js\?v=20260621-step8-1/);
   assert.match(myTreesHtml, /my-trees-i18n-refresh\.js\?v=20260622-hub-social-dedupe-1/);
   assert.match(myTreesHtml, /i18n-my-trees\.js\?v=20260619-2710-1/);
-  assert.match(myTreesHtml, /my-trees\.css\?v=20260622-mytrees-controls-1/);
+  assert.match(myTreesHtml, /my-trees\.css\?v=20260622-title-row-1/);
   assert.match(myTreesHtml, /my-trees-page\.js\?v=20260622-mytrees-create-1/);
-  assert.match(myTreesCss, /my-trees-header\.css\?v=20260622-mytrees-controls-1/);
+  assert.match(myTreesCss, /my-trees-header\.css\?v=20260622-title-row-1/);
   assert.match(myTreesCss, /my-trees-mobile-controls-balance\.css\?v=20260622-mytrees-controls-1/);
   assert.match(myTreesCss, /search\/search-controls\.css/);
   assert.match(myTreesCss, /search\/search-preview-sidebar\.css/);
@@ -306,11 +306,11 @@ test('15. My LoveTree desktop visual rhythm alignment with Browse', () => {
   const resultsHeadDecl = uncommentedCss.match(/\.my-trees-results-head\s*\{([^}]*)\}/);
   assert.ok(resultsHeadDecl, '.my-trees-results-head block must be declared');
 
-  // 2. .my-trees-results-title-row has justify-content: flex-start
+  // 2. .my-trees-results-title-row separates label and create CTA
   assert.match(
     uncommentedCss,
-    /\.my-trees-results-title-row\s*\{[^}]*justify-content:\s*flex-start;[^}]*}/,
-    '.my-trees-results-title-row must use justify-content: flex-start'
+    /\.my-trees-results-title-row\s*\{[^}]*justify-content:\s*space-between;[^}]*}/,
+    '.my-trees-results-title-row must keep the label left and create CTA right'
   );
 
   // 3. .my-trees-results-controls has margin-left: auto and flex-wrap: nowrap in desktop
