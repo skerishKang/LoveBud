@@ -210,3 +210,55 @@ test('getRedirectResult and persist failure paths do NOT pass raw error objects 
         'Persist error catch must format friendly message using safe wrapper'
     );
 });
+
+test('signInWithGoogle prints diagnostic redirect start/called logs safely under authDebug', () => {
+    assert.match(
+        authFirebaseJs,
+        /console\.info\(\s*['"]\[auth\.redirect\]\s*sign-in-start['"]\s*\)/,
+        'signInWithGoogle must log sign-in-start under authDebug'
+    );
+    assert.match(
+        authFirebaseJs,
+        /console\.info\(\s*['"]\[auth\.redirect\]\s*sign-in-redirect-called['"]\s*\)/,
+        'signInWithGoogle must log sign-in-redirect-called under authDebug'
+    );
+    assert.match(
+        authFirebaseJs,
+        /console\.info\(\s*['"]\[auth\.redirect\]\s*storage-probe\s*ok=['"]\s*\+\s*storageOk\s*\)/,
+        'signInWithGoogle must log storage-probe output'
+    );
+});
+
+test('getRedirectResult no-result branch logs current-user-present safely under authDebug', () => {
+    assert.match(
+        authFirebaseJs,
+        /console\.info\(\s*['"]\[auth\.redirect\]\s*no-result\s*current-user-present=['"]\s*\+\s*hasCurrentUser\s*\)/,
+        'getRedirectResult no-result branch must log currentUser presence'
+    );
+});
+
+test('signInWithGoogle redirect catch does not pass raw error to console.error or getFriendlyErrorMessage', () => {
+    // raw redirectError must not be logged to console.error
+    assert.ok(
+        !/console\.error\(\s*['"]Google redirect sign-in failed:['"]\s*,\s*redirectError\s*\)/.test(authFirebaseJs),
+        'signInWithGoogle redirect catch must not log raw redirectError to console'
+    );
+    // console.warn code only log
+    assert.match(
+        authFirebaseJs,
+        /console\.warn\(\s*['"]\[auth\.redirect\]\s*sign-in-redirect-error\s*code=['"]\s*\+\s*redirectErrorCode\s*\)/,
+        'signInWithGoogle catch must log redirect error code via console.warn'
+    );
+    // wrapper must be constructed
+    assert.match(
+        authFirebaseJs,
+        /var\s+safeRedirectSignInError\s*=\s*\{\s*code:\s*redirectError\s*&&\s*redirectError\.code\s*||\s*['"]['"]\s*,\s*name:\s*redirectError\s*&&\s*redirectError\.name\s*||\s*['"]['"]\s*,\s*message:\s*['"]['"]\s*\};/,
+        'signInWithGoogle redirect catch must construct safeRedirectSignInError wrapper'
+    );
+    // friendly message called with safe wrapper
+    assert.match(
+        authFirebaseJs,
+        /getFriendlyErrorMessage\(\s*safeRedirectSignInError\s*,\s*true\s*\)/,
+        'signInWithGoogle must pass safeRedirectSignInError wrapper to getFriendlyErrorMessage'
+    );
+});

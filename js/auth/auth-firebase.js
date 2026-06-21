@@ -158,10 +158,36 @@
     var preloadRedirectTargetData = options && options.preloadRedirectTargetData;
     var getRedirectTarget = options && options.getRedirectTarget;
 
+    var debugEnabled = false;
+    try {
+      var params = new URLSearchParams(window.location.search || '');
+      if (params.get('authDebug') === '1') {
+        debugEnabled = true;
+      }
+    } catch (e) {}
+
+    if (debugEnabled) {
+      console.info('[auth.redirect] sign-in-start');
+    }
+
     var envError = typeof getEnvironmentCheckError === 'function' ? getEnvironmentCheckError() : null;
     if (envError) {
+      if (debugEnabled) {
+        console.info('[auth.redirect] env-error present');
+      }
       alert(envError);
       return;
+    }
+
+    if (debugEnabled) {
+      var storageOk = false;
+      try {
+        var testKey = '__lovebud_storage_probe__';
+        localStorage.setItem(testKey, testKey);
+        localStorage.removeItem(testKey);
+        storageOk = true;
+      } catch (e) {}
+      console.info('[auth.redirect] storage-probe ok=' + storageOk);
     }
 
     if (!firebase.apps || !firebase.apps.length) {
@@ -177,6 +203,9 @@
     try { provider.setCustomParameters({ prompt: 'select_account' }); } catch (e) {}
 
     var redirectTarget = typeof getRedirectTarget === 'function' ? getRedirectTarget() : 'pages/my-trees.html';
+    if (debugEnabled) {
+      console.info('[auth.redirect] redirect-target-present=' + (!!redirectTarget));
+    }
 
     /* Always use signInWithRedirect for Google login. Rationale:
        - Embedded browsers (preview iframes, in-app web views, sandboxed
@@ -194,11 +223,28 @@
       if (typeof preloadRedirectTargetData === 'function') {
         preloadRedirectTargetData();
       }
+      if (firebase.auth.Auth && firebase.auth.Auth.Persistence) {
+        if (debugEnabled) {
+          console.info('[auth.redirect] setting persistence LOCAL');
+        }
+        await firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+      }
+      if (debugEnabled) {
+        console.info('[auth.redirect] sign-in-redirect-called');
+      }
       await firebase.auth().signInWithRedirect(provider);
       return;
     } catch (redirectError) {
-      console.error('Google redirect sign-in failed:', redirectError);
-      var redirectMessage = getFriendlyErrorMessage(redirectError, true);
+      var redirectErrorCode = redirectError && (redirectError.code || redirectError.name) || 'unknown';
+      console.warn('[auth.redirect] sign-in-redirect-error code=' + redirectErrorCode);
+      var safeRedirectSignInError = {
+        code: redirectError && redirectError.code || '',
+        name: redirectError && redirectError.name || '',
+        message: ''
+      };
+      var redirectMessage = typeof getFriendlyErrorMessage === 'function'
+        ? getFriendlyErrorMessage(safeRedirectSignInError, true)
+        : null;
       if (redirectMessage) alert(redirectMessage);
       return;
     }
@@ -483,6 +529,10 @@
         } else {
           if (debugEnabled) {
             console.info('[auth.redirect] no-result');
+            setTimeout(function() {
+              var hasCurrentUser = !!(firebase.apps && firebase.apps.length && firebase.auth().currentUser);
+              console.info('[auth.redirect] no-result current-user-present=' + hasCurrentUser);
+            }, 100);
           }
         }
       }).catch(function(redirectError) {
@@ -506,6 +556,21 @@
 
     firebase.auth().onAuthStateChanged(async function(user) {
       clearTimeout(authTimeout);
+
+      var debugEnabled = false;
+      try {
+        var params = new URLSearchParams(window.location.search || '');
+        if (params.get('authDebug') === '1') {
+          debugEnabled = true;
+        }
+      } catch (e) {}
+
+      if (debugEnabled) {
+        console.info('[auth.state] changed user-present=' + (!!user));
+        console.info('[auth.state] login-page=' + (typeof isLoginPage === 'function' ? isLoginPage() : false));
+        var redirectDest = typeof getRedirectTarget === 'function' ? getRedirectTarget() : null;
+        console.info('[auth.state] redirect-target-present=' + (!!redirectDest));
+      }
 
       if (user) {
         try {
