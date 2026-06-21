@@ -407,7 +407,7 @@
                   '<span>좋아요</span>',
                 '</div>',
                 '<div class="preview-social-action preview-social-stat" aria-label="댓글" role="status">',
-                  '<span class="material-symbols-outlined" aria-hidden="true">mode_comment</span>',
+                  '<span class="material-symbols-outlined" aria-hidden="true">chat_bubble</span>',
                   '<strong data-my-trees-social-comments>0</strong>',
                   '<span>댓글</span>',
                 '</div>',
