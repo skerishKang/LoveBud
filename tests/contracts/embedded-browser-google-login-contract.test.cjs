@@ -75,33 +75,29 @@ test('isEmbeddedBrowser() detects common WebView markers in UA', () => {
     );
 });
 
-// ── 2) signInWithGoogle ALWAYS uses signInWithRedirect ───────────────
-test('signInWithGoogle does NOT call signInWithPopup anywhere', () => {
-    assert.ok(
-        !/firebase\.auth\(\)\.signInWithPopup\s*\(\s*provider\s*\)/.test(authFirebaseJs),
-        'signInWithGoogle must NOT call signInWithPopup anywhere — always use signInWithRedirect'
+// ── 2) signInWithGoogle hybrid login flow ─────────────────────────────
+test('signInWithGoogle calls signInWithPopup first if not in an embedded browser', () => {
+    assert.match(
+        authFirebaseJs,
+        /await\s+firebase\.auth\(\)\.signInWithPopup\s*\(\s*provider\s*\)/,
+        'signInWithGoogle must support signInWithPopup for normal browsers'
     );
 });
 
-test('signInWithGoogle always calls signInWithRedirect', () => {
+test('signInWithGoogle falls back to signInWithRedirect on known popup/storage/cancel errors', () => {
     assert.match(
         authFirebaseJs,
         /await\s+firebase\.auth\(\)\.signInWithRedirect\s*\(\s*provider\s*\)/,
-        'signInWithGoogle must call signInWithRedirect(provider) — always'
+        'signInWithGoogle must fall back to signInWithRedirect(provider)'
     );
 });
 
-// ── 3) Popup-fallback error code list is retired ─────────────────────
-test('Popup-fallback error code list is retired', () => {
-    // The legacy popupFallbackCodes object must be gone since popup
-    // is no longer used as a path.
-    assert.ok(
-        !/popupFallbackCodes/.test(authFirebaseJs),
-        'Legacy popupFallbackCodes must not appear after popup is retired'
-    );
-    assert.ok(
-        !/shouldTryRedirectFallback/.test(authFirebaseJs),
-        'Legacy shouldTryRedirectFallback guard must not appear'
+// ── 3) Embedded browser skips popup and uses signInWithRedirect ───────
+test('signInWithGoogle checks isEmbeddedBrowser before popup attempt', () => {
+    assert.match(
+        authFirebaseJs,
+        /!\s*isEmbeddedBrowser\s*\(\s*\)/,
+        'signInWithGoogle must bypass popup logic for embedded browsers'
     );
 });
 
@@ -349,11 +345,31 @@ test('authDebug events written to sessionStorage only contain safe status string
         /recordAuthDebugEvent\(\s*['"]redirect-target-present=['"]\s*\+\s*\(!!redirectDest\)\s*\)/,
         'must record redirect-target-present event'
     );
+    assert.match(
+        authFirebaseJs,
+        /recordAuthDebugEvent\(\s*['"]popup-start['"]\s*\)/,
+        'must record popup-start event'
+    );
+    assert.match(
+        authFirebaseJs,
+        /recordAuthDebugEvent\(\s*['"]popup-success['"]\s*\)/,
+        'must record popup-success event'
+    );
+    assert.match(
+        authFirebaseJs,
+        /recordAuthDebugEvent\(\s*['"]popup-error\s*code=['"]\s*\+\s*popupErrorCode\s*\)/,
+        'must record popup-error code event'
+    );
+    assert.match(
+        authFirebaseJs,
+        /recordAuthDebugEvent\(\s*['"]redirect-fallback-start['"]\s*\)/,
+        'must record redirect-fallback-start event'
+    );
 });
 
 test('authDebug events do NOT record user credentials, emails, uids, or raw message errors', () => {
     assert.ok(
-        !/recordAuthDebugEvent\([\s\S]*?(?:user\.email|user\.uid|user\.photoURL|user\.displayName|redirectError\.message|persistError\.message|persErr\.message)/.test(authFirebaseJs),
+        !/recordAuthDebugEvent\([\s\S]*?(?:user\.email|user\.uid|user\.photoURL|user\.displayName|redirectError\.message|persistError\.message|persErr\.message|popupError\.message)/.test(authFirebaseJs),
         'must not pass user details or raw error messages to debug records'
     );
 });

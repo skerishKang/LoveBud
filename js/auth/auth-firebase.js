@@ -249,6 +249,58 @@
       console.info('[auth.redirect] redirect-target-present=' + (!!redirectTarget));
     }
 
+    if (!isEmbeddedBrowser()) {
+      if (debugEnabled) {
+        console.info('[auth.popup] popup-start');
+        recordAuthDebugEvent('popup-start');
+      }
+      try {
+        var popupResult = await firebase.auth().signInWithPopup(provider);
+        if (popupResult && popupResult.user) {
+          if (debugEnabled) {
+            console.info('[auth.popup] popup-success');
+            recordAuthDebugEvent('popup-success');
+          }
+          if (typeof persistConfirmedAuthSession === 'function') {
+            await persistConfirmedAuthSession(popupResult.user);
+          }
+          if (typeof preloadRedirectTargetData === 'function') {
+            preloadRedirectTargetData();
+          }
+          window.location.href = redirectTarget;
+          return;
+        }
+      } catch (popupError) {
+        var popupErrorCode = popupError && (popupError.code || popupError.name) || 'unknown';
+        console.warn('[auth.popup] popup-error code=' + popupErrorCode);
+        if (debugEnabled) {
+          recordAuthDebugEvent('popup-error code=' + popupErrorCode);
+        }
+
+        var isFallbackError = popupErrorCode === 'auth/popup-blocked' ||
+                              popupErrorCode === 'auth/web-storage-unsupported' ||
+                              popupErrorCode === 'auth/cancelled-popup-request';
+
+        if (!isFallbackError) {
+          var safePopupSignInError = {
+            code: popupError && popupError.code || '',
+            name: popupError && popupError.name || '',
+            message: ''
+          };
+          var popupMessage = typeof getFriendlyErrorMessage === 'function'
+            ? getFriendlyErrorMessage(safePopupSignInError, true)
+            : null;
+          if (popupMessage) alert(popupMessage);
+          return;
+        }
+
+        if (debugEnabled) {
+          console.info('[auth.redirect] redirect-fallback-start');
+          recordAuthDebugEvent('redirect-fallback-start');
+        }
+      }
+    }
+
     try {
       if (typeof preloadRedirectTargetData === 'function') {
         preloadRedirectTargetData();
