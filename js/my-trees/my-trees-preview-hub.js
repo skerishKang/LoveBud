@@ -99,11 +99,6 @@
             openBtn: document.getElementById('myTreesHubOpenBtn'),
             editBtn: document.getElementById('myTreesHubEditBtn'),
             shareBtn: document.getElementById('myTreesHubShareBtn'),
-            metaBlock: document.getElementById('myTreesHubMeta'),
-            metaViewsCount: document.getElementById('myTreesHubMetaViewsCount'),
-            metaLikesCount: document.getElementById('myTreesHubMetaLikesCount'),
-            metaCommentsCount: document.getElementById('myTreesHubMetaCommentsCount'),
-            metaSharesCount: document.getElementById('myTreesHubMetaSharesCount'),
             noMoments: document.getElementById('myTreesHubNoMoments')
         };
     }
@@ -305,19 +300,6 @@
         if (els.content) els.content.hidden = false;
         if (els.badge) {
             els.badge.textContent = i18nHub('myTrees.hub_badge', '선택한 내 트리', 'Selected tree');
-        }
-
-        /* ── Hub bottom meta — 조회수 / 좋아요 / 댓글 / 공유 (Browse parity) ── */
-        if (els.metaBlock) {
-            var views = (tree && (tree.viewCount || tree.view_count)) ? (tree.viewCount || tree.view_count) : 0;
-            var likes = (tree && (tree.likeCount || tree.like_count)) ? (tree.likeCount || tree.like_count) : 0;
-            var comments = (tree && (tree.commentCount || tree.comment_count)) ? (tree.commentCount || tree.comment_count) : 0;
-            var shares = (tree && (tree.shareCount || tree.share_count)) ? (tree.shareCount || tree.share_count) : 0;
-            if (els.metaViewsCount) els.metaViewsCount.textContent = String(views);
-            if (els.metaLikesCount) els.metaLikesCount.textContent = String(likes);
-            if (els.metaCommentsCount) els.metaCommentsCount.textContent = String(comments);
-            if (els.metaSharesCount) els.metaSharesCount.textContent = String(shares);
-            els.metaBlock.hidden = false;
         }
 
         /* ── Update action buttons href ── */

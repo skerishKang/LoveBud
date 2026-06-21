@@ -85,10 +85,6 @@
     setText('myTreesHubOpenBtn', 'myTrees.hub_open', '감상 열기');
     setText('myTreesHubEditBtn', 'myTrees.hub_edit', '편집하기');
     setText('myTreesHubShareBtn', 'myTrees.hub_share', '감상 링크 복사');
-    setText('myTreesHubMetaViewsLabel', 'myTrees.hub_meta_views_label', '조회수');
-    setText('myTreesHubMetaLikesLabel', 'myTrees.hub_meta_likes_label', '좋아요');
-    setText('myTreesHubMetaCommentsLabel', 'myTrees.hub_meta_comments_label', '댓글');
-    setText('myTreesHubMetaSharesLabel', 'myTrees.hub_meta_shares_label', '공유');
     var retryBtn = document.getElementById('retryLoadBtn');
     if (retryBtn) retryBtn.textContent = tText('myTrees.retry', '다시 시도');
 
