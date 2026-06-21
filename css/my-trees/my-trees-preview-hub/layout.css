@@ -3,6 +3,27 @@
    This file only keeps the my-trees-specific content/owner-action delta
    and the empty/loaded state toggles. ── */
 
+/* PR #2757 macro parity: explicitly mirror .preview-sidebar's surface
+   on .my-trees-hub-panel so the owner panel reads as a Browse-shaped
+   preview regardless of any class-merge regressions. The values
+   intentionally match css/search/search-preview-sidebar/layout.css
+   .preview-sidebar so the two hubs are visually indistinguishable on
+   size, border, padding, radius, surface gradient, and shadow. */
+.my-trees-hub-panel.preview-sidebar {
+    background:
+        radial-gradient(circle at 28% 12%, rgba(255, 248, 246, 0.96), transparent 38%),
+        radial-gradient(circle at 80% 22%, rgba(242, 234, 228, 0.72), transparent 28%),
+        linear-gradient(180deg, rgba(255, 249, 245, 0.92), rgba(244, 248, 238, 0.96));
+    padding: 30px 24px;
+    border-radius: 2.25rem;
+    border: 1px solid rgba(144, 73, 81, 0.1);
+    box-shadow:
+        0 24px 60px rgba(75, 64, 57, 0.12),
+        inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(14px);
+    overflow: hidden;
+}
+
 /* Empty/loaded state toggles — my-trees-specific because the
    content markup (my-trees-hub-content, my-trees-hub-actions,
    my-trees-hub-placeholder) is owner-side, not a public preview. */
