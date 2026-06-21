@@ -104,7 +104,7 @@ test('My Trees hub visually simplifies representative blocks and differentiates 
   const actions = read('css/my-trees/my-trees-preview-hub/actions.css');
 
   assert.match(content, /\.my-trees-hub-rep\s*\{\s*display:\s*flex;\s*flex-direction:\s*column;\s*gap:\s*8px;\s*margin-top:\s*16px;\s*padding:\s*0;\s*border-radius:\s*0;\s*background:\s*transparent;\s*border:\s*none;\s*box-shadow:\s*none;\s*\}/s, 'representative block card decorations must be removed');
-  assert.match(actions, /\.my-trees-hub-open-btn\s*\{[^}]*background:\s*var\(--primary\);[^}]*color:\s*white;[^}]*\}/s, '감상하기 (openBtn) must be primary colored');
+  assert.match(actions, /\.my-trees-hub-open-btn\s*\{[^}]*background:\s*var\(--primary\);[^}]*color:\s*white;[^}]*\}/s, '감상 열기 (openBtn) must be primary colored');
   // PR #2750: secondary button is a quieter outline style — transparent
   // background, muted color (not the bold primary color). The semantic
   // check is the transparent background; color is intentionally flexible.
