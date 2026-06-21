@@ -163,10 +163,10 @@
             var mem = memories[i];
             var label = getMomentLabel(mem, '시작 순간', 'Starting moment');
             var stageIndex = offset + i + 1;
-            html += '<div class="my-trees-hub-flow-stage" title="' + escapeHtml(label) + '">' +
+            html += '<span class="my-trees-hub-flow-stage" title="' + escapeHtml(label) + '">' +
                 '<span class="my-trees-hub-flow-stage-index">' + stageIndex + '</span>' +
                 '<span class="my-trees-hub-flow-stage-label">' + escapeHtml(label) + '</span>' +
-                '</div>';
+                '</span>';
         }
         return html;
     }
@@ -392,10 +392,12 @@
 
         /* ── Social shell (owner passive) ──
            Mirrors Browse's .preview-social-bar / .preview-social-shell layout.
-           For the owner, all four reactions are rendered as passive stats
-           (the existing #myTreesHubMeta stays for compatibility; the social
-           shell above gives Browse visual parity). */
-        if (els.details && !els.details.querySelector('[data-my-trees-social-shell]')) {
+           For the owner, all four reactions are rendered as passive stats.
+           Step 7 follow-up: shell now sits BELOW #myTreesHubActions so the
+           primary "트리 열기" button is the last interactive element above
+           the social stats. The populate selectors use document.querySelector
+           so they find the shell regardless of its parent. */
+        if (!document.querySelector('[data-my-trees-social-shell]') && els.actions) {
             var shell = document.createElement('div');
             shell.className = 'preview-social-shell';
             shell.setAttribute('data-my-trees-social-shell', '');
@@ -407,7 +409,9 @@
                   '<span>좋아요</span>',
                 '</div>',
                 '<div class="preview-social-action preview-social-stat" aria-label="댓글" role="status">',
-                  '<span class="material-symbols-outlined" aria-hidden="true">chat_bubble</span>',
+                  // Step 7: switch to "comment" — chat_bubble was rendering as
+                  // a missing glyph □ in some Material Symbols font versions.
+                  '<span class="material-symbols-outlined" aria-hidden="true">comment</span>',
                   '<strong data-my-trees-social-comments>0</strong>',
                   '<span>댓글</span>',
                 '</div>',
@@ -423,18 +427,18 @@
                 '</div>',
                 '</div>'
             ].join('');
-            els.details.appendChild(shell);
+            els.actions.after(shell);
         }
 
         // Populate owner-passive stats if the tree carries them.
         if (tree) {
-            var likeEl = els.details && els.details.querySelector('[data-my-trees-social-likes]');
+            var likeEl = document.querySelector('[data-my-trees-social-likes]');
             if (likeEl) likeEl.textContent = String(tree.likeCount || tree.like_count || 0);
-            var commentEl = els.details && els.details.querySelector('[data-my-trees-social-comments]');
+            var commentEl = document.querySelector('[data-my-trees-social-comments]');
             if (commentEl) commentEl.textContent = String(tree.commentCount || tree.comment_count || 0);
-            var shareEl = els.details && els.details.querySelector('[data-my-trees-social-shares]');
+            var shareEl = document.querySelector('[data-my-trees-social-shares]');
             if (shareEl) shareEl.textContent = String(tree.shareCount || tree.share_count || 0);
-            var viewEl = els.details && els.details.querySelector('[data-my-trees-social-views]');
+            var viewEl = document.querySelector('[data-my-trees-social-views]');
             if (viewEl) viewEl.textContent = String(tree.viewCount || tree.view_count || 0);
         }
     }

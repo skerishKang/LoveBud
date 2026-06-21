@@ -226,10 +226,12 @@
     var visible = memories.slice(0, 4);
     return visible.map(function (memory, index) {
       var label = getMomentLabel(memory, index === 0 ? '시작 순간' : '이어진 순간');
-      return '<div class="my-trees-hub-flow-stage" title="' + escapeHtml(label) + '">' +
+      // Step 7 follow-up: span (not div) for HTML parity with Browse's
+      // .preview-flow-stage. Both render as inline-flex.
+      return '<span class="my-trees-hub-flow-stage" title="' + escapeHtml(label) + '">' +
         '<span class="my-trees-hub-flow-stage-index">' + (index + 1) + '</span>' +
         '<span class="my-trees-hub-flow-stage-label">' + escapeHtml(label) + '</span>' +
-        '</div>';
+        '</span>';
     }).join('');
   }
 
