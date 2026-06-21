@@ -127,6 +127,45 @@
     return /^\/(?:pages\/)?(?:my-trees|editor|settings)(?:\.html)?$/.test(path);
   }
 
+  function recordAuthDebugEvent(eventStr) {
+    try {
+      var params = new URLSearchParams(window.location.search || '');
+      if (params.get('authDebug') !== '1') return;
+      var debugKey = 'lovebud_auth_debug_events';
+      var currentStr = sessionStorage.getItem(debugKey) || '';
+      var list = currentStr ? currentStr.split('|') : [];
+      list.push(eventStr);
+      sessionStorage.setItem(debugKey, list.join('|'));
+
+      var isLogin = /^\/(?:pages\/)?login(?:\.html)?$/.test(window.location.pathname || '');
+      if (isLogin) {
+        var renderLogs = function() {
+          var container = document.getElementById('auth-debug-panel');
+          if (!container) {
+            var card = document.querySelector('.login-card');
+            if (card) {
+              container = document.createElement('div');
+              container.id = 'auth-debug-panel';
+              container.style.cssText = 'margin: 20px auto 0; padding: 12px; background: #222; color: #0f0; font-family: monospace; font-size: 11px; border-radius: 8px; max-width: 360px; word-break: break-all; white-space: pre-wrap; line-height: 1.4; border: 1px solid #333; box-shadow: 0 4px 12px rgba(0,0,0,0.5);';
+              card.parentNode.insertBefore(container, card.nextSibling);
+            }
+          }
+          if (container) {
+            var items = list.map(function(item) {
+              return '> ' + item;
+            });
+            container.textContent = '=== LOVEBUD AUTH DEBUG ===\n' + items.join('\n');
+          }
+        };
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', renderLogs);
+        } else {
+          renderLogs();
+        }
+      }
+    } catch (e) {}
+  }
+
   function initOfflineAuth(options) {
     var markAuthReady = options && options.markAuthReady;
     var updateNavUI = options && options.updateNavUI;
@@ -168,12 +207,14 @@
 
     if (debugEnabled) {
       console.info('[auth.redirect] sign-in-start');
+      recordAuthDebugEvent('sign-in-start');
     }
 
     var envError = typeof getEnvironmentCheckError === 'function' ? getEnvironmentCheckError() : null;
     if (envError) {
       if (debugEnabled) {
         console.info('[auth.redirect] env-error present');
+        recordAuthDebugEvent('env-error present');
       }
       alert(envError);
       return;
@@ -188,6 +229,7 @@
         storageOk = true;
       } catch (e) {}
       console.info('[auth.redirect] storage-probe ok=' + storageOk);
+      recordAuthDebugEvent('storage-probe ok=' + storageOk);
     }
 
     if (!firebase.apps || !firebase.apps.length) {
@@ -207,18 +249,6 @@
       console.info('[auth.redirect] redirect-target-present=' + (!!redirectTarget));
     }
 
-    /* Always use signInWithRedirect for Google login. Rationale:
-       - Embedded browsers (preview iframes, in-app web views, sandboxed
-         WebViews) cannot show OAuth popups — signInWithPopup fails
-         silently with about:blank.
-       - Desktop browsers sometimes block popups (privacy settings,
-         extensions) — signInWithRedirect works regardless.
-       - The redirect flow uses the same tab for OAuth navigation,
-         so the user lands back on the original page after auth.
-       - Behavior is identical across all environments.
-       Previous implementation tried popup first on desktop and only
-       fell back to redirect on popup error, which left users on
-       environments with browser-level popup blocking silently failing. */
     try {
       if (typeof preloadRedirectTargetData === 'function') {
         preloadRedirectTargetData();
@@ -226,17 +256,32 @@
       if (firebase.auth.Auth && firebase.auth.Auth.Persistence) {
         if (debugEnabled) {
           console.info('[auth.redirect] setting persistence LOCAL');
+          recordAuthDebugEvent('persistence-set-start');
         }
-        await firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+        try {
+          await firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+          if (debugEnabled) {
+            recordAuthDebugEvent('persistence-set-success');
+          }
+        } catch (persErr) {
+          if (debugEnabled) {
+            recordAuthDebugEvent('persistence-set-error code=' + (persErr && (persErr.code || persErr.name) || 'unknown'));
+          }
+          throw persErr;
+        }
       }
       if (debugEnabled) {
         console.info('[auth.redirect] sign-in-redirect-called');
+        recordAuthDebugEvent('sign-in-redirect-called');
       }
       await firebase.auth().signInWithRedirect(provider);
       return;
     } catch (redirectError) {
       var redirectErrorCode = redirectError && (redirectError.code || redirectError.name) || 'unknown';
       console.warn('[auth.redirect] sign-in-redirect-error code=' + redirectErrorCode);
+      if (debugEnabled) {
+        recordAuthDebugEvent('sign-in-redirect-error code=' + redirectErrorCode);
+      }
       var safeRedirectSignInError = {
         code: redirectError && redirectError.code || '',
         name: redirectError && redirectError.name || '',
@@ -459,20 +504,6 @@
       attachDropdownListener();
     }
 
-    /* Handle the redirect callback from signInWithRedirect.
-       Firebase delivers the auth state via onAuthStateChanged after the
-       redirect completes, but getRedirectResult() surfaces any error
-       that occurred during the redirect flow (e.g. auth/internal-error,
-       auth/network-request-failed). Without this call the user sees the
-       redirect succeed but no session, with no error message.
-
-       Race-condition guard: the persisted session cache must be
-       written BEFORE we navigate, otherwise protected routes (e.g.
-       my-trees) read an empty cache, treat the user as anonymous, and
-       bounce them back to /pages/login?redirect=my-trees — looking
-       exactly like the redirect sign-in never happened. The previous
-       implementation fire-and-forgot persistConfirmedAuthSession and
-       navigated immediately, which caused this loop. */
     if (typeof firebase.auth().getRedirectResult === 'function') {
       var debugEnabled = false;
       try {
@@ -484,12 +515,14 @@
 
       if (debugEnabled) {
         console.info('[auth.redirect] start');
+        recordAuthDebugEvent('redirect-result-start');
       }
 
       firebase.auth().getRedirectResult().then(async function(result) {
         if (result && result.user) {
           if (debugEnabled) {
             console.info('[auth.redirect] user-present');
+            recordAuthDebugEvent('redirect-result-user-present=true');
           }
           var redirectDest = typeof getRedirectTarget === 'function'
             ? getRedirectTarget()
@@ -500,9 +533,13 @@
               await persistConfirmedAuthSession(result.user);
               if (debugEnabled) {
                 console.info('[auth.redirect] persist-success');
+                recordAuthDebugEvent('persist-success');
               }
             } catch (persistError) {
               console.warn('[auth.redirect] persist-failed code=' + (persistError && (persistError.code || persistError.name) || 'unknown'));
+              if (debugEnabled) {
+                recordAuthDebugEvent('persist-failed code=' + (persistError && (persistError.code || persistError.name) || 'unknown'));
+              }
               var friendlyPersist = null;
               if (typeof getFriendlyErrorMessage === 'function') {
                 var safePersistError = {
@@ -523,21 +560,27 @@
           if (typeof isLoginPage === 'function' && isLoginPage()) {
             if (debugEnabled) {
               console.info('[auth.redirect] navigating target-present=' + (!!redirectDest));
+              recordAuthDebugEvent('navigating target-present=' + (!!redirectDest));
             }
             window.location.replace(redirectDest);
           }
         } else {
           if (debugEnabled) {
             console.info('[auth.redirect] no-result');
+            recordAuthDebugEvent('redirect-result-no-result');
             setTimeout(function() {
               var hasCurrentUser = !!(firebase.apps && firebase.apps.length && firebase.auth().currentUser);
               console.info('[auth.redirect] no-result current-user-present=' + hasCurrentUser);
+              recordAuthDebugEvent('no-result current-user-present=' + hasCurrentUser);
             }, 100);
           }
         }
       }).catch(function(redirectError) {
         if (redirectError && redirectError.code !== 'auth/no-auth-event') {
           console.warn('[auth.redirect] result-error code=' + (redirectError.code || redirectError.name || 'unknown'));
+          if (debugEnabled) {
+            recordAuthDebugEvent('redirect-result-error code=' + (redirectError.code || redirectError.name || 'unknown'));
+          }
           var friendly = null;
           if (typeof getFriendlyErrorMessage === 'function') {
             var safeRedirectError = {
@@ -570,6 +613,10 @@
         console.info('[auth.state] login-page=' + (typeof isLoginPage === 'function' ? isLoginPage() : false));
         var redirectDest = typeof getRedirectTarget === 'function' ? getRedirectTarget() : null;
         console.info('[auth.state] redirect-target-present=' + (!!redirectDest));
+
+        recordAuthDebugEvent('auth-state-user-present=' + (!!user));
+        recordAuthDebugEvent('login-page=' + (typeof isLoginPage === 'function' ? isLoginPage() : false));
+        recordAuthDebugEvent('redirect-target-present=' + (!!redirectDest));
       }
 
       if (user) {
