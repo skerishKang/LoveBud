@@ -60,13 +60,17 @@
         }
     }
 
-    // Issue #1489 #1490: 소셔바 셸 — 좋아요 → 댓글 → 조회수 순서 (공유 제거)
+    // PR #2761: restore 공유 stat alongside 좋아요/댓글/조회수 so the
+    // social bar mirrors the card reaction row and the My Trees hub
+    // pill row. The earlier Issue #1489 #1490 removal predated the card
+    // parity work; restoring it here keeps Browse ↔ My Trees symmetric.
     function renderSocialShell() {
         return '' +
             '<div class="preview-social-shell" data-preview-social-shell>' +
                 '<div class="preview-social-bar" aria-label="트리 반응">' +
                     '<button type="button" class="preview-social-action" data-preview-like disabled aria-label="좋아요 0"><span class="material-symbols-outlined" aria-hidden="true">favorite</span><strong>0</strong><span>좋아요</span></button>' +
                     '<button type="button" class="preview-social-action" data-preview-comments aria-expanded="false" aria-label="댓글 0"><span class="material-symbols-outlined" aria-hidden="true">mode_comment</span><strong>0</strong><span>댓글</span></button>' +
+                    '<div class="preview-social-action preview-social-stat" aria-label="공유" role="status"><span class="material-symbols-outlined" aria-hidden="true">share</span><strong>0</strong><span>공유</span></div>' +
                     '<div class="preview-social-action preview-social-stat" aria-label="조회수" role="status"><span class="material-symbols-outlined" aria-hidden="true">visibility</span><strong>0</strong><span>조회수</span></div>' +
                 '</div>' +
                 '<div class="preview-comments-panel" data-preview-comments-panel hidden>' +

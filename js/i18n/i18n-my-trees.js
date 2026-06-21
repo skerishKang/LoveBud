@@ -80,13 +80,14 @@
     'myTrees.create_modal_cancel': { ko: '취소', en: 'Cancel' },
     'myTrees.create_modal_submit': { ko: '이 트리로 시작하기', en: 'Start with this tree' },
     'myTrees.create_modal_title_required': { ko: '트리 제목을 입력해 주세요.', en: 'Please enter a tree title.' },
-    'myTrees.hub_title': { ko: '감상 허브', en: 'Preview Hub' },
+    'myTrees.hub_title': { ko: '내 러브트리 미리보기', en: 'My LoveTree Preview' },
     'myTrees.hub_badge': { ko: '선택한 내 트리', en: 'Selected tree' },
     'myTrees.hub_open': { ko: '감상 열기', en: 'Open viewing' },
     'myTrees.hub_edit': { ko: '편집하기', en: 'Edit' },
     'myTrees.hub_share': { ko: '감상 링크 복사', en: 'Copy view link' },
     'myTrees.hub_meta_views_label': { ko: '조회수', en: 'Views' },
     'myTrees.hub_meta_likes_label': { ko: '좋아요', en: 'Likes' },
-    'myTrees.hub_meta_comments_label': { ko: '댓글', en: 'Comments' }
+    'myTrees.hub_meta_comments_label': { ko: '댓글', en: 'Comments' },
+    'myTrees.hub_meta_shares_label': { ko: '공유', en: 'Shares' }
   };
 })();
