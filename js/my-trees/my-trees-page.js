@@ -142,13 +142,18 @@
   function setupHeaderCreateButton(options) {
     var onCreate = options && options.onCreate;
     var btn = document.getElementById('headerCreateTreeBtn');
+    var emptyBtn = document.getElementById('createTreeBtn');
 
-    if (!btn || typeof onCreate !== 'function') return;
+    if (typeof onCreate !== 'function') return;
 
-    btn.addEventListener('click', function(e) {
-      e.preventDefault();
-      e.stopPropagation();
-      onCreate();
+    [btn, emptyBtn].forEach(function(target) {
+      if (!target || target.dataset.createTreeBound === 'true') return;
+      target.dataset.createTreeBound = 'true';
+      target.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        onCreate();
+      });
     });
   }
 

@@ -11,22 +11,22 @@ function read(file) {
 test('1. My Trees bundle imports mobile controls balance override last', () => {
   const css = read('css/my-trees.css');
   const responsiveIdx = css.indexOf('my-trees-responsive.css');
-  const balanceIdx = css.indexOf('my-trees-mobile-controls-balance.css?v=20260618-2683-1');
+  const balanceIdx = css.indexOf('my-trees-mobile-controls-balance.css?v=20260622-mytrees-controls-1');
   assert.ok(responsiveIdx > 0, 'responsive import must exist');
   assert.ok(balanceIdx > 0, 'mobile controls balance import must exist');
   assert.ok(responsiveIdx < balanceIdx, 'balance override must load after responsive rules');
 });
 
-test('2. Mobile sort control uses a tighter compact width (50% / 180px)', () => {
+test('2. Mobile sort control can shrink without colliding with view controls', () => {
   const css = read('css/my-trees/my-trees-mobile-controls-balance.css');
   assert.match(css, /@media\s*\(max-width:\s*768px\)/);
-  assert.match(css, /\.my-trees-results-controls\s+\.sort-control\s*{[^}]*flex:\s*0\s+1\s+50%;[^}]*max-width:\s*180px;[^}]*}/s);
+  assert.match(css, /\.my-trees-results-controls\s+\.sort-control\s*{[^}]*flex:\s*1\s+1\s+auto;[^}]*max-width:\s*none;[^}]*min-width:\s*0;[^}]*}/s);
 });
 
-test('3. View mode keeps trailing separation from the shorter sort control', () => {
+test('3. View mode keeps fixed width while the controls row owns spacing', () => {
   const css = read('css/my-trees/my-trees-mobile-controls-balance.css');
-  assert.match(css, /\.my-trees-results-controls\s*{[^}]*gap:\s*18px;[^}]*}/s);
-  assert.match(css, /\.my-trees-results-controls\s+\.my-trees-view-mode-mount\s*{[^}]*margin-left:\s*auto;[^}]*}/s);
+  assert.match(css, /\.my-trees-results-controls\s*{[^}]*gap:\s*8px;[^}]*margin-left:\s*0;[^}]*}/s);
+  assert.match(css, /\.my-trees-results-controls\s+\.my-trees-view-mode-mount\s*{[^}]*flex:\s*0\s+0\s+auto;[^}]*margin-left:\s*0;[^}]*}/s);
 });
 
 test('4. Recent-sort option text is shortened to a compact 3-character label', () => {

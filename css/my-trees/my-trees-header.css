@@ -125,11 +125,14 @@ white-space: nowrap;
         border-top: 1px solid rgba(144, 73, 81, 0.09);
     }
     .my-trees-results-title-row {
-        flex-wrap: nowrap;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 10px;
     }
     /* Compact the title-row create CTA so it does not dominate the mobile row.
        Higher specificity (0,2,0) overrides the responsive.css .btn-header-create (0,1,0) rule. */
     .my-trees-results-title-row .btn-header-create {
+        flex: 0 0 auto;
         width: auto;
         min-height: 36px;
         padding: 0 12px;
@@ -143,11 +146,14 @@ white-space: nowrap;
     /* Switch results controls from stretching grid to flex:
        sort select grows, view-mode segmented control shrinks to fit. */
     .my-trees-results-controls {
+        flex: 1 1 100%;
         width: 100%;
         display: flex;
         align-items: center;
+        justify-content: space-between;
         gap: 8px;
         flex-wrap: nowrap;
+        margin-left: 0;
     }
     .my-trees-results-controls .sort-control {
         flex: 1 1 auto;
