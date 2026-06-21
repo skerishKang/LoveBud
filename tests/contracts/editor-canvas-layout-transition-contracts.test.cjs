@@ -121,6 +121,11 @@ test('layout transition helper — updateLayoutToggleUI preserves i18n fallback 
     /editor_layout_free/,
     'must reference editor_layout_free i18n key'
   );
+  assert.match(
+    transitionSource,
+    /value\s*&&\s*value\s*!==\s*key\s*\?\s*value\s*:\s*fallback/,
+    'must fall back when i18n returns the raw key'
+  );
 });
 
 test('layout transition helper — updateLayoutToggleUI preserves icon values', () => {

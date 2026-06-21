@@ -46,7 +46,7 @@ test('3. My Trees desktop selectors do not introduce conflicting geometry styles
   assert.match(header, /\.my-trees-results-head\s*\{[^}]*margin:\s*4px\s+0\s+18px;?/, 'Results head margin must be 4px 0 18px');
 
   // Title row & controls alignments must be correct
-  assert.match(header, /\.my-trees-results-title-row\s*\{[^}]*justify-content:\s*flex-start;/, 'Title row must justify-content: flex-start');
+  assert.match(header, /\.my-trees-results-title-row\s*\{[^}]*justify-content:\s*space-between;/, 'Title row must keep label left and create CTA right');
   assert.match(header, /\.my-trees-results-controls\s*\{[^}]*margin-left:\s*auto;[^}]*flex-wrap:\s*nowrap;/, 'Controls must use margin-left: auto and flex-wrap: nowrap');
 });
 
@@ -73,13 +73,13 @@ test('6. Stylesheets use the current My Trees controls cache key for busting', (
 
   assert.match(
     html,
-    /href="\.\.\/css\/my-trees\.css\?v=20260622-mytrees-controls-1"/,
+    /href="\.\.\/css\/my-trees\.css\?v=20260622-title-row-1"/,
     'my-trees.html must load my-trees.css with the current controls cache query'
   );
 
   assert.match(
     css,
-    /my-trees-header\.css\?v=20260622-mytrees-controls-1/,
+    /my-trees-header\.css\?v=20260622-title-row-1/,
     'my-trees.css must import my-trees-header.css with the current controls cache query'
   );
 });
