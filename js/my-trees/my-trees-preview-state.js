@@ -219,11 +219,15 @@
   }
 
   function buildHydratedFlowStages(memories) {
-    var icons = ['🌱', '🌿', '🌳', '🌸'];
-    return memories.slice(0, 4).map(function (memory, index) {
+    // Step 5 follow-up: match Browse's numeric stage rhythm (no emoji icon).
+    // The class is .my-trees-hub-flow-stage-index (shared with Browse's
+    // numeric styling on the legacy renderer). Up to 4 visible stages
+    // to stay consistent with VISIBLE_FLOW_MOMENT_COUNT.
+    var visible = memories.slice(0, 4);
+    return visible.map(function (memory, index) {
       var label = getMomentLabel(memory, index === 0 ? '시작 순간' : '이어진 순간');
       return '<div class="my-trees-hub-flow-stage" title="' + escapeHtml(label) + '">' +
-        '<span class="my-trees-hub-flow-stage-icon">' + icons[index % icons.length] + '</span>' +
+        '<span class="my-trees-hub-flow-stage-index">' + (index + 1) + '</span>' +
         '<span class="my-trees-hub-flow-stage-label">' + escapeHtml(label) + '</span>' +
         '</div>';
     }).join('');
@@ -247,8 +251,14 @@
       if (flowList) flowList.innerHTML = buildHydratedFlowStages(memories);
       if (flowControls) {
         var hiddenCount = Math.max(0, memories.length - 4);
+        // Step 5 follow-up: replace the legacy static <span> with the same
+        // interactive <button data-my-trees-flow-toggle> used by the main
+        // hub renderer. The toggle handler lives in my-trees-preview-hub.js
+        // and reads the same attribute, so behavior is symmetric.
         flowControls.innerHTML = hiddenCount > 0
-          ? '<span class="my-trees-hub-flow-toggle is-static">' + escapeHtml('외 ' + hiddenCount + '개 순간') + '</span>'
+          ? '<button type="button" class="my-trees-hub-flow-toggle" data-my-trees-flow-toggle>' +
+            escapeHtml('더보기 (' + hiddenCount + ')') +
+            '</button>'
           : '';
       }
       return;

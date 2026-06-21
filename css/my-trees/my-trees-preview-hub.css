@@ -12,3 +12,7 @@
 @import url("./my-trees-preview-hub/states.css");
 @import url("./my-trees-preview-hub/actions.css");
 @import url("./my-trees-preview-hub/responsive.css");
+/* Step 5 follow-up: shared .preview-social-shell / .preview-social-bar
+   rules so My Trees hub can render the same owner-passive social stats
+   block that Browse uses. */
+@import url("../../search/search-preview-social-bar.css");

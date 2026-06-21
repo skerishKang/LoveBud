@@ -26,8 +26,8 @@ test('display/edit mode static constraints', () => {
   // 3. My LoveTree edit href uses editor?treeId=
   assert.match(previewHub, /editor\?treeId=/);
 
-  // 4. My LoveTree copy has 감상 열기 / 편집하기 or fallback markers
-  assert.match(previewHub, /'감상\s*열기'/);
+  // 4. My LoveTree copy has 트리 열기 / 편집하기 (Browse parity, Step 5) or fallback markers
+  assert.match(previewHub, /'트리\s*열기'/);
   assert.match(previewHub, /'편집하기'/);
   assert.match(myTreesUi, /'감상하기'/);
   assert.match(myTreesUi, /'편집하기'/);
