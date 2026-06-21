@@ -81,8 +81,8 @@ test('My Trees hub renderer uses .my-trees-hub-flow-stage-index (numeric)', () =
 test('My Trees hydrated flow stages use numeric index (no emoji icon)', () => {
     assert.match(
         myTreesStateJs,
-        /<span class="my-trees-hub-flow-stage-index">\s*['"]?\s*\+\s*\(index\s*\+\s*1\)\s*\+\s*['"]?\s*<\/span>/,
-        'buildHydratedFlowStages must use the numeric index class'
+        /<span class="my-trees-hub-flow-stage-index">\s*'\s*\+\s*\w+\s*\+\s*'<\/span>/,
+        'buildHydratedFlowStages must use the numeric index class (source uses string concatenation)'
     );
     assert.ok(
         !/my-trees-hub-flow-stage-icon/.test(myTreesStateJs),

@@ -163,9 +163,13 @@
             var mem = memories[i];
             var label = getMomentLabel(mem, '시작 순간', 'Starting moment');
             var stageIndex = offset + i + 1;
-            html += '<span class="my-trees-hub-flow-stage" title="' + escapeHtml(label) + '">' +
+            // Step 8 follow-up: Browse-parity attributes
+            // (data-my-trees-moment-index on stage, title + aria-label on label).
+            // is-active is applied by enhanceMyTreesFlowStages() after
+            // render so the initial selection matches the active video.
+            html += '<span class="my-trees-hub-flow-stage" data-my-trees-moment-index="' + stageIndex + '">' +
                 '<span class="my-trees-hub-flow-stage-index">' + stageIndex + '</span>' +
-                '<span class="my-trees-hub-flow-stage-label">' + escapeHtml(label) + '</span>' +
+                '<span class="my-trees-hub-flow-stage-label" title="' + escapeHtml(label) + '" aria-label="' + escapeHtml(label) + '">' + escapeHtml(label) + '</span>' +
                 '</span>';
         }
         return html;
@@ -175,11 +179,89 @@
 
     function buildFlowToggle(hiddenCount, isExpanded) {
         if (hiddenCount <= 0) return '';
+        // Step 8 follow-up: align toggle text with Browse's
+        // format ('... 그리고 N개의 순간 더' / '접기').
+        var label = isExpanded
+            ? i18nHub('', '접기', 'Show less')
+            : i18nHub(
+                '',
+                '... 그리고 ' + hiddenCount + '개의 순간 더',
+                '... and ' + hiddenCount + ' more moments'
+            );
         return '<button type="button" class="my-trees-hub-flow-toggle" data-my-trees-flow-toggle>' +
-            (isExpanded
-                ? i18nHub('', '간략히 보기', 'Show less')
-                : i18nHub('', '더보기 (' + hiddenCount + ')', 'Show more (' + hiddenCount + ')')) +
+            label +
             '</button>';
+    }
+
+    /* ── Enhance flow stages (Browse parity) ──
+       Mirrors search-preview-playable-hub-patch.js enhanceFlowStages():
+       adds role + tabindex, marks the active stage with is-active,
+       and binds a click handler that swaps the video iframe to that
+       moment. Owner can preview any moment of their own tree from
+       the hub without entering the editor. */
+    var _selectedMomentIndexByTree = {};
+
+    function getTreeKey(tree) {
+        return String((tree && (tree.id || tree.treeId)) || '');
+    }
+
+    function getMomentSourceUrl(memory) {
+        if (!memory) return '';
+        return String(
+            memory.sourceUrl || memory.source_url ||
+            memory.videoUrl || memory.videoURL ||
+            memory.mediaUrl || memory.mediaURL ||
+            memory.linkUrl || memory.linkURL ||
+            ''
+        ).trim();
+    }
+
+    function swapToMomentIframe(tree, momentIndex) {
+        var memories = Array.isArray(tree && tree.memories) ? tree.memories : [];
+        var memory = memories[Number(momentIndex) || 0];
+        if (!memory) return false;
+        var sourceUrl = getMomentSourceUrl(memory);
+        if (!sourceUrl) return false;
+        var iframe = document.querySelector('#myTreesHubMedia iframe');
+        if (!iframe) return false;
+        var embedUrl = sourceUrl;
+        if (window.LoveBudSearchPreviewMediaHelper && typeof window.LoveBudSearchPreviewMediaHelper.generateIframeSource === 'function') {
+            var resolved = window.LoveBudSearchPreviewMediaHelper.generateIframeSource(sourceUrl);
+            if (resolved) embedUrl = resolved;
+        }
+        iframe.src = embedUrl;
+        var label = getMomentLabel(memory, '시작 순간', 'Starting moment');
+        iframe.setAttribute('title', label);
+        return true;
+    }
+
+    function enhanceMyTreesFlowStages(tree) {
+        var flowList = document.getElementById('myTreesHubFlowList');
+        if (!flowList || !tree) return;
+        var stages = Array.prototype.slice.call(flowList.querySelectorAll('.my-trees-hub-flow-stage'));
+        if (!stages.length) return;
+        var treeKey = getTreeKey(tree);
+        var selectedIndex = Number(_selectedMomentIndexByTree[treeKey] || 0);
+        stages.forEach(function(stage, index) {
+            stage.setAttribute('role', 'button');
+            stage.setAttribute('tabindex', '0');
+            stage.classList.toggle('is-active', index === selectedIndex);
+            if (stage.dataset.myTreesMomentBound) return;
+            stage.dataset.myTreesMomentBound = 'true';
+            var activate = function() {
+                _selectedMomentIndexByTree[treeKey] = index;
+                stages.forEach(function(item) { item.classList.remove('is-active'); });
+                stage.classList.add('is-active');
+                swapToMomentIframe(tree, index);
+            };
+            stage.addEventListener('click', activate);
+            stage.addEventListener('keydown', function(event) {
+                if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    activate();
+                }
+            });
+        });
     }
 
     function showPlaceholder() {
@@ -339,6 +421,10 @@
                     els.flowControls.innerHTML = '';
                 }
             }
+
+            // Step 8 follow-up: bind role/tabindex/is-active + click handler
+            // so the owner can preview any moment from the hub.
+            enhanceMyTreesFlowStages(tree);
         } else {
             // No moments — show waiting state
             if (els.flowSection) els.flowSection.hidden = true;
