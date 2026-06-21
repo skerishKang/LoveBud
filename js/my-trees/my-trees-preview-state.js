@@ -219,18 +219,17 @@
   }
 
   function buildHydratedFlowStages(memories) {
-    // Step 5 follow-up: match Browse's numeric stage rhythm (no emoji icon).
-    // The class is .my-trees-hub-flow-stage-index (shared with Browse's
-    // numeric styling on the legacy renderer). Up to 4 visible stages
-    // to stay consistent with VISIBLE_FLOW_MOMENT_COUNT.
+    // Step 5: numeric stage rhythm (no emoji icon).
+    // Step 7: span (not div) for HTML parity with Browse.
+    // Step 8: Browse-parity attributes — data-my-trees-moment-index on the
+    // stage, title + aria-label on the label (mirrors Browse's stage label).
     var visible = memories.slice(0, 4);
     return visible.map(function (memory, index) {
       var label = getMomentLabel(memory, index === 0 ? '시작 순간' : '이어진 순간');
-      // Step 7 follow-up: span (not div) for HTML parity with Browse's
-      // .preview-flow-stage. Both render as inline-flex.
-      return '<span class="my-trees-hub-flow-stage" title="' + escapeHtml(label) + '">' +
-        '<span class="my-trees-hub-flow-stage-index">' + (index + 1) + '</span>' +
-        '<span class="my-trees-hub-flow-stage-label">' + escapeHtml(label) + '</span>' +
+      var stageIndex = index + 1;
+      return '<span class="my-trees-hub-flow-stage" data-my-trees-moment-index="' + stageIndex + '">' +
+        '<span class="my-trees-hub-flow-stage-index">' + stageIndex + '</span>' +
+        '<span class="my-trees-hub-flow-stage-label" title="' + escapeHtml(label) + '" aria-label="' + escapeHtml(label) + '">' + escapeHtml(label) + '</span>' +
         '</span>';
     }).join('');
   }

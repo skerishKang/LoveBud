@@ -5,7 +5,9 @@
    border-radius:1rem; margin-bottom:16px. The My Trees flow now uses
    the same flat surface so both pages read as one card family. */
 .my-trees-hub-flow {
-    margin-top: 16px;
+    /* Step 8 follow-up: drop the legacy top spacing for exact Browse
+       parity. Browse's .preview-focus-flow-card has no extra space
+       above, so the flow card sits flush below the title block. */
     padding: 20px;
     border-radius: 1rem;
     background: var(--surface-container-low);
