@@ -59,10 +59,17 @@ test('Browse and My Trees Card Density & Empty-State Rhythm Invariant Checks', a
   await t.test('css/global/tokens.css defines shared card density tokens', () => {
     const tokens = read('css/global/tokens.css');
     assert.match(tokens, /--lovetree-card-grid-gap:\s*24px;/);
+    assert.match(tokens, /--lovetree-card-grid-gap-compact:\s*18px;/);
     assert.match(tokens, /--lovetree-card-content-pad:\s*18px;/);
     assert.match(tokens, /--lovetree-card-content-pad-compact:\s*14px;/);
     assert.match(tokens, /--lovetree-card-media-height-browse:\s*336px;/);
-    assert.match(tokens, /--lovetree-card-media-height-mytrees:\s*184px;/);
+    // Step 2 follow-up: --lovetree-card-media-height-mytrees is now unused
+    // after PR #2765 unified card height on --lovetree-card-media-height-browse.
+    // The token must NOT be re-introduced.
+    assert.ok(
+      !/--lovetree-card-media-height-mytrees:/.test(tokens),
+      'Dead token --lovetree-card-media-height-mytrees must not be re-introduced'
+    );
   });
 
   await t.test('No 3D orbit viewer code is introduced and Scout is untouched', () => {

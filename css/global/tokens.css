@@ -92,10 +92,10 @@
 
     /* Card Density Spacing Tokens */
     --lovetree-card-grid-gap: 24px;
+    --lovetree-card-grid-gap-compact: 18px;
     --lovetree-card-content-pad: 18px;
     --lovetree-card-content-pad-compact: 14px;
     --lovetree-card-media-height-browse: 336px;
-    --lovetree-card-media-height-mytrees: 184px;
 
     /* PR #2763: shared card image container tokens.
        Browse and My Trees cards share the same image surface (height,

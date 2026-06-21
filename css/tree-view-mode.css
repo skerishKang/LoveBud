@@ -4,6 +4,15 @@
  *
  * Base styles live in css/search/* and css/my-trees/* — this file only
  * overrides per-mode without removing the existing default columns.
+ *
+ * v20260621-step2-1 — view-mode parity with Browse (Step 2 follow-up):
+ *   - gap values token-driven on both pages (--lovetree-card-grid-gap,
+ *     --lovetree-card-grid-gap-compact)
+ *   - mobile compact breakpoint unified at max-width: 640px on both pages
+ *   - list-mode border-radius and body padding now apply to both
+ *     .tree-card-media/.tree-card-thumb and .tree-card-body/.tree-card-info
+ *   - hardcoded 1.85rem border-radius → var(--lovetree-card-radius-lg)
+ *   - removed redundant ≤900px and ≤600px rules
  */
 
 /* ── Control UI ───────────────────────────────────────────────────── */
@@ -71,12 +80,12 @@
 /* ── Browse (#resultsList) — default 3-col, data-attr overrides ──── */
 #resultsList[data-tree-view-mode="large"] {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 26px;
+    gap: var(--lovetree-card-grid-gap);
 }
 
 #resultsList[data-tree-view-mode="compact"] {
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 20px;
+    gap: var(--lovetree-card-grid-gap-compact);
 }
 
 #resultsList[data-tree-view-mode="list"] {
@@ -98,11 +107,12 @@
     height: 100%;
     min-height: 110px;
     width: 100%;
-    border-radius: 1.85rem 0 0 1.85rem;
+    border-radius: var(--lovetree-card-radius-lg) 0 0 var(--lovetree-card-radius-lg);
     overflow: hidden;
 }
 
-#resultsList[data-tree-view-mode="list"] .tree-card-body {
+#resultsList[data-tree-view-mode="list"] .tree-card-body,
+#resultsList[data-tree-view-mode="list"] .tree-card-info {
     padding: 14px 16px;
     display: flex;
     flex-direction: column;
@@ -135,7 +145,7 @@
     #resultsList[data-tree-view-mode="list"] .tree-card-media,
     #resultsList[data-tree-view-mode="list"] .tree-card-thumb {
         min-height: 110px;
-        border-radius: 1.85rem 0 0 1.85rem;
+        border-radius: var(--lovetree-card-radius-lg) 0 0 var(--lovetree-card-radius-lg);
     }
 }
 
@@ -152,7 +162,7 @@
     #resultsList[data-tree-view-mode="list"] .tree-card-thumb {
         height: 140px;
         min-height: 140px;
-        border-radius: 1.85rem 1.85rem 0 0;
+        border-radius: var(--lovetree-card-radius-lg) var(--lovetree-card-radius-lg) 0 0;
     }
 
     #resultsList[data-tree-view-mode="list"] .tree-card-body {
@@ -173,12 +183,12 @@
 /* ── My LoveTree (.trees-grid) — default 2-col, data-attr overrides ─ */
 .trees-grid[data-tree-view-mode="large"] {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 24px;
+    gap: var(--lovetree-card-grid-gap);
 }
 
 .trees-grid[data-tree-view-mode="compact"] {
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 18px;
+    gap: var(--lovetree-card-grid-gap-compact);
 }
 
 .trees-grid[data-tree-view-mode="list"] {
@@ -199,6 +209,7 @@
     height: 100%;
     min-height: 110px;
     width: 100%;
+    border-radius: var(--lovetree-card-radius-lg) 0 0 var(--lovetree-card-radius-lg);
 }
 
 .trees-grid[data-tree-view-mode="compact"] .tree-card-info,
@@ -214,9 +225,15 @@
     font-size: 0.95rem;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 640px) {
     .trees-grid[data-tree-view-mode="compact"] {
         grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+    }
+
+    .trees-grid[data-tree-view-mode="compact"] .tree-card {
+        height: auto;
+        min-height: 260px;
     }
 }
 
@@ -229,13 +246,7 @@
 
     .trees-grid[data-tree-view-mode="list"] .tree-card-thumb {
         min-height: 110px;
-        border-radius: 1.85rem 0 0 1.85rem;
-    }
-}
-
-@media (max-width: 600px) {
-    .trees-grid[data-tree-view-mode="list"] .tree-card {
-        grid-template-columns: 110px minmax(0, 1fr);
+        border-radius: var(--lovetree-card-radius-lg) 0 0 var(--lovetree-card-radius-lg);
     }
 }
 
@@ -251,7 +262,7 @@
     .trees-grid[data-tree-view-mode="list"] .tree-card-thumb {
         height: 140px;
         min-height: 140px;
-        border-radius: 1.85rem 1.85rem 0 0;
+        border-radius: var(--lovetree-card-radius-lg) var(--lovetree-card-radius-lg) 0 0;
     }
 
     .trees-grid[data-tree-view-mode="list"] .tree-card-info {
