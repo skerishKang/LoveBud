@@ -197,12 +197,12 @@ tests.push({
 
 // ── 3. My Trees .tree-card uses same card token family ───────────────────────
 tests.push({
-    name: 'My Trees .tree-card keeps --lovetree-card-radius (not forced to radius-lg)',
+    name: 'My Trees .tree-card uses --lovetree-card-radius-lg for border-radius (Browse parity)',
     fn: () => {
         const val = cssHasRule(MY_TREES_CARDS_CSS, '.tree-card', 'border-radius');
         assert.ok(val !== null, 'tree-card must have border-radius rule');
-        assert.ok(val.includes('var(--lovetree-card-radius)'), 'My Trees tree-card must use --lovetree-card-radius');
-        assert.ok(!val.includes('var(--lovetree-card-radius-lg)'), 'My Trees tree-card must NOT be forced to --lovetree-card-radius-lg');
+        assert.ok(val.includes('var(--lovetree-card-radius-lg)'), 'My Trees tree-card must use --lovetree-card-radius-lg for Browse parity');
+        assert.ok(!val.includes('1.85rem'), 'My Trees tree-card border-radius must not be hardcoded 1.85rem');
     },
 });
 

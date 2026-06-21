@@ -26,7 +26,7 @@ test('Browse and My Trees Card Density & Empty-State Rhythm Invariant Checks', a
   await t.test('My Trees cards CSS utilizes shared tokens and grid layouts', () => {
     const cardsCss = read('css/my-trees/my-trees-cards.css');
     assert.match(cardsCss, /\.trees-grid\s*{[^}]*display:\s*grid;[^}]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\);[^}]*gap:\s*var\(--lovetree-card-grid-gap\);[^}]*}/);
-    assert.match(cardsCss, /border-radius:\s*var\(--lovetree-card-radius\)/);
+    assert.match(cardsCss, /border-radius:\s*var\(--lovetree-card-radius-lg\)/);
     assert.match(cardsCss, /box-shadow:\s*var\(--lovetree-card-shadow\)/);
     assert.match(cardsCss, /box-shadow:\s*var\(--lovetree-card-shadow-hover\)/);
     assert.match(cardsCss, /box-shadow:\s*var\(--lovetree-card-ring-active\),\s*var\(--lovetree-card-shadow-active\)/);
