@@ -49,6 +49,15 @@
 }
 
 /* ── Hub meta badge ── */
+/* PR #2756 macro parity: Browse has no equivalent meta badge between the
+   tree title and the flow list. Hide My Trees' 7개의 순간 / 첫 순간을
+   기다리는 중 badge so the hub reads as a Browse-shaped preview, not
+   an owner console. Contract tests still expect #myTreesHubMetaBadge to
+   exist in the DOM (idempotency + ordering); only its visual layer is
+   removed here. */
+#myTreesHubMetaBadge {
+    display: none !important;
+}
 
 .my-trees-hub-meta-badge {
     display: inline-flex;

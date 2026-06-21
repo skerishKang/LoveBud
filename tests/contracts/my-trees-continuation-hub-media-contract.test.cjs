@@ -80,9 +80,9 @@ test('My Trees hub uses localized 내 트리 미리보기 and Selected tree tags
   const html = read('pages/my-trees.html');
   const hub = read('js/my-trees/my-trees-preview-hub.js');
 
-  assert.match(i18n, /'myTrees\.hub_title':\s*\{\s*ko:\s*'내 트리 미리보기',\s*en:\s*'My Tree Preview'\s*\}/, 'hub_title must be in i18n-my-trees.js');
+  assert.match(i18n, /'myTrees\.hub_title':\s*\{\s*ko:\s*'감상 허브',\s*en:\s*'Preview Hub'\s*\}/, 'hub_title must be in i18n-my-trees.js');
   assert.match(i18n, /'myTrees\.hub_badge':\s*\{\s*ko:\s*'선택한 내 트리',\s*en:\s*'Selected tree'\s*\}/, 'hub_badge must be in i18n-my-trees.js');
-  assert.match(refresh, /setText\('myTreesHubTitle',\s*'myTrees\.hub_title',\s*'내 트리 미리보기'\);/, 'refresh script must update myTreesHubTitle');
+  assert.match(refresh, /setText\('myTreesHubTitle',\s*'myTrees\.hub_title',\s*'감상 허브'\);/, 'refresh script must update myTreesHubTitle');
   assert.match(refresh, /setText\('myTreesHubBadge',\s*'myTrees\.hub_badge',\s*'선택한 내 트리'\);/, 'refresh script must update myTreesHubBadge');
   assert.match(html, /id="myTreesHubTitle"\s+data-i18n="myTrees\.hub_title"/, 'HTML must have data-i18n attribute for hub title');
   assert.match(html, /id="myTreesHubBadge"\s+data-i18n="myTrees\.hub_badge"/, 'HTML must have data-i18n attribute for hub badge');
