@@ -92,12 +92,22 @@ test('signInWithGoogle falls back to signInWithRedirect on known popup/storage/c
     );
 });
 
-// ── 3) Embedded browser skips popup and uses signInWithRedirect ───────
-test('signInWithGoogle checks isEmbeddedBrowser before popup attempt', () => {
+// ── 3) Embedded browser and googleLoginMode override behavior ────────
+test('signInWithGoogle respects googleLoginMode and falls back to isEmbeddedBrowser', () => {
     assert.match(
         authFirebaseJs,
-        /!\s*isEmbeddedBrowser\s*\(\s*\)/,
-        'signInWithGoogle must bypass popup logic for embedded browsers'
+        /googleLoginMode\s*===\s*['"]redirect['"]/,
+        'signInWithGoogle must check googleLoginMode === "redirect"'
+    );
+    assert.match(
+        authFirebaseJs,
+        /googleLoginMode\s*===\s*['"]popup['"]/,
+        'signInWithGoogle must check googleLoginMode === "popup"'
+    );
+    assert.match(
+        authFirebaseJs,
+        /var\s+useRedirect\s*=\s*embedded;/,
+        'signInWithGoogle must default redirect usage to embedded status'
     );
 });
 
@@ -364,6 +374,16 @@ test('authDebug events written to sessionStorage only contain safe status string
         authFirebaseJs,
         /recordAuthDebugEvent\(\s*['"]redirect-fallback-start['"]\s*\)/,
         'must record redirect-fallback-start event'
+    );
+    assert.match(
+        authFirebaseJs,
+        /recordAuthDebugEvent\(\s*['"]embedded-detected=['"]\s*\+\s*embedded\s*\)/,
+        'must record embedded-detected event'
+    );
+    assert.match(
+        authFirebaseJs,
+        /recordAuthDebugEvent\(\s*['"]login-mode=['"]\s*\+\s*\(useRedirect\s*\?\s*['"]redirect['"]\s*:\s*['"]popup['"]\)\s*\)/,
+        'must record login-mode event'
     );
 });
 
