@@ -156,12 +156,12 @@ const FILE_ALLOWLIST = {
     reason: 'Static i18n heading text + material icons; outerHTML read for icon preservation'
   },
   'js/my-trees/my-trees-preview-hub.js': {
-    count: 13, classification: 'safe',
-    reason: 'buildFlowStages template uses escapeHtml; material-icon badges with escapeHtml for count; i18n safeText; clear-container; static toggle buttons; view and edit action buttons'
+    count: 14, classification: 'safe',
+    reason: 'buildFlowStages template uses escapeHtml; material-icon badges with escapeHtml for count; i18n safeText; clear-container; static toggle buttons; view and edit action buttons; owner-passive social-shell template (Step 5 follow-up) is static markup with escapeHtml-bound counts'
   },
   'js/my-trees/my-trees-preview-state.js': {
     count: 3, classification: 'safe',
-    reason: 'Created moment preview hydration uses escapeHtml for hydrated memory labels, hidden count text, and tree title/count empty-state markup'
+    reason: 'Created moment preview hydration uses escapeHtml for hydrated memory labels, hidden count text, and tree title/count empty-state markup; Step 5 follow-up swaps the legacy static toggle <span> for an interactive <button data-my-trees-flow-toggle> (still escapeHtml-safe)'
   },
   'js/my-trees/my-trees-ui.js': {
     count: 3, classification: 'safe',

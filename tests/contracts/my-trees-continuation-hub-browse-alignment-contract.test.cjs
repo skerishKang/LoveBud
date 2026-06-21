@@ -26,7 +26,7 @@ test('My Trees hub preserves its runtime ids and owner actions', () => {
     assert.match(html, new RegExp(`id=["']${id}["']`), `My Trees hub must retain #${id}`);
   }
 
-  assert.match(html, /id=["']myTreesHubOpenBtn["'][^>]*>\s*[\s\S]*?감상\s*열기/, 'primary owner action must remain 감상 열기');
+  assert.match(html, /id=["']myTreesHubOpenBtn["'][^>]*>\s*[\s\S]*?트리\s*열기/, 'primary owner action must be 트리 열기 (Browse parity, Step 5)');
   assert.match(html, /id=["']myTreesHubEditBtn["'][^>]*>\s*[\s\S]*?편집하기/, 'secondary owner action must remain 편집하기');
 
   // Verify rep block removal
@@ -75,7 +75,7 @@ test('My Trees hub keeps its non-media focus surface and shared visual rhythm', 
   ];
 
   assert.match(content, /\.my-trees-hub-rep\s*\{\s*display:\s*flex;\s*flex-direction:\s*column;\s*gap:\s*8px;\s*margin-top:\s*16px;\s*padding:\s*0;\s*border-radius:\s*0;\s*background:\s*transparent;\s*border:\s*none;\s*box-shadow:\s*none;\s*\}/s, 'first-moment block card decorations must be removed for a unified focus surface');
-  assert.match(actions, /\.my-trees-hub-open-btn\s*\{[^}]*min-height:\s*50px;[^}]*border-radius:\s*999px;/s, '감상 열기 primary action rhythm');
+  assert.match(actions, /\.my-trees-hub-open-btn\s*\{[^}]*min-height:\s*50px;[^}]*border-radius:\s*999px;/s, '트리 열기 primary action rhythm');
   assert.match(actions, /\.my-trees-hub-edit-btn\s*\{[^}]*min-height:\s*44px;[^}]*border-radius:\s*999px;/s, '편집하기 secondary action rhythm (Browse auxiliary)');
   assert.match(actions, /\.my-trees-hub-share-btn[\s\S]*?min-height:\s*40px;[\s\S]*?border-radius:\s*999px;/, '감상 링크 복사 tertiary action rhythm');
   assert.match(actions, /\.my-trees-hub-visibility-btn[\s\S]*?min-height:\s*40px;[\s\S]*?border-radius:\s*999px;/, '공개 범위 quaternary action rhythm');

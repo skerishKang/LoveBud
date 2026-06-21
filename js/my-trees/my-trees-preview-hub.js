@@ -94,6 +94,7 @@
             flowList: document.getElementById('myTreesHubFlowList'),
             flowControls: document.getElementById('myTreesHubFlowControls'),
             summary: document.getElementById('myTreesHubSummary'),
+            details: document.getElementById('myTreesHubDetails'),
             actions: document.getElementById('myTreesHubActions'),
             openBtn: document.getElementById('myTreesHubOpenBtn'),
             editBtn: document.getElementById('myTreesHubEditBtn'),
@@ -376,14 +377,65 @@
                 els.openBtn.href = isPublicTree
                     ? basePath + 'view.html?treeId=' + encodeURIComponent(tree.id) + '&from=my-trees'
                     : basePath + 'editor?treeId=' + encodeURIComponent(tree.id) + '&from=my-trees';
-                els.openBtn.innerHTML = '<span class="material-symbols-outlined">visibility</span>' +
-                    escapeHtml(i18nHub('', '감상 열기', 'View'));
+                // Step 5 follow-up: align primary button label + icon with Browse
+                // ("트리 열기" + account_tree). Owner still gets the secondary
+                // "편집하기" button below for edit access.
+                els.openBtn.innerHTML = '<span class="material-symbols-outlined">account_tree</span>' +
+                    escapeHtml(i18nHub('', '트리 열기', 'Open tree'));
             }
             if (els.editBtn && tree && tree.id) {
                 els.editBtn.href = basePath + 'editor?treeId=' + encodeURIComponent(tree.id) + '&from=my-trees';
                 els.editBtn.innerHTML = '<span class="material-symbols-outlined">edit</span>' +
                     escapeHtml(i18nHub('', '편집하기', 'Edit'));
             }
+        }
+
+        /* ── Social shell (owner passive) ──
+           Mirrors Browse's .preview-social-bar / .preview-social-shell layout.
+           For the owner, all four reactions are rendered as passive stats
+           (the existing #myTreesHubMeta stays for compatibility; the social
+           shell above gives Browse visual parity). */
+        if (els.details && !els.details.querySelector('[data-my-trees-social-shell]')) {
+            var shell = document.createElement('div');
+            shell.className = 'preview-social-shell';
+            shell.setAttribute('data-my-trees-social-shell', '');
+            shell.innerHTML = [
+                '<div class="preview-social-bar" aria-label="트리 반응">',
+                '<div class="preview-social-action preview-social-stat" aria-label="좋아요" role="status">',
+                  '<span class="material-symbols-outlined" aria-hidden="true">favorite</span>',
+                  '<strong data-my-trees-social-likes>0</strong>',
+                  '<span>좋아요</span>',
+                '</div>',
+                '<div class="preview-social-action preview-social-stat" aria-label="댓글" role="status">',
+                  '<span class="material-symbols-outlined" aria-hidden="true">mode_comment</span>',
+                  '<strong data-my-trees-social-comments>0</strong>',
+                  '<span>댓글</span>',
+                '</div>',
+                '<div class="preview-social-action preview-social-stat" aria-label="공유" role="status">',
+                  '<span class="material-symbols-outlined" aria-hidden="true">share</span>',
+                  '<strong data-my-trees-social-shares>0</strong>',
+                  '<span>공유</span>',
+                '</div>',
+                '<div class="preview-social-action preview-social-stat" aria-label="조회수" role="status">',
+                  '<span class="material-symbols-outlined" aria-hidden="true">visibility</span>',
+                  '<strong data-my-trees-social-views>0</strong>',
+                  '<span>조회수</span>',
+                '</div>',
+                '</div>'
+            ].join('');
+            els.details.appendChild(shell);
+        }
+
+        // Populate owner-passive stats if the tree carries them.
+        if (tree) {
+            var likeEl = els.details && els.details.querySelector('[data-my-trees-social-likes]');
+            if (likeEl) likeEl.textContent = String(tree.likeCount || tree.like_count || 0);
+            var commentEl = els.details && els.details.querySelector('[data-my-trees-social-comments]');
+            if (commentEl) commentEl.textContent = String(tree.commentCount || tree.comment_count || 0);
+            var shareEl = els.details && els.details.querySelector('[data-my-trees-social-shares]');
+            if (shareEl) shareEl.textContent = String(tree.shareCount || tree.share_count || 0);
+            var viewEl = els.details && els.details.querySelector('[data-my-trees-social-views]');
+            if (viewEl) viewEl.textContent = String(tree.viewCount || tree.view_count || 0);
         }
     }
     
@@ -443,8 +495,10 @@
                 els.openBtn.href = isPublicTree
                     ? basePath + 'view.html?treeId=' + encodeURIComponent(tree.id) + '&from=my-trees'
                     : basePath + 'editor?treeId=' + encodeURIComponent(tree.id) + '&from=my-trees';
-                els.openBtn.innerHTML = '<span class="material-symbols-outlined">visibility</span> ' +
-                    escapeHtml(i18nHub('', '감상 열기', 'View'));
+                // Step 5 follow-up: align primary button label + icon with Browse
+                // ("트리 열기" + account_tree). Both render paths use the same setup.
+                els.openBtn.innerHTML = '<span class="material-symbols-outlined">account_tree</span> ' +
+                    escapeHtml(i18nHub('', '트리 열기', 'Open tree'));
             }
             if (els.editBtn && tree && tree.id) {
                 els.editBtn.href = basePath + 'editor?treeId=' + encodeURIComponent(tree.id) + '&from=my-trees';
