@@ -284,8 +284,10 @@ test('14. Runtime cache-busts updated for changed JS/CSS', () => {
   assert.match(myTreesHtml, /my-trees-preview-state\.js\?v=20260621-step8-1/);
   assert.match(myTreesHtml, /my-trees-i18n-refresh\.js\?v=20260618-2664-1/);
   assert.match(myTreesHtml, /i18n-my-trees\.js\?v=20260619-2710-1/);
-  assert.match(myTreesHtml, /my-trees\.css\?v=20260620-2751-1/);
-  assert.match(myTreesCss, /my-trees-header\.css\?v=20260618-2676-1/);
+  assert.match(myTreesHtml, /my-trees\.css\?v=20260622-mytrees-controls-1/);
+  assert.match(myTreesHtml, /my-trees-page\.js\?v=20260622-mytrees-create-1/);
+  assert.match(myTreesCss, /my-trees-header\.css\?v=20260622-mytrees-controls-1/);
+  assert.match(myTreesCss, /my-trees-mobile-controls-balance\.css\?v=20260622-mytrees-controls-1/);
   assert.match(myTreesCss, /search\/search-controls\.css/);
   assert.match(myTreesCss, /search\/search-preview-sidebar\.css/);
   assert.match(

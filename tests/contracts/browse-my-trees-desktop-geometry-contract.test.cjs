@@ -67,19 +67,19 @@ test('5. Mobile media queries are not modified in layout', () => {
   assert.ok(layout.includes('@media (max-width: 768px)'), 'Mobile layout media query must be present');
 });
 
-test('6. Stylesheets use the geometry cache key for busting', () => {
+test('6. Stylesheets use the current My Trees controls cache key for busting', () => {
   const html = read('pages/my-trees.html');
   const css = read('css/my-trees.css');
 
   assert.match(
     html,
-    /href="\.\.\/css\/my-trees\.css\?v=[^"]*geometry=2735-1/,
-    'my-trees.html must load my-trees.css with geometry cache query'
+    /href="\.\.\/css\/my-trees\.css\?v=20260622-mytrees-controls-1"/,
+    'my-trees.html must load my-trees.css with the current controls cache query'
   );
 
   assert.match(
     css,
-    /my-trees-header\.css\?v=[^']*geometry=2735-1/,
-    'my-trees.css must import my-trees-header.css with geometry cache query'
+    /my-trees-header\.css\?v=20260622-mytrees-controls-1/,
+    'my-trees.css must import my-trees-header.css with the current controls cache query'
   );
 });

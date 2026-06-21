@@ -118,28 +118,30 @@ const BROWSE_RHYTHM = {
     width: '100%',
     padding: '0 38px 0 16px',
   },
-  // Source: search-controls.css @media (max-width: 768px) #browseSortControls
+  // My Trees-specific collision guard: keep the sort control flexible enough
+  // to share a compact row with the owner view-mode segmented control.
   sortControl: {
-    cssRule: '#browseSortControls',
-    sourceFile: 'css/search/search-controls.css',
+    cssRule: '.my-trees-results-controls .sort-control',
+    sourceFile: 'css/my-trees/my-trees-mobile-controls-balance.css',
     sourceMedia: '@media (max-width: 768px)',
-    flex: '0 1 50%',
-    'max-width': '180px',
+    flex: '1 1 auto',
+    'max-width': 'none',
+    'min-width': '0',
   },
-  // Source: search-controls.css @media (max-width: 768px) #browseViewModeMount
+  // My Trees-specific collision guard: spacing is owned by the row gap.
   viewModeMount: {
-    cssRule: '#browseViewModeMount',
-    sourceFile: 'css/search/search-controls.css',
+    cssRule: '.my-trees-results-controls .my-trees-view-mode-mount',
+    sourceFile: 'css/my-trees/my-trees-mobile-controls-balance.css',
     sourceMedia: '@media (max-width: 768px)',
     flex: '0 0 auto',
-    'margin-left': 'auto',
+    'margin-left': '0',
   },
-  // Source: search-controls.css @media (max-width: 768px) .browse-results-controls
+  // My Trees-specific collision guard for the two compact controls.
   resultsControls: {
-    cssRule: '.browse-results-controls',
-    sourceFile: 'css/search/search-controls.css',
+    cssRule: '.my-trees-results-controls',
+    sourceFile: 'css/my-trees/my-trees-mobile-controls-balance.css',
     sourceMedia: '@media (max-width: 768px)',
-    gap: '18px',
+    gap: '8px',
   },
 };
 
@@ -285,20 +287,22 @@ test('rhythm: phone 375/390/430 — My Trees sort control matches Browse @media 
   const balance = readCss(MY_TREES_CSS.balance);
   const decl = findMobileRule(balance, '.my-trees-results-controls .sort-control');
   assert.ok(decl, 'my-trees-mobile-controls-balance.css must contain @media (max-width:768px) rule for .my-trees-results-controls .sort-control');
-  assert.strictEqual(propFromDecl(decl, 'flex'), '0 1 50%', 'sort-control mobile flex must be 0 1 50% (Browse parity)');
-  assert.strictEqual(propFromDecl(decl, 'max-width'), '180px', 'sort-control mobile max-width must be 180px');
+  assert.strictEqual(propFromDecl(decl, 'flex'), BROWSE_RHYTHM.sortControl.flex, 'sort-control mobile flex must allow collision-free shrink');
+  assert.strictEqual(propFromDecl(decl, 'max-width'), BROWSE_RHYTHM.sortControl['max-width'], 'sort-control mobile max-width must not cap the available row width');
+  assert.strictEqual(propFromDecl(decl, 'min-width'), BROWSE_RHYTHM.sortControl['min-width'], 'sort-control mobile min-width must allow shrink');
 });
 
 test('rhythm: phone 375/390/430 — My Trees view-mode mount matches Browse @media (max-width: 768px) #browseViewModeMount (flex 0 0 auto, margin-left auto)', () => {
   const balance = readCss(MY_TREES_CSS.balance);
   const decl = findMobileRule(balance, '.my-trees-results-controls .my-trees-view-mode-mount');
   assert.ok(decl, 'my-trees-mobile-controls-balance.css must contain @media (max-width:768px) rule for .my-trees-results-controls .my-trees-view-mode-mount');
-  assert.strictEqual(propFromDecl(decl, 'margin-left'), 'auto', 'view-mode-mount mobile margin-left must be auto');
+  assert.strictEqual(propFromDecl(decl, 'flex'), BROWSE_RHYTHM.viewModeMount.flex, 'view-mode-mount mobile flex must stay fixed');
+  assert.strictEqual(propFromDecl(decl, 'margin-left'), BROWSE_RHYTHM.viewModeMount['margin-left'], 'view-mode-mount mobile margin-left must avoid auto-pushing');
 });
 
 test('rhythm: phone 375/390/430 — My Trees results-controls gap matches Browse @media (max-width: 768px) (gap 18px)', () => {
   const balance = readCss(MY_TREES_CSS.balance);
   const decl = findMobileRule(balance, '.my-trees-results-controls');
   assert.ok(decl, 'my-trees-mobile-controls-balance.css must contain @media (max-width:768px) rule for .my-trees-results-controls');
-  assert.strictEqual(propFromDecl(decl, 'gap'), '18px', 'results-controls mobile gap must be 18px (Browse parity)');
+  assert.strictEqual(propFromDecl(decl, 'gap'), BROWSE_RHYTHM.resultsControls.gap, 'results-controls mobile gap must avoid overlap');
 });
