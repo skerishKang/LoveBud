@@ -9,10 +9,10 @@
     width: 100%;
     max-width: 100%;
     box-sizing: border-box;
-    height: 136px;
-    margin: 0 0 14px;
+    height: var(--lovetree-card-image-height);
+    margin: 0 0 var(--lovetree-card-image-gap);
     overflow: hidden;
-    border-radius: 1.45rem;
+    border-radius: var(--lovetree-card-image-radius);
     background:
         radial-gradient(circle at 20% 15%, rgba(255, 245, 246, 0.95), rgba(255,255,255,0.18) 46%),
         radial-gradient(circle at 78% 18%, rgba(255, 255, 255, 0.68), transparent 30%),

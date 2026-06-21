@@ -3,14 +3,36 @@
 .tree-card:hover { box-shadow: var(--lovetree-card-shadow-hover); border-color: var(--lovetree-card-border-hover); }
 .tree-card.is-selected,
 .tree-card[data-selected-tree-card="true"] { border-color: var(--lovetree-card-border-active); box-shadow: var(--lovetree-card-ring-active), var(--lovetree-card-shadow-active); }
-.tree-card-thumb { width: 100%; height: var(--lovetree-card-media-height-mytrees); display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; padding: var(--lovetree-card-content-pad); }
+.tree-card-thumb {
+    width: 100%;
+    height: var(--lovetree-card-image-height);
+    margin: 0 0 var(--lovetree-card-image-gap);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+    box-sizing: border-box;
+    border-radius: var(--lovetree-card-image-radius);
+    background:
+        radial-gradient(circle at 20% 15%, rgba(255, 245, 246, 0.95), rgba(255,255,255,0.18) 46%),
+        radial-gradient(circle at 78% 18%, rgba(255, 255, 255, 0.68), transparent 30%),
+        linear-gradient(135deg, rgba(144, 73, 81, 0.12), rgba(122, 139, 110, 0.12));
+    isolation: isolate;
+    flex-shrink: 0;
+    border: 1px solid rgba(255, 255, 255, 0.58);
+    box-shadow:
+        0 0 0 1px rgba(144, 73, 81, 0.04) inset,
+        0 12px 24px rgba(75, 64, 57, 0.08);
+}
+.tree-card-thumb-image { width: 100%; height: 100%; }
 .tree-card-thumb::after { content: ""; position: absolute; inset: auto 0 0; height: 44%; background: linear-gradient(to top, rgba(75,64,57,0.18), transparent); pointer-events: none; z-index: 1; }
 .tree-card-thumb-glow { position: absolute; inset: auto auto 18px 18px; width: 128px; height: 128px; border-radius: 50%; filter: blur(10px); }
 .tree-card-thumb-initial { position: absolute; top: 16px; left: 16px; width: 42px; height: 42px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 17px; font-weight: 800; background: rgba(255,255,255,0.72); border: 1px solid rgba(255,255,255,0.55); backdrop-filter: blur(6px); z-index: 2; }
 .tree-card-thumb-topline { position: absolute; top: 16px; right: 16px; z-index: 2; }
 .tree-card-thumb-art { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
 .tree-card-thumb svg { width: 84%; height: 84%; opacity: 0.95; }
-.tree-card-thumb-image { width: calc(100% + 36px); height: calc(100% + 36px); margin: -18px; object-fit: cover; display: block; }
+.tree-card-thumb-image { width: 100%; height: 100%; object-fit: cover; display: block; }
 .tree-card-text-visual { position: relative; width: calc(100% - 20px); min-height: 126px; display: flex; flex-direction: column; justify-content: center; gap: 8px; padding: 16px 18px; border-radius: 24px; border: 1px solid; box-shadow: 0 14px 34px rgba(75, 64, 57, 0.07); backdrop-filter: blur(10px); z-index: 1; }
 .tree-card-text-kicker { font-size: 10px; font-weight: 900; letter-spacing: 0.08em; text-transform: uppercase; }
 .tree-card-text-title { font-size: 1rem; font-weight: 800; line-height: 1.4; color: var(--on-surface); word-break: keep-all; }

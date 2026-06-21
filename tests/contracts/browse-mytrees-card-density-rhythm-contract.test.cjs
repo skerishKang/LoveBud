@@ -30,7 +30,7 @@ test('Browse and My Trees Card Density & Empty-State Rhythm Invariant Checks', a
     assert.match(cardsCss, /box-shadow:\s*var\(--lovetree-card-shadow\)/);
     assert.match(cardsCss, /box-shadow:\s*var\(--lovetree-card-shadow-hover\)/);
     assert.match(cardsCss, /box-shadow:\s*var\(--lovetree-card-ring-active\),\s*var\(--lovetree-card-shadow-active\)/);
-    assert.match(cardsCss, /height:\s*var\(--lovetree-card-media-height-mytrees\)/);
+    assert.match(cardsCss, /height:\s*var\(--lovetree-card-image-height\)/);
   });
 
   await t.test('Browse tree card layout CSS utilizes shared tokens', () => {
