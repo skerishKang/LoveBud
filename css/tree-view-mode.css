@@ -220,8 +220,51 @@
     }
 }
 
+@media (max-width: 768px) {
+    .trees-grid[data-tree-view-mode="list"] .tree-card {
+        grid-template-columns: 110px minmax(0, 1fr);
+        height: auto;
+        min-height: 110px;
+    }
+
+    .trees-grid[data-tree-view-mode="list"] .tree-card-thumb {
+        min-height: 110px;
+        border-radius: 1.85rem 0 0 1.85rem;
+    }
+}
+
 @media (max-width: 600px) {
     .trees-grid[data-tree-view-mode="list"] .tree-card {
         grid-template-columns: 110px minmax(0, 1fr);
+    }
+}
+
+@media (max-width: 480px) {
+    /* Stack list card vertically on very small screens */
+    .trees-grid[data-tree-view-mode="list"] .tree-card {
+        grid-template-columns: 1fr;
+        grid-template-rows: 140px auto;
+        height: auto;
+        min-height: 0;
+    }
+
+    .trees-grid[data-tree-view-mode="list"] .tree-card-thumb {
+        height: 140px;
+        min-height: 140px;
+        border-radius: 1.85rem 1.85rem 0 0;
+    }
+
+    .trees-grid[data-tree-view-mode="list"] .tree-card-info {
+        padding: 12px 14px 14px;
+    }
+
+    /* Compact also stays 2-col on very small screens */
+    .trees-grid[data-tree-view-mode="compact"] {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+    }
+
+    .trees-grid[data-tree-view-mode="compact"] .tree-card {
+        min-height: 240px;
     }
 }
