@@ -59,6 +59,8 @@
     'myTrees.moment_count': { ko: '순간', en: '순간' },
     'myTrees.moment_count_compact': { ko: '순간 {count}개', en: '순간 {count}개' },
     'myTrees.view_count': { ko: '조회수', en: '조회수' },
+    'myTrees.like_count': { ko: '좋아요', en: '좋아요' },
+    'myTrees.comment_count': { ko: '댓글', en: '댓글' },
     'myTrees.create_modal_kicker': { ko: '새 러브트리 시작', en: 'Start a new LoveTree' },
     'myTrees.create_modal_title': { ko: '어떤 러브트리를 남길까요?', en: 'What kind of LoveTree would you like to start?' },
     'myTrees.create_modal_desc': { ko: '이름을 정하고 첫 순간을 남겨요.', en: 'Set a name, then save your first moment.' },
@@ -82,8 +84,8 @@
     'myTrees.hub_open': { ko: '감상 열기', en: 'Open viewing' },
     'myTrees.hub_edit': { ko: '편집하기', en: 'Edit' },
     'myTrees.hub_share': { ko: '감상 링크 복사', en: 'Copy view link' },
-    'myTrees.hub_visibility': { ko: '공개 범위', en: 'Visibility' },
-    'myTrees.visibility_make_private': { ko: '비공개로 전환', en: 'Make private' },
-    'myTrees.visibility_make_public': { ko: '공개로 전환', en: 'Make public' }
+    'myTrees.hub_meta_views_label': { ko: '조회수', en: 'Views' },
+    'myTrees.hub_meta_likes_label': { ko: '좋아요', en: 'Likes' },
+    'myTrees.hub_meta_comments_label': { ko: '댓글', en: 'Comments' }
   };
 })();
