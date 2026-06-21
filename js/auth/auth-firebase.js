@@ -249,7 +249,27 @@
       console.info('[auth.redirect] redirect-target-present=' + (!!redirectTarget));
     }
 
-    if (!isEmbeddedBrowser()) {
+    var googleLoginMode = null;
+    try {
+      var params = new URLSearchParams(window.location.search || '');
+      googleLoginMode = params.get('googleLoginMode');
+    } catch (e) {}
+
+    var embedded = isEmbeddedBrowser();
+    var useRedirect = embedded;
+
+    if (googleLoginMode === 'redirect') {
+      useRedirect = true;
+    } else if (googleLoginMode === 'popup') {
+      useRedirect = false;
+    }
+
+    if (debugEnabled) {
+      recordAuthDebugEvent('embedded-detected=' + embedded);
+      recordAuthDebugEvent('login-mode=' + (useRedirect ? 'redirect' : 'popup'));
+    }
+
+    if (!useRedirect) {
       if (debugEnabled) {
         console.info('[auth.popup] popup-start');
         recordAuthDebugEvent('popup-start');
