@@ -99,18 +99,25 @@ test('My Trees flow stage uses transparent background (Browse parity)', () => {
 });
 
 // ── 2) My Trees social shell uses chat_bubble (not mode_comment) ──────
-test('My Trees social shell uses chat_bubble for the comment icon', () => {
+test('My Trees social shell uses comment for the comment icon', () => {
+    // Step 7 follow-up: chat_bubble was rendering as a missing glyph □ in
+    // some Material Symbols font versions. "comment" is the universal
+    // fallback that renders correctly across all font versions.
     assert.match(
         myTreesHubJs,
-        /<span class="material-symbols-outlined"\s+aria-hidden="true">chat_bubble<\/span>/,
-        'My Trees social shell must use chat_bubble icon for comments (Step 6)'
+        /<span class="material-symbols-outlined"\s+aria-hidden="true">comment<\/span>/,
+        'My Trees social shell must use comment icon for comments (Step 7)'
     );
 });
 
-test('My Trees social shell does NOT use the legacy mode_comment icon', () => {
+test('My Trees social shell does NOT use the broken mode_comment or chat_bubble icons', () => {
     assert.ok(
         !/material-symbols-outlined["']\s*aria-hidden="true">mode_comment<\/span>/.test(myTreesHubJs),
-        'Legacy mode_comment icon must not return (was failing to render in some Material Symbols font versions)'
+        'Legacy mode_comment icon must not return (was rendering as missing glyph)'
+    );
+    assert.ok(
+        !/material-symbols-outlined["']\s*aria-hidden="true">chat_bubble<\/span>/.test(myTreesHubJs),
+        'Step 6 chat_bubble icon must not return (was rendering as missing glyph in some font versions)'
     );
 });
 

@@ -13,10 +13,17 @@
 }
 
 .my-trees-hub-flow-label {
-    font-size: 12px;
+    /* Step 7 follow-up: align with Browse's inline-styled label.
+       Browse uses font-size 11px, text-transform: uppercase,
+       letter-spacing 1px, margin-bottom 12px. The My Trees
+       label was font-size 12px, no uppercase, no letter-spacing,
+       margin-bottom 10px. */
+    font-size: 11px;
     font-weight: 800;
     color: var(--on-surface-variant);
-    margin-bottom: 10px;
+    margin-bottom: 12px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
     display: flex;
     align-items: center;
     gap: 4px;
@@ -37,6 +44,15 @@
     min-width: 0;
     max-width: 100%;
     align-items: stretch;
+}
+
+/* Step 7 follow-up: 2-column grid on desktop (Browse parity). Browse
+   uses `.preview-flow-list` with the same media query, so flow
+   stages render as a 2x2 grid at ≥1025px and a single column below. */
+@media (min-width: 1025px) {
+    .my-trees-hub-flow-list {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
 }
 
 .my-trees-hub-flow-stage {
@@ -61,19 +77,14 @@
 }
 
 .my-trees-hub-flow-stage-index {
-    font-size: 12px;
-    font-weight: 800;
+    /* Step 7 follow-up: stage index parity. Browse uses an inline
+       span with only color + font-weight + flex (no pill). The My Trees
+       index used a pill (background, border-radius, padding, min-width,
+       height) which produced a circled-number look that Browse does not
+       have. Retired the pill styling for exact parity. */
     color: var(--primary);
+    font-weight: 800;
     flex: 0 0 auto;
-    min-width: 18px;
-    height: 18px;
-    padding: 0 4px;
-    border-radius: 999px;
-    background: rgba(144, 73, 81, 0.10);
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    line-height: 1;
 }
 
 .my-trees-hub-flow-stage-label {

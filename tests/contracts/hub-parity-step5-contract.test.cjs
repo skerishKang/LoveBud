@@ -183,9 +183,11 @@ test('My Trees hub manifest imports search-preview-social-bar.css', () => {
     );
 });
 
-test('My Trees hub renders .preview-social-shell (owner passive)', () => {
-    // The shell is built as an element with className set; the inner
-    // .preview-social-bar div is emitted via innerHTML template literal.
+test('My Trees hub renders .preview-social-shell (owner passive) BELOW action buttons', () => {
+    // Step 7 follow-up: the social shell must sit below the action buttons
+    // (after #myTreesHubActions) so the primary "트리 열기" button is the
+    // last interactive element above the social stats. The legacy placement
+    // (appended to #myTreesHubDetails) is retired.
     assert.match(
         myTreesHubJs,
         /className\s*=\s*['"]preview-social-shell['"]/,
@@ -195,6 +197,15 @@ test('My Trees hub renders .preview-social-shell (owner passive)', () => {
         myTreesHubJs,
         /<div class="preview-social-bar"/,
         'My Trees hub renderer must emit a .preview-social-bar div in the template'
+    );
+    assert.match(
+        myTreesHubJs,
+        /els\.actions\.after\(\s*shell\s*\)/,
+        'My Trees social shell must be inserted AFTER els.actions (#myTreesHubActions) so it sits below the 트리 열기 button'
+    );
+    assert.ok(
+        !/els\.details\.appendChild\(\s*shell\s*\)/.test(myTreesHubJs),
+        'Legacy appendChild to els.details must not return (was placing shell above the action buttons)'
     );
 });
 
