@@ -59,6 +59,41 @@
     el.appendChild(document.createTextNode(secondLine));
   }
 
+  function setHubOpenBtn() {
+    var el = document.getElementById('myTreesHubOpenBtn');
+    if (!el) return;
+    var locale = window.i18n?.currentLang || document.documentElement?.lang || 'ko';
+    var isEnglish = String(locale).toLowerCase().startsWith('en');
+    var label = isEnglish ? 'Open tree' : '트리 열기';
+    if (typeof window.t === 'function') {
+      var translated = window.t('myTrees.hub_open');
+      if (typeof translated === 'string' && translated.trim() && translated !== 'myTrees.hub_open') {
+        label = translated;
+      }
+    }
+    el.innerHTML = '<span class="material-symbols-outlined">account_tree</span><span>' + label + '</span>';
+  }
+
+  function setHubShareBtn() {
+    var el = document.getElementById('myTreesHubShareBtn');
+    if (!el) return;
+    var locale = window.i18n?.currentLang || document.documentElement?.lang || 'ko';
+    var isEnglish = String(locale).toLowerCase().startsWith('en');
+    var label = isEnglish ? 'Copy share link' : '감상 링크 복사';
+    if (typeof window.t === 'function') {
+      var translated = window.t('myTrees.hub_share');
+      if (typeof translated === 'string' && translated.trim() && translated !== 'myTrees.hub_share') {
+        label = translated;
+      }
+    }
+    var labelEl = el.querySelector('[data-i18n="myTrees.hub_share"]');
+    if (labelEl) {
+      labelEl.textContent = label;
+    } else {
+      el.innerHTML = '<span class="material-symbols-outlined">link</span><span>' + label + '</span>';
+    }
+  }
+
   function applyMyTreesShellCopy() {
     document.title = tText('nav.myTrees', '내 러브트리') + ' | LoveTree';
     setText('myTreesPageEyebrow', 'myTrees.page_eyebrow', '내가 키우는 러브트리');
@@ -82,9 +117,10 @@
 
     setText('myTreesHubTitle', 'myTrees.hub_title', '감상 허브');
     setText('myTreesHubBadge', 'myTrees.hub_badge', '선택한 내 트리');
-    setText('myTreesHubOpenBtn', 'myTrees.hub_open', '감상 열기');
     setText('myTreesHubEditBtn', 'myTrees.hub_edit', '편집하기');
-    setText('myTreesHubShareBtn', 'myTrees.hub_share', '감상 링크 복사');
+    setHubOpenBtn();
+    setHubShareBtn();
+
     var retryBtn = document.getElementById('retryLoadBtn');
     if (retryBtn) retryBtn.textContent = tText('myTrees.retry', '다시 시도');
 
@@ -112,7 +148,6 @@
         el.textContent = tText('myTrees.moment_count_compact', '순간 {count}개').replace('{count}', count);
       }
     });
-
   }
 
   function refreshMyTreesLanguage() {
