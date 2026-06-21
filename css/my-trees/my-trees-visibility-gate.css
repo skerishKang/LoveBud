@@ -1,37 +1,33 @@
 
-.tree-card-info {
-  min-height: 96px;
-}
-
-/* Compact footer row matching Browse engagement pattern */
-.tree-card-footer {
+/* Compact meta-row inside the unified .tree-card-body — parity with Browse. */
+.tree-meta-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  padding: 12px 18px 14px;
-  border-top: 1px solid rgba(144,73,81,0.08);
+  padding-top: 10px;
+  border-top: 1px solid rgba(144, 73, 81, 0.08);
   font-size: 13px;
   color: var(--on-surface-variant);
   min-width: 0;
 }
 
-.tree-card-footer-left,
-.tree-card-footer-right {
+.tree-meta-left,
+.tree-meta-right {
   display: flex;
   align-items: center;
   gap: 8px;
   min-width: 0;
 }
 
-.tree-card-footer-right {
+.tree-meta-right {
   justify-content: flex-end;
   overflow: hidden;
   flex: 1 1 auto;
   gap: 6px;
 }
 
-.tree-card-footer-metrics {
+.tree-card-reaction-metrics {
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -42,14 +38,14 @@
   white-space: nowrap;
 }
 
-.tree-card-footer-metric {
+.tree-card-reaction-metric {
   display: inline-flex;
   align-items: center;
   gap: 3px;
   min-width: 0;
 }
 
-.tree-card-footer-metric .material-symbols-outlined {
+.tree-card-reaction-metric .material-symbols-outlined {
   font-size: 14px;
   line-height: 1;
 }
