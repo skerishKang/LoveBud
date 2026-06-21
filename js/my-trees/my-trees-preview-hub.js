@@ -158,13 +158,6 @@
             var mem = memories[i];
             var label = getMomentLabel(mem, '시작 순간', 'Starting moment');
             var stageIndex = offset + i + 1;
-            // Step 9 follow-up: full Browse parity in the rendered HTML.
-            // - role="button" + tabindex="0": make the stage keyboard-focusable
-            //   (matches Browse's .preview-flow-stage)
-            // - is-active on the first stage: indicates the moment currently
-            //   shown in the video iframe
-            // - title + aria-label on the label: tooltip + a11y
-            // enhanceMyTreesFlowStages() will keep these in sync on click.
             var activeClass = (stageIndex === 1) ? ' is-active' : '';
             html += '<span class="my-trees-hub-flow-stage' + activeClass + '" role="button" tabindex="0" data-my-trees-moment-index="' + stageIndex + '">' +
                 '<span class="my-trees-hub-flow-stage-index">' + stageIndex + '</span>' +
@@ -178,8 +171,6 @@
 
     function buildFlowToggle(hiddenCount, isExpanded) {
         if (hiddenCount <= 0) return '';
-        // Step 8 follow-up: align toggle text with Browse's
-        // format ('... 그리고 N개의 순간 더' / '접기').
         var label = isExpanded
             ? i18nHub('', '접기', 'Show less')
             : i18nHub(
@@ -192,17 +183,7 @@
             '</button>';
     }
 
-    /* ── Enhance flow stages (Browse parity) ──
-       Mirrors search-preview-playable-hub-patch.js enhanceFlowStages():
-       adds role + tabindex, marks the active stage with is-active,
-       and binds a click handler that swaps the video iframe to that
-       moment. Owner can preview any moment of their own tree from
-       the hub without entering the editor. */
     var _selectedMomentIndexByTree = {};
-
-    function getTreeKey(tree) {
-        return String((tree && (tree.id || tree.treeId)) || '');
-    }
 
     function getMomentSourceUrl(memory) {
         if (!memory) return '';
@@ -362,11 +343,6 @@
             };
         }
 
-        /* ── Visibility button — toggle public/private inline ── */
-        // (removed in PR #2759: Browse has no visibility toggle on the hub,
-        // so the owner-context 비공개 전환 button was inconsistent with
-        // Browse parity. Visibility changes are managed via the editor.)
-
         /* ── Tree title ── */
         if (els.treeTitle) {
             var displayTitle = String(tree && tree.title || '').trim() || t('default_tree_title', '나의 러브트리');
@@ -395,7 +371,6 @@
 
             if (els.flowControls) {
                 if (hiddenMemories.length > 0 && isFlowExpanded) {
-                    // Show all hidden memories
                     var hiddenHtml = buildFlowStages(hiddenMemories, VISIBLE_FLOW_MOMENT_COUNT);
                     if (els.flowList) {
                         els.flowList.insertAdjacentHTML('beforeend', hiddenHtml);
@@ -408,11 +383,8 @@
                 }
             }
 
-            // Step 8 follow-up: bind role/tabindex/is-active + click handler
-            // so the owner can preview any moment from the hub.
             enhanceMyTreesFlowStages(tree);
         } else {
-            // No moments — show waiting state
             if (els.flowSection) els.flowSection.hidden = true;
             if (els.noMoments) {
                 els.noMoments.hidden = false;
@@ -431,11 +403,21 @@
         if (els.summary) {
             if (hasMemories) {
                 els.summary.hidden = false;
-                var displayTitle = String(tree && tree.title || '').trim() || t('default_tree_title', '나의 러브트리');
-                els.summary.innerHTML = i18nHub('',
-                    '<strong style="color:var(--on-surface);">' + escapeHtml(displayTitle) + '</strong>에 담긴 <span style="color:var(--primary);font-weight:700;">' + memoryCount + '개의 순간</span>이 이어졌어요.',
-                    '<strong style="color:var(--on-surface);">' + memoryCount + ' moments</strong> in <strong style="color:var(--on-surface);">' + escapeHtml(displayTitle) + '</strong> are connected.'
-                );
+                var summaryTitle = String(tree && tree.title || '').trim() || t('default_tree_title', '나의 러브트리');
+                var timeRange = String(tree && tree.timeRange || tree && tree.time_range || '').trim();
+                // 날짜 범위가 있으면 둘러보기와 동일하게 표시: "N개의 순간이 YYYY.MM.DD ~ YYYY.MM.DD에 걸쳐 이어졌어요."
+                // 없으면: "N개의 순간이 이어졌어요."
+                if (timeRange) {
+                    els.summary.innerHTML = i18nHub('',
+                        '<p class="preview-summary-line"><strong>' + escapeHtml(summaryTitle) + '</strong>에 담긴 <strong>' + memoryCount + '개의 순간</strong>이 <strong>' + escapeHtml(timeRange) + '</strong>에 걸쳐 이어졌어요.</p>',
+                        '<p class="preview-summary-line"><strong>' + memoryCount + ' moments</strong> in <strong>' + escapeHtml(summaryTitle) + '</strong> connected across <strong>' + escapeHtml(timeRange) + '</strong>.</p>'
+                    );
+                } else {
+                    els.summary.innerHTML = i18nHub('',
+                        '<strong style="color:var(--on-surface);">' + escapeHtml(summaryTitle) + '</strong>에 담긴 <span style="color:var(--primary);font-weight:700;">' + memoryCount + '개의 순간</span>이 이어졌어요.',
+                        '<strong style="color:var(--on-surface);">' + memoryCount + ' moments</strong> in <strong style="color:var(--on-surface);">' + escapeHtml(summaryTitle) + '</strong> are connected.'
+                    );
+                }
             } else {
                 els.summary.hidden = true;
             }
@@ -449,9 +431,6 @@
                 els.openBtn.href = isPublicTree
                     ? basePath + 'view.html?treeId=' + encodeURIComponent(tree.id) + '&from=my-trees'
                     : basePath + 'editor?treeId=' + encodeURIComponent(tree.id) + '&from=my-trees';
-                // Step 5 follow-up: align primary button label + icon with Browse
-                // ("트리 열기" + account_tree). Owner still gets the secondary
-                // "편집하기" button below for edit access.
                 els.openBtn.innerHTML = '<span class="material-symbols-outlined">account_tree</span>' +
                     escapeHtml(i18nHub('', '트리 열기', 'Open tree'));
             }
@@ -462,13 +441,7 @@
             }
         }
 
-        /* ── Social shell (owner passive) ──
-           Mirrors Browse's .preview-social-bar / .preview-social-shell layout.
-           For the owner, all four reactions are rendered as passive stats.
-           Step 7 follow-up: shell now sits BELOW #myTreesHubActions so the
-           primary "트리 열기" button is the last interactive element above
-           the social stats. The populate selectors use document.querySelector
-           so they find the shell regardless of its parent. */
+        /* ── Social shell (owner passive) ── */
         if (!document.querySelector('[data-my-trees-social-shell]') && els.actions) {
             var shell = document.createElement('div');
             shell.className = 'preview-social-shell';
@@ -481,8 +454,6 @@
                   '<span>좋아요</span>',
                 '</div>',
                 '<div class="preview-social-action preview-social-stat" aria-label="댓글" role="status">',
-                  // Step 7: switch to "comment" — chat_bubble was rendering as
-                  // a missing glyph □ in some Material Symbols font versions.
                   '<span class="material-symbols-outlined" aria-hidden="true">comment</span>',
                   '<strong data-my-trees-social-comments>0</strong>',
                   '<span>댓글</span>',
@@ -497,7 +468,6 @@
             els.actions.after(shell);
         }
 
-        // Populate owner-passive stats if the tree carries them.
         if (tree) {
             var likeEl = document.querySelector('[data-my-trees-social-likes]');
             if (likeEl) likeEl.textContent = String(tree.likeCount || tree.like_count || 0);
@@ -564,8 +534,6 @@
                 els.openBtn.href = isPublicTree
                     ? basePath + 'view.html?treeId=' + encodeURIComponent(tree.id) + '&from=my-trees'
                     : basePath + 'editor?treeId=' + encodeURIComponent(tree.id) + '&from=my-trees';
-                // Step 5 follow-up: align primary button label + icon with Browse
-                // ("트리 열기" + account_tree). Both render paths use the same setup.
                 els.openBtn.innerHTML = '<span class="material-symbols-outlined">account_tree</span> ' +
                     escapeHtml(i18nHub('', '트리 열기', 'Open tree'));
             }
@@ -576,18 +544,6 @@
             }
         }
     }
-    
-    /* ── Helper to navigate back to my trees after editor ── */
-    function getEditorUrl(treeId) {
-        if (!treeId) return '#';
-        var basePath = '';
-        if (typeof window.LoveBudPath !== 'undefined' && window.LoveBudPath.getBasePath) {
-            basePath = window.LoveBudPath.getBasePath();
-        } else {
-            basePath = window.location.pathname.indexOf('/pages/') !== -1 ? '' : 'pages/';
-        }
-        return basePath + 'editor?treeId=' + encodeURIComponent(treeId);
-    }
 
     /* ── Card selection handler ── */
 
@@ -595,7 +551,6 @@
         if (!tree) return;
         options = options || {};
 
-        // Update visual selection state
         var grid = document.getElementById('trees-grid');
         if (grid) {
             var cards = grid.querySelectorAll('.tree-card');
@@ -603,7 +558,6 @@
                 card.classList.remove('is-selected');
                 card.removeAttribute('data-selected-tree-card');
             });
-            // Find and mark selected card
             cards.forEach(function (card) {
                 if (card.dataset && card.dataset.treeId === String(tree.id)) {
                     card.classList.add('is-selected');
@@ -612,15 +566,12 @@
             });
         }
 
-        // Update state module
         if (_stateModule && typeof _stateModule.setSelectedTreeId === 'function') {
             _stateModule.setSelectedTreeId(tree.id);
         }
 
-        // Show appreciation hub
         showContent(tree);
 
-        // Scroll to hub on mobile (skip for initial auto-select)
         if (!options.skipScroll) {
             var panel = document.getElementById('myTreesHubPanel');
             if (panel && window.innerWidth <= 768) {
@@ -661,7 +612,6 @@
             });
         }
 
-        // Show placeholder initially
         showPlaceholder();
     }
 
