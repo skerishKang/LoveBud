@@ -97,6 +97,14 @@
     --lovetree-card-media-height-browse: 336px;
     --lovetree-card-media-height-mytrees: 184px;
 
+    /* PR #2763: shared card image container tokens.
+       Browse and My Trees cards share the same image surface (height,
+       radius, gap, gradient). Single source of truth so future tweaks
+       propagate to both pages automatically. */
+    --lovetree-card-image-height: 136px;
+    --lovetree-card-image-radius: 1.45rem;
+    --lovetree-card-image-gap: 14px;
+
     /* Page width rhythm */
     --page-brand-max: 1280px;
     --page-work-max: 1440px;
