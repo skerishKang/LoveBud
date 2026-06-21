@@ -97,6 +97,10 @@
             actions: document.getElementById('myTreesHubActions'),
             openBtn: document.getElementById('myTreesHubOpenBtn'),
             editBtn: document.getElementById('myTreesHubEditBtn'),
+            shareBtn: document.getElementById('myTreesHubShareBtn'),
+            visibilityBtn: document.getElementById('myTreesHubVisibilityBtn'),
+            visibilityIcon: document.getElementById('myTreesHubVisibilityIcon'),
+            visibilityLabel: document.getElementById('myTreesHubVisibilityLabel'),
             noMoments: document.getElementById('myTreesHubNoMoments')
         };
     }
@@ -236,6 +240,72 @@
             els.editBtn.href = basePath + 'editor?treeId=' + encodeURIComponent(tree.id) + '&from=my-trees';
         }
 
+        /* ── Share button — copy share URL to clipboard ── */
+        if (els.shareBtn && tree && tree.id) {
+            els.shareBtn.setAttribute('data-tree-id', tree.id);
+            els.shareBtn.onclick = function(ev) {
+                ev.preventDefault();
+                var tid = tree.id;
+                var url = window.location.origin + basePath + 'view.html?treeId=' + encodeURIComponent(tid) + '&from=shared';
+                var labelEl = els.shareBtn.querySelector('[data-i18n="myTrees.hub_share"]');
+                var origLabel = labelEl ? labelEl.textContent : '';
+                var copyFromInput = function(text) {
+                    if (navigator.clipboard && navigator.clipboard.writeText) {
+                        return navigator.clipboard.writeText(text);
+                    }
+                    return new Promise(function(resolve, reject) {
+                        try {
+                            var ta = document.createElement('textarea');
+                            ta.value = text;
+                            ta.style.position = 'fixed';
+                            ta.style.opacity = '0';
+                            document.body.appendChild(ta);
+                            ta.focus();
+                            ta.select();
+                            var ok = document.execCommand('copy');
+                            document.body.removeChild(ta);
+                            ok ? resolve() : reject(new Error('copy failed'));
+                        } catch (e) { reject(e); }
+                    });
+                };
+                copyFromInput(url).then(function() {
+                    if (labelEl) labelEl.textContent = i18nHub('', '복사되었어요', 'Copied');
+                    setTimeout(function() { if (labelEl) labelEl.textContent = origLabel; }, 1800);
+                }).catch(function() {
+                    if (labelEl) labelEl.textContent = i18nHub('', '복사 실패', 'Copy failed');
+                    setTimeout(function() { if (labelEl) labelEl.textContent = origLabel; }, 1800);
+                });
+            };
+        }
+
+        /* ── Visibility button — toggle public/private inline ── */
+        if (els.visibilityBtn && tree && tree.id) {
+            var visIcon = els.visibilityIcon;
+            var visLabel = els.visibilityLabel;
+            var applyVisLabel = function() {
+                var isPub = (tree.visibility === 'public');
+                if (visIcon) visIcon.textContent = isPub ? 'public' : 'lock';
+                if (visLabel) visLabel.textContent = i18nHub(
+                    isPub ? 'myTrees.visibility_make_private' : 'myTrees.visibility_make_public',
+                    isPub ? '비공개로 전환' : '공개로 전환',
+                    isPub ? 'Make private' : 'Make public'
+                );
+            };
+            applyVisLabel();
+            els.visibilityBtn.onclick = function(ev) {
+                ev.preventDefault();
+                var newVis = (tree.visibility === 'public') ? 'private' : 'public';
+                tree.visibility = newVis;
+                applyVisLabel();
+                if (window.LoveBudMyTrees && typeof window.LoveBudMyTrees.updateTreeVisibility === 'function') {
+                    try { window.LoveBudMyTrees.updateTreeVisibility(tree.id, newVis); } catch (e) { /* no-op */ }
+                }
+                if (typeof window.MyTreesHubEvents === 'function') {
+                    try { window.MyTreesHubEvents({ type: 'visibility', treeId: tree.id, visibility: newVis }); } catch (e) { /* no-op */ }
+                }
+            };
+        }
+
         /* ── Tree title ── */
         if (els.treeTitle) {
             var displayTitle = String(tree && tree.title || '').trim() || t('default_tree_title', '나의 러브트리');
@@ -315,7 +385,7 @@
                     ? basePath + 'view.html?treeId=' + encodeURIComponent(tree.id) + '&from=my-trees'
                     : basePath + 'editor?treeId=' + encodeURIComponent(tree.id) + '&from=my-trees';
                 els.openBtn.innerHTML = '<span class="material-symbols-outlined">visibility</span>' +
-                    escapeHtml(i18nHub('', '감상하기', 'View'));
+                    escapeHtml(i18nHub('', '감상 열기', 'View'));
             }
             if (els.editBtn && tree && tree.id) {
                 els.editBtn.href = basePath + 'editor?treeId=' + encodeURIComponent(tree.id) + '&from=my-trees';
@@ -382,7 +452,7 @@
                     ? basePath + 'view.html?treeId=' + encodeURIComponent(tree.id) + '&from=my-trees'
                     : basePath + 'editor?treeId=' + encodeURIComponent(tree.id) + '&from=my-trees';
                 els.openBtn.innerHTML = '<span class="material-symbols-outlined">visibility</span> ' +
-                    escapeHtml(i18nHub('', '감상하기', 'View'));
+                    escapeHtml(i18nHub('', '감상 열기', 'View'));
             }
             if (els.editBtn && tree && tree.id) {
                 els.editBtn.href = basePath + 'editor?treeId=' + encodeURIComponent(tree.id) + '&from=my-trees';

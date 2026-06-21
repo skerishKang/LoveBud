@@ -78,6 +78,12 @@
     'myTrees.create_modal_submit': { ko: '이 트리로 시작하기', en: 'Start with this tree' },
     'myTrees.create_modal_title_required': { ko: '트리 제목을 입력해 주세요.', en: 'Please enter a tree title.' },
     'myTrees.hub_title': { ko: '감상 허브', en: 'Preview Hub' },
-    'myTrees.hub_badge': { ko: '선택한 내 트리', en: 'Selected tree' }
+    'myTrees.hub_badge': { ko: '선택한 내 트리', en: 'Selected tree' },
+    'myTrees.hub_open': { ko: '감상 열기', en: 'Open viewing' },
+    'myTrees.hub_edit': { ko: '편집하기', en: 'Edit' },
+    'myTrees.hub_share': { ko: '감상 링크 복사', en: 'Copy view link' },
+    'myTrees.hub_visibility': { ko: '공개 범위', en: 'Visibility' },
+    'myTrees.visibility_make_private': { ko: '비공개로 전환', en: 'Make private' },
+    'myTrees.visibility_make_public': { ko: '공개로 전환', en: 'Make public' }
   };
 })();
