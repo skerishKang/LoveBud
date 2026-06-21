@@ -49,7 +49,25 @@ test('My Trees continuation flow uses Browse-like single-column desktop rhythm',
     /\.my-trees-hub-flow-list\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\);[^}]*\}/,
     'desktop continuation flow must use a single-column grid matching Browse'
   );
-  assert.match(flow, /\.my-trees-hub-flow-stage\s*\{[^}]*min-height:\s*42px\s*!important;[^}]*border-radius:\s*12px\s*!important;/, 'flow stages must retain Browse-like compact card density');
+  // Step 6 follow-up: flow stage now uses the same compact, transparent
+  // inline-style treatment as Browse (.preview-flow-stage). The legacy
+  // card-density overrides (min-height 42px, padding 8px 10px, border-
+  // radius 12px, background, border, shadow) are retired.
+  assert.match(
+    flow,
+    /\.my-trees-hub-flow-stage\s*\{[^}]*padding:\s*2px\s+6px;[^}]*border-radius:\s*4px;[^}]*font-size:\s*13px;/s,
+    'flow stage must use Browse inline-style compact rhythm (padding 2px 6px, border-radius 4px, font-size 13px)'
+  );
+  assert.doesNotMatch(
+    flow,
+    /\.my-trees-hub-flow-stage\s*\{[^}]*min-height:\s*42px\s*!important/,
+    'legacy heavier min-height 42px card density must not return'
+  );
+  assert.doesNotMatch(
+    flow,
+    /\.my-trees-hub-flow-stage\s*\{[^}]*border-radius:\s*12px\s*!important/,
+    'legacy 12px border-radius must not return'
+  );
 });
 
 test('My Trees continuation flow stays one-column at narrow breakpoints', () => {
