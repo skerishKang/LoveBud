@@ -318,7 +318,7 @@
     });
 
     // i18n-safe labels via getI18nText helper
-    var viewLabel = getI18nText(i18n, 'myTrees.card_view', '감상하기');
+    var viewLabel = getI18nText(i18n, 'myTrees.card_view', '트리 열기');
     var editLabel = getI18nText(i18n, 'myTrees.card_edit', '편집하기');
     var viewCountLabel = getI18nText(i18n, 'myTrees.view_count', '조회수');
     var likeCountLabel = getI18nText(i18n, 'myTrees.like_count', '좋아요');
@@ -359,7 +359,7 @@
           '</div>',
           '<div class="tree-meta-right">',
             '<a class="tree-card-open-link" href="' + escapeHtml(viewHref) + '" target="_self">',
-              '<span class="material-symbols-outlined" aria-hidden="true">visibility</span>',
+              '<span class="material-symbols-outlined" aria-hidden="true">account_tree</span>',
               viewLabel,
             '</a>',
           '</div>',

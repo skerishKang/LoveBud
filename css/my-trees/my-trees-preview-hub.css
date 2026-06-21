@@ -16,3 +16,8 @@
    rules so My Trees hub can render the same owner-passive social stats
    block that Browse uses. */
 @import url("../../search/search-preview-social-bar.css");
+/* 2026-06-22 hotfix: my-trees-specific social-shell overrides keep the
+   3-pill rhythm horizontal at narrow widths (prevent vertical text
+   collapse). Scoped to [data-my-trees-social-shell] so it doesn't
+   affect Browse. */
+@import url("./my-trees-preview-hub/social-bar.css");

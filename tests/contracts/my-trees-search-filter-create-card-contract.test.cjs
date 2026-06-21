@@ -158,7 +158,7 @@ test('13. getI18nText returns fallback when i18n echoes the key', () => {
   const echoI18n = (k) => k;
   assert.strictEqual(getI18nText(echoI18n, 'myTrees.card_edit', '편집하기'), '편집하기',
     'Must return fallback when i18n returns the key string');
-  assert.strictEqual(getI18nText(echoI18n, 'myTrees.card_view', '감상하기'), '감상하기',
+  assert.strictEqual(getI18nText(echoI18n, 'myTrees.card_view', '트리 열기'), '트리 열기',
     'Must return fallback when i18n returns the key string');
 
   // When i18n returns a proper translation, use it

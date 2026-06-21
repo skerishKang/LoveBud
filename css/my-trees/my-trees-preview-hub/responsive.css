@@ -67,11 +67,15 @@
 
 
     .my-trees-hub-flow-stage {
-        min-height: 36px !important;
-        padding: 6px 8px !important;
+        /* 2026-06-22 hotfix: keep the pill rhythm on very narrow widths.
+           Use a smaller pill (radius 999) instead of the legacy 10px
+           so each moment stays scannable as a button, not as a card. */
+        min-height: 32px !important;
+        padding: 5px 8px !important;
         font-size: 11.5px !important;
         line-height: 1.3 !important;
-        border-radius: 10px !important;
+        border-radius: 999px !important;
+        gap: 4px !important;
     }
 
     .my-trees-hub-flow-list {
