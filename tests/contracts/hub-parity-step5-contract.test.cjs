@@ -222,6 +222,19 @@ test('My Trees hub social bar renders all four Browse-parity stat items', () => 
     }
 });
 
+test('My Trees hub does not keep the legacy duplicate static meta row', () => {
+    assert.doesNotMatch(
+        myTreesHtml,
+        /id=["']myTreesHubMeta["']/,
+        'Legacy #myTreesHubMeta row must not render above the Browse-parity social shell'
+    );
+    assert.doesNotMatch(
+        myTreesHubJs,
+        /myTreesHubMeta(?:Views|Likes|Comments|Shares)?Count|metaBlock|metaViewsCount|metaLikesCount|metaCommentsCount|metaSharesCount/,
+        'My Trees hub JS must not repopulate the removed duplicate static meta row'
+    );
+});
+
 test('My Trees social shell uses Browse parity class .preview-social-stat', () => {
     // All four stats must be tagged with the shared .preview-social-stat class
     const occurrences = (myTreesHubJs.match(/preview-social-stat/g) || []).length;
