@@ -115,6 +115,28 @@
     return String(tree.representativeMemo || tree.representative_memo || '').trim();
   }
 
+  /* ── Date range helper ── */
+  function formatDate(dateVal) {
+    if (!dateVal) return '';
+    var d = new Date(dateVal);
+    if (isNaN(d.getTime())) return '';
+    var y = d.getFullYear();
+    var m = String(d.getMonth() + 1).padStart(2, '0');
+    var day = String(d.getDate()).padStart(2, '0');
+    return y + '.' + m + '.' + day;
+  }
+
+  function deriveTimeRange(memories) {
+    if (!Array.isArray(memories) || memories.length === 0) return '';
+    var dates = memories.map(function (mem) {
+      return new Date((mem && (mem.createdAt || mem.created_at || mem.timestamp)) || 0).getTime();
+    }).filter(function (t) { return t > 0; });
+    if (dates.length === 0) return '';
+    var minDate = Math.min.apply(null, dates);
+    var maxDate = Math.max.apply(null, dates);
+    return formatDate(minDate) + ' ~ ' + formatDate(maxDate);
+  }
+
   function rememberHydratedTree(tree) {
     var treeId = getTreeId(tree);
     if (treeId) hydratedTreesById[treeId] = tree;
@@ -172,6 +194,10 @@
     enriched.representativeTitle = getRepresentativeTitle(enriched) || (firstMoment && String(firstMoment.title || '').trim()) || '';
     enriched.representativeMemo = getRepresentativeMemo(enriched) || (firstMoment && String(firstMoment.memo || firstMoment.description || '').trim()) || '';
     enriched.memories = ordered.length ? ordered : getMemoryList(tree);
+    /* ── derive timeRange if not already set ── */
+    if (!enriched.timeRange && !enriched.time_range && ordered.length > 0) {
+      enriched.timeRange = deriveTimeRange(ordered);
+    }
     return rememberHydratedTree(enriched);
   }
 
@@ -219,23 +245,29 @@
   }
 
   function buildHydratedFlowStages(memories) {
-    // Step 5: numeric stage rhythm (no emoji icon).
-    // Step 7: span (not div) for HTML parity with Browse.
-    // Step 8: Browse-parity attributes — data-my-trees-moment-index on the
-    // stage, title + aria-label on the label (mirrors Browse's stage label).
     var visible = memories.slice(0, 4);
     return visible.map(function (memory, index) {
       var label = getMomentLabel(memory, index === 0 ? '시작 순간' : '이어진 순간');
       var stageIndex = index + 1;
-      // Step 9: full Browse parity — role="button" + tabindex="0" make
-      // the stage keyboard-focusable; is-active on the first stage marks
-      // the moment currently shown in the video iframe.
       var activeClass = (index === 0) ? ' is-active' : '';
       return '<span class="my-trees-hub-flow-stage' + activeClass + '" role="button" tabindex="0" data-my-trees-moment-index="' + stageIndex + '">' +
         '<span class="my-trees-hub-flow-stage-index">' + stageIndex + '</span>' +
         '<span class="my-trees-hub-flow-stage-label" title="' + escapeHtml(label) + '" aria-label="' + escapeHtml(label) + '">' + escapeHtml(label) + '</span>' +
         '</span>';
     }).join('');
+  }
+
+  /* ── FIX: patch summary with timeRange after hub renders ── */
+  function patchSummaryWithTimeRange(tree) {
+    var summaryEl = document.getElementById('myTreesHubSummary');
+    if (!summaryEl || summaryEl.hidden) return;
+    var hydratedTree = getHydratedTree(tree) || tree;
+    var timeRange = String(hydratedTree.timeRange || hydratedTree.time_range || '').trim();
+    if (!timeRange) return;
+    var memoryCount = Math.max(getTreeMomentCount(tree), getTreeMomentCount(hydratedTree));
+    if (memoryCount <= 0) return;
+    var summaryTitle = String((hydratedTree && hydratedTree.title) || (tree && tree.title) || '나의 러브트리').trim();
+    summaryEl.innerHTML = '<p class="preview-summary-line"><strong>' + escapeHtml(summaryTitle) + '</strong>에 담긴 <strong>' + memoryCount + '개의 순간</strong>이 <strong>' + escapeHtml(timeRange) + '</strong>에 걸쳐 이어졌어요.</p>';
   }
 
   function patchHubForCreatedMoments(tree) {
@@ -256,16 +288,15 @@
       if (flowList) flowList.innerHTML = buildHydratedFlowStages(memories);
       if (flowControls) {
         var hiddenCount = Math.max(0, memories.length - 4);
-        // Step 5 follow-up: replace the legacy static <span> with the same
-        // interactive <button data-my-trees-flow-toggle> used by the main
-        // hub renderer. The toggle handler lives in my-trees-preview-hub.js
-        // and reads the same attribute, so behavior is symmetric.
+        /* FIX: use Browse-style label "... 그리고 N개의 순간 더" instead of "더보기 (N)" */
         flowControls.innerHTML = hiddenCount > 0
           ? '<button type="button" class="my-trees-hub-flow-toggle" data-my-trees-flow-toggle>' +
-            escapeHtml('더보기 (' + hiddenCount + ')') +
+            escapeHtml('... 그리고 ' + hiddenCount + '개의 순간 더') +
             '</button>'
           : '';
       }
+      /* FIX: patch summary line to include date range */
+      patchSummaryWithTimeRange(tree);
       return;
     }
 
