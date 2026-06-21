@@ -206,13 +206,13 @@
             const embedUrl = new URL(`https://www.youtube.com/embed/${encodeURIComponent(youtubeId)}`);
             embedUrl.searchParams.set('autoplay', '0');
             embedUrl.searchParams.set('mute', '0');
-            embedUrl.searchParams.set('controls', '1');
+            embedUrl.searchParams.set('controls', '0');
             embedUrl.searchParams.set('rel', '0');
             embedUrl.searchParams.set('modestbranding', '1');
             return embedUrl.href;
         }
 
-        return safeSourceUrl + (safeSourceUrl.includes('?') ? '&' : '?') + 'autoplay=0&mute=0&controls=1';
+        return safeSourceUrl + (safeSourceUrl.includes('?') ? '&' : '?') + 'autoplay=0&mute=0&controls=0';
     }
 
     function generateIframeSource(sourceUrl) {
