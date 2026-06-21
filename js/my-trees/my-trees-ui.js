@@ -322,6 +322,8 @@
     var editLabel = getI18nText(i18n, 'myTrees.card_edit', '편집하기');
     var viewCountLabel = getI18nText(i18n, 'myTrees.view_count', '조회수');
     var likeCountLabel = getI18nText(i18n, 'myTrees.like_count', '좋아요');
+    var commentCountLabel = getI18nText(i18n, 'myTrees.comment_count', '댓글');
+    var commentCount = Number(normalizedTree.commentCount || normalizedTree.comment_count || 0);
 
     card.innerHTML = [
       buildTreeThumbVisual(normalizedTree, i18n),
@@ -343,6 +345,10 @@
             '<span class="tree-card-footer-metric" title="' + escapeHtml(likeCountLabel + ' ' + formatCompactCount(likeCount)) + '">',
               '<span class="material-symbols-outlined" aria-hidden="true">favorite</span>',
               '<span>' + formatCompactCount(likeCount) + '</span>',
+            '</span>',
+            '<span class="tree-card-footer-metric" title="' + escapeHtml(commentCountLabel + ' ' + formatCompactCount(commentCount)) + '">',
+              '<span class="material-symbols-outlined" aria-hidden="true">chat_bubble</span>',
+              '<span>' + formatCompactCount(commentCount) + '</span>',
             '</span>',
           '</div>',
         '</div>',

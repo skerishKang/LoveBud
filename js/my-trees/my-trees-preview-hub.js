@@ -98,9 +98,10 @@
             openBtn: document.getElementById('myTreesHubOpenBtn'),
             editBtn: document.getElementById('myTreesHubEditBtn'),
             shareBtn: document.getElementById('myTreesHubShareBtn'),
-            visibilityBtn: document.getElementById('myTreesHubVisibilityBtn'),
-            visibilityIcon: document.getElementById('myTreesHubVisibilityIcon'),
-            visibilityLabel: document.getElementById('myTreesHubVisibilityLabel'),
+            metaBlock: document.getElementById('myTreesHubMeta'),
+            metaViewsCount: document.getElementById('myTreesHubMetaViewsCount'),
+            metaLikesCount: document.getElementById('myTreesHubMetaLikesCount'),
+            metaCommentsCount: document.getElementById('myTreesHubMetaCommentsCount'),
             noMoments: document.getElementById('myTreesHubNoMoments')
         };
     }
@@ -222,6 +223,17 @@
             els.badge.textContent = i18nHub('myTrees.hub_badge', '선택한 내 트리', 'Selected tree');
         }
 
+        /* ── Hub bottom meta — 조회수 / 좋아요 / 댓글 (Browse parity) ── */
+        if (els.metaBlock) {
+            var views = (tree && (tree.viewCount || tree.view_count)) ? (tree.viewCount || tree.view_count) : 0;
+            var likes = (tree && (tree.likeCount || tree.like_count)) ? (tree.likeCount || tree.like_count) : 0;
+            var comments = (tree && (tree.commentCount || tree.comment_count)) ? (tree.commentCount || tree.comment_count) : 0;
+            if (els.metaViewsCount) els.metaViewsCount.textContent = String(views);
+            if (els.metaLikesCount) els.metaLikesCount.textContent = String(likes);
+            if (els.metaCommentsCount) els.metaCommentsCount.textContent = String(comments);
+            els.metaBlock.hidden = false;
+        }
+
         /* ── Update action buttons href ── */
         var basePath = '';
         if (typeof window.LoveBudPath !== 'undefined' && window.LoveBudPath.getBasePath) {
@@ -279,32 +291,9 @@
         }
 
         /* ── Visibility button — toggle public/private inline ── */
-        if (els.visibilityBtn && tree && tree.id) {
-            var visIcon = els.visibilityIcon;
-            var visLabel = els.visibilityLabel;
-            var applyVisLabel = function() {
-                var isPub = (tree.visibility === 'public');
-                if (visIcon) visIcon.textContent = isPub ? 'public' : 'lock';
-                if (visLabel) visLabel.textContent = i18nHub(
-                    isPub ? 'myTrees.visibility_make_private' : 'myTrees.visibility_make_public',
-                    isPub ? '비공개로 전환' : '공개로 전환',
-                    isPub ? 'Make private' : 'Make public'
-                );
-            };
-            applyVisLabel();
-            els.visibilityBtn.onclick = function(ev) {
-                ev.preventDefault();
-                var newVis = (tree.visibility === 'public') ? 'private' : 'public';
-                tree.visibility = newVis;
-                applyVisLabel();
-                if (window.LoveBudMyTrees && typeof window.LoveBudMyTrees.updateTreeVisibility === 'function') {
-                    try { window.LoveBudMyTrees.updateTreeVisibility(tree.id, newVis); } catch (e) { /* no-op */ }
-                }
-                if (typeof window.MyTreesHubEvents === 'function') {
-                    try { window.MyTreesHubEvents({ type: 'visibility', treeId: tree.id, visibility: newVis }); } catch (e) { /* no-op */ }
-                }
-            };
-        }
+        // (removed in PR #2759: Browse has no visibility toggle on the hub,
+        // so the owner-context 비공개 전환 button was inconsistent with
+        // Browse parity. Visibility changes are managed via the editor.)
 
         /* ── Tree title ── */
         if (els.treeTitle) {
