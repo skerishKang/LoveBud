@@ -158,11 +158,15 @@
             var mem = memories[i];
             var label = getMomentLabel(mem, '시작 순간', 'Starting moment');
             var stageIndex = offset + i + 1;
-            // Step 8 follow-up: Browse-parity attributes
-            // (data-my-trees-moment-index on stage, title + aria-label on label).
-            // is-active is applied by enhanceMyTreesFlowStages() after
-            // render so the initial selection matches the active video.
-            html += '<span class="my-trees-hub-flow-stage" data-my-trees-moment-index="' + stageIndex + '">' +
+            // Step 9 follow-up: full Browse parity in the rendered HTML.
+            // - role="button" + tabindex="0": make the stage keyboard-focusable
+            //   (matches Browse's .preview-flow-stage)
+            // - is-active on the first stage: indicates the moment currently
+            //   shown in the video iframe
+            // - title + aria-label on the label: tooltip + a11y
+            // enhanceMyTreesFlowStages() will keep these in sync on click.
+            var activeClass = (stageIndex === 1) ? ' is-active' : '';
+            html += '<span class="my-trees-hub-flow-stage' + activeClass + '" role="button" tabindex="0" data-my-trees-moment-index="' + stageIndex + '">' +
                 '<span class="my-trees-hub-flow-stage-index">' + stageIndex + '</span>' +
                 '<span class="my-trees-hub-flow-stage-label" title="' + escapeHtml(label) + '" aria-label="' + escapeHtml(label) + '">' + escapeHtml(label) + '</span>' +
                 '</span>';
@@ -483,11 +487,6 @@
                   '<strong data-my-trees-social-comments>0</strong>',
                   '<span>댓글</span>',
                 '</div>',
-                '<div class="preview-social-action preview-social-stat" aria-label="공유" role="status">',
-                  '<span class="material-symbols-outlined" aria-hidden="true">share</span>',
-                  '<strong data-my-trees-social-shares>0</strong>',
-                  '<span>공유</span>',
-                '</div>',
                 '<div class="preview-social-action preview-social-stat" aria-label="조회수" role="status">',
                   '<span class="material-symbols-outlined" aria-hidden="true">visibility</span>',
                   '<strong data-my-trees-social-views>0</strong>',
@@ -504,8 +503,6 @@
             if (likeEl) likeEl.textContent = String(tree.likeCount || tree.like_count || 0);
             var commentEl = document.querySelector('[data-my-trees-social-comments]');
             if (commentEl) commentEl.textContent = String(tree.commentCount || tree.comment_count || 0);
-            var shareEl = document.querySelector('[data-my-trees-social-shares]');
-            if (shareEl) shareEl.textContent = String(tree.shareCount || tree.share_count || 0);
             var viewEl = document.querySelector('[data-my-trees-social-views]');
             if (viewEl) viewEl.textContent = String(tree.viewCount || tree.view_count || 0);
         }

@@ -121,9 +121,11 @@ test('My Trees social shell does NOT use the broken mode_comment or chat_bubble 
     );
 });
 
-test('My Trees social shell keeps the other 3 icons unchanged', () => {
-    // favorite (좋아요), share (공유), visibility (조회수) must remain
-    const expectedIcons = ['favorite', 'share', 'visibility'];
+test('My Trees social shell keeps the 2 non-comment icons unchanged', () => {
+    // Step 9: Browse has 3 stats (favorite / mode_comment / visibility).
+    // My Trees must keep favorite + visibility. The share icon was retired
+    // to match Browse (which has no share stat).
+    const expectedIcons = ['favorite', 'visibility'];
     for (const icon of expectedIcons) {
         assert.match(
             myTreesHubJs,

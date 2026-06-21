@@ -26,10 +26,24 @@
     border-radius: 12px !important;
     background: rgba(255, 255, 255, 0.56) !important;
     border: 1px solid rgba(144, 73, 81, 0.08);
+    /* Step 9 follow-up: hover + active states for visual affordance
+       on moment selection. The .is-active class is set/cleared by the
+       hub renderer (search-preview-playable-hub-patch.js). */
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.66);
     color: var(--on-surface-variant) !important;
     font-size: 12.5px !important;
     line-height: 1.35;
+    cursor: pointer;
+}
+
+.preview-flow-stage:hover {
+    background: rgba(144, 73, 81, 0.10) !important;
+    border-color: rgba(144, 73, 81, 0.20) !important;
+}
+
+.preview-flow-stage.is-active {
+    background: rgba(144, 73, 81, 0.14) !important;
+    border-color: rgba(144, 73, 81, 0.28) !important;
 }
 
 /* Issue #602: label text clamped to 2 lines with ellipsis; full label preserved in title attribute */
