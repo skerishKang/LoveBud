@@ -262,3 +262,98 @@ test('signInWithGoogle redirect catch does not pass raw error to console.error o
         'signInWithGoogle must pass safeRedirectSignInError wrapper to getFriendlyErrorMessage'
     );
 });
+
+test('authDebug events written to sessionStorage only contain safe status string values', () => {
+    assert.match(
+        authFirebaseJs,
+        /recordAuthDebugEvent\(\s*['"]sign-in-start['"]\s*\)/,
+        'must record sign-in-start event'
+    );
+    assert.match(
+        authFirebaseJs,
+        /recordAuthDebugEvent\(\s*['"]storage-probe\s*ok=['"]\s*\+\s*storageOk\s*\)/,
+        'must record storage-probe ok event'
+    );
+    assert.match(
+        authFirebaseJs,
+        /recordAuthDebugEvent\(\s*['"]persistence-set-start['"]\s*\)/,
+        'must record persistence-set-start event'
+    );
+    assert.match(
+        authFirebaseJs,
+        /recordAuthDebugEvent\(\s*['"]persistence-set-success['"]\s*\)/,
+        'must record persistence-set-success event'
+    );
+    assert.match(
+        authFirebaseJs,
+        /recordAuthDebugEvent\(\s*['"]persistence-set-error\s*code=['"]\s*\+\s*\(persErr\s*&&\s*\(persErr\.code\s*||\s*persErr\.name\)\s*||\s*['"]unknown['"]\)\s*\)/,
+        'must record persistence-set-error code event'
+    );
+    assert.match(
+        authFirebaseJs,
+        /recordAuthDebugEvent\(\s*['"]sign-in-redirect-called['"]\s*\)/,
+        'must record sign-in-redirect-called event'
+    );
+    assert.match(
+        authFirebaseJs,
+        /recordAuthDebugEvent\(\s*['"]redirect-result-start['"]\s*\)/,
+        'must record redirect-result-start event'
+    );
+    assert.match(
+        authFirebaseJs,
+        /recordAuthDebugEvent\(\s*['"]redirect-result-user-present=true['"]\s*\)/,
+        'must record redirect-result-user-present=true event'
+    );
+    assert.match(
+        authFirebaseJs,
+        /recordAuthDebugEvent\(\s*['"]persist-success['"]\s*\)/,
+        'must record persist-success event'
+    );
+    assert.match(
+        authFirebaseJs,
+        /recordAuthDebugEvent\(\s*['"]persist-failed\s*code=['"]\s*\+\s*\(persistError\s*&&\s*\(persistError\.code\s*||\s*persistError\.name\)\s*||\s*['"]unknown['"]\)\s*\)/,
+        'must record persist-failed code event'
+    );
+    assert.match(
+        authFirebaseJs,
+        /recordAuthDebugEvent\(\s*['"]navigating\s*target-present=['"]\s*\+\s*\(!!redirectDest\)\s*\)/,
+        'must record navigating event'
+    );
+    assert.match(
+        authFirebaseJs,
+        /recordAuthDebugEvent\(\s*['"]redirect-result-no-result['"]\s*\)/,
+        'must record redirect-result-no-result event'
+    );
+    assert.match(
+        authFirebaseJs,
+        /recordAuthDebugEvent\(\s*['"]no-result\s*current-user-present=['"]\s*\+\s*hasCurrentUser\s*\)/,
+        'must record no-result current-user-present event'
+    );
+    assert.match(
+        authFirebaseJs,
+        /recordAuthDebugEvent\(\s*['"]redirect-result-error\s*code=['"]\s*\+\s*\(redirectError\.code\s*||\s*redirectError\.name\s*||\s*['"]unknown['"]\)\s*\)/,
+        'must record redirect-result-error event'
+    );
+    assert.match(
+        authFirebaseJs,
+        /recordAuthDebugEvent\(\s*['"]auth-state-user-present=['"]\s*\+\s*\(!!user\)\s*\)/,
+        'must record auth-state-user-present event'
+    );
+    assert.match(
+        authFirebaseJs,
+        /recordAuthDebugEvent\(\s*['"]login-page=['"]\s*\+\s*\(typeof\s*isLoginPage\s*===\s*['"]function['"]\s*\?\s*isLoginPage\(\)\s*:\s*false\)\s*\)/,
+        'must record login-page event'
+    );
+    assert.match(
+        authFirebaseJs,
+        /recordAuthDebugEvent\(\s*['"]redirect-target-present=['"]\s*\+\s*\(!!redirectDest\)\s*\)/,
+        'must record redirect-target-present event'
+    );
+});
+
+test('authDebug events do NOT record user credentials, emails, uids, or raw message errors', () => {
+    assert.ok(
+        !/recordAuthDebugEvent\([\s\S]*?(?:user\.email|user\.uid|user\.photoURL|user\.displayName|redirectError\.message|persistError\.message|persErr\.message)/.test(authFirebaseJs),
+        'must not pass user details or raw error messages to debug records'
+    );
+});
