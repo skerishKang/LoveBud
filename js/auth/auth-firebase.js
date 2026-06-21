@@ -1,6 +1,32 @@
 (function () {
   if (window.LoveBudAuthFirebase) return;
 
+  /* ── Embedded browser detection ──
+     Embedded browsers (preview iframes inside the app, in-app web
+     views, sandboxed WebViews) typically can't show OAuth popups —
+     they fail silently with about:blank, leaving the user staring
+     at a blank tab. signInWithRedirect works in those environments
+     because it uses the same tab for navigation instead of spawning a
+     popup window. */
+  function isEmbeddedBrowser() {
+    try {
+      // Running inside a frame/iframe
+      if (window.self !== window.top) return true;
+    } catch (e) {
+      // Cross-origin frame access throws; treat as embedded
+      return true;
+    }
+
+    var ua = String((navigator && navigator.userAgent) || '').toLowerCase();
+    // Common embedded WebView markers
+    var embeddedMarkers = ['wv', 'webview', 'inapp', 'app_webview'];
+    for (var i = 0; i < embeddedMarkers.length; i++) {
+      if (ua.indexOf(embeddedMarkers[i]) !== -1) return true;
+    }
+
+    return false;
+  }
+
   function getEnvironmentCheckError() {
     var protocol = window.location.protocol || '';
     if (protocol === 'file:') {
@@ -150,7 +176,28 @@
     var provider = new firebase.auth.GoogleAuthProvider();
     try { provider.setCustomParameters({ prompt: 'select_account' }); } catch (e) {}
 
-    var loginPage = typeof isLoginPage === 'function' ? isLoginPage() : false;
+    var embedded = isEmbeddedBrowser();
+    var redirectTarget = typeof getRedirectTarget === 'function' ? getRedirectTarget() : 'pages/my-trees.html';
+
+    /* Embedded browsers (preview iframes, in-app web views, sandboxed
+       WebViews) cannot show OAuth popups — the popup fails silently
+       and the user is left staring at about:blank. Skip the popup
+       entirely on embedded environments and go straight to
+       signInWithRedirect, which uses the same tab for navigation. */
+    if (embedded) {
+      try {
+        if (typeof preloadRedirectTargetData === 'function') {
+          preloadRedirectTargetData();
+        }
+        await firebase.auth().signInWithRedirect(provider);
+        return;
+      } catch (redirectError) {
+        console.error('Google redirect (embedded) failed:', redirectError);
+        var embeddedMessage = getFriendlyErrorMessage(redirectError, true);
+        if (embeddedMessage) alert(embeddedMessage);
+        return;
+      }
+    }
 
     try {
       var authResult = await firebase.auth().signInWithPopup(provider);
@@ -162,21 +209,27 @@
       if (typeof preloadRedirectTargetData === 'function') {
         preloadRedirectTargetData();
       }
-      window.location.href = typeof getRedirectTarget === 'function' ? getRedirectTarget() : 'pages/my-trees.html';
+      window.location.href = redirectTarget;
     } catch (error) {
       console.error('Google login failed:', error);
 
+      // All popup errors on non-embedded pages now fall back to
+      // signInWithRedirect (previously this only ran on the login page).
       var popupFallbackCodes = {
         'auth/popup-blocked': true,
         'auth/web-storage-unsupported': true,
-        'auth/cancelled-popup-request': true
+        'auth/cancelled-popup-request': true,
+        'auth/popup-closed-by-user': true,
+        'auth/internal-error': true
       };
 
-      var shouldTryRedirectFallback = loginPage && popupFallbackCodes[error && error.code];
+      var shouldTryRedirectFallback = popupFallbackCodes[error && error.code];
 
       if (shouldTryRedirectFallback) {
         try {
-          alert('팝업 로그인에 실패해 리디렉션 방식으로 다시 시도합니다.');
+          if (typeof preloadRedirectTargetData === 'function') {
+            preloadRedirectTargetData();
+          }
           await firebase.auth().signInWithRedirect(provider);
           return;
         } catch (redirectError) {
@@ -399,6 +452,38 @@
 
     if (typeof attachDropdownListener === 'function') {
       attachDropdownListener();
+    }
+
+    /* Handle the redirect callback from signInWithRedirect.
+       Firebase delivers the auth state via onAuthStateChanged after the
+       redirect completes, but getRedirectResult() surfaces any error
+       that occurred during the redirect flow (e.g. auth/internal-error,
+       auth/network-request-failed). Without this call the user sees the
+       redirect succeed but no session, with no error message. */
+    if (typeof firebase.auth().getRedirectResult === 'function') {
+      firebase.auth().getRedirectResult().then(function(result) {
+        if (result && result.user) {
+          if (typeof persistConfirmedAuthSession === 'function') {
+            persistConfirmedAuthSession(result.user).catch(function() {});
+          }
+          var redirectDest = typeof getRedirectTarget === 'function'
+            ? getRedirectTarget()
+            : 'pages/my-trees.html';
+          if (typeof isLoginPage === 'function' && isLoginPage()) {
+            window.location.replace(redirectDest);
+          }
+        }
+      }).catch(function(redirectError) {
+        if (redirectError && redirectError.code !== 'auth/no-auth-event') {
+          console.warn('Google redirect result error:', redirectError);
+          var friendly = typeof getFriendlyErrorMessage === 'function'
+            ? getFriendlyErrorMessage(redirectError, true)
+            : null;
+          if (friendly) {
+            try { alert(friendly); } catch (e) {}
+          }
+        }
+      });
     }
 
     firebase.auth().onAuthStateChanged(async function(user) {
