@@ -115,7 +115,7 @@
     setText('manageRenameBtn', 'myTrees.manage_rename', '이름 다듬기');
     setText('manageDeleteBtn', 'myTrees.manage_delete', '삭제');
 
-    setText('myTreesHubTitle', 'myTrees.hub_title', '내 러브트리 미리보기');
+    setText('myTreesHubTitle', 'myTrees.hub_title', '내 러브트리');
     setText('myTreesHubBadge', 'myTrees.hub_badge', '선택한 내 트리');
     setText('myTreesHubEditBtn', 'myTrees.hub_edit', '편집하기');
     setHubOpenBtn();
