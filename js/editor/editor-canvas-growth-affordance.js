@@ -293,24 +293,11 @@ function createEditorCanvasGrowthAffordance(deps) {
         button.style.position = 'absolute';
         button.style.left = `${tipPos.x - TIP_HALF}px`;
         button.style.top = `${tipPos.y - TIP_HALF}px`;
-        button.style.width = `${TIP_SIZE}px`;
-        button.style.minHeight = `${TIP_SIZE}px`;
-        button.style.height = `${TIP_SIZE}px`;
-        button.style.borderRadius = '50%';
-        button.style.border = 'none';
-        button.style.background = 'rgba(144, 73, 81, 0.92)';
+        // Sizing, appearance, and transitions are owned by CSS (.memory-add-affordance).
+        // Only set per-node dynamic values here.
         button.style.color = '#fff';
         button.style.cursor = 'pointer';
         button.style.zIndex = '5';
-        button.style.display = 'flex';
-        button.style.alignItems = 'center';
-        button.style.justifyContent = 'center';
-        button.style.boxSizing = 'border-box';
-        button.style.padding = '0';
-        button.style.gap = '10px';
-        button.style.overflow = 'hidden';
-        button.style.boxShadow = '0 3px 10px rgba(144, 73, 81, 0.25)';
-        button.style.transition = 'width 0.16s ease, min-height 0.16s ease, height 0.16s ease, border-radius 0.16s ease, background 0.16s ease, box-shadow 0.16s ease, padding 0.16s ease';
 
         const plusIcon = documentRef.createElement('span');
         plusIcon.setAttribute('aria-hidden', 'true');
@@ -330,13 +317,8 @@ function createEditorCanvasGrowthAffordance(deps) {
         button.appendChild(plusIcon);
 
         const textWrap = documentRef.createElement('span');
+        // Visibility is controlled via CSS (.affordance-tip-text, .affordance-expanded .affordance-tip-text).
         textWrap.className = 'affordance-tip-text';
-        textWrap.style.display = 'none';
-        textWrap.style.flexDirection = 'column';
-        textWrap.style.alignItems = 'flex-start';
-        textWrap.style.minWidth = '0';
-        textWrap.style.maxWidth = '126px';
-        textWrap.style.gap = '2px';
 
         const titleEl = documentRef.createElement('span');
         titleEl.textContent = labelText;
@@ -387,17 +369,8 @@ function createEditorCanvasGrowthAffordance(deps) {
             lockMovement();
             if (bubbleExpanded) return;
             bubbleExpanded = true;
-            button.style.width = `${BUBBLE_WIDTH}px`;
-            button.style.minHeight = `${BUBBLE_MIN_HEIGHT}px`;
-            button.style.height = 'auto';
-            button.style.borderRadius = '999px';
-            button.style.justifyContent = 'flex-start';
-            button.style.padding = '10px 14px 10px 10px';
-            button.style.border = '1px solid rgba(144, 73, 81, 0.18)';
-            button.style.background = 'linear-gradient(180deg, rgba(255,255,255,0.98), rgba(250,246,244,0.96))';
-            button.style.boxShadow = '0 12px 28px rgba(75, 64, 57, 0.10)';
-            button.style.backdropFilter = 'blur(8px)';
-            textWrap.style.display = 'flex';
+            // CSS (.affordance-expanded) handles all visual transitions.
+            button.classList.add('affordance-expanded');
             button.setAttribute('aria-expanded', 'true');
         }
 
@@ -407,17 +380,8 @@ function createEditorCanvasGrowthAffordance(deps) {
                 return;
             }
             bubbleExpanded = false;
-            button.style.width = `${TIP_SIZE}px`;
-            button.style.minHeight = `${TIP_SIZE}px`;
-            button.style.height = `${TIP_SIZE}px`;
-            button.style.borderRadius = '50%';
-            button.style.justifyContent = 'center';
-            button.style.padding = '0';
-            button.style.border = 'none';
-            button.style.background = 'rgba(144, 73, 81, 0.92)';
-            button.style.boxShadow = '0 3px 10px rgba(144, 73, 81, 0.25)';
-            button.style.backdropFilter = 'none';
-            textWrap.style.display = 'none';
+            // CSS (.memory-add-affordance without .affordance-expanded) restores collapsed state.
+            button.classList.remove('affordance-expanded');
             button.setAttribute('aria-expanded', 'false');
             unlockMovementSoon(160);
         }

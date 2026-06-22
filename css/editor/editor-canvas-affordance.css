@@ -1,0 +1,101 @@
+/*
+ * editor-canvas-affordance.css
+ *
+ * Styles for the growth affordance (+ tip / bubble) rendered on the editor
+ * canvas. Previously all sizing, colour and transition values lived as inline
+ * `style` assignments inside editor-canvas-growth-affordance.js.  Moving them
+ * here lets CSS handle all visual transitions so the JS only toggles a single
+ * `.affordance-expanded` class.
+ *
+ * Scope: .memory-add-affordance  (button element)
+ *         .affordance-tip-text   (inner text wrapper span)
+ */
+
+/* ── collapsed (default) state ──────────────────────────────────────────── */
+.memory-add-affordance {
+  /* layout */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  overflow: hidden;
+  position: absolute;
+  gap: 10px;
+  padding: 0;
+
+  /* sizing */
+  width: var(--affordance-tip-size, 36px);
+  min-height: var(--affordance-tip-size, 36px);
+  height: var(--affordance-tip-size, 36px);
+
+  /* appearance */
+  border: none;
+  border-radius: 50%;
+  background: rgba(144, 73, 81, 0.92);
+  color: #fff;
+  cursor: pointer;
+  z-index: 5;
+  box-shadow: 0 3px 10px rgba(144, 73, 81, 0.25);
+  backdrop-filter: none;
+
+  /* transition — all visual properties so no box-model jump occurs */
+  transition:
+    width            0.16s ease,
+    min-height       0.16s ease,
+    height           0.16s ease,
+    border-radius    0.16s ease,
+    background       0.16s ease,
+    box-shadow       0.16s ease,
+    padding          0.16s ease,
+    border-color     0.16s ease;
+}
+
+/* ── expanded state ─────────────────────────────────────────────────────── */
+.memory-add-affordance.affordance-expanded {
+  /* sizing */
+  width: var(--affordance-bubble-width, 188px);
+  min-height: var(--affordance-bubble-min-height, 56px);
+  height: auto;
+
+  /* layout */
+  justify-content: flex-start;
+  padding: 10px 14px 10px 10px;
+
+  /* appearance */
+  border: 1px solid rgba(144, 73, 81, 0.18);
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(250,246,244,0.96));
+  box-shadow: 0 12px 28px rgba(75, 64, 57, 0.10);
+  backdrop-filter: blur(8px);
+}
+
+/* ── inner text wrapper ─────────────────────────────────────────────────── */
+/*
+ * Use opacity + visibility instead of display:none → flex so the element
+ * participates in the transition timeline and never causes a sudden layout
+ * jump when it becomes visible.
+ *
+ * `max-width: 0` in the collapsed state clips the text without affecting
+ * the flex row height.
+ */
+.affordance-tip-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+  max-width: 0;
+  gap: 2px;
+  opacity: 0;
+  visibility: hidden;
+  overflow: hidden;
+  transition:
+    opacity     0.14s ease 0.02s,
+    visibility  0.14s ease 0.02s,
+    max-width   0.16s ease;
+}
+
+.memory-add-affordance.affordance-expanded .affordance-tip-text {
+  max-width: 126px;
+  opacity: 1;
+  visibility: visible;
+}

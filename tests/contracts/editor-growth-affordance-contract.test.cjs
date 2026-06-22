@@ -141,3 +141,64 @@ test('isStartMoment handles missing options gracefully', () => {
 
   assert.match(source, /if\s*\([^)]*options\s*&&\s*\([^)]*options\.isStartMoment[^)]*\)/);
 });
+
+// ── CSS class-toggle contract (Issue #2806) ──────────────────────────────────
+// The bubble expand/collapse must be driven by adding/removing a CSS class
+// rather than directly mutating inline style properties.  This eliminates the
+// display:none → flex layout jump that caused the "stretched thumbnail" artifact.
+
+test('showBubble adds affordance-expanded class instead of mutating inline styles', () => {
+  const source = fs.readFileSync(path.join(ROOT, 'js/editor/editor-canvas-growth-affordance.js'), 'utf8');
+
+  // showBubble must use classList.add
+  assert.match(source, /classList\.add\s*\(\s*['"]affordance-expanded['"]\s*\)/);
+  // showBubble must NOT set inline width/borderRadius/background on expand
+  // (the old pattern was button.style.width = ...)
+  const showBubbleSectionMatch = source.match(/function\s+showBubble\s*\(\s*\)([\s\S]*?)function\s+hideBubble/);
+  assert.ok(showBubbleSectionMatch, 'showBubble function must exist before hideBubble');
+  const showBubbleBody = showBubbleSectionMatch[1];
+  assert.doesNotMatch(showBubbleBody, /button\.style\.width\s*=/);
+  assert.doesNotMatch(showBubbleBody, /button\.style\.borderRadius\s*=/);
+  assert.doesNotMatch(showBubbleBody, /button\.style\.background\s*=/);
+});
+
+test('hideBubble removes affordance-expanded class instead of mutating inline styles', () => {
+  const source = fs.readFileSync(path.join(ROOT, 'js/editor/editor-canvas-growth-affordance.js'), 'utf8');
+
+  // hideBubble must use classList.remove
+  assert.match(source, /classList\.remove\s*\(\s*['"]affordance-expanded['"]\s*\)/);
+  // hideBubble must NOT reset inline width/background/borderRadius on collapse
+  const hideBubbleSectionMatch = source.match(/function\s+hideBubble\s*\(\s*\)([\s\S]*?)button\.addEventListener\s*\(\s*['"]mouseenter['"]/);
+  assert.ok(hideBubbleSectionMatch, 'hideBubble function must exist before event listeners');
+  const hideBubbleBody = hideBubbleSectionMatch[1];
+  assert.doesNotMatch(hideBubbleBody, /button\.style\.width\s*=/);
+  assert.doesNotMatch(hideBubbleBody, /button\.style\.background\s*=/);
+});
+
+test('textWrap visibility is not driven by display:none in JS', () => {
+  const source = fs.readFileSync(path.join(ROOT, 'js/editor/editor-canvas-growth-affordance.js'), 'utf8');
+
+  // The affordance-tip-text span must NOT have display toggled via JS.
+  // Visibility is now handled by CSS (opacity + visibility + max-width transition).
+  assert.doesNotMatch(source, /textWrap\.style\.display\s*=/);
+});
+
+test('affordance-expanded CSS class is defined in editor-canvas-affordance.css', () => {
+  const cssSource = fs.readFileSync(
+    path.join(ROOT, 'css/editor/editor-canvas-affordance.css'), 'utf8'
+  );
+
+  assert.match(cssSource, /\.affordance-expanded/);
+  assert.match(cssSource, /\.memory-add-affordance/);
+  assert.match(cssSource, /\.affordance-tip-text/);
+  // Visibility must be managed via opacity/visibility, not display
+  assert.match(cssSource, /opacity\s*:/);
+  assert.match(cssSource, /visibility\s*:/);
+  assert.doesNotMatch(cssSource, /\.affordance-expanded\s+\.affordance-tip-text\s*\{[^}]*display\s*:\s*flex/);
+});
+
+test('editor.css imports editor-canvas-affordance.css', () => {
+  const editorCss = fs.readFileSync(path.join(ROOT, 'css/editor.css'), 'utf8');
+
+  assert.match(editorCss, /editor-canvas-affordance\.css/);
+});

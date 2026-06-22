@@ -12,6 +12,7 @@
 @import url("./editor/editor-layout.css?v=20260504-775");
 @import url("./editor/editor-sidebar.css");
 @import url("./editor/editor-canvas.css?v=20260504-787");
+@import url("./editor/editor-canvas-affordance.css");
 @import url("./editor/editor-canvas-toolbar.css?v=20260512-1041");
 @import url("./editor/editor-floating-toolbar.css?v=20260518-1");
 @import url("./editor/editor-mobile-action-bar.css?v=20260518-1");
