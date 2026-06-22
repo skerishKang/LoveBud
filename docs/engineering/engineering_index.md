@@ -55,6 +55,7 @@
 37. [FRONTEND_SPLIT_PROGRESS_1505.md](../refactor/FRONTEND_SPLIT_PROGRESS_1505.md) - Issue #1505 frontend split 전체 진행 상태 및 차기 후보
 38. [EDITOR_CANVAS_PREFLIGHT_AUDIT_1505.md](../refactor/EDITOR_CANVAS_PREFLIGHT_AUDIT_1505.md) - js/editor/editor-canvas.js 모듈 분리 preflight audit
 39. [LAYOUT_MODE_TRANSITION_PREFLIGHT_AUDIT_1505.md](../refactor/LAYOUT_MODE_TRANSITION_PREFLIGHT_AUDIT_1505.md) - js/editor/editor-canvas.js 레이아웃 모드 전환 모듈 분리 preflight audit
+40. [PUBLIC_VIEWER_SHELL_SPLIT_AUDIT.md](./PUBLIC_VIEWER_SHELL_SPLIT_AUDIT.md) - #2686 public viewer shell responsibility map, DOM ownership, global namespace inventory, low-risk split candidates, one-file-at-a-time follow-up plan
 
 
 
