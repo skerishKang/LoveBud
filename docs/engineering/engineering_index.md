@@ -56,6 +56,7 @@
 38. [EDITOR_CANVAS_PREFLIGHT_AUDIT_1505.md](../refactor/EDITOR_CANVAS_PREFLIGHT_AUDIT_1505.md) - js/editor/editor-canvas.js 모듈 분리 preflight audit
 39. [LAYOUT_MODE_TRANSITION_PREFLIGHT_AUDIT_1505.md](../refactor/LAYOUT_MODE_TRANSITION_PREFLIGHT_AUDIT_1505.md) - js/editor/editor-canvas.js 레이아웃 모드 전환 모듈 분리 preflight audit
 40. [PUBLIC_VIEWER_SHELL_SPLIT_AUDIT.md](./PUBLIC_VIEWER_SHELL_SPLIT_AUDIT.md) - #2686 public viewer shell responsibility map, DOM ownership, global namespace inventory, low-risk split candidates, one-file-at-a-time follow-up plan
+41. [AUTH_FLOW_OWNERSHIP_AUDIT.md](./AUTH_FLOW_OWNERSHIP_AUDIT.md) - #2712 auth entrypoints by page, Firebase init/listener ownership, cached-session lifecycle, protected-route lifecycle, login-page lifecycle, duplicated responsibilities, staged refactor plan
 
 
 
