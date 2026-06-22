@@ -167,3 +167,28 @@
         font-size: 10px !important;
     }
 }
+
+/* Scoped layout classes for Issue #2808 */
+.editor-status-card .editor-sidebar-header-row {
+    align-items: center !important;
+    margin-bottom: 14px !important;
+}
+
+.editor-status-card .editor-sidebar-header-row .editor-reference-kicker {
+    margin-bottom: 0 !important;
+}
+
+.editor-status-card .editor-sidebar-header-row #renameTreeBtn.editor-rename-btn {
+    margin-top: 0 !important;
+}
+
+.editor-status-card .editor-title-row {
+    margin-bottom: 12px !important;
+}
+
+.editor-status-card .editor-title-row #sidebarTreeTitle {
+    word-break: keep-all !important;
+    overflow-wrap: break-word !important;
+    line-height: 1.35 !important;
+    display: block !important;
+}
