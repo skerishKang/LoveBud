@@ -145,9 +145,22 @@ function createEditorDetailUI(deps) {
         const params = new URLSearchParams();
         params.set('autoplay', '1');
         params.set('rel', '0');
-        const startValue = data && (data.startTime || data.start_time || data.startSeconds || data.start_seconds);
-        const startSeconds = Number(startValue || 0);
+
+        let startValue = data && (data.startTime || data.start_time || data.startSeconds || data.start_seconds);
+        let endValue = data && (data.endTime || data.end_time || data.endSeconds || data.end_seconds);
+
+        try {
+            const parsed = new URL(rawUrl);
+            if (!startValue) startValue = parsed.searchParams.get('start') || parsed.searchParams.get('t');
+            if (!endValue) endValue = parsed.searchParams.get('end');
+        } catch (e) {}
+
+        const startSeconds = startValue ? Number(startValue) : 0;
         if (Number.isFinite(startSeconds) && startSeconds > 0) params.set('start', String(Math.floor(startSeconds)));
+
+        const endSeconds = endValue ? Number(endValue) : 0;
+        if (Number.isFinite(endSeconds) && endSeconds > 0) params.set('end', String(Math.floor(endSeconds)));
+
         return 'https://www.youtube-nocookie.com/embed/' + encodeURIComponent(videoId) + '?' + params.toString();
     };
 
@@ -451,14 +464,47 @@ function createEditorDetailUI(deps) {
 
         if (imgEl) {
             clearDetailPlayer(mediaWrap);
-            const thumbnail = resolveMemoryThumbnail(data);
-            if (thumbnail) {
-                imgEl.src = thumbnail;
-                imgEl.alt = data.title || '';
-                if (mediaWrap) mediaWrap.style.display = '';
-                bindDetailMediaPlayback(data, mediaWrap);
+            const rawUrl = getMemoryPlaybackUrl(data);
+            const videoId = getYouTubeVideoId(rawUrl);
+
+            if (videoId) {
+                const player = buildInlinePlayerElement(data);
+                if (player) {
+                    imgEl.style.display = 'none';
+                    const overlay = mediaWrap ? mediaWrap.querySelector('.memory-preview-overlay') : null;
+                    if (overlay) overlay.hidden = true;
+                    if (mediaWrap) {
+                        mediaWrap.style.display = '';
+                        mediaWrap.classList.add('is-playing');
+                        mediaWrap.appendChild(player);
+                    }
+                } else {
+                    const thumbnail = resolveMemoryThumbnail(data);
+                    if (thumbnail) {
+                        imgEl.src = thumbnail;
+                        imgEl.alt = data.title || '';
+                        imgEl.style.display = '';
+                        const overlay = mediaWrap ? mediaWrap.querySelector('.memory-preview-overlay') : null;
+                        if (overlay) overlay.hidden = false;
+                        if (mediaWrap) mediaWrap.style.display = '';
+                        bindDetailMediaPlayback(data, mediaWrap);
+                    } else {
+                        clearDetailMedia();
+                    }
+                }
             } else {
-                clearDetailMedia();
+                const thumbnail = resolveMemoryThumbnail(data);
+                if (thumbnail) {
+                    imgEl.src = thumbnail;
+                    imgEl.alt = data.title || '';
+                    imgEl.style.display = '';
+                    const overlay = mediaWrap ? mediaWrap.querySelector('.memory-preview-overlay') : null;
+                    if (overlay) overlay.hidden = false;
+                    if (mediaWrap) mediaWrap.style.display = '';
+                    bindDetailMediaPlayback(data, mediaWrap);
+                } else {
+                    clearDetailMedia();
+                }
             }
         }
 
