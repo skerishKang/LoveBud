@@ -240,6 +240,35 @@ tests.push({
     },
 });
 
+tests.push({
+    name: 'My Trees card renderer appends both is-selected and is-active classes for visual state sharing',
+    fn: () => {
+        const myTreesUiJs = fs.readFileSync(path.join(ROOT, 'js', 'my-trees', 'my-trees-ui.js'), 'utf8');
+        assert.match(
+            myTreesUiJs,
+            /\? ' is-selected is-active' : ''/,
+            'My Trees card render state must include both is-selected and is-active classes'
+        );
+    }
+});
+
+tests.push({
+    name: 'My Trees markSelectedCard state manager toggles both is-selected and is-active classes',
+    fn: () => {
+        const myTreesStateJs = fs.readFileSync(path.join(ROOT, 'js', 'my-trees', 'my-trees-preview-state.js'), 'utf8');
+        assert.match(
+            myTreesStateJs,
+            /card\.classList\.remove\(\s*['"]is-selected['"]\s*,\s*['"]is-active['"]\s*\)/,
+            'My Trees markSelectedCard state manager must remove is-active class'
+        );
+        assert.match(
+            myTreesStateJs,
+            /card\.classList\.add\(\s*['"]is-selected['"]\s*,\s*['"]is-active['"]\s*\)/,
+            'My Trees markSelectedCard state manager must add is-active class'
+        );
+    }
+});
+
 // ── 4. Both pages share the same card token family ───────────────────────────
 tests.push({
     name: 'Both pages reference the same card token family (--lovetree-card-*)',

@@ -266,7 +266,7 @@
     var cardMeta = getTreeCardMeta(normalizedTree, i18n);
     var title = cardMeta.title;
 
-    var selectedClass = typeof isSelected === 'function' && isSelected(normalizedTree.id) ? ' is-selected' : '';
+    var selectedClass = typeof isSelected === 'function' && isSelected(normalizedTree.id) ? ' is-selected is-active' : '';
     var basePath = options && typeof options.basePath === 'string'
       ? options.basePath
       : ((typeof window.LoveBudPath !== 'undefined' && window.LoveBudPath.getBasePath)
