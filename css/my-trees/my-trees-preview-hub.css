@@ -1,9 +1,6 @@
 /**
  * LoveBud - My Trees Preview Hub Styles Manifest
- * v20260524-1
- *
- * This file serves as a manifest for the My Trees Preview Hub CSS split.
- * Do not add styles directly to this file.
+ * v20260524-1 (2026-06-22: +social-bar override for narrow widths)
  */
 
 @import url("./my-trees-preview-hub/layout.css");
@@ -12,7 +9,5 @@
 @import url("./my-trees-preview-hub/states.css");
 @import url("./my-trees-preview-hub/actions.css");
 @import url("./my-trees-preview-hub/responsive.css");
-/* Step 5 follow-up: shared .preview-social-shell / .preview-social-bar
-   rules so My Trees hub can render the same owner-passive social stats
-   block that Browse uses. */
+@import url("./my-trees-preview-hub/social-bar.css");
 @import url("../../search/search-preview-social-bar.css");

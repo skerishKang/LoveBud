@@ -1,14 +1,14 @@
 /**
  * LoveBud Hub Parity Step 6 — Contract Test
  *
- * Locks two visual fixes from the Step 6 follow-up:
+ * Locks two visual fixes from the Step 6 follow-up + the 2026-06-22 hotfix:
  *
- *   1. My Trees flow stages use the same compact, transparent inline-style
- *      treatment as Browse (.preview-flow-stage) — padding 2px 6px,
- *      border-radius 4px, font-size 13px, transparent background, no
- *      border, no shadow, no min-height. The legacy card-density
- *      overrides (min-height 42px, padding 8px 10px, border-radius
- *      12px, background, border, shadow) must not return.
+ *   1. My Trees flow stages render as a discrete pill button so each
+ *      moment reads as an interactive marker in production. The
+ *      2026-06-22 hotfix replaces the previous flat transparent style
+ *      (padding 2px 6px, border-radius 4px, no border) with a pill
+ *      surface (border-radius 999px, surface background, 1px border,
+ *      min-height 34px) that survives the narrow column widths.
  *
  *   2. My Trees owner-passive social shell uses `chat_bubble` for the
  *      comment icon (the `mode_comment` ligature fails to render in
@@ -32,51 +32,49 @@ const myTreesFlowCss = fs.readFileSync(
     'utf8'
 );
 
-// ── 1) My Trees flow stage parity with Browse ─────────────────────────
-test('My Trees flow stage uses Browse inline-style compact rhythm', () => {
-    const re = /\.my-trees-hub-flow-stage\s*\{[^}]*padding:\s*2px\s+6px;[^}]*border-radius:\s*4px;[^}]*font-size:\s*13px;/s;
+// ── 1) My Trees flow stage parity with Browse (2026-06-22 hotfix) ────
+test('My Trees flow stage renders as a pill button (2026-06-22 hotfix)', () => {
+    const block = (myTreesFlowCss.match(/\.my-trees-hub-flow-stage\s*\{[^}]*\}/s) || [''])[0];
+    assert.ok(block, 'rule must exist');
     assert.match(
-        myTreesFlowCss,
-        re,
-        'My Trees .my-trees-hub-flow-stage must use Browse-style padding 2px 6px, border-radius 4px, font-size 13px (Step 6)'
+        block,
+        /border-radius:\s*999px/,
+        'My Trees .my-trees-hub-flow-stage must use border-radius: 999px (pill rhythm)'
+    );
+    assert.match(
+        block,
+        /background:\s*rgba\(\s*255,\s*250,\s*249/,
+        'My Trees .my-trees-hub-flow-stage must use the soft surface pill background'
+    );
+    assert.match(
+        block,
+        /border:\s*1px solid\s+rgba\(144,\s*73,\s*81/,
+        'My Trees .my-trees-hub-flow-stage must use the primary-tinted border'
+    );
+    assert.match(
+        block,
+        /min-height:\s*34px/,
+        'My Trees .my-trees-hub-flow-stage must declare min-height 34px for tap-friendly target'
     );
 });
 
-test('My Trees flow stage does NOT carry the legacy card-density overrides', () => {
-    // The legacy rule had:
-    //   min-height: 42px !important;
-    //   padding: 8px 10px !important;
-    //   border-radius: 12px !important;
-    //   background: rgba(255, 255, 255, 0.56) !important;
-    //   border: 1px solid rgba(144, 73, 81, 0.08);
-    //   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.66);
-    //   font-size: 12.5px !important;
-    // All of these must be gone.
+test('My Trees flow stage does NOT carry the legacy flat-style overrides', () => {
+    // The Step 6 flat rule had: padding 2px 6px + transparent background
+    // + border-radius 4px + no border. The 2026-06-22 hotfix replaces it
+    // with a pill surface. Lock the legacy flat-style overrides out.
     const block = (myTreesFlowCss.match(/\.my-trees-hub-flow-stage\s*\{[^}]*\}/s) || [''])[0];
     assert.ok(block, 'rule must exist');
     assert.ok(
-        !/min-height:\s*42px\s*!important/.test(block),
-        'legacy min-height 42px !important must not return'
+        !/padding:\s*2px\s+6px;/.test(block),
+        'legacy padding 2px 6px (flat inline style) must not return'
     );
     assert.ok(
-        !/padding:\s*8px\s+10px\s*!important/.test(block),
-        'legacy padding 8px 10px !important must not return'
+        !/background:\s*transparent;/.test(block),
+        'legacy transparent background must not return'
     );
     assert.ok(
-        !/border-radius:\s*12px\s*!important/.test(block),
-        'legacy border-radius 12px !important must not return'
-    );
-    assert.ok(
-        !/background:\s*rgba\(255,\s*255,\s*255,\s*0\.56\)\s*!important/.test(block),
-        'legacy background rgba(255,255,255,0.56) !important must not return'
-    );
-    assert.ok(
-        !/box-shadow:/.test(block),
-        'legacy box-shadow must not return on flow stage'
-    );
-    assert.ok(
-        !/border:\s*1px solid/.test(block),
-        'legacy 1px solid border must not return on flow stage'
+        !/border-radius:\s*4px;/.test(block),
+        'legacy border-radius 4px (flat square) must not return'
     );
 });
 
@@ -86,15 +84,6 @@ test('My Trees flow stage uses display: inline-flex (Browse parity)', () => {
         block,
         /display:\s*inline-flex/,
         'My Trees .my-trees-hub-flow-stage must use display: inline-flex (Browse parity)'
-    );
-});
-
-test('My Trees flow stage uses transparent background (Browse parity)', () => {
-    const block = (myTreesFlowCss.match(/\.my-trees-hub-flow-stage\s*\{[^}]*\}/s) || [''])[0];
-    assert.match(
-        block,
-        /background:\s*transparent/,
-        'My Trees .my-trees-hub-flow-stage must use background: transparent (Browse parity)'
     );
 });
 

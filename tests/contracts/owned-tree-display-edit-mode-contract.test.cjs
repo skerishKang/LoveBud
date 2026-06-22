@@ -26,10 +26,12 @@ test('display/edit mode static constraints', () => {
   // 3. My LoveTree edit href uses editor?treeId=
   assert.match(previewHub, /editor\?treeId=/);
 
-  // 4. My LoveTree copy has 트리 열기 / 편집하기 (Browse parity, Step 5) or fallback markers
+  // 4. My LoveTree copy uses 트리 열기 / 편집하기 (Browse parity, Step 5) as
+  // both primary copy and i18n fallback. The legacy '감상하기' marker is
+  // retained for non-i18n contexts (e.g. card link fallback before refresh).
   assert.match(previewHub, /'트리\s*열기'/);
   assert.match(previewHub, /'편집하기'/);
-  assert.match(myTreesUi, /'감상하기'/);
+  assert.match(myTreesUi, /'트리\s*열기'/);
   assert.match(myTreesUi, /'편집하기'/);
 
   // 5. Raw ownerId/user ID must not be directly displayed in UI text
