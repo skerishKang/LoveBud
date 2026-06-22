@@ -6,6 +6,7 @@
    the same flat surface so both pages read as one card family. */
 .my-trees-hub-flow {
     /* Step 8 follow-up: inherits styles from .preview-focus-flow-card */
+    background: var(--surface-container-low);
 }
 
 .my-trees-hub-flow-label {
