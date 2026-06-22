@@ -78,6 +78,8 @@ function createEditorMemoryForm(deps) {
         formIntro: document.getElementById('addMemoryFormIntro'),
         urlLabel: document.getElementById('memoryUrlLabel'),
         titleLabel: document.getElementById('memoryTitleLabel'),
+        tagsInput: document.getElementById('memoryTagsInput'),
+        tagsLabel: document.getElementById('memoryTagsLabel'),
         memoLabel: document.getElementById('memoryMemoLabel'),
         confirmBtn: document.getElementById('confirmAddMemory'),
         preview: document.getElementById('memoryLinkPreview'),
@@ -96,6 +98,7 @@ function createEditorMemoryForm(deps) {
             refs.startTimeInput,
             refs.endTimeInput,
             refs.titleInput,
+            refs.tagsInput,
             refs.memoInput
         ].filter(Boolean);
     }
@@ -200,6 +203,7 @@ function createEditorMemoryForm(deps) {
         if (refs.startTimeInput) refs.startTimeInput.value = '';
         if (refs.endTimeInput) refs.endTimeInput.value = '';
         if (refs.titleInput) refs.titleInput.value = '';
+        if (refs.tagsInput) refs.tagsInput.value = '';
         if (refs.memoInput) refs.memoInput.value = '';
         userHasEditedStartTime = false;
         userHasEditedTitle = false;
@@ -215,6 +219,10 @@ function createEditorMemoryForm(deps) {
             : (i18n('editor_add_next_memory_title') || '어떤 순간이 이어졌나요?'));
         setText(refs.urlLabel, i18n('editor_youtube_link') || 'YouTube 장면 링크');
         setText(refs.titleLabel, i18n('editor_memory_title') || '순간 제목');
+        setText(refs.tagsLabel, i18n('editor_edit_tag_label') || '감정 태그 (쉼표로 구분)');
+        if (refs.tagsInput) {
+            refs.tagsInput.placeholder = i18n('editor_edit_tag_placeholder') || '#감동, #행복, #그리움';
+        }
         setText(refs.memoLabel, i18n('editor_memory_memo_optional') || '감정 메모');
     }
 

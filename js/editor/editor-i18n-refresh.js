@@ -306,6 +306,8 @@
     setText('addMemoryFormTitle', 'editor_new_memory', '어떤 순간이 이어졌나요?');
     setText('memoryUrlLabel', 'editor_youtube_link', 'YouTube 장면 링크');
     setText('memoryTitleLabel', 'editor_memory_title', '순간 제목');
+    setText('memoryTagsLabel', 'editor_edit_tag_label', '감정 태그 (쉼표로 구분)');
+    setAttr('memoryTagsInput', 'placeholder', 'editor_edit_tag_placeholder', '#감동, #행복, #그리움');
     setText('memoryMemoLabel', 'editor_memory_memo_optional', '감정 메모');
     setText('cancelAddMemory', 'editor_cancel', '취소');
     setText('confirmAddMemory', 'editor_confirm_add', '이 순간 심기');
