@@ -123,6 +123,10 @@ function createEditorDetailUI(deps) {
 
     const getYouTubeVideoId = (rawUrl) => {
         if (!rawUrl) return '';
+        const mediaHelper = window.LoveBudMedia;
+        if (mediaHelper && typeof mediaHelper.extractYouTubeId === 'function') {
+            return mediaHelper.extractYouTubeId(rawUrl) || '';
+        }
         try {
             const url = new URL(rawUrl, window.location.origin);
             const host = url.hostname.replace(/^www\./, '');
@@ -142,12 +146,54 @@ function createEditorDetailUI(deps) {
         const rawUrl = getMemoryPlaybackUrl(data);
         const videoId = getYouTubeVideoId(rawUrl);
         if (!videoId) return '';
+
+        const mediaHelper = window.LoveBudMedia;
+        let startSeconds = null;
+        let endSeconds = null;
+
+        let startValue = data && (data.startTime || data.start_time || data.startSeconds || data.start_seconds);
+        let endValue = data && (data.endTime || data.end_time || data.endSeconds || data.end_seconds);
+
+        if (mediaHelper && typeof mediaHelper.parseYouTubeTimeToSeconds === 'function') {
+            if (startValue !== undefined && startValue !== null) {
+                startSeconds = mediaHelper.parseYouTubeTimeToSeconds(startValue);
+            }
+            if (endValue !== undefined && endValue !== null) {
+                endSeconds = mediaHelper.parseYouTubeTimeToSeconds(endValue);
+            }
+        }
+
+        try {
+            const parsed = new URL(rawUrl);
+            if (startSeconds === null) {
+                const urlStart = parsed.searchParams.get('start') || parsed.searchParams.get('t');
+                if (urlStart && mediaHelper && typeof mediaHelper.parseYouTubeTimeToSeconds === 'function') {
+                    startSeconds = mediaHelper.parseYouTubeTimeToSeconds(urlStart);
+                } else if (urlStart) {
+                    startSeconds = Number(urlStart);
+                }
+            }
+            if (endSeconds === null) {
+                const urlEnd = parsed.searchParams.get('end');
+                if (urlEnd && mediaHelper && typeof mediaHelper.parseYouTubeTimeToSeconds === 'function') {
+                    endSeconds = mediaHelper.parseYouTubeTimeToSeconds(urlEnd);
+                } else if (urlEnd) {
+                    endSeconds = Number(urlEnd);
+                }
+            }
+        } catch (e) {}
+
         const params = new URLSearchParams();
         params.set('autoplay', '1');
         params.set('rel', '0');
-        const startValue = data && (data.startTime || data.start_time || data.startSeconds || data.start_seconds);
-        const startSeconds = Number(startValue || 0);
-        if (Number.isFinite(startSeconds) && startSeconds > 0) params.set('start', String(Math.floor(startSeconds)));
+
+        if (Number.isFinite(startSeconds) && startSeconds > 0) {
+            params.set('start', String(Math.floor(startSeconds)));
+        }
+        if (Number.isFinite(endSeconds) && endSeconds > 0) {
+            params.set('end', String(Math.floor(endSeconds)));
+        }
+
         return 'https://www.youtube-nocookie.com/embed/' + encodeURIComponent(videoId) + '?' + params.toString();
     };
 
@@ -164,19 +210,6 @@ function createEditorDetailUI(deps) {
             iframe.referrerPolicy = 'strict-origin-when-cross-origin';
             return iframe;
         }
-
-        const rawUrl = getMemoryPlaybackUrl(data);
-        if (/\.(mp4|webm|ogg)(\?|#|$)/i.test(rawUrl)) {
-            const video = document.createElement('video');
-            video.dataset.editorDetailPlayer = '1';
-            video.className = 'detail-video-player';
-            video.src = rawUrl;
-            video.controls = true;
-            video.autoplay = true;
-            video.playsInline = true;
-            return video;
-        }
-
         return null;
     };
 
@@ -451,14 +484,47 @@ function createEditorDetailUI(deps) {
 
         if (imgEl) {
             clearDetailPlayer(mediaWrap);
-            const thumbnail = resolveMemoryThumbnail(data);
-            if (thumbnail) {
-                imgEl.src = thumbnail;
-                imgEl.alt = data.title || '';
-                if (mediaWrap) mediaWrap.style.display = '';
-                bindDetailMediaPlayback(data, mediaWrap);
+            const rawUrl = getMemoryPlaybackUrl(data);
+            const videoId = getYouTubeVideoId(rawUrl);
+
+            if (videoId) {
+                const player = buildInlinePlayerElement(data);
+                if (player) {
+                    imgEl.style.display = 'none';
+                    const overlay = mediaWrap ? mediaWrap.querySelector('.memory-preview-overlay') : null;
+                    if (overlay) overlay.hidden = true;
+                    if (mediaWrap) {
+                        mediaWrap.style.display = '';
+                        mediaWrap.classList.add('is-playing');
+                        mediaWrap.appendChild(player);
+                    }
+                } else {
+                    const thumbnail = resolveMemoryThumbnail(data);
+                    if (thumbnail) {
+                        imgEl.src = thumbnail;
+                        imgEl.alt = data.title || '';
+                        imgEl.style.display = '';
+                        const overlay = mediaWrap ? mediaWrap.querySelector('.memory-preview-overlay') : null;
+                        if (overlay) overlay.hidden = false;
+                        if (mediaWrap) mediaWrap.style.display = '';
+                        bindDetailMediaPlayback(data, mediaWrap);
+                    } else {
+                        clearDetailMedia();
+                    }
+                }
             } else {
-                clearDetailMedia();
+                const thumbnail = resolveMemoryThumbnail(data);
+                if (thumbnail) {
+                    imgEl.src = thumbnail;
+                    imgEl.alt = data.title || '';
+                    imgEl.style.display = '';
+                    const overlay = mediaWrap ? mediaWrap.querySelector('.memory-preview-overlay') : null;
+                    if (overlay) overlay.hidden = false;
+                    if (mediaWrap) mediaWrap.style.display = '';
+                    bindDetailMediaPlayback(data, mediaWrap);
+                } else {
+                    clearDetailMedia();
+                }
             }
         }
 
