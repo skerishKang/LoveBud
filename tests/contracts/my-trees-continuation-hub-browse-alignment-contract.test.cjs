@@ -49,24 +49,45 @@ test('My Trees continuation flow uses Browse-like single-column desktop rhythm',
     /\.my-trees-hub-flow-list\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\);[^}]*\}/,
     'desktop continuation flow must use a single-column grid matching Browse'
   );
-  // Step 6 follow-up: flow stage now uses the same compact, transparent
-  // inline-style treatment as Browse (.preview-flow-stage). The legacy
-  // card-density overrides (min-height 42px, padding 8px 10px, border-
-  // radius 12px, background, border, shadow) are retired.
+  // 2026-06-22 hotfix: flow stage is a discrete pill button so each
+  // moment reads as a clickable marker in production (was flat
+  // transparent text). The shared Browse flat-style rhythm is replaced
+  // with: border-radius 999px, surface background, 1px primary-tinted
+  // border, min-height 34px. Lock the new requirements and retire the
+  // legacy flat-style selectors.
+  const block = (flow.match(/\.my-trees-hub-flow-stage\s*\{[^}]*\}/s) || [''])[0];
+  assert.ok(block, 'rule must exist');
   assert.match(
-    flow,
-    /\.my-trees-hub-flow-stage\s*\{[^}]*padding:\s*2px\s+6px;[^}]*border-radius:\s*4px;[^}]*font-size:\s*13px;/s,
-    'flow stage must use Browse inline-style compact rhythm (padding 2px 6px, border-radius 4px, font-size 13px)'
+    block,
+    /border-radius:\s*999px/,
+    'flow stage must use pill border-radius (999px)'
   );
-  assert.doesNotMatch(
-    flow,
-    /\.my-trees-hub-flow-stage\s*\{[^}]*min-height:\s*42px\s*!important/,
-    'legacy heavier min-height 42px card density must not return'
+  assert.match(
+    block,
+    /background:\s*rgba\(\s*255,\s*250,\s*249/,
+    'flow stage must use the soft surface pill background'
   );
-  assert.doesNotMatch(
-    flow,
-    /\.my-trees-hub-flow-stage\s*\{[^}]*border-radius:\s*12px\s*!important/,
-    'legacy 12px border-radius must not return'
+  assert.match(
+    block,
+    /border:\s*1px solid\s+rgba\(144,\s*73,\s*81/,
+    'flow stage must use the primary-tinted border'
+  );
+  assert.match(
+    block,
+    /min-height:\s*34px/,
+    'flow stage must declare min-height 34px for tap-friendly target'
+  );
+  assert.ok(
+    !/padding:\s*2px\s+6px;/.test(block),
+    'legacy flat padding 2px 6px must not return'
+  );
+  assert.ok(
+    !/background:\s*transparent;/.test(block),
+    'legacy flat transparent background must not return'
+  );
+  assert.ok(
+    !/border-radius:\s*4px;/.test(block),
+    'legacy flat border-radius 4px must not return'
   );
 });
 
