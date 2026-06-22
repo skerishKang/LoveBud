@@ -1,6 +1,6 @@
 export function buildAddMemoryFormTemplate() {
     return `
-        <div id="addMemoryForm" class="memory-create-section editor-memory-form-modal" style="display:none;">
+        <div id="addMemoryForm" class="memory-create-section editor-memory-form-modal">
             <div class="editor-memory-form-body">
                 <div class="editor-modal-eyebrow" id="addMemoryFormEyebrow">첫 순간 시작</div>
                 <h3 class="headline editor-modal-title" id="addMemoryFormTitle">...</h3>
@@ -49,6 +49,10 @@ export function buildAddMemoryFormTemplate() {
                     <div class="editor-form-stack editor-form-stack-compact">
                         <label id="memoryTitleLabel" class="editor-form-label">...</label>
                         <input type="text" id="memoryTitleInput" placeholder="..." class="editor-form-input">
+                    </div>
+                    <div class="editor-form-stack editor-form-stack-compact">
+                        <label id="memoryTagsLabel" class="editor-form-label">...</label>
+                        <input type="text" id="memoryTagsInput" class="editor-form-input" placeholder="...">
                     </div>
                     <div class="editor-form-stack editor-form-stack-roomy">
                         <label id="memoryMemoLabel" class="editor-form-label">...</label>

@@ -31,6 +31,7 @@
             ['addMemoryFormIntro', 'editor_add_memory_intro', '지금 마음이 머문 다음 장면을 이어 심어 보세요. 첫 순간이라면 여기서 러브트리가 시작됩니다.'],
             ['memoryUrlLabel', 'editor_youtube_link', 'YouTube 장면 링크'],
             ['memoryTitleLabel', 'editor_memory_title', '순간 제목'],
+            ['memoryTagsLabel', 'editor_edit_tag_label', '감정 태그 (쉼표로 구분)'],
             ['memoryMemoLabel', 'editor_memory_memo_optional', '감정 메모'],
             ['cancelAddMemory', 'editor_cancel', '취소'],
             ['confirmAddMemory', 'editor_confirm_add', '이 순간 심기'],
@@ -59,6 +60,7 @@
 
         const placeholderBindings = [
             ['memoryTitleInput', 'editor_memory_title_placeholder', '이 순간을 어떻게 기억하고 싶은지 적어보세요'],
+            ['memoryTagsInput', 'editor_edit_tag_placeholder', '#감동, #행복, #그리움'],
             ['memoryMemoInput', 'editor_memory_memo_placeholder', '왜 이 장면이 이어졌는지, 지금 마음을 남겨보세요...'],
             ['editTitleInput', 'editor_edit_title_placeholder', '순간의 제목을 입력하세요'],
             ['editMemoInput', 'editor_memory_memo_placeholder', '이 순간의 감정을 남겨보세요...'],

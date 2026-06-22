@@ -137,6 +137,7 @@
         } = options || {};
         const rawUrl = refs?.urlInput ? refs.urlInput.value.trim() : '';
         const titleValue = refs?.titleInput ? refs.titleInput.value.trim() : '';
+        const tagsValue = refs?.tagsInput ? refs.tagsInput.value.trim() : '';
         const memoValue = refs?.memoInput ? refs.memoInput.value.trim() : '';
         const usingLinkMode = currentInputMode === 'link';
 
@@ -173,6 +174,7 @@
             ? window.LoveBudEditorUtils.getCanonicalRootId(memories)
             : getCanonicalRootId();
 
+        const parsedTags = tagsValue ? tagsValue.split(',').map(t => t.trim()).filter(t => t) : [];
         const channelInfo = mediaSource.channelInfo || null;
         const data = {
             treeId,
@@ -181,7 +183,7 @@
             timestamp: todayDateString(),
             sourceUrl: mediaSource.embedUrl,
             sourceType: mediaSource.sourceType,
-            emotionTags: [],
+            emotionTags: parsedTags,
             parentId: resolveParentIdForCreate(getSelectedNodeId(), freshCanonicalRootId),
             thumbnail: mediaSource.thumbnailUrl,
             artist: '',
