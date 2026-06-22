@@ -104,20 +104,20 @@
       return;
     }
 
-    var candidates = getMediaCandidates(tree);
+    // Default render path (initial showContent) keeps the exact
+    // helper-approved pattern that the My Trees media contract locks
+    // in: helper.getPreviewMediaMemory(getMediaCandidates(tree)).
+    // For the flow-stage-click path (Issue #2825) we use the new
+    // helper.getPreviewMediaMemoryAt(candidates, preferredMomentIndex)
+    // which goes through the same sanitizeUrl predicate and so keeps
+    // the "only helper-approved media candidates" principle. We never
+    // index candidates[preferredMomentIndex] directly here.
     var mediaMemory;
-    if (typeof preferredMomentIndex === 'number' && preferredMomentIndex >= 0 && candidates[preferredMomentIndex]) {
-      // Issue #2825: when a flow stage is clicked, the media preview must
-      // re-render to show THAT specific moment. The default
-      // getPreviewMediaMemory picks the "best" memory (first with a
-      // sourceUrl or thumbnail), but that does not match the active
-      // stage after a click — leading to the compact flow stage click
-      // not updating the media preview. The flow stage click handler
-      // now passes the clicked moment's array index here so the active
-      // stage and the rendered media always refer to the same moment.
-      mediaMemory = candidates[preferredMomentIndex];
+    if (typeof preferredMomentIndex === 'number' && preferredMomentIndex >= 0
+        && typeof helper.getPreviewMediaMemoryAt === 'function') {
+      mediaMemory = helper.getPreviewMediaMemoryAt(getMediaCandidates(tree), preferredMomentIndex);
     } else {
-      mediaMemory = helper.getPreviewMediaMemory(candidates);
+      mediaMemory = helper.getPreviewMediaMemory(getMediaCandidates(tree));
     }
     if (!mediaMemory) {
       clearMedia();
