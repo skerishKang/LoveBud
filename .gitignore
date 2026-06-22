@@ -44,6 +44,7 @@ coverage/
 # Local agent docs / notes (ignored from public repo)
 AGENT.md
 LOCAL_AGENT.md
+.agents/
 
 # App pages and project reports are real repo assets and must stay trackable.
 # Do not ignore `pages/` or `docs/reports/`.
