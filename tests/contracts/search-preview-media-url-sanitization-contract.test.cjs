@@ -126,7 +126,7 @@ test('search-preview-media-helper: YouTube URLs are normalized to playable embed
     'https://www.youtube.com/watch?v=dQw4w9WgXcQ'
   ];
 
-  const expectedEmbedUrl = 'https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=0&mute=0&controls=1&rel=0&modestbranding=1';
+  const expectedEmbedUrl = 'https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=0&mute=0&controls=0&rel=0&modestbranding=1';
 
   for (const url of ytUrls) {
     const embed = helper.toPlayableEmbedUrl(url);

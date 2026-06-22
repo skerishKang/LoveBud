@@ -58,40 +58,36 @@
 }
 
 .my-trees-hub-flow-stage {
-    /* 2026-06-22 hotfix: lock the stage as a clearly readable pill button.
-       Previously the stage was a near-flat inline element with only a
-       hover tint, which read as plain text/list items in production.
-       Use a discrete pill surface + border so each stage is unmistakably
-       a clickable moment marker while keeping Browse's compact rhythm. */
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 6px 10px;
-    background: rgba(255, 250, 249, 0.72);
-    border: 1px solid rgba(144, 73, 81, 0.16);
-    border-radius: 999px;
-    font-size: 13px;
-    color: var(--on-surface);
-    min-height: 34px;
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
     min-width: 0;
     max-width: 100%;
+    height: 42px !important;
+    min-height: 42px !important;
+    justify-content: flex-start;
     overflow: hidden;
-    /* Step 9 follow-up: hover + active states for visual affordance.
-       The .is-active class is set/cleared by the hub renderer
-       (my-trees-preview-hub.js) to indicate the currently shown
-       moment in the video iframe. */
+    width: 100%;
+    padding: 8px 10px !important;
+    border-radius: 12px !important;
+    background: rgba(255, 255, 255, 0.56) !important;
+    border: 1px solid rgba(144, 73, 81, 0.08);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.66);
+    color: var(--on-surface-variant) !important;
+    font-size: 12.5px !important;
+    line-height: 1.35;
     cursor: pointer;
-    transition: background 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
 }
 
 .my-trees-hub-flow-stage:hover {
-    background: rgba(255, 246, 247, 0.96);
-    border-color: rgba(144, 73, 81, 0.32);
+    background: rgba(144, 73, 81, 0.10) !important;
+    border-color: rgba(144, 73, 81, 0.20) !important;
 }
 
 .my-trees-hub-flow-stage.is-active {
-    background: rgba(144, 73, 81, 0.14);
-    border-color: rgba(144, 73, 81, 0.48);
+    background: rgba(144, 73, 81, 0.14) !important;
+    border: 1px solid rgba(144, 73, 81, 0.28) !important;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.66) !important;
 }
 
 .my-trees-hub-flow-stage-index {

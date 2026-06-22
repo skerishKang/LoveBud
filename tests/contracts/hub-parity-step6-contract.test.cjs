@@ -33,28 +33,33 @@ const myTreesFlowCss = fs.readFileSync(
 );
 
 // ── 1) My Trees flow stage parity with Browse (2026-06-22 hotfix) ────
-test('My Trees flow stage renders as a pill button (2026-06-22 hotfix)', () => {
+test('My Trees flow stage renders with Browse right-rail rhythm', () => {
     const block = (myTreesFlowCss.match(/\.my-trees-hub-flow-stage\s*\{[^}]*\}/s) || [''])[0];
     assert.ok(block, 'rule must exist');
     assert.match(
         block,
-        /border-radius:\s*999px/,
-        'My Trees .my-trees-hub-flow-stage must use border-radius: 999px (pill rhythm)'
+        /border-radius:\s*12px\s*!important/,
+        'My Trees .my-trees-hub-flow-stage must use Browse border-radius: 12px'
     );
     assert.match(
         block,
-        /background:\s*rgba\(\s*255,\s*250,\s*249/,
-        'My Trees .my-trees-hub-flow-stage must use the soft surface pill background'
+        /background:\s*rgba\(\s*255,\s*255,\s*255,\s*0\.56\)\s*!important/,
+        'My Trees .my-trees-hub-flow-stage must use the Browse soft surface'
     );
     assert.match(
         block,
-        /border:\s*1px solid\s+rgba\(144,\s*73,\s*81/,
-        'My Trees .my-trees-hub-flow-stage must use the primary-tinted border'
+        /padding:\s*8px\s+10px\s*!important/,
+        'My Trees .my-trees-hub-flow-stage must use Browse padding 8px 10px'
     );
     assert.match(
         block,
-        /min-height:\s*34px/,
-        'My Trees .my-trees-hub-flow-stage must declare min-height 34px for tap-friendly target'
+        /(?:^|\s)height:\s*42px\s*!important/,
+        'My Trees .my-trees-hub-flow-stage must declare Browse height 42px'
+    );
+    assert.match(
+        block,
+        /min-height:\s*42px\s*!important/,
+        'My Trees .my-trees-hub-flow-stage must declare Browse min-height 42px'
     );
 });
 
@@ -76,14 +81,18 @@ test('My Trees flow stage does NOT carry the legacy flat-style overrides', () =>
         !/border-radius:\s*4px;/.test(block),
         'legacy border-radius 4px (flat square) must not return'
     );
+    assert.ok(
+        !/border-radius:\s*999px;/.test(block),
+        'legacy 999px pill radius must not return'
+    );
 });
 
-test('My Trees flow stage uses display: inline-flex (Browse parity)', () => {
+test('My Trees flow stage uses display: flex (Browse parity)', () => {
     const block = (myTreesFlowCss.match(/\.my-trees-hub-flow-stage\s*\{[^}]*\}/s) || [''])[0];
     assert.match(
         block,
-        /display:\s*inline-flex/,
-        'My Trees .my-trees-hub-flow-stage must use display: inline-flex (Browse parity)'
+        /display:\s*flex\s*!important/,
+        'My Trees .my-trees-hub-flow-stage must use display: flex (Browse parity)'
     );
 });
 
