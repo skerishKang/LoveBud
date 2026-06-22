@@ -213,6 +213,10 @@
 
         var getYouTubeVideoId = function(rawUrl) {
             if (!rawUrl) return '';
+            var mediaHelper = window.LoveBudMedia;
+            if (mediaHelper && typeof mediaHelper.extractYouTubeId === 'function') {
+                return mediaHelper.extractYouTubeId(rawUrl) || '';
+            }
             try {
                 var url = new URL(rawUrl, window.location.origin);
                 var host = url.hostname.replace(/^www\./, '');
@@ -232,24 +236,53 @@
             var rawUrl = getMemoryPlaybackUrl(data);
             var videoId = getYouTubeVideoId(rawUrl);
             if (!videoId) return '';
-            var params = new URLSearchParams();
-            params.set('autoplay', '1');
-            params.set('rel', '0');
+
+            var mediaHelper = window.LoveBudMedia;
+            var startSeconds = null;
+            var endSeconds = null;
 
             var startValue = data && (data.startTime || data.start_time || data.startSeconds || data.start_seconds);
             var endValue = data && (data.endTime || data.end_time || data.endSeconds || data.end_seconds);
 
+            if (mediaHelper && typeof mediaHelper.parseYouTubeTimeToSeconds === 'function') {
+                if (startValue !== undefined && startValue !== null) {
+                    startSeconds = mediaHelper.parseYouTubeTimeToSeconds(startValue);
+                }
+                if (endValue !== undefined && endValue !== null) {
+                    endSeconds = mediaHelper.parseYouTubeTimeToSeconds(endValue);
+                }
+            }
+
             try {
                 var parsed = new URL(rawUrl);
-                if (!startValue) startValue = parsed.searchParams.get('start') || parsed.searchParams.get('t');
-                if (!endValue) endValue = parsed.searchParams.get('end');
+                if (startSeconds === null) {
+                    var urlStart = parsed.searchParams.get('start') || parsed.searchParams.get('t');
+                    if (urlStart && mediaHelper && typeof mediaHelper.parseYouTubeTimeToSeconds === 'function') {
+                        startSeconds = mediaHelper.parseYouTubeTimeToSeconds(urlStart);
+                    } else if (urlStart) {
+                        startSeconds = Number(urlStart);
+                    }
+                }
+                if (endSeconds === null) {
+                    var urlEnd = parsed.searchParams.get('end');
+                    if (urlEnd && mediaHelper && typeof mediaHelper.parseYouTubeTimeToSeconds === 'function') {
+                        endSeconds = mediaHelper.parseYouTubeTimeToSeconds(urlEnd);
+                    } else if (urlEnd) {
+                        endSeconds = Number(urlEnd);
+                    }
+                }
             } catch (e) {}
 
-            var startSeconds = startValue ? Number(startValue) : 0;
-            if (Number.isFinite(startSeconds) && startSeconds > 0) params.set('start', String(Math.floor(startSeconds)));
+            var params = new URLSearchParams();
+            params.set('autoplay', '1');
+            params.set('rel', '0');
 
-            var endSeconds = endValue ? Number(endValue) : 0;
-            if (Number.isFinite(endSeconds) && endSeconds > 0) params.set('end', String(Math.floor(endSeconds)));
+            if (Number.isFinite(startSeconds) && startSeconds > 0) {
+                params.set('start', String(Math.floor(startSeconds)));
+            }
+            if (Number.isFinite(endSeconds) && endSeconds > 0) {
+                params.set('end', String(Math.floor(endSeconds)));
+            }
 
             return 'https://www.youtube-nocookie.com/embed/' + encodeURIComponent(videoId) + '?' + params.toString();
         };
@@ -267,19 +300,6 @@
                 iframe.referrerPolicy = 'strict-origin-when-cross-origin';
                 return iframe;
             }
-
-            var rawUrl = getMemoryPlaybackUrl(data);
-            if (/\.(mp4|webm|ogg)(\?|#|$)/i.test(rawUrl)) {
-                var video = document.createElement('video');
-                video.dataset.editorDetailPlayer = '1';
-                video.className = 'detail-video-player';
-                video.src = rawUrl;
-                video.controls = true;
-                video.autoplay = true;
-                video.playsInline = true;
-                return video;
-            }
-
             return null;
         };
 
