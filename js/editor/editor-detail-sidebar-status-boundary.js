@@ -38,15 +38,25 @@
                 const safeTimeRange = escapeHtml(timeRange);
 
                 if (timeRange) {
+                    // Mirror My Trees hub summary template (.my-trees-hub-summary
+                    // / patchSummaryWithTimeRange) verbatim so the editor
+                    // left rail looks identical to the My Trees hub body line:
+                    //   "<p class="preview-summary-line"><strong>{title}</strong>에
+                    //    담긴 <strong>{count}개의 순간</strong>이 <strong>{timeRange}</strong>
+                    //    에 걸쳐 이어졌어요.</p>"
+                    // The title is bolded for context (matches hub pattern);
+                    // count / timeRange keep emphasis. CSS .editor-flow-summary
+                    // strong override keeps the prose-sized rhythm even though
+                    // .editor-status-card strong would otherwise inherit 1.42rem.
                     flowSummaryEl.innerHTML = formatI18nText(
                         'sidebar_flow_summary_connected_with_range',
-                        '{title}에 담긴 <strong>{count}개의 순간</strong>이 <strong>{timeRange}</strong>에 걸쳐 이어졌어요.',
+                        '<p class="preview-summary-line"><strong>{title}</strong>에 담긴 <strong>{count}개의 순간</strong>이 <strong>{timeRange}</strong>에 걸쳐 이어졌어요.</p>',
                         { title: safeTitle, count: String(count), timeRange: safeTimeRange }
                     );
                 } else {
                     flowSummaryEl.innerHTML = formatI18nText(
                         'sidebar_flow_summary_connected',
-                        '{title}에 담긴 <strong>{count}개의 순간</strong>이 이어졌어요.',
+                        '<p class="preview-summary-line"><strong>{title}</strong>에 담긴 <strong>{count}개의 순간</strong>이 이어졌어요.</p>',
                         { title: safeTitle, count: String(count) }
                     );
                 }

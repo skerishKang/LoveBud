@@ -296,76 +296,104 @@ function extractSummaryKey(source, key) {
   return { ko: m[1], en: m[2] };
 }
 
-test('i18n key sidebar_flow_summary_connected no longer wraps {title} in <strong>', () => {
+test('i18n key sidebar_flow_summary_connected mirrors My Trees hub summary verbatim', () => {
+  // Source of truth: js/my-trees/my-trees-preview-state.js patchSummaryWithTimeRange
+  // and js/my-trees/my-trees-preview-hub.js els.summary.innerHTML pattern.
   const source = fs.readFileSync(I18N_EDITOR_FILE, 'utf8');
   const key = extractSummaryKey(source, 'sidebar_flow_summary_connected');
   assert.ok(key, 'i18n key sidebar_flow_summary_connected must exist');
-  assert.ok(
-    !/<strong>\s*\{title\}\s*<\/strong>/.test(key.ko),
-    'ko template must not wrap {title} in <strong>; got: ' + key.ko
-  );
-  assert.ok(
-    !/<strong>\s*\{title\}\s*<\/strong>/.test(key.en),
-    'en template must not wrap {title} in <strong>; got: ' + key.en
-  );
-});
-
-test('i18n key sidebar_flow_summary_connected_with_range no longer wraps {title} in <strong>', () => {
-  const source = fs.readFileSync(I18N_EDITOR_FILE, 'utf8');
-  const key = extractSummaryKey(source, 'sidebar_flow_summary_connected_with_range');
-  assert.ok(key, 'i18n key sidebar_flow_summary_connected_with_range must exist');
-  assert.ok(
-    !/<strong>\s*\{title\}\s*<\/strong>/.test(key.ko),
-    'ko template must not wrap {title} in <strong>; got: ' + key.ko
-  );
-  assert.ok(
-    !/<strong>\s*\{title\}\s*<\/strong>/.test(key.en),
-    'en template must not wrap {title} in <strong>; got: ' + key.en
-  );
-});
-
-test('i18n key sidebar_flow_summary_connected keeps <strong> only around {count}', () => {
-  const source = fs.readFileSync(I18N_EDITOR_FILE, 'utf8');
-  const key = extractSummaryKey(source, 'sidebar_flow_summary_connected');
-  assert.ok(key, 'i18n key sidebar_flow_summary_connected must exist');
+  // Wrap in <p class="preview-summary-line"> to match the hub pattern.
+  assert.match(key.ko, /<p\s+class="preview-summary-line">/,
+    'ko template must wrap summary in <p class="preview-summary-line">; got: ' + key.ko);
+  assert.match(key.en, /<p\s+class="preview-summary-line">/,
+    'en template must wrap summary in <p class="preview-summary-line">; got: ' + key.en);
+  // <strong> around {title}, {count}, and (for the with_range variant) {timeRange}.
+  assert.match(key.ko, /<strong>\s*\{title\}\s*<\/strong>/,
+    'ko template must wrap {title} in <strong> (matches hub pattern); got: ' + key.ko);
+  assert.match(key.en, /<strong>\s*\{title\}\s*<\/strong>/,
+    'en template must wrap {title} in <strong> (matches hub pattern); got: ' + key.en);
   assert.match(key.ko, /<strong>\s*\{count\}개의\s*순간\s*<\/strong>/,
     'ko template must wrap {count}개의 순간 in <strong>');
   assert.match(key.en, /<strong>\s*\{count\}\s*moments\s*<\/strong>/,
     'en template must wrap {count} moments in <strong>');
 });
 
-test('i18n key sidebar_flow_summary_connected_with_range keeps <strong> only around {count} and {timeRange}', () => {
+test('i18n key sidebar_flow_summary_connected_with_range mirrors My Trees hub summary verbatim', () => {
   const source = fs.readFileSync(I18N_EDITOR_FILE, 'utf8');
   const key = extractSummaryKey(source, 'sidebar_flow_summary_connected_with_range');
   assert.ok(key, 'i18n key sidebar_flow_summary_connected_with_range must exist');
-  assert.match(key.ko, /<strong>\s*\{count\}개의\s*순간\s*<\/strong>/,
-    'ko template must wrap {count}개의 순간 in <strong>');
+  assert.match(key.ko, /<p\s+class="preview-summary-line">/,
+    'ko template must wrap summary in <p class="preview-summary-line">; got: ' + key.ko);
+  assert.match(key.en, /<p\s+class="preview-summary-line">/,
+    'en template must wrap summary in <p class="preview-summary-line">; got: ' + key.en);
+  assert.match(key.ko, /<strong>\s*\{title\}\s*<\/strong>/);
+  assert.match(key.en, /<strong>\s*\{title\}\s*<\/strong>/);
+  assert.match(key.ko, /<strong>\s*\{count\}개의\s*순간\s*<\/strong>/);
   assert.match(key.ko, /<strong>\s*\{timeRange\}\s*<\/strong>/,
     'ko template must wrap {timeRange} in <strong>');
-  assert.match(key.en, /<strong>\s*\{count\}\s*moments\s*<\/strong>/,
-    'en template must wrap {count} moments in <strong>');
+  assert.match(key.en, /<strong>\s*\{count\}\s*moments\s*<\/strong>/);
   assert.match(key.en, /<strong>\s*\{timeRange\}\s*<\/strong>/,
     'en template must wrap {timeRange} in <strong>');
 });
 
-test('editor-detail-sidebar-status-boundary.js fallback template no longer wraps {title} in <strong>', () => {
+test('editor-detail-sidebar-status-boundary.js fallback template mirrors My Trees hub pattern', () => {
   const source = fs.readFileSync(SIDEBAR_BOUNDARY_FILE, 'utf8');
-  assert.ok(
-    !/<strong>\s*\{title\}\s*<\/strong>/.test(source),
-    'fallback template must not wrap {title} in <strong>'
-  );
+  assert.match(source, /<p\s+class="preview-summary-line">/,
+    'fallback template must wrap summary in <p class="preview-summary-line"> (My Trees hub pattern)');
+  assert.match(source, /<strong>\s*\{title\}\s*<\/strong>/,
+    'fallback template must wrap {title} in <strong> (My Trees hub pattern)');
   assert.match(source, /<strong>\s*\{count\}개의\s*순간\s*<\/strong>/);
   assert.match(source, /<strong>\s*\{timeRange\}\s*<\/strong>/);
 });
 
-test('editor-i18n-refresh.js summary path no longer wraps {title} in <strong>', () => {
+test('editor-i18n-refresh.js summary path mirrors My Trees hub pattern', () => {
   const source = fs.readFileSync(I18N_REFRESH_FILE, 'utf8');
-  assert.ok(
-    !/<strong>\s*\{title\}\s*<\/strong>/.test(source),
-    'editor-i18n-refresh.js summary path must not wrap {title} in <strong>'
-  );
+  assert.match(source, /<p\s+class="preview-summary-line">/,
+    'editor-i18n-refresh.js summary path must wrap summary in <p class="preview-summary-line"> (My Trees hub pattern)');
+  assert.match(source, /<strong>\s*\{title\}\s*<\/strong>/,
+    'editor-i18n-refresh.js summary path must wrap {title} in <strong> (My Trees hub pattern)');
   assert.match(source, /<strong>\s*\{count\}개의\s*순간\s*<\/strong>/);
   assert.match(source, /<strong>\s*\{timeRange\}\s*<\/strong>/);
+});
+
+test('editor summary innerHTML matches My Trees hub patchSummaryWithTimeRange template exactly', () => {
+  // Verbatim-mirror test: editor's innerHTML string must equal the
+  // My Trees hub template so the only divergence between the two
+  // body sentences is the language.
+  const hubSource = fs.readFileSync(
+    path.join(ROOT, 'js/my-trees/my-trees-preview-state.js'), 'utf8'
+  );
+  // My Trees template uses string concatenation. Extract the static
+  // segments before / after the runtime values (title, count, timeRange).
+  // Pattern: "'<p class...><strong>' + escapeHtml(summaryTitle) + '</strong>에 담긴 <strong>' + memoryCount + '개의 순간</strong>이 <strong>' + escapeHtml(timeRange) + '</strong>에 걸쳐 ... .</p>'"
+  const hubMatch = hubSource.match(
+    /summaryEl\.innerHTML\s*=\s*'([^']+)'\s*\+\s*escapeHtml\(summaryTitle\)\s*\+\s*'([^']+)'\s*\+\s*memoryCount\s*\+\s*'([^']+)'\s*\+\s*escapeHtml\(timeRange\)\s*\+\s*'([^']+)'/
+  );
+  assert.ok(hubMatch, 'My Trees patchSummaryWithTimeRange template must exist');
+  const hubHead = hubMatch[1];
+  const hubMid1 = hubMatch[2];
+  const hubMid2 = hubMatch[3];
+  const hubTail = hubMatch[4];
+
+  const editorBoundary = fs.readFileSync(SIDEBAR_BOUNDARY_FILE, 'utf8');
+  // editor must reuse the same static segments (with {title}/{count}/{timeRange}
+  // placeholders instead of runtime vars).
+  assert.ok(
+    editorBoundary.indexOf(hubHead) !== -1,
+    'editor must contain the My Trees hub head (before title); hubHead=' + hubHead
+  );
+  assert.ok(
+    editorBoundary.indexOf(hubMid1) !== -1,
+    'editor must contain the My Trees hub middle (after title); hubMid1=' + hubMid1
+  );
+  assert.ok(
+    editorBoundary.indexOf(hubMid2) !== -1,
+    'editor must contain the My Trees hub middle (after count); hubMid2=' + hubMid2
+  );
+  assert.ok(
+    editorBoundary.indexOf(hubTail) !== -1,
+    'editor must contain the My Trees hub tail (after timeRange); hubTail=' + hubTail
+  );
 });
 
 test('.editor-flow-summary rule sets explicit small-prose font-size (not title-sized)', () => {

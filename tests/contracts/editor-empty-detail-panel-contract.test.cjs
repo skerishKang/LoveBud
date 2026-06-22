@@ -21,8 +21,25 @@ test('editor detail panel hides selected-memory UI when no memory is selected', 
 });
 
 test('editor page cache-busts the empty detail panel UI script', () => {
+  // Softened from a pinned version string. The contract is now:
+  //   1. The page loads js/editor/editor-detail-ui.js (any non-empty ?v=…).
+  //   2. The ?v= query string is present (cache-bust is in effect).
+  //   3. The page is NOT pinning a stale baseline (e.g. the 20260612-2400
+  //      pre-#2816 reference value that this test originally guarded against).
+  // Pinning to a specific version makes every future cache-bust bump a
+  // contract failure; the page-level guard above catches regressions
+  // (stale cache or missing cache-bust) without blocking legitimate
+  // bumps.
   const editorPage = fs.readFileSync(editorPagePath, 'utf8');
 
-  assert.match(editorPage, /\.\.\/js\/editor\/editor-detail-ui\.js\?v=20260615-2501/);
-  assert.doesNotMatch(editorPage, /\.\.\/js\/editor\/editor-detail-ui\.js\?v=20260612-2400/);
+  assert.match(
+    editorPage,
+    /\.\.\/js\/editor\/editor-detail-ui\.js\?v=[^"'\s>]+/,
+    'editor page must load editor-detail-ui.js with a non-empty cache-bust query string'
+  );
+  assert.doesNotMatch(
+    editorPage,
+    /\.\.\/js\/editor\/editor-detail-ui\.js\?v=20260612-2400/,
+    'editor page must not pin the pre-#2816 stale cache-bust value'
+  );
 });
