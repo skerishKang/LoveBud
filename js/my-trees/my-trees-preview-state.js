@@ -289,11 +289,17 @@
       if (flowControls) {
         var hiddenCount = Math.max(0, memories.length - 4);
         /* FIX: use Browse-style label "... 그리고 N개의 순간 더" instead of "더보기 (N)" */
-        flowControls.innerHTML = hiddenCount > 0
-          ? '<button type="button" class="my-trees-hub-flow-toggle" data-my-trees-flow-toggle>' +
+        if (hiddenCount > 0) {
+          flowControls.innerHTML = '<button type="button" class="my-trees-hub-flow-toggle" data-my-trees-flow-toggle>' +
             escapeHtml('... 그리고 ' + hiddenCount + '개의 순간 더') +
-            '</button>'
-          : '';
+            '</button>';
+          flowControls.style.display = '';
+          flowControls.hidden = false;
+        } else {
+          flowControls.innerHTML = '';
+          flowControls.style.display = 'none';
+          flowControls.hidden = true;
+        }
       }
       /* FIX: patch summary line to include date range */
       patchSummaryWithTimeRange(tree);

@@ -171,6 +171,14 @@
     display: block !important;
 }
 
+#myTreesHubContent,
+#myTreesHubPlaceholder,
+#myTreesHubActions,
+#myTreesHubPanel .preview-social-shell {
+    max-width: 320px;
+    margin-inline: auto;
+}
+
 #myTreesHubMedia .preview-media-frame-iframe {
     border-radius: 16px !important;
 }

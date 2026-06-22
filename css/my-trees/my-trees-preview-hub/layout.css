@@ -24,6 +24,11 @@
     overflow: hidden;
 }
 
+.my-trees-hub-header {
+    max-width: 320px;
+    margin-inline: auto;
+}
+
 /* Empty/loaded state toggles — my-trees-specific because the
    content markup (my-trees-hub-content, my-trees-hub-actions,
    my-trees-hub-placeholder) is owner-side, not a public preview. */
