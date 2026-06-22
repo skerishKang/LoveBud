@@ -121,36 +121,17 @@ test('My Trees hydrated flow toggle is an interactive button (not static span)',
 });
 
 // ── 4) Flow card uses Browse flat surface ─────────────────────────────
-test('My Trees flow card uses Browse-style flat surface (no gradient/border/shadow)', () => {
-    const re = /\.my-trees-hub-flow\s*\{[^}]*background:\s*var\(--surface-container-low\)[^}]*\}/s;
-    assert.match(
-        myTreesFlowCss,
-        re,
-        'My Trees .my-trees-hub-flow must use var(--surface-container-low) like Browse'
-    );
-});
-
-test('My Trees flow card does NOT carry the legacy gradient/border/box-shadow', () => {
-    // The legacy My Trees flow card rule had:
-    //   background: linear-gradient(...)
-    //   border: 1px solid rgba(144, 73, 81, 0.10)
-    //   box-shadow: 0 14px 28px ...
+test('My Trees flow card carries the Browse frame surface', () => {
     const rule = /\.my-trees-hub-flow\s*\{[^}]*\}/s;
     const match = myTreesFlowCss.match(rule);
     assert.ok(match, 'rule must exist');
     const block = match[0];
-    assert.ok(
-        !/linear-gradient/.test(block),
-        'flow card must not use linear-gradient (legacy richer surface)'
-    );
-    assert.ok(
-        !/border:\s*1px solid/.test(block),
-        'flow card must not have a heavy 1px border (Browse parity)'
-    );
-    assert.ok(
-        !/box-shadow:/.test(block),
-        'flow card must not carry a heavy box-shadow (Browse parity)'
-    );
+    assert.match(block, /background:\s*linear-gradient\(180deg,\s*rgba\(255,\s*255,\s*255,\s*0\.66\),\s*rgba\(255,\s*248,\s*245,\s*0\.52\)\)\s*!important;/);
+    assert.match(block, /border:\s*1px\s+solid\s+rgba\(144,\s*73,\s*81,\s*0\.10\);/);
+    assert.match(block, /border-radius:\s*1rem;/);
+    assert.match(block, /box-shadow:\s*0\s+14px\s+28px\s+rgba\(75,\s*64,\s*57,\s*0\.07\),\s*inset\s+0\s+1px\s+0\s+rgba\(255,\s*255,\s*255,\s*0\.78\);/);
+    assert.match(block, /padding:\s*20px;/);
+    assert.match(block, /margin-bottom:\s*16px;/);
 });
 
 // ── 5) Primary button label parity: 트리 열기 + account_tree ────────────
