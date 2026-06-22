@@ -280,7 +280,22 @@ test('14. Runtime cache-busts updated for changed JS/CSS', () => {
   const myTreesCss = read('css/my-trees.css');
   assert.match(searchHtml, /search-preview-state\.js\?v=20260616-2532-1/);
   assert.match(myTreesHtml, /my-trees-ui\.js\?v=20260620-2751-1/);
-  assert.match(myTreesHtml, /my-trees-preview-hub\.js\?v=20260622-parity-1/);
+  // Softened: any non-empty cache-bust on my-trees-preview-hub.js plus
+  // a guard that the pre-#2829 baseline value is gone. Future
+  // cache-bust bumps should not require updating this assertion
+  // (PR #2834 follow-up). The version-specific contract for the
+  // post-#2825 cache-bust lives in
+  // tests/contracts/my-trees-flow-stage-cache-bust-contract.test.cjs.
+  assert.match(
+    myTreesHtml,
+    /my-trees-preview-hub\.js\?v=[^"'\s>]+/,
+    'my-trees-preview-hub.js must carry a non-empty cache-bust query string'
+  );
+  assert.doesNotMatch(
+    myTreesHtml,
+    /my-trees-preview-hub\.js\?v=20260622-parity-1/,
+    'my-trees-preview-hub.js must not still pin the pre-#2829 cache-bust 20260622-parity-1'
+  );
   assert.match(myTreesHtml, /my-trees-preview-state\.js\?v=20260622-step9-1/);
   assert.match(myTreesHtml, /my-trees-i18n-refresh\.js\?v=20260622-hub-social-dedupe-1/);
   assert.match(myTreesHtml, /i18n-my-trees\.js\?v=20260619-2710-1/);
