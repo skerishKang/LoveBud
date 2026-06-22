@@ -649,7 +649,8 @@
         showLoading: showLoading,
         onCardClick: onCardClick,
         getSelectedTree: function () { return _selectedTree; },
-        setTreeGridContainer: setTreeGridContainer
+        setTreeGridContainer: setTreeGridContainer,
+        rebindFlowStages: function(tree) { enhanceMyTreesFlowStages(tree); }
     };
 
     window.LoveBudMyTreesPreviewHub = api;

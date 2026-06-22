@@ -6,10 +6,12 @@ const path = require('node:path');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const hubFile = path.join(ROOT, 'js/my-trees/my-trees-preview-hub.js');
+const stateFile = path.join(ROOT, 'js/my-trees/my-trees-preview-state.js');
 const mediaFile = path.join(ROOT, 'js/my-trees/my-trees-preview-media.js');
 const helperFile = path.join(ROOT, 'js/search/search-preview-media-helper.js');
 
 const hubSource = fs.readFileSync(hubFile, 'utf8');
+const stateSource = fs.readFileSync(stateFile, 'utf8');
 const mediaSource = fs.readFileSync(mediaFile, 'utf8');
 const helperSource = fs.readFileSync(helperFile, 'utf8');
 
@@ -106,5 +108,39 @@ test('LoveBudSearchPreviewMediaHelper exposes getPreviewMediaMemoryAt with the s
     helperSource,
     /function\s+getPreviewMediaMemoryAt\s*\([\s\S]*?sanitizeUrl\(candidate\s*(?:&&\s*candidate)?\.thumbnail/,
     'getPreviewMediaMemoryAt must sanitizeUrl-check thumbnail (same predicate as getPreviewMediaMemory)'
+  );
+});
+
+test('my-trees-preview-hub exposes rebindFlowStages on the public API (#2825 post-cache-bust)', () => {
+  assert.match(
+    hubSource,
+    /rebindFlowStages\s*:\s*function\s*\(\s*tree\s*\)/,
+    'hub public API must expose rebindFlowStages(tree) so the state module can re-bind stage click handlers after hydrated DOM replacement'
+  );
+});
+
+test('my-trees-preview-hub rebindFlowStages delegates to the private enhanceMyTreesFlowStages (#2825 post-cache-bust)', () => {
+  assert.match(
+    hubSource,
+    /rebindFlowStages\s*:\s*function\s*\([\s\S]*?enhanceMyTreesFlowStages\s*\(\s*tree\s*\)/,
+    'rebindFlowStages must delegate to the existing private enhanceMyTreesFlowStages(tree) without duplicating click binding logic'
+  );
+});
+
+test('my-trees-preview-state rebinds stage handlers after hydrated flowList.innerHTML replacement (#2825 post-cache-bust)', () => {
+  assert.match(
+    stateSource,
+    /flowList\.innerHTML\s*=\s*buildHydratedFlowStages[\s\S]*?rebindFlowStages\s*\(\s*tree\s*\)/,
+    'after buildHydratedFlowStages replaces flowList.innerHTML, patchHubForCreatedMoments must call hub.rebindFlowStages(tree) so the newly created stage DOM elements get click handlers bound'
+  );
+  assert.match(
+    stateSource,
+    /LoveBudMyTreesPreviewHub\s*\|\|\s*window\.LoveTreeMyTreesPreviewHub/,
+    'rebind call must look up the hub from either window.LoveBudMyTreesPreviewHub or window.LoveTreeMyTreesPreviewHub for backward compatibility'
+  );
+  assert.doesNotMatch(
+    stateSource,
+    /flowList\.innerHTML[\s\S]{0,20}?rebindFlowStages/,
+    'rebindFlowStages must be called AFTER flowList.innerHTML assignment, not before or inline — the new DOM must exist before event binding'
   );
 });
