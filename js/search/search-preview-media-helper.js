@@ -81,6 +81,30 @@
         }) || null;
     }
 
+    // Returns the helper-approved memory at the given array index within
+    // the candidate list. "Helper-approved" is the same predicate as
+    // getPreviewMediaMemory: the memory has a sanitized sourceUrl or
+    // sanitized thumbnail. This is the explicit-moment counterpart of
+    // getPreviewMediaMemory (which always returns the first approved
+    // memory). Issue #2825 — flow stage click selects a specific moment
+    // and re-renders the media preview for that moment without losing
+    // the helper-approved-candidate principle.
+    function getPreviewMediaMemoryAt(memories, momentIndex) {
+        if (!Array.isArray(memories) || memories.length === 0) return null;
+        if (typeof momentIndex !== 'number' || momentIndex < 0 || momentIndex >= memories.length) return null;
+        var candidate = memories[momentIndex];
+        if (!candidate) return null;
+        // Re-validate through the same predicate as getPreviewMediaMemory
+        // so a caller cannot trick the adapter into rendering a memory
+        // with no sourceUrl / no thumbnail (which would otherwise be
+        // passed to renderPreviewIframe / renderPreviewThumbnailMedia
+        // and produce an empty media frame).
+        var hasSource = !!sanitizeUrl(candidate && candidate.sourceUrl || '');
+        var hasThumbnail = !!sanitizeUrl(candidate && candidate.thumbnail || '');
+        if (!hasSource && !hasThumbnail) return null;
+        return candidate;
+    }
+
     function renderPreviewThumbnailFallback(title, subtitle) {
         return `
             <div class="preview-media-fallback" style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px;background:linear-gradient(135deg,var(--surface-container-low),white);border-radius:1rem;color:var(--on-surface-variant);">
@@ -241,6 +265,7 @@
 
     window.LoveBudSearchPreviewMediaHelper = {
         getPreviewMediaMemory: getPreviewMediaMemory,
+        getPreviewMediaMemoryAt: getPreviewMediaMemoryAt,
         renderPreviewThumbnailFallback: renderPreviewThumbnailFallback,
         renderPreviewThumbnailMedia: renderPreviewThumbnailMedia,
         showPreviewImageFallback: showPreviewImageFallback,

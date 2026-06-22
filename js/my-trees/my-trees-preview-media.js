@@ -96,7 +96,7 @@
     els.container.hidden = false;
   }
 
-  function renderMedia(tree) {
+  function renderMedia(tree, preferredMomentIndex) {
     var els = getEls();
     var helper = window.LoveBudSearchPreviewMediaHelper;
     if (!els.container || !els.media || !helper || typeof helper.getPreviewMediaMemory !== 'function') {
@@ -104,7 +104,21 @@
       return;
     }
 
-    var mediaMemory = helper.getPreviewMediaMemory(getMediaCandidates(tree));
+    // Default render path (initial showContent) keeps the exact
+    // helper-approved pattern that the My Trees media contract locks
+    // in: helper.getPreviewMediaMemory(getMediaCandidates(tree)).
+    // For the flow-stage-click path (Issue #2825) we use the new
+    // helper.getPreviewMediaMemoryAt(candidates, preferredMomentIndex)
+    // which goes through the same sanitizeUrl predicate and so keeps
+    // the "only helper-approved media candidates" principle. We never
+    // index candidates[preferredMomentIndex] directly here.
+    var mediaMemory;
+    if (typeof preferredMomentIndex === 'number' && preferredMomentIndex >= 0
+        && typeof helper.getPreviewMediaMemoryAt === 'function') {
+      mediaMemory = helper.getPreviewMediaMemoryAt(getMediaCandidates(tree), preferredMomentIndex);
+    } else {
+      mediaMemory = helper.getPreviewMediaMemory(getMediaCandidates(tree));
+    }
     if (!mediaMemory) {
       clearMedia();
       return;
@@ -140,6 +154,14 @@
     }
 
     if (typeof helper.bindPreviewThumbnailHandlers === 'function') helper.bindPreviewThumbnailHandlers(els.media);
+  }
+
+  // Issue #2825: dedicated entry point for flow stage clicks. Delegates
+  // to renderMedia(tree, preferredMomentIndex) so the active stage and
+  // the rendered media preview always point to the same moment — for
+  // both the compact 1-4 stages and the expanded 5+ stages.
+  function renderMediaForMoment(tree, momentIndex) {
+    return renderMedia(tree, momentIndex);
   }
 
   function patchHub() {
@@ -217,6 +239,7 @@
   patchRendererSelection();
   window.LoveBudMyTreesPreviewMedia = {
     renderMedia: renderMedia,
+    renderMediaForMoment: renderMediaForMoment,
     clearMedia: clearMedia,
     showPlaceholder: showPlaceholder,
     patchHub: patchHub,
