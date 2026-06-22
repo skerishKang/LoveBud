@@ -395,3 +395,38 @@ test('Public viewer detail UI selected moment playback contract (read-only)', ()
   assert.equal(elements.editTitleInput, undefined, 'Edit inputs should not exist in public viewer context');
   assert.equal(elements.editMemoInput, undefined, 'Edit inputs should not exist in public viewer context');
 });
+
+// ── Play overlay CSS guard (regression: button had no CSS so it was clipped) ──
+
+const detailInfoCssFile = path.join(ROOT, 'css/editor/editor-detail-content/detail-info.css');
+
+test('.memory-preview-overlay CSS exists and is positioned over the image (editor click-to-play regression)', () => {
+  const css = fs.readFileSync(detailInfoCssFile, 'utf8');
+  const overlayRule = (css.match(/\.memory-preview-overlay\s*\{([^}]*)\}/) || ['', ''])[1];
+  assert.ok(overlayRule.length > 0, '.memory-preview-overlay rule must exist in editor detail CSS');
+  assert.match(overlayRule, /position\s*:\s*absolute/,
+    '.memory-preview-overlay must be position: absolute to overlay over the image');
+  assert.match(overlayRule, /inset\s*:\s*0/,
+    '.memory-preview-overlay must cover the full .detail-video (inset: 0)');
+  assert.match(overlayRule, /pointer-events\s*:\s*auto/,
+    '.memory-preview-overlay must be clickable (pointer-events: auto)');
+  assert.match(overlayRule, /z-index\s*:\s*[1-9]/,
+    '.memory-preview-overlay must sit above the image (z-index >= 1)');
+});
+
+test('.memory-preview-overlay .play-btn CSS exists with visible tap target (regression: button was invisible)', () => {
+  const css = fs.readFileSync(detailInfoCssFile, 'utf8');
+  const playBtnRule = (css.match(/\.memory-preview-overlay\s+\.play-btn\s*\{([^}]*)\}/) || ['', ''])[1];
+  assert.ok(playBtnRule.length > 0, '.memory-preview-overlay .play-btn rule must exist');
+  assert.match(playBtnRule, /border-radius\s*:\s*50%/,
+    'play button must be circular (border-radius: 50%)');
+  assert.match(playBtnRule, /width\s*:\s*\d+px/,
+    'play button must have an explicit pixel width so it is visible');
+  assert.match(playBtnRule, /pointer-events\s*:\s*auto/,
+    'play button must receive pointer events (no overlay eating the click)');
+  // Triangle play glyph via ::before
+  const beforeRule = (css.match(/\.memory-preview-overlay\s+\.play-btn::before\s*\{([^}]*)\}/) || ['', ''])[1];
+  assert.ok(beforeRule.length > 0, '.play-btn::before must exist to draw the play triangle');
+  assert.match(beforeRule, /border-style\s*:\s*solid/,
+    'play triangle must use border-style: solid');
+});
