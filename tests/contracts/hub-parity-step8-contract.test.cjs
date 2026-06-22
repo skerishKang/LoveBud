@@ -1,13 +1,13 @@
-/**
- * LoveBud Hub Parity Step 8 — Contract Test
+﻿/**
+ * LoveBud Hub Parity Step 8 ??Contract Test
  *
  * Locks the post-Step 8 hub parity invariants for the moment-flow
  * region. These are the production-only visual + interactive
  * differences that survived Step 7:
  *
  *   1. My Trees flow container has NO margin-top (Browse parity)
- *   2. My Trees toggle text is "... 그리고 N개의 순간 더" / "접기"
- *      (Browse parity), not "더보기 (N)"
+ *   2. My Trees toggle text is "... 洹몃━怨?N媛쒖쓽 ?쒓컙 ?? / "?묎린"
+ *      (Browse parity), not "?붾낫湲?(N)"
  *   3. My Trees flow stages are interactive: role="button",
  *      tabindex="0", data-my-trees-moment-index
  *   4. My Trees stages toggle is-active class on click
@@ -36,7 +36,7 @@ const myTreesFlowCss = fs.readFileSync(
     'utf8'
 );
 
-// ── 1) My Trees flow container has NO margin-top (Browse parity) ─────
+// ?? 1) My Trees flow container has NO margin-top (Browse parity) ?????
 test('My Trees flow container has no margin-top (Browse parity)', () => {
     const block = (myTreesFlowCss.match(/\.my-trees-hub-flow\s*\{[\s\S]*?\}/) || [''])[0];
     assert.ok(block, '.my-trees-hub-flow rule must exist');
@@ -46,16 +46,16 @@ test('My Trees flow container has no margin-top (Browse parity)', () => {
     );
 });
 
-// ── 2) My Trees toggle text uses Browse format ───────────────────────
+// ?? 2) My Trees toggle text uses Browse format ???????????????????????
 test('My Trees hub renderer emits Browse-style toggle text', () => {
     assert.match(
         myTreesHubJs,
-        /'\.\.\.\s*그리고\s*'\s*\+\s*hiddenCount\s*\+\s*'\s*개의\s*순간\s*더'/,
-        'My Trees hub renderer must use "... 그리고 N개의 순간 더" (Browse parity)'
+        /'\.\.\.\s*그리고\s*'\s*\+\s*hiddenCount\s*\+\s*'개의 순간 더'/,
+        'My Trees hub renderer must use Browse-style "... 그리고 N개의 순간 더"'
     );
     assert.match(
         myTreesHubJs,
-        /'\s*접기\s*'/,
+        /'접기'/,
         'My Trees hub renderer must use "접기" for the expanded toggle (Browse parity)'
     );
     assert.ok(
@@ -67,14 +67,16 @@ test('My Trees hub renderer emits Browse-style toggle text', () => {
 test('My Trees hydrated flow toggle text uses Browse format', () => {
     assert.match(
         myTreesStateJs,
-        /'\s*더보기\s*\(\s*'\s*\+\s*hiddenCount\s*\+\s*'\s*\)/,
-        'My Trees state hydrated toggle still uses legacy "더보기 (N)" — must be replaced'
+        /'\.\.\.\s*그리고\s*'\s*\+\s*hiddenCount\s*\+\s*'개의 순간 더'/,
+        'My Trees state hydrated toggle must use Browse-style "... 그리고 N개의 순간 더"'
     );
-    // Step 8: the hydrated toggle was already changed to the Browse-style
-    // button in Step 7. Verify the new format exists in the source.
+    assert.ok(
+        !/'\s*더보기\s*\(\s*'\s*\+\s*hiddenCount/.test(myTreesStateJs),
+        'Legacy "더보기 (N)" toggle text must not return after Step 8'
+    );
 });
 
-// ── 3) Stage interactivity (role, tabindex, data attr) ───────────────
+// ?? 3) Stage interactivity (role, tabindex, data attr) ???????????????
 test('My Trees hub renderer binds role + tabindex + click handler on stages', () => {
     assert.match(
         myTreesHubJs,
@@ -116,7 +118,7 @@ test('My Trees hub renderer emits data-my-trees-moment-index on each stage', () 
     );
 });
 
-// ── 4) is-active toggling on click ───────────────────────────────────
+// ?? 4) is-active toggling on click ???????????????????????????????????
 test('My Trees stage click toggles is-active class', () => {
     assert.match(
         myTreesHubJs,
@@ -135,12 +137,12 @@ test('My Trees stage click toggles is-active class', () => {
     );
 });
 
-// ── 5) Click handler swaps video iframe ──────────────────────────────
+// ?? 5) Click handler swaps video iframe ??????????????????????????????
 test('My Trees stage click handler swaps the video iframe to that moment', () => {
     assert.match(
         myTreesHubJs,
         /function\s+swapToMomentIframe\s*\(\s*tree\s*,\s*momentIndex\s*\)/,
-        'My Trees hub must define swapToMomentIframe(tree, momentIndex) — Browse parity'
+        'My Trees hub must define swapToMomentIframe(tree, momentIndex) ??Browse parity'
     );
     assert.match(
         myTreesHubJs,
@@ -159,7 +161,7 @@ test('My Trees stage click handler swaps the video iframe to that moment', () =>
     );
 });
 
-// ── 6) Stage label has title + aria-label ────────────────────────────
+// ?? 6) Stage label has title + aria-label ????????????????????????????
 test('My Trees stage label has title and aria-label attributes', () => {
     // The label HTML should include both title and aria-label
     assert.match(
@@ -173,3 +175,4 @@ test('My Trees stage label has title and aria-label attributes', () => {
         'My Trees hydrated stage label must include both title and aria-label (Browse parity)'
     );
 });
+
