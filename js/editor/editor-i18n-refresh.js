@@ -278,12 +278,12 @@
         flowSummaryEl.textContent = tText('editor_tree_status_empty', '아직 첫 순간을 기다리고 있어요.');
       } else {
         if (timeRange) {
-          flowSummaryEl.innerHTML = tText('sidebar_flow_summary_connected_with_range', '<strong>{title}</strong>에 담긴 <strong>{count}개의 순간</strong>이 <strong>{timeRange}</strong>에 걸쳐 이어졌어요.')
+          flowSummaryEl.innerHTML = tText('sidebar_flow_summary_connected_with_range', '{title}에 담긴 <strong>{count}개의 순간</strong>이 <strong>{timeRange}</strong>에 걸쳐 이어졌어요.')
             .replace('{title}', escapeHtml(titleText))
             .replace('{count}', String(count))
             .replace('{timeRange}', escapeHtml(timeRange));
         } else {
-          flowSummaryEl.innerHTML = tText('sidebar_flow_summary_connected', '<strong>{title}</strong>에 담긴 <strong>{count}개의 순간</strong>이 이어졌어요.')
+          flowSummaryEl.innerHTML = tText('sidebar_flow_summary_connected', '{title}에 담긴 <strong>{count}개의 순간</strong>이 이어졌어요.')
             .replace('{title}', escapeHtml(titleText))
             .replace('{count}', String(count));
         }

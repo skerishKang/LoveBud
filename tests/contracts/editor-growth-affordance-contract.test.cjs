@@ -275,3 +275,118 @@ test('is-interacting class is toggled in lockMovement and unlockMovementSoon (#2
   assert.match(cssSource, /\.memory-add-affordance\.is-interacting/,
     'is-interacting rule must be present in the affordance CSS');
 });
+
+// ── Left rail summary typography contract (Commit C) ────────────────────────
+// Tree title is rendered by #sidebarTreeTitle in 1.42rem. The summary line
+// below it must NOT duplicate a heading-style title — it should be small
+// prose, with only count / timeRange emphasised.
+
+const I18N_EDITOR_FILE = path.join(ROOT, 'js/i18n/i18n-editor.js');
+const SIDEBAR_BOUNDARY_FILE = path.join(ROOT, 'js/editor/editor-detail-sidebar-status-boundary.js');
+const I18N_REFRESH_FILE = path.join(ROOT, 'js/editor/editor-i18n-refresh.js');
+const STATUS_CARD_CSS_FILE = path.join(ROOT, 'css/editor/editor-status-settings/status-card.css');
+
+function extractSummaryKey(source, key) {
+  const pattern = new RegExp(
+    "'" + key.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&') +
+    "':\\{ko:'((?:[^'\\\\]|\\\\.)*)',en:'((?:[^'\\\\]|\\\\.)*)'\\}"
+  );
+  const m = source.match(pattern);
+  if (!m) return null;
+  return { ko: m[1], en: m[2] };
+}
+
+test('i18n key sidebar_flow_summary_connected no longer wraps {title} in <strong>', () => {
+  const source = fs.readFileSync(I18N_EDITOR_FILE, 'utf8');
+  const key = extractSummaryKey(source, 'sidebar_flow_summary_connected');
+  assert.ok(key, 'i18n key sidebar_flow_summary_connected must exist');
+  assert.ok(
+    !/<strong>\s*\{title\}\s*<\/strong>/.test(key.ko),
+    'ko template must not wrap {title} in <strong>; got: ' + key.ko
+  );
+  assert.ok(
+    !/<strong>\s*\{title\}\s*<\/strong>/.test(key.en),
+    'en template must not wrap {title} in <strong>; got: ' + key.en
+  );
+});
+
+test('i18n key sidebar_flow_summary_connected_with_range no longer wraps {title} in <strong>', () => {
+  const source = fs.readFileSync(I18N_EDITOR_FILE, 'utf8');
+  const key = extractSummaryKey(source, 'sidebar_flow_summary_connected_with_range');
+  assert.ok(key, 'i18n key sidebar_flow_summary_connected_with_range must exist');
+  assert.ok(
+    !/<strong>\s*\{title\}\s*<\/strong>/.test(key.ko),
+    'ko template must not wrap {title} in <strong>; got: ' + key.ko
+  );
+  assert.ok(
+    !/<strong>\s*\{title\}\s*<\/strong>/.test(key.en),
+    'en template must not wrap {title} in <strong>; got: ' + key.en
+  );
+});
+
+test('i18n key sidebar_flow_summary_connected keeps <strong> only around {count}', () => {
+  const source = fs.readFileSync(I18N_EDITOR_FILE, 'utf8');
+  const key = extractSummaryKey(source, 'sidebar_flow_summary_connected');
+  assert.ok(key, 'i18n key sidebar_flow_summary_connected must exist');
+  assert.match(key.ko, /<strong>\s*\{count\}개의\s*순간\s*<\/strong>/,
+    'ko template must wrap {count}개의 순간 in <strong>');
+  assert.match(key.en, /<strong>\s*\{count\}\s*moments\s*<\/strong>/,
+    'en template must wrap {count} moments in <strong>');
+});
+
+test('i18n key sidebar_flow_summary_connected_with_range keeps <strong> only around {count} and {timeRange}', () => {
+  const source = fs.readFileSync(I18N_EDITOR_FILE, 'utf8');
+  const key = extractSummaryKey(source, 'sidebar_flow_summary_connected_with_range');
+  assert.ok(key, 'i18n key sidebar_flow_summary_connected_with_range must exist');
+  assert.match(key.ko, /<strong>\s*\{count\}개의\s*순간\s*<\/strong>/,
+    'ko template must wrap {count}개의 순간 in <strong>');
+  assert.match(key.ko, /<strong>\s*\{timeRange\}\s*<\/strong>/,
+    'ko template must wrap {timeRange} in <strong>');
+  assert.match(key.en, /<strong>\s*\{count\}\s*moments\s*<\/strong>/,
+    'en template must wrap {count} moments in <strong>');
+  assert.match(key.en, /<strong>\s*\{timeRange\}\s*<\/strong>/,
+    'en template must wrap {timeRange} in <strong>');
+});
+
+test('editor-detail-sidebar-status-boundary.js fallback template no longer wraps {title} in <strong>', () => {
+  const source = fs.readFileSync(SIDEBAR_BOUNDARY_FILE, 'utf8');
+  assert.ok(
+    !/<strong>\s*\{title\}\s*<\/strong>/.test(source),
+    'fallback template must not wrap {title} in <strong>'
+  );
+  assert.match(source, /<strong>\s*\{count\}개의\s*순간\s*<\/strong>/);
+  assert.match(source, /<strong>\s*\{timeRange\}\s*<\/strong>/);
+});
+
+test('editor-i18n-refresh.js summary path no longer wraps {title} in <strong>', () => {
+  const source = fs.readFileSync(I18N_REFRESH_FILE, 'utf8');
+  assert.ok(
+    !/<strong>\s*\{title\}\s*<\/strong>/.test(source),
+    'editor-i18n-refresh.js summary path must not wrap {title} in <strong>'
+  );
+  assert.match(source, /<strong>\s*\{count\}개의\s*순간\s*<\/strong>/);
+  assert.match(source, /<strong>\s*\{timeRange\}\s*<\/strong>/);
+});
+
+test('.editor-flow-summary rule sets explicit small-prose font-size (not title-sized)', () => {
+  const source = fs.readFileSync(STATUS_CARD_CSS_FILE, 'utf8');
+  const block = (source.match(/\.editor-flow-summary\s*\{([^}]*)\}/) || ['', ''])[1];
+  assert.ok(block.length > 0, '.editor-flow-summary rule must exist');
+  assert.match(block, /font-size\s*:\s*13\.5px/,
+    '.editor-flow-summary must be 13.5px (small prose) — must NOT inherit the 1.42rem title size from .editor-status-card strong');
+  assert.match(block, /line-height\s*:\s*1\.55/,
+    '.editor-flow-summary line-height must be 1.55 (prose rhythm)');
+  assert.match(block, /color\s*:\s*var\(--on-surface-variant\)/);
+});
+
+test('.editor-flow-summary strong overrides .editor-status-card strong (1.42rem) with prose sizing', () => {
+  const source = fs.readFileSync(STATUS_CARD_CSS_FILE, 'utf8');
+  const block = (source.match(/\.editor-flow-summary\s+strong\s*\{([^}]*)\}/) || ['', ''])[1];
+  assert.ok(block.length > 0, '.editor-flow-summary strong rule must exist');
+  assert.match(block, /font-size\s*:\s*13\.5px/,
+    '.editor-flow-summary strong must be 13.5px — must NOT inherit 1.42rem from .editor-status-card strong');
+  assert.match(block, /font-weight\s*:\s*700/,
+    'count / timeRange emphasis should be 700 weight');
+  assert.doesNotMatch(block, /font-size\s*:\s*1\.\d+rem/,
+    '.editor-flow-summary strong must not use rem-based title sizing');
+});
