@@ -240,8 +240,8 @@ const FILE_ALLOWLIST = {
     reason: 'In-app rename modal uses static modal HTML only; current title is assigned to input.value, not innerHTML'
   },
   'js/editor/editor-memory-actions.js': {
-    count: 1, classification: 'safe',
-    reason: 'field.innerHTML — template literal with escapeHtml for user content'
+    count: 2, classification: 'safe',
+    reason: 'field.innerHTML and grid.innerHTML — template literal with escapeHtml for user content or static HTML only'
   },
   'js/editor/editor-page-helpers.js': {
     count: 1, classification: 'safe',

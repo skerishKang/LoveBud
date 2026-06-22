@@ -69,6 +69,78 @@ function createEditorMemoryActions(deps) {
         };
     };
 
+    const extractYouTubeStartAndEnd = (url) => {
+        if (!url || typeof url !== 'string') return { start: null, end: null };
+        let start = null;
+        let end = null;
+        try {
+            const parsed = new URL(url.trim());
+            const startVal = parsed.searchParams.get('t') || parsed.searchParams.get('start');
+            const endVal = parsed.searchParams.get('end');
+
+            const media = window.LoveBudMedia || {};
+            if (typeof media.parseYouTubeTimeToSeconds === 'function') {
+                start = media.parseYouTubeTimeToSeconds(startVal);
+                end = media.parseYouTubeTimeToSeconds(endVal);
+            }
+        } catch (e) {
+            const startMatch = url.match(/[#&?](?:t|start)=([^&#]+)/i);
+            const endMatch = url.match(/[#&?]end=([^&#]+)/i);
+            const media = window.LoveBudMedia || {};
+            if (typeof media.parseYouTubeTimeToSeconds === 'function') {
+                if (startMatch) start = media.parseYouTubeTimeToSeconds(decodeURIComponent(startMatch[1]));
+                if (endMatch) end = media.parseYouTubeTimeToSeconds(decodeURIComponent(endMatch[1]));
+            }
+        }
+        return { start, end };
+    };
+
+    const ensureVideoSegmentGrid = () => {
+        const editMode = document.getElementById('detailEditMode');
+        const sourceUrlGroup = document.getElementById('editSourceUrlGroup');
+        if (!editMode || !sourceUrlGroup) return null;
+
+        let grid = document.getElementById('editVideoSegmentGrid');
+        if (!grid) {
+            grid = document.createElement('div');
+            grid.id = 'editVideoSegmentGrid';
+            grid.className = 'editor-video-segment-grid';
+            grid.innerHTML = `
+                <div class="editor-form-field editor-video-segment-field editor-video-segment-field-start" id="editStartTimeField">
+                    <label id="editStartTimeLabel" for="editStartTimeInput" class="editor-form-label">${formatI18nText('editor_video_start_label', '시작')}</label>
+                    <input type="text" id="editStartTimeInput" placeholder="${formatI18nText('editor_video_start_placeholder', '예: 1:23')}" class="editor-form-input">
+                </div>
+                <div class="editor-form-field editor-video-segment-field editor-video-segment-field-end" id="editEndTimeField">
+                    <label id="editEndTimeLabel" for="editEndTimeInput" class="editor-form-label">${formatI18nText('editor_video_end_label', '끝')}</label>
+                    <input type="text" id="editEndTimeInput" placeholder="${formatI18nText('editor_video_end_placeholder', '선택, 예: 1:45')}" class="editor-form-input">
+                </div>
+                <p id="editStartTimeHint" class="editor-form-help editor-video-segment-help">${formatI18nText('editor_video_segment_help', '순간의 시작과 끝 시간을 입력하세요.')}</p>
+            `;
+            sourceUrlGroup.parentNode.insertBefore(grid, sourceUrlGroup.nextSibling);
+        }
+        return grid;
+    };
+
+    const updateEditVideoSegmentGridVisibility = () => {
+        const sourceUrlInput = document.getElementById('editSourceUrlInput');
+        const grid = document.getElementById('editVideoSegmentGrid');
+        if (!sourceUrlInput || !grid) return;
+
+        const timeHelper = window.LoveBudEditorMemoryFormTime;
+        if (!timeHelper) {
+            grid.classList.add('is-hidden');
+            return;
+        }
+
+        const value = sourceUrlInput.value.trim();
+        const media = window.LoveBudMedia || {};
+        const isYoutube = typeof media.extractYouTubeId === 'function'
+            ? !!media.extractYouTubeId(value)
+            : !!(value.match(/(?:v=|\/|youtu\.be\/|embed\/|shorts\/)([0-9A-Za-z_-]{11})/));
+
+        grid.classList.toggle('is-hidden', !isYoutube);
+    };
+
     const ensureSourceUrlEditField = () => {
         const editMode = document.getElementById('detailEditMode');
         const memoGroup = document.getElementById('editMemoInput')?.closest('.editor-form-stack');
@@ -112,7 +184,30 @@ function createEditorMemoryActions(deps) {
             titleInput.value = currentEditingMemory.title || '';
             setTimeout(() => titleInput.focus(), 0);
         }
-        if (sourceUrlInput) sourceUrlInput.value = getEditableSourceUrl(currentEditingMemory);
+        if (sourceUrlInput) {
+            sourceUrlInput.value = getEditableSourceUrl(currentEditingMemory);
+
+            // Handle Video Segment Grid for Start / End time
+            const grid = ensureVideoSegmentGrid();
+            const startTimeInput = document.getElementById('editStartTimeInput');
+            const endTimeInput = document.getElementById('editEndTimeInput');
+            const media = window.LoveBudMedia || {};
+
+            if (startTimeInput && endTimeInput && typeof media.formatYouTubeStartTime === 'function') {
+                const parsedTimes = extractYouTubeStartAndEnd(getEditableSourceUrl(currentEditingMemory));
+                startTimeInput.value = parsedTimes.start ? media.formatYouTubeStartTime(parsedTimes.start) : '';
+                endTimeInput.value = parsedTimes.end ? media.formatYouTubeStartTime(parsedTimes.end) : '';
+            }
+
+            if (!sourceUrlInput.dataset.listenerBound) {
+                sourceUrlInput.addEventListener('input', () => {
+                    updateEditVideoSegmentGridVisibility();
+                });
+                sourceUrlInput.dataset.listenerBound = 'true';
+            }
+
+            updateEditVideoSegmentGridVisibility();
+        }
         if (memoInput) memoInput.value = currentEditingMemory.memo || '';
         if (tagsInput) tagsInput.value = (currentEditingMemory.emotionTags || []).join(', ');
     };
@@ -134,6 +229,45 @@ function createEditorMemoryActions(deps) {
         const sourceUrlInput = document.getElementById('editSourceUrlInput');
         const memoInput = document.getElementById('editMemoInput');
         const tagsInput = document.getElementById('editTagsInput');
+        const startTimeInput = document.getElementById('editStartTimeInput');
+        const endTimeInput = document.getElementById('editEndTimeInput');
+        const timeHelper = window.LoveBudEditorMemoryFormTime;
+
+        const startHasValue = startTimeInput && startTimeInput.value.trim();
+        const endHasValue = endTimeInput && endTimeInput.value.trim();
+
+        if ((startHasValue || endHasValue) && !timeHelper) {
+            showToast(formatI18nText('time_helper_missing', '시간을 처리하는 도구를 불러오지 못했습니다.'), 'error');
+            updateSaveStatus('failed', formatI18nText('save_failed', '저장 실패'));
+            return;
+        }
+
+        let startSeconds = null;
+        let endSeconds = null;
+
+        if (startHasValue && timeHelper) {
+            startSeconds = timeHelper.parseTime(startTimeInput.value.trim());
+            if (startSeconds === null) {
+                showToast(formatI18nText('invalid_start_time', '시작 시간을 다시 확인해 주세요.'), 'error');
+                updateSaveStatus('failed', formatI18nText('save_failed', '저장 실패'));
+                return;
+            }
+        }
+
+        if (endHasValue && timeHelper) {
+            const endCheck = timeHelper.validateEndTime({
+                rawEndTime: endTimeInput.value.trim(),
+                startSeconds,
+                invalidMessage: formatI18nText('invalid_end_time', '끝 시간을 다시 확인해 주세요.'),
+                rangeMessage: formatI18nText('invalid_time_range', '끝 시간은 시작 시간보다 뒤여야 해요.')
+            });
+            if (!endCheck.ok) {
+                showToast(endCheck.message, 'error');
+                updateSaveStatus('failed', formatI18nText('save_failed', '저장 실패'));
+                return;
+            }
+            endSeconds = endCheck.endSeconds;
+        }
 
         const payload = {
             title: titleInput ? titleInput.value.trim() : currentEditingMemory.title,
@@ -144,14 +278,60 @@ function createEditorMemoryActions(deps) {
         if (sourceUrlInput) {
             const rawSourceUrl = sourceUrlInput.value.trim();
             const previousSourceUrl = getEditableSourceUrl(currentEditingMemory);
-            if (rawSourceUrl !== previousSourceUrl) {
-                const sourceUpdate = resolveSourceUpdate(rawSourceUrl);
-                if (!sourceUpdate) {
-                    showToast(formatI18nText('invalid_youtube_unsupported', 'YouTube 링크만 지원합니다. youtube.com 또는 youtu.be 링크를 사용해 주세요.'), 'error');
-                    updateSaveStatus('failed', formatI18nText('save_failed', '저장 실패'));
-                    return;
+            const parsedPrev = extractYouTubeStartAndEnd(previousSourceUrl);
+            const prevStart = parsedPrev.start;
+            const prevEnd = parsedPrev.end;
+
+            const urlChanged = rawSourceUrl !== previousSourceUrl;
+            const startChanged = startSeconds !== prevStart;
+            const endChanged = endSeconds !== prevEnd;
+
+            if (urlChanged || startChanged || endChanged) {
+                const media = window.LoveBudMedia || {};
+                const isYoutube = typeof media.extractYouTubeId === 'function'
+                    ? !!media.extractYouTubeId(rawSourceUrl)
+                    : !!(rawSourceUrl.match(/(?:v=|\/|youtu\.be\/|embed\/|shorts\/)([0-9A-Za-z_-]{11})/));
+
+                if (rawSourceUrl) {
+                    if (isYoutube) {
+                        const sourceUpdate = resolveSourceUpdate(rawSourceUrl);
+                        if (!sourceUpdate) {
+                            showToast(formatI18nText('invalid_youtube_unsupported', 'YouTube 링크만 지원합니다. youtube.com 또는 youtu.be 링크를 사용해 주세요.'), 'error');
+                            updateSaveStatus('failed', formatI18nText('save_failed', '저장 실패'));
+                            return;
+                        }
+
+                        let embedUrl = typeof media.getEmbedUrl === 'function'
+                            ? media.getEmbedUrl(rawSourceUrl, 'youtube', { startSeconds })
+                            : sourceUpdate.sourceUrl;
+
+                        if (embedUrl && endSeconds !== null) {
+                            try {
+                                const parsedEmbed = new URL(embedUrl);
+                                parsedEmbed.searchParams.set('end', String(endSeconds));
+                                embedUrl = parsedEmbed.toString();
+                            } catch (e) {
+                                console.error('Failed to parse embedUrl for setting end parameter', e);
+                            }
+                        }
+
+                        sourceUpdate.sourceUrl = embedUrl;
+                        Object.assign(payload, sourceUpdate);
+                    } else {
+                        showToast(formatI18nText('invalid_youtube_unsupported', 'YouTube 링크만 지원합니다. youtube.com 또는 youtu.be 링크를 사용해 주세요.'), 'error');
+                        updateSaveStatus('failed', formatI18nText('save_failed', '저장 실패'));
+                        return;
+                    }
+                } else {
+                    if (previousSourceUrl) {
+                        Object.assign(payload, {
+                            sourceUrl: '',
+                            sourceType: 'other',
+                            thumbnail: '',
+                            source: ''
+                        });
+                    }
                 }
-                Object.assign(payload, sourceUpdate);
             }
         }
 
