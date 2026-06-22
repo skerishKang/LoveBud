@@ -96,7 +96,7 @@
     els.container.hidden = false;
   }
 
-  function renderMedia(tree) {
+  function renderMedia(tree, preferredMomentIndex) {
     var els = getEls();
     var helper = window.LoveBudSearchPreviewMediaHelper;
     if (!els.container || !els.media || !helper || typeof helper.getPreviewMediaMemory !== 'function') {
@@ -104,7 +104,21 @@
       return;
     }
 
-    var mediaMemory = helper.getPreviewMediaMemory(getMediaCandidates(tree));
+    var candidates = getMediaCandidates(tree);
+    var mediaMemory;
+    if (typeof preferredMomentIndex === 'number' && preferredMomentIndex >= 0 && candidates[preferredMomentIndex]) {
+      // Issue #2825: when a flow stage is clicked, the media preview must
+      // re-render to show THAT specific moment. The default
+      // getPreviewMediaMemory picks the "best" memory (first with a
+      // sourceUrl or thumbnail), but that does not match the active
+      // stage after a click — leading to the compact flow stage click
+      // not updating the media preview. The flow stage click handler
+      // now passes the clicked moment's array index here so the active
+      // stage and the rendered media always refer to the same moment.
+      mediaMemory = candidates[preferredMomentIndex];
+    } else {
+      mediaMemory = helper.getPreviewMediaMemory(candidates);
+    }
     if (!mediaMemory) {
       clearMedia();
       return;
@@ -140,6 +154,14 @@
     }
 
     if (typeof helper.bindPreviewThumbnailHandlers === 'function') helper.bindPreviewThumbnailHandlers(els.media);
+  }
+
+  // Issue #2825: dedicated entry point for flow stage clicks. Delegates
+  // to renderMedia(tree, preferredMomentIndex) so the active stage and
+  // the rendered media preview always point to the same moment — for
+  // both the compact 1-4 stages and the expanded 5+ stages.
+  function renderMediaForMoment(tree, momentIndex) {
+    return renderMedia(tree, momentIndex);
   }
 
   function patchHub() {
@@ -217,6 +239,7 @@
   patchRendererSelection();
   window.LoveBudMyTreesPreviewMedia = {
     renderMedia: renderMedia,
+    renderMediaForMoment: renderMediaForMoment,
     clearMedia: clearMedia,
     showPlaceholder: showPlaceholder,
     patchHub: patchHub,

@@ -232,7 +232,26 @@
                 _selectedMomentIndexByTree[treeKey] = index;
                 stages.forEach(function(item) { item.classList.remove('is-active'); });
                 stage.classList.add('is-active');
-                swapToMomentIframe(tree, index);
+                // Issue #2825: the click must re-render the media preview
+                // to the clicked moment so the active stage and the
+                // visible media always refer to the same moment. The
+                // legacy swapToMomentIframe() only swapped the existing
+                // iframe's src (and returned false silently if the
+                // initial media was a thumbnail), so compact flow stage
+                // 1-4 clicks effectively did nothing for thumbnail media.
+                // renderMediaForMoment() goes through the same code path
+                // as the initial showContent render but with a forced
+                // moment index, so iframe and thumbnail media are both
+                // re-rendered correctly.
+                var previewMedia = window.LoveBudMyTreesPreviewMedia;
+                if (previewMedia && typeof previewMedia.renderMediaForMoment === 'function') {
+                    previewMedia.renderMediaForMoment(tree, index);
+                } else {
+                    // Fallback if the preview-media module hasn't loaded
+                    // yet (e.g. older cached hub). Keeps the previous
+                    // iframe-swap behavior as a graceful degradation.
+                    swapToMomentIframe(tree, index);
+                }
             };
             stage.addEventListener('click', activate);
             stage.addEventListener('keydown', function(event) {
