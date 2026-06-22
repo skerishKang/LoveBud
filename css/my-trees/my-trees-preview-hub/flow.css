@@ -117,6 +117,10 @@
 .my-trees-hub-flow-controls {
     margin-top: 11px;
 }
+.my-trees-hub-flow-controls:empty {
+    margin-top: 0 !important;
+    display: none !important;
+}
 
 .my-trees-hub-flow-toggle {
     display: inline;

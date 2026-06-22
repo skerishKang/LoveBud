@@ -1,4 +1,4 @@
-﻿/**
+/**
  * LoveBud Hub Parity Step 8 ??Contract Test
  *
  * Locks the post-Step 8 hub parity invariants for the moment-flow
@@ -173,6 +173,33 @@ test('My Trees stage label has title and aria-label attributes', () => {
         myTreesStateJs,
         /my-trees-hub-flow-stage-label"\s+title="[^"]*"\s+aria-label="[^"]*"/,
         'My Trees hydrated stage label must include both title and aria-label (Browse parity)'
+    );
+});
+
+// ── 7) Social stats order (조회수 -> 좋아요 -> 댓글) ───────────────────────
+test('My Trees hub renderer renders social metrics in the correct order', () => {
+    const barHtmlMatch = myTreesHubJs.match(/shell\.innerHTML\s*=\s*\[([\s\S]*?)\]\.join/);
+    assert.ok(barHtmlMatch, 'Social shell markup must exist in js');
+    const barHtml = barHtmlMatch[1];
+
+    const viewsIndex = barHtml.indexOf('aria-label="조회수"');
+    const likesIndex = barHtml.indexOf('aria-label="좋아요"');
+    const commentsIndex = barHtml.indexOf('aria-label="댓글"');
+
+    assert.ok(viewsIndex !== -1, 'Views pill must exist');
+    assert.ok(likesIndex !== -1, 'Likes pill must exist');
+    assert.ok(commentsIndex !== -1, 'Comments pill must exist');
+
+    assert.ok(viewsIndex < likesIndex, 'Views must come before Likes');
+    assert.ok(likesIndex < commentsIndex, 'Likes must come before Comments');
+});
+
+// ── 8) Flow controls empty state hiding ──────────────────────────────
+test('My Trees flow controls must be hidden when empty', () => {
+    assert.match(
+        myTreesFlowCss,
+        /\.my-trees-hub-flow-controls:empty\s*{[\s\S]*?display:\s*none\s*!important;?[\s\S]*?}/,
+        'flow controls:empty rule must hide empty wrapper'
     );
 });
 
