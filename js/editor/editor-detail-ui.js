@@ -520,11 +520,25 @@ function createEditorDetailUI(deps) {
             }
         }
 
+        const showAtlasPreview = (() => {
+            try {
+                const params = new URLSearchParams(window.location.search);
+                if (params.get('atlasPreview') === '1' || params.get('debugAtlas') === '1') return true;
+                if (localStorage.getItem('debugAtlas') === 'true' || localStorage.getItem('atlasPreview') === 'true') return true;
+            } catch (e) {}
+            return false;
+        })();
+
         if (atlasPreviewPanel && atlasPreviewMount) {
-            const treeState = getTreeState();
-            atlasPreviewPanel.render(atlasPreviewMount, data, {
-                treeMemories: treeState.treeMemories
-            });
+            if (showAtlasPreview) {
+                const treeState = getTreeState();
+                atlasPreviewPanel.render(atlasPreviewMount, data, {
+                    treeMemories: treeState.treeMemories
+                });
+            } else {
+                atlasPreviewMount.replaceChildren();
+                atlasPreviewMount.hidden = true;
+            }
         }
 
         const reactionsCard = document.getElementById('momentReactionsCard');

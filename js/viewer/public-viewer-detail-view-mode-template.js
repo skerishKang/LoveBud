@@ -39,22 +39,26 @@
                         </div>
                     </div>
 
-                    <div class="editor-moment-reactions-card" id="momentReactionsCard">
+                    <div class="editor-moment-reactions-card" id="momentReactionsCard" aria-label="순간 반응" style="font-variant-numeric:tabular-nums;">
                         <button
-                            class="editor-reaction-like-btn"
+                            type="button"
+                            class="editor-moment-reaction editor-reaction-like-btn"
                             id="momentLikeBtn"
                             aria-label="좋아요"
                             data-reacted="false"
                         >
-                            <span class="editor-reaction-like-icon">🤍</span>
+                            <span class="editor-reaction-like-icon" aria-hidden="true">🤍</span>
+                            <span class="editor-reaction-label">좋아요</span>
                             <span class="editor-reaction-like-count" id="momentLikeCount">0</span>
                         </button>
                         <button
-                            class="editor-reaction-comment-btn"
+                            type="button"
+                            class="editor-moment-reaction editor-reaction-comment-btn"
                             id="momentCommentBtn"
-                            aria-label="코멘트 보기"
+                            aria-label="댓글 보기"
                         >
-                            <span class="editor-reaction-comment-icon">💬</span>
+                            <span class="editor-reaction-comment-icon" aria-hidden="true">💬</span>
+                            <span class="editor-reaction-label">댓글</span>
                             <span class="editor-reaction-comment-count" id="momentCommentCount">0</span>
                         </button>
                     </div>
