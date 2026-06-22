@@ -289,11 +289,21 @@
       if (flowControls) {
         var hiddenCount = Math.max(0, memories.length - 4);
         /* FIX: use Browse-style label "... 그리고 N개의 순간 더" instead of "더보기 (N)" */
-        flowControls.innerHTML = hiddenCount > 0
-          ? '<button type="button" class="my-trees-hub-flow-toggle" data-my-trees-flow-toggle>' +
-            escapeHtml('... 그리고 ' + hiddenCount + '개의 순간 더') +
-            '</button>'
-          : '';
+        if (hiddenCount > 0) {
+          flowControls.replaceChildren();
+          var flowToggle = document.createElement('button');
+          flowToggle.type = 'button';
+          flowToggle.className = 'my-trees-hub-flow-toggle';
+          flowToggle.setAttribute('data-my-trees-flow-toggle', '');
+          flowToggle.textContent = '... 그리고 ' + hiddenCount + '개의 순간 더';
+          flowControls.appendChild(flowToggle);
+          flowControls.style.display = '';
+          flowControls.hidden = false;
+        } else {
+          flowControls.replaceChildren();
+          flowControls.style.display = 'none';
+          flowControls.hidden = true;
+        }
       }
       /* FIX: patch summary line to include date range */
       patchSummaryWithTimeRange(tree);

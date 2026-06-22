@@ -104,10 +104,15 @@ test('My Trees hub renderer emits a <button data-my-trees-flow-toggle>', () => {
 });
 
 test('My Trees hydrated flow toggle is an interactive button (not static span)', () => {
-    assert.match(
-        myTreesStateJs,
-        /<button[^>]*class=["']my-trees-hub-flow-toggle["'][^>]*data-my-trees-flow-toggle/,
-        'my-trees-preview-state.js must emit an interactive button for the flow toggle'
+    const emitsButtonMarkup = /<button[^>]*class=["']my-trees-hub-flow-toggle["'][^>]*data-my-trees-flow-toggle/.test(myTreesStateJs);
+    const createsButtonWithDomApi =
+        /document\.createElement\(\s*['"]button['"]\s*\)/.test(myTreesStateJs) &&
+        /flowToggle\.className\s*=\s*['"]my-trees-hub-flow-toggle['"]/.test(myTreesStateJs) &&
+        /flowToggle\.setAttribute\(\s*['"]data-my-trees-flow-toggle['"]\s*,\s*['"]['"]\s*\)/.test(myTreesStateJs);
+
+    assert.ok(
+        emitsButtonMarkup || createsButtonWithDomApi,
+        'my-trees-preview-state.js must render an interactive button for the flow toggle'
     );
     assert.ok(
         !/my-trees-hub-flow-toggle is-static/.test(myTreesStateJs),

@@ -376,10 +376,16 @@
                         els.flowList.insertAdjacentHTML('beforeend', hiddenHtml);
                     }
                     els.flowControls.innerHTML = buildFlowToggle(hiddenMemories.length, true);
+                    els.flowControls.style.display = '';
+                    els.flowControls.hidden = false;
                 } else if (hiddenMemories.length > 0) {
                     els.flowControls.innerHTML = buildFlowToggle(hiddenMemories.length, false);
+                    els.flowControls.style.display = '';
+                    els.flowControls.hidden = false;
                 } else {
                     els.flowControls.innerHTML = '';
+                    els.flowControls.style.display = 'none';
+                    els.flowControls.hidden = true;
                 }
             }
 
