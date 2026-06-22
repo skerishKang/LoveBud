@@ -55,6 +55,7 @@
 37. [FRONTEND_SPLIT_PROGRESS_1505.md](../refactor/FRONTEND_SPLIT_PROGRESS_1505.md) - Issue #1505 frontend split 전체 진행 상태 및 차기 후보
 38. [EDITOR_CANVAS_PREFLIGHT_AUDIT_1505.md](../refactor/EDITOR_CANVAS_PREFLIGHT_AUDIT_1505.md) - js/editor/editor-canvas.js 모듈 분리 preflight audit
 39. [LAYOUT_MODE_TRANSITION_PREFLIGHT_AUDIT_1505.md](../refactor/LAYOUT_MODE_TRANSITION_PREFLIGHT_AUDIT_1505.md) - js/editor/editor-canvas.js 레이아웃 모드 전환 모듈 분리 preflight audit
+40. [AUTH_FLOW_OWNERSHIP_AUDIT.md](./AUTH_FLOW_OWNERSHIP_AUDIT.md) - #2712 auth entrypoints by page, Firebase init/listener ownership, cached-session lifecycle, protected-route lifecycle, login-page lifecycle, duplicated responsibilities, staged refactor plan
 
 
 
