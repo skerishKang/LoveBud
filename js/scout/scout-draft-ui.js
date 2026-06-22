@@ -140,6 +140,13 @@
             header.appendChild(closeBtn);
             modal.appendChild(header);
 
+            // Intro helper — concrete Scout value (link → moment → review → save)
+            const intro = document.createElement('p');
+            intro.className = 'scout-draft-intro';
+            intro.id = 'scoutDraftIntro';
+            intro.textContent = t('scout_intro_help') || '';
+            modal.appendChild(intro);
+
             // Form
             const form = document.createElement('form');
             form.className = 'scout-draft-form';
