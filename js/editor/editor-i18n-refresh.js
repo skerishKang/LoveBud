@@ -67,8 +67,10 @@
       '.editor-view-options-help{font-size:11px;line-height:1.5;color:var(--on-surface-variant);border-top:1px solid rgba(221,198,184,0.55);padding-top:9px;}',
       'body.editor-view-hide-labels .memory-node .node-info-label{display:none!important;}',
       'body.editor-view-hide-tips .memory-add-affordance,body.editor-view-hide-tips .branch-line-affordance{display:none!important;pointer-events:none!important;}',
-      'body.editor-view-hide-bubbles .memory-add-affordance.affordance-tooltip-bubble{width:36px!important;min-height:36px!important;height:36px!important;border-radius:50%!important;padding:0!important;justify-content:center!important;background:rgba(144,73,81,0.92)!important;border:none!important;box-shadow:0 3px 10px rgba(144,73,81,0.25)!important;}',
-      'body.editor-view-hide-bubbles .memory-add-affordance .affordance-tip-text{display:none!important;}',
+      // body.editor-view-hide-bubbles rules moved to
+      // css/editor/editor-canvas-affordance.css so the cascade order matches
+      // the .affordance-expanded transition pipeline and the inline !important
+      // override no longer fights the new width/height transitions (#2806).
       '.editor-view-option-row input:disabled{opacity:0.35;cursor:not-allowed;}',
       '.editor-view-option-row input:disabled~span{opacity:0.35;}',
       '@media (max-width:768px){.editor-view-options-panel{right:auto;left:0;top:42px;width:210px;}}'
@@ -276,12 +278,12 @@
         flowSummaryEl.textContent = tText('editor_tree_status_empty', '아직 첫 순간을 기다리고 있어요.');
       } else {
         if (timeRange) {
-          flowSummaryEl.innerHTML = tText('sidebar_flow_summary_connected_with_range', '<strong>{title}</strong>에 담긴 <strong>{count}개의 순간</strong>이 <strong>{timeRange}</strong>에 걸쳐 이어졌어요.')
+          flowSummaryEl.innerHTML = tText('sidebar_flow_summary_connected_with_range', '{title}에 담긴 <strong>{count}개의 순간</strong>이 <strong>{timeRange}</strong>에 걸쳐 이어졌어요.')
             .replace('{title}', escapeHtml(titleText))
             .replace('{count}', String(count))
             .replace('{timeRange}', escapeHtml(timeRange));
         } else {
-          flowSummaryEl.innerHTML = tText('sidebar_flow_summary_connected', '<strong>{title}</strong>에 담긴 <strong>{count}개의 순간</strong>이 이어졌어요.')
+          flowSummaryEl.innerHTML = tText('sidebar_flow_summary_connected', '{title}에 담긴 <strong>{count}개의 순간</strong>이 이어졌어요.')
             .replace('{title}', escapeHtml(titleText))
             .replace('{count}', String(count));
         }

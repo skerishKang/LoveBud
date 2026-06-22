@@ -40,13 +40,13 @@
                 if (timeRange) {
                     flowSummaryEl.innerHTML = formatI18nText(
                         'sidebar_flow_summary_connected_with_range',
-                        '<strong>{title}</strong>에 담긴 <strong>{count}개의 순간</strong>이 <strong>{timeRange}</strong>에 걸쳐 이어졌어요.',
+                        '{title}에 담긴 <strong>{count}개의 순간</strong>이 <strong>{timeRange}</strong>에 걸쳐 이어졌어요.',
                         { title: safeTitle, count: String(count), timeRange: safeTimeRange }
                     );
                 } else {
                     flowSummaryEl.innerHTML = formatI18nText(
                         'sidebar_flow_summary_connected',
-                        '<strong>{title}</strong>에 담긴 <strong>{count}개의 순간</strong>이 이어졌어요.',
+                        '{title}에 담긴 <strong>{count}개의 순간</strong>이 이어졌어요.',
                         { title: safeTitle, count: String(count) }
                     );
                 }
