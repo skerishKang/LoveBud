@@ -8,28 +8,48 @@
             getTreeState
         } = deps;
 
+        const escapeHtml = (value) => {
+            const sec = window.LoveBudSecurity;
+            if (sec && typeof sec.escapeHtml === 'function') return sec.escapeHtml(value);
+            return String(value == null ? '' : value)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        };
+
         const updateFlowSummary = (treeState) => {
             const flowSummaryEl = document.getElementById('sidebarFlowSummary');
             if (!flowSummaryEl) return;
 
+            const currentTreeData = getCurrentTreeData() || {};
             const count = treeState.totalMomentCount || 0;
+            const timeRange = String(currentTreeData.timeRange || currentTreeData.time_range || '').trim();
 
             if (count === 0) {
                 flowSummaryEl.textContent = formatI18nText(
                     'editor_tree_status_empty',
                     '아직 첫 순간을 기다리고 있어요.'
                 );
-            } else if (count === 1) {
-                flowSummaryEl.textContent = formatI18nText(
-                    'sidebar_flow_summary_one_moment',
-                    '첫 순간이 심어진 러브트리예요.'
-                );
             } else {
-                flowSummaryEl.textContent = formatI18nText(
-                    'sidebar_flow_summary_connected',
-                    '{count}개의 순간이 이어진 러브트리예요.',
-                    { count: String(count) }
-                );
+                const titleText = String(currentTreeData.title || '').trim() || '러브트리';
+                const safeTitle = escapeHtml(titleText);
+                const safeTimeRange = escapeHtml(timeRange);
+
+                if (timeRange) {
+                    flowSummaryEl.innerHTML = formatI18nText(
+                        'sidebar_flow_summary_connected_with_range',
+                        '<strong>{title}</strong>에 담긴 <strong>{count}개의 순간</strong>이 <strong>{timeRange}</strong>에 걸쳐 이어졌어요.',
+                        { title: safeTitle, count: String(count), timeRange: safeTimeRange }
+                    );
+                } else {
+                    flowSummaryEl.innerHTML = formatI18nText(
+                        'sidebar_flow_summary_connected',
+                        '<strong>{title}</strong>에 담긴 <strong>{count}개의 순간</strong>이 이어졌어요.',
+                        { title: safeTitle, count: String(count) }
+                    );
+                }
             }
         };
 

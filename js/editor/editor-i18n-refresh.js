@@ -268,12 +268,23 @@
 
     var flowSummaryEl = document.getElementById('sidebarFlowSummary');
     if (flowSummaryEl) {
+      var currentTreeData = window.currentTreeData || {};
+      var timeRange = String(currentTreeData.timeRange || currentTreeData.time_range || '').trim();
+      var titleText = String(currentTreeData.title || '').trim() || '러브트리';
+
       if (!count) {
         flowSummaryEl.textContent = tText('editor_tree_status_empty', '아직 첫 순간을 기다리고 있어요.');
-      } else if (count === 1) {
-        flowSummaryEl.textContent = tText('sidebar_flow_summary_one_moment', '첫 순간이 심어진 러브트리예요.');
       } else {
-        flowSummaryEl.textContent = tText('sidebar_flow_summary_connected', '{count}개의 순간이 이어진 러브트리예요.').replace('{count}', String(count));
+        if (timeRange) {
+          flowSummaryEl.innerHTML = tText('sidebar_flow_summary_connected_with_range', '<strong>{title}</strong>에 담긴 <strong>{count}개의 순간</strong>이 <strong>{timeRange}</strong>에 걸쳐 이어졌어요.')
+            .replace('{title}', escapeHtml(titleText))
+            .replace('{count}', String(count))
+            .replace('{timeRange}', escapeHtml(timeRange));
+        } else {
+          flowSummaryEl.innerHTML = tText('sidebar_flow_summary_connected', '<strong>{title}</strong>에 담긴 <strong>{count}개의 순간</strong>이 이어졌어요.')
+            .replace('{title}', escapeHtml(titleText))
+            .replace('{count}', String(count));
+        }
       }
     }
   }

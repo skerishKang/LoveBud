@@ -215,6 +215,10 @@ const FILE_ALLOWLIST = {
     count: 4, classification: 'safe',
     reason: 'material-icon + i18n formatI18nText; 3 clear-container'
   },
+  'js/editor/editor-detail-sidebar-status-boundary.js': {
+    count: 2, classification: 'safe',
+    reason: 'flowSummaryEl.innerHTML uses i18n template with title/timeRange passed through escapeHtml before insertion; count is non-user numeric text'
+  },
   'js/editor/editor-detail-tree-meta.js': {
     count: 1, classification: 'safe',
     reason: 'clear-container: treeMetaMount.innerHTML = empty string'
@@ -228,8 +232,8 @@ const FILE_ALLOWLIST = {
     reason: 'canvas.innerHTML = buildCanvasFallback() — approved template with escapeHtml'
   },
   'js/editor/editor-i18n-refresh.js': {
-    count: 2, classification: 'safe',
-    reason: 'material-icon + i18n tText; panel array join of option HTML with safe text'
+    count: 4, classification: 'safe',
+    reason: 'material-icon + i18n tText; panel array join of option HTML with safe text; flowSummaryEl.innerHTML uses i18n template with title/timeRange passed through escapeHtml before insertion'
   },
   'js/editor/editor-rename-ui.js': {
     count: 1, classification: 'safe',
