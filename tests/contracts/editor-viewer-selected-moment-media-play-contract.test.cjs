@@ -50,6 +50,9 @@ function createMockElement(tagName = 'div') {
       if (sel === 'img') {
         return this.children.find(c => c.tagName === 'IMG') || { style: {} };
       }
+      if (sel === '.play-btn') {
+        return this.children.find(c => c.classList && c.classList.contains('play-btn')) || null;
+      }
       if (sel === '[data-editor-detail-player="1"]') {
         return this.children.find(c => c.dataset && c.dataset.editorDetailPlayer === '1') || null;
       }
@@ -225,14 +228,36 @@ test('Editor detail UI YouTube selected moment playback contract', () => {
 
   detailUI.updateDetailPanel(ytMoment);
 
-  // Check that the player is appended
-  const player = elements.mediaWrap.children.find(c => c.tagName === 'IFRAME');
-  assert.ok(player, 'YouTube moment should append iframe player');
+  // #2817 regression follow-up: editor must NOT auto-play YouTube on selection.
+  // After updateDetailPanel(ytMoment), there should be NO iframe yet — only the
+  // static thumbnail + play button. The iframe is built only when the user
+  // explicitly clicks the play button (handled inside bindDetailMediaPlayback).
+  let player = elements.mediaWrap.children.find(c => c.tagName === 'IFRAME');
+  assert.equal(player, undefined, 'Editor selection alone must NOT append iframe player (regression #2817)');
+  assert.equal(elements.img.style.display, '', 'Static thumbnail should remain visible until play action');
+  assert.equal(elements.overlay.hidden, false, 'Overlay should remain visible until play action');
+
+  // Simulate the explicit play action: the .play-btn inside mediaWrap is
+  // shown by bindDetailMediaPlayback() — invoking its onclick should build
+  // and append the iframe, and start/end params must be preserved.
+  const playBtn = createMockElement('button');
+  playBtn.classList.add('play-btn');
+  elements.mediaWrap.appendChild(playBtn);
+  // Re-render so bindDetailMediaPlayback wires the handler on the new play-btn.
+  detailUI.updateDetailPanel(ytMoment);
+  const playBtnAfter = elements.mediaWrap.querySelector('.play-btn') || playBtn;
+  assert.ok(playBtnAfter.onclick, 'Play button onclick must be bound after selection');
+  // Invoke the play action.
+  const evt = { preventDefault() {}, stopPropagation() {} };
+  playBtnAfter.onclick(evt);
+
+  player = elements.mediaWrap.children.find(c => c.tagName === 'IFRAME');
+  assert.ok(player, 'Editor play action must append iframe player');
   assert.equal(player.dataset.editorDetailPlayer, '1');
-  assert.ok(player.src.includes('start=83'), 'YouTube start param should be parsed');
-  assert.ok(player.src.includes('end=150'), 'YouTube end param should be parsed');
-  assert.equal(elements.img.style.display, 'none', 'Static thumbnail image should be hidden for YouTube player');
-  assert.equal(elements.overlay.hidden, true, 'Overlay should be hidden for YouTube player');
+  assert.ok(player.src.includes('start=83'), 'YouTube start param should be parsed (1:23 -> 83)');
+  assert.ok(player.src.includes('end=150'), 'YouTube end param should be parsed (2:30 -> 150)');
+  assert.equal(elements.img.style.display, 'none', 'Static thumbnail image should be hidden after play action');
+  assert.equal(elements.overlay.hidden, true, 'Overlay should be hidden after play action');
 
   // Test Moving to non-YouTube Moment
   const textMoment = {

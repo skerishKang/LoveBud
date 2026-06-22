@@ -484,47 +484,23 @@ function createEditorDetailUI(deps) {
 
         if (imgEl) {
             clearDetailPlayer(mediaWrap);
-            const rawUrl = getMemoryPlaybackUrl(data);
-            const videoId = getYouTubeVideoId(rawUrl);
-
-            if (videoId) {
-                const player = buildInlinePlayerElement(data);
-                if (player) {
-                    imgEl.style.display = 'none';
-                    const overlay = mediaWrap ? mediaWrap.querySelector('.memory-preview-overlay') : null;
-                    if (overlay) overlay.hidden = true;
-                    if (mediaWrap) {
-                        mediaWrap.style.display = '';
-                        mediaWrap.classList.add('is-playing');
-                        mediaWrap.appendChild(player);
-                    }
-                } else {
-                    const thumbnail = resolveMemoryThumbnail(data);
-                    if (thumbnail) {
-                        imgEl.src = thumbnail;
-                        imgEl.alt = data.title || '';
-                        imgEl.style.display = '';
-                        const overlay = mediaWrap ? mediaWrap.querySelector('.memory-preview-overlay') : null;
-                        if (overlay) overlay.hidden = false;
-                        if (mediaWrap) mediaWrap.style.display = '';
-                        bindDetailMediaPlayback(data, mediaWrap);
-                    } else {
-                        clearDetailMedia();
-                    }
-                }
+            // #2817 regression follow-up: editor must NOT auto-play YouTube
+            // when a moment is selected. Selection only renders the static
+            // thumbnail + play button; buildInlinePlayerElement() is reserved
+            // for the explicit play action inside bindDetailMediaPlayback().
+            // Viewer/read-only keeps the immediate-iframe behavior (see
+            // js/viewer/public-viewer-detail-ui.js).
+            const thumbnail = resolveMemoryThumbnail(data);
+            if (thumbnail) {
+                imgEl.src = thumbnail;
+                imgEl.alt = data.title || '';
+                imgEl.style.display = '';
+                const overlay = mediaWrap ? mediaWrap.querySelector('.memory-preview-overlay') : null;
+                if (overlay) overlay.hidden = false;
+                if (mediaWrap) mediaWrap.style.display = '';
+                bindDetailMediaPlayback(data, mediaWrap);
             } else {
-                const thumbnail = resolveMemoryThumbnail(data);
-                if (thumbnail) {
-                    imgEl.src = thumbnail;
-                    imgEl.alt = data.title || '';
-                    imgEl.style.display = '';
-                    const overlay = mediaWrap ? mediaWrap.querySelector('.memory-preview-overlay') : null;
-                    if (overlay) overlay.hidden = false;
-                    if (mediaWrap) mediaWrap.style.display = '';
-                    bindDetailMediaPlayback(data, mediaWrap);
-                } else {
-                    clearDetailMedia();
-                }
+                clearDetailMedia();
             }
         }
 
