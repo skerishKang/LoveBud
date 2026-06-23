@@ -45,9 +45,10 @@
     -webkit-box-orient: vertical;
 }
 
+/* 둘러보기 기준으로 padding 맞춤 (search-preview.css: padding: 2px 2px 0) */
 .my-trees-hub-panel .preview-focus-title-block {
     margin-bottom: 12px;
-    padding: 0;
+    padding: 2px 2px 0;
 }
 
 /* ── Hub meta badge ── */
