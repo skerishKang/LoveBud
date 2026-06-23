@@ -415,6 +415,8 @@ test('.editor-flow-summary strong overrides .editor-status-card strong (1.42rem)
   assert.ok(block.length > 0, '.editor-flow-summary strong rule must exist');
   assert.match(block, /font-size\s*:\s*13\.5px/,
     '.editor-flow-summary strong must be 13.5px — must NOT inherit 1.42rem from .editor-status-card strong');
+  assert.match(block, /display\s*:\s*inline/,
+    '.editor-flow-summary strong must be inline — parent .editor-status-card strong sets display:block which would break the summary sentence');
   assert.match(block, /font-weight\s*:\s*700/,
     'count / timeRange emphasis should be 700 weight');
   assert.doesNotMatch(block, /font-size\s*:\s*1\.\d+rem/,
