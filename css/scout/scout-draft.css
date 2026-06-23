@@ -101,6 +101,17 @@
     outline-offset: 2px;
 }
 
+/* Intro helper — concrete Scout value copy (link → moment → review → save) */
+.scout-draft-intro {
+    margin: 0;
+    padding: 14px 24px 16px;
+    font-size: 0.8125rem;
+    line-height: 1.55;
+    color: var(--color-brown-500);
+    background: rgba(249, 240, 232, 0.5);
+    border-bottom: 1px solid var(--scout-modal-border);
+}
+
 /* Form */
 .scout-draft-form {
     padding: 24px;
@@ -407,6 +418,11 @@
         padding: 16px 20px;
     }
 
+    .scout-draft-intro {
+        padding: 12px 20px 14px;
+        font-size: 0.78rem;
+    }
+
     .scout-draft-form {
         padding: 20px;
         gap: 16px;
@@ -438,6 +454,11 @@
 
     .scout-field label {
         color: var(--color-cream-100);
+    }
+
+    .scout-draft-intro {
+        color: var(--color-cream-200);
+        background: rgba(60, 45, 40, 0.55);
     }
 
     .scout-input,

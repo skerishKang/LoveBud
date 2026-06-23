@@ -24,8 +24,8 @@
             en: 'Paste a public link (http:// or https://)'
         },
         'scout_source_url_hint': {
-            ko: 'YouTube, 기사, 블로그 등 공개된 페이지 링크를 입력하세요.',
-            en: 'Enter a public page link (YouTube, article, blog, etc.).'
+            ko: 'YouTube 영상 등 공개 링크를 붙여넣으면 그 페이지를 바탕으로 순간 후보를 잡아드려요.',
+            en: 'Paste a public link like a YouTube video and Scout will draft a moment from it.'
         },
         'scout_excerpt_label': {
             ko: '발췌 / 요약',
@@ -136,18 +136,23 @@
             en: 'Save Moment with Scout'
         },
         'scout_trigger_tooltip': {
-            ko: '직접 링크와 메모로 순간을 저장합니다 (AI 없이)',
-            en: 'Save a moment manually with link and note (no AI)'
+            ko: '링크나 거친 기억을 붙여넣고, 제목·감정 메모·감정 태그를 제안 받아 검토 후 저장해요. AI 제안은 선택이며 직접 쓴 내용으로도 저장할 수 있어요.',
+            en: 'Paste a link or rough memory, get a suggested title, memo and tags, then review before saving. AI is optional — you can always write your own.'
+        },
+        // Intro helper shown at the top of the Scout modal
+        'scout_intro_help': {
+            ko: 'YouTube 링크나 떠오르는 기억을 붙여넣어 순간 후보를 만들어요. AI 제안으로 제목·감정 메모·감정 태그를 채우고, 저장 전에 직접 다듬어주세요.',
+            en: 'Paste a YouTube link or a rough memory to start a moment. Use AI to draft a title, memo and tags, then refine it yourself before saving.'
         },
 
         // Suggestion button & messages
         'scout_suggest_btn': {
-            ko: 'AI 제안 받기',
-            en: 'Get AI Suggestion'
+            ko: 'AI로 제목·감정 메모·감정 태그 제안 받기',
+            en: 'Suggest title, memo & tags with AI'
         },
         'scout_suggest_applied': {
-            ko: '제안이 적용되었습니다.',
-            en: 'Suggestion applied.'
+            ko: '제안을 채웠어요. 저장 전에 직접 검토하고 고쳐주세요.',
+            en: 'We filled in a suggestion. Review and edit before saving.'
         },
         'scout_suggest_unavailable': {
             ko: 'AI 제안을 불러오지 못했습니다. 직접 입력 후 저장할 수 있습니다.',
