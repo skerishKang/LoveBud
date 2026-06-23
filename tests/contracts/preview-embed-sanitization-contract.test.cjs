@@ -111,3 +111,33 @@ test('media-embed-patch.js toEmbedUrl returns empty for non-YouTube', () => {
         !norm.includes('returnraw+') && !norm.includes('returnraw.'),
         'toEmbedUrl must not pass through raw URLs');
 });
+
+test('media-embed-patch.js sets controls=0 (hide native YouTube controls)', () => {
+    const src = fs.readFileSync(
+        path.resolve(__dirname, '../../js/search/search-preview-media-embed-patch.js'), 'utf8');
+    assert.ok(
+        src.includes("controls', '0'"),
+        'toEmbedUrl must set controls=0 to hide native YouTube control bar');
+});
+
+test('media-embed-patch.js does NOT set controls=1', () => {
+    const src = fs.readFileSync(
+        path.resolve(__dirname, '../../js/search/search-preview-media-embed-patch.js'), 'utf8');
+    assert.ok(
+        !src.includes("controls', '1'"),
+        'toEmbedUrl must NOT set controls=1 (would show native YouTube control bar)');
+});
+
+test('media-embed-patch.js preserves YouTube-only embed and sanitizeUrl delegate', () => {
+    const src = fs.readFileSync(
+        path.resolve(__dirname, '../../js/search/search-preview-media-embed-patch.js'), 'utf8');
+    // YouTube-only: toEmbedUrl must use getYouTubeVideoId
+    assert.ok(src.includes('getYouTubeVideoId'), 'toEmbedUrl must use getYouTubeVideoId for YouTube-only filtering');
+    // sanitizeUrl delegate must still be present
+    assert.ok(src.includes('sanitizeUrl'), 'sanitizeUrl delegate must be preserved');
+    // autoplay=0, mute=0, rel=0, modestbranding=1 must be preserved
+    assert.ok(src.includes("autoplay', '0'"), 'autoplay=0 must be preserved');
+    assert.ok(src.includes("mute', '0'"), 'mute=0 must be preserved');
+    assert.ok(src.includes("rel', '0'"), 'rel=0 must be preserved');
+    assert.ok(src.includes("modestbranding', '1'"), 'modestbranding=1 must be preserved');
+});
