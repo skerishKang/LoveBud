@@ -596,15 +596,15 @@
         if (_dom.previewDesc) {
             _dom.previewDesc.hidden = false;
         }
-        if (_dom.previewHubSummarySlot) {
-            _dom.previewHubSummarySlot.innerHTML = '<p class="preview-empty-description">' + escapeHtml(placeholderDescription) + '</p>';
-        }
         var dynamicMeta = document.getElementById('previewHubDynamicMetadataSlot');
         if (dynamicMeta) dynamicMeta.innerHTML = '';
         if (_dom.previewHubFlowSlot) _dom.previewHubFlowSlot.innerHTML = '';
         if (_dom.previewHubSummarySlot) _dom.previewHubSummarySlot.innerHTML = '';
         if (_dom.previewHubActionsSlot) _dom.previewHubActionsSlot.innerHTML = '';
         if (_dom.previewHubSocialSlot) _dom.previewHubSocialSlot.innerHTML = '';
+        if (_dom.previewHubSummarySlot) {
+            _dom.previewHubSummarySlot.innerHTML = '<p class="preview-empty-description">' + escapeHtml(placeholderDescription) + '</p>';
+        }
         if (previewStats) {
             previewStats.hidden = true;
         }

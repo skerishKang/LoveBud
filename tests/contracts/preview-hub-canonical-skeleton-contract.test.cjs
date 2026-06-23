@@ -328,12 +328,16 @@ test('Browse resetPreview does not use previewDesc.innerHTML for placeholder', (
     assert.ok(match === null, 'resetPreview must not set previewDesc.innerHTML');
 });
 
-test('Browse resetPreview renders placeholder into previewHubSummarySlot', () => {
-    assert.match(
-        browseRendererJs,
-        /previewHubSummarySlot\.innerHTML\s*=\s*'<p class="preview-empty-description">/,
-        'resetPreview must render placeholder description into previewHubSummarySlot'
-    );
+test('Browse resetPreview renders placeholder into previewHubSummarySlot after clearing all slots', () => {
+    // resetPreview must first clear all canonical slots (including summary),
+    // then render the placeholder into summary slot last.
+    // Verify that summary clear precedes placeholder assignment.
+    const clearIdx = browseRendererJs.indexOf("previewHubSummarySlot.innerHTML = ''");
+    const placeholderIdx = browseRendererJs.indexOf("previewHubSummarySlot.innerHTML = '<p class=\"preview-empty-description\">");
+    assert.ok(clearIdx !== -1, 'resetPreview must clear previewHubSummarySlot');
+    assert.ok(placeholderIdx !== -1, 'resetPreview must render placeholder into previewHubSummarySlot');
+    assert.ok(placeholderIdx > clearIdx,
+        'placeholder assignment must come after summary clear in resetPreview');
 });
 
 // ── 11) Browse dynamic metadata host ───────────────────────────────────
