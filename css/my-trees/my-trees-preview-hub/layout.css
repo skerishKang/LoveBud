@@ -27,8 +27,6 @@
 /* Parity with .preview-panel-header in search/search-preview-sidebar/header.css:
    padding-bottom + border-bottom separator + margin-bottom spacing. */
 .my-trees-hub-header {
-    max-width: 320px;
-    margin-inline: auto;
     padding-bottom: 14px;
     border-bottom: 1px solid rgba(144, 73, 81, 0.08);
     margin-bottom: 10px;
