@@ -9,11 +9,13 @@ const hubFile = path.join(ROOT, 'js/my-trees/my-trees-preview-hub.js');
 const stateFile = path.join(ROOT, 'js/my-trees/my-trees-preview-state.js');
 const mediaFile = path.join(ROOT, 'js/my-trees/my-trees-preview-media.js');
 const helperFile = path.join(ROOT, 'js/search/search-preview-media-helper.js');
+const myTreesHtmlFile = path.join(ROOT, 'pages/my-trees.html');
 
 const hubSource = fs.readFileSync(hubFile, 'utf8');
 const stateSource = fs.readFileSync(stateFile, 'utf8');
 const mediaSource = fs.readFileSync(mediaFile, 'utf8');
 const helperSource = fs.readFileSync(helperFile, 'utf8');
+const myTreesHtml = fs.readFileSync(myTreesHtmlFile, 'utf8');
 
 test('my-trees-preview-hub click handler re-renders media via LoveBudMyTreesPreviewMedia.renderMediaForMoment (#2825)', () => {
   assert.match(
@@ -142,5 +144,40 @@ test('my-trees-preview-state rebinds stage handlers after hydrated flowList.inne
     stateSource,
     /flowList\.innerHTML[\s\S]{0,20}?rebindFlowStages/,
     'rebindFlowStages must be called AFTER flowList.innerHTML assignment, not before or inline — the new DOM must exist before event binding'
+  );
+});
+
+test('my-trees-preview-state rebind uses clean typeof-based guard pattern (#2835)', () => {
+  assert.match(
+    stateSource,
+    /typeof\s+previewHub\.rebindFlowStages\s*===\s*['"]function['"]/,
+    'rebind call must guard with typeof previewHub.rebindFlowStages === "function" instead of double global lookup'
+  );
+});
+
+test('pages/my-trees.html hub and state scripts carry the same new cache-bust token (#2835)', () => {
+  const hubMatch = myTreesHtml.match(/src="\.\.\/js\/my-trees\/my-trees-preview-hub\.js\?v=([^"'\s>]+)"/);
+  const stateMatch = myTreesHtml.match(/src="\.\.\/js\/my-trees\/my-trees-preview-state\.js\?v=([^"'\s>]+)"/);
+  assert.ok(hubMatch, 'my-trees-preview-hub.js must have a cache-bust query');
+  assert.ok(stateMatch, 'my-trees-preview-state.js must have a cache-bust query');
+  assert.ok(hubMatch[1] && hubMatch[1].length > 0, 'hub cache-bust token must be non-empty');
+  assert.ok(stateMatch[1] && stateMatch[1].length > 0, 'state cache-bust token must be non-empty');
+  assert.equal(
+    hubMatch[1],
+    stateMatch[1],
+    'hub and state scripts must share the same cache-bust token'
+  );
+});
+
+test('pages/my-trees.html no longer pins old hub token #2829 or old state token step9 (#2835)', () => {
+  assert.doesNotMatch(
+    myTreesHtml,
+    /my-trees-preview-state\.js\?v=20260622-step9-1/,
+    'state script must not still pin the pre-#2835 cache-bust 20260622-step9-1'
+  );
+  assert.doesNotMatch(
+    myTreesHtml,
+    /my-trees-preview-hub\.js\?v=20260623-2825-1/,
+    'hub script must not still pin the #2829 cache-bust 20260623-2825-1'
   );
 });

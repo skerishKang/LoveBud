@@ -287,9 +287,13 @@
       if (flowSection) flowSection.hidden = false;
       if (flowList) {
         flowList.innerHTML = buildHydratedFlowStages(memories);
-        (window.LoveBudMyTreesPreviewHub || window.LoveTreeMyTreesPreviewHub || 0)
-          .rebindFlowStages && (window.LoveBudMyTreesPreviewHub || window.LoveTreeMyTreesPreviewHub)
-            .rebindFlowStages(tree);
+        var previewHub =
+          window.LoveBudMyTreesPreviewHub ||
+          window.LoveTreeMyTreesPreviewHub;
+
+        if (previewHub && typeof previewHub.rebindFlowStages === 'function') {
+          previewHub.rebindFlowStages(tree);
+        }
       }
       if (flowControls) {
         var hiddenCount = Math.max(0, memories.length - 4);
