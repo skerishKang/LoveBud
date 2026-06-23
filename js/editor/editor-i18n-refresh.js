@@ -263,16 +263,6 @@
     if (title) title.textContent = tText('editor_view_options_title', '캔버스 표시');
   }
 
-  function escapeHtml(value) {
-    if (value == null) return '';
-    return String(value)
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#39;');
-  }
-
   function updateEditorDynamicSummary() {
     var memories = Array.isArray(window.currentTreeMemories) ? window.currentTreeMemories : [];
     var rootId = getCanonicalRootId(memories);
@@ -288,12 +278,12 @@
         flowSummaryEl.textContent = tText('editor_tree_status_empty', '아직 첫 순간을 기다리고 있어요.');
       } else {
         if (timeRange) {
-          flowSummaryEl.innerHTML = tText('sidebar_flow_summary_connected_with_range', '<p class="preview-summary-line"><strong>{title}</strong>에 담긴 <strong>{count}개의 순간</strong>이 <strong>{timeRange}</strong>에 걸쳐 이어졌어요.</p>')
+          flowSummaryEl.innerHTML = tText('sidebar_flow_summary_connected_with_range', '<span class="preview-summary-line"><strong>{title}</strong>에 담긴 <strong>{count}개의 순간</strong>이 <strong>{timeRange}</strong>에 걸쳐 이어졌어요.</span>')
             .replace('{title}', escapeHtml(titleText))
             .replace('{count}', String(count))
             .replace('{timeRange}', escapeHtml(timeRange));
         } else {
-          flowSummaryEl.innerHTML = tText('sidebar_flow_summary_connected', '<p class="preview-summary-line"><strong>{title}</strong>에 담긴 <strong>{count}개의 순간</strong>이 이어졌어요.</p>')
+          flowSummaryEl.innerHTML = tText('sidebar_flow_summary_connected', '<span class="preview-summary-line"><strong>{title}</strong>에 담긴 <strong>{count}개의 순간</strong>이 이어졌어요.</span>')
             .replace('{title}', escapeHtml(titleText))
             .replace('{count}', String(count));
         }
