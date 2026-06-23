@@ -25,7 +25,7 @@ test('my-trees-preview-hub css — manifest contains expected imports', () => {
     ];
 
     for (const file of expectedImports) {
-        assert.match(content, new RegExp(`@import url\\(['"]${file}['"]\\);`), `Manifest must import ${file}`);
+        assert.match(content, new RegExp(`@import url\\(['"]${file}(?:\\?[^'"]*)?['"]\\);`), `Manifest must import ${file}`);
     }
 });
 
