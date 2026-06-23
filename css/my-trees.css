@@ -14,15 +14,21 @@
 @import url('./my-trees/my-trees-mobile-controls-balance.css?v=20260622-mytrees-controls-1');
 
 
-/* Owner hub keeps its empty/loaded shell compact; actual selected media opts back in. */
+/* Owner hub: hide video container by default in loaded state;
+   show whenever a media state class is present (thumbnail OR media),
+   matching the same pattern Browse uses via preview-state-* classes.
+   Removed the has-media gate — JS sets preview-state-thumbnail, not has-media. */
 #myTreesHubPanel.is-loaded #myTreesHubVideoContainer {
   display: none;
 }
 
+#myTreesHubPanel.is-loaded.preview-state-thumbnail #myTreesHubVideoContainer,
+#myTreesHubPanel.is-loaded.preview-state-media #myTreesHubVideoContainer,
 #myTreesHubPanel.is-loaded.has-media #myTreesHubVideoContainer {
   display: block;
 }
 
-.preview-sidebar.preview-state-thumbnail #myTreesHubVideoContainer {
+.preview-sidebar.preview-state-thumbnail #myTreesHubVideoContainer,
+.preview-sidebar.preview-state-media #myTreesHubVideoContainer {
   display: block;
 }
