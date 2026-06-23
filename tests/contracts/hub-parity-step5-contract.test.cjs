@@ -185,8 +185,8 @@ test('My Trees hub renders .preview-social-shell (owner passive) BELOW action bu
         /<div class="preview-social-bar"/,
         'My Trees hub renderer must emit a .preview-social-bar div in the template'
     );
-    const usesSocialSlotAppend = /socialSlot\.appendChild\(\s*shell\s*\)/.test(myTreesHubJs);
-    const usesActionsAfterFallback = /els\.actions\.after\(\s*shell\s*\)/.test(myTreesHubJs);
+    const usesSocialSlotAppend = /socialSlot\.appendChild\(\s*(createMyTreesSocialShell\(\)|shell)\s*\)/.test(myTreesHubJs);
+    const usesActionsAfterFallback = /els\.actions\.after\(\s*(createMyTreesSocialShell\(\)|shell)\s*\)/.test(myTreesHubJs);
     assert.ok(
         usesSocialSlotAppend || usesActionsAfterFallback,
         'My Trees social shell must be inserted via socialSlot.appendChild or els.actions.after (actions.after is the fallback when socialSlot absent)'

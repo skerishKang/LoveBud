@@ -277,6 +277,32 @@
         _expandedFlowKey = null;
     }
 
+    function createMyTreesSocialShell() {
+        var shell = document.createElement('div');
+        shell.className = 'preview-social-shell';
+        shell.setAttribute('data-my-trees-social-shell', '');
+        shell.innerHTML = [
+            '<div class="preview-social-bar" aria-label="트리 반응">',
+            '<div class="preview-social-action preview-social-stat" aria-label="조회수" role="status">',
+              '<span class="material-symbols-outlined" aria-hidden="true">visibility</span>',
+              '<strong data-my-trees-social-views>0</strong>',
+              '<span>조회수</span>',
+            '</div>',
+            '<div class="preview-social-action preview-social-stat" aria-label="좋아요" role="status">',
+              '<span class="material-symbols-outlined" aria-hidden="true">favorite</span>',
+              '<strong data-my-trees-social-likes>0</strong>',
+              '<span>좋아요</span>',
+            '</div>',
+            '<div class="preview-social-action preview-social-stat" aria-label="댓글" role="status">',
+              '<span class="material-symbols-outlined" aria-hidden="true">comment</span>',
+              '<strong data-my-trees-social-comments>0</strong>',
+              '<span>댓글</span>',
+            '</div>',
+            '</div>'
+        ].join('');
+        return shell;
+    }
+
     function showContent(tree) {
         var els = getEls();
         if (!els) return;
@@ -470,55 +496,11 @@
         var socialSlot = els.socialSlot;
         if (socialSlot) {
             if (!socialSlot.querySelector('[data-my-trees-social-shell]')) {
-                var shell = document.createElement('div');
-                shell.className = 'preview-social-shell';
-                shell.setAttribute('data-my-trees-social-shell', '');
-                shell.innerHTML = [
-                    '<div class="preview-social-bar" aria-label="트리 반응">',
-                    '<div class="preview-social-action preview-social-stat" aria-label="조회수" role="status">',
-                      '<span class="material-symbols-outlined" aria-hidden="true">visibility</span>',
-                      '<strong data-my-trees-social-views>0</strong>',
-                      '<span>조회수</span>',
-                    '</div>',
-                    '<div class="preview-social-action preview-social-stat" aria-label="좋아요" role="status">',
-                      '<span class="material-symbols-outlined" aria-hidden="true">favorite</span>',
-                      '<strong data-my-trees-social-likes>0</strong>',
-                      '<span>좋아요</span>',
-                    '</div>',
-                    '<div class="preview-social-action preview-social-stat" aria-label="댓글" role="status">',
-                      '<span class="material-symbols-outlined" aria-hidden="true">comment</span>',
-                      '<strong data-my-trees-social-comments>0</strong>',
-                      '<span>댓글</span>',
-                    '</div>',
-                    '</div>'
-                ].join('');
-                socialSlot.appendChild(shell);
+                socialSlot.appendChild(createMyTreesSocialShell());
             }
         } else {
             if (!document.querySelector('[data-my-trees-social-shell]') && els.actions) {
-                var shell = document.createElement('div');
-                shell.className = 'preview-social-shell';
-                shell.setAttribute('data-my-trees-social-shell', '');
-                shell.innerHTML = [
-                    '<div class="preview-social-bar" aria-label="트리 반응">',
-                    '<div class="preview-social-action preview-social-stat" aria-label="조회수" role="status">',
-                      '<span class="material-symbols-outlined" aria-hidden="true">visibility</span>',
-                      '<strong data-my-trees-social-views>0</strong>',
-                      '<span>조회수</span>',
-                    '</div>',
-                    '<div class="preview-social-action preview-social-stat" aria-label="좋아요" role="status">',
-                      '<span class="material-symbols-outlined" aria-hidden="true">favorite</span>',
-                      '<strong data-my-trees-social-likes>0</strong>',
-                      '<span>좋아요</span>',
-                    '</div>',
-                    '<div class="preview-social-action preview-social-stat" aria-label="댓글" role="status">',
-                      '<span class="material-symbols-outlined" aria-hidden="true">comment</span>',
-                      '<strong data-my-trees-social-comments>0</strong>',
-                      '<span>댓글</span>',
-                    '</div>',
-                    '</div>'
-                ].join('');
-                els.actions.after(shell);
+                els.actions.after(createMyTreesSocialShell());
             }
         }
 

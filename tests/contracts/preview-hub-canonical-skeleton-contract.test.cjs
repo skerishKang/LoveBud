@@ -382,8 +382,8 @@ test('My Trees social shell uses socialSlot.appendChild when socialSlot exists',
         path.join(ROOT, 'js/my-trees/my-trees-preview-hub.js'), 'utf8');
     // The primary path must be socialSlot.appendChild(shell) — this is the canonical branch.
     // The fallback els.actions.after(shell) must be in the else branch.
-    const socialSlotPrimary = /if\s*\(\s*socialSlot\s*\)\s*\{[\s\S]*?socialSlot\.appendChild\s*\(shell\)/.test(myTreesHubJs);
-    const fallbackActionsAfter = /else\s*\{[\s\S]*?els\.actions\.after\s*\(shell\)/.test(myTreesHubJs);
+    const socialSlotPrimary = /if\s*\(\s*socialSlot\s*\)\s*\{[\s\S]*?socialSlot\.appendChild\s*\((?:createMyTreesSocialShell\(\)|shell)\)/.test(myTreesHubJs);
+    const fallbackActionsAfter = /else\s*\{[\s\S]*?els\.actions\.after\s*\((?:createMyTreesSocialShell\(\)|shell)\)/.test(myTreesHubJs);
     assert.ok(socialSlotPrimary, 'canonical DOM: social shell must use socialSlot.appendChild');
     assert.ok(fallbackActionsAfter, 'legacy fallback: else branch must use els.actions.after');
 });
