@@ -50,7 +50,7 @@ test('My Trees aside has .preview-hub class', () => {
 test('Shared scroll CSS is imported by search.css', () => {
     assert.match(
         searchCss,
-        /@import url\(['"]\.\.\/shared\/preview-hub-scroll\.css['"]\)/,
+        /@import url\(['"](?:\.\.\/shared\/|\.\/shared\/)preview-hub-scroll\.css['"]\)/,
         'search.css must import shared preview-hub-scroll.css'
     );
 });
