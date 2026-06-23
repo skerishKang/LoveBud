@@ -186,16 +186,16 @@ const FILE_ALLOWLIST = {
     reason: 'CardRenderer.* and state.growingTrees use approved template renderers with escapeHtml; clear-container'
   },
   'js/search/search-preview-renderer.js': {
-    count: 14, classification: 'safe',
-    reason: 'escapeHtml/sanitizeUrl used for all user content (safeTreeTitle, safeSourceUrl, etc.); renderEmotionTags, renderPlaceholder, renderPreviewIframe approved helpers'
+    count: 27, classification: 'safe',
+    reason: 'escapeHtml for user content (safeTreeTitle, safeSourceUrl, placeholderDescription, emotionTags); sanitizeUrl for iframe src; canonical slot flow/summary/actions renderers use approved template literals with escaped values; clear-container assignments for slot reset and loading state; approved helpers renderPlaceholder, renderPreviewIframe, renderEmotionTags'
   },
   'js/search/search-preview-playable-hub-patch.js': {
-    count: 4, classification: 'safe',
-    reason: 'escapeHtml for title in summary lines; renderIframe/renderSocialBar approved for URLs with sanitizeUrl'
+    count: 5, classification: 'safe',
+    reason: 'escapeHtml for title in summary lines; renderIframe uses sanitizeUrl for embed URL; renderSocialBar approved static template with escapeHtml counts; canonical socialSlot.innerHTML replaces previewDesc.insertAdjacentHTML fallback'
   },
   'js/search/search-preview-hub-dom-patch.js': {
-    count: 2, classification: 'safe',
-    reason: 'summaryText is escaped with escapeHtml before preview-summary-line innerHTML reinsertion; renderSocialShell is static template markup.'
+    count: 3, classification: 'safe',
+    reason: 'summaryText escaped with escapeHtml before preview-summary-line innerHTML; renderSocialShell static template markup; canonical socialSlot.innerHTML insertion replaces legacy desc.insertAdjacentHTML fallback'
   },
   'js/search/search-preview-state.js': {
     count: 1, classification: 'safe',
