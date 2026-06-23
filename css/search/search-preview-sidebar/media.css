@@ -9,6 +9,7 @@
     box-shadow: none;
 }
 
+/* mirror my-trees content.css: fill all nested wrappers and iframe with 100% */
 .video-container iframe,
 .video-container video,
 .video-container img {
@@ -18,25 +19,14 @@
     display: block;
 }
 
-/* nested wrapper inside video-container (e.g. preview-media-frame-iframe) */
-.video-container .preview-media-frame,
-.video-container .preview-media-frame-iframe,
-.video-container [class*="media-frame"] {
+.video-container .preview-media-frame {
     width: 100%;
     height: 100%;
-    position: absolute;
-    inset: 0;
-    overflow: hidden;
 }
 
-.video-container .preview-media-frame iframe,
-.video-container .preview-media-frame-iframe iframe,
-.video-container [class*="media-frame"] iframe {
+.video-container .preview-media-frame-iframe iframe {
     width: 100%;
-    height: 115%;
-    margin-top: -7.5%;
-    display: block;
-    border: none;
+    height: 100%;
 }
 
 .video-container {
@@ -47,6 +37,11 @@
     box-shadow: 0 16px 38px rgba(75, 64, 57, 0.10);
 }
 
+/* remove decorative ::before overlay that was showing as black area */
+.video-container::before {
+    content: none;
+}
+
 .video-container.preview-state-empty,
 .video-container.preview-state-loading,
 .video-container.preview-state-no-moments {
@@ -55,6 +50,29 @@
         linear-gradient(135deg, rgba(144, 73, 81, 0.08), rgba(122, 139, 110, 0.09));
     border-color: rgba(144, 73, 81, 0.08);
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.78);
+}
+
+.video-container.preview-state-empty::before,
+.video-container.preview-state-loading::before,
+.video-container.preview-state-no-moments::before {
+    content: '';
+    position: absolute;
+    left: 18px;
+    top: 15px;
+    width: 76px;
+    height: 50px;
+    border-radius: 999px;
+    background:
+        radial-gradient(circle at 70% 25%, rgba(144, 73, 81, 0.70) 0 5px, transparent 6px),
+        radial-gradient(circle at 36% 48%, rgba(122, 139, 110, 0.62) 0 5px, transparent 6px),
+        radial-gradient(circle at 50% 28%, rgba(200, 116, 128, 0.56) 0 4px, transparent 5px),
+        linear-gradient(32deg, transparent 39%, rgba(144, 73, 81, 0.48) 40% 44%, transparent 45%),
+        linear-gradient(150deg, transparent 43%, rgba(122, 139, 110, 0.36) 44% 48%, transparent 49%),
+        rgba(255, 255, 255, 0.82);
+    border: 1px solid rgba(144, 73, 81, 0.14);
+    box-shadow: 0 12px 24px rgba(50, 38, 35, 0.14);
+    pointer-events: none;
+    z-index: 2;
 }
 
 .video-container.preview-state-loading::before {
@@ -76,25 +94,4 @@
 
 .preview-media-fallback {
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
-}
-
-.video-container::before {
-    content: '';
-    position: absolute;
-    left: 18px;
-    top: 15px;
-    width: 76px;
-    height: 50px;
-    border-radius: 999px;
-    background:
-        radial-gradient(circle at 70% 25%, rgba(144, 73, 81, 0.70) 0 5px, transparent 6px),
-        radial-gradient(circle at 36% 48%, rgba(122, 139, 110, 0.62) 0 5px, transparent 6px),
-        radial-gradient(circle at 50% 28%, rgba(200, 116, 128, 0.56) 0 4px, transparent 5px),
-        linear-gradient(32deg, transparent 39%, rgba(144, 73, 81, 0.48) 40% 44%, transparent 45%),
-        linear-gradient(150deg, transparent 43%, rgba(122, 139, 110, 0.36) 44% 48%, transparent 49%),
-        rgba(255, 255, 255, 0.82);
-    border: 1px solid rgba(144, 73, 81, 0.14);
-    box-shadow: 0 12px 24px rgba(50, 38, 35, 0.14);
-    pointer-events: none;
-    z-index: 2;
 }
