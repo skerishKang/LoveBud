@@ -34,8 +34,8 @@
 
 .my-trees-hub-tree-title {
     font-family: var(--font-heading);
-    font-size: 1.34rem;
-    font-weight: 900;
+    font-size: 1.18rem;
+    font-weight: 800;
     color: var(--on-surface);
     line-height: 1.18;
     overflow-wrap: anywhere;
@@ -47,7 +47,7 @@
 
 .my-trees-hub-panel .preview-focus-title-block {
     margin-bottom: 12px;
-    padding: 2px 2px 0;
+    padding: 0;
 }
 
 /* ── Hub meta badge ── */
