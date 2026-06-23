@@ -43,14 +43,8 @@ export function renderAffordancesForMemory(mem, deps) {
         });
     }
 
-    if (branchPorts) {
-        if (typeof branchPorts.renderPortsForNode === 'function') {
-            branchPorts.renderPortsForNode(mem);
-        }
-        if (typeof branchPorts.showPortsForMemory === 'function') {
-            branchPorts.showPortsForMemory(mem);
-        }
-    }
+    // Branch ports are deferred until an explicit connection-editing workflow exists.
+    // The growth affordance remains the single primary add-moment CTA.
 }
 
 /**
