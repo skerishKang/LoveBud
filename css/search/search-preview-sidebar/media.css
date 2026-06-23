@@ -78,7 +78,8 @@
     z-index: 2;
 }
 
-/* 미디어 로드 시 ::before 장식 제거 (내 러브트리와 동일) */
-#previewVideoContainer::before {
+/* 미디어 로드 시 ::before 장식 제거 — 둘러보기 + 내 러브트리 공통 */
+#previewVideoContainer::before,
+#myTreesHubVideoContainer::before {
     content: none;
 }
