@@ -33,6 +33,7 @@
 /* ── Hub tree title ── */
 
 .my-trees-hub-tree-title {
+    font-family: var(--font-heading);
     font-size: 1.34rem;
     font-weight: 900;
     color: var(--on-surface);
@@ -136,10 +137,10 @@
 /* ── Hub summary line ── */
 
 .my-trees-hub-summary {
-    font-size: 13.5px;
+    font-size: 14px;
     color: var(--on-surface-variant);
-    line-height: 1.55;
-    padding: 0;
+    line-height: 1.6;
+    padding: 0 4px;
     margin-top: 12px;
 }
 

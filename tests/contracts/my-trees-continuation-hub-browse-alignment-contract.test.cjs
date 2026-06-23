@@ -113,6 +113,71 @@ test('My Trees hub keeps its multi-line hero original styling and hierarchy', ()
   assert.match(header, /\.my-trees-title-line:nth-child\(3\)\s*\{\s*color:\s*#b85c66;\s*font-weight:\s*900;\s*\}/);
 });
 
+test('My Trees hub tree title uses Browse-parity heading font', () => {
+  const content = read('css/my-trees/my-trees-preview-hub/content.css');
+  assert.match(
+    content,
+    /\.my-trees-hub-tree-title\s*\{[^}]*font-family:\s*var\(--font-heading\);[^}]*\}/,
+    '.my-trees-hub-tree-title must use var(--font-heading) to match Browse'
+  );
+  // font-size, font-weight, line-height must remain unchanged
+  assert.match(content, /\.my-trees-hub-tree-title\s*\{[^}]*font-size:\s*1\.34rem;[^}]*\}/);
+  assert.match(content, /\.my-trees-hub-tree-title\s*\{[^}]*font-weight:\s*900;[^}]*\}/);
+  assert.match(content, /\.my-trees-hub-tree-title\s*\{[^}]*line-height:\s*1\.18;[^}]*\}/);
+});
+
+test('My Trees hub summary uses Browse-parity typography', () => {
+  const content = read('css/my-trees/my-trees-preview-hub/content.css');
+  assert.match(
+    content,
+    /\.my-trees-hub-summary\s*\{[^}]*font-size:\s*14px;[^}]*\}/,
+    '.my-trees-hub-summary font-size must be 14px matching Browse'
+  );
+  assert.match(
+    content,
+    /\.my-trees-hub-summary\s*\{[^}]*line-height:\s*1\.6;[^}]*\}/,
+    '.my-trees-hub-summary line-height must be 1.6 matching Browse'
+  );
+  assert.match(
+    content,
+    /\.my-trees-hub-summary\s*\{[^}]*padding:\s*0\s+4px;[^}]*\}/,
+    '.my-trees-hub-summary padding must be 0 4px matching Browse'
+  );
+  // margin-top: 12px must be preserved
+  assert.match(content, /\.my-trees-hub-summary\s*\{[^}]*margin-top:\s*12px;[^}]*\}/);
+});
+
+test('My Trees hub actions use Browse-parity heading font and share/visibility font-size', () => {
+  const actions = read('css/my-trees/my-trees-preview-hub/actions.css');
+
+  // All four action types must share font-family: var(--font-heading)
+  assert.match(
+    actions,
+    /\.my-trees-hub-open-btn,\s*\.my-trees-hub-edit-btn,\s*\.my-trees-hub-share-btn,\s*\.my-trees-hub-visibility-btn\s*\{[^}]*font-family:\s*var\(--font-heading\);[^}]*\}/s,
+    'all hub action buttons must use var(--font-heading)'
+  );
+
+  // share/visibility tertiary font-size must be 13px
+  assert.match(
+    actions,
+    /\.my-trees-hub-share-btn,\s*\.my-trees-hub-visibility-btn\s*\{[^}]*font-size:\s*13px;[^}]*\}/s,
+    '.my-trees-hub-share-btn and .my-trees-hub-visibility-btn font-size must be 13px matching Browse'
+  );
+
+  // Owner action ids must be preserved
+  const html = read('pages/my-trees.html');
+  assert.match(html, /id=["']myTreesHubOpenBtn["']/, 'myTreesHubOpenBtn must exist');
+  assert.match(html, /id=["']myTreesHubEditBtn["']/, 'myTreesHubEditBtn must exist');
+  assert.match(html, /id=["']myTreesHubShareBtn["']/, 'myTreesHubShareBtn must exist');
+
+  // Action gap and social shell spacing must remain unchanged
+  assert.match(actions, /\.my-trees-hub-actions\s*\{[^}]*gap:\s*10px;[^}]*\}/, 'action gap must remain 10px');
+  assert.match(actions, /\.my-trees-hub-actions\s*\{[^}]*margin-top:\s*18px;[^}]*\}/, 'actions margin-top must remain 18px');
+  const content = read('css/my-trees/my-trees-preview-hub/social-bar.css');
+  assert.match(content, /margin-top:\s*1rem;/, 'social shell margin-top must remain unchanged');
+  assert.match(content, /padding-top:\s*0\.95rem;/, 'social shell padding-top must remain unchanged');
+});
+
 test('My Trees hub HTML structure hierarchy follows Browse parity', () => {
   const html = read('pages/my-trees.html');
 
