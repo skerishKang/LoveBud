@@ -80,3 +80,11 @@
         padding: 9px;
     }
 }
+
+#editVideoSegmentGrid {
+    margin-top: 12px;
+}
+
+#editVideoSegmentGrid.is-hidden {
+    display: none;
+}

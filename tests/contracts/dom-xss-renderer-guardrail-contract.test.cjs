@@ -160,8 +160,8 @@ const FILE_ALLOWLIST = {
     reason: 'buildFlowStages template uses escapeHtml; material-icon badges with escapeHtml for count; i18n safeText; clear-container; static toggle buttons; view and edit action buttons; owner-passive social-shell template (Step 5 follow-up) is static markup with escapeHtml-bound counts'
   },
   'js/my-trees/my-trees-preview-state.js': {
-    count: 4, classification: 'safe',
-    reason: 'Created moment preview hydration uses escapeHtml for hydrated memory labels, hidden count text, and tree title/count empty-state markup; Step 5 follow-up swaps the legacy static toggle <span> for an interactive <button data-my-trees-flow-toggle> (still escapeHtml-safe)'
+    count: 3, classification: 'safe',
+    reason: 'Created moment preview hydration uses escapeHtml for hydrated memory labels and tree title/count empty-state markup; Step 5 follow-up uses DOM APIs for the interactive <button data-my-trees-flow-toggle> and replaceChildren() for clear-container paths'
   },
   'js/my-trees/my-trees-ui.js': {
     count: 3, classification: 'safe',
@@ -186,16 +186,16 @@ const FILE_ALLOWLIST = {
     reason: 'CardRenderer.* and state.growingTrees use approved template renderers with escapeHtml; clear-container'
   },
   'js/search/search-preview-renderer.js': {
-    count: 14, classification: 'safe',
-    reason: 'escapeHtml/sanitizeUrl used for all user content (safeTreeTitle, safeSourceUrl, etc.); renderEmotionTags, renderPlaceholder, renderPreviewIframe approved helpers'
+    count: 27, classification: 'safe',
+    reason: 'escapeHtml for user content (safeTreeTitle, safeSourceUrl, placeholderDescription, emotionTags); sanitizeUrl for iframe src; canonical slot flow/summary/actions renderers use approved template literals with escaped values; clear-container assignments for slot reset and loading state; approved helpers renderPlaceholder, renderPreviewIframe, renderEmotionTags'
   },
   'js/search/search-preview-playable-hub-patch.js': {
-    count: 4, classification: 'safe',
-    reason: 'escapeHtml for title in summary lines; renderIframe/renderSocialBar approved for URLs with sanitizeUrl'
+    count: 5, classification: 'safe',
+    reason: 'escapeHtml for title in summary lines; renderIframe uses sanitizeUrl for embed URL; renderSocialBar approved static template with escapeHtml counts; canonical socialSlot.innerHTML replaces previewDesc.insertAdjacentHTML fallback'
   },
   'js/search/search-preview-hub-dom-patch.js': {
-    count: 2, classification: 'safe',
-    reason: 'summaryText is escaped with escapeHtml before preview-summary-line innerHTML reinsertion; renderSocialShell is static template markup.'
+    count: 3, classification: 'safe',
+    reason: 'summaryText escaped with escapeHtml before preview-summary-line innerHTML; renderSocialShell static template markup; canonical socialSlot.innerHTML insertion replaces legacy desc.insertAdjacentHTML fallback'
   },
   'js/search/search-preview-state.js': {
     count: 1, classification: 'safe',
@@ -215,6 +215,10 @@ const FILE_ALLOWLIST = {
     count: 4, classification: 'safe',
     reason: 'material-icon + i18n formatI18nText; 3 clear-container'
   },
+  'js/editor/editor-detail-sidebar-status-boundary.js': {
+    count: 2, classification: 'safe',
+    reason: 'flowSummaryEl.innerHTML uses i18n template with title/timeRange passed through escapeHtml before insertion; count is non-user numeric text'
+  },
   'js/editor/editor-detail-tree-meta.js': {
     count: 1, classification: 'safe',
     reason: 'clear-container: treeMetaMount.innerHTML = empty string'
@@ -228,16 +232,16 @@ const FILE_ALLOWLIST = {
     reason: 'canvas.innerHTML = buildCanvasFallback() — approved template with escapeHtml'
   },
   'js/editor/editor-i18n-refresh.js': {
-    count: 2, classification: 'safe',
-    reason: 'material-icon + i18n tText; panel array join of option HTML with safe text'
+    count: 4, classification: 'safe',
+    reason: 'material-icon + i18n tText; panel array join of option HTML with safe text; flowSummaryEl.innerHTML uses i18n template with title/timeRange passed through escapeHtml before insertion'
   },
   'js/editor/editor-rename-ui.js': {
     count: 1, classification: 'safe',
     reason: 'In-app rename modal uses static modal HTML only; current title is assigned to input.value, not innerHTML'
   },
   'js/editor/editor-memory-actions.js': {
-    count: 1, classification: 'safe',
-    reason: 'field.innerHTML — template literal with escapeHtml for user content'
+    count: 2, classification: 'safe',
+    reason: 'field.innerHTML and grid.innerHTML — template literal with escapeHtml for user content or static HTML only'
   },
   'js/editor/editor-page-helpers.js': {
     count: 1, classification: 'safe',

@@ -1,4 +1,5 @@
-/* Issue #1053/#1058/#1489/#1490: playable Browse hub media, flow moment switching, and final hub action layout. */
+/* Issue #1053/#1058/#1489/#1490: playable Browse hub media, flow moment switching, and final hub action layout.
+   둘러보기는 helper.renderPreviewIframe()를 통해 내 러브트리와 동일한 오버레이 패턴을 코울 */
 (function() {
     'use strict';
 
@@ -26,20 +27,6 @@
             return '';
         }
         return '';
-    }
-
-    function toEmbedUrl(value) {
-        var raw = String(value || '').trim();
-        if (!raw) return '';
-        var videoId = getYouTubeVideoId(raw);
-        if (!videoId) return '';
-        var embedUrl = new URL('https://www.youtube.com/embed/' + encodeURIComponent(videoId));
-        embedUrl.searchParams.set('autoplay', '0');
-        embedUrl.searchParams.set('mute', '0');
-        embedUrl.searchParams.set('controls', '1');
-        embedUrl.searchParams.set('rel', '0');
-        embedUrl.searchParams.set('modestbranding', '1');
-        return embedUrl.href;
     }
 
     function getTreeKey(tree) {
@@ -91,24 +78,32 @@
         return sanitizeUrl(img.currentSrc || img.src || img.getAttribute('src') || '');
     }
 
-    function renderIframe(embedUrl, title) {
-        return '<div class="preview-media-frame preview-media-frame-iframe" style="position:relative;width:100%;height:100%;border-radius:1rem;overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,0.12);">' +
-            '<iframe width="100%" height="100%" src="' + embedUrl + '" title="' + escapeHtml(title || 'LoveTree media') + '" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen style="position:absolute;top:0;left:0;"></iframe>' +
-            '</div>';
-    }
-
+    /* 내 러브트리와 동일: helper.renderPreviewIframe()를 호출하여 오버레이 패턴으로 렌더 */
     function replaceWithIframe(tree, preferredIndex) {
         var container = document.getElementById('previewVideoContainer');
         if (!container) return false;
+        var helper = window.LoveBudSearchPreviewMediaHelper;
+        if (!helper || typeof helper.renderPreviewIframe !== 'function') return false;
+
         var candidate = getCandidateUrlFromTree(tree, preferredIndex) || getCandidateUrlFromRenderedDom(container);
-        var embedUrl = toEmbedUrl(candidate);
-        if (!embedUrl) return false;
+        if (!getYouTubeVideoId(candidate)) return false;
+
         var memories = Array.isArray(tree && tree.memories) ? tree.memories : [];
         var memory = memories[Number(preferredIndex || 0)] || memories[0] || null;
-        var title = memory ? getMomentLabel(memory, Number(preferredIndex || 0)) : tree && tree.title;
-        container.innerHTML = renderIframe(embedUrl, title);
+        var treeTitle = tree && tree.title || '';
+        var mediaTitle = memory ? getMomentLabel(memory, Number(preferredIndex || 0)) : treeTitle;
+
+        var markup = helper.renderPreviewIframe(candidate, treeTitle, mediaTitle);
+        if (!markup) return false;
+
+        container.innerHTML = markup;
         container.classList.remove('preview-state-thumbnail');
         container.classList.add('preview-state-media');
+
+        /* helper가 bindPreviewOverlayEvents를 제공하면 오버레이 이벤트 바인딩 */
+        if (typeof helper.bindPreviewOverlayEvents === 'function') {
+            helper.bindPreviewOverlayEvents(container);
+        }
         return true;
     }
 
@@ -142,7 +137,10 @@
     function normalizePreviewCopy(tree) {
         var previewDesc = document.getElementById('previewDesc');
         if (!previewDesc) return;
-        var copy = previewDesc.querySelector('.preview-focus-copy');
+        var copy = document.getElementById('previewHubSummarySlot');
+        if (!copy) {
+            copy = previewDesc.querySelector('.preview-focus-copy');
+        }
         if (copy) {
             var title = String(tree && tree.title || '러브트리').trim();
             var count = Number(tree && tree.memoryCount || (tree && tree.memories && tree.memories.length) || 0);
@@ -153,9 +151,14 @@
                 copy.innerHTML = '<p class="preview-summary-line"><strong>' + escapeHtml(title) + '</strong>에 담긴 <strong>' + count + '개의 순간</strong>이 이어졌어요.</p>';
             }
         }
-        var oldSocial = previewDesc.querySelector('[data-preview-social-shell]');
-        if (oldSocial) oldSocial.remove();
-        previewDesc.insertAdjacentHTML('beforeend', renderSocialBar(tree || {}));
+        var socialSlot = document.getElementById('previewHubSocialSlot');
+        if (socialSlot) {
+            socialSlot.innerHTML = renderSocialBar(tree || {});
+        } else {
+            var oldSocial = previewDesc.querySelector('[data-preview-social-shell]');
+            if (oldSocial) oldSocial.remove();
+            previewDesc.insertAdjacentHTML('beforeend', renderSocialBar(tree || {}));
+        }
     }
 
     function hideRedundantBlocks() {

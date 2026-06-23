@@ -296,6 +296,40 @@
                         });
                 }
             }
+
+            // Register with auth callbacks if available so that if auth resolves later,
+            // we re-run the owner check dynamic injection.
+            if (typeof window.registerOnAuthReady === 'function') {
+                window.registerOnAuthReady(() => {
+                    const resolvedUserId = getCurrentUserId();
+                    if (!resolvedUserId || isEditorPage || !treeId) return;
+                    const apiFetch = window.LoveTreeBaseApiFetch && window.LoveTreeBaseApiFetch.apiFetch;
+                    if (typeof apiFetch === 'function') {
+                        apiFetch('/trees/' + encodeURIComponent(treeId))
+                            .then(tree => {
+                                const ownerId = tree && (tree.ownerId || tree.owner_id);
+                                if (ownerId && ownerId === resolvedUserId) {
+                                    const actionsRow = block.querySelector('.tree-meta-actions-row');
+                                    if (actionsRow) {
+                                        if (actionsRow.querySelector('.vv-edit-btn-dynamic')) return;
+                                        const editBtn = createPillButton({
+                                            label: formatI18nText('edit_tree', '내 트리 편집'),
+                                            icon: 'edit',
+                                            tone: 'primary'
+                                        });
+                                        editBtn.className = 'vv-edit-btn-dynamic';
+                                        editBtn.addEventListener('click', () => {
+                                            var basePath = window.location.pathname.indexOf('/pages/') !== -1 ? '' : 'pages/';
+                                            window.location.href = window.location.origin + '/' + basePath + 'editor?treeId=' + encodeURIComponent(treeId) + '&from=view';
+                                        });
+                                        actionsRow.appendChild(editBtn);
+                                    }
+                                }
+                            })
+                            .catch(() => {});
+                    }
+                });
+            }
         };
 
         return {

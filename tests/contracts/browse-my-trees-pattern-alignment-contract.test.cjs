@@ -280,14 +280,56 @@ test('14. Runtime cache-busts updated for changed JS/CSS', () => {
   const myTreesCss = read('css/my-trees.css');
   assert.match(searchHtml, /search-preview-state\.js\?v=20260616-2532-1/);
   assert.match(myTreesHtml, /my-trees-ui\.js\?v=20260620-2751-1/);
-  assert.match(myTreesHtml, /my-trees-preview-hub\.js\?v=20260622-parity-1/);
-  assert.match(myTreesHtml, /my-trees-preview-state\.js\?v=20260622-step9-1/);
+  // Softened: any non-empty cache-bust on my-trees-preview-hub.js plus
+  // a guard that the pre-#2829 baseline value is gone. Future
+  // cache-bust bumps should not require updating this assertion
+  // (PR #2834 follow-up). The version-specific contract for the
+  // post-#2825 cache-bust lives in
+  // tests/contracts/my-trees-flow-stage-cache-bust-contract.test.cjs.
+  assert.match(
+    myTreesHtml,
+    /my-trees-preview-hub\.js\?v=[^"'\s>]+/,
+    'my-trees-preview-hub.js must carry a non-empty cache-bust query string'
+  );
+  assert.doesNotMatch(
+    myTreesHtml,
+    /my-trees-preview-hub\.js\?v=20260622-parity-1/,
+    'my-trees-preview-hub.js must not still pin the pre-#2829 cache-bust 20260622-parity-1'
+  );
+  assert.match(
+    myTreesHtml,
+    /my-trees-preview-state\.js\?v=[^"'\s>]+/,
+    'my-trees-preview-state.js must carry a non-empty cache-bust query string'
+  );
+  assert.doesNotMatch(
+    myTreesHtml,
+    /my-trees-preview-state\.js\?v=20260622-step9-1/,
+    'my-trees-preview-state.js must not still pin the pre-#2835 cache-bust 20260622-step9-1'
+  );
   assert.match(myTreesHtml, /my-trees-i18n-refresh\.js\?v=20260622-hub-social-dedupe-1/);
   assert.match(myTreesHtml, /i18n-my-trees\.js\?v=20260619-2710-1/);
-  assert.match(myTreesHtml, /my-trees\.css\?v=20260622-title-row-1/);
+  assert.match(
+    myTreesHtml,
+    /my-trees\.css\?v=[^"'\s>]+/,
+    'pages/my-trees.html must load my-trees.css with a non-empty cache-bust query'
+  );
+  assert.doesNotMatch(
+    myTreesHtml,
+    /my-trees\.css\?v=20260622-title-row-1/,
+    'pages/my-trees.html must not still pin the pre-#social-bar-path cache-bust 20260622-title-row-1 on my-trees.css'
+  );
   assert.match(myTreesHtml, /my-trees-page\.js\?v=20260622-mytrees-create-1/);
   assert.match(myTreesCss, /my-trees-header\.css\?v=20260622-title-row-1/);
-  assert.match(myTreesCss, /my-trees-preview-hub\.css\?v=20260622-hub-preview-1/);
+  assert.match(
+    myTreesCss,
+    /my-trees-preview-hub\.css\?v=[^"'\s>]+/,
+    'css/my-trees.css must import my-trees-preview-hub.css with a non-empty cache-bust query'
+  );
+  assert.doesNotMatch(
+    myTreesCss,
+    /my-trees-preview-hub\.css\?v=20260622-hub-preview-1/,
+    'css/my-trees.css must not still pin the pre-#social-bar-path cache-bust 20260622-hub-preview-1 on my-trees-preview-hub.css'
+  );
   assert.match(myTreesCss, /my-trees-mobile-controls-balance\.css\?v=20260622-mytrees-controls-1/);
   assert.match(myTreesCss, /search\/search-controls\.css/);
   assert.match(myTreesCss, /search\/search-preview-sidebar\.css/);
@@ -296,7 +338,7 @@ test('14. Runtime cache-busts updated for changed JS/CSS', () => {
     /#myTreesHubPanel\.is-loaded #myTreesHubVideoContainer\s*\{\s*display:\s*none;/
   );
   assert.ok(!/my-trees-finder\.css\?v=/.test(myTreesHtml), 'pages/my-trees.html must NOT directly link my-trees-finder.css (bundle owns finder import)');
-  assert.match(searchHtml, /search\.css\?v=20260618-2690-1/);
+  assert.match(searchHtml, /search\.css\?v=20260623-2841-2/);
 });
 
 test('15. My LoveTree desktop visual rhythm alignment with Browse', () => {

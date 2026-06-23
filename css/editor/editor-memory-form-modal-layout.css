@@ -1,3 +1,7 @@
+#addMemoryForm.editor-memory-form-modal {
+    display: none;
+}
+
 #addMemoryForm.editor-memory-form-modal.is-open {
     display: flex !important;
     flex-direction: column;

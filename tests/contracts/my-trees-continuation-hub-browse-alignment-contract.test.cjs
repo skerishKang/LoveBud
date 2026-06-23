@@ -113,29 +113,141 @@ test('My Trees hub keeps its multi-line hero original styling and hierarchy', ()
   assert.match(header, /\.my-trees-title-line:nth-child\(3\)\s*\{\s*color:\s*#b85c66;\s*font-weight:\s*900;\s*\}/);
 });
 
+test('My Trees hub tree title uses Browse-parity heading font', () => {
+  const content = read('css/my-trees/my-trees-preview-hub/content.css');
+  assert.match(
+    content,
+    /\.my-trees-hub-tree-title\s*\{[^}]*font-family:\s*var\(--font-heading\);[^}]*\}/,
+    '.my-trees-hub-tree-title must use var(--font-heading) to match Browse'
+  );
+  // font-size, font-weight, line-height must remain unchanged
+  assert.match(content, /\.my-trees-hub-tree-title\s*\{[^}]*font-size:\s*1\.34rem;[^}]*\}/);
+  assert.match(content, /\.my-trees-hub-tree-title\s*\{[^}]*font-weight:\s*900;[^}]*\}/);
+  assert.match(content, /\.my-trees-hub-tree-title\s*\{[^}]*line-height:\s*1\.18;[^}]*\}/);
+});
+
+test('My Trees hub summary uses Browse-parity typography', () => {
+  const content = read('css/my-trees/my-trees-preview-hub/content.css');
+  assert.match(
+    content,
+    /\.my-trees-hub-summary\s*\{[^}]*font-size:\s*14px;[^}]*\}/,
+    '.my-trees-hub-summary font-size must be 14px matching Browse'
+  );
+  assert.match(
+    content,
+    /\.my-trees-hub-summary\s*\{[^}]*line-height:\s*1\.6;[^}]*\}/,
+    '.my-trees-hub-summary line-height must be 1.6 matching Browse'
+  );
+  assert.match(
+    content,
+    /\.my-trees-hub-summary\s*\{[^}]*padding:\s*0\s+4px;[^}]*\}/,
+    '.my-trees-hub-summary padding must be 0 4px matching Browse'
+  );
+  // margin-top: 12px must be preserved
+  assert.match(content, /\.my-trees-hub-summary\s*\{[^}]*margin-top:\s*12px;[^}]*\}/);
+});
+
+test('My Trees hub actions use Browse-parity heading font and share/visibility font-size', () => {
+  const actions = read('css/my-trees/my-trees-preview-hub/actions.css');
+
+  // All four action types must share font-family: var(--font-heading)
+  assert.match(
+    actions,
+    /\.my-trees-hub-open-btn,\s*\.my-trees-hub-edit-btn,\s*\.my-trees-hub-share-btn,\s*\.my-trees-hub-visibility-btn\s*\{[^}]*font-family:\s*var\(--font-heading\);[^}]*\}/s,
+    'all hub action buttons must use var(--font-heading)'
+  );
+
+  // share/visibility tertiary font-size must be 13px
+  assert.match(
+    actions,
+    /\.my-trees-hub-share-btn,\s*\.my-trees-hub-visibility-btn\s*\{[^}]*font-size:\s*13px;[^}]*\}/s,
+    '.my-trees-hub-share-btn and .my-trees-hub-visibility-btn font-size must be 13px matching Browse'
+  );
+
+  // Owner action ids must be preserved
+  const html = read('pages/my-trees.html');
+  assert.match(html, /id=["']myTreesHubOpenBtn["']/, 'myTreesHubOpenBtn must exist');
+  assert.match(html, /id=["']myTreesHubEditBtn["']/, 'myTreesHubEditBtn must exist');
+  assert.match(html, /id=["']myTreesHubShareBtn["']/, 'myTreesHubShareBtn must exist');
+
+  // Action gap and social shell spacing must remain unchanged
+  assert.match(actions, /\.my-trees-hub-actions\s*\{[^}]*gap:\s*10px;[^}]*\}/, 'action gap must remain 10px');
+  assert.match(actions, /\.my-trees-hub-actions\s*\{[^}]*margin-top:\s*18px;[^}]*\}/, 'actions margin-top must remain 18px');
+  const content = read('css/my-trees/my-trees-preview-hub/social-bar.css');
+  assert.match(content, /margin-top:\s*1rem;/, 'social shell margin-top must remain unchanged');
+  assert.match(content, /padding-top:\s*0\.95rem;/, 'social shell padding-top must remain unchanged');
+});
+
+test('My Trees flow controls line-height matches Browse parity', () => {
+    const flow = read('css/my-trees/my-trees-preview-hub/flow.css');
+
+    // .my-trees-hub-flow-controls must have line-height: 1.4 (Browse parity)
+    assert.match(
+        flow,
+        /\.my-trees-hub-flow-controls\s*\{[^}]*line-height:\s*1\.4;[^}]*\}/,
+        '.my-trees-hub-flow-controls must have line-height: 1.4 matching Browse controls line-height'
+    );
+    // margin-top: 11px must be preserved
+    assert.match(
+        flow,
+        /\.my-trees-hub-flow-controls\s*\{[^}]*margin-top:\s*11px;[^}]*\}/,
+        '.my-trees-hub-flow-controls margin-top must remain 11px'
+    );
+    // .my-trees-hub-flow-toggle own line-height: 1.2 must remain unchanged
+    assert.match(
+        flow,
+        /\.my-trees-hub-flow-toggle\s*\{[^}]*line-height:\s*1\.2;[^}]*\}/,
+        '.my-trees-hub-flow-toggle own line-height must remain 1.2'
+    );
+    // flow card geometry must not be changed
+    assert.match(
+        flow,
+        /\.my-trees-hub-flow\s*\{[^}]*padding:\s*20px;/s,
+        'flow card padding must remain 20px'
+    );
+    assert.match(
+        flow,
+        /\.my-trees-hub-flow\s*\{[^}]*margin-bottom:\s*16px;/s,
+        'flow card margin-bottom must remain 16px'
+    );
+    assert.match(
+        flow,
+        /\.my-trees-hub-flow-list\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\);[^}]*gap:\s*7px;/s,
+        'flow list grid and gap must remain unchanged'
+    );
+    assert.match(
+        flow,
+        /\.my-trees-hub-flow-stage\s*\{[^}]*(?:min-)?height:\s*42px\s*!important/,
+        'flow stage height must remain unchanged'
+    );
+});
+
 test('My Trees hub HTML structure hierarchy follows Browse parity', () => {
   const html = read('pages/my-trees.html');
 
-  // Order assertion: header -> videoContainer -> content (inside has details/title/badge/flow/no-moments/summary) -> actions
+  // Order assertion: header -> videoContainer -> content (inside has title/badge/flow/no-moments/summary/actions/social)
+  // Issue #2841: #myTreesHubDetails wrapper removed; actions and social moved inside #myTreesHubContent.
   const idxHeader = html.indexOf('class="my-trees-hub-header');
   const idxVideo = html.indexOf('id="myTreesHubVideoContainer"');
   const idxContent = html.indexOf('id="myTreesHubContent"');
-  const idxDetails = html.indexOf('id="myTreesHubDetails"');
+  const idxNoDetails = html.indexOf('id="myTreesHubDetails"');
   const idxTitle = html.indexOf('id="myTreesHubTreeTitle"');
   const idxMetaBadge = html.indexOf('id="myTreesHubMetaBadge"');
   const idxFlow = html.indexOf('id="myTreesHubFlow"');
   const idxNoMoments = html.indexOf('id="myTreesHubNoMoments"');
   const idxSummary = html.indexOf('id="myTreesHubSummary"');
   const idxActions = html.indexOf('id="myTreesHubActions"');
+  const idxSocialSlot = html.indexOf('id="myTreesHubSocialSlot"');
 
   assert.ok(idxHeader !== -1, 'hub header must exist');
   assert.ok(idxVideo > idxHeader, 'video container must be after header');
   assert.ok(idxContent > idxVideo, 'content container must be after video container');
-  assert.ok(idxDetails > idxContent, 'details wrapper must be inside content container');
-  assert.ok(idxTitle > idxDetails, 'tree title must be inside details');
+  assert.ok(idxNoDetails === -1, '#myTreesHubDetails wrapper must be removed (Issue #2841)');
+  assert.ok(idxTitle > idxContent, 'tree title must be inside content container');
   assert.ok(idxMetaBadge > idxTitle, 'meta badge must be after tree title');
   assert.ok(idxFlow > idxMetaBadge, 'flow must be after meta badge');
   assert.ok(idxNoMoments > idxFlow, 'no-moments block must be after flow');
   assert.ok(idxSummary > idxNoMoments, 'summary must be after no-moments');
-  assert.ok(idxActions > idxContent, 'actions block must be after content');
+  assert.ok(idxActions > idxSummary, 'actions must be after summary (moved inside content)');
+  assert.ok(idxSocialSlot > idxActions, 'social slot must be after actions (last child of content)');
 });

@@ -33,6 +33,7 @@
 /* ── Hub tree title ── */
 
 .my-trees-hub-tree-title {
+    font-family: var(--font-heading);
     font-size: 1.34rem;
     font-weight: 900;
     color: var(--on-surface);
@@ -46,6 +47,7 @@
 
 .my-trees-hub-panel .preview-focus-title-block {
     margin-bottom: 12px;
+    padding: 0;
 }
 
 /* ── Hub meta badge ── */
@@ -135,10 +137,10 @@
 /* ── Hub summary line ── */
 
 .my-trees-hub-summary {
-    font-size: 13.5px;
+    font-size: 14px;
     color: var(--on-surface-variant);
-    line-height: 1.55;
-    padding: 0;
+    line-height: 1.6;
+    padding: 0 4px;
     margin-top: 12px;
 }
 
@@ -155,20 +157,29 @@
     display: none !important;
 }
 
+/* 둘러보기 허브 기준으로 크기/비율 통일 */
 #myTreesHubVideoContainer {
     position: relative;
     width: 100%;
-    aspect-ratio: 16/10;
+    aspect-ratio: 16/9;
     background: linear-gradient(135deg, rgba(144, 73, 81, 0.08), rgba(122, 139, 110, 0.08));
-    border-radius: 1.9rem !important;
+    border-radius: 1.55rem !important;
     overflow: hidden !important;
     border: 1px solid rgba(144, 73, 81, 0.13);
     min-width: 0;
-    max-width: 320px;
+    max-width: 100%;
     box-sizing: border-box;
-    box-shadow: 0 20px 42px rgba(75, 64, 57, 0.16), 0 0 0 8px rgba(255, 255, 255, 0.34);
+    box-shadow: 0 16px 38px rgba(75, 64, 57, 0.16), 0 0 0 8px rgba(255, 255, 255, 0.34);
     margin-inline: auto !important;
     display: block !important;
+}
+
+#myTreesHubContent,
+#myTreesHubPlaceholder,
+#myTreesHubActions,
+#myTreesHubPanel .preview-social-shell {
+    max-width: 100%;
+    margin-inline: auto;
 }
 
 #myTreesHubMedia .preview-media-frame-iframe {

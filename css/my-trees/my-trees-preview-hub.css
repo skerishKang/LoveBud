@@ -1,13 +1,13 @@
 /**
  * LoveBud - My Trees Preview Hub Styles Manifest
- * v20260524-1 (2026-06-22: +social-bar override for narrow widths)
+ * v20260624-layout-fullwidth-1
  */
 
-@import url("./my-trees-preview-hub/layout.css");
-@import url("./my-trees-preview-hub/content.css");
+@import url("./my-trees-preview-hub/layout.css?v=20260624-layout-fullwidth-1");
+@import url("./my-trees-preview-hub/content.css?v=20260624-layout-fullwidth-1");
 @import url("./my-trees-preview-hub/flow.css");
 @import url("./my-trees-preview-hub/states.css");
 @import url("./my-trees-preview-hub/actions.css");
 @import url("./my-trees-preview-hub/responsive.css");
+@import url("../search/search-preview-social-bar.css");
 @import url("./my-trees-preview-hub/social-bar.css");
-@import url("../../search/search-preview-social-bar.css");

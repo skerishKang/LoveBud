@@ -104,10 +104,15 @@ test('My Trees hub renderer emits a <button data-my-trees-flow-toggle>', () => {
 });
 
 test('My Trees hydrated flow toggle is an interactive button (not static span)', () => {
-    assert.match(
-        myTreesStateJs,
-        /<button[^>]*class=["']my-trees-hub-flow-toggle["'][^>]*data-my-trees-flow-toggle/,
-        'my-trees-preview-state.js must emit an interactive button for the flow toggle'
+    const emitsButtonMarkup = /<button[^>]*class=["']my-trees-hub-flow-toggle["'][^>]*data-my-trees-flow-toggle/.test(myTreesStateJs);
+    const createsButtonWithDomApi =
+        /document\.createElement\(\s*['"]button['"]\s*\)/.test(myTreesStateJs) &&
+        /flowToggle\.className\s*=\s*['"]my-trees-hub-flow-toggle['"]/.test(myTreesStateJs) &&
+        /flowToggle\.setAttribute\(\s*['"]data-my-trees-flow-toggle['"]\s*,\s*['"]['"]\s*\)/.test(myTreesStateJs);
+
+    assert.ok(
+        emitsButtonMarkup || createsButtonWithDomApi,
+        'my-trees-preview-state.js must render an interactive button for the flow toggle'
     );
     assert.ok(
         !/my-trees-hub-flow-toggle is-static/.test(myTreesStateJs),
@@ -116,36 +121,17 @@ test('My Trees hydrated flow toggle is an interactive button (not static span)',
 });
 
 // ── 4) Flow card uses Browse flat surface ─────────────────────────────
-test('My Trees flow card uses Browse-style flat surface (no gradient/border/shadow)', () => {
-    const re = /\.my-trees-hub-flow\s*\{[^}]*background:\s*var\(--surface-container-low\)[^}]*\}/s;
-    assert.match(
-        myTreesFlowCss,
-        re,
-        'My Trees .my-trees-hub-flow must use var(--surface-container-low) like Browse'
-    );
-});
-
-test('My Trees flow card does NOT carry the legacy gradient/border/box-shadow', () => {
-    // The legacy My Trees flow card rule had:
-    //   background: linear-gradient(...)
-    //   border: 1px solid rgba(144, 73, 81, 0.10)
-    //   box-shadow: 0 14px 28px ...
+test('My Trees flow card carries the Browse frame surface', () => {
     const rule = /\.my-trees-hub-flow\s*\{[^}]*\}/s;
     const match = myTreesFlowCss.match(rule);
     assert.ok(match, 'rule must exist');
     const block = match[0];
-    assert.ok(
-        !/linear-gradient/.test(block),
-        'flow card must not use linear-gradient (legacy richer surface)'
-    );
-    assert.ok(
-        !/border:\s*1px solid/.test(block),
-        'flow card must not have a heavy 1px border (Browse parity)'
-    );
-    assert.ok(
-        !/box-shadow:/.test(block),
-        'flow card must not carry a heavy box-shadow (Browse parity)'
-    );
+    assert.match(block, /background:\s*linear-gradient\(180deg,\s*rgba\(255,\s*255,\s*255,\s*0\.66\),\s*rgba\(255,\s*248,\s*245,\s*0\.52\)\)\s*!important;/);
+    assert.match(block, /border:\s*1px\s+solid\s+rgba\(144,\s*73,\s*81,\s*0\.10\);/);
+    assert.match(block, /border-radius:\s*1rem;/);
+    assert.match(block, /box-shadow:\s*0\s+14px\s+28px\s+rgba\(75,\s*64,\s*57,\s*0\.07\),\s*inset\s+0\s+1px\s+0\s+rgba\(255,\s*255,\s*255,\s*0\.78\);/);
+    assert.match(block, /padding:\s*20px;/);
+    assert.match(block, /margin-bottom:\s*16px;/);
 });
 
 // ── 5) Primary button label parity: 트리 열기 + account_tree ────────────
@@ -178,16 +164,17 @@ test('My Trees primary button JS sets "트리 열기" + account_tree icon', () =
 test('My Trees hub manifest imports search-preview-social-bar.css', () => {
     assert.match(
         myTreesHubManifest,
-        /@import url\(['"]\.\.\/\.\.\/search\/search-preview-social-bar\.css['"]\)/,
-        'My Trees hub manifest must import the shared social-bar CSS'
+        /@import url\(['"]\.\.\/search\/search-preview-social-bar\.css['"]\)/,
+        'My Trees hub manifest must import the shared social-bar CSS via ../search/... (correct relative path)'
     );
 });
 
 test('My Trees hub renders .preview-social-shell (owner passive) BELOW action buttons', () => {
     // Step 7 follow-up: the social shell must sit below the action buttons
-    // (after #myTreesHubActions) so the primary "트리 열기" button is the
-    // last interactive element above the social stats. The legacy placement
-    // (appended to #myTreesHubDetails) is retired.
+    // so the primary "트리 열기" button is the last interactive element
+    // above the social stats. Issue #2841 uses #myTreesHubSocialSlot as
+    // the target host; legacy els.actions.after(shell) is a fallback when
+    // the static slot is absent.
     assert.match(
         myTreesHubJs,
         /className\s*=\s*['"]preview-social-shell['"]/,
@@ -198,10 +185,11 @@ test('My Trees hub renders .preview-social-shell (owner passive) BELOW action bu
         /<div class="preview-social-bar"/,
         'My Trees hub renderer must emit a .preview-social-bar div in the template'
     );
-    assert.match(
-        myTreesHubJs,
-        /els\.actions\.after\(\s*shell\s*\)/,
-        'My Trees social shell must be inserted AFTER els.actions (#myTreesHubActions) so it sits below the 트리 열기 button'
+    const usesSocialSlotAppend = /socialSlot\.appendChild\(\s*(createMyTreesSocialShell\(\)|shell)\s*\)/.test(myTreesHubJs);
+    const usesActionsAfterFallback = /els\.actions\.after\(\s*(createMyTreesSocialShell\(\)|shell)\s*\)/.test(myTreesHubJs);
+    assert.ok(
+        usesSocialSlotAppend || usesActionsAfterFallback,
+        'My Trees social shell must be inserted via socialSlot.appendChild or els.actions.after (actions.after is the fallback when socialSlot absent)'
     );
     assert.ok(
         !/els\.details\.appendChild\(\s*shell\s*\)/.test(myTreesHubJs),
@@ -240,6 +228,37 @@ test('My Trees hub does not keep the legacy duplicate static meta row', () => {
         /myTreesHubMeta(?:Views|Likes|Comments|Shares)?Count|metaBlock|metaViewsCount|metaLikesCount|metaCommentsCount|metaSharesCount/,
         'My Trees hub JS must not repopulate the removed duplicate static meta row'
     );
+});
+
+test('My Trees hub has removed #myTreesHubDetails wrapper (Issue #2841)', () => {
+    assert.ok(
+        !myTreesHtml.includes('id="myTreesHubDetails"'),
+        '#myTreesHubDetails wrapper must be removed from My Trees HTML'
+    );
+});
+
+test('My Trees hub has #myTreesHubActions inside #myTreesHubContent (Issue #2841)', () => {
+    const idxContent = myTreesHtml.indexOf('id="myTreesHubContent"');
+    const idxActions = myTreesHtml.indexOf('id="myTreesHubActions"');
+    const idxSocialSlot = myTreesHtml.indexOf('id="myTreesHubSocialSlot"');
+    // Find the content section closing div by looking for the </div> that
+    // matches the opening <div id="myTreesHubContent"> tag. The content
+    // contains children including social slot at the end, so we scan past
+    // the social slot div to find the content container's closing.
+    const idxContentClose = myTreesHtml.indexOf('</div>', idxSocialSlot + 50);
+    assert.ok(idxActions > idxContent, '#myTreesHubActions must be after #myTreesHubContent opening');
+    assert.ok(idxActions < idxContentClose, '#myTreesHubActions must be inside #myTreesHubContent (before its closing tag)');
+});
+
+test('My Trees hub has #myTreesHubSocialSlot static host (Issue #2841)', () => {
+    assert.match(
+        myTreesHtml,
+        /id="myTreesHubSocialSlot"/,
+        'My Trees HTML must have #myTreesHubSocialSlot static host'
+    );
+    const idxSocial = myTreesHtml.indexOf('id="myTreesHubSocialSlot"');
+    const idxActions = myTreesHtml.indexOf('id="myTreesHubActions"');
+    assert.ok(idxSocial > idxActions, '#myTreesHubSocialSlot must be after #myTreesHubActions');
 });
 
 test('My Trees social shell uses Browse parity class .preview-social-stat', () => {

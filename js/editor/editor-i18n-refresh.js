@@ -67,8 +67,10 @@
       '.editor-view-options-help{font-size:11px;line-height:1.5;color:var(--on-surface-variant);border-top:1px solid rgba(221,198,184,0.55);padding-top:9px;}',
       'body.editor-view-hide-labels .memory-node .node-info-label{display:none!important;}',
       'body.editor-view-hide-tips .memory-add-affordance,body.editor-view-hide-tips .branch-line-affordance{display:none!important;pointer-events:none!important;}',
-      'body.editor-view-hide-bubbles .memory-add-affordance.affordance-tooltip-bubble{width:36px!important;min-height:36px!important;height:36px!important;border-radius:50%!important;padding:0!important;justify-content:center!important;background:rgba(144,73,81,0.92)!important;border:none!important;box-shadow:0 3px 10px rgba(144,73,81,0.25)!important;}',
-      'body.editor-view-hide-bubbles .memory-add-affordance .affordance-tip-text{display:none!important;}',
+      // body.editor-view-hide-bubbles rules moved to
+      // css/editor/editor-canvas-affordance.css so the cascade order matches
+      // the .affordance-expanded transition pipeline and the inline !important
+      // override no longer fights the new width/height transitions (#2806).
       '.editor-view-option-row input:disabled{opacity:0.35;cursor:not-allowed;}',
       '.editor-view-option-row input:disabled~span{opacity:0.35;}',
       '@media (max-width:768px){.editor-view-options-panel{right:auto;left:0;top:42px;width:210px;}}'
@@ -268,12 +270,23 @@
 
     var flowSummaryEl = document.getElementById('sidebarFlowSummary');
     if (flowSummaryEl) {
+      var currentTreeData = window.currentTreeData || {};
+      var timeRange = String(currentTreeData.timeRange || currentTreeData.time_range || '').trim();
+      var titleText = String(currentTreeData.title || '').trim() || '러브트리';
+
       if (!count) {
         flowSummaryEl.textContent = tText('editor_tree_status_empty', '아직 첫 순간을 기다리고 있어요.');
-      } else if (count === 1) {
-        flowSummaryEl.textContent = tText('sidebar_flow_summary_one_moment', '첫 순간이 심어진 러브트리예요.');
       } else {
-        flowSummaryEl.textContent = tText('sidebar_flow_summary_connected', '{count}개의 순간이 이어진 러브트리예요.').replace('{count}', String(count));
+        if (timeRange) {
+          flowSummaryEl.innerHTML = tText('sidebar_flow_summary_connected_with_range', '<p class="preview-summary-line"><strong>{title}</strong>에 담긴 <strong>{count}개의 순간</strong>이 <strong>{timeRange}</strong>에 걸쳐 이어졌어요.</p>')
+            .replace('{title}', escapeHtml(titleText))
+            .replace('{count}', String(count))
+            .replace('{timeRange}', escapeHtml(timeRange));
+        } else {
+          flowSummaryEl.innerHTML = tText('sidebar_flow_summary_connected', '<p class="preview-summary-line"><strong>{title}</strong>에 담긴 <strong>{count}개의 순간</strong>이 이어졌어요.</p>')
+            .replace('{title}', escapeHtml(titleText))
+            .replace('{count}', String(count));
+        }
       }
     }
   }
@@ -295,6 +308,8 @@
     setText('addMemoryFormTitle', 'editor_new_memory', '어떤 순간이 이어졌나요?');
     setText('memoryUrlLabel', 'editor_youtube_link', 'YouTube 장면 링크');
     setText('memoryTitleLabel', 'editor_memory_title', '순간 제목');
+    setText('memoryTagsLabel', 'editor_edit_tag_label', '감정 태그 (쉼표로 구분)');
+    setAttr('memoryTagsInput', 'placeholder', 'editor_edit_tag_placeholder', '#감동, #행복, #그리움');
     setText('memoryMemoLabel', 'editor_memory_memo_optional', '감정 메모');
     setText('cancelAddMemory', 'editor_cancel', '취소');
     setText('confirmAddMemory', 'editor_confirm_add', '이 순간 심기');

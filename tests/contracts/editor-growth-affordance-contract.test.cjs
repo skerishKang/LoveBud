@@ -141,3 +141,280 @@ test('isStartMoment handles missing options gracefully', () => {
 
   assert.match(source, /if\s*\([^)]*options\s*&&\s*\([^)]*options\.isStartMoment[^)]*\)/);
 });
+
+// ── CSS class-toggle contract (Issue #2806) ──────────────────────────────────
+// PR #2818 hypothesis: the bubble expand/collapse must be driven by adding /
+// removing a CSS class rather than directly mutating inline style properties.
+// Follow-up hypothesis: textWrap must also start as max-width: 0 (not 126px)
+// with a transition-delay so the button width transition grows first.
+
+test('showBubble adds affordance-expanded class instead of mutating inline styles', () => {
+  const source = fs.readFileSync(path.join(ROOT, 'js/editor/editor-canvas-growth-affordance.js'), 'utf8');
+
+  // showBubble must use classList.add
+  assert.match(source, /classList\.add\s*\(\s*['"]affordance-expanded['"]\s*\)/);
+  // showBubble must NOT set inline width/borderRadius/background on expand
+  const showBubbleSectionMatch = source.match(/function\s+showBubble\s*\(\s*\)([\s\S]*?)function\s+hideBubble/);
+  assert.ok(showBubbleSectionMatch, 'showBubble function must exist before hideBubble');
+  const showBubbleBody = showBubbleSectionMatch[1];
+  assert.doesNotMatch(showBubbleBody, /button\.style\.width\s*=/);
+  assert.doesNotMatch(showBubbleBody, /button\.style\.borderRadius\s*=/);
+  assert.doesNotMatch(showBubbleBody, /button\.style\.background\s*=/);
+});
+
+test('hideBubble removes affordance-expanded class instead of mutating inline styles', () => {
+  const source = fs.readFileSync(path.join(ROOT, 'js/editor/editor-canvas-growth-affordance.js'), 'utf8');
+
+  // hideBubble must use classList.remove
+  assert.match(source, /classList\.remove\s*\(\s*['"]affordance-expanded['"]\s*\)/);
+  // hideBubble must NOT reset inline width/background/borderRadius on collapse
+  const hideBubbleSectionMatch = source.match(/function\s+hideBubble\s*\(\s*\)([\s\S]*?)button\.addEventListener\s*\(\s*['"]mouseenter['"]/);
+  assert.ok(hideBubbleSectionMatch, 'hideBubble function must exist before event listeners');
+  const hideBubbleBody = hideBubbleSectionMatch[1];
+  assert.doesNotMatch(hideBubbleBody, /button\.style\.width\s*=/);
+  assert.doesNotMatch(hideBubbleBody, /button\.style\.background\s*=/);
+});
+
+test('textWrap visibility is not driven by display:none in JS', () => {
+  const source = fs.readFileSync(path.join(ROOT, 'js/editor/editor-canvas-growth-affordance.js'), 'utf8');
+
+  // The affordance-tip-text span must NOT have display toggled via JS.
+  // Visibility is now handled by CSS (opacity + visibility + max-width transition).
+  assert.doesNotMatch(source, /textWrap\.style\.display\s*=/);
+});
+
+test('affordance-expanded CSS class is defined in editor-canvas-affordance.css', () => {
+  const cssSource = fs.readFileSync(
+    path.join(ROOT, 'css/editor/editor-canvas-affordance.css'), 'utf8'
+  );
+
+  assert.match(cssSource, /\.affordance-expanded/);
+  assert.match(cssSource, /\.memory-add-affordance/);
+  assert.match(cssSource, /\.affordance-tip-text/);
+  // Visibility must be managed via opacity/visibility, not display
+  assert.match(cssSource, /opacity\s*:/);
+  assert.match(cssSource, /visibility\s*:/);
+  assert.doesNotMatch(cssSource, /\.affordance-expanded\s+\.affordance-tip-text\s*\{[^}]*display\s*:\s*flex/);
+});
+
+test('editor.css imports editor-canvas-affordance.css', () => {
+  const editorCss = fs.readFileSync(path.join(ROOT, 'css/editor.css'), 'utf8');
+
+  assert.match(editorCss, /editor-canvas-affordance\.css/);
+});
+
+// ── #2806 follow-up: textWrap collapsed state + transition-delay ────────────
+
+test('textWrap collapsed state is max-width 0, opacity 0, visibility hidden (#2806 follow-up)', () => {
+  const cssSource = fs.readFileSync(
+    path.join(ROOT, 'css/editor/editor-canvas-affordance.css'), 'utf8'
+  );
+
+  // Extract the .affordance-tip-text rule (collapsed default state).
+  const tipRule = (cssSource.match(/\.affordance-tip-text\s*\{([^}]*)\}/) || ['', ''])[1];
+  assert.ok(tipRule.length > 0, '.affordance-tip-text rule must exist');
+  assert.match(tipRule, /max-width\s*:\s*0/,
+    'collapsed textWrap must start at max-width: 0 (NOT 126px) so it does not force a 126x~64 vertical-rectangle intermediate state during button growth');
+  assert.match(tipRule, /opacity\s*:\s*0/,
+    'collapsed textWrap must start at opacity: 0');
+  assert.match(tipRule, /visibility\s*:\s*hidden/,
+    'collapsed textWrap must start at visibility: hidden');
+});
+
+test('textWrap expanded state uses max-width 126px with a transition-delay (#2806 follow-up)', () => {
+  const cssSource = fs.readFileSync(
+    path.join(ROOT, 'css/editor/editor-canvas-affordance.css'), 'utf8'
+  );
+
+  // Extract the .memory-add-affordance.affordance-expanded .affordance-tip-text rule.
+  const expandedTipRule = (cssSource.match(/\.memory-add-affordance\.affordance-expanded\s+\.affordance-tip-text\s*\{([^}]*)\}/) || ['', ''])[1];
+  assert.ok(expandedTipRule.length > 0, 'expanded textWrap rule must exist');
+  assert.match(expandedTipRule, /max-width\s*:\s*126px/,
+    'expanded textWrap must be 126px wide');
+  assert.match(expandedTipRule, /opacity\s*:\s*1/,
+    'expanded textWrap must be fully visible');
+  assert.match(expandedTipRule, /visibility\s*:\s*visible/);
+
+  // transition must include a delay (button width grows first)
+  const collapsedTipRule = (cssSource.match(/\.affordance-tip-text\s*\{([^}]*)\}/) || ['', ''])[1];
+  assert.match(collapsedTipRule, /transition[^{}]*var\(--affordance-text-delay\)/,
+    'textWrap transition must use --affordance-text-delay so the text fades in after the button width transition starts');
+});
+
+test('editor-i18n-refresh.js no longer carries the inline !important bubble rules (#2806 follow-up)', () => {
+  const source = fs.readFileSync(
+    path.join(ROOT, 'js/editor/editor-i18n-refresh.js'), 'utf8'
+  );
+
+  // The inline !important forced-collapsed rules are now owned by the
+  // editor-canvas-affordance.css file under
+  // body.editor-view-hide-bubbles .memory-add-affordance.affordance-tooltip-bubble.
+  // Verify the inline string is gone from the JS so the cascade order is stable.
+  assert.doesNotMatch(source, /editor-view-hide-bubbles\s+\.memory-add-affordance\.affordance-tooltip-bubble\s*\{[^}]*width\s*:\s*36px\s*!important/,
+    'inline !important forced-collapsed rules must be removed from editor-i18n-refresh.js');
+});
+
+test('is-interacting class is toggled in lockMovement and unlockMovementSoon (#2806 follow-up)', () => {
+  const source = fs.readFileSync(path.join(ROOT, 'js/editor/editor-canvas-growth-affordance.js'), 'utf8');
+
+  // Check classList calls directly on the source string. Avoid regex-parsing
+  // function bodies (nested setTimeout callbacks break simple capture groups).
+  assert.match(source, /classList\.add\s*\(\s*INTERACTING_CLASS\s*\)/,
+    'lockMovement must add INTERACTING_CLASS');
+  assert.match(source, /classList\.remove\s*\(\s*INTERACTING_CLASS\s*\)/,
+    'unlockMovementSoon must remove INTERACTING_CLASS');
+  assert.match(source, /classList\.add\s*\(\s*LOCK_CLASS\s*\)/,
+    'lockMovement must also add the canvas-level LOCK_CLASS');
+  assert.match(source, /classList\.remove\s*\(\s*LOCK_CLASS\s*\)/,
+    'unlockMovementSoon must also remove the canvas-level LOCK_CLASS');
+
+  // And the CSS must style it.
+  const cssSource = fs.readFileSync(
+    path.join(ROOT, 'css/editor/editor-canvas-affordance.css'), 'utf8'
+  );
+  assert.match(cssSource, /\.memory-add-affordance\.is-interacting/,
+    'is-interacting rule must be present in the affordance CSS');
+});
+
+// ── Left rail summary typography contract (Commit C) ────────────────────────
+// Tree title is rendered by #sidebarTreeTitle in 1.42rem. The summary line
+// below it must NOT duplicate a heading-style title — it should be small
+// prose, with only count / timeRange emphasised.
+
+const I18N_EDITOR_FILE = path.join(ROOT, 'js/i18n/i18n-editor.js');
+const SIDEBAR_BOUNDARY_FILE = path.join(ROOT, 'js/editor/editor-detail-sidebar-status-boundary.js');
+const I18N_REFRESH_FILE = path.join(ROOT, 'js/editor/editor-i18n-refresh.js');
+const STATUS_CARD_CSS_FILE = path.join(ROOT, 'css/editor/editor-status-settings/status-card.css');
+
+function extractSummaryKey(source, key) {
+  const pattern = new RegExp(
+    "'" + key.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&') +
+    "':\\{ko:'((?:[^'\\\\]|\\\\.)*)',en:'((?:[^'\\\\]|\\\\.)*)'\\}"
+  );
+  const m = source.match(pattern);
+  if (!m) return null;
+  return { ko: m[1], en: m[2] };
+}
+
+test('i18n key sidebar_flow_summary_connected mirrors My Trees hub summary verbatim', () => {
+  // Source of truth: js/my-trees/my-trees-preview-state.js patchSummaryWithTimeRange
+  // and js/my-trees/my-trees-preview-hub.js els.summary.innerHTML pattern.
+  const source = fs.readFileSync(I18N_EDITOR_FILE, 'utf8');
+  const key = extractSummaryKey(source, 'sidebar_flow_summary_connected');
+  assert.ok(key, 'i18n key sidebar_flow_summary_connected must exist');
+  // Wrap in <p class="preview-summary-line"> to match the hub pattern.
+  assert.match(key.ko, /<p\s+class="preview-summary-line">/,
+    'ko template must wrap summary in <p class="preview-summary-line">; got: ' + key.ko);
+  assert.match(key.en, /<p\s+class="preview-summary-line">/,
+    'en template must wrap summary in <p class="preview-summary-line">; got: ' + key.en);
+  // <strong> around {title}, {count}, and (for the with_range variant) {timeRange}.
+  assert.match(key.ko, /<strong>\s*\{title\}\s*<\/strong>/,
+    'ko template must wrap {title} in <strong> (matches hub pattern); got: ' + key.ko);
+  assert.match(key.en, /<strong>\s*\{title\}\s*<\/strong>/,
+    'en template must wrap {title} in <strong> (matches hub pattern); got: ' + key.en);
+  assert.match(key.ko, /<strong>\s*\{count\}개의\s*순간\s*<\/strong>/,
+    'ko template must wrap {count}개의 순간 in <strong>');
+  assert.match(key.en, /<strong>\s*\{count\}\s*moments\s*<\/strong>/,
+    'en template must wrap {count} moments in <strong>');
+});
+
+test('i18n key sidebar_flow_summary_connected_with_range mirrors My Trees hub summary verbatim', () => {
+  const source = fs.readFileSync(I18N_EDITOR_FILE, 'utf8');
+  const key = extractSummaryKey(source, 'sidebar_flow_summary_connected_with_range');
+  assert.ok(key, 'i18n key sidebar_flow_summary_connected_with_range must exist');
+  assert.match(key.ko, /<p\s+class="preview-summary-line">/,
+    'ko template must wrap summary in <p class="preview-summary-line">; got: ' + key.ko);
+  assert.match(key.en, /<p\s+class="preview-summary-line">/,
+    'en template must wrap summary in <p class="preview-summary-line">; got: ' + key.en);
+  assert.match(key.ko, /<strong>\s*\{title\}\s*<\/strong>/);
+  assert.match(key.en, /<strong>\s*\{title\}\s*<\/strong>/);
+  assert.match(key.ko, /<strong>\s*\{count\}개의\s*순간\s*<\/strong>/);
+  assert.match(key.ko, /<strong>\s*\{timeRange\}\s*<\/strong>/,
+    'ko template must wrap {timeRange} in <strong>');
+  assert.match(key.en, /<strong>\s*\{count\}\s*moments\s*<\/strong>/);
+  assert.match(key.en, /<strong>\s*\{timeRange\}\s*<\/strong>/,
+    'en template must wrap {timeRange} in <strong>');
+});
+
+test('editor-detail-sidebar-status-boundary.js fallback template mirrors My Trees hub pattern', () => {
+  const source = fs.readFileSync(SIDEBAR_BOUNDARY_FILE, 'utf8');
+  assert.match(source, /<p\s+class="preview-summary-line">/,
+    'fallback template must wrap summary in <p class="preview-summary-line"> (My Trees hub pattern)');
+  assert.match(source, /<strong>\s*\{title\}\s*<\/strong>/,
+    'fallback template must wrap {title} in <strong> (My Trees hub pattern)');
+  assert.match(source, /<strong>\s*\{count\}개의\s*순간\s*<\/strong>/);
+  assert.match(source, /<strong>\s*\{timeRange\}\s*<\/strong>/);
+});
+
+test('editor-i18n-refresh.js summary path mirrors My Trees hub pattern', () => {
+  const source = fs.readFileSync(I18N_REFRESH_FILE, 'utf8');
+  assert.match(source, /<p\s+class="preview-summary-line">/,
+    'editor-i18n-refresh.js summary path must wrap summary in <p class="preview-summary-line"> (My Trees hub pattern)');
+  assert.match(source, /<strong>\s*\{title\}\s*<\/strong>/,
+    'editor-i18n-refresh.js summary path must wrap {title} in <strong> (My Trees hub pattern)');
+  assert.match(source, /<strong>\s*\{count\}개의\s*순간\s*<\/strong>/);
+  assert.match(source, /<strong>\s*\{timeRange\}\s*<\/strong>/);
+});
+
+test('editor summary innerHTML matches My Trees hub patchSummaryWithTimeRange template exactly', () => {
+  // Verbatim-mirror test: editor's innerHTML string must equal the
+  // My Trees hub template so the only divergence between the two
+  // body sentences is the language.
+  const hubSource = fs.readFileSync(
+    path.join(ROOT, 'js/my-trees/my-trees-preview-state.js'), 'utf8'
+  );
+  // My Trees template uses string concatenation. Extract the static
+  // segments before / after the runtime values (title, count, timeRange).
+  // Pattern: "'<p class...><strong>' + escapeHtml(summaryTitle) + '</strong>에 담긴 <strong>' + memoryCount + '개의 순간</strong>이 <strong>' + escapeHtml(timeRange) + '</strong>에 걸쳐 ... .</p>'"
+  const hubMatch = hubSource.match(
+    /summaryEl\.innerHTML\s*=\s*'([^']+)'\s*\+\s*escapeHtml\(summaryTitle\)\s*\+\s*'([^']+)'\s*\+\s*memoryCount\s*\+\s*'([^']+)'\s*\+\s*escapeHtml\(timeRange\)\s*\+\s*'([^']+)'/
+  );
+  assert.ok(hubMatch, 'My Trees patchSummaryWithTimeRange template must exist');
+  const hubHead = hubMatch[1];
+  const hubMid1 = hubMatch[2];
+  const hubMid2 = hubMatch[3];
+  const hubTail = hubMatch[4];
+
+  const editorBoundary = fs.readFileSync(SIDEBAR_BOUNDARY_FILE, 'utf8');
+  // editor must reuse the same static segments (with {title}/{count}/{timeRange}
+  // placeholders instead of runtime vars).
+  assert.ok(
+    editorBoundary.indexOf(hubHead) !== -1,
+    'editor must contain the My Trees hub head (before title); hubHead=' + hubHead
+  );
+  assert.ok(
+    editorBoundary.indexOf(hubMid1) !== -1,
+    'editor must contain the My Trees hub middle (after title); hubMid1=' + hubMid1
+  );
+  assert.ok(
+    editorBoundary.indexOf(hubMid2) !== -1,
+    'editor must contain the My Trees hub middle (after count); hubMid2=' + hubMid2
+  );
+  assert.ok(
+    editorBoundary.indexOf(hubTail) !== -1,
+    'editor must contain the My Trees hub tail (after timeRange); hubTail=' + hubTail
+  );
+});
+
+test('.editor-flow-summary rule sets explicit small-prose font-size (not title-sized)', () => {
+  const source = fs.readFileSync(STATUS_CARD_CSS_FILE, 'utf8');
+  const block = (source.match(/\.editor-flow-summary\s*\{([^}]*)\}/) || ['', ''])[1];
+  assert.ok(block.length > 0, '.editor-flow-summary rule must exist');
+  assert.match(block, /font-size\s*:\s*13\.5px/,
+    '.editor-flow-summary must be 13.5px (small prose) — must NOT inherit the 1.42rem title size from .editor-status-card strong');
+  assert.match(block, /line-height\s*:\s*1\.55/,
+    '.editor-flow-summary line-height must be 1.55 (prose rhythm)');
+  assert.match(block, /color\s*:\s*var\(--on-surface-variant\)/);
+});
+
+test('.editor-flow-summary strong overrides .editor-status-card strong (1.42rem) with prose sizing', () => {
+  const source = fs.readFileSync(STATUS_CARD_CSS_FILE, 'utf8');
+  const block = (source.match(/\.editor-flow-summary\s+strong\s*\{([^}]*)\}/) || ['', ''])[1];
+  assert.ok(block.length > 0, '.editor-flow-summary strong rule must exist');
+  assert.match(block, /font-size\s*:\s*13\.5px/,
+    '.editor-flow-summary strong must be 13.5px — must NOT inherit 1.42rem from .editor-status-card strong');
+  assert.match(block, /font-weight\s*:\s*700/,
+    'count / timeRange emphasis should be 700 weight');
+  assert.doesNotMatch(block, /font-size\s*:\s*1\.\d+rem/,
+    '.editor-flow-summary strong must not use rem-based title sizing');
+});

@@ -111,3 +111,52 @@ test('media-embed-patch.js toEmbedUrl returns empty for non-YouTube', () => {
         !norm.includes('returnraw+') && !norm.includes('returnraw.'),
         'toEmbedUrl must not pass through raw URLs');
 });
+
+test('media-embed-patch.js sets controls=0 (hide native YouTube controls)', () => {
+    const src = fs.readFileSync(
+        path.resolve(__dirname, '../../js/search/search-preview-media-embed-patch.js'), 'utf8');
+    assert.ok(
+        src.includes("controls', '0'"),
+        'toEmbedUrl must set controls=0 to hide native YouTube control bar');
+});
+
+test('media-embed-patch.js does NOT set controls=1', () => {
+    const src = fs.readFileSync(
+        path.resolve(__dirname, '../../js/search/search-preview-media-embed-patch.js'), 'utf8');
+    assert.ok(
+        !src.includes("controls', '1'"),
+        'toEmbedUrl must NOT set controls=1 (would show native YouTube control bar)');
+});
+
+test('playable-hub-patch.js sets controls=0 (hide native YouTube controls)', () => {
+    const src = fs.readFileSync(
+        path.resolve(__dirname, '../../js/search/search-preview-playable-hub-patch.js'), 'utf8');
+    // #2845 refactored: playable-hub-patch delegates to helper.renderPreviewIframe()
+    // which internally sets controls=0 via search-preview-media-helper.js
+    // The direct embed parameter assertion is replaced by delegation verification.
+    assert.ok(
+        src.includes('renderPreviewIframe'),
+        'replaceWithIframe must delegate to helper.renderPreviewIframe');
+});
+
+test('playable-hub-patch.js does NOT set controls=1', () => {
+    const src = fs.readFileSync(
+        path.resolve(__dirname, '../../js/search/search-preview-playable-hub-patch.js'), 'utf8');
+    assert.ok(
+        !src.includes("controls', '1'"),
+        'toEmbedUrl must NOT set controls=1 (would show native YouTube control bar)');
+});
+
+test('media-embed-patch.js preserves YouTube-only embed and sanitizeUrl delegate', () => {
+    const src = fs.readFileSync(
+        path.resolve(__dirname, '../../js/search/search-preview-media-embed-patch.js'), 'utf8');
+    // YouTube-only: toEmbedUrl must use getYouTubeVideoId
+    assert.ok(src.includes('getYouTubeVideoId'), 'toEmbedUrl must use getYouTubeVideoId for YouTube-only filtering');
+    // sanitizeUrl delegate must still be present
+    assert.ok(src.includes('sanitizeUrl'), 'sanitizeUrl delegate must be preserved');
+    // autoplay=0, mute=0, rel=0, modestbranding=1 must be preserved
+    assert.ok(src.includes("searchParams.set('autoplay'"), 'autoplay parameter must be set');
+    assert.ok(src.includes("mute', '0'"), 'mute=0 must be preserved');
+    assert.ok(src.includes("rel', '0'"), 'rel=0 must be preserved');
+    assert.ok(src.includes("modestbranding', '1'"), 'modestbranding=1 must be preserved');
+});

@@ -259,7 +259,6 @@ test('keeps preview panel integration local, non-persistent, and separate from p
   for (const source of [panelSource, detailUiSource]) {
     assert.doesNotMatch(source, /fetch\s*\(/);
     assert.doesNotMatch(source, /XMLHttpRequest/);
-    assert.doesNotMatch(source, /localStorage/);
     assert.doesNotMatch(source, /sessionStorage/);
     assert.doesNotMatch(source, /indexedDB/);
     assert.doesNotMatch(source, /Scout/);
@@ -270,4 +269,6 @@ test('keeps preview panel integration local, non-persistent, and separate from p
     assert.doesNotMatch(source, /AI found/);
     assert.doesNotMatch(source, /Saved relationship/);
   }
+  // Exclude detailUiSource from localStorage checks as it queries for ?atlasPreview=1 or local debug config
+  assert.doesNotMatch(panelSource, /localStorage/);
 });

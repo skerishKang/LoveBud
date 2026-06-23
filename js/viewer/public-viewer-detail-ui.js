@@ -174,27 +174,235 @@
         var resolveMemoryThumbnail = deps && typeof deps.resolveMemoryThumbnail === 'function'
             ? deps.resolveMemoryThumbnail
             : function() { return ''; };
+        var i18n = deps && typeof deps.i18n === 'function'
+            ? deps.i18n
+            : function() { return ''; };
+        var showToast = deps && typeof deps.showToast === 'function'
+            ? deps.showToast
+            : function() {};
+
+        function formatI18nText(key, fallback) {
+            var text = i18n(key);
+            return text && text !== key ? text : fallback;
+        }
+
+        var clearDetailPlayer = function(mediaWrap) {
+            if (!mediaWrap) return;
+            var existingPlayer = mediaWrap.querySelector('[data-editor-detail-player="1"]');
+            if (existingPlayer) existingPlayer.remove();
+            mediaWrap.classList.remove('is-playing');
+            var overlay = mediaWrap.querySelector('.memory-preview-overlay');
+            if (overlay) overlay.hidden = false;
+            var imgEl = mediaWrap.querySelector('img');
+            if (imgEl) imgEl.style.display = '';
+        };
+
+        var getMemoryPlaybackUrl = function(data) {
+            if (!data) return '';
+            return String(
+                data.sourceUrl ||
+                data.source_url ||
+                data.videoUrl ||
+                data.video_url ||
+                data.url ||
+                data.linkUrl ||
+                data.link_url ||
+                ''
+            ).trim();
+        };
+
+        var getYouTubeVideoId = function(rawUrl) {
+            if (!rawUrl) return '';
+            var mediaHelper = window.LoveBudMedia;
+            if (mediaHelper && typeof mediaHelper.extractYouTubeId === 'function') {
+                return mediaHelper.extractYouTubeId(rawUrl) || '';
+            }
+            try {
+                var url = new URL(rawUrl, window.location.origin);
+                var host = url.hostname.replace(/^www\./, '');
+                if (host === 'youtu.be') {
+                    return url.pathname.split('/').filter(Boolean)[0] || '';
+                }
+                if (host === 'youtube.com' || host === 'm.youtube.com' || host === 'music.youtube.com') {
+                    if (url.pathname.startsWith('/embed/')) return url.pathname.split('/').filter(Boolean)[1] || '';
+                    if (url.pathname.startsWith('/shorts/')) return url.pathname.split('/').filter(Boolean)[1] || '';
+                    return url.searchParams.get('v') || '';
+                }
+            } catch (error) {}
+            return '';
+        };
+
+        var buildYouTubeEmbedUrl = function(data) {
+            var rawUrl = getMemoryPlaybackUrl(data);
+            var videoId = getYouTubeVideoId(rawUrl);
+            if (!videoId) return '';
+
+            var mediaHelper = window.LoveBudMedia;
+            var startSeconds = null;
+            var endSeconds = null;
+
+            var startValue = data && (data.startTime || data.start_time || data.startSeconds || data.start_seconds);
+            var endValue = data && (data.endTime || data.end_time || data.endSeconds || data.end_seconds);
+
+            if (mediaHelper && typeof mediaHelper.parseYouTubeTimeToSeconds === 'function') {
+                if (startValue !== undefined && startValue !== null) {
+                    startSeconds = mediaHelper.parseYouTubeTimeToSeconds(startValue);
+                }
+                if (endValue !== undefined && endValue !== null) {
+                    endSeconds = mediaHelper.parseYouTubeTimeToSeconds(endValue);
+                }
+            }
+
+            try {
+                var parsed = new URL(rawUrl);
+                if (startSeconds === null) {
+                    var urlStart = parsed.searchParams.get('start') || parsed.searchParams.get('t');
+                    if (urlStart && mediaHelper && typeof mediaHelper.parseYouTubeTimeToSeconds === 'function') {
+                        startSeconds = mediaHelper.parseYouTubeTimeToSeconds(urlStart);
+                    } else if (urlStart) {
+                        startSeconds = Number(urlStart);
+                    }
+                }
+                if (endSeconds === null) {
+                    var urlEnd = parsed.searchParams.get('end');
+                    if (urlEnd && mediaHelper && typeof mediaHelper.parseYouTubeTimeToSeconds === 'function') {
+                        endSeconds = mediaHelper.parseYouTubeTimeToSeconds(urlEnd);
+                    } else if (urlEnd) {
+                        endSeconds = Number(urlEnd);
+                    }
+                }
+            } catch (e) {}
+
+            var params = new URLSearchParams();
+            params.set('autoplay', '1');
+            params.set('rel', '0');
+
+            if (Number.isFinite(startSeconds) && startSeconds > 0) {
+                params.set('start', String(Math.floor(startSeconds)));
+            }
+            if (Number.isFinite(endSeconds) && endSeconds > 0) {
+                params.set('end', String(Math.floor(endSeconds)));
+            }
+
+            return 'https://www.youtube-nocookie.com/embed/' + encodeURIComponent(videoId) + '?' + params.toString();
+        };
+
+        var buildInlinePlayerElement = function(data) {
+            var youtubeEmbedUrl = buildYouTubeEmbedUrl(data);
+            if (youtubeEmbedUrl) {
+                var iframe = document.createElement('iframe');
+                iframe.dataset.editorDetailPlayer = '1';
+                iframe.className = 'detail-video-player';
+                iframe.src = youtubeEmbedUrl;
+                iframe.title = data && data.title ? data.title : formatI18nText('selected_moment_video', '선택된 순간 영상');
+                iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share';
+                iframe.allowFullscreen = true;
+                iframe.referrerPolicy = 'strict-origin-when-cross-origin';
+                return iframe;
+            }
+            return null;
+        };
+
+        var bindDetailMediaPlayback = function(data, mediaWrap) {
+            if (!mediaWrap) return;
+            var playBtn = mediaWrap.querySelector('.play-btn');
+            if (!playBtn) return;
+            playBtn.hidden = false;
+            playBtn.onclick = function(event) {
+                event.preventDefault();
+                event.stopPropagation();
+                var player = buildInlinePlayerElement(data);
+                if (!player) {
+                    if (showToast) showToast(formatI18nText('moment_inline_player_unavailable', '재생 가능한 영상 링크가 없어요.'), 'warn');
+                    return;
+                }
+                clearDetailPlayer(mediaWrap);
+                var imgEl = mediaWrap.querySelector('img');
+                var overlay = mediaWrap.querySelector('.memory-preview-overlay');
+                if (imgEl) imgEl.style.display = 'none';
+                if (overlay) overlay.hidden = true;
+                mediaWrap.classList.add('is-playing');
+                mediaWrap.appendChild(player);
+                if (typeof player.play === 'function') {
+                    player.play().catch(function() {});
+                }
+            };
+        };
 
         return function updatePublicViewerCurrentMomentImage(data) {
             var imgEl = document.getElementById('detailImg') || document.querySelector('.detail-video img');
             if (!imgEl) return;
 
+            var mediaWrap = imgEl.closest('.detail-video') || imgEl.parentElement;
+            clearDetailPlayer(mediaWrap);
+
             var isEmptyState = !!(data && data.isNewTree);
-            var thumb = resolveMemoryThumbnail(data);
-            if (thumb) {
-                imgEl.src = thumb;
-                var container = imgEl.closest('.detail-video') || imgEl.parentElement;
-                if (container) {
-                    container.classList.remove('is-empty');
+            imgEl.alt = isEmptyState ? '' : ((data && data.title) || '');
+
+            if (isEmptyState) {
+                imgEl.removeAttribute('src');
+                if (mediaWrap) {
+                    mediaWrap.classList.add('is-empty');
+                    mediaWrap.style.display = 'none';
+                }
+                return;
+            }
+
+            var rawUrl = getMemoryPlaybackUrl(data);
+            var videoId = getYouTubeVideoId(rawUrl);
+
+            if (videoId) {
+                var player = buildInlinePlayerElement(data);
+                if (player) {
+                    imgEl.style.display = 'none';
+                    var overlay = mediaWrap ? mediaWrap.querySelector('.memory-preview-overlay') : null;
+                    if (overlay) overlay.hidden = true;
+                    if (mediaWrap) {
+                        mediaWrap.style.display = '';
+                        mediaWrap.classList.remove('is-empty');
+                        mediaWrap.classList.add('is-playing');
+                        mediaWrap.appendChild(player);
+                    }
+                } else {
+                    var thumb = resolveMemoryThumbnail(data);
+                    if (thumb) {
+                        imgEl.src = thumb;
+                        imgEl.style.display = '';
+                        var overlay = mediaWrap ? mediaWrap.querySelector('.memory-preview-overlay') : null;
+                        if (overlay) overlay.hidden = false;
+                        if (mediaWrap) {
+                            mediaWrap.style.display = '';
+                            mediaWrap.classList.remove('is-empty');
+                        }
+                        bindDetailMediaPlayback(data, mediaWrap);
+                    } else {
+                        imgEl.removeAttribute('src');
+                        if (mediaWrap) {
+                            mediaWrap.classList.add('is-empty');
+                            mediaWrap.style.display = 'none';
+                        }
+                    }
                 }
             } else {
-                imgEl.removeAttribute('src');
-                var container = imgEl.closest('.detail-video') || imgEl.parentElement;
-                if (container) {
-                    container.classList.add('is-empty');
+                var thumb = resolveMemoryThumbnail(data);
+                if (thumb) {
+                    imgEl.src = thumb;
+                    imgEl.style.display = '';
+                    var overlay = mediaWrap ? mediaWrap.querySelector('.memory-preview-overlay') : null;
+                    if (overlay) overlay.hidden = false;
+                    if (mediaWrap) {
+                        mediaWrap.style.display = '';
+                        mediaWrap.classList.remove('is-empty');
+                    }
+                    bindDetailMediaPlayback(data, mediaWrap);
+                } else {
+                    imgEl.removeAttribute('src');
+                    if (mediaWrap) {
+                        mediaWrap.classList.add('is-empty');
+                        mediaWrap.style.display = 'none';
+                    }
                 }
             }
-            imgEl.alt = isEmptyState ? '' : ((data && data.title) || '');
         };
     }
 
