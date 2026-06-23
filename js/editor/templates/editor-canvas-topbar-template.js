@@ -37,6 +37,13 @@ export function buildCanvasTopbarTemplate() {
                             <span class="editor-canvas-tool-label" id="compactModeToggleLabel">간략 보기</span>
                         </button>
                     </div>
+                    <div class="editor-canvas-toolbar-separator" aria-hidden="true"></div>
+                    <div class="editor-canvas-toolbar-group" aria-label="목록 보기">
+                        <button type="button" class="editor-canvas-tool-btn editor-canvas-tool-btn-wide" id="momentListToggleBtn" aria-label="순간 목록 보기" title="순간 목록">
+                            <span class="material-symbols-outlined" aria-hidden="true">format_list_bulleted</span>
+                            <span class="editor-canvas-tool-label" id="momentListToggleLabel">순간 목록</span>
+                        </button>
+                    </div>
                 </div>
             </div>
     `;

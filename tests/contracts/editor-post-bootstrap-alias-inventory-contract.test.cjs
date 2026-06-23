@@ -87,10 +87,10 @@ test('first batch namespace-derived aliases are removed', () => {
   }
 });
 
-test('remaining helper method aliases: none — all 20 helper method aliases have been cleaned up', () => {
+test('remaining helper method aliases: none — all 21 helper method aliases have been cleaned up', () => {
   const editor = read('js/editor.js');
 
-  // All 20 helper method aliases have been removed or inlined:
+  // All 21 helper method aliases have been removed or inlined:
   //  - 5 first batch (PR #2127)
   //  - 6 second batch (PR #2129)
   //  - 4 third batch (PR #2131)
@@ -99,6 +99,7 @@ test('remaining helper method aliases: none — all 20 helper method aliases hav
   //  - 1 inline http status deps alias (PR #2137)
   //  - 1 memory id (PR #2139)
   //  - 1 auth start (PR #2141)
+  //  - 1 moment list (PR #2803)
 
   const forbiddenLocalAliases = [
     'const bindEditorPageEvents = editorPageEventBindings.bindEditorPageEvents;',
@@ -120,6 +121,7 @@ test('remaining helper method aliases: none — all 20 helper method aliases hav
     'const exposeRefreshMemoriesBridge = shellHelpers.exposeRefreshMemoriesBridge;',
     'const getHttpStatus = shellHelpers.getHttpStatus;',
     'const nextMemoryIdFromMemories = editorTreeHelpers.nextMemoryIdFromMemories;',
+    'const createMomentListBinding = shellHelpers.createMomentListBinding;',
     'const registerEditorAuthStart = editorPageHelpers.registerEditorAuthStart;',
     'const escapeHtml = deps.escapeHtml;',
     'const findRootMemory = deps.findRootMemory;',
@@ -193,6 +195,7 @@ test('remaining helper method aliases: none — all 20 helper method aliases hav
   assert.ok(editor.includes('deps.editorSaveStatus'), 'editor should use deps.editorSaveStatus directly');
   assert.ok(editor.includes('deps.editorDataLoader'), 'editor should use deps.editorDataLoader directly');
   assert.ok(editor.includes('deps.editorTreeHelpers'), 'editor should use deps.editorTreeHelpers directly');
+  assert.ok(editor.includes('deps.shellHelpers.createMomentListBinding'), 'editor should use deps.shellHelpers.createMomentListBinding directly');
 
   // Verify call site context for tree load error helpers
   assert.match(editor, /buildTreeLoadErrorCopy:\s*deps\.buildTreeLoadErrorCopy/);
@@ -254,8 +257,8 @@ test('remaining helper method aliases: none — all 20 helper method aliases hav
   assert.ok(editor.includes('deps.shellHelpers'), 'editor should use deps.shellHelpers directly');
   assert.equal(
     (editor.match(/deps\.shellHelpers\.[A-Za-z0-9_$]+/g) || []).length,
-    11,
-    'editor should read all 11 shell helper methods from deps.shellHelpers directly'
+    12,
+    'editor should read all 12 shell helper methods from deps.shellHelpers directly'
   );
 
   // Verify call site context for memory thumbnail resolver

@@ -670,6 +670,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
             applyEditorInitialSelection();
 
+            // Initialize Moment List (optional feature)
+            const createMomentListBinding = deps.shellHelpers.createMomentListBinding;
+            if (typeof createMomentListBinding === 'function') {
+                log('Initializing Moment List...');
+                const momentList = createMomentListBinding({
+                    documentRef: document,
+                    getTreeMemories: () => treeMemories(),
+                    getSelectedNodeId: () => selectedNodeId,
+                    setSelectedNodeId: (value) => { selectedNodeId = value; },
+                    updateDetailPanel: callUpdateDetailPanel,
+                    rerenderCanvas: () => initCanvas(),
+                    isRootMemory: deps.isRootMemory,
+                    getCanonicalRootId: () => canonicalRootId,
+                    i18n: deps.i18n
+                });
+                window.LoveBudEditorMomentListInstance = momentList;
+                log('Moment List initialized');
+            }
+
             const finalizeEditorReady = createEditorReadyFinalizer({
                 updateSidebarStatus,
                 markEditorReady,

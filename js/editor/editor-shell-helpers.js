@@ -12,6 +12,7 @@
     const shellStartup = window.LoveBudEditorShellStartup || {};
     const shellCanvasUI = window.LoveBudEditorShellCanvasUI || {};
     const shellMemory = window.LoveBudEditorShellMemory || {};
+    const shellMomentList = window.LoveBudEditorShellMomentList || {};
 
     window.LoveBudEditorShellHelpers = {
         ...shellUtils,
@@ -19,6 +20,7 @@
         ...shellGuards,
         ...shellStartup,
         ...shellCanvasUI,
-        ...shellMemory
+        ...shellMemory,
+        ...shellMomentList
     };
 })();
