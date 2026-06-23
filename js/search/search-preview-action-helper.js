@@ -127,7 +127,8 @@
     }
 
     /**
-     * Render open tree CTA button (secondary action)
+     * Render open tree CTA button (primary action)
+     * margin-top은 CSS #previewHubActionsSlot에서 담당 (#ALIGN-CTA)
      * @param {Object} tree - Tree object
      * @returns {string} Button HTML markup
      */
@@ -140,7 +141,7 @@
             'Open tree'
         );
         return `
-            <a href="${escapeHtml(href)}" class="btn-round btn-primary preview-primary-action" style="width:100%;margin-top:18px;min-height:50px;display:inline-flex;align-items:center;justify-content:center;text-decoration:none;font-size:14px;font-weight:800;gap:8px;">
+            <a href="${escapeHtml(href)}" class="btn-round btn-primary preview-primary-action" style="width:100%;min-height:50px;display:inline-flex;align-items:center;justify-content:center;text-decoration:none;font-size:14px;font-weight:800;gap:8px;">
                 <span class="material-symbols-outlined" style="font-size:16px;">account_tree</span>
                 ${escapeHtml(label)}
             </a>
