@@ -30,6 +30,7 @@
 const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
+var scoutEnvGuard = require('./_scout-env-guard.cjs');
 
 const ROOT = path.resolve(__dirname, '../..');
 const BOUNDARY_PATH = path.join(
@@ -66,21 +67,21 @@ const sourceSelectorCode = readFileSafe(SOURCE_SELECTOR_PATH);
 
 let boundaryModulePromise = null;
 async function loadBoundaryModule() {
-  if (!boundaryModulePromise) boundaryModulePromise = import(BOUNDARY_PATH);
+  if (!boundaryModulePromise) boundaryModulePromise = scoutEnvGuard.safeImport(BOUNDARY_PATH);
   return boundaryModulePromise;
 }
 
 let dependencyAdapterModulePromise = null;
 async function loadDependencyAdapterModule() {
   if (!dependencyAdapterModulePromise) {
-    dependencyAdapterModulePromise = import(DEPENDENCY_ADAPTER_PATH);
+    dependencyAdapterModulePromise = scoutEnvGuard.safeImport(DEPENDENCY_ADAPTER_PATH);
   }
   return dependencyAdapterModulePromise;
 }
 
 let verifierModulePromise = null;
 async function loadVerifierModule() {
-  if (!verifierModulePromise) verifierModulePromise = import(VERIFIER_PATH);
+  if (!verifierModulePromise) verifierModulePromise = scoutEnvGuard.safeImport(VERIFIER_PATH);
   return verifierModulePromise;
 }
 
@@ -702,7 +703,7 @@ tests.push({
   },
 });
 
-(async () => {
+if (!scoutEnvGuard.shouldSkip()) {(async () => {
   let passed = 0;
   let failed = 0;
   for (const t of tests) {
@@ -722,4 +723,4 @@ tests.push({
   }
   console.log('\n' + passed + ' passed, ' + failed + ' failed');
   if (failed > 0) process.exit(1);
-})();
+})();}

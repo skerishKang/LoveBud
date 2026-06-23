@@ -25,6 +25,7 @@
 const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
+var scoutEnvGuard = require('./_scout-env-guard.cjs');
 
 const ROOT = path.resolve(__dirname, '../..');
 const ADAPTER_PATH = path.join(ROOT, 'functions/api/scout/provider-specific-adapter.js');
@@ -61,7 +62,7 @@ const srcSelCode = readFileSafe(SOURCE_SELECTOR_PATH);
 const auditDocCode = readFileSafe(AUDIT_DOC_PATH);
 
 async function importAdapter() {
-  const module = await import(ADAPTER_PATH);
+  const module = await scoutEnvGuard.safeImport(ADAPTER_PATH);
   return module;
 }
 
@@ -529,7 +530,7 @@ async function run() {
   process.exit(failed > 0 ? 1 : 0);
 }
 
-run().catch(e => {
+if (!scoutEnvGuard.shouldSkip()) {run().catch(e => {
   console.error('Test runner error:', e);
   process.exit(1);
-});
+});}

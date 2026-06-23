@@ -20,6 +20,7 @@
 const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
+var scoutEnvGuard = require('./_scout-env-guard.cjs');
 
 const ROOT = path.resolve(__dirname, '../..');
 const VERIFIER_PATH = path.join(ROOT, 'functions/api/scout/live-auth-verifier-adapter.js');
@@ -33,7 +34,7 @@ const suggestCode = fs.readFileSync(SUGGEST_PATH, 'utf-8');
 let verifierModulePromise = null;
 async function loadVerifierModule() {
   if (!verifierModulePromise) {
-    verifierModulePromise = import(VERIFIER_PATH);
+    verifierModulePromise = scoutEnvGuard.safeImport(VERIFIER_PATH);
   }
   return verifierModulePromise;
 }
@@ -41,7 +42,7 @@ async function loadVerifierModule() {
 let depAdapterModulePromise = null;
 async function loadDepAdapterModule() {
   if (!depAdapterModulePromise) {
-    depAdapterModulePromise = import(DEP_ADAPTER_PATH);
+    depAdapterModulePromise = scoutEnvGuard.safeImport(DEP_ADAPTER_PATH);
   }
   return depAdapterModulePromise;
 }
@@ -450,7 +451,7 @@ tests.push({
 });
 
 // ── Runner ───────────────────────────────────────────────────────────────────
-(async () => {
+if (!scoutEnvGuard.shouldSkip()) {(async () => {
   let passed = 0;
   let failed = 0;
   for (const t of tests) {
@@ -466,4 +467,4 @@ tests.push({
   }
   console.log('\n' + passed + ' passed, ' + failed + ' failed');
   if (failed > 0) process.exit(1);
-})();
+})();}

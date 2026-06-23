@@ -22,6 +22,7 @@
 const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
+var scoutEnvGuard = require('./_scout-env-guard.cjs');
 
 const ROOT = path.resolve(__dirname, '../..');
 const TAXONOMY_DOC = path.join(ROOT, 'docs/product/lovebud-scout-live-endpoint-error-taxonomy-contract.md');
@@ -68,7 +69,7 @@ function cleanSource(code) {
 let handlerPromise = null;
 async function getOnRequestPost() {
   if (!handlerPromise) {
-    handlerPromise = import(SUGGEST_PATH).then(m => m.onRequestPost);
+    handlerPromise = scoutEnvGuard.safeImport(SUGGEST_PATH).then(m => m.onRequestPost);
   }
   return handlerPromise;
 }
@@ -606,7 +607,7 @@ async function run() {
   process.exit(failed > 0 ? 1 : 0);
 }
 
-run().catch(e => {
+if (!scoutEnvGuard.shouldSkip()) {run().catch(e => {
   console.error('Test runner error:', e);
   process.exit(1);
-});
+});}

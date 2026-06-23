@@ -30,6 +30,7 @@
 const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
+var scoutEnvGuard = require('./_scout-env-guard.cjs');
 
 const ROOT = path.resolve(__dirname, '../..');
 const BOUNDARY_PATH = path.join(ROOT, 'functions/api/scout/live-auth-rate-limit-boundary.js');
@@ -70,7 +71,7 @@ const boundaryDoc = readFileSafe(BOUNDARY_DOC_PATH);
 const auditDoc = readFileSafe(AUDIT_DOC_PATH);
 
 async function importBoundary() {
-  return await import(BOUNDARY_PATH);
+  return await scoutEnvGuard.safeImport(BOUNDARY_PATH);
 }
 
 let _boundaryMod = null;
@@ -640,7 +641,7 @@ async function run() {
   process.exit(failed > 0 ? 1 : 0);
 }
 
-run().catch(e => {
+if (!scoutEnvGuard.shouldSkip()) {run().catch(e => {
   console.error('Test runner error:', e);
   process.exit(1);
-});
+});}

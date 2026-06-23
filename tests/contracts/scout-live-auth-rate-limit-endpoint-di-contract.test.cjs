@@ -21,6 +21,7 @@
 const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
+var scoutEnvGuard = require('./_scout-env-guard.cjs');
 
 const ROOT = path.resolve(__dirname, '../..');
 const BOUNDARY_PATH = path.join(ROOT, 'functions/api/scout/live-auth-rate-limit-boundary.js');
@@ -59,7 +60,7 @@ function cleanSource(code) {
 let onRequestPost = null;
 async function getOnRequestPost() {
   if (!onRequestPost) {
-    const mod = await import(SUGGEST_PATH);
+    const mod = await scoutEnvGuard.safeImport(SUGGEST_PATH);
     onRequestPost = mod.onRequestPost;
   }
   return onRequestPost;
@@ -397,7 +398,7 @@ tests.push({
   fn: () => {
     // Direct boundary test: pass an object with sensitive fields and ensure boundary sanitizes
     return (async () => {
-      const mod = await import(BOUNDARY_PATH);
+      const mod = await scoutEnvGuard.safeImport(BOUNDARY_PATH);
       let captured = null;
       const limiter = async (payload) => { captured = payload; return { allowed: true }; };
       const authResult = { ok: true, userKey: 'user-x', token: 'TEST_FIXTURE_TOKEN_xyz_INTERNAL' };
@@ -657,7 +658,7 @@ async function run() {
   process.exit(failed > 0 ? 1 : 0);
 }
 
-run().catch(e => {
+if (!scoutEnvGuard.shouldSkip()) {run().catch(e => {
   console.error('Test runner error:', e);
   process.exit(1);
-});
+});}

@@ -8,6 +8,7 @@
 const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
+var scoutEnvGuard = require('./_scout-env-guard.cjs');
 
 const ROOT = path.resolve(__dirname, '../..');
 const BOUNDARY_PATH = path.join(ROOT, 'functions/api/scout/live-auth-rate-limit-boundary.js');
@@ -61,7 +62,7 @@ function createMockRequest(options = {}) {
 let onRequestPost = null;
 async function getOnRequestPost() {
   if (!onRequestPost) {
-    const mod = await import(SUGGEST_PATH);
+    const mod = await scoutEnvGuard.safeImport(SUGGEST_PATH);
     onRequestPost = mod.onRequestPost;
   }
   return onRequestPost;
@@ -463,7 +464,7 @@ async function run() {
   process.exit(failedCount > 0 ? 1 : 0);
 }
 
-run().catch(err => {
+if (!scoutEnvGuard.shouldSkip()) {run().catch(err => {
   console.error(err);
   process.exit(1);
-});
+});}

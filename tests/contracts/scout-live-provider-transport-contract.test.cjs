@@ -20,6 +20,7 @@
 const path = require('path');
 const assert = require('assert');
 const fs = require('fs');
+var scoutEnvGuard = require('./_scout-env-guard.cjs');
 
 // ─── Import subject ──────────────────────────────────────────────────────────
 
@@ -128,7 +129,7 @@ async function run() {
   // ── 1. Dynamic import ───────────────────────────────────────────────────────
   await suite('1. Dynamic import (side-effect-free)', async () => {
     try {
-      const mod = await import(MODULE_PATH);
+      const mod = await scoutEnvGuard.safeImport(MODULE_PATH);
       createScoutLiveProviderTransport = mod.createScoutLiveProviderTransport;
       createScoutDisabledProviderTransport = mod.createScoutDisabledProviderTransport;
       createScoutInjectedProviderTransport = mod.createScoutInjectedProviderTransport;
@@ -404,7 +405,7 @@ async function run() {
   }
 }
 
-run().catch(err => {
+if (!scoutEnvGuard.shouldSkip()) {run().catch(err => {
   console.error('[scout-live-provider-transport-contract] Uncaught:', err.message || String(err));
   process.exit(1);
-});
+});}

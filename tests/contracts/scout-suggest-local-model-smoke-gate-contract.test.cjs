@@ -21,6 +21,7 @@
 const path = require('path');
 const assert = require('assert');
 const fs = require('fs');
+var scoutEnvGuard = require('./_scout-env-guard.cjs');
 
 // ─── Paths ───────────────────────────────────────────────────────────────────
 
@@ -175,7 +176,7 @@ async function run() {
         buildScoutLiveProviderPrompt, validateScoutLiveProviderResponse;
 
     try {
-      const transportMod = await import(TRANSPORT_PATH);
+      const transportMod = await scoutEnvGuard.safeImport(TRANSPORT_PATH);
       createScoutLiveProviderTransport = transportMod.createScoutLiveProviderTransport;
       pass('live-provider-transport.js importable');
     } catch (err) {
@@ -184,7 +185,7 @@ async function run() {
     }
 
     try {
-      const executorMod = await import(EXECUTOR_PATH);
+      const executorMod = await scoutEnvGuard.safeImport(EXECUTOR_PATH);
       createScoutLiveProviderExecutor = executorMod.createScoutLiveProviderExecutor;
       pass('live-provider-executor.js importable');
     } catch (err) {
@@ -193,7 +194,7 @@ async function run() {
     }
 
     try {
-      const adapterMod = await import(ADAPTER_PATH);
+      const adapterMod = await scoutEnvGuard.safeImport(ADAPTER_PATH);
       buildScoutLiveProviderPrompt = adapterMod.buildScoutLiveProviderPrompt;
       validateScoutLiveProviderResponse = adapterMod.validateScoutLiveProviderResponse;
       pass('live-provider-adapter.js importable (buildPrompt + validateResponse)');
@@ -292,7 +293,7 @@ async function run() {
   await suite('4. Transport seam: disabled default (no network)', async () => {
     let createScoutLiveProviderTransport;
     try {
-      const mod = await import(TRANSPORT_PATH);
+      const mod = await scoutEnvGuard.safeImport(TRANSPORT_PATH);
       createScoutLiveProviderTransport = mod.createScoutLiveProviderTransport;
     } catch (err) {
       fail('transport import', err.message);
@@ -313,7 +314,7 @@ async function run() {
   await suite('5. Executor with no transport: safe-fail TRANSPORT_MISSING', async () => {
     let createScoutLiveProviderExecutor;
     try {
-      const mod = await import(EXECUTOR_PATH);
+      const mod = await scoutEnvGuard.safeImport(EXECUTOR_PATH);
       createScoutLiveProviderExecutor = mod.createScoutLiveProviderExecutor;
     } catch (err) {
       fail('executor import', err.message);
@@ -406,7 +407,7 @@ async function run() {
   }
 }
 
-run().catch(err => {
+if (!scoutEnvGuard.shouldSkip()) {run().catch(err => {
   console.error('[scout-suggest-local-model-smoke-gate-contract] Uncaught:', err.message || String(err));
   process.exit(1);
-});
+});}

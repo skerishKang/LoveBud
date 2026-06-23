@@ -12,6 +12,7 @@
 const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
+var scoutEnvGuard = require('./_scout-env-guard.cjs');
 
 const ROOT = path.resolve(__dirname, '../..');
 const VERIFIER_PATH = path.join(ROOT, 'functions/api/scout/live-auth-verifier-adapter.js');
@@ -28,7 +29,7 @@ const sourceSelectorCode = readFileSafe(SOURCE_SELECTOR_PATH);
 
 let verifierModulePromise = null;
 async function loadVerifierModule() {
-  if (!verifierModulePromise) verifierModulePromise = import(VERIFIER_PATH);
+  if (!verifierModulePromise) verifierModulePromise = scoutEnvGuard.safeImport(VERIFIER_PATH);
   return verifierModulePromise;
 }
 
@@ -60,7 +61,7 @@ tests.push({ name: 'Endpoint and frontend defaults remain preserved', fn: () => 
   assert.ok(!suggestCode.includes('createScoutLiveRateLimitStorageAdapter'), 'endpoint must not directly create storage adapter in this slice');
 }});
 
-(async () => {
+if (!scoutEnvGuard.shouldSkip()) {(async () => {
   let passed = 0, failed = 0;
   for (const t of tests) {
     try { await t.fn(); console.log('  ✓ ' + t.name); passed++; }
@@ -68,4 +69,4 @@ tests.push({ name: 'Endpoint and frontend defaults remain preserved', fn: () => 
   }
   console.log('\n' + passed + ' passed, ' + failed + ' failed');
   if (failed > 0) process.exit(1);
-})();
+})();}

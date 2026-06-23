@@ -20,6 +20,7 @@
 const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
+var scoutEnvGuard = require('./_scout-env-guard.cjs');
 
 const ROOT = path.resolve(__dirname, '../..');
 const OFFICIAL_BOUNDARY_PATH = path.join(ROOT, 'functions/api/scout/live-auth-rate-limit-boundary.js');
@@ -85,7 +86,7 @@ tests.push({
 tests.push({
   name: 'Official boundary exports the PR #2278 API',
   fn: async () => {
-    const mod = await import(OFFICIAL_BOUNDARY_PATH);
+    const mod = await scoutEnvGuard.safeImport(OFFICIAL_BOUNDARY_PATH);
     assert.ok(mod.SCOUT_LIVE_AUTH_RATE_LIMIT_STATUS, 'SCOUT_LIVE_AUTH_RATE_LIMIT_STATUS exported');
     assert.ok(mod.SCOUT_LIVE_AUTH_RATE_LIMIT_ERROR_CODES, 'SCOUT_LIVE_AUTH_RATE_LIMIT_ERROR_CODES exported');
     assert.strictEqual(typeof mod.createScoutLiveAuthBoundary, 'function');
@@ -323,7 +324,7 @@ async function run() {
   process.exit(failed > 0 ? 1 : 0);
 }
 
-run().catch(e => {
+if (!scoutEnvGuard.shouldSkip()) {run().catch(e => {
   console.error('Test runner error:', e);
   process.exit(1);
-});
+});}

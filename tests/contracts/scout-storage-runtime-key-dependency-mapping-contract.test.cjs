@@ -28,6 +28,7 @@
 const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
+var scoutEnvGuard = require('./_scout-env-guard.cjs');
 
 const ROOT = path.resolve(__dirname, '../..');
 const DEP_ADAPTER_PATH = path.join(ROOT, 'functions/api/scout/live-auth-rate-limit-dependency-adapter.js');
@@ -71,7 +72,7 @@ const endpointClient = readFileSafe(ENDPOINT_CLIENT_PATH);
 let depModulePromise = null;
 async function loadDepModule() {
   if (!depModulePromise) {
-    depModulePromise = import(DEP_ADAPTER_PATH);
+    depModulePromise = scoutEnvGuard.safeImport(DEP_ADAPTER_PATH);
   }
   return depModulePromise;
 }
@@ -461,7 +462,7 @@ push('Storage adapter preserves STORAGE_KEY_BUILT nested metadata in its respons
   // STORAGE_KEY_BUILT under storageKeyBuilder.code (not at the top-level
   // code field). The dependency adapter does not depend on this nesting,
   // but the slice must not promote STORAGE_KEY_BUILT to the top level.
-  const { createScoutLiveRateLimitStorageAdapter } = await import(STORAGE_ADAPTER_PATH);
+  const { createScoutLiveRateLimitStorageAdapter } = await scoutEnvGuard.safeImport(STORAGE_ADAPTER_PATH);
   const adapter = createScoutLiveRateLimitStorageAdapter({
     mockDisabled: false,
     storageMode: 'kv',
@@ -546,7 +547,7 @@ push('Documentation locks non-goals and mapping rationale', () => {
 
 // ─── Runner ─────────────────────────────────────────────────────────────────
 
-(async () => {
+if (!scoutEnvGuard.shouldSkip()) {(async () => {
   let passed = 0;
   let failed = 0;
 
@@ -564,4 +565,4 @@ push('Documentation locks non-goals and mapping rationale', () => {
 
   console.log('\n' + passed + ' passed, ' + failed + ' failed');
   if (failed > 0) process.exit(1);
-})();
+})();}

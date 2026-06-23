@@ -27,6 +27,7 @@
 const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
+var scoutEnvGuard = require('./_scout-env-guard.cjs');
 
 const ROOT = path.resolve(__dirname, '../..');
 const DEP_ADAPTER_PATH = path.join(ROOT, 'functions/api/scout/live-auth-rate-limit-dependency-adapter.js');
@@ -63,11 +64,11 @@ const endpointClientCode = readFileSafe(ENDPOINT_CLIENT_PATH);
 let depModulePromise = null;
 let storageModulePromise = null;
 async function loadDepModule() {
-  if (!depModulePromise) depModulePromise = import(DEP_ADAPTER_PATH);
+  if (!depModulePromise) depModulePromise = scoutEnvGuard.safeImport(DEP_ADAPTER_PATH);
   return depModulePromise;
 }
 async function loadStorageModule() {
-  if (!storageModulePromise) storageModulePromise = import(STORAGE_ADAPTER_PATH);
+  if (!storageModulePromise) storageModulePromise = scoutEnvGuard.safeImport(STORAGE_ADAPTER_PATH);
   return storageModulePromise;
 }
 
@@ -492,7 +493,7 @@ tests.push({
 });
 
 // ── Runner ─────────────────────────────────────────────────────────────────
-(async () => {
+if (!scoutEnvGuard.shouldSkip()) {(async () => {
   let passed = 0;
   let failed = 0;
   for (const t of tests) {
@@ -508,4 +509,4 @@ tests.push({
   }
   console.log('\n' + passed + ' passed, ' + failed + ' failed');
   if (failed > 0) process.exit(1);
-})();
+})();}

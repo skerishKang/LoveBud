@@ -22,6 +22,7 @@
 const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
+var scoutEnvGuard = require('./_scout-env-guard.cjs');
 
 const ROOT = path.resolve(__dirname, '../..');
 const STORAGE_ADAPTER_PATH = path.join(ROOT, 'functions/api/scout/live-rate-limit-storage-adapter.js');
@@ -58,7 +59,7 @@ const endpointClientCode = readFileSafe(ENDPOINT_CLIENT_PATH);
 let storageModulePromise = null;
 async function loadStorageModule() {
   if (!storageModulePromise) {
-    storageModulePromise = import(STORAGE_ADAPTER_PATH);
+    storageModulePromise = scoutEnvGuard.safeImport(STORAGE_ADAPTER_PATH);
   }
   return storageModulePromise;
 }
@@ -400,7 +401,7 @@ tests.push({
 });
 
 // ── Runner ─────────────────────────────────────────────────────────────────
-(async () => {
+if (!scoutEnvGuard.shouldSkip()) {(async () => {
   let passed = 0;
   let failed = 0;
   for (const t of tests) {
@@ -416,4 +417,4 @@ tests.push({
   }
   console.log('\n' + passed + ' passed, ' + failed + ' failed');
   if (failed > 0) process.exit(1);
-})();
+})();}

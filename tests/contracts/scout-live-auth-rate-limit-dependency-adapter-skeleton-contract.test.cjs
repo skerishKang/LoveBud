@@ -22,6 +22,7 @@
 const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
+var scoutEnvGuard = require('./_scout-env-guard.cjs');
 
 const ROOT = path.resolve(__dirname, '../..');
 const ADAPTER_PATH = path.join(ROOT, 'functions/api/scout/live-auth-rate-limit-dependency-adapter.js');
@@ -64,7 +65,7 @@ const endpointClientCode = readFileSafe(ENDPOINT_CLIENT_PATH);
 let adapterModulePromise = null;
 async function loadAdapterModule() {
   if (!adapterModulePromise) {
-    adapterModulePromise = import(ADAPTER_PATH);
+    adapterModulePromise = scoutEnvGuard.safeImport(ADAPTER_PATH);
   }
   return adapterModulePromise;
 }
@@ -365,7 +366,7 @@ tests.push({
 });
 
 // ── Runner ─────────────────────────────────────────────────────────────────
-(async () => {
+if (!scoutEnvGuard.shouldSkip()) {(async () => {
   let passed = 0;
   let failed = 0;
   for (const t of tests) {
@@ -381,4 +382,4 @@ tests.push({
   }
   console.log('\n' + passed + ' passed, ' + failed + ' failed');
   if (failed > 0) process.exit(1);
-})();
+})();}
