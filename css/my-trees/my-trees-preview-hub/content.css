@@ -141,7 +141,8 @@
     font-size: 14px;
     color: var(--on-surface-variant);
     line-height: 1.6;
-    padding: 0 4px;
+    /* 둘러보기 .preview-focus-copy 기준: padding 0 2px */
+    padding: 0 2px;
     margin-top: 12px;
 }
 
