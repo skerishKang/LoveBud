@@ -248,8 +248,8 @@
             _dom.previewTitle.innerHTML = `<div class="preview-focus-title" style="font-size:1.05rem;font-weight:800;color:var(--on-surface);">${safeTreeTitle}</div>`;
         }
 
-        if (_dom.previewDesc) {
-            _dom.previewDesc.innerHTML = `
+        if (_dom.previewHubFlowSlot) {
+            _dom.previewHubFlowSlot.innerHTML = `
                 <div class="preview-focus-flow-card preview-focus-flow-card-loading" style="background:var(--surface-container-low);padding:20px;border-radius:1rem;">
                     ${renderSectionHeading('auto_stories', getSearchCopy('search.previewLoadingHeading', '감상 허브를 여는 중', 'Opening the preview hub'))}
                     <div style="font-size:14px;line-height:1.7;color:var(--on-surface-variant);">
@@ -258,6 +258,9 @@
                 </div>
             `;
         }
+        if (_dom.previewHubSummarySlot) _dom.previewHubSummarySlot.innerHTML = '';
+        if (_dom.previewHubActionsSlot) _dom.previewHubActionsSlot.innerHTML = '';
+        if (_dom.previewHubSocialSlot) _dom.previewHubSocialSlot.innerHTML = '';
 
         if (previewStats) {
             previewStats.hidden = true;
@@ -460,6 +463,11 @@
                 ? metadataHelper.renderHubMetadata(tree)
                 : '';
 
+            var dynamicMeta = document.getElementById('previewHubDynamicMetadataSlot');
+            if (dynamicMeta) {
+                dynamicMeta.innerHTML = hubMetadataHtml;
+            }
+
             if (!hasMemories) {
                 const noRecordsLine = formatSearchCopy(
                     'search.previewNoRecordsLine',
@@ -471,24 +479,33 @@
                     '{countLabel} {followup}'
                 );
 
-                _dom.previewDesc.innerHTML = hubMetadataHtml + `
-                    <div class="preview-focus-flow-card preview-focus-flow-card-empty" style="background:var(--surface-container-low);padding:20px;border-radius:1rem;margin-bottom:16px;">
-                        ${renderSectionHeading('route', getSearchCopy('search.previewTimelineHeading', '이 트리는 어디서 시작될까요?', 'Where will this tree begin?'))}
-                        <div style="font-size:14px;line-height:1.7;color:var(--on-surface-variant);">
-                            ${escapeHtml(getSearchCopy('search.previewTimelineEmpty', '아직 시작 순간이 남아 있지 않아 흐름이 비어 있어요.', 'The flow is still empty because the starting moment has not been saved yet.'))}<br>
-                            ${escapeHtml(getSearchCopy('search.previewTimelineEmptyBody', '첫 순간이 더해지면 이 패널에서 대표 순간과 흐름을 바로 볼 수 있어요.', 'Once the first moment is added, you will be able to see the featured moment and flow in this panel.'))}
+                if (_dom.previewHubFlowSlot) {
+                    _dom.previewHubFlowSlot.innerHTML = `
+                        <div class="preview-focus-flow-card preview-focus-flow-card-empty" style="background:var(--surface-container-low);padding:20px;border-radius:1rem;margin-bottom:16px;">
+                            ${renderSectionHeading('route', getSearchCopy('search.previewTimelineHeading', '이 트리는 어디서 시작될까요?', 'Where will this tree begin?'))}
+                            <div style="font-size:14px;line-height:1.7;color:var(--on-surface-variant);">
+                                ${escapeHtml(getSearchCopy('search.previewTimelineEmpty', '아직 시작 순간이 남아 있지 않아 흐름이 비어 있어요.', 'The flow is still empty because the starting moment has not been saved yet.'))}<br>
+                                ${escapeHtml(getSearchCopy('search.previewTimelineEmptyBody', '첫 순간이 더해지면 이 패널에서 대표 순간과 흐름을 바로 볼 수 있어요.', 'Once the first moment is added, you will be able to see the featured moment and flow in this panel.'))}
+                            </div>
                         </div>
-                    </div>
-
-                    <div class="preview-focus-copy" style="font-size:14px;color:var(--on-surface-variant);line-height:1.6;padding:0 4px;">
-                        ${getPreviewSummaryCopy(tree, memories)}
-                        <span style="color:var(--primary);font-weight:700;">${noRecordsLine}</span>
-                        ${renderInfoCallout('info', getSearchCopy('search.previewNewTreeInfo', '이제 막 감상이 시작될 공개 러브트리예요.', 'This public LoveTree is just about to begin.'))}
-                    </div>
-                    ${renderOpenTreeButton(tree)}
-                    ${renderPreviewActionButton(tree)}
-                    ${renderShareButton(tree)}
-                `;
+                    `;
+                }
+                if (_dom.previewHubSummarySlot) {
+                    _dom.previewHubSummarySlot.innerHTML = `
+                        <div class="preview-focus-copy" style="font-size:14px;color:var(--on-surface-variant);line-height:1.6;padding:0 4px;">
+                            ${getPreviewSummaryCopy(tree, memories)}
+                            <span style="color:var(--primary);font-weight:700;">${noRecordsLine}</span>
+                            ${renderInfoCallout('info', getSearchCopy('search.previewNewTreeInfo', '이제 막 감상이 시작될 공개 러브트리예요.', 'This public LoveTree is just about to begin.'))}
+                        </div>
+                    `;
+                }
+                if (_dom.previewHubActionsSlot) {
+                    _dom.previewHubActionsSlot.innerHTML = `
+                        ${renderOpenTreeButton(tree)}
+                        ${renderPreviewActionButton(tree)}
+                        ${renderShareButton(tree)}
+                    `;
+                }
             } else {
                 const visibleMemories = memories.slice(0, VISIBLE_FLOW_MOMENT_COUNT);
                 const hiddenMemories = memories.slice(VISIBLE_FLOW_MOMENT_COUNT);
@@ -498,26 +515,34 @@
                 const firstMomentLabel = getMomentLabel(firstMem, '시작 순간', 'Starting moment');
                 const lastMomentLabel = getMomentLabel(memories[memories.length - 1], '최근에 남은 순간', 'Latest saved moment');
 
-                _dom.previewDesc.hidden = false;
-                _dom.previewDesc.innerHTML = hubMetadataHtml + `
-                    <div class="preview-focus-flow-card" style="background:var(--surface-container-low);padding:20px;border-radius:1rem;margin-bottom:16px;">
-                        ${renderSectionHeading('route', getSearchCopy('search.previewTimelineHeading', '대표 순간에서 이어진 흐름', 'Flow connected from the featured moment'))}
-                        <div class="preview-flow-list">
-                            ${pathStages}
+                if (_dom.previewHubFlowSlot) {
+                    _dom.previewHubFlowSlot.innerHTML = `
+                        <div class="preview-focus-flow-card" style="background:var(--surface-container-low);padding:20px;border-radius:1rem;margin-bottom:16px;">
+                            ${renderSectionHeading('route', getSearchCopy('search.previewTimelineHeading', '대표 순간에서 이어진 흐름', 'Flow connected from the featured moment'))}
+                            <div class="preview-flow-list">
+                                ${pathStages}
+                            </div>
+                            ${hiddenStages}
+                            ${flowToggle ? `<div class="preview-flow-controls">${flowToggle}</div>` : ''}
                         </div>
-                        ${hiddenStages}
-                        ${flowToggle ? `<div class="preview-flow-controls">${flowToggle}</div>` : ''}
-                    </div>
-
-                    <div class="preview-focus-copy" style="font-size:14px;color:var(--on-surface-variant);line-height:1.6;padding:0 4px;">
-                        ${getPreviewSummaryCopy(tree, memories)}
-                        ${renderInfoCallout('favorite', `${firstMomentLabel}에서 시작해 ${lastMomentLabel}까지 이어진 감정의 흐름이에요.`)}
-                        ${renderInfoCallout('touch_app', getSearchCopy('search.previewJourneyCta', '이곳에서 대표 순간과 이어진 감정을 훑어보고, 마음이 머무는 순간으로 들어가 보세요.', 'Scan the featured moment and connected feelings here, then open the moment that draws you in.'), 'primary')}
-                    </div>
-                    ${renderOpenTreeButton(tree)}
-                    ${renderPreviewActionButton(tree)}
-                    ${renderShareButton(tree)}
-                `;
+                    `;
+                }
+                if (_dom.previewHubSummarySlot) {
+                    _dom.previewHubSummarySlot.innerHTML = `
+                        <div class="preview-focus-copy" style="font-size:14px;color:var(--on-surface-variant);line-height:1.6;padding:0 4px;">
+                            ${getPreviewSummaryCopy(tree, memories)}
+                            ${renderInfoCallout('favorite', `${firstMomentLabel}에서 시작해 ${lastMomentLabel}까지 이어진 감정의 흐름이에요.`)}
+                            ${renderInfoCallout('touch_app', getSearchCopy('search.previewJourneyCta', '이곳에서 대표 순간과 이어진 감정을 훑어보고, 마음이 머무는 순간으로 들어가 보세요.', 'Scan the featured moment and connected feelings here, then open the moment that draws you in.'), 'primary')}
+                        </div>
+                    `;
+                }
+                if (_dom.previewHubActionsSlot) {
+                    _dom.previewHubActionsSlot.innerHTML = `
+                        ${renderOpenTreeButton(tree)}
+                        ${renderPreviewActionButton(tree)}
+                        ${renderShareButton(tree)}
+                    `;
+                }
             }
         }
 
@@ -570,7 +595,15 @@
         }
         if (_dom.previewDesc) {
             _dom.previewDesc.hidden = false;
-            _dom.previewDesc.innerHTML = '<p class="preview-empty-description">' + escapeHtml(placeholderDescription) + '</p>';
+        }
+        var dynamicMeta = document.getElementById('previewHubDynamicMetadataSlot');
+        if (dynamicMeta) dynamicMeta.innerHTML = '';
+        if (_dom.previewHubFlowSlot) _dom.previewHubFlowSlot.innerHTML = '';
+        if (_dom.previewHubSummarySlot) _dom.previewHubSummarySlot.innerHTML = '';
+        if (_dom.previewHubActionsSlot) _dom.previewHubActionsSlot.innerHTML = '';
+        if (_dom.previewHubSocialSlot) _dom.previewHubSocialSlot.innerHTML = '';
+        if (_dom.previewHubSummarySlot) {
+            _dom.previewHubSummarySlot.innerHTML = '<p class="preview-empty-description">' + escapeHtml(placeholderDescription) + '</p>';
         }
         if (previewStats) {
             previewStats.hidden = true;

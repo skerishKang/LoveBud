@@ -8,7 +8,7 @@
   <link rel="icon" href="/assets/favicon/favicon.svg" type="image/svg+xml">
   <link rel="icon" href="/favicon.ico" sizes="32x32">
   <link rel="stylesheet" href="../css/global.css?v=20260619-2710-1">
-  <link rel="stylesheet" href="../css/my-trees.css?v=20260623-flow-controls-baseline-1">
+  <link rel="stylesheet" href="../css/my-trees.css?v=20260623-2841-2">
   <link rel="stylesheet" href="../css/tree-view-mode.css?v=20260621-step2-1">
   <link rel="stylesheet" href="../css/page-transitions.css?v=20260430-1">
   <link rel="stylesheet" href="../css/components/lovebud-ai-panel.css?v=20260616-ai-panel-1">
@@ -71,7 +71,7 @@
       </div>
     </section>
 
-    <aside class="my-trees-hub-panel preview-sidebar lovetree-calm-right-rail reveal-fade is-empty preview-state-empty" id="myTreesHubPanel">
+    <aside class="my-trees-hub-panel preview-sidebar preview-hub lovetree-calm-right-rail reveal-fade is-empty preview-state-empty" id="myTreesHubPanel">
       <div class="my-trees-hub-header preview-panel-header">
         <div class="my-trees-hub-title-group preview-panel-title-group">
           <h3 id="myTreesHubTitle" data-i18n="myTrees.hub_title">내 러브트리</h3>
@@ -86,24 +86,23 @@
         <div class="my-trees-hub-media" id="myTreesHubMedia" hidden></div>
       </div>
       <div class="my-trees-hub-content preview-details" id="myTreesHubContent" hidden>
-        <div id="myTreesHubDetails">
-          <div class="preview-focus-title-block">
-            <div class="my-trees-hub-tree-title preview-focus-title" id="myTreesHubTreeTitle"></div>
-            <div class="my-trees-hub-meta-badge preview-focus-title-meta" id="myTreesHubMetaBadge"></div>
-          </div>
-          <div class="my-trees-hub-flow preview-flow-section preview-focus-flow-card" id="myTreesHubFlow" hidden>
-            <div class="my-trees-hub-flow-label"><span class="material-symbols-outlined">route</span><span>이어진 흐름</span></div>
-            <div class="my-trees-hub-flow-list preview-flow-list" id="myTreesHubFlowList"></div>
-            <div class="my-trees-hub-flow-controls preview-flow-controls" id="myTreesHubFlowControls"></div>
-          </div>
-          <div class="my-trees-hub-no-moments preview-focus-flow-card-empty" id="myTreesHubNoMoments" hidden></div>
-          <div class="my-trees-hub-summary preview-focus-copy" id="myTreesHubSummary"></div>
+        <div class="preview-focus-title-block">
+          <div class="my-trees-hub-tree-title preview-focus-title" id="myTreesHubTreeTitle"></div>
+          <div class="my-trees-hub-meta-badge preview-focus-title-meta" id="myTreesHubMetaBadge"></div>
         </div>
-      </div>
-      <div class="my-trees-hub-actions preview-actions" id="myTreesHubActions" hidden>
-        <a href="#" class="my-trees-hub-open-btn preview-primary-action" id="myTreesHubOpenBtn"><span class="material-symbols-outlined">account_tree</span><span data-i18n="myTrees.hub_open">트리 열기</span></a>
-        <a href="#" class="my-trees-hub-edit-btn preview-secondary-action" id="myTreesHubEditBtn"><span class="material-symbols-outlined">edit</span><span data-i18n="myTrees.hub_edit">편집하기</span></a>
-        <button type="button" class="my-trees-hub-share-btn preview-share-action" id="myTreesHubShareBtn"><span class="material-symbols-outlined">link</span><span data-i18n="myTrees.hub_share">감상 링크 복사</span></button>
+        <div class="my-trees-hub-flow preview-flow-section preview-focus-flow-card" id="myTreesHubFlow" hidden>
+          <div class="my-trees-hub-flow-label"><span class="material-symbols-outlined">route</span><span>이어진 흐름</span></div>
+          <div class="my-trees-hub-flow-list preview-flow-list" id="myTreesHubFlowList"></div>
+          <div class="my-trees-hub-flow-controls preview-flow-controls" id="myTreesHubFlowControls"></div>
+        </div>
+        <div class="my-trees-hub-no-moments preview-focus-flow-card-empty" id="myTreesHubNoMoments" hidden></div>
+        <div class="my-trees-hub-summary preview-focus-copy" id="myTreesHubSummary"></div>
+        <div class="my-trees-hub-actions preview-actions" id="myTreesHubActions" hidden>
+          <a href="#" class="my-trees-hub-open-btn preview-primary-action" id="myTreesHubOpenBtn"><span class="material-symbols-outlined">account_tree</span><span data-i18n="myTrees.hub_open">트리 열기</span></a>
+          <a href="#" class="my-trees-hub-edit-btn preview-secondary-action" id="myTreesHubEditBtn"><span class="material-symbols-outlined">edit</span><span data-i18n="myTrees.hub_edit">편집하기</span></a>
+          <button type="button" class="my-trees-hub-share-btn preview-share-action" id="myTreesHubShareBtn"><span class="material-symbols-outlined">link</span><span data-i18n="myTrees.hub_share">감상 링크 복사</span></button>
+        </div>
+        <div id="myTreesHubSocialSlot"></div>
       </div>
     </aside>
   </main>
@@ -139,11 +138,11 @@
   <script src="../js/my-trees/my-trees-state.js?v=20260421-4"></script>
   <script src="../js/my-trees/my-trees-page.js?v=20260622-mytrees-create-1"></script>
   <script src="../js/my-trees/my-trees-render.js?v=20260504-1"></script>
-  <script src="../js/search/search-preview-media-helper.js?v=20260623-2835-2"></script>
+  <script src="../js/search/search-preview-media-helper.js?v=20260623-2841-2"></script>
   <script src="../js/search/search-preview-media-embed-patch.js?v=20260623-hide-native-controls-1"></script>
-  <script src="../js/my-trees/my-trees-preview-hub.js?v=20260623-2835-2"></script>
-  <script src="../js/my-trees/my-trees-preview-state.js?v=20260623-2835-2"></script>
-  <script src="../js/my-trees/my-trees-preview-media.js?v=20260623-2835-2"></script>
+  <script src="../js/my-trees/my-trees-preview-hub.js?v=20260623-2841-2"></script>
+  <script src="../js/my-trees/my-trees-preview-state.js?v=20260623-2841-2"></script>
+  <script src="../js/my-trees/my-trees-preview-media.js?v=20260623-2841-2"></script>
   <script src="../js/my-trees/my-trees-filter.js?v=20260616-2535-1"></script>
   <script src="../js/my-trees.js?v=20260616-2535-1"></script>
   <script src="../js/my-trees/my-trees-i18n-refresh.js?v=20260622-hub-social-dedupe-1"></script>

@@ -7,7 +7,7 @@
     <link rel="icon" href="/assets/favicon/favicon.svg" type="image/svg+xml">
     <link rel="icon" href="/favicon.ico" sizes="32x32">
     <link rel="stylesheet" href="../css/global.css?v=20260618-2700-1">
-    <link rel="stylesheet" href="../css/search.css?v=20260618-2690-1">
+    <link rel="stylesheet" href="../css/search.css?v=20260623-2841-2">
     <link rel="stylesheet" href="../css/tree-view-mode.css?v=20260621-step2-1">
     <link rel="stylesheet" href="../css/page-transitions.css?v=20260430-1">
     <link rel="stylesheet" href="../css/components/lovebud-ai-panel.css?v=20260616-ai-panel-1">
@@ -89,8 +89,8 @@
             </div>
         </section>
 
-        <aside class="preview-sidebar lovetree-calm-right-rail reveal-fade" id="previewSidebar">
-            <div class="preview-panel-header">
+        <aside class="preview-sidebar preview-hub lovetree-calm-right-rail reveal-fade" id="previewSidebar">
+            <header class="preview-panel-header">
                 <div class="preview-panel-title-group">
                     <h3>감상 허브</h3>
                     <span class="preview-badge">선택한 트리</span>
@@ -98,35 +98,41 @@
                 <button type="button" class="preview-mobile-close" id="previewMobileClose" aria-label="감상 닫기">
                     <span class="material-symbols-outlined">close</span>
                 </button>
-            </div>
+            </header>
             <div id="previewVideoContainer" class="video-container">
                 <div class="preview-empty-state">
                     <p>러브트리를 고르면 이어진 순간의 흐름이 여기에 열려요.</p>
                 </div>
             </div>
-            <div id="previewDetails">
+            <div id="previewDesc" class="preview-panel-desc" hidden>
                 <div id="previewTitle" class="headline preview-panel-title"></div>
-                <div id="previewDesc" class="preview-panel-desc" hidden></div>
-                <div id="previewTreeStats" class="tree-meta" hidden>
-                    <span class="tree-meta-item">
-                        <span class="material-symbols-outlined preview-panel-icon">account_tree</span>
-                        <span id="previewMemoriesCount"></span>
-                        <span>이어진 순간들</span>
-                    </span>
-                    <span class="tree-meta-item">
-                        <span class="material-symbols-outlined preview-panel-icon">schedule</span>
-                        <span id="previewTreeDuration"></span>
-                    </span>
-                </div>
-                <div id="previewEmotionSection" hidden>
-                    <div class="emotion-tags-label">
-                        <span class="material-symbols-outlined preview-panel-icon">favorite</span>
-                        <span>이어진 감정</span>
+                <div id="previewHubMetaSlot">
+                    <div id="previewHubDynamicMetadataSlot"></div>
+                    <div id="previewTreeStats" class="tree-meta" hidden>
+                        <span class="tree-meta-item">
+                            <span class="material-symbols-outlined preview-panel-icon">account_tree</span>
+                            <span id="previewMemoriesCount"></span>
+                            <span>이어진 순간들</span>
+                        </span>
+                        <span class="tree-meta-item">
+                            <span class="material-symbols-outlined preview-panel-icon">schedule</span>
+                            <span id="previewTreeDuration"></span>
+                        </span>
                     </div>
-                    <div id="previewEmotionTags" class="preview-panel-emotion-tags">
-                        감정의 결이 이곳에 놓여요.
+                    <div id="previewEmotionSection" hidden>
+                        <div class="emotion-tags-label">
+                            <span class="material-symbols-outlined preview-panel-icon">favorite</span>
+                            <span>이어진 감정</span>
+                        </div>
+                        <div id="previewEmotionTags" class="preview-panel-emotion-tags">
+                            감정의 결이 이곳에 놓여요.
+                        </div>
                     </div>
                 </div>
+                <div id="previewHubFlowSlot"></div>
+                <div id="previewHubSummarySlot"></div>
+                <div id="previewHubActionsSlot"></div>
+                <div id="previewHubSocialSlot"></div>
             </div>
         </aside>
     </main>
@@ -151,9 +157,9 @@
     <script src="../js/search/search-preview-copy-helper.js?v=20260501-1"></script>
     <script src="../js/search/search-preview-action-helper.js?v=20260508-618-rev1"></script>
     <script src="../js/search/search-preview-renderer-builders.js?v=20260505-1"></script>
-    <script src="../js/search/search-preview-renderer.js?v=20260616-2536-1"></script>
-    <script src="../js/search/search-preview-playable-hub-patch.js?v=20260623-browse-controls-flow-baseline-1"></script>
-    <script src="../js/search/search-preview-hub-dom-patch.js?v=20260512-1058-1"></script>
+    <script src="../js/search/search-preview-renderer.js?v=20260623-2841-2"></script>
+    <script src="../js/search/search-preview-playable-hub-patch.js?v=20260623-2841-2"></script>
+    <script src="../js/search/search-preview-hub-dom-patch.js?v=20260623-2841-2"></script>
     <script src="../js/search/search-preview-cache.js?v=20260427-1"></script>
     <script src="../js/search/search-copy.js?v=20260520-1281-1"></script>
     <script src="../js/search/search-ui-copy.js?v=20260520-1281-2"></script>
@@ -167,7 +173,7 @@
      <script src="../js/search/search-controls.js?v=20260429-1"></script>
     <script src="../js/search/search-data.js?v=20260616-2539-1"></script>
      <script src="../js/search/search-preview-controller.js?v=20260508-618-rev1"></script>
-    <script src="../js/search/index.js?v=20260616-2539-1"></script>
+    <script src="../js/search/index.js?v=20260623-2841-2"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="../js/firebase-config.js?v=20260417-31"></script>
