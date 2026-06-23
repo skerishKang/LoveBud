@@ -4,14 +4,14 @@
     background:
         radial-gradient(circle at 24% 8%, rgba(255, 255, 255, 0.92), transparent 34%),
         radial-gradient(circle at 80% 18%, rgba(200, 116, 128, 0.16), transparent 30%),
-        linear-gradient(180deg, rgba(255, 250, 247, 0.98), rgba(244, 248, 238, 0.96));
+        linear-gradient(180deg, rgba(255, 250, 247, 0.98), rgba(244, 248, 238, 0.96)));
     border-color: rgba(144, 73, 81, 0.14);
     box-shadow: 0 28px 70px rgba(75, 64, 57, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.94);
 }
 
 .preview-sidebar.preview-state-media .video-container,
 .preview-sidebar.preview-state-thumbnail .video-container {
-    aspect-ratio: 16 / 10;
+    aspect-ratio: 16 / 9;
     border-radius: 1.9rem;
     border-color: rgba(144, 73, 81, 0.13);
     box-shadow: 0 20px 42px rgba(75, 64, 57, 0.16), 0 0 0 8px rgba(255, 255, 255, 0.34);
