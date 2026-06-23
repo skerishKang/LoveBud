@@ -225,26 +225,29 @@ test('My Trees flow controls line-height matches Browse parity', () => {
 test('My Trees hub HTML structure hierarchy follows Browse parity', () => {
   const html = read('pages/my-trees.html');
 
-  // Order assertion: header -> videoContainer -> content (inside has details/title/badge/flow/no-moments/summary) -> actions
+  // Order assertion: header -> videoContainer -> content (inside has title/badge/flow/no-moments/summary/actions/social)
+  // Issue #2841: #myTreesHubDetails wrapper removed; actions and social moved inside #myTreesHubContent.
   const idxHeader = html.indexOf('class="my-trees-hub-header');
   const idxVideo = html.indexOf('id="myTreesHubVideoContainer"');
   const idxContent = html.indexOf('id="myTreesHubContent"');
-  const idxDetails = html.indexOf('id="myTreesHubDetails"');
+  const idxNoDetails = html.indexOf('id="myTreesHubDetails"');
   const idxTitle = html.indexOf('id="myTreesHubTreeTitle"');
   const idxMetaBadge = html.indexOf('id="myTreesHubMetaBadge"');
   const idxFlow = html.indexOf('id="myTreesHubFlow"');
   const idxNoMoments = html.indexOf('id="myTreesHubNoMoments"');
   const idxSummary = html.indexOf('id="myTreesHubSummary"');
   const idxActions = html.indexOf('id="myTreesHubActions"');
+  const idxSocialSlot = html.indexOf('id="myTreesHubSocialSlot"');
 
   assert.ok(idxHeader !== -1, 'hub header must exist');
   assert.ok(idxVideo > idxHeader, 'video container must be after header');
   assert.ok(idxContent > idxVideo, 'content container must be after video container');
-  assert.ok(idxDetails > idxContent, 'details wrapper must be inside content container');
-  assert.ok(idxTitle > idxDetails, 'tree title must be inside details');
+  assert.ok(idxNoDetails === -1, '#myTreesHubDetails wrapper must be removed (Issue #2841)');
+  assert.ok(idxTitle > idxContent, 'tree title must be inside content container');
   assert.ok(idxMetaBadge > idxTitle, 'meta badge must be after tree title');
   assert.ok(idxFlow > idxMetaBadge, 'flow must be after meta badge');
   assert.ok(idxNoMoments > idxFlow, 'no-moments block must be after flow');
   assert.ok(idxSummary > idxNoMoments, 'summary must be after no-moments');
-  assert.ok(idxActions > idxContent, 'actions block must be after content');
+  assert.ok(idxActions > idxSummary, 'actions must be after summary (moved inside content)');
+  assert.ok(idxSocialSlot > idxActions, 'social slot must be after actions (last child of content)');
 });

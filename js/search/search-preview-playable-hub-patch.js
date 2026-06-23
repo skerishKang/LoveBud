@@ -142,7 +142,10 @@
     function normalizePreviewCopy(tree) {
         var previewDesc = document.getElementById('previewDesc');
         if (!previewDesc) return;
-        var copy = previewDesc.querySelector('.preview-focus-copy');
+        var copy = document.getElementById('previewHubSummarySlot');
+        if (!copy) {
+            copy = previewDesc.querySelector('.preview-focus-copy');
+        }
         if (copy) {
             var title = String(tree && tree.title || '러브트리').trim();
             var count = Number(tree && tree.memoryCount || (tree && tree.memories && tree.memories.length) || 0);
@@ -153,9 +156,14 @@
                 copy.innerHTML = '<p class="preview-summary-line"><strong>' + escapeHtml(title) + '</strong>에 담긴 <strong>' + count + '개의 순간</strong>이 이어졌어요.</p>';
             }
         }
-        var oldSocial = previewDesc.querySelector('[data-preview-social-shell]');
-        if (oldSocial) oldSocial.remove();
-        previewDesc.insertAdjacentHTML('beforeend', renderSocialBar(tree || {}));
+        var socialSlot = document.getElementById('previewHubSocialSlot');
+        if (socialSlot) {
+            socialSlot.innerHTML = renderSocialBar(tree || {});
+        } else {
+            var oldSocial = previewDesc.querySelector('[data-preview-social-shell]');
+            if (oldSocial) oldSocial.remove();
+            previewDesc.insertAdjacentHTML('beforeend', renderSocialBar(tree || {}));
+        }
     }
 
     function hideRedundantBlocks() {

@@ -171,9 +171,10 @@ test('My Trees hub manifest imports search-preview-social-bar.css', () => {
 
 test('My Trees hub renders .preview-social-shell (owner passive) BELOW action buttons', () => {
     // Step 7 follow-up: the social shell must sit below the action buttons
-    // (after #myTreesHubActions) so the primary "트리 열기" button is the
-    // last interactive element above the social stats. The legacy placement
-    // (appended to #myTreesHubDetails) is retired.
+    // so the primary "트리 열기" button is the last interactive element
+    // above the social stats. Issue #2841 uses #myTreesHubSocialSlot as
+    // the target host; legacy els.actions.after(shell) is a fallback when
+    // the static slot is absent.
     assert.match(
         myTreesHubJs,
         /className\s*=\s*['"]preview-social-shell['"]/,
@@ -184,10 +185,11 @@ test('My Trees hub renders .preview-social-shell (owner passive) BELOW action bu
         /<div class="preview-social-bar"/,
         'My Trees hub renderer must emit a .preview-social-bar div in the template'
     );
-    assert.match(
-        myTreesHubJs,
-        /els\.actions\.after\(\s*shell\s*\)/,
-        'My Trees social shell must be inserted AFTER els.actions (#myTreesHubActions) so it sits below the 트리 열기 button'
+    const usesSocialSlotAppend = /socialSlot\.appendChild\(\s*shell\s*\)/.test(myTreesHubJs);
+    const usesActionsAfterFallback = /els\.actions\.after\(\s*shell\s*\)/.test(myTreesHubJs);
+    assert.ok(
+        usesSocialSlotAppend || usesActionsAfterFallback,
+        'My Trees social shell must be inserted via socialSlot.appendChild or els.actions.after (actions.after is the fallback when socialSlot absent)'
     );
     assert.ok(
         !/els\.details\.appendChild\(\s*shell\s*\)/.test(myTreesHubJs),
@@ -226,6 +228,37 @@ test('My Trees hub does not keep the legacy duplicate static meta row', () => {
         /myTreesHubMeta(?:Views|Likes|Comments|Shares)?Count|metaBlock|metaViewsCount|metaLikesCount|metaCommentsCount|metaSharesCount/,
         'My Trees hub JS must not repopulate the removed duplicate static meta row'
     );
+});
+
+test('My Trees hub has removed #myTreesHubDetails wrapper (Issue #2841)', () => {
+    assert.ok(
+        !myTreesHtml.includes('id="myTreesHubDetails"'),
+        '#myTreesHubDetails wrapper must be removed from My Trees HTML'
+    );
+});
+
+test('My Trees hub has #myTreesHubActions inside #myTreesHubContent (Issue #2841)', () => {
+    const idxContent = myTreesHtml.indexOf('id="myTreesHubContent"');
+    const idxActions = myTreesHtml.indexOf('id="myTreesHubActions"');
+    const idxSocialSlot = myTreesHtml.indexOf('id="myTreesHubSocialSlot"');
+    // Find the content section closing div by looking for the </div> that
+    // matches the opening <div id="myTreesHubContent"> tag. The content
+    // contains children including social slot at the end, so we scan past
+    // the social slot div to find the content container's closing.
+    const idxContentClose = myTreesHtml.indexOf('</div>', idxSocialSlot + 50);
+    assert.ok(idxActions > idxContent, '#myTreesHubActions must be after #myTreesHubContent opening');
+    assert.ok(idxActions < idxContentClose, '#myTreesHubActions must be inside #myTreesHubContent (before its closing tag)');
+});
+
+test('My Trees hub has #myTreesHubSocialSlot static host (Issue #2841)', () => {
+    assert.match(
+        myTreesHtml,
+        /id="myTreesHubSocialSlot"/,
+        'My Trees HTML must have #myTreesHubSocialSlot static host'
+    );
+    const idxSocial = myTreesHtml.indexOf('id="myTreesHubSocialSlot"');
+    const idxActions = myTreesHtml.indexOf('id="myTreesHubActions"');
+    assert.ok(idxSocial > idxActions, '#myTreesHubSocialSlot must be after #myTreesHubActions');
 });
 
 test('My Trees social shell uses Browse parity class .preview-social-stat', () => {

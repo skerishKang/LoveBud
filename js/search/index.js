@@ -20,6 +20,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         previewMemoriesCount: document.getElementById('previewMemoriesCount'),
         previewTreeDuration: document.getElementById('previewTreeDuration'),
         previewEmotionTags: document.getElementById('previewEmotionTags'),
+        previewHubFlowSlot: document.getElementById('previewHubFlowSlot'),
+        previewHubSummarySlot: document.getElementById('previewHubSummarySlot'),
+        previewHubActionsSlot: document.getElementById('previewHubActionsSlot'),
+        previewHubSocialSlot: document.getElementById('previewHubSocialSlot'),
+        previewHubMetaSlot: document.getElementById('previewHubMetaSlot'),
         searchInput: document.getElementById('searchInput'),
         tagChips: document.querySelectorAll('.tag-chip'),
         resultsHead: document.querySelector('.browse-results-head'),
@@ -38,7 +43,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         previewDesc: refs.previewDesc,
         previewMemoriesCount: refs.previewMemoriesCount,
         previewTreeDuration: refs.previewTreeDuration,
-        previewEmotionTags: refs.previewEmotionTags
+        previewEmotionTags: refs.previewEmotionTags,
+        previewHubFlowSlot: refs.previewHubFlowSlot,
+        previewHubSummarySlot: refs.previewHubSummarySlot,
+        previewHubActionsSlot: refs.previewHubActionsSlot,
+        previewHubSocialSlot: refs.previewHubSocialSlot,
+        previewHubMetaSlot: refs.previewHubMetaSlot
     });
 
     const Adapter = window.LoveBudSearchAdapter;

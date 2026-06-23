@@ -27,19 +27,29 @@
         return document.getElementById('previewDesc');
     }
 
+    function getPreviewSocialSlot() {
+        return document.getElementById('previewHubSocialSlot');
+    }
+
     function getPreviewTitleText() {
         var title = document.querySelector('#previewTitle .preview-focus-title') || document.getElementById('previewTitle');
         return String(title && title.textContent || '').trim() || '러브트리';
     }
 
     function getSummaryText() {
-        var copy = document.querySelector('#previewDesc .preview-focus-copy');
-        if (!copy) return '';
-        var clone = copy.cloneNode(true);
-        Array.prototype.slice.call(clone.children).forEach(function(child) {
-            if (child.tagName === 'DIV') child.remove();
-        });
-        return String(clone.textContent || '').replace(/\s+/g, ' ').trim();
+        var summarySlot = document.getElementById('previewHubSummarySlot');
+        if (!summarySlot) {
+            var desc = getPreviewDesc();
+            if (!desc) return '';
+            var copy = desc.querySelector('.preview-focus-copy');
+            if (!copy) return '';
+            var clone = copy.cloneNode(true);
+            Array.prototype.slice.call(clone.children).forEach(function(child) {
+                if (child.tagName === 'DIV') child.remove();
+            });
+            return String(clone.textContent || '').replace(/\s+/g, ' ').trim();
+        }
+        return String(summarySlot.textContent || '').replace(/\s+/g, ' ').trim();
     }
 
     function normalizeCopy() {
@@ -82,10 +92,17 @@
     }
 
     function ensureSocialShell() {
-        var desc = getPreviewDesc();
-        if (!desc) return;
-        if (!desc.querySelector('[data-preview-social-shell]')) {
-            desc.insertAdjacentHTML('beforeend', renderSocialShell());
+        var socialSlot = getPreviewSocialSlot();
+        if (!socialSlot) {
+            var desc = getPreviewDesc();
+            if (!desc) return;
+            if (!desc.querySelector('[data-preview-social-shell]')) {
+                desc.insertAdjacentHTML('beforeend', renderSocialShell());
+            }
+        } else {
+            if (!socialSlot.querySelector('[data-preview-social-shell]')) {
+                socialSlot.innerHTML = renderSocialShell();
+            }
         }
         if (socialBound) return;
         socialBound = true;

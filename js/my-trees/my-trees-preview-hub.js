@@ -94,12 +94,12 @@
             flowList: document.getElementById('myTreesHubFlowList'),
             flowControls: document.getElementById('myTreesHubFlowControls'),
             summary: document.getElementById('myTreesHubSummary'),
-            details: document.getElementById('myTreesHubDetails'),
             actions: document.getElementById('myTreesHubActions'),
             openBtn: document.getElementById('myTreesHubOpenBtn'),
             editBtn: document.getElementById('myTreesHubEditBtn'),
             shareBtn: document.getElementById('myTreesHubShareBtn'),
-            noMoments: document.getElementById('myTreesHubNoMoments')
+            noMoments: document.getElementById('myTreesHubNoMoments'),
+            socialSlot: document.getElementById('myTreesHubSocialSlot')
         };
     }
 
@@ -467,38 +467,68 @@
         }
 
         /* ── Social shell (owner passive) ── */
-        if (!document.querySelector('[data-my-trees-social-shell]') && els.actions) {
-            var shell = document.createElement('div');
-            shell.className = 'preview-social-shell';
-            shell.setAttribute('data-my-trees-social-shell', '');
-            shell.innerHTML = [
-                '<div class="preview-social-bar" aria-label="트리 반응">',
-                '<div class="preview-social-action preview-social-stat" aria-label="조회수" role="status">',
-                  '<span class="material-symbols-outlined" aria-hidden="true">visibility</span>',
-                  '<strong data-my-trees-social-views>0</strong>',
-                  '<span>조회수</span>',
-                '</div>',
-                '<div class="preview-social-action preview-social-stat" aria-label="좋아요" role="status">',
-                  '<span class="material-symbols-outlined" aria-hidden="true">favorite</span>',
-                  '<strong data-my-trees-social-likes>0</strong>',
-                  '<span>좋아요</span>',
-                '</div>',
-                '<div class="preview-social-action preview-social-stat" aria-label="댓글" role="status">',
-                  '<span class="material-symbols-outlined" aria-hidden="true">comment</span>',
-                  '<strong data-my-trees-social-comments>0</strong>',
-                  '<span>댓글</span>',
-                '</div>',
-                '</div>'
-            ].join('');
-            els.actions.after(shell);
+        var socialSlot = els.socialSlot;
+        if (!socialSlot) {
+            if (!document.querySelector('[data-my-trees-social-shell]') && els.actions) {
+                var shell = document.createElement('div');
+                shell.className = 'preview-social-shell';
+                shell.setAttribute('data-my-trees-social-shell', '');
+                shell.innerHTML = [
+                    '<div class="preview-social-bar" aria-label="트리 반응">',
+                    '<div class="preview-social-action preview-social-stat" aria-label="조회수" role="status">',
+                      '<span class="material-symbols-outlined" aria-hidden="true">visibility</span>',
+                      '<strong data-my-trees-social-views>0</strong>',
+                      '<span>조회수</span>',
+                    '</div>',
+                    '<div class="preview-social-action preview-social-stat" aria-label="좋아요" role="status">',
+                      '<span class="material-symbols-outlined" aria-hidden="true">favorite</span>',
+                      '<strong data-my-trees-social-likes>0</strong>',
+                      '<span>좋아요</span>',
+                    '</div>',
+                    '<div class="preview-social-action preview-social-stat" aria-label="댓글" role="status">',
+                      '<span class="material-symbols-outlined" aria-hidden="true">comment</span>',
+                      '<strong data-my-trees-social-comments>0</strong>',
+                      '<span>댓글</span>',
+                    '</div>',
+                    '</div>'
+                ].join('');
+                els.actions.after(shell);
+            }
+        } else {
+            if (!socialSlot.querySelector('[data-my-trees-social-shell]')) {
+                var shell = document.createElement('div');
+                shell.className = 'preview-social-shell';
+                shell.setAttribute('data-my-trees-social-shell', '');
+                shell.innerHTML = [
+                    '<div class="preview-social-bar" aria-label="트리 반응">',
+                    '<div class="preview-social-action preview-social-stat" aria-label="조회수" role="status">',
+                      '<span class="material-symbols-outlined" aria-hidden="true">visibility</span>',
+                      '<strong data-my-trees-social-views>0</strong>',
+                      '<span>조회수</span>',
+                    '</div>',
+                    '<div class="preview-social-action preview-social-stat" aria-label="좋아요" role="status">',
+                      '<span class="material-symbols-outlined" aria-hidden="true">favorite</span>',
+                      '<strong data-my-trees-social-likes>0</strong>',
+                      '<span>좋아요</span>',
+                    '</div>',
+                    '<div class="preview-social-action preview-social-stat" aria-label="댓글" role="status">',
+                      '<span class="material-symbols-outlined" aria-hidden="true">comment</span>',
+                      '<strong data-my-trees-social-comments>0</strong>',
+                      '<span>댓글</span>',
+                    '</div>',
+                    '</div>'
+                ].join('');
+                socialSlot.appendChild(shell);
+            }
         }
 
+        var panelScope = els.panel;
         if (tree) {
-            var likeEl = document.querySelector('[data-my-trees-social-likes]');
+            var likeEl = panelScope ? panelScope.querySelector('[data-my-trees-social-likes]') : document.querySelector('[data-my-trees-social-likes]');
             if (likeEl) likeEl.textContent = String(tree.likeCount || tree.like_count || 0);
-            var commentEl = document.querySelector('[data-my-trees-social-comments]');
+            var commentEl = panelScope ? panelScope.querySelector('[data-my-trees-social-comments]') : document.querySelector('[data-my-trees-social-comments]');
             if (commentEl) commentEl.textContent = String(tree.commentCount || tree.comment_count || 0);
-            var viewEl = document.querySelector('[data-my-trees-social-views]');
+            var viewEl = panelScope ? panelScope.querySelector('[data-my-trees-social-views]') : document.querySelector('[data-my-trees-social-views]');
             if (viewEl) viewEl.textContent = String(tree.viewCount || tree.view_count || 0);
         }
     }

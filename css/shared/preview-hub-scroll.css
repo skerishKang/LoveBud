@@ -1,0 +1,15 @@
+@media (min-width: 769px) {
+    .preview-hub {
+        max-height: calc(100dvh - 120px);
+        overflow-y: auto;
+        overflow-x: hidden;
+        overscroll-behavior: contain;
+        scrollbar-gutter: stable both-edges;
+    }
+}
+
+@media (max-width: 768px) {
+    .preview-hub {
+        overscroll-behavior: contain;
+    }
+}
