@@ -143,8 +143,8 @@ test('My Trees hub summary uses Browse-parity typography', () => {
     /\.my-trees-hub-summary\s*\{[^}]*padding:\s*0\s+4px;[^}]*\}/,
     '.my-trees-hub-summary padding must be 0 4px matching Browse'
   );
-  // margin-top: 12px must be preserved
-  assert.match(content, /\.my-trees-hub-summary\s*\{[^}]*margin-top:\s*12px;[^}]*\}/);
+  // margin-top: 0 to align with Browse summary which has no top margin
+  assert.match(content, /\.my-trees-hub-summary\s*\{[^}]*margin-top:\s*0;[^}]*\}/);
 });
 
 test('My Trees hub actions use Browse-parity heading font and share/visibility font-size', () => {
