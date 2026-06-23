@@ -52,12 +52,6 @@
 }
 
 /* ── Hub meta badge ── */
-/* PR #2756 macro parity: Browse has no equivalent meta badge between the
-   tree title and the flow list. Hide My Trees' 7개의 순간 / 첫 순간을
-   기다리는 중 badge so the hub reads as a Browse-shaped preview, not
-   an owner console. Contract tests still expect #myTreesHubMetaBadge to
-   exist in the DOM (idempotency + ordering); only its visual layer is
-   removed here. */
 #myTreesHubMetaBadge {
     display: none !important;
 }
@@ -96,10 +90,6 @@
     box-shadow: none;
 }
 
-/* PR #2759 macro parity: hub bottom meta pill (조회수/좋아요/댓글)
-   mirrors Browse .tree-meta + .tree-meta-item rhythm. The shared class
-   names (tree-meta, tree-meta-item) match Browse so the owner hub reads
-   as a Browse-shaped preview with the same metric pill style. */
 .my-trees-hub-meta.tree-meta {
     padding: 14px 0 16px;
     padding-left: 14px;
@@ -141,8 +131,7 @@
     font-size: 14px;
     color: var(--on-surface-variant);
     line-height: 1.6;
-    /* 둘러보기 .preview-focus-copy 기준: padding 0 2px */
-    padding: 0 2px;
+    padding: 0;
     margin-top: 12px;
 }
 
