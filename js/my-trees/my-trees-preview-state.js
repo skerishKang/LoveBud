@@ -285,7 +285,16 @@
     if (memories.length > 0) {
       if (noMoments) noMoments.hidden = true;
       if (flowSection) flowSection.hidden = false;
-      if (flowList) flowList.innerHTML = buildHydratedFlowStages(memories);
+      if (flowList) {
+        flowList.innerHTML = buildHydratedFlowStages(memories);
+        var previewHub =
+          window.LoveBudMyTreesPreviewHub ||
+          window.LoveTreeMyTreesPreviewHub;
+
+        if (previewHub && typeof previewHub.rebindFlowStages === 'function') {
+          previewHub.rebindFlowStages(tree);
+        }
+      }
       if (flowControls) {
         var hiddenCount = Math.max(0, memories.length - 4);
         /* FIX: use Browse-style label "... 그리고 N개의 순간 더" instead of "더보기 (N)" */
