@@ -155,29 +155,5 @@ test('my-trees-preview-state rebind uses clean typeof-based guard pattern (#2835
   );
 });
 
-test('pages/my-trees.html hub and state scripts carry the same new cache-bust token (#2835)', () => {
-  const hubMatch = myTreesHtml.match(/src="\.\.\/js\/my-trees\/my-trees-preview-hub\.js\?v=([^"'\s>]+)"/);
-  const stateMatch = myTreesHtml.match(/src="\.\.\/js\/my-trees\/my-trees-preview-state\.js\?v=([^"'\s>]+)"/);
-  assert.ok(hubMatch, 'my-trees-preview-hub.js must have a cache-bust query');
-  assert.ok(stateMatch, 'my-trees-preview-state.js must have a cache-bust query');
-  assert.ok(hubMatch[1] && hubMatch[1].length > 0, 'hub cache-bust token must be non-empty');
-  assert.ok(stateMatch[1] && stateMatch[1].length > 0, 'state cache-bust token must be non-empty');
-  assert.equal(
-    hubMatch[1],
-    stateMatch[1],
-    'hub and state scripts must share the same cache-bust token'
-  );
-});
-
-test('pages/my-trees.html no longer pins old hub token #2829 or old state token step9 (#2835)', () => {
-  assert.doesNotMatch(
-    myTreesHtml,
-    /my-trees-preview-state\.js\?v=20260622-step9-1/,
-    'state script must not still pin the pre-#2835 cache-bust 20260622-step9-1'
-  );
-  assert.doesNotMatch(
-    myTreesHtml,
-    /my-trees-preview-hub\.js\?v=20260623-2825-1/,
-    'hub script must not still pin the #2829 cache-bust 20260623-2825-1'
-  );
-});
+// Note: cache-bust token quartet consistency is verified by
+// my-trees-flow-stage-cache-bust-contract.test.cjs to avoid overlap.

@@ -296,7 +296,16 @@ test('14. Runtime cache-busts updated for changed JS/CSS', () => {
     /my-trees-preview-hub\.js\?v=20260622-parity-1/,
     'my-trees-preview-hub.js must not still pin the pre-#2829 cache-bust 20260622-parity-1'
   );
-  assert.match(myTreesHtml, /my-trees-preview-state\.js\?v=20260622-step9-1/);
+  assert.match(
+    myTreesHtml,
+    /my-trees-preview-state\.js\?v=[^"'\s>]+/,
+    'my-trees-preview-state.js must carry a non-empty cache-bust query string'
+  );
+  assert.doesNotMatch(
+    myTreesHtml,
+    /my-trees-preview-state\.js\?v=20260622-step9-1/,
+    'my-trees-preview-state.js must not still pin the pre-#2835 cache-bust 20260622-step9-1'
+  );
   assert.match(myTreesHtml, /my-trees-i18n-refresh\.js\?v=20260622-hub-social-dedupe-1/);
   assert.match(myTreesHtml, /i18n-my-trees\.js\?v=20260619-2710-1/);
   assert.match(myTreesHtml, /my-trees\.css\?v=20260622-title-row-1/);
