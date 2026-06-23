@@ -1,6 +1,6 @@
 /**
  * LoveBud - My Trees Appreciation Hub
- * v20260514-1
+ * v20260624-summary-slot-align-1
  *
  * Selected-tree appreciation hub for My Trees page.
  * Adapted from Browse's preview hub (search-preview-renderer.js) grammar.
@@ -10,6 +10,11 @@
  * - Display: tree title, moment count, representative info, flow preview
  * - "트리 열기" primary action → opens Editor
  * - No management controls (rename, delete, visibility)
+ *
+ * Structure alignment with Browse:
+ * - #myTreesHubSummary is a plain wrapper slot (no preview-focus-copy class)
+ * - JS writes <div class="preview-focus-copy" style="padding:0 4px"> inside it
+ *   so the rendered DOM matches Browse's #previewHubSummarySlot structure exactly
  */
 
 (function () {
@@ -101,6 +106,22 @@
             noMoments: document.getElementById('myTreesHubNoMoments'),
             socialSlot: document.getElementById('myTreesHubSocialSlot')
         };
+    }
+
+    /* ── Write summary content into the slot wrapper.
+       #myTreesHubSummary is a plain wrapper (no preview-focus-copy class).
+       We create the inner preview-focus-copy div here, matching Browse's
+       #previewHubSummarySlot → <div class="preview-focus-copy"> structure. ── */
+
+    function writeSummary(summaryEl, html, hidden) {
+        if (!summaryEl) return;
+        if (hidden) {
+            summaryEl.hidden = true;
+            summaryEl.innerHTML = '';
+            return;
+        }
+        summaryEl.hidden = false;
+        summaryEl.innerHTML = '<div class="preview-focus-copy" style="padding:0 4px">' + html + '</div>';
     }
 
     /* ── Get tree key for flow expansion tracking ── */
@@ -451,27 +472,24 @@
         }
 
         /* ── Summary ── */
-        if (els.summary) {
-            if (hasMemories) {
-                els.summary.hidden = false;
-                var summaryTitle = String(tree && tree.title || '').trim() || t('default_tree_title', '나의 러브트리');
-                var timeRange = String(tree && tree.timeRange || tree && tree.time_range || '').trim();
-                // 날짜 범위가 있으면 둘러보기와 동일하게 표시: "N개의 순간이 YYYY.MM.DD ~ YYYY.MM.DD에 걸쳐 이어졌어요."
-                // 없으면: "N개의 순간이 이어졌어요."
-                if (timeRange) {
-                    els.summary.innerHTML = i18nHub('',
-                        '<p class="preview-summary-line"><strong>' + escapeHtml(summaryTitle) + '</strong>에 담긴 <strong>' + memoryCount + '개의 순간</strong>이 <strong>' + escapeHtml(timeRange) + '</strong>에 걸쳐 이어졌어요.</p>',
-                        '<p class="preview-summary-line"><strong>' + memoryCount + ' moments</strong> in <strong>' + escapeHtml(summaryTitle) + '</strong> connected across <strong>' + escapeHtml(timeRange) + '</strong>.</p>'
-                    );
-                } else {
-                    els.summary.innerHTML = i18nHub('',
-                        '<strong style="color:var(--on-surface);">' + escapeHtml(summaryTitle) + '</strong>에 담긴 <span style="color:var(--primary);font-weight:700;">' + memoryCount + '개의 순간</span>이 이어졌어요.',
-                        '<strong style="color:var(--on-surface);">' + memoryCount + ' moments</strong> in <strong style="color:var(--on-surface);">' + escapeHtml(summaryTitle) + '</strong> are connected.'
-                    );
-                }
+        if (hasMemories) {
+            var summaryTitle = String(tree && tree.title || '').trim() || t('default_tree_title', '나의 러브트리');
+            var timeRange = String(tree && tree.timeRange || tree && tree.time_range || '').trim();
+            var summaryHtml;
+            if (timeRange) {
+                summaryHtml = i18nHub('',
+                    '<p class="preview-summary-line"><strong>' + escapeHtml(summaryTitle) + '</strong>에 담긴 <strong>' + memoryCount + '개의 순간</strong>이 <strong>' + escapeHtml(timeRange) + '</strong>에 걸쳐 이어졌어요.</p>',
+                    '<p class="preview-summary-line"><strong>' + memoryCount + ' moments</strong> in <strong>' + escapeHtml(summaryTitle) + '</strong> connected across <strong>' + escapeHtml(timeRange) + '</strong>.</p>'
+                );
             } else {
-                els.summary.hidden = true;
+                summaryHtml = i18nHub('',
+                    '<strong style="color:var(--on-surface);">' + escapeHtml(summaryTitle) + '</strong>에 담긴 <span style="color:var(--primary);font-weight:700;">' + memoryCount + '개의 순간</span>이 이어졌어요.',
+                    '<strong style="color:var(--on-surface);">' + memoryCount + ' moments</strong> in <strong style="color:var(--on-surface);">' + escapeHtml(summaryTitle) + '</strong> are connected.'
+                );
             }
+            writeSummary(els.summary, summaryHtml, false);
+        } else {
+            writeSummary(els.summary, '', true);
         }
 
         /* ── Actions ── */
@@ -550,13 +568,14 @@
         if (els.flowSection) els.flowSection.hidden = true;
         if (els.noMoments) els.noMoments.hidden = true;
 
-        if (els.summary) {
-            els.summary.hidden = false;
-            els.summary.textContent = i18nHub('',
+        writeSummary(
+            els.summary,
+            escapeHtml(i18nHub('',
                 '이 트리의 대표 순간과 이어진 감정을 불러오는 중이에요.',
                 'Loading the featured moment and connected feelings of this tree.'
-            );
-        }
+            )),
+            false
+        );
 
         if (els.actions) {
             els.actions.hidden = false;
