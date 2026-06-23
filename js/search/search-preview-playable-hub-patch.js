@@ -1,4 +1,5 @@
-/* Issue #1053/#1058/#1489/#1490: playable Browse hub media, flow moment switching, and final hub action layout. */
+/* Issue #1053/#1058/#1489/#1490: playable Browse hub media, flow moment switching, and final hub action layout.
+   클릭-투-플레이 패턴 — 내 러브트리(bindDetailMediaPlayback)와 동일하게 통일. */
 (function() {
     'use strict';
 
@@ -28,17 +29,19 @@
         return '';
     }
 
-    function toEmbedUrl(value) {
+    function toEmbedUrl(value, autoplay) {
         var raw = String(value || '').trim();
         if (!raw) return '';
         var videoId = getYouTubeVideoId(raw);
         if (!videoId) return '';
-        var embedUrl = new URL('https://www.youtube.com/embed/' + encodeURIComponent(videoId));
-        embedUrl.searchParams.set('autoplay', '0');
-        embedUrl.searchParams.set('mute', '0');
-        embedUrl.searchParams.set('controls', '0');
+        var embedUrl = new URL('https://www.youtube-nocookie.com/embed/' + encodeURIComponent(videoId));
+        embedUrl.searchParams.set('autoplay', autoplay ? '1' : '0');
         embedUrl.searchParams.set('rel', '0');
-        embedUrl.searchParams.set('modestbranding', '1');
+        if (!autoplay) {
+            embedUrl.searchParams.set('mute', '0');
+            embedUrl.searchParams.set('controls', '0');
+            embedUrl.searchParams.set('modestbranding', '1');
+        }
         return embedUrl.href;
     }
 
@@ -91,24 +94,64 @@
         return sanitizeUrl(img.currentSrc || img.src || img.getAttribute('src') || '');
     }
 
-    function renderIframe(embedUrl, title) {
-        return '<div class="preview-media-frame preview-media-frame-iframe" style="position:relative;width:100%;height:100%;border-radius:1rem;overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,0.12);">' +
-            '<iframe width="100%" height="100%" src="' + embedUrl + '" title="' + escapeHtml(title || 'LoveTree media') + '" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen style="position:absolute;top:0;left:0;"></iframe>' +
-            '</div>';
+    function getThumbnailUrl(videoId) {
+        if (!videoId) return '';
+        return 'https://i.ytimg.com/vi/' + encodeURIComponent(videoId) + '/hqdefault.jpg';
     }
 
-    function replaceWithIframe(tree, preferredIndex) {
+    /* 내 러브트리와 동일: 썸네일 + 오버레이 플레이 버튼 렌더. 클릭 시 autoplay iframe으로 교체 */
+    function renderThumbnailWithOverlay(container, embedUrlNoAutoplay, embedUrlAutoplay, title) {
+        var videoId = getYouTubeVideoId(embedUrlNoAutoplay);
+        var thumbUrl = getThumbnailUrl(videoId);
+
+        container.innerHTML =
+            '<img src="' + escapeHtml(thumbUrl) + '" alt="' + escapeHtml(title || '') + '" style="width:100%;height:100%;object-fit:cover;display:block;border-radius:inherit;" loading="lazy">' +
+            '<div class="memory-preview-overlay preview-play-overlay" role="button" tabindex="0" aria-label="재생" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.10);border-radius:inherit;cursor:pointer;">' +
+                '<button type="button" class="play-btn" aria-label="재생" style="width:52px;height:52px;border-radius:50%;background:rgba(255,255,255,0.92);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(0,0,0,0.18);transition:transform 0.15s;">' +
+                    '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M8 5.14v13.72a1 1 0 0 0 1.5.86l11-6.86a1 1 0 0 0 0-1.72l-11-6.86A1 1 0 0 0 8 5.14z" fill="#904951"/></svg>' +
+                '</button>' +
+            '</div>';
+
+        container.classList.remove('preview-state-empty', 'preview-state-loading', 'preview-state-no-moments');
+        container.classList.add('preview-state-thumbnail');
+
+        var overlay = container.querySelector('.preview-play-overlay');
+        if (!overlay) return;
+        if (overlay.dataset.previewPlayBound) return;
+        overlay.dataset.previewPlayBound = 'true';
+
+        function activatePlayer() {
+            container.innerHTML =
+                '<div class="preview-media-frame preview-media-frame-iframe" style="position:relative;width:100%;height:100%;border-radius:inherit;overflow:hidden;">' +
+                '<iframe width="100%" height="100%" src="' + escapeHtml(embedUrlAutoplay) + '" title="' + escapeHtml(title || 'LoveTree media') + '" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen style="position:absolute;top:0;left:0;"></iframe>' +
+                '</div>';
+            container.classList.remove('preview-state-thumbnail');
+            container.classList.add('preview-state-media');
+        }
+
+        overlay.addEventListener('click', activatePlayer);
+        overlay.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); activatePlayer(); }
+        });
+        var playBtn = overlay.querySelector('.play-btn');
+        if (playBtn) {
+            playBtn.addEventListener('mouseenter', function() { playBtn.style.transform = 'scale(1.08)'; });
+            playBtn.addEventListener('mouseleave', function() { playBtn.style.transform = ''; });
+        }
+    }
+
+    function replaceWithOverlay(tree, preferredIndex) {
         var container = document.getElementById('previewVideoContainer');
         if (!container) return false;
         var candidate = getCandidateUrlFromTree(tree, preferredIndex) || getCandidateUrlFromRenderedDom(container);
-        var embedUrl = toEmbedUrl(candidate);
-        if (!embedUrl) return false;
+        var videoId = getYouTubeVideoId(candidate);
+        if (!videoId) return false;
+        var embedNoAutoplay = toEmbedUrl(candidate, false);
+        var embedAutoplay = toEmbedUrl(candidate, true);
         var memories = Array.isArray(tree && tree.memories) ? tree.memories : [];
         var memory = memories[Number(preferredIndex || 0)] || memories[0] || null;
         var title = memory ? getMomentLabel(memory, Number(preferredIndex || 0)) : tree && tree.title;
-        container.innerHTML = renderIframe(embedUrl, title);
-        container.classList.remove('preview-state-thumbnail');
-        container.classList.add('preview-state-media');
+        renderThumbnailWithOverlay(container, embedNoAutoplay, embedAutoplay, title);
         return true;
     }
 
@@ -193,7 +236,7 @@
                 selectedMomentIndexByTree[treeKey] = index;
                 stages.forEach(function(item) { item.classList.remove('is-active'); });
                 stage.classList.add('is-active');
-                replaceWithIframe(tree, index);
+                replaceWithOverlay(tree, index);
             };
             stage.addEventListener('click', activate);
             stage.addEventListener('keydown', function(event) {
@@ -220,8 +263,8 @@
     function finalizeHub(tree) {
         var treeKey = getTreeKey(tree);
         var selectedIndex = Number(selectedMomentIndexByTree[treeKey] || 0);
-        replaceWithIframe(tree, selectedIndex);
-        window.setTimeout(function() { replaceWithIframe(tree, selectedIndex); }, 80);
+        replaceWithOverlay(tree, selectedIndex);
+        window.setTimeout(function() { replaceWithOverlay(tree, selectedIndex); }, 80);
         normalizePreviewCopy(tree);
         hideRedundantBlocks();
         enhanceFlowStages(tree);
