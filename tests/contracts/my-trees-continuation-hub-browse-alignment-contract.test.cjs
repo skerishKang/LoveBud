@@ -178,6 +178,50 @@ test('My Trees hub actions use Browse-parity heading font and share/visibility f
   assert.match(content, /padding-top:\s*0\.95rem;/, 'social shell padding-top must remain unchanged');
 });
 
+test('My Trees flow controls line-height matches Browse parity', () => {
+    const flow = read('css/my-trees/my-trees-preview-hub/flow.css');
+
+    // .my-trees-hub-flow-controls must have line-height: 1.4 (Browse parity)
+    assert.match(
+        flow,
+        /\.my-trees-hub-flow-controls\s*\{[^}]*line-height:\s*1\.4;[^}]*\}/,
+        '.my-trees-hub-flow-controls must have line-height: 1.4 matching Browse controls line-height'
+    );
+    // margin-top: 11px must be preserved
+    assert.match(
+        flow,
+        /\.my-trees-hub-flow-controls\s*\{[^}]*margin-top:\s*11px;[^}]*\}/,
+        '.my-trees-hub-flow-controls margin-top must remain 11px'
+    );
+    // .my-trees-hub-flow-toggle own line-height: 1.2 must remain unchanged
+    assert.match(
+        flow,
+        /\.my-trees-hub-flow-toggle\s*\{[^}]*line-height:\s*1\.2;[^}]*\}/,
+        '.my-trees-hub-flow-toggle own line-height must remain 1.2'
+    );
+    // flow card geometry must not be changed
+    assert.match(
+        flow,
+        /\.my-trees-hub-flow\s*\{[^}]*padding:\s*20px;/s,
+        'flow card padding must remain 20px'
+    );
+    assert.match(
+        flow,
+        /\.my-trees-hub-flow\s*\{[^}]*margin-bottom:\s*16px;/s,
+        'flow card margin-bottom must remain 16px'
+    );
+    assert.match(
+        flow,
+        /\.my-trees-hub-flow-list\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\);[^}]*gap:\s*7px;/s,
+        'flow list grid and gap must remain unchanged'
+    );
+    assert.match(
+        flow,
+        /\.my-trees-hub-flow-stage\s*\{[^}]*(?:min-)?height:\s*42px\s*!important/,
+        'flow stage height must remain unchanged'
+    );
+});
+
 test('My Trees hub HTML structure hierarchy follows Browse parity', () => {
   const html = read('pages/my-trees.html');
 

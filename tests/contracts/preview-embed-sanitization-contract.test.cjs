@@ -128,6 +128,22 @@ test('media-embed-patch.js does NOT set controls=1', () => {
         'toEmbedUrl must NOT set controls=1 (would show native YouTube control bar)');
 });
 
+test('playable-hub-patch.js sets controls=0 (hide native YouTube controls)', () => {
+    const src = fs.readFileSync(
+        path.resolve(__dirname, '../../js/search/search-preview-playable-hub-patch.js'), 'utf8');
+    assert.ok(
+        src.includes("controls', '0'"),
+        'toEmbedUrl must set controls=0 to hide native YouTube control bar');
+});
+
+test('playable-hub-patch.js does NOT set controls=1', () => {
+    const src = fs.readFileSync(
+        path.resolve(__dirname, '../../js/search/search-preview-playable-hub-patch.js'), 'utf8');
+    assert.ok(
+        !src.includes("controls', '1'"),
+        'toEmbedUrl must NOT set controls=1 (would show native YouTube control bar)');
+});
+
 test('media-embed-patch.js preserves YouTube-only embed and sanitizeUrl delegate', () => {
     const src = fs.readFileSync(
         path.resolve(__dirname, '../../js/search/search-preview-media-embed-patch.js'), 'utf8');
