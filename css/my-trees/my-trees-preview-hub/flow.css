@@ -13,11 +13,6 @@
 }
 
 .my-trees-hub-flow-label {
-    /* Step 7 follow-up: align with Browse's inline-styled label.
-       Browse uses font-size 11px, text-transform: uppercase,
-       letter-spacing 1px, margin-bottom 12px. The My Trees
-       label was font-size 12px, no uppercase, no letter-spacing,
-       margin-bottom 10px. */
     font-size: 11px;
     font-weight: 800;
     color: var(--on-surface-variant);
@@ -33,10 +28,6 @@
     font-size: 14px;
 }
 
-/* Desktop mirrors Browse's compact, scannable moment rhythm: single
-   column so each stage gets full width and the visual rhythm matches
-   .preview-flow-list. Narrow layouts already return to a single column
-   in responsive.css, so this is desktop-safe. */
 .my-trees-hub-flow-list {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
@@ -46,9 +37,6 @@
     align-items: stretch;
 }
 
-/* Step 7 follow-up: 2-column grid on desktop (Browse parity). Browse
-   uses `.preview-flow-list` with the same media query, so flow
-   stages render as a 2x2 grid at ≥1025px and a single column below. */
 @media (min-width: 1025px) {
     .my-trees-hub-flow-list {
         grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -61,7 +49,7 @@
     gap: 6px !important;
     min-width: 0;
     max-width: 100%;
-    height: 42px !important;
+    /* height 고정 제거 → 둘러보기 기준(min-height만) 맞춤 */
     min-height: 42px !important;
     justify-content: flex-start;
     overflow: hidden;
@@ -89,11 +77,6 @@
 }
 
 .my-trees-hub-flow-stage-index {
-    /* Step 7 follow-up: stage index parity. Browse uses an inline
-       span with only color + font-weight + flex (no pill). The My Trees
-       index used a pill (background, border-radius, padding, min-width,
-       height) which produced a circled-number look that Browse does not
-       have. Retired the pill styling for exact parity. */
     color: var(--primary);
     font-weight: 800;
     flex: 0 0 auto;
