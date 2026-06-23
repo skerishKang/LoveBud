@@ -55,16 +55,17 @@ test('Shared scroll CSS is imported by search.css', () => {
     );
 });
 
-test('Shared scroll CSS is imported by both HTML entrypoints', () => {
-    assert.match(
-        browseHtml,
-        /preview-hub-scroll\.css/,
-        'Browse HTML must import preview-hub-scroll.css'
+test('Shared scroll CSS is NOT directly linked from HTML entrypoints (CSS import only)', () => {
+    // Shared scroll CSS must only be loaded via CSS @import chains, not direct <link>.
+    // This prevents duplicate-load and stale-cache scenarios.
+    const linkRe = /<link[^>]*preview-hub-scroll\.css[^>]*>/i;
+    assert.ok(
+        !linkRe.test(browseHtml),
+        'Browse HTML must NOT have a direct <link> to preview-hub-scroll.css'
     );
-    assert.match(
-        myTreesHtml,
-        /preview-hub-scroll\.css/,
-        'My Trees HTML must import preview-hub-scroll.css'
+    assert.ok(
+        !linkRe.test(myTreesHtml),
+        'My Trees HTML must NOT have a direct <link> to preview-hub-scroll.css'
     );
 });
 
@@ -308,4 +309,90 @@ test('My Trees preserves all existing IDs', () => {
         assert.match(myTreesHtml, new RegExp(`id=["']${id}["']`),
             `My Trees HTML must retain #${id}`);
     }
+});
+
+// ── 10) Browse reset must NOT destroy canonical slot hosts ─────────────
+test('Browse resetPreview does not use previewDesc.innerHTML for placeholder', () => {
+    // resetPreview must clear individual slot hosts, not nuke #previewDesc's children.
+    // It may set previewDesc.hidden but must not set previewDesc.innerHTML.
+    // Check that the only remaining previewDesc.innerHTML assignment is in updatePreview
+    // (which is the normal update path that renders new content into slot hosts).
+    const resetLine = /previewDesc\.innerHTML\s*=/.exec(browseRendererJs);
+    // In updatePreview, previewDesc.innerHTML is NOT used. But let's be more precise:
+    // The renderer must NOT use previewDesc.innerHTML in resetPreview.
+    // We check that the ONLY innerHTML on previewDesc is in the updatePreview path,
+    // which should only set previewDesc.hidden.
+    const match = browseRendererJs.match(/previewDesc\.innerHTML\s*=/);
+    // After the fix, resetPreview no longer sets previewDesc.innerHTML.
+    // The only valid use would be in updatePreview to set hidden state, which uses .hidden, not innerHTML.
+    assert.ok(match === null, 'resetPreview must not set previewDesc.innerHTML');
+});
+
+test('Browse resetPreview renders placeholder into previewHubSummarySlot', () => {
+    assert.match(
+        browseRendererJs,
+        /previewHubSummarySlot\.innerHTML\s*=\s*'<p class="preview-empty-description">/,
+        'resetPreview must render placeholder description into previewHubSummarySlot'
+    );
+});
+
+// ── 11) Browse dynamic metadata host ───────────────────────────────────
+test('Browse HTML has #previewHubDynamicMetadataSlot inside meta slot', () => {
+    const idxMetaSlot = browseHtml.indexOf('id="previewHubMetaSlot"');
+    const idxDynamicMeta = browseHtml.indexOf('id="previewHubDynamicMetadataSlot"');
+    const idxTreeStats = browseHtml.indexOf('id="previewTreeStats"');
+    assert.ok(idxDynamicMeta !== -1, 'Browse HTML must have #previewHubDynamicMetadataSlot');
+    assert.ok(idxDynamicMeta > idxMetaSlot, '#previewHubDynamicMetadataSlot must be inside #previewHubMetaSlot');
+    assert.ok(idxTreeStats > idxDynamicMeta, '#previewTreeStats must be after #previewHubDynamicMetadataSlot');
+});
+
+test('Browse renderer writes hubMetadataHtml to dynamic metadata slot via getElementById', () => {
+    // The renderer uses a variable for the dynamic metadata host.
+    const usesDynamicMeta = /document\.getElementById\(['"]previewHubDynamicMetadataSlot['"]\)/.test(browseRendererJs);
+    const overwritesMetaSlot = /previewHubMetaSlot\.innerHTML\s*=/.test(browseRendererJs);
+    assert.ok(usesDynamicMeta, 'renderer must reference #previewHubDynamicMetadataSlot');
+    assert.ok(!overwritesMetaSlot, 'renderer must NOT write directly to previewHubMetaSlot.innerHTML');
+});
+
+// ── 12) Static meta IDs preserved through dynamic rendering ────────────
+test('Browse static #previewTreeStats and #previewEmotionSection are not removed by reset', () => {
+    // resetPreview clears the dynamic metadata host via getElementById, not previewHubMetaSlot.innerHTML.
+    const hasMetaSlotInnerHtml = /previewHubMetaSlot\.innerHTML\s*=/.test(browseRendererJs);
+    assert.ok(!hasMetaSlotInnerHtml, 'resetPreview must not clear previewHubMetaSlot.innerHTML');
+});
+
+test('Browse reset + update path renders to flow/summary/actions slot hosts', () => {
+    // After reset, the updatePreview path writes to individual slot hosts.
+    // (Social slot is populated by hub-dom-patch/playable-hub-patch, not the renderer.)
+    assert.match(browseRendererJs, /previewHubFlowSlot\.innerHTML\s*=\s*`/,
+        'updatePreview must write to previewHubFlowSlot');
+    assert.match(browseRendererJs, /previewHubSummarySlot\.innerHTML\s*=\s*`/,
+        'updatePreview must write to previewHubSummarySlot');
+    assert.match(browseRendererJs, /previewHubActionsSlot\.innerHTML\s*=\s*`/,
+        'updatePreview must write to previewHubActionsSlot');
+});
+
+// ── 13) My Trees social shell targets #myTreesHubSocialSlot in canonical DOM ─
+test('My Trees social shell uses socialSlot.appendChild when socialSlot exists', () => {
+    const myTreesHubJs = fs.readFileSync(
+        path.join(ROOT, 'js/my-trees/my-trees-preview-hub.js'), 'utf8');
+    // The primary path must be socialSlot.appendChild(shell) — this is the canonical branch.
+    // The fallback els.actions.after(shell) must be in the else branch.
+    const socialSlotPrimary = /if\s*\(\s*socialSlot\s*\)\s*\{[\s\S]*?socialSlot\.appendChild\s*\(shell\)/.test(myTreesHubJs);
+    const fallbackActionsAfter = /else\s*\{[\s\S]*?els\.actions\.after\s*\(shell\)/.test(myTreesHubJs);
+    assert.ok(socialSlotPrimary, 'canonical DOM: social shell must use socialSlot.appendChild');
+    assert.ok(fallbackActionsAfter, 'legacy fallback: else branch must use els.actions.after');
+});
+
+// ── 14) My Trees social count query scoped to #myTreesHubPanel ──────────
+test('My Trees social count query uses els.panel scope (panel-scoped)', () => {
+    const myTreesHubJs = fs.readFileSync(
+        path.join(ROOT, 'js/my-trees/my-trees-preview-hub.js'), 'utf8');
+    // Social count queries use els.panel (i.e. #myTreesHubPanel) as query scope
+    // to avoid picking up Browse panel elements when both panels coexist.
+    assert.match(
+        myTreesHubJs,
+        /panelScope\s*\?\s*panelScope\.querySelector/,
+        'social count query must scope to panel element'
+    );
 });

@@ -25,6 +25,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         previewHubActionsSlot: document.getElementById('previewHubActionsSlot'),
         previewHubSocialSlot: document.getElementById('previewHubSocialSlot'),
         previewHubMetaSlot: document.getElementById('previewHubMetaSlot'),
+        previewHubDynamicMetadataSlot: document.getElementById('previewHubDynamicMetadataSlot'),
         searchInput: document.getElementById('searchInput'),
         tagChips: document.querySelectorAll('.tag-chip'),
         resultsHead: document.querySelector('.browse-results-head'),
@@ -48,7 +49,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         previewHubSummarySlot: refs.previewHubSummarySlot,
         previewHubActionsSlot: refs.previewHubActionsSlot,
         previewHubSocialSlot: refs.previewHubSocialSlot,
-        previewHubMetaSlot: refs.previewHubMetaSlot
+        previewHubMetaSlot: refs.previewHubMetaSlot,
+        previewHubDynamicMetadataSlot: refs.previewHubDynamicMetadataSlot
     });
 
     const Adapter = window.LoveBudSearchAdapter;

@@ -463,8 +463,9 @@
                 ? metadataHelper.renderHubMetadata(tree)
                 : '';
 
-            if (_dom.previewHubMetaSlot) {
-                _dom.previewHubMetaSlot.innerHTML = hubMetadataHtml;
+            var dynamicMeta = document.getElementById('previewHubDynamicMetadataSlot');
+            if (dynamicMeta) {
+                dynamicMeta.innerHTML = hubMetadataHtml;
             }
 
             if (!hasMemories) {
@@ -594,9 +595,12 @@
         }
         if (_dom.previewDesc) {
             _dom.previewDesc.hidden = false;
-            _dom.previewDesc.innerHTML = '<p class="preview-empty-description">' + escapeHtml(placeholderDescription) + '</p>';
         }
-        if (_dom.previewHubMetaSlot) _dom.previewHubMetaSlot.innerHTML = '';
+        if (_dom.previewHubSummarySlot) {
+            _dom.previewHubSummarySlot.innerHTML = '<p class="preview-empty-description">' + escapeHtml(placeholderDescription) + '</p>';
+        }
+        var dynamicMeta = document.getElementById('previewHubDynamicMetadataSlot');
+        if (dynamicMeta) dynamicMeta.innerHTML = '';
         if (_dom.previewHubFlowSlot) _dom.previewHubFlowSlot.innerHTML = '';
         if (_dom.previewHubSummarySlot) _dom.previewHubSummarySlot.innerHTML = '';
         if (_dom.previewHubActionsSlot) _dom.previewHubActionsSlot.innerHTML = '';

@@ -338,7 +338,7 @@ test('14. Runtime cache-busts updated for changed JS/CSS', () => {
     /#myTreesHubPanel\.is-loaded #myTreesHubVideoContainer\s*\{\s*display:\s*none;/
   );
   assert.ok(!/my-trees-finder\.css\?v=/.test(myTreesHtml), 'pages/my-trees.html must NOT directly link my-trees-finder.css (bundle owns finder import)');
-  assert.match(searchHtml, /search\.css\?v=20260618-2690-1/);
+  assert.match(searchHtml, /search\.css\?v=20260623-2841-2/);
 });
 
 test('15. My LoveTree desktop visual rhythm alignment with Browse', () => {
