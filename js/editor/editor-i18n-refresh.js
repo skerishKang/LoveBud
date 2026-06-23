@@ -263,6 +263,16 @@
     if (title) title.textContent = tText('editor_view_options_title', '캔버스 표시');
   }
 
+  function escapeHtml(value) {
+    if (value == null) return '';
+    return String(value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
   function updateEditorDynamicSummary() {
     var memories = Array.isArray(window.currentTreeMemories) ? window.currentTreeMemories : [];
     var rootId = getCanonicalRootId(memories);
