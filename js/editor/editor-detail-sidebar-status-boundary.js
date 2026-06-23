@@ -50,13 +50,13 @@
                     // .editor-status-card strong would otherwise inherit 1.42rem.
                     flowSummaryEl.innerHTML = formatI18nText(
                         'sidebar_flow_summary_connected_with_range',
-                        '<span class="preview-summary-line"><strong>{title}</strong>에 담긴 <strong>{count}개의 순간</strong>이 <strong>{timeRange}</strong>에 걸쳐 이어졌어요.</span>',
+                        '<p class="preview-summary-line"><strong>{title}</strong>에 담긴 <strong>{count}개의 순간</strong>이 <strong>{timeRange}</strong>에 걸쳐 이어졌어요.</p>',
                         { title: safeTitle, count: String(count), timeRange: safeTimeRange }
                     );
                 } else {
                     flowSummaryEl.innerHTML = formatI18nText(
                         'sidebar_flow_summary_connected',
-                        '<span class="preview-summary-line"><strong>{title}</strong>에 담긴 <strong>{count}개의 순간</strong>이 이어졌어요.</span>',
+                        '<p class="preview-summary-line"><strong>{title}</strong>에 담긴 <strong>{count}개의 순간</strong>이 이어졌어요.</p>',
                         { title: safeTitle, count: String(count) }
                     );
                 }

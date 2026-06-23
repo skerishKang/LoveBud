@@ -18,7 +18,7 @@ export function buildSidebarTemplate() {
                     <div class="editor-title-row">
                         <strong id="sidebarTreeTitle">러브트리</strong>
                     </div>
-                    <p id="sidebarFlowSummary" class="editor-flow-summary"></p>
+                    <div id="sidebarFlowSummary" class="editor-flow-summary"></div>
                 </div>
             </section>
 

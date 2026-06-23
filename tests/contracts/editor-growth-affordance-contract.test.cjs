@@ -302,10 +302,10 @@ test('i18n key sidebar_flow_summary_connected mirrors My Trees hub summary verba
   const source = fs.readFileSync(I18N_EDITOR_FILE, 'utf8');
   const key = extractSummaryKey(source, 'sidebar_flow_summary_connected');
   assert.ok(key, 'i18n key sidebar_flow_summary_connected must exist');
-  assert.match(key.ko, /<span\s+class="preview-summary-line">/,
-    'ko template must wrap summary in <span class="preview-summary-line">; got: ' + key.ko);
-  assert.match(key.en, /<span\s+class="preview-summary-line">/,
-    'en template must wrap summary in <span class="preview-summary-line">; got: ' + key.en);
+  assert.match(key.ko, /<p\s+class="preview-summary-line">/,
+    'ko template must wrap summary in <p class="preview-summary-line"> (My Trees hub pattern); got: ' + key.ko);
+  assert.match(key.en, /<p\s+class="preview-summary-line">/,
+    'en template must wrap summary in <p class="preview-summary-line"> (My Trees hub pattern); got: ' + key.en);
   // <strong> around {title}, {count}, and (for the with_range variant) {timeRange}.
   assert.match(key.ko, /<strong>\s*\{title\}\s*<\/strong>/,
     'ko template must wrap {title} in <strong> (matches hub pattern); got: ' + key.ko);
@@ -321,10 +321,10 @@ test('i18n key sidebar_flow_summary_connected_with_range mirrors My Trees hub su
   const source = fs.readFileSync(I18N_EDITOR_FILE, 'utf8');
   const key = extractSummaryKey(source, 'sidebar_flow_summary_connected_with_range');
   assert.ok(key, 'i18n key sidebar_flow_summary_connected_with_range must exist');
-  assert.match(key.ko, /<span\s+class="preview-summary-line">/,
-    'ko template must wrap summary in <span class="preview-summary-line">; got: ' + key.ko);
-  assert.match(key.en, /<span\s+class="preview-summary-line">/,
-    'en template must wrap summary in <span class="preview-summary-line">; got: ' + key.en);
+  assert.match(key.ko, /<p\s+class="preview-summary-line">/,
+    'ko template must wrap summary in <p class="preview-summary-line"> (My Trees hub pattern); got: ' + key.ko);
+  assert.match(key.en, /<p\s+class="preview-summary-line">/,
+    'en template must wrap summary in <p class="preview-summary-line"> (My Trees hub pattern); got: ' + key.en);
   assert.match(key.ko, /<strong>\s*\{title\}\s*<\/strong>/);
   assert.match(key.en, /<strong>\s*\{title\}\s*<\/strong>/);
   assert.match(key.ko, /<strong>\s*\{count\}개의\s*순간\s*<\/strong>/);
@@ -337,8 +337,8 @@ test('i18n key sidebar_flow_summary_connected_with_range mirrors My Trees hub su
 
 test('editor-detail-sidebar-status-boundary.js fallback template mirrors My Trees hub pattern', () => {
   const source = fs.readFileSync(SIDEBAR_BOUNDARY_FILE, 'utf8');
-  assert.match(source, /<span\s+class="preview-summary-line">/,
-    'fallback template must wrap summary in <span class="preview-summary-line"> (editor container is <p>)');
+  assert.match(source, /<p\s+class="preview-summary-line">/,
+    'fallback template must wrap summary in <p class="preview-summary-line"> (My Trees hub pattern)');
   assert.match(source, /<strong>\s*\{title\}\s*<\/strong>/,
     'fallback template must wrap {title} in <strong> (My Trees hub pattern)');
   assert.match(source, /<strong>\s*\{count\}개의\s*순간\s*<\/strong>/);
@@ -347,8 +347,8 @@ test('editor-detail-sidebar-status-boundary.js fallback template mirrors My Tree
 
 test('editor-i18n-refresh.js summary path mirrors My Trees hub pattern', () => {
   const source = fs.readFileSync(I18N_REFRESH_FILE, 'utf8');
-  assert.match(source, /<span\s+class="preview-summary-line">/,
-    'editor-i18n-refresh.js summary path must wrap summary in <span class="preview-summary-line"> (editor container is <p>)');
+  assert.match(source, /<p\s+class="preview-summary-line">/,
+    'editor-i18n-refresh.js summary path must wrap summary in <p class="preview-summary-line"> (My Trees hub pattern)');
   assert.match(source, /<strong>\s*\{title\}\s*<\/strong>/,
     'editor-i18n-refresh.js summary path must wrap {title} in <strong> (My Trees hub pattern)');
   assert.match(source, /<strong>\s*\{count\}개의\s*순간\s*<\/strong>/);
@@ -375,14 +375,11 @@ test('editor summary innerHTML matches My Trees hub patchSummaryWithTimeRange te
   const hubTail = hubMatch[4];
 
   const editorBoundary = fs.readFileSync(SIDEBAR_BOUNDARY_FILE, 'utf8');
-  // Editor uses <span> wrapper (valid: container is <p>) while My Trees
-  // uses <p> wrapper (container is <div>). Check mid segments match
-  // (the segments after the opening tag) and content structure is identical.
-  const editorHead = hubHead.replace('<p ', '<span ').replace('</p>', '</span>');
-  const editorTail = hubTail.replace('</p>', '</span>');
+  // Editor now uses <div> container (same as My Trees hub) so the same
+  // <p class="preview-summary-line"> template can be used verbatim.
   assert.ok(
-    editorBoundary.indexOf(editorHead) !== -1,
-    'editor must contain <span class="preview-summary-line"> head (My Trees uses <p> but editor container is <p>); editorHead=' + editorHead
+    editorBoundary.indexOf(hubHead) !== -1,
+    'editor must contain the My Trees hub head (before title); hubHead=' + hubHead
   );
   assert.ok(
     editorBoundary.indexOf(hubMid1) !== -1,
@@ -393,8 +390,8 @@ test('editor summary innerHTML matches My Trees hub patchSummaryWithTimeRange te
     'editor must contain the My Trees hub middle (after count); hubMid2=' + hubMid2
   );
   assert.ok(
-    editorBoundary.indexOf(editorTail) !== -1,
-    'editor must contain the editor summary tail (after timeRange); editorTail=' + editorTail
+    editorBoundary.indexOf(hubTail) !== -1,
+    'editor must contain the My Trees hub tail (after timeRange); hubTail=' + hubTail
   );
 });
 

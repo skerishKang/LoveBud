@@ -108,3 +108,8 @@
     color: var(--on-surface);
     letter-spacing: 0;
 }
+
+.editor-flow-summary .preview-summary-line {
+    margin: 0;
+    word-break: keep-all;
+}
