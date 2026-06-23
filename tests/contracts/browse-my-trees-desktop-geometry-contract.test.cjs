@@ -73,8 +73,13 @@ test('6. Stylesheets use the current My Trees controls cache key for busting', (
 
   assert.match(
     html,
+    /href="\.\.\/css\/my-trees\.css\?v=[^"'\s>]+"/,
+    'my-trees.html must load my-trees.css with a non-empty cache-bust query'
+  );
+  assert.doesNotMatch(
+    html,
     /href="\.\.\/css\/my-trees\.css\?v=20260622-title-row-1"/,
-    'my-trees.html must load my-trees.css with the current controls cache query'
+    'my-trees.html must not still pin the pre-#social-bar-path cache-bust 20260622-title-row-1 on my-trees.css'
   );
 
   assert.match(

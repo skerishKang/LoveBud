@@ -308,10 +308,28 @@ test('14. Runtime cache-busts updated for changed JS/CSS', () => {
   );
   assert.match(myTreesHtml, /my-trees-i18n-refresh\.js\?v=20260622-hub-social-dedupe-1/);
   assert.match(myTreesHtml, /i18n-my-trees\.js\?v=20260619-2710-1/);
-  assert.match(myTreesHtml, /my-trees\.css\?v=20260622-title-row-1/);
+  assert.match(
+    myTreesHtml,
+    /my-trees\.css\?v=[^"'\s>]+/,
+    'pages/my-trees.html must load my-trees.css with a non-empty cache-bust query'
+  );
+  assert.doesNotMatch(
+    myTreesHtml,
+    /my-trees\.css\?v=20260622-title-row-1/,
+    'pages/my-trees.html must not still pin the pre-#social-bar-path cache-bust 20260622-title-row-1 on my-trees.css'
+  );
   assert.match(myTreesHtml, /my-trees-page\.js\?v=20260622-mytrees-create-1/);
   assert.match(myTreesCss, /my-trees-header\.css\?v=20260622-title-row-1/);
-  assert.match(myTreesCss, /my-trees-preview-hub\.css\?v=20260622-hub-preview-1/);
+  assert.match(
+    myTreesCss,
+    /my-trees-preview-hub\.css\?v=[^"'\s>]+/,
+    'css/my-trees.css must import my-trees-preview-hub.css with a non-empty cache-bust query'
+  );
+  assert.doesNotMatch(
+    myTreesCss,
+    /my-trees-preview-hub\.css\?v=20260622-hub-preview-1/,
+    'css/my-trees.css must not still pin the pre-#social-bar-path cache-bust 20260622-hub-preview-1 on my-trees-preview-hub.css'
+  );
   assert.match(myTreesCss, /my-trees-mobile-controls-balance\.css\?v=20260622-mytrees-controls-1/);
   assert.match(myTreesCss, /search\/search-controls\.css/);
   assert.match(myTreesCss, /search\/search-preview-sidebar\.css/);

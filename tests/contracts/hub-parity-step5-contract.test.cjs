@@ -164,8 +164,8 @@ test('My Trees primary button JS sets "트리 열기" + account_tree icon', () =
 test('My Trees hub manifest imports search-preview-social-bar.css', () => {
     assert.match(
         myTreesHubManifest,
-        /@import url\(['"]\.\.\/\.\.\/search\/search-preview-social-bar\.css['"]\)/,
-        'My Trees hub manifest must import the shared social-bar CSS'
+        /@import url\(['"]\.\.\/search\/search-preview-social-bar\.css['"]\)/,
+        'My Trees hub manifest must import the shared social-bar CSS via ../search/... (correct relative path)'
     );
 });
 
