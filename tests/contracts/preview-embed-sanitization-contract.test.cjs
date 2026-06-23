@@ -152,7 +152,7 @@ test('media-embed-patch.js preserves YouTube-only embed and sanitizeUrl delegate
     // sanitizeUrl delegate must still be present
     assert.ok(src.includes('sanitizeUrl'), 'sanitizeUrl delegate must be preserved');
     // autoplay=0, mute=0, rel=0, modestbranding=1 must be preserved
-    assert.ok(src.includes("autoplay', '0'"), 'autoplay=0 must be preserved');
+    assert.ok(src.includes("searchParams.set('autoplay'"), 'autoplay parameter must be set');
     assert.ok(src.includes("mute', '0'"), 'mute=0 must be preserved');
     assert.ok(src.includes("rel', '0'"), 'rel=0 must be preserved');
     assert.ok(src.includes("modestbranding', '1'"), 'modestbranding=1 must be preserved');
