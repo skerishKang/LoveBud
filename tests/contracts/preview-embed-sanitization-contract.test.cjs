@@ -147,6 +147,85 @@ test('playable-hub-patch.js does NOT set controls=1', () => {
         'toEmbedUrl must NOT set controls=1 (would show native YouTube control bar)');
 });
 
+// ── Click-to-play autoplay promotion ──
+
+function hasAutoplayPromotionHelper(src) {
+    return src.includes('toAutoplayIframeSource') &&
+        src.includes('sanitizeUrl(value)') &&
+        src.includes("new URL(") &&
+        src.includes("searchParams.set('autoplay', '1'");
+}
+
+function callsHelperInOverlayClick(src) {
+    return src.includes('toAutoplayIframeSource(wrapper.getAttribute');
+}
+
+function noWrapperInnerHTML(src) {
+    return !src.includes('wrapper.innerHTML');
+}
+
+test('media-helper.js retains initial autoplay=0 and controls=0 policy', () => {
+    const src = fs.readFileSync(
+        path.resolve(__dirname, '../../js/search/search-preview-media-helper.js'), 'utf8');
+    assert.ok(src.includes("autoplay', '0'"), 'toPlayableEmbedUrl must set autoplay=0');
+    assert.ok(src.includes("controls', '0'"), 'toPlayableEmbedUrl must set controls=0');
+    // autoplay=1 must appear ONLY inside toAutoplayIframeSource (the click-only helper)
+    const autoplay1Count = (src.match(/autoplay',\s*'1'/g) || []).length;
+    assert.equal(autoplay1Count, 1, 'autoplay=1 must appear exactly once (in toAutoplayIframeSource), not in toPlayableEmbedUrl');
+});
+
+test('media-helper.js has click-only autoplay promotion helper', () => {
+    const src = fs.readFileSync(
+        path.resolve(__dirname, '../../js/search/search-preview-media-helper.js'), 'utf8');
+    assert.ok(hasAutoplayPromotionHelper(src),
+        'toAutoplayIframeSource must exist, parse URL, and set autoplay=1 via searchParams');
+});
+
+test('media-helper.js calls autoplay promotion helper in overlay click handler', () => {
+    const src = fs.readFileSync(
+        path.resolve(__dirname, '../../js/search/search-preview-media-helper.js'), 'utf8');
+    assert.ok(callsHelperInOverlayClick(src),
+        'bindPreviewOverlayEvents must call toAutoplayIframeSource(wrapper.getAttribute(...))');
+});
+
+test('media-helper.js does not restore wrapper.innerHTML', () => {
+    const src = fs.readFileSync(
+        path.resolve(__dirname, '../../js/search/search-preview-media-helper.js'), 'utf8');
+    assert.ok(noWrapperInnerHTML(src),
+        'Must not use wrapper.innerHTML anywhere');
+});
+
+test('media-embed-patch.js retains initial autoplay=0 and controls=0 policy', () => {
+    const src = fs.readFileSync(
+        path.resolve(__dirname, '../../js/search/search-preview-media-embed-patch.js'), 'utf8');
+    assert.ok(src.includes("autoplay', '0'"), 'toEmbedUrl must set autoplay=0');
+    assert.ok(src.includes("controls', '0'"), 'toEmbedUrl must set controls=0');
+    // autoplay=1 must appear ONLY inside toAutoplayIframeSource (the click-only helper)
+    const autoplay1Count = (src.match(/autoplay',\s*'1'/g) || []).length;
+    assert.equal(autoplay1Count, 1, 'autoplay=1 must appear exactly once (in toAutoplayIframeSource), not in toEmbedUrl');
+});
+
+test('media-embed-patch.js has click-only autoplay promotion helper', () => {
+    const src = fs.readFileSync(
+        path.resolve(__dirname, '../../js/search/search-preview-media-embed-patch.js'), 'utf8');
+    assert.ok(hasAutoplayPromotionHelper(src),
+        'toAutoplayIframeSource must exist, parse URL, and set autoplay=1 via searchParams');
+});
+
+test('media-embed-patch.js calls autoplay promotion helper in overlay click handler', () => {
+    const src = fs.readFileSync(
+        path.resolve(__dirname, '../../js/search/search-preview-media-embed-patch.js'), 'utf8');
+    assert.ok(callsHelperInOverlayClick(src),
+        'bindPreviewOverlayEvents must call toAutoplayIframeSource(wrapper.getAttribute(...))');
+});
+
+test('media-embed-patch.js does not restore wrapper.innerHTML', () => {
+    const src = fs.readFileSync(
+        path.resolve(__dirname, '../../js/search/search-preview-media-embed-patch.js'), 'utf8');
+    assert.ok(noWrapperInnerHTML(src),
+        'Must not use wrapper.innerHTML anywhere');
+});
+
 test('media-embed-patch.js preserves YouTube-only embed and sanitizeUrl delegate', () => {
     const src = fs.readFileSync(
         path.resolve(__dirname, '../../js/search/search-preview-media-embed-patch.js'), 'utf8');
