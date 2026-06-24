@@ -205,40 +205,43 @@ test('editor.css imports editor-canvas-affordance.css', () => {
 
 // ── #2806 follow-up: textWrap collapsed state + transition-delay ────────────
 
-test('textWrap collapsed state is max-width 0, opacity 0, visibility hidden (#2806 follow-up)', () => {
+test('textWrap is always in its final visible state (#2806 stable render)', () => {
   const cssSource = fs.readFileSync(
     path.join(ROOT, 'css/editor/editor-canvas-affordance.css'), 'utf8'
   );
 
-  // Extract the .affordance-tip-text rule (collapsed default state).
   const tipRule = (cssSource.match(/\.affordance-tip-text\s*\{([^}]*)\}/) || ['', ''])[1];
   assert.ok(tipRule.length > 0, '.affordance-tip-text rule must exist');
-  assert.match(tipRule, /max-width\s*:\s*0/,
-    'collapsed textWrap must start at max-width: 0 (NOT 126px) so it does not force a 126x~64 vertical-rectangle intermediate state during button growth');
-  assert.match(tipRule, /opacity\s*:\s*0/,
-    'collapsed textWrap must start at opacity: 0');
-  assert.match(tipRule, /visibility\s*:\s*hidden/,
-    'collapsed textWrap must start at visibility: hidden');
+  assert.match(tipRule, /max-width\s*:\s*126px/,
+    'textWrap must have its final max-width from the start');
+  assert.match(tipRule, /opacity\s*:\s*1/,
+    'textWrap must be fully visible from the start');
+  assert.match(tipRule, /visibility\s*:\s*visible/,
+    'textWrap must be visible from the start');
 });
 
-test('textWrap expanded state uses max-width 126px with a transition-delay (#2806 follow-up)', () => {
+test('textWrap does not depend on affordance-expanded for visibility (#2806 stable render)', () => {
   const cssSource = fs.readFileSync(
     path.join(ROOT, 'css/editor/editor-canvas-affordance.css'), 'utf8'
   );
 
-  // Extract the .memory-add-affordance.affordance-expanded .affordance-tip-text rule.
-  const expandedTipRule = (cssSource.match(/\.memory-add-affordance\.affordance-expanded\s+\.affordance-tip-text\s*\{([^}]*)\}/) || ['', ''])[1];
-  assert.ok(expandedTipRule.length > 0, 'expanded textWrap rule must exist');
-  assert.match(expandedTipRule, /max-width\s*:\s*126px/,
-    'expanded textWrap must be 126px wide');
-  assert.match(expandedTipRule, /opacity\s*:\s*1/,
-    'expanded textWrap must be fully visible');
-  assert.match(expandedTipRule, /visibility\s*:\s*visible/);
+  // TextWrap is always visible; there is no collapsed/expanded split.
+  const tipRule = (cssSource.match(/\.affordance-tip-text\s*\{([^}]*)\}/) || ['', ''])[1];
+  assert.ok(tipRule.length > 0, '.affordance-tip-text rule must exist');
+  assert.match(tipRule, /opacity\s*:\s*1/,
+    'textWrap must be fully visible regardless of affordance-expanded');
+  assert.match(tipRule, /max-width\s*:\s*126px/,
+    'textWrap must have final max-width regardless of affordance-expanded');
 
-  // transition must include a delay (button width grows first)
-  const collapsedTipRule = (cssSource.match(/\.affordance-tip-text\s*\{([^}]*)\}/) || ['', ''])[1];
-  assert.match(collapsedTipRule, /transition[^{}]*var\(--affordance-text-delay\)/,
-    'textWrap transition must use --affordance-text-delay so the text fades in after the button width transition starts');
+  // The CTA button itself changes transform/box-shadow on hover (no size change).
+  const buttonRule = (cssSource.match(/\.memory-add-affordance\.affordance-expanded\s*\{([^}]*)\}/) || ['', ''])[1];
+  assert.ok(buttonRule.length > 0, '.memory-add-affordance.affordance-expanded rule must exist');
+  assert.match(buttonRule, /transform/,
+    'affordance-expanded must set transform for hover feedback');
+  assert.doesNotMatch(buttonRule, /width\s*:/,
+    'affordance-expanded must not change width');
+  assert.doesNotMatch(buttonRule, /height\s*:/,
+    'affordance-expanded must not change height');
 });
 
 test('editor-i18n-refresh.js no longer carries the inline !important bubble rules (#2806 follow-up)', () => {
