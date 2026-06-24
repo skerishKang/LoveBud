@@ -284,9 +284,10 @@
     }
 
     function toAutoplayIframeSource(value) {
-        if (!value) return '';
+        const safeUrl = sanitizeUrl(value);
+        if (!safeUrl) return '';
         try {
-            const url = new URL(String(value));
+            const url = new URL(safeUrl);
             url.searchParams.set('autoplay', '1');
             url.searchParams.set('mute', '0');
             return url.href;

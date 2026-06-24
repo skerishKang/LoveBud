@@ -151,6 +151,7 @@ test('playable-hub-patch.js does NOT set controls=1', () => {
 
 function hasAutoplayPromotionHelper(src) {
     return src.includes('toAutoplayIframeSource') &&
+        src.includes('sanitizeUrl(value)') &&
         src.includes("new URL(") &&
         src.includes("searchParams.set('autoplay', '1'");
 }
