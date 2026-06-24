@@ -352,6 +352,7 @@
     var getCanonicalRootId = options && options.getCanonicalRootId;
     var showToast = options && options.showToast;
     var i18n = options && options.i18n;
+    var validateConnectCandidate = options && options.validateConnectCandidate;
 
     var editorCanvas = null;
     var targetData = null;
@@ -365,13 +366,48 @@
     var confirmBtn = document.getElementById('connectExistingConfirmBtn');
     var confirmCancelBtn = document.getElementById('connectExistingConfirmCancelBtn');
 
+    var _bindMode = false;
+
     function setEditorCanvas(canvas) {
       editorCanvas = canvas;
     }
 
+    function setConnectMemory(fn) {
+      connectMemory = fn;
+    }
+
+    function setValidateConnectCandidate(fn) {
+      validateConnectCandidate = fn;
+    }
+
+    function resetConnectFlow() {
+      targetData = null;
+      if (editorCanvas) editorCanvas.clearPendingConnect();
+      hideAll();
+      updateCtaVisibility();
+    }
+
     function enterConnectMode() {
+      var sourceId = editorCanvas ? editorCanvas.getPendingConnectSourceId() : null;
+      if (sourceId) return;
+
       var mem = getCurrentEditingMemory ? getCurrentEditingMemory() : null;
       if (!mem || !editorCanvas) return;
+
+      if (typeof validateConnectCandidate === 'function') {
+        var check = validateConnectCandidate(mem.id, mem.id);
+        if (!check.ok) {
+          if (typeof showToast === 'function') {
+            showToast(
+              (typeof i18n === 'function' ? i18n('connect_source_invalid') : null) ||
+                '연결할 수 없는 순간입니다',
+              'error'
+            );
+          }
+          return;
+        }
+      }
+
       var posFn = editorCanvas.calcPosition;
       var pos = typeof posFn === 'function' ? posFn(mem) : null;
       editorCanvas.setPendingConnect(mem.id, pos);
@@ -379,9 +415,7 @@
     }
 
     function exitConnectMode() {
-      targetData = null;
-      if (editorCanvas) editorCanvas.clearPendingConnect();
-      hideAll();
+      resetConnectFlow();
     }
 
     function showSection(name) {
@@ -398,10 +432,37 @@
     }
 
     function handleConnectTargetSelect(targetMem, targetPos) {
+      var sourceId = editorCanvas ? editorCanvas.getPendingConnectSourceId() : null;
+      if (!sourceId || !targetMem) return;
+
+      if (String(sourceId) === String(targetMem.id)) return;
+
+      if (typeof validateConnectCandidate === 'function') {
+        var check = validateConnectCandidate(sourceId, targetMem.id);
+        if (!check.ok) {
+          if (typeof showToast === 'function') {
+            var msgs = {
+              source_is_root: '루트 순간은 연결할 수 없어요',
+              target_is_root: '루트 순간으로 연결할 수 없어요',
+              self_connection: '같은 순간으로 연결할 수 없어요',
+              already_connected: '이미 연결된 순간입니다',
+              target_is_descendant: '하위 순간을 부모로 연결할 수 없어요',
+              target_chain_missing_parent: '연결할 수 없는 대상 순간입니다',
+              target_chain_loop: '대상 순간의 연결 구조를 확인할 수 없습니다'
+            };
+            showToast(
+              msgs[check.reason] || '연결할 수 없는 대상입니다',
+              'error'
+            );
+          }
+          return;
+        }
+      }
+
       targetData = { mem: targetMem, pos: targetPos };
       if (confirmHint) {
         var label = targetMem.title || '';
-        confirmHint.textContent = (label ? '"' + label + '"' : '이 순간') + '(으)로 연결할까요?';
+        confirmHint.textContent = (label ? '"' + label + '" ' : '') + '(으)로 연결할까요?';
       }
       showSection('confirm');
     }
@@ -413,20 +474,15 @@
 
       connectMemory(sourceId, targetData.mem.id).then(function(success) {
         if (success) {
-          targetData = null;
-          if (editorCanvas) editorCanvas.clearPendingConnect();
-          hideAll();
+          resetConnectFlow();
         } else {
-          showSection('pending');
+          showSection('confirm');
         }
       });
     }
 
     function handleCancel() {
-      targetData = null;
-      if (editorCanvas) editorCanvas.clearPendingConnect();
-      hideAll();
-      updateCtaVisibility();
+      resetConnectFlow();
     }
 
     function updateCtaVisibility() {
@@ -442,12 +498,19 @@
       if (isRoot) { hideAll(); return; }
 
       var sourceId = editorCanvas ? editorCanvas.getPendingConnectSourceId() : null;
-      if (sourceId) return; // already in a connect flow, don't overwrite
+      if (sourceId) return;
 
       showSection('cta');
     }
 
+    function updateCtaNow() {
+      updateCtaVisibility();
+    }
+
     function bindControls() {
+      if (_bindMode) return;
+      _bindMode = true;
+
       if (ctaBtn && !ctaBtn.dataset.connectBound) {
         ctaBtn.dataset.connectBound = '1';
         ctaBtn.addEventListener('click', function() { enterConnectMode(); });
@@ -466,7 +529,8 @@
       }
 
       var mode = window.LoveBudEditorInteractionMode;
-      if (mode && typeof mode.subscribe === 'function') {
+      if (mode && typeof mode.subscribe === 'function' && !mode._connectExistingSubscribed) {
+        mode._connectExistingSubscribed = true;
         mode.subscribe(function() { updateCtaVisibility(); });
       }
 
@@ -475,10 +539,14 @@
 
     return {
       setEditorCanvas: setEditorCanvas,
+      setConnectMemory: setConnectMemory,
+      setValidateConnectCandidate: setValidateConnectCandidate,
       handleConnectTargetSelect: handleConnectTargetSelect,
       bindControls: bindControls,
       exitConnectMode: exitConnectMode,
-      showCtaSection: function() { showSection('cta'); }
+      showCtaSection: function() { showSection('cta'); },
+      resetConnectFlow: resetConnectFlow,
+      updateCtaNow: updateCtaNow
     };
   }
 

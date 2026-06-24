@@ -695,6 +695,62 @@ function createEditorMemoryActions(deps) {
         }
     };
 
+    function validateConnectCandidate(sourceId, targetId) {
+        if (canEdit === false) return { ok: false, reason: 'canEdit_false' };
+        var mode = window.LoveBudEditorInteractionMode;
+        if (mode && !mode.isEditMode()) return { ok: false, reason: 'not_edit_mode' };
+        if (!sourceId || !targetId) return { ok: false, reason: 'missing_ids' };
+        if (String(sourceId) === String(targetId)) return { ok: false, reason: 'self_connection' };
+
+        var memories = getTreeMemories().slice();
+        var srcIdx = memories.findIndex(function (m) { return String(m.id) === String(sourceId); });
+        var tgtIdx = memories.findIndex(function (m) { return String(m.id) === String(targetId); });
+        if (srcIdx === -1) return { ok: false, reason: 'source_not_found' };
+        if (tgtIdx === -1) return { ok: false, reason: 'target_not_found' };
+
+        var sourceMem = memories[srcIdx];
+        var targetMem = memories[tgtIdx];
+        var canonicalRootId = typeof getCanonicalRootId === 'function' ? getCanonicalRootId() : 'root';
+
+        if (
+            (typeof isRootMemory === 'function' && isRootMemory(sourceMem, canonicalRootId)) ||
+            String(sourceMem.id) === String(canonicalRootId)
+        ) {
+            return { ok: false, reason: 'source_is_root' };
+        }
+        if (
+            (typeof isRootMemory === 'function' && isRootMemory(targetMem, canonicalRootId)) ||
+            String(targetMem.id) === String(canonicalRootId)
+        ) {
+            return { ok: false, reason: 'target_is_root' };
+        }
+
+        if (String(sourceMem.parentId) === String(targetId)) {
+            return { ok: false, reason: 'already_connected' };
+        }
+
+        if (isDescendant(memories, sourceId, targetId)) {
+            return { ok: false, reason: 'target_is_descendant' };
+        }
+
+        var chainVisited = {};
+        var chainId = targetId;
+        while (chainId) {
+            if (chainVisited[String(chainId)]) {
+                return { ok: false, reason: 'target_chain_loop' };
+            }
+            chainVisited[String(chainId)] = true;
+            var mem = memories.find(function (m) { return String(m.id) === String(chainId); });
+            if (!mem) {
+                return { ok: false, reason: 'target_chain_missing_parent' };
+            }
+            if (!mem.parentId) break;
+            chainId = mem.parentId;
+        }
+
+        return { ok: true };
+    }
+
     return {
         enterEditMode,
         exitEditMode,
@@ -703,6 +759,7 @@ function createEditorMemoryActions(deps) {
         deleteMemory,
         disconnectMemory,
         connectMemory,
+        validateConnectCandidate,
         getCurrentEditingMemory,
         setCurrentEditingMemory,
         isEditMode: () => isEditMode

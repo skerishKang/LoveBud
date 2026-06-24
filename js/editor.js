@@ -531,10 +531,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 canEdit
             });
 
-            const { enterEditMode, exitEditMode, saveMemoryEdit, deleteMemory, disconnectMemory, connectMemory } = memoryActions;
+            const { enterEditMode, exitEditMode, saveMemoryEdit, deleteMemory, disconnectMemory, connectMemory, validateConnectCandidate } = memoryActions;
             disconnectMemoryFn = disconnectMemory;
             if (connectExistingController) {
-                connectExistingController.connectMemory = connectMemory;
+                if (typeof connectExistingController.setConnectMemory === 'function') {
+                    connectExistingController.setConnectMemory(connectMemory);
+                }
+                if (typeof connectExistingController.validateConnectCandidate === 'undefined' && typeof connectExistingController.setValidateConnectCandidate === 'function') {
+                    connectExistingController.setValidateConnectCandidate(validateConnectCandidate);
+                }
                 if (typeof connectExistingController.bindControls === 'function') {
                     connectExistingController.bindControls();
                 }

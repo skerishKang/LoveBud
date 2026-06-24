@@ -354,8 +354,8 @@ function createEditorCanvas(deps) {
         if (String(pendingConnectState.sourceId) === String(targetMem.id)) return;
         var targetPos = calcPosition(targetMem);
         canvasEdges.drawDashedPreview(
-            pendingConnectState.sourcePos,
-            targetPos
+            targetPos,
+            pendingConnectState.sourcePos
         );
         if (typeof onConnectTargetSelect === 'function') {
             onConnectTargetSelect(targetMem, targetPos);
