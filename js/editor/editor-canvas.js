@@ -370,10 +370,18 @@ function createEditorCanvas(deps) {
         pendingConnectState = { sourceId: sourceId, sourcePos: sourcePos };
     }
 
+    var onPendingConnectCleared = null;
+
+    function setOnPendingConnectCleared(fn) {
+        onPendingConnectCleared = fn;
+    }
+
     function clearPendingConnect() {
         pendingConnectState = null;
         canvasEdges.clearDashedPreview();
-        canvasEdges.clearDashedPreview();
+        if (typeof onPendingConnectCleared === 'function') {
+            onPendingConnectCleared();
+        }
     }
 
     function getPendingConnectSourceId() {
@@ -533,7 +541,6 @@ function createEditorCanvas(deps) {
 
             renderUtils.clearCanvasNodes(canvas);
             clearEdgeSelection();
-            clearPendingConnect();
             clearBranches();
             clearGrowthAffordance();
 
@@ -753,7 +760,8 @@ function createEditorCanvas(deps) {
         setPendingConnect,
         clearPendingConnect,
         getPendingConnectSourceId,
-        drawConnectPreview
+        drawConnectPreview,
+        setOnPendingConnectCleared
     };
 }
 

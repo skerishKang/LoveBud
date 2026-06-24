@@ -457,7 +457,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     isRootMemory: deps.isRootMemory,
                     getCanonicalRootId: () => canonicalRootId,
                     showToast: deps.showToast,
-                    i18n: deps.i18n
+                    i18n: deps.i18n,
+                    canEdit
                 });
             }
 

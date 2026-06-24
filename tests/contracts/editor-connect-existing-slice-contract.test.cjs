@@ -532,3 +532,106 @@ test('branch-line-preview CSS has pointer-events:none', () => {
   assert.match(css, /\.branch-line-preview/, 'must have CSS rule');
   assert.match(css, /pointer-events:\s*none/, 'must have pointer-events: none');
 });
+
+// ── 15. editor.js passes canEdit to controller ──────────────────────────
+
+test('editor.js passes canEdit to createConnectExistingController', () => {
+  var source = readSource('js/editor.js');
+  assert.match(source, /canEdit/,
+    'editor.js must pass canEdit to controller');
+  assert.match(source, /createConnectExistingController\(\{[\s\S]*?canEdit[\s\S]*?\}\)/,
+    'canEdit must be in the controller options object');
+});
+
+// ── 16. setEditorCanvas wires onPendingConnectCleared callback ──────────
+
+test('setEditorCanvas wires setOnPendingConnectCleared with targetData cleanup', () => {
+  var source = readSource('js/editor/editor-bindings.js');
+  assert.match(source, /setOnPendingConnectCleared/,
+    'must call setOnPendingConnectCleared');
+  assert.match(source, /targetData\s*=\s*null/,
+    'callback must clear targetData');
+  assert.match(source, /hideAll/,
+    'callback must call hideAll');
+  assert.match(source, /updateCtaVisibility/,
+    'callback must call updateCtaVisibility');
+});
+
+// ── 17. clearPendingConnect calls onPendingConnectCleared ────────────────
+
+test('clearPendingConnect invokes onPendingConnectCleared callback', () => {
+  var source = readSource('js/editor/editor-canvas.js');
+  assert.match(source, /typeof onPendingConnectCleared === 'function'/,
+    'must guard callback invocation');
+  assert.match(source, /onPendingConnectCleared\(\)/,
+    'must call onPendingConnectCleared');
+});
+
+// ── 18. initCanvas calls clearEdgeSelection (rerender cleanup chain) ─────
+
+test('initCanvas calls clearEdgeSelection for cleanup before re-render', () => {
+  var source = readSource('js/editor/editor-canvas.js');
+  var initCanvasBody = source.match(/const initCanvas\s*=\s*\(\)\s*=>\s*\{[\s\S]*?\n\s+\};/);
+  assert.notEqual(initCanvasBody, null, 'initCanvas function body must be found');
+  assert.match(initCanvasBody[0], /clearEdgeSelection\(\)/,
+    'initCanvas must call clearEdgeSelection');
+  assert.doesNotMatch(initCanvasBody[0], /clearPendingConnect\(\)\s*;/,
+    'initCanvas must not call clearPendingConnect directly (handled by clearEdgeSelection)');
+});
+
+// ── 19. resetConnectFlow calls clearPendingConnect ──────────────────────
+
+test('resetConnectFlow calls clearPendingConnect on editorCanvas', () => {
+  var source = readSource('js/editor/editor-bindings.js');
+  assert.match(source, /editorCanvas\.clearPendingConnect\(\)/,
+    'resetConnectFlow must call clearPendingConnect');
+});
+
+// ── 20. Controller enterConnectMode guards canEdit === false ────────────
+
+test('controller functions guard canEdit === false', () => {
+  var source = readSource('js/editor/editor-bindings.js');
+  assert.match(source, /enterConnectMode[\s\S]*?if\s*\(canEdit\s*===\s*false\)\s*return/,
+    'enterConnectMode must guard canEdit === false');
+  assert.match(source, /handleConnectTargetSelect[\s\S]*?if\s*\(canEdit\s*===\s*false\)\s*return/,
+    'handleConnectTargetSelect must guard canEdit === false');
+  assert.match(source, /handleConfirm[\s\S]*?if\s*\(canEdit\s*===\s*false\)\s*return/,
+    'handleConfirm must guard canEdit === false');
+  assert.match(source, /updateCtaVisibility[\s\S]*?if\s*\(canEdit\s*===\s*false\)/,
+    'updateCtaVisibility must guard canEdit === false');
+});
+
+// ── 21. updateDetailPanel wrapper calls updateCtaNow ────────────────────
+
+test('editor.js wraps updateDetailPanel to call updateCtaNow on selection change', () => {
+  var source = readSource('js/editor.js');
+  assert.match(source, /updateCtaNow\(\)/,
+    'editor.js must call updateCtaNow after bindControls');
+  assert.match(source, /_baseUpdateDetailPanel/,
+    'wrapper must capture base updateDetailPanel');
+  assert.match(source, /connectExistingController\.updateCtaNow\(\)/,
+    'wrapper must call updateCtaNow');
+});
+
+// ── 22. No duplicate canvasEdges.clearDashedPreview in clearPendingConnect ──
+
+test('clearPendingConnect calls canvasEdges.clearDashedPreview exactly once', () => {
+  var source = readSource('js/editor/editor-canvas.js');
+  var clearFn = source.match(/function clearPendingConnect\(\)\s*\{[\s\S]*?^    \}/m);
+  assert.notEqual(clearFn, null, 'clearPendingConnect function must be found');
+  var matches = clearFn[0].match(/canvasEdges\.clearDashedPreview\(\)/g);
+  assert.equal(matches ? matches.length : 0, 1,
+    'clearDashedPreview must be called exactly once in clearPendingConnect');
+});
+
+// ── 23. onPendingConnectCleared exposed in return object ─────────────────
+
+test('setOnPendingConnectCleared is exposed in canvas return object', () => {
+  var source = readSource('js/editor/editor-canvas.js');
+  assert.match(source, /setOnPendingConnectCleared/,
+    'setOnPendingConnectCleared must be exported');
+  var returnBlock = source.match(/return\s*\{[\s\S]*?\};/);
+  assert.notEqual(returnBlock, null, 'return object must be found');
+  assert.match(returnBlock[0], /setOnPendingConnectCleared/,
+    'setOnPendingConnectCleared must be in return object');
+});

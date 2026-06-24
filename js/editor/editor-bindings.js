@@ -345,7 +345,7 @@
 
   // ── Connect Existing Moment (Slice 2 #2804) ────────────────────────────
 
-  function createConnectExistingController(options) {
+    function createConnectExistingController(options) {
     var connectMemory = options && options.connectMemory;
     var getCurrentEditingMemory = options && options.getCurrentEditingMemory;
     var isRootMemory = options && options.isRootMemory;
@@ -353,6 +353,7 @@
     var showToast = options && options.showToast;
     var i18n = options && options.i18n;
     var validateConnectCandidate = options && options.validateConnectCandidate;
+    var canEdit = options && options.canEdit;
 
     var editorCanvas = null;
     var targetData = null;
@@ -370,6 +371,13 @@
 
     function setEditorCanvas(canvas) {
       editorCanvas = canvas;
+      if (editorCanvas && typeof editorCanvas.setOnPendingConnectCleared === 'function') {
+        editorCanvas.setOnPendingConnectCleared(function() {
+          targetData = null;
+          hideAll();
+          updateCtaVisibility();
+        });
+      }
     }
 
     function setConnectMemory(fn) {
@@ -388,6 +396,7 @@
     }
 
     function enterConnectMode() {
+      if (canEdit === false) return;
       var sourceId = editorCanvas ? editorCanvas.getPendingConnectSourceId() : null;
       if (sourceId) return;
 
@@ -428,6 +437,7 @@
     }
 
     function handleConnectTargetSelect(targetMem, targetPos) {
+      if (canEdit === false) return;
       var sourceId = editorCanvas ? editorCanvas.getPendingConnectSourceId() : null;
       if (!sourceId || !targetMem) return;
 
@@ -469,6 +479,7 @@
     }
 
     function handleConfirm() {
+      if (canEdit === false) return;
       if (!targetData || typeof connectMemory !== 'function') return;
       var sourceId = editorCanvas ? editorCanvas.getPendingConnectSourceId() : null;
       if (!sourceId) return;
@@ -487,6 +498,7 @@
     }
 
     function updateCtaVisibility() {
+      if (canEdit === false) { hideAll(); return; }
       var mode = window.LoveBudEditorInteractionMode;
       var isEdit = mode && typeof mode.isEditMode === 'function' && mode.isEditMode();
       if (!isEdit) { hideAll(); return; }
