@@ -57,9 +57,9 @@
         var videoId = getYouTubeVideoId(raw);
         if (videoId) {
             var embedUrl = new URL('https://www.youtube.com/embed/' + encodeURIComponent(videoId));
-            embedUrl.searchParams.set('autoplay', '1');
+            embedUrl.searchParams.set('autoplay', '0');
             embedUrl.searchParams.set('mute', '0');
-            embedUrl.searchParams.set('controls', '1');
+            embedUrl.searchParams.set('controls', '0');
             embedUrl.searchParams.set('rel', '0');
             embedUrl.searchParams.set('modestbranding', '1');
             return embedUrl.href;
@@ -85,7 +85,18 @@
                 var iframeSrc = wrapper.getAttribute('data-preview-ctp-src');
                 var title = wrapper.getAttribute('data-preview-ctp-title') || 'LoveTree media';
                 if (!iframeSrc) return;
-                wrapper.innerHTML = '<iframe width="100%" height="100%" src="' + escapeHtml(iframeSrc) + '" title="' + escapeHtml(title) + '" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen style="position:absolute;top:0;left:0;width:100%;height:100%;border:none;"></iframe>';
+                while (wrapper.firstChild) wrapper.removeChild(wrapper.firstChild);
+                var iframe = document.createElement('iframe');
+                iframe.setAttribute('width', '100%');
+                iframe.setAttribute('height', '100%');
+                iframe.setAttribute('src', iframeSrc);
+                iframe.setAttribute('title', title);
+                iframe.setAttribute('frameborder', '0');
+                iframe.setAttribute('allow', 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share');
+                iframe.setAttribute('referrerpolicy', 'strict-origin-when-cross-origin');
+                iframe.setAttribute('allowfullscreen', '');
+                iframe.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;border:none;';
+                wrapper.appendChild(iframe);
             });
         });
     }
