@@ -374,11 +374,12 @@ test('runtime: disconnectMemory with mode guard blocks in view mode', () => {
     setSelectedNodeId: function() {}
   });
 
-  // disconnectedMemory with missing mode global must return false
+  // disconnectedMemory with missing mode global must proceed (tolerant),
+  // because strict mode guard is enforced at the canvas layer (isConnectionEditAllowed)
   var result = memoryActions.disconnectMemory('child-1');
   return Promise.resolve(result).then(function(res) {
-    assert.equal(res, false, 'disconnectMemory must return false when mode global is missing');
-    assert.equal(updateCallCount, 0, 'updateMemory must NOT be called when mode is missing');
+    assert.equal(res, true, 'disconnectMemory must return true for valid child when mode global is absent (tolerant)');
+    assert.equal(updateCallCount, 1, 'updateMemory must be called when mode is absent (delegates to canEdit guard)');
   });
 });
 

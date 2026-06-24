@@ -356,10 +356,11 @@ function createEditorCanvas(deps) {
 
         if (canEdit !== false) {
             uiHelpers.bindNodeDragStart(nodeEl, () => viewportState.layoutMode, (e) => {
-                if (typeof canvasInteraction.beginNodeDrag !== 'function') return;
-                var mode = window.LoveBudEditorInteractionMode;
-                if (!mode || !mode.isEditMode()) return;
-                canvasInteraction.beginNodeDrag(e, nodeEl, mem, viewportState, getWorldPosition, canEdit);
+                if (typeof canvasInteraction.beginNodeDrag === 'function') {
+                    var mode = window.LoveBudEditorInteractionMode;
+                    if (mode && !mode.isEditMode()) return;
+                    canvasInteraction.beginNodeDrag(e, nodeEl, mem, viewportState, getWorldPosition, canEdit);
+                }
             });
         }
 

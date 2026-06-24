@@ -19,11 +19,11 @@ function getBindNodeDragBlock() {
 const bindNodeDragBlock = getBindNodeDragBlock();
 
 test('editor canvas node drag delegation — bindNodeDrag prefers primary interaction runtime', () => {
-  const guardIndex = indexOfRequired(bindNodeDragBlock, "if (typeof canvasInteraction.beginNodeDrag === 'function') {");
+  const guardOpen = indexOfRequired(bindNodeDragBlock, "if (typeof canvasInteraction.beginNodeDrag === 'function') {");
+  const modeGuard = indexOfRequired(bindNodeDragBlock, "if (mode && !mode.isEditMode()) return;");
   const callIndex = indexOfRequired(bindNodeDragBlock, 'canvasInteraction.beginNodeDrag(e, nodeEl, mem, viewportState, getWorldPosition, canEdit);');
-  const returnIndex = indexOfRequired(bindNodeDragBlock, 'return;');
-  assert.ok(guardIndex < callIndex);
-  assert.ok(callIndex < returnIndex);
+  assert.ok(guardOpen < modeGuard, 'guardOpen must precede modeGuard');
+  assert.ok(modeGuard < callIndex, 'modeGuard must precede call');
 });
 
 test('editor canvas node drag delegation — local fallback is removed after primary delegation', () => {

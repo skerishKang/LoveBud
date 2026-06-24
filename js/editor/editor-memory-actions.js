@@ -166,7 +166,7 @@ function createEditorMemoryActions(deps) {
     const enterEditMode = () => {
         if (canEdit === false) return;
         var mode = window.LoveBudEditorInteractionMode;
-        if (!mode || !mode.isEditMode()) return;
+        if (mode && !mode.isEditMode()) return;
         const currentEditingMemory = getCurrentEditingMemory();
         if (!currentEditingMemory) return;
         isEditMode = true;
@@ -225,7 +225,7 @@ function createEditorMemoryActions(deps) {
     const saveMemoryEdit = async () => {
         if (canEdit === false) return;
         var mode = window.LoveBudEditorInteractionMode;
-        if (!mode || !mode.isEditMode()) return;
+        if (mode && !mode.isEditMode()) return;
         const currentEditingMemory = getCurrentEditingMemory();
         if (!currentEditingMemory) return;
 
@@ -496,7 +496,7 @@ function createEditorMemoryActions(deps) {
     const deleteMemory = async () => {
         if (canEdit === false) return;
         var mode = window.LoveBudEditorInteractionMode;
-        if (!mode || !mode.isEditMode()) return;
+        if (mode && !mode.isEditMode()) return;
         const currentEditingMemory = getCurrentEditingMemory();
         if (!currentEditingMemory) return;
 
@@ -540,7 +540,7 @@ function createEditorMemoryActions(deps) {
     const disconnectMemory = async (childId) => {
         if (canEdit === false) return false;
         var mode = window.LoveBudEditorInteractionMode;
-        if (!mode || !mode.isEditMode()) return false;
+        if (mode && !mode.isEditMode()) return false;
         if (!childId) return false;
 
         var memories = getTreeMemories().slice();
