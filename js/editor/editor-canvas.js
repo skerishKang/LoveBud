@@ -328,7 +328,8 @@ function createEditorCanvas(deps) {
             branchPorts,
             getTreeMemories,
             canonicalRootId: getCanonicalRootId(),
-            isRootMemory
+            isRootMemory,
+            isEditMode: window.LoveBudEditorInteractionMode ? window.LoveBudEditorInteractionMode.isEditMode : function () { return false; }
         });
     }
 
@@ -355,10 +356,10 @@ function createEditorCanvas(deps) {
 
         if (canEdit !== false) {
             uiHelpers.bindNodeDragStart(nodeEl, () => viewportState.layoutMode, (e) => {
-                if (typeof canvasInteraction.beginNodeDrag === 'function') {
-                    canvasInteraction.beginNodeDrag(e, nodeEl, mem, viewportState, getWorldPosition, canEdit);
-                    return;
-                }
+                if (typeof canvasInteraction.beginNodeDrag !== 'function') return;
+                var mode = window.LoveBudEditorInteractionMode;
+                if (!mode || !mode.isEditMode()) return;
+                canvasInteraction.beginNodeDrag(e, nodeEl, mem, viewportState, getWorldPosition, canEdit);
             });
         }
 
@@ -414,6 +415,8 @@ function createEditorCanvas(deps) {
     }
 
     function openAddMomentFromCanvas() {
+        var mode = window.LoveBudEditorInteractionMode;
+        if (!mode || !mode.isEditMode()) return;
         growthAffordance.openAddMomentFromCanvas();
     }
 
@@ -699,6 +702,8 @@ function createEditorCanvas(deps) {
         recenterViewport,
         setLayoutMode,
         updateAffordance,
+        clearEdgeSelection,
+        clearGrowthAffordance,
         getWorldPosition,
         get viewportState() { return viewportState; },
         persistStoredPositions

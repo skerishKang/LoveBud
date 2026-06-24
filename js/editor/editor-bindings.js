@@ -28,6 +28,8 @@
       addBtn.addEventListener('click', function(e) {
         e.preventDefault();
         e.stopPropagation();
+        var mode = window.LoveBudEditorInteractionMode;
+        if (!mode || !mode.isEditMode()) return;
         if (typeof showAddMemoryForm === 'function') {
           showAddMemoryForm();
         }
@@ -41,6 +43,8 @@
     if (confirmBtn && typeof addMemoryFromForm === 'function') {
       confirmBtn.addEventListener('click', function(e) {
         e.preventDefault();
+        var mode = window.LoveBudEditorInteractionMode;
+        if (!mode || !mode.isEditMode()) return;
         addMemoryFromForm().catch(function(err) {
           console.error('[editor] Failed to add memory:', err);
           if (typeof updateSaveStatus === 'function') {
@@ -69,6 +73,8 @@
       memoInput.addEventListener('keypress', function(e) {
         if (e.key === 'Enter' && !e.shiftKey) {
           e.preventDefault();
+          var mode = window.LoveBudEditorInteractionMode;
+          if (!mode || !mode.isEditMode()) return;
           addMemoryFromForm();
         }
       });
@@ -122,6 +128,8 @@
     var detailEmptyStartBtn = getDetailButton('detailEmptyStartBtn');
 
     bindButtonOnce(detailEmptyStartBtn, 'detailEmptyStartBound', function() {
+      var mode = window.LoveBudEditorInteractionMode;
+      if (!mode || !mode.isEditMode()) return;
       if (typeof showAddMemoryForm === 'function') {
         showAddMemoryForm();
       }
@@ -192,6 +200,12 @@
     if (document.documentElement.dataset.editorNodeDirectEditBound === '1') return false;
     document.documentElement.dataset.editorNodeDirectEditBound = '1';
 
+    function guardEnterEdit(nodeEl) {
+      var mode = window.LoveBudEditorInteractionMode;
+      if (!mode || !mode.isEditMode()) return;
+      requestDirectNodeEdit(nodeEl, enterEditMode);
+    }
+
     var tapThreshold = 10;
     var doubleTapDelay = 360;
     var touchStartPoint = null;
@@ -203,7 +217,7 @@
       if (!nodeEl) return;
       event.preventDefault();
       event.stopPropagation();
-      requestDirectNodeEdit(nodeEl, enterEditMode);
+      guardEnterEdit(nodeEl);
     }, true);
 
     document.addEventListener('touchstart', function(event) {
@@ -236,12 +250,13 @@
 
       event.preventDefault();
       event.stopPropagation();
-      requestDirectNodeEdit(nodeEl, enterEditMode);
+      guardEnterEdit(nodeEl);
       lastTap = { time: 0, node: null };
     }, { passive: false, capture: true });
 
     document.addEventListener('touchcancel', function() {
       touchStartPoint = null;
+      lastTap = { time: 0, node: null };
     }, { passive: true, capture: true });
 
     return true;
@@ -263,15 +278,25 @@
     ensureEditModeDeleteButton(deleteMemoryBtn, deleteMemory);
 
     bindButtonOnce(editMemoryBtn, 'editBound', function(e) {
+      var mode = window.LoveBudEditorInteractionMode;
+      if (!mode || !mode.isEditMode()) return;
       var latestDeleteBtn = getDetailButton('deleteMemoryBtn');
       hideCurrentMemoryViewModeSecondaryActions(detailPanel, latestDeleteBtn);
       ensureEditModeDeleteButton(latestDeleteBtn, deleteMemory);
       enterEditMode(e);
     });
 
-    bindButtonOnce(deleteMemoryBtn, 'deleteBound', deleteMemory);
+    bindButtonOnce(deleteMemoryBtn, 'deleteBound', function() {
+      var mode = window.LoveBudEditorInteractionMode;
+      if (!mode || !mode.isEditMode()) return;
+      deleteMemory();
+    });
     bindButtonOnce(cancelEditBtn, 'cancelBound', exitEditMode);
-    bindButtonOnce(saveEditBtn, 'saveBound', saveMemoryEdit);
+    bindButtonOnce(saveEditBtn, 'saveBound', function() {
+      var mode = window.LoveBudEditorInteractionMode;
+      if (!mode || !mode.isEditMode()) return;
+      saveMemoryEdit();
+    });
     bindCanvasNodeDirectEdit({ enterEditMode: enterEditMode });
   }
 

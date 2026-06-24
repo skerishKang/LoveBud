@@ -18,6 +18,7 @@
   var BOTTOM_BAR_ID = 'mobileBottomBar';
   var ACTION_BTN_ID = 'mobileBottomAction';
   var ACTION_LABEL_ID = 'mobileBottomActionLabel';
+  var MODE_TOGGLE_ID = 'mobileModeToggle';
   var MOBILE_BREAKPOINT = 480;
   var IS_HIDDEN_CLASS = 'is-hidden';
   var UPDATE_DEBOUNCE = 120;
@@ -33,6 +34,52 @@
     bar.dataset.mbbInitialized = '1';
 
     var iconEl = actionBtn.querySelector('.material-symbols-outlined');
+
+    var canEdit = window.canEdit;
+    var modeToggle = null;
+    var modeUnsubscribe = null;
+
+    if (canEdit !== false && window.LoveBudEditorInteractionMode) {
+      modeToggle = document.createElement('button');
+      modeToggle.type = 'button';
+      modeToggle.id = MODE_TOGGLE_ID;
+      modeToggle.className = 'editor-mobile-mode-toggle';
+      modeToggle.setAttribute('aria-label', '보기 모드');
+      modeToggle.textContent = '보기';
+      bar.insertBefore(modeToggle, actionBtn);
+
+      function syncModeUI() {
+        var mode = window.LoveBudEditorInteractionMode;
+        var isEdit = mode && mode.isEditMode();
+        if (isEdit) {
+          modeToggle.textContent = '편집 중';
+          modeToggle.setAttribute('aria-label', '편집 모드');
+          actionBtn.disabled = false;
+        } else {
+          modeToggle.textContent = '보기';
+          modeToggle.setAttribute('aria-label', '보기 모드');
+          actionBtn.disabled = true;
+        }
+        updateBar();
+      }
+
+      modeToggle.addEventListener('click', function(e) {
+        e.preventDefault();
+        var mode = window.LoveBudEditorInteractionMode;
+        if (!mode) return;
+        if (mode.isEditMode()) {
+          mode.setMode(mode.MODE_VIEW);
+        } else {
+          mode.setMode(mode.MODE_EDIT);
+        }
+      });
+
+      modeUnsubscribe = window.LoveBudEditorInteractionMode.subscribe(function () {
+        syncModeUI();
+      });
+
+      syncModeUI();
+    }
 
     /**
      * Check if memory form or detail edit mode is currently open.
@@ -80,13 +127,19 @@
         return;
       }
 
-      // Update label and icon based on selection state
-      if (hasSelectedMoment()) {
-        actionLabel.textContent = '이어가기';
-        if (iconEl) iconEl.textContent = 'arrow_forward';
+      // Update label and icon based on selection state (edit mode only)
+      var mode = window.LoveBudEditorInteractionMode;
+      if (mode && mode.isEditMode()) {
+        if (hasSelectedMoment()) {
+          actionLabel.textContent = '이어가기';
+          if (iconEl) iconEl.textContent = 'arrow_forward';
+        } else {
+          actionLabel.textContent = '새 순간 만들기';
+          if (iconEl) iconEl.textContent = 'add';
+        }
       } else {
-        actionLabel.textContent = '새 순간 만들기';
-        if (iconEl) iconEl.textContent = 'add';
+        actionLabel.textContent = '편집하려면 모드 전환';
+        if (iconEl) iconEl.textContent = 'edit';
       }
 
       bar.classList.remove(IS_HIDDEN_CLASS);
@@ -98,6 +151,9 @@
      */
     function onActionClick(e) {
       e.preventDefault();
+
+      var mode = window.LoveBudEditorInteractionMode;
+      if (!mode || !mode.isEditMode()) return;
 
       if (hasSelectedMoment()) {
         // "이어가기" → delegate to continueFromMomentBtn (detail panel)

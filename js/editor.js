@@ -683,6 +683,101 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             finalizeEditorReady();
+
+            if (canEdit !== false && window.LoveBudEditorInteractionMode && typeof window.LoveBudEditorInteractionMode.subscribe === 'function') {
+                (function injectDesktopModeToggle() {
+                    var sidebar = document.querySelector('.sidebar');
+                    if (!sidebar) return;
+                    var existing = document.getElementById('editorDesktopModeToggle');
+                    if (existing) return;
+
+                    var toggle = document.createElement('div');
+                    toggle.id = 'editorDesktopModeToggle';
+                    toggle.className = 'editor-desktop-mode-toggle';
+                    toggle.setAttribute('role', 'radiogroup');
+                    toggle.setAttribute('aria-label', '상호작용 모드');
+
+                    var viewBtn = document.createElement('button');
+                    viewBtn.type = 'button';
+                    viewBtn.className = 'editor-mode-btn editor-mode-btn-view';
+                    viewBtn.setAttribute('role', 'radio');
+                    viewBtn.setAttribute('aria-checked', 'true');
+                    viewBtn.innerHTML = '<span class="material-symbols-outlined" aria-hidden="true">visibility</span><span>보기</span>';
+
+                    var editBtn = document.createElement('button');
+                    editBtn.type = 'button';
+                    editBtn.className = 'editor-mode-btn editor-mode-btn-edit';
+                    editBtn.setAttribute('role', 'radio');
+                    editBtn.setAttribute('aria-checked', 'false');
+                    editBtn.innerHTML = '<span class="material-symbols-outlined" aria-hidden="true">edit</span><span>편집</span>';
+
+                    var modeDescription = document.createElement('p');
+                    modeDescription.className = 'editor-mode-description';
+                    modeDescription.textContent = '안전하게 감상하고 탐색할 수 있어요.';
+
+                    function syncToggle() {
+                        var mode = window.LoveBudEditorInteractionMode;
+                        var isEdit = mode && mode.isEditMode();
+                        viewBtn.setAttribute('aria-checked', isEdit ? 'false' : 'true');
+                        editBtn.setAttribute('aria-checked', isEdit ? 'true' : 'false');
+                        viewBtn.disabled = isEdit;
+                        editBtn.disabled = !isEdit;
+                        if (modeDescription) {
+                            modeDescription.textContent = isEdit
+                                ? '순간과 흐름을 수정할 수 있어요.'
+                                : '안전하게 감상하고 탐색할 수 있어요.';
+                        }
+                    }
+
+                    function handleModeChange(modeValue) {
+                        var isEdit = modeValue === window.LoveBudEditorInteractionMode.MODE_EDIT;
+                        if (isEdit) {
+                            if (typeof editorCanvas !== 'undefined' && editorCanvas && typeof editorCanvas.updateAffordance === 'function') {
+                                editorCanvas.updateAffordance();
+                            }
+                        } else {
+                            if (typeof editorCanvas !== 'undefined' && editorCanvas && typeof editorCanvas.clearGrowthAffordance === 'function') {
+                                editorCanvas.clearGrowthAffordance();
+                            }
+                            if (typeof editorCanvas !== 'undefined' && editorCanvas && typeof editorCanvas.clearEdgeSelection === 'function') {
+                                editorCanvas.clearEdgeSelection();
+                            }
+                            var editModeEl = document.getElementById('detailEditMode');
+                            if (editModeEl) editModeEl.style.display = 'none';
+                            var viewModeEl = document.getElementById('detailViewMode');
+                            if (viewModeEl) viewModeEl.style.display = '';
+                        }
+                        syncToggle();
+                    }
+
+                    viewBtn.addEventListener('click', function () {
+                        window.LoveBudEditorInteractionMode.setMode(window.LoveBudEditorInteractionMode.MODE_VIEW);
+                    });
+                    editBtn.addEventListener('click', function () {
+                        window.LoveBudEditorInteractionMode.setMode(window.LoveBudEditorInteractionMode.MODE_EDIT);
+                    });
+
+                    window.LoveBudEditorInteractionMode.subscribe(handleModeChange);
+
+                    toggle.appendChild(viewBtn);
+                    toggle.appendChild(editBtn);
+
+                    var descriptionWrap = document.createElement('div');
+                    descriptionWrap.className = 'editor-mode-description-wrap';
+                    descriptionWrap.appendChild(modeDescription);
+
+                    var target = sidebar.querySelector('.editor-status-section .editor-space-between-row') || sidebar.querySelector('.editor-status-section');
+                    if (target) {
+                        target.parentElement.insertBefore(toggle, target.nextSibling);
+                        target.parentElement.insertBefore(descriptionWrap, toggle.nextSibling);
+                    } else {
+                        sidebar.insertBefore(toggle, sidebar.firstChild);
+                        sidebar.insertBefore(descriptionWrap, toggle.nextSibling);
+                    }
+
+                    handleModeChange(window.LoveBudEditorInteractionMode.getMode());
+                })();
+            }
         } catch (error) {
             reportError('CRITICAL: Exception in startEditor', error);
         }
