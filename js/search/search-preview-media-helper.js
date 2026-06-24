@@ -224,15 +224,15 @@
         const youtubeId = getYouTubeVideoId(safeSourceUrl);
         if (youtubeId) {
             const embedUrl = new URL(`https://www.youtube.com/embed/${encodeURIComponent(youtubeId)}`);
-            embedUrl.searchParams.set('autoplay', '1');
+            embedUrl.searchParams.set('autoplay', '0');
             embedUrl.searchParams.set('mute', '0');
-            embedUrl.searchParams.set('controls', '1');
+            embedUrl.searchParams.set('controls', '0');
             embedUrl.searchParams.set('rel', '0');
             embedUrl.searchParams.set('modestbranding', '1');
             return embedUrl.href;
         }
 
-        return safeSourceUrl + (safeSourceUrl.includes('?') ? '&' : '?') + 'autoplay=1&mute=0&controls=1';
+        return safeSourceUrl + (safeSourceUrl.includes('?') ? '&' : '?') + 'autoplay=0&mute=0&controls=0';
     }
 
     function generateIframeSource(sourceUrl) {
@@ -283,6 +283,19 @@
         </div>`;
     }
 
+    function toAutoplayIframeSource(value) {
+        const safeUrl = sanitizeUrl(value);
+        if (!safeUrl) return '';
+        try {
+            const url = new URL(safeUrl);
+            url.searchParams.set('autoplay', '1');
+            url.searchParams.set('mute', '0');
+            return url.href;
+        } catch (e) {
+            return '';
+        }
+    }
+
     /**
      * 클릭-투-플레이 오버레이 이벤트 바인딩.
      * container 내부의 [data-preview-ctp-overlay]를 찾아 클릭 시
@@ -297,15 +310,21 @@
             overlay.addEventListener('click', function onCtpClick() {
                 const wrapper = overlay.closest('[data-preview-ctp-src]');
                 if (!wrapper) return;
-                const iframeSrc = wrapper.getAttribute('data-preview-ctp-src');
+                const iframeSrc = toAutoplayIframeSource(wrapper.getAttribute('data-preview-ctp-src'));
                 const title = wrapper.getAttribute('data-preview-ctp-title') || 'LoveTree media';
                 if (!iframeSrc) return;
-                wrapper.innerHTML = `<iframe width="100%" height="100%"
-                    src="${escapeHtml(iframeSrc)}"
-                    title="${escapeHtml(title)}" frameborder="0"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                    referrerpolicy="strict-origin-when-cross-origin"
-                    allowfullscreen style="position:absolute;top:0;left:0;width:100%;height:100%;border:none;"></iframe>`;
+                while (wrapper.firstChild) wrapper.removeChild(wrapper.firstChild);
+                const iframe = document.createElement('iframe');
+                iframe.setAttribute('width', '100%');
+                iframe.setAttribute('height', '100%');
+                iframe.setAttribute('src', iframeSrc);
+                iframe.setAttribute('title', title);
+                iframe.setAttribute('frameborder', '0');
+                iframe.setAttribute('allow', 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share');
+                iframe.setAttribute('referrerpolicy', 'strict-origin-when-cross-origin');
+                iframe.setAttribute('allowfullscreen', '');
+                iframe.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;border:none;';
+                wrapper.appendChild(iframe);
             });
         });
     }
@@ -322,7 +341,8 @@
         generateIframeSource: generateIframeSource,
         toPlayableEmbedUrl: toPlayableEmbedUrl,
         renderPreviewIframe: renderPreviewIframe,
-        bindPreviewOverlayEvents: bindPreviewOverlayEvents
+        bindPreviewOverlayEvents: bindPreviewOverlayEvents,
+        toAutoplayIframeSource: toAutoplayIframeSource
     };
 
 })();
