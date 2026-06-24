@@ -68,6 +68,18 @@
         return '';
     }
 
+    function toAutoplayIframeSource(value) {
+        if (!value) return '';
+        try {
+            var url = new URL(String(value));
+            url.searchParams.set('autoplay', '1');
+            url.searchParams.set('mute', '0');
+            return url.href;
+        } catch (e) {
+            return '';
+        }
+    }
+
     /**
      * 클릭-투-플레이 오버레이 이벤트 바인딩.
      * container 내 [data-preview-ctp-overlay]를 찾아 클릭 시
@@ -82,7 +94,7 @@
             overlay.addEventListener('click', function onCtpClick() {
                 var wrapper = overlay.closest('[data-preview-ctp-src]');
                 if (!wrapper) return;
-                var iframeSrc = wrapper.getAttribute('data-preview-ctp-src');
+                var iframeSrc = toAutoplayIframeSource(wrapper.getAttribute('data-preview-ctp-src'));
                 var title = wrapper.getAttribute('data-preview-ctp-title') || 'LoveTree media';
                 if (!iframeSrc) return;
                 while (wrapper.firstChild) wrapper.removeChild(wrapper.firstChild);
@@ -145,6 +157,7 @@
         };
 
         helper.bindPreviewOverlayEvents = bindPreviewOverlayEvents;
+        helper.toAutoplayIframeSource = toAutoplayIframeSource;
         helper.__loveBudEmbedPatchApplied = true;
     }
 
