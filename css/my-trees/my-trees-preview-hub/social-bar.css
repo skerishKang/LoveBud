@@ -21,7 +21,7 @@
 #myTreesHubPanel [data-my-trees-social-shell] .preview-social-bar {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 0.45rem;
+    gap: 0.5rem;
     align-items: stretch;
 }
 
@@ -80,6 +80,23 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+@media (max-width: 480px) {
+    #myTreesHubPanel .preview-social-shell[data-my-trees-social-shell] .preview-social-bar,
+    #myTreesHubPanel [data-my-trees-social-shell] .preview-social-bar {
+        gap: 0.38rem;
+    }
+    #myTreesHubPanel .preview-social-shell[data-my-trees-social-shell] .preview-social-action,
+    #myTreesHubPanel [data-my-trees-social-shell] .preview-social-action {
+        min-height: 2.25rem;
+        padding-inline: 0.35rem;
+        font-size: 0.68rem;
+    }
+    #myTreesHubPanel .preview-social-shell[data-my-trees-social-shell] .preview-social-action .material-symbols-outlined,
+    #myTreesHubPanel [data-my-trees-social-shell] .preview-social-action .material-symbols-outlined {
+        font-size: 0.95rem;
+    }
 }
 
 @media (max-width: 420px) {
