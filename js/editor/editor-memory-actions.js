@@ -605,6 +605,96 @@ function createEditorMemoryActions(deps) {
         }
     };
 
+    function isDescendant(memories, sourceId, targetId) {
+        var visited = {};
+        var currentId = targetId;
+        while (currentId) {
+            if (String(currentId) === String(sourceId)) return true;
+            if (visited[String(currentId)]) return false;
+            visited[String(currentId)] = true;
+            var mem = memories.find(function (m) { return String(m.id) === String(currentId); });
+            if (!mem || !mem.parentId) break;
+            currentId = mem.parentId;
+        }
+        return false;
+    }
+
+    const connectMemory = async (sourceId, targetId) => {
+        if (canEdit === false) return false;
+        var mode = window.LoveBudEditorInteractionMode;
+        if (mode && !mode.isEditMode()) return false;
+        if (!sourceId || !targetId) return false;
+        if (String(sourceId) === String(targetId)) return false;
+
+        var memories = getTreeMemories().slice();
+        var srcIdx = memories.findIndex(function (m) { return String(m.id) === String(sourceId); });
+        var tgtIdx = memories.findIndex(function (m) { return String(m.id) === String(targetId); });
+        if (srcIdx === -1 || tgtIdx === -1) return false;
+
+        var sourceMem = memories[srcIdx];
+        var canonicalRootId = typeof getCanonicalRootId === 'function'
+            ? getCanonicalRootId()
+            : 'root';
+
+        if (
+            (typeof isRootMemory === 'function' && isRootMemory(sourceMem, canonicalRootId)) ||
+            String(sourceMem.id) === String(canonicalRootId)
+        ) {
+            showToast(formatI18nText('connect_root_blocked', '루트 순간은 연결할 수 없어요'), 'error');
+            return false;
+        }
+
+        if (String(sourceMem.parentId) === String(targetId)) {
+            showToast(formatI18nText('connect_already_connected', '이미 연결된 순간입니다'), 'error');
+            return false;
+        }
+
+        if (isDescendant(memories, sourceId, targetId)) {
+            showToast(formatI18nText('connect_cycle_blocked', '하위 순간을 부모로 연결할 수 없어요'), 'error');
+            return false;
+        }
+
+        updateSaveStatus('saving', formatI18nText('save_saving', '저장 중...'));
+
+        try {
+            var apiResult = null;
+            if (window.apiClient && typeof window.apiClient.updateMemory === 'function') {
+                apiResult = await window.apiClient.updateMemory(sourceId, { parentId: targetId });
+            } else {
+                throw new Error('updateMemory not available');
+            }
+
+            var nextMemory = Object.assign({}, sourceMem, { parentId: targetId }, apiResult || {});
+            memories[srcIdx] = nextMemory;
+            setTreeMemories(memories);
+
+            var treeData = getCurrentTreeData();
+            if (treeData && Array.isArray(treeData.memories)) {
+                var dataIdx = treeData.memories.findIndex(function (m) { return String(m.id) === String(sourceId); });
+                if (dataIdx !== -1) {
+                    treeData.memories[dataIdx] = nextMemory;
+                }
+            }
+
+            if (window.LoveBudCache) {
+                var cacheKey = 'memories_' + (treeData && treeData.id ? treeData.id : 'default');
+                window.LoveBudCache.set(cacheKey, memories, 2 * 60 * 1000);
+            }
+
+            if (typeof rerenderCanvas === 'function') rerenderCanvas();
+            if (typeof updateSidebarStatus === 'function') updateSidebarStatus();
+            if (typeof updateDetailPanel === 'function') updateDetailPanel(nextMemory);
+            updateSaveStatus('saved', formatI18nText('save_saved', '저장 완료'));
+            showToast(formatI18nText('connect_success', '순간을 연결했어요'), 'success');
+            return true;
+        } catch (error) {
+            console.error('[editor] Failed to connect memory:', error);
+            updateSaveStatus('failed', formatI18nText('save_failed', '저장 실패'));
+            showToast(formatI18nText('connect_failed', '연결에 실패했어요'), 'error');
+            return false;
+        }
+    };
+
     return {
         enterEditMode,
         exitEditMode,
@@ -612,6 +702,7 @@ function createEditorMemoryActions(deps) {
         updateSelectedMemoryFields,
         deleteMemory,
         disconnectMemory,
+        connectMemory,
         getCurrentEditingMemory,
         setCurrentEditingMemory,
         isEditMode: () => isEditMode

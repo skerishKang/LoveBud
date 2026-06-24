@@ -142,6 +142,34 @@
             onSelectEdge = fn;
         }
 
+        // ── Dashed preview for connect-existing-moment flow ──
+
+        var _previewPath = null;
+
+        function drawDashedPreview(startPos, endPos) {
+            clearDashedPreview();
+            var route = computeAutoRoute(startPos, endPos);
+            var path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            path.setAttribute('d', route.d);
+            path.setAttribute('class', 'branch-line branch-line-preview');
+            path.setAttribute('fill', 'none');
+            path.setAttribute('stroke', 'var(--primary)');
+            path.setAttribute('stroke-width', '2.5');
+            path.setAttribute('opacity', '0.7');
+            path.setAttribute('stroke-dasharray', '8 5');
+            path.setAttribute('stroke-linecap', 'round');
+            svg.appendChild(path);
+            _previewPath = path;
+            return path;
+        }
+
+        function clearDashedPreview() {
+            if (_previewPath) {
+                _previewPath.remove();
+                _previewPath = null;
+            }
+        }
+
         return {
             clearBranches,
             drawBranch,
@@ -149,7 +177,9 @@
             selectEdge,
             clearSelection,
             getSelectedEdgeChildId,
-            setOnSelectEdge
+            setOnSelectEdge,
+            drawDashedPreview,
+            clearDashedPreview
         };
     }
 

@@ -343,11 +343,151 @@
     if (footerBtn) footerBtn.style.display = 'none';
   }
 
+  // ── Connect Existing Moment (Slice 2 #2804) ────────────────────────────
+
+  function createConnectExistingController(options) {
+    var connectMemory = options && options.connectMemory;
+    var getCurrentEditingMemory = options && options.getCurrentEditingMemory;
+    var isRootMemory = options && options.isRootMemory;
+    var getCanonicalRootId = options && options.getCanonicalRootId;
+    var showToast = options && options.showToast;
+    var i18n = options && options.i18n;
+
+    var editorCanvas = null;
+    var targetData = null;
+
+    var ctaSection = document.getElementById('connectExistingCtaSection');
+    var ctaBtn = document.getElementById('connectExistingCtaBtn');
+    var pendingSection = document.getElementById('connectExistingPendingSection');
+    var pendingCancelBtn = document.getElementById('connectExistingCancelBtn');
+    var confirmSection = document.getElementById('connectExistingConfirmSection');
+    var confirmHint = document.getElementById('connectExistingConfirmHint');
+    var confirmBtn = document.getElementById('connectExistingConfirmBtn');
+    var confirmCancelBtn = document.getElementById('connectExistingConfirmCancelBtn');
+
+    function setEditorCanvas(canvas) {
+      editorCanvas = canvas;
+    }
+
+    function enterConnectMode() {
+      var mem = getCurrentEditingMemory ? getCurrentEditingMemory() : null;
+      if (!mem || !editorCanvas) return;
+      var posFn = editorCanvas.calcPosition;
+      var pos = typeof posFn === 'function' ? posFn(mem) : null;
+      editorCanvas.setPendingConnect(mem.id, pos);
+      showSection('pending');
+    }
+
+    function exitConnectMode() {
+      targetData = null;
+      if (editorCanvas) editorCanvas.clearPendingConnect();
+      hideAll();
+    }
+
+    function showSection(name) {
+      hideAll();
+      if (name === 'cta' && ctaSection) ctaSection.style.display = '';
+      if (name === 'pending' && pendingSection) pendingSection.style.display = '';
+      if (name === 'confirm' && confirmSection) confirmSection.style.display = '';
+    }
+
+    function hideAll() {
+      if (ctaSection) ctaSection.style.display = 'none';
+      if (pendingSection) pendingSection.style.display = 'none';
+      if (confirmSection) confirmSection.style.display = 'none';
+    }
+
+    function handleConnectTargetSelect(targetMem, targetPos) {
+      targetData = { mem: targetMem, pos: targetPos };
+      if (confirmHint) {
+        var label = targetMem.title || '';
+        confirmHint.textContent = (label ? '"' + label + '"' : '이 순간') + '(으)로 연결할까요?';
+      }
+      showSection('confirm');
+    }
+
+    function handleConfirm() {
+      if (!targetData || typeof connectMemory !== 'function') return;
+      var sourceId = editorCanvas ? editorCanvas.getPendingConnectSourceId() : null;
+      if (!sourceId) return;
+
+      connectMemory(sourceId, targetData.mem.id).then(function(success) {
+        if (success) {
+          targetData = null;
+          if (editorCanvas) editorCanvas.clearPendingConnect();
+          hideAll();
+        } else {
+          showSection('pending');
+        }
+      });
+    }
+
+    function handleCancel() {
+      targetData = null;
+      if (editorCanvas) editorCanvas.clearPendingConnect();
+      hideAll();
+      updateCtaVisibility();
+    }
+
+    function updateCtaVisibility() {
+      var mode = window.LoveBudEditorInteractionMode;
+      var isEdit = mode && typeof mode.isEditMode === 'function' && mode.isEditMode();
+      if (!isEdit) { hideAll(); return; }
+
+      var mem = getCurrentEditingMemory ? getCurrentEditingMemory() : null;
+      if (!mem) { hideAll(); return; }
+
+      var canonicalRootId = typeof getCanonicalRootId === 'function' ? getCanonicalRootId() : 'root';
+      var isRoot = typeof isRootMemory === 'function' && isRootMemory(mem, canonicalRootId);
+      if (isRoot) { hideAll(); return; }
+
+      var sourceId = editorCanvas ? editorCanvas.getPendingConnectSourceId() : null;
+      if (sourceId) return; // already in a connect flow, don't overwrite
+
+      showSection('cta');
+    }
+
+    function bindControls() {
+      if (ctaBtn && !ctaBtn.dataset.connectBound) {
+        ctaBtn.dataset.connectBound = '1';
+        ctaBtn.addEventListener('click', function() { enterConnectMode(); });
+      }
+      if (pendingCancelBtn && !pendingCancelBtn.dataset.connectPendingCancelBound) {
+        pendingCancelBtn.dataset.connectPendingCancelBound = '1';
+        pendingCancelBtn.addEventListener('click', function() { handleCancel(); });
+      }
+      if (confirmBtn && !confirmBtn.dataset.connectConfirmBound) {
+        confirmBtn.dataset.connectConfirmBound = '1';
+        confirmBtn.addEventListener('click', function() { handleConfirm(); });
+      }
+      if (confirmCancelBtn && !confirmCancelBtn.dataset.connectConfirmCancelBound) {
+        confirmCancelBtn.dataset.connectConfirmCancelBound = '1';
+        confirmCancelBtn.addEventListener('click', function() { handleCancel(); });
+      }
+
+      var mode = window.LoveBudEditorInteractionMode;
+      if (mode && typeof mode.subscribe === 'function') {
+        mode.subscribe(function() { updateCtaVisibility(); });
+      }
+
+      hideAll();
+    }
+
+    return {
+      setEditorCanvas: setEditorCanvas,
+      handleConnectTargetSelect: handleConnectTargetSelect,
+      bindControls: bindControls,
+      exitConnectMode: exitConnectMode,
+      showCtaSection: function() { showSection('cta'); }
+    };
+  }
+
   window.LoveBudEditorBindings = {
     bindMemoryCreateControls: bindMemoryCreateControls,
     bindMemoryCreateControlsFromDom: bindMemoryCreateControlsFromDom,
     bindDetailEmptyStartButton: bindDetailEmptyStartButton,
     bindDetailActionButtons: bindDetailActionButtons,
-    hideUnimplementedButtons: hideUnimplementedButtons
+    hideUnimplementedButtons: hideUnimplementedButtons,
+    createConnectExistingController: createConnectExistingController
   };
 })();

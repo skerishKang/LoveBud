@@ -10,6 +10,12 @@
     opacity: 0.85 !important;
 }
 
+/* Dashed preview line for connect-existing-moment flow */
+.branch-line-preview {
+    pointer-events: none;
+    cursor: default;
+}
+
 /* Edge disconnect button */
 .edge-disconnect-btn {
     position: absolute;

@@ -70,3 +70,35 @@
     outline: 2px solid var(--primary-vibrant);
     outline-offset: 2px;
 }
+
+/* ── Connect existing moment (Slice 2 #2804) ────────────── */
+
+.editor-connect-existing-section {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(144,73,81,0.10);
+}
+
+.editor-connect-pending-hint,
+.editor-connect-confirm-hint {
+    margin: 0 0 10px;
+    font-size: 13px;
+    color: var(--on-surface-variant);
+    text-align: center;
+    line-height: 1.5;
+}
+
+.editor-connect-pending-actions,
+.editor-connect-confirm-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+}
+
+.editor-connect-pending-actions .btn-round,
+.editor-connect-confirm-actions .btn-round {
+    flex: 1;
+    max-width: 160px;
+    min-height: 40px;
+    font-size: 13px;
+}

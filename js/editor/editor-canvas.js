@@ -19,7 +19,8 @@ function createEditorCanvas(deps) {
         onNodeClick,
         openAddMoment,
         canEdit,
-        onDisconnectEdge
+        onDisconnectEdge,
+        onConnectTargetSelect
     } = deps;
 
     const i18n = window.t || function(key) { return key; };
@@ -51,6 +52,7 @@ function createEditorCanvas(deps) {
         selectedEdgeChildId = null;
         canvasEdges.clearSelection();
         hideEdgeDisconnectButton();
+        clearPendingConnect();
     }
 
     function isConnectionEditAllowed() {
@@ -345,10 +347,44 @@ function createEditorCanvas(deps) {
         }, 45);
     }
 
+    var pendingConnectState = null;
+
+    function handleConnectTargetSelect(targetMem) {
+        if (!pendingConnectState || !targetMem) return;
+        if (String(pendingConnectState.sourceId) === String(targetMem.id)) return;
+        var targetPos = calcPosition(targetMem);
+        canvasEdges.drawDashedPreview(
+            pendingConnectState.sourcePos,
+            targetPos
+        );
+        if (typeof onConnectTargetSelect === 'function') {
+            onConnectTargetSelect(targetMem, targetPos);
+        }
+    }
+
+    function setPendingConnect(sourceId, sourcePos) {
+        pendingConnectState = { sourceId: sourceId, sourcePos: sourcePos };
+    }
+
+    function clearPendingConnect() {
+        pendingConnectState = null;
+        canvasEdges.clearDashedPreview();
+    }
+
+    function getPendingConnectSourceId() {
+        return pendingConnectState ? pendingConnectState.sourceId : null;
+    }
+
     function bindNodeDrag(nodeEl, mem) {
         nodeEl.style.cursor = canEdit !== false && viewportState.layoutMode === 'structured' ? 'default' : 'grab';
 
         const selectMemoryNode = () => {
+            if (pendingConnectState) {
+                if (String(pendingConnectState.sourceId) !== String(mem.id)) {
+                    handleConnectTargetSelect(mem);
+                }
+                return;
+            }
             onNodeClick(nodeEl, mem);
         };
 
@@ -492,6 +528,7 @@ function createEditorCanvas(deps) {
 
             renderUtils.clearCanvasNodes(canvas);
             clearEdgeSelection();
+            clearPendingConnect();
             clearBranches();
             clearGrowthAffordance();
 
@@ -707,7 +744,10 @@ function createEditorCanvas(deps) {
         clearGrowthAffordance,
         getWorldPosition,
         get viewportState() { return viewportState; },
-        persistStoredPositions
+        persistStoredPositions,
+        setPendingConnect,
+        clearPendingConnect,
+        getPendingConnectSourceId
     };
 }
 
