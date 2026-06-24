@@ -89,21 +89,21 @@ test('edge click handler checks canEdit === false before selecting', () => {
     'click handler must stop propagation to prevent pan/zoom interference');
 });
 
-// ── 4. isEditMode guard: DOM-based edit mode check ────────────────────────
+// ── 4. isConnectionEditAllowed guard (replaces detailEditMode DOM check) ──
 
-test('editor-canvas.js defines isEditMode check and passes canEdit to edges', () => {
+test('editor-canvas.js defines isConnectionEditAllowed and uses LoveBudEditorInteractionMode', () => {
   const source = readSource('js/editor/editor-canvas.js');
 
-  assert.match(source, /isEditMode:\s*function\s*\(\)/,
-    'must define isEditMode check function');
-  assert.match(source, /detailEditMode/,
-    'must check detailEditMode element');
-  assert.match(source, /display\s*!==\s*['"]none['"]/,
-    'must check display !== none');
-  assert.match(source, /canEdit/,
-    'must reference canEdit in createEditorCanvas scope');
-  assert.match(source, /createEditorCanvasEdges/,
-    'must pass isEditMode to edges factory');
+  assert.match(source, /function\s+isConnectionEditAllowed\s*\(/,
+    'must define isConnectionEditAllowed function');
+  assert.match(source, /LoveBudEditorInteractionMode/,
+    'must check LoveBudEditorInteractionMode');
+  assert.match(source, /canEdit\s*===\s*false/,
+    'must check canEdit === false');
+  assert.match(source, /mode\.isEditMode/,
+    'must call mode.isEditMode()');
+  assert.doesNotMatch(source, /detailEditMode/,
+    'must NOT use detailEditMode DOM check');
 });
 
 // ── 5. Selection state: selectEdge and clearSelection ──────────────────────
@@ -146,23 +146,21 @@ test('showEdgeDisconnectButton and hideEdgeDisconnectButton exist in canvas', ()
     'clearEdgeSelection helper must exist');
 });
 
-test('disconnectSelectedEdge confirms before calling updateMemory', () => {
+test('handleDisconnect confirms before calling onDisconnectEdge callback', () => {
   const source = readSource('js/editor/editor-canvas.js');
-  const body = extractFunctionBody(source, 'disconnectSelectedEdge');
+  const body = extractFunctionBody(source, 'handleDisconnect');
 
-  assert.notEqual(body, null, 'disconnectSelectedEdge function must exist');
-  assert.match(body, /canEdit\s*===\s*false/,
-    'must guard against canEdit === false');
+  assert.notEqual(body, null, 'handleDisconnect function must exist');
+  assert.match(body, /isConnectionEditAllowed/,
+    'must check isConnectionEditAllowed');
   assert.match(body, /window\.confirm\(/,
     'must call window.confirm before disconnecting');
-  assert.match(body, /updateMemory/,
-    'must call apiClient.updateMemory');
-  assert.match(body, /parentId:\s*null/,
-    'must set parentId to null (canonical root)');
+  assert.match(body, /onDisconnectEdge/,
+    'must call onDisconnectEdge callback');
   assert.match(body, /catch\s*\(/,
     'must handle errors');
-  assert.match(body, /window\.alert\(/,
-    'must show alert on failure');
+  assert.doesNotMatch(body, /updateMemory/,
+    'must NOT call updateMemory directly');
 });
 
 // ── 7. Deselection on background click ──────────────────────────────────
@@ -186,36 +184,53 @@ test('background pointerdown handler clears edge selection', () => {
 
 // ── 8. View mode / canEdit === false fail-closed ──────────────────────────
 
-test('edge click guard checks both canEdit and isEditMode', () => {
+test('edge click handler calls isConnectionEditAllowed to guard edit mode', () => {
   const source = readSource('js/editor/editor-canvas-edges.js');
   const clickLineMatch = source.match(/addEventListener\s*\(\s*['"]click['"][\s\S]{0,600}\)/);
 
   assert.notEqual(clickLineMatch, null, 'click handler must exist');
   const clickHandler = clickLineMatch[0];
 
-  assert.match(clickHandler, /canEdit\s*===\s*false/,
+  assert.match(clickHandler, /isConnectionEditAllowed/,
+    'click handler must check isConnectionEditAllowed');
+  assert.match(clickHandler, /canEdit/,
     'click handler must check canEdit');
-  assert.match(clickHandler, /isEditMode/,
-    'click handler must check isEditMode');
   assert.match(clickHandler, /onSelectEdge/,
     'click handler must call onSelectEdge callback');
+  assert.doesNotMatch(clickHandler, /isEditMode/,
+    'click handler must not check isEditMode directly');
 });
 
-// ── 9. No new API/network/fetch behavior ─────────────────────────────────
+// ── 9. No new API/network/fetch behavior — mutation delegated to memoryActions ──
 
-test('disconnectSelectedEdge only uses existing updateMemory, adds no new fetch/API', () => {
+test('editor-canvas.js handleDisconnect does not contain apiClient calls or cache mutations', () => {
   const source = readSource('js/editor/editor-canvas.js');
-  const body = extractFunctionBody(source, 'disconnectSelectedEdge');
+  const body = extractFunctionBody(source, 'handleDisconnect');
 
-  assert.notEqual(body, null, 'disconnectSelectedEdge function must exist');
+  assert.notEqual(body, null, 'handleDisconnect function must exist');
+  assert.doesNotMatch(body, /apiClient/,
+    'must not call apiClient directly');
   assert.doesNotMatch(body, /fetch\s*\(/,
     'must not add fetch calls');
-  assert.doesNotMatch(body, /XMLHttpRequest/,
-    'must not add XHR calls');
-  assert.doesNotMatch(body, /axios/,
-    'must not add axios calls');
-  assert.match(body, /apiClient\.updateMemory/,
-    'must reuse existing apiClient.updateMemory');
+  assert.doesNotMatch(body, /LoveBudCache/,
+    'must not touch cache directly');
+  assert.doesNotMatch(body, /currentTreeData/,
+    'must not touch currentTreeData directly');
+});
+
+test('editor-memory-actions.js disconnectMemory calls updateMemory with parentId null', () => {
+  const source = readSource('js/editor/editor-memory-actions.js');
+
+  assert.match(source, /disconnectMemory/,
+    'disconnectMemory function must exist');
+  assert.match(source, /updateMemory/,
+    'must call apiClient.updateMemory');
+  assert.match(source, /parentId:\s*null/,
+    'must set parentId to null');
+  assert.match(source, /setTreeMemories/,
+    'must call setTreeMemories');
+  assert.match(source, /rerenderCanvas/,
+    'must trigger rerenderCanvas');
 });
 
 // ── 10. CSS: branch-line is clickable ───────────────────────────────────

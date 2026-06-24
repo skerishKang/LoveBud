@@ -1,10 +1,17 @@
 (function () {
+    function isConnectionEditAllowed(canEdit) {
+        if (canEdit === false) return false;
+        var mode = window.LoveBudEditorInteractionMode;
+        return !!mode &&
+            typeof mode.isEditMode === 'function' &&
+            mode.isEditMode();
+    }
+
     function createEditorCanvasEdges(options) {
         const {
             svg,
             canvasViewport = {},
-            canEdit,
-            isEditMode
+            canEdit
         } = options || {};
 
         const NODE_HALF = 54;
@@ -17,18 +24,12 @@
             svg.querySelectorAll('.branch-line').forEach((line) => line.remove());
         };
 
-        /**
-         * Compute auto-routing bezier curve between two node centers.
-         * Determines best "exit" direction from each node to create
-         * smooth, non-overlapping branch lines.
-         */
         function computeAutoRoute(startPos, endPos) {
             var dx = endPos.x - startPos.x;
             var dy = endPos.y - startPos.y;
             var absDx = Math.abs(dx);
             var absDy = Math.abs(dy);
 
-            // Determine exit direction from source node
             var srcDirX = 0, srcDirY = 0;
             if (absDx > absDy) {
                 srcDirX = dx > 0 ? 1 : -1;
@@ -66,8 +67,7 @@
 
         const drawBranch = (startPos, endPos, routeInfo) => {
             if (typeof canvasViewport.drawBranch === 'function') {
-                canvasViewport.drawBranch(svg, startPos, endPos);
-                return null;
+                return canvasViewport.drawBranch(svg, startPos, endPos);
             }
 
             var route;
@@ -109,10 +109,7 @@
                     e.stopPropagation();
                     var childId = this.getAttribute('data-edge-child-id');
                     if (!childId) return;
-
-                    if (canEdit === false) return;
-                    if (typeof isEditMode === 'function' && !isEditMode()) return;
-
+                    if (!isConnectionEditAllowed(canEdit)) return;
                     if (typeof onSelectEdge === 'function') {
                         onSelectEdge(childId, this);
                     }

@@ -531,12 +531,68 @@ function createEditorMemoryActions(deps) {
         }
     };
 
+    const disconnectMemory = async (childId) => {
+        if (canEdit === false) return false;
+        if (!childId) return false;
+
+        var memories = getTreeMemories().slice();
+        var idx = memories.findIndex(function(m) { return String(m.id) === String(childId); });
+        if (idx === -1) return false;
+
+        var mem = memories[idx];
+        if (mem.id === 'root') return false;
+        if (mem.parentId === '' || mem.parentId === mem.id) return false;
+        if (mem.parentId === null || mem.parentId === undefined) {
+            return false;
+        }
+
+        updateSaveStatus('saving', formatI18nText('save_saving', '저장 중...'));
+
+        try {
+            var apiResult = null;
+            if (window.apiClient && typeof window.apiClient.updateMemory === 'function') {
+                apiResult = await window.apiClient.updateMemory(childId, { parentId: null });
+            } else {
+                throw new Error('updateMemory not available');
+            }
+
+            var nextMemory = Object.assign({}, mem, { parentId: null }, apiResult || {});
+            memories[idx] = nextMemory;
+            setTreeMemories(memories);
+
+            var treeData = getCurrentTreeData();
+            if (treeData && Array.isArray(treeData.memories)) {
+                var dataIdx = treeData.memories.findIndex(function(m) { return String(m.id) === String(childId); });
+                if (dataIdx !== -1) {
+                    treeData.memories[dataIdx] = nextMemory;
+                }
+            }
+
+            if (window.LoveBudCache) {
+                var cacheKey = 'memories_' + (treeData && treeData.id ? treeData.id : 'default');
+                window.LoveBudCache.set(cacheKey, memories, 2 * 60 * 1000);
+            }
+
+            if (typeof rerenderCanvas === 'function') rerenderCanvas();
+            if (typeof updateSidebarStatus === 'function') updateSidebarStatus();
+            updateSaveStatus('saved', formatI18nText('save_saved', '저장 완료'));
+            showToast(formatI18nText('disconnect_success', '연결을 해제했어요'), 'success');
+            return true;
+        } catch (error) {
+            console.error('[editor] Failed to disconnect memory:', error);
+            updateSaveStatus('failed', formatI18nText('save_failed', '저장 실패'));
+            showToast(formatI18nText('disconnect_failed', '연결 해제에 실패했어요'), 'error');
+            return false;
+        }
+    };
+
     return {
         enterEditMode,
         exitEditMode,
         saveMemoryEdit,
         updateSelectedMemoryFields,
         deleteMemory,
+        disconnectMemory,
         getCurrentEditingMemory,
         setCurrentEditingMemory,
         isEditMode: () => isEditMode

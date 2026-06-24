@@ -449,6 +449,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             log('Creating Editor Canvas Instance...');
+            var disconnectMemoryFn = null;
             editorCanvas = window.createEditorCanvas({
                 canvas,
                 svg,
@@ -462,7 +463,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 createInitialMemory,
                 onNodeClick: selectNode,
                 openAddMoment: () => showAddMemoryForm(),
-                canEdit
+                canEdit,
+                onDisconnectEdge: async function(childId) {
+                    if (typeof disconnectMemoryFn !== 'function') return false;
+                    return disconnectMemoryFn(childId);
+                }
             });
 
             // Store instance for global bridge
@@ -507,7 +512,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 canEdit
             });
 
-            const { enterEditMode, exitEditMode, saveMemoryEdit, deleteMemory } = memoryActions;
+            const { enterEditMode, exitEditMode, saveMemoryEdit, deleteMemory, disconnectMemory } = memoryActions;
+            disconnectMemoryFn = disconnectMemory;
 
             log('Initializing Memory Form...');
             const memoryForm = window.createEditorMemoryForm({
