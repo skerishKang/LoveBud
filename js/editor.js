@@ -450,6 +450,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
             log('Creating Editor Canvas Instance...');
             var disconnectMemoryFn = null;
+            var connectExistingController = null;
+            if (window.LoveBudEditorBindings && typeof window.LoveBudEditorBindings.createConnectExistingController === 'function') {
+                connectExistingController = window.LoveBudEditorBindings.createConnectExistingController({
+                    getCurrentEditingMemory: () => currentEditingMemory,
+                    isRootMemory: deps.isRootMemory,
+                    getCanonicalRootId: () => canonicalRootId,
+                    showToast: deps.showToast,
+                    i18n: deps.i18n,
+                    canEdit
+                });
+            }
+
             editorCanvas = window.createEditorCanvas({
                 canvas,
                 svg,
@@ -467,11 +479,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 onDisconnectEdge: async function(childId) {
                     if (typeof disconnectMemoryFn !== 'function') return false;
                     return disconnectMemoryFn(childId);
+                },
+                onConnectTargetSelect: function(targetMem, targetPos) {
+                    if (connectExistingController && typeof connectExistingController.handleConnectTargetSelect === 'function') {
+                        connectExistingController.handleConnectTargetSelect(targetMem, targetPos);
+                    }
                 }
             });
 
             // Store instance for global bridge
             if (canvas) canvas.__editorCanvasInstance = editorCanvas;
+            if (connectExistingController && typeof connectExistingController.setEditorCanvas === 'function') {
+                connectExistingController.setEditorCanvas(editorCanvas);
+            }
             log('Canvas instance bound to DOM');
 
             const { calcPosition, drawBranch, drawNode, initCanvas } = editorCanvas;
@@ -512,8 +532,27 @@ document.addEventListener('DOMContentLoaded', () => {
                 canEdit
             });
 
-            const { enterEditMode, exitEditMode, saveMemoryEdit, deleteMemory, disconnectMemory } = memoryActions;
+            const { enterEditMode, exitEditMode, saveMemoryEdit, deleteMemory, disconnectMemory, connectMemory, validateConnectCandidate } = memoryActions;
             disconnectMemoryFn = disconnectMemory;
+            if (connectExistingController) {
+                if (typeof connectExistingController.setConnectMemory === 'function') {
+                    connectExistingController.setConnectMemory(connectMemory);
+                }
+                if (typeof connectExistingController.validateConnectCandidate === 'undefined' && typeof connectExistingController.setValidateConnectCandidate === 'function') {
+                    connectExistingController.setValidateConnectCandidate(validateConnectCandidate);
+                }
+                if (typeof connectExistingController.bindControls === 'function') {
+                    connectExistingController.bindControls();
+                }
+                if (typeof connectExistingController.updateCtaNow === 'function') {
+                    connectExistingController.updateCtaNow();
+                    var _baseUpdateDetailPanel = updateDetailPanel;
+                    updateDetailPanel = function(mem) {
+                        _baseUpdateDetailPanel(mem);
+                        connectExistingController.updateCtaNow();
+                    };
+                }
+            }
 
             log('Initializing Memory Form...');
             const memoryForm = window.createEditorMemoryForm({
@@ -741,6 +780,9 @@ document.addEventListener('DOMContentLoaded', () => {
                             }
                             if (typeof editorCanvas !== 'undefined' && editorCanvas && typeof editorCanvas.clearEdgeSelection === 'function') {
                                 editorCanvas.clearEdgeSelection();
+                            }
+                            if (connectExistingController && typeof connectExistingController.exitConnectMode === 'function') {
+                                connectExistingController.exitConnectMode();
                             }
                             var editModeEl = document.getElementById('detailEditMode');
                             if (editModeEl) editModeEl.style.display = 'none';

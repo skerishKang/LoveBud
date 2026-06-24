@@ -20,6 +20,7 @@ export function buildDetailEditModeTemplate() {
                     <button id="cancelEditBtn" class="btn-round btn-outline editor-form-action-btn">...</button>
                     <button id="saveEditBtn" class="btn-round btn-primary editor-form-action-btn">...</button>
                 </div>
+
                 <div class="detail-actions editor-delete-row">
                     <button id="deleteMemoryBtn" class="editor-delete-link">...</button>
                 </div>
