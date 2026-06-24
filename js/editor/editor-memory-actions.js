@@ -540,9 +540,20 @@ function createEditorMemoryActions(deps) {
         if (idx === -1) return false;
 
         var mem = memories[idx];
-        if (mem.id === 'root') return false;
-        if (mem.parentId === '' || mem.parentId === mem.id) return false;
-        if (mem.parentId === null || mem.parentId === undefined) {
+        var canonicalRootId = typeof getCanonicalRootId === 'function'
+            ? getCanonicalRootId()
+            : 'root';
+
+        if (
+            (typeof isRootMemory === 'function' && isRootMemory(mem, canonicalRootId)) ||
+            String(mem.id) === String(canonicalRootId) ||
+            mem.id === 'root' ||
+            mem.parentId === 'root' ||
+            mem.parentId === '' ||
+            String(mem.parentId) === String(mem.id) ||
+            mem.parentId === null ||
+            mem.parentId === undefined
+        ) {
             return false;
         }
 
