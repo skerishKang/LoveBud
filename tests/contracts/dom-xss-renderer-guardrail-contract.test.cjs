@@ -281,6 +281,12 @@ const FILE_ALLOWLIST = {
     reason: 'buildHeaderHTML() — approved template renderer, static navigation markup'
   },
 
+  // ── Public Canvas Init ───────────────────────────────────────────────
+  'js/viewer/public-canvas-init.js': {
+    count: 1, classification: 'safe',
+    reason: 'sidebarSummaryEl.innerHTML — uses escapeHtml for user-provided description/summary content'
+  },
+
   // ── UI Utils ─────────────────────────────────────────────────────────
   'js/utils/ui.js': {
     count: 1, classification: 'safe',

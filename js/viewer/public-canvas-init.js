@@ -409,6 +409,31 @@
         return false;
     }
 
+    function updateOwnerModeUI(selectionState) {
+        var modeGroup = document.getElementById('viewerModeGroup');
+        var editBtn = document.getElementById('viewerModeEditBtn');
+        if (!modeGroup || !editBtn) return;
+        var treeData = window.currentTreeData || null;
+        var canEdit = treeData && window.LoveBudTreeWorkspacePermission
+            ? window.LoveBudTreeWorkspacePermission.resolveTreeWorkspaceCanEdit(treeData)
+            : false;
+        if (canEdit) {
+            modeGroup.style.display = '';
+            editBtn.addEventListener('click', function() {
+                var currentTreeId = treeData && treeData.id;
+                if (!currentTreeId) return;
+                var selectedMemoryId = selectionState && typeof selectionState.getSelectedNodeId === 'function'
+                    ? selectionState.getSelectedNodeId()
+                    : '';
+                var basePath = window.location.pathname.indexOf('/pages/') !== -1 ? '' : 'pages/';
+                var params = 'treeId=' + encodeURIComponent(currentTreeId) + '&mode=edit';
+                if (selectedMemoryId) {
+                    params += '&memoryId=' + encodeURIComponent(selectedMemoryId);
+                }
+                window.location.href = window.location.origin + '/' + basePath + 'editor?' + params;
+            });
+        }
+    }
     function installPublicCanvasToolbarCompactMode() {
         var canvasEntry = window.LoveBudPublicViewerCanvasEntry;
         if (canvasEntry && typeof canvasEntry.installToolbarCompactMode === 'function') {
@@ -588,6 +613,36 @@
                 console.log('[public-canvas] Canvas initialized successfully');
 
                 installPublicCanvasToolbarCompactMode();
+
+                // Populate viewer sidebar
+                var sidebarTitleEl = document.getElementById('viewerSidebarTreeTitle');
+                var sidebarSummaryEl = document.getElementById('viewerSidebarSummary');
+                var sidebarCountEl = document.getElementById('viewerSidebarMomentCount');
+                var treeData = normalized.treeData || {};
+                var treeTitle = treeData.title || '러브트리';
+                if (sidebarTitleEl) {
+                    sidebarTitleEl.textContent = treeTitle;
+                }
+                var allMemories = normalized.treeMemories || [];
+                var nonRootMemories = allMemories.filter(function(m) {
+                    return !isRootMemory(m, canonicalRootId);
+                });
+                var momentCount = nonRootMemories.length;
+                if (sidebarCountEl) {
+                    sidebarCountEl.textContent = momentCount + '개의 순간';
+                }
+                if (sidebarSummaryEl) {
+                    var treeSummary = treeData.description || treeData.summary || treeData.memo || null;
+                    if (!treeSummary && treeData.data) {
+                        treeSummary = treeData.data.description || treeData.data.summary || treeData.data.memo || null;
+                    }
+                    if (treeSummary) {
+                        sidebarSummaryEl.innerHTML = '<p class="preview-summary-line">' + escapeHtml(treeSummary) + '</p>';
+                        sidebarSummaryEl.style.display = '';
+                    } else {
+                        sidebarSummaryEl.style.display = 'none';
+                    }
+                }
             }
 
             waitForPublicRuntime(startCanvas);

@@ -184,7 +184,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const applyEditorStartupShell = createEditorStartupShellApplier({
                 prepareEditorShell,
                 applyEditorEditabilityState,
-                canEdit,
+                canEdit: false,
                 log
             });
 
@@ -219,6 +219,16 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             const treeId = initialLoadResult.treeId;
+
+            var effectiveCanEdit = false;
+            var loadedTreeData = initialLoadResult.tree || window.currentTreeData || null;
+            if (loadedTreeData && window.LoveBudTreeWorkspacePermission) {
+                effectiveCanEdit = window.LoveBudTreeWorkspacePermission.resolveTreeWorkspaceCanEdit(loadedTreeData);
+            }
+            if (effectiveCanEdit !== (canEdit !== false)) {
+                applyEditorEditabilityState({ canEdit: effectiveCanEdit });
+            }
+
             const normalizeMemory = initialLoadResult.normalizeMemory;
             const treeMemories = initialLoadResult.treeMemories;
 

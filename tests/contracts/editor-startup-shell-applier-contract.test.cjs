@@ -46,7 +46,7 @@ test('editor entrypoint delegates startup shell preparation to shell helper', ()
   assert.match(editorSource, /const createEditorStartupShellApplier\s*=\s*deps\.shellHelpers\.createEditorStartupShellApplier/);
   assert.match(editorSource, /LoveBudEditorShellHelpers\.createEditorStartupShellApplier missing/);
   assert.match(editorSource, /const applyEditorStartupShell\s*=\s*createEditorStartupShellApplier\({/);
-  assert.match(editorSource, /prepareEditorShell,\s*applyEditorEditabilityState,\s*canEdit,\s*log/s);
+  assert.match(editorSource, /prepareEditorShell,\s*applyEditorEditabilityState,\s*canEdit:\s*false,\s*log/s);
   assert.match(editorSource, /applyEditorStartupShell\(\);/);
 });
 

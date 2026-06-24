@@ -33,6 +33,6 @@ test('editor no longer owns inline startup shell dependency check', () => {
 
 test('startup shell dependency delegation preserves startup shell application path', () => {
   assert.match(editorSource, /const applyEditorStartupShell\s*=\s*createEditorStartupShellApplier\(\{/);
-  assert.match(editorSource, /prepareEditorShell,\s*applyEditorEditabilityState,\s*canEdit,\s*log/s);
+  assert.match(editorSource, /prepareEditorShell,\s*applyEditorEditabilityState,\s*canEdit:\s*false,\s*log/s);
   assert.match(editorSource, /applyEditorStartupShell\(\);/);
 });

@@ -21,7 +21,7 @@ test('editability shell state helper keeps testable body and namespace hooks', (
 test('editor delegates editability shell state through startup shell applier', () => {
   assert.match(editorSource, /deps\.applyEditorEditabilityState/);
   assert.match(editorSource, /const applyEditorEditabilityState\s*=/);
-  assert.match(editorSource, /applyEditorEditabilityState,\s*canEdit,\s*log/s);
+  assert.match(editorSource, /applyEditorEditabilityState,\s*canEdit:\s*false,\s*log/s);
   assert.match(editorSource, /applyEditorStartupShell\(\);/);
   assert.doesNotMatch(editorSource, /window\.LoveBudEditor\.canEdit\s*=\s*nextCanEdit/);
   assert.doesNotMatch(editorSource, /classList\?\.toggle\('editor-readonly',\s*!nextCanEdit\)/);

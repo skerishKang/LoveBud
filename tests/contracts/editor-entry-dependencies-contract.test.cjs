@@ -57,7 +57,7 @@ test('editor entry delegates dependency resolution to helper', () => {
   assert.match(editor, /deps\.getCanonicalRootId/);
   assert.match(editor, /deps\.isRootMemory/);
   assert.match(editor, /const\s+\{\s*log,\s*reportError\s*\}\s*=\s*deps\.createEditorDebugReporter\(\)/);
-  assert.match(editor, /prepareEditorShell,\s*applyEditorEditabilityState,\s*canEdit,\s*log/s);
+  assert.match(editor, /prepareEditorShell,\s*applyEditorEditabilityState,\s*canEdit:\s*false,\s*log/s);
   assert.match(editor, /applyEditorStartupShell\(\);/);
 
   assert.match(editor, /reportEditorBootstrapMissingDependency\('LoveBudEditorPageHelpers\.registerEditorAuthStart missing'\)/);

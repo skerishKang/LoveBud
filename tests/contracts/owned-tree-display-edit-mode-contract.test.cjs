@@ -44,7 +44,7 @@ test('display/edit mode static constraints', () => {
   assert.match(viewHtml, /public-viewer-detail-tree-meta\.js/);
 });
 
-test('public-viewer-detail-tree-meta runtime owner edit button checks', () => {
+test('public-viewer-detail-tree-meta no longer creates edit buttons', () => {
   const metaSource = read('js/viewer/public-viewer-detail-tree-meta.js');
 
   function createMockElement(tagName = 'div') {
@@ -59,17 +59,11 @@ test('public-viewer-detail-tree-meta runtime owner edit button checks', () => {
     };
   }
 
-  // Set up mock window and document for the meta boundary
   const context = {
     window: {},
     document: {
       createElement(tag) { return createMockElement(tag); },
       createTextNode(txt) { return { text: txt }; }
-    },
-    LoveTreeBaseApiFetch: {
-      getCachedTokenRecord() {
-        return { uid: 'user-owner' };
-      }
     },
     location: {
       pathname: '/pages/view.html',
@@ -94,7 +88,7 @@ test('public-viewer-detail-tree-meta runtime owner edit button checks', () => {
 
   const boundary = factory(deps);
 
-  // Case A: Current user is the owner -> edit button should be generated
+  // Case A: Owner context - editButtonEl must NOT exist
   const modelA = boundary.buildTreeMetaRenderModel({
     currentTree: { id: 'tree-1', title: 'My Tree', ownerId: 'user-owner' },
     treeState: { totalMomentCount: 5, hasMoments: true },
@@ -103,9 +97,10 @@ test('public-viewer-detail-tree-meta runtime owner edit button checks', () => {
     localSaveMode: false
   });
 
-  assert.ok(modelA.editButtonEl !== null, 'Owner must see edit button');
+  assert.equal(modelA.editButtonEl, undefined, 'Owner edit CTA removed: editButtonEl must not exist');
+  assert.equal(modelA.editBtn, undefined, 'Owner edit CTA removed: editBtn must not exist');
 
-  // Case B: Current user is NOT the owner -> edit button should be null
+  // Case B: Non-owner context - editButtonEl must NOT exist
   const modelB = boundary.buildTreeMetaRenderModel({
     currentTree: { id: 'tree-1', title: 'My Tree', ownerId: 'user-other' },
     treeState: { totalMomentCount: 5, hasMoments: true },
@@ -114,128 +109,16 @@ test('public-viewer-detail-tree-meta runtime owner edit button checks', () => {
     localSaveMode: false
   });
 
-  assert.equal(modelB.editButtonEl, null, 'Non-owner must NOT see edit button');
-
-  // Case C: No logged in user -> edit button should be null
-  context.LoveTreeBaseApiFetch.getCachedTokenRecord = () => null;
-  const modelC = boundary.buildTreeMetaRenderModel({
-    currentTree: { id: 'tree-1', title: 'My Tree', ownerId: 'user-owner' },
-    treeState: { totalMomentCount: 5, hasMoments: true },
-    data: { id: 'tree-1' },
-    isEmptyState: false,
-    localSaveMode: false
-  });
-
-  assert.equal(modelC.editButtonEl, null, 'Logged-out visitor must NOT see edit button');
+  assert.equal(modelB.editButtonEl, undefined, 'Non-owner edit CTA also absent');
 });
 
-test('public-viewer-detail-tree-meta runtime async owner verification checks', async () => {
+test('public-viewer-detail-tree-meta no longer has async owner verification or auth callback injection', async () => {
   const metaSource = read('js/viewer/public-viewer-detail-tree-meta.js');
 
-  function createMockElement(tagName = 'div') {
-    const children = [];
-    const classList = {
-      add: () => {},
-      remove: () => {}
-    };
-    const dataset = {};
-    return {
-      tagName: tagName.toUpperCase(),
-      style: {},
-      children,
-      classList,
-      dataset,
-      appendChild(c) { children.push(c); },
-      replaceChildren() { children.length = 0; },
-      addEventListener() {},
-      querySelector(sel) {
-        if (sel === '.tree-meta-actions-row') {
-          return this;
-        }
-        return null;
-      }
-    };
-  }
-
-  let apiFetchUrlCalled = null;
-  let apiFetchResolveValue = null;
-
-  const context = {
-    window: {},
-    document: {
-      createElement(tag) { return createMockElement(tag); },
-      createTextNode(txt) { return { text: txt }; }
-    },
-    LoveTreeBaseApiFetch: {
-      getCachedTokenRecord() {
-        return { uid: 'user-owner' };
-      },
-      apiFetch(url) {
-        apiFetchUrlCalled = url;
-        return Promise.resolve(apiFetchResolveValue);
-      }
-    },
-    location: {
-      pathname: '/pages/view.html',
-      origin: 'http://localhost'
-    }
-  };
-  context.window = context;
-
-  vm.createContext(context);
-  vm.runInContext(metaSource, context);
-
-  const factory = context.createPublicViewerDetailTreeMetaBoundary || context.window.createPublicViewerDetailTreeMetaBoundary;
-  const deps = {
-    i18n: (k) => k,
-    formatI18nText: (k, fallback) => fallback,
-    resolveTreeTitleText: (t) => t || 'LoveTree',
-    createInlineIcon: () => createMockElement('span'),
-    showToast: () => {}
-  };
-
-  const boundary = factory(deps);
-
-  apiFetchResolveValue = { id: 'tree-1', ownerId: 'user-owner' };
-
-  const modelA = boundary.buildTreeMetaRenderModel({
-    currentTree: { id: 'tree-1', title: 'My Tree' },
-    treeState: { totalMomentCount: 5, hasMoments: true },
-    data: { id: 'tree-1' },
-    isEmptyState: false,
-    localSaveMode: false
-  });
-
-  assert.equal(modelA.editButtonEl, null, 'editButtonEl must be null initially since ownerId is missing in publicRead');
-
-  const mountA = createMockElement('div');
-  boundary.renderTreeMetaBoundary(mountA, modelA, 'tree-1', { id: 'tree-1' });
-
-  assert.equal(apiFetchUrlCalled, '/trees/tree-1');
-
-  await new Promise(resolve => setTimeout(resolve, 0));
-
-  const block = mountA.children[0];
-  assert.ok(block.children.some(c => c.className === 'vv-edit-btn-dynamic'), 'Dynamic edit button must be appended on successful verification');
-
-  apiFetchUrlCalled = null;
-  apiFetchResolveValue = { id: 'tree-1', ownerId: 'user-other' };
-
-  const modelB = boundary.buildTreeMetaRenderModel({
-    currentTree: { id: 'tree-1', title: 'My Tree' },
-    treeState: { totalMomentCount: 5, hasMoments: true },
-    data: { id: 'tree-1' },
-    isEmptyState: false,
-    localSaveMode: false
-  });
-
-  const mountB = createMockElement('div');
-  boundary.renderTreeMetaBoundary(mountB, modelB, 'tree-1', { id: 'tree-1' });
-
-  await new Promise(resolve => setTimeout(resolve, 0));
-
-  const blockB = mountB.children[0];
-  assert.equal(blockB.children.some(c => c.className === 'vv-edit-btn-dynamic'), false, 'Non-owner must not see dynamic edit button');
+  // Source-level assertions: dynamic injection and auth callback are removed
+  assert.equal(metaSource.indexOf('vv-edit-btn-dynamic'), -1, 'vv-edit-btn-dynamic class must be removed');
+  assert.equal(metaSource.indexOf('registerOnAuthReady'), -1, 'registerOnAuthReady must be removed');
+  assert.equal(metaSource.indexOf("apiFetch('/trees/"), -1, 'apiFetch(/trees/) dynamic re-fetch must be removed');
 });
 
 test('My LoveTrees routing contract for public and private trees', () => {
