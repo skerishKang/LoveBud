@@ -543,6 +543,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (typeof connectExistingController.bindControls === 'function') {
                     connectExistingController.bindControls();
                 }
+                if (typeof connectExistingController.updateCtaNow === 'function') {
+                    connectExistingController.updateCtaNow();
+                    var _baseUpdateDetailPanel = updateDetailPanel;
+                    updateDetailPanel = function(mem) {
+                        _baseUpdateDetailPanel(mem);
+                        connectExistingController.updateCtaNow();
+                    };
+                }
             }
 
             log('Initializing Memory Form...');

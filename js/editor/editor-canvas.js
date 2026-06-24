@@ -353,13 +353,17 @@ function createEditorCanvas(deps) {
         if (!pendingConnectState || !targetMem) return;
         if (String(pendingConnectState.sourceId) === String(targetMem.id)) return;
         var targetPos = calcPosition(targetMem);
+        if (typeof onConnectTargetSelect === 'function') {
+            onConnectTargetSelect(targetMem, targetPos);
+        }
+    }
+
+    function drawConnectPreview(targetPos) {
+        if (!pendingConnectState) return;
         canvasEdges.drawDashedPreview(
             targetPos,
             pendingConnectState.sourcePos
         );
-        if (typeof onConnectTargetSelect === 'function') {
-            onConnectTargetSelect(targetMem, targetPos);
-        }
     }
 
     function setPendingConnect(sourceId, sourcePos) {
@@ -368,6 +372,7 @@ function createEditorCanvas(deps) {
 
     function clearPendingConnect() {
         pendingConnectState = null;
+        canvasEdges.clearDashedPreview();
         canvasEdges.clearDashedPreview();
     }
 
@@ -747,7 +752,8 @@ function createEditorCanvas(deps) {
         persistStoredPositions,
         setPendingConnect,
         clearPendingConnect,
-        getPendingConnectSourceId
+        getPendingConnectSourceId,
+        drawConnectPreview
     };
 }
 

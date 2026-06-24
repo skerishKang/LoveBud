@@ -392,20 +392,16 @@
       if (sourceId) return;
 
       var mem = getCurrentEditingMemory ? getCurrentEditingMemory() : null;
-      if (!mem || !editorCanvas) return;
+      if (!mem || !mem.id || !editorCanvas) return;
 
-      if (typeof validateConnectCandidate === 'function') {
-        var check = validateConnectCandidate(mem.id, mem.id);
-        if (!check.ok) {
-          if (typeof showToast === 'function') {
-            showToast(
-              (typeof i18n === 'function' ? i18n('connect_source_invalid') : null) ||
-                '연결할 수 없는 순간입니다',
-              'error'
-            );
-          }
-          return;
+      var canonicalRootId = typeof getCanonicalRootId === 'function'
+        ? getCanonicalRootId() : 'root';
+      var isRoot = typeof isRootMemory === 'function' && isRootMemory(mem, canonicalRootId);
+      if (isRoot) {
+        if (typeof showToast === 'function') {
+          showToast('루트 순간은 연결할 수 없어요', 'error');
         }
+        return;
       }
 
       var posFn = editorCanvas.calcPosition;
@@ -457,6 +453,11 @@
           }
           return;
         }
+      }
+
+      // Draw preview only after validation passes
+      if (editorCanvas && typeof editorCanvas.drawConnectPreview === 'function') {
+        editorCanvas.drawConnectPreview(targetPos);
       }
 
       targetData = { mem: targetMem, pos: targetPos };

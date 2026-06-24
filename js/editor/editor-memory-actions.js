@@ -624,36 +624,29 @@ function createEditorMemoryActions(deps) {
         var mode = window.LoveBudEditorInteractionMode;
         if (mode && !mode.isEditMode()) return false;
         if (!sourceId || !targetId) return false;
-        if (String(sourceId) === String(targetId)) return false;
+
+        var validation = validateConnectCandidate(sourceId, targetId);
+        if (!validation.ok) {
+            var msgs = {
+                source_is_root: formatI18nText('connect_root_blocked', '루트 순간은 연결할 수 없어요'),
+                target_is_root: formatI18nText('connect_root_blocked', '루트 순간은 연결할 수 없어요'),
+                self_connection: formatI18nText('connect_self_blocked', '같은 순간으로 연결할 수 없어요'),
+                already_connected: formatI18nText('connect_already_connected', '이미 연결된 순간입니다'),
+                target_is_descendant: formatI18nText('connect_cycle_blocked', '하위 순간을 부모로 연결할 수 없어요'),
+                target_chain_missing_parent: formatI18nText('connect_chain_broken', '연결 구조를 확인할 수 없습니다'),
+                target_chain_loop: formatI18nText('connect_chain_broken', '연결 구조를 확인할 수 없습니다')
+            };
+            if (msgs[validation.reason]) {
+                showToast(msgs[validation.reason], 'error');
+            }
+            return false;
+        }
 
         var memories = getTreeMemories().slice();
         var srcIdx = memories.findIndex(function (m) { return String(m.id) === String(sourceId); });
-        var tgtIdx = memories.findIndex(function (m) { return String(m.id) === String(targetId); });
-        if (srcIdx === -1 || tgtIdx === -1) return false;
+        if (srcIdx === -1) return false;
 
         var sourceMem = memories[srcIdx];
-        var canonicalRootId = typeof getCanonicalRootId === 'function'
-            ? getCanonicalRootId()
-            : 'root';
-
-        if (
-            (typeof isRootMemory === 'function' && isRootMemory(sourceMem, canonicalRootId)) ||
-            String(sourceMem.id) === String(canonicalRootId)
-        ) {
-            showToast(formatI18nText('connect_root_blocked', '루트 순간은 연결할 수 없어요'), 'error');
-            return false;
-        }
-
-        if (String(sourceMem.parentId) === String(targetId)) {
-            showToast(formatI18nText('connect_already_connected', '이미 연결된 순간입니다'), 'error');
-            return false;
-        }
-
-        if (isDescendant(memories, sourceId, targetId)) {
-            showToast(formatI18nText('connect_cycle_blocked', '하위 순간을 부모로 연결할 수 없어요'), 'error');
-            return false;
-        }
-
         updateSaveStatus('saving', formatI18nText('save_saving', '저장 중...'));
 
         try {
