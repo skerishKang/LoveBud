@@ -69,7 +69,7 @@ test('editor keeps detail UI updateSelectedMemoryFields injection intact', () =>
 
 test('editor keeps memory actions creation and assignment intact', () => {
   assert.match(editorSource, /memoryActions\s*=\s*window\.createEditorMemoryActions\(\{/);
-  assert.match(editorSource, /const \{\s*enterEditMode,\s*exitEditMode,\s*saveMemoryEdit,\s*deleteMemory\s*\}\s*=\s*memoryActions/);
+  assert.match(editorSource, /const \{\s*enterEditMode,\s*exitEditMode,\s*saveMemoryEdit,\s*deleteMemory(?:\s*,\s*disconnectMemory)?\s*\}\s*=\s*memoryActions/);
 });
 
 test('editor delegates missing memory actions readiness wrapper guard before creation', () => {

@@ -10,5 +10,6 @@ window.LoveBudEditorCanvasViewportBranches = {
     path.setAttribute('stroke-width', '2');
     path.setAttribute('opacity', '0.5');
     svg.appendChild(path);
+    return path;
   },
 };

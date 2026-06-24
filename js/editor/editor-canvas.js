@@ -18,7 +18,8 @@ function createEditorCanvas(deps) {
         createInitialMemory,
         onNodeClick,
         openAddMoment,
-        canEdit
+        canEdit,
+        onDisconnectEdge
     } = deps;
 
     const i18n = window.t || function(key) { return key; };
@@ -32,7 +33,89 @@ function createEditorCanvas(deps) {
     const canvasNode = window.LoveBudEditorCanvasNode || {};
     const canvasInteraction = window.LoveBudEditorCanvasInteraction || {};
     const canvasViewport = window.LoveBudEditorCanvasViewport || {};
-    const canvasEdges = window.createEditorCanvasEdges({ svg, canvasViewport });
+    const canvasEdges = window.createEditorCanvasEdges({
+        svg,
+        canvasViewport,
+        canEdit
+    });
+
+    let selectedEdgeChildId = null;
+
+    canvasEdges.setOnSelectEdge(function(childId) {
+        selectedEdgeChildId = childId;
+        canvasEdges.selectEdge(childId);
+        showEdgeDisconnectButton(childId);
+    });
+
+    function clearEdgeSelection() {
+        selectedEdgeChildId = null;
+        canvasEdges.clearSelection();
+        hideEdgeDisconnectButton();
+    }
+
+    function isConnectionEditAllowed() {
+        if (canEdit === false) return false;
+        var mode = window.LoveBudEditorInteractionMode;
+        return !!mode &&
+            typeof mode.isEditMode === 'function' &&
+            mode.isEditMode();
+    }
+
+    function showEdgeDisconnectButton(childId) {
+        if (!isConnectionEditAllowed()) return;
+        hideEdgeDisconnectButton();
+        var path = svg.querySelector('.branch-line[data-edge-child-id="' + String(childId).replace(/"/g, '\\"') + '"]');
+        if (!path) return;
+        try {
+            var bbox = path.getBBox();
+            var midX = bbox.x + bbox.width / 2;
+            var midY = bbox.y + bbox.height / 2;
+            var btn = document.createElement('button');
+            btn.className = 'edge-disconnect-btn';
+            btn.id = 'edgeDisconnectBtn';
+            btn.setAttribute('aria-label', '연결 해제');
+            btn.setAttribute('title', '연결 해제');
+            btn.textContent = '\u2715';
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                handleDisconnect();
+            });
+            canvas.appendChild(btn);
+            btn.style.left = midX + 'px';
+            btn.style.top = midY + 'px';
+        } catch(e) {
+            console.warn('[editor-canvas] Could not position edge disconnect button:', e);
+        }
+    }
+
+    function hideEdgeDisconnectButton() {
+        var btn = document.getElementById('edgeDisconnectBtn');
+        if (btn) btn.remove();
+    }
+
+    async function handleDisconnect() {
+        var childId = selectedEdgeChildId;
+        if (!childId) return;
+        if (!isConnectionEditAllowed()) return;
+
+        if (!window.confirm('\uC774 \uC21C\uAC04\uC758 \uC5F0\uACB0\uC744 \uD574\uC81C\uD560\uAE4C\uC694?')) {
+            return;
+        }
+
+        try {
+            if (typeof onDisconnectEdge !== 'function') {
+                console.error('[editor-canvas] onDisconnectEdge callback not available');
+                return;
+            }
+            var result = await onDisconnectEdge(childId);
+            if (result === true) {
+                clearEdgeSelection();
+            }
+        } catch (error) {
+            console.error('[editor-canvas] disconnect edge error:', error);
+            clearEdgeSelection();
+        }
+    }
 
     const layoutStorage = window.LoveBudEditorCanvasLayoutStorage || {};
     const layoutTransition = window.LoveBudEditorCanvasLayoutTransition || {};
@@ -245,7 +328,8 @@ function createEditorCanvas(deps) {
             branchPorts,
             getTreeMemories,
             canonicalRootId: getCanonicalRootId(),
-            isRootMemory
+            isRootMemory,
+            isEditMode: window.LoveBudEditorInteractionMode ? window.LoveBudEditorInteractionMode.isEditMode : function () { return false; }
         });
     }
 
@@ -273,8 +357,9 @@ function createEditorCanvas(deps) {
         if (canEdit !== false) {
             uiHelpers.bindNodeDragStart(nodeEl, () => viewportState.layoutMode, (e) => {
                 if (typeof canvasInteraction.beginNodeDrag === 'function') {
+                    var mode = window.LoveBudEditorInteractionMode;
+                    if (mode && !mode.isEditMode()) return;
                     canvasInteraction.beginNodeDrag(e, nodeEl, mem, viewportState, getWorldPosition, canEdit);
-                    return;
                 }
             });
         }
@@ -331,6 +416,8 @@ function createEditorCanvas(deps) {
     }
 
     function openAddMomentFromCanvas() {
+        var mode = window.LoveBudEditorInteractionMode;
+        if (!mode || !mode.isEditMode()) return;
         growthAffordance.openAddMomentFromCanvas();
     }
 
@@ -404,6 +491,7 @@ function createEditorCanvas(deps) {
             canvas.style.backgroundPosition = `${viewportState.offsetX}px ${viewportState.offsetY}px`;
 
             renderUtils.clearCanvasNodes(canvas);
+            clearEdgeSelection();
             clearBranches();
             clearGrowthAffordance();
 
@@ -563,7 +651,20 @@ function createEditorCanvas(deps) {
                 getDragTargetElement: (id) => document.querySelector(`.memory-node[data-memory-id=\"${id}\"]`),
                 showMovedToast: uiHelpers.showMovedToast
             });
-            return;
+        }
+
+        if (!canvas._edgeDeselectBound) {
+            canvas._edgeDeselectBound = true;
+            canvas.addEventListener('pointerdown', function(e) {
+                if (e.target.closest('.memory-node')) return;
+                if (e.target.closest('.branch-line')) return;
+                if (e.target.closest('.edge-disconnect-btn')) return;
+                if (e.target.closest('#addMemoryForm')) return;
+                if (e.target.closest('.memory-add-affordance')) return;
+                if (selectedEdgeChildId) {
+                    clearEdgeSelection();
+                }
+            });
         }
     }
 
@@ -602,6 +703,8 @@ function createEditorCanvas(deps) {
         recenterViewport,
         setLayoutMode,
         updateAffordance,
+        clearEdgeSelection,
+        clearGrowthAffordance,
         getWorldPosition,
         get viewportState() { return viewportState; },
         persistStoredPositions

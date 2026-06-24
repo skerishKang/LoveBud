@@ -29,8 +29,14 @@ export function renderAffordancesForMemory(mem, deps) {
         branchPorts,
         getTreeMemories,
         canonicalRootId,
-        isRootMemory
+        isRootMemory,
+        isEditMode
     } = deps;
+
+    if (typeof isEditMode === 'function' && !isEditMode()) {
+        clearGrowthAffordances(growthAffordance, branchPorts);
+        return;
+    }
 
     const drawableMemories = getTreeMemories().filter((node) => !isRootMemory(node, canonicalRootId));
     
