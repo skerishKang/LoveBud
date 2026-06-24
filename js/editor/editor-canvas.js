@@ -32,7 +32,109 @@ function createEditorCanvas(deps) {
     const canvasNode = window.LoveBudEditorCanvasNode || {};
     const canvasInteraction = window.LoveBudEditorCanvasInteraction || {};
     const canvasViewport = window.LoveBudEditorCanvasViewport || {};
-    const canvasEdges = window.createEditorCanvasEdges({ svg, canvasViewport });
+    const canvasEdges = window.createEditorCanvasEdges({
+        svg,
+        canvasViewport,
+        canEdit,
+        isEditMode: function() {
+            var el = document.getElementById('detailEditMode');
+            return !!el && el.style.display !== 'none';
+        }
+    });
+
+    let selectedEdgeChildId = null;
+
+    canvasEdges.setOnSelectEdge(function(childId) {
+        selectedEdgeChildId = childId;
+        canvasEdges.selectEdge(childId);
+        showEdgeDisconnectButton(childId);
+    });
+
+    function clearEdgeSelection() {
+        selectedEdgeChildId = null;
+        canvasEdges.clearSelection();
+        hideEdgeDisconnectButton();
+    }
+
+    function showEdgeDisconnectButton(childId) {
+        hideEdgeDisconnectButton();
+        var path = svg.querySelector('.branch-line[data-edge-child-id="' + String(childId).replace(/"/g, '\\"') + '"]');
+        if (!path) return;
+        try {
+            var bbox = path.getBBox();
+            var midX = bbox.x + bbox.width / 2;
+            var midY = bbox.y + bbox.height / 2;
+            var btn = document.createElement('button');
+            btn.className = 'edge-disconnect-btn';
+            btn.id = 'edgeDisconnectBtn';
+            btn.setAttribute('aria-label', '연결 해제');
+            btn.setAttribute('title', '연결 해제');
+            btn.textContent = '\u2715';
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                disconnectSelectedEdge();
+            });
+            canvas.appendChild(btn);
+            btn.style.left = midX + 'px';
+            btn.style.top = midY + 'px';
+        } catch(e) {
+            console.warn('[editor-canvas] Could not position edge disconnect button:', e);
+        }
+    }
+
+    function hideEdgeDisconnectButton() {
+        var btn = document.getElementById('edgeDisconnectBtn');
+        if (btn) btn.remove();
+    }
+
+    function disconnectSelectedEdge() {
+        var childId = selectedEdgeChildId;
+        if (!childId) return;
+        if (canEdit === false) return;
+
+        if (!window.confirm('\uC774 \uC21C\uAC04\uC758 \uC5F0\uACB0\uC744 \uD574\uC81C\uD560\uAE4C\uC694?')) {
+            return;
+        }
+
+        var memories = getTreeMemories().slice();
+        var idx = memories.findIndex(function(m) { return String(m.id) === String(childId); });
+        if (idx === -1) {
+            console.warn('[editor-canvas] Memory not found for disconnect:', childId);
+            return;
+        }
+
+        (async function() {
+            try {
+                var apiResult = null;
+                if (window.apiClient && typeof window.apiClient.updateMemory === 'function') {
+                    apiResult = await window.apiClient.updateMemory(childId, { parentId: null });
+                } else {
+                    throw new Error('updateMemory not available');
+                }
+
+                memories[idx] = Object.assign({}, memories[idx], { parentId: null }, apiResult || {});
+                if (window.currentTreeData && Array.isArray(window.currentTreeData.memories)) {
+                    var dataIdx = window.currentTreeData.memories.findIndex(function(m) { return String(m.id) === String(childId); });
+                    if (dataIdx !== -1) {
+                        window.currentTreeData.memories[dataIdx] = memories[idx];
+                    }
+                }
+
+                if (window.LoveBudCache) {
+                    var cacheKey = 'memories_' + treeId;
+                    window.LoveBudCache.set(cacheKey, memories, 2 * 60 * 1000);
+                }
+
+                clearEdgeSelection();
+                if (typeof initCanvas === 'function') initCanvas();
+                if (typeof updateDetailPanel === 'function') updateDetailPanel(null);
+            } catch (error) {
+                console.error('[editor-canvas] Failed to disconnect edge:', error);
+                window.alert('\uC5F0\uACB0 \uD574\uC81C\uC5D0 \uC2E4\uD328\uD588\uC5B4\uC694. \uB2E4\uC2DC \uC2DC\uB3C4\uD574 \uC8FC\uC138\uC694.');
+                clearEdgeSelection();
+            }
+        })();
+    }
 
     const layoutStorage = window.LoveBudEditorCanvasLayoutStorage || {};
     const layoutTransition = window.LoveBudEditorCanvasLayoutTransition || {};
@@ -563,7 +665,20 @@ function createEditorCanvas(deps) {
                 getDragTargetElement: (id) => document.querySelector(`.memory-node[data-memory-id=\"${id}\"]`),
                 showMovedToast: uiHelpers.showMovedToast
             });
-            return;
+        }
+
+        if (!canvas._edgeDeselectBound) {
+            canvas._edgeDeselectBound = true;
+            canvas.addEventListener('pointerdown', function(e) {
+                if (e.target.closest('.memory-node')) return;
+                if (e.target.closest('.branch-line')) return;
+                if (e.target.closest('.edge-disconnect-btn')) return;
+                if (e.target.closest('#addMemoryForm')) return;
+                if (e.target.closest('.memory-add-affordance')) return;
+                if (selectedEdgeChildId) {
+                    clearEdgeSelection();
+                }
+            });
         }
     }
 

@@ -2,11 +2,16 @@
     function createEditorCanvasEdges(options) {
         const {
             svg,
-            canvasViewport = {}
+            canvasViewport = {},
+            canEdit,
+            isEditMode
         } = options || {};
 
         const NODE_HALF = 54;
         const CLEARANCE = NODE_HALF * 0.6;
+
+        let selectedEdgeChildId = null;
+        let onSelectEdge = null;
 
         const clearBranches = () => {
             svg.querySelectorAll('.branch-line').forEach((line) => line.remove());
@@ -26,26 +31,21 @@
             // Determine exit direction from source node
             var srcDirX = 0, srcDirY = 0;
             if (absDx > absDy) {
-                // Horizontal predominance
                 srcDirX = dx > 0 ? 1 : -1;
                 srcDirY = 0;
             } else {
-                // Vertical predominance
                 srcDirX = 0;
                 srcDirY = dy > 0 ? 1 : -1;
             }
 
-            // Determine approach direction to target node
             var tgtDirX = -srcDirX;
             var tgtDirY = -srcDirY;
 
-            // Control points: exit from source, approach to target
             var cp1x = startPos.x + srcDirX * CLEARANCE;
             var cp1y = startPos.y + srcDirY * CLEARANCE;
             var cp2x = endPos.x + tgtDirX * CLEARANCE;
             var cp2y = endPos.y + tgtDirY * CLEARANCE;
 
-            // If nodes are close, use a smoother blend
             var distance = Math.sqrt(dx * dx + dy * dy);
             if (distance < NODE_HALF * 3) {
                 cp1x = startPos.x + dx * 0.35;
@@ -64,15 +64,10 @@
             };
         }
 
-        /**
-         * Draw a branch line with auto-routing.
-         * If canvasViewport.drawBranch exists, delegates to it.
-         * Otherwise uses cubic bezier auto-routing.
-         */
         const drawBranch = (startPos, endPos, routeInfo) => {
             if (typeof canvasViewport.drawBranch === 'function') {
                 canvasViewport.drawBranch(svg, startPos, endPos);
-                return;
+                return null;
             }
 
             var route;
@@ -90,6 +85,7 @@
             path.setAttribute('stroke-width', '2');
             path.setAttribute('opacity', '0.5');
             svg.appendChild(path);
+            return path;
         };
 
         const drawBranchForMemory = (node, context) => {
@@ -104,17 +100,59 @@
             const parentId = node.parentId || canonicalRootId;
             const parent = treeMemories.find((memory) => memory.id === parentId);
 
-            // Skip branch if parent is the hidden canonical root — prevents orphan
-            // "tail" lines from invisible root to the first visible memory
             if (parent && parent.id !== canonicalRootId) {
-                drawBranch(calcPosition(parent), calcPosition(node));
+                var path = drawBranch(calcPosition(parent), calcPosition(node));
+                if (!path) return;
+                path.setAttribute('data-edge-child-id', String(node.id));
+
+                path.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                    var childId = this.getAttribute('data-edge-child-id');
+                    if (!childId) return;
+
+                    if (canEdit === false) return;
+                    if (typeof isEditMode === 'function' && !isEditMode()) return;
+
+                    if (typeof onSelectEdge === 'function') {
+                        onSelectEdge(childId, this);
+                    }
+                });
             }
         };
+
+        function selectEdge(childId) {
+            clearSelection();
+            selectedEdgeChildId = childId;
+            svg.querySelectorAll('.branch-line').forEach(function (p) {
+                if (p.getAttribute('data-edge-child-id') === childId) {
+                    p.classList.add('is-selected');
+                }
+            });
+        }
+
+        function clearSelection() {
+            selectedEdgeChildId = null;
+            svg.querySelectorAll('.branch-line.is-selected').forEach(function (p) {
+                p.classList.remove('is-selected');
+            });
+        }
+
+        function getSelectedEdgeChildId() {
+            return selectedEdgeChildId;
+        }
+
+        function setOnSelectEdge(fn) {
+            onSelectEdge = fn;
+        }
 
         return {
             clearBranches,
             drawBranch,
-            drawBranchForMemory
+            drawBranchForMemory,
+            selectEdge,
+            clearSelection,
+            getSelectedEdgeChildId,
+            setOnSelectEdge
         };
     }
 
