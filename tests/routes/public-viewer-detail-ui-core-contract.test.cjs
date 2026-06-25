@@ -140,7 +140,9 @@ test('public viewer detail UI adapter owns current moment image boundary', () =>
   assert.ok(boundarySource.includes('detailImg'), 'image boundary targets the detail image mount');
   assert.ok(boundarySource.includes('resolveMemoryThumbnail(data)'), 'image boundary uses resolver with data');
   assert.ok(boundarySource.includes('imgEl.src ='), 'image boundary sets image src');
-  assert.ok(boundarySource.includes("imgEl.alt = isEmptyState ? '' : ((data && data.title) || '')"), 'image boundary sets alt text consistently');
+  assert.ok(boundarySource.includes('imgEl.alt = isEmptyState ?'), 'image boundary handles empty state alt');
+  assert.ok(boundarySource.includes('safeAlt'), 'image boundary uses safeDisplayTitle guard for alt text');
+  assert.ok(source.includes('function safeDisplayTitle(title)'), 'viewer detail adapter exposes safeDisplayTitle helper');
 });
 
 test('public viewer detail UI adapter exposes read-only reaction summary boundary', () => {
