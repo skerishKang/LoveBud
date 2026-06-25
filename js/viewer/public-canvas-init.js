@@ -664,41 +664,65 @@
                 window.__viewerTreeData = normalized.treeData;
                 updateOwnerModeUI(selectionState, normalized.treeData);
                 // Deferred re-check: auth may resolve after tree data loads
-                if (typeof window.LoveBudPublicCanvasInit._ownerAuthPoller === 'undefined') {
-                    window.LoveBudPublicCanvasInit._ownerAuthPoller = true;
+                if (normalized.treeData && !normalized.treeData._ownerCapabilityPollerStarted) {
+                    normalized.treeData._ownerCapabilityPollerStarted = true;
                     (function pollOwnerAuth() {
+                        // If active treeData changed, terminate this poll instance
+                        var activeTreeData = window.__viewerTreeData || window.currentTreeData;
+                        if (activeTreeData !== normalized.treeData) return;
+
                         var mg = document.getElementById('viewerModeGroup');
                         if (mg && mg.style.display !== 'none') return;
                         var ap = window.LoveTreeAuthPolicy;
                         var conf = ap && typeof ap.hasConfirmedAuthSession === 'function'
                             ? ap.hasConfirmedAuthSession() : false;
                         if (conf) {
-                            var targetTreeData = window.__viewerTreeData || window.currentTreeData;
+                            var targetTreeData = normalized.treeData;
                             var targetTreeId = targetTreeData && targetTreeData.id;
-                            if (targetTreeId) {
-                                // Track in-flight state by attaching to the treeData object itself
-                                if (targetTreeData._capabilityFetching) return;
+                            var currentUser = ap.getCachedAuthUser && ap.getCachedAuthUser();
+                            var targetAuthUid = currentUser && currentUser.uid;
+
+                            if (targetTreeId && targetAuthUid) {
+                                // If cached viewerCanEdit exists, check if UID matches
                                 if (targetTreeData.viewerCanEdit !== undefined) {
-                                    if (window.__viewerTreeData === targetTreeData) {
-                                        if (typeof window.LoveBudPublicCanvasInit.updateOwnerModeUI === 'function') {
-                                            window.LoveBudPublicCanvasInit.updateOwnerModeUI();
+                                    if (targetTreeData._viewerCapabilityAuthUid !== targetAuthUid) {
+                                        // Cache mismatch: invalidate cache and refetch
+                                        delete targetTreeData.viewerCanEdit;
+                                        delete targetTreeData._viewerCapabilityAuthUid;
+                                        if (targetTreeData.data) {
+                                            delete targetTreeData.data.viewerCanEdit;
                                         }
+                                    } else {
+                                        if (window.__viewerTreeData === targetTreeData) {
+                                            if (typeof window.LoveBudPublicCanvasInit.updateOwnerModeUI === 'function') {
+                                                window.LoveBudPublicCanvasInit.updateOwnerModeUI();
+                                            }
+                                        }
+                                        return;
                                     }
-                                    return;
                                 }
+
+                                if (targetTreeData._capabilityFetching) return;
                                 targetTreeData._capabilityFetching = true;
+
                                 var apiFetch = window.LoveTreeBaseApiFetch && window.LoveTreeBaseApiFetch.apiFetch;
                                 if (typeof apiFetch === 'function') {
                                     apiFetch('/private/trees/' + encodeURIComponent(targetTreeId) + '/capability')
                                         .then(function(res) {
                                             targetTreeData._capabilityFetching = false;
-                                            // Check if targetTreeData is still the active tree
-                                            var activeTreeData = window.__viewerTreeData || window.currentTreeData;
-                                            if (activeTreeData !== targetTreeData || (activeTreeData && activeTreeData.id !== targetTreeId)) {
-                                                return; // Discard stale capability response
+                                            // Check if target conditions are still active
+                                            var checkActiveTree = window.__viewerTreeData || window.currentTreeData;
+                                            var currentConfirmedUser = ap.getCachedAuthUser && ap.getCachedAuthUser();
+                                            if (checkActiveTree !== targetTreeData ||
+                                                (checkActiveTree && checkActiveTree.id !== targetTreeId) ||
+                                                !currentConfirmedUser ||
+                                                currentConfirmedUser.uid !== targetAuthUid) {
+                                                return; // Discard stale request
                                             }
+
                                             var canEdit = !!(res && res.viewerCanEdit);
                                             targetTreeData.viewerCanEdit = canEdit;
+                                            targetTreeData._viewerCapabilityAuthUid = targetAuthUid;
                                             if (targetTreeData.data) {
                                                 targetTreeData.data.viewerCanEdit = canEdit;
                                             }
@@ -708,11 +732,17 @@
                                         })
                                         .catch(function(e) {
                                             targetTreeData._capabilityFetching = false;
-                                            var activeTreeData = window.__viewerTreeData || window.currentTreeData;
-                                            if (activeTreeData !== targetTreeData || (activeTreeData && activeTreeData.id !== targetTreeId)) {
-                                                return; // Discard stale capability response
+                                            var checkActiveTree = window.__viewerTreeData || window.currentTreeData;
+                                            var currentConfirmedUser = ap.getCachedAuthUser && ap.getCachedAuthUser();
+                                            if (checkActiveTree !== targetTreeData ||
+                                                (checkActiveTree && checkActiveTree.id !== targetTreeId) ||
+                                                !currentConfirmedUser ||
+                                                currentConfirmedUser.uid !== targetAuthUid) {
+                                                return; // Discard stale request
                                             }
+
                                             targetTreeData.viewerCanEdit = false;
+                                            targetTreeData._viewerCapabilityAuthUid = targetAuthUid;
                                             if (targetTreeData.data) {
                                                 targetTreeData.data.viewerCanEdit = false;
                                             }

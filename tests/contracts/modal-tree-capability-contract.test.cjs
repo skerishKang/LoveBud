@@ -132,53 +132,64 @@ test('4. guest returns viewerCanEdit=false on HTTP 401/403 or exception', () => 
   assert.match(norm, /"viewercanedit":false/, 'must fall back to false');
 });
 
-// VM-based dynamic tests for resolveTreeWorkspaceCanEdit
-test('5a. resolveTreeWorkspaceCanEdit: viewerCanEdit true is verified with active confirmed user', () => {
-  const tree = { id: 't1', viewerCanEdit: true };
-  const user = { uid: 'u123' };
+// VM-based dynamic tests for resolveTreeWorkspaceCanEdit (Permission helper VM dynamic tests)
+test('5a. resolveTreeWorkspaceCanEdit: viewerCanEdit true is verified with matching UID', () => {
+  const tree = { id: 't1', viewerCanEdit: true, _viewerCapabilityAuthUid: 'u123' };
   
-  const canEditOwner = runPermissionInSandbox(tree, user, true);
-  assert.equal(canEditOwner, true, 'should be true with valid logged in user');
+  const canEditOwner = runPermissionInSandbox(tree, { uid: 'u123' }, true);
+  assert.equal(canEditOwner, true, '1. true with matching _viewerCapabilityAuthUid');
+
+  const canEditDiffOwner = runPermissionInSandbox(tree, { uid: 'u456' }, true);
+  assert.equal(canEditDiffOwner, false, '2. false with different user UID');
 
   const canEditSignedOut = runPermissionInSandbox(tree, null, false);
-  assert.equal(canEditSignedOut, false, 'should be false if guest/signed out');
-
-  const canEditNoUid = runPermissionInSandbox(tree, {}, true);
-  assert.equal(canEditNoUid, false, 'should be false if user has no uid');
+  assert.equal(canEditSignedOut, false, '3. false if signed-out / no user');
 });
 
 test('5b. resolveTreeWorkspaceCanEdit: viewerCanEdit false is always false', () => {
-  const tree = { id: 't1', viewerCanEdit: false, ownerId: 'u123' };
+  const tree = { id: 't1', viewerCanEdit: false, _viewerCapabilityAuthUid: 'u123' };
   const user = { uid: 'u123' };
   const canEdit = runPermissionInSandbox(tree, user, true);
-  assert.equal(canEdit, false, 'should return false immediately when viewerCanEdit is false');
+  assert.equal(canEdit, false, '4. false with viewerCanEdit false');
 });
 
 test('5c. resolveTreeWorkspaceCanEdit: requestedReadOnly is respected first', () => {
-  const tree = { id: 't1', viewerCanEdit: true };
+  const tree = { id: 't1', viewerCanEdit: true, _viewerCapabilityAuthUid: 'u123' };
   const user = { uid: 'u123' };
   const canEdit = runPermissionInSandbox(tree, user, true, true);
-  assert.equal(canEdit, false, 'should return false if read only is requested');
+  assert.equal(canEdit, false, '5. false if requestedReadOnly is true');
 });
 
-test('6. public-canvas-init poller, confirmed auth, capability call, UI update, and stale prevention existence', () => {
+// Lifecycle static contract tests for public-canvas-init poller
+test('6. public-canvas-init lifecycle checks for stale fetch and UID verification', () => {
   const src = readInitJs();
   const compactSrc = compact(src);
 
-  // Assert poller exists and handles confirmed auth
-  assert.match(compactSrc, /pollownerauth/, 'must have a deferred poller function');
-  assert.match(compactSrc, /ap\.hasconfirmedauthsession\(\)/, 'poller must check for confirmed auth');
+  // Assert targetAuthUid snapshot exist
+  assert.match(compactSrc, /targetauthuid=/, 'poller must snapshot targetAuthUid');
 
-  // Assert request snapshotting & active tree comparison
-  assert.match(compactSrc, /targettreedata=window\.__viewertreedata/, 'must snapshot active treeData');
-  assert.match(compactSrc, /targettreeid=targettreedata&&targettreedata\.id/, 'must snapshot treeId');
-  assert.match(compactSrc, /activetreedata!==targettreedata/, 'must compare active treeData to snapshot on resolution');
+  // Assert active tree object comparisons on resolve/reject
+  assert.match(compactSrc, /checkactivetree!==targettreedata/, 'must check active tree object equivalence');
 
-  // Assert lifecycle deduplication guard
-  assert.match(compactSrc, /targettreedata\._capabilityfetching/, 'must use in-flight marker on treeData lifecycle object');
+  // Assert active UID comparison on resolve/reject
+  assert.match(compactSrc, /currentconfirmeduser\.uid!==targetauthuid/, 'must check active authenticated user UID matches targetAuthUid');
 
-  // Assert updateUI call
-  assert.match(compactSrc, /updateownermodeui\(\)/, 'must trigger UI update upon capability resolution');
+  // Assert _viewerCapabilityAuthUid is recorded on success and failure
+  assert.match(compactSrc, /targettreedata\._viewercapabilityauthuid=targetauthuid;/, 'must save _viewerCapabilityAuthUid on success');
+
+  // Assert treeData-scoped poller marker exist
+  assert.match(compactSrc, /normalized\.treedata\&\&\!normalized\.treedata\._ownercapabilitypollerstarted/, 'must guard poller initialization on normalized.treeData scope');
+
+  // Assert no global one-shot ownerAuthPoller guard blocks refetch
+  assert.ok(!compactSrc.includes('window.lovebudpubliccanvasinit._ownerauthpoller=true'), 'global poller guard must be removed');
+
+  // Assert cached capability UID mismatch invalidates cache
+  assert.match(compactSrc, /targettreedata\._viewercapabilityauthuid!==targetauthuid/, 'must detect auth UID mismatch on cached data');
+  assert.match(compactSrc, /deletetargettreedata\.viewercanedit/, 'must delete viewerCanEdit on UID mismatch');
+  assert.match(compactSrc, /deletetargettreedata\._viewercapabilityauthuid/, 'must delete _viewerCapabilityAuthUid on UID mismatch');
+
+  // Assert mode=edit query parameter is not query-granted
+  assert.match(compactSrc, /updateownermodeui\(/, 'must evaluate UI correctly');
 });
 
 test('7. mode=edit URL query parameter does not grant viewer capability', () => {
