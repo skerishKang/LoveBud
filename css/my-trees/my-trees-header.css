@@ -22,15 +22,6 @@ border-bottom: 0;
     letter-spacing: var(--eyebrow-letter-spacing);
     margin-bottom: 14px;
 }
-.search-panel-eyebrow.page-hero-eyebrow#myTreesPageEyebrow {
-    margin-bottom: 14px;
-}
-.my-trees-header h1 { font-size: clamp(3.45rem, 5.8vw, 5.15rem); font-weight: 900; color: var(--on-surface); margin: 20px 0 14px; letter-spacing: -0.052em; line-height: 0.99; }
-.my-trees-title-line { display: block; }
-.my-trees-title-line:nth-child(1) { color: var(--on-surface-variant); font-weight: 700; opacity: 0.9; }
-.my-trees-title-accent { color: var(--hero-warm-color, var(--primary)); font-weight: 780; letter-spacing: -0.03em; }
-.my-trees-title-line:nth-child(3) { color: #b85c66; font-weight: 900; }
-.search-panel-header p#myTreesPageDesc { color: var(--on-surface-variant); margin: 0; font-size: 1.02rem; line-height: 1.78; opacity: 0.82; max-width: 520px; }
 .header-actions { display: flex; align-items: center; gap: 10px; flex: 0 0 auto; }
 .sort-control { position: relative; display: inline-flex; align-items: center; }
 .summary-sort-control {

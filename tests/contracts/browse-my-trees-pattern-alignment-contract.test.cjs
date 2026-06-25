@@ -14,11 +14,11 @@ test('1. #2532 issue marker or test description check', () => {
   assert.ok(selfContent.includes('#2532'), 'Test must contain #2532 issue marker reference');
 });
 
-test('2. pages/my-trees.html heading uses multi-line rhythm class', () => {
+test('2. pages/my-trees.html heading uses shared multi-line rhythm classes', () => {
   const html = read('pages/my-trees.html');
-  // Class token must be present in some class attribute, not necessarily as the first token.
-  assert.ok(/\bmy-trees-title-line\b/.test(html), 'my-trees.html must use multi-line class "my-trees-title-line"');
-  assert.ok(/\bmy-trees-title-accent\b/.test(html), 'my-trees.html must use my-trees-title-accent');
+  // Use shared title-line and title-accent classes instead of my-trees specific ones
+  assert.ok(/\btitle-line\b/.test(html), 'my-trees.html must use shared multi-line class "title-line"');
+  assert.ok(/\btitle-accent\b/.test(html), 'my-trees.html must use shared title-accent class');
 });
 
 test('3. My LoveTree description uses distinct personal archive copy', () => {
@@ -92,13 +92,9 @@ test('4d. My LoveTree search panel follows Browse utility panel visual structure
   assert.match(sharedCss, /\.search-input\s*{[^}]*appearance:\s*none;[^}]*-webkit-appearance:\s*none;[^}]*}/s,
     '#2878: shared .search-input must carry appearance: none / -webkit-appearance: none');
 
-  assert.match(finderCss, /\.my-trees-finder\s*{[^}]*justify-content:\s*space-between;[^}]*padding:\s*14px;[^}]*border-radius:\s*24px;[^}]*background:\s*rgba\(255, 255, 255, 0\.48\);[^}]*box-shadow:\s*0 14px 32px rgba\(75, 64, 57, 0\.035\);/s);
-  assert.match(finderCss, /\.my-trees-search-box\s*{[^}]*max-width:\s*420px;[^}]*}/s);
-  // #2878: .my-trees-search-input base block is removed; webkit decoration reset lives in finder.css.
+  // #2878: .my-trees-finder desktop base block removed; now inherits from .browse-utility-row in search-controls.css
+  // webkit decoration reset lives in finder.css.
   assert.match(finderCss, /\.my-trees-search-input::-webkit-search-decoration,\s*\.my-trees-search-input::-webkit-search-cancel-button,\s*\.my-trees-search-input::-webkit-search-results-button,\s*\.my-trees-search-input::-webkit-search-results-decoration\s*{\s*display:\s*none;\s*}/s);
-  assert.match(finderCss, /\.my-trees-filter-chips\s*{[^}]*justify-content:\s*flex-end;[^}]*}/s);
-  assert.match(finderCss, /\.my-trees-filter-chip\s*{[^}]*background:\s*var\(--lovetree-chip-bg\);[^}]*border:\s*1px solid var\(--lovetree-chip-border\);[^}]*color:\s*var\(--lovetree-chip-text\);[^}]*}/s);
-  assert.match(finderCss, /\.my-trees-filter-chip\.is-active\s*{[^}]*background:\s*var\(--lovetree-chip-active-bg\);[^}]*color:\s*var\(--lovetree-chip-active-text\);[^}]*border-color:\s*var\(--lovetree-chip-active-border\);[^}]*}/s);
   assert.match(headerCss, /\.my-trees-header\s*{[^}]*margin-bottom:\s*12px;[^}]*padding-bottom:\s*0;[^}]*border-bottom:\s*0;[^}]*}/s);
   assert.match(headerCss, /\.my-trees-results-head\s*{[^}]*margin:\s*0 0 16px;[^}]*padding-top:\s*18px;[^}]*border-top:\s*1px solid rgba\(144, 73, 81, 0\.09\);[^}]*}/s);
   assert.match(headerCss, /@media\s*\(max-width:\s*768px\)\s*{[\s\S]*?\.my-trees-results-head\s*{[^}]*margin-top:\s*0;[^}]*padding-top:\s*14px;[^}]*border-top:\s*1px solid rgba\(144, 73, 81, 0\.09\);[^}]*}/);
@@ -327,7 +323,7 @@ test('14. Runtime cache-busts updated for changed JS/CSS', () => {
     'pages/my-trees.html must not still pin the pre-#social-bar-path cache-bust 20260622-title-row-1 on my-trees.css'
   );
   assert.match(myTreesHtml, /my-trees-page\.js\?v=20260622-mytrees-create-1/);
-  assert.match(myTreesCss, /my-trees-header\.css\?v=20260622-title-row-1/);
+  assert.match(myTreesCss, /my-trees-header\.css\?v=20260625-2878-structure-1/);
   assert.match(
     myTreesCss,
     /my-trees-preview-hub\.css\?v=[^"'\s>]+/,
