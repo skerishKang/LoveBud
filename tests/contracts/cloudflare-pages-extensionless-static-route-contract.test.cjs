@@ -79,20 +79,12 @@ const EXPECTED_301_RULES = [
   '/editor.html /pages/editor 301',
   '/my-trees.html /pages/my-trees 301',
   '/tree.html /pages/tree 301',
-
-  '/pages/intro.html /pages/intro 301',
-  '/pages/login.html /pages/login 301',
-  '/pages/search.html /pages/search 301',
-  '/pages/detail.html /pages/detail 301',
-  '/pages/editor.html /pages/editor 301',
-  '/pages/my-trees.html /pages/my-trees 301',
-  '/pages/tree.html /pages/tree 301',
 ];
 
-test('.html -> extensionless 301 canonical redirects are preserved', () => {
+test('.html -> extensionless 301 canonical redirects are preserved (root only)', () => {
   const lines = redirectLines();
   for (const rule of EXPECTED_301_RULES) {
-    assert.ok(lines.includes(rule), `Missing 301 rule: ${rule}`);
+    assert.ok(lines.includes(rule), `Missing root 301 rule: ${rule}`);
   }
 });
 
@@ -135,6 +127,25 @@ const EXPECTED_TRAILING_SLASH_301 = [
   '/editor.html/ /pages/editor 301',
   '/my-trees.html/ /pages/my-trees 301',
   '/tree.html/ /pages/tree 301',
+];
+
+test('.html/ trailing-slash 301 redirects are preserved (root only)', () => {
+  const lines = redirectLines();
+  for (const rule of EXPECTED_TRAILING_SLASH_301) {
+    assert.ok(lines.includes(rule), `Missing trailing-slash 301: ${rule}`);
+  }
+});
+
+// ─── NESTED /pages/*.html 301 REMOVED (LOOP PREVENTION) ──────────
+
+const FORBIDDEN_NESTED_301 = [
+  '/pages/intro.html /pages/intro 301',
+  '/pages/login.html /pages/login 301',
+  '/pages/search.html /pages/search 301',
+  '/pages/detail.html /pages/detail 301',
+  '/pages/editor.html /pages/editor 301',
+  '/pages/my-trees.html /pages/my-trees 301',
+  '/pages/tree.html /pages/tree 301',
 
   '/pages/intro.html/ /pages/intro 301',
   '/pages/login.html/ /pages/login 301',
@@ -145,9 +156,31 @@ const EXPECTED_TRAILING_SLASH_301 = [
   '/pages/tree.html/ /pages/tree 301',
 ];
 
-test('.html/ trailing-slash 301 redirects are preserved', () => {
+test('No /pages/*.html -> /pages/<name> 301 redirect exists (loop prevention)', () => {
   const lines = redirectLines();
-  for (const rule of EXPECTED_TRAILING_SLASH_301) {
-    assert.ok(lines.includes(rule), `Missing trailing-slash 301: ${rule}`);
+  for (const rule of FORBIDDEN_NESTED_301) {
+    assert.ok(!lines.includes(rule), `Nested 301 redirect must be removed (causes loop): ${rule}`);
+  }
+});
+
+test('200 rewrite targets are never redirected back (no loop)', () => {
+  const lines = redirectLines();
+  const rewriteTargets = [];
+  for (const line of lines) {
+    if (!line.endsWith(' 200')) continue;
+    const parts = line.split(/\s+/);
+    rewriteTargets.push(parts[1]);
+  }
+  for (const target of rewriteTargets) {
+    // Check there is no 301 rule that would catch the rewrite target
+    const redirectFromTarget = lines.filter(l => {
+      if (!l.endsWith(' 301')) return false;
+      const parts = l.split(/\s+/);
+      return parts[0].replace(/\/$/, '') === target;
+    });
+    assert.equal(
+      redirectFromTarget.length, 0,
+      `Rewrite target "${target}" must not have a matching 301 redirect (loop): ${redirectFromTarget.join(', ')}`
+    );
   }
 });
