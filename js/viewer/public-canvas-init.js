@@ -415,36 +415,83 @@
         var modeGroup = document.getElementById('viewerModeGroup');
         var viewBtn = document.getElementById('viewerModeViewBtn');
         var editBtn = document.getElementById('viewerModeEditBtn');
-        if (!modeGroup || !viewBtn || !editBtn) return;
+
+        var sidebarOwnerMode = document.getElementById('viewerSidebarOwnerMode');
+        var sidebarViewBtn = document.getElementById('viewerSidebarViewBtn');
+        var sidebarEditBtn = document.getElementById('viewerSidebarEditBtn');
+        var sidebarBackLink = document.getElementById('viewerSidebarBackLink');
+        var sidebarBackLabel = document.getElementById('viewerSidebarBackLabel');
+        var sidebarKicker = document.getElementById('viewerSidebarKicker');
+
         var treeData = providedTreeData || window.currentTreeData || null;
         var canEdit = treeData && window.LoveBudTreeWorkspacePermission
             ? window.LoveBudTreeWorkspacePermission.resolveTreeWorkspaceCanEdit(treeData)
             : false;
+
+        var isPages = window.location.pathname.indexOf('/pages/') !== -1;
+        var searchHref = isPages ? 'search.html' : 'pages/search.html';
+        var myTreesHref = isPages ? 'my-trees.html' : 'pages/my-trees.html';
+
         if (canEdit) {
-            modeGroup.style.display = '';
-            viewBtn.disabled = true;
-            viewBtn.setAttribute('aria-current', 'true');
-            editBtn.disabled = false;
-            editBtn.removeAttribute('aria-current');
+            if (modeGroup) {
+                modeGroup.style.display = '';
+                if (viewBtn) {
+                    viewBtn.disabled = true;
+                    viewBtn.setAttribute('aria-current', 'true');
+                }
+                if (editBtn) {
+                    editBtn.disabled = false;
+                    editBtn.removeAttribute('aria-current');
+                }
+            }
+
+            if (sidebarOwnerMode) sidebarOwnerMode.style.display = '';
+            if (sidebarViewBtn) {
+                sidebarViewBtn.disabled = true;
+                sidebarViewBtn.setAttribute('aria-current', 'true');
+            }
+            if (sidebarEditBtn) {
+                sidebarEditBtn.disabled = false;
+                sidebarEditBtn.removeAttribute('aria-current');
+            }
+            if (sidebarBackLink) sidebarBackLink.href = myTreesHref;
+            if (sidebarBackLabel) sidebarBackLabel.textContent = '내 러브트리로 돌아가기';
+            if (sidebarKicker) sidebarKicker.textContent = '내가 키우는 러브트리';
+
+            var navigateToEditor = function() {
+                var currentTreeId = treeData && treeData.id;
+                if (!currentTreeId) return;
+                var selectedMemoryId = selectionState && typeof selectionState.getSelectedNodeId === 'function'
+                    ? selectionState.getSelectedNodeId()
+                    : '';
+                var basePath = window.location.pathname.indexOf('/pages/') !== -1 ? '' : 'pages/';
+                var params = 'treeId=' + encodeURIComponent(currentTreeId) + '&mode=edit';
+                if (selectedMemoryId) {
+                    params += '&memoryId=' + encodeURIComponent(selectedMemoryId);
+                }
+                window.location.href = window.location.origin + '/' + basePath + 'editor?' + params;
+            };
+
             var handlerKey = '_lovebudEditClick';
-            if (!editBtn[handlerKey]) {
-                editBtn[handlerKey] = function() {
-                    var currentTreeId = treeData && treeData.id;
-                    if (!currentTreeId) return;
-                    var selectedMemoryId = selectionState && typeof selectionState.getSelectedNodeId === 'function'
-                        ? selectionState.getSelectedNodeId()
-                        : '';
-                    var basePath = window.location.pathname.indexOf('/pages/') !== -1 ? '' : 'pages/';
-                    var params = 'treeId=' + encodeURIComponent(currentTreeId) + '&mode=edit';
-                    if (selectedMemoryId) {
-                        params += '&memoryId=' + encodeURIComponent(selectedMemoryId);
-                    }
-                    window.location.href = window.location.origin + '/' + basePath + 'editor?' + params;
-                };
-                editBtn.addEventListener('click', editBtn[handlerKey]);
+            if (editBtn) {
+                if (!editBtn[handlerKey]) {
+                    editBtn[handlerKey] = navigateToEditor;
+                    editBtn.addEventListener('click', editBtn[handlerKey]);
+                }
+            }
+            if (sidebarEditBtn) {
+                var sidebarKey = '_lovebudSidebarEditClick';
+                if (!sidebarEditBtn[sidebarKey]) {
+                    sidebarEditBtn[sidebarKey] = navigateToEditor;
+                    sidebarEditBtn.addEventListener('click', sidebarEditBtn[sidebarKey]);
+                }
             }
         } else {
-            modeGroup.style.display = 'none';
+            if (modeGroup) modeGroup.style.display = 'none';
+            if (sidebarOwnerMode) sidebarOwnerMode.style.display = 'none';
+            if (sidebarBackLink) sidebarBackLink.href = searchHref;
+            if (sidebarBackLabel) sidebarBackLabel.textContent = '둘러보기로 돌아가기';
+            if (sidebarKicker) sidebarKicker.textContent = '공개 러브트리';
         }
     }
     window.LoveBudPublicCanvasInit = window.LoveBudPublicCanvasInit || {};

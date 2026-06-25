@@ -129,6 +129,10 @@ const FILE_ALLOWLIST = {
     count: 1, classification: 'safe',
     reason: 'mount.outerHTML = template — static public viewer detail view template, no user content'
   },
+  'js/viewer/templates/public-viewer-sidebar-template.js': {
+    count: 1, classification: 'safe',
+    reason: 'mount.outerHTML = template — static public viewer sidebar template, no user content'
+  },
   'js/viewer/viewer-init-flow.js': {
     count: 1, classification: 'safe',
     reason: 'Panels.renderPanel — approved template renderer with internal escaping'

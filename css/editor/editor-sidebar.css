@@ -192,3 +192,39 @@
     line-height: 1.35 !important;
     display: block !important;
 }
+
+/* Public Viewer Sidebar Styles (Issue #2884) */
+.public-viewer-sidebar {
+  display: flex;
+}
+
+.public-viewer-sidebar .viewer-sidebar-owner-mode {
+  margin-top: auto;
+  padding-top: 16px;
+  border-top: 1px solid rgba(144, 73, 81, 0.08);
+}
+
+.public-viewer-sidebar .viewer-sidebar-mode-actions {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+}
+
+.public-viewer-sidebar .viewer-sidebar-mode-actions .sidebar-btn {
+  flex: 1 1 0;
+}
+
+.public-viewer-sidebar .viewer-sidebar-moment-count {
+  display: block;
+  margin-top: 12px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--on-surface-note);
+  opacity: 0.8;
+}
+
+@media (max-width: 1024px) {
+  .public-viewer-sidebar {
+    display: none !important;
+  }
+}

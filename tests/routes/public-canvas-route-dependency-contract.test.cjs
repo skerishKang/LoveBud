@@ -461,3 +461,179 @@ test('public canvas init delegates metrics/profile setup through entry wrapper',
     'local load failure append helper must be defined before init public canvas function'
   );
 });
+
+test('public canvas sidebar template and controller wiring contract (Issue #2884)', () => {
+  const html = getViewHtml();
+  const scripts = getScriptSrcs();
+  const templateSrc = fs.readFileSync('js/viewer/templates/public-viewer-sidebar-template.js', 'utf8');
+  const initSrc = fs.readFileSync('js/viewer/public-canvas-init.js', 'utf8');
+  const cssSrc = fs.readFileSync('css/editor/editor-sidebar.css', 'utf8');
+
+  // 1. pages/view.html에 publicViewerSidebarTemplateMount가 canvas mount보다 앞에 존재
+  const mountIdx = html.indexOf('id="publicViewerSidebarTemplateMount"');
+  const canvasIdx = html.indexOf('id="canvasArea"');
+  assert.notEqual(mountIdx, -1, 'publicViewerSidebarTemplateMount must exist in view.html');
+  assert.notEqual(canvasIdx, -1, 'canvasArea must exist in view.html');
+  assert.ok(mountIdx < canvasIdx, 'publicViewerSidebarTemplateMount must reside before canvasArea');
+
+  // 2. public viewer sidebar template script가 존재
+  assert.ok(
+    scriptIncludes(scripts, 'js/viewer/templates/public-viewer-sidebar-template.js'),
+    'view.html must import public-viewer-sidebar-template.js'
+  );
+
+  // 3. sidebar template script가 public-canvas-init.js보다 먼저 로드
+  assertScriptOrder(
+    scripts,
+    'js/viewer/templates/public-viewer-sidebar-template.js',
+    'js/viewer/public-canvas-init.js'
+  );
+
+  // 4. public view는 editor sidebar template, add-memory template, floating toolbar를 새로 가져오지 않음
+  assert.equal(html.includes('editorSidebarTemplateMount'), false, 'must not include editorSidebarTemplateMount');
+  assert.equal(html.includes('editor-floating-toolbar-template'), false, 'must not load editor-floating-toolbar-template');
+
+  // 5. template에는 required sidebar IDs가 존재
+  const requiredIds = [
+    'viewerSidebarBackLink',
+    'viewerSidebarBackLabel',
+    'viewerSidebarKicker',
+    'viewerSidebarTreeTitle',
+    'viewerSidebarSummary',
+    'viewerSidebarMomentCount',
+    'viewerSidebarOwnerMode',
+    'viewerSidebarViewBtn',
+    'viewerSidebarEditBtn'
+  ];
+  requiredIds.forEach(id => {
+    assert.ok(templateSrc.includes(`id="${id}"`), `template must contain id="${id}"`);
+  });
+
+  // 6. template에는 renameTreeBtn, addMemoryBtn, sidebarVisibilityToggleBtn가 없음
+  const forbiddenBtns = ['renameTreeBtn', 'addMemoryBtn', 'sidebarVisibilityToggleBtn'];
+  forbiddenBtns.forEach(btn => {
+    assert.equal(templateSrc.includes(btn), false, `template must not contain ${btn}`);
+  });
+
+  // 7. public-canvas-init.js가 title/summary/moment count를 새 IDs에 연결
+  assert.ok(initSrc.includes('viewerSidebarTreeTitle'), 'init must reference viewerSidebarTreeTitle');
+  assert.ok(initSrc.includes('viewerSidebarSummary'), 'init must reference viewerSidebarSummary');
+  assert.ok(initSrc.includes('viewerSidebarMomentCount'), 'init must reference viewerSidebarMomentCount');
+
+  // 8. owner rail reveal이 resolveTreeWorkspaceCanEdit() 또는 existing capability result에 종속
+  assert.ok(
+    initSrc.includes('resolveTreeWorkspaceCanEdit'),
+    'init must depend on resolveTreeWorkspaceCanEdit for capability check'
+  );
+
+  // 9. capability false일 때 owner mode container가 숨겨지는 code path 존재
+  assert.ok(
+    initSrc.includes("sidebarOwnerMode.style.display = 'none'"),
+    'init must hide owner mode container when capability false'
+  );
+
+  // 10. raw ownerId/Firebase UID를 sidebar DOM에 렌더하지 않음
+  assert.equal(templateSrc.includes('ownerId'), false, 'template must not output ownerId');
+  assert.equal(templateSrc.includes('uid'), false, 'template must not output uid');
+
+  // 11. template의 viewerSidebarOwnerMode에 viewer-sidebar-owner-mode class 존재
+  assert.ok(
+    templateSrc.includes('class="viewer-sidebar-owner-mode"'),
+    'template must have viewer-sidebar-owner-mode class'
+  );
+
+  // 12. template에 viewer-sidebar-mode-actions class 존재
+  assert.ok(
+    templateSrc.includes('class="viewer-sidebar-mode-actions"'),
+    'template must have viewer-sidebar-mode-actions class'
+  );
+
+  // 13. template에 editor-add-section이 없음
+  assert.equal(
+    templateSrc.includes('editor-add-section'),
+    false,
+    'public viewer owner controls must not use editor-add-section because editor-readonly hides it'
+  );
+
+  // 14. template에 editor-add-section-bottom이 없음
+  assert.equal(
+    templateSrc.includes('editor-add-section-bottom'),
+    false,
+    'template must not contain editor-add-section-bottom'
+  );
+
+  // 15. css/editor/editor-sidebar.css가 두 class selector를 포함
+  assert.ok(
+    cssSrc.includes('.public-viewer-sidebar .viewer-sidebar-owner-mode'),
+    'css must contain selector for viewer-sidebar-owner-mode'
+  );
+  assert.ok(
+    cssSrc.includes('.public-viewer-sidebar .viewer-sidebar-mode-actions'),
+    'css must contain selector for viewer-sidebar-mode-actions'
+  );
+
+  // 16. public viewer owner action container가 .editor-readonly .editor-add-section hide rule에 걸리지 않음을 정적 검증
+  const isProtected = !templateSrc.includes('editor-add-section');
+  assert.ok(isProtected, 'verified that public owner controls will not be hidden by readonly editor-add-section css rules');
+
+  // 17. template의 viewerSidebarMomentCount가 viewer-sidebar-moment-count class를 사용함
+  assert.ok(
+    templateSrc.includes('class="viewer-sidebar-moment-count"'),
+    'template must have viewer-sidebar-moment-count class'
+  );
+
+  // 18. template에 editor-tree-quiet-note가 없음
+  assert.equal(
+    templateSrc.includes('editor-tree-quiet-note'),
+    false,
+    'public viewer moment count must not use editor-tree-quiet-note because editor CSS hides it'
+  );
+
+  // 19. css/editor/editor-sidebar.css가 .public-viewer-sidebar .viewer-sidebar-moment-count selector를 포함함
+  assert.ok(
+    cssSrc.includes('.public-viewer-sidebar .viewer-sidebar-moment-count'),
+    'css must contain selector for public viewer sidebar moment count'
+  );
+
+  // 20. public moment count가 기존 .editor-tree-quiet-note hide rule에 걸리지 않음을 정적으로 확인
+  const isCountVisible = !templateSrc.includes('editor-tree-quiet-note');
+  assert.ok(isCountVisible, 'verified that public moment count will not be hidden by readonly editor-tree-quiet-note css rules');
+
+  // 21. pages/view.html이 next exact versions를 사용함
+  assert.ok(
+    html.includes('href="../css/editor.css?v=20260625-2884-left-rail-2"'),
+    'view.html must load editor.css with version 20260625-2884-left-rail-2'
+  );
+  assert.ok(
+    html.includes('src="../js/viewer/templates/public-viewer-sidebar-template.js?v=20260625-2884-left-rail-2"'),
+    'view.html must load template module with version 20260625-2884-left-rail-2'
+  );
+  assert.ok(
+    html.includes('src="../js/viewer/public-canvas-init.js?v=20260625-2884-left-rail-2"'),
+    'view.html must load public-canvas-init.js with version 20260625-2884-left-rail-2'
+  );
+
+  // 22. css/editor.css가 next exact import를 사용함
+  const mainCssSrc = fs.readFileSync('css/editor.css', 'utf8');
+  assert.ok(
+    mainCssSrc.includes('@import url("./editor/editor-sidebar.css?v=20260625-2884-left-rail-2");'),
+    'editor.css must import editor-sidebar.css with version 20260625-2884-left-rail-2'
+  );
+
+  // 23. public rail 관련 asset에서 old cache key가 view.html 및 editor.css에 남지 않음
+  const forbiddenCacheKeys = [
+    '20260510-1006',
+    '20260625-2874-auth-hotfix-1',
+    '20260625-2884-left-rail-1'
+  ];
+  forbiddenCacheKeys.forEach(key => {
+    assert.equal(
+      html.includes(`editor.css?v=${key}`) ||
+      html.includes(`public-canvas-init.js?v=${key}`) ||
+      html.includes(`public-viewer-sidebar-template.js?v=${key}`) ||
+      mainCssSrc.includes(`editor-sidebar.css?v=${key}`),
+      false,
+      `view.html and editor.css must not contain old cache key: ${key}`
+    );
+  });
+});
