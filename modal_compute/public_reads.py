@@ -171,11 +171,11 @@ def _build_social_counts_source(
     if not has_table or (not has_like_count and not has_view_count):
         return "(SELECT NULL::text as tree_id, 0 as like_count, 0 as view_count WHERE FALSE) s_dummy"
     if has_like_count and not has_view_count:
-        return "(SELECT tree_id, like_count, 0 as view_count FROM tree_social_counts) s_social"
+        return "(SELECT tree_id::text as tree_id, like_count, 0 as view_count FROM tree_social_counts) s_social"
     if not has_like_count and has_view_count:
-        return "(SELECT tree_id, 0 as like_count, view_count FROM tree_social_counts) s_social"
+        return "(SELECT tree_id::text as tree_id, 0 as like_count, view_count FROM tree_social_counts) s_social"
     # Both table and columns exist
-    return "tree_social_counts"
+    return "(SELECT tree_id::text as tree_id, like_count, view_count FROM tree_social_counts) s_social"
 
 
 def fetch_latest_public_tree_snapshots(limit: int = 12, sort: str = "latest") -> list[dict[str, Any]]:

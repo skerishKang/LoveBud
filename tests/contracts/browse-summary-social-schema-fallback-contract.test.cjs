@@ -16,13 +16,13 @@ test('Tolerate missing tree_social_counts dynamically inside fetch_latest_public
   // 2. like-only source는 실제 like_count를 읽고 view_count는 literal 0
   assert.match(
     publicReads,
-    /has_like_count\s+and\s+not\s+has_view_count:[\s\S]*?SELECT\s+tree_id,\s+like_count,\s+0\s+as\s+view_count\s+FROM\s+tree_social_counts/
+    /has_like_count\s+and\s+not\s+has_view_count:[\s\S]*?SELECT\s+tree_id(::text)?\s+as\s+tree_id,\s+like_count,\s+0\s+as\s+view_count\s+FROM\s+tree_social_counts/
   );
 
   // 3. view-only source는 실제 view_count를 읽고 like_count는 literal 0
   assert.match(
     publicReads,
-    /not\s+has_like_count\s+and\s+has_view_count:[\s\S]*?SELECT\s+tree_id,\s+0\s+as\s+like_count,\s+view_count\s+FROM\s+tree_social_counts/
+    /not\s+has_like_count\s+and\s+has_view_count:[\s\S]*?SELECT\s+tree_id(::text)?\s+as\s+tree_id,\s+0\s+as\s+like_count,\s+view_count\s+FROM\s+tree_social_counts/
   );
 
   // table 없음 또는 두 column 모두 없을 때
