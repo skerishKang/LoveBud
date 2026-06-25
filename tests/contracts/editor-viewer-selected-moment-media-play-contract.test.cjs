@@ -387,9 +387,26 @@ test('Public viewer detail UI selected moment playback contract (read-only)', ()
   detailUI.updateDetailPanel(ytMoment);
 
   const player = elements.mediaWrap.children.find(c => c.tagName === 'IFRAME');
-  assert.ok(player, 'Public viewer should append iframe player');
-  assert.ok(player.src.includes('start=83'), 'YouTube start param from format 1m23s should be parsed');
-  assert.ok(player.src.includes('end=150'), 'YouTube end param from format 2m30s should be parsed');
+  assert.equal(player, undefined, 'Public viewer selection must NOT autoplay — no iframe on selection');
+  assert.equal(elements.img.style.display, '', 'Static thumbnail should remain visible until play action');
+  assert.equal(elements.overlay.hidden, false, 'Overlay should remain visible until play action');
+
+  // Verify play button is bound for explicit play
+  const playBtn = createMockElement('button');
+  playBtn.classList.add('play-btn');
+  elements.mediaWrap.appendChild(playBtn);
+  // Use a different ID to bypass the 150ms debounce on same memoryId
+  var ytMoment2 = Object.assign({}, ytMoment, { id: 'mem-1-play' });
+  detailUI.updateDetailPanel(ytMoment2);
+  const playBtnAfter = elements.mediaWrap.querySelector('.play-btn') || playBtn;
+  assert.ok(playBtnAfter.onclick, 'Play button onclick must be bound after selection');
+  const evt = { preventDefault() {}, stopPropagation() {} };
+  playBtnAfter.onclick(evt);
+
+  const player2 = elements.mediaWrap.children.find(c => c.tagName === 'IFRAME');
+  assert.ok(player2, 'Public viewer explicit play action must append iframe player');
+  assert.ok(player2.src.includes('start=83'), 'YouTube start param from format 1m23s should be parsed');
+  assert.ok(player2.src.includes('end=150'), 'YouTube end param from format 2m30s should be parsed');
 
   // Verify viewer/read-only path has NO edit inputs or edit controls mixed in
   assert.equal(elements.editTitleInput, undefined, 'Edit inputs should not exist in public viewer context');

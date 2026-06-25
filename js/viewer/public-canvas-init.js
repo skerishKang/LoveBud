@@ -410,6 +410,8 @@
     }
 
     function updateOwnerModeUI(selectionState, providedTreeData) {
+        selectionState = selectionState || window.__viewerSelectionState || null;
+        providedTreeData = providedTreeData || window.__viewerTreeData || null;
         var modeGroup = document.getElementById('viewerModeGroup');
         var viewBtn = document.getElementById('viewerModeViewBtn');
         var editBtn = document.getElementById('viewerModeEditBtn');
@@ -445,6 +447,8 @@
             modeGroup.style.display = 'none';
         }
     }
+    window.LoveBudPublicCanvasInit = window.LoveBudPublicCanvasInit || {};
+    window.LoveBudPublicCanvasInit.updateOwnerModeUI = updateOwnerModeUI;
     function installPublicCanvasToolbarCompactMode() {
         var canvasEntry = window.LoveBudPublicViewerCanvasEntry;
         if (canvasEntry && typeof canvasEntry.installToolbarCompactMode === 'function') {
@@ -656,7 +660,27 @@
                 }
 
                 // Show owner mode group if authenticated owner
+                window.__viewerSelectionState = selectionState;
+                window.__viewerTreeData = normalized.treeData;
                 updateOwnerModeUI(selectionState, normalized.treeData);
+                // Deferred re-check: auth may resolve after tree data loads
+                if (typeof window.LoveBudPublicCanvasInit._ownerAuthPoller === 'undefined') {
+                    window.LoveBudPublicCanvasInit._ownerAuthPoller = true;
+                    (function pollOwnerAuth() {
+                        var mg = document.getElementById('viewerModeGroup');
+                        if (mg && mg.style.display !== 'none') return;
+                        var ap = window.LoveTreeAuthPolicy;
+                        var authReady = ap && typeof ap.hasConfirmedAuthSession === 'function'
+                            ? ap.hasConfirmedAuthSession() : true;
+                        if (authReady) return;
+                        if (typeof window.LoveBudPublicCanvasInit.updateOwnerModeUI === 'function') {
+                            window.LoveBudPublicCanvasInit.updateOwnerModeUI();
+                        }
+                        if (mg && mg.style.display === 'none') {
+                            setTimeout(pollOwnerAuth, 200);
+                        }
+                    })();
+                }
             }
 
             waitForPublicRuntime(startCanvas);

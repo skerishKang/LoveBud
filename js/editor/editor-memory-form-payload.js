@@ -101,19 +101,30 @@
         };
     }
 
+    function isLocalizationKey(value) {
+        if (!value || typeof value !== 'string') return false;
+        // Pattern: lowercase segments separated by underscores, at least 3 segments
+        // e.g. editor_url_only_youtube_title, viewer_tree_title
+        return /^[a-z]+(?:_[a-z]+){2,}$/.test(value) && value.indexOf('_') !== -1;
+    }
+
     function resolveUrlOnlyDefaultTitle(mediaSource, i18n) {
         const sourceType = String(mediaSource?.sourceType || '').trim().toLowerCase();
         const sourceLabel = String(mediaSource?.sourceLabel || '').trim();
 
         if (sourceType === 'youtube' || /youtube/i.test(sourceLabel)) {
-            return (typeof i18n === 'function' && i18n('editor_url_only_youtube_title')) || 'YouTube 순간';
+            const resolved = typeof i18n === 'function' ? i18n('editor_url_only_youtube_title') : null;
+            if (resolved && !isLocalizationKey(resolved)) return resolved;
+            return 'YouTube 영상';
         }
 
         if (sourceLabel) {
             return sourceLabel + ' 순간';
         }
 
-        return (typeof i18n === 'function' && i18n('editor_url_only_default_title')) || '새 순간';
+        const resolved = typeof i18n === 'function' ? i18n('editor_url_only_default_title') : null;
+        if (resolved && !isLocalizationKey(resolved)) return resolved;
+        return '새 순간';
     }
 
     function resolveMemoryTitle(titleValue, rawUrl, usingLinkMode, mediaSource, i18n) {

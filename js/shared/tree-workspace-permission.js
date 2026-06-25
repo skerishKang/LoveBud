@@ -39,4 +39,37 @@
         resolveTreeOwnerId: resolveTreeOwnerId,
         resolveTreeWorkspaceCanEdit: resolveTreeWorkspaceCanEdit
     };
+
+    function resolveMemoryUrl(memory) {
+        if (!memory) return '';
+        return memory.sourceUrl || memory.source_url || memory.videoUrl || memory.video_url || memory.url || memory.linkUrl || memory.link_url || '';
+    }
+
+    function classifyDuplicateUrls(memories) {
+        if (!Array.isArray(memories)) return [];
+        var urlMap = Object.create(null);
+        memories.forEach(function(memory) {
+            var url = resolveMemoryUrl(memory);
+            if (!url) return;
+            if (!urlMap[url]) urlMap[url] = [];
+            urlMap[url].push({ id: memory.id, title: memory.title || '' });
+        });
+        var duplicates = [];
+        Object.keys(urlMap).forEach(function(url) {
+            if (urlMap[url].length > 1) {
+                duplicates.push({ url: url, count: urlMap[url].length, items: urlMap[url] });
+            }
+        });
+        return duplicates;
+    }
+
+    function isLocalizationKeyTitle(title) {
+        if (!title || typeof title !== 'string') return false;
+        return /^[a-z]+(?:_[a-z]+){2,}$/.test(title) && title.indexOf('_') !== -1;
+    }
+
+    window.LoveBudTreeWorkspaceClassifier = {
+        classifyDuplicateUrls: classifyDuplicateUrls,
+        isLocalizationKeyTitle: isLocalizationKeyTitle
+    };
 })();

@@ -27,7 +27,7 @@ test('viewer image boundary owns src and alt output', () => {
   assert.ok(boundary.includes("document.querySelector('.detail-video img')"));
   assert.ok(boundary.includes('resolveMemoryThumbnail(data)'));
   assert.ok(boundary.includes('imgEl.src ='));
-  assert.ok(boundary.includes("imgEl.alt = isEmptyState ? '' : ((data && data.title) || '')"));
+  assert.ok(boundary.includes('imgEl.alt = isEmptyState ?'));
   assert.equal(boundary.includes('innerHTML'), false);
 });
 

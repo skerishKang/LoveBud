@@ -1,6 +1,14 @@
 (function() {
     'use strict';
 
+    function safeDisplayTitle(title) {
+        if (!title) return title;
+        if (typeof title === 'string' && /^[a-z]+(?:_[a-z]+){2,}$/.test(title) && title.indexOf('_') !== -1) {
+            return null;
+        }
+        return title;
+    }
+
     function createPublicViewerUpdateFocusSelectedBtn(deps) {
         var getSelectedNodeId = deps && typeof deps.getSelectedNodeId === 'function'
             ? deps.getSelectedNodeId
@@ -148,9 +156,11 @@
             titleContainer.style.alignItems = 'flex-start';
 
             titleText.style.flex = '1';
+            var rawTitle = data && data.title;
+            var safeTitle = safeDisplayTitle(rawTitle);
             titleText.textContent = isEmptyState
                 ? getText('editor_current_moment_empty_title', '이 트리의 첫 장면을 심어 보세요')
-                : ((data && data.title) || getText('editor_current_moment_title', '지금 마음이 머문 장면'));
+                : (safeTitle || getText('editor_current_moment_title', '지금 마음이 머문 장면'));
 
             titleContainer.appendChild(titleText);
             titleEl.appendChild(titleContainer);
@@ -337,7 +347,8 @@
             clearDetailPlayer(mediaWrap);
 
             var isEmptyState = !!(data && data.isNewTree);
-            imgEl.alt = isEmptyState ? '' : ((data && data.title) || '');
+            var safeAlt = safeDisplayTitle(data && data.title);
+            imgEl.alt = isEmptyState ? '' : (safeAlt || '');
 
             if (isEmptyState) {
                 imgEl.removeAttribute('src');
@@ -352,35 +363,23 @@
             var videoId = getYouTubeVideoId(rawUrl);
 
             if (videoId) {
-                var player = buildInlinePlayerElement(data);
-                if (player) {
-                    imgEl.style.display = 'none';
+                // YouTube: explicit-play only — show thumbnail + play overlay, never autoplay
+                var thumb = resolveMemoryThumbnail(data);
+                if (thumb) {
+                    imgEl.src = thumb;
+                    imgEl.style.display = '';
                     var overlay = mediaWrap ? mediaWrap.querySelector('.memory-preview-overlay') : null;
-                    if (overlay) overlay.hidden = true;
+                    if (overlay) overlay.hidden = false;
                     if (mediaWrap) {
                         mediaWrap.style.display = '';
                         mediaWrap.classList.remove('is-empty');
-                        mediaWrap.classList.add('is-playing');
-                        mediaWrap.appendChild(player);
                     }
+                    bindDetailMediaPlayback(data, mediaWrap);
                 } else {
-                    var thumb = resolveMemoryThumbnail(data);
-                    if (thumb) {
-                        imgEl.src = thumb;
-                        imgEl.style.display = '';
-                        var overlay = mediaWrap ? mediaWrap.querySelector('.memory-preview-overlay') : null;
-                        if (overlay) overlay.hidden = false;
-                        if (mediaWrap) {
-                            mediaWrap.style.display = '';
-                            mediaWrap.classList.remove('is-empty');
-                        }
-                        bindDetailMediaPlayback(data, mediaWrap);
-                    } else {
-                        imgEl.removeAttribute('src');
-                        if (mediaWrap) {
-                            mediaWrap.classList.add('is-empty');
-                            mediaWrap.style.display = 'none';
-                        }
+                    imgEl.removeAttribute('src');
+                    if (mediaWrap) {
+                        mediaWrap.classList.add('is-empty');
+                        mediaWrap.style.display = 'none';
                     }
                 }
             } else {
