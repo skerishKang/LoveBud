@@ -42,8 +42,8 @@ test('3. My Trees desktop selectors do not introduce conflicting geometry styles
   // Eyebrow margin-bottom is aligned to Browse's 14px
   assert.match(header, /\.my-trees-eyebrow\s*\{[^}]*margin-bottom:\s*14px;?/, 'Eyebrow margin-bottom must be 14px');
 
-  // Results head margin-bottom aligned to Browse's 4px 0 18px
-  assert.match(header, /\.my-trees-results-head\s*\{[^}]*margin:\s*4px\s+0\s+18px;?/, 'Results head margin must be 4px 0 18px');
+  // Results head margin aligned to Browse's 0 0 16px (#2892)
+  assert.match(header, /\.my-trees-results-head\s*\{[^}]*margin:\s*0\s+0\s+16px;?/, 'Results head margin must be 0 0 16px (#2892)');
 
   // Title row & controls alignments must be correct
   assert.match(header, /\.my-trees-results-title-row\s*\{[^}]*justify-content:\s*space-between;/, 'Title row must keep label left and create CTA right');
