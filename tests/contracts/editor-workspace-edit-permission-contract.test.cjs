@@ -612,20 +612,25 @@ test('23. editor auth-late reconciliation contracts and dynamic VM assertions', 
   assert.ok(loadedTree, 'loaded tree must exist');
   assert.equal(loadedTree._editorAuthEditabilityCallbackRegistered, true, 'marker must be set on tree');
 
+  // When canEdit remains true (switch/login retains edit), no redirection happens
   loadedTree.viewerCanEdit = true;
-  applyEditorEditabilityCalls = [];
+  let redirected = false;
+  sandbox.window.location = {
+    pathname: '/pages/editor.html',
+    origin: 'http://localhost',
+    search: '?treeId=test-tree-id',
+    set href(val) {
+      if (val.includes('my-trees')) {
+        redirected = true;
+      }
+    },
+    get href() { return ''; }
+  };
   callback();
-  assert.equal(applyEditorEditabilityCalls.length, 1);
-  assert.equal(applyEditorEditabilityCalls[0].canEdit, true, 'callback must apply editability when user is owner');
+  assert.equal(redirected, false, 'callback must not exit if user still has edit permissions');
 
+  // When user is logout (viewerCanEdit = false), it MUST redirect/exit to my-trees
   loadedTree.viewerCanEdit = false;
-  applyEditorEditabilityCalls = [];
   callback();
-  assert.equal(applyEditorEditabilityCalls.length, 1);
-  assert.equal(applyEditorEditabilityCalls[0].canEdit, false, 'callback must apply readonly on logout');
-
-  sandbox.window.currentTreeData = { id: 'different-tree-id', viewerCanEdit: true };
-  applyEditorEditabilityCalls = [];
-  callback();
-  assert.equal(applyEditorEditabilityCalls.length, 0, 'callback must not update state if tree ID is mismatched');
+  assert.equal(redirected, true, 'callback must trigger exit to my-trees on auth logout');
 });

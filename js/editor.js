@@ -237,7 +237,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 typeof window.registerOnAuthReady === 'function'
             ) {
                 loadedTreeData._editorAuthEditabilityCallbackRegistered = true;
-                window.registerOnAuthReady(function() {
+                window.registerOnAuthReady(function(authUser) {
                     var activeTree = window.currentTreeData || loadedTreeData;
                     if (!activeTree || activeTree.id !== treeId) return;
 
@@ -245,7 +245,12 @@ document.addEventListener('DOMContentLoaded', () => {
                         ? window.LoveBudTreeWorkspacePermission.resolveTreeWorkspaceCanEdit(activeTree)
                         : false;
 
-                    applyEditorEditabilityState({ canEdit: canEditNow });
+                    if (!canEditNow) {
+                        // Logout or switch account where permission is lost -> do full exit/reload
+                        var isPagesContext = window.location.pathname.indexOf('/pages/') !== -1;
+                        var myTreesHref = isPagesContext ? 'my-trees.html' : 'pages/my-trees.html';
+                        window.location.href = window.location.origin + '/' + myTreesHref;
+                    }
                 });
             }
 
