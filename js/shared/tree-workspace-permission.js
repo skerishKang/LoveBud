@@ -27,6 +27,8 @@
     function resolveTreeWorkspaceCanEdit(tree, options) {
         if (!tree) return false;
         if (options && options.requestedReadOnly === true) return false;
+        if (tree.viewerCanEdit === true) return true;
+        if (tree.viewerCanEdit === false) return false;
         var currentUser = resolveAuthSessionUser();
         if (!currentUser || !currentUser.uid) return false;
         var ownerId = resolveTreeOwnerId(tree);
