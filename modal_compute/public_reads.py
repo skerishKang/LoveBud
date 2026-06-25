@@ -169,7 +169,7 @@ def _build_social_counts_source(
 ) -> str:
     """Build the dynamic subquery or table reference for tree_social_counts."""
     if not has_table or (not has_like_count and not has_view_count):
-        return "(SELECT NULL::uuid as tree_id, 0 as like_count, 0 as view_count WHERE FALSE) s_dummy"
+        return "(SELECT NULL::text as tree_id, 0 as like_count, 0 as view_count WHERE FALSE) s_dummy"
     if has_like_count and not has_view_count:
         return "(SELECT tree_id, like_count, 0 as view_count FROM tree_social_counts) s_social"
     if not has_like_count and has_view_count:

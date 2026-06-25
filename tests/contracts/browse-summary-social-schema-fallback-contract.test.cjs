@@ -28,7 +28,7 @@ test('Tolerate missing tree_social_counts dynamically inside fetch_latest_public
   // table 없음 또는 두 column 모두 없을 때
   assert.match(
     publicReads,
-    /not\s+has_table\s+or\s+\(\s*not\s+has_like_count\s+and\s+not\s+has_view_count\s*\):[\s\S]*?SELECT\s+NULL::uuid\s+as\s+tree_id,\s+0\s+as\s+like_count,\s+0\s+as\s+view_count\s+WHERE\s+FALSE/
+    /not\s+has_table\s+or\s+\(\s*not\s+has_like_count\s+and\s+not\s+has_view_count\s*\):[\s\S]*?SELECT\s+NULL::text\s+as\s+tree_id,\s+0\s+as\s+like_count,\s+0\s+as\s+view_count\s+WHERE\s+FALSE/
   );
 
   // 4. likes fallback은 has_like_count_column 부재에만 반응
