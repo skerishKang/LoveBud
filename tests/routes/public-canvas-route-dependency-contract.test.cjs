@@ -598,4 +598,42 @@ test('public canvas sidebar template and controller wiring contract (Issue #2884
   // 20. public moment count가 기존 .editor-tree-quiet-note hide rule에 걸리지 않음을 정적으로 확인
   const isCountVisible = !templateSrc.includes('editor-tree-quiet-note');
   assert.ok(isCountVisible, 'verified that public moment count will not be hidden by readonly editor-tree-quiet-note css rules');
+
+  // 21. pages/view.html이 next exact versions를 사용함
+  assert.ok(
+    html.includes('href="../css/editor.css?v=20260625-2884-left-rail-2"'),
+    'view.html must load editor.css with version 20260625-2884-left-rail-2'
+  );
+  assert.ok(
+    html.includes('src="../js/viewer/templates/public-viewer-sidebar-template.js?v=20260625-2884-left-rail-2"'),
+    'view.html must load template module with version 20260625-2884-left-rail-2'
+  );
+  assert.ok(
+    html.includes('src="../js/viewer/public-canvas-init.js?v=20260625-2884-left-rail-2"'),
+    'view.html must load public-canvas-init.js with version 20260625-2884-left-rail-2'
+  );
+
+  // 22. css/editor.css가 next exact import를 사용함
+  const mainCssSrc = fs.readFileSync('css/editor.css', 'utf8');
+  assert.ok(
+    mainCssSrc.includes('@import url("./editor/editor-sidebar.css?v=20260625-2884-left-rail-2");'),
+    'editor.css must import editor-sidebar.css with version 20260625-2884-left-rail-2'
+  );
+
+  // 23. public rail 관련 asset에서 old cache key가 view.html 및 editor.css에 남지 않음
+  const forbiddenCacheKeys = [
+    '20260510-1006',
+    '20260625-2874-auth-hotfix-1',
+    '20260625-2884-left-rail-1'
+  ];
+  forbiddenCacheKeys.forEach(key => {
+    assert.equal(
+      html.includes(`editor.css?v=${key}`) ||
+      html.includes(`public-canvas-init.js?v=${key}`) ||
+      html.includes(`public-viewer-sidebar-template.js?v=${key}`) ||
+      mainCssSrc.includes(`editor-sidebar.css?v=${key}`),
+      false,
+      `view.html and editor.css must not contain old cache key: ${key}`
+    );
+  });
 });
