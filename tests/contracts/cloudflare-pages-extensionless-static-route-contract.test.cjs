@@ -13,44 +13,16 @@ function redirectLines() {
   return readRedirects().split('\n').map(l => l.trim()).filter(l => l && !l.startsWith('#'));
 }
 
-// ─── REWRITE RULES (200) ─────────────────────────────────────────────────────
+// ─── NO CUSTOM 200 REWRITES — CLOUDFLARE NATIVE CLEAN URLs ───────
 
-const EXPECTED_REWRITES = [
-  '/intro /pages/intro.html 200',
-  '/login /pages/login.html 200',
-  '/search /pages/search.html 200',
-  '/detail /pages/detail.html 200',
-  '/editor /pages/editor.html 200',
-  '/my-trees /pages/my-trees.html 200',
-  '/tree /pages/tree.html 200',
-
-  '/pages/intro /pages/intro.html 200',
-  '/pages/login /pages/login.html 200',
-  '/pages/search /pages/search.html 200',
-  '/pages/detail /pages/detail.html 200',
-  '/pages/editor /pages/editor.html 200',
-  '/pages/my-trees /pages/my-trees.html 200',
-  '/pages/tree /pages/tree.html 200',
-];
-
-test('_redirects contains all 14 extensionless -> .html 200 rewrite rules', () => {
+test('has no 200 rewrite rules (Cloudflare native clean URLs used instead)', () => {
   const lines = redirectLines();
-  for (const rule of EXPECTED_REWRITES) {
-    assert.ok(lines.includes(rule), `Missing rewrite rule: ${rule}`);
+  for (const line of lines) {
+    assert.ok(!line.endsWith(' 200'), `Must not have any 200 rewrite rule (Cloudflare natively serves clean URLs): ${line}`);
   }
 });
 
-test('_redirects /pages/login rewrites to /pages/login.html 200', () => {
-  const lines = redirectLines();
-  assert.ok(lines.includes('/pages/login /pages/login.html 200'));
-});
-
-test('_redirects /pages/my-trees rewrites to /pages/my-trees.html 200', () => {
-  const lines = redirectLines();
-  assert.ok(lines.includes('/pages/my-trees /pages/my-trees.html 200'));
-});
-
-// ─── TARGET FILES EXIST ──────────────────────────────────────────────────────
+// ─── TARGET .html FILES EXIST ─────────────────────────────────────
 
 const TARGET_HTML_FILES = [
   'pages/intro.html',
@@ -69,9 +41,9 @@ test('All target .html files exist', () => {
   }
 });
 
-// ─── .html -> EXTENSIONLESS 301 RULES PRESERVED ──────────────────────────────
+// ─── ROOT LEGACY .html → /pages/<name> 301 RULES PRESERVED ────────
 
-const EXPECTED_301_RULES = [
+const EXPECTED_ROOT_301 = [
   '/intro.html /pages/intro 301',
   '/login.html /pages/login 301',
   '/search.html /pages/search 301',
@@ -81,29 +53,33 @@ const EXPECTED_301_RULES = [
   '/tree.html /pages/tree 301',
 ];
 
-test('.html -> extensionless 301 canonical redirects are preserved (root only)', () => {
+const EXPECTED_ROOT_TRAILING_SLASH_301 = [
+  '/intro.html/ /pages/intro 301',
+  '/login.html/ /pages/login 301',
+  '/search.html/ /pages/search 301',
+  '/detail.html/ /pages/detail 301',
+  '/editor.html/ /pages/editor 301',
+  '/my-trees.html/ /pages/my-trees 301',
+  '/tree.html/ /pages/tree 301',
+];
+
+test('root legacy .html → /pages/<name> 301 redirects are preserved', () => {
   const lines = redirectLines();
-  for (const rule of EXPECTED_301_RULES) {
+  for (const rule of EXPECTED_ROOT_301) {
     assert.ok(lines.includes(rule), `Missing root 301 rule: ${rule}`);
   }
 });
 
-// ─── NO INVERTED DIRECTION ───────────────────────────────────────────────────
-
-test('No rewrite tries to direct .html -> extensionless as 200', () => {
+test('root legacy .html/ trailing-slash 301 redirects are preserved', () => {
   const lines = redirectLines();
-  for (const line of lines) {
-    if (!line.endsWith(' 200')) continue;
-    const parts = line.split(/\s+/);
-    assert.equal(parts.length, 3, `Rewrite rule should have 3 parts: ${line}`);
-    assert.ok(
-      parts[1].endsWith('.html'),
-      `200 rewrite target should be .html file, got: ${line}`
-    );
+  for (const rule of EXPECTED_ROOT_TRAILING_SLASH_301) {
+    assert.ok(lines.includes(rule), `Missing root trailing-slash 301: ${rule}`);
   }
 });
 
-test('No 301 redirect targets .html file', () => {
+// ─── ALL 301 SOURCES ARE .html FILES ──────────────────────────────
+
+test('every 301 redirect source is a .html file', () => {
   const lines = redirectLines();
   for (const line of lines) {
     if (!line.endsWith(' 301')) continue;
@@ -117,26 +93,7 @@ test('No 301 redirect targets .html file', () => {
   }
 });
 
-// ─── .html/ TRAILING SLASH VARIANTS ALSO PRESERVED ───────────────────────────
-
-const EXPECTED_TRAILING_SLASH_301 = [
-  '/intro.html/ /pages/intro 301',
-  '/login.html/ /pages/login 301',
-  '/search.html/ /pages/search 301',
-  '/detail.html/ /pages/detail 301',
-  '/editor.html/ /pages/editor 301',
-  '/my-trees.html/ /pages/my-trees 301',
-  '/tree.html/ /pages/tree 301',
-];
-
-test('.html/ trailing-slash 301 redirects are preserved (root only)', () => {
-  const lines = redirectLines();
-  for (const rule of EXPECTED_TRAILING_SLASH_301) {
-    assert.ok(lines.includes(rule), `Missing trailing-slash 301: ${rule}`);
-  }
-});
-
-// ─── NESTED /pages/*.html 301 REMOVED (LOOP PREVENTION) ──────────
+// ─── NESTED /pages/*.html → /pages/<name> 301 MUST NOT EXIST ──────
 
 const FORBIDDEN_NESTED_301 = [
   '/pages/intro.html /pages/intro 301',
@@ -156,14 +113,16 @@ const FORBIDDEN_NESTED_301 = [
   '/pages/tree.html/ /pages/tree 301',
 ];
 
-test('No /pages/*.html -> /pages/<name> 301 redirect exists (loop prevention)', () => {
+test('nested /pages/*.html → /pages/<name> 301 must not exist (would shadow Cloudflare native clean URLs)', () => {
   const lines = redirectLines();
   for (const rule of FORBIDDEN_NESTED_301) {
-    assert.ok(!lines.includes(rule), `Nested 301 redirect must be removed (causes loop): ${rule}`);
+    assert.ok(!lines.includes(rule), `Nested 301 must be removed: ${rule}`);
   }
 });
 
-test('200 rewrite targets are never redirected back (no loop)', () => {
+// ─── REWRITE TARGET NEVER CONFLICTS (NO CUSTOM 200, SO NO LOOP) ──
+
+test('no custom rewrite pairs exist that could create a redirect loop', () => {
   const lines = redirectLines();
   const rewriteTargets = [];
   for (const line of lines) {
@@ -171,16 +130,6 @@ test('200 rewrite targets are never redirected back (no loop)', () => {
     const parts = line.split(/\s+/);
     rewriteTargets.push(parts[1]);
   }
-  for (const target of rewriteTargets) {
-    // Check there is no 301 rule that would catch the rewrite target
-    const redirectFromTarget = lines.filter(l => {
-      if (!l.endsWith(' 301')) return false;
-      const parts = l.split(/\s+/);
-      return parts[0].replace(/\/$/, '') === target;
-    });
-    assert.equal(
-      redirectFromTarget.length, 0,
-      `Rewrite target "${target}" must not have a matching 301 redirect (loop): ${redirectFromTarget.join(', ')}`
-    );
-  }
+  assert.equal(rewriteTargets.length, 0,
+    'Must have zero 200 rewrite rules (Cloudflare natively serves clean URLs)');
 });
