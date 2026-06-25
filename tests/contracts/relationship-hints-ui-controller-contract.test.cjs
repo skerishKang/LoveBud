@@ -194,7 +194,7 @@ test('editor.html loads relationship hints helper scripts before editor.js', () 
   const html = read('pages/editor.html');
   const stateMachineIndex = html.indexOf('../js/editor/relationship-hints-state-machine.js?v=20260613-2462');
   const uiControllerIndex = html.indexOf('../js/editor/relationship-hints-ui-controller.js?v=20260613-2462');
-  const editorIndex = html.indexOf('../js/editor.js?v=20260613-2448');
+  const editorIndex = html.indexOf('../js/editor.js');
 
   assert.notEqual(stateMachineIndex, -1, 'relationship-hints-state-machine.js must be loaded');
   assert.notEqual(uiControllerIndex, -1, 'relationship-hints-ui-controller.js must be loaded');

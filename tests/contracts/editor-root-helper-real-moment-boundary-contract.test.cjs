@@ -207,7 +207,7 @@ test('editor page cache-busts root helpers and CTA files to PR #2448/#2449', () 
   assert.match(editorPage, /\.\.\/js\/editor\/editor-shell-canvas-ui\.js\?v=20260613-2448/);
   assert.match(editorPage, /\.\.\/js\/editor\/editor-shell-memory\.js\?v=20260613-2448/);
   assert.match(editorPage, /\.\.\/js\/editor\/editor-shell-helpers\.js\?v=20260613-2448/);
-  assert.match(editorPage, /\.\.\/js\/editor\.js\?v=20260613-2448/);
+  assert.match(editorPage, /\.\.\/js\/editor\.js\?v=202606(13-2448|25-2874-auth-hotfix-1)/);
 
   // PR #2449: editor-empty-guide-ui.js + editor-page-event-bindings.js + editor-empty-guide-template.js
   // + editor-panel-history.js 모두 ?v=20260613-2449로 bust

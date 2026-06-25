@@ -231,6 +231,24 @@ document.addEventListener('DOMContentLoaded', () => {
                 applyEditorEditabilityState({ canEdit: effectiveCanEdit });
             }
 
+            if (
+                loadedTreeData &&
+                !loadedTreeData._editorAuthEditabilityCallbackRegistered &&
+                typeof window.registerOnAuthReady === 'function'
+            ) {
+                loadedTreeData._editorAuthEditabilityCallbackRegistered = true;
+                window.registerOnAuthReady(function() {
+                    var activeTree = window.currentTreeData || loadedTreeData;
+                    if (!activeTree || activeTree.id !== treeId) return;
+
+                    var canEditNow = window.LoveBudTreeWorkspacePermission
+                        ? window.LoveBudTreeWorkspacePermission.resolveTreeWorkspaceCanEdit(activeTree)
+                        : false;
+
+                    applyEditorEditabilityState({ canEdit: canEditNow });
+                });
+            }
+
             const normalizeMemory = initialLoadResult.normalizeMemory;
             const treeMemories = initialLoadResult.treeMemories;
 
