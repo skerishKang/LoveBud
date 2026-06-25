@@ -34,3 +34,22 @@
 /pages/tree.html/ /pages/tree 301
 /tree.html /pages/tree 301
 /tree.html/ /pages/tree 301
+
+# Internal rewrite (200) for extensionless canonical routes to actual .html files
+# query strings are preserved (e.g. /pages/login?redirect=my-trees)
+# relative paths like ../css/ ../js/ resolve correctly from /pages/<name>.html
+/intro /pages/intro.html 200
+/login /pages/login.html 200
+/search /pages/search.html 200
+/detail /pages/detail.html 200
+/editor /pages/editor.html 200
+/my-trees /pages/my-trees.html 200
+/tree /pages/tree.html 200
+
+/pages/intro /pages/intro.html 200
+/pages/login /pages/login.html 200
+/pages/search /pages/search.html 200
+/pages/detail /pages/detail.html 200
+/pages/editor /pages/editor.html 200
+/pages/my-trees /pages/my-trees.html 200
+/pages/tree /pages/tree.html 200
