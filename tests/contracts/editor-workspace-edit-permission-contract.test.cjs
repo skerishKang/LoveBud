@@ -550,6 +550,7 @@ test('23. editor auth-late reconciliation contracts and dynamic VM assertions', 
             editorSaveStatus: {},
             editorPageHelpers: {},
             editorDataLoader: {},
+            getMyTreesHref: () => 'my-trees-mocked-href',
             getConfirmedSessionUser: () => ({}),
             redirectToEditorLogin: () => {},
             buildTreeLoadErrorCopy: () => {},
@@ -631,6 +632,21 @@ test('23. editor auth-late reconciliation contracts and dynamic VM assertions', 
 
   // When user is logout (viewerCanEdit = false), it MUST redirect/exit to my-trees
   loadedTree.viewerCanEdit = false;
+  let targetHref = '';
+  sandbox.window.location = {
+    pathname: '/pages/editor.html',
+    origin: 'http://localhost',
+    search: '?treeId=test-tree-id',
+    set href(val) {
+      targetHref = val;
+      if (val.includes('my-trees')) {
+        redirected = true;
+      }
+    },
+    get href() { return ''; }
+  };
   callback();
   assert.equal(redirected, true, 'callback must trigger exit to my-trees on auth logout');
+  assert.equal(targetHref, 'my-trees-mocked-href', 'Must redirect exactly to deps.getMyTreesHref() result');
+  assert.ok(!targetHref.startsWith('http'), 'Must be a relative/context-safe path without origin prefix');
 });

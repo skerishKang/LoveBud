@@ -247,9 +247,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     if (!canEditNow) {
                         // Logout or switch account where permission is lost -> do full exit/reload
-                        var isPagesContext = window.location.pathname.indexOf('/pages/') !== -1;
-                        var myTreesHref = isPagesContext ? 'my-trees.html' : 'pages/my-trees.html';
-                        window.location.href = window.location.origin + '/' + myTreesHref;
+                        var myTreesHref = typeof deps.getMyTreesHref === 'function'
+                            ? deps.getMyTreesHref()
+                            : 'my-trees';
+                        window.location.href = myTreesHref;
                     }
                 });
             }
