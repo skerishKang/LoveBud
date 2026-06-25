@@ -150,6 +150,24 @@
     var readConfirmedAuthCache = options.readConfirmedAuthCache;
 
     var editorStarted = false;
+    var editorRedirecting = false;
+
+    function resolveSettledAuthUser(windowRef, callbackUser) {
+      if (callbackUser && callbackUser.uid) {
+        return { pending: false, user: callbackUser };
+      }
+
+      var bootstrap = windowRef.LoveBudAuthBootstrap;
+      var snapshot = bootstrap && typeof bootstrap.getSnapshot === 'function'
+        ? bootstrap.getSnapshot()
+        : null;
+
+      if (!snapshot || snapshot.ready !== true) {
+        return { pending: true, user: null };
+      }
+
+      return { pending: false, user: snapshot.user || null };
+    }
 
     function tryStartEditor(user) {
       if (editorStarted) {
@@ -164,27 +182,31 @@
       var treeId = params.get('treeId');
 
       if (treeId) {
-        // When treeId is present, we MUST wait for the actual Firebase user session confirmation.
-        // The local cachedUser is NOT enough to build an owner editor runtime.
-        var ap = windowRef.LoveTreeAuthPolicy;
-        var hasConfirmed = ap && typeof ap.hasConfirmedAuthSession === 'function' ? ap.hasConfirmedAuthSession() : false;
-
-        // If auth is not ready/settled yet (e.g. Firebase auth is initializing), do not start.
-        if (windowRef.__lovebudAuthReady !== true) {
+        var settled = resolveSettledAuthUser(windowRef, user);
+        if (settled.pending) {
           return;
         }
 
-        // Auth is settled. Check if we actually have a logged-in user session.
-        if (!user || !hasConfirmed) {
-          redirectToEditorLogin();
+        if (!settled.user || !settled.user.uid) {
+          if (!editorRedirecting) {
+            editorRedirecting = true;
+            redirectToEditorLogin();
+          }
           return;
         }
       } else {
         // Fallback for new tree creation path (no treeId in URL)
-        if (!user) {
+        var settled = resolveSettledAuthUser(windowRef, user);
+        if (settled.pending) {
+          return;
+        }
+        if (!settled.user || !settled.user.uid) {
           var cachedUser = readConfirmedAuthCache();
           if (!cachedUser || !cachedUser.uid) {
-            redirectToEditorLogin();
+            if (!editorRedirecting) {
+              editorRedirecting = true;
+              redirectToEditorLogin();
+            }
             return;
           }
         }
