@@ -19,12 +19,10 @@ export function buildPublicSidebarTemplate() {
                     <div id="viewerSidebarMomentCount" class="editor-tree-quiet-note" style="margin-top: 12px; font-size: 12px; opacity: 0.8;">0개의 순간</div>
                 </div>
             </section>
-            <section id="viewerSidebarOwnerMode" class="editor-add-section editor-add-section-bottom" style="display: none;">
-                <div class="editor-add-card" style="gap: 8px;">
-                    <div style="display: flex; gap: 8px; width: 100%;">
-                        <button type="button" class="sidebar-btn" id="viewerSidebarViewBtn" style="flex: 1;" disabled>보기</button>
-                        <button type="button" class="sidebar-btn sidebar-btn-primary" id="viewerSidebarEditBtn" style="flex: 1;">편집</button>
-                    </div>
+            <section id="viewerSidebarOwnerMode" class="viewer-sidebar-owner-mode" style="display: none;">
+                <div class="viewer-sidebar-mode-actions">
+                    <button type="button" class="sidebar-btn" id="viewerSidebarViewBtn" disabled>보기</button>
+                    <button type="button" class="sidebar-btn sidebar-btn-primary" id="viewerSidebarEditBtn">편집</button>
                 </div>
             </section>
         </aside>

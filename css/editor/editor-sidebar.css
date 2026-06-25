@@ -195,23 +195,27 @@
 
 /* Public Viewer Sidebar Styles (Issue #2884) */
 .public-viewer-sidebar {
-    display: flex;
+  display: flex;
 }
 
 .public-viewer-sidebar .viewer-sidebar-owner-mode {
-    margin-top: auto;
-    padding-top: 16px;
-    border-top: 1px solid rgba(144, 73, 81, 0.08);
+  margin-top: auto;
+  padding-top: 16px;
+  border-top: 1px solid rgba(144, 73, 81, 0.08);
 }
 
 .public-viewer-sidebar .viewer-sidebar-mode-actions {
-    display: flex;
-    gap: 8px;
-    width: 100%;
+  display: flex;
+  gap: 8px;
+  width: 100%;
+}
+
+.public-viewer-sidebar .viewer-sidebar-mode-actions .sidebar-btn {
+  flex: 1 1 0;
 }
 
 @media (max-width: 1024px) {
-    .public-viewer-sidebar {
-        display: none !important;
-    }
+  .public-viewer-sidebar {
+    display: none !important;
+  }
 }

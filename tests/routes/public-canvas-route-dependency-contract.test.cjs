@@ -467,6 +467,7 @@ test('public canvas sidebar template and controller wiring contract (Issue #2884
   const scripts = getScriptSrcs();
   const templateSrc = fs.readFileSync('js/viewer/templates/public-viewer-sidebar-template.js', 'utf8');
   const initSrc = fs.readFileSync('js/viewer/public-canvas-init.js', 'utf8');
+  const cssSrc = fs.readFileSync('css/editor/editor-sidebar.css', 'utf8');
 
   // 1. pages/view.html에 publicViewerSidebarTemplateMount가 canvas mount보다 앞에 존재
   const mountIdx = html.indexOf('id="publicViewerSidebarTemplateMount"');
@@ -534,4 +535,44 @@ test('public canvas sidebar template and controller wiring contract (Issue #2884
   // 10. raw ownerId/Firebase UID를 sidebar DOM에 렌더하지 않음
   assert.equal(templateSrc.includes('ownerId'), false, 'template must not output ownerId');
   assert.equal(templateSrc.includes('uid'), false, 'template must not output uid');
+
+  // 11. template의 viewerSidebarOwnerMode에 viewer-sidebar-owner-mode class 존재
+  assert.ok(
+    templateSrc.includes('class="viewer-sidebar-owner-mode"'),
+    'template must have viewer-sidebar-owner-mode class'
+  );
+
+  // 12. template에 viewer-sidebar-mode-actions class 존재
+  assert.ok(
+    templateSrc.includes('class="viewer-sidebar-mode-actions"'),
+    'template must have viewer-sidebar-mode-actions class'
+  );
+
+  // 13. template에 editor-add-section이 없음
+  assert.equal(
+    templateSrc.includes('editor-add-section'),
+    false,
+    'public viewer owner controls must not use editor-add-section because editor-readonly hides it'
+  );
+
+  // 14. template에 editor-add-section-bottom이 없음
+  assert.equal(
+    templateSrc.includes('editor-add-section-bottom'),
+    false,
+    'template must not contain editor-add-section-bottom'
+  );
+
+  // 15. css/editor/editor-sidebar.css가 두 class selector를 포함
+  assert.ok(
+    cssSrc.includes('.public-viewer-sidebar .viewer-sidebar-owner-mode'),
+    'css must contain selector for viewer-sidebar-owner-mode'
+  );
+  assert.ok(
+    cssSrc.includes('.public-viewer-sidebar .viewer-sidebar-mode-actions'),
+    'css must contain selector for viewer-sidebar-mode-actions'
+  );
+
+  // 16. public viewer owner action container가 .editor-readonly .editor-add-section hide rule에 걸리지 않음을 정적 검증
+  const isProtected = !templateSrc.includes('editor-add-section');
+  assert.ok(isProtected, 'verified that public owner controls will not be hidden by readonly editor-add-section css rules');
 });
