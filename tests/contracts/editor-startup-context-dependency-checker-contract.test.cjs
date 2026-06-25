@@ -30,6 +30,6 @@ test('editor no longer owns repeated inline startup context dependency checks', 
 });
 
 test('startup context dependency delegation preserves startup context creation path', () => {
-  assert.match(editorSource, /const \{\s*canvas,\s*svg,\s*detailPanel,\s*addBtn,\s*urlTreeId,\s*canEdit\s*\}\s*=\s*createEditorStartupContext\(\{/s);
+  assert.match(editorSource, /const \{\s*canvas,\s*svg,\s*detailPanel,\s*addBtn,\s*urlTreeId,\s*canEdit,\s*mode,\s*memoryId\s*\}\s*=\s*createEditorStartupContext\(\{/s);
   assert.match(editorSource, /createEditorDomRefs,\s*locationRef:\s*window\.location,\s*URLSearchParamsRef:\s*URLSearchParams/s);
 });

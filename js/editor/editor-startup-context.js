@@ -18,6 +18,8 @@
     var params = new URLSearchParamsRef(search);
     var urlTreeId = params.get('treeId');
     var canEdit = params.get('readonly') !== '1';
+    var mode = params.get('mode') || '';
+    var memoryId = params.get('memoryId') || '';
 
     return {
       canvas: refs && refs.canvas,
@@ -25,7 +27,9 @@
       detailPanel: refs && refs.detailPanel,
       addBtn: refs && refs.addBtn,
       urlTreeId: urlTreeId,
-      canEdit: canEdit
+      canEdit: canEdit,
+      mode: mode,
+      memoryId: memoryId
     };
   }
 

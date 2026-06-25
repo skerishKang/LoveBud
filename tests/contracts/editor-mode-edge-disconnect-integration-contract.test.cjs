@@ -399,6 +399,6 @@ test('mobile bottom bar checks canEdit before creating mode toggle', () => {
 test('editor.js desktop mode toggle guarded by canEdit', () => {
   const source = readSource('js/editor.js');
 
-  assert.match(source, /canEdit\s*!==\s*false.*LoveBudEditorInteractionMode/,
-    'desktop mode toggle must be guarded by canEdit !== false');
+  assert.match(source, /effectiveCanEdit.*LoveBudEditorInteractionMode/,
+    'desktop mode toggle must be guarded by effectiveCanEdit');
 });

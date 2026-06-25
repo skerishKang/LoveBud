@@ -90,17 +90,26 @@
         var memories = Array.isArray(treeMemories) ? treeMemories : [];
         var rootUtils = globalObject.LoveBudEditorUtils || {};
 
+        function resolveExistingMemoryId(candidateId) {
+            if (!candidateId) return null;
+            return memories.some(function(memory) {
+                return memory && memory.id === candidateId;
+            }) ? candidateId : null;
+        }
+
         function getCanonicalRootId() {
+            var candidate;
             if (typeof rootUtils.getCanonicalRootId === 'function') {
-                return rootUtils.getCanonicalRootId(memories);
+                candidate = rootUtils.getCanonicalRootId(memories);
+            } else {
+                var roots = memories.filter(function(memory) {
+                    return memory.parentId === null || memory.parentId === undefined;
+                });
+                candidate = roots.length === 0 ? null : roots.sort(function(a, b) {
+                    return (a.createdAt || '9999') > (b.createdAt || '9999') ? 1 : -1;
+                })[0].id;
             }
-            var roots = memories.filter(function(memory) {
-                return memory.parentId === null || memory.parentId === undefined;
-            });
-            if (roots.length === 0) return 'root';
-            return roots.sort(function(a, b) {
-                return (a.createdAt || '9999') > (b.createdAt || '9999') ? 1 : -1;
-            })[0].id;
+            return resolveExistingMemoryId(candidate);
         }
 
         function isRootMemory(memory, rootId) {

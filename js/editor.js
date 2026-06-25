@@ -162,7 +162,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 detailPanel,
                 addBtn,
                 urlTreeId,
-                canEdit
+                canEdit,
+                mode,
+                memoryId
             } = createEditorStartupContext({
                 createEditorDomRefs,
                 locationRef: window.location,
@@ -184,7 +186,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const applyEditorStartupShell = createEditorStartupShellApplier({
                 prepareEditorShell,
                 applyEditorEditabilityState,
-                canEdit,
+                canEdit: false,
                 log
             });
 
@@ -219,11 +221,30 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             const treeId = initialLoadResult.treeId;
+
+            var effectiveCanEdit = false;
+            var loadedTreeData = initialLoadResult.tree || window.currentTreeData || null;
+            if (loadedTreeData && window.LoveBudTreeWorkspacePermission) {
+                effectiveCanEdit = window.LoveBudTreeWorkspacePermission.resolveTreeWorkspaceCanEdit(loadedTreeData);
+            }
+            if (effectiveCanEdit !== (canEdit !== false)) {
+                applyEditorEditabilityState({ canEdit: effectiveCanEdit });
+            }
+
             const normalizeMemory = initialLoadResult.normalizeMemory;
             const treeMemories = initialLoadResult.treeMemories;
 
             const canonicalRootId = deps.getCanonicalRootId(treeMemories());
             let selectedNodeId = canonicalRootId;
+
+            if (memoryId) {
+                var memoriesForSelection = treeMemories();
+                var foundMemoryForSelection = memoriesForSelection.find(function(m) { return m.id === memoryId; });
+                if (foundMemoryForSelection) {
+                    selectedNodeId = memoryId;
+                }
+            }
+
             let currentEditingMemory = null;
             let editorCanvas = null;
 
@@ -368,7 +389,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             const updateTreeVisibility = deps.editorTreeHelpers.createTreeVisibilityUpdater({
-                canEdit,
+                canEdit: effectiveCanEdit,
                 getTreeId: () => treeId,
                 getApiClient: () => window.apiClient,
                 applyUpdatedTreeVisibility: deps.editorTreeHelpers.applyUpdatedTreeVisibility,
@@ -458,7 +479,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     getCanonicalRootId: () => canonicalRootId,
                     showToast: deps.showToast,
                     i18n: deps.i18n,
-                    canEdit
+                    canEdit: effectiveCanEdit
                 });
             }
 
@@ -475,7 +496,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 createInitialMemory,
                 onNodeClick: selectNode,
                 openAddMoment: () => showAddMemoryForm(),
-                canEdit,
+                canEdit: effectiveCanEdit,
                 onDisconnectEdge: async function(childId) {
                     if (typeof disconnectMemoryFn !== 'function') return false;
                     return disconnectMemoryFn(childId);
@@ -529,7 +550,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 rerenderCanvas: () => initCanvas(),
                 getCurrentTreeData: () => window.currentTreeData || {},
                 isLocalSaveMode: () => isLocalSaveMode,
-                canEdit
+                canEdit: effectiveCanEdit
             });
 
             const { enterEditMode, exitEditMode, saveMemoryEdit, deleteMemory, disconnectMemory, connectMemory, validateConnectCandidate } = memoryActions;
@@ -582,7 +603,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 canvasArea: canvas,
                 rerenderCanvas: () => initCanvas(),
                 focusNodeById: (id) => editorCanvas.focusNodeById(id),
-                canEdit
+                canEdit: effectiveCanEdit
             });
 
             const { showAddMemoryForm, hideAddMemoryForm, addMemoryFromForm, addMemoryFromScoutPayload } = memoryForm;
@@ -673,7 +694,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (typeof bindEditorPageEvents === 'function') {
                 bindEditorPageEvents({
-                    canEdit,
+                    canEdit: effectiveCanEdit,
                     sidebarUIHelper,
                     editorBindings: deps.editorBindings,
                     emptyGuideUIHelper,
@@ -723,7 +744,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
             finalizeEditorReady();
 
-            if (canEdit !== false && window.LoveBudEditorInteractionMode && typeof window.LoveBudEditorInteractionMode.subscribe === 'function') {
+            if (mode === 'edit' && effectiveCanEdit && window.LoveBudEditorInteractionMode) {
+                window.LoveBudEditorInteractionMode.setMode(window.LoveBudEditorInteractionMode.MODE_EDIT);
+            }
+
+            if (effectiveCanEdit && window.LoveBudEditorInteractionMode && typeof window.LoveBudEditorInteractionMode.subscribe === 'function') {
                 (function injectDesktopModeToggle() {
                     var sidebar = document.querySelector('.sidebar');
                     if (!sidebar) return;

@@ -8,16 +8,6 @@
             showToast
         } = deps;
 
-        const getCurrentUserId = () => {
-            if (window.firebase && firebase.auth && firebase.auth().currentUser) {
-                return firebase.auth().currentUser.uid;
-            }
-            const cached = window.LoveTreeBaseApiFetch && typeof window.LoveTreeBaseApiFetch.getCachedTokenRecord === 'function'
-                ? window.LoveTreeBaseApiFetch.getCachedTokenRecord()
-                : null;
-            return cached ? cached.uid : null;
-        };
-
         const createPillButton = ({ label, icon, tone = 'soft' }) => {
             const btn = document.createElement('button');
             btn.type = 'button';
@@ -84,8 +74,7 @@
             visInfo,
             isPublic,
             countLabel,
-            shareButtonEl = null,
-            editButtonEl = null
+            shareButtonEl = null
         }) => {
             const wrap = document.createElement('div');
             wrap.style.padding = '20px 20px 18px';
@@ -178,7 +167,6 @@
             actionsRow.style.paddingTop = '2px';
 
             if (shareButtonEl) actionsRow.appendChild(shareButtonEl);
-            if (editButtonEl) actionsRow.appendChild(editButtonEl);
 
             wrap.appendChild(actionsRow);
 
@@ -211,21 +199,6 @@
                 shareBtn = createShareTreeButton();
             }
 
-            let editBtn = null;
-            const currentUserId = getCurrentUserId();
-            const ownerId = currentTree.ownerId || currentTree.owner_id;
-            const isEditorPage = window.location.pathname.indexOf('editor') !== -1;
-            if (ownerId && currentUserId && ownerId === currentUserId && !isEditorPage) {
-                editBtn = createPillButton({
-                    label: formatI18nText('edit_tree', '내 트리 편집'),
-                    icon: 'edit',
-                    tone: 'primary'
-                });
-                editBtn.addEventListener('click', () => {
-                    var basePath = window.location.pathname.indexOf('/pages/') !== -1 ? '' : 'pages/';
-                    window.location.href = window.location.origin + '/' + basePath + 'editor?treeId=' + encodeURIComponent(currentTree.id) + '&from=view';
-                });
-            }
 
             return {
                 displayTreeTitle,
@@ -235,8 +208,7 @@
                 isPublic,
                 countLabel: localBadgeText ? `${treeCountLabel} · ${localBadgeText}` : treeCountLabel,
                 shareButtonEl: shareBtn,
-                shareBtn,
-                editButtonEl: editBtn
+                shareBtn
             };
         };
 
@@ -251,8 +223,7 @@
                 visInfo: model.visInfo,
                 isPublic: model.isPublic,
                 countLabel: model.countLabel,
-                shareButtonEl: model.shareButtonEl,
-                editButtonEl: model.editButtonEl
+                shareButtonEl: model.shareButtonEl
             });
             treeMetaMount.appendChild(block);
 
@@ -264,72 +235,7 @@
                 });
             }
 
-            const currentUserId = getCurrentUserId();
-            const isEditorPage = window.location.pathname.indexOf('editor') !== -1;
-            if (!model.editButtonEl && currentUserId && treeId && !isEditorPage) {
-                const apiFetch = window.LoveTreeBaseApiFetch && window.LoveTreeBaseApiFetch.apiFetch;
-                if (typeof apiFetch === 'function') {
-                    apiFetch('/trees/' + encodeURIComponent(treeId))
-                        .then(tree => {
-                            const ownerId = tree && (tree.ownerId || tree.owner_id);
-                            if (ownerId && ownerId === currentUserId) {
-                                const actionsRow = block.querySelector('.tree-meta-actions-row');
-                                if (actionsRow) {
-                                    // Check if edit button was already added dynamically to prevent duplicate appends
-                                    if (actionsRow.querySelector('.vv-edit-btn-dynamic')) return;
-                                    const editBtn = createPillButton({
-                                        label: formatI18nText('edit_tree', '내 트리 편집'),
-                                        icon: 'edit',
-                                        tone: 'primary'
-                                    });
-                                    editBtn.className = 'vv-edit-btn-dynamic';
-                                    editBtn.addEventListener('click', () => {
-                                        var basePath = window.location.pathname.indexOf('/pages/') !== -1 ? '' : 'pages/';
-                                        window.location.href = window.location.origin + '/' + basePath + 'editor?treeId=' + encodeURIComponent(treeId) + '&from=view';
-                                    });
-                                    actionsRow.appendChild(editBtn);
-                                }
-                            }
-                        })
-                        .catch(err => {
-                            console.warn('[public-viewer-detail-tree-meta] owner check failed:', err);
-                        });
-                }
-            }
 
-            // Register with auth callbacks if available so that if auth resolves later,
-            // we re-run the owner check dynamic injection.
-            if (typeof window.registerOnAuthReady === 'function') {
-                window.registerOnAuthReady(() => {
-                    const resolvedUserId = getCurrentUserId();
-                    if (!resolvedUserId || isEditorPage || !treeId) return;
-                    const apiFetch = window.LoveTreeBaseApiFetch && window.LoveTreeBaseApiFetch.apiFetch;
-                    if (typeof apiFetch === 'function') {
-                        apiFetch('/trees/' + encodeURIComponent(treeId))
-                            .then(tree => {
-                                const ownerId = tree && (tree.ownerId || tree.owner_id);
-                                if (ownerId && ownerId === resolvedUserId) {
-                                    const actionsRow = block.querySelector('.tree-meta-actions-row');
-                                    if (actionsRow) {
-                                        if (actionsRow.querySelector('.vv-edit-btn-dynamic')) return;
-                                        const editBtn = createPillButton({
-                                            label: formatI18nText('edit_tree', '내 트리 편집'),
-                                            icon: 'edit',
-                                            tone: 'primary'
-                                        });
-                                        editBtn.className = 'vv-edit-btn-dynamic';
-                                        editBtn.addEventListener('click', () => {
-                                            var basePath = window.location.pathname.indexOf('/pages/') !== -1 ? '' : 'pages/';
-                                            window.location.href = window.location.origin + '/' + basePath + 'editor?treeId=' + encodeURIComponent(treeId) + '&from=view';
-                                        });
-                                        actionsRow.appendChild(editBtn);
-                                    }
-                                }
-                            })
-                            .catch(() => {});
-                    }
-                });
-            }
         };
 
         return {

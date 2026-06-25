@@ -202,7 +202,7 @@ test('editor.js calls createEditorStartupDependencyWaiter with log and reportErr
 });
 
 test('editor.js delegates applyEditorEditabilityState to startup shell applier', () => {
-  assert.match(editorSource, /applyEditorEditabilityState,\s*canEdit,\s*log/s);
+  assert.match(editorSource, /applyEditorEditabilityState,\s*canEdit:\s*false,\s*log/s);
   assert.match(editorSource, /applyEditorStartupShell\(\);/);
 });
 
