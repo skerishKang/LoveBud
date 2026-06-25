@@ -51,6 +51,7 @@
     max-width: 100%;
     height: 42px !important;
     min-height: 42px !important;
+    box-sizing: border-box;
     justify-content: flex-start;
     overflow: hidden;
     width: 100%;
@@ -85,11 +86,10 @@
 .my-trees-hub-flow-stage-label {
     min-width: 0;
     overflow: hidden;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
+    display: block;
+    white-space: nowrap;
     text-overflow: ellipsis;
-    word-break: break-word;
+    word-break: normal;
     line-height: 1.35;
 }
 
