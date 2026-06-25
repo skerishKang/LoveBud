@@ -341,3 +341,112 @@ test('17. public-canvas-init updateOwnerModeUI edit button includes treeId, mode
     'Edit button URL must include memoryId when selected'
   );
 });
+
+// ── Owner mode deferred reconciliation ────────────────────────────
+
+test('18. deferred auth poller re-evaluates owner mode when auth confirms late', () => {
+  const src = readSource('js/viewer/public-canvas-init.js');
+  assert.ok(
+    src.indexOf('pollOwnerAuth') !== -1,
+    'Must have a deferred auth poller function'
+  );
+  assert.ok(
+    /if\s*\(\s*conf\s*\)\s*\{/.test(src),
+    'Poller must call updateOwnerModeUI when auth is confirmed'
+  );
+  assert.ok(
+    src.indexOf('window.LoveBudPublicCanvasInit.updateOwnerModeUI()') !== -1,
+    'Poller must invoke updateOwnerModeUI when auth confirms'
+  );
+  assert.ok(
+    src.indexOf('ap.hasConfirmedAuthSession()') !== -1,
+    'Poller must check hasConfirmedAuthSession'
+  );
+});
+
+test('19. deferred auth poller exits without mode group when guest is settled', () => {
+  const src = readSource('js/viewer/public-canvas-init.js');
+  assert.ok(
+    src.indexOf('window.__lovebudAuthReady === true') !== -1,
+    'Poller must check __lovebudAuthReady to detect settled guest state'
+  );
+  // The poller must call updateOwnerModeUI then return for both confirmed and guest-settled paths
+  var confReeval = src.indexOf('if (conf)');
+  var guestSettled = src.indexOf('window.__lovebudAuthReady === true');
+  assert.ok(
+    confReeval < guestSettled,
+    'Auth confirmation check must come before guest settled check in poller'
+  );
+  // After guest settled, no more setTimeout(..., 200) should follow in the same block
+  var guestReturnIndex = src.indexOf('return;', guestSettled);
+  var setTimeoutAfterGuest = src.indexOf('setTimeout(pollOwnerAuth, 200)', guestSettled);
+  assert.ok(
+    guestReturnIndex !== -1,
+    'Guest settled path must return to stop polling'
+  );
+  assert.ok(
+    setTimeoutAfterGuest === -1 || setTimeoutAfterGuest > guestReturnIndex,
+    'No setTimeout should follow the guest-settled return in the poller'
+  );
+});
+
+test('20. updateOwnerModeUI does not read mode=edit from URL to grant permission', () => {
+  const src = readSource('js/viewer/public-canvas-init.js');
+  // The owner mode decision must come only from resolveTreeWorkspaceCanEdit,
+  // never from URL params.get('mode')
+  var fnStart = src.indexOf('function updateOwnerModeUI');
+  var fnEnd = src.indexOf('function installPublicCanvasToolbarCompactMode', fnStart);
+  var fnBody = src.slice(fnStart, fnEnd);
+  assert.ok(
+    fnBody.indexOf('params.get(\'mode\')') === -1,
+    'updateOwnerModeUI must not read mode from URL via params.get'
+  );
+  assert.ok(
+    fnBody.indexOf('resolveTreeWorkspaceCanEdit') !== -1,
+    'updateOwnerModeUI must base decision on resolveTreeWorkspaceCanEdit'
+  );
+  // mode=edit appears in the edit button URL builder (navigating to editor)
+  // but never as a permission check conditional
+  var modeEditCount = (fnBody.match(/mode=edit/g) || []).length;
+  assert.ok(
+    modeEditCount <= 1,
+    'mode=edit must appear at most once in updateOwnerModeUI (URL builder only): got ' + modeEditCount
+  );
+});
+
+test('21. owner mode click handler is registered at most once', () => {
+  const src = readSource('js/viewer/public-canvas-init.js');
+  assert.ok(
+    src.indexOf('if (!editBtn[handlerKey])') !== -1,
+    'Must guard against duplicate click handler registration with editBtn[handlerKey]'
+  );
+  assert.ok(
+    src.indexOf("editBtn.addEventListener('click', editBtn[handlerKey])") !== -1,
+    'Click handler must be added via addEventListener'
+  );
+  // The addEventListener should only appear once (guarded by the if check)
+  var handlerRegistrations = src.match(/addEventListener\('click', editBtn\[handlerKey\]\)/g);
+  assert.ok(
+    handlerRegistrations && handlerRegistrations.length === 1,
+    'Click handler must be registered exactly once in updateOwnerModeUI'
+  );
+});
+
+test('22. deferred poller starts only after initial owner mode evaluation', () => {
+  const src = readSource('js/viewer/public-canvas-init.js');
+  // The poller is defined and started after the initial updateOwnerModeUI call
+  var initialUpdate = src.indexOf('updateOwnerModeUI(selectionState, normalized.treeData)');
+  var pollerDefinition = src.indexOf('window.LoveBudPublicCanvasInit._ownerAuthPoller');
+  assert.ok(
+    initialUpdate !== -1,
+    'Initial owner mode evaluation must be present'
+  );
+  assert.ok(
+    pollerDefinition !== -1,
+    'Deferred poller definition must be present'
+  );
+  assert.ok(
+    initialUpdate < pollerDefinition,
+    'Initial updateOwnerModeUI must be called before deferred poller starts'
+  );
+});
