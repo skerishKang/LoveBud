@@ -99,20 +99,20 @@ test('My Trees hub keeps its non-media focus surface and shared visual rhythm', 
   }
 });
 
-test('My Trees hub keeps its multi-line hero original styling and hierarchy', () => {
+test('My Trees hub uses shared hero styling from search-hero-controls.css', () => {
   const html = read('pages/my-trees.html');
-  const header = read('css/my-trees/my-trees-header.css');
+  const heroControls = read('css/search/search-hero-controls.css');
 
   // Verify multi-line structure is intact
   assert.match(html, /<h1 class="headline shared-mobile-hero-title" id="myTreesPageTitle">/);
-  // Verify original classes styling in css/my-trees/my-trees-header.css is restored (original color, font-weight, margin)
-  assert.match(header, /\.my-trees-header h1\s*\{\s*font-size:\s*clamp\(3\.45rem,\s*5\.8vw,\s*5\.15rem\);/);
-  assert.match(header, /\.my-trees-title-line\s*\{\s*display:\s*block;\s*\}/);
-  assert.match(header, /\.my-trees-title-line:nth-child\(1\)\s*\{\s*color:\s*var\(--on-surface-variant\);\s*font-weight:\s*700;\s*opacity:\s*0\.9;\s*\}/);
-  assert.match(header, /\.my-trees-title-accent\s*\{\s*color:\s*var\(--hero-warm-color,\s*var\(--primary\)\);\s*font-weight:\s*780;\s*letter-spacing:\s*-0\.03em;\s*\}/);
-  assert.match(header, /\.my-trees-title-line:nth-child\(3\)\s*\{\s*color:\s*#b85c66;\s*font-weight:\s*900;\s*\}/);
+  // After #2878 structure parity, My Trees uses shared hero styles from search-hero-controls.css
+  assert.ok(heroControls.includes('.search-panel-header h1,'), 'shared hero controls must have .search-panel-header h1 selector');
+  assert.ok(heroControls.includes('.search-panel-header h2'), 'shared hero controls must have .search-panel-header h2 selector');
+  assert.ok(heroControls.includes('font-size: clamp(3.45rem, 5.8vw, 5.15rem)'), 'shared hero controls must have font-size clamp');
+  assert.ok(heroControls.includes('.search-panel-header h1 .title-line'), 'shared hero controls must have .search-panel-header h1 .title-line selector');
+  assert.ok(heroControls.includes('display: block'), 'shared hero controls must have display: block for title-line');
+  assert.match(html, /id="myTreesPageDesc">/);
 });
-
 test('My Trees hub tree title uses Browse-parity heading font', () => {
   const content = read('css/my-trees/my-trees-preview-hub/content.css');
   assert.match(

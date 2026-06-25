@@ -57,65 +57,40 @@ tests.push({
     },
 });
 
-// ── 2. My Trees .my-trees-filter-chip.is-active uses new token ────────────────
+// ── 2. My Trees filter chips now use shared .tag-chip from search-controls.css ────
+// After #2878 structure parity, My Trees uses shared .tag-chip/.tag-chip.active
+// geometry from search-controls.css. Visual tokens are aligned with Browse.
 tests.push({
-    name: 'My Trees .my-trees-filter-chip.is-active uses --lovetree-chip-active-shadow',
+    name: 'My Trees uses shared .tag-chip class alongside my-trees-filter-chip',
     fn: () => {
-        const re = /\.my-trees-filter-chip\.is-active\s*{([^}]*)}/m;
-        const match = MY_TREES_FINDER_CSS.match(re);
-        assert.ok(match, '.my-trees-filter-chip.is-active block must exist');
-        const block = match[1];
-        assert.ok(block.includes('var(--lovetree-chip-active-shadow)'),
-            'My Trees active filter chip must use --lovetree-chip-active-shadow');
+        // My Trees HTML should have both tag-chip and my-trees-filter-chip classes
+        const html = fs.readFileSync(path.join(ROOT, 'pages/my-trees.html'), 'utf8');
+        assert.ok(html.includes('class="my-trees-filter-chip tag-chip'),
+            'My Trees filter chips must have both my-trees-filter-chip and tag-chip classes');
     },
 });
 
 tests.push({
-    name: 'My Trees .my-trees-filter-chip.is-active does NOT have hardcoded shadow',
+    name: 'Shared .tag-chip in search-controls.css has expected base styles',
     fn: () => {
-        const re = /\.my-trees-filter-chip\.is-active\s*{([^}]*)}/m;
-        const match = MY_TREES_FINDER_CSS.match(re);
-        assert.ok(match, '.my-trees-filter-chip.is-active block must exist');
-        const block = match[1];
-        assert.ok(!block.includes('0 4px 12px rgba(144, 73, 81, 0.05)'),
-            'My Trees active chip must NOT have hardcoded 0 4px 12px rgba(144, 73, 81, 0.05) shadow');
-        assert.ok(!block.includes('rgba(144, 73, 81, 0.05)'),
-            'My Trees active chip must NOT have hardcoded rgba(144, 73, 81, 0.05) at all');
+        assert.ok(SEARCH_CONTROLS_CSS.includes('.tag-chip {'),
+            'Shared .tag-chip selector must exist in search-controls.css');
+        assert.ok(SEARCH_CONTROLS_CSS.includes('background: rgba(255,255,255,0.76)'),
+            'Shared .tag-chip must have expected background');
     },
 });
 
 tests.push({
-    name: 'My Trees .my-trees-filter-chip.is-active keeps chip active bg/border/text tokens',
+    name: 'Shared .tag-chip.active in search-controls.css has expected active styles',
     fn: () => {
-        const re = /\.my-trees-filter-chip\.is-active\s*{([^}]*)}/m;
-        const match = MY_TREES_FINDER_CSS.match(re);
-        assert.ok(match, '.my-trees-filter-chip.is-active block must exist');
-        const block = match[1];
-        assert.ok(block.includes('var(--lovetree-chip-active-bg)'),
-            'My Trees active chip must use --lovetree-chip-active-bg');
-        assert.ok(block.includes('var(--lovetree-chip-active-text)'),
-            'My Trees active chip must use --lovetree-chip-active-text');
-        assert.ok(block.includes('var(--lovetree-chip-active-border)'),
-            'My Trees active chip must use --lovetree-chip-active-border');
+        assert.ok(SEARCH_CONTROLS_CSS.includes('.tag-chip.active {'),
+            'Shared .tag-chip.active selector must exist in search-controls.css');
+        assert.ok(SEARCH_CONTROLS_CSS.includes('background: rgba(144, 73, 81, 0.12)'),
+            'Shared .tag-chip.active must have expected background');
     },
 });
 
-// ── 3. My Trees base filter chip uses --lovetree-chip-* tokens (unchanged) ──
-tests.push({
-    name: 'My Trees .my-trees-filter-chip base uses --lovetree-chip-* token family',
-    fn: () => {
-        const val = cssHasRule(MY_TREES_FINDER_CSS, '.my-trees-filter-chip', 'background');
-        assert.ok(val !== null, '.my-trees-filter-chip must have background');
-        assert.ok(val.includes('var(--lovetree-chip-bg)'),
-            'My Trees filter chip background must use --lovetree-chip-bg');
-        const border = cssHasRule(MY_TREES_FINDER_CSS, '.my-trees-filter-chip', 'border');
-        assert.ok(border !== null && border.includes('var(--lovetree-chip-border)'),
-            'My Trees filter chip border must use --lovetree-chip-border');
-        const color = cssHasRule(MY_TREES_FINDER_CSS, '.my-trees-filter-chip', 'color');
-        assert.ok(color !== null && color.includes('var(--lovetree-chip-text)'),
-            'My Trees filter chip color must use --lovetree-chip-text');
-    },
-});
+// ── 3. My Trees finder CSS no longer has desktop duplicate geometry ────────
 
 // ── 4. Browse tag-chip still uses --control-chip-* family (no regression) ─────
 tests.push({
@@ -226,20 +201,18 @@ tests.push({
     },
 });
 
-// ── 8. My Trees filter chip layout guard (no structural change) ──────────────
+// ── 8. My Trees filter chip layout guard - now uses shared .tag-chip ────────
 tests.push({
-    name: 'My Trees .my-trees-filter-chip layout properties unchanged',
+    name: 'Shared .tag-chip has expected layout properties',
     fn: () => {
-        const re = /\.my-trees-filter-chip\s*{([^}]*)}/m;
-        const match = MY_TREES_FINDER_CSS.match(re);
-        assert.ok(match, '.my-trees-filter-chip block must exist');
-        const block = match[1];
-        assert.ok(block.includes('border-radius: var(--radius-full)'),
-            '.my-trees-filter-chip must still use --radius-full');
-        assert.ok(block.includes('min-height: 34px'),
-            '.my-trees-filter-chip must still use min-height: 34px');
-        assert.ok(block.includes('font-size: 13px'),
-            '.my-trees-filter-chip must still use font-size: 13px');
+        // After #2878, My Trees uses shared .tag-chip from search-controls.css
+        const tagChipBlock = /\.tag-chip\s*{([^}]*)}/m.exec(SEARCH_CONTROLS_CSS);
+        assert.ok(tagChipBlock, '.tag-chip block must exist in search-controls.css');
+        const block = tagChipBlock[1];
+        assert.ok(block.includes('border-radius: 99px'),
+            'Shared .tag-chip must have border-radius: 999px');
+        assert.ok(block.includes('font-size: 12px'),
+            'Shared .tag-chip must have font-size: 12px');
     },
 });
 
