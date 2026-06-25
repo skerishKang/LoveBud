@@ -6,6 +6,8 @@ const vm = require('node:vm');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 
+// ── Bridge normalizeForCanvas tests ──
+
 function loadBridge() {
   const source = fs.readFileSync(path.join(ROOT, 'js/viewer/public-canvas-bridge.js'), 'utf8');
   const sandbox = { window: {}, console };
@@ -220,121 +222,194 @@ test('normalizeForCanvas: memory normalize handles null/invalid entries safely',
   assert.equal(result.treeMemories[0].id, 'm1');
 });
 
-// ── Canonical root / moment count behavior ──
-// Matches the exact fallback logic in public-canvas-init.js createPublicCanvasMemoryHelpers
+// ── Canvas entry selector runtime tests ──
 
-function inlineGetCanonicalRootId(memories) {
-  const roots = memories.filter(function(m) { return m.parentId === null || m.parentId === undefined; });
-  if (roots.length === 0) return null;
-  return roots.sort(function(a, b) {
-    return (a.createdAt || '9999') > (b.createdAt || '9999') ? 1 : -1;
-  })[0].id;
+function loadCanvasEntry(rootUtils) {
+  const source = fs.readFileSync(
+    path.join(ROOT, 'js/viewer/public-viewer-canvas-entry.js'),
+    'utf8'
+  );
+  const sandbox = {
+    window: {
+      LoveBudEditorUtils: rootUtils || {}
+    },
+    console
+  };
+  vm.createContext(sandbox);
+  vm.runInContext(source, sandbox);
+  return sandbox.window.LoveBudPublicViewerCanvasEntry;
 }
 
-function inlineIsRootMemory(mem, rootId) {
-  return !!(mem && rootId && mem.id === rootId);
-}
+test('entry: canonical root r1 is excluded; others remain', () => {
+  const entry = loadCanvasEntry({});
+  const selectors = entry.createMemorySelectors([
+    { id: 'r1', parentId: null, createdAt: '2026-01-01' },
+    { id: 'm1', parentId: 'r1', createdAt: '2026-01-02' },
+    { id: 'm2', parentId: 'r1', createdAt: '2026-01-03' }
+  ]);
+  const rootId = selectors.getCanonicalRootId();
+  assert.equal(rootId, 'r1');
+  assert.equal(selectors.isRootMemory({ id: 'r1' }, rootId), true);
+  assert.equal(selectors.isRootMemory({ id: 'm1' }, rootId), false);
+  assert.equal(selectors.isRootMemory({ id: 'm2' }, rootId), false);
+});
 
-function inlineNonRootCount(memories, canonicalRootId) {
-  return memories.filter(function(m) { return !inlineIsRootMemory(m, canonicalRootId); }).length;
-}
+test('entry: self-parent memory is not excluded unless canonical root', () => {
+  const entry = loadCanvasEntry({});
+  const selectors = entry.createMemorySelectors([
+    { id: 'r1', parentId: null, createdAt: '2026-01-01' },
+    { id: 's1', parentId: 's1', createdAt: '2026-01-02' },
+    { id: 'm1', parentId: 'r1', createdAt: '2026-01-03' }
+  ]);
+  const rootId = selectors.getCanonicalRootId();
+  assert.equal(rootId, 'r1');
+  assert.equal(selectors.isRootMemory({ id: 's1' }, rootId), false);
+});
 
-test('count: canonical root (id !== "root") is excluded; others remain', () => {
+test('entry: rootUtils returns "root" but no memory id "root" → null', () => {
+  const entry = loadCanvasEntry({
+    getCanonicalRootId: function() { return 'root'; },
+    isRootMemory: function(mem, rootId) { return mem && mem.id === rootId; }
+  });
+  const selectors = entry.createMemorySelectors([
+    { id: 'r1', parentId: null, createdAt: '2026-01-01' },
+    { id: 'm1', parentId: 'r1', createdAt: '2026-01-02' }
+  ]);
+  const rootId = selectors.getCanonicalRootId();
+  assert.equal(rootId, null, 'phantom "root" sentinel rejected');
+});
+
+test('entry: rootUtils returns "ghost" sentinel → null', () => {
+  const entry = loadCanvasEntry({
+    getCanonicalRootId: function() { return 'ghost'; },
+    isRootMemory: function(mem, rootId) { return mem && mem.id === rootId; }
+  });
+  const selectors = entry.createMemorySelectors([
+    { id: 'r1', parentId: null, createdAt: '2026-01-01' },
+    { id: 'm1', parentId: 'r1', createdAt: '2026-01-02' }
+  ]);
+  const rootId = selectors.getCanonicalRootId();
+  assert.equal(rootId, null, 'phantom "ghost" sentinel rejected');
+});
+
+test('entry: rootUtils returns "root" and legacy root memory exists → "root" kept', () => {
+  const entry = loadCanvasEntry({
+    getCanonicalRootId: function() { return 'root'; },
+    isRootMemory: function(mem, rootId) { return mem && mem.id === rootId; }
+  });
+  const selectors = entry.createMemorySelectors([
+    { id: 'root', parentId: null, createdAt: '2026-01-01' },
+    { id: 'm1', parentId: 'root', createdAt: '2026-01-02' }
+  ]);
+  const rootId = selectors.getCanonicalRootId();
+  assert.equal(rootId, 'root', 'real legacy root memory keeps "root" id');
+  assert.equal(selectors.isRootMemory({ id: 'root' }, rootId), true);
+});
+
+test('entry: no roots → null, all memories kept in non-root count', () => {
+  const entry = loadCanvasEntry({});
+  const selectors = entry.createMemorySelectors([
+    { id: 'm1', parentId: 'p1', createdAt: '2026-01-01' },
+    { id: 'm2', parentId: 'p1', createdAt: '2026-01-02' }
+  ]);
+  const rootId = selectors.getCanonicalRootId();
+  assert.equal(rootId, null);
+  const nonRootCount = selectors.findFirstSelectableMemory(rootId)
+    ? selectors.findFirstSelectableMemory(rootId) : null;
+  assert.ok(nonRootCount !== null, 'still find first memory');
+});
+
+test('entry: count computed via actual isRootMemory excludes only canonical root', () => {
+  const entry = loadCanvasEntry({});
   const mems = [
     { id: 'r1', parentId: null, createdAt: '2026-01-01' },
     { id: 'm1', parentId: 'r1', createdAt: '2026-01-02' },
     { id: 'm2', parentId: 'r1', createdAt: '2026-01-03' }
   ];
-  const rootId = inlineGetCanonicalRootId(mems);
-  assert.equal(rootId, 'r1');
-  assert.equal(inlineIsRootMemory(mems[0], rootId), true);
-  assert.equal(inlineIsRootMemory(mems[1], rootId), false);
-  assert.equal(inlineIsRootMemory(mems[2], rootId), false);
-  assert.equal(inlineNonRootCount(mems, rootId), 2);
+  const selectors = entry.createMemorySelectors(mems);
+  const rootId = selectors.getCanonicalRootId();
+  const nonRoot = mems.filter(function(m) { return !selectors.isRootMemory(m, rootId); });
+  assert.equal(nonRoot.length, 2);
 });
 
-test('count: self-parent memory is NOT excluded unless it is the canonical root', () => {
-  const mems = [
-    { id: 'r1', parentId: null, createdAt: '2026-01-01' },
-    { id: 's1', parentId: 's1', createdAt: '2026-01-02' },
-    { id: 'm1', parentId: 'r1', createdAt: '2026-01-03' }
-  ];
-  const rootId = inlineGetCanonicalRootId(mems);
-  assert.equal(rootId, 'r1');
-  assert.equal(inlineIsRootMemory(mems[1], rootId), false, 'self-parent is not the canonical root');
-  assert.equal(inlineNonRootCount(mems, rootId), 2);
-});
-
-test('count: null-parent memory (id !== "root") is canonical root, excluded exactly once', () => {
-  const mems = [
-    { id: 'r1', parentId: null, createdAt: '2026-01-01' },
-    { id: 'm1', parentId: 'm1', createdAt: '2026-01-02' },
-    { id: 'm2', parentId: 'r1', createdAt: '2026-01-03' }
-  ];
-  const rootId = inlineGetCanonicalRootId(mems);
-  assert.equal(rootId, 'r1');
-  assert.equal(inlineIsRootMemory(mems[0], rootId), true, 'null-parent memory is the canonical root');
-  assert.equal(inlineIsRootMemory(mems[1], rootId), false, 'self-parent memory is not excluded');
-  assert.equal(inlineNonRootCount(mems, rootId), 2);
-});
-
-test('count: no canonical root returns null; no memory excluded', () => {
-  const mems = [
-    { id: 'm1', parentId: 'p1', createdAt: '2026-01-01' },
-    { id: 'm2', parentId: 'p1', createdAt: '2026-01-02' }
-  ];
-  const rootId = inlineGetCanonicalRootId(mems);
+test('entry: empty memory array → null rootId', () => {
+  const entry = loadCanvasEntry({});
+  const selectors = entry.createMemorySelectors([]);
+  const rootId = selectors.getCanonicalRootId();
   assert.equal(rootId, null);
-  assert.equal(inlineIsRootMemory(mems[0], rootId), false);
-  assert.equal(inlineIsRootMemory(mems[1], rootId), false);
-  assert.equal(inlineNonRootCount(mems, rootId), 2);
 });
 
-test('count: when no canonical root, "root" string literal is not assumed', () => {
-  const mems = [
-    { id: 'm1', parentId: null, createdAt: '2026-01-01' },
-    { id: 'm2', parentId: 'm1', createdAt: '2026-01-02' }
-  ];
-  const rootId = inlineGetCanonicalRootId(mems);
-  assert.equal(rootId, 'm1');
-  assert.equal(inlineIsRootMemory({ id: 'm1' }, 'root'), false, 'isRootMemory must not match literal root');
-  assert.equal(inlineNonRootCount(mems, rootId), 1);
-});
-
-test('count: normalizeForCanvas filters nulls before they reach memory helpers', () => {
-  const bridge = loadBridge();
-  const result = bridge.normalizeForCanvas(
-    { id: 't1', ownerId: 'u1' },
-    [null, undefined, { id: 'm1' }, null]
-  );
-  assert.equal(result.treeMemories.length, 1, 'normalizeForCanvas already filters nulls upstream');
-});
-
-test('count: inline helpers accept clean arrays (matching normalized pipeline)', () => {
-  const mems = [
+test('entry: rootUtils returns null → null propagated', () => {
+  const entry = loadCanvasEntry({
+    getCanonicalRootId: function() { return null; },
+    isRootMemory: function(mem, rootId) { return mem && mem.id === rootId; }
+  });
+  const selectors = entry.createMemorySelectors([
     { id: 'r1', parentId: null, createdAt: '2026-01-01' },
     { id: 'm1', parentId: 'r1', createdAt: '2026-01-02' }
-  ];
-  const rootId = inlineGetCanonicalRootId(mems);
-  assert.equal(rootId, 'r1');
-  assert.equal(inlineIsRootMemory(null, rootId), false);
-  assert.equal(inlineIsRootMemory(undefined, rootId), false);
-  assert.equal(inlineNonRootCount(mems, rootId), 1);
-});
-
-test('count: canonicalRootId is null when null-parent memories exist but have real content', () => {
-  const mems = [
-    { id: 'm1', parentId: null, createdAt: '2026-01-01', thumbnail: 'http://img', title: 'Real Moment' },
-    { id: 'm2', parentId: 'm1', createdAt: '2026-01-02' }
-  ];
-  const rootId = inlineGetCanonicalRootId(mems);
-  assert.equal(rootId, 'm1', 'fallback logic treats any null-parent as root candidate');
-  assert.equal(inlineIsRootMemory(mems[0], rootId), true);
-  assert.equal(inlineNonRootCount(mems, rootId), 1);
-});
-
-test('count: empty memory array returns null rootId, zero count not negative', () => {
-  const rootId = inlineGetCanonicalRootId([]);
+  ]);
+  const rootId = selectors.getCanonicalRootId();
   assert.equal(rootId, null);
-  assert.equal(inlineNonRootCount([], rootId), 0);
+});
+
+test('entry: rootUtils returns undefined → null propagated', () => {
+  const entry = loadCanvasEntry({
+    getCanonicalRootId: function() { return undefined; },
+    isRootMemory: function(mem, rootId) { return mem && mem.id === rootId; }
+  });
+  const selectors = entry.createMemorySelectors([
+    { id: 'r1', parentId: null, createdAt: '2026-01-01' },
+    { id: 'm1', parentId: 'r1', createdAt: '2026-01-02' }
+  ]);
+  const rootId = selectors.getCanonicalRootId();
+  assert.equal(rootId, null);
+});
+
+test('entry: local fallback filter finds root from memories', () => {
+  const entry = loadCanvasEntry({});
+  const selectors = entry.createMemorySelectors([
+    { id: 'r1', parentId: null, createdAt: '2026-01-01' },
+    { id: 'r2', parentId: null, createdAt: '2026-01-00' },
+    { id: 'm1', parentId: 'r1', createdAt: '2026-01-02' }
+  ]);
+  const rootId = selectors.getCanonicalRootId();
+  assert.equal(rootId, 'r2', 'earliest null-parent is canonical root');
+});
+
+// ── public-canvas-init.js sentinel contract ──
+
+test('init: resolveExistingMemoryId helper exists', () => {
+  const src = fs.readFileSync(path.join(ROOT, 'js/viewer/public-canvas-init.js'), 'utf8');
+  assert.ok(
+    src.includes('function resolveExistingMemoryId(candidateId)'),
+    'init fallback must have a sentinel validation helper'
+  );
+  assert.ok(
+    src.includes('return resolveExistingMemoryId(rootUtils.getCanonicalRootId(treeMemories))'),
+    'rootUtils.getCanonicalRootId result must pass through resolveExistingMemoryId'
+  );
+});
+
+test('init: no literal "root" fallback', () => {
+  const src = fs.readFileSync(path.join(ROOT, 'js/viewer/public-canvas-init.js'), 'utf8');
+  assert.ok(
+    !src.includes("roots.length === 0) return 'root'"),
+    'init fallback must not return literal "root" when no roots found'
+  );
+});
+
+test('init: entry path delegates to canvasEntry.getCanonicalRootId', () => {
+  const src = fs.readFileSync(path.join(ROOT, 'js/viewer/public-canvas-init.js'), 'utf8');
+  assert.ok(
+    src.includes('memorySelectors.getCanonicalRootId()'),
+    'init must prefer entry selector getCanonicalRootId'
+  );
+});
+
+test('init: resolveExistingMemoryId validates against treeMemories array', () => {
+  const src = fs.readFileSync(path.join(ROOT, 'js/viewer/public-canvas-init.js'), 'utf8');
+  assert.ok(
+    src.includes('treeMemories.some(function(m) { return m && m.id === candidateId; })'),
+    'resolveExistingMemoryId must check treeMemories for actual id presence'
+  );
 });

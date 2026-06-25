@@ -196,11 +196,16 @@
             ? canvasEntry.createMemorySelectors(treeMemories)
             : null;
 
+        function resolveExistingMemoryId(candidateId) {
+            if (!candidateId) return null;
+            return treeMemories.some(function(m) { return m && m.id === candidateId; }) ? candidateId : null;
+        }
+
         var getCanonicalRootId = memorySelectors && typeof memorySelectors.getCanonicalRootId === 'function'
             ? function() { return memorySelectors.getCanonicalRootId(); }
             : function() {
                 if (typeof rootUtils.getCanonicalRootId === 'function') {
-                    return rootUtils.getCanonicalRootId(treeMemories);
+                    return resolveExistingMemoryId(rootUtils.getCanonicalRootId(treeMemories));
                 }
                 var roots = treeMemories.filter(function(m) { return m.parentId === null || m.parentId === undefined; });
                 if (roots.length === 0) return null;
