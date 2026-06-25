@@ -461,3 +461,77 @@ test('public canvas init delegates metrics/profile setup through entry wrapper',
     'local load failure append helper must be defined before init public canvas function'
   );
 });
+
+test('public canvas sidebar template and controller wiring contract (Issue #2884)', () => {
+  const html = getViewHtml();
+  const scripts = getScriptSrcs();
+  const templateSrc = fs.readFileSync('js/viewer/templates/public-viewer-sidebar-template.js', 'utf8');
+  const initSrc = fs.readFileSync('js/viewer/public-canvas-init.js', 'utf8');
+
+  // 1. pages/view.html에 publicViewerSidebarTemplateMount가 canvas mount보다 앞에 존재
+  const mountIdx = html.indexOf('id="publicViewerSidebarTemplateMount"');
+  const canvasIdx = html.indexOf('id="canvasArea"');
+  assert.notEqual(mountIdx, -1, 'publicViewerSidebarTemplateMount must exist in view.html');
+  assert.notEqual(canvasIdx, -1, 'canvasArea must exist in view.html');
+  assert.ok(mountIdx < canvasIdx, 'publicViewerSidebarTemplateMount must reside before canvasArea');
+
+  // 2. public viewer sidebar template script가 존재
+  assert.ok(
+    scriptIncludes(scripts, 'js/viewer/templates/public-viewer-sidebar-template.js'),
+    'view.html must import public-viewer-sidebar-template.js'
+  );
+
+  // 3. sidebar template script가 public-canvas-init.js보다 먼저 로드
+  assertScriptOrder(
+    scripts,
+    'js/viewer/templates/public-viewer-sidebar-template.js',
+    'js/viewer/public-canvas-init.js'
+  );
+
+  // 4. public view는 editor sidebar template, add-memory template, floating toolbar를 새로 가져오지 않음
+  assert.equal(html.includes('editorSidebarTemplateMount'), false, 'must not include editorSidebarTemplateMount');
+  assert.equal(html.includes('editor-floating-toolbar-template'), false, 'must not load editor-floating-toolbar-template');
+
+  // 5. template에는 required sidebar IDs가 존재
+  const requiredIds = [
+    'viewerSidebarBackLink',
+    'viewerSidebarBackLabel',
+    'viewerSidebarKicker',
+    'viewerSidebarTreeTitle',
+    'viewerSidebarSummary',
+    'viewerSidebarMomentCount',
+    'viewerSidebarOwnerMode',
+    'viewerSidebarViewBtn',
+    'viewerSidebarEditBtn'
+  ];
+  requiredIds.forEach(id => {
+    assert.ok(templateSrc.includes(`id="${id}"`), `template must contain id="${id}"`);
+  });
+
+  // 6. template에는 renameTreeBtn, addMemoryBtn, sidebarVisibilityToggleBtn가 없음
+  const forbiddenBtns = ['renameTreeBtn', 'addMemoryBtn', 'sidebarVisibilityToggleBtn'];
+  forbiddenBtns.forEach(btn => {
+    assert.equal(templateSrc.includes(btn), false, `template must not contain ${btn}`);
+  });
+
+  // 7. public-canvas-init.js가 title/summary/moment count를 새 IDs에 연결
+  assert.ok(initSrc.includes('viewerSidebarTreeTitle'), 'init must reference viewerSidebarTreeTitle');
+  assert.ok(initSrc.includes('viewerSidebarSummary'), 'init must reference viewerSidebarSummary');
+  assert.ok(initSrc.includes('viewerSidebarMomentCount'), 'init must reference viewerSidebarMomentCount');
+
+  // 8. owner rail reveal이 resolveTreeWorkspaceCanEdit() 또는 existing capability result에 종속
+  assert.ok(
+    initSrc.includes('resolveTreeWorkspaceCanEdit'),
+    'init must depend on resolveTreeWorkspaceCanEdit for capability check'
+  );
+
+  // 9. capability false일 때 owner mode container가 숨겨지는 code path 존재
+  assert.ok(
+    initSrc.includes("sidebarOwnerMode.style.display = 'none'"),
+    'init must hide owner mode container when capability false'
+  );
+
+  // 10. raw ownerId/Firebase UID를 sidebar DOM에 렌더하지 않음
+  assert.equal(templateSrc.includes('ownerId'), false, 'template must not output ownerId');
+  assert.equal(templateSrc.includes('uid'), false, 'template must not output uid');
+});
