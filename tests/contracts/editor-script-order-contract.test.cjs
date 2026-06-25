@@ -187,15 +187,10 @@ test('editor entry still depends on DOMContentLoaded timing for later i18n/auth 
 
   assert.notEqual(entry, -1, 'js/editor.js should be loaded by pages/editor.html');
 
-  const scriptsExpectedAfterEntry = [
-    'js/editor/editor-i18n-refresh.js',
+  const scriptsExpectedBeforeEntry = [
     'firebase-app.js',
     'firebase-auth.js',
     'js/firebase-config.js',
-    'js/i18n/i18n-core.js',
-    'js/i18n/i18n-editor.js',
-    'js/i18n.js',
-    'js/shared-header.js',
     'js/auth/auth-state.js',
     'js/auth/auth-callbacks.js',
     'js/auth/auth-cache.js',
@@ -203,7 +198,21 @@ test('editor entry still depends on DOMContentLoaded timing for later i18n/auth 
     'js/auth/auth-session.js',
     'js/auth/auth-firebase.js',
     'js/auth.js',
+    'js/shared-header.js',
   ];
+
+  const scriptsExpectedAfterEntry = [
+    'js/editor/editor-i18n-refresh.js',
+    'js/i18n/i18n-core.js',
+    'js/i18n/i18n-editor.js',
+    'js/i18n.js',
+  ];
+
+  for (const script of scriptsExpectedBeforeEntry) {
+    const index = sourceIndex(sources, script);
+    assert.notEqual(index, -1, `${script} should be loaded by pages/editor.html`);
+    assert.ok(index < entry, `${script} currently loads before js/editor.js`);
+  }
 
   for (const script of scriptsExpectedAfterEntry) {
     const index = sourceIndex(sources, script);

@@ -77,6 +77,12 @@ function isBrowseSummaryRequest(request) {
   return path === '/api/community/trees' && url.searchParams.get('view') === 'summary';
 }
 
+function isPrivateTreeCapabilityRequest(request) {
+  if (request.method.toUpperCase() !== 'GET') return false;
+  const path = new URL(request.url).pathname.replace(/\/+$/, '');
+  return /^\/api\/private\/trees\/[^/]+\/capability$/.test(path);
+}
+
 function buildBrowseCacheRequest(request) {
   const url = new URL(request.url);
   const requestedSort = url.searchParams.get('sort');
@@ -174,6 +180,13 @@ function buildModalUrl(request, env) {
   if (treeForkMatch && method === 'POST') {
     const treeId = encodeURIComponent(decodeURIComponent(treeForkMatch[1]));
     target.pathname = `/modal/private/trees/${treeId}/fork`;
+    return target;
+  }
+
+  const capabilityMatch = path.match(/^\/api\/private\/trees\/([^/]+)\/capability$/);
+  if (capabilityMatch) {
+    const treeId = encodeURIComponent(decodeURIComponent(capabilityMatch[1]));
+    target.pathname = `/modal/private/trees/${treeId}/capability`;
     return target;
   }
 
@@ -462,6 +475,9 @@ export async function onRequest(context) {
       }
     }
   } else {
+    if (isPrivateTreeCapabilityRequest(request) && !hasAuthorizationHeader(request)) {
+      return buildMissingAuthorizationResponse(requestId);
+    }
     try {
       const modalResponse = await tryModalRead(request, env || {}, requestId);
       if (modalResponse) return await withUpstreamHeader(modalResponse, 'modal', requestId);
@@ -480,7 +496,8 @@ export async function onRequest(context) {
     const isForkPath = path.match(/^\/api\/trees\/[^/]+\/fork$/);
     const isCollection = ['/api/trees', '/api/memories'].includes(path);
     const isDetail = path.match(/^\/api\/(trees|memories)\/[^/]+$/);
-    const allow = isForkPath ? 'POST' : (isCollection ? 'GET, POST' : (isDetail ? 'GET, PUT, DELETE' : 'GET'));
+    const isCapability = path.match(/^\/api\/private\/trees\/[^/]+\/capability$/);
+    const allow = isForkPath ? 'POST' : (isCollection ? 'GET, POST' : (isDetail ? 'GET, PUT, DELETE' : (isCapability ? 'GET' : 'GET')));
     return buildMethodNotAllowedResponse(allow, requestId);
   }
 

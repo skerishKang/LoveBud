@@ -650,3 +650,172 @@ test('23. editor auth-late reconciliation contracts and dynamic VM assertions', 
   assert.equal(targetHref, 'my-trees-mocked-href', 'Must redirect exactly to deps.getMyTreesHref() result');
   assert.ok(!targetHref.startsWith('http'), 'Must be a relative/context-safe path without origin prefix');
 });
+
+test('17. editor-page-helpers auth start state machine and login loop prevention contract', () => {
+  const helpersSrc = readSource('js/editor/editor-page-helpers.js');
+  const vm = require('node:vm');
+
+  function runHelpers(sandbox) {
+    sandbox.window = sandbox.window || {};
+    sandbox.URLSearchParams = sandbox.URLSearchParams || URLSearchParams;
+    vm.createContext(sandbox);
+    vm.runInContext(helpersSrc, sandbox);
+    return sandbox.window.LoveBudEditorPageHelpers;
+  }
+
+  // 1. Immediate null callback + bootstrap pending -> no redirect, no startEditor
+  {
+    let started = false;
+    let redirected = 0;
+    const sandbox = {
+      window: {
+        location: { search: '?treeId=tree-123' },
+        LoveBudAuthBootstrap: {
+          getSnapshot() { return { ready: false, user: null }; }
+        },
+        registerOnAuthReady(cb) { this.onAuthReady = cb; }
+      }
+    };
+    const api = runHelpers(sandbox);
+    const tryStart = api.registerEditorAuthStart({
+      windowRef: sandbox.window,
+      startEditor() { started = true; },
+      redirectToEditorLogin() { redirected++; },
+      readConfirmedAuthCache() { return null; }
+    });
+
+    tryStart(null);
+    assert.equal(started, false, 'Should not start editor when bootstrap is pending');
+    assert.equal(redirected, 0, 'Should not redirect when bootstrap is pending');
+  }
+
+  // 2. Immediate user callback -> startEditor exactly once (even if confirmed session is missing/false)
+  {
+    let started = 0;
+    let redirected = 0;
+    const sandbox = {
+      window: {
+        location: { search: '?treeId=tree-123' },
+        LoveBudAuthBootstrap: {
+          getSnapshot() { return { ready: true, user: { uid: 'user-123' } }; }
+        },
+        registerOnAuthReady(cb) { this.onAuthReady = cb; }
+      }
+    };
+    const api = runHelpers(sandbox);
+    const tryStart = api.registerEditorAuthStart({
+      windowRef: sandbox.window,
+      startEditor() { started++; },
+      redirectToEditorLogin() { redirected++; },
+      readConfirmedAuthCache() { return null; }
+    });
+
+    tryStart({ uid: 'user-123' });
+    assert.equal(started, 1, 'Should start editor when user has uid');
+    assert.equal(redirected, 0, 'Should not redirect when user has uid');
+  }
+
+  // 3. Bootstrap settled null -> redirectToEditorLogin exactly once
+  {
+    let started = 0;
+    let redirected = 0;
+    const sandbox = {
+      window: {
+        location: { search: '?treeId=tree-123' },
+        LoveBudAuthBootstrap: {
+          getSnapshot() { return { ready: true, user: null }; }
+        },
+        registerOnAuthReady(cb) { this.onAuthReady = cb; }
+      }
+    };
+    const api = runHelpers(sandbox);
+    const tryStart = api.registerEditorAuthStart({
+      windowRef: sandbox.window,
+      startEditor() { started++; },
+      redirectToEditorLogin() { redirected++; },
+      readConfirmedAuthCache() { return null; }
+    });
+
+    tryStart(null);
+    assert.equal(started, 0, 'Should not start editor when user is null');
+    assert.equal(redirected, 1, 'Should redirect to login when bootstrap is ready but user is null');
+  }
+
+  // 4. Confirmed-cache false but actual user.uid present -> redirect not called
+  {
+    let started = 0;
+    let redirected = 0;
+    const sandbox = {
+      window: {
+        location: { search: '?treeId=tree-123' },
+        LoveBudAuthBootstrap: {
+          getSnapshot() { return { ready: true, user: { uid: 'user-123' } }; }
+        },
+        registerOnAuthReady(cb) { this.onAuthReady = cb; }
+      }
+    };
+    const api = runHelpers(sandbox);
+    const tryStart = api.registerEditorAuthStart({
+      windowRef: sandbox.window,
+      startEditor() { started++; },
+      redirectToEditorLogin() { redirected++; },
+      readConfirmedAuthCache() { return { uid: null }; }
+    });
+
+    tryStart({ uid: 'user-123' });
+    assert.equal(started, 1);
+    assert.equal(redirected, 0);
+  }
+
+  // 5. Repeated null callback does not trigger multiple redirects (redirection is deduplicated)
+  {
+    let started = 0;
+    let redirected = 0;
+    const sandbox = {
+      window: {
+        location: { search: '?treeId=tree-123' },
+        LoveBudAuthBootstrap: {
+          getSnapshot() { return { ready: true, user: null }; }
+        },
+        registerOnAuthReady(cb) { this.onAuthReady = cb; }
+      }
+    };
+    const api = runHelpers(sandbox);
+    const tryStart = api.registerEditorAuthStart({
+      windowRef: sandbox.window,
+      startEditor() { started++; },
+      redirectToEditorLogin() { redirected++; },
+      readConfirmedAuthCache() { return null; }
+    });
+
+    tryStart(null);
+    tryStart(null);
+    assert.equal(redirected, 1, 'Redirection should only happen once');
+  }
+
+  // 6. mode=edit only (no treeId) -> should not boot editor without valid auth/cache session
+  {
+    let started = 0;
+    let redirected = 0;
+    const sandbox = {
+      window: {
+        location: { search: '?mode=edit' },
+        LoveBudAuthBootstrap: {
+          getSnapshot() { return { ready: true, user: null }; }
+        },
+        registerOnAuthReady(cb) { this.onAuthReady = cb; }
+      }
+    };
+    const api = runHelpers(sandbox);
+    const tryStart = api.registerEditorAuthStart({
+      windowRef: sandbox.window,
+      startEditor() { started++; },
+      redirectToEditorLogin() { redirected++; },
+      readConfirmedAuthCache() { return null; } // No cache user
+    });
+
+    tryStart(null);
+    assert.equal(started, 0, 'Should not start editor for new tree if cache is empty and auth is null');
+    assert.equal(redirected, 1, 'Should redirect if no valid session on new tree creation');
+  }
+});

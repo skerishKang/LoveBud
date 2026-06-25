@@ -55,22 +55,28 @@ test('editor.html keeps script loading order before editor runtime', () => {
         lastIndex = index;
     });
     
-    // Check auth scripts which load after editor.js
-    const authOrder = [
+    // Check auth scripts loading order
+    const authOrderBeforeEditor = [
         'js/auth/auth-state.js',
         'js/auth/auth-callbacks.js',
         'js/auth/auth-firebase.js',
-        'js/auth.js',
-        'js/auth/auth-protected-route.js'
+        'js/auth.js'
     ];
     
-    let lastAuthIndex = html.indexOf('js/editor.js');
-    authOrder.forEach(script => {
+    let lastAuthIndex = -1;
+    authOrderBeforeEditor.forEach(script => {
         const index = html.indexOf(script);
-        assert.notEqual(index, -1, `tree.html must load ${script}`);
-        assert.ok(index > lastAuthIndex, `${script} must load after editor.js and previous scripts`);
+        assert.notEqual(index, -1, `editor.html must load ${script}`);
+        assert.ok(index > lastAuthIndex, `${script} must load in correct order`);
         lastAuthIndex = index;
     });
+
+    const editorIndex = html.indexOf('js/editor.js');
+    assert.ok(lastAuthIndex < editorIndex, 'Auth scripts must load before editor.js');
+
+    const protectedRouteIndex = html.indexOf('js/auth/auth-protected-route.js');
+    assert.notEqual(protectedRouteIndex, -1, 'editor.html must load auth-protected-route.js');
+    assert.ok(editorIndex < protectedRouteIndex, 'auth-protected-route.js must load after editor.js');
 });
 
 test('editor.html exposes stable static template extraction candidates', () => {

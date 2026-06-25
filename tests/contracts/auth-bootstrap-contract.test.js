@@ -103,8 +103,8 @@ test('editor page preserves auth submodule bootstrap order and current editor-be
   const firstAuthModuleIndex = assertHasScript(scripts, 'pages/editor.html', 'js/auth/auth-state.js');
 
   assert.ok(
-    editorRuntimeIndex < firstAuthModuleIndex,
-    'pages/editor.html currently loads editor runtime before auth bootstrap; keep this boundary explicit until intentionally redesigned'
+    firstAuthModuleIndex < editorRuntimeIndex,
+    'pages/editor.html currently loads auth bootstrap before editor runtime'
   );
 
   assertOrderedScripts('pages/editor.html', [

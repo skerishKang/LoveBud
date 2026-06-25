@@ -611,3 +611,117 @@ test('isModalOwnedWriteRoute recognises POST /api/trees/:id/fork as modal-owned 
     'isModalOwnedWriteRoute should treat POST /api/trees/:id/fork as modal-owned write'
   );
 });
+
+// ─── PRIVATE CAPABILITY ROUTE CONTRACTS ───────────────────────────────────
+
+const TEST_HOST = 'https://test5.lovebud.pages.dev';
+const MODAL_BASE_URL = 'https://padiemipu--lovebud-browse-snapshot-fastapi-app.modal.run';
+
+function mockFetch(handler) {
+  const original = globalThis.fetch;
+  const calls = [];
+  globalThis.fetch = async (url, options = {}) => {
+    const call = { url: typeof url === 'string' ? url : url.toString(), options };
+    calls.push(call);
+    return handler(call, calls.length);
+  };
+  return { calls, restore: () => { globalThis.fetch = original; } };
+}
+
+async function callOnRequest(request, envOverrides) {
+  const mod = await import('../../functions/api/[[path]].js');
+  const { onRequest } = mod;
+  return onRequest({
+    request,
+    env: { MODAL_BASE_URL, ...envOverrides },
+  });
+}
+
+test('1. authenticated GET /api/private/trees/:id/capability forwards to modal private capability', async () => {
+  const { calls, restore } = mockFetch(async (call) => {
+    return new Response(JSON.stringify({ viewerCanEdit: true }), {
+      status: 200,
+      headers: { 'content-type': 'application/json' }
+    });
+  });
+
+  try {
+    const request = new Request(`${TEST_HOST}/api/private/trees/test-tree-123/capability`, {
+      headers: { 'authorization': 'Bearer owner-token' }
+    });
+    const response = await callOnRequest(request);
+
+    assert.equal(response.status, 200);
+    assert.equal(calls.length, 1);
+    assert.ok(calls[0].url.includes('/modal/private/trees/test-tree-123/capability'));
+    assert.equal(calls[0].options.headers.authorization, 'Bearer owner-token');
+
+    const body = await response.json();
+    assert.equal(body.viewerCanEdit, true);
+  } finally {
+    restore();
+  }
+});
+
+test('2. unauthenticated GET /api/private/trees/:id/capability returns 401 without Modal fetch', async () => {
+  const { calls, restore } = mockFetch(async (call) => {
+    return new Response(JSON.stringify({ error: 'Should not call modal' }), { status: 500 });
+  });
+
+  try {
+    const request = new Request(`${TEST_HOST}/api/private/trees/test-tree-123/capability`, {
+      method: 'GET'
+    });
+    const response = await callOnRequest(request);
+
+    assert.equal(response.status, 401);
+    assert.equal(calls.length, 0);
+    const body = await response.json();
+    assert.equal(body.error, 'Authorization required');
+  } finally {
+    restore();
+  }
+});
+
+test('3. capability route does not fall back to public trees route', async () => {
+  const { calls, restore } = mockFetch(async (call) => {
+    return new Response(JSON.stringify({ error: 'Not found' }), { status: 404 });
+  });
+
+  try {
+    const request = new Request(`${TEST_HOST}/api/private/trees/test-tree-123/capability`, {
+      headers: { 'authorization': 'Bearer owner-token' }
+    });
+    const response = await callOnRequest(request);
+
+    // Should return 404 from private path directly, no fallback to public mapping /modal/trees/
+    assert.equal(response.status, 404);
+    assert.equal(calls.length, 1);
+    assert.ok(!calls[0].url.includes('/modal/trees/test-tree-123/capability'));
+    assert.ok(calls[0].url.includes('/modal/private/trees/test-tree-123/capability'));
+  } finally {
+    restore();
+  }
+});
+
+test('4. method non-GET on capability returns 405 Method Not Allowed with Allow: GET', async () => {
+  const { calls, restore } = mockFetch(async (call) => {
+    return new Response(JSON.stringify({ error: 'Should not call modal' }), { status: 500 });
+  });
+
+  try {
+    const request = new Request(`${TEST_HOST}/api/private/trees/test-tree-123/capability`, {
+      method: 'POST',
+      headers: { 'authorization': 'Bearer owner-token' }
+    });
+    const response = await callOnRequest(request);
+
+    assert.equal(response.status, 405);
+    assert.equal(calls.length, 0);
+    assert.equal(response.headers.get('allow'), 'GET');
+    const body = await response.json();
+    assert.equal(body.error, 'Method not allowed');
+  } finally {
+    restore();
+  }
+});
