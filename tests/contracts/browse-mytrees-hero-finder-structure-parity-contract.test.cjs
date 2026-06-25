@@ -85,15 +85,15 @@ test('6. My Trees preserves id attributes and button semantics', () => {
   assert.match(myTreesHtml, /<button[^>]*class="[^"]*my-trees-filter-chip[^"]*"[^>]*>/, 'Filter chips must be button elements');
 });
 
-test('7. My Trees CSS cache keys are updated for structure parity', () => {
+test('7. My Trees CSS cache keys are updated for hero title recovery', () => {
   const myTreesHtml = read('pages/my-trees.html');
   const myTreesCss = read('css/my-trees.css');
 
   // Check HTML cache key
-  assert.match(myTreesHtml, /href="\.\.\/css\/my-trees\.css\?v=20260625-2878-structure-1"/, 'my-trees.html must use v=20260625-2878-structure-1');
+  assert.match(myTreesHtml, /href="\.\.\/css\/my-trees\.css\?v=20260626-2878-hero-title-1"/, 'my-trees.html must use v=20260626-2878-hero-title-1');
 
-  // Check CSS import cache key
-  assert.match(myTreesCss, /my-trees-header\.css\?v=20260625-2878-structure-1/, 'my-trees.css must import my-trees-header.css with v=20260625-2878-structure-1');
+  // Check CSS import cache key for shared hero controls
+  assert.match(myTreesCss, /search-hero-controls\.css\?v=20260626-2878-hero-title-1/, 'my-trees.css must import search-hero-controls.css with v=20260626-2878-hero-title-1');
 });
 
 test('8. My Trees header CSS removes duplicate hero selectors', () => {
@@ -126,4 +126,20 @@ test('10. My Trees results head and controls CSS is preserved', () => {
   assert.match(headerCss, /\.my-trees-results-label/, 'Must preserve my-trees-results-label selector');
   assert.match(headerCss, /\.my-trees-results-controls/, 'Must preserve my-trees-results-controls selector');
   assert.match(headerCss, /\.btn-header-create/, 'Must preserve btn-header-create selector');
+});
+
+test('11. Shared search-hero-controls.css contains required title-line rules', () => {
+  const sharedCss = read('css/search/search-hero-controls.css');
+
+  // Must have display: block for title-line
+  assert.match(sharedCss, /\.search-panel-header h1 .title-line\s*{\s*display:\s*block;/, 'Must have display: block for .title-line in shared CSS');
+
+  // Must have styling for 1st line
+  assert.match(sharedCss, /\.search-panel-header h1 .title-line:nth-child\(1\)\s*{\s*color:\s*var\(--on-surface-variant\);\s*font-weight:\s*700;/, 'Must have correct styling for 1st title-line');
+
+  // Must have styling for accent line
+  assert.match(sharedCss, /\.search-panel-header h1 .title-accent\s*{\s*color:\s*var\(--primary\);\s*font-weight:\s*780;/, 'Must have correct styling for .title-accent');
+
+  // Must have styling for 3rd line
+  assert.match(sharedCss, /\.search-panel-header h1 .title-line:nth-child\(3\)\s*{\s*color:\s*#b85c66;\s*font-weight:\s*900;/, 'Must have correct styling for 3rd title-line');
 });
