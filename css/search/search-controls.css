@@ -176,6 +176,7 @@
 /* ── Unified Sort select styling matching summary-sort-control ── */
 .browse-sort-select {
     box-sizing: border-box;
+    inline-size: var(--lovetree-results-sort-control-inline-size);
     min-height: 44px;
     padding: 0 38px 0 16px;
     border-radius: 999px;

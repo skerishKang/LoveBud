@@ -76,6 +76,8 @@
     --lovetree-chip-active-border: var(--lovetree-pill-border);
     --lovetree-chip-active-shadow: 0 4px 12px rgba(144, 73, 81, 0.05);
 
+    --lovetree-results-sort-control-inline-size: 112px;
+
     /* LoveTree Empty State Visual Tokens — PR 4 (Browse ↔ My Trees alignment)
        Keeps page-specific layout while sharing surface, tone, copy, and action depth. */
     --lovetree-empty-state-surface: var(--lovetree-soft-surface);

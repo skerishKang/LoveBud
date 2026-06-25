@@ -26,6 +26,7 @@ border-bottom: 0;
 .sort-control { position: relative; display: inline-flex; align-items: center; }
 .summary-sort-control {
 box-sizing: border-box;
+inline-size: var(--lovetree-results-sort-control-inline-size);
 min-height: 44px;
 padding: 0 38px 0 16px;
 border-radius: 999px;
@@ -83,7 +84,6 @@ white-space: nowrap;
     padding-top: 18px;
     border-top: 1px solid rgba(144, 73, 81, 0.09);
     min-width: 0;
-    margin: 4px 0 18px;
 }
 
 .my-trees-results-title-row {
