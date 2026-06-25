@@ -229,9 +229,12 @@ def fetch_latest_public_tree_snapshots(limit: int = 12, sort: str = "latest") ->
                 # If the migration has not run yet, fall back to the latest
                 # order rather than crashing the whole endpoint.
                 has_social_counts_table = _table_exists(cur, "tree_social_counts")
-                has_view_count_column = _table_has_column(cur, "tree_social_counts", "view_count")
+                has_like_count_column = _table_has_column(cur, "tree_social_counts", "like_count") if has_social_counts_table else False
+                has_view_count_column = _table_has_column(cur, "tree_social_counts", "view_count") if has_social_counts_table else False
                 effective_order_clause = order_clause
-                if sort == "views" and not (has_social_counts_table and has_view_count_column):
+                if sort == "likes" and not (has_social_counts_table and has_like_count_column):
+                    effective_order_clause = "t.created_at DESC"
+                elif sort == "views" and not (has_social_counts_table and has_view_count_column):
                     effective_order_clause = "t.created_at DESC"
                 meta_duration = (time.time() - meta_start) * 1000
                 print(f"[LoveBudModal] [TIMING] Schema metadata check took {meta_duration:.2f}ms")
@@ -239,6 +242,11 @@ def fetch_latest_public_tree_snapshots(limit: int = 12, sort: str = "latest") ->
                 if has_memories and has_title:
                     q_start = time.time()
                     modern_query = modern_query_template.format(order_clause=effective_order_clause)
+                    if not (has_social_counts_table and has_like_count_column and has_view_count_column):
+                        modern_query = modern_query.replace(
+                            "FROM tree_social_counts",
+                            "FROM (SELECT NULL::uuid as tree_id, 0 as like_count, 0 as view_count WHERE FALSE) s_dummy"
+                        )
                     cur.execute(modern_query, (limit,))
                     rows = cur.fetchall()
                     q_duration = (time.time() - q_start) * 1000
