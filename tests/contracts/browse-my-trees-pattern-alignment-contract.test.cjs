@@ -81,12 +81,20 @@ test('4d. My LoveTree search panel follows Browse utility panel visual structure
   const finderCss = read('css/my-trees/my-trees-finder.css');
   const headerCss = read('css/my-trees/my-trees-header.css');
   const responsiveCss = read('css/my-trees/my-trees-responsive.css');
+  // Shared controls CSS must carry the base presentation values (#2878: my-trees-search-input
+  // no longer duplicates these; they are inherited from .search-input in search-controls.css).
+  const sharedCss = read('css/search/search-controls.css');
+  assert.match(sharedCss, /\.search-input\s*{[^}]*padding:\s*15px 18px 15px 48px;[^}]*border-radius:\s*999px;[^}]*background:\s*rgba\(255,\s*255,\s*255,\s*0\.82\);/s,
+    '#2878: shared .search-input in search-controls.css must carry the base presentation values that .my-trees-search-input now inherits');
+  // #2878: line-height and appearance are now in shared .search-input, not in .my-trees-search-input.
+  assert.match(sharedCss, /\.search-input\s*{[^}]*line-height:\s*1\.15;[^}]*}/s,
+    '#2878: shared .search-input must carry line-height: 1.15');
+  assert.match(sharedCss, /\.search-input\s*{[^}]*appearance:\s*none;[^}]*-webkit-appearance:\s*none;[^}]*}/s,
+    '#2878: shared .search-input must carry appearance: none / -webkit-appearance: none');
 
   assert.match(finderCss, /\.my-trees-finder\s*{[^}]*justify-content:\s*space-between;[^}]*padding:\s*14px;[^}]*border-radius:\s*24px;[^}]*background:\s*rgba\(255, 255, 255, 0\.48\);[^}]*box-shadow:\s*0 14px 32px rgba\(75, 64, 57, 0\.035\);/s);
   assert.match(finderCss, /\.my-trees-search-box\s*{[^}]*max-width:\s*420px;[^}]*}/s);
-  assert.match(finderCss, /\.my-trees-search-input\s*{[^}]*padding:\s*15px 18px 15px 48px;[^}]*border-radius:\s*999px;[^}]*background:\s*rgba\(255, 255, 255, 0\.82\);/s);
-  assert.match(finderCss, /\.my-trees-search-input\s*{[^}]*line-height:\s*1\.15;[^}]*}/s);
-  assert.match(finderCss, /\.my-trees-search-input\s*{[^}]*appearance:\s*none;[^}]*-webkit-appearance:\s*none;[^}]*}/s);
+  // #2878: .my-trees-search-input base block is removed; webkit decoration reset lives in finder.css.
   assert.match(finderCss, /\.my-trees-search-input::-webkit-search-decoration,\s*\.my-trees-search-input::-webkit-search-cancel-button,\s*\.my-trees-search-input::-webkit-search-results-button,\s*\.my-trees-search-input::-webkit-search-results-decoration\s*{\s*display:\s*none;\s*}/s);
   assert.match(finderCss, /\.my-trees-filter-chips\s*{[^}]*justify-content:\s*flex-end;[^}]*}/s);
   assert.match(finderCss, /\.my-trees-filter-chip\s*{[^}]*background:\s*var\(--lovetree-chip-bg\);[^}]*border:\s*1px solid var\(--lovetree-chip-border\);[^}]*color:\s*var\(--lovetree-chip-text\);[^}]*}/s);

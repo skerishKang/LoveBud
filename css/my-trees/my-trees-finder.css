@@ -24,16 +24,8 @@
   min-width: 0;
 }
 
-.my-trees-search-input {
-  width: 100%;
-  padding: 15px 18px 15px 48px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.82);
-  line-height: 1.15;
-  appearance: none;
-  -webkit-appearance: none;
-}
 
+/* Defensive webkit search decoration reset (type="text" but kept as guard) */
 .my-trees-search-input::-webkit-search-decoration,
 .my-trees-search-input::-webkit-search-cancel-button,
 .my-trees-search-input::-webkit-search-results-button,
