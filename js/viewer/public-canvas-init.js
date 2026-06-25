@@ -670,15 +670,23 @@
                         var mg = document.getElementById('viewerModeGroup');
                         if (mg && mg.style.display !== 'none') return;
                         var ap = window.LoveTreeAuthPolicy;
-                        var authReady = ap && typeof ap.hasConfirmedAuthSession === 'function'
-                            ? ap.hasConfirmedAuthSession() : true;
-                        if (authReady) return;
-                        if (typeof window.LoveBudPublicCanvasInit.updateOwnerModeUI === 'function') {
-                            window.LoveBudPublicCanvasInit.updateOwnerModeUI();
+                        var conf = ap && typeof ap.hasConfirmedAuthSession === 'function'
+                            ? ap.hasConfirmedAuthSession() : false;
+                        if (conf) {
+                            // Auth confirmed — re-evaluate owner mode UI
+                            if (typeof window.LoveBudPublicCanvasInit.updateOwnerModeUI === 'function') {
+                                window.LoveBudPublicCanvasInit.updateOwnerModeUI();
+                            }
+                            return;
                         }
-                        if (mg && mg.style.display === 'none') {
-                            setTimeout(pollOwnerAuth, 200);
+                        // Guest settled: Firebase onAuthStateChanged fired (null user)
+                        if (window.__lovebudAuthReady === true) {
+                            if (typeof window.LoveBudPublicCanvasInit.updateOwnerModeUI === 'function') {
+                                window.LoveBudPublicCanvasInit.updateOwnerModeUI();
+                            }
+                            return;
                         }
+                        setTimeout(pollOwnerAuth, 200);
                     })();
                 }
             }
