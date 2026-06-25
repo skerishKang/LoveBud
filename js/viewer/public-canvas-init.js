@@ -203,7 +203,7 @@
                     return rootUtils.getCanonicalRootId(treeMemories);
                 }
                 var roots = treeMemories.filter(function(m) { return m.parentId === null || m.parentId === undefined; });
-                if (roots.length === 0) return 'root';
+                if (roots.length === 0) return null;
                 return roots.sort(function(a, b) {
                     return (a.createdAt || '9999') > (b.createdAt || '9999') ? 1 : -1;
                 })[0].id;

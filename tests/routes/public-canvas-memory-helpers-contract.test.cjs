@@ -26,8 +26,8 @@ test('public canvas init keeps memory/root helpers behind a local helper', () =>
     'memory helpers factory must preserve root filtering fallback'
   );
   assert.ok(
-    initSrc.includes("if (roots.length === 0) return 'root';"),
-    'memory helpers factory must preserve root default fallback'
+    initSrc.includes("if (roots.length === 0) return null;"),
+    'memory helpers factory must return null when no root found'
   );
   assert.ok(
     initSrc.includes("return (a.createdAt || '9999') > (b.createdAt || '9999') ? 1 : -1;"),

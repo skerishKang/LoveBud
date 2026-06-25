@@ -55,13 +55,27 @@
      * Sets window.currentTreeData and window.currentTreeMemories.
      */
     function normalizeForCanvas(tree, rawMemories) {
+        var ownerId = tree.ownerId || tree.owner_id || (tree.data && (tree.data.ownerId || tree.data.owner_id)) || '';
+        var description = tree.description || (tree.data && tree.data.description) || '';
+        var summary = tree.summary || (tree.data && tree.data.summary) || '';
+        var memo = tree.memo || (tree.data && tree.data.memo) || '';
+
         var treeData = {
             id: tree.id || tree.treeId || '',
             title: tree.title || '',
             visibility: 'public',
             stage: tree.stage || '',
-            ownerId: tree.ownerId || tree.owner_id || '',
-            memoryCount: Array.isArray(rawMemories) ? rawMemories.length : 0
+            ownerId: ownerId,
+            description: description,
+            summary: summary,
+            memo: memo,
+            memoryCount: Array.isArray(rawMemories) ? rawMemories.length : 0,
+            data: {
+                ownerId: ownerId,
+                description: description,
+                summary: summary,
+                memo: memo
+            }
         };
 
         var normalize = function(mem) {
