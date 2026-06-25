@@ -198,3 +198,237 @@ test('7. mode=edit URL query parameter does not grant viewer capability', () => 
   assert.ok(fn.length > 0, 'updateOwnerModeUI must exist');
   assert.ok(!fn.includes("params.get('mode')"), 'mode URL parameter must not be used to grant capability');
 });
+
+test('8. dynamic auth change, cache invalidation, and deduplication contracts', async () => {
+  const code = readInitJs();
+  let apiFetchCount = 0;
+  let apiFetchCalls = [];
+  let apiFetchResolve;
+  const apiFetchPromise = new Promise((resolve) => {
+    apiFetchResolve = resolve;
+  });
+
+  const registeredCallbacks = [];
+  let updateOwnerModeUICallCount = 0;
+
+  const sandbox = {
+    console: {
+      log: () => {},
+      error: () => {},
+    },
+    setTimeout: (fn, delay) => {
+      if (delay === 200) {
+        // don't loop endlessly in tests unless needed
+        return;
+      }
+      fn();
+    },
+    document: {
+      readyState: 'complete',
+      body: {
+        classList: {
+          add: () => {},
+          remove: () => {},
+        },
+        appendChild: () => {},
+      },
+      createElement: () => ({
+        style: {},
+        appendChild: () => {},
+        classList: {
+          toggle: () => {},
+          add: () => {},
+          remove: () => {},
+        }
+      }),
+      getElementById: (id) => {
+        return {
+          classList: {
+            toggle: () => {},
+          },
+          appendChild: () => {},
+          style: {},
+          disabled: false,
+          setAttribute: () => {},
+          removeAttribute: () => {},
+        };
+      },
+      querySelectorAll: () => [],
+      querySelector: () => null,
+    },
+    URLSearchParams: class {
+      get() {
+        return 'test-tree-id';
+      }
+    },
+    window: {
+      location: {
+        search: '?treeId=test-tree-id',
+        pathname: '/pages/detail.html',
+        origin: 'http://localhost',
+      },
+      LoveBudPublicCanvasBridge: {
+        loadPublicTreeData: () => Promise.resolve({
+          tree: { id: 'test-tree-id', title: 'Test Tree' },
+          memories: []
+        }),
+        normalizeForCanvas: (tree, memories) => ({
+          treeData: tree,
+          treeMemories: memories
+        })
+      },
+      createEditorCanvas: () => ({
+        initCanvas: () => {},
+      }),
+      createPublicViewerDetailUI: () => ({
+        setDetailEmptyState: () => {},
+        updateFocusSelectedBtn: () => {},
+        updateSidebarStatus: () => {},
+        updateDetailPanel: () => {},
+      }),
+      registerOnAuthReady: (callback) => {
+        registeredCallbacks.push(callback);
+      },
+      matchMedia: () => ({
+        matches: false,
+        addEventListener: () => {}
+      }),
+      LoveTreeAuthPolicy: {
+        hasConfirmedAuthSession: () => true,
+        getCachedAuthUser: () => ({ uid: 'user123' })
+      },
+      LoveTreeBaseApiFetch: {
+        apiFetch: (url) => {
+          apiFetchCount++;
+          apiFetchCalls.push(url);
+          return Promise.resolve({ viewerCanEdit: true });
+        }
+      },
+      LoveBudTreeWorkspacePermission: {
+        resolveTreeWorkspaceCanEdit: (tree) => {
+          return !!tree.viewerCanEdit;
+        }
+      },
+      LoveBudPublicCanvasInit: {
+        updateOwnerModeUI: () => {
+          updateOwnerModeUICallCount++;
+        }
+      }
+    }
+  };
+
+  sandbox.window.window = sandbox.window;
+  sandbox.window.document = sandbox.document;
+  sandbox.window.setTimeout = sandbox.setTimeout;
+
+  vm.createContext(sandbox);
+  vm.runInContext(code, sandbox);
+
+  const originalUpdateUI = sandbox.window.LoveBudPublicCanvasInit.updateOwnerModeUI;
+  sandbox.window.LoveBudPublicCanvasInit.updateOwnerModeUI = () => {
+    updateOwnerModeUICallCount++;
+    if (typeof originalUpdateUI === 'function') {
+      originalUpdateUI();
+    }
+  };
+
+  // Allow the loadPublicTreeData Promise to resolve and startCanvas to execute
+  await new Promise((resolve) => setTimeout(resolve, 50));
+
+  // 1. registerOnAuthReady가 tree-scoped callback registration으로 사용됨
+  if (registeredCallbacks.length === 0) {
+    throw new Error('No callbacks registered. Sandbox state: ' + JSON.stringify({
+      windowKeys: Object.keys(sandbox.window),
+      treeData: sandbox.window.__viewerTreeData,
+      currentTreeData: sandbox.window.currentTreeData,
+      hasAuthReady: typeof sandbox.window.registerOnAuthReady
+    }, null, 2));
+  }
+  assert.equal(registeredCallbacks.length, 1, 'registerOnAuthReady must be registered exactly once');
+
+  const authCallback = registeredCallbacks[0];
+  const targetTreeData = sandbox.window.__viewerTreeData;
+  assert.ok(targetTreeData, 'targetTreeData must be stored in sandbox');
+  assert.equal(targetTreeData._ownerCapabilityAuthCallbackRegistered, true, 'marker must be set on treeData');
+
+  // Initialize cache
+  targetTreeData.viewerCanEdit = true;
+  targetTreeData._viewerCapabilityAuthUid = 'user123';
+  if (targetTreeData.data) {
+    targetTreeData.data.viewerCanEdit = true;
+  }
+
+  // 2. callback이 active tree object / treeId mismatch 시 종료함
+  const originalTreeData = sandbox.window.__viewerTreeData;
+  sandbox.window.__viewerTreeData = { id: 'other-tree-id' };
+
+  // Call callback with logout, but since it is mismatched active tree, targetTreeData cache should NOT be deleted
+  authCallback(null);
+  assert.equal(targetTreeData.viewerCanEdit, true, 'mismatched tree must not mutate original cache');
+
+  // Restore active tree
+  sandbox.window.__viewerTreeData = originalTreeData;
+
+  // 3. logout/guest callback이 capability fetch 없이 cache를 삭제하고 updateOwnerModeUI()를 호출함
+  apiFetchCount = 0;
+  updateOwnerModeUICallCount = 0;
+
+  // Mock signed out
+  sandbox.window.LoveTreeAuthPolicy.hasConfirmedAuthSession = () => false;
+  sandbox.window.LoveTreeAuthPolicy.getCachedAuthUser = () => null;
+
+  authCallback(null);
+
+  assert.equal(targetTreeData.viewerCanEdit, undefined, 'viewerCanEdit must be deleted on logout');
+  assert.equal(targetTreeData._viewerCapabilityAuthUid, undefined, 'auth UID must be deleted on logout');
+  assert.equal(apiFetchCount, 0, 'apiFetch must not be called on logout');
+  assert.ok(updateOwnerModeUICallCount > 0, 'updateOwnerModeUI must be called on logout');
+
+  // 4. UID 변경 callback이 old cache를 삭제하고 refetch 경로로 들어감
+  sandbox.window.LoveTreeAuthPolicy.hasConfirmedAuthSession = () => true;
+  sandbox.window.LoveTreeAuthPolicy.getCachedAuthUser = () => ({ uid: 'user456' });
+  apiFetchCount = 0;
+  updateOwnerModeUICallCount = 0;
+
+  // Set stale cache for old user
+  targetTreeData.viewerCanEdit = true;
+  targetTreeData._viewerCapabilityAuthUid = 'user123';
+
+  authCallback({ uid: 'user456' });
+
+  assert.equal(targetTreeData.viewerCanEdit, undefined, 'old viewerCanEdit must be deleted on UID change');
+  assert.equal(targetTreeData._viewerCapabilityAuthUid, undefined, 'old auth UID must be deleted on UID change');
+  assert.equal(apiFetchCount, 1, 'apiFetch must be called on UID change');
+
+  // 5. in-flight dedupe가 auth UID별임
+  apiFetchCount = 0;
+  targetTreeData._capabilityFetchingAuthUid = 'user456';
+
+  authCallback({ uid: 'user456' });
+  assert.equal(apiFetchCount, 0, 'deduplication must prevent duplicate fetching for the same auth UID');
+
+  // Cleanup fetch indicator
+  delete targetTreeData._capabilityFetchingAuthUid;
+
+  // 6. stale A UID result가 B UID active state에 기록되지 않음
+  let resolveA;
+  let apiFetchPromiseA = new Promise((resolve) => { resolveA = resolve; });
+  sandbox.window.LoveTreeBaseApiFetch.apiFetch = (url) => {
+    return apiFetchPromiseA;
+  };
+
+  sandbox.window.LoveTreeAuthPolicy.hasConfirmedAuthSession = () => true;
+  sandbox.window.LoveTreeAuthPolicy.getCachedAuthUser = () => ({ uid: 'userA' });
+
+  // Trigger fetch for userA
+  authCallback({ uid: 'userA' });
+
+  // Switch active user to userB
+  sandbox.window.LoveTreeAuthPolicy.getCachedAuthUser = () => ({ uid: 'userB' });
+
+  // Resolve user A's promise
+  resolveA({ viewerCanEdit: true });
+  await new Promise((resolve) => setTimeout(resolve, 10));
+
+  assert.notEqual(targetTreeData.viewerCanEdit, true, 'stale userA capability result must not overwrite active state when active user switched to userB');
+});
