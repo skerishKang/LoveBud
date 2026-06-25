@@ -432,3 +432,19 @@ test('8. dynamic auth change, cache invalidation, and deduplication contracts', 
 
   assert.notEqual(targetTreeData.viewerCanEdit, true, 'stale userA capability result must not overwrite active state when active user switched to userB');
 });
+
+test('9. pages/view.html contract for Firebase bootstrap and asset versioning', () => {
+  const viewHtml = fs.readFileSync(path.join(ROOT, 'pages/view.html'), 'utf8');
+
+  assert.ok(viewHtml.includes('firebase-app.js'), 'Must load firebase-app.js');
+  assert.ok(viewHtml.includes('firebase-auth.js'), 'Must load firebase-auth.js');
+  assert.ok(viewHtml.includes('firebase-config.js'), 'Must load firebase-config.js');
+  assert.ok(viewHtml.includes('auth/auth-state.js'), 'Must load auth-state.js');
+  assert.ok(viewHtml.includes('auth.js'), 'Must load auth.js');
+
+  assert.ok(!viewHtml.includes('auth-protected-route.js'), 'Must NOT load auth-protected-route.js');
+
+  assert.ok(viewHtml.includes('tree-workspace-permission.js?v=20260625-2874-auth-hotfix-1'), 'tree-workspace-permission.js version must be updated');
+  assert.ok(viewHtml.includes('public-canvas-bridge.js?v=20260625-2874-auth-hotfix-1'), 'public-canvas-bridge.js version must be updated');
+  assert.ok(viewHtml.includes('public-canvas-init.js?v=20260625-2874-auth-hotfix-1'), 'public-canvas-init.js version must be updated');
+});

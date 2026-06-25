@@ -159,11 +159,34 @@
         return;
       }
 
-      if (!user) {
-        var cachedUser = readConfirmedAuthCache();
-        if (!cachedUser || !cachedUser.uid) {
+      var search = windowRef.location.search || '';
+      var params = new URLSearchParams(search);
+      var treeId = params.get('treeId');
+
+      if (treeId) {
+        // When treeId is present, we MUST wait for the actual Firebase user session confirmation.
+        // The local cachedUser is NOT enough to build an owner editor runtime.
+        var ap = windowRef.LoveTreeAuthPolicy;
+        var hasConfirmed = ap && typeof ap.hasConfirmedAuthSession === 'function' ? ap.hasConfirmedAuthSession() : false;
+
+        // If auth is not ready/settled yet (e.g. Firebase auth is initializing), do not start.
+        if (windowRef.__lovebudAuthReady !== true) {
+          return;
+        }
+
+        // Auth is settled. Check if we actually have a logged-in user session.
+        if (!user || !hasConfirmed) {
           redirectToEditorLogin();
           return;
+        }
+      } else {
+        // Fallback for new tree creation path (no treeId in URL)
+        if (!user) {
+          var cachedUser = readConfirmedAuthCache();
+          if (!cachedUser || !cachedUser.uid) {
+            redirectToEditorLogin();
+            return;
+          }
         }
       }
 

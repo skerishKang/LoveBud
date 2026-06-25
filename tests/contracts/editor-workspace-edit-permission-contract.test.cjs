@@ -450,3 +450,203 @@ test('22. deferred poller starts only after initial owner mode evaluation', () =
     'Initial updateOwnerModeUI must be called before deferred poller starts'
   );
 });
+
+test('23. editor auth-late reconciliation contracts and dynamic VM assertions', async () => {
+  const editorHtml = readSource('pages/editor.html');
+  assert.ok(editorHtml.includes('tree-workspace-permission.js?v=20260625-2874-auth-hotfix-1'), 'tree-workspace-permission.js version must be updated');
+  assert.ok(editorHtml.includes('editor.js?v=20260625-2874-auth-hotfix-1'), 'editor.js version must be updated');
+
+  const editorJsSrc = readSource('js/editor.js');
+  assert.ok(editorJsSrc.includes('_editorAuthEditabilityCallbackRegistered'), 'Must have editor auth callback registration guard');
+  assert.ok(editorJsSrc.includes('registerOnAuthReady'), 'Must register auth ready callback');
+
+  const registeredCallbacks = [];
+  let applyEditorEditabilityCalls = [];
+
+  const sandbox = {
+    document: {
+      addEventListener: (event, handler) => {
+        if (event === 'DOMContentLoaded') {
+          handler();
+        }
+      }
+    },
+    URLSearchParams: class {
+      get() {
+        return 'test-tree-id';
+      }
+    },
+    window: {
+      LoveBudEditorEntryDependencies: {
+        resolveEditorEntryDependencies: () => ({
+          status: 'ready',
+          deps: {
+            applyEditorShellCopy: () => {},
+            safeI18nText: () => '',
+            i18n: {},
+            getMyTreesHref: () => '',
+            createPrepareEditorShell: () => () => {},
+            createEditorDebugReporter: () => ({ log: () => {}, reportError: () => {} }),
+            bindEditorPageEvents: () => {},
+            runEditorInitialLoadFlow: (options) => {
+              const tree = { id: 'test-tree-id', viewerCanEdit: false, _viewerCapabilityAuthUid: 'user123' };
+              if (options && typeof options.syncCurrentTreeData === 'function') {
+                options.syncCurrentTreeData(tree);
+              }
+              return Promise.resolve({
+                status: 'success',
+                treeId: 'test-tree-id',
+                tree: tree,
+                treeMemories: () => []
+              });
+            },
+            createEditorRefreshSaveRuntime: () => ({
+              status: 'success',
+              saveStatusData: {},
+              updateSaveStatus: () => {}
+            }),
+            createEditorStartupContext: () => ({
+              canvas: {},
+              svg: {},
+              detailPanel: {},
+              addBtn: {},
+              urlTreeId: 'test-tree-id',
+              canEdit: false,
+              mode: 'edit',
+              memoryId: null
+            }),
+            shellHelpers: {
+              createEditorStartDependencyGuard: () => () => true,
+              createEditorStartDependencyChecker: () => () => true,
+              createEditorRequiredGlobalWaiter: () => async () => true,
+              createEditorStartupShellApplier: () => () => {},
+              createEditorCanvasEmptyGuideUpdater: () => () => {},
+              createEditorSelectNodeHandler: () => () => {},
+              createEditorSidebarStatusUpdater: () => () => {},
+              createEditorInitialMemoryProvider: () => () => {},
+              createEditorNextMemoryIdProvider: () => () => {},
+              createEditorInitialSelectionApplier: () => () => {},
+              createEditorReadyFinalizer: () => () => {}
+            },
+            createEditorStartupDependencyWaiter: () => async () => true,
+            markEditorReady: () => {},
+            applyEditorEditabilityState: (state) => {
+              applyEditorEditabilityCalls.push(state);
+            },
+            createEditorDomRefs: () => ({}),
+            exposeCanvasEmptyGuideUpdater: () => {},
+            exposeDetailPanelUpdater: () => {},
+            createSidebarTreeActionsUpdater: () => () => {},
+            createMemoryActionsReadinessWrapper: () => () => {},
+            createCurrentMomentDetailOpener: () => () => {},
+            createSelectedMomentFocusHandler: () => () => {},
+            editorTreeHelpers: {
+              createInitialMemory: () => {},
+              createTreeVisibilityUpdater: () => () => {}
+            },
+            nextMemoryIdFromMemories: () => {},
+            getCanonicalRootId: () => 'root-id',
+            editorSelectionUI: {},
+            editorSaveStatus: {},
+            editorPageHelpers: {},
+            editorDataLoader: {},
+            getMyTreesHref: () => 'my-trees-mocked-href',
+            getConfirmedSessionUser: () => ({}),
+            redirectToEditorLogin: () => {},
+            buildTreeLoadErrorCopy: () => {},
+            renderTreeLoadError: () => {},
+            syncCurrentTreeData: (tree) => {
+              sandbox.window.currentTreeData = tree;
+            },
+            escapeHtml: () => '',
+            findRootMemory: () => {},
+            resolveTreeTitleText: () => '',
+            resolveHintText: () => '',
+            resolveInfoText: () => '',
+            resolveMemoryThumbnail: () => '',
+            isRootMemory: () => false,
+            resolveParentIdForCreate: () => {},
+            getYouTubeInputErrorMessage: () => '',
+            getHttpStatus: () => 200,
+            editorBindings: {},
+            getEditorBasePath: () => '',
+            readConfirmedAuthCache: () => null,
+            registerEditorAuthStart: (options) => {
+              options.startEditor();
+            }
+          }
+        })
+      },
+      createEditorDetailUI: () => ({
+        setDetailEmptyState: () => {},
+        updateFocusSelectedBtn: () => {},
+        updateSidebarStatus: () => {},
+        updateDetailPanel: () => {}
+      }),
+      createEditorCanvas: () => ({
+        initCanvas: () => {}
+      }),
+      createEditorMemoryActions: () => ({}),
+      createEditorMemoryForm: () => ({}),
+      registerOnAuthReady: (callback) => {
+        registeredCallbacks.push(callback);
+      },
+      LoveBudTreeWorkspacePermission: {
+        resolveTreeWorkspaceCanEdit: (tree) => {
+          return !!tree.viewerCanEdit;
+        }
+      }
+    }
+  };
+
+  sandbox.window.window = sandbox.window;
+  const vm = require('node:vm');
+  vm.createContext(sandbox);
+  vm.runInContext(editorJsSrc, sandbox);
+
+  await new Promise((resolve) => setTimeout(resolve, 50));
+
+  assert.equal(registeredCallbacks.length, 1, 'registerOnAuthReady must be called to register late auth callback');
+  const callback = registeredCallbacks[0];
+
+  const loadedTree = sandbox.window.currentTreeData;
+  assert.ok(loadedTree, 'loaded tree must exist');
+  assert.equal(loadedTree._editorAuthEditabilityCallbackRegistered, true, 'marker must be set on tree');
+
+  // When canEdit remains true (switch/login retains edit), no redirection happens
+  loadedTree.viewerCanEdit = true;
+  let redirected = false;
+  sandbox.window.location = {
+    pathname: '/pages/editor.html',
+    origin: 'http://localhost',
+    search: '?treeId=test-tree-id',
+    set href(val) {
+      if (val.includes('my-trees')) {
+        redirected = true;
+      }
+    },
+    get href() { return ''; }
+  };
+  callback();
+  assert.equal(redirected, false, 'callback must not exit if user still has edit permissions');
+
+  // When user is logout (viewerCanEdit = false), it MUST redirect/exit to my-trees
+  loadedTree.viewerCanEdit = false;
+  let targetHref = '';
+  sandbox.window.location = {
+    pathname: '/pages/editor.html',
+    origin: 'http://localhost',
+    search: '?treeId=test-tree-id',
+    set href(val) {
+      targetHref = val;
+      if (val.includes('my-trees')) {
+        redirected = true;
+      }
+    },
+    get href() { return ''; }
+  };
+  callback();
+  assert.equal(redirected, true, 'callback must trigger exit to my-trees on auth logout');
+  assert.equal(targetHref, 'my-trees-mocked-href', 'Must redirect exactly to deps.getMyTreesHref() result');
+  assert.ok(!targetHref.startsWith('http'), 'Must be a relative/context-safe path without origin prefix');
+});
