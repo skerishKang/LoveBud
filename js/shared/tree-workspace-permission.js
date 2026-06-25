@@ -3,7 +3,7 @@
 
     function resolveTreeOwnerId(tree) {
         if (!tree) return null;
-        return tree.ownerId || tree.owner_id || null;
+        return tree.ownerId || tree.owner_id || (tree.data && (tree.data.ownerId || tree.data.owner_id)) || null;
     }
 
     function resolveTreeData(tree) {

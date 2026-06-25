@@ -178,12 +178,12 @@ test('8. viewer sidebar populates rich flow summary', () => {
 test('8b. sidebar moment count excludes canonical root', () => {
   const src = readSource('js/viewer/public-canvas-init.js');
   assert.ok(
-    src.indexOf("m.id !== 'root'") !== -1,
-    'Must exclude root placeholder (id !== root) from count'
+    src.indexOf('nonRootMemories = allMemories.filter') !== -1,
+    'Must filter memories for non-root count'
   );
   assert.ok(
-    src.indexOf("m.id !== m.parentId") !== -1,
-    'Must exclude self-referential root from count'
+    src.indexOf('isRootMemory(m, canonicalRootId)') !== -1,
+    'Must use isRootMemory with canonicalRootId to exclude root'
   );
 });
 

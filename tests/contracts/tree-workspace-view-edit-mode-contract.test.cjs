@@ -307,16 +307,18 @@ test('entry: rootUtils returns "root" and legacy root memory exists → "root" k
 });
 
 test('entry: no roots → null, all memories kept in non-root count', () => {
-  const entry = loadCanvasEntry({});
-  const selectors = entry.createMemorySelectors([
+  const mems = [
     { id: 'm1', parentId: 'p1', createdAt: '2026-01-01' },
     { id: 'm2', parentId: 'p1', createdAt: '2026-01-02' }
-  ]);
+  ];
+  const entry = loadCanvasEntry({});
+  const selectors = entry.createMemorySelectors(mems);
   const rootId = selectors.getCanonicalRootId();
   assert.equal(rootId, null);
-  const nonRootCount = selectors.findFirstSelectableMemory(rootId)
-    ? selectors.findFirstSelectableMemory(rootId) : null;
-  assert.ok(nonRootCount !== null, 'still find first memory');
+  const nonRoot = mems.filter(function(memory) {
+    return !selectors.isRootMemory(memory, rootId);
+  });
+  assert.equal(nonRoot.length, 2);
 });
 
 test('entry: count computed via actual isRootMemory excludes only canonical root', () => {

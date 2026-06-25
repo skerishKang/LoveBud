@@ -146,6 +146,15 @@
         var compactGroup = createGroup('툴바 표시 모드');
         compactGroup.appendChild(createButton('compactModeToggleBtn', '간략 모드 전환', 'unfold_more'));
 
+        var modeGroup = createGroup('트리 모드');
+        modeGroup.id = 'viewerModeGroup';
+        modeGroup.style.display = 'none';
+        append(
+            modeGroup,
+            createButton('viewerModeViewBtn', '보기', 'visibility'),
+            createButton('viewerModeEditBtn', '편집', 'edit')
+        );
+
         append(
             toolbar,
             zoomGroup,
@@ -154,7 +163,9 @@
             createSeparator(),
             layoutGroup,
             createSeparator(),
-            compactGroup
+            compactGroup,
+            createSeparator(),
+            modeGroup
         );
         topbar.appendChild(toolbar);
         return topbar;
