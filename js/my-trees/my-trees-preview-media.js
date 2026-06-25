@@ -104,14 +104,6 @@
       return;
     }
 
-    // Default render path (initial showContent) keeps the exact
-    // helper-approved pattern that the My Trees media contract locks
-    // in: helper.getPreviewMediaMemory(getMediaCandidates(tree)).
-    // For the flow-stage-click path (Issue #2825) we use the new
-    // helper.getPreviewMediaMemoryAt(candidates, preferredMomentIndex)
-    // which goes through the same sanitizeUrl predicate and so keeps
-    // the "only helper-approved media candidates" principle. We never
-    // index candidates[preferredMomentIndex] directly here.
     var mediaMemory;
     if (typeof preferredMomentIndex === 'number' && preferredMomentIndex >= 0
         && typeof helper.getPreviewMediaMemoryAt === 'function') {
@@ -154,6 +146,8 @@
     }
 
     if (typeof helper.bindPreviewThumbnailHandlers === 'function') helper.bindPreviewThumbnailHandlers(els.media);
+    // fix #2836: bind click-to-play overlay so play button triggers autoplay iframe
+    if (typeof helper.bindPreviewOverlayEvents === 'function') helper.bindPreviewOverlayEvents(els.media);
   }
 
   // Issue #2825: dedicated entry point for flow stage clicks. Delegates
