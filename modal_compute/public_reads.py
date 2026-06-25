@@ -162,6 +162,22 @@ def _normalize_legacy_memory_row(node: dict[str, Any], tree_id: str, row: dict[s
     }
 
 
+def _build_social_counts_source(
+    has_table: bool,
+    has_like_count: bool,
+    has_view_count: bool,
+) -> str:
+    """Build the dynamic subquery or table reference for tree_social_counts."""
+    if not has_table or (not has_like_count and not has_view_count):
+        return "(SELECT NULL::uuid as tree_id, 0 as like_count, 0 as view_count WHERE FALSE) s_dummy"
+    if has_like_count and not has_view_count:
+        return "(SELECT tree_id, like_count, 0 as view_count FROM tree_social_counts) s_social"
+    if not has_like_count and has_view_count:
+        return "(SELECT tree_id, 0 as like_count, view_count FROM tree_social_counts) s_social"
+    # Both table and columns exist
+    return "tree_social_counts"
+
+
 def fetch_latest_public_tree_snapshots(limit: int = 12, sort: str = "latest") -> list[dict[str, Any]]:
     """Fetch the latest public tree snapshots using a robust join-lateral query.
     Falls back to legacy trees.payload format if memories table is missing.
@@ -202,7 +218,7 @@ def fetch_latest_public_tree_snapshots(limit: int = 12, sort: str = "latest") ->
             -- Social counts: like_count, view_count
             -- COALESCE handles pre-migration envs (table or column missing) safely.
             SELECT tree_id, like_count, view_count
-            FROM tree_social_counts
+            FROM {social_counts_source}
         ) s ON t.id = s.tree_id
         LEFT JOIN LATERAL (
             -- Representative Snapshot: Latest memory with visual data
@@ -229,16 +245,27 @@ def fetch_latest_public_tree_snapshots(limit: int = 12, sort: str = "latest") ->
                 # If the migration has not run yet, fall back to the latest
                 # order rather than crashing the whole endpoint.
                 has_social_counts_table = _table_exists(cur, "tree_social_counts")
-                has_view_count_column = _table_has_column(cur, "tree_social_counts", "view_count")
+                has_like_count_column = _table_has_column(cur, "tree_social_counts", "like_count") if has_social_counts_table else False
+                has_view_count_column = _table_has_column(cur, "tree_social_counts", "view_count") if has_social_counts_table else False
                 effective_order_clause = order_clause
-                if sort == "views" and not (has_social_counts_table and has_view_count_column):
+                if sort == "likes" and not (has_social_counts_table and has_like_count_column):
+                    effective_order_clause = "t.created_at DESC"
+                elif sort == "views" and not (has_social_counts_table and has_view_count_column):
                     effective_order_clause = "t.created_at DESC"
                 meta_duration = (time.time() - meta_start) * 1000
                 print(f"[LoveBudModal] [TIMING] Schema metadata check took {meta_duration:.2f}ms")
 
                 if has_memories and has_title:
                     q_start = time.time()
-                    modern_query = modern_query_template.format(order_clause=effective_order_clause)
+                    social_counts_source = _build_social_counts_source(
+                        has_social_counts_table,
+                        has_like_count_column,
+                        has_view_count_column,
+                    )
+                    modern_query = modern_query_template.format(
+                        order_clause=effective_order_clause,
+                        social_counts_source=social_counts_source,
+                    )
                     cur.execute(modern_query, (limit,))
                     rows = cur.fetchall()
                     q_duration = (time.time() - q_start) * 1000

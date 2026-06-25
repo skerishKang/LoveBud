@@ -45,7 +45,7 @@ test('Public reads fetch_latest_public_tree_snapshots supports sort=views', () =
   // Join with tree_social_counts (subquery now selects like_count AND view_count)
   assert.match(publicReads, /LEFT JOIN\s+\(\s*--\s*Social counts/);
   assert.match(publicReads, /SELECT\s+tree_id,\s+like_count,\s+view_count/);
-  assert.match(publicReads, /FROM\s+tree_social_counts/);
+  assert.match(publicReads, /FROM\s+\{\s*social_counts_source\s*\}/);
   assert.match(publicReads, /s\s+ON\s+t\.id\s*=\s*s\.tree_id/);
 
   // Select like_count and view_count (COALESCE for safe pre-migration envs)
@@ -66,14 +66,23 @@ test('Browse sort=views order_clause is symmetric with sort=likes', () => {
 test('sort=views has safe fallback to latest when tree_social_counts view_count is missing', () => {
   // Pre-migration envs (table missing or column missing) must not crash the endpoint
   assert.match(publicReads, /has_social_counts_table\s*=\s*_table_exists\(cur,\s*["']tree_social_counts["']\)/);
-  assert.match(publicReads, /has_view_count_column\s*=\s*_table_has_column\(cur,\s*["']tree_social_counts["'],\s*["']view_count["']\)/);
-  assert.match(publicReads, /if\s+sort\s*==\s*["']views["']\s+and\s+not\s*\(\s*has_social_counts_table\s+and\s+has_view_count_column\s*\)/);
+  assert.match(
+    publicReads,
+    /has_view_count_column\s*=\s*_table_has_column\(cur,\s*["']tree_social_counts["'],\s*["']view_count["']\)/
+  );
+  assert.match(
+    publicReads,
+    /elif\s+sort\s*==\s*["']views["']\s+and\s+not\s*\(\s*has_social_counts_table\s+and\s+has_view_count_column\s*\)/
+  );
 
   // Fallback path sets effective_order_clause to the latest order
   assert.match(publicReads, /effective_order_clause\s*=\s*["']t\.created_at DESC["']/);
   // modern_query_template is the source query and gets formatted with the order clause
   assert.match(publicReads, /modern_query_template/);
-  assert.match(publicReads, /modern_query\s*=\s*modern_query_template\.format\(order_clause=effective_order_clause\)/);
+  assert.match(
+    publicReads,
+    /modern_query\s*=\s*modern_query_template\.format\([\s\S]*?order_clause=effective_order_clause[\s\S]*?\)/
+  );
 });
 
 test('Browse/Search summary payload does NOT include viewCount (boundary preserved)', () => {

@@ -53,7 +53,7 @@ test('Public reads fetch_latest_public_tree_snapshots supports sort=likes', () =
   // Join with tree_social_counts (likes subquery covers like_count)
   assert.match(publicReads, /LEFT JOIN\s+\(\s*--\s*Social counts/);
   assert.match(publicReads, /SELECT\s+tree_id,\s+like_count,\s+view_count/);
-  assert.match(publicReads, /FROM\s+tree_social_counts/);
+  assert.match(publicReads, /FROM\s+\{\s*social_counts_source\s*\}/);
   assert.match(publicReads, /s\s+ON\s+t\.id\s*=\s*s\.tree_id/);
 
   // Select like_count in modern query
