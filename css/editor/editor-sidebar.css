@@ -214,6 +214,15 @@
   flex: 1 1 0;
 }
 
+.public-viewer-sidebar .viewer-sidebar-moment-count {
+  display: block;
+  margin-top: 12px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--on-surface-note);
+  opacity: 0.8;
+}
+
 @media (max-width: 1024px) {
   .public-viewer-sidebar {
     display: none !important;

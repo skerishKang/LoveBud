@@ -16,7 +16,7 @@ export function buildPublicSidebarTemplate() {
                         <strong id="viewerSidebarTreeTitle">러브트리</strong>
                     </div>
                     <div id="viewerSidebarSummary" class="editor-flow-summary" style="display: none;"></div>
-                    <div id="viewerSidebarMomentCount" class="editor-tree-quiet-note" style="margin-top: 12px; font-size: 12px; opacity: 0.8;">0개의 순간</div>
+                    <div id="viewerSidebarMomentCount" class="viewer-sidebar-moment-count">0개의 순간</div>
                 </div>
             </section>
             <section id="viewerSidebarOwnerMode" class="viewer-sidebar-owner-mode" style="display: none;">

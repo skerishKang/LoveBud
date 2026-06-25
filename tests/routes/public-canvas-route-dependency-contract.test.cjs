@@ -575,4 +575,27 @@ test('public canvas sidebar template and controller wiring contract (Issue #2884
   // 16. public viewer owner action container가 .editor-readonly .editor-add-section hide rule에 걸리지 않음을 정적 검증
   const isProtected = !templateSrc.includes('editor-add-section');
   assert.ok(isProtected, 'verified that public owner controls will not be hidden by readonly editor-add-section css rules');
+
+  // 17. template의 viewerSidebarMomentCount가 viewer-sidebar-moment-count class를 사용함
+  assert.ok(
+    templateSrc.includes('class="viewer-sidebar-moment-count"'),
+    'template must have viewer-sidebar-moment-count class'
+  );
+
+  // 18. template에 editor-tree-quiet-note가 없음
+  assert.equal(
+    templateSrc.includes('editor-tree-quiet-note'),
+    false,
+    'public viewer moment count must not use editor-tree-quiet-note because editor CSS hides it'
+  );
+
+  // 19. css/editor/editor-sidebar.css가 .public-viewer-sidebar .viewer-sidebar-moment-count selector를 포함함
+  assert.ok(
+    cssSrc.includes('.public-viewer-sidebar .viewer-sidebar-moment-count'),
+    'css must contain selector for public viewer sidebar moment count'
+  );
+
+  // 20. public moment count가 기존 .editor-tree-quiet-note hide rule에 걸리지 않음을 정적으로 확인
+  const isCountVisible = !templateSrc.includes('editor-tree-quiet-note');
+  assert.ok(isCountVisible, 'verified that public moment count will not be hidden by readonly editor-tree-quiet-note css rules');
 });
