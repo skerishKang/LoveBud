@@ -673,43 +673,55 @@
                         var conf = ap && typeof ap.hasConfirmedAuthSession === 'function'
                             ? ap.hasConfirmedAuthSession() : false;
                         if (conf) {
-                            var treeData = window.__viewerTreeData || window.currentTreeData;
-                            var currentTreeId = treeData && treeData.id;
-                            if (currentTreeId) {
-                                if (window.LoveBudPublicCanvasInit._capabilityFetching === currentTreeId) return;
-                                if (treeData.viewerCanEdit !== undefined) {
-                                    if (typeof window.LoveBudPublicCanvasInit.updateOwnerModeUI === 'function') {
-                                        window.LoveBudPublicCanvasInit.updateOwnerModeUI();
+                            var targetTreeData = window.__viewerTreeData || window.currentTreeData;
+                            var targetTreeId = targetTreeData && targetTreeData.id;
+                            if (targetTreeId) {
+                                // Track in-flight state by attaching to the treeData object itself
+                                if (targetTreeData._capabilityFetching) return;
+                                if (targetTreeData.viewerCanEdit !== undefined) {
+                                    if (window.__viewerTreeData === targetTreeData) {
+                                        if (typeof window.LoveBudPublicCanvasInit.updateOwnerModeUI === 'function') {
+                                            window.LoveBudPublicCanvasInit.updateOwnerModeUI();
+                                        }
                                     }
                                     return;
                                 }
-                                window.LoveBudPublicCanvasInit._capabilityFetching = currentTreeId;
+                                targetTreeData._capabilityFetching = true;
                                 var apiFetch = window.LoveTreeBaseApiFetch && window.LoveTreeBaseApiFetch.apiFetch;
                                 if (typeof apiFetch === 'function') {
-                                    apiFetch('/private/trees/' + encodeURIComponent(currentTreeId) + '/capability')
+                                    apiFetch('/private/trees/' + encodeURIComponent(targetTreeId) + '/capability')
                                         .then(function(res) {
-                                            window.LoveBudPublicCanvasInit._capabilityFetching = null;
+                                            targetTreeData._capabilityFetching = false;
+                                            // Check if targetTreeData is still the active tree
+                                            var activeTreeData = window.__viewerTreeData || window.currentTreeData;
+                                            if (activeTreeData !== targetTreeData || (activeTreeData && activeTreeData.id !== targetTreeId)) {
+                                                return; // Discard stale capability response
+                                            }
                                             var canEdit = !!(res && res.viewerCanEdit);
-                                            treeData.viewerCanEdit = canEdit;
-                                            if (treeData.data) {
-                                                treeData.data.viewerCanEdit = canEdit;
+                                            targetTreeData.viewerCanEdit = canEdit;
+                                            if (targetTreeData.data) {
+                                                targetTreeData.data.viewerCanEdit = canEdit;
                                             }
                                             if (typeof window.LoveBudPublicCanvasInit.updateOwnerModeUI === 'function') {
                                                 window.LoveBudPublicCanvasInit.updateOwnerModeUI();
                                             }
                                         })
                                         .catch(function(e) {
-                                            window.LoveBudPublicCanvasInit._capabilityFetching = null;
-                                            treeData.viewerCanEdit = false;
-                                            if (treeData.data) {
-                                                treeData.data.viewerCanEdit = false;
+                                            targetTreeData._capabilityFetching = false;
+                                            var activeTreeData = window.__viewerTreeData || window.currentTreeData;
+                                            if (activeTreeData !== targetTreeData || (activeTreeData && activeTreeData.id !== targetTreeId)) {
+                                                return; // Discard stale capability response
+                                            }
+                                            targetTreeData.viewerCanEdit = false;
+                                            if (targetTreeData.data) {
+                                                targetTreeData.data.viewerCanEdit = false;
                                             }
                                             if (typeof window.LoveBudPublicCanvasInit.updateOwnerModeUI === 'function') {
                                                 window.LoveBudPublicCanvasInit.updateOwnerModeUI();
                                             }
                                         });
                                 } else {
-                                    window.LoveBudPublicCanvasInit._capabilityFetching = null;
+                                    targetTreeData._capabilityFetching = false;
                                 }
                             }
                             return;
