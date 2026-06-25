@@ -28,6 +28,10 @@
         if (!tree) return false;
         if (options && options.requestedReadOnly === true) return false;
         var currentUser = resolveAuthSessionUser();
+        if (tree.viewerCanEdit === true) {
+            return !!(currentUser && currentUser.uid && tree._viewerCapabilityAuthUid === currentUser.uid);
+        }
+        if (tree.viewerCanEdit === false) return false;
         if (!currentUser || !currentUser.uid) return false;
         var ownerId = resolveTreeOwnerId(tree);
         if (!ownerId) return false;

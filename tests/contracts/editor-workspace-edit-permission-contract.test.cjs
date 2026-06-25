@@ -436,7 +436,7 @@ test('22. deferred poller starts only after initial owner mode evaluation', () =
   const src = readSource('js/viewer/public-canvas-init.js');
   // The poller is defined and started after the initial updateOwnerModeUI call
   var initialUpdate = src.indexOf('updateOwnerModeUI(selectionState, normalized.treeData)');
-  var pollerDefinition = src.indexOf('window.LoveBudPublicCanvasInit._ownerAuthPoller');
+  var pollerDefinition = src.indexOf('normalized.treeData._ownerCapabilityPollerStarted');
   assert.ok(
     initialUpdate !== -1,
     'Initial owner mode evaluation must be present'

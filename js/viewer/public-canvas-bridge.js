@@ -66,6 +66,7 @@
             visibility: 'public',
             stage: tree.stage || '',
             ownerId: ownerId,
+            viewerCanEdit: tree.viewerCanEdit,
             description: description,
             summary: summary,
             memo: memo,

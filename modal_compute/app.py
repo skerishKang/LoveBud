@@ -288,6 +288,25 @@ def get_private_tree_detail(
     return tree
 
 
+@web_app.get("/modal/private/trees/{tree_id}/capability")
+def get_private_tree_capability(
+    tree_id: str,
+    authorization: str | None = Header(default=None),
+) -> dict:
+    try:
+        user = require_firebase_user(authorization)
+        safe_tree_id = validate_required_id(tree_id, "treeId")
+        tree = fetch_owner_tree(safe_tree_id, user["uid"])
+        return {"viewerCanEdit": tree is not None}
+    except HTTPException as e:
+        if e.status_code in {401, 403}:
+            return {"viewerCanEdit": False}
+        raise
+    except Exception:
+        return {"viewerCanEdit": False}
+
+
+
 @web_app.post("/modal/private/trees/{tree_id}/fork")
 def post_fork_tree(
     tree_id: str,
