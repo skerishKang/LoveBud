@@ -249,3 +249,95 @@ test('11. viewer detail UI preserves autoplay and reactions guards', () => {
     'Must preserve inline player guard attribute'
   );
 });
+
+// ── Page script load order ────────────────────────────────────────
+
+test('12. editor.html loads tree-workspace-permission in correct order', () => {
+  const src = readSource('pages/editor.html');
+  const authPolicyIdx = src.indexOf('auth-policy.js');
+  const permissionIdx = src.indexOf('tree-workspace-permission.js');
+  const editorJsIdx = src.indexOf('js/editor.js');
+  assert.ok(authPolicyIdx !== -1, 'editor.html must load auth-policy.js');
+  assert.ok(permissionIdx !== -1, 'editor.html must load tree-workspace-permission.js');
+  assert.ok(editorJsIdx !== -1, 'editor.html must load editor.js');
+  assert.ok(
+    authPolicyIdx < permissionIdx,
+    'auth-policy.js must load BEFORE tree-workspace-permission.js'
+  );
+  assert.ok(
+    permissionIdx < editorJsIdx,
+    'tree-workspace-permission.js must load BEFORE editor.js'
+  );
+});
+
+test('13. view.html loads tree-workspace-permission in correct order', () => {
+  const src = readSource('pages/view.html');
+  const authPolicyIdx = src.indexOf('auth-policy.js');
+  const permissionIdx = src.indexOf('tree-workspace-permission.js');
+  const initJsIdx = src.indexOf('public-canvas-init.js');
+  assert.ok(authPolicyIdx !== -1, 'view.html must load auth-policy.js');
+  assert.ok(permissionIdx !== -1, 'view.html must load tree-workspace-permission.js');
+  assert.ok(initJsIdx !== -1, 'view.html must load public-canvas-init.js');
+  assert.ok(
+    authPolicyIdx < permissionIdx,
+    'auth-policy.js must load BEFORE tree-workspace-permission.js'
+  );
+  assert.ok(
+    permissionIdx < initJsIdx,
+    'tree-workspace-permission.js must load BEFORE public-canvas-init.js'
+  );
+});
+
+// ── updateOwnerModeUI runtime contract ────────────────────────────
+
+test('14. public-canvas-init calls updateOwnerModeUI with selectionState and normalized treeData', () => {
+  const src = readSource('js/viewer/public-canvas-init.js');
+  assert.ok(
+    src.indexOf('updateOwnerModeUI(selectionState, normalized.treeData)') !== -1,
+    'startCanvas must call updateOwnerModeUI with selectionState and normalized.treeData'
+  );
+  assert.ok(
+    src.indexOf('function updateOwnerModeUI(selectionState, providedTreeData)') !== -1,
+    'updateOwnerModeUI must accept selectionState and providedTreeData args'
+  );
+  assert.ok(
+    src.indexOf('var treeData = providedTreeData || window.currentTreeData || null;') !== -1,
+    'helper must use provided treeData arg before falling back to global'
+  );
+});
+
+test('15. public-canvas-init updateOwnerModeUI handles view button as current state', () => {
+  const src = readSource('js/viewer/public-canvas-init.js');
+  assert.ok(
+    src.indexOf('viewBtn.disabled = true') !== -1,
+    'View button must be disabled in current View state'
+  );
+  assert.ok(
+    src.indexOf("viewBtn.setAttribute('aria-current', 'true')") !== -1,
+    'View button must have aria-current=true'
+  );
+  assert.ok(
+    src.indexOf("editBtn.removeAttribute('aria-current')") !== -1,
+    'Edit button must not have aria-current'
+  );
+});
+
+test('16. public-canvas-init updateOwnerModeUI hides mode group for guest/non-owner', () => {
+  const src = readSource('js/viewer/public-canvas-init.js');
+  assert.ok(
+    src.indexOf("modeGroup.style.display = 'none'") !== -1,
+    'Guest/non-owner must hide mode group'
+  );
+});
+
+test('17. public-canvas-init updateOwnerModeUI edit button includes treeId, mode=edit, memoryId', () => {
+  const src = readSource('js/viewer/public-canvas-init.js');
+  assert.ok(
+    src.indexOf("params = 'treeId=' + encodeURIComponent(currentTreeId) + '&mode=edit'") !== -1,
+    'Edit button URL must include treeId and mode=edit params'
+  );
+  assert.ok(
+    src.indexOf("params += '&memoryId=' + encodeURIComponent(selectedMemoryId)") !== -1,
+    'Edit button URL must include memoryId when selected'
+  );
+});

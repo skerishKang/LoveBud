@@ -409,29 +409,40 @@
         return false;
     }
 
-    function updateOwnerModeUI(selectionState) {
+    function updateOwnerModeUI(selectionState, providedTreeData) {
         var modeGroup = document.getElementById('viewerModeGroup');
+        var viewBtn = document.getElementById('viewerModeViewBtn');
         var editBtn = document.getElementById('viewerModeEditBtn');
-        if (!modeGroup || !editBtn) return;
-        var treeData = window.currentTreeData || null;
+        if (!modeGroup || !viewBtn || !editBtn) return;
+        var treeData = providedTreeData || window.currentTreeData || null;
         var canEdit = treeData && window.LoveBudTreeWorkspacePermission
             ? window.LoveBudTreeWorkspacePermission.resolveTreeWorkspaceCanEdit(treeData)
             : false;
         if (canEdit) {
             modeGroup.style.display = '';
-            editBtn.addEventListener('click', function() {
-                var currentTreeId = treeData && treeData.id;
-                if (!currentTreeId) return;
-                var selectedMemoryId = selectionState && typeof selectionState.getSelectedNodeId === 'function'
-                    ? selectionState.getSelectedNodeId()
-                    : '';
-                var basePath = window.location.pathname.indexOf('/pages/') !== -1 ? '' : 'pages/';
-                var params = 'treeId=' + encodeURIComponent(currentTreeId) + '&mode=edit';
-                if (selectedMemoryId) {
-                    params += '&memoryId=' + encodeURIComponent(selectedMemoryId);
-                }
-                window.location.href = window.location.origin + '/' + basePath + 'editor?' + params;
-            });
+            viewBtn.disabled = true;
+            viewBtn.setAttribute('aria-current', 'true');
+            editBtn.disabled = false;
+            editBtn.removeAttribute('aria-current');
+            var handlerKey = '_lovebudEditClick';
+            if (!editBtn[handlerKey]) {
+                editBtn[handlerKey] = function() {
+                    var currentTreeId = treeData && treeData.id;
+                    if (!currentTreeId) return;
+                    var selectedMemoryId = selectionState && typeof selectionState.getSelectedNodeId === 'function'
+                        ? selectionState.getSelectedNodeId()
+                        : '';
+                    var basePath = window.location.pathname.indexOf('/pages/') !== -1 ? '' : 'pages/';
+                    var params = 'treeId=' + encodeURIComponent(currentTreeId) + '&mode=edit';
+                    if (selectedMemoryId) {
+                        params += '&memoryId=' + encodeURIComponent(selectedMemoryId);
+                    }
+                    window.location.href = window.location.origin + '/' + basePath + 'editor?' + params;
+                };
+                editBtn.addEventListener('click', editBtn[handlerKey]);
+            }
+        } else {
+            modeGroup.style.display = 'none';
         }
     }
     function installPublicCanvasToolbarCompactMode() {
@@ -643,6 +654,9 @@
                         sidebarSummaryEl.style.display = 'none';
                     }
                 }
+
+                // Show owner mode group if authenticated owner
+                updateOwnerModeUI(selectionState, normalized.treeData);
             }
 
             waitForPublicRuntime(startCanvas);
