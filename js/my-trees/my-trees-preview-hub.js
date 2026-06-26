@@ -659,6 +659,14 @@
         _stateModule = options.stateModule || window.LoveBudMyTreesState || null;
         _onOpenTree = options.onOpenTree || null;
 
+        /* #2903 layout probe: expose 4th action + status slot only when ?hubLayoutProbe=1 */
+        if (window.location.search.indexOf('hubLayoutProbe=1') !== -1) {
+            var probeSlot = document.querySelector('[data-layout-probe-slot]');
+            var probeStatus = document.querySelector('[data-layout-probe-status]');
+            if (probeSlot) probeSlot.removeAttribute('hidden');
+            if (probeStatus) probeStatus.removeAttribute('hidden');
+        }
+
         bindFlowToggle();
 
         var closeBtn = document.getElementById('myTreesHubClose');
