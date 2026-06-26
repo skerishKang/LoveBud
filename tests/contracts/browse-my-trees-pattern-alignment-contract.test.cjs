@@ -359,7 +359,16 @@ test('14. Runtime cache-busts updated for changed JS/CSS', () => {
     /#myTreesHubPanel\.is-loaded #myTreesHubVideoContainer\s*\{\s*display:\s*none;/
   );
   assert.ok(!/my-trees-finder\.css\?v=/.test(myTreesHtml), 'pages/my-trees.html must NOT directly link my-trees-finder.css (bundle owns finder import)');
-  assert.match(searchHtml, /search\.css\?v=20260626-2923-hub-flow-baseline-1/);
+  assert.match(
+    searchHtml,
+    /search\.css\?v=[^"'\s>]+/,
+    'pages/search.html must load search.css with a non-empty cache-bust query'
+  );
+  assert.doesNotMatch(
+    searchHtml,
+    /search\.css\?v=20260626-2923-hub-flow-baseline-1/,
+    'pages/search.html must not keep the pre-CTP-overlay cache-bust 20260626-2923-hub-flow-baseline-1'
+  );
 });
 
 test('15. My LoveTree desktop visual rhythm alignment with Browse', () => {
