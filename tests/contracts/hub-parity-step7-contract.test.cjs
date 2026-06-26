@@ -4,8 +4,7 @@
  * Locks the post-Step 7 hub parity invariants for the moment-flow
  * region. These are the visible differences that survived Step 6:
  *
- *   1. My Trees flow list renders as 2 columns on desktop (≥1025px)
- *      via a media query — matching Browse .preview-flow-list
+ *   1. My Trees flow list remains a single column at all viewports, matching Browse
  *   2. My Trees flow label uses Browse's styling (font-size 11px,
  *      text-transform: uppercase, letter-spacing 1px,
  *      margin-bottom 12px)
@@ -48,13 +47,18 @@ const myTreesFlowCss = fs.readFileSync(
     'utf8'
 );
 
-// ── 1) 2-column grid on desktop ────────────────────────────────────────
-test('My Trees flow list has 2-column grid at min-width 1025px', () => {
-    const re = /@media\s*\(min-width:\s*1025px\)\s*\{[^}]*\.my-trees-hub-flow-list\s*\{[^}]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)[^}]*\}/s;
+// ── 1) Single-column at all viewports (matching Browse) ────────────────
+test('My Trees flow list remains single column with no desktop grid override', () => {
+    const baseRe = /\.my-trees-hub-flow-list\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)[^}]*\}/s;
     assert.match(
         myTreesFlowCss,
-        re,
-        'My Trees .my-trees-hub-flow-list must use 2 columns on desktop (Browse parity, Step 7)'
+        baseRe,
+        '.my-trees-hub-flow-list base rule must keep grid-template-columns: minmax(0, 1fr)'
+    );
+    const overrideRe = /@media\s*\(min-width:\s*1025px\)\s*\{[^}]*\.my-trees-hub-flow-list\s*\{[^}]*grid-template-columns:\s*repeat\(2,[^}]*\}/s;
+    assert.ok(
+        !overrideRe.test(myTreesFlowCss),
+        '.my-trees-hub-flow-list must NOT have a desktop override for grid-template-columns: repeat(2, ...)'
     );
 });
 
