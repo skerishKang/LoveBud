@@ -75,6 +75,20 @@ test('My Trees continuation flow stays one-column at narrow breakpoints', () => 
   );
 });
 
+test('My Trees flow list must not have a desktop 2-column override', () => {
+  const flow = read('css/my-trees/my-trees-preview-hub/flow.css');
+  assert.ok(
+    !/@media\s*\(min-width:\s*1025px\)[\s\S]*?\.my-trees-hub-flow-list[\s\S]*?repeat\(2/.test(flow),
+    'desktop 2-column grid-template-columns override must be removed from flow.css'
+  );
+  // single-column default must still be present
+  assert.match(
+    flow,
+    /\.my-trees-hub-flow-list\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\);[^}]*\}/,
+    'single-column grid-template-columns must remain as the default'
+  );
+});
+
 test('My Trees hub keeps its non-media focus surface and shared visual rhythm', () => {
   const content = read('css/my-trees/my-trees-preview-hub/content.css');
   const actions = read('css/my-trees/my-trees-preview-hub/actions.css');
