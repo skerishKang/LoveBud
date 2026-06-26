@@ -144,10 +144,6 @@
     display: none !important;
 }
 
-#myTreesHubMedia .preview-media-frame-iframe > div {
-    display: none !important;
-}
-
 /* 둘러보기 허브 기준으로 크기/비율 통일 */
 #myTreesHubVideoContainer {
     position: relative;
