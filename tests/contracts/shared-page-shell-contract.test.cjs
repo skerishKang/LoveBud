@@ -70,10 +70,31 @@ test('Shared Page Shell Contract Verification', async (t) => {
     }
   });
 
-  await t.test('css/search/search-base.css defines .search-container with desktop 2-column grid rhythm', () => {
+  await t.test('Shared shell owns shell geometry; search-base.css does not redefine it', () => {
+    const shellCss = read('css/global/lovetree-calm-page-shell.css');
     const searchBaseCss = read('css/search/search-base.css');
+    // Shared shell must define all shell geometry
+    assert.match(shellCss, /\.lovetree-calm-two-column-shell/, 'Shared shell must define two-column-shell');
+    assert.match(shellCss, /width:\s*min/, 'Shared shell must own width');
+    assert.match(shellCss, /max-width:\s*var\(--page-shell-max\)/, 'Shared shell must own max-width');
+    assert.match(shellCss, /margin:\s*0\s+auto/, 'Shared shell must own margin');
+    assert.match(shellCss, /box-sizing:\s*border-box/, 'Shared shell must own box-sizing on two-column-shell');
+    assert.match(shellCss, /display:\s*grid/, 'Shared shell must own display:grid');
+    assert.match(shellCss, /grid-template-columns:\s*minmax\(0,\s*1fr\)\s+minmax\(360px,\s*400px\)/, 'Shared shell must own desktop grid columns');
+    assert.match(shellCss, /gap:\s*var\(--hero-gap\)/, 'Shared shell must own desktop gap via hero-gap');
+    // search-base.css must keep its page-specific identity and icon rules but NOT shell geometry
     assert.ok(searchBaseCss.includes('.search-container'), 'search-base.css must define .search-container');
-    assert.match(searchBaseCss, /grid-template-columns:\s*minmax\(0,\s*1fr\)\s+minmax\(360px,\s*400px\)/, 'search-base.css grid layout column layout must align');
+    const containerBlock = searchBaseCss.match(/\.search-container\s*\{[^}]*\}/);
+    assert.ok(containerBlock, 'search-base.css must have a .search-container rule block');
+    const block = containerBlock[0];
+    assert.ok(!/width\s*:/.test(block), '.search-container block must not redefine width');
+    assert.ok(!/max-width\s*:/.test(block), '.search-container block must not redefine max-width');
+    assert.ok(!/margin\s*:/.test(block), '.search-container block must not redefine margin');
+    assert.ok(!/display\s*:/.test(block), '.search-container block must not redefine display');
+    assert.ok(!/grid-template-columns\s*:/.test(block), '.search-container block must not redefine grid-template-columns');
+    assert.ok(!/gap\s*:/.test(block), '.search-container block must not redefine gap');
+    assert.ok(!/box-sizing\s*:/.test(block), '.search-container block must not redefine box-sizing');
+    assert.ok(!searchBaseCss.includes('min-width: 0'), 'search-base.css must not redefine min-width:0 on children');
   });
 
   await t.test('css/my-trees/my-trees-preview-hub/layout.css keeps hub empty/loaded state toggles', () => {
@@ -88,6 +109,37 @@ test('Shared Page Shell Contract Verification', async (t) => {
       /\.my-trees-hub-panel:not\(\.is-empty\)\s+\.my-trees-hub-placeholder/,
       'layout.css must hide hub placeholder when loaded'
     );
+  });
+
+  await t.test('my-trees-layout.css retains My Trees specific deltas but not shared geometry', () => {
+    const layoutCss = read('css/my-trees/my-trees-layout.css');
+    // My Trees unique deltas must be preserved
+    assert.match(layoutCss, /min-height:\s*100vh/, 'my-trees-layout.css must keep min-height:100vh');
+    assert.match(layoutCss, /body\.my-trees-auth-pending/, 'my-trees-layout.css must keep auth-pending visibility guard');
+    assert.match(layoutCss, /visibility:\s*hidden/, 'my-trees-layout.css must keep visibility:hidden for auth-pending');
+    // Page-specific padding is legitimate
+    assert.ok(layoutCss.includes('padding: 52px var(--page-pad-desktop) 58px'), 'my-trees-layout.css must keep desktop padding');
+    assert.ok(layoutCss.includes('padding: 40px var(--page-pad-tablet) 56px'), 'my-trees-layout.css must keep tablet padding');
+    assert.ok(layoutCss.includes('padding: 24px var(--page-pad-mobile) 36px'), 'my-trees-layout.css must keep mobile padding');
+    // Shared shell geometry must NOT be redefined in the .my-trees-container rule block
+    const containerBlock = layoutCss.match(/\.my-trees-container\s*\{[^}]*\}/);
+    assert.ok(containerBlock, 'my-trees-layout.css must have a .my-trees-container rule block');
+    const block = containerBlock[0];
+    assert.ok(!/width\s*:/.test(block), '.my-trees-container block must not redefine width');
+    assert.ok(!/max-width\s*:/.test(block), '.my-trees-container block must not redefine max-width');
+    assert.ok(!/margin\s*:/.test(block), '.my-trees-container block must not redefine margin');
+    assert.ok(!/display\s*:/.test(block), '.my-trees-container block must not redefine display');
+    assert.ok(!/grid-template-columns\s*:/.test(block), '.my-trees-container block must not redefine grid-template-columns');
+    assert.ok(!/gap\s*:/.test(block), '.my-trees-container block must not redefine gap');
+    assert.ok(!/box-sizing\s*:/.test(block), '.my-trees-container block must not redefine box-sizing');
+    // Also check responsive blocks do not redefine grid/gap
+    const responsiveBlocks = [...layoutCss.matchAll(/@media[^{]*\{[^}]*\}/g)].map(m => m[0]);
+    for (const rb of responsiveBlocks) {
+      if (rb.includes('.my-trees-container')) {
+        assert.ok(!/grid-template-columns/.test(rb), 'responsive .my-trees-container block must not redefine grid');
+        assert.ok(!/gap\s*:/.test(rb), 'responsive .my-trees-container block must not redefine gap');
+      }
+    }
   });
 
   await t.test('Verify no 3D orbit implementation is introduced and Scout is untouched', () => {

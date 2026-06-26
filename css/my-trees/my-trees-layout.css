@@ -3,19 +3,8 @@
    Browse .search-container for full parity. */
 
 .my-trees-container {
-  width: min(100%, var(--page-shell-max));
-  max-width: var(--page-shell-max);
-  margin: 0 auto;
   padding: 52px var(--page-pad-desktop) 58px;
   min-height: 100vh;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(360px, 400px);
-  gap: var(--hero-gap);
-  box-sizing: border-box;
-}
-
-.my-trees-container > * {
-  min-width: 0;
 }
 
 body.my-trees-auth-pending .my-trees-container {
@@ -25,14 +14,11 @@ body.my-trees-auth-pending .my-trees-container {
 @media (max-width: 1024px) {
   .my-trees-container {
     padding: 40px var(--page-pad-tablet) 56px;
-    grid-template-columns: minmax(0, 1fr) 340px;
-    gap: 24px;
   }
 }
 
 @media (max-width: 768px) {
   .my-trees-container {
     padding: 24px var(--page-pad-mobile) 36px;
-    grid-template-columns: 1fr;
   }
 }
