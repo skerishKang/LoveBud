@@ -47,10 +47,76 @@
     return String(memory.thumbnail || memory.thumbnailUrl || memory.thumbnail_url || memory.imageUrl || memory.image_url || memory.coverUrl || memory.cover_url || memory.posterUrl || memory.poster_url || '').trim();
   }
 
+  function getMemorySourceUrl(memory) {
+    if (!memory) return '';
+    return String(
+      memory.sourceUrl ||
+      memory.source_url ||
+      memory.videoUrl ||
+      memory.video_url ||
+      memory.mediaUrl ||
+      memory.media_url ||
+      memory.linkUrl ||
+      memory.link_url ||
+      memory.url ||
+      ''
+    ).trim();
+  }
+
+  function normalizePreviewMemory(rawMemory) {
+    var memory = rawMemory && rawMemory.data ? rawMemory.data : (rawMemory || {});
+    return Object.assign({}, memory, {
+      sourceUrl: getMemorySourceUrl(memory),
+      thumbnail: getThumbnail(memory)
+    });
+  }
+
+  function hasPlayableMedia(tree) {
+    return getMemories(tree).some(function(memory) {
+      return !!getMemorySourceUrl(memory);
+    });
+  }
+
+  var hydratedPreviewTreesById = Object.create(null);
+  var previewHydrationRequestId = 0;
+
+  function hydrateTreeForPreview(tree) {
+    if (!tree || !tree.id || hasPlayableMedia(tree)) {
+      return Promise.resolve(tree);
+    }
+
+    var treeId = String(tree.id);
+    if (hydratedPreviewTreesById[treeId]) {
+      return Promise.resolve(Object.assign({}, tree, hydratedPreviewTreesById[treeId]));
+    }
+
+    if (!window.apiClient || typeof window.apiClient.getMemoriesByTree !== 'function') {
+      return Promise.resolve(tree);
+    }
+
+    return window.apiClient.getMemoriesByTree(tree.id).then(function(rawMemories) {
+      var memories = (Array.isArray(rawMemories) ? rawMemories : [])
+        .map(normalizePreviewMemory)
+        .sort(function(a, b) {
+          var left = new Date(a.createdAt || a.created_at || a.timestamp || 0).getTime();
+          var right = new Date(b.createdAt || b.created_at || b.timestamp || 0).getTime();
+          return left - right;
+        });
+
+      var hydrated = {
+        memories: memories,
+        memoryCount: Math.max(Number(tree.memoryCount || 0), memories.length)
+      };
+
+      hydratedPreviewTreesById[treeId] = hydrated;
+      return Object.assign({}, tree, hydrated);
+    });
+  }
+
   function getMediaCandidates(tree) {
     return getMemories(tree).map(function (memory) {
       return Object.assign({}, memory || {}, {
-        sourceUrl: String(memory && (memory.sourceUrl || memory.source_url || memory.url) || '').trim(),
+        sourceUrl: getMemorySourceUrl(memory),
         thumbnail: getThumbnail(memory)
       });
     });
@@ -197,8 +263,31 @@
     }
     if (typeof originalOnCardClick === 'function') {
       hub.onCardClick = function (tree, options) {
+        var requestId = ++previewHydrationRequestId;
+
+        if (typeof hub.showLoading === 'function') {
+          hub.showLoading(tree);
+        }
+
+        hydrateTreeForPreview(tree).then(function(hydratedTree) {
+          if (requestId !== previewHydrationRequestId) return;
+
+          if (typeof hub.showContent === 'function') {
+            hub.showContent(hydratedTree);
+          } else {
+            renderMedia(hydratedTree);
+          }
+        }).catch(function() {
+          if (requestId !== previewHydrationRequestId) return;
+
+          if (typeof hub.showContent === 'function') {
+            hub.showContent(tree);
+          } else {
+            renderMedia(tree);
+          }
+        });
+
         var result = originalOnCardClick.call(hub, tree, options);
-        renderMedia(tree);
         return result;
       };
     }
