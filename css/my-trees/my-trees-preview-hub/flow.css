@@ -37,12 +37,6 @@
     align-items: stretch;
 }
 
-@media (min-width: 1025px) {
-    .my-trees-hub-flow-list {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-}
-
 .my-trees-hub-flow-stage {
     display: flex !important;
     align-items: center !important;

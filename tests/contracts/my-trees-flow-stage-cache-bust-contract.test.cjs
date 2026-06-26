@@ -43,25 +43,28 @@ test('My Trees page loads compact flow runtime script quartet (#2835)', () => {
   );
 });
 
-test('compact flow runtime quartet uses a single shared cache-bust version (#2835)', () => {
-  const quartet = (myTreesHtml.match(RUNTIME_BUNDLE_PATTERN) || []);
-  assert.equal(quartet.length, 4, 'all four runtime scripts must be present');
-  const versions = quartet.map((entry) => entry.split('?v=')[1]);
-  assert.ok(versions.every((v) => v && v.length > 0), 'every cache-bust value must be non-empty');
+test('compact flow runtime quartet has non-empty cache-bust versions (#2835, #2923)', () => {
+  // Hub must carry a non-empty cache-bust (independent version)
+  assert.match(
+    myTreesHtml,
+    /my-trees-preview-hub\.js\?v=[^"'\s>]+/,
+    'my-trees-preview-hub.js must carry a non-empty cache-bust'
+  );
+  // Trio (media-helper, state, media) must all share the same non-empty version
+  const trioPattern = /\.\.\/js\/(?:search\/search-preview-media-helper|my-trees\/my-trees-preview-state|my-trees\/my-trees-preview-media)\.js\?v=([^"'\s>]+)/g;
+  const trio = (myTreesHtml.match(trioPattern) || []);
+  assert.equal(trio.length, 3, 'all three trio scripts must be present');
+  const trioVersions = trio.map((entry) => entry.split('?v=')[1]);
+  assert.ok(trioVersions.every((v) => v && v.length > 0), 'every trio cache-bust value must be non-empty');
   assert.equal(
-    versions[0],
-    versions[1],
+    trioVersions[0],
+    trioVersions[1],
     'preview-hub and preview-media must share the same cache-bust version'
   );
   assert.equal(
-    versions[0],
-    versions[2],
+    trioVersions[0],
+    trioVersions[2],
     'search-preview-media-helper must share the same cache-bust version'
-  );
-  assert.equal(
-    versions[0],
-    versions[3],
-    'preview-state must share the same cache-bust version'
   );
 });
 
@@ -104,5 +107,21 @@ test('My Trees page no longer ships the pre-#2835 cache-bust values', () => {
     myTreesHtml,
     /my-trees-preview-state\.js\?v=20260622-step9-1/,
     'my-trees-preview-state.js must not still pin the pre-#2835 cache-bust 20260622-step9-1'
+  );
+  // New hydrated-flow token must be present in the trio
+  assert.match(
+    myTreesHtml,
+    /search-preview-media-helper\.js\?v=20260626-2929-hydrated-flow-1/,
+    'search-preview-media-helper.js must use the new hydrated-flow token'
+  );
+  assert.match(
+    myTreesHtml,
+    /my-trees-preview-state\.js\?v=20260626-2929-hydrated-flow-1/,
+    'my-trees-preview-state.js must use the new hydrated-flow token'
+  );
+  assert.match(
+    myTreesHtml,
+    /my-trees-preview-media\.js\?v=20260626-2929-hydrated-flow-1/,
+    'my-trees-preview-media.js must use the new hydrated-flow token'
   );
 });

@@ -64,9 +64,10 @@ test('My Trees hub renderer applies is-active to the first stage', () => {
 });
 
 test('My Trees hydrated flow stages also emit role + tabindex + is-active', () => {
+    // Additional shared class (preview-flow-stage) may be present in class value.
     assert.match(
         myTreesStateJs,
-        /<span class="my-trees-hub-flow-stage' \+ activeClass \+ '" role="button" tabindex="0" data-my-trees-moment-index="' \+ stageIndex \+ '">/,
+        /<span class="my-trees-hub-flow-stage[^"']*' \+ activeClass \+ '" role="button" tabindex="0" data-my-trees-moment-index="' \+ stageIndex \+ '">/,
         'my-trees-preview-state.js hydrated stages must include role + tabindex'
     );
     assert.match(

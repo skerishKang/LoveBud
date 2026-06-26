@@ -163,15 +163,16 @@ test('My Trees stage click handler swaps the video iframe to that moment', () =>
 
 // ?? 6) Stage label has title + aria-label ????????????????????????????
 test('My Trees stage label has title and aria-label attributes', () => {
-    // The label HTML should include both title and aria-label
+    // The label HTML should include both title and aria-label.
+    // Additional shared classes (preview-flow-stage-label) may be present in class value.
     assert.match(
         myTreesHubJs,
-        /my-trees-hub-flow-stage-label"\s+title="[^"]*"\s+aria-label="[^"]*"/,
+        /my-trees-hub-flow-stage-label[^"]*"\s+title="[^"]*"\s+aria-label="[^"]*"/,
         'My Trees stage label must include both title and aria-label (Browse parity)'
     );
     assert.match(
         myTreesStateJs,
-        /my-trees-hub-flow-stage-label"\s+title="[^"]*"\s+aria-label="[^"]*"/,
+        /my-trees-hub-flow-stage-label[^"]*"\s+title="[^"]*"\s+aria-label="[^"]*"/,
         'My Trees hydrated stage label must include both title and aria-label (Browse parity)'
     );
 });

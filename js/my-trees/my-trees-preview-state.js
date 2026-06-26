@@ -250,9 +250,9 @@
       var label = getMomentLabel(memory, index === 0 ? '시작 순간' : '이어진 순간');
       var stageIndex = index + 1;
       var activeClass = (index === 0) ? ' is-active' : '';
-      return '<span class="my-trees-hub-flow-stage' + activeClass + '" role="button" tabindex="0" data-my-trees-moment-index="' + stageIndex + '">' +
+      return '<span class="my-trees-hub-flow-stage preview-flow-stage' + activeClass + '" role="button" tabindex="0" data-my-trees-moment-index="' + stageIndex + '">' +
         '<span class="my-trees-hub-flow-stage-index">' + stageIndex + '</span>' +
-        '<span class="my-trees-hub-flow-stage-label" title="' + escapeHtml(label) + '" aria-label="' + escapeHtml(label) + '">' + escapeHtml(label) + '</span>' +
+        '<span class="my-trees-hub-flow-stage-label preview-flow-stage-label" title="' + escapeHtml(label) + '" aria-label="' + escapeHtml(label) + '">' + escapeHtml(label) + '</span>' +
         '</span>';
     }).join('');
   }
@@ -302,7 +302,7 @@
           flowControls.replaceChildren();
           var flowToggle = document.createElement('button');
           flowToggle.type = 'button';
-          flowToggle.className = 'my-trees-hub-flow-toggle';
+          flowToggle.className = 'my-trees-hub-flow-toggle preview-flow-toggle';
           flowToggle.setAttribute('data-my-trees-flow-toggle', '');
           flowToggle.textContent = '... 그리고 ' + hiddenCount + '개의 순간 더';
           flowControls.appendChild(flowToggle);
