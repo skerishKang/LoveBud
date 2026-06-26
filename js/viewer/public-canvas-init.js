@@ -415,83 +415,36 @@
         var modeGroup = document.getElementById('viewerModeGroup');
         var viewBtn = document.getElementById('viewerModeViewBtn');
         var editBtn = document.getElementById('viewerModeEditBtn');
-
-        var sidebarOwnerMode = document.getElementById('viewerSidebarOwnerMode');
-        var sidebarViewBtn = document.getElementById('viewerSidebarViewBtn');
-        var sidebarEditBtn = document.getElementById('viewerSidebarEditBtn');
-        var sidebarBackLink = document.getElementById('viewerSidebarBackLink');
-        var sidebarBackLabel = document.getElementById('viewerSidebarBackLabel');
-        var sidebarKicker = document.getElementById('viewerSidebarKicker');
-
+        if (!modeGroup || !viewBtn || !editBtn) return;
         var treeData = providedTreeData || window.currentTreeData || null;
         var canEdit = treeData && window.LoveBudTreeWorkspacePermission
             ? window.LoveBudTreeWorkspacePermission.resolveTreeWorkspaceCanEdit(treeData)
             : false;
-
-        var isPages = window.location.pathname.indexOf('/pages/') !== -1;
-        var searchHref = isPages ? 'search.html' : 'pages/search.html';
-        var myTreesHref = isPages ? 'my-trees.html' : 'pages/my-trees.html';
-
         if (canEdit) {
-            if (modeGroup) {
-                modeGroup.style.display = '';
-                if (viewBtn) {
-                    viewBtn.disabled = true;
-                    viewBtn.setAttribute('aria-current', 'true');
-                }
-                if (editBtn) {
-                    editBtn.disabled = false;
-                    editBtn.removeAttribute('aria-current');
-                }
-            }
-
-            if (sidebarOwnerMode) sidebarOwnerMode.style.display = '';
-            if (sidebarViewBtn) {
-                sidebarViewBtn.disabled = true;
-                sidebarViewBtn.setAttribute('aria-current', 'true');
-            }
-            if (sidebarEditBtn) {
-                sidebarEditBtn.disabled = false;
-                sidebarEditBtn.removeAttribute('aria-current');
-            }
-            if (sidebarBackLink) sidebarBackLink.href = myTreesHref;
-            if (sidebarBackLabel) sidebarBackLabel.textContent = '내 러브트리로 돌아가기';
-            if (sidebarKicker) sidebarKicker.textContent = '내가 키우는 러브트리';
-
-            var navigateToEditor = function() {
-                var currentTreeId = treeData && treeData.id;
-                if (!currentTreeId) return;
-                var selectedMemoryId = selectionState && typeof selectionState.getSelectedNodeId === 'function'
-                    ? selectionState.getSelectedNodeId()
-                    : '';
-                var basePath = window.location.pathname.indexOf('/pages/') !== -1 ? '' : 'pages/';
-                var params = 'treeId=' + encodeURIComponent(currentTreeId) + '&mode=edit';
-                if (selectedMemoryId) {
-                    params += '&memoryId=' + encodeURIComponent(selectedMemoryId);
-                }
-                window.location.href = window.location.origin + '/' + basePath + 'editor?' + params;
-            };
-
+            modeGroup.style.display = '';
+            viewBtn.disabled = true;
+            viewBtn.setAttribute('aria-current', 'true');
+            editBtn.disabled = false;
+            editBtn.removeAttribute('aria-current');
             var handlerKey = '_lovebudEditClick';
-            if (editBtn) {
-                if (!editBtn[handlerKey]) {
-                    editBtn[handlerKey] = navigateToEditor;
-                    editBtn.addEventListener('click', editBtn[handlerKey]);
-                }
-            }
-            if (sidebarEditBtn) {
-                var sidebarKey = '_lovebudSidebarEditClick';
-                if (!sidebarEditBtn[sidebarKey]) {
-                    sidebarEditBtn[sidebarKey] = navigateToEditor;
-                    sidebarEditBtn.addEventListener('click', sidebarEditBtn[sidebarKey]);
-                }
+            if (!editBtn[handlerKey]) {
+                editBtn[handlerKey] = function() {
+                    var currentTreeId = treeData && treeData.id;
+                    if (!currentTreeId) return;
+                    var selectedMemoryId = selectionState && typeof selectionState.getSelectedNodeId === 'function'
+                        ? selectionState.getSelectedNodeId()
+                        : '';
+                    var basePath = window.location.pathname.indexOf('/pages/') !== -1 ? '' : 'pages/';
+                    var params = 'treeId=' + encodeURIComponent(currentTreeId) + '&mode=edit';
+                    if (selectedMemoryId) {
+                        params += '&memoryId=' + encodeURIComponent(selectedMemoryId);
+                    }
+                    window.location.href = window.location.origin + '/' + basePath + 'editor?' + params;
+                };
+                editBtn.addEventListener('click', editBtn[handlerKey]);
             }
         } else {
-            if (modeGroup) modeGroup.style.display = 'none';
-            if (sidebarOwnerMode) sidebarOwnerMode.style.display = 'none';
-            if (sidebarBackLink) sidebarBackLink.href = searchHref;
-            if (sidebarBackLabel) sidebarBackLabel.textContent = '둘러보기로 돌아가기';
-            if (sidebarKicker) sidebarKicker.textContent = '공개 러브트리';
+            modeGroup.style.display = 'none';
         }
     }
     window.LoveBudPublicCanvasInit = window.LoveBudPublicCanvasInit || {};
@@ -710,156 +663,23 @@
                 window.__viewerSelectionState = selectionState;
                 window.__viewerTreeData = normalized.treeData;
                 updateOwnerModeUI(selectionState, normalized.treeData);
-                function reconcileOwnerCapabilityForActiveTree(targetTreeData) {
-                    var activeTreeData = window.__viewerTreeData || window.currentTreeData;
-                    if (activeTreeData !== targetTreeData) return;
-                    var targetTreeId = targetTreeData && targetTreeData.id;
-                    if (!targetTreeId) return;
-
-                    var ap = window.LoveTreeAuthPolicy;
-                    var conf = ap && typeof ap.hasConfirmedAuthSession === 'function' ? ap.hasConfirmedAuthSession() : false;
-                    var currentUser = ap && typeof ap.getCachedAuthUser === 'function' ? ap.getCachedAuthUser() : null;
-                    var targetAuthUid = currentUser && currentUser.uid;
-
-                    if (!conf || !targetAuthUid) {
-                        delete targetTreeData.viewerCanEdit;
-                        delete targetTreeData._viewerCapabilityAuthUid;
-                        delete targetTreeData._capabilityFetching;
-                        delete targetTreeData._capabilityFetchingAuthUid;
-                        if (targetTreeData.data) {
-                            delete targetTreeData.data.viewerCanEdit;
-                        }
-                        if (typeof window.LoveBudPublicCanvasInit.updateOwnerModeUI === 'function') {
-                            window.LoveBudPublicCanvasInit.updateOwnerModeUI();
-                        }
-                        return;
-                    }
-
-                    if (targetTreeData.viewerCanEdit !== undefined) {
-                        if (targetTreeData._viewerCapabilityAuthUid !== targetAuthUid) {
-                            delete targetTreeData.viewerCanEdit;
-                            delete targetTreeData._viewerCapabilityAuthUid;
-                            if (targetTreeData.data) {
-                                delete targetTreeData.data.viewerCanEdit;
-                            }
-                        } else {
-                            if (typeof window.LoveBudPublicCanvasInit.updateOwnerModeUI === 'function') {
-                                window.LoveBudPublicCanvasInit.updateOwnerModeUI();
-                            }
-                            return;
-                        }
-                    }
-
-                    if (targetTreeData._capabilityFetchingAuthUid === targetAuthUid) return;
-                    targetTreeData._capabilityFetchingAuthUid = targetAuthUid;
-
-                    var apiFetch = window.LoveTreeBaseApiFetch && window.LoveTreeBaseApiFetch.apiFetch;
-                    if (typeof apiFetch === 'function') {
-                        apiFetch('/private/trees/' + encodeURIComponent(targetTreeId) + '/capability')
-                            .then(function(res) {
-                                if (targetTreeData._capabilityFetchingAuthUid === targetAuthUid) {
-                                    delete targetTreeData._capabilityFetchingAuthUid;
-                                }
-                                var checkActiveTree = window.__viewerTreeData || window.currentTreeData;
-                                var currentConfirmedUser = ap && typeof ap.getCachedAuthUser === 'function' ? ap.getCachedAuthUser() : null;
-                                if (checkActiveTree !== targetTreeData ||
-                                    (checkActiveTree && checkActiveTree.id !== targetTreeId) ||
-                                    !currentConfirmedUser ||
-                                    currentConfirmedUser.uid !== targetAuthUid) {
-                                    return;
-                                }
-                                var canEdit = !!(res && res.viewerCanEdit);
-                                targetTreeData.viewerCanEdit = canEdit;
-                                targetTreeData._viewerCapabilityAuthUid = targetAuthUid;
-                                if (targetTreeData.data) {
-                                    targetTreeData.data.viewerCanEdit = canEdit;
-                                }
-                                if (typeof window.LoveBudPublicCanvasInit.updateOwnerModeUI === 'function') {
-                                    window.LoveBudPublicCanvasInit.updateOwnerModeUI();
-                                }
-                            })
-                            .catch(function() {
-                                if (targetTreeData._capabilityFetchingAuthUid === targetAuthUid) {
-                                    delete targetTreeData._capabilityFetchingAuthUid;
-                                }
-                                var checkActiveTree = window.__viewerTreeData || window.currentTreeData;
-                                var currentConfirmedUser = ap && typeof ap.getCachedAuthUser === 'function' ? ap.getCachedAuthUser() : null;
-                                if (checkActiveTree !== targetTreeData ||
-                                    (checkActiveTree && checkActiveTree.id !== targetTreeId) ||
-                                    !currentConfirmedUser ||
-                                    currentConfirmedUser.uid !== targetAuthUid) {
-                                    return;
-                                }
-                                targetTreeData.viewerCanEdit = false;
-                                targetTreeData._viewerCapabilityAuthUid = targetAuthUid;
-                                if (targetTreeData.data) {
-                                    targetTreeData.data.viewerCanEdit = false;
-                                }
-                                if (typeof window.LoveBudPublicCanvasInit.updateOwnerModeUI === 'function') {
-                                    window.LoveBudPublicCanvasInit.updateOwnerModeUI();
-                                }
-                            });
-                    } else {
-                        if (targetTreeData._capabilityFetchingAuthUid === targetAuthUid) {
-                            delete targetTreeData._capabilityFetchingAuthUid;
-                        }
-                    }
-                }
-
-                // Register auth observer on current treeData lifecycle
-                var treeData = normalized.treeData;
-                if (treeData && !treeData._ownerCapabilityAuthCallbackRegistered && typeof window.registerOnAuthReady === 'function') {
-                    treeData._ownerCapabilityAuthCallbackRegistered = true;
-                    var targetTreeData = treeData;
-                    var targetTreeId = treeData.id;
-                    window.registerOnAuthReady(function(authUser) {
-                        var activeTreeData = window.__viewerTreeData || window.currentTreeData;
-                        if (activeTreeData !== targetTreeData || activeTreeData.id !== targetTreeId) return;
-
-                        var ap = window.LoveTreeAuthPolicy;
-                        var conf = ap && typeof ap.hasConfirmedAuthSession === 'function' ? ap.hasConfirmedAuthSession() : false;
-                        if (!authUser || !conf) {
-                            delete targetTreeData.viewerCanEdit;
-                            delete targetTreeData._viewerCapabilityAuthUid;
-                            delete targetTreeData._capabilityFetching;
-                            delete targetTreeData._capabilityFetchingAuthUid;
-                            if (targetTreeData.data) {
-                                delete targetTreeData.data.viewerCanEdit;
-                            }
-                            if (typeof window.LoveBudPublicCanvasInit.updateOwnerModeUI === 'function') {
-                                window.LoveBudPublicCanvasInit.updateOwnerModeUI();
-                            }
-                        } else {
-                            var newAuthUid = authUser.uid;
-                            if (targetTreeData._viewerCapabilityAuthUid !== newAuthUid) {
-                                delete targetTreeData.viewerCanEdit;
-                                delete targetTreeData._viewerCapabilityAuthUid;
-                                if (targetTreeData.data) {
-                                    delete targetTreeData.data.viewerCanEdit;
-                                }
-                                reconcileOwnerCapabilityForActiveTree(targetTreeData);
-                            } else {
-                                if (typeof window.LoveBudPublicCanvasInit.updateOwnerModeUI === 'function') {
-                                    window.LoveBudPublicCanvasInit.updateOwnerModeUI();
-                                }
-                            }
-                        }
-                    });
-                }
-
                 // Deferred re-check: auth may resolve after tree data loads
-                if (normalized.treeData && !normalized.treeData._ownerCapabilityPollerStarted) {
-                    normalized.treeData._ownerCapabilityPollerStarted = true;
+                if (typeof window.LoveBudPublicCanvasInit._ownerAuthPoller === 'undefined') {
+                    window.LoveBudPublicCanvasInit._ownerAuthPoller = true;
                     (function pollOwnerAuth() {
-                        var activeTreeData = window.__viewerTreeData || window.currentTreeData;
-                        if (activeTreeData !== normalized.treeData) return;
-
+                        var mg = document.getElementById('viewerModeGroup');
+                        if (mg && mg.style.display !== 'none') return;
                         var ap = window.LoveTreeAuthPolicy;
-                        var conf = ap && typeof ap.hasConfirmedAuthSession === 'function' ? ap.hasConfirmedAuthSession() : false;
+                        var conf = ap && typeof ap.hasConfirmedAuthSession === 'function'
+                            ? ap.hasConfirmedAuthSession() : false;
                         if (conf) {
-                            reconcileOwnerCapabilityForActiveTree(normalized.treeData);
+                            // Auth confirmed — re-evaluate owner mode UI
+                            if (typeof window.LoveBudPublicCanvasInit.updateOwnerModeUI === 'function') {
+                                window.LoveBudPublicCanvasInit.updateOwnerModeUI();
+                            }
                             return;
                         }
+                        // Guest settled: Firebase onAuthStateChanged fired (null user)
                         if (window.__lovebudAuthReady === true) {
                             if (typeof window.LoveBudPublicCanvasInit.updateOwnerModeUI === 'function') {
                                 window.LoveBudPublicCanvasInit.updateOwnerModeUI();
