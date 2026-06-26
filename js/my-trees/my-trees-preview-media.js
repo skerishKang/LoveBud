@@ -206,7 +206,9 @@
   }
 
   function patchRendererSelection() {
-    var renderer = window.LoveBudMyTreesRender || window.LoveTreeMyTreesRender;
+    var renderer = window.LoveBudMyTreesRender
+      || window.LoveTreeMyTreesRender
+      || window.LoveBudMyTreesBatchRender;
     if (!renderer || typeof renderer.renderTrees !== 'function' || renderer.__playableMediaSelectionPatched) return;
     var originalRenderTrees = renderer.renderTrees;
 
