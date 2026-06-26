@@ -502,6 +502,31 @@ selectors for identical flow card and flow element geometry.
   `preview-flow-stage-label` to label element
 - My Trees `buildFlowToggle()`: added `preview-flow-toggle` to toggle button
 
+**Phase 2d regression fix (#2928):**
+After Phase 2d landed, the My Trees **hydration** path (`my-trees-preview-state.js`)
+was still emitting stage and toggle markup without the shared flow classes.
+That caused login-time hydrated hubs to fall back to default HTML surface
+without the 42px stage height, desaturated grid, or continuation-toggle style.
+This rule locks the hydration renderer to emit the same canonical classes:
+- `buildHydratedFlowStages()`: adds `preview-flow-stage` and
+  `preview-flow-stage-label` to every hydrated stage
+- `patchHubForCreatedMoments()` continuation button: adds `preview-flow-toggle`
+  alongside the existing `my-trees-hub-flow-toggle` owner class
+
+Existing data attributes, role, tabindex, stage index, and rebind logic are
+preserved exactly.
+
+**Phase 2d regression fix, CTP overlay parity (#2928):**
+The phase 2d Browse-side veil removal (see 2c) only declared the override
+under `#previewVideoContainer`, which left a 10% black veil only on the My
+Trees hub click-to-play overlay. The override now applies to both:
+- `#previewVideoContainer [data-preview-ctp-overlay]` and `:hover`
+- `#myTreesHubVideoContainer [data-preview-ctp-overlay]` and `:hover`
+
+Central play affordance, click-to-play handler, and media-title gradient
+remain untouched; existing transparent memory/play-overlay typography rules
+still apply.
+
 **Remaining rendering divergence (not converged by Phase 2d):**
 - Browse renders flow cards dynamically via `search-preview-renderer.js` with
   inline background style

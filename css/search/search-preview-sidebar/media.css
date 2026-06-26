@@ -84,9 +84,12 @@
     content: none;
 }
 
-/* Browse preview veil 제거 — click-to-play 기능과 handler는 유지, 시각적 레이어만 투명 */
+/* Browse + My Trees preview veil 제거 — click-to-play 기능과 handler는 유지, 시각적 레이어만 투명
+   Phase 2d regression: My Trees CTP overlay도 Browse와 동일하게 transparent 적용 */
 #previewVideoContainer [data-preview-ctp-overlay],
-#previewVideoContainer [data-preview-ctp-overlay]:hover {
+#previewVideoContainer [data-preview-ctp-overlay]:hover,
+#myTreesHubVideoContainer [data-preview-ctp-overlay],
+#myTreesHubVideoContainer [data-preview-ctp-overlay]:hover {
     background: transparent !important;
 }
 
