@@ -309,16 +309,16 @@
               '<strong data-my-trees-social-views>0</strong>',
               '<span>조회수</span>',
             '</div>',
-            '<div class="preview-social-action preview-social-stat" aria-label="좋아요" role="status">',
+            '<button type="button" class="preview-social-action" disabled aria-label="좋아요 0">',
               '<span class="material-symbols-outlined" aria-hidden="true">favorite</span>',
               '<strong data-my-trees-social-likes>0</strong>',
               '<span>좋아요</span>',
-            '</div>',
-            '<div class="preview-social-action preview-social-stat" aria-label="댓글" role="status">',
-              '<span class="material-symbols-outlined" aria-hidden="true">comment</span>',
+            '</button>',
+            '<button type="button" class="preview-social-action" aria-expanded="false" aria-label="댓글 0">',
+              '<span class="material-symbols-outlined" aria-hidden="true">mode_comment</span>',
               '<strong data-my-trees-social-comments>0</strong>',
               '<span>댓글</span>',
-            '</div>',
+            '</button>',
             '</div>'
         ].join('');
         return shell;
