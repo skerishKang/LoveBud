@@ -40,6 +40,10 @@ const myTreesFlowCss = fs.readFileSync(
     path.join(ROOT, 'css/my-trees/my-trees-preview-hub/flow.css'),
     'utf8'
 );
+const sharedSlotsCss = fs.readFileSync(
+    path.join(ROOT, 'css/shared/preview-hub-content-slots.css'),
+    'utf8'
+);
 const myTreesHubManifest = fs.readFileSync(
     path.join(ROOT, 'css/my-trees/my-trees-preview-hub.css'),
     'utf8'
@@ -98,7 +102,7 @@ test('My Trees hydrated flow stages use numeric index (no emoji icon)', () => {
 test('My Trees hub renderer emits a <button data-my-trees-flow-toggle>', () => {
     assert.match(
         myTreesHubJs,
-        /<button[^>]*class=["']my-trees-hub-flow-toggle["'][^>]*data-my-trees-flow-toggle/,
+        /<button[^>]*class=["']my-trees-hub-flow-toggle[^"']*["'][^>]*data-my-trees-flow-toggle/,
         'my-trees-preview-hub.js must emit an interactive button for the flow toggle'
     );
 });
@@ -122,6 +126,7 @@ test('My Trees hydrated flow toggle is an interactive button (not static span)',
 
 // ── 4) Flow card uses Browse flat surface ─────────────────────────────
 test('My Trees flow card carries the Browse frame surface', () => {
+    // Surface styling kept in My Trees flow.css
     const rule = /\.my-trees-hub-flow\s*\{[^}]*\}/s;
     const match = myTreesFlowCss.match(rule);
     assert.ok(match, 'rule must exist');
@@ -130,8 +135,9 @@ test('My Trees flow card carries the Browse frame surface', () => {
     assert.match(block, /border:\s*1px\s+solid\s+rgba\(144,\s*73,\s*81,\s*0\.10\);/);
     assert.match(block, /border-radius:\s*1rem;/);
     assert.match(block, /box-shadow:\s*0\s+14px\s+28px\s+rgba\(75,\s*64,\s*57,\s*0\.07\),\s*inset\s+0\s+1px\s+0\s+rgba\(255,\s*255,\s*255,\s*0\.78\);/);
-    assert.match(block, /padding:\s*20px;/);
-    assert.match(block, /margin-bottom:\s*16px;/);
+    // Padding and margin-bottom now owned by shared CSS .preview-flow-slot
+    assert.match(sharedSlotsCss, /\.preview-flow-slot\s*\{[^}]*padding:\s*20px;/s);
+    assert.match(sharedSlotsCss, /\.preview-flow-slot[^{]*\{[^}]*margin-bottom:\s*16px;/s);
 });
 
 // ── 5) Primary button label parity: 트리 열기 + account_tree ────────────

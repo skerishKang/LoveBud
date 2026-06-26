@@ -436,6 +436,98 @@ selectors for identical container geometry.
 
 ---
 
+## 11. Hub flow baseline ownership — Phase 2d completed
+
+**Phase 2d** centralized the flow slot class ownership across Browse and My
+Trees hub preview slots. Before this phase, each page used page-specific
+selectors for identical flow card and flow element geometry.
+
+**Canonical shared classes:**
+
+| Element | Shared class | Browse usage | My Trees usage |
+|---------|-------------|-------------|----------------|
+| Flow wrapper | `preview-flow-slot` | `preview-focus-flow-card` + `preview-flow-slot` | `my-trees-hub-flow` + `preview-flow-slot` |
+| Flow list | `preview-flow-list` | `preview-flow-list` | `my-trees-hub-flow-list` + `preview-flow-list` |
+| Flow stage | `preview-flow-stage` | `preview-flow-stage` | `my-trees-hub-flow-stage` + `preview-flow-stage` |
+| Stage label | `preview-flow-stage-label` | `preview-flow-stage-label` | `my-trees-hub-flow-stage-label` + `preview-flow-stage-label` |
+| Flow controls | `preview-flow-controls` | `preview-flow-controls` | `my-trees-hub-flow-controls` + `preview-flow-controls` |
+| Flow toggle | `preview-flow-toggle` | `preview-flow-toggle` | `my-trees-hub-flow-toggle` + `preview-flow-toggle` |
+
+**Shared CSS owner (base geometry):** `css/shared/preview-hub-content-slots.css`
+- `.preview-flow-slot` — `padding: 20px`,
+  `box-sizing: border-box`, `min-width: 0`
+- `.preview-flow-slot:not(.preview-flow-slot-loading)` — `margin-bottom: 16px`
+  (loading flow excluded from bottom margin to preserve previous behaviour)
+
+**Browse shared preview CSS (desktop baseline ownership):**
+- `css/search/search-preview-sidebar/flow.css`: `.preview-flow-list`,
+  `.preview-flow-stage`, `.preview-flow-stage-label`, `.preview-flow-controls`,
+  `.preview-flow-toggle` base geometry and visual appearance
+- `css/search/search-preview-sidebar/responsive.css`: `@media (min-width: 1025px)`
+  2-column grid rule; `@media (max-width: 768px)` stage density override;
+  `@media (max-width: 375px)` mobile flow overrides
+
+**Duplicate selectors removed from My Trees CSS:**
+- `flow.css`: `.my-trees-hub-flow` box-sizing/margin-bottom/padding (→ shared);
+  `.my-trees-hub-flow-list` base + desktop 2-column media (→ Browse);
+  `.my-trees-hub-flow-stage` base/hover/active (→ Browse);
+  `.my-trees-hub-flow-stage-label` base (→ Browse);
+  `.my-trees-hub-flow-controls` margin-top (→ Browse);
+  `.my-trees-hub-flow-toggle` base/hover/focus (→ Browse)
+- `responsive.css`: `@media (max-width: 1024px)` `.my-trees-hub-flow-list`
+  1-column override removed; `@media (max-width: 768px)` `.my-trees-hub-flow-stage`
+  / `.my-trees-hub-flow` padding overrides removed; `@media (max-width: 375px)`
+  `.my-trees-hub-flow-list` gap / `.my-trees-hub-flow` padding /
+  `.my-trees-hub-flow-controls` margin / `.my-trees-hub-flow-toggle` font-size
+  overrides removed
+
+**Owner-specific rules preserved:**
+- `flow.css`: `.my-trees-hub-flow` surface (background/border/border-radius/
+  box-shadow); `.my-trees-hub-flow-label` and icon; `.my-trees-hub-flow-stage-index`;
+  `#myTreesHubFlowControls[hidden]`/`#myTreesHubNoMoments[hidden]`;
+  `.my-trees-hub-flow-controls:empty`; `.my-trees-hub-flow-controls` line-height
+- `responsive.css`: `@media (max-width: 768px)` `.my-trees-hub-flow`
+  padding: 16px (owner-specific responsive delta for tighter card padding);
+  `@media (max-width: 375px)` `.my-trees-hub-flow`
+  padding: 12px (owner-specific responsive delta) and
+  `.my-trees-hub-flow-stage` compact pill delta (min-height: 32px,
+  border-radius: 999px)
+
+**Renderer changes:**
+- Browse `search-preview-renderer.js`: added `preview-flow-slot` to 3 flow
+  card templates (loading, no-moments, normal); added `preview-flow-slot-loading`
+  to the loading card template only; removed inline
+  `padding:20px;border-radius:1rem;margin-bottom:16px` from all three
+- My Trees `buildFlowStages()`: added `preview-flow-stage` to stage element,
+  `preview-flow-stage-label` to label element
+- My Trees `buildFlowToggle()`: added `preview-flow-toggle` to toggle button
+
+**Remaining rendering divergence (not converged by Phase 2d):**
+- Browse renders flow cards dynamically via `search-preview-renderer.js` with
+  inline background style
+- My Trees renders flow stages statically via `my-trees-preview-hub.js`
+  `buildFlowStages()` and `buildFlowToggle()` with CSS background
+
+---
+
+## 12. Validation matrix (Phase 2d additions)
+
+| Check | Mechanism |
+|-------|-----------|
+| Both pages use `preview-flow-slot` on flow wrapper | `browse-my-trees-hub-flow-baseline-contract.test.cjs` |
+| Both pages share `preview-flow-list`, `preview-flow-stage`, `preview-flow-stage-label`, `preview-flow-controls`, `preview-flow-toggle` | `browse-my-trees-hub-flow-baseline-contract.test.cjs` |
+| Shared CSS owns flow slot base geometry (loading excluded from 16px margin) | `browse-my-trees-hub-flow-baseline-contract.test.cjs` |
+| Browse shared preview CSS owns list/stage/label/controls/toggle base + desktop 2-column | `browse-my-trees-hub-flow-baseline-contract.test.cjs` |
+| My Trees flow.css no longer retains duplicate desktop/base geometry | `browse-my-trees-hub-flow-baseline-contract.test.cjs` |
+| My Trees 768px flow padding delta (16px) preserved in responsive.css | `browse-my-trees-hub-flow-baseline-contract.test.cjs` |
+| My Trees 375px flow padding delta (12px) preserved in responsive.css | `browse-my-trees-hub-flow-baseline-contract.test.cjs` |
+| My Trees 375px compact pill delta is preserved in responsive.css | `browse-my-trees-hub-flow-baseline-contract.test.cjs` |
+| Existing IDs, keyboard behavior, data attributes preserved | `browse-my-trees-hub-flow-baseline-contract.test.cjs` |
+| Audit document Phase 2d and Refs verified | `browse-my-trees-hub-flow-baseline-contract.test.cjs` |
+| #1882 not closed by this PR (parent issue only) | `browse-my-trees-hub-flow-baseline-contract.test.cjs` |
+
+---
+
 Refs #2923
 Refs #2903
 Refs #1882

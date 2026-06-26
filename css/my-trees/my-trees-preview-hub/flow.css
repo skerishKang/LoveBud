@@ -1,15 +1,14 @@
 /* ── Hub moment flow list ── */
-/* Align the My Trees flow card with Browse's .preview-focus-flow-card.
-   My Trees does not load search-preview.css, so the frame surface is
-   locked here against the actual owner hub DOM. */
+/* Owner-specific surface for the My Trees flow card.
+   The shared .preview-flow-slot now owns padding/margin/box-sizing
+   and Browse flow.css owns .preview-flow-list/stage/stage-label/toggle
+   base geometry. This file keeps only My Trees owner-specific rules. */
+
 .my-trees-hub-flow {
     background: linear-gradient(180deg, rgba(255, 255, 255, 0.66), rgba(255, 248, 245, 0.52)) !important;
     border: 1px solid rgba(144, 73, 81, 0.10);
     border-radius: 1rem;
     box-shadow: 0 14px 28px rgba(75, 64, 57, 0.07), inset 0 1px 0 rgba(255, 255, 255, 0.78);
-    box-sizing: border-box;
-    margin-bottom: 16px;
-    padding: 20px;
 }
 
 .my-trees-hub-flow-label {
@@ -28,77 +27,15 @@
     font-size: 14px;
 }
 
-.my-trees-hub-flow-list {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    gap: 7px;
-    min-width: 0;
-    max-width: 100%;
-    align-items: stretch;
-}
-
-@media (min-width: 1025px) {
-    .my-trees-hub-flow-list {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-}
-
-.my-trees-hub-flow-stage {
-    display: flex !important;
-    align-items: center !important;
-    gap: 6px !important;
-    min-width: 0;
-    max-width: 100%;
-    height: 42px !important;
-    min-height: 42px !important;
-    box-sizing: border-box;
-    justify-content: flex-start;
-    overflow: hidden;
-    width: 100%;
-    padding: 8px 10px !important;
-    border-radius: 12px !important;
-    background: rgba(255, 255, 255, 0.56) !important;
-    border: 1px solid rgba(144, 73, 81, 0.08);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.66);
-    color: var(--on-surface-variant) !important;
-    font-size: 12.5px !important;
-    line-height: 1.35;
-    cursor: pointer;
-}
-
-.my-trees-hub-flow-stage:hover {
-    background: rgba(144, 73, 81, 0.10) !important;
-    border-color: rgba(144, 73, 81, 0.20) !important;
-}
-
-.my-trees-hub-flow-stage.is-active {
-    background: rgba(144, 73, 81, 0.14) !important;
-    border: 1px solid rgba(144, 73, 81, 0.28) !important;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.66) !important;
-}
-
 .my-trees-hub-flow-stage-index {
     color: var(--primary);
     font-weight: 800;
     flex: 0 0 auto;
 }
 
-.my-trees-hub-flow-stage-label {
-    min-width: 0;
-    overflow: hidden;
-    display: block;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-    word-break: normal;
-    line-height: 1.35;
-}
-
 /* ── Hub flow controls ── */
 
-/* Visual alignment with Browse: compact the owner-only controls line by 2px
-   so the continuation affordance shares the same baseline as Browse. */
 .my-trees-hub-flow-controls {
-    margin-top: 11px;
     line-height: 1.2;
 }
 
@@ -110,32 +47,4 @@
 .my-trees-hub-flow-controls:empty {
     margin-top: 0 !important;
     display: none !important;
-}
-
-.my-trees-hub-flow-toggle {
-    display: inline;
-    color: var(--primary);
-    font: inherit;
-    font-size: 13px;
-    font-weight: 600;
-    line-height: 1.2;
-    cursor: pointer;
-    border: none;
-    background: transparent;
-    padding: 0;
-    margin: 0;
-    text-decoration: underline;
-    text-decoration-color: rgba(144, 73, 81, 0.25);
-    text-underline-offset: 3px;
-}
-
-.my-trees-hub-flow-toggle:hover {
-    color: var(--primary-vibrant);
-    text-decoration-color: var(--primary);
-}
-
-.my-trees-hub-flow-toggle:focus-visible {
-    outline: 2px solid var(--primary);
-    outline-offset: 2px;
-    border-radius: 2px;
 }

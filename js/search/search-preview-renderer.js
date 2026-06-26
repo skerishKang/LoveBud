@@ -250,7 +250,7 @@
 
         if (_dom.previewHubFlowSlot) {
             _dom.previewHubFlowSlot.innerHTML = `
-                <div class="preview-focus-flow-card preview-focus-flow-card-loading" style="background:var(--surface-container-low);padding:20px;border-radius:1rem;">
+                <div class="preview-focus-flow-card preview-flow-slot preview-flow-slot-loading preview-focus-flow-card-loading" style="background:var(--surface-container-low);">
                     ${renderSectionHeading('auto_stories', getSearchCopy('search.previewLoadingHeading', '감상 허브를 여는 중', 'Opening the preview hub'))}
                     <div style="font-size:14px;line-height:1.7;color:var(--on-surface-variant);">
                         ${escapeHtml(getSearchCopy('search.previewLoadingBody', '선택한 트리의 대표 순간과 이어진 감정을 이곳에서 먼저 보여드릴게요.', 'The featured moment and connected feelings of this tree will appear here first.'))}
@@ -481,7 +481,7 @@
 
                 if (_dom.previewHubFlowSlot) {
                     _dom.previewHubFlowSlot.innerHTML = `
-                        <div class="preview-focus-flow-card preview-focus-flow-card-empty" style="background:var(--surface-container-low);padding:20px;border-radius:1rem;margin-bottom:16px;">
+                        <div class="preview-focus-flow-card preview-flow-slot preview-focus-flow-card-empty" style="background:var(--surface-container-low);">
                             ${renderSectionHeading('route', getSearchCopy('search.previewTimelineHeading', '이 트리는 어디서 시작될까요?', 'Where will this tree begin?'))}
                             <div style="font-size:14px;line-height:1.7;color:var(--on-surface-variant);">
                                 ${escapeHtml(getSearchCopy('search.previewTimelineEmpty', '아직 시작 순간이 남아 있지 않아 흐름이 비어 있어요.', 'The flow is still empty because the starting moment has not been saved yet.'))}<br>
@@ -517,7 +517,7 @@
 
                 if (_dom.previewHubFlowSlot) {
                     _dom.previewHubFlowSlot.innerHTML = `
-                        <div class="preview-focus-flow-card" style="background:var(--surface-container-low);padding:20px;border-radius:1rem;margin-bottom:16px;">
+                        <div class="preview-focus-flow-card preview-flow-slot" style="background:var(--surface-container-low);">
                             ${renderSectionHeading('route', getSearchCopy('search.previewTimelineHeading', '대표 순간에서 이어진 흐름', 'Flow connected from the featured moment'))}
                             <div class="preview-flow-list">
                                 ${pathStages}
