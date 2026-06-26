@@ -185,6 +185,53 @@ test('Document explicitly allows Phase 2 to normalise results-head topology', ()
     assert.ok(allowsNormalise, 'Document must acknowledge that results-head wrapper depth is not permanent architecture');
 });
 
+// ── 12b) Audit structure map must match actual HTML ──────────────────
+test('Audit document must not contain #searchContainer (Browse uses <main> not an ID)', () => {
+    const doc = read('docs/engineering/BROWSE_MY_TREES_CANONICAL_STRUCTURE_AUDIT.md');
+    const html = read('pages/search.html');
+    // Verify actual HTML has no #searchContainer
+    assert.ok(!html.includes('id="searchContainer"'), 'search.html must not have id="searchContainer"');
+    // Verify audit document does not claim #searchContainer exists
+    const hasWrongId = /#searchContainer/.test(doc);
+    assert.ok(!hasWrongId, 'Audit document must not reference #searchContainer');
+});
+
+test('Audit document must not contain #searchControls (Browse finder div has no ID)', () => {
+    const doc = read('docs/engineering/BROWSE_MY_TREES_CANONICAL_STRUCTURE_AUDIT.md');
+    const html = read('pages/search.html');
+    assert.ok(!html.includes('id="searchControls"'), 'search.html must not have id="searchControls"');
+    const hasWrongControls = /#searchControls/.test(doc);
+    assert.ok(!hasWrongControls, 'Audit document must not reference #searchControls');
+});
+
+test('Audit document must not describe My Trees finder as nested (flat single div)', () => {
+    const doc = read('docs/engineering/BROWSE_MY_TREES_CANONICAL_STRUCTURE_AUDIT.md');
+    const myTreesHtml = read('pages/my-trees.html');
+    // Verify actual HTML: finder is a single div with all classes
+    const finderLine = myTreesHtml.match(/class="[^"]*browse-utility-row[^"]*my-trees-finder[^"]*"/);
+    assert.ok(finderLine, 'my-trees.html finder must be a single element with both browse-utility-row and my-trees-finder');
+    // Verify audit document does NOT show nested structure
+    const nestedPattern = /my-trees-finder.*\n.*browse-utility-row/;
+    assert.ok(!nestedPattern.test(doc), 'Audit document must not show my-trees-finder containing a nested browse-utility-row');
+});
+
+test('Audit document must not classify filter span/button as permanent owner/public delta', () => {
+    const doc = read('docs/engineering/BROWSE_MY_TREES_CANONICAL_STRUCTURE_AUDIT.md');
+    // Extract the table row about filter chips in the Allowed deltas section
+    const filterRow = doc.match(/filter chips.*\n\|.*\|.*\|/i);
+    assert.ok(filterRow, 'Allowed deltas section must mention filter chips');
+    const rowText = filterRow[0];
+    // Must NOT be classified as semantically correct / permanent
+    const isPermanent = /display-only\s*toggles|Semantically correct/i.test(rowText);
+    assert.ok(!isPermanent, 'Filter chip delta must not be described as semantically permanent');
+    // Must be described as a current implementation difference / normalization candidate
+    assert.match(
+        rowText,
+        /current semantic implementation difference|normalization candidate/i,
+        'Filter chip delta must be described as a current implementation difference, not permanent architecture'
+    );
+});
+
 // ── 13) Audit document mentions key duplication topics ───────────────
 test('Audit document mentions container geometry duplication', () => {
     const doc = read('docs/engineering/BROWSE_MY_TREES_CANONICAL_STRUCTURE_AUDIT.md');

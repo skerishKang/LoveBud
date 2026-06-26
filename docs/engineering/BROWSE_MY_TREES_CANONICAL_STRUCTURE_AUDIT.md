@@ -64,14 +64,14 @@ Enforced by `tests/contracts/my-trees-browse-hub-structure-alignment-contract.te
 
 ```
 body.bokeh-bg
-  #searchContainer.search-container.lovetree-calm-two-column-shell
+  main.search-container.lovetree-calm-two-column-shell
     [lovetree-calm-main-column]
       .browse-curation-shell.reveal-up              ← hero
         .search-panel-header
           .search-panel-eyebrow (span)
           h1.headline
           p
-      #searchControls.browse-utility-row            ← finder
+      .browse-utility-row.lovetree-calm-utility-row ← finder
       .browse-results-head.lovetree-calm-results-head  ← results head (flat)
         span.browse-results-label
         .browse-results-controls
@@ -107,8 +107,7 @@ body.bokeh-bg.my-trees-auth-pending
           .search-panel-eyebrow (div)
           h1.headline
           p
-      #myTreesFinder.my-trees-finder               ← finder
-        .browse-utility-row.lovetree-calm-utility-row
+      #myTreesFinder.browse-utility-row.my-trees-finder.lovetree-calm-utility-row  ← finder
       .browse-results-head.my-trees-results-head   ← results head (nested)
         .my-trees-results-title-row                  ← EXTRA wrapper
           span.browse-results-label
@@ -275,7 +274,7 @@ My Trees (owner-authenticated, writable, single-user). The following deltas are
 
 | Delta | Rationale |
 |-------|-----------|
-| Browse filter chips use `<span>` with emotion-based categories; My Trees uses `<button>` with property-based filters | Semantically correct — Browse filters are display-only toggles; My Trees filters are interactive controls that modify data |
+| Browse filter chips use `<span>` with emotion-based categories; My Trees uses `<button>` with property-based filters | Current semantic implementation difference; future accessibility/interaction normalization candidate |
 | Browse actions are JS-rendered into slots; My Trees actions are pre-rendered static markup | My Trees has a fixed owner action set (open/edit/share/visibility); Browse must vary by tree ownership |
 | My Trees has `#headerCreateTreeBtn` in results-head | Owner-only affordance; not applicable to public Browse |
 | My Trees has `#state-loading/error/empty/loaded` formal state containers | Owner view requires explicit error/empty states with actionable retry/create buttons |
