@@ -126,25 +126,34 @@ test('My Trees hub tree title uses Browse-parity heading font', () => {
   assert.match(content, /\.my-trees-hub-tree-title\s*\{[^}]*line-height:\s*1\.18;[^}]*\}/);
 });
 
-test('My Trees hub summary uses Browse-parity typography', () => {
+test('My Trees hub summary uses Browse-parity typography (via shared CSS)', () => {
+  const shared = read('css/shared/preview-hub-content-slots.css');
+  assert.match(
+    shared,
+    /\.preview-summary-slot\s*\{[^}]*font-size:\s*14px;[^}]*\}/,
+    '.preview-summary-slot font-size must be 14px matching Browse'
+  );
+  assert.match(
+    shared,
+    /\.preview-summary-slot\s*\{[^}]*line-height:\s*1\.6;[^}]*\}/,
+    '.preview-summary-slot line-height must be 1.6 matching Browse'
+  );
+  assert.match(
+    shared,
+    /\.preview-summary-slot\s*\{[^}]*padding: 0;[^}]*\}/,
+    '.preview-summary-slot padding must be 0 matching Browse'
+  );
+  assert.match(
+    shared,
+    /\.preview-summary-slot\s*\{[^}]*margin-top:\s*0;[^}]*\}/,
+    '.preview-summary-slot margin-top must be 0 matching Browse'
+  );
+  // My Trees shared class is added alongside owner class
   const content = read('css/my-trees/my-trees-preview-hub/content.css');
-  assert.match(
-    content,
-    /\.my-trees-hub-summary\s*\{[^}]*font-size:\s*14px;[^}]*\}/,
-    '.my-trees-hub-summary font-size must be 14px matching Browse'
+  assert.ok(
+    !content.includes('.my-trees-hub-summary'),
+    'content.css must no longer own .my-trees-hub-summary shared presentation'
   );
-  assert.match(
-    content,
-    /\.my-trees-hub-summary\s*\{[^}]*line-height:\s*1\.6;[^}]*\}/,
-    '.my-trees-hub-summary line-height must be 1.6 matching Browse'
-  );
-  assert.match(
-    content,
-    /\.my-trees-hub-summary\s*\{[^}]*padding: 0;[^}]*\}/,
-    '.my-trees-hub-summary padding must be 0 4px matching Browse'
-  );
-  // margin-top: 0 to align with Browse summary which has no top margin
-  assert.match(content, /\.my-trees-hub-summary\s*\{[^}]*margin-top:\s*0;[^}]*\}/);
 });
 
 test('My Trees hub actions use Browse-parity heading font and share/visibility font-size', () => {
@@ -170,9 +179,10 @@ test('My Trees hub actions use Browse-parity heading font and share/visibility f
   assert.match(html, /id=["']myTreesHubEditBtn["']/, 'myTreesHubEditBtn must exist');
   assert.match(html, /id=["']myTreesHubShareBtn["']/, 'myTreesHubShareBtn must exist');
 
-  // Action gap and social shell spacing must remain unchanged
-  assert.match(actions, /\.my-trees-hub-actions\s*\{[^}]*gap: 0;[^}]*\}/, 'action gap must be 0 matching Browse');
-  assert.match(actions, /\.my-trees-hub-actions\s*\{[^}]*margin-top:\s*18px;[^}]*\}/, 'actions margin-top must remain 18px');
+  // Action gap and margin now owned by shared CSS .preview-actions
+  const shared = read('css/shared/preview-hub-content-slots.css');
+  assert.match(shared, /\.preview-actions\s*\{[^}]*gap: 0;[^}]*\}/, 'action gap must be 0 matching Browse (in shared CSS)');
+  assert.match(shared, /\.preview-actions\s*\{[^}]*margin-top:\s*18px;[^}]*\}/, 'actions margin-top must remain 18px (in shared CSS)');
   const content = read('css/my-trees/my-trees-preview-hub/social-bar.css');
   assert.match(content, /margin-top:\s*1rem;/, 'social shell margin-top must remain unchanged');
   assert.match(content, /padding-top:\s*0\.95rem;/, 'social shell padding-top must remain unchanged');

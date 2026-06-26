@@ -121,7 +121,7 @@
             return;
         }
         summaryEl.hidden = false;
-        summaryEl.innerHTML = '<div class="preview-focus-copy" style="padding:0 4px">' + html + '</div>';
+        summaryEl.innerHTML = '<div class="preview-focus-copy">' + html + '</div>';
     }
 
     /* ── Get tree key for flow expansion tracking ── */

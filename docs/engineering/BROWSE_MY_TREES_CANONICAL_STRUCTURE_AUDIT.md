@@ -380,6 +380,60 @@ Owner/public context differences fall into two categories:
 | Both CSS entrypoints import shared `preview-hub-scroll.css` | `browse-my-trees-structure-reconciliation-contract.test.cjs` |
 | Current results-head wrapper depth is NOT locked as permanent architecture | `browse-my-trees-structure-reconciliation-contract.test.cjs` |
 
+### 9.1 Hub content slot ownership — Phase 2c completed
+
+**Phase 2c** centralized the summary, actions, and social slot class ownership
+across Browse and My Trees. Before this phase, each page used page-specific
+selectors for identical container geometry.
+
+**Canonical shared classes:**
+
+| Slot | Shared class | Browse ID | My Trees ID |
+|------|-------------|-----------|-------------|
+| Summary | `preview-summary-slot` | `#previewHubSummarySlot` | `#myTreesHubSummary` |
+| Action stack | `preview-actions` | `#previewHubActionsSlot` | `#myTreesHubActions` |
+| Social | `preview-hub-social-slot` | `#previewHubSocialSlot` | `#myTreesHubSocialSlot` |
+
+**Shared CSS owner:** `css/shared/preview-hub-content-slots.css`
+
+**Ownership moved to shared CSS:**
+- `.preview-summary-slot` — `font-size: 14px`, `color: var(--on-surface-variant)`,
+  `line-height: 1.6`, `padding: 0`, `margin-top: 0`, `min-width: 0`
+- `.preview-actions` — `margin-top: 18px`, `display: flex`, `flex-direction: column`,
+  `gap: 0`, `min-width: 0`
+- `.preview-hub-social-slot` — `min-width: 0`
+
+**Duplicate selectors removed:**
+- `css/search/search-preview-sidebar/flow.css`: `#previewHubActionsSlot` block removed
+  (margin ownership moved to `.preview-actions`)
+- `css/my-trees/my-trees-preview-hub/actions.css`: `.my-trees-hub-actions` container
+  geometry block removed (moved to `.preview-actions`)
+- `css/my-trees/my-trees-preview-hub/content.css`: `.my-trees-hub-summary` shared
+  presentation declarations removed (moved to `.preview-summary-slot`)
+
+**Renderer inline style normalization:**
+- Browse `search-preview-renderer.js`: removed `style="font-size:14px;color:var(--on-surface-variant);line-height:1.6;padding:0 4px;"` from both memory states
+- My Trees `writeSummary()`: removed `style="padding:0 4px"` from `preview-focus-copy`
+
+**Remaining rendering divergence (not converged by Phase 2c):**
+- Browse uses dynamic slot injection into `#previewHubSummarySlot`, `#previewHubActionsSlot`
+- My Trees uses static owner markup with `.hidden` toggle inside `#myTreesHubSummary`,
+  `#myTreesHubActions`
+- This PR does **not** claim renderer convergence completion
+
+---
+
+## 10. Validation matrix (Phase 2c additions)
+
+| Check | Mechanism |
+|-------|-----------|
+| Both pages have shared slot classes on summary/actions/social | `browse-my-trees-hub-content-slots-contract.test.cjs` |
+| Both CSS entries import `preview-hub-content-slots.css` | `browse-my-trees-hub-content-slots-contract.test.cjs` |
+| Shared CSS owns exact slot geometry values | `browse-my-trees-hub-content-slots-contract.test.cjs` |
+| Old duplicate container ownership removed from flow.css and actions.css | `browse-my-trees-hub-content-slots-contract.test.cjs` |
+| Renderer inline style fingerprint removed | `browse-my-trees-hub-content-slots-contract.test.cjs` |
+| Action semantics preserved (Browse has 감상 열기/감상 링크 복사/트리 열기; My Trees has 트리 열기/편집하기/감상 링크 복사) | `browse-my-trees-hub-content-slots-contract.test.cjs` |
+
 ---
 
 Refs #2923

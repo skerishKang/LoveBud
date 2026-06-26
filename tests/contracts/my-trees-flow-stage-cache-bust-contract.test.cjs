@@ -43,24 +43,23 @@ test('My Trees page loads compact flow runtime script quartet (#2835)', () => {
   );
 });
 
-test('compact flow runtime quartet uses a single shared cache-bust version (#2835)', () => {
+test('compact flow runtime quartet has non-empty cache-bust versions (#2835, #2923)', () => {
   const quartet = (myTreesHtml.match(RUNTIME_BUNDLE_PATTERN) || []);
   assert.equal(quartet.length, 4, 'all four runtime scripts must be present');
   const versions = quartet.map((entry) => entry.split('?v=')[1]);
   assert.ok(versions.every((v) => v && v.length > 0), 'every cache-bust value must be non-empty');
+  // Phase 2c (#2923) independently bumps my-trees-preview-hub.js for hub-content-slots changes.
+  // The other three scripts remain at the #2835 coordinated version.
+  // preview-hub.js (index 1) may differ; the remaining trio must still share.
+  const nonHubVersions = [versions[0], versions[2], versions[3]];
   assert.equal(
-    versions[0],
-    versions[1],
-    'preview-hub and preview-media must share the same cache-bust version'
+    nonHubVersions[0],
+    nonHubVersions[1],
+    'search-preview-media-helper and preview-media must share the same cache-bust version'
   );
   assert.equal(
-    versions[0],
-    versions[2],
-    'search-preview-media-helper must share the same cache-bust version'
-  );
-  assert.equal(
-    versions[0],
-    versions[3],
+    nonHubVersions[0],
+    nonHubVersions[2],
     'preview-state must share the same cache-bust version'
   );
 });
@@ -104,5 +103,11 @@ test('My Trees page no longer ships the pre-#2835 cache-bust values', () => {
     myTreesHtml,
     /my-trees-preview-state\.js\?v=20260622-step9-1/,
     'my-trees-preview-state.js must not still pin the pre-#2835 cache-bust 20260622-step9-1'
+  );
+  // Phase 2c (#2923): pre-phase-2c hub version must not remain
+  assert.doesNotMatch(
+    myTreesHtml,
+    /my-trees-preview-hub\.js\?v=20260626-2914-layout-probe-1/,
+    'my-trees-preview-hub.js must not still pin the pre-#2923 cache-bust 20260626-2914-layout-probe-1'
   );
 });

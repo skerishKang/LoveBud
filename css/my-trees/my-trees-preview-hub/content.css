@@ -125,16 +125,6 @@
     font-size: 16px;
 }
 
-/* ── Hub summary line ── */
-
-.my-trees-hub-summary {
-    font-size: 14px;
-    color: var(--on-surface-variant);
-    line-height: 1.6;
-    padding: 0;
-    margin-top: 0;
-}
-
 /* Refs #2733: remove non-functional My Trees media overlays */
 #myTreesHubVideoContainer::before {
     content: none;

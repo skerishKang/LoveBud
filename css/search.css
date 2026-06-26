@@ -17,6 +17,7 @@
 @import url("./search/search-tree-card.css");
 @import url("./search/search-card-footer-cleanup.css");
 @import url("./search/search-preview-sidebar.css");
+@import url("./shared/preview-hub-content-slots.css");
 @import url("./shared/preview-hub-scroll.css");
 @import url("./search/search-preview-media-cleanup.css");
 @import url("./search/search-preview-media-no-overlays.css");

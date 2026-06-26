@@ -1,0 +1,38 @@
+/**
+ * Shared preview hub content slot CSS
+ * v20260626-2923-hub-content-slots-1
+ *
+ * Centralizes summary, actions, and social slot geometry for
+ * Browse and My Trees preview hubs.
+ *
+ * Responsibility:
+ * - .preview-summary-slot: summary typography and spacing
+ * - .preview-actions: action stack container layout
+ * - .preview-hub-social-slot: slot-level min-width guard
+ *
+ * Does NOT own:
+ * - action button individual heights, margins, or visuals
+ * - summary inner .preview-focus-copy padding
+ * - media, flow, or hub panel sizing
+ */
+
+.preview-summary-slot {
+    font-size: 14px;
+    color: var(--on-surface-variant);
+    line-height: 1.6;
+    padding: 0;
+    margin-top: 0;
+    min-width: 0;
+}
+
+.preview-actions {
+    margin-top: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    min-width: 0;
+}
+
+.preview-hub-social-slot {
+    min-width: 0;
+}
