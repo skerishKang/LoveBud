@@ -11,13 +11,13 @@
     .my-trees-hub-tree-title {
         font-size: 1.15rem;
     }
-
-    .my-trees-hub-flow-list {
-        grid-template-columns: minmax(0, 1fr);
-    }
 }
 
 @media (max-width: 768px) {
+    .my-trees-hub-flow {
+        padding: 16px !important;
+    }
+
     /* --- Mobile bottom sheet preview --- */
     #myTreesHubPanel.preview-sidebar {
         /* Remove from grid flow */
@@ -127,16 +127,6 @@
         padding: 5px 9px;
     }
 
-    .my-trees-hub-flow-stage {
-        min-height: 40px !important;
-        padding: 8px 9px !important;
-        font-size: 12px !important;
-    }
-
-    .my-trees-hub-flow {
-        padding: 16px !important;
-    }
-
     .my-trees-hub-goto-btn {
         min-height: 48px;
         font-size: 15px;
@@ -144,6 +134,10 @@
 }
 
 @media (max-width: 375px) {
+    .my-trees-hub-flow {
+        padding: 12px !important;
+    }
+
     .my-trees-hub-header h3 {
         font-size: 1.2rem;
     }
@@ -170,22 +164,6 @@
         line-height: 1.3 !important;
         border-radius: 999px !important;
         gap: 4px !important;
-    }
-
-    .my-trees-hub-flow-list {
-        gap: 5px;
-    }
-
-    .my-trees-hub-flow {
-        padding: 12px !important;
-    }
-
-    .my-trees-hub-flow-controls {
-        margin-top: 8px;
-    }
-
-    .my-trees-hub-flow-toggle {
-        font-size: 12px;
     }
 
     .my-trees-hub-open-btn {

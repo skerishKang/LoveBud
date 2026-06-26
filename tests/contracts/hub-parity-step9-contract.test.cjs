@@ -46,9 +46,10 @@ const browseFlowCss = fs.readFileSync(
 test('My Trees hub renderer emits role="button" + tabindex="0" on every stage', () => {
     // The stage tag is built via JS string concatenation. The contract
     // here checks the source template, not the runtime output.
+    // Additional shared class (preview-flow-stage) may be present in the class value.
     assert.match(
         myTreesHubJs,
-        /<span class="my-trees-hub-flow-stage' \+ activeClass \+ '" role="button" tabindex="0" data-my-trees-moment-index="' \+ stageIndex \+ '">/,
+        /<span class="my-trees-hub-flow-stage[^"]*' \+ activeClass \+ '" role="button" tabindex="0" data-my-trees-moment-index="' \+ stageIndex \+ '">/,
         'buildFlowStages must include role="button" tabindex="0" data-my-trees-moment-index on every stage (initial HTML parity)'
     );
 });
@@ -66,7 +67,7 @@ test('My Trees hub renderer applies is-active to the first stage', () => {
 test('My Trees hydrated flow stages also emit role + tabindex + is-active', () => {
     assert.match(
         myTreesStateJs,
-        /<span class="my-trees-hub-flow-stage' \+ activeClass \+ '" role="button" tabindex="0" data-my-trees-moment-index="' \+ stageIndex \+ '">/,
+        /<span class="my-trees-hub-flow-stage[^"]*' \+ activeClass \+ '" role="button" tabindex="0" data-my-trees-moment-index="' \+ stageIndex \+ '">/,
         'my-trees-preview-state.js hydrated stages must include role + tabindex'
     );
     assert.match(
@@ -77,28 +78,28 @@ test('My Trees hydrated flow stages also emit role + tabindex + is-active', () =
 });
 
 // ── 2) CSS hover affordance (Browse + My Trees) ───────────────────────
-test('My Trees flow stage has cursor: pointer for click affordance', () => {
-    const block = (myTreesFlowCss.match(/\.my-trees-hub-flow-stage\s*\{[^}]*\}/s) || [''])[0];
+test('My Trees flow stage has cursor: pointer for click affordance (inherited from Browse)', () => {
+    const block = (browseFlowCss.match(/\.preview-flow-stage\s*\{[^}]*\}/s) || [''])[0];
     assert.match(
         block,
         /cursor:\s*pointer/,
-        'My Trees .my-trees-hub-flow-stage must have cursor: pointer to advertise clickability'
+        'Browse .preview-flow-stage must have cursor: pointer (My Trees inherits via shared class)'
     );
 });
 
-test('My Trees flow stage has :hover visual state', () => {
+test('My Trees flow stage has :hover visual state (inherited from Browse)', () => {
     assert.match(
-        myTreesFlowCss,
-        /\.my-trees-hub-flow-stage:hover\s*\{/,
-        'My Trees .my-trees-hub-flow-stage must have a :hover rule (visual affordance on hover)'
+        browseFlowCss,
+        /\.preview-flow-stage:hover\s*\{/,
+        'Browse .preview-flow-stage must have a :hover rule (My Trees inherits via shared class)'
     );
 });
 
-test('My Trees flow stage has .is-active visual state', () => {
+test('My Trees flow stage has .is-active visual state (inherited from Browse)', () => {
     assert.match(
-        myTreesFlowCss,
-        /\.my-trees-hub-flow-stage\.is-active\s*\{/,
-        'My Trees .my-trees-hub-flow-stage must have a .is-active rule (so the currently-shown moment is visually indicated)'
+        browseFlowCss,
+        /\.preview-flow-stage\.is-active\s*\{/,
+        'Browse .preview-flow-stage must have a .is-active rule (My Trees inherits via shared class)'
     );
 });
 

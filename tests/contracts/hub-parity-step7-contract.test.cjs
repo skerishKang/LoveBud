@@ -47,23 +47,31 @@ const myTreesFlowCss = fs.readFileSync(
     path.join(ROOT, 'css/my-trees/my-trees-preview-hub/flow.css'),
     'utf8'
 );
+const browseFlowCss = fs.readFileSync(
+    path.join(ROOT, 'css/search/search-preview-sidebar/flow.css'),
+    'utf8'
+);
+const browseRespCss = fs.readFileSync(
+    path.join(ROOT, 'css/search/search-preview-sidebar/responsive.css'),
+    'utf8'
+);
 
-// ── 1) 2-column grid on desktop ────────────────────────────────────────
-test('My Trees flow list has 2-column grid at min-width 1025px', () => {
-    const re = /@media\s*\(min-width:\s*1025px\)\s*\{[^}]*\.my-trees-hub-flow-list\s*\{[^}]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)[^}]*\}/s;
+// ── 1) 2-column grid on desktop (inherited from Browse responsive) ────
+test('My Trees flow list has 2-column grid at min-width 1025px (inherited from Browse)', () => {
+    const re = /@media\s*\(min-width:\s*1025px\)\s*\{[\s\S]*?\.preview-flow-list[\s\S]*?\{[^}]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)[^}]*\}/s;
     assert.match(
-        myTreesFlowCss,
+        browseRespCss,
         re,
-        'My Trees .my-trees-hub-flow-list must use 2 columns on desktop (Browse parity, Step 7)'
+        'Browse responsive.css must define .preview-flow-list 2-column grid at 1025px+ (My Trees inherits)'
     );
 });
 
-test('My Trees flow list keeps 1 column on mobile (base rule)', () => {
-    const re = /\.my-trees-hub-flow-list\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)[^}]*\}/s;
+test('My Trees flow list keeps 1 column on mobile (inherited from Browse .preview-flow-list)', () => {
+    const re = /\.preview-flow-list[^{]*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)[^}]*\}/s;
     assert.match(
-        myTreesFlowCss,
+        browseFlowCss,
         re,
-        'My Trees .my-trees-hub-flow-list base rule must keep 1 column (mobile)'
+        'Browse flow.css .preview-flow-list base rule must define 1 column (My Trees inherits)'
     );
 });
 

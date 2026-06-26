@@ -36,3 +36,13 @@
 .preview-hub-social-slot {
     min-width: 0;
 }
+
+.preview-flow-slot {
+    padding: 20px;
+    box-sizing: border-box;
+    min-width: 0;
+}
+
+.preview-flow-slot:not(.preview-flow-slot-loading) {
+    margin-bottom: 16px;
+}

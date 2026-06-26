@@ -40,38 +40,49 @@ test('My Trees hub preserves its runtime ids and owner actions', () => {
   assert.ok(!js.includes('getRepTextMeta'), 'getRepTextMeta must not be used or defined');
 });
 
-test('My Trees continuation flow uses Browse-like single-column desktop rhythm', () => {
-  const flow = read('css/my-trees/my-trees-preview-hub/flow.css');
-
-  // PR #2750: realign desktop flow to match Browse's .preview-flow-list (single column).
+test('My Trees continuation flow uses Browse-like single-column desktop rhythm (shared via preview-flow-* classes)', () => {
+  // The grid, stage, and stage-label baseline moved to Browse flow.css.
+  // My Trees inherits via shared preview-flow-list / preview-flow-stage classes.
+  const browseFlow = read('css/search/search-preview-sidebar/flow.css');
   assert.match(
-    flow,
-    /\.my-trees-hub-flow-list\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\);[^}]*\}/,
-    'desktop continuation flow must use a single-column grid matching Browse'
-  );
-  // Step 6 follow-up: flow stage now uses the same compact, transparent
-  // inline-style treatment as Browse (.preview-flow-stage). The legacy
-  // card-density overrides (min-height 42px, padding 8px 10px, border-
-  // radius 12px, background, border, shadow) are retired.
-  assert.match(
-    flow,
-    /\.my-trees-hub-flow-stage\s*\{[^}]*padding:\s*8px\s+10px\s*!important;[^}]*border-radius:\s*12px\s*!important;/s,
-    'flow stage must use Browse inline-style compact rhythm (padding 8px 10px, border-radius 12px, min-height 42px)'
+    browseFlow,
+    /\.preview-flow-list[^{]*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\);[^}]*gap:\s*7px;/s,
+    'Browse flow.css .preview-flow-list must define grid-template-columns and gap'
   );
   assert.match(
-    flow,
-    /\.my-trees-hub-flow-stage\s*\{[^}]*(?:min-)?height:\s*42px\s*!important/,
-    'flow stage must use Browse 42px height rhythm'
+    browseFlow,
+    /\.preview-flow-stage\s*\{[^}]*padding:\s*8px\s+10px\s*!important;[^}]*border-radius:\s*12px\s*!important;/s,
+    'Browse flow.css .preview-flow-stage must define padding and border-radius'
+  );
+  assert.match(
+    browseFlow,
+    /\.preview-flow-stage\s*\{[^}]*(?:min-)?height:\s*42px\s*!important/,
+    'Browse flow.css .preview-flow-stage must define 42px height'
   );
 });
 
-test('My Trees continuation flow stays one-column at narrow breakpoints', () => {
-  const responsive = read('css/my-trees/my-trees-preview-hub/responsive.css');
+test('My Trees continuation flow stays one-column at narrow breakpoints (inherited from Browse responsive)', () => {
+  // The 1024px .my-trees-hub-flow-list override removed from My Trees responsive.css.
+  // The single-column collapse is now inherited from .preview-flow-list base rule.
+  const browseResp = read('css/search/search-preview-sidebar/responsive.css');
+  assert.match(
+    browseResp,
+    /@media\s*\(max-width:\s*480px\)\s*\{[\s\S]*?\.preview-flow-list[\s\S]*?grid-template-columns:\s*minmax\(0,\s*1fr\);/,
+    'Browse responsive.css must collapse flow list to single column at narrow widths'
+  );
+});
 
+test('My Trees hub preserves owner-specific flow padding deltas at 768px and 375px', () => {
+  const responsive = read('css/my-trees/my-trees-preview-hub/responsive.css');
   assert.match(
     responsive,
-    /@media\s*\(max-width:\s*1024px\)\s*\{[\s\S]*?\.my-trees-hub-flow-list\s*\{\s*grid-template-columns:\s*minmax\(0,\s*1fr\);\s*\}/,
-    '≤1024px continuation flow must collapse to one column'
+    /@media\s*\(max-width:\s*768px\)[\s\S]*?\.my-trees-hub-flow\s*\{[^}]*padding:\s*16px\s*!important;/,
+    'responsive.css must preserve .my-trees-hub-flow padding: 16px !important at <=768px'
+  );
+  assert.match(
+    responsive,
+    /@media\s*\(max-width:\s*375px\)[\s\S]*?\.my-trees-hub-flow\s*\{[^}]*padding:\s*12px\s*!important;/,
+    'responsive.css must preserve .my-trees-hub-flow padding: 12px !important at <=375px'
   );
 });
 
@@ -190,45 +201,50 @@ test('My Trees hub actions use Browse-parity heading font and share/visibility f
 
 test('My Trees flow controls line-height matches Browse parity', () => {
     const flow = read('css/my-trees/my-trees-preview-hub/flow.css');
+    const browseFlow = read('css/search/search-preview-sidebar/flow.css');
+    const shared = read('css/shared/preview-hub-content-slots.css');
 
-    // .my-trees-hub-flow-controls must have line-height: 1.4 (Browse parity)
+    // .my-trees-hub-flow-controls must have line-height: 1.2 (owner-specific)
     assert.match(
         flow,
-        /\.my-trees-hub-flow-controls\s*\{[^}]*line-height: 1.2;[^}]*\}/,
+        /\.my-trees-hub-flow-controls\s*\{[^}]*line-height: 1\.2;[^}]*\}/,
         '.my-trees-hub-flow-controls line-height must remain 1.2'
     );
-    // margin-top: 11px must be preserved
+    // margin-top now owned by Browse .preview-flow-controls
     assert.match(
-        flow,
-        /\.my-trees-hub-flow-controls\s*\{[^}]*margin-top:\s*11px;[^}]*\}/,
-        '.my-trees-hub-flow-controls margin-top must remain 11px'
+        browseFlow,
+        /\.preview-flow-controls\s*\{[^}]*margin-top:\s*11px;/,
+        '.preview-flow-controls must own margin-top: 11px'
     );
-    // .my-trees-hub-flow-toggle own line-height: 1.2 must remain unchanged
+    // .preview-flow-toggle owns line-height: 1.2
     assert.match(
-        flow,
-        /\.my-trees-hub-flow-toggle\s*\{[^}]*line-height:\s*1\.2;[^}]*\}/,
-        '.my-trees-hub-flow-toggle own line-height must remain 1.2'
+        browseFlow,
+        /\.preview-flow-toggle\s*\{[^}]*line-height:\s*1\.2;[^}]*\}/,
+        '.preview-flow-toggle must own line-height: 1.2'
     );
-    // flow card geometry must not be changed
+    // flow card padding/margin-bottom now in shared CSS .preview-flow-slot
+    // margin-bottom is on :not(.preview-flow-slot-loading) to exclude loading flow
     assert.match(
-        flow,
-        /\.my-trees-hub-flow\s*\{[^}]*padding:\s*20px;/s,
-        'flow card padding must remain 20px'
-    );
-    assert.match(
-        flow,
-        /\.my-trees-hub-flow\s*\{[^}]*margin-bottom:\s*16px;/s,
-        'flow card margin-bottom must remain 16px'
+        shared,
+        /\.preview-flow-slot\s*\{[^}]*padding:\s*20px;/s,
+        '.preview-flow-slot must own padding: 20px'
     );
     assert.match(
-        flow,
-        /\.my-trees-hub-flow-list\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\);[^}]*gap:\s*7px;/s,
-        'flow list grid and gap must remain unchanged'
+        shared,
+        /\.preview-flow-slot:not\(\.preview-flow-slot-loading\)\s*\{[^}]*margin-bottom:\s*16px;/s,
+        '.preview-flow-slot:not(.preview-flow-slot-loading) must own margin-bottom: 16px'
     );
+    // flow list grid must remain in Browse flow.css
     assert.match(
-        flow,
-        /\.my-trees-hub-flow-stage\s*\{[^}]*(?:min-)?height:\s*42px\s*!important/,
-        'flow stage height must remain unchanged'
+        browseFlow,
+        /\.preview-flow-list[^{]*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\);[^}]*gap:\s*7px;/s,
+        'Browse flow.css .preview-flow-list must own grid and gap'
+    );
+    // flow stage height must remain in Browse flow.css
+    assert.match(
+        browseFlow,
+        /\.preview-flow-stage\s*\{[^}]*(?:min-)?height:\s*42px\s*!important/,
+        'Browse flow.css .preview-flow-stage must own 42px height'
     );
 });
 

@@ -31,68 +31,75 @@ const myTreesFlowCss = fs.readFileSync(
     path.join(ROOT, 'css/my-trees/my-trees-preview-hub/flow.css'),
     'utf8'
 );
+const browseFlowCss = fs.readFileSync(
+    path.join(ROOT, 'css/search/search-preview-sidebar/flow.css'),
+    'utf8'
+);
 
 // ── 1) My Trees flow stage parity with Browse (2026-06-22 hotfix) ────
-test('My Trees flow stage renders with Browse right-rail rhythm', () => {
-    const block = (myTreesFlowCss.match(/\.my-trees-hub-flow-stage\s*\{[^}]*\}/s) || [''])[0];
-    assert.ok(block, 'rule must exist');
+test('My Trees flow stage renders with Browse right-rail rhythm (shared via .preview-flow-stage)', () => {
+    // Stage baseline CSS moved to Browse flow.css .preview-flow-stage.
+    // My Trees inherits via shared preview-flow-stage class.
+    const block = (browseFlowCss.match(/\.preview-flow-stage\s*\{[^}]*\}/s) || [''])[0];
+    assert.ok(block, '.preview-flow-stage rule must exist in Browse flow.css');
     assert.match(
         block,
         /border-radius:\s*12px\s*!important/,
-        'My Trees .my-trees-hub-flow-stage must use Browse border-radius: 12px'
+        'Browse .preview-flow-stage must use border-radius: 12px (My Trees inherits)'
     );
     assert.match(
         block,
         /background:\s*rgba\(\s*255,\s*255,\s*255,\s*0\.56\)\s*!important/,
-        'My Trees .my-trees-hub-flow-stage must use the Browse soft surface'
+        'Browse .preview-flow-stage must use the soft surface (My Trees inherits)'
     );
     assert.match(
         block,
         /padding:\s*8px\s+10px\s*!important/,
-        'My Trees .my-trees-hub-flow-stage must use Browse padding 8px 10px'
+        'Browse .preview-flow-stage must use padding 8px 10px (My Trees inherits)'
     );
     assert.match(
         block,
         /(?:^|\s)height:\s*42px\s*!important/,
-        'My Trees .my-trees-hub-flow-stage must declare Browse height 42px'
+        'Browse .preview-flow-stage must declare height 42px (My Trees inherits)'
     );
     assert.match(
         block,
         /min-height:\s*42px\s*!important/,
-        'My Trees .my-trees-hub-flow-stage must declare Browse min-height 42px'
+        'Browse .preview-flow-stage must declare min-height 42px (My Trees inherits)'
     );
 });
 
 test('My Trees flow stage does NOT carry the legacy flat-style overrides', () => {
-    // The Step 6 flat rule had: padding 2px 6px + transparent background
-    // + border-radius 4px + no border. The 2026-06-22 hotfix replaces it
-    // with a pill surface. Lock the legacy flat-style overrides out.
-    const block = (myTreesFlowCss.match(/\.my-trees-hub-flow-stage\s*\{[^}]*\}/s) || [''])[0];
-    assert.ok(block, 'rule must exist');
+    // Stage block moved to Browse flow.css. Both My Trees and Browse
+    // must be free of the legacy flat-style overrides.
+    const mtBlock = (myTreesFlowCss.match(/\.my-trees-hub-flow-stage\s*\{[^}]*\}/s) || [''])[0];
+    const brBlock = (browseFlowCss.match(/\.preview-flow-stage\s*\{[^}]*\}/s) || [''])[0];
+    assert.ok(!mtBlock, '.my-trees-hub-flow-stage must not exist in My Trees flow.css (moved to Browse)');
+    assert.ok(brBlock, '.preview-flow-stage must exist in Browse flow.css');
     assert.ok(
-        !/padding:\s*2px\s+6px;/.test(block),
+        !/padding:\s*2px\s+6px;/.test(brBlock),
         'legacy padding 2px 6px (flat inline style) must not return'
     );
     assert.ok(
-        !/background:\s*transparent;/.test(block),
+        !/background:\s*transparent;/.test(brBlock),
         'legacy transparent background must not return'
     );
     assert.ok(
-        !/border-radius:\s*4px;/.test(block),
+        !/border-radius:\s*4px;/.test(brBlock),
         'legacy border-radius 4px (flat square) must not return'
     );
     assert.ok(
-        !/border-radius:\s*999px;/.test(block),
+        !/border-radius:\s*999px;/.test(brBlock),
         'legacy 999px pill radius must not return'
     );
 });
 
-test('My Trees flow stage uses display: flex (Browse parity)', () => {
-    const block = (myTreesFlowCss.match(/\.my-trees-hub-flow-stage\s*\{[^}]*\}/s) || [''])[0];
+test('My Trees flow stage uses display: flex (inherited from Browse .preview-flow-stage)', () => {
+    const block = (browseFlowCss.match(/\.preview-flow-stage\s*\{[^}]*\}/s) || [''])[0];
     assert.match(
         block,
         /display:\s*flex\s*!important/,
-        'My Trees .my-trees-hub-flow-stage must use display: flex (Browse parity)'
+        'Browse .preview-flow-stage must use display: flex (My Trees inherits)'
     );
 });
 

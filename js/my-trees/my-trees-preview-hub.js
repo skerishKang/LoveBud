@@ -180,9 +180,9 @@
             var label = getMomentLabel(mem, '시작 순간', 'Starting moment');
             var stageIndex = offset + i + 1;
             var activeClass = (stageIndex === 1) ? ' is-active' : '';
-            html += '<span class="my-trees-hub-flow-stage' + activeClass + '" role="button" tabindex="0" data-my-trees-moment-index="' + stageIndex + '">' +
+            html += '<span class="my-trees-hub-flow-stage preview-flow-stage' + activeClass + '" role="button" tabindex="0" data-my-trees-moment-index="' + stageIndex + '">' +
                 '<span class="my-trees-hub-flow-stage-index">' + stageIndex + '</span>' +
-                '<span class="my-trees-hub-flow-stage-label" title="' + escapeHtml(label) + '" aria-label="' + escapeHtml(label) + '">' + escapeHtml(label) + '</span>' +
+                '<span class="my-trees-hub-flow-stage-label preview-flow-stage-label" title="' + escapeHtml(label) + '" aria-label="' + escapeHtml(label) + '">' + escapeHtml(label) + '</span>' +
                 '</span>';
         }
         return html;
@@ -199,7 +199,7 @@
                 '... 그리고 ' + hiddenCount + '개의 순간 더',
                 '... and ' + hiddenCount + ' more moments'
             );
-        return '<button type="button" class="my-trees-hub-flow-toggle" data-my-trees-flow-toggle>' +
+        return '<button type="button" class="my-trees-hub-flow-toggle preview-flow-toggle" data-my-trees-flow-toggle>' +
             label +
             '</button>';
     }
