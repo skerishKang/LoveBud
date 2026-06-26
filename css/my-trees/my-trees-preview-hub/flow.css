@@ -95,9 +95,11 @@
 
 /* ── Hub flow controls ── */
 
+/* Visual alignment with Browse: compact the owner-only controls line by 2px
+   so the continuation affordance shares the same baseline as Browse. */
 .my-trees-hub-flow-controls {
-    margin-top: 11px;
-    line-height: 1.4;
+    margin-top: 9px;
+    line-height: 1.2;
 }
 
 #myTreesHubFlowControls[hidden],
