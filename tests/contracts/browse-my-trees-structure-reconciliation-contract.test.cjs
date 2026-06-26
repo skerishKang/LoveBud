@@ -39,7 +39,7 @@ test('Architecture audit document contains all required sections', () => {
         'Current structure map',
         'Duplication / divergence ledger',
         'Canonical target topology',
-        'Allowed owner/public deltas',
+        'Owner/public deltas',
         'Migration seams and proposed Phase 2 order',
         'Non-goals and regression risks',
         'Validation matrix',
@@ -215,21 +215,69 @@ test('Audit document must not describe My Trees finder as nested (flat single di
     assert.ok(!nestedPattern.test(doc), 'Audit document must not show my-trees-finder containing a nested browse-utility-row');
 });
 
-test('Audit document must not classify filter span/button as permanent owner/public delta', () => {
+// ── 12c) Section 6 splits preservation constraints from normalization candidates ──
+test('Section 6 title reflects preservation vs normalization split', () => {
     const doc = read('docs/engineering/BROWSE_MY_TREES_CANONICAL_STRUCTURE_AUDIT.md');
-    // Extract the table row about filter chips in the Allowed deltas section
-    const filterRow = doc.match(/filter chips.*\n\|.*\|.*\|/i);
-    assert.ok(filterRow, 'Allowed deltas section must mention filter chips');
-    const rowText = filterRow[0];
-    // Must NOT be classified as semantically correct / permanent
-    const isPermanent = /display-only\s*toggles|Semantically correct/i.test(rowText);
-    assert.ok(!isPermanent, 'Filter chip delta must not be described as semantically permanent');
-    // Must be described as a current implementation difference / normalization candidate
-    assert.match(
-        rowText,
-        /current semantic implementation difference|normalization candidate/i,
-        'Filter chip delta must be described as a current implementation difference, not permanent architecture'
-    );
+    assert.match(doc, /##\s+6\.\s+Owner\/public deltas: preservation constraints and normalization candidates/i,
+        'Section 6 title must use the new framing');
+});
+
+test('Section 6 contains both 6.1 and 6.2 subsections', () => {
+    const doc = read('docs/engineering/BROWSE_MY_TREES_CANONICAL_STRUCTURE_AUDIT.md');
+    assert.match(doc, /###\s+6\.1\s+Preserve as owner\/public product differences/i,
+        'Section 6 must have preservation subsection');
+    assert.match(doc, /###\s+6\.2\s+Normalization candidates while preserving behavior/i,
+        'Section 6 must have normalization candidates subsection');
+});
+
+test('Document must not contain "not candidates for normalisation" or "not candidates for normalization"', () => {
+    const doc = read('docs/engineering/BROWSE_MY_TREES_CANONICAL_STRUCTURE_AUDIT.md');
+    const forbidden = [/not candidates for normalis/i];
+    for (const pattern of forbidden) {
+        assert.ok(!pattern.test(doc),
+            'Document must not claim deltas are "not candidates for normalisation" — they are split into preservation vs normalisation');
+    }
+});
+
+// ── 12d) Filter span/button must be under normalization candidates (6.2) ──────────
+test('Filter span/button delta must be under 6.2 normalization candidates', () => {
+    const doc = read('docs/engineering/BROWSE_MY_TREES_CANONICAL_STRUCTURE_AUDIT.md');
+    const sec62 = doc.split(/###\s+6\.2\s+Normalization candidates while preserving behavior/i)[1]
+        ?.split(/###\s+6\.3|##\s+7\.|##\s+6\.\s[^2]/)[0] || '';
+    assert.ok(sec62.length > 50, 'Section 6.2 content must be extractable');
+    assert.match(sec62, /filter chips/i,
+        'Section 6.2 must contain filter chip delta');
+    assert.match(sec62, /current semantic implementation difference|normalization candidate/i,
+        'Filter chip delta in 6.2 must be described as a current implementation difference');
+});
+
+// ── 12e) Hub rendering pattern must be under normalization candidates (6.2) ───────
+test('Hub rendering pattern (slot vs static) must be under 6.2 normalization candidates', () => {
+    const doc = read('docs/engineering/BROWSE_MY_TREES_CANONICAL_STRUCTURE_AUDIT.md');
+    const sec62 = doc.split(/###\s+6\.2\s+Normalization candidates while preserving behavior/i)[1]
+        ?.split(/###\s+6\.3|##\s+7\.|##\s+6\.\s[^2]/)[0] || '';
+    assert.ok(sec62.length > 50, 'Section 6.2 content must be extractable');
+    assert.match(sec62, /slot|static|injection|JS-rendered|hub markup/i,
+        'Section 6.2 must contain hub rendering pattern delta');
+});
+
+// ── 12f) #headerCreateTreeBtn and state containers must be under preservation (6.1) ─
+test('#headerCreateTreeBtn must be under 6.1 preservation constraints', () => {
+    const doc = read('docs/engineering/BROWSE_MY_TREES_CANONICAL_STRUCTURE_AUDIT.md');
+    const sec61 = doc.split(/###\s+6\.1\s+Preserve as owner\/public product differences/i)[1]
+        ?.split(/###\s+6\.2/i)[0] || '';
+    assert.ok(sec61.length > 50, 'Section 6.1 content must be extractable');
+    assert.match(sec61, /headerCreateTreeBtn/i,
+        'Section 6.1 must contain headerCreateTreeBtn');
+});
+
+test('My Trees state containers must be under 6.1 preservation constraints', () => {
+    const doc = read('docs/engineering/BROWSE_MY_TREES_CANONICAL_STRUCTURE_AUDIT.md');
+    const sec61 = doc.split(/###\s+6\.1\s+Preserve as owner\/public product differences/i)[1]
+        ?.split(/###\s+6\.2/i)[0] || '';
+    assert.ok(sec61.length > 50, 'Section 6.1 content must be extractable');
+    assert.match(sec61, /state-loading|state containers|loading.*error.*empty/i,
+        'Section 6.1 must contain My Trees state containers');
 });
 
 // ── 13) Audit document mentions key duplication topics ───────────────

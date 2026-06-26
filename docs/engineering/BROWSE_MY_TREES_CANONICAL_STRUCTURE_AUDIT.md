@@ -266,20 +266,34 @@ page-shell (lovetree-calm-two-column-shell)
 
 ---
 
-## 6. Allowed owner/public deltas
+## 6. Owner/public deltas: preservation constraints and normalization candidates
 
-Some differences are inherent to Browse (public, read-only, multi-tenant) vs
-My Trees (owner-authenticated, writable, single-user). The following deltas are
-**not** candidates for normalisation:
+Owner/public context differences fall into two categories:
+
+- **Preserve as owner/public product differences:** Deltas driven by permission,
+  ownership, or product semantics that must remain regardless of structural
+  normalisation.
+- **Normalization candidates while preserving behavior:** Deltas where the
+  structural or semantic representation can be unified without changing the
+  functional behaviour.
+
+### 6.1 Preserve as owner/public product differences
 
 | Delta | Rationale |
 |-------|-----------|
-| Browse filter chips use `<span>` with emotion-based categories; My Trees uses `<button>` with property-based filters | Current semantic implementation difference; future accessibility/interaction normalization candidate |
-| Browse actions are JS-rendered into slots; My Trees actions are pre-rendered static markup | My Trees has a fixed owner action set (open/edit/share/visibility); Browse must vary by tree ownership |
 | My Trees has `#headerCreateTreeBtn` in results-head | Owner-only affordance; not applicable to public Browse |
 | My Trees has `#state-loading/error/empty/loaded` formal state containers | Owner view requires explicit error/empty states with actionable retry/create buttons |
 | Browse has `#previewHubDynamicMetadataSlot` inside meta slot | Browse metadata is dynamic (tree stats, emotion tags); My Trees uses a static meta badge |
 | My Trees hub has initial `is-empty preview-state-empty` state | Owner hub starts empty and must show a placeholder before any tree is selected |
+
+### 6.2 Normalization candidates while preserving behavior
+
+| Delta | Rationale |
+|-------|-----------|
+| Browse filter chips use `<span>` with emotion-based categories; My Trees uses `<button>` with property-based filters | Current semantic implementation difference; future accessibility/interaction normalization candidate |
+| Browse actions are JS-rendered into slots; My Trees actions are pre-rendered static markup | Pattern choice differs by context but convergence is feasible while preserving per-page action semantics |
+| Shared hub CSS sub-module ownership | Move content-identical sub-modules to `css/shared/preview-hub/`; keep page-specific overrides in page folders |
+| Results-head wrapper topology | My Trees extra `.my-trees-results-title-row` can be flattened with an optional owner CTA slot |
 
 ---
 
