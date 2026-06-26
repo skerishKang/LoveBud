@@ -84,6 +84,12 @@
     content: none;
 }
 
+/* Browse preview veil 제거 — click-to-play 기능과 handler는 유지, 시각적 레이어만 투명 */
+#previewVideoContainer [data-preview-ctp-overlay],
+#previewVideoContainer [data-preview-ctp-overlay]:hover {
+    background: transparent !important;
+}
+
 /* 클릭-투-플레이 오버레이 — 내 러브트리 .memory-preview-overlay / .play-btn 과 동일 패턴 */
 .video-container .memory-preview-overlay,
 .video-container .preview-play-overlay {
