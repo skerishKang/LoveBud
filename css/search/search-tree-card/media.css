@@ -57,6 +57,10 @@
     filter: drop-shadow(0 8px 14px rgba(75, 64, 57, 0.12));
 }
 
+.tree-card-media:has(> img[data-search-card-image])::before {
+    content: none;
+}
+
 .tree-card-media::after {
     content: '';
     position: absolute;
