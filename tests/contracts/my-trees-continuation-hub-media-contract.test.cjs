@@ -71,7 +71,10 @@ test('My Trees hub removes non-functional media overlays', () => {
 
   assert.match(content, /#myTreesHubVideoContainer::before\s*\{\s*content:\s*none;?\s*\}/s, 'My Trees hub video container must have content: none override');
   assert.match(content, /#myTreesHubMedia\s+\.preview-media-frame-thumbnail\s+\[data-preview-overlay\]\s*\{\s*display:\s*none\s*!important;?\s*\}/s, 'My Trees hub thumbnail overlay must be display: none !important');
-  assert.match(content, /#myTreesHubMedia\s+\.preview-media-frame-iframe\s*>\s*div\s*\{\s*display:\s*none\s*!important;?\s*\}/s, 'My Trees hub iframe overlay div must be display: none !important');
+
+  // Broad iframe direct-child div suppression is intentionally removed:
+  // it hides the click-to-play wrapper/media-title and breaks click interaction.
+  assert.doesNotMatch(content, /#myTreesHubMedia\s+\.preview-media-frame-iframe\s*>\s*div\s*\{\s*display:\s*none\s*!important/s, 'My Trees hub must not suppress iframe direct-child divs globally');
 });
 
 test('My Trees hub uses localized 내 트리 미리보기 and Selected tree tags', () => {
