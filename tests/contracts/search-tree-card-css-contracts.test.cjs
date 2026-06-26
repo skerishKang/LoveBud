@@ -57,3 +57,13 @@ test('search-tree-card css — parent manifest reference is preserved', () => {
     const parentContent = fs.readFileSync(PARENT_MANIFEST_PATH, 'utf8');
     assert.match(parentContent, /@import url\(['"]\.\/search\/search-tree-card\.css['"]\);/, 'Parent manifest must still import the card manifest');
 });
+
+test('search-tree-card css — loaded cover trace hides when image is present', () => {
+    const mediaContent = fs.readFileSync(path.join(ROOT, 'css/search/search-tree-card/media.css'), 'utf8');
+    assert.ok(mediaContent.includes('.tree-card-media:has(> img[data-search-card-image])::before'),
+        'media.css must contain the :has() rule for img[data-search-card-image]');
+    assert.ok(mediaContent.includes('content: none'),
+        'The :has() rule must set content to none when a loaded image is present');
+    assert.ok(mediaContent.includes('.tree-card-media::before'),
+        'Base .tree-card-media::before decoration must still be defined for fallback/empty states');
+});
