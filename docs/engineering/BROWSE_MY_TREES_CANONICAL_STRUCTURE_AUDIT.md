@@ -72,8 +72,10 @@ body.bokeh-bg
           h1.headline
           p
       .browse-utility-row.lovetree-calm-utility-row ← finder
-      .browse-results-head.lovetree-calm-results-head  ← results head (flat)
-        span.browse-results-label
+      .browse-results-head.lovetree-calm-results-head  ← results head (canonical)
+        .browse-results-title-slot
+          span.browse-results-label
+        .browse-results-owner-cta-slot[hidden]        ← hidden (no owner CTA on Browse)
         .browse-results-controls
           #browseSortControls (JS mount)
           #browseViewModeMount (JS mount)
@@ -108,11 +110,12 @@ body.bokeh-bg.my-trees-auth-pending
           h1.headline
           p
       #myTreesFinder.browse-utility-row.my-trees-finder.lovetree-calm-utility-row  ← finder
-      .browse-results-head.my-trees-results-head   ← results head (nested)
-        .my-trees-results-title-row                  ← EXTRA wrapper
-          span.browse-results-label
+      .browse-results-head.my-trees-results-head   ← results head (canonical)
+        .browse-results-title-slot
+          span.browse-results-label.my-trees-results-label
+        .browse-results-owner-cta-slot              ← owner CTA slot
           #headerCreateTreeBtn
-        .browse-results-controls
+        .browse-results-controls.my-trees-results-controls
           .sort-control
             #sortTreesSelect
           #myTreesViewModeMount
@@ -156,30 +159,34 @@ The only unique additions are:
 The shared shell should eventually absorb the unique deltas, and the page-specific
 container classes should become thin overrides or be removed.
 
-### 4.2 Results-head wrapper-depth difference
+### 4.2 Results-head wrapper-depth divergence — Phase 2b completed
 
-**Browse**: flat — label and controls are direct children of `.browse-results-head`.
+**Phase 2b** eliminated the `.my-trees-results-title-row` wrapper divergence.
+Both pages now share the same canonical results-head topology:
 
 ```
 .browse-results-head
-  span.browse-results-label
+  .browse-results-title-slot
+    .browse-results-label
+  .browse-results-owner-cta-slot
+    (owner CTA only on My Trees; [hidden] on Browse)
   .browse-results-controls
+    sort control
+    view-mode mount
 ```
 
-**My Trees**: nested — label is inside `.my-trees-results-title-row`, controls below.
+The only remaining owner-specific delta is the button content inside
+`.browse-results-owner-cta-slot` — My Trees has `#headerCreateTreeBtn`,
+Browse has an empty hidden slot.
 
-```
-.my-trees-results-head
-  .my-trees-results-title-row                       ← EXTRA wrapper
-    span.browse-results-label
-    #headerCreateTreeBtn
-  .browse-results-controls
-    .sort-control
-    #myTreesViewModeMount
-```
+**Before Phase 2b:**
 
-This wrapper depth difference is the single largest structural divergence in the
-results-head region. Phase 2 should normalise to a consistent topology.
+Browse was flat (label + controls as direct children), while My Trees
+nested label and CTA inside `.my-trees-results-title-row`. That wrapper
+and all its CSS selectors have been removed.
+
+**Normalization candidates while preserving behavior** (section 6.2) entry
+for "Results-head wrapper topology" is now resolved.
 
 ### 4.3 Browse slot injection vs My Trees static owner hub markup
 
@@ -238,8 +245,10 @@ page-shell (lovetree-calm-two-column-shell)
 │   │       ├── search-input-wrapper
 │   │       ├── filter-row
 │   ├── results-head (lovetree-calm-results-head)
-│   │   ├── results label
-│   │   ├── optional owner CTA slot (owner pages only)
+│   │   ├── results-title-slot (browse-results-title-slot)
+│   │   │   └── results label
+│   │   ├── owner CTA slot (browse-results-owner-cta-slot)
+│   │   │   └── [hidden] on Browse / owner CTA on My Trees
 │   │   └── controls
 │   │       ├── sort control
 │   │       └── view mode control
@@ -293,7 +302,7 @@ Owner/public context differences fall into two categories:
 | Browse filter chips use `<span>` with emotion-based categories; My Trees uses `<button>` with property-based filters | Current semantic implementation difference; future accessibility/interaction normalization candidate |
 | Browse actions are JS-rendered into slots; My Trees actions are pre-rendered static markup | Pattern choice differs by context but convergence is feasible while preserving per-page action semantics |
 | Shared hub CSS sub-module ownership | Move content-identical sub-modules to `css/shared/preview-hub/`; keep page-specific overrides in page folders |
-| Results-head wrapper topology | My Trees extra `.my-trees-results-title-row` can be flattened with an optional owner CTA slot |
+| Results-head wrapper topology | ~~My Trees extra `.my-trees-results-title-row` can be flattened with an optional owner CTA slot~~ **Phase 2b completed** — wrapper removed, both pages share `browse-results-title-slot → browse-results-owner-cta-slot → browse-results-controls` |
 
 ---
 
@@ -303,9 +312,11 @@ Owner/public context differences fall into two categories:
    `.my-trees-container` geometry into the shared calm shell; make page-specific
    classes thin overrides.
 
-2. **Unify results-head wrapper depth**: Eliminate the extra
+2. **~~Unify results-head wrapper depth~~**: ~~Eliminate the extra
    `.my-trees-results-title-row` wrapper; add an optional owner CTA slot directly
-   alongside the label.
+   alongside the label.~~ **Phase 2b completed.** Both pages now share
+   `browse-results-title-slot → browse-results-owner-cta-slot → browse-results-controls`.
+   Only owner CTA contents differ between pages.
 
 3. **Move shared hub CSS to `css/shared/`**: Extract flow, actions, social-bar
    sub-modules that are content-identical between Browse and My Trees into
@@ -362,6 +373,9 @@ Owner/public context differences fall into two categories:
 | Both pages retain `browse-results-head` / `lovetree-calm-results-head` | `browse-my-trees-structure-reconciliation-contract.test.cjs` |
 | Both pages retain `preview-hub` | `preview-hub-canonical-skeleton-contract.test.cjs` |
 | Results-head deltas documented: Browse has `browseSortControls` + `browseViewModeMount`; My Trees has `headerCreateTreeBtn` + `sortTreesSelect` + `myTreesViewModeMount` | `browse-my-trees-structure-reconciliation-contract.test.cjs` |
+| Both pages share canonical results-head topology: `browse-results-title-slot → browse-results-owner-cta-slot → browse-results-controls` | `browse-my-trees-pattern-alignment-contract.test.cjs` |
+| Browse owner CTA slot is hidden; My Trees owner CTA slot contains `#headerCreateTreeBtn` | `browse-my-trees-pattern-alignment-contract.test.cjs` |
+| `.my-trees-results-title-row` removed from HTML and CSS | `browse-my-trees-pattern-alignment-contract.test.cjs` |
 | Hub rendering deltas documented: Browse has `previewHubFlowSlot` / `previewHubSummarySlot` / `previewHubActionsSlot`; My Trees has `myTreesHubFlow` / `myTreesHubSummary` / `myTreesHubActions` | `browse-my-trees-structure-reconciliation-contract.test.cjs` |
 | Both CSS entrypoints import shared `preview-hub-scroll.css` | `browse-my-trees-structure-reconciliation-contract.test.cjs` |
 | Current results-head wrapper depth is NOT locked as permanent architecture | `browse-my-trees-structure-reconciliation-contract.test.cjs` |

@@ -86,15 +86,6 @@ white-space: nowrap;
     min-width: 0;
 }
 
-.my-trees-results-title-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    width: 100%;
-    min-width: 0;
-}
-
 .my-trees-results-label {
     flex: 1 1 auto;
     font-size: 1rem;
@@ -109,7 +100,6 @@ white-space: nowrap;
     align-items: center;
     gap: 8px;
     flex-shrink: 0;
-    margin-left: auto;
     flex-wrap: nowrap;
 }
 
@@ -119,15 +109,9 @@ white-space: nowrap;
         padding-top: 14px;
         border-top: 1px solid rgba(144, 73, 81, 0.09);
     }
-    .my-trees-results-title-row {
-        flex-wrap: nowrap;
-        align-items: center;
-        justify-content: space-between;
-        gap: 10px;
-    }
-    /* Compact the title-row create CTA so it does not dominate the mobile row.
+    /* Compact the owner-cta-slot create CTA so it does not dominate the mobile row.
        Higher specificity (0,2,0) overrides the responsive.css .btn-header-create (0,1,0) rule. */
-    .my-trees-results-title-row .btn-header-create {
+    .my-trees-results-head .browse-results-owner-cta-slot .btn-header-create {
         flex: 0 0 auto;
         width: auto;
         min-height: 36px;
@@ -136,7 +120,7 @@ white-space: nowrap;
         gap: 4px;
         box-shadow: 0 2px 8px rgba(144, 73, 81, 0.18);
     }
-    .my-trees-results-title-row .btn-header-create .material-symbols-outlined {
+    .my-trees-results-head .browse-results-owner-cta-slot .btn-header-create .material-symbols-outlined {
         font-size: 16px;
     }
     /* Switch results controls from stretching grid to flex:
@@ -149,7 +133,6 @@ white-space: nowrap;
         justify-content: space-between;
         gap: 8px;
         flex-wrap: nowrap;
-        margin-left: 0;
     }
     .my-trees-results-controls .sort-control {
         flex: 1 1 auto;

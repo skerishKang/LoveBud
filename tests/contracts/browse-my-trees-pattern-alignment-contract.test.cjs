@@ -130,33 +130,50 @@ test('4g. My LoveTree CSS bundle keeps finder import before responsive import (p
   assert.ok(finderIdx < responsiveIdx, 'css/my-trees.css must import my-trees-finder.css BEFORE my-trees-responsive.css so the mobile 40px responsive rule wins the cascade');
 });
 
-test('4h. My LoveTree + new tree CTA lives in title row, not in results controls', () => {
-  const html = read('pages/my-trees.html');
-  // Find the opening tags of title-row and controls wrappers by class token (any position in class attribute).
-  const titleRowMatch = html.match(/<div\b[^>]*class="[^"]*\bmy-trees-results-title-row\b[^"]*"/);
-  const controlsMatch = html.match(/<div\b[^>]*class="[^"]*\bmy-trees-results-controls\b[^"]*"/);
-  assert.ok(titleRowMatch, 'pages/my-trees.html must wrap the results label and create CTA in .my-trees-results-title-row');
-  assert.ok(controlsMatch, 'pages/my-trees.html must keep .my-trees-results-controls for sort + view mode only');
-  const titleRowStart = titleRowMatch.index;
-  const controlsStart = controlsMatch.index;
-  // CTA position must be after the title row starts and before the controls start.
-  const ctaIdx = html.indexOf('id="headerCreateTreeBtn"');
-  assert.ok(ctaIdx > 0, 'pages/my-trees.html must contain id="headerCreateTreeBtn"');
-  assert.ok(ctaIdx > titleRowStart, 'create CTA must appear after the title row opens');
-  assert.ok(ctaIdx < controlsStart, 'create CTA must appear before .my-trees-results-controls opens');
+test('4h. Browse and My Trees share canonical results-head slot topology', () => {
+  const browseHtml = read('pages/search.html');
+  const myTreesHtml = read('pages/my-trees.html');
+
+  // Both pages must have the three canonical slots in order:
+  // browse-results-title-slot → browse-results-owner-cta-slot → browse-results-controls
+  const canonicalSlotPattern = /browse-results-title-slot[\s\S]*browse-results-owner-cta-slot[\s\S]*browse-results-controls/;
+
+  assert.ok(
+    canonicalSlotPattern.test(browseHtml.slice(browseHtml.indexOf('browse-results-head'))),
+    'Browse results-head must contain title-slot → owner-cta-slot → controls in order'
+  );
+  assert.ok(
+    canonicalSlotPattern.test(myTreesHtml.slice(myTreesHtml.indexOf('browse-results-head'))),
+    'My Trees results-head must contain title-slot → owner-cta-slot → controls in order'
+  );
+
+  // Browse owner CTA slot must be hidden
+  assert.ok(browseHtml.includes('browse-results-owner-cta-slot" hidden'), 'Browse owner CTA slot must have hidden attribute');
+
+  // My Trees CTA must be inside owner-cta-slot and before controls
+  const myTreesOwnerSlotIdx = myTreesHtml.indexOf('browse-results-owner-cta-slot');
+  const myTreesControlsIdx = myTreesHtml.indexOf('my-trees-results-controls');
+  const ctaIdx = myTreesHtml.indexOf('id="headerCreateTreeBtn"');
+  assert.ok(myTreesOwnerSlotIdx > 0, 'My Trees must have owner-cta-slot');
+  assert.ok(ctaIdx > myTreesOwnerSlotIdx, 'My Trees CTA must be inside owner-cta-slot');
+  assert.ok(ctaIdx < myTreesControlsIdx, 'My Trees CTA must appear before controls');
+
+  // .my-trees-results-title-row must NOT exist in HTML
+  assert.ok(!myTreesHtml.includes('my-trees-results-title-row'), 'My Trees HTML must not contain .my-trees-results-title-row');
+  assert.ok(!browseHtml.includes('my-trees-results-title-row'), 'Browse HTML must not contain .my-trees-results-title-row');
 });
 
-test('4i. My LoveTree mobile title-row CTA is compact and view-mode control shrinks to fit', () => {
+test('4i. My LoveTree mobile owner-cta-slot CTA is compact and view-mode control shrinks to fit', () => {
   const headerCss = read('css/my-trees/my-trees-header.css');
-  // Title-row create CTA must use compact sizing on mobile so it does not dominate the row.
-  const mobileTitleCta = headerCss.match(
-    /@media\s*\(max-width:\s*768px\)\s*{[\s\S]*?\.my-trees-results-title-row\s+\.btn-header-create\s*{([^}]*)}/
+  // Owner-cta-slot create CTA must use compact sizing on mobile so it does not dominate the row.
+  const mobileCta = headerCss.match(
+    /@media\s*\(max-width:\s*768px\)\s*{[\s\S]*?\.my-trees-results-head\s+\.browse-results-owner-cta-slot\s+\.btn-header-create\s*{([^}]*)}/
   );
-  assert.ok(mobileTitleCta, 'My LoveTree mobile title-row .btn-header-create rule must exist inside @media (max-width:768px)');
-  const ctaBody = mobileTitleCta[1];
-  assert.match(ctaBody, /min-height:\s*36px/, 'mobile title-row CTA must use min-height: 36px');
-  assert.match(ctaBody, /padding:\s*0\s+12px/, 'mobile title-row CTA must use padding: 0 12px');
-  assert.match(ctaBody, /width:\s*auto/, 'mobile title-row CTA must use width: auto (not full-width)');
+  assert.ok(mobileCta, 'My LoveTree mobile .my-trees-results-head .browse-results-owner-cta-slot .btn-header-create rule must exist inside @media (max-width:768px)');
+  const ctaBody = mobileCta[1];
+  assert.match(ctaBody, /min-height:\s*36px/, 'mobile owner-cta-slot CTA must use min-height: 36px');
+  assert.match(ctaBody, /padding:\s*0\s+12px/, 'mobile owner-cta-slot CTA must use padding: 0 12px');
+  assert.match(ctaBody, /width:\s*auto/, 'mobile owner-cta-slot CTA must use width: auto (not full-width)');
   // View-mode segmented control must stay shrink-to-fit (flex: 0 0 auto) on mobile.
   assert.match(
     headerCss,
@@ -347,23 +364,27 @@ test('14. Runtime cache-busts updated for changed JS/CSS', () => {
 
 test('15. My LoveTree desktop visual rhythm alignment with Browse', () => {
   const headerCss = read('css/my-trees/my-trees-header.css');
-  const uncommentedCss = headerCss.replace(/\/\*[\s\S]*?\*\//g, '');
+  const searchControlsCss = read('css/search/search-controls.css');
+  const uncommentedHeaderCss = headerCss.replace(/\/\*[\s\S]*?\*\//g, '');
+  const uncommentedSearchCss = searchControlsCss.replace(/\/\*[\s\S]*?\*\//g, '');
 
   // 1. .my-trees-results-head desktop block exists
-  const resultsHeadDecl = uncommentedCss.match(/\.my-trees-results-head\s*\{([^}]*)\}/);
+  const resultsHeadDecl = uncommentedHeaderCss.match(/\.my-trees-results-head\s*\{([^}]*)\}/);
   assert.ok(resultsHeadDecl, '.my-trees-results-head block must be declared');
 
-  // 2. .my-trees-results-title-row separates label and create CTA
+  // 2. Canonical slot base classes exist in search-controls.css
+  assert.match(uncommentedSearchCss, /\.browse-results-title-slot\s*\{/, '.browse-results-title-slot must be defined in search-controls.css');
+  assert.match(uncommentedSearchCss, /\.browse-results-owner-cta-slot\s*\{/, '.browse-results-owner-cta-slot must be defined in search-controls.css');
+  assert.match(uncommentedSearchCss, /\.browse-results-owner-cta-slot\[hidden\]/, '.browse-results-owner-cta-slot[hidden] rule must exist to hide Browse slot');
+
+  // 3. .my-trees-results-controls has flex-wrap: nowrap in desktop (margin-left: auto removed —
+  //    canonical parent slot order and title-slot flex handle desktop alignment)
   assert.match(
-    uncommentedCss,
-    /\.my-trees-results-title-row\s*\{[^}]*justify-content:\s*space-between;[^}]*}/,
-    '.my-trees-results-title-row must keep the label left and create CTA right'
+    uncommentedHeaderCss,
+    /\.my-trees-results-controls\s*\{[^}]*flex-wrap:\s*nowrap;[^}]*}/,
+    '.my-trees-results-controls must have flex-wrap: nowrap in desktop declaration'
   );
 
-  // 3. .my-trees-results-controls has margin-left: auto and flex-wrap: nowrap in desktop
-  assert.match(
-    uncommentedCss,
-    /\.my-trees-results-controls\s*\{[^}]*margin-left:\s*auto;[^}]*flex-wrap:\s*nowrap;[^}]*}/,
-    '.my-trees-results-controls must have margin-left: auto and flex-wrap: nowrap in desktop declaration'
-  );
+  // 4. .my-trees-results-title-row must NOT exist in CSS
+  assert.ok(!uncommentedHeaderCss.includes('.my-trees-results-title-row'), '.my-trees-results-title-row selector must be removed from my-trees-header.css');
 });

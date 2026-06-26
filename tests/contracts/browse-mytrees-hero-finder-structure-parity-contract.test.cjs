@@ -122,10 +122,11 @@ test('10. My Trees results head and controls CSS is preserved', () => {
 
   // Results head styles should be preserved
   assert.match(headerCss, /\.my-trees-results-head/, 'Must preserve my-trees-results-head selector');
-  assert.match(headerCss, /\.my-trees-results-title-row/, 'Must preserve my-trees-results-title-row selector');
   assert.match(headerCss, /\.my-trees-results-label/, 'Must preserve my-trees-results-label selector');
   assert.match(headerCss, /\.my-trees-results-controls/, 'Must preserve my-trees-results-controls selector');
   assert.match(headerCss, /\.btn-header-create/, 'Must preserve btn-header-create selector');
+  // .my-trees-results-title-row must be removed (Phase 2b replaced it with canonical slots)
+  assert.ok(!headerCss.includes('.my-trees-results-title-row'), '.my-trees-results-title-row must be removed from my-trees-header.css');
 });
 
 test('11. Shared search-hero-controls.css contains required title-line rules', () => {
