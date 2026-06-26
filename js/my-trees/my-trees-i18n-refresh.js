@@ -23,13 +23,13 @@
     var locale = window.i18n?.currentLang || document.documentElement?.lang || 'ko';
     var isEnglish = String(locale).toLowerCase().startsWith('en');
     if (isEnglish) {
-      el.innerHTML = '<span class="my-trees-title-line">Open and continue</span>' +
-                     '<span class="my-trees-title-line my-trees-title-accent">Your LoveTrees</span>';
+      el.innerHTML = '<span class="title-line">Open and continue</span>' +
+                     '<span class="title-line title-accent">Your LoveTrees</span>';
       return;
     }
-    el.innerHTML = '<span class="my-trees-title-line">내가 키운</span>' +
-                   '<span class="my-trees-title-line my-trees-title-accent">러브트리를</span>' +
-                   '<span class="my-trees-title-line">다시 열어보세요</span>';
+    el.innerHTML = '<span class="title-line">내가 키운</span>' +
+                   '<span class="title-line title-accent">러브트리를</span>' +
+                   '<span class="title-line">다시 열어보세요</span>';
   }
 
   function setDescMarkup() {
