@@ -492,7 +492,7 @@
                 }
                 if (_dom.previewHubSummarySlot) {
                     _dom.previewHubSummarySlot.innerHTML = `
-                        <div class="preview-focus-copy" style="font-size:14px;color:var(--on-surface-variant);line-height:1.6;padding:0 4px;">
+                        <div class="preview-focus-copy">
                             ${getPreviewSummaryCopy(tree, memories)}
                             <span style="color:var(--primary);font-weight:700;">${noRecordsLine}</span>
                             ${renderInfoCallout('info', getSearchCopy('search.previewNewTreeInfo', '이제 막 감상이 시작될 공개 러브트리예요.', 'This public LoveTree is just about to begin.'))}
@@ -529,7 +529,7 @@
                 }
                 if (_dom.previewHubSummarySlot) {
                     _dom.previewHubSummarySlot.innerHTML = `
-                        <div class="preview-focus-copy" style="font-size:14px;color:var(--on-surface-variant);line-height:1.6;padding:0 4px;">
+                        <div class="preview-focus-copy">
                             ${getPreviewSummaryCopy(tree, memories)}
                             ${renderInfoCallout('favorite', `${firstMomentLabel}에서 시작해 ${lastMomentLabel}까지 이어진 감정의 흐름이에요.`)}
                             ${renderInfoCallout('touch_app', getSearchCopy('search.previewJourneyCta', '이곳에서 대표 순간과 이어진 감정을 훑어보고, 마음이 머무는 순간으로 들어가 보세요.', 'Scan the featured moment and connected feelings here, then open the moment that draws you in.'), 'primary')}

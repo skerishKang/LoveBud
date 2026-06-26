@@ -8,7 +8,7 @@
   <link rel="icon" href="/assets/favicon/favicon.svg" type="image/svg+xml">
   <link rel="icon" href="/favicon.ico" sizes="32x32">
   <link rel="stylesheet" href="../css/global.css?v=20260619-2710-1">
-  <link rel="stylesheet" href="../css/my-trees.css?v=20260626-2903-hub-rhythm-1">
+  <link rel="stylesheet" href="../css/my-trees.css?v=20260626-2923-hub-content-slots-1">
   <link rel="stylesheet" href="../css/tree-view-mode.css?v=20260621-step2-1">
   <link rel="stylesheet" href="../css/page-transitions.css?v=20260430-1">
   <link rel="stylesheet" href="../css/components/lovebud-ai-panel.css?v=20260616-ai-panel-1">
@@ -98,7 +98,7 @@
           <div class="my-trees-hub-flow-controls preview-flow-controls" id="myTreesHubFlowControls"></div>
         </div>
         <div class="my-trees-hub-no-moments preview-focus-flow-card-empty" id="myTreesHubNoMoments" hidden></div>
-        <div class="my-trees-hub-summary" id="myTreesHubSummary"></div>
+        <div class="my-trees-hub-summary preview-summary-slot" id="myTreesHubSummary"></div>
         <div class="my-trees-hub-actions preview-actions" id="myTreesHubActions" hidden>
           <a href="#" class="btn-round btn-primary preview-primary-action my-trees-hub-open-btn" id="myTreesHubOpenBtn"><span class="material-symbols-outlined">account_tree</span><span data-i18n="myTrees.hub_open">트리 열기</span></a>
           <a href="#" class="btn-round preview-secondary-action my-trees-hub-edit-btn" id="myTreesHubEditBtn"><span class="material-symbols-outlined">edit</span><span data-i18n="myTrees.hub_edit">편집하기</span></a>
@@ -106,7 +106,7 @@
           <button type="button" class="btn-round my-trees-hub-layout-probe-slot" data-layout-probe-slot hidden style="width:100%;margin-top:10px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;gap:6px;background:var(--primary-container);color:var(--on-primary-container);border:1px solid var(--outline-variant);"><span class="material-symbols-outlined" style="font-size:16px;">content_copy</span><span>내 러브트리로 가져오기</span></button>
           <div class="copy-status-text" data-layout-probe-status hidden style="display:block;flex:0 0 18px;width:100%;font-size:12px;color:var(--on-surface-variant);margin-top:6px;min-height:18px;"></div>
         </div>
-        <div id="myTreesHubSocialSlot"></div>
+        <div id="myTreesHubSocialSlot" class="preview-hub-social-slot"></div>
       </div>
     </aside>
   </main>
@@ -145,7 +145,7 @@
   <script src="../js/search/search-preview-media-helper.js?v=20260626-2914-layout-probe-1"></script>
   <script src="../js/search/search-preview-media-embed-patch.js?v=20260624-baseline-recovery-3"></script>
   <!-- #2835 summary-slot-align scripts -->
-  <script src="../js/my-trees/my-trees-preview-hub.js?v=20260626-2914-layout-probe-1"></script>
+  <script src="../js/my-trees/my-trees-preview-hub.js?v=20260626-2923-hub-content-slots-1"></script>
   <script src="../js/my-trees/my-trees-preview-state.js?v=20260626-2914-layout-probe-1"></script>
   <script src="../js/my-trees/my-trees-mobile-preview-sheet.js?v=20260624-baseline-recovery-3"></script>
   <!-- #2835 runtime quartet cache-bust unified -->

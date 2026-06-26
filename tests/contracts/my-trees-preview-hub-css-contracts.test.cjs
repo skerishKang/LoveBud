@@ -35,7 +35,7 @@ test('my-trees-preview-hub css — split files exist and contain core selectors'
         'content.css': ['.my-trees-hub-tree-title', '.my-trees-hub-rep'],
         'flow.css': ['.my-trees-hub-flow-list', '.my-trees-hub-flow-toggle'],
         'states.css': ['.my-trees-hub-placeholder', '.my-trees-hub-no-moments'],
-        'actions.css': ['.my-trees-hub-actions', '.my-trees-hub-open-btn'],
+        'actions.css': ['.my-trees-hub-open-btn', '.my-trees-hub-edit-btn'],
         'responsive.css': ['@media (max-width: 1024px)', '@media (max-width: 768px)', '@media (max-width: 375px)']
     };
 

@@ -90,9 +90,3 @@
     outline-offset: 2px;
     border-radius: 2px;
 }
-
-/* #ALIGN-CTA: 트리열기 버튼 상단 여백을 내 러브트리
-   .my-trees-hub-actions margin-top: 18px과 동일하게 맞춤 */
-#previewHubActionsSlot {
-    margin-top: 18px;
-}
