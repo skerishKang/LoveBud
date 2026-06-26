@@ -171,8 +171,8 @@
 
     function renderRepresentativeMedia(tree, firstMem, titleText) {
         const mediaUrl = sanitizeUrl(
-            firstMem?.thumbnail ||
             tree.representativeThumbnail ||
+            firstMem?.thumbnail ||
             tree.thumbnail ||
             ''
         );
