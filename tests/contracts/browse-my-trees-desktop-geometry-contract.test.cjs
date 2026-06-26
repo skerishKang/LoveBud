@@ -47,8 +47,10 @@ test('3. My Trees desktop selectors do not introduce conflicting geometry styles
   assert.match(header, /\.my-trees-results-head\s*\{[^}]*margin:\s*0\s+0\s+16px;?/, 'Results head margin must be 0 0 16px (#2892)');
 
   // Title row & controls alignments must be correct
-  assert.match(header, /\.my-trees-results-title-row\s*\{[^}]*justify-content:\s*space-between;/, 'Title row must keep label left and create CTA right');
-  assert.match(header, /\.my-trees-results-controls\s*\{[^}]*margin-left:\s*auto;[^}]*flex-wrap:\s*nowrap;/, 'Controls must use margin-left: auto and flex-wrap: nowrap');
+  assert.match(header, /\.my-trees-results-controls\s*\{[^}]*flex-wrap:\s*nowrap;/, 'Controls must use flex-wrap: nowrap');
+  // margin-left: auto is no longer needed — canonical slot order and title-slot flex handle desktop alignment
+  // .my-trees-results-title-row is removed in Phase 2b
+  assert.ok(!header.includes('.my-trees-results-title-row'), '.my-trees-results-title-row must be removed from my-trees-header.css');
 });
 
 test('4. Right rail geometry related selectors are not overridden', () => {

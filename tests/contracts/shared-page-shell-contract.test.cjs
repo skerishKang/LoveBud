@@ -168,6 +168,8 @@ test('Shared Page Shell Contract Verification', async (t) => {
     assert.ok(searchHtml.includes('lovetree-calm-right-rail'), 'search.html must include class lovetree-calm-right-rail');
     assert.ok(searchHtml.includes('browse-utility-row lovetree-calm-utility-row'), 'search.html must contain browse-utility-row lovetree-calm-utility-row');
     assert.ok(searchHtml.includes('browse-results-head lovetree-calm-results-head'), 'search.html must contain browse-results-head lovetree-calm-results-head');
+    assert.ok(searchHtml.includes('browse-results-title-slot'), 'search.html must contain browse-results-title-slot');
+    assert.ok(searchHtml.includes('browse-results-owner-cta-slot" hidden'), 'search.html must contain browse-results-owner-cta-slot with hidden attribute');
   });
 
   await t.test('pages/my-trees.html includes shared calm shell classes', () => {
@@ -177,8 +179,14 @@ test('Shared Page Shell Contract Verification', async (t) => {
     assert.ok(myTreesHtml.includes('lovetree-calm-right-rail'), 'my-trees.html must include class lovetree-calm-right-rail');
     assert.ok(myTreesHtml.includes('my-trees-finder lovetree-calm-utility-row'), 'my-trees.html must contain my-trees-finder lovetree-calm-utility-row');
     assert.ok(myTreesHtml.includes('my-trees-results-head lovetree-calm-results-head'), 'my-trees.html must contain my-trees-results-head lovetree-calm-results-head');
-    assert.ok(myTreesHtml.includes('my-trees-results-title-row'), 'my-trees.html must retain my-trees-results-title-row');
+    assert.ok(myTreesHtml.includes('browse-results-title-slot'), 'my-trees.html must contain browse-results-title-slot');
+    assert.ok(myTreesHtml.includes('browse-results-owner-cta-slot'), 'my-trees.html must contain browse-results-owner-cta-slot');
     assert.ok(myTreesHtml.includes('my-trees-results-controls'), 'my-trees.html must retain my-trees-results-controls');
+    assert.ok(!myTreesHtml.includes('my-trees-results-title-row'), 'my-trees.html must NOT contain my-trees-results-title-row (removed in Phase 2b)');
+    // ID stability verification
+    assert.ok(myTreesHtml.includes('headerCreateTreeBtn'), 'my-trees.html must contain headerCreateTreeBtn');
+    assert.ok(myTreesHtml.includes('sortTreesSelect'), 'my-trees.html must contain sortTreesSelect');
+    assert.ok(myTreesHtml.includes('myTreesViewModeMount'), 'my-trees.html must contain myTreesViewModeMount');
   });
 
   await t.test('Verify calm page shell css defines row baseline classes', () => {
