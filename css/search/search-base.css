@@ -1,18 +1,7 @@
 /* LoveBud Search page styles. Page-specific only. */
 
 .search-container {
-    width: min(100%, var(--page-shell-max));
-    max-width: var(--page-shell-max);
-    margin: 0 auto;
     padding: 52px var(--page-pad-desktop) 58px;
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(360px, 400px);
-    gap: var(--hero-gap);
-    box-sizing: border-box;
-}
-
-.search-container > * {
-    min-width: 0;
 }
 
 .search-container .material-symbols-outlined {

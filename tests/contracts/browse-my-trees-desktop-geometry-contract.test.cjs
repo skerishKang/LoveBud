@@ -11,17 +11,18 @@ function read(relativePath) {
   return fs.readFileSync(path.join(ROOT, relativePath), 'utf8');
 }
 
-test('1. Browse/My Trees outer shell grid uses same shared tokens', () => {
+test('1. Browse/My Trees outer shell grid uses same shared tokens via lovetree-calm-two-column-shell single owner', () => {
+  const shellCss = read('css/global/lovetree-calm-page-shell.css');
   const searchBase = read('css/search/search-base.css');
   const myTreesLayout = read('css/my-trees/my-trees-layout.css');
 
-  // Both should use same shared page shell tokens
-  assert.ok(searchBase.includes('var(--page-shell-max)'), 'search-base.css must use page-shell-max');
-  assert.ok(myTreesLayout.includes('var(--page-shell-max)'), 'my-trees-layout.css must use page-shell-max');
+  // Shared shell is now the single owner of grid geometry
+  assert.match(shellCss, /\.lovetree-calm-two-column-shell\s*\{[^}]*var\(--page-shell-max\)/, 'shared shell must use page-shell-max');
+  assert.match(shellCss, /\.lovetree-calm-two-column-shell\s*\{[^}]*var\(--hero-gap\)/, 'shared shell must use hero-gap');
+
+  // Page-specific files still reference page-pad tokens for padding
   assert.ok(searchBase.includes('var(--page-pad-desktop)'), 'search-base.css must use page-pad-desktop');
   assert.ok(myTreesLayout.includes('var(--page-pad-desktop)'), 'my-trees-layout.css must use page-pad-desktop');
-  assert.ok(searchBase.includes('var(--hero-gap)'), 'search-base.css must use hero-gap');
-  assert.ok(myTreesLayout.includes('var(--hero-gap)'), 'my-trees-layout.css must use hero-gap');
 });
 
 test('2. My Trees HTML maintains shared hero/control classes', () => {

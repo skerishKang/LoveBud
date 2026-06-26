@@ -22,11 +22,15 @@
     }
 }
 
-/* Desktop 2-column grid layout */
+/* Desktop 2-column grid layout — single owner of shared shell geometry */
 .lovetree-calm-two-column-shell {
+    width: min(100%, var(--page-shell-max));
+    max-width: var(--page-shell-max);
+    margin: 0 auto;
+    box-sizing: border-box;
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(360px, 400px);
-    gap: 28px;
+    gap: var(--hero-gap);
     align-items: start;
 }
 
