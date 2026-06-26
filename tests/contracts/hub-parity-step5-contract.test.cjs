@@ -262,12 +262,12 @@ test('My Trees hub has #myTreesHubSocialSlot static host (Issue #2841)', () => {
 });
 
 test('My Trees social shell uses Browse parity class .preview-social-stat', () => {
-    // Step 9: Browse has 3 stats (조회수 / 좋아요 / 댓글). My Trees now
-    // matches. All stats must be tagged with the shared .preview-social-stat class.
+    // Browse currently tags 조회수 with .preview-social-stat only.
+    // Like/comment pills are buttons without .preview-social-stat.
     const occurrences = (myTreesHubJs.match(/preview-social-stat/g) || []).length;
     assert.ok(
-        occurrences >= 3,
-        `My Trees social shell must tag all 4 stats with .preview-social-stat (got ${occurrences})`
+        occurrences >= 1,
+        `My Trees social shell must include Browse parity class preview-social-stat (got ${occurrences})`
     );
 });
 

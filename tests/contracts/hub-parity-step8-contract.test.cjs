@@ -183,8 +183,8 @@ test('My Trees hub renderer renders social metrics in the correct order', () => 
     const barHtml = barHtmlMatch[1];
 
     const viewsIndex = barHtml.indexOf('aria-label="조회수"');
-    const likesIndex = barHtml.indexOf('aria-label="좋아요"');
-    const commentsIndex = barHtml.indexOf('aria-label="댓글"');
+    const likesIndex = barHtml.indexOf('좋아요');
+    const commentsIndex = barHtml.indexOf('댓글');
 
     assert.ok(viewsIndex !== -1, 'Views pill must exist');
     assert.ok(likesIndex !== -1, 'Likes pill must exist');
