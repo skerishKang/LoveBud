@@ -211,6 +211,17 @@
 .tree-card-visibility.public { background: rgba(122, 139, 110, 0.1); color: var(--secondary); }
 .tree-card-visibility.private { background: var(--lovetree-pill-bg); color: var(--lovetree-pill-text); }
 
+.tree-card-title-row .tree-card-visibility {
+    flex: 0 0 auto;
+    margin-top: 2px;
+    white-space: nowrap;
+}
+
+.tree-card-visibility .material-symbols-outlined {
+    font-size: 12px;
+    line-height: 1;
+}
+
 /* Step 3 follow-up: meta-row + reaction metrics shared with Browse.
    Locks parity of the inner card body across both pages so the cards
    read as one block, not two stacked sections. */

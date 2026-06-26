@@ -75,22 +75,38 @@
       : getI18nText(i18n, 'visibility_make_public', '공개로 전환');
   }
 
-  function getTreeCardMeta(tree, i18n) {
-    var Visuals = window.LoveBudMyTreesCardVisuals;
-    if (Visuals && typeof Visuals.getTreeCardMeta === 'function') return Visuals.getTreeCardMeta(tree, i18n);
-    var visibility = tree && tree.visibility === 'public' ? 'public' : 'private';
+  function normalizeCardVisibility(tree) {
+    return tree && tree.visibility === 'public' ? 'public' : 'private';
+  }
+
+  function buildVisibilityBadgeHtml(visibility, i18n) {
     var visibilityLabel = visibility === 'public'
       ? getI18nText(i18n, 'myTrees.summary_public', '공개')
       : getI18nText(i18n, 'myTrees.summary_private', '비공개');
-    return {
-      visibilityIcon: visibility === 'public' ? 'lock' : 'public',
-      visibilityActionLabel: getVisibilityActionLabel(tree, i18n),
-      title: tree && tree.title,
-      mood: getTreeMomentCount(tree) > 0
+    var visibilityIcon = visibility === 'public' ? 'public' : 'lock';
+    return '<span class="tree-card-visibility ' + visibility + '" aria-label="' + visibilityLabel + '">' +
+      '<span class="material-symbols-outlined" aria-hidden="true">' + visibilityIcon + '</span>' +
+      '<span class="tree-card-visibility-label">' + visibilityLabel + '</span>' +
+      '</span>';
+  }
+
+  function getTreeCardMeta(tree, i18n) {
+    var Visuals = window.LoveBudMyTreesCardVisuals;
+    var delegatedMeta = (Visuals && typeof Visuals.getTreeCardMeta === 'function')
+      ? Visuals.getTreeCardMeta(tree, i18n)
+      : null;
+    var visibility = normalizeCardVisibility(tree);
+    var meta = (delegatedMeta && typeof delegatedMeta === 'object')
+      ? Object.assign({}, delegatedMeta)
+      : {};
+    meta.visibilityBadgeHtml = buildVisibilityBadgeHtml(visibility, i18n);
+    meta.title = meta.title || (tree && tree.title);
+    meta.mood = meta.mood || (
+      getTreeMomentCount(tree) > 0
         ? getI18nText(i18n, 'myTrees.card_growing', '차곡차곡 자라는 중')
-        : getI18nText(i18n, 'myTrees.card_waiting', '첫 순간을 기다리는 중'),
-      privateBadgeHtml: visibility === 'private' ? '<div class="tree-card-meta"><span class="tree-card-visibility private"><span class="material-symbols-outlined" style="font-size:12px;">lock</span>' + visibilityLabel + '</span></div>' : ''
-    };
+        : getI18nText(i18n, 'myTrees.card_waiting', '첫 순간을 기다리는 중')
+    );
+    return meta;
   }
 
   function getTreeMoodPalette(tree) {
@@ -246,7 +262,7 @@
       normalizedTree = {
         id: tree && tree.id,
         title: (tree && tree.title) || '나의 러브트리',
-        visibility: (tree && tree.visibility) || '',
+        visibility: tree && tree.visibility === 'public' ? 'public' : 'private',
         updatedAt: (tree && (tree.updatedAt || tree.createdAt)) || null,
         memoryCount: getTreeMomentCount(tree),
         representativeThumbnail: getRepresentativeThumbnail(tree),
@@ -254,6 +270,7 @@
         representativeMemo: tree && (tree.representativeMemo || tree.representative_memo || '')
       };
     } else {
+      normalizedTree.visibility = normalizedTree.visibility === 'public' ? 'public' : 'private';
       normalizedTree.representativeThumbnail = normalizedTree.representativeThumbnail || getRepresentativeThumbnail(tree);
       normalizedTree.memoryCount = getTreeMomentCount(tree || normalizedTree);
       normalizedTree.representativeTitle = normalizedTree.representativeTitle || (tree && (tree.representativeTitle || tree.representative_title || ''));
@@ -332,9 +349,9 @@
       '<div class="tree-card-body">',
         '<div class="tree-card-title-row">',
           '<div class="tree-card-title">' + escapeHtml(title) + '</div>',
+          cardMeta.visibilityBadgeHtml,
         '</div>',
         '<div class="tree-card-subcopy">' + cardMeta.mood + '</div>',
-        cardMeta.privateBadgeHtml,
         '<div class="tree-meta-row">',
           '<div class="tree-meta-left">',
             // Issue #1488 #1490: 조회수→좋아요 순서, 순간수 제거
@@ -534,6 +551,7 @@
   var api = {
     escapeHtml: escapeHtml,
     getI18nText: getI18nText,
+    getTreeCardMeta: getTreeCardMeta,
     buildMiniTreeSVG: buildMiniTreeSVG,
     getTreeMomentCount: getTreeMomentCount,
     getTreeViewCount: getTreeViewCount,

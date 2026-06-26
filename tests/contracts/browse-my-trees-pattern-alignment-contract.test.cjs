@@ -249,7 +249,7 @@ test('10. My LoveTree card order: thumb -> body/title/subcopy/meta-row/action (B
   const idxBody = templateSection.indexOf('tree-card-body');
   const idxTitle = templateSection.indexOf('tree-card-title');
   const idxSubcopy = templateSection.indexOf('tree-card-subcopy');
-  const idxMeta = templateSection.indexOf('cardMeta.privateBadgeHtml');
+  const idxMeta = templateSection.indexOf('cardMeta.visibilityBadgeHtml');
   const idxMetaRow = templateSection.indexOf('tree-meta-row');
   const idxReaction = templateSection.indexOf('tree-card-reaction-metrics');
   const idxOpen = templateSection.indexOf('tree-card-open-link');
@@ -257,14 +257,15 @@ test('10. My LoveTree card order: thumb -> body/title/subcopy/meta-row/action (B
   assert.ok(idxBody !== -1, 'Single tree-card-body container must exist (Browse parity)');
   assert.ok(idxTitle !== -1, 'Title class must exist');
   assert.ok(idxSubcopy !== -1, 'Subcopy class must exist');
-  assert.ok(idxMeta !== -1, 'Private badge template must exist');
+  assert.ok(idxMeta !== -1, 'Visibility badge template must exist');
   assert.ok(idxMetaRow !== -1, 'tree-meta-row wrapper must exist');
   assert.ok(idxReaction !== -1, 'tree-card-reaction-metrics must exist (Browse parity)');
   assert.ok(idxOpen !== -1, 'Open link class must exist');
   assert.ok(idxThumb < idxBody, 'thumb must be before body');
   assert.ok(idxBody < idxMetaRow, 'body must contain the meta-row');
-  assert.ok(idxTitle < idxSubcopy, 'title must be before subcopy');
-  assert.ok(idxSubcopy < idxMeta, 'subcopy must be before privateBadgeHtml');
+  assert.ok(idxTitle < idxMeta, 'title must be before visibilityBadgeHtml');
+  assert.ok(idxMeta < idxSubcopy, 'visibilityBadgeHtml must be before subcopy (in title-row)');
+  assert.ok(idxSubcopy < idxMetaRow, 'subcopy must be before meta-row');
   assert.ok(idxMetaRow < idxOpen, 'meta-row must be before open link');
   // Step 3 follow-up: the legacy two-block split (info + footer) must not return.
   assert.equal(
@@ -300,7 +301,7 @@ test('14. Runtime cache-busts updated for changed JS/CSS', () => {
   const myTreesHtml = read('pages/my-trees.html');
   const myTreesCss = read('css/my-trees.css');
   assert.match(searchHtml, /search-preview-state\.js\?v=20260616-2532-1/);
-  assert.match(myTreesHtml, /my-trees-ui\.js\?v=20260620-2751-1/);
+  assert.match(myTreesHtml, /my-trees-ui\.js\?v=20260626-2824-visibility-state-2/);
   // Softened: any non-empty cache-bust on my-trees-preview-hub.js plus
   // a guard that the pre-#2829 baseline value is gone. Future
   // cache-bust bumps should not require updating this assertion
