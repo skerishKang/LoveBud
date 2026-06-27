@@ -224,12 +224,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
             var effectiveCanEdit = false;
             var loadedTreeData = initialLoadResult.tree || window.currentTreeData || null;
+            var requestedReadOnly = canEdit === false;
             if (loadedTreeData && window.LoveBudTreeWorkspacePermission) {
-                effectiveCanEdit = window.LoveBudTreeWorkspacePermission.resolveTreeWorkspaceCanEdit(loadedTreeData);
+                effectiveCanEdit = window.LoveBudTreeWorkspacePermission.resolveTreeWorkspaceCanEdit(loadedTreeData, {
+                    requestedReadOnly: requestedReadOnly
+                });
             }
-            if (effectiveCanEdit !== (canEdit !== false)) {
-                applyEditorEditabilityState({ canEdit: effectiveCanEdit });
-            }
+            applyEditorEditabilityState({ canEdit: effectiveCanEdit });
 
             const normalizeMemory = initialLoadResult.normalizeMemory;
             const treeMemories = initialLoadResult.treeMemories;
