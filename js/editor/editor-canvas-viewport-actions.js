@@ -89,4 +89,34 @@ window.LoveBudEditorCanvasViewportActions = {
     viewportState.offsetY = Math.round(metrics.height * viewportApi.readableCenter.y - (centerWorldY * nextScale));
     initCanvas();
   },
+
+  /**
+   * Zooms to a specific scale while anchoring the given local canvas point.
+   * The world coordinate under the pointer remains fixed.
+   * @param {object} viewportApi - The viewport object (provides getNearestZoom, getNextZoom, setScale, minScale, maxScale)
+   * @param {object} options
+   */
+  zoomAtPoint(viewportApi, options) {
+    const {
+      scale,
+      localX,
+      localY,
+      viewportState,
+      initCanvas
+    } = options;
+
+    const oldScale = viewportApi.getNearestZoom(viewportState.scale || 1);
+    const nextScale = viewportApi.getNearestZoom(Math.min(viewportApi.maxScale, Math.max(viewportApi.minScale, scale)));
+
+    if (nextScale === oldScale) return;
+
+    const worldX = (localX - viewportState.offsetX) / oldScale;
+    const worldY = (localY - viewportState.offsetY) / oldScale;
+
+    viewportApi.setScale(viewportState, nextScale);
+    viewportState.offsetX = Math.round(localX - worldX * nextScale);
+    viewportState.offsetY = Math.round(localY - worldY * nextScale);
+
+    initCanvas();
+  },
 };

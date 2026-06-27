@@ -587,6 +587,7 @@ function createEditorCanvas(deps) {
 
             bindCanvasPan();
             bindViewportControls();
+            bindWheelZoom();
             bindResizeHandling();
             bindLayoutModeToggle();
             // Bind compact mode toggle
@@ -667,6 +668,29 @@ function createEditorCanvas(deps) {
             });
             return;
         }
+    }
+
+    function bindWheelZoom() {
+        if (typeof canvasViewport.bindWheelZoom !== 'function') return;
+
+        function zoomAtPoint(scale, localX, localY) {
+            if (typeof canvasViewport.zoomAtPoint !== 'function') return;
+
+            canvasViewport.zoomAtPoint({
+                scale,
+                localX,
+                localY,
+                viewportState,
+                initCanvas: scheduleRender
+            });
+
+            persistStoredPositions();
+        }
+
+        canvasViewport.bindWheelZoom({
+            viewportState,
+            zoomAtPoint
+        });
     }
 
     function bindLayoutModeToggle() {
