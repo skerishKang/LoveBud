@@ -131,4 +131,100 @@ window.LoveBudEditorCanvasViewportControls = {
       updateZoomIndicator();
     });
   },
+
+  /**
+   * Binds mouse wheel zoom on the canvas area.
+   * Safe to call multiple times; only binds once per viewportState.
+   * Only activates for desktop plain wheel (no Ctrl/Cmd).
+   *
+   * @param {object} viewportApi - The viewport object
+   * @param {object} options
+   * @param {object} options.viewportState
+   * @param {function} options.zoomAtPoint
+   */
+  bindWheelZoom(viewportApi, options) {
+    const { viewportState, zoomAtPoint } = options;
+
+    // Verify canvasArea exists before binding
+    const canvasArea = document.getElementById('canvasArea');
+    if (!canvasArea) return;
+    if (viewportState.wheelZoomBound) return;
+    viewportState.wheelZoomBound = true;
+
+    // Coarse-only pointer environments (mobile/touch) should not bind
+    const hasFinePointer = window.matchMedia && window.matchMedia('(any-pointer: fine)').matches;
+    const hasCoarseOnlyPointer = window.matchMedia && window.matchMedia('(any-pointer: coarse)').matches && !hasFinePointer;
+    if (hasCoarseOnlyPointer) {
+      viewportState.wheelZoomBound = false;
+      return;
+    }
+
+    // Exclusion selector for interactive elements inside/outside canvas
+    const interactiveSelector = [
+      '.editor-canvas-topbar',
+      '.editor-canvas-toolbar',
+      '#editorFloatingToolbarTemplateMount',
+      '#mobileBottomBar',
+      'input',
+      'textarea',
+      'select',
+      'button',
+      'a',
+      '[contenteditable]',
+      '.dropdown',
+      '.modal',
+      '.dialog',
+      '[role="dialog"]',
+      '[role="menu"]'
+    ].join(', ');
+
+    canvasArea.addEventListener('wheel', (event) => {
+      // Exclude modifier keys: Ctrl / Cmd / Meta
+      if (event.ctrlKey || event.metaKey) return;
+
+      // Exclude if target is an interactive element
+      const target = event.target;
+      if (target && typeof target.closest === 'function') {
+        if (target.closest(interactiveSelector)) {
+          return;
+        }
+      }
+
+      // Exclude if target is outside canvasArea (side panel, toolbar, etc.)
+      if (!canvasArea.contains(target)) return;
+
+      // Exclude if panning or dragging
+      if (viewportState.isPanning || viewportState.isDraggingNode) return;
+
+      // Calculate zoom direction
+      const delta = event.deltaY;
+      if (delta === 0) return;
+
+      // Determine next scale using preset levels
+      const oldScale = viewportApi.getNearestZoom(viewportState.scale || 1);
+      const direction = delta > 0 ? -1 : 1; // wheel down = zoom out, wheel up = zoom in
+      const nextScale = viewportApi.getNextZoom(oldScale, direction);
+      if (nextScale === oldScale) return; // at min/max
+
+      // Get local pointer coordinates relative to canvasArea
+      const rect = canvasArea.getBoundingClientRect();
+      const localX = event.clientX - rect.left;
+      const localY = event.clientY - rect.top;
+
+      // Prevent default scroll only for eligible wheel
+      event.preventDefault();
+
+      // Perform anchored zoom with simple signature
+      if (typeof zoomAtPoint === 'function') {
+        zoomAtPoint(nextScale, localX, localY);
+      }
+
+      // Update zoom indicator after zoom
+      const indicator = document.getElementById('zoomIndicator');
+      if (indicator) {
+        indicator.textContent = Math.round(nextScale * 100) + '%';
+        indicator.classList.remove('is-hidden');
+      }
+    }, { passive: false });
+  },
 };

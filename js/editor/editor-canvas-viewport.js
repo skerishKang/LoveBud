@@ -166,11 +166,27 @@ window.LoveBudEditorCanvasViewport = {
     return window.LoveBudEditorCanvasViewportActions.zoomBy(this, options);
   },
 
+  zoomAtPoint(options) {
+    if (!window.LoveBudEditorCanvasViewportActions ||
+        typeof window.LoveBudEditorCanvasViewportActions.zoomAtPoint !== 'function') {
+      return;
+    }
+    return window.LoveBudEditorCanvasViewportActions.zoomAtPoint(this, options);
+  },
+
   bindControls(options) {
     if (!window.LoveBudEditorCanvasViewportControls ||
         typeof window.LoveBudEditorCanvasViewportControls.bindControls !== 'function') {
       return;
     }
     return window.LoveBudEditorCanvasViewportControls.bindControls(this, options);
-  }
+  },
+
+  bindWheelZoom(options) {
+    if (!window.LoveBudEditorCanvasViewportControls ||
+        typeof window.LoveBudEditorCanvasViewportControls.bindWheelZoom !== 'function') {
+      return;
+    }
+    return window.LoveBudEditorCanvasViewportControls.bindWheelZoom(this, options);
+  },
 };
