@@ -1,6 +1,14 @@
 (function () {
   var nodeHelpers = {};
 
+  var sanitizeTitle = function sanitizeTitle(value, fallback) {
+    var classifier = window.LoveBudTreeWorkspaceClassifier;
+    if (classifier && typeof classifier.sanitizeDisplayTitle === 'function') {
+      return classifier.sanitizeDisplayTitle(value, fallback);
+    }
+    return value || fallback || '';
+  };
+
   nodeHelpers.hideNodeSkeleton = function hideNodeSkeleton(img, skeleton) {
     img.classList.add('loaded');
     skeleton.style.display = 'none';
@@ -32,7 +40,7 @@
         (window.LoveBudEditorHelpers && window.LoveBudEditorHelpers.safeUrl
             ? window.LoveBudEditorHelpers.safeUrl(mem && mem.thumbnail || '')
             : (mem && mem.thumbnail || ''));
-    img.alt = mem.title || '';
+    img.alt = sanitizeTitle(mem.title, '순간 이미지');
     img.draggable = false;
     img.addEventListener('dragstart', function (e) { e.preventDefault(); });
     img.onload = function () { nodeHelpers.hideNodeSkeleton(img, skeleton); };
@@ -69,7 +77,9 @@
     nodeEl.draggable = false;
     nodeEl.tabIndex = 0;
     nodeEl.setAttribute('role', 'button');
-    nodeEl.setAttribute('aria-label', mem.title ? (mem.title + ' \uC120\uD0DD') : '\uC21C\uAC04 \uC120\uD0DD');
+    var safeTitle = sanitizeTitle(mem.title, '');
+    var ariaLabel = safeTitle ? safeTitle + ' \uC120\uD0DD' : '\uC21C\uAC04 \uC120\uD0DD';
+    nodeEl.setAttribute('aria-label', ariaLabel);
     nodeEl.style.touchAction = 'none';
   };
 
@@ -96,7 +106,7 @@
     infoLabel.className = 'node-info-label';
     var titleEl = document.createElement('p');
     titleEl.className = 'node-title';
-    titleEl.textContent = memory.title || '';
+    titleEl.textContent = sanitizeTitle(memory.title, '순간');
     var dateEl = document.createElement('p');
     dateEl.className = 'node-date';
     dateEl.textContent = memory.timestamp || '';

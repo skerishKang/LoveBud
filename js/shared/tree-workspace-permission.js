@@ -69,11 +69,43 @@
 
     function isLocalizationKeyTitle(title) {
         if (!title || typeof title !== 'string') return false;
-        return /^[a-z]+(?:_[a-z]+){2,}$/.test(title);
+        var raw = title.trim();
+        if (!raw) return false;
+        // Underscore-separated legacy keys: editor_url_only_youtube_title
+        if (/^[a-z]+(?:_[a-z]+){2,}$/.test(raw)) return true;
+        // Dot-separated legacy keys: tree.title, memory.content, editor.current.moment
+        if (/^[a-z]+(?:\.[a-z0-9_]+)+$/.test(raw)) return true;
+        return false;
+    }
+
+    function sanitizeDisplayTitle(value, fallback) {
+        if (!value || typeof value !== 'string') {
+            return typeof fallback === 'string' ? fallback : '';
+        }
+        var raw = value.trim();
+        if (!raw) return typeof fallback === 'string' ? fallback : '';
+        if (!isLocalizationKeyTitle(raw)) return value;
+        // Legacy key detected: never expose the raw key.
+        if (typeof fallback === 'string' && fallback) return fallback;
+        // Per-key fallbacks
+        var FALLBACKS = {
+            'editor_url_only_youtube_title': 'YouTube 영상',
+            'editor.current.moment': '지금 마음이 머문 장면',
+            'editor.current.moment.empty': '이 트리의 첫 순간을 심어 보세요'
+        };
+        // Context-agnostic fallbacks for a11y/visible contexts where no caller fallback provided
+        var GENERIC_FALLBACKS = {
+            'tree.title': '순간',
+            'memory.content': '순간',
+            'memory.memo': '순간',
+            'memory.title': '순간'
+        };
+        return FALLBACKS[raw] || GENERIC_FALLBACKS[raw] || '';
     }
 
     window.LoveBudTreeWorkspaceClassifier = {
         classifyDuplicateUrls: classifyDuplicateUrls,
-        isLocalizationKeyTitle: isLocalizationKeyTitle
+        isLocalizationKeyTitle: isLocalizationKeyTitle,
+        sanitizeDisplayTitle: sanitizeDisplayTitle
     };
 })();

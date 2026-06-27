@@ -7,6 +7,11 @@
             var classifier = window.LoveBudTreeWorkspaceClassifier;
             if (classifier && typeof classifier.isLocalizationKeyTitle === 'function'
                 && classifier.isLocalizationKeyTitle(title)) {
+                // Use the classifier's built-in sanitizeDisplayTitle for per-key fallbacks.
+                if (typeof classifier.sanitizeDisplayTitle === 'function') {
+                    var sanitized = classifier.sanitizeDisplayTitle(title, null);
+                    if (sanitized) return sanitized;
+                }
                 return null;
             }
         }
