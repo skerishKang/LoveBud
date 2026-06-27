@@ -1,3 +1,5 @@
+import { validateWritePayload } from '../_shared/legacy-key-guard.js';
+
 function stripTrailingSlash(value) {
   return String(value || '').replace(/\/$/, '');
 }
@@ -107,6 +109,15 @@ export async function onRequestPost(context) {
   const bodyResult = await readBoundedWriteBody(request);
   if (bodyResult.tooLarge) {
     return buildPayloadTooLargeResponse();
+  }
+
+  // Legacy localization key write-boundary guard (#2940)
+  if (bodyResult.body) {
+    try {
+      const payload = JSON.parse(new TextDecoder().decode(bodyResult.body));
+      const guard = validateWritePayload(payload, ['title', 'memo']);
+      if (guard) return guard;
+    } catch (_) { /* non-JSON upstream; skip guard */ }
   }
 
   const modalBaseUrl = stripTrailingSlash(context.env?.MODAL_BASE_URL);
