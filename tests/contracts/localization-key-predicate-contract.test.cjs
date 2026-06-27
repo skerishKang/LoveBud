@@ -76,9 +76,12 @@ test('canonical isLocalizationKeyTitle rejects plain titles', () => {
 
 test('canonical predicate has no redundant indexOf check', () => {
   const source = fs.readFileSync(workspacePermissionFile, 'utf8');
-  const predicateLine = source.match(/return\s*\/\^\[a-z\]\+\(\?:_\[a-z\]\+\)\{2,\}\$\/\.test\(title\)[^;]*;/);
-  assert.ok(predicateLine, 'must find the predicate return statement');
-  assert.doesNotMatch(predicateLine[0], /indexOf/, 'must not contain redundant indexOf check');
+  // The predicate now spans multiple lines (underscore + dot patterns)
+  const predicateBlock = source.match(/function isLocalizationKeyTitle\(title\) \{[\s\S]*?\n\s*\}/);
+  assert.ok(predicateBlock, 'must find the isLocalizationKeyTitle function body');
+  const body = predicateBlock[0];
+  assert.doesNotMatch(body, /indexOf/, 'must not contain redundant indexOf check');
+  assert.match(body, /\[a-z\]/, 'must contain regex-based key detection');
 });
 
 // ── Editor memory form payload delegates to canonical predicate ──

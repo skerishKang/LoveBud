@@ -33,6 +33,15 @@ function createEditorDetailUI(deps) {
         return text;
     };
 
+    // Shared sanitizer for legacy localization key display
+    const sanitizeMomentTitle = (value, fallback) => {
+        const classifier = window.LoveBudTreeWorkspaceClassifier;
+        if (classifier && typeof classifier.sanitizeDisplayTitle === 'function') {
+            return classifier.sanitizeDisplayTitle(value, fallback);
+        }
+        return value || fallback || '';
+    };
+
     const createEditorDetailUIBuilders = window.createEditorDetailUIBuilders;
     const {
         createInlineIcon,
@@ -210,7 +219,9 @@ function createEditorDetailUI(deps) {
             iframe.dataset.editorDetailPlayer = '1';
             iframe.className = 'detail-video-player';
             iframe.src = youtubeEmbedUrl;
-            iframe.title = data && data.title ? data.title : formatI18nText('selected_moment_video', '선택된 순간 영상');
+            iframe.title = data && data.title
+                ? sanitizeMomentTitle(data.title, formatI18nText('selected_moment_video', '선택된 순간 영상'))
+                : formatI18nText('selected_moment_video', '선택된 순간 영상');
             iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share';
             iframe.allowFullscreen = true;
             iframe.referrerPolicy = 'strict-origin-when-cross-origin';
@@ -465,7 +476,7 @@ function createEditorDetailUI(deps) {
 
             const titleText = document.createElement('span');
             titleText.style.flex = '1';
-            titleText.textContent = data.title || formatI18nText('editor_current_moment_title', '지금 마음이 머문 장면');
+            titleText.textContent = sanitizeMomentTitle(data.title, formatI18nText('editor_current_moment_title', '지금 마음이 머문 장면'));
 
             titleContainer.appendChild(titleText);
 
@@ -496,7 +507,7 @@ function createEditorDetailUI(deps) {
             const thumbnail = resolveMemoryThumbnail(data);
             if (thumbnail) {
                 imgEl.src = thumbnail;
-                imgEl.alt = data.title || '';
+                imgEl.alt = sanitizeMomentTitle(data.title, '순간 이미지');
                 imgEl.style.display = '';
                 const overlay = mediaWrap ? mediaWrap.querySelector('.memory-preview-overlay') : null;
                 if (overlay) overlay.hidden = false;
