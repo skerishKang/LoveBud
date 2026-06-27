@@ -443,7 +443,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 updateTreeVisibility,
                 openCurrentMomentDetail,
                 focusSelectedMoment,
-                updateSelectedMemoryFields
+                updateSelectedMemoryFields,
+                canEdit: effectiveCanEdit,
+                openRenameTree: window.openRenameModalForCurrentTree
             });
 
             // Wire the lazy stubs with the real detail UI handlers. The
