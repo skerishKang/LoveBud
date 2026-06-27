@@ -38,3 +38,74 @@ test('login redirect preserves full editor target query', () => {
   const target = context.window.LoveBudEditorPageHelpers.buildEditorRedirectTarget();
   assert.match(target, /editor\?treeId=tree123&memoryId=mem456&mode=edit/);
 });
+
+function extractNavigateToEditor(source) {
+  const match = source.match(/var navigateToEditor = function\(\)\s*\{[\s\S]*?\n\s*\};/);
+  assert.ok(match, 'navigateToEditor function should exist in public-canvas-init.js');
+  return match[0];
+}
+
+function execNavigateToEditor({ pathname, origin, treeId, memoryId }) {
+  const source = loadScript('js/viewer/public-canvas-init.js');
+  const navSource = extractNavigateToEditor(source);
+  const context = {
+    window: {
+      location: {
+        pathname: pathname,
+        origin: origin,
+        href: ''
+      }
+    },
+    treeData: treeId ? { id: treeId } : null,
+    selectionState: {
+      getSelectedNodeId: () => memoryId || ''
+    },
+    encodeURIComponent: encodeURIComponent
+  };
+  const factorySrc = '(function() { ' + navSource + ' return navigateToEditor; })';
+  const factory = vm.runInNewContext(factorySrc, context);
+  const navigateToEditor = factory();
+  navigateToEditor();
+  return context.window.location.href;
+}
+
+test('owner edit target resolves page-relative in /pages/ context', () => {
+  const href = execNavigateToEditor({
+    pathname: '/pages/view',
+    origin: 'https://lovebud.pages.dev',
+    treeId: 'tree123',
+    memoryId: 'mem456'
+  });
+  assert.equal(href, 'editor?treeId=tree123&mode=edit&memoryId=mem456');
+});
+
+test('owner edit target resolves page-relative in root context', () => {
+  const href = execNavigateToEditor({
+    pathname: '/view',
+    origin: 'https://lovebud.pages.dev',
+    treeId: 'tree123',
+    memoryId: 'mem456'
+  });
+  assert.equal(href, 'pages/editor?treeId=tree123&mode=edit&memoryId=mem456');
+});
+
+test('owner edit target is not origin-rooted /editor? form', () => {
+  const source = loadScript('js/viewer/public-canvas-init.js');
+  const navSource = extractNavigateToEditor(source);
+  assert.ok(!/window\.location\.origin\s*\+\s*['"]\/['"]/.test(navSource),
+    'navigateToEditor must not use window.location.origin + "/" prefix');
+  assert.ok(!/\/editor\?/.test(navSource),
+    'navigateToEditor must not target an absolute /editor? route');
+  assert.ok(/basePath\s*\+\s*['"]editor\?['"]/.test(navSource),
+    'navigateToEditor must use page-relative basePath + "editor?" form');
+});
+
+test('owner edit target omits memoryId when none selected', () => {
+  const href = execNavigateToEditor({
+    pathname: '/pages/view',
+    origin: 'https://lovebud.pages.dev',
+    treeId: 'tree123',
+    memoryId: ''
+  });
+  assert.equal(href, 'editor?treeId=tree123&mode=edit');
+});
