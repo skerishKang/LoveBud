@@ -8,6 +8,18 @@ const ROOT = path.resolve(__dirname, '..', '..');
 const editorDetailUIFile = path.join(ROOT, 'js/editor/editor-detail-ui.js');
 const publicViewerDetailUIFile = path.join(ROOT, 'js/viewer/public-viewer-detail-ui.js');
 
+// ── Dead code guard: no player.play() in either file ──
+
+test('editor-detail-ui must not contain player.play() dead code', () => {
+  const source = fs.readFileSync(editorDetailUIFile, 'utf8');
+  assert.doesNotMatch(source, /player\.play\s*\(/, 'player.play() is dead code — appending iframe with autoplay=1 starts playback');
+});
+
+test('public-viewer-detail-ui must not contain player.play() dead code', () => {
+  const source = fs.readFileSync(publicViewerDetailUIFile, 'utf8');
+  assert.doesNotMatch(source, /player\.play\s*\(/, 'player.play() is dead code — appending iframe with autoplay=1 starts playback');
+});
+
 function createMockElement(tagName = 'div') {
   const classList = {
     classes: new Set(),

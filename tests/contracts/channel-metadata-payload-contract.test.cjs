@@ -30,6 +30,7 @@ function createPayloadContext(url, options = {}) {
   };
   vm.createContext(context);
   vm.runInContext(fs.readFileSync(path.join(ROOT, 'js/utils/media.js'), 'utf8'), context);
+  vm.runInContext(fs.readFileSync(path.join(ROOT, 'js/shared/tree-workspace-permission.js'), 'utf8'), context);
   vm.runInContext(fs.readFileSync(path.join(ROOT, 'js/editor/editor-memory-form-payload.js'), 'utf8'), context);
 
   return context.window.LoveBudEditorMemoryFormPayload.buildMemoryPayload({
