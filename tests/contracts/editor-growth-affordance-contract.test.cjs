@@ -422,3 +422,148 @@ test('.editor-flow-summary strong overrides .editor-status-card strong (1.42rem)
   assert.doesNotMatch(block, /font-size\s*:\s*1\.\d+rem/,
     '.editor-flow-summary strong must not use rem-based title sizing');
 });
+
+// ── #2856: bubbles-off compact CTA contract ──────────────────────────────────
+
+test('bubbles-off selector does not hide the entire CTA (no display:none on .affordance-tooltip-bubble)', () => {
+  const cssSource = fs.readFileSync(
+    path.join(ROOT, 'css/editor/editor-canvas-affordance.css'), 'utf8'
+  );
+
+  // The selector body.editor-view-hide-bubbles .memory-add-affordance.affordance-tooltip-bubble
+  // must NOT set display: none on the CTA button itself.
+  const hideBubblesRule = (
+    cssSource.match(
+      /body\.editor-view-hide-bubbles\s+\.memory-add-affordance\.affordance-tooltip-bubble\s*\{([^}]*)\}/
+    ) || ['', '']
+  )[1];
+
+  assert.ok(hideBubblesRule.length > 0,
+    'bubbles-off override rule for .affordance-tooltip-bubble must exist');
+  assert.doesNotMatch(hideBubblesRule, /display\s*:\s*none/,
+    'bubbles-off must NOT hide the entire CTA with display:none');
+  assert.doesNotMatch(hideBubblesRule, /pointer-events\s*:\s*none/,
+    'bubbles-off must NOT disable pointer-events on the CTA');
+});
+
+test('bubbles-off selector preserves compact circle dimensions (36px)', () => {
+  const cssSource = fs.readFileSync(
+    path.join(ROOT, 'css/editor/editor-canvas-affordance.css'), 'utf8'
+  );
+
+  const hideBubblesRule = (
+    cssSource.match(
+      /body\.editor-view-hide-bubbles\s+\.memory-add-affordance\.affordance-tooltip-bubble\s*\{([^}]*)\}/
+    ) || ['', '']
+  )[1];
+
+  assert.match(hideBubblesRule, /width\s*:\s*36px/,
+    'bubbles-off must enforce width: 36px on the CTA');
+  assert.match(hideBubblesRule, /min-width\s*:\s*36px/,
+    'bubbles-off must enforce min-width: 36px on the CTA');
+  assert.match(hideBubblesRule, /height\s*:\s*36px/,
+    'bubbles-off must enforce height: 36px on the CTA');
+  assert.match(hideBubblesRule, /min-height\s*:\s*36px/,
+    'bubbles-off must enforce min-height: 36px on the CTA');
+});
+
+test('bubbles-off selector preserves circle appearance (border-radius 50%, padding 0, justify-content center)', () => {
+  const cssSource = fs.readFileSync(
+    path.join(ROOT, 'css/editor/editor-canvas-affordance.css'), 'utf8'
+  );
+
+  const hideBubblesRule = (
+    cssSource.match(
+      /body\.editor-view-hide-bubbles\s+\.memory-add-affordance\.affordance-tooltip-bubble\s*\{([^}]*)\}/
+    ) || ['', '']
+  )[1];
+
+  assert.match(hideBubblesRule, /border-radius\s*:\s*50%/,
+    'bubbles-off must enforce border-radius: 50% for circular CTA');
+  assert.match(hideBubblesRule, /padding\s*:\s*0/,
+    'bubbles-off must enforce padding: 0 on the CTA');
+  assert.match(hideBubblesRule, /justify-content\s*:\s*center/,
+    'bubbles-off must enforce justify-content: center to center the + icon');
+});
+
+test('bubbles-off hides only .affordance-tip-text via display:none', () => {
+  const cssSource = fs.readFileSync(
+    path.join(ROOT, 'css/editor/editor-canvas-affordance.css'), 'utf8'
+  );
+
+  const textHideRule = (
+    cssSource.match(
+      /body\.editor-view-hide-bubbles\s+\.memory-add-affordance\.affordance-tooltip-bubble\s+\.affordance-tip-text\s*\{([^}]*)\}/
+    ) || ['', '']
+  )[1];
+
+  assert.ok(textHideRule.length > 0,
+    'bubbles-off rule for .affordance-tip-text must exist');
+  assert.match(textHideRule, /display\s*:\s*none/,
+    'bubbles-off must hide .affordance-tip-text with display:none');
+});
+
+test('bubbles-off preserves compact CTA on hover (affordance-expanded does not expand)', () => {
+  const cssSource = fs.readFileSync(
+    path.join(ROOT, 'css/editor/editor-canvas-affordance.css'), 'utf8'
+  );
+
+  const hoverRule = (
+    cssSource.match(
+      /body\.editor-view-hide-bubbles\s+\.memory-add-affordance\.affordance-tooltip-bubble\.affordance-expanded\s*\{([^}]*)\}/
+    ) || ['', '']
+  )[1];
+
+  assert.ok(hoverRule.length > 0,
+    'bubbles-off hover override for .affordance-expanded must exist');
+  // Dimensions must stay compact on hover
+  assert.match(hoverRule, /width\s*:\s*36px/,
+    'bubbles-off hover must keep width: 36px');
+  assert.match(hoverRule, /height\s*:\s*36px/,
+    'bubbles-off hover must keep height: 36px');
+  assert.match(hoverRule, /border-radius\s*:\s*50%/,
+    'bubbles-off hover must keep border-radius: 50%');
+  // Only transform/shadow feedback allowed
+  assert.match(hoverRule, /transform/,
+    'bubbles-off hover must use transform for feedback');
+  assert.doesNotMatch(hoverRule, /width\s*:\s*188px/,
+    'bubbles-off hover must NOT expand to bubble width');
+  assert.doesNotMatch(hoverRule, /height\s*:\s*60px/,
+    'bubbles-off hover must NOT expand to bubble height');
+  assert.doesNotMatch(hoverRule, /padding\s*:\s*10px/,
+    'bubbles-off hover must NOT restore bubble padding');
+});
+
+test('final pill default state and opacity/transform-only transition contract maintained', () => {
+  const cssSource = fs.readFileSync(
+    path.join(ROOT, 'css/editor/editor-canvas-affordance.css'), 'utf8'
+  );
+
+  // Base button rule (final pill form)
+  const baseRule = (cssSource.match(/\.memory-add-affordance\s*\{([^}]*)\}/) || ['', ''])[1];
+  assert.ok(baseRule.length > 0, '.memory-add-affordance base rule must exist');
+  assert.match(baseRule, /width\s*:\s*var\(--affordance-bubble-width/,
+    'base CTA must use final bubble width from CSS variable');
+  assert.match(baseRule, /height\s*:\s*var\(--affordance-bubble-min-height/,
+    'base CTA must use final bubble height from CSS variable');
+  assert.match(baseRule, /border-radius\s*:\s*999px/,
+    'base CTA must have pill border-radius');
+  assert.match(baseRule, /transition\s*:[^;]*\bopacity\b/,
+    'base CTA must transition opacity');
+  assert.match(baseRule, /transition\s*:[^;]*\btransform\b/,
+    'base CTA must transition transform');
+  // Transition must NOT include width/height/padding/min-width/min-height
+  const transitionDecl = baseRule.match(/transition\s*:\s*([^;]+)/);
+  assert.ok(transitionDecl, 'transition declaration must exist');
+  const transitionValue = transitionDecl[1];
+  assert.doesNotMatch(transitionValue, /\bwidth\b/,
+    'transition must not include width');
+  assert.doesNotMatch(transitionValue, /\bheight\b/,
+    'transition must not include height');
+  assert.doesNotMatch(transitionValue, /\bpadding\b/,
+    'transition must not include padding');
+  assert.doesNotMatch(transitionValue, /\bmin-width\b/,
+    'transition must not include min-width');
+  assert.doesNotMatch(transitionValue, /\bmin-height\b/,
+    'transition must not include min-height');
+});

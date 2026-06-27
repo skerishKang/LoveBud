@@ -1,3 +1,20 @@
+/*
+ * Editor Canvas Growth Affordance
+ *
+ * Creates the "+" affordance button on the editor canvas for adding new moments.
+ *
+ * Current contract (stabilized in PR #2806 + #2856):
+ * - The CTA is always rendered in its final pill form from creation.
+ * - Hover/focus adds .affordance-expanded class for transform/shadow feedback only —
+ *   no width/height/padding/size change occurs.
+ * - In bubbles-off mode (body.editor-view-hide-bubbles), only the text wrapper
+ *   (.affordance-tip-text) is hidden via CSS. The compact circular CTA (+ button)
+ *   remains visible and clickable at 36px with border-radius: 50%.
+ * - Appearance animation uses only opacity and transform (no width/height transition).
+ * - Interaction lock (is-interacting / affordance-interaction-locked) prevents
+ *   node-hover movement while the user interacts with the affordance.
+ */
+
 function createEditorCanvasGrowthAffordance(deps) {
     const {
         canvas,
@@ -370,9 +387,9 @@ function createEditorCanvasGrowthAffordance(deps) {
             lockMovement();
             if (bubbleExpanded) return;
             bubbleExpanded = true;
-            // CSS (.affordance-expanded) owns all box-model + appearance
-            // transitions; textWrap visibility is controlled by opacity +
-            // visibility + max-width with a delay so the button grows first.
+            // CSS (.affordance-expanded) owns transform/shadow feedback for hover.
+            // No size/layout change occurs — the CTA is always in its final pill form.
+            // Text wrapper (.affordance-tip-text) is always visible in normal mode.
             button.classList.add('affordance-expanded');
             button.setAttribute('aria-expanded', 'true');
         }
@@ -384,7 +401,7 @@ function createEditorCanvasGrowthAffordance(deps) {
             }
             bubbleExpanded = false;
             // CSS (.memory-add-affordance without .affordance-expanded) restores
-            // the collapsed state.
+            // the default pill appearance (no collapsed circle state).
             button.classList.remove('affordance-expanded');
             button.setAttribute('aria-expanded', 'false');
             unlockMovementSoon(160);

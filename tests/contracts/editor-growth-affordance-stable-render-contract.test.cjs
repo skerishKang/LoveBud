@@ -177,3 +177,90 @@ test('CTA is stable: no intermediate image or stretch state', () => {
   );
   assert.ok(buttonEl, 'CTA button should be appended in stable final form');
 });
+
+// ── #2856: bubbles-off compact CTA preservation contract ─────────────────────
+
+test('bubbles-off does not use display:none on the CTA button (#2856 compact CTA)', () => {
+  const hideBubblesRule = (
+    cssSource.match(
+      /body\.editor-view-hide-bubbles\s+\.memory-add-affordance\.affordance-tooltip-bubble\s*\{([^}]*)\}/
+    ) || ['', '']
+  )[1];
+
+  assert.ok(hideBubblesRule.length > 0,
+    'bubbles-off override rule must exist');
+  assert.doesNotMatch(hideBubblesRule, /display\s*:\s*none/,
+    'bubbles-off must NOT hide the entire CTA with display:none');
+  assert.doesNotMatch(hideBubblesRule, /pointer-events\s*:\s*none/,
+    'bubbles-off must NOT disable pointer-events');
+});
+
+test('bubbles-off enforces compact circle size 36px (#2856 compact CTA)', () => {
+  const hideBubblesRule = (
+    cssSource.match(
+      /body\.editor-view-hide-bubbles\s+\.memory-add-affordance\.affordance-tooltip-bubble\s*\{([^}]*)\}/
+    ) || ['', '']
+  )[1];
+
+  assert.match(hideBubblesRule, /width\s*:\s*36px/,
+    'bubbles-off must set width: 36px');
+  assert.match(hideBubblesRule, /min-width\s*:\s*36px/,
+    'bubbles-off must set min-width: 36px');
+  assert.match(hideBubblesRule, /height\s*:\s*36px/,
+    'bubbles-off must set height: 36px');
+  assert.match(hideBubblesRule, /min-height\s*:\s*36px/,
+    'bubbles-off must set min-height: 36px');
+});
+
+test('bubbles-off enforces circle shape and centering (#2856 compact CTA)', () => {
+  const hideBubblesRule = (
+    cssSource.match(
+      /body\.editor-view-hide-bubbles\s+\.memory-add-affordance\.affordance-tooltip-bubble\s*\{([^}]*)\}/
+    ) || ['', '']
+  )[1];
+
+  assert.match(hideBubblesRule, /border-radius\s*:\s*50%/,
+    'bubbles-off must set border-radius: 50%');
+  assert.match(hideBubblesRule, /padding\s*:\s*0/,
+    'bubbles-off must set padding: 0');
+  assert.match(hideBubblesRule, /justify-content\s*:\s*center/,
+    'bubbles-off must set justify-content: center');
+});
+
+test('bubbles-off hides only .affordance-tip-text (#2856 compact CTA)', () => {
+  const textHideRule = (
+    cssSource.match(
+      /body\.editor-view-hide-bubbles\s+\.memory-add-affordance\.affordance-tooltip-bubble\s+\.affordance-tip-text\s*\{([^}]*)\}/
+    ) || ['', '']
+  )[1];
+
+  assert.ok(textHideRule.length > 0,
+    'bubbles-off rule for .affordance-tip-text must exist');
+  assert.match(textHideRule, /display\s*:\s*none/,
+    'bubbles-off must hide .affordance-tip-text with display:none');
+});
+
+test('bubbles-off keeps CTA compact even with affordance-expanded hover class (#2856 compact CTA)', () => {
+  const hoverRule = (
+    cssSource.match(
+      /body\.editor-view-hide-bubbles\s+\.memory-add-affordance\.affordance-tooltip-bubble\.affordance-expanded\s*\{([^}]*)\}/
+    ) || ['', '']
+  )[1];
+
+  assert.ok(hoverRule.length > 0,
+    'bubbles-off hover override must exist');
+  assert.match(hoverRule, /width\s*:\s*36px/,
+    'hover must keep width: 36px in bubbles-off');
+  assert.match(hoverRule, /height\s*:\s*36px/,
+    'hover must keep height: 36px in bubbles-off');
+  assert.match(hoverRule, /border-radius\s*:\s*50%/,
+    'hover must keep border-radius: 50% in bubbles-off');
+  assert.match(hoverRule, /padding\s*:\s*0/,
+    'hover must keep padding: 0 in bubbles-off');
+  assert.match(hoverRule, /transform/,
+    'hover must use transform feedback only');
+  assert.doesNotMatch(hoverRule, /width\s*:\s*188px/,
+    'hover must NOT expand to full bubble width');
+  assert.doesNotMatch(hoverRule, /height\s*:\s*60px/,
+    'hover must NOT expand to full bubble height');
+});
