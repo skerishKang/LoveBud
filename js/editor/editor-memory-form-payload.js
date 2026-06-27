@@ -103,9 +103,13 @@
 
     function isLocalizationKey(value) {
         if (!value || typeof value !== 'string') return false;
-        // Pattern: lowercase segments separated by underscores, at least 3 segments
-        // e.g. editor_url_only_youtube_title, viewer_tree_title
-        return /^[a-z]+(?:_[a-z]+){2,}$/.test(value) && value.indexOf('_') !== -1;
+        // Delegate to the canonical predicate shared across editor and viewer.
+        // If the classifier module is not yet loaded, return false safely
+        // so the caller's fallback semantics (e.g. 'YouTube 영상') apply.
+        var classifier = window.LoveBudTreeWorkspaceClassifier;
+        return !!classifier
+            && typeof classifier.isLocalizationKeyTitle === 'function'
+            && classifier.isLocalizationKeyTitle(value);
     }
 
     function resolveUrlOnlyDefaultTitle(mediaSource, i18n) {
@@ -113,8 +117,11 @@
         const sourceLabel = String(mediaSource?.sourceLabel || '').trim();
 
         if (sourceType === 'youtube' || /youtube/i.test(sourceLabel)) {
-            const resolved = typeof i18n === 'function' ? i18n('editor_url_only_youtube_title') : null;
-            if (resolved && !isLocalizationKey(resolved)) return resolved;
+            var key = 'editor_url_only_youtube_title';
+            const resolved = typeof i18n === 'function' ? i18n(key) : null;
+            // Accept a real translation: must differ from the requested key,
+            // and must not be a raw localization key (classifier guard).
+            if (resolved && resolved !== key && !isLocalizationKey(resolved)) return resolved;
             return 'YouTube 영상';
         }
 
@@ -122,8 +129,9 @@
             return sourceLabel + ' 순간';
         }
 
-        const resolved = typeof i18n === 'function' ? i18n('editor_url_only_default_title') : null;
-        if (resolved && !isLocalizationKey(resolved)) return resolved;
+        var key = 'editor_url_only_default_title';
+        const resolved = typeof i18n === 'function' ? i18n(key) : null;
+        if (resolved && resolved !== key && !isLocalizationKey(resolved)) return resolved;
         return '새 순간';
     }
 

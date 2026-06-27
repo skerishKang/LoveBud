@@ -69,7 +69,7 @@
 
     function isLocalizationKeyTitle(title) {
         if (!title || typeof title !== 'string') return false;
-        return /^[a-z]+(?:_[a-z]+){2,}$/.test(title) && title.indexOf('_') !== -1;
+        return /^[a-z]+(?:_[a-z]+){2,}$/.test(title);
     }
 
     window.LoveBudTreeWorkspaceClassifier = {

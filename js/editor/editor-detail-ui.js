@@ -239,9 +239,6 @@ function createEditorDetailUI(deps) {
             if (overlay) overlay.hidden = true;
             mediaWrap.classList.add('is-playing');
             mediaWrap.appendChild(player);
-            if (typeof player.play === 'function') {
-                player.play().catch(() => {});
-            }
         };
     };
 

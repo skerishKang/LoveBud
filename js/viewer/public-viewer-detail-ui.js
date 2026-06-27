@@ -3,8 +3,12 @@
 
     function safeDisplayTitle(title) {
         if (!title) return title;
-        if (typeof title === 'string' && /^[a-z]+(?:_[a-z]+){2,}$/.test(title) && title.indexOf('_') !== -1) {
-            return null;
+        if (typeof title === 'string') {
+            var classifier = window.LoveBudTreeWorkspaceClassifier;
+            if (classifier && typeof classifier.isLocalizationKeyTitle === 'function'
+                && classifier.isLocalizationKeyTitle(title)) {
+                return null;
+            }
         }
         return title;
     }
@@ -333,9 +337,6 @@
                 if (overlay) overlay.hidden = true;
                 mediaWrap.classList.add('is-playing');
                 mediaWrap.appendChild(player);
-                if (typeof player.play === 'function') {
-                    player.play().catch(function() {});
-                }
             };
         };
 
