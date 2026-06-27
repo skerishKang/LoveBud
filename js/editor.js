@@ -231,30 +231,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 applyEditorEditabilityState({ canEdit: effectiveCanEdit });
             }
 
-            if (
-                loadedTreeData &&
-                !loadedTreeData._editorAuthEditabilityCallbackRegistered &&
-                typeof window.registerOnAuthReady === 'function'
-            ) {
-                loadedTreeData._editorAuthEditabilityCallbackRegistered = true;
-                window.registerOnAuthReady(function(authUser) {
-                    var activeTree = window.currentTreeData || loadedTreeData;
-                    if (!activeTree || activeTree.id !== treeId) return;
-
-                    var canEditNow = window.LoveBudTreeWorkspacePermission
-                        ? window.LoveBudTreeWorkspacePermission.resolveTreeWorkspaceCanEdit(activeTree)
-                        : false;
-
-                    if (!canEditNow) {
-                        // Logout or switch account where permission is lost -> do full exit/reload
-                        var myTreesHref = typeof deps.getMyTreesHref === 'function'
-                            ? deps.getMyTreesHref()
-                            : 'my-trees';
-                        window.location.href = myTreesHref;
-                    }
-                });
-            }
-
             const normalizeMemory = initialLoadResult.normalizeMemory;
             const treeMemories = initialLoadResult.treeMemories;
 
