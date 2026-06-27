@@ -17,7 +17,9 @@ function createEditorDetailUI(deps) {
         updateTreeVisibility,
         openCurrentMomentDetail,
         focusSelectedMoment,
-        updateSelectedMemoryFields
+        updateSelectedMemoryFields,
+        canEdit,
+        openRenameTree
     } = deps;
 
     const formatI18nText = (key, fallback, replacements) => {
@@ -49,7 +51,11 @@ function createEditorDetailUI(deps) {
         resolveTreeTitleText,
         createInlineIcon,
         showToast,
-        openCurrentMomentDetail
+        openCurrentMomentDetail,
+        canEdit,
+        openRenameTree,
+        updateTreeVisibility,
+        updateDetailPanel: () => updateDetailPanel
     });
     const { buildTreeMetaRenderModel, renderTreeMetaBoundary } = treeMetaBoundary;
 

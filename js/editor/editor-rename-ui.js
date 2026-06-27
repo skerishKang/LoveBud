@@ -248,15 +248,21 @@
     return Promise.resolve(win.currentTreeData);
   }
 
-  function openRenameModalForButton(buttonEl) {
+  function openRenameModalForCurrentTree(options) {
+    options = options || {};
     const win = getWindowRef();
     const doc = getDocumentRef();
     const i18n = getEditorRenameI18n(win);
     const currentTree = win && win.currentTreeData ? Object.assign({}, win.currentTreeData) : {};
     const treeId = getTreeId(currentTree, win);
-    if (!treeId) {
-      showToast(win, i18n, renameText(i18n, 'rename_tree_missing', '트리 정보를 찾을 수 없습니다'), 'error');
-      return;
+
+    if (options.canEdit === false || !treeId) {
+      if (options.canEdit === false && treeId) {
+        // Silently fail or handle per requirements; here we just return null as requested.
+      } else if (!treeId) {
+        showToast(win, i18n, renameText(i18n, 'rename_tree_missing', '트리 정보를 찾을 수 없습니다'), 'error');
+      }
+      return null;
     }
 
     const currentTitle = currentTree.title || renameText(i18n, 'lovetree_brand', '러브트리');
@@ -267,7 +273,12 @@
         getCurrentTitle: function() { return currentTitle; },
         getI18n: function() { return i18n; },
         saveTitle: function(nextTitle) {
-          return saveEditorTreeTitle(win, currentTree, treeId, nextTitle);
+          return saveEditorTreeTitle(win, currentTree, treeId, nextTitle).then(function(updatedTree) {
+            if (typeof options.onSaved === 'function') {
+              options.onSaved(updatedTree);
+            }
+            return updatedTree;
+          });
         },
         reportError: function(error) {
           console.error('[editor] rename tree failed:', error);
@@ -280,7 +291,12 @@
         getCurrentTitle: function() { return currentTitle; },
         getI18n: function() { return i18n; },
         saveTitle: function(nextTitle) {
-          return saveEditorTreeTitle(win, currentTree, treeId, nextTitle);
+          return saveEditorTreeTitle(win, currentTree, treeId, nextTitle).then(function(updatedTree) {
+            if (typeof options.onSaved === 'function') {
+              options.onSaved(updatedTree);
+            }
+            return updatedTree;
+          });
         },
         reportError: function(error) {
           console.error('[editor] rename tree failed:', error);
@@ -289,6 +305,13 @@
       });
 
     controller.open({ currentTitle: currentTitle, i18n: i18n });
+    return controller;
+  }
+
+  function openRenameModalForButton(buttonEl) {
+    openRenameModalForCurrentTree({
+      triggerEl: buttonEl
+    });
   }
 
   function bindEditorRenameButton(buttonEl, canEdit) {
@@ -316,6 +339,7 @@
 
   const api = {
     createRenameModalController: createRenameModalController,
+    openRenameModalForCurrentTree: openRenameModalForCurrentTree,
     syncEditorTreeTitle: syncEditorTreeTitle,
     bindEditorRenameButton: bindEditorRenameButton,
     injectEditorRenameButton: injectEditorRenameButton
@@ -324,6 +348,7 @@
   const win = getWindowRef();
   if (win) {
     win.LoveBudEditorRenameModal = api;
+    win.openRenameModalForCurrentTree = openRenameModalForCurrentTree;
     win.syncEditorTreeTitle = syncEditorTreeTitle;
     win.bindEditorRenameButton = bindEditorRenameButton;
     win.injectEditorRenameButton = injectEditorRenameButton;

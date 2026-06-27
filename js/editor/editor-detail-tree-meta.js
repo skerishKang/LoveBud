@@ -6,8 +6,15 @@
             resolveTreeTitleText,
             createInlineIcon,
             showToast,
-            openCurrentMomentDetail
+            openCurrentMomentDetail,
+            canEdit,
+            openRenameTree,
+            updateTreeVisibility,
+            updateDetailPanel
         } = deps;
+
+        const PENDING_LABEL = '상태 변경 중...';
+        const PENDING_ICON = 'hourglass_empty';
 
         const createPillButton = ({ label, icon, tone = 'soft' }) => {
             const btn = document.createElement('button');
@@ -66,6 +73,125 @@
             tone: 'ghost'
         });
 
+        const createOwnerActionBtn = ({ label, icon }) => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.style.display = 'inline-flex';
+            btn.style.alignItems = 'center';
+            btn.style.justifyContent = 'center';
+            btn.style.gap = '6px';
+            btn.style.minHeight = '38px';
+            btn.style.padding = '9px 13px';
+            btn.style.borderRadius = '999px';
+            btn.style.fontSize = '12px';
+            btn.style.fontWeight = '800';
+            btn.style.cursor = 'pointer';
+            btn.style.transition = 'transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease, border-color 0.18s ease';
+            btn.style.border = '1px solid rgba(144,73,81,0.10)';
+            btn.style.boxShadow = '0 6px 16px rgba(75, 64, 57, 0.06)';
+            btn.style.background = 'linear-gradient(180deg, rgba(255,255,255,0.98), rgba(247,242,239,0.96))';
+            btn.style.color = 'var(--primary)';
+
+            // Create identifiable icon element
+            const iconEl = document.createElement('span');
+            iconEl.className = 'material-symbols-outlined';
+            iconEl.dataset.ownerActionIcon = '1';
+            iconEl.style.fontSize = '14px';
+            iconEl.textContent = icon;
+            btn.appendChild(iconEl);
+
+            // Create identifiable label element
+            const labelEl = document.createElement('span');
+            labelEl.dataset.ownerActionLabel = '1';
+            labelEl.textContent = label;
+            btn.appendChild(labelEl);
+
+            btn.addEventListener('mouseenter', () => {
+                btn.style.transform = 'translateY(-1px)';
+            });
+            btn.addEventListener('mouseleave', () => {
+                btn.style.transform = 'translateY(0)';
+            });
+
+            btn._iconEl = iconEl;
+            btn._labelEl = labelEl;
+
+            return btn;
+        };
+
+        const createOwnerActionButtons = (isPublic, onRenameSaved) => {
+            const nextVis = isPublic ? 'private' : 'public';
+            const visLabel = isPublic
+                ? formatI18nText('make_private', '비공개로 전환')
+                : formatI18nText('make_public', '공개로 전환');
+            const visIcon = isPublic ? 'lock' : 'public';
+
+            const renameBtn = createOwnerActionBtn({
+                label: formatI18nText('rename_tree', '이름 바꾸기'),
+                icon: 'edit'
+            });
+            renameBtn.addEventListener('click', () => {
+                if (typeof openRenameTree !== 'function') return;
+                openRenameTree({
+                    canEdit: canEdit,
+                    triggerEl: renameBtn,
+                    onSaved: onRenameSaved
+                });
+            });
+
+            const visBtn = createOwnerActionBtn({
+                label: visLabel,
+                icon: visIcon
+            });
+
+            visBtn.dataset.origVisIcon = visIcon;
+            visBtn.dataset.origVisLabel = visLabel;
+
+            visBtn.addEventListener('click', async () => {
+                if (typeof updateTreeVisibility !== 'function') return;
+
+                // Apply pending state using reliable element references
+                visBtn.disabled = true;
+                visBtn.setAttribute('aria-busy', 'true');
+                visBtn.style.opacity = '0.65';
+                visBtn.style.pointerEvents = 'none';
+
+                if (visBtn._iconEl) {
+                    visBtn._iconEl.textContent = PENDING_ICON;
+                }
+                if (visBtn._labelEl) {
+                    visBtn._labelEl.textContent = PENDING_LABEL;
+                }
+
+                try {
+                    await updateTreeVisibility(nextVis);
+                } catch (error) {
+                    console.error('[editor] visibility toggle failed:', error);
+                    if (typeof showToast === 'function') {
+                        showToast(
+                            formatI18nText('visibility_toggle_error', '공개 상태를 바꾸지 못했어요.'),
+                            'error'
+                        );
+                    }
+                } finally {
+                    visBtn.disabled = false;
+                    visBtn.setAttribute('aria-busy', 'false');
+                    visBtn.style.opacity = '';
+                    visBtn.style.pointerEvents = '';
+
+                    // Restore original icon and label from data attributes
+                    if (visBtn._iconEl) {
+                        visBtn._iconEl.textContent = visBtn.dataset.origVisIcon || visIcon;
+                    }
+                    if (visBtn._labelEl) {
+                        visBtn._labelEl.textContent = visBtn.dataset.origVisLabel || visLabel;
+                    }
+                }
+            });
+
+            return [renameBtn, visBtn];
+        };
+
         const bindShareButton = ({ btn, data, treeId }) => {
             if (!btn || !data?.id) return;
             if (btn.dataset.shareBound === '1') return;
@@ -100,7 +226,8 @@
             isPublic,
             countLabel,
             shareButtonEl = null,
-            openDetailButtonEl = null
+            openDetailButtonEl = null,
+            onRenameSaved = null
         }) => {
             const wrap = document.createElement('div');
             wrap.style.padding = '20px 20px 18px';
@@ -193,6 +320,11 @@
 
             if (shareButtonEl) actionsRow.appendChild(shareButtonEl);
             if (openDetailButtonEl) actionsRow.appendChild(openDetailButtonEl);
+            if (canEdit === true) {
+                const [renameBtn, visBtn] = createOwnerActionButtons(isPublic, onRenameSaved);
+                actionsRow.appendChild(renameBtn);
+                actionsRow.appendChild(visBtn);
+            }
 
             if (actionsRow.children.length > 0) {
                 wrap.appendChild(actionsRow);
@@ -246,6 +378,16 @@
         const renderTreeMetaBoundary = (treeMetaMount, model, treeId, data) => {
             if (!treeMetaMount) return;
 
+            // Build onRenameSaved callback that captures data via closure
+            const onRenameSaved = function(updatedTree) {
+                const rerender = typeof updateDetailPanel === 'function'
+                    ? updateDetailPanel()
+                    : null;
+                if (typeof rerender === 'function') {
+                    rerender(data);
+                }
+            };
+
             treeMetaMount.innerHTML = '';
             treeMetaMount.appendChild(createTreeMetaBlock({
                 displayTreeTitle: model.displayTreeTitle,
@@ -255,7 +397,8 @@
                 isPublic: model.isPublic,
                 countLabel: model.countLabel,
                 shareButtonEl: model.shareButtonEl,
-                openDetailButtonEl: model.openDetailButtonEl
+                openDetailButtonEl: model.openDetailButtonEl,
+                onRenameSaved: onRenameSaved
             }));
 
             if (model.shareBtn) {
