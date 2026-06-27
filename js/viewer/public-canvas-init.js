@@ -469,7 +469,7 @@
                 if (selectedMemoryId) {
                     params += '&memoryId=' + encodeURIComponent(selectedMemoryId);
                 }
-                window.location.href = window.location.origin + '/' + basePath + 'editor?' + params;
+                window.location.href = basePath + 'editor?' + params;
             };
 
             var handlerKey = '_lovebudEditClick';
