@@ -101,8 +101,16 @@
     var logger = (options && options.logger) || console;
 
     var redirectTarget = typeof getRedirectTargetFn === 'function' ? getRedirectTargetFn() : '';
-    var isEditorTarget = redirectTarget.indexOf('editor.html') !== -1;
-    var isMyTreesTarget = redirectTarget.indexOf('my-trees.html') !== -1;
+
+    function matchRedirect(routeName) {
+      if (redirectTarget.indexOf(routeName + '.html') !== -1) return true;
+      var path = '/pages/' + routeName;
+      return redirectTarget === path ||
+             redirectTarget.indexOf(path + '?') === 0 ||
+             redirectTarget.indexOf(path + '#') === 0;
+    }
+    var isEditorTarget = matchRedirect('editor');
+    var isMyTreesTarget = matchRedirect('my-trees');
 
     try {
       if (apiClient && apiClient.getTrees) {

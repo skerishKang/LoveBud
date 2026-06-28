@@ -395,3 +395,88 @@ test('getRedirectTarget canonicalizes legacy routes, preserves pages paths, and 
   // No params → default fallback
   assert.equal(runWithParams(''), 'my-trees.html');
 });
+
+test('signInWithGoogle success popup sets canonical href and activates editor preload with canonical redirect', async () => {
+  const vm = require('node:vm');
+  const sessionSource = readRepoFile('js/auth/auth-session.js');
+  const firebaseSource = readRepoFile('js/auth/auth-firebase.js');
+
+  async function runSignInFlow(search) {
+    const store = {};
+    const sandbox = {
+      Object, Array, String, Number, Boolean, Promise, JSON, Math, Date, RegExp,
+      Error, TypeError, RangeError, parseInt, parseFloat, isNaN,
+      setTimeout, clearTimeout, setInterval, clearInterval, decodeURIComponent,
+      URL, URLSearchParams, console,
+      alert: function () {},
+      navigator: { userAgent: 'Mozilla/5.0' },
+      localStorage: {
+        getItem: function (k) { return store[k] || null; },
+        setItem: function (k, v) { store[k] = String(v); },
+        removeItem: function (k) { delete store[k]; },
+      },
+      window: {
+        location: { search: search || '', origin: 'http://localhost', href: '' },
+        self: null,
+        top: null,
+      },
+      firebase: {
+        apps: ['mock-app'],
+        auth: Object.assign(
+          function () {
+            return { signInWithPopup: async function () { return { user: { uid: 'test-uid' } }; } };
+          },
+          { GoogleAuthProvider: function GoogleAuthProvider() {} }
+        ),
+      },
+    };
+    sandbox.window.self = sandbox.window;
+    sandbox.window.top = sandbox.window;
+
+    const ctx = vm.createContext(sandbox);
+    vm.runInContext(sessionSource, ctx);
+    vm.runInContext(firebaseSource, ctx);
+
+    const preloadCalls = [];
+
+    await ctx.window.LoveBudAuthFirebase.signInWithGoogle({
+      getEnvironmentCheckError: function () { return null; },
+      isLoginPage: function () { return false; },
+      persistConfirmedAuthSession: async function () {},
+      preloadRedirectTargetData: function () {
+        preloadCalls.push('preload-called');
+        ctx.window.LoveBudAuthSession.preloadRedirectTargetData({
+          getRedirectTarget: function () {
+            return ctx.window.LoveBudAuthSession.getRedirectTarget();
+          },
+          apiClient: {
+            getTrees: async function () { return [{ id: 'tree-1' }]; },
+            getTree: async function (id) { preloadCalls.push('getTree:' + id); return { id: id }; },
+            getMemoriesByTree: async function () { preloadCalls.push('getMemoriesByTree'); return []; },
+          },
+        });
+      },
+      getRedirectTarget: function () {
+        return ctx.window.LoveBudAuthSession.getRedirectTarget();
+      },
+    });
+
+    // Allow async preload chain (getTrees → getTree) to complete
+    await new Promise(function (resolve) { setTimeout(resolve, 10); });
+
+    return {
+      href: ctx.window.location.href,
+      preloadCalls: preloadCalls,
+    };
+  }
+
+  // bare redirect → canonical href
+  var r1 = await runSignInFlow('?redirect=my-trees');
+  assert.equal(r1.href, '/pages/my-trees');
+  assert.ok(r1.preloadCalls.indexOf('preload-called') !== -1, 'preloadRedirectTargetData must be called');
+
+  // editor redirect with query → canonical href + editor preload activated
+  var r2 = await runSignInFlow('?redirect=editor?treeId=t1');
+  assert.equal(r2.href, '/pages/editor?treeId=t1');
+  assert.ok(r2.preloadCalls.indexOf('getTree:tree-1') !== -1, 'canonical editor redirect must activate editor preload');
+});
