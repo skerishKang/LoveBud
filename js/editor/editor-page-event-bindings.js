@@ -96,14 +96,16 @@
         addMemoryFromForm: opts.addMemoryFromForm,
         updateSaveStatus: opts.updateSaveStatus,
         showToast: opts.showToast,
-        i18n: opts.i18n
+        i18n: opts.i18n,
+        getTreeMemories: opts.getTreeMemories
       });
       results.memoryCreateControls = true;
     }
 
     if (canEdit && typeof editorBindings.bindDetailEmptyStartButton === 'function') {
       editorBindings.bindDetailEmptyStartButton({
-        showAddMemoryForm: wrappedShowAddMemoryForm
+        showAddMemoryForm: wrappedShowAddMemoryForm,
+        getTreeMemories: opts.getTreeMemories
       });
       results.detailEmptyStartButton = true;
     }

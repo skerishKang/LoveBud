@@ -787,8 +787,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         var isEdit = mode && mode.isEditMode();
                         viewBtn.setAttribute('aria-checked', isEdit ? 'false' : 'true');
                         editBtn.setAttribute('aria-checked', isEdit ? 'true' : 'false');
-                        viewBtn.disabled = isEdit;
-                        editBtn.disabled = !isEdit;
+                        viewBtn.disabled = !isEdit;
+                        editBtn.disabled = isEdit;
                         if (modeDescription) {
                             modeDescription.textContent = isEdit
                                 ? '순간과 흐름을 수정할 수 있어요.'
