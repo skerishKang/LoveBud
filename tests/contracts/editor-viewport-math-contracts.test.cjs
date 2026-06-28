@@ -1073,7 +1073,7 @@ test('focusNodeById — centers target at readable center and reapplies selectio
   let rafCalls = 0;
 
   context.requestAnimationFrame = (cb) => { rafCalls += 1; cb(); };
-  context.document = { querySelector: () => null };
+  context.findMemoryNodeById = () => null;
 
   vp.focusNodeById({
     nodeId: 'child',
@@ -1083,6 +1083,7 @@ test('focusNodeById — centers target at readable center and reapplies selectio
     viewportState,
     initCanvas: () => { initCalls += 1; },
     reapplySelection: (nodeId) => { reapplyCalls += 1; lastReapplyNodeId = nodeId; },
+    findMemoryNodeById: () => null,
   });
 
   // readable center: x=500, y=252
@@ -1105,7 +1106,7 @@ test('focusNodeById — normalizes scale to 1 before centering', () => {
   let rafCalls = 0;
 
   context.requestAnimationFrame = (cb) => { rafCalls += 1; cb(); };
-  context.document = { querySelector: () => null };
+  context.findMemoryNodeById = () => null;
 
   vp.focusNodeById({
     nodeId: 'child',
@@ -1115,6 +1116,7 @@ test('focusNodeById — normalizes scale to 1 before centering', () => {
     viewportState,
     initCanvas: () => { initCalls += 1; },
     reapplySelection: () => { reapplyCalls += 1; },
+    findMemoryNodeById: () => null,
   });
 
   // setScale(..., 1) → nearest = 1
@@ -1132,7 +1134,6 @@ test('focusNodeById — toggles focus animation class when node element exists',
   const { context, viewport: vp } = createViewportContext();
   const viewportState = { scale: 1, offsetX: 0, offsetY: 0 };
   let rafCalls = 0;
-  let capturedSelector = '';
   let removeCalls = 0;
   let addCalls = 0;
   let offsetWidthReads = 0;
@@ -1157,13 +1158,6 @@ test('focusNodeById — toggles focus animation class when node element exists',
     callback();
   };
 
-  context.document = {
-    querySelector: (selector) => {
-      capturedSelector = selector;
-      return fakeNodeEl;
-    },
-  };
-
   vp.focusNodeById({
     nodeId: 'child',
     getTreeMemories: () => [{ id: 'child' }],
@@ -1172,9 +1166,9 @@ test('focusNodeById — toggles focus animation class when node element exists',
     viewportState,
     initCanvas: () => {},
     reapplySelection: () => {},
+    findMemoryNodeById: () => fakeNodeEl,
   });
 
-  assert.ok(capturedSelector.includes('data-memory-id="child"'));
   assert.equal(removeCalls, 1);
   assert.equal(offsetWidthReads, 1);
   assert.equal(addCalls, 1);
@@ -1185,18 +1179,12 @@ test('focusNodeById — skips animation class toggle when node element is missin
   const { context, viewport: vp } = createViewportContext();
   const viewportState = { scale: 1, offsetX: 0, offsetY: 0 };
   let rafCalls = 0;
-  let querySelectorCalls = 0;
+  let removeCalls = 0;
+  let addCalls = 0;
 
   context.requestAnimationFrame = (callback) => {
     rafCalls += 1;
     callback();
-  };
-
-  context.document = {
-    querySelector: (selector) => {
-      querySelectorCalls += 1;
-      return null;
-    },
   };
 
   vp.focusNodeById({
@@ -1207,11 +1195,12 @@ test('focusNodeById — skips animation class toggle when node element is missin
     viewportState,
     initCanvas: () => {},
     reapplySelection: () => {},
+    findMemoryNodeById: () => null,
   });
 
-  // RAF ran but classList not touched because nodeEl was null
+  assert.equal(removeCalls, 0);
+  assert.equal(addCalls, 0);
   assert.equal(rafCalls, 1);
-  assert.equal(querySelectorCalls, 1);
 });
 
 // ---------------------------------------------------------------------------

@@ -16,7 +16,7 @@ window.LoveBudEditorCanvasViewportActions = {
    * @param {object} options
    */
   focusNodeById(viewportApi, options) {
-    const { nodeId, getTreeMemories, getWorldPosition, getMetrics, viewportState, initCanvas, reapplySelection } = options;
+    const { nodeId, getTreeMemories, getWorldPosition, getMetrics, viewportState, initCanvas, reapplySelection, findMemoryNodeById } = options;
     if (!nodeId) return;
     const treeMemories = getTreeMemories();
     const target = treeMemories.find((memory) => memory.id === nodeId);
@@ -32,7 +32,10 @@ window.LoveBudEditorCanvasViewportActions = {
     reapplySelection(nodeId);
 
     requestAnimationFrame(() => {
-      const nodeEl = document.querySelector(`.memory-node[data-memory-id="${nodeId}"]`);
+      var nodeEl = null;
+      if (typeof findMemoryNodeById === 'function') {
+        nodeEl = findMemoryNodeById(nodeId);
+      }
       if (nodeEl) {
         nodeEl.classList.remove('focus-animate');
         void nodeEl.offsetWidth;

@@ -2,6 +2,7 @@
  * UI helpers for the Editor Canvas.
  * Focuses on DOM manipulations and simple UI state updates.
  */
+import { findMemoryNodeById } from './editor-canvas-selection.js?v=20260628-2971-selector-safe-lookup-3';
 
 /**
  * Updates the layout toggle button UI based on the current layout mode.
@@ -411,7 +412,7 @@ export function updateCanvasPanBackgroundPosition(canvasEl, offsetX, offsetY) {
  */
 export function resetDraggedNodeCursor(documentRef, draggedId) {
     if (!documentRef || !draggedId) return null;
-    const draggedEl = documentRef.querySelector(`.memory-node[data-memory-id="${draggedId}"]`);
+    const draggedEl = findMemoryNodeById(draggedId, documentRef);
     if (draggedEl) {
         draggedEl.style.cursor = 'grab';
     }

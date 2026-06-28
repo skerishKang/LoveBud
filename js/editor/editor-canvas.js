@@ -1,8 +1,8 @@
 import * as utils from './editor-canvas-utils.js';
 import * as panzoomUtils from './editor-canvas-panzoom.js';
-import * as selectionUtils from './editor-canvas-selection.js';
+import * as selectionUtils from './editor-canvas-selection.js?v=20260628-2971-selector-safe-lookup-3';
 import * as renderUtils from './editor-canvas-renderer.js';
-import * as uiHelpers from './editor-canvas-ui-helpers.js?v=20260622-layout-label-1';
+import * as uiHelpers from './editor-canvas-ui-helpers.js?v=20260628-2971-selector-safe-lookup-3';
 
 function createEditorCanvas(deps) {
     const {
@@ -575,7 +575,7 @@ function createEditorCanvas(deps) {
                     console.log(`[editor-canvas] Reapplying selection: ${selectedMem.id}`);
                     reapplySelection(selectedMem.id);
 
-                    const selectedEl = document.querySelector(`.memory-node[data-memory-id="${selectedMem.id}"]`);
+                    const selectedEl = selectionUtils.findMemoryNodeById(selectedMem.id);
                     if (selectedEl && typeof onNodeClick === 'function') {
                         onNodeClick(selectedEl, selectedMem);
                     } else {
@@ -629,7 +629,8 @@ function createEditorCanvas(deps) {
                 getMetrics,
                 viewportState,
                 initCanvas: scheduleRender,
-                reapplySelection
+                reapplySelection,
+                findMemoryNodeById: selectionUtils.findMemoryNodeById
             });
             persistStoredPositions();
             return;
@@ -721,7 +722,7 @@ function createEditorCanvas(deps) {
                 persistStoredPositions,
                 initCanvas,
                 getWorldPosition,
-                getDragTargetElement: (id) => document.querySelector(`.memory-node[data-memory-id=\"${id}\"]`),
+                getDragTargetElement: (id) => selectionUtils.findMemoryNodeById(id),
                 showMovedToast: uiHelpers.showMovedToast
             });
         }
