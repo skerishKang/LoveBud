@@ -12,7 +12,7 @@
     function extractParam(name) {
       var startRegex = new RegExp('[?&]' + name + '=');
       var startMatch = rawSearch.match(startRegex);
-      if (!startMatch) return null;
+      if (!startMatch) return { found: false };
       var valueStart = startMatch.index + startMatch[0].length;
       // 다음 top-level &returnTo= 또는 &redirect= marker 탐색
       var nextMarkerRegex = new RegExp('&(?:returnTo|redirect)=');
@@ -24,15 +24,22 @@
         value = rawSearch.substring(valueStart);
       }
       try {
-        return decodeURIComponent(value);
+        return { found: true, value: decodeURIComponent(value) };
       } catch (e) {
-        return value;
+        return { found: true, value: value };
       }
     }
 
-    var returnTo = extractParam('returnTo');
-    // returnTo가 있으면 redirect 무시
-    var rawTarget = returnTo || extractParam('redirect');
+    // extractor가 값뿐 아니라 파라미터 존재 여부도 구분
+    // returnTo가 존재하면(빈 값이어도) redirect를 절대 재시도하지 않음
+    var returnToResult = extractParam('returnTo');
+    var rawTarget;
+    if (returnToResult.found) {
+      rawTarget = returnToResult.value;
+    } else {
+      var redirectResult = extractParam('redirect');
+      rawTarget = redirectResult.found ? redirectResult.value : null;
+    }
     if (!rawTarget) {
       var basePath = typeof getBasePath === 'function' ? getBasePath() : '';
       return basePath + 'my-trees.html';
