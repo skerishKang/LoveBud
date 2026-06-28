@@ -127,6 +127,24 @@
       en: 'Maybe later'
     },
 
+    // 비밀번호 재설정
+    'password_reset_link': {
+      ko: '비밀번호를 잊으셨나요?',
+      en: 'Forgot your password?'
+    },
+    'password_reset_sending': {
+      ko: '링크 보내는 중…',
+      en: 'Sending link…'
+    },
+    'password_reset_confirmation': {
+      ko: '입력한 이메일이 등록되어 있다면 비밀번호 재설정 링크를 보냈습니다. 받은편지함과 스팸함을 확인해 주세요.',
+      en: 'If the email is registered, we have sent a password reset link. Please check your inbox and spam folder.'
+    },
+    'password_reset_email_required': {
+      ko: '비밀번호를 재설정할 이메일 주소를 입력해 주세요.',
+      en: 'Please enter the email address for password reset.'
+    },
+
     // 전환 링크
     'switch_to_signup': {
       ko: '계정이 없나요? 회원가입으로 전환',

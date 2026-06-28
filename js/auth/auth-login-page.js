@@ -226,6 +226,8 @@
     var modal = document.getElementById('email-auth-modal');
     var titleEl = document.getElementById('email-auth-title');
     var helperEl = document.getElementById('email-auth-helper');
+    var resetBtn = document.getElementById('email-auth-reset');
+    var resetWrap = document.getElementById('email-auth-reset-wrap');
 
     function updateModeUi() {
       if (typeof syncEmailAuthModeUiFn !== 'function') return;
@@ -248,8 +250,16 @@
       displayNameInput.required = isSignup;
     }
 
+    function syncResetVisibility() {
+      if (!resetBtn || !resetWrap) return;
+      var isLogin = (typeof getEmailAuthMode === 'function' ? getEmailAuthMode() : 'login') === 'login';
+      resetWrap.hidden = !isLogin;
+      resetBtn.disabled = !isLogin;
+    }
+
     updateModeUi();
     syncDisplayNameVisibility();
+    syncResetVisibility();
 
     if (toggleBtn) {
       toggleBtn.addEventListener('click', function () {
@@ -261,6 +271,7 @@
         }
         updateModeUi();
         syncDisplayNameVisibility();
+        syncResetVisibility();
       });
     }
 
@@ -367,6 +378,82 @@
         submitBtn.textContent = originalText;
       }
     });
+
+    function getResetLabel(key, fallback) {
+      var loginI18n = window.i18nLogin || {};
+      var lang = (typeof window.getCurrentLang === 'function' ? window.getCurrentLang() : 'ko') || 'ko';
+      var dict = loginI18n[key];
+      return dict ? (dict[lang] || dict.ko || fallback) : fallback;
+    }
+
+    if (resetBtn) {
+      resetBtn.addEventListener('click', async function () {
+        if (!emailInput) return;
+
+        var email = String(emailInput.value || '').trim();
+        if (!email) {
+          alert(getResetLabel('password_reset_email_required', '비밀번호를 재설정할 이메일 주소를 입력해 주세요.'));
+          emailInput.focus();
+          return;
+        }
+
+        // Validate email format before calling Firebase
+        if (emailInput.checkValidity && !emailInput.checkValidity()) {
+          var formatError = typeof getFriendlyErrorMessage === 'function'
+            ? getFriendlyErrorMessage({ code: 'auth/invalid-email' }, false)
+            : '올바른 이메일 형식이 아닙니다.';
+          alert(formatError);
+          emailInput.focus();
+          return;
+        }
+        // Simple regex guard for environments where checkValidity may not catch all cases
+        var emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+          var formatError = typeof getFriendlyErrorMessage === 'function'
+            ? getFriendlyErrorMessage({ code: 'auth/invalid-email' }, false)
+            : '올바른 이메일 형식이 아닙니다.';
+          alert(formatError);
+          emailInput.focus();
+          return;
+        }
+
+        var envError = typeof getEnvironmentCheckError === 'function'
+          ? getEnvironmentCheckError()
+          : null;
+        if (envError) {
+          alert(envError);
+          return;
+        }
+
+        if (typeof initFirebase === 'function') initFirebase();
+        if (!firebaseRef.apps || !firebaseRef.apps.length) {
+          alert('Firebase가 초기화되지 않았습니다. 페이지를 새로고침해 주세요.');
+          return;
+        }
+
+        resetBtn.disabled = true;
+        var originalText = resetBtn.textContent;
+        resetBtn.textContent = getResetLabel('password_reset_sending', '링크 보내는 중…');
+
+        try {
+          await firebaseRef.auth().sendPasswordResetEmail(email);
+          alert(getResetLabel('password_reset_confirmation', '입력한 이메일이 등록되어 있다면 비밀번호 재설정 링크를 보냈습니다. 받은편지함과 스팸함을 확인해 주세요.'));
+        } catch (error) {
+          console.error('Password reset error:', error);
+          if (error.code === 'auth/user-not-found') {
+            alert(getResetLabel('password_reset_confirmation', '입력한 이메일이 등록되어 있다면 비밀번호 재설정 링크를 보냈습니다. 받은편지함과 스팸함을 확인해 주세요.'));
+          } else {
+            var friendlyMessage = typeof getFriendlyErrorMessage === 'function'
+              ? getFriendlyErrorMessage(error, false)
+              : '비밀번호 재설정 중 오류가 발생했습니다.';
+            alert(friendlyMessage || '비밀번호 재설정 중 오류가 발생했습니다.');
+          }
+        } finally {
+          resetBtn.textContent = originalText;
+          syncResetVisibility();
+        }
+      });
+    }
   }
 
   function setupSignupForm(options) {

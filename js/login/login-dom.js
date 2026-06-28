@@ -17,7 +17,9 @@
     emailAuthDisplayName: 'email-auth-display-name',
     authModeBadge: 'auth-mode-badge',
     redirectNotice: 'redirect-notice',
-    emailAuthDisplayNameWrap: '[data-auth-display-name-wrap]'
+    emailAuthDisplayNameWrap: '[data-auth-display-name-wrap]',
+    emailAuthReset: 'email-auth-reset',
+    emailAuthResetWrap: 'email-auth-reset-wrap'
   });
 
   function byId(id, root) {
