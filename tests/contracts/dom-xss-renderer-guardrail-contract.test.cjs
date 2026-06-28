@@ -240,8 +240,8 @@ const FILE_ALLOWLIST = {
     reason: 'canvas.innerHTML = buildCanvasFallback() — approved template with escapeHtml'
   },
   'js/editor/editor-i18n-refresh.js': {
-    count: 4, classification: 'safe',
-    reason: 'material-icon + i18n tText; panel array join of option HTML with safe text; flowSummaryEl.innerHTML uses i18n template with title/timeRange passed through escapeHtml before insertion'
+    count: 2, classification: 'safe',
+    reason: 'material-icon + i18n tText; panel array join of option HTML with safe text; summary renderer removed in #2970'
   },
   'js/editor/editor-rename-ui.js': {
     count: 1, classification: 'safe',

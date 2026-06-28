@@ -220,6 +220,6 @@ test('editor page cache-busts editor.js for the lazy wrapper fix', () => {
   const editorPage = read('pages/editor.html');
 
   // PR #2882: editor.js cache-bust 갱신
-  assert.match(editorPage, /\.\.\/js\/editor\.js\?v=20260627-2882-detail-tree-meta-actions-1/);
+  assert.match(editorPage, /\.\.\/js\/editor\.js\?v=20260628-2970/);
   assert.doesNotMatch(editorPage, /\.\.\/js\/editor\.js\?v=20260502-1/);
 });

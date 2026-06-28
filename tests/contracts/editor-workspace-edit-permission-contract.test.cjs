@@ -454,7 +454,7 @@ test('22. deferred poller starts only after initial owner mode evaluation', () =
 test('23. editor auth-late reconciliation contracts and dynamic VM assertions', async () => {
   const editorHtml = readSource('pages/editor.html');
   assert.ok(editorHtml.includes('tree-workspace-permission.js?v=20260625-2874-auth-hotfix-1'), 'tree-workspace-permission.js version must be updated');
-  assert.ok(editorHtml.includes('editor.js?v=20260627-2882-detail-tree-meta-actions-1'), 'editor.js version must be updated');
+  assert.ok(editorHtml.includes('editor.js?v=20260628-2970'), 'editor.js version must be updated');
 
   const editorJsSrc = readSource('js/editor.js');
   assert.ok(editorJsSrc.includes('registerEditorAuthStart'), 'Editor must delegate auth start to page helpers');
