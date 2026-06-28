@@ -29,7 +29,7 @@
         e.preventDefault();
         e.stopPropagation();
         var mode = window.LoveBudEditorInteractionMode;
-        if (!mode || !mode.isEditMode()) return;
+        if (!mode || (!mode.isEditMode() && !ensureEditModeForFirstMoment(options && options.getTreeMemories))) return;
         if (typeof showAddMemoryForm === 'function') {
           showAddMemoryForm();
         }
@@ -44,7 +44,7 @@
       confirmBtn.addEventListener('click', function(e) {
         e.preventDefault();
         var mode = window.LoveBudEditorInteractionMode;
-        if (!mode || !mode.isEditMode()) return;
+        if (!mode || (!mode.isEditMode() && !ensureEditModeForFirstMoment(options && options.getTreeMemories))) return;
         addMemoryFromForm().catch(function(err) {
           console.error('[editor] Failed to add memory:', err);
           if (typeof updateSaveStatus === 'function') {
@@ -74,7 +74,7 @@
         if (e.key === 'Enter' && !e.shiftKey) {
           e.preventDefault();
           var mode = window.LoveBudEditorInteractionMode;
-          if (!mode || !mode.isEditMode()) return;
+          if (!mode || (!mode.isEditMode() && !ensureEditModeForFirstMoment(options && options.getTreeMemories))) return;
           addMemoryFromForm();
         }
       });
@@ -107,8 +107,22 @@
       addMemoryFromForm: options && options.addMemoryFromForm,
       updateSaveStatus: options && options.updateSaveStatus,
       showToast: options && options.showToast,
-      i18n: options && options.i18n
+      i18n: options && options.i18n,
+      getTreeMemories: options && options.getTreeMemories
     });
+  }
+
+  function ensureEditModeForFirstMoment(getTreeMemories) {
+    var mode = window.LoveBudEditorInteractionMode;
+    if (!mode) return false;
+    if (mode.isEditMode()) return true;
+    if (typeof getTreeMemories !== 'function') return false;
+    var memories = getTreeMemories();
+    if (memories && memories.length === 0) {
+      mode.setMode(mode.MODE_EDIT);
+      return true;
+    }
+    return false;
   }
 
   function bindButtonOnce(button, bindingKey, handler) {
@@ -129,7 +143,7 @@
 
     bindButtonOnce(detailEmptyStartBtn, 'detailEmptyStartBound', function() {
       var mode = window.LoveBudEditorInteractionMode;
-      if (!mode || !mode.isEditMode()) return;
+      if (!mode || (!mode.isEditMode() && !ensureEditModeForFirstMoment(options && options.getTreeMemories))) return;
       if (typeof showAddMemoryForm === 'function') {
         showAddMemoryForm();
       }
