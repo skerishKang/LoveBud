@@ -71,11 +71,26 @@ def _table_has_column(cur, table_name: str, column_name: str) -> bool:
     return res
 
 
+def _is_public_legacy_node(node: Any) -> bool:
+    """Check if a legacy payload node qualifies as public for public read endpoints.
+
+    Only dict nodes whose visibility is explicitly ``"public"`` or absent
+    (which defaults to ``"public"``) are considered public.
+    Non-dict nodes and nodes with any other visibility value (``"private"``,
+    ``"unlisted"``, ``None``, unknown) are excluded.
+    """
+    return isinstance(node, dict) and node.get("visibility", "public") == "public"
+
+
 def _get_legacy_memory_from_payload(payload: dict[str, Any], memory_id: str) -> dict[str, Any] | None:
-    """Find a single memory/node by ID within legacy payload.nodes."""
+    """Find a single public memory/node by ID within legacy payload.nodes.
+
+    Only nodes satisfying :func:`_is_public_legacy_node` are considered;
+    private, non-dict, or unknown-visibility nodes are skipped.
+    """
     nodes = payload.get("nodes") or []
     for node in nodes:
-        if node.get("id") == memory_id:
+        if _is_public_legacy_node(node) and node.get("id") == memory_id:
             return node
     return None
 
@@ -110,11 +125,12 @@ def _normalize_legacy_tree_row(row: dict[str, Any], payload: dict[str, Any] | No
     if payload is None:
         payload = row.get("payload") or {}
     nodes = payload.get("nodes") or []
+    public_nodes = [n for n in nodes if _is_public_legacy_node(n)]
     return {
         "id": str(row["id"]),
         "title": row.get("title") or row.get("name") or "Untitled LoveTree",
         "visibility": "public" if row.get("is_public") else "private",
-        "memoryCount": len(nodes),
+        "memoryCount": len(public_nodes),
         "createdAt": _to_isoformat_dt(row.get("created_at")),
         "updatedAt": _to_isoformat_dt(row.get("updated_at")),
     }
@@ -293,7 +309,7 @@ def fetch_latest_public_tree_snapshots(limit: int = 12, sort: str = "latest") ->
                     nodes = payload.get("nodes") or []
                     public_nodes = [
                         n for n in nodes
-                        if isinstance(n, dict) and n.get("visibility", "public") == "public"
+                        if _is_public_legacy_node(n)
                     ]
                     if len(public_nodes) < 3:
                         continue  # Quality filter: 3+ public memories
@@ -415,7 +431,7 @@ def fetch_growing_public_tree_snapshots(limit: int = 6) -> list[dict[str, Any]]:
                     nodes = payload.get("nodes") or []
                     public_nodes = [
                         n for n in nodes
-                        if isinstance(n, dict) and n.get("visibility", "public") == "public"
+                        if _is_public_legacy_node(n)
                     ]
                     mc = len(public_nodes)
                     if mc < 1 or mc > 2:
@@ -508,7 +524,6 @@ def fetch_public_memories(tree_id: str | None = None, limit: int = 100) -> list[
                 has_visibility = _table_has_column(cur, "trees", "visibility")
                 has_name = _table_has_column(cur, "trees", "name")
                 has_is_public = _table_has_column(cur, "trees", "is_public")
-
                 # Use appropriate column names based on schema
                 if has_title and has_visibility:
                     tree_cols = "id, title as name, visibility as is_public, payload, created_at, updated_at"
@@ -542,14 +557,17 @@ def fetch_public_memories(tree_id: str | None = None, limit: int = 100) -> list[
                     )
                 return cur.fetchall()
 
+
     rows = run_db_with_retry(operation)
     result: list[dict[str, Any]] = []
 
     for tree_row in rows:
         payload = tree_row.get("payload") or {}
         nodes = payload.get("nodes") or []
+        # Filter to public nodes (visibility predicate) BEFORE sorting and limit.
+        public_nodes = [n for n in nodes if _is_public_legacy_node(n)]
         # Sort by order if available, otherwise preserve array order
-        sorted_nodes = sorted(nodes, key=lambda n: n.get("order", 0) if isinstance(n.get("order"), (int, float)) else 0)
+        sorted_nodes = sorted(public_nodes, key=lambda n: n.get("order", 0) if isinstance(n.get("order"), (int, float)) else 0)
         for node in sorted_nodes[:limit]:
             memory_row = _legacy_payload_node_to_memory_row(node, tree_row["id"], tree_row)
             result.append(normalize_memory_row(memory_row))
@@ -640,7 +658,7 @@ def fetch_public_memory(memory_id: str) -> dict[str, Any] | None:
     for tree_row in rows:
         payload = tree_row.get("payload") or {}
         node = _get_legacy_memory_from_payload(payload, memory_id)
-        if node:
+        if node and _is_public_legacy_node(node):
             memory_row = _legacy_payload_node_to_memory_row(node, tree_row["id"], tree_row)
             memory = normalize_memory_row(memory_row)
             # Legacy fixture: no reaction counts
