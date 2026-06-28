@@ -7,21 +7,32 @@
     var rawSearch = window.location.search || '';
     // raw query string에서 returnTo / redirect 값을 직접 추출 (중첩 query 보존)
     // 예: ?returnTo=/pages/editor.html?treeId=123&memoryId=456&mode=edit
+    // 중첩 &는 내부 query의 일부이므로, 다음 top-level &returnTo= 또는 &redirect=
+    // marker 전까지 search 끝까지 추출
     function extractParam(name) {
-      var regex = new RegExp('[?&]' + name + '=([^&]*)');
-      var match = rawSearch.match(regex);
-      if (match && match[1]) {
-        // decodeURIComponent로 디코딩하되, 중첩된 & 등은 그대로 둠
-        return decodeURIComponent(match[1]);
+      var startRegex = new RegExp('[?&]' + name + '=');
+      var startMatch = rawSearch.match(startRegex);
+      if (!startMatch) return null;
+      var valueStart = startMatch.index + startMatch[0].length;
+      // 다음 top-level &returnTo= 또는 &redirect= marker 탐색
+      var nextMarkerRegex = new RegExp('&(?:returnTo|redirect)=');
+      var nextMatch = rawSearch.substring(valueStart).match(nextMarkerRegex);
+      var value;
+      if (nextMatch) {
+        value = rawSearch.substring(valueStart, valueStart + nextMatch.index);
+      } else {
+        value = rawSearch.substring(valueStart);
       }
-      return null;
+      try {
+        return decodeURIComponent(value);
+      } catch (e) {
+        return value;
+      }
     }
 
     var returnTo = extractParam('returnTo');
-    var redirect = extractParam('redirect');
-
-    // returnTo 우선, 없을 때만 redirect 사용
-    var rawTarget = returnTo || redirect;
+    // returnTo가 있으면 redirect 무시
+    var rawTarget = returnTo || extractParam('redirect');
     if (!rawTarget) {
       var basePath = typeof getBasePath === 'function' ? getBasePath() : '';
       return basePath + 'my-trees.html';

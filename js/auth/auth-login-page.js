@@ -37,17 +37,10 @@
         return window.LoveBudAuthSession.getRedirectTarget();
       }
     } catch (error) {
-      // fallback to legacy logic
+      // fallback below
     }
-    // Legacy fallback (should rarely be used)
-    try {
-      var params = new URLSearchParams(window.location.search || '');
-      var returnTo = params.get('returnTo');
-      if (returnTo) return returnTo;
-      return params.get('redirect') || 'pages/my-trees.html';
-    } catch (error) {
-      return 'pages/my-trees.html';
-    }
+    // 세션 normalizer 미사용 시 안전한 기본값만 반환
+    return 'my-trees.html';
   }
 
   function bindLoginAuthState() {
