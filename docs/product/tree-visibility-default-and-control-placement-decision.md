@@ -40,6 +40,16 @@ New trees are created with `visibility: 'private'`. This applies to:
 
 The server-side write path must also accept and persist `visibility: 'private'` as the default when no explicit value is provided.
 
+### Legacy `memory.visibility` Bridge Rule
+
+The product treats **tree visibility as the publication state** (tree-level). The legacy `memory.visibility` field remains in storage and filtering paths but is a separate data attribute.
+
+- A newly created private-default tree must not leak to Browse or public share/viewer routes, even if its internal memories carry legacy `visibility: 'public'`.
+- When publishing a tree to public, the API slice must explicitly reconcile the 3-public-moments guard with the legacy memory visibility field — i.e., define whether the guard counts moments with `memory.visibility === 'public'` or moments belonging to a public tree.
+- This decision does **not** perform memory visibility migration or data rewrite. The API consistency slice (Slice B) is responsible for validating and documenting the reconciliation.
+
+> The user-facing statement is: **“The published state is tree-level. Legacy memory visibility will be reconciled in the API consistency slice.”**
+
 ### Existing Public Tree Non-Migration
 
 Existing trees with `visibility: 'public'` are **not migrated**. Their current state is preserved. A future migration slice may address the population of private trees that were mistakenly created as public, but that is out of scope for this decision.
@@ -85,13 +95,13 @@ When a user attempts to change a private tree to public, the system must present
 
 1. **"This tree will be discoverable in Browse."** — users must understand the tree becomes publicly listed.
 2. **"Existing share links will work for anyone with the link."** — existing share recipients retain access.
-3. **"All moments in this tree share the same visibility."** — there is no per-moment granularity.
+3. **"The published state is tree-level. Legacy memory visibility will be reconciled in the API consistency slice."** — no per-moment granularity; legacy memory visibility is a separate data field that will be reconciled later.
 
-> **Note on existing share link behavior**: Code audit confirms `detail.html?id=<treeid>&tree=<treeId>` share routes are accessible for any tree the server authorizes. For private trees, authorization fails (404/unauthorized). After publishing, existing share links become functional for anyone with the link. This behavior is server-enforced, not a UI promise. The confirmation copy reflects this accurately but is subject to server-side authorization invariants holding.
+> **Note on existing share link behavior**: Client code alone cannot confirm private/public share authorization outcomes. The publish/private transition effects on Browse visibility, existing share link access, and unauthorized responses are gated on **Slice C server-side verification**. Before that gate passes, the UI must not guarantee “existing links will immediately open/close for everyone.” The confirmation copy reflects intended behavior, subject to server-side authorization invariants.
 
 When changing public to private:
 1. **"This tree will no longer appear in Browse."**
-2. **"Existing share links will stop working for unauthorized users."**
+2. **"Existing share links will stop working for unauthorized users."** — subject to Slice C server-side verification.
 
 ---
 
