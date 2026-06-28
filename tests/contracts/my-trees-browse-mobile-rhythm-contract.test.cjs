@@ -264,11 +264,10 @@ test('rhythm: phone 375/390/430 — My Trees results-head matches Browse @media 
   const header = readCss(MY_TREES_CSS.header);
   const decl = findMobileRule(header, '.my-trees-results-head');
   assert.ok(decl, 'my-trees-header.css must contain @media (max-width:768px) rule for .my-trees-results-head');
-  // Base already provides flex-direction:column, gap:12px, margin:0 0 16px
-  const baseDecl = findRule(header, '.my-trees-results-head');
-  assert.strictEqual(propFromDecl(baseDecl, 'gap'), '12px', 'results-head base gap must be 12px');
-  assert.match(propFromDecl(baseDecl, 'margin') || '', /0 0 16px/, 'results-head base margin must include 0 0 16px');
-  assert.strictEqual(propFromDecl(baseDecl, 'flex-direction'), 'column', 'results-head base flex-direction must be column');
+  // Mobile override provides flex-direction:column, gap:12px, margin:0 0 16px
+  assert.strictEqual(propFromDecl(decl, 'flex-direction'), 'column', 'results-head mobile flex-direction must be column');
+  assert.strictEqual(propFromDecl(decl, 'gap'), '12px', 'results-head mobile gap must be 12px');
+  assert.match(propFromDecl(decl, 'margin') || '', /0 0 16px/, 'results-head mobile margin must include 0 0 16px');
   // Mobile override must set padding-top to 14px (Browse value)
   assert.strictEqual(propFromDecl(decl, 'padding-top'), '14px', 'results-head mobile padding-top must be 14px');
 });

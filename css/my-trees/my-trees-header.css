@@ -73,9 +73,6 @@ white-space: nowrap;
 
 /* ── My Trees Results Head (controls row below search) ── */
 .my-trees-results-head {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
     margin: 0 0 16px;
     padding-top: 18px;
     border-top: 1px solid rgba(144, 73, 81, 0.09);
@@ -113,6 +110,9 @@ white-space: nowrap;
     .btn-header-create { width: 100%; min-height: 40px; padding: 10px 14px; font-size: 13px; }
 
     .my-trees-results-head {
+        flex-direction: column;
+        gap: 12px;
+        margin: 0 0 16px;
         margin-top: 0;
         padding-top: 14px;
         border-top: 1px solid rgba(144, 73, 81, 0.09);
