@@ -4,13 +4,80 @@
  */
 (function () {
   function getRedirectTarget(getBasePath) {
-    var params = new URLSearchParams(window.location.search);
-    var returnTo = params.get('returnTo');
-    if (returnTo) return returnTo;
-    var redirect = params.get('redirect');
-    if (redirect) return redirect;
-    var basePath = typeof getBasePath === 'function' ? getBasePath() : '';
-    return basePath + 'my-trees.html';
+    var rawSearch = window.location.search || '';
+    // raw query string에서 returnTo / redirect 값을 직접 추출 (중첩 query 보존)
+    // 예: ?returnTo=/pages/editor.html?treeId=123&memoryId=456&mode=edit
+    // 중첩 &는 내부 query의 일부이므로, 다음 top-level &returnTo= 또는 &redirect=
+    // marker 전까지 search 끝까지 추출
+    function extractParam(name) {
+      var startRegex = new RegExp('[?&]' + name + '=');
+      var startMatch = rawSearch.match(startRegex);
+      if (!startMatch) return { found: false };
+      var valueStart = startMatch.index + startMatch[0].length;
+      // 다음 top-level &returnTo= 또는 &redirect= marker 탐색
+      var nextMarkerRegex = new RegExp('&(?:returnTo|redirect)=');
+      var nextMatch = rawSearch.substring(valueStart).match(nextMarkerRegex);
+      var value;
+      if (nextMatch) {
+        value = rawSearch.substring(valueStart, valueStart + nextMatch.index);
+      } else {
+        value = rawSearch.substring(valueStart);
+      }
+      try {
+        return { found: true, value: decodeURIComponent(value) };
+      } catch (e) {
+        return { found: true, value: value };
+      }
+    }
+
+    // extractor가 값뿐 아니라 파라미터 존재 여부도 구분
+    // returnTo가 존재하면(빈 값이어도) redirect를 절대 재시도하지 않음
+    var returnToResult = extractParam('returnTo');
+    var rawTarget;
+    if (returnToResult.found) {
+      rawTarget = returnToResult.value;
+    } else {
+      var redirectResult = extractParam('redirect');
+      rawTarget = redirectResult.found ? redirectResult.value : null;
+    }
+    if (!rawTarget) {
+      var basePath = typeof getBasePath === 'function' ? getBasePath() : '';
+      return basePath + 'my-trees.html';
+    }
+
+    // URL 파싱 및 검증
+    var parsed;
+    try {
+      parsed = new URL(rawTarget, window.location.origin);
+    } catch (e) {
+      // malformed URL → fallback
+      var basePath = typeof getBasePath === 'function' ? getBasePath() : '';
+      return basePath + 'my-trees.html';
+    }
+
+    // cross-origin 차단
+    if (parsed.origin !== window.location.origin) {
+      var basePath = typeof getBasePath === 'function' ? getBasePath() : '';
+      return basePath + 'my-trees.html';
+    }
+
+    // protocol 스킴 차단 (javascript:, data:, //host 등)
+    var protocol = parsed.protocol;
+    if (protocol !== 'http:' && protocol !== 'https:') {
+      var basePath = typeof getBasePath === 'function' ? getBasePath() : '';
+      return basePath + 'my-trees.html';
+    }
+
+    // login-page loop 차단
+    var pathname = parsed.pathname || '';
+    if (pathname.indexOf('/pages/login') !== -1 ||
+        pathname.indexOf('login.html') !== -1) {
+      var basePath = typeof getBasePath === 'function' ? getBasePath() : '';
+      return basePath + 'my-trees.html';
+    }
+
+    // same-origin internal route만 허용: pathname + search + hash 반환
+    return pathname + parsed.search + parsed.hash;
   }
 
   function preloadRedirectTargetData(options) {
@@ -32,7 +99,7 @@
             }));
             logger.log('[auth] Preloaded my-trees cache:', trees.length, 'trees');
 
-            // Optimization: Only preload detail for editor target. 
+            // Optimization: Only preload detail for editor target.
             // my-trees target will handle its own (deferred) preload to avoid redundant blocking.
             if (isEditorTarget && trees[0]) {
               var firstTreeId = trees[0].id || trees[0];

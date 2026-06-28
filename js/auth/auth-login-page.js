@@ -33,13 +33,14 @@
 
   function resolveLoginRedirectTarget() {
     try {
-      var params = new URLSearchParams(window.location.search || '');
-      var returnTo = params.get('returnTo');
-      if (returnTo) return returnTo;
-      return params.get('redirect') || 'my-trees.html';
+      if (window.LoveBudAuthSession && typeof window.LoveBudAuthSession.getRedirectTarget === 'function') {
+        return window.LoveBudAuthSession.getRedirectTarget();
+      }
     } catch (error) {
-      return 'my-trees.html';
+      // fallback below
     }
+    // 세션 normalizer 미사용 시 안전한 기본값만 반환
+    return 'my-trees.html';
   }
 
   function bindLoginAuthState() {
