@@ -6,11 +6,48 @@
   function getRedirectTarget(getBasePath) {
     var params = new URLSearchParams(window.location.search);
     var returnTo = params.get('returnTo');
-    if (returnTo) return returnTo;
     var redirect = params.get('redirect');
-    if (redirect) return redirect;
-    var basePath = typeof getBasePath === 'function' ? getBasePath() : '';
-    return basePath + 'my-trees.html';
+
+    // returnTo 우선, 없을 때만 redirect 사용
+    var rawTarget = returnTo || redirect;
+    if (!rawTarget) {
+      var basePath = typeof getBasePath === 'function' ? getBasePath() : '';
+      return basePath + 'my-trees.html';
+    }
+
+    // URL 파싱 및 검증
+    var parsed;
+    try {
+      parsed = new URL(rawTarget, window.location.origin);
+    } catch (e) {
+      // malformed URL → fallback
+      var basePath = typeof getBasePath === 'function' ? getBasePath() : '';
+      return basePath + 'my-trees.html';
+    }
+
+    // cross-origin 차단
+    if (parsed.origin !== window.location.origin) {
+      var basePath = typeof getBasePath === 'function' ? getBasePath() : '';
+      return basePath + 'my-trees.html';
+    }
+
+    // protocol 스킴 차단 (javascript:, data:, //host 등)
+    var protocol = parsed.protocol;
+    if (protocol !== 'http:' && protocol !== 'https:') {
+      var basePath = typeof getBasePath === 'function' ? getBasePath() : '';
+      return basePath + 'my-trees.html';
+    }
+
+    // login-page loop 차단
+    var pathname = parsed.pathname || '';
+    if (pathname.indexOf('/pages/login') !== -1 ||
+        pathname.indexOf('login.html') !== -1) {
+      var basePath = typeof getBasePath === 'function' ? getBasePath() : '';
+      return basePath + 'my-trees.html';
+    }
+
+    // same-origin internal route만 허용: pathname + search + hash 반환
+    return pathname + parsed.search + parsed.hash;
   }
 
   function preloadRedirectTargetData(options) {
@@ -32,7 +69,7 @@
             }));
             logger.log('[auth] Preloaded my-trees cache:', trees.length, 'trees');
 
-            // Optimization: Only preload detail for editor target. 
+            // Optimization: Only preload detail for editor target.
             // my-trees target will handle its own (deferred) preload to avoid redundant blocking.
             if (isEditorTarget && trees[0]) {
               var firstTreeId = trees[0].id || trees[0];

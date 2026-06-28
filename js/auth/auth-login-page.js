@@ -33,12 +33,20 @@
 
   function resolveLoginRedirectTarget() {
     try {
+      if (window.LoveBudAuthSession && typeof window.LoveBudAuthSession.getRedirectTarget === 'function') {
+        return window.LoveBudAuthSession.getRedirectTarget();
+      }
+    } catch (error) {
+      // fallback to legacy logic
+    }
+    // Legacy fallback (should rarely be used)
+    try {
       var params = new URLSearchParams(window.location.search || '');
       var returnTo = params.get('returnTo');
       if (returnTo) return returnTo;
-      return params.get('redirect') || 'my-trees.html';
+      return params.get('redirect') || 'pages/my-trees.html';
     } catch (error) {
-      return 'my-trees.html';
+      return 'pages/my-trees.html';
     }
   }
 
