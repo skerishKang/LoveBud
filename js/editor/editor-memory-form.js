@@ -47,9 +47,10 @@ function createEditorMemoryForm(deps) {
     let previewInputHandler = null;
     let startTimeInputHandler = null;
     let endTimeInputHandler = null;
-    let currentInputMode = 'link';
     let userHasEditedStartTime = false;
     let userHasEditedTitle = false;
+    let currentInputMode = 'link';
+    let _addMemoryInvoker = null;
 
     function getFreshCanonicalRootId() {
         return window.LoveBudEditorUtils?.getCanonicalRootId
@@ -198,6 +199,25 @@ function createEditorMemoryForm(deps) {
         }
     };
 
+    function restoreFocusToInvoker() {
+        var invoker = _addMemoryInvoker;
+        _addMemoryInvoker = null;
+        if (!invoker) return;
+        // Safe guard: must be connected, not disabled, not hidden, not aria-hidden, visible
+        if (typeof invoker.isConnected !== 'undefined' && !invoker.isConnected) return;
+        if (invoker.disabled === true) return;
+        if (invoker.hidden === true) return;
+        if (invoker.getAttribute && invoker.getAttribute('aria-hidden') === 'true') return;
+        if (typeof invoker.offsetParent === 'undefined' || invoker.offsetParent === null) {
+            // offsetParent null for disconnected or display:none elements — safe guard
+            return;
+        }
+        if (typeof invoker.focus !== 'function') return;
+        requestAnimationFrame(function () {
+            try { invoker.focus(); } catch (e) { /* no-op */ }
+        });
+    }
+
     function resetFormValues() {
         if (refs.urlInput) refs.urlInput.value = '';
         if (refs.startTimeInput) refs.startTimeInput.value = '';
@@ -269,6 +289,20 @@ function createEditorMemoryForm(deps) {
         if (canEdit === false) return;
         const form = refs.addMemoryForm;
         if (!form) return;
+
+        // Capture invoker before form opens
+        if (!isFormOpen) {
+            var active = document.activeElement;
+            if (active && active !== document.body && active !== document.documentElement) {
+                // Only capture if the active element is not inside the form itself
+                if (!form.contains(active)) {
+                    if (active.disabled !== true && active.hidden !== true) {
+                        _addMemoryInvoker = active;
+                    }
+                }
+            }
+        }
+
         resetFormValues();
         applyFormOpenStyles();
         setEmptyGuideSuppressed(true);
@@ -307,8 +341,10 @@ function createEditorMemoryForm(deps) {
         bindPreviewEvents(isFirstMoment);
     };
 
-    const hideAddMemoryForm = () => {
-        const form = refs.addMemoryForm;
+    const hideAddMemoryForm = function(options) {
+        var opts = options || {};
+        var shouldRestore = opts.restoreFocus !== false;
+        var form = refs.addMemoryForm;
         if (!form) return;
         form.style.display = 'none';
         form.classList.remove('is-open');
@@ -327,6 +363,10 @@ function createEditorMemoryForm(deps) {
         if (refs.urlInput && previewInputHandler) refs.urlInput.removeEventListener('input', previewInputHandler);
         if (refs.startTimeInput && startTimeInputHandler) refs.startTimeInput.removeEventListener('input', startTimeInputHandler);
         if (refs.endTimeInput && endTimeInputHandler) refs.endTimeInput.removeEventListener('input', endTimeInputHandler);
+
+        if (shouldRestore) {
+            restoreFocusToInvoker();
+        }
     };
 
     async function createMemoryWithFallback(newMemoryData) {
@@ -467,11 +507,12 @@ function createEditorMemoryForm(deps) {
         }
 
         updateSaveStatus('saving', i18n('save_saving'));
-        hideAddMemoryForm();
+        hideAddMemoryForm({ restoreFocus: false });
 
         const enrichedPayload = await enrichPayloadChannelMetadata(payloadResult.data, rawUrl);
         const { createdMemory, useApi } = await createMemoryWithFallback(enrichedPayload);
         commitMemoryToTree(createdMemory, useApi);
+        restoreFocusToInvoker();
     };
 
     const addMemoryFromScoutPayload = async (payload, draft) => {
