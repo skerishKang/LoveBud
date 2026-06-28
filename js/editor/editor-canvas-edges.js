@@ -82,8 +82,8 @@
             path.setAttribute('class', 'branch-line');
             path.setAttribute('fill', 'none');
             path.setAttribute('stroke', 'var(--secondary)');
-            path.setAttribute('stroke-width', '2');
-            path.setAttribute('opacity', '0.5');
+            path.setAttribute('stroke-width', '2.2');
+            path.setAttribute('opacity', '0.55');
             svg.appendChild(path);
             return path;
         };
@@ -104,6 +104,7 @@
                 var path = drawBranch(calcPosition(parent), calcPosition(node));
                 if (!path) return;
                 path.setAttribute('data-edge-child-id', String(node.id));
+                path.setAttribute('data-edge-parent-id', String(parent.id));
 
                 path.addEventListener('click', function (e) {
                     e.stopPropagation();
@@ -136,6 +137,31 @@
 
         function getSelectedEdgeChildId() {
             return selectedEdgeChildId;
+        }
+
+        function highlightSelectedFlow(memoryId) {
+            // First, clear all flow-related classes from all branch lines
+            svg.querySelectorAll('.branch-line').forEach(function (p) {
+                p.classList.remove('is-flow-related', 'is-flow-outbound', 'is-flow-inbound');
+            });
+
+            if (!memoryId) return;
+
+            var selectedId = String(memoryId);
+
+            svg.querySelectorAll('.branch-line').forEach(function (p) {
+                var parentId = p.getAttribute('data-edge-parent-id');
+                var childId = p.getAttribute('data-edge-child-id');
+                if (childId === selectedId || parentId === selectedId) {
+                    p.classList.add('is-flow-related');
+
+                    if (parentId === selectedId) {
+                        p.classList.add('is-flow-outbound');
+                    } else if (childId === selectedId) {
+                        p.classList.add('is-flow-inbound');
+                    }
+                }
+            });
         }
 
         function setOnSelectEdge(fn) {
@@ -178,6 +204,7 @@
             clearSelection,
             getSelectedEdgeChildId,
             setOnSelectEdge,
+            highlightSelectedFlow,
             drawDashedPreview,
             clearDashedPreview
         };

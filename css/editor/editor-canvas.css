@@ -4,6 +4,16 @@
     cursor: pointer;
     transition: stroke 0.15s ease, stroke-width 0.15s ease, opacity 0.15s ease;
 }
+/* Selected-node immediate flow edges — primary color, higher opacity, wider */
+.branch-line.is-flow-related {
+    stroke: var(--primary) !important;
+    opacity: 0.8 !important;
+    stroke-width: 2.8 !important;
+}
+.branch-line.is-flow-inbound,
+.branch-line.is-flow-outbound {
+    /* Hook classes: reserved for future directional distinction */
+}
 .branch-line.is-selected {
     stroke: var(--primary) !important;
     stroke-width: 3.5 !important;

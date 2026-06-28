@@ -320,6 +320,7 @@ function createEditorCanvas(deps) {
     const drawBranch = requireCanvasEdgeMethod('drawBranch');
     const clearBranches = requireCanvasEdgeMethod('clearBranches');
     const drawBranchForMemory = requireCanvasEdgeMethod('drawBranchForMemory');
+    const highlightSelectedFlow = requireCanvasEdgeMethod('highlightSelectedFlow');
     const NODE_TAP_SELECT_THRESHOLD = 8;
     const AFFORDANCE_LOCK_CLASS = 'affordance-interaction-locked';
 
@@ -574,6 +575,7 @@ function createEditorCanvas(deps) {
                 if (selectedMem) {
                     console.log(`[editor-canvas] Reapplying selection: ${selectedMem.id}`);
                     reapplySelection(selectedMem.id);
+                    highlightSelectedFlow(selectedMem.id);
 
                     const selectedEl = selectionUtils.findMemoryNodeById(selectedMem.id);
                     if (selectedEl && typeof onNodeClick === 'function') {
@@ -779,6 +781,7 @@ function createEditorCanvas(deps) {
         updateAffordance,
         clearEdgeSelection,
         clearGrowthAffordance,
+        highlightSelectedFlow,
         getWorldPosition,
         get viewportState() { return viewportState; },
         persistStoredPositions,

@@ -77,6 +77,10 @@
             if (editorCanvas && typeof editorCanvas.updateAffordance === 'function') {
                 editorCanvas.updateAffordance();
             }
+
+            if (editorCanvas && typeof editorCanvas.highlightSelectedFlow === 'function') {
+                editorCanvas.highlightSelectedFlow(data.id);
+            }
         };
     },
 
