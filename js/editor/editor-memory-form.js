@@ -214,6 +214,7 @@ function createEditorMemoryForm(deps) {
         }
         if (typeof invoker.focus !== 'function') return;
         requestAnimationFrame(function () {
+            if (isFormOpen) return;
             try { invoker.focus(); } catch (e) { /* no-op */ }
         });
     }

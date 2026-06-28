@@ -101,6 +101,25 @@ test('Editor Add Memory Focus Lifecycle Contract', async (t) => {
       'restore must use requestAnimationFrame');
   });
 
+  // 8b. Deferred callback guards against re-opened form (re-entry race)
+  await t.test('restoreFocusToInvoker rAF callback checks isFormOpen to prevent stale restore', () => {
+    const restoreFn = formJs.match(/function restoreFocusToInvoker[\s\S]*?function resetFormValues/);
+    assert.ok(restoreFn, 'restoreFocusToInvoker must exist');
+    const body = restoreFn[0];
+    // Locate the requestAnimationFrame callback content
+    const rAFStart = body.indexOf('requestAnimationFrame');
+    assert.ok(rAFStart >= 0, 'requestAnimationFrame must exist in restore function');
+    const rAFBody = body.substring(rAFStart);
+    // The callback must check isFormOpen before focusing
+    assert.ok(rAFBody.includes('if (isFormOpen) return'),
+      'rAF callback must guard with isFormOpen check to skip restore when form is re-opened');
+    // The isFormOpen guard must appear before the focus() call
+    const focusIdx = rAFBody.indexOf('.focus()');
+    const guardIdx = rAFBody.indexOf('if (isFormOpen) return');
+    assert.ok(guardIdx >= 0 && guardIdx < focusIdx,
+      'isFormOpen guard must appear before the focus() call inside rAF callback');
+  });
+
   // 9. Stale invoker cleared after restore attempt
   await t.test('stale invoker is cleared after restore attempt', () => {
     assert.ok(formJs.includes('_addMemoryInvoker = null'),
