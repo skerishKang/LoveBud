@@ -100,17 +100,13 @@ function initCentralAuthState() {
       window.LoveBudAuthFirebase &&
       typeof window.LoveBudAuthFirebase.onAuthStateChanged === 'function') {
     window.LoveBudAuthFirebase.onAuthStateChanged(function(user) {
-      if (user) {
-        setAuthState(true, user);
-      }
+      setAuthState(true, user || null);
     });
   } else if (typeof firebase !== 'undefined' && firebase.auth) {
     try {
       if (typeof firebase.auth().onAuthStateChanged === 'function') {
         firebase.auth().onAuthStateChanged(function(user) {
-          if (user) {
-            setAuthState(true, user);
-          }
+          setAuthState(true, user || null);
         });
       }
     } catch (e) {}
