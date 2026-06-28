@@ -1,6 +1,6 @@
 /**
  * LoveBud - Shared Header Component
- * v20260421-2
+ * v20260628-2993-1
  *
  * 책임 경계:
  * - shared-header는 실제 header markup과 header-specific behavior를 소유합니다.
@@ -225,11 +225,9 @@
         return loginHref + '?redirect=' + encodeURIComponent(targetHref);
     }
 
-    function buildLangToggleHTML(isHidden) {
-        var hiddenAttr = isHidden ? ' hidden' : '';
-        var hiddenStyle = isHidden ? ' style="display:none !important;"' : '';
+    function buildLangToggleHTML() {
         return [
-            '<div class="lang-toggle header-lang-toggle"' + hiddenAttr + hiddenStyle + '>',
+            '<div class="lang-toggle header-lang-toggle">',
                 '<button type="button" class="btn-round btn-outline lang-menu-trigger">',
                     '<span class="material-symbols-outlined">language</span>',
                     '<span>언어</span>',
@@ -339,7 +337,7 @@
                         '</div>',
                         '<div class="nav-actions">',
                             buildAIPanelTriggerHTML(),
-                            buildLangToggleHTML(isLoggedIn),
+                            buildLangToggleHTML(),
                             authHTML,
                         '</div>',
                     '</div>',

@@ -478,13 +478,9 @@ function updateHeaderLangToggleVisibility(isLoggedIn) {
     var headerLangToggle = document.querySelector('.header-lang-toggle');
     if (!headerLangToggle) return;
 
-    if (isLoggedIn) {
-          headerLangToggle.hidden = true;
-          headerLangToggle.style.setProperty('display', 'none', 'important');
-    } else {
-          headerLangToggle.hidden = false;
-          headerLangToggle.style.removeProperty('display');
-    }
+    // Always show the language toggle regardless of login state
+    headerLangToggle.hidden = false;
+    headerLangToggle.style.removeProperty('display');
 }
 
 function updateNavUI(user) {
