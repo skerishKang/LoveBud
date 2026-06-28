@@ -73,10 +73,6 @@ white-space: nowrap;
 
 /* ── My Trees Results Head (controls row below search) ── */
 .my-trees-results-head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
     margin: 0 0 16px;
     padding-top: 18px;
     border-top: 1px solid rgba(144, 73, 81, 0.09);
