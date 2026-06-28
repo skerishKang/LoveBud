@@ -35,7 +35,7 @@ const IN_SCOPE_PAGES = [
 ];
 
 // Shared header cache version (bumped on each shared-header change)
-const SHARED_HEADER_JS_VERSION = '20260421-2';
+const SHARED_HEADER_JS_VERSION = '20260628-2993-1';
 const GLOBAL_CSS_VERSION = '20260618-2700-1';
 const MY_TREES_GLOBAL_CSS_VERSION = '20260619-2710-1';
 const INDEX_CSS_VERSION = '20260618-2700-1';
