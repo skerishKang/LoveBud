@@ -74,6 +74,20 @@ test('Login Password Reset Contract', async (t) => {
       'reset handler must reference email_required i18n key');
   });
 
+  // 6b. email format validation guard before Firebase call
+  await t.test('reset handler validates email format before calling Firebase', () => {
+    assert.ok(authLoginPageJs.includes("checkValidity") || authLoginPageJs.includes("emailRegex"),
+      'reset handler must validate email format');
+    assert.ok(authLoginPageJs.includes("auth/invalid-email"),
+      'reset handler must reference auth/invalid-email for format errors');
+    const resetHandler = authLoginPageJs.match(/resetBtn\.addEventListener[\s\S]*?sendPasswordResetEmail/);
+    if (resetHandler) {
+      const beforeFirebase = resetHandler[0].split('sendPasswordResetEmail')[0];
+      assert.ok(beforeFirebase.includes('checkValidity') || beforeFirebase.includes('emailRegex'),
+        'email format validation must appear before sendPasswordResetEmail call');
+    }
+  });
+
   // 7. login mode visibility / signup mode hidden
   await t.test('reset button has syncResetVisibility for login/signup mode', () => {
     assert.ok(authLoginPageJs.includes('resetWrap.hidden = !isLogin'),
@@ -84,12 +98,15 @@ test('Login Password Reset Contract', async (t) => {
       'syncResetVisibility function must be defined');
   });
 
-  // 8. sending disabled → finally restore
-  await t.test('reset handler disables button while sending, restores in finally', () => {
+  // 8. sending disabled → mode-safe finally restore via syncResetVisibility
+  await t.test('reset handler disables button while sending, restores via syncResetVisibility in finally', () => {
     assert.ok(authLoginPageJs.includes('resetBtn.disabled = true'),
       'reset handler must disable button while sending');
-    assert.ok(authLoginPageJs.includes('resetBtn.disabled = false'),
-      'reset handler must restore button in finally');
+    // finally no longer uses raw disabled=false — uses mode-safe syncResetVisibility
+    assert.ok(!authLoginPageJs.match(/finally[\s\S]{0,80}resetBtn\.disabled\s*=\s*false/),
+      'finally must NOT blindly re-enable reset button — must use syncResetVisibility instead');
+    assert.ok(authLoginPageJs.includes('syncResetVisibility();'),
+      'finally must call syncResetVisibility() for mode-safe restore');
     assert.ok(authLoginPageJs.includes('password_reset_sending'),
       'reset handler must show sending text');
   });

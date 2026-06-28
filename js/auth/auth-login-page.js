@@ -397,6 +397,26 @@
           return;
         }
 
+        // Validate email format before calling Firebase
+        if (emailInput.checkValidity && !emailInput.checkValidity()) {
+          var formatError = typeof getFriendlyErrorMessage === 'function'
+            ? getFriendlyErrorMessage({ code: 'auth/invalid-email' }, false)
+            : '올바른 이메일 형식이 아닙니다.';
+          alert(formatError);
+          emailInput.focus();
+          return;
+        }
+        // Simple regex guard for environments where checkValidity may not catch all cases
+        var emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+          var formatError = typeof getFriendlyErrorMessage === 'function'
+            ? getFriendlyErrorMessage({ code: 'auth/invalid-email' }, false)
+            : '올바른 이메일 형식이 아닙니다.';
+          alert(formatError);
+          emailInput.focus();
+          return;
+        }
+
         var envError = typeof getEnvironmentCheckError === 'function'
           ? getEnvironmentCheckError()
           : null;
@@ -429,8 +449,8 @@
             alert(friendlyMessage || '비밀번호 재설정 중 오류가 발생했습니다.');
           }
         } finally {
-          resetBtn.disabled = false;
           resetBtn.textContent = originalText;
+          syncResetVisibility();
         }
       });
     }
