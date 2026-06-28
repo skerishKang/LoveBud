@@ -298,6 +298,7 @@ test('login page redirects confirmed authenticated users away from login state',
   assert.match(session, /new\s+URL\s*\(\s*rawTarget\s*,\s*window\.location\.origin\s*\)/, 'auth-session must normalize target URL against current origin');
   assert.match(session, /parsed\.origin\s*!==\s*window\.location\.origin/, 'auth-session must validate same-origin target');
   assert.match(session, /my-trees\.html/, 'auth-session must fallback to My Trees on invalid or cross-origin target');
+  assert.match(session, /canonicalizeRoute/, 'auth-session must canonicalize legacy routes before URL validation');
   // login-page auth observer delegates to session module for redirect target resolution
   assert.match(loginPage, /LoveBudAuthSession\.getRedirectTarget\(\)/, 'login-page auth observer must delegate to auth-session for redirect target');
   assert.match(loginPage, /return\s+'my-trees\.html'/, 'login-page fallback when session module unavailable must be my-trees.html');
@@ -328,4 +329,154 @@ test('auth UI logout uses delegated data attribute and blocks inline signOut onc
   assert.match(source, /data-auth-action=\\?["']logout\\?["']/, 'logout control must keep delegated data-auth-action contract');
   assert.match(source, /closest\(\s*["']\[data-auth-action=\\?["']logout\\?["']\]["']\s*\)/, 'auth-ui must keep delegated logout click handling');
   assert.doesNotMatch(source, /onclick\s*=\s*\\?["']signOut\s*\(\s*\)\\?["']/i, 'auth-ui must not reintroduce inline onclick="signOut()"');
+});
+
+test('getRedirectTarget canonicalizes legacy routes, preserves pages paths, and blocks unsafe/login-loop targets', () => {
+  const vm = require('node:vm');
+  const sessionSource = readRepoFile('js/auth/auth-session.js');
+
+  function runWithParams(search) {
+    const sandbox = {
+      URLSearchParams: URLSearchParams,
+      URL: URL,
+      RegExp: RegExp,
+      decodeURIComponent: decodeURIComponent,
+      window: {
+        location: {
+          search: search || '',
+          origin: 'http://localhost'
+        },
+        LoveBudAuthSession: {}
+      },
+      console: console,
+    };
+    vm.runInNewContext(sessionSource, sandbox);
+    return sandbox.window.LoveBudAuthSession.getRedirectTarget();
+  }
+
+  // Bare route → /pages/<route>
+  assert.equal(runWithParams('?redirect=my-trees'), '/pages/my-trees');
+  assert.equal(runWithParams('?redirect=search'), '/pages/search');
+  assert.equal(runWithParams('?redirect=intro'), '/pages/intro');
+  assert.equal(runWithParams('?redirect=detail'), '/pages/detail');
+  assert.equal(runWithParams('?redirect=editor'), '/pages/editor');
+  assert.equal(runWithParams('?redirect=settings'), '/pages/settings');
+
+  // pages/<route> without leading slash → /pages/<route>
+  assert.equal(runWithParams('?returnTo=pages/editor?treeId=t1'), '/pages/editor?treeId=t1');
+
+  // /pages/<route> preserved as-is
+  assert.equal(runWithParams('?returnTo=/pages/editor?treeId=t1'), '/pages/editor?treeId=t1');
+
+  // Nested query preserved through canonicalization (URLSearchParams decodes %26 → &)
+  assert.equal(runWithParams('?redirect=editor%3FtreeId%3Dt1%26memoryId%3Dm1'), '/pages/editor?treeId=t1&memoryId=m1');
+  // Non-encoded bare route with simple query
+  assert.equal(runWithParams('?redirect=editor?treeId=t1'), '/pages/editor?treeId=t1');
+
+  // returnTo wins over redirect
+  assert.equal(runWithParams('?returnTo=/pages/settings&redirect=my-trees'), '/pages/settings');
+
+  // .html legacy form → /pages/<route>
+  assert.equal(runWithParams('?redirect=my-trees.html'), '/pages/my-trees');
+  assert.equal(runWithParams('?redirect=search.html'), '/pages/search');
+  assert.equal(runWithParams('?redirect=detail.html?treeId=t1'), '/pages/detail?treeId=t1');
+
+  // External/unsafe targets → default fallback
+  assert.equal(runWithParams('?redirect=https://evil.example'), 'my-trees.html');
+  assert.equal(runWithParams('?redirect=//evil.example'), 'my-trees.html');
+  assert.equal(runWithParams('?redirect=javascript:alert(1)'), 'my-trees.html');
+  assert.equal(runWithParams('?redirect=data:text/html,<script>alert(1)</script>'), 'my-trees.html');
+
+  // Login loop prevention → default fallback
+  assert.equal(runWithParams('?redirect=login'), 'my-trees.html');
+  assert.equal(runWithParams('?redirect=login.html'), 'my-trees.html');
+  assert.equal(runWithParams('?redirect=/pages/login'), 'my-trees.html');
+
+  // No params → default fallback
+  assert.equal(runWithParams(''), 'my-trees.html');
+});
+
+test('signInWithGoogle success popup sets canonical href and activates editor preload with canonical redirect', async () => {
+  const vm = require('node:vm');
+  const sessionSource = readRepoFile('js/auth/auth-session.js');
+  const firebaseSource = readRepoFile('js/auth/auth-firebase.js');
+
+  async function runSignInFlow(search) {
+    const store = {};
+    const sandbox = {
+      Object, Array, String, Number, Boolean, Promise, JSON, Math, Date, RegExp,
+      Error, TypeError, RangeError, parseInt, parseFloat, isNaN,
+      setTimeout, clearTimeout, setInterval, clearInterval, decodeURIComponent,
+      URL, URLSearchParams, console,
+      alert: function () {},
+      navigator: { userAgent: 'Mozilla/5.0' },
+      localStorage: {
+        getItem: function (k) { return store[k] || null; },
+        setItem: function (k, v) { store[k] = String(v); },
+        removeItem: function (k) { delete store[k]; },
+      },
+      window: {
+        location: { search: search || '', origin: 'http://localhost', href: '' },
+        self: null,
+        top: null,
+      },
+      firebase: {
+        apps: ['mock-app'],
+        auth: Object.assign(
+          function () {
+            return { signInWithPopup: async function () { return { user: { uid: 'test-uid' } }; } };
+          },
+          { GoogleAuthProvider: function GoogleAuthProvider() {} }
+        ),
+      },
+    };
+    sandbox.window.self = sandbox.window;
+    sandbox.window.top = sandbox.window;
+
+    const ctx = vm.createContext(sandbox);
+    vm.runInContext(sessionSource, ctx);
+    vm.runInContext(firebaseSource, ctx);
+
+    const preloadCalls = [];
+
+    await ctx.window.LoveBudAuthFirebase.signInWithGoogle({
+      getEnvironmentCheckError: function () { return null; },
+      isLoginPage: function () { return false; },
+      persistConfirmedAuthSession: async function () {},
+      preloadRedirectTargetData: function () {
+        preloadCalls.push('preload-called');
+        ctx.window.LoveBudAuthSession.preloadRedirectTargetData({
+          getRedirectTarget: function () {
+            return ctx.window.LoveBudAuthSession.getRedirectTarget();
+          },
+          apiClient: {
+            getTrees: async function () { return [{ id: 'tree-1' }]; },
+            getTree: async function (id) { preloadCalls.push('getTree:' + id); return { id: id }; },
+            getMemoriesByTree: async function () { preloadCalls.push('getMemoriesByTree'); return []; },
+          },
+        });
+      },
+      getRedirectTarget: function () {
+        return ctx.window.LoveBudAuthSession.getRedirectTarget();
+      },
+    });
+
+    // Allow async preload chain (getTrees → getTree) to complete
+    await new Promise(function (resolve) { setTimeout(resolve, 10); });
+
+    return {
+      href: ctx.window.location.href,
+      preloadCalls: preloadCalls,
+    };
+  }
+
+  // bare redirect → canonical href
+  var r1 = await runSignInFlow('?redirect=my-trees');
+  assert.equal(r1.href, '/pages/my-trees');
+  assert.ok(r1.preloadCalls.indexOf('preload-called') !== -1, 'preloadRedirectTargetData must be called');
+
+  // editor redirect with query → canonical href + editor preload activated
+  var r2 = await runSignInFlow('?redirect=editor?treeId=t1');
+  assert.equal(r2.href, '/pages/editor?treeId=t1');
+  assert.ok(r2.preloadCalls.indexOf('getTree:tree-1') !== -1, 'canonical editor redirect must activate editor preload');
 });
