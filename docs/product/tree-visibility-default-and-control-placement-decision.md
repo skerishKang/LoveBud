@@ -48,7 +48,7 @@ The product treats **tree visibility as the publication state** (tree-level). Th
 - When publishing a tree to public, the API slice must explicitly reconcile the 3-public-moments guard with the legacy memory visibility field — i.e., define whether the guard counts moments with `memory.visibility === 'public'` or moments belonging to a public tree.
 - This decision does **not** perform memory visibility migration or data rewrite. The API consistency slice (Slice B) is responsible for validating and documenting the reconciliation.
 
-> The user-facing statement is: **“The published state is tree-level. Legacy memory visibility will be reconciled in the API consistency slice.”**
+> The user-facing statement is: **"The published state is tree-level. Legacy memory visibility will be reconciled in the API consistency slice."**
 
 ### Existing Public Tree Non-Migration
 
@@ -94,10 +94,10 @@ Share recipients (via `detail.html?id=...&tree=...` links) receive read-only acc
 When a user attempts to change a private tree to public, the system must present a confirmation that communicates:
 
 1. **"This tree will be discoverable in Browse."** — users must understand the tree becomes publicly listed.
-2. **"Existing share links will work for anyone with the link."** — existing share recipients retain access.
+2. **"Existing share-link access will be verified as part of the publication check."** — whether existing share recipients can access the tree is subject to server-side authorization verification, not guaranteed by client-side state alone.
 3. **"The published state is tree-level. Legacy memory visibility will be reconciled in the API consistency slice."** — no per-moment granularity; legacy memory visibility is a separate data field that will be reconciled later.
 
-> **Note on existing share link behavior**: Client code alone cannot confirm private/public share authorization outcomes. The publish/private transition effects on Browse visibility, existing share link access, and unauthorized responses are gated on **Slice C server-side verification**. Before that gate passes, the UI must not guarantee “existing links will immediately open/close for everyone.” The confirmation copy reflects intended behavior, subject to server-side authorization invariants.
+> **Note on existing share link behavior**: Client code alone cannot confirm private/public share authorization outcomes. Browse visibility, existing share link access, and unauthorized responses are gated on **Slice C server-side verification**. Before that verification gate passes, the UI must not guarantee that publishing or switching to private will immediately open or close existing links for everyone.
 
 When changing public to private:
 1. **"This tree will no longer appear in Browse."**
@@ -132,7 +132,7 @@ Implement or connect the Tree Settings surface accessible from My Trees card and
 Ensure the API write path (`apiClient.updateTree`) correctly persists `visibility` changes and enforces the minimum 3 public moments guard (currently enforced server-side, returns 409 on violation).
 
 ### Slice C: Browse/Share Consistency
-Verify that after publishing, the tree appears in Browse within the expected propagation window, and that share links immediately become functional for public trees.
+Verify actual share-link authorization and access behavior for public and private trees.
 
 ### Slice D: Editor Right Panel Display-Only Alignment
 Confirm the editor selected-moment right panel does not render a visibility toggle. Display the current tree visibility state with a "Manage in Tree Settings" link if the owner needs to change it.
