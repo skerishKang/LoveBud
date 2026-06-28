@@ -69,6 +69,23 @@
     return card.cloneNode(true);
   }
 
+  function bindMyTreesCardImageHandlers(root) {
+    if (!root || typeof root.querySelectorAll !== 'function') return;
+    root.querySelectorAll('.tree-card-thumb-image').forEach(function(img) {
+      if (img.dataset.imageHandlerBound === 'true') return;
+      img.dataset.imageHandlerBound = 'true';
+
+      img.addEventListener('error', function() {
+        this.style.display = 'none';
+        var fallback = this.nextElementSibling;
+        if (fallback && fallback.hasAttribute('data-media-fallback')) {
+          fallback.removeAttribute('hidden');
+          fallback.style.display = 'flex';
+        }
+      });
+    });
+  }
+
   function attachTreeCardEvents(card, tree, options) {
     var onSelect = options && options.onSelect;
     var openHref = resolveOpenHref(card, tree);
@@ -99,6 +116,7 @@
     });
 
     stopOpenLinkPropagation(card);
+    bindMyTreesCardImageHandlers(card);
     return card;
   }
 
@@ -125,7 +143,8 @@
     resolveOpenHref: resolveOpenHref,
     cloneCardWithoutListeners: cloneCardWithoutListeners,
     attachTreeCardEvents: attachTreeCardEvents,
-    patchBuildTreeCard: patchBuildTreeCard
+    patchBuildTreeCard: patchBuildTreeCard,
+    bindMyTreesCardImageHandlers: bindMyTreesCardImageHandlers
   };
 
   window.LoveBudMyTreesCardEvents = api;

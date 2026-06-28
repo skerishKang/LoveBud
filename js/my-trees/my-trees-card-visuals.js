@@ -24,7 +24,7 @@
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
+      .replace(/\"/g, '&quot;')
       .replace(/'/g, '&#39;');
   }
 
@@ -194,6 +194,26 @@
     ].join('');
   }
 
+  function sanitizeUrl(value) {
+    var sec = window.LoveBudSecurity;
+    if (sec && typeof sec.sanitizeUrl === 'function') return sec.sanitizeUrl(value);
+    var utils = getUtils();
+    if (utils && typeof utils.sanitizeUrl === 'function') return utils.sanitizeUrl(value);
+    if (!value) return '';
+    var raw = String(value).trim();
+    if (!raw) return '';
+    try {
+      var parsed = new URL(raw, window.location.origin);
+      var protocol = parsed.protocol;
+      if (protocol === 'http:' || protocol === 'https:') {
+        return parsed.href;
+      }
+      return '';
+    } catch (e) {
+      return '';
+    }
+  }
+
   function getRepresentativeThumbnail(tree) {
     if (!tree) return '';
     var firstMemory = getFirstMemory(tree);
@@ -201,14 +221,23 @@
       firstStringValue(firstMemory, ['thumbnail', 'thumbnailUrl', 'thumbnail_url', 'imageUrl', 'image_url']);
     var rawSourceUrl = firstStringValue(tree, ['representativeSourceUrl', 'representative_source_url', 'representativeMemorySourceUrl', 'representative_memory_source_url', 'sourceUrl', 'source_url']) ||
       firstStringValue(firstMemory, ['sourceUrl', 'sourceURL', 'source_url', 'videoUrl', 'video_url', 'url']);
-    return canonicalizeThumbnailUrl(rawThumbnail, rawSourceUrl);
+    return sanitizeUrl(canonicalizeThumbnailUrl(rawThumbnail, rawSourceUrl));
   }
 
   function getRepresentativeTextMeta(tree, i18n) {
     if (!tree) return null;
 
-    var repTitle = clipText(tree.representativeTitle || tree.representative_title || '', 40);
-    var repMemo = clipText(tree.representativeMemo || tree.representative_memo || '', 82);
+    var firstMemory = getFirstMemory(tree);
+
+    var repTitle = clipText(
+      tree.representativeTitle || tree.representative_title || firstMemory?.title || '',
+      40
+    );
+    var repMemo = clipText(
+      tree.representativeMemo || tree.representative_memo ||
+      firstMemory?.memo || firstMemory?.description || '',
+      82
+    );
 
     if (!repTitle && !repMemo) return null;
 
@@ -298,6 +327,8 @@
       ? getI18nText(i18n, 'myTrees.card_growing', '차곡차곡 자라는 중')
       : getI18nText(i18n, 'myTrees.card_waiting', '첫 순간을 기다리는 중');
     var thumbnail = getRepresentativeThumbnail(tree);
+    var textCoverHtml = buildRepresentativeTextVisual(tree, palette, i18n);
+    var hasTextCover = Boolean(textCoverHtml);
 
     var isEnglish = String(window.i18n?.currentLang || '').toLowerCase().startsWith('en');
     var pill1 = isEnglish ? 'First Moment' : '첫 순간';
@@ -318,14 +349,17 @@
       '</div>'
     ].join('');
 
+    var errorFallbackHtml = hasTextCover ? textCoverHtml : fallbackHtml;
+
     return [
       '<div class="tree-card-thumb" style="background:' + palette.background + ';">',
         '<div class="tree-card-thumb-glow" style="background:' + palette.leafSoft + ';"></div>',
         '<div class="tree-card-thumb-initial" style="color:' + palette.accent + ';border-color:' + palette.leafSoft + ';">' + initial + '</div>',
         '<div class="tree-card-thumb-art">',
           thumbnail
-            ? '<img class="tree-card-thumb-image" src="' + escapeHtml(thumbnail) + '" alt="' + escapeHtml(title) + '">'
-            : fallbackHtml,
+            ? '<img class="tree-card-thumb-image" src="' + escapeHtml(thumbnail) + '" alt="' + escapeHtml(title) + '" loading="lazy">' +
+              '<div data-media-fallback hidden style="width:100%;height:100%;display:none;align-items:center;justify-content:center;">' + errorFallbackHtml + '</div>'
+            : errorFallbackHtml,
         '</div>',
         (momentCount > 0 ? '<div class="tree-card-thumb-topline"><span class="tree-card-moment-badge" data-count="' + momentCount + '">' + getI18nText(i18n, 'myTrees.moment_count_compact', '순간 {count}개').replace('{count}', String(momentCount)) + '</span></div>' : ''),
         (momentCount > 0 ? '<div class="tree-card-thumb-caption">' + moodLabel + '</div>' : ''),
@@ -344,6 +378,7 @@
     getRepresentativeTextMeta: getRepresentativeTextMeta,
     buildRepresentativeTextVisual: buildRepresentativeTextVisual,
     buildTreeThumbVisual: buildTreeThumbVisual,
-    _canonicalizeThumbnailUrl: canonicalizeThumbnailUrl
+    _canonicalizeThumbnailUrl: canonicalizeThumbnailUrl,
+    _sanitizeUrl: sanitizeUrl
   };
 })();
