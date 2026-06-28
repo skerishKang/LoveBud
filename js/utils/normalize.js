@@ -77,9 +77,12 @@
         // Transitional fallback block:
         // Accept legacy snake_case fields during migration.
         // New code and server responses must prefer flat camelCase only.
+        var resolvedOwnerId = tree.ownerId || tree.owner_id || tree.userId || tree.user_id || null;
+
         return {
             id: tree.id,
-            userId: tree.userId || tree.user_id || null,
+            ownerId: resolvedOwnerId,
+            userId: resolvedOwnerId,
             title: tree.title || '나의 러브트리',
             visibility: tree.visibility || 'private',
             createdAt: tree.createdAt || tree.created_at || null,
