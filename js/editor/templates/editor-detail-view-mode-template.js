@@ -1,11 +1,11 @@
 export function buildDetailViewModeTemplate() {
     return `
-            <div id="detailViewMode" class="editor-hidden-initial" style="display: none;">
-                <div class="editor-tree-meta-section" aria-hidden="true">
-                    <div class="editor-section-eyebrow" id="detailTreeStatusLabel">현재 트리</div>
-                    <div id="detailTreeMetaMount"></div>
-                </div>
+            <div class="editor-tree-meta-section">
+                <div class="editor-section-eyebrow" id="detailTreeStatusLabel">현재 트리</div>
+                <div id="detailTreeMetaMount"></div>
+            </div>
 
+            <div id="detailViewMode" class="editor-hidden-initial" style="display: none;">
                 <div class="editor-current-moment-card">
                     <div class="editor-current-moment-head">
                         <div id="detailCurrentMomentBadge" class="editor-current-moment-badge">...</div>

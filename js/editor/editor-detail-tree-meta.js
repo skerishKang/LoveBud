@@ -9,12 +9,8 @@
             openCurrentMomentDetail,
             canEdit,
             openRenameTree,
-            updateTreeVisibility,
             updateDetailPanel
         } = deps;
-
-        const PENDING_LABEL = '상태 변경 중...';
-        const PENDING_ICON = 'hourglass_empty';
 
         const createPillButton = ({ label, icon, tone = 'soft' }) => {
             const btn = document.createElement('button');
@@ -120,12 +116,6 @@
         };
 
         const createOwnerActionButtons = (isPublic, onRenameSaved) => {
-            const nextVis = isPublic ? 'private' : 'public';
-            const visLabel = isPublic
-                ? formatI18nText('make_private', '비공개로 전환')
-                : formatI18nText('make_public', '공개로 전환');
-            const visIcon = isPublic ? 'lock' : 'public';
-
             const renameBtn = createOwnerActionBtn({
                 label: formatI18nText('rename_tree', '이름 바꾸기'),
                 icon: 'edit'
@@ -139,57 +129,7 @@
                 });
             });
 
-            const visBtn = createOwnerActionBtn({
-                label: visLabel,
-                icon: visIcon
-            });
-
-            visBtn.dataset.origVisIcon = visIcon;
-            visBtn.dataset.origVisLabel = visLabel;
-
-            visBtn.addEventListener('click', async () => {
-                if (typeof updateTreeVisibility !== 'function') return;
-
-                // Apply pending state using reliable element references
-                visBtn.disabled = true;
-                visBtn.setAttribute('aria-busy', 'true');
-                visBtn.style.opacity = '0.65';
-                visBtn.style.pointerEvents = 'none';
-
-                if (visBtn._iconEl) {
-                    visBtn._iconEl.textContent = PENDING_ICON;
-                }
-                if (visBtn._labelEl) {
-                    visBtn._labelEl.textContent = PENDING_LABEL;
-                }
-
-                try {
-                    await updateTreeVisibility(nextVis);
-                } catch (error) {
-                    console.error('[editor] visibility toggle failed:', error);
-                    if (typeof showToast === 'function') {
-                        showToast(
-                            formatI18nText('visibility_toggle_error', '공개 상태를 바꾸지 못했어요.'),
-                            'error'
-                        );
-                    }
-                } finally {
-                    visBtn.disabled = false;
-                    visBtn.setAttribute('aria-busy', 'false');
-                    visBtn.style.opacity = '';
-                    visBtn.style.pointerEvents = '';
-
-                    // Restore original icon and label from data attributes
-                    if (visBtn._iconEl) {
-                        visBtn._iconEl.textContent = visBtn.dataset.origVisIcon || visIcon;
-                    }
-                    if (visBtn._labelEl) {
-                        visBtn._labelEl.textContent = visBtn.dataset.origVisLabel || visLabel;
-                    }
-                }
-            });
-
-            return [renameBtn, visBtn];
+            return [renameBtn];
         };
 
         const bindShareButton = ({ btn, data, treeId }) => {
@@ -321,9 +261,8 @@
             if (shareButtonEl) actionsRow.appendChild(shareButtonEl);
             if (openDetailButtonEl) actionsRow.appendChild(openDetailButtonEl);
             if (canEdit === true) {
-                const [renameBtn, visBtn] = createOwnerActionButtons(isPublic, onRenameSaved);
+                const [renameBtn] = createOwnerActionButtons(isPublic, onRenameSaved);
                 actionsRow.appendChild(renameBtn);
-                actionsRow.appendChild(visBtn);
             }
 
             if (actionsRow.children.length > 0) {

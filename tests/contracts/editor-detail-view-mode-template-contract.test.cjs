@@ -9,6 +9,13 @@ test('Detail View Mode template helper exists and contains markup', () => {
     const helperCode = fs.readFileSync(helperPath, 'utf8');
     assert.ok(helperCode.includes('id="detailViewMode"'), 'must include detail view mode root id');
     assert.ok(helperCode.includes('id="detailTreeMetaMount"'), 'must include detail tree meta mount id');
+    assert.ok(helperCode.includes('class="editor-tree-meta-section"'), 'must include editor-tree-meta-section class (tree context card)');
+    // Tree meta section should be OUTSIDE detailViewMode (persistent tree context)
+    const treeMetaIndex = helperCode.indexOf('class="editor-tree-meta-section"');
+    const viewModeIndex = helperCode.indexOf('id="detailViewMode"');
+    assert.ok(treeMetaIndex !== -1 && viewModeIndex !== -1, 'both tree meta section and detailViewMode must exist');
+    assert.ok(treeMetaIndex < viewModeIndex, 'tree meta section must appear before detailViewMode in template (persistent tree context)');
+
     assert.ok(helperCode.includes('id="detailCurrentMomentBadge"'), 'must include badge id');
     assert.ok(helperCode.includes('id="editMemoryBtn"'), 'must include edit btn id');
     assert.ok(helperCode.includes('id="detailCurrentMomentTitle"'), 'must include title id');
@@ -21,7 +28,7 @@ test('Detail View Mode template helper exists and contains markup', () => {
     assert.ok(helperCode.includes('id="saveStatusIndicator"'), 'must include save status indicator id');
     assert.ok(helperCode.includes('id="saveStatusText"'), 'must include save status text id');
     assert.ok(helperCode.includes('id="lastSavedTime"'), 'must include last saved time id');
-    
+
     assert.ok(helperCode.includes('class="editor-hidden-initial"'), 'must include editor-hidden-initial class');
     assert.match(helperCode, /id="detailViewMode"[^>]*style="display:\s*none;"/, 'detail view mode root must be initially hidden');
     assert.ok(helperCode.includes('class="editor-current-moment-card"'), 'must include editor-current-moment-card class');

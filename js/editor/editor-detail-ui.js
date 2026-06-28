@@ -14,7 +14,6 @@ function createEditorDetailUI(deps) {
         getCurrentTreeData,
         getLocalSaveMode,
         showToast,
-        updateTreeVisibility,
         openCurrentMomentDetail,
         focusSelectedMoment,
         updateSelectedMemoryFields,
@@ -63,7 +62,6 @@ function createEditorDetailUI(deps) {
         openCurrentMomentDetail,
         canEdit,
         openRenameTree,
-        updateTreeVisibility,
         updateDetailPanel: () => updateDetailPanel
     });
     const { buildTreeMetaRenderModel, renderTreeMetaBoundary } = treeMetaBoundary;
@@ -261,8 +259,8 @@ function createEditorDetailUI(deps) {
 
         clearDetailMedia();
 
-        const treeMetaMount = document.getElementById('detailTreeMetaMount');
-        if (treeMetaMount) treeMetaMount.innerHTML = '';
+        // Tree context card is persistent - do NOT clear detailTreeMetaMount here
+        // It's rendered/updated by updateDetailPanel when tree is loaded
 
         const atlasPreviewMount = document.getElementById('detailAtlasPreviewMount');
         if (atlasPreviewMount) {
@@ -432,6 +430,19 @@ function createEditorDetailUI(deps) {
         const memoryActions = detailPanel.querySelector('.memory-actions');
         const atlasPreviewMount = document.getElementById('detailAtlasPreviewMount');
 
+        // Always render tree context card when tree is loaded (treeState.hasMoments or tree exists)
+        // Tree context persists regardless of moment selection state
+        if (treeMetaMount && (treeState.hasMoments || currentTree.id)) {
+            const treeMetaModel = buildTreeMetaRenderModel({
+                currentTree: currentTree || {},
+                treeState,
+                data,
+                isEmptyState: false, // Tree context card is never empty when tree is loaded
+                localSaveMode
+            });
+            renderTreeMetaBoundary(treeMetaMount, treeMetaModel, treeId, data);
+        }
+
         if (isEmptyState) {
             if (badgeEl) badgeEl.textContent = formatI18nText('waiting_first_moment', '첫 순간을 기다리고 있어요');
             if (titleEl) titleEl.textContent = formatI18nText('editor_current_moment_empty_title', '이 트리의 첫 장면을 심어 보세요');
@@ -446,18 +457,6 @@ function createEditorDetailUI(deps) {
         }
 
         setDetailEmptyState(false);
-
-        const treeMetaModel = buildTreeMetaRenderModel({
-            currentTree: currentTree || {},
-            treeState,
-            data,
-            isEmptyState,
-            localSaveMode
-        });
-
-        if (treeMetaMount) {
-            renderTreeMetaBoundary(treeMetaMount, treeMetaModel, treeId, data);
-        }
 
         if (badgeEl) {
             badgeEl.textContent = isRootSelected

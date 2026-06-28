@@ -14,21 +14,29 @@
     box-shadow: 0 4px 12px rgba(75, 64, 57, 0.03);
 }
 
+/* Tree context card - lower visual hierarchy (always visible, persistent) */
 .editor-tree-meta-section {
     gap: 8px;
+    background: var(--surface-container-low);
+    border-color: rgba(144,73,81,0.06);
+    box-shadow: 0 2px 8px rgba(75, 64, 57, 0.02);
+    order: 0;
+}
+
+/* Selected moment card - higher visual hierarchy */
+.editor-current-moment-card {
+    gap: 9px;
+    background: var(--surface-container-lowest);
+    border: 1px solid rgba(144, 73, 81, 0.12);
+    box-shadow: 0 6px 16px rgba(75, 64, 57, 0.05);
+    order: 1;
 }
 
 .editor-moment-info-card {
     background: var(--surface-container-low);
     border-color: rgba(144,73,81,0.06);
     box-shadow: none;
-}
-
-.editor-current-moment-card {
-    gap: 9px;
-    background: var(--surface-container-lowest);
-    border: 1px solid rgba(144, 73, 81, 0.12);
-    box-shadow: 0 6px 16px rgba(75, 64, 57, 0.05);
+    order: 2;
 }
 
 /* ── Section eyebrow ───────────────────────────────────── */
