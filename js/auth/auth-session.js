@@ -4,9 +4,21 @@
  */
 (function () {
   function getRedirectTarget(getBasePath) {
-    var params = new URLSearchParams(window.location.search);
-    var returnTo = params.get('returnTo');
-    var redirect = params.get('redirect');
+    var rawSearch = window.location.search || '';
+    // raw query string에서 returnTo / redirect 값을 직접 추출 (중첩 query 보존)
+    // 예: ?returnTo=/pages/editor.html?treeId=123&memoryId=456&mode=edit
+    function extractParam(name) {
+      var regex = new RegExp('[?&]' + name + '=([^&]*)');
+      var match = rawSearch.match(regex);
+      if (match && match[1]) {
+        // decodeURIComponent로 디코딩하되, 중첩된 & 등은 그대로 둠
+        return decodeURIComponent(match[1]);
+      }
+      return null;
+    }
+
+    var returnTo = extractParam('returnTo');
+    var redirect = extractParam('redirect');
 
     // returnTo 우선, 없을 때만 redirect 사용
     var rawTarget = returnTo || redirect;
