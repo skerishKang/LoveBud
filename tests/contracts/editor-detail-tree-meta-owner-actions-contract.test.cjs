@@ -357,7 +357,7 @@ test('7. cache-bust: all 4 use same token', () => {
   assert.match(html, /editor-rename-ui\.js\?v=20260627-2882-detail-tree-meta-actions-1/);
   assert.match(html, /editor-detail-tree-meta\.js\?v=20260627-2882-detail-tree-meta-actions-1/);
   assert.match(html, /editor-detail-ui\.js\?v=20260627-2882-detail-tree-meta-actions-1/);
-  assert.match(html, /editor\.js\?v=20260627-2882-detail-tree-meta-actions-1/);
+  assert.match(html, /editor\.js\?v=20260628-2970/);
 });
 
 test('8. no direct API calls', () => {

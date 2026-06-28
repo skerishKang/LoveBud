@@ -30,12 +30,6 @@
     el.setAttribute(attr, tText(key, fallback));
   }
 
-  function getCanonicalRootId(memories) {
-    if (!Array.isArray(memories) || !memories.length) return 'root';
-    var explicitRoot = memories.find(function(m) { return m && (m.parentId === null || m.parentId === undefined); });
-    return explicitRoot ? explicitRoot.id : ((memories.find(function(m) { return m && m.id === 'root'; }) || {}).id || 'root');
-  }
-
   function readViewOptions() {
     try {
       var raw = localStorage.getItem(VIEW_OPTIONS_STORAGE_KEY);
@@ -263,34 +257,6 @@
     if (title) title.textContent = tText('editor_view_options_title', '캔버스 표시');
   }
 
-  function updateEditorDynamicSummary() {
-    var memories = Array.isArray(window.currentTreeMemories) ? window.currentTreeMemories : [];
-    var rootId = getCanonicalRootId(memories);
-    var count = memories.filter(function(m) { return m && m.id !== rootId; }).length;
-
-    var flowSummaryEl = document.getElementById('sidebarFlowSummary');
-    if (flowSummaryEl) {
-      var currentTreeData = window.currentTreeData || {};
-      var timeRange = String(currentTreeData.timeRange || currentTreeData.time_range || '').trim();
-      var titleText = String(currentTreeData.title || '').trim() || '러브트리';
-
-      if (!count) {
-        flowSummaryEl.textContent = tText('editor_tree_status_empty', '아직 첫 순간을 기다리고 있어요.');
-      } else {
-        if (timeRange) {
-          flowSummaryEl.innerHTML = tText('sidebar_flow_summary_connected_with_range', '<p class="preview-summary-line"><strong>{title}</strong>에 담긴 <strong>{count}개의 순간</strong>이 <strong>{timeRange}</strong>에 걸쳐 이어졌어요.</p>')
-            .replace('{title}', escapeHtml(titleText))
-            .replace('{count}', String(count))
-            .replace('{timeRange}', escapeHtml(timeRange));
-        } else {
-          flowSummaryEl.innerHTML = tText('sidebar_flow_summary_connected', '<p class="preview-summary-line"><strong>{title}</strong>에 담긴 <strong>{count}개의 순간</strong>이 이어졌어요.</p>')
-            .replace('{title}', escapeHtml(titleText))
-            .replace('{count}', String(count));
-        }
-      }
-    }
-  }
-
   function refreshEditorLanguage() {
     if (typeof window.applyI18n === 'function') {
       window.applyI18n();
@@ -357,7 +323,6 @@
 
     ensureViewOptionsControl();
     updateViewOptionsLanguage();
-    updateEditorDynamicSummary();
   }
 
   if (document.readyState === 'loading') {

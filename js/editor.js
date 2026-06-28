@@ -472,6 +472,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 updateSidebarTreeActions
             });
 
+            if (!window.__lovebudSidebarStatusRefreshBound) {
+                window.__lovebudSidebarStatusRefreshBound = true;
+                window.addEventListener('lovebud-lang-change', function() {
+                    updateSidebarStatus();
+                });
+            }
+
             log('Creating Editor Canvas Instance...');
             var disconnectMemoryFn = null;
             var connectExistingController = null;

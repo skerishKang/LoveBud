@@ -345,14 +345,12 @@ test('editor-detail-sidebar-status-boundary.js fallback template mirrors My Tree
   assert.match(source, /<strong>\s*\{timeRange\}\s*<\/strong>/);
 });
 
-test('editor-i18n-refresh.js summary path mirrors My Trees hub pattern', () => {
+test('editor-i18n-refresh.js must NOT carry summary renderer (#2970)', () => {
   const source = fs.readFileSync(I18N_REFRESH_FILE, 'utf8');
-  assert.match(source, /<p\s+class="preview-summary-line">/,
-    'editor-i18n-refresh.js summary path must wrap summary in <p class="preview-summary-line"> (My Trees hub pattern)');
-  assert.match(source, /<strong>\s*\{title\}\s*<\/strong>/,
-    'editor-i18n-refresh.js summary path must wrap {title} in <strong> (My Trees hub pattern)');
-  assert.match(source, /<strong>\s*\{count\}개의\s*순간\s*<\/strong>/);
-  assert.match(source, /<strong>\s*\{timeRange\}\s*<\/strong>/);
+  assert.doesNotMatch(source, /sidebarFlowSummary/,
+    'editor-i18n-refresh.js must not reference sidebarFlowSummary directly');
+  assert.doesNotMatch(source, /<p\s+class="preview-summary-line">/,
+    'editor-i18n-refresh.js must not contain summary HTML template');
 });
 
 test('editor summary innerHTML matches My Trees hub patchSummaryWithTimeRange template exactly', () => {
