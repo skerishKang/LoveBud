@@ -7,8 +7,9 @@ window.LoveBudEditorCanvasViewportBranches = {
     path.setAttribute('class', 'branch-line');
     path.setAttribute('fill', 'none');
     path.setAttribute('stroke', 'var(--secondary)');
-    path.setAttribute('stroke-width', '2');
-    path.setAttribute('opacity', '0.5');
+    path.setAttribute('stroke-width', '2.2');
+    path.setAttribute('opacity', '0.55');
+    path.setAttribute('stroke-linecap', 'round');
     svg.appendChild(path);
     return path;
   },

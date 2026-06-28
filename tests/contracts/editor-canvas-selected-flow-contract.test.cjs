@@ -111,7 +111,45 @@ test('Editor Canvas Selected Flow Emphasis Contract', async (t) => {
       'CSS is-selected must have highest opacity');
   });
 
-  // 9. No persistence, graph route, API, DB, or auth changes
+  // 9. Baseline edge values across both renderers
+  await t.test('editor-canvas-edges.js fallback regular edge has 2.2 / 0.55 / round', () => {
+    const drawBranchFn = edgesJs.match(/const drawBranch =[\s\S]*?};/);
+    assert.ok(drawBranchFn, 'drawBranch function must exist in edges.js');
+    const fnBody = drawBranchFn[0];
+    // Only check the fallback path (inside drawBranch before canvasViewport.drawBranch delegation)
+    assert.ok(fnBody.includes("'stroke-width', '2.2'"),
+      'edges.js fallback drawBranch must have stroke-width 2.2');
+    assert.ok(fnBody.includes("'opacity', '0.55'"),
+      'edges.js fallback drawBranch must have opacity 0.55');
+    assert.ok(fnBody.includes("'stroke-linecap', 'round'"),
+      'edges.js fallback drawBranch must have stroke-linecap round');
+  });
+
+  await t.test('editor-canvas-viewport-branches.js regular edge has 2.2 / 0.55 / round', () => {
+    const vpBranches = read('js/editor/editor-canvas-viewport-branches.js');
+    assert.ok(vpBranches.includes("'stroke-width', '2.2'"),
+      'viewport branches drawBranch must have stroke-width 2.2');
+    assert.ok(vpBranches.includes("'opacity', '0.55'"),
+      'viewport branches drawBranch must have opacity 0.55');
+    assert.ok(vpBranches.includes("'stroke-linecap', 'round'"),
+      'viewport branches drawBranch must have stroke-linecap round');
+  });
+
+  await t.test('dashed preview edge maintains 2.5 / 0.7 / 8 5 / round', () => {
+    const previewFn = edgesJs.match(/function drawDashedPreview[\s\S]*?function clearDashedPreview/);
+    assert.ok(previewFn, 'drawDashedPreview function must exist');
+    const fnBody = previewFn[0];
+    assert.ok(fnBody.includes("'stroke-width', '2.5'"),
+      'dashed preview must keep stroke-width 2.5');
+    assert.ok(fnBody.includes("'opacity', '0.7'"),
+      'dashed preview must keep opacity 0.7');
+    assert.ok(fnBody.includes("'stroke-dasharray', '8 5'"),
+      'dashed preview must keep stroke-dasharray 8 5');
+    assert.ok(fnBody.includes("'stroke-linecap', 'round'"),
+      'dashed preview must keep stroke-linecap round');
+  });
+
+  // 10. No persistence, graph route, API, DB, or auth changes
   await t.test('No persistence, graph route, API, DB, or auth changes', () => {
     const forbidden = ['localStorage', 'fetch(', 'api/', 'firebase', 'postgres'];
     const allFiles = [edgesJs, canvasJs, shellCanvasUiJs];
