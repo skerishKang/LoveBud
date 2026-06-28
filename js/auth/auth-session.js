@@ -3,6 +3,17 @@
  * Extracted from auth.js to keep redirect/session preload responsibility isolated.
  */
 (function () {
+  var LEGACY_PAGE_ROUTES = ['intro', 'search', 'detail', 'editor', 'my-trees', 'settings'];
+
+  function canonicalizeRoute(raw) {
+    if (!raw) return null;
+    var cleaned = raw.replace(/\.html([?#]|$)/, '$1');
+    if (/^\/pages\/(intro|search|detail|editor|my-trees|settings)([?#].*)?$/.test(cleaned)) return cleaned;
+    if (/^pages\/(intro|search|detail|editor|my-trees|settings)([?#].*)?$/.test(cleaned)) return '/' + cleaned;
+    if (/^(intro|search|detail|editor|my-trees|settings)([?#].*)?$/.test(cleaned)) return '/pages/' + cleaned;
+    return null;
+  }
+
   function getRedirectTarget(getBasePath) {
     var rawSearch = window.location.search || '';
     // raw query string에서 returnTo / redirect 값을 직접 추출 (중첩 query 보존)
@@ -45,6 +56,10 @@
       return basePath + 'my-trees.html';
     }
 
+    // canonicalizeRoute로 legacy bare route / pages/* → /pages/<route> 정규화
+    var canon = canonicalizeRoute(rawTarget);
+    if (canon) return canon;
+
     // URL 파싱 및 검증
     var parsed;
     try {
@@ -71,7 +86,7 @@
     // login-page loop 차단
     var pathname = parsed.pathname || '';
     if (pathname.indexOf('/pages/login') !== -1 ||
-        pathname.indexOf('login.html') !== -1) {
+        /\/login(?:\.html)?$/.test(pathname)) {
       var basePath = typeof getBasePath === 'function' ? getBasePath() : '';
       return basePath + 'my-trees.html';
     }

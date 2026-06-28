@@ -298,6 +298,7 @@ test('login page redirects confirmed authenticated users away from login state',
   assert.match(session, /new\s+URL\s*\(\s*rawTarget\s*,\s*window\.location\.origin\s*\)/, 'auth-session must normalize target URL against current origin');
   assert.match(session, /parsed\.origin\s*!==\s*window\.location\.origin/, 'auth-session must validate same-origin target');
   assert.match(session, /my-trees\.html/, 'auth-session must fallback to My Trees on invalid or cross-origin target');
+  assert.match(session, /canonicalizeRoute/, 'auth-session must canonicalize legacy routes before URL validation');
   // login-page auth observer delegates to session module for redirect target resolution
   assert.match(loginPage, /LoveBudAuthSession\.getRedirectTarget\(\)/, 'login-page auth observer must delegate to auth-session for redirect target');
   assert.match(loginPage, /return\s+'my-trees\.html'/, 'login-page fallback when session module unavailable must be my-trees.html');
@@ -328,4 +329,69 @@ test('auth UI logout uses delegated data attribute and blocks inline signOut onc
   assert.match(source, /data-auth-action=\\?["']logout\\?["']/, 'logout control must keep delegated data-auth-action contract');
   assert.match(source, /closest\(\s*["']\[data-auth-action=\\?["']logout\\?["']\]["']\s*\)/, 'auth-ui must keep delegated logout click handling');
   assert.doesNotMatch(source, /onclick\s*=\s*\\?["']signOut\s*\(\s*\)\\?["']/i, 'auth-ui must not reintroduce inline onclick="signOut()"');
+});
+
+test('getRedirectTarget canonicalizes legacy routes, preserves pages paths, and blocks unsafe/login-loop targets', () => {
+  const vm = require('node:vm');
+  const sessionSource = readRepoFile('js/auth/auth-session.js');
+
+  function runWithParams(search) {
+    const sandbox = {
+      URLSearchParams: URLSearchParams,
+      URL: URL,
+      RegExp: RegExp,
+      decodeURIComponent: decodeURIComponent,
+      window: {
+        location: {
+          search: search || '',
+          origin: 'http://localhost'
+        },
+        LoveBudAuthSession: {}
+      },
+      console: console,
+    };
+    vm.runInNewContext(sessionSource, sandbox);
+    return sandbox.window.LoveBudAuthSession.getRedirectTarget();
+  }
+
+  // Bare route → /pages/<route>
+  assert.equal(runWithParams('?redirect=my-trees'), '/pages/my-trees');
+  assert.equal(runWithParams('?redirect=search'), '/pages/search');
+  assert.equal(runWithParams('?redirect=intro'), '/pages/intro');
+  assert.equal(runWithParams('?redirect=detail'), '/pages/detail');
+  assert.equal(runWithParams('?redirect=editor'), '/pages/editor');
+  assert.equal(runWithParams('?redirect=settings'), '/pages/settings');
+
+  // pages/<route> without leading slash → /pages/<route>
+  assert.equal(runWithParams('?returnTo=pages/editor?treeId=t1'), '/pages/editor?treeId=t1');
+
+  // /pages/<route> preserved as-is
+  assert.equal(runWithParams('?returnTo=/pages/editor?treeId=t1'), '/pages/editor?treeId=t1');
+
+  // Nested query preserved through canonicalization (URLSearchParams decodes %26 → &)
+  assert.equal(runWithParams('?redirect=editor%3FtreeId%3Dt1%26memoryId%3Dm1'), '/pages/editor?treeId=t1&memoryId=m1');
+  // Non-encoded bare route with simple query
+  assert.equal(runWithParams('?redirect=editor?treeId=t1'), '/pages/editor?treeId=t1');
+
+  // returnTo wins over redirect
+  assert.equal(runWithParams('?returnTo=/pages/settings&redirect=my-trees'), '/pages/settings');
+
+  // .html legacy form → /pages/<route>
+  assert.equal(runWithParams('?redirect=my-trees.html'), '/pages/my-trees');
+  assert.equal(runWithParams('?redirect=search.html'), '/pages/search');
+  assert.equal(runWithParams('?redirect=detail.html?treeId=t1'), '/pages/detail?treeId=t1');
+
+  // External/unsafe targets → default fallback
+  assert.equal(runWithParams('?redirect=https://evil.example'), 'my-trees.html');
+  assert.equal(runWithParams('?redirect=//evil.example'), 'my-trees.html');
+  assert.equal(runWithParams('?redirect=javascript:alert(1)'), 'my-trees.html');
+  assert.equal(runWithParams('?redirect=data:text/html,<script>alert(1)</script>'), 'my-trees.html');
+
+  // Login loop prevention → default fallback
+  assert.equal(runWithParams('?redirect=login'), 'my-trees.html');
+  assert.equal(runWithParams('?redirect=login.html'), 'my-trees.html');
+  assert.equal(runWithParams('?redirect=/pages/login'), 'my-trees.html');
+
+  // No params → default fallback
+  assert.equal(runWithParams(''), 'my-trees.html');
 });
