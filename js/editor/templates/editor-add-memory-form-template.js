@@ -20,7 +20,7 @@ export function buildAddMemoryFormTemplate() {
                     <span id="memoryFormSupportNoteText">YouTube 링크가 있으면 대표 장면이 잡히고, 링크가 없어도 제목과 메모만으로 첫 순간을 시작할 수 있어요.</span>
                 </div>
                 <div class="editor-form-field editor-form-field-primary" id="memoryUrlField">
-                    <label id="memoryUrlLabel" class="editor-form-label">...</label>
+                    <label id="memoryUrlLabel" for="memoryUrlInput" class="editor-form-label">...</label>
                     <input type="text" id="memoryUrlInput" placeholder="https://www.youtube.com/watch?v=..." class="editor-form-input">
                 </div>
                 <div class="editor-video-segment-grid" id="memoryVideoSegmentGrid">
@@ -47,15 +47,15 @@ export function buildAddMemoryFormTemplate() {
                 </div>
                 <div class="editor-form-field editor-form-field-grid">
                     <div class="editor-form-stack editor-form-stack-compact">
-                        <label id="memoryTitleLabel" class="editor-form-label">...</label>
+                        <label id="memoryTitleLabel" for="memoryTitleInput" class="editor-form-label">...</label>
                         <input type="text" id="memoryTitleInput" placeholder="..." class="editor-form-input">
                     </div>
                     <div class="editor-form-stack editor-form-stack-compact">
-                        <label id="memoryTagsLabel" class="editor-form-label">...</label>
+                        <label id="memoryTagsLabel" for="memoryTagsInput" class="editor-form-label">...</label>
                         <input type="text" id="memoryTagsInput" class="editor-form-input" placeholder="...">
                     </div>
                     <div class="editor-form-stack editor-form-stack-roomy">
-                        <label id="memoryMemoLabel" class="editor-form-label">...</label>
+                        <label id="memoryMemoLabel" for="memoryMemoInput" class="editor-form-label">...</label>
                         <textarea id="memoryMemoInput" placeholder="..." rows="5" class="editor-form-textarea"></textarea>
                     </div>
                 </div>
