@@ -169,6 +169,66 @@
         }
     }
 
+    function clipText(value, maxLength) {
+        var text = String(value || '').trim();
+        if (!text) return '';
+        if (text.length <= maxLength) return text;
+        return text.slice(0, maxLength).trim() + '\u2026';
+    }
+
+    function buildRepresentativeTextVisual(tree, palette, firstMem) {
+        var repTitle = clipText(
+            tree.representativeTitle || tree.representative_title || firstMem?.title || '',
+            40
+        );
+        var repMemo = clipText(
+            tree.representativeMemo || tree.representative_memo ||
+            firstMem?.memo || firstMem?.description || '',
+            82
+        );
+        if (!repTitle && !repMemo) return '';
+
+        return [
+            '<div class="tree-card-text-visual" style="border-color:' + palette.leafSoft + ';background:rgba(255,255,255,0.84);">',
+                '<div class="tree-card-text-kicker" style="color:' + palette.accent + ';">첫 순간 기록</div>',
+                '<div class="tree-card-text-title">' + escapeHtml(repTitle) + '</div>',
+                '<div class="tree-card-text-memo">' + escapeHtml(repMemo) + '</div>',
+            '</div>'
+        ].join('');
+    }
+
+    var _fallbackPalettes = [
+        {
+            background: 'linear-gradient(135deg, #fff3f6 0%, #f8e4ea 42%, #f6efe8 100%)',
+            leaf: '#d8839a',
+            leafSoft: 'rgba(216, 131, 154, 0.18)',
+            accent: '#904951'
+        },
+        {
+            background: 'linear-gradient(135deg, #fdf6ea 0%, #f7ebd7 46%, #f5f0f7 100%)',
+            leaf: '#c79d68',
+            leafSoft: 'rgba(199, 157, 104, 0.18)',
+            accent: '#9d6b4d'
+        },
+        {
+            background: 'linear-gradient(135deg, #f2f6ef 0%, #e4efe1 48%, #f8efe8 100%)',
+            leaf: '#7a8b6e',
+            leafSoft: 'rgba(122, 139, 110, 0.18)',
+            accent: '#5d6f52'
+        },
+        {
+            background: 'linear-gradient(135deg, #f6f0fb 0%, #ece4f7 42%, #fdf2f3 100%)',
+            leaf: '#9f7ec2',
+            leafSoft: 'rgba(159, 126, 194, 0.18)',
+            accent: '#7d5ba6'
+        }
+    ];
+
+    function _getFallbackPalette(tree) {
+        var seed = hashSeed((tree && tree.id) || (tree && tree.title) || 'lovetree');
+        return _fallbackPalettes[seed % _fallbackPalettes.length];
+    }
+
     function renderRepresentativeMedia(tree, firstMem, titleText) {
         const mediaUrl = sanitizeUrl(
             tree.representativeThumbnail ||
@@ -176,11 +236,33 @@
             tree.thumbnail ||
             ''
         );
-        const firstMoment = escapeHtml(firstMem?.title || '대표 순간 준비 중');
+        const firstMoment = escapeHtml(firstMem?.title || '');
 
+        // Tier 1: real media thumbnail
+        if (mediaUrl) {
+            return `
+                <div class="tree-card-media" aria-label="${firstMoment}" style="position:relative;overflow:hidden;">
+                    ${renderRepresentativeImage(mediaUrl, firstMoment, tree, titleText)}
+                </div>
+            `;
+        }
+
+        var palette = _getFallbackPalette(tree);
+
+        // Tier 2: text-led cover when representative text exists
+        var textVisual = buildRepresentativeTextVisual(tree, palette, firstMem);
+        if (textVisual) {
+            return `
+                <div class="tree-card-media" aria-label="${firstMoment}" style="background:${palette.background};position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;">
+                    ${textVisual}
+                </div>
+            `;
+        }
+
+        // Tier 3: premium SVG fallback
         return `
             <div class="tree-card-media" aria-label="${firstMoment}" style="position:relative;overflow:hidden;">
-                ${renderRepresentativeImage(mediaUrl, firstMoment, tree, titleText)}
+                ${renderMediaFallback(tree, titleText)}
             </div>
         `;
     }
@@ -205,6 +287,10 @@
         renderRepresentativeImage: renderRepresentativeImage,
         sanitizeUrl: sanitizeUrl,
         renderRepresentativeMedia: renderRepresentativeMedia,
-        escapeHtml: escapeHtml
+        escapeHtml: escapeHtml,
+        clipText: clipText,
+        buildRepresentativeTextVisual: buildRepresentativeTextVisual,
+        _fallbackPalettes: _fallbackPalettes,
+        _getFallbackPalette: _getFallbackPalette
     };
 })();

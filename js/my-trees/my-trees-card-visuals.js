@@ -24,7 +24,7 @@
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
+      .replace(/\"/g, '&quot;')
       .replace(/'/g, '&#39;');
   }
 
@@ -298,6 +298,8 @@
       ? getI18nText(i18n, 'myTrees.card_growing', '차곡차곡 자라는 중')
       : getI18nText(i18n, 'myTrees.card_waiting', '첫 순간을 기다리는 중');
     var thumbnail = getRepresentativeThumbnail(tree);
+    var textCoverHtml = buildRepresentativeTextVisual(tree, palette, i18n);
+    var hasTextCover = Boolean(textCoverHtml);
 
     var isEnglish = String(window.i18n?.currentLang || '').toLowerCase().startsWith('en');
     var pill1 = isEnglish ? 'First Moment' : '첫 순간';
@@ -318,14 +320,17 @@
       '</div>'
     ].join('');
 
+    var errorFallbackHtml = hasTextCover ? textCoverHtml : fallbackHtml;
+
     return [
       '<div class="tree-card-thumb" style="background:' + palette.background + ';">',
         '<div class="tree-card-thumb-glow" style="background:' + palette.leafSoft + ';"></div>',
         '<div class="tree-card-thumb-initial" style="color:' + palette.accent + ';border-color:' + palette.leafSoft + ';">' + initial + '</div>',
         '<div class="tree-card-thumb-art">',
           thumbnail
-            ? '<img class="tree-card-thumb-image" src="' + escapeHtml(thumbnail) + '" alt="' + escapeHtml(title) + '">'
-            : fallbackHtml,
+            ? '<img class="tree-card-thumb-image" src="' + escapeHtml(thumbnail) + '" alt="' + escapeHtml(title) + '" loading="lazy">' +
+              '<div data-media-fallback hidden style="width:100%;height:100%;display:none;align-items:center;justify-content:center;">' + errorFallbackHtml + '</div>'
+            : errorFallbackHtml,
         '</div>',
         (momentCount > 0 ? '<div class="tree-card-thumb-topline"><span class="tree-card-moment-badge" data-count="' + momentCount + '">' + getI18nText(i18n, 'myTrees.moment_count_compact', '순간 {count}개').replace('{count}', String(momentCount)) + '</span></div>' : ''),
         (momentCount > 0 ? '<div class="tree-card-thumb-caption">' + moodLabel + '</div>' : ''),
