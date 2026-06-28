@@ -2,7 +2,7 @@ const assert = require('node:assert/strict');
 const test = require('node:test');
 
 // ---------------------------------------------------------------------------
-// Helper: minimal fake DOM element (style + classList + querySelector)
+// Helper: minimal fake DOM element (style + classList + querySelectorAll)
 // ---------------------------------------------------------------------------
 function fakeElement(overrides = {}) {
   const classList = new Set();
@@ -15,32 +15,43 @@ function fakeElement(overrides = {}) {
     },
     /** @type {Map<string, fakeElement>} */
     _children: new Map(),
-    querySelector(sel) {
-      // match .memory-node[data-memory-id="X"] pattern
-      for (const el of this._children.values()) {
-        if (el._dataMemoryId && sel.includes(`"${el._dataMemoryId}"`)) return el;
-      }
-      return null;
-    },
+    /** @type {string|null} */
     _dataMemoryId: null,
+    dataset: {},
+    _allMemoryNodes: function () {
+      var result = [];
+      if (this._dataMemoryId !== null) result.push(this);
+      for (const el of this._children.values()) {
+        if (el._dataMemoryId !== null) result.push(el);
+      }
+      return result;
+    },
     ...overrides,
   };
 }
 
 // ---------------------------------------------------------------------------
-// Helper: minimal fake document
+// Helper: minimal fake document (supports querySelectorAll for collection lookup)
 // ---------------------------------------------------------------------------
 function fakeDocument() {
   const elements = new Map();
+  function allMemoryNodes() {
+    var result = [];
+    for (const el of elements.values()) {
+      if (el._dataMemoryId !== null) result.push(el);
+    }
+    return result;
+  }
   return {
-    getElementById: (id) => elements.get(id) || null,
     _set(id, el) { elements.set(id, el); },
-    querySelector(sel) {
-      for (const el of elements.values()) {
-        if (sel.endsWith(`"${el._dataMemoryId}"`)) return el;
+    querySelectorAll: function (sel) {
+      if (sel === '.memory-node') {
+        var items = allMemoryNodes();
+        return Object.assign([], items, { length: items.length });
       }
-      return null;
+      return [];
     },
+    getElementById: function (id) { return elements.get(id) || null; }
   };
 }
 
@@ -123,13 +134,8 @@ test('resetDraggedNodeCursor — resets cursor of dragged node', async () => {
   // existing node → cursor set to grab + element returned
   const doc = fakeDocument();
   const node = fakeElement({ _dataMemoryId: 'abc', style: { cursor: 'grabbing' } });
+  node.dataset.memoryId = 'abc';
   doc._set('node-abc', node);
-  // wire up so querySelector can find it
-  const container = fakeElement();
-  container._children.set('abc', node);
-  doc.querySelector = (sel) => container.querySelector(sel);
-  // also add to elements so getElementById doesn't break for unrelated lookups
-  doc.getElementById = () => null;
 
   const result = resetDraggedNodeCursor(doc, 'abc');
   assert.equal(result, node);

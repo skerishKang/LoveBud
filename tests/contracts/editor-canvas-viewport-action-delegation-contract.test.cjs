@@ -54,7 +54,8 @@ test('editor canvas viewport action delegation — focusNodeById passes expected
     'getMetrics,',
     'viewportState,',
     'initCanvas: scheduleRender,',
-    'reapplySelection'
+    'reapplySelection',
+    'findMemoryNodeById: selectionUtils.findMemoryNodeById'
   ]) {
     assert.match(focusNodeByIdBlock, new RegExp(dependency.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
   }

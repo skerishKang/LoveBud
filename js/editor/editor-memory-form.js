@@ -389,7 +389,11 @@ function createEditorMemoryForm(deps) {
             if (parent) drawBranch(calcPosition(parent), calcPosition(normalizedMemory));
         }
 
-        const el = document.querySelector(`.memory-node[data-memory-id="${normalizedMemory.id}"]`);
+        var el = null;
+        if (window.LoveBudEditorCanvasSelection
+            && typeof window.LoveBudEditorCanvasSelection.findMemoryNodeById === 'function') {
+            el = window.LoveBudEditorCanvasSelection.findMemoryNodeById(normalizedMemory.id);
+        }
         if (el) {
             selectNode(el, normalizedMemory);
             el.classList.add('new-node-highlight');
