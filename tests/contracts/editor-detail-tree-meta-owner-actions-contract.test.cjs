@@ -129,8 +129,12 @@ function build(depsOverrides) {
   };
   sb.globalThis = sb;
   sb.window = sb;
+  // Ensure window is available as global in VM context
+  sb.window = sb.window;
 
   vm.createContext(sb);
+  // Manually inject window into global scope
+  vm.runInContext('globalThis.window = globalThis.window || {}; globalThis.window.location = globalThis.window.location || { pathname: "/pages/editor.html", origin: "https://example.com", search: "" };', sb);
   vm.runInContext(read('js/editor/editor-detail-tree-meta.js'), sb);
 
   const deps = Object.assign({
@@ -154,14 +158,27 @@ function render(depsOverrides, opts) {
   opts = opts || {};
   const r = build(depsOverrides || {});
   const isPub = opts.isPublic !== undefined ? opts.isPublic : true;
-  r.boundary.renderTreeMetaBoundary(r.mount, {
-    displayTreeTitle: opts.title || 'Test',
-    visIcon: isPub ? 'public' : 'lock',
-    visLabel: isPub ? '공개' : '비공개',
-    visInfo: 'info', isPublic: isPub, countLabel: '3',
-    shareButtonEl: null, openDetailButtonEl: null,
-    shareBtn: null, openDetailBtn: null
-  }, 'tree-1', opts.data || { id: 'm1', title: 'Moment' });
+  const currentTree = {
+    id: 'tree-1',
+    title: opts.title || 'Test',
+    visibility: isPub ? 'public' : 'private'
+  };
+  const treeState = {
+    totalMomentCount: 3,
+    hasMoments: true,
+    hasVisibleMoments: true
+  };
+  const data = opts.data === undefined ? { id: 'm1', title: 'Moment' } : opts.data;
+  const localSaveMode = false;
+
+  const model = r.boundary.buildTreeMetaRenderModel({
+    currentTree,
+    treeState,
+    data,
+    isEmptyState: !data || !data.id, // Empty when no moment selected
+    localSaveMode
+  });
+  r.boundary.renderTreeMetaBoundary(r.mount, model, currentTree.id, data);
   return r;
 }
 

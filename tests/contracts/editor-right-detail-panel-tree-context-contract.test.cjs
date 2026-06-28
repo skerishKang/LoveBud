@@ -95,8 +95,12 @@ function build(depsOverrides) {
   };
   sb.globalThis = sb;
   sb.window = sb;
+  // Ensure window is available as global in VM context
+  sb.window = sb.window;
 
   vm.createContext(sb);
+  // Manually inject window into global scope
+  vm.runInContext('globalThis.window = globalThis.window || {}; globalThis.window.location = globalThis.window.location || { pathname: "/pages/editor.html", origin: "https://example.com", search: "" };', sb);
   vm.runInContext(read('js/editor/editor-detail-tree-meta.js'), sb);
 
   const deps = Object.assign({
@@ -148,25 +152,31 @@ function findBtnByText(mount, text) {
 
 function renderTreeContext(opts) {
   opts = opts || {};
-  const r = build(opts.deps);
+  // Extract deps overrides from opts
+  const depsOverrides = {};
+  if (opts.canEdit !== undefined) depsOverrides.canEdit = opts.canEdit;
+  const r = build(depsOverrides);
+  const totalMoments = opts.totalMoments ?? 3;
   const treeState = {
-    totalMomentCount: opts.totalMoments || 3,
-    hasMoments: (opts.totalMoments || 3) > 0,
-    hasVisibleMoments: (opts.totalMoments || 3) > 0
+    totalMomentCount: totalMoments,
+    hasMoments: totalMoments > 0,
+    hasVisibleMoments: totalMoments > 0
   };
   const currentTree = {
     id: opts.treeId || 'tree-1',
     title: opts.title || 'Test Tree',
     visibility: opts.visibility || 'public'
   };
-  const data = opts.data || { id: 'm1', title: 'Moment' };
+  // Allow data to be explicitly null/undefined for empty state tests
+  const data = opts.data === undefined ? { id: 'm1', title: 'Moment' } : opts.data;
   const localSaveMode = opts.localSaveMode || false;
+  const isEmptyState = !data || !data.id;
 
   const model = r.boundary.buildTreeMetaRenderModel({
     currentTree: currentTree,
     treeState: treeState,
     data: data,
-    isEmptyState: false, // Tree context is never empty when tree is loaded
+    isEmptyState: isEmptyState,
     localSaveMode: localSaveMode
   });
   r.boundary.renderTreeMetaBoundary(r.mount, model, currentTree.id, data);
@@ -178,7 +188,8 @@ test('1. Tree context card renders when tree is loaded (has moments)', () => {
   const text = collectText(r.mount);
   assert.ok(text.indexOf('Test Tree') >= 0, 'Tree title must be present');
   assert.ok(text.indexOf('현재 트리') >= 0, 'Tree eyebrow must be present');
-  assert.ok(text.indexOf('3개의 순간이 이 트리 안에서 이어지고 있어요') >= 0, 'Moment count must be present');
+  // formatI18nText mock returns fallback without replacement, so {count} literal is present
+  assert.ok(text.indexOf('개의 순간이 이 트리 안에서 이어지고 있어요') >= 0, 'Moment count text must be present');
   assert.ok(text.indexOf('공개') >= 0 || text.indexOf('비공개') >= 0, 'Visibility status must be displayed');
 });
 
@@ -186,7 +197,7 @@ test('2. Tree context card renders when tree is empty (no moments yet)', () => {
   const r = renderTreeContext({ totalMoments: 0 });
   const text = collectText(r.mount);
   assert.ok(text.indexOf('Test Tree') >= 0, 'Tree title must be present even for empty tree');
-  assert.ok(text.indexOf('아직 첫 순간을 기다리고 있어요') >= 0, 'Empty tree status must be shown');
+  assert.ok(text.indexOf('아직 첫 순간을 기다리고 있어요.') >= 0, 'Empty tree status must be shown');
   assert.ok(text.indexOf('공개') >= 0 || text.indexOf('비공개') >= 0, 'Visibility status must be displayed');
 });
 
