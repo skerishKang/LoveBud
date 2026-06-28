@@ -1,11 +1,11 @@
 .my-trees-header {
-display: flex;
-align-items: flex-end;
-justify-content: space-between;
-gap: 24px;
-margin-bottom: 12px;
-padding-bottom: 0;
-border-bottom: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 12px;
+  padding-bottom: 0;
+  border-bottom: 0;
 }
 .header-content { flex: 1; min-width: 0; }
 .my-trees-eyebrow {
@@ -16,10 +16,12 @@ border-bottom: 0;
     padding: var(--eyebrow-padding-y) var(--eyebrow-padding-x);
     border-radius: var(--eyebrow-radius);
     background: var(--eyebrow-bg);
+    border: var(--eyebrow-border);
     color: var(--eyebrow-color);
     font-size: var(--eyebrow-font-size);
     font-weight: var(--eyebrow-font-weight);
     letter-spacing: var(--eyebrow-letter-spacing);
+    text-transform: var(--eyebrow-text-transform);
     margin-bottom: 14px;
 }
 .header-actions { display: flex; align-items: center; gap: 10px; flex: 0 0 auto; }
@@ -70,15 +72,6 @@ white-space: nowrap;
 .btn-header-create:disabled { opacity: 0.6; cursor: not-allowed; transform: none; box-shadow: none; }
 
 /* ── My Trees Results Head (controls row below search) ── */
-/*
-.my-trees-results-head {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    margin: 0 0 16px;
-}
-*/
-
 .my-trees-results-head {
     margin: 0 0 16px;
     padding-top: 18px;
@@ -87,7 +80,6 @@ white-space: nowrap;
 }
 
 .my-trees-results-label {
-    flex: 1 1 auto;
     font-size: 1rem;
     font-weight: 700;
     color: var(--on-surface);
@@ -104,7 +96,23 @@ white-space: nowrap;
 }
 
 @media (max-width: 768px) {
+    .my-trees-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 16px;
+        margin-bottom: 12px;
+        padding-bottom: 0;
+        border-bottom: 0;
+    }
+    .header-content { width: 100%; }
+    .header-actions { width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .summary-sort-control { width: 100%; min-height: 40px; font-size: 13px; }
+    .btn-header-create { width: 100%; min-height: 40px; padding: 10px 14px; font-size: 13px; }
+
     .my-trees-results-head {
+        flex-direction: column;
+        gap: 12px;
+        margin: 0 0 16px;
         margin-top: 0;
         padding-top: 14px;
         border-top: 1px solid rgba(144, 73, 81, 0.09);
@@ -151,4 +159,3 @@ white-space: nowrap;
         flex-wrap: nowrap;
     }
 }
-
