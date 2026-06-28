@@ -194,6 +194,26 @@
     ].join('');
   }
 
+  function sanitizeUrl(value) {
+    var sec = window.LoveBudSecurity;
+    if (sec && typeof sec.sanitizeUrl === 'function') return sec.sanitizeUrl(value);
+    var utils = getUtils();
+    if (utils && typeof utils.sanitizeUrl === 'function') return utils.sanitizeUrl(value);
+    if (!value) return '';
+    var raw = String(value).trim();
+    if (!raw) return '';
+    try {
+      var parsed = new URL(raw, window.location.origin);
+      var protocol = parsed.protocol;
+      if (protocol === 'http:' || protocol === 'https:') {
+        return parsed.href;
+      }
+      return '';
+    } catch (e) {
+      return '';
+    }
+  }
+
   function getRepresentativeThumbnail(tree) {
     if (!tree) return '';
     var firstMemory = getFirstMemory(tree);
@@ -201,14 +221,23 @@
       firstStringValue(firstMemory, ['thumbnail', 'thumbnailUrl', 'thumbnail_url', 'imageUrl', 'image_url']);
     var rawSourceUrl = firstStringValue(tree, ['representativeSourceUrl', 'representative_source_url', 'representativeMemorySourceUrl', 'representative_memory_source_url', 'sourceUrl', 'source_url']) ||
       firstStringValue(firstMemory, ['sourceUrl', 'sourceURL', 'source_url', 'videoUrl', 'video_url', 'url']);
-    return canonicalizeThumbnailUrl(rawThumbnail, rawSourceUrl);
+    return sanitizeUrl(canonicalizeThumbnailUrl(rawThumbnail, rawSourceUrl));
   }
 
   function getRepresentativeTextMeta(tree, i18n) {
     if (!tree) return null;
 
-    var repTitle = clipText(tree.representativeTitle || tree.representative_title || '', 40);
-    var repMemo = clipText(tree.representativeMemo || tree.representative_memo || '', 82);
+    var firstMemory = getFirstMemory(tree);
+
+    var repTitle = clipText(
+      tree.representativeTitle || tree.representative_title || firstMemory?.title || '',
+      40
+    );
+    var repMemo = clipText(
+      tree.representativeMemo || tree.representative_memo ||
+      firstMemory?.memo || firstMemory?.description || '',
+      82
+    );
 
     if (!repTitle && !repMemo) return null;
 
@@ -349,6 +378,7 @@
     getRepresentativeTextMeta: getRepresentativeTextMeta,
     buildRepresentativeTextVisual: buildRepresentativeTextVisual,
     buildTreeThumbVisual: buildTreeThumbVisual,
-    _canonicalizeThumbnailUrl: canonicalizeThumbnailUrl
+    _canonicalizeThumbnailUrl: canonicalizeThumbnailUrl,
+    _sanitizeUrl: sanitizeUrl
   };
 })();
