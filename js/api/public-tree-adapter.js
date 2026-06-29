@@ -105,6 +105,27 @@
     return record.treeId || record.tree_id || null;
   }
 
+  function _normalizeBrowseViewCount(raw) {
+    // Strict viewCount normalizer: three-state policy.
+    //   valid positive/zero integer (camelCase or snake_case) → preserve
+    //   null / missing / invalid → undefined (never synthetic 0)
+    var v = raw && (raw.viewCount !== undefined ? raw.viewCount : raw.view_count);
+    // Fast-path: null, undefined, empty/whitespace string
+    if (v === null || v === undefined) return undefined;
+    if (typeof v === 'string') {
+      if (!/^(0|[1-9]\d*)$/.test(v)) return undefined;
+      var n = Number(v);
+      return Number.isSafeInteger(n) && n >= 0 ? n : undefined;
+    }
+    // Boolean, array, object (including null already caught above)
+    if (typeof v !== 'number') return undefined;
+    // Number: must be safe integer, non-negative, finite
+    if (!Number.isFinite(v)) return undefined;
+    if (!Number.isSafeInteger(v)) return undefined;
+    if (v < 0) return undefined;
+    return v;
+  }
+
   function normalizeBrowseTreeRecord(rawTree) {
     const tree = unwrapTreeRecord(rawTree);
     const rawThumb = tree.representativeThumbnail || tree.representative_thumbnail || tree.thumbnail || '';
@@ -119,6 +140,7 @@
       ownerId: tree.ownerId || tree.owner_id || null,
       representativeThumbnail: canonicalizeYouTubeThumbnailUrl(rawThumb, rawSource),
       memoryCount: Number(tree.memoryCount || tree.memory_count || 0),
+      viewCount: _normalizeBrowseViewCount(tree),
       theme: tree.theme || '',
       stage: tree.stage || ''
     };
@@ -165,6 +187,7 @@
         ownerId: tree.ownerId,
         memories: [],
         memoryCount: Number.isFinite(tree.memoryCount) ? tree.memoryCount : 0,
+        viewCount: tree.viewCount,
         emotionTags: [],
         timeRange: '기록 없음',
         representativeThumbnail: tree.representativeThumbnail || '',
@@ -219,6 +242,8 @@
     buildPublicTreeSummaryModels,
     hydrateTreeWithPublicMemories,
     buildPublicTreeViewModels,
+    // Internal helpers exposed for contract tests
+    _normalizeBrowseViewCount,
     // Utils
     sanitizeUrl,
     isValidYouTubeVideoId,
