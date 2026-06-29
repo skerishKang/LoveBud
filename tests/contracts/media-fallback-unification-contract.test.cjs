@@ -167,16 +167,28 @@ test('My Trees: bindMyTreesCardImageHandlers binds error listener', () => {
 
 test('My Trees: broken image URL triggers data-media-fallback display swap', () => {
     let errorHandler = null;
+    let fallbackHiddenRemoved = false;
+    const fallbackEl = {
+        hasAttribute: function (a) { return a === 'data-media-fallback'; },
+        removeAttribute: function (a) { if (a === 'hidden') { fallbackHiddenRemoved = true; } },
+        style: { display: '' }
+    };
     const img = {
         dataset: { imageHandlerBound: undefined },
         style: {},
         addEventListener: function (evt, fn) {
             if (evt === 'error') errorHandler = fn;
         },
-        nextElementSibling: {
-            hasAttribute: function (a) { return a === 'data-media-fallback'; },
-            removeAttribute: function () {},
-            style: {}
+        closest: function (sel) {
+            if (sel === '.tree-card-thumb') {
+                return {
+                    querySelector: function (q) {
+                        if (q === '[data-media-fallback]') return fallbackEl;
+                        return null;
+                    }
+                };
+            }
+            return null;
         }
     };
     const card = {
@@ -195,6 +207,8 @@ test('My Trees: broken image URL triggers data-media-fallback display swap', () 
     // simulate error
     errorHandler.call(img);
     assert.strictEqual(img.style.display, 'none', 'image should be hidden on error');
+    assert.ok(fallbackHiddenRemoved, 'fallback hidden attribute should be removed');
+    assert.strictEqual(fallbackEl.style.display, 'flex', 'fallback display should be set to flex');
 });
 
 // ---- cross-page output parity: same input -> same tier ----
