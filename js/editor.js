@@ -769,25 +769,30 @@ document.addEventListener('DOMContentLoaded', () => {
                     toggle.id = 'editorDesktopModeToggle';
                     toggle.className = 'editor-desktop-mode-toggle';
                     toggle.setAttribute('role', 'radiogroup');
-                    toggle.setAttribute('aria-label', '상호작용 모드');
+                    toggle.setAttribute('aria-label', '편집기 모드 선택');
 
                     var viewBtn = document.createElement('button');
                     viewBtn.type = 'button';
                     viewBtn.className = 'editor-mode-btn editor-mode-btn-view';
                     viewBtn.setAttribute('role', 'radio');
                     viewBtn.setAttribute('aria-checked', 'true');
-                    viewBtn.innerHTML = '<span class="material-symbols-outlined" aria-hidden="true">visibility</span><span>보기</span>';
+                    viewBtn.setAttribute('aria-label', '감상 모드');
+                    viewBtn.setAttribute('title', '감상 모드');
+                    viewBtn.innerHTML = '<span class="material-symbols-outlined" aria-hidden="true">visibility</span><span>감상 모드</span>';
 
                     var editBtn = document.createElement('button');
                     editBtn.type = 'button';
                     editBtn.className = 'editor-mode-btn editor-mode-btn-edit';
                     editBtn.setAttribute('role', 'radio');
                     editBtn.setAttribute('aria-checked', 'false');
-                    editBtn.innerHTML = '<span class="material-symbols-outlined" aria-hidden="true">edit</span><span>편집</span>';
+                    editBtn.setAttribute('aria-label', '편집 모드');
+                    editBtn.setAttribute('title', '편집 모드');
+                    editBtn.innerHTML = '<span class="material-symbols-outlined" aria-hidden="true">edit</span><span>편집 모드</span>';
 
                     var modeDescription = document.createElement('p');
                     modeDescription.className = 'editor-mode-description';
-                    modeDescription.textContent = '안전하게 감상하고 탐색할 수 있어요.';
+                    modeDescription.setAttribute('aria-live', 'polite');
+                    modeDescription.textContent = '감상 모드예요. 재생과 탐색만 가능하며, 수정하려면 편집 모드로 전환하세요.';
 
                     function syncToggle() {
                         var mode = window.LoveBudEditorInteractionMode;
@@ -798,8 +803,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         editBtn.disabled = isEdit;
                         if (modeDescription) {
                             modeDescription.textContent = isEdit
-                                ? '순간과 흐름을 수정할 수 있어요.'
-                                : '안전하게 감상하고 탐색할 수 있어요.';
+                                ? '편집 모드예요. 순간 수정과 이어서 기록하기를 할 수 있어요.'
+                                : '감상 모드예요. 재생과 탐색만 가능하며, 수정하려면 편집 모드로 전환하세요.';
                         }
                     }
 

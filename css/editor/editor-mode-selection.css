@@ -127,3 +127,18 @@
 [data-editor-interaction-mode="view"] .editor-mobile-bottom-action:disabled {
     opacity: 0.5;
 }
+
+/**
+ * View Mode (감상 모드): hide owner editing actions.
+ * These are only visible in edit mode.
+ * display: none ensures they are not keyboard-focusable.
+ */
+[data-editor-interaction-mode="view"] #editMemoryBtn,
+[data-editor-interaction-mode="view"] #continueFromMomentBtn,
+[data-editor-interaction-mode="view"] #ftbEditBtn,
+[data-editor-interaction-mode="view"] #ftbContinueBtn,
+[data-editor-interaction-mode="view"] #ftbQuickAdd,
+[data-editor-interaction-mode="view"] #ftbBranchBtn,
+[data-editor-interaction-mode="view"] #ftbForkBtn {
+    display: none !important;
+}
