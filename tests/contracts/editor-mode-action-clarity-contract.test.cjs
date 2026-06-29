@@ -1,0 +1,161 @@
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('fs');
+const path = require('path');
+const { execSync } = require('child_process');
+
+test('interaction mode default is view', () => {
+    const source = fs.readFileSync('js/editor.js', 'utf8');
+    assert.ok(source.includes('MODE_VIEW'), 'editor.js must reference MODE_VIEW');
+});
+
+test('desktop toggle uses 감상 모드 / 편집 모드 copy', () => {
+    const source = fs.readFileSync('js/editor.js', 'utf8');
+    assert.ok(source.includes('감상 모드'), 'toggle must include 감상 모드 label');
+    assert.ok(source.includes('편집 모드'), 'toggle must include 편집 모드 label');
+    assert.ok(!source.includes('<span>보기</span>'), 'old 보기 label must be removed');
+    assert.ok(!source.includes('<span>편집</span>'), 'old 편집 label must be removed');
+});
+
+test('radiogroup aria-label is 편집기 모드 선택', () => {
+    const source = fs.readFileSync('js/editor.js', 'utf8');
+    // setAttribute('aria-label', '편집기 모드 선택')
+    assert.ok(source.includes('편집기 모드 선택'), 'radiogroup aria-label must specify 편집기 모드 선택');
+});
+
+test('mode buttons have aria-label and title attributes', () => {
+    const source = fs.readFileSync('js/editor.js', 'utf8');
+    assert.ok(source.includes("aria-label', '감상 모드'"), 'view button must have aria-label');
+    assert.ok(source.includes("aria-label', '편집 모드'"), 'edit button must have aria-label');
+    assert.ok(source.includes("title', '감상 모드'"), 'view button must have title');
+    assert.ok(source.includes("title', '편집 모드'"), 'edit button must have title');
+});
+
+test('view description mentions edit mode transition', () => {
+    const source = fs.readFileSync('js/editor.js', 'utf8');
+    assert.ok(
+        source.includes('수정하려면 편집 모드로 전환하세요'),
+        'view description must guide user to switch to edit mode'
+    );
+});
+
+test('edit description mentions edit and continue', () => {
+    const source = fs.readFileSync('js/editor.js', 'utf8');
+    assert.ok(
+        source.includes('순간 수정과 이어서 기록하기를 할 수 있어요'),
+        'edit description must mention edit and continue actions'
+    );
+});
+
+test('CSS has [data-editor-interaction-mode="view"] hide rules', () => {
+    const css = fs.readFileSync('css/editor/editor-mode-selection.css', 'utf8');
+    assert.ok(css.includes('[data-editor-interaction-mode="view"]'), 'CSS must include view mode selector');
+});
+
+test('owner editing actions hidden in view mode via CSS', () => {
+    const css = fs.readFileSync('css/editor/editor-mode-selection.css', 'utf8');
+    const viewSelectors = [
+        '#editMemoryBtn',
+        '#continueFromMomentBtn',
+        '#ftbEditBtn',
+        '#ftbContinueBtn',
+        '#ftbQuickAdd'
+    ];
+    // Find the hide block (starts at second occurrence of view selector)
+    const parts = css.split('[data-editor-interaction-mode="view"]');
+    // parts[0] = everything before first selector
+    // parts[1] = first occurrence block (editor-mobile-bottom-action)
+    // parts[2] = second occurrence block (display: none rules)
+    assert.ok(parts.length >= 3, 'CSS must have multiple [data-editor-interaction-mode="view"] blocks');
+    const hideBlock = parts.slice(1).join(' ');
+    for (const sel of viewSelectors) {
+        assert.ok(hideBlock.includes(sel), `CSS must hide ${sel} in view mode`);
+    }
+});
+
+test('edit mode does not permanently hide owner buttons', () => {
+    const css = fs.readFileSync('css/editor/editor-mode-selection.css', 'utf8');
+    // There should be NO CSS rule with [data-editor-interaction-mode="edit"] that hides buttons
+    assert.ok(
+        !css.includes('[data-editor-interaction-mode="edit"] #'),
+        'edit mode must not have CSS display:none rules for owner buttons'
+    );
+});
+
+test('view mode retains 감상하기 and 재생 actions', () => {
+    const detailTemplate = fs.readFileSync('js/editor/templates/editor-detail-view-mode-template.js', 'utf8');
+    assert.ok(detailTemplate.includes('viewMomentDetailBtn'), 'viewMomentDetailBtn must exist');
+    assert.ok(detailTemplate.includes('play-btn'), 'play button must exist');
+});
+
+test('editMemoryBtn exists in detail template', () => {
+    const detailTemplate = fs.readFileSync('js/editor/templates/editor-detail-view-mode-template.js', 'utf8');
+    assert.ok(detailTemplate.includes('editMemoryBtn'), 'editMemoryBtn must exist in template');
+});
+
+test('editor.js retains isEditMode() guard for edit handlers', () => {
+    const source = fs.readFileSync('js/editor.js', 'utf8');
+    assert.ok(
+        source.includes('isEditMode') || source.includes('isEditMode()'),
+        'editor.js must reference isEditMode for action guards'
+    );
+});
+
+test('no DB/API/Firebase/persistence files modified', () => {
+    const changed = runGitDiffNames();
+    const blockedPatterns = ['firebase', 'api-client', 'firestore'];
+    for (const file of changed) {
+        for (const pattern of blockedPatterns) {
+            assert.ok(
+                !file.includes(pattern),
+                `Must not modify ${file} (contains ${pattern})`
+            );
+        }
+    }
+});
+
+test('modeDescription has aria-live attribute', () => {
+    const source = fs.readFileSync('js/editor.js', 'utf8');
+    assert.ok(source.includes('aria-live'), 'modeDescription must have aria-live attribute');
+    assert.ok(source.includes('aria-live'), 'modeDescription aria-live must be polite');
+});
+
+test('detail primary action label changed to 감상', () => {
+    const template = fs.readFileSync('js/editor/templates/editor-detail-view-mode-template.js', 'utf8');
+    assert.ok(template.includes('>감상<'), 'detail actions section must be labeled 감상');
+    assert.ok(!template.includes('주요 행동'), 'old 주요 행동 label must be removed');
+});
+
+test('viewMomentDetailBtn label updated to 이 순간 감상하기', () => {
+    const template = fs.readFileSync('js/editor/templates/editor-detail-view-mode-template.js', 'utf8');
+    assert.ok(template.includes('이 순간 감상하기'), 'view btn label must be 이 순간 감상하기');
+    assert.ok(!template.includes('현재 순간 감상하기'), 'old 현재 순간 감상하기 must be removed');
+});
+
+test('continueFromMomentBtn kept and hidden by view-mode CSS', () => {
+    const css = fs.readFileSync('css/editor/editor-mode-selection.css', 'utf8');
+    const template = fs.readFileSync('js/editor/templates/editor-detail-view-mode-template.js', 'utf8');
+    assert.ok(template.includes('continueFromMomentBtn'), 'continue button must exist in template');
+    assert.ok(css.includes('#continueFromMomentBtn'), 'CSS must hide continueFromMomentBtn in view mode');
+});
+
+test('floating toolbar view btn (감상하기) kept', () => {
+    const toolbar = fs.readFileSync('js/editor/templates/editor-floating-toolbar-template.js', 'utf8');
+    assert.ok(toolbar.includes('ftbViewBtn'), 'floating toolbar view button must exist');
+});
+
+/**
+ * Helper: git diff --name-only against origin/main
+ */
+function runGitDiffNames() {
+    try {
+        const output = execSync('git diff --name-only origin/main...HEAD', {
+            encoding: 'utf8',
+            maxBuffer: 10 * 1024 * 1024,
+            timeout: 15000
+        });
+        return output.trim().split('\n').filter(Boolean);
+    } catch {
+        return [];
+    }
+}
