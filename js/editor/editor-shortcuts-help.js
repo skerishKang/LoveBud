@@ -21,6 +21,7 @@
         let modalEl = null;
         let closeBtn = null;
         let lastFocusedEl = null;
+        let triggerEl = options.triggerEl || null;
         let bound = false;
 
         function element(id, tagName, className) {
@@ -38,6 +39,32 @@
             return fallback;
         }
 
+        function handleDialogKeyDown(event) {
+            if (event.key === 'Escape') {
+                closeHelpModal();
+                return;
+            }
+            if (event.key === 'Tab') {
+                const focusables = modalEl.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+                if (focusables.length === 0) return;
+
+                const firstEl = focusables[0];
+                const lastEl = focusables[focusables.length - 1];
+
+                if (event.shiftKey) {
+                    if (doc.activeElement === firstEl) {
+                        lastEl.focus();
+                        event.preventDefault();
+                    }
+                } else {
+                    if (doc.activeElement === lastEl) {
+                        firstEl.focus();
+                        event.preventDefault();
+                    }
+                }
+            }
+        }
+
         function ensureModal() {
             if (!doc || !doc.createElement || !doc.body) return null;
             if (modalEl && modalEl.parentElement) return modalEl;
@@ -51,7 +78,7 @@
 
             modalEl.innerHTML = [
                 '<div id="editorShortcutHelpModalBackdrop" class="editor-rename-modal-backdrop" aria-hidden="true"></div>',
-                '<section class="editor-rename-modal-card" role="dialog" aria-modal="true" aria-labelledby="editorShortcutHelpTitle" aria-describedby="editorShortcutHelpDesc" style="max-width: 480px;">',
+                '<section id="editorShortcutHelpDialog" class="editor-rename-modal-card" role="dialog" aria-modal="true" aria-labelledby="editorShortcutHelpTitle" aria-describedby="editorShortcutHelpDesc" tabindex="-1" style="max-width: 480px;">',
                 '<div class="editor-rename-modal-header" style="margin-bottom: 16px;">',
                 '<span class="editor-rename-modal-kicker">' + t('editor_shortcut_kicker', '도움말') + '</span>',
                 '<h2 id="editorShortcutHelpTitle" style="margin-top: 8px;">' + t('editor_shortcut_title', '키보드 단축키') + '</h2>',
@@ -121,6 +148,11 @@
 
             doc.body.appendChild(modalEl);
 
+            const dialogEl = doc.getElementById('editorShortcutHelpDialog');
+            if (dialogEl) {
+                dialogEl.addEventListener('keydown', handleDialogKeyDown);
+            }
+
             const backdropEl = doc.getElementById('editorShortcutHelpModalBackdrop');
             if (backdropEl) {
                 backdropEl.addEventListener('click', closeHelpModal);
@@ -132,12 +164,6 @@
                 modalEl.addEventListener('click', function(event) {
                     const target = event.target || {};
                     if (target === modalEl || target.id === 'editorShortcutHelpModalBackdrop') {
-                        closeHelpModal();
-                    }
-                });
-
-                doc.addEventListener('keydown', function(event) {
-                    if ((event.key === 'Escape' || event.keyCode === 27) && isOpen()) {
                         closeHelpModal();
                     }
                 });
@@ -158,11 +184,14 @@
         function closeHelpModal() {
             if (!isOpen()) return;
             modalEl.hidden = true;
+            if (triggerEl) {
+                triggerEl.setAttribute('aria-expanded', 'false');
+                triggerEl.focus();
+            } else if (lastFocusedEl && typeof lastFocusedEl.focus === 'function') {
+                lastFocusedEl.focus();
+            }
             if (doc.body && doc.body.classList) {
                 doc.body.classList.remove('editor-rename-modal-open');
-            }
-            if (lastFocusedEl && typeof lastFocusedEl.focus === 'function') {
-                lastFocusedEl.focus();
             }
         }
 
@@ -171,6 +200,7 @@
             if (!opened) return null;
 
             lastFocusedEl = doc.activeElement || null;
+            if (triggerEl) triggerEl.setAttribute('aria-expanded', 'true');
             modalEl.hidden = false;
             if (doc.body && doc.body.classList) {
                 doc.body.classList.add('editor-rename-modal-open');

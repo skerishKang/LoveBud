@@ -141,7 +141,8 @@
       const helpController = window.LoveBudEditorShortcutHelp.createShortcutHelpController({
         windowRef: (typeof window !== 'undefined') ? window : null,
         documentRef: (typeof document !== 'undefined') ? document : null,
-        i18n: opts.i18n
+        i18n: opts.i18n,
+        triggerEl: helpBtn
       });
       helpBtn.addEventListener('click', function(e) {
         e.preventDefault();
