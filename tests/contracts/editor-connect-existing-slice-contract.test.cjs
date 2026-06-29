@@ -296,7 +296,16 @@ test('connectMemory calls apiClient.updateMemory exactly once on valid confirm',
   var source = readSource('js/editor/editor-memory-actions.js');
   var updateCallCount = 0;
   var sandbox = {
-    window: { apiClient: { updateMemory: async function() { updateCallCount++; return {}; } }, LoveBudCache: { set: function() {} } },
+    window: {
+      apiClient: {
+        updateMemory: async function(sourceId, payload) {
+          updateCallCount++;
+          // Confirmed response guard expects parentId to match targetId
+          return { parentId: payload.parentId };
+        }
+      },
+      LoveBudCache: { set: function() {} }
+    },
     console: { error: function() {}, warn: function() {} },
     setTimeout: function() {},
     Promise: Promise,

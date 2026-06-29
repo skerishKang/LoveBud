@@ -336,7 +336,7 @@ test('runtime: disconnectMemory with mode guard blocks in view mode', () => {
 
   var sandbox = {
     window: {
-      apiClient: { updateMemory: async function() { updateCallCount++; return {}; } },
+      apiClient: { updateMemory: async function() { updateCallCount++; return { parentId: null }; } },
       LoveBudCache: { set: function() {} },
       LoveBudEditorInteractionMode: undefined
     },
