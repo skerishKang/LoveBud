@@ -41,6 +41,8 @@
 
         function handleDialogKeyDown(event) {
             if (event.key === 'Escape') {
+                event.preventDefault();
+                event.stopPropagation();
                 closeHelpModal();
                 return;
             }
