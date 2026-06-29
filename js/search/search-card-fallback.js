@@ -188,9 +188,16 @@
         );
         if (!repTitle && !repMemo) return '';
 
+        // i18n kicker with Korean fallback
+        var kickerKey = 'card.representative.kicker';
+        var kickerText = (typeof window.t === 'function' ? window.t(kickerKey) : kickerKey);
+        if (!kickerText || kickerText === kickerKey) {
+            kickerText = '첫 순간 기록'; // Korean fallback if i18n unavailable
+        }
+
         return [
             '<div class="tree-card-text-visual" style="border-color:' + palette.leafSoft + ';background:rgba(255,255,255,0.84);">',
-                '<div class="tree-card-text-kicker" style="color:' + palette.accent + ';">첫 순간 기록</div>',
+                '<div class="tree-card-text-kicker" style="color:' + palette.accent + ';">' + escapeHtml(kickerText) + '</div>',
                 '<div class="tree-card-text-title">' + escapeHtml(repTitle) + '</div>',
                 '<div class="tree-card-text-memo">' + escapeHtml(repMemo) + '</div>',
             '</div>'

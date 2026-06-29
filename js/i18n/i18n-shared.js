@@ -239,6 +239,12 @@
     '컨셉': {
       ko: '컨셉',
       en: 'Concept'
+    },
+
+    // 대표 텍스트 커버 킥커 (Browse / My Trees 공용)
+    'card.representative.kicker': {
+      ko: '첫 순간 기록',
+      en: 'First moment'
     }
   };
 })();

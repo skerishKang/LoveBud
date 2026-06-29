@@ -253,7 +253,7 @@
 
     return [
       '<div class="tree-card-text-visual" style="border-color:' + palette.leafSoft + ';background:rgba(255,255,255,0.84);">',
-        '<div class="tree-card-text-kicker" style="color:' + palette.accent + ';">' + escapeHtml(getI18nText(i18n, 'myTrees.card_first_moment', '첫 순간 기록')) + '</div>',
+        '<div class="tree-card-text-kicker" style="color:' + palette.accent + ';">' + escapeHtml(getI18nText(i18n, 'card.representative.kicker', '첫 순간 기록')) + '</div>',
         '<div class="tree-card-text-title">' + escapeHtml(textMeta.title) + '</div>',
         '<div class="tree-card-text-memo">' + escapeHtml(textMeta.memo) + '</div>',
       '</div>'
