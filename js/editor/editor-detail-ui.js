@@ -215,20 +215,17 @@ function createEditorDetailUI(deps) {
     /**
      * Build a stable embed identity string from memory data.
      * Used to compare player identity when reselecting the same moment.
-     * Format: "videoId:startSeconds:endSeconds"
+     * Combines the normalized source URL with the canonical embed URL
+     * so that any change in source, video ID, timestamps, or time-range
+     * fields produces a different identity.
+     * Format: "normalizedSourceUrl||canonicalEmbedUrl"
      */
     const buildEmbedIdentity = (data) => {
         if (!data) return '';
-        const rawUrl = getMemoryPlaybackUrl(data);
-        const videoId = getYouTubeVideoId(rawUrl);
-        if (!videoId) return '';
-        var start = 0;
-        var end = 0;
-        var sv = data && (data.startTime || data.start_time || data.startSeconds || data.start_seconds);
-        var ev = data && (data.endTime || data.end_time || data.endSeconds || data.end_seconds);
-        if (sv !== undefined && sv !== null) start = Number(sv) || 0;
-        if (ev !== undefined && ev !== null) end = Number(ev) || 0;
-        return videoId + ':' + String(Math.floor(start)) + ':' + String(Math.floor(end));
+        var sourceUrl = getMemoryPlaybackUrl(data);
+        var embedUrl = buildYouTubeEmbedUrl(data);
+        if (!sourceUrl && !embedUrl) return '';
+        return (sourceUrl || '') + '||' + (embedUrl || '');
     };
 
     /**

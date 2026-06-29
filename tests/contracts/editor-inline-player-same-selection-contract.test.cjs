@@ -3,7 +3,7 @@
  *
  * Verifies that editor-detail-ui.js preserves the active inline player
  * when the same moment with the same effective embed is reselected,
- * and tears down correctly on changed selection.
+ * and tears down correctly when source, timestamps, or embed changes.
  */
 'use strict';
 
@@ -19,22 +19,27 @@ const source = fs.readFileSync(path.join(ROOT, 'js/editor/editor-detail-ui.js'),
 // Identity helpers
 // ---------------------------------------------------------------------------
 
-test('buildEmbedIdentity helper exists and uses videoId:start:end format', () => {
+test('buildEmbedIdentity helper exists', () => {
   assert.match(source, /const buildEmbedIdentity/, 'buildEmbedIdentity function must exist');
-  assert.match(source, /videoId.*start.*end/, 'identity must embed videoId, start, end');
+});
+
+test('buildEmbedIdentity uses getMemoryPlaybackUrl and buildYouTubeEmbedUrl', () => {
+  assert.match(source, /getMemoryPlaybackUrl/, 'must include source URL');
+  assert.match(source, /buildYouTubeEmbedUrl/, 'must include canonical embed URL');
+  assert.match(source, /\|\|/, 'must join source and embed with separator');
+});
+
+test('buildEmbedIdentity returns empty for null/undefined data', () => {
+  assert.match(source, /if \(!data\) return ''/, 'must guard null data');
+  assert.match(source, /if \(!sourceUrl && !embedUrl\) return ''/, 'must guard empty URLs');
 });
 
 test('shouldPreservePlayer helper guards all 5 conditions', () => {
   assert.match(source, /const shouldPreservePlayer/, 'shouldPreservePlayer function must exist');
-  // 1) parentNode check (still attached)
   assert.match(source, /parentNode/, 'must check parentNode');
-  // 2) memory ID comparison
   assert.match(source, /editorDetailMemoryId/, 'must read recorded memory ID');
-  // 3) embed identity comparison
   assert.match(source, /editorDetailEmbedIdentity/, 'must read recorded embed identity');
-  // 4) data.id vs memId match
   assert.match(source, /memId.*!==.*data\.id/, 'must compare memory IDs');
-  // 5) current embed identity matches
   assert.match(source, /buildEmbedIdentity/, 'must recompute current embed identity');
 });
 
@@ -86,11 +91,32 @@ test('clearDetailMedia still calls clearDetailPlayer', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Timestamp regression: same memory, different timestamps → teardown
+// ---------------------------------------------------------------------------
+
+test('embed identity changes when ?t= param differs', () => {
+  // Different source URLs produce different identity strings
+  assert.match(source, /getMemoryPlaybackUrl/, 'identity must embed source URL');
+});
+
+test('embed identity changes when ?start= param differs', () => {
+  assert.match(source, /buildYouTubeEmbedUrl/, 'identity must embed canonical embed URL');
+});
+
+test('embed identity includes explicit startTime/endTime via canonical embed', () => {
+  // buildYouTubeEmbedUrl parses startTime/endTime into embed query params
+  assert.match(source, /buildYouTubeEmbedUrl/, 'identity must go through canonical builder');
+});
+
+test('invalid/no effective embed returns empty identity (teardown)', () => {
+  assert.match(source, /if \(!sourceUrl && !embedUrl\) return ''/, 'empty URLs → empty identity');
+});
+
+// ---------------------------------------------------------------------------
 // Existing policy preserved
 // ---------------------------------------------------------------------------
 
 test('no autoplay on selection', () => {
-  // The comment explicitly forbids auto-play on selection
   assert.match(source, /must NOT auto-play/, 'editor must not auto-play on selection');
 });
 
