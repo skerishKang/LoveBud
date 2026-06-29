@@ -37,6 +37,13 @@ export function buildCanvasTopbarTemplate() {
                             <span class="editor-canvas-tool-label" id="compactModeToggleLabel">간략 보기</span>
                         </button>
                     </div>
+                    <div class="editor-canvas-toolbar-separator" aria-hidden="true"></div>
+                    <div class="editor-canvas-toolbar-group" aria-label="도움말">
+                        <button type="button" class="editor-canvas-tool-btn editor-canvas-tool-btn-wide" id="editorShortcutHelpBtn" aria-label="단축키 안내" title="단축키 안내" aria-haspopup="dialog" aria-expanded="false" aria-controls="editorShortcutHelpModal">
+                            <span class="material-symbols-outlined" aria-hidden="true">keyboard</span>
+                            <span class="editor-canvas-tool-label">단축키</span>
+                        </button>
+                    </div>
                 </div>
             </div>
     `;

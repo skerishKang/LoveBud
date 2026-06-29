@@ -135,6 +135,22 @@
       results.detailActionButtons = true;
     }
 
+    // Bind Shortcut Help Trigger Button
+    var helpBtn = (typeof document !== 'undefined') ? document.getElementById('editorShortcutHelpBtn') : null;
+    if (helpBtn && window.LoveBudEditorShortcutHelp) {
+      const helpController = window.LoveBudEditorShortcutHelp.createShortcutHelpController({
+        windowRef: (typeof window !== 'undefined') ? window : null,
+        documentRef: (typeof document !== 'undefined') ? document : null,
+        i18n: opts.i18n,
+        triggerEl: helpBtn
+      });
+      helpBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        helpController.open();
+      });
+    }
+
     return results;
   }
 

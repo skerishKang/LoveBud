@@ -219,6 +219,10 @@ const FILE_ALLOWLIST = {
     count: 2, classification: 'safe',
     reason: 'static material-icon + i18n app text for mode toggle buttons (viewBtn.innerHTML, editBtn.innerHTML)'
   },
+  'js/editor/editor-shortcuts-help.js': {
+    count: 1, classification: 'safe',
+    reason: 'static help dialog template, no user content'
+  },
   'js/editor/editor-detail-inline-edit.js': {
     count: 4, classification: 'safe',
     reason: 'material-icon + i18n formatI18nText; 3 clear-container'
