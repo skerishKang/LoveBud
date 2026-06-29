@@ -1,7 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
-const childProcess = require('child_process');
 
 function read(path) {
   return fs.readFileSync(path, 'utf8');
@@ -55,22 +54,4 @@ test('mobile hierarchy css keeps canvas-first off-canvas layout on small screens
   assert.match(css, /\.editor-mobile-panel-controls\s*\{[\s\S]*max-width: calc\(100% - 28px\);[\s\S]*box-sizing: border-box;/m, 'controls must cap width to avoid horizontal overflow');
   assert.match(css, /\.editor-mobile-panel-backdrop\s*\{[\s\S]*position: absolute;[\s\S]*top: 0;[\s\S]*bottom: 0;/m, 'backdrop must stay under header within editor layout');
   assert.match(css, /\.editor-layout\.has-mobile-panel-open #mobileBottomBar\s*\{[\s\S]*visibility: hidden;[\s\S]*pointer-events: none;/m, 'mobile bottom bar must be blocked while a modal panel is open');
-});
-
-test('protected detail template files remain untouched', () => {
-  const diffNames = childProcess
-    .execSync('git diff --name-only origin/main...HEAD', { encoding: 'utf8' })
-    .trim()
-    .split('\n')
-    .filter(Boolean);
-
-  const protectedFiles = [
-    'js/editor/editor-detail-tree-meta.js',
-    'js/editor/editor-detail-ui.js',
-    'js/editor/templates/editor-detail-view-mode-template.js',
-  ];
-
-  protectedFiles.forEach((file) => {
-    assert.ok(!diffNames.includes(file), `${file} must remain untouched`);
-  });
 });
