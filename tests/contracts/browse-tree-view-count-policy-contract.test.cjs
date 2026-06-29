@@ -6,7 +6,7 @@ const test = require('node:test');
 const ROOT = path.join(__dirname, '..', '..');
 const policyPath = path.join(ROOT, 'docs', 'product', 'lovebud-browse-tree-view-count-policy.md');
 const routerPath = path.join(ROOT, 'functions', 'api', '[[path]].js');
-const modalBrowsePath = path.join(ROOT, 'modal_compute', 'browse_latest.py');
+const validationPath = path.join(ROOT, 'modal_compute', 'validation.py');
 
 function read(filePath) {
   return fs.readFileSync(filePath, 'utf8');
@@ -82,9 +82,9 @@ test('current router accepts latest, popular, and likes sort (views still reject
   assert.doesNotMatch(router, /sort'\)\s*===\s*'views'/);
 });
 
-test('current Browse summary remains without tree view count payload', () => {
-  const modalBrowse = read(modalBrowsePath);
+test('current Browse summary now includes viewCount payload via normalize_row', () => {
+  const validation = read(validationPath);
 
-  assert.match(modalBrowse, /"memoryCount": memory_count/);
-  assert.doesNotMatch(modalBrowse, /"viewCount"/);
+  assert.match(validation, /"memoryCount": memory_count/);
+  assert.match(validation, /"viewCount"/);
 });

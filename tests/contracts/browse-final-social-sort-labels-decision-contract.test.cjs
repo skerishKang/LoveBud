@@ -169,19 +169,18 @@ test('Runtime locking: public_reads order_clause branches for likes and views ex
   // views branch
   assert.match(content, /view_count.*DESC.*updated_at.*DESC.*created_at.*DESC.*id.*ASC|order_clause.*views/);
 });
+test('Runtime locking: viewCount and likeCount in Browse summary payload', () => {
+  // The Browse summary payload must expose viewCount and likeCount.
+  // The SQL query selects s.view_count for sort=views ordering, and
+  // normalize_row() with include_like_count=True adds both likeCount and viewCount.
 
-test('Runtime locking: no viewCount or likeCount in Browse summary payload', () => {
-  // The Browse summary payload must not expose viewCount or likeCount.
-  // The SQL query may select s.view_count for sort=views ordering, but
-  // normalize_row() with include_like_count=True only adds likeCount.
-  // viewCount is never added to the result.
   const filePath = path.join(__dirname, '..', '..', 'modal_compute', 'validation.py');
   const content = fs.readFileSync(filePath, 'utf8');
   
-  // normalize_row should not add viewCount
-  assert.doesNotMatch(content, /result\[\"viewCount\"\]|result\['viewCount'\]/);
+  // normalize_row must add viewCount
+  assert.match(content, /result\[\"viewCount\"\]|result\['viewCount'\]/);
   
-  // include_like_count only adds likeCount
+  // include_like_count adds both likeCount and viewCount
   assert.match(content, /include_like_count/);
   assert.match(content, /result\[\"likeCount\"\]/);
 });
