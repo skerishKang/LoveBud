@@ -142,25 +142,11 @@
         return String(count);
     }
 
-    function getViewCount(tree) {
-        // viewCount: available numeric value (including 0) or null when absent
-        var keys = ['totalViewCount', 'viewCount', 'viewsCount', 'views', 'view_count', 'views_count',
-                     'visitorCount', 'visitorsCount', 'visitCount', 'visitsCount', 'visits',
-                     'openCount', 'opensCount', 'open_count'];
-        for (var i = 0; i < keys.length; i += 1) {
-            var value = tree && tree[keys[i]];
-            if (value !== null && value !== undefined && value !== '') {
-                var num = Number(value);
-                if (Number.isFinite(num) && num >= 0) return num;
-            }
-        }
-        return null;
-    }
-
     function getTreeReactionCounts(tree) {
+        var shared = window.LoveBudSearchSharedUtils;
         return {
             likes: getFirstFiniteCount(tree, ['likeCount', 'likesCount', 'likes', 'reactionCount', 'reaction_count']),
-            views: getViewCount(tree),
+            views: shared && typeof shared.getViewCount === 'function' ? shared.getViewCount(tree) : null,
             comments: getFirstFiniteCount(tree, ['commentCount', 'commentsCount', 'comments', 'comment_count']),
             shares: getFirstFiniteCount(tree, ['shareCount', 'sharesCount', 'shares', 'share_count'])
         };
