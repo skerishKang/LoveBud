@@ -368,6 +368,52 @@ test('My Trees UI fallback path (no Visuals) produces SVG fallback correctly', (
     'Fallback path must render <img> when thumbnail provided');
 });
 
+test('My Trees UI fallback path (no Visuals) tier-2 text cover meets theme contract', () => {
+  const src = fs.readFileSync(path.join(ROOT, 'js/my-trees/my-trees-ui.js'), 'utf8');
+  // Load without LoveBudMyTreesCardVisuals to exercise the inline fallback
+  const win = runInNewWindow(src, {
+    LoveBudMyTreesUtils: { escapeHtml: function(v) { return String(v || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); } },
+    // No LoveBudMyTreesCardVisuals set deliberately
+  });
+
+  const html = win.LoveBudMyTreesUI.buildTreeThumbVisual(
+    {
+      title: 'Fallback Tree',
+      representativeTitle: 'Text-only moment',
+      representativeMemo: 'No image, so this must use tier two.'
+    },
+    function(k) { return k; }
+  );
+
+  // Must render text-led cover (tier 2), not SVG-only fallback
+  assert.ok(/tree-card-text-visual/.test(html),
+    'Fallback path must render text-led cover when representative text exists');
+  assert.ok(!/tree-card-media-fallback/.test(html),
+    'Fallback path must NOT use SVG-only media-fallback when representative text exists');
+
+  // Custom property contract
+  assert.ok(html.includes('--tree-card-text-border'),
+    'Fallback path tier-2 HTML must contain --tree-card-text-border');
+  assert.ok(html.includes('--tree-card-text-accent'),
+    'Fallback path tier-2 HTML must contain --tree-card-text-accent');
+
+  // No inline background on the text-visual element
+  const tvEl = html.match(/<div\s+class="tree-card-text-visual"[^>]*>/);
+  assert.ok(tvEl, 'tree-card-text-visual element must exist');
+  assert.doesNotMatch(tvEl[0], /style="[^"]*background\s*:/,
+    'Fallback path text-visual must not inline background');
+
+  // Kicker must not have inline style="color:"
+  const kickerEl = html.match(/<div\s+class="tree-card-text-kicker"[^>]*>/);
+  assert.ok(kickerEl, 'tree-card-text-kicker element must exist');
+  assert.doesNotMatch(kickerEl[0], /style="[^"]*color\s*:/,
+    'Fallback path kicker must not have inline style="color:"');
+
+  // Korean fallback preserved
+  assert.ok(html.includes('첫 순간 기록'),
+    'Fallback path must preserve Korean kicker fallback');
+});
+
 // ---------------------------------------------------------------------------
 // Runtime: Browse renderRepresentativeMedia tier 2 output contract
 // ---------------------------------------------------------------------------
