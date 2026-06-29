@@ -212,11 +212,49 @@ function createEditorDetailUI(deps) {
         return 'https://www.youtube-nocookie.com/embed/' + encodeURIComponent(videoId) + '?' + params.toString();
     };
 
+    /**
+     * Build a stable embed identity string from memory data.
+     * Used to compare player identity when reselecting the same moment.
+     * Combines the normalized source URL with the canonical embed URL
+     * so that any change in source, video ID, timestamps, or time-range
+     * fields produces a different identity.
+     * Format: "normalizedSourceUrl||canonicalEmbedUrl"
+     */
+    const buildEmbedIdentity = (data) => {
+        if (!data) return '';
+        var sourceUrl = getMemoryPlaybackUrl(data);
+        var embedUrl = buildYouTubeEmbedUrl(data);
+        if (!sourceUrl && !embedUrl) return '';
+        return (sourceUrl || '') + '||' + (embedUrl || '');
+    };
+
+    /**
+     * Determine whether an existing inline player should be preserved.
+     * Returns true only when ALL conditions hold:
+     *   1. The existing player has a recorded memory ID.
+     *   2. That ID matches the incoming data.id.
+     *   3. The existing player has a recorded embed identity.
+     *   4. That identity matches the incoming data's embed identity.
+     *   5. The existing player is still attached to the DOM.
+     */
+    const shouldPreservePlayer = (data, existingPlayer) => {
+        if (!data || !existingPlayer || !existingPlayer.parentNode) return false;
+        var memId = existingPlayer.dataset.editorDetailMemoryId;
+        var embedId = existingPlayer.dataset.editorDetailEmbedIdentity;
+        if (!memId || !embedId) return false;
+        if (String(memId) !== String(data.id)) return false;
+        var currentEmbedId = buildEmbedIdentity(data);
+        if (!currentEmbedId) return false;
+        return embedId === currentEmbedId;
+    };
+
     const buildInlinePlayerElement = (data) => {
         const youtubeEmbedUrl = buildYouTubeEmbedUrl(data);
         if (youtubeEmbedUrl) {
             const iframe = document.createElement('iframe');
             iframe.dataset.editorDetailPlayer = '1';
+            iframe.dataset.editorDetailMemoryId = (data && data.id) || '';
+            iframe.dataset.editorDetailEmbedIdentity = buildEmbedIdentity(data);
             iframe.className = 'detail-video-player';
             iframe.src = youtubeEmbedUrl;
             iframe.title = data && data.title
@@ -497,7 +535,14 @@ function createEditorDetailUI(deps) {
         }
 
         if (imgEl) {
-            clearDetailPlayer(mediaWrap);
+            // Preserve active inline player when reselecting the same moment
+            // with the same effective embed. This avoids killing YouTube playback.
+            const existingPlayer = mediaWrap ? mediaWrap.querySelector('[data-editor-detail-player="1"]') : null;
+            const sameSelectionPreserved = existingPlayer && shouldPreservePlayer(data, existingPlayer);
+
+            if (!sameSelectionPreserved) {
+                clearDetailPlayer(mediaWrap);
+            }
             // #2817 regression follow-up: editor must NOT auto-play YouTube
             // when a moment is selected. Selection only renders the static
             // thumbnail + play button; buildInlinePlayerElement() is reserved
@@ -508,13 +553,13 @@ function createEditorDetailUI(deps) {
             if (thumbnail) {
                 imgEl.src = thumbnail;
                 imgEl.alt = sanitizeMomentTitle(data.title, '순간 이미지');
-                imgEl.style.display = '';
+                imgEl.style.display = sameSelectionPreserved ? 'none' : '';
                 const overlay = mediaWrap ? mediaWrap.querySelector('.memory-preview-overlay') : null;
-                if (overlay) overlay.hidden = false;
+                if (overlay) overlay.hidden = sameSelectionPreserved ? true : false;
                 if (mediaWrap) mediaWrap.style.display = '';
                 bindDetailMediaPlayback(data, mediaWrap);
             } else {
-                clearDetailMedia();
+                if (!sameSelectionPreserved) clearDetailMedia();
             }
         }
 
