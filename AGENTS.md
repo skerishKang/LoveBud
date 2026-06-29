@@ -28,15 +28,77 @@
 
 ---
 
-## 2. 제품 / 브랜드 source of truth
+## 2. 제품 / 브랜드 판단 기준
 
-제품과 UX 판단이 필요할 때 아래 문서를 최우선으로 봅니다.
+LoveBud 작업에서 제품·브랜드 판단이 필요할 때는, 작업 성격에 따라 아래 순서로 확인합니다.
+
+### 2.1 제품 철학과 브랜드 톤
+
+다음 문서는 LoveBud의 장기 제품 정체성과 UX 감도를 판단하는 기준입니다.
 
 1. `docs/product/PRODUCT_IDENTITY.md`
 2. `docs/product/BRAND_EXPERIENCE.md`
-3. `docs/design/UI_DESIGN_SYSTEM.md`
 
-이 세 문서는 LoveBud / LoveTree의 **제품 정체성, 브랜드 감성, UI 판단 기준**의 source of truth입니다.
+핵심 해석:
+
+- LoveBud는 일반 북마크, 관리자 화면, 생산성 워크플로우 도구가 아니다.
+- LoveTree는 팬이 좋아하게 된 첫 순간과 이어진 감정의 경로를 기록하고 감상하는 경험이다.
+- UI는 기능·수치·관리 행동보다 대표 순간, 감정 흐름, 감상 경험을 우선한다.
+- Browse는 검색 결과나 게시판이 아니라 공개 LoveTree를 천천히 발견하는 감상 허브로 다룬다.
+- Editor는 단순 입력 폼이 아니라 첫 순간을 심고 다음 순간을 이어 가는 공간으로 다룬다.
+
+### 2.2 현재 MVP 범위와 사용자 여정
+
+현재 구현 우선순위, MVP 범위, 화면별 행동은 아래 문서를 함께 확인합니다.
+
+1. `docs/product/PRODUCT_BRIEF.md`
+2. `docs/product/MVP_SCOPE.md`
+3. `docs/product/USER_FLOW.md`
+4. 현재 GitHub `main`의 구현과 계약 테스트
+
+제품 철학 문서는 장기 방향을 설명한다.
+현재 구현 범위와 실제 사용자 행동은 `main`, MVP 문서, 열린 이슈의 명시적 결정이 우선한다.
+
+### 2.3 정책성 판단
+
+다음 항목은 브랜드 감성 문서만으로 추정하지 않는다.
+
+- public/private visibility
+- Plus private storage
+- anonymous public exposure
+- Browse/Search 소개 가능 여부
+- publication guard
+- tree 또는 memory 권한
+
+이런 판단은 아래 정책 문서를 확인한다.
+
+- `docs/product/PUBLICATION_AND_PRIVACY_UX_POLICY.md`
+- `docs/engineering/BROWSE_FILTER_VS_PUBLICATION_GUARD.md`
+- 관련 API 계약과 현재 `main` 구현
+
+### 2.4 UI 구현 기준
+
+`docs/design/UI_DESIGN_SYSTEM.md`은 화면 감도와 반응형 기준을 위한 참고 문서다.
+
+단, 색상 token, spacing, typography, 컴포넌트 상태, 실제 DOM 구조는 문서만으로 추정하지 않는다.
+구현 변경 전에는 반드시 현재 `css/`, `js/`, template, contract test를 확인한다.
+
+### 2.5 충돌 시 우선순위
+
+문서·코드·이슈가 충돌하면 아래 순서를 따른다.
+
+1. 현재 `main`의 실제 동작과 검증된 계약 테스트
+2. 명시적으로 결정된 최신 제품 이슈 또는 merged PR
+3. MVP/정책 문서
+4. `PRODUCT_IDENTITY.md`, `BRAND_EXPERIENCE.md`
+5. `UI_DESIGN_SYSTEM.md`
+
+### 2.6 모바일 해석
+
+모바일은 빠른 기록과 감상을 우선하되, owner가 필요한 핵심 편집 행동에 접근하지 못하게 만들어서는 안 된다.
+
+모바일을 "축소된 데스크톱"이나 "편집 불가 감상 전용 화면"으로 해석하지 않는다.
+필요할 때는 canvas 중심 구조를 유지하면서 보조 패널과 행동을 단계적으로 제공한다.
 
 ---
 
@@ -343,11 +405,22 @@ LoveBud는 여러 에이전트가 동시에 검토하고 작업할 수 있도록
 
 #### Secrets / credentials 취급 규칙
 
+##### 구분: Production secrets vs Test account credentials
+
+이 규칙은 **Production secrets**와 **Test account credentials**를 구분하여 적용합니다.
+
+| 유형 | 정의 | 취급 |
+|------|------|------|
+| **Production secrets** | API tokens, service account keys, Firebase/Cloudflare/Modal/Neon secrets, 배포 인증서, GitHub tokens, 운용용 DB credentials | 기존 금지 규칙 그대로 적용 |
+| **Test account credentials** | `.local/test-accounts.json`에 저장된 QA/테스트용 이메일·비밀번호 | **QA 검증 목적에 한해 사용·표시 허용** |
+
 Secret Handling Clarification
 
-Agents must never print, paste, summarize, screenshot, log, commit, or expose secret values.
+Agents must never print, paste, summarize, screenshot, log, commit, or expose production secret values.
 
-However, agents may use secrets locally when required for authorized project operations, provided that the value is not displayed, copied, summarized, committed, or persisted outside the approved local secret store.
+However, agents may use production secrets locally when required for authorized project operations, provided that the value is not displayed, copied, summarized, committed, or persisted outside the approved local secret store.
+
+For **test account credentials** (stored in `.local/test-accounts.json`), agents may read and use them for authorized QA/testing/verification workflows, including displaying them to the user or using them in browser automation for login flows.
 
 **Allowed:**
 - Referring to secret names, required locations, and expected presence.
@@ -375,9 +448,10 @@ However, agents may use secrets locally when required for authorized project ope
 
 **Clarification:**
 - Secret files may be read by machine processes only for authorized local execution or key-presence validation.
-- Secret values must not be displayed to the agent, user, logs, PRs, issues, screenshots, or reports.
-- Reports may contain only `EXISTS` / `MISSING` / `PRESENT` / `GITIGNORED` / `SUCCESS` / `FAIL`.
-- If a secret value is accidentally displayed or logged, stop work and report `SECURITY_INCIDENT_SECRET_EXPOSURE` without repeating the secret.
+- Production secret values must not be displayed to the agent, user, logs, PRs, issues, screenshots, or reports.
+- **Test account credentials** (`.local/test-accounts.json`) are **exempt** from this restriction when used for authorized QA/testing/verification workflows.
+- Reports may contain only `EXISTS` / `MISSING` / `PRESENT` / `GITIGNORED` / `SUCCESS` / `FAIL` for production secrets. Test account credentials may be displayed in full.
+- If a production secret value is accidentally displayed or logged, stop work and report `SECURITY_INCIDENT_SECRET_EXPOSURE` without repeating the secret.
 
 **PowerShell guidance to include or summarize:**
 **Allowed:**
@@ -416,7 +490,7 @@ GitHub CLI, browser login, connector-backed GitHub access, or token-backed local
 
 3. **Provider Dashboard 사용**: 배포나 외부 서비스 연동이 필요한 경우, 에이전트는 사용자에게 해당 provider dashboard (GitHub Actions Secrets, Cloudflare/Vercel/Netlify dashboard 등)에서 값을 설정하도록 안내합니다.
 
-에이전트는 어떤 경우에도 비밀 값을 직접 읽거나 출력하지 않습니다.
+에이전트는 **production secrets**의 경우 어떤 경우에도 비밀 값을 직접 읽거나 출력하지 않습니다. **Test account credentials** (`.local/test-accounts.json`)는 QA/testing/검증 workflow에서 읽고 표시할 수 있습니다.
 
 `.secrets/` 또는 `.env*` 파일이 git 추적 대상에 올라온 정황이 있으면 즉시 작업을 중단하고 보고합니다.
 
@@ -557,9 +631,10 @@ LoveBud 작업은 항상 **현재 `main` 확인 → source of truth 확인 → �
 - Search/Browse/Editor/My Trees/Auth-gated 등 동적 데이터를 사용하는 페이지는 로컬 정적 서버만으로 최종 PASS할 수 없습니다.
 
 ### 보안
-- 자격 증명, 토큰, 쿠키, 세션, Firebase/Cloudflare/Modal/Neon secret 값을 절대 기록하거나 노출하지 않습니다.
+- Production secrets (자격 증명, 토큰, 쿠키, 세션, Firebase/Cloudflare/Modal/Neon secret 값)을 절대 기록하거나 노출하지 않습니다.
+- **Test account credentials** (`.local/test-accounts.json`)는 QA/검증 workflow에서 사용 및 표시할 수 있습니다.
 - GitHub CLI/browser login/connector/token-backed local access는 `docs/ops/GITHUB_AUTH_TOKEN_USAGE.md`를 함께 따릅니다.
-- 필요한 secret은 이름과 위치 정책만 언급하며, 실제 값은 절대 포함하지 않습니다.
+- 필요한 production secret은 이름과 위치 정책만 언급하며, 실제 값은 절대 포함하지 않습니다.
 
 ### Local Artifact Hygiene
 - repo 내부에 `local-backup/`, `work/`, screenshots, report JSON 파일을 만들지 않습니다.
