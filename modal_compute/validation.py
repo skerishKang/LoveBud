@@ -142,6 +142,7 @@ def normalize_row(row: dict[str, Any], *, stage_override: str | None = None, inc
     }
     if include_like_count:
         result["likeCount"] = row.get("like_count", 0) or 0
+        result["viewCount"] = row.get("view_count", 0) or 0
     return result
 
 
