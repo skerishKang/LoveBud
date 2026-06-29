@@ -77,10 +77,13 @@
 
       img.addEventListener('error', function() {
         this.style.display = 'none';
-        var fallback = this.nextElementSibling;
-        if (fallback && fallback.hasAttribute('data-media-fallback')) {
-          fallback.removeAttribute('hidden');
-          fallback.style.display = 'flex';
+        var container = this.closest('.tree-card-thumb');
+        if (container) {
+          var fallback = container.querySelector('[data-media-fallback]');
+          if (fallback) {
+            fallback.removeAttribute('hidden');
+            fallback.style.display = 'flex';
+          }
         }
       });
     });
