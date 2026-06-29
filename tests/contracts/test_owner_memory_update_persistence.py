@@ -638,49 +638,39 @@ def test_existing_title_memo_sourceurl_updates_still_work():
 # ============================================================================
 
 def test_cycle_detection_with_existing_cycle_breaks():
-    """Cycle detection with existing cycle in DB breaks to avoid infinite loop."""
-    conn = MockConnection()
-    call_count = [0]
-
-    def cursor_factory(*a, **k):
-        call_count[0] += 1
-        if call_count[0] == 1:
-            return MockCursor(fetchone_result={"parent_id": uuid.UUID("00000000-0000-0000-0000-000000000002")})
-        elif call_count[0] == 2:
-            return MockCursor(fetchone_result={"parent_id": uuid.UUID("00000000-0000-0000-0000-000000000001")})
-        elif call_count[0] == 3:
-            return MockCursor(fetchone_result={"parent_id": uuid.UUID("00000000-0000-0000-0000-000000000002")})
-        return MockCursor()
-
-    conn.cursor = cursor_factory
+    """Cycle detection with existing cycle in DB breaks to avoid infinite loop (corrupted cycle)."""
+    mock_cursor = MagicMock()
+    mock_cursor.fetchone.side_effect = [
+        {"parent_id": uuid.UUID("00000000-0000-0000-0000-000000000002")},
+        {"parent_id": uuid.UUID("00000000-0000-0000-0000-000000000001")}
+    ]
+    conn = MagicMock()
+    conn.cursor.return_value.__enter__.return_value = mock_cursor
 
     source_id = "00000000-0000-0000-0000-000000000003"
     target_parent_id = "00000000-0000-0000-0000-000000000001"
 
     result = _would_create_cycle(conn, source_id, target_parent_id)
     assert result is True, "Should detect cycle even with existing corrupted data"
+    assert conn.cursor.call_count == 1, f"Expected exactly 1 cursor context open, got {conn.cursor.call_count}"
 
 
 def test_cycle_detection_no_cycle_returns_false():
     """Cycle detection returns false when no cycle exists."""
-    conn = MockConnection()
-    call_count = [0]
-
-    def cursor_factory(*a, **k):
-        call_count[0] += 1
-        if call_count[0] == 1:
-            return MockCursor(fetchone_result={"parent_id": uuid.UUID("00000000-0000-0000-0000-000000000002")})
-        elif call_count[0] == 2:
-            return MockCursor(fetchone_result={"parent_id": None})
-        return MockCursor()
-
-    conn.cursor = cursor_factory
+    mock_cursor = MagicMock()
+    mock_cursor.fetchone.side_effect = [
+        {"parent_id": uuid.UUID("00000000-0000-0000-0000-000000000002")},
+        {"parent_id": None}
+    ]
+    conn = MagicMock()
+    conn.cursor.return_value.__enter__.return_value = mock_cursor
 
     source_id = "00000000-0000-0000-0000-000000000003"
     target_parent_id = "00000000-0000-0000-0000-000000000001"
 
     result = _would_create_cycle(conn, source_id, target_parent_id)
     assert result is False, "Should not detect cycle when none exists"
+    assert conn.cursor.call_count == 1, f"Expected exactly 1 cursor context open, got {conn.cursor.call_count}"
 
 
 def test_would_create_cycle_single_cursor_reuse():
