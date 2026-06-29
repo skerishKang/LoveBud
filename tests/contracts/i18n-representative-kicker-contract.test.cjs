@@ -373,3 +373,15 @@ test('Search page uses updated i18n-shared.js cache query', () => {
     assert.ok(searchHtml.includes('i18n-shared.js?v=20260629-5'), 'Search page should reference updated i18n-shared.js cache query');
     assert.ok(!searchHtml.includes('i18n-shared.js?v=20260421-4'), 'Search page should NOT reference old i18n-shared.js cache query');
 });
+
+// ---- Test 17: My Trees page uses updated i18n-shared.js cache query ----
+test('My Trees page uses updated i18n-shared.js cache query', () => {
+    const fs = require('node:fs');
+    const path = require('node:path');
+    const myTreesHtml = fs.readFileSync(
+        path.join(ROOT, 'pages', 'my-trees.html'),
+        'utf8'
+    );
+    assert.ok(myTreesHtml.includes('i18n-shared.js?v=20260629-5'), 'My Trees page should reference updated i18n-shared.js cache query');
+    assert.ok(!myTreesHtml.includes('i18n-shared.js?v=20260421-4'), 'My Trees page should NOT reference old i18n-shared.js cache query');
+});
