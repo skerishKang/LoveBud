@@ -24,6 +24,9 @@ test('editor.html keeps active editor page shell contracts', () => {
     
     // 5. Mobile UI
     assert.ok(html.includes('id="mobileBottomBar"'), 'must have mobileBottomBar');
+    assert.ok(html.includes('id="mobileTreePanelToggle"'), 'must have mobileTreePanelToggle');
+    assert.ok(html.includes('id="mobileDetailPanelToggle"'), 'must have mobileDetailPanelToggle');
+    assert.ok(html.includes('id="editorMobilePanelBackdrop"'), 'must have editorMobilePanelBackdrop');
 });
 
 test('editor.html keeps script loading order before editor runtime', () => {
@@ -31,6 +34,8 @@ test('editor.html keeps script loading order before editor runtime', () => {
 
     // Expected order of editor scripts
     const scriptOrder = [
+        'js/editor/templates/editor-detail-edit-mode-template.js',
+        'js/editor/editor-mobile-panel-hierarchy.js',
         'js/editor/editor-dom-selectors.js',
         'js/editor/editor-root-helpers.js',
         'js/editor/editor-canvas-layout.js',
@@ -77,6 +82,15 @@ test('editor.html keeps script loading order before editor runtime', () => {
     const protectedRouteIndex = html.indexOf('js/auth/auth-protected-route.js');
     assert.notEqual(protectedRouteIndex, -1, 'editor.html must load auth-protected-route.js');
     assert.ok(editorIndex < protectedRouteIndex, 'auth-protected-route.js must load after editor.js');
+});
+
+test('editor.html keeps detail toggle accessibility defaults clear before runtime', () => {
+    const html = fs.readFileSync('pages/editor.html', 'utf8');
+
+    assert.match(html, /id="mobileDetailPanelToggle"[\s\S]*aria-disabled="true"/, 'detail toggle must expose aria-disabled when no selection exists');
+    assert.match(html, /id="mobileDetailPanelToggle"[\s\S]*disabled/, 'detail toggle must start disabled without a selected moment');
+    assert.match(html, /id="mobileTreePanelToggle"[\s\S]*aria-expanded="false"/, 'tree toggle must start collapsed');
+    assert.match(html, /id="mobileDetailPanelToggle"[\s\S]*aria-expanded="false"/, 'detail toggle must start collapsed');
 });
 
 test('editor.html exposes stable static template extraction candidates', () => {
