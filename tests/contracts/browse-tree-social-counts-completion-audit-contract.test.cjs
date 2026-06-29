@@ -62,9 +62,9 @@ test('Audit document records final Browse labels and control mapping', () => {
 test('Audit document records Browse/Search summary payload boundary', () => {
   const content = read(path.join('docs', 'product', 'lovebud-browse-tree-social-counts-completion-audit.md'));
 
-  assert.match(content, /`likeCount` remains the existing summary count surface/);
+  assert.match(content, /persisted `viewCount`/);
   assert.match(content, /`normalize_row\(row, include_like_count=True\)`/);
-  assert.match(content, /no `result\["viewCount"\]`/);
+  assert.match(content, /Missing or null `view_count`/);
 });
 
 test('Audit document records private/public boundary preservation', () => {

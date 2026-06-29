@@ -28,7 +28,7 @@ The tree-level social counts work is complete across the product decision chain,
 | `sort=views` backend maintained | ✅ Ready | `functions/api/[[path]].js`, `modal_compute/app.py`, `modal_compute/public_reads.py` |
 | Browse UI exposes exactly `최신순` / `조회순` / `좋아요순` | ✅ Ready | `js/search/search-ui.js`, `js/i18n/i18n-search.js` |
 | Browse controls send `latest` / `views` / `likes` | ✅ Ready | `js/search/search-ui.js`, `js/search/search-index.js` |
-| Browse/Search summary payload count boundary preserved | ✅ Ready | `modal_compute/validation.py`, `modal_compute/public_reads.py` |
+| Browse/Search summary payload includes persisted viewCount | ✅ Ready | `modal_compute/validation.py`, `modal_compute/public_reads.py` |
 | Private tree leakage boundary preserved | ✅ Ready | `t.visibility = 'public'` filters, public detail 404 behavior, view/like read helpers |
 | No raw analytics storage or Scout live work mixed in | ✅ Ready | migration comments, `tree_views.py`, relevant Browse/Search files contain no Scout/live-provider work |
 | Closure recommendation | ✅ Ready | #2451 audit can close #1661 completed |
@@ -102,19 +102,21 @@ Evidence:
 
 Conclusion: the Browse controls are wired end-to-end.
 
-### 5. Browse/Search summary payload count boundary is preserved
+### 5. Browse/Search summary payload includes persisted viewCount
 
-**Verdict: ✅ Ready.**
+**Verdict: ✅ Ready (updated by #3017).**
 
-The summary payload remains bounded. `viewCount` is not newly exposed in Browse/Search summaries.
+The summary payload now includes a persisted `viewCount` when the social-count source has a real value.
 
 Evidence:
-- `modal_compute/validation.py` has no `result["viewCount"]` / `result['viewCount']` path.
-- `modal_compute/public_reads.py` normalizes Browse latest rows with `normalize_row(row, include_like_count=True)`; this preserves the existing `likeCount` summary surface and does not add `viewCount`.
-- `modal_compute/public_reads.py` fetches `s.view_count` only as an internal ordering signal for `sort=views`; it is not added to the summary object.
-- `js/search/search-ui.js` does not add or render `viewCount` or `likeCount` badges.
+- `modal_compute/validation.py` includes `result["viewCount"]` when `include_like_count=True` and the row has a non-None `view_count` value.
+- Missing or null `view_count` (social-count source unavailable) omits the field so the UI does not display a synthetic "0" indistinguishable from a genuine persisted zero.
+- `modal_compute/public_reads.py` calls `normalize_row(row, include_like_count=True)` for Browse latest summaries; the growing helper does not join social counts.
+- Private tree reads continue to return 404 and never reach `normalize_row` with social counts.
+- `sort=views` UI label/ordering is unchanged by this scope; only the summary payload `viewCount` field is added.
+- Detail API view-tracking write, dedup policy, and data migration are unchanged.
 
-Conclusion: the summary payload boundary is preserved. `likeCount` remains the existing summary count surface; `viewCount` remains absent from summary cards.
+Conclusion: the summary payload boundary now includes persisted `viewCount` for public trees only, with a clear two-state convention (available count vs. omitted field).
 
 ### 6. Private/public boundary is preserved
 
@@ -153,7 +155,7 @@ Rationale:
 2. The storage model and privacy boundaries are implemented.
 3. `sort=likes` and `sort=views` are backend-complete.
 4. The final Browse UI labels are implemented.
-5. The Browse/Search summary payload remains within the approved boundary.
+5. The Browse/Search summary payload includes persisted `viewCount` with a clear available/unavailable two-state convention.
 6. Contract tests lock the behavior and the audit test in this PR documents the closure gate.
 
 No remaining #1661 blocker was found.

@@ -1,74 +1,73 @@
 """Focused behavioral tests for modal_compute/validation.normalize_row.
 
 Tests the viewCount and likeCount output of normalize_row directly,
-covering positive counts, missing/null fallbacks, and the include_like_count=False path.
+with explicit two-state policy: persisted zero ≠ unavailable count.
 """
 import sys
 import os
 
-# Add the repo root to sys.path so modal_compute can be imported
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, ROOT)
 
 from modal_compute.validation import normalize_row
 
-
-def test_normalize_row_includes_view_count():
-    """Positive view_count and like_count are surfaced as viewCount and likeCount."""
-    row = {"view_count": 3, "like_count": 2, "id": "abc", "title": "T",
-           "visibility": "public", "created_at": None, "updated_at": None,
-           "memory_count": 5, "all_tags": None, "raw_thumbnail": None,
-           "raw_source_url": None}
-    result = normalize_row(row, include_like_count=True)
-    assert result["viewCount"] == 3, f"Expected viewCount=3, got {result['viewCount']}"
-    assert result["likeCount"] == 2, f"Expected likeCount=2, got {result['likeCount']}"
+_BASE = {"id": "abc", "title": "T", "visibility": "public",
+         "created_at": None, "updated_at": None, "memory_count": 5,
+         "all_tags": None, "raw_thumbnail": None, "raw_source_url": None}
 
 
-def test_normalize_row_missing_view_count():
-    """Missing or null view_count/ like_count fall back to 0 when include_like_count=True."""
-    row = {"id": "abc", "title": "T", "visibility": "public",
-           "created_at": None, "updated_at": None, "memory_count": 5,
-           "all_tags": None, "raw_thumbnail": None, "raw_source_url": None}
-    # No view_count or like_count keys at all
+def test_persisted_zero():
+    """Persisted view_count = 0 is a legitimate count and appears as viewCount: 0."""
+    row = dict(_BASE, view_count=0, like_count=2)
     result = normalize_row(row, include_like_count=True)
     assert result["viewCount"] == 0
-    assert result["likeCount"] == 0
+    assert result["likeCount"] == 2
 
-    # Explicit None values
-    row["view_count"] = None
-    row["like_count"] = None
+
+def test_missing_field():
+    """Missing view_count key means no value is available — viewCount is omitted."""
+    row = dict(_BASE, like_count=2)
     result = normalize_row(row, include_like_count=True)
-    assert result["viewCount"] == 0
-    assert result["likeCount"] == 0
-
-
-def test_normalize_row_no_include_like_count():
-    """When include_like_count=False, neither viewCount nor likeCount appear."""
-    row = {"view_count": 3, "like_count": 2, "id": "abc", "title": "T",
-           "visibility": "public", "created_at": None, "updated_at": None,
-           "memory_count": 5, "all_tags": None, "raw_thumbnail": None,
-           "raw_source_url": None}
-    result = normalize_row(row, include_like_count=False)
     assert "viewCount" not in result, f"Unexpected viewCount: {result.get('viewCount')}"
-    assert "likeCount" not in result, f"Unexpected likeCount: {result.get('likeCount')}"
+    assert result["likeCount"] == 2
 
 
-def test_normalize_row_preserves_existing_fields():
-    """The existing public summary fields are unchanged."""
-    row = {"id": "abc", "title": "My Tree", "visibility": "public",
-           "created_at": None, "updated_at": None, "memory_count": 5,
-           "all_tags": None, "raw_thumbnail": None, "raw_source_url": None}
+def test_explicit_null():
+    """Explicit None view_count is semantically "no data" — viewCount is omitted."""
+    row = dict(_BASE, view_count=None, like_count=2)
+    result = normalize_row(row, include_like_count=True)
+    assert "viewCount" not in result, f"Unexpected viewCount: {result.get('viewCount')}"
+    assert result["likeCount"] == 2
+
+
+def test_positive_count():
+    """Positive view_count appears as a numeric positive viewCount."""
+    row = dict(_BASE, view_count=42, like_count=7)
+    result = normalize_row(row, include_like_count=True)
+    assert result["viewCount"] == 42
+    assert result["likeCount"] == 7
+
+
+def test_no_include_like_count():
+    """When include_like_count=False, neither viewCount nor likeCount appear."""
+    row = dict(_BASE, view_count=42, like_count=7)
+    result = normalize_row(row, include_like_count=False)
+    assert "viewCount" not in result
+    assert "likeCount" not in result
+
+
+def test_preserves_existing_fields():
+    """Existing public summary fields are unchanged."""
+    row = dict(_BASE)
     result = normalize_row(row, include_like_count=False)
     assert result["id"] == "abc"
-    assert result["title"] == "My Tree"
+    assert result["title"] == "T"
     assert result["visibility"] == "public"
     assert result["memoryCount"] == 5
 
 
-def test_normalize_row_public_visibility_filter():
-    """The normalize_row function does not change visibility; the SQL WHERE clause enforces the filter."""
-    row = {"id": "abc", "title": "T", "visibility": "public",
-           "created_at": None, "updated_at": None, "memory_count": 5,
-           "all_tags": None, "raw_thumbnail": None, "raw_source_url": None}
+def test_visibility_not_changed_by_normalize():
+    """normalize_row does not alter visibility; the SQL WHERE clause enforces the filter."""
+    row = dict(_BASE, visibility="public")
     result = normalize_row(row, include_like_count=True)
     assert result["visibility"] == "public"
