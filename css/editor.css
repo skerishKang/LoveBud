@@ -29,12 +29,12 @@
 @import url("./editor/editor-detail-actions.css?v=20260518-1");
 @import url("./editor/editor-detail-edit.css?v=20260518-1");
 @import url("./editor/editor-responsive.css");
-@import url("./editor/editor-mobile-panel-hierarchy.css?v=20260629-3000");
 @import url("./editor/editor-mode-selection.css");
 @import url("./editor/editor-status-settings.css");
 @import url("./editor/editor-memory-edit.css");
 @import url("./editor/editor-overrides.css");
 @import url("./editor/editor-responsive-tail.css");
+@import url("./editor/editor-mobile-panel-hierarchy.css?v=20260629-3000");
 
 /* Editor read-only mode — hides mutation controls when .editor-readonly class is on body */
 .editor-readonly #addMemoryBtn,

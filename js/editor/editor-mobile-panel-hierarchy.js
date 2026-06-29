@@ -133,6 +133,10 @@
       return null;
     }
 
+    function isConnectedElement(element) {
+      return !!(element && element.isConnected);
+    }
+
     function trapTabKey(panel, event) {
       if (event.key !== 'Tab') return;
       var focusable = getFocusable(panel);
@@ -179,24 +183,33 @@
       backdrop.hidden = true;
       backdrop.setAttribute('aria-hidden', 'true');
       if (!options || options.restoreFocus !== false) {
-        var focusTarget = state.returnFocusEl || record.toggle;
+        var focusTarget = isConnectedElement(state.returnFocusEl)
+          ? state.returnFocusEl
+          : (isConnectedElement(document.activeElement) ? document.activeElement : record.toggle);
         if (focusTarget && typeof focusTarget.focus === 'function') {
           focusTarget.focus();
         }
       }
-      state.returnFocusEl = null;
+      if (!(options && options.preserveReturnFocus === true)) {
+        state.returnFocusEl = null;
+      }
     }
 
     function openPanel(key) {
       var record = panels[key];
+      var hadActivePanel = !!state.activeKey;
       if (!record || !isMobileViewport()) return;
       if (record.toggle.disabled) return;
       if (state.activeKey && state.activeKey !== key) {
-        closePanel(state.activeKey, { restoreFocus: false });
+        closePanel(state.activeKey, { restoreFocus: false, preserveReturnFocus: true });
       }
 
       state.activeKey = key;
-      state.returnFocusEl = document.activeElement;
+      if (!hadActivePanel || !isConnectedElement(state.returnFocusEl)) {
+        state.returnFocusEl = isConnectedElement(document.activeElement)
+          ? document.activeElement
+          : record.toggle;
+      }
       layout.classList.add('has-mobile-panel-open');
       backdrop.hidden = false;
       backdrop.setAttribute('aria-hidden', 'false');
@@ -209,6 +222,7 @@
           panelRecord.element.setAttribute('aria-hidden', 'false');
           panelRecord.element.setAttribute('aria-modal', 'true');
           panelRecord.element.setAttribute('role', 'dialog');
+          panelRecord.element.setAttribute('aria-label', panelKey === 'tree' ? '트리 정보' : '선택한 순간');
           panelRecord.element.setAttribute('tabindex', '-1');
         } else {
           applyClosedState(panelRecord);

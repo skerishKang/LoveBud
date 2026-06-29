@@ -169,6 +169,11 @@
     #mobileBottomBar {
         z-index: 30;
     }
+
+    .editor-layout.has-mobile-panel-open #mobileBottomBar {
+        visibility: hidden;
+        pointer-events: none;
+    }
 }
 
 @media (min-width: 769px) {
