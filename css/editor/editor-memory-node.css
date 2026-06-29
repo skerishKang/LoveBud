@@ -145,6 +145,13 @@
     box-shadow: 0 10px 24px rgba(144, 73, 81, 0.09);
 }
 
+.memory-node:focus-visible .node-card {
+    outline: 2px solid rgba(144, 73, 81, 0.36);
+    outline-offset: 3px;
+    border-color: rgba(144, 73, 81, 0.34);
+    box-shadow: 0 0 0 4px rgba(144, 73, 81, 0.08), 0 12px 28px rgba(144, 73, 81, 0.12);
+}
+
 .new-node-highlight .node-card {
     animation: newNodePulse 1.5s ease-in-out 3;
     border-color: var(--primary) !important;
