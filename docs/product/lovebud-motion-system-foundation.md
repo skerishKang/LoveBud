@@ -19,12 +19,15 @@
 | Browse | `js/search/search-card-renderer.js` | `animation: searchSkeletonPulse` | feedback | loading | Disable/Simplify |
 | Browse | `css/editor/editor-mode-selection.css` | `.editor-rename-modal-btn` transition | hover | feedback | Simplify/Instant |
 | My Trees | `js/my-trees/my-trees-ui.js` | card opacity transition | feedback | reveal | Opacity fade-in allowed |
-| Editor | `css/editor/editor-canvas.css` | `.branch-port` transition | hover | hierarchy-change | Simplify/Instant |
-| Editor | `js/editor/editor-canvas-branch-ports.js` | `path` opacity (not observed) | canvas-interaction | state-change | N/A |
+| Editor | `css/editor/editor-canvas.css` | `.branch-line` transition (stroke/opacity) | hierarchy-change | state feedback | Simplify/Instant |
+| Editor | `css/editor/editor-canvas.css` | `.edge-disconnect-btn` hover scale (1.15) | hover | feedback | Simplify/Instant |
+| Editor | `css/editor/editor-canvas.css` | `.branch-port-handle::before` hover scale (1.4) | hover | feedback | Simplify/Instant |
+| Editor | `css/editor/editor-canvas.css` | `.memory-node.focus-animate` pulse | feedback | focus reveal | Simplify/Instant |
+| Editor | `css/editor/editor-canvas.css` | `.editor-canvas-empty-guide` fadeIn | feedback | reveal | Opacity fade-in allowed |
 | Shared | `js/shared-header.js` | `animation: spin` | feedback | loading | Remove/Disable |
-| Editor | `js/page-transitions.js` | `.page-transition-enter` | page-transition | navigation | Opacity-only or instant |
-| Browse | `.tree-card` (CSS not observed) | hover/active (not observed) | hover | feedback | N/A |
-| Detail | `js/editor/editor-detail-ui.js` | opacity (not observed) | hierarchy-change | reveal | N/A |
+| Editor | `css/page-transitions.css` | `.page-transition-enter` (opacity/transform) | page-transition | navigation | Opacity-only or instant |
+| Editor | `css/page-transitions.css` | `.reveal-up` (opacity/transform) | feedback | reveal | Opacity fade-in allowed |
+| Detail | `js/editor/editor-detail-ui.js` | opacity (not observed in active runtime) | hierarchy-change | reveal | N/A |
 
 ## 4. Proposed token contract
 
