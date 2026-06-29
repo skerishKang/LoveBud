@@ -107,35 +107,20 @@
         return true;
     }
 
-    function getCount(tree, keys) {
-        for (var i = 0; i < keys.length; i += 1) {
-            var value = Number(tree && tree[keys[i]]);
-            if (Number.isFinite(value) && value >= 0) return value;
-        }
-        return 0;
-    }
-
-    // Issue #1489 #1490: 조회수→좋아요→댓글 순서, 공유 제거, totalViewCount 우선
+    /**
+     * Render the truthful preview social shell via the share-link helper.
+     *
+     * Shows only view count (when valid) and a read-only share button.
+     * No likes, comments, or fake share counts.
+     * Degrades gracefully to empty string when the helper is unavailable.
+     */
     function renderSocialBar(tree) {
-        var shared = window.LoveBudSearchSharedUtils;
-        var views  = shared && typeof shared.getViewCount === 'function' ? shared.getViewCount(tree) : null;
-        var likes    = getCount(tree, ['likeCount', 'likesCount', 'likes', 'reactionCount', 'reaction_count']);
-        var comments = getCount(tree, ['commentCount', 'commentsCount', 'comments', 'replyCount', 'reply_count']);
-        var viewsHtml = views !== null
-            ? '<div class="preview-social-action preview-social-stat" aria-label="조회수 ' + escapeHtml(String(views)) + '" role="status"><span class="material-symbols-outlined" aria-hidden="true">visibility</span><strong>' + escapeHtml(String(views)) + '</strong><span>조회수</span></div>'
-            : '';
-        return '<div class="preview-social-shell" data-preview-social-shell>' +
-            '<div class="preview-social-bar" aria-label="트리 반응">' +
-                viewsHtml +
-                '<button type="button" class="preview-social-action" data-preview-like disabled aria-label="좋아요 ' + escapeHtml(String(likes)) + '"><span class="material-symbols-outlined" aria-hidden="true">favorite</span><strong>' + escapeHtml(String(likes)) + '</strong><span>좋아요</span></button>' +
-                '<button type="button" class="preview-social-action" data-preview-comments aria-expanded="false" aria-label="댓글 ' + escapeHtml(String(comments)) + '"><span class="material-symbols-outlined" aria-hidden="true">mode_comment</span><strong>' + escapeHtml(String(comments)) + '</strong><span>댓글</span></button>' +
-            '</div>' +
-            '<div class="preview-comments-panel" data-preview-comments-panel hidden>' +
-                '<div class="preview-comments-title">댓글</div>' +
-                '<p>아직 댓글이 없어요.</p>' +
-                '<p class="preview-comments-note">댓글 작성 기능은 후속 기능으로 준비 중입니다.</p>' +
-            '</div>' +
-        '</div>';
+        var shareLink = window.LoveBudSearchShareLink;
+        if (shareLink && typeof shareLink.renderPreviewSocialShell === 'function') {
+            return shareLink.renderPreviewSocialShell(tree);
+        }
+        // Graceful degrade: helper unavailable → empty social shell
+        return '<div class="preview-social-shell" data-preview-social-shell><div class="preview-social-bar" aria-label="트리 반응"></div></div>';
     }
 
     function normalizePreviewCopy(tree) {
@@ -204,18 +189,6 @@
         });
     }
 
-    function bindCommentsToggle() {
-        var button = document.querySelector('[data-preview-comments]');
-        var panel = document.querySelector('[data-preview-comments-panel]');
-        if (!button || !panel || button.dataset.previewCommentsBound) return;
-        button.dataset.previewCommentsBound = 'true';
-        button.addEventListener('click', function() {
-            var willOpen = panel.hidden;
-            panel.hidden = !willOpen;
-            button.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
-        });
-    }
-
     function finalizeHub(tree) {
         var treeKey = getTreeKey(tree);
         var selectedIndex = Number(selectedMomentIndexByTree[treeKey] || 0);
@@ -224,7 +197,11 @@
         normalizePreviewCopy(tree);
         hideRedundantBlocks();
         enhanceFlowStages(tree);
-        bindCommentsToggle();
+        // Bind the delegated share click handler once (idempotent)
+        var shareLink = window.LoveBudSearchShareLink;
+        if (shareLink && typeof shareLink.bindPreviewShareHandler === 'function') {
+            shareLink.bindPreviewShareHandler();
+        }
     }
 
     function patchRenderer() {

@@ -7,8 +7,10 @@
  *   3. missing/null             → hide views metric entirely
  *
  * The view-count alias resolution is owned by LoveBudSearchSharedUtils;
- * both the card renderer and hub patch delegate to it.
- * likes/comments/shares zero fallback is unchanged.
+ * both the card renderer and hub patch delegate to it (the hub patch
+ * delegates through LoveBudSearchShareLink.renderPreviewSocialShell).
+ * likes/comments/shares zero fallback is unchanged on cards; the hub
+ * shows only view count + share (no likes/comments/fake counts).
  */
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -63,37 +65,36 @@ test('card renderer: likes/comments/shares always rendered regardless of views',
 });
 
 // ---------------------------------------------------------------------------
-// Preview hub
+// Preview hub (truthful — delegates to share-link helper, no fake counts)
 // ---------------------------------------------------------------------------
 
-test('preview hub: delegates view-count resolution to shared utils', () => {
-  assert.match(hubPatch, /shared\.getViewCount\(tree\)/);
+test('preview hub: delegates view-count resolution to share-link helper', () => {
+  // The hub patch delegates to LoveBudSearchShareLink.renderPreviewSocialShell
+  assert.match(hubPatch, /shareLink\.renderPreviewSocialShell\(tree\)/);
   // Must NOT have its own getViewCount function
   assert.ok(!hubPatch.includes('function getViewCount(tree)'),
     'preview hub must not define its own getViewCount');
 });
 
-test('preview hub: positive/persisted zero viewCount → 조회수 rendered', () => {
-  // The viewsHtml variable is set to the full stat div when views !== null
-  assert.match(hubPatch, /viewsHtml/);
-  assert.match(hubPatch, /views !== null/);
+test('preview hub: viewCount rendered via share-link helper', () => {
+  // The hub calls renderPreviewSocialShell which handles positive/zero/null states
+  assert.match(hubPatch, /renderSocialBar\(tree/);
+  // Must delegate to share link
+  assert.match(hubPatch, /shareLink\.renderPreviewSocialShell/);
 });
 
-test('preview hub: null viewCount → 조회수 stat block omitted', () => {
-  // When views is null, viewsHtml is empty string (ternary : '')
-  assert.match(hubPatch, /views !== null/);
-  assert.match(hubPatch, /viewsHtml/);
+test('preview hub: no fake likes/comments/placeholder in hub source', () => {
+  assert.ok(!hubPatch.includes('data-preview-like'),
+    'preview hub must NOT have data-preview-like');
+  assert.ok(!hubPatch.includes('data-preview-comments'),
+    'preview hub must NOT have data-preview-comments');
+  assert.ok(!hubPatch.includes('아직 댓글이 없어요'),
+    'preview hub must NOT have comments placeholder');
+  assert.ok(!hubPatch.includes('getCount'),
+    'preview hub must NOT define getCount');
 });
 
-test('preview hub: likes/comments buttons always rendered', () => {
-  assert.match(hubPatch, /data-preview-like/);
-  assert.match(hubPatch, /data-preview-comments/);
-});
-
-test('preview hub: getCount preserved for likes/comments (zero fallback)', () => {
-  // The original getCount function still exists and returns 0 for missing
-  assert.match(hubPatch, /return 0/);
-  // likes and comments still use getCount
-  assert.match(hubPatch, /getCount.*likeCount/);
-  assert.match(hubPatch, /getCount.*commentCount/);
+test('preview hub: share helper binding established', () => {
+  assert.match(hubPatch, /bindPreviewShareHandler/);
+  assert.match(hubPatch, /shareLink\.bindPreviewShareHandler/);
 });

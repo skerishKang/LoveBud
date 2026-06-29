@@ -4,63 +4,64 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const ROOT = path.resolve(__dirname, '..', '..');
-const TARGET_FILE = path.join(ROOT, 'js/search/search-preview-hub-dom-patch.js');
 
-function readFile(filePath) {
-  return fs.readFileSync(filePath, 'utf8');
-}
+/**
+ * Static contract: the hub DOM patch no longer contains comments panel
+ * markup or social shell rendering.
+ *
+ * The truthful social shell (view count + share button only) is owned
+ * by search-share-link.js. This test verifies that the hub DOM patch
+ * does NOT re-introduce any comments panel, fake likes, or static
+ * social shell that could become an XSS vector.
+ */
+test('hub DOM patch does not render social shell or comments panel', () => {
+  const source = fs.readFileSync(path.join(ROOT, 'js/search/search-preview-hub-dom-patch.js'), 'utf8');
 
-test('This is a static contract for search preview comments panel / comment body XSS checks (not applicable yet / static shell only)', () => {
-  const source = readFile(TARGET_FILE);
+  // The old renderSocialShell and ensureSocialShell must not exist
+  assert.ok(!source.includes('function renderSocialShell'),
+    'renderSocialShell must be removed from hub DOM patch');
+  assert.ok(!source.includes('function ensureSocialShell'),
+    'ensureSocialShell must be removed from hub DOM patch');
+  assert.ok(!source.includes('socialBound'),
+    'socialBound flag must be removed');
 
-  // 1. Extract renderSocialShell function source slice
-  const startKeyword = 'function renderSocialShell()';
-  const endKeyword = 'function ensureSocialShell()';
-  
-  const startIndex = source.indexOf(startKeyword);
-  const endIndex = source.indexOf(endKeyword);
-  
-  assert.ok(startIndex !== -1, 'renderSocialShell must be defined');
-  assert.ok(endIndex !== -1, 'ensureSocialShell must be defined');
-  assert.ok(startIndex < endIndex, 'renderSocialShell must precede ensureSocialShell');
-  
-  const renderSocialShellSlice = source.substring(startIndex, endIndex);
+  // No comments-related markup
+  assert.ok(!source.includes('data-preview-comments'),
+    'comments selector must not exist');
+  assert.ok(!source.includes('preview-comments-panel'),
+    'comments panel must not exist');
+  assert.ok(!source.includes('아직 댓글이 없어요'),
+    'comments placeholder must not exist');
+  assert.ok(!source.includes('댓글 작성 기능은 후속 기능'),
+    'future comments note must not exist');
 
-  // 2. Verify renderSocialShell slice does not contain dynamic comment properties or loop constructs
-  const forbiddenPatterns = [
-    'comment.body',
-    'comment.text',
-    'comment.content',
-    'comments.map',
-    'comments.forEach',
-    '${comment',
-    '+ comment.',
-    '.innerHTML = comment',
-    '.insertAdjacentHTML(... comment'
-  ];
+  // No likes
+  assert.ok(!source.includes('data-preview-like'),
+    'likes selector must not exist');
+  assert.ok(!source.includes('data-preview-share-tree-id'),
+    'share button must not be rendered from DOM patch (owned by share-link)');
+});
 
-  for (const pattern of forbiddenPatterns) {
-    assert.ok(!renderSocialShellSlice.includes(pattern), `Forbidden pattern "${pattern}" must not exist in renderSocialShell`);
-  }
+/**
+ * Static contract: the truthful social shell is owned by search-share-link.js.
+ * It contains no dynamic user content — treeId is escaped via escapeHtml.
+ */
+test('share-link social shell uses safe static markup with escaped treeId', () => {
+  const source = fs.readFileSync(path.join(ROOT, 'js/search/search-share-link.js'), 'utf8');
 
-  // 3. Verify insertAdjacentHTML('beforeend', renderSocialShell()) is used to insert the social shell
-  assert.match(
-    source,
-    /\.insertAdjacentHTML\(\s*['"]beforeend['"]\s*,\s*renderSocialShell\(\)\s*\)/,
-    "Must preserve the insertAdjacentHTML('beforeend', renderSocialShell()) insertion pattern"
-  );
+  // Share button uses escapeHtml for treeId in data attribute
+  assert.match(source, /escapeHtml.*tree\.id/,
+    'treeId must be escaped before being placed in HTML');
+  // safeTreeId is assigned on a separate line from the data attribute
+  assert.ok(source.includes('safeTreeId'),
+    'share button uses escaped safe tree ID variable');
 
-  // 4. Verify static comments panel is returned
-  assert.match(renderSocialShellSlice, /댓글/, 'Should include static text: 댓글');
-  assert.match(renderSocialShellSlice, /아직 댓글이 없어요\./, 'Should include static text: 아직 댓글이 없어요.');
-  assert.match(renderSocialShellSlice, /댓글 작성 기능은 후속 기능으로 준비 중입니다\./, 'Should include static text: 댓글 작성 기능은 후속 기능으로 준비 중입니다.');
-
-  // 5. XSS payloads referenced as "not applicable yet / static shell only" contract
-  const xssPayloads = [
-    '<img src=x onerror=alert(1)>',
-    '"><svg onload=alert(1)>',
-    '<a href="javascript:alert(1)">x</a>'
-  ];
-  
-  assert.ok(xssPayloads.length > 0);
+  // No unescaped dynamic content in share button HTML
+  // All values go through escapeHtml
+  assert.ok(source.includes('.innerHTML') === false,
+    'share-link must not use innerHTML');
+  assert.ok(source.includes('.outerHTML') === false,
+    'share-link must not use outerHTML');
+  assert.ok(source.includes('.insertAdjacentHTML') === false,
+    'share-link must not use insertAdjacentHTML');
 });
