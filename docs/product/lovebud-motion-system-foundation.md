@@ -8,18 +8,23 @@
 ## 2. Inventory method
 
 *   **Scope**: Browse, My Trees, Editor, detail / modal / panel / toolbar.
-*   **Keywords used**: `transition`, `animation`, `transform`, `opacity`, `keyframes`, `prefers-reduced-motion`.
+*   **Inventory Criteria**: Only CSS `transition`, `animation`, `transform`, `opacity` based motion behaviors found in the source code have been included.
+*   **Verification**: Behaviors were identified via file-level grep for motion keywords. Uncertain behaviors are marked as "not observed in current audit".
 
 ## 3. Current motion inventory
 
 | Surface | File / selector | Current behavior | Motion class | User purpose | Reduced-motion expectation |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| Browse | `js/search/search-card-renderer.js` | Fade-in on load | feedback | reveal | Opacity change is acceptable |
-| Browse | `js/search/search-card-renderer.js` | Pulse animation | feedback | loading state | Disable/Simplify |
-| My Trees | `js/my-trees/my-trees-ui.js` | Opacity fade on load | feedback | reveal | Opacity change is acceptable |
-| Editor | `css/editor/editor-mode-selection.css` | Transition on hover/active | hover | state feedback | Minimize/Disable |
-| Editor | `js/page-transitions.js` | Page transitions | page-transition | navigation | Opacity-only or instant |
-| Shared | `js/shared-header.js` | Infinite spin | feedback | loading | Remove/Disable |
+| Browse | `js/search/search-card-renderer.js` | `animation: fadeIn` | feedback | reveal | Opacity fade-in allowed |
+| Browse | `js/search/search-card-renderer.js` | `animation: searchSkeletonPulse` | feedback | loading | Disable/Simplify |
+| Browse | `css/editor/editor-mode-selection.css` | `.editor-rename-modal-btn` transition | hover | feedback | Simplify/Instant |
+| My Trees | `js/my-trees/my-trees-ui.js` | card opacity transition | feedback | reveal | Opacity fade-in allowed |
+| Editor | `css/editor/editor-canvas.css` | `.branch-port` transition | hover | hierarchy-change | Simplify/Instant |
+| Editor | `js/editor/editor-canvas-branch-ports.js` | `path` opacity (not observed) | canvas-interaction | state-change | N/A |
+| Shared | `js/shared-header.js` | `animation: spin` | feedback | loading | Remove/Disable |
+| Editor | `js/page-transitions.js` | `.page-transition-enter` | page-transition | navigation | Opacity-only or instant |
+| Browse | `.tree-card` (CSS not observed) | hover/active (not observed) | hover | feedback | N/A |
+| Detail | `js/editor/editor-detail-ui.js` | opacity (not observed) | hierarchy-change | reveal | N/A |
 
 ## 4. Proposed token contract
 
@@ -46,9 +51,9 @@
 
 ## 6. First migration candidates
 
-1.  **Shared Header Spin** (`js/shared-header.js`): Low risk (purely decorative). Observability: visual loading indicator.
-2.  **Browse Card Fade-in** (`js/search/search-card-renderer.js`): Low risk, easy to verify. Observability: search results appearance.
-3.  **Editor Selection Hover** (`css/editor/editor-mode-selection.css`): Low risk, high interaction frequency. Observability: editor node selection feedback.
+1.  **Shared Header Spin** (`js/shared-header.js`): Low risk (purely decorative animation). Observability: visual loading indicator.
+2.  **Browse Skeleton Pulse** (`js/search/search-card-renderer.js`): Low risk, easy to verify (loading state). Observability: search results appearance.
+3.  **Editor Modal Button** (`css/editor/editor-mode-selection.css`): Low risk, small scope. Observability: button state change on hover.
 
 ## 7. Migration guardrails
 
