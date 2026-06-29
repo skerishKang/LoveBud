@@ -432,6 +432,67 @@ async function tryModalWrite(request, env, requestId = null) {
   }
 }
 
+// ─── Public Tree Read Caching Helper Functions ───────────────────────────────
+
+function isAnonymousPublicTreeReadRequest(request) {
+  if (request.method.toUpperCase() !== 'GET') return false;
+  const path = new URL(request.url).pathname.replace(/\/+$/, '');
+  const match = path.match(/^\/api\/trees\/([^/]+)$/);
+  if (!match) return false;
+  return !hasAuthorizationHeader(request);
+}
+
+function buildPublicTreeReadCacheRequest(request) {
+  const url = new URL(request.url);
+  const path = url.pathname.replace(/\/+$/, '');
+  const match = path.match(/^\/api\/trees\/([^/]+)$/);
+  const rawTreeId = match ? match[1] : '';
+  const canonicalTreeId = encodeURIComponent(decodeURIComponent(rawTreeId));
+
+  const cacheUrl = new URL(url.origin);
+  cacheUrl.pathname = `/__cache/public/trees/${canonicalTreeId}`;
+  return new Request(cacheUrl.toString(), { method: 'GET' });
+}
+
+function isFreshPublicTreeCacheResponse(response) {
+  if (!response) return false;
+  const expiresAtHeader = response.headers.get('x-lovebud-public-tree-cache-expires-at');
+  if (!expiresAtHeader) return false;
+  const expiresAt = Number(expiresAtHeader);
+  if (!Number.isFinite(expiresAt)) return false;
+  return Date.now() < expiresAt;
+}
+
+async function isVerifiedPublicTreeCacheCandidate(response) {
+  if (!response) return false;
+  if (response.status !== 200) return false;
+
+  const contentType = response.headers.get('content-type') || '';
+  if (!contentType.includes('application/json')) return false;
+
+  if (response.headers.has('set-cookie') || response.headers.has('Set-Cookie')) return false;
+
+  try {
+    const cloned = response.clone();
+    const data = await cloned.json();
+    return data && data.visibility === 'public';
+  } catch (e) {
+    return false;
+  }
+}
+
+function withPublicTreeCacheStatus(response, status) {
+  const headers = new Headers(response.headers);
+  headers.set('x-lovebud-public-tree-cache', status);
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 export async function onRequest(context) {
   const { request, env } = context;
   const requestId = getOrCreateRequestId(request);
@@ -448,6 +509,88 @@ export async function onRequest(context) {
       return buildModalUnavailableResponse(requestId);
     }
   }
+
+  // ─── Public Tree Read Edge Cache Logic ─────────────────────────────────────
+  if (isAnonymousPublicTreeReadRequest(request)) {
+    const cache = (typeof globalThis !== 'undefined' && globalThis.caches) ? globalThis.caches.default : (typeof caches !== 'undefined' ? caches.default : null);
+    if (!cache) {
+      // Bypassed or stubbed when caches global is unavailable (e.g. in some unit tests)
+      try {
+        const modalResponse = await tryModalRead(request, env || {}, requestId);
+        if (modalResponse) {
+          const isCandidate = await isVerifiedPublicTreeCacheCandidate(modalResponse);
+          if (isCandidate) {
+            const freshResp = withPublicTreeCacheStatus(modalResponse, 'store-failed');
+            return await withUpstreamHeader(freshResp, 'modal', requestId);
+          } else {
+            const skipResp = withPublicTreeCacheStatus(modalResponse, 'skip-noncacheable');
+            return await withUpstreamHeader(skipResp, 'modal', requestId);
+          }
+        }
+      } catch (error) {
+        console.warn('[LoveBudCloudflareProxy] Modal read failed for public tree, returning 503', error);
+        return buildModalUnavailableResponse(requestId);
+      }
+    } else {
+      const cacheKey = buildPublicTreeReadCacheRequest(request);
+      let cachedResponse = null;
+
+      try {
+        cachedResponse = await cache.match(cacheKey);
+      } catch (e) {
+        console.warn('[LoveBudCloudflareProxy] Cache match throw, bypassing to hit upstream', e);
+      }
+
+      if (cachedResponse) {
+        if (isFreshPublicTreeCacheResponse(cachedResponse)) {
+          const hitResp = withPublicTreeCacheStatus(cachedResponse, 'hit');
+          return await withUpstreamHeader(hitResp, 'modal', requestId);
+        } else {
+          try {
+            await cache.delete(cacheKey);
+          } catch (e) {
+            console.warn('[LoveBudCloudflareProxy] Cache delete throw', e);
+          }
+        }
+      }
+
+      try {
+        const modalResponse = await tryModalRead(request, env || {}, requestId);
+        if (modalResponse) {
+          const isCandidate = await isVerifiedPublicTreeCacheCandidate(modalResponse);
+          if (isCandidate) {
+            const cacheableResponse = new Response(modalResponse.clone().body, {
+              status: modalResponse.status,
+              statusText: modalResponse.statusText,
+              headers: modalResponse.headers
+            });
+
+            cacheableResponse.headers.set('Cache-Control', 'public, max-age=30, must-revalidate');
+            const expiresAt = Date.now() + 30000;
+            cacheableResponse.headers.set('x-lovebud-public-tree-cache-expires-at', String(expiresAt));
+
+            let putStatus = 'miss';
+            try {
+              await cache.put(cacheKey, cacheableResponse.clone());
+            } catch (e) {
+              console.warn('[LoveBudCloudflareProxy] Cache put failed', e);
+              putStatus = 'store-failed';
+            }
+
+            const freshResp = withPublicTreeCacheStatus(cacheableResponse, putStatus);
+            return await withUpstreamHeader(freshResp, 'modal', requestId);
+          } else {
+            const skipResp = withPublicTreeCacheStatus(modalResponse, 'skip-noncacheable');
+            return await withUpstreamHeader(skipResp, 'modal', requestId);
+          }
+        }
+      } catch (error) {
+        console.warn('[LoveBudCloudflareProxy] Modal read failed for public tree, returning 503', error);
+        return buildModalUnavailableResponse(requestId);
+      }
+    }
+  }
+  // ─────────────────────────────────────────────────────────────────────────────
 
   if (isBrowseSummaryRequest(request)) {
     const cache = caches.default;
@@ -480,7 +623,16 @@ export async function onRequest(context) {
     }
     try {
       const modalResponse = await tryModalRead(request, env || {}, requestId);
-      if (modalResponse) return await withUpstreamHeader(modalResponse, 'modal', requestId);
+      if (modalResponse) {
+        let finalResponse = modalResponse;
+        if (request.method.toUpperCase() === 'GET' && hasAuthorizationHeader(request)) {
+          const path = new URL(request.url).pathname.replace(/\/+$/, '');
+          if (path.match(/^\/api\/trees\/[^/]+$/)) {
+            finalResponse = withPublicTreeCacheStatus(modalResponse, 'bypass-auth');
+          }
+        }
+        return await withUpstreamHeader(finalResponse, 'modal', requestId);
+      }
     } catch (error) {
       if (isModalOwned) {
         console.warn('[LoveBudCloudflareProxy] Modal read failed, returning 503', error);

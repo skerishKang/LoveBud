@@ -23,6 +23,16 @@
 - `/api/memories/{id}` → Modal memory detail
 - `/api/trees/{id}` → Modal tree detail (public/private 분기)
 
+## Public viewer tree-read cache
+
+- 대상: 익명 GET `/api/trees/{id}` 요청만 캐싱 (Authorization 요청은 bypass)
+- 조건: verified public JSON 200 응답만 캐시에 저장
+- TTL: 30초
+- stale serving 없음 (must-revalidate 적용, expired cache fallback 금지)
+- 특징: title/memory/visibility/delete 변경은 최대 30초 이내에 반영되는 bounded freshness 정책을 가짐
+- Cache Status Header: `x-lovebud-public-tree-cache`
+- Private/owner read는 캐시 대상이 아님
+
 ## Route 추가 가이드
 
 새 route를 추가할 때:
