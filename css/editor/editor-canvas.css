@@ -158,8 +158,17 @@
     -webkit-tap-highlight-color: transparent;
 }
 .branch-port-handle:focus-visible {
-    outline: 2px solid rgba(144, 73, 81, 0.5);
-    outline-offset: 2px;
+    outline: 2px solid rgba(144, 73, 81, 0.85);
+    outline-offset: 3px;
+    opacity: 1 !important;
+    box-shadow: 0 0 0 4px rgba(144, 73, 81, 0.15) !important;
+}
+/* focus-visible: + 아이콘 표시, 도트 숨김 */
+.branch-port-handle:focus-visible span {
+    display: flex !important;
+}
+.branch-port-handle:focus-visible::before {
+    display: none !important;
 }
 .branch-port-handle::-moz-focus-inner {
     border: 0;

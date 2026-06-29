@@ -89,6 +89,7 @@
             btn.setAttribute('aria-label', getAddDirectionAriaLabel(directionLabel));
             btn.setAttribute('title', directionLabel + ' 브랜치');
             btn.tabIndex = -1;
+            btn.setAttribute('aria-hidden', 'true');
 
             // Inline styles for positioning + appearance
             btn.style.position = 'absolute';
@@ -140,6 +141,8 @@
                 btn.style.color = 'rgba(144, 73, 81, 0.65)';
                 btn.style.boxShadow = '0 1px 4px rgba(75, 64, 57, 0.08)';
                 btn.style.borderColor = 'rgba(144, 73, 81, 0.35)';
+                // 선택 상태(tabIndex=0)면 저-강도 노출 유지, 비선택이면 완전 숨김
+                btn.style.opacity = btn.tabIndex === 0 ? '0.35' : '0';
             });
 
             // Click → open add-moment
@@ -192,8 +195,11 @@
             for (var i = 0; i < els.length; i++) {
                 var el = els[i];
                 if (el.dataset.memoryId === targetId) {
-                    el.style.opacity = '1';
+                    // 선택 node: 저-강도 노출, Tab 도달 가능, aria 활성화
+                    el.style.opacity = '0.35';
                     el.style.pointerEvents = 'auto';
+                    el.tabIndex = 0;
+                    el.setAttribute('aria-hidden', 'false');
                 }
             }
         }
@@ -208,6 +214,8 @@
                 if (el.dataset.memoryId === targetId) {
                     el.style.opacity = '0';
                     el.style.pointerEvents = 'none';
+                    el.tabIndex = -1;
+                    el.setAttribute('aria-hidden', 'true');
                 }
             }
         }
@@ -217,6 +225,8 @@
             for (var i = 0; i < els.length; i++) {
                 els[i].style.opacity = '0';
                 els[i].style.pointerEvents = 'none';
+                els[i].tabIndex = -1;
+                els[i].setAttribute('aria-hidden', 'true');
             }
         }
 
