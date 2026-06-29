@@ -21,11 +21,23 @@ function read(rel) {
 
 test('media-helper direct fallback markup has referrerpolicy', () => {
   const src = read('js/search/search-preview-media-helper.js');
-  // Thumbnail-less branch returns iframe markup with referrerpolicy
-  const match = src.match(/return `<div class="preview-media-frame preview-media-frame-iframe"[\s\S]*?<\/div>`/m);
-  assert.ok(match, 'thumbnail-less iframe fallback markup must exist');
-  assert.match(match[0], /referrerpolicy="strict-origin-when-cross-origin"/,
-    'thumbnail-less direct iframe markup must include referrerpolicy="strict-origin-when-cross-origin"');
+  // The thumbnail-less direct iframe fallback is NOT the first
+  // `return <div class="preview-media-frame preview-media-frame-iframe">` — that one
+  // is the click-to-play thumbnail branch. The actual thumbnail-less direct iframe
+  // fallback is marked by a comment and ends before toAutoplayIframeSource.
+  const fallbackStart = src.indexOf('// 썸네일 없는 경우 바로 iframe (기존 방식 폴백)');
+  assert.ok(fallbackStart >= 0, 'media-helper direct iframe fallback comment marker must exist');
+  const fallbackEnd = src.indexOf('function toAutoplayIframeSource', fallbackStart);
+  assert.ok(fallbackEnd > fallbackStart, 'media-helper fallback section must end before toAutoplayIframeSource');
+  const fallbackSection = src.slice(fallbackStart, fallbackEnd);
+
+  // This section must contain the iframe markup with the policy
+  assert.match(fallbackSection, /<iframe/,
+    'media-helper fallback section must contain iframe element');
+  assert.match(fallbackSection, /allowfullscreen/,
+    'media-helper fallback section must contain allowfullscreen attribute');
+  assert.match(fallbackSection, /referrerpolicy="strict-origin-when-cross-origin"/,
+    'media-helper thumbnail-less direct iframe markup must include referrerpolicy="strict-origin-when-cross-origin"');
 });
 
 // ---------------------------------------------------------------------------
