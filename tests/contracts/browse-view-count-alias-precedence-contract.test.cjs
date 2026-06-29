@@ -95,9 +95,9 @@ test('preview hub patch does NOT define its own VIEW_COUNT_KEYS / alias array', 
   // The old getViewCount function must not be present
   assert.ok(!src.includes('function getViewCount(tree)'),
     'preview hub must NOT define its own getViewCount');
-  // Must reference shared utils getViewCount
-  assert.ok(src.includes('shared.getViewCount(tree)'),
-    'preview hub must call shared.getViewCount from shared utils');
+  // Must delegate to share-link helper which uses shared utils getViewCount
+  assert.ok(src.includes('shareLink.renderPreviewSocialShell(tree)'),
+    'preview hub must delegate to share-link helper renderPreviewSocialShell');
 });
 
 // ---------------------------------------------------------------------------

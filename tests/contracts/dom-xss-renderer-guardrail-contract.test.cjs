@@ -198,8 +198,8 @@ const FILE_ALLOWLIST = {
     reason: 'escapeHtml for title in summary lines; renderIframe uses sanitizeUrl for embed URL; renderSocialBar approved static template with escapeHtml counts; canonical socialSlot.innerHTML replaces previewDesc.insertAdjacentHTML fallback'
   },
   'js/search/search-preview-hub-dom-patch.js': {
-    count: 3, classification: 'safe',
-    reason: 'summaryText escaped with escapeHtml before preview-summary-line innerHTML; renderSocialShell static template markup; canonical socialSlot.innerHTML insertion replaces legacy desc.insertAdjacentHTML fallback'
+    count: 1, classification: 'safe',
+    reason: 'summaryText escaped with escapeHtml before preview-summary-line innerHTML only; social shell removed (now owned by search-share-link.js)'
   },
   'js/search/search-preview-state.js': {
     count: 1, classification: 'safe',

@@ -265,12 +265,21 @@ test('[INVENTORY] REMAINING (KEEP — preview state): clearSelectedPreview mobil
   // Runtime guard ensuring sheet methods exist before calling.
 });
 
-test('[INVENTORY] REMAINING (KEEP — share link): getStatusText getSearchCopy guard', () => {
+test('[INVENTORY] REMOVED (clean): share link module no longer has getSearchCopy guard or getStatusText', () => {
   const shareModule = read('js/search/search-share-link.js');
 
-  assert.match(shareModule, /typeof getSearchCopy === 'function'/);
-  // getSearchCopy may be undefined if share link is used before UI initializes.
-  // Guard produces fallback strings — product stability.
+  // The old getSearchCopy guard and getStatusText are removed — share-link
+  // now has a simplified API with clipboard-first approach.
+  assert.ok(!shareModule.includes('getStatusText'),
+    'getStatusText must be removed from share-link');
+  assert.ok(!shareModule.includes('typeof getSearchCopy ==='),
+    'getSearchCopy guard must be removed from share-link');
+  assert.ok(!shareModule.includes('patchSearchUIFactory'),
+    'patchSearchUIFactory must be removed from share-link');
+  // New API exports clean helpers
+  assert.match(shareModule, /buildReadOnlyTreeUrl/);
+  assert.match(shareModule, /renderPreviewSocialShell/);
+  assert.match(shareModule, /bindPreviewShareHandler/);
 });
 
 test('[INVENTORY] REMAINING (KEEP — mobile sheet): bindMobilePreviewHandlers mediaQuery guard', () => {

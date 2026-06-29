@@ -1,9 +1,11 @@
-/* Issue #1058/#1489/#1490: DOM-level Browse hub final layout patch. */
+/* Issue #1058/#1489/#1490: DOM-level Browse hub final layout patch.
+   Now limited to copy normalization and flow-stage marking only —
+   the truthful social shell is owned by search-share-link.js via the
+   playable hub patch. */
 (function() {
     'use strict';
 
     var lastPatchedTitle = '';
-    var socialBound = false;
 
     function escapeHtml(value) {
         if (window.LoveBudSecurity && typeof window.LoveBudSecurity.escapeHtml === 'function') {
@@ -70,54 +72,6 @@
         }
     }
 
-    // PR #2761: restore 공유 stat alongside 좋아요/댓글/조회수 so the
-    // social bar mirrors the card reaction row and the My Trees hub
-    // pill row. The earlier Issue #1489 #1490 removal predated the card
-    // parity work; restoring it here keeps Browse ↔ My Trees symmetric.
-    function renderSocialShell() {
-        return '' +
-            '<div class="preview-social-shell" data-preview-social-shell>' +
-                '<div class="preview-social-bar" aria-label="트리 반응">' +
-                    '<button type="button" class="preview-social-action" data-preview-like disabled aria-label="좋아요 0"><span class="material-symbols-outlined" aria-hidden="true">favorite</span><strong>0</strong><span>좋아요</span></button>' +
-                    '<button type="button" class="preview-social-action" data-preview-comments aria-expanded="false" aria-label="댓글 0"><span class="material-symbols-outlined" aria-hidden="true">mode_comment</span><strong>0</strong><span>댓글</span></button>' +
-                    '<div class="preview-social-action preview-social-stat" aria-label="공유" role="status"><span class="material-symbols-outlined" aria-hidden="true">share</span><strong>0</strong><span>공유</span></div>' +
-                    '<div class="preview-social-action preview-social-stat" aria-label="조회수" role="status"><span class="material-symbols-outlined" aria-hidden="true">visibility</span><strong>0</strong><span>조회수</span></div>' +
-                '</div>' +
-                '<div class="preview-comments-panel" data-preview-comments-panel hidden>' +
-                    '<div class="preview-comments-title">댓글</div>' +
-                    '<p>아직 댓글이 없어요.</p>' +
-                    '<p class="preview-comments-note">댓글 작성 기능은 후속 기능으로 준비 중입니다.</p>' +
-                '</div>' +
-            '</div>';
-    }
-
-    function ensureSocialShell() {
-        var socialSlot = getPreviewSocialSlot();
-        if (!socialSlot) {
-            var desc = getPreviewDesc();
-            if (!desc) return;
-            if (!desc.querySelector('[data-preview-social-shell]')) {
-                desc.insertAdjacentHTML('beforeend', renderSocialShell());
-            }
-        } else {
-            if (!socialSlot.querySelector('[data-preview-social-shell]')) {
-                socialSlot.innerHTML = renderSocialShell();
-            }
-        }
-        if (socialBound) return;
-        socialBound = true;
-        document.addEventListener('click', function(event) {
-            var button = event.target && event.target.closest && event.target.closest('[data-preview-comments]');
-            if (!button) return;
-            var shell = button.closest('[data-preview-social-shell]');
-            var panel = shell && shell.querySelector('[data-preview-comments-panel]');
-            if (!panel) return;
-            var willOpen = panel.hidden;
-            panel.hidden = !willOpen;
-            button.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
-        });
-    }
-
     function removeRedundantBlocks() {
         hide(document.querySelector('.preview-focus-title-meta'));
         hide(document.getElementById('previewTreeStats'));
@@ -142,7 +96,6 @@
         var currentTitle = getPreviewTitleText();
         removeRedundantBlocks();
         markFlowStages();
-        ensureSocialShell();
         lastPatchedTitle = currentTitle;
     }
 
