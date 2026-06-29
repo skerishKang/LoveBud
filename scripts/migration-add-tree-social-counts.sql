@@ -13,7 +13,7 @@
 
 CREATE TABLE IF NOT EXISTS tree_likes (
     id UUID PRIMARY KEY,
-    tree_id UUID NOT NULL REFERENCES trees(id) ON DELETE CASCADE,
+    tree_id TEXT NOT NULL REFERENCES trees(id) ON DELETE CASCADE,
     owner_id VARCHAR(128) NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     deleted_at TIMESTAMP WITH TIME ZONE NULL
@@ -29,7 +29,7 @@ CREATE INDEX IF NOT EXISTS idx_tree_likes_owner_id ON tree_likes(owner_id);
 CREATE INDEX IF NOT EXISTS idx_tree_likes_created_at ON tree_likes(created_at);
 
 CREATE TABLE IF NOT EXISTS tree_social_counts (
-    tree_id UUID PRIMARY KEY REFERENCES trees(id) ON DELETE CASCADE,
+    tree_id TEXT PRIMARY KEY REFERENCES trees(id) ON DELETE CASCADE,
     like_count INTEGER NOT NULL DEFAULT 0 CHECK (like_count >= 0),
     view_count INTEGER NOT NULL DEFAULT 0 CHECK (view_count >= 0),
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()

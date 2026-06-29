@@ -13,7 +13,7 @@ const router = fs.readFileSync(routerPath, 'utf8');
 
 test('tree social counts migration creates tree_likes separately from memory reactions', () => {
   assert.match(sql, /CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+tree_likes/i);
-  assert.match(sql, /tree_id\s+UUID\s+NOT\s+NULL\s+REFERENCES\s+trees\(id\)\s+ON\s+DELETE\s+CASCADE/i);
+  assert.match(sql, /tree_id\s+TEXT\s+NOT\s+NULL\s+REFERENCES\s+trees\(id\)\s+ON\s+DELETE\s+CASCADE/i);
   assert.match(sql, /owner_id\s+VARCHAR\(128\)\s+NOT\s+NULL/i);
   assert.match(sql, /deleted_at\s+TIMESTAMP\s+WITH\s+TIME\s+ZONE\s+NULL/i);
   assert.doesNotMatch(sql, /memory_id\s+UUID/i);
@@ -29,7 +29,7 @@ test('tree_likes migration enforces one active like per account per tree', () =>
 
 test('tree social counts migration creates aggregate counts table', () => {
   assert.match(sql, /CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+tree_social_counts/i);
-  assert.match(sql, /tree_id\s+UUID\s+PRIMARY\s+KEY\s+REFERENCES\s+trees\(id\)\s+ON\s+DELETE\s+CASCADE/i);
+  assert.match(sql, /tree_id\s+TEXT\s+PRIMARY\s+KEY\s+REFERENCES\s+trees\(id\)\s+ON\s+DELETE\s+CASCADE/i);
   assert.match(sql, /like_count\s+INTEGER\s+NOT\s+NULL\s+DEFAULT\s+0\s+CHECK\s*\(like_count\s+>=\s+0\)/i);
   assert.match(sql, /view_count\s+INTEGER\s+NOT\s+NULL\s+DEFAULT\s+0\s+CHECK\s*\(view_count\s+>=\s+0\)/i);
   assert.match(sql, /updated_at\s+TIMESTAMP\s+WITH\s+TIME\s+ZONE\s+NOT\s+NULL\s+DEFAULT\s+NOW\(\)/i);

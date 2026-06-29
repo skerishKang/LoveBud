@@ -9,7 +9,7 @@ const sql = fs.readFileSync(migrationPath, 'utf8');
 
 test('tree view tracking migration creates privacy-preserving dedup table', () => {
   assert.match(sql, /CREATE TABLE IF NOT EXISTS tree_view_dedup_events/);
-  assert.match(sql, /tree_id UUID NOT NULL REFERENCES trees\(id\) ON DELETE CASCADE/);
+  assert.match(sql, /tree_id TEXT NOT NULL REFERENCES trees\(id\) ON DELETE CASCADE/);
   assert.match(sql, /actor_key VARCHAR\(128\) NOT NULL/);
   assert.match(sql, /actor_kind VARCHAR\(32\) NOT NULL/);
   assert.match(sql, /counted_window_start TIMESTAMP WITH TIME ZONE NOT NULL/);
