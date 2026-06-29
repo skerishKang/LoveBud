@@ -282,8 +282,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         ui
     });
 
-    ui.bindMobilePreviewHandlers();
-    ui.bindShareCopyHandler();
+    if (typeof ui.bindMobilePreviewHandlers === 'function') {
+        ui.bindMobilePreviewHandlers();
+    }
+
+    var shareLink = window.LoveBudSearchShareLink;
+    if (shareLink && typeof shareLink.bindPreviewShareHandler === 'function') {
+        shareLink.bindPreviewShareHandler();
+    }
 
     controls.bind();
     ui.syncStaticBrowseCopy();
