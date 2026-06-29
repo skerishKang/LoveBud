@@ -88,6 +88,7 @@
     'myTrees.hub_meta_views_label': { ko: '조회수', en: 'Views' },
     'myTrees.hub_meta_likes_label': { ko: '좋아요', en: 'Likes' },
     'myTrees.hub_meta_comments_label': { ko: '댓글', en: 'Comments' },
-    'myTrees.hub_meta_shares_label': { ko: '공유', en: 'Shares' }
+    'myTrees.hub_meta_shares_label': { ko: '공유', en: 'Shares' },
+    'myTrees.card_first_moment': { ko: '첫 순간 기록', en: 'First moment' }
   };
 })();
