@@ -13,7 +13,7 @@
 
 CREATE TABLE IF NOT EXISTS tree_view_dedup_events (
     id UUID PRIMARY KEY,
-    tree_id UUID NOT NULL REFERENCES trees(id) ON DELETE CASCADE,
+    tree_id TEXT NOT NULL REFERENCES trees(id) ON DELETE CASCADE,
     actor_key VARCHAR(128) NOT NULL,
     actor_kind VARCHAR(32) NOT NULL CHECK (actor_kind IN ('authenticated', 'anonymous')),
     counted_window_start TIMESTAMP WITH TIME ZONE NOT NULL,
