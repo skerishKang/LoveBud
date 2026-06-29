@@ -239,13 +239,34 @@ export function bindViewportControlsFallback(options) {
 }
 
 /**
- * Binds keyboard shortcuts (Enter, Space) on a node element to trigger selection.
+ * Binds keyboard shortcuts on a node element to trigger selection and optional
+ * previous/next keyboard navigation.
  * @param {HTMLElement} nodeEl - The memory node element.
- * @param {Function} onSelect - Callback to trigger when a shortcut is pressed.
+ * @param {Function} onSelect - Callback to trigger when Enter/Space is pressed.
+ * @param {Object} [options]
+ * @param {Function} [options.onArrowNavigate]
+ * @param {Function} [options.shouldHandleArrowNavigation]
  */
-export function bindNodeControlShortcuts(nodeEl, onSelect) {
+export function bindNodeControlShortcuts(nodeEl, onSelect, options = {}) {
     if (!nodeEl) return;
+    const onArrowNavigate = options.onArrowNavigate;
+    const shouldHandleArrowNavigation = options.shouldHandleArrowNavigation;
+
     nodeEl.addEventListener('keydown', (e) => {
+        if (
+            (e.key === 'ArrowLeft' || e.key === 'ArrowUp' || e.key === 'ArrowRight' || e.key === 'ArrowDown')
+            && typeof onArrowNavigate === 'function'
+        ) {
+            if (typeof shouldHandleArrowNavigation === 'function' && !shouldHandleArrowNavigation(e)) {
+                return;
+            }
+            const offset = (e.key === 'ArrowLeft' || e.key === 'ArrowUp') ? -1 : 1;
+            e.preventDefault();
+            e.stopPropagation();
+            onArrowNavigate(offset, e);
+            return;
+        }
+
         if (e.key !== 'Enter' && e.key !== ' ') return;
         e.preventDefault();
         e.stopPropagation();
