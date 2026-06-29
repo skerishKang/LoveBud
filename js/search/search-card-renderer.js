@@ -142,25 +142,25 @@
         return String(count);
     }
 
+    function getViewCount(tree) {
+        // viewCount: available numeric value (including 0) or null when absent
+        var keys = ['totalViewCount', 'viewCount', 'viewsCount', 'views', 'view_count', 'views_count',
+                     'visitorCount', 'visitorsCount', 'visitCount', 'visitsCount', 'visits',
+                     'openCount', 'opensCount', 'open_count'];
+        for (var i = 0; i < keys.length; i += 1) {
+            var value = tree && tree[keys[i]];
+            if (value !== null && value !== undefined && value !== '') {
+                var num = Number(value);
+                if (Number.isFinite(num) && num >= 0) return num;
+            }
+        }
+        return null;
+    }
+
     function getTreeReactionCounts(tree) {
         return {
             likes: getFirstFiniteCount(tree, ['likeCount', 'likesCount', 'likes', 'reactionCount', 'reaction_count']),
-            views: getFirstFiniteCount(tree, [
-                'totalViewCount',
-                'viewCount',
-                'viewsCount',
-                'views',
-                'view_count',
-                'views_count',
-                'visitorCount',
-                'visitorsCount',
-                'visitCount',
-                'visitsCount',
-                'visits',
-                'openCount',
-                'opensCount',
-                'open_count'
-            ]),
+            views: getViewCount(tree),
             comments: getFirstFiniteCount(tree, ['commentCount', 'commentsCount', 'comments', 'comment_count']),
             shares: getFirstFiniteCount(tree, ['shareCount', 'sharesCount', 'shares', 'share_count'])
         };
@@ -174,11 +174,11 @@
     function renderTreeReactionMetrics(tree) {
         const counts = getTreeReactionCounts(tree);
         const metrics = [
-            { icon: 'visibility', label: '조회수', value: counts.views },
+            counts.views !== null ? { icon: 'visibility', label: '조회수', value: counts.views } : null,
             { icon: 'favorite', label: '좋아요', value: counts.likes },
             { icon: 'chat_bubble', label: '댓글', value: counts.comments },
             { icon: 'share', label: '공유', value: counts.shares }
-        ];
+        ].filter(Boolean);
 
         return `
             <div class="tree-card-reaction-metrics" aria-label="트리 반응 요약">
