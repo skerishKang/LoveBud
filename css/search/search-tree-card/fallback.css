@@ -74,7 +74,8 @@
     box-sizing: border-box;
     width: 100%;
     height: 100%;
-    border: 2px solid transparent;
+    border: 2px solid var(--tree-card-text-border, transparent);
+    background: var(--surface);
     border-radius: 1.35rem;
     gap: 8px;
 }
@@ -86,6 +87,7 @@
     text-transform: uppercase;
     opacity: 0.8;
     margin-bottom: 4px;
+    color: var(--tree-card-text-accent, var(--primary));
 }
 
 .tree-card-text-title {

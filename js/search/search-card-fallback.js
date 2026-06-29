@@ -196,8 +196,8 @@
         }
 
         return [
-            '<div class="tree-card-text-visual" style="border-color:' + palette.leafSoft + ';background:rgba(255,255,255,0.84);">',
-                '<div class="tree-card-text-kicker" style="color:' + palette.accent + ';">' + escapeHtml(kickerText) + '</div>',
+            '<div class="tree-card-text-visual" style="--tree-card-text-border:' + palette.leafSoft + ';--tree-card-text-accent:' + palette.accent + ';">',
+                '<div class="tree-card-text-kicker">' + escapeHtml(kickerText) + '</div>',
                 '<div class="tree-card-text-title">' + escapeHtml(repTitle) + '</div>',
                 '<div class="tree-card-text-memo">' + escapeHtml(repMemo) + '</div>',
             '</div>'
