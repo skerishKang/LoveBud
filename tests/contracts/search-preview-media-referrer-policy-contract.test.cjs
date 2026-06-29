@@ -45,10 +45,15 @@ test('media-helper bindPreviewOverlayEvents sets referrerpolicy via setAttribute
 
 test('embed-patch direct fallback markup has referrerpolicy', () => {
   const src = read('js/search/search-preview-media-embed-patch.js');
-  // Find the thumbnail-less fallback iframe
-  const match = src.match(/return `<div class="preview-media-frame preview-media-frame-iframe"[\s\S]*?<\/div>`/m);
-  assert.ok(match, 'thumbnail-less iframe fallback markup must exist in embed-patch');
-  assert.match(match[0], /referrerpolicy="strict-origin-when-cross-origin"/,
+  // The fallback uses string concatenation, not a template literal.
+  // Locate the fallback section by the comment marker.
+  const fallbackStart = src.indexOf('// 썸네일 없는 경우 바로 iframe (폴백)');
+  assert.ok(fallbackStart >= 0, 'embed-patch fallback comment marker must exist');
+  // Extract from the comment to the end of the function body (next '};').
+  const fallbackSection = src.slice(fallbackStart, src.indexOf('};', fallbackStart));
+  assert.ok(fallbackSection, 'embed-patch fallback section must be extractable');
+  // The fallback uses string concatenation and includes referrerpolicy attribute.
+  assert.match(fallbackSection, /referrerpolicy="strict-origin-when-cross-origin"/,
     'embed-patch thumbnail-less direct iframe markup must include referrerpolicy="strict-origin-when-cross-origin"');
 });
 
