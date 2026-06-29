@@ -13,6 +13,7 @@ const { test } = require('node:test');
 const vm = require('vm');
 
 const ROOT = path.join(__dirname, '..', '..');
+const sharedUtilsSource = fs.readFileSync(path.join(ROOT, 'js/search/search-shared-utils.js'), 'utf8');
 const rendererSource = fs.readFileSync(path.join(ROOT, 'js/search/search-card-renderer.js'), 'utf8');
 
 function createSandbox() {
@@ -33,14 +34,6 @@ function createSandbox() {
       sanitizeUrl: (v) => v || ''
     },
     LoveBudPath: { getBasePath: () => '' },
-    LoveBudSearchSharedUtils: {
-      escapeHtml: (v) => String(v == null ? '' : v)
-        .replace(/&/g, '&amp;').replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;').replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;'),
-      sanitizeUrl: (v) => v || '',
-      getBasePath: () => ''
-    },
     i18n: { currentLang: 'ko' }
   };
   return sandbox;
@@ -66,6 +59,8 @@ function buildTree(overrides) {
 function getRenderer() {
   const sandbox = createSandbox();
   const context = vm.createContext(sandbox);
+  // Load real shared utils first (authoritative view-count resolver)
+  vm.runInContext(sharedUtilsSource, context, { filename: 'search-shared-utils.js' });
   vm.runInContext(rendererSource, context, { filename: 'search-card-renderer.js' });
   return context.window.LoveBudSearchCardRenderer;
 }

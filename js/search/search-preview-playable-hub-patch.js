@@ -115,25 +115,10 @@
         return 0;
     }
 
-    function getViewCount(tree) {
-        // viewCount: available numeric value (including 0) or null when absent
-        var keys = ['totalViewCount', 'viewCount', 'view_count', 'views',
-                     'viewsCount', 'views_count',
-                     'visitorCount', 'visitorsCount', 'visitCount', 'visitsCount', 'visits',
-                     'openCount', 'opensCount', 'open_count'];
-        for (var i = 0; i < keys.length; i += 1) {
-            var value = tree && tree[keys[i]];
-            if (value !== null && value !== undefined && value !== '') {
-                var num = Number(value);
-                if (Number.isFinite(num) && num >= 0) return num;
-            }
-        }
-        return null;
-    }
-
     // Issue #1489 #1490: 조회수→좋아요→댓글 순서, 공유 제거, totalViewCount 우선
     function renderSocialBar(tree) {
-        var views    = getViewCount(tree);
+        var shared = window.LoveBudSearchSharedUtils;
+        var views  = shared && typeof shared.getViewCount === 'function' ? shared.getViewCount(tree) : null;
         var likes    = getCount(tree, ['likeCount', 'likesCount', 'likes', 'reactionCount', 'reaction_count']);
         var comments = getCount(tree, ['commentCount', 'commentsCount', 'comments', 'replyCount', 'reply_count']);
         var viewsHtml = views !== null

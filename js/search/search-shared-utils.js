@@ -1,9 +1,12 @@
 /**
  * LoveBud Search Shared Renderer Utilities
  * v20260428-1
- * 
+ *
  * Pure utility functions shared by search card and preview renderers.
  * DOM-agnostic, stateless helpers.
+ *
+ * This module is the SINGLE AUTHORITATIVE source for view-count alias
+ * precedence across all Browse consumers (card renderer, preview hub).
  */
 
 (function() {
@@ -53,11 +56,48 @@
         return width > 0 && height > 0 && width <= 120 && height <= 90;
     }
 
+    /**
+     * Canonical view-count alias precedence.
+     * Order-sensitive: the first match wins.
+     * 0 is a valid display value; null/undefined/NaN/Infinity/negative/empty-string
+     * cause fallthrough to the next alias. If no alias yields a valid value,
+     * getViewCount returns null (UI hides the views metric).
+     */
+    var VIEW_COUNT_KEYS = [
+        'totalViewCount',
+        'viewCount',
+        'viewsCount',
+        'views',
+        'view_count',
+        'views_count',
+        'visitorCount',
+        'visitorsCount',
+        'visitCount',
+        'visitsCount',
+        'visits',
+        'openCount',
+        'opensCount',
+        'open_count'
+    ];
+
+    function getViewCount(tree) {
+        for (var i = 0; i < VIEW_COUNT_KEYS.length; i += 1) {
+            var value = tree && tree[VIEW_COUNT_KEYS[i]];
+            if (value !== null && value !== undefined && value !== '') {
+                var num = Number(value);
+                if (Number.isFinite(num) && num >= 0) return num;
+            }
+        }
+        return null;
+    }
+
     window.LoveBudSearchSharedUtils = {
         escapeHtml: escapeHtml,
         sanitizeUrl: sanitizeUrl,
         getBasePath: getBasePath,
-        isSuspiciousYouTubeThumbnailImage: isSuspiciousYouTubeThumbnailImage
+        isSuspiciousYouTubeThumbnailImage: isSuspiciousYouTubeThumbnailImage,
+        VIEW_COUNT_KEYS: VIEW_COUNT_KEYS,
+        getViewCount: getViewCount
     };
 
 })();
