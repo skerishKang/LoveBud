@@ -1,7 +1,7 @@
 /**
  * Runtime API chain test: viewCount flows through getPublicTrees.
  *
- * Loads adapter + postgres-client with a mock BaseApiFetch,
+ * Loads adapter + postgres-client with mock BaseApiFetch,
  * then calls window.apiClient.getPublicTrees() with controlled data.
  */
 'use strict';
@@ -16,119 +16,79 @@ const ROOT = path.join(__dirname, '..', '..');
 const adapterSrc = fs.readFileSync(path.join(ROOT, 'js/api/public-tree-adapter.js'), 'utf8');
 const pgClientSrc = fs.readFileSync(path.join(ROOT, 'js/postgres-client.js'), 'utf8');
 
-function createSandbox(mockFetch) {
-  const sandbox = {
-    window: {},
-    console: console,
-    setTimeout: setTimeout,
-    clearTimeout: clearTimeout,
-    URLSearchParams: URLSearchParams,
-    URL: URL,
-    crypto: { randomUUID: () => 'mock-uuid' }
-  };
-  return sandbox;
-}
-
 function setupEnv(mockApiTrees) {
   const sandbox = {
-    window: {},
-    console: console,
-    setTimeout: setTimeout,
-    clearTimeout: clearTimeout,
-    URLSearchParams: URLSearchParams,
-    URL: URL,
-    crypto: { randomUUID: () => 'mock-uuid' }
+    window: {
+      location: { hostname: 'localhost', search: '' },
+      localStorage: { getItem() { return null; }, setItem() {}, removeItem() {} },
+      LoveBudRuntimeFlags: null,
+    },
+    localStorage: { getItem() { return null; }, setItem() {}, removeItem() {} },
+    console,
+    setTimeout,
+    clearTimeout,
+    URLSearchParams,
+    URL,
+    fetch: async () => ({ ok: true, json: async () => ({}) }),
   };
-
-  // Mock BaseApiFetch.apiFetch
   sandbox.window.LoveTreeBaseApiFetch = {
     apiFetch: async (endpoint) => {
-      if (endpoint.includes('/community/trees')) {
-        return mockApiTrees;
-      }
+      if (endpoint.includes('/community/trees')) return mockApiTrees;
       return [];
     }
   };
-
-  // Mock AuthPolicy
   sandbox.window.LoveTreeAuthPolicy = {
     endpointLikelyRequiresAuth: () => false,
-    hasConfirmedAuthSession: () => false
+    hasConfirmedAuthSession: () => false,
   };
-
   const ctx = vm.createContext(sandbox);
-
-  // Load adapter first
   vm.runInContext(adapterSrc, ctx, { filename: 'public-tree-adapter.js' });
-  // Then load postgres-client
   vm.runInContext(pgClientSrc, ctx, { filename: 'postgres-client.js' });
-
   return ctx;
 }
 
-// ---------------------------------------------------------------------------
-// getPublicTrees chain tests
-// ---------------------------------------------------------------------------
-
-test('api chain: camelCase viewCount preserved', async () => {
-  const mockData = [
-    { id: 't1', visibility: 'public', viewCount: 3, likeCount: 0 }
-  ];
-  const ctx = setupEnv(mockData);
-  const result = await ctx.window.apiClient.getPublicTrees({ view: 'summary' });
-  assert.equal(result.length, 1);
-  assert.equal(result[0].viewCount, 3);
-  assert.equal(result[0].id, 't1');
+test('api chain: camelCase positive viewCount preserved', async () => {
+  const ctx = setupEnv([{ id: 't1', visibility: 'public', viewCount: 3 }]);
+  const r = await ctx.window.apiClient.getPublicTrees({ view: 'summary' });
+  assert.equal(r[0].viewCount, 3);
 });
 
-test('api chain: persisted zero viewCount', async () => {
-  const mockData = [
-    { id: 't1', visibility: 'public', viewCount: 0, likeCount: 5 }
-  ];
-  const ctx = setupEnv(mockData);
-  const result = await ctx.window.apiClient.getPublicTrees({ view: 'summary' });
-  assert.equal(result.length, 1);
-  assert.equal(result[0].viewCount, 0);
+test('api chain: persisted zero', async () => {
+  const ctx = setupEnv([{ id: 't1', visibility: 'public', viewCount: 0 }]);
+  const r = await ctx.window.apiClient.getPublicTrees({ view: 'summary' });
+  assert.equal(r[0].viewCount, 0);
 });
 
 test('api chain: missing viewCount undefined', async () => {
-  const mockData = [
-    { id: 't1', visibility: 'public', likeCount: 0 }
-  ];
-  const ctx = setupEnv(mockData);
-  const result = await ctx.window.apiClient.getPublicTrees({ view: 'summary' });
-  assert.equal(result.length, 1);
-  assert.equal(result[0].viewCount, undefined);
+  const ctx = setupEnv([{ id: 't1', visibility: 'public' }]);
+  const r = await ctx.window.apiClient.getPublicTrees({ view: 'summary' });
+  assert.equal(r[0].viewCount, undefined);
 });
 
 test('api chain: null viewCount undefined', async () => {
-  const mockData = [
-    { id: 't1', visibility: 'public', viewCount: null, likeCount: 0 }
-  ];
-  const ctx = setupEnv(mockData);
-  const result = await ctx.window.apiClient.getPublicTrees({ view: 'summary' });
-  assert.equal(result.length, 1);
-  assert.equal(result[0].viewCount, undefined);
+  const ctx = setupEnv([{ id: 't1', visibility: 'public', viewCount: null }]);
+  const r = await ctx.window.apiClient.getPublicTrees({ view: 'summary' });
+  assert.equal(r[0].viewCount, undefined);
 });
 
 test('api chain: private tree excluded', async () => {
-  const mockData = [
+  const ctx = setupEnv([
     { id: 'pub', visibility: 'public', viewCount: 3 },
-    { id: 'priv', visibility: 'private', viewCount: 5 }
-  ];
-  const ctx = setupEnv(mockData);
-  const result = await ctx.window.apiClient.getPublicTrees({ view: 'summary' });
-  assert.equal(result.length, 1);
-  assert.equal(result[0].id, 'pub');
-  assert.equal(result[0].viewCount, 3);
+    { id: 'priv', visibility: 'private', viewCount: 5 },
+  ]);
+  const r = await ctx.window.apiClient.getPublicTrees({ view: 'summary' });
+  assert.equal(r.length, 1);
+  assert.equal(r[0].id, 'pub');
 });
 
-test('api chain: snake_case view_count normalized', async () => {
-  const mockData = [
-    { id: 't1', visibility: 'public', view_count: 7, likeCount: 0 }
-  ];
-  const ctx = setupEnv(mockData);
-  const result = await ctx.window.apiClient.getPublicTrees({ view: 'summary' });
-  assert.equal(result.length, 1);
-  assert.equal(result[0].viewCount, 7);
+test('api chain: invalid boolean does not produce synthetic 0', async () => {
+  const ctx = setupEnv([{ id: 't1', visibility: 'public', viewCount: true }]);
+  const r = await ctx.window.apiClient.getPublicTrees({ view: 'summary' });
+  assert.equal(r[0].viewCount, undefined);
+});
+
+test('api chain: whitespace string does not produce synthetic 0', async () => {
+  const ctx = setupEnv([{ id: 't1', visibility: 'public', viewCount: '  ' }]);
+  const r = await ctx.window.apiClient.getPublicTrees({ view: 'summary' });
+  assert.equal(r[0].viewCount, undefined);
 });

@@ -106,14 +106,24 @@
   }
 
   function _normalizeBrowseViewCount(raw) {
-    // viewCount from camelCase or snake_case, three-state policy:
-    //   numeric (including 0) → preserve
-    //   null / missing / invalid → omit (undefined)
+    // Strict viewCount normalizer: three-state policy.
+    //   valid positive/zero integer (camelCase or snake_case) → preserve
+    //   null / missing / invalid → undefined (never synthetic 0)
     var v = raw && (raw.viewCount !== undefined ? raw.viewCount : raw.view_count);
-    if (v === null || v === undefined || v === '') return undefined;
-    var num = Number(v);
-    if (Number.isFinite(num) && num >= 0) return num;
-    return undefined;
+    // Fast-path: null, undefined, empty/whitespace string
+    if (v === null || v === undefined) return undefined;
+    if (typeof v === 'string') {
+      if (!/^(0|[1-9]\d*)$/.test(v)) return undefined;
+      var n = Number(v);
+      return Number.isSafeInteger(n) && n >= 0 ? n : undefined;
+    }
+    // Boolean, array, object (including null already caught above)
+    if (typeof v !== 'number') return undefined;
+    // Number: must be safe integer, non-negative, finite
+    if (!Number.isFinite(v)) return undefined;
+    if (!Number.isSafeInteger(v)) return undefined;
+    if (v < 0) return undefined;
+    return v;
   }
 
   function normalizeBrowseTreeRecord(rawTree) {
