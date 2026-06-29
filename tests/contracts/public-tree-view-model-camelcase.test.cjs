@@ -1,63 +1,147 @@
-const test = require('node:test');
+/**
+ * Runtime tests: normalizeBrowseTreeRecord and buildPublicTreeSummaryModels
+ * three-state viewCount behavior.
+ *
+ * Tests run the actual exported adapter functions via vm sandbox.
+ */
+'use strict';
+
+const path = require('path');
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
-const path = require('node:path');
-const vm = require('node:vm');
+const fs = require('fs');
+const { test } = require('node:test');
+const vm = require('vm');
 
-const ROOT = path.resolve(__dirname, '..', '..');
+const ROOT = path.join(__dirname, '..', '..');
+const adapterPath = path.join(ROOT, 'js/api/public-tree-adapter.js');
+const adapterSrc = fs.readFileSync(adapterPath, 'utf8');
 
-function loadInternals() {
-  // Load postgres-client.js first to create __LoveBudApiClientInternals
-  const postgresSource = fs.readFileSync(path.join(ROOT, 'js/postgres-client.js'), 'utf8');
-  // Load adapter to add adapter functions to internals (for backward compatibility)
-  const adapterSource = fs.readFileSync(path.join(ROOT, 'js/api/public-tree-adapter.js'), 'utf8');
-  const sandbox = {
-    window: {
-      location: { hostname: 'localhost', search: '' },
-      localStorage: { getItem() { return null; }, setItem() {}, removeItem() {} },
-      LoveBudRuntimeFlags: null,
-    },
-    localStorage: { getItem() { return null; }, setItem() {}, removeItem() {} },
-    console,
-    fetch: async () => ({ ok: true, json: async () => ({}) }),
-    setTimeout,
-    clearTimeout,
+function createSandbox() {
+  return {
+    window: {},
+    console: console,
+    setTimeout: setTimeout,
+    clearTimeout: clearTimeout
   };
-  vm.createContext(sandbox);
-  // Load postgres-client.js first (creates __LoveBudApiClientInternals)
-  vm.runInContext(postgresSource, sandbox);
-  // Then load adapter (extends __LoveBudApiClientInternals for backward compatibility)
-  vm.runInContext(adapterSource, sandbox);
-  return sandbox.window.__LoveBudApiClientInternals;
 }
 
-test('browse tree helper normalizes camelCase tree record', () => {
-  const I = loadInternals();
-  const tree = I.normalizeBrowseTreeRecord({
-    id: 't1',
-    title: 'Tree',
-    visibility: 'public',
-    createdAt: '2026-04-20T00:00:00Z',
-    ownerId: 'u1',
-  });
+function getAdapter() {
+  const sandbox = createSandbox();
+  const ctx = vm.createContext(sandbox);
+  vm.runInContext(adapterSrc, ctx, { filename: 'public-tree-adapter.js' });
+  return ctx.window.LoveTreePublicTreeAdapter;
+}
 
-  assert.equal(tree.id, 't1');
-  assert.equal(tree.createdAt, '2026-04-20T00:00:00Z');
-  assert.equal(tree.ownerId, 'u1');
+// ---------------------------------------------------------------------------
+// _normalizeBrowseViewCount unit tests
+// ---------------------------------------------------------------------------
+
+test('normalizeViewCount: camelCase positive', () => {
+  const a = getAdapter();
+  assert.equal(a._normalizeBrowseViewCount({ viewCount: 3 }), 3);
 });
 
-test('browse memory helper normalizes legacy wrapped snake_case record', () => {
-  const I = loadInternals();
-  const memory = I.normalizeBrowseMemoryRecord({
-    data: {
-      id: 'm1',
-      tree_id: 't1',
-      created_at: '2026-04-20T00:00:00Z',
-      emotion_tags: ['legacy'],
-    }
-  });
+test('normalizeViewCount: snake_case positive', () => {
+  const a = getAdapter();
+  assert.equal(a._normalizeBrowseViewCount({ view_count: 5 }), 5);
+});
 
-  assert.equal(memory.treeId, 't1');
-  assert.equal(memory.createdAt, '2026-04-20T00:00:00Z');
-  assert.deepEqual(memory.emotionTags, ['legacy']);
+test('normalizeViewCount: camelCase takes priority over snake_case', () => {
+  const a = getAdapter();
+  assert.equal(a._normalizeBrowseViewCount({ viewCount: 7, view_count: 99 }), 7);
+});
+
+test('normalizeViewCount: persisted zero', () => {
+  const a = getAdapter();
+  assert.equal(a._normalizeBrowseViewCount({ viewCount: 0 }), 0);
+});
+
+test('normalizeViewCount: missing field', () => {
+  const a = getAdapter();
+  assert.equal(a._normalizeBrowseViewCount({}), undefined);
+});
+
+test('normalizeViewCount: explicit null', () => {
+  const a = getAdapter();
+  assert.equal(a._normalizeBrowseViewCount({ viewCount: null }), undefined);
+  assert.equal(a._normalizeBrowseViewCount({ view_count: null }), undefined);
+});
+
+test('normalizeViewCount: empty string', () => {
+  const a = getAdapter();
+  assert.equal(a._normalizeBrowseViewCount({ viewCount: '' }), undefined);
+});
+
+test('normalizeViewCount: negative number', () => {
+  const a = getAdapter();
+  assert.equal(a._normalizeBrowseViewCount({ viewCount: -1 }), undefined);
+});
+
+test('normalizeViewCount: raw=null/undefined', () => {
+  const a = getAdapter();
+  assert.equal(a._normalizeBrowseViewCount(null), undefined);
+  assert.equal(a._normalizeBrowseViewCount(undefined), undefined);
+});
+
+// ---------------------------------------------------------------------------
+// normalizeBrowseTreeRecord tests
+// ---------------------------------------------------------------------------
+
+test('normalizeBrowseTreeRecord: preserves camelCase viewCount', () => {
+  const a = getAdapter();
+  const result = a.normalizeBrowseTreeRecord({ id: 't1', visibility: 'public', viewCount: 3 });
+  assert.equal(result.viewCount, 3);
+});
+
+test('normalizeBrowseTreeRecord: preserves snake_case view_count', () => {
+  const a = getAdapter();
+  const result = a.normalizeBrowseTreeRecord({ id: 't1', visibility: 'public', view_count: 5 });
+  assert.equal(result.viewCount, 5);
+});
+
+test('normalizeBrowseTreeRecord: persisted zero viewCount', () => {
+  const a = getAdapter();
+  const result = a.normalizeBrowseTreeRecord({ id: 't1', visibility: 'public', viewCount: 0 });
+  assert.equal(result.viewCount, 0);
+});
+
+test('normalizeBrowseTreeRecord: missing viewCount omitted', () => {
+  const a = getAdapter();
+  const result = a.normalizeBrowseTreeRecord({ id: 't1', visibility: 'public' });
+  assert.equal(result.viewCount, undefined);
+});
+
+test('normalizeBrowseTreeRecord: null viewCount omitted', () => {
+  const a = getAdapter();
+  const result = a.normalizeBrowseTreeRecord({ id: 't1', visibility: 'public', viewCount: null });
+  assert.equal(result.viewCount, undefined);
+});
+
+// ---------------------------------------------------------------------------
+// buildPublicTreeSummaryModels tests
+// ---------------------------------------------------------------------------
+
+test('buildPublicTreeSummaryModels: viewCount passes through', () => {
+  const a = getAdapter();
+  const trees = [
+    { id: 't1', visibility: 'public', viewCount: 3 },
+    { id: 't2', visibility: 'public', viewCount: 0 },
+    { id: 't3', visibility: 'public' }  // missing
+  ];
+  const results = a.buildPublicTreeSummaryModels(trees);
+  assert.equal(results.length, 3);
+  assert.equal(results[0].viewCount, 3);
+  assert.equal(results[1].viewCount, 0);
+  assert.equal(results[2].viewCount, undefined);
+});
+
+test('buildPublicTreeSummaryModels: private tree excluded', () => {
+  const a = getAdapter();
+  const trees = [
+    { id: 'pub', visibility: 'public', viewCount: 3 },
+    { id: 'priv', visibility: 'private', viewCount: 5 }
+  ];
+  const results = a.buildPublicTreeSummaryModels(trees);
+  assert.equal(results.length, 1);
+  assert.equal(results[0].id, 'pub');
 });

@@ -105,6 +105,17 @@
     return record.treeId || record.tree_id || null;
   }
 
+  function _normalizeBrowseViewCount(raw) {
+    // viewCount from camelCase or snake_case, three-state policy:
+    //   numeric (including 0) → preserve
+    //   null / missing / invalid → omit (undefined)
+    var v = raw && (raw.viewCount !== undefined ? raw.viewCount : raw.view_count);
+    if (v === null || v === undefined || v === '') return undefined;
+    var num = Number(v);
+    if (Number.isFinite(num) && num >= 0) return num;
+    return undefined;
+  }
+
   function normalizeBrowseTreeRecord(rawTree) {
     const tree = unwrapTreeRecord(rawTree);
     const rawThumb = tree.representativeThumbnail || tree.representative_thumbnail || tree.thumbnail || '';
@@ -119,6 +130,7 @@
       ownerId: tree.ownerId || tree.owner_id || null,
       representativeThumbnail: canonicalizeYouTubeThumbnailUrl(rawThumb, rawSource),
       memoryCount: Number(tree.memoryCount || tree.memory_count || 0),
+      viewCount: _normalizeBrowseViewCount(tree),
       theme: tree.theme || '',
       stage: tree.stage || ''
     };
@@ -165,6 +177,7 @@
         ownerId: tree.ownerId,
         memories: [],
         memoryCount: Number.isFinite(tree.memoryCount) ? tree.memoryCount : 0,
+        viewCount: tree.viewCount,
         emotionTags: [],
         timeRange: '기록 없음',
         representativeThumbnail: tree.representativeThumbnail || '',
@@ -219,6 +232,8 @@
     buildPublicTreeSummaryModels,
     hydrateTreeWithPublicMemories,
     buildPublicTreeViewModels,
+    // Internal helpers exposed for contract tests
+    _normalizeBrowseViewCount,
     // Utils
     sanitizeUrl,
     isValidYouTubeVideoId,
