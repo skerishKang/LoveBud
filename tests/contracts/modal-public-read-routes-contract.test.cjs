@@ -99,9 +99,9 @@ test('modal public read helpers preserve public visibility filters and normaliza
   const latestHelper = extractPythonFunction(content, 'fetch_latest_public_tree_snapshots');
   assert.ok(hasString(latestHelper, "t.visibility = 'public'"));
   assert.ok(hasString(latestHelper, "WHERE visibility = 'public'"));
-  // latest Browse summary: likeCount opt-in, viewCount forbidden
+  // latest Browse summary: likeCount and viewCount in SQL, normalized by validation normalize_row
   assert.ok(hasString(latestHelper, 'normalize_row(row, include_like_count=True)'));
-  assert.ok(!hasString(latestHelper, '"viewCount"'), 'latest helper must not emit viewCount in payload');
+  assert.ok(hasString(latestHelper, 's.view_count'), 'latest helper must select view_count in SQL');
   assert.ok(hasString(latestHelper, 'HAVING count(*) >= 3'));
   assert.ok(hasString(latestHelper, 'has_memories'));
   assert.ok(hasString(latestHelper, '_table_exists(cur, "memories")'));

@@ -60,11 +60,11 @@ test('Public reads fetch_latest_public_tree_snapshots supports sort=likes', () =
   assert.match(publicReads, /s\.like_count,/);
 });
 
-test('Normalize row includes likeCount from modern query but NOT viewCount', () => {
-  // validation.py normalize_row includes likeCount conditionally
+test('Normalize row includes likeCount and viewCount from modern query', () => {
+  // validation.py normalize_row includes likeCount and viewCount conditionally
   const validation = fs.readFileSync(path.join(ROOT, 'modal_compute', 'validation.py'), 'utf8');
   assert.match(validation, /result\["likeCount"\]\s*=\s*row\.get\(["']like_count["'],\s*0\)\s+or\s+0/);
-  assert.doesNotMatch(validation, /"viewCount"/);
+  assert.match(validation, /"viewCount"/);
 
   // include_like_count parameter exists
   assert.match(validation, /include_like_count:\s*bool\s*=\s*False/);

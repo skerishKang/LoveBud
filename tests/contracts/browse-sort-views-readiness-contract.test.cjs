@@ -132,13 +132,13 @@ test('Runtime baseline: public_reads has a sort=views order_clause branch', () =
   assert.match(publicReads, /order_clause\s*=\s*["']t\.created_at DESC["']/);
 });
 
-test('Runtime baseline: viewCount is NOT in Browse/Search summary payload (boundary preserved)', () => {
+test('Runtime baseline: viewCount IS in Browse/Search summary payload', () => {
   const publicReads = read(publicReadsPath);
   const validation = read(validationPath);
 
-  // No viewCount in any normalize_row output
-  assert.doesNotMatch(validation, /"viewCount"/);
-  assert.doesNotMatch(publicReads, /"viewCount"/);
+  // viewCount now in normalize_row output
+  assert.match(validation, /"viewCount"/);
+  assert.match(publicReads, /s\.view_count/);
 
   // modern latest query selects s.view_count internally (for sort=views ordering)
   // but it must NOT be exposed in the normalize_row payload

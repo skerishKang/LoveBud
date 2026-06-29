@@ -62,11 +62,9 @@ test('Audit document records final Browse labels and control mapping', () => {
 test('Audit document records Browse/Search summary payload boundary', () => {
   const content = read(path.join('docs', 'product', 'lovebud-browse-tree-social-counts-completion-audit.md'));
 
-  assert.match(content, /`viewCount` is not newly exposed in Browse\/Search summaries/);
-  assert.match(content, /`likeCount` remains the existing summary count surface/);
-  assert.match(content, /`viewCount` remains absent from summary cards/);
+  assert.match(content, /persisted `viewCount`/);
   assert.match(content, /`normalize_row\(row, include_like_count=True\)`/);
-  assert.match(content, /no `result\["viewCount"\]`/);
+  assert.match(content, /Missing or null `view_count`/);
 });
 
 test('Audit document records private/public boundary preservation', () => {
@@ -137,12 +135,11 @@ test('Runtime locking: public_reads has likes/views order branches and public-tr
   assert.match(publicReads, /normalize_row\(row, include_like_count=True\)/);
 });
 
-test('Runtime locking: validation does not expose viewCount in Browse/Search summary', () => {
+test('Runtime locking: validation exposes viewCount in Browse/Search summary', () => {
   const validation = read(path.join('modal_compute', 'validation.py'));
 
-  assert.doesNotMatch(validation, /result\["viewCount"\]/);
-  assert.doesNotMatch(validation, /result\['viewCount'\]/);
-  assert.doesNotMatch(validation, /"viewCount"/);
+  assert.match(validation, /result\["viewCount"\]/);
+  assert.match(validation, /"viewCount"/);
   assert.match(validation, /"memoryCount": memory_count/);
   assert.match(validation, /include_like_count/);
   assert.match(validation, /result\["likeCount"\]/);

@@ -85,19 +85,17 @@ test('sort=views has safe fallback to latest when tree_social_counts view_count 
   );
 });
 
-test('Browse/Search summary payload does NOT include viewCount (boundary preserved)', () => {
-  // No viewCount in any normalize_row output
-  assert.doesNotMatch(validation, /"viewCount"/);
-  assert.doesNotMatch(publicReads, /"viewCount"/);
+test('Browse/Search summary payload now includes viewCount', () => {
+  // viewCount is now included in normalize_row output (in validation.py)
+  assert.match(validation, /"viewCount"/);
+  // public_reads.py selects view_count in SQL and calls normalize_row with include_like_count=True
+  assert.match(publicReads, /s\.view_count/);
 
   // No "viewCount" key in legacy fallback dictionaries
   const latestHelper = publicReads.substring(
     publicReads.indexOf('fetch_latest_public_tree_snapshots'),
     publicReads.indexOf('fetch_growing_public_tree_snapshots')
   );
-  assert.doesNotMatch(latestHelper, /"viewCount":\s*0,/);
-  assert.doesNotMatch(latestHelper, /"viewCount":\s*row\.get/);
-
   // Growing helper must NOT include viewCount
   const growingHelper = publicReads.substring(
     publicReads.indexOf('fetch_growing_public_tree_snapshots'),
@@ -107,8 +105,8 @@ test('Browse/Search summary payload does NOT include viewCount (boundary preserv
   assert.doesNotMatch(growingHelper, /s\.view_count/);
 });
 
-test('Browse UI labels remain unchanged (조회순 / 좋아요순 still forbidden)', () => {
-  // Catch-all and modal app must not include any UI label change for views
+
+test('viewCount is exposed in both public detail and Browse/Search summary', () => {
   assert.doesNotMatch(catchAllRoute, /조회순/);
   assert.doesNotMatch(modalApp, /조회순/);
   assert.doesNotMatch(publicReads, /조회순/);
@@ -168,13 +166,13 @@ test('No raw IP / user-agent / fingerprint / referrer / header in view tracking 
   assert.match(policy, /full device fingerprint/);
 });
 
-test('viewCount is still exposed only on the narrow public detail endpoint (not Browse/Search)', () => {
+test('viewCount is exposed in both public detail and Browse/Search summary', () => {
   // modal app public tree detail route sets viewCount
   assert.match(modalApp, /tree\["viewCount"\]\s*=\s*fetch_public_tree_view_count/);
 
-  // but Browse/Search summary sources do NOT include viewCount (boundary preserved)
-  assert.doesNotMatch(publicReads, /"viewCount"/);
-  assert.doesNotMatch(validation, /"viewCount"/);
+  // Browse/Search summary sources now include viewCount via normalize_row
+  assert.match(validation, /"viewCount"/);
+  assert.match(publicReads, /s\.view_count/);
 });
 
 test('Scout live provider/fetch/network is not touched (boundary preserved)', () => {

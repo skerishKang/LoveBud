@@ -142,6 +142,13 @@ def normalize_row(row: dict[str, Any], *, stage_override: str | None = None, inc
     }
     if include_like_count:
         result["likeCount"] = row.get("like_count", 0) or 0
+        # viewCount is included only when the DB row has a real value.
+        # Missing key, None, or social-count source unavailable means we cannot
+        # truthfully report a count — omit the field so the UI does not display
+        # a synthetic "0" indistinguishable from a genuine persisted zero.
+        vc = row.get("view_count")
+        if vc is not None:
+            result["viewCount"] = int(vc)
     return result
 
 
