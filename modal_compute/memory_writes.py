@@ -82,7 +82,43 @@ def create_owner_memory(owner_id: str, payload: dict[str, Any]) -> dict[str, Any
 
 def update_owner_memory(owner_id: str, memory_id: str, payload: dict[str, Any]) -> dict[str, Any]:
     safe_memory_id = validate_required_uuid(memory_id, "memoryId")
-    require_memory_owner(safe_memory_id, owner_id)
+    memory = require_memory_owner(safe_memory_id, owner_id)
+
+    # Explicit allowlist for update payload
+    ALLOWED_UPDATE_FIELDS = {
+        "title",
+        "memo",
+        "artist",
+        "source",
+        "sourceUrl",
+        "sourceType",
+        "thumbnail",
+        "emotionTags",
+        "timestamp",
+        "visibility",
+        "channelId",
+        "channelName",
+        "channelUrl",
+        "parentId",
+    }
+
+    # Check for unsupported fields
+    unknown_fields = [k for k in payload.keys() if k not in ALLOWED_UPDATE_FIELDS]
+    if unknown_fields:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": "UNSUPPORTED_MEMORY_UPDATE_FIELDS",
+                "fields": sorted(unknown_fields),
+            },
+        )
+
+    # Reject empty payload
+    if not payload:
+        raise HTTPException(
+            status_code=400,
+            detail={"code": "EMPTY_MEMORY_UPDATE"},
+        )
 
     updates: list[str] = []
     params: list[Any] = []
@@ -137,7 +173,67 @@ def update_owner_memory(owner_id: str, memory_id: str, payload: dict[str, Any]) 
         updates.append("channel_url = %s")
         params.append(validate_optional_string(payload.get("channelUrl"), 1000) or None)
 
+    # New: artist update support
+    if "artist" in payload:
+        updates.append("artist = %s")
+        params.append(validate_optional_string(payload.get("artist"), 100))
+
+    # New: timestamp update support
+    if "timestamp" in payload:
+        updates.append("timestamp = %s")
+        params.append(validate_optional_string(payload.get("timestamp"), 100))
+
+    # New: parentId update support
+    if "parentId" in payload:
+        parent_id_value = payload.get("parentId")
+        # Normalize disconnect values: null, "", whitespace-only -> None
+        if parent_id_value is None or (isinstance(parent_id_value, str) and parent_id_value.strip() == ""):
+            updates.append("parent_id = NULL")
+        else:
+            # Validate UUID format
+            parent_id = validate_required_uuid(parent_id_value, "parentId")
+            # Check: parent memory exists, same tree, not self, not descendant
+            # All checks must happen within the same DB connection context
+            with get_db_connection() as conn:
+                with conn.cursor() as cur:
+                    # Check parent exists
+                    cur.execute(
+                        """
+                        SELECT id, tree_id, parent_id
+                        FROM memories
+                        WHERE id = %s
+                        """,
+                        (parent_id,),
+                    )
+                    parent_mem = cur.fetchone()
+                if not parent_mem:
+                    raise HTTPException(
+                        status_code=400,
+                        detail={"code": "INVALID_PARENT_ID", "reason": "not_found"},
+                    )
+                # Check: same tree
+                if str(parent_mem["tree_id"]) != str(memory["tree_id"]):
+                    raise HTTPException(
+                        status_code=400,
+                        detail={"code": "PARENT_MEMORY_TREE_MISMATCH"},
+                    )
+                # Check: not self
+                if str(parent_mem["id"]) == str(safe_memory_id):
+                    raise HTTPException(
+                        status_code=400,
+                        detail={"code": "INVALID_PARENT_ID", "reason": "self_parent"},
+                    )
+                # Check: not descendant (cycle detection with visited guard)
+                if _would_create_cycle(conn, safe_memory_id, parent_id):
+                    raise HTTPException(
+                        status_code=400,
+                        detail={"code": "PARENT_CYCLE"},
+                    )
+            updates.append("parent_id = %s")
+            params.append(parent_id)
+
     if not updates:
+        # This should not happen due to empty payload check above, but guard anyway
         memory = require_memory_owner(safe_memory_id, owner_id)
         return normalize_memory_row(memory)
 
@@ -166,6 +262,33 @@ def update_owner_memory(owner_id: str, memory_id: str, payload: dict[str, Any]) 
     if not row:
         raise HTTPException(status_code=404, detail="Memory not found")
     return normalize_memory_row(row)
+
+
+def _would_create_cycle(conn, source_id: str, target_parent_id: str) -> bool:
+    """
+    Check if setting source_id's parent to target_parent_id would create a cycle.
+    Walks up the ancestor chain from target_parent_id looking for source_id.
+    Includes visited guard to prevent infinite loops on existing corrupted data.
+    """
+    visited = set()
+    current_id = target_parent_id
+    while current_id:
+        if str(current_id) == str(source_id):
+            return True
+        if str(current_id) in visited:
+            # Existing cycle in DB - break to avoid infinite loop
+            return True
+        visited.add(str(current_id))
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT parent_id FROM memories WHERE id = %s",
+                (current_id,),
+            )
+            row = cur.fetchone()
+        if not row or not row["parent_id"]:
+            break
+        current_id = row["parent_id"]
+    return False
 
 
 def delete_owner_memory(owner_id: str, memory_id: str) -> dict[str, Any]:

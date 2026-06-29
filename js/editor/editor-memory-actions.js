@@ -345,7 +345,7 @@ function createEditorMemoryActions(deps) {
             if (window.apiClient && typeof window.apiClient.updateMemory === 'function') {
                 const savedMemory = await window.apiClient.updateMemory(currentEditingMemory.id, payload);
                 const savedPatch = savedMemory && typeof savedMemory === 'object' ? savedMemory : {};
-                
+
                 // Priority: server response > payload > current memory
                 // This ensures sourceUrl/thumbnail from server normalization is used
                 const prioritizedPatch = {
@@ -353,7 +353,7 @@ function createEditorMemoryActions(deps) {
                     ...payload,
                     ...savedPatch
                 };
-                
+
                 // Explicitly ensure source fields come from server response
                 if (savedPatch.sourceUrl !== undefined) {
                     prioritizedPatch.sourceUrl = savedPatch.sourceUrl;
@@ -364,7 +364,7 @@ function createEditorMemoryActions(deps) {
                 if (savedPatch.sourceType !== undefined) {
                     prioritizedPatch.sourceType = savedPatch.sourceType;
                 }
-                
+
                 const nextEditingMemory = prioritizedPatch;
 
                 const nextMemories = getTreeMemories().slice();
@@ -537,6 +537,7 @@ function createEditorMemoryActions(deps) {
         }
     };
 
+    // ---- Confirmed-response guard for disconnect ----
     const disconnectMemory = async (childId) => {
         if (canEdit === false) return false;
         var mode = window.LoveBudEditorInteractionMode;
@@ -575,7 +576,18 @@ function createEditorMemoryActions(deps) {
                 throw new Error('updateMemory not available');
             }
 
-            var nextMemory = Object.assign({}, mem, { parentId: null }, apiResult || {});
+            // CONFIRMED RESPONSE GUARD: only proceed if server confirms parentId === null
+            if (!apiResult || typeof apiResult !== 'object' ||
+                !Object.prototype.hasOwnProperty.call(apiResult, 'parentId') ||
+                apiResult.parentId !== null) {
+                // Failure: response missing parentId or parentId is not null
+                updateSaveStatus('failed', formatI18nText('save_failed', '저장 실패'));
+                showToast(formatI18nText('disconnect_failed', '연결 해제에 실패했어요'), 'error');
+                return false;
+            }
+
+            // Success: build nextMemory from CONFIRMED server response
+            var nextMemory = Object.assign({}, mem, apiResult);
             memories[idx] = nextMemory;
             setTreeMemories(memories);
 
@@ -594,6 +606,7 @@ function createEditorMemoryActions(deps) {
 
             if (typeof rerenderCanvas === 'function') rerenderCanvas();
             if (typeof updateSidebarStatus === 'function') updateSidebarStatus();
+            if (typeof updateDetailPanel === 'function') updateDetailPanel(nextMemory);
             updateSaveStatus('saved', formatI18nText('save_saved', '저장 완료'));
             showToast(formatI18nText('disconnect_success', '연결을 해제했어요'), 'success');
             return true;
@@ -619,6 +632,7 @@ function createEditorMemoryActions(deps) {
         return false;
     }
 
+    // ---- Confirmed-response guard for connect ----
     const connectMemory = async (sourceId, targetId) => {
         if (canEdit === false) return false;
         var mode = window.LoveBudEditorInteractionMode;
@@ -657,7 +671,18 @@ function createEditorMemoryActions(deps) {
                 throw new Error('updateMemory not available');
             }
 
-            var nextMemory = Object.assign({}, sourceMem, { parentId: targetId }, apiResult || {});
+            // CONFIRMED RESPONSE GUARD: only proceed if server confirms parentId === targetId
+            if (!apiResult || typeof apiResult !== 'object' ||
+                !Object.prototype.hasOwnProperty.call(apiResult, 'parentId') ||
+                String(apiResult.parentId) !== String(targetId)) {
+                // Failure: response missing parentId or parentId doesn't match target
+                updateSaveStatus('failed', formatI18nText('save_failed', '저장 실패'));
+                showToast(formatI18nText('connect_failed', '연결에 실패했어요'), 'error');
+                return false;
+            }
+
+            // Success: build nextMemory from CONFIRMED server response
+            var nextMemory = Object.assign({}, sourceMem, apiResult);
             memories[srcIdx] = nextMemory;
             setTreeMemories(memories);
 
