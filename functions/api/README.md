@@ -32,6 +32,10 @@
 - 특징: title/memory/visibility/delete 변경은 최대 30초 이내에 반영되는 bounded freshness 정책을 가짐
 - Cache Status Header: `x-lovebud-public-tree-cache`
 - Private/owner read는 캐시 대상이 아님
+- **주의 (Route Precedence)**:
+  - production의 primary handler는 `functions/api/trees/[id].js`입니다.
+  - `functions/api/[[path]].js`는 catch-all이며, exact detail route인 `trees/[id].js`보다 우선하지 않습니다.
+  - 따라서 public cache contract는 route-specific detail handler인 `trees/[id].js`에서 적용 및 검증됩니다.
 
 ## Route 추가 가이드
 
