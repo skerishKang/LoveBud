@@ -1,5 +1,5 @@
 /**
- * Contract tests for Cloudflare Pages Function catch-all router's
+ * Contract tests for Cloudflare Pages Function route-specific detail router's
  * public read-only tree-read cache boundary.
  */
 
@@ -79,11 +79,12 @@ function restoreMocks() {
   fetchCalls = [];
 }
 
-async function callOnRequest(request, envOverrides) {
-  const mod = await import('../../functions/api/[[path]].js');
-  const { onRequest } = mod;
-  return onRequest({
+async function callOnRequestGet(request, params = { id: 'tree-123' }, envOverrides = {}) {
+  const mod = await import('../../functions/api/trees/[id].js');
+  const { onRequestGet } = mod;
+  return onRequestGet({
     request,
+    params,
     env: { MODAL_BASE_URL, ...envOverrides },
   });
 }
@@ -103,12 +104,13 @@ test('1. anonymous public tree 200: cache miss, headers validation, body preserv
     };
 
     const request = new Request(`${TEST_HOST}/api/trees/tree-123`);
-    const response = await callOnRequest(request);
+    const response = await callOnRequestGet(request, { id: 'tree-123' });
 
     assert.equal(response.status, 200);
     assert.equal(fetchCalls.length, 1);
     assert.equal(response.headers.get('x-lovebud-public-tree-cache'), 'miss');
     assert.equal(response.headers.get('Cache-Control'), 'public, max-age=30, must-revalidate');
+    assert.ok(response.headers.get('x-lovebud-request-id'));
 
     const body = await response.json();
     assert.equal(body.id, 'tree-123');
@@ -141,12 +143,12 @@ test('2. anonymous public tree cache hit on subsequent request', async () => {
 
     // First Request
     const request1 = new Request(`${TEST_HOST}/api/trees/tree-123`);
-    await callOnRequest(request1);
+    await callOnRequestGet(request1, { id: 'tree-123' });
     assert.equal(mockServerCallCount, 1);
 
     // Second Request
     const request2 = new Request(`${TEST_HOST}/api/trees/tree-123`);
-    const response2 = await callOnRequest(request2);
+    const response2 = await callOnRequestGet(request2, { id: 'tree-123' });
 
     assert.equal(response2.status, 200);
     assert.equal(mockServerCallCount, 1); // No additional upstream calls
@@ -159,7 +161,10 @@ test('2. anonymous public tree cache hit on subsequent request', async () => {
 test('3. authenticated public tree GET: bypass cache entirely', async () => {
   setupMocks();
   try {
-    fetchHandler = async () => {
+    fetchHandler = async (call) => {
+      if (call.url.includes('/modal/private/trees/tree-123')) {
+        return new Response(JSON.stringify({ error: 'Not Found' }), { status: 404 });
+      }
       return new Response(JSON.stringify({
         id: 'tree-123',
         title: 'Fresh Public Tree',
@@ -173,7 +178,7 @@ test('3. authenticated public tree GET: bypass cache entirely', async () => {
     const request = new Request(`${TEST_HOST}/api/trees/tree-123`, {
       headers: { 'authorization': 'Bearer some-user' }
     });
-    const response = await callOnRequest(request);
+    const response = await callOnRequestGet(request, { id: 'tree-123' });
 
     assert.equal(response.status, 200);
     assert.equal(response.headers.get('x-lovebud-public-tree-cache'), 'bypass-auth');
@@ -197,7 +202,7 @@ test('4. 404 / 403 / 500 / 503 response: do not cache', async () => {
     };
 
     const request = new Request(`${TEST_HOST}/api/trees/tree-404`);
-    const response = await callOnRequest(request);
+    const response = await callOnRequestGet(request, { id: 'tree-404' });
 
     assert.equal(response.status, 404);
     assert.equal(response.headers.get('x-lovebud-public-tree-cache'), 'skip-noncacheable');
@@ -224,7 +229,7 @@ test('5. 200 but visibility !== public: skip caching', async () => {
     };
 
     const request = new Request(`${TEST_HOST}/api/trees/tree-private`);
-    const response = await callOnRequest(request);
+    const response = await callOnRequestGet(request, { id: 'tree-private' });
 
     assert.equal(response.status, 200);
     assert.equal(response.headers.get('x-lovebud-public-tree-cache'), 'skip-noncacheable');
@@ -250,7 +255,7 @@ test('6. non-JSON / Set-Cookie: skip caching', async () => {
     };
 
     const request = new Request(`${TEST_HOST}/api/trees/tree-cookie`);
-    const response = await callOnRequest(request);
+    const response = await callOnRequestGet(request, { id: 'tree-cookie' });
 
     assert.equal(response.status, 200);
     assert.equal(response.headers.get('x-lovebud-public-tree-cache'), 'skip-noncacheable');
@@ -292,7 +297,7 @@ test('7. expired cache entry: triggers deletion and refreshes from upstream', as
     await mockCaches.default.put(`/__cache/public/trees/tree-123`, expiredResponse);
 
     const request = new Request(`${TEST_HOST}/api/trees/tree-123`);
-    const response = await callOnRequest(request);
+    const response = await callOnRequestGet(request, { id: 'tree-123' });
 
     assert.equal(response.status, 200);
     assert.equal(mockServerCallCount, 1);
@@ -323,7 +328,7 @@ test('8. expired entry + Modal upstream 503: stale serving prohibited', async ()
     await mockCaches.default.put(`/__cache/public/trees/tree-123`, expiredResponse);
 
     const request = new Request(`${TEST_HOST}/api/trees/tree-123`);
-    const response = await callOnRequest(request);
+    const response = await callOnRequestGet(request, { id: 'tree-123' });
 
     // Stale cached data must NOT be served; upstream 503 forwarded
     assert.equal(response.status, 503);
@@ -352,7 +357,7 @@ test('9. cache put failure does not crash response delivery', async () => {
     };
 
     const request = new Request(`${TEST_HOST}/api/trees/tree-123`);
-    const response = await callOnRequest(request);
+    const response = await callOnRequestGet(request, { id: 'tree-123' });
 
     assert.equal(response.status, 200);
     assert.equal(response.headers.get('x-lovebud-public-tree-cache'), 'store-failed');
@@ -368,7 +373,7 @@ test('9. cache put failure does not crash response delivery', async () => {
 test('10. source guard limits and cache policies stability', async () => {
   const fs = require('fs');
   const path = require('path');
-  const code = fs.readFileSync(path.resolve(__dirname, '../../functions/api/[[path]].js'), 'utf8');
+  const code = fs.readFileSync(path.resolve(__dirname, '../../functions/api/trees/[id].js'), 'utf8');
 
   // stale-while-revalidate must not exist in public tree caching block
   assert.ok(!code.includes("max-age=30, stale-while-revalidate"));
