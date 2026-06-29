@@ -17,7 +17,6 @@
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | Browse | `js/search/search-card-renderer.js` | `animation: fadeIn` | feedback | reveal | Opacity fade-in allowed |
 | Browse | `js/search/search-card-renderer.js` | `animation: searchSkeletonPulse` | feedback | loading | Disable/Simplify |
-| Browse | `css/editor/editor-mode-selection.css` | `.editor-rename-modal-btn` transition | hover | feedback | Simplify/Instant |
 | My Trees | `js/my-trees/my-trees-ui.js` | card opacity transition | feedback | reveal | Opacity fade-in allowed |
 | Editor | `css/editor/editor-canvas.css` | `.branch-line` transition (stroke/opacity) | hierarchy-change | state feedback | Simplify/Instant |
 | Editor | `css/editor/editor-canvas.css` | `.edge-disconnect-btn` hover scale (1.15) | hover | feedback | Simplify/Instant |
@@ -27,7 +26,11 @@
 | Shared | `js/shared-header.js` | `animation: spin` | feedback | loading | Remove/Disable |
 | Editor | `css/page-transitions.css` | `.page-transition-enter` (opacity/transform) | page-transition | navigation | Opacity-only or instant |
 | Editor | `css/page-transitions.css` | `.reveal-up` (opacity/transform) | feedback | reveal | Opacity fade-in allowed |
-| Detail | `js/editor/editor-detail-ui.js` | opacity (not observed in active runtime) | hierarchy-change | reveal | N/A |
+
+### Not observed in current audit
+
+*   **Detail panel transition behavior** was not confirmed in the active runtime audit.
+*   **Browse card hover/active motion** was not confirmed in the current source audit.
 
 ## 4. Proposed token contract
 
@@ -56,7 +59,6 @@
 
 1.  **Shared Header Spin** (`js/shared-header.js`): Low risk (purely decorative animation). Observability: visual loading indicator.
 2.  **Browse Skeleton Pulse** (`js/search/search-card-renderer.js`): Low risk, easy to verify (loading state). Observability: search results appearance.
-3.  **Editor Modal Button** (`css/editor/editor-mode-selection.css`): Low risk, small scope. Observability: button state change on hover.
 
 ## 7. Migration guardrails
 
