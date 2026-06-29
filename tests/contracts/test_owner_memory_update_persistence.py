@@ -683,6 +683,85 @@ def test_cycle_detection_no_cycle_returns_false():
     assert result is False, "Should not detect cycle when none exists"
 
 
+def test_would_create_cycle_single_cursor_reuse():
+    """_would_create_cycle creates only 1 cursor for multi-hop checks, and correctly identifies cycles and non-cycles."""
+    mock_cursor = MagicMock()
+    mock_cursor.fetchone.side_effect = [
+        {"parent_id": "00000000-0000-0000-0000-000000000002"},
+        {"parent_id": None}
+    ]
+    conn = MagicMock()
+    conn.cursor.return_value.__enter__.return_value = mock_cursor
+
+    source_id = "00000000-0000-0000-0000-000000000003"
+    target_parent_id = "00000000-0000-0000-0000-000000000001"
+
+    result = _would_create_cycle(conn, source_id, target_parent_id)
+    assert result is False
+    assert conn.cursor.call_count == 1, f"Expected exactly 1 cursor context open, got {conn.cursor.call_count}"
+
+    # Cycle case
+    mock_cursor_cycle = MagicMock()
+    mock_cursor_cycle.fetchone.side_effect = [
+        {"parent_id": "00000000-0000-0000-0000-000000000003"} # cycle source
+    ]
+    conn_cycle = MagicMock()
+    conn_cycle.cursor.return_value.__enter__.return_value = mock_cursor_cycle
+    result_cycle = _would_create_cycle(conn_cycle, source_id, target_parent_id)
+    assert result_cycle is True
+    assert conn_cycle.cursor.call_count == 1
+
+
+def test_no_update_guard_source_contract():
+    """no-update guard returns normalized object without performing redundant require_memory_owner calls."""
+    import inspect
+    import ast
+    from modal_compute import memory_writes
+
+    src = inspect.getsource(memory_writes.update_owner_memory)
+    tree = ast.parse(src)
+
+    # Walk AST to find 'if not updates:' block and verify no 'require_memory_owner' call is in it
+    found_guard = False
+    for node in ast.walk(tree):
+        if isinstance(node, ast.If):
+            # check if condition matches 'not updates'
+            if isinstance(node.test, ast.UnaryOp) and isinstance(node.test.op, ast.Not):
+                if isinstance(node.test.operand, ast.Name) and node.test.operand.id == "updates":
+                    found_guard = True
+                    # ensure no call to require_memory_owner in body
+                    for child in ast.walk(node):
+                        if isinstance(child, ast.Call) and isinstance(child.func, ast.Name):
+                            assert child.func.id != "require_memory_owner", "Redundant require_memory_owner call in no-update guard!"
+
+    assert found_guard, "Could not find 'if not updates:' guard block in source AST"
+
+
+def test_parent_not_found_semantics_preserved():
+    """parent lookup not-found check maintains INVALID_PARENT_ID / reason: not_found / HTTP 400."""
+    owner_id = "owner-123"
+    memory_id = "11111111-1111-1111-1111-111111111111"
+    tree_id = "22222222-2222-2222-2222-222222222222"
+    parent_id = "33333333-3333-3333-3333-333333333333"
+
+    source_mem_row = make_memory_row(memory_id, tree_id)
+
+    tracker = MockConnectionTracker()
+    conn1 = MockConnection()
+    conn1.cursor_factory = lambda *a, **k: MockCursor(fetchone_result=None) # parent not found
+    tracker.add_connection(conn1)
+
+    with patch('modal_compute.memory_writes.get_db_connection', side_effect=tracker.get_next_connection):
+        with patch('modal_compute.memory_writes.require_memory_owner', return_value=source_mem_row):
+            try:
+                update_owner_memory(owner_id, memory_id, {"parentId": parent_id})
+                assert False, "Should have failed with parent not found"
+            except HTTPException as e:
+                assert e.status_code == 400
+                assert e.detail.get("code") == "INVALID_PARENT_ID"
+                assert e.detail.get("reason") == "not_found"
+
+
 # ============================================================================
 # Main
 # ============================================================================
@@ -707,6 +786,9 @@ if __name__ == "__main__":
         ("persistence: disconnect UPDATE executes with parent_id = NULL and no None placeholder param", test_persistence_disconnect_executes_final_update_memories_with_null_parent_in_query_no_none_param),
         ("persistence: connect RETURNING row is normalized into response", test_persistence_connect_returning_row_is_normalized_into_response),
         ("persistence: disconnect RETURNING row is normalized into response", test_persistence_disconnect_returning_row_is_normalized_into_response),
+        ("_would_create_cycle cursor reuse contract", test_would_create_cycle_single_cursor_reuse),
+        ("no-update guard source contract", test_no_update_guard_source_contract),
+        ("parent lookup not-found semantics contract", test_parent_not_found_semantics_preserved),
     ]
 
     print("=" * 70)
