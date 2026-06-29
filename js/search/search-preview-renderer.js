@@ -425,7 +425,7 @@
                                  src="${iframeSrc}"
                                  title="${safeTreeTitle}" frameborder="0"
                                  allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                 allowfullscreen style="position:absolute;top:0;left:0;"></iframe>
+                                 allowfullscreen referrerpolicy="strict-origin-when-cross-origin" style="position:absolute;top:0;left:0;"></iframe>
                              <div style="position:absolute;bottom:0;left:0;right:0;background:linear-gradient(to top,rgba(0,0,0,0.8),transparent);padding:40px 20px 20px;color:white;text-align:center;">
                                  <div style="font-size:14px;font-weight:700;margin-bottom:8px;opacity:0.9;">${escapeHtml(getSearchCopy('search.previewStartFromFirstMoment', '대표 순간부터 감상하기', 'Start from the featured moment'))}</div>
                                  <div style="font-size:12px;opacity:0.7;">${safeMediaMemTitle}</div>
