@@ -25,7 +25,7 @@
 
 | Key | Storage location | Contents | Write owner | Read owner | Clear behavior | Security classification | Cross-tab / hard-reload implication |
 |-----|------------------|----------|-------------|------------|----------------|-------------------------|-------------------------------------|
-| `lovebud_auth_token` | **sessionStorage** | `{ uid, token, expiresAt }` | `persistConfirmedAuthSession()` via `sessionStorage.setItem()` | `getCachedAuthToken()` via `sessionStorage.getItem()` | Cleared on logout, invalid session, 30s pre-expiry; also removed from localStorage defensively | **High** — Firebase ID token (~1hr TTL) | **Per-tab**; hard reload clears token; second tab has no token until new login |
+| `lovebud_auth_token` | **sessionStorage** | `{ uid, token, expiresAt }` | `persistConfirmedAuthSession()` via `sessionStorage.setItem()` | `getCachedAuthToken()` via `sessionStorage.getItem()` | Cleared on logout, invalid session, 30s pre-expiry; also removed from localStorage defensively | **High** — Firebase ID token (~1hr TTL) | **Per-tab**; same-tab hard reload/restore preserves sessionStorage; opener-created tab may receive an initial copy; independent tab starts empty |
 | `lovebud_auth_cache` | **localStorage** | `{ uid, displayName, email }` | `setConfirmedAuthCache()` / `persistConfirmedAuthSession()` via `localStorage.setItem()` | `getCachedAuthUser()` via `localStorage.getItem()` | Cleared on logout; also cleared when confirmed flag is false | **Medium** — non-sensitive profile data | **Cross-tab persistent**; survives hard reload |
 | `lovebud_auth_confirmed` | **localStorage** | `"true"` (string flag) | `setConfirmedAuthCache()` / `persistConfirmedAuthSession()` via `localStorage.setItem()` | `getCachedAuthUser()` checks `localStorage.getItem(confirmedKey) === "true"` | Cleared on logout; also cleared when cache is invalid | **Low** — boolean flag only | **Cross-tab persistent**; survives hard reload |
 
@@ -43,8 +43,8 @@
 | Authenticated request token read | `getCachedAuthToken()` reads from `sessionStorage`, parses, checks expiry | ✅ `auth-cache.js:105-124` |
 | 30-second expiry safety window | If `Date.now() >= expiresAt - 30000` → token removed, `null` returned | ✅ `auth-cache.js:116-118` |
 | Logout / invalid-session clear | `signOut()` → `clearConfirmedAuthCache()` → clears all 3 keys from localStorage + token from sessionStorage | ✅ `auth-cache.js:80-86`, `auth.js:675` |
-| Hard reload behavior | `sessionStorage` cleared → token lost; `localStorage` cache/confirmed survive → UI renders cached profile until token re-acquired | ✅ sessionStorage semantics |
-| Second-tab behavior | New tab has no `sessionStorage` token → `getCachedAuthToken()` returns `null` → treated as unauthenticated until next login/refresh | ✅ sessionStorage is per-tab |
+| Hard reload behavior | `sessionStorage` preserved on same-tab hard reload/restore; `localStorage` cache/confirmed survive → UI renders cached profile until token re-acquired | ✅ sessionStorage semantics |
+| Second-tab behavior | New independent tab has no `sessionStorage` token → `getCachedAuthToken()` returns `null` → treated as unauthenticated until next login/refresh; opener-created tab may receive an initial copy via sessionStorage inheritance; Firebase re-bootstrap on load may re-populate token in some environments | ⚠️ not fully verified; depends on environment |
 
 > **Not verified in this docs-only slice**: Exact timing of token refresh, Firebase internal token rotation, cross-tab session synchronization via BroadcastChannel or storage events (not implemented).
 
@@ -58,7 +58,7 @@
 | **Active XSS authenticated action risk** | Token not in localStorage reduces persistent exposure | **sessionStorage alone does not eliminate XSS account risk.** Any active injected script can still access same-origin browser session context, read the token from `sessionStorage`, and issue authenticated requests. | CSP hardening, Trusted Types, XSS prevention (separate workstream) |
 | **Stale session / expired token reuse** | 30-second pre-expiry guard removes token before actual expiry | Race condition if request fires in the 30s window and token expires before response | Token refresh / rotation (future) |
 | **Shared-device persistence** | Token cleared on tab close / session end; UI cache survives | User profile visible on shared device until explicit logout | Explicit logout UX (existing) |
-| **Cross-tab expectations** | Token is per-tab; second tab treated as unauthenticated | User confusion when second tab shows logged-out state | Session synchronization (out of scope) |
+| **Cross-tab expectations** | Token is per-top-level-browsing-context; independent tabs start empty; opener-created tabs may inherit initial copy; Firebase re-bootstrap on load may re-populate token | User confusion when second tab shows logged-out state; opener-created tab may appear logged-in | Session synchronization (out of scope); actual Firebase re-bootstrap behavior is runtime-dependent |
 | **CSRF (only if future cookie model considered)** | N/A — no cookie-based auth currently | N/A | CSRF protection design required for cookie model (see §5) |
 
 > **Firebase public client configuration is not itself a credential leak.** The Firebase Web API key is intended for public client use; it authorizes project access but does not grant data access without user authentication.
@@ -140,8 +140,8 @@ Each of the following is a separate workstream, not coupled to token storage dec
 | Refresh | `getCachedAuthToken()` returns valid token; 30s guard not triggered prematurely | Auth | ✅ |
 | Expiry | Token removed from sessionStorage when `Date.now() >= expiresAt - 30000` | Auth | ✅ |
 | Logout | `sessionStorage.removeItem(tokenKey)` + `localStorage.removeItem(...)` for all 3 keys | Auth | ✅ |
-| Hard reload | `sessionStorage` empty; `localStorage` cache/confirmed persist | Auth | ✅ |
-| Second tab | New tab `sessionStorage.getItem(tokenKey) === null` until login | Auth | ✅ |
+| Hard reload | Same-tab hard reload/restore preserves `sessionStorage` token; `localStorage` cache/confirmed persist | Auth | ✅ |
+| Second tab | Independent tab starts empty; opener-created tab may inherit initial `sessionStorage` copy; Firebase re-bootstrap on load may re-populate token — verify actual behavior per environment | Auth | ✅ |
 | Invalid session | `getCachedAuthToken()` returns `null` on corrupted/missing token | Auth | ✅ |
 | Authenticated retry | Request includes `Authorization: Bearer <token>` from sessionStorage | Auth | ✅ |
 

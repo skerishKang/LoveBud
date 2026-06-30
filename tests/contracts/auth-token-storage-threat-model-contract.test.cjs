@@ -176,10 +176,45 @@ test('Document marks issue legacy localStorage vs current baseline neutrally', (
   assert.match(doc, /without judging past design choices/i, 'Must not judge past design choices');
 });
 
-test('Lifecycle map marks unverified items', () => {
+test('Follow-up test matrix reflects hard reload preservation', () => {
   const doc = read('docs/security/AUTH_TOKEN_STORAGE_THREAT_MODEL.md');
-  assert.match(doc, /not verified in this docs-only slice/i,
-    'Must mark unverified lifecycle behaviors');
+  assert.match(doc, /Hard reload.*Same-tab hard reload.*restore preserves sessionStorage|Same-tab hard reload.*restore preserves sessionStorage/i,
+    'Follow-up test matrix must state same-tab hard reload preserves sessionStorage');
+});
+
+test('Follow-up test matrix reflects opener-created tab behavior', () => {
+  const doc = read('docs/security/AUTH_TOKEN_STORAGE_THREAT_MODEL.md');
+  assert.match(doc, /opener-created tab.*may.*inherit|opener-created tab.*initial copy|opener-created tab.*may.*inherit.*initial/i,
+    'Follow-up test matrix must mention opener-created tab inheritance');
+});
+
+test('Follow-up test matrix does NOT assert second tab always unauthenticated', () => {
+  const doc = read('docs/security/AUTH_TOKEN_STORAGE_THREAT_MODEL.md');
+  assert.ok(!doc.includes('New tab `sessionStorage.getItem(tokenKey) === null` until login'),
+    'Follow-up matrix must not assert second tab always null until login');
+  assert.ok(!doc.includes('second tab always has no token'),
+    'Follow-up matrix must not assert second tab always has no token');
+});
+
+test('Document states same-tab hard reload preserves sessionStorage', () => {
+  const doc = read('docs/security/AUTH_TOKEN_STORAGE_THREAT_MODEL.md');
+  assert.match(doc, /same-tab hard reload.*restore preserves sessionStorage|same-tab hard reload.*preserves sessionStorage/i,
+    'Must state same-tab hard reload preserves sessionStorage token');
+});
+
+test('Document states opener-created tab may inherit sessionStorage copy', () => {
+  const doc = read('docs/security/AUTH_TOKEN_STORAGE_THREAT_MODEL.md');
+  assert.match(doc, /opener-created tab.*may.*inherit|opener-created tab.*initial copy/i,
+    'Must state opener-created tab may receive initial sessionStorage copy');
+});
+
+test('Document does NOT assert second tab always unauthenticated', () => {
+  const doc = read('docs/security/AUTH_TOKEN_STORAGE_THREAT_MODEL.md');
+  // Should NOT contain the old absolute assertion
+  assert.ok(!doc.includes('second tab has no token until new login'),
+    'Must not contain old absolute assertion about second tab having no token');
+  assert.ok(!doc.includes('second tab has no token until login'),
+    'Must not contain absolute assertion about second tab having no token until login');
 });
 
 test('Non-goals explicitly listed', () => {
