@@ -212,8 +212,8 @@ function setupForm(sandbox, elMap, metrics, extraOptions) {
     getFriendlyErrorMessage: extraOptions.getFriendlyErrorMessage || function () { return null; },
     getEmailAuthMode: function () { return emailAuthMode; },
     setEmailAuthMode: function (m) { emailAuthMode = m; },
-    persistConfirmedAuthSession: function () {},
-    preloadRedirectTargetData: function () {},
+    persistConfirmedAuthSession: extraOptions.persistConfirmedAuthSession || function () {},
+    preloadRedirectTargetData: extraOptions.preloadRedirectTargetData || function () {},
     getRedirectTarget: extraOptions.getRedirectTarget || function () { return 'pages/my-trees.html'; },
     isInvalidAuthSessionError: function () { return false; },
     clearStaleFirebaseAuthState: function () {}
@@ -497,6 +497,68 @@ test('state transition: hidden/aria-hidden/textContent consistency', async funct
   assert.equal(ctx.elMap['email-auth-status'].getAttribute('aria-hidden'), 'true',
     'status aria-hidden must be true');
   assert.equal(ctx.elMap['email-auth-status'].textContent, '', 'status must have no text');
+});
+
+test('login redirect: target URL and persist→preload→redirect sequencing', async function () {
+  var ctx = buildSandbox({});
+  var eventLog = [];
+  var REDIRECT_TARGET = 'pages/my-trees.html?source=email-login';
+
+  ctx.sandbox.location = {
+    href: '',
+    pathname: '/pages/login',
+    toString: function () { return this.href; }
+  };
+
+  setupForm(ctx.sandbox, ctx.elMap, ctx.metrics, {
+    getRedirectTarget: function () { return REDIRECT_TARGET; },
+    persistConfirmedAuthSession: function () { eventLog.push('persist'); },
+    preloadRedirectTargetData: function () { eventLog.push('preload'); }
+  });
+
+  await triggerSubmit(ctx.elMap, { email: 'user@login.com', password: 'pass1234' });
+
+  assert.equal(ctx.metrics.signInCalls, 1, 'signIn must be called exactly once');
+  assert.equal(ctx.metrics.createUserCalls, 0, 'createUser must not be called');
+  assert.equal(eventLog.length, 2, 'must have exactly 2 lifecycle events');
+  assert.equal(eventLog[0], 'persist', 'first event must be persistConfirmedAuthSession');
+  assert.equal(eventLog[1], 'preload', 'second event must be preloadRedirectTargetData');
+  assert.equal(ctx.sandbox.location.href, REDIRECT_TARGET, 'window.location.href must equal the redirect target');
+  assert.ok(!ctx.elMap['email-auth-status'].hidden, 'status must be visible');
+  assert.ok(ctx.elMap['email-auth-status'].textContent.includes('로그인되었습니다'), 'status must say 로그인되었습니다');
+  assert.ok(ctx.elMap['email-auth-submit'].disabled, 'submit must be disabled');
+});
+
+test('signup redirect: target URL and persist→preload→redirect sequencing', async function () {
+  var ctx = buildSandbox({});
+  var eventLog = [];
+  var REDIRECT_TARGET = 'pages/my-trees.html?source=email-signup';
+
+  ctx.sandbox.location = {
+    href: '',
+    pathname: '/pages/signup',
+    toString: function () { return this.href; }
+  };
+
+  setupForm(ctx.sandbox, ctx.elMap, ctx.metrics, {
+    initialMode: 'signup',
+    getRedirectTarget: function () { return REDIRECT_TARGET; },
+    persistConfirmedAuthSession: function () { eventLog.push('persist'); },
+    preloadRedirectTargetData: function () { eventLog.push('preload'); }
+  });
+
+  await triggerSubmit(ctx.elMap, { email: 'new@signup.com', password: 'strongpass1234', displayName: 'SignupUser' });
+
+  assert.equal(ctx.metrics.createUserCalls, 1, 'createUser must be called exactly once');
+  assert.equal(ctx.metrics.updateProfileCalls, 1, 'updateProfile must be called');
+  assert.equal(ctx.metrics.signInCalls, 0, 'signIn must not be called for signup');
+  assert.equal(eventLog.length, 2, 'must have exactly 2 lifecycle events');
+  assert.equal(eventLog[0], 'persist', 'first event must be persistConfirmedAuthSession');
+  assert.equal(eventLog[1], 'preload', 'second event must be preloadRedirectTargetData');
+  assert.equal(ctx.sandbox.location.href, REDIRECT_TARGET, 'window.location.href must equal the redirect target');
+  assert.ok(!ctx.elMap['email-auth-status'].hidden, 'status must be visible');
+  assert.ok(ctx.elMap['email-auth-status'].textContent.includes('회원가입이 완료되었습니다'), 'status must say 회원가입이 완료되었습니다');
+  assert.ok(ctx.elMap['email-auth-submit'].disabled, 'submit must be disabled');
 });
 
 test('HTML: #email-auth-status exists in login.html with role/aria', function () {
