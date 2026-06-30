@@ -13,9 +13,9 @@
         if (typeof storage.loadLayoutMode !== 'function') return;
 
         var originalLoadLayoutMode = storage.loadLayoutMode.bind(storage);
-        storage.loadLayoutMode = function publicViewerLoadLayoutMode(layoutModeStorageKey) {
+        storage.loadLayoutMode = function publicViewerLoadLayoutMode(layoutModeStorageKey, readOnly) {
             if (isPortraitPublicViewer()) return 'structured';
-            return originalLoadLayoutMode(layoutModeStorageKey);
+            return originalLoadLayoutMode(layoutModeStorageKey, readOnly);
         };
         storage.__publicMobileLayoutDefaultInstalled = true;
     }

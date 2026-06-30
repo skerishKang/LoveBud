@@ -131,13 +131,13 @@ function createEditorCanvas(deps) {
 
     function loadStoredLayout() {
         if (typeof storageUtils.loadStoredLayout === 'function') {
-            return storageUtils.loadStoredLayout(treeId, layoutStorageKey, canvasLayout);
+            return storageUtils.loadStoredLayout(treeId, layoutStorageKey, canvasLayout, canEdit === false);
         }
     }
 
     function loadLayoutMode() {
         if (typeof storageUtils.loadLayoutMode === 'function') {
-            return storageUtils.loadLayoutMode(layoutModeStorageKey);
+            return storageUtils.loadLayoutMode(layoutModeStorageKey, canEdit === false);
         }
     }
 

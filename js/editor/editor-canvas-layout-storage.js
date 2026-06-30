@@ -1,5 +1,9 @@
 (function() {
-    function loadStoredLayout(treeId, layoutStorageKey, canvasLayout) {
+    function loadStoredLayout(treeId, layoutStorageKey, canvasLayout, readOnly) {
+        if (readOnly) {
+            return { positions: {}, offsetX: 0, offsetY: 0, scale: 1 };
+        }
+
         if (canvasLayout && typeof canvasLayout.createLayoutStore === 'function') {
             const store = canvasLayout.createLayoutStore(treeId);
             const initialState = store.createInitialViewportState();
@@ -27,7 +31,10 @@
         }
     }
 
-    function loadLayoutMode(layoutModeStorageKey) {
+    function loadLayoutMode(layoutModeStorageKey, readOnly) {
+        if (readOnly) {
+            return 'structured';
+        }
         try {
             const raw = localStorage.getItem(layoutModeStorageKey);
             if (raw === 'structured' || raw === 'free') return raw;
