@@ -402,6 +402,44 @@ function createEditorCanvas(deps) {
             onNodeClick(nodeEl, mem);
         };
 
+        const navigateNodeByOffset = (offset) => {
+            const canonicalRootId = getCanonicalRootId();
+            const orderedMemories = getTreeMemories().filter(function (memory) {
+                return !isRootMemory(memory, canonicalRootId);
+            });
+            if (!orderedMemories.length) return;
+
+            const currentIndex = orderedMemories.findIndex(function (memory) {
+                return memory.id === mem.id;
+            });
+            if (currentIndex === -1) return;
+
+            const nextIndex = currentIndex + offset;
+            if (nextIndex < 0 || nextIndex >= orderedMemories.length) return;
+
+            const nextMemory = orderedMemories[nextIndex];
+            const nextNodeEl = selectionUtils.findMemoryNodeById(nextMemory.id);
+            if (!nextNodeEl) return;
+
+            onNodeClick(nextNodeEl, nextMemory);
+            if (typeof nextNodeEl.focus === 'function') {
+                nextNodeEl.focus();
+            }
+        };
+
+        const shouldHandleArrowNavigation = (event) => {
+            if (canEdit === false) return false;
+            if (window.matchMedia && window.matchMedia('(max-width: 768px)').matches) return false;
+            if (event.altKey || event.ctrlKey || event.metaKey) return false;
+
+            const target = event.target;
+            if (!target || !target.closest || !target.closest('.memory-node')) return false;
+            if (target.closest('input, textarea, select, [contenteditable="true"], [contenteditable=""], [contenteditable]')) return false;
+            if (target.closest('#addMemoryForm, .editor-memory-form-modal, .editor-floating-toolbar, .editor-ftb-dropdown, [role="dialog"], .detail-panel')) return false;
+
+            return true;
+        };
+
         uiHelpers.bindNodeHoverAffordance(nodeEl, mem, renderAffordanceForHoveredMemory);
 
         if (canEdit !== false) {
@@ -421,7 +459,10 @@ function createEditorCanvas(deps) {
             tapThreshold: NODE_TAP_SELECT_THRESHOLD
         });
 
-        uiHelpers.bindNodeControlShortcuts(nodeEl, selectMemoryNode);
+        uiHelpers.bindNodeControlShortcuts(nodeEl, selectMemoryNode, {
+            onArrowNavigate: navigateNodeByOffset,
+            shouldHandleArrowNavigation: shouldHandleArrowNavigation
+        });
     }
 
     function createNodeElement(mem, pos) {

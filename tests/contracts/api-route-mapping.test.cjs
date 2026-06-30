@@ -134,6 +134,20 @@ test('cloudflare api catch-all routes public tree GET without auth to modal/tree
   );
 });
 
+test('production public tree detail cache boundary resides in route-specific trees/[id].js', () => {
+  const content = readFileContent(TREE_DETAIL_JS);
+
+  // Must verify that the cache implementation is handled in trees/[id].js (route-specific priority)
+  assert.ok(
+    hasString(content, 'x-lovebud-public-tree-cache'),
+    'trees/[id].js must implement x-lovebud-public-tree-cache headers and policy'
+  );
+  assert.ok(
+    hasString(content, 'max-age=30'),
+    'trees/[id].js must specify cache max-age=30'
+  );
+});
+
 test('cloudflare api trees.js routes to modal/private/trees', () => {
   const content = readFileContent(TREES_JS);
 

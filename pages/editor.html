@@ -44,6 +44,30 @@
 
       <main class="canvas-area reveal-scale reveal-up" id="canvasArea">
         <div id="editorCanvasTopbarTemplateMount"></div>
+        <div class="editor-mobile-panel-controls" aria-label="모바일 보조 패널">
+          <button
+            type="button"
+            id="mobileTreePanelToggle"
+            class="editor-mobile-panel-toggle"
+            aria-controls="editorSidebarTemplateMount"
+            aria-expanded="false"
+            aria-haspopup="dialog"
+          >
+            트리 정보
+          </button>
+          <button
+            type="button"
+            id="mobileDetailPanelToggle"
+            class="editor-mobile-panel-toggle"
+            aria-controls="detailPanel"
+            aria-expanded="false"
+            aria-haspopup="dialog"
+            aria-disabled="true"
+            disabled
+          >
+            선택한 순간
+          </button>
+        </div>
         <svg class="canvas-svg" id="canvasSvg"></svg>
 
         <div id="editorFloatingToolbarTemplateMount"></div>
@@ -73,6 +97,14 @@
       </main>
 
       <div id="editorDetailPanelShellTemplateMount"></div>
+      <button
+        type="button"
+        id="editorMobilePanelBackdrop"
+        class="editor-mobile-panel-backdrop"
+        aria-hidden="true"
+        tabindex="-1"
+        hidden
+      ></button>
     </div>
 
     <script src="../js/cache-utils.js?v=20260418-1"></script>
@@ -90,6 +122,7 @@
     <script type="module" src="../js/editor/templates/editor-detail-empty-state-template.js?v=20260531-1494"></script>
     <script type="module" src="../js/editor/templates/editor-detail-view-mode-template.js?v=20260615-2501"></script>
     <script type="module" src="../js/editor/templates/editor-detail-edit-mode-template.js?v=20260531-1494"></script>
+    <script src="../js/editor/editor-mobile-panel-hierarchy.js?v=20260629-3000"></script>
     <script src="../js/editor/editor-dom-selectors.js?v=20260428-1"></script>
     <script src="../js/editor/editor-root-helpers.js?v=20260613-2448"></script>
     <script src="../js/editor/editor-canvas-layout.js?v=20260507-655"></script>
@@ -182,6 +215,7 @@
     <script src="../js/editor/relationship-hints-state-machine.js?v=20260613-2462"></script>
     <script src="../js/editor/relationship-hints-ui-controller.js?v=20260613-2462"></script>
     <script src="../js/editor/editor-page-event-bindings.js?v=20260613-2449"></script>
+    <script src="../js/editor/editor-shortcuts-help.js?v=20260630-1"></script>
     <script src="../js/editor/editor-initial-load-flow.js?v=20260531-1698"></script>
     <script src="../js/editor/editor-refresh-save-runtime.js?v=20260531-1698"></script>
     <script src="../js/editor/editor-entry-dependencies.js?v=20260531-1698"></script>

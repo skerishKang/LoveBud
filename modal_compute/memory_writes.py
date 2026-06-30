@@ -206,11 +206,11 @@ def update_owner_memory(owner_id: str, memory_id: str, payload: dict[str, Any]) 
                         (parent_id,),
                     )
                     parent_mem = cur.fetchone()
-                if not parent_mem:
-                    raise HTTPException(
-                        status_code=400,
-                        detail={"code": "INVALID_PARENT_ID", "reason": "not_found"},
-                    )
+                    if not parent_mem:
+                        raise HTTPException(
+                            status_code=400,
+                            detail={"code": "INVALID_PARENT_ID", "reason": "not_found"},
+                        )
                 # Check: same tree
                 if str(parent_mem["tree_id"]) != str(memory["tree_id"]):
                     raise HTTPException(
@@ -234,7 +234,6 @@ def update_owner_memory(owner_id: str, memory_id: str, payload: dict[str, Any]) 
 
     if not updates:
         # This should not happen due to empty payload check above, but guard anyway
-        memory = require_memory_owner(safe_memory_id, owner_id)
         return normalize_memory_row(memory)
 
     query = f"""
@@ -272,22 +271,22 @@ def _would_create_cycle(conn, source_id: str, target_parent_id: str) -> bool:
     """
     visited = set()
     current_id = target_parent_id
-    while current_id:
-        if str(current_id) == str(source_id):
-            return True
-        if str(current_id) in visited:
-            # Existing cycle in DB - break to avoid infinite loop
-            return True
-        visited.add(str(current_id))
-        with conn.cursor() as cur:
+    with conn.cursor() as cur:
+        while current_id:
+            if str(current_id) == str(source_id):
+                return True
+            if str(current_id) in visited:
+                # Existing cycle in DB - break to avoid infinite loop
+                return True
+            visited.add(str(current_id))
             cur.execute(
                 "SELECT parent_id FROM memories WHERE id = %s",
                 (current_id,),
             )
             row = cur.fetchone()
-        if not row or not row["parent_id"]:
-            break
-        current_id = row["parent_id"]
+            if not row or not row["parent_id"]:
+                break
+            current_id = row["parent_id"]
     return False
 
 
