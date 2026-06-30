@@ -26,8 +26,8 @@ test('canvas layout storage helper — exposes LoveBudEditorCanvasLayoutStorage 
 
 test('canvas layout storage helper — functions accept expected parameter lengths', () => {
   const storage = createStorageContext();
-  assert.equal(storage.loadStoredLayout.length, 3, 'loadStoredLayout(treeId, layoutStorageKey, canvasLayout)');
-  assert.equal(storage.loadLayoutMode.length, 1, 'loadLayoutMode(layoutModeStorageKey)');
+  assert.equal(storage.loadStoredLayout.length, 4, 'loadStoredLayout(treeId, layoutStorageKey, canvasLayout, readOnly)');
+  assert.equal(storage.loadLayoutMode.length, 2, 'loadLayoutMode(layoutModeStorageKey, readOnly)');
   assert.equal(storage.persistLayoutMode.length, 3, 'persistLayoutMode(mode, layoutModeStorageKey, canEdit)');
   assert.equal(storage.persistStoredPositions.length, 5, 'persistStoredPositions(viewportState, treeId, layoutStorageKey, canvasLayout, canEdit)');
 });

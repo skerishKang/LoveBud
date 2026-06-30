@@ -40,14 +40,14 @@ const persistStoredPositionsBlock = getBlock(
 
 test('editor canvas layout storage delegation — loadStoredLayout prefers storage helper', () => {
   const guardIndex = indexOfRequired(loadStoredLayoutBlock, "if (typeof storageUtils.loadStoredLayout === 'function') {");
-  const helperCallIndex = indexOfRequired(loadStoredLayoutBlock, 'return storageUtils.loadStoredLayout(treeId, layoutStorageKey, canvasLayout);');
+  const helperCallIndex = indexOfRequired(loadStoredLayoutBlock, 'return storageUtils.loadStoredLayout(treeId, layoutStorageKey, canvasLayout, canEdit === false);');
 
   assert.ok(guardIndex < helperCallIndex);
 });
 
 test('editor canvas layout storage delegation — loadLayoutMode prefers storage helper', () => {
   const guardIndex = indexOfRequired(loadLayoutModeBlock, "if (typeof storageUtils.loadLayoutMode === 'function') {");
-  const helperCallIndex = indexOfRequired(loadLayoutModeBlock, 'return storageUtils.loadLayoutMode(layoutModeStorageKey);');
+  const helperCallIndex = indexOfRequired(loadLayoutModeBlock, 'return storageUtils.loadLayoutMode(layoutModeStorageKey, canEdit === false);');
 
   assert.ok(guardIndex < helperCallIndex);
 });
