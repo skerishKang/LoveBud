@@ -285,79 +285,18 @@
     return 'public';
   }
 
-  var createFlowActive = false;
-
   async function createNewTree() {
-    var i18n = window.t || function(k) { return k; };
-
-    if (createFlowActive) return;
-    createFlowActive = true;
-
-    try {
-      var actions = window.LoveBudMyTreesActions || myTreesActions;
-
-      if (!actions || typeof actions.createNewTree !== 'function') {
-        var headerBtn = document.getElementById('headerCreateTreeBtn');
-        var emptyBtn = document.getElementById('createTreeBtn');
-        var restoreHeaderText = '<span class="material-symbols-outlined">add</span> ' + (i18n('myTrees.header_create') || '새 러브트리');
-        var restoreEmptyText = '<span class="material-symbols-outlined" style="font-size:20px;">add_circle</span> ' + (i18n('create_tree_btn') || '새 러브트리 만들기');
-
-        var openingText = i18n('myTrees.create_opening') || '러브트리 만들기를 준비하고 있어요…';
-
-        if (headerBtn) {
-          headerBtn.disabled = true;
-          headerBtn.innerHTML = '<span class="material-symbols-outlined">hourglass_empty</span> ' + openingText;
-        }
-        if (emptyBtn) {
-          emptyBtn.disabled = true;
-          emptyBtn.innerHTML = '<span class="material-symbols-outlined" style="font-size:20px;">hourglass_empty</span> ' + openingText;
-        }
-
-        var MODULE_WAIT_INTERVAL = 100;
-        var MODULE_WAIT_TIMEOUT = 3000;
-        var waited = 0;
-
-        while (waited < MODULE_WAIT_TIMEOUT) {
-          await new Promise(function(r) { setTimeout(r, MODULE_WAIT_INTERVAL); });
-          waited += MODULE_WAIT_INTERVAL;
-
-          actions = window.LoveBudMyTreesActions || myTreesActions;
-          if (actions && typeof actions.createNewTree === 'function') break;
-        }
-
-        if (!actions || typeof actions.createNewTree !== 'function') {
-          if (headerBtn) {
-            headerBtn.disabled = false;
-            headerBtn.innerHTML = restoreHeaderText;
-          }
-          if (emptyBtn) {
-            emptyBtn.disabled = false;
-            emptyBtn.innerHTML = restoreEmptyText;
-          }
-          warnMissingModule('LoveBudMyTreesActions', 'createNewTree');
-          showMissingActionError('createNewTree');
-          return;
-        }
-
-        if (headerBtn) {
-          headerBtn.disabled = false;
-          headerBtn.innerHTML = restoreHeaderText;
-        }
-        if (emptyBtn) {
-          emptyBtn.disabled = false;
-          emptyBtn.innerHTML = restoreEmptyText;
-        }
-      }
-
-      await actions.createNewTree({
+    if (myTreesActions && typeof myTreesActions.createNewTree === 'function') {
+      return myTreesActions.createNewTree({
         getDefaultVisibility: getDefaultVisibility,
         showToast: showToast,
         cacheKey: TREES_CACHE_KEY,
-        i18n: i18n
+        i18n: window.t || function(k) { return k; }
       });
-    } finally {
-      createFlowActive = false;
     }
+
+    warnMissingModule('LoveBudMyTreesActions', 'createNewTree');
+    showMissingActionError('createNewTree');
   }
 
   var TREES_CACHE_KEY = myTreesData?.TREES_CACHE_KEY || 'my_trees_list';
