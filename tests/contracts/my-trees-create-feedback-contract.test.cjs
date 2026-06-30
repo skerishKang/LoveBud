@@ -62,7 +62,7 @@ test('Success triggers exactly one redirect after success status shown', () => {
   // Success message shown before redirect
   assert.match(actionsSource, /successMsg.*create_success|myTrees\.create_success/, 'Success message key must be used');
   assert.match(actionsSource, /submitBtn\.textContent = successMsg/, 'Submit button must show success message');
-  assert.match(actionsSource, /headerBtn\.innerHTML.*check_circle.*successMsg/, 'Header button must show success message');
+  assert.match(actionsSource, /setCtaContent\(headerBtn, 'check_circle'.*successMsg\)/, 'Header button must show success message via setCtaContent');
   // aria-busy cleared on success
   assert.match(actionsSource, /backdrop\.removeAttribute\('aria-busy'\)/, 'aria-busy must be cleared on success');
   // Only one redirect call
@@ -73,7 +73,7 @@ test('Success triggers exactly one redirect after success status shown', () => {
 test('Success status set before redirect', () => {
   // Success message displayed on buttons before redirect
   assert.match(actionsSource, /submitBtn\.textContent = successMsg[\s\S]*?setTimeout/, 'Success message must be set before setTimeout redirect');
-  assert.match(actionsSource, /headerBtn\.innerHTML.*successMsg[\s\S]*?setTimeout/, 'Header success message must be set before redirect');
+  assert.match(actionsSource, /setCtaContent\(headerBtn[\s\S]*?successMsg[\s\S]*?setTimeout/, 'Header success message must be set before redirect');
 });
 
 test('Failure preserves input title, restores CTA, shows safe inline error', () => {
@@ -81,9 +81,9 @@ test('Failure preserves input title, restores CTA, shows safe inline error', () 
   // The error handler does NOT clear titleInput.value - it only re-enables via setSubmitting(false)
   // Buttons restored to original state
   assert.match(actionsSource, /headerBtn\.disabled = false/, 'Header button must be re-enabled on error');
-  assert.match(actionsSource, /headerBtn\.innerHTML = restoreHeaderText/, 'Header button must restore original text');
+  assert.match(actionsSource, /setCtaContent\(headerBtn, 'add'/, 'Header button must restore original text via setCtaContent');
   assert.match(actionsSource, /emptyBtn\.disabled = false/, 'Empty button must be re-enabled on error');
-  assert.match(actionsSource, /emptyBtn\.innerHTML = restoreEmptyText/, 'Empty button must restore original text');
+  assert.match(actionsSource, /setCtaContent\(emptyBtn, 'add_circle'/, 'Empty button must restore original text via setCtaContent');
   // setSubmitting(false) re-enables input
   assert.match(actionsSource, /modal\.setSubmitting\(false.*i18n\)/, 'Modal must call setSubmitting(false) on error');
   // Safe error message used

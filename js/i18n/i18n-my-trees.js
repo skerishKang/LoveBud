@@ -81,6 +81,7 @@
     'myTrees.create_modal_submit': { ko: '이 트리로 시작하기', en: 'Start with this tree' },
     'myTrees.create_modal_title_required': { ko: '트리 제목을 입력해 주세요.', en: 'Please enter a tree title.' },
     'myTrees.creating': { ko: '러브트리를 준비하고 있어요…', en: 'Preparing your LoveTree…' },
+    'myTrees.create_opening': { ko: '러브트리 만들기를 준비하고 있어요…', en: 'Preparing to create your LoveTree…' },
     'myTrees.create_success': { ko: '러브트리가 만들어졌어요. 이동 중이에요…', en: 'LoveTree created. Redirecting…' },
     'myTrees.create_tree_fail': { ko: '러브트리 만들기 실패. 다시 시도해 주세요.', en: 'Failed to create LoveTree. Please try again.' },
     'myTrees.hub_title': { ko: '내 러브트리', en: 'My LoveTree' },

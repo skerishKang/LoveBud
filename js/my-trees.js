@@ -301,6 +301,88 @@
 
   var TREES_CACHE_KEY = myTreesData?.TREES_CACHE_KEY || 'my_trees_list';
 
+  var createFlowGuard = false;
+  var createFlowMaxWaitMs = 3000;
+  var createFlowRetryIntervalMs = 100;
+
+  function setHeaderCtaState(isOpening, i18n) {
+    var headerBtn = document.getElementById('headerCreateTreeBtn');
+    if (!headerBtn) return;
+    var t = i18n || window.t || function(k) { return k; };
+    headerBtn.disabled = isOpening;
+    headerBtn.replaceChildren();
+
+    var icon = document.createElement('span');
+    icon.className = 'material-symbols-outlined';
+    icon.textContent = isOpening ? 'hourglass_empty' : 'add';
+    headerBtn.appendChild(icon);
+
+    headerBtn.appendChild(document.createTextNode(' ' + safeText(t, isOpening ? 'myTrees.create_opening' : 'myTrees.header_create', isOpening ? '러브트리 만들기를 준비하고 있어요…' : '새 러브트리')));
+  }
+
+  function setEmptyCtaState(isOpening, i18n) {
+    var emptyBtn = document.getElementById('createTreeBtn');
+    if (!emptyBtn) return;
+    var t = i18n || window.t || function(k) { return k; };
+    emptyBtn.disabled = isOpening;
+    emptyBtn.replaceChildren();
+
+    var icon = document.createElement('span');
+    icon.className = 'material-symbols-outlined';
+    icon.style.fontSize = '20px';
+    icon.textContent = isOpening ? 'hourglass_empty' : 'add_circle';
+    emptyBtn.appendChild(icon);
+
+    emptyBtn.appendChild(document.createTextNode(' ' + safeText(t, isOpening ? 'myTrees.create_opening' : 'create_tree_btn', isOpening ? '러브트리 만들기를 준비하고 있어요…' : '새 러브트리 만들기')));
+  }
+
+  function safeText(i18n, key, fallback) {
+    var translated = typeof i18n === 'function' ? i18n(key) : '';
+    return translated && translated !== key ? translated : fallback;
+  }
+
+  async function waitForMyTreesActions(startTime) {
+    while (!myTreesActions || typeof myTreesActions.createNewTree !== 'function') {
+      if (Date.now() - startTime > createFlowMaxWaitMs) {
+        return false;
+      }
+      await new Promise(resolve => setTimeout(resolve, createFlowRetryIntervalMs));
+    }
+    return true;
+  }
+
+  async function createNewTree() {
+    if (createFlowGuard) {
+      return;
+    }
+    createFlowGuard = true;
+
+    var i18n = window.t || function(k) { return k; };
+    var startTime = Date.now();
+
+    setHeaderCtaState(true, i18n);
+    setEmptyCtaState(true, i18n);
+
+    try {
+      var ready = await waitForMyTreesActions(startTime);
+      if (!ready) {
+        showMissingActionError('createNewTree');
+        return;
+      }
+
+      return await myTreesActions.createNewTree({
+        getDefaultVisibility: getDefaultVisibility,
+        showToast: showToast,
+        cacheKey: TREES_CACHE_KEY,
+        i18n: i18n
+      });
+    } finally {
+      createFlowGuard = false;
+      setHeaderCtaState(false, i18n);
+      setEmptyCtaState(false, i18n);
+    }
+  }
+
   async function loadTrees() {
     if (myTreesData && typeof myTreesData.loadTrees === 'function') {
       return myTreesData.loadTrees({
