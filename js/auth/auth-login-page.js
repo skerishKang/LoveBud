@@ -1,6 +1,21 @@
 (function () {
   if (window.LoveBudAuthLoginPage) return;
 
+  /**
+   * Idempotent event listener helper.
+   * Removes the previously attached handler (stored on element[handlerKey])
+   * before adding the new one, so calling setupEmailAuthEntry() more than
+   * once does NOT accumulate duplicate listeners.
+   */
+  function replaceEventListener(element, handlerKey, eventName, handler) {
+    if (!element || typeof element.addEventListener !== 'function') return;
+    if (element[handlerKey] && typeof element.removeEventListener === 'function') {
+      element.removeEventListener(eventName, element[handlerKey]);
+    }
+    element[handlerKey] = handler;
+    element.addEventListener(eventName, handler);
+  }
+
   function isCurrentLoginPage() {
     var path = window.location.pathname || '';
     return path.indexOf('/pages/login.html') !== -1 ||
@@ -115,6 +130,7 @@
   }
 
   var EMAIL_AUTH_EXECUTION_METHODS = {
+    setupEmailAuthEntry: true,
     setupEmailAuthForm: true,
     setupSignupForm: true
   };
@@ -200,6 +216,165 @@
     });
   }
 
+  function setupEmailAuthEntry(options) {
+    if (window.__lovebudEmailAuthEntryBound) return;
+    window.__lovebudEmailAuthEntryBound = true;
+
+    var setEmailAuthMode = options && options.setEmailAuthMode;
+    var getEmailAuthMode = options && options.getEmailAuthMode;
+    var syncEmailAuthModeUiFn = options && options.syncEmailAuthModeUi;
+    var applyI18n = options && options.applyI18n;
+    var initialMode = (options && options.initialMode) || 'login';
+
+    var modal = document.getElementById('email-auth-modal');
+    var closeBtn = document.getElementById('email-auth-close');
+    var toggleBtn = document.getElementById('email-auth-toggle');
+    var emailBtn = document.getElementById('login-btn-email');
+    var signupBtn = document.getElementById('signup-btn-email');
+    var lastTriggerButton = null;
+
+    // Set canonical mode immediately
+    if (typeof setEmailAuthMode === 'function') {
+      setEmailAuthMode(initialMode);
+    }
+
+    function syncAllUi() {
+      var mode = typeof getEmailAuthMode === 'function' ? getEmailAuthMode() : 'login';
+
+      // Title/helper/badge/submit/toggle text via canonical syncEmailAuthModeUi
+      if (typeof syncEmailAuthModeUiFn === 'function') {
+        syncEmailAuthModeUiFn({
+          emailAuthMode: mode,
+          titleEl: document.getElementById('email-auth-title'),
+          helperEl: document.getElementById('email-auth-helper'),
+          submitBtn: document.getElementById('email-auth-submit'),
+          toggleBtn: toggleBtn,
+          badgeEl: document.getElementById('auth-mode-badge'),
+          applyI18n: typeof applyI18n === 'function' ? applyI18n : undefined
+        });
+      }
+
+      // Display name visibility + required
+      var displayNameInput = document.getElementById('email-auth-display-name');
+      var displayNameWrap = displayNameInput && (typeof displayNameInput.closest === 'function'
+        ? displayNameInput.closest('[data-auth-display-name-wrap]')
+        : null);
+      if (displayNameInput && displayNameWrap) {
+        var isSignup = mode === 'signup';
+        displayNameWrap.style.display = isSignup ? 'block' : 'none';
+        displayNameInput.required = isSignup;
+      }
+
+      // Reset password visibility + disabled
+      var resetWrap = document.getElementById('email-auth-reset-wrap');
+      var resetBtn = document.getElementById('email-auth-reset');
+      if (resetWrap && resetBtn) {
+        resetWrap.hidden = mode === 'signup';
+        resetBtn.disabled = mode === 'signup';
+      }
+
+      // Note: focus is applied by openModal() after the modal is visible,
+      // not here inside syncAllUi(), to maintain correct display-then-focus order.
+    }
+
+    function openModal(mode) {
+      // 1. Set canonical mode
+      if (typeof setEmailAuthMode === 'function') {
+        setEmailAuthMode(mode);
+      }
+      // 2. Make modal visible
+      if (modal) modal.style.display = 'flex';
+      // 3. Sync UI based on canonical state
+      syncAllUi();
+      // 4. Focus email input now that modal is visible
+      var emailInput = document.getElementById('email-auth-email');
+      if (emailInput) { try { emailInput.focus(); } catch (e) {} }
+    }
+
+    function closeModal() {
+      if (modal) modal.style.display = 'none';
+      if (lastTriggerButton && typeof lastTriggerButton.focus === 'function') {
+        try { lastTriggerButton.focus(); } catch (e) {}
+        lastTriggerButton = null;
+      }
+    }
+
+    // ── login CTA ──
+    if (emailBtn) {
+      replaceEventListener(emailBtn, '__lovebudEmailEntryLoginOpen', 'click', function (e) {
+        e.preventDefault();
+        lastTriggerButton = emailBtn;
+        openModal('login');
+      });
+    }
+
+    // ── signup CTA ──
+    if (signupBtn) {
+      replaceEventListener(signupBtn, '__lovebudEmailEntrySignupOpen', 'click', function (e) {
+        e.preventDefault();
+        lastTriggerButton = signupBtn;
+        openModal('signup');
+      });
+    }
+
+    // ── close button ──
+    if (closeBtn) {
+      replaceEventListener(closeBtn, '__lovebudEmailEntryClose', 'click', function () {
+        closeModal();
+      });
+    }
+
+    // ── backdrop ──
+    if (modal) {
+      replaceEventListener(modal, '__lovebudEmailEntryBackdrop', 'click', function (e) {
+        if (e.target === modal) closeModal();
+      });
+    }
+
+    // ── login/signup toggle ──
+    if (toggleBtn) {
+      replaceEventListener(toggleBtn, '__lovebudEmailEntryToggle', 'click', function () {
+        var currentMode = typeof getEmailAuthMode === 'function' ? getEmailAuthMode() : 'login';
+        var nextMode = currentMode === 'login' ? 'signup' : 'login';
+        if (typeof setEmailAuthMode === 'function') {
+          setEmailAuthMode(nextMode);
+        }
+        syncAllUi();
+      });
+    }
+
+    // ── Escape + Tab focus-trap (unified, idempotent) ──
+    if (modal) {
+      replaceEventListener(modal, '__lovebudEmailEntryKeydown', 'keydown', function (e) {
+        // Escape: close modal and return focus to trigger
+        if (e.key === 'Escape' || e.key === 'Esc') {
+          closeModal();
+          return;
+        }
+        // Tab: trap focus inside modal
+        if (e.key === 'Tab') {
+          var focusable = modal.querySelectorAll(
+            'input:not([disabled]), button:not([disabled]), [tabindex]:not([tabindex="-1"])'
+          );
+          if (focusable.length === 0) return;
+          var first = focusable[0];
+          var last = focusable[focusable.length - 1];
+          if (e.shiftKey) {
+            if (document.activeElement === first) {
+              e.preventDefault();
+              try { last.focus(); } catch (e2) {}
+            }
+          } else {
+            if (document.activeElement === last) {
+              e.preventDefault();
+              try { first.focus(); } catch (e2) {}
+            }
+          }
+        }
+      });
+    }
+  }
+
   function setupEmailAuthForm(options) {
     var firebaseRef = options && options.firebase;
     var initFirebase = options && options.initFirebase;
@@ -207,7 +382,6 @@
     var getFriendlyErrorMessage = options && options.getFriendlyErrorMessage;
     var getEmailAuthMode = options && options.getEmailAuthMode;
     var setEmailAuthMode = options && options.setEmailAuthMode;
-    var syncEmailAuthModeUiFn = options && options.syncEmailAuthModeUi;
     var persistConfirmedAuthSession = options && options.persistConfirmedAuthSession;
     var preloadRedirectTargetData = options && options.preloadRedirectTargetData;
     var getRedirectTarget = options && options.getRedirectTarget;
@@ -222,80 +396,17 @@
     var passwordInput = document.getElementById('email-auth-password');
     var displayNameInput = document.getElementById('email-auth-display-name');
     var submitBtn = document.getElementById('email-auth-submit');
-    var toggleBtn = document.getElementById('email-auth-toggle');
-    var modal = document.getElementById('email-auth-modal');
-    var titleEl = document.getElementById('email-auth-title');
-    var helperEl = document.getElementById('email-auth-helper');
     var resetBtn = document.getElementById('email-auth-reset');
     var resetWrap = document.getElementById('email-auth-reset-wrap');
 
-    function updateModeUi() {
-      if (typeof syncEmailAuthModeUiFn !== 'function') return;
-      syncEmailAuthModeUiFn({
-        emailAuthMode: typeof getEmailAuthMode === 'function' ? getEmailAuthMode() : 'login',
-        titleEl: titleEl,
-        helperEl: helperEl,
-        submitBtn: submitBtn,
-        toggleBtn: toggleBtn,
-        badgeEl: document.getElementById('auth-mode-badge')
-      });
-    }
-
-    function syncDisplayNameVisibility() {
-      if (!displayNameInput) return;
-      var wrapper = displayNameInput.closest('[data-auth-display-name-wrap]');
-      if (!wrapper) return;
-      var isSignup = (typeof getEmailAuthMode === 'function' ? getEmailAuthMode() : 'login') === 'signup';
-      wrapper.style.display = isSignup ? 'block' : 'none';
-      displayNameInput.required = isSignup;
-    }
-
     function syncResetVisibility() {
-      if (!resetBtn || !resetWrap) return;
-      var isLogin = (typeof getEmailAuthMode === 'function' ? getEmailAuthMode() : 'login') === 'login';
-      resetWrap.hidden = !isLogin;
-      resetBtn.disabled = !isLogin;
+      var isLogin = typeof getEmailAuthMode === 'function' ? getEmailAuthMode() : 'login';
+      isLogin = isLogin === 'login';
+      if (resetWrap) resetWrap.hidden = !isLogin;
+      if (resetBtn) resetBtn.disabled = !isLogin;
     }
 
-    updateModeUi();
-    syncDisplayNameVisibility();
-    syncResetVisibility();
-
-    if (toggleBtn) {
-      toggleBtn.addEventListener('click', function () {
-        var nextMode = (typeof getEmailAuthMode === 'function' ? getEmailAuthMode() : 'login') === 'login'
-          ? 'signup'
-          : 'login';
-        if (typeof setEmailAuthMode === 'function') {
-          setEmailAuthMode(nextMode);
-        }
-        updateModeUi();
-        syncDisplayNameVisibility();
-        syncResetVisibility();
-      });
-    }
-
-    var emailBtn = document.getElementById('login-btn-email');
-    if (emailBtn) {
-      emailBtn.addEventListener('click', function (e) {
-        e.preventDefault();
-        if (modal) modal.style.display = 'flex';
-      });
-    }
-
-    var closeBtn = document.getElementById('email-auth-close');
-    if (closeBtn) {
-      closeBtn.addEventListener('click', function () {
-        if (modal) modal.style.display = 'none';
-      });
-    }
-
-    if (modal) {
-      modal.addEventListener('click', function (e) {
-        if (e.target === modal) modal.style.display = 'none';
-      });
-    }
-
+    // Only form submit + password reset — all UI binding is in setupEmailAuthEntry
     form.addEventListener('submit', async function (e) {
       e.preventDefault();
 
@@ -548,6 +659,7 @@
     setupLoginPageAuthUi: setupLoginPageAuthUi,
     setupGoogleBtn: setupGoogleBtn,
     setupSignupGoogleBtn: setupSignupGoogleBtn,
+    setupEmailAuthEntry: setupEmailAuthEntry,
     setupEmailAuthForm: setupEmailAuthForm,
     setupSignupForm: setupSignupForm
   };

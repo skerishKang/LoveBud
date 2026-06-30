@@ -60,6 +60,45 @@
         </div>
     </div>
 
+    <!-- Email Auth Modal -->
+    <div id="email-auth-modal" role="dialog" aria-modal="true" aria-labelledby="email-auth-title" aria-describedby="email-auth-helper" class="login-email-modal" style="display:none;">
+    <div class="login-email-modal-card">
+    <button id="email-auth-close" aria-label="모달 닫기" class="login-email-close">&times;</button>
+<div id="auth-mode-badge" class="login-auth-mode-badge">
+    로그인
+</div>
+<h2 id="email-auth-title" class="login-email-title" data-i18n="email_modal_title_login">이메일로 로그인</h2>
+<p id="email-auth-helper" class="login-email-helper" data-i18n="email_modal_desc_login">이미 만든 이메일 계정으로 로그인합니다</p>
+ <form id="email-auth-form" class="login-form" novalidate>
+ <div data-auth-display-name-wrap class="login-form-group-large" style="display:none;">
+     <label for="email-auth-display-name" class="login-form-label" data-i18n="display_name_label">닉네임</label>
+     <input
+         type="text"
+         id="email-auth-display-name"
+         maxlength="30"
+         placeholder="예: XG Alpha"
+         data-i18n-placeholder="display_name_placeholder"
+         class="login-form-input"
+     >
+ </div>
+ <div class="login-form-group-large">
+     <label for="email-auth-email" class="login-form-label" data-i18n="email_label">이메일</label>
+     <input type="email" id="email-auth-email" required class="login-form-input" aria-describedby="email-auth-error">
+ </div>
+<div class="login-form-group-xl">
+    <label for="email-auth-password" class="login-form-label" data-i18n="password_label">비밀번호</label>
+    <input type="password" id="email-auth-password" required class="login-form-input" aria-describedby="email-auth-error">
+</div>
+<div id="email-auth-reset-wrap" class="login-form-reset-wrap">
+    <button type="button" id="email-auth-reset" class="login-form-reset-link" data-i18n="password_reset_link">비밀번호를 잊으셨나요?</button>
+</div>
+<p id="email-auth-error" class="login-form-error" role="alert" aria-live="polite" aria-hidden="true" hidden></p>
+<button type="submit" id="email-auth-submit" class="login-submit-button login-submit-button-primary" data-i18n="login_btn">로그인</button>
+</form>
+<button id="email-auth-toggle" class="login-email-toggle" data-i18n="switch_to_signup">계정이 없나요? 회원가입으로 전환</button>
+</div>
+</div>
+
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="../js/firebase-config.js?v=20260417-31"></script>
@@ -81,7 +120,6 @@
     <script src="../js/auth/auth-login-page.js?v=20260628-return-target-1"></script>
     <script src="../js/auth/auth-ui-templates.js?v=20260522-1283"></script>
     <script src="../js/auth.js?v=20260422-3"></script>
-    <script src="../js/signup-page.js?v=20260427-1"></script>
     <script src="../js/page-transitions.js?v=20260430-1"></script>
 </body>
 </html>
