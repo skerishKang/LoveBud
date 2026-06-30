@@ -162,7 +162,7 @@
 
 ### Current `const X = deps.X;` patterns in `editor.js`
 
-All 15+ remaining `const X = deps.X;` are clean **direct property reads** from the `deps` object. No `shellHelpers` namespace involved anymore.
+All 15+ remaining `const X = deps.X;` are clean **direct property reads** from the `deps` object. Local `const X = shellHelpers.X` alias patterns have been removed, but the `deps.shellHelpers` namespace and `window.LoveBudEditorShellHelpers` compatibility surface are still active.
 
 ### Contract test coverage for aliases
 
@@ -178,51 +178,55 @@ All 15+ remaining `const X = deps.X;` are clean **direct property reads** from t
 | Consumed in `editor.js` via `deps.shellHelpers.X` | `editor.js:43–92` (10 factory consts) |
 | Owner file | `js/editor/editor-shell-helpers.js` (exports `window.LoveBudEditorShellHelpers`) |
 | Compatibility boundary owner | `editor-entry-dependencies.js` (reads `window.LoveBudEditorShellHelpers`, wraps into `deps.shellHelpers` — isolates `editor.js` from the window surface) |
-| Future slice: maintained global surface | `window.LoveBudEditorShellHelpers` until this extraction PR replaces it with `LoveBudEditorShellStartup` |
-| Future slice: changed global surface | `deps.shellHelpers.X` → `deps.X` in both `editor-entry-dependencies.js` and `editor.js`; `window.LoveBudEditorShellHelpers` → `window.LoveBudEditorShellStartup` |
+| Future slice: maintained global surface | `window.LoveBudEditorShellHelpers` kept intact in first extraction slice; rename/flatten deferred to separate audit issue |
+| Future slice: changed global surface | `deps.shellHelpers` kept in first slice; new `editor-shell-startup.js` may add a parallel `window.LoveBudEditorShellStartup` surface, but `LoveBudEditorShellHelpers` remains the active compatibility boundary |
 
 ## 6. First Extraction Candidate (Exact 1)
 
-### Candidate: `editor-shell-helpers.js` → `editor-shell-startup.js`
+### Candidate: `editor-shell-helpers.js` → `editor-shell-startup.js` (behavior-preserving)
 
-**Rationale**: `editor-shell-helpers.js` contains ~11 factory functions from `deps.shellHelpers.*` — all match the `createEditor*<name>` pattern with identical `typeof` guards. This is the **only** remaining `shellHelpers` namespace. Moving these to `editor-shell-startup.js` removes the namespace entirely.
+**Rationale**: `editor-shell-helpers.js` contains ~11 factory functions from `deps.shellHelpers.*` — all match the `createEditor*<name>` pattern with identical `typeof` guards. The goal of the first slice is to introduce a new `editor-shell-startup.js` module while preserving `window.LoveBudEditorShellHelpers` as the active compatibility surface. No rename, no namespace flatten — those are deferred to a separate audit issue.
 
-**Operation**: Actual file rename (`editor-shell-helpers.js` → `editor-shell-startup.js`) + `shellHelpers` namespace removal from both `editor-entry-dependencies.js` and `editor.js`.
+**Operation**: Source split or facade: create `editor-shell-startup.js` as the new hosting module for the startup factory functions. Keep `editor-shell-helpers.js` as a thin compatibility re-export (or remove it if nothing else imports `LoveBudEditorShellHelpers` aside from `editor-entry-dependencies.js`).
+
+The key invariant: `window.LoveBudEditorShellHelpers` and `deps.shellHelpers` both remain usable after this slice. The new module may add `window.LoveBudEditorShellStartup` as a parallel surface, but consumers (`editor-entry-dependencies.js`, `editor.js`) continue reading from `deps.shellHelpers`.
 
 **Required changes**:
-1. Rename `js/editor/editor-shell-helpers.js` → `js/editor/editor-shell-startup.js`; update `window` surface name from `LoveBudEditorShellHelpers` to `LoveBudEditorShellStartup`
-2. `js/editor/editor-entry-dependencies.js`: remove `shellHelpers` namespace; wire all `shellHelpers.*` factory results directly into `deps.<name>` (e.g. `applyEditorShellCopy`, `createEditorStartDependencyGuard`, `createEditorStartDependencyChecker`, `createEditorRequiredGlobalWaiter`, `createEditorStartupShellApplier`, `createEditorCanvasEmptyGuideUpdater`, `createEditorSelectNodeHandler`, `createEditorSidebarStatusUpdater`, `createEditorInitialMemoryProvider`, `createEditorNextMemoryIdProvider`, `createEditorInitialSelectionApplier`, `createEditorReadyFinalizer`)
-3. `js/editor.js`: change `deps.shellHelpers.X` → `deps.X` (10 lines)
-4. `pages/editor.html`: update `<script>` tag filename and global surface name
-5. Focused contract test(s): update `shellHelpers` references to new surface and file path
+1. Create `js/editor/editor-shell-startup.js` — host startup factory functions
+2. If `editor-shell-helpers.js` is retained as a compatibility facade, keep `window.LoveBudEditorShellHelpers` intact
+3. If `editor-shell-helpers.js` is removed, `editor-entry-dependencies.js` must still resolve `window.LoveBudEditorShellHelpers` from the new module
+4. `pages/editor.html`: add the new `<script>` tag **only if** the new module requires a separate load entry (decide during implementation)
+5. Focused contract test(s): verify `window.LoveBudEditorShellHelpers` still present, verify new `window.LoveBudEditorShellStartup` surface if added
 
 **Allowed files** (minimum set):
 - `js/editor/editor-shell-startup.js` (new)
-- `js/editor/editor-shell-helpers.js` (remove)
-- `js/editor/editor-entry-dependencies.js`
-- `js/editor.js`
-- `pages/editor.html`
-- Focused contract test file(s) covering the renamed global surface and script order
+- `js/editor/editor-shell-helpers.js` (compatibility facade or removed)
+- `pages/editor.html` (only if script loading change is required — not mandatory)
+- Focused contract test file(s) covering compatibility surface preservation and script order
 
-**Forbidden files**:
-- `css/editor.css` (no CSS)
-- `js/auth.js`, `js/api/*`, `js/postgres-client.js` (no API/auth/DB)
-- `js/editor/editor-detail-ui.js`, `js/editor/editor-canvas.js`, `js/editor/editor-memory-actions.js`, `js/editor/editor-memory-form.js` (no behavior modules)
+**Forbidden files** (first slice):
+- `js/editor.js`
+- `js/editor/editor-entry-dependencies.js`
+- `css/editor.css`
+- `js/auth.js`, `js/api/*`, `js/postgres-client.js`
+- `js/editor/editor-detail-ui.js`, `js/editor/editor-canvas.js`, `js/editor/editor-memory-actions.js`, `js/editor/editor-memory-form.js`
 - `pages/*.html` except `pages/editor.html`
-- `functions/*`, `modal_compute/*`, `netlify/*` (no deployment changes)
+- `functions/*`, `modal_compute/*`, `netlify/*`
 
 **Preserved globals**:
 - `LoveBudEditorEntryDependencies` (unchanged)
 - `LoveBudEditorDataLoader` (unchanged)
-- `LoveBudEditorShellHelpers` → replaced by `LoveBudEditorShellStartup`
-- All `window.createEditor*`, `window.LoveBud*` surfaces (unchanged except `ShellHelpers` → `ShellStartup`)
+- `LoveBudEditorShellHelpers` — kept active
+- `LoveBudEditorShellStartup` — added as parallel surface (if implemented)
+- All `window.createEditor*`, `window.LoveBud*` surfaces (unchanged)
 
 **Rollback condition**:
-- If any `typeof shellHelpers.X !== 'function'` guard still exists in `editor-entry-dependencies.js` or `editor.js` → full rollback
-- If any `editor.js` start sequence changes beyond `deps.shellHelpers.X` → `deps.X` → revert
-- If any contract test expects `LoveBudEditorShellHelpers` still present → revert
+- If `window.LoveBudEditorShellHelpers` is no longer resolvable after the slice → full rollback
+- If `deps.shellHelpers` breaks in `editor.js` → revert
+- If `editor.js` start sequence changes → revert
+- If any contract test expects `LoveBudEditorShellHelpers` still present and it is not → revert
 
-**Boundary**: File rename + `shellHelpers` namespace removal only. No behavior change, no new factory function, no API/auth/DB/data-model change.
+**Boundary**: Behavior-preserving source split only. No rename, no namespace flatten, no `deps.shellHelpers.X` → `deps.X` change in this slice. No new factory function, no API/auth/DB/data-model change.
 
 ## 7. Related Existing Contract Test / Smoke Coverage
 
@@ -255,10 +259,12 @@ All 15+ remaining `const X = deps.X;` are clean **direct property reads** from t
 
 - No API/auth/data-model/user-visible behavior changes
 - No global alias reintroduction
-- No `shellHelpers.X` → direct `deps.shellHelpers.X` change — must use `deps.X` path
-- No `<script>` order changes in `pages/editor.html`
+- No `deps.shellHelpers.X` → `deps.X` flatten in this slice (deferred to separate audit issue)
+- No rename of `LoveBudEditorShellHelpers` global surface (deferred to separate audit issue)
+- No changes to `js/editor.js` or `js/editor/editor-entry-dependencies.js`
 - No `netlify/functions/**`, `modal_compute/*`, `functions/*` changes
-- No `css/*`, `js/*`, `pages/*` changes outside `js/editor/*`
+- No `css/*` changes
+- No `pages/*` changes outside `pages/editor.html`
 - No test addition/modification in this audit PR (audit-only)
 - No `Closes #1882`, `Fixes #1882`, `Resolves #1882` — only `Refs #1882`
 
@@ -266,19 +272,20 @@ All 15+ remaining `const X = deps.X;` are clean **direct property reads** from t
 
 ### First extraction PR (after this audit):
 
-1. **Move** `editor-shell-helpers.js` → `editor-shell-startup.js`
-2. **Remove** `shellHelpers` namespace from `editor.js`
-3. **Replace** `const X = deps.shellHelpers.X` → `const X = deps.X` in `editor.js` (10 lines, flat namespace removal)
-4. **No** other file changes
+1. **Create** `js/editor/editor-shell-startup.js` — host startup factory functions
+2. **Preserve** `window.LoveBudEditorShellHelpers` compatibility surface (keep `editor-shell-helpers.js` as facade, or ensure re-export from new module)
+3. **Add** `pages/editor.html` `<script>` tag only if new module requires a separate load entry
+4. **No changes** to `js/editor.js`, `js/editor/editor-entry-dependencies.js`, or `deps.shellHelpers` consumer code
+
+**Allowed file scope**: see §6 Allowed files. Anything outside that list is forbidden in this slice.
 
 ### Verification (next implementation PR):
 
 - `git diff --check` (no whitespace errors)
 - Focused contract tests only:
-  - `tests/contracts/editor-script-order-contract.test.cjs` — verify `<script>` tag update does not break load order
-  - `tests/contracts/editor-entry-dependencies-contract.test.cjs` — verify `deps.X` replacements match expected surface
-  - `tests/contracts/editor-post-bootstrap-alias-inventory-contract.test.cjs` — verify `shellHelpers` namespace alias count drops to 0
-  - New focused contract test for the renamed global surface (`LoveBudEditorShellStartup`)
+  - `tests/contracts/editor-script-order-contract.test.cjs` — verify `<script>` tag update does not break load order (if `pages/editor.html` was changed)
+  - `tests/contracts/editor-post-bootstrap-alias-inventory-contract.test.cjs` — verify alias count remains 0
+  - New focused contract test for the new module surface (`window.LoveBudEditorShellStartup` if added) and compatibility (`window.LoveBudEditorShellHelpers` still present)
 - Remote CI (GitHub Actions) — merge check only
 - User signed-in production smoke — after merge, one manual smoke on the editor page
 - No blanket `npm test`, no `npm run verify:remote`, no `npm run check:pr-guardrails`
@@ -289,10 +296,10 @@ All 15+ remaining `const X = deps.X;` are clean **direct property reads** from t
 - **Cluster**: ~20+ `shellHelpers` factory methods, ~15+ `deps.*` direct reads, ~11 global dependency registrations
 - **Dependency**: `editor-entry-dependencies.js`, `editor-shell-helpers.js`, `editor-data-loader.js`, `editor-canvas.js`, `editor-detail-ui.js`, `editor-memory-actions.js`, `editor-memory-form.js`
 - **Global surface**: `LoveBudEditor*`, `window.createEditor*`, `window.apiClient`, `window.currentTreeData`
-- **Alias status**: 0 remaining `const X = shellHelpers.X` → all `const X = deps.X`
-- **Extraction candidate**: `editor-shell-startup.js` (1 file)
+- **Alias status**: 0 remaining `const X = shellHelpers.X` — local alias patterns removed. `deps.shellHelpers` and `window.LoveBudEditorShellHelpers` still active
+- **First extraction candidate**: `editor-shell-startup.js` — behavior-preserving source split, no rename/flatten
 - **Protected**: #2960, #2856, #3070, #3084 — all preserved
-- **No-go**: No API, no auth, no data-model, no user-visible behavior, no alias reintroduction, no protected-scope changes
+- **No-go**: No API/auth/data-model/behavior change; no `js/editor.js` or `editor-entry-dependencies.js` changes; no `LoveBudEditorShellHelpers` rename or `deps.shellHelpers` flatten in this slice
 
 Refs #3088
 Refs #1882
