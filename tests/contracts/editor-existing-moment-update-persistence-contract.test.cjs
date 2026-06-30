@@ -476,52 +476,43 @@ test('12. deferred pending: duplicate blocked → resolve → guard reset → se
   assert.equal(t12Ctx.getFormDisplay('edit'), 'block', 'edit form is open');
   var p1 = t12Ctx.actions.saveMemoryEdit();
 
-  // b. API call count should be 1 (updateMemory was invoked, returned deferred promise)
-  //    Since the promise is pending but synchronous call increased callCount
+  // b. 첫 deferred API call count = 1
   assert.equal(t12Ctx.getCallCount(), 1, 'first save: 1 API call initiated');
 
-  // c. Promise is still unresolved — cannot check resolved state, only that callCount is 1
+  // c. 첫 Promise는 unresolved 상태
 
-  // d. pending state: second save
+  // d. p2 = saveMemoryEdit() 실행
   var p2 = t12Ctx.actions.saveMemoryEdit();
 
-  // e. API call count still 1 (duplicate blocked by guard)
-  assert.equal(t12Ctx.getCallCount(), 1, 'duplicate blocked: still 1 API call');
+  // e. call count = 1 유지
+  assert.equal(t12Ctx.getCallCount(), 1, 'duplicate submit p2 blocked: still 1 API call');
 
-  // f. edit form still open while pending
+  // f. p3 = saveMemoryEdit() 실행
+  var p3 = t12Ctx.actions.saveMemoryEdit();
+
+  // g. call count = 1 유지
+  assert.equal(t12Ctx.getCallCount(), 1, 'duplicate submit p3 blocked: still 1 API call');
+
+  // h. pending 중 edit form = block, view form = none
   assert.equal(t12Ctx.getFormDisplay('edit'), 'block', 'edit form stays open while pending');
+  assert.equal(t12Ctx.getFormDisplay('view'), 'none', 'view form stays hidden while pending');
 
-  // g. resolveDeferred with valid response (matching ID, canonical same video ID)
+  // i. resolveDeferred(matching ID + canonical same-video-ID + changed fields acknowledged response)
   t12Ctx.resolveDeferred(deferredResponse);
 
-  // h. wait for both promises
-  await Promise.all([p1, p2]);
+  // j. await Promise.all([p1, p2, p3])
+  await Promise.all([p1, p2, p3]);
 
-  // i. success: edit form closes, view form opens
+  // k. success 후 edit form = none, view form = block
   assert.equal(t12Ctx.getFormDisplay('edit'), 'none', 'success closes edit form');
   assert.equal(t12Ctx.getFormDisplay('view'), 'block', 'success opens view form');
   assert.equal(t12Ctx.getEditingMemory().title, 'Updated', 'title updated after deferred resolve');
 
-  // j. guard reset → second save
-  //    Set up fresh DOM values for a second mutation
-  var secondResponse = {
-    id: 'mem-1', title: 'Final', sourceUrl: 'https://www.youtube.com/embed/bbbbbbbbbbb',
-    sourceType: 'youtube',
-    thumbnail: 'https://img.youtube.com/vi/bbbbbbbbbbb/mqdefault.jpg',
-    source: 'YouTube', emotionTags: [],
-    updatedAt: new Date().toISOString()
-  };
+  // l. 다시 saveMemoryEdit() 호출 (enterEditMode 후 두 번째 save 실행)
+  t12Ctx.actions.enterEditMode();
+  var pFinal = t12Ctx.actions.saveMemoryEdit();
+  await pFinal;
 
-  // Need a second deferred for the next save
-  // The second save uses a normal (non-deferred) apiResponse
-  // Since useDeferred only applies to the first call and deferredPromise was consumed,
-  // we direct the second save via a non-deferred path
-  // Actually, after useDeferred resolves once, subsequent calls go through the normal
-  // path (the deferredPromise is consumed). So we need to use apiResponse for the second.
-  // This is a harness limitation — useDeferred only works once.
-  // Instead, since the first deferred is consumed, the second save will get
-  // the default success response, which matches ID and video — it will succeed.
-
-  await t12Ctx.actions.saveMemoryEdit();
+  // m. call count = 2 확인
   assert.equal(t12Ctx.getCallCount(), 2, 'second save: 2 API calls — guard reset');
 });

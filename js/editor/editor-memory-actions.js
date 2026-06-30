@@ -345,14 +345,13 @@ function createEditorMemoryActions(deps) {
             }
         }
 
+        if (isMemoryEditSaveInFlight) return;
+        isMemoryEditSaveInFlight = true;
+
         updateSaveStatus('saving', i18n('save_saving'));
 
         try {
             if (window.apiClient && typeof window.apiClient.updateMemory === 'function') {
-                // Guard set here: all synchronous validations passed
-                if (isMemoryEditSaveInFlight) return;
-                isMemoryEditSaveInFlight = true;
-
                 const savedMemory = await window.apiClient.updateMemory(currentEditingMemory.id, payload);
                 const savedPatch = savedMemory && typeof savedMemory === 'object' ? savedMemory : {};
 
