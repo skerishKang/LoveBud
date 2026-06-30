@@ -19,8 +19,8 @@
 
     // 로그인 페이지
     'login_title': {
-      ko: '다시 러브트리에 로그인하세요',
-      en: 'Log back in to LoveTree'
+      ko: '러브트리에 로그인하세요',
+      en: 'Log in to LoveTree'
     },
     'login_desc': {
       ko: '기록해 둔 순간과 러브트리를 이어서 보려면 로그인하세요.',
