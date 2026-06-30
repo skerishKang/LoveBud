@@ -66,7 +66,7 @@ test('Decision record meta fields present', () => {
 
 test('Decision summary contains interim model and XSS caveat', () => {
   const doc = normalizeDocument(read('docs/security/AUTH_TOKEN_STORAGE_THREAT_MODEL.md'));
-  assert.match(doc, /sessionStorage interim model retained/, 'Must state sessionStorage interim model retained');
+  assert.match(doc, /sessionStorage-backed token cache is retained as a short-term interim model/, 'Must state sessionStorage-backed token cache is retained as the interim model');
   assert.match(doc, /does not eliminate active XSS risk/, 'Must state sessionStorage does not eliminate active XSS risk');
   assert.match(doc, /active XSS authenticated action risk/, 'Must state active XSS authenticated action risk');
   assert.match(doc, /No claim that current state is XSS-proof/, 'Must not claim XSS-proof');
@@ -151,7 +151,7 @@ test('auth-cache.js clears legacy localStorage token key', () => {
 test('auth-cache.js sessionStorage token write path exists', () => {
   const src = read('js/auth/auth-cache.js');
   // persistConfirmedAuthSession writes token to sessionStorage
-  assert.match(src, /tokenStorage\.setItem\(tokenKey/, 'Token must be written to sessionStorage via setItem');
+  assert.match(src, /tokenStorage\.setItem\(\s*tokenKey/, 'Token must be written to sessionStorage via setItem');
   assert.match(src, /expiresAt/, 'Token record must include expiresAt');
 });
 
