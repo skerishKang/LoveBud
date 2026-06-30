@@ -186,8 +186,8 @@ test('Document marks issue legacy localStorage vs current baseline neutrally', (
 });
 
 test('Follow-up test matrix reflects hard reload preservation', () => {
-  const doc = read('docs/security/AUTH_TOKEN_STORAGE_THREAT_MODEL.md');
-  assert.match(doc, /Hard reload.*Same-tab hard reload.*restore preserves sessionStorage|Same-tab hard reload.*restore preserves sessionStorage/i,
+  const doc = normalizeDocument(read('docs/security/AUTH_TOKEN_STORAGE_THREAT_MODEL.md'));
+  assert.match(doc, /Hard reload Same-tab hard reload restore preserves sessionStorage|Same-tab hard reload restore preserves sessionStorage/i,
     'Follow-up test matrix must state same-tab hard reload preserves sessionStorage');
 });
 
@@ -206,8 +206,8 @@ test('Follow-up test matrix does NOT assert second tab always unauthenticated', 
 });
 
 test('Document states same-tab hard reload preserves sessionStorage', () => {
-  const doc = read('docs/security/AUTH_TOKEN_STORAGE_THREAT_MODEL.md');
-  assert.match(doc, /same-tab hard reload.*restore preserves sessionStorage|same-tab hard reload.*preserves sessionStorage/i,
+  const doc = normalizeDocument(read('docs/security/AUTH_TOKEN_STORAGE_THREAT_MODEL.md'));
+  assert.match(doc, /same-tab hard reload restore preserves sessionStorage|same-tab hard reload preserves sessionStorage/i,
     'Must state same-tab hard reload preserves sessionStorage token');
 });
 
