@@ -2,6 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('path');
+const vm = require('node:vm');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 
@@ -148,9 +149,11 @@ test('attemptStartedAt recorded before POST for reconciliation', () => {
   assert.match(actionsSource, /attemptStartedAt = Date\.now\(\)/, 'attemptStartedAt must be recorded before POST');
 });
 
-test('Reconciliation uses attemptStartedAt instead of fixed 60s window', () => {
-  assert.match(actionsSource, /new Date\(t\.createdAt\)\.getTime\(\) >= attemptStartedAt/, 'Reconciliation must compare createdAt >= attemptStartedAt');
+test('Reconciliation uses pre-POST snapshot (ID-based, timestamp secondary)', () => {
+  assert.match(actionsSource, /findNewTree\(/, 'Reconciliation must use findNewTree helper');
+  assert.match(actionsSource, /excludeIds\.indexOf\(t\.id\) === -1/, 'Reconciliation must exclude pre-POST IDs');
   assert.doesNotMatch(actionsSource, /60000/, 'Reconciliation must not use 60-second window');
+  assert.match(actionsSource, /attemptStartedAt/, 'attemptStartedAt used as secondary sort condition');
 });
 
 test('Check mode issues getTrees only, never createTree', () => {
@@ -167,8 +170,9 @@ test('401 and 403 defer to auth UX, do not retry', () => {
 });
 
 test('400 and 422 validation errors preserve normal retry flow', () => {
-  assert.match(actionsSource, /Non-ambiguous error, retry allowed/, 'Normal retry path must log retry allowed');
+  assert.match(actionsSource, /Validation error, retry allowed/, 'Validation error path must log retry allowed');
   assert.match(actionsSource, /myTrees\.create_tree_fail/, 'Error message must use safe i18n key');
+  assert.match(actionsSource, /status === 400 \|\| status === 422/, 'Status 400/422 must be explicitly checked');
 });
 
 test('createFlowGuard prevents duplicate form submissions', () => {
@@ -180,4 +184,432 @@ test('__myTreesCreateFlowActive prevents duplicate createNewTree calls', () => {
   assert.match(actionsSource, /__myTreesCreateFlowActive\)/, 'Must check __myTreesCreateFlowActive at top');
   assert.match(actionsSource, /__myTreesCreateFlowActive = true;/, 'Must set __myTreesCreateFlowActive active');
   assert.match(actionsSource, /__myTreesCreateFlowActive = false;/, 'Must reset __myTreesCreateFlowActive at end');
+});
+
+test('409 and 429 errors do not retry, safe stop', () => {
+  assert.match(actionsSource, /status === 409 \|\| status === 429/, '409/429 must be explicitly handled');
+  assert.match(actionsSource, /Conflict\/rate-limit, safe stop/, '409/429 must log safe stop');
+  assert.match(actionsSource, /closeModal\(null\)/, '409/429 must close modal');
+  // No retry path after 409/429
+  var conflictBlock = actionsSource.match(/status === 409[\s\S]*?break;/);
+  assert.ok(conflictBlock, '409/429 block must end with break (no retry)');
+  assert.doesNotMatch(conflictBlock ? conflictBlock[0] : '', /setCtaContent\(.*hourglass_empty/, 'No retry CTA setup in 409/429 block');
+});
+
+test('findNewTree excludes snapshot IDs, uses Math.abs timestamp sort', () => {
+  assert.match(actionsSource, /excludeIds\.indexOf\(t\.id\) === -1/, 'findNewTree must filter out snapshot IDs');
+  assert.match(actionsSource, /Math\.abs\(new Date\(a\.createdAt\)/, 'findNewTree must use Math.abs for timestamp sorting');
+  assert.match(actionsSource, /return candidates\[0\]/, 'findNewTree must return first sorted candidate');
+});
+
+test('createNewTree returns outcome redirecting on success', () => {
+  assert.match(actionsSource, /return \{ outcome: 'redirecting' \};/, 'createNewTree must return redirecting outcome on success');
+  assert.match(actionsSource, /takeSnapshot\(\);/, 'createNewTree must take pre-POST snapshot');
+});
+
+test('js/my-trees.js polls window.LoveBudMyTreesActions not closure snapshot', () => {
+  assert.match(myTreesJs, /window\.LoveBudMyTreesActions/, 'my-trees.js must poll window.LoveBudMyTreesActions');
+  assert.doesNotMatch(myTreesJs, /while \(!myTreesActions \|\|/, 'my-trees.js must not poll closure snapshot');
+});
+
+test('js/my-trees.js createNewTree preserves CTA lock on redirecting outcome', () => {
+  assert.match(myTreesJs, /redirecting = true;/, 'my-trees.js must set redirecting flag');
+  assert.match(myTreesJs, /if \(!redirecting\)/, 'my-trees.js must skip CTA restore when redirecting');
+});
+
+// ─── VM Runtime Tests ──────────────────────────────────────────
+
+test.describe('Runtime (VM)', { concurrency: 1 }, function() {
+
+function createFakeElement(tagName, id) {
+  var listeners = {};
+  var children = [];
+  var attributes = {};
+  var classList = {
+    _items: [],
+    add: function(c) { if (!classList._items.includes(c)) classList._items.push(c); },
+    remove: function(c) { classList._items = classList._items.filter(function(x) { return x !== c; }); },
+    contains: function(c) { return classList._items.includes(c); },
+    toggle: function(c) { if (classList.contains(c)) classList.remove(c); else classList.add(c); }
+  };
+  return {
+    tagName: tagName,
+    id: id || null,
+    nodeType: 1,
+    children: children,
+    classList: classList,
+    className: '',
+    style: {},
+    disabled: false,
+    textContent: '',
+    value: '',
+    innerHTML: '',
+    _listeners: listeners,
+    _attributes: attributes,
+    _parent: null,
+    ownerDocument: null,
+    getAttribute: function(name) { return attributes[name] !== undefined ? String(attributes[name]) : null; },
+    setAttribute: function(name, value) { attributes[name] = String(value); },
+    removeAttribute: function(name) { delete attributes[name]; },
+    appendChild: function(child) { children.push(child); child._parent = this; return child; },
+    replaceChildren: function() { children.length = 0; },
+    addEventListener: function(type, handler) {
+      if (!listeners[type]) listeners[type] = [];
+      listeners[type].push(handler);
+    },
+    removeEventListener: function(type, handler) {
+      if (!listeners[type]) return;
+      listeners[type] = listeners[type].filter(function(h) { return h !== handler; });
+    },
+    dispatchEvent: function(event) {
+      var handlers = listeners[event.type] || [];
+      for (var i = 0; i < handlers.length; i++) handlers[i](event);
+    },
+    focus: function() {},
+    select: function() {},
+    querySelector: function(sel) {
+      if (sel === '.create-tree-visibility') return this._createTreeVisibility || null;
+      return null;
+    },
+    closest: function(sel) {
+      if (sel === '.create-tree-field') return this._closestField || null;
+      return null;
+    }
+  };
+}
+
+function createFakeEvent(type) {
+  return {
+    type: type,
+    defaultPrevented: false,
+    stopPropagation: function() {},
+    preventDefault: function() { this.defaultPrevented = true; },
+    key: '',
+    target: null
+  };
+}
+
+function createFakeDocument() {
+  var elements = new Map();
+  var doc = {
+    _elements: elements,
+    getElementById: function(id) { return elements.get(id) || null; },
+    createElement: function(tagName) { return createFakeElement(tagName, null); },
+    createTextNode: function(text) { return { nodeType: 3, textContent: String(text) }; },
+    addEventListener: function(type, handler) { doc['_on' + type] = handler; },
+    removeEventListener: function(type, handler) {},
+    dispatchEvent: function() {},
+    querySelector: function(sel) {
+      if (sel === '.my-trees-dashboard-grid-shell') return createFakeElement('div', null);
+      if (sel === '#sortTreesSelect') return null;
+      return null;
+    },
+    body: createFakeElement('body', null),
+    head: createFakeElement('head', null),
+    createEvent: function() { return { initEvent: function() {} }; }
+  };
+  doc.body.ownerDocument = doc;
+  doc.head.ownerDocument = doc;
+  return doc;
+}
+
+function setupDefaultElements(doc) {
+  var ids = [
+    'createTreeModalBackdrop',
+    'createTreeModalForm',
+    'createTreeTitleInput',
+    'createTreeModalError',
+    'createTreeModalCancelBtn',
+    'createTreeModalCloseBtn',
+    'createTreeModalSubmitBtn',
+    'headerCreateTreeBtn',
+    'createTreeBtn'
+  ];
+  var tagMap = { 'createTreeModalForm': 'form', 'createTreeTitleInput': 'input' };
+  ids.forEach(function(id) {
+    var tag = tagMap[id] || 'div';
+    if (id.endsWith('Btn')) tag = 'button';
+    var el = createFakeElement(tag, id);
+    doc._elements.set(id, el);
+    el.ownerDocument = doc;
+  });
+  var form = doc._elements.get('createTreeModalForm');
+  var submitBtn = doc._elements.get('createTreeModalSubmitBtn');
+  submitBtn._form = form;
+  var visibilityDiv = createFakeElement('div', null);
+  visibilityDiv.className = 'create-tree-visibility';
+  visibilityDiv._closestField = createFakeElement('div', null);
+  visibilityDiv._closestField.className = 'create-tree-field';
+  form._createTreeVisibility = visibilityDiv;
+  form.appendChild(visibilityDiv);
+}
+
+function createContextifiedWindow() {
+  var doc = createFakeDocument();
+  setupDefaultElements(doc);
+  var _hrefValue = 'http://localhost/';
+  var location = {
+    get href() { return _hrefValue; },
+    set href(v) { _hrefValue = String(v); },
+    replace: function(url) { _hrefValue = String(url); },
+    toString: function() { return _hrefValue; }
+  };
+  var win = {
+    window: null,
+    document: doc,
+    self: null,
+    globalThis: null,
+    location: location,
+    localStorage: (function() {
+      var store = {};
+      return {
+        getItem: function(k) { return store[k] !== undefined ? store[k] : null; },
+        setItem: function(k, v) { store[k] = String(v); },
+        removeItem: function(k) { delete store[k]; }
+      };
+    })(),
+    setTimeout: setTimeout,
+    clearTimeout: clearTimeout,
+    setInterval: setInterval,
+    clearInterval: clearInterval,
+    console: console,
+    Math: Math,
+    Date: Date,
+    JSON: JSON,
+    encodeURIComponent: encodeURIComponent,
+    String: String,
+    Array: Array,
+    Object: Object,
+    Boolean: Boolean,
+    Number: Number,
+    Promise: Promise,
+    Error: Error,
+    parseInt: parseInt,
+    parseFloat: parseFloat,
+    isNaN: isNaN,
+    isFinite: isFinite,
+    RegExp: RegExp,
+    Event: function(type) { return createFakeEvent(type); },
+    CustomEvent: function(type) { return createFakeEvent(type); },
+    _redirectUrl: ''
+  };
+  win.window = win;
+  win.self = win;
+  win.globalThis = win;
+  win.t = function(k) { return k; };
+  win.getConfirmedAuthUser = function() { return { uid: 'user123' }; };
+  win.LoveBudUI = { showToast: function() {} };
+  win.LoveBudMyTreesPage = { setState: function() {}, STATE: {} };
+  win.LoveBudMyTreesData = { loadTrees: function() {} };
+  var _href = _hrefValue;
+  Object.defineProperty(win.location, 'href', {
+    get: function() { return _href; },
+    set: function(v) { _href = String(v); win._redirectUrl = String(v); },
+    configurable: true,
+    enumerable: true
+  });
+  return win;
+}
+
+function loadActionsScript(win) {
+  var code = fs.readFileSync(path.join(ROOT, 'js/my-trees/my-trees-actions.js'), 'utf8');
+  vm.runInContext(code, win);
+}
+
+test('Runtime: success flow returns redirecting outcome, CTA stays disabled', async function(t) {
+  var win = createContextifiedWindow();
+  vm.createContext(win);
+  win.apiClient = { createTree: async function() { return { id: 'runtime-1' }; } };
+  loadActionsScript(win);
+  var headerBtn = win.document.getElementById('headerCreateTreeBtn');
+  var titleInput = win.document.getElementById('createTreeTitleInput');
+
+  var promise = win.LoveBudMyTreesActions.createNewTree({ i18n: win.t });
+  await new Promise(function(r) { setTimeout(r, 50); });
+  titleInput.value = 'Runtime Tree';
+  win.document.getElementById('createTreeModalForm').dispatchEvent(createFakeEvent('submit'));
+
+  var result = await promise;
+  assert.strictEqual(result.outcome, 'redirecting', 'Must return redirecting outcome');
+  assert.strictEqual(headerBtn.disabled, true, 'Header CTA must remain disabled after redirect commit');
+});
+
+test('Runtime: pre-existing same-title tree excluded from reconciliation', async function(t) {
+  var win = createContextifiedWindow();
+  vm.createContext(win);
+  var now = Date.now();
+
+  win.apiClient = {
+    createTree: async function() {
+      var err = new Error('Network Error');
+      throw err;
+    },
+    getTrees: async function() {
+      // Return one tree that was created BEFORE attemptStartedAt with same title
+      return [
+        { id: 'old-tree', title: 'Same Title', createdAt: new Date(now - 120000).toISOString() }
+      ];
+    }
+  };
+
+  loadActionsScript(win);
+  var submitBtn = win.document.getElementById('createTreeModalSubmitBtn');
+  var titleInput = win.document.getElementById('createTreeTitleInput');
+
+  var promise = win.LoveBudMyTreesActions.createNewTree({ i18n: win.t });
+  await new Promise(function(r) { setTimeout(r, 50); });
+  titleInput.value = 'Same Title';
+  win.document.getElementById('createTreeModalForm').dispatchEvent(createFakeEvent('submit'));
+
+  // Wait for reconciliation attempt
+  await new Promise(function(r) { setTimeout(r, 200); });
+
+  // Should enter check mode, NOT redirect
+  assert.ok(win._redirectUrl === '', 'Should NOT redirect to pre-existing tree');
+  assert.ok(submitBtn.textContent.indexOf('check_status') !== -1 || submitBtn.textContent.indexOf('생성 상태 확인') !== -1,
+    'Should enter check mode, got: ' + submitBtn.textContent);
+});
+
+test('Runtime: 409 conflict does not retry, modal closes', async function(t) {
+  var win = createContextifiedWindow();
+  vm.createContext(win);
+  var callCount = 0;
+
+  win.apiClient = {
+    createTree: async function() {
+      callCount++;
+      var err = new Error('Conflict');
+      err.status = 409;
+      throw err;
+    }
+  };
+
+  loadActionsScript(win);
+  var backdrop = win.document.getElementById('createTreeModalBackdrop');
+  var titleInput = win.document.getElementById('createTreeTitleInput');
+
+  var promise = win.LoveBudMyTreesActions.createNewTree({ i18n: win.t });
+  await new Promise(function(r) { setTimeout(r, 50); });
+  titleInput.value = 'Conflict Tree';
+  win.document.getElementById('createTreeModalForm').dispatchEvent(createFakeEvent('submit'));
+
+  await new Promise(function(r) { setTimeout(r, 200); });
+
+  assert.strictEqual(callCount, 1, 'createTree called exactly once (no retry)');
+  assert.ok(!backdrop.classList.contains('show'), 'Modal should be closed after 409');
+});
+
+test('Runtime: 429 rate limit does not retry, modal closes', async function(t) {
+  var win = createContextifiedWindow();
+  vm.createContext(win);
+  var callCount = 0;
+
+  win.apiClient = {
+    createTree: async function() {
+      callCount++;
+      var err = new Error('Rate Limited');
+      err.status = 429;
+      throw err;
+    }
+  };
+
+  loadActionsScript(win);
+  var backdrop = win.document.getElementById('createTreeModalBackdrop');
+  var titleInput = win.document.getElementById('createTreeTitleInput');
+
+  var promise = win.LoveBudMyTreesActions.createNewTree({ i18n: win.t });
+  await new Promise(function(r) { setTimeout(r, 50); });
+  titleInput.value = 'Rate Tree';
+  win.document.getElementById('createTreeModalForm').dispatchEvent(createFakeEvent('submit'));
+
+  await new Promise(function(r) { setTimeout(r, 200); });
+
+  assert.strictEqual(callCount, 1, 'createTree called exactly once (no retry)');
+  assert.ok(!backdrop.classList.contains('show'), 'Modal should be closed after 429');
+});
+
+test('Runtime: check mode repeated submission issues 0 additional createTree', async function(t) {
+  var win = createContextifiedWindow();
+  vm.createContext(win);
+  var createCallCount = 0;
+  var getTreesCallCount = 0;
+
+  win.apiClient = {
+    createTree: async function() {
+      createCallCount++;
+      var err = new Error('Network Error');
+      throw err;
+    },
+    getTrees: async function() {
+      getTreesCallCount++;
+      return [];
+    }
+  };
+
+  loadActionsScript(win);
+  var submitBtn = win.document.getElementById('createTreeModalSubmitBtn');
+  var titleInput = win.document.getElementById('createTreeTitleInput');
+
+  var promise = win.LoveBudMyTreesActions.createNewTree({ i18n: win.t });
+  await new Promise(function(r) { setTimeout(r, 50); });
+  titleInput.value = 'Check Tree';
+  win.document.getElementById('createTreeModalForm').dispatchEvent(createFakeEvent('submit'));
+
+  // Wait for check mode
+  await new Promise(function(r) { setTimeout(r, 200); });
+
+  assert.strictEqual(createCallCount, 1, 'createTree called exactly once');
+  // takeSnapshot (1) + reconcile after ambiguous (1) = 2
+  assert.strictEqual(getTreesCallCount, 2, 'getTrees called: takeSnapshot + reconcile');
+
+  // Submit again in check mode
+  titleInput.value = 'Check Tree';
+  win.document.getElementById('createTreeModalForm').dispatchEvent(createFakeEvent('submit'));
+  await new Promise(function(r) { setTimeout(r, 200); });
+
+  assert.strictEqual(createCallCount, 1, 'createTree still exactly once (no additional POST)');
+  // Check mode reconcile = 1 more getTrees
+  assert.strictEqual(getTreesCallCount, 3, 'getTrees: 1 more for check mode reconcile');
+});
+
+test('Runtime: client/server clock skew handled via ID-based reconciliation', { timeout: 5000 }, async function(t) {
+  var win = createContextifiedWindow();
+  vm.createContext(win);
+  var now = Date.now();
+  var callCount = 0;
+
+  win.apiClient = {
+    createTree: async function() {
+      var err = new Error('Network Error');
+      throw err;
+    },
+    getTrees: async function() {
+      callCount++;
+      // First call = takeSnapshot (no matching tree yet)
+      if (callCount === 1) {
+        return [
+          { id: 'existing-1', title: 'Other Tree', createdAt: new Date(now - 86400000).toISOString() }
+        ];
+      }
+      // Second call = reconcile (new tree appeared, clock is skewed)
+      return [
+        { id: 'existing-1', title: 'Other Tree', createdAt: new Date(now - 86400000).toISOString() },
+        { id: 'new-id', title: 'Skew Tree', createdAt: new Date(now + 3600000).toISOString() }
+      ];
+    }
+  };
+
+  loadActionsScript(win);
+  var titleInput = win.document.getElementById('createTreeTitleInput');
+  var headerBtn = win.document.getElementById('headerCreateTreeBtn');
+
+  var promise = win.LoveBudMyTreesActions.createNewTree({ i18n: win.t });
+  await new Promise(function(r) { setTimeout(r, 50); });
+  titleInput.value = 'Skew Tree';
+  win.document.getElementById('createTreeModalForm').dispatchEvent(createFakeEvent('submit'));
+
+  var result = await promise;
+  assert.strictEqual(result.outcome, 'redirecting', 'Should return redirecting despite clock skew');
+  assert.strictEqual(headerBtn.disabled, true, 'CTA stays disabled after redirect commit');
+});
 });

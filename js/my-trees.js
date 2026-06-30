@@ -342,7 +342,7 @@
   }
 
   async function waitForMyTreesActions(startTime) {
-    while (!myTreesActions || typeof myTreesActions.createNewTree !== 'function') {
+    while (!window.LoveBudMyTreesActions || typeof window.LoveBudMyTreesActions.createNewTree !== 'function') {
       if (Date.now() - startTime > createFlowMaxWaitMs) {
         return false;
       }
@@ -363,6 +363,8 @@
     setHeaderCtaState(true, i18n);
     setEmptyCtaState(true, i18n);
 
+    var redirecting = false;
+
     try {
       var ready = await waitForMyTreesActions(startTime);
       if (!ready) {
@@ -370,16 +372,23 @@
         return;
       }
 
-      return await myTreesActions.createNewTree({
+      var result = await window.LoveBudMyTreesActions.createNewTree({
         getDefaultVisibility: getDefaultVisibility,
         showToast: showToast,
         cacheKey: TREES_CACHE_KEY,
         i18n: i18n
       });
+
+      if (result && result.outcome === 'redirecting') {
+        redirecting = true;
+        return result;
+      }
     } finally {
-      createFlowGuard = false;
-      setHeaderCtaState(false, i18n);
-      setEmptyCtaState(false, i18n);
+      if (!redirecting) {
+        createFlowGuard = false;
+        setHeaderCtaState(false, i18n);
+        setEmptyCtaState(false, i18n);
+      }
     }
   }
 
