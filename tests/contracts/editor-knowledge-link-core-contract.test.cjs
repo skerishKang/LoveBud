@@ -110,6 +110,20 @@ test('6. lookupPublishedEntities: options.limit bounds', () => {
 
   const results = core.lookupPublishedEntities(fixture, '', { limit: 1 });
   assert.strictEqual(results.length, 1, 'Should limit returned list to exactly 1');
+
+  const allPublished = fixture.entities.filter(e => e.publicationState === 'published').length;
+
+  const resultsFloat = core.lookupPublishedEntities(fixture, '', { limit: 1.5 });
+  assert.strictEqual(resultsFloat.length, allPublished, 'Float limit should be ignored');
+
+  const resultsZero = core.lookupPublishedEntities(fixture, '', { limit: 0 });
+  assert.strictEqual(resultsZero.length, allPublished, 'Zero limit should be ignored');
+
+  const resultsNeg = core.lookupPublishedEntities(fixture, '', { limit: -1 });
+  assert.strictEqual(resultsNeg.length, allPublished, 'Negative limit should be ignored');
+
+  const resultsString = core.lookupPublishedEntities(fixture, '', { limit: "1" });
+  assert.strictEqual(resultsString.length, allPublished, 'String limit should be ignored');
 });
 
 test('7. lookupPublishedEntities: draft entities are strictly excluded', () => {
@@ -248,7 +262,7 @@ test('12. validateManualMomentEntityLink: reject unknown or draft entity referen
   assert.strictEqual(core.validateManualMomentEntityLink(draftInput, mockFixture).code, 'ENTITY_NOT_PUBLISHED', 'Draft entity must be rejected');
 });
 
-test('13. validateManualMomentEntityLink: reject public visibility escalation', () => {
+test('13. validateManualMomentEntityLink: sourceMomentVisibility constraints and escalation prevention', () => {
   const core = loadCoreModule();
   const mockFixture = {
     entities: [
@@ -274,7 +288,36 @@ test('13. validateManualMomentEntityLink: reject public visibility escalation', 
     visibility: 'public',
     sourceMomentVisibility: 'public'
   };
-  assert.ok(core.validateManualMomentEntityLink(validPublicLink, mockFixture).ok);
+  assert.ok(core.validateManualMomentEntityLink(validPublicLink, mockFixture).ok, 'Public link with public source must succeed');
+
+  // Allow: private link + sourceMomentVisibility: "public"
+  const privateLinkPublicSource = {
+    momentId: 'm-1',
+    entityId: 'e-pub',
+    relationType: 'about',
+    visibility: 'private',
+    sourceMomentVisibility: 'public'
+  };
+  assert.ok(core.validateManualMomentEntityLink(privateLinkPublicSource, mockFixture).ok, 'Private link with public source must succeed');
+
+  // Reject: private link + sourceMomentVisibility: "internal"
+  const privateLinkInternalSource = {
+    momentId: 'm-1',
+    entityId: 'e-pub',
+    relationType: 'about',
+    visibility: 'private',
+    sourceMomentVisibility: 'internal'
+  };
+  assert.strictEqual(core.validateManualMomentEntityLink(privateLinkInternalSource, mockFixture).code, 'INVALID_SOURCE_MOMENT_VISIBILITY', 'Internal source moment visibility must be rejected');
+
+  // Reject: private link + sourceMomentVisibility omitted
+  const privateLinkOmittedSource = {
+    momentId: 'm-1',
+    entityId: 'e-pub',
+    relationType: 'about',
+    visibility: 'private'
+  };
+  assert.strictEqual(core.validateManualMomentEntityLink(privateLinkOmittedSource, mockFixture).code, 'INVALID_SOURCE_MOMENT_VISIBILITY', 'Omitted source moment visibility must be rejected');
 });
 
 test('14. Immutability validation: lookup and validation do not mutate parameters', () => {
@@ -302,19 +345,39 @@ test('14. Immutability validation: lookup and validation do not mutate parameter
 });
 
 test('15. DOM/Network/Storage independent module verification', () => {
-  // Sandboxing limits access to globals.
-  // The fact that it runs cleanly in vm context with empty sandbox confirms absolute independence.
   const core = loadCoreModule();
   assert.ok(core);
+
+  // Static checks on core source content
+  const coreSource = fs.readFileSync(CORE_SCRIPT_PATH, 'utf8');
+  const forbiddenKeywords = [
+    'document', 'innerHTML', 'outerHTML', 'insertAdjacentHTML',
+    'fetch(', 'XMLHttpRequest', 'WebSocket',
+    'localStorage', 'sessionStorage', 'indexedDB',
+    'firebase', 'supabase', 'neon'
+  ];
+
+  for (const keyword of forbiddenKeywords) {
+    assert.ok(!coreSource.includes(keyword), `Core module must not contain DOM/network/storage reference: ${keyword}`);
+  }
 });
 
 test('16. Self-closing verification (avoid closing keywords in doc and test)', () => {
-  const src = fs.readFileSync(__filename, 'utf8');
-  // Build pattern programmatically to avoid matching this test file source code itself
+  const filesToScan = [
+    CORE_SCRIPT_PATH,
+    __filename,
+    path.join(ROOT, 'docs/product/lovebud-curated-knowledge-fixtures-contract.md')
+  ];
+
   const verbList = ['Clo' + 'ses', 'Fi' + 'xes', 'Reso' + 'lves'];
   const pattern = new RegExp('(' + verbList.join('|') + ')\\s+#1882', 'i');
 
-  assert.ok(!pattern.test(src),
-    'contract test source must NOT contain forbidden closing keywords (like Clo' + 'ses #1882)');
+  for (const filePath of filesToScan) {
+    if (fs.existsSync(filePath)) {
+      const src = fs.readFileSync(filePath, 'utf8');
+      assert.ok(!pattern.test(src),
+        `File ${path.basename(filePath)} must NOT contain forbidden closing keywords (like Clo` + `ses #1882)`);
+    }
+  }
 });
 

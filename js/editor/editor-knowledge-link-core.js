@@ -38,8 +38,8 @@
       return [];
     }
 
-    const limit = options && typeof options.limit === 'number' && options.limit > 0
-      ? Math.floor(options.limit)
+    const limit = options && Number.isInteger(options.limit) && options.limit > 0
+      ? options.limit
       : null;
 
     const trimmedQuery = typeof query === 'string' ? query.trim().toLowerCase() : '';
@@ -134,14 +134,14 @@
     }
 
     // 6. Security & visibility consistency guardrails
+    if (sourceMomentVisibility !== 'public' && sourceMomentVisibility !== 'private') {
+      return { ok: false, code: 'INVALID_SOURCE_MOMENT_VISIBILITY' };
+    }
+
     if (visibility === 'public') {
       // Public link requires public source moment
       if (sourceMomentVisibility !== 'public') {
         return { ok: false, code: 'VISIBILITY_MISMATCH' };
-      }
-      // Public link requires published target entity (guaranteed by check 5, but explicit for clarity)
-      if (entity.publicationState !== 'published') {
-        return { ok: false, code: 'ENTITY_NOT_PUBLISHED' };
       }
     }
 
