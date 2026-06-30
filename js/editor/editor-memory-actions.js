@@ -346,6 +346,15 @@ function createEditorMemoryActions(deps) {
                 const savedMemory = await window.apiClient.updateMemory(currentEditingMemory.id, payload);
                 const savedPatch = savedMemory && typeof savedMemory === 'object' ? savedMemory : {};
 
+                // Validate response: must be a memory record with matching ID
+                const responseId = savedPatch.id || savedPatch.memoryId || null;
+                if (!responseId || String(responseId) !== String(currentEditingMemory.id)) {
+                    const detail = savedPatch && typeof savedPatch.error !== 'undefined'
+                        ? (savedPatch.error || '')
+                        : '';
+                    throw new Error(detail || 'Invalid server response: missing or mismatched memory ID');
+                }
+
                 // Priority: server response > payload > current memory
                 // This ensures sourceUrl/thumbnail from server normalization is used
                 const prioritizedPatch = {
