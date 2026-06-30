@@ -396,8 +396,65 @@
     var passwordInput = document.getElementById('email-auth-password');
     var displayNameInput = document.getElementById('email-auth-display-name');
     var submitBtn = document.getElementById('email-auth-submit');
+    var errorEl = document.getElementById('email-auth-error');
+    var statusEl = document.getElementById('email-auth-status');
     var resetBtn = document.getElementById('email-auth-reset');
     var resetWrap = document.getElementById('email-auth-reset-wrap');
+
+    /* ── Submitting guard ── */
+    var _submitting = false;
+
+    /* ── State helpers ── */
+
+    function setStateIdle() {
+      _submitting = false;
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = typeof getEmailAuthMode === 'function' && getEmailAuthMode() === 'signup'
+          ? '회원가입' : '로그인';
+      }
+      if (errorEl) { errorEl.textContent = ''; errorEl.hidden = true; errorEl.setAttribute('aria-hidden', 'true'); }
+      if (statusEl) { statusEl.textContent = ''; statusEl.hidden = true; statusEl.setAttribute('aria-hidden', 'true'); }
+    }
+
+    function setStateSubmitting(pendingText) {
+      _submitting = true;
+      if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = pendingText; }
+      // Clear previous error
+      if (errorEl) { errorEl.textContent = ''; errorEl.hidden = true; errorEl.setAttribute('aria-hidden', 'true'); }
+      // Show status
+      if (statusEl && pendingText) {
+        statusEl.textContent = pendingText;
+        statusEl.hidden = false;
+        statusEl.removeAttribute('aria-hidden');
+      }
+    }
+
+    function setStateSuccess(successText) {
+      _submitting = false;
+      if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = successText; }
+      // Clear error
+      if (errorEl) { errorEl.textContent = ''; errorEl.hidden = true; errorEl.setAttribute('aria-hidden', 'true'); }
+      // Update status
+      if (statusEl && successText) {
+        statusEl.textContent = successText;
+        statusEl.hidden = false;
+        statusEl.removeAttribute('aria-hidden');
+      }
+    }
+
+    function setStateError(message) {
+      _submitting = false;
+      if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = typeof getEmailAuthMode === 'function' && getEmailAuthMode() === 'signup' ? '회원가입' : '로그인'; }
+      // Show error inline
+      if (errorEl && message) {
+        errorEl.textContent = message;
+        errorEl.hidden = false;
+        errorEl.removeAttribute('aria-hidden');
+      }
+      // Clear status
+      if (statusEl) { statusEl.textContent = ''; statusEl.hidden = true; statusEl.setAttribute('aria-hidden', 'true'); }
+    }
 
     function syncResetVisibility() {
       var isLogin = typeof getEmailAuthMode === 'function' ? getEmailAuthMode() : 'login';
@@ -410,11 +467,14 @@
     form.addEventListener('submit', async function (e) {
       e.preventDefault();
 
+      // Duplicate-submit guard
+      if (_submitting) return;
+
       var envError = typeof getEnvironmentCheckError === 'function'
         ? getEnvironmentCheckError()
         : null;
       if (envError) {
-        alert(envError);
+        setStateError(envError);
         return;
       }
 
@@ -426,27 +486,28 @@
       var emailAuthMode = typeof getEmailAuthMode === 'function' ? getEmailAuthMode() : 'login';
 
       if (!email || !password) {
-        alert('이메일과 비밀번호를 모두 입력해 주세요.');
+        setStateError('이메일과 비밀번호를 모두 입력해 주세요.');
+        if (emailInput && !email) try { emailInput.focus(); } catch (e) {}
+        else if (passwordInput) try { passwordInput.focus(); } catch (e) {}
         return;
       }
       if (emailAuthMode === 'signup' && !displayName) {
-        alert('닉네임을 입력해 주세요.');
+        setStateError('닉네임을 입력해 주세요.');
+        if (displayNameInput) try { displayNameInput.focus(); } catch (e) {}
         return;
       }
       if (password.length < 8) {
-        alert('비밀번호는 최소 8자 이상이어야 합니다.');
+        setStateError('비밀번호는 최소 8자 이상이어야 합니다.');
+        if (passwordInput) try { passwordInput.focus(); } catch (e) {}
         return;
       }
 
-      submitBtn.disabled = true;
-      var originalText = submitBtn.textContent;
-      submitBtn.textContent = emailAuthMode === 'login' ? '로그인 중...' : '가입 중...';
+      // Enter submitting state
+      setStateSubmitting(emailAuthMode === 'login' ? '로그인 중입니다…' : '가입 중입니다…');
 
       if (typeof initFirebase === 'function') initFirebase();
       if (!firebaseRef.apps || !firebaseRef.apps.length) {
-        alert('Firebase가 초기화되지 않았습니다. 페이지를 새로고침해 주세요.');
-        submitBtn.disabled = false;
-        submitBtn.textContent = originalText;
+        setStateError('Firebase가 초기화되지 않았습니다. 페이지를 새로고침해 주세요.');
         return;
       }
 
@@ -462,6 +523,11 @@
           }
           authUser = signupResult && signupResult.user ? signupResult.user : firebaseRef.auth().currentUser;
         }
+
+        // Success — show completion status before redirect
+        setStateSuccess(emailAuthMode === 'login'
+          ? '로그인되었습니다. 이동 중입니다…'
+          : '회원가입이 완료되었습니다. 이동 중입니다…');
 
         if (typeof persistConfirmedAuthSession === 'function') {
           await persistConfirmedAuthSession(authUser);
@@ -480,14 +546,14 @@
             clearStaleFirebaseAuthState();
           }
         }
-        var friendlyMessage = typeof getFriendlyErrorMessage === 'function'
+        var safeMessage = typeof getFriendlyErrorMessage === 'function'
           ? getFriendlyErrorMessage(error, false)
           : '인증 중 오류가 발생했습니다.';
-        alert(friendlyMessage || '인증 중 오류가 발생했습니다.');
-      } finally {
-        submitBtn.disabled = false;
-        submitBtn.textContent = originalText;
+        setStateError(safeMessage || '인증 중 오류가 발생했습니다.');
       }
+      // NOTE: no catch-all finally that resets success state.
+      // Only the error path calls setStateError to restore the idle state.
+      // The success path keeps the success UI through window.location.href.
     });
 
     function getResetLabel(key, fallback) {
