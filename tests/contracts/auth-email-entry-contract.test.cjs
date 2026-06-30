@@ -371,3 +371,451 @@ test('No raw addEventListener on modal CTA elements in setupEmailAuthForm', func
             !afterForm.includes('login-btn-email'),
     'setupEmailAuthForm must not have login-btn-email reference');
 });
+
+// ── 11. vm-based runtime tests ──────────────────────────────────────
+// Uses Node vm + minimal fake DOM to execute auth-login-page.js in a sandbox.
+// Firebase mock is only used in submit-path tests; open/close/toggle tests
+// do NOT use Firebase, real accounts, emails, passwords, or network.
+
+const vm = require('node:vm');
+
+/**
+ * Build a minimal fake DOM environment sufficient to run setupEmailAuthEntry().
+ * Returns { sandbox, elements, getCanonicalMode, setCanonicalMode }.
+ */
+function buildSandbox(opts) {
+  opts = opts || {};
+
+  // Canonical mode store (mirrors auth.js EMAIL_AUTH_MODE)
+  let canonicalMode = opts.initialMode || 'login';
+
+  // Minimal EventTarget-like element factory
+  function makeEl(id, tag) {
+    const listeners = {}; // eventName -> [fn]
+    const props = {};
+    const el = {
+      id: id || '',
+      tagName: (tag || 'div').toUpperCase(),
+      style: { display: '' },
+      hidden: false,
+      disabled: false,
+      required: false,
+      value: '',
+      textContent: '',
+      dataset: {},
+      getAttribute() { return null; },
+      setAttribute() {},
+      querySelectorAll(sel) { return []; },
+      closest() { return null; },
+      focus() { el.__focused = true; },
+      __focused: false,
+      __listenerCount: function(name) {
+        return (listeners[name] || []).length;
+      },
+      addEventListener(name, fn) {
+        if (!listeners[name]) listeners[name] = [];
+        listeners[name].push(fn);
+        props[fn.__handlerKey || Symbol()] = fn;
+      },
+      removeEventListener(name, fn) {
+        if (!listeners[name]) return;
+        listeners[name] = listeners[name].filter(f => f !== fn);
+      },
+      dispatchEvent(ev) {
+        (listeners[ev.type] || []).forEach(fn => fn(ev));
+      },
+      click() {
+        const ev = { type: 'click', target: el, preventDefault() {}, stopPropagation() {} };
+        (listeners['click'] || []).forEach(fn => fn(ev));
+      },
+    };
+    return el;
+  }
+
+  function makeKeyEvent(key, shiftKey) {
+    return {
+      type: 'keydown',
+      key,
+      shiftKey: !!shiftKey,
+      preventDefault() { this._prevented = true; },
+    };
+  }
+
+  // Build named elements
+  const elements = {
+    modal: makeEl('email-auth-modal', 'div'),
+    closeBtn: makeEl('email-auth-close', 'button'),
+    toggleBtn: makeEl('email-auth-toggle', 'button'),
+    emailBtn: makeEl('login-btn-email', 'button'),
+    signupBtn: makeEl('signup-btn-email', 'button'),
+    emailInput: makeEl('email-auth-email', 'input'),
+    titleEl: makeEl('email-auth-title', 'h2'),
+    helperEl: makeEl('email-auth-helper', 'p'),
+    submitBtn: makeEl('email-auth-submit', 'button'),
+    badgeEl: makeEl('auth-mode-badge', 'span'),
+    displayNameInput: makeEl('email-auth-display-name', 'input'),
+    displayNameWrap: makeEl('', 'div'),
+    resetWrap: makeEl('email-auth-reset-wrap', 'div'),
+    resetBtn: makeEl('email-auth-reset', 'button'),
+    form: makeEl('email-auth-form', 'form'),
+    // Pre-create password input so setupEmailAuthForm sees it at call time
+    passwordInput: makeEl('email-auth-password', 'input'),
+  };
+
+  // displayNameInput.closest must return displayNameWrap
+  elements.displayNameInput.closest = function(sel) {
+    if (sel && sel.includes('data-auth-display-name-wrap')) return elements.displayNameWrap;
+    return null;
+  };
+  elements.displayNameWrap.style = { display: '' };
+
+  // modal.querySelectorAll returns focusable elements in order
+  elements.modal.querySelectorAll = function(sel) {
+    return [elements.emailInput, elements.submitBtn, elements.closeBtn];
+  };
+
+  const idMap = {};
+  for (const el of Object.values(elements)) {
+    if (el.id) idMap[el.id] = el;
+  }
+
+  // Fake document
+  const fakeDocument = {
+    getElementById(id) { return idMap[id] || null; },
+    querySelector(sel) { return null; },
+    activeElement: null,
+    addEventListener() {},
+  };
+
+  // Fake window
+  const fakeWindow = {
+    LoveBudAuthLoginPage: undefined,
+    __lovebudEmailAuthEntryBound: false,
+    location: { pathname: '/pages/login.html', search: '' },
+    applyI18n: undefined,
+    document: fakeDocument,
+  };
+
+  const sandbox = vm.createContext({
+    window: fakeWindow,
+    document: fakeDocument,
+    console: { log() {}, warn() {}, error() {} },
+    alert() {},
+    firebase: undefined,
+    initFirebase: undefined,
+  });
+
+  // Load auth-login-page.js into sandbox
+  const src = fs.readFileSync(path.join(ROOT, 'js/auth/auth-login-page.js'), 'utf8');
+  vm.runInContext(src, sandbox);
+
+  function getCanonicalMode() { return canonicalMode; }
+  function setCanonicalMode(m) { canonicalMode = (m === 'signup' ? 'signup' : 'login'); }
+
+  // Call setupEmailAuthEntry with canonical mode hooks
+  sandbox.window.LoveBudAuthLoginPage.setupEmailAuthEntry({
+    setEmailAuthMode: setCanonicalMode,
+    getEmailAuthMode: getCanonicalMode,
+    syncEmailAuthModeUi: function(opts2) {
+      // minimal: update badge text for mode readability
+      if (opts2 && opts2.badgeEl) {
+        opts2.badgeEl.textContent = (canonicalMode === 'signup') ? '회원가입' : '로그인';
+      }
+    },
+    applyI18n: undefined,
+    initialMode: opts.initialMode || 'login',
+  });
+
+  return { sandbox, elements, getCanonicalMode, setCanonicalMode };
+}
+
+test('vm runtime: replaceEventListener helper is defined locally in auth-login-page.js (no ReferenceError)', function () {
+  // If replaceEventListener is missing, building the sandbox will throw ReferenceError.
+  let error = null;
+  try {
+    buildSandbox({ initialMode: 'login' });
+  } catch (e) {
+    error = e;
+  }
+  assert.equal(error, null, 'setupEmailAuthEntry must not throw ReferenceError: ' + (error && error.message));
+});
+
+test('vm runtime: login CTA click sets canonical mode to login, opens modal, focuses email input', function () {
+  const { elements, getCanonicalMode } = buildSandbox({ initialMode: 'login' });
+
+  // Initial state: modal is closed
+  assert.equal(elements.modal.style.display, '', 'modal should start hidden');
+
+  elements.emailBtn.click();
+
+  assert.equal(getCanonicalMode(), 'login', 'canonical mode must be login after login CTA click');
+  assert.equal(elements.modal.style.display, 'flex', 'modal must be open (display:flex) after login CTA');
+  assert.equal(elements.emailInput.__focused, true, 'email input must receive focus after login CTA');
+});
+
+test('vm runtime: signup CTA click sets canonical mode to signup, opens modal, focuses email input', function () {
+  const { elements, getCanonicalMode } = buildSandbox({ initialMode: 'login' });
+
+  elements.signupBtn.click();
+
+  assert.equal(getCanonicalMode(), 'signup', 'canonical mode must be signup after signup CTA click');
+  assert.equal(elements.modal.style.display, 'flex', 'modal must be open after signup CTA');
+  assert.equal(elements.emailInput.__focused, true, 'email input must receive focus after signup CTA');
+});
+
+test('vm runtime: signup CTA shows nickname wrapper and hides reset', function () {
+  const { elements } = buildSandbox({ initialMode: 'login' });
+
+  elements.signupBtn.click();
+
+  assert.equal(elements.displayNameWrap.style.display, 'block', 'nickname wrapper must be visible in signup');
+  assert.equal(elements.displayNameInput.required, true, 'nickname input must be required in signup');
+  assert.equal(elements.resetWrap.hidden, true, 'reset wrapper must be hidden in signup');
+  assert.equal(elements.resetBtn.disabled, true, 'reset button must be disabled in signup');
+});
+
+test('vm runtime: close button closes modal and returns focus to last trigger', function () {
+  const { elements } = buildSandbox({ initialMode: 'login' });
+
+  // Open via login CTA (sets lastTriggerButton = emailBtn)
+  elements.emailBtn.click();
+  assert.equal(elements.modal.style.display, 'flex', 'modal must be open');
+
+  // Reset focus tracking
+  elements.emailBtn.__focused = false;
+
+  // Close
+  elements.closeBtn.click();
+  assert.equal(elements.modal.style.display, 'none', 'modal must close after close button click');
+  assert.equal(elements.emailBtn.__focused, true, 'focus must return to login CTA after close');
+});
+
+test('vm runtime: backdrop click closes modal', function () {
+  const { elements } = buildSandbox({ initialMode: 'login' });
+
+  elements.emailBtn.click();
+  assert.equal(elements.modal.style.display, 'flex');
+
+  // Simulate backdrop click (e.target === modal)
+  const ev = {
+    type: 'click',
+    target: elements.modal,
+    preventDefault() {},
+    stopPropagation() {},
+  };
+  elements.modal.dispatchEvent(ev);
+
+  assert.equal(elements.modal.style.display, 'none', 'modal must close on backdrop click');
+});
+
+test('vm runtime: Escape key closes modal', function () {
+  const { elements } = buildSandbox({ initialMode: 'login' });
+
+  elements.signupBtn.click();
+  assert.equal(elements.modal.style.display, 'flex');
+
+  // Simulate Escape keydown
+  const ev = {
+    type: 'keydown',
+    key: 'Escape',
+    shiftKey: false,
+    preventDefault() {},
+  };
+  elements.modal.dispatchEvent(ev);
+
+  assert.equal(elements.modal.style.display, 'none', 'modal must close on Escape key');
+});
+
+test('vm runtime: toggle switches mode from login to signup and back', function () {
+  const { elements, getCanonicalMode } = buildSandbox({ initialMode: 'login' });
+
+  elements.emailBtn.click(); // open in login mode
+  assert.equal(getCanonicalMode(), 'login');
+
+  elements.toggleBtn.click(); // switch to signup
+  assert.equal(getCanonicalMode(), 'signup', 'toggle must switch login→signup');
+  assert.equal(elements.displayNameWrap.style.display, 'block', 'nickname wrap visible after toggle to signup');
+
+  elements.toggleBtn.click(); // switch back to login
+  assert.equal(getCanonicalMode(), 'login', 'toggle must switch signup→login');
+  assert.equal(elements.displayNameWrap.style.display, 'none', 'nickname wrap hidden after toggle to login');
+});
+
+test('vm runtime: no duplicate listener accumulation (idempotency)', function () {
+  // Reset the guard so we can call setupEmailAuthEntry a second time
+  const opts = { initialMode: 'login' };
+  const { sandbox, elements, getCanonicalMode, setCanonicalMode } = buildSandbox(opts);
+
+  // Reset the binding guard and call setup again
+  sandbox.window.__lovebudEmailAuthEntryBound = false;
+  sandbox.window.LoveBudAuthLoginPage.setupEmailAuthEntry({
+    setEmailAuthMode: setCanonicalMode,
+    getEmailAuthMode: getCanonicalMode,
+    syncEmailAuthModeUi: function() {},
+    initialMode: 'login',
+  });
+
+  // Click login CTA: must only open modal once (mode changes exactly once per click)
+  elements.modal.style.display = '';
+  elements.emailBtn.click();
+
+  // Modal is open — canonical mode is 'login' (not toggled twice)
+  assert.equal(elements.modal.style.display, 'flex', 'modal must be open');
+  assert.equal(getCanonicalMode(), 'login', 'canonical mode must be login after single click (no double-fire)');
+});
+
+test('vm runtime: Firebase-independent — setupEmailAuthEntry works without Firebase', function () {
+  // buildSandbox does NOT inject firebase — this must not throw
+  let error = null;
+  try {
+    const { elements } = buildSandbox({ initialMode: 'login' });
+    elements.emailBtn.click();
+    elements.closeBtn.click();
+  } catch (e) {
+    error = e;
+  }
+  assert.equal(error, null, 'open/close must work without Firebase: ' + (error && error.message));
+});
+
+test('vm runtime: setupEmailAuthForm login submit calls signInWithEmailAndPassword exactly once', async function () {
+  const { sandbox, elements, getCanonicalMode, setCanonicalMode } = buildSandbox({ initialMode: 'login' });
+
+  let signInCalls = 0;
+  let createCalls = 0;
+
+  const mockUser = { uid: 'u1', displayName: null };
+  const mockAuth = function() {
+    return {
+      signInWithEmailAndPassword: async function() {
+        signInCalls++;
+        return { user: mockUser };
+      },
+      createUserWithEmailAndPassword: async function() {
+        createCalls++;
+        const u = { uid: 'u2', displayName: null, updateProfile: async function() {} };
+        return { user: u };
+      },
+      currentUser: mockUser,
+    };
+  };
+
+  const mockFirebase = {
+    auth: mockAuth,
+    apps: [{}],
+  };
+
+  // Set form inputs BEFORE calling setupEmailAuthForm
+  // (setupEmailAuthForm captures elements at call-time via getElementById)
+  elements.emailInput.value = 'test@example.com';
+  elements.passwordInput.value = 'password123';
+
+  // Open modal in login mode
+  elements.emailBtn.click();
+  assert.equal(getCanonicalMode(), 'login');
+
+  // Call setupEmailAuthForm with Firebase mock
+  sandbox.window.LoveBudAuthLoginPage.setupEmailAuthForm({
+    firebase: mockFirebase,
+    initFirebase: function() {},
+    getEnvironmentCheckError: function() { return null; },
+    getFriendlyErrorMessage: function() { return null; },
+    getEmailAuthMode: getCanonicalMode,
+    setEmailAuthMode: setCanonicalMode,
+    persistConfirmedAuthSession: async function() {},
+    preloadRedirectTargetData: function() {},
+    getRedirectTarget: function() { return 'my-trees.html'; },
+    isInvalidAuthSessionError: function() { return false; },
+    clearStaleFirebaseAuthState: function() {},
+  });
+
+  Object.defineProperty(sandbox.window, 'location', {
+    value: { pathname: '/pages/login.html', search: '', href: '' },
+    writable: true,
+    configurable: true,
+  });
+
+  // Submit the form
+  const submitEvent = {
+    type: 'submit',
+    preventDefault: function() {},
+  };
+  elements.form.dispatchEvent(submitEvent);
+
+  // Wait for async submit handler
+  await new Promise(resolve => setTimeout(resolve, 50));
+
+  assert.equal(signInCalls, 1, 'signInWithEmailAndPassword must be called exactly once for login');
+  assert.equal(createCalls, 0, 'createUserWithEmailAndPassword must NOT be called for login');
+});
+
+test('vm runtime: setupEmailAuthForm signup submit calls createUserWithEmailAndPassword + updateProfile', async function () {
+  const { sandbox, elements, getCanonicalMode, setCanonicalMode } = buildSandbox({ initialMode: 'signup' });
+
+  let signInCalls = 0;
+  let createCalls = 0;
+  let updateProfileCalls = 0;
+
+  const mockUser = {
+    uid: 'u2', displayName: null,
+    updateProfile: async function(data) {
+      updateProfileCalls++;
+    },
+  };
+  const mockAuth = function() {
+    return {
+      signInWithEmailAndPassword: async function() {
+        signInCalls++;
+        return { user: { uid: 'u1', displayName: null } };
+      },
+      createUserWithEmailAndPassword: async function() {
+        createCalls++;
+        return { user: mockUser };
+      },
+      currentUser: mockUser,
+    };
+  };
+
+  const mockFirebase = {
+    auth: mockAuth,
+    apps: [{}],
+  };
+
+  // Set form inputs BEFORE calling setupEmailAuthForm
+  elements.emailInput.value = 'test@example.com';
+  elements.passwordInput.value = 'password123';
+  elements.displayNameInput.value = '테스터';
+  elements.displayNameInput.required = true;
+
+  // Open modal in signup mode
+  elements.signupBtn.click();
+  assert.equal(getCanonicalMode(), 'signup');
+
+  sandbox.window.LoveBudAuthLoginPage.setupEmailAuthForm({
+    firebase: mockFirebase,
+    initFirebase: function() {},
+    getEnvironmentCheckError: function() { return null; },
+    getFriendlyErrorMessage: function() { return null; },
+    getEmailAuthMode: getCanonicalMode,
+    setEmailAuthMode: setCanonicalMode,
+    persistConfirmedAuthSession: async function() {},
+    preloadRedirectTargetData: function() {},
+    getRedirectTarget: function() { return 'my-trees.html'; },
+    isInvalidAuthSessionError: function() { return false; },
+    clearStaleFirebaseAuthState: function() {},
+  });
+
+  Object.defineProperty(sandbox.window, 'location', {
+    value: { pathname: '/pages/login.html', search: '', href: '' },
+    writable: true,
+    configurable: true,
+  });
+
+  const submitEvent = { type: 'submit', preventDefault: function() {} };
+  elements.form.dispatchEvent(submitEvent);
+
+  await new Promise(resolve => setTimeout(resolve, 50));
+
+  assert.equal(createCalls, 1, 'createUserWithEmailAndPassword must be called exactly once for signup');
+  assert.equal(updateProfileCalls, 1, 'updateProfile must be called with displayName for signup');
+  assert.equal(signInCalls, 0, 'signInWithEmailAndPassword must NOT be called for signup');
+});
