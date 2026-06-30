@@ -321,6 +321,9 @@ function applyCachedAuthState() {
 }
 
 function initAuth() {
+  // Bind email modal UI immediately — Firebase-independent
+  setupEmailAuthEntry();
+
   if (__authProtectedRouteBridge) {
     __authProtectedRouteBridge.initAuth();
     return;
@@ -692,6 +695,18 @@ async function signUpWithGoogle() {
 function setupSignupGoogleBtn() {
   callLoginPageModule('setupSignupGoogleBtn', [{
     signUpWithGoogle: signUpWithGoogle
+  }]);
+}
+
+// ── Email Auth Entry (Firebase-independent UI binding) ───────────────
+
+function setupEmailAuthEntry() {
+  callLoginPageModule('setupEmailAuthEntry', [{
+    setEmailAuthMode: setEmailAuthMode,
+    getEmailAuthMode: function () { return EMAIL_AUTH_MODE; },
+    syncEmailAuthModeUi: syncEmailAuthModeUi,
+    applyI18n: window.applyI18n,
+    initialMode: resolveEmailAuthMode()
   }]);
 }
 
