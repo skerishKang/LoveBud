@@ -44,7 +44,11 @@ async function runSaveMemoryEdit({
     getElementById(id) {
       if (!this.elements[id]) {
         this.elements[id] = {
-          id, value: '',
+          id, value: '', disabled: false,
+          _attrs: {},
+          getAttribute(attr) { return this._attrs[attr] !== undefined ? this._attrs[attr] : null; },
+          setAttribute(attr, val) { this._attrs[attr] = val; },
+          removeAttribute(attr) { delete this._attrs[attr]; },
           classList: { classes: new Set(), add(c) { this.classes.add(c); }, remove(c) { this.classes.delete(c); }, toggle(c, f) { if (f) this.classes.add(c); else this.classes.delete(c); }, contains(c) { return this.classes.has(c); } },
           style: {}, dataset: {}, listeners: {},
           addEventListener(e, cb) { this.listeners[e] = cb; },
@@ -467,13 +471,18 @@ test('12. deferred pending: duplicate blocked → resolve → guard reset → se
 
   var t12Ctx = await runSaveMemoryEdit({
     initialMemory: mem,
-    domValues: { title: 'Updated', memo: '', tags: '', sourceUrl: 'https://www.youtube.com/shorts/bbbbbbbbbbb' },
+    domValues: { title: 'Old', memo: '', tags: '', sourceUrl: 'https://www.youtube.com/embed/aaaaaaaaaaa' },
     useDeferred: true,
   });
 
-  // a. open edit form, start first save
+  // a. open edit form; enterEditMode fills form with current memory values ('Old')
   t12Ctx.actions.enterEditMode();
   assert.equal(t12Ctx.getFormDisplay('edit'), 'block', 'edit form is open');
+
+  // Inject changed values so the no-change guard does not block
+  t12Ctx.setInputValue('editTitleInput', 'Updated');
+  t12Ctx.setInputValue('editSourceUrlInput', 'https://www.youtube.com/shorts/bbbbbbbbbbb');
+
   var p1 = t12Ctx.actions.saveMemoryEdit();
 
   // b. 첫 deferred API call count = 1
@@ -481,7 +490,7 @@ test('12. deferred pending: duplicate blocked → resolve → guard reset → se
 
   // c. 첫 Promise는 unresolved 상태
 
-  // d. p2 = saveMemoryEdit() 실행
+  // d. p2 = saveMemoryEdit() 실행 (blocked by isMemoryEditSaveInFlight)
   var p2 = t12Ctx.actions.saveMemoryEdit();
 
   // e. call count = 1 유지
@@ -509,7 +518,11 @@ test('12. deferred pending: duplicate blocked → resolve → guard reset → se
   assert.equal(t12Ctx.getEditingMemory().title, 'Updated', 'title updated after deferred resolve');
 
   // l. 다시 saveMemoryEdit() 호출 (enterEditMode 후 두 번째 save 실행)
+  //    enterEditMode fills form with current memory values ('Updated')
+  //    Inject another changed value so no-change guard does not block
   t12Ctx.actions.enterEditMode();
+  t12Ctx.setInputValue('editTitleInput', 'Updated Again');
+
   var pFinal = t12Ctx.actions.saveMemoryEdit();
   await pFinal;
 

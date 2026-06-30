@@ -28,6 +28,41 @@ function createEditorMemoryActions(deps) {
     let isInlineMemorySaveInFlight = false;
     let isMemoryEditSaveInFlight = false;
 
+    // ── Edit-form CTA busy state helpers ─────────────────────────────────
+    // Uses textContent only. Never touches innerHTML/outerHTML/insertAdjacentHTML.
+    const _saveEditBtnOriginalLabel = { value: null };
+
+    const setEditFormBusy = (busy) => {
+        const saveBtn = document.getElementById('saveEditBtn');
+        const cancelBtn = document.getElementById('cancelEditBtn');
+        const deleteBtn = document.getElementById('deleteMemoryBtn');
+        const editMode = document.getElementById('detailEditMode');
+
+        if (busy) {
+            if (saveBtn) {
+                if (_saveEditBtnOriginalLabel.value === null) {
+                    _saveEditBtnOriginalLabel.value = saveBtn.textContent;
+                }
+                saveBtn.disabled = true;
+                saveBtn.textContent = formatI18nText('save_saving', '저장 중...');
+            }
+            if (cancelBtn) cancelBtn.disabled = true;
+            if (deleteBtn) deleteBtn.disabled = true;
+            if (editMode) editMode.setAttribute('aria-busy', 'true');
+        } else {
+            if (saveBtn) {
+                saveBtn.disabled = false;
+                if (_saveEditBtnOriginalLabel.value !== null) {
+                    saveBtn.textContent = _saveEditBtnOriginalLabel.value;
+                    _saveEditBtnOriginalLabel.value = null;
+                }
+            }
+            if (cancelBtn) cancelBtn.disabled = false;
+            if (deleteBtn) deleteBtn.disabled = false;
+            if (editMode) editMode.removeAttribute('aria-busy');
+        }
+    };
+
     const formatI18nText = (key, fallback) => {
         const text = typeof i18n === 'function' ? i18n(key) : '';
         return text && text !== key ? text : fallback;
@@ -229,128 +264,159 @@ function createEditorMemoryActions(deps) {
         if (mode && !mode.isEditMode()) return;
         const currentEditingMemory = getCurrentEditingMemory();
         if (!currentEditingMemory) return;
-        if (!currentEditingMemory.id) {
-            showToast(formatI18nText('save_failed', '저장 실패'), 'error');
-            updateSaveStatus('failed', formatI18nText('save_failed', '저장 실패'));
-            return;
-        }
 
-        const titleInput = document.getElementById('editTitleInput');
-        const sourceUrlInput = document.getElementById('editSourceUrlInput');
-        const memoInput = document.getElementById('editMemoInput');
-        const tagsInput = document.getElementById('editTagsInput');
-        const startTimeInput = document.getElementById('editStartTimeInput');
-        const endTimeInput = document.getElementById('editEndTimeInput');
-        const timeHelper = window.LoveBudEditorMemoryFormTime;
+        // ── Duplicate-submit guard: block re-entry immediately ───────────
+        if (isMemoryEditSaveInFlight) return;
+        isMemoryEditSaveInFlight = true;
+        setEditFormBusy(true);
 
-        const startHasValue = startTimeInput && startTimeInput.value.trim();
-        const endHasValue = endTimeInput && endTimeInput.value.trim();
+        try {
+            if (!currentEditingMemory.id) {
+                updateSaveStatus('failed', formatI18nText('save_failed', '저장 실패'));
+                showToast(formatI18nText('save_failed', '저장 실패'), 'error');
+                return;
+            }
 
-        if ((startHasValue || endHasValue) && !timeHelper) {
-            showToast(formatI18nText('time_helper_missing', '시간을 처리하는 도구를 불러오지 못했습니다.'), 'error');
-            updateSaveStatus('failed', formatI18nText('save_failed', '저장 실패'));
-            return;
-        }
+            const titleInput = document.getElementById('editTitleInput');
+            const sourceUrlInput = document.getElementById('editSourceUrlInput');
+            const memoInput = document.getElementById('editMemoInput');
+            const tagsInput = document.getElementById('editTagsInput');
+            const startTimeInput = document.getElementById('editStartTimeInput');
+            const endTimeInput = document.getElementById('editEndTimeInput');
+            const timeHelper = window.LoveBudEditorMemoryFormTime;
 
-        let startSeconds = null;
-        let endSeconds = null;
+            const startHasValue = startTimeInput && startTimeInput.value.trim();
+            const endHasValue = endTimeInput && endTimeInput.value.trim();
 
-        if (startHasValue && timeHelper) {
-            startSeconds = timeHelper.parseTime(startTimeInput.value.trim());
-            if (startSeconds === null) {
-                showToast(formatI18nText('invalid_start_time', '시작 시간을 다시 확인해 주세요.'), 'error');
+            if ((startHasValue || endHasValue) && !timeHelper) {
+                showToast(formatI18nText('time_helper_missing', '시간을 처리하는 도구를 불러오지 못했습니다.'), 'error');
                 updateSaveStatus('failed', formatI18nText('save_failed', '저장 실패'));
                 return;
             }
-        }
 
-        if (endHasValue && timeHelper) {
-            const endCheck = timeHelper.validateEndTime({
-                rawEndTime: endTimeInput.value.trim(),
-                startSeconds,
-                invalidMessage: formatI18nText('invalid_end_time', '끝 시간을 다시 확인해 주세요.'),
-                rangeMessage: formatI18nText('invalid_time_range', '끝 시간은 시작 시간보다 뒤여야 해요.')
-            });
-            if (!endCheck.ok) {
-                showToast(endCheck.message, 'error');
-                updateSaveStatus('failed', formatI18nText('save_failed', '저장 실패'));
-                return;
+            let startSeconds = null;
+            let endSeconds = null;
+
+            if (startHasValue && timeHelper) {
+                startSeconds = timeHelper.parseTime(startTimeInput.value.trim());
+                if (startSeconds === null) {
+                    showToast(formatI18nText('invalid_start_time', '시작 시간을 다시 확인해 주세요.'), 'error');
+                    updateSaveStatus('failed', formatI18nText('save_failed', '저장 실패'));
+                    return;
+                }
             }
-            endSeconds = endCheck.endSeconds;
-        }
 
-        const payload = {
-            title: titleInput ? titleInput.value.trim() : currentEditingMemory.title,
-            memo: memoInput ? memoInput.value.trim() : currentEditingMemory.memo,
-            emotionTags: tagsInput ? tagsInput.value.split(',').map((t) => t.trim()).filter((t) => t) : currentEditingMemory.emotionTags
-        };
+            if (endHasValue && timeHelper) {
+                const endCheck = timeHelper.validateEndTime({
+                    rawEndTime: endTimeInput.value.trim(),
+                    startSeconds,
+                    invalidMessage: formatI18nText('invalid_end_time', '끝 시간을 다시 확인해 주세요.'),
+                    rangeMessage: formatI18nText('invalid_time_range', '끝 시간은 시작 시간보다 뒤여야 해요.')
+                });
+                if (!endCheck.ok) {
+                    showToast(endCheck.message, 'error');
+                    updateSaveStatus('failed', formatI18nText('save_failed', '저장 실패'));
+                    return;
+                }
+                endSeconds = endCheck.endSeconds;
+            }
 
-        if (sourceUrlInput) {
-            const rawSourceUrl = sourceUrlInput.value.trim();
-            const previousSourceUrl = getEditableSourceUrl(currentEditingMemory);
-            const parsedPrev = extractYouTubeStartAndEnd(previousSourceUrl);
-            const prevStart = parsedPrev.start;
-            const prevEnd = parsedPrev.end;
+            const payload = {
+                title: titleInput ? titleInput.value.trim() : currentEditingMemory.title,
+                memo: memoInput ? memoInput.value.trim() : currentEditingMemory.memo,
+                emotionTags: tagsInput ? tagsInput.value.split(',').map((t) => t.trim()).filter((t) => t) : currentEditingMemory.emotionTags
+            };
 
-            const urlChanged = rawSourceUrl !== previousSourceUrl;
-            const startChanged = startSeconds !== prevStart;
-            const endChanged = endSeconds !== prevEnd;
+            if (sourceUrlInput) {
+                const rawSourceUrl = sourceUrlInput.value.trim();
+                const previousSourceUrl = getEditableSourceUrl(currentEditingMemory);
+                const parsedPrev = extractYouTubeStartAndEnd(previousSourceUrl);
+                const prevStart = parsedPrev.start;
+                const prevEnd = parsedPrev.end;
 
-            if (urlChanged || startChanged || endChanged) {
-                const media = window.LoveBudMedia || {};
-                const isYoutube = typeof media.extractYouTubeId === 'function'
-                    ? !!media.extractYouTubeId(rawSourceUrl)
-                    : !!(rawSourceUrl.match(/(?:v=|\/|youtu\.be\/|embed\/|shorts\/)([0-9A-Za-z_-]{11})/));
+                const urlChanged = rawSourceUrl !== previousSourceUrl;
+                const startChanged = startSeconds !== prevStart;
+                const endChanged = endSeconds !== prevEnd;
 
-                if (rawSourceUrl) {
-                    if (isYoutube) {
-                        const sourceUpdate = resolveSourceUpdate(rawSourceUrl);
-                        if (!sourceUpdate) {
+                if (urlChanged || startChanged || endChanged) {
+                    const media = window.LoveBudMedia || {};
+                    const isYoutube = typeof media.extractYouTubeId === 'function'
+                        ? !!media.extractYouTubeId(rawSourceUrl)
+                        : !!(rawSourceUrl.match(/(?:v=|\/|youtu\.be\/|embed\/|shorts\/)([0-9A-Za-z_-]{11})/));
+
+                    if (rawSourceUrl) {
+                        if (isYoutube) {
+                            const sourceUpdate = resolveSourceUpdate(rawSourceUrl);
+                            if (!sourceUpdate) {
+                                showToast(formatI18nText('invalid_youtube_unsupported', 'YouTube 링크만 지원합니다. youtube.com 또는 youtu.be 링크를 사용해 주세요.'), 'error');
+                                updateSaveStatus('failed', formatI18nText('save_failed', '저장 실패'));
+                                return;
+                            }
+
+                            let embedUrl = typeof media.getEmbedUrl === 'function'
+                                ? media.getEmbedUrl(rawSourceUrl, 'youtube', { startSeconds })
+                                : sourceUpdate.sourceUrl;
+
+                            if (embedUrl && endSeconds !== null) {
+                                try {
+                                    const parsedEmbed = new URL(embedUrl);
+                                    parsedEmbed.searchParams.set('end', String(endSeconds));
+                                    embedUrl = parsedEmbed.toString();
+                                } catch (e) {
+                                    console.error('Failed to parse embedUrl for setting end parameter', e);
+                                }
+                            }
+
+                            sourceUpdate.sourceUrl = embedUrl;
+                            Object.assign(payload, sourceUpdate);
+                        } else {
                             showToast(formatI18nText('invalid_youtube_unsupported', 'YouTube 링크만 지원합니다. youtube.com 또는 youtu.be 링크를 사용해 주세요.'), 'error');
                             updateSaveStatus('failed', formatI18nText('save_failed', '저장 실패'));
                             return;
                         }
-
-                        let embedUrl = typeof media.getEmbedUrl === 'function'
-                            ? media.getEmbedUrl(rawSourceUrl, 'youtube', { startSeconds })
-                            : sourceUpdate.sourceUrl;
-
-                        if (embedUrl && endSeconds !== null) {
-                            try {
-                                const parsedEmbed = new URL(embedUrl);
-                                parsedEmbed.searchParams.set('end', String(endSeconds));
-                                embedUrl = parsedEmbed.toString();
-                            } catch (e) {
-                                console.error('Failed to parse embedUrl for setting end parameter', e);
-                            }
-                        }
-
-                        sourceUpdate.sourceUrl = embedUrl;
-                        Object.assign(payload, sourceUpdate);
                     } else {
-                        showToast(formatI18nText('invalid_youtube_unsupported', 'YouTube 링크만 지원합니다. youtube.com 또는 youtu.be 링크를 사용해 주세요.'), 'error');
-                        updateSaveStatus('failed', formatI18nText('save_failed', '저장 실패'));
-                        return;
-                    }
-                } else {
-                    if (previousSourceUrl) {
-                        Object.assign(payload, {
-                            sourceUrl: '',
-                            sourceType: 'other',
-                            thumbnail: '',
-                            source: ''
-                        });
+                        if (previousSourceUrl) {
+                            Object.assign(payload, {
+                                sourceUrl: '',
+                                sourceType: 'other',
+                                thumbnail: '',
+                                source: ''
+                            });
+                        }
                     }
                 }
             }
-        }
 
-        if (isMemoryEditSaveInFlight) return;
-        isMemoryEditSaveInFlight = true;
+            // ── No-change guard: skip API write if nothing changed ───────
+            const prevTitle = String(currentEditingMemory.title || '').trim();
+            const prevMemo = String(currentEditingMemory.memo || '').trim();
+            const prevTags = (currentEditingMemory.emotionTags || []).slice().sort().join(',');
+            const prevSourceUrl = getEditableSourceUrl(currentEditingMemory);
+            const prevSegment = extractYouTubeStartAndEnd(prevSourceUrl);
 
-        updateSaveStatus('saving', i18n('save_saving'));
+            const newTitle = String(payload.title || '').trim();
+            const newMemo = String(payload.memo || '').trim();
+            const newTags = (payload.emotionTags || []).slice().sort().join(',');
+            const newSourceUrl = payload.sourceUrl !== undefined ? String(payload.sourceUrl || '').trim() : prevSourceUrl;
+            const newStart = startSeconds;
+            const newEnd = endSeconds;
 
-        try {
+            const hasChange = (
+                newTitle !== prevTitle ||
+                newMemo !== prevMemo ||
+                newTags !== prevTags ||
+                newSourceUrl !== prevSourceUrl ||
+                newStart !== prevSegment.start ||
+                newEnd !== prevSegment.end
+            );
+
+            if (!hasChange) {
+                showToast(formatI18nText('save_no_change', '변경된 내용이 없어요'), 'info');
+                return;
+            }
+
+            updateSaveStatus('saving', i18n('save_saving'));
+
             if (window.apiClient && typeof window.apiClient.updateMemory === 'function') {
                 const savedMemory = await window.apiClient.updateMemory(currentEditingMemory.id, payload);
                 const savedPatch = savedMemory && typeof savedMemory === 'object' ? savedMemory : {};
@@ -358,21 +424,18 @@ function createEditorMemoryActions(deps) {
                 // Validate response: must be a memory record with matching ID
                 const responseId = savedPatch.id || savedPatch.memoryId || null;
                 if (!responseId || String(responseId) !== String(currentEditingMemory.id)) {
-                    const detail = savedPatch && typeof savedPatch.error !== 'undefined'
-                        ? (savedPatch.error || '')
-                        : '';
-                    throw new Error(detail || 'Invalid server response: missing or mismatched memory ID');
+                    throw new Error('Invalid server response: missing or mismatched memory ID');
                 }
 
                 // Validate changed fields are acknowledged in the response
                 const payloadVideoId = (function extractId(url) {
                     if (!url || typeof url !== 'string') return null;
-                    const m = url.match(/(?:v=|[/]|youtu[.]be[/]|embed[/]|shorts[/])([0-9A-Za-z_-]{11})/);
+                    const m = url.match(/(?:v=|[\/]|youtu[.]be[\/]|embed[\/]|shorts[\/])([0-9A-Za-z_-]{11})/);
                     return m ? m[1] : null;
                 })(payload.sourceUrl);
                 const responseVideoId = (function extractId(url) {
                     if (!url || typeof url !== 'string') return null;
-                    const m = url.match(/(?:v=|[/]|youtu[.]be[/]|embed[/]|shorts[/])([0-9A-Za-z_-]{11})/);
+                    const m = url.match(/(?:v=|[\/]|youtu[.]be[\/]|embed[\/]|shorts[\/])([0-9A-Za-z_-]{11})/);
                     return m ? m[1] : null;
                 })(savedPatch.sourceUrl);
 
@@ -408,33 +471,22 @@ function createEditorMemoryActions(deps) {
                 }
 
                 // Priority: server response > payload > current memory
-                // This ensures sourceUrl/thumbnail from server normalization is used
                 const prioritizedPatch = {
                     ...currentEditingMemory,
                     ...payload,
                     ...savedPatch
                 };
 
-                // Explicitly ensure source fields come from server response
-                if (savedPatch.sourceUrl !== undefined) {
-                    prioritizedPatch.sourceUrl = savedPatch.sourceUrl;
-                }
-                if (savedPatch.thumbnail !== undefined) {
-                    prioritizedPatch.thumbnail = savedPatch.thumbnail;
-                }
-                if (savedPatch.sourceType !== undefined) {
-                    prioritizedPatch.sourceType = savedPatch.sourceType;
-                }
+                if (savedPatch.sourceUrl !== undefined) prioritizedPatch.sourceUrl = savedPatch.sourceUrl;
+                if (savedPatch.thumbnail !== undefined) prioritizedPatch.thumbnail = savedPatch.thumbnail;
+                if (savedPatch.sourceType !== undefined) prioritizedPatch.sourceType = savedPatch.sourceType;
 
                 const nextEditingMemory = prioritizedPatch;
 
                 const nextMemories = getTreeMemories().slice();
                 const memIndex = nextMemories.findIndex((m) => m.id === currentEditingMemory.id);
                 if (memIndex >= 0) {
-                    nextMemories[memIndex] = {
-                        ...nextMemories[memIndex],
-                        ...nextEditingMemory
-                    };
+                    nextMemories[memIndex] = { ...nextMemories[memIndex], ...nextEditingMemory };
                     setTreeMemories(nextMemories);
                 }
 
@@ -451,10 +503,10 @@ function createEditorMemoryActions(deps) {
 
                 if (window.LoveBudCache) {
                     const treeId = (currentTreeData && currentTreeData.id) || nextEditingMemory.treeId || 'default';
-                    const cacheKey = 'memories_' + treeId;
-                    window.LoveBudCache.set(cacheKey, nextMemories, 2 * 60 * 1000);
+                    window.LoveBudCache.set('memories_' + treeId, nextMemories, 2 * 60 * 1000);
                 }
 
+                // ── Confirmed success: update state and close edit mode ──
                 setCurrentEditingMemory(nextEditingMemory);
                 exitEditMode();
                 updateDetailPanel(nextEditingMemory);
@@ -467,11 +519,13 @@ function createEditorMemoryActions(deps) {
                 throw new Error('updateMemory not available');
             }
         } catch (error) {
+            // Do not expose raw provider/API error text to user
             console.error('[editor] Failed to update memory:', error);
-            updateSaveStatus('failed', i18n('save_failed'));
-            showToast(i18n('update_failed') || '순간 수정에 실패했어요', 'error');
+            updateSaveStatus('failed', formatI18nText('save_failed', '저장 실패'));
+            showToast(formatI18nText('update_failed', '순간 수정에 실패했어요'), 'error');
         } finally {
             isMemoryEditSaveInFlight = false;
+            setEditFormBusy(false);
         }
     };
 
