@@ -26,6 +26,7 @@ function createEditorMemoryActions(deps) {
 
     let isEditMode = false;
     let isInlineMemorySaveInFlight = false;
+    let isMemoryEditSaveInFlight = false;
 
     const formatI18nText = (key, fallback) => {
         const text = typeof i18n === 'function' ? i18n(key) : '';
@@ -228,6 +229,11 @@ function createEditorMemoryActions(deps) {
         if (mode && !mode.isEditMode()) return;
         const currentEditingMemory = getCurrentEditingMemory();
         if (!currentEditingMemory) return;
+        if (!currentEditingMemory.id) {
+            showToast(formatI18nText('save_failed', '저장 실패'), 'error');
+            updateSaveStatus('failed', formatI18nText('save_failed', '저장 실패'));
+            return;
+        }
 
         const titleInput = document.getElementById('editTitleInput');
         const sourceUrlInput = document.getElementById('editSourceUrlInput');
@@ -339,12 +345,67 @@ function createEditorMemoryActions(deps) {
             }
         }
 
+        if (isMemoryEditSaveInFlight) return;
+        isMemoryEditSaveInFlight = true;
+
         updateSaveStatus('saving', i18n('save_saving'));
 
         try {
             if (window.apiClient && typeof window.apiClient.updateMemory === 'function') {
                 const savedMemory = await window.apiClient.updateMemory(currentEditingMemory.id, payload);
                 const savedPatch = savedMemory && typeof savedMemory === 'object' ? savedMemory : {};
+
+                // Validate response: must be a memory record with matching ID
+                const responseId = savedPatch.id || savedPatch.memoryId || null;
+                if (!responseId || String(responseId) !== String(currentEditingMemory.id)) {
+                    const detail = savedPatch && typeof savedPatch.error !== 'undefined'
+                        ? (savedPatch.error || '')
+                        : '';
+                    throw new Error(detail || 'Invalid server response: missing or mismatched memory ID');
+                }
+
+                // Validate changed fields are acknowledged in the response
+                const payloadVideoId = (function extractId(url) {
+                    if (!url || typeof url !== 'string') return null;
+                    const m = url.match(/(?:v=|[/]|youtu[.]be[/]|embed[/]|shorts[/])([0-9A-Za-z_-]{11})/);
+                    return m ? m[1] : null;
+                })(payload.sourceUrl);
+                const responseVideoId = (function extractId(url) {
+                    if (!url || typeof url !== 'string') return null;
+                    const m = url.match(/(?:v=|[/]|youtu[.]be[/]|embed[/]|shorts[/])([0-9A-Za-z_-]{11})/);
+                    return m ? m[1] : null;
+                })(savedPatch.sourceUrl);
+
+                // If the user changed the source URL, verify the response acknowledges it
+                if (payloadVideoId && payload.sourceUrl !== getEditableSourceUrl(currentEditingMemory)) {
+                    if (!responseVideoId) {
+                        throw new Error('Server response is missing video reference');
+                    }
+                    if (responseVideoId !== payloadVideoId) {
+                        throw new Error('Server response contains stale video reference');
+                    }
+                }
+
+                // If the user changed title, verify the response acknowledges it
+                if (payload.title !== undefined && currentEditingMemory.title !== undefined &&
+                    payload.title !== currentEditingMemory.title &&
+                    String(savedPatch.title || '').trim() !== String(payload.title).trim()) {
+                    throw new Error('Server response does not reflect updated title');
+                }
+
+                // If the user changed memo, verify the response acknowledges it
+                if (payload.memo !== undefined && currentEditingMemory.memo !== undefined &&
+                    payload.memo !== currentEditingMemory.memo &&
+                    String(savedPatch.memo || '').trim() !== String(payload.memo).trim()) {
+                    throw new Error('Server response does not reflect updated memo');
+                }
+
+                // If the user changed tags, verify the response acknowledges it
+                if (payload.emotionTags !== undefined && currentEditingMemory.emotionTags !== undefined &&
+                    JSON.stringify(payload.emotionTags) !== JSON.stringify(currentEditingMemory.emotionTags) &&
+                    JSON.stringify((savedPatch.emotionTags || []).sort()) !== JSON.stringify((payload.emotionTags || []).sort())) {
+                    throw new Error('Server response does not reflect updated emotion tags');
+                }
 
                 // Priority: server response > payload > current memory
                 // This ensures sourceUrl/thumbnail from server normalization is used
@@ -409,6 +470,8 @@ function createEditorMemoryActions(deps) {
             console.error('[editor] Failed to update memory:', error);
             updateSaveStatus('failed', i18n('save_failed'));
             showToast(i18n('update_failed') || '순간 수정에 실패했어요', 'error');
+        } finally {
+            isMemoryEditSaveInFlight = false;
         }
     };
 
