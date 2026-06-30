@@ -406,17 +406,6 @@
 
     /* ── State helpers ── */
 
-    function setStateIdle() {
-      _submitting = false;
-      if (submitBtn) {
-        submitBtn.disabled = false;
-        submitBtn.textContent = typeof getEmailAuthMode === 'function' && getEmailAuthMode() === 'signup'
-          ? '회원가입' : '로그인';
-      }
-      if (errorEl) { errorEl.textContent = ''; errorEl.hidden = true; errorEl.setAttribute('aria-hidden', 'true'); }
-      if (statusEl) { statusEl.textContent = ''; statusEl.hidden = true; statusEl.setAttribute('aria-hidden', 'true'); }
-    }
-
     function setStateSubmitting(pendingText) {
       _submitting = true;
       if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = pendingText; }
@@ -431,7 +420,6 @@
     }
 
     function setStateSuccess(successText) {
-      _submitting = false;
       if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = successText; }
       // Clear error
       if (errorEl) { errorEl.textContent = ''; errorEl.hidden = true; errorEl.setAttribute('aria-hidden', 'true'); }

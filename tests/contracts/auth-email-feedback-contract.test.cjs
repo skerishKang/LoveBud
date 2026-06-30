@@ -380,6 +380,105 @@ test('duplicate submit: guard mechanism exists and prevents re-entry', async fun
   assert.equal(signInCount, 1, 'signIn must be called exactly once despite 2 submits');
 });
 
+test('success window: login redirect guard blocks second submit', async function () {
+  var ctx = buildSandbox({});
+  var signInCount = 0;
+  var createUserCount = 0;
+  var updateProfileCount = 0;
+
+  ctx.sandbox.firebase.auth = function () {
+    return {
+      signInWithEmailAndPassword: async function () {
+        signInCount++;
+        return { user: { uid: 'mock-uid', email: 'a@b.com' } };
+      },
+      createUserWithEmailAndPassword: async function () { createUserCount++; return { user: null }; },
+      sendPasswordResetEmail: async function () {},
+      signOut: async function () {},
+      onAuthStateChanged: function () {},
+      getRedirectTarget: function () {},
+      getRedirectResult: function () { return Promise.resolve({ user: null }); },
+      currentUser: null
+    };
+  };
+
+  setupForm(ctx.sandbox, ctx.elMap, ctx.metrics);
+
+  // First submit succeeds (resolved promise)
+  await triggerSubmit(ctx.elMap, { email: 'a@b.com', password: 'pass1234' });
+
+  // Success status must be visible
+  assert.ok(!ctx.elMap['email-auth-status'].hidden, 'status must be visible after success');
+  assert.ok(ctx.elMap['email-auth-status'].textContent.includes('로그인되었습니다'),
+    'status must say 로그인되었습니다');
+  // Button disabled with success text
+  assert.ok(ctx.elMap['email-auth-submit'].disabled, 'submit must be disabled');
+  assert.ok(ctx.elMap['email-auth-submit'].textContent.includes('로그인되었습니다'),
+    'button must show success text');
+
+  // Second submit — must be blocked by _submitting guard (still true from setStateSubmitting)
+  await triggerSubmit(ctx.elMap, { email: 'b@c.com', password: 'otherpass' });
+
+  // signIn count must still be exactly 1
+  assert.equal(signInCount, 1, 'signIn must be called exactly once despite second submit after success');
+  // createUser must not have been called
+  assert.equal(createUserCount, 0, 'createUser must not be called');
+
+  // Success status must still be intact
+  assert.ok(!ctx.elMap['email-auth-status'].hidden, 'status must stay visible');
+  assert.ok(ctx.elMap['email-auth-status'].textContent.includes('로그인되었습니다'),
+    'status text must be unchanged');
+  assert.ok(ctx.elMap['email-auth-submit'].disabled, 'submit must stay disabled');
+});
+
+test('success window: signup redirect guard blocks second submit', async function () {
+  var ctx = buildSandbox({});
+  var signInCount = 0;
+  var createUserCount = 0;
+  var updateProfileCount = 0;
+
+  ctx.sandbox.firebase.auth = function () {
+    return {
+      signInWithEmailAndPassword: async function () { signInCount++; return { user: null }; },
+      createUserWithEmailAndPassword: async function () {
+        createUserCount++;
+        return { user: { uid: 'mock-new', email: 'new@test.com', updateProfile: async function (p) {
+          updateProfileCount++;
+        }}};
+      },
+      sendPasswordResetEmail: async function () {},
+      signOut: async function () {},
+      onAuthStateChanged: function () {},
+      getRedirectResult: function () { return Promise.resolve({ user: null }); },
+      currentUser: null
+    };
+  };
+
+  setupForm(ctx.sandbox, ctx.elMap, ctx.metrics, { initialMode: 'signup' });
+
+  // First signup succeeds
+  await triggerSubmit(ctx.elMap, { email: 'new@test.com', password: 'newpass1234', displayName: 'NewUser' });
+
+  // Verify success state
+  assert.equal(createUserCount, 1, 'createUser must be called exactly once');
+  assert.equal(updateProfileCount, 1, 'updateProfile must be called exactly once');
+  assert.ok(!ctx.elMap['email-auth-status'].hidden, 'status must be visible after signup success');
+  assert.ok(ctx.elMap['email-auth-status'].textContent.includes('회원가입이 완료되었습니다'),
+    'status must say 회원가입 완료');
+
+  // Second submit — must be blocked by _submitting guard
+  await triggerSubmit(ctx.elMap, { email: 'new@test.com', password: 'newpass1234', displayName: 'NewUser' });
+
+  // No additional createUser or updateProfile calls
+  assert.equal(createUserCount, 1, 'createUser must still be exactly 1');
+  assert.equal(updateProfileCount, 1, 'updateProfile must still be exactly 1');
+  assert.equal(signInCount, 0, 'signIn must be 0 (never called during signup)');
+
+  // Success status must still be intact
+  assert.ok(!ctx.elMap['email-auth-status'].hidden, 'status must stay visible');
+  assert.ok(ctx.elMap['email-auth-submit'].disabled, 'submit must stay disabled');
+});
+
 test('state transition: hidden/aria-hidden/textContent consistency', async function () {
   var ctx = buildSandbox({});
   setupForm(ctx.sandbox, ctx.elMap, ctx.metrics);
