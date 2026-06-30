@@ -209,6 +209,59 @@ test('Identifier leakage is forbidden', () => {
 test('Deterministic failures for invalid mutations', () => {
   const baseData = JSON.parse(fs.readFileSync(FIXTURE_PATH, 'utf8'));
 
+  // A. Top-level Validation Mutations
+  assert.throws(() => validateFixtures(null), /Fixture must be an object/);
+  assert.throws(() => validateFixtures([]), /Fixture must be an object/);
+
+  const entitiesNull = deepClone(baseData);
+  entitiesNull.entities = null;
+  assert.throws(() => validateFixtures(entitiesNull), /entities must be an array/);
+
+  const entitiesObject = deepClone(baseData);
+  entitiesObject.entities = {};
+  assert.throws(() => validateFixtures(entitiesObject), /entities must be an array/);
+
+  const relationsNull = deepClone(baseData);
+  relationsNull.relations = null;
+  assert.throws(() => validateFixtures(relationsNull), /relations must be an array/);
+
+  const relationsObject = deepClone(baseData);
+  relationsObject.relations = {};
+  assert.throws(() => validateFixtures(relationsObject), /relations must be an array/);
+
+  // B. ISO date Validation Mutations
+  const badCreatedAt = deepClone(baseData);
+  badCreatedAt.entities[0].createdAt = '2026-13-01T00:00:00.000Z';
+  assert.throws(() => validateFixtures(badCreatedAt), /Invalid createdAt date value/);
+
+  const badUpdatedAt = deepClone(baseData);
+  badUpdatedAt.entities[0].updatedAt = '2026-13-01T00:00:00.000Z';
+  assert.throws(() => validateFixtures(badUpdatedAt), /Invalid updatedAt date value/);
+
+  // C. Entity sourceRef Validation Mutations (Table-driven)
+  const invalidValues = ['', '   ', 42];
+  for (const val of invalidValues) {
+    const badLabel = deepClone(baseData);
+    badLabel.entities[0].sourceRefs[0].label = val;
+    assert.throws(() => validateFixtures(badLabel), /sourceRef label must be non-empty string/);
+
+    const badUrl = deepClone(baseData);
+    badUrl.entities[0].sourceRefs[0].url = val;
+    assert.throws(() => validateFixtures(badUrl), /sourceRef url must be non-empty string/);
+  }
+
+  // D. Relation sourceRef Validation Mutations (Table-driven)
+  for (const val of invalidValues) {
+    const badRelLabel = deepClone(baseData);
+    badRelLabel.relations[0].sourceRefs[0].label = val;
+    assert.throws(() => validateFixtures(badRelLabel), /Relation sourceRef label must be non-empty string/);
+
+    const badRelUrl = deepClone(baseData);
+    badRelUrl.relations[0].sourceRefs[0].url = val;
+    assert.throws(() => validateFixtures(badRelUrl), /Relation sourceRef url must be non-empty string/);
+  }
+
+  // General structural mutation validators
   const badType = deepClone(baseData);
   badType.entities[0].type = 'unknown_type';
   assert.throws(() => validateFixtures(badType), /Invalid entity type/);
@@ -255,28 +308,6 @@ test('Deterministic failures for invalid mutations', () => {
   const leakUidLabel = deepClone(baseData);
   leakUidLabel.entities[0].sourceRefs[0].label = 'uid:AbCdEfGhIjKlMnOpQrStUv';
   assert.throws(() => validateFixtures(leakUidLabel), /Security leak detected/);
-
-  assert.throws(() => validateFixtures([]), /Fixture must be an object/);
-
-  const nullEntities = deepClone(baseData);
-  nullEntities.entities = null;
-  assert.throws(() => validateFixtures(nullEntities), /entities must be an array/);
-
-  const nullRelations = deepClone(baseData);
-  nullRelations.relations = null;
-  assert.throws(() => validateFixtures(nullRelations), /relations must be an array/);
-
-  const badDate = deepClone(baseData);
-  badDate.entities[0].createdAt = '2026-13-01T00:00:00.000Z';
-  assert.throws(() => validateFixtures(badDate), /Invalid createdAt date value/);
-
-  const emptyEntityLabel = deepClone(baseData);
-  emptyEntityLabel.entities[0].sourceRefs[0].label = '';
-  assert.throws(() => validateFixtures(emptyEntityLabel), /sourceRef label must be non-empty string/);
-
-  const emptyRelationUrl = deepClone(baseData);
-  emptyRelationUrl.relations[0].sourceRefs[0].url = '   ';
-  assert.throws(() => validateFixtures(emptyRelationUrl), /sourceRef url must be non-empty string/);
 });
 
 test('No closing keywords for #1882 in files', () => {
