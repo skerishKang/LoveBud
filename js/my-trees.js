@@ -11,7 +11,6 @@
  */
 
 (function() {
-  var isCreateTreeInFlight = false;
   var myTreesUI = window.LoveBudMyTreesUI || null;
   var myTreesActions = window.LoveBudMyTreesActions || null;
   var myTreesData = window.LoveBudMyTreesData || null;
@@ -286,95 +285,98 @@
     return 'public';
   }
 
-  function resetCtaButtons(btn, emptyBtn) {
-    if (btn) {
-      btn.disabled = false;
-      updateCtaButton(btn, 'add', null, (window.t || function(k) { return k; })('myTrees.header_create') || '새 러브트리');
-    }
-    if (emptyBtn) {
-      emptyBtn.disabled = false;
-      updateCtaButton(emptyBtn, 'add_circle', '20px', (window.t || function(k) { return k; })('create_tree_btn') || '새 러브트리 만들기');
-    }
-  }
+  var TREES_CACHE_KEY = myTreesData?.TREES_CACHE_KEY || 'my_trees_list';
 
-  function updateCtaButton(button, iconName, iconSize, text) {
-    if (!button) return;
-    button.replaceChildren();
+  var createFlowGuard = false;
+  var createFlowMaxWaitMs = 3000;
+  var createFlowRetryIntervalMs = 100;
+
+  function setHeaderCtaState(isOpening, i18n) {
+    var headerBtn = document.getElementById('headerCreateTreeBtn');
+    if (!headerBtn) return;
+    var t = i18n || window.t || function(k) { return k; };
+    headerBtn.disabled = isOpening;
+    headerBtn.replaceChildren();
+
     var icon = document.createElement('span');
     icon.className = 'material-symbols-outlined';
-    if (iconSize) icon.style.fontSize = iconSize;
-    icon.textContent = iconName;
-    button.appendChild(icon);
-    button.appendChild(document.createTextNode(' ' + text));
+    icon.textContent = isOpening ? 'hourglass_empty' : 'add';
+    headerBtn.appendChild(icon);
+
+    headerBtn.appendChild(document.createTextNode(' ' + safeText(t, isOpening ? 'myTrees.create_opening' : 'myTrees.header_create', isOpening ? '러브트리 만들기를 준비하고 있어요…' : '새 러브트리')));
   }
 
-  function setOpeningState(headerBtn, emptyBtn, isOpening, openingLabel, preparingLabel) {
-    var label = isOpening ? openingLabel : preparingLabel;
-    if (headerBtn) {
-      headerBtn.disabled = isOpening;
-      updateCtaButton(headerBtn, 'hourglass_empty', null, label);
+  function setEmptyCtaState(isOpening, i18n) {
+    var emptyBtn = document.getElementById('createTreeBtn');
+    if (!emptyBtn) return;
+    var t = i18n || window.t || function(k) { return k; };
+    emptyBtn.disabled = isOpening;
+    emptyBtn.replaceChildren();
+
+    var icon = document.createElement('span');
+    icon.className = 'material-symbols-outlined';
+    icon.style.fontSize = '20px';
+    icon.textContent = isOpening ? 'hourglass_empty' : 'add_circle';
+    emptyBtn.appendChild(icon);
+
+    emptyBtn.appendChild(document.createTextNode(' ' + safeText(t, isOpening ? 'myTrees.create_opening' : 'create_tree_btn', isOpening ? '러브트리 만들기를 준비하고 있어요…' : '새 러브트리 만들기')));
+  }
+
+  function safeText(i18n, key, fallback) {
+    var translated = typeof i18n === 'function' ? i18n(key) : '';
+    return translated && translated !== key ? translated : fallback;
+  }
+
+  async function waitForMyTreesActions(startTime) {
+    while (!window.LoveBudMyTreesActions || typeof window.LoveBudMyTreesActions.createNewTree !== 'function') {
+      if (Date.now() - startTime > createFlowMaxWaitMs) {
+        return false;
+      }
+      await new Promise(resolve => setTimeout(resolve, createFlowRetryIntervalMs));
     }
-    if (emptyBtn) {
-      emptyBtn.disabled = isOpening;
-      updateCtaButton(emptyBtn, 'hourglass_empty', '20px', label);
-    }
+    return true;
   }
 
   async function createNewTree() {
-    if (isCreateTreeInFlight) return;
-    isCreateTreeInFlight = true;
+    if (createFlowGuard) {
+      return;
+    }
+    createFlowGuard = true;
 
-    var headerBtn = document.getElementById('headerCreateTreeBtn');
-    var emptyBtn = document.getElementById('createTreeBtn');
     var i18n = window.t || function(k) { return k; };
+    var startTime = Date.now();
+
+    setHeaderCtaState(true, i18n);
+    setEmptyCtaState(true, i18n);
+
+    var redirecting = false;
 
     try {
-      var maxRetries = 20;
-      var retryCount = 0;
-
-      // Disable CTAs immediately
-      setOpeningState(headerBtn, emptyBtn, true,
-        i18n('creating') || '만드는 중...',
-        i18n('preparing_create') || '러브트리 만들기를 준비하고 있어요…'
-      );
-
-      // Wait for module readiness (poll window.LoveBudMyTreesActions each time)
-      while (retryCount < maxRetries) {
-        var actions = window.LoveBudMyTreesActions || null;
-        if (actions && typeof actions.createNewTree === 'function') {
-          break;
-        }
-        retryCount++;
-        if (retryCount >= maxRetries) {
-          actions = null;
-          break;
-        }
-        await new Promise(function(r) { setTimeout(r, 100); });
-      }
-
-      if (!actions || typeof actions.createNewTree !== 'function') {
-        // CTA will be reset in finally
-        showToast(
-          (i18n('preparing_create') || '러브트리 만들기를 준비하고 있어요…') +
-          ' (' + (i18n('timeout_error') || '시간 초과. 다시 시도해 주세요.') + ')',
-          'error'
-        );
+      var ready = await waitForMyTreesActions(startTime);
+      if (!ready) {
+        showMissingActionError('createNewTree');
         return;
       }
 
-      await actions.createNewTree({
+      var result = await window.LoveBudMyTreesActions.createNewTree({
         getDefaultVisibility: getDefaultVisibility,
         showToast: showToast,
         cacheKey: TREES_CACHE_KEY,
         i18n: i18n
       });
+
+      if (result && result.outcome === 'redirecting') {
+        redirecting = true;
+        return result;
+      }
     } finally {
-      isCreateTreeInFlight = false;
-      resetCtaButtons(headerBtn, emptyBtn);
+      if (!redirecting) {
+        createFlowGuard = false;
+        setHeaderCtaState(false, i18n);
+        setEmptyCtaState(false, i18n);
+      }
     }
   }
-
-  var TREES_CACHE_KEY = myTreesData?.TREES_CACHE_KEY || 'my_trees_list';
 
   async function loadTrees() {
     if (myTreesData && typeof myTreesData.loadTrees === 'function') {
