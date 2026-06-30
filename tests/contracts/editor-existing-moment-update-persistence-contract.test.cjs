@@ -8,6 +8,14 @@ const ROOT = path.join(__dirname, '..', '..');
 
 /**
  * Helper: run saveMemoryEdit in a VM sandbox.
+ *
+ * Exposed accessors:
+ *   getDocument()        — the live doc object (mutations visible in VM)
+ *   setInputValue(id, v) — set a DOM element's value
+ *   getFormDisplay(mode) — 'edit' or 'view' display style
+ *   getCallCount()       — how many times apiClient.updateMemory was called
+ *   resolveDeferred(data) — resolve the deferred promise (useDeferred only)
+ *   rejectDeferred(err)   — reject the deferred promise (useDeferred only)
  */
 async function runSaveMemoryEdit({
   initialMemory = null,
@@ -15,19 +23,19 @@ async function runSaveMemoryEdit({
   apiResponse = null,
   apiShouldResolve = true,
   apiDelayMs = 0,
+  useDeferred = false,
 } = {}) {
   let callCount = 0;
   let toastMessage = null;
   let toastType = null;
-  // Track deferred promise for pending tests
-  let deferResolve = null;
-  let deferReject = null;
+  let deferredResolveFn = null;
+  let deferredRejectFn = null;
   let deferredPromise = null;
 
-  function makeDeferredPromise() {
+  if (useDeferred) {
     deferredPromise = new Promise(function(resolve, reject) {
-      deferResolve = resolve;
-      deferReject = reject;
+      deferredResolveFn = resolve;
+      deferredRejectFn = reject;
     });
   }
 
@@ -66,6 +74,7 @@ async function runSaveMemoryEdit({
   const sandbox = {
     console, URL, URLSearchParams,
     currentEditingMemory: initialMemory ? { ...initialMemory } : null,
+    __editingMemoryMirror: initialMemory ? { ...initialMemory } : null,
     treeMemories: initialMemory ? [{ ...initialMemory }] : [],
     currentTreeData: initialMemory ? { id: 'tree-1', memories: [{ ...initialMemory }] } : null,
     toastMessage: null, toastType: null,
@@ -114,11 +123,13 @@ async function runSaveMemoryEdit({
       apiClient: {
         async updateMemory(id, payload) {
           callCount++;
-          // Simulate API delay if requested
+          sandbox.savedPayload = { id: id, ...payload };
+          if (useDeferred && deferredPromise) {
+            return deferredPromise.then(function(resp) { return resp; });
+          }
           if (apiDelayMs > 0) {
             await new Promise(function(r) { setTimeout(r, apiDelayMs); });
           }
-          sandbox.savedPayload = { id: id, ...payload };
           if (!apiShouldResolve) throw new Error('update failed');
           if (apiResponse !== null) return apiResponse;
           return { id: id, ...(sandbox.currentEditingMemory || {}), ...payload, updatedAt: new Date().toISOString() };
@@ -140,7 +151,7 @@ async function runSaveMemoryEdit({
         updateSidebarStatus: function() {},
         showToast: function(msg, type) { toastMessage = msg; toastType = type; },
         getCurrentEditingMemory: function() { return currentEditingMemory; },
-        setCurrentEditingMemory: function(mem) { currentEditingMemory = mem; },
+        setCurrentEditingMemory: function(mem) { if (currentEditingMemory && mem) { Object.keys(mem).forEach(function(k) { currentEditingMemory[k] = mem[k]; }); } else { currentEditingMemory = mem; } },
         getTreeMemories: function() { return treeMemories; },
         setTreeMemories: function(mems) { treeMemories = mems; if(currentTreeData) currentTreeData.memories = mems; },
         getSelectedNodeId: function() { return currentEditingMemory ? currentEditingMemory.id : null; },
@@ -162,6 +173,9 @@ async function runSaveMemoryEdit({
   `;
   var actions = new vm.Script(factoryCode).runInNewContext(sandbox);
 
+  function editDisplay() { return doc.getElementById('detailEditMode').style.display || 'block'; }
+  function viewDisplay() { return doc.getElementById('detailViewMode').style.display || 'block'; }
+
   return {
     actions,
     getSavedPayload: function() { return sandbox.savedPayload; },
@@ -170,6 +184,17 @@ async function runSaveMemoryEdit({
     getTreeMemories: function() { return sandbox.treeMemories; },
     getCurrentTreeData: function() { return sandbox.currentTreeData; },
     getCallCount: function() { return callCount; },
+    // DOM accessors — mutations are visible inside the VM (shared doc ref)
+    getDocument: function() { return doc; },
+    getElement: function(id) { return doc.getElementById(id); },
+    setInputValue: function(id, value) { var el = doc.getElementById(id); if (el) el.value = value; },
+    getFormDisplay: function(mode) { return mode === 'edit' ? editDisplay() : viewDisplay(); },
+    // Deferred resolve/reject (useDeferred only)
+    resolveDeferred: function(data) { if (deferredResolveFn) { deferredResolveFn(data); } },
+    rejectDeferred: function(err) { if (deferredRejectFn) { deferredRejectFn(err); } },
+    // Direct sandbox access for debugging
+    getDirectMemoryTitle: function() { return sandbox.currentEditingMemory ? sandbox.currentEditingMemory.title : null; },
+    getDirectCallCount: function() { return callCount; },
   };
 }
 
@@ -361,67 +386,142 @@ test('9. no #1882 closing keywords', function(t) {
 });
 
 // =============================================================================
-// Additional scenarios: validation guard, missing ID, retry after failure
+// Enhanced transition tests
 // =============================================================================
 
-test('10. validation failure does not lock future retry', async function(t) {
-  // Phase 1: submit with invalid end time
+test('10. same-context validation failure → fix input → retry → success', { timeout: 3000 }, async function(t) {
   var t10Ctx = await runSaveMemoryEdit({
     initialMemory: { id: 'mem-retry', title: 'Old', sourceUrl: 'https://www.youtube.com/embed/aaaa', sourceType: 'youtube', emotionTags: [] },
-    // startTime > endTime causes validation failure (end <= start)
+    // startTime 2:00 > endTime 1:00 → validation fails (end <= start)
     domValues: { title: 'New', memo: '', tags: '', sourceUrl: 'https://www.youtube.com/embed/aaaa', startTime: '2:00', endTime: '1:00' }
   });
 
+  // Phase 1: open edit form and set DOM values
+  assert.equal(t10Ctx.getFormDisplay('edit'), 'none', 'inactive edit form starts as none');
+  t10Ctx.actions.enterEditMode();
+  assert.equal(t10Ctx.getFormDisplay('edit'), 'block', 'enterEditMode shows edit form');
+  assert.equal(t10Ctx.getFormDisplay('view'), 'none', 'enterEditMode hides view form');
+  // Re-set DOM values after enterEditMode (which resets them from currentMemory)
+  t10Ctx.setInputValue('editTitleInput', 'New');
+  t10Ctx.setInputValue('editMemoInput', '');
+  t10Ctx.setInputValue('editTagsInput', '');
+  t10Ctx.setInputValue('editStartTimeInput', '2:00');
+  t10Ctx.setInputValue('editEndTimeInput', '1:00');
+
+  // Phase 2: submit with invalid end time
+
   await t10Ctx.actions.saveMemoryEdit();
-  assert.equal(t10Ctx.getCallCount(), 0, 'first submit must NOT call API (validation failure)');
-  assert.equal(t10Ctx.getToast().type, 'error', 'must show error toast');
+  assert.equal(t10Ctx.getCallCount(), 0, 'validation failure: 0 API calls');
+  assert.equal(t10Ctx.getToast().type, 'error', 'validation error toast shown');
+  assert.equal(t10Ctx.getFormDisplay('edit'), 'block', 'edit form stays open after validation failure');
+  assert.equal(t10Ctx.getFormDisplay('view'), 'none', 'view form stays hidden after validation failure');
 
-  // Phase 2: fix the values and retry — same action instance
-  // We can't modify DOM in the sandbox easily, so create a fresh valid submit
-  var t10ValidCtx = await runSaveMemoryEdit({
-    initialMemory: { id: 'mem-retry', title: 'Old', sourceUrl: 'https://www.youtube.com/embed/aaaa', sourceType: 'youtube', emotionTags: [] },
-    domValues: { title: 'New', memo: '', tags: '', sourceUrl: 'https://www.youtube.com/shorts/bbbb' }
-  });
+  // Phase 2: fix the DOM input values via shared doc reference — same context
+  // Only fix startTime/endTime — keep sourceUrl same so no video change needed
+  t10Ctx.setInputValue('editStartTimeInput', '');
+  t10Ctx.setInputValue('editEndTimeInput', '');
+  // sourceUrl stays same — only title changes, no video validation needed
 
-  await t10ValidCtx.actions.saveMemoryEdit();
-  assert.equal(t10ValidCtx.getCallCount(), 1, 'retry must call API exactly once');
-  assert.equal(t10ValidCtx.getEditingMemory().title, 'New', 'retry must succeed');
+  // Phase 3: retry — same ctx, same actions
+  await t10Ctx.actions.saveMemoryEdit();
+
+  assert.equal(t10Ctx.getCallCount(), 1, 'retry must call API exactly once');
+  assert.equal(t10Ctx.getToast().type, 'success', 'retry must show success toast');
+  // Validate via saved payload (crosses VM boundary correctly)
+  var savedPayload = t10Ctx.getSavedPayload();
+  assert.ok(savedPayload, 'retry must produce a saved payload');
+  assert.equal(savedPayload.title, 'New', 'API payload must contain new title');
+  // Validate form state transitions
+  assert.equal(t10Ctx.getFormDisplay('edit'), 'none', 'success closes edit form');
+  assert.equal(t10Ctx.getFormDisplay('view'), 'block', 'success opens view form');
 });
 
 test('11. missing existing memory ID — no API call, safe failure', async function(t) {
-  var memNoId = {
-    title: 'No ID',
-    sourceUrl: 'https://www.youtube.com/embed/aaaa', sourceType: 'youtube', emotionTags: []
-  };
-  // No id property on memory
+  var memNoId = { title: 'No ID', sourceUrl: 'https://www.youtube.com/embed/aaaa', sourceType: 'youtube', emotionTags: [] };
   var t11Ctx = await runSaveMemoryEdit({
     initialMemory: memNoId,
     domValues: { title: 'Should not call API', memo: '', tags: '', sourceUrl: 'https://www.youtube.com/shorts/bbbb' }
   });
 
+  t11Ctx.actions.enterEditMode();
+  assert.equal(t11Ctx.getFormDisplay('edit'), 'block', 'edit form opens');
+
   await t11Ctx.actions.saveMemoryEdit();
-  assert.equal(t11Ctx.getCallCount(), 0, 'missing ID must NOT call API');
-  // Form stays open, editing memory unchanged
-  assert.equal(t11Ctx.getEditingMemory().title, 'No ID', 'editing memory must be unchanged');
+  assert.equal(t11Ctx.getCallCount(), 0, 'missing ID: 0 API calls');
+  assert.equal(t11Ctx.getEditingMemory().title, 'No ID', 'editing memory unchanged');
+  assert.equal(t11Ctx.getFormDisplay('edit'), 'block', 'edit form stays open after missing ID');
 });
 
-test('12. deferred pending resolves — guard resets for next save', { timeout: 3000 }, async function(t) {
+test('12. deferred pending: duplicate blocked → resolve → guard reset → second save', { timeout: 3000 }, async function(t) {
   var mem = {
     id: 'mem-1', title: 'Old',
     sourceUrl: 'https://www.youtube.com/embed/aaaaaaaaaaa', sourceType: 'youtube', emotionTags: []
   };
+  var deferredResponse = {
+    id: 'mem-1', title: 'Updated', sourceUrl: 'https://www.youtube.com/embed/bbbbbbbbbbb',
+    sourceType: 'youtube',
+    thumbnail: 'https://img.youtube.com/vi/bbbbbbbbbbb/mqdefault.jpg',
+    source: 'YouTube', emotionTags: [],
+    updatedAt: new Date().toISOString()
+  };
+
   var t12Ctx = await runSaveMemoryEdit({
     initialMemory: mem,
     domValues: { title: 'Updated', memo: '', tags: '', sourceUrl: 'https://www.youtube.com/shorts/bbbbbbbbbbb' },
-    apiDelayMs: 50
+    useDeferred: true,
   });
 
-  // First save
-  await t12Ctx.actions.saveMemoryEdit();
-  assert.equal(t12Ctx.getCallCount(), 1, 'first save: 1 API call');
-  assert.equal(t12Ctx.getEditingMemory().title, 'Updated', 'first save succeeded');
+  // a. open edit form, start first save
+  t12Ctx.actions.enterEditMode();
+  assert.equal(t12Ctx.getFormDisplay('edit'), 'block', 'edit form is open');
+  var p1 = t12Ctx.actions.saveMemoryEdit();
 
-  // Second save — guard should have been reset
+  // b. API call count should be 1 (updateMemory was invoked, returned deferred promise)
+  //    Since the promise is pending but synchronous call increased callCount
+  assert.equal(t12Ctx.getCallCount(), 1, 'first save: 1 API call initiated');
+
+  // c. Promise is still unresolved — cannot check resolved state, only that callCount is 1
+
+  // d. pending state: second save
+  var p2 = t12Ctx.actions.saveMemoryEdit();
+
+  // e. API call count still 1 (duplicate blocked by guard)
+  assert.equal(t12Ctx.getCallCount(), 1, 'duplicate blocked: still 1 API call');
+
+  // f. edit form still open while pending
+  assert.equal(t12Ctx.getFormDisplay('edit'), 'block', 'edit form stays open while pending');
+
+  // g. resolveDeferred with valid response (matching ID, canonical same video ID)
+  t12Ctx.resolveDeferred(deferredResponse);
+
+  // h. wait for both promises
+  await Promise.all([p1, p2]);
+
+  // i. success: edit form closes, view form opens
+  assert.equal(t12Ctx.getFormDisplay('edit'), 'none', 'success closes edit form');
+  assert.equal(t12Ctx.getFormDisplay('view'), 'block', 'success opens view form');
+  assert.equal(t12Ctx.getEditingMemory().title, 'Updated', 'title updated after deferred resolve');
+
+  // j. guard reset → second save
+  //    Set up fresh DOM values for a second mutation
+  var secondResponse = {
+    id: 'mem-1', title: 'Final', sourceUrl: 'https://www.youtube.com/embed/bbbbbbbbbbb',
+    sourceType: 'youtube',
+    thumbnail: 'https://img.youtube.com/vi/bbbbbbbbbbb/mqdefault.jpg',
+    source: 'YouTube', emotionTags: [],
+    updatedAt: new Date().toISOString()
+  };
+
+  // Need a second deferred for the next save
+  // The second save uses a normal (non-deferred) apiResponse
+  // Since useDeferred only applies to the first call and deferredPromise was consumed,
+  // we direct the second save via a non-deferred path
+  // Actually, after useDeferred resolves once, subsequent calls go through the normal
+  // path (the deferredPromise is consumed). So we need to use apiResponse for the second.
+  // This is a harness limitation — useDeferred only works once.
+  // Instead, since the first deferred is consumed, the second save will get
+  // the default success response, which matches ID and video — it will succeed.
+
   await t12Ctx.actions.saveMemoryEdit();
-  assert.equal(t12Ctx.getCallCount(), 2, 'second save after guard reset: 2 API calls');
+  assert.equal(t12Ctx.getCallCount(), 2, 'second save: 2 API calls — guard reset');
 });
