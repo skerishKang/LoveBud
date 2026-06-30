@@ -612,4 +612,107 @@ test('Runtime: client/server clock skew handled via ID-based reconciliation', { 
   assert.strictEqual(result.outcome, 'redirecting', 'Should return redirecting despite clock skew');
   assert.strictEqual(headerBtn.disabled, true, 'CTA stays disabled after redirect commit');
 });
+
+test('Runtime: snapshot getTrees failure prevents automatic redirect (check mode only)', async function(t) {
+  var win = createContextifiedWindow();
+  vm.createContext(win);
+  var createCallCount = 0;
+  var getTreesCallCount = 0;
+
+  win.apiClient = {
+    createTree: async function() {
+      createCallCount++;
+      var err = new Error('Network Error');
+      throw err;
+    },
+    getTrees: async function() {
+      getTreesCallCount++;
+      if (getTreesCallCount === 1) {
+        throw new Error('Snapshot failed');
+      }
+      return [
+        { id: 'new-tree', title: 'My Tree', createdAt: new Date().toISOString() }
+      ];
+    }
+  };
+
+  loadActionsScript(win);
+  var submitBtn = win.document.getElementById('createTreeModalSubmitBtn');
+  var titleInput = win.document.getElementById('createTreeTitleInput');
+
+  var promise = win.LoveBudMyTreesActions.createNewTree({ i18n: win.t });
+  await new Promise(function(r) { setTimeout(r, 50); });
+  titleInput.value = 'My Tree';
+  win.document.getElementById('createTreeModalForm').dispatchEvent(createFakeEvent('submit'));
+
+  // Wait for createTree to fail and enter check mode (ambiguous error + no snapshot)
+  await new Promise(function(r) { setTimeout(r, 200); });
+
+  assert.strictEqual(createCallCount, 1, 'createTree called exactly once (no retry)');
+  assert.strictEqual(getTreesCallCount, 1, 'getTrees called once (takeSnapshot only, no reconcile)');
+  assert.ok(win._redirectUrl === '', 'Should NOT auto-redirect when snapshot unavailable');
+
+  // Submit again in check mode — reconcile occurs but snapshotAvailable=false blocks redirect
+  titleInput.value = 'My Tree';
+  win.document.getElementById('createTreeModalForm').dispatchEvent(createFakeEvent('submit'));
+  await new Promise(function(r) { setTimeout(r, 200); });
+
+  assert.strictEqual(createCallCount, 1, 'createTree still exactly once (no additional POST)');
+  assert.strictEqual(getTreesCallCount, 1, 'getTrees: takeSnapshot only, no reconcile (snapshot unavailable)');
+  assert.ok(win._redirectUrl === '', 'Should NOT auto-redirect in check mode when snapshot unavailable');
+  assert.ok(submitBtn.textContent.indexOf('check_status') !== -1 || submitBtn.textContent.indexOf('생성 상태 확인') !== -1,
+    'Should stay in check mode, got: ' + submitBtn.textContent);
+});
+
+test('Runtime: js/my-trees.js loads before actions module, CTA stays disabled on redirecting outcome', async function(t) {
+  var win = createContextifiedWindow();
+  vm.createContext(win);
+
+  // Load my-trees.js first (actions module not yet available)
+  var myTreesCode = fs.readFileSync(path.join(ROOT, 'js/my-trees.js'), 'utf8');
+  vm.runInContext(myTreesCode, win);
+
+  // Trigger DOMContentLoaded to boot the page
+  var handler = win.document._onDOMContentLoaded;
+  assert.ok(handler, 'DOMContentLoaded handler must be registered');
+  handler();
+
+  await new Promise(function(r) { setTimeout(r, 100); });
+
+  var headerBtn = win.document.getElementById('headerCreateTreeBtn');
+  var emptyBtn = win.document.getElementById('createTreeBtn');
+  assert.ok(headerBtn, 'Header CTA must exist');
+  assert.strictEqual(headerBtn.disabled, false, 'Header CTA must be enabled initially');
+  assert.strictEqual(emptyBtn.disabled, false, 'Empty CTA must be enabled initially');
+
+  // Inject actions module late
+  loadActionsScript(win);
+  assert.ok(win.LoveBudMyTreesActions, 'Actions module must be available after injection');
+
+  // Set up API client — getTrees for takeSnapshot, createTree succeeds
+  win.apiClient = {
+    getTrees: async function() { return []; },
+    createTree: async function() { return { id: 'page-flow-1' }; }
+  };
+
+  // Click header CTA
+  var clickEvent = createFakeEvent('click');
+  headerBtn.dispatchEvent(clickEvent);
+
+  // Wait for modal to open
+  await new Promise(function(r) { setTimeout(r, 150); });
+
+  var titleInput = win.document.getElementById('createTreeTitleInput');
+  assert.ok(titleInput, 'Title input must be accessible in modal');
+
+  // Submit the modal
+  titleInput.value = 'Page Flow Tree';
+  win.document.getElementById('createTreeModalForm').dispatchEvent(createFakeEvent('submit'));
+
+  // Wait for success → redirecting outcome
+  await new Promise(function(r) { setTimeout(r, 300); });
+
+  assert.strictEqual(headerBtn.disabled, true, 'Header CTA must remain disabled after redirecting outcome');
+  assert.strictEqual(emptyBtn.disabled, true, 'Empty CTA must remain disabled after redirecting outcome');
+});
 });

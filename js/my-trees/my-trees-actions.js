@@ -60,69 +60,79 @@
     }
   }
 
+  function buildDom(tag, attrs, children) {
+    var el = document.createElement(tag);
+    if (attrs) {
+      for (var key in attrs) {
+        if (key === 'class') el.className = attrs[key];
+        else if (key === 'style') el.setAttribute('style', attrs[key]);
+        else el.setAttribute(key, attrs[key]);
+      }
+    }
+    if (children) {
+      for (var i = 0; i < children.length; i++) {
+        var child = children[i];
+        if (typeof child === 'string') {
+          el.appendChild(document.createTextNode(child));
+        } else if (child) {
+          el.appendChild(child);
+        }
+      }
+    }
+    return el;
+  }
+
   function renderCreationGoalCard(form, i18n) {
     var visibilityGrid = form.querySelector('.create-tree-visibility');
     var visibilityField = visibilityGrid ? visibilityGrid.closest('.create-tree-field') : null;
     if (!visibilityField) return;
 
-    // Clear container safely
-    visibilityField.replaceChildren();
+    var label = buildDom('div', { class: 'create-tree-label' }, [
+      safeText(i18n, 'myTrees.create_modal_goal_label', '시작 목표')
+    ]);
 
-    var labelDiv = document.createElement('div');
-    labelDiv.className = 'create-tree-label';
-    labelDiv.textContent = safeText(i18n, 'myTrees.create_modal_goal_label', '시작 목표');
-    visibilityField.appendChild(labelDiv);
+    var psychiatryIcon = buildDom('span', { class: 'material-symbols-outlined', style: 'font-size:18px;color:var(--primary);' }, ['psychiatry']);
+    var goalTitleText = buildDom('span', null, [
+      safeText(i18n, 'myTrees.create_modal_goal_title', '둘러보기에 소개될 트리로 키우기')
+    ]);
+    var goalTitleRow = buildDom('span', { style: 'display:inline-flex;align-items:center;gap:8px;' }, [
+      psychiatryIcon,
+      goalTitleText
+    ]);
 
-    var cardDiv = document.createElement('div');
-    cardDiv.className = 'create-tree-visibility-card';
-    cardDiv.style.cssText = 'cursor:default;min-height:auto;background:rgba(255,246,247,0.98);border-color:rgba(144,73,81,0.20);box-shadow:0 10px 24px rgba(144,73,81,0.08);';
+    var badgeText = safeText(i18n, 'myTrees.create_modal_goal_badge', '추천');
+    var badge = buildDom('span', {
+      style: 'display:inline-flex;align-items:center;justify-content:center;padding:4px 9px;border-radius:999px;background:rgba(144,73,81,0.10);color:var(--primary);font-size:11px;font-weight:900;white-space:nowrap;'
+    }, [badgeText]);
 
-    var topDiv = document.createElement('div');
-    topDiv.className = 'create-tree-visibility-top';
-    topDiv.style.cssText = 'justify-content:space-between;align-items:flex-start;';
+    var top = buildDom('div', { class: 'create-tree-visibility-top', style: 'justify-content:space-between;align-items:flex-start;' }, [
+      goalTitleRow,
+      badge
+    ]);
 
-    var spanLeft = document.createElement('span');
-    spanLeft.style.cssText = 'display:inline-flex;align-items:center;gap:8px;';
-
-    var icon = document.createElement('span');
-    icon.className = 'material-symbols-outlined';
-    icon.style.cssText = 'font-size:18px;color:var(--primary);';
-    icon.textContent = 'psychiatry';
-    spanLeft.appendChild(icon);
-
-    var titleSpan = document.createElement('span');
-    titleSpan.textContent = safeText(i18n, 'myTrees.create_modal_goal_title', '둘러보기에 소개될 트리로 키우기');
-    spanLeft.appendChild(titleSpan);
-
-    topDiv.appendChild(spanLeft);
-
-    var badgeSpan = document.createElement('span');
-    badgeSpan.style.cssText = 'display:inline-flex;align-items:center;justify-content:center;padding:4px 9px;border-radius:999px;background:rgba(144,73,81,0.10);color:var(--primary);font-size:11px;font-weight:900;white-space:nowrap;';
-    badgeSpan.textContent = safeText(i18n, 'myTrees.create_modal_goal_badge', '추천');
-    topDiv.appendChild(badgeSpan);
-
-    cardDiv.appendChild(topDiv);
-
-    var descDiv = document.createElement('div');
-    descDiv.className = 'create-tree-visibility-desc';
-    descDiv.style.cssText = 'font-size:13px;line-height:1.65;';
-    descDiv.textContent = safeText(
+    var descText = safeText(
       i18n,
       'myTrees.create_modal_goal_desc',
       '좋아하는 순간을 3개 이상 남기면 둘러보기에 소개될 수 있어요. 첫 순간부터 차근차근 채워보세요.'
     );
-    cardDiv.appendChild(descDiv);
+    var desc = buildDom('div', { class: 'create-tree-visibility-desc', style: 'font-size:13px;line-height:1.65;' }, [descText]);
 
-    visibilityField.appendChild(cardDiv);
+    var card = buildDom('div', {
+      class: 'create-tree-visibility-card',
+      style: 'cursor:default;min-height:auto;background:rgba(255,246,247,0.98);border-color:rgba(144,73,81,0.20);box-shadow:0 10px 24px rgba(144,73,81,0.08);'
+    }, [top, desc]);
 
-    var helpDiv = document.createElement('div');
-    helpDiv.className = 'create-tree-help';
-    helpDiv.textContent = safeText(
+    var helpText = safeText(
       i18n,
       'myTrees.create_modal_goal_help',
       '처음에는 제목만 정하고 시작해도 괜찮아요. 좋아하는 순간을 3개 이상 남기면 둘러보기에 소개될 수 있어요.'
     );
-    visibilityField.appendChild(helpDiv);
+    var help = buildDom('div', { class: 'create-tree-help' }, [helpText]);
+
+    visibilityField.replaceChildren();
+    visibilityField.appendChild(label);
+    visibilityField.appendChild(card);
+    visibilityField.appendChild(help);
   }
 
   function setupCreateTreeModal(options) {
@@ -416,6 +426,7 @@
     }
 
     var preCreateTreeIds = [];
+    var snapshotAvailable = false;
     var attemptStartedAt = 0;
 
     function setCtaContent(btn, iconName, iconSize, text) {
@@ -483,10 +494,12 @@
 
     async function takeSnapshot() {
       preCreateTreeIds = [];
+      snapshotAvailable = false;
       if (window.apiClient && window.apiClient.getTrees) {
         try {
           var trees = await window.apiClient.getTrees();
           preCreateTreeIds = trees.map(function(t) { return t.id; });
+          snapshotAvailable = true;
         } catch (e) {
           myTreesDebugLog('[my-trees-actions] Snapshot getTrees failed, using empty snapshot', e);
         }
@@ -533,6 +546,18 @@
       try {
         if (modalResult._check) {
           myTreesDebugLog('[my-trees-actions] Check mode: reconciling via getTrees');
+
+          if (!snapshotAvailable) {
+            myTreesDebugLog('[my-trees-actions] Snapshot not available, cannot automatically reconcile. Enter check mode directly.');
+            enterCheckMode();
+            modalResult = await awaitModalAgain();
+            if (!modalResult) {
+              restoreCtas();
+              break;
+            }
+            continue;
+          }
+
           var checkMatch = await reconcile(modalResult);
           if (checkMatch) {
             myTreesDebugLog('[my-trees-actions] Check mode reconciliation successful');
@@ -603,10 +628,21 @@
         if (!status || (status >= 500 && status <= 599)) {
           myTreesDebugLog('[my-trees-actions] Ambiguous error, attempting reconciliation', e);
 
+          if (!snapshotAvailable) {
+            myTreesDebugLog('[my-trees-actions] Snapshot not available, cannot automatically reconcile. Enter check mode.');
+            enterCheckMode();
+            modalResult = await awaitModalAgain();
+            if (!modalResult) {
+              restoreCtas();
+              break;
+            }
+            continue;
+          }
+
           var match = await reconcile(modalResult);
-              if (match) {
-                myTreesDebugLog('[my-trees-actions] Reconciliation successful, tree found');
-                showSuccessAndRedirect(match.id, safeText(i18n, 'myTrees.create_success', '러브트리가 만들어졌어요. 이동 중이에요…'));
+          if (match) {
+            myTreesDebugLog('[my-trees-actions] Reconciliation successful, tree found');
+            showSuccessAndRedirect(match.id, safeText(i18n, 'myTrees.create_success', '러브트리가 만들어졌어요. 이동 중이에요…'));
             return { outcome: 'redirecting' };
           }
 
