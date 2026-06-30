@@ -143,3 +143,41 @@ test('aria-hidden remains false during success confirmation', () => {
   // The comment in the code confirms this: "Keep aria-hidden='false' during success confirmation"
   assert.match(actionsSource, /Keep aria-hidden="false" during success confirmation/, 'Code must contain comment confirming aria-hidden stays false');
 });
+
+test('attemptStartedAt recorded before POST for reconciliation', () => {
+  assert.match(actionsSource, /attemptStartedAt = Date\.now\(\)/, 'attemptStartedAt must be recorded before POST');
+});
+
+test('Reconciliation uses attemptStartedAt instead of fixed 60s window', () => {
+  assert.match(actionsSource, /new Date\(t\.createdAt\)\.getTime\(\) >= attemptStartedAt/, 'Reconciliation must compare createdAt >= attemptStartedAt');
+  assert.doesNotMatch(actionsSource, /60000/, 'Reconciliation must not use 60-second window');
+});
+
+test('Check mode issues getTrees only, never createTree', () => {
+  assert.match(actionsSource, /if \(createTreeModalState\._checkMode\)/, 'Check mode guard must exist in form submit');
+  assert.match(actionsSource, /modalResult\._check\)/, 'createNewTree must check for _check flag');
+  assert.match(actionsSource, /Check mode: reconciling via getTrees/, 'Check mode must log reconciling via getTrees');
+});
+
+test('401 and 403 defer to auth UX, do not retry', () => {
+  assert.match(actionsSource, /status === 401/, '401 must be explicitly handled');
+  assert.match(actionsSource, /status === 403/, '403 must be explicitly handled');
+  assert.match(actionsSource, /Auth error, deferring to auth UX/, 'Auth error must log deferring to auth UX');
+  assert.match(actionsSource, /myTrees\.auth_required/, 'Auth error must use auth_required i18n key');
+});
+
+test('400 and 422 validation errors preserve normal retry flow', () => {
+  assert.match(actionsSource, /Non-ambiguous error, retry allowed/, 'Normal retry path must log retry allowed');
+  assert.match(actionsSource, /myTrees\.create_tree_fail/, 'Error message must use safe i18n key');
+});
+
+test('createFlowGuard prevents duplicate form submissions', () => {
+  assert.match(actionsSource, /createFlowGuard\) return;/, 'createFlowGuard must prevent duplicate flow entry');
+  assert.match(actionsSource, /createTreeModalState\.createFlowGuard = true;/, 'createFlowGuard must be set before async operations');
+});
+
+test('__myTreesCreateFlowActive prevents duplicate createNewTree calls', () => {
+  assert.match(actionsSource, /__myTreesCreateFlowActive\)/, 'Must check __myTreesCreateFlowActive at top');
+  assert.match(actionsSource, /__myTreesCreateFlowActive = true;/, 'Must set __myTreesCreateFlowActive active');
+  assert.match(actionsSource, /__myTreesCreateFlowActive = false;/, 'Must reset __myTreesCreateFlowActive at end');
+});
