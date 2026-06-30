@@ -105,8 +105,9 @@ test('Initial bootstrap incomplete state does not leave CTA unresponsive', () =>
   // setupHeaderCreateButton attaches handler even if myTreesPage not loaded
   assert.match(myTreesJs, /function setupHeaderCreateButton\(\)/, 'setupHeaderCreateButton must exist');
   assert.match(myTreesJs, /btn\.addEventListener\('click'/, 'Header button must have click handler attached');
-  // createNewTree is available as fallback even without myTreesActions module
-  assert.match(myTreesJs, /warnMissingModule\('LoveBudMyTreesActions', 'createNewTree'\)/, 'Must warn if module missing but not crash');
+  // createNewTree polls window.LoveBudMyTreesActions via waitForMyTreesActions
+  assert.match(myTreesJs, /waitForMyTreesActions\(/, 'Must poll window.LoveBudMyTreesActions');
+  assert.match(myTreesJs, /showMissingActionError\('createNewTree'\)/, 'Must show error if module missing');
 });
 
 test('Existing My Trees normal create route not broken', () => {

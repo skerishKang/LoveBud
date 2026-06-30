@@ -413,6 +413,7 @@
     var headerBtn = document.getElementById('headerCreateTreeBtn');
     var emptyBtn = document.getElementById('createTreeBtn');
     var modal = setupCreateTreeModal(options);
+    if (!modal) return { outcome: 'cancelled' };
 
     if (window.__myTreesCreateFlowActive) {
       return;

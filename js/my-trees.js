@@ -285,20 +285,6 @@
     return 'public';
   }
 
-  async function createNewTree() {
-    if (myTreesActions && typeof myTreesActions.createNewTree === 'function') {
-      return myTreesActions.createNewTree({
-        getDefaultVisibility: getDefaultVisibility,
-        showToast: showToast,
-        cacheKey: TREES_CACHE_KEY,
-        i18n: window.t || function(k) { return k; }
-      });
-    }
-
-    warnMissingModule('LoveBudMyTreesActions', 'createNewTree');
-    showMissingActionError('createNewTree');
-  }
-
   var TREES_CACHE_KEY = myTreesData?.TREES_CACHE_KEY || 'my_trees_list';
 
   var createFlowGuard = false;

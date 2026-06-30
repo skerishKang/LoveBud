@@ -1,0 +1,225 @@
+{
+  "version": 1,
+  "entities": [
+    {
+      "id": "fixture-group-lumen",
+      "type": "group_or_organization",
+      "canonicalName": "Lumen",
+      "aliases": ["루멘", "Lumen K-pop"],
+      "summary": "A 2025 debut K-pop girl group known for dream-pop sound and ethereal concepts.",
+      "sourceRefs": [
+        {
+          "label": "Fixture editorial reference",
+          "url": "https://example.com/knowledge-fixture-reference"
+        }
+      ],
+      "publicationState": "published",
+      "createdAt": "2026-01-15T10:00:00.000Z",
+      "updatedAt": "2026-01-15T10:00:00.000Z"
+    },
+    {
+      "id": "fixture-person-ara",
+      "type": "person",
+      "canonicalName": "Ara",
+      "aliases": ["아라", "Ara Kim"],
+      "summary": "Leader and main vocalist of Lumen, known for her ethereal voice and songwriting.",
+      "sourceRefs": [
+        {
+          "label": "Fixture editorial reference",
+          "url": "https://example.com/knowledge-fixture-reference"
+        }
+      ],
+      "publicationState": "published",
+      "createdAt": "2026-01-15T10:00:00.000Z",
+      "updatedAt": "2026-01-15T10:00:00.000Z"
+    },
+    {
+      "id": "fixture-work-first-light",
+      "type": "work",
+      "canonicalName": "First Light",
+      "aliases": ["퍼스트 라이트", "First Light EP"],
+      "summary": "Lumen's debut mini-album featuring the title track 'Dawn'. Released in March 2025.",
+      "sourceRefs": [
+        {
+          "label": "Fixture editorial reference",
+          "url": "https://example.com/knowledge-fixture-reference"
+        }
+      ],
+      "publicationState": "published",
+      "createdAt": "2026-01-15T10:00:00.000Z",
+      "updatedAt": "2026-01-15T10:00:00.000Z"
+    },
+    {
+      "id": "fixture-source-first-light-live",
+      "type": "video_or_source",
+      "canonicalName": "First Light Live Performance",
+      "aliases": ["First Light 쇼케이스 라이브"],
+      "summary": "Official live performance video of 'First Light' from Lumen's debut showcase.",
+      "sourceRefs": [
+        {
+          "label": "Fixture editorial reference",
+          "url": "https://example.com/knowledge-fixture-reference"
+        }
+      ],
+      "publicationState": "published",
+      "createdAt": "2026-01-15T10:00:00.000Z",
+      "updatedAt": "2026-01-15T10:00:00.000Z"
+    },
+    {
+      "id": "fixture-place-sunrise-hall",
+      "type": "place",
+      "canonicalName": "Sunrise Hall",
+      "aliases": ["선라이즈 홀", "Sunrise Hall Seoul"],
+      "summary": "Intimate performance venue in Seoul where Lumen held their debut showcase.",
+      "sourceRefs": [
+        {
+          "label": "Fixture editorial reference",
+          "url": "https://example.com/knowledge-fixture-reference"
+        }
+      ],
+      "publicationState": "published",
+      "createdAt": "2026-01-15T10:00:00.000Z",
+      "updatedAt": "2026-01-15T10:00:00.000Z"
+    },
+    {
+      "id": "fixture-event-first-light-showcase",
+      "type": "event",
+      "canonicalName": "First Light Showcase",
+      "aliases": ["퍼스트 라이트 쇼케이스", "Lumen Debut Showcase"],
+      "summary": "Lumen's debut showcase event held at Sunrise Hall, introducing First Light EP.",
+      "sourceRefs": [
+        {
+          "label": "Fixture editorial reference",
+          "url": "https://example.com/knowledge-fixture-reference"
+        }
+      ],
+      "publicationState": "published",
+      "createdAt": "2026-01-15T10:00:00.000Z",
+      "updatedAt": "2026-01-15T10:00:00.000Z"
+    },
+    {
+      "id": "fixture-concept-dream-pop",
+      "type": "concept",
+      "canonicalName": "Dream Pop",
+      "aliases": ["드림팝", "Dream Pop Genre"],
+      "summary": "A subgenre of alternative rock and pop music characterized by ethereal atmospheres and melodic focus. Lumen's core musical identity.",
+      "sourceRefs": [
+        {
+          "label": "Fixture editorial reference",
+          "url": "https://example.com/knowledge-fixture-reference"
+        }
+      ],
+      "publicationState": "published",
+      "createdAt": "2026-01-15T10:00:00.000Z",
+      "updatedAt": "2026-01-15T10:00:00.000Z"
+    },
+    {
+      "id": "fixture-group-velvet",
+      "type": "group_or_organization",
+      "canonicalName": "Velvet",
+      "aliases": ["벨벳", "Velvet K-pop"],
+      "summary": "A 2025 debut K-pop boy group known for R&B-infused sound.",
+      "sourceRefs": [
+        {
+          "label": "Fixture editorial reference",
+          "url": "https://example.com/knowledge-fixture-reference"
+        }
+      ],
+      "publicationState": "draft",
+      "createdAt": "2026-01-15T10:00:00.000Z",
+      "updatedAt": "2026-01-15T10:00:00.000Z"
+    }
+  ],
+  "relations": [
+    {
+      "id": "fixture-relation-001",
+      "from": "fixture-person-ara",
+      "to": "fixture-group-lumen",
+      "relationType": "member_of",
+      "sourceRefs": [
+        {
+          "label": "Fixture editorial reference",
+          "url": "https://example.com/knowledge-fixture-reference"
+        }
+      ],
+      "visibility": "public",
+      "createdBy": "editorial_fixture",
+      "ownershipBoundary": "knowledge_hub_editorial"
+    },
+    {
+      "id": "fixture-relation-002",
+      "from": "fixture-work-first-light",
+      "to": "fixture-group-lumen",
+      "relationType": "created_by",
+      "sourceRefs": [
+        {
+          "label": "Fixture editorial reference",
+          "url": "https://example.com/knowledge-fixture-reference"
+        }
+      ],
+      "visibility": "public",
+      "createdBy": "editorial_fixture",
+      "ownershipBoundary": "knowledge_hub_editorial"
+    },
+    {
+      "id": "fixture-relation-003",
+      "from": "fixture-source-first-light-live",
+      "to": "fixture-work-first-light",
+      "relationType": "related_to",
+      "sourceRefs": [
+        {
+          "label": "Fixture editorial reference",
+          "url": "https://example.com/knowledge-fixture-reference"
+        }
+      ],
+      "visibility": "public",
+      "createdBy": "editorial_fixture",
+      "ownershipBoundary": "knowledge_hub_editorial"
+    },
+    {
+      "id": "fixture-relation-004",
+      "from": "fixture-work-first-light",
+      "to": "fixture-event-first-light-showcase",
+      "relationType": "released_on",
+      "sourceRefs": [
+        {
+          "label": "Fixture editorial reference",
+          "url": "https://example.com/knowledge-fixture-reference"
+        }
+      ],
+      "visibility": "public",
+      "createdBy": "editorial_fixture",
+      "ownershipBoundary": "knowledge_hub_editorial"
+    },
+    {
+      "id": "fixture-relation-005",
+      "from": "fixture-event-first-light-showcase",
+      "to": "fixture-place-sunrise-hall",
+      "relationType": "related_to",
+      "sourceRefs": [
+        {
+          "label": "Fixture editorial reference",
+          "url": "https://example.com/knowledge-fixture-reference"
+        }
+      ],
+      "visibility": "public",
+      "createdBy": "editorial_fixture",
+      "ownershipBoundary": "knowledge_hub_editorial"
+    },
+    {
+      "id": "fixture-relation-006",
+      "from": "fixture-concept-dream-pop",
+      "to": "fixture-group-lumen",
+      "relationType": "related_to",
+      "sourceRefs": [
+        {
+          "label": "Fixture editorial reference",
+          "url": "https://example.com/knowledge-fixture-reference"
+        }
+      ],
+      "visibility": "public",
+      "createdBy": "editorial_fixture",
+      "ownershipBoundary": "knowledge_hub_editorial"
+    }
+  ]
+}
