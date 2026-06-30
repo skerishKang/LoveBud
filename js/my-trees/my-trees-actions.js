@@ -480,8 +480,6 @@
         }
         if (modal.backdrop) {
           modal.backdrop.removeAttribute('aria-busy');
-          // Keep aria-hidden="false" during success confirmation so screen readers
-          // can announce the success message. Modal stays visually open (.show class).
         }
         if (typeof modal.closeModal === 'function') {
           modal.closeModal({ completed: true, treeId: treeId });
@@ -549,8 +547,15 @@
           myTreesDebugLog('[my-trees-actions] Check mode: reconciling via getTrees');
 
           if (!snapshotAvailable) {
-            myTreesDebugLog('[my-trees-actions] Snapshot not available, cannot automatically reconcile. Enter check mode directly.');
-            enterCheckMode();
+            myTreesDebugLog('[my-trees-actions] Snapshot not available, calling reconcile for getTrees but never auto-redirecting.');
+            await reconcile(modalResult);
+            if (modal) {
+              modal.setError(safeText(i18n, 'myTrees.snapshot_check_hint', '자동 식별할 수 없으니 새로고침 후 내 러브트리 목록에서 확인해 달라.'));
+              modal.setSubmitting(false, i18n);
+              modal.submitBtn.textContent = safeText(i18n, 'myTrees.check_status', '생성 상태 확인');
+              createTreeModalState._checkMode = true;
+              createTreeModalState.createFlowGuard = false;
+            }
             modalResult = await awaitModalAgain();
             if (!modalResult) {
               restoreCtas();

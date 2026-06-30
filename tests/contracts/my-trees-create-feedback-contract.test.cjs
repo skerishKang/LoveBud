@@ -138,12 +138,10 @@ test('i18n keys for creating/success states exist', () => {
   assert.match(i18nSource, /myTrees\.create_tree_fail.*러브트리 만들기 실패.*Failed to create LoveTree/, 'myTrees.create_tree_fail key must exist');
 });
 
-test('aria-hidden remains false during success confirmation', () => {
-  // On success, aria-busy is removed but aria-hidden stays false until redirect
+test('aria-busy cleared and modal closed on success', () => {
+  // On success, aria-busy is removed and modal is closed via closeModal
   assert.match(actionsSource, /backdrop\.removeAttribute\('aria-busy'\)/, 'aria-busy must be cleared on success');
-  // Check that setAttribute('aria-hidden', 'true') is NOT in the success path (before redirect)
-  // The comment in the code confirms this: "Keep aria-hidden='false' during success confirmation"
-  assert.match(actionsSource, /Keep aria-hidden="false" during success confirmation/, 'Code must contain comment confirming aria-hidden stays false');
+  assert.match(actionsSource, /modal\.closeModal\(/, 'modal.closeModal must be called on success');
 });
 
 test('attemptStartedAt recorded before POST for reconciliation', () => {
@@ -653,16 +651,25 @@ test('Runtime: snapshot getTrees failure prevents automatic redirect (check mode
   assert.strictEqual(getTreesCallCount, 1, 'getTrees called once (takeSnapshot only, no reconcile)');
   assert.ok(win._redirectUrl === '', 'Should NOT auto-redirect when snapshot unavailable');
 
-  // Submit again in check mode — reconcile occurs but snapshotAvailable=false blocks redirect
+  // Submit again in check mode — getTrees called once for reconcile, but never auto-redirects
   titleInput.value = 'My Tree';
   win.document.getElementById('createTreeModalForm').dispatchEvent(createFakeEvent('submit'));
   await new Promise(function(r) { setTimeout(r, 200); });
 
   assert.strictEqual(createCallCount, 1, 'createTree still exactly once (no additional POST)');
-  assert.strictEqual(getTreesCallCount, 1, 'getTrees: takeSnapshot only, no reconcile (snapshot unavailable)');
+  assert.strictEqual(getTreesCallCount, 2, 'getTrees: 1 takeSnapshot + 1 check mode reconcile');
   assert.ok(win._redirectUrl === '', 'Should NOT auto-redirect in check mode when snapshot unavailable');
   assert.ok(submitBtn.textContent.indexOf('check_status') !== -1 || submitBtn.textContent.indexOf('생성 상태 확인') !== -1,
-    'Should stay in check mode, got: ' + submitBtn.textContent);
+    'Should stay in check mode with check_status button, got: ' + submitBtn.textContent);
+
+  // Submit again — same behavior (getTrees called once more, still no redirect)
+  titleInput.value = 'My Tree';
+  win.document.getElementById('createTreeModalForm').dispatchEvent(createFakeEvent('submit'));
+  await new Promise(function(r) { setTimeout(r, 200); });
+
+  assert.strictEqual(createCallCount, 1, 'createTree still exactly once after 3rd submit');
+  assert.strictEqual(getTreesCallCount, 3, 'getTrees: 1 takeSnapshot + 2 check mode reconciles');
+  assert.ok(win._redirectUrl === '', 'Still no redirect on 3rd check mode submit');
 });
 
 test('Runtime: js/my-trees.js loads before actions module, CTA stays disabled on redirecting outcome', async function(t) {
