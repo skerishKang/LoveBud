@@ -311,6 +311,22 @@
       if (!mode || !mode.isEditMode()) return;
       saveMemoryEdit();
     });
+
+    // Ctrl+Enter / Meta+Enter keyboard shortcut for save (in editMemoInput).
+    // Plain Enter in textarea is preserved as newline — save is NOT triggered.
+    var editMemoInput = document.getElementById('editMemoInput');
+    if (editMemoInput && !editMemoInput.dataset.saveShortcutBound) {
+      editMemoInput.dataset.saveShortcutBound = '1';
+      editMemoInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+          e.preventDefault();
+          var kbMode = window.LoveBudEditorInteractionMode;
+          if (!kbMode || !kbMode.isEditMode()) return;
+          if (typeof saveMemoryEdit === 'function') saveMemoryEdit();
+        }
+      });
+    }
+
     bindCanvasNodeDirectEdit({ enterEditMode: enterEditMode });
   }
 

@@ -19,6 +19,11 @@ function setupTestContext(initialMemory, finalDomValues = {}) {
         this.elements[id] = {
           id,
           value: '',
+          disabled: false,
+          _attrs: {},
+          getAttribute(attr) { return this._attrs[attr] !== undefined ? this._attrs[attr] : null; },
+          setAttribute(attr, val) { this._attrs[attr] = val; },
+          removeAttribute(attr) { delete this._attrs[attr]; },
           classList: {
             classes: new Set(),
             add(c) { this.classes.add(c); },
