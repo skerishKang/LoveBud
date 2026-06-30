@@ -217,6 +217,51 @@ test('Document does NOT assert second tab always unauthenticated', () => {
     'Must not contain absolute assertion about second tab having no token until login');
 });
 
+// ---------------------------------------------------------------------------
+// 5. Stale hard-reload claim removal contracts (Refs #2987)
+// ---------------------------------------------------------------------------
+
+test('Document does NOT contain "lost on tab close / hard reload"', () => {
+  const doc = read('docs/security/AUTH_TOKEN_STORAGE_THREAT_MODEL.md');
+  assert.ok(!doc.includes('lost on tab close'),
+    'Document must not contain the stale phrase "lost on tab close"');
+  assert.ok(!/token lost on tab close/.test(doc),
+    'Document must not contain "token lost on tab close" pattern');
+});
+
+test('Document does NOT contain "hard reload clears token"', () => {
+  const doc = read('docs/security/AUTH_TOKEN_STORAGE_THREAT_MODEL.md');
+  assert.ok(!/hard reload.*clears token/.test(doc),
+    'Document must not contain "hard reload clears token" pattern');
+  assert.ok(!/hard reload.*clear/.test(doc),
+    'Document must not contain "hard reload clear" pattern');
+});
+
+test('§5-A mentions same-tab hard reload/restore preservation', () => {
+  const doc = read('docs/security/AUTH_TOKEN_STORAGE_THREAT_MODEL.md');
+  assert.match(doc, /same-tab hard reload.*restore preserves the sessionStorage record/i,
+    '§5-A Security property must state same-tab hard reload/restore preserves sessionStorage');
+});
+
+test('§5-A does not absolutely assert multi-tab results', () => {
+  const doc = read('docs/security/AUTH_TOKEN_STORAGE_THREAT_MODEL.md');
+  // §5-A Tradeoff must avoid absolute claims about multi-tab behavior
+  assert.ok(!doc.includes('per-tab token breaks multi-tab UX'),
+    '§5-A must not claim absolute "per-tab token breaks multi-tab UX"');
+  assert.match(doc, /Independent and opener-created browsing contexts can differ/i,
+    '§5-A Tradeoff must state browsing contexts can differ');
+});
+
+test('Lifecycle map distinguishes independent-tab cache read from Firebase re-bootstrap', () => {
+  const doc = read('docs/security/AUTH_TOKEN_STORAGE_THREAT_MODEL.md');
+  assert.match(doc, /direct cache read initially returns `null`/i,
+    'Lifecycle map must mention independent-tab direct cache read initially returns null');
+  assert.match(doc, /Firebase re-bootstrap.*may subsequently populate or alter effective auth state/i,
+    'Lifecycle map must state Firebase re-bootstrap may subsequently populate or alter effective auth state');
+  assert.match(doc, /final behavior requires runtime verification/i,
+    'Lifecycle map must state final behavior requires runtime verification per environment');
+});
+
 test('Non-goals explicitly listed', () => {
   const doc = read('docs/security/AUTH_TOKEN_STORAGE_THREAT_MODEL.md');
   const nongoals = [

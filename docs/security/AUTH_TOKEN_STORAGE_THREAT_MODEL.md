@@ -25,7 +25,7 @@
 
 | Key | Storage location | Contents | Write owner | Read owner | Clear behavior | Security classification | Cross-tab / hard-reload implication |
 |-----|------------------|----------|-------------|------------|----------------|-------------------------|-------------------------------------|
-| `lovebud_auth_token` | **sessionStorage** | `{ uid, token, expiresAt }` | `persistConfirmedAuthSession()` via `sessionStorage.setItem()` | `getCachedAuthToken()` via `sessionStorage.getItem()` | Cleared on logout, invalid session, 30s pre-expiry; also removed from localStorage defensively | **High** — Firebase ID token (~1hr TTL) | **Per-tab**; same-tab hard reload/restore preserves sessionStorage; opener-created tab may receive an initial copy; independent tab starts empty |
+| `lovebud_auth_token` | **sessionStorage** | `{ uid, token, expiresAt }` | `persistConfirmedAuthSession()` via `sessionStorage.setItem()` | `getCachedAuthToken()` via `sessionStorage.getItem()` | Cleared on logout, invalid session, 30s pre-expiry; also removed from localStorage defensively | **High** — Firebase ID token (~1hr TTL) | **Not cross-tab persistent**; same-tab hard reload/restore preserves sessionStorage; opener-created tab may receive an initial copy; independent tab starts empty |
 | `lovebud_auth_cache` | **localStorage** | `{ uid, displayName, email }` | `setConfirmedAuthCache()` / `persistConfirmedAuthSession()` via `localStorage.setItem()` | `getCachedAuthUser()` via `localStorage.getItem()` | Cleared on logout; also cleared when confirmed flag is false | **Medium** — non-sensitive profile data | **Cross-tab persistent**; survives hard reload |
 | `lovebud_auth_confirmed` | **localStorage** | `"true"` (string flag) | `setConfirmedAuthCache()` / `persistConfirmedAuthSession()` via `localStorage.setItem()` | `getCachedAuthUser()` checks `localStorage.getItem(confirmedKey) === "true"` | Cleared on logout; also cleared when cache is invalid | **Low** — boolean flag only | **Cross-tab persistent**; survives hard reload |
 
@@ -44,7 +44,7 @@
 | 30-second expiry safety window | If `Date.now() >= expiresAt - 30000` → token removed, `null` returned | ✅ `auth-cache.js:116-118` |
 | Logout / invalid-session clear | `signOut()` → `clearConfirmedAuthCache()` → clears all 3 keys from localStorage + token from sessionStorage | ✅ `auth-cache.js:80-86`, `auth.js:675` |
 | Hard reload behavior | `sessionStorage` preserved on same-tab hard reload/restore; `localStorage` cache/confirmed survive → UI renders cached profile until token re-acquired | ✅ sessionStorage semantics |
-| Second-tab behavior | New independent tab has no `sessionStorage` token → `getCachedAuthToken()` returns `null` → treated as unauthenticated until next login/refresh; opener-created tab may receive an initial copy via sessionStorage inheritance; Firebase re-bootstrap on load may re-populate token in some environments | ⚠️ not fully verified; depends on environment |
+| Second-tab behavior | New independent tab has no `sessionStorage` token → `getCachedAuthToken()` direct cache read initially returns `null`; opener-created tab may receive an initial copy via sessionStorage inheritance; Firebase re-bootstrap on load may subsequently populate or alter effective auth state — final behavior requires runtime verification per environment | ⚠️ not fully verified; depends on environment |
 
 > **Not verified in this docs-only slice**: Exact timing of token refresh, Firebase internal token rotation, cross-tab session synchronization via BroadcastChannel or storage events (not implemented).
 
@@ -68,8 +68,8 @@
 ## 5. Options considered
 
 ### A. Current scoped sessionStorage interim model
-* **Security property**: Reduces persistent token exposure; token lost on tab close / hard reload.
-* **Tradeoff**: Does not mitigate active XSS; per-tab token breaks multi-tab UX.
+* **Security property**: Reduces persistent token exposure; same-tab hard reload/restore preserves the sessionStorage record, while the cache is not a durable cross-tab persistence model.
+* **Tradeoff**: Does not mitigate active XSS. Independent and opener-created browsing contexts can differ, and Firebase re-bootstrap behavior must be verified at runtime.
 * **Implementation prerequisites**: Already implemented; baseline verified.
 * **Non-goals**: Not XSS-proof; not a cookie replacement.
 
