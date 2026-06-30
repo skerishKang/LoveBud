@@ -16,6 +16,13 @@ function read(rel) {
   return fs.readFileSync(path.join(ROOT, rel), 'utf8');
 }
 
+function normalizeDocument(text) {
+  return text
+    .replace(/[*`]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 // ---------------------------------------------------------------------------
 // 1. Document existence and required headings
 // ---------------------------------------------------------------------------
@@ -58,14 +65,11 @@ test('Decision record meta fields present', () => {
 // ---------------------------------------------------------------------------
 
 test('Decision summary contains interim model and XSS caveat', () => {
-  const doc = read('docs/security/AUTH_TOKEN_STORAGE_THREAT_MODEL.md');
-  // Interim model retained
-  assert.match(doc, /sessionStorage.*interim model/i, 'Must state sessionStorage interim model retained');
-  // XSS residual risk
-  assert.match(doc, /sessionStorage.*does not eliminate XSS/i, 'Must state sessionStorage does not eliminate XSS risk');
-  assert.match(doc, /active XSS residual risk/i, 'Must state active XSS residual risk');
-  // No claim of XSS-proof
-  assert.match(doc, /No claim that current state is XSS-proof/i, 'Must not claim XSS-proof');
+  const doc = normalizeDocument(read('docs/security/AUTH_TOKEN_STORAGE_THREAT_MODEL.md'));
+  assert.match(doc, /sessionStorage interim model retained/, 'Must state sessionStorage interim model retained');
+  assert.match(doc, /does not eliminate active XSS risk/, 'Must state sessionStorage does not eliminate active XSS risk');
+  assert.match(doc, /active XSS authenticated action risk/, 'Must state active XSS authenticated action risk');
+  assert.match(doc, /No claim that current state is XSS-proof/, 'Must not claim XSS-proof');
 });
 
 test('HttpOnly BFF option has required prerequisites', () => {
@@ -85,18 +89,24 @@ test('HttpOnly BFF option has required prerequisites', () => {
 });
 
 test('CSRF, session revocation, migration gates documented', () => {
-  const doc = read('docs/security/AUTH_TOKEN_STORAGE_THREAT_MODEL.md');
-  assert.match(doc, /CSRF/i, 'CSRF must be mentioned');
-  assert.match(doc, /session revocation/i, 'Session revocation must be mentioned');
-  // Migration gates
-  assert.match(doc, /login.*refresh.*expiry.*logout.*hard reload.*second tab/i, 'Migration gates must list login/refresh/expiry/logout/hard reload/second tab');
-  assert.match(doc, /browser QA.*auth smoke/i, 'Migration PR must require browser QA and auth smoke');
+  const doc = normalizeDocument(read('docs/security/AUTH_TOKEN_STORAGE_THREAT_MODEL.md'));
+  assert.match(doc, /CSRF/, 'CSRF must be mentioned');
+  assert.match(doc, /session revocation/, 'Session revocation must be mentioned');
+  
+  const gates = [
+    'Login', 'Token refresh', 'Expiry / 30s guard', 'Logout', 'Hard reload',
+    'Second tab behavior', 'Invalid session handling', 'Authenticated API retry / Authorization header attachment'
+  ];
+  for (const gate of gates) {
+    assert.ok(doc.includes(gate), `Migration gate must list: ${gate}`);
+  }
+  assert.match(doc, /browser QA.*auth smoke/, 'Migration PR must require browser QA and auth smoke');
 });
 
 test('Docs-only scope and no runtime behavior change claims', () => {
-  const doc = read('docs/security/AUTH_TOKEN_STORAGE_THREAT_MODEL.md');
-  assert.match(doc, /docs-only.*no runtime behavior change/i, 'Must state docs-only scope, no runtime behavior change claim');
-  assert.match(doc, /no claim.*behavior test completion/i, 'Must not claim behavior test completion');
+  const doc = normalizeDocument(read('docs/security/AUTH_TOKEN_STORAGE_THREAT_MODEL.md'));
+  assert.match(doc, /Scope: docs-only; no auth runtime, Firebase, API.*changes/, 'Must state docs-only scope, no runtime behavior change claim');
+  assert.match(doc, /does not claim behavior test completion/, 'Must not claim behavior test completion');
 });
 
 test('Dependencies kept separate listed', () => {
@@ -170,10 +180,9 @@ test('auth-cache.js does NOT write tokenKey to localStorage', () => {
 // ---------------------------------------------------------------------------
 
 test('Document marks issue legacy localStorage vs current baseline neutrally', () => {
-  const doc = read('docs/security/AUTH_TOKEN_STORAGE_THREAT_MODEL.md');
-  assert.match(doc, /legacy localStorage.*issue.*current.*baseline.*neutrally/i,
-    'Must neutrally record legacy localStorage reference vs current baseline difference');
-  assert.match(doc, /without judging past design choices/i, 'Must not judge past design choices');
+  const doc = normalizeDocument(read('docs/security/AUTH_TOKEN_STORAGE_THREAT_MODEL.md'));
+  assert.match(doc, /The issue text references a legacy localStorage token path. The current implementation baseline/, 'Must neutrally record legacy localStorage reference vs current baseline difference');
+  assert.match(doc, /without judging past design choices/, 'Must not judge past design choices');
 });
 
 test('Follow-up test matrix reflects hard reload preservation', () => {
