@@ -375,97 +375,74 @@
     return 'public';
   }
 
-  function setCtaContent(button, iconName, iconSize, text) {
-    if (!button) return;
-    button.replaceChildren();
-    var icon = document.createElement('span');
-    icon.className = 'material-symbols-outlined';
-    if (iconSize) icon.style.fontSize = iconSize;
-    icon.textContent = iconName;
-    button.appendChild(icon);
-    button.appendChild(document.createTextNode(' ' + text));
+  function waitForCreateTreeModalResult(modal) {
+    return new Promise(function(resolve) {
+      modal.resolve = resolve;
+    });
   }
 
   async function createNewTree(options) {
     var i18n = getI18n(options);
-    var headerBtn = document.getElementById('headerCreateTreeBtn');
-    var emptyBtn = document.getElementById('createTreeBtn');
     var modal = setupCreateTreeModal(options);
+    if (!modal) return { outcome: 'cancelled' };
 
-    var modalResult = await openCreateTreeModal(options);
-    if (!modalResult) {
-      return;
-    }
+    var modalOpen = false;
 
-    var creatingText = safeText(i18n, 'creating', '생성 중...');
-    if (headerBtn) {
-      headerBtn.disabled = true;
-      setCtaContent(headerBtn, 'hourglass_empty', null, creatingText);
-    }
+    while (true) {
+      var modalResult;
 
-    if (emptyBtn) {
-      emptyBtn.disabled = true;
-      setCtaContent(emptyBtn, 'hourglass_empty', '20px', creatingText);
-    }
+      if (!modalOpen) {
+        modalOpen = true;
+        modalResult = await openCreateTreeModal(options);
+      } else {
+        modalResult = await waitForCreateTreeModalResult(modal);
+      }
 
-    if (modal && typeof modal.setSubmitting === 'function') {
+      if (!modalResult) {
+        return { outcome: 'cancelled' };
+      }
+
       modal.setSubmitting(true, i18n);
-    }
 
-    myTreesDebugLog('[my-trees-actions] Creating tree with visibility: public');
+      try {
+        var newTree;
 
-    try {
-      var newTree;
+        if (window.apiClient && window.apiClient.createTree) {
+          newTree = await window.apiClient.createTree({
+            title: modalResult.title,
+            visibility: 'public'
+          });
+        } else {
+          newTree = { id: 'tree-' + Date.now(), title: modalResult.title, visibility: 'public' };
+          options?.showToast?.(safeText(i18n, 'demo_mode', '데모 모드입니다. 실제 트리는 생성되지 않습니다.'), 'error');
+        }
 
-      if (window.apiClient && window.apiClient.createTree) {
-        newTree = await window.apiClient.createTree({
-          title: modalResult.title,
-          visibility: 'public'
-        });
-        myTreesDebugLog('[my-trees-actions] Tree created');
-      } else {
-        newTree = { id: 'tree-' + Date.now(), title: modalResult.title, visibility: 'public' };
-        options?.showToast?.(safeText(i18n, 'demo_mode', '데모 모드입니다. 실제 트리는 생성되지 않습니다.'), 'error');
-      }
+        if (window.LoveBudCache && options?.cacheKey) {
+          window.LoveBudCache.clear(options.cacheKey);
+        }
+        clearPersistentTreesCache();
 
-      if (window.LoveBudCache && options?.cacheKey) {
-        window.LoveBudCache.clear(options.cacheKey);
-        myTreesDebugLog('[my-trees-actions] Cache cleared after new tree creation');
-      }
-      clearPersistentTreesCache();
+        if (modal && typeof modal.closeModal === 'function') {
+          modal.closeModal({ completed: true });
+        }
 
-      if (modal && typeof modal.closeModal === 'function') {
-        modal.closeModal({ completed: true });
-      }
+        options?.showToast?.(safeText(i18n, 'create_tree_success', '러브트리가 생성되었습니다.'), 'success');
 
-      var treeId = newTree?.id;
-      if (treeId) {
-        window.location.href = 'editor?treeId=' + encodeURIComponent(treeId);
-      } else {
-        window.location.href = 'editor';
-      }
-    } catch (e) {
-      console.error('[my-trees-actions] createTree failed:', getErrorMessage(e));
+        await new Promise(function(r) { setTimeout(r, 300); });
 
-      var headerText = safeText(i18n, 'myTrees.header_create', '새 러브트리');
-      var emptyText = safeText(i18n, 'create_tree_btn', '새 러브트리 만들기');
-
-      if (headerBtn) {
-        headerBtn.disabled = false;
-        setCtaContent(headerBtn, 'add', null, headerText);
-      }
-
-      if (emptyBtn) {
-        emptyBtn.disabled = false;
-        setCtaContent(emptyBtn, 'add_circle', '20px', emptyText);
-      }
-
-      if (modal) {
+        var treeId = newTree?.id;
+        if (treeId) {
+          window.location.href = 'editor?treeId=' + encodeURIComponent(treeId);
+        } else {
+          window.location.href = 'editor';
+        }
+        return { outcome: 'success' };
+      } catch (e) {
+        console.error('[my-trees-actions] createTree failed:', getErrorMessage(e));
         modal.setSubmitting(false, i18n);
-        modal.setError(safeText(i18n, 'create_tree_fail', '트리 생성에 실패했습니다'));
+        modal.setError(safeText(i18n, 'create_tree_fail', '러브트리 만들기 실패. 다시 시도해 주세요.'));
+        options?.showToast?.(safeText(i18n, 'create_tree_fail', '러브트리 만들기 실패. 다시 시도해 주세요.'), 'error');
       }
-
-      options?.showToast?.(safeText(i18n, 'create_tree_fail', '트리 생성에 실패했습니다'), 'error');
     }
   }
 

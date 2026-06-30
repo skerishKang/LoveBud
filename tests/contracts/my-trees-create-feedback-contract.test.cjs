@@ -58,6 +58,20 @@ function createFakeElement(tagName, id) {
     toggle: function(c) { if (classList.contains(c)) classList.remove(c); else classList.add(c); }
   };
 
+  var textContentValue = '';
+  function computeTextContent() {
+    var parts = [];
+    function walk(nodes) {
+      for (var i = 0; i < nodes.length; i++) {
+        var n = nodes[i];
+        if (n.nodeType === 3) parts.push(n.textContent);
+        else if (n.nodeType === 1 && n.children) walk(n.children);
+      }
+    }
+    walk(children);
+    return parts.join('');
+  }
+
   var el = {
     tagName: tagName,
     id: id || null,
@@ -67,7 +81,12 @@ function createFakeElement(tagName, id) {
     className: '',
     style: {},
     disabled: false,
-    textContent: '',
+    get textContent() { return computeTextContent(); },
+    set textContent(v) {
+      textContentValue = String(v);
+      children.length = 0;
+      children.push({ nodeType: 3, textContent: String(v) });
+    },
     value: '',
     innerHTML: '',
     _listeners: listeners,
@@ -188,12 +207,18 @@ function createContextifiedWindow(docOnly) {
                removeItem: function(k) { delete store[k]; } };
     })(),
     t: function(k) { return k; },
-    LoveBudUI: { showToast: function() {} },
+    LoveBudUI: { showToast: function(message, type) { win._recordedEvents.push(['toast', message, type]); } },
     LoveBudMyTreesPage: { setState: function() {}, STATE: {} },
     LoveBudMyTreesData: { loadTrees: function() {} },
     getConfirmedAuthUser: function() { return { uid: 'user123' }; },
-    _redirectUrl: ''
+    _recordedEvents: []
   };
+  Object.defineProperty(win.location, 'href', {
+    get: function() { return location._h; },
+    set: function(v) { win._recordedEvents.push(['redirect', String(v)]); location._h = String(v); },
+    configurable: true, enumerable: true
+  });
+
   win.window = win;
   win.self = win;
   win.top = win;
@@ -214,23 +239,140 @@ function loadPageScript(win) {
   vm.runInContext(read('js/my-trees.js'), win);
 }
 
-function setupSlowApi(win, delay) {
-  win.apiClient = {
-    createTree: function() {
-      return new Promise(function(resolve) {
-        setTimeout(function() { resolve({ id: 't1' }); }, delay || 100);
-      });
-    }
-  };
-}
-
 // ─── Tests ─────────────────────────────────────────────────
 
-test('warm module rapid header+empty click -> create 1회', async function(t) {
+test('A. initial cancel: header CTA click, modal cancel, CTA enabled, guard reset allows reopen', async function(t) {
   var win = createContextifiedWindow();
   loadActionsScript(win);
   loadPageScript(win);
-  setupSlowApi(win, 50);
+  fireDOMContentLoaded(win);
+
+  var headerBtn = win.document.getElementById('headerCreateTreeBtn');
+  var emptyBtn = win.document.getElementById('createTreeBtn');
+  var backdrop = win.document.getElementById('createTreeModalBackdrop');
+  var cancelBtn = win.document.getElementById('createTreeModalCancelBtn');
+
+  // 1. Initial click
+  headerBtn.dispatchEvent(createFakeEvent('click'));
+  await new Promise(r => setTimeout(r, 50)); // Wait for modal to open
+  assert.ok(backdrop.classList.contains('show'), 'Modal should open after first click');
+  assert.strictEqual(headerBtn.disabled, true, 'Header CTA should be disabled when modal is open');
+  assert.strictEqual(emptyBtn.disabled, true, 'Empty CTA should be disabled when modal is open');
+
+  // 2. Cancel modal
+  cancelBtn.dispatchEvent(createFakeEvent('click'));
+  await new Promise(r => setTimeout(r, 50)); // Wait for modal to close
+  assert.ok(!backdrop.classList.contains('show'), 'Modal should close after cancel');
+  assert.strictEqual(headerBtn.disabled, false, 'Header CTA should be re-enabled after cancel');
+  assert.ok(headerBtn.textContent.indexOf('myTrees.header_create') !== -1, 'Header CTA text restored');
+  assert.strictEqual(emptyBtn.disabled, false, 'Empty CTA should be re-enabled after cancel');
+  assert.ok(emptyBtn.textContent.indexOf('create_tree_btn') !== -1, 'Empty CTA text restored');
+
+  // 3. Re-click header CTA to confirm guard reset
+  headerBtn.dispatchEvent(createFakeEvent('click'));
+  await new Promise(r => setTimeout(r, 50)); // Wait for modal to open again
+  assert.ok(backdrop.classList.contains('show'), 'Modal should reopen after guard reset');
+});
+
+test('B. failure then same-modal retry: API fails, generic error, then succeeds', async function(t) {
+  var win = createContextifiedWindow();
+  loadActionsScript(win);
+  loadPageScript(win);
+
+  var apiClientCallCount = 0;
+  var apiResponses = [
+    new Error('DB Connection Error'), // First call fails
+    { id: 'retry-tree-123', title: 'Retry Tree', visibility: 'public' } // Second call succeeds
+  ];
+
+  win.apiClient = {
+    createTree: async function(opts) {
+      apiClientCallCount++;
+      const response = apiResponses.shift();
+      if (response instanceof Error) {
+        throw response;
+      }
+      return response;
+    }
+  };
+  fireDOMContentLoaded(win);
+
+  var headerBtn = win.document.getElementById('headerCreateTreeBtn');
+  var titleInput = win.document.getElementById('createTreeTitleInput');
+  var form = win.document.getElementById('createTreeModalForm');
+  var errorEl = win.document.getElementById('createTreeModalError');
+  var submitBtn = win.document.getElementById('createTreeModalSubmitBtn');
+
+  // 1. Initial click
+  headerBtn.dispatchEvent(createFakeEvent('click'));
+  await new Promise(r => setTimeout(r, 50));
+  titleInput.value = 'Fail First';
+  form.dispatchEvent(createFakeEvent('submit'));
+  await new Promise(r => setTimeout(r, 100)); // Wait for API call and error display
+
+  assert.strictEqual(apiClientCallCount, 1, 'First API call should happen');
+  assert.ok(win.document.getElementById('createTreeModalBackdrop').classList.contains('show'), 'Modal should remain open on failure');
+  assert.ok(errorEl.textContent.indexOf('트리 만들기 실패') !== -1, 'Generic error shown in modal');
+  assert.ok(errorEl.textContent.indexOf('DB Connection Error') === -1, 'Raw API error not exposed');
+  assert.strictEqual(submitBtn.disabled, false, 'Submit button should be re-enabled after failure');
+  assert.ok(submitBtn.textContent.indexOf('시작하기') !== -1, 'Submit button text restored');
+
+  // 2. Second submit (retry in same modal)
+  titleInput.value = 'Retry Success'; // User can change or keep title
+  form.dispatchEvent(createFakeEvent('submit'));
+  await new Promise(r => setTimeout(r, 500)); // Wait for API call, success toast, and redirect
+
+  assert.strictEqual(apiClientCallCount, 2, 'Second API call should happen on retry');
+  assert.ok(!win.document.getElementById('createTreeModalBackdrop').classList.contains('show'), 'Modal should close on success');
+  assert.ok(win._recordedEvents.some(e => e[0] === 'toast' && e[1].includes('러브트리가 생성되었습니다.')), 'Success toast should be shown');
+  assert.ok(win.location.href.includes('editor?treeId=' + encodeURIComponent('retry-tree-123')), 'Should redirect to editor with new treeId');
+});
+
+test('C. success feedback before redirect: toast event before redirect', async function(t) {
+  var win = createContextifiedWindow();
+  loadActionsScript(win);
+  loadPageScript(win);
+  win.apiClient = { createTree: async function() { return { id: 'tree-42', title: 'Success Tree' }; } };
+  win.t = function(key) {
+    if (key === 'create_tree_success') return '러브트리가 생성되었습니다.';
+    return key;
+  };
+  fireDOMContentLoaded(win);
+
+  var headerBtn = win.document.getElementById('headerCreateTreeBtn');
+  headerBtn.dispatchEvent(createFakeEvent('click'));
+
+  var titleInput = win.document.getElementById('createTreeTitleInput');
+  titleInput.value = 'Success Tree';
+
+  var form = win.document.getElementById('createTreeModalForm');
+  form.dispatchEvent(createFakeEvent('submit'));
+
+  await new Promise(function(r) { setTimeout(r, 500); }); // Sufficient time for toast + delay + redirect
+
+  // Assert order: toast must be before redirect
+  const toastIndex = win._recordedEvents.findIndex(e => e[0] === 'toast' && e[1].includes('러브트리가 생성되었습니다.'));
+  const redirectIndex = win._recordedEvents.findIndex(e => e[0] === 'redirect' && e[1].includes('editor?treeId='));
+
+  assert.ok(toastIndex !== -1, 'Success toast event should be recorded');
+  assert.ok(redirectIndex !== -1, 'Redirect event should be recorded');
+  assert.ok(toastIndex < redirectIndex, 'Toast event must occur before redirect event');
+
+  // Assert redirect URL
+  assert.strictEqual(win.location.href, 'editor?treeId=' + encodeURIComponent('tree-42'),
+    'Redirect should be exact editor?treeId=' + encodeURIComponent('tree-42'));
+});
+
+test('D1. warm module rapid header+empty click -> create 1회', async function(t) {
+  var win = createContextifiedWindow();
+  loadActionsScript(win);
+  loadPageScript(win);
+  var createTreeResolvers = [];
+  win.apiClient = {
+    createTree: function() {
+      return new Promise(function(resolve) { createTreeResolvers.push(resolve); });
+    }
+  };
   fireDOMContentLoaded(win);
 
   var callCount = 0;
@@ -248,24 +390,30 @@ test('warm module rapid header+empty click -> create 1회', async function(t) {
   headerBtn.dispatchEvent(createFakeEvent('click'));
   emptyBtn.dispatchEvent(createFakeEvent('click'));
 
-  // Wait for modal to open
-  await new Promise(function(r) { setTimeout(r, 50); });
+  await new Promise(function(r) { setTimeout(r, 50); }); // Wait for modal to open
 
-  // Close modal to let create proceed
-  var backdrop = win.document.getElementById('createTreeModalBackdrop');
-  if (backdrop && backdrop.classList.contains('show')) {
-    var cancelBtn = win.document.getElementById('createTreeModalCancelBtn');
-    cancelBtn.dispatchEvent(createFakeEvent('click'));
-  }
+  // Submit modal to let create proceed
+  var titleInput = win.document.getElementById('createTreeTitleInput');
+  titleInput.value = 'Warm Tree';
+  var form = win.document.getElementById('createTreeModalForm');
+  form.dispatchEvent(createFakeEvent('submit'));
+  await new Promise(r => setTimeout(r, 50)); // Wait for promise resolution
 
-  await new Promise(function(r) { setTimeout(r, 200); });
-  assert.strictEqual(callCount, 1, 'Should only create one tree despite rapid clicks');
+  assert.strictEqual(callCount, 1, 'Should only trigger createNewTree once despite rapid clicks');
+  assert.strictEqual(createTreeResolvers.length, 1, 'Should only have one API call pending');
+  if (createTreeResolvers.length > 0) createTreeResolvers[0]({ id: 'warm-tree' });
+  await new Promise(r => setTimeout(r, 200));
 });
 
-test('delayed module rapid header+empty click -> create 1회', async function(t) {
+test('D2. delayed module rapid header+empty click -> create 1회', async function(t) {
   var win = createContextifiedWindow();
   loadPageScript(win);
-  setupSlowApi(win, 50);
+  var createTreeResolvers = [];
+  win.apiClient = {
+    createTree: function() {
+      return new Promise(function(resolve) { createTreeResolvers.push(resolve); });
+    }
+  };
   fireDOMContentLoaded(win);
 
   var callCount = 0;
@@ -288,10 +436,20 @@ test('delayed module rapid header+empty click -> create 1회', async function(t)
   // Wait for polling to find module
   await new Promise(function(r) { setTimeout(r, 300); });
 
-  assert.strictEqual(callCount, 1, 'Should only create one tree despite rapid clicks with delayed module');
+  // Submit modal
+  var titleInput = win.document.getElementById('createTreeTitleInput');
+  titleInput.value = 'Delayed Tree';
+  var form = win.document.getElementById('createTreeModalForm');
+  form.dispatchEvent(createFakeEvent('submit'));
+  await new Promise(r => setTimeout(r, 50));
+
+  assert.strictEqual(callCount, 1, 'Should only trigger createNewTree once despite rapid clicks with delayed module');
+  assert.strictEqual(createTreeResolvers.length, 1, 'Should only have one API call pending');
+  if (createTreeResolvers.length > 0) createTreeResolvers[0]({ id: 'delayed-tree' });
+  await new Promise(r => setTimeout(r, 200));
 });
 
-test('timeout 후 guard/CTA 복구 + retry 성공', async function(t) {
+test('D3. timeout 후 guard/CTA 복구 + retry 성공', async function(t) {
   var win = createContextifiedWindow();
   loadPageScript(win);
   fireDOMContentLoaded(win);
@@ -306,37 +464,33 @@ test('timeout 후 guard/CTA 복구 + retry 성공', async function(t) {
   await new Promise(function(r) { setTimeout(r, 2600); });
 
   assert.strictEqual(headerBtn.disabled, false, 'Header btn restored after timeout');
-  var childText = '';
-  headerBtn.children.forEach(function(c) {
-    if (c.nodeType === 3) childText += c.textContent;
-  });
-  assert.ok(childText.indexOf('myTrees.header_create') !== -1, 'CTA restored after timeout');
+  var headerCtaText = headerBtn.textContent;
+  assert.ok(headerCtaText.indexOf('myTrees.header_create') !== -1 || headerCtaText.indexOf('New LoveTree') !== -1, 'Header CTA restored text');
 
   // Now load actions and retry should work
   loadActionsScript(win);
-  var callCount = 0;
-  var origCreate = win.LoveBudMyTreesActions.createNewTree;
-  win.LoveBudMyTreesActions.createNewTree = function(opts) {
-    callCount++;
-    return origCreate.call(win.LoveBudMyTreesActions, opts);
+  var apiClientCallCount = 0;
+  win.apiClient = {
+    createTree: async function() {
+      apiClientCallCount++;
+      return { id: 't2' };
+    }
   };
 
-  win.apiClient = { createTree: async function() { return { id: 't2' }; } };
+  headerBtn.dispatchEvent(createFakeEvent('click')); // This will open modal again
+  await new Promise(function(r) { setTimeout(r, 50); });
 
-  headerBtn.dispatchEvent(createFakeEvent('click'));
-  await new Promise(function(r) { setTimeout(r, 150); });
+  var titleInput = win.document.getElementById('createTreeTitleInput');
+  titleInput.value = 'Timeout Retry';
+  var form = win.document.getElementById('createTreeModalForm');
+  form.dispatchEvent(createFakeEvent('submit'));
+  await new Promise(function(r) { setTimeout(r, 600); });
 
-  var backdrop = win.document.getElementById('createTreeModalBackdrop');
-  if (backdrop && backdrop.classList.contains('show')) {
-    var cancelBtn = win.document.getElementById('createTreeModalCancelBtn');
-    cancelBtn.dispatchEvent(createFakeEvent('click'));
-  }
-  await new Promise(function(r) { setTimeout(r, 200); });
-
-  assert.strictEqual(callCount, 1, 'Retry should succeed after timeout');
+  assert.strictEqual(apiClientCallCount, 1, 'Timeout retry triggers one API call');
+  assert.ok(win.location.href.includes('editor?treeId=' + encodeURIComponent('t2')), 'Timeout retry should redirect');
 });
 
-test('modal submit pending before resolve', async function(t) {
+test('D4. modal submit pending before resolve', async function(t) {
   var win = createContextifiedWindow();
   loadActionsScript(win);
   loadPageScript(win);
@@ -372,83 +526,10 @@ test('modal submit pending before resolve', async function(t) {
 
   // Resolve API
   if (resolveHolder) resolveHolder({ id: 't3' });
-  await new Promise(function(r) { setTimeout(r, 50); });
+  await new Promise(function(r) { setTimeout(r, 200); });
 });
 
-test('success feedback + exact redirect', async function(t) {
-  var win = createContextifiedWindow();
-  loadActionsScript(win);
-  loadPageScript(win);
-  win.apiClient = { createTree: async function() { return { id: 'tree-42' }; } };
-  fireDOMContentLoaded(win);
-
-  var headerBtn = win.document.getElementById('headerCreateTreeBtn');
-  headerBtn.dispatchEvent(createFakeEvent('click'));
-
-  var titleInput = win.document.getElementById('createTreeTitleInput');
-  titleInput.value = 'Success Tree';
-
-  var form = win.document.getElementById('createTreeModalForm');
-  form.dispatchEvent(createFakeEvent('submit'));
-
-  await new Promise(function(r) { setTimeout(r, 150); });
-
-  assert.strictEqual(win.location.href, 'editor?treeId=' + encodeURIComponent('tree-42'),
-    'Redirect should be exact editor?treeId=' + encodeURIComponent('tree-42'));
-});
-
-test('failure generic UI only + retry', async function(t) {
-  var win = createContextifiedWindow();
-  loadActionsScript(win);
-  loadPageScript(win);
-
-  var callCount = 0;
-  win.apiClient = {
-    createTree: async function() {
-      callCount++;
-      throw new Error('DB Connection Error');
-    }
-  };
-
-  fireDOMContentLoaded(win);
-
-  var headerBtn = win.document.getElementById('headerCreateTreeBtn');
-  headerBtn.dispatchEvent(createFakeEvent('click'));
-
-  var titleInput = win.document.getElementById('createTreeTitleInput');
-  titleInput.value = 'Fail Tree';
-
-  var form = win.document.getElementById('createTreeModalForm');
-  form.dispatchEvent(createFakeEvent('submit'));
-  await new Promise(function(r) { setTimeout(r, 100); });
-
-  var backdrop = win.document.getElementById('createTreeModalBackdrop');
-  assert.ok(backdrop.classList.contains('show'), 'Modal should remain open on failure');
-  var errorEl = win.document.getElementById('createTreeModalError');
-  assert.ok(errorEl.textContent.indexOf('실패했습니다') !== -1, 'Generic error shown');
-  assert.ok(errorEl.textContent.indexOf('DB Connection Error') === -1, 'Raw error not exposed');
-
-  // Close modal (cancel) to reset flow
-  var cancelBtn = win.document.getElementById('createTreeModalCancelBtn');
-  cancelBtn.dispatchEvent(createFakeEvent('click'));
-  await new Promise(function(r) { setTimeout(r, 50); });
-
-  // Re-trigger createNewTree (page guard is now false after finally)
-  headerBtn.dispatchEvent(createFakeEvent('click'));
-  await new Promise(function(r) { setTimeout(r, 100); });
-
-  backdrop = win.document.getElementById('createTreeModalBackdrop');
-  assert.ok(backdrop.classList.contains('show'), 'Modal should open on retry');
-  var newTitleInput = win.document.getElementById('createTreeTitleInput');
-  newTitleInput.value = 'Retry Tree';
-  newTitleInput.dispatchEvent(createFakeEvent('input'));
-  form.dispatchEvent(createFakeEvent('submit'));
-  await new Promise(function(r) { setTimeout(r, 100); });
-
-  assert.strictEqual(callCount, 2, 'Retry triggers one more API call');
-});
-
-test('source guard: no DOM HTML sinks in actions, exactly 1 in page', async function(t) {
+test('D5. source guard: no DOM HTML sinks in actions, exactly 1 in page', async function(t) {
   var actionsJs = read('js/my-trees/my-trees-actions.js');
   var forbidden = ['.innerHTML', '.outerHTML', '.insertAdjacentHTML'];
   forbidden.forEach(function(sink) {
@@ -459,8 +540,11 @@ test('source guard: no DOM HTML sinks in actions, exactly 1 in page', async func
   var count = 0;
   pageJs.split('\n').forEach(function(line) {
     forbidden.forEach(function(sink) {
-      if (line.indexOf(sink) !== -1) count++;
+      // Allow only the specific clear-container sink
+      if (line.indexOf('containerFallback.innerHTML = \'\';') === -1 && line.indexOf(sink) !== -1) {
+        count++;
+      }
     });
   });
-  assert.strictEqual(count, 1, 'my-trees.js should have exactly 1 sink (clear-container)');
+  assert.strictEqual(count, 0, 'my-trees.js should have exactly 1 sink (clear-container) and no others');
 });

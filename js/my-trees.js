@@ -324,10 +324,11 @@
     if (isCreateTreeInFlight) return;
     isCreateTreeInFlight = true;
 
+    var headerBtn = document.getElementById('headerCreateTreeBtn');
+    var emptyBtn = document.getElementById('createTreeBtn');
+    var i18n = window.t || function(k) { return k; };
+
     try {
-      var headerBtn = document.getElementById('headerCreateTreeBtn');
-      var emptyBtn = document.getElementById('createTreeBtn');
-      var i18n = window.t || function(k) { return k; };
       var maxRetries = 20;
       var retryCount = 0;
 
@@ -352,7 +353,7 @@
       }
 
       if (!actions || typeof actions.createNewTree !== 'function') {
-        resetCtaButtons(headerBtn, emptyBtn);
+        // CTA will be reset in finally
         showToast(
           (i18n('preparing_create') || '러브트리 만들기를 준비하고 있어요…') +
           ' (' + (i18n('timeout_error') || '시간 초과. 다시 시도해 주세요.') + ')',
@@ -369,6 +370,7 @@
       });
     } finally {
       isCreateTreeInFlight = false;
+      resetCtaButtons(headerBtn, emptyBtn);
     }
   }
 
