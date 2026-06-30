@@ -184,6 +184,7 @@ test('Private/draft entities are excluded from public discovery', () => {
     createdBy: 'editorial_fixture',
     ownershipBoundary: 'knowledge_hub_editorial'
   });
+  assert.doesNotThrow(() => validateFixtures(mutation), 'Valid private relation should pass validation');
   const resultsWithPrivate = getPublicDiscoveryRelations(mutation);
   assert.ok(!resultsWithPrivate.some((r) => r.id === 'rel-private'), 'Private relation must be excluded from public discovery');
 });
@@ -238,6 +239,44 @@ test('Deterministic failures for invalid mutations', () => {
   const badShape = deepClone(baseData);
   badShape.version = 2;
   assert.throws(() => validateFixtures(badShape), /Fixture version must be 1/);
+
+  const ownCollision = deepClone(baseData);
+  ownCollision.entities[0].aliases.push(ownCollision.entities[0].canonicalName);
+  assert.throws(() => validateFixtures(ownCollision), /collides with own canonicalName/);
+
+  const aliasDuplicate = deepClone(baseData);
+  aliasDuplicate.entities[0].aliases.push(aliasDuplicate.entities[0].aliases[0]);
+  assert.throws(() => validateFixtures(aliasDuplicate), /Duplicate alias/);
+
+  const nameDuplicate = deepClone(baseData);
+  nameDuplicate.entities[1].canonicalName = nameDuplicate.entities[0].canonicalName;
+  assert.throws(() => validateFixtures(nameDuplicate), /Duplicate canonicalName/);
+
+  const leakUidLabel = deepClone(baseData);
+  leakUidLabel.entities[0].sourceRefs[0].label = 'uid:AbCdEfGhIjKlMnOpQrStUv';
+  assert.throws(() => validateFixtures(leakUidLabel), /Security leak detected/);
+
+  assert.throws(() => validateFixtures([]), /Fixture must be an object/);
+
+  const nullEntities = deepClone(baseData);
+  nullEntities.entities = null;
+  assert.throws(() => validateFixtures(nullEntities), /entities must be an array/);
+
+  const nullRelations = deepClone(baseData);
+  nullRelations.relations = null;
+  assert.throws(() => validateFixtures(nullRelations), /relations must be an array/);
+
+  const badDate = deepClone(baseData);
+  badDate.entities[0].createdAt = '2026-13-01T00:00:00.000Z';
+  assert.throws(() => validateFixtures(badDate), /Invalid createdAt date value/);
+
+  const emptyEntityLabel = deepClone(baseData);
+  emptyEntityLabel.entities[0].sourceRefs[0].label = '';
+  assert.throws(() => validateFixtures(emptyEntityLabel), /sourceRef label must be non-empty string/);
+
+  const emptyRelationUrl = deepClone(baseData);
+  emptyRelationUrl.relations[0].sourceRefs[0].url = '   ';
+  assert.throws(() => validateFixtures(emptyRelationUrl), /sourceRef url must be non-empty string/);
 });
 
 test('No closing keywords for #1882 in files', () => {
