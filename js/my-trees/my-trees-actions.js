@@ -405,7 +405,8 @@
         }
         if (modal.backdrop) {
           modal.backdrop.removeAttribute('aria-busy');
-          modal.backdrop.setAttribute('aria-hidden', 'true');
+          // Keep aria-hidden="false" during success confirmation so screen readers
+          // can announce the success message. Modal stays visually open (.show class).
         }
       }
       if (headerBtn) {

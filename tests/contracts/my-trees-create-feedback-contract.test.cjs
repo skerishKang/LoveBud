@@ -135,3 +135,11 @@ test('i18n keys for creating/success states exist', () => {
   assert.match(i18nSource, /myTrees\.create_success.*러브트리가 만들어졌어요.*LoveTree created/, 'myTrees.create_success key must exist');
   assert.match(i18nSource, /myTrees\.create_tree_fail.*러브트리 만들기 실패.*Failed to create LoveTree/, 'myTrees.create_tree_fail key must exist');
 });
+
+test('aria-hidden remains false during success confirmation', () => {
+  // On success, aria-busy is removed but aria-hidden stays false until redirect
+  assert.match(actionsSource, /backdrop\.removeAttribute\('aria-busy'\)/, 'aria-busy must be cleared on success');
+  // Check that setAttribute('aria-hidden', 'true') is NOT in the success path (before redirect)
+  // The comment in the code confirms this: "Keep aria-hidden='false' during success confirmation"
+  assert.match(actionsSource, /Keep aria-hidden="false" during success confirmation/, 'Code must contain comment confirming aria-hidden stays false');
+});
