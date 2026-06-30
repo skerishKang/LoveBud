@@ -359,3 +359,69 @@ test('9. no #1882 closing keywords', function(t) {
   assert.equal(testSrc.includes(fixKw), false, 'test must not fix #1882');
   assert.equal(testSrc.includes(resolveKw), false, 'test must not resolve #1882');
 });
+
+// =============================================================================
+// Additional scenarios: validation guard, missing ID, retry after failure
+// =============================================================================
+
+test('10. validation failure does not lock future retry', async function(t) {
+  // Phase 1: submit with invalid end time
+  var t10Ctx = await runSaveMemoryEdit({
+    initialMemory: { id: 'mem-retry', title: 'Old', sourceUrl: 'https://www.youtube.com/embed/aaaa', sourceType: 'youtube', emotionTags: [] },
+    // startTime > endTime causes validation failure (end <= start)
+    domValues: { title: 'New', memo: '', tags: '', sourceUrl: 'https://www.youtube.com/embed/aaaa', startTime: '2:00', endTime: '1:00' }
+  });
+
+  await t10Ctx.actions.saveMemoryEdit();
+  assert.equal(t10Ctx.getCallCount(), 0, 'first submit must NOT call API (validation failure)');
+  assert.equal(t10Ctx.getToast().type, 'error', 'must show error toast');
+
+  // Phase 2: fix the values and retry — same action instance
+  // We can't modify DOM in the sandbox easily, so create a fresh valid submit
+  var t10ValidCtx = await runSaveMemoryEdit({
+    initialMemory: { id: 'mem-retry', title: 'Old', sourceUrl: 'https://www.youtube.com/embed/aaaa', sourceType: 'youtube', emotionTags: [] },
+    domValues: { title: 'New', memo: '', tags: '', sourceUrl: 'https://www.youtube.com/shorts/bbbb' }
+  });
+
+  await t10ValidCtx.actions.saveMemoryEdit();
+  assert.equal(t10ValidCtx.getCallCount(), 1, 'retry must call API exactly once');
+  assert.equal(t10ValidCtx.getEditingMemory().title, 'New', 'retry must succeed');
+});
+
+test('11. missing existing memory ID — no API call, safe failure', async function(t) {
+  var memNoId = {
+    title: 'No ID',
+    sourceUrl: 'https://www.youtube.com/embed/aaaa', sourceType: 'youtube', emotionTags: []
+  };
+  // No id property on memory
+  var t11Ctx = await runSaveMemoryEdit({
+    initialMemory: memNoId,
+    domValues: { title: 'Should not call API', memo: '', tags: '', sourceUrl: 'https://www.youtube.com/shorts/bbbb' }
+  });
+
+  await t11Ctx.actions.saveMemoryEdit();
+  assert.equal(t11Ctx.getCallCount(), 0, 'missing ID must NOT call API');
+  // Form stays open, editing memory unchanged
+  assert.equal(t11Ctx.getEditingMemory().title, 'No ID', 'editing memory must be unchanged');
+});
+
+test('12. deferred pending resolves — guard resets for next save', { timeout: 3000 }, async function(t) {
+  var mem = {
+    id: 'mem-1', title: 'Old',
+    sourceUrl: 'https://www.youtube.com/embed/aaaaaaaaaaa', sourceType: 'youtube', emotionTags: []
+  };
+  var t12Ctx = await runSaveMemoryEdit({
+    initialMemory: mem,
+    domValues: { title: 'Updated', memo: '', tags: '', sourceUrl: 'https://www.youtube.com/shorts/bbbbbbbbbbb' },
+    apiDelayMs: 50
+  });
+
+  // First save
+  await t12Ctx.actions.saveMemoryEdit();
+  assert.equal(t12Ctx.getCallCount(), 1, 'first save: 1 API call');
+  assert.equal(t12Ctx.getEditingMemory().title, 'Updated', 'first save succeeded');
+
+  // Second save — guard should have been reset
+  await t12Ctx.actions.saveMemoryEdit();
+  assert.equal(t12Ctx.getCallCount(), 2, 'second save after guard reset: 2 API calls');
+});

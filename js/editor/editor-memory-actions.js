@@ -229,8 +229,11 @@ function createEditorMemoryActions(deps) {
         if (mode && !mode.isEditMode()) return;
         const currentEditingMemory = getCurrentEditingMemory();
         if (!currentEditingMemory) return;
-        if (isMemoryEditSaveInFlight) return;
-        isMemoryEditSaveInFlight = true;
+        if (!currentEditingMemory.id) {
+            showToast(formatI18nText('save_failed', '저장 실패'), 'error');
+            updateSaveStatus('failed', formatI18nText('save_failed', '저장 실패'));
+            return;
+        }
 
         const titleInput = document.getElementById('editTitleInput');
         const sourceUrlInput = document.getElementById('editSourceUrlInput');
@@ -346,6 +349,10 @@ function createEditorMemoryActions(deps) {
 
         try {
             if (window.apiClient && typeof window.apiClient.updateMemory === 'function') {
+                // Guard set here: all synchronous validations passed
+                if (isMemoryEditSaveInFlight) return;
+                isMemoryEditSaveInFlight = true;
+
                 const savedMemory = await window.apiClient.updateMemory(currentEditingMemory.id, payload);
                 const savedPatch = savedMemory && typeof savedMemory === 'object' ? savedMemory : {};
 
