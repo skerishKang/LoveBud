@@ -411,7 +411,6 @@ function createEditorMemoryActions(deps) {
             );
 
             if (!hasChange) {
-                updateSaveStatus('idle', '');
                 showToast(formatI18nText('save_no_change', '변경된 내용이 없어요'), 'info');
                 return;
             }

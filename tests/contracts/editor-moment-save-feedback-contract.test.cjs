@@ -8,7 +8,10 @@
  * - API failure keeps edit mode open and restores CTA
  * - Retry after failure triggers a new API call
  * - No-change guard prevents API write
- * - Plain Enter in memo textarea does NOT trigger save
+ * - Plain Enter in memo textarea does NOT trigger save (Keyboard shortcut execution)
+ * - Ctrl+Enter and Meta+Enter trigger save and call preventDefault
+ * - Double binding does not register duplicate event handlers
+ * - Interaction mode isEditMode=false prevents key shortcut execution
  * - Raw provider/API error text is not forwarded to user feedback
  * - Response ID and field acknowledgement guards are maintained
  * - #1882 closing keyword guard
@@ -54,6 +57,7 @@ function makeFakeElement(id, tag = 'button') {
       handlers.forEach(fn => fn(evt));
     },
     closest: function() { return null; },
+    querySelectorAll: function() { return []; },
     classList: { add() {}, remove() {}, toggle() {}, contains() { return false; } }
   };
 }
@@ -81,33 +85,61 @@ function makeFakeDOM() {
 
 // ── Module loader ─────────────────────────────────────────────────────────
 
-function loadActionsInSandbox(dom, deps) {
-  const code = fs.readFileSync(ACTIONS_PATH, 'utf8');
+function createSandbox(dom, deps) {
+  const actionsCode = fs.readFileSync(ACTIONS_PATH, 'utf8');
+  const bindingsCode = fs.readFileSync(BINDINGS_PATH, 'utf8');
+
+  let editModeState = true;
 
   const sandbox = {
     window: {
       apiClient: deps.apiClient || null,
       LoveBudEditorInteractionMode: {
-        isEditMode: () => true,
+        isEditMode: () => editModeState,
         setMode: () => {},
-        subscribe: () => {}
+        subscribe: () => {},
+        _connectExistingSubscribed: false
       },
       LoveBudMedia: null,
       LoveBudEditorMemoryFormTime: null,
       LoveBudCache: null,
+      LoveBudEditorBindings: null,
       createEditorMemoryActions: undefined
     },
     document: {
+      documentElement: makeFakeElement('html', 'html'),
       getElementById: (id) => dom[id] || null,
       createElement: () => makeFakeElement('_created', 'div'),
+      addEventListener: () => {},
     },
-    console: { error: () => {}, log: () => {} }
+    console: { error: () => {}, log: () => {} },
+    // Helpers to toggle interaction mode edit state in tests
+    _setEditModeState: (s) => { editModeState = s; }
   };
   vm.createContext(sandbox);
-  vm.runInContext(code, sandbox);
+
+  // Load actions
+  vm.runInContext(actionsCode, sandbox);
+  // Load bindings
+  vm.runInContext(bindingsCode, sandbox);
 
   const factory = sandbox.window.createEditorMemoryActions || sandbox.createEditorMemoryActions;
-  return factory(deps);
+  const actions = factory(deps);
+
+  // Expose bindings control
+  return {
+    actions,
+    sandbox,
+    bindDetailControls: () => {
+      sandbox.window.LoveBudEditorBindings.bindDetailActionButtons({
+        detailPanel: dom.detailEditMode,
+        enterEditMode: actions.enterEditMode,
+        deleteMemory: actions.deleteMemory,
+        exitEditMode: actions.exitEditMode,
+        saveMemoryEdit: actions.saveMemoryEdit
+      });
+    }
+  };
 }
 
 function makeBaseDeps(overrides = {}) {
@@ -173,17 +205,15 @@ test('1. save in-flight: API call is exactly one, save/cancel/delete disabled, a
       }
     }
   });
-  // Make title different so no-change guard doesn't trigger
   deps.getCurrentEditingMemory = () => ({ id: 'mem-1', title: 'Old Title', memo: 'Old Memo', emotionTags: [], sourceUrl: '' });
   dom.editTitleInput.value = 'New Title';
   dom.editMemoInput.value = 'New Memo';
 
-  const actions = loadActionsInSandbox(dom, deps);
+  const { actions } = createSandbox(dom, deps);
 
   const savePromise = actions.saveMemoryEdit();
 
-  // Immediately after call starts, check UI busy state
-  await Promise.resolve(); // flush microtask
+  await Promise.resolve();
 
   assert.strictEqual(apiCallCount, 1, 'API should be called exactly once');
   assert.strictEqual(dom.saveEditBtn.disabled, true, 'saveEditBtn must be disabled during save');
@@ -191,7 +221,6 @@ test('1. save in-flight: API call is exactly one, save/cancel/delete disabled, a
   assert.strictEqual(dom.deleteMemoryBtn.disabled, true, 'deleteMemoryBtn must be disabled during save');
   assert.strictEqual(dom.detailEditMode.getAttribute('aria-busy'), 'true', 'aria-busy must be set on detailEditMode');
 
-  // Resolve and clean up
   resolveApi();
   await savePromise;
 });
@@ -215,12 +244,11 @@ test('2. duplicate submit prevention: multiple triggers produce exactly one API 
   dom.editTitleInput.value = 'New Title';
   dom.editMemoInput.value = 'New Memo';
 
-  const actions = loadActionsInSandbox(dom, deps);
+  const { actions } = createSandbox(dom, deps);
 
-  // Simulate pointer click + Ctrl+Enter + Meta+Enter (all call saveMemoryEdit)
   const p1 = actions.saveMemoryEdit();
-  const p2 = actions.saveMemoryEdit(); // duplicate pointer
-  const p3 = actions.saveMemoryEdit(); // duplicate keyboard shortcut
+  const p2 = actions.saveMemoryEdit();
+  const p3 = actions.saveMemoryEdit();
 
   resolveApi();
   await Promise.all([p1, p2, p3]);
@@ -244,24 +272,20 @@ test('3. confirmed success: edit mode closes, detail/sidebar/canvas refreshed, s
   dom.editTitleInput.value = 'New Title';
   dom.editMemoInput.value = 'New Memo';
 
-  const actions = loadActionsInSandbox(dom, deps);
+  const { actions } = createSandbox(dom, deps);
   await actions.saveMemoryEdit();
 
-  // Edit mode should be closed (viewMode shown, editMode hidden)
   assert.strictEqual(dom.detailViewMode.style.display, 'block', 'viewMode must be shown on success');
   assert.strictEqual(dom.detailEditMode.style.display, 'none', 'editMode must be hidden on success');
 
-  // Detail and sidebar refreshed
   assert.ok(deps._updateDetailPanelCalls.length > 0, 'updateDetailPanel must be called on success');
   assert.ok(deps._updateSidebarStatusCalls.length > 0, 'updateSidebarStatus must be called on success');
   assert.ok(deps._rerenderCanvasCalls.length > 0, 'rerenderCanvas must be called on success');
   assert.ok(deps._setCurrentEditingMemoryCalls.length > 0, 'setCurrentEditingMemory must be called on success');
 
-  // Saved status
   const savedStatus = deps._saveStatuses.find(s => s.status === 'saved');
   assert.ok(savedStatus, 'updateSaveStatus("saved") must be called on success');
 
-  // CTA restored
   assert.strictEqual(dom.saveEditBtn.disabled, false, 'saveEditBtn must be re-enabled after success');
   assert.strictEqual(dom.cancelEditBtn.disabled, false, 'cancelEditBtn must be re-enabled after success');
   assert.strictEqual(dom.detailEditMode.getAttribute('aria-busy'), undefined, 'aria-busy must be removed on success');
@@ -279,18 +303,15 @@ test('4. API reject: edit mode stays open, CTA restored, no raw error exposed', 
   dom.editTitleInput.value = 'New Title';
   dom.editMemoInput.value = 'New Memo';
 
-  const actions = loadActionsInSandbox(dom, deps);
+  const { actions } = createSandbox(dom, deps);
   await actions.saveMemoryEdit();
 
-  // Edit mode must remain open
   assert.notStrictEqual(dom.detailViewMode.style.display, 'block', 'viewMode must NOT be shown on failure');
   assert.notStrictEqual(dom.detailEditMode.style.display, 'none', 'editMode must NOT be hidden on failure');
 
-  // CTA restored
   assert.strictEqual(dom.saveEditBtn.disabled, false, 'saveEditBtn must be re-enabled after failure');
   assert.strictEqual(dom.cancelEditBtn.disabled, false, 'cancelEditBtn must be re-enabled after failure');
 
-  // Raw error text must NOT appear in any toast
   const toastMessages = deps._toasts.map(t => t.msg);
   for (const msg of toastMessages) {
     assert.ok(
@@ -299,7 +320,6 @@ test('4. API reject: edit mode stays open, CTA restored, no raw error exposed', 
     );
   }
 
-  // Failed status set
   const failStatus = deps._saveStatuses.find(s => s.status === 'failed');
   assert.ok(failStatus, 'updateSaveStatus("failed") must be called on API reject');
 });
@@ -320,13 +340,11 @@ test('5. retry after failure: new API call succeeds', async () => {
   dom.editTitleInput.value = 'New Title';
   dom.editMemoInput.value = 'New Memo';
 
-  const actions = loadActionsInSandbox(dom, deps);
+  const { actions } = createSandbox(dom, deps);
 
-  // First attempt fails
   await actions.saveMemoryEdit();
   assert.strictEqual(callCount, 1, 'First call must fire');
 
-  // Retry should work
   await actions.saveMemoryEdit();
   assert.strictEqual(callCount, 2, 'Retry must fire a second API call');
 
@@ -334,7 +352,7 @@ test('5. retry after failure: new API call succeeds', async () => {
   assert.ok(savedStatus, 'Second attempt must succeed with saved status');
 });
 
-test('6. no-change save: API write is 0 calls, form stays open', async () => {
+test('6. no-change save: API write is 0 calls, form stays open, info toast only', async () => {
   const dom = makeFakeDOM();
   let apiCallCount = 0;
   const deps = makeBaseDeps({
@@ -342,7 +360,6 @@ test('6. no-change save: API write is 0 calls, form stays open', async () => {
       updateMemory: async () => { apiCallCount++; return {}; }
     }
   });
-  // Set inputs to SAME values as current memory (no change)
   const sameTitle = 'Same Title';
   const sameMemo = 'Same Memo';
   deps.getCurrentEditingMemory = () => ({
@@ -356,41 +373,135 @@ test('6. no-change save: API write is 0 calls, form stays open', async () => {
   dom.editMemoInput.value = sameMemo;
   dom.editTagsInput.value = '';
 
-  const actions = loadActionsInSandbox(dom, deps);
+  const { actions } = createSandbox(dom, deps);
   await actions.saveMemoryEdit();
 
   assert.strictEqual(apiCallCount, 0, 'No API call should be made when nothing changed');
-  // Edit mode must NOT be closed (no exitEditMode triggered)
   assert.notStrictEqual(dom.detailViewMode.style.display, 'block', 'viewMode must NOT be shown on no-change');
 
-  // No "saved" toast
-  const successToast = deps._toasts.find(t => t.type === 'success');
-  assert.ok(!successToast, 'No success toast on no-change');
+  // Info toast shown
+  const infoToast = deps._toasts.find(t => t.type === 'info');
+  assert.ok(infoToast, 'Info toast must be shown on no-change');
+
+  // No saved/failed status set
+  const savedOrFailed = deps._saveStatuses.some(s => s.status === 'saved' || s.status === 'failed');
+  assert.ok(!savedOrFailed, 'No save status updates on no-change');
+
+  // CTA restored
+  assert.strictEqual(dom.saveEditBtn.disabled, false, 'saveEditBtn remains enabled');
 });
 
-test('7. plain Enter in editMemoInput does NOT trigger save', async () => {
-  // Verify via editor-bindings.js source that keydown guard is Ctrl+Enter or Meta+Enter only
-  const bindingsSrc = fs.readFileSync(BINDINGS_PATH, 'utf8');
+test('7. Keyboard shortcut execution: plain Enter, Ctrl+Enter, Meta+Enter, click, duplicate binding, and isEditMode checks', async () => {
+  const dom = makeFakeDOM();
+  let apiCallCount = 0;
+  const deps = makeBaseDeps({
+    apiClient: {
+      updateMemory: async (id, payload) => {
+        apiCallCount++;
+        return { id, ...payload };
+      }
+    }
+  });
+  deps.getCurrentEditingMemory = () => ({ id: 'mem-1', title: 'Old', memo: 'Old Memo', emotionTags: [] });
+  dom.editTitleInput.value = 'New Title';
+  dom.editMemoInput.value = 'New Memo';
 
-  // Must have the saveShortcutBound guard
-  assert.ok(bindingsSrc.includes('saveShortcutBound'), 'Bindings must have saveShortcutBound guard');
+  const { bindDetailControls, sandbox } = createSandbox(dom, deps);
 
-  // Must require ctrlKey or metaKey
-  assert.ok(
-    bindingsSrc.includes('ctrlKey') && bindingsSrc.includes('metaKey'),
-    'Keyboard shortcut must check for ctrlKey and metaKey'
-  );
+  // Bind elements
+  bindDetailControls();
 
-  // Plain Enter (without modifier) must NOT call save - verified by guard structure
-  // The listener only fires when (e.ctrlKey || e.metaKey) - plain Enter does NOT match
-  assert.ok(
-    bindingsSrc.includes("e.key === 'Enter' && (e.ctrlKey || e.metaKey)"),
-    "Guard must be: e.key === 'Enter' && (e.ctrlKey || e.metaKey)"
-  );
+  // Reference elements & check bindings
+  const saveBtn = dom.saveEditBtn;
+  const memoTextarea = dom.editMemoInput;
+
+  assert.ok(saveBtn._listeners['click'], 'Save button should have click listener bound');
+  assert.ok(memoTextarea._listeners['keydown'], 'Memo textarea should have keydown listener bound');
+
+  // Helper to make fake KeyboardEvent
+  function triggerKeyEvent(key, modifiers = {}) {
+    let preventDefaultCalled = 0;
+    const evt = {
+      type: 'keydown',
+      key,
+      ctrlKey: !!modifiers.ctrlKey,
+      metaKey: !!modifiers.metaKey,
+      preventDefault: () => { preventDefaultCalled++; }
+    };
+    memoTextarea.dispatchEvent(evt);
+    return preventDefaultCalled;
+  }
+
+  // --- 1. Plain Enter: No save, no preventDefault ---
+  apiCallCount = 0;
+  let pdefs = triggerKeyEvent('Enter');
+  assert.strictEqual(apiCallCount, 0, 'Plain Enter must not call saveMemoryEdit');
+  assert.strictEqual(pdefs, 0, 'Plain Enter must not call preventDefault');
+
+  // --- 2. Ctrl+Enter: Triggers save, calls preventDefault ---
+  dom.editTitleInput.value = 'Ctrl Title';
+  apiCallCount = 0;
+  pdefs = triggerKeyEvent('Enter', { ctrlKey: true });
+  await new Promise(r => setTimeout(r, 0)); // flush async save call and finally blocks
+  assert.strictEqual(apiCallCount, 1, 'Ctrl+Enter must trigger saveMemoryEdit');
+  assert.strictEqual(pdefs, 1, 'Ctrl+Enter must call preventDefault once');
+
+  // Reset flag for subsequent tests
+  dom.saveEditBtn.disabled = false;
+  dom.cancelEditBtn.disabled = false;
+
+  // --- 3. Meta+Enter: Triggers save, calls preventDefault ---
+  dom.editTitleInput.value = 'Meta Title';
+  apiCallCount = 0;
+  pdefs = triggerKeyEvent('Enter', { metaKey: true });
+  await new Promise(r => setTimeout(r, 0));
+  assert.strictEqual(apiCallCount, 1, 'Meta+Enter must trigger saveMemoryEdit');
+  assert.strictEqual(pdefs, 1, 'Meta+Enter must call preventDefault once');
+
+  dom.saveEditBtn.disabled = false;
+  dom.cancelEditBtn.disabled = false;
+
+  // --- 4. Save button click: Triggers save ---
+  dom.editTitleInput.value = 'Click Title';
+  apiCallCount = 0;
+  saveBtn.dispatchEvent({ type: 'click' });
+  await new Promise(r => setTimeout(r, 0));
+  assert.strictEqual(apiCallCount, 1, 'Save button click must trigger saveMemoryEdit');
+
+  dom.saveEditBtn.disabled = false;
+  dom.cancelEditBtn.disabled = false;
+
+  // --- 5. Double binding call: guards prevent duplicate listeners ---
+  const initialClickCount = saveBtn._listeners['click'].length;
+  const initialKeydownCount = memoTextarea._listeners['keydown'].length;
+
+  bindDetailControls(); // call bind again
+
+  assert.strictEqual(saveBtn._listeners['click'].length, initialClickCount, 'Click listener should not be duplicated');
+  assert.strictEqual(memoTextarea._listeners['keydown'].length, initialKeydownCount, 'Keydown listener should not be duplicated');
+
+  dom.editTitleInput.value = 'Double Title';
+  apiCallCount = 0;
+  triggerKeyEvent('Enter', { ctrlKey: true });
+  await new Promise(r => setTimeout(r, 0));
+  assert.strictEqual(apiCallCount, 1, 'Event trigger must run only once after duplicate bindings call');
+
+  dom.saveEditBtn.disabled = false;
+  dom.cancelEditBtn.disabled = false;
+
+  // --- 6. isEditMode false check ---
+  sandbox._setEditModeState(false); // disable editMode mock in interactionMode
+  apiCallCount = 0;
+  triggerKeyEvent('Enter', { ctrlKey: true });
+  await new Promise(r => setTimeout(r, 0));
+  assert.strictEqual(apiCallCount, 0, 'Ctrl+Enter must be ignored if isEditMode() is false');
+
+  saveBtn.dispatchEvent({ type: 'click' });
+  await new Promise(r => setTimeout(r, 0));
+  assert.strictEqual(apiCallCount, 0, 'Save button click must be ignored if isEditMode() is false');
 });
 
 test('8. raw provider/API error text not forwarded to user feedback', async () => {
-  // Error thrown with specific internal string
   const dom = makeFakeDOM();
   const INTERNAL_ERR = 'neon_connection_error_5432';
   const deps = makeBaseDeps({
@@ -402,7 +513,7 @@ test('8. raw provider/API error text not forwarded to user feedback', async () =
   dom.editTitleInput.value = 'New Title';
   dom.editMemoInput.value = 'New Memo';
 
-  const actions = loadActionsInSandbox(dom, deps);
+  const { actions } = createSandbox(dom, deps);
   await actions.saveMemoryEdit();
 
   for (const toast of deps._toasts) {
@@ -413,7 +524,6 @@ test('8. raw provider/API error text not forwarded to user feedback', async () =
 test('9. response ID and field acknowledgement guards', async () => {
   const dom = makeFakeDOM();
 
-  // Case A: response ID mismatch -> error stays in catch, edit mode stays open
   const depsA = makeBaseDeps({
     apiClient: {
       updateMemory: async () => ({ id: 'WRONG-ID', title: 'New Title', memo: 'New Memo', emotionTags: [] })
@@ -426,19 +536,17 @@ test('9. response ID and field acknowledgement guards', async () => {
   domA.editTitleInput.value = 'New Title';
   domA.editMemoInput.value = 'New Memo';
 
-  const actionsA = loadActionsInSandbox(domA, depsA);
+  const { actions: actionsA } = createSandbox(domA, depsA);
   await actionsA.saveMemoryEdit();
 
-  // Edit mode must not close on ID mismatch
   const savedA = depsA._saveStatuses.find(s => s.status === 'saved');
   assert.ok(!savedA, 'Saved status must NOT be set when response ID mismatches');
 
-  // Case B: title not acknowledged -> failure
   const depsB = makeBaseDeps({
     apiClient: {
       updateMemory: async (id) => ({
         id,
-        title: 'WRONG TITLE ECHO', // different from payload
+        title: 'WRONG TITLE ECHO',
         memo: 'New Memo',
         emotionTags: []
       })
@@ -449,7 +557,7 @@ test('9. response ID and field acknowledgement guards', async () => {
   domB.editTitleInput.value = 'My New Title';
   domB.editMemoInput.value = 'New Memo';
 
-  const actionsB = loadActionsInSandbox(domB, depsB);
+  const { actions: actionsB } = createSandbox(domB, depsB);
   await actionsB.saveMemoryEdit();
 
   const savedB = depsB._saveStatuses.find(s => s.status === 'saved');
