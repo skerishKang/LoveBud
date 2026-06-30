@@ -6,6 +6,8 @@
     'empty_state_desc': { ko: '첫 러브트리를 만들어 시작해보세요.', en: 'Create your first LoveTree to begin.' },
     'create_tree_btn': { ko: '새 러브트리 만들기', en: 'Create New LoveTree' },
     'creating': { ko: '만드는 중...', en: 'Creating...' },
+    'preparing_create': { ko: '러브트리 만들기를 준비하고 있어요…', en: 'Preparing your LoveTree…' },
+    'timeout_error': { ko: '시간 초과. 다시 시도해 주세요.', en: 'Timeout. Please try again.' },
     'demo_mode': { ko: '데모 모드입니다. 실제 트리는 생성되지 않습니다.', en: 'Demo mode. No actual tree will be created.' },
     'create_tree_fail': { ko: '러브트리 만들기 실패. 다시 시도해 주세요.', en: 'Failed to create LoveTree. Please try again.' },
     'rename': { ko: '이름 변경', en: 'Rename' },
