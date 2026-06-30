@@ -176,12 +176,21 @@ test('contract document has non-goals section', function () {
   assert.ok(src.includes('Non-Goals') || src.includes('비목표'), 'Must have non-goals section');
 });
 
-// ── 13. Self-closing verification (avoid Closes/Fixes/Resolves #1882) ──
+// ── 13. Closing keyword verification (avoid closing verbs with #1882 in doc and test) ──
 
-test('this test source does not close #1882 with forbidden verbs', function () {
-  const src = fs.readFileSync(__filename, 'utf8');
-  // Look for lines starting with whitespace and Closes/Fixes/Resolves followed by #1882
-  const pattern = /^\s*(Closes|Fixes|Resolves)\s+#1882/m;
-  assert.ok(!pattern.test(src), 'test source must NOT contain a line closing #1882 with Closes/Fixes/Resolves');
+test('contract document and test source do not contain forbidden closing keywords for #1882', function () {
+  const docSrc = readContract();
+  const testSrc = fs.readFileSync(__filename, 'utf8');
+
+  // Build pattern programmatically to avoid matching this test file source code itself
+  const parts = ['(', 'Closes', '|', 'Fixes', '|', 'Resolves', ')\\s+#1882'];
+  const pattern = new RegExp(parts.join(''), 'i');
+
+  assert.ok(!pattern.test(docSrc),
+    'contract document must NOT contain forbidden closing keywords (like Clo' + 'ses #1882)');
+  assert.ok(!pattern.test(testSrc),
+    'contract test source must NOT contain forbidden closing keywords (like Clo' + 'ses #1882)');
 });
+
+
 
