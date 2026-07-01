@@ -65,7 +65,7 @@ test('public canvas init keeps runtime wait loop behind a local helper', () => {
     'startCanvas must be defined before runtime wait helper is invoked'
   );
   assert.ok(
-    initSrc.indexOf('waitForPublicRuntime(startCanvas);') < initSrc.indexOf('.catch(handlePublicCanvasLoadFailure)'),
+    initSrc.indexOf('waitForPublicRuntime(startCanvas);') < initSrc.indexOf('.catch(window.LoveBudPublicCanvasErrorFallback.handlePublicCanvasLoadFailure)'),
     'runtime wait invocation must remain before load error handling'
   );
 });

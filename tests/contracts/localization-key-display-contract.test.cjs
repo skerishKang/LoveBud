@@ -26,6 +26,7 @@ const classifierFile = 'js/shared/tree-workspace-permission.js';
 const editorDetailFile = 'js/editor/editor-detail-ui.js';
 const canvasNodeFile = 'js/editor/editor-canvas-node.js';
 const viewerDetailFile = 'js/viewer/public-viewer-detail-ui.js';
+const metadataTextFile = 'js/viewer/public-viewer-detail-metadata-text.js';
 
 // ── Predicate: dot key detection ──
 
@@ -214,10 +215,10 @@ test('canvas node source uses safeTitle + conditional for aria-label', () => {
 // ── Static: public-viewer-detail-ui uses enhanced safeDisplayTitle ──
 
 test('public-viewer-detail-ui safeDisplayTitle delegates to classifier', () => {
-  const src = readRepoFile(viewerDetailFile);
-  assert.match(src, /LoveBudTreeWorkspaceClassifier/, 'viewer detail must reference classifier');
-  assert.match(src, /sanitizeDisplayTitle/, 'viewer detail must call sanitizeDisplayTitle');
-  assert.doesNotMatch(src, /LoveBudLocalizationDisplayHelper/, 'viewer must not reference old helper');
+  const src = readRepoFile(metadataTextFile);
+  assert.match(src, /LoveBudTreeWorkspaceClassifier/, 'metadata-text must reference classifier');
+  assert.match(src, /sanitizeDisplayTitle/, 'metadata-text must call sanitizeDisplayTitle');
+  assert.doesNotMatch(src, /LoveBudLocalizationDisplayHelper/, 'metadata-text must not reference old helper');
 });
 
 // ── Regression: no mutation, no write API ──
@@ -249,15 +250,15 @@ test('classifier sanitizeDisplayTitle never mutates input object', () => {
 });
 
 test('viewer detail still has safeDisplayTitle', () => {
-  const src = readRepoFile(viewerDetailFile);
-  assert.match(src, /function safeDisplayTitle/, 'viewer must retain safeDisplayTitle function');
+  const src = readRepoFile(metadataTextFile);
+  assert.match(src, /function safeDisplayTitle/, 'metadata-text must retain safeDisplayTitle function');
 });
 
 test('viewer safeDisplayTitle hides dot-separated keys', () => {
-  const ctx = runInSandbox(classifierFile, viewerDetailFile);
+  const ctx = runInSandbox(classifierFile, metadataTextFile);
   const isKey = ctx.window.LoveBudTreeWorkspaceClassifier.isLocalizationKeyTitle;
 
-  // safeDisplayTitle is private, but its backing predicate now detects dot keys
+  // safeDisplayTitle is defined in metadata-text, its backing predicate detects dot keys
   assert.equal(isKey('tree.title'), true, 'predicate must detect dot keys');
   assert.equal(isKey('editor_url_only_youtube_title'), true, 'predicate must detect underscore keys');
   assert.equal(isKey('My lovely day'), false, 'predicate must not flag normal titles');

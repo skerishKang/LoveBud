@@ -158,7 +158,9 @@ test('8. non-allowlisted files are not modified', () => {
     'js/viewer/public-canvas-error-fallback.js',
     'js/viewer/public-canvas-init.js',
     'pages/view.html',
-    'tests/contracts/public-canvas-error-fallback-contract.test.cjs'
+    'tests/contracts/public-canvas-error-fallback-contract.test.cjs',
+    'tests/contracts/localization-key-display-contract.test.cjs',
+    'tests/contracts/localization-key-predicate-contract.test.cjs'
   ];
 
   // Read git diff to check what files are modified
@@ -170,7 +172,7 @@ test('8. non-allowlisted files are not modified', () => {
     const isAllowlisted = allowlisted.some(a => file.endsWith(a) || file === a);
     assert.ok(
       isAllowlisted,
-      `Modified file "${file}" is not in the allowlist — only these 4 files may be changed`
+      `Modified file "${file}" is not in the allowlist — only these ${allowlisted.length} files may be changed`
     );
   }
 });

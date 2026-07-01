@@ -136,6 +136,15 @@ test('public-viewer-detail-ui runtime cache, fallback, and throttle contract', a
   context.window = context;
 
   vm.createContext(context);
+  const metadataCode = fs.readFileSync(path.join(ROOT, 'js/viewer/public-viewer-detail-metadata-text.js'), 'utf8');
+  vm.runInContext(metadataCode, context);
+  assert.ok(context.window.LoveBudPublicViewerDetailMetadataText, 'window.LoveBudPublicViewerDetailMetadataText must exist');
+  assert.ok(context.window.LoveBudPublicViewerDetailMetadataText.safeDisplayTitle, 'safeDisplayTitle helper must exist');
+  assert.ok(context.window.LoveBudPublicViewerDetailMetadataText.createPublicViewerCurrentMomentBadgeBoundary, 'createPublicViewerCurrentMomentBadgeBoundary helper must exist');
+  assert.ok(context.window.LoveBudPublicViewerDetailMetadataText.createPublicViewerCurrentMomentTitleBoundary, 'createPublicViewerCurrentMomentTitleBoundary helper must exist');
+  assert.ok(context.window.LoveBudPublicViewerDetailMetadataText.updatePublicViewerCurrentMomentHint, 'updatePublicViewerCurrentMomentHint helper must exist');
+  assert.ok(context.window.LoveBudPublicViewerDetailMetadataText.updatePublicViewerCurrentMomentDate, 'updatePublicViewerCurrentMomentDate helper must exist');
+
   vm.runInContext(scriptSource, context);
 
   assert.equal(typeof context.createPublicViewerDetailUI, 'function', 'UI factory should be exposed on window');

@@ -335,6 +335,7 @@ test('public canvas entry wrapper exposes boundary and setup methods', () => {
 
 test('public canvas init delegates metrics/profile setup through entry wrapper', () => {
   const initSrc = fs.readFileSync('js/viewer/public-canvas-init.js', 'utf8');
+  const errorFallbackSrc = fs.readFileSync('js/viewer/public-canvas-error-fallback.js', 'utf8');
 
   assert.ok(initSrc.includes('LoveBudPublicViewerCanvasEntry'), 'public canvas init must reference the entry wrapper');
   assert.ok(initSrc.includes('installPublicMetrics'), 'public canvas init must delegate installPublicMetrics through entry wrapper');
@@ -379,10 +380,14 @@ test('public canvas init delegates metrics/profile setup through entry wrapper',
     false,
     'public canvas init should not construct editor canvas options inline'
   );
-  assert.ok(initSrc.includes('createLoadFailureState'), 'public canvas init must keep createLoadFailureState call path');
-  assert.ok(initSrc.includes('canvasEntry.createLoadFailureState'), 'public canvas init must delegate load failure state through entry wrapper');
-  assert.ok(initSrc.includes('typeof canvasEntry.createLoadFailureState === \'function\''), 'public canvas init must guard delegated load failure state helper');
-  assert.ok(initSrc.includes('document.createElement'), 'public canvas init must retain fallback load failure DOM builder');
+  assert.ok(
+    errorFallbackSrc.includes('createLoadFailureState'),
+    'public canvas error fallback must keep createLoadFailureState'
+  );
+  assert.ok(
+    initSrc.includes('LoveBudPublicCanvasErrorFallback.handlePublicCanvasLoadFailure'),
+    'public canvas init must delegate load failure handling through error fallback'
+  );
   assert.ok(initSrc.includes('installPublicEditorReadOnlyState'), 'public canvas init must delegate public editor read-only state through entry wrapper');
   assert.ok(initSrc.includes('canvasEntry.installPublicEditorReadOnlyState(canvas, editorCanvas)'), 'public canvas init must pass canvas and editorCanvas to delegated read-only state helper');
   assert.ok(initSrc.includes('window.LoveBudEditor.canEdit = false'), 'public canvas init must retain fallback canEdit false assignment');
@@ -421,14 +426,22 @@ test('public canvas init delegates metrics/profile setup through entry wrapper',
     initSrc.indexOf('setupPublicRoute') < initSrc.indexOf('bridge.loadPublicTreeData'),
     'public route setup must remain before bridge loading start'
   );
-  assert.ok(initSrc.includes('createMissingRouteState'), 'public canvas init must delegate missing route state creation');
-  assert.ok(initSrc.includes('canvasEntry.createMissingRouteState'), 'public canvas init must call delegated missing route state helper');
-  assert.ok(initSrc.includes('document.body.appendChild(errEl)'), 'public canvas init must keep appending missing route state locally');
   assert.ok(
-    initSrc.indexOf('createMissingRouteState') < initSrc.indexOf('LoveBudPublicCanvasBridge'),
-    'missing route state helper must be defined before bridge lookup path'
+    errorFallbackSrc.includes('createMissingRouteState'),
+    'public canvas error fallback must keep createMissingRouteState'
   );
-  assert.ok(initSrc.includes('treeId parameter required. Usage: ?treeId=<id>'), 'public canvas init must retain fallback missing treeId message');
+  assert.ok(
+    initSrc.includes('window.LoveBudPublicCanvasErrorFallback.appendMissingRouteState()'),
+    'public canvas init must call delegated missing route helper through error fallback'
+  );
+  assert.ok(
+    initSrc.indexOf('if (!treeId)') < initSrc.indexOf('window.LoveBudPublicCanvasErrorFallback.appendMissingRouteState()'),
+    'missing route guard must call error fallback append before bridge lookup'
+  );
+  assert.ok(
+    errorFallbackSrc.includes('treeId parameter required. Usage: ?treeId=<id>'),
+    'public canvas error fallback must retain fallback missing treeId message'
+  );
   assert.ok(initSrc.includes('getPublicCanvasBridge'), 'public canvas init must delegate public bridge lookup through entry wrapper');
   assert.ok(initSrc.includes('canvasEntry.getPublicCanvasBridge'), 'public canvas init must call delegated bridge lookup helper');
   assert.ok(initSrc.includes('window.LoveBudPublicCanvasBridge'), 'public canvas init must retain bridge lookup fallback');
@@ -453,12 +466,17 @@ test('public canvas init delegates metrics/profile setup through entry wrapper',
   assert.ok(initSrc.includes('function startCanvas'), 'public canvas init must keep startCanvas local');
   assert.ok(initSrc.includes('var onPublicCanvasNodeClick = createPublicCanvasNodeClickHandler({'), 'public canvas init must keep node click flow local');
   assert.ok(initSrc.includes('editorCanvas.initCanvas();'), 'public canvas init must keep editorCanvas init call local');
-  assert.ok(initSrc.includes('appendPublicLoadFailureState'), 'public canvas init must delegate load failure appending through entry wrapper');
-  assert.ok(initSrc.includes('canvasEntry.appendPublicLoadFailureState'), 'public canvas init must call delegated load failure append helper');
-  assert.ok(initSrc.includes('container.appendChild(createLoadFailureState(error && error.message))'), 'public canvas init must retain load failure appending fallback');
   assert.ok(
-    initSrc.indexOf('appendPublicLoadFailureState') < initSrc.indexOf('initPublicCanvas()'),
-    'local load failure append helper must be defined before init public canvas function'
+    errorFallbackSrc.includes('appendPublicLoadFailureState'),
+    'public canvas error fallback must expose appendPublicLoadFailureState'
+  );
+  assert.ok(
+    errorFallbackSrc.includes('container.appendChild(createLoadFailureState(error && error.message))'),
+    'public canvas error fallback must retain load failure appending fallback'
+  );
+  assert.ok(
+    errorFallbackSrc.indexOf('appendPublicLoadFailureState') < errorFallbackSrc.indexOf('handlePublicCanvasLoadFailure'),
+    'append load failure helper must be defined before handlePublicCanvasLoadFailure in error fallback'
   );
 });
 
