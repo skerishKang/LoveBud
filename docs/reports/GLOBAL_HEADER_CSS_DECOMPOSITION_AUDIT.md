@@ -157,7 +157,7 @@ If any of the following changes:
 | Total lines | 743 |
 | `@import` (`@import`) | 1 (`global-header-language.css`) |
 | `@media` blocks | 10 |
-| `!important` | 5 (all in `@media (max-width: 480px)` `.lang-menu-trigger`) |
+| `!important` | 5 (preserve selector and media-query context in any future extraction) |
 | `clamp()` | 3 |
 | `var()` | ~20 |
 | `!important` free scope | All other selectors |
