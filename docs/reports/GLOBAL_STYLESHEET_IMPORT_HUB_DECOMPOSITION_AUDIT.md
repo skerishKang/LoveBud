@@ -22,16 +22,14 @@
 | 5 | `@import url('./global/global-ready-state.css')` | Ready-state loading guard |
 | 6 | `@import url('./global/global-transition-polish.css')` | Transition polish |
 
-**Retained declarations** (lines 14–680): The hub keeps:
-- `.lovetree-page-shell` (lines 15–30)
-- `.lovetree-soft-surface`, `.lovetree-card`, `.lovetree-pill`, `.lovetree-chip` (lines 33–109)
-- `.btn-round`, `.btn-primary`, `.btn-outline` (lines 111–163)
-- `:root` control tokens (lines 349–372)
-- `.emotion-path-highlight`, `.cta-appreciation`, `.card-appreciation`, `.emotion-tag-refined`, `.moment-indicator`, `.path-arrow-refined`, `.section-divider-soft`, `.insight-text`, `.appreciation-bg`, `.save-status-indicator` (lines 175–318)
-- `.material-symbols-outlined` FOUC guard (lines 324–329)
-- Eyebrow, hero, h1, lead, search-panel, page-hero, shared-mobile declarations (lines 332–680)
-
-**Notable:** `.page-hero-eyebrow.lovetree-eyebrow::before` content-none reset (lines 388–395) — pseudo-element override in the hub.
+**Retained declarations:** The hub keeps:
+- `.lovetree-page-shell`, `.lovetree-soft-surface`, `.lovetree-card`, `.lovetree-pill`, `.lovetree-chip` — page shell/soft-surface/card/pill/chip
+- `.btn-round`, `.btn-primary`, `.btn-outline` — button base
+- `:root` — control tokens
+- `.emotion-path-highlight`, `.cta-appreciation`, `.card-appreciation`, `.emotion-tag-refined`, `.moment-indicator`, `.path-arrow-refined`, `.section-divider-soft`, `.insight-text`, `.appreciation-bg`, `.save-status-indicator` — emotion/appreciation CTA, save-status
+- `.material-symbols-outlined` — FOUC guard
+- Eyebrow, hero, h1, lead, search-panel, page-hero, shared-mobile — typography and page-hero
+- Focus-visible — `body .btn-round`, `body .btn-primary`, `body .btn-outline`
 
 ---
 
@@ -70,25 +68,16 @@
 ## 4. No-split/defer conclusion
 
 **Why no split:**
-- The `@import` order (tokens → base → header → page-shell → ready-state → transition-polish) is a single **cascade sequence**. Each import depends on the previous being loaded before its own declarations apply.
-- The hub's retained declarations (`.lovetree-*`, `.btn-*`, `.save-status-*`, `.material-symbols-*`) interleave with imported styles through custom properties (`--control-*`, `--lovetree-*`). Breaking any existing `@import` or moving a retained cluster to a new file would require duplicating the token dependency or reordering the cascade.
-- A **broader stylesheet aggregation / import-order contract** must be separately established before any extraction is reassessable.
+The audited import and retained-declaration ordering does not identify a behavior-preserving first split within the allowed files. A broader stylesheet aggregation/import-order contract is required before reassessing extraction.
 
 **Recorded as `no-split / defer`.**
 
-### Prerequisite for future split
-- A stylesheet aggregation contract that defines:
-  1. The exact import-order dependency chain (tokens → base ... → transition-polish)
-  2. Which custom properties each imported file may consume
-  3. Which `@media` blocks each imported file may contain
-- Without this contract, any extraction risks breaking cascade ordering.
-
-### Rollback triggers
-- Change to `@import` order in `css/global.css`
-- Change to `--control-*` or `--lovetree-*` custom property availability
-- Change to selector ordering (`.lovetree-page-shell`, `.lovetree-card`, `.btn-round`, etc.)
-- Change to `@media` breakpoint boundaries
-- Change to focus-visible `outline: 2px solid var(--control-focus-ring)` rule
+### Observed rollback conditions (not located to per-file)
+- `@import` order in `css/global.css`
+- `--control-*` and `--lovetree-*` custom-property availability
+- Selector ordering (`.lovetree-page-shell`, `.lovetree-card`, `.btn-round`)
+- `@media` breakpoint boundaries
+- `outline: 2px solid var(--control-focus-ring)` focus-visible rule
 
 ---
 
@@ -118,8 +107,8 @@
 |----------|----------|
 | Shared page shell | `lovetree-page-shell` — `max-width`, `margin: 0 auto` |
 | Desktop/narrow responsive | `@media (max-width: 768px)` — `.btn-round padding: 10px`, `.page-hero-h1` |
-| Guest/signed-in header | No direct header rule in hub — header is imported |
-| Button/form/card | `.btn-round`, `.btn-primary`, `.btn-outline` — hub retains |
+| Guest/signed-in header | No header-specific selector is identified in the retained hub declarations; header behavior is primarily owned by the imported header stylesheet |
+| Button/card | `.btn-round`, `.btn-primary`, `.btn-outline` — hub retains |
 | Save-status | `.save-status-indicator.saving/.saved/.failed` — hub retains |
 | Focus-visible | `body .btn-round:focus-visible` — `outline: 2px solid var(--control-focus-ring)` |
 | Remote CI | Repository workflow must complete green before merge |
@@ -132,11 +121,7 @@
 |--------|-------|
 | Total lines | 680 |
 | `@import` | 6 |
-| `@media` | 7 |
-| `!important` | 6 |
-| `var()` | ~122 |
-| `:root` | 1 (lines 349–372) |
-| `--control-*` custom properties | ~15 |
+| `:root` | 1 |
 
 ---
 
