@@ -384,9 +384,23 @@ test('public canvas init delegates metrics/profile setup through entry wrapper',
     errorFallbackSrc.includes('createLoadFailureState'),
     'public canvas error fallback must keep createLoadFailureState'
   );
+  // New contract: local handlePublicCanvasLoadFailure must exist
   assert.ok(
+    initSrc.includes('function handlePublicCanvasLoadFailure(error)'),
+    'public canvas init must define a local load failure helper'
+  );
+  assert.ok(
+    initSrc.includes('fallback.handlePublicCanvasLoadFailure(error)'),
+    'public canvas init must delegate through local fallback variable'
+  );
+  assert.ok(
+    initSrc.includes('}).catch(handlePublicCanvasLoadFailure);'),
+    'public canvas init must use local catch handler'
+  );
+  assert.equal(
     initSrc.includes('LoveBudPublicCanvasErrorFallback.handlePublicCanvasLoadFailure'),
-    'public canvas init must delegate load failure handling through error fallback'
+    false,
+    'public canvas init must not use old direct catch pattern'
   );
   assert.ok(initSrc.includes('installPublicEditorReadOnlyState'), 'public canvas init must delegate public editor read-only state through entry wrapper');
   assert.ok(initSrc.includes('canvasEntry.installPublicEditorReadOnlyState(canvas, editorCanvas)'), 'public canvas init must pass canvas and editorCanvas to delegated read-only state helper');
