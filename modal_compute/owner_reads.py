@@ -15,20 +15,19 @@ from modal_compute.validation import (
 def fetch_user_trees(owner_id: str, limit: int = 100) -> list[dict[str, Any]]:
     query = """
         SELECT t.id, t.owner_id, t.title, t.visibility,
-               t.group_name, t.created_at, t.updated_at,
+               t.group_name, t.keywords,
+               t.created_at, t.updated_at,
                COUNT(m.id)::int AS memory_count
         FROM trees t
         LEFT JOIN memories m
           ON m.tree_id = t.id
         WHERE t.owner_id = %s
         GROUP BY t.id, t.owner_id, t.title, t.visibility,
-                 t.group_name, t.created_at, t.updated_at
+                 t.group_name, t.keywords,
+                 t.created_at, t.updated_at
         ORDER BY t.created_at DESC
         LIMIT %s;
     """
-    # Note: keywords is excluded from GROUP BY (it's an array column
-    # that doesn't participate in the GROUP BY — keep the SELECT
-    # separate for the owner tree fetch)
 
     def operation():
         with get_db_connection() as conn:
@@ -38,7 +37,10 @@ def fetch_user_trees(owner_id: str, limit: int = 100) -> list[dict[str, Any]]:
 
     rows = run_db_with_retry(operation)
 
-    return [normalize_tree_row(row, row.get("memory_count")) for row in rows]
+    return [
+        normalize_tree_row(row, row.get("memory_count"), include_owner_metadata=True)
+        for row in rows
+    ]
 
 
 def fetch_owner_tree(tree_id: str, owner_id: str) -> dict[str, Any] | None:
