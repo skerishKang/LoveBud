@@ -6,6 +6,7 @@ const test = require('node:test');
 // ---------------------------------------------------------------------------
 function fakeElement(overrides = {}) {
   const classList = new Set();
+  const listeners = new Map();
   return {
     style: {},
     classList: {
@@ -13,13 +14,25 @@ function fakeElement(overrides = {}) {
       remove: (c) => classList.delete(c),
       contains: (c) => classList.has(c),
       toggle: (c, force) => {
-        if (force === undefined) return classList.has(c) ? classList.delete(c) : classList.add(c);
+        if (force === undefined) {
+          const exists = classList.has(c);
+          if (exists) classList.delete(c); else classList.add(c);
+          return !exists;
+        }
         if (force) classList.add(c); else classList.delete(c);
         return classList.has(c);
       },
     },
     setAttribute: function(name, val) { this._attrs = this._attrs || {}; this._attrs[name] = val; },
     getAttribute: function(name) { return this._attrs ? this._attrs[name] : null; },
+    addEventListener: function(event, cb) {
+      if (!listeners.has(event)) listeners.set(event, []);
+      listeners.get(event).push(cb);
+    },
+    dispatchEvent: function(event) {
+      const callbacks = listeners.get(event);
+      if (callbacks) callbacks.forEach(cb => cb());
+    },
     /** @type {Map<string, fakeElement>} */
     _children: new Map(),
     /** @type {string|null} */
@@ -234,18 +247,18 @@ test('updateLayoutToggleUI — synchronizes visual and a11y states', async () =>
   updateLayoutToggleUI('structured', (k) => k);
   assert.equal(toggleBtn.classList.contains('is-active'), true);
   assert.equal(toggleBtn.getAttribute('aria-pressed'), 'true');
-  assert.equal(toggleBtn.getAttribute('aria-label'), '현재 editor_layout_structured, editor_layout_free로 전환');
-  assert.equal(toggleBtn.getAttribute('title'), '현재 editor_layout_structured, editor_layout_free로 전환');
-  assert.equal(toggleLabel.textContent, 'editor_layout_structured');
+  assert.equal(toggleBtn.getAttribute('aria-label'), '현재 정리된 트리, 자유 배치로 전환');
+  assert.equal(toggleBtn.getAttribute('title'), '현재 정리된 트리, 자유 배치로 전환');
+  assert.equal(toggleLabel.textContent, '정리된 트리');
   assert.equal(toggleIcon.textContent, 'account_tree');
 
   // free layout
   updateLayoutToggleUI('free', (k) => k);
   assert.equal(toggleBtn.classList.contains('is-active'), false);
   assert.equal(toggleBtn.getAttribute('aria-pressed'), 'false');
-  assert.equal(toggleBtn.getAttribute('aria-label'), '현재 editor_layout_free, editor_layout_structured로 전환');
-  assert.equal(toggleBtn.getAttribute('title'), '현재 editor_layout_free, editor_layout_structured로 전환');
-  assert.equal(toggleLabel.textContent, 'editor_layout_free');
+  assert.equal(toggleBtn.getAttribute('aria-label'), '현재 자유 배치, 정리된 트리로 전환');
+  assert.equal(toggleBtn.getAttribute('title'), '현재 자유 배치, 정리된 트리로 전환');
+  assert.equal(toggleLabel.textContent, '자유 배치');
   assert.equal(toggleIcon.textContent, 'auto_awesome');
 
   if (originalDocument) {
@@ -260,7 +273,7 @@ test('updateCompactToggleUI — synchronizes visual and a11y states', async () =
   const toggleBtn = fakeElement();
   const toggleLabel = { textContent: '' };
   const icon = fakeElement();
-  toggleBtn._children.set('icon', icon); // mock querySelector
+  toggleBtn._children.set('icon', icon);
   toggleBtn.querySelector = (sel) => (sel === '.material-symbols-outlined' ? icon : null);
   const doc = fakeDocument();
   doc._set('compactModeToggleBtn', toggleBtn);
@@ -274,7 +287,7 @@ test('updateCompactToggleUI — synchronizes visual and a11y states', async () =
   assert.equal(toggleBtn.getAttribute('aria-pressed'), 'true');
   assert.equal(toggleBtn.getAttribute('aria-label'), '현재 간략 보기, 상세 보기로 전환');
   assert.equal(toggleBtn.getAttribute('title'), '현재 간략 보기, 상세 보기로 전환');
-  assert.equal(toggleLabel.textContent, '상세 보기');
+  assert.equal(toggleLabel.textContent, '간략 보기');
   assert.equal(icon.textContent, 'unfold_less');
 
   // compact mode inactive (detailed)
@@ -283,7 +296,7 @@ test('updateCompactToggleUI — synchronizes visual and a11y states', async () =
   assert.equal(toggleBtn.getAttribute('aria-pressed'), 'false');
   assert.equal(toggleBtn.getAttribute('aria-label'), '현재 상세 보기, 간략 보기로 전환');
   assert.equal(toggleBtn.getAttribute('title'), '현재 상세 보기, 간략 보기로 전환');
-  assert.equal(toggleLabel.textContent, '간략 보기');
+  assert.equal(toggleLabel.textContent, '상세 보기');
   assert.equal(icon.textContent, 'unfold_more');
 
   if (originalDocument) {
@@ -293,7 +306,7 @@ test('updateCompactToggleUI — synchronizes visual and a11y states', async () =
   }
 });
 
-test('bindCompactModeToggle — restores state and prevents double binding', async () => {
+test('bindCompactModeToggle — restores state, prevents double bind and handles click', async () => {
   const { bindCompactModeToggle } = await import('../../js/editor/editor-canvas-ui-helpers.js');
 
   const toggleBtn = fakeElement();
@@ -305,14 +318,13 @@ test('bindCompactModeToggle — restores state and prevents double binding', asy
   doc._set('compactModeToggleBtn', toggleBtn);
   doc._set('compactModeToggleLabel', { textContent: '' });
 
-  // mock querySelector for toolbar
   const originalDocument = globalThis.document;
   globalThis.document = {
     ...doc,
     querySelector: (sel) => (sel === '.editor-canvas-toolbar' ? toolbar : null)
   };
+  globalThis.window = globalThis;
 
-  // Mock localStorage
   const storage = new Map();
   globalThis.localStorage = {
     getItem: (k) => storage.get(k),
@@ -323,13 +335,25 @@ test('bindCompactModeToggle — restores state and prevents double binding', asy
   storage.set('lovebud_toolbar_compact', 'true');
   bindCompactModeToggle();
   assert.equal(toolbar.classList.contains('is-compact'), true);
+  assert.equal(toggleBtn.classList.contains('is-active'), true);
   assert.equal(toggleBtn.getAttribute('aria-pressed'), 'true');
+  assert.equal(toggleBtn.getAttribute('aria-label'), '현재 간략 보기, 상세 보기로 전환');
   assert.equal(icon.textContent, 'unfold_less');
 
   // 2. Prevent double bind
-  const originalBindValue = toggleBtn.dataset.compactBound;
   bindCompactModeToggle();
   assert.equal(toggleBtn.dataset.compactBound, '1');
+
+  // 3. Test click behavior
+  // Trigger the click event
+  toggleBtn.dispatchEvent('click');
+
+  assert.equal(toolbar.classList.contains('is-compact'), false);
+  assert.equal(toggleBtn.classList.contains('is-active'), false);
+  assert.equal(toggleBtn.getAttribute('aria-pressed'), 'false');
+  assert.equal(toggleBtn.getAttribute('aria-label'), '현재 상세 보기, 간략 보기로 전환');
+  assert.equal(storage.get('lovebud_toolbar_compact'), 'false');
+  assert.equal(icon.textContent, 'unfold_more');
 
   if (originalDocument) {
     globalThis.document = originalDocument;

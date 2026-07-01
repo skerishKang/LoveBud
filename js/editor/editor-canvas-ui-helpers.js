@@ -63,7 +63,7 @@ export function updateCompactToggleUI(isCompact, i18n) {
     toggleBtn.setAttribute('title', `현재 ${currentLabel}, ${nextLabel}로 전환`);
 
     if (toggleLabel) {
-        toggleLabel.textContent = nextLabel; // Label typically shows what it WILL switch to
+        toggleLabel.textContent = currentLabel;
     }
 
     const icon = toggleBtn.querySelector('.material-symbols-outlined');
