@@ -11,7 +11,7 @@
 
 ## 1. Import-order map
 
-**Current `css/global.css` imports (lines 7–12):**
+**Current `css/global.css` imports (lines 9–14):**
 
 | Order | Import | Purpose |
 |-------|--------|---------|
@@ -59,9 +59,9 @@
 - **Custom-property availability:** `:root` block (lines 349–372) defines `--control-*` tokens; these are available after the `@import` chain
 - **Selector/specificity ordering:** `.lovetree-page-shell` (lines 15–16), `.lovetree-soft-surface` (lines 33–37), `.lovetree-card` (lines 40–57), `.lovetree-pill` (lines 60–81), `.lovetree-chip` (lines 84–109), `.btn-round` (lines 111–115) — fixed order
 - **Page shell:** `lovetree-page-shell` `max-width`/`margin`/`padding` — shell hub
-- **Shared button/form/card/save-status states:** `.save-status-indicator.saving/.saved/.failed` (lines 299–318) — hub-hosted
+- **Shared button/card/save-status states:** `.save-status-indicator.saving/.saved/.failed` — hub-hosted
 - **Responsive:** `@media (max-width: 768px)` for `.btn-round`, `.tag-chip`, `.page-hero-section` — hub-hosted
-- **Focus-visible:** `body .btn-round:focus-visible` ... `outline: 2px solid var(--control-focus-ring)` (lines 590–596)
+- **Focus-visible:** `body .btn-round:focus-visible` ... `outline: 2px solid var(--control-focus-ring)` — hub-hosted
 
 ---
 
@@ -72,7 +72,7 @@ The audited import and retained-declaration ordering does not identify a behavio
 
 **Recorded as `no-split / defer`.**
 
-### Observed rollback conditions (not located to per-file)
+### Observed rollback conditions
 - `@import` order in `css/global.css`
 - `--control-*` and `--lovetree-*` custom-property availability
 - Selector ordering (`.lovetree-page-shell`, `.lovetree-card`, `.btn-round`)
