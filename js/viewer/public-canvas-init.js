@@ -476,6 +476,55 @@
         };
     }
 
+    function setPublicViewerLoadingState(isLoading) {
+        var body = document.body;
+        var sidebarCountEl = document.getElementById('viewerSidebarMomentCount');
+        var emptyGuide = document.getElementById('canvasEmptyGuide');
+
+        if (body) {
+            if (body.classList) {
+                if (isLoading) {
+                    body.classList.add('public-viewer-loading');
+                } else {
+                    body.classList.remove('public-viewer-loading');
+                }
+            }
+            if (typeof body.setAttribute === 'function' && typeof body.removeAttribute === 'function') {
+                if (isLoading) {
+                    body.setAttribute('aria-busy', 'true');
+                } else {
+                    body.removeAttribute('aria-busy');
+                }
+            }
+        }
+
+        if (sidebarCountEl && isLoading) {
+            sidebarCountEl.textContent = '불러오는 중…';
+        }
+
+        if (emptyGuide && emptyGuide.classList && typeof emptyGuide.classList.add === 'function' && isLoading) {
+            emptyGuide.classList.add('editor-canvas-empty-guide-hidden');
+        }
+    }
+
+    function ensurePublicCanvasLoadFailureHandler() {
+        var fallback = window.LoveBudPublicCanvasErrorFallback;
+        if (!fallback || typeof fallback.handlePublicCanvasLoadFailure !== 'function') {
+            return;
+        }
+        if (fallback.__lovebudLoadingWrappedHandlePublicCanvasLoadFailure) {
+            fallback.handlePublicCanvasLoadFailure = fallback.__lovebudLoadingWrappedHandlePublicCanvasLoadFailure;
+            return;
+        }
+
+        var originalHandlePublicCanvasLoadFailure = fallback.handlePublicCanvasLoadFailure;
+        fallback.__lovebudLoadingWrappedHandlePublicCanvasLoadFailure = function(error) {
+            setPublicViewerLoadingState(false);
+            return originalHandlePublicCanvasLoadFailure(error);
+        };
+        fallback.handlePublicCanvasLoadFailure = fallback.__lovebudLoadingWrappedHandlePublicCanvasLoadFailure;
+    }
+
     function initPublicCanvas() {
         var routeSetup = setupPublicRoute();
         var treeId = routeSetup && routeSetup.treeId;
@@ -491,6 +540,9 @@
             console.error('[public-canvas] Bridge not loaded');
             return;
         }
+
+        setPublicViewerLoadingState(true);
+        ensurePublicCanvasLoadFailureHandler();
 
         bridge.loadPublicTreeData(treeId).then(function(result) {
             var publicCanvasResult = extractPublicCanvasResult(result);
@@ -510,6 +562,7 @@
                 var detailPanel = targets.detailPanel;
 
                 if (!canvas || !svg) {
+                    setPublicViewerLoadingState(false);
                     console.error('[public-canvas] Canvas or SVG element not found');
                     return;
                 }
@@ -624,6 +677,8 @@
                         sidebarSummaryEl.style.display = 'none';
                     }
                 }
+
+                setPublicViewerLoadingState(false);
 
                 // Show owner mode group if authenticated owner
                 window.__viewerSelectionState = selectionState;
@@ -814,6 +869,8 @@
 
         return normalized;
     }
+
+    window.LoveBudPublicCanvasInit.setPublicViewerLoadingState = setPublicViewerLoadingState;
 
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', initPublicCanvas);

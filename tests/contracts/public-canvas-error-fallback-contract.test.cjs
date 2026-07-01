@@ -159,11 +159,13 @@ test('8. non-allowlisted files are not modified', () => {
     'js/viewer/public-canvas-error-fallback.js',
     'js/viewer/public-canvas-init.js',
     'js/viewer/public-viewer-detail-ui.js',
+    'js/viewer/templates/public-viewer-sidebar-template.js',
     'pages/view.html',
     'tests/contracts/public-canvas-error-fallback-contract.test.cjs',
     'tests/contracts/localization-key-display-contract.test.cjs',
     'tests/contracts/localization-key-predicate-contract.test.cjs',
     'tests/routes/public-canvas-direct-load-moment-count-regression.test.cjs',
+    'tests/routes/public-canvas-loading-state-contract.test.cjs',
     'tests/routes/public-viewer-detail-ui-core-contract.test.cjs',
     'tests/routes/public-viewer-focus-contract.test.cjs',
     'tests/routes/public-viewer-sidebar-contract.test.cjs'
