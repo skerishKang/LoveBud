@@ -316,49 +316,55 @@ test('bindCompactModeToggle — restores state, prevents double bind and handles
 
   const doc = fakeDocument();
   doc._set('compactModeToggleBtn', toggleBtn);
-  doc._set('compactModeToggleLabel', { textContent: '' });
+  const toggleLabel = { textContent: '' };
+  doc._set('compactModeToggleLabel', toggleLabel);
 
-  const originalDocument = globalThis.document;
-  globalThis.document = {
-    ...doc,
-    querySelector: (sel) => (sel === '.editor-canvas-toolbar' ? toolbar : null)
-  };
-  globalThis.window = globalThis;
+  const origDoc = globalThis.document;
+  const origWin = globalThis.window;
+  const origStorage = globalThis.localStorage;
 
-  const storage = new Map();
-  globalThis.localStorage = {
-    getItem: (k) => storage.get(k),
-    setItem: (k, v) => storage.set(k, v),
-  };
+  try {
+    globalThis.document = {
+      ...doc,
+      querySelector: (sel) => (sel === '.editor-canvas-toolbar' ? toolbar : null)
+    };
+    globalThis.window = globalThis;
+    const storage = new Map();
+    globalThis.localStorage = {
+      getItem: (k) => storage.get(k),
+      setItem: (k, v) => storage.set(k, v),
+    };
 
-  // 1. Restore compact = true
-  storage.set('lovebud_toolbar_compact', 'true');
-  bindCompactModeToggle();
-  assert.equal(toolbar.classList.contains('is-compact'), true);
-  assert.equal(toggleBtn.classList.contains('is-active'), true);
-  assert.equal(toggleBtn.getAttribute('aria-pressed'), 'true');
-  assert.equal(toggleBtn.getAttribute('aria-label'), '현재 간략 보기, 상세 보기로 전환');
-  assert.equal(icon.textContent, 'unfold_less');
+    // 1. Restore compact = true
+    storage.set('lovebud_toolbar_compact', 'true');
+    bindCompactModeToggle();
+    assert.equal(toolbar.classList.contains('is-compact'), true);
+    assert.equal(toggleBtn.classList.contains('is-active'), true);
+    assert.equal(toggleBtn.getAttribute('aria-pressed'), 'true');
+    assert.equal(toggleBtn.getAttribute('aria-label'), '현재 간략 보기, 상세 보기로 전환');
+    assert.equal(toggleBtn.getAttribute('title'), '현재 간략 보기, 상세 보기로 전환');
+    assert.equal(toggleLabel.textContent, '간략 보기');
+    assert.equal(icon.textContent, 'unfold_less');
 
-  // 2. Prevent double bind
-  bindCompactModeToggle();
-  assert.equal(toggleBtn.dataset.compactBound, '1');
+    // 2. Prevent double bind
+    bindCompactModeToggle();
+    assert.equal(toggleBtn.dataset.compactBound, '1');
 
-  // 3. Test click behavior
-  // Trigger the click event
-  toggleBtn.dispatchEvent('click');
+    // 3. Test click behavior
+    toggleBtn.dispatchEvent('click');
 
-  assert.equal(toolbar.classList.contains('is-compact'), false);
-  assert.equal(toggleBtn.classList.contains('is-active'), false);
-  assert.equal(toggleBtn.getAttribute('aria-pressed'), 'false');
-  assert.equal(toggleBtn.getAttribute('aria-label'), '현재 상세 보기, 간략 보기로 전환');
-  assert.equal(storage.get('lovebud_toolbar_compact'), 'false');
-  assert.equal(icon.textContent, 'unfold_more');
-
-  if (originalDocument) {
-    globalThis.document = originalDocument;
-  } else {
-    delete globalThis.document;
+    assert.equal(toolbar.classList.contains('is-compact'), false);
+    assert.equal(toggleBtn.classList.contains('is-active'), false);
+    assert.equal(toggleBtn.getAttribute('aria-pressed'), 'false');
+    assert.equal(toggleBtn.getAttribute('aria-label'), '현재 상세 보기, 간략 보기로 전환');
+    assert.equal(toggleBtn.getAttribute('title'), '현재 상세 보기, 간략 보기로 전환');
+    assert.equal(toggleLabel.textContent, '상세 보기');
+    assert.equal(icon.textContent, 'unfold_more');
+    assert.equal(storage.get('lovebud_toolbar_compact'), 'false');
+  } finally {
+    if (origDoc) globalThis.document = origDoc; else delete globalThis.document;
+    if (origWin) globalThis.window = origWin; else delete globalThis.window;
+    if (origStorage) globalThis.localStorage = origStorage; else delete globalThis.localStorage;
   }
 });
 
