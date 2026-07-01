@@ -17,7 +17,7 @@
 
 **Consuming surfaces:** All pages that load `css/global.css` as their stylesheet hub.
 
-**Style origin:** All rules are author-origin. The target stylesheet contains five `!important` declarations, all scoped to `.lang-menu-trigger` within `@media (max-width: 480px)`.
+**Style origin:** All rules are author-origin. The target stylesheet contains five `!important` declarations; any future extraction must preserve their selector and media-query context.
 
 ---
 
@@ -145,8 +145,8 @@ If any of the following changes:
 | Narrow/mobile nav | ≤768px: `.mobile-nav-toggle` `display: inline-flex`, `.main-nav-panel` absolute |
 | Focus-visible keyboard | `Tab` → `.user-dropdown-item:focus-visible` → `box-shadow: 0 0 0 2px` |
 | Responsive breakpoints | 768px: flex layout; 1360px: compact link grid; 1536px: `padding-inline: 28px` |
-| Dark/light appearance | No dark-theme rules in file — gap |
-| Remote CI | `git diff --check` only; no `npm test`, `npm run lint`, `npm run build` |
+| Dark/light appearance | No corresponding `prefers-color-scheme` query was found in the target stylesheet; ownership is not determined by this audit |
+| Remote CI | repository workflow must complete green before merge |
 
 ---
 
