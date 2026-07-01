@@ -60,12 +60,15 @@ test('public viewer detail UI adapter owns focus selected button updates', () =>
   assert.ok(source.includes('LoveBudPublicViewerDetailUI'), 'viewer detail adapter exposes an inspectable namespace');
 });
 
-test('public viewer detail UI adapter owns sidebar status as noop', () => {
+test('public viewer detail UI adapter owns sidebar status updater from normalized tree memories', () => {
   const source = fs.readFileSync('js/viewer/public-viewer-detail-ui.js', 'utf8');
 
-  assert.ok(source.includes('function updatePublicViewerSidebarStatus() {}'), 'viewer adapter exposes a sidebar status noop');
-  assert.ok(source.includes('detailUI.updateSidebarStatus = updatePublicViewerSidebarStatus'), 'viewer adapter assigns sidebar status noop');
-  assert.ok(source.includes('updatePublicViewerSidebarStatus: updatePublicViewerSidebarStatus'), 'viewer adapter publishes sidebar status noop for inspection');
+  assert.ok(source.includes('function createPublicViewerSidebarStatusUpdater(deps)'), 'viewer adapter exposes sidebar status updater factory');
+  assert.ok(source.includes('detailUI.updateSidebarStatus = createPublicViewerSidebarStatusUpdater(deps)'), 'viewer adapter assigns sidebar status updater');
+  assert.ok(source.includes('createPublicViewerSidebarStatusUpdater: createPublicViewerSidebarStatusUpdater'), 'viewer adapter publishes sidebar status updater for inspection');
+  assert.ok(source.includes("document.getElementById('viewerSidebarMomentCount')"), 'sidebar updater targets sidebar count element');
+  assert.ok(source.includes("sidebarCountEl.textContent = visibleMomentCount + '개의 순간'"), 'sidebar updater renders visible normalized count');
+  assert.equal(source.includes('memoryCount || 0'), false, 'sidebar updater must not use tree.memoryCount shortcut');
 });
 
 test('public viewer detail UI adapter owns empty state', () => {
