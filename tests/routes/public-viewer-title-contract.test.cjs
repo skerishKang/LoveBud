@@ -2,20 +2,21 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
 
-const source = fs.readFileSync('js/viewer/public-viewer-detail-ui.js', 'utf8');
+const metadataTextSource = fs.readFileSync('js/viewer/public-viewer-detail-metadata-text.js', 'utf8');
+const detailUiSource = fs.readFileSync('js/viewer/public-viewer-detail-ui.js', 'utf8');
 
 function getTitleBoundary() {
-  const start = source.indexOf('function createPublicViewerCurrentMomentTitleBoundary(deps)');
-  const end = source.indexOf('function updatePublicViewerCurrentMomentHint()');
+  const start = metadataTextSource.indexOf('function createPublicViewerCurrentMomentTitleBoundary(deps)');
+  const end = metadataTextSource.indexOf('function updatePublicViewerCurrentMomentHint()');
   assert.notEqual(start, -1);
   assert.notEqual(end, -1);
-  return source.slice(start, end);
+  return metadataTextSource.slice(start, end);
 }
 
 test('viewer title boundary is exposed', () => {
-  assert.ok(source.includes('function createPublicViewerCurrentMomentTitleBoundary(deps)'));
-  assert.ok(source.includes('createPublicViewerCurrentMomentTitleBoundary: createPublicViewerCurrentMomentTitleBoundary'));
-  assert.ok(source.includes('detailCurrentMomentTitle'));
+  assert.ok(metadataTextSource.includes('function createPublicViewerCurrentMomentTitleBoundary(deps)'));
+  assert.ok(metadataTextSource.includes('createPublicViewerCurrentMomentTitleBoundary: createPublicViewerCurrentMomentTitleBoundary'));
+  assert.ok(metadataTextSource.includes('detailCurrentMomentTitle'));
 });
 
 test('viewer title boundary clears with removeChild loop, not innerHTML', () => {
@@ -44,10 +45,10 @@ test('viewer title boundary does not wire editor inline edit', () => {
 });
 
 test('viewer title boundary runs after badge and before hint in updatePublicViewerDetailPanel', () => {
-  const wrapperStart = source.indexOf('detailUI.updateDetailPanel = function updatePublicViewerDetailPanel(data)');
-  const badgeCall = source.indexOf('updateCurrentMomentBadge(data);', wrapperStart);
-  const titleCall = source.indexOf('updateCurrentMomentTitle(data);', wrapperStart);
-  const hintCall = source.indexOf('updatePublicViewerCurrentMomentHint();', wrapperStart);
+  const wrapperStart = detailUiSource.indexOf('detailUI.updateDetailPanel = function updatePublicViewerDetailPanel(data)');
+  const badgeCall = detailUiSource.indexOf('updateCurrentMomentBadge(data);', wrapperStart);
+  const titleCall = detailUiSource.indexOf('updateCurrentMomentTitle(data);', wrapperStart);
+  const hintCall = detailUiSource.indexOf('metadataText.updatePublicViewerCurrentMomentHint();', wrapperStart);
 
   assert.notEqual(wrapperStart, -1);
   assert.notEqual(badgeCall, -1);

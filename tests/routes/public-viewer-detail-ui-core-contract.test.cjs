@@ -98,33 +98,46 @@ test('public viewer detail UI adapter owns empty state', () => {
   );
 });
 
-test('public viewer detail UI adapter exposes current moment badge boundary', () => {
-  const source = fs.readFileSync('js/viewer/public-viewer-detail-ui.js', 'utf8');
-  const boundaryStart = source.indexOf('function createPublicViewerCurrentMomentBadgeBoundary(deps)');
-  const boundaryEnd = source.indexOf('function updatePublicViewerCurrentMomentHint()');
-  const boundarySource = source.slice(boundaryStart, boundaryEnd);
+test('public viewer detail UI adapter delegates metadata text boundaries', () => {
+  const metadataTextSource = fs.readFileSync('js/viewer/public-viewer-detail-metadata-text.js', 'utf8');
+  const detailUiSource = fs.readFileSync('js/viewer/public-viewer-detail-ui.js', 'utf8');
 
-  assert.notEqual(boundaryStart, -1, 'viewer adapter exposes current moment badge boundary factory');
-  assert.notEqual(boundaryEnd, -1, 'viewer adapter keeps hint boundary after badge boundary');
-  assert.ok(source.includes('createPublicViewerCurrentMomentBadgeBoundary: createPublicViewerCurrentMomentBadgeBoundary'), 'viewer adapter publishes badge boundary on namespace');
-  assert.ok(boundarySource.includes('detailCurrentMomentBadge'), 'badge boundary targets the current moment badge mount');
-  assert.ok(boundarySource.includes('waiting_first_moment'), 'badge boundary covers waiting first moment state');
-  assert.ok(boundarySource.includes('start_moment'), 'badge boundary covers root moment state');
-  assert.ok(boundarySource.includes('selected_moment'), 'badge boundary covers selected moment state');
+  assert.ok(metadataTextSource.includes('function createPublicViewerCurrentMomentBadgeBoundary(deps)'), 'metadata text owns badge boundary factory');
+  assert.ok(metadataTextSource.includes('function updatePublicViewerCurrentMomentHint()'), 'metadata text owns hint boundary');
+  assert.ok(metadataTextSource.includes('function safeDisplayTitle(title)'), 'metadata text owns safeDisplayTitle helper');
+  assert.ok(metadataTextSource.includes('LoveBudPublicViewerDetailMetadataText'), 'metadata text exposes namespace');
+
+  assert.ok(detailUiSource.includes('window.LoveBudPublicViewerDetailMetadataText'), 'detail UI reads metadata text namespace');
+  assert.ok(detailUiSource.includes('metadataText.createPublicViewerCurrentMomentBadgeBoundary(deps)'), 'detail UI delegates badge boundary');
+  assert.ok(detailUiSource.includes('metadataText.createPublicViewerCurrentMomentTitleBoundary(deps)'), 'detail UI delegates title boundary');
+  assert.ok(detailUiSource.includes('metadataText.updatePublicViewerCurrentMomentHint()'), 'detail UI delegates hint');
+  assert.ok(detailUiSource.includes('metadataText.updatePublicViewerCurrentMomentDate(data)'), 'detail UI delegates date');
+  assert.ok(detailUiSource.includes('window.LoveBudPublicViewerDetailMetadataText.safeDisplayTitle'), 'detail UI delegates safeDisplayTitle for image alt');
 });
 
-test('public viewer detail UI adapter owns current moment hint boundary', () => {
-  const source = fs.readFileSync('js/viewer/public-viewer-detail-ui.js', 'utf8');
-  const boundaryStart = source.indexOf('function updatePublicViewerCurrentMomentHint()');
-  const boundaryEnd = source.indexOf('function createPublicViewerCurrentMomentImageBoundary(deps)');
-  const boundarySource = source.slice(boundaryStart, boundaryEnd);
+test('public viewer detail UI adapter delegates badge boundary with textContent and badge states', () => {
+  const metadataTextSource = fs.readFileSync('js/viewer/public-viewer-detail-metadata-text.js', 'utf8');
+  const badgeStart = metadataTextSource.indexOf('function createPublicViewerCurrentMomentBadgeBoundary(deps)');
+  const badgeEnd = metadataTextSource.indexOf('function createPublicViewerCurrentMomentTitleBoundary(deps)');
+  const badgeSource = metadataTextSource.slice(badgeStart, badgeEnd);
 
-  assert.notEqual(boundaryStart, -1, 'viewer adapter exposes current moment hint boundary');
-  assert.notEqual(boundaryEnd, -1, 'viewer adapter keeps image boundary after hint boundary');
-  assert.ok(source.includes('updatePublicViewerCurrentMomentHint: updatePublicViewerCurrentMomentHint'), 'viewer adapter publishes hint boundary on namespace');
-  assert.ok(boundarySource.includes('detailCurrentMomentHint'), 'hint boundary targets the current moment hint mount');
-  assert.ok(boundarySource.includes("hintEl.textContent = ''"), 'hint boundary clears hint text');
-  assert.ok(boundarySource.includes('hintEl.hidden = true'), 'hint boundary hides the hint mount');
+  assert.notEqual(badgeStart, -1, 'metadata text exposes badge boundary factory');
+  assert.notEqual(badgeEnd, -1, 'title boundary follows badge boundary in metadata text');
+  assert.ok(badgeSource.includes('detailCurrentMomentBadge'), 'badge boundary targets the current moment badge mount');
+  assert.ok(badgeSource.includes('waiting_first_moment'), 'badge boundary covers waiting first moment state');
+  assert.ok(badgeSource.includes('start_moment'), 'badge boundary covers root moment state');
+  assert.ok(badgeSource.includes('selected_moment'), 'badge boundary covers selected moment state');
+  assert.ok(badgeSource.includes('badgeEl.textContent'), 'badge boundary uses textContent');
+  assert.equal(badgeSource.includes('innerHTML'), false, 'badge boundary does not use innerHTML');
+});
+
+test('public viewer detail UI adapter delegates hint boundary with textContent and hidden', () => {
+  const metadataTextSource = fs.readFileSync('js/viewer/public-viewer-detail-metadata-text.js', 'utf8');
+
+  assert.ok(metadataTextSource.includes('detailCurrentMomentHint'), 'hint boundary targets the current moment hint mount');
+  assert.ok(metadataTextSource.includes("hintEl.textContent = ''"), 'hint boundary clears hint text');
+  assert.ok(metadataTextSource.includes('hintEl.hidden = true'), 'hint boundary hides the hint mount');
+  assert.equal(metadataTextSource.includes('innerHTML'), false, 'hint boundary does not use innerHTML');
 });
 
 test('public viewer detail UI adapter owns current moment image boundary', () => {
@@ -142,7 +155,7 @@ test('public viewer detail UI adapter owns current moment image boundary', () =>
   assert.ok(boundarySource.includes('imgEl.src ='), 'image boundary sets image src');
   assert.ok(boundarySource.includes('imgEl.alt = isEmptyState ?'), 'image boundary handles empty state alt');
   assert.ok(boundarySource.includes('safeAlt'), 'image boundary uses safeDisplayTitle guard for alt text');
-  assert.ok(source.includes('function safeDisplayTitle(title)'), 'viewer detail adapter exposes safeDisplayTitle helper');
+  assert.ok(source.includes('window.LoveBudPublicViewerDetailMetadataText.safeDisplayTitle'), 'image boundary delegates safeDisplayTitle to metadata text');
 });
 
 test('public viewer detail UI adapter exposes read-only reaction summary boundary', () => {
@@ -197,7 +210,7 @@ test('public viewer detail UI adapter renders channel link via viewer namespace'
 
   const titleIndex = panelSource.indexOf('updateCurrentMomentTitle(data);');
   const channelLinkIndex = panelSource.indexOf('updatePublicViewerDetailChannelLink(data);');
-  const hintIndex = panelSource.indexOf('updatePublicViewerCurrentMomentHint();');
+  const hintIndex = panelSource.indexOf('metadataText.updatePublicViewerCurrentMomentHint();');
 
   assert.ok(titleIndex < channelLinkIndex, 'channel link runs after title update');
   assert.ok(channelLinkIndex < hintIndex, 'channel link runs before hint update');
@@ -319,7 +332,7 @@ test('public viewer detail UI adapter owns detail panel render flow', () => {
   assert.equal(source.includes('delegatedUpdateDetailPanel(data);'), false, 'viewer adapter no longer delegates detail panel rendering');
   assert.ok(source.includes('delegatesToEditorDetailUI: false'), 'viewer adapter marks editor detail delegation as removed');
   assert.ok(source.includes('var updateTreeMeta = createPublicViewerTreeMetaBoundary(deps)'), 'viewer adapter creates tree meta updater');
-  assert.ok(source.includes('var updateCurrentMomentBadge = createPublicViewerCurrentMomentBadgeBoundary(deps)'), 'viewer adapter creates the badge updater');
+  assert.ok(source.includes('var updateCurrentMomentBadge = metadataText.createPublicViewerCurrentMomentBadgeBoundary(deps)'), 'viewer adapter delegates badge updater to metadata text');
   assert.ok(source.includes('var updateCurrentMomentImage = createPublicViewerCurrentMomentImageBoundary(deps)'), 'viewer adapter creates the image updater');
   assert.ok(source.includes('var updateReadOnlyReactionSummary = createPublicViewerReadOnlyReactionSummaryBoundary(deps)'), 'viewer adapter creates the read-only reaction updater');
   assert.ok(source.includes('var updateDetailHeading = createPublicViewerDetailHeadingBoundary(deps)'), 'viewer adapter creates heading updater');
@@ -327,7 +340,7 @@ test('public viewer detail UI adapter owns detail panel render flow', () => {
   assert.ok(source.includes('updateDetailHeading();'), 'viewer flow starts with heading update');
   assert.ok(source.includes('updateTreeMeta(data);'), 'viewer flow applies tree meta post-processing');
   assert.ok(source.includes('updateCurrentMomentBadge(data);'), 'viewer flow applies badge post-processing');
-  assert.ok(source.includes('updatePublicViewerCurrentMomentHint();'), 'viewer flow applies hint post-processing');
+  assert.ok(source.includes('metadataText.updatePublicViewerCurrentMomentHint();'), 'viewer flow applies hint post-processing');
   assert.ok(source.includes('updateCurrentMomentImage(data);'), 'viewer flow applies image post-processing');
   assert.ok(source.includes('updateReadOnlyReactionSummary(data);'), 'viewer flow applies read-only reactions');
 });
