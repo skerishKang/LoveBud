@@ -392,22 +392,45 @@ function createEditorMemoryActions(deps) {
             const prevMemo = String(currentEditingMemory.memo || '').trim();
             const prevTags = (currentEditingMemory.emotionTags || []).slice().sort().join(',');
             const prevSourceUrl = getEditableSourceUrl(currentEditingMemory);
-            const prevSegment = extractYouTubeStartAndEnd(prevSourceUrl);
 
-            const newTitle = String(payload.title || '').trim();
-            const newMemo = String(payload.memo || '').trim();
-            const newTags = (payload.emotionTags || []).slice().sort().join(',');
-            const newSourceUrl = payload.sourceUrl !== undefined ? String(payload.sourceUrl || '').trim() : prevSourceUrl;
-            const newStart = startSeconds;
-            const newEnd = endSeconds;
+            const media = window.LoveBudMedia || {};
+            const extractVid = (url) => {
+                if (!url || typeof url !== 'string') return null;
+                return typeof media.extractYouTubeId === 'function'
+                    ? media.extractYouTubeId(url)
+                    : ((url.match(/(?:v=|\/|youtu\.be\/|embed\/|shorts\/)([0-9A-Za-z_-]{11})/) || [])[1] || null);
+            };
+
+            const prevVideoId = extractVid(prevSourceUrl);
+            const prevSegment = extractYouTubeStartAndEnd(prevSourceUrl);
+            const prevStart = (prevSegment.start === null || prevSegment.start === undefined) ? null : Number(prevSegment.start);
+            const prevEnd = (prevSegment.end === null || prevSegment.end === undefined) ? null : Number(prevSegment.end);
+
+            const newTitle = titleInput ? titleInput.value.trim() : prevTitle;
+            const newMemo = memoInput ? memoInput.value.trim() : prevMemo;
+            const newTags = tagsInput ? tagsInput.value.split(',').map((t) => t.trim()).filter(Boolean).slice().sort().join(',') : prevTags;
+            const newRawUrl = sourceUrlInput ? sourceUrlInput.value.trim() : prevSourceUrl;
+            const newVideoId = extractVid(newRawUrl);
+            const newStart = (startSeconds === null || startSeconds === undefined) ? null : Number(startSeconds);
+            const newEnd = (endSeconds === null || endSeconds === undefined) ? null : Number(endSeconds);
+
+            let sourceChanged = false;
+            if (prevVideoId && newVideoId) {
+                // Both are YouTube videos: compare video IDs and normalized segments
+                sourceChanged = (prevVideoId !== newVideoId || prevStart !== newStart || prevEnd !== newEnd);
+            } else if (!prevVideoId && !newVideoId) {
+                // Neither are YouTube videos: compare normalized raw URLs directly
+                sourceChanged = (prevSourceUrl !== newRawUrl);
+            } else {
+                // One is YouTube and the other is not: definitely changed
+                sourceChanged = true;
+            }
 
             const hasChange = (
                 newTitle !== prevTitle ||
                 newMemo !== prevMemo ||
                 newTags !== prevTags ||
-                newSourceUrl !== prevSourceUrl ||
-                newStart !== prevSegment.start ||
-                newEnd !== prevSegment.end
+                sourceChanged
             );
 
             if (!hasChange) {

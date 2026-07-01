@@ -73,13 +73,15 @@ function makeFakeDOM() {
     editMemoInput: makeFakeElement('editMemoInput', 'textarea'),
     editTagsInput: makeFakeElement('editTagsInput', 'input'),
     editSourceUrlInput: makeFakeElement('editSourceUrlInput', 'input'),
-    editStartTimeInput: null,
-    editEndTimeInput: null,
+    editStartTimeInput: makeFakeElement('editStartTimeInput', 'input'),
+    editEndTimeInput: makeFakeElement('editEndTimeInput', 'input'),
   };
   els.editTitleInput.value = 'Test Title';
   els.editMemoInput.value = 'Test Memo';
   els.editTagsInput.value = '';
   els.editSourceUrlInput.value = '';
+  els.editStartTimeInput.value = '';
+  els.editEndTimeInput.value = '';
   return els;
 }
 
@@ -100,8 +102,8 @@ function createSandbox(dom, deps) {
         subscribe: () => {},
         _connectExistingSubscribed: false
       },
-      LoveBudMedia: null,
-      LoveBudEditorMemoryFormTime: null,
+      LoveBudMedia: deps._LoveBudMedia || null,
+      LoveBudEditorMemoryFormTime: deps._LoveBudEditorMemoryFormTime || null,
       LoveBudCache: null,
       LoveBudEditorBindings: null,
       createEditorMemoryActions: undefined
@@ -389,6 +391,161 @@ test('6. no-change save: API write is 0 calls, form stays open, info toast only'
 
   // CTA restored
   assert.strictEqual(dom.saveEditBtn.disabled, false, 'saveEditBtn remains enabled');
+});
+
+function makeYoutubeMediaStub() {
+  return {
+    extractYouTubeId: (url) => {
+      if (!url) return null;
+      const match = url.match(/(?:v=|\/|embed\/|shorts\/)([0-9A-Za-z_-]{11})/);
+      return match ? match[1] : null;
+    },
+    getEmbedUrl: (url, type, options) => {
+      const videoId = 'dQw4w9WgXcQ';
+      let embed = 'https://www.youtube.com/embed/' + videoId;
+      if (options && options.startSeconds != null) {
+        embed += '?start=' + options.startSeconds;
+      }
+      return embed;
+    },
+    getThumbnailUrl: () => 'https://img.youtube.com/vi/dQw4w9WgXcQ/mqdefault.jpg',
+    formatYouTubeStartTime: (seconds) => {
+      if (seconds == null) return '';
+      const m = Math.floor(seconds / 60);
+      const s = seconds % 60;
+      return m + ':' + String(s).padStart(2, '0');
+    },
+    parseYouTubeTimeToSeconds: (val) => {
+      if (!val) return null;
+      if (/^\d+$/.test(val)) return Number(val);
+      const parts = val.split(':');
+      if (parts.length === 2) return Number(parts[0]) * 60 + Number(parts[1]);
+      return null;
+    }
+  };
+}
+
+function makeFormTimeStub() {
+  return {
+    parseTime: (val) => {
+      if (!val) return null;
+      if (/^\d+$/.test(val)) return Number(val);
+      const parts = val.split(':');
+      if (parts.length === 2) return Number(parts[0]) * 60 + Number(parts[1]);
+      return null;
+    },
+    validateEndTime: (options) => {
+      const { rawEndTime, startSeconds } = options;
+      if (!rawEndTime) return { ok: true, endSeconds: null };
+      const parts = rawEndTime.split(':');
+      const endSeconds = Number(parts[0]) * 60 + Number(parts[1]);
+      if (startSeconds && endSeconds <= startSeconds) {
+        return { ok: false, message: '끝 시간은 시작 시간보다 뒤여야 해요.' };
+      }
+      return { ok: true, endSeconds };
+    }
+  };
+}
+
+test('6b. no-change save with YouTube source + start/end segments: 0 API calls, info toast, form stays open, no refresh', async () => {
+  const dom = makeFakeDOM();
+  let apiCallCount = 0;
+
+  const deps = makeBaseDeps({
+    _LoveBudMedia: makeYoutubeMediaStub(),
+    _LoveBudEditorMemoryFormTime: makeFormTimeStub(),
+    apiClient: {
+      updateMemory: async () => { apiCallCount++; return {}; }
+    }
+  });
+
+  const sameSource = 'https://www.youtube.com/embed/dQw4w9WgXcQ?start=20&end=30';
+  deps.getCurrentEditingMemory = () => ({
+    id: 'mem-1',
+    title: 'Same Title',
+    memo: 'Same Memo',
+    emotionTags: [],
+    sourceUrl: sameSource
+  });
+
+  dom.editTitleInput.value = 'Same Title';
+  dom.editMemoInput.value = 'Same Memo';
+  dom.editTagsInput.value = '';
+  dom.editSourceUrlInput.value = sameSource;
+  dom.editStartTimeInput.value = '0:20';
+  dom.editEndTimeInput.value = '0:30';
+
+  const { actions } = createSandbox(dom, deps);
+  await actions.saveMemoryEdit();
+
+  // updateMemory 호출 0회
+  assert.strictEqual(apiCallCount, 0, 'No API call when nothing changed (YouTube + segments)');
+
+  // edit form 유지
+  assert.notStrictEqual(dom.detailViewMode.style.display, 'block', 'viewMode must NOT be shown');
+  assert.notStrictEqual(dom.detailEditMode.style.display, 'none', 'editMode must NOT be hidden');
+
+  // saved/failed status 없음
+  const hasSavedOrFailed = deps._saveStatuses.some(s => s.status === 'saved' || s.status === 'failed');
+  assert.ok(!hasSavedOrFailed, 'No saved/failed status on no-change');
+
+  // info feedback 존재
+  const infoToast = deps._toasts.find(t => t.type === 'info');
+  assert.ok(infoToast, 'Info toast must be shown on no-change');
+
+  // detail refresh 0회
+  assert.strictEqual(deps._updateDetailPanelCalls.length, 0, 'No detail panel refresh');
+  // sidebar refresh 0회
+  assert.strictEqual(deps._updateSidebarStatusCalls.length, 0, 'No sidebar refresh');
+  // canvas rerender 0회
+  assert.strictEqual(deps._rerenderCanvasCalls.length, 0, 'No canvas rerender');
+
+  // CTA 정상 복구
+  assert.strictEqual(dom.saveEditBtn.disabled, false, 'saveEditBtn re-enabled');
+  assert.strictEqual(dom.cancelEditBtn.disabled, false, 'cancelEditBtn re-enabled');
+  assert.strictEqual(dom.deleteMemoryBtn.disabled, false, 'deleteMemoryBtn re-enabled');
+
+  // aria-busy 정상 복구
+  assert.strictEqual(dom.detailEditMode.getAttribute('aria-busy'), undefined, 'aria-busy removed');
+});
+
+test('6c. segment time change still triggers API write 1회', async () => {
+  const dom = makeFakeDOM();
+  let apiCallCount = 0;
+
+  const deps = makeBaseDeps({
+    _LoveBudMedia: makeYoutubeMediaStub(),
+    _LoveBudEditorMemoryFormTime: makeFormTimeStub(),
+    apiClient: {
+      updateMemory: async (id, payload) => {
+        apiCallCount++;
+        return { id, ...payload, title: payload.title, memo: payload.memo, emotionTags: payload.emotionTags || [] };
+      }
+    }
+  });
+
+  const originalSource = 'https://www.youtube.com/embed/dQw4w9WgXcQ?start=20&end=30';
+  deps.getCurrentEditingMemory = () => ({
+    id: 'mem-1',
+    title: 'Same Title',
+    memo: 'Same Memo',
+    emotionTags: [],
+    sourceUrl: originalSource
+  });
+
+  dom.editTitleInput.value = 'Same Title';
+  dom.editMemoInput.value = 'Same Memo';
+  dom.editTagsInput.value = '';
+  dom.editSourceUrlInput.value = originalSource;
+  dom.editStartTimeInput.value = '0:25'; // changed
+  dom.editEndTimeInput.value = '0:35';   // changed
+
+  const { actions } = createSandbox(dom, deps);
+  await actions.saveMemoryEdit();
+
+  assert.strictEqual(apiCallCount, 1, 'Segment change must trigger exactly 1 API call');
+  assert.strictEqual(dom.detailViewMode.style.display, 'block', 'viewMode shown on success');
+  assert.strictEqual(dom.detailEditMode.style.display, 'none', 'editMode hidden on success');
 });
 
 test('7. Keyboard shortcut execution: plain Enter, Ctrl+Enter, Meta+Enter, click, duplicate binding, and isEditMode checks', async () => {
