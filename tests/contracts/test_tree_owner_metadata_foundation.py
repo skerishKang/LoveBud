@@ -16,6 +16,7 @@ sys.path.insert(0, ROOT)
 from modal_compute.validation import (
     normalize_group_name,
     normalize_keywords,
+    normalize_row,
     normalize_tree_row,
 )
 
@@ -277,7 +278,9 @@ def test_public_normalize_row_no_metadata():
         "all_tags": None,
         "raw_thumbnail": None,
         "raw_source_url": None,
+        "group_name": "kpop",
+        "keywords": ["a", "b"],
     }
-    result = normalize_tree_row(row, 5)
+    result = normalize_row(row)
     assert "groupName" not in result
     assert "keywords" not in result

@@ -85,13 +85,19 @@
             userId: resolvedOwnerId,
             title: tree.title || '나의 러브트리',
             visibility: tree.visibility || 'private',
-            groupName: (function (raw) {
+            groupName: (function (tree) {
+                var raw;
+                if (Object.prototype.hasOwnProperty.call(tree, 'groupName')) {
+                    raw = tree.groupName;
+                } else {
+                    raw = tree.group_name;
+                }
                 if (typeof raw === 'string') {
                     raw = raw.trim();
                     return raw || null;
                 }
                 return null;
-            })(tree.groupName || tree.group_name || null),
+            })(tree),
             keywords: (function (raw) {
                 if (!Array.isArray(raw)) return [];
                 return raw.filter(function (kw) { return typeof kw === 'string'; })
