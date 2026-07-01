@@ -67,7 +67,7 @@ test('3. pages/view.html loads fallback script before public-canvas-init.js', ()
   assert.ok(fallbackPos < initPos, 'fallback script must load before public-canvas-init.js');
 });
 
-test('4. public-canvas-init.js uses fallback namespace for appendMissingRouteState and handlePublicCanvasLoadFailure', () => {
+test('4. public-canvas-init.js uses local handlePublicCanvasLoadFailure that delegates to fallback namespace', () => {
   const initSrc = fs.readFileSync(INIT_PATH, 'utf8');
 
   // appendMissingRouteState call site
@@ -77,11 +77,41 @@ test('4. public-canvas-init.js uses fallback namespace for appendMissingRouteSta
     'initPublicCanvas must delegate to fallback namespace for appendMissingRouteState'
   );
 
-  // handlePublicCanvasLoadFailure call site
-  const loadFailureCall = 'window.LoveBudPublicCanvasErrorFallback.handlePublicCanvasLoadFailure';
+  // Local handlePublicCanvasLoadFailure must exist
+  const localHandlerExists = 'function handlePublicCanvasLoadFailure(error)';
   assert.ok(
-    initSrc.includes(loadFailureCall),
-    'initPublicCanvas .catch must delegate to fallback namespace for handlePublicCanvasLoadFailure'
+    initSrc.includes(localHandlerExists),
+    'public-canvas-init.js must define a local load failure cleanup handler'
+  );
+
+  // Local handler must check for fallback namespace delegation
+  const fallbackLookupExpression = 'window.LoveBudPublicCanvasErrorFallback';
+  assert.ok(
+    initSrc.includes(fallbackLookupExpression),
+    'local handlePublicCanvasLoadFailure must check for fallback namespace'
+  );
+
+  // Local handler must call fallback.handlePublicCanvasLoadFailure when present
+  const fallbackDelegation = 'fallback.handlePublicCanvasLoadFailure(error)';
+  assert.ok(
+    initSrc.includes(fallbackDelegation),
+    'local handler must delegate to fallback when present'
+  );
+
+  // Promise rejection must route through the local handler, not a global direct jump
+  const catchBinding = '}).catch(handlePublicCanvasLoadFailure);';
+  assert.ok(
+    initSrc.includes(catchBinding),
+    'promise rejection must route through the local catch wrapper'
+  );
+
+  // Must not use old direct catch expression in .catch()
+  // The old pattern was .catch(window.LoveBudPublicCanvasErrorFallback.handlePublicCanvasLoadFailure)
+  // which is now replaced by .catch(handlePublicCanvasLoadFailure) through local handler delegation
+  const oldDirectCatchPattern = 'window.LoveBudPublicCanvasErrorFallback.handlePublicCanvasLoadFailure';
+  assert.ok(
+    !initSrc.includes(oldDirectCatchPattern),
+    'source must not use old direct catch expression — local handler replaces it'
   );
 });
 
@@ -159,11 +189,13 @@ test('8. non-allowlisted files are not modified', () => {
     'js/viewer/public-canvas-error-fallback.js',
     'js/viewer/public-canvas-init.js',
     'js/viewer/public-viewer-detail-ui.js',
+    'js/viewer/templates/public-viewer-sidebar-template.js',
     'pages/view.html',
     'tests/contracts/public-canvas-error-fallback-contract.test.cjs',
     'tests/contracts/localization-key-display-contract.test.cjs',
     'tests/contracts/localization-key-predicate-contract.test.cjs',
     'tests/routes/public-canvas-direct-load-moment-count-regression.test.cjs',
+    'tests/routes/public-canvas-loading-state-contract.test.cjs',
     'tests/routes/public-viewer-detail-ui-core-contract.test.cjs',
     'tests/routes/public-viewer-focus-contract.test.cjs',
     'tests/routes/public-viewer-sidebar-contract.test.cjs'
