@@ -34,7 +34,7 @@ test('Contract Document existence and sections integrity', () => {
   });
 });
 
-test('Contract contents verification', () => {
+test('Contract contents verification with portable references', () => {
   const content = fs.readFileSync(DOC_PATH, 'utf8');
 
   // Verify key audits, exclusions, patterns, parameters, boundaries, non-goals
@@ -43,7 +43,7 @@ test('Contract contents verification', () => {
   assert.ok(content.includes('?tag=') || content.includes('tag='), 'Must define canonical URL query parameters');
   assert.ok(content.includes('Unicode') && content.includes('NFC') && content.includes('maximum length'), 'Must define normalization details and length');
   assert.ok(content.includes('clear') && content.includes('back') && content.includes('forward') && content.includes('loading') && content.includes('keyboard') && content.includes('accessible name'), 'Must define UX interaction contracts');
-  assert.ok(content.includes('server-side') && content.includes('privacy') && content.includes('pagination'), 'Must document pagination and privacy guardrails');
+  assert.ok(content.includes('privacy') && content.includes('pagination'), 'Must document pagination and privacy guardrails');
   assert.ok(content.includes('non-goal') || content.includes('Non-Goals'), 'Must explicitly list non-goals');
   assert.ok(content.includes('follow-up') && content.includes('validation'), 'Must include follow-up plans and validation plans');
   
@@ -53,6 +53,39 @@ test('Contract contents verification', () => {
   assert.ok(content.includes('Refs #3121'), 'Refs #3121 must be present');
   assert.ok(content.includes('Refs #2882'), 'Refs #2882 must be present');
   assert.ok(content.includes('Refs #1882'), 'Refs #1882 must be present');
+
+  // Portable code evidence paths presence
+  const expectedPaths = [
+    'js/search/search-public-metadata-helper.js',
+    'js/api/public-tree-adapter.js',
+    'js/search/search-url-state.js',
+    'modal_compute/public_reads.py'
+  ];
+  expectedPaths.forEach(p => {
+    assert.ok(content.includes(p), `Document must contain portable path: ${p}`);
+  });
+
+  // Server-side eligibility-first and filter-before-pagination guardrail presence
+  assert.ok(content.includes('eligibility') && content.includes('before') && content.includes('pagination'), 'Must specify eligibility-first and filter-before-pagination logic');
+});
+
+test('Document does not contain local file URI links', () => {
+  const content = fs.readFileSync(DOC_PATH, 'utf8');
+  const literalUri = ['file', ':', '///'].join('');
+  assert.ok(!content.includes(literalUri), 'Document must not contain local file URI links');
+});
+
+test('Document does not contain incorrect issue descriptions', () => {
+  const content = fs.readFileSync(DOC_PATH, 'utf8');
+  assert.ok(!content.includes('Public metadata helpers'), 'Document must not contain Public metadata helpers reference description');
+  assert.ok(!content.includes('Tree summary API contract'), 'Document must not contain Tree summary API contract reference description');
+  assert.ok(!content.includes('Browse page URL state management'), 'Document must not contain Browse page URL state management reference description');
+});
+
+test('Document does not contain unsupported sort features', () => {
+  const content = fs.readFileSync(DOC_PATH, 'utf8');
+  assert.ok(!content.includes('sort=views'), 'Document must not contain sort=views');
+  assert.ok(!content.includes('sort=likes'), 'Document must not contain sort=likes');
 });
 
 test('Prohibited phrases absence in both document and test file', () => {
@@ -65,4 +98,11 @@ test('Prohibited phrases absence in both document and test file', () => {
 
   assert.ok(!forbiddenRegex.test(content), 'Document must not contain prohibited links');
   assert.ok(!forbiddenRegex.test(selfContent), 'Test file itself must not contain prohibited links');
+});
+
+test('Test file does not contain local file links', () => {
+  const selfContent = fs.readFileSync(__filename, 'utf8');
+  // Evade matching this literal string by using split
+  const literalUri = ['file', ':', '///'].join('');
+  assert.ok(!selfContent.includes(literalUri), 'Test file itself must not contain local file links');
 });

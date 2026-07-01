@@ -7,7 +7,11 @@ This document serves as an audit and planning contract for the future implementa
 * **Non-Goals**: No DB/API/schema/UI code implementation is included in this phase. No Scout work is authorized or performed.
 
 ## Current public tag source audit
-Based on our codebase audit of [search-public-metadata-helper.js](file:///mnt/g/Ddrive/BatangD/task/workdiary/LoveBud-3123-public-tag-contract/js/search/search-public-metadata-helper.js#L86-L117) and [public-tree-adapter.js](file:///mnt/g/Ddrive/BatangD/task/workdiary/LoveBud-3123-public-tag-contract/js/api/public-tree-adapter.js#L210-L211):
+Based on our codebase audit of:
+- `js/search/search-public-metadata-helper.js` — `getPublicTags(tree)`
+- `js/api/public-tree-adapter.js` — public tree normalization boundary
+- `js/search/search-url-state.js` — current Browse URL-state handling
+- `modal_compute/public_reads.py` — current public-tree read boundary
 * **Source Fields**: The Browse card currently extracts tags from `tree.emotionTags` and `tree.tags` via the helper method `getPublicTags(tree)`.
 * **Summary Payload Dependency**: Rendering the public tag chips on the Browse cards is fully supported by the existing public tree summary payload (no memories hydration/preloading is required for showing the tags in the list view).
 * **Missing/Invalid Values Handling**: Empty, null, or whitespace-only tags are skipped. Standard filters strip leading `#` characters and discard tags matching raw internal identities (UUID-like structures, owner strings) or internal markers (starting with `__`).
@@ -17,8 +21,8 @@ Based on our codebase audit of [search-public-metadata-helper.js](file:///mnt/g/
 * **Integrity Guardrail**: Under no circumstances should owner-only metadata be leaked to public search pages, card components, filter states, or URL query parameters.
 
 ## Public eligibility and privacy boundary
-* **Privacy Enforcement**: Only public trees (`visibility = 'public'`) and their corresponding public moments/memories can be exposed in tag searches.
-* **Server-Side Safety**: Any future implementation must guarantee public eligibility at the database query level on the server to prevent data leakage of private trees or private memories.
+* **Privacy Enforcement**: Only public trees (`visibility = 'public'`) can be exposed in tag searches.
+* **Server-Side Safety**: Future server-side filtering must apply the existing public-tree eligibility boundary before tag matching. The tag query must never widen the result set to private trees, owner-only metadata, or unverified memory-detail records.
 
 ## Canonical URL contract
 We propose the addition of a new query parameter to manage tag filtering, keeping it separate from search queries:
@@ -41,7 +45,7 @@ To prevent index fragmentation, tag exploration must enforce the following norma
 * **Clear State**: A clear button or clicking the active tag chip again removes the `tag` parameter from the URL and resets the filter state.
 * **Back/Forward Navigation**: The browser's back and forward buttons must trigger standard `popstate` handling, restoring the tag search state directly from the URL query params.
 * **Query Hierarchy**: When both general text query `q` and `tag` are present, they should behave as an intersection (AND) filter.
-* **Sort Preservation**: Existing sorting options (`sort=latest`, `sort=popular`, `sort=views`, `sort=likes`) must be preserved when tags are toggled.
+* **Sort Preservation**: When a valid existing `sort` state (such as `latest` or `popular`) is present, tag activation preserves it. This contract does not introduce, imply, or validate additional sort modes.
 
 ## Accessibility and keyboard behavior
 * **Interactive Elements**: Tag elements on cards must be structured using HTML5 button elements or custom elements with `role="button"` and `tabindex="0"`.
@@ -54,7 +58,7 @@ To prevent index fragmentation, tag exploration must enforce the following norma
 * **Failure State**: If the network fetch fails, it must fallback cleanly without crash and display a graceful error state.
 
 ## API and pagination feasibility
-* **Current Backend Limitation**: The current public summary API query in [public_reads.py](file:///mnt/g/Ddrive/BatangD/task/workdiary/LoveBud-3123-public-tag-contract/modal_compute/public_reads.py#L212-L252) does not support database-level tag filtering.
+* **Current Backend Limitation**: The current public summary API query does not support database-level tag filtering.
 * **Client-Side Filtering Pitfalls**: Filtering on the client side is highly inefficient and incorrect for pagination because it can only filter the limited set of retrieved summary trees (low coverage, broken page sizes, and potential privacy leaks).
 * **Required Data Contract**: The backend `/api/community/trees` endpoint must accept a `tag` query parameter and perform server-side database filtering (`WHERE ...`).
 
@@ -65,16 +69,23 @@ To prevent index fragmentation, tag exploration must enforce the following norma
 * No Scout token or provider transport work.
 
 ## Narrow follow-up implementation slice
-To proceed safely, the immediate follow-up task should be:
-* **Focus**: Backend: Implement `tag` query parameter support in `modal_compute/public_reads.py` (specifically within the SQL queries of `fetch_latest_public_tree_snapshots`) to enable database-level tag filtering before any UI changes are made.
+Before UI activation, introduce a narrowly scoped server-side public-tree tag-filter contract:
+- accept one normalized `tag` input;
+- validate length and malformed input;
+- apply existing public-tree eligibility first;
+- filter before pagination;
+- preserve the existing safe URL-state boundary;
+- add focused API and route contracts.
+
+The exact backend function and storage/query strategy must be selected only after confirming the current public-read implementation.
 
 ## Test and production-validation plan
 * **Contract Test**: Run node-based assertions on file paths, manifest properties, and the existence of this exploration contract document.
 * **Staging Verification**: Deploy to a Cloudflare Pages preview branch, populate staging DB with mock trees containing tags, and test URL param query validation.
 
 ## References
-* Refs #3123 (Browse tag search planning)
-* Refs #2981 (Public metadata helpers)
-* Refs #3121 (Tree summary API contract)
-* Refs #2882 (Owner-only metadata boundaries)
-* Refs #1882 (Browse page URL state management)
+- Refs #3123
+- Refs #2981
+- Refs #3121
+- Refs #2882
+- Refs #1882
