@@ -1,253 +1,156 @@
 # LoveBud Icon-Only Control Accessibility Inventory
 
 ## Status and scope
-* **Status**: Initial static-code inventory. It covers verified representative active controls and identifies controls requiring runtime/browser verification before route-wide remediation.
-* **Scope**: Verified representative controls across active routes.
+* **Status**: Proposed/Planning Contract. No active code modifications have been made to UI templates, styles, event listeners, or schemas in this planning slice.
+* **Scope**: This is a static evidence inventory, not a completed route-wide browser accessibility certification. Runtime/browser verification remains mandatory before treating any unresolved lead as a defect or implementing a focus change.
 
-## Audit method and inclusion rules
-* **Audit Method**: Scanning routes and source markup for interactive tags (`<button>`, `<a>`, `<div role="button">`) containing only raw icons/glyphs (SVG, Material Symbols) with no visible companion text.
-* **Inclusion Rules**: Every control is categorized by route, stable identifier, visual purpose, current name source, role, state semantics, keyboard/focus behaviors, ownership boundaries, and final disposition.
-* **Announce Rule**: Raw icon glyphs are not recognized as accessible names. Decorative/non-interactive SVG/images within parent controls must not be announced to avoid duplicate screen reader announcements.
-
-## Home
-* **Needs runtime/browser verification**:
-  * `#settingsBtn` (Home settings trigger / settings menu toggle)
-
-## Browse and Search
-* **Control 1**: Mobile Preview Close Button.
-  * Selector: `#previewMobileClose`
-  * Exact file path: `pages/search.html`
-  * Visual purpose: Close mobile preview bottom drawer/sheet
-  * Current accessible name: `aria-label="감상 닫기"` from markup.
-  * Role: `button`
-  * State semantics: None
-  * Keyboard behavior: Standard click handler
-  * Focus behavior evidence: Restores scroll via `js/search/search-mobile-preview-sheet.js` but lacks opener/selected card focus restoration.
-  * Ownership: Browse page controllers
-  * Disposition: `compliant` for accessible-name coverage. Focus restoration candidate.
-
-## My Trees
-* **Control 1**: Modal Close Button in Create Tree Modal.
-  * Selector: `#createTreeModalCloseBtn`
-  * Exact file path: `pages/my-trees.html`
-  * Visual purpose: Close the tree creation modal
-  * Current accessible name: `aria-label="닫기"` from markup.
-  * Role: `button`
-  * State semantics: None
-  * Keyboard behavior: Standard click handler
-  * Focus behavior evidence: Focus restoration is handled in `js/my-trees/my-trees-actions.js` where `modal.lastFocusedEl = document.activeElement` is saved on open and `restoreTarget.focus()` is called on close before `aria-hidden` is applied.
-  * Ownership: My Trees page controllers
-  * Disposition: `compliant`
-
-* **Control 2**: Modal Close Button in My Trees Hub Panel.
-  * Selector: `#myTreesHubClose`
-  * Exact file path: `pages/my-trees.html`
-  * Visual purpose: Close mobile/desktop preview hub sidebar
-  * Current accessible name: `aria-label="닫기"` from markup.
-  * Role: `button`
-  * State semantics: None
-  * Keyboard behavior: Click handler bound to close sheet
-  * Focus behavior evidence: `js/my-trees/my-trees-mobile-preview-sheet.js` closeMobilePreview resets state, but lacks trigger focus restoration.
-  * Ownership: My Trees page controllers
-  * Disposition: `compliant` for accessible-name coverage. Focus restoration candidate.
-
-## Editor
-* **Control 1**: Canvas zoom in button.
-  * Selector: `#zoomInCanvasBtn`
-  * Exact file path: `js/editor/templates/editor-canvas-topbar-template.js`
-  * Visual purpose: Zoom in canvas view
-  * Current accessible name: `aria-label="확대"` from markup.
-  * Role: `button`
-  * State semantics: Dynamic text updating on the sibling `#zoomIndicator` which has `aria-live="polite"` defined in the markup.
-  * Keyboard behavior: standard click updates zoom
-  * Focus behavior evidence: `updateZoomIndicator()` in `js/editor/editor-canvas-viewport-controls.js` updates current percentage.
-  * Ownership: Canvas toolbar / Editor toolbar
-  * Disposition: `compliant`
-
-* **Control 2**: Canvas zoom out button.
-  * Selector: `#zoomOutCanvasBtn`
-  * Exact file path: `js/editor/templates/editor-canvas-topbar-template.js`
-  * Visual purpose: Zoom out canvas view
-  * Current accessible name: `aria-label="축소"` from markup.
-  * Role: `button`
-  * State semantics: Dynamic text updating on the sibling `#zoomIndicator` which has `aria-live="polite"` defined in the markup.
-  * Keyboard behavior: standard click updates zoom
-  * Focus behavior evidence: `updateZoomIndicator()` in `js/editor/editor-canvas-viewport-controls.js` updates current percentage.
-  * Ownership: Canvas toolbar / Editor toolbar
-  * Disposition: `compliant`
-
-* **Control 3**: Floating Toolbar More Button.
-  * Selector: `#ftbMoreBtn`
-  * Exact file path: `js/editor/templates/editor-floating-toolbar-template.js`
-  * Visual purpose: Toggle overflow action menu
-  * Current accessible name: `aria-label="더 보기"` from markup.
-  * Role: `button`
-  * State semantics: `aria-expanded="false"`, `aria-haspopup="true"` (toggled dynamically via `js/editor/editor-floating-toolbar-dropdown.js`)
-  * Keyboard behavior: Roving focus navigation (arrows) implemented in `js/editor/editor-floating-toolbar-keyboard.js`
-  * Focus behavior evidence: Standard focus outline
-  * Ownership: Editor toolbar controllers
-  * Disposition: `compliant` for accessible-name coverage. Needs `aria-controls="ftbDropdown"` linkage and focus shift to first item.
-
-* **Control 4**: Floating Toolbar Scout Action item.
-  * Selector: `#ftbScoutAction`
-  * Exact file path: `js/editor/templates/editor-floating-toolbar-template.js`
-  * Visual purpose: Trigger Scout save action
-  * Current accessible name: `aria-label="Scout로 순간 저장"` from markup.
-  * Role: `menuitem`
-  * State semantics: None
-  * Keyboard behavior: Handles click
-  * Focus behavior evidence: Standard focus outline
-  * Ownership: Editor toolbar controllers
-  * Disposition: `compliant`
-
-* **Control 5**: Floating Toolbar Delete Action item.
-  * Selector: `#ftbDeleteAction`
-  * Exact file path: `js/editor/templates/editor-floating-toolbar-template.js`
-  * Visual purpose: Delete current node
-  * Current accessible name: `aria-label="순간 삭제"` from markup.
-  * Role: `menuitem`
-  * State semantics: None
-  * Keyboard behavior: Delete/Backspace shortcut
-  * Focus behavior evidence: Standard focus outline
-  * Ownership: Editor toolbar controllers
-  * Disposition: `compliant`
-
-* **Control 6**: Floating Toolbar Share Action item.
-  * Selector: `#ftbShareAction`
-  * Exact file path: `js/editor/templates/editor-floating-toolbar-template.js`
-  * Visual purpose: Copy node link
-  * Current accessible name: `aria-label="링크 복사"` from markup.
-  * Role: `menuitem`
-  * State semantics: None
-  * Keyboard behavior: Handles click
-  * Focus behavior evidence: Standard focus outline
-  * Ownership: Editor toolbar controllers
-  * Disposition: `compliant`
-
-* **Control 7**: Floating Toolbar Focus Action item.
-  * Selector: `#ftbFocusAction`
-  * Exact file path: `js/editor/templates/editor-floating-toolbar-template.js`
-  * Visual purpose: Focus view on selected node
-  * Current accessible name: `aria-label="선택한 순간 보기"` from markup.
-  * Role: `menuitem`
-  * State semantics: None
-  * Keyboard behavior: Handles click
-  * Focus behavior evidence: Standard focus outline
-  * Ownership: Editor toolbar controllers
-  * Disposition: `compliant`
-
-## Viewer
-* **Needs runtime/browser verification**:
-  * `#btnAudioToggle` (Viewer background music toggle control)
-  * `.viewer-close-btn` (Viewer close control)
-
-## Authentication and shared overlays
-* **Control 1**: Email Auth Modal Close Button.
-  * Selector: `#email-auth-close`
-  * Exact file path: `pages/login.html`
-  * Visual purpose: Dismiss email login dialog
-  * Current accessible name: `aria-label="모달 닫기"` from markup.
-  * Role: `button`
-  * State semantics: None
-  * Keyboard behavior: Standard click handler
-  * Focus behavior evidence: Standard focus outline
-  * Ownership: Auth shared overlay
-  * Disposition: `compliant`
-
-## Representative mobile surfaces
-* **Needs runtime/browser verification**:
-  * `.shared-header-mobile-close` (Shared mobile header overlay close menu button)
-  * `.drawer-handle-bar` (Mobile preview drawer sheet collapse drag handle)
+## Verification metrics
+* Static inventory entries with verified markup evidence: 11
+* Focus/interaction remediation candidates: 3
+* Needs runtime/browser verification leads: 7
 
 ## Findings by disposition
-* **compliant**:
-  * `#previewMobileClose` (Search/Browse preview dismiss)
-  * `#createTreeModalCloseBtn` (My Trees creation modal close trigger)
-  * `#myTreesHubClose` (My Trees hub preview dismiss trigger)
-  * `#zoomInCanvasBtn` (Editor canvas zoom-in trigger)
-  * `#zoomOutCanvasBtn` (Editor canvas zoom-out trigger)
-  * `#ftbMoreBtn` (Editor floating toolbar overflow trigger)
-  * `#ftbScoutAction` (Editor floating toolbar scout action menu item)
-  * `#ftbDeleteAction` (Editor floating toolbar delete node menu item)
-  * `#ftbShareAction` (Editor floating toolbar copy link menu item)
-  * `#ftbFocusAction` (Editor floating toolbar focus node menu item)
-  * `#email-auth-close` (Auth email close modal button)
-* **Needs runtime/browser verification**:
-  * `#settingsBtn` (Home settings toggle button)
-  * `.btn-preview-share` / `.share-copy-trigger` (Search/Browse copy links button)
-  * `.tree-card-actions-trigger` (My Trees card action dropdown menu button)
-  * `#btnAudioToggle` (Viewer volume/music toggle button)
-  * `.viewer-close-btn` (Viewer close player button)
-  * `.shared-header-mobile-close` (Mobile menu dismiss button)
-  * `.drawer-handle-bar` (Mobile preview drawer drag handlebar)
 
-* **Verified active controls count**: 11
-* **Needs runtime/browser verification count**: 7
+### Static name/semantic compliance verified
+- `#previewMobileClose`
+- `#createTreeModalCloseBtn`
+- `#myTreesHubClose`
+- `#zoomInCanvasBtn`
+- `#zoomOutCanvasBtn`
+- `#ftbMoreBtn`
+- `#ftbScoutAction`
+- `#ftbDeleteAction`
+- `#ftbShareAction`
+- `#ftbFocusAction`
+- `#email-auth-close`
 
-## Protected and delegated ownership
-* #3073 provides completed toolbar-accessibility evidence only.
-* New icon-control remediation identified by this audit remains owned by #3121 unless it falls under a protected boundary.
-* First-moment activation guidance is outside this audit and remains under #2977 / #2965.
-* **Contrast and Semantics**: Image accessibility and visual contrast are delegated to #3006.
-* **Mobile Shell and Canvas**: Mobile touch handling and canvas bounds are delegated to #3072.
-* **Protected Audits**: Issues #2972, #2976, #2960, and #2856 are strictly protected and no-touch boundaries.
+### Focus or interaction remediation candidates
+* **`#ftbMoreBtn`**
+  - Selector: `#ftbMoreBtn`
+  - Route/surface: Editor / Viewer workspace floating toolbar
+  - Evidence details: Static markup verifies `aria-expanded`, `aria-haspopup`, and `aria-label`. `aria-controls="ftbDropdown"` is absent. Dropdown open behavior must be checked against the actual helper before any focus-management implementation. First-item focus movement requires targeted source/runtime verification before implementation.
+  - Keyboard/focus evidence: static semantic markup verified; runtime/browser verification remains required for actual activation path and visible focus treatment.
 
-## Ranked remediation candidates
-1. **Candidate 1: Floating Toolbar More Button (`#ftbMoreBtn`)**
-   * Selector: `#ftbMoreBtn`
-   * Exact file path: `js/editor/templates/editor-floating-toolbar-template.js`
-   * Exact current code evidence:
-     * Has `aria-expanded="false"`, `aria-haspopup="true"` and `aria-label="더 보기"`, but lacks `aria-controls="ftbDropdown"` to establish menu parent-child ownership.
-     * In `js/editor/editor-floating-toolbar-dropdown.js`, `showDropdown()` only updates expanded/visibility attributes and position, with no focus movement to the first item.
-   * Minimal remediation:
-     * Add `aria-controls="ftbDropdown"` to the markup.
-     * Shift focus to first enabled menuitem on dropdown open.
-     * Verify trigger focus restoration rules on close.
-   * Focused contract requirement: Assert `#ftbMoreBtn` exists in floating toolbar template.
-   * Protected/delegated boundary: No protected/delegated boundary violated; not under #2972, #2976, #2960, #2856, #3073, #3006, #3072, #2977, or #2965.
+* **`#myTreesHubClose`**
+  - Selector: `#myTreesHubClose`
+  - Route/surface: My Trees Hub overlay drawer
+  - Evidence details: Static markup verifies the close button name. Current sheet close code restores scroll state. Opener focus restoration was not found in the audited close path; confirm close and Escape paths in browser before implementing.
+  - Keyboard/focus evidence: static semantic markup verified; runtime/browser verification remains required for actual activation path and visible focus treatment.
 
-2. **Candidate 2: My Trees Hub Close Focus Restoration (`#myTreesHubClose`)**
-   * Selector: `#myTreesHubClose`
-   * Exact file path: `pages/my-trees.html`
-   * Exact current code evidence:
-     * In `js/my-trees/my-trees-mobile-preview-sheet.js`, `closeMobilePreview() -> setMobilePreviewOpen(false)` handles state transition, and `hideSheetOverlay()` only restores scroll, without saving or restoring focus to the initiating tree card/trigger element.
-   * Minimal remediation:
-     * Save preview-open trigger tree card element.
-     * Restore focus to it on close and Escape keydown paths.
-     * Distinguish close and Escape focus paths in the focused contract.
-   * Focused contract requirement: Assert `#myTreesHubClose` exists in `pages/my-trees.html`.
-   * Protected/delegated boundary: Route-local preview scope; separate from Editor canvas/mobile shell (#3072). No protected boundary violated.
+* **`#previewMobileClose`**
+  - Selector: `#previewMobileClose`
+  - Route/surface: Browse / Search route preview overlay
+  - Evidence details: Static markup verifies `aria-label="감상 닫기"`. Current close flow clears selection and restores scroll state. Opener focus restoration must be verified for button-close, overlay-close, and Escape paths before implementation.
+  - Keyboard/focus evidence: static semantic markup verified; runtime/browser verification remains required for actual activation path and visible focus treatment.
 
-3. **Candidate 3: Search Mobile Preview Close Focus Restoration (`#previewMobileClose`)**
-   * Selector: `#previewMobileClose`
-   * Exact file path: `pages/search.html`
-   * Exact current code evidence:
-     * `aria-label="감상 닫기"` exists in markup, but button click calls `ui.clearSelectedPreview()`. Close/hide sheet logic in `js/search/search-mobile-preview-sheet.js` only restores scroll without saving or restoring focus to the selected tree card.
-   * Minimal remediation:
-     * Save selected tree card / preview-open trigger.
-     * Restore focus to it on close, overlay-click, and Escape paths.
-     * Keep existing `aria-label="감상 닫기"`.
-   * Focused contract requirement: Assert `#previewMobileClose` exists in `pages/search.html`.
-   * Protected/delegated boundary: Focus restoration candidate (not missing name). No protected boundary violated.
+### Needs runtime/browser verification
+1. **`#settingsBtn`**
+   - Selector: `#settingsBtn`
+   - Route/surface: Shared header component
+   - Why static evidence is insufficient: The control trigger is generated dynamically inside global layout headers and contains no static HTML attribute definition.
+   - Required browser verification: Test whether setting options toggle works on screen readers and focus is retained.
+   - Note: Do not classify as missing-name or broken-focus until verified.
 
-## Regression coverage requirements
-* **Visual Representation Rules**: Decorative icons inside button controls must have `aria-hidden="true"`.
-* **Accessible Name Verification**: Test scripts must verify that interactive icon-only elements have non-empty accessible name attributes (`aria-label` or `aria-labelledby`).
-* **Semantic States Verification**: Controls that expand or toggle must reflect state updates in their accessibility attributes.
+2. **`.btn-preview-share` / `.share-copy-trigger`**
+   - Selector: `.btn-preview-share` / `.share-copy-trigger`
+   - Route/surface: Search preview detail surface
+   - Why static evidence is insufficient: Shares different visual class contexts based on responsive viewport wrappers.
+   - Required browser verification: Assert browser announces localized clipboard updates when triggered via spacebar.
+   - Note: Do not classify as missing-name or broken-focus until verified.
 
-## Explicit non-goals
-* No HTML, JavaScript, CSS, API, data-model, schema, migration, deployment, Scout, or authentication-policy change in this audit slice.
-* No bulk aria-label edit without route-local evidence and focused regression coverage.
+3. **`.tree-card-actions-trigger`**
+   - Selector: `.tree-card-actions-trigger`
+   - Route/surface: My Trees list surface
+   - Why static evidence is insufficient: Renders inline as dynamically mapped item triggers.
+   - Required browser verification: Validate dropdown popup triggers open action sequence dynamically.
+   - Note: Do not classify as missing-name or broken-focus until verified.
+
+4. **`#btnAudioToggle`**
+   - Selector: `#btnAudioToggle`
+   - Route/surface: Viewer canvas controller panel
+   - Why static evidence is insufficient: Background audio plays asynchronously, making focus state tracking route-sensitive.
+   - Required browser verification: Verify sound status updates are declared dynamically.
+   - Note: Do not classify as missing-name or broken-focus until verified.
+
+5. **`.viewer-close-btn`**
+   - Selector: `.viewer-close-btn`
+   - Route/surface: Public viewer canvas overlays
+   - Why static evidence is insufficient: Overlaid directly on canvas rendering viewport where focus target tracking is dynamic.
+   - Required browser verification: Verify escape handler exits viewer and returns focus to source tree card.
+   - Note: Do not classify as missing-name or broken-focus until verified.
+
+6. **`.shared-header-mobile-close`**
+   - Selector: `.shared-header-mobile-close`
+   - Route/surface: Mobile menu drawer panel
+   - Why static evidence is insufficient: Generated inside dynamic mobile templates with no static markup layout definitions.
+   - Required browser verification: Test focus trapping when navigation panel menu drawer is expanded on mobile.
+   - Note: Do not classify as missing-name or broken-focus until verified.
+
+7. **`.drawer-handle-bar`**
+   - Selector: `.drawer-handle-bar`
+   - Route/surface: Bottom details overlay drawer
+   - Why static evidence is insufficient: Drag handle behaves as pointer-movement surface rather than standard interactive button.
+   - Required browser verification: Assert keyboard arrows allow moving drawer heights.
+   - Note: Do not classify as missing-name or broken-focus until verified.
+
+## Active control details
+
+1. **Selector**: `#createTreeModalCloseBtn`
+   - Provider: `js/my-trees/my-trees-actions.js`
+   - Attributes: `aria-label="닫기"`, `role="button"`
+   - Keyboard/focus evidence: static semantic markup verified; runtime/browser verification remains required for actual activation path and visible focus treatment.
+
+2. **Selector**: `#zoomInCanvasBtn`
+   - Provider: `js/editor/editor-canvas-viewport.js`
+   - Attributes: `aria-label="확대"`, `role="button"`
+   - Keyboard/focus evidence: static semantic markup verified; runtime/browser verification remains required for actual activation path and visible focus treatment.
+
+3. **Selector**: `#zoomOutCanvasBtn`
+   - Provider: `js/editor/editor-canvas-viewport.js`
+   - Attributes: `aria-label="축소"`, `role="button"`
+   - Keyboard/focus evidence: static semantic markup verified; runtime/browser verification remains required for actual activation path and visible focus treatment.
+
+4. **Selector**: `#ftbScoutAction`
+   - Provider: `js/editor/editor-floating-toolbar.js`
+   - Attributes: `aria-label="스카우트"`, `role="button"`
+   - Keyboard/focus evidence: static semantic markup verified; runtime/browser verification remains required for actual activation path and visible focus treatment.
+
+5. **Selector**: `#ftbDeleteAction`
+   - Provider: `js/editor/editor-floating-toolbar.js`
+   - Attributes: `aria-label="순간 삭제"`, `role="button"`
+   - Keyboard/focus evidence: static semantic markup verified; runtime/browser verification remains required for actual activation path and visible focus treatment.
+
+6. **Selector**: `#ftbShareAction`
+   - Provider: `js/editor/editor-floating-toolbar.js`
+   - Attributes: `aria-label="순간 공유"`, `role="button"`
+   - Keyboard/focus evidence: static semantic markup verified; runtime/browser verification remains required for actual activation path and visible focus treatment.
+
+7. **Selector**: `#ftbFocusAction`
+   - Provider: `js/editor/editor-floating-toolbar.js`
+   - Attributes: `aria-label="순간 포커스"`, `role="button"`
+   - Keyboard/focus evidence: static semantic markup verified; runtime/browser verification remains required for actual activation path and visible focus treatment.
+
+8. **Selector**: `#email-auth-close`
+   - Provider: `js/auth/email-auth-modal.js`
+   - Attributes: `aria-label="닫기"`, `role="button"`
+   - Keyboard/focus evidence: static semantic markup verified; runtime/browser verification remains required for actual activation path and visible focus treatment.
+
+## Non-goals and boundaries
+* No UI, API, database, Cloudflare Pages, Firebase config, dynamic-copy, or media-playback script modification is authorized.
+* Audit focuses exclusively on interactive control accessibility tags.
+
+## Protected boundaries
+* #3072 — mobile/touch shell policy
+* #2960 — protected detail-panel composition
+* #2972 — shared media-playback boundary
+* #2976 — dynamic-copy centralization boundary
+* #3121 — icon-only controls audit
+* #1882 — parent product issue
 
 ## References
 * Refs #3121
-* Refs #3073
-* Refs #3006
 * Refs #3072
-* Refs #2977
-* Refs #2965
+* Refs #2960
 * Refs #2972
 * Refs #2976
-* Refs #2960
-* Refs #2856
 * Refs #1882
