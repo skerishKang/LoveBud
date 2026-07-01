@@ -52,12 +52,6 @@ function createEditorMemoryForm(deps) {
     let currentInputMode = 'link';
     let _addMemoryInvoker = null;
 
-    function getFreshCanonicalRootId() {
-        return window.LoveBudEditorUtils?.getCanonicalRootId
-            ? window.LoveBudEditorUtils.getCanonicalRootId(getTreeMemories())
-            : getCanonicalRootId();
-    }
-
     const refs = {
         addMemoryForm: document.getElementById('addMemoryForm'),
         urlInput: document.getElementById('memoryUrlInput'),

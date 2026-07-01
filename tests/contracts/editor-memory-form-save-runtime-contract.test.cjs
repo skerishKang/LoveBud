@@ -304,6 +304,36 @@ test('commitMemoryToTree appends memory and updates save status', () => {
     assert.ok(savedStatus.m.includes('local'));
 });
 
+test('addMemoryFromForm source order: validation → saving → hide → enrich → create → commit → restore', () => {
+    const formJs = fs.readFileSync(path.join(ROOT, 'js/editor/editor-memory-form.js'), 'utf8');
+    const addFormBody = formJs.match(/const addMemoryFromForm[\s\S]*?};/);
+    assert.ok(addFormBody, 'addMemoryFromForm must exist');
+    const body = addFormBody[0];
+
+    const validationCall = body.indexOf('if (!payloadResult.ok)');
+    const savingCall = body.indexOf("updateSaveStatus('saving'");
+    const hideCall = body.indexOf("hideAddMemoryForm({ restoreFocus: false })");
+    const enrichCall = body.indexOf('saveRuntime.enrichPayloadChannelMetadata');
+    const createCall = body.indexOf('saveRuntime.createMemoryWithFallback');
+    const commitCall = body.indexOf('saveRuntime.commitMemoryToTree');
+    const restoreCall = body.indexOf('restoreFocusToInvoker()');
+
+    assert.ok(validationCall >= 0, 'validation guard must exist');
+    assert.ok(savingCall >= 0, 'updateSaveStatus(saving) must exist');
+    assert.ok(hideCall >= 0, 'hideAddMemoryForm({ restoreFocus: false }) must exist');
+    assert.ok(enrichCall >= 0, 'enrichPayloadChannelMetadata must exist');
+    assert.ok(createCall >= 0, 'createMemoryWithFallback must exist');
+    assert.ok(commitCall >= 0, 'commitMemoryToTree must exist');
+    assert.ok(restoreCall >= 0, 'restoreFocusToInvoker() must exist');
+
+    assert.ok(validationCall < savingCall, 'validation must precede updateSaveStatus');
+    assert.ok(savingCall < hideCall, 'updateSaveStatus must precede hideAddMemoryForm');
+    assert.ok(hideCall < enrichCall, 'hideAddMemoryForm must precede enrichPayloadChannelMetadata');
+    assert.ok(enrichCall < createCall, 'enrichPayloadChannelMetadata must precede createMemoryWithFallback');
+    assert.ok(createCall < commitCall, 'createMemoryWithFallback must precede commitMemoryToTree');
+    assert.ok(commitCall < restoreCall, 'commitMemoryToTree must precede restoreFocusToInvoker');
+});
+
 test('existing-edit flow enrichPayloadChannelMetadata remains accessible from form', () => {
     const sandbox = createSandbox({
         window: {

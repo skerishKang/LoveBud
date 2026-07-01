@@ -121,6 +121,7 @@ function createEditorFormContext(apiClient) {
     }
   };
   vm.createContext(context);
+  vm.runInContext(fs.readFileSync(path.join(ROOT, 'js/editor/editor-memory-form-save.js'), 'utf8'), context);
   vm.runInContext(fs.readFileSync(path.join(ROOT, 'js/editor/editor-memory-form.js'), 'utf8'), context);
   return context;
 }
