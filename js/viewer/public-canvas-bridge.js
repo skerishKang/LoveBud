@@ -55,6 +55,7 @@
      * Sets window.currentTreeData and window.currentTreeMemories.
      */
     function normalizeForCanvas(tree, rawMemories) {
+        var adapter = window.LoveTreePublicTreeAdapter;
         var ownerId = tree.ownerId || tree.owner_id || (tree.data && (tree.data.ownerId || tree.data.owner_id)) || '';
         var description = tree.description || (tree.data && tree.data.description) || '';
         var summary = tree.summary || (tree.data && tree.data.summary) || '';
@@ -81,29 +82,34 @@
 
         var normalize = function(mem) {
             if (!mem) return null;
+            var source = adapter && typeof adapter.unwrapMemoryRecord === 'function'
+                ? adapter.unwrapMemoryRecord(mem)
+                : (mem.data || mem || {});
             return {
-                id: mem.id,
-                treeId: mem.treeId || mem.tree_id || tree.id,
-                parentId: mem.parentId ?? mem.parent_id ?? null,
-                title: mem.title || '',
-                memo: mem.memo || mem.description || mem.emotionMemo || '',
-                quote: mem.quote || '',
-                timestamp: mem.timestamp || '',
-                thumbnail: mem.thumbnail || '',
+                id: source.id || mem.id || null,
+                treeId: source.treeId || source.tree_id || mem.treeId || mem.tree_id || tree.id,
+                parentId: source.parentId ?? source.parent_id ?? mem.parentId ?? mem.parent_id ?? null,
+                title: source.title || mem.title || '',
+                memo: source.memo || source.description || source.emotionMemo || mem.memo || mem.description || mem.emotionMemo || '',
+                quote: source.quote || mem.quote || '',
+                timestamp: source.timestamp || mem.timestamp || '',
+                thumbnail: source.thumbnail || mem.thumbnail || '',
                 visibility: 'public',
-                artist: mem.artist || '',
-                source: mem.source || '',
-                sourceUrl: mem.sourceUrl || mem.source_url || '',
-                sourceType: mem.sourceType || mem.source_type || 'youtube',
-                emotionTags: mem.emotionTags || mem.emotion_tags || [],
-                createdAt: mem.createdAt || mem.created_at || null,
-                updatedAt: mem.updatedAt || mem.updated_at || null
+                artist: source.artist || mem.artist || '',
+                source: source.source || mem.source || '',
+                sourceUrl: source.sourceUrl || source.source_url || mem.sourceUrl || mem.source_url || '',
+                sourceType: source.sourceType || source.source_type || mem.sourceType || mem.source_type || 'youtube',
+                emotionTags: source.emotionTags || source.emotion_tags || mem.emotionTags || mem.emotion_tags || [],
+                createdAt: source.createdAt || source.created_at || mem.createdAt || mem.created_at || null,
+                updatedAt: source.updatedAt || source.updated_at || mem.updatedAt || mem.updated_at || null
             };
         };
 
         var normalizedMemories = (Array.isArray(rawMemories) ? rawMemories : [])
             .map(normalize)
-            .filter(Boolean);
+            .filter(function(memory) {
+                return !!(memory && memory.id);
+            });
 
         // Set window globals expected by createEditorCanvas
         window.currentTreeData = treeData;

@@ -16,7 +16,31 @@
         };
     }
 
-    function updatePublicViewerSidebarStatus() {}
+    function createPublicViewerSidebarStatusUpdater(deps) {
+        var getTreeMemories = deps && typeof deps.getTreeMemories === 'function'
+            ? deps.getTreeMemories
+            : function() { return []; };
+        var getCanonicalRootId = deps && typeof deps.getCanonicalRootId === 'function'
+            ? deps.getCanonicalRootId
+            : function() { return null; };
+        var isRootMemory = deps && typeof deps.isRootMemory === 'function'
+            ? deps.isRootMemory
+            : function(memory, rootId) { return !!(memory && rootId && memory.id === rootId); };
+
+        return function updatePublicViewerSidebarStatus() {
+            var sidebarCountEl = document.getElementById('viewerSidebarMomentCount');
+            if (!sidebarCountEl) return;
+
+            var treeMemories = Array.isArray(getTreeMemories()) ? getTreeMemories() : [];
+            var canonicalRootId = getCanonicalRootId();
+            var nonRootMemories = treeMemories.filter(function(memory) {
+                return memory && !isRootMemory(memory, canonicalRootId);
+            });
+            var visibleMomentCount = nonRootMemories.length;
+
+            sidebarCountEl.textContent = visibleMomentCount + '개의 순간';
+        };
+    }
 
     function createPublicViewerEmptyStateContent() {
         var wrap = document.createElement('div');
@@ -715,7 +739,7 @@
         var updateReadOnlyReactionSummary = createPublicViewerReadOnlyReactionSummaryBoundary(deps);
 
         detailUI.updateFocusSelectedBtn = createPublicViewerUpdateFocusSelectedBtn(deps);
-        detailUI.updateSidebarStatus = updatePublicViewerSidebarStatus;
+        detailUI.updateSidebarStatus = createPublicViewerSidebarStatusUpdater(deps);
         detailUI.setDetailEmptyState = createPublicViewerSetDetailEmptyState(deps);
 
         var lastDetailKey = null;
@@ -756,7 +780,7 @@
         createPublicViewerDetailUI: createPublicViewerDetailUI,
         createPublicViewerDetailHeadingBoundary: createPublicViewerDetailHeadingBoundary,
         createPublicViewerUpdateFocusSelectedBtn: createPublicViewerUpdateFocusSelectedBtn,
-        updatePublicViewerSidebarStatus: updatePublicViewerSidebarStatus,
+        createPublicViewerSidebarStatusUpdater: createPublicViewerSidebarStatusUpdater,
         createPublicViewerSetDetailEmptyState: createPublicViewerSetDetailEmptyState,
         createPublicViewerCurrentMomentBadgeBoundary: (window.LoveBudPublicViewerDetailMetadataText && window.LoveBudPublicViewerDetailMetadataText.createPublicViewerCurrentMomentBadgeBoundary) || null,
         createPublicViewerCurrentMomentTitleBoundary: (window.LoveBudPublicViewerDetailMetadataText && window.LoveBudPublicViewerDetailMetadataText.createPublicViewerCurrentMomentTitleBoundary) || null,
