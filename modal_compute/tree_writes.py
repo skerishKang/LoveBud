@@ -19,6 +19,8 @@ from modal_compute.write_validation import (
     require_tree_owner,
 )
 from modal_compute.validation import (
+    normalize_group_name,
+    normalize_keywords,
     normalize_tree_row,
     validate_optional_string,
     validate_required_uuid,
@@ -32,19 +34,28 @@ def create_owner_tree(owner_id: str, payload: dict[str, Any]) -> dict[str, Any]:
     visibility = validate_visibility(payload.get("visibility"), "public")
     require_plus_for_private_storage(owner_id, visibility)
 
+    group_name = normalize_group_name(payload.get("groupName"))
+    keywords = normalize_keywords(payload.get("keywords"))
+
     query = """
-        INSERT INTO trees (id, owner_id, title, visibility, created_at, updated_at)
-        VALUES (%s, %s, %s, %s, NOW(), NOW())
-        RETURNING id, owner_id, title, visibility, created_at, updated_at;
+        INSERT INTO trees (id, owner_id, title, visibility,
+                            group_name, keywords, created_at, updated_at)
+        VALUES (%s, %s, %s, %s, %s, %s, NOW(), NOW())
+        RETURNING id, owner_id, title, visibility,
+                  group_name, keywords, created_at, updated_at;
     """
 
     with get_db_connection() as conn:
         with conn.cursor() as cur:
-            cur.execute(query, (str(uuid.uuid4()), owner_id, title, visibility))
+            cur.execute(
+                query,
+                (str(uuid.uuid4()), owner_id, title, visibility,
+                 group_name, keywords),
+            )
             row = cur.fetchone()
         conn.commit()
 
-    return normalize_tree_row(row, 0)
+    return normalize_tree_row(row, 0, include_owner_metadata=True)
 
 
 def update_owner_tree(owner_id: str, tree_id: str, payload: dict[str, Any]) -> dict[str, Any]:
@@ -63,6 +74,14 @@ def update_owner_tree(owner_id: str, tree_id: str, payload: dict[str, Any]) -> d
         require_plus_for_private_storage(owner_id, visibility)
         updates.append("visibility = %s")
         params.append(visibility)
+
+    if "groupName" in payload:
+        updates.append("group_name = %s")
+        params.append(normalize_group_name(payload.get("groupName")))
+
+    if "keywords" in payload:
+        updates.append("keywords = %s")
+        params.append(normalize_keywords(payload.get("keywords")))
 
     if not updates:
         tree = fetch_owner_tree(safe_tree_id, owner_id)
