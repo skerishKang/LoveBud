@@ -11,7 +11,7 @@
 
 ## Home
 * **Needs runtime/browser verification**:
-  * Theme toggle / settings trigger: Candidate selector `#settingsBtn` (potentially located in custom layout branches or header files but not found in `index.html` main body). Must be verified dynamically.
+  * `#settingsBtn` (Home settings trigger / settings menu toggle)
 
 ## Browse and Search
 * **Control 1**: Mobile Preview Close Button.
@@ -22,12 +22,9 @@
   * Role: `button`
   * State semantics: None
   * Keyboard behavior: Standard click handler
-  * Focus behavior evidence: Standard focus outline
+  * Focus behavior evidence: Restores scroll via `js/search/search-mobile-preview-sheet.js` but lacks opener/selected card focus restoration.
   * Ownership: Browse page controllers
-  * Disposition: `compliant` for accessible-name coverage. Optional future visual-copy review is out of scope; do not rank this as a remediation candidate.
-
-* **Needs runtime/browser verification**:
-  * Share/Copy link button: Candidate selector `.btn-preview-share` or `.share-copy-trigger`. Must be verified at runtime to ensure exact template location.
+  * Disposition: `compliant` for accessible-name coverage. Focus restoration candidate.
 
 ## My Trees
 * **Control 1**: Modal Close Button in Create Tree Modal.
@@ -38,9 +35,9 @@
   * Role: `button`
   * State semantics: None
   * Keyboard behavior: Standard click handler
-  * Focus behavior evidence: Standard focus outline
+  * Focus behavior evidence: Focus restoration is handled in `js/my-trees/my-trees-actions.js` where `modal.lastFocusedEl = document.activeElement` is saved on open and `restoreTarget.focus()` is called on close before `aria-hidden` is applied.
   * Ownership: My Trees page controllers
-  * Disposition: `compliant` for accessible-name coverage. Focus restoration logic is needed (focus lost upon modal close).
+  * Disposition: `compliant`
 
 * **Control 2**: Modal Close Button in My Trees Hub Panel.
   * Selector: `#myTreesHubClose`
@@ -49,13 +46,10 @@
   * Current accessible name: `aria-label="닫기"` from markup.
   * Role: `button`
   * State semantics: None
-  * Keyboard behavior: Standard click handler
-  * Focus behavior evidence: Standard focus outline
+  * Keyboard behavior: Click handler bound to close sheet
+  * Focus behavior evidence: `js/my-trees/my-trees-mobile-preview-sheet.js` closeMobilePreview resets state, but lacks trigger focus restoration.
   * Ownership: My Trees page controllers
-  * Disposition: `compliant` for accessible-name coverage.
-
-* **Needs runtime/browser verification**:
-  * Tree Card Action Button: Candidate selector `.tree-card-actions-trigger`.
+  * Disposition: `compliant` for accessible-name coverage. Focus restoration candidate.
 
 ## Editor
 * **Control 1**: Canvas zoom in button.
@@ -64,11 +58,11 @@
   * Visual purpose: Zoom in canvas view
   * Current accessible name: `aria-label="확대"` from markup.
   * Role: `button`
-  * State semantics: None
-  * Keyboard behavior: Keydown listener on canvas container
-  * Focus behavior evidence: Standard focus outline
+  * State semantics: Dynamic text updating on the sibling `#zoomIndicator` which has `aria-live="polite"` defined in the markup.
+  * Keyboard behavior: standard click updates zoom
+  * Focus behavior evidence: `updateZoomIndicator()` in `js/editor/editor-canvas-viewport-controls.js` updates current percentage.
   * Ownership: Canvas toolbar / Editor toolbar
-  * Disposition: `compliant` for accessible-name coverage. State indicator alerts (max zoom limit hit) are needed.
+  * Disposition: `compliant`
 
 * **Control 2**: Canvas zoom out button.
   * Selector: `#zoomOutCanvasBtn`
@@ -76,11 +70,11 @@
   * Visual purpose: Zoom out canvas view
   * Current accessible name: `aria-label="축소"` from markup.
   * Role: `button`
-  * State semantics: None
-  * Keyboard behavior: Keydown listener on canvas container
-  * Focus behavior evidence: Standard focus outline
+  * State semantics: Dynamic text updating on the sibling `#zoomIndicator` which has `aria-live="polite"` defined in the markup.
+  * Keyboard behavior: standard click updates zoom
+  * Focus behavior evidence: `updateZoomIndicator()` in `js/editor/editor-canvas-viewport-controls.js` updates current percentage.
   * Ownership: Canvas toolbar / Editor toolbar
-  * Disposition: `compliant` for accessible-name coverage. State indicator alerts (min zoom limit hit) are needed.
+  * Disposition: `compliant`
 
 * **Control 3**: Floating Toolbar More Button.
   * Selector: `#ftbMoreBtn`
@@ -92,7 +86,7 @@
   * Keyboard behavior: Roving focus navigation (arrows) implemented in `js/editor/editor-floating-toolbar-keyboard.js`
   * Focus behavior evidence: Standard focus outline
   * Ownership: Editor toolbar controllers
-  * Disposition: `compliant` for accessible-name coverage. Lack of `aria-controls` linking to `#ftbDropdown` needs correction.
+  * Disposition: `compliant` for accessible-name coverage. Needs `aria-controls="ftbDropdown"` linkage and focus shift to first item.
 
 * **Control 4**: Floating Toolbar Scout Action item.
   * Selector: `#ftbScoutAction`
@@ -144,8 +138,8 @@
 
 ## Viewer
 * **Needs runtime/browser verification**:
-  * Audio toggle button: Candidate selector `#btnAudioToggle`. Must be verified at runtime to ensure dynamic DOM mount logic.
-  * Viewer Close Button: Candidate selector `.viewer-close-btn`.
+  * `#btnAudioToggle` (Viewer background music toggle control)
+  * `.viewer-close-btn` (Viewer close control)
 
 ## Authentication and shared overlays
 * **Control 1**: Email Auth Modal Close Button.
@@ -160,16 +154,35 @@
   * Ownership: Auth shared overlay
   * Disposition: `compliant`
 
-* **Needs runtime/browser verification**:
-  * Shared header mobile overlay close: Candidate selector `.shared-header-mobile-close`.
-
 ## Representative mobile surfaces
 * **Needs runtime/browser verification**:
-  * Drawer collapse handlebar button: Candidate selector `.drawer-handle-bar`.
+  * `.shared-header-mobile-close` (Shared mobile header overlay close menu button)
+  * `.drawer-handle-bar` (Mobile preview drawer sheet collapse drag handle)
 
 ## Findings by disposition
-* **compliant**: `#previewMobileClose`, `#createTreeModalCloseBtn`, `#myTreesHubClose`, `#zoomInCanvasBtn`, `#zoomOutCanvasBtn`, `#ftbMoreBtn`, `#ftbScoutAction`, `#ftbDeleteAction`, `#ftbShareAction`, `#ftbFocusAction`, `#email-auth-close`.
-* **remediation-needed (structural improvements)**: `#zoomOutCanvasBtn` (state alert missing), `#zoomInCanvasBtn` (state alert missing), `#ftbMoreBtn` (`aria-controls` missing), `#createTreeModalCloseBtn` (focus restoration missing).
+* **compliant**:
+  * `#previewMobileClose` (Search/Browse preview dismiss)
+  * `#createTreeModalCloseBtn` (My Trees creation modal close trigger)
+  * `#myTreesHubClose` (My Trees hub preview dismiss trigger)
+  * `#zoomInCanvasBtn` (Editor canvas zoom-in trigger)
+  * `#zoomOutCanvasBtn` (Editor canvas zoom-out trigger)
+  * `#ftbMoreBtn` (Editor floating toolbar overflow trigger)
+  * `#ftbScoutAction` (Editor floating toolbar scout action menu item)
+  * `#ftbDeleteAction` (Editor floating toolbar delete node menu item)
+  * `#ftbShareAction` (Editor floating toolbar copy link menu item)
+  * `#ftbFocusAction` (Editor floating toolbar focus node menu item)
+  * `#email-auth-close` (Auth email close modal button)
+* **Needs runtime/browser verification**:
+  * `#settingsBtn` (Home settings toggle button)
+  * `.btn-preview-share` / `.share-copy-trigger` (Search/Browse copy links button)
+  * `.tree-card-actions-trigger` (My Trees card action dropdown menu button)
+  * `#btnAudioToggle` (Viewer volume/music toggle button)
+  * `.viewer-close-btn` (Viewer close player button)
+  * `.shared-header-mobile-close` (Mobile menu dismiss button)
+  * `.drawer-handle-bar` (Mobile preview drawer drag handlebar)
+
+* **Verified active controls count**: 11
+* **Needs runtime/browser verification count**: 7
 
 ## Protected and delegated ownership
 * #3073 provides completed toolbar-accessibility evidence only.
@@ -180,29 +193,42 @@
 * **Protected Audits**: Issues #2972, #2976, #2960, and #2856 are strictly protected and no-touch boundaries.
 
 ## Ranked remediation candidates
-1. **Candidate 1: Canvas Zoom Controls (`#zoomOutCanvasBtn` / `#zoomInCanvasBtn`)**
-   * Selector: `#zoomOutCanvasBtn` / `#zoomInCanvasBtn`
-   * Exact file path: `js/editor/templates/editor-canvas-topbar-template.js` & `js/viewer/public-viewer-canvas-topbar-template.js`
-   * Current evidence: Has localized `aria-label="축소"` and `aria-label="확대"` attributes, but lacks explicit dynamic live region announcements or screen-reader instructions when zoom limits (max/min zoom) are reached.
-   * Specific minimal remediation: Update `aria-disabled` state dynamically when limits are hit, and trigger live region readouts.
-   * Focused contract test requirement: Test script should assert `#zoomOutCanvasBtn` and `#zoomInCanvasBtn` exist in templates.
-   * Protected/delegated boundary: No protected/delegated boundary violated; not under #2972, #2976, #2960, #2856, #3073, #3006, #3072, #2977, or #2965.
-
-2. **Candidate 2: Floating Toolbar More Button (`#ftbMoreBtn`)**
+1. **Candidate 1: Floating Toolbar More Button (`#ftbMoreBtn`)**
    * Selector: `#ftbMoreBtn`
    * Exact file path: `js/editor/templates/editor-floating-toolbar-template.js`
-   * Current evidence: Has `aria-expanded="false"`, `aria-haspopup="true"` and `aria-label="더 보기"`, but lacks `aria-controls="ftbDropdown"` to establish menu parent-child ownership, and does not automatically focus the first menu item when expanded.
-   * Specific minimal remediation: Add `aria-controls="ftbDropdown"` to the markup and update dropdown focus management to place focus on `#ftbScoutAction` on expand.
-   * Focused contract test requirement: Test script should assert `#ftbMoreBtn` exists in floating toolbar template.
+   * Exact current code evidence:
+     * Has `aria-expanded="false"`, `aria-haspopup="true"` and `aria-label="더 보기"`, but lacks `aria-controls="ftbDropdown"` to establish menu parent-child ownership.
+     * In `js/editor/editor-floating-toolbar-dropdown.js`, `showDropdown()` only updates expanded/visibility attributes and position, with no focus movement to the first item.
+   * Minimal remediation:
+     * Add `aria-controls="ftbDropdown"` to the markup.
+     * Shift focus to first enabled menuitem on dropdown open.
+     * Verify trigger focus restoration rules on close.
+   * Focused contract requirement: Assert `#ftbMoreBtn` exists in floating toolbar template.
    * Protected/delegated boundary: No protected/delegated boundary violated; not under #2972, #2976, #2960, #2856, #3073, #3006, #3072, #2977, or #2965.
 
-3. **Candidate 3: Create Tree Modal Close Button (`#createTreeModalCloseBtn`)**
-   * Selector: `#createTreeModalCloseBtn`
+2. **Candidate 2: My Trees Hub Close Focus Restoration (`#myTreesHubClose`)**
+   * Selector: `#myTreesHubClose`
    * Exact file path: `pages/my-trees.html`
-   * Current evidence: Has `aria-label="닫기"`, but when the modal is closed by this button, visual focus is lost rather than returned to the initiating trigger element (`#createTreeBtn` or `#headerCreateTreeBtn`), causing screen readers to reset focus to the top of the document.
-   * Specific minimal remediation: Add focus restoration logic in modal hide handler to return focus to the active trigger.
-   * Focused contract test requirement: Test script should assert `#createTreeModalCloseBtn` exists in `pages/my-trees.html`.
-   * Protected/delegated boundary: No protected/delegated boundary violated; not under #2972, #2976, #2960, #2856, #3073, #3006, #3072, #2977, or #2965.
+   * Exact current code evidence:
+     * In `js/my-trees/my-trees-mobile-preview-sheet.js`, `closeMobilePreview() -> setMobilePreviewOpen(false)` handles state transition, and `hideSheetOverlay()` only restores scroll, without saving or restoring focus to the initiating tree card/trigger element.
+   * Minimal remediation:
+     * Save preview-open trigger tree card element.
+     * Restore focus to it on close and Escape keydown paths.
+     * Distinguish close and Escape focus paths in the focused contract.
+   * Focused contract requirement: Assert `#myTreesHubClose` exists in `pages/my-trees.html`.
+   * Protected/delegated boundary: Route-local preview scope; separate from Editor canvas/mobile shell (#3072). No protected boundary violated.
+
+3. **Candidate 3: Search Mobile Preview Close Focus Restoration (`#previewMobileClose`)**
+   * Selector: `#previewMobileClose`
+   * Exact file path: `pages/search.html`
+   * Exact current code evidence:
+     * `aria-label="감상 닫기"` exists in markup, but button click calls `ui.clearSelectedPreview()`. Close/hide sheet logic in `js/search/search-mobile-preview-sheet.js` only restores scroll without saving or restoring focus to the selected tree card.
+   * Minimal remediation:
+     * Save selected tree card / preview-open trigger.
+     * Restore focus to it on close, overlay-click, and Escape paths.
+     * Keep existing `aria-label="감상 닫기"`.
+   * Focused contract requirement: Assert `#previewMobileClose` exists in `pages/search.html`.
+   * Protected/delegated boundary: Focus restoration candidate (not missing name). No protected boundary violated.
 
 ## Regression coverage requirements
 * **Visual Representation Rules**: Decorative icons inside button controls must have `aria-hidden="true"`.

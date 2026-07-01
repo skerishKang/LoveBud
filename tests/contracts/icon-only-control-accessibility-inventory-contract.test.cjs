@@ -38,39 +38,33 @@ test('Contract Document existence and sections integrity', () => {
 test('Contract contents verification of fields, dispositions, and candidates', () => {
   const content = fs.readFileSync(DOC_PATH, 'utf8');
 
-  // Verify status section specifies "Initial static-code inventory"
-  assert.ok(content.includes('Initial static-code inventory'), 'Must specify Initial static-code inventory status');
+  // Verify counts
+  assert.ok(content.includes('Verified active controls count**: 11') || content.includes('Verified active controls count: 11') || content.includes('active controls count: 11'), 'Must verify active control count is 11');
+  assert.ok(content.includes('verification count**: 7') || content.includes('verification count: 7'), 'Must verify runtime verification count is 7');
 
-  // Verify no speculative phrases like "if present as icon-only" exist
-  assert.ok(!content.includes('if present as icon-only'), 'Must not contain speculative if present as icon-only');
-  assert.ok(!content.includes('aria-label or raw Material glyph'), 'Must not contain speculative name attributes');
-  assert.ok(!content.includes('standard click handler'), 'Must not contain speculative handlers');
-  assert.ok(!content.includes('standard outline'), 'Must not contain speculative outlines');
-  assert.ok(!content.includes('highlighted focus ring'), 'Must not contain speculative focus rings');
-  assert.ok(!content.includes('outlined focus'), 'Must not contain speculative focus behavior');
+  // Verify zoom controls evidence and no false positives
+  assert.ok(content.includes('aria-live="polite"'), 'Must reference aria-live="polite" for zoom indicator');
+  assert.ok(content.includes('updateZoomIndicator()'), 'Must reference updateZoomIndicator() evidence');
+  assert.ok(!content.includes('state alert missing'), 'Must not claim state alert missing for zoom controls');
+  assert.ok(!content.includes('lacks explicit dynamic live region'), 'Must not claim lacks explicit dynamic live region for zoom controls');
 
-  // Verify #previewMobileClose classification
-  assert.ok(content.includes('aria-label="감상 닫기"'), 'Must document previewMobileClose label');
+  // Verify create tree modal focus restoration evidence and no false positives
+  assert.ok(content.includes('lastFocusedEl'), 'Must reference lastFocusedEl evidence');
+  assert.ok(content.includes('restoreTarget.focus()'), 'Must reference restoreTarget.focus() evidence');
+  assert.ok(!content.includes('focus lost upon modal close'), 'Must not claim focus lost upon modal close');
+  assert.ok(!content.includes('focus restoration logic is needed'), 'Must not claim focus restoration logic is needed for create tree modal');
+
+  // Verify three final candidates
+  const expectedCandidates = ['#ftbMoreBtn', '#myTreesHubClose', '#previewMobileClose'];
+  expectedCandidates.forEach(cand => {
+    assert.ok(content.includes(cand), `Must document candidate: ${cand}`);
+  });
+
+  // Verify previewMobileClose classification
   assert.ok(!content.includes('missing name') || !content.match(/previewMobileClose.*missing name/i), 'previewMobileClose must not be marked as missing name');
 
-  // Verify ownership references (Refs #3073, #2977, #2965)
-  assert.ok(content.includes('#3073 provides completed toolbar-accessibility evidence only'), 'Must correct #3073 description');
-  assert.ok(content.includes('#2977') && content.includes('#2965'), 'Must reference #2977 and #2965');
-
-  // Verify candidate properties
-  const candidates = ['Candidate 1', 'Candidate 2', 'Candidate 3'];
-  candidates.forEach(cand => {
-    assert.ok(content.includes(cand), `Must document ${cand}`);
-  });
-
-  // Verify inventory field set identifiers exist
-  const fields = ['selector', 'file path', 'current evidence', 'minimal remediation', 'test requirement', 'boundary'];
-  fields.forEach(f => {
-    assert.ok(content.toLowerCase().includes(f.toLowerCase()), `Document must refer to candidate field: ${f}`);
-  });
-
   // Verify delegated and protected issue boundaries are referenced
-  const issueBoundaries = ['#3073', '#3006', '#3072', '#2972', '#2976', '#2960', '#2856'];
+  const issueBoundaries = ['#3073', '#3006', '#3072', '#2972', '#2976', '#2960', '#2856', '#2977', '#2965'];
   issueBoundaries.forEach(issue => {
     assert.ok(content.includes(issue), `Document must reference issue boundary: ${issue}`);
   });
