@@ -14,7 +14,6 @@ test('Contract: index.html elements integrity', () => {
 
   // 1. index.html has growth-tree-svg and exactly 3 growth-stage-cards
   assert.ok(html.includes('growth-tree-svg'), 'index.html must have growth-tree-svg');
-  
   const matches = html.match(/class="[^"]*growth-stage-card\b[^"]*"/g) || [];
   assert.equal(matches.length, 3, `index.html must have exactly 3 growth-stage-cards, found ${matches.length}`);
 
@@ -30,7 +29,6 @@ test('Contract: css manifest and growth-stage.css rules', () => {
 
   // 4. growth-stage.css has default hidden policy
   const growthCss = fs.readFileSync(GROWTH_STAGE_CSS_PATH, 'utf8');
-  
   const defaultPolicyPattern = /\.growth-stage-card\s*\{[^}]*opacity:\s*0;[^}]*visibility:\s*hidden;[^}]*pointer-events:\s*none;/;
   assert.ok(defaultPolicyPattern.test(growthCss), 'growth-stage.css must have default hidden policy for .growth-stage-card');
 
