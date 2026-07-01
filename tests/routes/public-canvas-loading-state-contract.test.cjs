@@ -103,6 +103,26 @@ function createRuntimeHarness(options = {}) {
 
   const fallbackCalls = [];
 
+  const fallbackImpl = options.includeFallback === false
+    ? null
+    : {
+        escapeHtml(value) {
+          return String(value || '');
+        },
+        appendMissingRouteState() {
+          fallbackCalls.push({ type: 'missing-route' });
+        },
+        handlePublicCanvasLoadFailure(error) {
+          fallbackCalls.push({
+            type: 'load-failure',
+            message: error && error.message ? error.message : '',
+            loading: body.classList.contains('public-viewer-loading'),
+            busy: body.getAttribute('aria-busy'),
+            count: elements.viewerSidebarMomentCount.textContent
+          });
+        }
+      };
+
   const sandbox = {
     window: {
       location: {
@@ -134,23 +154,7 @@ function createRuntimeHarness(options = {}) {
           };
         }
       },
-      LoveBudPublicCanvasErrorFallback: {
-        escapeHtml(value) {
-          return String(value || '');
-        },
-        appendMissingRouteState() {
-          fallbackCalls.push({ type: 'missing-route' });
-        },
-        handlePublicCanvasLoadFailure(error) {
-          fallbackCalls.push({
-            type: 'load-failure',
-            message: error && error.message ? error.message : '',
-            loading: body.classList.contains('public-viewer-loading'),
-            busy: body.getAttribute('aria-busy'),
-            count: elements.viewerSidebarMomentCount.textContent
-          });
-        }
-      },
+      LoveBudPublicCanvasErrorFallback: fallbackImpl,
       createEditorCanvas() {
         return {
           initCanvas() {
@@ -251,6 +255,11 @@ test('D/E. rejection clears loading before error fallback without using tree.mem
 
   assert.notEqual(helperSourceStart, -1, 'loading helper must exist');
   assert.equal(helperSource.includes('memoryCount'), false, 'loading helper must not inspect tree.memoryCount');
+  assert.equal(initSource.includes('ensurePublicCanvasLoadFailureHandler'), false, 'source must not keep global load failure wrapper');
+  assert.equal(initSource.includes('__lovebudLoadingWrappedHandlePublicCanvasLoadFailure'), false, 'source must not keep wrapped global fallback marker');
+  assert.equal(/fallback\.handlePublicCanvasLoadFailure\s*=\s*[^=]/.test(initSource), false, 'source must not reassign the global fallback handler');
+  assert.ok(initSource.includes('function handlePublicCanvasLoadFailure(error)'), 'source must define a local load failure cleanup helper');
+  assert.ok(initSource.includes('}).catch(handlePublicCanvasLoadFailure);'), 'promise rejection must route through the local catch wrapper');
 
   harness.rejectLoad(new Error('network down'));
   await harness.flush();
@@ -262,4 +271,16 @@ test('D/E. rejection clears loading before error fallback without using tree.mem
   assert.equal(harness.fallbackCalls[0].loading, false, 'error fallback must observe loading already cleared');
   assert.equal(harness.fallbackCalls[0].busy, undefined, 'error fallback must observe aria-busy cleared');
   assert.equal(harness.fallbackCalls[0].count, '불러오는 중…', 'reject path must not misreport a successful 0-count state');
+});
+
+test('F. rejection stays safe even when the shared fallback namespace is unavailable', async () => {
+  const harness = createRuntimeHarness({ includeFallback: false });
+
+  harness.rejectLoad(new Error('missing fallback'));
+  await harness.flush();
+  await harness.flush();
+
+  assert.equal(harness.body.classList.contains('public-viewer-loading'), false, 'loading class must still clear without fallback');
+  assert.equal(harness.body.getAttribute('aria-busy'), undefined, 'aria-busy must still clear without fallback');
+  assert.equal(harness.fallbackCalls.length, 0, 'no fallback calls should be recorded when namespace is absent');
 });

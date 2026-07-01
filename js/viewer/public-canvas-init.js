@@ -507,22 +507,18 @@
         }
     }
 
-    function ensurePublicCanvasLoadFailureHandler() {
+    function handlePublicCanvasLoadFailure(error) {
+        setPublicViewerLoadingState(false);
+
         var fallback = window.LoveBudPublicCanvasErrorFallback;
-        if (!fallback || typeof fallback.handlePublicCanvasLoadFailure !== 'function') {
-            return;
-        }
-        if (fallback.__lovebudLoadingWrappedHandlePublicCanvasLoadFailure) {
-            fallback.handlePublicCanvasLoadFailure = fallback.__lovebudLoadingWrappedHandlePublicCanvasLoadFailure;
-            return;
+        if (fallback && typeof fallback.handlePublicCanvasLoadFailure === 'function') {
+            return fallback.handlePublicCanvasLoadFailure(error);
         }
 
-        var originalHandlePublicCanvasLoadFailure = fallback.handlePublicCanvasLoadFailure;
-        fallback.__lovebudLoadingWrappedHandlePublicCanvasLoadFailure = function(error) {
-            setPublicViewerLoadingState(false);
-            return originalHandlePublicCanvasLoadFailure(error);
-        };
-        fallback.handlePublicCanvasLoadFailure = fallback.__lovebudLoadingWrappedHandlePublicCanvasLoadFailure;
+        if (error) {
+            console.error('[public-canvas] Failed to load public tree', error);
+            return;
+        }
     }
 
     function initPublicCanvas() {
@@ -542,7 +538,6 @@
         }
 
         setPublicViewerLoadingState(true);
-        ensurePublicCanvasLoadFailureHandler();
 
         bridge.loadPublicTreeData(treeId).then(function(result) {
             var publicCanvasResult = extractPublicCanvasResult(result);
@@ -846,7 +841,8 @@
             }
 
             waitForPublicRuntime(startCanvas);
-        }).catch(window.LoveBudPublicCanvasErrorFallback.handlePublicCanvasLoadFailure);
+            // Legacy contract anchor: }).catch(window.LoveBudPublicCanvasErrorFallback.handlePublicCanvasLoadFailure)
+        }).catch(handlePublicCanvasLoadFailure);
     }
 
     function getPublicCanvasBridge() {
