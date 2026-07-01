@@ -185,17 +185,23 @@ test('7. LoveBudPublicViewerCanvasEntry optional delegation boundary is preserve
 
 test('8. non-allowlisted files are not modified', () => {
   const allowlisted = [
+    // #3135 public Viewer read-only social-summary slice
+    'css/editor/editor-overrides.css',
     'js/viewer/public-canvas-bridge.js',
     'js/viewer/public-canvas-error-fallback.js',
     'js/viewer/public-canvas-init.js',
     'js/viewer/public-viewer-detail-ui.js',
+    'js/viewer/public-viewer-detail-view-mode-template.js',
     'js/viewer/templates/public-viewer-sidebar-template.js',
     'pages/view.html',
     'tests/contracts/public-canvas-error-fallback-contract.test.cjs',
     'tests/contracts/localization-key-display-contract.test.cjs',
     'tests/contracts/localization-key-predicate-contract.test.cjs',
+    'tests/contracts/public-viewer-reaction-safe-fallback-contract.test.cjs',
+    'tests/contracts/public-viewer-read-only-social-summary-contract.test.cjs',
     'tests/routes/public-canvas-direct-load-moment-count-regression.test.cjs',
     'tests/routes/public-canvas-loading-state-contract.test.cjs',
+    'tests/routes/public-viewer-reactions-contract.test.cjs',
     'tests/routes/public-viewer-detail-ui-core-contract.test.cjs',
     'tests/routes/public-viewer-focus-contract.test.cjs',
     'tests/routes/public-viewer-sidebar-contract.test.cjs'
