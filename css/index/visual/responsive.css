@@ -27,7 +27,6 @@
     .card-bottom { left: 50%; top: 616px; transform: translateX(-50%) rotate(-3deg); }
     .card-side-top { right: 14px; top: 170px; }
     .card-side-bottom { right: 14px; top: 532px; }
-    .home-v3-note-paper { left: 20px; top: 152px; }
     .branch-a, .branch-b, .branch-c, .branch-d, .branch-e, .branch-f, .home-v3-dots, .home-v3-word { display: none; }
 }
 

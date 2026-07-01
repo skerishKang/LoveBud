@@ -68,6 +68,7 @@
     if (!cards.length || typeof fetch !== 'function') return;
     if (document.getElementById('hero-growth-video')) return;
 
+    const stage = document.querySelector('.home-v3-growth-stage');
     const normalizeText = (value) => String(value || '').toLowerCase();
     const getThumbnail = (tree) => String(
         tree?.representativeThumbnail
@@ -109,6 +110,9 @@
                 img.onload = () => {
                     cards[index].style.setProperty('--moment-image', `url("${thumbnail.replace(/"/g, '%22')}")`);
                     cards[index].classList.add('has-hero-thumbnail');
+                    if (stage) {
+                        stage.classList.add('has-real-thumbnails');
+                    }
                 };
                 img.onerror = () => {
                     // Silently fail to preserve CSS gradient fallback and avoid console clutter
