@@ -17,7 +17,7 @@
 
 **Consuming surfaces:** All pages that load `css/global.css` as their stylesheet hub.
 
-**Style origin:** All rules are author-origin. No `user-agent` or `!important` overrides present in this file (5 `!important` usages across 743 lines — all in `padding`, `font-size` for `.lang-menu-trigger` within `@media (max-width: 480px)`).
+**Style origin:** All rules are author-origin. The target stylesheet contains five `!important` declarations, all scoped to `.lang-menu-trigger` within `@media (max-width: 480px)`.
 
 ---
 
@@ -73,15 +73,14 @@
 - `@media (max-width: 768px)`: `min-height: 65px`, `contain-intrinsic-size: 0 65px`
 
 ### 2h. Dark/light appearance and reduced-motion
-**No `prefers-reduced-motion` or `prefers-color-scheme` rules found in this file.**  
-All `transition` values are `none` or `0.2s`. This is a known gap: no graceful fallback if the user agent sets `prefers-reduced-motion: reduce`.
+No `prefers-reduced-motion` or `prefers-color-scheme` query was found in this stylesheet. Whether this concern belongs to the shared header's responsibility or to a broader product accessibility scope cannot be determined from this audit alone.
 
 ---
 
 ## 3. Cascade / override / specificity risks
 
 1. **`@import` is first** — `css/global/global-header.css` line 1 loads `global-header-language.css` before any declaration. Language dropdown CSS can override header tokens if its selectors match.
-2. **`#shared-header` vs `.nav-bar`** — `#shared-header` (ID) has higher specificity than `.nav-bar` (class). Any future rule must `:not()` around the shared-header ID.
+2. **`#shared-header` vs `.nav-bar`** — `#shared-header` (ID) has higher specificity than `.nav-bar` (class). Future selector changes must preserve the current `#shared-header` and `.nav-bar` cascade relationship and verify the CLS reservation behavior.
 3. **`.show` class** — `.user-dropdown-menu.show` → `display: block`. No animation or transition. Any `.show` addition must preserve this display flag.
 4. **`min-width: max-content`** — Used in `.nav-actions` and `.main-nav`. Can cause overflow at narrow viewports. Extracted file must keep this property.
 5. **`clamp()` usage** — `column-gap: clamp(16px, 2.5vw, 40px)` in `.nav-bar`. Extracted file must retain same `clamp`.
@@ -92,13 +91,10 @@ All `transition` values are `none` or `0.2s`. This is a known gap: no graceful f
 
 ### Conclusion: No safe first split
 
-The file is a single cohesive shell: header base + auth controls + dropdown + mobile responsive. All selectors share `.nav-bar`, `.nav-link`, `.user-`, `.main-nav` prefixes.
-
 **Why no split:**
 - `global-header-language.css` is already extracted as a child `@import` (line 1).
-- The remaining 742 lines share one `@media` breakpoint system and one `clamp`/`var` token dependency.
-- Any split would require either: (a) duplicating `@media` blocks across files, or (b) breaking `@import` ordering.
-- `!important` (5 uses) are all scoped to `.lang-menu-trigger` in `@media (max-width: 480px)` — already contained.
+- The audited declaration and media-query ordering does not identify a behavior-preserving first split within the allowed files.
+- A broader stylesheet aggregation/import-order contract would be a prerequisite before reassessing an extraction.
 
 **Recorded as `no-split / defer`.**
 
@@ -111,7 +107,7 @@ The file is a single cohesive shell: header base + auth controls + dropdown + mo
 If any of the following changes:
 - Selector ordering in this file
 - `@media` query boundary (768px, 480px, 769px)
-- `.show` / `.hide` display toggles
+- `.user-dropdown-menu.show` display toggle
 - `z-index: 1000` for dropdown
 - `!important` usage pattern
 - `.user-dropdown-menu` absolute positioning
