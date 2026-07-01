@@ -692,16 +692,23 @@
     }
 
     function createPublicViewerDetailUI(deps) {
-        var metadataText = window.LoveBudPublicViewerDetailMetadataText || {};
+        var metadataText = window.LoveBudPublicViewerDetailMetadataText;
+
+        if (
+            !metadataText ||
+            typeof metadataText.createPublicViewerCurrentMomentBadgeBoundary !== 'function' ||
+            typeof metadataText.createPublicViewerCurrentMomentTitleBoundary !== 'function' ||
+            typeof metadataText.updatePublicViewerCurrentMomentHint !== 'function' ||
+            typeof metadataText.updatePublicViewerCurrentMomentDate !== 'function'
+        ) {
+            throw new Error('[public-viewer-detail] Metadata text dependency not loaded');
+        }
+
         var detailUI = {};
         var updateDetailHeading = createPublicViewerDetailHeadingBoundary(deps);
         var updateTreeMeta = createPublicViewerTreeMetaBoundary(deps);
-        var updateCurrentMomentBadge = (typeof metadataText.createPublicViewerCurrentMomentBadgeBoundary === 'function')
-            ? metadataText.createPublicViewerCurrentMomentBadgeBoundary(deps)
-            : function() {};
-        var updateCurrentMomentTitle = (typeof metadataText.createPublicViewerCurrentMomentTitleBoundary === 'function')
-            ? metadataText.createPublicViewerCurrentMomentTitleBoundary(deps)
-            : function() {};
+        var updateCurrentMomentBadge = metadataText.createPublicViewerCurrentMomentBadgeBoundary(deps);
+        var updateCurrentMomentTitle = metadataText.createPublicViewerCurrentMomentTitleBoundary(deps);
         var updateCurrentMomentImage = createPublicViewerCurrentMomentImageBoundary(deps);
         var updateMemoBody = createPublicViewerMemoBodyBoundary(deps);
         var updateCurrentMomentTags = createPublicViewerCurrentMomentTagsBoundary(deps);
@@ -734,13 +741,9 @@
             updateCurrentMomentBadge(data);
             updateCurrentMomentTitle(data);
             updatePublicViewerDetailChannelLink(data);
-            if (typeof metadataText.updatePublicViewerCurrentMomentHint === 'function') {
-                metadataText.updatePublicViewerCurrentMomentHint();
-            }
+            metadataText.updatePublicViewerCurrentMomentHint();
             updateCurrentMomentImage(data);
-            if (typeof metadataText.updatePublicViewerCurrentMomentDate === 'function') {
-                metadataText.updatePublicViewerCurrentMomentDate(data);
-            }
+            metadataText.updatePublicViewerCurrentMomentDate(data);
             updateMemoBody(data);
             updateCurrentMomentTags(data);
             updateReadOnlyReactionSummary(data);
