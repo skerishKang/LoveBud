@@ -37,11 +37,20 @@
 
         var isStructured = layoutMode === 'structured';
         toggleBtn.classList.toggle('is-active', isStructured);
+        toggleBtn.setAttribute('aria-pressed', isStructured ? 'true' : 'false');
+
+        var currentLabel = isStructured
+            ? resolveLayoutLabel(i18n, 'editor_layout_structured', '정리된 트리')
+            : resolveLayoutLabel(i18n, 'editor_layout_free', '자유 배치');
+        var nextLabel = isStructured
+            ? resolveLayoutLabel(i18n, 'editor_layout_free', '자유 배치')
+            : resolveLayoutLabel(i18n, 'editor_layout_structured', '정리된 트리');
+
+        toggleBtn.setAttribute('aria-label', '현재 ' + currentLabel + ', ' + nextLabel + '로 전환');
+        toggleBtn.setAttribute('title', '현재 ' + currentLabel + ', ' + nextLabel + '로 전환');
 
         if (toggleLabel) {
-            toggleLabel.textContent = isStructured
-                ? resolveLayoutLabel(i18n, 'editor_layout_structured', '정리된 트리')
-                : resolveLayoutLabel(i18n, 'editor_layout_free', '자유 배치');
+            toggleLabel.textContent = currentLabel;
         }
         if (toggleIcon) {
             toggleIcon.textContent = isStructured ? 'account_tree' : 'auto_awesome';

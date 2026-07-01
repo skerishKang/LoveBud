@@ -12,7 +12,14 @@ function fakeElement(overrides = {}) {
       add: (c) => classList.add(c),
       remove: (c) => classList.delete(c),
       contains: (c) => classList.has(c),
+      toggle: (c, force) => {
+        if (force === undefined) return classList.has(c) ? classList.delete(c) : classList.add(c);
+        if (force) classList.add(c); else classList.delete(c);
+        return classList.has(c);
+      },
     },
+    setAttribute: function(name, val) { this._attrs = this._attrs || {}; this._attrs[name] = val; },
+    getAttribute: function(name) { return this._attrs ? this._attrs[name] : null; },
     /** @type {Map<string, fakeElement>} */
     _children: new Map(),
     /** @type {string|null} */
@@ -210,3 +217,124 @@ test('updateLayoutToggleUI falls back when i18n returns raw layout key', async (
     delete globalThis.document;
   }
 });
+
+test('updateLayoutToggleUI — synchronizes visual and a11y states', async () => {
+  const { updateLayoutToggleUI } = await import('../../js/editor/editor-canvas-ui-helpers.js');
+  const toggleBtn = fakeElement();
+  const toggleLabel = { textContent: '' };
+  const toggleIcon = { textContent: '' };
+  const doc = fakeDocument();
+  doc._set('layoutModeToggleBtn', toggleBtn);
+  doc._set('layoutModeToggleLabel', toggleLabel);
+  doc._set('layoutModeToggleIcon', toggleIcon);
+  const originalDocument = globalThis.document;
+  globalThis.document = doc;
+
+  // structured layout
+  updateLayoutToggleUI('structured', (k) => k);
+  assert.equal(toggleBtn.classList.contains('is-active'), true);
+  assert.equal(toggleBtn.getAttribute('aria-pressed'), 'true');
+  assert.equal(toggleBtn.getAttribute('aria-label'), '현재 editor_layout_structured, editor_layout_free로 전환');
+  assert.equal(toggleBtn.getAttribute('title'), '현재 editor_layout_structured, editor_layout_free로 전환');
+  assert.equal(toggleLabel.textContent, 'editor_layout_structured');
+  assert.equal(toggleIcon.textContent, 'account_tree');
+
+  // free layout
+  updateLayoutToggleUI('free', (k) => k);
+  assert.equal(toggleBtn.classList.contains('is-active'), false);
+  assert.equal(toggleBtn.getAttribute('aria-pressed'), 'false');
+  assert.equal(toggleBtn.getAttribute('aria-label'), '현재 editor_layout_free, editor_layout_structured로 전환');
+  assert.equal(toggleBtn.getAttribute('title'), '현재 editor_layout_free, editor_layout_structured로 전환');
+  assert.equal(toggleLabel.textContent, 'editor_layout_free');
+  assert.equal(toggleIcon.textContent, 'auto_awesome');
+
+  if (originalDocument) {
+    globalThis.document = originalDocument;
+  } else {
+    delete globalThis.document;
+  }
+});
+
+test('updateCompactToggleUI — synchronizes visual and a11y states', async () => {
+  const { updateCompactToggleUI } = await import('../../js/editor/editor-canvas-ui-helpers.js');
+  const toggleBtn = fakeElement();
+  const toggleLabel = { textContent: '' };
+  const icon = fakeElement();
+  toggleBtn._children.set('icon', icon); // mock querySelector
+  toggleBtn.querySelector = (sel) => (sel === '.material-symbols-outlined' ? icon : null);
+  const doc = fakeDocument();
+  doc._set('compactModeToggleBtn', toggleBtn);
+  doc._set('compactModeToggleLabel', toggleLabel);
+  const originalDocument = globalThis.document;
+  globalThis.document = doc;
+
+  // compact mode active
+  updateCompactToggleUI(true, (k) => k);
+  assert.equal(toggleBtn.classList.contains('is-active'), true);
+  assert.equal(toggleBtn.getAttribute('aria-pressed'), 'true');
+  assert.equal(toggleBtn.getAttribute('aria-label'), '현재 간략 보기, 상세 보기로 전환');
+  assert.equal(toggleBtn.getAttribute('title'), '현재 간략 보기, 상세 보기로 전환');
+  assert.equal(toggleLabel.textContent, '상세 보기');
+  assert.equal(icon.textContent, 'unfold_less');
+
+  // compact mode inactive (detailed)
+  updateCompactToggleUI(false, (k) => k);
+  assert.equal(toggleBtn.classList.contains('is-active'), false);
+  assert.equal(toggleBtn.getAttribute('aria-pressed'), 'false');
+  assert.equal(toggleBtn.getAttribute('aria-label'), '현재 상세 보기, 간략 보기로 전환');
+  assert.equal(toggleBtn.getAttribute('title'), '현재 상세 보기, 간략 보기로 전환');
+  assert.equal(toggleLabel.textContent, '간략 보기');
+  assert.equal(icon.textContent, 'unfold_more');
+
+  if (originalDocument) {
+    globalThis.document = originalDocument;
+  } else {
+    delete globalThis.document;
+  }
+});
+
+test('bindCompactModeToggle — restores state and prevents double binding', async () => {
+  const { bindCompactModeToggle } = await import('../../js/editor/editor-canvas-ui-helpers.js');
+
+  const toggleBtn = fakeElement();
+  const toolbar = fakeElement();
+  const icon = fakeElement();
+  toggleBtn.querySelector = (sel) => (sel === '.material-symbols-outlined' ? icon : null);
+
+  const doc = fakeDocument();
+  doc._set('compactModeToggleBtn', toggleBtn);
+  doc._set('compactModeToggleLabel', { textContent: '' });
+
+  // mock querySelector for toolbar
+  const originalDocument = globalThis.document;
+  globalThis.document = {
+    ...doc,
+    querySelector: (sel) => (sel === '.editor-canvas-toolbar' ? toolbar : null)
+  };
+
+  // Mock localStorage
+  const storage = new Map();
+  globalThis.localStorage = {
+    getItem: (k) => storage.get(k),
+    setItem: (k, v) => storage.set(k, v),
+  };
+
+  // 1. Restore compact = true
+  storage.set('lovebud_toolbar_compact', 'true');
+  bindCompactModeToggle();
+  assert.equal(toolbar.classList.contains('is-compact'), true);
+  assert.equal(toggleBtn.getAttribute('aria-pressed'), 'true');
+  assert.equal(icon.textContent, 'unfold_less');
+
+  // 2. Prevent double bind
+  const originalBindValue = toggleBtn.dataset.compactBound;
+  bindCompactModeToggle();
+  assert.equal(toggleBtn.dataset.compactBound, '1');
+
+  if (originalDocument) {
+    globalThis.document = originalDocument;
+  } else {
+    delete globalThis.document;
+  }
+});
+
