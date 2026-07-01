@@ -56,8 +56,8 @@
 ## 3. Protected invariants
 
 - **Import order:** 6 `@import` statements, fixed order: tokens → base → header → page-shell → ready-state → transition-polish
-- **Custom-property availability:** `:root` block (lines 349–372) defines `--control-*` tokens; these are available after the `@import` chain
-- **Selector/specificity ordering:** `.lovetree-page-shell` (lines 15–16), `.lovetree-soft-surface` (lines 33–37), `.lovetree-card` (lines 40–57), `.lovetree-pill` (lines 60–81), `.lovetree-chip` (lines 84–109), `.btn-round` (lines 111–115) — fixed order
+- **Custom-property availability:** The retained `:root` control-token block defines `--control-*` tokens; preserve its availability relative to the retained declarations and imported styles.
+- **Selector/specificity ordering:** Preserve the observed ordering among `.lovetree-page-shell`, `.lovetree-soft-surface`, `.lovetree-card`, `.lovetree-pill`, `.lovetree-chip`, and `.btn-round`.
 - **Page shell:** `lovetree-page-shell` `max-width`/`margin`/`padding` — shell hub
 - **Shared button/card/save-status states:** `.save-status-indicator.saving/.saved/.failed` — hub-hosted
 - **Responsive:** `@media (max-width: 768px)` for `.btn-round`, `.tag-chip`, `.page-hero-section` — hub-hosted
