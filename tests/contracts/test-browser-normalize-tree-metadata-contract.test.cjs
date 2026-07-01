@@ -159,15 +159,31 @@ test('normalizeTree keywords # no auto-prefix', () => {
   assert.equal(tree.keywords[0].indexOf('#'), -1);
 });
 
-test('normalizeTree non-array keywords -> []', () => {
+test('normalizeTree canonical groupName beats legacy group_name', () => {
   const N = getNormalizer();
   const tree = N.normalizeTree({
     id: 't1', ownerId: 'u1', title: 'T', visibility: 'public',
-    keywords: 'string', memoryCount: 0,
+    groupName: ' BTS ', group_name: 'HYBE', memoryCount: 0,
   });
-  // non-array keywords → [] via Array.isArray('string') fallback
-  assert.equal(Array.isArray(tree.keywords), true);
-  assert.equal(tree.keywords.length, 0);
+  assert.equal(tree.groupName, 'BTS');
+});
+
+test('normalizeTree canonical blank groupName does not fall back to legacy', () => {
+  const N = getNormalizer();
+  const tree = N.normalizeTree({
+    id: 't1', ownerId: 'u1', title: 'T', visibility: 'public',
+    groupName: '   ', group_name: 'HYBE', memoryCount: 0,
+  });
+  assert.equal(tree.groupName, null);
+});
+
+test('normalizeTree canonical non-string groupName does not fall back to legacy', () => {
+  const N = getNormalizer();
+  const tree = N.normalizeTree({
+    id: 't1', ownerId: 'u1', title: 'T', visibility: 'public',
+    groupName: 42, group_name: 'HYBE', memoryCount: 0,
+  });
+  assert.equal(tree.groupName, null);
 });
 
 // ============================================================
