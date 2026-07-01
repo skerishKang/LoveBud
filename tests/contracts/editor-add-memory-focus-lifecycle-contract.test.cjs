@@ -144,11 +144,12 @@ test('Editor Add Memory Focus Lifecycle Contract', async (t) => {
     }
   });
 
-  // 12. Existing focusNodeById / selectNode flow is preserved
+  // 12. Existing focusNodeById / selectNode flow is preserved (moved to editor-memory-form-save.js)
   await t.test('existing commitMemoryToTree still calls selectNode and focusNodeById', () => {
-    assert.ok(formJs.includes('selectNode(el, normalizedMemory)'),
-      'commitMemoryToTree must still call selectNode');
-    assert.ok(formJs.includes('focusNodeById(normalizedMemory.id)'),
-      'commitMemoryToTree must still call focusNodeById');
+    const saveJs = read('js/editor/editor-memory-form-save.js');
+    assert.ok(saveJs.includes('selectNode(el, normalizedMemory)'),
+      'commitMemoryToTree must still call selectNode in editor-memory-form-save.js');
+    assert.ok(saveJs.includes('focusNodeById(normalizedMemory.id)'),
+      'commitMemoryToTree must still call focusNodeById in editor-memory-form-save.js');
   });
 });
