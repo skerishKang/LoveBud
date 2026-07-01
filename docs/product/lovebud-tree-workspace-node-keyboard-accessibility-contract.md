@@ -25,51 +25,72 @@
 * **Route ownership**: Viewer Route (`pages/view.html`).
 
 ## Existing pointer, selection, and detail-panel paths
-* **Pointerdown Event**: Bound in `js/editor/editor-canvas.js` (line 455) via `uiHelpers.bindNodePointerSelection()`.
-* **Selection State update**: Calls `selectMemoryNode()` which delegates to `selectionUtils.reapplySelection()` to apply the `.selected` class.
-* **Detail Panel update**: Invokes `updateDetailPanel(mem)` which mounts information into the side panel templates without database query layout mutations.
+### Existing selection activation
+- Pointer selection is activated by `click` and qualified `touchend` in `bindNodePointerSelection()`.
+- `pointerdown` and `mousedown` are drag-start events through `bindNodeDragStart()`, not node-selection events.
+- Free-layout drag suppression prevents a moved node from immediately reselecting through its follow-up click path.
 
 ## Existing keyboard and focus behavior
-* **Arrow navigation**: Keyboard listeners are bound in `js/editor/editor-canvas.js` via `uiHelpers.bindNodeControlShortcuts` which delegates arrow triggers to `navigateNodeByOffset`.
-* **Roving tabindex**: Currently absent; all nodes are statically initialized with `tabIndex = 0`, causing tab key explosion on large datasets.
-* **Conflicts**: Canvas pan/zoom gestures are handled via D3/panzoom listeners in `js/editor/editor-canvas-viewport.js` and do not conflict with keyboard navigation focus models.
+### Editor current keyboard evidence
+- Editable desktop Editor nodes support Arrow-based sequential navigation when focus is already on a node.
+- Enter and Space activate node selection.
+- All generated nodes currently have `tabIndex = 0`.
+
+### Public Viewer current keyboard evidence
+- Public Viewer reuses the HTML node host and Enter/Space activation path.
+- Its canvas configuration sets `canEdit: false`.
+- Current Editor Arrow navigation guard therefore does not enable Arrow navigation in public Viewer.
+- Viewer Arrow parity is a proposed implementation requirement, not existing behavior.
 
 ## Needs runtime/browser verification
-* Multi-touch mobile zoom interaction behaviors.
-* Browser-specific voiceover announcements of dynamic `aria-live` state updates.
+* keyboard interaction during an active drag;
+* focus behavior after pan/zoom or rerender;
+* touch and multi-touch coexistence;
+* reduced-motion behavior;
+* VoiceOver/NVDA announcement behavior.
 
 ## Recommended semantic host and focus model
 * **Selected model**: `single-entry roving tabindex model`.
 * **Why**: Renders as standard HTML `div` overlays which allow roving tabindex without SVG accessibility tree limitations. Roving tabindex avoids Tab key explosion across dense nodes by maintaining only a single focusable entry point (`tabindex="0"`) and setting all others to `tabindex="-1"`.
 
 ## Keyboard interaction contract
-* **initial focus entry**: Tab key enters the canvas focusing the root memory node (`tabindex="0"`).
-* **Arrow navigation**: Arrow keys move focus adjacent to the current node, shifting `tabindex="0"` dynamically.
-* **Home/End behavior**: Home focuses the root node; End focuses the leaf node at the maximum depth.
-* **Enter/Space behavior**: Triggers node selection and opens the detail panel.
-* **Escape behavior**: Clears selection and returns focus to the root canvas container.
-* **detail panel open focus ownership**: Shifting focus to the sidebar detail panel header.
-* **detail panel close focus return**: Focus returns cleanly to the active moment node trigger.
-* **selection versus focus distinction**: Focused nodes show a dashed focus ring; selected nodes possess the `.selected` class with a solid visual outline.
-* **no write/no layout mutation guarantee**: Keyboard navigation must never write to database schemas or change spatial layouts.
-* **reduced motion handling**: Transition animations are disabled under user prefers-reduced-motion profiles.
+### Verified current behavior
+- Enter and Space trigger node selection.
+
+### Proposed implementation contract
+- **initial focus entry**: Tab key enters the canvas focusing the root memory node (`tabindex="0"`).
+- **Arrow navigation**: Arrow keys move focus adjacent to the current node, shifting `tabindex="0"` dynamically.
+- **Home/End behavior**: Home focuses the root node; End focuses the leaf node at the maximum depth.
+- **Escape behavior**: Clears selection and returns focus to the root canvas container.
+- **reduced-motion focus transition behavior**: Transition animations are disabled under user prefers-reduced-motion profiles.
 
 ## Selection, detail-panel, and focus-return contract
-* Selecting a node opens the detail panel. Closing the detail panel or pressing Escape returns focus to the active node.
+### Proposed implementation contract
+- **detail panel open focus ownership**: Shifting focus to the sidebar detail panel header.
+- **detail panel close focus restoration**: Focus returns cleanly to the active moment node trigger.
+- **selection versus focus distinction**: Focused nodes show a dashed focus ring; selected nodes possess the `.selected` class with a solid visual outline.
+- **no write/no layout mutation guarantee**: Keyboard navigation must never write to database schemas or change spatial layouts.
 
 ## Privacy-safe accessible-name contract
-* **Prohibited metadata**:
-  * private memo full text
-  * raw source URLs
-  * owner-only groupName
-  * owner-only keywords
-  * internal IDs
-  * hidden moderation state
-  * private media metadata
-* **Permitted sources**: `sanitizeTitle(mem.title, '')` only.
+### Verified current behavior
+- The current node `aria-label` uses sanitized title plus a selection action phrase (`sanitizeTitle(mem.title, '') + " 선택"`).
+- Displayed node information in `js/editor/editor-canvas-node.js` can include timestamp and memo-derived highlight text, but this memo-derived highlight text must not become part of the accessible node name.
+
+### Proposed implementation contract
+* **Editor owner route**:
+  * accessible name may use the sanitized node title visible to that owner;
+  * it must not concatenate memo-derived highlight text, raw URLs, hidden identifiers, or owner-only grouping metadata.
+* **Public Viewer route**:
+  * accessible name may use only the sanitized title provided in the public Viewer payload;
+  * it must never expose non-public metadata even when shared rendering helpers are reused.
+
+Any richer future naming must remain route-specific and privacy-gated.
 
 ## Canvas, drag, pan, zoom, and mobile conflict boundaries
-* Arrow keys are ignored when edit mode drag workflows are active. Space/Enter triggers are bypassed during active canvas pan/zoom transforms.
+### Verified static evidence
+- Canvas panning ignores events originating within `.memory-node`.
+- Free-layout node drag starts through `mousedown` / `pointerdown`.
+- Editor Arrow handling is limited to editable desktop nodes and excludes specific form/dialog/toolbar targets.
 
 ## Protected and delegated ownership
 * #3072 — mobile/touch shell policy
@@ -80,7 +101,12 @@
 * #1882 — parent product issue
 
 ## First implementation slice
-* **Exact files**: `js/editor/editor-canvas.js` and `js/viewer/public-canvas-init.js`.
+* **Exact files**:
+  * `js/editor/editor-canvas-node.js`: initial tabindex, role, aria-label host
+  * `js/editor/editor-canvas-ui-helpers.js`: keyboard event behavior and focus utility boundary
+  * `js/editor/editor-canvas.js`: Editor selection, Arrow navigation, rerender synchronization
+  * `js/viewer/public-canvas-init.js`: Viewer canEdit:false behavior and route-specific keyboard parity wiring
+* **CSS focus-indicator**: implementation discovery required (do not hardcode static paths).
 * **Route-local focused test**: `tests/contracts/tree-workspace-node-keyboard-accessibility-contract.test.cjs`.
 * **Protected boundary relationship**: Respects all protected boundaries with no touch gesture mutations.
 

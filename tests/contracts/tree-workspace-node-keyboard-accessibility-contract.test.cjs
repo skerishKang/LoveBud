@@ -37,50 +37,48 @@ test('Contract Document existence and sections integrity', () => {
   });
 });
 
-test('Contract contents verification of inventory, paths, model, and rules', () => {
+test('Contract contents verification of selection, behaviors, models, and boundaries', () => {
   const content = fs.readFileSync(DOC_PATH, 'utf8');
 
-  // Verify Editor inventory evidence
-  const editorSection = content.substring(content.indexOf('## Editor node rendering'), content.indexOf('## Public Viewer node rendering'));
-  assert.ok(editorSection.includes('js/editor/editor-canvas-node.js'), 'Editor inventory must reference correct provider file');
-  assert.ok(editorSection.includes('memory-node'), 'Editor inventory must reference memory-node class');
+  // click and touchend are selection evidence
+  assert.ok(content.includes('click') && content.includes('touchend') && content.includes('bindNodePointerSelection'), 'Must document click/touchend for selection');
 
-  // Verify Viewer inventory evidence
-  const viewerSection = content.substring(content.indexOf('## Public Viewer node rendering'), content.indexOf('## Existing pointer'));
-  assert.ok(viewerSection.includes('js/editor/editor-canvas-node.js'), 'Viewer inventory must reference shared provider file');
+  // mousedown / pointerdown are drag-start, pointerdown is not selection
+  assert.ok(content.includes('mousedown') && content.includes('pointerdown') && content.includes('bindNodeDragStart'), 'Must document mousedown/pointerdown as drag start');
+  assert.ok(content.includes('not node-selection events') || content.includes('not a node-selection'), 'Must specify pointerdown is not a selection event');
 
-  // Exact file path / selector / function evidence
-  assert.ok(content.includes('exact file path') || content.includes('Exact file path') || content.includes('Exact files'), 'Must document exact file path');
-  assert.ok(content.includes('Selector') || content.includes('selector'), 'Must document selector');
-  assert.ok(content.includes('Provider') || content.includes('provider'), 'Must document provider evidence');
+  // Editor and Viewer behaviors are split
+  assert.ok(content.includes('Editor current keyboard evidence') && content.includes('Public Viewer current keyboard evidence'), 'Must split Editor and Viewer keyboard behaviors');
 
-  // Pointer-selection-detail path
-  assert.ok(content.includes('Pointerdown Event') && content.includes('selectionUtils.reapplySelection') && content.includes('updateDetailPanel'), 'Must document pointer-selection-detail panel path');
+  // canEdit: false and Viewer Arrow navigation missing is recorded
+  assert.ok(content.includes('canEdit: false') && content.includes('does not enable Arrow navigation in public Viewer'), 'Must record Viewer arrow navigation limitations');
 
-  // Focus model and roving tab index
-  assert.ok(content.includes('roving tabindex') && content.includes('tabindex="0"') && content.includes('tabindex="-1"'), 'Must define roving tabindex model details');
+  // Home/End/Escape/focus-return in proposed contracts
+  const proposedSection = content.substring(content.indexOf('### Proposed implementation contract'));
+  assert.ok(proposedSection.includes('Home/End'), 'Home/End must be in proposed contract');
+  assert.ok(proposedSection.includes('Escape'), 'Escape must be in proposed contract');
+  assert.ok(proposedSection.includes('focus') || proposedSection.includes('restoration'), 'Focus return must be in proposed contract');
 
-  // Keyboard navigation keys
-  const keys = ['initial focus entry', 'Arrow navigation', 'Home/End', 'Enter/Space', 'Escape', 'focus return'];
-  keys.forEach(k => {
-    assert.ok(content.includes(k), `Must define keyboard action rule: ${k}`);
+  // Runtime/browser verification includes drag, pan/zoom, touch, reduced-motion, screen-reader
+  const verificationSection = content.substring(content.indexOf('## Needs runtime/browser verification'), content.indexOf('## Recommended semantic host'));
+  const keywords = ['drag', 'pan/zoom', 'touch', 'reduced-motion', 'VoiceOver/NVDA'];
+  keywords.forEach(k => {
+    assert.ok(verificationSection.includes(k), `Verification must include: ${k}`);
   });
 
-  // Focus and selection distinction
-  assert.ok(content.includes('selection versus focus distinction') || content.includes('focus and selection distinction'), 'Must document distinction between focus and selection');
+  // Privacy exclusion contains memo-derived highlight text
+  const privacySection = content.substring(content.indexOf('## Privacy-safe accessible-name contract'));
+  assert.ok(privacySection.includes('memo-derived highlight text'), 'Privacy exclusion must check memo-derived highlight text');
 
-  // Privacy rules
-  const prohibitedMeta = [
-    'private memo full text',
-    'raw source URLs',
-    'owner-only groupName',
-    'owner-only keywords',
-    'internal IDs',
-    'hidden moderation state',
-    'private media metadata'
+  // First implementation slice has 4 files
+  const files = [
+    'js/editor/editor-canvas-node.js',
+    'js/editor/editor-canvas-ui-helpers.js',
+    'js/editor/editor-canvas.js',
+    'js/viewer/public-canvas-init.js'
   ];
-  prohibitedMeta.forEach(p => {
-    assert.ok(content.includes(p), `Must prohibit metadata: ${p}`);
+  files.forEach(f => {
+    assert.ok(content.includes(f), `Implementation slice must list: ${f}`);
   });
 
   // Protected issue boundaries
@@ -88,9 +86,6 @@ test('Contract contents verification of inventory, paths, model, and rules', () 
   issues.forEach(issue => {
     assert.ok(content.includes(issue), `Must reference protected issue: ${issue}`);
   });
-
-  // First implementation slice and browser validation
-  assert.ok(content.includes('First implementation slice') && content.includes('browser-validation plan'), 'Must document first implementation slice and validation plans');
 });
 
 test('Document and test do not make active code changes or deployment changes', () => {
