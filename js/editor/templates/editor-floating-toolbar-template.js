@@ -34,20 +34,20 @@ export function buildFloatingToolbarTemplate() {
         </button>
         <!-- Secondary actions dropdown for "..." button -->
         <div id="ftbDropdown" class="editor-ftb-dropdown is-hidden" role="menu" aria-label="추가 행동" style="display:none;">
-            <button type="button" class="editor-ftb-dropdown-item" id="ftbScoutAction" role="menuitem" data-action="scout">
+            <button type="button" class="editor-ftb-dropdown-item" id="ftbScoutAction" role="menuitem" data-action="scout" aria-label="Scout로 순간 저장">
                 <span class="material-symbols-outlined" aria-hidden="true">scanner</span>
                 <span data-i18n="scout_trigger_label">Scout로 순간 저장</span>
             </button>
-            <button type="button" class="editor-ftb-dropdown-item" id="ftbDeleteAction" role="menuitem" data-action="delete">
+            <button type="button" class="editor-ftb-dropdown-item" id="ftbDeleteAction" role="menuitem" data-action="delete" aria-label="순간 삭제">
                 <span class="material-symbols-outlined" aria-hidden="true">delete</span>
                 <span>순간 삭제</span>
                 <span class="editor-ftb-shortcut-hint">Del</span>
             </button>
-            <button type="button" class="editor-ftb-dropdown-item" id="ftbShareAction" role="menuitem" data-action="share">
+            <button type="button" class="editor-ftb-dropdown-item" id="ftbShareAction" role="menuitem" data-action="share" aria-label="링크 복사">
                 <span class="material-symbols-outlined" aria-hidden="true">link</span>
                 <span>링크 복사</span>
             </button>
-            <button type="button" class="editor-ftb-dropdown-item" id="ftbFocusAction" role="menuitem" data-action="focus">
+            <button type="button" class="editor-ftb-dropdown-item" id="ftbFocusAction" role="menuitem" data-action="focus" aria-label="선택한 순간 보기">
                 <span class="material-symbols-outlined" aria-hidden="true">center_focus_strong</span>
                 <span>선택한 순간 보기</span>
             </button>
