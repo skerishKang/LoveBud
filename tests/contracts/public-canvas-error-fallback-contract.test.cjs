@@ -185,6 +185,12 @@ test('7. LoveBudPublicViewerCanvasEntry optional delegation boundary is preserve
 
 test('8. non-allowlisted files are not modified', () => {
   const allowlisted = [
+    // #3022 editor video-focus view
+    'pages/editor.html',
+    'css/editor/editor-video-focus-view.css',
+    'js/editor/editor-video-focus-view.js',
+    'tests/contracts/editor-video-focus-view-contract.test.cjs',
+
     // #3135 public Viewer read-only social-summary slice
     'css/editor/editor-overrides.css',
     'js/viewer/public-canvas-bridge.js',
