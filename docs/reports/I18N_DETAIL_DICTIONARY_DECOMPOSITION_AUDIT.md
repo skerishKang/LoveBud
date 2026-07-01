@@ -36,13 +36,15 @@ at line 4. The dictionary object is created directly with object-literal syntax;
 
 ### 2.3 Preserved-for-future-split condition
 
-For any future split to preserve current behavior, the post-split final state must:
+For the detail merger path (see §4.3), the following must be preserved in any future split:
 
-- Still expose exactly one global named `i18nDetail` on `window` with the same object shape (`{ key: { ko: string, en: string } }`).
-- Still be loaded as a `<script>` reference before `js/i18n/i18n-index.js` executes (since `i18n-index.js` reads `window.i18nDetail` at line 19 during the IIFE).
-- Still produce a single object that `i18n-index.js` can iterate with `Object.keys(...)` and assign into `mergedDictionary`; the order of insertion into `mergedDictionary` currently influences which value wins for any duplicated key.
+- The `window.i18nDetail` global name and reachability on `window` must remain (the global API identity).
+- The effective key/value set visible to `window.t(key)` at the directly inspected detail call sites must not change for any verified entry.
+- The duplicate-key survivor for `video_embed_fallback_cta` (line-349 English value wins per §3.7) must not change.
+- The load/merge timing: `window.i18nDetail` must be assigned before `js/i18n/i18n-index.js` executes on routes that use the merger path.
+- For index-free routes (§4.2), the effective dictionary-injection path is not yet established; any future split must verify equivalence there separately (see §6.2(4)).
 
-No IIFE rename, getter, setter, or export rename is implied or required by a no-split outcome.
+The specific construction mechanism (single object-literal vs. other composition) is not prescribed by this audit, provided the above observable properties are preserved and demonstrated via a verified equivalence contract in a separate runtime PR.
 
 ## 3. Dictionary Key-Family Map (verified on current main)
 
@@ -165,9 +167,20 @@ So the fallback is invoked when:
 
 This fallback boundary is real and observable at the call sites that were directly verified. The audit does not claim to enumerate every consumer of the dictionary in the repository; only the consumers directly inspected are listed. Any extension of this list requires a separate runtime investigation.
 
-### 4.5 Legacy/missing-key fallback
+### 4.5 Missing-key and locale behavior
 
-The dictionary structure currently has `{ ko: string, en: string }` per key, with no per-key fallback chain, no per-key default locale override, and no missing-key stub inside the dictionary. Missing-key behavior is fully delegated to the runtime `tText` fallback closure above. No dictionary-internal fallback is implemented; the audit makes no claim about whether one should be added (that is a future implementation decision).
+The runtime lookup chain has two layers that are relevant to the fallback contract:
+
+**`window.t(key)`** (from `js/i18n/i18n-core.js`):
+- If the key is absent from the dictionary, returns the key string itself.
+- If the key is present but the selected locale's value is absent, falls back to the default locale value (the other `ko`/`en` field) — this is implemented by `i18n-core.js` and is not a dictionary-internal stub.
+
+**`tText(key, fallback)`** (from `js/detail/detail-utils.js`):
+- This is an additional wrapper used at the directly verified detail call sites (see §4.4).
+- It calls `window.t(key)` internally and applies a further guard: if the result is not a string, is empty, or equals the key string itself (the missing-key echo), the caller's Korean fallback string is returned instead.
+- The Korean fallback is a hardcoded string literal at each call site (e.g., `'기억을 찾지 못했어요'` for `memory_not_found_title`); it is not derived from the dictionary.
+
+The dictionary itself (`js/i18n/i18n-detail.js`) has no per-key fallback chain, no per-key locale-override, and no missing-key stub. The two-layer fallback is entirely in the consumer-side helpers. The audit makes no claim about whether a future implementation should consolidate or change either layer.
 
 ## 5. Protected Invariants
 
@@ -184,14 +197,15 @@ The following must remain preserved in any future extraction:
 
 ## 6. No-Split / Defer Conclusion
 
-After examining the current global API boundary, the IIFE-wrapper style, the dictionary merger pattern in `js/i18n/i18n-index.js`, the single `window.i18nDetail = { ... }` write, and the per-page script-order contracts in §4, this audit concludes:
+After examining the current global API boundary, the IIFE-wrapper style, the dictionary merger pattern in `js/i18n/i18n-index.js`, the single `window.i18nDetail = { ... }` write, the confirmed detail-merger/lookup path, and the undetermined index-free routes, this audit concludes:
 
 > **The audited global-object assignment and consumer/load-order contract does not identify a behavior-preserving first split within the allowed files.**
 
 Specifically:
-- There is no module-factory function or per-key injection that would naturally split into multiple files. Any split that changes the construction mechanism (e.g., from a single object-literal assignment to an `Object.assign({}, ...parts)` build or to a multi-step `window.i18nDetail = {}` followed by incremental mutation) is acceptable only if a verified equivalence contract records the observable behavior change risk relative to today's runtime result. Such a contract is out of scope for this audit-only PR.
-- The duplicate-key boundary in §3.7 means the source-order of object-literal property insertion is currently load-bearing for `video_embed_fallback_cta`. Any split that distributes this key across two files would either rely on `i18n-index.js` iteration order (which is a separate decision), or require resolving the duplicate explicitly. Neither is in-scope for an audit-only PR.
-- The dictionary is read exclusively via `window.t` after the merger runs; consumers do not call `i18nDetail` directly. This makes the global-object boundary narrower than the file boundary, which gives a future split two viable shapes (file-per-family vs. file-per-surface), but neither is uniquely safe without an accompanying consumer-side contract change that is explicitly out of scope.
+- The detail merger path is confirmed: `window.i18nDetail` is assigned, then `i18n-index.js` runs and merges it, then consumers call `window.t(key)` (with `tText` wrapping at verified call sites). Within this path, no natural split is identified that would preserve §5 invariants without a verified equivalence contract.
+- The duplicate-key boundary in §3.7 means the source-order of object-literal property insertion is currently load-bearing for `video_embed_fallback_cta`. Any split that distributes this key across two files would require either resolving the duplicate explicitly or relying on `i18n-index.js` iteration order (which is a separate decision). Neither is in-scope for an audit-only PR.
+- For the index-free routes (`pages/view.html`, `pages/public-canvas.html`), the effective dictionary-injection path is not established by this audit (see §4.2 and §6.2(4)). A future split that affects those routes cannot be assessed until the path is verified.
+- A future split that produces a different construction mechanism (e.g., `Object.assign({}, ...parts)` or multi-step mutation) is acceptable only if a verified equivalence contract records that the observable lookup results, duplicate survivor semantics, global availability where required, and route-specific load timing are preserved. Such a contract is out of scope for this audit-only PR.
 
 ### 6.1 Rollback triggers (for any future split attempt)
 
@@ -238,7 +252,7 @@ A future runtime implementation PR that touches `js/i18n/i18n-detail.js` or its 
 - **Detail/viewer initial load with script order preserved**: `pages/detail.html` initial render, with `i18n-detail.js` loading at the documented §4.2 position relative to its neighbors. For `pages/view.html` and `pages/public-canvas.html`, the prerequisite from §6.2(4) (establishing the effective dictionary-injection path) must complete before these routes are included in any pre-merge verification matrix.
 - **Public and signed-in detail surfaces where current consumers exist**: coverage of public-canvas read-only route and detail signed-in route is conditional on the §6.2(4) prerequisite; this verification row records the intent without claiming equivalence has been established today.
 - **Translation-present path**: each key in §3 families, when looked up via `window.t(key)` after locale selection, returns the expected `ko` or `en` string for the selected locale, **on routes where the effective dictionary-injection path is verified**.
-- **Legacy/missing-key fallback path**: lookup for a key not in the dictionary (or whose value is empty) invokes the `tText` fallback closure in `js/detail/detail-utils.js` and returns the Korean literal passed by the consumer at the call site (verified at the call sites directly inspected in §4.4).
+- **Legacy/missing-key fallback path (directly verified tText call sites only)**: at the call sites directly inspected in §4.4, lookup for a key not in the dictionary (or whose value is empty or whose lookup result echoes the key string) invokes the `tText(key, fallback)` wrapper in `js/detail/detail-utils.js` and returns the caller's hardcoded Korean fallback literal. This row does not assert the same behavior for any call site beyond those directly inspected.
 - **Tree load error / not-found / API unavailable keys**: `memory_not_found_*`, `tree_load_*`, `tree_not_found_*`, `tree_load_api_unavailable` render the documented §3.1 copy on the detail route.
 - **Unavailable media, empty-detail states**: `video_unavailable_soft_*`, `empty_panel_hint`, `empty_memo_*`, `connected_*`, `no_siblings_in_path` render the documented §3.4 copy on the detail route.
 - **Editor-side consumers** that reference tree-context / growth-label keys on `pages/editor.html` resolve the same key strings as on the detail page (because both load `i18n-detail.js` via the merger path).
