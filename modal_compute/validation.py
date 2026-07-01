@@ -98,6 +98,7 @@ def normalize_tree_row(
     memory_count: int | None = None,
     *,
     include_owner: bool = True,
+    include_owner_metadata: bool = False,
 ) -> dict[str, Any]:
     tree = {
         "id": str(row["id"]),
@@ -110,6 +111,14 @@ def normalize_tree_row(
 
     if include_owner:
         tree["ownerId"] = str(row["owner_id"]) if row.get("owner_id") else None
+
+    if include_owner_metadata:
+        tree["groupName"] = normalize_group_name(row.get("group_name"))
+        raw_keywords = row.get("keywords")
+        if raw_keywords is None:
+            tree["keywords"] = []
+        else:
+            tree["keywords"] = [str(kw) for kw in raw_keywords if kw]
 
     return tree
 
@@ -169,6 +178,58 @@ def validate_optional_string(value: Any, max_length: int = 5000) -> str:
     if len(text) > max_length:
         raise HTTPException(status_code=400, detail=f"Field exceeds max {max_length}")
     return text
+
+
+def normalize_group_name(raw: Any) -> str | None:
+    """Normalize a groupName value: trim, empty→null, max 80 chars."""
+    if raw is None:
+        return None
+    if not isinstance(raw, str):
+        return None
+    stripped = raw.strip()
+    if not stripped:
+        return None
+    if len(stripped) > 80:
+        raise HTTPException(status_code=400, detail="groupName exceeds max 80 characters")
+    return stripped
+
+
+def normalize_keywords(raw: Any) -> list[str]:
+    """
+    Normalize a keywords value:
+    - Must be an array (if not, 400 error)
+    - Each item trim, empty removed
+    - Order-preserving deduplication
+    - Max 5 items, each max 24 chars
+    - DB default [] if empty
+    - No '#' auto-add or forced prefix
+    """
+    if raw is None:
+        return []
+    if not isinstance(raw, list):
+        raise HTTPException(status_code=400, detail="keywords must be an array")
+
+    seen = set()
+    result: list[str] = []
+    for item in raw:
+        if not isinstance(item, str):
+            raise HTTPException(status_code=400, detail="each keyword must be a string")
+        trimmed = item.strip()
+        if not trimmed:
+            continue
+        if len(trimmed) > 24:
+            raise HTTPException(
+                status_code=400,
+                detail=f"keyword '{trimmed[:20]}...' exceeds max 24 characters"
+            )
+        if trimmed not in seen:
+            seen.add(trimmed)
+            result.append(trimmed)
+
+    if len(result) > 5:
+        raise HTTPException(status_code=400, detail="keywords exceeds max 5")
+
+    return result
 
 
 def validate_required_uuid(value: Any, name: str) -> str:
