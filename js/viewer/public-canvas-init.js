@@ -841,7 +841,6 @@
             }
 
             waitForPublicRuntime(startCanvas);
-            // Legacy contract anchor: }).catch(window.LoveBudPublicCanvasErrorFallback.handlePublicCanvasLoadFailure)
         }).catch(handlePublicCanvasLoadFailure);
     }
 

@@ -261,6 +261,10 @@ test('D/E. rejection clears loading before error fallback without using tree.mem
   assert.ok(initSource.includes('function handlePublicCanvasLoadFailure(error)'), 'source must define a local load failure cleanup helper');
   assert.ok(initSource.includes('}).catch(handlePublicCanvasLoadFailure);'), 'promise rejection must route through the local catch wrapper');
 
+  // Legacy contract anchor checks
+  assert.equal(initSource.includes('Legacy contract anchor'), false, 'source must not retain legacy contract anchor comment');
+  assert.equal(initSource.includes('.catch(window.LoveBudPublicCanvasErrorFallback.handlePublicCanvasLoadFailure)'), false, 'source must not use old direct catch expression');
+
   harness.rejectLoad(new Error('network down'));
   await harness.flush();
   await harness.flush();
