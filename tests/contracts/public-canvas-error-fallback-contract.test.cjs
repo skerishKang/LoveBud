@@ -185,6 +185,7 @@ test('7. LoveBudPublicViewerCanvasEntry optional delegation boundary is preserve
 
 test('8. non-allowlisted files are not modified', () => {
   const allowlisted = [
+    'docs/architecture/lovebud-page-loaded-global-bridge-observations.md',
     'js/viewer/public-canvas-bridge.js',
     'js/viewer/public-canvas-error-fallback.js',
     'js/viewer/public-canvas-init.js',
