@@ -13,14 +13,12 @@
 * **Provider**: `js/editor/editor-canvas-node.js` (`nodeHelpers.createNodeElement`).
 * **Child structure**: Renders a card layout using `.node-card`, containing a `.node-img-wrapper`, a `.node-skeleton`, and a child `img` element.
 * **Initial accessible attributes**:
-  * `tabIndex = 0` (via line 78)
-  * `role = "button"` (line 79)
-  * `aria-label = safeTitle + ' 선택'` (line 82)
+  * `js/editor/editor-canvas-node.js` assigns `tabIndex = 0`, `role="button"`, and the title-derived `aria-label`.
 * **Route ownership**: Editor Route (`pages/editor.html`).
 
 ## Public Viewer node rendering and interaction inventory
 * **Element type**: HTML `div` element with class name `memory-node floating-node`.
-* **Provider**: Shares the exact same module file dependency `js/editor/editor-canvas-node.js` loaded via script tag in `pages/view.html` (line 49).
+* **Provider**: `pages/view.html` loads `js/editor/editor-canvas-node.js` before the Viewer initialization entry.
 * **Initial accessible attributes**: Same as Editor (shares `setupNodeElement`).
 * **Route ownership**: Viewer Route (`pages/view.html`).
 
@@ -29,6 +27,23 @@
 - Pointer selection is activated by `click` and qualified `touchend` in `bindNodePointerSelection()`.
 - `pointerdown` and `mousedown` are drag-start events through `bindNodeDragStart()`, not node-selection events.
 - Free-layout drag suppression prevents a moved node from immediately reselecting through its follow-up click path.
+
+### Editor verified selection and detail path
+1. `click` or qualified `touchend` triggers the node `onSelect` callback.
+2. `editor-canvas.js` delegates activation to its injected `onNodeClick(nodeEl, mem)`.
+3. `editor.js` supplies `selectNode` through `createEditorSelectNodeHandler()`.
+4. `selectNode` updates selected/current-memory state and calls the injected detail-panel updater.
+5. `createEditorDetailUI()` provides that actual `updateDetailPanel` implementation.
+
+Static guardrail:
+- the selection path itself is not a tree write or layout mutation;
+- free-layout drag persistence remains a separate pointer-drag path.
+
+### Viewer verified selection and detail path
+- `public-canvas-init.js` defines `createPublicCanvasOptions()` which passes `updateDetailPanel` and `onNodeClick` into public canvas options.
+- The canvas configuration sets `canEdit: false`.
+- `createPublicEditorCanvas()` or its bootstrap sequence delegates canvas creation using these options.
+- Viewer final `onNodeClick` ownership remains a runtime/browser verification item.
 
 ## Existing keyboard and focus behavior
 ### Editor current keyboard evidence
@@ -74,7 +89,9 @@
 ## Privacy-safe accessible-name contract
 ### Verified current behavior
 - The current node `aria-label` uses sanitized title plus a selection action phrase (`sanitizeTitle(mem.title, '') + " 선택"`).
-- Displayed node information in `js/editor/editor-canvas-node.js` can include timestamp and memo-derived highlight text, but this memo-derived highlight text must not become part of the accessible node name.
+- Displayed node information in `js/editor/editor-canvas-node.js` can include a timestamp and a memo-derived highlight text via `appendNodeInfo()`.
+- `.node-mood` is the visible node-card metadata element created via `moodEl.className = 'node-mood'` and assigned `moodEl.textContent = resolveNodeHighlightText(memory)`.
+- `.node-mood` and any memo-derived result from `resolveNodeHighlightText()` must not be concatenated into the node `aria-label`.
 
 ### Proposed implementation contract
 * **Editor owner route**:
@@ -107,11 +124,45 @@ Any richer future naming must remain route-specific and privacy-gated.
   * `js/editor/editor-canvas.js`: Editor selection, Arrow navigation, rerender synchronization
   * `js/viewer/public-canvas-init.js`: Viewer canEdit:false behavior and route-specific keyboard parity wiring
 * **CSS focus-indicator**: implementation discovery required (do not hardcode static paths).
-* **Route-local focused test**: `tests/contracts/tree-workspace-node-keyboard-accessibility-contract.test.cjs`.
 * **Protected boundary relationship**: Respects all protected boundaries with no touch gesture mutations.
 
+### Required implementation tests
+- `tests/contracts/editor-canvas-node-keyboard-roving-contract.test.cjs`
+  - one `tabindex="0"` node entry
+  - remaining nodes `tabindex="-1"`
+  - title-derived aria-label excludes `.node-mood` / memo-derived text
+  - Enter/Space selection parity
+
+- `tests/routes/editor-node-keyboard-interaction-contract.test.cjs`
+  - editable desktop Arrow navigation
+  - no write/layout mutation on focus movement
+  - drag suppression does not trigger selection
+
+- `tests/routes/public-viewer-node-keyboard-parity-contract.test.cjs`
+  - Viewer `canEdit:false`
+  - Enter/Space selection parity
+  - Viewer Arrow parity only after dedicated implementation
+  - public accessible-name privacy boundary
+
 ## Regression coverage and browser-validation plan
-* Validate roving tabindex changes dynamically on arrow key triggers. Assert focus is restored to the selected node trigger upon closing panels.
+### Required browser validation after implementation
+Editor desktop:
+- Tab enters one node only.
+- Arrow movement changes focus without opening edit/drag behavior.
+- Enter and Space preserve pointer-selection outcome.
+- detail panel close returns focus to the activated node.
+- free-layout drag does not produce accidental selection.
+
+Public Viewer desktop:
+- Tab enters one node only.
+- Enter and Space activate the public detail result.
+- no owner-only or memo-derived text is announced.
+- Viewer Arrow behavior matches only the approved implementation contract.
+
+Mobile and assistive technology:
+- touch interaction remains unchanged under #3072.
+- VoiceOver/NVDA announce the node name once.
+- reduced-motion preference does not remove visible focus indication.
 
 ## Explicit non-goals
 * No HTML, JavaScript, CSS, API, data-model, schema, migration, deployment, Scout, or authentication-policy change in this audit slice.

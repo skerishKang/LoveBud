@@ -66,9 +66,39 @@ test('Contract contents verification of selection, behaviors, models, and bounda
     assert.ok(verificationSection.includes(k), `Verification must include: ${k}`);
   });
 
-  // Privacy exclusion contains memo-derived highlight text
+  // Privacy section verification
   const privacySection = content.substring(content.indexOf('## Privacy-safe accessible-name contract'));
-  assert.ok(privacySection.includes('memo-derived highlight text'), 'Privacy exclusion must check memo-derived highlight text');
+  assert.ok(privacySection.includes('.node-mood'), 'Privacy section must include .node-mood element check');
+  assert.ok(privacySection.includes('resolveNodeHighlightText'), 'Privacy section must include resolveNodeHighlightText function check');
+  assert.ok(!privacySection.includes('.node-highlight-text'), 'Privacy section must not contain stale .node-highlight-text');
+
+  // No line numbers check
+  const lineNumbers = ['line 78', 'line 79', 'line 82', 'line 49'];
+  lineNumbers.forEach(ln => {
+    assert.ok(!content.includes(ln), `Must not contain stale line number: ${ln}`);
+  });
+
+  // Editor verified selection/detail path contains required terms
+  const selectionPathSection = content.substring(content.indexOf('### Editor verified selection and detail path'));
+  const selectionTerms = ['createEditorSelectNodeHandler', 'createEditorDetailUI', 'updateDetailPanel', 'onNodeClick'];
+  selectionTerms.forEach(term => {
+    assert.ok(selectionPathSection.includes(term), `Selection path must include: ${term}`);
+  });
+
+  // Viewer detail path verification
+  const viewerPathSection = content.substring(content.indexOf('### Viewer verified selection and detail path'));
+  assert.ok(viewerPathSection.includes('createPublicCanvasOptions') || viewerPathSection.includes('runtime/browser verification'), 'Viewer detail path must contain verified adapter or runtime verification details');
+
+  // Future implementation tests checks
+  assert.ok(content.includes('tests/contracts/editor-canvas-node-keyboard-roving-contract.test.cjs'), 'Must include roving contract path');
+  assert.ok(content.includes('tests/routes/editor-node-keyboard-interaction-contract.test.cjs'), 'Must include editor route interaction contract path');
+  assert.ok(content.includes('tests/routes/public-viewer-node-keyboard-parity-contract.test.cjs'), 'Must include viewer route parity contract path');
+
+  // Browser validation plan categories
+  const validationSection = content.substring(content.indexOf('## Regression coverage and browser-validation plan'));
+  assert.ok(validationSection.includes('Editor desktop:'), 'Must validate Editor desktop path');
+  assert.ok(validationSection.includes('Public Viewer desktop:'), 'Must validate Viewer desktop path');
+  assert.ok(validationSection.includes('Mobile and assistive technology:'), 'Must validate Mobile/AT path');
 
   // First implementation slice has 4 files
   const files = [
