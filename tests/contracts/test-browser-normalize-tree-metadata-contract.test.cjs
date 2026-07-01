@@ -58,24 +58,22 @@ test('normalizeTree accepts legacy snake_case', () => {
   assert.deepEqual(tree.keywords, ['a', 'b']);
 });
 
-test('normalizeTree blank groupName passthrough', () => {
+test('normalizeTree blank groupName -> null', () => {
   const N = getNormalizer();
   const tree = N.normalizeTree({
     id: 't1', ownerId: 'u1', title: 'T', visibility: 'public',
     groupName: '   ', memoryCount: 0,
   });
-  // JS normalizer passes raw value through; server validates
-  assert.equal(tree.groupName, '   ');
+  assert.equal(tree.groupName, null);
 });
 
-test('normalizeTree non-string groupName passthrough', () => {
+test('normalizeTree non-string groupName -> null', () => {
   const N = getNormalizer();
   const tree = N.normalizeTree({
     id: 't1', ownerId: 'u1', title: 'T', visibility: 'public',
     groupName: 42, memoryCount: 0,
   });
-  // JS normalizer passes raw value through; server validates
-  assert.equal(tree.groupName, 42);
+  assert.equal(tree.groupName, null);
 });
 
 test('normalizeTree missing groupName -> null', () => {
@@ -126,6 +124,50 @@ test('normalizeTree JSON round-trip preserves groupName', () => {
   const round = JSON.parse(JSON.stringify(tree));
   assert.equal(round.groupName, 'kpop');
   assert.deepEqual(round.keywords, ['a', 'b']);
+});
+
+// ============================================================
+// normalizeTree — additional edge cases
+// ============================================================
+
+test('normalizeTree legacy group_name trim', () => {
+  const N = getNormalizer();
+  const tree = N.normalizeTree({
+    id: 't1', ownerId: 'u1', title: 'T', visibility: 'public',
+    group_name: '  HYBE  ', memoryCount: 0,
+  });
+  assert.equal(tree.groupName, 'HYBE');
+});
+
+test('normalizeTree keywords filters non-string', () => {
+  const N = getNormalizer();
+  const tree = N.normalizeTree({
+    id: 't1', ownerId: 'u1', title: 'T', visibility: 'public',
+    keywords: [' a ', '', 42, 'b'], memoryCount: 0,
+  });
+  assert.deepEqual(tree.keywords, ['a', 'b']);
+});
+
+test('normalizeTree keywords # no auto-prefix', () => {
+  const N = getNormalizer();
+  // Server returns ['kpop', 'bts'] — normalizer must NOT add #
+  const tree = N.normalizeTree({
+    id: 't1', ownerId: 'u1', title: 'T', visibility: 'public',
+    keywords: ['kpop'], memoryCount: 0,
+  });
+  assert.equal(tree.keywords[0], 'kpop');
+  assert.equal(tree.keywords[0].indexOf('#'), -1);
+});
+
+test('normalizeTree non-array keywords -> []', () => {
+  const N = getNormalizer();
+  const tree = N.normalizeTree({
+    id: 't1', ownerId: 'u1', title: 'T', visibility: 'public',
+    keywords: 'string', memoryCount: 0,
+  });
+  // non-array keywords → [] via Array.isArray('string') fallback
+  assert.equal(Array.isArray(tree.keywords), true);
+  assert.equal(tree.keywords.length, 0);
 });
 
 // ============================================================

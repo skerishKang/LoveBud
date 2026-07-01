@@ -2,7 +2,7 @@
 --
 -- Refs #2882 (tree owner metadata foundation)
 --
--- Adds owner-level tree metadata for browse/sort/filter.
+-- Adds owner-authored tree metadata for future owner-only management and card display.
 -- Existing trees: group_name defaults to NULL, keywords defaults to '{}'.
 --
 -- Columns:
