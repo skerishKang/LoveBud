@@ -322,6 +322,12 @@ test('8. dynamic auth change, cache invalidation, and deduplication contracts', 
   sandbox.window.setTimeout = sandbox.setTimeout;
 
   vm.createContext(sandbox);
+  const fallbackCode = fs.readFileSync(path.join(ROOT, 'js/viewer/public-canvas-error-fallback.js'), 'utf8');
+  vm.runInContext(fallbackCode, sandbox);
+  assert.ok(sandbox.window.LoveBudPublicCanvasErrorFallback, 'window.LoveBudPublicCanvasErrorFallback must exist');
+  assert.ok(sandbox.window.LoveBudPublicCanvasErrorFallback.handlePublicCanvasLoadFailure, 'handlePublicCanvasLoadFailure helper must exist');
+  assert.ok(sandbox.window.LoveBudPublicCanvasErrorFallback.appendMissingRouteState, 'appendMissingRouteState helper must exist');
+
   vm.runInContext(code, sandbox);
 
   const originalUpdateUI = sandbox.window.LoveBudPublicCanvasInit.updateOwnerModeUI;
