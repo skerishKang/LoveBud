@@ -38,23 +38,35 @@ test('Contract Document existence and sections integrity', () => {
 test('Contract contents verification of fields, dispositions, and candidates', () => {
   const content = fs.readFileSync(DOC_PATH, 'utf8');
 
-  // Verify inventory field set identifiers exist
-  const fields = ['DOM selector', 'visual purpose', 'role', 'Keyboard behavior', 'Focus behavior'];
-  fields.forEach(f => {
-    assert.ok(content.toLowerCase().includes(f.toLowerCase()), `Document must refer to inventory field: ${f}`);
+  // Verify status section specifies "Initial static-code inventory"
+  assert.ok(content.includes('Initial static-code inventory'), 'Must specify Initial static-code inventory status');
+
+  // Verify no speculative phrases like "if present as icon-only" exist
+  assert.ok(!content.includes('if present as icon-only'), 'Must not contain speculative if present as icon-only');
+  assert.ok(!content.includes('aria-label or raw Material glyph'), 'Must not contain speculative name attributes');
+  assert.ok(!content.includes('standard click handler'), 'Must not contain speculative handlers');
+  assert.ok(!content.includes('standard outline'), 'Must not contain speculative outlines');
+  assert.ok(!content.includes('highlighted focus ring'), 'Must not contain speculative focus rings');
+  assert.ok(!content.includes('outlined focus'), 'Must not contain speculative focus behavior');
+
+  // Verify #previewMobileClose classification
+  assert.ok(content.includes('aria-label="감상 닫기"'), 'Must document previewMobileClose label');
+  assert.ok(!content.includes('missing name') || !content.match(/previewMobileClose.*missing name/i), 'previewMobileClose must not be marked as missing name');
+
+  // Verify ownership references (Refs #3073, #2977, #2965)
+  assert.ok(content.includes('#3073 provides completed toolbar-accessibility evidence only'), 'Must correct #3073 description');
+  assert.ok(content.includes('#2977') && content.includes('#2965'), 'Must reference #2977 and #2965');
+
+  // Verify candidate properties
+  const candidates = ['Candidate 1', 'Candidate 2', 'Candidate 3'];
+  candidates.forEach(cand => {
+    assert.ok(content.includes(cand), `Must document ${cand}`);
   });
 
-  // Verify disposition categories are documented
-  const dispositions = [
-    'compliant',
-    'missing name',
-    'misleading name',
-    'missing state semantics',
-    'focus issue',
-    'decorative/non-interactive'
-  ];
-  dispositions.forEach(disp => {
-    assert.ok(content.includes(disp), `Document must categorize disposition: ${disp}`);
+  // Verify inventory field set identifiers exist
+  const fields = ['selector', 'file path', 'current evidence', 'minimal remediation', 'test requirement', 'boundary'];
+  fields.forEach(f => {
+    assert.ok(content.toLowerCase().includes(f.toLowerCase()), `Document must refer to candidate field: ${f}`);
   });
 
   // Verify delegated and protected issue boundaries are referenced
@@ -62,17 +74,12 @@ test('Contract contents verification of fields, dispositions, and candidates', (
   issueBoundaries.forEach(issue => {
     assert.ok(content.includes(issue), `Document must reference issue boundary: ${issue}`);
   });
-
-  // Verify minimum three remediation candidates exist
-  assert.ok(content.includes('Candidate 1'), 'Must have Candidate 1');
-  assert.ok(content.includes('Candidate 2'), 'Must have Candidate 2');
-  assert.ok(content.includes('Candidate 3'), 'Must have Candidate 3');
 });
 
 test('Document and test do not make active code changes or deployment changes', () => {
   const content = fs.readFileSync(DOC_PATH, 'utf8');
   assert.ok(content.includes('Explicit non-goals'), 'Document must list non-goals');
-  assert.ok(content.includes('No UI tag click handler') || content.includes('No UI'), 'Must state no UI/code change in non-goals');
+  assert.ok(content.includes('No HTML, JavaScript, CSS') || content.includes('No HTML'), 'Must state no UI/code change in non-goals');
 });
 
 test('Prohibited phrases absence in both document and test file', () => {
