@@ -43,6 +43,8 @@ Object.assign(window.i18nEditor, {
     editor_continue_from_moment: { ko: '이 순간에서 이어가기', en: 'Continue from this moment' },
     editor_branch_from_moment: { ko: '이 순간에서 가지 만들기', en: 'Branch from this moment' },
     editor_actions_primary: { ko: '주요 행동', en: 'Primary actions' },
+    editor_moment_reactions: { ko: '순간 반응', en: 'Moment reactions' },
+    editor_current_tree: { ko: '현재 트리', en: 'Current tree' },
     editor_actions_secondary: { ko: '추가 행동', en: 'Additional actions' },
     editor_delete: { ko: '순간 삭제', en: 'Delete moment' },
     editor_edit_title_placeholder: { ko: '순간의 제목을 입력하세요', en: 'Enter the title of this moment' },
