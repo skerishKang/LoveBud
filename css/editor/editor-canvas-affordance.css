@@ -2,26 +2,21 @@
  * editor-canvas-affordance.css
  *
  * Styles for the growth affordance (+ tip / bubble) rendered on the editor
- * canvas. Replaces inline style mutations in editor-canvas-growth-affordance.js
- * with a single CSS class toggle (.affordance-expanded). All visual transitions
- * for the affordance button + inner text wrapper are owned by this file.
+ * canvas. All visual state for the affordance button + inner text wrapper is
+ * owned by this file.
  *
- * Issue #2806 follow-up: the "vertical rectangle" intermediate state came from
- * the textWrap being display:flex with max-width: 126px at t=0 of the
- * transition, before the button itself had time to grow. The fix is:
- *   - textWrap collapsed: max-width: 0, opacity: 0, visibility: hidden
- *   - textWrap expanded:  max-width: 126px, opacity: 1, visibility: visible
- *   - textWrap has a transition-delay so the button width transition (160ms)
- *     starts first, then the text fades in.
- *   - height is set to a stable value (BUBBLE_MIN_HEIGHT 60px) to prevent the
- *     flex column from forcing a natural-height intermediate.
+ * #2806 fix: the CTA is always in its final pill form from the moment it is
+ * created. No intermediate circle → pill size transition or "vertical
+ * rectangle" stretch can occur. Appearance animation uses only opacity and
+ * transform.
  *
  * Scope:
- *   .memory-add-affordance                (button element, collapsed default)
- *   .memory-add-affordance.affordance-expanded  (expanded state)
- *   .affordance-tip-text                  (inner text wrapper, opacity/width)
- *   body.editor-view-hide-bubbles         (forced collapsed override)
- *   body .memory-add-affordance.is-interacting  (visual lock during expansion)
+ *   .memory-add-affordance                  (button element, final pill form)
+ *   .memory-add-affordance.affordance-visible  (revealed / visible state)
+ *   .memory-add-affordance.affordance-expanded  (hover / interaction state)
+ *   .affordance-tip-text                    (inner text wrapper, always visible)
+ *   body.editor-view-hide-bubbles           (forced hidden override)
+ *   body .memory-add-affordance.is-interacting  (visual lock during interaction)
  */
 
 /* ── Tokens (synced with JS constants in editor-canvas-growth-affordance.js) ── */
@@ -29,136 +24,133 @@
     --affordance-tip-size: 36px;
     --affordance-bubble-width: 188px;
     --affordance-bubble-min-height: 60px;
-    --affordance-transition-fast: 0.16s ease;
-    --affordance-text-delay: 0.08s;     /* textWrap fade starts after button grows */
-    --affordance-text-duration: 0.14s ease;
+    --affordance-reveal-duration: 0.2s ease;
 }
 
-/* ── collapsed (default) state ──────────────────────────────────────────── */
+/* ── final pill form (default state, always visible) ─────────────────────── */
 .memory-add-affordance {
     /* layout */
-    display: flex;
+    display: inline-flex;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
     box-sizing: border-box;
     overflow: hidden;
     position: absolute;
     gap: 10px;
-    padding: 0;
+    padding: 10px 14px 10px 10px;
 
-    /* sizing — stable values for both states so the box never paints
-       a "natural height" intermediate while the textWrap is participating. */
-    width: var(--affordance-tip-size, 36px);
-    min-width: var(--affordance-tip-size, 36px);
-    height: var(--affordance-tip-size, 36px);
-    min-height: var(--affordance-tip-size, 36px);
-
-    /* appearance */
-    border: none;
-    border-radius: 50%;
-    background: rgba(144, 73, 81, 0.92);
-    color: #fff;
-    cursor: pointer;
-    z-index: 5;
-    box-shadow: 0 3px 10px rgba(144, 73, 81, 0.25);
-    backdrop-filter: none;
-
-    /* transition — all visual properties so no box-model jump occurs */
-    transition:
-        width            var(--affordance-transition-fast),
-        min-width        var(--affordance-transition-fast),
-        height           var(--affordance-transition-fast),
-        min-height       var(--affordance-transition-fast),
-        border-radius    var(--affordance-transition-fast),
-        background       var(--affordance-transition-fast),
-        box-shadow       var(--affordance-transition-fast),
-        padding          var(--affordance-transition-fast),
-        border-color     var(--affordance-transition-fast);
-}
-
-/* ── expanded state ─────────────────────────────────────────────────────── */
-.memory-add-affordance.affordance-expanded {
-    /* sizing */
+    /* sizing — always the final bubble size, no collapsed circle state */
     width: var(--affordance-bubble-width, 188px);
     min-width: var(--affordance-bubble-width, 188px);
     height: var(--affordance-bubble-min-height, 60px);
     min-height: var(--affordance-bubble-min-height, 60px);
 
-    /* layout */
-    justify-content: flex-start;
-    padding: 10px 14px 10px 10px;
-
     /* appearance */
     border: 1px solid rgba(144, 73, 81, 0.18);
     border-radius: 999px;
     background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(250,246,244,0.96));
+    color: #fff;
+    cursor: pointer;
+    z-index: 5;
     box-shadow: 0 12px 28px rgba(75, 64, 57, 0.10);
     backdrop-filter: blur(8px);
+
+    /* always visible — no hidden initial state */
+    opacity: 1;
+    transform: scale(1);
+
+    /* only opacity and transform are animated */
+    transition: opacity var(--affordance-reveal-duration), transform var(--affordance-reveal-duration);
 }
 
-/* ── inner text wrapper ─────────────────────────────────────────────────── */
+/* ── expanded / hover enhancement ────────────────────────────────────────── */
 /*
- * Use opacity + visibility + max-width (NOT display) so the text participates
- * in the transition timeline. Critically, collapsed max-width is 0 (not 126px)
- * so the textWrap never forces a 126px-wide column-flex natural-height while
- * the button is still mid-growth — this is the vertical-rectangle fix.
+ * affordance-expanded is toggled on hover for subtle visual feedback
+ * (no size / layout change — those are always the final pill form).
  */
+.memory-add-affordance.affordance-expanded {
+    box-shadow: 0 14px 32px rgba(75, 64, 57, 0.14);
+    transform: scale(1.03);
+}
+
+/* ── inner text wrapper (always visible in final form) ───────────────────── */
 .affordance-tip-text {
     display: flex;
     flex-direction: column;
     align-items: flex-start;
     min-width: 0;
-    max-width: 0;
-    width: 0;
-    gap: 2px;
-    opacity: 0;
-    visibility: hidden;
-    overflow: hidden;
-    /* Delayed so the button width transition (160ms) finishes its first phase
-       before the textWrap starts fading in. */
-    transition:
-        opacity     var(--affordance-text-duration) var(--affordance-text-delay),
-        visibility  var(--affordance-text-duration) var(--affordance-text-delay),
-        max-width   var(--affordance-transition-fast) var(--affordance-text-delay),
-        width       var(--affordance-transition-fast) var(--affordance-text-delay);
-}
-
-.memory-add-affordance.affordance-expanded .affordance-tip-text {
     max-width: 126px;
     width: auto;
+    gap: 2px;
     opacity: 1;
     visibility: visible;
 }
 
-/* ── is-interacting lock (visual feedback during expand/collapse) ───────── */
-/*
- * During show/hide the canvas pan/zoom is locked via .affordance-interaction-
- * locked. The button itself gets .is-interacting so the user sees a small
- * visual settle (slight box-shadow drop) until the transition completes.
- */
+/* ── is-interacting lock (visual feedback during interaction) ────────────── */
 .memory-add-affordance.is-interacting {
     box-shadow: 0 6px 18px rgba(144, 73, 81, 0.32);
 }
 
-/* ── forced collapsed (body.editor-view-hide-bubbles) ───────────────────── */
+/* ── forced hidden (body.editor-view-hide-bubbles) ───────────────────────── */
 /*
- * The legacy editor-i18n-refresh.js inline !important rules are replaced by
- * this data-state rule so the bubbles-on setting is enforced through the
- * CSS pipeline and does not fight the new transitions.
+ * In bubbles-off mode we only hide the explanatory text (.affordance-tip-text).
+ * The compact circular CTA (+ button) must remain visible and clickable so
+ * users can still add new moments from the canvas.
  */
 body.editor-view-hide-bubbles .memory-add-affordance.affordance-tooltip-bubble {
-    width: var(--affordance-tip-size, 36px) !important;
-    min-width: var(--affordance-tip-size, 36px) !important;
-    height: var(--affordance-tip-size, 36px) !important;
-    min-height: var(--affordance-tip-size, 36px) !important;
+    /* Compact circle dimensions */
+    width: 36px !important;
+    min-width: 36px !important;
+    height: 36px !important;
+    min-height: 36px !important;
+
+    /* Circle appearance */
     border-radius: 50% !important;
     padding: 0 !important;
     justify-content: center !important;
-    background: rgba(144, 73, 81, 0.92) !important;
-    border: none !important;
-    box-shadow: 0 3px 10px rgba(144, 73, 81, 0.25) !important;
+    gap: 0 !important;
+
+    /* Preserve compact circle background/border/shadow from base rule */
+    background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(250,246,244,0.96)) !important;
+    border: 1px solid rgba(144, 73, 81, 0.18) !important;
+    box-shadow: 0 12px 28px rgba(75, 64, 57, 0.10) !important;
+    backdrop-filter: blur(8px) !important;
 }
 
-body.editor-view-hide-bubbles .memory-add-affordance .affordance-tip-text {
+/* Hide only the text wrapper in bubbles-off mode */
+body.editor-view-hide-bubbles .memory-add-affordance.affordance-tooltip-bubble .affordance-tip-text {
     display: none !important;
+}
+
+/* Ensure hover state does not expand the CTA in bubbles-off mode */
+body.editor-view-hide-bubbles .memory-add-affordance.affordance-tooltip-bubble.affordance-expanded {
+    /* Keep compact circle dimensions on hover */
+    width: 36px !important;
+    min-width: 36px !important;
+    height: 36px !important;
+    min-height: 36px !important;
+    border-radius: 50% !important;
+    padding: 0 !important;
+    justify-content: center !important;
+    gap: 0 !important;
+
+    /* Transform/shadow feedback only — no size change */
+    transform: scale(1.03) !important;
+    box-shadow: 0 14px 32px rgba(75, 64, 57, 0.14) !important;
+}
+
+/* Ensure the plus icon stays centered in compact mode */
+body.editor-view-hide-bubbles .memory-add-affordance.affordance-tooltip-bubble span[aria-hidden="true"] {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(180deg, rgba(144, 73, 81, 1), rgba(144, 73, 81, 0.88));
+    color: #fff;
+    font-size: 18px;
+    font-weight: 700;
+    flex: 0 0 auto;
+    box-shadow: 0 6px 14px rgba(144, 73, 81, 0.22);
 }
