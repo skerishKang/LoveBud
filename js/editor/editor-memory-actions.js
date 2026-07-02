@@ -650,6 +650,7 @@ function createEditorMemoryActions(deps) {
 
                 const nextMemories = getTreeMemories().filter((m) => m.id !== currentEditingMemory.id);
                 setTreeMemories(nextMemories);
+                window.LoveBudCache.set('memories_' + treeId, nextMemories, 2 * 60 * 1000);
                 setCurrentEditingMemory(null);
                 exitEditMode();
 
