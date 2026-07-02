@@ -17,6 +17,29 @@
     // Utilities
     // -----------------------------------------------------------------------
 
+    /**
+     * Resolve a social count from a tree object by trying multiple keys.
+     *
+     * Preserves authoritative zero. Treats null, undefined, empty string,
+     * NaN, and negative values as unavailable.
+     *
+     * @param {object|null} tree - The tree object.
+     * @param {string[]} keys - Ordered candidate property names.
+     * @returns {number|null} The first valid non-negative finite integer,
+     *   or null when unavailable.
+     */
+    function resolveSocialCount(tree, keys) {
+        if (!tree) return null;
+        for (var i = 0; i < keys.length; i++) {
+            var val = tree[keys[i]];
+            if (val !== null && val !== undefined && val !== '' && val !== 'undefined' && val !== 'null') {
+                var num = Number(val);
+                if (isFinite(num) && num >= 0) return num;
+            }
+        }
+        return null;
+    }
+
     function getSharedUtils() {
         return window.LoveBudSearchSharedUtils || null;
     }
@@ -78,10 +101,8 @@
 
         var utils = getSharedUtils();
         var viewCount = utils && typeof utils.getViewCount === 'function' ? utils.getViewCount(tree) : null;
-        var likeCount = tree && (tree.likeCount || tree.likesCount || tree.likes || tree.like_count);
-        var commentCount = tree && (tree.commentCount || tree.commentsCount || tree.comments || tree.comment_count);
-        if (likeCount !== undefined && likeCount !== null) likeCount = Number(likeCount);
-        if (commentCount !== undefined && commentCount !== null) commentCount = Number(commentCount);
+        var likeCount = resolveSocialCount(tree, ['likeCount', 'likesCount', 'likes', 'like_count']);
+        var commentCount = resolveSocialCount(tree, ['commentCount', 'commentsCount', 'comments', 'comment_count']);
         var safeTreeId = escapeHtml(String(tree.id || ''));
 
         // ---- View count stat ----
@@ -102,6 +123,8 @@
                 '" role="status"><span class="material-symbols-outlined" aria-hidden="true">favorite</span><strong>' +
                 escapeHtml(String(likeCount)) +
                 '</strong><span>좋아요</span></div>';
+        } else {
+            likesHtml = '<div class="preview-social-action preview-social-stat" aria-label="좋아요 정보 없음" role="status"><span class="material-symbols-outlined" aria-hidden="true">favorite</span><strong>&mdash;</strong><span>좋아요</span></div>';
         }
 
         // ---- Comment count stat ----
@@ -112,6 +135,8 @@
                 '" role="status"><span class="material-symbols-outlined" aria-hidden="true">chat_bubble</span><strong>' +
                 escapeHtml(String(commentCount)) +
                 '</strong><span>댓글</span></div>';
+        } else {
+            commentsHtml = '<div class="preview-social-action preview-social-stat" aria-label="댓글 정보 없음" role="status"><span class="material-symbols-outlined" aria-hidden="true">chat_bubble</span><strong>&mdash;</strong><span>댓글</span></div>';
         }
 
         // ---- Share button (only when tree ID is valid) ----
