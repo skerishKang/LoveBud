@@ -285,8 +285,8 @@ test('3. confirmed success: edit mode closes, detail/sidebar/canvas refreshed, s
   assert.ok(deps._rerenderCanvasCalls.length > 0, 'rerenderCanvas must be called on success');
   assert.ok(deps._setCurrentEditingMemoryCalls.length > 0, 'setCurrentEditingMemory must be called on success');
 
-  const savedStatus = deps._saveStatuses.find(s => s.status === 'saved');
-  assert.ok(savedStatus, 'updateSaveStatus("saved") must be called on success');
+  const savedStatus = deps._saveStatuses.find(s => s.status === 'manual_saved');
+  assert.ok(savedStatus, 'updateSaveStatus("manual_saved") must be called on success');
 
   assert.strictEqual(dom.saveEditBtn.disabled, false, 'saveEditBtn must be re-enabled after success');
   assert.strictEqual(dom.cancelEditBtn.disabled, false, 'cancelEditBtn must be re-enabled after success');
@@ -322,8 +322,8 @@ test('4. API reject: edit mode stays open, CTA restored, no raw error exposed', 
     );
   }
 
-  const failStatus = deps._saveStatuses.find(s => s.status === 'failed');
-  assert.ok(failStatus, 'updateSaveStatus("failed") must be called on API reject');
+  const failStatus = deps._saveStatuses.find(s => s.status === 'manual_failed');
+  assert.ok(failStatus, 'updateSaveStatus("manual_failed") must be called on API reject');
 });
 
 test('5. retry after failure: new API call succeeds', async () => {
@@ -350,8 +350,8 @@ test('5. retry after failure: new API call succeeds', async () => {
   await actions.saveMemoryEdit();
   assert.strictEqual(callCount, 2, 'Retry must fire a second API call');
 
-  const savedStatus = deps._saveStatuses.find(s => s.status === 'saved');
-  assert.ok(savedStatus, 'Second attempt must succeed with saved status');
+  const savedStatus = deps._saveStatuses.find(s => s.status === 'manual_saved');
+  assert.ok(savedStatus, 'Second attempt must succeed with manual_saved status');
 });
 
 test('6. no-change save: API write is 0 calls, form stays open, info toast only', async () => {
