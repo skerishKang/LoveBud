@@ -86,6 +86,14 @@
       ko: '흩어진 기억이 하나의 러브트리가 돼요.',
       en: 'Scattered memories become one LoveTree.'
     },
+    'home.v3.growth.card4.title': {
+      ko: '다시 찾게 된 장면',
+      en: 'A scene you found again'
+    },
+    'home.v3.growth.card4.copy': {
+      ko: '지나온 시간 끝에 다시 마주한 소중한 기록.',
+      en: 'A precious record you found again at the end of time.'
+    },
     'home.v3.paper.title': {
       ko: '첫 문장',
       en: 'First note'

@@ -1,11 +1,24 @@
 @keyframes drawTreePath {
-    0%, 12% { stroke-dashoffset: 1; opacity: 0.2; }
-    46%, 78% { stroke-dashoffset: 0; opacity: 1; }
-    100% { stroke-dashoffset: 0; opacity: 0.35; }
+    0% { stroke-dashoffset: 1; opacity: 0; }
+    100% { stroke-dashoffset: 0; opacity: 1; }
 }
 
 @keyframes growMomentCard {
-    0%, 20% { opacity: 0; transform: translateY(18px) scale(0.96); }
-    36%, 78% { opacity: 1; transform: translateY(0) scale(1); }
-    100% { opacity: 0.72; transform: translateY(0) scale(1); }
+    0% { opacity: 0; transform: translateY(18px) scale(0.96); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .growth-tree-svg path {
+        animation: none !important;
+        stroke-dashoffset: 0 !important;
+        opacity: 1 !important;
+    }
+    .growth-stage-card {
+        animation: none !important;
+        opacity: 1 !important;
+        visibility: visible !important;
+        transform: none !important;
+        pointer-events: auto !important;
+    }
 }

@@ -13,6 +13,26 @@
         width: 190px;
     }
 
+    .growth-stage-card.one {
+        left: 6%;
+        bottom: 10%;
+        top: auto;
+    }
+
+    .growth-stage-card.four {
+        display: none;
+    }
+
+    .growth-stage-card.two {
+        right: 6%;
+        top: 14%;
+    }
+
+    .growth-stage-card.three {
+        right: 8%;
+        bottom: 10%;
+    }
+
     .home-v3-collage {
         min-height: 600px;
     }
@@ -69,17 +89,22 @@
     }
 
     .growth-stage-card.one {
-        left: 3%;
-        top: 50%;
+        left: 4%;
+        bottom: 8%;
+        top: auto;
+    }
+
+    .growth-stage-card.four {
+        display: none;
     }
 
     .growth-stage-card.two {
         right: 4%;
-        top: 18%;
+        top: 22%;
     }
 
     .growth-stage-card.three {
-        right: 6%;
+        right: 4%;
         bottom: 8%;
     }
 }
