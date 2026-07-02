@@ -309,7 +309,7 @@
               '<strong data-my-trees-social-views>0</strong>',
               '<span>조회수</span>',
             '</div>',
-            '<button type="button" class="preview-social-action" disabled aria-label="좋아요 0">',
+            '<button type="button" class="preview-social-action" aria-label="좋아요 0">',
               '<span class="material-symbols-outlined" aria-hidden="true">favorite</span>',
               '<strong data-my-trees-social-likes>0</strong>',
               '<span>좋아요</span>',
@@ -530,6 +530,36 @@
             if (commentEl) commentEl.textContent = String(tree.commentCount || tree.comment_count || 0);
             var viewEl = panelScope ? panelScope.querySelector('[data-my-trees-social-views]') : document.querySelector('[data-my-trees-social-views]');
             if (viewEl) viewEl.textContent = String(tree.viewCount || tree.view_count || 0);
+        }
+
+        /* ── Wire like button (removed hardcoded disabled) ── */
+        var socialBar = panelScope
+            ? panelScope.querySelector('.preview-social-bar')
+            : document.querySelector('.preview-social-bar');
+        if (socialBar) {
+            var likeBtn = socialBar.querySelector('[aria-label*="좋아요"]');
+            if (likeBtn) {
+                likeBtn.onclick = function () {
+                    var treeKey = getTreeKey(tree);
+                    if (!treeKey || !window.apiClient || typeof window.apiClient.toggleReaction !== 'function') return;
+                    var wasReacted = likeBtn.dataset.reacted === 'true';
+                    var prevCount = parseInt(likeEl ? likeEl.textContent : '0') || 0;
+                    var nextReacted = !wasReacted;
+                    var nextCount = nextReacted ? prevCount + 1 : Math.max(0, prevCount - 1);
+                    likeBtn.dataset.reacted = nextReacted ? 'true' : 'false';
+                    if (likeEl) likeEl.textContent = String(nextCount);
+                    window.apiClient.toggleReaction(treeKey, 'like').then(function (result) {
+                        if (result && likeEl) {
+                            likeEl.textContent = String(result.like_count ?? result.likeCount ?? nextCount);
+                            var serverReacted = result.user_reacted ?? result.userReacted ?? nextReacted;
+                            likeBtn.dataset.reacted = serverReacted ? 'true' : 'false';
+                        }
+                    }).catch(function () {
+                        likeBtn.dataset.reacted = wasReacted ? 'true' : 'false';
+                        if (likeEl) likeEl.textContent = String(prevCount);
+                    });
+                };
+            }
         }
     }
     
