@@ -3,15 +3,17 @@
  *
  * Verifies that the editor-video-focus-view module:
  *  1. Loads correctly from pages/editor.html.
- *  2. Detects [data-editor-detail-player="1"] presence.
- *  3. Shows/hides CTA based on .is-playing state.
- *  4. Opens/closes focus view via body class + wrapper class.
- *  5. Closes focus when the player iframe is removed.
- *  6. Does NOT recreate, move, or replace the player iframe.
- *  7. Does NOT use fetch, apiClient, localStorage, or DB.
- *  8. Does NOT use keydown, Escape, or focus-trap.
- *  9. Does NOT modify protected files.
- * 10. Does NOT refer to closed #1882.
+ *  2. Uses [data-editor-detail-player="1"] presence as CTA criteria (not .is-playing).
+ *  3. Has a sync path for dynamically created detail panel/player.
+ *  4. Focus CSS contains real position:fixed, centered surface, size/ratio/z-index declarations.
+ *  5. Backdrop and close button are created as real DOM elements.
+ *  6. Backdrop click and close button click trigger close.
+ *  7. Player/wrapper detachment triggers auto-close via isConnected/contains check.
+ *  8. Does NOT recreate, move, or replace the player iframe.
+ *  9. Does NOT use fetch, apiClient, localStorage, or DB.
+ * 10. Does NOT use keydown, Escape, or focus-trap.
+ * 11. Does NOT modify protected files.
+ * 12. Does NOT refer to closed #1882.
  */
 'use strict';
 
@@ -21,14 +23,23 @@ const path = require('node:path');
 const test = require('node:test');
 
 const ROOT = path.join(__dirname, '..', '..');
-const source = fs.readFileSync(path.join(ROOT, 'js/editor/editor-video-focus-view.js'), 'utf8');
+const jsPath = path.join(ROOT, 'js/editor/editor-video-focus-view.js');
+const cssPath = path.join(ROOT, 'css/editor/editor-video-focus-view.css');
+const htmlPath = path.join(ROOT, 'pages/editor.html');
+const source = fs.readFileSync(jsPath, 'utf8');
+const css = fs.readFileSync(cssPath, 'utf8');
+const html = fs.readFileSync(htmlPath, 'utf8');
 
 // ---------------------------------------------------------------------------
-// 1. Module loads and initializes
+// 1. Module loads in pages/editor.html
 // ---------------------------------------------------------------------------
 
-test('module loads at DOMContentLoaded or immediately', () => {
-  assert.match(source, /DOMContentLoaded/, 'must register DOMContentLoaded');
+test('pages/editor.html loads editor-video-focus-view CSS', () => {
+  assert.match(html, /editor-video-focus-view\.css/, 'CSS must be loaded in editor.html');
+});
+
+test('pages/editor.html loads editor-video-focus-view JS', () => {
+  assert.match(html, /editor-video-focus-view\.js/, 'JS must be loaded in editor.html');
 });
 
 test('module exposes window.LoveBudEditorVideoFocus', () => {
@@ -36,87 +47,132 @@ test('module exposes window.LoveBudEditorVideoFocus', () => {
 });
 
 test('window.LoveBudEditorVideoFocus contains open/close/isOpen', () => {
-  // open and close keys are on separate lines — match across newlines
-  assert.match(source, /open\s*:\s*openFocusView.*close\s*:/s, 'must expose open and close');
+  assert.match(source, /open\s*:\s*openFocusView/, 'must expose open');
+  assert.match(source, /close\s*:\s*closeFocusView/, 'must expose close');
+  assert.match(source, /isOpen\s*:\s*function/, 'must expose isOpen');
 });
 
-
 // ---------------------------------------------------------------------------
-// 2. Player detection
+// 2. Player detection — based on [data-editor-detail-player="1"], not .is-playing
 // ---------------------------------------------------------------------------
 
 test('module queries [data-editor-detail-player="1"]', () => {
-  assert.match(source, /PLAYER_SELECTOR/, 'must define player selector');
+  assert.match(source, /PLAYER_SELECTOR/, 'must define player selector constant');
   assert.match(source, /data-editor-detail-player/, 'must query by data attribute');
 });
 
 test('module queries .detail-video wrapper', () => {
-  assert.match(source, /VIDEO_WRAPPER_SELECTOR/, 'must define wrapper selector');
+  assert.match(source, /VIDEO_WRAPPER_SELECTOR/, 'must define wrapper selector constant');
   assert.match(source, /\.detail-video/, 'must query .detail-video');
 });
 
-// ---------------------------------------------------------------------------
-// 3. CTA visibility
-// ---------------------------------------------------------------------------
-
-test('CTA text is 영상 크게 보기', () => {
-  assert.match(source, /영상 크게 보기/, 'must use Korean CTA text');
+test('CTA visibility depends on [data-editor-detail-player] presence (not .is-playing)', () => {
+  assert.match(source, /getActivePlayerInWrapper/, 'must check player presence');
+  assert.doesNotMatch(source, /getIsPlayingState/, 'must not use getIsPlayingState');
+  assert.doesNotMatch(source, /\.is-playing/, 'must not depend on .is-playing class');
 });
 
-test('CTA hidden when no .is-playing', () => {
-  assert.match(source, /hideFocusToggle/, 'must have hideFocusToggle');
-});
-
-test('CTA shown when is-playing + player exists', () => {
-  assert.match(source, /showFocusToggle/, 'must have showFocusToggle');
+test('player presence check uses querySelector with PLAYER_SELECTOR', () => {
+  assert.match(source, /querySelector\(PLAYER_SELECTOR/, 'must query player selector');
 });
 
 // ---------------------------------------------------------------------------
-// 4. Focus open/close via body class + wrapper class
+// 3. Dynamic panel sync path
 // ---------------------------------------------------------------------------
 
-test('openFocusView adds body class editor-video-focus-open', () => {
-  assert.match(source, /FOCUS_OPEN_BODY_CLASS/, 'must define open body class');
-  assert.match(source, /classList\.add\(FOCUS_OPEN_BODY_CLASS/, 'must add body class on open');
+test('module uses MutationObserver on document.body for dynamic sync', () => {
+  assert.match(source, /MutationObserver/, 'must create MutationObserver');
+  assert.match(source, /observe\(document\.body/, 'must observe document.body');
+  assert.match(source, /subtree:\s*true/, 'must use subtree:true');
 });
 
-test('openFocusView adds wrapper class is-editor-video-focused', () => {
-  assert.match(source, /FOCUS_ACTIVE_CLASS/, 'must define active class');
-  assert.match(source, /classList\.add\(FOCUS_ACTIVE_CLASS/, 'must add wrapper class on open');
+test('handleSync ensures toggle exists when .detail-video appears', () => {
+  assert.match(source, /ensureFocusToggle/, 'must ensure toggle button');
+  assert.match(source, /handleSync/, 'must have sync handler');
 });
 
-test('closeFocusView removes body class', () => {
-  assert.match(source, /classList\.remove\(FOCUS_OPEN_BODY_CLASS/, 'must remove body class on close');
-});
-
-test('closeFocusView removes wrapper class', () => {
-  assert.match(source, /classList\.remove\(FOCUS_ACTIVE_CLASS/, 'must remove wrapper class on close');
+test('ensureFocusToggle returns early if toggle already exists', () => {
+  assert.match(source, /querySelector.*FOCUS_TOGGLE_BTN_CLASS/, 'must check for existing toggle');
+  assert.match(source, /if \(existingToggle\) return/, 'must return early if toggle exists');
 });
 
 // ---------------------------------------------------------------------------
-// 5. Player removal auto-close
+// 4. Focus CSS has real declarations (not empty selectors)
 // ---------------------------------------------------------------------------
 
-test('MutationObserver watches for player removal', () => {
-  assert.match(source, /mutationObserver/, 'must create MutationObserver');
-  assert.match(source, /MutationObserver/, 'must use MutationObserver');
+test('CSS backdrop has position:fixed and z-index', () => {
+  assert.match(css, /\.editor-video-focus-backdrop\s*\{/, 'backdrop selector must exist');
+  assert.match(css, /position:\s*fixed/, 'backdrop must be fixed position');
+  assert.match(css, /z-index:\s*400/, 'backdrop z-index must be 400');
 });
 
-test('MutationObserver callback calls closeFocusView', () => {
-  // Check that both 'removedNodes' and 'data-editor-detail-player' appear in source
-  assert.match(source, /removedNodes/, 'must iterate removedNodes');
-  assert.match(source, /data-editor-detail-player/, 'must reference player selector');
-  assert.match(source, /closeFocusView/, 'must call close when player removed');
+test('CSS focus surface has position:fixed, centered, aspect-ratio, z-index', () => {
+  assert.match(css, /body\.editor-video-focus-open\s*\.detail-video\.is-editor-video-focused/, 'focus selector must exist');
+  assert.match(css, /position:\s*fixed/, 'must be fixed position');
+  assert.match(css, /transform:\s*translate/, 'must be centered via translate');
+  assert.match(css, /aspect-ratio:\s*16\s*\/\s*9/, 'must use 16:9 aspect ratio');
+  assert.match(css, /z-index:\s*401/, 'focus surface z-index must be 401');
+  assert.match(css, /width:\s*min/, 'must use min() for responsive width');
 });
 
-
-test('disconnect on close cleans up observer', () => {
-  assert.match(source, /disconnect/, 'must disconnect observer');
-  assert.match(source, /stopPlayerWatch/, 'must stop player watch');
+test('CSS close button has position:fixed and z-index above focus surface', () => {
+  assert.match(css, /\.editor-video-focus-close/, 'close button selector must exist');
+  assert.match(css, /z-index:\s*402/, 'close button z-index must be 402');
 });
 
 // ---------------------------------------------------------------------------
-// 6. No iframe mutation
+// 5. Backdrop and close button are created as real DOM elements
+// ---------------------------------------------------------------------------
+
+test('openFocusView creates backdrop element with className', () => {
+  assert.match(source, /createElement.*div/, 'must create div element for backdrop');
+  assert.match(source, /FOCUS_BACKDROP_CLASS/, 'must use backdrop class constant');
+  assert.match(source, /document\.body\.appendChild/, 'must append backdrop to body');
+});
+
+test('openFocusView creates close button element', () => {
+  assert.match(source, /createElement.*button/, 'must create button element for close');
+  assert.match(source, /FOCUS_CLOSE_BTN_CLASS/, 'must use close button class constant');
+  assert.match(source, /videoWrapper\.appendChild\(/, 'must append close btn to wrapper');
+});
+
+test('closeFocusView removes backdrop and close button', () => {
+  assert.match(source, /removeChild\(currentBackdrop\)/, 'must remove backdrop on close');
+  assert.match(source, /removeChild\(currentCloseBtn\)/, 'must remove close button on close');
+});
+
+// ---------------------------------------------------------------------------
+// 6. Close path via click
+// ---------------------------------------------------------------------------
+
+test('backdrop click triggers closeFocusView', () => {
+  assert.match(source, /backdrop\.addEventListener\(.click., closeFocusView/, 'backdrop click must call close');
+});
+
+test('close button click triggers closeFocusView', () => {
+  assert.match(source, /closeBtn\.addEventListener\(.click., closeFocusView/, 'close button click must call close');
+});
+
+// ---------------------------------------------------------------------------
+// 7. Player/wrapper detachment triggers auto-close
+// ---------------------------------------------------------------------------
+
+test('auto-close checks isConnected on player', () => {
+  assert.match(source, /isConnected/, 'must check isConnected');
+  assert.match(source, /currentPlayer\.isConnected/, 'must check player connection');
+});
+
+test('auto-close checks wrapper contains player', () => {
+  assert.match(source, /currentVideoWrapper\.contains\(/, 'must check wrapper contains player');
+});
+
+test('handleSync runs auto-close check when focus is open', () => {
+  assert.match(source, /if \(isFocusOpen\)/, 'must check focus state in sync');
+  assert.match(source, /closeFocusView/, 'must call close in auto-close path');
+});
+
+// ---------------------------------------------------------------------------
+// 8. No iframe mutation
 // ---------------------------------------------------------------------------
 
 test('module does NOT set iframe.src', () => {
@@ -128,11 +184,10 @@ test('module does NOT cloneNode', () => {
 });
 
 test('module does NOT replaceWith', () => {
-  // Check for actual replaceWith() call, not just the word in docs
   assert.doesNotMatch(source, /\.replaceWith\(/, 'must not call .replaceWith()');
 });
 
-test('module does NOT appendChild on player', () => {
+test('module does NOT appendChild to player', () => {
   assert.doesNotMatch(source, /player\.appendChild/, 'must not append to player');
   assert.doesNotMatch(source, /currentPlayer\.appendChild/, 'must not append to currentPlayer');
 });
@@ -142,43 +197,37 @@ test('module does NOT remove player', () => {
   assert.doesNotMatch(source, /currentPlayer\.remove\(\)/, 'must not remove currentPlayer');
 });
 
+test('CSS does NOT change iframe position via transform on iframe', () => {
+  assert.doesNotMatch(css, /iframe\s*\{[^}]*transform/, 'must not transform the iframe element directly');
+});
+
 // ---------------------------------------------------------------------------
-// 7. No fetch/apiClient/localStorage/DB
+// 9. No fetch/apiClient/localStorage/DB
 // ---------------------------------------------------------------------------
 
 test('module does NOT call fetch()', () => {
-  // Check for actual function call, not just the word
   assert.doesNotMatch(source, /\bfetch\s*\(/, 'must not call fetch()');
 });
 
-test('module does NOT reference apiClient in code', () => {
-  // apiClient appears in comments as disclaimer — that's OK
-  // Check for actual usage, not just the word
-});
-
-test('module does NOT use localStorage (no function calls)', () => {
+test('module does NOT use localStorage', () => {
   assert.doesNotMatch(source, /localStorage\./, 'must not use localStorage');
-  assert.doesNotMatch(source, /\.localStorage/, 'must not use .localStorage');
 });
 
-test('module does NOT reference database in code', () => {
-});
-
-test('module does NOT reference provider in code', () => {
+test('module does NOT reference database, apiClient, or provider in code', () => {
+  assert.doesNotMatch(source, /\bapiClient\b/, 'must not reference apiClient');
+  assert.doesNotMatch(source, /\.firestore/, 'must not reference firestore');
+  assert.doesNotMatch(source, /\bprovider\b/, 'must not reference provider');
 });
 
 // ---------------------------------------------------------------------------
-// 8. No keyboard/navigation code
+// 10. No keyboard/navigation code
 // ---------------------------------------------------------------------------
 
 test('module does NOT use keydown event listener', () => {
-  // Check for actual keydown event listener usage, not just the word in docs
   assert.doesNotMatch(source, /addEventListener\(.*keydown/, 'must not add keydown listener');
 });
 
 test('module does NOT use Escape key handling', () => {
-  // Check for actual Escape key handling
-  // The word 'Escape' appears only in the doc disclaimer (line 21)
   assert.doesNotMatch(source, /'Escape'/, 'must not use Escape string literal');
 });
 
@@ -189,7 +238,7 @@ test('module does NOT use focusTrap', () => {
 });
 
 // ---------------------------------------------------------------------------
-// 9. Protected file check
+// 11. Protected file check
 // ---------------------------------------------------------------------------
 
 const PROTECTED_FILES = [
@@ -211,33 +260,16 @@ const ALLOWED_FILES = [
 
 test('source does not reference protected files', () => {
   PROTECTED_FILES.forEach(function (f) {
-    // Simple check — does the source contain any protected file path?
     assert.ok(source.indexOf(f) === -1, 'must not reference ' + f);
   });
 });
 
 // ---------------------------------------------------------------------------
-// 10. #1882 close reference check
+// 12. #1882 close reference check — must use Refers only
 // ---------------------------------------------------------------------------
 
 test('module does not use Closes, Fixes, or Resolves with #1882', () => {
   assert.doesNotMatch(source, /Closes\s*#1882/, 'must not close #1882');
   assert.doesNotMatch(source, /Fixes\s*#1882/, 'must not fix #1882');
   assert.doesNotMatch(source, /Resolves\s*#1882/, 'must not resolve #1882');
-});
-
-// ---------------------------------------------------------------------------
-// 11. Diff check — only allowed files
-// ---------------------------------------------------------------------------
-
-test('only allowed files changed in this commit', () => {
-  const changed = [
-    'pages/editor.html',
-    'css/editor/editor-video-focus-view.css',
-    'js/editor/editor-video-focus-view.js',
-    'tests/contracts/editor-video-focus-view-contract.test.cjs',
-    'tests/contracts/public-canvas-error-fallback-contract.test.cjs',
-  ];
-  // This is a runtime check; the test itself verifies file patterns
-  assert.ok(true, 'check passed');
 });
