@@ -153,6 +153,59 @@ test('social shell has NO likes/comments/fake share count selectors', () => {
   assert.ok(html.includes('공유하기'), 'must contain share button with 공유하기 label');
 });
 
+test('social shell shows likeCount 0 and commentCount 0 as zero', () => {
+  var link = loadShareLink({ sharedUtils: makeSharedUtils(5) });
+  var html = link.renderPreviewSocialShell({ id: 't1', likeCount: 0, commentCount: 0 });
+  assert.ok(html.includes('>0<'), 'must preserve zero likeCount');
+  assert.ok(html.includes('aria-label="좋아요 0"'), 'aria-label must show zero');
+  assert.ok(html.includes('>0<'), 'must preserve zero commentCount');
+  assert.ok(html.includes('aria-label="댓글 0"'), 'aria-label must show zero');
+});
+
+test('social shell shows em-dash when likeCount and commentCount unavailable', () => {
+  var link = loadShareLink({ sharedUtils: makeSharedUtils(5) });
+  var html = link.renderPreviewSocialShell({ id: 't1' });
+  assert.ok(html.includes('>&mdash;</strong>'), 'likeCount must show — when unavailable');
+  assert.ok(html.includes('aria-label="좋아요 정보 없음"'), 'aria-label must say 정보 없음');
+  assert.ok(html.includes('>&mdash;</strong>'), 'commentCount must show — when unavailable');
+  assert.ok(html.includes('aria-label="댓글 정보 없음"'), 'aria-label must say 정보 없음');
+});
+
+test('social shell never contains literal undefined/null/NaN string', () => {
+  var link = loadShareLink({ sharedUtils: makeSharedUtils(5) });
+  var html = link.renderPreviewSocialShell({ id: 't1' });
+  assert.ok(!html.includes('undefined'), 'must NOT contain "undefined"');
+  assert.ok(!html.includes('null'), 'must NOT contain "null"');
+  assert.ok(!html.includes('NaN'), 'must NOT contain "NaN"');
+});
+
+test('social shell footer order is views → likes → comments → share', () => {
+  var link = loadShareLink({ sharedUtils: makeSharedUtils(7) });
+  var html = link.renderPreviewSocialShell({ id: 't1', likeCount: 3, commentCount: 5 });
+  var visibilityIdx = html.indexOf('visibility');
+  var favoriteIdx = html.indexOf('favorite');
+  var chatIdx = html.indexOf('chat_bubble');
+  var shareIdx = html.indexOf('data-preview-share-tree-id');
+  assert.ok(visibilityIdx >= 0, 'views must be present');
+  assert.ok(favoriteIdx >= 0, 'likes must be present');
+  assert.ok(chatIdx >= 0, 'comments must be present');
+  assert.ok(shareIdx >= 0, 'share must be present');
+  assert.ok(visibilityIdx < favoriteIdx, 'views must come before likes');
+  assert.ok(favoriteIdx < chatIdx, 'likes must come before comments');
+  assert.ok(chatIdx < shareIdx, 'comments must come before share');
+});
+
+test('social shell share button is action button not metric', () => {
+  var link = loadShareLink({ sharedUtils: makeSharedUtils(5) });
+  var html = link.renderPreviewSocialShell({ id: 't1' });
+  assert.ok(html.includes('button'), 'share must be a button element');
+  assert.ok(html.includes('data-preview-share-tree-id'), 'share must have data attribute');
+  assert.ok(html.includes('공유하기'), 'share button text must be 공유하기');
+  var shareBtn = html.match(/<button[^>]*data-preview-share-tree-id[^>]*>/);
+  assert.ok(shareBtn, 'share button tag must be found');
+  assert.ok(!shareBtn[0].includes('role'), 'share button must NOT have role attribute');
+});
+
 // ---------------------------------------------------------------------------
 // 3. Clipboard primary/fallback
 // ---------------------------------------------------------------------------
