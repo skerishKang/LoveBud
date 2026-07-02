@@ -279,3 +279,52 @@
         min-height: 240px;
     }
 }
+
+/* ── Text truncation for card consistency ───────────────────── */
+.tree-card .tree-title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 100%;
+}
+
+.tree-card .tree-subtitle {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 100%;
+}
+
+.tree-card .tree-tags {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 100%;
+}
+
+#resultsList[data-tree-view-mode="compact"] .tree-card .tree-title,
+.trees-grid[data-tree-view-mode="compact"] .tree-card-title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 100%;
+    display: block;
+}
+
+#resultsList[data-tree-view-mode="compact"] .tree-card .tree-subtitle {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 100%;
+}
+
+#resultsList[data-tree-view-mode="compact"] .tree-card-body {
+    min-height: 100px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+#resultsList[data-tree-view-mode="compact"] .tree-card .tree-meta-row {
+    margin-top: auto;
+}
