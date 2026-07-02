@@ -422,6 +422,32 @@ body .editor-memory-mode-chip.is-active {
     transform: translateY(1px);
 }
 
+.editor-moment-reactions-card.is-read-only {
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.editor-reaction-stat {
+    cursor: default;
+    pointer-events: none;
+    transform: none;
+}
+
+.editor-moment-reactions-card.is-read-only .editor-reaction-stat:hover,
+.editor-moment-reactions-card.is-read-only .editor-reaction-stat:focus-visible,
+.editor-moment-reactions-card.is-read-only .editor-reaction-stat:active {
+    background: transparent;
+    color: inherit;
+    transform: none;
+}
+
+.editor-moment-reaction-readonly-note {
+    margin: 0 0 0 4px;
+    color: var(--on-surface-muted, #7c6f6a);
+    font-size: 12px;
+    line-height: 1.4;
+}
+
 .editor-reaction-label {
     font-weight: 600;
 }

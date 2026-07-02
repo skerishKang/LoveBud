@@ -11,9 +11,11 @@ test('public viewer reaction summary boundary stays read-only', () => {
 
   assert.notEqual(start, -1, 'read-only reaction boundary exists');
   assert.notEqual(end, -1, 'public detail factory follows reaction boundary');
-  assert.ok(boundary.includes('likeBtn.onclick = null'), 'like button handler is cleared');
-  assert.ok(boundary.includes('commentBtn.onclick = null'), 'comment button handler is cleared');
+  assert.equal(boundary.includes('onclick = null'), false, 'public viewer does not clear button handlers');
+  assert.equal(boundary.includes('.disabled'), false, 'public viewer does not depend on disabled button state');
+  assert.equal(boundary.includes('aria-disabled'), false, 'public viewer does not depend on aria-disabled button state');
   assert.equal(boundary.includes('toggleReaction'), false, 'public viewer does not call toggleReaction');
+  assert.equal(boundary.includes('fetch('), false, 'public viewer reaction boundary does not add mutation fetches');
   assert.equal(boundary.includes('from=editor'), false, 'public viewer does not use editor comment context');
 });
 

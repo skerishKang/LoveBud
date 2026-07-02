@@ -471,27 +471,30 @@
             return status === 401 || status === 403;
         }
 
+        function updateReadOnlyReactionCounts(likeBtn, likeCount, commentBtn, commentCount, likeValue, commentValue) {
+            var normalizedLikeCount = Number(likeValue) || 0;
+            var normalizedCommentCount = Number(commentValue) || 0;
+
+            if (likeCount) likeCount.textContent = normalizedLikeCount;
+            if (commentCount) commentCount.textContent = normalizedCommentCount;
+            if (likeBtn) likeBtn.setAttribute('aria-label', '좋아요 ' + normalizedLikeCount);
+            if (commentBtn) commentBtn.setAttribute('aria-label', '댓글 ' + normalizedCommentCount);
+        }
+
         function applyReadOnlyReactionFallback(likeBtn, likeCount, commentCount, commentBtn, reactionsCard) {
             if (likeBtn) {
-                likeBtn.dataset.reacted = 'false';
                 var icon = likeBtn.querySelector('.editor-reaction-like-icon');
                 if (icon) icon.textContent = '🤍';
-                likeBtn.onclick = null;
-                likeBtn.disabled = true;
-                likeBtn.setAttribute('aria-disabled', 'true');
                 likeBtn.title = "공개 감상에서는 읽기 전용으로 표시돼요";
             }
             if (commentBtn) {
-                commentBtn.onclick = null;
-                commentBtn.disabled = true;
-                commentBtn.setAttribute('aria-disabled', 'true');
                 commentBtn.title = "공개 감상에서는 읽기 전용으로 표시돼요";
             }
-            if (likeCount) likeCount.textContent = '0';
-            if (commentCount) commentCount.textContent = '0';
+            updateReadOnlyReactionCounts(likeBtn, likeCount, commentBtn, commentCount, 0, 0);
             if (reactionsCard) {
+                reactionsCard.classList.add('is-read-only');
                 reactionsCard.classList.add('is-public-readonly');
-                reactionsCard.setAttribute('data-read-only-fallback', 'true');
+                reactionsCard.setAttribute('data-read-only-summary', 'true');
             }
         }
 
@@ -520,13 +523,7 @@
 
             if (reactionSummaryCache[data.id]) {
                 var cached = reactionSummaryCache[data.id];
-                if (likeCount) likeCount.textContent = cached.likeCount;
-                if (commentCount) commentCount.textContent = cached.commentCount;
-                if (likeBtn) {
-                    likeBtn.dataset.reacted = cached.userReacted ? 'true' : 'false';
-                    var icon = likeBtn.querySelector('.editor-reaction-like-icon');
-                    if (icon) icon.textContent = cached.userReacted ? '❤️' : '🤍';
-                }
+                updateReadOnlyReactionCounts(likeBtn, likeCount, commentBtn, commentCount, cached.likeCount, cached.commentCount);
                 return;
             }
 
@@ -555,13 +552,7 @@
 
                     var currentSelectedId = (deps && typeof deps.getSelectedNodeId === 'function') ? deps.getSelectedNodeId() : null;
                     if (currentSelectedId === data.id) {
-                        if (likeCount) likeCount.textContent = res.likeCount;
-                        if (commentCount) commentCount.textContent = res.commentCount;
-                        if (likeBtn) {
-                            likeBtn.dataset.reacted = res.userReacted ? 'true' : 'false';
-                            var icon = likeBtn.querySelector('.editor-reaction-like-icon');
-                            if (icon) icon.textContent = res.userReacted ? '❤️' : '🤍';
-                        }
+                        updateReadOnlyReactionCounts(likeBtn, likeCount, commentBtn, commentCount, res.likeCount, res.commentCount);
                     }
                 })
                 .catch(function(error) {

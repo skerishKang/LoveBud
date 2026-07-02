@@ -354,46 +354,53 @@ test('getRedirectTarget canonicalizes legacy routes, preserves pages paths, and 
     return sandbox.window.LoveBudAuthSession.getRedirectTarget();
   }
 
-  // Bare route → /pages/<route>
-  assert.equal(runWithParams('?redirect=my-trees'), '/pages/my-trees');
-  assert.equal(runWithParams('?redirect=search'), '/pages/search');
-  assert.equal(runWithParams('?redirect=intro'), '/pages/intro');
-  assert.equal(runWithParams('?redirect=detail'), '/pages/detail');
-  assert.equal(runWithParams('?redirect=editor'), '/pages/editor');
-  assert.equal(runWithParams('?redirect=settings'), '/pages/settings');
+  const redirectScenarios = [
+    // Bare route → /pages/<route>
+    ['bare my-trees', '?redirect=my-trees', '/pages/my-trees'],
+    ['bare search', '?redirect=search', '/pages/search'],
+    ['bare intro', '?redirect=intro', '/pages/intro'],
+    ['bare detail', '?redirect=detail', '/pages/detail'],
+    ['bare editor', '?redirect=editor', '/pages/editor'],
+    ['bare settings', '?redirect=settings', '/pages/settings'],
 
-  // pages/<route> without leading slash → /pages/<route>
-  assert.equal(runWithParams('?returnTo=pages/editor?treeId=t1'), '/pages/editor?treeId=t1');
+    // pages/<route> without leading slash → /pages/<route>
+    ['pages/editor without leading slash', '?returnTo=pages/editor?treeId=t1', '/pages/editor?treeId=t1'],
 
-  // /pages/<route> preserved as-is
-  assert.equal(runWithParams('?returnTo=/pages/editor?treeId=t1'), '/pages/editor?treeId=t1');
+    // /pages/<route> preserved as-is
+    ['pages/editor with leading slash', '?returnTo=/pages/editor?treeId=t1', '/pages/editor?treeId=t1'],
 
-  // Nested query preserved through canonicalization (URLSearchParams decodes %26 → &)
-  assert.equal(runWithParams('?redirect=editor%3FtreeId%3Dt1%26memoryId%3Dm1'), '/pages/editor?treeId=t1&memoryId=m1');
-  // Non-encoded bare route with simple query
-  assert.equal(runWithParams('?redirect=editor?treeId=t1'), '/pages/editor?treeId=t1');
+    // Nested query preserved through canonicalization
+    ['nested query encoded', '?redirect=editor%3FtreeId%3Dt1%26memoryId%3Dm1', '/pages/editor?treeId=t1&memoryId=m1'],
+    // Non-encoded bare route with simple query
+    ['non-encoded bare route with query', '?redirect=editor?treeId=t1', '/pages/editor?treeId=t1'],
 
-  // returnTo wins over redirect
-  assert.equal(runWithParams('?returnTo=/pages/settings&redirect=my-trees'), '/pages/settings');
+    // returnTo wins over redirect
+    ['returnTo wins over redirect', '?returnTo=/pages/settings&redirect=my-trees', '/pages/settings'],
 
-  // .html legacy form → /pages/<route>
-  assert.equal(runWithParams('?redirect=my-trees.html'), '/pages/my-trees');
-  assert.equal(runWithParams('?redirect=search.html'), '/pages/search');
-  assert.equal(runWithParams('?redirect=detail.html?treeId=t1'), '/pages/detail?treeId=t1');
+    // .html legacy form → /pages/<route>
+    ['legacy my-trees.html', '?redirect=my-trees.html', '/pages/my-trees'],
+    ['legacy search.html', '?redirect=search.html', '/pages/search'],
+    ['legacy detail.html with query', '?redirect=detail.html?treeId=t1', '/pages/detail?treeId=t1'],
 
-  // External/unsafe targets → default fallback
-  assert.equal(runWithParams('?redirect=https://evil.example'), 'my-trees.html');
-  assert.equal(runWithParams('?redirect=//evil.example'), 'my-trees.html');
-  assert.equal(runWithParams('?redirect=javascript:alert(1)'), 'my-trees.html');
-  assert.equal(runWithParams('?redirect=data:text/html,<script>alert(1)</script>'), 'my-trees.html');
+    // External/unsafe targets → default fallback
+    ['https external target blocked', '?redirect=https://evil.example', 'my-trees.html'],
+    ['protocol-relative external blocked', '?redirect=//evil.example', 'my-trees.html'],
+    ['javascript: URI blocked', '?redirect=javascript:alert(1)', 'my-trees.html'],
+    ['data: URI blocked', '?redirect=data:text/html,<script>alert(1)</script>', 'my-trees.html'],
 
-  // Login loop prevention → default fallback
-  assert.equal(runWithParams('?redirect=login'), 'my-trees.html');
-  assert.equal(runWithParams('?redirect=login.html'), 'my-trees.html');
-  assert.equal(runWithParams('?redirect=/pages/login'), 'my-trees.html');
+    // Login loop prevention → default fallback
+    ['login bare blocked', '?redirect=login', 'my-trees.html'],
+    ['login.html legacy blocked', '?redirect=login.html', 'my-trees.html'],
+    ['/pages/login blocked', '?redirect=/pages/login', 'my-trees.html'],
 
-  // No params → default fallback
-  assert.equal(runWithParams(''), 'my-trees.html');
+    // No params → default fallback
+    ['empty search fallback', '', 'my-trees.html'],
+  ];
+
+  for (const [name, search, expected] of redirectScenarios) {
+    const actual = runWithParams(search);
+    assert.equal(actual, expected, `${name} (search=${JSON.stringify(search)}): expected ${expected}, got ${actual}`);
+  }
 });
 
 test('signInWithGoogle success popup sets canonical href and activates editor preload with canonical redirect', async () => {
@@ -470,13 +477,17 @@ test('signInWithGoogle success popup sets canonical href and activates editor pr
     };
   }
 
-  // bare redirect → canonical href
-  var r1 = await runSignInFlow('?redirect=my-trees');
-  assert.equal(r1.href, '/pages/my-trees');
-  assert.ok(r1.preloadCalls.indexOf('preload-called') !== -1, 'preloadRedirectTargetData must be called');
+  const signInScenarios = [
+    ['bare my-trees redirect → canonical href + preload', '?redirect=my-trees', '/pages/my-trees', ['preload-called']],
+    ['editor redirect with query → canonical href + editor preload', '?redirect=editor?treeId=t1', '/pages/editor?treeId=t1', ['preload-called', 'getTree:tree-1']],
+  ];
 
-  // editor redirect with query → canonical href + editor preload activated
-  var r2 = await runSignInFlow('?redirect=editor?treeId=t1');
-  assert.equal(r2.href, '/pages/editor?treeId=t1');
-  assert.ok(r2.preloadCalls.indexOf('getTree:tree-1') !== -1, 'canonical editor redirect must activate editor preload');
+  for (const [name, search, expectedHref, expectedPreloadCalls] of signInScenarios) {
+    const result = await runSignInFlow(search);
+    assert.equal(result.href, expectedHref, `${name} (search=${JSON.stringify(search)}): href expected ${expectedHref}, got ${result.href}`);
+    for (const expectedCall of expectedPreloadCalls) {
+      assert.ok(result.preloadCalls.indexOf(expectedCall) !== -1,
+        `${name}: preload must include ${expectedCall}`);
+    }
+  }
 });

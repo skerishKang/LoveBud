@@ -578,6 +578,19 @@ function createEditorDetailUI(deps) {
             });
         }
 
+        // ── Entity search (Knowledge Link) ────────────────────
+        const entitySearchMount = document.getElementById('detailEntitySearchMount');
+        if (entitySearchMount) {
+            const entitySearchUI = window.LoveBudEditorKnowledgeLinkUI;
+            if (entitySearchUI && typeof entitySearchUI.renderEntitySearch === 'function') {
+                // Only render once; reuse existing UI on subsequent updates
+                if (!entitySearchMount.dataset.entitySearchInitialized) {
+                    entitySearchUI.renderEntitySearch(entitySearchMount, null, null);
+                    entitySearchMount.dataset.entitySearchInitialized = '1';
+                }
+            }
+        }
+
         if (noteEl) {
             noteEl.innerHTML = '';
 

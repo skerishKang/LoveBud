@@ -1,5 +1,15 @@
 /* ── Search responsive — mobile bottom sheet preview ────── */
 
+/* Scroll-lock for iOS Safari when preview sheet is open.
+   JS sets body.style.top = -scrollY and toggles preview-sheet-open,
+   but position:fixed is required for the top offset to actually lock. */
+body.preview-sheet-open {
+    position: fixed;
+    left: 0;
+    width: 100%;
+    overflow: hidden;
+}
+
 @media (max-width: 768px) {
     /* --- Mobile bottom sheet preview --- */
     /* Hidden state: out of flow entirely, not order:-1 at top */
