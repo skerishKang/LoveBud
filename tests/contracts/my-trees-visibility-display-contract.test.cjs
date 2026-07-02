@@ -102,8 +102,8 @@ test('Browse public-tree adapter guard unchanged', () => {
 
 test('pages/my-trees.html cache-bust token for my-trees-ui.js is -2, CSS is -1', () => {
   const html = read('pages/my-trees.html');
-  assert.match(html, /my-trees\.css\?v=20260626-2824-visibility-state-1/,
-    'my-trees.css must remain at -1');
+  assert.match(html, /my-trees\.css\?v=20260702-2710-shared-rhythm-1/,
+    'my-trees.css must be at shared-rhythm-1');
   assert.match(html, new RegExp('my-trees-ui\\.js\\?v=20260626-2824-visibility-state-2'),
     'my-trees-ui.js must be at -2');
 });
