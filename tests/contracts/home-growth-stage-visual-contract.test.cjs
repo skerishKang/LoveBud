@@ -282,4 +282,121 @@ console.log('✓ 14: thumbnail-fetch-fallback gradient');
 }
 console.log('✓ 15: no infinite in growth-stage.css');
 
+// ============================================================
+// 16. growth-stage-card has visibility: visible (not hidden)
+// ============================================================
+{
+  // Check the static CSS rule — not the animation keyframe
+  const cardRule = cssGrowth.match(/\.growth-stage-card\s*\{[^}]*\}/);
+  assert.ok(cardRule, 'Must find .growth-stage-card CSS rule block');
+  const ruleText = cardRule[0];
+
+  assert.ok(
+    !ruleText.includes('visibility: hidden'),
+    '.growth-stage-card static rule must not contain visibility: hidden'
+  );
+  assert.ok(
+    ruleText.includes('visibility: visible'),
+    '.growth-stage-card static rule must have visibility: visible'
+  );
+}
+console.log('✓ 16: growth-stage-card visibility: visible (not hidden)');
+
+// ============================================================
+// 17. growMomentCard keyframe 100% has opacity: 1
+// ============================================================
+{
+  // Find the keyframe by scanning lines for @keyframes growMomentCard
+  const kfStart = cssAnim.indexOf('@keyframes growMomentCard');
+  assert.ok(kfStart !== -1, 'Must find @keyframes growMomentCard block');
+
+  // Extract keyframe block (until next @keyframes or closing of outer block)
+  let brace = 0;
+  let inBlock = false;
+  let kf = '';
+  for (let i = kfStart; i < cssAnim.length; i++) {
+    const ch = cssAnim[i];
+    if (ch === '{') { brace++; inBlock = true; }
+    else if (ch === '}') { brace--; }
+    if (inBlock) kf += ch;
+    if (brace === 0 && inBlock) break;
+  }
+
+  assert.ok(kf.includes('100%'), 'growMomentCard must have a 100% keyframe');
+  assert.ok(kf.includes('opacity: 1'), 'growMomentCard 100% must have opacity: 1');
+  assert.ok(kf.includes('transform: translateY(0)'), 'growMomentCard 100% must have final transform');
+}
+console.log('✓ 17: growMomentCard 100% opacity: 1');
+
+// ============================================================
+// 18. Animation-fill-mode is not infinite; uses both/forwards
+// ============================================================
+{
+  const cardAnimLine = cssGrowth.match(/animation:\s*growMomentCard[^;]+/);
+  assert.ok(cardAnimLine, 'Must find animation property on growth-stage-card');
+
+  assert.ok(
+    !cardAnimLine[0].includes('infinite'),
+    'animation must not contain infinite'
+  );
+  assert.ok(
+    cardAnimLine[0].includes('both') || cardAnimLine[0].includes('forwards'),
+    'animation fill-mode must be both or forwards'
+  );
+}
+console.log('✓ 18: animation fill-mode not infinite');
+
+// ============================================================
+// 19. No thumbnail class gates card visibility
+// ============================================================
+{
+  // Check that .has-hero-thumbnail does NOT set visibility on .growth-stage-card
+  const shrinkRule = cssGrowth.match(/\.growth-stage-card\.has-hero-thumbnail\s*\{[^}]*\}/);
+  assert.ok(
+    !shrinkRule || !shrinkRule[0].includes('visibility'),
+    'has-hero-thumbnail must not gate card visibility'
+  );
+
+  // Also check that .has-hero-thumbnail ::before does not contain visibility
+  const beforeRule = cssGrowth.match(/\.growth-stage-card\.has-hero-thumbnail::before\s*\{[^}]*\}/);
+  assert.ok(
+    !beforeRule || !beforeRule[0].includes('visibility'),
+    'has-hero-thumbnail ::before must not gate card visibility'
+  );
+}
+console.log('✓ 19: no thumbnail-gated visibility');
+
+// ==========================================================
+// 20. reduced-motion: card has visibility: visible + opacity: 1
+// ==========================================================
+{
+  const reduceIdx = cssAnim.indexOf('@media (prefers-reduced-motion: reduce)');
+  assert.ok(reduceIdx !== -1, 'Must find prefers-reduced-motion block');
+
+  let brace = 0;
+  let inBlock = false;
+  let block = '';
+  for (let i = reduceIdx; i < cssAnim.length; i++) {
+    const ch = cssAnim[i];
+    if (ch === '{') { brace++; inBlock = true; }
+    else if (ch === '}') { brace--; }
+    if (inBlock) block += ch;
+    if (brace === 0 && inBlock) break;
+  }
+
+  assert.ok(
+    block.includes('visibility: visible'),
+    'reduced-motion block must have visibility: visible for cards'
+  );
+  assert.ok(
+    block.includes('opacity: 1'),
+    'reduced-motion block must have opacity: 1'
+  );
+  assert.ok(
+    block.includes('stroke-dashoffset: 0'),
+    'reduced-motion block must have stroke-dashoffset: 0'
+  );
+}
+console.log('✓ 20: reduced-motion: card fully visible');
+
 console.log('\n✅ All contract tests passed.');

@@ -113,10 +113,10 @@
     box-shadow: 0 22px 46px rgba(80, 61, 58, 0.14);
     backdrop-filter: blur(16px);
     opacity: 0;
-    visibility: hidden;
+    visibility: visible;
     pointer-events: none;
     transform: translateY(18px) scale(0.96);
-    animation: growMomentCard 3.8s ease-in-out forwards;
+    animation: growMomentCard 3.8s ease-in-out both;
     z-index: 15;
 }
 
