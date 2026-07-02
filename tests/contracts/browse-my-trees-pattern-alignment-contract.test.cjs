@@ -341,7 +341,7 @@ test('14. Runtime cache-busts updated for changed JS/CSS', () => {
     'pages/my-trees.html must not still pin the pre-#social-bar-path cache-bust 20260622-title-row-1 on my-trees.css'
   );
   assert.match(myTreesHtml, /my-trees-page\.js\?v=20260622-mytrees-create-1/);
-  assert.match(myTreesCss, /my-trees-header\.css\?v=20260625-2878-structure-1/);
+  assert.match(myTreesCss, /my-trees-header\.css\?v=20260702-2710-shared-rhythm-1/);
   assert.match(
     myTreesCss,
     /my-trees-preview-hub\.css\?v=[^"'\s>]+/,
