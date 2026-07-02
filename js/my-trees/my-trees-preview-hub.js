@@ -22,7 +22,7 @@
 
     /* ── Constants ── */
 
-    var VISIBLE_FLOW_MOMENT_COUNT = 4;
+    var VISIBLE_FLOW_MOMENT_COUNT = 10;
 
     /* ── Escape HTML ── */
 
