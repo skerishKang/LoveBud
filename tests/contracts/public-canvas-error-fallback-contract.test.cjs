@@ -191,6 +191,11 @@ test('8. non-allowlisted files are not modified', () => {
     'js/editor/editor-video-focus-view.js',
     'tests/contracts/editor-video-focus-view-contract.test.cjs',
 
+    // #3075 visitor viewer read-only moment social affordance
+    'css/visitor-viewer/visitor-viewer-panel/moment-actions.css',
+    'js/visitor-viewer/visitor-viewer-panels.js',
+    'tests/contracts/visitor-viewer-panel-css-contracts.test.cjs',
+
     // #3135 public Viewer read-only social-summary slice
     'css/editor/editor-overrides.css',
     'js/viewer/public-canvas-bridge.js',
