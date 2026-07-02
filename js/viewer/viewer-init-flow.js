@@ -35,7 +35,26 @@
                     throw new Error('Viewer data loader helper unavailable');
                 }
                 var memories = await DataLoader.loadPublicData(treeId);
-                if (!memories || memories.length === 0) { RS.renderEmpty(); return; }
+
+                // #3060: Deterministic fallback for confirmed Neon hub snapshot
+                // When data returns empty/null, instead of a generic empty state
+                // we render the shell with hardcoded defaults so the viewer
+                // still shows a meaningful tree context.
+                if (!memories || memories.length === 0) {
+                    var fallbackData = (State && typeof State.createDeterministicFallbackData === 'function')
+                        ? State.createDeterministicFallbackData(treeId)
+                        : { tree: { title: '\uB7EC\uBE0C\uD2B8\uB9AC', creator: '@lovetree_viewer', meta: '' } };
+                    var fbContainer = RS.qs ? RS.qs('#viewerTreeContainer') : document.querySelector('#viewerTreeContainer');
+                    if (fbContainer) {
+                        RS.renderDeterministicFallback();
+                        if (ShellRender && typeof ShellRender.renderFallbackShell === 'function') {
+                            ShellRender.renderFallbackShell(fbContainer, fallbackData);
+                        } else {
+                            ShellRender.renderShell(fbContainer, fallbackData);
+                        }
+                    }
+                    return;
+                }
 
                 var viewerData = DT.buildBranches(memories);
 

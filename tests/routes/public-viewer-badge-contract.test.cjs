@@ -2,21 +2,23 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
 
-const source = fs.readFileSync('js/viewer/public-viewer-detail-ui.js', 'utf8');
+const metadataTextSource = fs.readFileSync('js/viewer/public-viewer-detail-metadata-text.js', 'utf8');
+const detailUiSource = fs.readFileSync('js/viewer/public-viewer-detail-ui.js', 'utf8');
 
 function getBadgeBoundary() {
-  const start = source.indexOf('function createPublicViewerCurrentMomentBadgeBoundary(deps)');
-  const end = source.indexOf('function createPublicViewerCurrentMomentTitleBoundary(deps)');
+  const start = metadataTextSource.indexOf('function createPublicViewerCurrentMomentBadgeBoundary(deps)');
+  const end = metadataTextSource.indexOf('function createPublicViewerCurrentMomentTitleBoundary(deps)');
   assert.notEqual(start, -1);
   assert.notEqual(end, -1);
-  return source.slice(start, end);
+  return metadataTextSource.slice(start, end);
 }
 
 test('viewer badge boundary is exposed', () => {
-  assert.ok(source.includes('function createPublicViewerCurrentMomentBadgeBoundary(deps)'));
-  assert.ok(source.includes('createPublicViewerCurrentMomentBadgeBoundary: createPublicViewerCurrentMomentBadgeBoundary'));
-  assert.ok(source.includes('var updateCurrentMomentBadge = createPublicViewerCurrentMomentBadgeBoundary(deps)'));
-  assert.ok(source.includes('updateCurrentMomentBadge(data);'));
+  assert.ok(metadataTextSource.includes('function createPublicViewerCurrentMomentBadgeBoundary(deps)'));
+  assert.ok(metadataTextSource.includes('createPublicViewerCurrentMomentBadgeBoundary: createPublicViewerCurrentMomentBadgeBoundary'));
+  assert.ok(detailUiSource.includes('LoveBudPublicViewerDetailMetadataText'));
+  assert.ok(detailUiSource.includes('createPublicViewerCurrentMomentBadgeBoundary(deps)'));
+  assert.ok(detailUiSource.includes('updateCurrentMomentBadge(data);'));
 });
 
 test('viewer badge boundary owns badge states', () => {
@@ -31,10 +33,10 @@ test('viewer badge boundary owns badge states', () => {
 });
 
 test('viewer badge boundary order is stable', () => {
-  const delegatedIndex = source.indexOf('delegatedUpdateDetailPanel(data);');
-  const badgeIndex = source.indexOf('updateCurrentMomentBadge(data);');
-  const titleIndex = source.indexOf('updateCurrentMomentTitle(data);');
-  const hintIndex = source.indexOf('updatePublicViewerCurrentMomentHint();');
+  const delegatedIndex = detailUiSource.indexOf('delegatedUpdateDetailPanel(data);');
+  const badgeIndex = detailUiSource.indexOf('updateCurrentMomentBadge(data);');
+  const titleIndex = detailUiSource.indexOf('updateCurrentMomentTitle(data);');
+  const hintIndex = detailUiSource.indexOf('metadataText.updatePublicViewerCurrentMomentHint();');
 
   assert.ok(delegatedIndex < badgeIndex);
   assert.ok(badgeIndex < titleIndex);

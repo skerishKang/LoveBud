@@ -3,6 +3,16 @@
    .lovetree-calm-two-column-shell / .lovetree-calm-right-rail (shared).
    This file keeps only my-trees-specific content density deltas. ── */
 
+/* Scroll-lock for iOS Safari when preview sheet is open.
+   JS sets body.style.top = -scrollY and toggles preview-sheet-open,
+   but position:fixed is required for the top offset to actually lock. */
+body.preview-sheet-open {
+    position: fixed;
+    left: 0;
+    width: 100%;
+    overflow: hidden;
+}
+
 @media (max-width: 1024px) {
     .my-trees-hub-header h3 {
         font-size: 1.42rem;

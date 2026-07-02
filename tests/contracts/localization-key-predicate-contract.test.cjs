@@ -10,6 +10,7 @@ const workspacePermissionFile = path.join(ROOT, 'js/shared/tree-workspace-permis
 const editorFormPayloadFile = path.join(ROOT, 'js/editor/editor-memory-form-payload.js');
 const editorDetailUIFile = path.join(ROOT, 'js/editor/editor-detail-ui.js');
 const publicViewerDetailUIFile = path.join(ROOT, 'js/viewer/public-viewer-detail-ui.js');
+const metadataTextFile = path.join(ROOT, 'js/viewer/public-viewer-detail-metadata-text.js');
 
 // ── Canonical predicate focused contract ──
 
@@ -162,14 +163,14 @@ test('editor-memory-form-payload survives absent LoveBudTreeWorkspaceClassifier 
 // ── Public viewer detail UI delegates to canonical predicate ──
 
 test('public-viewer-detail-ui delegates to window.LoveBudTreeWorkspaceClassifier.isLocalizationKeyTitle', () => {
-  const source = fs.readFileSync(publicViewerDetailUIFile, 'utf8');
+  const source = fs.readFileSync(metadataTextFile, 'utf8');
   // Must reference the canonical predicate module
   assert.match(source, /LoveBudTreeWorkspaceClassifier/,
-    'public viewer detail UI must reference canonical predicate module');
+    'metadata-text must reference canonical predicate module');
   assert.match(source, /isLocalizationKeyTitle/,
-    'public viewer detail UI must delegate to canonical predicate isLocalizationKeyTitle');
+    'metadata-text must delegate to canonical predicate isLocalizationKeyTitle');
   assert.doesNotMatch(source, /\/\^\[a-z\]\+\(\?:_\[a-z\]\+\)\{2,\}\$\/\.test/,
-    'public viewer detail UI must not contain its own regex predicate');
+    'metadata-text must not contain its own regex predicate');
 });
 
 test('public-viewer-detail-ui safeDisplayTitle hides localization keys via canonical predicate', () => {
@@ -179,13 +180,10 @@ test('public-viewer-detail-ui safeDisplayTitle hides localization keys via canon
 
   // Load workspace permission first (provides canonical predicate)
   vm.runInContext(fs.readFileSync(workspacePermissionFile, 'utf8'), context);
-  // Load public viewer detail UI
-  vm.runInContext(fs.readFileSync(publicViewerDetailUIFile, 'utf8'), context);
+  // Load public viewer detail metadata text
+  vm.runInContext(fs.readFileSync(metadataTextFile, 'utf8'), context);
 
-  // safeDisplayTitle is not exported, but its behavior is observable through
-  // the update functions that call it indirectly. We test the source reference
-  // statically above. Here we verify the behavioral contract: the canonical
-  // predicate itself rejects raw localization keys.
+  // safeDisplayTitle is defined in metadata-text, its backing predicate detects dot keys
   const { isLocalizationKeyTitle } = context.window.LoveBudTreeWorkspaceClassifier;
 
   // If safeDisplayTitle were fed a raw key, it would return null via the predicate

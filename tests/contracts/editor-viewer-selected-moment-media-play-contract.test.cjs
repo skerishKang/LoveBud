@@ -208,6 +208,11 @@ test('Editor detail UI YouTube selected moment playback contract', () => {
     createMemoEditBoundary() {}
   });
 
+  const metadataCode = fs.readFileSync(path.join(ROOT, 'js/viewer/public-viewer-detail-metadata-text.js'), 'utf8');
+  vm.createContext(context);
+  vm.runInContext(metadataCode, context);
+  assert.ok(context.window.LoveBudPublicViewerDetailMetadataText, 'window.LoveBudPublicViewerDetailMetadataText must exist');
+
   runScriptInContext(editorDetailUIFile, context);
 
   const detailUI = context.window.createEditorDetailUI({
@@ -374,6 +379,11 @@ test('Public viewer detail UI selected moment playback contract (read-only)', ()
     buildTreeMetaRenderModel() { return {}; },
     renderTreeMetaBoundary() {}
   });
+
+  const metadataCode2 = fs.readFileSync(path.join(ROOT, 'js/viewer/public-viewer-detail-metadata-text.js'), 'utf8');
+  vm.createContext(context);
+  vm.runInContext(metadataCode2, context);
+  assert.ok(context.window.LoveBudPublicViewerDetailMetadataText, 'window.LoveBudPublicViewerDetailMetadataText must exist');
 
   runScriptInContext(publicViewerDetailUIFile, context);
 

@@ -18,17 +18,57 @@ export function updateLayoutToggleUI(layoutMode, i18n) {
     const toggleLabel = document.getElementById('layoutModeToggleLabel');
     const toggleIcon = document.getElementById('layoutModeToggleIcon');
     if (!toggleBtn) return;
-    
+
     const isStructured = layoutMode === 'structured';
     toggleBtn.classList.toggle('is-active', isStructured);
-    
+    toggleBtn.setAttribute('aria-pressed', isStructured ? 'true' : 'false');
+
+    const currentLabel = isStructured
+        ? resolveLayoutLabel(i18n, 'editor_layout_structured', '정리된 트리')
+        : resolveLayoutLabel(i18n, 'editor_layout_free', '자유 배치');
+    const nextLabel = isStructured
+        ? resolveLayoutLabel(i18n, 'editor_layout_free', '자유 배치')
+        : resolveLayoutLabel(i18n, 'editor_layout_structured', '정리된 트리');
+
+    toggleBtn.setAttribute('aria-label', `현재 ${currentLabel}, ${nextLabel}로 전환`);
+    toggleBtn.setAttribute('title', `현재 ${currentLabel}, ${nextLabel}로 전환`);
+
     if (toggleLabel) {
-        toggleLabel.textContent = isStructured
-            ? resolveLayoutLabel(i18n, 'editor_layout_structured', '정리된 트리')
-            : resolveLayoutLabel(i18n, 'editor_layout_free', '자유 배치');
+        toggleLabel.textContent = currentLabel;
     }
     if (toggleIcon) {
         toggleIcon.textContent = isStructured ? 'account_tree' : 'auto_awesome';
+    }
+}
+
+/**
+ * Updates the compact mode toggle button UI based on the current view mode.
+ * @param {boolean} isCompact - Whether compact mode is active.
+ * @param {Function} i18n - i18n lookup function.
+ */
+export function updateCompactToggleUI(isCompact, i18n) {
+    const toggleBtn = document.getElementById('compactModeToggleBtn');
+    const toggleLabel = document.getElementById('compactModeToggleLabel');
+    if (!toggleBtn) return;
+
+    toggleBtn.classList.toggle('is-active', isCompact);
+    toggleBtn.setAttribute('aria-pressed', isCompact ? 'true' : 'false');
+
+    const currentLabel = isCompact ? '간략 보기' : '상세 보기';
+    const nextLabel = isCompact ? '상세 보기' : '간략 보기';
+
+    // Note: using hardcoded labels for compact mode as per current implementation patterns,
+    // but maintaining the "현재 X, Y로 전환" pattern for consistency with layout toggle.
+    toggleBtn.setAttribute('aria-label', `현재 ${currentLabel}, ${nextLabel}로 전환`);
+    toggleBtn.setAttribute('title', `현재 ${currentLabel}, ${nextLabel}로 전환`);
+
+    if (toggleLabel) {
+        toggleLabel.textContent = currentLabel;
+    }
+
+    const icon = toggleBtn.querySelector('.material-symbols-outlined');
+    if (icon) {
+        icon.textContent = isCompact ? 'unfold_less' : 'unfold_more';
     }
 }
 
@@ -79,22 +119,23 @@ export function bindCompactModeToggle() {
     if (!toggleBtn || !toolbar) return;
     if (toggleBtn.dataset.compactBound) return;
 
+    const i18n = window.t || function(key) { return key; };
+
     // Restore saved preference
     var saved = localStorage.getItem('lovebud_toolbar_compact');
-    if (saved === 'true') {
+    var isCompact = (saved === 'true');
+    if (isCompact) {
         toolbar.classList.add('is-compact');
-        var icon = toggleBtn.querySelector('.material-symbols-outlined');
-        if (icon) icon.textContent = 'unfold_less';
+    } else {
+        toolbar.classList.remove('is-compact');
     }
+    updateCompactToggleUI(isCompact, i18n);
 
     toggleBtn.addEventListener('click', function() {
-        var isCompact = toolbar.classList.toggle('is-compact');
-        var icon = toggleBtn.querySelector('.material-symbols-outlined');
-        if (icon) {
-            icon.textContent = isCompact ? 'unfold_less' : 'unfold_more';
-        }
+        var currentlyCompact = toolbar.classList.toggle('is-compact');
+        updateCompactToggleUI(currentlyCompact, i18n);
         try {
-            localStorage.setItem('lovebud_toolbar_compact', isCompact ? 'true' : 'false');
+            localStorage.setItem('lovebud_toolbar_compact', currentlyCompact ? 'true' : 'false');
         } catch (e) {
             // localStorage may not be available
         }

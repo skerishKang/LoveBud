@@ -1,7 +1,7 @@
 export function buildDetailViewModeTemplate() {
     return `
             <div id="detailViewMode" class="editor-hidden-initial" style="display: none;">
-                <div class="editor-tree-meta-section" aria-hidden="true">
+                <div class="editor-tree-meta-section" id="detailTreeMetaSection">
                     <div class="editor-section-eyebrow" id="detailTreeStatusLabel">현재 트리</div>
                     <div id="detailTreeMetaMount"></div>
                 </div>
@@ -48,6 +48,11 @@ export function buildDetailViewModeTemplate() {
                     <div class="detail-info-group is-compact">
                         <label id="detailTagsLabel">...</label>
                         <div class="tags-container" id="detailTags"></div>
+                    </div>
+
+                    <div class="detail-info-group">
+                        <label id="detailEntitySearchLabel">연결된 지식</label>
+                        <div id="detailEntitySearchMount"></div>
                     </div>
 
                     <div class="detail-info-group">

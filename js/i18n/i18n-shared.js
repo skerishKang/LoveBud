@@ -167,6 +167,48 @@
       en: 'Saved locally'
     },
 
+    // 임시 저장 (auto-save)
+    'save_auto_saving': {
+      ko: '임시 저장 중...',
+      en: 'Auto-saving...'
+    },
+    'save_auto_saved': {
+      ko: '임시 저장됨',
+      en: 'Auto-saved'
+    },
+    'save_auto_failed': {
+      ko: '임시 저장 실패',
+      en: 'Auto-save failed'
+    },
+
+    // 수동 저장 (manual save)
+    'save_manual_saving': {
+      ko: '저장 중...',
+      en: 'Saving...'
+    },
+    'save_manual_saved': {
+      ko: '저장됨',
+      en: 'Saved'
+    },
+    'save_manual_failed': {
+      ko: '저장 실패',
+      en: 'Save failed'
+    },
+
+    // 체크포인트 저장 (checkpoint)
+    'save_checkpoint_saving': {
+      ko: '연결 저장 중...',
+      en: 'Checkpoint saving...'
+    },
+    'save_checkpoint_saved': {
+      ko: '연결 저장됨',
+      en: 'Checkpoint saved'
+    },
+    'save_checkpoint_failed': {
+      ko: '연결 저장 실패',
+      en: 'Checkpoint save failed'
+    },
+
     // 준비중
     'action_coming_soon': {
       ko: '준비중',

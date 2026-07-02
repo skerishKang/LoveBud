@@ -17,13 +17,28 @@ test('Canvas Topbar template helper exists and contains markup', () => {
     assert.ok(helperCode.includes('id="compactModeToggleBtn"'), 'must preserve compact mode toggle button');
 });
 
+test('Canvas Topbar toggle buttons have correct baseline state', () => {
+    const helperCode = fs.readFileSync('js/editor/templates/editor-canvas-topbar-template.js', 'utf8');
+
+    // Layout toggle baseline
+    assert.ok(helperCode.includes('id="layoutModeToggleBtn" aria-pressed="false"'), 'layout toggle must start as not pressed');
+    assert.ok(helperCode.includes('aria-label="현재 자유 배치, 정리된 트리로 전환"'), 'layout toggle must describe current state and next action');
+    assert.ok(helperCode.includes('title="현재 자유 배치, 정리된 트리로 전환"'), 'layout toggle title must match aria-label');
+    assert.ok(helperCode.includes('id="layoutModeToggleLabel">자유 배치</span>'), 'layout toggle must start with "자유 배치"');
+
+    // Compact toggle baseline
+    assert.ok(helperCode.includes('id="compactModeToggleBtn" aria-pressed="false"'), 'compact toggle must start as not pressed');
+    assert.ok(helperCode.includes('aria-label="현재 상세 보기, 간략 보기로 전환"'), 'compact toggle must describe current state and next action');
+    assert.ok(helperCode.includes('title="현재 상세 보기, 간략 보기로 전환"'), 'compact toggle title must match aria-label');
+    assert.ok(helperCode.includes('id="compactModeToggleLabel">상세 보기</span>'), 'compact toggle must start with "상세 보기"');
+});
+
 test('Canvas Topbar compact display toggle has clear visible copy', () => {
     const helperCode = fs.readFileSync('js/editor/templates/editor-canvas-topbar-template.js', 'utf8');
 
     assert.ok(helperCode.includes('aria-label="표시 옵션"'), 'display option group must be clearly named');
-    assert.ok(helperCode.includes('aria-label="간략 보기 전환"'), 'compact toggle must explain the action');
     assert.ok(helperCode.includes('id="compactModeToggleLabel"'), 'compact toggle must expose a label element');
-    assert.ok(helperCode.includes('>간략 보기</span>'), 'compact toggle must have visible text');
+    assert.ok(helperCode.includes('>상세 보기</span>'), 'compact toggle must have visible text');
 });
 
 test('editor.html uses template mount and removes raw canvas topbar markup', () => {

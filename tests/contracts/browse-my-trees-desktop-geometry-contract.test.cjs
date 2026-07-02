@@ -87,7 +87,7 @@ test('6. Stylesheets use the current My Trees controls cache key for busting', (
 
   assert.match(
     css,
-    /my-trees-header\.css\?v=20260625-2878-structure-1/,
+    /my-trees-header\.css\?v=20260702-2710-shared-rhythm-1/,
     'my-trees.css must import my-trees-header.css with the current controls cache query'
   );
 });

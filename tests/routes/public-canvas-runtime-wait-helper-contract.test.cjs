@@ -64,8 +64,16 @@ test('public canvas init keeps runtime wait loop behind a local helper', () => {
     initSrc.indexOf('function startCanvas()') < initSrc.indexOf('waitForPublicRuntime(startCanvas);'),
     'startCanvas must be defined before runtime wait helper is invoked'
   );
+  // New ordering: local catch handler replaces old direct catch
   assert.ok(
-    initSrc.indexOf('waitForPublicRuntime(startCanvas);') < initSrc.indexOf('.catch(handlePublicCanvasLoadFailure)'),
-    'runtime wait invocation must remain before load error handling'
+    initSrc.indexOf('waitForPublicRuntime(startCanvas);') < initSrc.indexOf('}).catch(handlePublicCanvasLoadFailure);'),
+    'runtime wait invocation must remain before local catch handler'
+  );
+
+  // Old direct catch pattern must not appear in source
+  assert.equal(
+    initSrc.includes('.catch(window.LoveBudPublicCanvasErrorFallback.handlePublicCanvasLoadFailure)'),
+    false,
+    'source must not retain old direct catch pattern'
   );
 });

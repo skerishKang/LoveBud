@@ -10,7 +10,6 @@ const HTML_PATH = path.join(ROOT, 'index.html');
 const SPLIT_FILES = [
   'base.css',
   'branch.css',
-  'cards.css',
   'decorations.css',
   'growth-stage.css',
   'animations.css',
@@ -43,8 +42,8 @@ test('index.html references the original index-visual.css file and version query
   // Check exact link reference tag
   assert.match(
     html,
-    /href="css\/index-visual\.css\?v=20260426-2"/,
-    'index.html must continue to load css/index-visual.css?v=20260426-2'
+    /href="css\/index-visual\.css\?v=20260701-2821-1"/,
+    'index.html must load css/index-visual.css?v=20260701-2821-1'
   );
 });
 
@@ -53,8 +52,7 @@ test('representative classes exist in their respective split files', () => {
     { class: '.home-v3-collage', file: 'base.css' },
     { class: '.home-v3-halo', file: 'base.css' },
     { class: '.home-v3-branch', file: 'branch.css' },
-    { class: '.home-v3-card', file: 'cards.css' },
-    { class: '.home-v3-note-paper', file: 'decorations.css' },
+    { class: '.home-v3-word', file: 'decorations.css' },
     { class: '.home-v3-growth-stage', file: 'growth-stage.css' },
     { class: '.growth-tree-svg', file: 'growth-stage.css' },
     { class: '.growth-stage-card', file: 'growth-stage.css' },

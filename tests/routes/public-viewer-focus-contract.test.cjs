@@ -6,7 +6,7 @@ const source = fs.readFileSync('js/viewer/public-viewer-detail-ui.js', 'utf8');
 
 function getFocusBoundary() {
   const start = source.indexOf('function createPublicViewerUpdateFocusSelectedBtn(deps)');
-  const end = source.indexOf('function updatePublicViewerSidebarStatus()');
+  const end = source.indexOf('function createPublicViewerSidebarStatusUpdater(deps)');
   assert.notEqual(start, -1);
   assert.notEqual(end, -1);
   return source.slice(start, end);

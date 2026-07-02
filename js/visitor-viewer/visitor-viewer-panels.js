@@ -162,15 +162,15 @@
             '<h2 class="vv-moment-title">' + escape(moment.title) + '</h2>' +
             channelMetaHtml +
             '<p class="vv-moment-caption">' + escape(moment.caption) + '</p>' +
-            '<div class="vv-moment-memo"><p class="vv-moment-memo-label">creator memo</p><p class="vv-moment-memo-text">처음으로 이 트리에 꽂아둔, 오래 남은 장면.</p></div>' +
-            '<div class="vv-moment-actions">' +
-            '  <button type="button" class="vv-moment-action-btn" data-action="moment-like">' + Icon.heart + ' 좋아요 1.2k</button>' +
-            '  <button type="button" class="vv-moment-action-btn" data-action="moment-comment">' + Icon.message + ' 순간 댓글 ' + escape(comments.length) + '</button>' +
-            '  <button type="button" class="vv-moment-action-btn" data-action="moment-share">' + Icon.share + ' 공유</button><button type="button" class="vv-moment-action-btn" data-action="export-moment-card" aria-label="순간 이미지 카드 저장">이미지 카드 저장</button></div>' +
+            '<div class="vv-moment-memo"><p class="vv-moment-memo-label">creator memo</p><p class="vv-moment-memo-text"></p></div>' +
+            '<div class="vv-moment-actions" aria-label="순간 반응 요약">' +
+            '  <span class="vv-moment-action-stat" aria-label="좋아요"><span aria-hidden="true">' + Icon.heart + '</span> 좋아요</span>' +
+            '  <span class="vv-moment-action-stat" aria-label="댓글"><span aria-hidden="true">' + Icon.message + '</span> 순간 댓글</span>' +
+            '  <button type="button" class="vv-moment-action-btn" data-action="export-moment-card" aria-label="순간 이미지 카드 저장">이미지 카드 저장</button></div>' +
+            '<p class="vv-moment-reactions-readonly-note">반응 기능은 준비 중이에요.</p>' +
             '<div class="vv-moment-comments-section">' +
-            '  <div class="vv-moment-comments-header"><div><p class="vv-panel-eyebrow">Moment comments</p><h3 class="vv-moment-comments-title">이 순간에 남긴 댓글</h3></div>' +
-            '    <button type="button" class="vv-sort-btn">최신순</button></div>' +
-            '  <div class="vv-comment-input"><div class="vv-comment-input-avatar"></div><input type="text" class="vv-comment-input-field" placeholder="이 순간에 댓글 남기기" /><button type="button" class="vv-comment-submit">게시</button></div>' +
+            '  <div class="vv-moment-comments-header"><div><p class="vv-panel-eyebrow">Moment comments</p><h3 class="vv-moment-comments-title">이 순간에 남긴 댓글</h3></div></div>' +
+            '  <p class="vv-moment-comment-readonly-note">댓글은 준비 중이에요.</p>' +
             '  <div class="vv-comment-list">' + comments.map(CommentRow).join('') + '</div></div>' +
             '<div class="vv-moment-nav"><button type="button" data-action="prev-moment">← 이전 순간</button><button type="button" data-action="next-moment">다음 순간 →</button></div>' +
             '<p class="vv-moment-close-hint">닫으면 같은 가지 선택 상태로 돌아갑니다.</p></aside>';

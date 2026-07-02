@@ -1,0 +1,147 @@
+/*
+ * Editor video-focus view: in-app focused video presentation.
+ *
+ * Expands the existing .detail-video player into a larger, centered
+ * focus surface without recreating the iframe or changing its src.
+ *
+ * The focus view works by adding body.editor-video-focus-open and
+ * .is-editor-video-focused to the .detail-video wrapper. The CSS
+ * then repositions the .detail-video block into a fixed-position
+ * overlay. The original iframe stays in the DOM — only its visual
+ * presentation changes.
+ *
+ * Scope: editor .detail-video area only. Does not affect viewer,
+ * Browse, or public read-only surfaces.
+ *
+ * Guardrails:
+ *  - No iframe src mutation, no cloneNode, no remove/reinsert.
+ *  - No keydown/Escape/focus-trap/keyboard-navigation in this slice.
+ *  - No autoplay, no YouTube provider change, no URL sanitization.
+ */
+
+/* ==================================================================
+   Focus backdrop — real DOM element created by JS on focus open
+   ================================================================== */
+.editor-video-focus-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 400;
+    background: rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+}
+
+/* ==================================================================
+   Focus surface — the .detail-video wrapper becomes a large centered
+   overlay in this state. The original iframe remains inside.
+   ================================================================== */
+body.editor-video-focus-open .detail-video.is-editor-video-focused {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: min(960px, calc(100vw - 48px));
+    aspect-ratio: 16 / 9;
+    z-index: 401;
+    background: #000;
+    border-radius: 0;
+    box-shadow: 0 8px 40px rgba(0, 0, 0, 0.5);
+}
+
+body.editor-video-focus-open .detail-video.is-editor-video-focused iframe {
+    width: 100%;
+    height: 100%;
+    border: 0;
+}
+
+body.editor-video-focus-open .detail-video.is-editor-video-focused img,
+body.editor-video-focus-open .detail-video.is-editor-video-focused .memory-preview-overlay,
+body.editor-video-focus-open .detail-video.is-editor-video-focused .play-btn {
+    display: none;
+}
+
+/* ==================================================================
+   Close button — created by JS inside .detail-video on focus open
+   ================================================================== */
+.editor-video-focus-close {
+    position: fixed;
+    top: 16px;
+    right: 20px;
+    z-index: 402;
+    background: rgba(0, 0, 0, 0.65);
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    border-radius: 6px;
+    padding: 8px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    line-height: 1;
+    transition: background 0.15s ease;
+}
+
+.editor-video-focus-close:hover {
+    background: rgba(0, 0, 0, 0.85);
+}
+
+body:not(.editor-video-focus-open) .editor-video-focus-close {
+    display: none !important;
+}
+
+/* ==================================================================
+   Focus toggle — CTA button inside the detail panel
+   ================================================================== */
+.editor-video-focus-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    border: 1px solid var(--outline, rgba(144, 73, 81, 0.3));
+    border-radius: 20px;
+    background: var(--surface, #fff);
+    color: var(--on-surface, #333);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease;
+    white-space: nowrap;
+}
+
+.editor-video-focus-toggle:hover {
+    background: var(--surface-variant, rgba(144, 73, 81, 0.06));
+    border-color: var(--primary, rgba(144, 73, 81, 0.5));
+}
+
+.editor-video-focus-toggle .material-symbols-outlined {
+    font-size: 18px;
+}
+
+.editor-video-focus-toggle[hidden] {
+    display: none !important;
+}
+
+/* Hide CTA when focus view is open — the toggle lives inside the .detail-video wrapper
+   which becomes the focus surface, so it would otherwise sit on top of the video. */
+body.editor-video-focus-open .detail-video.is-editor-video-focused .editor-video-focus-toggle {
+    display: none !important;
+}
+
+/* ==================================================================
+   Narrow viewport: below 480px — compact layout
+   ================================================================== */
+@media (max-width: 480px) {
+    .editor-video-focus-toggle {
+        font-size: 12px;
+        padding: 6px 12px;
+    }
+}
+
+/* ==================================================================
+   Very narrow viewport: below 360px — minimal toggle
+   ================================================================== */
+@media (max-width: 360px) {
+    .editor-video-focus-toggle {
+        font-size: 11px;
+        padding: 5px 10px;
+    }
+}

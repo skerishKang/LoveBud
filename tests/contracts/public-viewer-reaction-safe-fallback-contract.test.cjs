@@ -81,10 +81,10 @@ test('public-viewer-detail-ui runtime cache, fallback, and throttle contract', a
     detailMemo: createMockElement(),
     detailTags: createMockElement(),
     momentReactionsCard: createMockElement(),
-    momentLikeBtn: createMockElement('button'),
+    momentLikeBtn: createMockElement('div'),
     momentLikeCount: createMockElement('span'),
     momentCommentCount: createMockElement('span'),
-    momentCommentBtn: createMockElement('button')
+    momentCommentBtn: createMockElement('div')
   };
 
   // Setup parent hierarchy for image container empty state testing
@@ -136,6 +136,15 @@ test('public-viewer-detail-ui runtime cache, fallback, and throttle contract', a
   context.window = context;
 
   vm.createContext(context);
+  const metadataCode = fs.readFileSync(path.join(ROOT, 'js/viewer/public-viewer-detail-metadata-text.js'), 'utf8');
+  vm.runInContext(metadataCode, context);
+  assert.ok(context.window.LoveBudPublicViewerDetailMetadataText, 'window.LoveBudPublicViewerDetailMetadataText must exist');
+  assert.ok(context.window.LoveBudPublicViewerDetailMetadataText.safeDisplayTitle, 'safeDisplayTitle helper must exist');
+  assert.ok(context.window.LoveBudPublicViewerDetailMetadataText.createPublicViewerCurrentMomentBadgeBoundary, 'createPublicViewerCurrentMomentBadgeBoundary helper must exist');
+  assert.ok(context.window.LoveBudPublicViewerDetailMetadataText.createPublicViewerCurrentMomentTitleBoundary, 'createPublicViewerCurrentMomentTitleBoundary helper must exist');
+  assert.ok(context.window.LoveBudPublicViewerDetailMetadataText.updatePublicViewerCurrentMomentHint, 'updatePublicViewerCurrentMomentHint helper must exist');
+  assert.ok(context.window.LoveBudPublicViewerDetailMetadataText.updatePublicViewerCurrentMomentDate, 'updatePublicViewerCurrentMomentDate helper must exist');
+
   vm.runInContext(scriptSource, context);
 
   assert.equal(typeof context.createPublicViewerDetailUI, 'function', 'UI factory should be exposed on window');
@@ -158,9 +167,13 @@ test('public-viewer-detail-ui runtime cache, fallback, and throttle contract', a
   // 1. Initial panel update: should request from API
   detailUI.updateDetailPanel(data1);
   assert.equal(fetchCalls, 1, 'First update should invoke API client fetch');
-  assert.equal(elements.momentLikeBtn.disabled, true, 'Buttons must be disabled');
-  assert.equal(elements.momentLikeBtn.getAttribute('aria-disabled'), 'true', 'Buttons must have aria-disabled');
-  assert.equal(elements.momentReactionsCard.getAttribute('data-read-only-fallback'), 'true', 'Card must flag read-only-fallback');
+  assert.equal(elements.momentLikeBtn.tagName, 'DIV', 'Like stat must not be a button');
+  assert.equal(elements.momentCommentBtn.tagName, 'DIV', 'Comment stat must not be a button');
+  assert.equal(elements.momentLikeBtn.disabled, undefined, 'Read-only stat must not depend on disabled button state');
+  assert.equal(elements.momentLikeBtn.getAttribute('aria-disabled'), undefined, 'Read-only stat must not depend on aria-disabled');
+  assert.equal(elements.momentReactionsCard.getAttribute('data-read-only-summary'), 'true', 'Card must flag read-only summary');
+  assert.equal(elements.momentLikeBtn.getAttribute('aria-label'), '좋아요 0', 'Like stat aria-label starts with neutral count');
+  assert.equal(elements.momentCommentBtn.getAttribute('aria-label'), '댓글 0', 'Comment stat aria-label starts with neutral count');
   assert.ok(imgParent.classList.contains('is-empty') === false, 'Image container should not have is-empty if thumbnail exists');
 
   // 2. Immediate repeat update (< 150ms): should short-circuit and NOT request fetch
@@ -179,12 +192,16 @@ test('public-viewer-detail-ui runtime cache, fallback, and throttle contract', a
 
   assert.equal(elements.momentLikeCount.textContent.toString(), '7', 'Like count updated after success');
   assert.equal(elements.momentCommentCount.textContent.toString(), '2', 'Comment count updated after success');
-  assert.equal(likeIcon.textContent, '❤️', 'Like icon updated after success');
+  assert.equal(elements.momentLikeBtn.getAttribute('aria-label'), '좋아요 7', 'Like stat aria-label reflects latest count');
+  assert.equal(elements.momentCommentBtn.getAttribute('aria-label'), '댓글 2', 'Comment stat aria-label reflects latest count');
+  assert.equal(likeIcon.textContent, '🤍', 'userReacted must not switch the read-only icon to pressed state');
 
   // 5. Subsequent update: should read from cache and NOT call API
   currentFakeTime += 500;
   detailUI.updateDetailPanel(data1);
   assert.equal(fetchCalls, 1, 'Cache hit should prevent refetching entirely');
+  assert.equal(elements.momentLikeBtn.getAttribute('aria-label'), '좋아요 7', 'Cached like count keeps aria-label in sync');
+  assert.equal(elements.momentCommentBtn.getAttribute('aria-label'), '댓글 2', 'Cached comment count keeps aria-label in sync');
 
   // 6. Test 401 Failure Fallback behaviour
   fetchCalls = 0;
@@ -203,6 +220,8 @@ test('public-viewer-detail-ui runtime cache, fallback, and throttle contract', a
   // Should remain neutral fallback (zero counts)
   assert.equal(elements.momentLikeCount.textContent.toString(), '0');
   assert.equal(elements.momentCommentCount.textContent.toString(), '0');
+  assert.equal(elements.momentLikeBtn.getAttribute('aria-label'), '좋아요 0');
+  assert.equal(elements.momentCommentBtn.getAttribute('aria-label'), '댓글 0');
 
   // Next update for mem-2 should NOT request fetch because it's in auth failure / cached neutral state
   currentFakeTime += 500;
