@@ -12,10 +12,10 @@ const GROWTH_STAGE_CSS_PATH = path.join(ROOT, 'css', 'index', 'visual', 'growth-
 test('Contract: index.html elements integrity', () => {
   const html = fs.readFileSync(HTML_PATH, 'utf8');
 
-  // 1. index.html has growth-tree-svg and exactly 3 growth-stage-cards
+  // 1. index.html has growth-tree-svg and exactly 4 growth-stage-cards
   assert.ok(html.includes('growth-tree-svg'), 'index.html must have growth-tree-svg');
   const matches = html.match(/class="[^"]*growth-stage-card\b[^"]*"/g) || [];
-  assert.equal(matches.length, 3, `index.html must have exactly 3 growth-stage-cards, found ${matches.length}`);
+  assert.equal(matches.length, 4, `index.html must have exactly 4 growth-stage-cards, found ${matches.length}`);
 
   // 2. index.html does not have home-v3-card and home-v3-note-paper
   assert.ok(!html.includes('home-v3-card'), 'index.html must not contain home-v3-card markup');
@@ -29,12 +29,12 @@ test('Contract: css manifest and growth-stage.css rules', () => {
 
   // 4. growth-stage.css has default hidden policy
   const growthCss = fs.readFileSync(GROWTH_STAGE_CSS_PATH, 'utf8');
-  const defaultPolicyPattern = /\.growth-stage-card\s*\{[^}]*opacity:\s*0;[^}]*visibility:\s*hidden;[^}]*pointer-events:\s*none;/;
+  const defaultPolicyPattern = /\.growth-stage-card\s*\{[^}]*opacity:\s*0;[^}]*visibility:\s*visible;[^}]*pointer-events:\s*none;/;
   assert.ok(defaultPolicyPattern.test(growthCss), 'growth-stage.css must have default hidden policy for .growth-stage-card');
 
-  // 5. growth-stage.css has conditional visible selector
-  const visiblePolicyPattern = /\.home-v3-growth-stage\.has-real-thumbnails\s+\.growth-stage-card\.has-hero-thumbnail\s*\{[^}]*opacity:\s*1;[^}]*visibility:\s*visible;/;
-  assert.ok(visiblePolicyPattern.test(growthCss), 'growth-stage.css must have conditional visible selector');
+  // 5. growth-stage.css uses animation-based reveal (not toggled visibility)
+  const animatePattern = /\.growth-stage-card\s*\{[^}]*animation:\s*growMomentCard[^}]*\bboth\b/;
+  assert.ok(animatePattern.test(growthCss), 'growth-stage.css must use animation growMomentCard with "both" fill mode');
 });
 
 test('Contract: index-inline-init.js class adjustments and fallback absence', () => {
