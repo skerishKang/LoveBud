@@ -210,10 +210,7 @@ test('8. non-allowlisted files are not modified', () => {
     'tests/routes/public-viewer-reactions-contract.test.cjs',
     'tests/routes/public-viewer-detail-ui-core-contract.test.cjs',
     'tests/routes/public-viewer-focus-contract.test.cjs',
-    'tests/routes/public-viewer-sidebar-contract.test.cjs',
-
-    // #2973 table-driven auth bootstrap contract
-    'tests/contracts/auth-bootstrap-contract.test.cjs',
+    'tests/routes/public-viewer-sidebar-contract.test.cjs'
   ];
 
   // Read git diff to check what files are modified
