@@ -79,7 +79,7 @@ def test_keywords_dedupe_preserves_order():
 
 def test_keywords_max_5():
     try:
-        normalize_keywords(["a"] * 6)
+        normalize_keywords(["a", "b", "c", "d", "e", "f"])
         assert False, "should raise"
     except HTTPException as e:
         assert e.status_code == 400
