@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>지식 상세 | LoveTree</title>
+    <link rel="icon" href="/assets/favicon/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="/favicon.ico" sizes="32x32" />
+    <link rel="stylesheet" href="../css/editor.css?v=20260614-2465" />
+    <link rel="stylesheet" href="../css/page-transitions.css?v=20260430-1" />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
+    />
+    <style>
+      .entity-page {
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 40px 24px 80px;
+      }
+      .entity-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 8px;
+      }
+      .entity-type-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 2px 10px;
+        border-radius: 12px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+        color: #fff;
+      }
+      .entity-type-badge.type-person { background: #7c4dff; }
+      .entity-type-badge.type-group_or_organization { background: #00bfa5; }
+      .entity-type-badge.type-work { background: #ff9100; }
+      .entity-type-badge.type-video_or_source { background: #536dfe; }
+      .entity-type-badge.type-place { background: #00b8d4; }
+      .entity-type-badge.type-event { background: #d500f9; }
+      .entity-type-badge.type-concept { background: #69f0ae; color: #1a1a2e; }
+
+      .entity-canonical-name {
+        font-size: 1.8rem;
+        font-weight: 700;
+        margin: 0 0 16px 0;
+        color: var(--on-surface);
+      }
+
+      .entity-summary {
+        font-size: 1rem;
+        line-height: 1.7;
+        color: var(--on-surface-variant);
+        margin-bottom: 32px;
+        padding: 16px 20px;
+        background: var(--surface-variant);
+        border-radius: 12px;
+      }
+
+      .entity-section {
+        margin-bottom: 32px;
+      }
+      .entity-section-title {
+        font-size: 0.85rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--on-surface-variant);
+        margin-bottom: 12px;
+        padding-bottom: 6px;
+        border-bottom: 1px solid var(--outline-variant);
+      }
+
+      .entity-aliases {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      .entity-alias-tag {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 16px;
+        background: var(--surface-variant);
+        font-size: 0.875rem;
+        color: var(--on-surface);
+      }
+
+      .entity-source-refs {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+      }
+      .entity-source-ref-item {
+        padding: 8px 0;
+        border-bottom: 1px solid var(--outline-variant);
+      }
+      .entity-source-ref-item:last-child {
+        border-bottom: none;
+      }
+      .entity-source-ref-link {
+        color: var(--primary);
+        text-decoration: none;
+        font-size: 0.875rem;
+      }
+      .entity-source-ref-link:hover {
+        text-decoration: underline;
+      }
+
+      .entity-related-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .entity-related-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 16px;
+        border-radius: 10px;
+        background: var(--surface-variant);
+        text-decoration: none;
+        color: var(--on-surface);
+        transition: background 0.15s;
+      }
+      .entity-related-item:hover {
+        background: var(--surface-variant-hover, rgba(255,255,255,0.08));
+      }
+      .entity-related-name {
+        font-weight: 500;
+        flex: 1;
+      }
+      .entity-related-type {
+        font-size: 0.75rem;
+        padding: 2px 8px;
+        border-radius: 10px;
+        background: rgba(255,255,255,0.1);
+        color: var(--on-surface-variant);
+      }
+
+      .entity-not-found {
+        text-align: center;
+        padding: 80px 24px;
+        color: var(--on-surface-variant);
+      }
+      .entity-not-found-icon {
+        font-size: 64px;
+        opacity: 0.3;
+        margin-bottom: 16px;
+      }
+      .entity-not-found-title {
+        font-size: 1.2rem;
+        font-weight: 600;
+        margin-bottom: 8px;
+        color: var(--on-surface);
+      }
+      .entity-loading {
+        text-align: center;
+        padding: 80px 24px;
+        color: var(--on-surface-variant);
+      }
+
+      #shared-header {
+        min-height: 48px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="noise-overlay"></div>
+    <div id="shared-header"></div>
+
+    <main class="entity-page page-transition-enter" id="entityPage">
+      <div id="entityContent"></div>
+    </main>
+
+    <script src="../js/cache-utils.js?v=20260418-1"></script>
+    <script src="../js/utils/normalize.js?v=20260422-1"></script>
+    <script src="../js/utils/path.js?v=20260418-1"></script>
+    <script src="../js/utils/ui.js?v=20260418-1"></script>
+    <script src="../js/utils/media.js?v=20260418-1"></script>
+    <script src="../js/editor/editor-knowledge-link-core.js?v=20260702-1"></script>
+    <script src="../js/entity.js?v=20260702-1"></script>
+    <script src="../js/shared-header.js?v=20260628-2993-1"></script>
+    <script src="../js/page-transitions.js?v=20260430-1"></script>
+    <script>
+      renderSharedHeader();
+
+      var entityPage = window.LoveBudEntityPage;
+      if (entityPage && typeof entityPage.renderEntityPage === 'function') {
+        entityPage.renderEntityPage();
+      }
+    </script>
+  </body>
+</html>

@@ -51,6 +51,11 @@ export function buildDetailViewModeTemplate() {
                     </div>
 
                     <div class="detail-info-group">
+                        <label id="detailEntitySearchLabel">연결된 지식</label>
+                        <div id="detailEntitySearchMount"></div>
+                    </div>
+
+                    <div class="detail-info-group">
                         <label id="detailMemoLabel">...</label>
                         <div class="diary-note" id="detailMemo"></div>
                     </div>
