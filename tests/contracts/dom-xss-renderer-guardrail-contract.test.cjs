@@ -320,6 +320,16 @@ const FILE_ALLOWLIST = {
     count: 1, classification: 'mock',
     reason: 'POC FILE — not used in production. clear-container: innerHTML = empty string'
   },
+
+  // ── Knowledge ────────────────────────────────────────────────────────
+  'js/editor/editor-knowledge-link-ui.js': {
+    count: 7, classification: 'safe',
+    reason: 'autocomplete dropdown template + entity chips with escapeHtml for user content'
+  },
+  'js/entity.js': {
+    count: 3, classification: 'safe',
+    reason: 'entity detail renderer — escapeHtml for all user-facing content'
+  },
 };
 
 // ─── KNOWN ISSUE ALLOWLIST ──────────────────────────────────────────────────
