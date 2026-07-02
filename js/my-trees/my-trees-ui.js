@@ -101,11 +101,24 @@
       : {};
     meta.visibilityBadgeHtml = buildVisibilityBadgeHtml(visibility, i18n);
     meta.title = meta.title || (tree && tree.title);
-    meta.mood = meta.mood || (
-      getTreeMomentCount(tree) > 0
+    meta.mood = meta.mood || (function () {
+      // #2880: Show group name + keywords on card subcopy when available,
+      // fall back to growth status text.
+      var groupName = tree && (tree.groupName || tree.group_name || tree.group);
+      var keywords = tree && (Array.isArray(tree.keywords) ? tree.keywords : []);
+      if (groupName) {
+        var subcopy = escapeHtml(groupName);
+        if (keywords.length > 0) {
+          subcopy += ' <span class="tree-card-keywords">' +
+            keywords.map(function (kw) { return '<span class="tree-card-keyword">#' + escapeHtml(kw) + '</span>'; }).join(' ') +
+            '</span>';
+        }
+        return subcopy;
+      }
+      return getTreeMomentCount(tree) > 0
         ? getI18nText(i18n, 'myTrees.card_growing', '차곡차곡 자라는 중')
-        : getI18nText(i18n, 'myTrees.card_waiting', '첫 순간을 기다리는 중')
-    );
+        : getI18nText(i18n, 'myTrees.card_waiting', '첫 순간을 기다리는 중');
+    })();
     return meta;
   }
 
