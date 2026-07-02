@@ -254,6 +254,7 @@ function createEditorMemoryForm(deps) {
                     });
                 }
                 updatePreview(isFirstMoment);
+                suggestYouTubeMetadata(url);
             };
             refs.urlInput.addEventListener('input', previewInputHandler);
         }
@@ -278,6 +279,55 @@ function createEditorMemoryForm(deps) {
                 userHasEditedTitle = true;
             }, { once: true });
         }
+    }
+
+    let _youtubeMetadataTimer = null;
+    let _lastSuggestedUrl = '';
+
+    function suggestYouTubeMetadata(url) {
+        // Only suggest for YouTube URLs
+        var match = url.match(
+            /^(?:https?:\/\/)?(?:www\.|m\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/
+        );
+        if (!match) return;
+        var videoId = match[1];
+
+        // Don't refetch the same URL
+        if (_lastSuggestedUrl === url) return;
+        _lastSuggestedUrl = url;
+
+        // Debounce: wait 800ms after typing stops
+        if (_youtubeMetadataTimer) clearTimeout(_youtubeMetadataTimer);
+        _youtubeMetadataTimer = setTimeout(function () {
+            _youtubeMetadataTimer = null;
+
+            // Skip if title was manually edited
+            if (userHasEditedTitle) return;
+            if (!refs.titleInput) return;
+
+            var oembedUrl = 'https://www.youtube.com/oembed?url=' +
+                encodeURIComponent('https://www.youtube.com/watch?v=' + videoId) +
+                '&format=json';
+
+            fetch(oembedUrl)
+                .then(function (res) { return res.json(); })
+                .then(function (data) {
+                    if (!data || !data.title) return;
+                    // Don't overwrite user-typed title
+                    if (userHasEditedTitle) return;
+                    var currentTitle = (refs.titleInput.value || '').trim();
+                    if (currentTitle.length > 0) return;
+                    // Fill the title
+                    refs.titleInput.value = data.title;
+                    // Update preview title if available
+                    if (refs.previewTitle && refs.previewTitle.textContent === '영상 링크 확인됨') {
+                        refs.previewTitle.textContent = data.title;
+                    }
+                })
+                .catch(function () {
+                    // Silently fail — metadata suggestion is optional
+                });
+        }, 800);
     }
 
     const showAddMemoryForm = () => {
