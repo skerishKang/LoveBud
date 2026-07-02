@@ -120,6 +120,12 @@ body:not(.editor-video-focus-open) .editor-video-focus-close {
     display: none !important;
 }
 
+/* Hide CTA when focus view is open — the toggle lives inside the .detail-video wrapper
+   which becomes the focus surface, so it would otherwise sit on top of the video. */
+body.editor-video-focus-open .detail-video.is-editor-video-focused .editor-video-focus-toggle {
+    display: none !important;
+}
+
 /* ==================================================================
    Narrow viewport: below 480px — compact layout
    ================================================================== */

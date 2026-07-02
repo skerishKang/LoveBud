@@ -76,6 +76,7 @@
         closeBtn.className = FOCUS_CLOSE_BTN_CLASS;
         closeBtn.setAttribute('type', 'button');
         closeBtn.setAttribute('aria-label', '닫기');
+        closeBtn.textContent = '닫기';
         videoWrapper.appendChild(closeBtn);
         currentCloseBtn = closeBtn;
 
