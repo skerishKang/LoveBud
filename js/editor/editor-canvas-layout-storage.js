@@ -39,7 +39,7 @@
             const raw = localStorage.getItem(layoutModeStorageKey);
             if (raw === 'structured' || raw === 'free') return raw;
         } catch (e) {}
-        return 'free';
+        return 'structured';
     }
 
     function persistLayoutMode(mode, layoutModeStorageKey, canEdit) {
