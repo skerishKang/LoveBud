@@ -529,3 +529,13 @@ function createEditorMemoryForm(deps) {
 }
 
 window.createEditorMemoryForm = createEditorMemoryForm;
+
+/* #2956: Standalone createMemory for testability.
+   Direct API call without form state, channel enrichment, or tree mutation.
+   Returns { createdMemory, useApi } matching createMemoryWithFallback shape. */
+window.createMemoryFromPayload = async function (payload) {
+  if (!window.apiClient || typeof window.apiClient.createMemory !== 'function') {
+    throw new Error('apiClient.createMemory not available');
+  }
+  return window.apiClient.createMemory(payload);
+};
