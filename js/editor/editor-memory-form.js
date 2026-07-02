@@ -466,7 +466,7 @@ function createEditorMemoryForm(deps) {
             return;
         }
 
-        updateSaveStatus('saving', i18n('save_saving'));
+        updateSaveStatus('manual_saving', i18n('save_saving'));
         hideAddMemoryForm({ restoreFocus: false });
 
         const enrichedPayload = await saveRuntime.enrichPayloadChannelMetadata(payloadResult.data, rawUrl);

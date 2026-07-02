@@ -45,8 +45,27 @@
             '</div>';
     }
 
+    /**
+     * Render a minimal fallback shell when a confirmed Neon hub snapshot is
+     * missing or corrupted.  Produces the same visual shell as renderShell(),
+     * but uses hardcoded deterministic defaults and marks the tree area with
+     * a data attribute so consumers can detect the fallback.
+     *
+     * @param {Element} container - The container element to render into
+     * @param {Object}  viewerData - Fallback viewerData (from State.createDeterministicFallbackData)
+     */
+    function renderFallbackShell(container, viewerData) {
+        if (!container) return;
+        renderShell(container, viewerData || { tree: { title: '\uB7EC\uBE0C\uD2B8\uB9AC', creator: '@lovetree_viewer', meta: '' } });
+        var treeBox = container.querySelector('.vv-tree-container');
+        if (treeBox) {
+            treeBox.setAttribute('data-fallback', 'neon-snapshot');
+        }
+    }
+
     window.LoveBudViewerShellRender = {
         renderShell: renderShell,
+        renderFallbackShell: renderFallbackShell,
         escapeHtml: escapeHtml
     };
 })();

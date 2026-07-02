@@ -28,6 +28,21 @@
                 state.selectedBranchId = branchId;
                 state.selectedMomentId = momentId;
                 state.activePanel = 'moment';
+                
+                // Check if there's an appreciation order and highlight next if available
+                var appreciationOrder = window.currentTreeData && window.currentTreeData.appreciationOrder;
+                if (appreciationOrder && Array.isArray(appreciationOrder) && appreciationOrder.length > 0) {
+                    var currentIndex = appreciationOrder.indexOf(momentId);
+                    if (currentIndex > -1 && currentIndex < appreciationOrder.length - 1) {
+                        var nextId = appreciationOrder[currentIndex + 1];
+                        var nextNode = document.querySelector('[data-memory-id="' + nextId + '"]');
+                        if (nextNode) {
+                            nextNode.classList.add('next-in-order');
+                            nextNode.setAttribute('aria-label', '다음 순서');
+                        }
+                    }
+                }
+                
                 refresh();
             },
             closeMoment: function() {

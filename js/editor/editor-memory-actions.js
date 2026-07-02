@@ -272,7 +272,7 @@ function createEditorMemoryActions(deps) {
 
         try {
             if (!currentEditingMemory.id) {
-                updateSaveStatus('failed', formatI18nText('save_failed', '저장 실패'));
+                updateSaveStatus('manual_failed', formatI18nText('save_failed', '저장 실패'));
                 showToast(formatI18nText('save_failed', '저장 실패'), 'error');
                 return;
             }
@@ -290,7 +290,7 @@ function createEditorMemoryActions(deps) {
 
             if ((startHasValue || endHasValue) && !timeHelper) {
                 showToast(formatI18nText('time_helper_missing', '시간을 처리하는 도구를 불러오지 못했습니다.'), 'error');
-                updateSaveStatus('failed', formatI18nText('save_failed', '저장 실패'));
+                updateSaveStatus('manual_failed', formatI18nText('save_failed', '저장 실패'));
                 return;
             }
 
@@ -301,7 +301,7 @@ function createEditorMemoryActions(deps) {
                 startSeconds = timeHelper.parseTime(startTimeInput.value.trim());
                 if (startSeconds === null) {
                     showToast(formatI18nText('invalid_start_time', '시작 시간을 다시 확인해 주세요.'), 'error');
-                    updateSaveStatus('failed', formatI18nText('save_failed', '저장 실패'));
+                    updateSaveStatus('manual_failed', formatI18nText('save_failed', '저장 실패'));
                     return;
                 }
             }
@@ -315,7 +315,7 @@ function createEditorMemoryActions(deps) {
                 });
                 if (!endCheck.ok) {
                     showToast(endCheck.message, 'error');
-                    updateSaveStatus('failed', formatI18nText('save_failed', '저장 실패'));
+                    updateSaveStatus('manual_failed', formatI18nText('save_failed', '저장 실패'));
                     return;
                 }
                 endSeconds = endCheck.endSeconds;
@@ -349,7 +349,7 @@ function createEditorMemoryActions(deps) {
                             const sourceUpdate = resolveSourceUpdate(rawSourceUrl);
                             if (!sourceUpdate) {
                                 showToast(formatI18nText('invalid_youtube_unsupported', 'YouTube 링크만 지원합니다. youtube.com 또는 youtu.be 링크를 사용해 주세요.'), 'error');
-                                updateSaveStatus('failed', formatI18nText('save_failed', '저장 실패'));
+                                updateSaveStatus('manual_failed', formatI18nText('save_failed', '저장 실패'));
                                 return;
                             }
 
@@ -371,7 +371,7 @@ function createEditorMemoryActions(deps) {
                             Object.assign(payload, sourceUpdate);
                         } else {
                             showToast(formatI18nText('invalid_youtube_unsupported', 'YouTube 링크만 지원합니다. youtube.com 또는 youtu.be 링크를 사용해 주세요.'), 'error');
-                            updateSaveStatus('failed', formatI18nText('save_failed', '저장 실패'));
+                            updateSaveStatus('manual_failed', formatI18nText('save_failed', '저장 실패'));
                             return;
                         }
                     } else {
@@ -438,7 +438,7 @@ function createEditorMemoryActions(deps) {
                 return;
             }
 
-            updateSaveStatus('saving', i18n('save_saving'));
+            updateSaveStatus('manual_saving', i18n('save_saving'));
 
             if (window.apiClient && typeof window.apiClient.updateMemory === 'function') {
                 const savedMemory = await window.apiClient.updateMemory(currentEditingMemory.id, payload);
@@ -536,7 +536,7 @@ function createEditorMemoryActions(deps) {
                 updateSidebarStatus();
                 if (typeof rerenderCanvas === 'function') rerenderCanvas();
 
-                updateSaveStatus('saved', i18n('save_saved'));
+                updateSaveStatus('manual_saved', i18n('save_saved'));
                 showToast(i18n('memory_updated') || '순간을 수정했어요', 'success');
             } else {
                 throw new Error('updateMemory not available');
@@ -544,7 +544,7 @@ function createEditorMemoryActions(deps) {
         } catch (error) {
             // Do not expose raw provider/API error text to user
             console.error('[editor] Failed to update memory:', error);
-            updateSaveStatus('failed', formatI18nText('save_failed', '저장 실패'));
+            updateSaveStatus('manual_failed', formatI18nText('save_failed', '저장 실패'));
             showToast(formatI18nText('update_failed', '순간 수정에 실패했어요'), 'error');
         } finally {
             isMemoryEditSaveInFlight = false;
@@ -557,7 +557,7 @@ function createEditorMemoryActions(deps) {
         const currentEditingMemory = getCurrentEditingMemory();
         const selectedNodeId = getSelectedNodeId() || currentEditingMemory?.id;
         if (!selectedNodeId) {
-            updateSaveStatus('failed', i18n('save_failed'));
+            updateSaveStatus('auto_failed', i18n('save_failed'));
             return false;
         }
         if (isInlineMemorySaveInFlight) return false;
@@ -570,14 +570,14 @@ function createEditorMemoryActions(deps) {
         const memories = Array.isArray(getTreeMemories()) ? getTreeMemories().slice() : [];
         const idx = memories.findIndex(m => m.id === selectedNodeId);
         if (idx === -1) {
-            updateSaveStatus('failed', i18n('save_failed'));
+            updateSaveStatus('auto_failed', i18n('save_failed'));
             return false;
         }
 
         const localSaveMode = typeof isLocalSaveMode === 'function' ? isLocalSaveMode() : false;
         let savedMemory = null;
 
-        updateSaveStatus('saving', i18n('save_saving'));
+        updateSaveStatus('auto_saving', i18n('save_saving'));
         isInlineMemorySaveInFlight = true;
         try {
             if (!localSaveMode) {
@@ -588,7 +588,7 @@ function createEditorMemoryActions(deps) {
             }
         } catch (error) {
             console.error('[editor] Failed to update selected memory:', error);
-            updateSaveStatus('failed', i18n('save_failed'));
+            updateSaveStatus('auto_failed', i18n('save_failed'));
             return false;
         } finally {
             isInlineMemorySaveInFlight = false;
@@ -629,7 +629,7 @@ function createEditorMemoryActions(deps) {
 
         if (typeof rerenderCanvas === 'function') rerenderCanvas();
         if (typeof updateSidebarStatus === 'function') updateSidebarStatus();
-        updateSaveStatus('saved', i18n('save_saved'));
+        updateSaveStatus('auto_saved', i18n('save_saved'));
         return true;
     };
 
@@ -707,7 +707,7 @@ function createEditorMemoryActions(deps) {
             return false;
         }
 
-        updateSaveStatus('saving', formatI18nText('save_saving', '저장 중...'));
+        updateSaveStatus('checkpoint_saving', formatI18nText('save_saving', '저장 중...'));
 
         try {
             var apiResult = null;
@@ -722,7 +722,7 @@ function createEditorMemoryActions(deps) {
                 !Object.prototype.hasOwnProperty.call(apiResult, 'parentId') ||
                 apiResult.parentId !== null) {
                 // Failure: response missing parentId or parentId is not null
-                updateSaveStatus('failed', formatI18nText('save_failed', '저장 실패'));
+                updateSaveStatus('checkpoint_failed', formatI18nText('save_failed', '저장 실패'));
                 showToast(formatI18nText('disconnect_failed', '연결 해제에 실패했어요'), 'error');
                 return false;
             }
@@ -748,12 +748,12 @@ function createEditorMemoryActions(deps) {
             if (typeof rerenderCanvas === 'function') rerenderCanvas();
             if (typeof updateSidebarStatus === 'function') updateSidebarStatus();
             if (typeof updateDetailPanel === 'function') updateDetailPanel(nextMemory);
-            updateSaveStatus('saved', formatI18nText('save_saved', '저장 완료'));
+            updateSaveStatus('checkpoint_saved', formatI18nText('save_saved', '저장 완료'));
             showToast(formatI18nText('disconnect_success', '연결을 해제했어요'), 'success');
             return true;
         } catch (error) {
             console.error('[editor] Failed to disconnect memory:', error);
-            updateSaveStatus('failed', formatI18nText('save_failed', '저장 실패'));
+            updateSaveStatus('checkpoint_failed', formatI18nText('save_failed', '저장 실패'));
             showToast(formatI18nText('disconnect_failed', '연결 해제에 실패했어요'), 'error');
             return false;
         }
@@ -802,7 +802,7 @@ function createEditorMemoryActions(deps) {
         if (srcIdx === -1) return false;
 
         var sourceMem = memories[srcIdx];
-        updateSaveStatus('saving', formatI18nText('save_saving', '저장 중...'));
+        updateSaveStatus('checkpoint_saving', formatI18nText('save_saving', '저장 중...'));
 
         try {
             var apiResult = null;
@@ -817,7 +817,7 @@ function createEditorMemoryActions(deps) {
                 !Object.prototype.hasOwnProperty.call(apiResult, 'parentId') ||
                 String(apiResult.parentId) !== String(targetId)) {
                 // Failure: response missing parentId or parentId doesn't match target
-                updateSaveStatus('failed', formatI18nText('save_failed', '저장 실패'));
+                updateSaveStatus('checkpoint_failed', formatI18nText('save_failed', '저장 실패'));
                 showToast(formatI18nText('connect_failed', '연결에 실패했어요'), 'error');
                 return false;
             }
@@ -843,12 +843,12 @@ function createEditorMemoryActions(deps) {
             if (typeof rerenderCanvas === 'function') rerenderCanvas();
             if (typeof updateSidebarStatus === 'function') updateSidebarStatus();
             if (typeof updateDetailPanel === 'function') updateDetailPanel(nextMemory);
-            updateSaveStatus('saved', formatI18nText('save_saved', '저장 완료'));
+            updateSaveStatus('checkpoint_saved', formatI18nText('save_saved', '저장 완료'));
             showToast(formatI18nText('connect_success', '순간을 연결했어요'), 'success');
             return true;
         } catch (error) {
             console.error('[editor] Failed to connect memory:', error);
-            updateSaveStatus('failed', formatI18nText('save_failed', '저장 실패'));
+            updateSaveStatus('checkpoint_failed', formatI18nText('save_failed', '저장 실패'));
             showToast(formatI18nText('connect_failed', '연결에 실패했어요'), 'error');
             return false;
         }

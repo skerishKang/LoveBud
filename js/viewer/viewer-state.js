@@ -85,10 +85,41 @@
         state.panelBranch = selection.panelBranch;
     }
 
+    /**
+     * Create a deterministic fallback viewerData object when a confirmed
+     * Neon hub snapshot is missing or corrupted.
+     *
+     * Returns a minimal but structurally valid object so ShellRender can
+     * produce a meaningful shell (header, meta, empty tree area) instead of
+     * a generic empty/error state.  All values are hardcoded defaults —
+     * deterministic, no network, no external data.
+     *
+     * @param {string} [treeId] - Optional tree identifier (used for context)
+     * @returns {Object} Minimal viewerData with deterministic defaults
+     */
+    function createDeterministicFallbackData(treeId) {
+        return {
+            branches: [],
+            rootSeed: null,
+            palette: {
+                rose: { stroke:'#e99aac', soft:'#fff1f3', text:'#be123c', dim:'rgba(251,113,133,.16)' }
+            },
+            tree: {
+                title: '\uB7EC\uBE0C\uD2B8\uB9AC',         /* 러브트리 */
+                creator: '@lovetree_viewer',
+                meta: '0\uAC1C\uC758 \uC21C\uAC04 \u00B7 \uACF5\uAC1C \uB7EC\uBE0C\uD2B8\uB9AC'
+                /* 0개의 순간 · 공개 러브트리 */
+            },
+            treeComments: [],
+            momentComments: {}
+        };
+    }
+
     window.LoveBudViewerState = {
         createInitialState: createInitialState,
         getAllMoments: getAllMoments,
         resolveSelection: resolveSelection,
-        applySelection: applySelection
+        applySelection: applySelection,
+        createDeterministicFallbackData: createDeterministicFallbackData
     };
 })();
