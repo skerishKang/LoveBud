@@ -130,7 +130,7 @@
 
 /* Memory node focus ring animation */
 .memory-node.focus-animate {
-    animation: nodeFocusPulse 0.6s ease-out;
+    animation: nodeFocusPulse 0.6s ease-out backwards;
 }
 
 @keyframes nodeFocusPulse {
