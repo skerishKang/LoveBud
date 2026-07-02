@@ -78,6 +78,10 @@
 
         var utils = getSharedUtils();
         var viewCount = utils && typeof utils.getViewCount === 'function' ? utils.getViewCount(tree) : null;
+        var likeCount = tree && (tree.likeCount || tree.likesCount || tree.likes || tree.like_count);
+        var commentCount = tree && (tree.commentCount || tree.commentsCount || tree.comments || tree.comment_count);
+        if (likeCount !== undefined && likeCount !== null) likeCount = Number(likeCount);
+        if (commentCount !== undefined && commentCount !== null) commentCount = Number(commentCount);
         var safeTreeId = escapeHtml(String(tree.id || ''));
 
         // ---- View count stat ----
@@ -90,6 +94,26 @@
                 '</strong><span>조회수</span></div>';
         }
 
+        // ---- Like count stat ----
+        var likesHtml = '';
+        if (likeCount !== null) {
+            likesHtml = '<div class="preview-social-action preview-social-stat" aria-label="좋아요 ' +
+                escapeHtml(String(likeCount)) +
+                '" role="status"><span class="material-symbols-outlined" aria-hidden="true">favorite</span><strong>' +
+                escapeHtml(String(likeCount)) +
+                '</strong><span>좋아요</span></div>';
+        }
+
+        // ---- Comment count stat ----
+        var commentsHtml = '';
+        if (commentCount !== null) {
+            commentsHtml = '<div class="preview-social-action preview-social-stat" aria-label="댓글 ' +
+                escapeHtml(String(commentCount)) +
+                '" role="status"><span class="material-symbols-outlined" aria-hidden="true">chat_bubble</span><strong>' +
+                escapeHtml(String(commentCount)) +
+                '</strong><span>댓글</span></div>';
+        }
+
         // ---- Share button (only when tree ID is valid) ----
         var shareHtml = '';
         if (safeTreeId) {
@@ -98,11 +122,13 @@
                 '" aria-label="공유하기"><span class="material-symbols-outlined" aria-hidden="true">share</span><span data-preview-share-label>공유하기</span></button>';
         }
 
-        if (!viewsHtml && !shareHtml) return '';
+        if (!viewsHtml && !likesHtml && !commentsHtml && !shareHtml) return '';
 
         return '<div class="preview-social-shell" data-preview-social-shell>' +
             '<div class="preview-social-bar" aria-label="트리 반응">' +
                 viewsHtml +
+                likesHtml +
+                commentsHtml +
                 shareHtml +
             '</div>' +
         '</div>';
