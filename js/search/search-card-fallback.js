@@ -237,9 +237,19 @@
     }
 
     function renderRepresentativeMedia(tree, firstMem, titleText) {
+        // Find the first memory with a valid thumbnail (iterate if firstMem.thumbnail is empty)
+        var validThumbnail = firstMem?.thumbnail;
+        if (!validThumbnail && tree && Array.isArray(tree.memories)) {
+            for (var i = 0; i < tree.memories.length; i++) {
+                if (tree.memories[i] && tree.memories[i].thumbnail) {
+                    validThumbnail = tree.memories[i].thumbnail;
+                    break;
+                }
+            }
+        }
         const mediaUrl = sanitizeUrl(
             tree.representativeThumbnail ||
-            firstMem?.thumbnail ||
+            validThumbnail ||
             tree.thumbnail ||
             ''
         );
