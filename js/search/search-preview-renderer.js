@@ -112,7 +112,7 @@
         return '';
     }
 
-    const VISIBLE_FLOW_MOMENT_COUNT = 4;
+    const VISIBLE_FLOW_MOMENT_COUNT = 10;
 
     let _dom = null;
     let currentPreviewTree = null;
