@@ -166,7 +166,7 @@ test('connectMemory: API throws returns false and does not apply local state', a
   assert.strictEqual(result, false, 'should return false on API error');
   assert.strictEqual(updateCallCount, 1, 'updateMemory called once');
   assert.strictEqual(setTreeMemoriesCalled, false, 'setTreeMemories not called');
-  assert.strictEqual(updateSaveStatusCalledWith, 'failed', 'updateSaveStatus called with failed');
+  assert.strictEqual(updateSaveStatusCalledWith, 'checkpoint_failed', 'updateSaveStatus called with failed');
 });
 
 test('disconnectMemory: confirmed response with parentId === null returns true and applies local state', async () => {
@@ -258,5 +258,5 @@ test('disconnectMemory: API throws returns false and does not apply local state'
   assert.strictEqual(result, false, 'should return false on API error');
   assert.strictEqual(updateCallCount, 1, 'updateMemory called once');
   assert.strictEqual(setTreeMemoriesCalled, false, 'setTreeMemories not called');
-  assert.strictEqual(updateSaveStatusCalledWith, 'failed', 'updateSaveStatus called with failed');
+  assert.strictEqual(updateSaveStatusCalledWith, 'checkpoint_failed', 'updateSaveStatus called with failed');
 });
