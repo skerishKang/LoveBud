@@ -116,7 +116,7 @@ test('existing factory export window.createEditorMemoryForm is preserved', () =>
     assert.equal(typeof form.enrichPayloadChannelMetadata, 'function');
 });
 
-test('addMemoryFromForm delegation preserves order: validation -> saving -> hide -> enrich -> create -> commit -> restore', async () => {
+test('addMemoryFromForm delegation preserves order: validation -> manual_saving -> hide -> enrich -> create -> commit -> restore', async () => {
     const calls = [];
     const sandbox = createSandbox({
         window: {
@@ -138,10 +138,10 @@ test('addMemoryFromForm delegation preserves order: validation -> saving -> hide
     };
     vm.runInContext(fs.readFileSync(path.join(ROOT, 'js/editor/editor-memory-form.js'), 'utf8'), sandbox);
     const form = sandbox.window.createEditorMemoryForm(defaultDeps({
-        updateSaveStatus: (status) => { if (status === 'saving') calls.push('saving'); }
+        updateSaveStatus: (status) => { if (status === 'manual_saving') calls.push('manual_saving'); }
     }));
     await form.addMemoryFromForm();
-    assert.deepEqual(calls, ['saving', 'enrich', 'create', 'commit']);
+    assert.deepEqual(calls, ['manual_saving', 'enrich', 'create', 'commit']);
 });
 
 test('createMemoryWithFallback returns expected shape via API success', async () => {
@@ -311,7 +311,7 @@ test('addMemoryFromForm source order: validation → saving → hide → enrich 
     const body = addFormBody[0];
 
     const validationCall = body.indexOf('if (!payloadResult.ok)');
-    const savingCall = body.indexOf("updateSaveStatus('saving'");
+    const savingCall = body.indexOf("updateSaveStatus('manual_saving'");
     const hideCall = body.indexOf("hideAddMemoryForm({ restoreFocus: false })");
     const enrichCall = body.indexOf('saveRuntime.enrichPayloadChannelMetadata');
     const createCall = body.indexOf('saveRuntime.createMemoryWithFallback');
