@@ -118,6 +118,15 @@ Global focus/visibility hardening 판단이 필요하면 아래를 추가로 읽
 - [BROWSE_POPULAR_SORT_SEMANTICS.md](./product/BROWSE_POPULAR_SORT_SEMANTICS.md) - Browse `popular` sort의 현재 memory-count proxy 의미와 v0.1 표시 정책 방향
 - [lovebud-browse-tree-social-counts-plan.md](./product/lovebud-browse-tree-social-counts-plan.md) - #1661 tree-level Browse social counts foundation plan
 - [lovebud-browse-tree-view-count-policy.md](./product/lovebud-browse-tree-view-count-policy.md) - #1661 Unit B tree-level view count policy
+- [lovebud-tree-layout-sync-contract.md](./product/lovebud-tree-layout-sync-contract.md) - #3056 Draft-first hub layout save and Neon checkpoint contract
+- [lovebud-appreciation-order-contract.md](./product/lovebud-appreciation-order-contract.md) - #3061 Owner-controlled appreciation-order contract and guided path
+- [lovebud-tree-experience-separation-boundaries.md](./product/lovebud-tree-experience-separation-boundaries.md) - #3054 Relationship map, appreciation order, hub layout, Scout suggestions separation boundaries
+- [lovebud-first-tree-journey.md](./product/lovebud-first-tree-journey.md) - #2977 First-tree journey and automatic hub fallback design
+- [lovebud-remaining-product-issues-status.md](./product/lovebud-remaining-product-issues-status.md) - #3086/#2980/#2863 Oversized module refactoring, emotion-flow defer, shared editing roles status
+- [lovebud-scout-link-based-fan-assistant-mvp.md](./product/lovebud-scout-link-based-fan-assistant-mvp.md) - #1882 Scout link-based fan assistant MVP product definition
+- [lovebud-scout-auth-verifier-unblock-path.md](./product/lovebud-scout-auth-verifier-unblock-path.md) - #2660 Scout staging auth verifier unblock path definition
+- [lovebud-scout-namu-lookup-harness-contract.md](./product/lovebud-scout-namu-lookup-harness-contract.md) - #3155 Scout namuwiki-style public lookup skill/harness design
+- [lovebud-scout-staging-api-key-smoke-report.md](./product/lovebud-scout-staging-api-key-smoke-report.md) - #2636 Scout staging API-key smoke test report
 - [UI_COPY_DIET_GUIDE.md](./product/UI_COPY_DIET_GUIDE.md) - UI 카피 다이어트 운영 기준
 - [MVP_SCOPE.md](./product/MVP_SCOPE.md) - MVP 범위
 - [USER_FLOW.md](./product/USER_FLOW.md) - 사용자 흐름
@@ -173,6 +182,7 @@ Reference 문서는 `docs/reference/` 아래에 정리됩니다.
    - [LAYOUT_MODE_TRANSITION_PREFLIGHT_AUDIT_1505.md](./refactor/LAYOUT_MODE_TRANSITION_PREFLIGHT_AUDIT_1505.md) - js/editor/editor-canvas.js 레이아웃 모드 전환 모듈 분리 preflight audit
    - [PUBLIC_VIEWER_SHELL_SPLIT_AUDIT.md](./engineering/PUBLIC_VIEWER_SHELL_SPLIT_AUDIT.md) - #2686 public viewer shell responsibility map, global namespace inventory, DOM ownership, low-risk split candidates, one-file-at-a-time follow-up plan
    - [AUTH_FLOW_OWNERSHIP_AUDIT.md](./engineering/AUTH_FLOW_OWNERSHIP_AUDIT.md) - #2712 auth entrypoints by page, Firebase init/listener ownership, cached-session lifecycle, protected-route lifecycle, login-page lifecycle, duplicated responsibilities, staged refactor plan
+   - [global-namespace-bridges-audit-report.md](./audit/global-namespace-bridges-audit-report.md) - #3120 Global namespace bridges (window.*) audit report by boundary
 
 ## security 문서군
 
