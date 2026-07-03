@@ -282,7 +282,19 @@ test('8. non-allowlisted files are not modified', () => {
     'functions/api/trees/[tree_id]/memories/[memory_id]/reactions.js',
     'functions/api/trees/[tree_id]/memories/[memory_id]/comments.js',
     'tests/contracts/public-moment-social-read-contract.test.cjs',
-    'tests/contracts/comments-reactions-access-contract.test.cjs'
+    'tests/contracts/comments-reactions-access-contract.test.cjs',
+
+    // #3177 harden authenticated moment social writes
+    'modal_compute/write_validation.py',
+    'modal_compute/social_idempotency.py',
+    'modal_compute/social_rate_limit.py',
+    'modal_compute/social_write_audit.py',
+    'functions/api/memories/[id]/reactions.js',
+    'functions/api/memories/[id]/comments.js',
+    'tests/contracts/moment-social-write-hardening-contract.test.cjs',
+    'tests/contracts/moment-social-write-migration-contract.test.cjs',
+    'scripts/migration-harden-moment-social-writes.sql',
+    'docs/ops/moment-social-write-hardening-migration-runbook.md'
   ];
 
   // Read git diff to check what files are modified

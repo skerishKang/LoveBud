@@ -362,6 +362,35 @@ test('fetch_public_comments returns bounded list with nextCursor null', () => {
   );
 });
 
+test('fetch_public_comments filters out non-visible comments', () => {
+  const content = readFileContent(COMMENTS_PY);
+  const fnStart = content.indexOf('def fetch_public_comments(');
+  const fnEnd = content.indexOf('def fetch_comments(', fnStart + 10);
+  const fnBody = content.slice(fnStart, fnEnd);
+
+  assert.ok(
+    hasString(fnBody, "status = 'visible'"),
+    'fetch_public_comments must filter by status = visible'
+  );
+  assert.ok(
+    hasString(fnBody, 'deleted_at IS NULL'),
+    'fetch_public_comments must filter out soft-deleted comments'
+  );
+});
+
+test('fetch_public_comments lifecycle WHERE clause is in the query not post-filter', () => {
+  const content = readFileContent(COMMENTS_PY);
+  const fnStart = content.indexOf('def fetch_public_comments(');
+  const fnEnd = content.indexOf('def fetch_comments(', fnStart + 10);
+  const fnBody = content.slice(fnStart, fnEnd);
+
+  // The lifecycle filter must be in the SQL WHERE clause, not a Python-level filter
+  assert.ok(
+    hasString(fnBody, "WHERE memory_id = %s"),
+    'lifecycle filter must be in SQL WHERE clause'
+  );
+});
+
 // ─── PUBLIC BROWSER API METHODS ───────────────────────────────────────────────
 
 test('postgres-client.js defines fetchPublicMomentReactionSummary', () => {
