@@ -35,6 +35,7 @@ from modal_compute.comments import (
     fetch_public_comments,
 )
 from modal_compute.owner_reads import (
+    OwnerTreeListError,
     fetch_user_trees,
     fetch_owner_tree,
     fetch_owner_memories,
@@ -289,9 +290,28 @@ async def post_public_tree_view(
 def get_private_trees(
     limit: int = Query(default=100, ge=1, le=200),
     authorization: str | None = Header(default=None),
+    x_lovebud_request_id: str | None = Header(default=None),
 ) -> list[dict]:
-    user = require_firebase_user(authorization)
-    return fetch_user_trees(user["uid"], limit=limit)
+    logger = RequestLogger(
+        request_id=x_lovebud_request_id,
+        route="/modal/private/trees",
+        method="GET",
+    )
+    try:
+        user = require_firebase_user(authorization)
+    except HTTPException:
+        logger.log_error(status_code=401, error_category="AUTH_FAILED", failure_phase="auth")
+        raise
+    try:
+        result = fetch_user_trees(user["uid"], limit=limit)
+        logger.log_success(status_code=200)
+        return result
+    except OwnerTreeListError as e:
+        logger.log_error(status_code=500, error_category=e.error_category, failure_phase=e.failure_phase)
+        raise HTTPException(status_code=500, detail="Internal server error")
+    except Exception:
+        logger.log_error(status_code=500, error_category="OWNER_TREE_LIST_UNEXPECTED_FAILURE", failure_phase="unexpected")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @web_app.post("/modal/private/trees")

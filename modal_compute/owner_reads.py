@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any
 
+import psycopg
+
 from modal_compute.db import (
     get_db_connection,
     run_db_with_retry,
@@ -10,6 +12,16 @@ from modal_compute.validation import (
     normalize_memory_row,
     normalize_tree_row,
 )
+
+
+class OwnerTreeListError(Exception):
+    def __init__(
+        self,
+        error_category: str,
+        failure_phase: str,
+    ) -> None:
+        self.error_category = error_category
+        self.failure_phase = failure_phase
 
 
 def fetch_user_trees(owner_id: str, limit: int = 100) -> list[dict[str, Any]]:
@@ -30,17 +42,49 @@ def fetch_user_trees(owner_id: str, limit: int = 100) -> list[dict[str, Any]]:
     """
 
     def operation():
-        with get_db_connection() as conn:
+        try:
+            conn_context = get_db_connection()
+        except Exception:
+            raise OwnerTreeListError(
+                error_category="OWNER_TREE_LIST_DB_CONNECTION_FAILURE",
+                failure_phase="db_connection",
+            )
+        with conn_context as conn:
             with conn.cursor() as cur:
-                cur.execute(query, (owner_id, limit))
-                return cur.fetchall()
+                try:
+                    cur.execute(query, (owner_id, limit))
+                    return cur.fetchall()
+                except psycopg.Error:
+                    raise OwnerTreeListError(
+                        error_category="OWNER_TREE_LIST_QUERY_FAILURE",
+                        failure_phase="query",
+                    )
 
-    rows = run_db_with_retry(operation)
+    try:
+        rows = run_db_with_retry(operation)
+    except OwnerTreeListError:
+        raise
+    except psycopg.OperationalError:
+        raise OwnerTreeListError(
+            error_category="OWNER_TREE_LIST_DB_CONNECTION_FAILURE",
+            failure_phase="db_connection",
+        )
+    except Exception:
+        raise OwnerTreeListError(
+            error_category="OWNER_TREE_LIST_UNEXPECTED_FAILURE",
+            failure_phase="unexpected",
+        )
 
-    return [
-        normalize_tree_row(row, row.get("memory_count"), include_owner_metadata=True)
-        for row in rows
-    ]
+    try:
+        return [
+            normalize_tree_row(row, row.get("memory_count"), include_owner_metadata=True)
+            for row in rows
+        ]
+    except Exception:
+        raise OwnerTreeListError(
+            error_category="OWNER_TREE_LIST_NORMALIZATION_FAILURE",
+            failure_phase="normalization",
+        )
 
 
 def fetch_owner_tree(tree_id: str, owner_id: str) -> dict[str, Any] | None:
