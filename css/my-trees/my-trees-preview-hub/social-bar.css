@@ -107,3 +107,10 @@
         display: none;
     }
 }
+
+/* ── Disabled like affordance — Issue #3181 ── */
+#myTreesHubPanel .preview-social-shell[data-my-trees-social-shell] .preview-social-action[disabled],
+#myTreesHubPanel [data-my-trees-social-shell] .preview-social-action[disabled] {
+    cursor: not-allowed;
+    opacity: 0.55;
+}
