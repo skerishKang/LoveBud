@@ -495,7 +495,8 @@ def delete_own_comment(
     authorization: str | None = Header(default=None),
 ) -> dict:
     user = require_firebase_user(authorization)
-    return soft_delete_own_comment(comment_id, user["uid"])
+    safe_comment_id = validate_required_uuid(comment_id, "commentId")
+    return soft_delete_own_comment(safe_comment_id, user["uid"])
 
 
 # ── Private appreciation-order and hub-layout routes ──────────────────────────
