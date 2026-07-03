@@ -43,24 +43,27 @@ def fetch_user_trees(owner_id: str, limit: int = 100) -> list[dict[str, Any]]:
 
     def operation():
         try:
-            conn_context = get_db_connection()
+            with get_db_connection() as conn:
+                with conn.cursor() as cur:
+                    try:
+                        cur.execute(query, (owner_id, limit))
+                        return cur.fetchall()
+                    except psycopg.OperationalError:
+                        raise
+                    except psycopg.Error:
+                        raise OwnerTreeListError(
+                            error_category="OWNER_TREE_LIST_QUERY_FAILURE",
+                            failure_phase="query",
+                        )
+        except OwnerTreeListError:
+            raise
+        except psycopg.OperationalError:
+            raise
         except Exception:
             raise OwnerTreeListError(
                 error_category="OWNER_TREE_LIST_DB_CONNECTION_FAILURE",
                 failure_phase="db_connection",
             )
-        with conn_context as conn:
-            with conn.cursor() as cur:
-                try:
-                    cur.execute(query, (owner_id, limit))
-                    return cur.fetchall()
-                except psycopg.OperationalError:
-                    raise
-                except psycopg.Error:
-                    raise OwnerTreeListError(
-                        error_category="OWNER_TREE_LIST_QUERY_FAILURE",
-                        failure_phase="query",
-                    )
 
     try:
         rows = run_db_with_retry(operation)

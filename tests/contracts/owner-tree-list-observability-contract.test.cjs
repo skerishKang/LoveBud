@@ -227,7 +227,27 @@ test('13. query-stage psycopg.OperationalError is explicitly re-raised before ge
   assert.ok(hasString(fetchBlock, 'raise\n'), 'OperationalError handler must re-raise unchanged');
 });
 
-test('14. modal_compute/api_response_helpers.py is absent from git diff', async () => {
+test('14. DB setup failures are classified as DB_CONNECTION_FAILURE', () => {
+  const content = readFileContent(OWNER_READS_PY);
+  const fetchBlock = extractPythonFunctionBlock(content, 'fetch_user_trees');
+
+  assert.ok(hasString(fetchBlock, 'with get_db_connection() as conn'), 'must use context manager');
+
+  // Verify that with get_db_connection() is inside a try block
+  const tryIdx = fetchBlock.indexOf('try:');
+  const withIdx = fetchBlock.indexOf('with get_db_connection()');
+  assert.ok(tryIdx !== -1 && withIdx > tryIdx, 'with get_db_connection() must be inside a try block');
+
+  // Verify a final generic exception handler maps to DB_CONNECTION_FAILURE
+  assert.ok(hasString(fetchBlock, 'OWNER_TREE_LIST_DB_CONNECTION_FAILURE'), 'must have DB_CONNECTION_FAILURE');
+  assert.ok(hasString(fetchBlock, 'failure_phase="db_connection"'), 'must use db_connection phase');
+
+  // Verify specific error preservation
+  assert.ok(hasString(fetchBlock, 'except OwnerTreeListError:\n        raise'), 'OwnerTreeListError must be re-raised');
+  assert.ok(hasString(fetchBlock, 'except psycopg.OperationalError:\n        raise'), 'psycopg.OperationalError must be re-raised');
+});
+
+test('15. modal_compute/api_response_helpers.py is absent from git diff', async () => {
   const { execSync } = require('child_process');
   const diffOutput = execSync('git diff --name-only origin/main...HEAD', { encoding: 'utf-8' });
   const changedFiles = diffOutput.trim().split('\n').filter(f => f.trim());
@@ -235,7 +255,7 @@ test('14. modal_compute/api_response_helpers.py is absent from git diff', async 
   assert.ok(!changedFiles.includes('modal_compute/api_response_helpers.py'), 'api_response_helpers.py must not be in changed files');
 });
 
-test('15. No-network runtime smoke for POST and GET missing-config', async () => {
+test('16. No-network runtime smoke for POST and GET missing-config', async () => {
   const treesModule = await import(path.join(ROOT, 'functions/api/trees.js'));
 
   const originalFetch = global.fetch;
