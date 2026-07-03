@@ -108,6 +108,20 @@ def toggle_reaction(memory_id: str, owner_id: str, reaction_type: str) -> dict[s
                 return reaction
 
 
+def fetch_public_reaction_counts(memory_id: str) -> dict[str, Any]:
+    """Fetch aggregate reaction counts for a public memory.
+
+    Returns only anonymous aggregate counts — no viewer-specific state.
+    Used by the public (guest-safe) reaction endpoint.
+    """
+    counts = fetch_reaction_counts(memory_id)
+    total = sum(counts.values())
+    return {
+        "counts": counts,
+        "total": total,
+    }
+
+
 def fetch_reaction_summary(memory_id: str, owner_id: str) -> dict[str, Any]:
     """Fetch reaction summary for a memory.
 

@@ -42,7 +42,9 @@
             toggleReaction: async (memoryId, type = 'like') => BaseApiFetch.apiFetch(`/memories/${memoryId}/reactions`, { method: 'POST', body: JSON.stringify({ type }) }),
             fetchReactionSummary: async (memoryId) => BaseApiFetch.apiFetch(`/memories/${memoryId}/reactions`),
             createComment: async (memoryId, body) => BaseApiFetch.apiFetch(`/memories/${memoryId}/comments`, { method: 'POST', body: JSON.stringify({ body }) }),
-            fetchComments: async (memoryId) => BaseApiFetch.apiFetch(`/memories/${memoryId}/comments`)
+            fetchComments: async (memoryId) => BaseApiFetch.apiFetch(`/memories/${memoryId}/comments`),
+            fetchPublicMomentReactionSummary: async (treeId, memoryId) => BaseApiFetch.apiFetch(`/trees/${encodeURIComponent(treeId)}/memories/${encodeURIComponent(memoryId)}/reactions`, { publicRead: true }),
+            fetchPublicMomentComments: async (treeId, memoryId) => BaseApiFetch.apiFetch(`/trees/${encodeURIComponent(treeId)}/memories/${encodeURIComponent(memoryId)}/comments`, { publicRead: true })
         };
     }
 

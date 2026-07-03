@@ -27,6 +27,7 @@ from modal_compute.public_reads import (
     fetch_public_memories,
     fetch_public_memory,
     fetch_public_tree,
+    require_public_memory_membership,
 )
 from modal_compute.owner_reads import (
     fetch_user_trees,
@@ -45,6 +46,12 @@ from modal_compute.owner_writes import (
 from modal_compute.reactions import (
     toggle_reaction,
     fetch_reaction_summary,
+    fetch_public_reaction_counts,
+)
+from modal_compute.comments import (
+    create_comment,
+    fetch_comments,
+    fetch_public_comments,
 )
 from modal_compute.tree_likes import (
     toggle_tree_like,
@@ -487,8 +494,6 @@ def get_memory_comments(
     return fetch_comments(memory_id, user["uid"])
 
 
-# ── Tree Metadata / Layout Routes (authenticated) ──────────────────────────────
-
 @web_app.post("/modal/private/trees/{tree_id}/appreciation-order")
 async def post_appreciation_order(
     tree_id: str,
@@ -534,7 +539,58 @@ def get_hub_layout(
     return fetch_hub_layout(tree_id, user["uid"])
 
 
-# ── ASGI Entry Point ──────────────────────────────────────────────────────────
+# ── Public (guest-safe) moment social read endpoints ──────────────────────────
+
+@web_app.get("/modal/public/trees/{tree_id}/memories/{memory_id}/reactions")
+def get_public_memory_reactions(
+    tree_id: str,
+    memory_id: str,
+    x_lovebud_request_id: str | None = Header(default=None),
+) -> dict:
+    logger = RequestLogger(
+        request_id=x_lovebud_request_id,
+        route="/modal/public/trees/id/memories/id/reactions",
+        method="GET",
+    )
+    try:
+        safe_tree_id = validate_required_id(tree_id, "treeId")
+        safe_memory_id = validate_required_id(memory_id, "memoryId")
+        require_public_memory_membership(safe_tree_id, safe_memory_id)
+        result = fetch_public_reaction_counts(safe_memory_id)
+        logger.log_success(status_code=200)
+        return result
+    except HTTPException:
+        raise
+    except Exception:
+        logger.log_error(status_code=500, error_category="UNEXPECTED_ERROR")
+        raise
+
+
+@web_app.get("/modal/public/trees/{tree_id}/memories/{memory_id}/comments")
+def get_public_memory_comments(
+    tree_id: str,
+    memory_id: str,
+    limit: int = Query(default=20, ge=1, le=50),
+    x_lovebud_request_id: str | None = Header(default=None),
+) -> dict:
+    logger = RequestLogger(
+        request_id=x_lovebud_request_id,
+        route="/modal/public/trees/id/memories/id/comments",
+        method="GET",
+    )
+    try:
+        safe_tree_id = validate_required_id(tree_id, "treeId")
+        safe_memory_id = validate_required_id(memory_id, "memoryId")
+        require_public_memory_membership(safe_tree_id, safe_memory_id)
+        result = fetch_public_comments(safe_memory_id, limit=limit)
+        logger.log_success(status_code=200)
+        return result
+    except HTTPException:
+        raise
+    except Exception:
+        logger.log_error(status_code=500, error_category="UNEXPECTED_ERROR")
+        raise
+
 
 @app.function(
     image=image,

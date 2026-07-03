@@ -88,7 +88,37 @@ test('require_memory_visible_or_owner returns 404 for private non-owner access',
   );
 });
 
-// ─── ROUTE DEFINITION CONTRACTS ────────────────────────────────────────────────
+test('private appreciation-order routes are defined in app.py', () => {
+  const content = readFileContent(APP_PY);
+  assert.ok(
+    hasString(content, '/modal/private/trees/{tree_id}/appreciation-order'),
+    'appreciation-order routes should be defined'
+  );
+});
+
+test('private hub-layout routes are defined in app.py', () => {
+  const content = readFileContent(APP_PY);
+  assert.ok(
+    hasString(content, '/modal/private/trees/{tree_id}/hub-layout'),
+    'hub-layout routes should be defined'
+  );
+});
+
+test('private appreciation-order GET route requires firebase auth', () => {
+  const content = readFileContent(APP_PY);
+  const getMatch = content.indexOf('def get_appreciation_order(');
+  assert.notEqual(getMatch, -1, 'get_appreciation_order should exist');
+  const block = content.slice(getMatch, getMatch + 500);
+  assert.ok(hasString(block, 'require_firebase_user(authorization)'), 'GET route must require auth');
+});
+
+test('private hub-layout GET route requires firebase auth', () => {
+  const content = readFileContent(APP_PY);
+  const getMatch = content.indexOf('def get_hub_layout(');
+  assert.notEqual(getMatch, -1, 'get_hub_layout should exist');
+  const block = content.slice(getMatch, getMatch + 500);
+  assert.ok(hasString(block, 'require_firebase_user(authorization)'), 'GET route must require auth');
+});
 
 test('comments routes are defined in app.py', () => {
   const content = readFileContent(APP_PY);
