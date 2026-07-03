@@ -17,9 +17,7 @@ const PUBLIC_DETAIL_MOUNTS = [
   'detailDateText',
   'detailTags',
   'detailMemo',
-  'momentReactionsCard',
-  'momentLikeBtn',
-  'momentCommentBtn'
+  'momentReactionsCard'
 ];
 
 test('public viewer detail template exposes the current rendered output mounts', () => {

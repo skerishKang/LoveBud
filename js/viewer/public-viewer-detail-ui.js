@@ -461,43 +461,6 @@
             ? deps.getCanonicalRootId
             : function() { return null; };
 
-        var reactionSummaryCache = Object.create(null);
-        var reactionSummaryInFlight = Object.create(null);
-        var reactionSummaryAuthFailures = Object.create(null);
-
-        function isAuthFailure(error) {
-            if (!error) return false;
-            var status = error.status || error.statusCode;
-            return status === 401 || status === 403;
-        }
-
-        function updateReadOnlyReactionCounts(likeBtn, likeCount, commentBtn, commentCount, likeValue, commentValue) {
-            var normalizedLikeCount = Number(likeValue) || 0;
-            var normalizedCommentCount = Number(commentValue) || 0;
-
-            if (likeCount) likeCount.textContent = normalizedLikeCount;
-            if (commentCount) commentCount.textContent = normalizedCommentCount;
-            if (likeBtn) likeBtn.setAttribute('aria-label', '좋아요 ' + normalizedLikeCount);
-            if (commentBtn) commentBtn.setAttribute('aria-label', '댓글 ' + normalizedCommentCount);
-        }
-
-        function applyReadOnlyReactionFallback(likeBtn, likeCount, commentCount, commentBtn, reactionsCard) {
-            if (likeBtn) {
-                var icon = likeBtn.querySelector('.editor-reaction-like-icon');
-                if (icon) icon.textContent = '🤍';
-                likeBtn.title = "공개 감상에서는 읽기 전용으로 표시돼요";
-            }
-            if (commentBtn) {
-                commentBtn.title = "공개 감상에서는 읽기 전용으로 표시돼요";
-            }
-            updateReadOnlyReactionCounts(likeBtn, likeCount, commentBtn, commentCount, 0, 0);
-            if (reactionsCard) {
-                reactionsCard.classList.add('is-read-only');
-                reactionsCard.classList.add('is-public-readonly');
-                reactionsCard.setAttribute('data-read-only-summary', 'true');
-            }
-        }
-
         return function updatePublicViewerReadOnlyReactionSummary(data) {
             var reactionsCard = document.getElementById('momentReactionsCard');
             if (!reactionsCard) return;
@@ -510,62 +473,11 @@
 
             reactionsCard.style.display = '';
 
-            var likeBtn = document.getElementById('momentLikeBtn');
-            var likeCount = document.getElementById('momentLikeCount');
-            var commentCount = document.getElementById('momentCommentCount');
-            var commentBtn = document.getElementById('momentCommentBtn');
-
-            applyReadOnlyReactionFallback(likeBtn, likeCount, commentCount, commentBtn, reactionsCard);
-
-            if (!data.id) {
-                return;
+            if (reactionsCard) {
+                reactionsCard.classList.add('is-read-only');
+                reactionsCard.classList.add('is-public-readonly');
+                reactionsCard.setAttribute('data-read-only-summary', 'true');
             }
-
-            if (reactionSummaryCache[data.id]) {
-                var cached = reactionSummaryCache[data.id];
-                updateReadOnlyReactionCounts(likeBtn, likeCount, commentBtn, commentCount, cached.likeCount, cached.commentCount);
-                return;
-            }
-
-            if (reactionSummaryAuthFailures[data.id]) {
-                return;
-            }
-
-            if (reactionSummaryInFlight[data.id]) {
-                return;
-            }
-
-            if (!window.apiClient || typeof window.apiClient.fetchReactionSummary !== 'function') {
-                return;
-            }
-
-            reactionSummaryInFlight[data.id] = window.apiClient.fetchReactionSummary(data.id)
-                .then(function(summary) {
-                    delete reactionSummaryInFlight[data.id];
-                    if (!summary) return;
-                    var res = {
-                        likeCount: summary.like_count ?? summary.likeCount ?? 0,
-                        commentCount: summary.comment_count ?? summary.commentCount ?? 0,
-                        userReacted: summary.user_reacted ?? summary.userReacted ?? false
-                    };
-                    reactionSummaryCache[data.id] = res;
-
-                    var currentSelectedId = (deps && typeof deps.getSelectedNodeId === 'function') ? deps.getSelectedNodeId() : null;
-                    if (currentSelectedId === data.id) {
-                        updateReadOnlyReactionCounts(likeBtn, likeCount, commentBtn, commentCount, res.likeCount, res.commentCount);
-                    }
-                })
-                .catch(function(error) {
-                    delete reactionSummaryInFlight[data.id];
-                    if (isAuthFailure(error)) {
-                        reactionSummaryAuthFailures[data.id] = true;
-                    }
-                    reactionSummaryCache[data.id] = {
-                        likeCount: 0,
-                        commentCount: 0,
-                        userReacted: false
-                    };
-                });
         };
     }
 
