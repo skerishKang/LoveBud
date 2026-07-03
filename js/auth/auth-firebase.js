@@ -322,9 +322,6 @@
     }
 
     try {
-      if (typeof preloadRedirectTargetData === 'function') {
-        preloadRedirectTargetData();
-      }
       if (firebase.auth.Auth && firebase.auth.Auth.Persistence) {
         if (debugEnabled) {
           console.info('[auth.redirect] setting persistence LOCAL');
