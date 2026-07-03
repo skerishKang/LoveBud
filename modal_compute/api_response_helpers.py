@@ -73,8 +73,3 @@ async def parse_json_body(request: Request) -> dict:
         raise HTTPException(status_code=400, detail="Invalid JSON body") from error
 
     return payload if isinstance(payload, dict) else {}
-
-
-def debug_log_delay(label: str) -> None:
-    import time
-    print(f"[LoveBudModal] [DELAY] {label} at {time.time()}")

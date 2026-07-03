@@ -28,7 +28,7 @@ test('1. GET /api/trees generates, forwards, echoes, and exposes x-lovebud-reque
   assert.ok(hasString(content, 'REQUEST_ID_HEADER'), 'trees.js must define REQUEST_ID_HEADER');
   assert.ok(hasString(content, 'x-lovebud-request-id'), 'trees.js must reference x-lovebud-request-id');
   assert.ok(hasString(content, 'getOrCreateRequestId'), 'trees.js must call getOrCreateRequestId');
-  assert.ok(hasString(content, 'withModalHeaderAndId'), 'trees.js must wrap response with request ID');
+  assert.ok(hasString(content, 'withModalHeaderAndId'), 'trees.js must call withModalHeaderAndId for GET');
   assert.ok(hasString(content, 'Access-Control-Expose-Headers'), 'trees.js must expose request ID through CORS');
 });
 
