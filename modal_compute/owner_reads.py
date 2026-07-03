@@ -24,6 +24,26 @@ class OwnerTreeListError(Exception):
         self.failure_phase = failure_phase
 
 
+def classify_query_error(error: psycopg.Error) -> str:
+    """Map psycopg query SQLSTATE to a safe fixed error category.
+
+    This is a pure function — no logging, no side effects.
+    Never returns the SQLSTATE value itself.
+    psycopg.OperationalError callers must route through the existing
+    retry / connection-path before reaching this classifier.
+    """
+    sqlstate = getattr(error, "sqlstate", None)
+    if sqlstate == "42703":
+        return "OWNER_TREE_LIST_QUERY_UNDEFINED_COLUMN"
+    if sqlstate == "42P01":
+        return "OWNER_TREE_LIST_QUERY_UNDEFINED_TABLE"
+    if sqlstate == "42501":
+        return "OWNER_TREE_LIST_QUERY_INSUFFICIENT_PRIVILEGE"
+    if sqlstate == "42883":
+        return "OWNER_TREE_LIST_QUERY_UNDEFINED_FUNCTION"
+    return "OWNER_TREE_LIST_QUERY_FAILURE"
+
+
 def fetch_user_trees(owner_id: str, limit: int = 100) -> list[dict[str, Any]]:
     query = """
         SELECT t.id, t.owner_id, t.title, t.visibility,
@@ -50,11 +70,11 @@ def fetch_user_trees(owner_id: str, limit: int = 100) -> list[dict[str, Any]]:
                         return cur.fetchall()
                     except psycopg.OperationalError:
                         raise
-                    except psycopg.Error:
+                    except psycopg.Error as error:
                         raise OwnerTreeListError(
-                            error_category="OWNER_TREE_LIST_QUERY_FAILURE",
+                            error_category=classify_query_error(error),
                             failure_phase="query",
-                        )
+                        ) from error
         except OwnerTreeListError:
             raise
         except psycopg.OperationalError:

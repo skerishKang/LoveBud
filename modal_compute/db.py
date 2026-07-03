@@ -55,7 +55,7 @@ def get_db_connection():
             yield conn
     except Exception:
         duration_ms = (time.time() - start) * 1000
-        print(f"[LoveBudModal] DB Pool acquire failed after {duration_ms:.2f}ms")
+        print(f"[LoveBudModal] DB connection scope failed after {duration_ms:.2f}ms")
         raise
 
 
