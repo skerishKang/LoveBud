@@ -109,12 +109,11 @@ test('5. Only fixed error categories and fixed failure phases are used', () => {
     'OWNER_TREE_LIST_DB_CONNECTION_FAILURE',
     'OWNER_TREE_LIST_QUERY_FAILURE',
     'OWNER_TREE_LIST_NORMALIZATION_FAILURE',
-    'OWNER_TREE_LIST_UNEXPECTED_FAILURE',
   ];
   for (const cat of allowedCategories) {
     assert.ok(hasString(readsContent, cat), `${cat} must be present`);
   }
-  const allowedPhases = ['db_connection', 'query', 'normalization', 'unexpected'];
+  const allowedPhases = ['db_connection', 'query', 'normalization'];
   for (const phase of allowedPhases) {
     assert.ok(hasString(readsContent, phase), `failure_phase '${phase}' must be present`);
   }
@@ -246,6 +245,12 @@ test('14. DB setup failures are classified as DB_CONNECTION_FAILURE', () => {
   // Verify specific error preservation
   assert.ok(hasString(fetchBlock, 'except OwnerTreeListError:\n        raise'), 'OwnerTreeListError must be re-raised');
   assert.ok(hasString(fetchBlock, 'except psycopg.OperationalError:\n        raise'), 'psycopg.OperationalError must be re-raised');
+
+  // Verify final generic exception handler
+  const genericHandlerIdx = fetchBlock.indexOf('except Exception:');
+  const dbConnectionFailureIdx = fetchBlock.indexOf('OWNER_TREE_LIST_DB_CONNECTION_FAILURE', genericHandlerIdx);
+  assert.ok(genericHandlerIdx !== -1, 'must have a final generic exception handler');
+  assert.ok(dbConnectionFailureIdx !== -1, 'final generic handler must map to DB_CONNECTION_FAILURE');
 });
 
 test('15. modal_compute/api_response_helpers.py must not contain debug_log_delay', () => {
