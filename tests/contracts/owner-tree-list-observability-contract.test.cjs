@@ -108,6 +108,10 @@ test('5. Only fixed error categories and fixed failure phases are used', () => {
   const allowedCategories = [
     'OWNER_TREE_LIST_DB_CONNECTION_FAILURE',
     'OWNER_TREE_LIST_QUERY_FAILURE',
+    'OWNER_TREE_LIST_QUERY_UNDEFINED_COLUMN',
+    'OWNER_TREE_LIST_QUERY_UNDEFINED_TABLE',
+    'OWNER_TREE_LIST_QUERY_INSUFFICIENT_PRIVILEGE',
+    'OWNER_TREE_LIST_QUERY_UNDEFINED_FUNCTION',
     'OWNER_TREE_LIST_NORMALIZATION_FAILURE',
   ];
   for (const cat of allowedCategories) {
@@ -124,7 +128,7 @@ test('6. fetch_user_trees distinguishes connection/query/normalization without c
   const fetchBlock = extractPythonFunctionBlock(content, 'fetch_user_trees');
 
   assert.ok(hasString(fetchBlock, 'OWNER_TREE_LIST_DB_CONNECTION_FAILURE'), 'must distinguish DB_CONNECTION_FAILURE');
-  assert.ok(hasString(fetchBlock, 'OWNER_TREE_LIST_QUERY_FAILURE'), 'must distinguish QUERY_FAILURE');
+  assert.ok(hasString(fetchBlock, 'classify_query_error'), 'must call classify_query_error for query failures');
   assert.ok(hasString(fetchBlock, 'OWNER_TREE_LIST_NORMALIZATION_FAILURE'), 'must distinguish NORMALIZATION_FAILURE');
 
   const originalSql = [
@@ -143,19 +147,19 @@ test('7. run_db_with_retry remains in use', () => {
   assert.ok(hasString(content, 'run_db_with_retry'), 'run_db_with_retry must be used');
 });
 
-test('8. db.py no longer prints raw str(e) for pool failures', () => {
+test('8. db.py no longer prints raw str(e) for connection scope failures', () => {
   const content = readFileContent(DB_PY);
   const poolAcquireBlock = extractPoolAcquireFailureBlock(content);
   assert.ok(!hasString(poolAcquireBlock, 'str(e)'), 'must not print str(e)');
   assert.ok(!hasString(poolAcquireBlock, '{str(e)}'), 'must not reference str(e)');
   assert.ok(!hasString(poolAcquireBlock, '{e}'), 'must not reference raw exception');
-  assert.ok(hasString(poolAcquireBlock, 'failed after'), 'must retain generic fixed message');
+  assert.ok(hasString(poolAcquireBlock, 'connection scope failed after'), 'must use corrected generic scope-failure wording');
 });
 
 function extractPoolAcquireFailureBlock(content) {
-  const needle = 'DB Pool acquire failed after';
+  const needle = 'connection scope failed after';
   const idx = content.indexOf(needle);
-  assert.notEqual(idx, -1, 'pool acquire failure message must exist');
+  assert.notEqual(idx, -1, 'connection scope failure message must exist');
   const lineStart = content.lastIndexOf('\n', idx) + 1;
   const lineEnd = content.indexOf('\n', idx);
   return content.slice(lineStart, lineEnd !== -1 ? lineEnd : content.length);
@@ -188,6 +192,7 @@ test('10. Required files for owner tree observability are present', () => {
     'modal_compute/owner_reads.py',
     'modal_compute/db.py',
     'tests/contracts/owner-tree-list-observability-contract.test.cjs',
+    'tests/contracts/test_owner_tree_query_error_classification.py',
   ];
   for (const f of allowedFiles) {
     const fullPath = path.join(ROOT, f);
@@ -227,7 +232,39 @@ test('13. query-stage psycopg.OperationalError is explicitly re-raised before ge
   assert.ok(hasString(fetchBlock, 'raise\n'), 'OperationalError handler must re-raise unchanged');
 });
 
-test('14. DB setup failures are classified as DB_CONNECTION_FAILURE', () => {
+test('14. fetch_user_trees calls classify_query_error for non-OperationalError psycopg errors', () => {
+  const content = readFileContent(OWNER_READS_PY);
+  const fetchBlock = extractPythonFunctionBlock(content, 'fetch_user_trees');
+
+  assert.ok(hasString(fetchBlock, 'classify_query_error(error)'), 'generic psycopg.Error handler must call classify_query_error');
+  assert.ok(hasString(fetchBlock, 'from error'), 'raise must preserve chained exception');
+});
+
+test('15. classify_query_error helper maps all five required SQLSTATEs', () => {
+  const content = readFileContent(OWNER_READS_PY);
+
+  // Must contain the function definition
+  assert.ok(hasString(content, 'def classify_query_error('), 'helper function must exist');
+
+  // All five required SQLSTATE mappings must be present
+  assert.ok(hasString(content, '42703'), 'must map SQLSTATE 42703 (undefined column)');
+  assert.ok(hasString(content, '42P01'), 'must map SQLSTATE 42P01 (undefined table)');
+  assert.ok(hasString(content, '42501'), 'must map SQLSTATE 42501 (insufficient privilege)');
+  assert.ok(hasString(content, '42883'), 'must map SQLSTATE 42883 (undefined function)');
+
+  // All five required category strings must be produced
+  assert.ok(hasString(content, 'OWNER_TREE_LIST_QUERY_UNDEFINED_COLUMN'), 'must produce undefined-column category');
+  assert.ok(hasString(content, 'OWNER_TREE_LIST_QUERY_UNDEFINED_TABLE'), 'must produce undefined-table category');
+  assert.ok(hasString(content, 'OWNER_TREE_LIST_QUERY_INSUFFICIENT_PRIVILEGE'), 'must produce insufficient-privilege category');
+  assert.ok(hasString(content, 'OWNER_TREE_LIST_QUERY_UNDEFINED_FUNCTION'), 'must produce undefined-function category');
+  assert.ok(hasString(content, 'OWNER_TREE_LIST_QUERY_FAILURE'), 'must retain generic fallback category');
+
+  // Must not leak raw SQLSTATE or exception text
+  assert.ok(!hasString(content, 'str(error)'), 'must not log str(error)');
+  assert.ok(!hasString(content, 'str(e)'), 'must not log str(e)');
+});
+
+test('16. DB setup failures are classified as DB_CONNECTION_FAILURE', () => {
   const content = readFileContent(OWNER_READS_PY);
   const fetchBlock = extractPythonFunctionBlock(content, 'fetch_user_trees');
 
@@ -253,14 +290,14 @@ test('14. DB setup failures are classified as DB_CONNECTION_FAILURE', () => {
   assert.ok(dbConnectionFailureIdx !== -1, 'final generic handler must map to DB_CONNECTION_FAILURE');
 });
 
-test('15. Static regression guard: modal_compute/api_response_helpers.py must not contain debug_log_delay', () => {
+test('17. Static regression guard: modal_compute/api_response_helpers.py must not contain debug_log_delay', () => {
   if (fs.existsSync(HELPERS_PY)) {
     const content = readFileContent(HELPERS_PY);
     assert.ok(!hasString(content, 'debug_log_delay'), 'api_response_helpers.py must not contain debug_log_delay');
   }
 });
 
-test('16. No-network runtime smoke for POST and GET missing-config', async () => {
+test('18. No-network runtime smoke for POST and GET missing-config', async () => {
   const treesModule = await import(path.join(ROOT, 'functions/api/trees.js'));
 
   const originalFetch = global.fetch;
