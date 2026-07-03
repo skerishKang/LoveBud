@@ -1,10 +1,10 @@
 from __future__ import annotations
+
 import json
 import time
-import uuid
 
 import modal
-from fastapi import FastAPI, Header, HTTPException, Query, Request, Response
+from fastapi import FastAPI, Header, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
@@ -29,6 +29,11 @@ from modal_compute.public_reads import (
     fetch_public_tree,
     require_public_memory_membership,
 )
+from modal_compute.comments import (
+    create_comment,
+    fetch_comments,
+    fetch_public_comments,
+)
 from modal_compute.owner_reads import (
     fetch_user_trees,
     fetch_owner_tree,
@@ -39,19 +44,14 @@ from modal_compute.owner_writes import (
     create_owner_memory,
     update_owner_tree,
     delete_owner_tree,
-    fork_public_tree,
     update_owner_memory,
     delete_owner_memory,
+    fork_public_tree,
 )
 from modal_compute.reactions import (
     toggle_reaction,
     fetch_reaction_summary,
     fetch_public_reaction_counts,
-)
-from modal_compute.comments import (
-    create_comment,
-    fetch_comments,
-    fetch_public_comments,
 )
 from modal_compute.tree_likes import (
     toggle_tree_like,
@@ -59,16 +59,13 @@ from modal_compute.tree_likes import (
     fetch_public_tree_like_count,
 )
 from modal_compute.tree_views import record_public_tree_view, fetch_public_tree_view_count
-from modal_compute.comments import (
-    create_comment,
-    fetch_comments,
-)
 from modal_compute.hub_layouts import (
-    HubLayoutNotFoundError,
     hub_layout_not_found_handler,
+    HubLayoutNotFoundError,
     save_hub_layout,
     fetch_hub_layout,
 )
+from modal_compute.social_errors import SocialWriteError, SOCIAL_ERROR_CODES
 
 
 def _allowed_origins() -> list[str]:
@@ -111,6 +108,20 @@ async def handle_hub_layout_not_found(request: Request, exc: HubLayoutNotFoundEr
     return await hub_layout_not_found_handler(request, exc)
 
 
+@web_app.exception_handler(SocialWriteError)
+async def social_write_error_handler(request: Request, exc: SocialWriteError) -> JSONResponse:
+    content: dict[str, object] = {"error": exc.message, "code": exc.code}
+    headers: dict[str, str] = {}
+    if exc.retry_after_ms is not None:
+        content["retryAfterMs"] = exc.retry_after_ms
+        headers["Retry-After"] = str(exc.retry_after_ms // 1000)
+    return JSONResponse(
+        status_code=exc.status_code,
+        content=content,
+        headers=headers if headers else None,
+    )
+
+
 web_app.add_middleware(
     CORSMiddleware,
     allow_origins=_allowed_origins(),
@@ -119,47 +130,11 @@ web_app.add_middleware(
     allow_headers=["*"],
 )
 
-# ── Correlation ID Middleware ─────────────────────────────────────────────────
-@web_app.middleware("http")
-async def add_correlation_id_middleware(request: Request, call_next):
-    request_id = request.headers.get("x-lovebud-request-id")
-    if not request_id:
-        request_id = f"req_{uuid.uuid4().hex[:12]}"
-    request.state.request_id = request_id
-    response = await call_next(request)
-    response.headers["x-lovebud-request-id"] = request_id
-    return response
 
-
-# ── Global Error Handler ───────────────────────────────────────────────────────
-@web_app.exception_handler(Exception)
-async def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
-    request_id = getattr(request.state, "request_id", "unknown")
-    if isinstance(exc, HTTPException):
-        status_code = exc.status_code
-        detail = exc.detail
-        code = "HTTP_EXCEPTION"
-    else:
-        status_code = 500
-        detail = "An unexpected internal server error occurred."
-        code = "UNEXPECTED_ERROR"
-    return JSONResponse(
-        status_code=status_code,
-        content={
-            "error": detail,
-            "code": code,
-            "requestId": request_id,
-        },
-    )
-
-
-# ── Health ─────────────────────────────────────────────────────────────────────
 @web_app.get("/modal/health")
 def modal_health() -> dict[str, bool]:
     return {"ok": True}
 
-
-# ── Browse / Community / Public Read Routes ────────────────────────────────────
 
 @web_app.get("/modal/browse/latest")
 def get_latest_browse_snapshot(
@@ -310,8 +285,6 @@ async def post_public_tree_view(
         raise
 
 
-# ── Private Tree Routes (authenticated) ───────────────────────────────────────
-
 @web_app.get("/modal/private/trees")
 def get_private_trees(
     limit: int = Query(default=100, ge=1, le=200),
@@ -362,6 +335,7 @@ def get_private_tree_capability(
         return {"viewerCanEdit": False}
 
 
+
 @web_app.post("/modal/private/trees/{tree_id}/fork")
 def post_fork_tree(
     tree_id: str,
@@ -409,8 +383,6 @@ def get_tree_likes(
     return fetch_tree_like_summary(tree_id, user["uid"])
 
 
-# ── Private Memory Routes (authenticated) ─────────────────────────────────────
-
 @web_app.get("/modal/private/memories")
 def get_private_memories(
     treeId: str | None = None,
@@ -457,11 +429,12 @@ async def post_memory_reaction(
     memory_id: str,
     request: Request,
     authorization: str | None = Header(default=None),
+    x_idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
 ) -> dict:
     user = require_firebase_user(authorization)
     payload = await parse_json_body(request)
     reaction_type = payload.get("type", "")
-    return toggle_reaction(memory_id, user["uid"], reaction_type)
+    return toggle_reaction(memory_id, user["uid"], reaction_type, idempotency_key=x_idempotency_key)
 
 
 @web_app.get("/modal/private/memories/{memory_id}/reactions")
@@ -478,11 +451,12 @@ async def post_memory_comment(
     memory_id: str,
     request: Request,
     authorization: str | None = Header(default=None),
+    x_idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
 ) -> dict:
     user = require_firebase_user(authorization)
     payload = await parse_json_body(request)
     body = payload.get("body", "")
-    return create_comment(memory_id, user["uid"], body)
+    return create_comment(memory_id, user["uid"], body, idempotency_key=x_idempotency_key)
 
 
 @web_app.get("/modal/private/memories/{memory_id}/comments")
@@ -493,6 +467,8 @@ def get_memory_comments(
     user = require_firebase_user(authorization)
     return fetch_comments(memory_id, user["uid"])
 
+
+# ── Private appreciation-order and hub-layout routes ──────────────────────────
 
 @web_app.post("/modal/private/trees/{tree_id}/appreciation-order")
 async def post_appreciation_order(

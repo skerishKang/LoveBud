@@ -1,20 +1,20 @@
-/**
- * postgres-client.js
- * Browser-side API client for LoveBud.
- *
- * Current runtime truth:
- * - official frontend entry: Cloudflare Pages (`lovebud.pages.dev`)
- * - browser contract: call same-origin `/api/*`
- * - routing behind `/api/*` may hit Cloudflare Pages functions directly,
- *   or pass through transitional adapters such as Vercel / Netlify during fallback
- * - direct browser-to-database access remains disabled
- *
- * The browser should stay deployment-agnostic and only rely on same-origin `/api/*`.
- */
 (function() {
     const PublicTreeAdapter = window.LoveTreePublicTreeAdapter;
     const BaseApiFetch = window.LoveTreeBaseApiFetch;
     const AuthPolicy = window.LoveTreeAuthPolicy;
+
+    function generateIdempotencyKey() {
+        const arr = new Uint8Array(16);
+        crypto.getRandomValues(arr);
+        return Array.from(arr, b => b.toString(36).padStart(2, '0')).join('');
+    }
+
+    function addIdempotencyKey(options, key) {
+        const idempotencyKey = key || generateIdempotencyKey();
+        const headers = options.headers || {};
+        headers['Idempotency-Key'] = idempotencyKey;
+        return { ...options, headers };
+    }
 
     function createTreeApi() {
         return {
@@ -39,9 +39,15 @@
             createMemory: async (payload) => BaseApiFetch.apiFetch('/memories', { method: 'POST', body: JSON.stringify(payload) }),
             updateMemory: async (memoryId, payload) => BaseApiFetch.apiFetch(`/memories/${memoryId}`, { method: 'PUT', body: JSON.stringify(payload) }),
             deleteMemory: async (memoryId) => BaseApiFetch.apiFetch(`/memories/${memoryId}`, { method: 'DELETE' }),
-            toggleReaction: async (memoryId, type = 'like') => BaseApiFetch.apiFetch(`/memories/${memoryId}/reactions`, { method: 'POST', body: JSON.stringify({ type }) }),
+            toggleReaction: async (memoryId, type = 'like', idempotencyKey) => {
+                const options = { method: 'POST', body: JSON.stringify({ type }) };
+                return BaseApiFetch.apiFetch(`/memories/${memoryId}/reactions`, addIdempotencyKey(options, idempotencyKey));
+            },
             fetchReactionSummary: async (memoryId) => BaseApiFetch.apiFetch(`/memories/${memoryId}/reactions`),
-            createComment: async (memoryId, body) => BaseApiFetch.apiFetch(`/memories/${memoryId}/comments`, { method: 'POST', body: JSON.stringify({ body }) }),
+            createComment: async (memoryId, body, idempotencyKey) => {
+                const options = { method: 'POST', body: JSON.stringify({ body }) };
+                return BaseApiFetch.apiFetch(`/memories/${memoryId}/comments`, addIdempotencyKey(options, idempotencyKey));
+            },
             fetchComments: async (memoryId) => BaseApiFetch.apiFetch(`/memories/${memoryId}/comments`),
             fetchPublicMomentReactionSummary: async (treeId, memoryId) => BaseApiFetch.apiFetch(`/trees/${encodeURIComponent(treeId)}/memories/${encodeURIComponent(memoryId)}/reactions`, { publicRead: true }),
             fetchPublicMomentComments: async (treeId, memoryId) => BaseApiFetch.apiFetch(`/trees/${encodeURIComponent(treeId)}/memories/${encodeURIComponent(memoryId)}/comments`, { publicRead: true })
@@ -90,7 +96,7 @@
 
         return {
             ...tree,
-            representativeThumbnail: PublicTreeAdapter 
+            representativeThumbnail: PublicTreeAdapter
                 ? PublicTreeAdapter.canonicalizeYouTubeThumbnailUrl(rawThumb, rawSource)
                 : rawThumb,
             emotionTags: rawEmotionTags.filter(Boolean).slice(0, 4),
@@ -222,6 +228,10 @@
         { name: 'youtubeApi', api: youtubeApi }
     ]);
 
+    const base = memoryApi;
+    apiClient.fetchPublicMomentReactionSummary = base.fetchPublicMomentReactionSummary;
+    apiClient.fetchPublicMomentComments = base.fetchPublicMomentComments;
+
     window.apiClient = apiClient;
 
     if (shouldExposeApiClientInternals()) {
@@ -235,6 +245,8 @@
             normalizeBrowseTreeRecord: PublicTreeAdapter?.normalizeBrowseTreeRecord,
             normalizeBrowseMemoryRecord: PublicTreeAdapter?.normalizeBrowseMemoryRecord,
             normalizeChannelMetadata,
+            generateIdempotencyKey,
+            addIdempotencyKey,
         };
     }
 })();
