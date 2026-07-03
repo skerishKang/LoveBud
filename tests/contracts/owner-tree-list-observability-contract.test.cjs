@@ -253,7 +253,7 @@ test('14. DB setup failures are classified as DB_CONNECTION_FAILURE', () => {
   assert.ok(dbConnectionFailureIdx !== -1, 'final generic handler must map to DB_CONNECTION_FAILURE');
 });
 
-test('15. modal_compute/api_response_helpers.py must not contain debug_log_delay', () => {
+test('15. Static regression guard: modal_compute/api_response_helpers.py must not contain debug_log_delay', () => {
   if (fs.existsSync(HELPERS_PY)) {
     const content = readFileContent(HELPERS_PY);
     assert.ok(!hasString(content, 'debug_log_delay'), 'api_response_helpers.py must not contain debug_log_delay');
