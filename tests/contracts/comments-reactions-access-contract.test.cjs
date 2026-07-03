@@ -576,12 +576,13 @@ test('create_comment uses cursor-local require_memory_visible_or_owner_cursor', 
 
 // ─── FORBIDDEN FILE SCOPE ────────────────────────────────────────────────────────
 
-test('my-trees-preview-hub.js is NOT modified', () => {
+test('My Trees preview does not send tree IDs to moment reactions', () => {
   const myTreesFile = path.join(ROOT, 'js/my-trees/my-trees-preview-hub.js');
-  assert.ok(fs.existsSync(myTreesFile), 'my-trees-preview-hub.js must still exist');
+  assert.ok(fs.existsSync(myTreesFile), 'my-trees-preview-hub.js must exist');
   const content = readFileContent(myTreesFile);
-  assert.ok(
-    hasString(content, 'window.apiClient.toggleReaction(treeKey'),
-    'my-trees-preview-hub.js must still have the treeKey toggleReaction call (separate issue)'
+  assert.equal(
+    content.includes('window.apiClient.toggleReaction(treeKey'),
+    false,
+    'my-trees-preview-hub.js must not send tree IDs to moment reactions (Refs #3178)'
   );
 });

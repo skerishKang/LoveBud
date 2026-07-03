@@ -294,7 +294,12 @@ test('8. non-allowlisted files are not modified', () => {
     'tests/contracts/moment-social-write-hardening-contract.test.cjs',
     'tests/contracts/moment-social-write-migration-contract.test.cjs',
     'scripts/migration-harden-moment-social-writes.sql',
-    'docs/ops/moment-social-write-hardening-migration-runbook.md'
+    'docs/ops/moment-social-write-hardening-migration-runbook.md',
+    // #3178 Do not send tree IDs to moment reaction endpoint
+    'js/my-trees/my-trees-preview-hub.js',
+    'tests/contracts/my-trees-preview-hub.test.cjs',
+    'tests/contracts/comments-reactions-access-contract.test.cjs',
+    'tests/contracts/moment-social-write-hardening-contract.test.cjs',
   ];
 
   // Read git diff to check what files are modified
