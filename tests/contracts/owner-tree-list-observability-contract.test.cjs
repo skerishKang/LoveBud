@@ -188,10 +188,106 @@ test('10. Exact changed-file scope is limited to the six allowed files', () => {
     'modal_compute/owner_reads.py',
     'modal_compute/db.py',
     'tests/contracts/owner-tree-list-observability-contract.test.cjs',
-    'modal_compute/api_response_helpers.py',
   ];
   for (const f of allowedFiles) {
     const fullPath = path.join(ROOT, f);
     assert.ok(fs.existsSync(fullPath), `${f} must exist (allowed file)`);
   }
 });
+
+test('11. POST /api/trees calls a defined withModalHeader', () => {
+  const content = readFileContent(TREES_JS);
+  const onRequestPostBlock = extractJSFunctionBlock(content, 'onRequestPost');
+  assert.ok(hasString(onRequestPostBlock, 'withModalHeader'), 'onRequestPost must call withModalHeader');
+
+  const withModalHeaderDef = extractSyncFunctionBlock(content, 'withModalHeader');
+  assert.ok(hasString(withModalHeaderDef, 'x-lovebud-upstream'), 'withModalHeader must set x-lovebud-upstream header');
+  assert.ok(hasString(withModalHeaderDef, 'modal'), 'withModalHeader must set upstream to modal');
+});
+
+test('12. GET missing-MODAL_BASE_URL response includes and exposes request ID', () => {
+  const content = readFileContent(TREES_JS);
+  const onRequestGetBlock = extractJSFunctionBlock(content, 'onRequestGet');
+
+  assert.ok(hasString(onRequestGetBlock, 'REQUEST_ID_HEADER'), 'GET missing-config response must include request ID header');
+  assert.ok(hasString(onRequestGetBlock, 'Access-Control-Expose-Headers'), 'GET missing-config response must expose request ID via CORS');
+  assert.ok(hasString(onRequestGetBlock, 'requestId'), 'GET missing-config response must set request ID');
+});
+
+test('13. query-stage psycopg.OperationalError is explicitly re-raised before generic psycopg.Error', () => {
+  const content = readFileContent(OWNER_READS_PY);
+  const fetchBlock = extractPythonFunctionBlock(content, 'fetch_user_trees');
+
+  const operationalErrorIdx = fetchBlock.indexOf('except psycopg.OperationalError');
+  const genericErrorIdx = fetchBlock.indexOf('except psycopg.Error');
+
+  assert.ok(operationalErrorIdx !== -1, 'must have except psycopg.OperationalError handler');
+  assert.ok(genericErrorIdx !== -1, 'must have except psycopg.Error handler');
+  assert.ok(operationalErrorIdx < genericErrorIdx, 'OperationalError handler must appear before generic Error handler');
+  assert.ok(hasString(fetchBlock, 'raise\n'), 'OperationalError handler must re-raise unchanged');
+});
+
+test('14. modal_compute/api_response_helpers.py is absent from git diff', async () => {
+  const { execSync } = require('child_process');
+  const diffOutput = execSync('git diff --name-only origin/main...HEAD', { encoding: 'utf-8' });
+  const changedFiles = diffOutput.trim().split('\n').filter(f => f.trim());
+
+  assert.ok(!changedFiles.includes('modal_compute/api_response_helpers.py'), 'api_response_helpers.py must not be in changed files');
+});
+
+test('15. No-network runtime smoke for POST and GET missing-config', async () => {
+  const treesModule = await import(path.join(ROOT, 'functions/api/trees.js'));
+
+  const originalFetch = global.fetch;
+  const mockFetch = (url, init) => {
+    return Promise.resolve(new Response(JSON.stringify({ ok: true, data: [] }), {
+      status: 200,
+      headers: { 'content-type': 'application/json' }
+    }));
+  };
+  global.fetch = mockFetch;
+
+  try {
+    const postContext = {
+      request: new Request('https://lovebud.pages.dev/api/trees', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'authorization': 'Bearer test-token'
+        },
+        body: JSON.stringify({ title: 'Test Tree', memo: 'Test memo' })
+      }),
+      env: { MODAL_BASE_URL: 'https://test.modal.com' }
+    };
+
+    const postResponse = await treesModule.onRequestPost(postContext);
+    assert.equal(postResponse.status, 200, 'POST should return 200');
+    assert.equal(postResponse.headers.get('x-lovebud-upstream'), 'modal', 'POST should include x-lovebud-upstream: modal');
+
+    const getMissingConfigContext = {
+      request: new Request('https://lovebud.pages.dev/api/trees'),
+      env: {}
+    };
+
+    const getResponse = await treesModule.onRequestGet(getMissingConfigContext);
+    assert.equal(getResponse.status, 503, 'GET missing-config should return 503');
+
+    const requestId = getResponse.headers.get('x-lovebud-request-id');
+    assert.ok(requestId, 'GET missing-config should include x-lovebud-request-id');
+    assert.ok(requestId.startsWith('req-'), 'request ID should have req- prefix');
+
+    const exposeHeaders = getResponse.headers.get('Access-Control-Expose-Headers');
+    assert.ok(exposeHeaders, 'GET missing-config should include Access-Control-Expose-Headers');
+    assert.ok(exposeHeaders.includes('x-lovebud-request-id'), 'Access-Control-Expose-Headers should expose request ID');
+  } finally {
+    global.fetch = originalFetch;
+  }
+});
+
+function extractSyncFunctionBlock(content, functionName) {
+  let idx = content.indexOf(`function ${functionName}`);
+  assert.notEqual(idx, -1, `${functionName} should exist`);
+  const openBrace = content.indexOf('{', idx);
+  assert.notEqual(openBrace, -1, `${functionName} should have body`);
+  return extractBraceBlock(content, openBrace, `${functionName} body`);
+}

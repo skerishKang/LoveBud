@@ -26,6 +26,16 @@ function stripTrailingSlash(value) {
   return String(value || '').replace(/\/$/, '');
 }
 
+function withModalHeader(response) {
+  const headers = new Headers(response.headers);
+  headers.set('x-lovebud-upstream', 'modal');
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers
+  });
+}
+
 async function withModalHeaderAndId(response, requestId = null) {
   const headers = new Headers(response.headers);
   headers.set('x-lovebud-upstream', 'modal');
@@ -98,7 +108,11 @@ export async function onRequestGet(context) {
   if (!modalBaseUrl) {
     return new Response(JSON.stringify({ error: 'MODAL_BASE_URL is not configured' }), {
       status: 503,
-      headers: { 'content-type': 'application/json; charset=utf-8' }
+      headers: {
+        'content-type': 'application/json; charset=utf-8',
+        [REQUEST_ID_HEADER]: requestId,
+        'Access-Control-Expose-Headers': REQUEST_ID_HEADER
+      }
     });
   }
 

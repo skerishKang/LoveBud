@@ -54,6 +54,8 @@ def fetch_user_trees(owner_id: str, limit: int = 100) -> list[dict[str, Any]]:
                 try:
                     cur.execute(query, (owner_id, limit))
                     return cur.fetchall()
+                except psycopg.OperationalError:
+                    raise
                 except psycopg.Error:
                     raise OwnerTreeListError(
                         error_category="OWNER_TREE_LIST_QUERY_FAILURE",
