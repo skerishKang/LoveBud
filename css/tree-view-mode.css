@@ -83,9 +83,186 @@
     gap: var(--lovetree-card-grid-gap);
 }
 
+#resultsList[data-tree-view-mode="large"] .tree-card {
+    height: 380px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+}
+
+#resultsList[data-tree-view-mode="large"] .tree-card-media {
+    height: 136px;
+    min-height: 136px;
+    margin: 0;
+}
+
+#resultsList[data-tree-view-mode="large"] .tree-card-body {
+    display: grid;
+    grid-template-rows: 3.25rem 2.4rem minmax(0, 1fr) auto;
+    row-gap: 8px;
+    padding: 10px 12px 12px;
+    flex: 1 1 auto;
+    height: auto;
+    min-height: 0;
+    box-sizing: border-box;
+}
+
+#resultsList[data-tree-view-mode="large"] .tree-title {
+    font-size: 1.25rem;
+    line-height: 1.3;
+    height: 3.25rem;
+    margin: 0;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: normal;
+    flex-shrink: 0;
+}
+
+#resultsList[data-tree-view-mode="large"] .tree-subtitle {
+    font-size: 0.85rem;
+    line-height: 1.4;
+    height: 2.4rem;
+    margin: 0;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: normal;
+    flex-shrink: 0;
+}
+
+#resultsList[data-tree-view-mode="large"] .tree-card-metadata-slot {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) 24px;
+  gap: 4px;
+  min-height: 0;
+  max-height: none;
+  overflow: hidden;
+}
+
+#resultsList[data-tree-view-mode="large"] .tree-public-metadata {
+  min-height: 0;
+  max-height: none;
+  overflow: hidden;
+}
+
+#resultsList[data-tree-view-mode="large"] .tree-public-metadata-desc {
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+#resultsList[data-tree-view-mode="large"] .tree-public-tags {
+  grid-row: 2;
+  height: 24px;
+  margin: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+#resultsList[data-tree-view-mode="large"] .tree-meta-row {
+    flex-shrink: 0;
+}
+
 #resultsList[data-tree-view-mode="compact"] {
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: var(--lovetree-card-grid-gap-compact);
+}
+
+#resultsList[data-tree-view-mode="compact"] .tree-card {
+    height: 290px;
+    min-height: 260px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+}
+
+#resultsList[data-tree-view-mode="compact"] .tree-card-media {
+    height: 100px;
+    min-height: 100px;
+    margin: 0;
+}
+
+#resultsList[data-tree-view-mode="compact"] .tree-card-body {
+    display: grid;
+    grid-template-rows: 1.5rem 1.2rem minmax(0, 1fr) auto;
+    row-gap: 6px;
+    padding: 8px 10px 10px;
+    flex: 1 1 auto;
+    height: auto;
+    min-height: 0;
+    box-sizing: border-box;
+}
+
+#resultsList[data-tree-view-mode="compact"] .tree-title {
+    font-size: 1.1rem;
+    line-height: 1.3;
+    height: 1.5rem;
+    margin: 0;
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+#resultsList[data-tree-view-mode="compact"] .tree-subtitle {
+    font-size: 0.8rem;
+    line-height: 1.4;
+    height: 1.2rem;
+    margin: 0;
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+#resultsList[data-tree-view-mode="compact"] .tree-card-metadata-slot {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) 22px;
+  gap: 4px;
+  min-height: 0;
+  max-height: none;
+  overflow: hidden;
+}
+
+#resultsList[data-tree-view-mode="compact"] .tree-public-metadata {
+  min-height: 0;
+  max-height: none;
+  overflow: hidden;
+}
+
+#resultsList[data-tree-view-mode="compact"] .tree-public-metadata-desc {
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+#resultsList[data-tree-view-mode="compact"] .tree-public-tags {
+  grid-row: 2;
+  height: 22px;
+  margin: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+#resultsList[data-tree-view-mode="compact"] .tree-meta-row {
+    flex-shrink: 0;
 }
 
 #resultsList[data-tree-view-mode="list"] {
@@ -129,8 +306,18 @@
     }
 
     #resultsList[data-tree-view-mode="compact"] .tree-card {
+        height: 280px;
+    }
+
+    #resultsList[data-tree-view-mode="compact"] .tree-card-media {
+        height: 90px;
+        min-height: 90px;
+    }
+
+    #resultsList[data-tree-view-mode="compact"] .tree-card-body {
         height: auto;
-        min-height: 260px;
+        flex: 1 1 auto;
+        min-height: 0;
     }
 }
 
@@ -176,7 +363,18 @@
     }
 
     #resultsList[data-tree-view-mode="compact"] .tree-card {
-        min-height: 240px;
+        height: 260px;
+    }
+
+    #resultsList[data-tree-view-mode="compact"] .tree-card-media {
+        height: 80px;
+        min-height: 80px;
+    }
+
+    #resultsList[data-tree-view-mode="compact"] .tree-card-body {
+        height: auto;
+        flex: 1 1 auto;
+        min-height: 0;
     }
 }
 
@@ -293,6 +491,11 @@
     text-overflow: ellipsis;
     white-space: nowrap;
     max-width: 100%;
+}
+
+#resultsList[data-tree-view-mode="large"] .tree-title,
+#resultsList[data-tree-view-mode="large"] .tree-subtitle {
+  white-space: normal;
 }
 
 .tree-card .tree-tags {

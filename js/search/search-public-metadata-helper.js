@@ -128,11 +128,14 @@
 
   function renderCardMetadata(tree) {
     var meta = getPublicMetadata(tree);
-    if (!meta) return '';
+    var uploaderName = (meta && meta.uploaderName) ? meta.uploaderName : '';
+    var description = (meta && meta.description) ? meta.description : '';
+    var topic = (meta && meta.topic) ? meta.topic : '';
+    var tags = (meta && meta.tags) ? meta.tags : [];
 
-    var topicHtml = meta.topic ? '<span class="tree-public-metadata-topic">' + escapeHtml(meta.topic) + '</span>' : '';
-    var descHtml = meta.description ? '<span class="tree-public-metadata-desc">' + escapeHtml(meta.description) + '</span>' : '';
-    var uploaderHtml = meta.uploaderName ? '<span class="tree-public-metadata-uploader">by ' + escapeHtml(meta.uploaderName) + '</span>' : '';
+    var topicHtml = topic ? '<span class="tree-public-metadata-topic">' + escapeHtml(topic) + '</span>' : '';
+    var descHtml = description ? '<span class="tree-public-metadata-desc">' + escapeHtml(description) + '</span>' : '';
+    var uploaderHtml = uploaderName ? '<span class="tree-public-metadata-uploader">by ' + escapeHtml(uploaderName) + '</span>' : '';
 
     var metadataBlock = '';
     if (topicHtml || descHtml || uploaderHtml) {
@@ -143,15 +146,21 @@
       '</div>';
     }
 
-    var tagsBlock = '';
-    if (meta.tags && meta.tags.length > 0) {
-      var tagSpans = meta.tags.map(function (tag) {
-        return '<span>#' + escapeHtml(tag) + '</span>';
-      }).join('');
-      tagsBlock = '<div class="tree-public-tags">' + tagSpans + '</div>';
+    var tagSpans = tags.map(function (tag) {
+      return '<span class="tree-public-tag">#' + escapeHtml(tag) + '</span>';
+    }).join('');
+
+    if (tags.length > 2) {
+      var overflowCount = tags.length - 2;
+      tagSpans += '<span class="tree-public-tag-overflow">+' + overflowCount + '</span>';
     }
 
-    return metadataBlock + tagsBlock;
+    var tagsBlock = '<div class="tree-public-tags">' + tagSpans + '</div>';
+
+    return '<div class="tree-card-metadata-slot">' +
+      metadataBlock +
+      tagsBlock +
+    '</div>';
   }
 
   function renderHubMetadata(tree) {

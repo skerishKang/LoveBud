@@ -86,7 +86,13 @@ test('7 & 8 & 12. search-card-renderer, search-preview-renderer and empty fallba
 
   // Render card metadata with completely empty values
   const cardHtmlEmpty = helper.renderCardMetadata({});
-  assert.equal(cardHtmlEmpty, '');
+  assert.equal(cardHtmlEmpty, '<div class="tree-card-metadata-slot"><div class="tree-public-tags"></div></div>');
+
+  const threeTagsHtml = helper.renderCardMetadata({ tags: ['tag1', 'tag2', 'tag3'] });
+  assert.match(threeTagsHtml, /#tag1/);
+  assert.match(threeTagsHtml, /#tag2/);
+  assert.match(threeTagsHtml, /#tag3/);
+  assert.match(threeTagsHtml, /\+1/);
 
   const hubHtmlEmpty = helper.renderHubMetadata({});
   assert.equal(hubHtmlEmpty, '');
