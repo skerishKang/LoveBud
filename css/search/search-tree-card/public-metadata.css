@@ -101,3 +101,15 @@
   font-weight: 500;
   overflow-wrap: anywhere;
 }
+
+.tree-public-tag-overflow {
+  display: none;
+}
+
+#resultsList[data-tree-view-mode="list"] .tree-card-metadata-slot {
+  display: contents;
+}
+
+#resultsList[data-tree-view-mode="list"] .tree-card-metadata-slot > .tree-public-tags:empty {
+  display: none;
+}
