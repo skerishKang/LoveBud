@@ -300,10 +300,6 @@ test('8. non-allowlisted files are not modified', () => {
     'tests/contracts/my-trees-preview-hub.test.cjs',
     'tests/contracts/comments-reactions-access-contract.test.cjs',
     'tests/contracts/moment-social-write-hardening-contract.test.cjs',
-
-    // #3192 defer private preload until authentication (redirect-initiation preload fix)
-    'js/auth/auth-firebase.js',
-    'tests/contracts/auth-bootstrap-contract.test.cjs',
   ];
 
   // Read git diff to check what files are modified
