@@ -271,7 +271,18 @@ test('8. non-allowlisted files are not modified', () => {
     'tests/routes/public-viewer-reactions-contract.test.cjs',
     'tests/routes/public-viewer-detail-ui-core-contract.test.cjs',
     'tests/routes/public-viewer-focus-contract.test.cjs',
-    'tests/routes/public-viewer-sidebar-contract.test.cjs'
+    'tests/routes/public-viewer-sidebar-contract.test.cjs',
+
+    // #3175 public moment social read contract
+    'js/postgres-client.js',
+    'modal_compute/public_reads.py',
+    'modal_compute/reactions.py',
+    'modal_compute/comments.py',
+    'modal_compute/app.py',
+    'functions/api/trees/[tree_id]/memories/[memory_id]/reactions.js',
+    'functions/api/trees/[tree_id]/memories/[memory_id]/comments.js',
+    'tests/contracts/public-moment-social-read-contract.test.cjs',
+    'tests/contracts/comments-reactions-access-contract.test.cjs'
   ];
 
   // Read git diff to check what files are modified

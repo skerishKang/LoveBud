@@ -55,6 +55,57 @@ def create_comment(memory_id: str, owner_id: str, body: str) -> dict[str, Any]:
     return normalize_comment_row(row)
 
 
+def normalize_public_comment_row(row: dict[str, Any]) -> dict[str, Any]:
+    """Public-safe comment DTO — no ownerId, no memoryId, no internal fields.
+
+    This normalizer is intentionally separate from normalize_comment_row so that
+    the public endpoint never leaks owner identity or internal DB shape.
+
+    Future: when moderation/deletion/hidden columns exist, add a WHERE clause
+    in the query (not a filter here). Currently no such schema exists, so all
+    comments stored against a public memory are returned.
+    """
+    return {
+        "id": str(row["id"]),
+        "body": str(row["body"]),
+        "createdAt": _to_isoformat(row.get("created_at")),
+    }
+
+
+def fetch_public_comments(
+    memory_id: str,
+    limit: int = 20,
+) -> dict[str, Any]:
+    """Fetch comments for a public memory, returning only public-safe fields.
+
+    Uses a small bounded default limit with a hard clamp. Pagination is not
+    implemented yet — nextCursor is null.
+    """
+    safe_limit = max(1, min(limit, 50))
+
+    def operation():
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT id, body, created_at
+                    FROM comments
+                    WHERE memory_id = %s
+                    ORDER BY created_at ASC
+                    LIMIT %s
+                    """,
+                    (memory_id, safe_limit),
+                )
+                return cur.fetchall()
+
+    rows = run_db_with_retry(operation)
+    comments = [normalize_public_comment_row(row) for row in rows]
+    return {
+        "comments": comments,
+        "nextCursor": None,
+    }
+
+
 def fetch_comments(memory_id: str, requester_uid: str, limit: int = 50) -> list[dict[str, Any]]:
     """Fetch comments for a memory, ordered by creation time."""
     safe_memory_id = validate_required_uuid(memory_id, "memoryId")

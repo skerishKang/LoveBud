@@ -3,6 +3,8 @@ from __future__ import annotations
 import time
 from typing import Any
 
+from fastapi import HTTPException
+
 from modal_compute.db import (
     get_db_connection,
     run_db_with_retry,
@@ -576,6 +578,45 @@ def fetch_public_memories(tree_id: str | None = None, limit: int = 100) -> list[
     result.sort(key=lambda m: m.get("createdAt") or "", reverse=True)
 
     return result
+
+
+def require_public_memory_membership(tree_id: str, memory_id: str) -> dict[str, Any]:
+    """Server-side guard: verify tree+mameory both exist, are public, and belong together.
+
+    Raises 404 if any of these fail:
+    - tree not found or not public
+    - memory not found or not public
+    - memory.tree_id != requested tree_id
+
+    Legacy payload trees (no memories table) also raise 404 because they
+    have no reaction/comment storage, so social reads are unavailable.
+    """
+    def operation():
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                if not _table_exists(cur, "memories"):
+                    raise HTTPException(status_code=404, detail="Memory not found")
+
+                cur.execute(
+                    """
+                    SELECT m.id, m.tree_id, m.visibility AS mem_visibility,
+                           t.visibility AS tree_visibility
+                    FROM memories m
+                    INNER JOIN trees t ON t.id = m.tree_id
+                    WHERE m.id = %s
+                      AND m.tree_id = %s
+                      AND m.visibility = 'public'
+                      AND t.visibility = 'public'
+                    LIMIT 1
+                    """,
+                    (memory_id, tree_id),
+                )
+                row = cur.fetchone()
+                if not row:
+                    raise HTTPException(status_code=404, detail="Memory not found")
+                return row
+
+    return run_db_with_retry(operation)
 
 
 def fetch_public_memory(memory_id: str) -> dict[str, Any] | None:
