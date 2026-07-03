@@ -500,6 +500,7 @@ test('CF proxies use /modal/public/trees/ upstream path', () => {
   );
 });
 
+
 test('CF proxies handle MODAL_BASE_URL missing and modal unavailable (503)', () => {
   const reactionsContent = readFileContent(CF_REACTIONS_PROXY);
   assert.ok(hasString(reactionsContent, 'MODAL_BASE_URL'), 'reactions proxy should handle MODAL_BASE_URL');
@@ -836,4 +837,112 @@ test('CF proxies use /modal/public/trees/ upstream path', () => {
     hasString(commentsContent, '/modal/public/trees/'),
     'CF comments proxy must target the public upstream route'
   );
+});
+
+// ─── MOCKED SUCCESS-PATH HEADER VERIFICATION ─────────────────────────────────
+
+test('CF reactions proxy preserves correlation headers on 200 upstream', async () => {
+  const REQUEST_ID = 'test-req-200-reactions';
+  let capturedUrl = '';
+  let capturedHeaders = {};
+
+  const originalFetch = globalThis.fetch;
+  try {
+    globalThis.fetch = async (url, opts) => {
+      capturedUrl = typeof url === 'string' ? url : url.toString();
+      capturedHeaders = (opts && opts.headers) ? Object.fromEntries(
+        opts.headers[Symbol.iterator] ? opts.headers : Object.entries(opts.headers)
+      ) : {};
+      return new Response(JSON.stringify({}), {
+        status: 200,
+        headers: { 'content-type': 'application/json' }
+      });
+    };
+
+    const mod = await import('file://' + CF_REACTIONS_PROXY);
+    const request = new Request(
+      'http://test.local/api/trees/test-tree/memories/test-memory/reactions',
+      { headers: { 'x-lovebud-request-id': REQUEST_ID } }
+    );
+    const env = { MODAL_BASE_URL: 'http://modal-upstream.test' };
+    const context = { request, env, params: { tree_id: 'test-tree', memory_id: 'test-memory' } };
+
+    const response = await mod.onRequestGet(context);
+
+    assert.equal(response.status, 200, 'should return 200');
+    assert.equal(
+      response.headers.get('x-lovebud-request-id'),
+      REQUEST_ID,
+      'response must echo the client request ID'
+    );
+    assert.equal(
+      response.headers.get('x-lovebud-upstream'),
+      'modal',
+      'response must set upstream header to modal'
+    );
+
+    assert.ok(capturedUrl.includes('/modal/public/trees/test-tree/memories/test-memory/reactions'),
+      'upstream URL must target the public modal route');
+    assert.ok(capturedHeaders['accept'], 'upstream request must include accept header');
+    assert.equal(capturedHeaders['x-lovebud-request-id'], REQUEST_ID,
+      'upstream request must forward request ID');
+    assert.equal(capturedHeaders['authorization'], undefined,
+      'upstream request must NOT forward authorization header');
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('CF comments proxy preserves correlation headers on 200 upstream', async () => {
+  const REQUEST_ID = 'test-req-200-comments';
+  let capturedUrl = '';
+  let capturedHeaders = {};
+
+  const originalFetch = globalThis.fetch;
+  try {
+    globalThis.fetch = async (url, opts) => {
+      capturedUrl = typeof url === 'string' ? url : url.toString();
+      capturedHeaders = (opts && opts.headers) ? Object.fromEntries(
+        opts.headers[Symbol.iterator] ? opts.headers : Object.entries(opts.headers)
+      ) : {};
+      return new Response(JSON.stringify({ comments: [], nextCursor: null }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' }
+      });
+    };
+
+    const mod = await import('file://' + CF_COMMENTS_PROXY);
+    const request = new Request(
+      'http://test.local/api/trees/test-tree/memories/test-memory/comments?limit=1',
+      { headers: { 'x-lovebud-request-id': REQUEST_ID } }
+    );
+    const env = { MODAL_BASE_URL: 'http://modal-upstream.test' };
+    const context = { request, env, params: { tree_id: 'test-tree', memory_id: 'test-memory' } };
+
+    const response = await mod.onRequestGet(context);
+
+    assert.equal(response.status, 200, 'should return 200');
+    assert.equal(
+      response.headers.get('x-lovebud-request-id'),
+      REQUEST_ID,
+      'response must echo the client request ID'
+    );
+    assert.equal(
+      response.headers.get('x-lovebud-upstream'),
+      'modal',
+      'response must set upstream header to modal'
+    );
+
+    assert.ok(capturedUrl.includes('/modal/public/trees/test-tree/memories/test-memory/comments'),
+      'upstream URL must target the public modal route');
+    assert.ok(capturedUrl.includes('limit=1'),
+      'upstream URL must forward limit query param');
+    assert.ok(capturedHeaders['accept'], 'upstream request must include accept header');
+    assert.equal(capturedHeaders['x-lovebud-request-id'], REQUEST_ID,
+      'upstream request must forward request ID');
+    assert.equal(capturedHeaders['authorization'], undefined,
+      'upstream request must NOT forward authorization header');
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });
