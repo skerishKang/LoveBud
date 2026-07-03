@@ -490,4 +490,46 @@ test('signInWithGoogle success popup sets canonical href and activates editor pr
         `${name}: preload must include ${expectedCall}`);
     }
   }
+}); // end of signInWithGoogle success popup test
+
+test('redirect-initiation branch must not call preloadRedirectTargetData before setPersistence/signInWithRedirect', () => {
+  const source = readRepoFile('js/auth/auth-firebase.js');
+
+  // Validate that the redirect-initiation try block immediately
+  // enters the setPersistence check — no preloadRedirectTargetData in between.
+  assert.match(
+    source,
+    /try\s*\{\s*\n\s+if\s*\(\s*firebase\.auth\.Auth\s*&&\s*firebase\.auth\.Auth\.Persistence\s*\)/,
+    'redirect-initiation try must jump directly into setPersistence, not preloadRedirectTargetData'
+  );
+
+  // Ensure no preloadRedirectTargetData() call exists between the redirect
+  // try block opener and the setPersistence guard.
+  assert.doesNotMatch(
+    source,
+    /try\s*\{\s*\n\s*if\s*\(\s*typeof\s+preloadRedirectTargetData\s*===\s*['"]function['"]\s*\)/,
+    'redirect-initiation try must not contain preloadRedirectTargetData before setPersistence'
+  );
+
+  // Confirm signInWithRedirect still follows setPersistence in the redirect path
+  assert.match(
+    source,
+    /setPersistence[\s\S]*?signInWithRedirect\s*\(/,
+    'redirect path must preserve setPersistence before signInWithRedirect'
+  );
+});
+
+test('popup success path preserves persistConfirmedAuthSession → preloadRedirectTargetData → navigation', () => {
+  const source = readRepoFile('js/auth/auth-firebase.js');
+
+  assert.match(
+    source,
+    /persistConfirmedAuthSession\s*\([\s\S]*?preloadRedirectTargetData\s*\([\s\S]*?window\.location\.href\s*=/,
+    'popup success path must keep persistConfirmedAuthSession → preloadRedirectTargetData → navigation order'
+  );
+  assert.match(
+    source,
+    /preloadRedirectTargetData[\s\S]*window\.location\.href/,
+    'preloadRedirectTargetData must be followed by navigation assignment in popup success'
+  );
 });

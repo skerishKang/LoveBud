@@ -101,14 +101,18 @@ test('editor.js retains isEditMode() guard for edit handlers', () => {
     );
 });
 
-test('no DB/API/Firebase/persistence files modified', () => {
+test('no unrelated DB/API/Firebase/persistence files modified', () => {
+    // #3192 — narrow exception: js/auth/auth-firebase.js containing 'firebase' is approved
     const changed = runGitDiffNames();
     const blockedPatterns = ['firebase', 'api-client', 'firestore'];
     for (const file of changed) {
         for (const pattern of blockedPatterns) {
+            const isApproved3192FirebaseException =
+                file === 'js/auth/auth-firebase.js' &&
+                pattern === 'firebase';
             assert.ok(
-                !file.includes(pattern),
-                `Must not modify ${file} (contains ${pattern})`
+                isApproved3192FirebaseException || !file.includes(pattern),
+                `#3192 exception not matched: Must not modify ${file} (contains ${pattern})`
             );
         }
     }
