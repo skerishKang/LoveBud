@@ -500,14 +500,14 @@ test('CF proxies use /modal/public/trees/ upstream path', () => {
   );
 });
 
-test('CF proxies handle MODAL_BASE_URL missing and modal unavailable', () => {
+test('CF proxies handle MODAL_BASE_URL missing and modal unavailable (503)', () => {
   const reactionsContent = readFileContent(CF_REACTIONS_PROXY);
   assert.ok(hasString(reactionsContent, 'MODAL_BASE_URL'), 'reactions proxy should handle MODAL_BASE_URL');
-  assert.ok(hasString(reactionsContent, 'buildModalUnavailableResponse'), 'reactions proxy should handle modal unavailable');
+  assert.ok(hasString(reactionsContent, 'build503Response'), 'reactions proxy should build 503 for unavailable');
 
   const commentsContent = readFileContent(CF_COMMENTS_PROXY);
   assert.ok(hasString(commentsContent, 'MODAL_BASE_URL'), 'comments proxy should handle MODAL_BASE_URL');
-  assert.ok(hasString(commentsContent, 'buildModalUnavailableResponse'), 'comments proxy should handle modal unavailable');
+  assert.ok(hasString(commentsContent, 'build503Response'), 'comments proxy should build 503 for unavailable');
 });
 
 // ─── PUBLIC VIEWER / UI SCOPE GUARD ───────────────────────────────────────────
@@ -583,4 +583,257 @@ test('Forbidden file: Scout, Browse, My Trees files are not modified', () => {
   assert.ok(!fs.existsSync(scoutDir) || fs.statSync(scoutDir).isDirectory(), 'scout dir unchanged');
   assert.ok(!fs.existsSync(browseDir) || fs.statSync(browseDir).isDirectory(), 'browse dir unchanged');
   assert.ok(!fs.existsSync(myTreesDir) || fs.statSync(myTreesDir).isDirectory(), 'my-trees dir unchanged');
+});
+
+// ─── REQUEST CORRELATION AND TIMEOUT SEMANTICS (#3185) ───────────────────────
+
+test('CF reactions proxy defines REQUEST_ID_HEADER constant', () => {
+  const content = readFileContent(CF_REACTIONS_PROXY);
+  assert.ok(
+    hasString(content, "const REQUEST_ID_HEADER = 'x-lovebud-request-id'"),
+    'reactions proxy must define REQUEST_ID_HEADER'
+  );
+});
+
+test('CF comments proxy defines REQUEST_ID_HEADER constant', () => {
+  const content = readFileContent(CF_COMMENTS_PROXY);
+  assert.ok(
+    hasString(content, "const REQUEST_ID_HEADER = 'x-lovebud-request-id'"),
+    'comments proxy must define REQUEST_ID_HEADER'
+  );
+});
+
+test('CF reactions proxy defines bounded MODAL_FETCH_TIMEOUT_MS', () => {
+  const content = readFileContent(CF_REACTIONS_PROXY);
+  assert.ok(
+    hasString(content, 'MODAL_FETCH_TIMEOUT_MS'),
+    'reactions proxy must define MODAL_FETCH_TIMEOUT_MS'
+  );
+  assert.ok(
+    hasRegex(content, /MODAL_FETCH_TIMEOUT_MS\s*=\s*\d+/),
+    'MODAL_FETCH_TIMEOUT_MS must be a numeric constant'
+  );
+});
+
+test('CF comments proxy defines bounded MODAL_FETCH_TIMEOUT_MS', () => {
+  const content = readFileContent(CF_COMMENTS_PROXY);
+  assert.ok(
+    hasString(content, 'MODAL_FETCH_TIMEOUT_MS'),
+    'comments proxy must define MODAL_FETCH_TIMEOUT_MS'
+  );
+  assert.ok(
+    hasRegex(content, /MODAL_FETCH_TIMEOUT_MS\s*=\s*\d+/),
+    'MODAL_FETCH_TIMEOUT_MS must be a numeric constant'
+  );
+});
+
+test('CF reactions proxy generates or reuses request ID', () => {
+  const content = readFileContent(CF_REACTIONS_PROXY);
+  assert.ok(
+    hasString(content, 'getOrCreateRequestId'),
+    'reactions proxy must define getOrCreateRequestId'
+  );
+  assert.ok(
+    hasString(content, 'generateRequestId'),
+    'reactions proxy must define generateRequestId'
+  );
+});
+
+test('CF comments proxy generates or reuses request ID', () => {
+  const content = readFileContent(CF_COMMENTS_PROXY);
+  assert.ok(
+    hasString(content, 'getOrCreateRequestId'),
+    'comments proxy must define getOrCreateRequestId'
+  );
+  assert.ok(
+    hasString(content, 'generateRequestId'),
+    'comments proxy must define generateRequestId'
+  );
+});
+
+test('CF reactions proxy forwards only accept and x-lovebud-request-id to Modal upstream', () => {
+  const content = readFileContent(CF_REACTIONS_PROXY);
+  assert.ok(
+    hasRegex(content, /headers\s*:\s*\{\s*[^}]*accept[^}]*\}\s*\}/),
+    'reactions proxy must pass accept header to Modal'
+  );
+  assert.ok(
+    hasRegex(content, /\[REQUEST_ID_HEADER\]\s*:\s*requestId/) ||
+    hasRegex(content, /REQUEST_ID_HEADER\s*:\s*requestId/),
+    'reactions proxy must forward request ID header to Modal'
+  );
+  // Must not forward authorization
+  assert.equal(
+    hasString(content, 'authorization'),
+    false,
+    'reactions proxy must not forward authorization header'
+  );
+});
+
+test('CF comments proxy forwards only accept and x-lovebud-request-id to Modal upstream', () => {
+  const content = readFileContent(CF_COMMENTS_PROXY);
+  assert.ok(
+    hasRegex(content, /headers\s*:\s*\{\s*[^}]*accept[^}]*\}\s*\}/),
+    'comments proxy must pass accept header to Modal'
+  );
+  assert.ok(
+    hasRegex(content, /\[REQUEST_ID_HEADER\]\s*:\s*requestId/) ||
+    hasRegex(content, /REQUEST_ID_HEADER\s*:\s*requestId/),
+    'comments proxy must forward request ID header to Modal'
+  );
+  // Must not forward authorization
+  assert.equal(
+    hasString(content, 'authorization'),
+    false,
+    'comments proxy must not forward authorization header'
+  );
+});
+
+test('CF reactions proxy returns request ID in all response variants', () => {
+  const content = readFileContent(CF_REACTIONS_PROXY);
+  // All response builders must use requestId
+  assert.ok(
+    hasRegex(content, /build503Response\s*\([^)]*\brequestId\b/) ||
+    hasString(content, '[REQUEST_ID_HEADER]: requestId'),
+    'reactions proxy 503 response must include requestId'
+  );
+  assert.ok(
+    hasRegex(content, /build504Response\s*\([^)]*\brequestId\b/) ||
+    hasString(content, '[REQUEST_ID_HEADER]: requestId'),
+    'reactions proxy 504 response must include requestId'
+  );
+  assert.ok(
+    hasRegex(content, /withUpstreamHeaders\s*\(.*,\s*requestId\s*\)/),
+    'reactions proxy success response must include requestId'
+  );
+});
+
+test('CF comments proxy returns request ID in all response variants', () => {
+  const content = readFileContent(CF_COMMENTS_PROXY);
+  assert.ok(
+    hasRegex(content, /build503Response\s*\([^)]*\brequestId\b/) ||
+    hasString(content, '[REQUEST_ID_HEADER]: requestId'),
+    'comments proxy 503 response must include requestId'
+  );
+  assert.ok(
+    hasRegex(content, /build504Response\s*\([^)]*\brequestId\b/) ||
+    hasString(content, '[REQUEST_ID_HEADER]: requestId'),
+    'comments proxy 504 response must include requestId'
+  );
+  assert.ok(
+    hasRegex(content, /withUpstreamHeaders\s*\(.*,\s*requestId\s*\)/),
+    'comments proxy success response must include requestId'
+  );
+});
+
+test('CF reactions proxy distinguishes timeout (504) from unavailable (503)', () => {
+  const content = readFileContent(CF_REACTIONS_PROXY);
+  assert.ok(
+    hasRegex(content, /AbortError/),
+    'reactions proxy must catch AbortError for timeout detection'
+  );
+  assert.ok(
+    hasRegex(content, /build504Response|status:\s*504/),
+    'reactions proxy must return 504 for timeout'
+  );
+  assert.ok(
+    hasRegex(content, /build503Response|status:\s*503/),
+    'reactions proxy must return 503 for unavailable'
+  );
+});
+
+test('CF comments proxy distinguishes timeout (504) from unavailable (503)', () => {
+  const content = readFileContent(CF_COMMENTS_PROXY);
+  assert.ok(
+    hasRegex(content, /AbortError/),
+    'comments proxy must catch AbortError for timeout detection'
+  );
+  assert.ok(
+    hasRegex(content, /build504Response|status:\s*504/),
+    'comments proxy must return 504 for timeout'
+  );
+  assert.ok(
+    hasRegex(content, /build503Response|status:\s*503/),
+    'comments proxy must return 503 for unavailable'
+  );
+});
+
+test('CF reactions proxy preserves x-lovebud-upstream: modal on all responses', () => {
+  const content = readFileContent(CF_REACTIONS_PROXY);
+  assert.ok(
+    hasRegex(content, /x-lovebud-upstream['":\s]+modal/),
+    'reactions proxy must set x-lovebud-upstream: modal'
+  );
+});
+
+test('CF comments proxy preserves x-lovebud-upstream: modal on all responses', () => {
+  const content = readFileContent(CF_COMMENTS_PROXY);
+  assert.ok(
+    hasRegex(content, /x-lovebud-upstream['":\s]+modal/),
+    'comments proxy must set x-lovebud-upstream: modal'
+  );
+});
+
+test('CF comments proxy preserves limit query parameter forwarding', () => {
+  const content = readFileContent(CF_COMMENTS_PROXY);
+  assert.ok(
+    hasString(content, 'limit=') && hasString(content, 'target.searchParams.set'),
+    'comments proxy must forward limit query parameter'
+  );
+});
+
+test('CF reactions proxy is GET-only (no POST handler)', () => {
+  const content = readFileContent(CF_REACTIONS_PROXY);
+  assert.ok(
+    hasString(content, 'onRequestGet'),
+    'reactions proxy should define onRequestGet'
+  );
+  assert.equal(
+    hasString(content, 'onRequestPost'),
+    false,
+    'reactions proxy should NOT define onRequestPost'
+  );
+});
+
+test('CF comments proxy is GET-only (no POST handler)', () => {
+  const content = readFileContent(CF_COMMENTS_PROXY);
+  assert.ok(
+    hasString(content, 'onRequestGet'),
+    'comments proxy should define onRequestGet'
+  );
+  assert.equal(
+    hasString(content, 'onRequestPost'),
+    false,
+    'comments proxy should NOT define onRequestPost'
+  );
+});
+
+test('CF proxies do not forward Authorization header', () => {
+  const reactionsContent = readFileContent(CF_REACTIONS_PROXY);
+  assert.equal(
+    hasString(reactionsContent, 'authorization'),
+    false,
+    'CF reactions proxy must not forward authorization header'
+  );
+
+  const commentsContent = readFileContent(CF_COMMENTS_PROXY);
+  assert.equal(
+    hasString(commentsContent, 'authorization'),
+    false,
+    'CF comments proxy must not forward authorization header'
+  );
+});
+
+test('CF proxies use /modal/public/trees/ upstream path', () => {
+  const reactionsContent = readFileContent(CF_REACTIONS_PROXY);
+  assert.ok(
+    hasString(reactionsContent, '/modal/public/trees/'),
+    'CF reactions proxy must target the public upstream route'
+  );
+
+  const commentsContent = readFileContent(CF_COMMENTS_PROXY);
+  assert.ok(
+    hasString(commentsContent, '/modal/public/trees/'),
+    'CF comments proxy must target the public upstream route'
+  );
 });
