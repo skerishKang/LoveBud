@@ -34,41 +34,39 @@ test('public viewer social row contains no button elements', () => {
   assert.doesNotMatch(reactionCardSlice(), /<button\b/i);
 });
 
-test('compatibility ids for stats and counts are preserved', () => {
-  const slice = reactionCardSlice();
-  assert.match(slice, /id="momentLikeBtn"/);
-  assert.match(slice, /id="momentCommentBtn"/);
-  assert.match(slice, /id="momentLikeCount"/);
-  assert.match(slice, /id="momentCommentCount"/);
+test('obsolete compatibility IDs and helper routines are removed', () => {
+  const combined = [templateSource, uiSource].join('\n');
+  assert.doesNotMatch(combined, /momentLikeBtn/);
+  assert.doesNotMatch(combined, /momentCommentBtn/);
+  assert.doesNotMatch(combined, /momentLikeCount/);
+  assert.doesNotMatch(combined, /momentCommentCount/);
+  assert.doesNotMatch(combined, /applyReadOnlyReactionFallback/);
+  assert.doesNotMatch(combined, /updateReadOnlyReactionCounts/);
 });
 
 test('read-only visible copy is present', () => {
   assert.match(reactionCardSlice(), /반응 기능은 준비 중이에요\./);
+  assert.match(reactionCardSlice(), /좋아요 정보 없음/);
+  assert.match(reactionCardSlice(), /댓글 정보 없음/);
+  assert.match(reactionCardSlice(), /—/);
 });
 
-test('social row has no interactive semantics', () => {
+test('social row has status role and no interactive elements/classes', () => {
   const slice = reactionCardSlice();
   assert.doesNotMatch(slice, /\btabindex=/i);
   assert.doesNotMatch(slice, /\brole="button"/i);
   assert.doesNotMatch(slice, /\baria-pressed=/i);
   assert.doesNotMatch(slice, /\bonclick=/i);
+  assert.match(slice, /role="status"/);
+  assert.doesNotMatch(slice, /\beditor-moment-reaction\b(?!s-card|-readonly-note)/);
+  assert.doesNotMatch(slice, /editor-reaction-like-btn/);
+  assert.doesNotMatch(slice, /editor-reaction-comment-btn/);
+  assert.doesNotMatch(slice, /editor-moment-reaction-stat/);
 });
 
-test('updater reflects counts and stat aria-labels without pressed state', () => {
-  const boundary = readOnlyBoundarySlice();
-  assert.match(boundary, /function updateReadOnlyReactionCounts/);
-  assert.match(boundary, /likeCount\.textContent = normalizedLikeCount/);
-  assert.match(boundary, /commentCount\.textContent = normalizedCommentCount/);
-  assert.match(boundary, /likeBtn\.setAttribute\('aria-label', '좋아요 ' \+ normalizedLikeCount\)/);
-  assert.match(boundary, /commentBtn\.setAttribute\('aria-label', '댓글 ' \+ normalizedCommentCount\)/);
-  assert.doesNotMatch(boundary, /dataset\.reacted/);
-  assert.doesNotMatch(boundary, /aria-pressed/);
-});
-
-test('CSS includes read-only modifier, stat, and note selectors', () => {
-  assert.match(cssSource, /\.editor-moment-reactions-card\.is-read-only/);
-  assert.match(cssSource, /\.editor-reaction-stat/);
-  assert.match(cssSource, /\.editor-moment-reaction-readonly-note/);
+test('CSS selectors are scoped to public read-only boundary', () => {
+  assert.match(cssSource, /\.editor-moment-reactions-card\.is-public-readonly\s+\.public-viewer-social-status/);
+  assert.doesNotMatch(cssSource, /\.editor-moment-reaction-stat\b/);
 });
 
 test('modified sources do not add public viewer reaction writes or provider/db hooks', () => {

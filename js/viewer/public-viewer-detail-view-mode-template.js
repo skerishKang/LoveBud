@@ -42,27 +42,27 @@
                     <div
                         class="editor-moment-reactions-card is-read-only is-public-readonly"
                         id="momentReactionsCard"
-                        aria-label="순간 반응"
+                        aria-label="순간 반응 (읽기 전용)"
                         data-read-only-summary="true"
                         style="font-variant-numeric:tabular-nums;"
                     >
                         <div
-                            class="editor-moment-reaction editor-reaction-like-btn editor-reaction-stat"
-                            id="momentLikeBtn"
-                            aria-label="좋아요 0"
+                            class="public-viewer-social-status"
+                            role="status"
+                            aria-label="좋아요 정보 없음"
                         >
                             <span class="editor-reaction-like-icon" aria-hidden="true">🤍</span>
                             <span class="editor-reaction-label">좋아요</span>
-                            <span class="editor-reaction-like-count" id="momentLikeCount">0</span>
+                            <span class="public-viewer-social-status-value">—</span>
                         </div>
                         <div
-                            class="editor-moment-reaction editor-reaction-comment-btn editor-reaction-stat"
-                            id="momentCommentBtn"
-                            aria-label="댓글 0"
+                            class="public-viewer-social-status"
+                            role="status"
+                            aria-label="댓글 정보 없음"
                         >
                             <span class="editor-reaction-comment-icon" aria-hidden="true">💬</span>
                             <span class="editor-reaction-label">댓글</span>
-                            <span class="editor-reaction-comment-count" id="momentCommentCount">0</span>
+                            <span class="public-viewer-social-status-value">—</span>
                         </div>
                         <p class="editor-moment-reaction-readonly-note">반응 기능은 준비 중이에요.</p>
                     </div>

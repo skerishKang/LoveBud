@@ -170,8 +170,10 @@ test('public viewer detail UI adapter exposes read-only reaction summary boundar
   assert.notEqual(boundaryStart, -1, 'viewer adapter exposes read-only reactions boundary factory');
   assert.notEqual(boundaryEnd, -1, 'viewer adapter keeps the public detail factory after the reactions boundary');
   assert.ok(source.includes('createPublicViewerReadOnlyReactionSummaryBoundary: createPublicViewerReadOnlyReactionSummaryBoundary'), 'viewer adapter publishes read-only reactions boundary on namespace');
-  assert.ok(boundarySource.includes('fetchReactionSummary'), 'read-only reactions boundary may fetch summary data');
+  assert.equal(boundarySource.includes('fetchReactionSummary'), false, 'read-only reactions boundary must not fetch summary data');
+  assert.equal(boundarySource.includes('fetchComments'), false, 'read-only reactions boundary must not fetch comments data');
   assert.equal(boundarySource.includes('toggleReaction'), false, 'read-only reactions boundary must not write reaction state');
+  assert.equal(boundarySource.includes('createComment'), false, 'read-only reactions boundary must not write comments');
   assert.equal(boundarySource.includes('from=editor'), false, 'read-only reactions boundary must not navigate through editor detail context');
 });
 

@@ -233,10 +233,6 @@ test('11. viewer detail UI preserves autoplay and reactions guards', () => {
     'Must preserve read-only reaction summary boundary'
   );
   assert.ok(
-    src.indexOf('applyReadOnlyReactionFallback') !== -1,
-    'Must preserve read-only reaction fallback function'
-  );
-  assert.ok(
     src.indexOf('is-public-readonly') !== -1,
     'Must preserve is-public-readonly CSS class'
   );
