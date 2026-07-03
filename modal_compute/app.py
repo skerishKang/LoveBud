@@ -33,6 +33,7 @@ from modal_compute.comments import (
     create_comment,
     fetch_comments,
     fetch_public_comments,
+    soft_delete_own_comment,
 )
 from modal_compute.owner_reads import (
     OwnerTreeListError,
@@ -486,6 +487,16 @@ def get_memory_comments(
 ) -> list[dict]:
     user = require_firebase_user(authorization)
     return fetch_comments(memory_id, user["uid"])
+
+
+@web_app.delete("/modal/private/comments/{comment_id}")
+def delete_own_comment(
+    comment_id: str,
+    authorization: str | None = Header(default=None),
+) -> dict:
+    user = require_firebase_user(authorization)
+    safe_comment_id = validate_required_uuid(comment_id, "commentId")
+    return soft_delete_own_comment(safe_comment_id, user["uid"])
 
 
 # ── Private appreciation-order and hub-layout routes ──────────────────────────
