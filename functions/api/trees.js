@@ -1,5 +1,27 @@
 import { validateWritePayload } from '../_shared/legacy-key-guard.js';
 
+const REQUEST_ID_HEADER = 'x-lovebud-request-id';
+const MAX_REQUEST_ID_LENGTH = 80;
+const SAFE_REQUEST_ID_PATTERN = /^[A-Za-z0-9._:-]+$/;
+
+function generateRequestId() {
+  return 'req-' + crypto.randomUUID();
+}
+
+function normalizeRequestId(value) {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  if (!trimmed || trimmed.length > MAX_REQUEST_ID_LENGTH) return null;
+  if (!SAFE_REQUEST_ID_PATTERN.test(trimmed)) return null;
+  return trimmed;
+}
+
+function getOrCreateRequestId(request) {
+  const existingRequestId = normalizeRequestId(request.headers.get(REQUEST_ID_HEADER));
+  if (existingRequestId) return existingRequestId;
+  return generateRequestId();
+}
+
 function stripTrailingSlash(value) {
   return String(value || '').replace(/\/$/, '');
 }
@@ -7,6 +29,24 @@ function stripTrailingSlash(value) {
 function withModalHeader(response) {
   const headers = new Headers(response.headers);
   headers.set('x-lovebud-upstream', 'modal');
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers
+  });
+}
+
+async function withModalHeaderAndId(response, requestId = null) {
+  const headers = new Headers(response.headers);
+  headers.set('x-lovebud-upstream', 'modal');
+  if (requestId) {
+    headers.set(REQUEST_ID_HEADER, requestId);
+    const existingExposeHeaders = headers.get('Access-Control-Expose-Headers') || '';
+    if (!existingExposeHeaders.includes(REQUEST_ID_HEADER)) {
+      const exposeHeaders = existingExposeHeaders ? `${existingExposeHeaders}, ${REQUEST_ID_HEADER}` : `${REQUEST_ID_HEADER}`;
+      headers.set('Access-Control-Expose-Headers', exposeHeaders);
+    }
+  }
   return new Response(response.body, {
     status: response.status,
     statusText: response.statusText,
@@ -44,46 +84,61 @@ async function readBoundedWriteBody(request) {
   return { tooLarge: false, body: encoded };
 }
 
-function buildModalUnavailableResponse() {
+function buildModalUnavailableResponse(requestId = null) {
+  const headers = {
+    'content-type': 'application/json; charset=utf-8',
+    'x-lovebud-upstream': 'modal',
+    'x-lovebud-degraded': 'modal-unavailable'
+  };
+  if (requestId) {
+    headers[REQUEST_ID_HEADER] = requestId;
+    headers['Access-Control-Expose-Headers'] = REQUEST_ID_HEADER;
+  }
   return new Response(JSON.stringify({ error: 'Modal service temporarily unavailable' }), {
     status: 503,
-    headers: {
-      'content-type': 'application/json; charset=utf-8',
-      'x-lovebud-upstream': 'modal',
-      'x-lovebud-degraded': 'modal-unavailable'
-    }
+    headers
   });
 }
 
 export async function onRequestGet(context) {
+  const request = context.request;
+  const requestId = getOrCreateRequestId(request);
+
   const modalBaseUrl = stripTrailingSlash(context.env?.MODAL_BASE_URL);
   if (!modalBaseUrl) {
     return new Response(JSON.stringify({ error: 'MODAL_BASE_URL is not configured' }), {
       status: 503,
-      headers: { 'content-type': 'application/json; charset=utf-8' }
+      headers: {
+        'content-type': 'application/json; charset=utf-8',
+        [REQUEST_ID_HEADER]: requestId,
+        'Access-Control-Expose-Headers': REQUEST_ID_HEADER
+      }
     });
   }
 
-  const sourceUrl = new URL(context.request.url);
+  const sourceUrl = new URL(request.url);
   const limit = Math.min(Math.max(Number(sourceUrl.searchParams.get('limit') || 100) || 100, 1), 200);
   const target = new URL('/modal/private/trees', modalBaseUrl);
   target.searchParams.set('limit', String(limit));
 
+  const modalRequestHeaders = {
+    accept: 'application/json',
+  };
+  if (request.headers.get('authorization')) {
+    modalRequestHeaders.authorization = request.headers.get('authorization');
+  }
+  modalRequestHeaders[REQUEST_ID_HEADER] = requestId;
+
   let response;
   try {
     response = await fetch(target.toString(), {
-      headers: {
-        accept: 'application/json',
-        ...(context.request.headers.get('authorization')
-          ? { authorization: context.request.headers.get('authorization') }
-          : {})
-      }
+      headers: modalRequestHeaders
     });
   } catch (error) {
-    return buildModalUnavailableResponse();
+    return buildModalUnavailableResponse(requestId);
   }
 
-  return withModalHeader(response);
+  return await withModalHeaderAndId(response, requestId);
 }
 
 function hasAuthorizationHeader(request) {

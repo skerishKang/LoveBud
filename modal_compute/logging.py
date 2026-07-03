@@ -10,6 +10,7 @@ def log_request_event(
     method: str | None = None,
     status_code: int | None = None,
     error_category: str | None = None,
+    failure_phase: str | None = None,
     duration_ms: float | None = None,
 ) -> None:
     """
@@ -49,6 +50,8 @@ def log_request_event(
         log_entry["status_code"] = status_code
     if error_category:
         log_entry["error_category"] = error_category
+    if failure_phase:
+        log_entry["failure_phase"] = failure_phase
     if duration_ms is not None:
         log_entry["duration_ms"] = duration_ms
 
@@ -86,6 +89,7 @@ class RequestLogger:
         self,
         status_code: int = 500,
         error_category: str = "UNEXPECTED_ERROR",
+        failure_phase: str | None = None,
     ) -> None:
         """Log a failed request with error category."""
         duration_ms = (time.time() - self.start_time) * 1000
@@ -95,5 +99,6 @@ class RequestLogger:
             method=self.method,
             status_code=status_code,
             error_category=error_category,
+            failure_phase=failure_phase,
             duration_ms=duration_ms,
         )
