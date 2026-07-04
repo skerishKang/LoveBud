@@ -133,51 +133,48 @@ test('permanent exclusions present', () => {
 test('public viewer detail-ui accepts only public callbacks in deps', () => {
   const src = readSource('js/viewer/public-viewer-detail-ui.js');
 
-  // Must consume deps.fetchPublicMomentReactionSummary
-  assert.ok(src.includes('fetchPublicMomentReactionSummary'),
+  // Must consume deps.fetchPublicMomentReactionSummary (exact dep source)
+  assert.ok(src.includes('deps.fetchPublicMomentReactionSummary'),
     'must consume deps.fetchPublicMomentReactionSummary');
 
-  // Must consume deps.fetchPublicMomentComments
-  assert.ok(src.includes('fetchPublicMomentComments'),
+  // Must consume deps.fetchPublicMomentComments (exact dep source)
+  assert.ok(src.includes('deps.fetchPublicMomentComments'),
     'must consume deps.fetchPublicMomentComments');
 
   // Must not accept deps.fetchReactionSummary (private read)
   assert.ok(!src.includes('deps.fetchReactionSummary') &&
-    !src.includes("deps['fetchReactionSummary']") &&
-    !src.includes('deps.fetchReactionSummary'),
+    !src.includes("deps['fetchReactionSummary']"),
     'must not accept deps.fetchReactionSummary');
 
   // Must not accept deps.fetchComments (private read)
-  assert.ok(!src.includes("deps['fetchComments']"),
+  assert.ok(!src.includes('deps.fetchComments') &&
+    !src.includes("deps['fetchComments']"),
     'must not accept deps.fetchComments');
 
-  // Must not reference toggleReaction
-  assert.ok(!src.includes('toggleReaction'),
-    'must not reference toggleReaction');
-
-  // Must not reference createComment
-  assert.ok(!src.includes('createComment'),
-    'must not reference createComment');
+  // Must not reference toggleReaction or createComment
+  assert.ok(!src.includes('toggleReaction'), 'must not reference toggleReaction');
+  assert.ok(!src.includes('createComment'), 'must not reference createComment');
 });
 
 test('canvas-entry.js injects only public callbacks', () => {
   const src = readSource('js/viewer/public-viewer-canvas-entry.js');
 
-  // Must inject apiClient.fetchPublicMomentReactionSummary
-  assert.ok(src.includes('apiClient.fetchPublicMomentReactionSummary'),
-    'canvas-entry must inject apiClient.fetchPublicMomentReactionSummary');
+  // Must inject exact pairing: fetchPublicMomentReactionSummary: typeof apiClient.fetchPublicMomentReactionSummary
+  assert.ok(src.includes('fetchPublicMomentReactionSummary: typeof apiClient.fetchPublicMomentReactionSummary'),
+    'canvas-entry must inject exact public reaction pairing');
 
-  // Must inject apiClient.fetchPublicMomentComments
-  assert.ok(src.includes('apiClient.fetchPublicMomentComments'),
-    'canvas-entry must inject apiClient.fetchPublicMomentComments');
+  // Must inject exact pairing: fetchPublicMomentComments: typeof apiClient.fetchPublicMomentComments
+  assert.ok(src.includes('fetchPublicMomentComments: typeof apiClient.fetchPublicMomentComments'),
+    'canvas-entry must inject exact public comments pairing');
 
   // Must not inject private fetchReactionSummary from apiClient
-  assert.ok(!src.includes('apiClient.fetchReactionSummary'),
+  assert.ok(!src.includes('apiClient.fetchReactionSummary') &&
+    !src.includes("apiClient['fetchReactionSummary']"),
     'canvas-entry must not inject private fetchReactionSummary');
 
   // Must not inject private fetchComments from apiClient
-  assert.ok(!src.includes("apiClient['fetchComments']") &&
-    !src.includes('apiClient.fetchComments'),
+  assert.ok(!src.includes('apiClient.fetchComments') &&
+    !src.includes("apiClient['fetchComments']"),
     'canvas-entry must not inject private fetchComments');
 
   // Must not reference toggleReaction or createComment
@@ -188,13 +185,13 @@ test('canvas-entry.js injects only public callbacks', () => {
 test('canvas-init.js injects only public callbacks', () => {
   const src = readSource('js/viewer/public-canvas-init.js');
 
-  // Must inject apiClient.fetchPublicMomentReactionSummary
-  assert.ok(src.includes('apiClient.fetchPublicMomentReactionSummary'),
-    'canvas-init must inject apiClient.fetchPublicMomentReactionSummary');
+  // Must inject exact pairing: fetchPublicMomentReactionSummary: typeof apiClient.fetchPublicMomentReactionSummary
+  assert.ok(src.includes('fetchPublicMomentReactionSummary: typeof apiClient.fetchPublicMomentReactionSummary'),
+    'canvas-init must inject exact public reaction pairing');
 
-  // Must inject apiClient.fetchPublicMomentComments
-  assert.ok(src.includes('apiClient.fetchPublicMomentComments'),
-    'canvas-init must inject apiClient.fetchPublicMomentComments');
+  // Must inject exact pairing: fetchPublicMomentComments: typeof apiClient.fetchPublicMomentComments
+  assert.ok(src.includes('fetchPublicMomentComments: typeof apiClient.fetchPublicMomentComments'),
+    'canvas-init must inject exact public comments pairing');
 
   // Must not inject private fetchReactionSummary from apiClient
   assert.ok(!src.includes('apiClient.fetchReactionSummary') &&
