@@ -15,6 +15,40 @@
   var IS_HIDDEN_CLASS = 'is-hidden';
 
   /**
+   * Determine whether the editor is currently in a read-only state.
+   * Priority: window.LoveBudEditor.canEdit === false, then body.editor-readonly class.
+   * Returns true when read-only, false when editable.
+   * Does NOT introduce a new global flag — relies on existing editor state.
+   */
+  function isEditorReadOnly() {
+    if (window.LoveBudEditor && window.LoveBudEditor.canEdit === false) {
+      return true;
+    }
+    if (document.body && document.body.classList.contains('editor-readonly')) {
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * Sync Scout action item visibility with the current editability state.
+   * When read-only, the Scout action item is hidden from the dropdown.
+   * When editable, it is shown (default).
+   */
+  function syncScoutActionVisibility(scoutAction) {
+    if (!scoutAction) return;
+    if (isEditorReadOnly()) {
+      scoutAction.classList.add(IS_HIDDEN_CLASS);
+      scoutAction.style.display = 'none';
+      scoutAction.setAttribute('aria-hidden', 'true');
+    } else {
+      scoutAction.classList.remove(IS_HIDDEN_CLASS);
+      scoutAction.style.display = '';
+      scoutAction.removeAttribute('aria-hidden');
+    }
+  }
+
+  /**
    * Position the dropdown below/right of the "..." button.
    */
   function positionDropdown(dropdown, moreBtn) {
@@ -36,9 +70,11 @@
 
   /**
    * Show the secondary actions dropdown.
+   * Re-checks editability state on open to sync Scout action visibility (dual guard §1).
    */
-  function showDropdown(dropdown, moreBtn) {
+  function showDropdown(dropdown, moreBtn, scoutAction) {
     if (!dropdown || !moreBtn) return;
+    syncScoutActionVisibility(scoutAction);
     dropdown.classList.remove(IS_HIDDEN_CLASS);
     dropdown.style.display = '';
     void dropdown.offsetWidth;
@@ -63,14 +99,14 @@
   /**
    * Toggle the secondary actions dropdown.
    */
-  function toggleDropdown(dropdown, moreBtn, e) {
+  function toggleDropdown(dropdown, moreBtn, e, scoutAction) {
     if (e) {
       e.stopPropagation();
     }
     if (dropdown && dropdown.classList.contains(IS_VISIBLE_CLASS)) {
       hideDropdown(dropdown, moreBtn);
     } else {
-      showDropdown(dropdown, moreBtn);
+      showDropdown(dropdown, moreBtn, scoutAction);
     }
   }
 
@@ -89,7 +125,7 @@
     // More button: toggle dropdown
     if (moreBtn) {
       moreBtn.addEventListener('click', function (e) {
-        toggleDropdown(dropdown, moreBtn, e);
+        toggleDropdown(dropdown, moreBtn, e, scoutAction);
       });
     }
 
@@ -158,6 +194,11 @@
       scoutAction.addEventListener('click', function (e) {
         e.stopPropagation();
         hideDropdown(dropdown, moreBtn);
+        // Dual guard §2: re-check editability immediately before opening Scout.
+        // In read-only trees, LoveBudScoutDraftUI.open must NEVER be called.
+        if (isEditorReadOnly()) {
+          return;
+        }
         if (window.LoveBudScoutDraftUI && window.LoveBudScoutDraftUI.open) {
           // Get the currently selected node ID from the context
           // ctx.selectedNode might be a function (getSelectedNodeEl) or an element
@@ -200,10 +241,12 @@
 
   // Expose on global namespace
   window.LoveBudFloatingToolbarDropdown = {
-    show: function (dropdown, moreBtn) { showDropdown(dropdown, moreBtn); },
+    show: function (dropdown, moreBtn, scoutAction) { showDropdown(dropdown, moreBtn, scoutAction); },
     hide: function (dropdown, moreBtn) { hideDropdown(dropdown, moreBtn); },
-    toggle: function (dropdown, moreBtn, e) { toggleDropdown(dropdown, moreBtn, e); },
+    toggle: function (dropdown, moreBtn, e, scoutAction) { toggleDropdown(dropdown, moreBtn, e, scoutAction); },
     bind: function (ctx) { bindDropdownEvents(ctx); },
-    bindToolbarDropdown: bindToolbarDropdown
+    bindToolbarDropdown: bindToolbarDropdown,
+    isEditorReadOnly: isEditorReadOnly,
+    syncScoutActionVisibility: syncScoutActionVisibility
   };
 })();
