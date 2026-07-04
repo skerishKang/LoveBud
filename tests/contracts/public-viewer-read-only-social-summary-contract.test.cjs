@@ -270,6 +270,10 @@ test('malformed comments DTO renders unavailable', async () => {
     async () => ({}),
     async () => null,
     async () => ({ comments: { id: 'oops' } }),
+    // nextCursor contract violations
+    async () => ({ comments: [] }),
+    async () => ({ comments: [], nextCursor: 'unexpected' }),
+    async () => ({ comments: [], nextCursor: {} }),
   ];
 
   for (const badComments of malformedCases) {

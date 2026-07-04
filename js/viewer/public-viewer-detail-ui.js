@@ -523,10 +523,10 @@
                 }
             }
 
-            // Validate comments DTO: { comments: Array, nextCursor: null }
+            // Validate comments DTO: exactly { comments: Array, nextCursor: null }
             var commentCount = -1;
             if (commentsData && typeof commentsData === 'object' && !Array.isArray(commentsData)) {
-                if (Array.isArray(commentsData.comments)) {
+                if (Array.isArray(commentsData.comments) && commentsData.nextCursor === null) {
                     commentCount = commentsData.comments.length;
                 }
             }
