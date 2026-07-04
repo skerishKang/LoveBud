@@ -127,8 +127,7 @@ test('Public read-only social summary never invokes private reaction API and hid
     i18n: (key) => key,
     getLocalSaveMode: () => false,
     showToast: () => {},
-    // #3184: inject stub public-read callbacks — must never call private API
-    fetchPublicMomentReactionSummary: async () => ({ reactions: [], likeCount: 0 }),
+    fetchPublicMomentReactionSummary: async () => ({ counts: { like: 0 }, total: 0 }),
     fetchPublicMomentComments: async () => ({ comments: [] })
   };
 

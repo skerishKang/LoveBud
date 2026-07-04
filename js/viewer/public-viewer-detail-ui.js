@@ -508,38 +508,42 @@
             }
         }
 
-        function renderSuccess(reactionData, commentsData) {
+        function validateSocialDTOs(reactionData, commentsData) {
+            // Validate reaction DTO: { counts: { like: <non-negative integer> }, total: ... }
+            var likeCount = -1;
+            if (reactionData && typeof reactionData === 'object' && !Array.isArray(reactionData)) {
+                var counts = reactionData.counts;
+                if (counts && typeof counts === 'object' && !Array.isArray(counts)) {
+                    var rawLike = counts.like;
+                    if (rawLike === undefined || rawLike === null) {
+                        likeCount = 0;
+                    } else if (typeof rawLike === 'number' && Number.isFinite(rawLike) && rawLike >= 0 && Math.floor(rawLike) === rawLike) {
+                        likeCount = rawLike;
+                    }
+                }
+            }
+
+            // Validate comments DTO: { comments: Array, nextCursor: null }
+            var commentCount = -1;
+            if (commentsData && typeof commentsData === 'object' && !Array.isArray(commentsData)) {
+                if (Array.isArray(commentsData.comments)) {
+                    commentCount = commentsData.comments.length;
+                }
+            }
+
+            if (likeCount >= 0 && commentCount >= 0) {
+                return { likeCount: likeCount, commentCount: commentCount };
+            }
+            return null;
+        }
+
+        function renderSuccess(likeCount, commentCount) {
             if (!getElements()) return;
             delete cardEl.dataset.socialLoading;
 
-            // Like aggregate from reaction DTO
-            var likeCount = 0;
-            if (reactionData && typeof reactionData === 'object') {
-                if (Array.isArray(reactionData.reactions)) {
-                    likeCount = reactionData.reactions.filter(function(r) {
-                        return r && r.type === 'like';
-                    }).length;
-                } else if (typeof reactionData.likeCount === 'number') {
-                    likeCount = reactionData.likeCount;
-                } else if (reactionData.count !== undefined) {
-                    likeCount = Number(reactionData.count) || 0;
-                }
-            }
             likeValueEl.textContent = String(likeCount);
             var likeStatus = likeValueEl.parentElement;
             if (likeStatus) likeStatus.setAttribute('aria-label', '좋아요 ' + likeCount + '개');
-
-            // Bounded comment count — never claim unbounded total
-            var commentCount = 0;
-            if (commentsData && typeof commentsData === 'object') {
-                if (Array.isArray(commentsData.comments)) {
-                    commentCount = commentsData.comments.length;
-                } else if (Array.isArray(commentsData)) {
-                    commentCount = commentsData.length;
-                } else if (typeof commentsData.count === 'number') {
-                    commentCount = commentsData.count;
-                }
-            }
 
             if (commentCount === 0) {
                 commentValueEl.textContent = '0';
@@ -598,7 +602,12 @@
                 var reactionData = results[0];
                 var commentsData = results[1];
                 if (reactionData !== null && commentsData !== null) {
-                    renderSuccess(reactionData, commentsData);
+                    var valid = validateSocialDTOs(reactionData, commentsData);
+                    if (valid) {
+                        renderSuccess(valid.likeCount, valid.commentCount);
+                    } else {
+                        renderUnavailable(treeId, memoryId, generation);
+                    }
                 } else {
                     renderUnavailable(treeId, memoryId, generation);
                 }

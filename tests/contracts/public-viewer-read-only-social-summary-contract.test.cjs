@@ -113,12 +113,23 @@ function createDetailUI(fetchReactionSummary, fetchComments) {
   return { elements, detailUI, context };
 }
 
+// Public DTO fixtures (authoritative endpoint shape only)
+function reactionDTO(like) {
+  return { counts: { like: like }, total: like };
+}
+
+function reactionDTOEmpty() {
+  return { counts: {}, total: 0 };
+}
+
+const commentsDTOEmpty = { comments: [], nextCursor: null };
+const commentsDTOThree = { comments: [{ id: 'c1', body: 'a' }, { id: 'c2' }, { id: 'c3' }], nextCursor: null };
+
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
 
 test('injected public-read callbacks are used — no private API path invocations', () => {
-  // Verify the source only references the injected callback names, not private API paths
   const noPrivateReactionPath = !/toggleReaction|private.*reaction|reaction.*write/i.test(scriptSource);
   const noPrivateCommentPath = !/createComment|composer|comment.*drawer/i.test(scriptSource);
   assert.ok(noPrivateReactionPath, 'source must not reference private reaction API');
@@ -131,7 +142,6 @@ test('root moment or missing context causes no read', () => {
     async () => { throw new Error('should not be called for root'); }
   );
 
-  // Reset card to visible
   elements.momentReactionsCard.style.display = '';
 
   // Root moment
@@ -161,30 +171,25 @@ test('loading state shown during fetch', () => {
     async () => commentsPromise
   );
 
-  // Non-root moment with treeId
   detailUI.updateDetailPanel({ id: 'mem-1', treeId: 'tree-1' });
 
-  // Should show loading state immediately
   assert.equal(elements.momentReactionsCard.style.display, '', 'card visible during loading');
   assert.equal(elements.momentReactionsCard.dataset.socialLoading, 'true', 'loading attribute set');
-  assert.equal(elements.momentReactionLikeValue.textContent, '⋯', 'like shows loading indicator');
-  assert.equal(elements.momentReactionCommentValue.textContent, '⋯', 'comment shows loading indicator');
+  assert.equal(elements.momentReactionLikeValue.textContent, '\u22EF', 'like shows loading indicator');
+  assert.equal(elements.momentReactionCommentValue.textContent, '\u22EF', 'comment shows loading indicator');
   assert.equal(elements.momentReactionNote.textContent, '반응 기능은 준비 중이에요.', 'note unchanged during loading');
 
-  // Resolve fetches
-  resolveReaction({ reactions: [{ type: 'like' }], likeCount: 1 });
-  resolveComments({ comments: [] });
+  resolveReaction(reactionDTO(0));
+  resolveComments(commentsDTOEmpty);
 });
 
-test('loading → success with zero comments renders 0', async () => {
+test('loading to success with zero likes and zero comments', async () => {
   const { elements, detailUI } = createDetailUI(
-    async () => ({ reactions: [], likeCount: 0 }),
-    async () => ({ comments: [] })
+    async () => reactionDTO(0),
+    async () => commentsDTOEmpty
   );
 
   detailUI.updateDetailPanel({ id: 'mem-1', treeId: 'tree-1' });
-
-  // Wait for async render
   await new Promise(r => setTimeout(r, 50));
 
   assert.equal(elements.momentReactionsCard.dataset.socialLoading, undefined, 'loading removed on success');
@@ -192,55 +197,138 @@ test('loading → success with zero comments renders 0', async () => {
   assert.equal(elements.momentReactionCommentValue.textContent, '0', 'comment count is 0');
 });
 
-test('bounded comment label for nonzero returned comments', async () => {
+test('counts.like renders correct value', async () => {
   const { elements, detailUI } = createDetailUI(
-    async () => ({ reactions: [{ type: 'like' }, { type: 'like' }], likeCount: 2 }),
-    async () => ({ comments: [{ id: 'c1', body: 'test' }, { id: 'c2' }, { id: 'c3' }] })
+    async () => reactionDTO(3),
+    async () => commentsDTOEmpty
   );
 
   detailUI.updateDetailPanel({ id: 'mem-1', treeId: 'tree-1' });
+  await new Promise(r => setTimeout(r, 50));
 
+  assert.equal(elements.momentReactionLikeValue.textContent, '3', 'like count renders value from counts.like');
+});
+
+test('missing counts.like means 0', async () => {
+  const { elements, detailUI } = createDetailUI(
+    async () => reactionDTOEmpty(),
+    async () => commentsDTOEmpty
+  );
+
+  detailUI.updateDetailPanel({ id: 'mem-1', treeId: 'tree-1' });
+  await new Promise(r => setTimeout(r, 50));
+
+  assert.equal(elements.momentReactionLikeValue.textContent, '0', 'missing counts.like defaults to 0');
+});
+
+test('bounded comment label for nonzero returned comments', async () => {
+  const { elements, detailUI } = createDetailUI(
+    async () => reactionDTO(2),
+    async () => commentsDTOThree
+  );
+
+  detailUI.updateDetailPanel({ id: 'mem-1', treeId: 'tree-1' });
   await new Promise(r => setTimeout(r, 50));
 
   assert.equal(elements.momentReactionLikeValue.textContent, '2', 'like count is 2');
   assert.equal(elements.momentReactionCommentValue.textContent, '3개 표시', 'bounded comment label');
 });
 
-test('safe unavailable state with retry button', async () => {
+test('malformed reaction DTO renders unavailable', async () => {
+  const malformedCases = [
+    async () => ({ counts: null }),
+    async () => ({ counts: { like: 'abc' } }),
+    async () => ({ counts: { like: -1 } }),
+    async () => ({ counts: { like: 1.5 } }),
+    async () => ({ counts: { like: NaN } }),
+    async () => ({ counts: [] }),
+    async () => ({}),
+    async () => null,
+  ];
+
+  for (const badReaction of malformedCases) {
+    const { elements, detailUI } = createDetailUI(badReaction, async () => commentsDTOEmpty);
+    elements.momentReactionsCard.dataset.socialLoading = 'true';
+    elements.momentReactionsCard.style.display = '';
+    elements.momentReactionLikeValue.textContent = '\u22EF';
+    elements.momentReactionCommentValue.textContent = '\u22EF';
+
+    detailUI.updateDetailPanel({ id: 'mem-1', treeId: 'tree-1' });
+    await new Promise(r => setTimeout(r, 50));
+
+    assert.equal(elements.momentReactionsCard.dataset.socialLoading, undefined, 'loading removed for malformed reaction');
+    assert.equal(elements.momentReactionLikeValue.textContent, '\u2014', 'like shows unavailable for malformed reaction');
+    assert.equal(elements.momentReactionCommentValue.textContent, '\u2014', 'comment shows unavailable for malformed reaction');
+    assert.equal(elements.momentReactionNote.textContent, '반응 정보를 불러올 수 없어요.', 'unavailable note for malformed reaction');
+  }
+});
+
+test('malformed comments DTO renders unavailable', async () => {
+  const malformedCases = [
+    async () => ({ comments: null }),
+    async () => ({ comments: 'not-array' }),
+    async () => ({}),
+    async () => null,
+    async () => ({ comments: { id: 'oops' } }),
+  ];
+
+  for (const badComments of malformedCases) {
+    const { elements, detailUI } = createDetailUI(
+      async () => reactionDTO(1),
+      badComments
+    );
+    elements.momentReactionsCard.dataset.socialLoading = 'true';
+    elements.momentReactionsCard.style.display = '';
+    elements.momentReactionLikeValue.textContent = '\u22EF';
+    elements.momentReactionCommentValue.textContent = '\u22EF';
+
+    detailUI.updateDetailPanel({ id: 'mem-1', treeId: 'tree-1' });
+    await new Promise(r => setTimeout(r, 50));
+
+    assert.equal(elements.momentReactionsCard.dataset.socialLoading, undefined, 'loading removed for malformed comments');
+    assert.equal(elements.momentReactionLikeValue.textContent, '\u2014', 'like shows unavailable for malformed comments');
+    assert.equal(elements.momentReactionCommentValue.textContent, '\u2014', 'comment shows unavailable for malformed comments');
+    assert.equal(elements.momentReactionNote.textContent, '반응 정보를 불러올 수 없어요.', 'unavailable note for malformed comments');
+  }
+});
+
+test('retry performs both reads again and renders success', async () => {
+  let failReaction = true;
+  let failComments = true;
+
   const { elements, detailUI } = createDetailUI(
-    async () => { throw new Error('network error'); },
-    async () => { throw new Error('network error'); }
+    async () => {
+      if (failReaction) { failReaction = false; throw new Error('first fail'); }
+      return reactionDTO(7);
+    },
+    async () => {
+      if (failComments) { failComments = false; throw new Error('first fail'); }
+      return { comments: [{ id: 'c1' }, { id: 'c2' }], nextCursor: null };
+    }
   );
 
+  // First attempt — both fail
   detailUI.updateDetailPanel({ id: 'mem-1', treeId: 'tree-1' });
-
   await new Promise(r => setTimeout(r, 50));
 
-  assert.equal(elements.momentReactionsCard.dataset.socialLoading, undefined, 'loading removed on failure');
-  assert.equal(elements.momentReactionLikeValue.textContent, '—', 'like shows unavailable');
-  assert.equal(elements.momentReactionCommentValue.textContent, '—', 'comment shows unavailable');
-  assert.equal(elements.momentReactionNote.textContent, '반응 정보를 불러올 수 없어요.', 'unavailable note');
+  assert.equal(elements.momentReactionsCard.dataset.socialLoading, undefined, 'loading removed after failure');
+  assert.equal(elements.momentReactionLikeValue.textContent, '\u2014', 'like shows unavailable after failure');
+  assert.equal(elements.momentReactionCommentValue.textContent, '\u2014', 'comment shows unavailable after failure');
 
-  // Retry button must exist and be a real button
   const retryBtn = elements.momentReactionsCard.querySelector('[data-social-retry="1"]');
-  assert.ok(retryBtn, 'retry button present in unavailable state');
-  assert.equal(retryBtn.tagName, 'BUTTON', 'retry is a real button');
-  assert.equal(retryBtn.textContent, '다시 시도', 'retry button text');
+  assert.ok(retryBtn, 'retry button present');
+  assert.ok(retryBtn.onclick, 'retry button has click handler');
 
-  // Now mock success for retry
-  const nextResolve = Promise.all([
-    new Promise(r => setTimeout(r, 10)),
-  ]);
-
-  // Simulate retry by clicking
-  if (retryBtn.onclick) {
-    retryBtn.onclick();
-  }
-
+  // Retry — second pair succeeds
+  retryBtn.onclick();
   await new Promise(r => setTimeout(r, 50));
 
-  // After retry with failing stubs, still in unavailable — but button should be wired
-  // (actual retry result depends on our stub which still throws)
+  assert.equal(elements.momentReactionsCard.dataset.socialLoading, undefined, 'loading removed after retry success');
+  assert.equal(elements.momentReactionLikeValue.textContent, '7', 'like count rendered after retry');
+  assert.equal(elements.momentReactionCommentValue.textContent, '2개 표시', 'comment count rendered after retry');
+
+  const retryAfterSuccess = elements.momentReactionsCard.querySelector('[data-social-retry="1"]');
+  assert.ok(!retryAfterSuccess, 'retry button removed after success');
 });
 
 test('no raw error text rendered on failure', async () => {
@@ -250,10 +338,8 @@ test('no raw error text rendered on failure', async () => {
   );
 
   detailUI.updateDetailPanel({ id: 'mem-1', treeId: 'tree-1' });
-
   await new Promise(r => setTimeout(r, 50));
 
-  // These exact error strings must NOT appear anywhere in the rendered content
   const renderedText = elements.momentReactionLikeValue.textContent + ' '
     + elements.momentReactionCommentValue.textContent + ' '
     + elements.momentReactionNote.textContent;
@@ -282,35 +368,32 @@ test('stale older response cannot overwrite newer selected moment', async () => 
     async (treeId, memoryId) => {
       if (memoryId === 'old') { oldCalled = true; return oldReactionP; }
       if (memoryId === 'new') { newCalled = true; return newReactionP; }
-      return { reactions: [] };
+      return reactionDTO(0);
     },
     async (treeId, memoryId) => {
       if (memoryId === 'old') return oldCommentsP;
       if (memoryId === 'new') return newCommentsP;
-      return { comments: [] };
+      return commentsDTOEmpty;
     }
   );
 
-  // Select old moment
   detailUI.updateDetailPanel({ id: 'old', treeId: 'tree-1' });
   assert.ok(oldCalled, 'old moment fetch started');
 
-  // Select new moment before old resolves
   detailUI.updateDetailPanel({ id: 'new', treeId: 'tree-1' });
   assert.ok(newCalled, 'new moment fetch started');
 
-  // Resolve old moment first (should be ignored — generation mismatch)
-  resolveOldReaction({ reactions: [{ type: 'like' }], likeCount: 999 });
-  resolveOldComments({ comments: [{ id: 'stale', body: 'ignore' }] });
+  // Old resolves first (should be ignored — generation mismatch)
+  resolveOldReaction(reactionDTO(999));
+  resolveOldComments(commentsDTOEmpty);
   await new Promise(r => setTimeout(r, 50));
 
-  // Card should still be loading (new hasn't resolved yet)
   assert.equal(elements.momentReactionsCard.dataset.socialLoading, 'true',
     'still loading because new moment not yet resolved');
 
-  // Resolve new moment
-  resolveNewReaction({ reactions: [{ type: 'like' }, { type: 'like' }, { type: 'like' }, { type: 'like' }, { type: 'like' }], likeCount: 5 });
-  resolveNewComments({ comments: [] });
+  // New resolves with valid DTO
+  resolveNewReaction(reactionDTO(5));
+  resolveNewComments(commentsDTOEmpty);
   await new Promise(r => setTimeout(r, 50));
 
   assert.equal(elements.momentReactionsCard.dataset.socialLoading, undefined,
@@ -320,7 +403,6 @@ test('stale older response cannot overwrite newer selected moment', async () => 
 });
 
 test('#1882 wording rule — only Refs, never Closes/Fixes', () => {
-  // In this test file
   assert.ok(!scriptSource.includes('Fixes #1882'), 'must not use Fixes #1882');
   assert.ok(!scriptSource.includes('Closes #1882'), 'must not use Closes #1882');
   assert.ok(!scriptSource.includes('Resolves #1882'), 'must not use Resolves #1882');
