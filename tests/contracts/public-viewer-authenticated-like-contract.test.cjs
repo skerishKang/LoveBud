@@ -766,6 +766,124 @@ test('fail-closed regression scenarios', async function() {
   }
 });
 
+test('empty private DTO: counts and userReactions empty objects', async function() {
+  var privateFetchCalledWith = [];
+  var toggleReactionCalledWith = [];
+  var publicFetchCalledWith = [];
+  var publicCommentsCalledWith = [];
+
+  var { elements, detailUI, deps } = createTestContext(
+    async function(memoryId) {
+      privateFetchCalledWith.push(memoryId);
+      return { counts: {}, userReactions: {} };
+    },
+    async function(memoryId, action) {
+      toggleReactionCalledWith.push({ memoryId: memoryId, action: action });
+      return { type: 'like', active: false, counts: { like: 6 } };
+    },
+    function() { return true; },
+    async function(treeId, memoryId) {
+      publicFetchCalledWith.push({ treeId: treeId, memoryId: memoryId });
+      return { counts: { like: 7 }, total: 7 };
+    },
+    async function(treeId, memoryId) {
+      publicCommentsCalledWith.push({ treeId: treeId, memoryId: memoryId });
+      return { comments: [], nextCursor: null };
+    }
+  );
+
+  deps.currentSelectedId = 'real-mem-1';
+  deps.treeMemories = [{ id: 'real-mem-1', treeId: 'tree-1' }];
+
+  detailUI.updateDetailPanel({ id: 'tree-1', treeId: 'tree-1' });
+
+  await new Promise(function(r) { setTimeout(r, 50); });
+
+  assert.equal(privateFetchCalledWith.length, 1, 'private summary called exactly once');
+  assert.equal(privateFetchCalledWith[0], 'real-mem-1', 'private summary resolved with real memoryId');
+  assert.notEqual(privateFetchCalledWith[0], 'tree-1', 'treeId must not be used as memoryId in private read');
+
+  assert.equal(elements.momentReactionLikeButton.style.display, '', 'like button is shown');
+  assert.equal(elements.momentReactionLikeButton.disabled, false, 'button is enabled / actionable');
+  assert.equal(elements.momentReactionLikeButton.getAttribute('aria-pressed'), 'false', 'aria-pressed is false');
+  assert.equal(elements.momentReactionLikeGuestNote.style.display, 'none', 'unavailable guest note hidden');
+
+  assert.equal(elements.momentReactionLikeValue.textContent, '7', 'public count 7 is maintained');
+
+  elements.momentReactionLikeButton.onclick();
+  await new Promise(function(r) { setTimeout(r, 50); });
+
+  assert.equal(toggleReactionCalledWith.length, 1, 'toggleReaction called exactly once');
+  assert.equal(toggleReactionCalledWith[0].memoryId, 'real-mem-1', 'toggleReaction resolves with real memoryId');
+  assert.equal(toggleReactionCalledWith[0].action, 'like', 'toggleReaction action matches');
+});
+
+test('empty private DTO rollback count preservation on write failure', async function() {
+  var rejectToggle;
+  var togglePromise = new Promise(function(_, r) { rejectToggle = r; });
+
+  var { elements, detailUI, deps } = createTestContext(
+    async function(memoryId) {
+      return { counts: {}, userReactions: {} };
+    },
+    function() { return togglePromise; },
+    function() { return true; },
+    async function(treeId, memoryId) {
+      return { counts: { like: 7 }, total: 7 };
+    }
+  );
+
+  deps.currentSelectedId = 'real-mem-1';
+  deps.treeMemories = [{ id: 'real-mem-1', treeId: 'tree-1' }];
+
+  detailUI.updateDetailPanel({ id: 'tree-1', treeId: 'tree-1' });
+  await new Promise(function(r) { setTimeout(r, 50); });
+
+  assert.equal(elements.momentReactionLikeValue.textContent, '7', 'public count 7 is rendered');
+
+  elements.momentReactionLikeButton.onclick();
+  assert.equal(elements.momentReactionLikeValue.textContent, '8', 'optimistic count 8');
+  assert.equal(elements.momentReactionLikeButton.getAttribute('aria-pressed'), 'true', 'optimistic pressed');
+
+  rejectToggle(new Error('fail'));
+  await new Promise(function(r) { setTimeout(r, 50); });
+
+  assert.equal(elements.momentReactionLikeValue.textContent, '7', 'rollback restored previous count 7');
+  assert.equal(elements.momentReactionLikeButton.getAttribute('aria-pressed'), 'false', 'unpressed restored');
+});
+
+test('malformed explicit fields in private DTO', async function() {
+  // Scenario 1: userReactions.like is null
+  {
+    var { elements, detailUI, deps } = createTestContext(
+      async function() { return { counts: { like: 0 }, userReactions: { like: null } }; },
+      null,
+      function() { return true; }
+    );
+    deps.currentSelectedId = 'mem-1';
+    deps.treeMemories = [{ id: 'mem-1', treeId: 'tree-1' }];
+    detailUI.updateDetailPanel({ id: 'mem-1', treeId: 'tree-1' });
+    await new Promise(r => setTimeout(r, 50));
+    assert.equal(elements.momentReactionLikeButton.style.display, 'none', 'button hidden when userReactions.like is null');
+    assert.equal(elements.momentReactionLikeGuestNote.textContent, '좋아요 정보를 불러올 수 없어요.', 'shows unavailable note');
+  }
+
+  // Scenario 2: counts.like is a string
+  {
+    var { elements, detailUI, deps } = createTestContext(
+      async function() { return { counts: { like: '0' }, userReactions: { like: false } }; },
+      null,
+      function() { return true; }
+    );
+    deps.currentSelectedId = 'mem-1';
+    deps.treeMemories = [{ id: 'mem-1', treeId: 'tree-1' }];
+    detailUI.updateDetailPanel({ id: 'mem-1', treeId: 'tree-1' });
+    await new Promise(r => setTimeout(r, 50));
+    assert.equal(elements.momentReactionLikeButton.style.display, 'none', 'button hidden when counts.like is a string');
+    assert.equal(elements.momentReactionLikeGuestNote.textContent, '좋아요 정보를 불러올 수 없어요.', 'shows unavailable note');
+  }
+});
+
 test('#1882 wording rule preserved', function() {
   assert.ok(!scriptSource.includes('Fixes #1882'), 'must not use Fixes #1882');
   assert.ok(!scriptSource.includes('Closes #1882'), 'must not use Closes #1882');
