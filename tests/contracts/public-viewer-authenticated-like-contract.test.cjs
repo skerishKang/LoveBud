@@ -106,7 +106,9 @@ function createTestContext(fetchReactionSummaryFn, toggleReactionFn, hasConfirme
   vm.runInContext(metadataCode, context);
   vm.runInContext(scriptSource, context);
 
+  var sharedGenerationRef = { value: 0 };
   var deps = {
+    sharedGenerationRef: sharedGenerationRef,
     currentSelectedId: 'mem-1',
     treeMemories: [{ id: 'mem-1', treeId: 'tree-1' }],
     getSelectedNodeId: function() { return deps.currentSelectedId; },
@@ -882,6 +884,216 @@ test('malformed explicit fields in private DTO', async function() {
     assert.equal(elements.momentReactionLikeButton.style.display, 'none', 'button hidden when counts.like is a string');
     assert.equal(elements.momentReactionLikeGuestNote.textContent, '좋아요 정보를 불러올 수 없어요.', 'shows unavailable note');
   }
+});
+
+test('same-selection unlike regression', async function() {
+  var privateFetchCalledWith = [];
+  var toggleReactionCalledWith = [];
+  var activeState = false;
+
+  var { elements, detailUI, deps } = createTestContext(
+    async function(memoryId) {
+      privateFetchCalledWith.push(memoryId);
+      return { counts: { like: activeState ? 1 : 0 }, userReactions: { like: activeState } };
+    },
+    async function(memoryId, action) {
+      toggleReactionCalledWith.push({ memoryId: memoryId, action: action });
+      activeState = !activeState;
+      return { type: 'like', active: activeState, counts: { like: activeState ? 1 : 0 } };
+    },
+    function() { return true; },
+    async function(treeId, memoryId) {
+      return { counts: { like: activeState ? 1 : 0 }, total: activeState ? 1 : 0 };
+    },
+    async function(treeId, memoryId) {
+      return { comments: [], nextCursor: null };
+    }
+  );
+
+  deps.currentSelectedId = 'real-mem-1';
+  deps.treeMemories = [{ id: 'real-mem-1', treeId: 'tree-1' }];
+
+  // Initial load
+  detailUI.updateDetailPanel({ id: 'tree-1', treeId: 'tree-1' });
+  await new Promise(r => setTimeout(r, 50));
+
+  // 1. Save initial handler
+  var handler = elements.momentReactionLikeButton.onclick;
+  assert.ok(typeof handler === 'function', 'onclick handler is bound');
+
+  // 2. Increment shared generation
+  deps.sharedGenerationRef.value++;
+
+  // 3. Call saved handler directly (without re-binding!)
+  handler();
+  await new Promise(r => setTimeout(r, 50));
+
+  // 4. Verify first write success
+  assert.equal(toggleReactionCalledWith.length, 1, 'first write called');
+  assert.equal(elements.momentReactionLikeButton.getAttribute('aria-pressed'), 'true', 'pressed');
+  assert.equal(elements.momentReactionLikeValue.textContent, '1', 'count is 1');
+
+  // 5. Call saved handler again (second click)
+  handler();
+  await new Promise(r => setTimeout(r, 50));
+
+  // 6. Verify second write (unlike) success
+  assert.equal(toggleReactionCalledWith.length, 2, 'second write (unlike) called');
+  assert.equal(elements.momentReactionLikeButton.getAttribute('aria-pressed'), 'false', 'unpressed');
+  assert.equal(elements.momentReactionLikeValue.textContent, '0', 'count is 0');
+  assert.equal(elements.momentReactionLikeButton.getAttribute('aria-busy'), undefined, 'busy removed');
+});
+
+test('old success does not unlock new write', async function() {
+  var resolveOldWrite;
+  var oldWritePromise = new Promise(r => { resolveOldWrite = r; });
+
+  var resolveNewWrite;
+  var newWritePromise = new Promise(r => { resolveNewWrite = r; });
+
+  var toggleReactionCount = 0;
+  var reconcileCount = 0;
+
+  var { elements, detailUI, deps } = createTestContext(
+    async function() { return { counts: {}, userReactions: {} }; },
+    async function(memoryId) {
+      toggleReactionCount++;
+      if (memoryId === 'old-mem') return oldWritePromise;
+      if (memoryId === 'new-mem') return newWritePromise;
+    },
+    function() { return true; },
+    async function(treeId, memoryId) {
+      reconcileCount++;
+      return { counts: { like: 1 }, total: 1 };
+    },
+    null
+  );
+
+  deps.treeMemories = [
+    { id: 'old-mem', treeId: 'tree-1' },
+    { id: 'new-mem', treeId: 'tree-1' }
+  ];
+
+  // 1. Load old-mem and trigger pending write
+  deps.currentSelectedId = 'old-mem';
+  detailUI.updateDetailPanel({ id: 'old-mem', treeId: 'tree-1' });
+  await new Promise(r => setTimeout(r, 50));
+  elements.momentReactionLikeButton.onclick();
+  assert.equal(elements.momentReactionLikeButton.getAttribute('aria-busy'), 'true', 'old-mem is busy');
+
+  // 2. Change selection to new-mem (clears busy state)
+  deps.currentSelectedId = 'new-mem';
+  detailUI.updateDetailPanel({ id: 'new-mem', treeId: 'tree-1' });
+  await new Promise(r => setTimeout(r, 50));
+  assert.equal(elements.momentReactionLikeButton.getAttribute('aria-busy'), undefined, 'new-mem starts not busy');
+
+  // 3. Trigger pending write on new-mem
+  elements.momentReactionLikeButton.onclick();
+  assert.equal(elements.momentReactionLikeButton.getAttribute('aria-busy'), 'true', 'new-mem is busy');
+
+  reconcileCount = 0;
+
+  // 4. Old-mem write success arrives
+  resolveOldWrite({ type: 'like', active: false, counts: { like: 0 } });
+  await new Promise(r => setTimeout(r, 50));
+
+  // Assertions: new-mem must STILL be busy/disabled, count optimistic
+  assert.equal(
+    elements.momentReactionLikeButton.getAttribute('aria-pressed'),
+    'true',
+    'stale old success must not overwrite new optimistic pressed state'
+  );
+  assert.equal(
+    elements.momentReactionLikeValue.textContent,
+    '2',
+    'stale old success must not overwrite new optimistic count'
+  );
+  assert.equal(elements.momentReactionLikeButton.getAttribute('aria-busy'), 'true', 'new-mem remains busy');
+  assert.equal(elements.momentReactionLikeButton.disabled, true, 'new-mem remains disabled');
+  assert.equal(reconcileCount, 0, 'no reconciliation called for stale old write');
+
+  // 5. New-mem write success arrives
+  resolveNewWrite({ type: 'like', active: true, counts: { like: 1 } });
+  await new Promise(r => setTimeout(r, 50));
+
+  // Assertions: new-mem is unlocked
+  assert.equal(elements.momentReactionLikeButton.getAttribute('aria-busy'), undefined, 'new-mem is no longer busy');
+  assert.equal(elements.momentReactionLikeButton.disabled, false, 'new-mem is enabled');
+  assert.equal(reconcileCount, 1, 'reconciliation called for current new write');
+});
+
+test('old reject does not unlock new write', async function() {
+  var rejectOldWrite;
+  var oldWritePromise = new Promise((_, r) => { rejectOldWrite = r; });
+
+  var resolveNewWrite;
+  var newWritePromise = new Promise(r => { resolveNewWrite = r; });
+
+  var reconcileCount = 0;
+
+  var { elements, detailUI, deps } = createTestContext(
+    async function() { return { counts: {}, userReactions: {} }; },
+    async function(memoryId) {
+      if (memoryId === 'old-mem') return oldWritePromise;
+      if (memoryId === 'new-mem') return newWritePromise;
+    },
+    function() { return true; },
+    async function(treeId, memoryId) {
+      reconcileCount++;
+      return { counts: { like: 1 }, total: 1 };
+    },
+    null
+  );
+
+  deps.treeMemories = [
+    { id: 'old-mem', treeId: 'tree-1' },
+    { id: 'new-mem', treeId: 'tree-1' }
+  ];
+
+  // 1. Load old-mem and trigger pending write
+  deps.currentSelectedId = 'old-mem';
+  detailUI.updateDetailPanel({ id: 'old-mem', treeId: 'tree-1' });
+  await new Promise(r => setTimeout(r, 50));
+  elements.momentReactionLikeButton.onclick();
+  assert.equal(elements.momentReactionLikeButton.getAttribute('aria-busy'), 'true', 'old-mem is busy');
+
+  // 2. Change selection to new-mem
+  deps.currentSelectedId = 'new-mem';
+  detailUI.updateDetailPanel({ id: 'new-mem', treeId: 'tree-1' });
+  await new Promise(r => setTimeout(r, 50));
+
+  // 3. Trigger pending write on new-mem
+  elements.momentReactionLikeButton.onclick();
+  assert.equal(elements.momentReactionLikeButton.getAttribute('aria-busy'), 'true', 'new-mem is busy');
+
+  reconcileCount = 0;
+
+  // 4. Old-mem write reject arrives
+  rejectOldWrite(new Error('fail'));
+  await new Promise(r => setTimeout(r, 50));
+
+  // Assertions: new-mem must STILL be busy/disabled, no error shown on new-mem
+  assert.equal(
+    elements.momentReactionLikeButton.getAttribute('aria-pressed'),
+    'true',
+    'stale old reject must not overwrite new optimistic pressed state'
+  );
+  assert.equal(
+    elements.momentReactionLikeValue.textContent,
+    '2',
+    'stale old reject must not overwrite new optimistic count'
+  );
+  assert.equal(elements.momentReactionLikeButton.getAttribute('aria-busy'), 'true', 'new-mem remains busy');
+  assert.equal(elements.momentReactionLikeButton.disabled, true, 'new-mem remains disabled');
+  assert.equal(elements.momentReactionWriteError.style.display, 'none', 'no error message on new-mem');
+  assert.equal(reconcileCount, 0, 'no reconciliation');
+
+  // 5. New-mem write success arrives
+  resolveNewWrite({ type: 'like', active: true, counts: { like: 1 } });
+  await new Promise(r => setTimeout(r, 50));
+
+  assert.equal(elements.momentReactionLikeButton.getAttribute('aria-busy'), undefined, 'new-mem is unlocked');
+  assert.equal(elements.momentReactionLikeButton.disabled, false, 'new-mem is enabled');
 });
 
 test('#1882 wording rule preserved', function() {
