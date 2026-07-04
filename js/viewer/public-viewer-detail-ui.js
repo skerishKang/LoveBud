@@ -475,6 +475,19 @@
         var commentValueEl = null;
         var noteEl = null;
 
+        function getGeneration() {
+            return sharedGenRef ? sharedGenRef.value : currentGeneration;
+        }
+
+        function nextGeneration() {
+            if (sharedGenRef) {
+                sharedGenRef.value++;
+                return sharedGenRef.value;
+            }
+            currentGeneration++;
+            return currentGeneration;
+        }
+
         function getElements() {
             if (!cardEl) cardEl = document.getElementById('momentReactionsCard');
             if (!likeValueEl) likeValueEl = document.getElementById('momentReactionLikeValue');
@@ -483,21 +496,23 @@
             return cardEl && likeValueEl && commentValueEl && noteEl;
         }
 
-        function setLoadingState() {
+        function setLoadingState(force) {
             if (!getElements()) return;
             cardEl.style.display = '';
             cardEl.dataset.socialLoading = 'true';
-            cardEl.setAttribute('data-read-only-summary', 'true');
-            cardEl.classList.add('is-read-only');
-            cardEl.classList.add('is-public-readonly');
-            cardEl.setAttribute('aria-label', '순간 반응 (읽기 전용)');
-            likeValueEl.textContent = '⋯';
-            commentValueEl.textContent = '⋯';
-            var likeStatus = likeValueEl.parentElement;
-            var commentStatus = commentValueEl.parentElement;
-            if (likeStatus) likeStatus.setAttribute('aria-label', '좋아요 불러오는 중');
-            if (commentStatus) commentStatus.setAttribute('aria-label', '댓글 불러오는 중');
-            noteEl.textContent = '반응 기능은 준비 중이에요.';
+            if (!force) {
+                cardEl.setAttribute('data-read-only-summary', 'true');
+                cardEl.classList.add('is-read-only');
+                cardEl.classList.add('is-public-readonly');
+                cardEl.setAttribute('aria-label', '순간 반응 (읽기 전용)');
+                likeValueEl.textContent = '⋯';
+                commentValueEl.textContent = '⋯';
+                var likeStatus = likeValueEl.parentElement;
+                var commentStatus = commentValueEl.parentElement;
+                if (likeStatus) likeStatus.setAttribute('aria-label', '좋아요 불러오는 중');
+                if (commentStatus) commentStatus.setAttribute('aria-label', '댓글 불러오는 중');
+                noteEl.textContent = '반응 기능은 준비 중이에요.';
+            }
             removeRetryButton();
         }
 
@@ -538,7 +553,7 @@
             return null;
         }
 
-        function renderSuccess(likeCount, commentCount) {
+        function renderSuccess(likeCount, commentCount, force) {
             if (!getElements()) return;
             delete cardEl.dataset.socialLoading;
 
@@ -556,63 +571,95 @@
                 if (commentStatus) commentStatus.setAttribute('aria-label', '댓글 ' + commentCount + '개 표시');
             }
 
-            // Note text is managed by the auth boundary (#3207)
-            // Do not overwrite here — the auth boundary sets the correct
-            // note for guest vs actionable mode.
             removeRetryButton();
         }
 
-        function renderUnavailable(treeId, memoryId, generation) {
+        function renderUnavailable(treeId, memoryId, generation, force) {
             if (!getElements()) return;
             delete cardEl.dataset.socialLoading;
-            likeValueEl.textContent = '—';
-            var likeStatus = likeValueEl.parentElement;
-            if (likeStatus) likeStatus.setAttribute('aria-label', '좋아요 정보 없음');
-            commentValueEl.textContent = '—';
-            var commentStatus = commentValueEl.parentElement;
-            if (commentStatus) commentStatus.setAttribute('aria-label', '댓글 정보 없음');
-            noteEl.textContent = '반응 정보를 불러올 수 없어요.';
 
-            // Add real keyboard-accessible retry button only in unavailable state
-            if (!cardEl.querySelector('[data-social-retry="1"]')) {
-                var retryBtn = document.createElement('button');
-                retryBtn.setAttribute('data-social-retry', '1');
-                retryBtn.className = 'editor-retry-button';
-                retryBtn.textContent = '다시 시도';
-                retryBtn.setAttribute('aria-label', '반응 정보 다시 불러오기');
-                retryBtn.type = 'button';
-                retryBtn.onclick = function() {
-                    if (generation !== currentGeneration) return;
-                    performFetch(treeId, memoryId, generation);
-                };
-                cardEl.appendChild(retryBtn);
+            if (!force) {
+                likeValueEl.textContent = '—';
+                var likeStatus = likeValueEl.parentElement;
+                if (likeStatus) likeStatus.setAttribute('aria-label', '좋아요 정보 없음');
+                commentValueEl.textContent = '—';
+                var commentStatus = commentValueEl.parentElement;
+                if (commentStatus) commentStatus.setAttribute('aria-label', '댓글 정보 없음');
+                noteEl.textContent = '반응 정보를 불러올 수 없어요.';
+
+                // Add real keyboard-accessible retry button only in unavailable state
+                if (!cardEl.querySelector('[data-social-retry="1"]')) {
+                    var retryBtn = document.createElement('button');
+                    retryBtn.setAttribute('data-social-retry', '1');
+                    retryBtn.className = 'editor-retry-button';
+                    retryBtn.textContent = '다시 시도';
+                    retryBtn.setAttribute('aria-label', '반응 정보 다시 불러오기');
+                    retryBtn.type = 'button';
+                    retryBtn.onclick = function() {
+                        if (generation !== getGeneration()) return;
+                        performFetch(treeId, memoryId, generation, false);
+                    };
+                    cardEl.appendChild(retryBtn);
+                }
+            } else {
+                var statusRegion = document.getElementById('momentReactionLikeStatusRegion');
+                if (statusRegion) {
+                    statusRegion.textContent = '반응 동기화에 실패했습니다.';
+                    statusRegion.style.display = '';
+                    setTimeout(function() {
+                        if (statusRegion) {
+                            statusRegion.style.display = 'none';
+                            statusRegion.textContent = '';
+                        }
+                    }, 4000);
+                }
             }
         }
 
-        function performFetch(treeId, memoryId, generation) {
+        function performFetch(treeId, memoryId, generation, force) {
             if (!fetchReactionSummary || !fetchComments) {
-                if (generation === currentGeneration) renderUnavailable(treeId, memoryId, generation);
+                if (generation === getGeneration()) {
+                    if (sharedGenRef) {
+                        sharedGenRef.publicSummaryValid = false;
+                    }
+                    renderUnavailable(treeId, memoryId, generation, force);
+                    if (sharedGenRef && typeof sharedGenRef.onPublicSummarySettled === 'function') {
+                        sharedGenRef.onPublicSummarySettled(generation);
+                    }
+                }
                 return;
             }
 
-            setLoadingState();
+            setLoadingState(force);
 
             Promise.all([
                 fetchReactionSummary(treeId, memoryId).catch(function() { return null; }),
                 fetchComments(treeId, memoryId).catch(function() { return null; })
             ]).then(function(results) {
-                if (generation !== currentGeneration) return;
+                if (generation !== getGeneration()) return;
                 var reactionData = results[0];
                 var commentsData = results[1];
                 if (reactionData !== null && commentsData !== null) {
                     var valid = validateSocialDTOs(reactionData, commentsData);
                     if (valid) {
-                        renderSuccess(valid.likeCount, valid.commentCount);
+                        if (sharedGenRef) {
+                            sharedGenRef.publicSummaryValid = true;
+                        }
+                        renderSuccess(valid.likeCount, valid.commentCount, force);
                     } else {
-                        renderUnavailable(treeId, memoryId, generation);
+                        if (sharedGenRef) {
+                            sharedGenRef.publicSummaryValid = false;
+                        }
+                        renderUnavailable(treeId, memoryId, generation, force);
                     }
                 } else {
-                    renderUnavailable(treeId, memoryId, generation);
+                    if (sharedGenRef) {
+                        sharedGenRef.publicSummaryValid = false;
+                    }
+                    renderUnavailable(treeId, memoryId, generation, force);
+                }
+                if (sharedGenRef && typeof sharedGenRef.onPublicSummarySettled === 'function') {
+                    sharedGenRef.onPublicSummarySettled(generation);
                 }
             });
         }
@@ -631,8 +678,10 @@
             // Root moment, empty state, missing memory/tree ID: hide card, issue no request
             if (!data || !treeId || !memoryId || isRootMemory(data, rootId)) {
                 hideCard();
-                currentGeneration++;
-                if (sharedGenRef) sharedGenRef.value = currentGeneration;
+                var thisGen = nextGeneration();
+                if (sharedGenRef) {
+                    sharedGenRef.publicSummaryValid = false;
+                }
                 lastLoadedMemoryId = null;
                 return;
             }
@@ -643,14 +692,16 @@
                 return;
             }
 
+            var thisGen = getGeneration();
             if (!force) {
-                currentGeneration++;
-                if (sharedGenRef) sharedGenRef.value = currentGeneration;
+                thisGen = nextGeneration();
+                if (sharedGenRef) {
+                    sharedGenRef.publicSummaryValid = false;
+                }
             }
             lastLoadedMemoryId = memoryId;
-            var thisGen = currentGeneration;
 
-            performFetch(treeId, memoryId, thisGen);
+            performFetch(treeId, memoryId, thisGen, force);
         };
     }
 
@@ -679,6 +730,7 @@
         var lastLikeState = { pressed: false, count: 0 };
         var inFlight = false;
         var lastLoadedMemoryId = null;
+        var currentSelectionValid = false;
 
         var cardEl = null;
         var likeButtonEl = null;
@@ -691,6 +743,10 @@
         var noteEl = null;
         var statusRegionEl = null;
         var treeId = null;
+
+        function getGeneration() {
+            return sharedGenRef ? sharedGenRef.value : currentGeneration;
+        }
 
         function getElements() {
             if (!cardEl) cardEl = document.getElementById('momentReactionsCard');
@@ -752,23 +808,41 @@
             noteEl.textContent = '반응 기능은 준비 중이에요.';
         }
 
+        function updateLikeButtonUI(pressed) {
+            if (!likeButtonEl) return;
+            likeButtonEl.setAttribute('aria-pressed', pressed ? 'true' : 'false');
+            likeButtonEl.classList.toggle('is-pressed', pressed);
+            likeButtonEl.textContent = pressed ? '❤️ 좋아요 취소' : '❤️ 좋아요';
+            likeButtonEl.setAttribute('aria-label', pressed ? '좋아요 취소' : '좋아요 누르기');
+        }
+
+        function syncButtonActionableState() {
+            if (!getElements()) return;
+            if (currentSelectionValid && sharedGenRef && sharedGenRef.publicSummaryValid) {
+                likeButtonEl.disabled = inFlight;
+            } else {
+                likeButtonEl.disabled = true;
+            }
+            if (inFlight) {
+                likeButtonEl.setAttribute('aria-busy', 'true');
+            } else {
+                likeButtonEl.removeAttribute('aria-busy');
+            }
+        }
+
         function showAuthActionable(pressed, count) {
             if (!getElements()) return;
             setCardActionable();
             likeButtonEl.style.display = '';
-            likeButtonEl.disabled = false;
-            likeButtonEl.setAttribute('aria-pressed', pressed ? 'true' : 'false');
-            likeButtonEl.classList.toggle('is-pressed', pressed);
-            likeButtonEl.removeAttribute('aria-busy');
-            likeButtonEl.textContent = pressed ? '\u2764\uFE0F \uC88B\uC544\uC694 \uCDE8\uC18C' : '\u2764\uFE0F \uC88B\uC544\uC694';
+            updateLikeButtonUI(pressed);
+            syncButtonActionableState();
             guestNoteEl.style.display = 'none';
             errorEl.style.display = 'none';
             errorEl.textContent = '';
             statusRegionEl.style.display = 'none';
             statusRegionEl.textContent = '';
-            // Count is managed by the public summary boundary (authoritative aggregate)
-            if (likeStatusEl) likeStatusEl.setAttribute('aria-label', '\uC88B\uC544\uC694 ' + (parseInt(likeValueEl.textContent, 10) || 0) + '\uAC1C');
-            noteEl.textContent = '\uB313\uAE00 \uAE30\uB2A5\uC740 \uC900\uBE44 \uC911\uC774\uC5D0\uC694.';
+            if (likeStatusEl) likeStatusEl.setAttribute('aria-label', '좋아요 ' + (parseInt(likeValueEl.textContent, 10) || 0) + '개');
+            noteEl.textContent = '댓글 기능은 준비 중이에요.';
         }
 
         function showAuthUnavailable() {
@@ -777,31 +851,28 @@
             likeButtonEl.style.display = 'none';
             likeButtonEl.disabled = true;
             guestNoteEl.style.display = '';
-            guestNoteEl.textContent = '\uC88B\uC544\uC694 \uC815\uBCF4\uB97C \uBD88\uB7EC\uC62C \uC218 \uC5C6\uC5B4\uC694.';
+            guestNoteEl.textContent = '좋아요 정보를 불러올 수 없어요.';
             errorEl.style.display = 'none';
             errorEl.textContent = '';
             statusRegionEl.style.display = 'none';
             statusRegionEl.textContent = '';
-            noteEl.textContent = '\uBC18\uC751 \uAE30\uB2A5\uC740 \uC900\uBE44 \uC911\uC774\uC5D0\uC694.';
+            noteEl.textContent = '반응 기능은 준비 중이에요.';
         }
 
-        function showErrorText(message) {
+        function showPoliteNotice(message) {
             if (!getElements()) return;
-            errorEl.textContent = message || '\uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC5B4\uC694.';
+            errorEl.textContent = message || '';
             errorEl.style.display = '';
+            errorEl.setAttribute('role', 'status');
+            errorEl.setAttribute('aria-live', 'polite');
+
+            statusRegionEl.textContent = message || '';
+            statusRegionEl.style.display = '';
             setTimeout(function() {
                 if (errorEl) {
                     errorEl.style.display = 'none';
                     errorEl.textContent = '';
                 }
-            }, 3000);
-        }
-
-        function showPoliteNotice(message) {
-            if (!getElements()) return;
-            statusRegionEl.textContent = message || '';
-            statusRegionEl.style.display = '';
-            setTimeout(function() {
                 if (statusRegionEl) {
                     statusRegionEl.style.display = 'none';
                     statusRegionEl.textContent = '';
@@ -809,22 +880,57 @@
             }, 4000);
         }
 
-        function setInFlight(busy) {
-            if (!getElements()) return;
-            inFlight = busy;
-            likeButtonEl.disabled = busy;
-            if (busy) {
-                likeButtonEl.setAttribute('aria-busy', 'true');
-            } else {
-                likeButtonEl.removeAttribute('aria-busy');
+        function validatePrivateDTO(result) {
+            if (!result || typeof result !== 'object' || Array.isArray(result)) {
+                return null;
             }
+            var userReactions = result.userReactions;
+            if (!userReactions || typeof userReactions !== 'object' || Array.isArray(userReactions)) {
+                return null;
+            }
+            if (userReactions.like !== true && userReactions.like !== false) {
+                return null;
+            }
+            var counts = result.counts;
+            if (!counts || typeof counts !== 'object' || Array.isArray(counts)) {
+                return null;
+            }
+            var like = counts.like;
+            if (typeof like !== 'number' || !Number.isFinite(like) || like < 0 || Math.floor(like) !== like) {
+                return null;
+            }
+            return {
+                pressed: userReactions.like === true,
+                count: like
+            };
+        }
+
+        function validateWriteResponse(response) {
+            if (!response || typeof response !== 'object' || Array.isArray(response)) {
+                return false;
+            }
+            if (response.type !== 'like') {
+                return false;
+            }
+            if (typeof response.active !== 'boolean') {
+                return false;
+            }
+            var counts = response.counts;
+            if (!counts || typeof counts !== 'object' || Array.isArray(counts)) {
+                return false;
+            }
+            var like = counts.like;
+            if (typeof like !== 'number' || !Number.isFinite(like) || like < 0 || Math.floor(like) !== like) {
+                return false;
+            }
+            return true;
         }
 
         function createClickHandler(memoryId, thisGen) {
             return function() {
                 if (inFlight) return;
                 if (!toggleReaction) return;
-                if (thisGen !== currentGeneration) return;
+                if (thisGen !== getGeneration()) return;
 
                 // Save current state for rollback
                 var previousPressed = likeButtonEl.getAttribute('aria-pressed') === 'true';
@@ -839,56 +945,119 @@
                 lastLikeState.count = previousCount;
 
                 // Update UI optimistically
-                likeButtonEl.setAttribute('aria-pressed', newPressed ? 'true' : 'false');
-                likeButtonEl.classList.toggle('is-pressed', newPressed);
-                likeButtonEl.textContent = newPressed ? '\u2764\uFE0F \uC88B\uC544\uC694 \uCDE8\uC18C' : '\u2764\uFE0F \uC88B\uC544\uC694';
+                updateLikeButtonUI(newPressed);
                 likeValueEl.textContent = String(newCount);
-                if (likeStatusEl) likeStatusEl.setAttribute('aria-label', '\uC88B\uC544\uC694 ' + newCount + '\uAC1C');
+                if (likeStatusEl) likeStatusEl.setAttribute('aria-label', '좋아요 ' + newCount + '개');
 
-                setInFlight(true);
+                inFlight = true;
+                syncButtonActionableState();
 
-                var callGen = currentGeneration;
+                var callGen = getGeneration();
 
                 toggleReaction(memoryId, 'like').then(function(response) {
-                    setInFlight(false);
-                    if (callGen !== currentGeneration) return;
+                    inFlight = false;
+                    if (callGen !== getGeneration()) {
+                        syncButtonActionableState();
+                        return;
+                    }
                     if (!getElements()) return;
 
                     // Use response as immediate state
-                    if (response && typeof response === 'object') {
-                        var active = response.active;
-                        var responseCount = response.counts && response.counts.like;
-                        if (typeof active === 'boolean') {
-                            likeButtonEl.setAttribute('aria-pressed', active ? 'true' : 'false');
-                            likeButtonEl.classList.toggle('is-pressed', active);
-                            likeButtonEl.textContent = active ? '\u2764\uFE0F \uC88B\uC544\uC694 \uCDE8\uC18C' : '\u2764\uFE0F \uC88B\uC544\uC694';
-                        }
-                        if (typeof responseCount === 'number' && responseCount >= 0) {
-                            likeValueEl.textContent = String(responseCount);
-                            if (likeStatusEl) likeStatusEl.setAttribute('aria-label', '\uC88B\uC544\uC694 ' + responseCount + '\uAC1C');
-                            lastLikeState.count = responseCount;
-                        }
-                        lastLikeState.pressed = likeButtonEl.getAttribute('aria-pressed') === 'true';
+                    if (!validateWriteResponse(response)) {
+                        updateLikeButtonUI(lastLikeState.pressed);
+                        likeValueEl.textContent = String(lastLikeState.count);
+                        if (likeStatusEl) likeStatusEl.setAttribute('aria-label', '좋아요 ' + lastLikeState.count + '개');
+                        showPoliteNotice('좋아요를 처리할 수 없어요. 다시 시도해 주세요.');
+                        syncButtonActionableState();
+                        return;
                     }
+
+                    var active = response.active;
+                    var responseCount = response.counts.like;
+                    updateLikeButtonUI(active);
+                    likeValueEl.textContent = String(responseCount);
+                    if (likeStatusEl) likeStatusEl.setAttribute('aria-label', '좋아요 ' + responseCount + '개');
+                    lastLikeState.pressed = active;
+                    lastLikeState.count = responseCount;
+
+                    syncButtonActionableState();
 
                     // Public reconciliation after successful write
                     if (typeof reconcilePublicSummary === 'function') {
                         reconcilePublicSummary({ id: memoryId, treeId: treeId }, true);
                     }
                 }).catch(function() {
-                    setInFlight(false);
-                    if (callGen !== currentGeneration) return;
+                    inFlight = false;
+                    if (callGen !== getGeneration()) {
+                        syncButtonActionableState();
+                        return;
+                    }
                     if (!getElements()) return;
 
                     // Rollback to previous state
-                    likeButtonEl.setAttribute('aria-pressed', lastLikeState.pressed ? 'true' : 'false');
-                    likeButtonEl.classList.toggle('is-pressed', lastLikeState.pressed);
-                    likeButtonEl.textContent = lastLikeState.pressed ? '\u2764\uFE0F \uC88B\uC544\uC694 \uCDE8\uC18C' : '\u2764\uFE0F \uC88B\uC544\uC694';
+                    updateLikeButtonUI(lastLikeState.pressed);
                     likeValueEl.textContent = String(lastLikeState.count);
-                    if (likeStatusEl) likeStatusEl.setAttribute('aria-label', '\uC88B\uC544\uC694 ' + lastLikeState.count + '\uAC1C');
+                    if (likeStatusEl) likeStatusEl.setAttribute('aria-label', '좋아요 ' + lastLikeState.count + '개');
 
-                    showErrorText('\uC88B\uC544\uC694\uB97C \uCC98\uB9AC\uD560 \uC218 \uC5C6\uC5B4\uC694. \uB2E4\uC2DC \uC2DC\uB3C4\uD574 \uC8FC\uC138\uC694.');
+                    showPoliteNotice('좋아요를 처리할 수 없어요. 다시 시도해 주세요.');
+                    syncButtonActionableState();
                 });
+            };
+        }
+
+        function loadPrivateSummary(memoryId, thisGen) {
+            if (!fetchReactionSummary) {
+                showAuthUnavailable();
+                return;
+            }
+
+            // Fetch private reaction summary to get user's like state
+            fetchReactionSummary(memoryId).then(function(result) {
+                if (thisGen !== getGeneration()) return;
+                if (!getElements()) return;
+
+                var validated = validatePrivateDTO(result);
+                if (!validated) {
+                    currentSelectionValid = false;
+                    showAuthUnavailable();
+                    return;
+                }
+
+                currentSelectionValid = true;
+                lastLikeState.pressed = validated.pressed;
+                lastLikeState.count = validated.count;
+
+                // Wire up click handler for this memory
+                likeButtonEl.onclick = createClickHandler(memoryId, thisGen);
+
+                if (sharedGenRef && sharedGenRef.publicSummaryValid) {
+                    showAuthActionable(validated.pressed, validated.count);
+                } else {
+                    showAuthUnavailable();
+                }
+            }).catch(function() {
+                if (thisGen !== getGeneration()) return;
+                currentSelectionValid = false;
+                showAuthUnavailable();
+            });
+        }
+
+        if (sharedGenRef) {
+            sharedGenRef.onPublicSummarySettled = function(generation) {
+                if (generation !== getGeneration()) return;
+                if (!hasConfirmedAuthSession()) {
+                    showGuestMode();
+                    return;
+                }
+                if (sharedGenRef.publicSummaryValid) {
+                    if (!currentSelectionValid) {
+                        loadPrivateSummary(lastLoadedMemoryId, generation);
+                    } else {
+                        showAuthActionable(lastLikeState.pressed, lastLikeState.count);
+                    }
+                } else {
+                    showAuthUnavailable();
+                }
             };
         }
 
@@ -900,24 +1069,20 @@
             // Root moment, empty state, missing context: hide auth elements
             if (!data || !memTreeId || !memoryId || isRootMemory(data, rootId)) {
                 hideAuthElements();
-                currentGeneration++;
-                if (sharedGenRef) sharedGenRef.value = currentGeneration;
                 lastLoadedMemoryId = null;
-                inFlight = false;
                 treeId = null;
+                currentSelectionValid = false;
                 return;
             }
 
-            // Memory changed: release pending in-flight lock
+            // Memory changed: reset selection valid and save lastLoadedMemoryId
             if (memoryId !== lastLoadedMemoryId) {
-                inFlight = false;
-                currentGeneration++;
-                if (sharedGenRef) sharedGenRef.value = currentGeneration;
                 lastLoadedMemoryId = memoryId;
                 treeId = memTreeId;
+                currentSelectionValid = false;
             }
 
-            var thisGen = currentGeneration;
+            var thisGen = getGeneration();
 
             // Check auth
             var isAuthConfirmed = hasConfirmedAuthSession();
@@ -927,58 +1092,21 @@
                 return;
             }
 
-            // Auth confirmed: show button (disabled during initial load)
+            // Auth confirmed: show button as disabled / loading initially
             if (!getElements()) return;
             likeButtonEl.style.display = '';
-            likeButtonEl.disabled = true;
+            updateLikeButtonUI(lastLikeState.pressed);
+            syncButtonActionableState();
             guestNoteEl.style.display = 'none';
-            guestNoteEl.textContent = '\uB85C\uADF8\uC778\uD558\uBA74 \uC88B\uC544\uC694\uB97C \uB0A8\uAE38 \uC218 \uC788\uC5B4\uC694.';
+            guestNoteEl.textContent = '로그인하면 좋아요를 남길 수 있어요.';
             errorEl.style.display = 'none';
             statusRegionEl.style.display = 'none';
 
-            if (!fetchReactionSummary) {
+            if (sharedGenRef && sharedGenRef.publicSummaryValid) {
+                loadPrivateSummary(memoryId, thisGen);
+            } else {
                 showAuthUnavailable();
-                return;
             }
-
-            // Fetch private reaction summary to get user's like state
-            fetchReactionSummary(memoryId).then(function(result) {
-                if (thisGen !== currentGeneration) return;
-                if (!getElements()) return;
-
-                var pressed = false;
-                var count = 0;
-                var validState = false;
-
-                if (result && typeof result === 'object') {
-                    var userReactions = result.userReactions;
-                    // userReactions is an object like { like: true }, not an array
-                    if (userReactions && typeof userReactions === 'object' && !Array.isArray(userReactions)) {
-                        pressed = userReactions.like === true;
-                        validState = true;
-                    }
-                    if (result.counts && typeof result.counts === 'object' && typeof result.counts.like === 'number' && result.counts.like >= 0) {
-                        count = result.counts.like;
-                    } else if (validState) {
-                        count = 0;
-                    }
-                }
-
-                if (!validState) {
-                    showAuthUnavailable();
-                    return;
-                }
-
-                lastLikeState.pressed = pressed;
-                lastLikeState.count = count;
-                showAuthActionable(pressed, count);
-
-                // Wire up click handler for this memory
-                likeButtonEl.onclick = createClickHandler(memoryId, thisGen);
-            }).catch(function() {
-                if (thisGen !== currentGeneration) return;
-                showAuthUnavailable();
-            });
         };
     }
 
