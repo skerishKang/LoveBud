@@ -893,20 +893,37 @@
             if (!userReactions || typeof userReactions !== 'object' || Array.isArray(userReactions)) {
                 return null;
             }
-            if (userReactions.like !== true && userReactions.like !== false) {
-                return null;
-            }
             var counts = result.counts;
             if (!counts || typeof counts !== 'object' || Array.isArray(counts)) {
                 return null;
             }
-            var like = counts.like;
-            if (typeof like !== 'number' || !Number.isFinite(like) || like < 0 || Math.floor(like) !== like) {
-                return null;
+
+            if (Object.prototype.hasOwnProperty.call(userReactions, 'like')) {
+                if (typeof userReactions.like !== 'boolean') {
+                    return null;
+                }
             }
+
+            if (Object.prototype.hasOwnProperty.call(counts, 'like')) {
+                var like = counts.like;
+                if (typeof like !== 'number' || !Number.isFinite(like) || like < 0 || Math.floor(like) !== like) {
+                    return null;
+                }
+            }
+
+            var pressed = false;
+            if (Object.prototype.hasOwnProperty.call(userReactions, 'like')) {
+                pressed = userReactions.like;
+            }
+
+            var count = null;
+            if (Object.prototype.hasOwnProperty.call(counts, 'like')) {
+                count = counts.like;
+            }
+
             return {
-                pressed: userReactions.like === true,
-                count: like
+                pressed: pressed,
+                count: count
             };
         }
 
@@ -1030,7 +1047,22 @@
 
                 currentSelectionValid = true;
                 lastLikeState.pressed = validated.pressed;
-                lastLikeState.count = validated.count;
+
+                if (validated.count === null) {
+                    var parsedCount = 0;
+                    if (likeValueEl && likeValueEl.textContent) {
+                        var txt = likeValueEl.textContent.trim();
+                        if (txt !== '' && txt !== '⋯' && txt !== '...' && txt !== '—') {
+                            var num = parseInt(txt, 10);
+                            if (!isNaN(num) && num >= 0) {
+                                parsedCount = num;
+                            }
+                        }
+                    }
+                    lastLikeState.count = parsedCount;
+                } else {
+                    lastLikeState.count = validated.count;
+                }
 
                 // Wire up click handler for this memory
                 likeButtonEl.onclick = createClickHandler(memoryId, thisGen);
