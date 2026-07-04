@@ -82,7 +82,6 @@ test('guest gate: no private social request for guest or auth-not-ready state', 
 
 test('public-comments-only display rule: always use guest-safe reader', () => {
   const doc = readDoc();
-  // Check the display rule paragraph exists
   const displayRuleSection = doc.match(/### Display Rule[\s\S]*?(?=## \d)/);
   assert.ok(displayRuleSection, 'Display Rule subsection must exist');
   const rule = displayRuleSection[0];
@@ -108,7 +107,8 @@ test('controlled lifecycle protocol references #3192 and safe reporting rules', 
   const protocolSection = doc.match(/## 4\. Controlled Runtime Verification Protocol[\s\S]*?(?=## \d)/);
   assert.ok(protocolSection, 'controlled lifecycle protocol section must exist');
   const section = protocolSection[0];
-  assert.ok(section.includes('#3192'), 'must reference #3192 fixture governance');
+  assert.ok(section.includes('#3192'), 'must reference #3192');
+  assert.ok(/not.*established by #3192/i.test(section), 'must clarify protocol is not from #3192');
   assert.ok(/reversible/i.test(section), 'must mention reversible reaction lifecycle');
   assert.ok(/comment lifecycle/i.test(section), 'must mention controlled comment lifecycle');
   assert.ok(/PASS \/ BLOCKED \/ FAIL/i.test(section), 'must specify outcome categories');
@@ -126,26 +126,89 @@ test('permanent exclusions present', () => {
   assert.ok(/Direct SQL|database inspection|real‑user data|runtime|production/i.test(section), 'must exclude DB/real-user/runtime changes');
 });
 
-test('public Tree Workspace detail-ui still has no toggleReaction, createComment, or private fetchComments path', () => {
+// ---------------------------------------------------------------------------
+// Tightened callback-boundary contract tests
+// ---------------------------------------------------------------------------
+
+test('public viewer detail-ui accepts only public callbacks in deps', () => {
   const src = readSource('js/viewer/public-viewer-detail-ui.js');
-  assert.ok(!src.includes('toggleReaction'), 'public viewer must not use toggleReaction');
-  assert.ok(!src.includes('createComment'), 'public viewer must not use createComment');
-  // The public viewer aliases fetchPublicMomentComments locally — verify it uses the public reader
-  assert.ok(src.includes('fetchPublicMomentComments'), 'public viewer must use fetchPublicMomentComments');
-  assert.ok(!src.includes('fetchComments(') || src.includes('fetchPublicMomentComments'),
-    'public viewer fetchComments must be the public reader');
+
+  // Must consume deps.fetchPublicMomentReactionSummary
+  assert.ok(src.includes('fetchPublicMomentReactionSummary'),
+    'must consume deps.fetchPublicMomentReactionSummary');
+
+  // Must consume deps.fetchPublicMomentComments
+  assert.ok(src.includes('fetchPublicMomentComments'),
+    'must consume deps.fetchPublicMomentComments');
+
+  // Must not accept deps.fetchReactionSummary (private read)
+  assert.ok(!src.includes('deps.fetchReactionSummary') &&
+    !src.includes("deps['fetchReactionSummary']") &&
+    !src.includes('deps.fetchReactionSummary'),
+    'must not accept deps.fetchReactionSummary');
+
+  // Must not accept deps.fetchComments (private read)
+  assert.ok(!src.includes("deps['fetchComments']"),
+    'must not accept deps.fetchComments');
+
+  // Must not reference toggleReaction
+  assert.ok(!src.includes('toggleReaction'),
+    'must not reference toggleReaction');
+
+  // Must not reference createComment
+  assert.ok(!src.includes('createComment'),
+    'must not reference createComment');
 });
 
-test('public viewer receives only guest-safe public callbacks', () => {
-  const src = readSource('js/viewer/public-viewer-detail-ui.js');
-  // The boundary receives injected callbacks; verify the names used inside
-  assert.ok(src.includes('fetchPublicMomentReactionSummary') || src.includes('fetchReactionSummary'),
-    'source must reference public reaction summary callback');
-  assert.ok(src.includes('fetchPublicMomentComments') || src.includes('fetchComments'),
-    'source must reference public comments callback');
-  // The public viewer should not contain private write callbacks
-  assert.ok(!src.includes('toggleReaction'), 'no toggleReaction in public viewer');
-  assert.ok(!src.includes('createComment'), 'no createComment in public viewer');
+test('canvas-entry.js injects only public callbacks', () => {
+  const src = readSource('js/viewer/public-viewer-canvas-entry.js');
+
+  // Must inject apiClient.fetchPublicMomentReactionSummary
+  assert.ok(src.includes('apiClient.fetchPublicMomentReactionSummary'),
+    'canvas-entry must inject apiClient.fetchPublicMomentReactionSummary');
+
+  // Must inject apiClient.fetchPublicMomentComments
+  assert.ok(src.includes('apiClient.fetchPublicMomentComments'),
+    'canvas-entry must inject apiClient.fetchPublicMomentComments');
+
+  // Must not inject private fetchReactionSummary from apiClient
+  assert.ok(!src.includes('apiClient.fetchReactionSummary'),
+    'canvas-entry must not inject private fetchReactionSummary');
+
+  // Must not inject private fetchComments from apiClient
+  assert.ok(!src.includes("apiClient['fetchComments']") &&
+    !src.includes('apiClient.fetchComments'),
+    'canvas-entry must not inject private fetchComments');
+
+  // Must not reference toggleReaction or createComment
+  assert.ok(!src.includes('toggleReaction'), 'no toggleReaction in canvas-entry');
+  assert.ok(!src.includes('createComment'), 'no createComment in canvas-entry');
+});
+
+test('canvas-init.js injects only public callbacks', () => {
+  const src = readSource('js/viewer/public-canvas-init.js');
+
+  // Must inject apiClient.fetchPublicMomentReactionSummary
+  assert.ok(src.includes('apiClient.fetchPublicMomentReactionSummary'),
+    'canvas-init must inject apiClient.fetchPublicMomentReactionSummary');
+
+  // Must inject apiClient.fetchPublicMomentComments
+  assert.ok(src.includes('apiClient.fetchPublicMomentComments'),
+    'canvas-init must inject apiClient.fetchPublicMomentComments');
+
+  // Must not inject private fetchReactionSummary from apiClient
+  assert.ok(!src.includes('apiClient.fetchReactionSummary') &&
+    !src.includes("apiClient['fetchReactionSummary']"),
+    'canvas-init must not inject private fetchReactionSummary');
+
+  // Must not inject private fetchComments from apiClient
+  assert.ok(!src.includes('apiClient.fetchComments') &&
+    !src.includes("apiClient['fetchComments']"),
+    'canvas-init must not inject private fetchComments');
+
+  // Must not reference toggleReaction or createComment
+  assert.ok(!src.includes('toggleReaction'), 'no toggleReaction in canvas-init');
+  assert.ok(!src.includes('createComment'), 'no createComment in canvas-init');
 });
 
 test('postgres-client.js exposes public read methods and separate private methods', () => {
@@ -161,17 +224,41 @@ test('postgres-client.js exposes public read methods and separate private method
   assert.ok(src.includes('fetchComments'), 'postgres-client must expose private fetchComments');
 });
 
-test('#1882 wording rule — only Refs, never Closes/Fixes/Resolves', () => {
+// ---------------------------------------------------------------------------
+// Regression assertions
+// ---------------------------------------------------------------------------
+
+test('document does not contain forbidden phrases', () => {
   const doc = readDoc();
-  assert.ok(!doc.includes('Fixes #1882'), 'document must not use Fixes #1882');
-  assert.ok(!doc.includes('Closes #1882'), 'document must not use Closes #1882');
-  assert.ok(!doc.includes('Resolves #1882'), 'document must not use Resolves #1882');
+
+  // Must not describe #3192 as "fixture governance"
+  assert.ok(!doc.includes('fixture governance'),
+    'document must not say fixture governance');
+
+  // Must not describe #1882 as "live integration test harness"
+  assert.ok(!doc.includes('live integration test harness'),
+    'document must not say live integration test harness');
+
+  // Must not say "established in #3192"
+  assert.ok(!doc.includes('established in #3192'),
+    'document must not say established in #3192');
+
+  // Must not use Closes/Fixes/Resolves #1882
+  assert.ok(!doc.includes('Fixes #1882'), 'must not use Fixes #1882');
+  assert.ok(!doc.includes('Closes #1882'), 'must not use Closes #1882');
+  assert.ok(!doc.includes('Resolves #1882'), 'must not use Resolves #1882');
 });
 
 test('source files uphold #1882 wording rule', () => {
-  const uiSrc = readSource('js/viewer/public-viewer-detail-ui.js');
-  assert.ok(!uiSrc.includes('Fixes #1882'), 'detail-ui must not use Fixes #1882');
-  const clientSrc = readSource('js/postgres-client.js');
-  assert.ok(!clientSrc.includes('Fixes #1882'), 'postgres-client must not use Fixes #1882');
-  assert.ok(!clientSrc.includes('Closes #1882'), 'postgres-client must not use Closes #1882');
+  const srcs = [
+    readSource('js/viewer/public-viewer-detail-ui.js'),
+    readSource('js/viewer/public-viewer-canvas-entry.js'),
+    readSource('js/viewer/public-canvas-init.js'),
+    readSource('js/postgres-client.js')
+  ];
+  srcs.forEach(function(src, i) {
+    assert.ok(!src.includes('Fixes #1882'), 'source ' + i + ' must not use Fixes #1882');
+    assert.ok(!src.includes('Closes #1882'), 'source ' + i + ' must not use Closes #1882');
+    assert.ok(!src.includes('Resolves #1882'), 'source ' + i + ' must not use Resolves #1882');
+  });
 });

@@ -301,6 +301,10 @@ test('8. non-allowlisted files are not modified', () => {
     'tests/contracts/my-trees-preview-hub.test.cjs',
     'tests/contracts/comments-reactions-access-contract.test.cjs',
     'tests/contracts/moment-social-write-hardening-contract.test.cjs',
+
+    // #3201 moment social write readiness gate
+    'docs/product/lovebud-moment-social-write-readiness-contract.md',
+    'tests/contracts/moment-social-write-readiness-contract.test.cjs',
   ];
 
   // Read git diff to check what files are modified

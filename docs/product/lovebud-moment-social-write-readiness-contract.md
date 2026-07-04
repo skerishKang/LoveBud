@@ -9,8 +9,8 @@
 - #3184 — Public read-only selected-moment social summary (complete)
 - #3075 — Actionable social UX for moment likes/comments (parent, not started)
 - #3201 — This gate: documentation-and-contract baseline
-- #3192 — Controlled runtime fixture governance
-- #1882 — LoveBud live integration test harness (open, always Refs only)
+- #3192 — Authenticated owner-tree/token-handoff readiness (separate track)
+- #1882 — Parent product issue (OPEN, always Refs only)
 
 ---
 
@@ -70,8 +70,11 @@ Any future implementation that adds like or comment write surfaces **must**:
 
 ## 4. Controlled Runtime Verification Protocol
 
-Any future runtime lifecycle verification under #3075 must follow the protocol
-established in #3192:
+This section defines a future separately authorized protocol for any runtime
+lifecycle verification that may be conducted under #3075. It is **not** an
+action already performed and is **not** established by #3192. Authenticated
+runtime readiness remains separately tracked in #3192 and must be independently
+verified before future authenticated social-write activation.
 
 - Use **only** the designated non-user test identity and synthetic public fixture.
 - Perform a **reversible** reaction lifecycle: toggle reaction → public‑read
