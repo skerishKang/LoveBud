@@ -889,21 +889,29 @@ test('malformed explicit fields in private DTO', async function() {
 test('same-selection unlike regression', async function() {
   var privateFetchCalledWith = [];
   var toggleReactionCalledWith = [];
+  var publicFetchCallCount = 0;
   var activeState = false;
 
   var { elements, detailUI, deps } = createTestContext(
     async function(memoryId) {
       privateFetchCalledWith.push(memoryId);
-      return { counts: { like: activeState ? 1 : 0 }, userReactions: { like: activeState } };
+      return activeState
+        ? { counts: { like: 1 }, userReactions: { like: true } }
+        : { counts: {}, userReactions: {} };
     },
     async function(memoryId, action) {
       toggleReactionCalledWith.push({ memoryId: memoryId, action: action });
       activeState = !activeState;
-      return { type: 'like', active: activeState, counts: { like: activeState ? 1 : 0 } };
+      return activeState
+        ? { type: 'like', active: true, counts: { like: 1 }, total: 1 }
+        : { type: 'like', active: false, counts: {}, total: 0 };
     },
     function() { return true; },
     async function(treeId, memoryId) {
-      return { counts: { like: activeState ? 1 : 0 }, total: activeState ? 1 : 0 };
+      publicFetchCallCount++;
+      return activeState
+        ? { counts: { like: 1 }, total: 1 }
+        : { counts: {}, total: 0 };
     },
     async function(treeId, memoryId) {
       return { comments: [], nextCursor: null };
@@ -941,7 +949,104 @@ test('same-selection unlike regression', async function() {
   assert.equal(toggleReactionCalledWith.length, 2, 'second write (unlike) called');
   assert.equal(elements.momentReactionLikeButton.getAttribute('aria-pressed'), 'false', 'unpressed');
   assert.equal(elements.momentReactionLikeValue.textContent, '0', 'count is 0');
+
+  // 7. Public reaction summary: initial load (1) + like reconcile (2) + unlike reconcile (3)
+  assert.equal(publicFetchCallCount, 3, 'public summary fetch: initial load + like reconcile + unlike reconcile');
   assert.equal(elements.momentReactionLikeButton.getAttribute('aria-busy'), undefined, 'busy removed');
+});
+
+test('active write response without like count is rejected', async function() {
+  var toggleReactionCalledWith = [];
+
+  var { elements, detailUI, deps } = createTestContext(
+    async function(memoryId) {
+      return { counts: {}, userReactions: {} };
+    },
+    async function(memoryId, action) {
+      toggleReactionCalledWith.push({ memoryId: memoryId, action: action });
+      return { type: 'like', active: true, counts: {}, total: 0 };
+    },
+    function() { return true; },
+    async function(treeId, memoryId) {
+      return { counts: {}, total: 0 };
+    },
+    async function(treeId, memoryId) {
+      return { comments: [], nextCursor: null };
+    }
+  );
+
+  deps.currentSelectedId = 'mem-active-no-like-count';
+  deps.treeMemories = [{ id: 'mem-active-no-like-count', treeId: 'tree-1' }];
+
+  // Initial load
+  detailUI.updateDetailPanel({ id: 'mem-active-no-like-count', treeId: 'tree-1' });
+  await new Promise(r => setTimeout(r, 50));
+
+  // Save initial handler
+  var handler = elements.momentReactionLikeButton.onclick;
+  assert.ok(typeof handler === 'function', 'onclick handler is bound');
+
+  // Trigger write
+  deps.sharedGenerationRef.value++;
+  handler();
+  await new Promise(r => setTimeout(r, 50));
+
+  // The active write with empty counts must be rejected:
+  // optimistic true/1 -> rollback to false/0
+  assert.equal(elements.momentReactionLikeButton.getAttribute('aria-pressed'), 'false', 'rolled back to unpressed');
+  assert.equal(elements.momentReactionLikeValue.textContent, '0', 'rolled back to count 0');
+
+  // Error UI must be shown
+  var errorEl = elements.momentReactionWriteError;
+  assert.ok(errorEl && !errorEl.hidden, 'error UI must be visible after rejected write');
+});
+
+test('active write response ignores inherited like count', async function() {
+  var toggleReactionCalledWith = [];
+
+  var inheritedCounts = Object.create({ like: 1 });
+
+  var { elements, detailUI, deps } = createTestContext(
+    async function(memoryId) {
+      return { counts: {}, userReactions: {} };
+    },
+    async function(memoryId, action) {
+      toggleReactionCalledWith.push({ memoryId: memoryId, action: action });
+      return { type: 'like', active: true, counts: inheritedCounts, total: 1 };
+    },
+    function() { return true; },
+    async function(treeId, memoryId) {
+      return { counts: {}, total: 0 };
+    },
+    async function(treeId, memoryId) {
+      return { comments: [], nextCursor: null };
+    }
+  );
+
+  deps.currentSelectedId = 'mem-inherited-like';
+  deps.treeMemories = [{ id: 'mem-inherited-like', treeId: 'tree-1' }];
+
+  // Initial load
+  detailUI.updateDetailPanel({ id: 'mem-inherited-like', treeId: 'tree-1' });
+  await new Promise(r => setTimeout(r, 50));
+
+  // Save initial handler
+  var handler = elements.momentReactionLikeButton.onclick;
+  assert.ok(typeof handler === 'function', 'onclick handler is bound');
+
+  // Trigger write
+  deps.sharedGenerationRef.value++;
+  handler();
+  await new Promise(r => setTimeout(r, 50));
+
+  // The inherited like count from prototype chain must be rejected:
+  // optimistic true/1 -> rollback to false/0
+  assert.equal(elements.momentReactionLikeButton.getAttribute('aria-pressed'), 'false', 'rolled back to unpressed');
+  assert.equal(elements.momentReactionLikeValue.textContent, '0', 'rolled back to count 0');
+
+  // Error UI must be shown
+  var errorEl = elements.momentReactionWriteError;
+  assert.ok(errorEl && !errorEl.hidden, 'error UI must be visible after inherited like count');
 });
 
 test('old success does not unlock new write', async function() {

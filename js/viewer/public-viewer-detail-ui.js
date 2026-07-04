@@ -932,23 +932,33 @@
 
         function validateWriteResponse(response) {
             if (!response || typeof response !== 'object' || Array.isArray(response)) {
-                return false;
+                return null;
             }
             if (response.type !== 'like') {
-                return false;
+                return null;
             }
             if (typeof response.active !== 'boolean') {
-                return false;
+                return null;
             }
             var counts = response.counts;
             if (!counts || typeof counts !== 'object' || Array.isArray(counts)) {
-                return false;
+                return null;
+            }
+            var hasLikeCount = Object.prototype.hasOwnProperty.call(counts, 'like');
+            if (response.active === false && !hasLikeCount) {
+                return { active: false, count: 0 };
+            }
+            if (response.active === true && !hasLikeCount) {
+                return null;
             }
             var like = counts.like;
             if (typeof like !== 'number' || !Number.isFinite(like) || like < 0 || Math.floor(like) !== like) {
-                return false;
+                return null;
             }
-            return true;
+            if (response.active === true && like < 1) {
+                return null;
+            }
+            return { active: response.active, count: like };
         }
 
         function createClickHandler(memoryId, boundEpoch) {
@@ -1005,7 +1015,8 @@
                     if (!getElements()) return;
 
                     // Use response as immediate state
-                    if (!validateWriteResponse(response)) {
+                    var validatedWrite = validateWriteResponse(response);
+                    if (!validatedWrite) {
                         updateLikeButtonUI(lastLikeState.pressed);
                         likeValueEl.textContent = String(lastLikeState.count);
                         if (likeStatusEl) likeStatusEl.setAttribute('aria-label', '좋아요 ' + lastLikeState.count + '개');
@@ -1014,8 +1025,8 @@
                         return;
                     }
 
-                    var active = response.active;
-                    var responseCount = response.counts.like;
+                    var active = validatedWrite.active;
+                    var responseCount = validatedWrite.count;
                     updateLikeButtonUI(active);
                     likeValueEl.textContent = String(responseCount);
                     if (likeStatusEl) likeStatusEl.setAttribute('aria-label', '좋아요 ' + responseCount + '개');
