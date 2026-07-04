@@ -254,6 +254,7 @@ test('8. non-allowlisted files are not modified', () => {
     // #3075 moment likes/comments actionable
     'tests/contracts/viewer-social-actionable-contract.test.cjs',
     'css/editor/editor-overrides.css',
+    'css/editor.css',
     'js/viewer/public-canvas-bridge.js',
     'js/viewer/public-canvas-error-fallback.js',
     'js/viewer/public-canvas-init.js',

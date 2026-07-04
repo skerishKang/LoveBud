@@ -66,16 +66,26 @@
                         <p id="momentReactionLikeGuestNote" style="display:none">로그인하면 좋아요를 남길 수 있어요.</p>
                         <div aria-live="polite" role="status" id="momentReactionLikeStatusRegion" style="display:none"></div>
                         <p id="momentReactionWriteError" class="editor-like-error" role="alert" style="display:none"></p>
-                        <div
-                            class="public-viewer-social-status"
-                            id="momentReactionCommentStatus"
-                            role="status"
-                            aria-label="댓글 불러오는 중"
+                        <button type="button" id="momentReactionCommentStatus"
+                          class="public-viewer-social-status editor-comment-toggle"
+                          aria-label="댓글 불러오는 중"
+                          aria-expanded="false"
+                          aria-controls="momentCommentsPanel"
+                          disabled
                         >
                             <span class="editor-reaction-comment-icon" aria-hidden="true">💬</span>
                             <span class="editor-reaction-label">댓글</span>
                             <span class="public-viewer-social-status-value" id="momentReactionCommentValue">⋯</span>
-                        </div>
+                        </button>
+                        <section
+                          id="momentCommentsPanel"
+                          class="editor-moment-comments-panel"
+                          aria-label="순간 댓글"
+                          hidden
+                        >
+                          <p id="momentCommentsPanelStatus" role="status" aria-live="polite"></p>
+                          <ul id="momentCommentsList" class="editor-moment-comments-list"></ul>
+                        </section>
                         <p class="editor-moment-reaction-readonly-note" id="momentReactionNote">반응 기능은 준비 중이에요.</p>
                     </div>
                 </div>

@@ -496,6 +496,67 @@ body .editor-memory-mode-chip.is-active {
     color: var(--on-primary, #fff);
 }
 
+/* #3218 — Read-only moment comments panel toggle */
+.editor-moment-reactions-card .editor-comment-toggle {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    width: 100%;
+    padding: 8px 4px;
+    font-family: inherit;
+    font-size: inherit;
+    background: transparent;
+    border: none;
+    border-radius: 8px;
+    color: var(--on-surface, #1c1b1a);
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.15s;
+}
+.editor-moment-reactions-card .editor-comment-toggle:hover,
+.editor-moment-reactions-card .editor-comment-toggle:focus-visible {
+    background: var(--surface-variant, #e7e0dc);
+    outline: none;
+}
+.editor-moment-reactions-card .editor-comment-toggle:disabled {
+    cursor: default;
+    color: var(--on-surface-muted, #7c6f6a);
+    pointer-events: none;
+}
+.editor-moment-comments-panel {
+    margin: 4px 0 0 4px;
+    padding: 0;
+    border-top: 1px solid var(--outline, #c0b8b4);
+}
+.editor-moment-comments-panel[hidden] {
+    display: none;
+}
+.editor-moment-comments-list {
+    list-style: none;
+    margin: 0;
+    padding: 4px 0;
+    max-height: 240px;
+    overflow-y: auto;
+}
+.editor-moment-comments-list li {
+    padding: 6px 0;
+    font-size: 0.85rem;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    color: var(--on-surface, #1c1b1a);
+    border-bottom: 1px solid var(--outline-variant, #cac4c0);
+}
+.editor-moment-comments-list li:last-child {
+    border-bottom: none;
+}
+#momentCommentsPanelStatus {
+    margin: 0;
+    padding: 8px 0;
+    font-size: 0.85rem;
+    color: var(--on-surface-variant, #494543);
+}
+
 /* Editor tree rename modal — replaces native window.prompt */
 body.editor-rename-modal-open {
     overflow: hidden;
