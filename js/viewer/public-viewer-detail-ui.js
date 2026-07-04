@@ -556,7 +556,9 @@
                 if (commentStatus) commentStatus.setAttribute('aria-label', '댓글 ' + commentCount + '개 표시');
             }
 
-            noteEl.textContent = '반응 기능은 준비 중이에요.';
+            // Note text is managed by the auth boundary (#3207)
+            // Do not overwrite here — the auth boundary sets the correct
+            // note for guest vs actionable mode.
             removeRetryButton();
         }
 
@@ -621,7 +623,7 @@
             removeRetryButton();
         }
 
-        return function updatePublicViewerReadOnlyReactionSummary(data) {
+        return function updatePublicViewerReadOnlyReactionSummary(data, force) {
             var rootId = getCanonicalRootId();
             var treeId = data && data.treeId;
             var memoryId = data && data.id;
@@ -636,12 +638,15 @@
             }
 
             // Avoid duplicate requests when same moment is rendered repeatedly (debounce window)
-            if (memoryId === lastLoadedMemoryId) {
+            // unless force=true (used for post-write reconciliation)
+            if (memoryId === lastLoadedMemoryId && !force) {
                 return;
             }
 
-            currentGeneration++;
-            if (sharedGenRef) sharedGenRef.value = currentGeneration;
+            if (!force) {
+                currentGeneration++;
+                if (sharedGenRef) sharedGenRef.value = currentGeneration;
+            }
             lastLoadedMemoryId = memoryId;
             var thisGen = currentGeneration;
 
@@ -675,20 +680,47 @@
         var inFlight = false;
         var lastLoadedMemoryId = null;
 
+        var cardEl = null;
         var likeButtonEl = null;
         var guestNoteEl = null;
         var errorEl = null;
         var likeValueEl = null;
         var likeStatusEl = null;
+        var commentStatusEl = null;
+        var commentValueEl = null;
+        var noteEl = null;
+        var statusRegionEl = null;
         var treeId = null;
 
         function getElements() {
+            if (!cardEl) cardEl = document.getElementById('momentReactionsCard');
             if (!likeButtonEl) likeButtonEl = document.getElementById('momentReactionLikeButton');
             if (!guestNoteEl) guestNoteEl = document.getElementById('momentReactionLikeGuestNote');
             if (!errorEl) errorEl = document.getElementById('momentReactionWriteError');
             if (!likeValueEl) likeValueEl = document.getElementById('momentReactionLikeValue');
             if (!likeStatusEl) likeStatusEl = document.getElementById('momentReactionLikeStatus');
-            return likeButtonEl && guestNoteEl && errorEl && likeValueEl && likeStatusEl;
+            if (!commentStatusEl) commentStatusEl = document.getElementById('momentReactionCommentStatus');
+            if (!commentValueEl) commentValueEl = document.getElementById('momentReactionCommentValue');
+            if (!noteEl) noteEl = document.getElementById('momentReactionNote');
+            if (!statusRegionEl) statusRegionEl = document.getElementById('momentReactionLikeStatusRegion');
+            return cardEl && likeButtonEl && guestNoteEl && errorEl && likeValueEl && likeStatusEl
+                && commentStatusEl && commentValueEl && noteEl && statusRegionEl;
+        }
+
+        function setCardReadOnly() {
+            if (!getElements()) return;
+            cardEl.setAttribute('data-read-only-summary', 'true');
+            cardEl.classList.add('is-read-only');
+            cardEl.classList.add('is-public-readonly');
+            cardEl.setAttribute('aria-label', '순간 반응 (읽기 전용)');
+        }
+
+        function setCardActionable() {
+            if (!getElements()) return;
+            cardEl.removeAttribute('data-read-only-summary');
+            cardEl.classList.remove('is-read-only');
+            cardEl.classList.remove('is-public-readonly');
+            cardEl.setAttribute('aria-label', '순간 반응');
         }
 
         function hideAuthElements() {
@@ -698,37 +730,64 @@
             likeButtonEl.setAttribute('aria-pressed', 'false');
             likeButtonEl.removeAttribute('aria-busy');
             likeButtonEl.classList.remove('is-pressed');
+            likeButtonEl.textContent = '';
             guestNoteEl.style.display = 'none';
             errorEl.style.display = 'none';
             errorEl.textContent = '';
+            statusRegionEl.style.display = 'none';
+            statusRegionEl.textContent = '';
         }
 
-        function showGuestNote() {
+        function showGuestMode() {
             if (!getElements()) return;
+            setCardReadOnly();
             likeButtonEl.style.display = 'none';
             likeButtonEl.disabled = true;
             guestNoteEl.style.display = '';
+            guestNoteEl.textContent = '로그인하면 좋아요를 남길 수 있어요.';
             errorEl.style.display = 'none';
             errorEl.textContent = '';
+            statusRegionEl.style.display = 'none';
+            statusRegionEl.textContent = '';
+            noteEl.textContent = '반응 기능은 준비 중이에요.';
         }
 
-        function showButton(pressed, count) {
+        function showAuthActionable(pressed, count) {
             if (!getElements()) return;
+            setCardActionable();
             likeButtonEl.style.display = '';
             likeButtonEl.disabled = false;
             likeButtonEl.setAttribute('aria-pressed', pressed ? 'true' : 'false');
             likeButtonEl.classList.toggle('is-pressed', pressed);
             likeButtonEl.removeAttribute('aria-busy');
+            likeButtonEl.textContent = pressed ? '\u2764\uFE0F \uC88B\uC544\uC694 \uCDE8\uC18C' : '\u2764\uFE0F \uC88B\uC544\uC694';
             guestNoteEl.style.display = 'none';
             errorEl.style.display = 'none';
             errorEl.textContent = '';
-            likeValueEl.textContent = String(count);
-            if (likeStatusEl) likeStatusEl.setAttribute('aria-label', '좋아요 ' + count + '개');
+            statusRegionEl.style.display = 'none';
+            statusRegionEl.textContent = '';
+            // Count is managed by the public summary boundary (authoritative aggregate)
+            if (likeStatusEl) likeStatusEl.setAttribute('aria-label', '\uC88B\uC544\uC694 ' + (parseInt(likeValueEl.textContent, 10) || 0) + '\uAC1C');
+            noteEl.textContent = '\uB313\uAE00 \uAE30\uB2A5\uC740 \uC900\uBE44 \uC911\uC774\uC5D0\uC694.';
+        }
+
+        function showAuthUnavailable() {
+            if (!getElements()) return;
+            setCardReadOnly();
+            likeButtonEl.style.display = 'none';
+            likeButtonEl.disabled = true;
+            guestNoteEl.style.display = '';
+            guestNoteEl.textContent = '\uC88B\uC544\uC694 \uC815\uBCF4\uB97C \uBD88\uB7EC\uC62C \uC218 \uC5C6\uC5B4\uC694.';
+            errorEl.style.display = 'none';
+            errorEl.textContent = '';
+            statusRegionEl.style.display = 'none';
+            statusRegionEl.textContent = '';
+            noteEl.textContent = '\uBC18\uC751 \uAE30\uB2A5\uC740 \uC900\uBE44 \uC911\uC774\uC5D0\uC694.';
         }
 
         function showErrorText(message) {
             if (!getElements()) return;
-            errorEl.textContent = message || '오류가 발생했어요.';
+            errorEl.textContent = message || '\uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC5B4\uC694.';
             errorEl.style.display = '';
             setTimeout(function() {
                 if (errorEl) {
@@ -736,6 +795,18 @@
                     errorEl.textContent = '';
                 }
             }, 3000);
+        }
+
+        function showPoliteNotice(message) {
+            if (!getElements()) return;
+            statusRegionEl.textContent = message || '';
+            statusRegionEl.style.display = '';
+            setTimeout(function() {
+                if (statusRegionEl) {
+                    statusRegionEl.style.display = 'none';
+                    statusRegionEl.textContent = '';
+                }
+            }, 4000);
         }
 
         function setInFlight(busy) {
@@ -770,17 +841,18 @@
                 // Update UI optimistically
                 likeButtonEl.setAttribute('aria-pressed', newPressed ? 'true' : 'false');
                 likeButtonEl.classList.toggle('is-pressed', newPressed);
+                likeButtonEl.textContent = newPressed ? '\u2764\uFE0F \uC88B\uC544\uC694 \uCDE8\uC18C' : '\u2764\uFE0F \uC88B\uC544\uC694';
                 likeValueEl.textContent = String(newCount);
-                if (likeStatusEl) likeStatusEl.setAttribute('aria-label', '좋아요 ' + newCount + '개');
+                if (likeStatusEl) likeStatusEl.setAttribute('aria-label', '\uC88B\uC544\uC694 ' + newCount + '\uAC1C');
 
                 setInFlight(true);
 
                 var callGen = currentGeneration;
 
                 toggleReaction(memoryId, 'like').then(function(response) {
+                    setInFlight(false);
                     if (callGen !== currentGeneration) return;
                     if (!getElements()) return;
-                    setInFlight(false);
 
                     // Use response as immediate state
                     if (response && typeof response === 'object') {
@@ -789,10 +861,11 @@
                         if (typeof active === 'boolean') {
                             likeButtonEl.setAttribute('aria-pressed', active ? 'true' : 'false');
                             likeButtonEl.classList.toggle('is-pressed', active);
+                            likeButtonEl.textContent = active ? '\u2764\uFE0F \uC88B\uC544\uC694 \uCDE8\uC18C' : '\u2764\uFE0F \uC88B\uC544\uC694';
                         }
                         if (typeof responseCount === 'number' && responseCount >= 0) {
                             likeValueEl.textContent = String(responseCount);
-                            if (likeStatusEl) likeStatusEl.setAttribute('aria-label', '좋아요 ' + responseCount + '개');
+                            if (likeStatusEl) likeStatusEl.setAttribute('aria-label', '\uC88B\uC544\uC694 ' + responseCount + '\uAC1C');
                             lastLikeState.count = responseCount;
                         }
                         lastLikeState.pressed = likeButtonEl.getAttribute('aria-pressed') === 'true';
@@ -800,20 +873,21 @@
 
                     // Public reconciliation after successful write
                     if (typeof reconcilePublicSummary === 'function') {
-                        reconcilePublicSummary({ id: memoryId, treeId: treeId });
+                        reconcilePublicSummary({ id: memoryId, treeId: treeId }, true);
                     }
                 }).catch(function() {
+                    setInFlight(false);
                     if (callGen !== currentGeneration) return;
                     if (!getElements()) return;
-                    setInFlight(false);
 
                     // Rollback to previous state
                     likeButtonEl.setAttribute('aria-pressed', lastLikeState.pressed ? 'true' : 'false');
                     likeButtonEl.classList.toggle('is-pressed', lastLikeState.pressed);
+                    likeButtonEl.textContent = lastLikeState.pressed ? '\u2764\uFE0F \uC88B\uC544\uC694 \uCDE8\uC18C' : '\u2764\uFE0F \uC88B\uC544\uC694';
                     likeValueEl.textContent = String(lastLikeState.count);
-                    if (likeStatusEl) likeStatusEl.setAttribute('aria-label', '좋아요 ' + lastLikeState.count + '개');
+                    if (likeStatusEl) likeStatusEl.setAttribute('aria-label', '\uC88B\uC544\uC694 ' + lastLikeState.count + '\uAC1C');
 
-                    showErrorText('좋아요를 처리할 수 없어요. 다시 시도해 주세요.');
+                    showErrorText('\uC88B\uC544\uC694\uB97C \uCC98\uB9AC\uD560 \uC218 \uC5C6\uC5B4\uC694. \uB2E4\uC2DC \uC2DC\uB3C4\uD574 \uC8FC\uC138\uC694.');
                 });
             };
         }
@@ -829,12 +903,14 @@
                 currentGeneration++;
                 if (sharedGenRef) sharedGenRef.value = currentGeneration;
                 lastLoadedMemoryId = null;
+                inFlight = false;
                 treeId = null;
                 return;
             }
 
-            // Check if memory changed
+            // Memory changed: release pending in-flight lock
             if (memoryId !== lastLoadedMemoryId) {
+                inFlight = false;
                 currentGeneration++;
                 if (sharedGenRef) sharedGenRef.value = currentGeneration;
                 lastLoadedMemoryId = memoryId;
@@ -847,7 +923,7 @@
             var isAuthConfirmed = hasConfirmedAuthSession();
 
             if (!isAuthConfirmed) {
-                showGuestNote();
+                showGuestMode();
                 return;
             }
 
@@ -856,10 +932,12 @@
             likeButtonEl.style.display = '';
             likeButtonEl.disabled = true;
             guestNoteEl.style.display = 'none';
+            guestNoteEl.textContent = '\uB85C\uADF8\uC778\uD558\uBA74 \uC88B\uC544\uC694\uB97C \uB0A8\uAE38 \uC218 \uC788\uC5B4\uC694.';
             errorEl.style.display = 'none';
+            statusRegionEl.style.display = 'none';
 
             if (!fetchReactionSummary) {
-                showButton(false, parseInt(likeValueEl.textContent, 10) || 0);
+                showAuthUnavailable();
                 return;
             }
 
@@ -870,28 +948,36 @@
 
                 var pressed = false;
                 var count = 0;
+                var validState = false;
 
                 if (result && typeof result === 'object') {
                     var userReactions = result.userReactions;
-                    if (Array.isArray(userReactions)) {
-                        pressed = userReactions.some(function(r) {
-                            return r && r.type === 'like' && r.active === true;
-                        });
+                    // userReactions is an object like { like: true }, not an array
+                    if (userReactions && typeof userReactions === 'object' && !Array.isArray(userReactions)) {
+                        pressed = userReactions.like === true;
+                        validState = true;
                     }
-                    if (result.counts && typeof result.counts.like === 'number') {
+                    if (result.counts && typeof result.counts === 'object' && typeof result.counts.like === 'number' && result.counts.like >= 0) {
                         count = result.counts.like;
+                    } else if (validState) {
+                        count = 0;
                     }
+                }
+
+                if (!validState) {
+                    showAuthUnavailable();
+                    return;
                 }
 
                 lastLikeState.pressed = pressed;
                 lastLikeState.count = count;
-                showButton(pressed, count);
+                showAuthActionable(pressed, count);
 
                 // Wire up click handler for this memory
                 likeButtonEl.onclick = createClickHandler(memoryId, thisGen);
             }).catch(function() {
                 if (thisGen !== currentGeneration) return;
-                showButton(false, parseInt(likeValueEl.textContent, 10) || 0);
+                showAuthUnavailable();
             });
         };
     }
@@ -1077,7 +1163,10 @@
             var memoryId = data ? data.id : null;
             if (memoryId && lastDetailKey === memoryId && (now - lastDetailAt) < 150) {
                 updateReadOnlyReactionSummary(data);
-                updateAuthenticatedLike(data);
+                // Defer auth boundary after public summary microtasks
+                Promise.resolve().then(function() {
+                    updateAuthenticatedLike(data);
+                });
                 return;
             }
             if (memoryId) {
@@ -1099,7 +1188,10 @@
             updateMemoBody(data);
             updateCurrentMomentTags(data);
             updateReadOnlyReactionSummary(data);
-            updateAuthenticatedLike(data);
+            // Defer auth boundary after public summary microtasks
+            Promise.resolve().then(function() {
+                updateAuthenticatedLike(data);
+            });
         };
         return detailUI;
     }

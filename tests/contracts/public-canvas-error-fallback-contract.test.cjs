@@ -267,6 +267,7 @@ test('8. non-allowlisted files are not modified', () => {
     'tests/contracts/localization-key-predicate-contract.test.cjs',
     'tests/contracts/public-viewer-reaction-safe-fallback-contract.test.cjs',
     'tests/contracts/public-viewer-read-only-social-summary-contract.test.cjs',
+    'tests/contracts/public-viewer-authenticated-like-contract.test.cjs',
     'tests/routes/public-canvas-direct-load-moment-count-regression.test.cjs',
     'tests/routes/public-canvas-loading-state-contract.test.cjs',
     'tests/routes/public-viewer-reactions-contract.test.cjs',
