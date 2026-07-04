@@ -56,6 +56,10 @@ function createDetailUI(fetchReactionSummary, fetchComments) {
     momentReactionLikeValue: createMockElement(),
     momentReactionCommentValue: createMockElement(),
     momentReactionNote: createMockElement(),
+    momentReactionCommentStatus: createMockElement('button'),
+    momentCommentsPanel: createMockElement(),
+    momentCommentsList: createMockElement(),
+    momentCommentsPanelStatus: createMockElement(),
     detailTreeMetaMount: createMockElement(),
     detailCurrentMomentBadge: createMockElement(),
     detailCurrentMomentTitle: createMockElement(),
@@ -67,9 +71,8 @@ function createDetailUI(fetchReactionSummary, fetchComments) {
   };
 
   const likeStatus = createMockElement();
-  const commentStatus = createMockElement();
   elements.momentReactionLikeValue.parentElement = likeStatus;
-  elements.momentReactionCommentValue.parentElement = commentStatus;
+  elements.momentReactionCommentValue.parentElement = elements.momentReactionCommentStatus;
 
   const imgParent = createMockElement('div');
   imgParent.classList.add('detail-video');
@@ -126,7 +129,7 @@ function reactionDTOEmpty() {
 }
 
 const commentsDTOEmpty = { comments: [], nextCursor: null };
-const commentsDTOThree = { comments: [{ id: 'c1', body: 'a' }, { id: 'c2' }, { id: 'c3' }], nextCursor: null };
+const commentsDTOThree = { comments: [{ id: 'c1', body: 'a' }, { id: 'c2', body: 'b' }, { id: 'c3', body: 'c' }], nextCursor: null };
 
 // ---------------------------------------------------------------------------
 // Tests
@@ -315,7 +318,7 @@ test('retry performs both reads again and renders success', async () => {
     },
     async () => {
       if (failComments) { failComments = false; throw new Error('first fail'); }
-      return { comments: [{ id: 'c1' }, { id: 'c2' }], nextCursor: null };
+      return { comments: [{ id: 'c1', body: 'x' }, { id: 'c2', body: 'y' }], nextCursor: null };
     }
   );
 
@@ -422,4 +425,170 @@ test('#1882 wording rule — only Refs, never Closes/Fixes', () => {
   assert.ok(!scriptSource.includes('Fixes #1882'), 'must not use Fixes #1882');
   assert.ok(!scriptSource.includes('Closes #1882'), 'must not use Closes #1882');
   assert.ok(!scriptSource.includes('Resolves #1882'), 'must not use Resolves #1882');
+});
+
+// ---------------------------------------------------------------------------
+// #3218 — Comments panel regression tests
+// ---------------------------------------------------------------------------
+
+test('zero-comment payload opens panel with empty notice and closes correctly', async () => {
+  const { elements, detailUI, deps } = createDetailUI(
+    async () => reactionDTO(0),
+    async () => commentsDTOEmpty
+  );
+
+  deps.currentSelectedId = 'mem-1';
+  deps.treeMemories = [{ id: 'mem-1', treeId: 'tree-1' }];
+  detailUI.updateDetailPanel({ id: 'mem-1', treeId: 'tree-1' });
+  await new Promise(r => setTimeout(r, 50));
+
+  const toggle = elements.momentReactionCommentStatus;
+  assert.equal(toggle.disabled, false, 'toggle enabled for zero comments');
+  assert.equal(toggle.getAttribute('aria-expanded'), 'false', 'initially collapsed');
+
+  // Click to open
+  toggle.onclick();
+  assert.equal(toggle.getAttribute('aria-expanded'), 'true', 'expanded after click');
+  assert.equal(elements.momentCommentsPanel.hidden, false, 'panel visible');
+  assert.equal(elements.momentCommentsPanelStatus.textContent, '아직 댓글이 없어요.', 'empty notice');
+
+  // Click to close
+  toggle.onclick();
+  assert.equal(toggle.getAttribute('aria-expanded'), 'false', 'collapsed after second click');
+  assert.equal(elements.momentCommentsPanel.hidden, true, 'panel hidden after close');
+});
+
+test('metadata-null click cannot open comments panel', async () => {
+  // When no successful summary has loaded, commentMemoryMeta is null
+  const { elements, detailUI } = createDetailUI(
+    async () => { throw new Error('fail'); },
+    async () => { throw new Error('fail'); }
+  );
+
+  detailUI.updateDetailPanel({ id: 'mem-1', treeId: 'tree-1' });
+  await new Promise(r => setTimeout(r, 50));
+
+  const toggle = elements.momentReactionCommentStatus;
+  assert.equal(toggle.disabled, true, 'toggle disabled after failure');
+  assert.equal(toggle.getAttribute('aria-expanded'), 'false', 'expanded false');
+
+  // The click handler from wireCommentToggle was never wired (fetch never succeeded),
+  // so onclick is null or a no-op that returns early.
+  if (typeof toggle.onclick === 'function') {
+    toggle.onclick();
+    assert.equal(toggle.getAttribute('aria-expanded'), 'false', 'click must not flip expanded');
+  }
+});
+
+test('unavailable result clears metadata and leaves toggle disabled', async () => {
+  const { elements, detailUI, deps } = createDetailUI(
+    async () => null,
+    async () => ({ comments: null })
+  );
+
+  deps.currentSelectedId = 'mem-1';
+  deps.treeMemories = [{ id: 'mem-1', treeId: 'tree-1' }];
+  detailUI.updateDetailPanel({ id: 'mem-1', treeId: 'tree-1' });
+  await new Promise(r => setTimeout(r, 50));
+
+  assert.equal(elements.momentReactionCommentStatus.disabled, true, 'toggle disabled after unavailable');
+  assert.equal(elements.momentReactionCommentStatus.getAttribute('aria-expanded'), 'false', 'expanded false');
+  assert.equal(elements.momentCommentsPanel.hidden, true, 'panel hidden');
+  assert.equal(elements.momentCommentsList.textContent, '', 'list cleared');
+});
+
+test('malformed comment item body rejection', async () => {
+  const malformedCases = [
+    // Non-string body
+    { comments: [{ id: 'c1', body: 'ok' }, { id: 'c2', body: 123 }], nextCursor: null },
+    // Missing body property
+    { comments: [{ id: 'c1', body: 'ok' }, { id: 'c2' }], nextCursor: null },
+    // Array item (instead of object)
+    { comments: [{ id: 'c1', body: 'ok' }, ['not-object']], nextCursor: null },
+    // inherited body via prototype
+    (function() {
+      var proto = { body: 'inherited' };
+      var item = Object.create(proto);
+      item.id = 'c3';
+      return { comments: [{ id: 'c1', body: 'ok' }, item], nextCursor: null };
+    })(),
+  ];
+
+  for (const badData of malformedCases) {
+    const { elements, detailUI, deps } = createDetailUI(
+      async () => reactionDTO(1),
+      async () => badData
+    );
+
+    deps.currentSelectedId = 'mem-1';
+    deps.treeMemories = [{ id: 'mem-1', treeId: 'tree-1' }];
+    elements.momentReactionsCard.dataset.socialLoading = 'true';
+    elements.momentReactionsCard.style.display = '';
+
+    detailUI.updateDetailPanel({ id: 'mem-1', treeId: 'tree-1' });
+    await new Promise(r => setTimeout(r, 50));
+
+    assert.equal(elements.momentReactionsCard.dataset.socialLoading, undefined, 'loading removed');
+    assert.equal(elements.momentReactionCommentStatus.disabled, true, 'toggle disabled for malformed');
+    assert.equal(elements.momentReactionCommentStatus.getAttribute('aria-expanded'), 'false', 'expanded false');
+    assert.equal(elements.momentCommentsPanel.hidden, true, 'panel hidden');
+  }
+});
+
+test('stale old moment response cannot reopen or replace newer moment comments panel', async () => {
+  let resolveOldComments;
+  const oldCommentsP = new Promise(r => { resolveOldComments = r; });
+  let resolveNewComments;
+  const newCommentsP = new Promise(r => { resolveNewComments = r; });
+
+  const { elements, detailUI, deps } = createDetailUI(
+    async () => reactionDTO(0),
+    async (treeId, memoryId) => {
+      if (memoryId === 'old') return oldCommentsP;
+      if (memoryId === 'new') return newCommentsP;
+      return commentsDTOEmpty;
+    }
+  );
+
+  // Select old moment
+  deps.currentSelectedId = 'old';
+  deps.treeMemories = [{ id: 'old', treeId: 'tree-1' }];
+  detailUI.updateDetailPanel({ id: 'old', treeId: 'tree-1' });
+
+  // Switch to new before old resolves
+  deps.currentSelectedId = 'new';
+  deps.treeMemories = [{ id: 'new', treeId: 'tree-1' }];
+  detailUI.updateDetailPanel({ id: 'new', treeId: 'tree-1' });
+
+  // Resolve new moment first
+  resolveNewComments({ comments: [{ id: 'n1', body: 'new comment' }], nextCursor: null });
+  await new Promise(r => setTimeout(r, 50));
+
+  // Open new moment's panel
+  const toggle = elements.momentReactionCommentStatus;
+  assert.equal(toggle.disabled, false, 'toggle enabled for new');
+  toggle.onclick();
+  assert.equal(toggle.getAttribute('aria-expanded'), 'true', 'new panel opened');
+  assert.equal(elements.momentCommentsList.children.length, 1, 'one comment visible');
+  assert.equal(elements.momentCommentsList.children[0].textContent, 'new comment', 'correct body');
+
+  // Now resolve old (should be stale — generation mismatch)
+  resolveOldComments({ comments: [{ id: 'o1', body: 'STALE_OVERWRITE' }], nextCursor: null });
+  await new Promise(r => setTimeout(r, 50));
+
+  // Old response must NOT change current panel
+  assert.equal(toggle.getAttribute('aria-expanded'), 'true', 'still expanded after stale resolve');
+  assert.equal(elements.momentCommentsList.children.length, 1, 'still one comment');
+  assert.equal(elements.momentCommentsList.children[0].textContent, 'new comment', 'body unchanged by stale');
+});
+
+test('read-only comment boundary uses no DocumentFragment or HTML insertion', () => {
+  const readOnlyFn = scriptSource.match(/function createPublicViewerReadOnlyReactionSummaryBoundary[\s\S]*?(?=function createPublicViewerAuthenticatedLikeBoundary|function createPublicViewerTreeMetaBoundary)/);
+  const readOnlySource = readOnlyFn ? readOnlyFn[0] : '';
+  assert.ok(readOnlySource.length > 100, 'read-only boundary source found');
+
+  assert.equal(readOnlySource.includes('createDocumentFragment'), false, 'no DocumentFragment');
+  assert.equal(readOnlySource.includes('innerHTML'), false, 'no innerHTML');
+  assert.equal(readOnlySource.includes('outerHTML'), false, 'no outerHTML');
+  assert.equal(readOnlySource.includes('insertAdjacentHTML'), false, 'no insertAdjacentHTML');
 });

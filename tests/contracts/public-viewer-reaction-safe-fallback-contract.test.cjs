@@ -74,7 +74,11 @@ test('Public read-only social summary never invokes private reaction API and hid
     momentReactionsCard: createMockElement(),
     momentReactionLikeValue: createMockElement(),
     momentReactionCommentValue: createMockElement(),
-    momentReactionNote: createMockElement()
+    momentReactionNote: createMockElement(),
+    momentReactionCommentStatus: createMockElement('button'),
+    momentCommentsPanel: createMockElement(),
+    momentCommentsList: createMockElement(),
+    momentCommentsPanelStatus: createMockElement()
   };
 
   elements.momentReactionsCard.setAttribute('data-read-only-summary', 'true');
@@ -82,9 +86,8 @@ test('Public read-only social summary never invokes private reaction API and hid
   elements.momentReactionsCard.classList.add('is-public-readonly');
 
   const likeStatus = createMockElement();
-  const commentStatus = createMockElement();
   elements.momentReactionLikeValue.parentElement = likeStatus;
-  elements.momentReactionCommentValue.parentElement = commentStatus;
+  elements.momentReactionCommentValue.parentElement = elements.momentReactionCommentStatus;
 
   const imgParent = createMockElement('div');
   imgParent.classList.add('detail-video');
@@ -128,7 +131,7 @@ test('Public read-only social summary never invokes private reaction API and hid
     getLocalSaveMode: () => false,
     showToast: () => {},
     fetchPublicMomentReactionSummary: async () => ({ counts: { like: 0 }, total: 0 }),
-    fetchPublicMomentComments: async () => ({ comments: [] })
+    fetchPublicMomentComments: async () => ({ comments: [], nextCursor: null })
   };
 
   const detailUI = context.createPublicViewerDetailUI(deps);

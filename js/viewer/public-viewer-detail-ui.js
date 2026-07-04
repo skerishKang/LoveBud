@@ -477,6 +477,11 @@
         var likeValueEl = null;
         var commentValueEl = null;
         var noteEl = null;
+        var commentToggleEl = null;
+        var commentPanelEl = null;
+        var commentsListEl = null;
+        var commentsPanelStatusEl = null;
+        var commentMemoryMeta = null;
 
         function getGeneration() {
             return sharedGenRef ? sharedGenRef.value : currentGeneration;
@@ -496,7 +501,12 @@
             if (!likeValueEl) likeValueEl = document.getElementById('momentReactionLikeValue');
             if (!commentValueEl) commentValueEl = document.getElementById('momentReactionCommentValue');
             if (!noteEl) noteEl = document.getElementById('momentReactionNote');
-            return cardEl && likeValueEl && commentValueEl && noteEl;
+            if (!commentToggleEl) commentToggleEl = document.getElementById('momentReactionCommentStatus');
+            if (!commentPanelEl) commentPanelEl = document.getElementById('momentCommentsPanel');
+            if (!commentsListEl) commentsListEl = document.getElementById('momentCommentsList');
+            if (!commentsPanelStatusEl) commentsPanelStatusEl = document.getElementById('momentCommentsPanelStatus');
+            return cardEl && likeValueEl && commentValueEl && noteEl
+                && commentToggleEl && commentPanelEl && commentsListEl && commentsPanelStatusEl;
         }
 
         function setLoadingState(force) {
@@ -513,9 +523,12 @@
                 var likeStatus = likeValueEl.parentElement;
                 var commentStatus = commentValueEl.parentElement;
                 if (likeStatus) likeStatus.setAttribute('aria-label', '좋아요 불러오는 중');
-                if (commentStatus) commentStatus.setAttribute('aria-label', '댓글 불러오는 중');
+                if (commentToggleEl) commentToggleEl.setAttribute('aria-label', '댓글 불러오는 중');
                 noteEl.textContent = '반응 기능은 준비 중이에요.';
+                commentToggleEl.disabled = true;
+                commentToggleEl.setAttribute('aria-expanded', 'false');
             }
+            resetCommentsPanel();
             removeRetryButton();
         }
 
@@ -543,15 +556,30 @@
             }
 
             // Validate comments DTO: exactly { comments: Array, nextCursor: null }
-            var commentCount = -1;
+            // Each item must be an object with own string body.
+            // Any malformed item invalidates the entire payload.
+            var validComments = null;
             if (commentsData && typeof commentsData === 'object' && !Array.isArray(commentsData)) {
                 if (Array.isArray(commentsData.comments) && commentsData.nextCursor === null) {
-                    commentCount = commentsData.comments.length;
+                    var items = commentsData.comments;
+                    var allValid = true;
+                    for (var i = 0; i < items.length; i++) {
+                        var item = items[i];
+                        if (!item || typeof item !== 'object' || Array.isArray(item) ||
+                            !Object.prototype.hasOwnProperty.call(item, 'body') ||
+                            typeof item.body !== 'string') {
+                            allValid = false;
+                            break;
+                        }
+                    }
+                    if (allValid) {
+                        validComments = items;
+                    }
                 }
             }
 
-            if (likeCount >= 0 && commentCount >= 0) {
-                return { likeCount: likeCount, commentCount: commentCount };
+            if (likeCount >= 0 && validComments !== null) {
+                return { likeCount: likeCount, commentCount: validComments.length, comments: validComments };
             }
             return null;
         }
@@ -566,20 +594,50 @@
 
             if (commentCount === 0) {
                 commentValueEl.textContent = '0';
-                var commentStatus = commentValueEl.parentElement;
-                if (commentStatus) commentStatus.setAttribute('aria-label', '댓글 없음');
+                if (commentToggleEl) commentToggleEl.setAttribute('aria-label', '댓글 없음');
             } else {
                 commentValueEl.textContent = commentCount + '개 표시';
-                var commentStatus = commentValueEl.parentElement;
-                if (commentStatus) commentStatus.setAttribute('aria-label', '댓글 ' + commentCount + '개 표시');
+                if (commentToggleEl) commentToggleEl.setAttribute('aria-label', '댓글 ' + commentCount + '개 보기');
             }
 
             removeRetryButton();
+            commentToggleEl.disabled = false;
+        }
+
+        function resetCommentsPanel() {
+            if (commentToggleEl) {
+                commentToggleEl.disabled = true;
+                commentToggleEl.setAttribute('aria-expanded', 'false');
+            }
+            if (commentPanelEl) commentPanelEl.hidden = true;
+            if (commentsListEl) commentsListEl.textContent = '';
+            if (commentsPanelStatusEl) commentsPanelStatusEl.textContent = '';
+            commentMemoryMeta = null;
+        }
+
+        function openCommentPanel(commentItems) {
+            if (!commentPanelEl || !commentsListEl || !commentsPanelStatusEl) return;
+            commentsListEl.textContent = '';
+
+            if (!commentItems || !Array.isArray(commentItems) || commentItems.length === 0) {
+                commentsPanelStatusEl.textContent = '\uC544\uC9C1 \uB313\uAE00\uC774 \uC5C6\uC5B4\uC694.';
+                commentPanelEl.hidden = false;
+                return;
+            }
+
+            for (var i = 0; i < commentItems.length; i++) {
+                var li = document.createElement('li');
+                li.textContent = commentItems[i].body;
+                commentsListEl.appendChild(li);
+            }
+            commentsPanelStatusEl.textContent = '';
+            commentPanelEl.hidden = false;
         }
 
         function renderUnavailable(treeId, memoryId, generation, force) {
             if (!getElements()) return;
             delete cardEl.dataset.socialLoading;
+            resetCommentsPanel();
 
             if (!force) {
                 likeValueEl.textContent = '—';
@@ -648,7 +706,16 @@
                         if (sharedGenRef) {
                             sharedGenRef.publicSummaryValid = true;
                         }
+                        commentMemoryMeta = {
+                            memoryId: memoryId,
+                            generation: generation,
+                            comments: valid.comments
+                        };
                         renderSuccess(valid.likeCount, valid.commentCount, force);
+                        // Wire comment toggle only on success (non-force or first load)
+                        if (!force || !commentToggleEl.onclick) {
+                            wireCommentToggle(generation, memoryId);
+                        }
                     } else {
                         if (sharedGenRef) {
                             sharedGenRef.publicSummaryValid = false;
@@ -671,6 +738,28 @@
             if (!getElements()) return;
             cardEl.style.display = 'none';
             removeRetryButton();
+            resetCommentsPanel();
+        }
+
+        function wireCommentToggle(gen, memId) {
+            if (!commentToggleEl) return;
+            commentToggleEl.onclick = function() {
+                var currentMeta = commentMemoryMeta;
+                if (getGeneration() !== gen) return;
+                // A click may set aria-expanded=true only when metadata
+                // exists and generation + memoryId both match the current wire.
+                if (!currentMeta || currentMeta.generation !== gen || currentMeta.memoryId !== memId) {
+                    return;
+                }
+                var isOpen = commentToggleEl.getAttribute('aria-expanded') === 'true';
+                if (isOpen) {
+                    commentToggleEl.setAttribute('aria-expanded', 'false');
+                    if (commentPanelEl) commentPanelEl.hidden = true;
+                } else {
+                    commentToggleEl.setAttribute('aria-expanded', 'true');
+                    openCommentPanel(currentMeta.comments);
+                }
+            };
         }
 
         return function updatePublicViewerReadOnlyReactionSummary(data, force) {
