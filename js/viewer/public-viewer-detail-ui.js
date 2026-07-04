@@ -454,6 +454,12 @@
     }
 
     function createPublicViewerReadOnlyReactionSummaryBoundary(deps) {
+        var fetchReactionSummary = deps && typeof deps.fetchPublicMomentReactionSummary === 'function'
+            ? deps.fetchPublicMomentReactionSummary
+            : null;
+        var fetchComments = deps && typeof deps.fetchPublicMomentComments === 'function'
+            ? deps.fetchPublicMomentComments
+            : null;
         var isRootMemory = deps && typeof deps.isRootMemory === 'function'
             ? deps.isRootMemory
             : function() { return false; };
@@ -461,23 +467,173 @@
             ? deps.getCanonicalRootId
             : function() { return null; };
 
-        return function updatePublicViewerReadOnlyReactionSummary(data) {
-            var reactionsCard = document.getElementById('momentReactionsCard');
-            if (!reactionsCard) return;
+        var currentGeneration = 0;
+        var lastLoadedMemoryId = null;
+        var cardEl = null;
+        var likeValueEl = null;
+        var commentValueEl = null;
+        var noteEl = null;
 
-            var rootId = getCanonicalRootId();
-            if (!data || isRootMemory(data, rootId)) {
-                reactionsCard.style.display = 'none';
+        function getElements() {
+            if (!cardEl) cardEl = document.getElementById('momentReactionsCard');
+            if (!likeValueEl) likeValueEl = document.getElementById('momentReactionLikeValue');
+            if (!commentValueEl) commentValueEl = document.getElementById('momentReactionCommentValue');
+            if (!noteEl) noteEl = document.getElementById('momentReactionNote');
+            return cardEl && likeValueEl && commentValueEl && noteEl;
+        }
+
+        function setLoadingState() {
+            if (!getElements()) return;
+            cardEl.style.display = '';
+            cardEl.dataset.socialLoading = 'true';
+            cardEl.setAttribute('data-read-only-summary', 'true');
+            cardEl.classList.add('is-read-only');
+            cardEl.classList.add('is-public-readonly');
+            cardEl.setAttribute('aria-label', '순간 반응 (읽기 전용)');
+            likeValueEl.textContent = '⋯';
+            commentValueEl.textContent = '⋯';
+            var likeStatus = likeValueEl.parentElement;
+            var commentStatus = commentValueEl.parentElement;
+            if (likeStatus) likeStatus.setAttribute('aria-label', '좋아요 불러오는 중');
+            if (commentStatus) commentStatus.setAttribute('aria-label', '댓글 불러오는 중');
+            noteEl.textContent = '반응 기능은 준비 중이에요.';
+            removeRetryButton();
+        }
+
+        function removeRetryButton() {
+            if (!cardEl) return;
+            var existingRetry = cardEl.querySelector('[data-social-retry="1"]');
+            if (existingRetry && existingRetry.parentElement) {
+                existingRetry.parentElement.removeChild(existingRetry);
+            }
+        }
+
+        function renderSuccess(reactionData, commentsData) {
+            if (!getElements()) return;
+            delete cardEl.dataset.socialLoading;
+
+            // Like aggregate from reaction DTO
+            var likeCount = 0;
+            if (reactionData && typeof reactionData === 'object') {
+                if (Array.isArray(reactionData.reactions)) {
+                    likeCount = reactionData.reactions.filter(function(r) {
+                        return r && r.type === 'like';
+                    }).length;
+                } else if (typeof reactionData.likeCount === 'number') {
+                    likeCount = reactionData.likeCount;
+                } else if (reactionData.count !== undefined) {
+                    likeCount = Number(reactionData.count) || 0;
+                }
+            }
+            likeValueEl.textContent = String(likeCount);
+            var likeStatus = likeValueEl.parentElement;
+            if (likeStatus) likeStatus.setAttribute('aria-label', '좋아요 ' + likeCount + '개');
+
+            // Bounded comment count — never claim unbounded total
+            var commentCount = 0;
+            if (commentsData && typeof commentsData === 'object') {
+                if (Array.isArray(commentsData.comments)) {
+                    commentCount = commentsData.comments.length;
+                } else if (Array.isArray(commentsData)) {
+                    commentCount = commentsData.length;
+                } else if (typeof commentsData.count === 'number') {
+                    commentCount = commentsData.count;
+                }
+            }
+
+            if (commentCount === 0) {
+                commentValueEl.textContent = '0';
+                var commentStatus = commentValueEl.parentElement;
+                if (commentStatus) commentStatus.setAttribute('aria-label', '댓글 없음');
+            } else {
+                commentValueEl.textContent = commentCount + '개 표시';
+                var commentStatus = commentValueEl.parentElement;
+                if (commentStatus) commentStatus.setAttribute('aria-label', '댓글 ' + commentCount + '개 표시');
+            }
+
+            noteEl.textContent = '반응 기능은 준비 중이에요.';
+            removeRetryButton();
+        }
+
+        function renderUnavailable(treeId, memoryId, generation) {
+            if (!getElements()) return;
+            delete cardEl.dataset.socialLoading;
+            likeValueEl.textContent = '—';
+            var likeStatus = likeValueEl.parentElement;
+            if (likeStatus) likeStatus.setAttribute('aria-label', '좋아요 정보 없음');
+            commentValueEl.textContent = '—';
+            var commentStatus = commentValueEl.parentElement;
+            if (commentStatus) commentStatus.setAttribute('aria-label', '댓글 정보 없음');
+            noteEl.textContent = '반응 정보를 불러올 수 없어요.';
+
+            // Add real keyboard-accessible retry button only in unavailable state
+            if (!cardEl.querySelector('[data-social-retry="1"]')) {
+                var retryBtn = document.createElement('button');
+                retryBtn.setAttribute('data-social-retry', '1');
+                retryBtn.className = 'editor-retry-button';
+                retryBtn.textContent = '다시 시도';
+                retryBtn.setAttribute('aria-label', '반응 정보 다시 불러오기');
+                retryBtn.type = 'button';
+                retryBtn.onclick = function() {
+                    if (generation !== currentGeneration) return;
+                    performFetch(treeId, memoryId, generation);
+                };
+                cardEl.appendChild(retryBtn);
+            }
+        }
+
+        function performFetch(treeId, memoryId, generation) {
+            if (!fetchReactionSummary || !fetchComments) {
+                if (generation === currentGeneration) renderUnavailable(treeId, memoryId, generation);
                 return;
             }
 
-            reactionsCard.style.display = '';
+            setLoadingState();
 
-            if (reactionsCard) {
-                reactionsCard.classList.add('is-read-only');
-                reactionsCard.classList.add('is-public-readonly');
-                reactionsCard.setAttribute('data-read-only-summary', 'true');
+            Promise.all([
+                fetchReactionSummary(treeId, memoryId).catch(function() { return null; }),
+                fetchComments(treeId, memoryId).catch(function() { return null; })
+            ]).then(function(results) {
+                if (generation !== currentGeneration) return;
+                var reactionData = results[0];
+                var commentsData = results[1];
+                if (reactionData !== null && commentsData !== null) {
+                    renderSuccess(reactionData, commentsData);
+                } else {
+                    renderUnavailable(treeId, memoryId, generation);
+                }
+            });
+        }
+
+        function hideCard() {
+            if (!getElements()) return;
+            cardEl.style.display = 'none';
+            removeRetryButton();
+        }
+
+        return function updatePublicViewerReadOnlyReactionSummary(data) {
+            var rootId = getCanonicalRootId();
+            var treeId = data && data.treeId;
+            var memoryId = data && data.id;
+
+            // Root moment, empty state, missing memory/tree ID: hide card, issue no request
+            if (!data || !treeId || !memoryId || isRootMemory(data, rootId)) {
+                hideCard();
+                currentGeneration++;
+                lastLoadedMemoryId = null;
+                return;
             }
+
+            // Avoid duplicate requests when same moment is rendered repeatedly (debounce window)
+            if (memoryId === lastLoadedMemoryId) {
+                return;
+            }
+
+            currentGeneration++;
+            lastLoadedMemoryId = memoryId;
+            var thisGen = currentGeneration;
+
+            performFetch(treeId, memoryId, thisGen);
         };
     }
 

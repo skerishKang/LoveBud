@@ -38,7 +38,13 @@ function createMockElement(tagName = 'div') {
       }
     },
     get firstChild() { return this.children[0] || null; },
-    querySelector() { return null; },
+    querySelector(sel) {
+      // Support retry button lookup
+      if (sel === '[data-social-retry="1"]') {
+        return this.children.find(c => c.getAttribute && c.getAttribute('data-social-retry') === '1') || null;
+      }
+      return null;
+    },
     closest() { return this.parentElement || this; }
   };
   return element;
@@ -53,7 +59,7 @@ test('public-viewer-detail-ui static analysis constraints', () => {
   assert.ok(imgCallIdx < reactionsCallIdx, 'image rendering must be scheduled before reactions update');
 });
 
-test('Public read-only social summary never invokes reaction API and remains static across moment changes', () => {
+test('Public read-only social summary never invokes private reaction API and hides for root', () => {
   let currentSelectedId = 'mem-1';
 
   const elements = {
@@ -65,8 +71,20 @@ test('Public read-only social summary never invokes reaction API and remains sta
     detailDateText: createMockElement(),
     detailMemo: createMockElement(),
     detailTags: createMockElement(),
-    momentReactionsCard: createMockElement()
+    momentReactionsCard: createMockElement(),
+    momentReactionLikeValue: createMockElement(),
+    momentReactionCommentValue: createMockElement(),
+    momentReactionNote: createMockElement()
   };
+
+  elements.momentReactionsCard.setAttribute('data-read-only-summary', 'true');
+  elements.momentReactionsCard.classList.add('is-read-only');
+  elements.momentReactionsCard.classList.add('is-public-readonly');
+
+  const likeStatus = createMockElement();
+  const commentStatus = createMockElement();
+  elements.momentReactionLikeValue.parentElement = likeStatus;
+  elements.momentReactionCommentValue.parentElement = commentStatus;
 
   const imgParent = createMockElement('div');
   imgParent.classList.add('detail-video');
@@ -108,12 +126,16 @@ test('Public read-only social summary never invokes reaction API and remains sta
     resolveMemoryThumbnail: (data) => data.thumbnail || '',
     i18n: (key) => key,
     getLocalSaveMode: () => false,
-    showToast: () => {}
+    showToast: () => {},
+    // #3184: inject stub public-read callbacks — must never call private API
+    fetchPublicMomentReactionSummary: async () => ({ reactions: [], likeCount: 0 }),
+    fetchPublicMomentComments: async () => ({ comments: [] })
   };
 
   const detailUI = context.createPublicViewerDetailUI(deps);
 
-  const data1 = { id: 'mem-1', title: 'Moment 1', thumbnail: '/thumb.jpg' };
+  // Non-root moment: card must be visible, loading state shown
+  const data1 = { id: 'mem-1', title: 'Moment 1', thumbnail: '/thumb.jpg', treeId: 'tree-1' };
   detailUI.updateDetailPanel(data1);
 
   assert.equal(elements.momentReactionsCard.style.display, '', 'Reactions card is shown for valid moment');
@@ -121,8 +143,21 @@ test('Public read-only social summary never invokes reaction API and remains sta
   assert.equal(elements.momentReactionsCard.classList.contains('is-read-only'), true, 'Reactions card has is-read-only class');
   assert.equal(elements.momentReactionsCard.classList.contains('is-public-readonly'), true, 'Reactions card has is-public-readonly class');
 
-  const rootData = { id: 'root', title: 'Root Moment' };
+  // Root moment: card must be hidden, no request issued
+  const rootData = { id: 'root', title: 'Root Moment', treeId: 'tree-1' };
   deps.isRootMemory = (data, id) => data.id === id;
   detailUI.updateDetailPanel(rootData);
   assert.equal(elements.momentReactionsCard.style.display, 'none', 'Reactions card is hidden for root moment');
+
+  // Moment with missing treeId: card must be hidden, no request issued
+  elements.momentReactionsCard.style.display = ''; // reset
+  const noTreeIdData = { id: 'mem-2', title: 'No Tree' };
+  detailUI.updateDetailPanel(noTreeIdData);
+  assert.equal(elements.momentReactionsCard.style.display, 'none', 'Reactions card is hidden when treeId is missing');
+
+  // Moment with missing id: card must be hidden, no request issued
+  elements.momentReactionsCard.style.display = ''; // reset
+  const noIdData = { treeId: 'tree-1' };
+  detailUI.updateDetailPanel(noIdData);
+  assert.equal(elements.momentReactionsCard.style.display, 'none', 'Reactions card is hidden when memory id is missing');
 });

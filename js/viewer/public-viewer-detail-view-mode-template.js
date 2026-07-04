@@ -44,27 +44,30 @@
                         id="momentReactionsCard"
                         aria-label="순간 반응 (읽기 전용)"
                         data-read-only-summary="true"
+                        data-social-loading="true"
                         style="font-variant-numeric:tabular-nums;"
                     >
                         <div
                             class="public-viewer-social-status"
+                            id="momentReactionLikeStatus"
                             role="status"
-                            aria-label="좋아요 정보 없음"
+                            aria-label="좋아요 불러오는 중"
                         >
                             <span class="editor-reaction-like-icon" aria-hidden="true">🤍</span>
                             <span class="editor-reaction-label">좋아요</span>
-                            <span class="public-viewer-social-status-value">—</span>
+                            <span class="public-viewer-social-status-value" id="momentReactionLikeValue">⋯</span>
                         </div>
                         <div
                             class="public-viewer-social-status"
+                            id="momentReactionCommentStatus"
                             role="status"
-                            aria-label="댓글 정보 없음"
+                            aria-label="댓글 불러오는 중"
                         >
                             <span class="editor-reaction-comment-icon" aria-hidden="true">💬</span>
                             <span class="editor-reaction-label">댓글</span>
-                            <span class="public-viewer-social-status-value">—</span>
+                            <span class="public-viewer-social-status-value" id="momentReactionCommentValue">⋯</span>
                         </div>
-                        <p class="editor-moment-reaction-readonly-note">반응 기능은 준비 중이에요.</p>
+                        <p class="editor-moment-reaction-readonly-note" id="momentReactionNote">반응 기능은 준비 중이에요.</p>
                     </div>
                 </div>
     `;
