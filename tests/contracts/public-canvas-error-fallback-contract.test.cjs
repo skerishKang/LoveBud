@@ -263,6 +263,7 @@ test('8. non-allowlisted files are not modified', () => {
     'js/viewer/templates/public-viewer-sidebar-template.js',
     'pages/view.html',
     'tests/contracts/public-canvas-error-fallback-contract.test.cjs',
+    'tests/routes/public-viewer-script-dependency-guard.test.cjs',
     'tests/contracts/localization-key-display-contract.test.cjs',
     'tests/contracts/localization-key-predicate-contract.test.cjs',
     'tests/contracts/public-viewer-reaction-safe-fallback-contract.test.cjs',

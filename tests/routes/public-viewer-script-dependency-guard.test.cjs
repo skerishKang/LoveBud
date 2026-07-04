@@ -8,6 +8,12 @@ function getScriptSrcs() {
     .map((match) => String(match[1] || '').split('?')[0]);
 }
 
+function getRawScriptSrcs() {
+  const html = fs.readFileSync('pages/view.html', 'utf8');
+  return [...html.matchAll(/<script(?:\s+type="module")?\s+src="([^"]+)"/g)]
+    .map((match) => String(match[1] || ''));
+}
+
 function hasScript(scripts, needle) {
   return scripts.some((src) => src.includes(needle));
 }
@@ -73,4 +79,13 @@ test('public viewer excludes editor authoring-only script stacks', () => {
       `pages/view.html must not load editor authoring-only script: ${needle}`
     );
   });
+});
+
+test('public viewer detail UI uses the #3213 cache-refresh version', () => {
+  const scripts = getRawScriptSrcs();
+
+  assert.ok(
+    scripts.includes('../js/viewer/public-viewer-detail-ui.js?v=20260705-3213-1'),
+    'pages/view.html must request the post-#3214 public viewer detail UI asset version'
+  );
 });
