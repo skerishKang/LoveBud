@@ -466,6 +466,9 @@
         var getCanonicalRootId = deps && typeof deps.getCanonicalRootId === 'function'
             ? deps.getCanonicalRootId
             : function() { return null; };
+        var resolveSocialContext = deps && typeof deps.resolveSocialContext === 'function'
+            ? deps.resolveSocialContext
+            : null;
 
         var sharedGenRef = deps && deps.sharedGenerationRef;
         var currentGeneration = sharedGenRef ? sharedGenRef.value : 0;
@@ -671,12 +674,8 @@
         }
 
         return function updatePublicViewerReadOnlyReactionSummary(data, force) {
-            var rootId = getCanonicalRootId();
-            var treeId = data && data.treeId;
-            var memoryId = data && data.id;
-
-            // Root moment, empty state, missing memory/tree ID: hide card, issue no request
-            if (!data || !treeId || !memoryId || isRootMemory(data, rootId)) {
+            var context = resolveSocialContext ? resolveSocialContext(data) : null;
+            if (!context) {
                 hideCard();
                 var thisGen = nextGeneration();
                 if (sharedGenRef) {
@@ -685,6 +684,9 @@
                 lastLoadedMemoryId = null;
                 return;
             }
+
+            var treeId = context.treeId;
+            var memoryId = context.memoryId;
 
             // Avoid duplicate requests when same moment is rendered repeatedly (debounce window)
             // unless force=true (used for post-write reconciliation)
@@ -723,6 +725,9 @@
             : function() { return null; };
         var reconcilePublicSummary = deps && typeof deps.reconcilePublicSummary === 'function'
             ? deps.reconcilePublicSummary
+            : null;
+        var resolveSocialContext = deps && typeof deps.resolveSocialContext === 'function'
+            ? deps.resolveSocialContext
             : null;
         var sharedGenRef = deps && deps.sharedGenerationRef;
         var currentGeneration = sharedGenRef ? sharedGenRef.value : 0;
@@ -1062,18 +1067,17 @@
         }
 
         return function updatePublicViewerAuthenticatedLike(data) {
-            var rootId = getCanonicalRootId();
-            var memTreeId = data && data.treeId;
-            var memoryId = data && data.id;
-
-            // Root moment, empty state, missing context: hide auth elements
-            if (!data || !memTreeId || !memoryId || isRootMemory(data, rootId)) {
+            var context = resolveSocialContext ? resolveSocialContext(data) : null;
+            if (!context) {
                 hideAuthElements();
                 lastLoadedMemoryId = null;
                 treeId = null;
                 currentSelectionValid = false;
                 return;
             }
+
+            var memTreeId = context.treeId;
+            var memoryId = context.memoryId;
 
             // Memory changed: reset selection valid and save lastLoadedMemoryId
             if (memoryId !== lastLoadedMemoryId) {
@@ -1269,12 +1273,85 @@
         var updateMemoBody = createPublicViewerMemoBodyBoundary(deps);
         var updateCurrentMomentTags = createPublicViewerCurrentMomentTagsBoundary(deps);
         var sharedGenerationRef = { value: 0 };
-        var updateReadOnlyReactionSummary = createPublicViewerReadOnlyReactionSummaryBoundary(
-            Object.assign({}, deps, { sharedGenerationRef: sharedGenerationRef })
-        );
+
+        var resolveSocialContext = function(data) {
+            if (!data || typeof data !== 'object') {
+                return null;
+            }
+            if (!data.id && !data.memoryId && !data.memory_id) {
+                return null;
+            }
+            var isRootMemoryFn = deps && deps.isRootMemory;
+            var getCanonicalRootIdFn = deps && deps.getCanonicalRootId;
+            if (isRootMemoryFn && getCanonicalRootIdFn) {
+                var rootId = getCanonicalRootIdFn();
+                if (isRootMemoryFn(data, rootId)) {
+                    return null;
+                }
+            }
+
+            if (!deps || typeof deps.getSelectedNodeId !== 'function') {
+                return null;
+            }
+            var selectedId = deps.getSelectedNodeId();
+            if (!selectedId) {
+                return null;
+            }
+
+            var memories = deps && typeof deps.getTreeMemories === 'function' ? deps.getTreeMemories() : [];
+            if (!Array.isArray(memories)) {
+                return null;
+            }
+
+            var matchedMemory = null;
+            for (var i = 0; i < memories.length; i++) {
+                var m = memories[i];
+                if (m && m.id === selectedId) {
+                    matchedMemory = m;
+                    break;
+                }
+            }
+
+            if (!matchedMemory) {
+                return null;
+            }
+
+            var treeId = matchedMemory.treeId;
+            if (!treeId || !matchedMemory.id) {
+                return null;
+            }
+
+            if (!data.treeId || data.treeId !== treeId) {
+                return null;
+            }
+
+            // Check if root memory
+            var isRoot = false;
+            if (isRootMemoryFn && getCanonicalRootIdFn) {
+                var rootId = getCanonicalRootIdFn();
+                if (isRootMemoryFn(matchedMemory, rootId)) {
+                    isRoot = true;
+                }
+            }
+            if (isRoot) {
+                return null;
+            }
+
+            return {
+                treeId: treeId,
+                memoryId: matchedMemory.id,
+                memory: matchedMemory
+            };
+        };
+
+        var boundaryDeps = Object.assign({}, deps, {
+            sharedGenerationRef: sharedGenerationRef,
+            resolveSocialContext: resolveSocialContext
+        });
+
+        var updateReadOnlyReactionSummary = createPublicViewerReadOnlyReactionSummaryBoundary(boundaryDeps);
         var updateAuthenticatedLike = createPublicViewerAuthenticatedLikeBoundary(
-            Object.assign({}, deps, {
-                sharedGenerationRef: sharedGenerationRef,
+            Object.assign({}, boundaryDeps, {
                 reconcilePublicSummary: updateReadOnlyReactionSummary
             })
         );

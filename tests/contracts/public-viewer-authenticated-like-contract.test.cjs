@@ -55,7 +55,7 @@ function createMockElement(tagName) {
   };
 }
 
-function createTestContext(fetchReactionSummaryFn, toggleReactionFn, hasConfirmedAuthSessionFn) {
+function createTestContext(fetchReactionSummaryFn, toggleReactionFn, hasConfirmedAuthSessionFn, fetchPublicMomentReactionSummaryFn, fetchPublicMomentCommentsFn) {
   var elements = {
     momentReactionsCard: createMockElement(),
     momentReactionLikeButton: createMockElement('button'),
@@ -107,10 +107,12 @@ function createTestContext(fetchReactionSummaryFn, toggleReactionFn, hasConfirme
   vm.runInContext(scriptSource, context);
 
   var deps = {
-    getSelectedNodeId: function() { return 'mem-1'; },
+    currentSelectedId: 'mem-1',
+    treeMemories: [{ id: 'mem-1', treeId: 'tree-1' }],
+    getSelectedNodeId: function() { return deps.currentSelectedId; },
     isRootMemory: function(data, rootId) { return data && data.id === rootId; },
     getCanonicalRootId: function() { return 'root'; },
-    getTreeMemories: function() { return [{ id: 'mem-1' }]; },
+    getTreeMemories: function() { return deps.treeMemories; },
     resolveMemoryThumbnail: function(data) { return data.thumbnail || ''; },
     i18n: function(k) { return k; },
     getLocalSaveMode: function() { return false; },
@@ -120,12 +122,13 @@ function createTestContext(fetchReactionSummaryFn, toggleReactionFn, hasConfirme
     fetchReactionSummary: fetchReactionSummaryFn || null,
     toggleReaction: toggleReactionFn || null,
     // Public read callbacks
-    fetchPublicMomentReactionSummary: async function() { return { counts: { like: 0 }, total: 0 }; },
-    fetchPublicMomentComments: async function() { return { comments: [], nextCursor: null }; }
+    fetchPublicMomentReactionSummary: fetchPublicMomentReactionSummaryFn || async function() { return { counts: { like: 0 }, total: 0 }; },
+    fetchPublicMomentComments: fetchPublicMomentCommentsFn || async function() { return { comments: [], nextCursor: null }; }
   };
 
   var detailUI = context.createPublicViewerDetailUI(deps);
-  return { elements: elements, detailUI: detailUI, context: context };
+
+  return { elements: elements, detailUI: detailUI, context: context, deps: deps };
 }
 
 function assertButtonAttrs(btn, opts) {
@@ -251,12 +254,14 @@ test('confirmed auth enables private fetchReactionSummary call', async function(
 
 test('root moment hides auth elements and issues no request', async function() {
   var called = false;
-  var { elements, detailUI } = createTestContext(
+  var { elements, detailUI, deps } = createTestContext(
     function() { called = true; return Promise.resolve(null); },
     function() { called = true; return Promise.resolve(null); },
     function() { return true; }
   );
 
+  deps.currentSelectedId = 'root';
+  deps.treeMemories = [{ id: 'root', treeId: 'tree-1' }];
   detailUI.updateDetailPanel({ id: 'root', treeId: 'tree-1' });
   await new Promise(function(r) { setTimeout(r, 50); });
   assert.equal(called, false, 'root must not call private API');
@@ -457,7 +462,7 @@ test('stale response cannot overwrite newer selected moment', async function() {
   var oldToggleCalled = false;
   var newToggleCalled = false;
 
-  var { elements, detailUI } = createTestContext(
+  var { elements, detailUI, deps } = createTestContext(
     async function(memoryId) {
       if (memoryId === 'old') return { counts: { like: 0 }, userReactions: { like: false } };
       return { counts: { like: 0 }, userReactions: { like: false } };
@@ -470,6 +475,8 @@ test('stale response cannot overwrite newer selected moment', async function() {
     function() { return true; }
   );
 
+  deps.currentSelectedId = 'old';
+  deps.treeMemories = [{ id: 'old', treeId: 'tree-1' }];
   detailUI.updateDetailPanel({ id: 'old', treeId: 'tree-1' });
   await new Promise(function(r) { setTimeout(r, 50); });
 
@@ -477,6 +484,8 @@ test('stale response cannot overwrite newer selected moment', async function() {
   assert.equal(oldToggleCalled, true, 'old toggle started');
 
   // Switch to new moment while old write is in-flight
+  deps.currentSelectedId = 'new';
+  deps.treeMemories = [{ id: 'new', treeId: 'tree-1' }];
   detailUI.updateDetailPanel({ id: 'new', treeId: 'tree-1' });
   await new Promise(function(r) { setTimeout(r, 50); });
 
@@ -496,7 +505,7 @@ test('in-flight lock releases after stale generation on success', async function
   var oldToggleP = new Promise(function(r) { resolveOldToggle = r; });
   var newToggleCalled = false;
 
-  var { elements, detailUI } = createTestContext(
+  var { elements, detailUI, deps } = createTestContext(
     async function(memoryId) {
       if (memoryId === 'old') return { counts: { like: 0 }, userReactions: { like: false } };
       return { counts: { like: 0 }, userReactions: { like: false } };
@@ -510,11 +519,15 @@ test('in-flight lock releases after stale generation on success', async function
   );
 
   // Start old moment write
+  deps.currentSelectedId = 'old';
+  deps.treeMemories = [{ id: 'old', treeId: 'tree-1' }];
   detailUI.updateDetailPanel({ id: 'old', treeId: 'tree-1' });
   await new Promise(function(r) { setTimeout(r, 50); });
   elements.momentReactionLikeButton.onclick();
 
   // Switch to new moment
+  deps.currentSelectedId = 'new';
+  deps.treeMemories = [{ id: 'new', treeId: 'tree-1' }];
   detailUI.updateDetailPanel({ id: 'new', treeId: 'tree-1' });
   await new Promise(function(r) { setTimeout(r, 50); });
 
@@ -532,16 +545,20 @@ test('in-flight lock releases after stale generation on failure', async function
   var rejectOldToggle;
   var oldToggleP = new Promise(function(_, r) { rejectOldToggle = r; });
 
-  var { elements, detailUI } = createTestContext(
+  var { elements, detailUI, deps } = createTestContext(
     async function(memoryId) { return { counts: { like: 0 }, userReactions: { like: false } }; },
     function(memoryId) { return oldToggleP; },
     function() { return true; }
   );
 
+  deps.currentSelectedId = 'old';
+  deps.treeMemories = [{ id: 'old', treeId: 'tree-1' }];
   detailUI.updateDetailPanel({ id: 'old', treeId: 'tree-1' });
   await new Promise(function(r) { setTimeout(r, 50); });
   elements.momentReactionLikeButton.onclick();
 
+  deps.currentSelectedId = 'new';
+  deps.treeMemories = [{ id: 'new', treeId: 'tree-1' }];
   detailUI.updateDetailPanel({ id: 'new', treeId: 'tree-1' });
   await new Promise(function(r) { setTimeout(r, 50); });
 
@@ -609,6 +626,144 @@ test('no raw error text in error display', async function() {
     'no raw error text');
   assert.ok(!elements.momentReactionWriteError.textContent.includes('500'),
     'no HTTP status in error');
+});
+
+test('production-shape mismatch: data.id is treeId but getSelectedNodeId is memoryId', async function() {
+  var privateFetchCalledWith = [];
+  var toggleReactionCalledWith = [];
+  var publicFetchCalledWith = [];
+  var publicCommentsCalledWith = [];
+
+  var { elements, detailUI, deps } = createTestContext(
+    async function(memoryId) {
+      privateFetchCalledWith.push(memoryId);
+      return { counts: { like: 10 }, userReactions: { like: true } };
+    },
+    async function(memoryId, action) {
+      toggleReactionCalledWith.push({ memoryId: memoryId, action: action });
+      return { type: 'like', active: false, counts: { like: 9 } };
+    },
+    function() { return true; },
+    async function(treeId, memoryId) {
+      publicFetchCalledWith.push({ treeId: treeId, memoryId: memoryId });
+      return { counts: { like: 10 }, total: 10 };
+    },
+    async function(treeId, memoryId) {
+      publicCommentsCalledWith.push({ treeId: treeId, memoryId: memoryId });
+      return { comments: [], nextCursor: null };
+    }
+  );
+
+  deps.currentSelectedId = 'real-mem-1';
+  deps.treeMemories = [{ id: 'real-mem-1', treeId: 'tree-1' }];
+
+  detailUI.updateDetailPanel({ id: 'tree-1', treeId: 'tree-1' });
+
+  await new Promise(function(r) { setTimeout(r, 50); });
+
+  // A. private summary checks
+  assert.equal(privateFetchCalledWith.length, 1, 'private summary called exactly once');
+  assert.equal(privateFetchCalledWith[0], 'real-mem-1', 'private summary resolved with real memoryId');
+  assert.notEqual(privateFetchCalledWith[0], 'tree-1', 'treeId must not be used as memoryId in private read');
+  assert.equal(elements.momentReactionLikeButton.style.display, '', 'like button is shown');
+  assert.equal(elements.momentReactionLikeButton.disabled, false, 'button is enabled / actionable');
+
+  // B. public summary checks (initial)
+  assert.equal(publicFetchCalledWith.length, 1, 'public summary called exactly once initially');
+  assert.equal(publicFetchCalledWith[0].treeId, 'tree-1', 'public summary treeId matches');
+  assert.equal(publicFetchCalledWith[0].memoryId, 'real-mem-1', 'public summary memoryId matches');
+  assert.notEqual(publicFetchCalledWith[0].memoryId, 'tree-1', 'treeId must not be used as memoryId in public read');
+
+  assert.equal(publicCommentsCalledWith.length, 1, 'public comments called exactly once initially');
+  assert.equal(publicCommentsCalledWith[0].treeId, 'tree-1', 'public comments treeId matches');
+  assert.equal(publicCommentsCalledWith[0].memoryId, 'real-mem-1', 'public comments memoryId matches');
+  assert.notEqual(publicCommentsCalledWith[0].memoryId, 'tree-1', 'treeId must not be used as memoryId in public comments');
+
+  // C. like write + reconciliation checks
+  elements.momentReactionLikeButton.onclick();
+  await new Promise(function(r) { setTimeout(r, 50); });
+
+  // Verify write
+  assert.equal(toggleReactionCalledWith.length, 1, 'toggleReaction called exactly once');
+  assert.equal(toggleReactionCalledWith[0].memoryId, 'real-mem-1', 'toggleReaction resolves with real memoryId');
+  assert.equal(toggleReactionCalledWith[0].action, 'like', 'toggleReaction action matches');
+  assert.notEqual(toggleReactionCalledWith[0].memoryId, 'tree-1', 'treeId must not be used as memoryId in write');
+
+  // Verify successful write reconciliation triggers another public read
+  assert.equal(publicFetchCalledWith.length, 2, 'public summary called again on reconciliation');
+  assert.equal(publicFetchCalledWith[1].treeId, 'tree-1', 'second public summary treeId matches');
+  assert.equal(publicFetchCalledWith[1].memoryId, 'real-mem-1', 'second public summary memoryId matches');
+  assert.notEqual(publicFetchCalledWith[1].memoryId, 'tree-1', 'treeId must not be used as memoryId in second public read');
+
+  assert.equal(publicCommentsCalledWith.length, 2, 'public comments called again on reconciliation');
+  assert.equal(publicCommentsCalledWith[1].treeId, 'tree-1', 'second public comments treeId matches');
+  assert.equal(publicCommentsCalledWith[1].memoryId, 'real-mem-1', 'second public comments memoryId matches');
+  assert.notEqual(publicCommentsCalledWith[1].memoryId, 'tree-1', 'treeId must not be used as memoryId in second public comments');
+});
+
+test('fail-closed regression scenarios', async function() {
+  // 1. getSelectedNodeId() returns null
+  {
+    var privateFetchCount = 0;
+    var toggleCount = 0;
+    var { elements, detailUI, deps } = createTestContext(
+      async function() { privateFetchCount++; return null; },
+      async function() { toggleCount++; return null; },
+      function() { return true; }
+    );
+    deps.currentSelectedId = null;
+    deps.treeMemories = [{ id: 'mem-1', treeId: 'tree-1' }];
+    detailUI.updateDetailPanel({ id: 'mem-1', treeId: 'tree-1' });
+    await new Promise(r => setTimeout(r, 50));
+    assert.equal(privateFetchCount, 0, 'no private fetch if selection missing');
+    assert.equal(elements.momentReactionLikeButton.style.display, 'none', 'like button is not shown');
+  }
+
+  // 2. selected ID is not in canonical memories
+  {
+    var privateFetchCount = 0;
+    var { elements, detailUI, deps } = createTestContext(
+      async function() { privateFetchCount++; return null; },
+      null,
+      function() { return true; }
+    );
+    deps.currentSelectedId = 'different-mem';
+    deps.treeMemories = [{ id: 'mem-1', treeId: 'tree-1' }];
+    detailUI.updateDetailPanel({ id: 'mem-1', treeId: 'tree-1' });
+    await new Promise(r => setTimeout(r, 50));
+    assert.equal(privateFetchCount, 0, 'no private fetch if selection not in memories');
+  }
+
+  // 3. canonical memory treeId and payload data.treeId differ
+  {
+    var privateFetchCount = 0;
+    var { elements, detailUI, deps } = createTestContext(
+      async function() { privateFetchCount++; return null; },
+      null,
+      function() { return true; }
+    );
+    deps.currentSelectedId = 'mem-1';
+    deps.treeMemories = [{ id: 'mem-1', treeId: 'tree-different' }];
+    detailUI.updateDetailPanel({ id: 'mem-1', treeId: 'tree-1' });
+    await new Promise(r => setTimeout(r, 50));
+    assert.equal(privateFetchCount, 0, 'no private fetch if treeId mismatch');
+  }
+
+  // 4. root selected memory
+  {
+    var privateFetchCount = 0;
+    var { elements, detailUI, deps } = createTestContext(
+      async function() { privateFetchCount++; return null; },
+      null,
+      function() { return true; }
+    );
+    deps.currentSelectedId = 'root';
+    deps.treeMemories = [{ id: 'root', treeId: 'tree-1' }];
+    detailUI.updateDetailPanel({ id: 'root', treeId: 'tree-1' });
+    await new Promise(r => setTimeout(r, 50));
+    assert.equal(privateFetchCount, 0, 'no private fetch for root');
+    assert.equal(elements.momentReactionLikeButton.style.display, 'none', 'social action hidden for root');
+  }
 });
 
 test('#1882 wording rule preserved', function() {

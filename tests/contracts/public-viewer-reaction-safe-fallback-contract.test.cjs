@@ -122,7 +122,7 @@ test('Public read-only social summary never invokes private reaction API and hid
     getSelectedNodeId: () => currentSelectedId,
     isRootMemory: (data, rootId) => data && data.id === rootId,
     getCanonicalRootId: () => 'root',
-    getTreeMemories: () => [{ id: 'mem-1' }],
+    getTreeMemories: () => [{ id: 'mem-1', treeId: 'tree-1' }],
     resolveMemoryThumbnail: (data) => data.thumbnail || '',
     i18n: (key) => key,
     getLocalSaveMode: () => false,
