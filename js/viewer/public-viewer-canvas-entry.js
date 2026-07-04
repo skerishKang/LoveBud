@@ -221,6 +221,7 @@
         var sel = options.selectionState || {};
 
         var apiClient = globalObject.apiClient || {};
+        var authPolicy = globalObject.LoveTreeAuthPolicy || {};
 
         return {
             detailPanel: options.detailPanel,
@@ -246,6 +247,15 @@
                 : function() { return Promise.reject(new Error('apiClient not available')); },
             fetchPublicMomentComments: typeof apiClient.fetchPublicMomentComments === 'function'
                 ? apiClient.fetchPublicMomentComments
+                : function() { return Promise.reject(new Error('apiClient not available')); },
+            hasConfirmedAuthSession: typeof authPolicy.hasConfirmedAuthSession === 'function'
+                ? authPolicy.hasConfirmedAuthSession
+                : function() { return false; },
+            fetchReactionSummary: typeof apiClient.fetchReactionSummary === 'function'
+                ? apiClient.fetchReactionSummary
+                : function() { return Promise.reject(new Error('apiClient not available')); },
+            toggleReaction: typeof apiClient.toggleReaction === 'function'
+                ? apiClient.toggleReaction
                 : function() { return Promise.reject(new Error('apiClient not available')); }
         };
     }

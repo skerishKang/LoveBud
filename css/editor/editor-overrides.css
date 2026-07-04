@@ -642,3 +642,62 @@ body.editor-rename-modal-open {
         width: 100%;
     }
 }
+
+/* #3207 — Authenticated like button in public viewer */
+.editor-like-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    min-height: 26px;
+    padding: 4px 8px;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--on-surface-soft, #7c6f6a);
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1.4;
+    cursor: pointer;
+    transition: background-color 0.18s ease, color 0.18s ease, transform 0.18s ease;
+}
+
+.editor-like-button:hover,
+.editor-like-button:focus-visible {
+    background: rgba(144, 73, 81, 0.10);
+    color: var(--primary);
+    outline: none;
+}
+
+.editor-like-button:active {
+    transform: translateY(1px);
+}
+
+.editor-like-button:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.editor-like-button.is-pressed {
+    color: var(--primary, #b56a4f);
+    font-weight: 700;
+}
+
+.editor-like-button.is-pressed:hover,
+.editor-like-button.is-pressed:focus-visible {
+    background: rgba(144, 73, 81, 0.12);
+}
+
+.editor-like-button[aria-busy="true"] {
+    opacity: 0.6;
+    cursor: wait;
+    pointer-events: none;
+}
+
+.editor-like-error {
+    margin: 4px 0 0 4px;
+    color: var(--danger, #c0392b);
+    font-size: 12px;
+    line-height: 1.4;
+    font-weight: 600;
+}

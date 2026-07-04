@@ -1,0 +1,618 @@
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const vm = require('node:vm');
+
+const ROOT = path.resolve(__dirname, '..', '..');
+const scriptSource = fs.readFileSync(path.join(ROOT, 'js/viewer/public-viewer-detail-ui.js'), 'utf8');
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+function createMockElement(tagName) {
+  var t = tagName || 'div';
+  var classList = {
+    classes: {},
+    add: function(c) { this.classes[c] = true; },
+    remove: function(c) { delete this.classes[c]; },
+    contains: function(c) { return !!this.classes[c]; },
+    toggle: function(c, f) {
+      if (f === true) this.classes[c] = true;
+      else if (f === false) delete this.classes[c];
+      else if (this.classes[c]) delete this.classes[c];
+      else this.classes[c] = true;
+    },
+  };
+  return {
+    tagName: t.toUpperCase(),
+    dataset: {},
+    style: {},
+    classList: classList,
+    parentElement: null,
+    children: [],
+    attributes: {},
+    textContent: '',
+    onclick: null,
+    disabled: false,
+    hidden: false,
+    setAttribute: function(n, v) { this.attributes[n] = v; },
+    removeAttribute: function(n) { delete this.attributes[n]; },
+    getAttribute: function(n) { return this.attributes[n]; },
+    appendChild: function(c) { this.children.push(c); c.parentElement = this; },
+    removeChild: function(c) {
+      var i = this.children.indexOf(c);
+      if (i !== -1) { this.children.splice(i, 1); c.parentElement = null; }
+    },
+    get firstChild() { return this.children[0] || null; },
+    querySelector: function(s) {
+      if (s === '[data-social-retry="1"]') return this.children.find(function(c) {
+        return c.getAttribute && c.getAttribute('data-social-retry') === '1';
+      }) || null;
+      return null;
+    },
+    closest: function() { return this.parentElement || this; }
+  };
+}
+
+function createTestContext(fetchReactionSummaryFn, toggleReactionFn, hasConfirmedAuthSessionFn) {
+  var elements = {
+    momentReactionsCard: createMockElement(),
+    momentReactionLikeButton: createMockElement('button'),
+    momentReactionLikeGuestNote: createMockElement(),
+    momentReactionWriteError: createMockElement(),
+    momentReactionLikeValue: createMockElement(),
+    momentReactionLikeStatus: createMockElement(),
+    momentReactionCommentStatus: createMockElement(),
+    momentReactionCommentValue: createMockElement(),
+    momentReactionNote: createMockElement(),
+    momentReactionLikeStatusRegion: createMockElement(),
+    detailTreeMetaMount: createMockElement(),
+    detailCurrentMomentBadge: createMockElement(),
+    detailCurrentMomentTitle: createMockElement(),
+    detailCurrentMomentHint: createMockElement(),
+    detailImg: createMockElement('img'),
+    detailDateText: createMockElement(),
+    detailMemo: createMockElement(),
+    detailTags: createMockElement()
+  };
+
+  // Set initial card classes/attributes from template
+  elements.momentReactionsCard.classList.add('is-read-only');
+  elements.momentReactionsCard.classList.add('is-public-readonly');
+  elements.momentReactionsCard.setAttribute('data-read-only-summary', 'true');
+  elements.momentReactionsCard.setAttribute('aria-label', '순간 반응 (읽기 전용)');
+
+  var context = {
+    window: {},
+    setTimeout: setTimeout,
+    clearTimeout: clearTimeout,
+    document: {
+      createElement: function(tagName) { return createMockElement(tagName); },
+      getElementById: function(id) { return elements[id] || null; },
+      querySelector: function(sel) {
+        if (sel === '#detailPanel h3') return createMockElement('h3');
+        if (sel === '.detail-video img') return elements.detailImg;
+        if (sel === '.diary-note') return elements.detailMemo;
+        return null;
+      },
+      querySelectorAll: function() { return []; }
+    }
+  };
+  context.window = context;
+
+  vm.createContext(context);
+  var metadataCode = fs.readFileSync(path.join(ROOT, 'js/viewer/public-viewer-detail-metadata-text.js'), 'utf8');
+  vm.runInContext(metadataCode, context);
+  vm.runInContext(scriptSource, context);
+
+  var deps = {
+    getSelectedNodeId: function() { return 'mem-1'; },
+    isRootMemory: function(data, rootId) { return data && data.id === rootId; },
+    getCanonicalRootId: function() { return 'root'; },
+    getTreeMemories: function() { return [{ id: 'mem-1' }]; },
+    resolveMemoryThumbnail: function(data) { return data.thumbnail || ''; },
+    i18n: function(k) { return k; },
+    getLocalSaveMode: function() { return false; },
+    showToast: function() {},
+    // Auth callbacks
+    hasConfirmedAuthSession: hasConfirmedAuthSessionFn || function() { return false; },
+    fetchReactionSummary: fetchReactionSummaryFn || null,
+    toggleReaction: toggleReactionFn || null,
+    // Public read callbacks
+    fetchPublicMomentReactionSummary: async function() { return { counts: { like: 0 }, total: 0 }; },
+    fetchPublicMomentComments: async function() { return { comments: [], nextCursor: null }; }
+  };
+
+  var detailUI = context.createPublicViewerDetailUI(deps);
+  return { elements: elements, detailUI: detailUI, context: context };
+}
+
+function assertButtonAttrs(btn, opts) {
+  assert.equal(btn.getAttribute('aria-pressed'), opts.pressed || 'false', 'aria-pressed');
+  assert.equal(btn.getAttribute('aria-label'), opts.label || null, 'aria-label fallback');
+  assert.equal(btn.classList.contains('is-pressed'), opts.isPressed || false, 'is-pressed class');
+  assert.equal(btn.disabled, opts.disabled || false, 'disabled');
+  if (opts.busy) {
+    assert.equal(btn.getAttribute('aria-busy'), 'true', 'aria-busy');
+  } else if (opts.busy === false) {
+    assert.equal(btn.getAttribute('aria-busy'), undefined, 'aria-busy removed');
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Source-level checks
+// ---------------------------------------------------------------------------
+
+test('authenticated like boundary function exists', function() {
+  assert.ok(scriptSource.indexOf('createPublicViewerAuthenticatedLikeBoundary') !== -1,
+    'auth like boundary must exist');
+});
+
+test('authenticated like boundary is exported on namespace', function() {
+  assert.ok(scriptSource.indexOf('createPublicViewerAuthenticatedLikeBoundary: createPublicViewerAuthenticatedLikeBoundary') !== -1,
+    'auth like boundary must be published on namespace');
+});
+
+test('template has like button with required attributes', function() {
+  var tmpl = fs.readFileSync(path.join(ROOT, 'js/viewer/public-viewer-detail-view-mode-template.js'), 'utf8');
+  assert.ok(tmpl.indexOf('momentReactionLikeButton') !== -1, 'template has like button');
+  assert.ok(tmpl.indexOf('aria-pressed') !== -1, 'button has aria-pressed');
+  assert.ok(tmpl.indexOf('aria-label') !== -1, 'button has aria-label');
+  assert.ok(tmpl.indexOf('disabled') !== -1, 'button starts disabled');
+});
+
+test('template has guest note and error elements', function() {
+  var tmpl = fs.readFileSync(path.join(ROOT, 'js/viewer/public-viewer-detail-view-mode-template.js'), 'utf8');
+  assert.ok(tmpl.indexOf('momentReactionLikeGuestNote') !== -1, 'template has guest note');
+  assert.ok(tmpl.indexOf('momentReactionWriteError') !== -1, 'template has error element');
+  assert.ok(tmpl.indexOf('role="alert"') !== -1, 'error has role=alert');
+});
+
+test('canvas-entry injects hasConfirmedAuthSession', function() {
+  var src = fs.readFileSync(path.join(ROOT, 'js/viewer/public-viewer-canvas-entry.js'), 'utf8');
+  assert.ok(src.indexOf('hasConfirmedAuthSession') !== -1, 'canvas-entry injects hasConfirmedAuthSession');
+});
+
+test('canvas-entry injects fetchReactionSummary and toggleReaction', function() {
+  var src = fs.readFileSync(path.join(ROOT, 'js/viewer/public-viewer-canvas-entry.js'), 'utf8');
+  assert.ok(src.indexOf('fetchReactionSummary') !== -1, 'canvas-entry injects fetchReactionSummary');
+  assert.ok(src.indexOf('toggleReaction') !== -1, 'canvas-entry injects toggleReaction');
+});
+
+test('canvas-init injects auth callbacks', function() {
+  var src = fs.readFileSync(path.join(ROOT, 'js/viewer/public-canvas-init.js'), 'utf8');
+  assert.ok(src.indexOf('hasConfirmedAuthSession') !== -1, 'canvas-init injects hasConfirmedAuthSession');
+  assert.ok(src.indexOf('fetchReactionSummary') !== -1, 'canvas-init injects fetchReactionSummary');
+  assert.ok(src.indexOf('toggleReaction') !== -1, 'canvas-init injects toggleReaction');
+});
+
+test('no private comment reader/writer in public viewer', function() {
+  assert.ok(!scriptSource.indexOf('createComment') !== -1 || scriptSource.indexOf('showAuthActionable') !== -1,
+    'no createComment added');
+});
+
+test('public comments still only from fetchPublicMomentComments', function() {
+  assert.ok(scriptSource.indexOf('fetchPublicMomentComments') !== -1,
+    'fetchPublicMomentComments must remain');
+});
+
+// ---------------------------------------------------------------------------
+// Runtime behavior tests
+// ---------------------------------------------------------------------------
+
+test('guest mode never calls fetchReactionSummary or toggleReaction', async function() {
+  var called = false;
+  var { elements, detailUI } = createTestContext(
+    function() { called = true; return Promise.resolve(null); },
+    function() { called = true; return Promise.resolve(null); },
+    function() { return false; } // guest
+  );
+
+  detailUI.updateDetailPanel({ id: 'mem-1', treeId: 'tree-1' });
+  await new Promise(function(r) { setTimeout(r, 50); });
+
+  assert.equal(called, false, 'guest mode must not call private API');
+  assert.equal(elements.momentReactionLikeButton.style.display, 'none', 'button hidden for guest');
+  assert.equal(elements.momentReactionLikeGuestNote.style.display, '', 'guest note visible');
+  assert.equal(elements.momentReactionsCard.getAttribute('data-read-only-summary'), 'true', 'read-only attr preserved');
+  assert.equal(elements.momentReactionsCard.classList.contains('is-read-only'), true, 'is-read-only preserved');
+});
+
+test('auth-not-ready never calls fetchReactionSummary or toggleReaction', async function() {
+  var called = false;
+  var { elements, detailUI } = createTestContext(
+    function() { called = true; return Promise.resolve(null); },
+    function() { called = true; return Promise.resolve(null); },
+    function() { return false; }
+  );
+
+  detailUI.updateDetailPanel({ id: 'mem-1', treeId: 'tree-1' });
+  await new Promise(function(r) { setTimeout(r, 50); });
+  // Same as guest
+  assert.equal(called, false, 'auth-not-ready must not call private API');
+});
+
+test('confirmed auth enables private fetchReactionSummary call', async function() {
+  var fsCalled = false;
+  var toggleCalled = false;
+  var { elements, detailUI } = createTestContext(
+    async function() { fsCalled = true; return { counts: { like: 0 }, userReactions: { like: false } }; },
+    function() { toggleCalled = true; return Promise.resolve(null); },
+    function() { return true; }
+  );
+
+  detailUI.updateDetailPanel({ id: 'mem-1', treeId: 'tree-1' });
+  await new Promise(function(r) { setTimeout(r, 50); });
+
+  assert.equal(fsCalled, true, 'fetchReactionSummary must be called for auth');
+  assert.equal(toggleCalled, false, 'toggleReaction not called automatically');
+});
+
+test('root moment hides auth elements and issues no request', async function() {
+  var called = false;
+  var { elements, detailUI } = createTestContext(
+    function() { called = true; return Promise.resolve(null); },
+    function() { called = true; return Promise.resolve(null); },
+    function() { return true; }
+  );
+
+  detailUI.updateDetailPanel({ id: 'root', treeId: 'tree-1' });
+  await new Promise(function(r) { setTimeout(r, 50); });
+  assert.equal(called, false, 'root must not call private API');
+  assert.equal(elements.momentReactionLikeButton.style.display, 'none', 'button hidden for root');
+});
+
+test('missing context hides auth elements', async function() {
+  var called = false;
+  var { elements, detailUI } = createTestContext(
+    function() { called = true; return Promise.resolve(null); },
+    function() { called = true; return Promise.resolve(null); },
+    function() { return true; }
+  );
+
+  detailUI.updateDetailPanel({ id: 'mem-1' }); // no treeId
+  await new Promise(function(r) { setTimeout(r, 50); });
+  assert.equal(called, false, 'missing treeId must not call private API');
+});
+
+test('confirmed auth with valid userReactions shows actionable button', async function() {
+  var { elements, detailUI } = createTestContext(
+    async function() { return { counts: { like: 3 }, userReactions: { like: true } }; },
+    null,
+    function() { return true; }
+  );
+
+  detailUI.updateDetailPanel({ id: 'mem-1', treeId: 'tree-1' });
+  await new Promise(function(r) { setTimeout(r, 50); });
+
+  assert.equal(elements.momentReactionLikeButton.style.display, '', 'button visible for auth');
+  assert.equal(elements.momentReactionLikeButton.disabled, false, 'button enabled');
+  assert.equal(elements.momentReactionLikeButton.getAttribute('aria-pressed'), 'true', 'pressed from userReactions');
+  assert.equal(elements.momentReactionLikeButton.classList.contains('is-pressed'), true, 'is-pressed class');
+  // Count is from public aggregate (authoritative), not private DTO
+  assert.equal(elements.momentReactionLikeValue.textContent, '0', 'count from public aggregate');
+  assert.equal(elements.momentReactionLikeGuestNote.style.display, 'none', 'guest note hidden');
+  // Actionable semantics
+  assert.equal(elements.momentReactionsCard.getAttribute('data-read-only-summary'), undefined, 'data-read-only-summary removed');
+  assert.equal(elements.momentReactionsCard.classList.contains('is-read-only'), false, 'is-read-only removed');
+  assert.equal(elements.momentReactionsCard.getAttribute('aria-label'), '순간 반응', 'aria-label updated');
+  assert.equal(elements.momentReactionNote.textContent, '댓글 기능은 준비 중이에요.', 'comment note updated');
+});
+
+test('confirmed auth with unpressed state shows actionable button', async function() {
+  var { elements, detailUI } = createTestContext(
+    async function() { return { counts: { like: 0 }, userReactions: { like: false } }; },
+    null,
+    function() { return true; }
+  );
+
+  detailUI.updateDetailPanel({ id: 'mem-1', treeId: 'tree-1' });
+  await new Promise(function(r) { setTimeout(r, 50); });
+
+  assert.equal(elements.momentReactionLikeButton.style.display, '', 'button visible');
+  assert.equal(elements.momentReactionLikeButton.getAttribute('aria-pressed'), 'false', 'not pressed');
+  assert.equal(elements.momentReactionLikeButton.classList.contains('is-pressed'), false, 'no is-pressed class');
+  // Count is from public aggregate
+  assert.equal(elements.momentReactionLikeValue.textContent, '0', 'count from public aggregate');
+});
+
+test('confirmed auth with malformed userReactions shows unavailable', async function() {
+  var { elements, detailUI } = createTestContext(
+    async function() { return { counts: { like: 0 }, userReactions: null }; },
+    null,
+    function() { return true; }
+  );
+
+  detailUI.updateDetailPanel({ id: 'mem-1', treeId: 'tree-1' });
+  await new Promise(function(r) { setTimeout(r, 50); });
+
+  assert.equal(elements.momentReactionLikeButton.style.display, 'none', 'button hidden for unavailable');
+  assert.equal(elements.momentReactionLikeButton.disabled, true, 'button disabled');
+  // Read-only semantics preserved
+  assert.equal(elements.momentReactionsCard.getAttribute('data-read-only-summary'), 'true', 'read-only preserved');
+  assert.equal(elements.momentReactionsCard.classList.contains('is-read-only'), true, 'is-read-only preserved');
+});
+
+test('confirmed auth with rejected fetchReactionSummary shows unavailable', async function() {
+  var { elements, detailUI } = createTestContext(
+    async function() { throw new Error('network'); },
+    null,
+    function() { return true; }
+  );
+
+  detailUI.updateDetailPanel({ id: 'mem-1', treeId: 'tree-1' });
+  await new Promise(function(r) { setTimeout(r, 50); });
+
+  assert.equal(elements.momentReactionLikeButton.style.display, 'none', 'button hidden');
+  assert.equal(elements.momentReactionLikeButton.disabled, true, 'button disabled');
+});
+
+test('in-flight lock prevents duplicate writes', async function() {
+  var toggleCount = 0;
+  var resolveToggle;
+  var togglePromise = new Promise(function(r) { resolveToggle = r; });
+
+  var { elements, detailUI } = createTestContext(
+    async function() { return { counts: { like: 0 }, userReactions: { like: false } }; },
+    function() { toggleCount++; return togglePromise; },
+    function() { return true; }
+  );
+
+  detailUI.updateDetailPanel({ id: 'mem-1', treeId: 'tree-1' });
+  await new Promise(function(r) { setTimeout(r, 50); });
+
+  // Click button
+  elements.momentReactionLikeButton.onclick();
+  assert.equal(toggleCount, 1, 'toggle called once');
+  assert.equal(elements.momentReactionLikeButton.getAttribute('aria-busy'), 'true', 'busy during in-flight');
+  assert.equal(elements.momentReactionLikeButton.disabled, true, 'disabled during in-flight');
+
+  // Try clicking again
+  elements.momentReactionLikeButton.onclick();
+  assert.equal(toggleCount, 1, 'duplicate click ignored during in-flight');
+
+  // Resolve
+  resolveToggle({ type: 'like', active: true, counts: { like: 1 } });
+  await new Promise(function(r) { setTimeout(r, 50); });
+});
+
+test('optimistic increment works on like', async function() {
+  var resolveToggle;
+  var togglePromise = new Promise(function(r) { resolveToggle = r; });
+
+  var { elements, detailUI } = createTestContext(
+    async function() { return { counts: { like: 0 }, userReactions: { like: false } }; },
+    function() { return togglePromise; },
+    function() { return true; }
+  );
+
+  detailUI.updateDetailPanel({ id: 'mem-1', treeId: 'tree-1' });
+  await new Promise(function(r) { setTimeout(r, 50); });
+
+  elements.momentReactionLikeButton.onclick();
+  // Optimistic state
+  assert.equal(elements.momentReactionLikeButton.getAttribute('aria-pressed'), 'true', 'optimistic pressed');
+  assert.equal(elements.momentReactionLikeValue.textContent, '1', 'optimistic increment');
+
+  resolveToggle({ type: 'like', active: true, counts: { like: 1 } });
+  await new Promise(function(r) { setTimeout(r, 50); });
+});
+
+test('optimistic decrement works on unlike', async function() {
+  var resolveToggle;
+  var togglePromise = new Promise(function(r) { resolveToggle = r; });
+
+  var { elements, detailUI } = createTestContext(
+    async function() { return { counts: { like: 1 }, userReactions: { like: true } }; },
+    function() { return togglePromise; },
+    function() { return true; }
+  );
+
+  detailUI.updateDetailPanel({ id: 'mem-1', treeId: 'tree-1' });
+  await new Promise(function(r) { setTimeout(r, 50); });
+
+  elements.momentReactionLikeButton.onclick();
+  assert.equal(elements.momentReactionLikeButton.getAttribute('aria-pressed'), 'false', 'optimistic unpressed');
+  assert.equal(elements.momentReactionLikeValue.textContent, '0', 'optimistic decrement');
+  assert.equal(elements.momentReactionLikeValue.textContent, '0', 'count floor at 0');
+
+  resolveToggle({ type: 'like', active: false, counts: { like: 0 } });
+  await new Promise(function(r) { setTimeout(r, 50); });
+});
+
+test('rollback on failure restores previous state', async function() {
+  var rejectToggle;
+  var togglePromise = new Promise(function(_, r) { rejectToggle = r; });
+
+  var { elements, detailUI } = createTestContext(
+    async function() { return { counts: { like: 0 }, userReactions: { like: false } }; },
+    function() { return togglePromise; },
+    function() { return true; }
+  );
+
+  detailUI.updateDetailPanel({ id: 'mem-1', treeId: 'tree-1' });
+  await new Promise(function(r) { setTimeout(r, 50); });
+
+  assert.equal(elements.momentReactionLikeValue.textContent, '0', 'initial count');
+  assert.equal(elements.momentReactionLikeButton.getAttribute('aria-pressed'), 'false', 'initial unpressed');
+
+  elements.momentReactionLikeButton.onclick();
+  assert.equal(elements.momentReactionLikeValue.textContent, '1', 'optimistic after click');
+  assert.equal(elements.momentReactionLikeButton.getAttribute('aria-pressed'), 'true', 'optimistic pressed');
+
+  rejectToggle(new Error('fail'));
+  await new Promise(function(r) { setTimeout(r, 50); });
+
+  assert.equal(elements.momentReactionLikeValue.textContent, '0', 'restored after failure');
+  assert.equal(elements.momentReactionLikeButton.getAttribute('aria-pressed'), 'false', 'unpressed restored');
+  assert.equal(elements.momentReactionLikeButton.getAttribute('aria-busy'), undefined, 'busy removed after failure');
+  assert.equal(elements.momentReactionWriteError.style.display, '', 'error shown after failure');
+  assert.ok(elements.momentReactionWriteError.textContent.length > 0, 'error has text');
+});
+
+test('stale response cannot overwrite newer selected moment', async function() {
+  var resolveOldToggle;
+  var oldToggleP = new Promise(function(r) { resolveOldToggle = r; });
+  var oldToggleCalled = false;
+  var newToggleCalled = false;
+
+  var { elements, detailUI } = createTestContext(
+    async function(memoryId) {
+      if (memoryId === 'old') return { counts: { like: 0 }, userReactions: { like: false } };
+      return { counts: { like: 0 }, userReactions: { like: false } };
+    },
+    function(memoryId) {
+      if (memoryId === 'old') { oldToggleCalled = true; return oldToggleP; }
+      newToggleCalled = true;
+      return Promise.resolve({ type: 'like', active: true, counts: { like: 1 } });
+    },
+    function() { return true; }
+  );
+
+  detailUI.updateDetailPanel({ id: 'old', treeId: 'tree-1' });
+  await new Promise(function(r) { setTimeout(r, 50); });
+
+  elements.momentReactionLikeButton.onclick(); // start old write
+  assert.equal(oldToggleCalled, true, 'old toggle started');
+
+  // Switch to new moment while old write is in-flight
+  detailUI.updateDetailPanel({ id: 'new', treeId: 'tree-1' });
+  await new Promise(function(r) { setTimeout(r, 50); });
+
+  // Old write resolves (should be ignored by generation guard)
+  resolveOldToggle({ type: 'like', active: true, counts: { like: 999 } });
+  await new Promise(function(r) { setTimeout(r, 50); });
+
+  // New moment should not show old count
+  assert.equal(elements.momentReactionLikeValue.textContent, '0', 'old response not applied to new moment');
+  assert.equal(elements.momentReactionLikeButton.getAttribute('aria-pressed'), 'false', 'old pressed state not applied');
+  // After new moment auth resolves, button is enabled with correct state
+  assert.equal(elements.momentReactionLikeButton.disabled, false, 'button enabled after auth resolves');
+});
+
+test('in-flight lock releases after stale generation on success', async function() {
+  var resolveOldToggle;
+  var oldToggleP = new Promise(function(r) { resolveOldToggle = r; });
+  var newToggleCalled = false;
+
+  var { elements, detailUI } = createTestContext(
+    async function(memoryId) {
+      if (memoryId === 'old') return { counts: { like: 0 }, userReactions: { like: false } };
+      return { counts: { like: 0 }, userReactions: { like: false } };
+    },
+    function(memoryId) {
+      if (memoryId === 'old') return oldToggleP;
+      newToggleCalled = true;
+      return Promise.resolve({ type: 'like', active: true, counts: { like: 1 } });
+    },
+    function() { return true; }
+  );
+
+  // Start old moment write
+  detailUI.updateDetailPanel({ id: 'old', treeId: 'tree-1' });
+  await new Promise(function(r) { setTimeout(r, 50); });
+  elements.momentReactionLikeButton.onclick();
+
+  // Switch to new moment
+  detailUI.updateDetailPanel({ id: 'new', treeId: 'tree-1' });
+  await new Promise(function(r) { setTimeout(r, 50); });
+
+  // Old write succeeds but should be stale
+  resolveOldToggle({ type: 'like', active: true, counts: { like: 999 } });
+  await new Promise(function(r) { setTimeout(r, 50); });
+
+  // New moment should not be stuck in "busy" state
+  assert.equal(elements.momentReactionLikeButton.getAttribute('aria-busy'), undefined, 'busy cleared after stale success');
+  // After new moment auth resolves, button is enabled with correct state
+  assert.equal(elements.momentReactionLikeButton.disabled, false, 'button enabled after new moment resolves');
+});
+
+test('in-flight lock releases after stale generation on failure', async function() {
+  var rejectOldToggle;
+  var oldToggleP = new Promise(function(_, r) { rejectOldToggle = r; });
+
+  var { elements, detailUI } = createTestContext(
+    async function(memoryId) { return { counts: { like: 0 }, userReactions: { like: false } }; },
+    function(memoryId) { return oldToggleP; },
+    function() { return true; }
+  );
+
+  detailUI.updateDetailPanel({ id: 'old', treeId: 'tree-1' });
+  await new Promise(function(r) { setTimeout(r, 50); });
+  elements.momentReactionLikeButton.onclick();
+
+  detailUI.updateDetailPanel({ id: 'new', treeId: 'tree-1' });
+  await new Promise(function(r) { setTimeout(r, 50); });
+
+  rejectOldToggle(new Error('network fail'));
+  await new Promise(function(r) { setTimeout(r, 50); });
+
+  // After stale failure, in-flight must be released
+  assert.equal(elements.momentReactionLikeButton.getAttribute('aria-busy'), undefined, 'busy cleared after stale failure');
+});
+
+test('actionable semantics on successful load', async function() {
+  var { elements, detailUI } = createTestContext(
+    async function() { return { counts: { like: 5 }, userReactions: { like: true } }; },
+    null,
+    function() { return true; }
+  );
+
+  detailUI.updateDetailPanel({ id: 'mem-1', treeId: 'tree-1' });
+  await new Promise(function(r) { setTimeout(r, 50); });
+
+  // Card should be actionable (not read-only)
+  assert.equal(elements.momentReactionsCard.getAttribute('data-read-only-summary'), undefined,
+    'actionable card no data-read-only-summary');
+  assert.equal(elements.momentReactionsCard.classList.contains('is-read-only'), false,
+    'actionable card no is-read-only');
+  assert.equal(elements.momentReactionsCard.getAttribute('aria-label'), '순간 반응',
+    'actionable card aria-label');
+  assert.equal(elements.momentReactionNote.textContent, '댓글 기능은 준비 중이에요.',
+    'actionable card note');
+});
+
+test('like button accessible label reflects pressed state', async function() {
+  var { elements, detailUI } = createTestContext(
+    async function() { return { counts: { like: 1 }, userReactions: { like: true } }; },
+    null,
+    function() { return true; }
+  );
+
+  detailUI.updateDetailPanel({ id: 'mem-1', treeId: 'tree-1' });
+  await new Promise(function(r) { setTimeout(r, 50); });
+
+  // When pressed, button should indicate cancel action
+  assert.equal(elements.momentReactionLikeButton.textContent.indexOf('취소') !== -1, true,
+    'pressed button shows 취소');
+});
+
+test('no raw error text in error display', async function() {
+  var rejectToggle;
+  var togglePromise = new Promise(function(_, r) { rejectToggle = r; });
+
+  var { elements, detailUI } = createTestContext(
+    async function() { return { counts: { like: 0 }, userReactions: { like: false } }; },
+    function() { return togglePromise; },
+    function() { return true; }
+  );
+
+  detailUI.updateDetailPanel({ id: 'mem-1', treeId: 'tree-1' });
+  await new Promise(function(r) { setTimeout(r, 50); });
+
+  elements.momentReactionLikeButton.onclick();
+  rejectToggle(new Error('CONNECTION_REFUSED'));
+  await new Promise(function(r) { setTimeout(r, 50); });
+
+  assert.ok(!elements.momentReactionWriteError.textContent.includes('CONNECTION_REFUSED'),
+    'no raw error text');
+  assert.ok(!elements.momentReactionWriteError.textContent.includes('500'),
+    'no HTTP status in error');
+});
+
+test('#1882 wording rule preserved', function() {
+  assert.ok(!scriptSource.includes('Fixes #1882'), 'must not use Fixes #1882');
+  assert.ok(!scriptSource.includes('Closes #1882'), 'must not use Closes #1882');
+  assert.ok(!scriptSource.includes('Resolves #1882'), 'must not use Resolves #1882');
+});

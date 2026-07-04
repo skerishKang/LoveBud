@@ -57,6 +57,15 @@
                             <span class="editor-reaction-label">좋아요</span>
                             <span class="public-viewer-social-status-value" id="momentReactionLikeValue">⋯</span>
                         </div>
+                        <button type="button" id="momentReactionLikeButton"
+                          class="editor-like-button"
+                          aria-label="좋아요 누르기"
+                          aria-pressed="false"
+                          disabled
+                          style="display:none"></button>
+                        <p id="momentReactionLikeGuestNote" style="display:none">로그인하면 좋아요를 남길 수 있어요.</p>
+                        <div aria-live="polite" role="status" id="momentReactionLikeStatusRegion" style="display:none"></div>
+                        <p id="momentReactionWriteError" class="editor-like-error" role="alert" style="display:none"></p>
                         <div
                             class="public-viewer-social-status"
                             id="momentReactionCommentStatus"
