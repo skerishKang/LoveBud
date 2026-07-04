@@ -220,6 +220,8 @@
         var roa = options.readOnlyActions || {};
         var sel = options.selectionState || {};
 
+        var apiClient = globalObject.apiClient || {};
+
         return {
             detailPanel: options.detailPanel,
             i18n: options.i18n,
@@ -238,7 +240,13 @@
             updateTreeVisibility: roa.noopAsync,
             openCurrentMomentDetail: roa.noop,
             focusSelectedMoment: roa.noop,
-            updateSelectedMemoryFields: roa.noopFalseAsync
+            updateSelectedMemoryFields: roa.noopFalseAsync,
+            fetchPublicMomentReactionSummary: typeof apiClient.fetchPublicMomentReactionSummary === 'function'
+                ? apiClient.fetchPublicMomentReactionSummary
+                : function() { return Promise.reject(new Error('apiClient not available')); },
+            fetchPublicMomentComments: typeof apiClient.fetchPublicMomentComments === 'function'
+                ? apiClient.fetchPublicMomentComments
+                : function() { return Promise.reject(new Error('apiClient not available')); }
         };
     }
 

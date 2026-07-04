@@ -207,6 +207,8 @@
     function createPublicCanvasDetailUIOptions(ctx) {
         var selectionState = ctx.selectionState;
         var canvasEntry = window.LoveBudPublicViewerCanvasEntry;
+        var apiClient = window.apiClient || {};
+
         return canvasEntry && typeof canvasEntry.createDetailUIOptions === 'function'
             ? canvasEntry.createDetailUIOptions({
                 detailPanel: ctx.detailPanel,
@@ -236,7 +238,13 @@
                 updateTreeVisibility: ctx.readOnlyActions.noopAsync,
                 openCurrentMomentDetail: ctx.readOnlyActions.noop,
                 focusSelectedMoment: ctx.readOnlyActions.noop,
-                updateSelectedMemoryFields: ctx.readOnlyActions.noopFalseAsync
+                updateSelectedMemoryFields: ctx.readOnlyActions.noopFalseAsync,
+                fetchPublicMomentReactionSummary: typeof apiClient.fetchPublicMomentReactionSummary === 'function'
+                    ? apiClient.fetchPublicMomentReactionSummary
+                    : function() { return Promise.reject(new Error('apiClient not available')); },
+                fetchPublicMomentComments: typeof apiClient.fetchPublicMomentComments === 'function'
+                    ? apiClient.fetchPublicMomentComments
+                    : function() { return Promise.reject(new Error('apiClient not available')); }
             };
     }
 
