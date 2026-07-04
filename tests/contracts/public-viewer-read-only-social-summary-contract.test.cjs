@@ -97,10 +97,12 @@ function createDetailUI(fetchReactionSummary, fetchComments) {
   vm.runInContext(scriptSource, context);
 
   const deps = {
-    getSelectedNodeId: () => 'mem-1',
+    currentSelectedId: 'mem-1',
+    treeMemories: [{ id: 'mem-1', treeId: 'tree-1' }],
+    getSelectedNodeId: () => deps.currentSelectedId,
     isRootMemory: (data, rootId) => data && data.id === rootId,
     getCanonicalRootId: () => 'root',
-    getTreeMemories: () => [{ id: 'mem-1' }],
+    getTreeMemories: () => deps.treeMemories,
     resolveMemoryThumbnail: (data) => data.thumbnail || '',
     i18n: (key) => key,
     getLocalSaveMode: () => false,
@@ -110,7 +112,8 @@ function createDetailUI(fetchReactionSummary, fetchComments) {
   };
 
   const detailUI = context.createPublicViewerDetailUI(deps);
-  return { elements, detailUI, context };
+
+  return { elements, detailUI, context, deps };
 }
 
 // Public DTO fixtures (authoritative endpoint shape only)
@@ -140,7 +143,7 @@ test('injected public-read callbacks are used in read-only boundary — no priva
 });
 
 test('root moment or missing context causes no read', () => {
-  const { elements, detailUI } = createDetailUI(
+  const { elements, detailUI, deps } = createDetailUI(
     async () => { throw new Error('should not be called for root'); },
     async () => { throw new Error('should not be called for root'); }
   );
@@ -148,6 +151,8 @@ test('root moment or missing context causes no read', () => {
   elements.momentReactionsCard.style.display = '';
 
   // Root moment
+  deps.currentSelectedId = 'root';
+  deps.treeMemories = [{ id: 'root', treeId: 'tree-1' }];
   detailUI.updateDetailPanel({ id: 'root', treeId: 'tree-1' });
   assert.equal(elements.momentReactionsCard.style.display, 'none', 'hidden for root');
 
@@ -371,7 +376,7 @@ test('stale older response cannot overwrite newer selected moment', async () => 
   let oldCalled = false;
   let newCalled = false;
 
-  const { elements, detailUI } = createDetailUI(
+  const { elements, detailUI, deps } = createDetailUI(
     async (treeId, memoryId) => {
       if (memoryId === 'old') { oldCalled = true; return oldReactionP; }
       if (memoryId === 'new') { newCalled = true; return newReactionP; }
@@ -384,9 +389,13 @@ test('stale older response cannot overwrite newer selected moment', async () => 
     }
   );
 
+  deps.currentSelectedId = 'old';
+  deps.treeMemories = [{ id: 'old', treeId: 'tree-1' }];
   detailUI.updateDetailPanel({ id: 'old', treeId: 'tree-1' });
   assert.ok(oldCalled, 'old moment fetch started');
 
+  deps.currentSelectedId = 'new';
+  deps.treeMemories = [{ id: 'new', treeId: 'tree-1' }];
   detailUI.updateDetailPanel({ id: 'new', treeId: 'tree-1' });
   assert.ok(newCalled, 'new moment fetch started');
 
