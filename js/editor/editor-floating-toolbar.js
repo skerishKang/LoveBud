@@ -247,6 +247,12 @@
       });
     }
 
+    // ─── Scout action visibility sync on init (issue #3212) ───
+    // Sync Scout action visibility with the initial editability state.
+    if (window.LoveBudFloatingToolbarDropdown && window.LoveBudFloatingToolbarDropdown.syncScoutActionVisibility) {
+      window.LoveBudFloatingToolbarDropdown.syncScoutActionVisibility(scoutAction);
+    }
+
     // ─── Affordance bindings ───────────────────────────────
 
     if (window.LoveBudFloatingToolbarAffordance && window.LoveBudFloatingToolbarAffordance.bind) {
