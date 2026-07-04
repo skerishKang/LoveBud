@@ -736,6 +736,9 @@
         var inFlight = false;
         var lastLoadedMemoryId = null;
         var currentSelectionValid = false;
+        var currentSelectionEpoch = 0;
+        var nextWriteToken = 0;
+        var activeWriteToken = 0;
 
         var cardEl = null;
         var likeButtonEl = null;
@@ -948,11 +951,13 @@
             return true;
         }
 
-        function createClickHandler(memoryId, thisGen) {
+        function createClickHandler(memoryId, boundEpoch) {
             return function() {
                 if (inFlight) return;
                 if (!toggleReaction) return;
-                if (thisGen !== getGeneration()) return;
+                if (boundEpoch !== currentSelectionEpoch) return;
+                if (memoryId !== lastLoadedMemoryId) return;
+                if (!currentSelectionValid) return;
 
                 // Save current state for rollback
                 var previousPressed = likeButtonEl.getAttribute('aria-pressed') === 'true';
@@ -971,14 +976,29 @@
                 likeValueEl.textContent = String(newCount);
                 if (likeStatusEl) likeStatusEl.setAttribute('aria-label', '좋아요 ' + newCount + '개');
 
+                var writeToken = ++nextWriteToken;
+                activeWriteToken = writeToken;
                 inFlight = true;
                 syncButtonActionableState();
 
-                var callGen = getGeneration();
+                var callEpoch = currentSelectionEpoch;
 
                 toggleReaction(memoryId, 'like').then(function(response) {
+                    var ownsActiveWrite = activeWriteToken === writeToken;
+                    var stillCurrentSelection =
+                        ownsActiveWrite &&
+                        callEpoch === currentSelectionEpoch &&
+                        memoryId === lastLoadedMemoryId &&
+                        currentSelectionValid;
+
+                    if (!ownsActiveWrite) {
+                        return;
+                    }
+
                     inFlight = false;
-                    if (callGen !== getGeneration()) {
+                    activeWriteToken = 0;
+
+                    if (!stillCurrentSelection) {
                         syncButtonActionableState();
                         return;
                     }
@@ -1009,8 +1029,21 @@
                         reconcilePublicSummary({ id: memoryId, treeId: treeId }, true);
                     }
                 }).catch(function() {
+                    var ownsActiveWrite = activeWriteToken === writeToken;
+                    var stillCurrentSelection =
+                        ownsActiveWrite &&
+                        callEpoch === currentSelectionEpoch &&
+                        memoryId === lastLoadedMemoryId &&
+                        currentSelectionValid;
+
+                    if (!ownsActiveWrite) {
+                        return;
+                    }
+
                     inFlight = false;
-                    if (callGen !== getGeneration()) {
+                    activeWriteToken = 0;
+
+                    if (!stillCurrentSelection) {
                         syncButtonActionableState();
                         return;
                     }
@@ -1027,7 +1060,7 @@
             };
         }
 
-        function loadPrivateSummary(memoryId, thisGen) {
+        function loadPrivateSummary(memoryId, boundEpoch) {
             if (!fetchReactionSummary) {
                 showAuthUnavailable();
                 return;
@@ -1035,7 +1068,7 @@
 
             // Fetch private reaction summary to get user's like state
             fetchReactionSummary(memoryId).then(function(result) {
-                if (thisGen !== getGeneration()) return;
+                if (boundEpoch !== currentSelectionEpoch) return;
                 if (!getElements()) return;
 
                 var validated = validatePrivateDTO(result);
@@ -1065,7 +1098,7 @@
                 }
 
                 // Wire up click handler for this memory
-                likeButtonEl.onclick = createClickHandler(memoryId, thisGen);
+                likeButtonEl.onclick = createClickHandler(memoryId, boundEpoch);
 
                 if (sharedGenRef && sharedGenRef.publicSummaryValid) {
                     showAuthActionable(validated.pressed, validated.count);
@@ -1073,7 +1106,7 @@
                     showAuthUnavailable();
                 }
             }).catch(function() {
-                if (thisGen !== getGeneration()) return;
+                if (boundEpoch !== currentSelectionEpoch) return;
                 currentSelectionValid = false;
                 showAuthUnavailable();
             });
@@ -1088,7 +1121,7 @@
                 }
                 if (sharedGenRef.publicSummaryValid) {
                     if (!currentSelectionValid) {
-                        loadPrivateSummary(lastLoadedMemoryId, generation);
+                        loadPrivateSummary(lastLoadedMemoryId, currentSelectionEpoch);
                     } else {
                         showAuthActionable(lastLikeState.pressed, lastLikeState.count);
                     }
@@ -1101,10 +1134,13 @@
         return function updatePublicViewerAuthenticatedLike(data) {
             var context = resolveSocialContext ? resolveSocialContext(data) : null;
             if (!context) {
+                currentSelectionEpoch++;
                 hideAuthElements();
                 lastLoadedMemoryId = null;
                 treeId = null;
                 currentSelectionValid = false;
+                inFlight = false;
+                activeWriteToken = 0;
                 return;
             }
 
@@ -1112,13 +1148,14 @@
             var memoryId = context.memoryId;
 
             // Memory changed: reset selection valid and save lastLoadedMemoryId
-            if (memoryId !== lastLoadedMemoryId) {
+            if (memoryId !== lastLoadedMemoryId || memTreeId !== treeId) {
+                currentSelectionEpoch++;
                 lastLoadedMemoryId = memoryId;
                 treeId = memTreeId;
                 currentSelectionValid = false;
+                inFlight = false;
+                activeWriteToken = 0;
             }
-
-            var thisGen = getGeneration();
 
             // Check auth
             var isAuthConfirmed = hasConfirmedAuthSession();
@@ -1139,7 +1176,7 @@
             statusRegionEl.style.display = 'none';
 
             if (sharedGenRef && sharedGenRef.publicSummaryValid) {
-                loadPrivateSummary(memoryId, thisGen);
+                loadPrivateSummary(memoryId, currentSelectionEpoch);
             } else {
                 showAuthUnavailable();
             }
@@ -1304,7 +1341,9 @@
         var updateCurrentMomentImage = createPublicViewerCurrentMomentImageBoundary(deps);
         var updateMemoBody = createPublicViewerMemoBodyBoundary(deps);
         var updateCurrentMomentTags = createPublicViewerCurrentMomentTagsBoundary(deps);
-        var sharedGenerationRef = { value: 0 };
+        var sharedGenerationRef = deps && deps.sharedGenerationRef
+            ? deps.sharedGenerationRef
+            : { value: 0 };
 
         var resolveSocialContext = function(data) {
             if (!data || typeof data !== 'object') {
@@ -1425,7 +1464,6 @@
             updateMemoBody(data);
             updateCurrentMomentTags(data);
             updateReadOnlyReactionSummary(data);
-            // Defer auth boundary after public summary microtasks
             Promise.resolve().then(function() {
                 updateAuthenticatedLike(data);
             });
