@@ -129,11 +129,14 @@ const commentsDTOThree = { comments: [{ id: 'c1', body: 'a' }, { id: 'c2' }, { i
 // Tests
 // ---------------------------------------------------------------------------
 
-test('injected public-read callbacks are used — no private API path invocations', () => {
-  const noPrivateReactionPath = !/toggleReaction|private.*reaction|reaction.*write/i.test(scriptSource);
-  const noPrivateCommentPath = !/createComment|composer|comment.*drawer/i.test(scriptSource);
-  assert.ok(noPrivateReactionPath, 'source must not reference private reaction API');
-  assert.ok(noPrivateCommentPath, 'source must not reference private comment API');
+test('injected public-read callbacks are used in read-only boundary — no private API path invocations', () => {
+  // Extract only the read-only boundary function body, not the new auth boundary
+  const readOnlyFn = scriptSource.match(/function createPublicViewerReadOnlyReactionSummaryBoundary[\s\S]*?(?=function createPublicViewerAuthenticatedLikeBoundary|function createPublicViewerTreeMetaBoundary)/);
+  const readOnlySource = readOnlyFn ? readOnlyFn[0] : scriptSource;
+  const noPrivateReactionPath = !/toggleReaction|private.*reaction|reaction.*write/i.test(readOnlySource);
+  const noPrivateCommentPath = !/createComment|composer|comment.*drawer/i.test(readOnlySource);
+  assert.ok(noPrivateReactionPath, 'read-only boundary must not reference private reaction API');
+  assert.ok(noPrivateCommentPath, 'read-only boundary must not reference private comment API');
 });
 
 test('root moment or missing context causes no read', () => {

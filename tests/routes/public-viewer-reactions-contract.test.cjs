@@ -6,7 +6,10 @@ const source = fs.readFileSync('js/viewer/public-viewer-detail-ui.js', 'utf8');
 
 test('public viewer reaction summary boundary stays read-only', () => {
   const start = source.indexOf('function createPublicViewerReadOnlyReactionSummaryBoundary(deps)');
-  const end = source.indexOf('function createPublicViewerDetailUI(deps)');
+  // End at the next public viewer function boundary, not at createPublicViewerDetailUI
+  // (#3207 added createPublicViewerAuthenticatedLikeBoundary between them)
+  const nextFn = source.indexOf('function createPublicViewerAuthenticatedLikeBoundary(deps)');
+  const end = nextFn !== -1 ? nextFn : source.indexOf('function createPublicViewerDetailUI(deps)');
   const boundary = source.slice(start, end);
 
   assert.notEqual(start, -1, 'read-only reaction boundary exists');

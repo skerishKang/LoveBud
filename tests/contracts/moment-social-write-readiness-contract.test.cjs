@@ -130,7 +130,7 @@ test('permanent exclusions present', () => {
 // Tightened callback-boundary contract tests
 // ---------------------------------------------------------------------------
 
-test('public viewer detail-ui accepts only public callbacks in deps', () => {
+test('public viewer detail-ui accepts only public callbacks in read-only boundary, and accepts private callbacks in auth boundary', () => {
   const src = readSource('js/viewer/public-viewer-detail-ui.js');
 
   // Must consume deps.fetchPublicMomentReactionSummary (exact dep source)
@@ -141,22 +141,24 @@ test('public viewer detail-ui accepts only public callbacks in deps', () => {
   assert.ok(src.includes('deps.fetchPublicMomentComments'),
     'must consume deps.fetchPublicMomentComments');
 
-  // Must not accept deps.fetchReactionSummary (private read)
-  assert.ok(!src.includes('deps.fetchReactionSummary') &&
-    !src.includes("deps['fetchReactionSummary']"),
-    'must not accept deps.fetchReactionSummary');
+  // Must consume deps.fetchReactionSummary (private read) for auth boundary
+  assert.ok(src.includes('deps.fetchReactionSummary'),
+    'must consume deps.fetchReactionSummary for auth boundary');
 
-  // Must not accept deps.fetchComments (private read)
+  // Must not accept deps.fetchComments (private read — not used)
   assert.ok(!src.includes('deps.fetchComments') &&
     !src.includes("deps['fetchComments']"),
     'must not accept deps.fetchComments');
 
-  // Must not reference toggleReaction or createComment
-  assert.ok(!src.includes('toggleReaction'), 'must not reference toggleReaction');
+  // Must reference toggleReaction (private write) for auth boundary
+  assert.ok(src.includes('toggleReaction'),
+    'must reference toggleReaction in auth boundary');
+
+  // Must not reference createComment
   assert.ok(!src.includes('createComment'), 'must not reference createComment');
 });
 
-test('canvas-entry.js injects only public callbacks', () => {
+test('canvas-entry.js injects public callbacks and new auth private callbacks', () => {
   const src = readSource('js/viewer/public-viewer-canvas-entry.js');
 
   // Must inject exact pairing: fetchPublicMomentReactionSummary: typeof apiClient.fetchPublicMomentReactionSummary
@@ -167,22 +169,22 @@ test('canvas-entry.js injects only public callbacks', () => {
   assert.ok(src.includes('fetchPublicMomentComments: typeof apiClient.fetchPublicMomentComments'),
     'canvas-entry must inject exact public comments pairing');
 
-  // Must not inject private fetchReactionSummary from apiClient
-  assert.ok(!src.includes('apiClient.fetchReactionSummary') &&
-    !src.includes("apiClient['fetchReactionSummary']"),
-    'canvas-entry must not inject private fetchReactionSummary');
+  // Must inject private fetchReactionSummary from apiClient for auth boundary
+  assert.ok(src.includes('apiClient.fetchReactionSummary'),
+    'canvas-entry must inject private fetchReactionSummary for auth boundary');
 
   // Must not inject private fetchComments from apiClient
   assert.ok(!src.includes('apiClient.fetchComments') &&
     !src.includes("apiClient['fetchComments']"),
     'canvas-entry must not inject private fetchComments');
 
-  // Must not reference toggleReaction or createComment
-  assert.ok(!src.includes('toggleReaction'), 'no toggleReaction in canvas-entry');
+  // Must reference toggleReaction for auth boundary
+  assert.ok(src.includes('toggleReaction'), 'toggleReaction present in canvas-entry for auth boundary');
+  // Must not reference createComment
   assert.ok(!src.includes('createComment'), 'no createComment in canvas-entry');
 });
 
-test('canvas-init.js injects only public callbacks', () => {
+test('canvas-init.js injects public callbacks and includes safe auth private callbacks in fallback', () => {
   const src = readSource('js/viewer/public-canvas-init.js');
 
   // Must inject exact pairing: fetchPublicMomentReactionSummary: typeof apiClient.fetchPublicMomentReactionSummary
@@ -193,18 +195,22 @@ test('canvas-init.js injects only public callbacks', () => {
   assert.ok(src.includes('fetchPublicMomentComments: typeof apiClient.fetchPublicMomentComments'),
     'canvas-init must inject exact public comments pairing');
 
-  // Must not inject private fetchReactionSummary from apiClient
+  // Must not reference apiClient.fetchReactionSummary (uses safe fallback function)
   assert.ok(!src.includes('apiClient.fetchReactionSummary') &&
     !src.includes("apiClient['fetchReactionSummary']"),
-    'canvas-init must not inject private fetchReactionSummary');
+    'canvas-init must not call apiClient.fetchReactionSummary directly');
 
   // Must not inject private fetchComments from apiClient
   assert.ok(!src.includes('apiClient.fetchComments') &&
     !src.includes("apiClient['fetchComments']"),
     'canvas-init must not inject private fetchComments');
 
-  // Must not reference toggleReaction or createComment
-  assert.ok(!src.includes('toggleReaction'), 'no toggleReaction in canvas-init');
+  // Must not reference toggleReaction via apiClient (uses safe fallback function)
+  assert.ok(!src.includes('apiClient.toggleReaction') &&
+    !src.includes("apiClient['toggleReaction']"),
+    'canvas-init must not call apiClient.toggleReaction directly');
+
+  // Must not reference createComment
   assert.ok(!src.includes('createComment'), 'no createComment in canvas-init');
 });
 

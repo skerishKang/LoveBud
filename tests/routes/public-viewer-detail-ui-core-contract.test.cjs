@@ -164,7 +164,10 @@ test('public viewer detail UI adapter owns current moment image boundary', () =>
 test('public viewer detail UI adapter exposes read-only reaction summary boundary', () => {
   const source = fs.readFileSync('js/viewer/public-viewer-detail-ui.js', 'utf8');
   const boundaryStart = source.indexOf('function createPublicViewerReadOnlyReactionSummaryBoundary(deps)');
-  const boundaryEnd = source.indexOf('function createPublicViewerDetailUI(deps)');
+  // End at the next public viewer function boundary, not at createPublicViewerDetailUI
+  // (#3207 added createPublicViewerAuthenticatedLikeBoundary between them)
+  const nextBoundary = source.indexOf('function createPublicViewerAuthenticatedLikeBoundary(deps)');
+  const boundaryEnd = nextBoundary !== -1 ? nextBoundary : source.indexOf('function createPublicViewerDetailUI(deps)');
   const boundarySource = source.slice(boundaryStart, boundaryEnd);
 
   assert.notEqual(boundaryStart, -1, 'viewer adapter exposes read-only reactions boundary factory');
@@ -340,7 +343,7 @@ test('public viewer detail UI adapter owns detail panel render flow', () => {
   assert.ok(source.includes('var updateTreeMeta = createPublicViewerTreeMetaBoundary(deps)'), 'viewer adapter creates tree meta updater');
   assert.ok(source.includes('var updateCurrentMomentBadge = metadataText.createPublicViewerCurrentMomentBadgeBoundary(deps)'), 'viewer adapter delegates badge updater to metadata text');
   assert.ok(source.includes('var updateCurrentMomentImage = createPublicViewerCurrentMomentImageBoundary(deps)'), 'viewer adapter creates the image updater');
-  assert.ok(source.includes('var updateReadOnlyReactionSummary = createPublicViewerReadOnlyReactionSummaryBoundary(deps)'), 'viewer adapter creates the read-only reaction updater');
+  assert.ok(source.includes('var updateReadOnlyReactionSummary = createPublicViewerReadOnlyReactionSummaryBoundary('), 'viewer adapter creates the read-only reaction updater');
   assert.ok(source.includes('var updateDetailHeading = createPublicViewerDetailHeadingBoundary(deps)'), 'viewer adapter creates heading updater');
   assert.ok(source.includes('detailUI.updateDetailPanel = function updatePublicViewerDetailPanel(data)'), 'viewer adapter owns the updateDetailPanel function');
   assert.ok(source.includes('updateDetailHeading();'), 'viewer flow starts with heading update');

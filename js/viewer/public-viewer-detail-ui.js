@@ -467,7 +467,8 @@
             ? deps.getCanonicalRootId
             : function() { return null; };
 
-        var currentGeneration = 0;
+        var sharedGenRef = deps && deps.sharedGenerationRef;
+        var currentGeneration = sharedGenRef ? sharedGenRef.value : 0;
         var lastLoadedMemoryId = null;
         var cardEl = null;
         var likeValueEl = null;
@@ -629,6 +630,7 @@
             if (!data || !treeId || !memoryId || isRootMemory(data, rootId)) {
                 hideCard();
                 currentGeneration++;
+                if (sharedGenRef) sharedGenRef.value = currentGeneration;
                 lastLoadedMemoryId = null;
                 return;
             }
@@ -639,10 +641,258 @@
             }
 
             currentGeneration++;
+            if (sharedGenRef) sharedGenRef.value = currentGeneration;
             lastLoadedMemoryId = memoryId;
             var thisGen = currentGeneration;
 
             performFetch(treeId, memoryId, thisGen);
+        };
+    }
+
+    function createPublicViewerAuthenticatedLikeBoundary(deps) {
+        var hasConfirmedAuthSession = deps && typeof deps.hasConfirmedAuthSession === 'function'
+            ? deps.hasConfirmedAuthSession
+            : function() { return false; };
+        var fetchReactionSummary = deps && typeof deps.fetchReactionSummary === 'function'
+            ? deps.fetchReactionSummary
+            : null;
+        var toggleReaction = deps && typeof deps.toggleReaction === 'function'
+            ? deps.toggleReaction
+            : null;
+        var isRootMemory = deps && typeof deps.isRootMemory === 'function'
+            ? deps.isRootMemory
+            : function() { return false; };
+        var getCanonicalRootId = deps && typeof deps.getCanonicalRootId === 'function'
+            ? deps.getCanonicalRootId
+            : function() { return null; };
+        var reconcilePublicSummary = deps && typeof deps.reconcilePublicSummary === 'function'
+            ? deps.reconcilePublicSummary
+            : null;
+        var sharedGenRef = deps && deps.sharedGenerationRef;
+        var currentGeneration = sharedGenRef ? sharedGenRef.value : 0;
+
+        var lastLikeState = { pressed: false, count: 0 };
+        var inFlight = false;
+        var lastLoadedMemoryId = null;
+
+        var likeButtonEl = null;
+        var guestNoteEl = null;
+        var errorEl = null;
+        var likeValueEl = null;
+        var likeStatusEl = null;
+        var treeId = null;
+
+        function getElements() {
+            if (!likeButtonEl) likeButtonEl = document.getElementById('momentReactionLikeButton');
+            if (!guestNoteEl) guestNoteEl = document.getElementById('momentReactionLikeGuestNote');
+            if (!errorEl) errorEl = document.getElementById('momentReactionWriteError');
+            if (!likeValueEl) likeValueEl = document.getElementById('momentReactionLikeValue');
+            if (!likeStatusEl) likeStatusEl = document.getElementById('momentReactionLikeStatus');
+            return likeButtonEl && guestNoteEl && errorEl && likeValueEl && likeStatusEl;
+        }
+
+        function hideAuthElements() {
+            if (!getElements()) return;
+            likeButtonEl.style.display = 'none';
+            likeButtonEl.disabled = true;
+            likeButtonEl.setAttribute('aria-pressed', 'false');
+            likeButtonEl.removeAttribute('aria-busy');
+            likeButtonEl.classList.remove('is-pressed');
+            guestNoteEl.style.display = 'none';
+            errorEl.style.display = 'none';
+            errorEl.textContent = '';
+        }
+
+        function showGuestNote() {
+            if (!getElements()) return;
+            likeButtonEl.style.display = 'none';
+            likeButtonEl.disabled = true;
+            guestNoteEl.style.display = '';
+            errorEl.style.display = 'none';
+            errorEl.textContent = '';
+        }
+
+        function showButton(pressed, count) {
+            if (!getElements()) return;
+            likeButtonEl.style.display = '';
+            likeButtonEl.disabled = false;
+            likeButtonEl.setAttribute('aria-pressed', pressed ? 'true' : 'false');
+            likeButtonEl.classList.toggle('is-pressed', pressed);
+            likeButtonEl.removeAttribute('aria-busy');
+            guestNoteEl.style.display = 'none';
+            errorEl.style.display = 'none';
+            errorEl.textContent = '';
+            likeValueEl.textContent = String(count);
+            if (likeStatusEl) likeStatusEl.setAttribute('aria-label', '좋아요 ' + count + '개');
+        }
+
+        function showErrorText(message) {
+            if (!getElements()) return;
+            errorEl.textContent = message || '오류가 발생했어요.';
+            errorEl.style.display = '';
+            setTimeout(function() {
+                if (errorEl) {
+                    errorEl.style.display = 'none';
+                    errorEl.textContent = '';
+                }
+            }, 3000);
+        }
+
+        function setInFlight(busy) {
+            if (!getElements()) return;
+            inFlight = busy;
+            likeButtonEl.disabled = busy;
+            if (busy) {
+                likeButtonEl.setAttribute('aria-busy', 'true');
+            } else {
+                likeButtonEl.removeAttribute('aria-busy');
+            }
+        }
+
+        function createClickHandler(memoryId, thisGen) {
+            return function() {
+                if (inFlight) return;
+                if (!toggleReaction) return;
+                if (thisGen !== currentGeneration) return;
+
+                // Save current state for rollback
+                var previousPressed = likeButtonEl.getAttribute('aria-pressed') === 'true';
+                var previousCount = parseInt(likeValueEl.textContent, 10) || 0;
+
+                // Optimistic toggle
+                var newPressed = !previousPressed;
+                var newCount = previousCount + (newPressed ? 1 : -1);
+                if (newCount < 0) newCount = 0;
+
+                lastLikeState.pressed = previousPressed;
+                lastLikeState.count = previousCount;
+
+                // Update UI optimistically
+                likeButtonEl.setAttribute('aria-pressed', newPressed ? 'true' : 'false');
+                likeButtonEl.classList.toggle('is-pressed', newPressed);
+                likeValueEl.textContent = String(newCount);
+                if (likeStatusEl) likeStatusEl.setAttribute('aria-label', '좋아요 ' + newCount + '개');
+
+                setInFlight(true);
+
+                var callGen = currentGeneration;
+
+                toggleReaction(memoryId, 'like').then(function(response) {
+                    if (callGen !== currentGeneration) return;
+                    if (!getElements()) return;
+                    setInFlight(false);
+
+                    // Use response as immediate state
+                    if (response && typeof response === 'object') {
+                        var active = response.active;
+                        var responseCount = response.counts && response.counts.like;
+                        if (typeof active === 'boolean') {
+                            likeButtonEl.setAttribute('aria-pressed', active ? 'true' : 'false');
+                            likeButtonEl.classList.toggle('is-pressed', active);
+                        }
+                        if (typeof responseCount === 'number' && responseCount >= 0) {
+                            likeValueEl.textContent = String(responseCount);
+                            if (likeStatusEl) likeStatusEl.setAttribute('aria-label', '좋아요 ' + responseCount + '개');
+                            lastLikeState.count = responseCount;
+                        }
+                        lastLikeState.pressed = likeButtonEl.getAttribute('aria-pressed') === 'true';
+                    }
+
+                    // Public reconciliation after successful write
+                    if (typeof reconcilePublicSummary === 'function') {
+                        reconcilePublicSummary({ id: memoryId, treeId: treeId });
+                    }
+                }).catch(function() {
+                    if (callGen !== currentGeneration) return;
+                    if (!getElements()) return;
+                    setInFlight(false);
+
+                    // Rollback to previous state
+                    likeButtonEl.setAttribute('aria-pressed', lastLikeState.pressed ? 'true' : 'false');
+                    likeButtonEl.classList.toggle('is-pressed', lastLikeState.pressed);
+                    likeValueEl.textContent = String(lastLikeState.count);
+                    if (likeStatusEl) likeStatusEl.setAttribute('aria-label', '좋아요 ' + lastLikeState.count + '개');
+
+                    showErrorText('좋아요를 처리할 수 없어요. 다시 시도해 주세요.');
+                });
+            };
+        }
+
+        return function updatePublicViewerAuthenticatedLike(data) {
+            var rootId = getCanonicalRootId();
+            var memTreeId = data && data.treeId;
+            var memoryId = data && data.id;
+
+            // Root moment, empty state, missing context: hide auth elements
+            if (!data || !memTreeId || !memoryId || isRootMemory(data, rootId)) {
+                hideAuthElements();
+                currentGeneration++;
+                if (sharedGenRef) sharedGenRef.value = currentGeneration;
+                lastLoadedMemoryId = null;
+                treeId = null;
+                return;
+            }
+
+            // Check if memory changed
+            if (memoryId !== lastLoadedMemoryId) {
+                currentGeneration++;
+                if (sharedGenRef) sharedGenRef.value = currentGeneration;
+                lastLoadedMemoryId = memoryId;
+                treeId = memTreeId;
+            }
+
+            var thisGen = currentGeneration;
+
+            // Check auth
+            var isAuthConfirmed = hasConfirmedAuthSession();
+
+            if (!isAuthConfirmed) {
+                showGuestNote();
+                return;
+            }
+
+            // Auth confirmed: show button (disabled during initial load)
+            if (!getElements()) return;
+            likeButtonEl.style.display = '';
+            likeButtonEl.disabled = true;
+            guestNoteEl.style.display = 'none';
+            errorEl.style.display = 'none';
+
+            if (!fetchReactionSummary) {
+                showButton(false, parseInt(likeValueEl.textContent, 10) || 0);
+                return;
+            }
+
+            // Fetch private reaction summary to get user's like state
+            fetchReactionSummary(memoryId).then(function(result) {
+                if (thisGen !== currentGeneration) return;
+                if (!getElements()) return;
+
+                var pressed = false;
+                var count = 0;
+
+                if (result && typeof result === 'object') {
+                    var userReactions = result.userReactions;
+                    if (Array.isArray(userReactions)) {
+                        pressed = userReactions.some(function(r) {
+                            return r && r.type === 'like' && r.active === true;
+                        });
+                    }
+                    if (result.counts && typeof result.counts.like === 'number') {
+                        count = result.counts.like;
+                    }
+                }
+
+                lastLikeState.pressed = pressed;
+                lastLikeState.count = count;
+                showButton(pressed, count);
+
+                // Wire up click handler for this memory
+                likeButtonEl.onclick = createClickHandler(memoryId, thisGen);
+            }).catch(function() {
+                if (thisGen !== currentGeneration) return;
+                showButton(false, parseInt(likeValueEl.textContent, 10) || 0);
+            });
         };
     }
 
@@ -804,7 +1054,16 @@
         var updateCurrentMomentImage = createPublicViewerCurrentMomentImageBoundary(deps);
         var updateMemoBody = createPublicViewerMemoBodyBoundary(deps);
         var updateCurrentMomentTags = createPublicViewerCurrentMomentTagsBoundary(deps);
-        var updateReadOnlyReactionSummary = createPublicViewerReadOnlyReactionSummaryBoundary(deps);
+        var sharedGenerationRef = { value: 0 };
+        var updateReadOnlyReactionSummary = createPublicViewerReadOnlyReactionSummaryBoundary(
+            Object.assign({}, deps, { sharedGenerationRef: sharedGenerationRef })
+        );
+        var updateAuthenticatedLike = createPublicViewerAuthenticatedLikeBoundary(
+            Object.assign({}, deps, {
+                sharedGenerationRef: sharedGenerationRef,
+                reconcilePublicSummary: updateReadOnlyReactionSummary
+            })
+        );
 
         detailUI.updateFocusSelectedBtn = createPublicViewerUpdateFocusSelectedBtn(deps);
         detailUI.updateSidebarStatus = createPublicViewerSidebarStatusUpdater(deps);
@@ -818,6 +1077,7 @@
             var memoryId = data ? data.id : null;
             if (memoryId && lastDetailKey === memoryId && (now - lastDetailAt) < 150) {
                 updateReadOnlyReactionSummary(data);
+                updateAuthenticatedLike(data);
                 return;
             }
             if (memoryId) {
@@ -839,6 +1099,7 @@
             updateMemoBody(data);
             updateCurrentMomentTags(data);
             updateReadOnlyReactionSummary(data);
+            updateAuthenticatedLike(data);
         };
         return detailUI;
     }
@@ -859,6 +1120,7 @@
         createPublicViewerMemoBodyBoundary: createPublicViewerMemoBodyBoundary,
         createPublicViewerCurrentMomentTagsBoundary: createPublicViewerCurrentMomentTagsBoundary,
         createPublicViewerReadOnlyReactionSummaryBoundary: createPublicViewerReadOnlyReactionSummaryBoundary,
+        createPublicViewerAuthenticatedLikeBoundary: createPublicViewerAuthenticatedLikeBoundary,
         createPublicViewerTreeMetaBoundary: createPublicViewerTreeMetaBoundary,
         delegatesToEditorDetailUI: false
     };
