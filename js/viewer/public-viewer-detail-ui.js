@@ -470,6 +470,10 @@
             ? deps.resolveSocialContext
             : null;
 
+        var hasConfirmedAuthSession = deps && typeof deps.hasConfirmedAuthSession === 'function'
+            ? deps.hasConfirmedAuthSession
+            : function() { return false; };
+
         var sharedGenRef = deps && deps.sharedGenerationRef;
         var currentGeneration = sharedGenRef ? sharedGenRef.value : 0;
         var lastLoadedMemoryId = null;
@@ -482,6 +486,8 @@
         var commentsListEl = null;
         var commentsPanelStatusEl = null;
         var commentMemoryMeta = null;
+        var composerFormEl = null;
+        var composerInputEl = null;
 
         function getGeneration() {
             return sharedGenRef ? sharedGenRef.value : currentGeneration;
@@ -613,6 +619,7 @@
             if (commentsListEl) commentsListEl.textContent = '';
             if (commentsPanelStatusEl) commentsPanelStatusEl.textContent = '';
             commentMemoryMeta = null;
+            removeComposer();
         }
 
         function openCommentPanel(commentItems) {
@@ -620,8 +627,9 @@
             commentsListEl.textContent = '';
 
             if (!commentItems || !Array.isArray(commentItems) || commentItems.length === 0) {
-                commentsPanelStatusEl.textContent = '\uC544\uC9C1 \uB313\uAE00\uC774 \uC5C6\uC5B4\uC694.';
+                commentsPanelStatusEl.textContent = '아직 댓글이 없어요.';
                 commentPanelEl.hidden = false;
+                appendComposer();
                 return;
             }
 
@@ -632,6 +640,66 @@
             }
             commentsPanelStatusEl.textContent = '';
             commentPanelEl.hidden = false;
+            appendComposer();
+        }
+
+        function appendComposer() {
+            if (!hasConfirmedAuthSession() ||
+                typeof window === 'undefined' || !window.apiClient ||
+                typeof window.apiClient.createComment !== 'function') {
+                removeComposer();
+                return;
+            }
+            if (composerFormEl && composerFormEl.parentNode === commentPanelEl) return;
+            removeComposer();
+            composerInputEl = document.createElement('textarea');
+            composerInputEl.placeholder = '댓글을 입력하세요...';
+            composerInputEl.rows = 2;
+            composerInputEl.style.width = '100%';
+            composerInputEl.style.boxSizing = 'border-box';
+
+            var submitBtn = document.createElement('button');
+            submitBtn.textContent = '등록';
+            submitBtn.type = 'button';
+
+            composerFormEl = document.createElement('div');
+            composerFormEl.style.display = 'flex';
+            composerFormEl.style.gap = '8px';
+            composerFormEl.style.marginTop = '8px';
+            composerFormEl.appendChild(composerInputEl);
+            composerFormEl.appendChild(submitBtn);
+
+            submitBtn.onclick = function() {
+                var body = (composerInputEl.value || '').trim();
+                if (!body) return;
+                var meta = commentMemoryMeta;
+                if (!meta || !meta.memoryId || !meta.treeId) return;
+                submitBtn.disabled = true;
+                submitBtn.textContent = '등록 중...';
+                var idemKey = 'c-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
+                window.apiClient.createComment(meta.memoryId, body, idemKey).then(function() {
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = '등록';
+                    composerInputEl.value = '';
+                    // Trigger force reconciliation for the current moment
+                    if (typeof meta.treeId !== 'undefined') {
+                        performFetch(meta.treeId, meta.memoryId, getGeneration(), true);
+                    }
+                }).catch(function() {
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = '등록';
+                });
+            };
+
+            commentPanelEl.appendChild(composerFormEl);
+        }
+
+        function removeComposer() {
+            if (composerFormEl && composerFormEl.parentNode) {
+                composerFormEl.parentNode.removeChild(composerFormEl);
+            }
+            composerFormEl = null;
+            composerInputEl = null;
         }
 
         function renderUnavailable(treeId, memoryId, generation, force) {
@@ -708,6 +776,7 @@
                         }
                         commentMemoryMeta = {
                             memoryId: memoryId,
+                            treeId: treeId,
                             generation: generation,
                             comments: valid.comments
                         };
