@@ -1389,6 +1389,13 @@
             composerInputEl.maxLength = 5000;
             composerInputEl.style.width = '100%';
             composerInputEl.style.boxSizing = 'border-box';
+            composerInputEl.addEventListener('input', function() {
+                // Clear only local validation error, not server failure
+                if (composerErrorEl.style.display !== 'none' && composerErrorEl.textContent === '댓글 내용을 입력해주세요.') {
+                    composerErrorEl.style.display = 'none';
+                    composerErrorEl.textContent = '';
+                }
+            });
 
             var submitBtn = document.createElement('button');
             submitBtn.textContent = '등록';
@@ -1445,7 +1452,16 @@
             submitBtn.onclick = function() {
                 if (submitBtn.disabled) return;
                 var body = (composerInputEl.value || '').trim();
-                if (!body) return;
+                // Clear any previous validation before checking
+                if (composerErrorEl.style.display !== 'none' && composerErrorEl.textContent === '댓글 내용을 입력해주세요.') {
+                    composerErrorEl.style.display = 'none';
+                    composerErrorEl.textContent = '';
+                }
+                if (!body) {
+                    composerErrorEl.textContent = '댓글 내용을 입력해주세요.';
+                    composerErrorEl.style.display = '';
+                    return;
+                }
                 if (body.length > 5000) {
                     composerErrorEl.textContent = '댓글은 5,000자 이하로 입력해주세요.';
                     composerErrorEl.style.display = '';
