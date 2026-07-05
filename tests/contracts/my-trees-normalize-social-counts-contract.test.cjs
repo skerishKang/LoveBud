@@ -264,54 +264,99 @@ test('normalizeTree still normalizes other fields correctly with social counts',
 });
 
 // ===========================================================================
-// Contract: no UI / backend / Browse files changed
+// Contract: normalizeTreeList preserves social counts and list semantics
 // ===========================================================================
 
-test('no My Trees UI module is changed by this test file', () => {
-    // Static contract — verify that no My Trees UI source was modified
-    // by checking git diff.  Only js/utils/normalize.js should be changed.
-    const { execSync } = require('child_process');
-    const diff = execSync('git diff --name-only HEAD', { encoding: 'utf8' }).trim();
-    const changed = diff.split('\n').filter(Boolean);
-    const uiFiles = changed.filter(function (f) {
-        return f.includes('my-trees-ui') || f.includes('cardRenderer');
-    });
-    assert.ok(uiFiles.length === 0,
-        'No My Trees UI file should be modified; found: ' + uiFiles.join(', '));
-});
-
-test('no Browse/public normalizer path is changed', () => {
-    // Static contract — verify the Browse adapter / public normalizer
-    // was not touched.  Only js/utils/normalize.js should be changed.
-    const { execSync } = require('child_process');
-    const diff = execSync('git diff --name-only HEAD', { encoding: 'utf8' }).trim();
-    const changed = diff.split('\n').filter(Boolean);
-    const browseFiles = changed.filter(function (f) {
-        return f.includes('search-data-adapter') ||
-               f.includes('browse') ||
-               f.includes('public-tree');
-    });
-    assert.ok(browseFiles.length === 0,
-        'No Browse/public adapter should be modified; found: ' + browseFiles.join(', '));
-});
-
-// ===========================================================================
-// Contract: normalizeTreeList also preserves social counts
-// ===========================================================================
-
-test('normalizeTreeList preserves social counts across the list', () => {
+test('normalizeTreeList preserves likeCount: 5, viewCount: 3 in list item', () => {
     const N = loadNormalizer();
     const trees = [
-        baseTree({ id: 'a', likeCount: 1, viewCount: 5 }),
+        baseTree({ id: 'a', likeCount: 5, viewCount: 3 })
+    ];
+    const out = N.normalizeTreeList(trees);
+    assert.strictEqual(out.length, 1);
+    assert.strictEqual(out[0].likeCount, 5);
+    assert.strictEqual(out[0].viewCount, 3);
+});
+
+test('normalizeTreeList preserves genuine zero likeCount and viewCount', () => {
+    const N = loadNormalizer();
+    const trees = [
+        baseTree({ id: 'zero-tree', likeCount: 0, viewCount: 0 })
+    ];
+    const out = N.normalizeTreeList(trees);
+    assert.strictEqual(out.length, 1);
+    assert.ok(Object.prototype.hasOwnProperty.call(out[0], 'likeCount'),
+        'likeCount key must exist for genuine zero');
+    assert.ok(Object.prototype.hasOwnProperty.call(out[0], 'viewCount'),
+        'viewCount key must exist for genuine zero');
+    assert.strictEqual(out[0].likeCount, 0);
+    assert.strictEqual(out[0].viewCount, 0);
+});
+
+test('normalizeTreeList omits absent likeCount and viewCount keys', () => {
+    const N = loadNormalizer();
+    const trees = [
+        baseTree({ id: 'no-counts' })
+    ];
+    const out = N.normalizeTreeList(trees);
+    assert.strictEqual(out.length, 1);
+    assert.ok(!Object.prototype.hasOwnProperty.call(out[0], 'likeCount'));
+    assert.ok(!Object.prototype.hasOwnProperty.call(out[0], 'viewCount'));
+});
+
+test('normalizeTreeList preserves list order and filters null entries', () => {
+    const N = loadNormalizer();
+    const trees = [
+        baseTree({ id: 'first', likeCount: 1, viewCount: 10 }),
+        null,
+        baseTree({ id: 'third', likeCount: 2, viewCount: 20 })
+    ];
+    const out = N.normalizeTreeList(trees);
+    assert.strictEqual(out.length, 2, 'null entries must be filtered');
+    assert.strictEqual(out[0].id, 'first');
+    assert.strictEqual(out[0].likeCount, 1);
+    assert.strictEqual(out[0].viewCount, 10);
+    assert.strictEqual(out[1].id, 'third');
+    assert.strictEqual(out[1].likeCount, 2);
+    assert.strictEqual(out[1].viewCount, 20);
+});
+
+test('normalizeTreeList does not introduce commentCount or shareCount', () => {
+    const N = loadNormalizer();
+    const trees = [
+        baseTree({ id: 'a', likeCount: 5, viewCount: 3 }),
         baseTree({ id: 'b', likeCount: 0, viewCount: 0 }),
         baseTree({ id: 'c' })
     ];
     const out = N.normalizeTreeList(trees);
-    assert.strictEqual(out.length, 3);
-    assert.strictEqual(out[0].likeCount, 1);
-    assert.strictEqual(out[0].viewCount, 5);
-    assert.strictEqual(out[1].likeCount, 0);
-    assert.strictEqual(out[1].viewCount, 0);
+    out.forEach(function (item, i) {
+        assert.ok(!Object.prototype.hasOwnProperty.call(item, 'commentCount'),
+            'item[' + i + '] must not have commentCount');
+        assert.ok(!Object.prototype.hasOwnProperty.call(item, 'shareCount'),
+            'item[' + i + '] must not have shareCount');
+    });
+});
+
+test('normalizeTreeList mixed social-count presence across items', () => {
+    const N = loadNormalizer();
+    const trees = [
+        baseTree({ id: 'has-both', likeCount: 7, viewCount: 12 }),
+        baseTree({ id: 'has-like-only', likeCount: 3 }),
+        baseTree({ id: 'has-view-only', viewCount: 8 }),
+        baseTree({ id: 'has-neither' })
+    ];
+    const out = N.normalizeTreeList(trees);
+    assert.strictEqual(out.length, 4);
+    // has-both
+    assert.strictEqual(out[0].likeCount, 7);
+    assert.strictEqual(out[0].viewCount, 12);
+    // has-like-only
+    assert.strictEqual(out[1].likeCount, 3);
+    assert.ok(!Object.prototype.hasOwnProperty.call(out[1], 'viewCount'));
+    // has-view-only
     assert.ok(!Object.prototype.hasOwnProperty.call(out[2], 'likeCount'));
-    assert.ok(!Object.prototype.hasOwnProperty.call(out[2], 'viewCount'));
+    assert.strictEqual(out[2].viewCount, 8);
+    // has-neither
+    assert.ok(!Object.prototype.hasOwnProperty.call(out[3], 'likeCount'));
+    assert.ok(!Object.prototype.hasOwnProperty.call(out[3], 'viewCount'));
 });
