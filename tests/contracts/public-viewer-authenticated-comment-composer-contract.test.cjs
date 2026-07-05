@@ -902,5 +902,37 @@ it('43. close/reopen and moment switch clear validation', async () => {
   // Switch to Moment B and back
   env.deps.currentSelectedId = 'mem-2';
   await env.openPanel('mem-2');
-  assert.equal(env.findErr(env.els.momentCommentsPanel), null, 'no validation on B');
+  assert.equal(env.findValidation(env.els.momentCommentsPanel), null, 'no validation on B');
+});
+
+it('44. whitespace-only input does not clear validation', async () => {
+  const env = createEnv();
+  await env.openPanel('mem-1');
+  const ta = env.findTA(env.els.momentCommentsPanel);
+  if (ta) ta.value = '';
+  env.findBtn(env.els.momentCommentsPanel).onclick();
+  assert.ok(env.findValidation(env.els.momentCommentsPanel), 'validation shown');
+
+  // Whitespace-only input should NOT clear validation
+  if (ta) {
+    ta.value = '   ';
+    ta.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+  assert.ok(env.findValidation(env.els.momentCommentsPanel), 'validation remains after whitespace input');
+  assert.equal(env.ccCount(), 0, 'no createComment');
+  assert.equal(env.lastKey(), null, 'no idempotency key');
+
+  // Non-empty input clears validation
+  if (ta) {
+    ta.value = 'real comment';
+    ta.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+  assert.equal(env.findValidation(env.els.momentCommentsPanel), null, 'validation cleared after non-empty input');
+
+  // Valid submit works
+  env.mkPending();
+  env.findBtn(env.els.momentCommentsPanel).onclick();
+  assert.equal(env.ccCount(), 1, 'write called');
+  env.resolve({ id: 'c-44' });
+  await flush();
 });
