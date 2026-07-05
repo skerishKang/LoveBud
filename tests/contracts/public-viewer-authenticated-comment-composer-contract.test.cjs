@@ -28,7 +28,10 @@ function makeEl() {
     appendChild(c) { this.children.push(c); c.parentElement = this; c.parentNode = this; },
     removeChild(c) { const i = this.children.indexOf(c); if (i !== -1) { this.children.splice(i, 1); c.parentElement = null; c.parentNode = null; } },
     parentElement: null, closest() { return this.parentElement || this; },
-    querySelector() { return null; }
+    querySelector() { return null; },
+    addEventListener: function(type, handler) { this._listeners = this._listeners || {}; this._listeners[type] = handler; },
+    removeEventListener: function(type) { if (this._listeners) delete this._listeners[type]; },
+    dispatchEvent: function() { var h = this._listeners && this._listeners.input; if (h) { h(); return true; } return false; },
   };
 }
 
@@ -115,6 +118,7 @@ function createEnv() {
     setAuth: (v) => { auth = !!v; },
     findSuccess: (p) => { function f(e) { if (e.tagName === 'P' && e.textContent && e.textContent.includes('댓글이 등록되었습니다')) return e; if (e.children) for (const c of e.children) { const r = f(c); if (r) return r; } return null; } return f(p); },
     findCancel: (p) => { function f(e) { if (e.tagName === 'BUTTON' && e.textContent && e.textContent.includes('입력 취소')) return e; if (e.children) for (const c of e.children) { const r = f(c); if (r) return r; } return null; } return f(p); },
+    findValidation: (p) => { function f(e) { if (e.tagName === 'P' && e.textContent && e.textContent.trim() === '댓글 내용을 입력해주세요.') return e; if (e.children) for (const c of e.children) { const r = f(c); if (r) return r; } return null; } return f(p); },
   };
 }
 
@@ -780,4 +784,155 @@ it('38. read-only boundary has no composerCancelBtn or 입력 취소', () => {
   assert.equal(b.includes('입력 취소'), false, 'no 입력 취소 in read-only');
   assert.equal(b.includes('createComment'), false, 'no createComment in read-only');
   assert.equal(b.includes('composer'), false, 'no composer in read-only');
+});
+
+// ---------------------------------------------------------------------------
+// 39-43: Blank input validation
+// ---------------------------------------------------------------------------
+it('39. empty input shows validation error, no API call', async () => {
+  const env = createEnv();
+  await env.openPanel('mem-1');
+  const ta = env.findTA(env.els.momentCommentsPanel);
+  if (ta) ta.value = '';
+  const readCount = env.publicReadCount();
+  env.findBtn(env.els.momentCommentsPanel).onclick();
+  const errEl = env.findValidation(env.els.momentCommentsPanel);
+  assert.ok(errEl, 'validation error element exists');
+  assert.equal(errEl.textContent.trim(), '댓글 내용을 입력해주세요.', 'validation message');
+  assert.ok(errEl.getAttribute('aria-live'), 'has aria-live');
+  assert.equal(env.ccCount(), 0, 'no createComment call');
+  assert.equal(env.publicReadCount(), readCount, 'no reconciliation');
+  assert.equal(env.els.momentCommentsPanel.hidden, false, 'panel stays open');
+  assert.ok(env.findBtn(env.els.momentCommentsPanel), 'submit still enabled');
+});
+
+it('40. whitespace-only input shows validation error, no API call', async () => {
+  const env = createEnv();
+  await env.openPanel('mem-1');
+  const ta = env.findTA(env.els.momentCommentsPanel);
+  if (ta) ta.value = '   ';
+  const readCount = env.publicReadCount();
+  env.findBtn(env.els.momentCommentsPanel).onclick();
+  const errEl = env.findValidation(env.els.momentCommentsPanel);
+  assert.ok(errEl, 'validation error');
+  assert.equal(errEl.textContent.trim(), '댓글 내용을 입력해주세요.');
+  assert.equal(env.ccCount(), 0, 'no write');
+  assert.equal(env.publicReadCount(), readCount, 'no reconciliation');
+});
+
+it('41. correction clears validation, then valid submit calls API once', async () => {
+  const env = createEnv();
+  await env.openPanel('mem-1');
+  const ta = env.findTA(env.els.momentCommentsPanel);
+  if (ta) ta.value = '';
+  env.findBtn(env.els.momentCommentsPanel).onclick();
+  assert.ok(env.findValidation(env.els.momentCommentsPanel), 'validation shown');
+  // Type to correct
+  if (ta) {
+    ta.value = 'valid comment';
+    ta.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+  // Validation should be cleared
+  assert.equal(env.findValidation(env.els.momentCommentsPanel), null, 'validation cleared after input');
+
+  // Now submit - should call API once
+  env.mkPending();
+  env.findBtn(env.els.momentCommentsPanel).onclick();
+  assert.equal(env.ccCount(), 1, 'write called once');
+  env.resolve({ id: 'c-41' });
+  await flush();
+});
+
+it('42. server failure and local validation do not mix', async () => {
+  const env = createEnv();
+  // First trigger a server failure
+  env.mkPending();
+  await env.openPanel('mem-1');
+  const ta = env.findTA(env.els.momentCommentsPanel);
+  if (ta) ta.value = 'will fail';
+  env.findBtn(env.els.momentCommentsPanel).onclick();
+  env.reject(new Error('Server Error'));
+  await flush();
+  const serverErr = env.findErr(env.els.momentCommentsPanel);
+  assert.ok(serverErr, 'server error shown');
+  assert.equal(serverErr.textContent.includes('등록하지 못했습니다'), true, 'server error text');
+
+  // Type in textarea - should NOT clear server error
+  if (ta) {
+    ta.value = 'typing...';
+    ta.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+  const afterInput = env.findErr(env.els.momentCommentsPanel);
+  assert.ok(afterInput, 'server error still visible after input');
+  assert.equal(afterInput.textContent.includes('등록하지 못했습니다'), true, 'server error preserved');
+
+  // Clear manually via cancel
+  env.findCancel(env.els.momentCommentsPanel).onclick();
+  assert.equal(env.findErr(env.els.momentCommentsPanel), null, 'error cleared by cancel');
+
+  // Now empty submit shows validation, not server error
+  if (ta) ta.value = '';
+  env.findBtn(env.els.momentCommentsPanel).onclick();
+  const validErr = env.findValidation(env.els.momentCommentsPanel);
+  assert.ok(validErr, 'validation error after cancel+empty');
+  assert.equal(validErr.textContent.trim(), '댓글 내용을 입력해주세요.', 'validation message');
+});
+
+it('43. close/reopen and moment switch clear validation', async () => {
+  const env = createEnv();
+  await env.openPanel('mem-1');
+  const ta = env.findTA(env.els.momentCommentsPanel);
+  if (ta) ta.value = '';
+  env.findBtn(env.els.momentCommentsPanel).onclick();
+  assert.ok(env.findValidation(env.els.momentCommentsPanel), 'validation shown');
+
+  // Close panel
+  if (env.els.momentReactionCommentStatus && env.els.momentReactionCommentStatus.onclick) {
+    env.els.momentReactionCommentStatus.onclick();
+  }
+  await flush();
+
+  // Reopen - no validation
+  if (env.els.momentReactionCommentStatus && env.els.momentReactionCommentStatus.onclick) {
+    env.els.momentReactionCommentStatus.onclick();
+  }
+  await flush();
+  assert.equal(env.findValidation(env.els.momentCommentsPanel), null, 'validation gone after reopen');
+
+  // Switch to Moment B and back
+  env.deps.currentSelectedId = 'mem-2';
+  await env.openPanel('mem-2');
+  assert.equal(env.findValidation(env.els.momentCommentsPanel), null, 'no validation on B');
+});
+
+it('44. whitespace-only input does not clear validation', async () => {
+  const env = createEnv();
+  await env.openPanel('mem-1');
+  const ta = env.findTA(env.els.momentCommentsPanel);
+  if (ta) ta.value = '';
+  env.findBtn(env.els.momentCommentsPanel).onclick();
+  assert.ok(env.findValidation(env.els.momentCommentsPanel), 'validation shown');
+
+  // Whitespace-only input should NOT clear validation
+  if (ta) {
+    ta.value = '   ';
+    ta.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+  assert.ok(env.findValidation(env.els.momentCommentsPanel), 'validation remains after whitespace input');
+  assert.equal(env.ccCount(), 0, 'no createComment');
+  assert.equal(env.lastKey(), null, 'no idempotency key');
+
+  // Non-empty input clears validation
+  if (ta) {
+    ta.value = 'real comment';
+    ta.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+  assert.equal(env.findValidation(env.els.momentCommentsPanel), null, 'validation cleared after non-empty input');
+
+  // Valid submit works
+  env.mkPending();
+  env.findBtn(env.els.momentCommentsPanel).onclick();
+  assert.equal(env.ccCount(), 1, 'write called');
+  env.resolve({ id: 'c-44' });
+  await flush();
 });

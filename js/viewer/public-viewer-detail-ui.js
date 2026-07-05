@@ -1354,6 +1354,7 @@
         var composerDraftBody = null;
         var activeContext = null;
         var composerInstanceToken = 0;
+        var composerValidationActive = false;
 
         function getGeneration() {
             return sharedGenRef ? sharedGenRef.value : 0;
@@ -1368,6 +1369,7 @@
             composerErrorEl = null;
             composerSuccessEl = null;
             composerCancelBtn = null;
+            composerValidationActive = false;
         }
 
         function deactivateComposer() {
@@ -1389,6 +1391,14 @@
             composerInputEl.maxLength = 5000;
             composerInputEl.style.width = '100%';
             composerInputEl.style.boxSizing = 'border-box';
+            composerInputEl.addEventListener('input', function() {
+                // Clear local validation only when trimmed non-empty correction is available
+                if (composerValidationActive && (composerInputEl.value || '').trim() !== '') {
+                    composerErrorEl.style.display = 'none';
+                    composerErrorEl.textContent = '';
+                    composerValidationActive = false;
+                }
+            });
 
             var submitBtn = document.createElement('button');
             submitBtn.textContent = '등록';
@@ -1441,11 +1451,23 @@
             // Reset draft for new composer instance
             composerDraftIdemKey = null;
             composerDraftBody = null;
+            composerValidationActive = false;
 
             submitBtn.onclick = function() {
                 if (submitBtn.disabled) return;
                 var body = (composerInputEl.value || '').trim();
-                if (!body) return;
+                // Clear any previous validation
+                if (composerValidationActive) {
+                    composerErrorEl.style.display = 'none';
+                    composerErrorEl.textContent = '';
+                    composerValidationActive = false;
+                }
+                if (!body) {
+                    composerErrorEl.textContent = '댓글 내용을 입력해주세요.';
+                    composerErrorEl.style.display = '';
+                    composerValidationActive = true;
+                    return;
+                }
                 if (body.length > 5000) {
                     composerErrorEl.textContent = '댓글은 5,000자 이하로 입력해주세요.';
                     composerErrorEl.style.display = '';
@@ -1472,6 +1494,7 @@
                 submitBtn.textContent = '등록 중...';
                 composerCancelBtn.disabled = true;
                 composerErrorEl.style.display = 'none';
+                composerValidationActive = false;
                 composerSuccessEl.style.display = 'none';
 
                 createComment(subCtx.memoryId, body, composerDraftIdemKey).then(function() {
@@ -1515,6 +1538,7 @@
                 composerErrorEl.style.display = 'none';
                 composerErrorEl.textContent = '';
                 composerSuccessEl.style.display = 'none';
+                composerValidationActive = false;
             };
 
             panelEl.appendChild(composerFormEl);
