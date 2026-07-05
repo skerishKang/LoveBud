@@ -470,9 +470,14 @@
             ? deps.resolveSocialContext
             : null;
 
+        var onCommentsPanelStateChange = deps && typeof deps.onCommentsPanelStateChange === 'function'
+            ? deps.onCommentsPanelStateChange
+            : null;
+
         var sharedGenRef = deps && deps.sharedGenerationRef;
         var currentGeneration = sharedGenRef ? sharedGenRef.value : 0;
         var lastLoadedMemoryId = null;
+        var lastData = null;
         var cardEl = null;
         var likeValueEl = null;
         var commentValueEl = null;
@@ -509,7 +514,7 @@
                 && commentToggleEl && commentPanelEl && commentsListEl && commentsPanelStatusEl;
         }
 
-        function setLoadingState(force) {
+        function setLoadingState(force, preservePanel) {
             if (!getElements()) return;
             cardEl.style.display = '';
             cardEl.dataset.socialLoading = 'true';
@@ -528,7 +533,9 @@
                 commentToggleEl.setAttribute('disabled', '');
                 commentToggleEl.setAttribute('aria-expanded', 'false');
             }
-            resetCommentsPanel();
+            if (!preservePanel) {
+                resetCommentsPanel();
+            }
             removeRetryButton();
         }
 
@@ -613,6 +620,7 @@
             if (commentsListEl) commentsListEl.textContent = '';
             if (commentsPanelStatusEl) commentsPanelStatusEl.textContent = '';
             commentMemoryMeta = null;
+            emitPanelState(false);
         }
 
         function openCommentPanel(commentItems) {
@@ -620,8 +628,9 @@
             commentsListEl.textContent = '';
 
             if (!commentItems || !Array.isArray(commentItems) || commentItems.length === 0) {
-                commentsPanelStatusEl.textContent = '\uC544\uC9C1 \uB313\uAE00\uC774 \uC5C6\uC5B4\uC694.';
+                commentsPanelStatusEl.textContent = '아직 댓글이 없어요.';
                 commentPanelEl.hidden = false;
+                emitPanelState(true);
                 return;
             }
 
@@ -632,6 +641,23 @@
             }
             commentsPanelStatusEl.textContent = '';
             commentPanelEl.hidden = false;
+            emitPanelState(true);
+        }
+
+        function emitPanelState(open) {
+            if (typeof onCommentsPanelStateChange !== 'function') return;
+            var meta = commentMemoryMeta;
+            if (open && meta) {
+                onCommentsPanelStateChange({
+                    open: true,
+                    treeId: meta.treeId,
+                    memoryId: meta.memoryId,
+                    generation: meta.generation,
+                    data: meta.data
+                });
+            } else {
+                onCommentsPanelStateChange({ open: false });
+            }
         }
 
         function renderUnavailable(treeId, memoryId, generation, force) {
@@ -677,7 +703,7 @@
             }
         }
 
-        function performFetch(treeId, memoryId, generation, force) {
+        function performFetch(treeId, memoryId, generation, force, preservePanel) {
             if (!fetchReactionSummary || !fetchComments) {
                 if (generation === getGeneration()) {
                     if (sharedGenRef) {
@@ -691,7 +717,7 @@
                 return;
             }
 
-            setLoadingState(force);
+            setLoadingState(force, preservePanel);
 
             Promise.all([
                 fetchReactionSummary(treeId, memoryId).catch(function() { return null; }),
@@ -708,13 +734,29 @@
                         }
                         commentMemoryMeta = {
                             memoryId: memoryId,
+                            treeId: treeId,
                             generation: generation,
-                            comments: valid.comments
+                            comments: valid.comments,
+                            data: lastData
                         };
                         renderSuccess(valid.likeCount, valid.commentCount, force);
                         // Wire comment toggle only on success (non-force or first load)
                         if (!force || !commentToggleEl.onclick) {
                             wireCommentToggle(generation, memoryId);
+                        }
+                        // If preserving panel, re-render comments display
+                        if (preservePanel && commentPanelEl && !commentPanelEl.hidden) {
+                            if (commentsListEl) commentsListEl.textContent = '';
+                            if (commentsPanelStatusEl) commentsPanelStatusEl.textContent = '';
+                            if (!valid.comments || valid.comments.length === 0) {
+                                commentsPanelStatusEl.textContent = '아직 댓글이 없어요.';
+                            } else {
+                                for (var i = 0; i < valid.comments.length; i++) {
+                                    var li = document.createElement('li');
+                                    li.textContent = valid.comments[i].body;
+                                    commentsListEl.appendChild(li);
+                                }
+                            }
                         }
                     } else {
                         if (sharedGenRef) {
@@ -755,6 +797,7 @@
                 if (isOpen) {
                     commentToggleEl.setAttribute('aria-expanded', 'false');
                     if (commentPanelEl) commentPanelEl.hidden = true;
+                    emitPanelState(false);
                 } else {
                     commentToggleEl.setAttribute('aria-expanded', 'true');
                     openCommentPanel(currentMeta.comments);
@@ -763,6 +806,11 @@
         }
 
         return function updatePublicViewerReadOnlyReactionSummary(data, force) {
+            var preservePanel = false;
+            if (force && typeof force === 'object') {
+                preservePanel = !!force.preserveCommentsPanel;
+                force = !!force.force;
+            }
             var context = resolveSocialContext ? resolveSocialContext(data) : null;
             if (!context) {
                 hideCard();
@@ -773,6 +821,8 @@
                 lastLoadedMemoryId = null;
                 return;
             }
+
+            lastData = data;
 
             var treeId = context.treeId;
             var memoryId = context.memoryId;
@@ -792,7 +842,7 @@
             }
             lastLoadedMemoryId = memoryId;
 
-            performFetch(treeId, memoryId, thisGen, force);
+            performFetch(treeId, memoryId, thisGen, force, preservePanel);
         };
     }
 
@@ -1283,6 +1333,175 @@
         };
     }
 
+    function createPublicViewerAuthenticatedCommentComposerBoundary(deps) {
+        var hasConfirmedAuthSession = deps && typeof deps.hasConfirmedAuthSession === 'function'
+            ? deps.hasConfirmedAuthSession
+            : function() { return false; };
+        var createComment = deps && typeof deps.createComment === 'function'
+            ? deps.createComment
+            : null;
+        var reconcilePublicSummary = deps && typeof deps.reconcilePublicSummary === 'function'
+            ? deps.reconcilePublicSummary
+            : null;
+        var sharedGenRef = deps && deps.sharedGenerationRef;
+
+        var composerFormEl = null;
+        var composerInputEl = null;
+        var composerErrorEl = null;
+        var composerDraftIdemKey = null;
+        var composerDraftBody = null;
+        var activeContext = null;
+        var composerInstanceToken = 0;
+
+        function getGeneration() {
+            return sharedGenRef ? sharedGenRef.value : 0;
+        }
+
+        function removeComposerDom() {
+            if (composerFormEl && composerFormEl.parentNode) {
+                composerFormEl.parentNode.removeChild(composerFormEl);
+            }
+            composerFormEl = null;
+            composerInputEl = null;
+            composerErrorEl = null;
+        }
+
+        function deactivateComposer() {
+            removeComposerDom();
+            activeContext = null;
+            composerDraftIdemKey = null;
+            composerDraftBody = null;
+            composerInstanceToken++;
+        }
+
+        function appendComposerDom(panelEl, context, instanceToken) {
+            if (!panelEl) return;
+            removeComposerDom();
+
+            composerInputEl = document.createElement('textarea');
+            composerInputEl.setAttribute('aria-label', '댓글 입력');
+            composerInputEl.placeholder = '댓글을 입력하세요...';
+            composerInputEl.rows = 2;
+            composerInputEl.maxLength = 5000;
+            composerInputEl.style.width = '100%';
+            composerInputEl.style.boxSizing = 'border-box';
+
+            var submitBtn = document.createElement('button');
+            submitBtn.textContent = '등록';
+            submitBtn.type = 'button';
+
+            composerErrorEl = document.createElement('p');
+            composerErrorEl.setAttribute('aria-live', 'polite');
+            composerErrorEl.style.color = 'red';
+            composerErrorEl.style.fontSize = '0.85em';
+            composerErrorEl.style.margin = '4px 0 0';
+            composerErrorEl.style.display = 'none';
+
+            composerFormEl = document.createElement('div');
+            composerFormEl.style.display = 'flex';
+            composerFormEl.style.flexDirection = 'column';
+            composerFormEl.style.gap = '4px';
+            composerFormEl.style.marginTop = '8px';
+
+            var inputRow = document.createElement('div');
+            inputRow.style.display = 'flex';
+            inputRow.style.gap = '8px';
+            inputRow.appendChild(composerInputEl);
+            inputRow.appendChild(submitBtn);
+
+            composerFormEl.appendChild(inputRow);
+            composerFormEl.appendChild(composerErrorEl);
+
+            // Reset draft for new composer instance
+            composerDraftIdemKey = null;
+            composerDraftBody = null;
+
+            submitBtn.onclick = function() {
+                if (submitBtn.disabled) return;
+                var body = (composerInputEl.value || '').trim();
+                if (!body) return;
+                if (body.length > 5000) {
+                    composerErrorEl.textContent = '댓글은 5,000자 이하로 입력해주세요.';
+                    composerErrorEl.style.display = '';
+                    return;
+                }
+                if (!activeContext) return;
+
+                // Capture immutable submission context for async race safety
+                var subCtx = {
+                    instanceToken: composerInstanceToken,
+                    treeId: activeContext.treeId,
+                    memoryId: activeContext.memoryId,
+                    generation: getGeneration(),
+                    data: activeContext.data
+                };
+                if (!subCtx.treeId || !subCtx.memoryId) return;
+
+                if (body !== composerDraftBody) {
+                    composerDraftIdemKey = 'c-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
+                    composerDraftBody = body;
+                }
+
+                submitBtn.disabled = true;
+                submitBtn.textContent = '등록 중...';
+                composerErrorEl.style.display = 'none';
+
+                createComment(subCtx.memoryId, body, composerDraftIdemKey).then(function() {
+                    if (composerInstanceToken !== subCtx.instanceToken) return;
+                    if (!activeContext || activeContext.treeId !== subCtx.treeId ||
+                        activeContext.memoryId !== subCtx.memoryId) return;
+
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = '등록';
+                    composerInputEl.value = '';
+                    composerDraftIdemKey = null;
+                    composerDraftBody = null;
+                    composerErrorEl.style.display = 'none';
+
+                    if (subCtx.generation === getGeneration()) {
+                        reconcilePublicSummary(subCtx.data, { force: true, preserveCommentsPanel: true });
+                    }
+                }).catch(function() {
+                    if (composerInstanceToken !== subCtx.instanceToken) return;
+                    if (!activeContext || activeContext.treeId !== subCtx.treeId ||
+                        activeContext.memoryId !== subCtx.memoryId) return;
+
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = '등록';
+                    composerErrorEl.textContent = '댓글을 등록하지 못했습니다. 다시 시도해주세요.';
+                    composerErrorEl.style.display = '';
+                });
+            };
+
+            panelEl.appendChild(composerFormEl);
+        }
+
+        return function updatePublicViewerAuthenticatedCommentComposer(state) {
+            if (!state || !state.open || typeof createComment !== 'function' || !hasConfirmedAuthSession()) {
+                deactivateComposer();
+                return;
+            }
+            var panelEl = document.getElementById('momentCommentsPanel');
+            if (!panelEl || panelEl.hidden) {
+                deactivateComposer();
+                return;
+            }
+
+            var newContext = {
+                memoryId: state.memoryId,
+                treeId: state.treeId,
+                data: state.data,
+                generation: state.generation !== undefined ? state.generation : (sharedGenRef ? sharedGenRef.value : 0)
+            };
+
+            // Mount order: remove old DOM → set new context → increment token → append new DOM
+            removeComposerDom();
+            activeContext = newContext;
+            composerInstanceToken++;
+            appendComposerDom(panelEl, activeContext, composerInstanceToken);
+        };
+    }
+
     function createPublicViewerTreeMetaBoundary(deps) {
         var i18n = deps && typeof deps.i18n === 'function'
             ? deps.i18n
@@ -1520,8 +1739,30 @@
             resolveSocialContext: resolveSocialContext
         });
 
-        var updateReadOnlyReactionSummary = createPublicViewerReadOnlyReactionSummaryBoundary(boundaryDeps);
+        // Create composer boundary first (it will receive reconcilePublicSummary after read-only is created)
+        var updateCommentComposer = null;
+        var commentPanelStateHandler = function(state) {
+            if (updateCommentComposer) updateCommentComposer(state);
+        };
+
+        // Create read-only boundary with lifecycle callback
+        var updateReadOnlyReactionSummary = createPublicViewerReadOnlyReactionSummaryBoundary(
+            Object.assign({}, boundaryDeps, {
+                onCommentsPanelStateChange: function(state) {
+                    commentPanelStateHandler(state);
+                }
+            })
+        );
+
+        // Create authenticaticated like boundary
         var updateAuthenticatedLike = createPublicViewerAuthenticatedLikeBoundary(
+            Object.assign({}, boundaryDeps, {
+                reconcilePublicSummary: updateReadOnlyReactionSummary
+            })
+        );
+
+        // Create composer boundary with reconcile pointing to read-only
+        updateCommentComposer = createPublicViewerAuthenticatedCommentComposerBoundary(
             Object.assign({}, boundaryDeps, {
                 reconcilePublicSummary: updateReadOnlyReactionSummary
             })
