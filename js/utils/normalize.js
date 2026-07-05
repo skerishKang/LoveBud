@@ -66,6 +66,31 @@
     }
 
     /**
+     * Normalize a social count field (likeCount, viewCount) from an owner-tree
+     * API response.  Preserves finite non-negative integer values; a genuine
+     * API "0" remains "0".  If the field is absent from input, the output is
+     * also absent (returns `undefined` so the property is omitted from the
+     * returned object).  Rejects negative, fractional, Infinity, NaN, and
+     * non-numeric types.
+     *
+     * @param {*} v - Raw value from API or cache
+     * @returns {number|undefined} Normalized count or undefined if absent/invalid
+     */
+    function _normalizeSocialCount(v) {
+        if (v === undefined || v === null) return undefined;
+        if (typeof v === 'number') {
+            if (Number.isFinite(v) && Number.isSafeInteger(v) && v >= 0) return v;
+            return undefined;
+        }
+        if (typeof v === 'string') {
+            if (!/^(0|[1-9]\d*)$/.test(v)) return undefined;
+            var n = Number(v);
+            return Number.isSafeInteger(n) && n >= 0 ? n : undefined;
+        }
+        return undefined;
+    }
+
+    /**
      * Normalize a tree object to standard flat camelCase shape.
      *
      * @param {Object} tree - Raw tree data from API or cache
@@ -79,7 +104,7 @@
         // New code and server responses must prefer flat camelCase only.
         var resolvedOwnerId = tree.ownerId || tree.owner_id || tree.userId || tree.user_id || null;
 
-        return {
+        var result = {
             id: tree.id,
             ownerId: resolvedOwnerId,
             userId: resolvedOwnerId,
@@ -109,6 +134,16 @@
             memoryCount: tree.memoryCount || tree.memory_count || 0,
             isArchived: tree.isArchived || tree.is_archived || false
         };
+
+        // Preserve owner-tree social counts only when the API provides them.
+        // Absent fields are omitted entirely from the normalized output so
+        // downstream renderers can distinguish "no data" from "zero".
+        var lc = _normalizeSocialCount(tree.likeCount);
+        var vc = _normalizeSocialCount(tree.viewCount);
+        if (lc !== undefined) result.likeCount = lc;
+        if (vc !== undefined) result.viewCount = vc;
+
+        return result;
     }
 
     /**
