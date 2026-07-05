@@ -795,9 +795,48 @@
                 }
                 var isOpen = commentToggleEl.getAttribute('aria-expanded') === 'true';
                 if (isOpen) {
+                    // A. Capture focus state before close (defensive, at earliest point)
+                    var wasFocusInsideCurrentPanel = commentPanelEl &&
+                        typeof document !== 'undefined' &&
+                        document.activeElement &&
+                        typeof commentPanelEl.contains === 'function' &&
+                        commentPanelEl.contains(document.activeElement);
+
+                    // B. Close
                     commentToggleEl.setAttribute('aria-expanded', 'false');
                     if (commentPanelEl) commentPanelEl.hidden = true;
                     emitPanelState(false);
+
+                    // C. Restore focus only when preconditions are fully met
+                    if (wasFocusInsideCurrentPanel) {
+                        try {
+                            if (
+                                // Generation and metadata still match
+                                getGeneration() === gen &&
+                                commentMemoryMeta &&
+                                commentMemoryMeta.generation === gen &&
+                                commentMemoryMeta.memoryId === memId &&
+                                // Toggle exists and is actionable
+                                commentToggleEl &&
+                                typeof commentToggleEl.focus === 'function' &&
+                                commentToggleEl['disabled'] !== true &&
+                                // Toggle is visible (property and style)
+                                commentToggleEl.hidden !== true &&
+                                commentToggleEl.style.display !== 'none' &&
+                                // Toggle is not detached from DOM
+                                commentToggleEl.isConnected === true &&
+                                // Card exists and is visible (property and style)
+                                cardEl &&
+                                cardEl.hidden !== true &&
+                                cardEl.style.display !== 'none' &&
+                                cardEl.isConnected === true
+                            ) {
+                                commentToggleEl.focus();
+                            }
+                        } catch (e) {
+                            // Defensive: ignore any DOM exceptions in mock or edge environments
+                        }
+                    }
                 } else {
                     commentToggleEl.setAttribute('aria-expanded', 'true');
                     openCommentPanel(currentMeta.comments);

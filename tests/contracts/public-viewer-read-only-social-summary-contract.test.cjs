@@ -28,6 +28,9 @@ function createMockElement(tagName = 'div') {
     textContent: '',
     onclick: null,
     _disabled: false,
+    _focusCallCount: 0,
+    isConnected: true,
+    _isConnected: true,
     setAttribute(name, val) {
       this.attributes[name] = val;
       if (name === 'disabled') this._disabled = true;
@@ -52,7 +55,18 @@ function createMockElement(tagName = 'div') {
       }
       return null;
     },
-    closest() { return this.parentElement || this; }
+    closest() { return this.parentElement || this; },
+    contains(child) {
+      if (!child) return false;
+      if (child === this) return true;
+      if (!this.children) return false;
+      if (this.children.includes(child)) return true;
+      for (const c of this.children) {
+        if (c.contains && c.contains(child)) return true;
+      }
+      return false;
+    },
+    focus() { this._focusCallCount++; },
   };
   Object.defineProperty(element, 'disabled', {
     get() { return this._disabled; },
@@ -100,6 +114,7 @@ function createDetailUI(fetchReactionSummary, fetchComments) {
 
   const context = {
     window: {},
+    _activeElement: elements.momentCommentsList,
     document: {
       createElement(tagName) { return createMockElement(tagName); },
       getElementById(id) { return elements[id] || null; },
@@ -109,7 +124,10 @@ function createDetailUI(fetchReactionSummary, fetchComments) {
         if (sel === '.diary-note') return elements.detailMemo;
         return null;
       },
-      querySelectorAll() { return []; }
+      querySelectorAll() { return []; },
+      get activeElement() {
+        return context._activeElement || null;
+      }
     }
   };
   context.window = context;
@@ -691,4 +709,485 @@ test('forced unavailable reconciliation resets comments panel', async () => {
     assert.equal(toggle.getAttribute('aria-expanded'), 'false', 'onclick cannot reopen after force unavailable');
     assert.equal(elements.momentCommentsPanel.hidden, true, 'panel stays hidden after onclick');
   }
+});
+
+// ---------------------------------------------------------------------------
+// Focus-return contract
+// ---------------------------------------------------------------------------
+async function flush() {
+  await new Promise(r => setTimeout(r, 30));
+  // Second yield to ensure async fetch chain fully completes
+  await Promise.resolve();
+}
+
+test('close with focus inside panel restores focus to enabled toggle exactly once', async () => {
+  const { elements, detailUI, deps, context } = createDetailUI(
+    async () => ({ counts: { like: 0 }, total: 0 }),
+    async () => ({ comments: [], nextCursor: null })
+  );
+
+  // Open panel
+  elements.momentReactionCommentStatus.removeAttribute('disabled');
+  elements.momentCommentsPanel.hidden = false;
+  deps.currentSelectedId = 'mem-1';
+  deps.treeMemories = [{ id: 'mem-1', treeId: 'tree-1' }];
+  detailUI.updateDetailPanel({ id: 'mem-1', treeId: 'tree-1' });
+  await flush();
+
+  // Simulate toggle open
+  const toggle = elements.momentReactionCommentStatus;
+  assert.ok(typeof toggle.onclick === 'function', 'toggle onclick must be wired');
+  toggle.setAttribute('aria-expanded', 'true');
+  elements.momentReactionsCard.style.display = '';
+
+  // Simulate focus on panel descendant (tests recursive contains() via child)
+  elements.momentCommentsPanel.appendChild(elements.momentCommentsList);
+  context._activeElement = elements.momentCommentsList;
+
+  // Close via toggle onclick
+  if (typeof toggle.onclick === 'function') {
+    toggle.onclick();
+  }
+
+  // Strong assertion: focus must be called exactly once on normal close
+  assert.equal(toggle._focusCallCount, 1, 'toggle focus() called exactly once on normal close');
+  assert.equal(toggle.getAttribute('aria-expanded'), 'false', 'aria-expanded false after close');
+  assert.equal(elements.momentCommentsPanel.hidden, true, 'panel hidden after close');
+});
+
+test('open panel does not call focus on toggle', async () => {
+  const { elements, detailUI, deps, context } = createDetailUI(
+    async () => ({ counts: { like: 0 }, total: 0 }),
+    async () => ({ comments: [], nextCursor: null })
+  );
+
+  elements.momentReactionCommentStatus.removeAttribute('disabled');
+  elements.momentCommentsPanel.hidden = false;
+  deps.currentSelectedId = 'mem-1';
+  deps.treeMemories = [{ id: 'mem-1', treeId: 'tree-1' }];
+  detailUI.updateDetailPanel({ id: 'mem-1', treeId: 'tree-1' });
+  await flush();
+
+  const toggle = elements.momentReactionCommentStatus;
+  assert.ok(typeof toggle.onclick === 'function', 'toggle onclick must be wired');
+  elements.momentReactionsCard.style.display = '';
+  context._activeElement = elements.momentCommentsPanel;
+
+  // Open (was expanded=false, so onclick opens)
+  if (typeof toggle.onclick === 'function') {
+    toggle.onclick();
+  }
+
+  assert.equal(toggle._focusCallCount, 0, 'no focus call on open');
+});
+
+test('disabled toggle does not receive focus on close', async () => {
+  const { elements, detailUI, deps, context } = createDetailUI(
+    async () => ({ counts: { like: 0 }, total: 0 }),
+    async () => ({ comments: [], nextCursor: null })
+  );
+
+  elements.momentReactionCommentStatus.removeAttribute('disabled');
+  elements.momentCommentsPanel.hidden = false;
+  deps.currentSelectedId = 'mem-1';
+  deps.treeMemories = [{ id: 'mem-1', treeId: 'tree-1' }];
+  detailUI.updateDetailPanel({ id: 'mem-1', treeId: 'tree-1' });
+  await flush();
+
+  const toggle = elements.momentReactionCommentStatus;
+  toggle.setAttribute('aria-expanded', 'true');
+  elements.momentReactionsCard.style.display = '';
+  context._activeElement = elements.momentCommentsPanel;
+
+  // Disable the toggle
+  toggle.setAttribute('disabled', '');
+
+  // Close — focus should not be called on disabled toggle
+  if (typeof toggle.onclick === 'function') {
+    toggle.onclick();
+  }
+
+  assert.equal(toggle._focusCallCount, 0, 'no focus on disabled toggle');
+});
+
+test('disabled="disabled" attribute prevents focus on close', async () => {
+  const { elements, detailUI, deps, context } = createDetailUI(
+    async () => ({ counts: { like: 0 }, total: 0 }),
+    async () => ({ comments: [], nextCursor: null })
+  );
+
+  elements.momentReactionCommentStatus.removeAttribute('disabled');
+  elements.momentCommentsPanel.hidden = false;
+  deps.currentSelectedId = 'mem-1';
+  deps.treeMemories = [{ id: 'mem-1', treeId: 'tree-1' }];
+  detailUI.updateDetailPanel({ id: 'mem-1', treeId: 'tree-1' });
+  await flush();
+
+  const toggle = elements.momentReactionCommentStatus;
+  toggle.setAttribute('aria-expanded', 'true');
+  elements.momentReactionsCard.style.display = '';
+  context._activeElement = elements.momentCommentsPanel;
+
+  // Disable with non-empty value
+  toggle.setAttribute('disabled', 'disabled');
+
+  if (typeof toggle.onclick === 'function') {
+    toggle.onclick();
+  }
+
+  assert.equal(toggle._focusCallCount, 0, 'no focus on disabled="disabled" toggle');
+});
+
+test('hidden toggle does not receive focus on close', async () => {
+  const { elements, detailUI, deps, context } = createDetailUI(
+    async () => ({ counts: { like: 0 }, total: 0 }),
+    async () => ({ comments: [], nextCursor: null })
+  );
+
+  elements.momentReactionCommentStatus.removeAttribute('disabled');
+  elements.momentCommentsPanel.hidden = false;
+  deps.currentSelectedId = 'mem-1';
+  deps.treeMemories = [{ id: 'mem-1', treeId: 'tree-1' }];
+  detailUI.updateDetailPanel({ id: 'mem-1', treeId: 'tree-1' });
+  await flush();
+
+  const toggle = elements.momentReactionCommentStatus;
+  toggle.setAttribute('aria-expanded', 'true');
+  elements.momentReactionsCard.style.display = '';
+  context._activeElement = elements.momentCommentsPanel;
+
+  // Hide the toggle via display
+  toggle.style.display = 'none';
+
+  if (typeof toggle.onclick === 'function') {
+    toggle.onclick();
+  }
+
+  assert.equal(toggle._focusCallCount, 0, 'no focus on hidden toggle');
+});
+
+test('toggle hidden property prevents focus on close', async () => {
+  const { elements, detailUI, deps, context } = createDetailUI(
+    async () => ({ counts: { like: 0 }, total: 0 }),
+    async () => ({ comments: [], nextCursor: null })
+  );
+
+  elements.momentReactionCommentStatus.removeAttribute('disabled');
+  elements.momentCommentsPanel.hidden = false;
+  deps.currentSelectedId = 'mem-1';
+  deps.treeMemories = [{ id: 'mem-1', treeId: 'tree-1' }];
+  detailUI.updateDetailPanel({ id: 'mem-1', treeId: 'tree-1' });
+  await flush();
+
+  const toggle = elements.momentReactionCommentStatus;
+  toggle.setAttribute('aria-expanded', 'true');
+  elements.momentReactionsCard.style.display = '';
+  context._activeElement = elements.momentCommentsPanel;
+
+  toggle.hidden = true;
+
+  if (typeof toggle.onclick === 'function') {
+    toggle.onclick();
+  }
+
+  assert.equal(toggle._focusCallCount, 0, 'no focus on toggle hidden=true');
+});
+
+test('hidden card does not receive focus attempt on close', async () => {
+  const { elements, detailUI, deps, context } = createDetailUI(
+    async () => ({ counts: { like: 0 }, total: 0 }),
+    async () => ({ comments: [], nextCursor: null })
+  );
+
+  elements.momentReactionCommentStatus.removeAttribute('disabled');
+  elements.momentCommentsPanel.hidden = false;
+  deps.currentSelectedId = 'mem-1';
+  deps.treeMemories = [{ id: 'mem-1', treeId: 'tree-1' }];
+  detailUI.updateDetailPanel({ id: 'mem-1', treeId: 'tree-1' });
+  await flush();
+
+  const toggle = elements.momentReactionCommentStatus;
+  toggle.setAttribute('aria-expanded', 'true');
+  context._activeElement = elements.momentCommentsPanel;
+
+  // Hide the card
+  elements.momentReactionsCard.style.display = 'none';
+
+  if (typeof toggle.onclick === 'function') {
+    toggle.onclick();
+  }
+
+  assert.equal(toggle._focusCallCount, 0, 'no focus when card is hidden');
+});
+
+test('card hidden property prevents focus on close', async () => {
+  const { elements, detailUI, deps, context } = createDetailUI(
+    async () => ({ counts: { like: 0 }, total: 0 }),
+    async () => ({ comments: [], nextCursor: null })
+  );
+
+  elements.momentReactionCommentStatus.removeAttribute('disabled');
+  elements.momentCommentsPanel.hidden = false;
+  deps.currentSelectedId = 'mem-1';
+  deps.treeMemories = [{ id: 'mem-1', treeId: 'tree-1' }];
+  detailUI.updateDetailPanel({ id: 'mem-1', treeId: 'tree-1' });
+  await flush();
+
+  const toggle = elements.momentReactionCommentStatus;
+  toggle.setAttribute('aria-expanded', 'true');
+  elements.momentReactionsCard.style.display = '';
+  context._activeElement = elements.momentCommentsPanel;
+
+  elements.momentReactionsCard.hidden = true;
+
+  if (typeof toggle.onclick === 'function') {
+    toggle.onclick();
+  }
+
+  assert.equal(toggle._focusCallCount, 0, 'no focus when card hidden=true');
+});
+
+test('detached toggle does not receive focus on close', async () => {
+  const { elements, detailUI, deps, context } = createDetailUI(
+    async () => ({ counts: { like: 0 }, total: 0 }),
+    async () => ({ comments: [], nextCursor: null })
+  );
+
+  elements.momentReactionCommentStatus.removeAttribute('disabled');
+  elements.momentCommentsPanel.hidden = false;
+  deps.currentSelectedId = 'mem-1';
+  deps.treeMemories = [{ id: 'mem-1', treeId: 'tree-1' }];
+  detailUI.updateDetailPanel({ id: 'mem-1', treeId: 'tree-1' });
+  await flush();
+
+  const toggle = elements.momentReactionCommentStatus;
+  toggle.setAttribute('aria-expanded', 'true');
+  elements.momentReactionsCard.style.display = '';
+  context._activeElement = elements.momentCommentsPanel;
+
+  // Mark toggle as detached
+  toggle._isConnected = false;
+  Object.defineProperty(toggle, 'isConnected', { get() { return this._isConnected; }, configurable: true });
+
+  if (typeof toggle.onclick === 'function') {
+    toggle.onclick();
+  }
+
+  assert.equal(toggle._focusCallCount, 0, 'no focus on detached toggle');
+});
+
+test('generation mismatch prevents focus on close', async () => {
+  const { elements, detailUI, deps, context } = createDetailUI(
+    async () => ({ counts: { like: 0 }, total: 0 }),
+    async () => ({ comments: [], nextCursor: null })
+  );
+
+  elements.momentReactionCommentStatus.removeAttribute('disabled');
+  elements.momentCommentsPanel.hidden = false;
+  deps.currentSelectedId = 'mem-1';
+  deps.treeMemories = [{ id: 'mem-1', treeId: 'tree-1' }];
+  detailUI.updateDetailPanel({ id: 'mem-1', treeId: 'tree-1' });
+  await flush();
+
+  const toggle = elements.momentReactionCommentStatus;
+  toggle.setAttribute('aria-expanded', 'true');
+  elements.momentReactionsCard.style.display = '';
+  context._activeElement = elements.momentCommentsPanel;
+
+  // Save reference to old onclick (gen=1, memId='mem-1') before switching
+  var oldOnClick = toggle.onclick;
+
+  // Switch to mem-2 — advances generation, replaces toggle.onclick
+  deps.currentSelectedId = 'mem-2';
+  deps.treeMemories = [{ id: 'mem-2', treeId: 'tree-1' }];
+  detailUI.updateDetailPanel({ id: 'mem-2', treeId: 'tree-1' });
+  await flush();
+
+  // Call OLD onclick — its closure has gen=1 but current gen is now 2
+  if (typeof oldOnClick === 'function') {
+    oldOnClick();
+  }
+
+  assert.equal(toggle._focusCallCount, 0, 'no focus on generation mismatch');
+});
+
+test('metadata mismatch prevents focus on close', async () => {
+  const { elements, detailUI, deps, context } = createDetailUI(
+    async () => ({ counts: { like: 0 }, total: 0 }),
+    async () => ({ comments: [], nextCursor: null })
+  );
+
+  elements.momentReactionCommentStatus.removeAttribute('disabled');
+  elements.momentCommentsPanel.hidden = false;
+  deps.currentSelectedId = 'mem-1';
+  deps.treeMemories = [{ id: 'mem-1', treeId: 'tree-1' }];
+  detailUI.updateDetailPanel({ id: 'mem-1', treeId: 'tree-1' });
+  await flush();
+
+  const toggle = elements.momentReactionCommentStatus;
+  toggle.setAttribute('aria-expanded', 'true');
+  elements.momentReactionsCard.style.display = '';
+  context._activeElement = elements.momentCommentsPanel;
+
+  // Switch moment — old toggle's onclick references old metadata
+  deps.currentSelectedId = 'mem-2';
+  deps.treeMemories = [{ id: 'mem-2', treeId: 'tree-1' }];
+  detailUI.updateDetailPanel({ id: 'mem-2', treeId: 'tree-1' });
+  await flush();
+
+  if (typeof toggle.onclick === 'function') {
+    toggle.onclick();
+  }
+
+  assert.equal(toggle._focusCallCount, 0, 'no focus on metadata mismatch after moment switch');
+});
+
+test('Moment A→B reset: old toggle focus not called even with old panel focus', async () => {
+  const { elements, detailUI, deps, context } = createDetailUI(
+    async () => ({ counts: { like: 0 }, total: 0 }),
+    async () => ({ comments: [], nextCursor: null })
+  );
+
+  elements.momentReactionCommentStatus.removeAttribute('disabled');
+  elements.momentCommentsPanel.hidden = false;
+  deps.currentSelectedId = 'mem-1';
+  deps.treeMemories = [{ id: 'mem-1', treeId: 'tree-1' }];
+  detailUI.updateDetailPanel({ id: 'mem-1', treeId: 'tree-1' });
+  await flush();
+
+  const toggle = elements.momentReactionCommentStatus;
+  toggle.setAttribute('aria-expanded', 'true');
+  elements.momentReactionsCard.style.display = '';
+
+  // Simulate old focus inside old panel
+  context._activeElement = elements.momentCommentsPanel;
+
+  // Switch to Moment B — old toggle onclick is now stale
+  deps.currentSelectedId = 'mem-2';
+  deps.treeMemories = [{ id: 'mem-2', treeId: 'tree-1' }];
+  detailUI.updateDetailPanel({ id: 'mem-2', treeId: 'tree-1' });
+  await flush();
+
+  // Old toggle's onclick (from moment A) should not call focus
+  if (typeof toggle.onclick === 'function') {
+    toggle.onclick();
+  }
+
+  assert.equal(toggle._focusCallCount, 0, 'no focus call on stale old-panel onclick after moment switch');
+});
+
+test('root moment reset: no focus call', async () => {
+  const { elements, detailUI, deps, context } = createDetailUI(
+    async () => ({ counts: { like: 0 }, total: 0 }),
+    async () => ({ comments: [], nextCursor: null })
+  );
+
+  elements.momentReactionCommentStatus.removeAttribute('disabled');
+  elements.momentCommentsPanel.hidden = false;
+  deps.currentSelectedId = 'mem-1';
+  deps.treeMemories = [{ id: 'mem-1', treeId: 'tree-1' }, { id: 'root', treeId: 'tree-1' }];
+  detailUI.updateDetailPanel({ id: 'mem-1', treeId: 'tree-1' });
+  await flush();
+
+  const toggle = elements.momentReactionCommentStatus;
+  toggle.setAttribute('aria-expanded', 'true');
+  elements.momentReactionsCard.style.display = '';
+  context._activeElement = elements.momentCommentsPanel;
+
+  // Switch to root — hides card / resets panel
+  deps.currentSelectedId = 'root';
+  deps.treeMemories = [{ id: 'root', treeId: 'tree-1' }];
+  detailUI.updateDetailPanel({ id: 'root', treeId: 'tree-1' });
+  await flush();
+
+  if (typeof toggle.onclick === 'function') {
+    toggle.onclick();
+  }
+
+  assert.equal(toggle._focusCallCount, 0, 'no focus on root moment reset');
+});
+
+test('unavailable state reset: no focus call', async () => {
+  const { elements, detailUI, deps, context } = createDetailUI(
+    async () => { throw new Error('unavailable'); },
+    async () => { throw new Error('unavailable'); }
+  );
+
+  elements.momentReactionCommentStatus.removeAttribute('disabled');
+  elements.momentCommentsPanel.hidden = false;
+  deps.currentSelectedId = 'mem-1';
+  deps.treeMemories = [{ id: 'mem-1', treeId: 'tree-1' }];
+  detailUI.updateDetailPanel({ id: 'mem-1', treeId: 'tree-1' });
+  await flush();
+
+  const toggle = elements.momentReactionCommentStatus;
+  assert.equal(toggle.getAttribute('aria-expanded'), 'false', 'toggle collapsed when unavailable');
+  context._activeElement = elements.momentCommentsPanel;
+
+  if (typeof toggle.onclick === 'function') {
+    toggle.onclick();
+  }
+
+  assert.equal(toggle._focusCallCount, 0, 'no focus when toggle is disabled after unavailable');
+});
+
+test('loading state reset: no focus call', async () => {
+  let resolveReaction, resolveComments;
+  const reactionPromise = new Promise(r => { resolveReaction = r; });
+  const commentsPromise = new Promise(r => { resolveComments = r; });
+
+  const { elements, detailUI, deps, context } = createDetailUI(
+    async () => reactionPromise,
+    async () => commentsPromise
+  );
+
+  elements.momentReactionCommentStatus.removeAttribute('disabled');
+  elements.momentCommentsPanel.hidden = false;
+  deps.currentSelectedId = 'mem-1';
+  deps.treeMemories = [{ id: 'mem-1', treeId: 'tree-1' }];
+  detailUI.updateDetailPanel({ id: 'mem-1', treeId: 'tree-1' });
+  await flush();
+
+  const toggle = elements.momentReactionCommentStatus;
+  context._activeElement = elements.momentCommentsPanel;
+
+  // While loading, toggle should be disabled
+  assert.equal(toggle.disabled, true, 'toggle disabled during loading');
+
+  if (typeof toggle.onclick === 'function') {
+    toggle.onclick();
+  }
+
+  assert.equal(toggle._focusCallCount, 0, 'no focus during loading state');
+});
+
+test('preserveCommentsPanel reconciliation does not move focus', async () => {
+  const { elements, detailUI, deps, context } = createDetailUI(
+    async () => ({ counts: { like: 0 }, total: 0 }),
+    async () => ({ comments: [], nextCursor: null })
+  );
+
+  elements.momentReactionCommentStatus.removeAttribute('disabled');
+  elements.momentCommentsPanel.hidden = false;
+  deps.currentSelectedId = 'mem-1';
+  deps.treeMemories = [{ id: 'mem-1', treeId: 'tree-1' }];
+  detailUI.updateDetailPanel({ id: 'mem-1', treeId: 'tree-1' });
+  await flush();
+
+  const toggle = elements.momentReactionCommentStatus;
+  // Simulate panel open state — resetCommentsPanel hid it during loading
+  elements.momentCommentsPanel.hidden = false;
+  toggle.setAttribute('aria-expanded', 'true');
+  elements.momentReactionsCard.style.display = '';
+  context._activeElement = elements.momentCommentsPanel;
+
+  // Force reconciliation with preserveCommentsPanel — must not close panel
+  detailUI.updateDetailPanel(
+    { id: 'mem-1', treeId: 'tree-1' },
+    { force: true, preserveCommentsPanel: true }
+  );
+  await flush();
+
+  assert.equal(toggle._focusCallCount, 0, 'no focus call during preserve reconciliation');
+  assert.equal(elements.momentCommentsPanel.hidden, false, 'panel stays open after preserve reconciliation');
 });
