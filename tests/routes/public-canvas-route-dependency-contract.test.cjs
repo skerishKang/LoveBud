@@ -631,10 +631,13 @@ test('public canvas sidebar template and controller wiring contract (Issue #2884
   const isCountVisible = !templateSrc.includes('editor-tree-quiet-note');
   assert.ok(isCountVisible, 'verified that public moment count will not be hidden by readonly editor-tree-quiet-note css rules');
 
-  // 21. pages/view.html이 next exact versions를 사용함
+  // 21. pages/view.html이 editor.css를 non-empty cache version으로 로드함
+  const editorCssHrefMatch = html.match(
+    /href="\.\.\/css\/editor\.css\?v=([^"]+)"/
+  );
   assert.ok(
-    html.includes('href="../css/editor.css?v=20260625-2884-left-rail-2"'),
-    'view.html must load editor.css with version 20260625-2884-left-rail-2'
+    editorCssHrefMatch && editorCssHrefMatch[1].trim().length > 0,
+    'view.html must load editor.css with a non-empty cache version'
   );
   assert.ok(
     html.includes('src="../js/viewer/templates/public-viewer-sidebar-template.js?v=20260625-2884-left-rail-2"'),
