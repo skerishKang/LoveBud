@@ -1350,29 +1350,33 @@
         var composerErrorEl = null;
         var composerDraftIdemKey = null;
         var composerDraftBody = null;
-        var submitGen = 0;
-        var lastContext = null;
+        var activeContext = null;
+        var composerInstanceToken = 0;
 
         function getGeneration() {
             return sharedGenRef ? sharedGenRef.value : 0;
         }
 
-        function remove() {
+        function removeComposerDom() {
             if (composerFormEl && composerFormEl.parentNode) {
                 composerFormEl.parentNode.removeChild(composerFormEl);
             }
             composerFormEl = null;
             composerInputEl = null;
             composerErrorEl = null;
-            composerDraftIdemKey = null;
-            composerDraftBody = null;
-            submitGen = 0;
-            lastContext = null;
         }
 
-        function append(panelEl) {
+        function deactivateComposer() {
+            removeComposerDom();
+            activeContext = null;
+            composerDraftIdemKey = null;
+            composerDraftBody = null;
+            composerInstanceToken++;
+        }
+
+        function appendComposerDom(panelEl, context, instanceToken) {
             if (!panelEl) return;
-            remove();
+            removeComposerDom();
 
             composerInputEl = document.createElement('textarea');
             composerInputEl.setAttribute('aria-label', '댓글 입력');
@@ -1408,9 +1412,9 @@
             composerFormEl.appendChild(inputRow);
             composerFormEl.appendChild(composerErrorEl);
 
+            // Reset draft for new composer instance
             composerDraftIdemKey = null;
             composerDraftBody = null;
-            submitGen = getGeneration();
 
             submitBtn.onclick = function() {
                 if (submitBtn.disabled) return;
@@ -1421,9 +1425,17 @@
                     composerErrorEl.style.display = '';
                     return;
                 }
-                if (!lastContext) return;
-                var currentGen = getGeneration();
-                if (currentGen !== submitGen) return;
+                if (!activeContext) return;
+
+                // Capture immutable submission context for async race safety
+                var subCtx = {
+                    instanceToken: composerInstanceToken,
+                    treeId: activeContext.treeId,
+                    memoryId: activeContext.memoryId,
+                    generation: getGeneration(),
+                    data: activeContext.data
+                };
+                if (!subCtx.treeId || !subCtx.memoryId) return;
 
                 if (body !== composerDraftBody) {
                     composerDraftIdemKey = 'c-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
@@ -1434,17 +1446,26 @@
                 submitBtn.textContent = '등록 중...';
                 composerErrorEl.style.display = 'none';
 
-                createComment(lastContext.memoryId, body, composerDraftIdemKey).then(function() {
+                createComment(subCtx.memoryId, body, composerDraftIdemKey).then(function() {
+                    if (composerInstanceToken !== subCtx.instanceToken) return;
+                    if (!activeContext || activeContext.treeId !== subCtx.treeId ||
+                        activeContext.memoryId !== subCtx.memoryId) return;
+
                     submitBtn.disabled = false;
                     submitBtn.textContent = '등록';
                     composerInputEl.value = '';
                     composerDraftIdemKey = null;
                     composerDraftBody = null;
                     composerErrorEl.style.display = 'none';
-                    if (currentGen === getGeneration() && lastContext) {
-                        reconcilePublicSummary(lastContext.data, { force: true, preserveCommentsPanel: true });
+
+                    if (subCtx.generation === getGeneration()) {
+                        reconcilePublicSummary(subCtx.data, { force: true, preserveCommentsPanel: true });
                     }
                 }).catch(function() {
+                    if (composerInstanceToken !== subCtx.instanceToken) return;
+                    if (!activeContext || activeContext.treeId !== subCtx.treeId ||
+                        activeContext.memoryId !== subCtx.memoryId) return;
+
                     submitBtn.disabled = false;
                     submitBtn.textContent = '등록';
                     composerErrorEl.textContent = '댓글을 등록하지 못했습니다. 다시 시도해주세요.';
@@ -1457,16 +1478,27 @@
 
         return function updatePublicViewerAuthenticatedCommentComposer(state) {
             if (!state || !state.open || typeof createComment !== 'function' || !hasConfirmedAuthSession()) {
-                remove();
+                deactivateComposer();
                 return;
             }
             var panelEl = document.getElementById('momentCommentsPanel');
             if (!panelEl || panelEl.hidden) {
-                remove();
+                deactivateComposer();
                 return;
             }
-            lastContext = { memoryId: state.memoryId, treeId: state.treeId, data: state.data };
-            append(panelEl);
+
+            var newContext = {
+                memoryId: state.memoryId,
+                treeId: state.treeId,
+                data: state.data,
+                generation: state.generation !== undefined ? state.generation : (sharedGenRef ? sharedGenRef.value : 0)
+            };
+
+            // Mount order: remove old DOM → set new context → increment token → append new DOM
+            removeComposerDom();
+            activeContext = newContext;
+            composerInstanceToken++;
+            appendComposerDom(panelEl, activeContext, composerInstanceToken);
         };
     }
 
