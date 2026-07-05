@@ -218,17 +218,24 @@ This audit traces the provenance of the four tree-card metrics (`likeCount`, `vi
 
 ## 7. Recommended Next Child Slice
 
-**Add `comment_count` column to `tree_social_counts` and wire a read-only tree-level comment-count aggregate.**
+**Documentation-only tree comment aggregate lifecycle contract.**
 
-Scope:
-- Migration: `ALTER TABLE tree_social_counts ADD COLUMN IF NOT EXISTS comment_count INTEGER NOT NULL DEFAULT 0 CHECK (comment_count >= 0)`
-- Backend read: `fetch_public_tree_comment_count()` in a new or existing module, mirroring `fetch_public_tree_like_count` / `fetch_public_tree_view_count` — read-only, no write path
-- Wire to `GET /modal/trees/{tree_id}` (public tree detail) post-fetch attachment
-- Wire to `normalize_row` with conditional emission (matching the `viewCount` pattern from line 158-160)
-- Do NOT add comment-write aggregation, share-count work, or UI feature changes
-- Remain read-only and readiness-first; no combination with tree-like writes, tree comments writes, or UI feature work
+No source-backed runtime count implementation is currently ready for `commentCount`. A `comment_count = 0` default-zero aggregate column added to `tree_social_counts` without tree-level comment records and lifecycle maintenance would be synthetic data, not an authoritative count. It would be indistinguishable from a genuine persisted zero — the same ambiguity this audit identifies as a defect for other metrics.
 
-This slice is the minimal read-only foundation that makes `commentCount` a `PERSISTED` metric on the same footing as `likeCount` and `viewCount`, without introducing writes or UI changes.
+Tree-level comments must remain distinct from moment-level comments:
+
+- Do not define tree `commentCount` as a sum of moment comments unless a separate product decision explicitly changes the metric's meaning and label.
+- Do not infer the count from the existing moment-scoped `comments` table (`comments.memory_id FK → memories.id`). That table records comments against individual moments within a tree, not against the tree itself.
+
+The next narrow prerequisite child is a **documentation-only tree comment aggregate lifecycle contract** that specifies:
+
+1. **What tree `commentCount` means** — a count of comments scoped to the tree record itself, not an aggregation of its moment comments.
+2. **Tree-scope comment records** — require comment records keyed to `tree_id`, distinct from the existing `comments.memory_id` foreign key.
+3. **Lifecycle effects on any future aggregate** — define create, delete, restore, moderation/hide, and reconciliation effects so that the aggregate column (when it eventually exists) reflects only authoritative state transitions.
+4. **Public-tree visibility and public-safe response boundaries** — specify that tree-scoped comments on private trees must not reach public read endpoints, and that no account-scoped data leaks into public card or detail payloads.
+5. **No card/UI/API count enabled by the contract alone** — the contract is a readiness prerequisite, not an implementation slice. No runtime column, endpoint, or UI change is included.
+
+No runtime implementation should begin until that lifecycle contract is approved.
 
 ---
 
