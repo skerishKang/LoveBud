@@ -1349,6 +1349,7 @@
         var composerInputEl = null;
         var composerErrorEl = null;
         var composerSuccessEl = null;
+        var composerCancelBtn = null;
         var composerDraftIdemKey = null;
         var composerDraftBody = null;
         var activeContext = null;
@@ -1366,6 +1367,7 @@
             composerInputEl = null;
             composerErrorEl = null;
             composerSuccessEl = null;
+            composerCancelBtn = null;
         }
 
         function deactivateComposer() {
@@ -1392,6 +1394,11 @@
             submitBtn.textContent = '등록';
             submitBtn.type = 'button';
 
+            composerCancelBtn = document.createElement('button');
+            composerCancelBtn.textContent = '입력 취소';
+            composerCancelBtn.type = 'button';
+            composerCancelBtn.setAttribute('aria-label', '댓글 입력 취소');
+
             composerErrorEl = document.createElement('p');
             composerErrorEl.setAttribute('aria-live', 'polite');
             composerErrorEl.style.color = 'red';
@@ -1416,8 +1423,16 @@
             var inputRow = document.createElement('div');
             inputRow.style.display = 'flex';
             inputRow.style.gap = '8px';
+            inputRow.style.alignItems = 'flex-start';
             inputRow.appendChild(composerInputEl);
-            inputRow.appendChild(submitBtn);
+
+            var btnGroup = document.createElement('div');
+            btnGroup.style.display = 'flex';
+            btnGroup.style.gap = '4px';
+            btnGroup.style.flexShrink = '0';
+            btnGroup.appendChild(submitBtn);
+            btnGroup.appendChild(composerCancelBtn);
+            inputRow.appendChild(btnGroup);
 
             composerFormEl.appendChild(inputRow);
             composerFormEl.appendChild(composerErrorEl);
@@ -1455,6 +1470,7 @@
 
                 submitBtn.disabled = true;
                 submitBtn.textContent = '등록 중...';
+                composerCancelBtn.disabled = true;
                 composerErrorEl.style.display = 'none';
                 composerSuccessEl.style.display = 'none';
 
@@ -1465,6 +1481,7 @@
 
                     submitBtn.disabled = false;
                     submitBtn.textContent = '등록';
+                    composerCancelBtn.disabled = false;
                     composerInputEl.value = '';
                     composerDraftIdemKey = null;
                     composerDraftBody = null;
@@ -1481,10 +1498,23 @@
 
                     submitBtn.disabled = false;
                     submitBtn.textContent = '등록';
+                    composerCancelBtn.disabled = false;
                     composerSuccessEl.style.display = 'none';
                     composerErrorEl.textContent = '댓글을 등록하지 못했습니다. 다시 시도해주세요.';
                     composerErrorEl.style.display = '';
                 });
+            };
+
+            composerCancelBtn.onclick = function() {
+                if (composerCancelBtn.disabled) return;
+                // Stale guard: if instance token changed, this handler belongs to a removed composer instance
+                if (composerInstanceToken !== instanceToken) return;
+                composerInputEl.value = '';
+                composerDraftIdemKey = null;
+                composerDraftBody = null;
+                composerErrorEl.style.display = 'none';
+                composerErrorEl.textContent = '';
+                composerSuccessEl.style.display = 'none';
             };
 
             panelEl.appendChild(composerFormEl);
