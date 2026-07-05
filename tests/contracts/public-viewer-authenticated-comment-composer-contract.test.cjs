@@ -936,3 +936,13 @@ it('44. whitespace-only input does not clear validation', async () => {
   env.resolve({ id: 'c-44' });
   await flush();
 });
+
+it('45. composer boundary does not call focus() arbitrarily', () => {
+  const cs = scriptSource.indexOf('function createPublicViewerAuthenticatedCommentComposerBoundary(deps)');
+  const ce = scriptSource.indexOf('function createPublicViewerTreeMetaBoundary(deps)');
+  const c = scriptSource.slice(cs, ce);
+  // Composer boundary must not call .focus() anywhere
+  assert.equal(c.includes('.focus()'), false, 'composer boundary has no .focus() call');
+  // Must not import or reference document.activeElement
+  assert.equal(c.includes('activeElement'), false, 'composer boundary does not reference activeElement');
+});
