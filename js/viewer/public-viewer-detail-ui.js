@@ -1283,6 +1283,149 @@
         };
     }
 
+    function createPublicViewerAuthenticatedCommentComposerBoundary(deps) {
+        var hasConfirmedAuthSession = deps && typeof deps.hasConfirmedAuthSession === 'function'
+            ? deps.hasConfirmedAuthSession
+            : function() { return false; };
+        var createComment = deps && typeof deps.createComment === 'function'
+            ? deps.createComment
+            : null;
+        var resolveSocialContext = deps && typeof deps.resolveSocialContext === 'function'
+            ? deps.resolveSocialContext
+            : null;
+        var reconcilePublicSummary = deps && typeof deps.reconcilePublicSummary === 'function'
+            ? deps.reconcilePublicSummary
+            : null;
+        var sharedGenRef = deps && deps.sharedGenerationRef;
+
+        var composerFormEl = null;
+        var composerInputEl = null;
+        var composerErrorEl = null;
+        var composerDraftIdemKey = null;
+        var composerDraftBody = null;
+        var submitGen = 0;
+        var lastContext = null;
+
+        function getGeneration() {
+            return sharedGenRef ? sharedGenRef.value : 0;
+        }
+
+        function remove() {
+            if (composerFormEl && composerFormEl.parentNode) {
+                composerFormEl.parentNode.removeChild(composerFormEl);
+            }
+            composerFormEl = null;
+            composerInputEl = null;
+            composerErrorEl = null;
+            composerDraftIdemKey = null;
+            composerDraftBody = null;
+        }
+
+        function append(panelEl) {
+            if (!panelEl) return;
+            remove();
+
+            composerInputEl = document.createElement('textarea');
+            composerInputEl.setAttribute('aria-label', '댓글 입력');
+            composerInputEl.placeholder = '댓글을 입력하세요...';
+            composerInputEl.rows = 2;
+            composerInputEl.maxLength = 5000;
+            composerInputEl.style.width = '100%';
+            composerInputEl.style.boxSizing = 'border-box';
+
+            var submitBtn = document.createElement('button');
+            submitBtn.textContent = '등록';
+            submitBtn.type = 'button';
+
+            composerErrorEl = document.createElement('p');
+            composerErrorEl.setAttribute('aria-live', 'polite');
+            composerErrorEl.style.color = 'red';
+            composerErrorEl.style.fontSize = '0.85em';
+            composerErrorEl.style.margin = '4px 0 0';
+            composerErrorEl.style.display = 'none';
+
+            composerFormEl = document.createElement('div');
+            composerFormEl.style.display = 'flex';
+            composerFormEl.style.flexDirection = 'column';
+            composerFormEl.style.gap = '4px';
+            composerFormEl.style.marginTop = '8px';
+
+            var inputRow = document.createElement('div');
+            inputRow.style.display = 'flex';
+            inputRow.style.gap = '8px';
+            inputRow.appendChild(composerInputEl);
+            inputRow.appendChild(submitBtn);
+
+            composerFormEl.appendChild(inputRow);
+            composerFormEl.appendChild(composerErrorEl);
+
+            composerDraftIdemKey = null;
+            composerDraftBody = null;
+            submitGen = getGeneration();
+
+            submitBtn.onclick = function() {
+                if (submitBtn.disabled) return;
+                var body = (composerInputEl.value || '').trim();
+                if (!body) return;
+                if (body.length > 5000) {
+                    composerErrorEl.textContent = '댓글은 5,000자 이하로 입력해주세요.';
+                    composerErrorEl.style.display = '';
+                    return;
+                }
+                if (!lastContext) return;
+                var currentGen = getGeneration();
+                if (currentGen !== submitGen) return;
+
+                if (body !== composerDraftBody) {
+                    composerDraftIdemKey = 'c-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
+                    composerDraftBody = body;
+                }
+
+                submitBtn.disabled = true;
+                submitBtn.textContent = '등록 중...';
+                composerErrorEl.style.display = 'none';
+
+                createComment(lastContext.memoryId, body, composerDraftIdemKey).then(function() {
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = '등록';
+                    composerInputEl.value = '';
+                    composerDraftIdemKey = null;
+                    composerDraftBody = null;
+                    composerErrorEl.style.display = 'none';
+                    if (currentGen === getGeneration() && lastContext) {
+                        reconcilePublicSummary(lastContext.data, true);
+                    }
+                }).catch(function() {
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = '등록';
+                    composerErrorEl.textContent = '댓글을 등록하지 못했습니다. 다시 시도해주세요.';
+                    composerErrorEl.style.display = '';
+                });
+            };
+
+            panelEl.appendChild(composerFormEl);
+        }
+
+        return function updatePublicViewerAuthenticatedCommentComposer(data, force) {
+            if (typeof createComment !== 'function' || !hasConfirmedAuthSession()) {
+                remove();
+                return;
+            }
+            var context = resolveSocialContext ? resolveSocialContext(data) : null;
+            if (!context) {
+                remove();
+                return;
+            }
+            var panelEl = document.getElementById('momentCommentsPanel');
+            if (!panelEl || panelEl.hidden) {
+                remove();
+                return;
+            }
+            lastContext = { memoryId: context.memoryId, treeId: context.treeId, data: data };
+            append(panelEl);
+        };
+    }
+
     function createPublicViewerTreeMetaBoundary(deps) {
         var i18n = deps && typeof deps.i18n === 'function'
             ? deps.i18n
@@ -1526,6 +1669,11 @@
                 reconcilePublicSummary: updateReadOnlyReactionSummary
             })
         );
+        var updateCommentComposer = createPublicViewerAuthenticatedCommentComposerBoundary(
+            Object.assign({}, boundaryDeps, {
+                reconcilePublicSummary: updateReadOnlyReactionSummary
+            })
+        );
 
         detailUI.updateFocusSelectedBtn = createPublicViewerUpdateFocusSelectedBtn(deps);
         detailUI.updateSidebarStatus = createPublicViewerSidebarStatusUpdater(deps);
@@ -1543,6 +1691,7 @@
                 // Defer auth boundary after public summary microtasks
                 Promise.resolve().then(function() {
                     updateAuthenticatedLike(data);
+                    updateCommentComposer(data);
                 });
                 return;
             }
@@ -1571,6 +1720,7 @@
             }
             Promise.resolve().then(function() {
                 updateAuthenticatedLike(data);
+                updateCommentComposer(data);
             });
         };
         return detailUI;

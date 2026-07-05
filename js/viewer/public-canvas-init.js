@@ -245,6 +245,9 @@
                 fetchPublicMomentComments: typeof apiClient.fetchPublicMomentComments === 'function'
                     ? apiClient.fetchPublicMomentComments
                     : function() { return Promise.reject(new Error('apiClient not available')); },
+                createComment: typeof apiClient.createComment === 'function'
+                    ? apiClient.createComment
+                    : function() { return Promise.reject(new Error('apiClient not available')); },
                 hasConfirmedAuthSession: function() { return false; },
                 fetchReactionSummary: function() { return Promise.reject(new Error('apiClient not available')); },
                 toggleReaction: function() { return Promise.reject(new Error('apiClient not available')); }
