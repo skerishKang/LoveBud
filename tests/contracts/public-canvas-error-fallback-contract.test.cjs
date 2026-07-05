@@ -312,6 +312,9 @@ test('8. non-allowlisted files are not modified', () => {
     // #3201 moment social write readiness gate
     'docs/product/lovebud-moment-social-write-readiness-contract.md',
     'tests/contracts/moment-social-write-readiness-contract.test.cjs',
+
+    // #3231 authenticated comment composer
+    'tests/contracts/public-viewer-authenticated-comment-composer-contract.test.cjs',
   ];
 
   // Read git diff to check what files are modified

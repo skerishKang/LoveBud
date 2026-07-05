@@ -514,7 +514,7 @@
                 && commentToggleEl && commentPanelEl && commentsListEl && commentsPanelStatusEl;
         }
 
-        function setLoadingState(force) {
+        function setLoadingState(force, preservePanel) {
             if (!getElements()) return;
             cardEl.style.display = '';
             cardEl.dataset.socialLoading = 'true';
@@ -533,7 +533,9 @@
                 commentToggleEl.setAttribute('disabled', '');
                 commentToggleEl.setAttribute('aria-expanded', 'false');
             }
-            resetCommentsPanel();
+            if (!preservePanel) {
+                resetCommentsPanel();
+            }
             removeRetryButton();
         }
 
@@ -701,7 +703,7 @@
             }
         }
 
-        function performFetch(treeId, memoryId, generation, force) {
+        function performFetch(treeId, memoryId, generation, force, preservePanel) {
             if (!fetchReactionSummary || !fetchComments) {
                 if (generation === getGeneration()) {
                     if (sharedGenRef) {
@@ -715,7 +717,7 @@
                 return;
             }
 
-            setLoadingState(force);
+            setLoadingState(force, preservePanel);
 
             Promise.all([
                 fetchReactionSummary(treeId, memoryId).catch(function() { return null; }),
@@ -741,6 +743,20 @@
                         // Wire comment toggle only on success (non-force or first load)
                         if (!force || !commentToggleEl.onclick) {
                             wireCommentToggle(generation, memoryId);
+                        }
+                        // If preserving panel, re-render comments display
+                        if (preservePanel && commentPanelEl && !commentPanelEl.hidden) {
+                            if (commentsListEl) commentsListEl.textContent = '';
+                            if (commentsPanelStatusEl) commentsPanelStatusEl.textContent = '';
+                            if (!valid.comments || valid.comments.length === 0) {
+                                commentsPanelStatusEl.textContent = '아직 댓글이 없어요.';
+                            } else {
+                                for (var i = 0; i < valid.comments.length; i++) {
+                                    var li = document.createElement('li');
+                                    li.textContent = valid.comments[i].body;
+                                    commentsListEl.appendChild(li);
+                                }
+                            }
                         }
                     } else {
                         if (sharedGenRef) {
@@ -781,6 +797,7 @@
                 if (isOpen) {
                     commentToggleEl.setAttribute('aria-expanded', 'false');
                     if (commentPanelEl) commentPanelEl.hidden = true;
+                    emitPanelState(false);
                 } else {
                     commentToggleEl.setAttribute('aria-expanded', 'true');
                     openCommentPanel(currentMeta.comments);
@@ -789,6 +806,11 @@
         }
 
         return function updatePublicViewerReadOnlyReactionSummary(data, force) {
+            var preservePanel = false;
+            if (force && typeof force === 'object') {
+                preservePanel = !!force.preserveCommentsPanel;
+                force = !!force.force;
+            }
             var context = resolveSocialContext ? resolveSocialContext(data) : null;
             if (!context) {
                 hideCard();
@@ -820,7 +842,7 @@
             }
             lastLoadedMemoryId = memoryId;
 
-            performFetch(treeId, memoryId, thisGen, force);
+            performFetch(treeId, memoryId, thisGen, force, preservePanel);
         };
     }
 
@@ -1344,6 +1366,8 @@
             composerErrorEl = null;
             composerDraftIdemKey = null;
             composerDraftBody = null;
+            submitGen = 0;
+            lastContext = null;
         }
 
         function append(panelEl) {
@@ -1418,7 +1442,7 @@
                     composerDraftBody = null;
                     composerErrorEl.style.display = 'none';
                     if (currentGen === getGeneration() && lastContext) {
-                        reconcilePublicSummary(lastContext.data, true);
+                        reconcilePublicSummary(lastContext.data, { force: true, preserveCommentsPanel: true });
                     }
                 }).catch(function() {
                     submitBtn.disabled = false;
@@ -1433,10 +1457,6 @@
 
         return function updatePublicViewerAuthenticatedCommentComposer(state) {
             if (!state || !state.open || typeof createComment !== 'function' || !hasConfirmedAuthSession()) {
-                remove();
-                return;
-            }
-            if (state.generation !== undefined && submitGen > 0 && state.generation !== submitGen) {
                 remove();
                 return;
             }
