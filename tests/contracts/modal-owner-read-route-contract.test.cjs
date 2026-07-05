@@ -58,8 +58,8 @@ test('fetch_user_trees keeps owner boundary, limit, parameter order, and normali
   assert.match(normalized, /cur\.execute\(query,\(owner_id,limit\)\)/, 'fetch_user_trees must pass query params as (owner_id, limit)');
   assert.match(
     normalized,
-    /normalize_tree_row\(row,row\.get\("memory_count"\)(?:,include_owner_metadata=true)?\)/,
-    'fetch_user_trees must preserve memory_count tree normalization'
+    /normalize_tree_row\(row,row\.get\("memory_count"\),include_owner_metadata=true,include_owner_social_counts=true,_owner_like_available=has_like_count,_owner_view_available=has_view_count,?\)/,
+    'fetch_user_trees must preserve memory_count tree normalization with owner social counts'
   );
   assert.match(
     normalized,

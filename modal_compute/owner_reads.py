@@ -44,19 +44,94 @@ def classify_query_error(error: psycopg.Error) -> str:
     return "OWNER_TREE_LIST_QUERY_FAILURE"
 
 
+_TABLE_EXISTS_CACHE: dict[str, bool] = {}
+_TABLE_HAS_COLUMN_CACHE: dict[tuple[str, str], bool] = {}
+
+
+def _table_exists(cur, table_name: str) -> bool:
+    """Check if a table exists in the public schema."""
+    if table_name in _TABLE_EXISTS_CACHE:
+        return _TABLE_EXISTS_CACHE[table_name]
+    cur.execute(
+        """
+        SELECT EXISTS (
+            SELECT 1
+            FROM information_schema.tables
+            WHERE table_schema = 'public'
+              AND table_name = %s
+        ) AS "exists"
+        """,
+        (table_name,),
+    )
+    row = cur.fetchone()
+    res = bool(row and row.get("exists"))
+    _TABLE_EXISTS_CACHE[table_name] = res
+    return res
+
+
+def _table_has_column(cur, table_name: str, column_name: str) -> bool:
+    """Check if a table has a specific column."""
+    cache_key = (table_name, column_name)
+    if cache_key in _TABLE_HAS_COLUMN_CACHE:
+        return _TABLE_HAS_COLUMN_CACHE[cache_key]
+    cur.execute(
+        """
+        SELECT EXISTS (
+            SELECT 1
+            FROM information_schema.columns
+            WHERE table_schema = 'public'
+              AND table_name = %s
+              AND column_name = %s
+        ) AS "exists"
+        """,
+        (table_name, column_name),
+    )
+    row = cur.fetchone()
+    res = bool(row and row.get("exists"))
+    _TABLE_HAS_COLUMN_CACHE[cache_key] = res
+    return res
+
+
+def _build_owner_social_counts_source(
+    has_table: bool,
+    has_like_count: bool,
+    has_view_count: bool,
+) -> str:
+    """Build the dynamic subquery for tree_social_counts in owner reads.
+
+    Follows the same safe capability-detection pattern as public reads
+    but is kept local and narrow for owner-read use only.
+    When the table or relevant columns are unavailable, a dummy source
+    returning no rows is substituted so the LEFT JOIN produces NULLs.
+    """
+    if not has_table or (not has_like_count and not has_view_count):
+        return "(SELECT NULL::text as tree_id, 0 as like_count, 0 as view_count WHERE FALSE) s_dummy"
+    if has_like_count and not has_view_count:
+        return "(SELECT tree_id::text as tree_id, like_count, 0 as view_count FROM tree_social_counts) s_social"
+    if not has_like_count and has_view_count:
+        return "(SELECT tree_id::text as tree_id, 0 as like_count, view_count FROM tree_social_counts) s_social"
+    return "(SELECT tree_id::text as tree_id, like_count, view_count FROM tree_social_counts) s_social"
+
+
 def fetch_user_trees(owner_id: str, limit: int = 100) -> list[dict[str, Any]]:
-    query = """
+    _OWNER_LIST_QUERY_TEMPLATE = """
         SELECT t.id, t.owner_id, t.title, t.visibility,
                t.group_name, t.keywords,
                t.created_at, t.updated_at,
-               COUNT(m.id)::int AS memory_count
+               COUNT(m.id)::int AS memory_count,
+               COALESCE(s.like_count, 0) as like_count,
+               COALESCE(s.view_count, 0) as view_count
         FROM trees t
-        LEFT JOIN memories m
-          ON m.tree_id = t.id
+        LEFT JOIN memories m ON m.tree_id = t.id
+        LEFT JOIN (
+            SELECT tree_id, like_count, view_count
+            FROM {social_counts_source}
+        ) s ON t.id = s.tree_id
         WHERE t.owner_id = %s
         GROUP BY t.id, t.owner_id, t.title, t.visibility,
                  t.group_name, t.keywords,
-                 t.created_at, t.updated_at
+                 t.created_at, t.updated_at,
+                 s.like_count, s.view_count
         ORDER BY t.created_at DESC
         LIMIT %s;
     """
@@ -65,9 +140,18 @@ def fetch_user_trees(owner_id: str, limit: int = 100) -> list[dict[str, Any]]:
         try:
             with get_db_connection() as conn:
                 with conn.cursor() as cur:
+                    has_social_counts = _table_exists(cur, "tree_social_counts")
+                    has_like_count = _table_has_column(cur, "tree_social_counts", "like_count") if has_social_counts else False
+                    has_view_count = _table_has_column(cur, "tree_social_counts", "view_count") if has_social_counts else False
+
+                    social_counts_source = _build_owner_social_counts_source(
+                        has_social_counts, has_like_count, has_view_count,
+                    )
+                    query = _OWNER_LIST_QUERY_TEMPLATE.format(social_counts_source=social_counts_source)
+
                     try:
                         cur.execute(query, (owner_id, limit))
-                        return cur.fetchall()
+                        return cur.fetchall(), has_like_count, has_view_count
                     except psycopg.OperationalError:
                         raise
                     except psycopg.Error as error:
@@ -86,7 +170,8 @@ def fetch_user_trees(owner_id: str, limit: int = 100) -> list[dict[str, Any]]:
             )
 
     try:
-        rows = run_db_with_retry(operation)
+        result = run_db_with_retry(operation)
+        rows, has_like_count, has_view_count = result
     except OwnerTreeListError:
         raise
     except psycopg.OperationalError:
@@ -102,7 +187,14 @@ def fetch_user_trees(owner_id: str, limit: int = 100) -> list[dict[str, Any]]:
 
     try:
         return [
-            normalize_tree_row(row, row.get("memory_count"), include_owner_metadata=True)
+            normalize_tree_row(
+                row,
+                row.get("memory_count"),
+                include_owner_metadata=True,
+                include_owner_social_counts=True,
+                _owner_like_available=has_like_count,
+                _owner_view_available=has_view_count,
+            )
             for row in rows
         ]
     except Exception:
@@ -113,31 +205,53 @@ def fetch_user_trees(owner_id: str, limit: int = 100) -> list[dict[str, Any]]:
 
 
 def fetch_owner_tree(tree_id: str, owner_id: str) -> dict[str, Any] | None:
-    query = """
+    _OWNER_DETAIL_QUERY_TEMPLATE = """
         SELECT t.id, t.owner_id, t.title, t.visibility,
                t.group_name, t.keywords,
                t.created_at, t.updated_at,
-               COUNT(m.id)::int AS memory_count
+               COUNT(m.id)::int AS memory_count,
+               COALESCE(s.like_count, 0) as like_count,
+               COALESCE(s.view_count, 0) as view_count
         FROM trees t
-        LEFT JOIN memories m
-          ON m.tree_id = t.id
+        LEFT JOIN memories m ON m.tree_id = t.id
+        LEFT JOIN (
+            SELECT tree_id, like_count, view_count
+            FROM {social_counts_source}
+        ) s ON t.id = s.tree_id
         WHERE t.id = %s
           AND t.owner_id = %s
         GROUP BY t.id, t.owner_id, t.title, t.visibility,
                  t.group_name, t.keywords,
-                 t.created_at, t.updated_at
+                 t.created_at, t.updated_at,
+                 s.like_count, s.view_count
         LIMIT 1;
     """
 
     def operation():
         with get_db_connection() as conn:
             with conn.cursor() as cur:
+                has_social_counts = _table_exists(cur, "tree_social_counts")
+                has_like_count = _table_has_column(cur, "tree_social_counts", "like_count") if has_social_counts else False
+                has_view_count = _table_has_column(cur, "tree_social_counts", "view_count") if has_social_counts else False
+
+                social_counts_source = _build_owner_social_counts_source(
+                    has_social_counts, has_like_count, has_view_count,
+                )
+                query = _OWNER_DETAIL_QUERY_TEMPLATE.format(social_counts_source=social_counts_source)
                 cur.execute(query, (tree_id, owner_id))
-                return cur.fetchone()
+                return cur.fetchone(), has_like_count, has_view_count
 
-    row = run_db_with_retry(operation)
+    result = run_db_with_retry(operation)
+    row, has_like_count, has_view_count = result
 
-    return normalize_tree_row(row, row.get("memory_count"), include_owner_metadata=True) if row else None
+    return normalize_tree_row(
+        row,
+        row.get("memory_count"),
+        include_owner_metadata=True,
+        include_owner_social_counts=True,
+        _owner_like_available=has_like_count,
+        _owner_view_available=has_view_count,
+    ) if row else None
 
 
 def fetch_owner_memories(owner_id: str, tree_id: str | None = None, limit: int = 100) -> list[dict[str, Any]]:

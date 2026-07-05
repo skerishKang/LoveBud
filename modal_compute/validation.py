@@ -99,6 +99,9 @@ def normalize_tree_row(
     *,
     include_owner: bool = True,
     include_owner_metadata: bool = False,
+    include_owner_social_counts: bool = False,
+    _owner_like_available: bool = False,
+    _owner_view_available: bool = False,
 ) -> dict[str, Any]:
     tree = {
         "id": str(row["id"]),
@@ -119,6 +122,18 @@ def normalize_tree_row(
             tree["keywords"] = []
         else:
             tree["keywords"] = [str(kw) for kw in raw_keywords if kw]
+
+    if include_owner_social_counts:
+        if _owner_like_available:
+            raw_like = row.get("like_count")
+            like_val = int(raw_like) if raw_like is not None else 0
+            if isinstance(like_val, int) and like_val >= 0:
+                tree["likeCount"] = like_val
+        if _owner_view_available:
+            raw_view = row.get("view_count")
+            view_val = int(raw_view) if raw_view is not None else 0
+            if isinstance(view_val, int) and view_val >= 0:
+                tree["viewCount"] = view_val
 
     return tree
 
