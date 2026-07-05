@@ -473,6 +473,9 @@
         var hasConfirmedAuthSession = deps && typeof deps.hasConfirmedAuthSession === 'function'
             ? deps.hasConfirmedAuthSession
             : function() { return false; };
+        var createComment = deps && typeof deps.createComment === 'function'
+            ? deps.createComment
+            : null;
 
         var sharedGenRef = deps && deps.sharedGenerationRef;
         var currentGeneration = sharedGenRef ? sharedGenRef.value : 0;
@@ -488,6 +491,10 @@
         var commentMemoryMeta = null;
         var composerFormEl = null;
         var composerInputEl = null;
+        var composerErrorEl = null;
+        var composerDraftIdemKey = null;
+        var composerDraftBody = null;
+        var composerSubmitGen = 0;
 
         function getGeneration() {
             return sharedGenRef ? sharedGenRef.value : currentGeneration;
@@ -644,17 +651,17 @@
         }
 
         function appendComposer() {
-            if (!hasConfirmedAuthSession() ||
-                typeof window === 'undefined' || !window.apiClient ||
-                typeof window.apiClient.createComment !== 'function') {
+            if (typeof createComment !== 'function' || !hasConfirmedAuthSession()) {
                 removeComposer();
                 return;
             }
             if (composerFormEl && composerFormEl.parentNode === commentPanelEl) return;
             removeComposer();
+
             composerInputEl = document.createElement('textarea');
             composerInputEl.placeholder = '댓글을 입력하세요...';
             composerInputEl.rows = 2;
+            composerInputEl.maxLength = 5000;
             composerInputEl.style.width = '100%';
             composerInputEl.style.boxSizing = 'border-box';
 
@@ -662,32 +669,69 @@
             submitBtn.textContent = '등록';
             submitBtn.type = 'button';
 
+            composerErrorEl = document.createElement('p');
+            composerErrorEl.style.color = 'red';
+            composerErrorEl.style.fontSize = '0.85em';
+            composerErrorEl.style.margin = '4px 0 0';
+            composerErrorEl.style.display = 'none';
+
             composerFormEl = document.createElement('div');
             composerFormEl.style.display = 'flex';
-            composerFormEl.style.gap = '8px';
+            composerFormEl.style.flexDirection = 'column';
+            composerFormEl.style.gap = '4px';
             composerFormEl.style.marginTop = '8px';
-            composerFormEl.appendChild(composerInputEl);
-            composerFormEl.appendChild(submitBtn);
+
+            var inputRow = document.createElement('div');
+            inputRow.style.display = 'flex';
+            inputRow.style.gap = '8px';
+            inputRow.appendChild(composerInputEl);
+            inputRow.appendChild(submitBtn);
+
+            composerFormEl.appendChild(inputRow);
+            composerFormEl.appendChild(composerErrorEl);
+
+            composerDraftIdemKey = null;
+            composerDraftBody = null;
+            composerSubmitGen = getGeneration();
 
             submitBtn.onclick = function() {
+                if (submitBtn.disabled) return;
                 var body = (composerInputEl.value || '').trim();
                 if (!body) return;
+                if (body.length > 5000) {
+                    composerErrorEl.textContent = '댓글은 5,000자 이하로 입력해주세요.';
+                    composerErrorEl.style.display = '';
+                    return;
+                }
                 var meta = commentMemoryMeta;
                 if (!meta || !meta.memoryId || !meta.treeId) return;
+                var currentGen = getGeneration();
+                if (currentGen !== composerSubmitGen) return;
+
+                if (body !== composerDraftBody) {
+                    composerDraftIdemKey = 'c-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
+                    composerDraftBody = body;
+                }
+
                 submitBtn.disabled = true;
                 submitBtn.textContent = '등록 중...';
-                var idemKey = 'c-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
-                window.apiClient.createComment(meta.memoryId, body, idemKey).then(function() {
+                composerErrorEl.style.display = 'none';
+
+                createComment(meta.memoryId, body, composerDraftIdemKey).then(function() {
                     submitBtn.disabled = false;
                     submitBtn.textContent = '등록';
                     composerInputEl.value = '';
-                    // Trigger force reconciliation for the current moment
-                    if (typeof meta.treeId !== 'undefined') {
-                        performFetch(meta.treeId, meta.memoryId, getGeneration(), true);
+                    composerDraftIdemKey = null;
+                    composerDraftBody = null;
+                    composerErrorEl.style.display = 'none';
+                    if (currentGen === getGeneration() && commentMemoryMeta && commentMemoryMeta.treeId) {
+                        performFetch(commentMemoryMeta.treeId, commentMemoryMeta.memoryId, getGeneration(), true);
                     }
                 }).catch(function() {
                     submitBtn.disabled = false;
                     submitBtn.textContent = '등록';
+                    composerErrorEl.textContent = '댓글을 등록하지 못했습니다. 다시 시도해주세요.';
+                    composerErrorEl.style.display = '';
                 });
             };
 
@@ -700,6 +744,9 @@
             }
             composerFormEl = null;
             composerInputEl = null;
+            composerErrorEl = null;
+            composerDraftIdemKey = null;
+            composerDraftBody = null;
         }
 
         function renderUnavailable(treeId, memoryId, generation, force) {

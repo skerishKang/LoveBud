@@ -231,7 +231,6 @@
     const base = memoryApi;
     apiClient.fetchPublicMomentReactionSummary = base.fetchPublicMomentReactionSummary;
     apiClient.fetchPublicMomentComments = base.fetchPublicMomentComments;
-    apiClient.createComment = base.createComment;
 
     window.apiClient = apiClient;
 

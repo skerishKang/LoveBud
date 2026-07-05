@@ -154,7 +154,9 @@ test('public viewer detail-ui accepts only public callbacks in read-only boundar
   assert.ok(src.includes('toggleReaction'),
     'must reference toggleReaction in auth boundary');
 
-  // createComment may appear in the read-only boundary via the comment composer
+  // Must reference createComment in read-only boundary for composer
+  assert.ok(src.includes('deps.createComment') || src.includes('createComment'),
+    'read-only boundary must reference createComment for composer');
 });
 
 test('canvas-entry.js injects public callbacks and new auth private callbacks', () => {
@@ -179,7 +181,9 @@ test('canvas-entry.js injects public callbacks and new auth private callbacks', 
 
   // Must reference toggleReaction for auth boundary
   assert.ok(src.includes('toggleReaction'), 'toggleReaction present in canvas-entry for auth boundary');
-  // createComment may appear in canvas-entry via the composer
+  // Must inject createComment via apiClient with same pattern as fetchPublicMomentComments
+  assert.ok(src.includes('apiClient.createComment') && src.includes('createComment: typeof apiClient.createComment'),
+    'canvas-entry must inject createComment via apiClient');
 });
 
 test('canvas-init.js injects public callbacks and includes safe auth private callbacks in fallback', () => {
@@ -208,8 +212,9 @@ test('canvas-init.js injects public callbacks and includes safe auth private cal
     !src.includes("apiClient['toggleReaction']"),
     'canvas-init must not call apiClient.toggleReaction directly');
 
-  // Must not reference createComment
-  assert.ok(!src.includes('createComment'), 'no createComment in canvas-init');
+  // Must inject createComment via apiClient (safe fallback)
+  assert.ok(src.includes('apiClient.createComment'),
+    'canvas-init must inject createComment via apiClient');
 });
 
 test('postgres-client.js exposes public read methods and separate private methods', () => {
