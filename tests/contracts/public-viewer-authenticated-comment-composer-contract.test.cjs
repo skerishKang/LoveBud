@@ -125,6 +125,7 @@ function createEnv() {
     findSuccess: (p) => { function f(e) { if (e.tagName === 'P' && e.textContent && e.textContent.includes('댓글이 등록되었습니다')) return e; if (e.children) for (const c of e.children) { const r = f(c); if (r) return r; } return null; } return f(p); },
     findCancel: (p) => { function f(e) { if (e.tagName === 'BUTTON' && e.textContent && e.textContent.includes('입력 취소')) return e; if (e.children) for (const c of e.children) { const r = f(c); if (r) return r; } return null; } return f(p); },
     findValidation: (p) => { function f(e) { if (e.tagName === 'P' && e.textContent && e.textContent.trim() === '댓글 내용을 입력해주세요.') return e; if (e.children) for (const c of e.children) { const r = f(c); if (r) return r; } return null; } return f(p); },
+    findGuestNote: (p) => { function f(e) { if (e.getAttribute && e.getAttribute('data-guest-comment-note') === '1') return e; if (e.children) for (const c of e.children) { const r = f(c); if (r) return r; } return null; } return f(p); },
   };
 }
 
@@ -945,4 +946,297 @@ it('45. composer boundary does not call focus() arbitrarily', () => {
   assert.equal(c.includes('.focus()'), false, 'composer boundary has no .focus() call');
   // Must not import or reference document.activeElement
   assert.equal(c.includes('activeElement'), false, 'composer boundary does not reference activeElement');
+});
+
+// ---------------------------------------------------------------------------
+// 46-54: Guest participation note
+// ---------------------------------------------------------------------------
+it('46. guest: guest note rendered with exact text, no composer elements', async () => {
+  const env = createEnv();
+  env.setAuth(false);
+  await env.openPanel('mem-1');
+
+  const panel = env.els.momentCommentsPanel;
+  const note = env.findGuestNote(panel);
+  assert.ok(note, 'guest note must exist in panel');
+  assert.equal(note.getAttribute('data-guest-comment-note'), '1', 'data attribute');
+  assert.equal(note.textContent.trim(),
+    '댓글은 읽을 수 있어요. 로그인하면 댓글을 남길 수 있어요.',
+    'exact guest note text');
+  assert.equal(env.hasBtn(panel), false, 'no submit button');
+  assert.equal(env.findTA(panel), null, 'no textarea');
+  assert.equal(env.findCancel(panel), null, 'no cancel button');
+  assert.equal(env.ccCount(), 0, 'no createComment calls');
+});
+
+it('47. guest note has aria-live but no focus move', async () => {
+  const env = createEnv();
+  env.setAuth(false);
+  await env.openPanel('mem-1');
+  const note = env.findGuestNote(env.els.momentCommentsPanel);
+  assert.ok(note, 'guest note exists');
+  assert.equal(note.getAttribute('aria-live'), 'polite', 'aria-live polite');
+  // Verify no button/link/onclick on the note itself
+  assert.equal(note.tagName, 'P', 'guest note is a <p> element');
+  assert.equal(note.onclick, null, 'no onclick on note');
+});
+
+it('48. authenticated: no guest note, composer visible', async () => {
+  const env = createEnv();
+  await env.openPanel('mem-1');
+  const panel = env.els.momentCommentsPanel;
+  const note = env.findGuestNote(panel);
+  assert.equal(note, null, 'no guest note when authenticated');
+  assert.ok(env.findBtn(panel), 'submit button present');
+  assert.ok(env.findTA(panel), 'textarea present');
+});
+
+it('49. close panel removes guest note, reopen shows it again', async () => {
+  const env = createEnv();
+  env.setAuth(false);
+  await env.openPanel('mem-1');
+  const panel = env.els.momentCommentsPanel;
+  assert.ok(env.findGuestNote(panel), 'guest note visible');
+
+  // Close
+  if (env.els.momentReactionCommentStatus && env.els.momentReactionCommentStatus.onclick) {
+    env.els.momentReactionCommentStatus.onclick();
+  }
+  await flush();
+  assert.equal(env.findGuestNote(panel), null, 'guest note removed after close');
+
+  // Reopen
+  if (env.els.momentReactionCommentStatus && env.els.momentReactionCommentStatus.onclick) {
+    env.els.momentReactionCommentStatus.onclick();
+  }
+  await flush();
+  assert.ok(env.findGuestNote(panel), 'guest note visible after reopen');
+});
+
+it('50. moment switch: guest note not duplicated', async () => {
+  const env = createEnv();
+  env.setAuth(false);
+  await env.openPanel('mem-1');
+  const panel = env.els.momentCommentsPanel;
+
+  // Moment A: exactly one guest note
+  const notesA = [].concat(env.findGuestNote(panel)).filter(Boolean);
+  assert.ok(env.findGuestNote(panel), 'guest note on Moment A');
+
+  // Switch to Moment B
+  env.deps.currentSelectedId = 'mem-2';
+  await env.openPanel('mem-2');
+  assert.ok(env.findGuestNote(panel), 'guest note on Moment B');
+  // No duplicate — there should be exactly one note at any time
+  const notesB = [];
+  (function walk(e) {
+    if (e.getAttribute && e.getAttribute('data-guest-comment-note') === '1') notesB.push(e);
+    if (e.children) for (const c of e.children) walk(c);
+  })(panel);
+  assert.equal(notesB.length, 1, 'exactly one guest note on moment switch');
+  assert.equal(env.hasBtn(panel), false, 'no composer button on guest');
+  assert.equal(env.ccCount(), 0, 'no createComment calls');
+});
+
+it('51. repeat update keeps exactly one guest note', async () => {
+  const env = createEnv();
+  env.setAuth(false);
+  await env.openPanel('mem-1');
+  const panel = env.els.momentCommentsPanel;
+
+  // Trigger a second update (same moment, guest, open)
+  env.ui.updateDetailPanel({ id: 'mem-1', treeId: 'tree-1' });
+  await new Promise(r => setTimeout(r, 20));
+
+  // Still exactly one note
+  const notes = [];
+  (function walk(e) {
+    if (e.getAttribute && e.getAttribute('data-guest-comment-note') === '1') notes.push(e);
+    if (e.children) for (const c of e.children) walk(c);
+  })(panel);
+  assert.equal(notes.length, 1, 'exactly one guest note after repeat update');
+  assert.equal(env.hasBtn(panel), false, 'no composer');
+  assert.equal(env.ccCount(), 0, 'no createComment');
+});
+
+it('52. guest→auth transition: guest note removed, composer shown', async () => {
+  const env = createEnv();
+  env.setAuth(false);
+  await env.openPanel('mem-1');
+  const panel = env.els.momentCommentsPanel;
+  assert.ok(env.findGuestNote(panel), 'guest note visible');
+  assert.equal(env.findBtn(panel), null, 'no composer');
+
+  // Close panel, then auth + reopen to force fresh evaluation
+  if (env.els.momentReactionCommentStatus && env.els.momentReactionCommentStatus.onclick) {
+    env.els.momentReactionCommentStatus.onclick();
+  }
+  await flush();
+  env.setAuth(true);
+  await env.openPanel('mem-1');
+  assert.equal(env.findGuestNote(panel), null, 'guest note removed after auth');
+  assert.ok(env.findBtn(panel), 'composer shown after auth');
+});
+
+it('53. auth→guest transition: composer removed, guest note shown', async () => {
+  const env = createEnv();
+  await env.openPanel('mem-1');
+  const panel = env.els.momentCommentsPanel;
+  assert.ok(env.findBtn(panel), 'composer visible when auth');
+  assert.equal(env.findGuestNote(panel), null, 'no guest note');
+
+  // Close panel, then guest + reopen to force fresh evaluation
+  if (env.els.momentReactionCommentStatus && env.els.momentReactionCommentStatus.onclick) {
+    env.els.momentReactionCommentStatus.onclick();
+  }
+  await flush();
+  env.setAuth(false);
+  await env.openPanel('mem-1');
+  assert.equal(env.hasBtn(panel), false, 'composer removed after guest');
+  assert.ok(env.findGuestNote(panel), 'guest note shown after guest');
+});
+
+it('54. composer source file has no .focus() or activeElement references', () => {
+  const composerSrc = fs.readFileSync(path.join(ROOT, 'js/viewer/public-viewer-authenticated-comment-composer.js'), 'utf8');
+  const codeOnly = composerSrc.replace(/\/\*[\s\S]*?\*\/|\/\/.*/g, '');
+  assert.equal(/\.focus\s*\(/.test(codeOnly), false,
+    'composer file must not call .focus()');
+  assert.equal(/activeElement/.test(codeOnly), false,
+    'composer file must not reference activeElement');
+});
+
+// ---------------------------------------------------------------------------
+// 55-56: Standalone composer updater — panel stays open, no reset/close
+// ---------------------------------------------------------------------------
+function findGuestNote(p) { function f(e) { if (e.getAttribute && e.getAttribute('data-guest-comment-note') === '1') return e; if (e.children) for (var i = 0; i < e.children.length; i++) { var r = f(e.children[i]); if (r) return r; } return null; } return f(p); }
+function findBtn(p) { function f(e) { if (e.textContent === '등록') return e; if (e.children) for (var i = 0; i < e.children.length; i++) { var r = f(e.children[i]); if (r) return r; } return null; } return f(p); }
+function findTA(p) { function f(e) { if (e.tagName === 'TEXTAREA') return e; if (e.children) for (var i = 0; i < e.children.length; i++) { var r = f(e.children[i]); if (r) return r; } return null; } return f(p); }
+function findCancel(p) { function f(e) { if (e.tagName === 'BUTTON' && e.textContent && e.textContent.indexOf('입력 취소') !== -1) return e; if (e.children) for (var i = 0; i < e.children.length; i++) { var r = f(e.children[i]); if (r) return r; } return null; } return f(p); }
+
+function createStandaloneComposer() {
+  var ccCount = 0;
+  var auth = false;
+  var panelEl = {
+    tagName: 'DIV', hidden: false, children: [], style: {},
+    attributes: {}, onclick: null,
+    setAttribute: function(n, v) { this.attributes[n] = v; },
+    getAttribute: function(n) { return this.attributes[n] || null; },
+    appendChild: function(c) { this.children.push(c); c.parentElement = this; c.parentNode = this; },
+    removeChild: function(c) { var i = this.children.indexOf(c); if (i !== -1) { this.children.splice(i, 1); c.parentElement = null; c.parentNode = null; } },
+    parentElement: null,
+    querySelector: function() { return null; },
+    addEventListener: function() {},
+  };
+  var ctx = vm.createContext({
+    window: {},
+    document: {
+      createElement: function(tag) {
+        var e = {
+          tagName: (tag || 'div').toUpperCase(), textContent: '', children: [],
+          style: {}, attributes: {}, onclick: null, value: '', _hidden: false, _listeners: {},
+          get hidden() { return this._hidden; },
+          set hidden(v) { this._hidden = !!v; },
+          classList: { classes: new Set(), add: function(c) { this.classes.add(c); }, remove: function(c) { this.classes.delete(c); }, contains: function(c) { return this.classes.has(c); } },
+          disabled: false, _disabled: false,
+          setAttribute: function(n, v) { this.attributes[n] = v; if (n === 'disabled') this._disabled = true; },
+          removeAttribute: function(n) { delete this.attributes[n]; if (n === 'disabled') this._disabled = false; },
+          getAttribute: function(n) { return this.attributes[n]; },
+          get parentElement() { return this._parent || null; },
+          set parentElement(v) { this._parent = v; },
+          get parentNode() { return this._parent || null; },
+          set parentNode(v) { this._parent = v; },
+          appendChild: function(c) { this.children.push(c); c.parentElement = this; c.parentNode = this; },
+          removeChild: function(c) { var i = this.children.indexOf(c); if (i !== -1) { this.children.splice(i, 1); c.parentElement = null; c.parentNode = null; } },
+          focus: function() { this._focusCount = (this._focusCount || 0) + 1; },
+          closest: function() { return this.parentElement || this; },
+          contains: function(child) { if (!child) return false; if (child === this) return true; for (var ci = 0; ci < this.children.length; ci++) { var c = this.children[ci]; if (c === child || (c.contains && c.contains(child))) return true; } return false; },
+          addEventListener: function(type, handler) { this._listeners[type] = handler; },
+        };
+        return e;
+      },
+      getElementById: function(id) {
+        if (id === 'momentCommentsPanel') return panelEl;
+        return null;
+      },
+    }
+  });
+  ctx.window = ctx;
+
+  vm.runInContext(
+    fs.readFileSync(path.join(ROOT, 'js/viewer/public-viewer-authenticated-comment-composer.js'), 'utf8'),
+    ctx
+  );
+
+  var composerFn = ctx.LoveBudPublicViewerAuthenticatedCommentComposer
+    .createPublicViewerAuthenticatedCommentComposerBoundary({
+      hasConfirmedAuthSession: function() { return auth; },
+      createComment: async function() { ccCount++; return { id: 'c-' + ccCount }; },
+      reconcilePublicSummary: function() {},
+      sharedGenerationRef: { value: 1 }
+    });
+
+  return {
+    composer: composerFn,
+    panel: panelEl,
+    setAuth: function(v) { auth = !!v; },
+    ccCount: function() { return ccCount; },
+  };
+}
+
+it('55. guest→auth direct updater: panel stays open, stale note removed, composer shown', async () => {
+  var sc = createStandaloneComposer();
+  sc.panel.hidden = false;
+  sc.setAuth(false);
+
+  // First call: guest panel — guest note appears
+  sc.composer({ open: true, treeId: 'tree-1', memoryId: 'mem-1', data: { id: 'mem-1', treeId: 'tree-1' }, generation: 1 });
+  var note = findGuestNote(sc.panel);
+  assert.ok(note, 'guest note visible on first call');
+  assert.equal(note.getAttribute('data-guest-comment-note'), '1', 'data attribute on guest note');
+
+  // No composer elements in guest state
+  assert.equal(findBtn(sc.panel), null, 'no submit button');
+  assert.equal(findTA(sc.panel), null, 'no textarea');
+  assert.equal(findCancel(sc.panel), null, 'no cancel button');
+  assert.equal(sc.ccCount(), 0, 'no createComment');
+
+  // Second call: same panel, same updater, auth changed — panel stays open
+  sc.setAuth(true);
+  sc.composer({ open: true, treeId: 'tree-1', memoryId: 'mem-1', data: { id: 'mem-1', treeId: 'tree-1' }, generation: 1 });
+
+  // Stale guest note must be gone; composer appears
+  assert.equal(findGuestNote(sc.panel), null, 'stale guest note removed');
+  assert.ok(findBtn(sc.panel), 'submit button shown');
+  assert.ok(findTA(sc.panel), 'textarea shown');
+  assert.ok(findCancel(sc.panel), 'cancel button shown');
+  assert.equal(sc.panel.hidden, false, 'panel stays open');
+  assert.equal(sc.ccCount(), 0, 'no createComment before submit');
+});
+
+it('56. auth→guest direct updater: panel stays open, stale composer removed, guest note shown', async () => {
+  var sc = createStandaloneComposer();
+  sc.panel.hidden = false;
+  sc.setAuth(true);
+
+  // First call: authenticated — composer appears
+  sc.composer({ open: true, treeId: 'tree-1', memoryId: 'mem-1', data: { id: 'mem-1', treeId: 'tree-1' }, generation: 1 });
+  assert.ok(findBtn(sc.panel), 'submit button visible on first call');
+  assert.ok(findTA(sc.panel), 'textarea visible');
+  assert.ok(findCancel(sc.panel), 'cancel button visible');
+  assert.equal(findGuestNote(sc.panel), null, 'no guest note');
+
+  // Second call: same panel, same updater, auth changed — panel stays open
+  sc.setAuth(false);
+  sc.composer({ open: true, treeId: 'tree-1', memoryId: 'mem-1', data: { id: 'mem-1', treeId: 'tree-1' }, generation: 1 });
+
+  // Stale composer must be gone; guest note appears
+  assert.equal(findBtn(sc.panel), null, 'submit button removed');
+  assert.equal(findTA(sc.panel), null, 'textarea removed');
+  assert.equal(findCancel(sc.panel), null, 'cancel button removed');
+
+  var note = findGuestNote(sc.panel);
+  assert.ok(note, 'guest note shown');
+  assert.equal(note.getAttribute('data-guest-comment-note'), '1', 'data attribute on guest note');
+  assert.equal(sc.panel.hidden, false, 'panel stays open');
+  assert.equal(sc.ccCount(), 0, 'no createComment calls');
 });

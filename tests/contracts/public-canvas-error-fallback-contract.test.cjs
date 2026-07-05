@@ -314,6 +314,7 @@ test('8. non-allowlisted files are not modified', () => {
     'tests/contracts/moment-social-write-readiness-contract.test.cjs',
 
     // #3231 authenticated comment composer
+    'js/viewer/public-viewer-authenticated-comment-composer.js',
     'tests/contracts/public-viewer-authenticated-comment-composer-contract.test.cjs',
 
     // #3241 split public social boundaries from detail-ui

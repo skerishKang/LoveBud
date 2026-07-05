@@ -43,6 +43,7 @@
         var activeContext = null;
         var composerInstanceToken = 0;
         var composerValidationActive = false;
+        var guestNoteEl = null;
 
         function getGeneration() {
             return sharedGenRef ? sharedGenRef.value : 0;
@@ -60,8 +61,29 @@
             composerValidationActive = false;
         }
 
+        function removeGuestNoteDom() {
+            if (guestNoteEl && guestNoteEl.parentNode) {
+                guestNoteEl.parentNode.removeChild(guestNoteEl);
+            }
+            guestNoteEl = null;
+        }
+
+        function appendGuestNoteDom(panelEl) {
+            if (!panelEl) return;
+            removeGuestNoteDom();
+            guestNoteEl = document.createElement('p');
+            guestNoteEl.setAttribute('data-guest-comment-note', '1');
+            guestNoteEl.textContent = '댓글은 읽을 수 있어요. 로그인하면 댓글을 남길 수 있어요.';
+            guestNoteEl.setAttribute('aria-live', 'polite');
+            guestNoteEl.style.margin = '8px 0 0';
+            guestNoteEl.style.fontSize = '0.9em';
+            guestNoteEl.style.color = '#555';
+            panelEl.appendChild(guestNoteEl);
+        }
+
         function deactivateComposer() {
             removeComposerDom();
+            removeGuestNoteDom();
             activeContext = null;
             composerDraftIdemKey = null;
             composerDraftBody = null;
@@ -233,12 +255,23 @@
         }
 
         return function updatePublicViewerAuthenticatedCommentComposer(state) {
-            if (!state || !state.open || typeof createComment !== 'function' || !hasConfirmedAuthSession()) {
+            removeGuestNoteDom();
+            if (!state || !state.open) {
                 deactivateComposer();
                 return;
             }
             var panelEl = document.getElementById('momentCommentsPanel');
             if (!panelEl || panelEl.hidden) {
+                deactivateComposer();
+                return;
+            }
+            // Guest path — panel is open but user is not authenticated
+            if (!hasConfirmedAuthSession()) {
+                deactivateComposer();
+                appendGuestNoteDom(panelEl);
+                return;
+            }
+            if (typeof createComment !== 'function') {
                 deactivateComposer();
                 return;
             }
