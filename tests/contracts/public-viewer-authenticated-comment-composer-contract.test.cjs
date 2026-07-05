@@ -113,6 +113,7 @@ function createEnv() {
     openPanel, findBtn, hasBtn, findTA, findErr,
     ccCount: () => ccCount, lastKey: () => lastKey, publicReadCount: () => publicReadCalls.length,
     setAuth: (v) => { auth = !!v; },
+    findSuccess: (p) => { function f(e) { if (e.tagName === 'P' && e.textContent && e.textContent.includes('댓글이 등록되었습니다')) return e; if (e.children) for (const c of e.children) { const r = f(c); if (r) return r; } return null; } return f(p); },
   };
 }
 
@@ -446,4 +447,155 @@ it('19. stale Moment A response does not affect Moment B composer or reconciliat
   assert.equal(env.els.momentCommentsPanel.hidden, false, 'B panel stays open');
   assert.equal(env.ccCount(), 1, 'no extra createComment call');
   assert.equal(env.publicReadCount(), readCountBefore, 'no reconciliation triggered by stale A response');
+});
+
+// ---------------------------------------------------------------------------
+// 20-28: Success feedback
+// ---------------------------------------------------------------------------
+it('20. success feedback shown after successful submit', async () => {
+  const env = createEnv();
+  env.mkPending();
+  await env.openPanel('mem-1');
+  const ta = env.findTA(env.els.momentCommentsPanel);
+  if (ta) ta.value = 'test';
+  const btn = env.findBtn(env.els.momentCommentsPanel);
+  btn.onclick();
+  env.resolve({ id: 'c-20' });
+  await flush();
+  const el = env.findSuccess(env.els.momentCommentsPanel);
+  assert.ok(el, 'success element exists');
+  assert.notEqual(el.style.display, 'none', 'success message visible');
+  assert.equal(el.textContent.trim(), '댓글이 등록되었습니다.', 'correct text');
+});
+
+it('21. success status has aria-live', async () => {
+  const env = createEnv();
+  env.mkPending();
+  await env.openPanel('mem-1');
+  const ta = env.findTA(env.els.momentCommentsPanel);
+  if (ta) ta.value = 'test';
+  env.findBtn(env.els.momentCommentsPanel).onclick();
+  env.resolve({ id: 'c-21' });
+  await flush();
+  const el = env.findSuccess(env.els.momentCommentsPanel);
+  assert.ok(el, 'success element');
+  assert.ok(el.getAttribute('aria-live'), 'has aria-live');
+});
+
+it('22. success text has no raw content', async () => {
+  const env = createEnv();
+  env.mkPending();
+  await env.openPanel('mem-1');
+  const ta = env.findTA(env.els.momentCommentsPanel);
+  if (ta) ta.value = 'secret body';
+  env.findBtn(env.els.momentCommentsPanel).onclick();
+  env.resolve({ id: 'c-22' });
+  await flush();
+  const el = env.findSuccess(env.els.momentCommentsPanel);
+  assert.ok(el, 'success element');
+  assert.equal(el.textContent.includes('secret body'), false, 'no comment body');
+  assert.equal(el.textContent.includes('c-22'), false, 'no backend ID');
+});
+
+it('23. new submit hides previous success', async () => {
+  const env = createEnv();
+  env.mkPending();
+  await env.openPanel('mem-1');
+  const ta = env.findTA(env.els.momentCommentsPanel);
+  if (ta) ta.value = 'first';
+  env.findBtn(env.els.momentCommentsPanel).onclick();
+  env.resolve({ id: 'c-23a' });
+  await flush();
+  assert.ok(env.findSuccess(env.els.momentCommentsPanel), 'success visible');
+  // New submit
+  env.mkPending();
+  if (ta) ta.value = 'second';
+  env.findBtn(env.els.momentCommentsPanel).onclick();
+  const el = env.findSuccess(env.els.momentCommentsPanel);
+  assert.equal(el.style.display, 'none', 'success hidden on new submit');
+  env.resolve({ id: 'c-23b' });
+  await flush();
+});
+
+it('24. failed submit: no success feedback', async () => {
+  const env = createEnv();
+  env.mkPending();
+  await env.openPanel('mem-1');
+  const ta = env.findTA(env.els.momentCommentsPanel);
+  if (ta) ta.value = 'test';
+  env.findBtn(env.els.momentCommentsPanel).onclick();
+  env.reject(new Error('fail'));
+  await flush();
+  const el = env.findSuccess(env.els.momentCommentsPanel);
+  assert.equal(el.style.display, 'none', 'success hidden on failure');
+});
+
+it('25. close/reopen clears success status', async () => {
+  const env = createEnv();
+  env.mkPending();
+  await env.openPanel('mem-1');
+  const ta = env.findTA(env.els.momentCommentsPanel);
+  if (ta) ta.value = 'test';
+  env.findBtn(env.els.momentCommentsPanel).onclick();
+  env.resolve({ id: 'c-25' });
+  await flush();
+  assert.ok(env.findSuccess(env.els.momentCommentsPanel), 'success visible');
+  // Close
+  if (env.els.momentReactionCommentStatus && env.els.momentReactionCommentStatus.onclick) {
+    env.els.momentReactionCommentStatus.onclick();
+  }
+  await flush();
+  // Reopen
+  if (env.els.momentReactionCommentStatus && env.els.momentReactionCommentStatus.onclick) {
+    env.els.momentReactionCommentStatus.onclick();
+  }
+  await flush();
+  const el = env.findSuccess(env.els.momentCommentsPanel);
+  assert.equal(el.style.display, 'none', 'success hidden after reopen');
+});
+
+it('26. A→B switch: old success not shown on B', async () => {
+  const env = createEnv();
+  env.mkPending();
+  await env.openPanel('mem-1');
+  const ta = env.findTA(env.els.momentCommentsPanel);
+  if (ta) ta.value = 'A comment';
+  env.findBtn(env.els.momentCommentsPanel).onclick();
+  env.resolve({ id: 'c-26a' });
+  await flush();
+  assert.ok(env.findSuccess(env.els.momentCommentsPanel), 'A success visible');
+  // Switch to B
+  env.deps.currentSelectedId = 'mem-2';
+  await env.openPanel('mem-2');
+  const el = env.findSuccess(env.els.momentCommentsPanel);
+  assert.equal(el.style.display, 'none', 'B has no old A success');
+});
+
+it('27. A pending → B → A completes: no success on B', async () => {
+  const env = createEnv();
+  env.mkPending();
+  await env.openPanel('mem-1');
+  const taA = env.findTA(env.els.momentCommentsPanel);
+  if (taA) taA.value = 'A pending';
+  env.findBtn(env.els.momentCommentsPanel).onclick();
+  assert.equal(env.ccCount(), 1, 'A submitted');
+  // Switch to B
+  env.deps.currentSelectedId = 'mem-2';
+  await env.openPanel('mem-2');
+  // A completes
+  env.resolve({ id: 'c-27a' });
+  await flush();
+  // B should have no success text
+  const el = env.findSuccess(env.els.momentCommentsPanel);
+  assert.equal(el.style.display, 'none', 'B shows no success from stale A');
+  assert.equal(env.els.momentCommentsPanel.hidden, false, 'B panel stays open');
+});
+
+it('28. guest: no composer, no success, 0 write calls', async () => {
+  const env = createEnv();
+  env.setAuth(false);
+  await env.openPanel('mem-1');
+  assert.equal(env.hasBtn(env.els.momentCommentsPanel), false, 'no composer');
+  assert.equal(env.findSuccess(env.els.momentCommentsPanel), null, 'no success element');
+  assert.equal(env.ccCount(), 0, 'no write calls');
 });
