@@ -470,9 +470,14 @@
             ? deps.resolveSocialContext
             : null;
 
+        var onCommentsPanelStateChange = deps && typeof deps.onCommentsPanelStateChange === 'function'
+            ? deps.onCommentsPanelStateChange
+            : null;
+
         var sharedGenRef = deps && deps.sharedGenerationRef;
         var currentGeneration = sharedGenRef ? sharedGenRef.value : 0;
         var lastLoadedMemoryId = null;
+        var lastData = null;
         var cardEl = null;
         var likeValueEl = null;
         var commentValueEl = null;
@@ -613,6 +618,7 @@
             if (commentsListEl) commentsListEl.textContent = '';
             if (commentsPanelStatusEl) commentsPanelStatusEl.textContent = '';
             commentMemoryMeta = null;
+            emitPanelState(false);
         }
 
         function openCommentPanel(commentItems) {
@@ -620,8 +626,9 @@
             commentsListEl.textContent = '';
 
             if (!commentItems || !Array.isArray(commentItems) || commentItems.length === 0) {
-                commentsPanelStatusEl.textContent = '\uC544\uC9C1 \uB313\uAE00\uC774 \uC5C6\uC5B4\uC694.';
+                commentsPanelStatusEl.textContent = '아직 댓글이 없어요.';
                 commentPanelEl.hidden = false;
+                emitPanelState(true);
                 return;
             }
 
@@ -632,6 +639,23 @@
             }
             commentsPanelStatusEl.textContent = '';
             commentPanelEl.hidden = false;
+            emitPanelState(true);
+        }
+
+        function emitPanelState(open) {
+            if (typeof onCommentsPanelStateChange !== 'function') return;
+            var meta = commentMemoryMeta;
+            if (open && meta) {
+                onCommentsPanelStateChange({
+                    open: true,
+                    treeId: meta.treeId,
+                    memoryId: meta.memoryId,
+                    generation: meta.generation,
+                    data: meta.data
+                });
+            } else {
+                onCommentsPanelStateChange({ open: false });
+            }
         }
 
         function renderUnavailable(treeId, memoryId, generation, force) {
@@ -708,8 +732,10 @@
                         }
                         commentMemoryMeta = {
                             memoryId: memoryId,
+                            treeId: treeId,
                             generation: generation,
-                            comments: valid.comments
+                            comments: valid.comments,
+                            data: lastData
                         };
                         renderSuccess(valid.likeCount, valid.commentCount, force);
                         // Wire comment toggle only on success (non-force or first load)
@@ -773,6 +799,8 @@
                 lastLoadedMemoryId = null;
                 return;
             }
+
+            lastData = data;
 
             var treeId = context.treeId;
             var memoryId = context.memoryId;
@@ -1290,9 +1318,6 @@
         var createComment = deps && typeof deps.createComment === 'function'
             ? deps.createComment
             : null;
-        var resolveSocialContext = deps && typeof deps.resolveSocialContext === 'function'
-            ? deps.resolveSocialContext
-            : null;
         var reconcilePublicSummary = deps && typeof deps.reconcilePublicSummary === 'function'
             ? deps.reconcilePublicSummary
             : null;
@@ -1406,13 +1431,12 @@
             panelEl.appendChild(composerFormEl);
         }
 
-        return function updatePublicViewerAuthenticatedCommentComposer(data, force) {
-            if (typeof createComment !== 'function' || !hasConfirmedAuthSession()) {
+        return function updatePublicViewerAuthenticatedCommentComposer(state) {
+            if (!state || !state.open || typeof createComment !== 'function' || !hasConfirmedAuthSession()) {
                 remove();
                 return;
             }
-            var context = resolveSocialContext ? resolveSocialContext(data) : null;
-            if (!context) {
+            if (state.generation !== undefined && submitGen > 0 && state.generation !== submitGen) {
                 remove();
                 return;
             }
@@ -1421,7 +1445,7 @@
                 remove();
                 return;
             }
-            lastContext = { memoryId: context.memoryId, treeId: context.treeId, data: data };
+            lastContext = { memoryId: state.memoryId, treeId: state.treeId, data: state.data };
             append(panelEl);
         };
     }
@@ -1663,13 +1687,30 @@
             resolveSocialContext: resolveSocialContext
         });
 
-        var updateReadOnlyReactionSummary = createPublicViewerReadOnlyReactionSummaryBoundary(boundaryDeps);
+        // Create composer boundary first (it will receive reconcilePublicSummary after read-only is created)
+        var updateCommentComposer = null;
+        var commentPanelStateHandler = function(state) {
+            if (updateCommentComposer) updateCommentComposer(state);
+        };
+
+        // Create read-only boundary with lifecycle callback
+        var updateReadOnlyReactionSummary = createPublicViewerReadOnlyReactionSummaryBoundary(
+            Object.assign({}, boundaryDeps, {
+                onCommentsPanelStateChange: function(state) {
+                    commentPanelStateHandler(state);
+                }
+            })
+        );
+
+        // Create authenticaticated like boundary
         var updateAuthenticatedLike = createPublicViewerAuthenticatedLikeBoundary(
             Object.assign({}, boundaryDeps, {
                 reconcilePublicSummary: updateReadOnlyReactionSummary
             })
         );
-        var updateCommentComposer = createPublicViewerAuthenticatedCommentComposerBoundary(
+
+        // Create composer boundary with reconcile pointing to read-only
+        updateCommentComposer = createPublicViewerAuthenticatedCommentComposerBoundary(
             Object.assign({}, boundaryDeps, {
                 reconcilePublicSummary: updateReadOnlyReactionSummary
             })
@@ -1691,7 +1732,6 @@
                 // Defer auth boundary after public summary microtasks
                 Promise.resolve().then(function() {
                     updateAuthenticatedLike(data);
-                    updateCommentComposer(data);
                 });
                 return;
             }
@@ -1720,7 +1760,6 @@
             }
             Promise.resolve().then(function() {
                 updateAuthenticatedLike(data);
-                updateCommentComposer(data);
             });
         };
         return detailUI;
