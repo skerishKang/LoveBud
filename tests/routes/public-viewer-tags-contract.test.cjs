@@ -6,9 +6,9 @@ const source = fs.readFileSync('js/viewer/public-viewer-detail-ui.js', 'utf8');
 
 function getTagsBoundary() {
   const start = source.indexOf('function createPublicViewerCurrentMomentTagsBoundary(deps)');
-  const end = source.indexOf('function createPublicViewerReadOnlyReactionSummaryBoundary(deps)');
-  assert.notEqual(start, -1);
-  assert.notEqual(end, -1);
+  const end = source.indexOf('function createPublicViewerDetailUI(deps)');
+  assert.notEqual(start, -1, 'tags boundary function must be found');
+  assert.notEqual(end, -1, 'detail UI function must be found as boundary end');
   return source.slice(start, end);
 }
 

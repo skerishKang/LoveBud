@@ -130,38 +130,40 @@ test('permanent exclusions present', () => {
 // Tightened callback-boundary contract tests
 // ---------------------------------------------------------------------------
 
-test('public viewer detail-ui accepts only public callbacks in read-only boundary, and accepts private callbacks in auth boundary', () => {
-  const src = readSource('js/viewer/public-viewer-detail-ui.js');
+test('public viewer social files accept only correct callbacks per boundary', () => {
+  var readOnlySrc = readSource('js/viewer/public-viewer-read-only-social-summary.js');
+  var authLikeSrc = readSource('js/viewer/public-viewer-authenticated-like.js');
+  var composerSrc = readSource('js/viewer/public-viewer-authenticated-comment-composer.js');
 
-  // Must consume deps.fetchPublicMomentReactionSummary (exact dep source)
-  assert.ok(src.includes('deps.fetchPublicMomentReactionSummary'),
-    'must consume deps.fetchPublicMomentReactionSummary');
+  // Read-only boundary must consume only public read callbacks
+  assert.ok(readOnlySrc.includes('deps.fetchPublicMomentReactionSummary'),
+    'read-only must consume deps.fetchPublicMomentReactionSummary');
+  assert.ok(readOnlySrc.includes('deps.fetchPublicMomentComments'),
+    'read-only must consume deps.fetchPublicMomentComments');
 
-  // Must consume deps.fetchPublicMomentComments (exact dep source)
-  assert.ok(src.includes('deps.fetchPublicMomentComments'),
-    'must consume deps.fetchPublicMomentComments');
+  // Auth like boundary must consume private read + toggleReaction
+  assert.ok(authLikeSrc.includes('deps.fetchReactionSummary'),
+    'auth like must consume deps.fetchReactionSummary for auth boundary');
+  assert.ok(authLikeSrc.includes('deps.toggleReaction'),
+    'auth like must reference toggleReaction');
 
-  // Must consume deps.fetchReactionSummary (private read) for auth boundary
-  assert.ok(src.includes('deps.fetchReactionSummary'),
-    'must consume deps.fetchReactionSummary for auth boundary');
+  // Neither read-only nor auth like must accept deps.fetchComments (private read — not used)
+  assert.ok(!readOnlySrc.includes('deps.fetchComments') &&
+    !readOnlySrc.includes("deps['fetchComments']"),
+    'read-only boundary must not accept deps.fetchComments');
+  assert.ok(!authLikeSrc.includes('deps.fetchComments') &&
+    !authLikeSrc.includes("deps['fetchComments']"),
+    'auth like boundary must not accept deps.fetchComments');
 
-  // Must not accept deps.fetchComments (private read — not used)
-  assert.ok(!src.includes('deps.fetchComments') &&
-    !src.includes("deps['fetchComments']"),
-    'must not accept deps.fetchComments');
-
-  // Must reference toggleReaction (private write) for auth boundary
-  assert.ok(src.includes('toggleReaction'),
-    'must reference toggleReaction in auth boundary');
-
-  // Must NOT reference createComment (read-only boundary is guest-only)
-  // Scope check to the read-only boundary function only (not the whole file)
-  var readOnlyStart = src.indexOf('function createPublicViewerReadOnlyReactionSummaryBoundary');
-  var authStart = src.indexOf('function createPublicViewerAuthenticatedLikeBoundary');
-  var readOnlyEnd = authStart !== -1 ? authStart : src.indexOf('function createPublicViewerAuthenticatedCommentComposerBoundary');
-  var readOnlySrc = src.slice(readOnlyStart, readOnlyEnd);
+  // read-only boundary must NOT reference createComment
   assert.ok(!readOnlySrc.includes('createComment'),
     'read-only boundary must not reference createComment');
+  // auth like boundary must NOT reference createComment
+  assert.ok(!authLikeSrc.includes('createComment'),
+    'auth like boundary must not reference createComment');
+  // composer boundary must reference createComment
+  assert.ok(composerSrc.includes('createComment'),
+    'composer boundary must reference createComment');
 });
 
 test('canvas-entry.js injects public callbacks and new auth private callbacks', () => {

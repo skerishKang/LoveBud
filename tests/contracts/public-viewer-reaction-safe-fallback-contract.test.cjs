@@ -119,6 +119,15 @@ test('Public read-only social summary never invokes private reaction API and hid
   vm.createContext(context);
   const metadataCode = fs.readFileSync(path.join(ROOT, 'js/viewer/public-viewer-detail-metadata-text.js'), 'utf8');
   vm.runInContext(metadataCode, context);
+  // Load social split modules before detail-ui
+  var socialFiles = [
+    'js/viewer/public-viewer-read-only-social-summary.js',
+    'js/viewer/public-viewer-authenticated-like.js',
+    'js/viewer/public-viewer-authenticated-comment-composer.js',
+  ];
+  socialFiles.forEach(function(sf) {
+    vm.runInContext(fs.readFileSync(path.join(ROOT, sf), 'utf8'), context);
+  });
   vm.runInContext(scriptSource, context);
 
   const deps = {

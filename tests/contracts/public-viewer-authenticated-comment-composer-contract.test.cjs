@@ -58,6 +58,12 @@ function createEnv() {
 
   const metaSrc = fs.readFileSync(path.join(ROOT, 'js/viewer/public-viewer-detail-metadata-text.js'), 'utf8');
   vm.runInContext(metaSrc, ctx);
+  const socialSummaryCode = fs.readFileSync(path.join(ROOT, 'js/viewer/public-viewer-read-only-social-summary.js'), 'utf8');
+  vm.runInContext(socialSummaryCode, ctx);
+  const authLikeCode = fs.readFileSync(path.join(ROOT, 'js/viewer/public-viewer-authenticated-like.js'), 'utf8');
+  vm.runInContext(authLikeCode, ctx);
+  const authComposerCode = fs.readFileSync(path.join(ROOT, 'js/viewer/public-viewer-authenticated-comment-composer.js'), 'utf8');
+  vm.runInContext(authComposerCode, ctx);
   vm.runInContext(scriptSource, ctx);
 
   let ccCount = 0, lastKey = null, resCmt, rejCmt, pendingP = null, auth = true;
@@ -139,28 +145,24 @@ it('1. read-only boundary contains no createComment/composer/idempotency', () =>
 });
 
 it('2. composer boundary exists with required features', () => {
-  const s = scriptSource.indexOf('function createPublicViewerAuthenticatedCommentComposerBoundary(deps)');
-  const e = scriptSource.indexOf('function createPublicViewerTreeMetaBoundary(deps)');
-  const c = scriptSource.slice(s, e);
-  assert.ok(c.includes('createComment'));
-  assert.ok(c.includes('hasConfirmedAuthSession'));
-  assert.ok(c.includes('maxLength'));
-  assert.ok(c.includes('aria-live'));
-  assert.ok(c.includes('composerDraftIdemKey'));
-  assert.ok(c.includes('composerInstanceToken'));
-  assert.ok(c.includes('subCtx'));
-  assert.ok(c.includes('reconcilePublicSummary'));
-  assert.equal(c.includes('toggleReaction'), false);
-  assert.equal(c.includes('resolveSocialContext'), false);
+  const composerSrc = fs.readFileSync(path.join(ROOT, 'js/viewer/public-viewer-authenticated-comment-composer.js'), 'utf8');
+  assert.ok(composerSrc.includes('createComment'));
+  assert.ok(composerSrc.includes('hasConfirmedAuthSession'));
+  assert.ok(composerSrc.includes('maxLength'));
+  assert.ok(composerSrc.includes('aria-live'));
+  assert.ok(composerSrc.includes('composerDraftIdemKey'));
+  assert.ok(composerSrc.includes('composerInstanceToken'));
+  assert.ok(composerSrc.includes('subCtx'));
+  assert.ok(composerSrc.includes('reconcilePublicSummary'));
+  assert.equal(composerSrc.includes('toggleReaction'), false);
+  assert.equal(composerSrc.includes('resolveSocialContext'), false);
 });
 
 it('3. read-only boundary emits onCommentsPanelStateChange', () => {
-  const s = scriptSource.indexOf('function createPublicViewerReadOnlyReactionSummaryBoundary(deps)');
-  const e = scriptSource.indexOf('function createPublicViewerAuthenticatedLikeBoundary(deps)');
-  const b = scriptSource.slice(s, e);
-  assert.ok(b.includes('onCommentsPanelStateChange'));
-  assert.ok(b.includes('emitPanelState(true)'));
-  assert.ok(b.includes('emitPanelState(false)'));
+  const ronlySrc = fs.readFileSync(path.join(ROOT, 'js/viewer/public-viewer-read-only-social-summary.js'), 'utf8');
+  assert.ok(ronlySrc.includes('onCommentsPanelStateChange'));
+  assert.ok(ronlySrc.includes('emitPanelState(true)'));
+  assert.ok(ronlySrc.includes('emitPanelState(false)'));
 });
 
 it('4. orchestrator wires lifecycle callback + composer', () => {
@@ -389,15 +391,13 @@ it('17. stale close/reopen: old response does not affect new input', async () =>
 // 18: Source-level: guest public-read, retry, reaction summary intact
 // ---------------------------------------------------------------------------
 it('18. guest read-only features intact', () => {
-  const s = scriptSource.indexOf('function createPublicViewerReadOnlyReactionSummaryBoundary(deps)');
-  const e = scriptSource.indexOf('function createPublicViewerAuthenticatedLikeBoundary(deps)');
-  const b = scriptSource.slice(s, e);
-  assert.ok(b.includes('fetchPublicMomentReactionSummary'));
-  assert.ok(b.includes('resetCommentsPanel'));
-  assert.ok(b.includes('renderUnavailable'));
-  assert.ok(b.includes('[data-social-retry'));
-  assert.equal(b.includes('toggleReaction'), false);
-  assert.equal(b.includes('createComment'), false);
+  const ronlySrc = fs.readFileSync(path.join(ROOT, 'js/viewer/public-viewer-read-only-social-summary.js'), 'utf8');
+  assert.ok(ronlySrc.includes('fetchPublicMomentReactionSummary'));
+  assert.ok(ronlySrc.includes('resetCommentsPanel'));
+  assert.ok(ronlySrc.includes('renderUnavailable'));
+  assert.ok(ronlySrc.includes('[data-social-retry'));
+  assert.equal(ronlySrc.includes('toggleReaction'), false);
+  assert.equal(ronlySrc.includes('createComment'), false);
 });
 
 // ---------------------------------------------------------------------------

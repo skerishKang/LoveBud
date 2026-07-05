@@ -232,9 +232,11 @@ test('11. viewer detail UI preserves autoplay and reactions guards', () => {
     src.indexOf('createPublicViewerReadOnlyReactionSummaryBoundary') !== -1,
     'Must preserve read-only reaction summary boundary'
   );
+  // is-public-readonly CSS class is now in public-viewer-read-only-social-summary.js
+  var readOnlySrc = readSource('js/viewer/public-viewer-read-only-social-summary.js');
   assert.ok(
-    src.indexOf('is-public-readonly') !== -1,
-    'Must preserve is-public-readonly CSS class'
+    readOnlySrc.indexOf('is-public-readonly') !== -1,
+    'Must preserve is-public-readonly CSS class in read-only social summary file'
   );
   assert.ok(
     src.indexOf('buildYouTubeEmbedUrl') !== -1,

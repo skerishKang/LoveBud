@@ -306,10 +306,10 @@ describe('6. No runtime claims', () => {
 // ---------------------------------------------------------------------------
 
 describe('7. Public viewer display boundary', () => {
-    it('public-viewer-detail-ui.js uses fetchPublicMomentComments', () => {
-        const src = readSrc('js/viewer/public-viewer-detail-ui.js');
+    it('public-viewer-read-only-social-summary.js uses fetchPublicMomentComments', () => {
+        const src = readSrc('js/viewer/public-viewer-read-only-social-summary.js');
         assert.match(src, /fetchPublicMomentComments/);
-        // fetchComments should not be bound to the display path
+        // fetchComments should be bound to fetchPublicMomentComments
         const lines = src.split('\n');
         const displayFetchComments = lines.find(l =>
             l.match(/var\s+fetchComments.*=.*fetchPublicMomentComments/) ||
