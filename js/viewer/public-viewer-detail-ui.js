@@ -1507,6 +1507,8 @@
 
             composerCancelBtn.onclick = function() {
                 if (composerCancelBtn.disabled) return;
+                // Stale guard: if instance token changed, this handler belongs to a removed composer instance
+                if (composerInstanceToken !== instanceToken) return;
                 composerInputEl.value = '';
                 composerDraftIdemKey = null;
                 composerDraftBody = null;

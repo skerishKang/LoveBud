@@ -714,30 +714,53 @@ it('35. pending→failure: cancel restored', async () => {
   assert.equal(cancelBtn.disabled, false, 'cancel restored after failure');
 });
 
-it('36. close/reopen: old cancel handler does not affect new composer', async () => {
+it('36. detached old cancel button onclick does not affect reopened composer', async () => {
   const env = createEnv();
   env.mkPending();
   await env.openPanel('mem-1');
   const ta = env.findTA(env.els.momentCommentsPanel);
   if (ta) ta.value = 'old draft';
-  // Close
+
+  // Save reference to OLD cancel button before close
+  const oldCancelBtn = env.findCancel(env.els.momentCommentsPanel);
+  assert.ok(oldCancelBtn, 'old cancel exists');
+
+  const readCountBefore = env.publicReadCount();
+
+  // Close panel
   if (env.els.momentReactionCommentStatus && env.els.momentReactionCommentStatus.onclick) {
     env.els.momentReactionCommentStatus.onclick();
   }
   await flush();
-  // Old cancel DOM is gone — no-op
-  // Reopen
+
+  // Reopen — new composer is created with new cancel button
   if (env.els.momentReactionCommentStatus && env.els.momentReactionCommentStatus.onclick) {
     env.els.momentReactionCommentStatus.onclick();
   }
   await flush();
-  const cancelBtn = env.findCancel(env.els.momentCommentsPanel);
-  assert.ok(cancelBtn, 'new cancel on reopened panel');
-  assert.equal(cancelBtn.disabled, false, 'new cancel enabled');
-  const ta2 = env.findTA(env.els.momentCommentsPanel);
-  if (ta2) ta2.value = 'new draft';
-  cancelBtn.onclick();
-  assert.equal(ta2.value, '', 'new cancel works on reopened panel');
+
+  // Type draft in NEW textarea
+  const taNew = env.findTA(env.els.momentCommentsPanel);
+  assert.ok(taNew, 'new textarea exists');
+  taNew.value = 'new draft';
+
+  // Call OLD cancel button's onclick — should be no-op due to stale guard
+  if (oldCancelBtn.onclick) oldCancelBtn.onclick();
+  await flush();
+
+  // New textarea must NOT be cleared
+  assert.equal(taNew.value, 'new draft', 'new draft preserved after old cancel onclick');
+  // Panel stays open
+  assert.equal(env.els.momentCommentsPanel.hidden, false, 'panel stays open');
+  // No extra API calls
+  assert.equal(env.ccCount(), 0, 'no createComment call');
+  assert.equal(env.publicReadCount(), readCountBefore, 'no reconciliation');
+
+  // NEW cancel button still works normally
+  const newCancelBtn = env.findCancel(env.els.momentCommentsPanel);
+  assert.ok(newCancelBtn, 'new cancel exists');
+  newCancelBtn.onclick();
+  assert.equal(taNew.value, '', 'new cancel clears draft');
 });
 
 it('37. guest: no cancel, no composer, 0 write calls', async () => {
@@ -747,4 +770,14 @@ it('37. guest: no cancel, no composer, 0 write calls', async () => {
   assert.equal(env.findCancel(env.els.momentCommentsPanel), null, 'no cancel');
   assert.equal(env.hasBtn(env.els.momentCommentsPanel), false, 'no composer');
   assert.equal(env.ccCount(), 0, 'no write');
+});
+
+it('38. read-only boundary has no composerCancelBtn or 입력 취소', () => {
+  const s = scriptSource.indexOf('function createPublicViewerReadOnlyReactionSummaryBoundary(deps)');
+  const e = scriptSource.indexOf('function createPublicViewerAuthenticatedLikeBoundary(deps)');
+  const b = scriptSource.slice(s, e);
+  assert.equal(b.includes('composerCancelBtn'), false, 'no composerCancelBtn in read-only');
+  assert.equal(b.includes('입력 취소'), false, 'no 입력 취소 in read-only');
+  assert.equal(b.includes('createComment'), false, 'no createComment in read-only');
+  assert.equal(b.includes('composer'), false, 'no composer in read-only');
 });
