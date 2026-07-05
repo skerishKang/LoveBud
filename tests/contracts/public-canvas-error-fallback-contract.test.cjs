@@ -315,6 +315,14 @@ test('8. non-allowlisted files are not modified', () => {
 
     // #3231 authenticated comment composer
     'tests/contracts/public-viewer-authenticated-comment-composer-contract.test.cjs',
+
+    // #3241 split public social boundaries from detail-ui
+    'js/viewer/public-viewer-read-only-social-summary.js',
+    'tests/contracts/public-viewer-social-boundary-split-contract.test.cjs',
+    'tests/contracts/authenticated-moment-comment-write-boundary-audit-contract.test.cjs',
+    'tests/contracts/editor-viewer-selected-moment-media-play-contract.test.cjs',
+    'tests/contracts/editor-workspace-edit-permission-contract.test.cjs',
+    'tests/routes/public-viewer-tags-contract.test.cjs',
   ];
 
   // Read git diff to check what files are modified

@@ -99,6 +99,24 @@ test('public viewer detail view-mode template uses the #3218 cache-refresh versi
   );
 });
 
+test('public viewer loads social split scripts before detail-ui', () => {
+  const rawScripts = getRawScriptSrcs();
+  const detailUiIdx = rawScripts.findIndex(s => s.includes('public-viewer-detail-ui.js'));
+  assert.ok(detailUiIdx >= 0, 'detail-ui script must be present');
+
+  const socialScripts = [
+    'public-viewer-read-only-social-summary.js',
+    'public-viewer-authenticated-like.js',
+    'public-viewer-authenticated-comment-composer.js',
+  ];
+
+  socialScripts.forEach((name) => {
+    const idx = rawScripts.findIndex(s => s.includes(name));
+    assert.ok(idx >= 0, `pages/view.html must load ${name}`);
+    assert.ok(idx < detailUiIdx, `${name} must be loaded before detail-ui (index ${idx} vs ${detailUiIdx})`);
+  });
+});
+
 test('view.html loads editor.css with #3218 cache version', () => {
   const html = fs.readFileSync('pages/view.html', 'utf8');
   assert.ok(

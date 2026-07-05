@@ -107,6 +107,12 @@ function createTestContext(fetchReactionSummaryFn, toggleReactionFn, hasConfirme
   vm.createContext(context);
   var metadataCode = fs.readFileSync(path.join(ROOT, 'js/viewer/public-viewer-detail-metadata-text.js'), 'utf8');
   vm.runInContext(metadataCode, context);
+  var socialSummaryCode = fs.readFileSync(path.join(ROOT, 'js/viewer/public-viewer-read-only-social-summary.js'), 'utf8');
+  vm.runInContext(socialSummaryCode, context);
+  var authLikeCode = fs.readFileSync(path.join(ROOT, 'js/viewer/public-viewer-authenticated-like.js'), 'utf8');
+  vm.runInContext(authLikeCode, context);
+  var authComposerCode = fs.readFileSync(path.join(ROOT, 'js/viewer/public-viewer-authenticated-comment-composer.js'), 'utf8');
+  vm.runInContext(authComposerCode, context);
   vm.runInContext(scriptSource, context);
 
   var sharedGenerationRef = { value: 0 };
@@ -201,8 +207,9 @@ test('no private comment reader/writer in public viewer', function() {
 });
 
 test('public comments still only from fetchPublicMomentComments', function() {
-  assert.ok(scriptSource.indexOf('fetchPublicMomentComments') !== -1,
-    'fetchPublicMomentComments must remain');
+  const ronlySrc = fs.readFileSync(path.join(ROOT, 'js/viewer/public-viewer-read-only-social-summary.js'), 'utf8');
+  assert.ok(ronlySrc.indexOf('fetchPublicMomentComments') !== -1,
+    'fetchPublicMomentComments must remain in read-only social summary');
 });
 
 // ---------------------------------------------------------------------------

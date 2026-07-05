@@ -146,11 +146,11 @@ test('public viewer detail UI adapter delegates hint boundary with textContent a
 test('public viewer detail UI adapter owns current moment image boundary', () => {
   const source = fs.readFileSync('js/viewer/public-viewer-detail-ui.js', 'utf8');
   const boundaryStart = source.indexOf('function createPublicViewerCurrentMomentImageBoundary(deps)');
-  const boundaryEnd = source.indexOf('function createPublicViewerReadOnlyReactionSummaryBoundary(deps)');
+  const boundaryEnd = source.indexOf('function createPublicViewerDetailUI(deps)');
   const boundarySource = source.slice(boundaryStart, boundaryEnd);
 
   assert.notEqual(boundaryStart, -1, 'viewer adapter exposes current moment image boundary factory');
-  assert.notEqual(boundaryEnd, -1, 'viewer adapter keeps image boundary before reactions boundary');
+  assert.notEqual(boundaryEnd, -1, 'viewer adapter keeps image boundary before detail UI factory');
   assert.ok(source.includes('createPublicViewerCurrentMomentImageBoundary: createPublicViewerCurrentMomentImageBoundary'), 'viewer adapter publishes image boundary on namespace');
   assert.ok(boundarySource.includes('resolveMemoryThumbnail'), 'image boundary uses injected thumbnail resolver');
   assert.ok(boundarySource.includes('detailImg'), 'image boundary targets the detail image mount');
@@ -162,17 +162,15 @@ test('public viewer detail UI adapter owns current moment image boundary', () =>
 });
 
 test('public viewer detail UI adapter exposes read-only reaction summary boundary', () => {
-  const source = fs.readFileSync('js/viewer/public-viewer-detail-ui.js', 'utf8');
-  const boundaryStart = source.indexOf('function createPublicViewerReadOnlyReactionSummaryBoundary(deps)');
-  // End at the next public viewer function boundary, not at createPublicViewerDetailUI
-  // (#3207 added createPublicViewerAuthenticatedLikeBoundary between them)
-  const nextBoundary = source.indexOf('function createPublicViewerAuthenticatedLikeBoundary(deps)');
-  const boundaryEnd = nextBoundary !== -1 ? nextBoundary : source.indexOf('function createPublicViewerDetailUI(deps)');
-  const boundarySource = source.slice(boundaryStart, boundaryEnd);
+  const source = fs.readFileSync('js/viewer/public-viewer-read-only-social-summary.js', 'utf8');
+  // The full source of the dedicated module is the read-only boundary
+  const boundarySource = source;
 
-  assert.notEqual(boundaryStart, -1, 'viewer adapter exposes read-only reactions boundary factory');
-  assert.notEqual(boundaryEnd, -1, 'viewer adapter keeps the public detail factory after the reactions boundary');
-  assert.ok(source.includes('createPublicViewerReadOnlyReactionSummaryBoundary: createPublicViewerReadOnlyReactionSummaryBoundary'), 'viewer adapter publishes read-only reactions boundary on namespace');
+  assert.ok(source.includes('function createPublicViewerReadOnlyReactionSummaryBoundary(deps)'), 'social summary file exposes read-only reactions boundary factory');
+  assert.ok(source.includes('LoveBudPublicViewerReadOnlySocialSummary'), 'social summary file exposes its namespace');
+  // detail-ui compatibility re-exports
+  const detailSource = fs.readFileSync('js/viewer/public-viewer-detail-ui.js', 'utf8');
+  assert.ok(detailSource.includes('createPublicViewerReadOnlyReactionSummaryBoundary: createPublicViewerReadOnlyReactionSummaryBoundary'), 'viewer adapter publishes read-only reactions boundary on namespace');
   // #3184 — boundary now reads public moment data through injected callbacks
   assert.ok(boundarySource.includes('fetchReactionSummary') || boundarySource.includes('fetchPublicMomentReactionSummary'), 'read-only reactions boundary must use injected public-read callbacks');
   assert.ok(boundarySource.includes('fetchComments') || boundarySource.includes('fetchPublicMomentComments'), 'read-only reactions boundary must use injected public-read callbacks');

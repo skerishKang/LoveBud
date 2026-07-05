@@ -385,6 +385,16 @@ test('Public viewer detail UI selected moment playback contract (read-only)', ()
   vm.runInContext(metadataCode2, context);
   assert.ok(context.window.LoveBudPublicViewerDetailMetadataText, 'window.LoveBudPublicViewerDetailMetadataText must exist');
 
+  // Load social split modules before detail-ui (required for dependency validation)
+  var socialModuleFiles = [
+    path.join(ROOT, 'js/viewer/public-viewer-read-only-social-summary.js'),
+    path.join(ROOT, 'js/viewer/public-viewer-authenticated-like.js'),
+    path.join(ROOT, 'js/viewer/public-viewer-authenticated-comment-composer.js'),
+  ];
+  socialModuleFiles.forEach(function(sf) {
+    vm.runInContext(fs.readFileSync(sf, 'utf8'), context);
+  });
+
   runScriptInContext(publicViewerDetailUIFile, context);
 
   const detailUI = context.window.createPublicViewerDetailUI({

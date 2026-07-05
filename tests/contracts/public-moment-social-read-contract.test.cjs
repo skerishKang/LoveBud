@@ -515,16 +515,17 @@ test('CF proxies handle MODAL_BASE_URL missing and modal unavailable (503)', () 
 
 test('public-viewer-detail-ui.js is not modified', () => {
   assert.ok(fs.existsSync(PUBLIC_VIEWER_UI), 'public-viewer-detail-ui.js must exist');
-  // Load the original from git — this checks the working tree hasn't changed it
   const content = readFileContent(PUBLIC_VIEWER_UI);
   // Core identifier unique to the read-only boundary pattern that must stay
   assert.ok(
     hasString(content, 'createPublicViewerReadOnlyReactionSummaryBoundary'),
     'public viewer must still have the read-only reaction boundary'
   );
+  // is-public-readonly class is now in public-viewer-read-only-social-summary.js
+  const summarySrc = readFileContent('js/viewer/public-viewer-read-only-social-summary.js');
   assert.ok(
-    hasString(content, 'is-public-readonly'),
-    'public viewer must still use is-public-readonly class'
+    hasString(summarySrc, 'is-public-readonly'),
+    'public viewer read-only social must use is-public-readonly class'
   );
 });
 

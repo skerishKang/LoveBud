@@ -135,6 +135,12 @@ function createDetailUI(fetchReactionSummary, fetchComments) {
   vm.createContext(context);
   const metadataCode = fs.readFileSync(path.join(ROOT, 'js/viewer/public-viewer-detail-metadata-text.js'), 'utf8');
   vm.runInContext(metadataCode, context);
+  const socialSummaryCode = fs.readFileSync(path.join(ROOT, 'js/viewer/public-viewer-read-only-social-summary.js'), 'utf8');
+  vm.runInContext(socialSummaryCode, context);
+  const authLikeCode = fs.readFileSync(path.join(ROOT, 'js/viewer/public-viewer-authenticated-like.js'), 'utf8');
+  vm.runInContext(authLikeCode, context);
+  const authComposerCode = fs.readFileSync(path.join(ROOT, 'js/viewer/public-viewer-authenticated-comment-composer.js'), 'utf8');
+  vm.runInContext(authComposerCode, context);
   vm.runInContext(scriptSource, context);
 
   const deps = {
@@ -174,9 +180,7 @@ const commentsDTOThree = { comments: [{ id: 'c1', body: 'a' }, { id: 'c2', body:
 // ---------------------------------------------------------------------------
 
 test('injected public-read callbacks are used in read-only boundary — no private API path invocations', () => {
-  // Extract only the read-only boundary function body, not the new auth boundary
-  const readOnlyFn = scriptSource.match(/function createPublicViewerReadOnlyReactionSummaryBoundary[\s\S]*?(?=function createPublicViewerAuthenticatedLikeBoundary|function createPublicViewerTreeMetaBoundary)/);
-  const readOnlySource = readOnlyFn ? readOnlyFn[0] : scriptSource;
+  const readOnlySource = fs.readFileSync(path.join(ROOT, 'js/viewer/public-viewer-read-only-social-summary.js'), 'utf8');
   const noPrivateReactionPath = !/toggleReaction|private.*reaction|reaction.*write/i.test(readOnlySource);
   const noPrivateCommentPath = !/createComment|composer|comment.*drawer/i.test(readOnlySource);
   assert.ok(noPrivateReactionPath, 'read-only boundary must not reference private reaction API');
@@ -621,8 +625,7 @@ test('stale old moment response cannot reopen or replace newer moment comments p
 });
 
 test('read-only comment boundary uses no DocumentFragment or HTML insertion', () => {
-  const readOnlyFn = scriptSource.match(/function createPublicViewerReadOnlyReactionSummaryBoundary[\s\S]*?(?=function createPublicViewerAuthenticatedLikeBoundary|function createPublicViewerTreeMetaBoundary)/);
-  const readOnlySource = readOnlyFn ? readOnlyFn[0] : '';
+  const readOnlySource = fs.readFileSync(path.join(ROOT, 'js/viewer/public-viewer-read-only-social-summary.js'), 'utf8');
   assert.ok(readOnlySource.length > 100, 'read-only boundary source found');
 
   assert.equal(readOnlySource.includes('createDocumentFragment'), false, 'no DocumentFragment');
