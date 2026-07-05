@@ -58,6 +58,7 @@ function createEnv() {
   vm.runInContext(scriptSource, ctx);
 
   let ccCount = 0, lastKey = null, resCmt, rejCmt, pendingP = null, auth = true;
+  const publicReadCalls = [];
 
   function mkPending() { pendingP = new Promise((res, rej) => { resCmt = res; rejCmt = rej; }); return pendingP; }
 
@@ -70,8 +71,14 @@ function createEnv() {
     getTreeMemories: () => deps.treeMemories,
     resolveMemoryThumbnail: (d) => d.thumbnail || '',
     i18n: (k) => k, getLocalSaveMode: () => false, showToast: () => {},
-    fetchPublicMomentReactionSummary: async () => ({ counts: { like: 0 }, total: 0 }),
-    fetchPublicMomentComments: async () => ({ comments: [], nextCursor: null }),
+    fetchPublicMomentReactionSummary: async (treeId, memoryId) => {
+      publicReadCalls.push({ kind: 'reaction', treeId, memoryId });
+      return { counts: { like: 0 }, total: 0 };
+    },
+    fetchPublicMomentComments: async (treeId, memoryId) => {
+      publicReadCalls.push({ kind: 'comments', treeId, memoryId });
+      return { comments: [], nextCursor: null };
+    },
     fetchReactionSummary: async () => { throw Error('x'); },
     toggleReaction: async () => { throw Error('x'); },
     hasConfirmedAuthSession: () => auth,
@@ -104,7 +111,7 @@ function createEnv() {
     resolve: (v) => { if (resCmt) resCmt(v); resCmt = null; pendingP = null; },
     reject: (e) => { if (rejCmt) rejCmt(e); rejCmt = null; pendingP = null; },
     openPanel, findBtn, hasBtn, findTA, findErr,
-    ccCount: () => ccCount, lastKey: () => lastKey,
+    ccCount: () => ccCount, lastKey: () => lastKey, publicReadCount: () => publicReadCalls.length,
     setAuth: (v) => { auth = !!v; },
   };
 }
@@ -385,4 +392,58 @@ it('18. guest read-only features intact', () => {
   assert.ok(b.includes('[data-social-retry'));
   assert.equal(b.includes('toggleReaction'), false);
   assert.equal(b.includes('createComment'), false);
+});
+
+// ---------------------------------------------------------------------------
+// 19: Cross-moment stale response guard
+// ---------------------------------------------------------------------------
+it('19. stale Moment A response does not affect Moment B composer or reconciliation', async () => {
+  const env = createEnv();
+  env.mkPending();
+
+  // 1. Moment A comments panel open
+  await env.openPanel('mem-1');
+  const taA = env.findTA(env.els.momentCommentsPanel);
+  assert.ok(taA, 'textarea on Moment A');
+  assert.ok(env.findBtn(env.els.momentCommentsPanel), 'composer on Moment A');
+
+  // 2. A textarea 입력
+  taA.value = 'old A input';
+
+  // 3. createComment(A) deferred pending
+  const btnA = env.findBtn(env.els.momentCommentsPanel);
+  btnA.onclick();
+
+  // 4. A request 정확히 1회
+  assert.equal(env.ccCount(), 1, 'createComment called once for A');
+
+  // 5. Moment B로 변경
+  env.deps.currentSelectedId = 'mem-2';
+
+  // 6. Moment B comments panel open
+  await env.openPanel('mem-2');
+
+  // 7. B composer 보임
+  assert.ok(env.findBtn(env.els.momentCommentsPanel), 'composer on Moment B');
+
+  // 8. B textarea에 입력
+  const taB = env.findTA(env.els.momentCommentsPanel);
+  assert.ok(taB, 'textarea on Moment B');
+  taB.value = 'new B input';
+
+  // 9. A response 완료 직전 publicReadCount 저장
+  const readCountBefore = env.publicReadCount();
+
+  // 10. A deferred response resolve
+  env.resolve({ id: 'c-a1' });
+
+  // 11. microtasks flush
+  await flush();
+
+  // 12. Assert: A response가 B에 영향 주지 않음
+  assert.equal(taB.value, 'new B input', 'B textarea preserved after A response');
+  assert.ok(env.findBtn(env.els.momentCommentsPanel), 'B composer still exists');
+  assert.equal(env.els.momentCommentsPanel.hidden, false, 'B panel stays open');
+  assert.equal(env.ccCount(), 1, 'no extra createComment call');
+  assert.equal(env.publicReadCount(), readCountBefore, 'no reconciliation triggered by stale A response');
 });
