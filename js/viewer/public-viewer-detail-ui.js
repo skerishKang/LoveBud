@@ -1348,6 +1348,7 @@
         var composerFormEl = null;
         var composerInputEl = null;
         var composerErrorEl = null;
+        var composerSuccessEl = null;
         var composerDraftIdemKey = null;
         var composerDraftBody = null;
         var activeContext = null;
@@ -1364,6 +1365,7 @@
             composerFormEl = null;
             composerInputEl = null;
             composerErrorEl = null;
+            composerSuccessEl = null;
         }
 
         function deactivateComposer() {
@@ -1397,6 +1399,14 @@
             composerErrorEl.style.margin = '4px 0 0';
             composerErrorEl.style.display = 'none';
 
+            composerSuccessEl = document.createElement('p');
+            composerSuccessEl.setAttribute('aria-live', 'polite');
+            composerSuccessEl.textContent = '댓글이 등록되었습니다.';
+            composerSuccessEl.style.color = 'green';
+            composerSuccessEl.style.fontSize = '0.85em';
+            composerSuccessEl.style.margin = '4px 0 0';
+            composerSuccessEl.style.display = 'none';
+
             composerFormEl = document.createElement('div');
             composerFormEl.style.display = 'flex';
             composerFormEl.style.flexDirection = 'column';
@@ -1411,6 +1421,7 @@
 
             composerFormEl.appendChild(inputRow);
             composerFormEl.appendChild(composerErrorEl);
+            composerFormEl.appendChild(composerSuccessEl);
 
             // Reset draft for new composer instance
             composerDraftIdemKey = null;
@@ -1445,6 +1456,7 @@
                 submitBtn.disabled = true;
                 submitBtn.textContent = '등록 중...';
                 composerErrorEl.style.display = 'none';
+                composerSuccessEl.style.display = 'none';
 
                 createComment(subCtx.memoryId, body, composerDraftIdemKey).then(function() {
                     if (composerInstanceToken !== subCtx.instanceToken) return;
@@ -1457,6 +1469,7 @@
                     composerDraftIdemKey = null;
                     composerDraftBody = null;
                     composerErrorEl.style.display = 'none';
+                    composerSuccessEl.style.display = '';
 
                     if (subCtx.generation === getGeneration()) {
                         reconcilePublicSummary(subCtx.data, { force: true, preserveCommentsPanel: true });
@@ -1468,6 +1481,7 @@
 
                     submitBtn.disabled = false;
                     submitBtn.textContent = '등록';
+                    composerSuccessEl.style.display = 'none';
                     composerErrorEl.textContent = '댓글을 등록하지 못했습니다. 다시 시도해주세요.';
                     composerErrorEl.style.display = '';
                 });
