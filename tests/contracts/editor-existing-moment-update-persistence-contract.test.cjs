@@ -83,6 +83,7 @@ async function runSaveMemoryEdit({
     currentTreeData: initialMemory ? { id: 'tree-1', memories: [{ ...initialMemory }] } : null,
     toastMessage: null, toastType: null,
     savedPayload: null, detailPanelUpdated: null, renderedCanvas: false,
+    saveStatusHistory: [],
     document: doc,
     setTimeout: function(fn, ms) { return setTimeout(fn, ms || 0); },
     clearTimeout: function(id) { clearTimeout(id); },
@@ -150,7 +151,7 @@ async function runSaveMemoryEdit({
     (function() {
       var act = createEditorMemoryActions({
         i18n: function(k) { return k; },
-        updateSaveStatus: function() {},
+        updateSaveStatus: function(status) { saveStatusHistory.push(status); },
         updateDetailPanel: function(mem) { detailPanelUpdated = mem ? JSON.parse(JSON.stringify(mem)) : null; },
         updateSidebarStatus: function() {},
         showToast: function(msg, type) { toastMessage = msg; toastType = type; },
@@ -188,6 +189,9 @@ async function runSaveMemoryEdit({
     getTreeMemories: function() { return sandbox.treeMemories; },
     getCurrentTreeData: function() { return sandbox.currentTreeData; },
     getCallCount: function() { return callCount; },
+    getDetailPanelUpdated: function() { return sandbox.detailPanelUpdated; },
+    getRenderedCanvas: function() { return sandbox.renderedCanvas; },
+    getSaveStatusHistory: function() { return sandbox.saveStatusHistory; },
     // DOM accessors — mutations are visible inside the VM (shared doc ref)
     getDocument: function() { return doc; },
     getElement: function(id) { return doc.getElementById(id); },
@@ -528,4 +532,213 @@ test('12. deferred pending: duplicate blocked → resolve → guard reset → se
 
   // m. call count = 2 확인
   assert.equal(t12Ctx.getCallCount(), 2, 'second save: 2 API calls — guard reset');
+});
+
+// =============================================================================
+// Source identity acknowledgement tests
+// =============================================================================
+
+test('13. same video but stale/missing segment — rejected', async function(t) {
+  const vid = 'ccccccccccc';
+  assert.equal(vid.length, 11, 'synthetic video ID must be exactly 11 characters');
+
+  var mem = {
+    id: 'mem-s1', title: 'Original Segment Title', memo: 'Original segment memo',
+    sourceUrl: 'https://www.youtube.com/embed/' + vid, sourceType: 'youtube',
+    thumbnail: 'https://img.youtube.com/vi/' + vid + '/mqdefault.jpg', emotionTags: ['original-tag']
+  };
+  // Payload sends sourceUrl with start=30; response has same video but missing start parameter
+  // Also note that title, memo, and tags in response represent updated text, which must be rejected!
+  var staleSegmentResponse = {
+    id: 'mem-s1', title: 'Stale update title', memo: 'Stale update memo',
+    sourceUrl: 'https://www.youtube.com/embed/' + vid,
+    sourceType: 'youtube',
+    thumbnail: 'https://img.youtube.com/vi/' + vid + '/mqdefault.jpg',
+    emotionTags: ['stale-tag'], updatedAt: new Date().toISOString()
+  };
+  var ctx = await runSaveMemoryEdit({
+    initialMemory: mem,
+    domValues: { title: 'Submitted Title Change', memo: 'Submitted memo change', tags: 'submitted-tag', sourceUrl: 'https://www.youtube.com/watch?v=' + vid, startTime: '0:30' },
+    apiResponse: staleSegmentResponse
+  });
+
+  // Track if canvas was rerendered or detail panel was updated during save
+  ctx.actions.enterEditMode(); // ensure form display starts in edit mode
+
+  await ctx.actions.saveMemoryEdit();
+
+  // Immutability checks: nothing locally changed
+  assert.equal(ctx.getCallCount(), 1, 'api call count must be exactly 1');
+
+  var editingMem = ctx.getEditingMemory();
+  assert.equal(editingMem.sourceUrl, 'https://www.youtube.com/embed/' + vid, 'stale segment response: sourceUrl must remain unchanged');
+  assert.equal(editingMem.title, 'Original Segment Title', 'stale segment response: title must remain unchanged');
+  assert.equal(editingMem.memo, 'Original segment memo', 'stale segment response: memo must remain unchanged');
+  assert.deepEqual(editingMem.emotionTags, ['original-tag'], 'stale segment response: tags must remain unchanged');
+
+  // Verify treeMemories and currentTreeData entries are unchanged
+  var treeMem = ctx.getTreeMemories().find(m => m.id === 'mem-s1');
+  assert.equal(treeMem.title, 'Original Segment Title', 'treeMemories entry title must remain unchanged');
+  assert.equal(treeMem.sourceUrl, 'https://www.youtube.com/embed/' + vid, 'treeMemories entry sourceUrl must remain unchanged');
+  assert.equal(treeMem.memo, 'Original segment memo', 'treeMemories entry memo must remain unchanged');
+  assert.deepEqual(treeMem.emotionTags, ['original-tag'], 'treeMemories entry tags must remain unchanged');
+
+  var treeDataMem = ctx.getCurrentTreeData().memories.find(m => m.id === 'mem-s1');
+  assert.equal(treeDataMem.title, 'Original Segment Title', 'currentTreeData entry title must remain unchanged');
+  assert.equal(treeDataMem.sourceUrl, 'https://www.youtube.com/embed/' + vid, 'currentTreeData entry sourceUrl must remain unchanged');
+  assert.equal(treeDataMem.memo, 'Original segment memo', 'currentTreeData entry memo must remain unchanged');
+  assert.deepEqual(treeDataMem.emotionTags, ['original-tag'], 'currentTreeData entry tags must remain unchanged');
+
+  // Verify detailPanelUpdated remains null (since it was never successfully saved/loaded)
+  assert.equal(ctx.getDetailPanelUpdated(), null, 'detailPanelUpdated must remain null');
+  assert.equal(ctx.getRenderedCanvas(), false, 'renderedCanvas must remain false');
+
+  // Verify save-status transitions
+  const statusHistory = ctx.getSaveStatusHistory();
+  assert.deepEqual(statusHistory, ['manual_saving', 'manual_failed'], 'save-status sequence must be manual_saving then manual_failed');
+  assert.ok(!statusHistory.includes('manual_saved'), 'save-status history must not contain manual_saved');
+
+  // Verify UI callbacks: toast was error, form remained in edit mode, no success callback was issued
+  assert.equal(ctx.getToast().type, 'error', 'must show error toast');
+  assert.notEqual(ctx.getToast().type, 'success', 'must not show success toast');
+  assert.equal(ctx.getFormDisplay('edit'), 'block', 'edit form must remain open after rejection');
+});
+
+test('14. clearing a source is rejected when response retains old source', async function(t) {
+  var mem = {
+    id: 'mem-clear1', title: 'Has source',
+    sourceUrl: 'https://www.youtube.com/embed/aaaaaaaaaaa', sourceType: 'youtube',
+    thumbnail: 'https://img.youtube.com/vi/aaaaaaaaaaa/mqdefault.jpg',
+    source: 'YouTube', emotionTags: []
+  };
+  // User clears sourceUrl (payload has sourceUrl:''); response still has the old URL
+  var retainedSourceResponse = {
+    id: 'mem-clear1', title: 'Has source',
+    sourceUrl: 'https://www.youtube.com/embed/aaaaaaaaaaa',
+    sourceType: 'youtube',
+    thumbnail: 'https://img.youtube.com/vi/aaaaaaaaaaa/mqdefault.jpg',
+    source: 'YouTube', emotionTags: [], updatedAt: new Date().toISOString()
+  };
+  var ctx = await runSaveMemoryEdit({
+    initialMemory: mem,
+    domValues: { title: 'Has source', memo: '', tags: '', sourceUrl: '' },
+    apiResponse: retainedSourceResponse
+  });
+
+  await ctx.actions.saveMemoryEdit();
+
+  var editingMem = ctx.getEditingMemory();
+  assert.equal(editingMem.sourceUrl, 'https://www.youtube.com/embed/aaaaaaaaaaa',
+    'response retaining old source must NOT update editing state');
+  assert.equal(ctx.getToast().type, 'error', 'must show error toast');
+});
+
+test('15. clearing a source is rejected when response omits sourceUrl', async function(t) {
+  var mem = {
+    id: 'mem-clear2', title: 'Has source',
+    sourceUrl: 'https://www.youtube.com/embed/aaaaaaaaaaa', sourceType: 'youtube',
+    thumbnail: 'https://img.youtube.com/vi/aaaaaaaaaaa/mqdefault.jpg',
+    source: 'YouTube', emotionTags: []
+  };
+  // User clears sourceUrl (payload has sourceUrl:''); response omits sourceUrl entirely
+  var omittedSourceResponse = {
+    id: 'mem-clear2', title: 'Has source',
+    sourceType: 'youtube',
+    emotionTags: [], updatedAt: new Date().toISOString()
+  };
+  var ctx = await runSaveMemoryEdit({
+    initialMemory: mem,
+    domValues: { title: 'Has source', memo: '', tags: '', sourceUrl: '' },
+    apiResponse: omittedSourceResponse
+  });
+
+  await ctx.actions.saveMemoryEdit();
+
+  var editingMem = ctx.getEditingMemory();
+  assert.equal(editingMem.sourceUrl, 'https://www.youtube.com/embed/aaaaaaaaaaa',
+    'response omitting sourceUrl must NOT update editing state');
+  assert.equal(ctx.getToast().type, 'error', 'must show error toast');
+});
+
+test('16. equivalent canonical segment response with different parameter order — accepted', async function(t) {
+  var mem = {
+    id: 'mem-equiv1', title: 'Equiv test',
+    sourceUrl: 'https://www.youtube.com/embed/aaaaaaaaaaa', sourceType: 'youtube',
+    thumbnail: 'https://img.youtube.com/vi/aaaaaaaaaaa/mqdefault.jpg', emotionTags: []
+  };
+  // Payload identity: youtube(aaaaaaaaaaa,30,60)
+  // Response: same video, same start/end but parameters in different order (end before start)
+  var equivResponse = {
+    id: 'mem-equiv1', title: 'Equiv test',
+    sourceUrl: 'https://www.youtube.com/embed/aaaaaaaaaaa?end=60&start=30',
+    sourceType: 'youtube',
+    thumbnail: 'https://img.youtube.com/vi/aaaaaaaaaaa/mqdefault.jpg',
+    emotionTags: [], updatedAt: new Date().toISOString()
+  };
+  var ctx = await runSaveMemoryEdit({
+    initialMemory: mem,
+    domValues: { title: 'Equiv test', memo: '', tags: '', sourceUrl: 'https://www.youtube.com/watch?v=aaaaaaaaaaa', startTime: '0:30', endTime: '1:00' },
+    apiResponse: equivResponse
+  });
+
+  await ctx.actions.saveMemoryEdit();
+
+  assert.equal(ctx.getEditingMemory().sourceUrl, 'https://www.youtube.com/embed/aaaaaaaaaaa?end=60&start=30',
+    'equivalent identity with reordered parameters must be accepted');
+  assert.equal(ctx.getToast().type, 'success', 'must show success toast');
+});
+
+test('17. different-video stale response remains rejected (identity mismatch)', async function(t) {
+  var mem = {
+    id: 'mem-dv1', title: 'Diff video',
+    sourceUrl: 'https://www.youtube.com/embed/aaaaaaaaaaa', sourceType: 'youtube',
+    thumbnail: 'https://img.youtube.com/vi/aaaaaaaaaaa/mqdefault.jpg', emotionTags: []
+  };
+  // User changes to video bbbbbbbbbbb; response still has aaaaaaaaaaa
+  var staleVideoResponse = {
+    id: 'mem-dv1', title: 'Diff video',
+    sourceUrl: 'https://www.youtube.com/embed/aaaaaaaaaaa',
+    sourceType: 'youtube',
+    thumbnail: 'https://img.youtube.com/vi/aaaaaaaaaaa/mqdefault.jpg',
+    emotionTags: [], updatedAt: new Date().toISOString()
+  };
+  var ctx = await runSaveMemoryEdit({
+    initialMemory: mem,
+    domValues: { title: 'Diff video', memo: '', tags: '', sourceUrl: 'https://www.youtube.com/shorts/bbbbbbbbbbb' },
+    apiResponse: staleVideoResponse
+  });
+
+  await ctx.actions.saveMemoryEdit();
+
+  var editingMem = ctx.getEditingMemory();
+  assert.equal(editingMem.sourceUrl, 'https://www.youtube.com/embed/aaaaaaaaaaa',
+    'stale different-video response must NOT update');
+  assert.equal(ctx.getToast().type, 'error', 'must show error toast');
+});
+
+test('18. existing canonical same-video success continues to pass', async function(t) {
+  var mem = {
+    id: 'mem-can2', title: 'Canonical',
+    sourceUrl: 'https://www.youtube.com/embed/aaaaaaaaaaa', sourceType: 'youtube',
+    thumbnail: 'https://img.youtube.com/vi/aaaaaaaaaaa/mqdefault.jpg', emotionTags: []
+  };
+  // User changes to Shorts URL for bbbbbbbbbbb; response has canonical embed for same video ID
+  var canonicalResponse = {
+    id: 'mem-can2', title: 'Canonical',
+    sourceUrl: 'https://www.youtube.com/embed/bbbbbbbbbbb',
+    sourceType: 'youtube',
+    thumbnail: 'https://img.youtube.com/vi/bbbbbbbbbbb/mqdefault.jpg',
+    source: 'YouTube', emotionTags: [], updatedAt: new Date().toISOString()
+  };
+  var ctx = await runSaveMemoryEdit({
+    initialMemory: mem,
+    domValues: { title: 'Canonical', memo: '', tags: '', sourceUrl: 'https://www.youtube.com/shorts/bbbbbbbbbbb' },
+    apiResponse: canonicalResponse
+  });
+
+  await ctx.actions.saveMemoryEdit();
+
+  assert.equal(ctx.getEditingMemory().sourceUrl, 'https://www.youtube.com/embed/bbbbbbbbbbb',
+    'canonical embed URL with same video ID must be accepted');
+  assert.equal(ctx.getToast().type, 'success', 'must show success toast');
 });
