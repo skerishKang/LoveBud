@@ -83,6 +83,7 @@ async function runSaveMemoryEdit({
     currentTreeData: initialMemory ? { id: 'tree-1', memories: [{ ...initialMemory }] } : null,
     toastMessage: null, toastType: null,
     savedPayload: null, detailPanelUpdated: null, renderedCanvas: false,
+    saveStatusHistory: [],
     document: doc,
     setTimeout: function(fn, ms) { return setTimeout(fn, ms || 0); },
     clearTimeout: function(id) { clearTimeout(id); },
@@ -150,7 +151,7 @@ async function runSaveMemoryEdit({
     (function() {
       var act = createEditorMemoryActions({
         i18n: function(k) { return k; },
-        updateSaveStatus: function() {},
+        updateSaveStatus: function(status) { saveStatusHistory.push(status); },
         updateDetailPanel: function(mem) { detailPanelUpdated = mem ? JSON.parse(JSON.stringify(mem)) : null; },
         updateSidebarStatus: function() {},
         showToast: function(msg, type) { toastMessage = msg; toastType = type; },
@@ -188,6 +189,9 @@ async function runSaveMemoryEdit({
     getTreeMemories: function() { return sandbox.treeMemories; },
     getCurrentTreeData: function() { return sandbox.currentTreeData; },
     getCallCount: function() { return callCount; },
+    getDetailPanelUpdated: function() { return sandbox.detailPanelUpdated; },
+    getRenderedCanvas: function() { return sandbox.renderedCanvas; },
+    getSaveStatusHistory: function() { return sandbox.saveStatusHistory; },
     // DOM accessors — mutations are visible inside the VM (shared doc ref)
     getDocument: function() { return doc; },
     getElement: function(id) { return doc.getElementById(id); },
