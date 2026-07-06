@@ -505,7 +505,34 @@ test('Gate A: does NOT contain the ambiguous phrase "approved non-public fixture
   );
 });
 
-// ─── 15. FUTURE SMOKE CHECKLIST ───────────────────────────────────────────────
+// ─── 15. FIXTURE ENVIRONMENT — NO NON-PRODUCTION CLAIM, APPROVED RUNTIME REQUIRED ─
+
+test('Gate A: does not contain the phrase "non-production or sandbox environment"', () => {
+  const content = readFile(CONTRACT_PATH);
+  assert.equal(
+    hasString(content, 'non-production or sandbox environment'),
+    false,
+    'Contract must not claim fixture is restricted to non-production/sandbox'
+  );
+});
+
+test('Gate A: requires an "approved runtime environment" for the fixture', () => {
+  const content = readFile(CONTRACT_PATH);
+  assert.ok(
+    hasString(content, 'approved runtime environment'),
+    'Contract must require an approved runtime environment for the fixture'
+  );
+});
+
+test('Gate A: production fixture provisioning is conditional on separate explicit approval', () => {
+  const content = readFile(CONTRACT_PATH);
+  assert.ok(
+    hasString(content, 'provisioned in production') && hasString(content, 'separate explicit approval'),
+    'Contract must require separate explicit approval before any production provisioning'
+  );
+});
+
+// ─── 16. FUTURE SMOKE CHECKLIST ───────────────────────────────────────────────
 
 test('Gate A: approval checklist requires explicit approval of dedicated test identity and fixture', () => {
   const content = readFile(CONTRACT_PATH);
@@ -548,7 +575,7 @@ test('Gate A: approval checklist requires cancellation when fixture safety canno
   );
 });
 
-// ─── 16. NO FIXTURE OR TEST IDENTITY CREATED DURING THIS TASK ─────────────────
+// ─── 17. NO FIXTURE OR TEST IDENTITY CREATED DURING THIS TASK ─────────────────
 
 test('Gate A: states no fixture, test identity, test Tree, or test memory is created in this task', () => {
   const content = readFile(CONTRACT_PATH);
@@ -558,7 +585,7 @@ test('Gate A: states no fixture, test identity, test Tree, or test memory is cre
   );
 });
 
-// ─── 17. SCOPE GUARD: NO SUBPROCESS, FETCH, ENV, SHELL, OR SECRET FILE USE IN TEST ──
+// ─── 18. SCOPE GUARD: NO SUBPROCESS, FETCH, ENV, SHELL, OR SECRET FILE USE IN TEST ──
 
 test('Gate A: test uses no child_process, fetch, process.env, network calls, database drivers, shell commands, or secret files', () => {
   // Verify only safe standard modules are required in the require block.

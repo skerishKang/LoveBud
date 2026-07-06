@@ -35,9 +35,9 @@ This contract does **not** assume or claim any unlisted/non-discoverable capabil
 
 ## 3. Fixture requirements
 
-### 3.1 Solo approved fixture
+### 3.1 Approved fixture in the smoke runtime environment
 
-The only acceptable future fixture is a **separately approved, dedicated test identity** plus dedicated test Tree and test memory, all created and owned in a non-production or sandbox environment.
+The only acceptable future fixture is a separately approved dedicated test identity plus a dedicated public test Tree and public test memory in the approved runtime environment for the Gate A smoke. When the approved Gate A smoke verifies the production public path, the dedicated fixture may be provisioned in production only after a separate explicit approval. It must remain isolated from real user accounts, Trees, memories, comments, reactions, and content.
 
 ### 3.2 Prohibitions
 
