@@ -1,6 +1,36 @@
 const assert = require('node:assert');
 const { describe, it } = require('node:test');
 
+function makeDefaultPolicy() {
+  return {
+    mode: 'dry-run-only',
+    implementationSlots: 1,
+    verificationSlots: 1,
+    autoEligibleLanes: ['docs', 'contract-test', 'test-stability', 'static-cleanup'],
+    humanRequiredLanes: [
+      'product-decision', 'ux-direction', 'browser-ui-qa',
+      'database-migration', 'api-contract', 'auth', 'privacy',
+      'deployment', 'production-approval'
+    ],
+    allowedStatuses: [
+      'READY_FOR_PLANNING', 'BLOCKED_BY_CI', 'BLOCKED_BY_DEPENDENCY',
+      'NEEDS_PRODUCT_DECISION', 'NEEDS_UI_QA', 'NEEDS_DEPLOYMENT_APPROVAL',
+      'SCOPE_CONFLICT', 'NO_AUTO', 'CI_STATE_UNTRUSTED',
+      'CI_DATA_MISSING', 'CI_UNKNOWN_STATUS'
+    ],
+    defaultHumanStatus: 'NEEDS_PRODUCT_DECISION',
+    humanStatusOverrides: {
+      'browser-ui-qa': 'NEEDS_UI_QA',
+      'deployment': 'NEEDS_DEPLOYMENT_APPROVAL',
+      'production-approval': 'NEEDS_DEPLOYMENT_APPROVAL'
+    },
+    merge: ['disabled'],
+    issueMutation: ['disabled'],
+    prMutation: ['disabled'],
+    worktreeMutation: ['disabled']
+  };
+}
+
 const FIXTURE_NO_ISSUES_NO_PRS = {
   mainSha: 'b85877498ddbc35b9526c2f89da113ff121e550f',
   issueCount: 0,
@@ -99,130 +129,145 @@ describe('LoveBud Loop Triage Contract', () => {
   describe('determineStatus', () => {
     it('docs lane with clean CI is READY_FOR_PLANNING', async () => {
       const { determineStatus } = await import('../../scripts/loop/build-queue.mjs');
-      const pr = { checks: '{"success":3}' };
-      assert.strictEqual(determineStatus(pr, 'docs'), 'READY_FOR_PLANNING');
+      const policy = makeDefaultPolicy();
+      const pr = { checks: JSON.stringify({success: 3}) };
+      assert.strictEqual(determineStatus(pr, 'docs', policy), 'READY_FOR_PLANNING');
     });
 
-    it('auth lane is NEEDS_PRODUCT_DECISION', async () => {
+    it('auth lane is NEEDS_PRODUCT_DECISION (default-human-status)', async () => {
       const { determineStatus } = await import('../../scripts/loop/build-queue.mjs');
-      const pr = { checks: '{"success":3}' };
-      assert.strictEqual(determineStatus(pr, 'auth'), 'NEEDS_PRODUCT_DECISION');
+      const policy = makeDefaultPolicy();
+      const pr = { checks: JSON.stringify({success: 3}) };
+      assert.strictEqual(determineStatus(pr, 'auth', policy), 'NEEDS_PRODUCT_DECISION');
     });
 
-    it('browser-ui-qa lane is NEEDS_UI_QA', async () => {
+    it('browser-ui-qa lane is NEEDS_UI_QA (human-status-override)', async () => {
       const { determineStatus } = await import('../../scripts/loop/build-queue.mjs');
-      const pr = { checks: '{"success":3}' };
-      assert.strictEqual(determineStatus(pr, 'browser-ui-qa'), 'NEEDS_UI_QA');
+      const policy = makeDefaultPolicy();
+      const pr = { checks: JSON.stringify({success: 3}) };
+      assert.strictEqual(determineStatus(pr, 'browser-ui-qa', policy), 'NEEDS_UI_QA');
     });
 
-    it('deployment lane is NEEDS_DEPLOYMENT_APPROVAL', async () => {
+    it('deployment lane is NEEDS_DEPLOYMENT_APPROVAL (human-status-override)', async () => {
       const { determineStatus } = await import('../../scripts/loop/build-queue.mjs');
-      const pr = { checks: '{"success":3}' };
-      assert.strictEqual(determineStatus(pr, 'deployment'), 'NEEDS_DEPLOYMENT_APPROVAL');
+      const policy = makeDefaultPolicy();
+      const pr = { checks: JSON.stringify({success: 3}) };
+      assert.strictEqual(determineStatus(pr, 'deployment', policy), 'NEEDS_DEPLOYMENT_APPROVAL');
     });
 
     it('PR with failing checks is BLOCKED_BY_CI', async () => {
       const { determineStatus } = await import('../../scripts/loop/build-queue.mjs');
-      const pr = { checks: '{"success":2,"failure":1}' };
-      assert.strictEqual(determineStatus(pr, 'docs'), 'BLOCKED_BY_CI');
+      const policy = makeDefaultPolicy();
+      const pr = { checks: JSON.stringify({success: 2, failure: 1}) };
+      assert.strictEqual(determineStatus(pr, 'docs', policy), 'BLOCKED_BY_CI');
     });
 
     it('PR with pending checks is BLOCKED_BY_CI', async () => {
       const { determineStatus } = await import('../../scripts/loop/build-queue.mjs');
-      const pr = { checks: '{"success":2,"pending":1}' };
-      assert.strictEqual(determineStatus(pr, 'docs'), 'BLOCKED_BY_CI');
+      const policy = makeDefaultPolicy();
+      const pr = { checks: JSON.stringify({success: 2, pending: 1}) };
+      assert.strictEqual(determineStatus(pr, 'docs', policy), 'BLOCKED_BY_CI');
     });
 
     it('null lane is NO_AUTO', async () => {
       const { determineStatus } = await import('../../scripts/loop/build-queue.mjs');
-      assert.strictEqual(determineStatus(null, null), 'NO_AUTO');
+      const policy = makeDefaultPolicy();
+      assert.strictEqual(determineStatus(null, null, policy), 'NO_AUTO');
     });
 
     it('unknown lane is NO_AUTO', async () => {
       const { determineStatus } = await import('../../scripts/loop/build-queue.mjs');
-      assert.strictEqual(determineStatus(null, 'unknown'), 'NO_AUTO');
+      const policy = makeDefaultPolicy();
+      assert.strictEqual(determineStatus(null, 'unknown', policy), 'NO_AUTO');
     });
 
     it('zero-failure CI is not BLOCKED_BY_CI', async () => {
       const { determineStatus } = await import('../../scripts/loop/build-queue.mjs');
-      const pr = { checks: '{"success":3,"failure":0,"pending":0}' };
-      assert.notStrictEqual(determineStatus(pr, 'docs'), 'BLOCKED_BY_CI');
-      assert.strictEqual(determineStatus(pr, 'docs'), 'READY_FOR_PLANNING');
+      const policy = makeDefaultPolicy();
+      const pr = { checks: JSON.stringify({success: 3, failure: 0, pending: 0}) };
+      assert.notStrictEqual(determineStatus(pr, 'docs', policy), 'BLOCKED_BY_CI');
+      assert.strictEqual(determineStatus(pr, 'docs', policy), 'READY_FOR_PLANNING');
     });
 
     it('positive failure count is BLOCKED_BY_CI', async () => {
       const { determineStatus } = await import('../../scripts/loop/build-queue.mjs');
-      const pr = { checks: '{"success":3,"failure":1,"pending":0}' };
-      assert.strictEqual(determineStatus(pr, 'docs'), 'BLOCKED_BY_CI');
+      const policy = makeDefaultPolicy();
+      const pr = { checks: JSON.stringify({success: 3, failure: 1, pending: 0}) };
+      assert.strictEqual(determineStatus(pr, 'docs', policy), 'BLOCKED_BY_CI');
     });
 
     it('positive pending count is BLOCKED_BY_CI', async () => {
       const { determineStatus } = await import('../../scripts/loop/build-queue.mjs');
-      const pr = { checks: '{"success":3,"failure":0,"pending":1}' };
-      assert.strictEqual(determineStatus(pr, 'docs'), 'BLOCKED_BY_CI');
+      const policy = makeDefaultPolicy();
+      const pr = { checks: JSON.stringify({success: 3, failure: 0, pending: 1}) };
+      assert.strictEqual(determineStatus(pr, 'docs', policy), 'BLOCKED_BY_CI');
     });
 
     it('zero action_required is not BLOCKED_BY_CI', async () => {
       const { determineStatus } = await import('../../scripts/loop/build-queue.mjs');
-      const pr = { checks: '{"success":3,"action_required":0,"queued":0}' };
-      assert.notStrictEqual(determineStatus(pr, 'docs'), 'BLOCKED_BY_CI');
-      assert.strictEqual(determineStatus(pr, 'docs'), 'READY_FOR_PLANNING');
+      const policy = makeDefaultPolicy();
+      const pr = { checks: JSON.stringify({success: 3, action_required: 0, queued: 0}) };
+      assert.notStrictEqual(determineStatus(pr, 'docs', policy), 'BLOCKED_BY_CI');
+      assert.strictEqual(determineStatus(pr, 'docs', policy), 'READY_FOR_PLANNING');
     });
 
     it('non-numeric count values are treated conservatively', async () => {
       const { determineStatus } = await import('../../scripts/loop/build-queue.mjs');
-      const pr1 = { checks: '{"success":3,"failure":"abc"}' };
-      assert.strictEqual(determineStatus(pr1, 'docs'), 'CI_STATE_UNTRUSTED');
-
-      const pr2 = { checks: '{"success":3,"failure":-1}' };
-      assert.strictEqual(determineStatus(pr2, 'docs'), 'CI_STATE_UNTRUSTED');
+      const policy = makeDefaultPolicy();
+      const pr1 = { checks: JSON.stringify({success: 3, failure: 'abc'}) };
+      assert.strictEqual(determineStatus(pr1, 'docs', policy), 'CI_STATE_UNTRUSTED');
+      const pr2 = { checks: JSON.stringify({success: 3, failure: -1}) };
+      assert.strictEqual(determineStatus(pr2, 'docs', policy), 'CI_STATE_UNTRUSTED');
     });
 
     it('cancelled and timed_out counts are treated as BLOCKED_BY_CI', async () => {
       const { determineStatus } = await import('../../scripts/loop/build-queue.mjs');
-      const pr1 = { checks: '{"success":2,"cancelled":1}' };
-      assert.strictEqual(determineStatus(pr1, 'docs'), 'BLOCKED_BY_CI');
-
-      const pr2 = { checks: '{"success":2,"timed_out":1}' };
-      assert.strictEqual(determineStatus(pr2, 'docs'), 'BLOCKED_BY_CI');
+      const policy = makeDefaultPolicy();
+      const pr1 = { checks: JSON.stringify({success: 2, cancelled: 1}) };
+      assert.strictEqual(determineStatus(pr1, 'docs', policy), 'BLOCKED_BY_CI');
+      const pr2 = { checks: JSON.stringify({success: 2, timed_out: 1}) };
+      assert.strictEqual(determineStatus(pr2, 'docs', policy), 'BLOCKED_BY_CI');
     });
 
     it('unknown positive status key is CI_UNKNOWN_STATUS', async () => {
       const { determineStatus } = await import('../../scripts/loop/build-queue.mjs');
-      const pr = { checks: '{"success":3,"neutral":1}' };
-      assert.strictEqual(determineStatus(pr, 'docs'), 'CI_UNKNOWN_STATUS');
+      const policy = makeDefaultPolicy();
+      const pr = { checks: JSON.stringify({success: 3, neutral: 1}) };
+      assert.strictEqual(determineStatus(pr, 'docs', policy), 'CI_UNKNOWN_STATUS');
     });
 
     it('missing checks data is CI_DATA_MISSING', async () => {
       const { determineStatus } = await import('../../scripts/loop/build-queue.mjs');
+      const policy = makeDefaultPolicy();
       const prNoChecks = { title: 'test' };
-      assert.strictEqual(determineStatus(prNoChecks, 'docs'), 'CI_DATA_MISSING');
-
+      assert.strictEqual(determineStatus(prNoChecks, 'docs', policy), 'CI_DATA_MISSING');
       const prNullChecks = { checks: null, title: 'test' };
-      assert.strictEqual(determineStatus(prNullChecks, 'docs'), 'CI_DATA_MISSING');
-
+      assert.strictEqual(determineStatus(prNullChecks, 'docs', policy), 'CI_DATA_MISSING');
       const prEmptyChecks = { checks: '{}', title: 'test' };
-      assert.strictEqual(determineStatus(prEmptyChecks, 'docs'), 'CI_DATA_MISSING');
+      assert.strictEqual(determineStatus(prEmptyChecks, 'docs', policy), 'CI_DATA_MISSING');
     });
 
     it('malformed CI JSON is CI_DATA_MISSING', async () => {
       const { determineStatus } = await import('../../scripts/loop/build-queue.mjs');
+      const policy = makeDefaultPolicy();
       const pr = { checks: 'not-json', title: 'test' };
-      assert.strictEqual(determineStatus(pr, 'docs'), 'CI_DATA_MISSING');
+      assert.strictEqual(determineStatus(pr, 'docs', policy), 'CI_DATA_MISSING');
     });
   });
 
   describe('build with fixtures', () => {
     it('empty state produces empty queue', async () => {
       const { build } = await import('../../scripts/loop/build-queue.mjs');
-      const report = build(FIXTURE_NO_ISSUES_NO_PRS);
+      const policy = makeDefaultPolicy();
+      const report = build(FIXTURE_NO_ISSUES_NO_PRS, policy);
       assert.strictEqual(report.queue.length, 0);
       assert.strictEqual(report.mode, 'dry-run');
     });
 
     it('docs-only fixture produces READY_FOR_PLANNING', async () => {
       const { build } = await import('../../scripts/loop/build-queue.mjs');
-      const report = build(FIXTURE_DOCS_ONLY);
+      const policy = makeDefaultPolicy();
+      const report = build(FIXTURE_DOCS_ONLY, policy);
       assert.strictEqual(report.queue.length, 1);
       assert.strictEqual(report.queue[0].status, 'READY_FOR_PLANNING');
       assert.strictEqual(report.queue[0].lane, 'docs');
@@ -230,7 +275,8 @@ describe('LoveBud Loop Triage Contract', () => {
 
     it('mixed fixture: docs is auto-eligible, auth is not', async () => {
       const { build } = await import('../../scripts/loop/build-queue.mjs');
-      const report = build(FIXTURE_MIXED);
+      const policy = makeDefaultPolicy();
+      const report = build(FIXTURE_MIXED, policy);
 
       const docsItem = report.queue.find(i => i.number === 101);
       assert.ok(docsItem);
@@ -259,10 +305,34 @@ describe('LoveBud Loop Triage Contract', () => {
 
     it('error state produces empty queue with error', async () => {
       const { build } = await import('../../scripts/loop/build-queue.mjs');
+      const policy = makeDefaultPolicy();
       const errorState = { error: true, errorMessage: 'test error' };
-      const report = build(errorState);
+      const report = build(errorState, policy);
       assert.strictEqual(report.queue.length, 0);
       assert.ok(report.error);
+    });
+
+    it('config change must affect build output status', async () => {
+      const { build } = await import('../../scripts/loop/build-queue.mjs');
+      const policy = makeDefaultPolicy();
+      let report = build(FIXTURE_DOCS_ONLY, policy);
+      assert.strictEqual(report.queue[0].status, 'READY_FOR_PLANNING');
+
+      policy.autoEligibleLanes = [];
+      policy.humanRequiredLanes = ['docs'];
+      policy.humanStatusOverrides = {};
+      report = build(FIXTURE_DOCS_ONLY, policy);
+      assert.strictEqual(report.queue[0].status, 'NEEDS_PRODUCT_DECISION');
+
+      policy.autoEligibleLanes = [];
+      policy.humanRequiredLanes = [];
+      assert.throws(() => build(FIXTURE_DOCS_ONLY, policy), /QUEUE_POLICY_VIOLATION/);
+    });
+
+    it('no hardcoded auto/human lane sets remain', async () => {
+      const bp = await import('../../scripts/loop/build-queue.mjs');
+      assert.strictEqual(typeof bp.AUTO_ELIGIBLE_LANES, 'undefined');
+      assert.strictEqual(typeof bp.HUMAN_REQUIRED_LANES, 'undefined');
     });
   });
 
@@ -275,6 +345,21 @@ describe('LoveBud Loop Triage Contract', () => {
       ], { encoding: 'utf-8' });
       assert.notStrictEqual(result.status, 0);
       assert.ok(result.stderr.includes('forbidden'));
+    });
+  });
+
+  describe('policy failure stops before GitHub collect', () => {
+    it('must exit non-zero when policy load fails', () => {
+      const cp = require('node:child_process');
+      const result = cp.spawnSync('node', [
+        'scripts/loop/run-loop.mjs',
+        '--mode=dry-run'
+      ], { cwd: __dirname + '/../..', encoding: 'utf-8', env: { ...process.env, LOCALAPPDATA: '' } });
+      if (result.status !== 0) {
+        assert.ok(result.stderr.includes('POLICY_CONFIG_INVALID') ||
+                  result.stderr.includes('LOOP TRIAGE FAILED'),
+                  'must fail with policy error');
+      }
     });
   });
 });

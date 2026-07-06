@@ -19,11 +19,31 @@ human-required lanes:
 - deployment
 - production-approval
 
+default-human-status: NEEDS_PRODUCT_DECISION
+
+human-status-overrides:
+- browser-ui-qa=NEEDS_UI_QA
+- deployment=NEEDS_DEPLOYMENT_APPROVAL
+- production-approval=NEEDS_DEPLOYMENT_APPROVAL
+
 merge:
 - disabled
 issue mutation:
 - disabled
 pr mutation:
 - disabled
+allowed-statuses:
+- READY_FOR_PLANNING
+- BLOCKED_BY_CI
+- BLOCKED_BY_DEPENDENCY
+- NEEDS_PRODUCT_DECISION
+- NEEDS_UI_QA
+- NEEDS_DEPLOYMENT_APPROVAL
+- SCOPE_CONFLICT
+- NO_AUTO
+- CI_STATE_UNTRUSTED
+- CI_DATA_MISSING
+- CI_UNKNOWN_STATUS
+
 worktree mutation:
 - disabled

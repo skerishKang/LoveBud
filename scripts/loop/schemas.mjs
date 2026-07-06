@@ -1,34 +1,3 @@
-const ALLOWED_LANES = Object.freeze([
-  'docs',
-  'contract-test',
-  'test-stability',
-  'static-cleanup',
-  'product-decision',
-  'ux-direction',
-  'browser-ui-qa',
-  'database-migration',
-  'api-contract',
-  'auth',
-  'privacy',
-  'deployment',
-  'production-approval',
-  'unknown'
-]);
-
-const ALLOWED_STATUSES = Object.freeze([
-  'READY_FOR_PLANNING',
-  'BLOCKED_BY_CI',
-  'BLOCKED_BY_DEPENDENCY',
-  'NEEDS_PRODUCT_DECISION',
-  'NEEDS_UI_QA',
-  'NEEDS_DEPLOYMENT_APPROVAL',
-  'SCOPE_CONFLICT',
-  'NO_AUTO',
-  'CI_STATE_UNTRUSTED',
-  'CI_DATA_MISSING',
-  'CI_UNKNOWN_STATUS'
-]);
-
 const ALLOWED_RISKS = Object.freeze([
   'none',
   'low',
@@ -37,16 +6,21 @@ const ALLOWED_RISKS = Object.freeze([
   'critical'
 ]);
 
-function validateLane(value) {
-  if (!ALLOWED_LANES.includes(value)) {
-    throw new Error(`Invalid lane: ${value}. Allowed: ${ALLOWED_LANES.join(', ')}`);
+function validateLane(value, policy) {
+  const allLanes = (policy.autoEligibleLanes || []).concat(policy.humanRequiredLanes || []);
+  const allowed = new Set(allLanes);
+  allowed.add('unknown');
+  if (!allowed.has(value)) {
+    const allowedStr = [...allLanes, 'unknown'].join(', ');
+    throw new Error(`Invalid lane: ${value}. Allowed: ${allowedStr}`);
   }
   return true;
 }
 
-function validateStatus(value) {
-  if (!ALLOWED_STATUSES.includes(value)) {
-    throw new Error(`Invalid status: ${value}. Allowed: ${ALLOWED_STATUSES.join(', ')}`);
+function validateStatus(value, policy) {
+  const allowed = new Set(policy.allowedStatuses || []);
+  if (!allowed.has(value)) {
+    throw new Error(`Invalid status: ${value}. Allowed: ${policy.allowedStatuses.join(', ')}`);
   }
   return true;
 }
@@ -58,7 +32,7 @@ function validateRisk(value) {
   return true;
 }
 
-function validateQueueItem(item) {
+function validateQueueItem(item, policy) {
   if (!item || typeof item !== 'object') {
     throw new Error('Queue item must be a non-null object');
   }
@@ -68,15 +42,15 @@ function validateQueueItem(item) {
   if (!item.title || typeof item.title !== 'string') {
     throw new Error('Queue item must have a string title');
   }
-  validateLane(item.lane);
-  validateStatus(item.status);
+  validateLane(item.lane, policy);
+  validateStatus(item.status, policy);
   if (item.risk !== undefined && item.risk !== null) {
     validateRisk(item.risk);
   }
   return true;
 }
 
-function validateOutputReport(report) {
+function validateOutputReport(report, policy) {
   if (!report || typeof report !== 'object') {
     throw new Error('Report must be a non-null object');
   }
@@ -84,7 +58,7 @@ function validateOutputReport(report) {
     throw new Error('Report must have a queue array');
   }
   for (const item of report.queue) {
-    validateQueueItem(item);
+    validateQueueItem(item, policy);
   }
   if (typeof report.timestamp !== 'string') {
     throw new Error('Report must have a string timestamp');
@@ -96,8 +70,6 @@ function validateOutputReport(report) {
 }
 
 export {
-  ALLOWED_LANES,
-  ALLOWED_STATUSES,
   ALLOWED_RISKS,
   validateLane,
   validateStatus,

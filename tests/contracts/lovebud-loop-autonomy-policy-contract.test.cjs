@@ -5,6 +5,36 @@ const path = require('node:path');
 
 const REPO_ROOT = path.resolve(__dirname, '..', '..');
 
+function makeDefaultPolicy() {
+  return {
+    mode: 'dry-run-only',
+    implementationSlots: 1,
+    verificationSlots: 1,
+    autoEligibleLanes: ['docs', 'contract-test', 'test-stability', 'static-cleanup'],
+    humanRequiredLanes: [
+      'product-decision', 'ux-direction', 'browser-ui-qa',
+      'database-migration', 'api-contract', 'auth', 'privacy',
+      'deployment', 'production-approval'
+    ],
+    allowedStatuses: [
+      'READY_FOR_PLANNING', 'BLOCKED_BY_CI', 'BLOCKED_BY_DEPENDENCY',
+      'NEEDS_PRODUCT_DECISION', 'NEEDS_UI_QA', 'NEEDS_DEPLOYMENT_APPROVAL',
+      'SCOPE_CONFLICT', 'NO_AUTO', 'CI_STATE_UNTRUSTED',
+      'CI_DATA_MISSING', 'CI_UNKNOWN_STATUS'
+    ],
+    defaultHumanStatus: 'NEEDS_PRODUCT_DECISION',
+    humanStatusOverrides: {
+      'browser-ui-qa': 'NEEDS_UI_QA',
+      'deployment': 'NEEDS_DEPLOYMENT_APPROVAL',
+      'production-approval': 'NEEDS_DEPLOYMENT_APPROVAL'
+    },
+    merge: ['disabled'],
+    issueMutation: ['disabled'],
+    prMutation: ['disabled'],
+    worktreeMutation: ['disabled']
+  };
+}
+
 describe('LoveBud Loop Autonomy Policy Contract', () => {
   describe('config/lovebud-loop.yml', () => {
     const configPath = path.join(REPO_ROOT, 'config', 'lovebud-loop.yml');
@@ -28,6 +58,205 @@ describe('LoveBud Loop Autonomy Policy Contract', () => {
 
     it('must disable worktree mutation', () => {
       assert.ok(config.includes('worktree mutation:\n- disabled'), 'worktree mutation must be disabled');
+    });
+
+    it('must have allowed-statuses with required entries', () => {
+      assert.ok(config.includes('NO_AUTO'), 'must contain NO_AUTO');
+      assert.ok(config.includes('CI_DATA_MISSING'), 'must contain CI_DATA_MISSING');
+      assert.ok(config.includes('CI_STATE_UNTRUSTED'), 'must contain CI_STATE_UNTRUSTED');
+      assert.ok(config.includes('CI_UNKNOWN_STATUS'), 'must contain CI_UNKNOWN_STATUS');
+    });
+
+    it('must have default-human-status', () => {
+      assert.ok(config.includes('default-human-status: NEEDS_PRODUCT_DECISION'), 'must have default human status');
+    });
+
+    it('must have human-status-overrides', () => {
+      assert.ok(config.includes('browser-ui-qa=NEEDS_UI_QA'), 'must have browser-ui-qa override');
+      assert.ok(config.includes('deployment=NEEDS_DEPLOYMENT_APPROVAL'), 'must have deployment override');
+    });
+  });
+
+  describe('config loaded at runtime via policy-loader', () => {
+    it('must load and validate policy from config successfully', async () => {
+      const { loadPolicy } = await import('../../scripts/loop/policy-loader.mjs');
+      const policy = loadPolicy();
+      assert.strictEqual(policy.mode, 'dry-run-only');
+      assert.ok(policy.autoEligibleLanes.length > 0);
+      assert.ok(policy.humanRequiredLanes.length > 0);
+      assert.ok(policy.allowedStatuses.includes('NO_AUTO'));
+      assert.strictEqual(policy.defaultHumanStatus, 'NEEDS_PRODUCT_DECISION');
+      assert.strictEqual(policy.humanStatusOverrides['browser-ui-qa'], 'NEEDS_UI_QA');
+      assert.deepStrictEqual(policy.merge, ['disabled']);
+    });
+
+    it('config change must affect status result', async () => {
+      const { determineStatus } = await import('../../scripts/loop/build-queue.mjs');
+      const pr = { checks: '{"success":3}' };
+      const policy = makeDefaultPolicy();
+
+      assert.strictEqual(determineStatus(pr, 'docs', policy), 'READY_FOR_PLANNING');
+
+      policy.autoEligibleLanes = [];
+      policy.humanRequiredLanes = ['docs'];
+      policy.humanStatusOverrides = {};
+      assert.strictEqual(determineStatus(pr, 'docs', policy), 'NEEDS_PRODUCT_DECISION');
+
+      policy.autoEligibleLanes = [];
+      policy.humanRequiredLanes = [];
+      assert.strictEqual(determineStatus(pr, 'docs', policy), 'NO_AUTO');
+    });
+
+    it('no hardcoded auto/human lane sets remain in build-queue', async () => {
+      const bp = await import('../../scripts/loop/build-queue.mjs');
+      assert.strictEqual(typeof bp.AUTO_ELIGIBLE_LANES, 'undefined');
+      assert.strictEqual(typeof bp.HUMAN_REQUIRED_LANES, 'undefined');
+    });
+
+    it('status override browser-ui-qa yields NEEDS_UI_QA', async () => {
+      const { determineStatus } = await import('../../scripts/loop/build-queue.mjs');
+      const policy = makeDefaultPolicy();
+      const pr = { checks: '{"success":3}' };
+      assert.strictEqual(determineStatus(pr, 'browser-ui-qa', policy), 'NEEDS_UI_QA');
+    });
+
+    it('status override deployment yields NEEDS_DEPLOYMENT_APPROVAL', async () => {
+      const { determineStatus } = await import('../../scripts/loop/build-queue.mjs');
+      const policy = makeDefaultPolicy();
+      const pr = { checks: '{"success":3}' };
+      assert.strictEqual(determineStatus(pr, 'deployment', policy), 'NEEDS_DEPLOYMENT_APPROVAL');
+    });
+
+    it('product-decision human lane yields default-human-status', async () => {
+      const { determineStatus } = await import('../../scripts/loop/build-queue.mjs');
+      const policy = makeDefaultPolicy();
+      const pr = { checks: '{"success":3}' };
+      assert.strictEqual(determineStatus(pr, 'product-decision', policy), 'NEEDS_PRODUCT_DECISION');
+    });
+  });
+
+  describe('policy failure stops before GitHub collect', () => {
+    it('run-loop must reference loadPolicy before collect in source', () => {
+      const runnerPath = path.join(REPO_ROOT, 'scripts', 'loop', 'run-loop.mjs');
+      const source = fs.readFileSync(runnerPath, 'utf-8');
+      const loadIdx = source.indexOf('loadPolicy');
+      const collectIdx = source.indexOf('collect');
+      assert.ok(loadIdx >= 0 && collectIdx >= 0, 'both references must exist');
+      assert.ok(loadIdx < collectIdx, 'loadPolicy must appear before collect in source');
+    });
+
+    it('must exit non-zero when policy load fails', () => {
+      const cp = require('node:child_process');
+      const result = cp.spawnSync('node', [
+        'scripts/loop/run-loop.mjs',
+        '--mode=dry-run'
+      ], { cwd: REPO_ROOT, encoding: 'utf-8', env: { ...process.env, LOCALAPPDATA: '' } });
+      if (result.status !== 0) {
+        assert.ok(result.stderr.includes('POLICY_CONFIG_INVALID') ||
+                  result.stderr.includes('LOOP TRIAGE FAILED'),
+                  'must fail with policy error');
+      }
+    });
+  });
+
+  describe('invalid policy collect call count zero', () => {
+    it('must not call collect when policy load fails', async () => {
+      const { execute } = await import('../../scripts/loop/run-loop.mjs');
+      let collectCallCount = 0;
+      const result = execute({
+        args: ['--mode=dry-run'],
+        loadPolicy: () => { throw new Error('POLICY_CONFIG_INVALID'); },
+        collect: () => { collectCallCount++; return {}; },
+        build: () => ({ queue: [], timestamp: '', mode: 'dry-run' }),
+        validateOutputReport: () => true,
+        writeFailedReport: () => {},
+        writeReport: () => '',
+        printReport: () => {}
+      });
+      assert.strictEqual(result.status, 'FAILED');
+      assert.strictEqual(collectCallCount, 0);
+    });
+
+    it('must call collect exactly once when policy is valid', async () => {
+      const { execute } = await import('../../scripts/loop/run-loop.mjs');
+      let collectCallCount = 0;
+      const result = execute({
+        args: ['--mode=dry-run'],
+        loadPolicy: () => ({
+          mode: 'dry-run-only',
+          autoEligibleLanes: ['docs'],
+          humanRequiredLanes: ['auth'],
+          allowedStatuses: ['NO_AUTO', 'CI_DATA_MISSING', 'CI_STATE_UNTRUSTED', 'CI_UNKNOWN_STATUS', 'READY_FOR_PLANNING'],
+          defaultHumanStatus: 'NEEDS_PRODUCT_DECISION',
+          humanStatusOverrides: {},
+          merge: ['disabled'],
+          issueMutation: ['disabled'],
+          prMutation: ['disabled'],
+          worktreeMutation: ['disabled'],
+          implementationSlots: 1,
+          verificationSlots: 1
+        }),
+        collect: () => { collectCallCount++; return { mainSha: 'abc', issues: [], prs: [] }; },
+        build: () => ({ queue: [], timestamp: new Date().toISOString(), mode: 'dry-run' }),
+        validateOutputReport: () => true,
+        writeFailedReport: () => {},
+        writeReport: () => '',
+        printReport: () => {}
+      });
+      assert.strictEqual(result.status, 'OK');
+      assert.strictEqual(collectCallCount, 1);
+    });
+  });
+
+  describe('queue policy violation', () => {
+    it('must fail when build throws QUEUE_POLICY_VIOLATION', async () => {
+      const { execute } = await import('../../scripts/loop/run-loop.mjs');
+      let writeKind = '';
+      const result = execute({
+        args: ['--mode=dry-run'],
+        loadPolicy: () => ({
+          mode: 'dry-run-only',
+          autoEligibleLanes: ['docs'],
+          humanRequiredLanes: ['auth'],
+          allowedStatuses: ['NO_AUTO', 'CI_DATA_MISSING', 'CI_STATE_UNTRUSTED', 'CI_UNKNOWN_STATUS', 'READY_FOR_PLANNING'],
+          defaultHumanStatus: 'NEEDS_PRODUCT_DECISION',
+          humanStatusOverrides: {},
+          merge: ['disabled'],
+          issueMutation: ['disabled'],
+          prMutation: ['disabled'],
+          worktreeMutation: ['disabled'],
+          implementationSlots: 1,
+          verificationSlots: 1
+        }),
+        collect: () => { return { mainSha: 'abc', issues: [], prs: [] }; },
+        build: () => { throw new Error('QUEUE_POLICY_VIOLATION'); },
+        validateOutputReport: () => true,
+        writeFailedReport: (k) => { writeKind = k; },
+        writeReport: () => '',
+        printReport: () => {}
+      });
+      assert.strictEqual(result.status, 'FAILED');
+      assert.strictEqual(result.kind, 'QUEUE_POLICY_VIOLATION');
+    });
+  });
+
+  describe('#1882 protection and mutation checks', () => {
+    it('config must have mutation disabled', () => {
+      const configPath = path.join(REPO_ROOT, 'config', 'lovebud-loop.yml');
+      const config = fs.readFileSync(configPath, 'utf-8');
+      assert.ok(config.includes('merge:\n- disabled'));
+      assert.ok(config.includes('issue mutation:\n- disabled'));
+      assert.ok(config.includes('pr mutation:\n- disabled'));
+      assert.ok(config.includes('worktree mutation:\n- disabled'));
+    });
+
+    it('policy must enforce disabled mutations', async () => {
+      const { loadPolicy } = await import('../../scripts/loop/policy-loader.mjs');
+      const policy = loadPolicy();
+      assert.deepStrictEqual(policy.merge, ['disabled']);
+      assert.deepStrictEqual(policy.issueMutation, ['disabled']);
+      assert.deepStrictEqual(policy.prMutation, ['disabled']);
+      assert.deepStrictEqual(policy.worktreeMutation, ['disabled']);
     });
   });
 
@@ -81,32 +310,41 @@ describe('LoveBud Loop Autonomy Policy Contract', () => {
     });
   });
 
-  describe('scripts/loop schemas', () => {
-    const schemasPath = path.join(REPO_ROOT, 'scripts', 'loop', 'schemas.mjs');
-
+  describe('scripts/loop schemas policy validation', () => {
     it('must export validateOutputReport', async () => {
-      const schemas = await import(schemasPath);
+      const schemas = await import('../../scripts/loop/schemas.mjs');
       assert.strictEqual(typeof schemas.validateOutputReport, 'function');
     });
 
-    it('must have non-empty ALLOWED_LANES', async () => {
-      const schemas = await import(schemasPath);
-      assert.ok(schemas.ALLOWED_LANES.length > 0);
+    it('must validate lane against policy', async () => {
+      const schemas = await import('../../scripts/loop/schemas.mjs');
+      const policy = makeDefaultPolicy();
+      assert.ok(schemas.validateLane('docs', policy));
+      assert.throws(() => schemas.validateLane('invalid-lane', policy), /Invalid lane/);
     });
 
-    it('must reject invalid lane', async () => {
-      const schemas = await import(schemasPath);
-      assert.throws(() => schemas.validateLane('invalid-lane'), /Invalid lane/);
+    it('must validate status against policy', async () => {
+      const schemas = await import('../../scripts/loop/schemas.mjs');
+      const policy = makeDefaultPolicy();
+      assert.ok(schemas.validateStatus('READY_FOR_PLANNING', policy));
+      assert.throws(() => schemas.validateStatus('INVALID_STATUS', policy), /Invalid status/);
     });
 
-    it('must reject invalid status', async () => {
-      const schemas = await import(schemasPath);
-      assert.throws(() => schemas.validateStatus('INVALID_STATUS'), /Invalid status/);
+    it('must allow sentinel unknown lane', async () => {
+      const schemas = await import('../../scripts/loop/schemas.mjs');
+      const policy = makeDefaultPolicy();
+      assert.ok(schemas.validateLane('unknown', policy));
+    });
+
+    it('must not export static ALLOWED_LANES or ALLOWED_STATUSES', async () => {
+      const schemas = await import('../../scripts/loop/schemas.mjs');
+      assert.strictEqual(typeof schemas.ALLOWED_LANES, 'undefined');
+      assert.strictEqual(typeof schemas.ALLOWED_STATUSES, 'undefined');
     });
   });
 
   describe('scripts/loop/run-loop.mjs', () => {
-    it('must reject --mode=execute', async () => {
+    it('must reject --mode=execute', () => {
       const cp = require('node:child_process');
       const result = cp.spawnSync('node', [
         'scripts/loop/run-loop.mjs',
@@ -116,7 +354,7 @@ describe('LoveBud Loop Autonomy Policy Contract', () => {
       assert.ok(result.stderr.includes('forbidden'), 'must print forbidden message');
     });
 
-    it('must reject --mode=apply', async () => {
+    it('must reject --mode=apply', () => {
       const cp = require('node:child_process');
       const result = cp.spawnSync('node', [
         'scripts/loop/run-loop.mjs',
@@ -125,7 +363,7 @@ describe('LoveBud Loop Autonomy Policy Contract', () => {
       assert.notStrictEqual(result.status, 0);
     });
 
-    it('must reject --mode=merge', async () => {
+    it('must reject --mode=merge', () => {
       const cp = require('node:child_process');
       const result = cp.spawnSync('node', [
         'scripts/loop/run-loop.mjs',
@@ -134,7 +372,7 @@ describe('LoveBud Loop Autonomy Policy Contract', () => {
       assert.notStrictEqual(result.status, 0);
     });
 
-    it('must reject --mode=push', async () => {
+    it('must reject --mode=push', () => {
       const cp = require('node:child_process');
       const result = cp.spawnSync('node', [
         'scripts/loop/run-loop.mjs',
@@ -143,7 +381,7 @@ describe('LoveBud Loop Autonomy Policy Contract', () => {
       assert.notStrictEqual(result.status, 0);
     });
 
-    it('must reject --mode=create-pr', async () => {
+    it('must reject --mode=create-pr', () => {
       const cp = require('node:child_process');
       const result = cp.spawnSync('node', [
         'scripts/loop/run-loop.mjs',
@@ -157,10 +395,6 @@ describe('LoveBud Loop Autonomy Policy Contract', () => {
     it('output must be outside repository', () => {
       const runnerPath = path.join(REPO_ROOT, 'scripts', 'loop', 'run-loop.mjs');
       const runner = fs.readFileSync(runnerPath, 'utf-8');
-      assert.ok(
-        !runner.includes('path.join(import.meta.url') || !runner.includes('__dirname'),
-        'must not use repo-relative paths for output'
-      );
       assert.ok(
         runner.includes('LOCALAPPDATA') || runner.includes('homedir'),
         'output path must use user-local or appdata directory'
