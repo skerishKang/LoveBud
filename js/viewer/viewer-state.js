@@ -13,7 +13,7 @@
      *   - selectedMomentId: null
      *   - activePanel: 'empty'
      *   - likedTree: false
-     *   - layoutMode: 'organic'
+     *   - layoutMode: 'hierarchy'
      */
     function createInitialState() {
         return {
@@ -21,7 +21,7 @@
             selectedMomentId: null,
             activePanel: 'empty',
             likedTree: false,
-            layoutMode: 'organic'
+            layoutMode: 'hierarchy'
         };
     }
 

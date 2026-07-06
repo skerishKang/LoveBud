@@ -469,7 +469,7 @@ test('viewer state helper creates correct initial state', () => {
     assert.equal(state.selectedMomentId, null, 'default moment is null');
     assert.equal(state.activePanel, 'empty', 'default panel is empty');
     assert.equal(state.likedTree, false, 'default liked is false');
-    assert.equal(state.layoutMode, 'organic', 'default layout is organic');
+    assert.equal(state.layoutMode, 'hierarchy', 'default layout is hierarchy');
 });
 
 test('viewer state helper getAllMoments flattens branches', () => {
