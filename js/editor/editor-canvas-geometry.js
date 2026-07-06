@@ -228,10 +228,10 @@
             }, 0);
 
             let childOffsetX = pos.x - (totalSubWidth * STRUCTURED_SIBLING_SPACING) / 2;
-            children.forEach(function(child, childIdx) {
+            children.forEach(function(child) {
                 const childWidth = getSubtreeWidth(child, new Set());
                 const childSlotWidth = childWidth * STRUCTURED_SIBLING_SPACING;
-                placeSubtree(child, depth + 1, childOffsetX, childSlotWidth, childIdx, children.length);
+                placeSubtree(child, depth + 1, childOffsetX, childSlotWidth, 0, 1);
                 childOffsetX += childSlotWidth;
             });
         }
@@ -272,10 +272,10 @@
                 // Center the entire structured layout based on virtual root children width
                 const centerX = metrics.width / 2;
                 let offsetX = centerX - (totalWidth * STRUCTURED_SIBLING_SPACING) / 2;
-                virtualRootChildren.forEach(function(child, childIdx) {
+                virtualRootChildren.forEach(function(child) {
                     const childWidth = getSubtreeWidth(child, new Set());
                     const slotWidth = childWidth * STRUCTURED_SIBLING_SPACING;
-                    placeSubtree(child, 1, offsetX, slotWidth, childIdx, virtualRootChildren.length);
+                    placeSubtree(child, 1, offsetX, slotWidth, 0, 1);
                     offsetX += slotWidth;
                 });
             }
