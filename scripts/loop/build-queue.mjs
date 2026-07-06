@@ -1,24 +1,5 @@
 import { validateLane, validateStatus } from './schemas.mjs';
 
-const HUMAN_REQUIRED_LANES = new Set([
-  'product-decision',
-  'ux-direction',
-  'browser-ui-qa',
-  'database-migration',
-  'api-contract',
-  'auth',
-  'privacy',
-  'deployment',
-  'production-approval'
-]);
-
-const AUTO_ELIGIBLE_LANES = new Set([
-  'docs',
-  'contract-test',
-  'test-stability',
-  'static-cleanup'
-]);
-
 const KNOWN_CI_KEYS = new Set([
   'success',
   'skipped',
@@ -116,7 +97,14 @@ function classifyChecks(checksObj) {
   return null;
 }
 
-function determineStatus(pr, lane) {
+function determineHumanStatus(lane, policy) {
+  if (policy.humanStatusOverrides && Object.prototype.hasOwnProperty.call(policy.humanStatusOverrides, lane)) {
+    return policy.humanStatusOverrides[lane];
+  }
+  return policy.defaultHumanStatus || 'NEEDS_PRODUCT_DECISION';
+}
+
+function determineStatus(pr, lane, policy) {
   if (pr) {
     let checksObj = pr.checks;
     if (typeof checksObj === 'string') {
@@ -135,20 +123,21 @@ function determineStatus(pr, lane) {
 
   if (!lane) return 'NO_AUTO';
 
-  if (HUMAN_REQUIRED_LANES.has(lane)) {
-    if (lane === 'browser-ui-qa') return 'NEEDS_UI_QA';
-    if (lane === 'deployment' || lane === 'production-approval') return 'NEEDS_DEPLOYMENT_APPROVAL';
-    return 'NEEDS_PRODUCT_DECISION';
+  const autoSet = new Set(policy.autoEligibleLanes || []);
+  const humanSet = new Set(policy.humanRequiredLanes || []);
+
+  if (humanSet.has(lane)) {
+    return determineHumanStatus(lane, policy);
   }
 
-  if (AUTO_ELIGIBLE_LANES.has(lane)) {
+  if (autoSet.has(lane)) {
     return 'READY_FOR_PLANNING';
   }
 
   return 'NO_AUTO';
 }
 
-function build(githubState) {
+function build(githubState, policy) {
   if (!githubState || githubState.error) {
     return { queue: [], timestamp: new Date().toISOString(), mode: 'dry-run', error: githubState ? githubState.errorMessage : 'No GitHub state' };
   }
@@ -157,13 +146,14 @@ function build(githubState) {
 
   for (const issue of (githubState.issues || [])) {
     const lane = classifyLane(issue.labels, issue.title);
-    const status = lane ? determineStatus(null, lane) : 'NO_AUTO';
+    const status = lane ? determineStatus(null, lane, policy) : 'NO_AUTO';
     try {
-      if (lane) validateLane(lane);
-      validateStatus(status);
+      if (lane) validateLane(lane, policy);
+      validateStatus(status, policy);
     } catch {
-      continue;
+      throw new Error('QUEUE_POLICY_VIOLATION');
     }
+    const humanSet = new Set(policy.humanRequiredLanes || []);
     queue.push({
       id: `issue-${issue.number}`,
       type: 'issue',
@@ -171,19 +161,20 @@ function build(githubState) {
       title: issue.title,
       lane: lane || 'unknown',
       status,
-      risk: HUMAN_REQUIRED_LANES.has(lane) ? 'medium' : 'low'
+      risk: lane && humanSet.has(lane) ? 'medium' : 'low'
     });
   }
 
   for (const pr of (githubState.prs || [])) {
     const lane = classifyLane([], pr.title);
-    const status = determineStatus(pr, lane);
+    const status = determineStatus(pr, lane, policy);
     try {
-      if (lane) validateLane(lane);
-      validateStatus(status);
+      if (lane) validateLane(lane, policy);
+      validateStatus(status, policy);
     } catch {
-      continue;
+      throw new Error('QUEUE_POLICY_VIOLATION');
     }
+    const humanSet = new Set(policy.humanRequiredLanes || []);
     queue.push({
       id: `pr-${pr.number}`,
       type: 'pr',
@@ -191,7 +182,7 @@ function build(githubState) {
       title: pr.title,
       lane: lane || 'unknown',
       status,
-      risk: lane && HUMAN_REQUIRED_LANES.has(lane) ? 'medium' : 'low',
+      risk: lane && humanSet.has(lane) ? 'medium' : 'low',
       headRefName: pr.headRefName,
       headRefOid: pr.headRefOid,
       checks: pr.checks
@@ -206,4 +197,4 @@ function build(githubState) {
   };
 }
 
-export { build, classifyLane, classifyChecks, determineStatus, AUTO_ELIGIBLE_LANES, HUMAN_REQUIRED_LANES };
+export { build, classifyLane, classifyChecks, determineStatus, determineHumanStatus };

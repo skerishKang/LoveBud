@@ -35,11 +35,12 @@ node scripts/loop/run-loop.mjs --mode=dry-run
 
 ### What happens
 
+0. **Load and validate policy**: `scripts/loop/policy-loader.mjs` reads `config/lovebud-loop.yml` and validates runtime constraints. Fail-closed — no GitHub call if policy is invalid.
 1. GitHub CLI auth check → fail-safe exit if missing
 2. Read GitHub state: main SHA, open issues, open PRs, CI check status
 3. Classify items into lanes by labels and title heuristics
-4. Assign status based on lane type and CI results
-5. Validate output against schemas
+4. Assign status based on lane type and CI results (policy defines which lanes are auto-eligible vs human-required)
+5. Validate output against schemas (using policy's allowed lanes and statuses)
 6. Write report to output directory
 7. Print summary to stdout
 
@@ -94,11 +95,13 @@ File naming: `queue-{ISO-timestamp-with-hyphens}.json`
 
 ## 3. Safety guarantees
 
+- **Policy enforced before first GitHub call**: `policy-loader.mjs` must succeed before any `gh` invocation. Invalid config is fail-closed.
 - **No GitHub mutations**: The runner never creates, edits, or closes issues, PRs, comments, or labels.
 - **No code changes**: The runner never modifies files in the repository.
 - **No branches or worktrees**: The runner never creates or deletes branches or worktrees.
 - **No pushes or PRs**: The runner never pushes or creates PRs.
 - **No secrets in output**: Report files exclude raw issue bodies, token-like strings, and environment values.
+- **Policy config is runtime-enforced**: `config/lovebud-loop.yml` is a single policy source. Config changes alone cannot enable execution, mutation, merge, or deployment capability.
 
 ---
 

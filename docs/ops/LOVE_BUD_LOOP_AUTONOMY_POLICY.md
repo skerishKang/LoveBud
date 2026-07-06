@@ -134,7 +134,22 @@ UI verification requires the user's logged-in production/preview session. No UI 
 
 ## 9. Enforcement
 
-- `config/lovebud-loop.yml` is the machine-readable policy source.
-- `tests/contracts/lovebud-loop-autonomy-policy-contract.test.cjs` verifies policy compliance.
+- `config/lovebud-loop.yml` is the machine-readable policy source. It is loaded and validated at runtime by `scripts/loop/policy-loader.mjs` **before** any GitHub API call.
+- `policy-loader.mjs` implements a strict YAML subset parser with fail-closed behavior:
+  - Duplicate keys, unknown root keys, malformed lists, unsupported YAML syntax → `POLICY_CONFIG_INVALID`
+  - Config path is resolved relative to the module location, not the working directory.
+  - Error messages never include raw config content, token patterns, filesystem paths, or environment values.
+- Runtime policy validation enforces:
+  - `mode` must be `dry-run-only`
+  - `implementation_slots` and `verification_slots` must be `1` in v0
+  - Auto/human lane lists must be non-empty, unique, and non-overlapping
+  - `allowed-statuses` must include `NO_AUTO`, `CI_DATA_MISSING`, `CI_STATE_UNTRUSTED`, `CI_UNKNOWN_STATUS`
+  - All mutation keys (`merge`, `issue mutation`, `pr mutation`, `worktree mutation`) must be exactly `['disabled']`
+- Policy load/validation failure stops the runner **before** any GitHub CLI call. No collector is invoked.
+- `config/lovebud-loop.yml` is no longer a declarative reference document. It is the **runtime-enforced single policy source**.
+- Changing config alone cannot enable execution, mutation, merge, worktree, or deployment capability. Schema extensions require separate review and contract test changes.
+- `scripts/loop/policy-loader.mjs` policy compliance.
+- `tests/contracts/lovebud-loop-policy-loader-contract.test.cjs` verifies YAML parsing, policy validation, and runtime fail-closed behavior.
+- `tests/contracts/lovebud-loop-autonomy-policy-contract.test.cjs` verifies config and doc policy compliance.
 - `tests/contracts/lovebud-loop-triage-contract.test.cjs` verifies triage behavior with fixtures.
 - Violations (merge, push, PR create, issue mutation) must cause test failure.

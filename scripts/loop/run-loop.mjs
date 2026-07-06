@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { homedir } from 'node:os';
+import { loadPolicy } from './policy-loader.mjs';
 import { collect } from './collect-github-state.mjs';
 import { build } from './build-queue.mjs';
 import { validateOutputReport } from './schemas.mjs';
@@ -14,25 +15,6 @@ function getOutputDir() {
   }
   const home = homedir();
   return join(home, 'LoveBudLoop', 'reports');
-}
-
-function parseArgs() {
-  const args = process.argv.slice(2);
-  const modeArg = args.find(a => a.startsWith('--mode='));
-  if (!modeArg) {
-    console.error('Error: --mode is required');
-    process.exit(1);
-  }
-  const mode = modeArg.split('=')[1];
-  if (FORBIDDEN_MODES.includes(mode)) {
-    console.error(`Error: mode "${mode}" is forbidden in v0. Only --mode=dry-run is allowed.`);
-    process.exit(1);
-  }
-  if (mode !== 'dry-run') {
-    console.error(`Error: unknown mode "${mode}". Only --mode=dry-run is allowed.`);
-    process.exit(1);
-  }
-  return { mode };
 }
 
 function writeFailedReport(kind, message) {
@@ -56,44 +38,38 @@ function writeFailedReport(kind, message) {
   console.log(`Failed report saved to: ${filepath}`);
 }
 
-function main() {
-  const { mode } = parseArgs();
-
-  let githubState;
-  try {
-    githubState = collect();
-  } catch (err) {
-    console.error('LOOP TRIAGE FAILED: collector threw unexpectedly');
-    writeFailedReport('COLLECTOR_THREW', 'Unexpected collector error.');
-    process.exit(1);
-  }
-
-  if (githubState && githubState.error) {
-    console.error(`LOOP TRIAGE FAILED: ${githubState.errorKind || githubState.error}`);
-    writeFailedReport(githubState.errorKind || githubState.error, githubState.errorMessage);
-    process.exit(1);
-  }
-
-  const report = build(githubState);
-
-  try {
-    validateOutputReport(report);
-  } catch (err) {
-    console.error(`LOOP TRIAGE FAILED: report validation error - ${err.message}`);
-    process.exit(1);
-  }
-
+function writeReport(report) {
   const outputDir = getOutputDir();
   if (!existsSync(outputDir)) {
     mkdirSync(outputDir, { recursive: true });
   }
-
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
   const filename = `queue-${timestamp}.json`;
   const filepath = join(outputDir, filename);
-
   writeFileSync(filepath, JSON.stringify(report, null, 2), 'utf-8');
+  return filepath;
+}
 
+function parseArgs(args) {
+  const argsArr = args || process.argv.slice(2);
+  const modeArg = argsArr.find(a => a.startsWith('--mode='));
+  if (!modeArg) {
+    console.error('Error: --mode is required');
+    process.exit(1);
+  }
+  const mode = modeArg.split('=')[1];
+  if (FORBIDDEN_MODES.includes(mode)) {
+    console.error(`Error: mode "${mode}" is forbidden in v0. Only --mode=dry-run is allowed.`);
+    process.exit(1);
+  }
+  if (mode !== 'dry-run') {
+    console.error(`Error: unknown mode "${mode}". Only --mode=dry-run is allowed.`);
+    process.exit(1);
+  }
+  return { mode };
+}
+
+function printReport(report, mode, filepath) {
   const autoEligible = report.queue.filter(i => i.status === 'READY_FOR_PLANNING');
   const blocked = report.queue.filter(i => i.status.startsWith('BLOCKED'));
   const needsDecision = report.queue.filter(i => i.status.startsWith('NEEDS'));
@@ -113,4 +89,78 @@ function main() {
   console.log(`  Mutation performed: false`);
 }
 
-main();
+function execute(deps) {
+  const { mode } = deps.args ? parseArgs(deps.args) : parseArgs();
+
+  let policy;
+  try {
+    policy = (deps.loadPolicy || loadPolicy)();
+  } catch (err) {
+    const kind = 'POLICY_CONFIG_INVALID';
+    console.error(`LOOP TRIAGE FAILED: ${kind}`);
+    (deps.writeFailedReport || writeFailedReport)(kind, '');
+    return { status: 'FAILED', kind };
+  }
+
+  let githubState;
+  try {
+    githubState = (deps.collect || collect)();
+  } catch (err) {
+    console.error('LOOP TRIAGE FAILED: collector threw unexpectedly');
+    (deps.writeFailedReport || writeFailedReport)('COLLECTOR_THREW', 'Unexpected collector error.');
+    return { status: 'FAILED', kind: 'COLLECTOR_THREW' };
+  }
+
+  if (githubState && githubState.error) {
+    console.error(`LOOP TRIAGE FAILED: ${githubState.errorKind || githubState.error}`);
+    (deps.writeFailedReport || writeFailedReport)(githubState.errorKind || githubState.error, githubState.errorMessage);
+    return { status: 'FAILED', kind: githubState.errorKind || githubState.error };
+  }
+
+  let report;
+  try {
+    report = (deps.build || build)(githubState, policy);
+  } catch (err) {
+    const kind = err.message === 'QUEUE_POLICY_VIOLATION' ? 'QUEUE_POLICY_VIOLATION' : 'BUILD_FAILED';
+    console.error(`LOOP TRIAGE FAILED: ${kind}`);
+    (deps.writeFailedReport || writeFailedReport)(kind, '');
+    return { status: 'FAILED', kind };
+  }
+
+  try {
+    (deps.validateOutputReport || validateOutputReport)(report, policy);
+  } catch (err) {
+    console.error(`LOOP TRIAGE FAILED: report validation error - ${err.message}`);
+    (deps.writeFailedReport || writeFailedReport)('REPORT_VALIDATION_FAILED', err.message);
+    return { status: 'FAILED', kind: 'REPORT_VALIDATION_FAILED' };
+  }
+
+  const filepath = (deps.writeReport || writeReport)(report);
+
+  (deps.printReport || printReport)(report, mode, filepath);
+
+  return { status: 'OK', report, filepath };
+}
+
+function main() {
+  const deps = {
+    loadPolicy,
+    collect,
+    build,
+    validateOutputReport,
+    writeFailedReport,
+    writeReport,
+    printReport
+  };
+  const result = execute(deps);
+  if (result.status === 'FAILED') {
+    process.exit(1);
+  }
+  process.exit(0);
+}
+
+if (process.argv[1] && (process.argv[1].endsWith('run-loop.mjs') || process.argv[1].endsWith('run-loop'))) {
+  main();
+}
+
+export { execute, main, parseArgs, getOutputDir, writeFailedReport, writeReport, printReport };
