@@ -1,6 +1,6 @@
 /**
  * Contract: LoveBud Appreciation Order Guide (#3061)
- * v20260702-qa-verification-1
+ * v20260707-3278-runtime-recovery-1
  *
  * Refs:
  *   - #3061 (appreciation order contract definition)
@@ -26,6 +26,11 @@ const VIEWER_HANDLER_FACTORY_PATH = path.join(
 const EDITOR_CANVAS_PATH = path.join(
     ROOT,
     'js/editor/editor-canvas.js'
+);
+
+const EDITOR_HTML_PATH = path.join(
+    ROOT,
+    'pages/editor.html'
 );
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
@@ -79,25 +84,49 @@ async function run() {
         );
     });
 
-    // 3. Editor canvas initializes appreciation order manager
-    await test('4. Editor canvas initializes appreciation order manager', function () {
+    // 3. Editor canvas must not reference the orphan appreciation-order initializer
+    await test('4. Editor canvas does not call missing appreciation order initializer', function () {
         const src = readSource(EDITOR_CANVAS_PATH);
-        assert.ok(
-            src.includes('appreciationOrderManager'),
-            'editor-canvas must reference appreciationOrderManager'
+        assert.doesNotMatch(
+            src,
+            /\binitAppreciationOrderManager\b/,
+            'editor-canvas must not call the orphan appreciation-order initializer'
         );
-        assert.ok(
-            src.includes('initAppreciationOrderManager'),
-            'editor-canvas must call initAppreciationOrderManager'
+        assert.doesNotMatch(
+            src,
+            /\bappreciationOrderManager\b/,
+            'editor-canvas must not attach an appreciationOrderManager runtime without a provider'
         );
-        assert.ok(
-            src.includes('canEdit !== false'),
-            'Only owner can edit appreciation order (canEdit guard)'
+    });
+
+    await test('5. No appreciation-order initializer provider is mounted by editor.html', function () {
+        const html = readSource(EDITOR_HTML_PATH);
+        assert.doesNotMatch(
+            html,
+            /appreciation-order/i,
+            'editor.html must not claim to mount an appreciation-order initializer provider'
+        );
+    });
+
+    await test('6. Repository contains no reachable appreciation-order initializer provider', function () {
+        const editorCanvasSource = readSource(EDITOR_CANVAS_PATH);
+        const editorHtmlSource = readSource(EDITOR_HTML_PATH);
+
+        const reachableProviderSources = [
+            editorCanvasSource,
+            editorHtmlSource,
+            readSource(VIEWER_HANDLER_FACTORY_PATH)
+        ].join('\n');
+
+        assert.doesNotMatch(
+            reachableProviderSources,
+            /\binitAppreciationOrderManager\b\s*[:=({]/,
+            'no reachable editor runtime source defines initAppreciationOrderManager on current main'
         );
     });
 
     // 4. Acceptance criteria: appreciation order must be array of IDs
-    await test('5. Contract document defines data structure', function () {
+    await test('7. Contract document defines data structure', function () {
         const contractPath = path.join(
             ROOT,
             'docs/product/lovebud-appreciation-order-contract.md'

@@ -637,18 +637,6 @@ function createEditorCanvas(deps) {
             // Bind compact mode toggle
             bindCompactModeToggle();
 
-            // Initialize Appreciation Order Manager
-            if (canEdit !== false) {
-                window.appreciationOrderManager = initAppreciationOrderManager({
-                    getTreeMemories: getTreeMemories,
-                    updateTreeMetadata: updateTreeMetadata,
-                    i18n: i18n,
-                    onSaveComplete: () => {
-                        if (typeof initCanvas === 'function') initCanvas();
-                    }
-                });
-            }
-
             viewportState.initialized = true;
             console.log(`[editor-canvas] initCanvas complete. Nodes rendered: ${document.querySelectorAll('.memory-node').length}`);
         } catch (error) {

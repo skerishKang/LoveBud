@@ -105,6 +105,19 @@ test('editor canvas init binds controls before marking viewport initialized', ()
   assert.ok(initializedIndex < completeLogIndex);
 });
 
+test('editor canvas init contains no orphan appreciation-order initializer call', () => {
+  assert.doesNotMatch(
+    initCanvasBlock,
+    /\binitAppreciationOrderManager\b/,
+    'initCanvas must not call an unresolved appreciation-order initializer'
+  );
+  assert.doesNotMatch(
+    initCanvasBlock,
+    /\bappreciationOrderManager\b/,
+    'initCanvas must not attach an appreciation-order manager without a reachable provider'
+  );
+});
+
 test('editor canvas init preserves error fallback', () => {
   const catchIndex = indexOfRequired(initCanvasBlock, '} catch (error) {');
   const errorLogIndex = indexOfRequired(initCanvasBlock, 'console.error(`[editor-canvas] initCanvas failed to render nodes. Context: treeId=${treeId}, layoutMode=${viewportState.layoutMode}, selectedNodeId=${selectedNodeId}`, error);');
