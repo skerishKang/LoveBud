@@ -123,12 +123,81 @@
         return recurse(mem);
     }
 
+    function getPublicLinearSpinePositions(treeMemories, canonicalRootId, isRootMemory, readMetrics) {
+        const metrics = readMetrics();
+        const rootMemory = treeMemories.find(function(m) { return isRootMemory(m, canonicalRootId); });
+
+        function isAbsentParent(parentId) {
+            if (!parentId || parentId === canonicalRootId) return true;
+            return !treeMemories.some(function(m) { return m.id === parentId; });
+        }
+
+        var spineY = Math.round(Math.min(metrics.height * STRUCTURED_ROOT_Y_FRAC, metrics.height - ROOT_BOTTOM_GUTTER)) - STRUCTURED_VERTICAL_SPACING;
+
+        var visible = treeMemories.filter(function(m) {
+            if (rootMemory && isRootMemory(m, canonicalRootId)) return false;
+            return true;
+        });
+
+        if (visible.length < 2) return null;
+
+        function getChildIds(parentId) {
+            return treeMemories.filter(function(m) {
+                var pid = m.parentId || canonicalRootId;
+                return pid === parentId && !isRootMemory(m, canonicalRootId);
+            });
+        }
+
+        // Find start nodes: visible nodes whose parent is root, canonical root, absent, or null
+        var startNodes = visible.filter(function(m) {
+            var pid = m.parentId;
+            if (!pid || pid === canonicalRootId || isAbsentParent(pid)) return true;
+            if (rootMemory && pid === rootMemory.id) return true;
+            return false;
+        });
+
+        if (startNodes.length !== 1) return null;
+
+        // Walk the chain from the start node
+        var chain = [];
+        var current = startNodes[0];
+        var chainVisited = new Set();
+        while (current) {
+            if (chainVisited.has(current.id)) return null; // cycle
+            chainVisited.add(current.id);
+            chain.push(current);
+            var children = getChildIds(current.id);
+            if (children.length > 1) return null; // branched
+            current = children.length === 1 ? children[0] : null;
+        }
+
+        // Verify all visible nodes are in the chain
+        var chainIds = new Set(chain.map(function(m) { return m.id; }));
+        for (var i = 0; i < visible.length; i++) {
+            if (!chainIds.has(visible[i].id)) return null; // disconnected
+        }
+
+        // Compute horizontal spine positions
+        var totalWidth = (chain.length - 1) * STRUCTURED_SIBLING_SPACING;
+        var startX = metrics.width / 2 - totalWidth / 2;
+
+        var positions = new Map();
+        chain.forEach(function(m, idx) {
+            positions.set(m.id, {
+                x: Math.round(startX + idx * STRUCTURED_SIBLING_SPACING),
+                y: Math.round(spineY)
+            });
+        });
+
+        return positions;
+    }
+
     /**
      * Structured layout: vertical tree hierarchy.
      * Root at bottom-center, children branching upward.
      * Ignores stored positions — pure topology-based layout.
      */
-    function getStructuredWorldPosition(mem, getCanonicalRootId, getTreeMemories, isRootMemory, getMetricsSnapshot) {
+    function getStructuredWorldPosition(mem, getCanonicalRootId, getTreeMemories, isRootMemory, getMetricsSnapshot, layoutPolicy) {
         const canonicalRootId = getCanonicalRootId();
         const treeMemories = getTreeMemories();
         const readMetrics = typeof getMetricsSnapshot === 'function'
@@ -281,6 +350,16 @@
             }
         }
 
+        // Public linear-spine overlay: override positions for valid non-branching chains
+        if (layoutPolicy === 'publicLinearSpine') {
+            var spinePositions = getPublicLinearSpinePositions(treeMemories, canonicalRootId, isRootMemory, readMetrics);
+            if (spinePositions) {
+                spinePositions.forEach(function(pos, id) {
+                    structuredPositions.set(id, pos);
+                });
+            }
+        }
+
         if (structuredPositions.has(mem.id)) {
             return structuredPositions.get(mem.id);
         }
@@ -313,6 +392,7 @@
         distributeAngles,
         getWorldPosition,
         getStructuredWorldPosition,
+        getPublicLinearSpinePositions,
         calcPosition
     };
 })();

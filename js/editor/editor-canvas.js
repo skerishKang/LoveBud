@@ -191,7 +191,8 @@ function createEditorCanvas(deps) {
             getCanonicalRootId,
             getTreeMemories,
             isRootMemory,
-            getMetrics
+            getMetrics,
+            layoutPolicy: canEdit === false ? 'publicLinearSpine' : undefined
         });
     }
 

@@ -33,12 +33,13 @@ export function getWorldPosition(mem, deps) {
         getCanonicalRootId,
         getTreeMemories,
         isRootMemory,
-        getMetrics
+        getMetrics,
+        layoutPolicy
     } = deps;
 
     if (layoutMode === 'structured') {
         return window.EditorCanvasGeometry.getStructuredWorldPosition(
-            mem, getCanonicalRootId, getTreeMemories, isRootMemory, getMetrics
+            mem, getCanonicalRootId, getTreeMemories, isRootMemory, getMetrics, layoutPolicy
         );
     }
     return window.EditorCanvasGeometry.getWorldPosition(
