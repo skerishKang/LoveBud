@@ -547,23 +547,31 @@ test('13. same video but stale/missing segment — rejected', async function(t) 
     sourceUrl: 'https://www.youtube.com/embed/' + vid, sourceType: 'youtube',
     thumbnail: 'https://img.youtube.com/vi/' + vid + '/mqdefault.jpg', emotionTags: ['original-tag']
   };
-  // Payload sends sourceUrl with start=30; response has same video but missing start parameter
+  // Payload sends sourceUrl with start=30 and end=60; response has same video but missing end parameter
   // Also note that title, memo, and tags in response represent updated text, which must be rejected!
   var staleSegmentResponse = {
     id: 'mem-s1', title: 'Stale update title', memo: 'Stale update memo',
-    sourceUrl: 'https://www.youtube.com/embed/' + vid,
+    sourceUrl: 'https://www.youtube.com/embed/' + vid + '?start=30',
     sourceType: 'youtube',
     thumbnail: 'https://img.youtube.com/vi/' + vid + '/mqdefault.jpg',
     emotionTags: ['stale-tag'], updatedAt: new Date().toISOString()
   };
   var ctx = await runSaveMemoryEdit({
     initialMemory: mem,
-    domValues: { title: 'Submitted Title Change', memo: 'Submitted memo change', tags: 'submitted-tag', sourceUrl: 'https://www.youtube.com/watch?v=' + vid, startTime: '0:30' },
+    domValues: { title: 'Submitted Title Change', memo: 'Submitted memo change', tags: 'submitted-tag', sourceUrl: 'https://www.youtube.com/watch?v=' + vid, startTime: '0:30', endTime: '1:00' },
     apiResponse: staleSegmentResponse
   });
 
   // Track if canvas was rerendered or detail panel was updated during save
-  ctx.actions.enterEditMode(); // ensure form display starts in edit mode
+  ctx.actions.enterEditMode(); // ensure form display starts in edit mode (this resets DOM values back to memory)
+
+  // Explicitly inject the submitted values to simulate edit form entries correctly
+  ctx.setInputValue('editTitleInput', 'Submitted Title Change');
+  ctx.setInputValue('editMemoInput', 'Submitted memo change');
+  ctx.setInputValue('editTagsInput', 'submitted-tag');
+  ctx.setInputValue('editSourceUrlInput', 'https://www.youtube.com/watch?v=' + vid);
+  ctx.setInputValue('editStartTimeInput', '0:30');
+  ctx.setInputValue('editEndTimeInput', '1:00');
 
   await ctx.actions.saveMemoryEdit();
 
