@@ -1,0 +1,29 @@
+version: 0
+mode: dry-run-only
+implementation_slots: 1
+verification_slots: 1
+auto-eligible lanes:
+- docs
+- contract-test
+- test-stability
+- static-cleanup
+
+human-required lanes:
+- product-decision
+- ux-direction
+- browser-ui-qa
+- database-migration
+- api-contract
+- auth
+- privacy
+- deployment
+- production-approval
+
+merge:
+- disabled
+issue mutation:
+- disabled
+pr mutation:
+- disabled
+worktree mutation:
+- disabled
