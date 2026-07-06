@@ -135,9 +135,19 @@
             ? getMetricsSnapshot
             : () => getMetrics({ clientWidth: 0, clientHeight: 0 });
 
+        const rootMemory = treeMemories.find(function(m) { return isRootMemory(m, canonicalRootId); });
+
+        // Checks if a parentId references a missing/unplaceable parent (rootless detection)
+        function isAbsentParent(parentId) {
+            if (!parentId || parentId === canonicalRootId) return true;
+            return !treeMemories.some(function(m) { return m.id === parentId; });
+        }
+
         function getDepth(node, visited) {
             if (visited === undefined) visited = new Set();
-            if (!node || isRootMemory(node, canonicalRootId)) return 0;
+            if (!node) return 0;
+            if (rootMemory && isRootMemory(node, canonicalRootId)) return 0;
+            if (!rootMemory && isAbsentParent(node.parentId)) return 1; // Direct child of virtual root is at depth 1
             if (visited.has(node.id)) return 0;
             visited.add(node.id);
             const parentId = node.parentId || canonicalRootId;
@@ -152,7 +162,11 @@
             visited.add(node.id);
             const children = treeMemories.filter(function(m) {
                 const pid = m.parentId || canonicalRootId;
-                return pid === node.id && !isRootMemory(m, canonicalRootId);
+                if (rootMemory) {
+                    return pid === node.id && !isRootMemory(m, canonicalRootId);
+                } else {
+                    return pid === node.id;
+                }
             });
             if (children.length === 0) return 1;
             return children.reduce(function(sum, child) { return sum + getSubtreeWidth(child, visited); }, 0);
@@ -166,7 +180,7 @@
             }
             visited.add(node.id);
 
-            const isRoot = isRootMemory(node, canonicalRootId);
+            const isRoot = rootMemory && isRootMemory(node, canonicalRootId);
             const y = isRoot
                 ? getRootY(metrics)
                 : getRootY(metrics) - depth * STRUCTURED_VERTICAL_SPACING;
@@ -188,18 +202,6 @@
             return Math.round(Math.min(metrics.height * STRUCTURED_ROOT_Y_FRAC, metrics.height - ROOT_BOTTOM_GUTTER));
         }
 
-        const rootMemory = treeMemories.find(function(m) { return isRootMemory(m, canonicalRootId); });
-
-        if (!rootMemory) {
-            const metrics = readMetrics();
-            return { x: Math.round(metrics.width / 2), y: getRootY(metrics) };
-        }
-
-        if (isRootMemory(mem, canonicalRootId)) {
-            const metrics = readMetrics();
-            return { x: Math.round(metrics.width / 2), y: getRootY(metrics) };
-        }
-
         const structuredPositions = new Map();
         const allVisited = new Set();
 
@@ -212,7 +214,11 @@
 
             const children = treeMemories.filter(function(m) {
                 const pid = m.parentId || canonicalRootId;
-                return pid === node.id && !isRootMemory(m, canonicalRootId);
+                if (rootMemory) {
+                    return pid === node.id && !isRootMemory(m, canonicalRootId);
+                } else {
+                    return pid === node.id;
+                }
             });
 
             if (children.length === 0) return;
@@ -222,33 +228,57 @@
             }, 0);
 
             let childOffsetX = pos.x - (totalSubWidth * STRUCTURED_SIBLING_SPACING) / 2;
-            children.forEach(function(child) {
+            children.forEach(function(child, childIdx) {
                 const childWidth = getSubtreeWidth(child, new Set());
                 const childSlotWidth = childWidth * STRUCTURED_SIBLING_SPACING;
-                placeSubtree(child, depth + 1, childOffsetX, childSlotWidth, 0, 1);
+                placeSubtree(child, depth + 1, childOffsetX, childSlotWidth, childIdx, children.length);
                 childOffsetX += childSlotWidth;
             });
         }
 
-        const rootPos = computePosition(rootMemory, 0, 0, 0, 0, 1);
-        structuredPositions.set(rootMemory.id, rootPos);
+        if (rootMemory) {
+            // Rooted tree behavior preserved
+            const rootPos = computePosition(rootMemory, 0, 0, 0, 0, 1);
+            structuredPositions.set(rootMemory.id, rootPos);
 
-        const rootChildren = treeMemories.filter(function(m) {
-            const pid = m.parentId || canonicalRootId;
-            return pid === rootMemory.id && !isRootMemory(m, canonicalRootId);
-        });
-
-        if (rootChildren.length > 0) {
-            const totalWidth = rootChildren.reduce(function(sum, child) {
-                return sum + getSubtreeWidth(child, new Set());
-            }, 0);
-            let offsetX = rootPos.x - (totalWidth * STRUCTURED_SIBLING_SPACING) / 2;
-            rootChildren.forEach(function(child) {
-                const childWidth = getSubtreeWidth(child, new Set());
-                const slotWidth = childWidth * STRUCTURED_SIBLING_SPACING;
-                placeSubtree(child, 1, offsetX, slotWidth, 0, 1);
-                offsetX += slotWidth;
+            const rootChildren = treeMemories.filter(function(m) {
+                const pid = m.parentId || canonicalRootId;
+                return pid === rootMemory.id && !isRootMemory(m, canonicalRootId);
             });
+
+            if (rootChildren.length > 0) {
+                const totalWidth = rootChildren.reduce(function(sum, child) {
+                    return sum + getSubtreeWidth(child, new Set());
+                }, 0);
+                let offsetX = rootPos.x - (totalWidth * STRUCTURED_SIBLING_SPACING) / 2;
+                rootChildren.forEach(function(child) {
+                    const childWidth = getSubtreeWidth(child, new Set());
+                    const slotWidth = childWidth * STRUCTURED_SIBLING_SPACING;
+                    placeSubtree(child, 1, offsetX, slotWidth, 0, 1);
+                    offsetX += slotWidth;
+                });
+            }
+        } else {
+            // Rootless tree behavior: group virtual-root children
+            const virtualRootChildren = treeMemories.filter(function(m) {
+                return isAbsentParent(m.parentId);
+            });
+
+            if (virtualRootChildren.length > 0) {
+                const metrics = readMetrics();
+                const totalWidth = virtualRootChildren.reduce(function(sum, child) {
+                    return sum + getSubtreeWidth(child, new Set());
+                }, 0);
+                // Center the entire structured layout based on virtual root children width
+                const centerX = metrics.width / 2;
+                let offsetX = centerX - (totalWidth * STRUCTURED_SIBLING_SPACING) / 2;
+                virtualRootChildren.forEach(function(child, childIdx) {
+                    const childWidth = getSubtreeWidth(child, new Set());
+                    const slotWidth = childWidth * STRUCTURED_SIBLING_SPACING;
+                    placeSubtree(child, 1, offsetX, slotWidth, childIdx, virtualRootChildren.length);
+                    offsetX += slotWidth;
+                });
+            }
         }
 
         if (structuredPositions.has(mem.id)) {
