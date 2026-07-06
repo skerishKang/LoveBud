@@ -29,6 +29,7 @@
     "smoke:cloudflare": "node scripts/cloudflare-supplied-url-smoke.cjs",
     "check:auth-credentials": "node scripts/ops-auth-credential-preflight.cjs",
     "check:pr-guardrails": "node scripts/check-pr-guardrails.cjs",
+    "loop:triage": "node scripts/loop/run-loop.mjs --mode=dry-run",
     "ci": "npm run lint && npm run build && npm run test && npm run verify"
   },
   "dependencies": {
