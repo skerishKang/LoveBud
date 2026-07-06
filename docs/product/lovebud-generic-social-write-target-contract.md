@@ -75,64 +75,90 @@ This contract does **not** define comment operations, share operations, ranking,
 
 ---
 
-## 3. Additive Compatibility Model
+## 3. Staged Schema Migration Gate
 
-### 3.1 Recommended future migration strategy
+Generic target fields are introduced in two explicitly separate schema stages, each with its own approval gate and verification requirements.
 
-The following requirements govern any future schema migration that introduces generic target fields:
+### 3.1 Migration A — additive generic-target preparation
 
-#### 3.1.1 Existing moment writes remain compatible
+Migration A is the **first** schema step. It is strictly additive preparation only.
 
-Existing moment write records and current moment callers (e.g., `reactions.py` calling `reserve_and_verify_idempotency`) **must remain compatible** without code changes during a temporary compatibility window.
+**What Migration A does:**
 
-#### 3.1.2 Generic target fields are additive and backfilled
+- Adds generic `target_kind` and `target_id` columns to `social_idempotency` and `social_audit_log`.
+- Backfills all existing rows:
+  - `target_kind = 'memory'`
+  - `target_id` from the legacy moment target field (`social_idempotency.target_memory_id` or `social_audit_log.memory_id`).
+- Legacy moment fields remain present, readable, and `NOT NULL`.
 
-New generic columns (e.g., `target_kind`, `target_id`) are **added** to existing tables. After addition, they are **backfilled** from existing moment values:
+**What Migration A does NOT do:**
 
-- `target_kind` ← `'memory'`
-- `target_id` ← `target_memory_id` (from `social_idempotency`) or `memory_id` (from `social_audit_log`)
+- Does not rename any column.
+- Does not drop any column.
+- Does not relax any `NOT NULL` constraint.
+- Does not alter legacy moment write behavior.
 
-#### 3.1.3 Existing moment writers retain current semantics
+**Tree runtime deployment is blocked at this stage.**
 
-During the compatibility window, existing moment writers continue to populate legacy moment-only target fields (`target_memory_id`, `memory_id`). They may optionally also populate generic target fields, but the legacy fields remain the authoritative source for moment writes until the window closes.
+No tree-like write caller may be deployed while only Migration A has been applied. There is no runtime that could populate generic fields with `target_kind = 'tree'`, and the legacy `NOT NULL` constraints would reject any such attempt.
 
-#### 3.1.4 Future tree writes use generic fields only
+Existing moment writers remain unchanged and continue using legacy fields only.
 
-Future tree write callers use **only** generic target fields (`target_kind` = `'tree'`, `target_id` = tree UUID). They do **not** populate legacy moment-only target fields (`target_memory_id`, `memory_id`).
+### 3.2 Verification Gate A
 
-#### 3.1.5 Generic target indexes and constraints preserve unique behavior
+Before any follow-up migration may proceed, the following must be confirmed:
+
+1. Every row in `social_idempotency` and `social_audit_log` has a valid `(target_kind, target_id)` pair.
+2. Every backfilled row has `target_kind = 'memory'`.
+3. Existing moment write behavior remains functional (idempotency reservation, replay, audit logging).
+4. No tree runtime caller has been deployed.
+
+Verification Gate A must be explicitly approved. No further schema change or runtime hardening may proceed until this gate passes.
+
+### 3.3 Migration B — approved compatibility cutover
+
+Migration B is a **separate, explicitly approved follow-up** migration that may only proceed after Verification Gate A has passed.
+
+**What Migration B does:**
+
+- Relaxes legacy `NOT NULL` constraints on `target_memory_id` and `memory_id` so future tree writes can leave moment-only target fields unset.
+- Generic target fields become mandatory for new generic-target writers.
+
+**What Migration B does NOT do:**
+
+- Does not rename legacy columns.
+- Does not drop legacy columns.
+- Legacy columns remain readable throughout the compatibility window.
+
+**Future tree writes use only generic target fields:**
+
+- `target_kind = 'tree'`
+- `target_id = <tree UUID>`
+
+Future tree writers must not populate `target_memory_id` or `memory_id`.
+
+### 3.4 Compatibility window phases
+
+| Phase | Moment writers | Tree writers | Legacy fields | Generic fields |
+|---|---|---|---|---|
+| **Current / pre-Migration A** | Populate legacy only | Do not exist | Authoritative, `NOT NULL` | Do not exist |
+| **Migration A preparation window** | Populate legacy only (unchanged) | Not deployed (blocked) | Authoritative, `NOT NULL` | Populated, readable (backfill `'memory'` only) |
+| **Migration B compatibility window** | Populate legacy + optionally generic | Populate generic only (`target_kind = 'tree'`) | Readable, `NOT NULL` relaxed | Authoritative for tree |
+| **Post-window future deprecation** | Populate generic only | Populate generic only | Read-only fallback, then deprecated | Authoritative |
+
+### 3.5 Generic target indexes and constraints preserve unique behavior
 
 The unique constraint on `(actor_id, operation, idempotency_key)` in `social_idempotency` is **preserved**. Generic target indexes must ensure that the same actor + operation + idempotency key combination remains unique regardless of target kind.
 
 The unique constraint semantics remain: the same `(actor_id, operation, idempotency_key)` triple can only map to one target + payload pair. A reused key with a different target or payload returns `409 IDEMPOTENCY_KEY_REUSED`.
 
-#### 3.1.6 Migration defines an unambiguous target kind/id pair
+### 3.6 Migration defines an unambiguous target kind/id pair
 
 Every row in `social_idempotency` and `social_audit_log` must have an unambiguous `(target_kind, target_id)` pair after backfill. No row may have `target_kind` or `target_id` as NULL after the backfill is complete and verified.
 
-#### 3.1.7 No destructive rename or drop in the first migration
-
-The first migration introducing generic target fields is **additive only**. No column is renamed or dropped. No constraint is removed. No index is dropped.
-
-#### 3.1.8 NOT NULL relaxation only after population and verification
-
-Any relaxation of legacy `NOT NULL` constraints on `target_memory_id` or `memory_id` may occur **only after**:
-
-1. Generic `target_kind` and `target_id` fields are populated for all existing rows
-2. A verification query confirms that every row has a valid `(target_kind, target_id)` pair
-3. All runtime callers have been updated to read generic fields
-
-#### 3.1.9 Legacy moment-only fields remain readable during compatibility window
+### 3.7 Legacy moment-only fields remain readable during compatibility window
 
 Legacy fields (`target_memory_id` in `social_idempotency`, `memory_id` in `social_audit_log`) remain readable throughout the compatibility window. They are not dropped, obscured, or made inaccessible until a separate, explicitly approved follow-up migration after the window closes.
-
-### 3.2 Compatibility window summary
-
-| Phase | Moment writers | Tree writers | Legacy fields | Generic fields |
-|---|---|---|---|---|
-| Current (pre-migration) | Populate legacy only | Do not exist | Authoritative | Do not exist |
-| Window (post-migration) | Populate legacy + optionally generic | Populate generic only | Readable, still authoritative for moment | Authoritative for tree |
-| Post-window (future) | Populate generic only | Populate generic only | Read-only fallback, then deprecated | Authoritative |
 
 ---
 
@@ -188,12 +214,13 @@ The result of a tree-like toggle is limited to:
 
 The following order is **required** for any future implementation. Each gate must be explicitly approved before the next begins.
 
-1. **Approved generic-schema migration** — Additive columns and indexes only. No destructive changes.
-2. **Schema evidence and compatibility verification** — Confirm backfill is complete, every row has a valid `(target_kind, target_id)` pair, and existing moment writes still function.
-3. **Modal/Cloudflare runtime hardening** — Implement `tree.like.toggle` with idempotency, advisory lock, audit, and safe result DTO. Cloudflare proxy forwards `Idempotency-Key`.
-4. **Authenticated runtime verification** — Contract tests and manual verification that tree-like writes behave as specified (replay, conflict, retryable, aggregate integrity).
-5. **Client pending-state and UI activation** — Frontend like button, optimistic state, error handling.
-6. **Logged-in production visual confirmation** — Verify that the like button works end-to-end in production with a real authenticated user.
+1. **Migration A approved and applied** — Additive generic-target columns, backfill from existing moment values. Legacy fields remain `NOT NULL`. No tree runtime deployed.
+2. **Verification Gate A completed** — Confirm backfill is complete, every row has a valid `(target_kind, target_id)` pair, all backfilled rows have `target_kind = 'memory'`, existing moment writes still function, and no tree runtime caller has been deployed.
+3. **Migration B separately approved and applied** — Legacy `NOT NULL` relaxation. Generic target fields become mandatory for new generic-target writers. Legacy columns remain readable, not renamed or dropped.
+4. **Modal/Cloudflare tree-like runtime hardening** — Implement `tree.like.toggle` with idempotency, advisory lock, audit, and safe result DTO. Cloudflare proxy forwards `Idempotency-Key`.
+5. **Authenticated runtime verification** — Contract tests and manual verification that tree-like writes behave as specified (replay, conflict, retryable, aggregate integrity).
+6. **Client pending-state and UI activation** — Frontend like button, optimistic state, error handling.
+7. **Logged-in production visual confirmation** — Verify that the like button works end-to-end in production with a real authenticated user.
 
 **This documentation issue performs none of these actions.**
 
