@@ -529,3 +529,174 @@ test('12. deferred pending: duplicate blocked → resolve → guard reset → se
   // m. call count = 2 확인
   assert.equal(t12Ctx.getCallCount(), 2, 'second save: 2 API calls — guard reset');
 });
+
+// =============================================================================
+// Source identity acknowledgement tests
+// =============================================================================
+
+test('13. same video but stale/missing segment — rejected', async function(t) {
+  var mem = {
+    id: 'mem-s1', title: 'Segment test',
+    sourceUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ', sourceType: 'youtube',
+    thumbnail: 'https://img.youtube.com/vi/dQw4w9WgXcQ/mqdefault.jpg', emotionTags: []
+  };
+  // Payload sends sourceUrl with start=30; response has same video but missing start parameter
+  var staleSegmentResponse = {
+    id: 'mem-s1', title: 'Segment test',
+    sourceUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
+    sourceType: 'youtube',
+    thumbnail: 'https://img.youtube.com/vi/dQw4w9WgXcQ/mqdefault.jpg',
+    emotionTags: [], updatedAt: new Date().toISOString()
+  };
+  var ctx = await runSaveMemoryEdit({
+    initialMemory: mem,
+    domValues: { title: 'Segment test', memo: '', tags: '', sourceUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', startTime: '0:30' },
+    apiResponse: staleSegmentResponse
+  });
+
+  await ctx.actions.saveMemoryEdit();
+
+  var editingMem = ctx.getEditingMemory();
+  assert.equal(editingMem.sourceUrl, 'https://www.youtube.com/embed/dQw4w9WgXcQ',
+    'stale segment response must NOT update sourceUrl');
+  assert.equal(ctx.getToast().type, 'error', 'must show error toast');
+});
+
+test('14. clearing a source is rejected when response retains old source', async function(t) {
+  var mem = {
+    id: 'mem-clear1', title: 'Has source',
+    sourceUrl: 'https://www.youtube.com/embed/aaaaaaaaaaa', sourceType: 'youtube',
+    thumbnail: 'https://img.youtube.com/vi/aaaaaaaaaaa/mqdefault.jpg',
+    source: 'YouTube', emotionTags: []
+  };
+  // User clears sourceUrl (payload has sourceUrl:''); response still has the old URL
+  var retainedSourceResponse = {
+    id: 'mem-clear1', title: 'Has source',
+    sourceUrl: 'https://www.youtube.com/embed/aaaaaaaaaaa',
+    sourceType: 'youtube',
+    thumbnail: 'https://img.youtube.com/vi/aaaaaaaaaaa/mqdefault.jpg',
+    source: 'YouTube', emotionTags: [], updatedAt: new Date().toISOString()
+  };
+  var ctx = await runSaveMemoryEdit({
+    initialMemory: mem,
+    domValues: { title: 'Has source', memo: '', tags: '', sourceUrl: '' },
+    apiResponse: retainedSourceResponse
+  });
+
+  await ctx.actions.saveMemoryEdit();
+
+  var editingMem = ctx.getEditingMemory();
+  assert.equal(editingMem.sourceUrl, 'https://www.youtube.com/embed/aaaaaaaaaaa',
+    'response retaining old source must NOT update editing state');
+  assert.equal(ctx.getToast().type, 'error', 'must show error toast');
+});
+
+test('15. clearing a source is rejected when response omits sourceUrl', async function(t) {
+  var mem = {
+    id: 'mem-clear2', title: 'Has source',
+    sourceUrl: 'https://www.youtube.com/embed/aaaaaaaaaaa', sourceType: 'youtube',
+    thumbnail: 'https://img.youtube.com/vi/aaaaaaaaaaa/mqdefault.jpg',
+    source: 'YouTube', emotionTags: []
+  };
+  // User clears sourceUrl (payload has sourceUrl:''); response omits sourceUrl entirely
+  var omittedSourceResponse = {
+    id: 'mem-clear2', title: 'Has source',
+    sourceType: 'youtube',
+    emotionTags: [], updatedAt: new Date().toISOString()
+  };
+  var ctx = await runSaveMemoryEdit({
+    initialMemory: mem,
+    domValues: { title: 'Has source', memo: '', tags: '', sourceUrl: '' },
+    apiResponse: omittedSourceResponse
+  });
+
+  await ctx.actions.saveMemoryEdit();
+
+  var editingMem = ctx.getEditingMemory();
+  assert.equal(editingMem.sourceUrl, 'https://www.youtube.com/embed/aaaaaaaaaaa',
+    'response omitting sourceUrl must NOT update editing state');
+  assert.equal(ctx.getToast().type, 'error', 'must show error toast');
+});
+
+test('16. equivalent canonical segment response with different parameter order — accepted', async function(t) {
+  var mem = {
+    id: 'mem-equiv1', title: 'Equiv test',
+    sourceUrl: 'https://www.youtube.com/embed/aaaaaaaaaaa', sourceType: 'youtube',
+    thumbnail: 'https://img.youtube.com/vi/aaaaaaaaaaa/mqdefault.jpg', emotionTags: []
+  };
+  // Payload identity: youtube(aaaaaaaaaaa,30,60)
+  // Response: same video, same start/end but parameters in different order (end before start)
+  var equivResponse = {
+    id: 'mem-equiv1', title: 'Equiv test',
+    sourceUrl: 'https://www.youtube.com/embed/aaaaaaaaaaa?end=60&start=30',
+    sourceType: 'youtube',
+    thumbnail: 'https://img.youtube.com/vi/aaaaaaaaaaa/mqdefault.jpg',
+    emotionTags: [], updatedAt: new Date().toISOString()
+  };
+  var ctx = await runSaveMemoryEdit({
+    initialMemory: mem,
+    domValues: { title: 'Equiv test', memo: '', tags: '', sourceUrl: 'https://www.youtube.com/watch?v=aaaaaaaaaaa', startTime: '0:30', endTime: '1:00' },
+    apiResponse: equivResponse
+  });
+
+  await ctx.actions.saveMemoryEdit();
+
+  assert.equal(ctx.getEditingMemory().sourceUrl, 'https://www.youtube.com/embed/aaaaaaaaaaa?end=60&start=30',
+    'equivalent identity with reordered parameters must be accepted');
+  assert.equal(ctx.getToast().type, 'success', 'must show success toast');
+});
+
+test('17. different-video stale response remains rejected (identity mismatch)', async function(t) {
+  var mem = {
+    id: 'mem-dv1', title: 'Diff video',
+    sourceUrl: 'https://www.youtube.com/embed/aaaaaaaaaaa', sourceType: 'youtube',
+    thumbnail: 'https://img.youtube.com/vi/aaaaaaaaaaa/mqdefault.jpg', emotionTags: []
+  };
+  // User changes to video bbbbbbbbbbb; response still has aaaaaaaaaaa
+  var staleVideoResponse = {
+    id: 'mem-dv1', title: 'Diff video',
+    sourceUrl: 'https://www.youtube.com/embed/aaaaaaaaaaa',
+    sourceType: 'youtube',
+    thumbnail: 'https://img.youtube.com/vi/aaaaaaaaaaa/mqdefault.jpg',
+    emotionTags: [], updatedAt: new Date().toISOString()
+  };
+  var ctx = await runSaveMemoryEdit({
+    initialMemory: mem,
+    domValues: { title: 'Diff video', memo: '', tags: '', sourceUrl: 'https://www.youtube.com/shorts/bbbbbbbbbbb' },
+    apiResponse: staleVideoResponse
+  });
+
+  await ctx.actions.saveMemoryEdit();
+
+  var editingMem = ctx.getEditingMemory();
+  assert.equal(editingMem.sourceUrl, 'https://www.youtube.com/embed/aaaaaaaaaaa',
+    'stale different-video response must NOT update');
+  assert.equal(ctx.getToast().type, 'error', 'must show error toast');
+});
+
+test('18. existing canonical same-video success continues to pass', async function(t) {
+  var mem = {
+    id: 'mem-can2', title: 'Canonical',
+    sourceUrl: 'https://www.youtube.com/embed/aaaaaaaaaaa', sourceType: 'youtube',
+    thumbnail: 'https://img.youtube.com/vi/aaaaaaaaaaa/mqdefault.jpg', emotionTags: []
+  };
+  // User changes to Shorts URL for bbbbbbbbbbb; response has canonical embed for same video ID
+  var canonicalResponse = {
+    id: 'mem-can2', title: 'Canonical',
+    sourceUrl: 'https://www.youtube.com/embed/bbbbbbbbbbb',
+    sourceType: 'youtube',
+    thumbnail: 'https://img.youtube.com/vi/bbbbbbbbbbb/mqdefault.jpg',
+    source: 'YouTube', emotionTags: [], updatedAt: new Date().toISOString()
+  };
+  var ctx = await runSaveMemoryEdit({
+    initialMemory: mem,
+    domValues: { title: 'Canonical', memo: '', tags: '', sourceUrl: 'https://www.youtube.com/shorts/bbbbbbbbbbb' },
+    apiResponse: canonicalResponse
+  });
+
+  await ctx.actions.saveMemoryEdit();
+
+  assert.equal(ctx.getEditingMemory().sourceUrl, 'https://www.youtube.com/embed/bbbbbbbbbbb',
+    'canonical embed URL with same video ID must be accepted');
+  assert.equal(ctx.getToast().type, 'success', 'must show success toast');
+});

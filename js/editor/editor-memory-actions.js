@@ -70,6 +70,42 @@ function createEditorMemoryActions(deps) {
 
     const getEditableSourceUrl = (memory) => String(memory?.sourceUrl || '').trim();
 
+    function normalizeSourceIdentity(url) {
+        var trimmed = String(url || '').trim();
+        if (!trimmed) return 'empty';
+
+        var media = window.LoveBudMedia || {};
+        var videoId = typeof media.extractYouTubeId === 'function'
+            ? media.extractYouTubeId(trimmed)
+            : ((trimmed.match(/(?:v=|\/|youtu\.be\/|embed\/|shorts\/)([0-9A-Za-z_-]{11})/) || [])[1] || '');
+
+        if (videoId) {
+            var startSeconds = null;
+            var endSeconds = null;
+            try {
+                var parsed = new URL(trimmed);
+                var tParam = parsed.searchParams.get('t') || parsed.searchParams.get('start');
+                var endParam = parsed.searchParams.get('end');
+                if (typeof media.parseYouTubeTimeToSeconds === 'function') {
+                    startSeconds = media.parseYouTubeTimeToSeconds(tParam);
+                    endSeconds = media.parseYouTubeTimeToSeconds(endParam);
+                }
+            } catch (e) {
+                var startMatch = trimmed.match(/[#&?](?:t|start)=([^&#]+)/i);
+                var endMatch = trimmed.match(/[#&?]end=([^&#]+)/i);
+                if (typeof media.parseYouTubeTimeToSeconds === 'function') {
+                    if (startMatch) startSeconds = media.parseYouTubeTimeToSeconds(decodeURIComponent(startMatch[1]));
+                    if (endMatch) endSeconds = media.parseYouTubeTimeToSeconds(decodeURIComponent(endMatch[1]));
+                }
+            }
+            var s = (startSeconds === null || startSeconds === undefined) ? null : Number(startSeconds);
+            var e = (endSeconds === null || endSeconds === undefined) ? null : Number(endSeconds);
+            return 'youtube(' + videoId + ',' + s + ',' + e + ')';
+        }
+
+        return 'raw(' + trimmed + ')';
+    }
+
     const resolveSourceUpdate = (rawUrl) => {
         const value = String(rawUrl || '').trim();
         if (!value) {
@@ -450,25 +486,15 @@ function createEditorMemoryActions(deps) {
                     throw new Error('Invalid server response: missing or mismatched memory ID');
                 }
 
-                // Validate changed fields are acknowledged in the response
-                const payloadVideoId = (function extractId(url) {
-                    if (!url || typeof url !== 'string') return null;
-                    const m = url.match(/(?:v=|[\/]|youtu[.]be[\/]|embed[\/]|shorts[\/])([0-9A-Za-z_-]{11})/);
-                    return m ? m[1] : null;
-                })(payload.sourceUrl);
-                const responseVideoId = (function extractId(url) {
-                    if (!url || typeof url !== 'string') return null;
-                    const m = url.match(/(?:v=|[\/]|youtu[.]be[\/]|embed[\/]|shorts[\/])([0-9A-Za-z_-]{11})/);
-                    return m ? m[1] : null;
-                })(savedPatch.sourceUrl);
-
-                // If the user changed the source URL, verify the response acknowledges it
-                if (payloadVideoId && payload.sourceUrl !== getEditableSourceUrl(currentEditingMemory)) {
-                    if (!responseVideoId) {
-                        throw new Error('Server response is missing video reference');
+                // Validate source identity is acknowledged in the response
+                if (Object.prototype.hasOwnProperty.call(payload, 'sourceUrl')) {
+                    if (!Object.prototype.hasOwnProperty.call(savedPatch, 'sourceUrl')) {
+                        throw new Error('Server response does not acknowledge source identity');
                     }
-                    if (responseVideoId !== payloadVideoId) {
-                        throw new Error('Server response contains stale video reference');
+                    var payloadIdentity = normalizeSourceIdentity(payload.sourceUrl);
+                    var responseIdentity = normalizeSourceIdentity(savedPatch.sourceUrl);
+                    if (payloadIdentity !== responseIdentity) {
+                        throw new Error('Server response does not reflect updated source identity');
                     }
                 }
 
