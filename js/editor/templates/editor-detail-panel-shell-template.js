@@ -35,6 +35,14 @@ export function buildDetailPanelShellTemplate() {
                 </div>
             </div>
 
+            <div class="editor-save-status-card">
+                <div id="saveStatusIndicator" class="save-status-indicator save-status editor-save-status-wrap" aria-live="polite">
+                    <span id="saveStatusIcon" class="editor-save-status-icon-hidden"></span>
+                    <span id="saveStatusText">저장됨</span>
+                    <span id="lastSavedTime" class="last-saved-time"></span>
+                </div>
+            </div>
+
         </aside>
     `;
 }

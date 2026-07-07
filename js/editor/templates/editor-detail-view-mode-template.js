@@ -86,14 +86,6 @@ export function buildDetailViewModeTemplate() {
                         <span class="editor-reaction-comment-count" id="momentCommentCount">0</span>
                     </button>
                 </div>
-
-                <div class="editor-save-status-card">
-                    <div id="saveStatusIndicator" class="save-status-indicator save-status editor-save-status-wrap" aria-live="polite">
-                        <span id="saveStatusIcon" class="editor-save-status-icon-hidden"></span>
-                        <span id="saveStatusText">저장됨</span>
-                        <span id="lastSavedTime" class="last-saved-time"></span>
-                    </div>
-                </div>
             </div>
     `;
 }

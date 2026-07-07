@@ -34,7 +34,7 @@ test('editor page cache-busts the social footer stylesheet and template', () => 
   const source = fs.readFileSync(editorPagePath, 'utf8');
 
   assert.match(source, /editor\.css\?v=20260614-2465/, 'editor stylesheet entrypoint must be cache-busted for this slice');
-  assert.match(source, /editor-detail-view-mode-template\.js\?v=20260615-2501/, 'detail view template must be cache-busted');
+  assert.match(source, /editor-detail-view-mode-template\.js\?v=fd957a097b3b/, 'detail view template must be cache-busted');
 });
 
 test('editor branch creation affordance remains in floating toolbar without being a primary visible CTA', () => {
