@@ -367,85 +367,31 @@ function createEditorMemoryActions(deps) {
                     });
                 }
                 endSeconds = endCheck.endSeconds;
-            }
-
-            const payload = {
-                title: titleInput ? titleInput.value.trim() : currentEditingMemory.title,
-                memo: memoInput ? memoInput.value.trim() : currentEditingMemory.memo,
-                emotionTags: tagsInput ? tagsInput.value.split(',').map((t) => t.trim()).filter((t) => t) : currentEditingMemory.emotionTags
+            }            // ── Canonical snapshot boundary and normalization ────────────────
+            const normText = (val) => {
+                return String(val || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim();
             };
 
-            if (sourceUrlInput) {
-                const rawSourceUrl = sourceUrlInput.value.trim();
-                const previousSourceUrl = getEditableSourceUrl(currentEditingMemory);
-                const parsedPrev = extractYouTubeStartAndEnd(previousSourceUrl);
-                const prevStart = parsedPrev.start;
-                const prevEnd = parsedPrev.end;
-
-                const urlChanged = rawSourceUrl !== previousSourceUrl;
-                const startChanged = startSeconds !== prevStart;
-                const endChanged = endSeconds !== prevEnd;
-
-                if (urlChanged || startChanged || endChanged) {
-                    const media = window.LoveBudMedia || {};
-                    const isYoutube = typeof media.extractYouTubeId === 'function'
-                        ? !!media.extractYouTubeId(rawSourceUrl)
-                        : !!(rawSourceUrl.match(/(?:v=|\/|youtu\.be\/|embed\/|shorts\/)([0-9A-Za-z_-]{11})/));
-
-                    if (rawSourceUrl) {
-                        if (isYoutube) {
-                            const sourceUpdate = resolveSourceUpdate(rawSourceUrl);
-                            if (!sourceUpdate) {
-                                showToast(formatI18nText('invalid_youtube_unsupported', 'YouTube 링크만 지원합니다. youtube.com 또는 youtu.be 링크를 사용해 주세요.'), 'error');
-                                updateSaveStatus('manual_failed', formatI18nText('save_failed', '저장 실패'));
-                                return emitSaveOutcome('failed', {
-                                    message: formatI18nText('save_failed', '저장 실패'),
-                                    saveStatus: 'manual_failed'
-                                });
-                            }
-
-                            let embedUrl = typeof media.getEmbedUrl === 'function'
-                                ? media.getEmbedUrl(rawSourceUrl, 'youtube', { startSeconds })
-                                : sourceUpdate.sourceUrl;
-
-                            if (embedUrl && endSeconds !== null) {
-                                try {
-                                    const parsedEmbed = new URL(embedUrl);
-                                    parsedEmbed.searchParams.set('end', String(endSeconds));
-                                    embedUrl = parsedEmbed.toString();
-                                } catch (e) {
-                                    console.error('Failed to parse embedUrl for setting end parameter', e);
-                                }
-                            }
-
-                            sourceUpdate.sourceUrl = embedUrl;
-                            Object.assign(payload, sourceUpdate);
-                        } else {
-                            showToast(formatI18nText('invalid_youtube_unsupported', 'YouTube 링크만 지원합니다. youtube.com 또는 youtu.be 링크를 사용해 주세요.'), 'error');
-                            updateSaveStatus('manual_failed', formatI18nText('save_failed', '저장 실패'));
-                            return emitSaveOutcome('failed', {
-                                message: formatI18nText('save_failed', '저장 실패'),
-                                saveStatus: 'manual_failed'
-                            });
-                        }
-                    } else {
-                        if (previousSourceUrl) {
-                            Object.assign(payload, {
-                                sourceUrl: '',
-                                sourceType: 'other',
-                                thumbnail: '',
-                                source: ''
-                            });
-                        }
-                    }
+            const normTags = (val) => {
+                if (Array.isArray(val)) {
+                    return val.map((t) => String(t || '').trim()).filter((t) => t);
                 }
-            }
+                return String(val || '').split(',').map((t) => t.trim()).filter((t) => t);
+            };
 
-            // ── No-change guard: skip API write if nothing changed ───────
-            const prevTitle = String(currentEditingMemory.title || '').trim();
-            const prevMemo = String(currentEditingMemory.memo || '').trim();
-            const prevTags = (currentEditingMemory.emotionTags || []).slice().sort().join(',');
-            const prevSourceUrl = getEditableSourceUrl(currentEditingMemory);
+            // Get inputs or defaults
+            const titleVal = titleInput ? titleInput.value : (currentEditingMemory.title || '');
+            const memoVal = memoInput ? memoInput.value : (currentEditingMemory.memo || '');
+            const tagsVal = tagsInput ? tagsInput.value : (currentEditingMemory.emotionTags || []).join(', ');
+
+            // Calculate normalized forms for comparison
+            const newTitle = normText(titleVal);
+            const newMemo = normText(memoVal);
+            const newTags = normTags(tagsVal).slice().sort().join(',');
+
+            const prevTitle = normText(currentEditingMemory.title);
+            const prevMemo = normText(currentEditingMemory.memo);
+            const prevTags = normTags(currentEditingMemory.emotionTags).slice().sort().join(',');
 
             const media = window.LoveBudMedia || {};
             const extractVid = (url) => {
@@ -455,14 +401,12 @@ function createEditorMemoryActions(deps) {
                     : ((url.match(/(?:v=|\/|youtu\.be\/|embed\/|shorts\/)([0-9A-Za-z_-]{11})/) || [])[1] || null);
             };
 
+            const prevSourceUrl = getEditableSourceUrl(currentEditingMemory);
             const prevVideoId = extractVid(prevSourceUrl);
             const prevSegment = extractYouTubeStartAndEnd(prevSourceUrl);
             const prevStart = (prevSegment.start === null || prevSegment.start === undefined) ? null : Number(prevSegment.start);
             const prevEnd = (prevSegment.end === null || prevSegment.end === undefined) ? null : Number(prevSegment.end);
 
-            const newTitle = titleInput ? titleInput.value.trim() : prevTitle;
-            const newMemo = memoInput ? memoInput.value.trim() : prevMemo;
-            const newTags = tagsInput ? tagsInput.value.split(',').map((t) => t.trim()).filter(Boolean).slice().sort().join(',') : prevTags;
             const newRawUrl = sourceUrlInput ? sourceUrlInput.value.trim() : prevSourceUrl;
             const newVideoId = extractVid(newRawUrl);
             const newStart = (startSeconds === null || startSeconds === undefined) ? null : Number(startSeconds);
@@ -470,13 +414,10 @@ function createEditorMemoryActions(deps) {
 
             let sourceChanged = false;
             if (prevVideoId && newVideoId) {
-                // Both are YouTube videos: compare video IDs and normalized segments
                 sourceChanged = (prevVideoId !== newVideoId || prevStart !== newStart || prevEnd !== newEnd);
             } else if (!prevVideoId && !newVideoId) {
-                // Neither are YouTube videos: compare normalized raw URLs directly
                 sourceChanged = (prevSourceUrl !== newRawUrl);
             } else {
-                // One is YouTube and the other is not: definitely changed
                 sourceChanged = true;
             }
 
@@ -492,6 +433,61 @@ function createEditorMemoryActions(deps) {
                 return reportNonNetworkSaveOutcome('no_change', 'manual_nochange', noChangeMessage);
             }
 
+            // Create payload from normalized/canonical values
+            const payload = {
+                title: titleInput ? newTitle : currentEditingMemory.title,
+                memo: memoInput ? newMemo : currentEditingMemory.memo,
+                emotionTags: tagsInput ? normTags(tagsVal).slice().sort() : currentEditingMemory.emotionTags
+            };
+
+            if (sourceUrlInput && sourceChanged) {
+                if (newRawUrl) {
+                    if (newVideoId) {
+                        const sourceUpdate = resolveSourceUpdate(newRawUrl);
+                        if (!sourceUpdate) {
+                            showToast(formatI18nText('invalid_youtube_unsupported', 'YouTube 링크만 지원합니다. youtube.com 또는 youtu.be 링크를 사용해 주세요.'), 'error');
+                            updateSaveStatus('manual_failed', formatI18nText('save_failed', '저장 실패'));
+                            return emitSaveOutcome('failed', {
+                                message: formatI18nText('save_failed', '저장 실패'),
+                                saveStatus: 'manual_failed'
+                            });
+                        }
+
+                        let embedUrl = typeof media.getEmbedUrl === 'function'
+                            ? media.getEmbedUrl(newRawUrl, 'youtube', { startSeconds: newStart })
+                            : sourceUpdate.sourceUrl;
+
+                        if (embedUrl && newEnd !== null) {
+                            try {
+                                const parsedEmbed = new URL(embedUrl);
+                                parsedEmbed.searchParams.set('end', String(newEnd));
+                                embedUrl = parsedEmbed.toString();
+                            } catch (e) {
+                                console.error('Failed to parse embedUrl for setting end parameter', e);
+                            }
+                        }
+
+                        sourceUpdate.sourceUrl = embedUrl;
+                        Object.assign(payload, sourceUpdate);
+                    } else {
+                        showToast(formatI18nText('invalid_youtube_unsupported', 'YouTube 링크만 지원합니다. youtube.com 또는 youtu.be 링크를 사용해 주세요.'), 'error');
+                        updateSaveStatus('manual_failed', formatI18nText('save_failed', '저장 실패'));
+                        return emitSaveOutcome('failed', {
+                            message: formatI18nText('save_failed', '저장 실패'),
+                            saveStatus: 'manual_failed'
+                        });
+                    }
+                } else {
+                    if (prevSourceUrl) {
+                        Object.assign(payload, {
+                            sourceUrl: '',
+                            sourceType: 'other',
+                            thumbnail: '',
+                            source: ''
+                        });
+                    }
+                }
+            }
             const savingMessage = formatI18nText('save_saving', '저장 중...');
             updateSaveStatus('manual_saving', savingMessage);
             emitSaveOutcome('saving', {
