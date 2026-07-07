@@ -526,6 +526,42 @@ function createEditorMemoryActions(deps) {
                     if (responseVideoId !== payloadVideoId) {
                         throw new Error('Server response contains stale video reference');
                     }
+
+                    // ── Derived-media coherence validation ─────────────────────
+                    // When the server returns thumbnail / sourceType / source fields,
+                    // verify they are coherent with the new video identity.
+                    // Three states:
+                    //   field omitted (undefined)          → accept, use payload canonical
+                    //   field present but empty            → reject
+                    //   field present with mismatched value → reject
+                    // Thumbnail coherence: extract video ID from thumbnail URL
+                    if (savedPatch.thumbnail !== undefined) {
+                        if (!savedPatch.thumbnail) {
+                            throw new Error('Server response has empty thumbnail for YouTube source');
+                        }
+                        const thumbnailVideoId = (function extractId(url) {
+                            if (!url || typeof url !== 'string') return null;
+                            const m = url.match(/\/vi\/([0-9A-Za-z_-]{11})\//);
+                            return m ? m[1] : null;
+                        })(savedPatch.thumbnail);
+                        if (!thumbnailVideoId || thumbnailVideoId !== payloadVideoId) {
+                            throw new Error('Server response contains stale thumbnail for previous video');
+                        }
+                    }
+                    // sourceType coherence: YouTube source must report 'youtube'
+                    if (savedPatch.sourceType !== undefined) {
+                        const st = String(savedPatch.sourceType || '').trim().toLowerCase();
+                        if (!st || st !== 'youtube') {
+                            throw new Error('Server response has mismatched sourceType for YouTube source');
+                        }
+                    }
+                    // source label coherence: YouTube source must report 'youtube' (case-insensitive)
+                    if (savedPatch.source !== undefined) {
+                        const s = String(savedPatch.source || '').trim().toLowerCase();
+                        if (!s || s !== 'youtube') {
+                            throw new Error('Server response has mismatched source label for YouTube source');
+                        }
+                    }
                 }
 
                 // If the user changed title, verify the response acknowledges it
