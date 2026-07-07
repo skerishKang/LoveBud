@@ -18,18 +18,44 @@ test('Detail View Mode template helper exists and contains markup', () => {
     assert.ok(helperCode.includes('id="continueFromMomentBtn"'), 'must include continue btn id');
     assert.ok(helperCode.includes('id="detailTags"'), 'must include tags id');
     assert.ok(helperCode.includes('id="detailMemo"'), 'must include memo id');
-    assert.ok(helperCode.includes('id="saveStatusIndicator"'), 'must include save status indicator id');
-    assert.ok(helperCode.includes('id="saveStatusText"'), 'must include save status text id');
-    assert.ok(helperCode.includes('id="lastSavedTime"'), 'must include last saved time id');
-    
+
     assert.ok(helperCode.includes('class="editor-hidden-initial"'), 'must include editor-hidden-initial class');
     assert.match(helperCode, /id="detailViewMode"[^>]*style="display:\s*none;"/, 'detail view mode root must be initially hidden');
     assert.ok(helperCode.includes('class="editor-current-moment-card"'), 'must include editor-current-moment-card class');
     assert.ok(helperCode.includes('class="editor-moment-actions-card"'), 'must include editor-moment-actions-card class');
     assert.ok(helperCode.includes('class="editor-moment-info-card"'), 'must include editor-moment-info-card class');
-    assert.ok(helperCode.includes('class="editor-save-status-card"'), 'must include editor-save-status-card class');
 
     assert.ok(helperCode.includes('editorDetailViewModeTemplateMount'), 'must find mount element');
+});
+
+test('Detail View Mode template must NOT contain the shared save-status markup', () => {
+    const helperCode = fs.readFileSync('js/editor/templates/editor-detail-view-mode-template.js', 'utf8');
+
+    assert.ok(!helperCode.includes('id="saveStatusIndicator"'), 'view-mode template must not contain saveStatusIndicator');
+    assert.ok(!helperCode.includes('id="saveStatusText"'), 'view-mode template must not contain saveStatusText');
+    assert.ok(!helperCode.includes('id="saveStatusIcon"'), 'view-mode template must not contain saveStatusIcon');
+    assert.ok(!helperCode.includes('id="lastSavedTime"'), 'view-mode template must not contain lastSavedTime');
+    assert.ok(!helperCode.includes('class="editor-save-status-card"'), 'view-mode template must not contain editor-save-status-card');
+});
+
+test('Detail Panel Shell template must contain the shared save-status markup exactly once', () => {
+    const helperCode = fs.readFileSync('js/editor/templates/editor-detail-panel-shell-template.js', 'utf8');
+
+    assert.ok(helperCode.includes('id="saveStatusIndicator"'), 'shell template must contain saveStatusIndicator');
+    assert.ok(helperCode.includes('id="saveStatusText"'), 'shell template must contain saveStatusText');
+    assert.ok(helperCode.includes('id="saveStatusIcon"'), 'shell template must contain saveStatusIcon');
+    assert.ok(helperCode.includes('id="lastSavedTime"'), 'shell template must contain lastSavedTime');
+    assert.ok(helperCode.includes('aria-live="polite"'), 'shell template must contain the single aria-live region');
+    assert.ok(helperCode.includes('class="editor-save-status-card"'), 'shell template must contain editor-save-status-card');
+
+    const indicatorCount = (helperCode.match(/id="saveStatusIndicator"/g) || []).length;
+    assert.strictEqual(indicatorCount, 1, 'saveStatusIndicator must appear exactly once in the shell template');
+
+    const ariaLiveCount = (helperCode.match(/aria-live="polite"/g) || []).length;
+    assert.strictEqual(ariaLiveCount, 1, 'aria-live polite region must appear exactly once in the shell template');
+
+    const statusCardCount = (helperCode.match(/class="editor-save-status-card"/g) || []).length;
+    assert.strictEqual(statusCardCount, 1, 'editor-save-status-card must appear exactly once in the shell template');
 });
 
 test('editor.html uses template mount and removes raw detail view mode markup', () => {

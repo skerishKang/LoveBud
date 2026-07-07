@@ -11,7 +11,9 @@ const TRACKED_ASSETS = [
   'js/editor/editor-bindings.js',
   'js/editor/editor-save-status.js',
   'js/editor/editor-save-status-ui.js',
-  'js/editor/editor-save-status-orchestration.js'
+  'js/editor/editor-save-status-orchestration.js',
+  'js/editor/templates/editor-detail-panel-shell-template.js',
+  'js/editor/templates/editor-detail-view-mode-template.js'
 ];
 
 function getSHA256First12(filePath) {
@@ -19,7 +21,7 @@ function getSHA256First12(filePath) {
   return crypto.createHash('sha256').update(content, 'utf8').digest('hex').slice(0, 12);
 }
 
-test('assert five tracked editor scripts have query-string version matching content SHA-256 fingerprint', () => {
+test('assert tracked editor scripts and save-status templates have query-string version matching content SHA-256 fingerprint', () => {
   const htmlContent = fs.readFileSync(path.join(ROOT, 'pages/editor.html'), 'utf8');
 
   // Verify that all 5 tracked assets are actually loaded in editor.html
