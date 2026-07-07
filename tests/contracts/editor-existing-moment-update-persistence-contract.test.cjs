@@ -140,7 +140,8 @@ async function runSaveMemoryEdit({
           if (!apiShouldResolve) throw new Error('update failed');
           if (apiResponse !== null) return apiResponse;
           return { id: id, ...(sandbox.currentEditingMemory || {}), ...payload, updatedAt: new Date().toISOString() };
-        }
+        },
+        clearCommunityCaches: function() { communityCacheClearCount++; }
       },
       LoveBudEditorInteractionMode: { isEditMode() { return true; } }
     }
@@ -152,6 +153,9 @@ async function runSaveMemoryEdit({
     set: function(key, val, ttl) { cacheWriteCount++; },
     get: function() { return null; }
   };
+
+  // ── Community cache clear tracker ──────────────────────────────────
+  let communityCacheClearCount = 0;
 
   var source = fs.readFileSync(path.join(ROOT, 'js/editor/editor-memory-actions.js'), 'utf-8');
   new vm.Script(source).runInNewContext(sandbox);
@@ -210,6 +214,7 @@ async function runSaveMemoryEdit({
     getDirectMemoryTitle: function() { return sandbox.currentEditingMemory ? sandbox.currentEditingMemory.title : null; },
     getDirectCallCount: function() { return callCount; },
     getCacheWriteCount: function() { return cacheWriteCount; },
+    getCommunityCacheClearCount: function() { return communityCacheClearCount; },
     getDetailPanelUpdated: function() { return sandbox.detailPanelUpdated; },
     getRenderedCanvas: function() { return sandbox.renderedCanvas; },
   };
@@ -875,4 +880,103 @@ test('H. empty source label in response — rejected', { timeout: 3000 }, async 
   assert.equal(ctx.getCacheWriteCount(), 0, 'cache must NOT be written');
   assert.equal(ctx.getRenderedCanvas(), false, 'canvas must NOT rerender');
   assert.equal(ctx.getFormDisplay('edit'), 'block', 'edit form must stay open');
+  assert.equal(ctx.getCommunityCacheClearCount(), 0, 'community cache clear must be 0 on empty source label rejection');
+});
+
+// =============================================================================
+// #3283: Manual save — community cache invalidation
+// =============================================================================
+
+test('I. manual successful save — clearCommunityCaches called exactly once', { timeout: 3000 }, async function(t) {
+  var mem = {
+    id: 'mem-1', title: 'Old',
+    sourceUrl: 'https://www.youtube.com/embed/aaaaaaaaaaa', sourceType: 'youtube',
+    thumbnail: 'https://img.youtube.com/vi/aaaaaaaaaaa/mqdefault.jpg',
+    source: 'YouTube', emotionTags: []
+  };
+  var canonicalResponse = {
+    id: 'mem-1', title: 'Updated',
+    sourceUrl: 'https://www.youtube.com/embed/aaaaaaaaaaa', sourceType: 'youtube',
+    thumbnail: 'https://img.youtube.com/vi/aaaaaaaaaaa/mqdefault.jpg',
+    source: 'YouTube',
+    emotionTags: [], updatedAt: new Date().toISOString()
+  };
+  var ctx = await runSaveMemoryEdit({
+    initialMemory: mem,
+    domValues: { title: 'Updated', memo: '', tags: '', sourceUrl: 'https://www.youtube.com/embed/aaaaaaaaaaa' },
+    apiResponse: canonicalResponse
+  });
+
+  await ctx.actions.saveMemoryEdit();
+
+  assert.equal(ctx.getCallCount(), 1, 'API was called exactly once');
+  assert.equal(ctx.getCommunityCacheClearCount(), 1, 'clearCommunityCaches must be called exactly once');
+  assert.equal(ctx.getEditingMemory().title, 'Updated', 'memory title must be updated');
+  assert.equal(ctx.getToast().type, 'success', 'must show success toast');
+});
+
+test('J. manual no-change — clearCommunityCaches not called', { timeout: 3000 }, async function(t) {
+  var mem = {
+    id: 'mem-1', title: 'Same',
+    sourceUrl: 'https://www.youtube.com/embed/aaaaaaaaaaa', sourceType: 'youtube', emotionTags: []
+  };
+  var ctx = await runSaveMemoryEdit({
+    initialMemory: mem,
+    domValues: { title: 'Same', memo: '', tags: '', sourceUrl: 'https://www.youtube.com/embed/aaaaaaaaaaa' },
+    apiShouldResolve: true
+  });
+
+  await ctx.actions.saveMemoryEdit();
+
+  assert.equal(ctx.getCallCount(), 0, 'no-change: 0 API calls');
+  assert.equal(ctx.getCommunityCacheClearCount(), 0, 'clearCommunityCaches must NOT be called');
+});
+
+test('K. manual API failure — clearCommunityCaches not called', { timeout: 3000 }, async function(t) {
+  var mem = {
+    id: 'mem-1', title: 'Old',
+    sourceUrl: 'https://www.youtube.com/embed/aaaaaaaaaaa', sourceType: 'youtube', emotionTags: []
+  };
+  var ctx = await runSaveMemoryEdit({
+    initialMemory: mem,
+    domValues: { title: 'New', memo: '', tags: '', sourceUrl: 'https://www.youtube.com/embed/aaaaaaaaaaa' },
+    apiShouldResolve: false
+  });
+
+  await ctx.actions.saveMemoryEdit();
+
+  assert.equal(ctx.getCallCount(), 1, 'API was called once');
+  assert.equal(ctx.getCommunityCacheClearCount(), 0, 'clearCommunityCaches must NOT be called on failure');
+  assert.equal(ctx.getToast().type, 'error', 'must show error toast');
+});
+
+test('L. manual stale acknowledgement — clearCommunityCaches not called', { timeout: 3000 }, async function(t) {
+  var mem = {
+    id: 'mem-1', title: 'Old',
+    sourceUrl: 'https://www.youtube.com/embed/aaaaaaaaaaa', sourceType: 'youtube',
+    thumbnail: 'https://img.youtube.com/vi/aaaaaaaaaaa/mqdefault.jpg', emotionTags: []
+  };
+  var staleThumbnailResponse = {
+    id: 'mem-1', title: 'Old',
+    sourceUrl: 'https://www.youtube.com/embed/bbbbbbbbbbb',
+    sourceType: 'youtube',
+    thumbnail: 'https://img.youtube.com/vi/aaaaaaaaaaa/mqdefault.jpg',
+    source: 'YouTube',
+    emotionTags: [], updatedAt: new Date().toISOString()
+  };
+  var ctx = await runSaveMemoryEdit({
+    initialMemory: mem,
+    domValues: { title: 'Old', memo: '', tags: '', sourceUrl: 'https://www.youtube.com/shorts/bbbbbbbbbbb' },
+    apiResponse: staleThumbnailResponse
+  });
+
+  ctx.actions.enterEditMode();
+  ctx.setInputValue('editSourceUrlInput', 'https://www.youtube.com/shorts/bbbbbbbbbbb');
+  assert.equal(ctx.getFormDisplay('edit'), 'block', 'edit form is open');
+
+  await ctx.actions.saveMemoryEdit();
+
+  assert.equal(ctx.getCallCount(), 1, 'API was called once');
+  assert.equal(ctx.getCommunityCacheClearCount(), 0, 'clearCommunityCaches must NOT be called on stale thumbnail rejection');
+  assert.equal(ctx.getToast().type, 'error', 'must show error toast');
 });

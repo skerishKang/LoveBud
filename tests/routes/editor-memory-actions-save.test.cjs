@@ -11,7 +11,8 @@ function createMemoryActionsWithStubs(overrides = {}) {
     console: { ...console, error: () => {} },
     window: {
       apiClient: {
-        updateMemory: async () => ({})
+        updateMemory: async () => ({}),
+        clearCommunityCaches: overrides.clearCommunityCaches || (() => {})
       },
       LoveBudCache: {
         set: () => {}
@@ -28,12 +29,14 @@ function createMemoryActionsWithStubs(overrides = {}) {
   const statuses = [];
   const detailUpdates = [];
   const cacheWrites = [];
+  let communityCacheClearCount = 0;
 
   context.window.apiClient.updateMemory = overrides.updateMemory || (async (memoryId, payload) => ({
     id: memoryId,
     ...payload,
     updatedAt: 'updated'
   }));
+  context.window.apiClient.clearCommunityCaches = () => { communityCacheClearCount++; };
   context.window.LoveBudCache.set = (key, value) => cacheWrites.push({ key, value });
 
   const actions = context.window.createEditorMemoryActions({
@@ -57,7 +60,7 @@ function createMemoryActionsWithStubs(overrides = {}) {
     setDetailEmptyState: () => {},
     rerenderCanvas: () => {},
     getCurrentTreeData: () => currentTreeData,
-    isLocalSaveMode: () => false
+    isLocalSaveMode: overrides.isLocalSaveMode || (() => false)
   });
 
   return {
@@ -67,7 +70,8 @@ function createMemoryActionsWithStubs(overrides = {}) {
     currentTreeData,
     statuses,
     detailUpdates,
-    cacheWrites
+    cacheWrites,
+    getCommunityCacheClearCount: () => communityCacheClearCount
   };
 }
 
@@ -91,6 +95,7 @@ test('editor inline memo save persists through API and refreshes current moment 
   assert.equal(harness.detailUpdates.at(-1).memo, 'after');
   assert.equal(harness.cacheWrites.at(-1).key, 'memories_tree-1');
   assert.deepEqual(harness.statuses, ['auto_saving', 'auto_saved']);
+  assert.equal(harness.getCommunityCacheClearCount(), 1, 'inline save must clear community caches exactly once');
 });
 
 test('editor inline memo save failure keeps existing state and reports failed status', async () => {
@@ -107,4 +112,18 @@ test('editor inline memo save failure keeps existing state and reports failed st
   assert.equal(harness.currentEditingMemory.memo, 'before');
   assert.equal(harness.detailUpdates.length, 0);
   assert.deepEqual(harness.statuses, ['auto_saving', 'auto_failed']);
+  assert.equal(harness.getCommunityCacheClearCount(), 0, 'inline save failure must NOT clear community caches');
+});
+
+test('editor inline memo save with localSaveMode must NOT clear community caches', async () => {
+  const harness = createMemoryActionsWithStubs({
+    isLocalSaveMode: () => true
+  });
+
+  const result = await harness.actions.updateSelectedMemoryFields({ memo: 'local-only' });
+
+  assert.equal(result, true);
+  assert.equal(harness.treeMemories[0].memo, 'local-only');
+  assert.equal(harness.currentEditingMemory.memo, 'local-only');
+  assert.equal(harness.getCommunityCacheClearCount(), 0, 'localSaveMode must NOT clear community caches');
 });
