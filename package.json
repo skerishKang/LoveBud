@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "type": "module",
   "private": true,
-  "description": "LoveBud — Cloudflare Pages frontend + same-origin API entry with Modal/Vercel/Netlify transitional layers",
+  "description": "LoveBud — Cloudflare Pages frontend and same-origin /api entry; Pages Functions → Modal → Neon active path; Firebase Auth/client bootstrap; Vercel/Netlify legacy artifacts",
   "scripts": {
     "lint": "node scripts/lint-static.js",
     "build": "node scripts/build-static.js",
