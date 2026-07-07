@@ -94,6 +94,16 @@ function createEditorMemoryActions(deps) {
 
     const getEditableSourceUrl = (memory) => String(memory?.sourceUrl || '').trim();
 
+    const clearCommunityCaches = () => {
+        if (window.apiClient && typeof window.apiClient.clearCommunityCaches === 'function') {
+            try {
+                window.apiClient.clearCommunityCaches();
+            } catch (e) {
+                console.error('[editor] Failed to clear community caches:', e);
+            }
+        }
+    };
+
     const resolveSourceUpdate = (rawUrl) => {
         const value = String(rawUrl || '').trim();
         if (!value) {
@@ -628,6 +638,9 @@ function createEditorMemoryActions(deps) {
                 updateSidebarStatus();
                 if (typeof rerenderCanvas === 'function') rerenderCanvas();
 
+                // Invalidate community/public caches so stale data is not served
+                clearCommunityCaches();
+
                 updateSaveStatus('manual_saved', i18n('save_saved'));
                 showToast(i18n('memory_updated') || '순간을 수정했어요', 'success');
                 return emitSaveOutcome('saved', {
@@ -725,6 +738,11 @@ function createEditorMemoryActions(deps) {
             if (typeof updateDetailPanel === 'function') updateDetailPanel(updatedMemory);
         } else if (typeof updateDetailPanel === 'function') {
             updateDetailPanel(nextMemory);
+        }
+
+        // Invalidate community/public caches after confirmed remote update
+        if (!localSaveMode && savedMemory) {
+            clearCommunityCaches();
         }
 
         if (typeof rerenderCanvas === 'function') rerenderCanvas();
