@@ -118,70 +118,75 @@ function createHarness(options = {}) {
     });
   }
 
+  const windowObject = {
+    apiClient: {
+      updateMemory: async (memoryId, payload) => {
+        apiCallCount += 1;
+        if (typeof options.updateMemory === 'function') {
+          return options.updateMemory(memoryId, payload);
+        }
+        if (deferredPromise) {
+          return deferredPromise;
+        }
+        return { id: memoryId, ...currentEditingMemory, ...payload };
+      }
+    },
+    LoveBudMedia: {
+      extractYouTubeId(url) {
+        if (!url) return '';
+        const match = String(url).match(/(?:v=|\/|embed\/|shorts\/)([0-9A-Za-z_-]{11})/);
+        return match ? match[1] : '';
+      },
+      getEmbedUrl(url) {
+        const match = String(url).match(/(?:v=|\/|embed\/|shorts\/)([0-9A-Za-z_-]{11})/);
+        return match ? `https://www.youtube.com/embed/${match[1]}` : '';
+      },
+      getThumbnailUrl(url) {
+        const match = String(url).match(/(?:v=|\/|embed\/|shorts\/)([0-9A-Za-z_-]{11})/);
+        return match ? `https://img.youtube.com/vi/${match[1]}/mqdefault.jpg` : '';
+      },
+      parseYouTubeTimeToSeconds(value) {
+        if (!value) return null;
+        const parts = String(value).split(':').map(Number);
+        if (parts.length === 2) return (parts[0] * 60) + parts[1];
+        return Number(value);
+      }
+    },
+    LoveBudEditorMemoryFormTime: {
+      parseTime(value) {
+        if (!value) return null;
+        const parts = String(value).split(':').map(Number);
+        if (parts.length === 2) return (parts[0] * 60) + parts[1];
+        return Number(value);
+      },
+      validateEndTime({ rawEndTime, startSeconds, invalidMessage, rangeMessage }) {
+        if (!rawEndTime || !String(rawEndTime).trim()) return { ok: true, endSeconds: null };
+        const parts = String(rawEndTime).split(':').map(Number);
+        const endSeconds = parts.length === 2 ? (parts[0] * 60) + parts[1] : Number(rawEndTime);
+        if (Number.isNaN(endSeconds)) return { ok: false, message: invalidMessage };
+        if (startSeconds != null && endSeconds <= startSeconds) return { ok: false, message: rangeMessage };
+        return { ok: true, endSeconds };
+      }
+    },
+    LoveBudCache: {
+      set() {}
+    }
+  };
+
+  if (options.modeHelper === undefined) {
+    windowObject.LoveBudEditorInteractionMode = {
+      isEditMode: () => options.isEditMode !== false
+    };
+  } else if (options.modeHelper !== null) {
+    windowObject.LoveBudEditorInteractionMode = options.modeHelper;
+  }
+
   const sandbox = {
     console: { ...console, error: () => {} },
     document: doc,
     setTimeout,
     clearTimeout,
-    window: {
-      apiClient: {
-        updateMemory: async (memoryId, payload) => {
-          apiCallCount += 1;
-          if (typeof options.updateMemory === 'function') {
-            return options.updateMemory(memoryId, payload);
-          }
-          if (deferredPromise) {
-            return deferredPromise;
-          }
-          return { id: memoryId, ...currentEditingMemory, ...payload };
-        }
-      },
-      LoveBudMedia: {
-        extractYouTubeId(url) {
-          if (!url) return '';
-          const match = String(url).match(/(?:v=|\/|embed\/|shorts\/)([0-9A-Za-z_-]{11})/);
-          return match ? match[1] : '';
-        },
-        getEmbedUrl(url) {
-          const match = String(url).match(/(?:v=|\/|embed\/|shorts\/)([0-9A-Za-z_-]{11})/);
-          return match ? `https://www.youtube.com/embed/${match[1]}` : '';
-        },
-        getThumbnailUrl(url) {
-          const match = String(url).match(/(?:v=|\/|embed\/|shorts\/)([0-9A-Za-z_-]{11})/);
-          return match ? `https://img.youtube.com/vi/${match[1]}/mqdefault.jpg` : '';
-        },
-        parseYouTubeTimeToSeconds(value) {
-          if (!value) return null;
-          const parts = String(value).split(':').map(Number);
-          if (parts.length === 2) return (parts[0] * 60) + parts[1];
-          return Number(value);
-        }
-      },
-      LoveBudEditorMemoryFormTime: {
-        parseTime(value) {
-          if (!value) return null;
-          const parts = String(value).split(':').map(Number);
-          if (parts.length === 2) return (parts[0] * 60) + parts[1];
-          return Number(value);
-        },
-        validateEndTime({ rawEndTime, startSeconds, invalidMessage, rangeMessage }) {
-          if (!rawEndTime || !String(rawEndTime).trim()) return { ok: true, endSeconds: null };
-          const parts = String(rawEndTime).split(':').map(Number);
-          const endSeconds = parts.length === 2 ? (parts[0] * 60) + parts[1] : Number(rawEndTime);
-          if (Number.isNaN(endSeconds)) return { ok: false, message: invalidMessage };
-          if (startSeconds != null && endSeconds <= startSeconds) return { ok: false, message: rangeMessage };
-          return { ok: true, endSeconds };
-        }
-      },
-      LoveBudEditorInteractionMode: {
-        ...(options.modeHelper === undefined
-          ? { isEditMode: () => options.isEditMode !== false }
-          : options.modeHelper),
-      },
-      LoveBudCache: {
-        set() {}
-      }
-    }
+    window: windowObject
   };
 
   vm.createContext(sandbox);
