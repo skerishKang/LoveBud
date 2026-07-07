@@ -418,6 +418,8 @@ test('Case 4: YouTube source URL with start/end segment unchanged save', async (
 
   assert.equal(harness.getUpdateMemoryCalls().length, 0, 'Should call updateMemory 0 times when YouTube segment is unchanged');
   assert.equal(harness.elements.detailEditMode.style.display, 'block', 'detailEditMode remains open');
+  assert.equal(harness.elements.detailViewMode.style.display, 'none', 'detailViewMode remains hidden');
   assert.equal(res.outcome, 'no_change');
   assert.equal(harness.elements.saveStatusText.textContent, '변경된 내용이 없어요');
+  assert.deepEqual(harness.getToasts(), [{ message: '변경된 내용이 없어요', type: 'info' }]);
 });
