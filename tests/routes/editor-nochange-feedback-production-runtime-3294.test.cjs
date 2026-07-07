@@ -1175,6 +1175,94 @@ test('production runtime: unchanged save from active edit form surfaces visible 
   }
 });
 
+test('shell template structural hierarchy: #saveStatusIndicator is outside #detailContent, and #detailViewMode/#detailEditMode are absent', () => {
+  const SHELL_TEMPLATE_PATH = path.join(ROOT, 'js/editor/templates/editor-detail-panel-shell-template.js');
+  const source = fs.readFileSync(SHELL_TEMPLATE_PATH, 'utf8');
+  const templateMatch = source.match(/return\s*`([\s\S]*?)`\s*;/);
+  assert.ok(templateMatch, 'template string must be extractable from source');
+  const html = templateMatch[1];
+
+  // Verify the shell template does NOT contain view/edit mode containers
+  // (they are mounted into #detailContent by separate template files)
+  assert.ok(!html.includes('detailViewMode'), 'detailViewMode must not appear in shell template');
+  assert.ok(!html.includes('detailEditMode'), 'detailEditMode must not appear in shell template');
+
+  // Locate key sections in the template output
+  const detailContentOpen = '<div class="detail-content" id="detailContent">';
+  const saveStatusCardOpen = '<div class="editor-save-status-card">';
+  const contentOpenIdx = html.indexOf(detailContentOpen);
+  assert.ok(contentOpenIdx >= 0, 'detailContent opening tag must be present');
+
+  const cardIdx = html.indexOf(saveStatusCardOpen);
+  assert.ok(cardIdx >= 0, 'editor-save-status-card must be present');
+
+  // The save-status section starts after detailContent closes
+  const contentSection = html.slice(contentOpenIdx, cardIdx);
+  assert.ok(!contentSection.includes('saveStatusIndicator'),
+    '#saveStatusIndicator must NOT be inside #detailContent');
+
+  // The card section contains saveStatusIndicator
+  const cardSection = html.slice(cardIdx);
+  assert.ok(cardSection.includes('id="saveStatusIndicator"'),
+    'editor-save-status-card section must contain #saveStatusIndicator');
+
+  // Verify detailPanel is the direct container for both
+  const asideOpen = '<aside class="detail-panel memory-detail-section reveal-fade" id="detailPanel">';
+  const asideIdx = html.indexOf(asideOpen);
+  assert.ok(asideIdx >= 0, 'detailPanel aside must be present');
+
+  const asideClose = '</aside>';
+  const asideCloseIdx = html.indexOf(asideClose);
+  assert.ok(asideCloseIdx > asideIdx, 'aside close tag must be found after open tag');
+
+  const insideAside = html.slice(asideIdx + asideOpen.length, asideCloseIdx);
+  assert.ok(insideAside.includes(detailContentOpen),
+    'detailContent must be inside detailPanel');
+  assert.ok(insideAside.includes(saveStatusCardOpen),
+    'editor-save-status-card must be inside detailPanel');
+});
+
+test('editor.html references shell template with matching SHA256 fingerprint', () => {
+  const EDITOR_PATH = path.join(ROOT, 'pages/editor.html');
+  const SHELL_TEMPLATE_PATH = path.join(ROOT, 'js/editor/templates/editor-detail-panel-shell-template.js');
+  const { createHash } = require('node:crypto');
+
+  const editorHtml = fs.readFileSync(EDITOR_PATH, 'utf8');
+
+  // Extract the v parameter from the shell template script tag
+  const shellScriptRe = /src="\.\.\/js\/editor\/templates\/editor-detail-panel-shell-template\.js\?v=([a-f0-9]+)"/;
+  const scriptMatch = editorHtml.match(shellScriptRe);
+  assert.ok(scriptMatch,
+    `shell template script tag with v parameter must exist in editor.html`);
+
+  const fingerprintFromHtml = scriptMatch[1];
+
+  // Compute SHA256 of current shell template file
+  const shellSource = fs.readFileSync(SHELL_TEMPLATE_PATH, 'utf8');
+  const computedFingerprint = createHash('sha256').update(shellSource).digest('hex').slice(0, 12);
+
+  assert.equal(fingerprintFromHtml, computedFingerprint,
+    `shell template fingerprint in editor.html (${fingerprintFromHtml}) must match computed SHA256[:12] (${computedFingerprint})`);
+});
+
+test('editor.html references js/editor.js with correct cache-bust URL (3296, no stray -3294 suffix)', () => {
+  const EDITOR_PATH = path.join(ROOT, 'pages/editor.html');
+  const editorHtml = fs.readFileSync(EDITOR_PATH, 'utf8');
+
+  // Find the js/editor.js script tag
+  const editorJsRe = /src="(\.\.\/js\/editor\.js\?v=[^"]+)"/;
+  const jsMatch = editorHtml.match(editorJsRe);
+  assert.ok(jsMatch, 'js/editor.js script tag must exist in editor.html');
+
+  const url = jsMatch[1];
+  assert.ok(url.includes('3296'),
+    `js/editor.js URL must reference 3296 suffix: ${url}`);
+  assert.ok(!url.includes('3294'),
+    `js/editor.js URL must not contain stray 3294 suffix: ${url}`);
+  assert.ok(url.endsWith('3296'),
+    `js/editor.js URL must end with 3296, got: ${url}`);
+});
+
 function traceInvoke(trace, label) {
   trace.push({
     type: 'invoke',
