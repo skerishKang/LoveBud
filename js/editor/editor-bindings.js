@@ -216,7 +216,7 @@
 
     function guardEnterEdit(nodeEl) {
       var mode = window.LoveBudEditorInteractionMode;
-      if (!mode || !mode.isEditMode()) return;
+      if (mode && mode.isEditMode()) return;
       requestDirectNodeEdit(nodeEl, enterEditMode);
     }
 
@@ -293,7 +293,7 @@
 
     bindButtonOnce(editMemoryBtn, 'editBound', function(e) {
       var mode = window.LoveBudEditorInteractionMode;
-      if (!mode || !mode.isEditMode()) return;
+      if (mode && mode.isEditMode()) return;
       var latestDeleteBtn = getDetailButton('deleteMemoryBtn');
       hideCurrentMemoryViewModeSecondaryActions(detailPanel, latestDeleteBtn);
       ensureEditModeDeleteButton(latestDeleteBtn, deleteMemory);

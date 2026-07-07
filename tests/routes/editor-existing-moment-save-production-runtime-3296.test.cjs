@@ -131,7 +131,7 @@ function createHarness(options = {}) {
   let treeMemories = currentEditingMemory ? [{ ...currentEditingMemory }] : [];
   let updateMemoryCalls = [];
 
-  let modeState = 'edit';
+  let modeState = 'view';
 
   const windowObject = {
     apiClient: {
@@ -294,14 +294,15 @@ function createHarness(options = {}) {
     canEdit: true
   });
 
-  // Bind UI elements
   sandbox.window.LoveBudEditorBindings.bindDetailActionButtons({
     detailPanel: elements.detailPanel,
     enterEditMode: () => {
+      sandbox.window.LoveBudEditorInteractionMode.setMode('edit');
       actions.enterEditMode();
     },
     deleteMemory: () => {},
     exitEditMode: () => {
+      sandbox.window.LoveBudEditorInteractionMode.setMode('view');
       actions.exitEditMode();
     },
     saveMemoryEdit: () => {
