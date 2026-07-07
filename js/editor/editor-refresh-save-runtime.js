@@ -22,6 +22,7 @@
             setCurrentEditingMemory,
             isRootMemory,
             canonicalRootId,
+            isDetailEditActive,
             updateDetailPanel,
             updateSidebarStatus,
             initCanvas,
@@ -55,8 +56,12 @@
             if (currentEditingMemory) {
                 const refreshedEditingMemory = treeMemories().find((memory) => memory.id === currentEditingMemory.id);
                 if (refreshedEditingMemory && !isRootMemory(refreshedEditingMemory, canonicalRootId)) {
+                    const detailEditActive =
+                        typeof isDetailEditActive === 'function' && isDetailEditActive();
                     setCurrentEditingMemory(refreshedEditingMemory);
-                    updateDetailPanel(refreshedEditingMemory);
+                    if (!detailEditActive) {
+                        updateDetailPanel(refreshedEditingMemory);
+                    }
                 }
             }
         };

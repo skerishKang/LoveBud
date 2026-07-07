@@ -21,6 +21,8 @@ const editorSource = fs.readFileSync(EDITOR_ENTRY_PATH, 'utf8');
 function assertEditorEntrySeam() {
   assert.match(editorSource, /deps\.registerEditorAuthStart\(\{/);
   assert.match(editorSource, /createEditorRefreshSaveRuntime\(/);
+  assert.match(editorSource, /const isDetailEditActive = \(\) => \{/);
+  assert.match(editorSource, /isDetailEditActive, updateDetailPanel/);
   assert.match(editorSource, /window\.createEditorDetailUI\(/);
   assert.match(editorSource, /window\.createEditorMemoryActions\(/);
   assert.match(editorSource, /bindEditorPageEvents\(\{/);
@@ -750,6 +752,12 @@ function createHarness() {
       },
       isRootMemory() { return false; },
       canonicalRootId: 'root',
+      isDetailEditActive() {
+        return !!detailEditMode &&
+          !detailEditMode.hidden &&
+          detailEditMode.style.display !== 'none' &&
+          detailViewMode.style.display === 'none';
+      },
       updateDetailPanel: detailUI.updateDetailPanel,
       updateSidebarStatus() {},
       initCanvas() {},
@@ -955,16 +963,19 @@ test('auth-refresh candidate repro: second auth callback must preserve active ed
     assert.equal(state250.editDisplay, 'block', 'edit form must stay visible at 250ms');
     assert.equal(state250.viewDisplay, 'none', 'detail view must stay hidden at 250ms');
 
-    const firstCloseWriter = findFirstFormCloseWriter(harness.trace);
+    const refreshUpdateDetailPanels = harness.trace.filter((entry) => {
+      return entry.type === 'updateDetailPanel' && entry.id === 'mem-1';
+    });
+
     assert.equal(
       state1000.editDisplay,
       'block',
-      'edit form must stay visible at 1s. first close writer=' + JSON.stringify(firstCloseWriter) + '\n' + summarizeTrace(harness.trace)
+      'edit form must stay visible at 1s. trace=\n' + summarizeTrace(harness.trace)
     );
     assert.equal(
       state1000.viewDisplay,
       'none',
-      'detail view must stay hidden at 1s. first close writer=' + JSON.stringify(firstCloseWriter) + '\n' + summarizeTrace(harness.trace)
+      'detail view must stay hidden at 1s. trace=\n' + summarizeTrace(harness.trace)
     );
     assert.equal(
       state1000.statusText,
@@ -976,6 +987,55 @@ test('auth-refresh candidate repro: second auth callback must preserve active ed
       status: 'manual_nochange',
       message: '변경된 내용이 없어요'
     });
+    assert.equal(refreshUpdateDetailPanels.length, 1, 'active edit state must block refresh-time updateDetailPanel rerender. trace=\n' + summarizeTrace(harness.trace));
+  } finally {
+    harness.advanceBy(5000);
+    await flushMicrotasks();
+  }
+});
+
+test('auth-refresh control: closed edit form still allows detail panel refresh update', async () => {
+  const harness = createHarness();
+  const authUser = { uid: 'user-1' };
+  const authReady = harness.getAuthReadyCallback();
+
+  try {
+    traceInvoke(harness.trace, 'auth-ready:first');
+    authReady(authUser);
+    await flushMicrotasks();
+
+    harness.mode.setMode(harness.mode.MODE_EDIT);
+    harness.editMemoryBtn.dispatchEvent({
+      type: 'click',
+      preventDefault() {},
+      stopPropagation() {}
+    });
+    harness.advanceBy(0);
+    await flushMicrotasks();
+
+    assert.equal(harness.detailEditMode.style.display, 'block', 'edit form should open before control close');
+
+    harness.getActions().exitEditMode();
+    await flushMicrotasks();
+
+    assert.equal(harness.detailEditMode.style.display, 'none', 'control case should close edit form before refresh');
+    assert.notEqual(harness.detailViewMode.style.display, 'none', 'control case should show detail view before refresh');
+
+    traceInvoke(harness.trace, 'auth-ready:second');
+    authReady(authUser);
+
+    harness.advanceBy(1000);
+    await flushMicrotasks();
+
+    const refreshUpdateDetailPanels = harness.trace.filter((entry) => {
+      return entry.type === 'updateDetailPanel' && entry.id === 'mem-1';
+    });
+
+    assert.equal(harness.getRefreshRequestCount(), 1, 'control case should still refresh once');
+    assert.equal(harness.getRefreshResolveCount(), 1, 'control case refresh should resolve once');
+    assert.equal(refreshUpdateDetailPanels.length, 2, 'closed edit form should allow refresh-time updateDetailPanel rerender. trace=\n' + summarizeTrace(harness.trace));
+    assert.equal(harness.detailEditMode.style.display, 'none', 'control case should keep edit form closed after refresh');
+    assert.notEqual(harness.detailViewMode.style.display, 'none', 'control case should keep detail view visible after refresh');
   } finally {
     harness.advanceBy(5000);
     await flushMicrotasks();
