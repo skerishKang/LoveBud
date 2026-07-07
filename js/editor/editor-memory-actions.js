@@ -21,7 +21,8 @@ function createEditorMemoryActions(deps) {
         rerenderCanvas,
         getCurrentTreeData,
         isLocalSaveMode,
-        canEdit
+        canEdit,
+        reportSaveOutcome
     } = deps;
 
     let isEditMode = false;
@@ -66,6 +67,22 @@ function createEditorMemoryActions(deps) {
     const formatI18nText = (key, fallback) => {
         const text = typeof i18n === 'function' ? i18n(key) : '';
         return text && text !== key ? text : fallback;
+    };
+
+    const emitSaveOutcome = (outcome, options = {}) => {
+        const result = {
+            outcome,
+            message: options.message || '',
+            saveStatus: options.saveStatus || null
+        };
+        if (typeof reportSaveOutcome === 'function') {
+            try {
+                reportSaveOutcome(result);
+            } catch (error) {
+                console.error('[editor] Failed to report save outcome:', error);
+            }
+        }
+        return result;
     };
 
     const getEditableSourceUrl = (memory) => String(memory?.sourceUrl || '').trim();
@@ -259,14 +276,30 @@ function createEditorMemoryActions(deps) {
     };
 
     const saveMemoryEdit = async () => {
-        if (canEdit === false) return;
+        if (canEdit === false) {
+            const blockedMessage = formatI18nText('save_blocked_mode', '편집 모드에서만 저장할 수 있어요');
+            showToast(blockedMessage, 'info');
+            return emitSaveOutcome('blocked_mode', { message: blockedMessage });
+        }
         var mode = window.LoveBudEditorInteractionMode;
-        if (mode && !mode.isEditMode()) return;
+        if (mode && !mode.isEditMode()) {
+            const blockedMessage = formatI18nText('save_blocked_mode', '편집 모드에서만 저장할 수 있어요');
+            showToast(blockedMessage, 'info');
+            return emitSaveOutcome('blocked_mode', { message: blockedMessage });
+        }
         const currentEditingMemory = getCurrentEditingMemory();
-        if (!currentEditingMemory) return;
+        if (!currentEditingMemory) {
+            const missingMessage = formatI18nText('save_blocked_missing_memory', '저장할 현재 순간을 찾지 못했어요');
+            showToast(missingMessage, 'info');
+            return emitSaveOutcome('blocked_missing_memory', { message: missingMessage });
+        }
 
         // ── Duplicate-submit guard: block re-entry immediately ───────────
-        if (isMemoryEditSaveInFlight) return;
+        if (isMemoryEditSaveInFlight) {
+            const inFlightMessage = formatI18nText('save_blocked_in_flight', '이미 저장 중이에요. 잠시만 기다려 주세요.');
+            showToast(inFlightMessage, 'info');
+            return emitSaveOutcome('blocked_in_flight', { message: inFlightMessage });
+        }
         isMemoryEditSaveInFlight = true;
         setEditFormBusy(true);
 
@@ -274,7 +307,10 @@ function createEditorMemoryActions(deps) {
             if (!currentEditingMemory.id) {
                 updateSaveStatus('manual_failed', formatI18nText('save_failed', '저장 실패'));
                 showToast(formatI18nText('save_failed', '저장 실패'), 'error');
-                return;
+                return emitSaveOutcome('failed', {
+                    message: formatI18nText('save_failed', '저장 실패'),
+                    saveStatus: 'manual_failed'
+                });
             }
 
             const titleInput = document.getElementById('editTitleInput');
@@ -291,7 +327,10 @@ function createEditorMemoryActions(deps) {
             if ((startHasValue || endHasValue) && !timeHelper) {
                 showToast(formatI18nText('time_helper_missing', '시간을 처리하는 도구를 불러오지 못했습니다.'), 'error');
                 updateSaveStatus('manual_failed', formatI18nText('save_failed', '저장 실패'));
-                return;
+                return emitSaveOutcome('failed', {
+                    message: formatI18nText('save_failed', '저장 실패'),
+                    saveStatus: 'manual_failed'
+                });
             }
 
             let startSeconds = null;
@@ -302,7 +341,10 @@ function createEditorMemoryActions(deps) {
                 if (startSeconds === null) {
                     showToast(formatI18nText('invalid_start_time', '시작 시간을 다시 확인해 주세요.'), 'error');
                     updateSaveStatus('manual_failed', formatI18nText('save_failed', '저장 실패'));
-                    return;
+                    return emitSaveOutcome('failed', {
+                        message: formatI18nText('save_failed', '저장 실패'),
+                        saveStatus: 'manual_failed'
+                    });
                 }
             }
 
@@ -316,7 +358,10 @@ function createEditorMemoryActions(deps) {
                 if (!endCheck.ok) {
                     showToast(endCheck.message, 'error');
                     updateSaveStatus('manual_failed', formatI18nText('save_failed', '저장 실패'));
-                    return;
+                    return emitSaveOutcome('failed', {
+                        message: formatI18nText('save_failed', '저장 실패'),
+                        saveStatus: 'manual_failed'
+                    });
                 }
                 endSeconds = endCheck.endSeconds;
             }
@@ -350,7 +395,10 @@ function createEditorMemoryActions(deps) {
                             if (!sourceUpdate) {
                                 showToast(formatI18nText('invalid_youtube_unsupported', 'YouTube 링크만 지원합니다. youtube.com 또는 youtu.be 링크를 사용해 주세요.'), 'error');
                                 updateSaveStatus('manual_failed', formatI18nText('save_failed', '저장 실패'));
-                                return;
+                                return emitSaveOutcome('failed', {
+                                    message: formatI18nText('save_failed', '저장 실패'),
+                                    saveStatus: 'manual_failed'
+                                });
                             }
 
                             let embedUrl = typeof media.getEmbedUrl === 'function'
@@ -372,7 +420,10 @@ function createEditorMemoryActions(deps) {
                         } else {
                             showToast(formatI18nText('invalid_youtube_unsupported', 'YouTube 링크만 지원합니다. youtube.com 또는 youtu.be 링크를 사용해 주세요.'), 'error');
                             updateSaveStatus('manual_failed', formatI18nText('save_failed', '저장 실패'));
-                            return;
+                            return emitSaveOutcome('failed', {
+                                message: formatI18nText('save_failed', '저장 실패'),
+                                saveStatus: 'manual_failed'
+                            });
                         }
                     } else {
                         if (previousSourceUrl) {
@@ -434,11 +485,17 @@ function createEditorMemoryActions(deps) {
             );
 
             if (!hasChange) {
-                showToast(formatI18nText('save_no_change', '변경된 내용이 없어요'), 'info');
-                return;
+                const noChangeMessage = formatI18nText('save_no_change', '변경된 내용이 없어요');
+                showToast(noChangeMessage, 'info');
+                return emitSaveOutcome('no_change', { message: noChangeMessage });
             }
 
-            updateSaveStatus('manual_saving', i18n('save_saving'));
+            const savingMessage = formatI18nText('save_saving', '저장 중...');
+            updateSaveStatus('manual_saving', savingMessage);
+            emitSaveOutcome('saving', {
+                message: savingMessage,
+                saveStatus: 'manual_saving'
+            });
 
             if (window.apiClient && typeof window.apiClient.updateMemory === 'function') {
                 const savedMemory = await window.apiClient.updateMemory(currentEditingMemory.id, payload);
@@ -538,6 +595,10 @@ function createEditorMemoryActions(deps) {
 
                 updateSaveStatus('manual_saved', i18n('save_saved'));
                 showToast(i18n('memory_updated') || '순간을 수정했어요', 'success');
+                return emitSaveOutcome('saved', {
+                    message: formatI18nText('save_saved', '저장됨'),
+                    saveStatus: 'manual_saved'
+                });
             } else {
                 throw new Error('updateMemory not available');
             }
@@ -546,6 +607,10 @@ function createEditorMemoryActions(deps) {
             console.error('[editor] Failed to update memory:', error);
             updateSaveStatus('manual_failed', formatI18nText('save_failed', '저장 실패'));
             showToast(formatI18nText('update_failed', '순간 수정에 실패했어요'), 'error');
+            return emitSaveOutcome('failed', {
+                message: formatI18nText('save_failed', '저장 실패'),
+                saveStatus: 'manual_failed'
+            });
         } finally {
             isMemoryEditSaveInFlight = false;
             setEditFormBusy(false);
