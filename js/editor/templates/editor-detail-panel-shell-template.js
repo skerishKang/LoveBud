@@ -1,3 +1,4 @@
+// Cache-bust marker for #3294 production no-change feedback rollout.
 export function buildDetailPanelShellTemplate() {
     return `
         <aside class="detail-panel memory-detail-section reveal-fade" id="detailPanel">

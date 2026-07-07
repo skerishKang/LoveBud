@@ -1,3 +1,4 @@
+// Cache-bust marker for #3294 production no-change feedback rollout.
 function createEditorMemoryActions(deps) {
     const {
         i18n,
