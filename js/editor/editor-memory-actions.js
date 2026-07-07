@@ -85,6 +85,12 @@ function createEditorMemoryActions(deps) {
         return result;
     };
 
+    const reportNonNetworkSaveOutcome = (outcome, saveStatus, message) => {
+        updateSaveStatus(saveStatus, message);
+        showToast(message, 'info');
+        return emitSaveOutcome(outcome, { message, saveStatus });
+    };
+
     const getEditableSourceUrl = (memory) => String(memory?.sourceUrl || '').trim();
 
     const resolveSourceUpdate = (rawUrl) => {
@@ -278,27 +284,23 @@ function createEditorMemoryActions(deps) {
     const saveMemoryEdit = async () => {
         if (canEdit === false) {
             const blockedMessage = formatI18nText('save_blocked_mode', '편집 모드에서만 저장할 수 있어요');
-            showToast(blockedMessage, 'info');
-            return emitSaveOutcome('blocked_mode', { message: blockedMessage });
+            return reportNonNetworkSaveOutcome('blocked_mode', 'manual_blocked', blockedMessage);
         }
         var mode = window.LoveBudEditorInteractionMode;
         if (mode && !mode.isEditMode()) {
             const blockedMessage = formatI18nText('save_blocked_mode', '편집 모드에서만 저장할 수 있어요');
-            showToast(blockedMessage, 'info');
-            return emitSaveOutcome('blocked_mode', { message: blockedMessage });
+            return reportNonNetworkSaveOutcome('blocked_mode', 'manual_blocked', blockedMessage);
         }
         const currentEditingMemory = getCurrentEditingMemory();
         if (!currentEditingMemory) {
             const missingMessage = formatI18nText('save_blocked_missing_memory', '저장할 현재 순간을 찾지 못했어요');
-            showToast(missingMessage, 'info');
-            return emitSaveOutcome('blocked_missing_memory', { message: missingMessage });
+            return reportNonNetworkSaveOutcome('blocked_missing_memory', 'manual_blocked', missingMessage);
         }
 
         // ── Duplicate-submit guard: block re-entry immediately ───────────
         if (isMemoryEditSaveInFlight) {
             const inFlightMessage = formatI18nText('save_blocked_in_flight', '이미 저장 중이에요. 잠시만 기다려 주세요.');
-            showToast(inFlightMessage, 'info');
-            return emitSaveOutcome('blocked_in_flight', { message: inFlightMessage });
+            return reportNonNetworkSaveOutcome('blocked_in_flight', 'manual_blocked', inFlightMessage);
         }
         isMemoryEditSaveInFlight = true;
         setEditFormBusy(true);
@@ -486,8 +488,7 @@ function createEditorMemoryActions(deps) {
 
             if (!hasChange) {
                 const noChangeMessage = formatI18nText('save_no_change', '변경된 내용이 없어요');
-                showToast(noChangeMessage, 'info');
-                return emitSaveOutcome('no_change', { message: noChangeMessage });
+                return reportNonNetworkSaveOutcome('no_change', 'manual_nochange', noChangeMessage);
             }
 
             const savingMessage = formatI18nText('save_saving', '저장 중...');

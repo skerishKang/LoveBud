@@ -271,6 +271,10 @@ test('blocked_mode is observable, visible, and skips updateMemory', async () => 
   assert.equal(harness.dom.detailEditMode.style.display, 'block');
   assert.equal(harness.getOutcomes().at(-1).outcome, 'blocked_mode');
   assert.equal(harness.getToasts().at(-1).type, 'info');
+  assert.deepEqual(
+    harness.getStatuses().map((entry) => entry.status),
+    ['manual_blocked']
+  );
 });
 
 test('blocked_missing_memory is observable, visible, and keeps edit form open', async () => {
@@ -283,6 +287,10 @@ test('blocked_missing_memory is observable, visible, and keeps edit form open', 
   assert.equal(harness.dom.detailEditMode.style.display, 'block');
   assert.equal(harness.getOutcomes().at(-1).outcome, 'blocked_missing_memory');
   assert.equal(harness.getToasts().at(-1).type, 'info');
+  assert.deepEqual(
+    harness.getStatuses().map((entry) => entry.status),
+    ['manual_blocked']
+  );
 });
 
 test('no_change is observable, visible, and leaves edit form open', async () => {
@@ -300,6 +308,10 @@ test('no_change is observable, visible, and leaves edit form open', async () => 
   assert.equal(harness.dom.detailEditMode.style.display, 'block');
   assert.equal(harness.getOutcomes().at(-1).outcome, 'no_change');
   assert.equal(harness.getToasts().at(-1).message, '변경된 내용이 없어요');
+  assert.deepEqual(
+    harness.getStatuses().map((entry) => entry.status),
+    ['manual_nochange']
+  );
 });
 
 test('blocked_in_flight is observable and does not trigger duplicate updateMemory calls', async () => {
@@ -315,6 +327,10 @@ test('blocked_in_flight is observable and does not trigger duplicate updateMemor
   assert.equal(secondResult.outcome, 'blocked_in_flight');
   assert.equal(harness.getApiCallCount(), 1);
   assert.equal(harness.dom.detailEditMode.style.display, 'block');
+  assert.deepEqual(
+    harness.getStatuses().map((entry) => entry.status),
+    ['manual_saving', 'manual_blocked']
+  );
 
   harness.resolveDeferred({
     id: 'memory-1',

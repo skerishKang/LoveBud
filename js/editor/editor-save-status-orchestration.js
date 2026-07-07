@@ -34,7 +34,7 @@
                     var possibleType = parts[0];
                     var possiblePhase = parts[1];
                     if ((possibleType === 'auto' || possibleType === 'manual' || possibleType === 'checkpoint') &&
-                        (possiblePhase === 'saving' || possiblePhase === 'saved' || possiblePhase === 'failed')) {
+                        (possiblePhase === 'saving' || possiblePhase === 'saved' || possiblePhase === 'failed' || possiblePhase === 'blocked' || possiblePhase === 'nochange')) {
                         type = possibleType;
                         phase = possiblePhase;
                     }
@@ -56,6 +56,8 @@
                     'auto_saving': '임시 저장 중...',
                     'auto_saved': '임시 저장됨',
                     'auto_failed': '임시 저장 실패',
+                    'manual_blocked': '지금은 저장할 수 없어요',
+                    'manual_nochange': '변경된 내용이 없어요',
                     'manual_saving': '저장 중...',
                     'manual_saved': '저장됨',
                     'manual_failed': '저장 실패',
@@ -70,6 +72,8 @@
                 'auto_saving': 'save-status-indicator saving saving-auto',
                 'auto_saved': 'save-status-indicator saved saved-auto',
                 'auto_failed': 'save-status-indicator failed failed-auto',
+                'manual_blocked': 'save-status-indicator info blocked-manual',
+                'manual_nochange': 'save-status-indicator info nochange-manual',
                 'manual_saving': 'save-status-indicator saving saving-manual',
                 'manual_saved': 'save-status-indicator saved saved-manual',
                 'manual_failed': 'save-status-indicator failed failed-manual',
@@ -104,6 +108,14 @@
                 indicator.className = classNameMap[type + '_' + phase] || 'save-status-indicator failed';
                 if (timeEl) timeEl.style.display = 'none';
                 hideLater(5000);
+                return;
+            }
+            if (phase === 'blocked' || phase === 'nochange') {
+                iconEl.textContent = 'info';
+                textEl.textContent = displayMessage;
+                indicator.className = classNameMap[type + '_' + phase] || 'save-status-indicator info';
+                if (timeEl) timeEl.style.display = 'none';
+                hideLater(phase === 'nochange' ? 4000 : 5000);
             }
         };
 
