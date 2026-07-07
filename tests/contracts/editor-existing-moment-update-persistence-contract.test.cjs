@@ -100,7 +100,10 @@ async function runSaveMemoryEdit({
           if (opts && opts.startSeconds != null) e += '?start=' + opts.startSeconds;
           return e;
         },
-        getThumbnailUrl() { return 'https://img.youtube.com/vi/test/mqdefault.jpg'; },
+        getThumbnailUrl(url) {
+          var vid = this.extractYouTubeId(url);
+          return vid ? 'https://img.youtube.com/vi/' + vid + '/mqdefault.jpg' : '';
+        },
         parseYouTubeTimeToSeconds(v) {
           if (!v) return null;
           var p = String(v).split(':');
@@ -141,6 +144,13 @@ async function runSaveMemoryEdit({
       },
       LoveBudEditorInteractionMode: { isEditMode() { return true; } }
     }
+  };
+
+  // ── Cache write tracker ────────────────────────────────────────────
+  let cacheWriteCount = 0;
+  sandbox.window.LoveBudCache = {
+    set: function(key, val, ttl) { cacheWriteCount++; },
+    get: function() { return null; }
   };
 
   var source = fs.readFileSync(path.join(ROOT, 'js/editor/editor-memory-actions.js'), 'utf-8');
@@ -199,6 +209,9 @@ async function runSaveMemoryEdit({
     // Direct sandbox access for debugging
     getDirectMemoryTitle: function() { return sandbox.currentEditingMemory ? sandbox.currentEditingMemory.title : null; },
     getDirectCallCount: function() { return callCount; },
+    getCacheWriteCount: function() { return cacheWriteCount; },
+    getDetailPanelUpdated: function() { return sandbox.detailPanelUpdated; },
+    getRenderedCanvas: function() { return sandbox.renderedCanvas; },
   };
 }
 
@@ -528,4 +541,338 @@ test('12. deferred pending: duplicate blocked → resolve → guard reset → se
 
   // m. call count = 2 확인
   assert.equal(t12Ctx.getCallCount(), 2, 'second save: 2 API calls — guard reset');
+});
+
+// =============================================================================
+// A. stale thumbnail video identity — server returns thumbnail for old video
+// =============================================================================
+test('A. stale thumbnail video identity — rejected', { timeout: 3000 }, async function(t) {
+  var mem = {
+    id: 'mem-1', title: 'Old',
+    sourceUrl: 'https://www.youtube.com/embed/aaaaaaaaaaa', sourceType: 'youtube',
+    thumbnail: 'https://img.youtube.com/vi/aaaaaaaaaaa/mqdefault.jpg',
+    source: 'YouTube', emotionTags: []
+  };
+  // New sourceUrl has video ID bbb, but server responds with thumbnail for aaa
+  var staleThumbnailResponse = {
+    id: 'mem-1', title: 'Old',
+    sourceUrl: 'https://www.youtube.com/embed/bbbbbbbbbbb',
+    sourceType: 'youtube',
+    thumbnail: 'https://img.youtube.com/vi/aaaaaaaaaaa/mqdefault.jpg',
+    source: 'YouTube',
+    emotionTags: [], updatedAt: new Date().toISOString()
+  };
+  var ctx = await runSaveMemoryEdit({
+    initialMemory: mem,
+    domValues: { title: 'Old', memo: '', tags: '', sourceUrl: 'https://www.youtube.com/shorts/bbbbbbbbbbb' },
+    apiResponse: staleThumbnailResponse
+  });
+
+  // Open edit form first (so form display checks are meaningful)
+  ctx.actions.enterEditMode();
+  // Re-set DOM values after enterEditMode resets them from currentMemory
+  ctx.setInputValue('editSourceUrlInput', 'https://www.youtube.com/shorts/bbbbbbbbbbb');
+  assert.equal(ctx.getFormDisplay('edit'), 'block', 'edit form is open');
+
+  await ctx.actions.saveMemoryEdit();
+
+  var editingMem = ctx.getEditingMemory();
+  assert.equal(editingMem.sourceUrl, 'https://www.youtube.com/embed/aaaaaaaaaaa',
+    'stale thumbnail response must NOT update sourceUrl');
+  assert.equal(ctx.getToast().type, 'error', 'must show error toast');
+  assert.equal(ctx.getCallCount(), 1, 'API was called exactly once');
+  assert.equal(ctx.getCacheWriteCount(), 0, 'cache must NOT be written');
+  assert.equal(ctx.getRenderedCanvas(), false, 'canvas must NOT rerender');
+  assert.equal(ctx.getDetailPanelUpdated(), null, 'detail panel must NOT be updated');
+  assert.equal(ctx.getFormDisplay('edit'), 'block', 'edit form must stay open');
+  assert.equal(ctx.getFormDisplay('view'), 'none', 'view form must stay hidden');
+});
+
+// =============================================================================
+// B. mismatched sourceType — server returns non-youtube sourceType
+// =============================================================================
+test('B. mismatched sourceType — rejected', { timeout: 3000 }, async function(t) {
+  var mem = {
+    id: 'mem-1', title: 'Old',
+    sourceUrl: 'https://www.youtube.com/embed/aaaaaaaaaaa', sourceType: 'youtube',
+    thumbnail: 'https://img.youtube.com/vi/aaaaaaaaaaa/mqdefault.jpg',
+    source: 'YouTube', emotionTags: []
+  };
+  var wrongSourceTypeResponse = {
+    id: 'mem-1', title: 'Old',
+    sourceUrl: 'https://www.youtube.com/embed/bbbbbbbbbbb',
+    sourceType: 'other',
+    thumbnail: 'https://img.youtube.com/vi/bbbbbbbbbbb/mqdefault.jpg',
+    source: 'YouTube',
+    emotionTags: [], updatedAt: new Date().toISOString()
+  };
+  var ctx = await runSaveMemoryEdit({
+    initialMemory: mem,
+    domValues: { title: 'Old', memo: '', tags: '', sourceUrl: 'https://www.youtube.com/shorts/bbbbbbbbbbb' },
+    apiResponse: wrongSourceTypeResponse
+  });
+
+  // Open edit form first
+  ctx.actions.enterEditMode();
+  ctx.setInputValue('editSourceUrlInput', 'https://www.youtube.com/shorts/bbbbbbbbbbb');
+  assert.equal(ctx.getFormDisplay('edit'), 'block', 'edit form is open');
+
+  await ctx.actions.saveMemoryEdit();
+
+  var editingMem = ctx.getEditingMemory();
+  assert.equal(editingMem.sourceType, 'youtube',
+    'wrong sourceType response must NOT update sourceType');
+  assert.equal(ctx.getToast().type, 'error', 'must show error toast');
+  assert.equal(ctx.getCallCount(), 1, 'API was called exactly once');
+  assert.equal(ctx.getCacheWriteCount(), 0, 'cache must NOT be written');
+  assert.equal(ctx.getRenderedCanvas(), false, 'canvas must NOT rerender');
+  assert.equal(ctx.getFormDisplay('edit'), 'block', 'edit form must stay open');
+});
+
+// =============================================================================
+// C. mismatched source label — server returns non-YouTube source
+// =============================================================================
+test('C. mismatched source label — rejected', { timeout: 3000 }, async function(t) {
+  var mem = {
+    id: 'mem-1', title: 'Old',
+    sourceUrl: 'https://www.youtube.com/embed/aaaaaaaaaaa', sourceType: 'youtube',
+    thumbnail: 'https://img.youtube.com/vi/aaaaaaaaaaa/mqdefault.jpg',
+    source: 'YouTube', emotionTags: []
+  };
+  var wrongSourceResponse = {
+    id: 'mem-1', title: 'Old',
+    sourceUrl: 'https://www.youtube.com/embed/bbbbbbbbbbb',
+    sourceType: 'youtube',
+    thumbnail: 'https://img.youtube.com/vi/bbbbbbbbbbb/mqdefault.jpg',
+    source: 'Vimeo',
+    emotionTags: [], updatedAt: new Date().toISOString()
+  };
+  var ctx = await runSaveMemoryEdit({
+    initialMemory: mem,
+    domValues: { title: 'Old', memo: '', tags: '', sourceUrl: 'https://www.youtube.com/shorts/bbbbbbbbbbb' },
+    apiResponse: wrongSourceResponse
+  });
+
+  // Open edit form first
+  ctx.actions.enterEditMode();
+  ctx.setInputValue('editSourceUrlInput', 'https://www.youtube.com/shorts/bbbbbbbbbbb');
+  assert.equal(ctx.getFormDisplay('edit'), 'block', 'edit form is open');
+
+  await ctx.actions.saveMemoryEdit();
+
+  var editingMem = ctx.getEditingMemory();
+  assert.equal(editingMem.source, 'YouTube',
+    'wrong source label response must NOT update source');
+  assert.equal(ctx.getToast().type, 'error', 'must show error toast');
+  assert.equal(ctx.getCallCount(), 1, 'API was called exactly once');
+  assert.equal(ctx.getCacheWriteCount(), 0, 'cache must NOT be written');
+  assert.equal(ctx.getRenderedCanvas(), false, 'canvas must NOT rerender');
+  assert.equal(ctx.getFormDisplay('edit'), 'block', 'edit form must stay open');
+});
+
+// =============================================================================
+// D. coherent canonical response — different thumbnail rendition accepted
+// =============================================================================
+test('D. coherent canonical response — different thumbnail rendition accepted', { timeout: 3000 }, async function(t) {
+  var mem = {
+    id: 'mem-1', title: 'Old',
+    sourceUrl: 'https://www.youtube.com/embed/aaaaaaaaaaa', sourceType: 'youtube',
+    thumbnail: 'https://img.youtube.com/vi/aaaaaaaaaaa/mqdefault.jpg',
+    source: 'YouTube', emotionTags: []
+  };
+  // Same video ID bbb, sourceType youtube, source YouTube, but different thumbnail resolution
+  var coherentResponse = {
+    id: 'mem-1', title: 'Old',
+    sourceUrl: 'https://www.youtube.com/embed/bbbbbbbbbbb',
+    sourceType: 'youtube',
+    thumbnail: 'https://img.youtube.com/vi/bbbbbbbbbbb/hqdefault.jpg',
+    source: 'YouTube',
+    emotionTags: [], updatedAt: new Date().toISOString()
+  };
+  var ctx = await runSaveMemoryEdit({
+    initialMemory: mem,
+    domValues: { title: 'Old', memo: '', tags: '', sourceUrl: 'https://www.youtube.com/shorts/bbbbbbbbbbb' },
+    apiResponse: coherentResponse
+  });
+
+  await ctx.actions.saveMemoryEdit();
+
+  var editingMem = ctx.getEditingMemory();
+  assert.equal(editingMem.sourceUrl, 'https://www.youtube.com/embed/bbbbbbbbbbb',
+    'coherent response must update sourceUrl');
+  assert.equal(editingMem.sourceType, 'youtube',
+    'sourceType must be youtube');
+  assert.equal(editingMem.source, 'YouTube',
+    'source must be YouTube');
+  assert.ok(editingMem.thumbnail.includes('bbbbbbbbbbb'),
+    'thumbnail must reference new video ID, not old');
+  assert.equal(ctx.getToast().type, 'success', 'must show success toast');
+  assert.equal(ctx.getCallCount(), 1, 'API was called exactly once');
+  assert.equal(ctx.getCacheWriteCount(), 1, 'cache must be written once');
+  assert.equal(ctx.getRenderedCanvas(), true, 'canvas must rerender');
+  assert.ok(ctx.getDetailPanelUpdated() !== null, 'detail panel must be updated');
+  assert.equal(ctx.getFormDisplay('edit'), 'none', 'success closes edit form');
+  assert.equal(ctx.getFormDisplay('view'), 'block', 'success opens view form');
+});
+
+// =============================================================================
+// E. all derived fields omitted — thumbnail/sourceType/source undefined in response
+// =============================================================================
+test('E. derived fields all omitted — payload canonical values preserved', { timeout: 3000 }, async function(t) {
+  var mem = {
+    id: 'mem-1', title: 'Old',
+    sourceUrl: 'https://www.youtube.com/embed/aaaaaaaaaaa', sourceType: 'youtube',
+    thumbnail: 'https://img.youtube.com/vi/aaaaaaaaaaa/mqdefault.jpg',
+    source: 'YouTube', emotionTags: []
+  };
+  // Response has sourceUrl, but NO thumbnail/sourceType/source
+  var omittedFieldsResponse = {
+    id: 'mem-1', title: 'Old',
+    sourceUrl: 'https://www.youtube.com/embed/bbbbbbbbbbb',
+    emotionTags: [], updatedAt: new Date().toISOString()
+  };
+  var ctx = await runSaveMemoryEdit({
+    initialMemory: mem,
+    domValues: { title: 'Old', memo: '', tags: '', sourceUrl: 'https://www.youtube.com/shorts/bbbbbbbbbbb' },
+    apiResponse: omittedFieldsResponse
+  });
+
+  await ctx.actions.saveMemoryEdit();
+
+  var editingMem = ctx.getEditingMemory();
+  assert.equal(editingMem.sourceUrl, 'https://www.youtube.com/embed/bbbbbbbbbbb',
+    'sourceUrl must update when response acknowledges it');
+  assert.equal(editingMem.sourceType, 'youtube',
+    'sourceType must be payload canonical (youtube), not lost');
+  assert.equal(editingMem.source, 'YouTube',
+    'source must be payload canonical (YouTube), not lost');
+  assert.ok(editingMem.thumbnail.includes('bbbbbbbbbbb') || editingMem.thumbnail === '',
+    'thumbnail must reference new video ID or be empty');
+  assert.equal(ctx.getToast().type, 'success', 'must show success toast');
+  assert.equal(ctx.getCallCount(), 1, 'API was called exactly once');
+  assert.equal(ctx.getCacheWriteCount(), 1, 'cache must be written once');
+  assert.equal(ctx.getRenderedCanvas(), true, 'canvas must rerender');
+  assert.ok(ctx.getDetailPanelUpdated() !== null, 'detail panel must be updated');
+  assert.equal(ctx.getFormDisplay('edit'), 'none', 'success closes edit form');
+  assert.equal(ctx.getFormDisplay('view'), 'block', 'success opens view form');
+});
+
+// =============================================================================
+// F. empty thumbnail in response — rejected
+// =============================================================================
+test('F. empty thumbnail in response — rejected', { timeout: 3000 }, async function(t) {
+  var mem = {
+    id: 'mem-1', title: 'Old',
+    sourceUrl: 'https://www.youtube.com/embed/aaaaaaaaaaa', sourceType: 'youtube',
+    thumbnail: 'https://img.youtube.com/vi/aaaaaaaaaaa/mqdefault.jpg',
+    source: 'YouTube', emotionTags: []
+  };
+  var emptyThumbnailResponse = {
+    id: 'mem-1', title: 'Old',
+    sourceUrl: 'https://www.youtube.com/embed/bbbbbbbbbbb',
+    sourceType: 'youtube',
+    thumbnail: '',
+    source: 'YouTube',
+    emotionTags: [], updatedAt: new Date().toISOString()
+  };
+  var ctx = await runSaveMemoryEdit({
+    initialMemory: mem,
+    domValues: { title: 'Old', memo: '', tags: '', sourceUrl: 'https://www.youtube.com/shorts/bbbbbbbbbbb' },
+    apiResponse: emptyThumbnailResponse
+  });
+
+  ctx.actions.enterEditMode();
+  ctx.setInputValue('editSourceUrlInput', 'https://www.youtube.com/shorts/bbbbbbbbbbb');
+  assert.equal(ctx.getFormDisplay('edit'), 'block', 'edit form is open');
+
+  await ctx.actions.saveMemoryEdit();
+
+  var editingMem = ctx.getEditingMemory();
+  assert.equal(editingMem.sourceUrl, 'https://www.youtube.com/embed/aaaaaaaaaaa',
+    'empty thumbnail response must NOT update sourceUrl');
+  assert.equal(ctx.getToast().type, 'error', 'must show error toast');
+  assert.equal(ctx.getCallCount(), 1, 'API was called exactly once');
+  assert.equal(ctx.getCacheWriteCount(), 0, 'cache must NOT be written');
+  assert.equal(ctx.getRenderedCanvas(), false, 'canvas must NOT rerender');
+  assert.equal(ctx.getFormDisplay('edit'), 'block', 'edit form must stay open');
+});
+
+// =============================================================================
+// G. empty sourceType in response — rejected
+// =============================================================================
+test('G. empty sourceType in response — rejected', { timeout: 3000 }, async function(t) {
+  var mem = {
+    id: 'mem-1', title: 'Old',
+    sourceUrl: 'https://www.youtube.com/embed/aaaaaaaaaaa', sourceType: 'youtube',
+    thumbnail: 'https://img.youtube.com/vi/aaaaaaaaaaa/mqdefault.jpg',
+    source: 'YouTube', emotionTags: []
+  };
+  var emptySourceTypeResponse = {
+    id: 'mem-1', title: 'Old',
+    sourceUrl: 'https://www.youtube.com/embed/bbbbbbbbbbb',
+    sourceType: '',
+    thumbnail: 'https://img.youtube.com/vi/bbbbbbbbbbb/mqdefault.jpg',
+    source: 'YouTube',
+    emotionTags: [], updatedAt: new Date().toISOString()
+  };
+  var ctx = await runSaveMemoryEdit({
+    initialMemory: mem,
+    domValues: { title: 'Old', memo: '', tags: '', sourceUrl: 'https://www.youtube.com/shorts/bbbbbbbbbbb' },
+    apiResponse: emptySourceTypeResponse
+  });
+
+  ctx.actions.enterEditMode();
+  ctx.setInputValue('editSourceUrlInput', 'https://www.youtube.com/shorts/bbbbbbbbbbb');
+  assert.equal(ctx.getFormDisplay('edit'), 'block', 'edit form is open');
+
+  await ctx.actions.saveMemoryEdit();
+
+  var editingMem = ctx.getEditingMemory();
+  assert.equal(editingMem.sourceType, 'youtube',
+    'empty sourceType response must NOT update sourceType');
+  assert.equal(ctx.getToast().type, 'error', 'must show error toast');
+  assert.equal(ctx.getCallCount(), 1, 'API was called exactly once');
+  assert.equal(ctx.getCacheWriteCount(), 0, 'cache must NOT be written');
+  assert.equal(ctx.getRenderedCanvas(), false, 'canvas must NOT rerender');
+  assert.equal(ctx.getFormDisplay('edit'), 'block', 'edit form must stay open');
+});
+
+// =============================================================================
+// H. empty source label in response — rejected
+// =============================================================================
+test('H. empty source label in response — rejected', { timeout: 3000 }, async function(t) {
+  var mem = {
+    id: 'mem-1', title: 'Old',
+    sourceUrl: 'https://www.youtube.com/embed/aaaaaaaaaaa', sourceType: 'youtube',
+    thumbnail: 'https://img.youtube.com/vi/aaaaaaaaaaa/mqdefault.jpg',
+    source: 'YouTube', emotionTags: []
+  };
+  var emptySourceResponse = {
+    id: 'mem-1', title: 'Old',
+    sourceUrl: 'https://www.youtube.com/embed/bbbbbbbbbbb',
+    sourceType: 'youtube',
+    thumbnail: 'https://img.youtube.com/vi/bbbbbbbbbbb/mqdefault.jpg',
+    source: '',
+    emotionTags: [], updatedAt: new Date().toISOString()
+  };
+  var ctx = await runSaveMemoryEdit({
+    initialMemory: mem,
+    domValues: { title: 'Old', memo: '', tags: '', sourceUrl: 'https://www.youtube.com/shorts/bbbbbbbbbbb' },
+    apiResponse: emptySourceResponse
+  });
+
+  ctx.actions.enterEditMode();
+  ctx.setInputValue('editSourceUrlInput', 'https://www.youtube.com/shorts/bbbbbbbbbbb');
+  assert.equal(ctx.getFormDisplay('edit'), 'block', 'edit form is open');
+
+  await ctx.actions.saveMemoryEdit();
+
+  var editingMem = ctx.getEditingMemory();
+  assert.equal(editingMem.source, 'YouTube',
+    'empty source label response must NOT update source');
+  assert.equal(ctx.getToast().type, 'error', 'must show error toast');
+  assert.equal(ctx.getCallCount(), 1, 'API was called exactly once');
+  assert.equal(ctx.getCacheWriteCount(), 0, 'cache must NOT be written');
+  assert.equal(ctx.getRenderedCanvas(), false, 'canvas must NOT rerender');
+  assert.equal(ctx.getFormDisplay('edit'), 'block', 'edit form must stay open');
 });
