@@ -526,11 +526,20 @@ document.addEventListener('DOMContentLoaded', () => {
             log('Canvas instance bound to DOM');
 
             const { calcPosition, drawBranch, drawNode, initCanvas } = editorCanvas;
+            const isDetailEditActive = () => {
+                const editMode = document.getElementById('detailEditMode');
+                const viewMode = document.getElementById('detailViewMode');
+
+                return !!editMode &&
+                    !editMode.hidden &&
+                    editMode.style.display !== 'none' &&
+                    (!viewMode || viewMode.style.display === 'none');
+            };
 
             const refreshSaveRuntime = createEditorRefreshSaveRuntime({
                 log, reportError, editorDataLoader: deps.editorDataLoader, treeId, apiClient: window.apiClient, normalizeMemory, treeMemories,
                 getCurrentEditingMemory: () => currentEditingMemory, setCurrentEditingMemory: (value) => { currentEditingMemory = value; },
-                isRootMemory: deps.isRootMemory, canonicalRootId, updateDetailPanel, updateSidebarStatus, initCanvas, exposeRefreshMemoriesBridge: deps.exposeRefreshMemoriesBridge,
+                isRootMemory: deps.isRootMemory, canonicalRootId, isDetailEditActive, updateDetailPanel, updateSidebarStatus, initCanvas, exposeRefreshMemoriesBridge: deps.exposeRefreshMemoriesBridge,
                 resolveSaveStatusTimeFormatter, editorSaveStatus: deps.editorSaveStatus, i18n: deps.i18n, createSaveStatusOrchestrationFallback: deps.createSaveStatusOrchestrationFallback, saveStatusOrchestrationHelper: window.LoveBudEditorSaveStatusOrchestration || {}
             });
 
