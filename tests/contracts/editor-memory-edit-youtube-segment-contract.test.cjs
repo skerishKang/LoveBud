@@ -132,6 +132,9 @@ function setupTestContext(initialMemory, finalDomValues = {}) {
           savedPayload = payload;
           return { id, ...payload };
         }
+      },
+      LoveBudEditorInteractionMode: {
+        isEditMode: () => true
       }
     }
   };

@@ -47,7 +47,9 @@
     IDLE: 'idle',
     SAVING: 'saving',
     SAVED: 'saved',
-    FAILED: 'failed'
+    FAILED: 'failed',
+    BLOCKED: 'blocked',
+    NOCHANGE: 'nochange'
   };
 
   var SaveType = {
@@ -60,7 +62,7 @@
   var VALID_STATES = {};
   (function buildValidStates() {
     var types = [SaveType.AUTO, SaveType.MANUAL, SaveType.CHECKPOINT];
-    var phases = [SavePhase.SAVING, SavePhase.SAVED, SavePhase.FAILED];
+    var phases = [SavePhase.SAVING, SavePhase.SAVED, SavePhase.FAILED, SavePhase.BLOCKED, SavePhase.NOCHANGE];
     for (var t = 0; t < types.length; t++) {
       for (var p = 0; p < phases.length; p++) {
         VALID_STATES[types[t] + '_' + phases[p]] = true;
@@ -101,6 +103,12 @@
       if (type === SaveType.AUTO) return '임시 저장 실패';
       if (type === SaveType.MANUAL) return '저장 실패';
       if (type === SaveType.CHECKPOINT) return '연결 저장 실패';
+    }
+    if (phase === SavePhase.BLOCKED) {
+      if (type === SaveType.MANUAL) return '지금은 저장할 수 없어요';
+    }
+    if (phase === SavePhase.NOCHANGE) {
+      if (type === SaveType.MANUAL) return '변경된 내용이 없어요';
     }
     return '';
   }
@@ -234,6 +242,12 @@
       if (type === SaveType.AUTO) className += ' failed-auto';
       else if (type === SaveType.MANUAL) className += ' failed-manual';
       else if (type === SaveType.CHECKPOINT) className += ' failed-checkpoint';
+    } else if (phase === SavePhase.BLOCKED || phase === SavePhase.NOCHANGE) {
+      icon = 'info';
+      className += ' info';
+      if (type === SaveType.MANUAL) {
+        className += phase === SavePhase.BLOCKED ? ' blocked-manual' : ' nochange-manual';
+      }
     }
 
     // ── Update DOM ───────────────────────────────────────────────────
@@ -252,8 +266,10 @@
     }
 
     // ── Auto-hide timer ──────────────────────────────────────────────
-    if (phase === SavePhase.SAVED || phase === SavePhase.FAILED) {
-      var hideDelay = phase === SavePhase.SAVED ? 3000 : 5000;
+    if (phase === SavePhase.SAVED || phase === SavePhase.FAILED || phase === SavePhase.BLOCKED || phase === SavePhase.NOCHANGE) {
+      var hideDelay = 5000;
+      if (phase === SavePhase.SAVED) hideDelay = 3000;
+      if (phase === SavePhase.NOCHANGE) hideDelay = 4000;
       state.timer = setTimeout(function() {
         indicator.style.display = 'none';
         state.phase = SavePhase.IDLE;
@@ -319,7 +335,7 @@
         var possiblePhase = parts[1];
         // Validate
         if ((possibleType === 'auto' || possibleType === 'manual' || possibleType === 'checkpoint') &&
-            (possiblePhase === 'saving' || possiblePhase === 'saved' || possiblePhase === 'failed')) {
+            (possiblePhase === 'saving' || possiblePhase === 'saved' || possiblePhase === 'failed' || possiblePhase === 'blocked' || possiblePhase === 'nochange')) {
           type = possibleType;
           phase = possiblePhase;
         }

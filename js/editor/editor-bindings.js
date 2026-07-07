@@ -307,9 +307,7 @@
     });
     bindButtonOnce(cancelEditBtn, 'cancelBound', exitEditMode);
     bindButtonOnce(saveEditBtn, 'saveBound', function() {
-      var mode = window.LoveBudEditorInteractionMode;
-      if (!mode || !mode.isEditMode()) return;
-      saveMemoryEdit();
+      if (typeof saveMemoryEdit === 'function') saveMemoryEdit();
     });
 
     // Ctrl+Enter / Meta+Enter keyboard shortcut for save (in editMemoInput).
@@ -320,8 +318,6 @@
       editMemoInput.addEventListener('keydown', function(e) {
         if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
           e.preventDefault();
-          var kbMode = window.LoveBudEditorInteractionMode;
-          if (!kbMode || !kbMode.isEditMode()) return;
           if (typeof saveMemoryEdit === 'function') saveMemoryEdit();
         }
       });
