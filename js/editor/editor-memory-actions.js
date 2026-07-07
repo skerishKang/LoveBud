@@ -287,7 +287,8 @@ function createEditorMemoryActions(deps) {
             return reportNonNetworkSaveOutcome('blocked_mode', 'manual_blocked', blockedMessage);
         }
         var mode = window.LoveBudEditorInteractionMode;
-        if (mode && !mode.isEditMode()) {
+        var isModeHelperMissing = !mode || typeof mode.isEditMode !== 'function';
+        if (isModeHelperMissing || !mode.isEditMode()) {
             const blockedMessage = formatI18nText('save_blocked_mode', '편집 모드에서만 저장할 수 있어요');
             return reportNonNetworkSaveOutcome('blocked_mode', 'manual_blocked', blockedMessage);
         }

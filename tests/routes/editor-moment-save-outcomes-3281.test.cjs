@@ -174,7 +174,9 @@ function createHarness(options = {}) {
         }
       },
       LoveBudEditorInteractionMode: {
-        isEditMode: () => options.isEditMode !== false
+        ...(options.modeHelper === undefined
+          ? { isEditMode: () => options.isEditMode !== false }
+          : options.modeHelper),
       },
       LoveBudCache: {
         set() {}
@@ -261,7 +263,39 @@ test('single authoritative save gate remains in actions, not button wrapper', ()
   assert.equal(saveCalls, 1, 'save button wrapper must delegate without its own mode gate');
 });
 
-test('blocked_mode is observable, visible, and skips updateMemory', async () => {
+test('blocked_mode is observable when interaction-mode helper is missing', async () => {
+  const harness = createHarness({ modeHelper: null });
+
+  const result = await harness.actions.saveMemoryEdit();
+
+  assert.equal(result.outcome, 'blocked_mode');
+  assert.equal(harness.getApiCallCount(), 0);
+  assert.equal(harness.dom.detailEditMode.style.display, 'block');
+  assert.equal(harness.getOutcomes().at(-1).outcome, 'blocked_mode');
+  assert.equal(harness.getToasts().at(-1).type, 'info');
+  assert.deepEqual(
+    harness.getStatuses().map((entry) => entry.status),
+    ['manual_blocked']
+  );
+});
+
+test('blocked_mode is observable when interaction-mode helper has no isEditMode function', async () => {
+  const harness = createHarness({ modeHelper: {} });
+
+  const result = await harness.actions.saveMemoryEdit();
+
+  assert.equal(result.outcome, 'blocked_mode');
+  assert.equal(harness.getApiCallCount(), 0);
+  assert.equal(harness.dom.detailEditMode.style.display, 'block');
+  assert.equal(harness.getOutcomes().at(-1).outcome, 'blocked_mode');
+  assert.equal(harness.getToasts().at(-1).type, 'info');
+  assert.deepEqual(
+    harness.getStatuses().map((entry) => entry.status),
+    ['manual_blocked']
+  );
+});
+
+test('blocked_mode is observable when interaction mode reports view mode', async () => {
   const harness = createHarness({ isEditMode: false });
 
   const result = await harness.actions.saveMemoryEdit();
