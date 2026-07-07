@@ -6,11 +6,11 @@
  * All entry pages that depend on window.apiClient must load:
  *   1. base-api-fetch  (creates window.LoveTreeBaseApiFetch)
  *   2. postgres-client (reads window.LoveTreeBaseApiFetch, creates window.apiClient)
- *   3. page entrypoint (reads window.apiClient)
+ *   3. actual top-level page entrypoint (reads window.apiClient)
  *
- * Editor additionally requires editor-page-event-bindings before
- * editor-entry-dependencies, and the full editor non-module script chain
- * to load only after postgres-client has provided window.apiClient.
+ * Editor additionally assembles its dependency modules in a specific order:
+ *   postgres-client → API-dependent editor modules → page-event-bindings
+ *   → editor-entry-dependencies (dependency assembly) → editor.js (actual top-level entry)
  *
  * Does NOT lock query fingerprint, total script count, or every window global.
  * Does NOT duplicate existing script-order contracts (search, detail) for
@@ -50,8 +50,11 @@ function assertScriptBefore(sources, beforeNeedle, afterNeedle) {
 }
 
 // ── Pages that load the API client stack ─────────────────────────────
+// Entry is the actual top-level entrypoint script for each page.
+// For editor this is editor.js (the runtime bootstrap), not the
+// intermediate dependency-assembly module editor-entry-dependencies.
 const API_CLIENT_PAGES = [
-  { page: 'editor',        entry: 'editor-entry-dependencies' },
+  { page: 'editor',        entry: 'editor.js' },
   { page: 'my-trees',      entry: 'my-trees-page-bootstrap' },
   { page: 'search',        entry: 'search-page-shell-init' },
   { page: 'detail',        entry: 'detail-page-shell-init' },
@@ -142,12 +145,21 @@ test('editor: postgres-client before API-dependent editor scripts', () => {
 });
 
 // ═════════════════════════════════════════════════════════════════════
-// D. Editor: page-event-bindings before entry-dependencies
+// D. Editor bootstrap assembly: page-event-bindings before entry-dependencies
+//     entry-dependencies assembles all window-provided helpers; it must come
+//     after every module it reads from window (including page-event-bindings)
+//     and before the actual top-level entrypoint editor.js.
 // ═════════════════════════════════════════════════════════════════════
-test('editor: page-event-bindings loads before entry-dependencies', () => {
+test('editor bootstrap: page-event-bindings loads before entry-dependencies', () => {
   const html = readRepoFile('pages/editor.html');
   const sources = getNonModuleScriptSources(html);
   assertScriptBefore(sources, 'editor-page-event-bindings', 'editor-entry-dependencies');
+});
+
+test('editor bootstrap: entry-dependencies loads before actual top-level entry editor.js', () => {
+  const html = readRepoFile('pages/editor.html');
+  const sources = getNonModuleScriptSources(html);
+  assertScriptBefore(sources, 'editor-entry-dependencies', 'editor.js');
 });
 
 // ═════════════════════════════════════════════════════════════════════
