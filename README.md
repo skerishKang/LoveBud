@@ -138,6 +138,22 @@ Cloudflare Pages에서는 위 경로가 사용자-facing 주소로 노출됩니�
 
 브라우저 코드는 `window.apiClient` → `js/api/base-api-fetch.js` → same-origin `/api/...` 경로를 사용합니다.
 
+### Runtime entry map
+
+- `pages/search.html` → `js/search/search-page-shell-init.js` top-level entry
+- `pages/detail.html` → `js/detail/detail-page-shell-init.js` top-level entry
+- `pages/editor.html` → `js/editor.js` top-level entry
+- `pages/my-trees.html` → `js/my-trees/my-trees-page-bootstrap.js` top-level entry with `js/my-trees.js` runtime
+- `pages/login.html` → `js/login-page.js` top-level entry with `js/login/login-page.js` and `js/auth/auth-login-page.js` login runtime
+- `index.html` → `js/index-inline-init.js` top-level entry
+- `pages/intro.html` → `js/intro/intro-page-init.js` top-level entry
+- API path: `page runtime → window.apiClient (assembled by js/postgres-client.js) → window.LoveTreeBaseApiFetch / js/api/base-api-fetch.js → same-origin /api/*`
+- Editor boundary: `pages/editor.html script order → js/editor.js entry/bootstrap → LoveBudEditorEntryDependencies resolution → refresh/save runtime + memory-action + binding composition`
+- Source of truth docs:
+  [JS script loading contract](docs/engineering/JS_SCRIPT_LOADING_NAMESPACE_CONTRACT.md)
+  [Engineering index](docs/engineering/engineering_index.md)
+  [Docs index](docs/doc_index.md)
+
 ### 현재 배포 구조
 
 - **Cloudflare Pages**: 공식 프론트 및 same-origin `/api` 엔트리
