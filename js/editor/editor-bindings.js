@@ -1,3 +1,4 @@
+// Cache-bust marker for #3294 production no-change feedback rollout.
 /**
  * LoveBud - Editor Bindings
  * v20260420-1
