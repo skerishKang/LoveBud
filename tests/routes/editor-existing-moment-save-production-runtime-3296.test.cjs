@@ -405,13 +405,14 @@ test('Case 4: YouTube source URL with start/end segment unchanged save', async (
     title: '제목',
     memo: '메모',
     emotionTags: [],
-    sourceUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ?start=83'
+    sourceUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ?start=83&end=125'
   };
 
   const harness = createHarness({ initialMemory });
   harness.triggerEnterEditMode();
 
   assert.equal(harness.elements.editStartTimeInput.value, '1:23');
+  assert.equal(harness.elements.editEndTimeInput.value, '2:05');
 
   const res = await harness.triggerSaveClick();
 
