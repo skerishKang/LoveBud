@@ -212,7 +212,7 @@ test('editor page cache-busts root helpers and CTA files to PR #2448/#2449', () 
   // PR #2449: editor-empty-guide-ui.js + editor-page-event-bindings.js + editor-empty-guide-template.js
   // + editor-panel-history.js 모두 ?v=20260613-2449로 bust
   assert.match(editorPage, /\.\.\/js\/editor\/editor-empty-guide-ui\.js\?v=20260613-2449/);
-  assert.match(editorPage, /\.\.\/js\/editor\/editor-page-event-bindings\.js\?v=20260613-2449/);
+  assert.match(editorPage, /\.\.\/js\/editor\/editor-page-event-bindings\.js\?v=8717a54e8dce/);
   assert.match(
     editorPage,
     /\.\.\/js\/editor\/templates\/editor-empty-guide-template\.js\?v=20260613-2449/,

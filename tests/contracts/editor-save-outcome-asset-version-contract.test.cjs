@@ -13,11 +13,13 @@ const TRACKED_ASSETS = [
   'js/editor/editor-save-status-ui.js',
   'js/editor/editor-save-status-orchestration.js',
   'js/editor/templates/editor-detail-panel-shell-template.js',
-  'js/editor/templates/editor-detail-view-mode-template.js'
+  'js/editor/templates/editor-detail-view-mode-template.js',
+  'js/editor/editor-mobile-bottom-bar.js',
+  'js/editor/editor-page-event-bindings.js'
 ];
 
 function getSHA256First12(filePath) {
-  const content = fs.readFileSync(path.join(ROOT, filePath), 'utf8');
+  const content = fs.readFileSync(path.join(ROOT, filePath), 'utf8').replace(/\r\n/g, '\n');
   return crypto.createHash('sha256').update(content, 'utf8').digest('hex').slice(0, 12);
 }
 
