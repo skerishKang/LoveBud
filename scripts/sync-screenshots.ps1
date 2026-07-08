@@ -4,14 +4,28 @@
 param (
     [Parameter(Mandatory=$true)]
     [string]$TestId,
-    
-    [string]$BrainDir = "C:\Users\limone\.gemini\antigravity\brain\1f240922-f74a-4d32-b5d2-18196caaaad5",
-    
+
+    # Source brain directory. Provide via -BrainDir or $env:LOVEBUD_SCREENSHOT_BRAIN_DIR.
+    [string]$BrainDir = $env:LOVEBUD_SCREENSHOT_BRAIN_DIR,
+
+    # Destination root. Provide via -DestRoot or $env:LOVEBUD_SCREENSHOT_DEST_ROOT.
+    # Defaults to a repo-relative path so the script works from any checkout.
+    [string]$DestRoot = $env:LOVEBUD_SCREENSHOT_DEST_ROOT,
+
     [int]$Count = 20
 )
 
+if (-not $BrainDir) {
+    Write-Error "BrainDir is required. Pass -BrainDir or set `$env:LOVEBUD_SCREENSHOT_BRAIN_DIR."
+    exit 1
+}
+
+if (-not $DestRoot) {
+    $DestRoot = Join-Path (Get-Location) "docs\test-scenarios\results"
+}
+
 $TempDir = Join-Path $BrainDir ".tempmediaStorage"
-$DestDir = "g:\Ddrive\BatangD\task\workdiary\LoveBud\docs\test-scenarios\results\$TestId\screenshots"
+$DestDir = Join-Path $DestRoot "$TestId\screenshots"
 
 if (-not (Test-Path $DestDir)) {
     New-Item -ItemType Directory -Path $DestDir -Force | Out-Null
