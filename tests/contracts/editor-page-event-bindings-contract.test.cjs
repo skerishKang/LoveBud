@@ -358,20 +358,37 @@ test('PR #2449 P2: wrapped hide calls originalHide BEFORE closeAndConsume', () =
 // 기존 test (unchanged)
 // ─────────────────────────────────────────────────────────────────────
 
-test('bindEditorPageEvents skips edit-only binding groups when canEdit is false', () => {
+test('bindEditorPageEvents always binds detail action buttons, even when canEdit is false (#3327)', () => {
   const { helper } = loadHelper();
   const calls = createCalls();
   const options = createBaseOptions(calls, false);
   const result = helper.bindEditorPageEvents(options);
 
-  assert.deepEqual(calls.map((call) => call.name), ['bindEmptyGuideEvents']);
+  // #3327: detail action buttons must ALWAYS be bound so the save/cancel/edit
+  // controls stay interactive; actual save/edit/delete remains canEdit-gated
+  // inside editor-memory-actions.js. Only edit-only *creation* groups skip.
+  assert.deepEqual(calls.map((call) => call.name), [
+    'bindEmptyGuideEvents',
+    'bindDetailActionButtons'
+  ]);
   assertBindingResult(result, {
     sidebarVisibilityToggle: false,
     memoryCreateControls: false,
     detailEmptyStartButton: false,
     emptyGuideEvents: true,
-    detailActionButtons: false
+    detailActionButtons: true
   });
+});
+
+test('bindEditorPageEvents passes canEdit=false into detail action binding options (#3327)', () => {
+  const { helper, context } = loadHelper();
+  const calls = createCalls();
+  const options = createBaseOptions(calls, false);
+  helper.bindEditorPageEvents(options);
+
+  const bindCall = calls.find((call) => call.name === 'bindDetailActionButtons');
+  assert.ok(bindCall, 'bindDetailActionButtons should be called');
+  assert.equal(bindCall.payload.canEdit, false);
 });
 
 test('bindEditorPageEvents tolerates missing helper methods without throwing', () => {

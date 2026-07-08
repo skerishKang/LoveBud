@@ -35,7 +35,13 @@
 
     var iconEl = actionBtn.querySelector('.material-symbols-outlined');
 
-    var canEdit = window.canEdit;
+    // #3327: editor editability is published on window.LoveBudEditor.canEdit
+    // (editor-shell-startup.js applyEditorEditabilityState), NOT window.canEdit.
+    // Reading the wrong surface let the mode toggle bypass the owner check and
+    // open edit mode for read-only users. Fall back to true (editable) only when
+    // no editor editability state has been published yet.
+    var editorNamespace = (typeof window !== 'undefined' && window.LoveBudEditor) || {};
+    var canEdit = editorNamespace.canEdit !== false;
     var modeToggle = null;
     var modeUnsubscribe = null;
 

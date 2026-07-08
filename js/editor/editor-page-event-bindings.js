@@ -125,8 +125,17 @@
       results.emptyGuideEvents = true;
     }
 
-    if (canEdit && typeof editorBindings.bindDetailActionButtons === 'function') {
+    // #3327: detail action buttons are ALWAYS bound so the save/cancel/edit
+    // controls remain interactive regardless of when effectiveCanEdit resolves.
+    // MutationObserver re-binding inside bindDetailActionButtons already makes
+    // this idempotent. Actual mutation (save/edit/delete) is still gated by the
+    // canEdit===false guards inside editor-memory-actions.js, so read-only users
+    // get a visible-but-harmless control surface rather than a dead one. The
+    // contract flag still reflects editability so callers can observe whether
+    // the owner-capability was active at bind time.
+    if (typeof editorBindings.bindDetailActionButtons === 'function') {
       editorBindings.bindDetailActionButtons({
+        canEdit: canEdit,
         enterEditMode: opts.enterEditMode,
         deleteMemory: opts.deleteMemory,
         exitEditMode: opts.exitEditMode,
