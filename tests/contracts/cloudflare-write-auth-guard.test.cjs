@@ -10,6 +10,7 @@ function readRepoFile(relativePath) {
 }
 
 const gateway = () => readRepoFile('functions/api/[[path]].js');
+const memoryProxy = () => readRepoFile('functions/_shared/memory-route-proxy.js');
 
 // ─── HELPER PRESENCE ────────────────────────────────────────────────────────
 
@@ -59,14 +60,22 @@ test('Cloudflare gateway guards POST /api/trees with auth check', () => {
 
 test('Cloudflare gateway guards POST /api/memories with auth check', () => {
   const source = gateway();
+  const memorySource = memoryProxy();
   assert.match(source, /'POST', 'PUT', 'DELETE'/);
-  assert.match(source, /\/modal\/private\/memories/);
+  assert.match(source, /isMemoryWriteRequest\(request\)/);
+  assert.match(source, /prepareMemoryWriteProxyRequest\(request, env \|\| \{\}, \{ requestId \}\)/);
+  assert.match(memorySource, /method === 'POST' && isMemoryCollectionRequest\(request\)/);
+  assert.match(memorySource, /buildMemoryMissingAuthorizationResponse/);
+  assert.match(memorySource, /readBoundedMemoryWriteBody/);
 });
 
 test('Cloudflare gateway guards PUT/DELETE detail writes with auth check', () => {
   const source = gateway();
+  const memorySource = memoryProxy();
   assert.match(source, /'PUT', 'DELETE']/);
-  assert.match(source, /\/modal\/private\/memories/);
+  assert.match(source, /isMemoryWriteRequest\(request\)/);
+  assert.match(memorySource, /\['PUT', 'DELETE'\]\.includes\(method\) && isMemoryDetailRequest\(request\)/);
+  assert.match(memorySource, /\/modal\/private\/memories/);
   assert.match(source, /\/modal\/private\/trees/);
 });
 

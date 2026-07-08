@@ -1,3 +1,13 @@
+import {
+  buildMemoryModalUrl,
+  buildMemoryMissingModalConfigResponse,
+  buildMemoryReadHeaders,
+  isMemoryReadRequest,
+  isMemoryRouteRequest,
+  isMemoryWriteRequest,
+  prepareMemoryWriteProxyRequest
+} from '../_shared/memory-route-proxy.js';
+
 function stripTrailingSlash(value) {
   return String(value || '').replace(/\/$/, '');
 }
@@ -156,31 +166,8 @@ export function buildModalUrl(request, env) {
     return target;
   }
 
-  if (path === '/api/memories') {
-    target.pathname = '/modal/private/memories';
-    if (method === 'GET') {
-      const treeId = sourceUrl.searchParams.get('treeId');
-      const limit = Math.min(Math.max(Number(sourceUrl.searchParams.get('limit') || 100) || 100, 1), 200);
-      if (treeId) target.searchParams.set('treeId', treeId);
-      target.searchParams.set('limit', String(limit));
-    }
-    return target;
-  }
-
-  const memoryMatch = path.match(/^\/api\/memories\/([^/]+)$/);
-  if (memoryMatch) {
-    const memoryId = encodeURIComponent(decodeURIComponent(memoryMatch[1]));
-    const authHeader = request.headers.get('authorization') || request.headers.get('Authorization');
-    // Signed-in reads use the authenticated detail endpoint so private memories
-    // resolve; anonymous reads use the public detail endpoint. Mirrors /api/trees/:id (#3288).
-    if (method === 'GET' && authHeader) {
-      target.pathname = `/modal/private/memories/${memoryId}`;
-      return target;
-    }
-    const isWrite = ['PUT', 'DELETE'].includes(method);
-    target.pathname = isWrite ? `/modal/private/memories/${memoryId}` : `/modal/memories/${memoryId}`;
-    return target;
-  }
+  const memoryTarget = buildMemoryModalUrl(request, env);
+  if (memoryTarget) return memoryTarget;
 
   // POST /api/trees/:id/fork → /modal/private/trees/:id/fork
   const treeForkMatch = path.match(/^\/api\/trees\/([^/]+)\/fork$/);
@@ -234,6 +221,7 @@ async function withUpstreamHeader(response, upstream, requestId = null) {
 
 function isModalOwnedGetRoute(request, env) {
   if (request.method.toUpperCase() !== 'GET') return false;
+  if (isMemoryReadRequest(request)) return true;
   const modalUrl = buildModalUrl(request, env || {});
   return modalUrl !== null;
 }
@@ -241,6 +229,7 @@ function isModalOwnedGetRoute(request, env) {
 function isModalOwnedWriteRoute(request, env) {
   const method = request.method.toUpperCase();
   if (!['POST', 'PUT', 'DELETE'].includes(method)) return false;
+  if (isMemoryWriteRequest(request)) return true;
 
   const url = new URL(request.url);
   const path = url.pathname.replace(/\/+$/, '');
@@ -343,12 +332,14 @@ async function tryModalRead(request, env, requestId = null) {
   const modalUrl = buildModalUrl(request, env || {});
   if (!modalUrl) return null;
 
-  const headers = {
-    accept: 'application/json',
-    ...(request.headers.get('authorization') ? { authorization: request.headers.get('authorization') } : {})
-  };
-
-  if (requestId) headers[REQUEST_ID_HEADER] = requestId;
+  const isMemoryRead = isMemoryReadRequest(request);
+  const headers = isMemoryRead
+    ? buildMemoryReadHeaders(request, requestId)
+    : {
+        accept: 'application/json',
+        ...(request.headers.get('authorization') ? { authorization: request.headers.get('authorization') } : {})
+      };
+  if (!isMemoryRead && requestId) headers[REQUEST_ID_HEADER] = requestId;
 
   const urlLog = getSafeUrlLog(modalUrl);
   console.log(`[LoveBudCloudflareProxy] GET -> ${urlLog} (id=${requestId})`);
@@ -390,6 +381,24 @@ async function tryModalWrite(request, env, requestId = null) {
   const method = request.method.toUpperCase();
   if (!['POST', 'PUT', 'DELETE'].includes(method)) return null;
   if (!isModalOwnedWriteRoute(request, env || {})) return null;
+
+  if (isMemoryWriteRequest(request)) {
+    const prepared = await prepareMemoryWriteProxyRequest(request, env || {}, { requestId });
+    if (prepared.response) return prepared.response;
+
+    const urlLog = getSafeUrlLog(prepared.target);
+    console.log(`[LoveBudCloudflareProxy] ${method} -> ${urlLog} (id=${requestId})`);
+
+    try {
+      return await fetchWithTimeout(prepared.target.toString(), prepared.fetchOptions);
+    } catch (error) {
+      if (error.name === 'AbortError') {
+        console.warn(`[LoveBudCloudflareProxy] Modal write timeout (25s): ${urlLog} (id=${requestId})`);
+        return buildModalTimeoutResponse(requestId);
+      }
+      throw error;
+    }
+  }
 
   // Reject private write without Authorization before body read
   if (!hasAuthorizationHeader(request)) {
@@ -503,6 +512,10 @@ function withPublicTreeCacheStatus(response, status) {
 export async function onRequest(context) {
   const { request, env } = context;
   const requestId = getOrCreateRequestId(request);
+
+  if (isMemoryRouteRequest(request) && !stripTrailingSlash((env || {}).MODAL_BASE_URL)) {
+    return buildMemoryMissingModalConfigResponse(requestId);
+  }
 
   const isModalOwned = isModalOwnedGetRoute(request, env || {});
   const isModalOwnedWrite = isModalOwnedWriteRoute(request, env || {});
