@@ -547,33 +547,57 @@ function createEditorMemoryActions(deps) {
                     return m ? m[1] : null;
                 })(savedPatch.sourceUrl);
 
-                // If the user changed the source URL, verify the response acknowledges it
-                if (payloadVideoId && payload.sourceUrl !== getEditableSourceUrl(currentEditingMemory)) {
-                    if (!responseVideoId) {
-                        throw new Error('Server response is missing video reference');
-                    }
-                    if (responseVideoId !== payloadVideoId) {
-                        throw new Error('Server response contains stale video reference');
-                    }
-
-                    // ── Source-identity (segment) acknowledgement validation ───
-                    // Pure in-memory comparison of the submitted source identity
-                    // against the save-response acknowledgement. No reread, no
-                    // extra fetch. Rejects on any mismatch of source type, video
-                    // id, start segment, or end segment.
-                    const submittedIdentity = normalizeSourceIdentity(payload.sourceUrl);
-                    const ackIdentity = normalizeSourceIdentity(savedPatch.sourceUrl);
-                    if (submittedIdentity.kind === 'empty' || ackIdentity.kind === 'empty') {
+                // Source-identity acknowledgement validation.
+                // Covers EVERY source-change case the user submitted — set, change
+                // video/segment, AND clear — by comparing the submitted source
+                // identity against the save-response acknowledgement. This is a
+                // pure in-memory comparison of the already-received response; no
+                // reread, no extra fetch, no diagnostic loop.
+                const sourceChangedThisSave =
+                    sourceChanged && sourceUrlInput && payload.sourceUrl !== undefined;
+                if (sourceChangedThisSave) {
+                    // Missing acknowledgement: response must echo the source identity.
+                    if (savedPatch.sourceUrl === undefined || savedPatch.sourceUrl === null) {
                         throw new Error('Server response is missing source acknowledgement');
                     }
-                    if (submittedIdentity.kind !== ackIdentity.kind) {
-                        throw new Error('Server response has mismatched source type');
-                    }
-                    if (submittedIdentity.kind === 'raw') {
+
+                    const submittedIdentity = normalizeSourceIdentity(payload.sourceUrl);
+                    const ackIdentity = normalizeSourceIdentity(savedPatch.sourceUrl);
+
+                    if (submittedIdentity.kind === 'empty') {
+                        // Clearing case: response sourceUrl must also be empty/cleared.
+                        if (ackIdentity.kind !== 'empty') {
+                            throw new Error('Server response did not clear source');
+                        }
+                        // Coherence of clearing acknowledgement: when the server
+                        // echoes derived fields, they must be cleared (empty or
+                        // the explicit 'other' type), not stale old values.
+                        if (savedPatch.sourceType !== undefined) {
+                            const st = String(savedPatch.sourceType || '').trim().toLowerCase();
+                            if (st && st !== 'other') {
+                                throw new Error('Server response has stale sourceType after clear');
+                            }
+                        }
+                        if (savedPatch.source !== undefined) {
+                            const s = String(savedPatch.source || '').trim().toLowerCase();
+                            if (s) {
+                                throw new Error('Server response has stale source label after clear');
+                            }
+                        }
+                        if (savedPatch.thumbnail !== undefined && savedPatch.thumbnail) {
+                            throw new Error('Server response has stale thumbnail after clear');
+                        }
+                    } else if (submittedIdentity.kind === 'raw') {
+                        if (ackIdentity.kind !== 'raw') {
+                            throw new Error('Server response has mismatched source type');
+                        }
                         if (submittedIdentity.raw !== ackIdentity.raw) {
                             throw new Error('Server response contains stale raw source reference');
                         }
                     } else if (submittedIdentity.kind === 'youtube') {
+                        if (ackIdentity.kind !== 'youtube') {
+                            throw new Error('Server response has mismatched source type');
+                        }
                         if (submittedIdentity.videoId !== ackIdentity.videoId) {
                             throw new Error('Server response contains stale video reference');
                         }
@@ -583,41 +607,39 @@ function createEditorMemoryActions(deps) {
                         if (submittedIdentity.end !== ackIdentity.end) {
                             throw new Error('Server response contains stale end segment');
                         }
-                    }
 
-                    // ── Derived-media coherence validation ─────────────────────
-                    // When the server returns thumbnail / sourceType / source fields,
-                    // verify they are coherent with the new video identity.
-                    // Three states:
-                    //   field omitted (undefined)          → accept, use payload canonical
-                    //   field present but empty            → reject
-                    //   field present with mismatched value → reject
-                    // Thumbnail coherence: extract video ID from thumbnail URL
-                    if (savedPatch.thumbnail !== undefined) {
-                        if (!savedPatch.thumbnail) {
-                            throw new Error('Server response has empty thumbnail for YouTube source');
+                        // ── Derived-media coherence validation (YouTube set/change only) ──
+                        // Three states for each derived field:
+                        //   field omitted (undefined)          → accept, use payload canonical
+                        //   field present but empty            → reject
+                        //   field present with mismatched value → reject
+                        // Thumbnail coherence: extract video ID from thumbnail URL
+                        if (savedPatch.thumbnail !== undefined) {
+                            if (!savedPatch.thumbnail) {
+                                throw new Error('Server response has empty thumbnail for YouTube source');
+                            }
+                            const thumbnailVideoId = (function extractId(url) {
+                                if (!url || typeof url !== 'string') return null;
+                                const m = url.match(/\/vi\/([0-9A-Za-z_-]{11})\//);
+                                return m ? m[1] : null;
+                            })(savedPatch.thumbnail);
+                            if (!thumbnailVideoId || thumbnailVideoId !== payloadVideoId) {
+                                throw new Error('Server response contains stale thumbnail for previous video');
+                            }
                         }
-                        const thumbnailVideoId = (function extractId(url) {
-                            if (!url || typeof url !== 'string') return null;
-                            const m = url.match(/\/vi\/([0-9A-Za-z_-]{11})\//);
-                            return m ? m[1] : null;
-                        })(savedPatch.thumbnail);
-                        if (!thumbnailVideoId || thumbnailVideoId !== payloadVideoId) {
-                            throw new Error('Server response contains stale thumbnail for previous video');
+                        // sourceType coherence: YouTube source must report 'youtube'
+                        if (savedPatch.sourceType !== undefined) {
+                            const st = String(savedPatch.sourceType || '').trim().toLowerCase();
+                            if (!st || st !== 'youtube') {
+                                throw new Error('Server response has mismatched sourceType for YouTube source');
+                            }
                         }
-                    }
-                    // sourceType coherence: YouTube source must report 'youtube'
-                    if (savedPatch.sourceType !== undefined) {
-                        const st = String(savedPatch.sourceType || '').trim().toLowerCase();
-                        if (!st || st !== 'youtube') {
-                            throw new Error('Server response has mismatched sourceType for YouTube source');
-                        }
-                    }
-                    // source label coherence: YouTube source must report 'youtube' (case-insensitive)
-                    if (savedPatch.source !== undefined) {
-                        const s = String(savedPatch.source || '').trim().toLowerCase();
-                        if (!s || s !== 'youtube') {
-                            throw new Error('Server response has mismatched source label for YouTube source');
+                        // source label coherence: YouTube source must report 'youtube' (case-insensitive)
+                        if (savedPatch.source !== undefined) {
+                            const s = String(savedPatch.source || '').trim().toLowerCase();
+                            if (!s || s !== 'youtube') {
+                                throw new Error('Server response has mismatched source label for YouTube source');
+                            }
                         }
                     }
                 }

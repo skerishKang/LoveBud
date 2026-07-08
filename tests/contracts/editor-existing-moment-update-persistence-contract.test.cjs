@@ -1144,3 +1144,193 @@ test('Q. runtime has no owner/community/public/DB reread in save path', function
   assert.equal(/new XMLHttpRequest|fetch\(/.test(src), false,
     'no fetch/XHR calls added in save path');
 });
+
+// =============================================================================
+// #3276 lite follow-up: source-clearing acknowledgement
+// Clearing the source is a source change and must be acknowledged, like set/change.
+// Refs #1882
+// =============================================================================
+
+// Helper: clear the source via the edit form (prev source was a YouTube embed).
+async function clearSourceCtx(initialMemory, apiResponse) {
+  var ctx = await runSaveMemoryEdit({
+    initialMemory: initialMemory,
+    domValues: { title: 'Old', memo: '', tags: '', sourceUrl: '' },
+    apiResponse: apiResponse
+  });
+  ctx.actions.enterEditMode();
+  ctx.setInputValue('editSourceUrlInput', '');
+  return ctx;
+}
+
+test('S. clearing source + response omits sourceUrl → rejected', { timeout: 3000 }, async function(t) {
+  var mem = {
+    id: 'mem-1', title: 'Old',
+    sourceUrl: 'https://www.youtube.com/embed/aaaaaaaaaaa', sourceType: 'youtube',
+    thumbnail: 'https://img.youtube.com/vi/aaaaaaaaaaa/mqdefault.jpg',
+    source: 'YouTube', emotionTags: []
+  };
+  // response echoes everything EXCEPT sourceUrl (missing acknowledgement)
+  var missingResponse = {
+    id: 'mem-1', title: 'Old',
+    sourceType: 'youtube', thumbnail: 'https://img.youtube.com/vi/aaaaaaaaaaa/mqdefault.jpg',
+    source: 'YouTube', emotionTags: [], updatedAt: new Date().toISOString()
+  };
+  var ctx = await clearSourceCtx(mem, missingResponse);
+
+  assert.equal(ctx.getFormDisplay('edit'), 'block', 'edit form is open');
+  await ctx.actions.saveMemoryEdit();
+
+  assert.equal(ctx.getEditingMemory().sourceUrl, 'https://www.youtube.com/embed/aaaaaaaaaaa',
+    'missing source acknowledgement must NOT clear source');
+  assert.equal(ctx.getToast().type, 'error', 'must show error toast');
+  assert.equal(ctx.getCallCount(), 1, 'API was called once');
+  assert.equal(ctx.getRenderedCanvas(), false, 'canvas must NOT rerender');
+  assert.equal(ctx.getFormDisplay('edit'), 'block', 'edit form must stay open');
+  assert.equal(ctx.getCommunityCacheClearCount(), 0, 'community cache clear must be 0 on missing ack');
+});
+
+test('T. clearing source + response keeps old sourceUrl → rejected', { timeout: 3000 }, async function(t) {
+  var mem = {
+    id: 'mem-1', title: 'Old',
+    sourceUrl: 'https://www.youtube.com/embed/aaaaaaaaaaa', sourceType: 'youtube',
+    thumbnail: 'https://img.youtube.com/vi/aaaaaaaaaaa/mqdefault.jpg',
+    source: 'YouTube', emotionTags: []
+  };
+  // response keeps the OLD sourceUrl (did not clear)
+  var staleResponse = {
+    id: 'mem-1', title: 'Old',
+    sourceUrl: 'https://www.youtube.com/embed/aaaaaaaaaaa',
+    sourceType: 'youtube', thumbnail: 'https://img.youtube.com/vi/aaaaaaaaaaa/mqdefault.jpg',
+    source: 'YouTube', emotionTags: [], updatedAt: new Date().toISOString()
+  };
+  var ctx = await clearSourceCtx(mem, staleResponse);
+
+  assert.equal(ctx.getFormDisplay('edit'), 'block', 'edit form is open');
+  await ctx.actions.saveMemoryEdit();
+
+  assert.equal(ctx.getEditingMemory().sourceUrl, 'https://www.youtube.com/embed/aaaaaaaaaaa',
+    'stale old sourceUrl must NOT clear source');
+  assert.equal(ctx.getToast().type, 'error', 'must show error toast');
+  assert.equal(ctx.getRenderedCanvas(), false, 'canvas must NOT rerender');
+  assert.equal(ctx.getFormDisplay('edit'), 'block', 'edit form must stay open');
+});
+
+test('U. clearing source + response sourceUrl empty but stale sourceType/source/thumbnail → rejected', { timeout: 3000 }, async function(t) {
+  var mem = {
+    id: 'mem-1', title: 'Old',
+    sourceUrl: 'https://www.youtube.com/embed/aaaaaaaaaaa', sourceType: 'youtube',
+    thumbnail: 'https://img.youtube.com/vi/aaaaaaaaaaa/mqdefault.jpg',
+    source: 'YouTube', emotionTags: []
+  };
+  // sourceUrl cleared, but derived fields still echo the old video
+  var incoherentResponse = {
+    id: 'mem-1', title: 'Old',
+    sourceUrl: '', sourceType: 'youtube', thumbnail: 'https://img.youtube.com/vi/aaaaaaaaaaa/mqdefault.jpg',
+    source: 'YouTube', emotionTags: [], updatedAt: new Date().toISOString()
+  };
+  var ctx = await clearSourceCtx(mem, incoherentResponse);
+
+  assert.equal(ctx.getFormDisplay('edit'), 'block', 'edit form is open');
+  await ctx.actions.saveMemoryEdit();
+
+  assert.equal(ctx.getEditingMemory().sourceUrl, 'https://www.youtube.com/embed/aaaaaaaaaaa',
+    'stale derived fields after clear must NOT clear source');
+  assert.equal(ctx.getToast().type, 'error', 'must show error toast');
+  assert.equal(ctx.getRenderedCanvas(), false, 'canvas must NOT rerender');
+  assert.equal(ctx.getFormDisplay('edit'), 'block', 'edit form must stay open');
+});
+
+test('V. clearing source + empty sourceUrl with coherent cleared fields → success', { timeout: 3000 }, async function(t) {
+  var mem = {
+    id: 'mem-1', title: 'Old',
+    sourceUrl: 'https://www.youtube.com/embed/aaaaaaaaaaa', sourceType: 'youtube',
+    thumbnail: 'https://img.youtube.com/vi/aaaaaaaaaaa/mqdefault.jpg',
+    source: 'YouTube', emotionTags: []
+  };
+  // fully coherent clearing acknowledgement
+  var okClearResponse = {
+    id: 'mem-1', title: 'Old',
+    sourceUrl: '', sourceType: 'other', thumbnail: '', source: '',
+    emotionTags: [], updatedAt: new Date().toISOString()
+  };
+  var ctx = await clearSourceCtx(mem, okClearResponse);
+
+  assert.equal(ctx.getFormDisplay('edit'), 'block', 'edit form is open');
+  await ctx.actions.saveMemoryEdit();
+
+  assert.equal(ctx.getEditingMemory().sourceUrl, '',
+    'coherent cleared acknowledgement must clear source');
+  assert.equal(ctx.getEditingMemory().sourceType, 'other', 'cleared sourceType must apply');
+  assert.equal(ctx.getToast().type, 'success', 'must show success toast');
+  assert.equal(ctx.getRenderedCanvas(), true, 'canvas must rerender');
+  assert.equal(ctx.getFormDisplay('edit'), 'none', 'edit form must close');
+  assert.equal(ctx.getCommunityCacheClearCount(), 1, 'community cache clear must run on success');
+});
+
+test('W. rejected clearing acknowledgement preserves full safe state', { timeout: 3000 }, async function(t) {
+  var mem = {
+    id: 'mem-1', title: 'KeepTitle', memo: 'KeepMemo',
+    sourceUrl: 'https://www.youtube.com/embed/aaaaaaaaaaa', sourceType: 'youtube',
+    thumbnail: 'https://img.youtube.com/vi/aaaaaaaaaaa/mqdefault.jpg',
+    source: 'YouTube', emotionTags: ['keep']
+  };
+  var staleResponse = {
+    id: 'mem-1', title: 'KeepTitle',
+    sourceUrl: 'https://www.youtube.com/embed/aaaaaaaaaaa',
+    sourceType: 'youtube', thumbnail: 'https://img.youtube.com/vi/aaaaaaaaaaa/mqdefault.jpg',
+    source: 'YouTube', emotionTags: ['keep'], updatedAt: new Date().toISOString()
+  };
+  var ctx = await clearSourceCtx(mem, staleResponse);
+
+  await ctx.actions.saveMemoryEdit();
+
+  // editing memory preserved
+  assert.equal(ctx.getEditingMemory().sourceUrl, 'https://www.youtube.com/embed/aaaaaaaaaaa',
+    'editing memory source preserved');
+  assert.equal(ctx.getEditingMemory().title, 'KeepTitle', 'editing memory title preserved');
+  // treeMemories preserved
+  var tree = ctx.getTreeMemories();
+  assert.equal(tree[0].sourceUrl, 'https://www.youtube.com/embed/aaaaaaaaaaa', 'treeMemories source preserved');
+  assert.equal(tree[0].title, 'KeepTitle', 'treeMemories title preserved');
+  // currentTreeData preserved
+  var tdata = ctx.getCurrentTreeData();
+  assert.equal(tdata.memories[0].sourceUrl, 'https://www.youtube.com/embed/aaaaaaaaaaa', 'currentTreeData source preserved');
+  // detail panel not updated
+  assert.equal(ctx.getDetailPanelUpdated(), null, 'detail panel not updated on rejection');
+  // canvas not rerendered
+  assert.equal(ctx.getRenderedCanvas(), false, 'canvas not rerendered');
+  // edit form remains open
+  assert.equal(ctx.getFormDisplay('edit'), 'block', 'edit form remains open');
+  // no success toast, no manual_saved status
+  assert.equal(ctx.getToast().type, 'error', 'no success toast');
+  // community cache clear must not run on rejection
+  assert.equal(ctx.getCommunityCacheClearCount(), 0, 'community cache clear must be 0 on rejection');
+});
+
+test('X. clearing acknowledgement: no reread/fetch/XHR/diagnostic added', function(t) {
+  var src = fs.readFileSync(path.join(ROOT, 'js/editor/editor-memory-actions.js'), 'utf-8');
+  assert.equal(/\brereadOwner\b|\brereadCommunity\b|\brereadPublic\b|\brereadMemory\b/.test(src), false,
+    'no reread helper calls in source');
+  assert.equal(/\bownerReread\b|\bcommunityReread\b|\bpublicReread\b/.test(src), false,
+    'no owner/community/public reread symbols');
+  assert.equal(/diagnosticLoop|autoDiagnose|runDiagnostics/.test(src), false,
+    'no production diagnostic routine');
+  assert.equal(/new XMLHttpRequest|fetch\(/.test(src), false,
+    'no fetch/XHR calls added in save path');
+});
+
+test('Y. #1882 referenced only as Refs (no closing keyword)', function(t) {
+  var src = fs.readFileSync(path.join(ROOT, 'js/editor/editor-memory-actions.js'), 'utf-8');
+  var testSrc = fs.readFileSync(__filename, 'utf-8');
+  var closeKw = 'Closes ' + '#1882';
+  var fixKw = 'Fixes ' + '#1882';
+  var resolveKw = 'Resolves ' + '#1882';
+  assert.equal(src.includes(closeKw), false, 'source must not close #1882');
+  assert.equal(src.includes(fixKw), false, 'source must not fix #1882');
+  assert.equal(src.includes(resolveKw), false, 'source must not resolve #1882');
+  assert.equal(testSrc.includes('Refs #1882'), true, 'test must reference Refs #1882');
+  assert.equal(testSrc.includes(closeKw), false, 'test must not close #1882');
+  assert.equal(testSrc.includes(fixKw), false, 'test must not fix #1882');
+  assert.equal(testSrc.includes(resolveKw), false, 'test must not resolve #1882');
+});
