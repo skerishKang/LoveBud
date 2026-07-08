@@ -603,19 +603,19 @@ test('update_owner_memory maps source URL payload fields to DB columns', () => {
 
   assert.match(
     normalized,
-    /updates\.append\("source_url=%s"\).*validate_optional_string\(payload\.get\("sourceurl"\),1000\)/i,
+    /updates\.append\("source_url=%s"\).*validate_optional_memory_string\(payload\.get\("sourceurl"\),"sourceurl",1000\)/i,
     'update_owner_memory must map sourceUrl to source_url with the source URL limit'
   );
 
   assert.match(
     normalized,
-    /updates\.append\("source_type=%s"\).*validate_optional_string\(payload\.get\("sourcetype"\),50\)/i,
+    /updates\.append\("source_type=%s"\).*validate_optional_memory_string\(payload\.get\("sourcetype"\),"sourcetype",50\)/i,
     'update_owner_memory must map sourceType to source_type with the source type limit'
   );
 
   assert.match(
     normalized,
-    /updates\.append\("thumbnail=%s"\).*validate_optional_string\(payload\.get\("thumbnail"\),500\)/i,
+    /updates\.append\("thumbnail=%s"\).*validate_optional_memory_string\(payload\.get\("thumbnail"\),"thumbnail",500\)/i,
     'update_owner_memory must map thumbnail with the thumbnail limit'
   );
 });
