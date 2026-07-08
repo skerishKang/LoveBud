@@ -111,26 +111,34 @@ test('trees.js rejects legacy key with 400 before upstream fetch', () => {
 
 test('memories.js imports validateWritePayload from legacy-key-guard', () => {
   const src = readRepoFile('functions/api/memories.js');
-  assert.ok(src.indexOf("from '../_shared/legacy-key-guard.js'") !== -1, 'memories.js must import guard');
-  assert.ok(src.indexOf('validateWritePayload') !== -1, 'memories.js must call validateWritePayload');
+  const helper = readRepoFile('functions/_shared/memory-route-proxy.js');
+  assert.ok(src.indexOf("from '../_shared/memory-route-proxy.js'") !== -1, 'memories.js must import memory proxy');
+  assert.ok(helper.indexOf("from './legacy-key-guard.js'") !== -1, 'memory proxy must import guard');
+  assert.ok(helper.indexOf('validateWritePayload') !== -1, 'memory proxy must call validateWritePayload');
 });
 
 test('memories.js rejects legacy key with 400 before upstream fetch', () => {
   const src = readRepoFile('functions/api/memories.js');
-  assert.match(src, /validateWritePayload\(payload,\s*\[['"]title['"],\s*['"]memo['"]\]\)/);
-  assert.match(src, /if \(guard\) return guard/);
+  const helper = readRepoFile('functions/_shared/memory-route-proxy.js');
+  assert.match(src, /proxyMemoryRouteRequest/);
+  assert.match(helper, /validateWritePayload\(payload,\s*\[['"]title['"],\s*['"]memo['"]\]\)/);
+  assert.match(helper, /if \(guard\) return/);
 });
 
 test('memories/[id].js imports validateWritePayload from legacy-key-guard', () => {
   const src = readRepoFile('functions/api/memories/[id].js');
-  assert.ok(src.indexOf("from '../../_shared/legacy-key-guard.js'") !== -1, 'memories/[id].js must import guard');
-  assert.ok(src.indexOf('validateWritePayload') !== -1, 'memories/[id].js must call validateWritePayload');
+  const helper = readRepoFile('functions/_shared/memory-route-proxy.js');
+  assert.ok(src.indexOf("from '../../_shared/memory-route-proxy.js'") !== -1, 'memories/[id].js must import memory proxy');
+  assert.ok(helper.indexOf("from './legacy-key-guard.js'") !== -1, 'memory proxy must import guard');
+  assert.ok(helper.indexOf('validateWritePayload') !== -1, 'memory proxy must call validateWritePayload');
 });
 
 test('memories/[id].js rejects legacy key with 400 before upstream fetch', () => {
   const src = readRepoFile('functions/api/memories/[id].js');
-  assert.match(src, /validateWritePayload\(payload,\s*\[['"]title['"],\s*['"]memo['"]\]\)/);
-  assert.match(src, /if \(guard\) return guard/);
+  const helper = readRepoFile('functions/_shared/memory-route-proxy.js');
+  assert.match(src, /proxyMemoryRouteRequest/);
+  assert.match(helper, /validateWritePayload\(payload,\s*\[['"]title['"],\s*['"]memo['"]\]\)/);
+  assert.match(helper, /if \(guard\) return/);
 });
 
 // ─── Guard placement: must precede upstream fetch in handler flow ─────────
@@ -149,25 +157,29 @@ test('trees.js guard precedes upstream fetch call', () => {
 
 test('memories.js guard precedes upstream fetch call', () => {
   const src = readRepoFile('functions/api/memories.js');
+  const helper = readRepoFile('functions/_shared/memory-route-proxy.js');
   const postStart = src.indexOf('export async function onRequestPost');
   assert.ok(postStart > 0, 'onRequestPost handler must exist');
-  const postSection = src.slice(postStart);
-  const guardIdx = postSection.indexOf('if (guard) return guard');
-  const fetchIdx = postSection.indexOf('await fetch(new URL(');
+  assert.match(src.slice(postStart), /proxyMemoryRouteRequest/);
+  const postSection = helper.slice(helper.indexOf('export async function prepareMemoryWriteProxyRequest'));
+  const guardIdx = postSection.indexOf('if (guard) return');
+  const fetchIdx = postSection.indexOf('fetchOptions');
   assert.ok(guardIdx > 0, 'guard check must exist in POST handler');
-  assert.ok(fetchIdx > 0, 'fetch call must exist in POST handler');
+  assert.ok(fetchIdx > 0, 'fetch preparation must exist in POST flow');
   assert.ok(guardIdx < fetchIdx, 'guard must precede upstream fetch in POST handler');
 });
 
 test('memories/[id].js guard precedes upstream fetch call', () => {
   const src = readRepoFile('functions/api/memories/[id].js');
+  const helper = readRepoFile('functions/_shared/memory-route-proxy.js');
   const putStart = src.indexOf('export async function onRequestPut');
   assert.ok(putStart > 0, 'onRequestPut handler must exist');
-  const putSection = src.slice(putStart);
-  const guardIdx = putSection.indexOf('if (guard) return guard');
-  const fetchIdx = putSection.indexOf('const response = await fetch(target.toString()');
+  assert.match(src.slice(putStart), /proxyMemoryRouteRequest/);
+  const putSection = helper.slice(helper.indexOf('export async function prepareMemoryWriteProxyRequest'));
+  const guardIdx = putSection.indexOf('if (guard) return');
+  const fetchIdx = putSection.indexOf('fetchOptions');
   assert.ok(guardIdx > 0, 'guard check must exist in PUT handler');
-  assert.ok(fetchIdx > 0, 'fetch call must exist in PUT handler');
+  assert.ok(fetchIdx > 0, 'fetch preparation must exist in PUT flow');
   assert.ok(guardIdx < fetchIdx, 'guard must precede upstream fetch in PUT handler');
 });
 

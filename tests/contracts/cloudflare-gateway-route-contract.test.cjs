@@ -10,6 +10,7 @@ function readRepoFile(relativePath) {
 }
 
 const gateway = () => readRepoFile('functions/api/[[path]].js');
+const memoryProxy = () => readRepoFile('functions/_shared/memory-route-proxy.js');
 
 test('Cloudflare gateway preserves community read route mappings to Modal', () => {
   const source = gateway();
@@ -25,19 +26,22 @@ test('Cloudflare gateway preserves community read route mappings to Modal', () =
 
 test('Cloudflare gateway preserves private collection route mappings to Modal', () => {
   const source = gateway();
+  const memorySource = memoryProxy();
 
   assert.match(source, /path === '\/api\/trees'/);
   assert.match(source, /target\.pathname = '\/modal\/private\/trees'/);
-  assert.match(source, /path === '\/api\/memories'/);
-  assert.match(source, /target\.pathname = '\/modal\/private\/memories'/);
+  assert.match(source, /buildMemoryModalUrl\(request, env\)/);
+  assert.match(memorySource, /path === '\/api\/memories'/);
+  assert.match(memorySource, /new URL\('\/modal\/private\/memories', modalBaseUrl\)/);
 });
 
 test('Cloudflare gateway preserves detail route public-private split', () => {
   const source = gateway();
+  const memorySource = memoryProxy();
 
-  assert.match(source, /const memoryMatch = path\.match/);
-  assert.match(source, /`\/modal\/private\/memories\/\$\{memoryId\}`/);
-  assert.match(source, /`\/modal\/memories\/\$\{memoryId\}`/);
+  assert.match(source, /buildMemoryModalUrl\(request, env\)/);
+  assert.match(memorySource, /isMemoryDetailRequest\(request\)/);
+  assert.match(memorySource, /\$\{isPrivate \? '\/modal\/private\/memories' : '\/modal\/memories'\}\/\$\{memoryId\}/);
   assert.match(source, /const treeMatch = path\.match/);
   assert.match(source, /`\/modal\/private\/trees\/\$\{encodeURIComponent\(decodeURIComponent\(treeMatch\[1\]\)\)\}`/);
   assert.match(source, /`\/modal\/trees\/\$\{encodeURIComponent\(decodeURIComponent\(treeMatch\[1\]\)\)\}`/);

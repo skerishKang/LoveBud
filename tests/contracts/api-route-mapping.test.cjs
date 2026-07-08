@@ -60,6 +60,7 @@ const MEMORIES_JS = path.join(ROOT, 'functions/api/memories.js');
 const CATCHALL_JS = path.join(ROOT, 'functions/api/[[path]].js');
 const TREE_DETAIL_JS = path.join(ROOT, 'functions/api/trees/[id].js');
 const MEMORY_DETAIL_JS = path.join(ROOT, 'functions/api/memories/[id].js');
+const MEMORY_PROXY_JS = path.join(ROOT, 'functions/_shared/memory-route-proxy.js');
 
 // ─── FILE EXISTENCE ────────────────────────────────────────────────────────
 
@@ -159,14 +160,19 @@ test('cloudflare api trees.js routes to modal/private/trees', () => {
 
 test('cloudflare api memories.js routes to modal/private/memories', () => {
   const content = readFileContent(MEMORIES_JS);
+  const helper = readFileContent(MEMORY_PROXY_JS);
 
   assert.ok(
-    hasString(content, '/modal/private/memories'),
-    'memories.js should proxy to /modal/private/memories'
+    hasString(content, 'proxyMemoryRouteRequest'),
+    'memories.js should delegate to shared memory route proxy'
   );
   assert.ok(
-    hasString(content, 'treeId'),
-    'memories.js should handle treeId query parameter'
+    hasString(helper, '/modal/private/memories'),
+    'shared memory route proxy should target /modal/private/memories'
+  );
+  assert.ok(
+    hasString(helper, 'treeId'),
+    'shared memory route proxy should handle treeId query parameter'
   );
 });
 
@@ -193,14 +199,15 @@ test('cloudflare api catch-all owns /api/trees GET and POST write routes', () =>
 
 test('cloudflare api catch-all owns /api/memories GET and POST write routes', () => {
   const content = readFileContent(CATCHALL_JS);
+  const helper = readFileContent(MEMORY_PROXY_JS);
 
   assert.ok(
-    hasString(content, "path === '/api/memories'"),
-    'catch-all buildModalUrl should handle /api/memories'
+    hasString(content, 'buildMemoryModalUrl'),
+    'catch-all buildModalUrl should delegate /api/memories to shared memory helper'
   );
   assert.ok(
-    hasString(content, '/modal/private/memories'),
-    'catch-all should map /api/memories to /modal/private/memories'
+    hasString(helper, '/modal/private/memories'),
+    'shared memory helper should map /api/memories to /modal/private/memories'
   );
 });
 
@@ -253,22 +260,23 @@ test('cloudflare api memory detail route exports private write handlers', () => 
 
 test('cloudflare api memory detail route forwards writes to modal private memories with authorization', () => {
   const content = readFileContent(MEMORY_DETAIL_JS);
+  const helper = readFileContent(MEMORY_PROXY_JS);
 
   assert.ok(
-    hasString(content, '/modal/private/memories/'),
-    'memory detail route should forward writes to /modal/private/memories/'
+    hasString(content, 'proxyMemoryRouteRequest'),
+    'memory detail route should delegate writes to shared memory route proxy'
   );
   assert.ok(
-    hasRegex(content, /method:\s*'PUT'/),
-    'memory detail route should forward PUT method'
+    hasString(helper, '/modal/private/memories'),
+    'shared memory route proxy should forward writes to /modal/private/memories/'
   );
   assert.ok(
-    hasRegex(content, /method:\s*'DELETE'/),
-    'memory detail route should forward DELETE method'
+    hasString(helper, 'method'),
+    'shared memory route proxy should forward request method'
   );
   assert.ok(
-    hasRegex(content, /context\.request\.headers\.get\('authorization'\)/),
-    'memory detail route should read and forward the authorization header'
+    hasRegex(helper, /request\.headers\.get\('authorization'\)/),
+    'shared memory route proxy should read and forward the authorization header'
   );
 });
 
@@ -287,22 +295,23 @@ test('cloudflare api catch-all routes trees/:treeId with auth split', () => {
 
 test('cloudflare api catch-all routes memories/:memoryId to modal/memories/:memoryId', () => {
   const content = readFileContent(CATCHALL_JS);
+  const helper = readFileContent(MEMORY_PROXY_JS);
 
   assert.ok(
     !hasString(content, 'authHeader && isWrite'),
     'memory route selection should not use authHeader && isWrite'
   );
   assert.ok(
-    hasString(content, 'isWrite'),
-    'catch-all should check for isWrite for memories'
+    hasString(content, 'buildMemoryModalUrl'),
+    'catch-all should delegate memory detail route selection to shared helper'
   );
   assert.ok(
-    hasString(content, '`/modal/private/memories/'),
-    'catch-all should route memory write to private path'
+    hasString(helper, '/modal/private/memories'),
+    'shared helper should route memory write to private path'
   );
   assert.ok(
-    hasString(content, '`/modal/memories/'),
-    'catch-all should route memory GET to public path'
+    hasString(helper, '/modal/memories'),
+    'shared helper should route anonymous memory GET to public path'
   );
 });
 
@@ -521,6 +530,7 @@ test('cloudflare api functions add x-lovebud-upstream: modal header', () => {
   const treesContent = readFileContent(TREES_JS);
   const memoriesContent = readFileContent(MEMORIES_JS);
   const catchallContent = readFileContent(CATCHALL_JS);
+  const memoryProxyContent = readFileContent(MEMORY_PROXY_JS);
 
   assert.ok(
     hasString(treesContent, 'x-lovebud-upstream'),
@@ -531,12 +541,12 @@ test('cloudflare api functions add x-lovebud-upstream: modal header', () => {
     'trees.js should set upstream to modal'
   );
   assert.ok(
-    hasString(memoriesContent, 'x-lovebud-upstream'),
-    'memories.js should set x-lovebud-upstream header'
+    hasString(memoriesContent, 'proxyMemoryRouteRequest'),
+    'memories.js should delegate upstream header wrapping to shared memory proxy'
   );
   assert.ok(
-    hasString(memoriesContent, 'modal'),
-    'memories.js should set upstream to modal'
+    hasString(memoryProxyContent, 'x-lovebud-upstream') && hasString(memoryProxyContent, 'modal'),
+    'shared memory proxy should set upstream to modal'
   );
   assert.ok(
     hasString(catchallContent, 'x-lovebud-upstream'),
