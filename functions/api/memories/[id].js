@@ -54,13 +54,16 @@ export async function onRequestGet(context) {
   }
 
   const memoryId = context.params?.id;
-  const target = new URL(`/modal/memories/${memoryId}`, modalBaseUrl);
+  // Signed-in detail reads use the authenticated detail endpoint so private
+  // memories resolve; anonymous reads use the public detail endpoint. Mirrors
+  // /api/trees/:id routing (#3288).
+  const authHeader = context.request.headers.get('authorization') || context.request.headers.get('Authorization');
+  const detailPath = authHeader ? `/modal/private/memories/${memoryId}` : `/modal/memories/${memoryId}`;
+  const target = new URL(detailPath, modalBaseUrl);
   const response = await fetch(target.toString(), {
     headers: {
       accept: 'application/json',
-      ...(context.request.headers.get('authorization')
-        ? { authorization: context.request.headers.get('authorization') }
-        : {})
+      ...(authHeader ? { authorization: authHeader } : {})
     }
   });
 
