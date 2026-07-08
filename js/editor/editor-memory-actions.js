@@ -104,9 +104,118 @@ function createEditorMemoryActions(deps) {
         }
     };
 
-    const resolveSourceUpdate = (rawUrl) => {
+    const normalizeSourceSeconds = (value) => {
+        if (value === null || value === undefined || value === '') return null;
+        const numberValue = Number(value);
+        return Number.isFinite(numberValue) ? numberValue : null;
+    };
+
+    const parseYouTubeTimeToSeconds = (value, media) => {
+        if (value === null || value === undefined || value === '') return null;
+        if (media && typeof media.parseYouTubeTimeToSeconds === 'function') {
+            return normalizeSourceSeconds(media.parseYouTubeTimeToSeconds(value));
+        }
+        const parts = String(value).trim().split(':').map(Number);
+        if (parts.length === 3 && parts.every(Number.isFinite)) {
+            return (parts[0] * 3600) + (parts[1] * 60) + parts[2];
+        }
+        if (parts.length === 2 && parts.every(Number.isFinite)) {
+            return (parts[0] * 60) + parts[1];
+        }
+        return normalizeSourceSeconds(value);
+    };
+
+    const extractYouTubeId = (rawUrl, media) => {
         const value = String(rawUrl || '').trim();
+        if (!value) return '';
+        if (media && typeof media.extractYouTubeId === 'function') {
+            return media.extractYouTubeId(value) || '';
+        }
+        const match = value.match(/(?:v=|\/|youtu\.be\/|embed\/|shorts\/)([0-9A-Za-z_-]{11})/);
+        return match ? match[1] : '';
+    };
+
+    const extractYouTubeSegment = (rawUrl, media) => {
+        const value = String(rawUrl || '').trim();
+        if (!value) return { start: null, end: null };
+        let startValue = null;
+        let endValue = null;
+
+        try {
+            const parsed = new URL(value, window.location && window.location.origin ? window.location.origin : 'https://lovebud.pages.dev');
+            startValue = parsed.searchParams.get('t') || parsed.searchParams.get('start');
+            endValue = parsed.searchParams.get('end');
+
+            const hashValue = String(parsed.hash || '').replace(/^#/, '').replace(/^\?/, '');
+            if (hashValue) {
+                const hashParams = new URLSearchParams(hashValue);
+                startValue = startValue || hashParams.get('t') || hashParams.get('start');
+                endValue = endValue || hashParams.get('end');
+            }
+        } catch (e) {
+            const startMatch = value.match(/[#&?](?:t|start)=([^&#]+)/i);
+            const endMatch = value.match(/[#&?]end=([^&#]+)/i);
+            if (startMatch) startValue = decodeURIComponent(startMatch[1]);
+            if (endMatch) endValue = decodeURIComponent(endMatch[1]);
+        }
+
+        return {
+            start: parseYouTubeTimeToSeconds(startValue, media),
+            end: parseYouTubeTimeToSeconds(endValue, media)
+        };
+    };
+
+    const buildSourceIdentity = (rawUrl, options = {}) => {
+        const value = String(rawUrl || '').trim();
+        const media = options.media || window.LoveBudMedia || {};
+        const hasStartOverride = Object.prototype.hasOwnProperty.call(options, 'startSeconds');
+        const hasEndOverride = Object.prototype.hasOwnProperty.call(options, 'endSeconds');
+
         if (!value) {
+            return { kind: 'empty', start: null, end: null };
+        }
+
+        const videoId = extractYouTubeId(value, media);
+        if (!videoId) {
+            return { kind: 'raw', raw: value, start: null, end: null };
+        }
+
+        const segment = extractYouTubeSegment(value, media);
+        return {
+            kind: 'youtube',
+            videoId,
+            start: hasStartOverride ? normalizeSourceSeconds(options.startSeconds) : segment.start,
+            end: hasEndOverride ? normalizeSourceSeconds(options.endSeconds) : segment.end
+        };
+    };
+
+    const areSourceIdentitiesEqual = (left, right) => {
+        if (!left || !right || left.kind !== right.kind) return false;
+        if (left.kind === 'empty') return true;
+        if (left.kind === 'raw') return left.raw === right.raw;
+        if (left.kind === 'youtube') {
+            return left.videoId === right.videoId &&
+                left.start === right.start &&
+                left.end === right.end;
+        }
+        return false;
+    };
+
+    const appendYouTubeEndParam = (sourceUrl, endSeconds) => {
+        if (!sourceUrl || endSeconds === null || endSeconds === undefined) return sourceUrl;
+        try {
+            const parsedEmbed = new URL(sourceUrl);
+            parsedEmbed.searchParams.set('end', String(endSeconds));
+            return parsedEmbed.toString();
+        } catch (e) {
+            const separator = String(sourceUrl).indexOf('?') === -1 ? '?' : '&';
+            return String(sourceUrl) + separator + 'end=' + encodeURIComponent(String(endSeconds));
+        }
+    };
+
+    const buildSourcePayloadFromIdentity = (rawUrl, identity) => {
+        if (!identity || identity.kind === 'raw') return null;
+        if (identity.kind === 'empty') {
             return {
                 sourceUrl: '',
                 sourceType: 'other',
@@ -116,72 +225,24 @@ function createEditorMemoryActions(deps) {
         }
 
         const media = window.LoveBudMedia || {};
-        const videoId = typeof media.extractYouTubeId === 'function'
-            ? media.extractYouTubeId(value)
-            : ((value.match(/(?:v=|\/|youtu\.be\/|embed\/|shorts\/)([0-9A-Za-z_-]{11})/) || [])[1] || '');
+        let embedUrl = typeof media.getEmbedUrl === 'function'
+            ? media.getEmbedUrl(rawUrl, 'youtube', identity.start === null ? {} : { startSeconds: identity.start })
+            : `https://www.youtube.com/embed/${identity.videoId}`;
 
-        if (!videoId) {
-            return null;
+        if (embedUrl && identity.end !== null) {
+            embedUrl = appendYouTubeEndParam(embedUrl, identity.end);
         }
 
-        const embedUrl = typeof media.getEmbedUrl === 'function'
-            ? media.getEmbedUrl(value, 'youtube')
-            : `https://www.youtube.com/embed/${videoId}`;
         const thumbnailUrl = typeof media.getThumbnailUrl === 'function'
-            ? media.getThumbnailUrl(value, 'youtube', 'mqdefault')
-            : `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`;
+            ? media.getThumbnailUrl(rawUrl, 'youtube', 'mqdefault')
+            : `https://img.youtube.com/vi/${identity.videoId}/mqdefault.jpg`;
 
         return {
-            sourceUrl: embedUrl || value,
+            sourceUrl: embedUrl || rawUrl,
             sourceType: 'youtube',
             thumbnail: thumbnailUrl || '',
             source: 'YouTube'
         };
-    };
-
-    const extractYouTubeStartAndEnd = (url) => {
-        if (!url || typeof url !== 'string') return { start: null, end: null };
-        let start = null;
-        let end = null;
-        try {
-            const parsed = new URL(url.trim());
-            const startVal = parsed.searchParams.get('t') || parsed.searchParams.get('start');
-            const endVal = parsed.searchParams.get('end');
-
-            const media = window.LoveBudMedia || {};
-            if (typeof media.parseYouTubeTimeToSeconds === 'function') {
-                start = media.parseYouTubeTimeToSeconds(startVal);
-                end = media.parseYouTubeTimeToSeconds(endVal);
-            }
-        } catch (e) {
-            const startMatch = url.match(/[#&?](?:t|start)=([^&#]+)/i);
-            const endMatch = url.match(/[#&?]end=([^&#]+)/i);
-            const media = window.LoveBudMedia || {};
-            if (typeof media.parseYouTubeTimeToSeconds === 'function') {
-                if (startMatch) start = media.parseYouTubeTimeToSeconds(decodeURIComponent(startMatch[1]));
-                if (endMatch) end = media.parseYouTubeTimeToSeconds(decodeURIComponent(endMatch[1]));
-            }
-        }
-        return { start, end };
-    };
-
-    // Pure, in-memory normalization of a source URL into a comparable identity.
-    // Used only to compare the submitted source identity against the save-response
-    // acknowledgement. It never triggers a reread, network call, or extra fetch.
-    const normalizeSourceIdentity = (url) => {
-        const value = String(url || '').trim();
-        if (!value) return { kind: 'empty' };
-        const media = window.LoveBudMedia || {};
-        const videoId = typeof media.extractYouTubeId === 'function'
-            ? media.extractYouTubeId(value)
-            : ((value.match(/(?:v=|\/|youtu\.be\/|embed\/|shorts\/)([0-9A-Za-z_-]{11})/) || [])[1] || '');
-        if (videoId) {
-            const seg = extractYouTubeStartAndEnd(value);
-            const s = (seg.start === null || seg.start === undefined) ? null : Number(seg.start);
-            const e = (seg.end === null || seg.end === undefined) ? null : Number(seg.end);
-            return { kind: 'youtube', videoId, start: s, end: e };
-        }
-        return { kind: 'raw', raw: value };
     };
 
     const ensureVideoSegmentGrid = () => {
@@ -285,9 +346,13 @@ function createEditorMemoryActions(deps) {
             const media = window.LoveBudMedia || {};
 
             if (startTimeInput && endTimeInput && typeof media.formatYouTubeStartTime === 'function') {
-                const parsedTimes = extractYouTubeStartAndEnd(getEditableSourceUrl(currentEditingMemory));
-                startTimeInput.value = parsedTimes.start ? media.formatYouTubeStartTime(parsedTimes.start) : '';
-                endTimeInput.value = parsedTimes.end ? media.formatYouTubeStartTime(parsedTimes.end) : '';
+                const sourceIdentity = buildSourceIdentity(getEditableSourceUrl(currentEditingMemory));
+                startTimeInput.value = sourceIdentity.kind === 'youtube' && sourceIdentity.start !== null
+                    ? media.formatYouTubeStartTime(sourceIdentity.start)
+                    : '';
+                endTimeInput.value = sourceIdentity.kind === 'youtube' && sourceIdentity.end !== null
+                    ? media.formatYouTubeStartTime(sourceIdentity.end)
+                    : '';
             }
 
             if (!sourceUrlInput.dataset.listenerBound) {
@@ -423,33 +488,14 @@ function createEditorMemoryActions(deps) {
             const prevMemo = normText(currentEditingMemory.memo);
             const prevTags = normTags(currentEditingMemory.emotionTags).slice().sort().join(',');
 
-            const media = window.LoveBudMedia || {};
-            const extractVid = (url) => {
-                if (!url || typeof url !== 'string') return null;
-                return typeof media.extractYouTubeId === 'function'
-                    ? media.extractYouTubeId(url)
-                    : ((url.match(/(?:v=|\/|youtu\.be\/|embed\/|shorts\/)([0-9A-Za-z_-]{11})/) || [])[1] || null);
-            };
-
             const prevSourceUrl = getEditableSourceUrl(currentEditingMemory);
-            const prevVideoId = extractVid(prevSourceUrl);
-            const prevSegment = extractYouTubeStartAndEnd(prevSourceUrl);
-            const prevStart = (prevSegment.start === null || prevSegment.start === undefined) ? null : Number(prevSegment.start);
-            const prevEnd = (prevSegment.end === null || prevSegment.end === undefined) ? null : Number(prevSegment.end);
-
             const newRawUrl = sourceUrlInput ? sourceUrlInput.value.trim() : prevSourceUrl;
-            const newVideoId = extractVid(newRawUrl);
-            const newStart = (startSeconds === null || startSeconds === undefined) ? null : Number(startSeconds);
-            const newEnd = (endSeconds === null || endSeconds === undefined) ? null : Number(endSeconds);
-
-            let sourceChanged = false;
-            if (prevVideoId && newVideoId) {
-                sourceChanged = (prevVideoId !== newVideoId || prevStart !== newStart || prevEnd !== newEnd);
-            } else if (!prevVideoId && !newVideoId) {
-                sourceChanged = (prevSourceUrl !== newRawUrl);
-            } else {
-                sourceChanged = true;
-            }
+            const previousSourceIdentity = buildSourceIdentity(prevSourceUrl);
+            const submittedSourceIdentityOptions = {};
+            if (startTimeInput) submittedSourceIdentityOptions.startSeconds = startSeconds;
+            if (endTimeInput) submittedSourceIdentityOptions.endSeconds = endSeconds;
+            const submittedSourceIdentity = buildSourceIdentity(newRawUrl, submittedSourceIdentityOptions);
+            const sourceChanged = !areSourceIdentitiesEqual(previousSourceIdentity, submittedSourceIdentity);
 
             const hasChange = (
                 newTitle !== prevTitle ||
@@ -471,35 +517,22 @@ function createEditorMemoryActions(deps) {
             };
 
             if (sourceUrlInput && sourceChanged) {
-                if (newRawUrl) {
-                    if (newVideoId) {
-                        const sourceUpdate = resolveSourceUpdate(newRawUrl);
-                        if (!sourceUpdate) {
-                            showToast(formatI18nText('invalid_youtube_unsupported', 'YouTube 링크만 지원합니다. youtube.com 또는 youtu.be 링크를 사용해 주세요.'), 'error');
-                            updateSaveStatus('manual_failed', formatI18nText('save_failed', '저장 실패'));
-                            return emitSaveOutcome('failed', {
-                                message: formatI18nText('save_failed', '저장 실패'),
-                                saveStatus: 'manual_failed'
-                            });
-                        }
+                if (submittedSourceIdentity.kind === 'raw') {
+                    showToast(formatI18nText('invalid_youtube_unsupported', 'YouTube 링크만 지원합니다. youtube.com 또는 youtu.be 링크를 사용해 주세요.'), 'error');
+                    updateSaveStatus('manual_failed', formatI18nText('save_failed', '저장 실패'));
+                    return emitSaveOutcome('failed', {
+                        message: formatI18nText('save_failed', '저장 실패'),
+                        saveStatus: 'manual_failed'
+                    });
+                }
 
-                        let embedUrl = typeof media.getEmbedUrl === 'function'
-                            ? media.getEmbedUrl(newRawUrl, 'youtube', { startSeconds: newStart })
-                            : sourceUpdate.sourceUrl;
-
-                        if (embedUrl && newEnd !== null) {
-                            try {
-                                const parsedEmbed = new URL(embedUrl);
-                                parsedEmbed.searchParams.set('end', String(newEnd));
-                                embedUrl = parsedEmbed.toString();
-                            } catch (e) {
-                                console.error('Failed to parse embedUrl for setting end parameter', e);
-                            }
-                        }
-
-                        sourceUpdate.sourceUrl = embedUrl;
-                        Object.assign(payload, sourceUpdate);
-                    } else {
+                if (submittedSourceIdentity.kind === 'empty') {
+                    if (prevSourceUrl) {
+                        Object.assign(payload, buildSourcePayloadFromIdentity(newRawUrl, submittedSourceIdentity));
+                    }
+                } else {
+                    const sourceUpdate = buildSourcePayloadFromIdentity(newRawUrl, submittedSourceIdentity);
+                    if (!sourceUpdate) {
                         showToast(formatI18nText('invalid_youtube_unsupported', 'YouTube 링크만 지원합니다. youtube.com 또는 youtu.be 링크를 사용해 주세요.'), 'error');
                         updateSaveStatus('manual_failed', formatI18nText('save_failed', '저장 실패'));
                         return emitSaveOutcome('failed', {
@@ -507,15 +540,7 @@ function createEditorMemoryActions(deps) {
                             saveStatus: 'manual_failed'
                         });
                     }
-                } else {
-                    if (prevSourceUrl) {
-                        Object.assign(payload, {
-                            sourceUrl: '',
-                            sourceType: 'other',
-                            thumbnail: '',
-                            source: ''
-                        });
-                    }
+                    Object.assign(payload, sourceUpdate);
                 }
             }
             const savingMessage = formatI18nText('save_saving', '저장 중...');
@@ -535,18 +560,6 @@ function createEditorMemoryActions(deps) {
                     throw new Error('Invalid server response: missing or mismatched memory ID');
                 }
 
-                // Validate changed fields are acknowledged in the response
-                const payloadVideoId = (function extractId(url) {
-                    if (!url || typeof url !== 'string') return null;
-                    const m = url.match(/(?:v=|[\/]|youtu[.]be[\/]|embed[\/]|shorts[\/])([0-9A-Za-z_-]{11})/);
-                    return m ? m[1] : null;
-                })(payload.sourceUrl);
-                const responseVideoId = (function extractId(url) {
-                    if (!url || typeof url !== 'string') return null;
-                    const m = url.match(/(?:v=|[\/]|youtu[.]be[\/]|embed[\/]|shorts[\/])([0-9A-Za-z_-]{11})/);
-                    return m ? m[1] : null;
-                })(savedPatch.sourceUrl);
-
                 // Source-identity acknowledgement validation.
                 // Covers EVERY source-change case the user submitted — set, change
                 // video/segment, AND clear — by comparing the submitted source
@@ -561,8 +574,8 @@ function createEditorMemoryActions(deps) {
                         throw new Error('Server response is missing source acknowledgement');
                     }
 
-                    const submittedIdentity = normalizeSourceIdentity(payload.sourceUrl);
-                    const ackIdentity = normalizeSourceIdentity(savedPatch.sourceUrl);
+                    const submittedIdentity = submittedSourceIdentity;
+                    const ackIdentity = buildSourceIdentity(savedPatch.sourceUrl);
 
                     if (submittedIdentity.kind === 'empty') {
                         // Clearing case: response sourceUrl must also be empty/cleared.
@@ -623,7 +636,7 @@ function createEditorMemoryActions(deps) {
                                 const m = url.match(/\/vi\/([0-9A-Za-z_-]{11})\//);
                                 return m ? m[1] : null;
                             })(savedPatch.thumbnail);
-                            if (!thumbnailVideoId || thumbnailVideoId !== payloadVideoId) {
+                            if (!thumbnailVideoId || thumbnailVideoId !== submittedIdentity.videoId) {
                                 throw new Error('Server response contains stale thumbnail for previous video');
                             }
                         }
