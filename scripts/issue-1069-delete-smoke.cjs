@@ -9,27 +9,45 @@
  * 5. Verify 2xx response (not 500)
  * 
  * Modal backend: https://padiemipu--lovebud-browse-snapshot-fastapi-app.modal.run
- * Test accounts from qa-credentials:
- *   - admin001-test5@lovebud.local / TestAdmin001!234
- *   - dev001-test5@lovebud.local / TestDev001!234
+ * Test accounts reference qa-credentials (identifiers only; passwords not stored here).
  */
 const assert = require('node:assert/strict');
 const fs = require('fs');
+const path = require('path');
 const crypto = require('crypto');
 
 const MODAL_BASE_URL = 'https://padiemipu--lovebud-browse-snapshot-fastapi-app.modal.run';
-const FIREBASE_API_KEY = 'AIzaSyDQNR8bNIp4LG4EGNwl1ew8B7Har-KJC90'; // From Firebase Console
 
-// Test accounts from qa-credentials
+// Firebase Web API key must come from the environment (never hard-coded).
+const FIREBASE_API_KEY = process.env.FIREBASE_API_KEY;
+if (!FIREBASE_API_KEY) {
+  throw new Error('FIREBASE_API_KEY environment variable is required (Firebase Web API key)');
+}
+
+// Test account identifiers (no secrets stored in this script).
 const TEST_ACCOUNTS = [
   { key: 'admin001', email: 'admin001-test5@lovebud.local', uid: 'admin001-test5' },
   { key: 'dev001', email: 'dev001-test5@lovebud.local', uid: 'dev001-test5' },
 ];
 
+// Service account path resolution (no developer-specific absolute paths):
+//   1. FIREBASE_SERVICE_ACCOUNT_PATH (explicit, CI-friendly)
+//   2. repo-relative fallback <cwd>/.secrets/<filename>.json
+function resolveServiceAccountPath() {
+  const filename = 'relovetree-firebase-adminsdk-fbsvc-5ec9e2b62770.json';
+  if (process.env.FIREBASE_SERVICE_ACCOUNT_PATH) {
+    return process.env.FIREBASE_SERVICE_ACCOUNT_PATH;
+  }
+  return path.join(process.cwd(), '.secrets', filename);
+}
+
 function loadServiceAccount() {
-  const serviceAccountPath = '/root/LoveBud/.secrets/relovetree-firebase-adminsdk-fbsvc-5ec9e2b62770.json';
+  const serviceAccountPath = resolveServiceAccountPath();
   if (!fs.existsSync(serviceAccountPath)) {
-    throw new Error('Firebase service account not found at ' + serviceAccountPath);
+    throw new Error(
+      'Firebase service account not found at ' + serviceAccountPath +
+      ' (set FIREBASE_SERVICE_ACCOUNT_PATH or place the file at <repo>/.secrets)'
+    );
   }
   return JSON.parse(fs.readFileSync(serviceAccountPath, 'utf8'));
 }
