@@ -892,6 +892,185 @@ def test_parent_not_found_semantics_preserved():
 
 
 # ============================================================================
+# #3330: source-field persistence acknowledgement convergence
+# ============================================================================
+#
+# Boundary localized to modal_compute/memory_writes.py (response-normalization /
+# write-acknowledgement layer). The fix rejects a stale/mismatched source
+# acknowledgement as a structured 409 (SOURCE_WRITE_ACK_DIVERGENCE) instead of
+# echoing the request to fake success. It does NOT force-merge request values
+# into the response (Refs #3330, Refs #3273, Refs #3329, Refs #1882).
+
+def test_source_fields_bound_to_sql_update_columns():
+    """request source/sourceUrl/sourceType/thumbnail are bound to the matching SQL columns."""
+    owner_id = "owner-123"
+    memory_id = "11111111-1111-1111-1111-111111111111"
+    tree_id = "22222222-2222-2222-2222-222222222222"
+
+    source_mem_row = make_memory_row(memory_id, tree_id)
+    updated_row = make_memory_row(
+        memory_id, tree_id,
+        source="New Source",
+        source_url="https://youtube.com/watch?v=new",
+        source_type="youtube",
+        thumbnail="https://img.youtube.com/vi/new/mqdefault.jpg",
+    )
+    cursor = MockCursor(fetchone_result=updated_row)
+    conn = MockConnection()
+    conn.cursor = lambda *a, **k: cursor
+
+    with patch('modal_compute.memory_writes.get_db_connection', return_value=conn):
+        with patch('modal_compute.memory_writes.require_memory_owner', return_value=source_mem_row):
+            update_owner_memory(owner_id, memory_id, {
+                "source": "New Source",
+                "sourceUrl": "https://youtube.com/watch?v=new",
+                "sourceType": "youtube",
+                "thumbnail": "https://img.youtube.com/vi/new/mqdefault.jpg",
+            })
+
+    update_calls = [c for c in cursor.execute_calls if "UPDATE memories" in c[0]]
+    assert update_calls, "expected an UPDATE memories statement"
+    query, params = update_calls[0]
+    assert "source = %s" in query, "source column must be bound"
+    assert "source_url = %s" in query, "source_url column must be bound"
+    assert "source_type = %s" in query, "source_type column must be bound"
+    assert "thumbnail = %s" in query, "thumbnail column must be bound"
+    # Spot-check that the bound params carry the requested identities.
+    assert any(p == "New Source" for p in params), "source param must be bound"
+    assert any(p == "https://youtube.com/watch?v=new" for p in params), "source_url param must be bound"
+    assert conn.commit_calls == 1
+
+
+def test_updated_source_returning_row_reflected_in_response():
+    """when the DB returns the updated row, the normalized response reflects it."""
+    owner_id = "owner-123"
+    memory_id = "11111111-1111-1111-1111-111111111111"
+    tree_id = "22222222-2222-2222-2222-222222222222"
+
+    source_mem_row = make_memory_row(memory_id, tree_id)
+    updated_row = make_memory_row(
+        memory_id, tree_id,
+        source="Updated Source",
+        source_url="https://youtube.com/watch?v=updated",
+        source_type="youtube",
+        thumbnail="https://img.youtube.com/vi/updated/mqdefault.jpg",
+    )
+    cursor = MockCursor(fetchone_result=updated_row)
+    conn = MockConnection()
+    conn.cursor = lambda *a, **k: cursor
+
+    with patch('modal_compute.memory_writes.get_db_connection', return_value=conn):
+        with patch('modal_compute.memory_writes.require_memory_owner', return_value=source_mem_row):
+            result = update_owner_memory(owner_id, memory_id, {
+                "source": "Updated Source",
+                "sourceUrl": "https://youtube.com/watch?v=updated",
+                "sourceType": "youtube",
+                "thumbnail": "https://img.youtube.com/vi/updated/mqdefault.jpg",
+            })
+
+    assert result["source"] == "Updated Source"
+    assert result["sourceUrl"] == "https://youtube.com/watch?v=updated"
+    assert result["sourceType"] == "youtube"
+    assert result["thumbnail"] == "https://img.youtube.com/vi/updated/mqdefault.jpg"
+
+
+def test_stale_source_returning_row_rejected_as_structured_409():
+    """DB RETURNING a stale source row must NOT be echoed into success.
+
+    If the write did not converge (persisted source identity differs from the
+    request), the write is rejected with SOURCE_WRITE_ACK_DIVERGENCE 409, not a
+    normalized success built from the request. This is the core #3330 boundary.
+    """
+    owner_id = "owner-123"
+    memory_id = "11111111-1111-1111-1111-111111111111"
+    tree_id = "22222222-2222-2222-2222-222222222222"
+
+    source_mem_row = make_memory_row(memory_id, tree_id)
+    # DB returns STALE identity (the pre-update value), despite the request asking
+    # for a new sourceUrl. This simulates a stale/cached readback.
+    stale_row = make_memory_row(
+        memory_id, tree_id,
+        source_url="https://youtube.com/watch?v=stale",
+    )
+    cursor = MockCursor(fetchone_result=stale_row)
+    conn = MockConnection()
+    conn.cursor = lambda *a, **k: cursor
+
+    with patch('modal_compute.memory_writes.get_db_connection', return_value=conn):
+        with patch('modal_compute.memory_writes.require_memory_owner', return_value=source_mem_row):
+            try:
+                update_owner_memory(owner_id, memory_id, {
+                    "sourceUrl": "https://youtube.com/watch?v=fresh",
+                })
+                assert False, "stale source acknowledgement must not be normalized into success"
+            except HTTPException as e:
+                assert e.status_code == 409, f"expected 409, got {e.status_code}"
+                detail = e.detail if isinstance(e.detail, dict) else {}
+                assert detail.get("code") == "SOURCE_WRITE_ACK_DIVERGENCE", f"got detail {e.detail}"
+                assert detail.get("field") == "sourceUrl"
+                assert detail.get("requested") == "https://youtube.com/watch?v=fresh"
+                assert detail.get("persisted") == "https://youtube.com/watch?v=stale"
+
+    # The UPDATE still ran (the write was attempted); the failure is in acknowledgement.
+    update_calls = [c for c in cursor.execute_calls if "UPDATE memories" in c[0]]
+    assert update_calls, "UPDATE must have been attempted"
+    assert conn.commit_calls == 1
+
+
+def test_title_memo_emotiontags_persistence_unaffected_by_source_gate():
+    """title/memo/emotionTags persistence still converges and returns normally (no source gate)."""
+    owner_id = "owner-123"
+    memory_id = "11111111-1111-1111-1111-111111111111"
+    tree_id = "22222222-2222-2222-2222-222222222222"
+
+    source_mem_row = make_memory_row(memory_id, tree_id, title="Old", memo="Old memo", emotion_tags=["sad"])
+    updated_row = make_memory_row(
+        memory_id, tree_id,
+        title="New Title",
+        memo="New memo",
+        emotion_tags=["happy", "calm"],
+    )
+    cursor = MockCursor(fetchone_result=updated_row)
+    conn = MockConnection()
+    conn.cursor = lambda *a, **k: cursor
+
+    with patch('modal_compute.memory_writes.get_db_connection', return_value=conn):
+        with patch('modal_compute.memory_writes.require_memory_owner', return_value=source_mem_row):
+            result = update_owner_memory(owner_id, memory_id, {
+                "title": "New Title",
+                "memo": "New memo",
+                "emotionTags": ["happy", "calm"],
+            })
+
+    assert result["title"] == "New Title"
+    assert result["memo"] == "New memo"
+    assert result["emotionTags"] == ["happy", "calm"]
+    assert conn.commit_calls == 1
+
+
+def test_source_type_default_passes_acknowledgement_when_persisted_matches_request():
+    """sourceType default ('youtube') persists and acknowledgement converges normally."""
+    owner_id = "owner-123"
+    memory_id = "11111111-1111-1111-1111-111111111111"
+    tree_id = "22222222-2222-2222-2222-222222222222"
+
+    source_mem_row = make_memory_row(memory_id, tree_id, source_type="youtube")
+    updated_row = make_memory_row(memory_id, tree_id, source_type="youtube")
+    cursor = MockCursor(fetchone_result=updated_row)
+    conn = MockConnection()
+    conn.cursor = lambda *a, **k: cursor
+
+    with patch('modal_compute.memory_writes.get_db_connection', return_value=conn):
+        with patch('modal_compute.memory_writes.require_memory_owner', return_value=source_mem_row):
+            result = update_owner_memory(owner_id, memory_id, {
+                "sourceType": "youtube",
+            })
+
+    assert result["sourceType"] == "youtube"
+    assert conn.commit_calls == 1
+
+
+# ============================================================================
 # Main
 # ============================================================================
 
@@ -922,6 +1101,11 @@ if __name__ == "__main__":
         ("#3287 update non-string sourceType -> structured 400, no mutation", test_update_source_type_non_string_rejected),
         ("#3287 create non-string title -> structured 400, no INSERT", test_create_non_string_scalar_rejected_structured_400),
         ("parent lookup not-found semantics contract", test_parent_not_found_semantics_preserved),
+        ("#3330 source fields bound to SQL update columns", test_source_fields_bound_to_sql_update_columns),
+        ("#3330 updated source RETURNING row reflected in response", test_updated_source_returning_row_reflected_in_response),
+        ("#3330 stale source RETURNING row rejected as structured 409", test_stale_source_returning_row_rejected_as_structured_409),
+        ("#3330 title/memo/emotionTags persistence unaffected by source gate", test_title_memo_emotiontags_persistence_unaffected_by_source_gate),
+        ("#3330 sourceType default passes acknowledgement when persisted matches", test_source_type_default_passes_acknowledgement_when_persisted_matches_request),
     ]
 
     print("=" * 70)
