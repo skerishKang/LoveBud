@@ -20,6 +20,7 @@ from modal_compute.validation import (
     validate_optional_uuid,
     validate_required_id,
     validate_optional_id,
+    normalize_memory_row,
 )
 from modal_compute.public_reads import (
     fetch_latest_public_tree_snapshots,
@@ -50,6 +51,7 @@ from modal_compute.owner_writes import (
     delete_owner_memory,
     fork_public_tree,
 )
+from modal_compute.write_validation import require_memory_owner
 from modal_compute.reactions import (
     toggle_reaction,
     fetch_reaction_summary,
@@ -443,6 +445,30 @@ def delete_private_memory(
 ) -> dict:
     user = require_firebase_user(authorization)
     return delete_owner_memory(user["uid"], memory_id)
+
+
+@web_app.get("/modal/private/memories/{memory_id}")
+def get_private_memory_detail(
+    memory_id: str,
+    authorization: str | None = Header(default=None),
+    x_lovebud_request_id: str | None = Header(default=None),
+) -> dict:
+    logger = RequestLogger(
+        request_id=x_lovebud_request_id,
+        route="/modal/private/memories/id",
+        method="GET",
+    )
+    try:
+        user = require_firebase_user(authorization)
+        safe_memory_id = validate_required_id(memory_id, "memoryId")
+        memory = require_memory_owner(safe_memory_id, user["uid"])
+        logger.log_success(status_code=200)
+        return normalize_memory_row(memory)
+    except HTTPException:
+        raise
+    except Exception:
+        logger.log_error(status_code=500, error_category="UNEXPECTED_ERROR")
+        raise
 
 
 @web_app.post("/modal/private/memories/{memory_id}/reactions")

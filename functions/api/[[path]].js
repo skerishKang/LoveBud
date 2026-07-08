@@ -106,7 +106,7 @@ function normalizeGrowingTreesLimit(rawLimit) {
   return Math.min(Math.max(Number(rawLimit || 6) || 6, 3), 12);
 }
 
-function buildModalUrl(request, env) {
+export function buildModalUrl(request, env) {
   const modalBaseUrl = stripTrailingSlash(env.MODAL_BASE_URL);
   if (!modalBaseUrl) return null;
 
@@ -170,6 +170,13 @@ function buildModalUrl(request, env) {
   const memoryMatch = path.match(/^\/api\/memories\/([^/]+)$/);
   if (memoryMatch) {
     const memoryId = encodeURIComponent(decodeURIComponent(memoryMatch[1]));
+    const authHeader = request.headers.get('authorization') || request.headers.get('Authorization');
+    // Signed-in reads use the authenticated detail endpoint so private memories
+    // resolve; anonymous reads use the public detail endpoint. Mirrors /api/trees/:id (#3288).
+    if (method === 'GET' && authHeader) {
+      target.pathname = `/modal/private/memories/${memoryId}`;
+      return target;
+    }
     const isWrite = ['PUT', 'DELETE'].includes(method);
     target.pathname = isWrite ? `/modal/private/memories/${memoryId}` : `/modal/memories/${memoryId}`;
     return target;
