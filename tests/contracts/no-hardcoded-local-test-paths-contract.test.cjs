@@ -7,18 +7,23 @@ const ROOT = path.resolve(__dirname, '..', '..');
 const TEST_ROOT = path.join(ROOT, 'tests');
 
 const TEXT_FILE_PATTERN = /\.(?:cjs|mjs|js|ts|tsx|jsx|py|md|txt|json)$/i;
+const slash = '/';
+const localRootPrefix = `${slash}${'root'}${slash}`;
+const localHomePrefix = `${slash}${'home'}${slash}`;
+const legacyWorktreeToken = `${'LoveBud'}${'-worktrees'}`;
+
 const FORBIDDEN_LOCAL_PATH_PATTERNS = [
   {
-    label: 'developer-specific /root path',
-    pattern: /(^|[^\w])\/root\//,
+    label: 'developer-specific root absolute path',
+    pattern: new RegExp(`(^|[^\\w])${localRootPrefix.replaceAll(slash, '\\/')}`),
   },
   {
-    label: 'developer-specific /home path',
-    pattern: /(^|[^\w])\/home\/[A-Za-z0-9._-]+\//,
+    label: 'developer-specific home absolute path',
+    pattern: new RegExp(`(^|[^\\w])${localHomePrefix.replaceAll(slash, '\\/')}[A-Za-z0-9._-]+${slash.replace('/', '\\/')}`),
   },
   {
     label: 'LoveBud worktree absolute path',
-    pattern: /LoveBud-worktrees/,
+    pattern: new RegExp(legacyWorktreeToken),
   },
   {
     label: 'Windows drive absolute path',
