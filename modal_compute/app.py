@@ -20,6 +20,7 @@ from modal_compute.validation import (
     validate_optional_uuid,
     validate_required_id,
     validate_optional_id,
+    normalize_memory_row,
 )
 from modal_compute.public_reads import (
     fetch_latest_public_tree_snapshots,
@@ -462,7 +463,7 @@ def get_private_memory_detail(
         safe_memory_id = validate_required_id(memory_id, "memoryId")
         memory = require_memory_owner(safe_memory_id, user["uid"])
         logger.log_success(status_code=200)
-        return memory
+        return normalize_memory_row(memory)
     except HTTPException:
         raise
     except Exception:
