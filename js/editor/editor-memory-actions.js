@@ -425,24 +425,29 @@ function createEditorMemoryActions(deps) {
     };
 
     const saveMemoryEdit = async () => {
+        if (window.__LOVEBUD_DIAGNOSTICS_ACTIVE__) window.__LOVEBUD_LAST_SAVE_DIAGNOSTIC__ = 'SAVE_HANDLER_ENTERED';
         if (canEdit === false) {
+            if (window.__LOVEBUD_DIAGNOSTICS_ACTIVE__) window.__LOVEBUD_LAST_SAVE_DIAGNOSTIC__ = 'SAVE_GUARD_BLOCKED_MODE';
             const blockedMessage = formatI18nText('save_blocked_mode', '편집 모드에서만 저장할 수 있어요');
             return reportNonNetworkSaveOutcome('blocked_mode', 'manual_blocked', blockedMessage);
         }
         var mode = window.LoveBudEditorInteractionMode;
         var isModeHelperMissing = !mode || typeof mode.isEditMode !== 'function';
         if (isModeHelperMissing || !mode.isEditMode()) {
+            if (window.__LOVEBUD_DIAGNOSTICS_ACTIVE__) window.__LOVEBUD_LAST_SAVE_DIAGNOSTIC__ = 'SAVE_GUARD_BLOCKED_MODE';
             const blockedMessage = formatI18nText('save_blocked_mode', '편집 모드에서만 저장할 수 있어요');
             return reportNonNetworkSaveOutcome('blocked_mode', 'manual_blocked', blockedMessage);
         }
         const currentEditingMemory = getCurrentEditingMemory();
         if (!currentEditingMemory) {
+            if (window.__LOVEBUD_DIAGNOSTICS_ACTIVE__) window.__LOVEBUD_LAST_SAVE_DIAGNOSTIC__ = 'SAVE_GUARD_MISSING_MEMORY';
             const missingMessage = formatI18nText('save_blocked_missing_memory', '저장할 현재 순간을 찾지 못했어요');
             return reportNonNetworkSaveOutcome('blocked_missing_memory', 'manual_blocked', missingMessage);
         }
 
         // ── Duplicate-submit guard: block re-entry immediately ───────────
         if (isMemoryEditSaveInFlight) {
+            if (window.__LOVEBUD_DIAGNOSTICS_ACTIVE__) window.__LOVEBUD_LAST_SAVE_DIAGNOSTIC__ = 'SAVE_GUARD_IN_FLIGHT';
             const inFlightMessage = formatI18nText('save_blocked_in_flight', '이미 저장 중이에요. 잠시만 기다려 주세요.');
             return reportNonNetworkSaveOutcome('blocked_in_flight', 'manual_blocked', inFlightMessage);
         }
@@ -451,6 +456,7 @@ function createEditorMemoryActions(deps) {
 
         try {
             if (!currentEditingMemory.id) {
+                if (window.__LOVEBUD_DIAGNOSTICS_ACTIVE__) window.__LOVEBUD_LAST_SAVE_DIAGNOSTIC__ = 'SAVE_GUARD_MISSING_ID';
                 updateSaveStatus('manual_failed', formatI18nText('save_failed', '저장 실패'));
                 showToast(formatI18nText('save_failed', '저장 실패'), 'error');
                 return emitSaveOutcome('failed', {
@@ -471,6 +477,7 @@ function createEditorMemoryActions(deps) {
             const endHasValue = endTimeInput && endTimeInput.value.trim();
 
             if ((startHasValue || endHasValue) && !timeHelper) {
+                if (window.__LOVEBUD_DIAGNOSTICS_ACTIVE__) window.__LOVEBUD_LAST_SAVE_DIAGNOSTIC__ = 'SAVE_GUARD_VALIDATION_FAILED';
                 showToast(formatI18nText('time_helper_missing', '시간을 처리하는 도구를 불러오지 못했습니다.'), 'error');
                 updateSaveStatus('manual_failed', formatI18nText('save_failed', '저장 실패'));
                 return emitSaveOutcome('failed', {
@@ -485,6 +492,7 @@ function createEditorMemoryActions(deps) {
             if (startHasValue && timeHelper) {
                 startSeconds = timeHelper.parseTime(startTimeInput.value.trim());
                 if (startSeconds === null) {
+                    if (window.__LOVEBUD_DIAGNOSTICS_ACTIVE__) window.__LOVEBUD_LAST_SAVE_DIAGNOSTIC__ = 'SAVE_GUARD_VALIDATION_FAILED';
                     showToast(formatI18nText('invalid_start_time', '시작 시간을 다시 확인해 주세요.'), 'error');
                     updateSaveStatus('manual_failed', formatI18nText('save_failed', '저장 실패'));
                     return emitSaveOutcome('failed', {
@@ -502,6 +510,7 @@ function createEditorMemoryActions(deps) {
                     rangeMessage: formatI18nText('invalid_time_range', '끝 시간은 시작 시간보다 뒤여야 해요.')
                 });
                 if (!endCheck.ok) {
+                    if (window.__LOVEBUD_DIAGNOSTICS_ACTIVE__) window.__LOVEBUD_LAST_SAVE_DIAGNOSTIC__ = 'SAVE_GUARD_VALIDATION_FAILED';
                     showToast(endCheck.message, 'error');
                     updateSaveStatus('manual_failed', formatI18nText('save_failed', '저장 실패'));
                     return emitSaveOutcome('failed', {
@@ -557,6 +566,7 @@ function createEditorMemoryActions(deps) {
             );
 
             if (!hasChange) {
+                if (window.__LOVEBUD_DIAGNOSTICS_ACTIVE__) window.__LOVEBUD_LAST_SAVE_DIAGNOSTIC__ = 'SAVE_GUARD_NO_CHANGE';
                 const noChangeMessage = formatI18nText('save_no_change', '변경된 내용이 없어요');
                 return reportNonNetworkSaveOutcome('no_change', 'manual_nochange', noChangeMessage);
             }
@@ -570,6 +580,7 @@ function createEditorMemoryActions(deps) {
 
             if (sourceUrlInput && sourceChanged) {
                 if (submittedSourceIdentity.kind === 'raw') {
+                    if (window.__LOVEBUD_DIAGNOSTICS_ACTIVE__) window.__LOVEBUD_LAST_SAVE_DIAGNOSTIC__ = 'SAVE_GUARD_VALIDATION_FAILED';
                     showToast(formatI18nText('invalid_youtube_unsupported', 'YouTube 링크만 지원합니다. youtube.com 또는 youtu.be 링크를 사용해 주세요.'), 'error');
                     updateSaveStatus('manual_failed', formatI18nText('save_failed', '저장 실패'));
                     return emitSaveOutcome('failed', {
@@ -585,6 +596,7 @@ function createEditorMemoryActions(deps) {
                 } else {
                     const sourceUpdate = buildSourcePayloadFromIdentity(newRawUrl, submittedSourceIdentity);
                     if (!sourceUpdate) {
+                        if (window.__LOVEBUD_DIAGNOSTICS_ACTIVE__) window.__LOVEBUD_LAST_SAVE_DIAGNOSTIC__ = 'SAVE_GUARD_VALIDATION_FAILED';
                         showToast(formatI18nText('invalid_youtube_unsupported', 'YouTube 링크만 지원합니다. youtube.com 또는 youtu.be 링크를 사용해 주세요.'), 'error');
                         updateSaveStatus('manual_failed', formatI18nText('save_failed', '저장 실패'));
                         return emitSaveOutcome('failed', {
@@ -603,6 +615,7 @@ function createEditorMemoryActions(deps) {
             });
 
             if (window.apiClient && typeof window.apiClient.updateMemory === 'function') {
+                if (window.__LOVEBUD_DIAGNOSTICS_ACTIVE__) window.__LOVEBUD_LAST_SAVE_DIAGNOSTIC__ = 'UPDATE_MEMORY_CALLED';
                 const savedMemory = await window.apiClient.updateMemory(currentEditingMemory.id, payload);
                 const savedPatch = savedMemory && typeof savedMemory === 'object' ? savedMemory : {};
 
@@ -743,6 +756,7 @@ function createEditorMemoryActions(deps) {
                     saveStatus: 'manual_saved'
                 });
             } else {
+                if (window.__LOVEBUD_DIAGNOSTICS_ACTIVE__) window.__LOVEBUD_LAST_SAVE_DIAGNOSTIC__ = 'SAVE_API_UNAVAILABLE';
                 throw new Error('updateMemory not available');
             }
         } catch (error) {

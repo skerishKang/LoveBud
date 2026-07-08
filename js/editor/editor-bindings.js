@@ -308,6 +308,7 @@
     });
     bindButtonOnce(cancelEditBtn, 'cancelBound', exitEditMode);
     bindButtonOnce(saveEditBtn, 'saveBound', function() {
+      if (window.__LOVEBUD_DIAGNOSTICS_ACTIVE__) window.__LOVEBUD_LAST_SAVE_DIAGNOSTIC__ = 'SAVE_CLICK_RECEIVED';
       if (typeof saveMemoryEdit === 'function') saveMemoryEdit();
     });
 
@@ -319,6 +320,7 @@
       editMemoInput.addEventListener('keydown', function(e) {
         if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
           e.preventDefault();
+          if (window.__LOVEBUD_DIAGNOSTICS_ACTIVE__) window.__LOVEBUD_LAST_SAVE_DIAGNOSTIC__ = 'SAVE_CLICK_RECEIVED';
           if (typeof saveMemoryEdit === 'function') saveMemoryEdit();
         }
       });
