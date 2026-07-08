@@ -540,8 +540,12 @@ function createEditorMemoryActions(deps) {
             const newRawUrl = sourceUrlInput ? sourceUrlInput.value.trim() : prevSourceUrl;
             const previousSourceIdentity = buildSourceIdentity(prevSourceUrl);
             const submittedSourceIdentityOptions = {};
-            if (startTimeInput) submittedSourceIdentityOptions.startSeconds = startSeconds;
-            if (endTimeInput) submittedSourceIdentityOptions.endSeconds = endSeconds;
+            if (startTimeInput && (startHasValue || (previousSourceIdentity && previousSourceIdentity.start !== null))) {
+                submittedSourceIdentityOptions.startSeconds = startSeconds;
+            }
+            if (endTimeInput && (endHasValue || (previousSourceIdentity && previousSourceIdentity.end !== null))) {
+                submittedSourceIdentityOptions.endSeconds = endSeconds;
+            }
             const submittedSourceIdentity = buildSourceIdentity(newRawUrl, submittedSourceIdentityOptions);
             const sourceChanged = !areSourceIdentitiesEqual(previousSourceIdentity, submittedSourceIdentity);
 
