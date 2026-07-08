@@ -81,6 +81,70 @@ def create_owner_memory(owner_id: str, payload: dict[str, Any]) -> dict[str, Any
     return normalize_memory_row(row)
 
 
+# Source-identity fields the update path can bind to SQL. Maps the request key
+# -> persisted DB column -> normalized response key. Used by the post-write
+# acknowledgement gate (Refs #3330, Refs #3273). Request values are never
+# echoed into the response; divergence is a structured failure.
+_SOURCE_ACK_FIELDS: tuple[tuple[str, str, str], ...] = (
+    ("source", "source", "source"),
+    ("sourceUrl", "source_url", "sourceUrl"),
+    ("sourceType", "source_type", "sourceType"),
+    ("thumbnail", "thumbnail", "thumbnail"),
+)
+_SOURCE_ACK_MAX_LEN = {
+    "source": 200,
+    "sourceUrl": 1000,
+    "sourceType": 50,
+    "thumbnail": 500,
+}
+
+
+def _source_ack_requested_value(payload_key: str, payload: dict[str, Any]) -> str:
+    """Normalize a requested source-identity value the same way the SQL binding does.
+
+    Mirrors the update binding (validate_optional_memory_string + sourceType
+    default "youtube") so the comparison is byte-identical to what was persisted.
+    """
+    requested = validate_optional_memory_string(payload.get(payload_key), payload_key, _SOURCE_ACK_MAX_LEN[payload_key])
+    if payload_key == "sourceType" and not requested:
+        requested = "youtube"
+    return requested or ""
+
+
+def _source_ack_persisted_value(db_column: str, row: dict[str, Any]) -> str:
+    """Read a persisted source-identity value the same way normalize_memory_row does."""
+    default = "youtube" if db_column == "source_type" else ""
+    return row.get(db_column) or default
+
+
+def _enforce_source_ack_convergence(payload: dict[str, Any], row: dict[str, Any]) -> None:
+    """Fail the write if a requested source-identity field did not actually persist.
+
+    Compares the post-write RETURNING row against the requested value. A missing
+    or stale acknowledgement is a structured failure — the response is never
+    coerced into success by echoing the request (Refs #3330, Refs #3273).
+
+    The divergence is detected internally, but the 409 detail never echoes the
+    raw requested/persisted values (raw source URLs, provider identifiers,
+    thumbnails) — that would leak production identity data across the #3273/#3330
+    privacy boundary. Only typed classification is returned.
+    """
+    for _payload_key, db_column, _resp_key in _SOURCE_ACK_FIELDS:
+        if _payload_key not in payload:
+            continue
+        requested = _source_ack_requested_value(_payload_key, payload)
+        persisted = _source_ack_persisted_value(db_column, row)
+        if requested != persisted:
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "code": "SOURCE_WRITE_ACK_DIVERGENCE",
+                    "field": _payload_key,
+                    "classification": "STALE_SOURCE_ACKNOWLEDGEMENT",
+                },
+            )
+
+
 def update_owner_memory(owner_id: str, memory_id: str, payload: dict[str, Any]) -> dict[str, Any]:
     safe_memory_id = validate_required_uuid(memory_id, "memoryId")
     memory = require_memory_owner(safe_memory_id, owner_id)
@@ -261,6 +325,7 @@ def update_owner_memory(owner_id: str, memory_id: str, payload: dict[str, Any]) 
 
     if not row:
         raise HTTPException(status_code=404, detail="Memory not found")
+    _enforce_source_ack_convergence(payload, row)
     return normalize_memory_row(row)
 
 
