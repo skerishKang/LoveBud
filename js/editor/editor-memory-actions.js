@@ -245,6 +245,54 @@ function createEditorMemoryActions(deps) {
         };
     };
 
+    const applyConfirmedSavedMemory = ({ currentEditingMemory, payload, savedPatch }) => {
+        // This helper runs only after every response-acknowledgement guard has
+        // passed. Keep validation outside so failed saves never partially sync.
+        const nextEditingMemory = {
+            ...currentEditingMemory,
+            ...payload,
+            ...savedPatch
+        };
+
+        if (savedPatch.sourceUrl !== undefined) nextEditingMemory.sourceUrl = savedPatch.sourceUrl;
+        if (savedPatch.thumbnail !== undefined) nextEditingMemory.thumbnail = savedPatch.thumbnail;
+        if (savedPatch.sourceType !== undefined) nextEditingMemory.sourceType = savedPatch.sourceType;
+        if (savedPatch.source !== undefined) nextEditingMemory.source = savedPatch.source;
+
+        const nextMemories = getTreeMemories().slice();
+        const memIndex = nextMemories.findIndex((m) => m.id === currentEditingMemory.id);
+        if (memIndex >= 0) {
+            nextMemories[memIndex] = nextEditingMemory;
+            setTreeMemories(nextMemories);
+        }
+
+        const currentTreeData = getCurrentTreeData();
+        if (currentTreeData && Array.isArray(currentTreeData.memories)) {
+            const dataIndex = currentTreeData.memories.findIndex((m) => m.id === currentEditingMemory.id);
+            if (dataIndex !== -1) {
+                currentTreeData.memories[dataIndex] = nextEditingMemory;
+            }
+        }
+
+        if (window.LoveBudCache) {
+            const treeId = (currentTreeData && currentTreeData.id) || nextEditingMemory.treeId || 'default';
+            window.LoveBudCache.set('memories_' + treeId, nextMemories, 2 * 60 * 1000);
+        }
+
+        setCurrentEditingMemory(nextEditingMemory);
+        exitEditMode();
+        updateDetailPanel(nextEditingMemory);
+        updateSidebarStatus();
+        if (typeof rerenderCanvas === 'function') rerenderCanvas();
+        clearCommunityCaches();
+
+        return {
+            nextEditingMemory,
+            nextMemories,
+            currentTreeData
+        };
+    };
+
     const ensureVideoSegmentGrid = () => {
         const editMode = document.getElementById('detailEditMode');
         const sourceUrlGroup = document.getElementById('editSourceUrlGroup');
@@ -678,51 +726,11 @@ function createEditorMemoryActions(deps) {
                     throw new Error('Server response does not reflect updated emotion tags');
                 }
 
-                // Priority: server response > payload > current memory
-                const prioritizedPatch = {
-                    ...currentEditingMemory,
-                    ...payload,
-                    ...savedPatch
-                };
-
-                if (savedPatch.sourceUrl !== undefined) prioritizedPatch.sourceUrl = savedPatch.sourceUrl;
-                if (savedPatch.thumbnail !== undefined) prioritizedPatch.thumbnail = savedPatch.thumbnail;
-                if (savedPatch.sourceType !== undefined) prioritizedPatch.sourceType = savedPatch.sourceType;
-
-                const nextEditingMemory = prioritizedPatch;
-
-                const nextMemories = getTreeMemories().slice();
-                const memIndex = nextMemories.findIndex((m) => m.id === currentEditingMemory.id);
-                if (memIndex >= 0) {
-                    nextMemories[memIndex] = { ...nextMemories[memIndex], ...nextEditingMemory };
-                    setTreeMemories(nextMemories);
-                }
-
-                const currentTreeData = getCurrentTreeData();
-                if (currentTreeData && Array.isArray(currentTreeData.memories)) {
-                    const dataIndex = currentTreeData.memories.findIndex((m) => m.id === currentEditingMemory.id);
-                    if (dataIndex !== -1) {
-                        currentTreeData.memories[dataIndex] = {
-                            ...currentTreeData.memories[dataIndex],
-                            ...nextEditingMemory
-                        };
-                    }
-                }
-
-                if (window.LoveBudCache) {
-                    const treeId = (currentTreeData && currentTreeData.id) || nextEditingMemory.treeId || 'default';
-                    window.LoveBudCache.set('memories_' + treeId, nextMemories, 2 * 60 * 1000);
-                }
-
-                // ── Confirmed success: update state and close edit mode ──
-                setCurrentEditingMemory(nextEditingMemory);
-                exitEditMode();
-                updateDetailPanel(nextEditingMemory);
-                updateSidebarStatus();
-                if (typeof rerenderCanvas === 'function') rerenderCanvas();
-
-                // Invalidate community/public caches so stale data is not served
-                clearCommunityCaches();
+                applyConfirmedSavedMemory({
+                    currentEditingMemory,
+                    payload,
+                    savedPatch
+                });
 
                 updateSaveStatus('manual_saved', i18n('save_saved'));
                 showToast(i18n('memory_updated') || '순간을 수정했어요', 'success');
