@@ -165,6 +165,25 @@ function createEditorMemoryActions(deps) {
         return { start, end };
     };
 
+    // Pure, in-memory normalization of a source URL into a comparable identity.
+    // Used only to compare the submitted source identity against the save-response
+    // acknowledgement. It never triggers a reread, network call, or extra fetch.
+    const normalizeSourceIdentity = (url) => {
+        const value = String(url || '').trim();
+        if (!value) return { kind: 'empty' };
+        const media = window.LoveBudMedia || {};
+        const videoId = typeof media.extractYouTubeId === 'function'
+            ? media.extractYouTubeId(value)
+            : ((value.match(/(?:v=|\/|youtu\.be\/|embed\/|shorts\/)([0-9A-Za-z_-]{11})/) || [])[1] || '');
+        if (videoId) {
+            const seg = extractYouTubeStartAndEnd(value);
+            const s = (seg.start === null || seg.start === undefined) ? null : Number(seg.start);
+            const e = (seg.end === null || seg.end === undefined) ? null : Number(seg.end);
+            return { kind: 'youtube', videoId, start: s, end: e };
+        }
+        return { kind: 'raw', raw: value };
+    };
+
     const ensureVideoSegmentGrid = () => {
         const editMode = document.getElementById('detailEditMode');
         const sourceUrlGroup = document.getElementById('editSourceUrlGroup');
@@ -535,6 +554,35 @@ function createEditorMemoryActions(deps) {
                     }
                     if (responseVideoId !== payloadVideoId) {
                         throw new Error('Server response contains stale video reference');
+                    }
+
+                    // ── Source-identity (segment) acknowledgement validation ───
+                    // Pure in-memory comparison of the submitted source identity
+                    // against the save-response acknowledgement. No reread, no
+                    // extra fetch. Rejects on any mismatch of source type, video
+                    // id, start segment, or end segment.
+                    const submittedIdentity = normalizeSourceIdentity(payload.sourceUrl);
+                    const ackIdentity = normalizeSourceIdentity(savedPatch.sourceUrl);
+                    if (submittedIdentity.kind === 'empty' || ackIdentity.kind === 'empty') {
+                        throw new Error('Server response is missing source acknowledgement');
+                    }
+                    if (submittedIdentity.kind !== ackIdentity.kind) {
+                        throw new Error('Server response has mismatched source type');
+                    }
+                    if (submittedIdentity.kind === 'raw') {
+                        if (submittedIdentity.raw !== ackIdentity.raw) {
+                            throw new Error('Server response contains stale raw source reference');
+                        }
+                    } else if (submittedIdentity.kind === 'youtube') {
+                        if (submittedIdentity.videoId !== ackIdentity.videoId) {
+                            throw new Error('Server response contains stale video reference');
+                        }
+                        if (submittedIdentity.start !== ackIdentity.start) {
+                            throw new Error('Server response contains stale start segment');
+                        }
+                        if (submittedIdentity.end !== ackIdentity.end) {
+                            throw new Error('Server response contains stale end segment');
+                        }
                     }
 
                     // ── Derived-media coherence validation ─────────────────────

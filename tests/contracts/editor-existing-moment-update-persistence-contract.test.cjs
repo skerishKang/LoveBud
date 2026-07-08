@@ -980,3 +980,167 @@ test('L. manual stale acknowledgement — clearCommunityCaches not called', { ti
   assert.equal(ctx.getCommunityCacheClearCount(), 0, 'clearCommunityCaches must NOT be called on stale thumbnail rejection');
   assert.equal(ctx.getToast().type, 'error', 'must show error toast');
 });
+
+// =============================================================================
+// #3276 lite: save-response source-identity acknowledgement (segment)
+// Pure in-memory comparison of submitted vs acknowledged source identity.
+// No owner/community/public reread, no DB reread, no diagnostic loop.
+// Refs #1882
+// =============================================================================
+
+// Helper: build an embed URL with start/end params (mirrors runtime getEmbedUrl).
+function embedUrlWithSegment(videoId, startSec, endSec) {
+  var e = 'https://www.youtube.com/embed/' + videoId;
+  if (startSec != null) e += '?start=' + startSec;
+  if (endSec != null) e += (startSec != null ? '&' : '?') + 'end=' + endSec;
+  return e;
+}
+
+test('M. missing source acknowledgement — response has no sourceUrl → rejected', { timeout: 3000 }, async function(t) {
+  var mem = {
+    id: 'mem-1', title: 'Old',
+    sourceUrl: 'https://www.youtube.com/embed/aaaaaaaaaaa', sourceType: 'youtube',
+    thumbnail: 'https://img.youtube.com/vi/aaaaaaaaaaa/mqdefault.jpg', emotionTags: []
+  };
+  // saveResponse acknowledges nothing about the source (no sourceUrl key)
+  var missingAckResponse = {
+    id: 'mem-1', title: 'Old',
+    sourceType: 'youtube', thumbnail: 'https://img.youtube.com/vi/bbbbbbbbbbb/mqdefault.jpg',
+    source: 'YouTube', emotionTags: []
+  };
+  var ctx = await runSaveMemoryEdit({
+    initialMemory: mem,
+    domValues: { title: 'Old', memo: '', tags: '', sourceUrl: 'https://www.youtube.com/shorts/bbbbbbbbbbb' },
+    apiResponse: missingAckResponse
+  });
+
+  ctx.actions.enterEditMode();
+  ctx.setInputValue('editSourceUrlInput', 'https://www.youtube.com/shorts/bbbbbbbbbbb');
+  assert.equal(ctx.getFormDisplay('edit'), 'block', 'edit form is open');
+
+  await ctx.actions.saveMemoryEdit();
+
+  assert.equal(ctx.getEditingMemory().sourceUrl, 'https://www.youtube.com/embed/aaaaaaaaaaa',
+    'missing source acknowledgement must NOT update source');
+  assert.equal(ctx.getToast().type, 'error', 'must show error toast');
+  assert.equal(ctx.getCallCount(), 1, 'API was called once');
+  assert.equal(ctx.getRenderedCanvas(), false, 'canvas must NOT rerender');
+  assert.equal(ctx.getFormDisplay('edit'), 'block', 'edit form must stay open');
+  assert.equal(ctx.getCommunityCacheClearCount(), 0, 'community cache clear must be 0 on missing ack');
+});
+
+test('N. source start-segment mismatch in response → rejected', { timeout: 3000 }, async function(t) {
+  var mem = {
+    id: 'mem-1', title: 'Old',
+    sourceUrl: 'https://www.youtube.com/embed/aaaaaaaaaaa', sourceType: 'youtube',
+    thumbnail: 'https://img.youtube.com/vi/aaaaaaaaaaa/mqdefault.jpg', emotionTags: []
+  };
+  // submitted start = 1:00 (60s); response ack has NO start params
+  var startMismatchResponse = {
+    id: 'mem-1', title: 'Old',
+    sourceUrl: 'https://www.youtube.com/embed/bbbbbbbbbbb',
+    sourceType: 'youtube', thumbnail: 'https://img.youtube.com/vi/bbbbbbbbbbb/mqdefault.jpg',
+    source: 'YouTube', emotionTags: [], updatedAt: new Date().toISOString()
+  };
+  var ctx = await runSaveMemoryEdit({
+    initialMemory: mem,
+    domValues: { title: 'Old', memo: '', tags: '', sourceUrl: 'https://www.youtube.com/shorts/bbbbbbbbbbb', startTime: '1:00' },
+    apiResponse: startMismatchResponse
+  });
+
+  ctx.actions.enterEditMode();
+  ctx.setInputValue('editSourceUrlInput', 'https://www.youtube.com/shorts/bbbbbbbbbbb');
+  ctx.setInputValue('editStartTimeInput', '1:00');
+  assert.equal(ctx.getFormDisplay('edit'), 'block', 'edit form is open');
+
+  await ctx.actions.saveMemoryEdit();
+
+  assert.equal(ctx.getEditingMemory().sourceUrl, 'https://www.youtube.com/embed/aaaaaaaaaaa',
+    'stale start segment must NOT update source');
+  assert.equal(ctx.getToast().type, 'error', 'must show error toast');
+  assert.equal(ctx.getRenderedCanvas(), false, 'canvas must NOT rerender');
+  assert.equal(ctx.getFormDisplay('edit'), 'block', 'edit form must stay open');
+});
+
+test('O. source end-segment mismatch in response → rejected', { timeout: 3000 }, async function(t) {
+  var mem = {
+    id: 'mem-1', title: 'Old',
+    sourceUrl: 'https://www.youtube.com/embed/aaaaaaaaaaa', sourceType: 'youtube',
+    thumbnail: 'https://img.youtube.com/vi/aaaaaaaaaaa/mqdefault.jpg', emotionTags: []
+  };
+  // submitted start=1:00 (60s) end=2:00 (120s); response ack misses end param
+  var endMismatchResponse = {
+    id: 'mem-1', title: 'Old',
+    sourceUrl: embedUrlWithSegment('bbbbbbbbbbb', 60),
+    sourceType: 'youtube', thumbnail: 'https://img.youtube.com/vi/bbbbbbbbbbb/mqdefault.jpg',
+    source: 'YouTube', emotionTags: [], updatedAt: new Date().toISOString()
+  };
+  var ctx = await runSaveMemoryEdit({
+    initialMemory: mem,
+    domValues: { title: 'Old', memo: '', tags: '', sourceUrl: 'https://www.youtube.com/shorts/bbbbbbbbbbb', startTime: '1:00', endTime: '2:00' },
+    apiResponse: endMismatchResponse
+  });
+
+  ctx.actions.enterEditMode();
+  ctx.setInputValue('editSourceUrlInput', 'https://www.youtube.com/shorts/bbbbbbbbbbb');
+  ctx.setInputValue('editStartTimeInput', '1:00');
+  ctx.setInputValue('editEndTimeInput', '2:00');
+  assert.equal(ctx.getFormDisplay('edit'), 'block', 'edit form is open');
+
+  await ctx.actions.saveMemoryEdit();
+
+  assert.equal(ctx.getEditingMemory().sourceUrl, 'https://www.youtube.com/embed/aaaaaaaaaaa',
+    'stale end segment must NOT update source');
+  assert.equal(ctx.getToast().type, 'error', 'must show error toast');
+  assert.equal(ctx.getRenderedCanvas(), false, 'canvas must NOT rerender');
+  assert.equal(ctx.getFormDisplay('edit'), 'block', 'edit form must stay open');
+});
+
+test('P. acknowledged start+end segment matches submitted → success', { timeout: 3000 }, async function(t) {
+  var mem = {
+    id: 'mem-1', title: 'Old',
+    sourceUrl: 'https://www.youtube.com/embed/aaaaaaaaaaa', sourceType: 'youtube',
+    thumbnail: 'https://img.youtube.com/vi/aaaaaaaaaaa/mqdefault.jpg', emotionTags: []
+  };
+  // acknowledgement carries the exact same start (60) + end (120)
+  var okResponse = {
+    id: 'mem-1', title: 'Old',
+    sourceUrl: embedUrlWithSegment('bbbbbbbbbbb', 60, 120),
+    sourceType: 'youtube', thumbnail: 'https://img.youtube.com/vi/bbbbbbbbbbb/mqdefault.jpg',
+    source: 'YouTube', emotionTags: [], updatedAt: new Date().toISOString()
+  };
+  var ctx = await runSaveMemoryEdit({
+    initialMemory: mem,
+    domValues: { title: 'Old', memo: '', tags: '', sourceUrl: 'https://www.youtube.com/shorts/bbbbbbbbbbb', startTime: '1:00', endTime: '2:00' },
+    apiResponse: okResponse
+  });
+
+  ctx.actions.enterEditMode();
+  ctx.setInputValue('editSourceUrlInput', 'https://www.youtube.com/shorts/bbbbbbbbbbb');
+  ctx.setInputValue('editStartTimeInput', '1:00');
+  ctx.setInputValue('editEndTimeInput', '2:00');
+  assert.equal(ctx.getFormDisplay('edit'), 'block', 'edit form is open');
+
+  await ctx.actions.saveMemoryEdit();
+
+  assert.equal(ctx.getEditingMemory().sourceUrl, embedUrlWithSegment('bbbbbbbbbbb', 60, 120),
+    'acknowledged start+end must update source');
+  assert.equal(ctx.getToast().type, 'success', 'must show success toast');
+  assert.equal(ctx.getRenderedCanvas(), true, 'canvas must rerender');
+  assert.equal(ctx.getFormDisplay('edit'), 'none', 'edit form must close');
+});
+
+test('Q. runtime has no owner/community/public/DB reread in save path', function(t) {
+  var src = fs.readFileSync(path.join(ROOT, 'js/editor/editor-memory-actions.js'), 'utf-8');
+  // Comments are allowed (audit references), but runtime calls are not.
+  assert.equal(/\brereadOwner\b|\brereadCommunity\b|\brereadPublic\b|\brereadMemory\b/.test(src), false,
+    'no reread helper calls in source');
+  assert.equal(/\bownerReread\b|\bcommunityReread\b|\bpublicReread\b/.test(src), false,
+    'no owner/community/public reread symbols');
+  // production diagnostic routines must not be introduced
+  assert.equal(/diagnosticLoop|autoDiagnose|runDiagnostics/.test(src), false,
+    'no production diagnostic routine');
+  // allocation-only: ensure no fetch/XHR/new XMLHttpRequest against an API/DB
+  assert.equal(/new XMLHttpRequest|fetch\(/.test(src), false,
+    'no fetch/XHR calls added in save path');
+});
