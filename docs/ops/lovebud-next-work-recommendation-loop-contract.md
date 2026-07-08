@@ -61,25 +61,85 @@ limited to controlled `reasonCodes` enum values (see §5.3).
 
 ## 5. Strict JSON output schema
 
+The recommendation output MUST conform to the following JSON Schema (draft 2020-12).
+It is a single, self-contained, `additionalProperties: false` object. The example
+fences in §5.1–§5.2 are valid instances of this schema.
+
 ```json
 {
-  "queueSnapshotId": "string",
-  "policyVersion": "string",
-  "decision": "PROPOSE | NO_CANDIDATE",
-  "selectedCandidateId": "string | null",
-  "reasonCodes": ["string"],
-  "generatedAt": "string"
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "queueSnapshotId",
+    "policyVersion",
+    "decision",
+    "selectedCandidateId",
+    "reasonCodes",
+    "generatedAt"
+  ],
+  "properties": {
+    "queueSnapshotId": { "type": "string", "minLength": 1 },
+    "policyVersion": { "type": "string", "minLength": 1 },
+    "decision": { "type": "string", "enum": ["PROPOSE", "NO_CANDIDATE"] },
+    "selectedCandidateId": { "type": ["string", "null"] },
+    "reasonCodes": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "enum": [
+          "READY_FOR_PLANNING",
+          "AUTO_ELIGIBLE_LANE",
+          "HUMAN_REQUIRED_LANE",
+          "BLOCKED_BY_CI",
+          "BLOCKED_BY_DEPENDENCY",
+          "SCOPE_CONFLICT",
+          "NO_AUTO",
+          "CI_DATA_MISSING",
+          "CI_STATE_UNTRUSTED",
+          "CI_UNKNOWN_STATUS",
+          "STALE_QUEUE",
+          "ALL_BLOCKED_BY_CI",
+          "POLICY_MISMATCH",
+          "MALFORMED_OUTPUT",
+          "TIMEOUT",
+          "UNAVAILABLE_CAPABILITY",
+          "PROVIDER_AMBIGUITY"
+        ]
+      }
+    },
+    "generatedAt": { "type": "string", "format": "date-time" }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "decision": { "const": "PROPOSE" } } },
+      "then": {
+        "properties": {
+          "selectedCandidateId": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "decision": { "const": "NO_CANDIDATE" } } },
+      "then": {
+        "properties": {
+          "selectedCandidateId": { "type": "null", "const": null }
+        }
+      }
+    }
+  ]
 }
 ```
 
-Contract rules:
+Contract rules (enforced by the schema above):
 
 - `additionalProperties: false` — no unknown keys allowed.
-- `decision` ∈ {`PROPOSE`, `NO_CANDIDATE`}.
-- `selectedCandidateId` is a non-null string **iff** `decision === "PROPOSE"`; `null`
-  otherwise.
-- `reasonCodes` is a non-empty array of controlled enum strings.
-- `generatedAt` is an ISO-8601 timestamp string.
+- `decision` ∈ {`PROPOSE`, `NO_CANDIDATE`} (closed enum).
+- `selectedCandidateId` is a non-empty string **iff** `decision === "PROPOSE"`; `null`
+  otherwise (see the `allOf`/`if`/`then` conditionals).
+- `reasonCodes` is a non-empty array (`minItems: 1`) of closed-enum strings.
+- `generatedAt` is an ISO-8601 `date-time` string.
 - `queueSnapshotId` and `policyVersion` MUST be copied verbatim from the queue
   snapshot; the loop must not synthesize its own values.
 
@@ -109,14 +169,30 @@ Contract rules:
 }
 ```
 
-### 5.3 Controlled reason codes (enum)
+### 5.3 Controlled reason codes (closed enum)
 
-`reasonCodes` are drawn from a fixed set, e.g.:
-`READY_FOR_PLANNING`, `AUTO_ELIGIBLE_LANE`, `HUMAN_REQUIRED_LANE`,
-`BLOCKED_BY_CI`, `BLOCKED_BY_DEPENDENCY`, `SCOPE_CONFLICT`, `NO_AUTO`,
-`CI_DATA_MISSING`, `CI_STATE_UNTRUSTED`, `CI_UNKNOWN_STATUS`, `STALE_QUEUE`,
-`ALL_BLOCKED_BY_CI`, `POLICY_MISMATCH`. This list is the only sanctioned explanatory
-vocabulary; free text is prohibited.
+`reasonCodes` MUST be one of the following **closed** enum values (the exact
+`reasonCodes.items.enum` array declared in the §5 schema):
+
+- `READY_FOR_PLANNING`
+- `AUTO_ELIGIBLE_LANE`
+- `HUMAN_REQUIRED_LANE`
+- `BLOCKED_BY_CI`
+- `BLOCKED_BY_DEPENDENCY`
+- `SCOPE_CONFLICT`
+- `NO_AUTO`
+- `CI_DATA_MISSING`
+- `CI_STATE_UNTRUSTED`
+- `CI_UNKNOWN_STATUS`
+- `STALE_QUEUE`
+- `ALL_BLOCKED_BY_CI`
+- `POLICY_MISMATCH`
+- `MALFORMED_OUTPUT`
+- `TIMEOUT`
+- `UNAVAILABLE_CAPABILITY`
+- `PROVIDER_AMBIGUITY`
+
+This list is the only sanctioned explanatory vocabulary; free text is prohibited.
 
 ## 6. Local failure report (distinct from recommendation)
 

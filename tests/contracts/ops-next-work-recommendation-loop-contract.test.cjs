@@ -16,20 +16,40 @@ describe('LoveBud Next-Work Recommendation Loop Contract', () => {
   });
 });
 
-// Reload doc for the assertions below so a missing file surfaces the baseline failure.
 if (!doc) {
-  try {
-    doc = fs.readFileSync(DOC_PATH, 'utf-8');
-  } catch (err) {
-    doc = null;
+  try { doc = fs.readFileSync(DOC_PATH, 'utf-8'); } catch { doc = null; }
+}
+
+// --- helpers: extract fenced ```json blocks from the doc and parse them ---
+function extractJsonFences(text) {
+  const fences = [];
+  const re = /```json\s*([\s\S]*?)```/g;
+  let m;
+  while ((m = re.exec(text)) !== null) {
+    const raw = m[1].trim();
+    let parsed = null;
+    let parseError = null;
+    try { parsed = JSON.parse(raw); } catch (e) { parseError = e; }
+    fences.push({ raw, parsed, parseError });
   }
+  return fences;
 }
 
-function describeContract(name, fn) {
-  describe(name, fn);
+// Schema fence = first json fence (the output schema appears before the examples).
+function getSchemaFence() {
+  const fences = extractJsonFences(doc);
+  assert.ok(fences.length > 0, 'doc must contain at least one json code fence');
+  return fences[0];
 }
 
-describeContract('B. Phase 1 dry-run queue authoritative', () => {
+function getExampleFence(decisionValue) {
+  const fences = extractJsonFences(doc);
+  const hit = fences.find((f) => f.parsed && f.parsed.decision === decisionValue);
+  assert.ok(hit, `doc must contain a json example with decision=${decisionValue}`);
+  return hit;
+}
+
+describe('B. Phase 1 dry-run queue authoritative', () => {
   it('declares the Phase 1 dry-run queue as the single authoritative source', () => {
     assert.ok(doc.includes('Phase 1 dry-run queue'), 'must reference the Phase 1 dry-run queue');
     assert.ok(doc.includes('authoritative'), 'must declare it authoritative');
@@ -40,15 +60,11 @@ describeContract('B. Phase 1 dry-run queue authoritative', () => {
   });
   it('is a read-only consumer, introduces no competing classifier', () => {
     assert.ok(doc.toLowerCase().includes('read-only consumer'), 'must state read-only consumption');
-    assert.ok(
-      !doc.includes('competing classifier rejected') || doc.includes('no competing classifier'),
-      'should not introduce a competing classifier'
-    );
     assert.ok(doc.toLowerCase().includes('no competing classifier'), 'must forbid a competing classifier');
   });
 });
 
-describeContract('C. structured metadata only / raw content forbidden', () => {
+describe('C. structured metadata only / raw content forbidden', () => {
   it('allows only structured queue metadata', () => {
     assert.ok(doc.toLowerCase().includes('structured queue metadata'), 'must allow structured queue metadata only');
   });
@@ -59,7 +75,7 @@ describeContract('C. structured metadata only / raw content forbidden', () => {
   });
 });
 
-describeContract('D. secrets / credentials forbidden', () => {
+describe('D. secrets / credentials forbidden', () => {
   it('forbids tokens, secrets, cookies, env, connection strings, raw production data', () => {
     const lower = doc.toLowerCase();
     assert.ok(lower.includes('token'), 'must forbid tokens');
@@ -72,67 +88,129 @@ describeContract('D. secrets / credentials forbidden', () => {
   });
 });
 
-describeContract('E. decision enum', () => {
+describe('E. decision enum', () => {
   it('restricts decision to PROPOSE / NO_CANDIDATE only', () => {
     assert.ok(doc.includes('PROPOSE'), 'must define PROPOSE');
     assert.ok(doc.includes('NO_CANDIDATE'), 'must define NO_CANDIDATE');
-    // No third decision value permitted.
-    assert.ok(
-      /exactly two values|restricted to exactly two|only two values|two values/.test(doc),
-      'must state the decision is limited to exactly two values'
-    );
+    assert.ok(/exactly two values|restricted to exactly two|only two values|two values/.test(doc),
+      'must state the decision is limited to exactly two values');
   });
 });
 
-describeContract('F. at-most-one candidate', () => {
+describe('F. at-most-one candidate', () => {
   it('PROPOSE references exactly one candidate', () => {
     assert.ok(doc.toLowerCase().includes('at most one'), 'must state at-most-one candidate');
+  });
+});
+
+describe('G. strict JSON Schema (draft 2020-12)', () => {
+  it('schema code fence is valid, parseable JSON', () => {
+    const f = getSchemaFence();
+    assert.ok(f.parsed !== null, `schema code fence must be JSON.parse-able: ${f.parseError && f.parseError.message}`);
+  });
+
+  it('schema carries $schema and declares object type with additionalProperties:false', () => {
+    const s = getSchemaFence().parsed;
+    assert.ok(s !== null);
+    assert.strictEqual(typeof s.$schema, 'string', 'must have $schema');
+    assert.strictEqual(s.type, 'object', 'type must be object');
+    assert.strictEqual(s.additionalProperties, false, 'additionalProperties must be false');
+  });
+
+  it('schema required includes exactly the six mandatory keys', () => {
+    const s = getSchemaFence().parsed;
+    assert.ok(Array.isArray(s.required), 'must have required array');
+    const required = ['queueSnapshotId', 'policyVersion', 'decision', 'selectedCandidateId', 'reasonCodes', 'generatedAt'];
+    for (const k of required) {
+      assert.ok(s.required.includes(k), `required must include ${k}`);
+    }
+    assert.deepStrictEqual(s.required.slice().sort(), required.slice().sort(),
+      'required must contain exactly the six keys');
+  });
+
+  it('decision enum is exactly [PROPOSE, NO_CANDIDATE]', () => {
+    const s = getSchemaFence().parsed;
+    const decision = s.properties && s.properties.decision;
+    assert.ok(decision, 'must declare decision property');
+    assert.strictEqual(decision.type, 'string', 'decision must be string');
+    assert.deepStrictEqual(decision.enum, ['PROPOSE', 'NO_CANDIDATE'], 'decision enum must be exactly the two values');
+  });
+
+  it('reasonCodes is array, minItems 1, with closed items.enum', () => {
+    const s = getSchemaFence().parsed;
+    const rc = s.properties && s.properties.reasonCodes;
+    assert.ok(rc, 'must declare reasonCodes property');
+    assert.strictEqual(rc.type, 'array', 'reasonCodes must be array');
+    assert.strictEqual(rc.minItems, 1, 'reasonCodes must have minItems 1');
+    assert.ok(Array.isArray(rc.items && rc.items.enum), 'reasonCodes.items.enum must be a closed array');
+    assert.ok(rc.items.enum.length >= 13, 'reasonCodes items enum must be a closed, non-trivial enum');
+  });
+
+  it('generatedAt is string with date-time format', () => {
+    const s = getSchemaFence().parsed;
+    const g = s.properties && s.properties.generatedAt;
+    assert.ok(g, 'must declare generatedAt property');
+    assert.strictEqual(g.type, 'string', 'generatedAt must be string');
+    assert.strictEqual(g.format, 'date-time', 'generatedAt must be format date-time');
+  });
+
+  it('selectedCandidateId is constrained by conditional PROPOSE / NO_CANDIDATE schema', () => {
+    const s = getSchemaFence().parsed;
+    assert.ok(Array.isArray(s.allOf), 'must use allOf for conditional constraint');
+    const foundIf = s.allOf.some((c) => c && c.if && c.then);
+    assert.ok(foundIf, 'must contain at least one if/then conditional');
+
+    // PROPOSE -> non-empty string
+    const proposeRule = s.allOf.find(
+      (c) => c && c.if && c.if.properties && c.if.properties.decision &&
+        c.if.properties.decision.const === 'PROPOSE'
+    );
+    assert.ok(proposeRule, 'must constrain PROPOSE branch');
+    const proposeThen = proposeRule.then.properties.selectedCandidateId;
+    assert.ok(proposeThen, 'PROPOSE then must constrain selectedCandidateId');
+    assert.strictEqual(proposeThen.type, 'string', 'PROPOSE selectedCandidateId must be string');
+    assert.strictEqual(proposeThen.minLength, 1, 'PROPOSE selectedCandidateId must be non-empty');
+
+    // NO_CANDIDATE -> null
+    const noRule = s.allOf.find(
+      (c) => c && c.if && c.if.properties && c.if.properties.decision &&
+        c.if.properties.decision.const === 'NO_CANDIDATE'
+    );
+    assert.ok(noRule, 'must constrain NO_CANDIDATE branch');
+    const noThen = noRule.then.properties.selectedCandidateId;
+    assert.ok(noThen, 'NO_CANDIDATE then must constrain selectedCandidateId');
     assert.ok(
-      doc.toLowerCase().includes('exactly one') || doc.toLowerCase().includes('at most one'),
-      'must restrict selection to a single candidate'
+      (Array.isArray(noThen.type) && noThen.type.includes('null')) || noThen.type === 'null' || noThen.const === null,
+      'NO_CANDIDATE selectedCandidateId must be null'
     );
   });
-});
 
-describeContract('G. strict JSON schema', () => {
-  it('defines the strict schema with all required keys', () => {
-    assert.ok(doc.includes('queueSnapshotId'), 'must include queueSnapshotId');
-    assert.ok(doc.includes('policyVersion'), 'must include policyVersion');
-    assert.ok(doc.includes('decision'), 'must include decision');
-    assert.ok(doc.includes('selectedCandidateId'), 'must include selectedCandidateId');
-    assert.ok(doc.includes('reasonCodes'), 'must include reasonCodes');
-    assert.ok(doc.includes('generatedAt'), 'must include generatedAt');
-  });
-  it('sets additionalProperties: false', () => {
-    assert.ok(doc.includes('additionalProperties: false'), 'must set additionalProperties: false');
-  });
-  it('selectedCandidateId is null unless PROPOSE', () => {
-    assert.ok(
-      doc.toLowerCase().includes('null') && doc.toLowerCase().includes('propose'),
-      'must tie selectedCandidateId null/non-null to PROPOSE'
-    );
+  it('examples satisfy the parsed schema invariants (no unknown top-level keys)', () => {
+    const propose = getExampleFence('PROPOSE').parsed;
+    assert.strictEqual(typeof propose.selectedCandidateId, 'string', 'PROPOSE selectedCandidateId must be string');
+    assert.ok(propose.selectedCandidateId.length >= 1, 'PROPOSE selectedCandidateId must be non-empty');
+    assert.deepStrictEqual(Object.keys(propose).sort(),
+      ['queueSnapshotId', 'policyVersion', 'decision', 'selectedCandidateId', 'reasonCodes', 'generatedAt'].sort(),
+      'PROPOSE example must have exactly the six top-level keys');
+
+    const no = getExampleFence('NO_CANDIDATE').parsed;
+    assert.strictEqual(no.selectedCandidateId, null, 'NO_CANDIDATE selectedCandidateId must be null');
+    assert.deepStrictEqual(Object.keys(no).sort(),
+      ['queueSnapshotId', 'policyVersion', 'decision', 'selectedCandidateId', 'reasonCodes', 'generatedAt'].sort(),
+      'NO_CANDIDATE example must have exactly the six top-level keys');
   });
 });
 
-describeContract('H. PROPOSE / NO_CANDIDATE examples', () => {
-  it('has a valid PROPOSE example with decision=PROPOSE and a non-null id', () => {
-    const proposeIdx = doc.indexOf('"decision": "PROPOSE"');
-    assert.ok(proposeIdx !== -1, 'must contain a PROPOSE example');
-    const nextDecisionIdx = doc.indexOf('"decision": "NO_CANDIDATE"', proposeIdx + 1);
-    const end = nextDecisionIdx === -1 ? proposeIdx + 400 : nextDecisionIdx;
-    const slice = doc.slice(proposeIdx, end);
-    assert.ok(slice.includes('"selectedCandidateId":') && !slice.includes('"selectedCandidateId": null'),
-      'PROPOSE example must have a non-null selectedCandidateId');
-  });
-  it('has a valid NO_CANDIDATE example with selectedCandidateId null', () => {
-    const noIdx = doc.indexOf('"decision": "NO_CANDIDATE"');
-    assert.ok(noIdx !== -1, 'must contain a NO_CANDIDATE example');
-    const slice = doc.slice(noIdx, noIdx + 400);
-    assert.ok(slice.includes('"selectedCandidateId": null'), 'NO_CANDIDATE example must have null selectedCandidateId');
+describe('H. PROPOSE / NO_CANDIDATE examples present', () => {
+  it('both examples are present and parseable', () => {
+    const p = getExampleFence('PROPOSE');
+    const n = getExampleFence('NO_CANDIDATE');
+    assert.ok(p.parsed !== null, 'PROPOSE example must be valid JSON');
+    assert.ok(n.parsed !== null, 'NO_CANDIDATE example must be valid JSON');
   });
 });
 
-describeContract('I. fail-closed rules', () => {
+describe('I. fail-closed rules', () => {
   it('covers all required fail-closed conditions', () => {
     const lower = doc.toLowerCase();
     assert.ok(lower.includes('stale queue'), 'must cover stale queue');
@@ -147,12 +225,12 @@ describeContract('I. fail-closed rules', () => {
     assert.ok(lower.includes('fail-closed') || lower.includes('fail closed'), 'must declare fail-closed behavior');
   });
   it('fail-closed forbids PROPOSE in failing conditions', () => {
-    assert.ok(/MUST NOT emit .?PROPOSE/.test(doc) || doc.includes('MUST NOT emit `PROPOSE`') || doc.includes('must not emit'),
+    assert.ok(/MUST NOT emit .?PROPOSE/.test(doc) || doc.includes('must not emit'),
       'must forbid emitting PROPOSE under failing conditions');
   });
 });
 
-describeContract('J. recommendation vs execution separation', () => {
+describe('J. recommendation vs execution separation', () => {
   it('recommendation is advisory only / separated from execution', () => {
     const lower = doc.toLowerCase();
     assert.ok(lower.includes('advisory'), 'must describe recommendation as advisory');
@@ -161,7 +239,7 @@ describeContract('J. recommendation vs execution separation', () => {
   });
 });
 
-describeContract('K. GitHub mutation / execution prohibitions', () => {
+describe('K. GitHub mutation / execution prohibitions', () => {
   it('forbids branch, worktree, commit, push, PR, merge, deployment, API, DB, credential use', () => {
     const lower = doc.toLowerCase();
     assert.ok(lower.includes('branch'), 'must forbid branch operations');
@@ -178,7 +256,7 @@ describeContract('K. GitHub mutation / execution prohibitions', () => {
   });
 });
 
-describeContract('L. config-only enablement forbidden', () => {
+describe('L. config-only enablement forbidden', () => {
   it('config change cannot enable execution', () => {
     const lower = doc.toLowerCase();
     assert.ok(lower.includes('config-only') || lower.includes('config change'), 'must address config-only change');
@@ -188,7 +266,7 @@ describeContract('L. config-only enablement forbidden', () => {
   });
 });
 
-describeContract('M. future provider approval 7 fields', () => {
+describe('M. future provider approval 7 fields', () => {
   it('requires all 7 approval fields before any provider adapter', () => {
     const lower = doc.toLowerCase();
     assert.ok(lower.includes('provider'), 'must require provider');
@@ -202,7 +280,7 @@ describeContract('M. future provider approval 7 fields', () => {
   });
 });
 
-describeContract('N. Ollama / local-model / cloud-provider non-goal', () => {
+describe('N. Ollama / local-model / cloud-provider non-goal', () => {
   it('marks Ollama, local model, cloud provider as non-goals', () => {
     const lower = doc.toLowerCase();
     assert.ok(lower.includes('ollama'), 'must name Ollama as non-goal');
@@ -212,7 +290,16 @@ describeContract('N. Ollama / local-model / cloud-provider non-goal', () => {
   });
 });
 
-describeContract('O. #1882 Refs only', () => {
+describe('O. local failure report is separate from recommendation (no decision field)', () => {
+  it('local failure report does not carry a decision field', () => {
+    const lower = doc.toLowerCase();
+    assert.ok(lower.includes('local failure report'), 'must define local failure report');
+    assert.ok(lower.includes('does not') && lower.includes('decision'), 'must state it does not carry a decision field');
+    assert.ok(lower.includes('separate') || lower.includes('distinct'), 'must be separate/distinct from recommendation');
+  });
+});
+
+describe('P. #1882 Refs only', () => {
   it('references #1882 only via Refs, with no closing keyword', () => {
     assert.ok(doc.includes('#1882'), 'must reference #1882');
     assert.ok(doc.includes('Refs #1882'), 'must use Refs #1882');
