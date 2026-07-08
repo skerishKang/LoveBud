@@ -123,6 +123,11 @@ def _enforce_source_ack_convergence(payload: dict[str, Any], row: dict[str, Any]
     Compares the post-write RETURNING row against the requested value. A missing
     or stale acknowledgement is a structured failure — the response is never
     coerced into success by echoing the request (Refs #3330, Refs #3273).
+
+    The divergence is detected internally, but the 409 detail never echoes the
+    raw requested/persisted values (raw source URLs, provider identifiers,
+    thumbnails) — that would leak production identity data across the #3273/#3330
+    privacy boundary. Only typed classification is returned.
     """
     for _payload_key, db_column, _resp_key in _SOURCE_ACK_FIELDS:
         if _payload_key not in payload:
@@ -135,8 +140,7 @@ def _enforce_source_ack_convergence(payload: dict[str, Any], row: dict[str, Any]
                 detail={
                     "code": "SOURCE_WRITE_ACK_DIVERGENCE",
                     "field": _payload_key,
-                    "requested": requested,
-                    "persisted": persisted,
+                    "classification": "STALE_SOURCE_ACKNOWLEDGEMENT",
                 },
             )
 
