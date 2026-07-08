@@ -6,15 +6,21 @@ Tests actual update_owner_memory() execution with mocked DB.
 Run: python3 tests/contracts/test_owner_memory_update_persistence.py
 """
 
+import os
 import sys
 import uuid
 from unittest.mock import patch, MagicMock, Mock
 from fastapi import HTTPException
 
-# Import the module under test
-sys.path.insert(0, '/root/LoveBud-worktrees/api-memory-update-persistence-2986')
+# Import the module under test (repo root derived from this file's location)
+REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, REPO_ROOT)
 
-from modal_compute.memory_writes import update_owner_memory, _would_create_cycle
+from modal_compute.memory_writes import (
+    create_owner_memory,
+    update_owner_memory,
+    _would_create_cycle,
+)
 
 
 # ============================================================================
@@ -727,6 +733,139 @@ def test_no_update_guard_source_contract():
     assert found_guard, "Could not find 'if not updates:' guard block in source AST"
 
 
+# ============================================================================
+# #3287 Tests: reject invalid (non-string) memory scalar types on update/create
+# ============================================================================
+
+def test_update_non_string_scalar_rejected_structured_400_and_no_mutation():
+    """#3287: update with non-string title returns structured 400 and must NOT execute UPDATE."""
+    owner_id = "owner-123"
+    memory_id = "11111111-1111-1111-1111-111111111111"
+    tree_id = "22222222-2222-2222-2222-222222222222"
+
+    source_mem_row = make_memory_row(memory_id, tree_id, title="Original Title")
+
+    update_cursor = MockCursor(fetchone_result=make_memory_row(memory_id, tree_id, title="Original Title"))
+    conn = MockConnection()
+    conn.cursor = lambda *a, **k: update_cursor
+
+    with patch('modal_compute.memory_writes.get_db_connection', return_value=conn):
+        with patch('modal_compute.memory_writes.require_memory_owner', return_value=source_mem_row):
+            try:
+                update_owner_memory(owner_id, memory_id, {"title": 12345})
+                assert False, "Should have raised HTTPException for non-string title"
+            except HTTPException as e:
+                assert e.status_code == 400
+                detail = e.detail if isinstance(e.detail, dict) else {}
+                assert detail.get("code") == "INVALID_MEMORY_SCALAR_TYPE", f"got detail {e.detail}"
+                assert detail.get("field") == "title"
+                assert detail.get("expected") == "string"
+
+    update_calls = [c for c in update_cursor.execute_calls if 'UPDATE memories' in c[0]]
+    assert len(update_calls) == 0, f"UPDATE must not run for invalid non-string scalar, got {update_calls}"
+    assert conn.commit_calls == 0, "No commit must happen for rejected payload"
+
+
+def test_update_non_string_scalar_other_fields_rejected_and_no_mutation():
+    """#3287: non-string memo/source/sourceUrl/thumbnail/channel fields rejected, no mutation."""
+    owner_id = "owner-123"
+    memory_id = "11111111-1111-1111-1111-111111111111"
+    tree_id = "22222222-2222-2222-2222-222222222222"
+
+    source_mem_row = make_memory_row(
+        memory_id, tree_id,
+        memo="Original memo", source="YouTube",
+        source_url="https://youtube.com/watch?v=orig",
+        thumbnail="https://img/orig.jpg",
+        channel_id="chan-1",
+    )
+
+    update_cursor = MockCursor(fetchone_result=make_memory_row(memory_id, tree_id))
+    conn = MockConnection()
+    conn.cursor = lambda *a, **k: update_cursor
+
+    bad_payload = {
+        "memo": {"a": 1},
+        "source": 7,
+        "sourceUrl": ["x"],
+        "thumbnail": 3.5,
+        "channelId": True,
+        "channelName": 99,
+        "channelUrl": {"u": "x"},
+    }
+    with patch('modal_compute.memory_writes.get_db_connection', return_value=conn):
+        with patch('modal_compute.memory_writes.require_memory_owner', return_value=source_mem_row):
+            try:
+                update_owner_memory(owner_id, memory_id, bad_payload)
+                assert False, "Should have raised HTTPException for non-string scalars"
+            except HTTPException as e:
+                assert e.status_code == 400
+                detail = e.detail if isinstance(e.detail, dict) else {}
+                assert detail.get("code") == "INVALID_MEMORY_SCALAR_TYPE"
+
+    update_calls = [c for c in update_cursor.execute_calls if 'UPDATE memories' in c[0]]
+    assert len(update_calls) == 0, f"UPDATE must not run for invalid non-string scalars, got {update_calls}"
+    assert conn.commit_calls == 0
+
+
+def test_update_source_type_non_string_rejected():
+    """#3287: sourceType non-string (e.g. number) returns structured 400, no mutation."""
+    owner_id = "owner-123"
+    memory_id = "11111111-1111-1111-1111-111111111111"
+    tree_id = "22222222-2222-2222-2222-222222222222"
+
+    source_mem_row = make_memory_row(memory_id, tree_id, source_type="youtube")
+    update_cursor = MockCursor(fetchone_result=make_memory_row(memory_id, tree_id))
+    conn = MockConnection()
+    conn.cursor = lambda *a, **k: update_cursor
+
+    with patch('modal_compute.memory_writes.get_db_connection', return_value=conn):
+        with patch('modal_compute.memory_writes.require_memory_owner', return_value=source_mem_row):
+            try:
+                update_owner_memory(owner_id, memory_id, {"sourceType": 42})
+                assert False, "Should have raised HTTPException for non-string sourceType"
+            except HTTPException as e:
+                assert e.status_code == 400
+                detail = e.detail if isinstance(e.detail, dict) else {}
+                assert detail.get("code") == "INVALID_MEMORY_SCALAR_TYPE"
+                assert detail.get("field") == "sourceType"
+
+    update_calls = [c for c in update_cursor.execute_calls if 'UPDATE memories' in c[0]]
+    assert len(update_calls) == 0
+    assert conn.commit_calls == 0
+
+
+def test_create_non_string_scalar_rejected_structured_400():
+    """#3287: create with non-string title returns structured 400, no INSERT."""
+    owner_id = "owner-123"
+    tree_id = "22222222-2222-2222-2222-222222222222"
+
+    tree_row = {"id": uuid.UUID(tree_id), "tree_id": uuid.UUID(tree_id), "visibility": "public"}
+
+    insert_cursor = MockCursor(fetchone_result=make_memory_row(uuid.uuid4(), tree_id))
+    conn = MockConnection()
+    conn.cursor = lambda *a, **k: insert_cursor
+
+    with patch('modal_compute.memory_writes.get_db_connection', return_value=conn):
+        with patch('modal_compute.memory_writes.fetch_owner_tree', return_value=tree_row):
+            try:
+                create_owner_memory(owner_id, {
+                    "treeId": str(tree_id),
+                    "title": 12345,
+                    "source": "YouTube",
+                })
+                assert False, "Should have raised HTTPException for non-string title on create"
+            except HTTPException as e:
+                assert e.status_code == 400
+                detail = e.detail if isinstance(e.detail, dict) else {}
+                assert detail.get("code") == "INVALID_MEMORY_SCALAR_TYPE"
+                assert detail.get("field") == "title"
+
+    insert_calls = [c for c in insert_cursor.execute_calls if 'INSERT INTO memories' in c[0]]
+    assert len(insert_calls) == 0, f"INSERT must not run for invalid non-string scalar, got {insert_calls}"
+    assert conn.commit_calls == 0
+
+
 def test_parent_not_found_semantics_preserved():
     """parent lookup not-found check maintains INVALID_PARENT_ID / reason: not_found / HTTP 400."""
     owner_id = "owner-123"
@@ -778,6 +917,10 @@ if __name__ == "__main__":
         ("persistence: disconnect RETURNING row is normalized into response", test_persistence_disconnect_returning_row_is_normalized_into_response),
         ("_would_create_cycle cursor reuse contract", test_would_create_cycle_single_cursor_reuse),
         ("no-update guard source contract", test_no_update_guard_source_contract),
+        ("#3287 update non-string title -> structured 400, no mutation", test_update_non_string_scalar_rejected_structured_400_and_no_mutation),
+        ("#3287 update non-string scalar fields -> structured 400, no mutation", test_update_non_string_scalar_other_fields_rejected_and_no_mutation),
+        ("#3287 update non-string sourceType -> structured 400, no mutation", test_update_source_type_non_string_rejected),
+        ("#3287 create non-string title -> structured 400, no INSERT", test_create_non_string_scalar_rejected_structured_400),
         ("parent lookup not-found semantics contract", test_parent_not_found_semantics_preserved),
     ]
 

@@ -195,6 +195,52 @@ def validate_optional_string(value: Any, max_length: int = 5000) -> str:
     return text
 
 
+def validate_optional_memory_string(
+    value: Any,
+    field_name: str,
+    max_length: int = 5000,
+    *,
+    allow_none: bool = True,
+) -> str:
+    """Strict optional string validation for memory create/update scalar fields (#3287).
+
+    Unlike validate_optional_string, a non-string value is NOT coerced to "".
+    That coercion previously let malformed input clear an existing stored field
+    instead of being rejected. Here, non-string input raises a structured 400 so
+    the caller can return before any DB mutation.
+
+    - None -> "" (omitted/absent field; callers decide default or omission)
+    - valid string -> trimmed, persisted
+    - non-string (int/float/bool/list/dict/...) -> HTTPException 400 with
+      code INVALID_MEMORY_SCALAR_TYPE
+    - length overflow -> HTTPException 400 (compatible with prior behavior)
+    """
+    if value is None:
+        if not allow_none:
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "code": "INVALID_MEMORY_SCALAR_TYPE",
+                    "field": field_name,
+                    "expected": "string",
+                },
+            )
+        return ""
+    if not isinstance(value, str):
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": "INVALID_MEMORY_SCALAR_TYPE",
+                "field": field_name,
+                "expected": "string",
+            },
+        )
+    text = value.strip()
+    if len(text) > max_length:
+        raise HTTPException(status_code=400, detail=f"Field exceeds max {max_length}")
+    return text
+
+
 def normalize_group_name(raw: Any) -> str | None:
     """Normalize a groupName value: trim, empty→null, max 80 chars."""
     if raw is None:

@@ -14,6 +14,7 @@ from modal_compute.write_validation import (
 )
 from modal_compute.validation import (
     normalize_memory_row,
+    validate_optional_memory_string,
     validate_optional_string,
     validate_required_uuid,
     validate_visibility,
@@ -54,19 +55,19 @@ def create_owner_memory(owner_id: str, payload: dict[str, Any]) -> dict[str, Any
         str(uuid.uuid4()),
         tree_id,
         parent_id,
-        validate_optional_string(payload.get("title"), 200),
-        validate_optional_string(payload.get("memo"), 5000),
-        validate_optional_string(payload.get("artist"), 100),
-        validate_optional_string(payload.get("source"), 200),
-        validate_optional_string(payload.get("sourceUrl"), 1000),
-        validate_optional_string(payload.get("sourceType"), 50) or "youtube",
-        validate_optional_string(payload.get("thumbnail"), 500),
+        validate_optional_memory_string(payload.get("title"), "title", 200),
+        validate_optional_memory_string(payload.get("memo"), "memo", 5000),
+        validate_optional_memory_string(payload.get("artist"), "artist", 100),
+        validate_optional_memory_string(payload.get("source"), "source", 200),
+        validate_optional_memory_string(payload.get("sourceUrl"), "sourceUrl", 1000),
+        validate_optional_memory_string(payload.get("sourceType"), "sourceType", 50) or "youtube",
+        validate_optional_memory_string(payload.get("thumbnail"), "thumbnail", 500),
         emotion_tags,
-        validate_optional_string(payload.get("timestamp"), 100),
+        validate_optional_memory_string(payload.get("timestamp"), "timestamp", 100),
         visibility,
-        validate_optional_string(payload.get("channelId"), 100) or None,
-        validate_optional_string(payload.get("channelName"), 200) or None,
-        validate_optional_string(payload.get("channelUrl"), 1000) or None,
+        validate_optional_memory_string(payload.get("channelId"), "channelId", 100) or None,
+        validate_optional_memory_string(payload.get("channelName"), "channelName", 200) or None,
+        validate_optional_memory_string(payload.get("channelUrl"), "channelUrl", 1000) or None,
     )
 
     with get_db_connection() as conn:
@@ -125,27 +126,27 @@ def update_owner_memory(owner_id: str, memory_id: str, payload: dict[str, Any]) 
 
     if "title" in payload:
         updates.append("title = %s")
-        params.append(validate_optional_string(payload.get("title"), 200))
+        params.append(validate_optional_memory_string(payload.get("title"), "title", 200))
 
     if "memo" in payload:
         updates.append("memo = %s")
-        params.append(validate_optional_string(payload.get("memo"), 5000))
+        params.append(validate_optional_memory_string(payload.get("memo"), "memo", 5000))
 
     if "source" in payload:
         updates.append("source = %s")
-        params.append(validate_optional_string(payload.get("source"), 200))
+        params.append(validate_optional_memory_string(payload.get("source"), "source", 200))
 
     if "sourceUrl" in payload:
         updates.append("source_url = %s")
-        params.append(validate_optional_string(payload.get("sourceUrl"), 1000))
+        params.append(validate_optional_memory_string(payload.get("sourceUrl"), "sourceUrl", 1000))
 
     if "sourceType" in payload:
         updates.append("source_type = %s")
-        params.append(validate_optional_string(payload.get("sourceType"), 50) or "youtube")
+        params.append(validate_optional_memory_string(payload.get("sourceType"), "sourceType", 50) or "youtube")
 
     if "thumbnail" in payload:
         updates.append("thumbnail = %s")
-        params.append(validate_optional_string(payload.get("thumbnail"), 500))
+        params.append(validate_optional_memory_string(payload.get("thumbnail"), "thumbnail", 500))
 
     if "emotionTags" in payload:
         emotion_tags = payload.get("emotionTags") if isinstance(payload.get("emotionTags"), list) else []
@@ -163,25 +164,25 @@ def update_owner_memory(owner_id: str, memory_id: str, payload: dict[str, Any]) 
 
     if "channelId" in payload:
         updates.append("channel_id = %s")
-        params.append(validate_optional_string(payload.get("channelId"), 100) or None)
+        params.append(validate_optional_memory_string(payload.get("channelId"), "channelId", 100) or None)
 
     if "channelName" in payload:
         updates.append("channel_name = %s")
-        params.append(validate_optional_string(payload.get("channelName"), 200) or None)
+        params.append(validate_optional_memory_string(payload.get("channelName"), "channelName", 200) or None)
 
     if "channelUrl" in payload:
         updates.append("channel_url = %s")
-        params.append(validate_optional_string(payload.get("channelUrl"), 1000) or None)
+        params.append(validate_optional_memory_string(payload.get("channelUrl"), "channelUrl", 1000) or None)
 
     # New: artist update support
     if "artist" in payload:
         updates.append("artist = %s")
-        params.append(validate_optional_string(payload.get("artist"), 100))
+        params.append(validate_optional_memory_string(payload.get("artist"), "artist", 100))
 
     # New: timestamp update support
     if "timestamp" in payload:
         updates.append("timestamp = %s")
-        params.append(validate_optional_string(payload.get("timestamp"), 100))
+        params.append(validate_optional_memory_string(payload.get("timestamp"), "timestamp", 100))
 
     # New: parentId update support
     if "parentId" in payload:
