@@ -25,7 +25,7 @@
 import process from 'node:process';
 
 // ─── Opaque operator env inputs ───────────────────────────────────────────────
-// GATE_A_API_BASE      : base URL of the API proxy (operator-supplied, e.g. https://lovebud.pages.dev)
+// GATE_A_API_BASE      : opaque API proxy base URL (operator-supplied)
 // GATE_A_MEMORY_ID     : opaque fixture target memory id (operator-supplied)
 // GATE_A_TREE_ID       : opaque fixture parent tree id (operator-supplied)
 // GATE_A_AUTHORIZATION : opaque Firebase bearer token (operator-supplied, NEVER logged)
