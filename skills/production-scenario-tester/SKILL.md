@@ -1,11 +1,11 @@
 # Skill: Production Scenario Tester
 
 ## 목적
-실운영 도메인(`https://lovebud.netlify.app`)에서 아이돌별 팬 여정 시나리오를 테스트하고, 그 결과를 문서화 및 증빙(스크린샷)하는 절차를 규정합니다.
+실운영 도메인(`https://lovebud.pages.dev`)에서 아이돌별 팬 여정 시나리오를 테스트하고, 그 결과를 문서화 및 증빙(스크린샷)하는 절차를 규정합니다.
 
 ## 입력 (Input)
 - **대상 그룹 데이터**: `docs/test-scenarios/data/{group}-data.json`
-- **테스트 환경**: `https://lovebud.netlify.app` (로컬 테스트 금지)
+- **테스트 환경**: `https://lovebud.pages.dev` (로컬 테스트 금지)
 
 ## 실행 절차 (Workflow)
 
