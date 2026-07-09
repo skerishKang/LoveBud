@@ -12,6 +12,8 @@ SAFE_ACTIONS = frozenset({
     "comment.hide",
     "tree.like.toggle",
     "tree.like.toggle.replay",
+    "tree.comment.create",
+    "tree.comment.create.replay",
 })
 
 

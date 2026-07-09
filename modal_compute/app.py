@@ -62,6 +62,7 @@ from modal_compute.tree_likes import (
     fetch_tree_like_summary,
     fetch_public_tree_like_count,
 )
+from modal_compute.tree_comments import create_tree_comment
 from modal_compute.tree_views import record_public_tree_view, fetch_public_tree_view_count
 from modal_compute.hub_layouts import (
     hub_layout_not_found_handler,
@@ -405,6 +406,19 @@ def get_tree_likes(
 ) -> dict:
     user = require_firebase_user(authorization)
     return fetch_tree_like_summary(tree_id, user["uid"])
+
+
+@web_app.post("/modal/private/trees/{tree_id}/comments")
+async def post_tree_comment(
+    tree_id: str,
+    request: Request,
+    authorization: str | None = Header(default=None),
+    x_idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
+) -> dict:
+    user = require_firebase_user(authorization)
+    payload = await parse_json_body(request)
+    body = payload.get("body") if isinstance(payload, dict) else None
+    return create_tree_comment(tree_id, user["uid"], body, idempotency_key=x_idempotency_key)
 
 
 @web_app.get("/modal/private/memories")
