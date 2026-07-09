@@ -48,6 +48,14 @@ test('document references #3376, #3188, #3372, #3374, #3075, #1882', () => {
   assert.ok(/#1882/.test(doc), 'Document must reference #1882');
 });
 
+test('document does not identify #3374 merge SHA as the current main baseline', () => {
+  const doc = readDoc();
+  assert.ok(
+    !/current `main` \(`e89c2b31`\)/i.test(doc),
+    'Document must not identify #3374 merge SHA as the current main baseline'
+  );
+});
+
 // ─── 2. Scope separation from #3075 ──────────────────────────────────────────
 
 test('document separates tree-level (treeId) from moment-level ((treeId, memoryId)) comments', () => {

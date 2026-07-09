@@ -15,7 +15,7 @@
 
 This document audits the **runtime/API prerequisites** that must exist before a tree-level comment client can be activated under #3188. It is the audit companion to the tree-level comment surface contract (#3372 / #3374).
 
-It answers, with evidence from current `main` (`e89c2b31`):
+It answers, with evidence from the current remote `main` runtime/API surface after #3375 (`1c1a854`), before this audit PR is merged:
 
 1. Does a tree-level comment **read/list** endpoint exist?
 2. Does a tree-level comment **create/write** endpoint exist?
