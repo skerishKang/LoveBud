@@ -117,7 +117,7 @@
             likeButtonEl.style.display = 'none';
             likeButtonEl.disabled = true;
             guestNoteEl.style.display = '';
-            guestNoteEl.textContent = '로그인하면 좋아요를 남길 수 있어요.';
+            guestNoteEl.textContent = '로그인하면 이 순간에 반응하고 댓글을 남길 수 있어요.';
             errorEl.style.display = 'none';
             errorEl.textContent = '';
             statusRegionEl.style.display = 'none';
@@ -491,7 +491,7 @@
             updateLikeButtonUI(lastLikeState.pressed);
             syncButtonActionableState();
             guestNoteEl.style.display = 'none';
-            guestNoteEl.textContent = '로그인하면 좋아요를 남길 수 있어요.';
+            guestNoteEl.textContent = '로그인하면 이 순간에 반응하고 댓글을 남길 수 있어요.';
             errorEl.style.display = 'none';
             statusRegionEl.style.display = 'none';
 
