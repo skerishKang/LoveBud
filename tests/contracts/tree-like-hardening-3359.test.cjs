@@ -31,6 +31,22 @@ function read(filePath) {
 
 // ─── Modal tree-like writer requires and validates Idempotency-Key ────────────
 
+test('Tree-like writer validates Idempotency-Key before any visibility/DB lookup', () => {
+  const src = read(TREE_LIKES_PATH);
+  const start = src.indexOf('def toggle_tree_like(');
+  const nextDef = src.indexOf('\ndef ', start + 10);
+  const block = nextDef === -1 ? src.slice(start) : src.slice(start, nextDef);
+  const missingIdx = block.indexOf('if not idempotency_key:');
+  const formatIdx = block.indexOf('validate_idempotency_key_format(idempotency_key)');
+  const visibilityIdx = block.indexOf('require_public_tree_for_like(safe_tree_id)');
+  assert.ok(missingIdx > 0, 'missing-key check must be present');
+  assert.ok(formatIdx > missingIdx, 'format validation must follow missing-key check');
+  assert.ok(
+    missingIdx < visibilityIdx && formatIdx < visibilityIdx,
+    'idempotency key validation must precede the public-tree visibility lookup'
+  );
+});
+
 test('Tree-like writer requires Idempotency-Key (missing -> safe typed error)', () => {
   const src = read(TREE_LIKES_PATH);
   assert.ok(src.includes('def toggle_tree_like('), 'toggle_tree_like must exist');

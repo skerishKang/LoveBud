@@ -218,7 +218,6 @@ def _read_active_and_count(cur: Any, tree_id: str, owner_id: str) -> tuple[bool,
 
 def toggle_tree_like(tree_id: str, owner_id: str, idempotency_key: str | None = None) -> dict[str, Any]:
     safe_tree_id = validate_required_uuid(tree_id, "treeId")
-    require_public_tree_for_like(safe_tree_id)
 
     if not idempotency_key:
         raise SocialWriteError(
@@ -228,6 +227,8 @@ def toggle_tree_like(tree_id: str, owner_id: str, idempotency_key: str | None = 
         )
 
     validate_idempotency_key_format(idempotency_key)
+
+    require_public_tree_for_like(safe_tree_id)
 
     operation = "tree.like.toggle"
     body: dict[str, Any] = {}
