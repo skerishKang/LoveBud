@@ -190,6 +190,100 @@ test('forbidden field name returns forbidden_content', () => {
   assert.strictEqual(result.error.code, 'forbidden_content');
 });
 
+const NEW_FORBIDDEN_FIELDS = [
+  'fullArticle',
+  'fullPost',
+  'fullTranscript',
+  'lyrics',
+  'paywalledContent',
+  'copiedImage',
+  'copiedVideo',
+  'rawProviderOutput',
+  'rawRequestResponseBodies',
+  'rawRequestBody',
+  'rawResponseBody',
+];
+
+for (const field of NEW_FORBIDDEN_FIELDS) {
+  test(`forbidden field '${field}' in reviewed returns forbidden_content`, () => {
+    const payload = {
+      reviewed: {
+        sourceLink: 'https://x.com/p',
+        sourceLabel: 'X Post',
+        memoryDraft: 'Draft post.',
+        [field]: 'DUMMY_SAFE_STRING_NO_RAW_VALUE',
+      },
+    };
+    const result = validateReviewedPayload(payload);
+    assert.ok(!result.ok, `forbidden field '${field}' must be rejected`);
+    assert.strictEqual(result.error.code, 'forbidden_content');
+    assert.ok(result.error.message.includes(field), `error must name the forbidden field '${field}'`);
+  });
+}
+
+test('forbidden field nested inside reviewed object returns forbidden_content', () => {
+  const payload = {
+    reviewed: {
+      sourceLink: 'https://x.com/p',
+      sourceLabel: 'X Post',
+      memoryDraft: 'Draft post.',
+      nested: {
+        deep: { fullArticle: 'DUMMY_SAFE_STRING_NO_RAW_VALUE' },
+      },
+    },
+  };
+  const result = validateReviewedPayload(payload);
+  assert.ok(!result.ok, 'nested forbidden field must be rejected');
+  assert.strictEqual(result.error.code, 'forbidden_content');
+  assert.ok(result.error.message.includes('fullArticle'), 'error must name the nested forbidden field');
+});
+
+test('forbidden field nested inside body returns forbidden_content', () => {
+  const payload = {
+    meta: { rawResponseBody: 'DUMMY_SAFE_STRING_NO_RAW_VALUE' },
+    reviewed: {
+      sourceLink: 'https://x.com/p',
+      sourceLabel: 'X Post',
+      memoryDraft: 'Draft post.',
+    },
+  };
+  const result = validateReviewedPayload(payload);
+  assert.ok(!result.ok, 'forbidden field in body must be rejected');
+  assert.strictEqual(result.error.code, 'forbidden_content');
+  assert.ok(result.error.message.includes('rawResponseBody'), 'error must name the body-level forbidden field');
+});
+
+test('forbidden_content error does not echo the forbidden value', () => {
+  const dummyValue = 'SUPER_SECRET_DUMMY_VALUE_MUST_NOT_APPEAR_IN_ERROR';
+  const payload = {
+    reviewed: {
+      sourceLink: 'https://x.com/p',
+      sourceLabel: 'X Post',
+      memoryDraft: 'Draft post.',
+      tokens: dummyValue,
+    },
+  };
+  const result = validateReviewedPayload(payload);
+  assert.ok(!result.ok, 'forbidden field must be rejected');
+  assert.strictEqual(result.error.code, 'forbidden_content');
+  assert.ok(result.error.message.includes('tokens'), 'error must name the forbidden field');
+  assert.ok(!result.error.message.includes(dummyValue), 'error message must not echo the forbidden value');
+});
+
+test('valid payload containing no forbidden field is accepted', () => {
+  const payload = {
+    reviewed: {
+      sourceLink: 'https://x.com/p',
+      sourceLabel: 'X Post',
+      memoryDraft: 'Draft post.',
+      summary: 'A short summary.',
+      fanContext: 'Fan context.',
+    },
+  };
+  const result = validateReviewedPayload(payload);
+  assert.ok(result.ok, 'payload without forbidden fields must be accepted');
+});
+
 test('invalid sourceLink URL returns invalid_payload', () => {
   const payload = {
     reviewed: {
@@ -241,4 +335,51 @@ test('emotionTags as non-string/non-array without value accepted (optional absen
   const result = validateReviewedPayload(payload);
   assert.ok(result.ok, 'optional emotionTags absent must be accepted');
   assert.strictEqual(result.reviewed.emotionTags, undefined, 'emotionTags must be absent from sanitized output when absent in input');
+});
+
+// ─── #3386 forbidden field contract coverage (source-level) ───────────────
+
+test('FORBIDDEN_NAMES covers all #3386 forbidden categories', () => {
+  const source = fs.readFileSync(INTAKE_PATH, 'utf8');
+  const required = [
+    'rawSourceBody', 'fullScrapedContent',
+    'fullArticle', 'fullPost', 'fullTranscript', 'lyrics', 'paywalledContent',
+    'copiedImage', 'copiedVideo',
+    'rawProviderOutput', 'rawRequestResponseBodies', 'rawRequestBody', 'rawResponseBody',
+    'tokens', 'cookies', 'authHeaders', 'apiBaseUrl', 'dashboardUrl',
+    'dbRow', 'privateLog', 'screenshotWithPrivateId',
+  ];
+  for (const name of required) {
+    assert.ok(source.includes(`'${name}'`), `FORBIDDEN_NAMES must include '${name}' (#3386 coverage)`);
+  }
+});
+
+test('intake and route have no fetch/provider/DB/storage writer', () => {
+  const routeSrc = fs.readFileSync(ROUTE_PATH, 'utf8');
+  const intakeSrc = fs.readFileSync(INTAKE_PATH, 'utf8');
+  const combined = routeSrc + '\n' + intakeSrc;
+  const forbidden = [
+    'fetch(',
+    'axios',
+    'XMLHttpRequest',
+    'knex',
+    'pg.',
+    'postgres',
+    'createClient',
+    'INSERT INTO',
+    'insertInto',
+    'drizzle',
+    'prisma',
+    'supabase',
+    'firebase',
+    'provider.',
+  ];
+  for (const pattern of forbidden) {
+    assert.ok(!combined.includes(pattern), `route/intake must not contain "${pattern}"`);
+  }
+});
+
+test('intake helper does not import storage/DB/provider/LLM modules', () => {
+  const intakeSrc = fs.readFileSync(INTAKE_PATH, 'utf8');
+  assert.ok(!intakeSrc.includes('import'), 'intake helper must not import external modules');
 });

@@ -1,6 +1,19 @@
 const FORBIDDEN_NAMES = [
   'rawSourceBody',
   'fullScrapedContent',
+
+  'fullArticle',
+  'fullPost',
+  'fullTranscript',
+  'lyrics',
+  'paywalledContent',
+  'copiedImage',
+  'copiedVideo',
+  'rawProviderOutput',
+  'rawRequestResponseBodies',
+  'rawRequestBody',
+  'rawResponseBody',
+
   'tokens',
   'cookies',
   'authHeaders',
