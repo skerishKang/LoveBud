@@ -392,9 +392,10 @@ def delete_private_tree(
 def post_tree_like(
     tree_id: str,
     authorization: str | None = Header(default=None),
+    x_idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
 ) -> dict:
     user = require_firebase_user(authorization)
-    return toggle_tree_like(tree_id, user["uid"])
+    return toggle_tree_like(tree_id, user["uid"], idempotency_key=x_idempotency_key)
 
 
 @web_app.get("/modal/private/trees/{tree_id}/likes")
