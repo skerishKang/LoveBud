@@ -537,8 +537,8 @@ test('public-viewer-detail-view-mode-template.js is not modified', () => {
     'template must still have read-only class'
   );
   assert.ok(
-    hasString(content, '반응 기능은 준비 중이에요'),
-    'template must still have the placeholder text'
+    hasString(content, '반응 정보를 불러오는 중이에요'),
+    'template must have the loading placeholder text'
   );
 });
 

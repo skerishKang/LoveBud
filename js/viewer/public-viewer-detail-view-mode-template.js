@@ -86,7 +86,7 @@
                           <p id="momentCommentsPanelStatus" role="status" aria-live="polite"></p>
                           <ul id="momentCommentsList" class="editor-moment-comments-list"></ul>
                         </section>
-                        <p class="editor-moment-reaction-readonly-note" id="momentReactionNote">반응 기능은 준비 중이에요.</p>
+                        <p class="editor-moment-reaction-readonly-note" id="momentReactionNote">반응 정보를 불러오는 중이에요.</p>
                     </div>
                 </div>
     `;
