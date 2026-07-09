@@ -107,7 +107,8 @@ Modal runtime 핵심 변수:
   - Modal secret `lovebud-db`에서 주입
 - `CORS_ALLOWED_ORIGINS`
   - 필요 시 명시 설정
-  - 기본 허용 origin에는 `https://lovebud.pages.dev`, `https://lovebud.vercel.app`, `https://lovebud.netlify.app` 포함 가능
+  - 기본 허용 origin에는 `https://lovebud.pages.dev`, `https://lovebud.vercel.app` 포함 가능
+  - `https://lovebud.netlify.app` / `*.netlify.app`는 stale/legacy이며 active origin으로 포함하지 않음 (#3348)
 
 ### 4.3 Vercel / Netlify
 

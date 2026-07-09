@@ -40,7 +40,7 @@ Since the client config is public, security MUST be enforced through the followi
 
 The following items are managed via the Firebase/Google Cloud Console and must be verified separately from the codebase:
 
-- [ ] **Authorized Domains**: Only `lovebud.pages.dev`, `lovebud.vercel.app`, `lovebud.netlify.app`, and `localhost` should be listed.
+- [ ] **Authorized Domains**: Only `lovebud.pages.dev`, `lovebud.vercel.app`, and `localhost` should be listed. Do not list `lovebud.netlify.app` or `*.netlify.app` (stale/legacy, #3348).
 - [ ] **Firestore Rules**: Verify that access is restricted based on `resource.data.visibility` and `request.auth.uid`.
 - [ ] **Storage Rules**: Verify the bucket access policy. **Note**: Absence of rules in the code does not imply safety; the Console's bucket policy is the final authority.
 - [ ] **API Key Restrictions**: Ensure the key is limited to Identity Toolkit and necessary Firebase services.

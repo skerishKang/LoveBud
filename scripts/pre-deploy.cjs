@@ -11,7 +11,10 @@
  * 사용법:
  *   node scripts/pre-deploy.js             # 빠른 검사 (syntax, i18n, routes, html)
  *   node scripts/pre-deploy.js --full      # 위 + env/DB/Firebase 원격 검사
- *   node scripts/pre-deploy.js --remote https://lovebud.netlify.app
+ *   node scripts/pre-deploy.js --remote https://lovebud.pages.dev
+ *
+ * Note: Netlify hosts (*.netlify.app) are stale/legacy and must not be used
+ * as --remote defaults or production validation targets (#3348).
  */
 
 const fs = require('fs');
@@ -22,7 +25,7 @@ const ROOT = path.resolve(__dirname, '..');
 const args = process.argv.slice(2);
 const FULL = args.includes('--full');
 const REMOTE_URL = args.includes('--remote')
-  ? args[args.indexOf('--remote') + 1] || 'https://lovebud.netlify.app'
+  ? args[args.indexOf('--remote') + 1] || 'https://lovebud.pages.dev'
   : null;
 
 let exitCode = 0;

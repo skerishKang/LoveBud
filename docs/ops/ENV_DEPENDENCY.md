@@ -80,7 +80,8 @@ Modal은 browse summary와 read-heavy aggregation의 active compute/runtime 우�
 - `modal_compute/app.py`
 
 **기본값**
-- `https://lovebud.pages.dev,https://lovebud.vercel.app,https://lovebud.netlify.app`
+- `https://lovebud.pages.dev,https://lovebud.vercel.app`
+- Note: `lovebud.netlify.app` / `*.netlify.app` are stale/legacy and must not be listed as active CORS origins (#3348).
 
 **용도**
 - Modal 직접 호출 또는 운영 점검 시 origin 허용 목록 제어
@@ -148,9 +149,9 @@ Netlify는 legacy / fallback / artifact 성격으로 남아 있습니다.
 - Authorized Domains
   - `lovebud.pages.dev`
   - `lovebud.vercel.app`
-  - `lovebud.netlify.app`
   - `localhost`
   - `127.0.0.1`
+  - Do not list `lovebud.netlify.app` or `*.netlify.app` as active Authorized Domains (#3348; stale/legacy).
 
 주의:
 - Firebase 웹 config는 프런트에 공개되어도 되는 client config입니다.

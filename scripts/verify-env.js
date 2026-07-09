@@ -5,17 +5,20 @@ require('dotenv').config();
  * LoveBud 환경변수 및 엔드포인트 검증 스크립트
  *
  * 사용법:
- *   node scripts/verify-env.js [--remote https://lovebud.netlify.app]
+ *   node scripts/verify-env.js [--remote https://lovebud.pages.dev]
  *
  * 확인 항목:
  *   1. 필수 환경변수 존재 여부
  *   2. 데이터베이스 연결
  *   3. Firebase 초기화
  *   4. 원격 엔드포인트 응답 (선택)
+ *
+ * Note: Netlify hosts (*.netlify.app) are stale/legacy and must not be used
+ * as --remote defaults or production validation targets (#3348).
  */
 
 const BASE_URL = process.argv.find(a => a === '--remote')
-  ? process.argv[process.argv.indexOf('--remote') + 1] || 'https://lovebud.netlify.app'
+  ? process.argv[process.argv.indexOf('--remote') + 1] || 'https://lovebud.pages.dev'
   : null;
 
 let exitCode = 0;

@@ -77,7 +77,7 @@ async function fixTreeVisibility() {
     console.log(`✅ ${memUpdateResult.rowCount}개 메모리 업데이트 완료`);
 
     console.log('\n🎉 완료! 이제 /api/community/trees를 다시 확인하세요.');
-    console.log('   curl.exe -s "https://lovebud.netlify.app/api/community/trees"');
+    console.log('   curl.exe -s "https://lovebud.pages.dev/api/community/trees"');
 
   } catch (err) {
     console.error('❌ 오류:', err.message);
