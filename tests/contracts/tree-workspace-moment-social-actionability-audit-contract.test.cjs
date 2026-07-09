@@ -119,6 +119,7 @@ describe('5. Guest unauthorized mutation prohibition', () => {
             doc.includes('no mutation calls') ||
             doc.includes('isAuthConfirmed');
         assert.ok(mentionsGuest, 'Doc must discuss guest behavior');
+        assert.ok(noUnauthorized, 'Doc must assert no unauthorized mutation/read/write loop');
     });
 });
 

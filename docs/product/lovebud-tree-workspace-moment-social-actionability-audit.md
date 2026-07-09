@@ -53,12 +53,16 @@ Dynamic DOM (not pre-rendered). Created when panel opens for authenticated users
 
 Social counts are loaded from real API endpoints, not placeholders or static values.
 
-| Source | Endpoint | Auth | Returns |
+| Source (client function, `js/postgres-client.js`) | Client Route (via `/api/...`) | Auth | Returns |
 |--------|----------|------|---------|
-| `fetchReactionSummary(treeId, memoryId)` | `POST /modal/private/memories/{memory_id}/reactions` (GET) | Required | `{ counts: { like: int }, total: int, userReactions: [...] }` |
-| `fetchComments(treeId, memoryId)` | `GET /api/memories/{memory_id}/comments` | Optional | `{ comments: [...], nextCursor: null }` |
+| `fetchReactionSummary(memoryId)` | `GET /api/memories/{memory_id}/reactions` | Required | `{ counts: { like: int }, total: int, userReactions: [...] }` |
+| `fetchComments(memoryId)` | `GET /api/memories/{memory_id}/comments` | Optional | `{ comments: [...], nextCursor: null }` |
 | `fetchPublicMomentReactionSummary(treeId, memoryId)` | `GET /api/trees/{tree_id}/memories/{memory_id}/reactions` | None (publicRead) | Anonymous aggregate counts |
 | `fetchPublicMomentComments(treeId, memoryId)` | `GET /api/trees/{tree_id}/memories/{memory_id}/comments` | None (publicRead) | `{ id, body, createdAt }` |
+| `toggleReaction(memoryId, type, idempotencyKey)` | `POST /api/memories/{memory_id}/reactions` | Required | Server confirmation |
+| `createComment(memoryId, body, idempotencyKey)` | `POST /api/memories/{memory_id}/comments` | Required | Created comment object |
+
+Client routes use base path `/api/...`. The Cloudflare Functions layer dispatches to Modal backend routes with corresponding GET/POST methods. See Section 3 for backend (Modal) implementation details.
 
 Loading state shows `⋯`. Unavailable state shows `—`. Success state shows real integer.
 
@@ -143,14 +147,22 @@ Loading state shows `⋯`. Unavailable state shows `—`. Success state shows re
 
 ### Separation Maintained
 
+**Existing committed artifacts (verified against `main` at `7aa8952e`)**:
+
+- **`modal_compute/tree_likes.py:183-244`** — `toggle_tree_like()` implementation using `tree_likes` DB table and `tree_social_counts` summary table for per-tree aggregate counts.
+- **`functions/api/trees/[tree_id]/likes.js`** — Cloudflare endpoint for `/api/trees/{tree_id}/likes` with `GET` and `POST` handlers (auth required). The frontend tree-level like toggle in `js/viewer/viewer-click-actions.js:16` toggles a CSS class only and does NOT call this endpoint — the endpoint exists but lacks client wiring.
+- **`docs/engineering/API_CONTRACT.md` Section 5 (planned fields)** — lists `likeCount`, `reactionCount`, `bookmarkCount` as planned additive fields on tree summary, but these are NOT currently assigned in browse/tree payloads.
+
+**Note on #3264 direction**: The generic social target migration (#3264) may rename or restructure reaction/comment tables. This audit describes the current committed state (`7aa8952e`) and does not predict post-migration schema. Moment-level and tree-level separation is source-verifiable at this commit.
+
 | Aspect | Moment-Level (#3075) | Tree-Level (#3188) |
 |--------|---------------------|-------------------|
-| Database table | `reactions` | `tree_likes`, `tree_social_counts` |
-| API endpoints | `/api/memories/{id}/reactions`, `/api/memories/{id}/comments` | `/api/trees/{id}/likes` |
+| Database table | `reactions` (existing) | `tree_likes`, `tree_social_counts` (existing) |
+| API endpoints | `/api/memories/{id}/reactions`, `/api/memories/{id}/comments` (existing) | `/api/trees/{id}/likes` (existing endpoint, no client UI wiring) |
 | UI location | Detail panel `#momentReactionsCard` | Viewer shell action dock |
 | Like scope | Per-moment | Per-tree |
-| Comments scope | Per-moment comments | Future tree-level comments |
-| Current state | Read/write implemented | Read pending (no API backing) |
+| Comments scope | Per-moment comments (existing) | Future tree-level comments (planned) |
+| Current state | Read/write implemented | Endpoint exists but frontend toggle is decorative only |
 
 ### Risk Areas
 
