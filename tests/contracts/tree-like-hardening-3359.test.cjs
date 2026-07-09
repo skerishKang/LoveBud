@@ -268,3 +268,95 @@ test('Tree-like hardening sources embed no connection strings or bearer tokens',
     assert.equal(/eyJ[A-Za-z0-9_-]{10,}/.test(src), false, `${p} must not embed JWTs`);
   }
 });
+
+// ─── #3366 regression: SELECT-first replay in generic idempotency resolver ────
+//
+// Live runtime verification (#3361, check 5) found that same-key replay
+// applied a second toggle because reserve_and_verify_idempotency_target
+// relied on INSERT ... ON CONFLICT ... RETURNING to detect replay.
+// When the DB unique constraint on (actor_id, operation, idempotency_key)
+// is absent (live runtime), the INSERT always succeeds as a fresh pending
+// row and every call is treated as a new reservation — no replay.
+//
+// The fix adds a SELECT-first lookup that queries the existing reservation
+// before any INSERT, making replay robust regardless of schema state.
+//
+// These tests verify the SELECT-first pattern statically from source.
+// Dynamic Python-level regression tests are in
+// tests/contracts/test_tree_like_idempotency.py (#3366 suite).
+
+const IDEM_PATH = path.join(ROOT, 'modal_compute/social_idempotency.py');
+
+test('#3366 regression: resolver has SELECT-first _read_existing_idempotency_target', () => {
+  const idem = read(IDEM_PATH);
+  assert.ok(
+    idem.includes('def _read_existing_idempotency_target('),
+    'must define SELECT-first lookup helper'
+  );
+  assert.ok(
+    idem.includes('SELECT target_kind, target_id, target_memory_id, result_id'),
+    'SELECT must return generic target columns and reservation state'
+  );
+});
+
+test('#3366 regression: reserve_and_verify_idempotency_target calls SELECT first', () => {
+  const idem = read(IDEM_PATH);
+  const fn = idem.slice(idem.indexOf('def reserve_and_verify_idempotency_target('));
+  const after = fn.slice(fn.indexOf('fingerprint = _compute_fingerprint(body)'));
+  assert.ok(
+    after.includes('existing = _read_existing_idempotency_target('),
+    'must call SELECT-first lookup after computing fingerprint'
+  );
+  assert.ok(
+    before( after.indexOf('INSERT INTO social_idempotency'),
+            after.indexOf('def _') ),
+    'resolver must INSERT only after SELECT returns no row'
+  );
+  function before(insertIdx, endIdx) {
+    const insertBlock = insertIdx === -1 ? after.slice(0, endIdx) : after.slice(0, insertIdx);
+    return insertBlock.indexOf('existing = _read_existing_idempotency_target(') !== -1;
+  }
+});
+
+test('#3366 regression: SELECT-first path returns stored DTO on completed/replayed state', () => {
+  const src = read(IDEM_PATH);
+  assert.ok(
+    /stored_state in \("completed", "replayed"\)/.test(src),
+    'SELECT-first must return stored DTO when state is completed or replayed'
+  );
+  assert.ok(
+    src.includes('"replay": True'),
+    'SELECT-first must flag replay as True in the returned dict'
+  );
+  assert.ok(
+    /"resultPayload": payload/.test(src),
+    'SELECT-first must include stored payload in replay return'
+  );
+});
+
+test('#3366 regression: INSERT ON CONFLICT has RETURNING clause for conflict detection', () => {
+  const idem = read(IDEM_PATH);
+  const fn = idem.slice(idem.indexOf('def reserve_and_verify_idempotency_target('));
+  const insertFn = fn.slice(fn.indexOf('INSERT INTO social_idempotency'));
+  assert.ok(
+    insertFn.includes('RETURNING'),
+    'INSERT must have RETURNING to capture existing row on conflict'
+  );
+  const afterInsert = idem.slice(idem.indexOf('row = cur.fetchone()'));
+  assert.ok(
+    afterInsert.includes('stored_result_id == result_id and stored_state == "pending"'),
+    'conflict fallback must distinguish new INSERT from conflict via result_id match'
+  );
+  assert.ok(
+    afterInsert.includes('"replay": True'),
+    'conflict fallback must return replay DTO when stored state is completed/replayed'
+  );
+  assert.ok(
+    afterInsert.includes('IDEMPOTENCY_KEY_REUSED'),
+    'conflict fallback must raise IDEMPOTENCY_KEY_REUSED on target/fingerprint mismatch'
+  );
+  assert.ok(
+    afterInsert.includes('SOCIAL_WRITE_UNAVAILABLE'),
+    'conflict fallback must raise SOCIAL_WRITE_UNAVAILABLE on pending/failed'
+  );
+});
