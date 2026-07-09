@@ -127,6 +127,7 @@ Global focus/visibility hardening 판단이 필요하면 아래를 추가로 읽
 - [lovebud-scout-link-based-fan-assistant-mvp.md](./product/lovebud-scout-link-based-fan-assistant-mvp.md) - #1882 Scout link-based fan assistant MVP product definition
 - [lovebud-scout-link-source-safety-boundary.md](./product/lovebud-scout-link-source-safety-boundary.md) - #3364/#1882 Scout MVP link-source safety boundary: allowed/disallowed sources, content handling, storage, attribution, implementation gates
 - [lovebud-scout-manual-link-to-memory-flow-contract.md](./product/lovebud-scout-manual-link-to-memory-flow-contract.md) - #3373/#1882/#3365/#3364 Scout MVP manual link-to-memory draft flow contract: states, visible fields, blocked states, edit-before-save, #3365 inheritance
+- [lovebud-scout-save-to-memory-payload-contract.md](./product/lovebud-scout-save-to-memory-payload-contract.md) - #3379/#1882/#3375/#3365/#3364/#3188/#3075 Scout MVP save-to-memory payload contract: payload shape, generated-vs-reviewed, required/optional/forbidden fields, source preservation, no raw/private, #3365/#3375 inheritance
 - [lovebud-scout-auth-verifier-unblock-path.md](./product/lovebud-scout-auth-verifier-unblock-path.md) - #2660 Scout staging auth verifier unblock path definition
 - [lovebud-scout-namu-lookup-harness-contract.md](./product/lovebud-scout-namu-lookup-harness-contract.md) - #3155 Scout namuwiki-style public lookup skill/harness design
 - [lovebud-scout-staging-api-key-smoke-report.md](./product/lovebud-scout-staging-api-key-smoke-report.md) - #2636 Scout staging API-key smoke test report
