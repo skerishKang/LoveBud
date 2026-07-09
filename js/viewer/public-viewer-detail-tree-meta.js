@@ -74,7 +74,8 @@
             visInfo,
             isPublic,
             countLabel,
-            shareButtonEl = null
+            shareButtonEl = null,
+            treeLikeControlEl = null   // optional tree-level like control element
         }) => {
             const wrap = document.createElement('div');
             wrap.style.padding = '20px 20px 18px';
@@ -166,6 +167,7 @@
             actionsRow.style.flexWrap = 'wrap';
             actionsRow.style.paddingTop = '2px';
 
+            if (treeLikeControlEl) actionsRow.appendChild(treeLikeControlEl);
             if (shareButtonEl) actionsRow.appendChild(shareButtonEl);
 
             wrap.appendChild(actionsRow);
@@ -212,7 +214,7 @@
             };
         };
 
-        const renderTreeMetaBoundary = (treeMetaMount, model, treeId, data) => {
+        const renderTreeMetaBoundary = (treeMetaMount, model, treeId, data, treeLikeControlEl) => {
             if (!treeMetaMount) return;
 
             treeMetaMount.replaceChildren();
@@ -223,7 +225,8 @@
                 visInfo: model.visInfo,
                 isPublic: model.isPublic,
                 countLabel: model.countLabel,
-                shareButtonEl: model.shareButtonEl
+                shareButtonEl: model.shareButtonEl,
+                treeLikeControlEl: treeLikeControlEl || null
             });
             treeMetaMount.appendChild(block);
 

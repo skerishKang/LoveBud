@@ -360,3 +360,171 @@ test('#3366 regression: INSERT ON CONFLICT has RETURNING clause for conflict det
     'conflict fallback must raise SOCIAL_WRITE_UNAVAILABLE on pending/failed'
   );
 });
+
+// ─── #3369 client tree-level like: DTO shape, Idempotency-Key, guest guard ──
+
+const TREE_LIKE_CLIENT_PATH = path.join(ROOT, 'js/viewer/public-viewer-tree-like.js');
+
+test('#3369 client: tree-like control module exists with createTreeLikeControl', () => {
+  const src = read(TREE_LIKE_CLIENT_PATH);
+  assert.ok(
+    src.includes('createTreeLikeControl'),
+    'module must export createTreeLikeControl function'
+  );
+  assert.ok(
+    src.includes('LoveBudTreeLikeControl'),
+    'module must register LoveBudTreeLikeControl namespace'
+  );
+});
+
+test('#3369 client: XHR mutation sends Idempotency-Key header', () => {
+  const src = read(TREE_LIKE_CLIENT_PATH);
+  assert.ok(
+    src.includes("setRequestHeader('Idempotency-Key'"),
+    'mutation must set Idempotency-Key header'
+  );
+  assert.ok(
+    src.includes("setRequestHeader('Authorization'"),
+    'mutation must set Authorization header'
+  );
+  assert.ok(
+    src.includes("setRequestHeader('Accept', 'application/json')"),
+    'mutation must set Accept header'
+  );
+});
+
+test('#3369 client: authoritative DTO shape is treeId/active/likeCount', () => {
+  const src = read(TREE_LIKE_CLIENT_PATH);
+  assert.ok(
+    /typeof dto\.treeId === 'string' && typeof dto\.active === 'boolean' && typeof dto\.likeCount === 'number'/.test(src),
+    'DTO validation must require treeId (string), active (boolean), likeCount (number)'
+  );
+});
+
+test('#3369 client: guest/unauthenticated users get disabled button, no mutation', () => {
+  const src = read(TREE_LIKE_CLIENT_PATH);
+  assert.ok(
+    src.includes('btn.disabled = true'),
+    'control must disable button for guests'
+  );
+  assert.ok(
+    src.includes('if (inFlight || isGuest) return;'),
+    'handleClick must early-return for guests'
+  );
+});
+
+test('#3369 client: pending click guard prevents duplicate keys', () => {
+  const src = read(TREE_LIKE_CLIENT_PATH);
+  assert.ok(
+    src.includes('if (inFlight || isGuest) return;'),
+    'handleClick must suppress duplicate calls when pending'
+  );
+});
+
+test('#3369 client: optimistic rollback on failure', () => {
+  const src = read(TREE_LIKE_CLIENT_PATH);
+  assert.ok(
+    src.includes('rollback(prevActive, prevCount)'),
+    'on failure must rollback to previous state'
+  );
+});
+
+test('#3369 client: no raw backend error in UI', () => {
+  const src = read(TREE_LIKE_CLIENT_PATH);
+  // xhr.responseText is used for safe DTO parse — that's OK.
+  // What must NOT appear: raw error/exceptions in visible UI output.
+  assert.equal(
+    src.includes('error.message'), false,
+    'client must not expose error.message in UI'
+  );
+  assert.equal(
+    src.includes('error.stack'), false,
+    'client must not expose error.stack in UI'
+  );
+  // Toast messages must be safe product strings, not raw error bodies.
+  const toastCalls = src.match(/showToast\(/g);
+  const toastMessages = toastCalls ? toastCalls.length : 0;
+  assert.ok(toastMessages >= 4, 'client must show safe product error toasts');
+});
+
+test('#3369: moment-level #3075 behavior unchanged — no moment card references', () => {
+  const src = read(TREE_LIKE_CLIENT_PATH);
+  assert.equal(
+    src.includes('momentReactionsCard'), false,
+    'tree-like control must not reference moment reactions card'
+  );
+  assert.equal(
+    src.includes('momentReactionLikeButton'), false,
+    'tree-like control must not reference moment reaction button'
+  );
+});
+
+// ─── #3370 fix: XHR flow — onload/onerror before send, single send, Promise path ──
+
+test('#3370: xhr.onload and xhr.onerror assigned before any send', () => {
+  const src = read(TREE_LIKE_CLIENT_PATH);
+  const handleIdx = src.indexOf('function handleClick()');
+  const endIdx = src.indexOf('\n        function sendWithToken(', handleIdx);
+  const beforeSend = src.slice(handleIdx, endIdx);
+  const onloadIdx = beforeSend.indexOf('xhr.onload = function');
+  const onerrorIdx = beforeSend.indexOf('xhr.onerror = function');
+  // onload must exist and come after xhr.open (initialization)
+  assert.ok(onloadIdx > 0, 'xhr.onload must be assigned in handleClick before sendWithToken');
+  assert.ok(onerrorIdx > 0, 'xhr.onerror must be assigned in handleClick');
+  assert.ok(onerrorIdx > onloadIdx, 'xhr.onerror must be assigned after xhr.onload');
+  // Verify the declared structure: xhr.open -> xhr.onload -> xhr.onerror -> sendWithToken
+  const openIdx = beforeSend.indexOf('xhr.open(');
+  assert.ok(
+    openIdx < onloadIdx && onloadIdx < onerrorIdx,
+    'xhr.open -> xhr.onload -> xhr.onerror must be in order'
+  );
+});
+
+test('#3370: sendWithToken is the only xhr.send call in handleClick', () => {
+  const src = read(TREE_LIKE_CLIENT_PATH);
+  // sendWithToken function must exist and contain exactly one xhr.send()
+  const sendFnMatch = src.match(/function sendWithToken\([^)]+\)\s*\{[^}]*\}/);
+  assert.ok(sendFnMatch !== null, 'sendWithToken function must exist');
+  const sendFn = sendFnMatch[0];
+  const sendCalls = (sendFn.match(/xhr\.send\(\)/g) || []).length;
+  assert.equal(sendCalls, 1, 'sendWithToken must call xhr.send() exactly once');
+  // Outside sendWithToken, no other xhr.send() should appear in the module
+  const moduleSendCalls = (src.match(/xhr\.send\(\)/g) || []).length;
+  assert.equal(moduleSendCalls, 1, 'xhr.send() must appear only once (inside sendWithToken)');
+});
+
+test('#3370: Promise token path exists and calls sendWithToken', () => {
+  const src = read(TREE_LIKE_CLIENT_PATH);
+  assert.ok(
+    src.includes("token.then(function(realToken)"),
+    'Promise token path must call token.then'
+  );
+  assert.ok(
+    src.includes("sendWithToken(realToken)"),
+    'Promise resolve must call sendWithToken'
+  );
+  assert.ok(
+    src.includes("typeof token.then === 'function'"),
+    'Promise detection must check typeof token.then'
+  );
+});
+
+test('#3370: non-Promise auth path calls sendWithToken(token)', () => {
+  const src = read(TREE_LIKE_CLIENT_PATH);
+  // The fallback for non-Promise tokens should call sendWithToken directly
+  const hasNonPromisePath = src.includes("sendWithToken(token)") &&
+    src.includes("if (!token) {");
+  assert.ok(hasNonPromisePath, 'non-Promise path must exist and call sendWithToken(token)');
+});
+
+test('#3370: Idempotency-Key header maintained in sendWithToken', () => {
+  const src = read(TREE_LIKE_CLIENT_PATH);
+  assert.ok(
+    src.includes("setRequestHeader('Idempotency-Key'"),
+    'mutation must set Idempotency-Key header'
+  );
+  assert.ok(
+    src.includes("setRequestHeader('Authorization'"),
+    'mutation must set Authorization header'
+  );
+});
