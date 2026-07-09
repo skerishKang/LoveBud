@@ -113,7 +113,7 @@ function createEnv() {
   function findBtn(p) { function f(e) { if (e.textContent === '등록') return e; if (e.children) for (const c of e.children) { const r = f(c); if (r) return r; } return null; } return f(p); }
   function hasBtn(p) { return !!findBtn(p); }
   function findTA(p) { function f(e) { if (e.tagName === 'TEXTAREA') return e; if (e.children) for (const c of e.children) { const r = f(c); if (r) return r; } return null; } return f(p); }
-  function findErr(p) { function f(e) { if (e.tagName === 'P' && e.textContent && e.textContent.includes('등록하지 못했습니다')) return e; if (e.children) for (const c of e.children) { const r = f(c); if (r) return r; } return null; } return f(p); }
+  function findErr(p) { function f(e) { if (e.tagName === 'P' && e.textContent && e.textContent.includes('남기지 못했어요')) return e; if (e.children) for (const c of e.children) { const r = f(c); if (r) return r; } return null; } return f(p); }
 
   return {
     els, ui, deps, mkPending,
@@ -122,9 +122,9 @@ function createEnv() {
     openPanel, findBtn, hasBtn, findTA, findErr,
     ccCount: () => ccCount, lastKey: () => lastKey, publicReadCount: () => publicReadCalls.length,
     setAuth: (v) => { auth = !!v; },
-    findSuccess: (p) => { function f(e) { if (e.tagName === 'P' && e.textContent && e.textContent.includes('댓글이 등록되었습니다')) return e; if (e.children) for (const c of e.children) { const r = f(c); if (r) return r; } return null; } return f(p); },
+    findSuccess: (p) => { function f(e) { if (e.tagName === 'P' && e.textContent && e.textContent.includes('남겼어요')) return e; if (e.children) for (const c of e.children) { const r = f(c); if (r) return r; } return null; } return f(p); },
     findCancel: (p) => { function f(e) { if (e.tagName === 'BUTTON' && e.textContent && e.textContent.includes('입력 취소')) return e; if (e.children) for (const c of e.children) { const r = f(c); if (r) return r; } return null; } return f(p); },
-    findValidation: (p) => { function f(e) { if (e.tagName === 'P' && e.textContent && e.textContent.trim() === '댓글 내용을 입력해주세요.') return e; if (e.children) for (const c of e.children) { const r = f(c); if (r) return r; } return null; } return f(p); },
+    findValidation: (p) => { function f(e) { if (e.tagName === 'P' && e.textContent && e.textContent.trim() === '댓글 내용을 입력해 주세요.') return e; if (e.children) for (const c of e.children) { const r = f(c); if (r) return r; } return null; } return f(p); },
     findGuestNote: (p) => { function f(e) { if (e.getAttribute && e.getAttribute('data-guest-comment-note') === '1') return e; if (e.children) for (const c of e.children) { const r = f(c); if (r) return r; } return null; } return f(p); },
   };
 }
@@ -471,7 +471,7 @@ it('20. success feedback shown after successful submit', async () => {
   const el = env.findSuccess(env.els.momentCommentsPanel);
   assert.ok(el, 'success element exists');
   assert.notEqual(el.style.display, 'none', 'success message visible');
-  assert.equal(el.textContent.trim(), '댓글이 등록되었습니다.', 'correct text');
+  assert.equal(el.textContent.trim(), '댓글을 남겼어요.', 'correct text');
 });
 
 it('21. success status has aria-live', async () => {
@@ -799,7 +799,7 @@ it('39. empty input shows validation error, no API call', async () => {
   env.findBtn(env.els.momentCommentsPanel).onclick();
   const errEl = env.findValidation(env.els.momentCommentsPanel);
   assert.ok(errEl, 'validation error element exists');
-  assert.equal(errEl.textContent.trim(), '댓글 내용을 입력해주세요.', 'validation message');
+  assert.equal(errEl.textContent.trim(), '댓글 내용을 입력해 주세요.', 'validation message');
   assert.ok(errEl.getAttribute('aria-live'), 'has aria-live');
   assert.equal(env.ccCount(), 0, 'no createComment call');
   assert.equal(env.publicReadCount(), readCount, 'no reconciliation');
@@ -816,7 +816,7 @@ it('40. whitespace-only input shows validation error, no API call', async () => 
   env.findBtn(env.els.momentCommentsPanel).onclick();
   const errEl = env.findValidation(env.els.momentCommentsPanel);
   assert.ok(errEl, 'validation error');
-  assert.equal(errEl.textContent.trim(), '댓글 내용을 입력해주세요.');
+  assert.equal(errEl.textContent.trim(), '댓글 내용을 입력해 주세요.');
   assert.equal(env.ccCount(), 0, 'no write');
   assert.equal(env.publicReadCount(), readCount, 'no reconciliation');
 });
@@ -856,7 +856,7 @@ it('42. server failure and local validation do not mix', async () => {
   await flush();
   const serverErr = env.findErr(env.els.momentCommentsPanel);
   assert.ok(serverErr, 'server error shown');
-  assert.equal(serverErr.textContent.includes('등록하지 못했습니다'), true, 'server error text');
+  assert.equal(serverErr.textContent.includes('남기지 못했어요'), true, 'server error text');
 
   // Type in textarea - should NOT clear server error
   if (ta) {
@@ -865,7 +865,7 @@ it('42. server failure and local validation do not mix', async () => {
   }
   const afterInput = env.findErr(env.els.momentCommentsPanel);
   assert.ok(afterInput, 'server error still visible after input');
-  assert.equal(afterInput.textContent.includes('등록하지 못했습니다'), true, 'server error preserved');
+  assert.equal(afterInput.textContent.includes('남기지 못했어요'), true, 'server error preserved');
 
   // Clear manually via cancel
   env.findCancel(env.els.momentCommentsPanel).onclick();
@@ -876,7 +876,7 @@ it('42. server failure and local validation do not mix', async () => {
   env.findBtn(env.els.momentCommentsPanel).onclick();
   const validErr = env.findValidation(env.els.momentCommentsPanel);
   assert.ok(validErr, 'validation error after cancel+empty');
-  assert.equal(validErr.textContent.trim(), '댓글 내용을 입력해주세요.', 'validation message');
+  assert.equal(validErr.textContent.trim(), '댓글 내용을 입력해 주세요.', 'validation message');
 });
 
 it('43. close/reopen and moment switch clear validation', async () => {

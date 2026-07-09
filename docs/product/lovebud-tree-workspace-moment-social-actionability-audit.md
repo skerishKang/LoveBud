@@ -137,7 +137,7 @@ Loading state shows `⋯`. Unavailable state shows `—`. Success state shows re
 - **Wired**: Yes — `public-viewer-authenticated-comment-composer.js:52-255`
 - **Composer DOM**: Dynamic — created/destroyed on panel open/close (draft state lost)
 - **Idempotency**: Client generates `composerDraftIdemKey = 'c-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10)` on each submit attempt
-- **In-flight guard**: `submitBtn.disabled = true; submitBtn.textContent = '등록 중...'`
+- **In-flight guard**: `submitBtn.disabled = true; submitBtn.textContent = '남기는 중...'`
 - **Stale instance guard**: `instanceToken` prevents stale callback handling
 - **No optimistic rendering**: Re-fetches full comment list on success via `reconcilePublicSummary()`
 - **Validation**: Whitespace check before submit; error preserves input; success clears input

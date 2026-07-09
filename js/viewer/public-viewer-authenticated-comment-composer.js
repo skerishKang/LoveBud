@@ -128,7 +128,7 @@
 
             composerSuccessEl = document.createElement('p');
             composerSuccessEl.setAttribute('aria-live', 'polite');
-            composerSuccessEl.textContent = '댓글이 등록되었습니다.';
+            composerSuccessEl.textContent = '댓글을 남겼어요.';
             composerSuccessEl.style.color = 'green';
             composerSuccessEl.style.fontSize = '0.85em';
             composerSuccessEl.style.margin = '4px 0 0';
@@ -173,13 +173,13 @@
                     composerValidationActive = false;
                 }
                 if (!body) {
-                    composerErrorEl.textContent = '댓글 내용을 입력해주세요.';
+                    composerErrorEl.textContent = '댓글 내용을 입력해 주세요.';
                     composerErrorEl.style.display = '';
                     composerValidationActive = true;
                     return;
                 }
                 if (body.length > 5000) {
-                    composerErrorEl.textContent = '댓글은 5,000자 이하로 입력해주세요.';
+                    composerErrorEl.textContent = '댓글은 5,000자 이하로 입력해 주세요.';
                     composerErrorEl.style.display = '';
                     return;
                 }
@@ -201,7 +201,7 @@
                 }
 
                 submitBtn.disabled = true;
-                submitBtn.textContent = '등록 중...';
+                submitBtn.textContent = '남기는 중...';
                 composerCancelBtn.disabled = true;
                 composerErrorEl.style.display = 'none';
                 composerValidationActive = false;
@@ -233,7 +233,7 @@
                     submitBtn.textContent = '등록';
                     composerCancelBtn.disabled = false;
                     composerSuccessEl.style.display = 'none';
-                    composerErrorEl.textContent = '댓글을 등록하지 못했습니다. 다시 시도해주세요.';
+                    composerErrorEl.textContent = '댓글을 남기지 못했어요. 다시 시도해 주세요.';
                     composerErrorEl.style.display = '';
                 });
             };
