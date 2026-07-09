@@ -252,12 +252,8 @@
                 hasConfirmedAuthSession: typeof authPolicy.hasConfirmedAuthSession === 'function'
                     ? authPolicy.hasConfirmedAuthSession
                     : function() { return false; },
-                fetchReactionSummary: typeof apiClient.fetchReactionSummary === 'function'
-                    ? apiClient.fetchReactionSummary
-                    : function() { return Promise.reject(new Error('apiClient not available')); },
-                toggleReaction: typeof apiClient.toggleReaction === 'function'
-                    ? apiClient.toggleReaction
-                    : function() { return Promise.reject(new Error('apiClient not available')); }
+                fetchReactionSummary: function() { return Promise.reject(new Error('apiClient not available')); },
+                toggleReaction: function() { return Promise.reject(new Error('apiClient not available')); }
             };
     }
 
