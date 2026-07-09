@@ -96,6 +96,35 @@ test('tree_comments carries generic target_kind/target_id for idempotency/audit 
   );
 });
 
+test('tree comment migration does not use invalid ADD CONSTRAINT IF NOT EXISTS syntax', () => {
+  assert.equal(
+    /ADD\s+CONSTRAINT\s+IF\s+NOT\s+EXISTS/i.test(sql),
+    false,
+    'PostgreSQL does not support ADD CONSTRAINT IF NOT EXISTS'
+  );
+  assert.equal(
+    /ALTER\s+TABLE\s+tree_comments\s+ADD\s+CONSTRAINT/i.test(sql),
+    false,
+    'Constraint must be defined inline in CREATE TABLE, not via ALTER TABLE'
+  );
+});
+
+test('tree comment migration defines the named target_id/tree_id CHECK inline', () => {
+  // The named constraint must appear inside the CREATE TABLE block, not after ALTER TABLE.
+  const createBlock = sql.slice(
+    sql.indexOf('CREATE TABLE IF NOT EXISTS tree_comments'),
+    sql.indexOf('CREATE INDEX IF NOT EXISTS idx_tree_comments_tree_id')
+  );
+  assert.ok(
+    /CONSTRAINT\s+tree_comments_target_id_matches_tree_id/i.test(createBlock),
+    'Named constraint must be declared inside CREATE TABLE'
+  );
+  assert.ok(
+    /CHECK\s*\(target_id\s+IS\s+NULL\s+OR\s+target_id\s*=\s*tree_id\)/i.test(createBlock),
+    'Named CHECK (target_id IS NULL OR target_id = tree_id) must be inside CREATE TABLE'
+  );
+});
+
 // ─── 4. Moment comment storage remains untouched (separation) ───────────────
 
 test('moment-level comments table is not modified by this migration', () => {

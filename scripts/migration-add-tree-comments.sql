@@ -31,14 +31,13 @@ CREATE TABLE IF NOT EXISTS tree_comments (
         CHECK (target_kind = 'tree'),
     target_id UUID,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    CONSTRAINT tree_comments_target_id_matches_tree_id
+        CHECK (target_id IS NULL OR target_id = tree_id)
 );
 
 -- Defensive invariant: a tree comment's generic target_id must equal its tree_id
 -- (or be null pending writer population). Moment/legacy fields are intentionally absent.
-ALTER TABLE tree_comments
-    ADD CONSTRAINT IF NOT EXISTS tree_comments_target_id_matches_tree_id
-    CHECK (target_id IS NULL OR target_id = tree_id);
 
 CREATE INDEX IF NOT EXISTS idx_tree_comments_tree_id ON tree_comments(tree_id);
 CREATE INDEX IF NOT EXISTS idx_tree_comments_owner_id ON tree_comments(owner_id);
