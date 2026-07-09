@@ -208,6 +208,7 @@
         var selectionState = ctx.selectionState;
         var canvasEntry = window.LoveBudPublicViewerCanvasEntry;
         var apiClient = window.apiClient || {};
+        var authPolicy = window.LoveTreeAuthPolicy || {};
 
         return canvasEntry && typeof canvasEntry.createDetailUIOptions === 'function'
             ? canvasEntry.createDetailUIOptions({
@@ -248,7 +249,9 @@
                 createComment: typeof apiClient.createComment === 'function'
                     ? apiClient.createComment
                     : function() { return Promise.reject(new Error('apiClient not available')); },
-                hasConfirmedAuthSession: function() { return false; },
+                hasConfirmedAuthSession: typeof authPolicy.hasConfirmedAuthSession === 'function'
+                    ? authPolicy.hasConfirmedAuthSession
+                    : function() { return false; },
                 fetchReactionSummary: function() { return Promise.reject(new Error('apiClient not available')); },
                 toggleReaction: function() { return Promise.reject(new Error('apiClient not available')); }
             };
