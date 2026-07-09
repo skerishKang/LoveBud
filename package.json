@@ -27,6 +27,7 @@
     "test:e2e:public-viewer-mobile": "node scripts/e2e-public-viewer-mobile-smoke.cjs",
     "test:e2e:ci": "npm run test:e2e:search-detail && npm run test:e2e:login-timeout && npm run test:e2e:ui-regression",
     "smoke:cloudflare": "node scripts/cloudflare-supplied-url-smoke.cjs",
+    "smoke:gate-a": "node scripts/smoke-gate-a-moment-social-write.mjs",
     "check:auth-credentials": "node scripts/ops-auth-credential-preflight.cjs",
     "check:pr-guardrails": "node scripts/check-pr-guardrails.cjs",
     "loop:triage": "node scripts/loop/run-loop.mjs --mode=dry-run",

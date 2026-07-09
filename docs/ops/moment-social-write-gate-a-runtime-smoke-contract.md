@@ -197,5 +197,65 @@ This contract and its associated test:
 - Do **not** change Browse, My Trees, Editor, Scout, or Hermes
 - Do **not** change `pr-comment-composer-verify`
 - Do **not** include any UI, CSS, or layout change
-- Do **not** execute any runtime smoke, API call, migration, or rollback
+- Do **not** include any runtime smoke, API call, migration, or rollback
+
+---
+
+## 11. Approved runner and invocation
+
+A repository-native runner now exists so the future separately approved smoke
+can be executed without improvising ad-hoc requests.
+
+- Runner: `scripts/smoke-gate-a-moment-social-write.mjs`
+- Package script: `npm run smoke:gate-a`
+
+### 11.1 Required opaque operator inputs (env-only)
+
+The runner reads **only** env inputs supplied by the operator through a private
+secret channel. It never hard-codes fixture IDs, tree IDs, memory IDs, account
+IDs, URLs, tokens, or idempotency keys.
+
+| Env var | Purpose |
+|---------|---------|
+| `GATE_A_API_BASE` | API proxy base URL (operator-supplied) |
+| `GATE_A_TREE_ID` | Opaque fixture parent tree id (operator-supplied) |
+| `GATE_A_MEMORY_ID` | Opaque fixture target memory id (operator-supplied) |
+| `GATE_A_AUTHORIZATION` | Opaque Firebase bearer token (operator-supplied, never logged) |
+| `GATE_A_REACTION_KEY` | Idempotency key for the reaction write (operator-supplied) |
+| `GATE_A_COMMENT_KEY` | Idempotency key for the comment write (operator-supplied) |
+
+Optional: `GATE_A_TIMEOUT_MS` (request timeout, default 30000).
+
+### 11.2 Fail-closed behavior
+
+If any required input is missing, the runner immediately emits
+`smokeStatus: BLOCKED_MISSING_ENV` with all sub-checks `NOT_RUN`, and exits
+without performing any network call. No fallback to defaults or real-user data.
+
+### 11.3 Allowed output
+
+The runner emits **only** the typed, sanitized Gate A evidence block:
+
+```
+smokeStatus: PASS | FAIL | BLOCKED_<CATEGORY>
+reactionWrite: PASS | FAIL | NOT_RUN
+commentWrite: PASS | FAIL | NOT_RUN
+publicVisibility: PASS | FAIL | NOT_RUN
+legacyCompatibility: PASS | FAIL | NOT_RUN
+genericTargetIntegrity: PASS | FAIL | NOT_RUN
+triggerCompatibility: PASS | FAIL | NOT_RUN
+secret/private exposure: NONE | STOP_AND_REPORT
+```
+
+No raw identifiers, tokens, request/response bodies, headers, audit rows, or
+credentials are printed. `publicVisibility` is verified via the guest-safe
+public read endpoint; `reactionWrite`/`commentWrite` go through the
+authenticated write path gated by `require_memory_visible_or_owner_cursor()`.
+
+### 11.4 Contract test
+
+`tests/contracts/gate-a-moment-social-write-smoke-runner-contract.test.cjs`
+proves: missing env yields `BLOCKED_MISSING_ENV`; output shape is the typed
+evidence block; forbidden raw/private fields are never printed; the runner
+contains no committed fixture identifiers or credentials.
 - Do **not** create, modify, or expose any user account, Tree, memory, comment, or reaction
