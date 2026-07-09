@@ -19,7 +19,7 @@ test('Modal app exposes authenticated tree like summary and toggle routes', () =
   assert.match(modalApp, /@web_app\.post\("\/modal\/private\/trees\/\{tree_id\}\/likes"\)/);
   assert.match(modalApp, /def\s+post_tree_like\(/);
   assert.match(modalApp, /user\s*=\s*require_firebase_user\(authorization\)/);
-  assert.match(modalApp, /return\s+toggle_tree_like\(tree_id,\s*user\["uid"\]\)/);
+  assert.match(modalApp, /return\s+toggle_tree_like\(tree_id,\s*user\["uid"\](,\s*idempotency_key=[^)]*)?\)/);
   assert.match(modalApp, /@web_app\.get\("\/modal\/private\/trees\/\{tree_id\}\/likes"\)/);
   assert.match(modalApp, /def\s+get_tree_likes\(/);
   assert.match(modalApp, /return\s+fetch_tree_like_summary\(tree_id,\s*user\["uid"\]\)/);

@@ -172,22 +172,24 @@ test('Document places runtime hardening after Gate B in implementation order', (
 
 // ─── Source anchors: inventory remains true against current tree ─────────────
 
-test('Current tree_likes.py has visibility and toggle but no idempotency/audit/lock', () => {
+test('Current tree_likes.py hardens toggle with idempotency/audit/lock and public visibility', () => {
   const src = read(TREE_LIKES_PATH);
   assert.ok(src.includes('require_public_tree_for_like'));
   assert.ok(src.includes('def toggle_tree_like'));
   assert.ok(src.includes('GREATEST(like_count - 1, 0)') || src.includes('GREATEST(like_count - 1,0)'));
-  assert.equal(src.includes('reserve_and_verify_idempotency'), false);
-  assert.equal(src.includes('record_audit'), false);
-  assert.equal(src.includes('pg_advisory_xact_lock'), false);
-  assert.equal(src.includes('Idempotency-Key'), false);
+  assert.ok(src.includes('reserve_and_verify_idempotency_target'));
+  assert.ok(src.includes('record_audit_target'));
+  assert.ok(src.includes('pg_advisory_xact_lock'));
+  assert.ok(src.includes('IDEMPOTENCY_KEY_REQUIRED'));
+  assert.ok(src.includes('Idempotency-Key') || src.includes('idempotency_key'));
 });
 
-test('Current Cloudflare tree likes proxy requires auth but does not forward Idempotency-Key', () => {
+test('Current Cloudflare tree likes proxy requires auth and forwards Idempotency-Key', () => {
   const src = read(CF_TREE_LIKES_PATH);
   assert.ok(src.includes('hasAuthorizationHeader') || src.includes('Authorization'));
   assert.ok(src.includes('/modal/private/trees/'));
-  assert.equal(src.includes('Idempotency-Key'), false);
+  assert.ok(src.includes('Idempotency-Key'));
+  assert.ok(src.includes("headers['Idempotency-Key'] = idempotencyKey"));
 });
 
 test('Moment reaction path remains the hardened reference (lock + idempotency + CF key)', () => {

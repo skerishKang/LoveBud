@@ -10,6 +10,8 @@ SAFE_ACTIONS = frozenset({
     "comment.create.replay",
     "comment.soft_delete",
     "comment.hide",
+    "tree.like.toggle",
+    "tree.like.toggle.replay",
 })
 
 
@@ -49,4 +51,36 @@ def record_audit(
         VALUES (%s, %s, %s, %s, %s, %s, NOW())
         """,
         (audit_id, actor_id, memory_id, action, outcome_code, request_key_hash),
+    )
+
+
+def record_audit_target(
+    cur: Any,
+    actor_id: str,
+    target_kind: str,
+    target_id: str,
+    action: str,
+    outcome_code: str,
+    request_key_hash: str | None = None,
+) -> None:
+    """Record a minimal safe audit entry for a generic-target social write.
+
+    Used by Gate-B-aligned tree-target writers. Stores the canonical generic
+    target pair (target_kind, target_id) and leaves the legacy memory_id NULL
+    so the compatibility trigger accepts the row. No auth material, tokens,
+    raw payloads, or stack traces are ever stored.
+    """
+
+    if action not in SAFE_ACTIONS:
+        action = f"unknown:{action}"
+
+    audit_id = str(uuid.uuid4())
+
+    cur.execute(
+        """
+        INSERT INTO social_audit_log
+            (id, actor_id, target_kind, target_id, memory_id, action, outcome_code, request_key_hash, created_at)
+        VALUES (%s, %s, %s, %s, NULL, %s, %s, %s, NOW())
+        """,
+        (audit_id, actor_id, target_kind, target_id, action, outcome_code, request_key_hash),
     )

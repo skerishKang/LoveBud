@@ -67,6 +67,38 @@ function buildMethodNotAllowedResponse(requestId) {
   });
 }
 
+const KEY_PATTERN = /^[A-Za-z0-9._:\-]{8,128}$/;
+
+function buildIdempotencyKeyRequiredResponse(requestId) {
+  return new Response(JSON.stringify({
+    error: 'Idempotency-Key header is required for this operation',
+    code: 'IDEMPOTENCY_KEY_REQUIRED'
+  }), {
+    status: 400,
+    headers: {
+      'content-type': 'application/json; charset=utf-8',
+      'x-lovebud-upstream': 'cloudflare',
+      'x-lovebud-route-status': 'idempotency-key-required',
+      [REQUEST_ID_HEADER]: requestId
+    }
+  });
+}
+
+function buildIdempotencyKeyInvalidResponse(requestId) {
+  return new Response(JSON.stringify({
+    error: 'Idempotency-Key must be 8-128 ASCII characters from [A-Za-z0-9._:-]',
+    code: 'IDEMPOTENCY_KEY_INVALID'
+  }), {
+    status: 400,
+    headers: {
+      'content-type': 'application/json; charset=utf-8',
+      'x-lovebud-upstream': 'cloudflare',
+      'x-lovebud-route-status': 'idempotency-key-invalid',
+      [REQUEST_ID_HEADER]: requestId
+    }
+  });
+}
+
 function buildModalUrl(request, env) {
   const modalBaseUrl = stripTrailingSlash(env.MODAL_BASE_URL);
   if (!modalBaseUrl) return null;
@@ -103,6 +135,14 @@ async function proxyTreeLike(request, env) {
     authorization: request.headers.get('authorization') || request.headers.get('Authorization'),
     [REQUEST_ID_HEADER]: requestId
   };
+
+  // Tree-like mutations require and forward Idempotency-Key unchanged.
+  if (method === 'POST') {
+    const idempotencyKey = request.headers.get('Idempotency-Key');
+    if (!idempotencyKey) return buildIdempotencyKeyRequiredResponse(requestId);
+    if (!KEY_PATTERN.test(idempotencyKey)) return buildIdempotencyKeyInvalidResponse(requestId);
+    headers['Idempotency-Key'] = idempotencyKey;
+  }
 
   try {
     const response = await fetchWithTimeout(modalUrl.toString(), {
