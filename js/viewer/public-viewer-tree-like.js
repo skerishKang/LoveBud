@@ -155,10 +155,6 @@
             if (!treeId) return;
 
             var token = getAuthToken();
-            if (!token) {
-                showToast(i18n('viewer.treeLikeAuthMissing', '로그인이 필요합니다', 'Sign in required'), 'error');
-                return;
-            }
 
             var idempotencyKey = 'tlk-' + crypto.randomUUID();
             pendingKey = idempotencyKey;
@@ -177,31 +173,10 @@
             var xhr = new XMLHttpRequest();
             xhr.open('POST', url, true);
 
-            // If token is a Promise, resolve it first
-            var resolveToken = function(tok) {
-                xhr.setRequestHeader('Authorization', 'Bearer ' + tok);
-                xhr.setRequestHeader('Idempotency-Key', idempotencyKey);
-                xhr.setRequestHeader('Accept', 'application/json');
-            };
-
-            if (token && typeof token.then === 'function') {
-                token.then(function(realToken) {
-                    resolveToken(realToken || '');
-                    xhr.send();
-                }).catch(function() {
-                    rollback(prevActive, prevCount);
-                });
-                return;
-            }
-
-            resolveToken(token);
-            xhr.send();
-
+            // Register handlers BEFORE any send (required for Promise path)
             xhr.onload = function () {
                 if (xhr.status !== 200) {
-                    // Rollback
                     rollback(prevActive, prevCount);
-                    // Safe error — no raw body
                     if (xhr.status === 401 || xhr.status === 403) {
                         showToast(i18n('viewer.treeLikeAuthError', '좋아요를 처리할 수 없습니다. 다시 로그인해 주세요.', 'Please sign in again'), 'error');
                     } else {
@@ -209,15 +184,12 @@
                     }
                     return;
                 }
-
-                // Authoritative DTO from server
                 try {
                     var dto = JSON.parse(xhr.responseText);
                     if (dto && typeof dto.treeId === 'string' && typeof dto.active === 'boolean' && typeof dto.likeCount === 'number') {
                         setLoading(false);
                         updateState(dto.active, dto.likeCount);
                     } else {
-                        // Malformed DTO — rollback
                         rollback(prevActive, prevCount);
                         showToast(i18n('viewer.treeLikeUnexpectedResponse', '예상치 못한 응답입니다', 'Unexpected response'), 'error');
                     }
@@ -232,7 +204,37 @@
                 showToast(i18n('viewer.treeLikeNetworkError', '네트워크 오류가 발생했습니다', 'Network error'), 'error');
             };
 
-            xhr.send();
+            // Single send helper — called exactly once per mutation
+            function sendWithToken(realToken) {
+                xhr.setRequestHeader('Authorization', 'Bearer ' + realToken);
+                xhr.setRequestHeader('Idempotency-Key', idempotencyKey);
+                xhr.setRequestHeader('Accept', 'application/json');
+                xhr.send();
+            }
+
+            // Resolve token: Promise or synchronous, then dispatch via sendWithToken
+            if (token && typeof token.then === 'function') {
+                token.then(function(realToken) {
+                    if (!realToken) {
+                        rollback(prevActive, prevCount);
+                        showToast(i18n('viewer.treeLikeAuthMissing', '로그인이 필요합니다', 'Sign in required'), 'error');
+                        return;
+                    }
+                    sendWithToken(realToken);
+                }).catch(function() {
+                    rollback(prevActive, prevCount);
+                    showToast(i18n('viewer.treeLikeAuthMissing', '로그인이 필요합니다', 'Sign in required'), 'error');
+                });
+                return;
+            }
+
+            if (!token) {
+                rollback(prevActive, prevCount);
+                showToast(i18n('viewer.treeLikeAuthMissing', '로그인이 필요합니다', 'Sign in required'), 'error');
+                return;
+            }
+
+            sendWithToken(token);
         }
 
         return {
