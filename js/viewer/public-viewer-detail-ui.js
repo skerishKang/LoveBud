@@ -584,6 +584,9 @@
             });
         }
 
+        var _cachedTreeLikeControl = null;
+        var _lastTreeId = null;
+
         return function updatePublicViewerTreeMeta(data) {
             var treeMetaMount = document.getElementById('detailTreeMetaMount');
             if (!treeMetaMount || !boundary) return;
@@ -602,7 +605,60 @@
                 localSaveMode: localSaveMode
             });
 
-            boundary.renderTreeMetaBoundary(treeMetaMount, model, treeId, data);
+            // Create tree-level like control once per treeId
+            var treeLikeControlEl = null;
+            if (treeId && treeId !== _lastTreeId) {
+                _lastTreeId = treeId;
+                _cachedTreeLikeControl = null;
+            }
+            if (treeId && !_cachedTreeLikeControl) {
+                var treeLikeFactory = window.LoveBudTreeLikeControl;
+                if (treeLikeFactory && typeof treeLikeFactory.createTreeLikeControl === 'function') {
+                    var tlc = treeLikeFactory.createTreeLikeControl({
+                        hasConfirmedAuthSession: function() {
+                            return !!(window.LoveBudAuth && typeof window.LoveBudAuth.hasConfirmedAuthSession === 'function'
+                                ? window.LoveBudAuth.hasConfirmedAuthSession()
+                                : false);
+                        },
+                        getAuthToken: function() {
+                            // Acquire at call time from Firebase auth singleton
+                            try {
+                                var user = window.firebase && window.firebase.auth && window.firebase.auth().currentUser;
+                                if (user) {
+                                    // getIdToken returns a Promise — return it directly
+                                    return user.getIdToken(false);
+                                }
+                            } catch (e) {
+                                // Silent — guest / not initialized
+                            }
+                            return null;
+                        },
+                        i18n: i18n,
+                        showToast: showToast,
+                        treeId: treeId,
+                        initialActive: false,
+                        initialCount: 0,
+                        formatCompactCount: function(n) {
+                            // Use LoveBudFormatCompactCount if available
+                            if (window.LoveBudFormatCompactCount && typeof window.LoveBudFormatCompactCount === 'function') {
+                                return window.LoveBudFormatCompactCount(n);
+                            }
+                            if (n >= 1000000) return (n / 1000000).toFixed(1).replace(/\.0$/, '') + 'M';
+                            if (n >= 1000) return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'K';
+                            return String(n);
+                        },
+                        resolveTreeTitleText: resolveTreeTitleText
+                    });
+                    _cachedTreeLikeControl = tlc;
+                    if (tlc && tlc.getElement) {
+                        treeLikeControlEl = tlc.getElement();
+                    }
+                }
+            } else if (_cachedTreeLikeControl && _cachedTreeLikeControl.getElement) {
+                treeLikeControlEl = _cachedTreeLikeControl.getElement();
+            }
+
+            boundary.renderTreeMetaBoundary(treeMetaMount, model, treeId, data, treeLikeControlEl);
         };
     }
 
