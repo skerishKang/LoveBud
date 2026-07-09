@@ -109,6 +109,10 @@
             }
             if (!preservePanel) {
                 resetCommentsPanel();
+            } else if (commentsPanelStatusEl) {
+                // Panel stays open during reconciliation: show loading copy, clear stale items
+                if (commentsListEl) commentsListEl.textContent = '';
+                commentsPanelStatusEl.textContent = '댓글을 불러오는 중이에요.';
             }
             removeRetryButton();
         }
@@ -202,7 +206,7 @@
             commentsListEl.textContent = '';
 
             if (!commentItems || !Array.isArray(commentItems) || commentItems.length === 0) {
-                commentsPanelStatusEl.textContent = '아직 댓글이 없어요.';
+                commentsPanelStatusEl.textContent = '아직 댓글이 없어요. 이 순간에 첫 댓글을 남겨보세요.';
                 commentPanelEl.hidden = false;
                 emitPanelState(true);
                 return;
@@ -323,7 +327,7 @@
                             if (commentsListEl) commentsListEl.textContent = '';
                             if (commentsPanelStatusEl) commentsPanelStatusEl.textContent = '';
                             if (!valid.comments || valid.comments.length === 0) {
-                                commentsPanelStatusEl.textContent = '아직 댓글이 없어요.';
+                                commentsPanelStatusEl.textContent = '아직 댓글이 없어요. 이 순간에 첫 댓글을 남겨보세요.';
                             } else {
                                 for (var i = 0; i < valid.comments.length; i++) {
                                     var li = document.createElement('li');

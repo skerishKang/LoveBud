@@ -492,7 +492,7 @@ test('zero-comment payload opens panel with empty notice and closes correctly', 
   toggle.onclick();
   assert.equal(toggle.getAttribute('aria-expanded'), 'true', 'expanded after click');
   assert.equal(elements.momentCommentsPanel.hidden, false, 'panel visible');
-  assert.equal(elements.momentCommentsPanelStatus.textContent, '아직 댓글이 없어요.', 'empty notice');
+  assert.equal(elements.momentCommentsPanelStatus.textContent, '아직 댓글이 없어요. 이 순간에 첫 댓글을 남겨보세요.', 'empty notice (clarified #3346)');
 
   // Click to close
   toggle.onclick();
