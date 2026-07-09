@@ -66,6 +66,19 @@ const REQUIRED_ENV = [
   'GATE_A_COMMENT_KEY',
 ];
 
+// Stale Netlify host guardrail (#3341): lovebud.netlify.app is a legacy/stale
+// runtime surface. Cloudflare Pages + Modal is the current production baseline.
+// Never run the smoke against a Netlify host.
+function isStaleNetlifyBase(base) {
+  try {
+    const url = new URL(String(base).trim());
+    const host = url.hostname.toLowerCase();
+    return host === 'lovebud.netlify.app' || host.endsWith('.netlify.app');
+  } catch {
+    return false;
+  }
+}
+
 function checkEnv() {
   const missing = REQUIRED_ENV.filter((k) => !process.env[k]);
   if (missing.length > 0) {
@@ -73,6 +86,13 @@ function checkEnv() {
     // detail, no stderr. Per Gate A contract (#3334), nothing outside the
     // approved block may be printed on any channel.
     EVIDENCE.smokeStatus = 'BLOCKED_MISSING_ENV';
+    emit();
+    return false;
+  }
+  // Stale Netlify guardrail: block before any network call. No host value is
+  // echoed (fail-closed, secret-safe).
+  if (isStaleNetlifyBase(process.env.GATE_A_API_BASE)) {
+    EVIDENCE.smokeStatus = 'BLOCKED_STALE_NETLIFY_API_BASE';
     emit();
     return false;
   }

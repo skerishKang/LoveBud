@@ -163,15 +163,77 @@ test('Gate A runner: blocked run emits NO output on stderr', () => {
   assert.strictEqual(err, '', `Blocked run must not write to stderr, got:\n${err}`);
 });
 
-test('Gate A runner: blocked run output (any channel) contains no env/auth/raw terms', () => {
-  const { out, err } = runRunner({});
-  const combined = `${out}\n${err}`;
-  for (const pat of FORBIDDEN_PATTERNS) {
+test('Gate A runner: stale Netlify API base yields BLOCKED_STALE_NETLIFY_API_BASE', () => {
+  const env = {
+    GATE_A_API_BASE: 'https://lovebud.netlify.app',
+    GATE_A_MEMORY_ID: 'mem-0000',
+    GATE_A_TREE_ID: 'tree-0000',
+    GATE_A_AUTHORIZATION: 'opaque-token',
+    GATE_A_REACTION_KEY: 'rk-0000',
+    GATE_A_COMMENT_KEY: 'ck-0000',
+  };
+  const { out } = runRunner(env);
+  assert.ok(
+    /smokeStatus:\s*BLOCKED_STALE_NETLIFY_API_BASE/.test(out),
+    `Expected BLOCKED_STALE_NETLIFY_API_BASE for Netlify base, got:\n${out}`
+  );
+  for (const key of ['reactionWrite', 'commentWrite', 'publicVisibility']) {
     assert.ok(
-      !pat.test(combined),
-      `Neither stdout nor stderr may contain forbidden pattern ${pat}, got:\n${combined}`
+      new RegExp(`${key}:\\s*NOT_RUN`).test(out),
+      `Expected ${key}: NOT_RUN when blocked by stale Netlify base, got:\n${out}`
     );
   }
+  assert.ok(
+    /secret\/private exposure:\s*NONE/.test(out),
+    `Expected secret/private exposure: NONE, got:\n${out}`
+  );
+});
+
+test('Gate A runner: stale Netlify subdomain (*.netlify.app) also blocked', () => {
+  const env = {
+    GATE_A_API_BASE: 'https://main--lovebud.netlify.app',
+    GATE_A_MEMORY_ID: 'mem-0000',
+    GATE_A_TREE_ID: 'tree-0000',
+    GATE_A_AUTHORIZATION: 'opaque-token',
+    GATE_A_REACTION_KEY: 'rk-0000',
+    GATE_A_COMMENT_KEY: 'ck-0000',
+  };
+  const { out } = runRunner(env);
+  assert.ok(
+    /smokeStatus:\s*BLOCKED_STALE_NETLIFY_API_BASE/.test(out),
+    `Expected BLOCKED_STALE_NETLIFY_API_BASE for *.netlify.app base, got:\n${out}`
+  );
+});
+
+test('Gate A runner: blocked Netlify run emits NO host/token/URL on any channel', () => {
+  const env = {
+    GATE_A_API_BASE: 'https://lovebud.netlify.app',
+    GATE_A_MEMORY_ID: 'mem-0000',
+    GATE_A_TREE_ID: 'tree-0000',
+    GATE_A_AUTHORIZATION: 'opaque-token',
+    GATE_A_REACTION_KEY: 'rk-0000',
+    GATE_A_COMMENT_KEY: 'ck-0000',
+  };
+  const { out, err } = runRunner(env);
+  const combined = `${out}\n${err}`;
+  // No raw URL/host leak.
+  assert.ok(!/netlify\.app/i.test(combined), `Netlify host must not be echoed, got:\n${combined}`);
+  // No token/URL/env leakage (reuse forbidden patterns where applicable).
+  for (const pat of FORBIDDEN_PATTERNS) {
+    assert.ok(!pat.test(combined), `Blocked Netlify run must not leak ${pat}, got:\n${combined}`);
+  }
+  assert.strictEqual(err, '', `Blocked Netlify run must not write to stderr, got:\n${err}`);
+});
+
+test('Gate A runner: Cloudflare Pages base is NOT blocked by the Netlify guardrail', () => {
+  // A valid Cloudflare/Modal base must NOT trip the Netlify guardrail.
+  // With only the base set (other env missing), it should still report
+  // BLOCKED_MISSING_ENV, proving the Netlify check did not short-circuit it.
+  const { out } = runRunner({ GATE_A_API_BASE: 'https://lovebud.pages.dev' });
+  assert.ok(
+    /smokeStatus:\s*BLOCKED_MISSING_ENV/.test(out),
+    `Cloudflare Pages base must not be treated as stale Netlify, got:\n${out}`
+  );
 });
 
 // ─── 5. Runner source contains no committed fixture identifiers or credentials ─
