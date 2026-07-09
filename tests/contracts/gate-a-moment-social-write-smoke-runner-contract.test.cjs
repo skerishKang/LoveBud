@@ -35,10 +35,10 @@ function runRunner(env) {
       encoding: 'utf8',
       timeout: 30000,
     });
-    return { code: 0, out };
+    return { code: 0, out, err: '' };
   } catch (err) {
     // The runner may exit non-zero on some failures, but BLOCKED_MISSING_ENV exits 0.
-    return { code: err.status ?? 1, out: err.stdout ?? '', errOut: err.stderr ?? '' };
+    return { code: err.status ?? 1, out: err.stdout ?? '', err: err.stderr ?? '' };
   }
 }
 
@@ -53,17 +53,30 @@ const REQUIRED_KEYS = [
   'secret/private exposure',
 ];
 
-// Forbidden raw/private substrings that must NEVER appear in runner output.
+// Forbidden raw/private substrings that must NEVER appear in runner output
+// on ANY channel (stdout or stderr).
 const FORBIDDEN_PATTERNS = [
+  // Opaque operator env var NAMES must not be echoed.
+  /\bGATE_A_(API_BASE|MEMORY_ID|TREE_ID|AUTHORIZATION|REACTION_KEY|COMMENT_KEY|TIMEOUT_MS)\b/,
+  // Auth / credential labels.
+  /authorization/i,
   /bearer\s+[A-Za-z0-9._-]+/i,
-  /authorization:\s*bearer/i,
   /idempotency-?key:\s*[A-Za-z0-9._:-]+/i,
+  // Secret / private terms (but NOT "secret/private exposure" — that is the
+  // allowed evidence key emitted by the runner).
+  /\btoken\b/i,
+  /\bpassword\b/i,
+  /\bcookie\b/i,
+  /\bcredential/i,
+  // Request/response metadata.
+  /request\b/i,
+  /response\b/i,
+  /header\b/i,
+  /status code/i,
+  // Raw identifiers.
   /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i, // UUID
   /tree_id=|memory_id=|treeId=|memoryId=/i,
   /"body":/i,
-  /token/i,
-  /password/i,
-  /cookie/i,
 ];
 
 // ─── 1. Runner file exists ────────────────────────────────────────────────────
@@ -139,6 +152,24 @@ test('Gate A runner: output contains no forbidden raw/private substrings', () =>
     assert.ok(
       !pat.test(out),
       `Output must not contain forbidden pattern ${pat}, got:\n${out}`
+    );
+  }
+});
+
+// ─── 4b. stderr must be empty for blocked runs; no channel leaks env/auth/raw ──
+
+test('Gate A runner: blocked run emits NO output on stderr', () => {
+  const { err } = runRunner({});
+  assert.strictEqual(err, '', `Blocked run must not write to stderr, got:\n${err}`);
+});
+
+test('Gate A runner: blocked run output (any channel) contains no env/auth/raw terms', () => {
+  const { out, err } = runRunner({});
+  const combined = `${out}\n${err}`;
+  for (const pat of FORBIDDEN_PATTERNS) {
+    assert.ok(
+      !pat.test(combined),
+      `Neither stdout nor stderr may contain forbidden pattern ${pat}, got:\n${combined}`
     );
   }
 });

@@ -50,11 +50,6 @@ function emit() {
   }
 }
 
-function blocked(category) {
-  EVIDENCE.smokeStatus = `BLOCKED_${category}`;
-  emit();
-}
-
 function fail() {
   if (!EVIDENCE.smokeStatus.startsWith('BLOCKED')) {
     EVIDENCE.smokeStatus = 'FAIL';
@@ -74,10 +69,10 @@ const REQUIRED_ENV = [
 function checkEnv() {
   const missing = REQUIRED_ENV.filter((k) => !process.env[k]);
   if (missing.length > 0) {
-    // Fail closed: report missing inputs by name only (never values).
-    process.stderr.write(`Missing required operator inputs: ${missing.join(', ')}\n`);
+    // Fail closed. Emit ONLY the typed evidence block — no env names, no
+    // detail, no stderr. Per Gate A contract (#3334), nothing outside the
+    // approved block may be printed on any channel.
     EVIDENCE.smokeStatus = 'BLOCKED_MISSING_ENV';
-    // Per Gate A contract: missing inputs yield BLOCKED, all sub-checks NOT_RUN.
     emit();
     return false;
   }
