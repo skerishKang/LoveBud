@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from typing import Any
 
-from modal_compute.db import get_db_connection
+from modal_compute.db import get_db_connection, run_db_with_retry
 from modal_compute.social_errors import SocialWriteError
 from modal_compute.social_idempotency import (
     _compute_key_hash,
@@ -17,6 +17,8 @@ from modal_compute.validation import validate_optional_string, validate_required
 
 COMMENT_BODY_MAX = 5000
 
+ANONYMOUS_DISPLAY_LABEL = "anonymous"
+
 
 def normalize_tree_comment_row(row: dict[str, Any]) -> dict[str, Any]:
     return {
@@ -27,6 +29,55 @@ def normalize_tree_comment_row(row: dict[str, Any]) -> dict[str, Any]:
         "createdAt": str(row.get("created_at")),
         "updatedAt": str(row.get("updated_at")),
     }
+
+
+def normalize_public_tree_comment_row(row: dict[str, Any]) -> dict[str, Any]:
+    """Safe public read DTO. Never returns the raw account identifier."""
+    return {
+        "id": str(row["id"]),
+        "treeId": str(row["tree_id"]),
+        "body": str(row["body"]),
+        "createdAt": str(row.get("created_at")),
+        "updatedAt": str(row.get("updated_at")),
+        "authorDisplayLabel": ANONYMOUS_DISPLAY_LABEL,
+    }
+
+
+def fetch_tree_comments(tree_id: str, limit: int = 20) -> dict[str, Any]:
+    """Read whole-tree (tree-level) comments for a public tree.
+
+    Targets only `tree_comments` with `tree_comments.tree_id = :treeId`.
+    Never touches moment `comments` or `memory_id`. Public-tree visibility
+    gate runs before any read. Returns safe public DTOs (no raw account id).
+    """
+    safe_tree_id = validate_required_uuid(tree_id, "treeId")
+
+    try:
+        safe_limit = int(limit)
+    except (TypeError, ValueError):
+        safe_limit = 20
+    if safe_limit < 1 or safe_limit > 50:
+        safe_limit = max(1, min(safe_limit, 50))
+
+    require_public_tree_for_like(safe_tree_id)
+
+    def operation() -> list[dict[str, Any]]:
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT id, tree_id, owner_id, body, created_at, updated_at
+                    FROM tree_comments
+                    WHERE tree_id = %s
+                    ORDER BY created_at ASC, id ASC
+                    LIMIT %s
+                    """,
+                    (safe_tree_id, safe_limit),
+                )
+                rows = cur.fetchall()
+                return [normalize_public_tree_comment_row(row) for row in rows]
+
+    return {"comments": run_db_with_retry(operation)}
 
 
 def create_tree_comment(

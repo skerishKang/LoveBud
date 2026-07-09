@@ -199,38 +199,37 @@ test('document defines future child split (impl, client/UI, moderation, non-prod
   assert.ok(/this #3404 contract satisfies none/i.test(doc), 'Document must state this contract alone does not satisfy implementation steps');
 });
 
-// ─── 13. Source-level: comments.js remains POST/create-focused, no GET ─────
+// ─── 13. Source-level: comments.js exposes GET read alongside POST create ──
 
-test('existing #3398 create route (comments.js) remains POST/create-focused, no GET handler', () => {
+test('comments.js exposes GET read handler and keeps POST create proxy intact', () => {
   const src = fs.readFileSync(COMMENTS_JS_PATH, 'utf8');
-  assert.ok(src.includes("allow: 'POST'"), 'comments.js must still reject non-POST with allow: POST');
   assert.ok(src.includes('buildMethodNotAllowedResponse'), 'comments.js must keep the method-not-allowed response');
-  assert.ok(!/export async function onRequestGet/.test(src), 'comments.js must NOT export a GET read/list handler in this child');
-  assert.ok(!/fetch_tree_comments|SELECT[\s\S]*tree_comments[\s\S]*ORDER BY/i.test(src), 'comments.js must NOT implement a tree_comments list query');
-  assert.ok(/onRequestPost/.test(src) && /proxyTreeCommentCreate/.test(src), 'comments.js must still expose the POST create proxy');
+  assert.ok(/export async function onRequestGet/.test(src), 'comments.js must now export a GET read/list handler (added by #3408)');
+  assert.ok(/onRequestPost/.test(src) && /proxyTreeCommentCreate/.test(src), 'comments.js must still expose the POST create proxy (unchanged)');
+  assert.ok(/if \(method === 'POST'\) return proxyTreeCommentCreate/.test(src), 'comments.js POST create behavior must remain intact');
 });
 
-// ─── 14. Source-level: tree_comments.py has no reader ──────────────────────
+// ─── 14. Source-level: tree_comments.py now has the reader ─────────────────
 
-test('modal_compute/tree_comments.py has no fetch_tree_comments reader', () => {
+test('modal_compute/tree_comments.py now defines fetch_tree_comments reader', () => {
   const src = fs.readFileSync(TREE_COMMENTS_PY_PATH, 'utf8');
-  assert.ok(!/def fetch_tree_comments/.test(src), 'tree_comments.py must NOT define fetch_tree_comments in this contract-only PR');
+  assert.ok(/def fetch_tree_comments/.test(src), 'tree_comments.py must now define fetch_tree_comments (added by #3408)');
   assert.ok(/def create_tree_comment/.test(src), 'tree_comments.py must still contain the #3398 create writer (unchanged)');
-  assert.ok(!/def fetch_tree_comment_list|def list_tree_comments|def read_tree_comments/.test(src), 'tree_comments.py must NOT define any alternative read/list reader');
+  assert.ok(/FROM tree_comments[\s\S]*ORDER BY created_at ASC, id ASC/.test(src), 'reader must query tree_comments only, oldest-first stable ordering');
 });
 
-// ─── 15. Source-level: app.py has no GET tree-comments registration ───────
+// ─── 15. Source-level: app.py now registers GET tree-comments route ────────
 
-test('modal_compute/app.py has no GET tree-comments registration', () => {
+test('modal_compute/app.py now registers GET tree-comments route (added by #3408)', () => {
   const src = fs.readFileSync(APP_PY_PATH, 'utf8');
-  const hasGetTreeComments = /@web_app\.get\("\/modal\/(private|public)\/trees\/\{tree_id\}\/comments"\)/.test(src);
+  const hasGetTreeComments = /@web_app\.get\("\/modal\/private\/trees\/{tree_id}\/comments"\)/.test(src);
   assert.ok(
-    !hasGetTreeComments,
-    'app.py must NOT register a GET tree-comments route (no accepted PR has implemented it)'
+    hasGetTreeComments,
+    'app.py must now register a GET tree-comments route (implemented by #3408)'
   );
   // POST tree-comments must still be present and unchanged (from #3398).
   assert.ok(/@web_app\.post\("\/modal\/private\/trees\/{tree_id}\/comments"\)/.test(src), 'app.py must still have the #3398 POST tree-comments route');
-  assert.ok(!/def fetch_tree_comments/.test(src), 'app.py must not reference fetch_tree_comments');
+  assert.ok(/fetch_tree_comments/.test(src), 'app.py must reference fetch_tree_comments');
 });
 
 // ─── 16. Companion artifact self-check ─────────────────────────────────────

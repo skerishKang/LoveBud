@@ -61,9 +61,20 @@ function buildMethodNotAllowedResponse(requestId) {
       'content-type': 'application/json; charset=utf-8',
       'x-lovebud-upstream': 'cloudflare',
       'x-lovebud-route-status': 'method-not-allowed',
-      allow: 'POST',
+      allow: 'GET, POST',
       [REQUEST_ID_HEADER]: requestId
     }
+  });
+}
+
+function withUpstreamHeaders(response, requestId) {
+  const headers = new Headers(response.headers);
+  headers.set('x-lovebud-upstream', 'modal');
+  headers.set(REQUEST_ID_HEADER, requestId);
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers
   });
 }
 
@@ -99,7 +110,7 @@ function buildIdempotencyKeyInvalidResponse(requestId) {
   });
 }
 
-function buildModalUrl(request, env) {
+function buildModalUrl(request, env, query = '') {
   const modalBaseUrl = stripTrailingSlash(env.MODAL_BASE_URL);
   if (!modalBaseUrl) return null;
   const url = new URL(request.url);
@@ -108,6 +119,7 @@ function buildModalUrl(request, env) {
   if (!treeId) return null;
   const target = new URL(modalBaseUrl);
   target.pathname = `/modal/private/trees/${encodeURIComponent(decodeURIComponent(treeId))}/comments`;
+  if (query) target.search = query;
   return target;
 }
 
@@ -170,10 +182,37 @@ async function proxyTreeCommentCreate(request, env) {
   }
 }
 
+async function proxyTreeCommentRead(request, env) {
+  const requestId = getOrCreateRequestId(request);
+  const modalUrl = buildModalUrl(request, env || {}, new URL(request.url).search);
+  if (!modalUrl) return buildModalUnavailableResponse(requestId);
+
+  try {
+    const response = await fetchWithTimeout(modalUrl.toString(), {
+      method: 'GET',
+      headers: {
+        accept: 'application/json',
+        [REQUEST_ID_HEADER]: requestId
+      }
+    });
+    return withUpstreamHeaders(response, requestId);
+  } catch (error) {
+    if (error.name === 'AbortError') return buildModalTimeoutResponse(requestId);
+    return buildModalUnavailableResponse(requestId);
+  }
+}
+
+export async function onRequestGet(context) {
+  return proxyTreeCommentRead(context.request, context.env || {});
+}
+
 export async function onRequestPost(context) {
   return proxyTreeCommentCreate(context.request, context.env || {});
 }
 
 export async function onRequest(context) {
-  return proxyTreeCommentCreate(context.request, context.env || {});
+  const method = context.request.method.toUpperCase();
+  if (method === 'GET') return proxyTreeCommentRead(context.request, context.env || {});
+  if (method === 'POST') return proxyTreeCommentCreate(context.request, context.env || {});
+  return buildMethodNotAllowedResponse(getOrCreateRequestId(context.request));
 }

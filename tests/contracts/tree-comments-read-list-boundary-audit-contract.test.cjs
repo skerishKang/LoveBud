@@ -245,41 +245,40 @@ test('companion contract test path is documented', () => {
   );
 });
 
-// ─── 16. Source-level check: #3398 create route remains POST/create-focused ─
+// ─── 16. Source-level check: #3398 create route still POST/create-focused alongside GET read ─
 
-test('existing #3398 create route (comments.js) remains POST/create-focused, no GET read/list runtime', () => {
+test('existing #3398 create route (comments.js) keeps POST create proxy unchanged alongside GET read', () => {
   const src = fs.readFileSync(COMMENTS_JS_PATH, 'utf8');
-  assert.ok(src.includes("allow: 'POST'"), 'comments.js must still reject non-POST with allow: POST');
   assert.ok(src.includes('buildMethodNotAllowedResponse'), 'comments.js must keep the method-not-allowed response');
   assert.ok(
-    !/export async function onRequestGet/.test(src),
-    'comments.js must NOT export a GET read/list handler in this child'
-  );
-  assert.ok(
-    !/fetch_tree_comments|SELECT[\s\S]*tree_comments[\s\S]*ORDER BY/i.test(src),
-    'comments.js must NOT implement a tree_comments list query'
+    /export async function onRequestGet/.test(src),
+    'comments.js now exports a GET read/list handler (implemented by #3408)'
   );
   assert.ok(
     /onRequestPost/.test(src) && /proxyTreeCommentCreate/.test(src),
-    'comments.js must still expose the POST create proxy'
+    'comments.js must still expose the POST create proxy (unchanged)'
+  );
+  assert.ok(
+    /if \(method === 'POST'\) return proxyTreeCommentCreate/.test(src),
+    'comments.js POST create behavior must remain intact'
   );
 });
 
-// ─── 17. Source-level check: tree_comments.py reader not implemented ────────
+// ─── 17. Source-level check: tree_comments.py reader implemented by #3408 ────
 
-test('modal_compute/tree_comments.py has no read/list reader implemented in this child', () => {
+test('modal_compute/tree_comments.py now defines fetch_tree_comments reader (added by #3408)', () => {
   const src = fs.readFileSync(TREE_COMMENTS_PY_PATH, 'utf8');
   assert.ok(
-    !/def fetch_tree_comments/.test(src),
-    'tree_comments.py must NOT define fetch_tree_comments (read reader) in this audit-only child'
+    /def fetch_tree_comments/.test(src),
+    'tree_comments.py must now define fetch_tree_comments (read reader) per #3408'
   );
   assert.ok(
     /def create_tree_comment/.test(src),
     'tree_comments.py must still contain the #3398 create writer (unchanged)'
   );
   assert.ok(
-    !/def fetch_tree_comment_list|def list_tree_comments|def read_tree_comments/.test(src),
-    'tree_comments.py must NOT define any alternative read/list reader'
+    /FROM tree_comments[\s\S]*ORDER BY created_at ASC, id ASC/.test(src),
+    'tree_comments reader must query tree_comments only, oldest-first stable ordering'
   );
 });
 
