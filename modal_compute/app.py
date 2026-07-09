@@ -62,7 +62,7 @@ from modal_compute.tree_likes import (
     fetch_tree_like_summary,
     fetch_public_tree_like_count,
 )
-from modal_compute.tree_comments import create_tree_comment
+from modal_compute.tree_comments import create_tree_comment, fetch_tree_comments
 from modal_compute.tree_views import record_public_tree_view, fetch_public_tree_view_count
 from modal_compute.hub_layouts import (
     hub_layout_not_found_handler,
@@ -419,6 +419,28 @@ async def post_tree_comment(
     payload = await parse_json_body(request)
     body = payload.get("body") if isinstance(payload, dict) else None
     return create_tree_comment(tree_id, user["uid"], body, idempotency_key=x_idempotency_key)
+
+
+@web_app.get("/modal/private/trees/{tree_id}/comments")
+def get_tree_comments(
+    tree_id: str,
+    limit: int = Query(default=20, ge=1, le=50),
+    x_lovebud_request_id: str | None = Header(default=None),
+) -> dict:
+    logger = RequestLogger(
+        request_id=x_lovebud_request_id,
+        route="/modal/private/trees/id/comments",
+        method="GET",
+    )
+    try:
+        result = fetch_tree_comments(tree_id, limit=limit)
+        logger.log_success(status_code=200)
+        return result
+    except HTTPException:
+        raise
+    except Exception:
+        logger.log_error(status_code=500, error_category="UNEXPECTED_ERROR")
+        raise
 
 
 @web_app.get("/modal/private/memories")
