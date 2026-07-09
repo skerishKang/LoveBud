@@ -84,6 +84,7 @@ PR3 button / badge / chip tone 기준 판단이 필요하면 아래를 추가로
 - `./ops/KNOWN_CI_E2E_BLOCKERS.md`
 - `./ops/BRANCH_CLEANUP_PLAN.md`
 - `./ops/MODAL_RUNTIME_DIAGNOSTICS_WORKFLOW.md`
+- `./ops/TREE_LIKE_RUNTIME_VERIFICATION_RUNBOOK.md`
 - `./migration/VERCEL_MODAL_MIGRATION_RUNBOOK.md`
 
 테스트 데이터(트리/순간) 생성이 필요하면 아래 워크플로우 가이드를 참고합니다.

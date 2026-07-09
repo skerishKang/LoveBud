@@ -47,6 +47,7 @@
 29. [MODAL_RUNTIME_DIAGNOSTICS_WORKFLOW.md](MODAL_RUNTIME_DIAGNOSTICS_WORKFLOW.md) - Issue #473 Modal runtime diagnostics workflow, Cloudflare ↔ Modal verification 절차, request ID correlation, blocked-state 보고 기준
 30. [FIXED_SLOT_DEPLOY_WITH_WRANGLER.md](FIXED_SLOT_DEPLOY_WITH_WRANGLER.md) - Issue #694 fixed slot Wrangler direct deploy 표준 경로 및 stale asset guardrail
 31. [../engineering/BROWSE_FILTER_VS_PUBLICATION_GUARD.md](../engineering/BROWSE_FILTER_VS_PUBLICATION_GUARD.md) - browse filter / publication guard 구분
+32. [TREE_LIKE_RUNTIME_VERIFICATION_RUNBOOK.md](TREE_LIKE_RUNTIME_VERIFICATION_RUNBOOK.md) - Issue #3362 tree-like runtime verification operator runbook, #3361 live authenticated evidence 절차 및 sanitized 보고 기준
 
 ---
 
@@ -96,6 +97,7 @@
 | [FLOW_A_QA_CHECKLIST.md](FLOW_A_QA_CHECKLIST.md) | QA 체크리스트 |
 | [PR_CHECKLIST.md](PR_CHECKLIST.md) | PR 점검 기준 |
 | [QA_CREDENTIALS.md](QA_CREDENTIALS.md) | QA credentials — persistent encrypted bundle workflow (✅ bundle committed v1; 13 accounts registered in approved password manager) |
+| [TREE_LIKE_RUNTIME_VERIFICATION_RUNBOOK.md](TREE_LIKE_RUNTIME_VERIFICATION_RUNBOOK.md) | Issue #3362 tree-like runtime verification operator runbook — #3361 live authenticated evidence 절차 및 sanitized 보고 기준 |
 | [QA_ACCOUNT_REGISTRY.md](QA_ACCOUNT_REGISTRY.md) | QA and AI actor account inventory — public-safe registry of all 13 accounts for password manager (Issue #873) |
 | [QA_CREDENTIALS.txt](QA_CREDENTIALS.txt) | QA credentials 한국어 요약 및 현재 상태 |
 | [qa-credential-bundle/README.md](qa-credential-bundle/README.md) | Persistent encrypted bundle commit status and path |
