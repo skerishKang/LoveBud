@@ -83,6 +83,27 @@ SET LOCAL statement_timeout = '30s';
 -- Take a brief, bounded table lock so the shape cannot change under us mid-migration.
 LOCK TABLE public.tree_comments IN SHARE ROW EXCLUSIVE MODE;
 
+-- ── Exact-expression normalizer (top-level, dropped before COMMIT) ──
+-- Normalizes a catalog constraint/default expression for EXACT comparison so a
+-- substring ILIKE match cannot accept a schema with extra conjuncts/disjuncts,
+-- extra casts, or different punctuation. PostgreSQL only adds deterministic
+-- casts (::text, ::character varying, ::bpchar, ::boolean, ::jsonb, ::timestamp
+-- with time zone, ::timestamptz, ::integer, ::bigint), parentheses, and
+-- whitespace, which this normalizer strips. It does NOT accept alternative
+-- expressions (e.g. `target_kind = 'tree' OR body <> ''` fails to match exactly).
+CREATE FUNCTION _lb_norm_expr(p_expr text) RETURNS text AS $$
+DECLARE
+  v text := lower(coalesce(p_expr, ''));
+BEGIN
+  v := regexp_replace(v, '^check\s*\(', '', 'i');   -- strip leading CHECK (
+  v := regexp_replace(v, '\)$', '');                  -- strip trailing )
+  v := regexp_replace(v, '^\((.*)\)$', '\1');         -- strip one outer (...)
+  v := regexp_replace(v, '\s+', ' ', 'g');             -- collapse whitespace
+  v := regexp_replace(v, '::(character varying|timestamp with time zone|timestamptz|text|bpchar|boolean|jsonb|integer|bigint)', '', 'g');
+  RETURN v;
+END;
+$$ LANGUAGE plpgsql IMMUTABLE;
+
 -- ── Exact reconciled-state validator (top-level, dropped before COMMIT) ──
 -- OUT ok = 1 when the table EXACTLY matches the canonical reconciled shape
 -- (12 columns + exact metadata, PK [id], 2 FKs, 2 CHECKs, exact index
@@ -113,13 +134,13 @@ BEGIN
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='tree_comments' AND column_name='tree_id' AND data_type='text' AND udt_name='text' AND is_nullable='NO' AND column_default IS NULL) THEN ok := 0; v_m := v_m || 'tree_id; '; END IF;
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='tree_comments' AND column_name='owner_id' AND data_type='character varying' AND udt_name='varchar' AND character_maximum_length=128 AND is_nullable='NO' AND column_default IS NULL) THEN ok := 0; v_m := v_m || 'owner_id; '; END IF;
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='tree_comments' AND column_name='body' AND data_type='text' AND udt_name='text' AND is_nullable='NO' AND column_default IS NULL) THEN ok := 0; v_m := v_m || 'body; '; END IF;
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='tree_comments' AND column_name='target_kind' AND data_type='character varying' AND udt_name='varchar' AND character_maximum_length=16 AND is_nullable='NO' AND column_default ILIKE '%''tree''%') THEN ok := 0; v_m := v_m || 'target_kind; '; END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='tree_comments' AND column_name='target_kind' AND data_type='character varying' AND udt_name='varchar' AND character_maximum_length=16 AND is_nullable='NO' AND column_default IS NOT NULL AND _lb_norm_expr(column_default) = 'tree') THEN ok := 0; v_m := v_m || 'target_kind; '; END IF;
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='tree_comments' AND column_name='target_id' AND data_type='text' AND udt_name='text' AND is_nullable='YES' AND column_default IS NULL) THEN ok := 0; v_m := v_m || 'target_id; '; END IF;
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='tree_comments' AND column_name='author_id' AND data_type='text' AND udt_name='text' AND is_nullable='YES' AND column_default IS NULL) THEN ok := 0; v_m := v_m || 'author_id; '; END IF;
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='tree_comments' AND column_name='author_display_name' AND data_type='text' AND udt_name='text' AND is_nullable='YES' AND column_default IS NULL) THEN ok := 0; v_m := v_m || 'author_display_name; '; END IF;
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='tree_comments' AND column_name='is_deleted' AND data_type='boolean' AND udt_name='bool' AND is_nullable='NO' AND column_default IN ('false','FALSE')) THEN ok := 0; v_m := v_m || 'is_deleted; '; END IF;
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='tree_comments' AND column_name='created_at' AND data_type='timestamp with time zone' AND udt_name='timestamptz' AND is_nullable='NO' AND column_default ILIKE '%now()%') THEN ok := 0; v_m := v_m || 'created_at; '; END IF;
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='tree_comments' AND column_name='updated_at' AND data_type='timestamp with time zone' AND udt_name='timestamptz' AND is_nullable='NO' AND column_default ILIKE '%now()%') THEN ok := 0; v_m := v_m || 'updated_at; '; END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='tree_comments' AND column_name='created_at' AND data_type='timestamp with time zone' AND udt_name='timestamptz' AND is_nullable='NO' AND column_default IS NOT NULL AND _lb_norm_expr(column_default) = 'now()') THEN ok := 0; v_m := v_m || 'created_at; '; END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='tree_comments' AND column_name='updated_at' AND data_type='timestamp with time zone' AND udt_name='timestamptz' AND is_nullable='NO' AND column_default IS NOT NULL AND _lb_norm_expr(column_default) = 'now()') THEN ok := 0; v_m := v_m || 'updated_at; '; END IF;
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='tree_comments' AND column_name='payload' AND data_type='jsonb' AND udt_name='jsonb' AND is_nullable='NO' AND column_default = '''{}''::jsonb') THEN ok := 0; v_m := v_m || 'payload; '; END IF;
 
   -- PRIMARY KEY exactly [id].
@@ -136,13 +157,15 @@ BEGIN
   WHERE c.conrelid='public.tree_comments'::regclass AND c.contype='f' AND array_length(c.conkey,1)=1 AND array_length(c.confkey,1)=1 AND a.attname='author_id' AND c.confrelid='public.users'::regclass AND fa.attname='id' AND c.confdeltype='n';
   IF v_f1 <> 1 OR v_f2 <> 1 THEN ok := 0; v_m := v_m || 'fk=' || v_f1 || '/' || v_f2 || '; '; END IF;
 
-  -- Exact CHECK definitions (by catalog expression, not just count).
-  SELECT count(*) INTO v_c_kind FROM pg_constraint
-  WHERE conrelid='public.tree_comments'::regclass AND contype='c'
-    AND pg_get_constraintdef(oid) ILIKE '%target_kind%=%''tree''%';
-  SELECT count(*) INTO v_c_tid FROM pg_constraint
-  WHERE conrelid='public.tree_comments'::regclass AND contype='c'
-    AND pg_get_constraintdef(oid) ILIKE '%target_id IS NULL OR target_id = tree_id%';
+  -- Exact CHECK definitions via normalized full-expression comparison (no substring).
+  -- Only these two exact expressions are allowed; anything with extra conjuncts /
+  -- disjuncts / different terms fails to match exactly.
+  SELECT count(*) INTO v_c_kind FROM pg_constraint c
+  WHERE c.conrelid='public.tree_comments'::regclass AND c.contype='c'
+    AND _lb_norm_expr(pg_get_constraintdef(c.oid)) = 'target_kind = ''tree''';
+  SELECT count(*) INTO v_c_tid FROM pg_constraint c
+  WHERE c.conrelid='public.tree_comments'::regclass AND c.contype='c'
+    AND _lb_norm_expr(pg_get_constraintdef(c.oid)) = 'target_id is null or target_id = tree_id';
   IF v_c_kind <> 1 OR v_c_tid <> 1 THEN ok := 0; v_m := v_m || 'checks; '; END IF;
 
   -- Exact TOTAL constraint set = 5 (1 PK + 2 FK + 2 CHECK, 0 UNIQUE/EXCLUDE/other).
@@ -238,6 +261,7 @@ DECLARE
   v_secondary_total integer;
   v_reconciled_ok integer;
   v_rc integer;
+  v_matviews integer;
   v_msg text;
 BEGIN
   -- ── Step 1: Table existence ────────────────────────────────────────────────
@@ -671,26 +695,23 @@ BEGIN
       v_body, v_owner, v_target_kind, v_target_id;
   END IF;
 
-  -- Types / nullability / defaults
+  -- Types / nullability / defaults (exact normalized comparison via _lb_norm_expr)
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='tree_comments' AND column_name='owner_id' AND data_type='character varying' AND is_nullable='NO') THEN
     RAISE EXCEPTION 'POST-VERIFY FAIL: owner_id must be varchar(128) NOT NULL';
   END IF;
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='tree_comments' AND column_name='body' AND data_type='text' AND is_nullable='NO') THEN
     RAISE EXCEPTION 'POST-VERIFY FAIL: body must be text NOT NULL';
   END IF;
-  SELECT count(*) INTO v_target_kind_default FROM information_schema.columns WHERE table_schema='public' AND table_name='tree_comments' AND column_name='target_kind' AND column_default ILIKE '%''tree''%';
-  IF v_target_kind_default <> 1 THEN
-    RAISE EXCEPTION 'POST-VERIFY FAIL: target_kind default must be ''tree''';
+  -- target_kind default: exact 'tree' (normalized)
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='tree_comments' AND column_name='target_kind' AND column_default IS NOT NULL AND _lb_norm_expr(column_default) = 'tree') THEN
+    RAISE EXCEPTION 'POST-VERIFY FAIL: target_kind default must be exactly ''tree''';
   END IF;
-  SELECT count(*) INTO v_created_notnull FROM information_schema.columns WHERE table_schema='public' AND table_name='tree_comments' AND column_name='created_at' AND is_nullable='NO';
-  SELECT count(*) INTO v_updated_notnull FROM information_schema.columns WHERE table_schema='public' AND table_name='tree_comments' AND column_name='updated_at' AND is_nullable='NO';
-  IF v_created_notnull <> 1 OR v_updated_notnull <> 1 THEN
-    RAISE EXCEPTION 'POST-VERIFY FAIL: created_at/updated_at are not NOT NULL after migration';
+  -- created_at / updated_at defaults: exact 'now()' (normalized)
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='tree_comments' AND column_name='created_at' AND column_default IS NOT NULL AND _lb_norm_expr(column_default) = 'now()') THEN
+    RAISE EXCEPTION 'POST-VERIFY FAIL: created_at default must be exactly now()';
   END IF;
-  SELECT count(*) INTO v_created_def FROM information_schema.columns WHERE table_schema='public' AND table_name='tree_comments' AND column_name='created_at' AND column_default ILIKE '%now()%';
-  SELECT count(*) INTO v_updated_def FROM information_schema.columns WHERE table_schema='public' AND table_name='tree_comments' AND column_name='updated_at' AND column_default ILIKE '%now()%';
-  IF v_created_def <> 1 OR v_updated_def <> 1 THEN
-    RAISE EXCEPTION 'POST-VERIFY FAIL: created_at/updated_at must default to NOW()';
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='tree_comments' AND column_name='updated_at' AND column_default IS NOT NULL AND _lb_norm_expr(column_default) = 'now()') THEN
+    RAISE EXCEPTION 'POST-VERIFY FAIL: updated_at default must be exactly now()';
   END IF;
 
   -- PRIMARY KEY must be exactly [id] (catalog array comparison, not string match)
@@ -712,15 +733,15 @@ BEGIN
     RAISE EXCEPTION 'POST-VERIFY FAIL: tree_id FK to trees(id) ON DELETE CASCADE must be preserved';
   END IF;
 
-  -- CHECK constraints present
+  -- CHECK constraints present (exact normalized expression comparison)
   SELECT count(*) INTO v_chk_kind FROM pg_constraint
   WHERE conrelid='public.tree_comments'::regclass AND contype='c'
-    AND pg_get_constraintdef(oid) ILIKE '%target_kind%=%''tree''%';
+    AND _lb_norm_expr(pg_get_constraintdef(oid)) = 'target_kind = ''tree''';
   SELECT count(*) INTO v_chk_tid FROM pg_constraint
   WHERE conrelid='public.tree_comments'::regclass AND contype='c'
-    AND pg_get_constraintdef(oid) ILIKE '%target_id IS NULL OR target_id = tree_id%';
+    AND _lb_norm_expr(pg_get_constraintdef(oid)) = 'target_id is null or target_id = tree_id';
   IF v_chk_kind <> 1 OR v_chk_tid <> 1 THEN
-    RAISE EXCEPTION 'POST-VERIFY FAIL: target_kind / target_id CHECK constraints missing';
+    RAISE EXCEPTION 'POST-VERIFY FAIL: target_kind / target_id CHECK constraints missing or incorrect';
   END IF;
 
   -- Required indexes
@@ -784,7 +805,8 @@ BEGIN
   END IF;
 END $$;
 
--- Drop the local validator (created inside this transaction; auto-removed on COMMIT anyway).
+-- Drop the local validator and normalizer (created inside this transaction; auto-removed on COMMIT anyway).
 DROP FUNCTION IF EXISTS _lb_reconciled_validator();
+DROP FUNCTION IF EXISTS _lb_norm_expr(text);
 
 COMMIT;

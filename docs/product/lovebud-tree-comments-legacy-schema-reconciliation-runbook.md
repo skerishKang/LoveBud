@@ -272,7 +272,17 @@ Verification consists of the contract tests (migration + rollback), the existing
 tree-comments migration contract, the Python reader test, the route implementation
 contract, the client adapter contract, `npm run lint` / `npm run build` /
 `npm run verify`, and a full PostgreSQL grammar parse of both SQL files via `pglast`
-(offline). **The actual DB migration/rollback was NOT executed in this step — no
+(offline).
+
+**Limitation: pglast does not validate PL/pgSQL variable declarations.** A
+dollar-quoted `DO $$ ... $$` block or `CREATE FUNCTION ... AS $$ ... $$` may parse
+correctly at the top-level SQL grammar level while a used variable (`v_matviews`)
+is missing from that block's `DECLARE` section. Only actual PostgreSQL execution
+(or a PL/pgSQL-aware static analyzer) can catch undeclared-variable errors. The
+contract tests explicitly verify declaration presence for all `v_*` variables used
+in each PL/pgSQL block.
+
+**The actual DB migration/rollback was NOT executed in this step — no
 Neon production/staging execution.**
 
 The final production schema verification and API smoke test are performed only inside

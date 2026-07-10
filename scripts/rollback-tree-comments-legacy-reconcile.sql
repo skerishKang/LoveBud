@@ -49,6 +49,27 @@ SET LOCAL statement_timeout = '30s';
 -- Take a brief, bounded table lock so the shape cannot change under us mid-rollback.
 LOCK TABLE public.tree_comments IN SHARE ROW EXCLUSIVE MODE;
 
+-- ── Exact-expression normalizer (top-level, dropped before COMMIT) ──
+-- Normalizes a catalog constraint/default expression for EXACT comparison so a
+-- substring ILIKE match cannot accept a schema with extra conjuncts/disjuncts,
+-- extra casts, or different punctuation. PostgreSQL only adds deterministic
+-- casts (::text, ::character varying, ::bpchar, ::boolean, ::jsonb, ::timestamp
+-- with time zone, ::timestamptz, ::integer, ::bigint), parentheses, and
+-- whitespace, which this normalizer strips. It does NOT accept alternative
+-- expressions (e.g. `target_kind = 'tree' OR body <> ''` fails to match exactly).
+CREATE FUNCTION _lb_norm_expr(p_expr text) RETURNS text AS $$
+DECLARE
+  v text := lower(coalesce(p_expr, ''));
+BEGIN
+  v := regexp_replace(v, '^check\s*\(', '', 'i');   -- strip leading CHECK (
+  v := regexp_replace(v, '\)$', '');                  -- strip trailing )
+  v := regexp_replace(v, '^\((.*)\)$', '\1');         -- strip one outer (...)
+  v := regexp_replace(v, '\s+', ' ', 'g');             -- collapse whitespace
+  v := regexp_replace(v, '::(character varying|timestamp with time zone|timestamptz|text|bpchar|boolean|jsonb|integer|bigint)', '', 'g');
+  RETURN v;
+END;
+$$ LANGUAGE plpgsql IMMUTABLE;
+
 -- ─── Preconditions (fail closed on any mismatch) ────────────────────────────
 
 DO $$
@@ -140,25 +161,43 @@ BEGIN
   -- target_kind: varchar(16) NOT NULL DEFAULT 'tree'
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='tree_comments'
     AND column_name='target_kind' AND data_type='character varying' AND udt_name='varchar'
-    AND character_maximum_length=16 AND is_nullable='NO' AND column_default ILIKE '%''tree''%') THEN
+    AND character_maximum_length=16 AND is_nullable='NO' AND column_default IS NOT NULL AND _lb_norm_expr(column_default) = 'tree') THEN
     RAISE EXCEPTION 'ROLLBACK PRECONDITION FAIL: target_kind must be varchar(16) NOT NULL DEFAULT ''tree''';
   END IF;
-  -- target_id: text NULL
+  -- target_id: text NULL, no default
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='tree_comments'
-    AND column_name='target_id' AND data_type='text' AND udt_name='text' AND is_nullable='YES') THEN
-    RAISE EXCEPTION 'ROLLBACK PRECONDITION FAIL: target_id must be text NULL';
+    AND column_name='target_id' AND data_type='text' AND udt_name='text' AND is_nullable='YES' AND column_default IS NULL) THEN
+    RAISE EXCEPTION 'ROLLBACK PRECONDITION FAIL: target_id must be text NULL with no default';
   END IF;
   -- created_at: timestamptz NOT NULL DEFAULT now()
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='tree_comments'
     AND column_name='created_at' AND data_type='timestamp with time zone' AND udt_name='timestamptz'
-    AND is_nullable='NO' AND column_default ILIKE '%now()%') THEN
+    AND is_nullable='NO' AND column_default IS NOT NULL AND _lb_norm_expr(column_default) = 'now()') THEN
     RAISE EXCEPTION 'ROLLBACK PRECONDITION FAIL: created_at must be timestamptz NOT NULL DEFAULT now()';
   END IF;
   -- updated_at: timestamptz NOT NULL DEFAULT now()
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='tree_comments'
     AND column_name='updated_at' AND data_type='timestamp with time zone' AND udt_name='timestamptz'
-    AND is_nullable='NO' AND column_default ILIKE '%now()%') THEN
+    AND is_nullable='NO' AND column_default IS NOT NULL AND _lb_norm_expr(column_default) = 'now()') THEN
     RAISE EXCEPTION 'ROLLBACK PRECONDITION FAIL: updated_at must be timestamptz NOT NULL DEFAULT now()';
+  END IF;
+
+  -- Legacy-preserved columns must exist with exact metadata
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='tree_comments'
+    AND column_name='author_id' AND data_type='text' AND udt_name='text' AND is_nullable='YES' AND column_default IS NULL) THEN
+    RAISE EXCEPTION 'ROLLBACK PRECONDITION FAIL: author_id must be text NULL with no default';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='tree_comments'
+    AND column_name='author_display_name' AND data_type='text' AND udt_name='text' AND is_nullable='YES' AND column_default IS NULL) THEN
+    RAISE EXCEPTION 'ROLLBACK PRECONDITION FAIL: author_display_name must be text NULL with no default';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='tree_comments'
+    AND column_name='is_deleted' AND data_type='boolean' AND udt_name='bool' AND is_nullable='NO' AND column_default IN ('false','FALSE')) THEN
+    RAISE EXCEPTION 'ROLLBACK PRECONDITION FAIL: is_deleted must be boolean NOT NULL DEFAULT false';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='tree_comments'
+    AND column_name='payload' AND data_type='jsonb' AND udt_name='jsonb' AND is_nullable='NO' AND column_default = '''{}''::jsonb') THEN
+    RAISE EXCEPTION 'ROLLBACK PRECONDITION FAIL: payload must be jsonb NOT NULL DEFAULT ''{}''::jsonb';
   END IF;
 
   -- ── Exact canonical PRIMARY KEY = [id] (catalog array comparison) ────────────
@@ -213,15 +252,15 @@ BEGIN
     RAISE EXCEPTION 'ROLLBACK PRECONDITION FAIL: legacy author FK author_id -> public.users(id) ON DELETE SET NULL not exact (matches=%)', v_fk_author;
   END IF;
 
-  -- Canonical CHECK constraints must both be present (target_kind + target_id/tree_id).
+  -- Canonical CHECK constraints must both be present (exact normalized expression).
   SELECT count(*) INTO v_chk_kind FROM pg_constraint
   WHERE conrelid='public.tree_comments'::regclass AND contype='c'
-    AND pg_get_constraintdef(oid) ILIKE '%target_kind%=%''tree''%';
+    AND _lb_norm_expr(pg_get_constraintdef(oid)) = 'target_kind = ''tree''';
   SELECT count(*) INTO v_chk_tid FROM pg_constraint
   WHERE conrelid='public.tree_comments'::regclass AND contype='c'
-    AND pg_get_constraintdef(oid) ILIKE '%target_id IS NULL OR target_id = tree_id%';
+    AND _lb_norm_expr(pg_get_constraintdef(oid)) = 'target_id is null or target_id = tree_id';
   IF v_chk_kind <> 1 OR v_chk_tid <> 1 THEN
-    RAISE EXCEPTION 'ROLLBACK PRECONDITION FAIL: canonical CHECK constraints missing (kind=% tid=%)', v_chk_kind, v_chk_tid;
+    RAISE EXCEPTION 'ROLLBACK PRECONDITION FAIL: canonical CHECK constraints missing or incorrect (kind=% tid=%)', v_chk_kind, v_chk_tid;
   END IF;
 
   -- ── No unexpected inbound foreign keys referencing tree_comments ────────────
@@ -573,5 +612,8 @@ BEGIN
     RAISE EXCEPTION 'ROLLBACK POST-VERIFY FAIL: unexpected trigger/RLS/dependent view/materialized view appeared after rollback';
   END IF;
 END $$;
+
+-- Drop the normalizer (created inside this transaction; auto-removed on COMMIT anyway).
+DROP FUNCTION IF EXISTS _lb_norm_expr(text);
 
 COMMIT;
