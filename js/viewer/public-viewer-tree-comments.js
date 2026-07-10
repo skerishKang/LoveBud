@@ -26,7 +26,12 @@
   function createTreeCommentsReadOnlyControl(deps) {
     var i18n = deps && typeof deps.i18n === 'function'
       ? deps.i18n
-      : function (k, fb) { return fb; };
+      : function (k) { return k; };
+
+    function getText(key, fallback) {
+      var value = i18n(key);
+      return value && value !== key ? value : fallback;
+    }
     var showToast = deps && typeof deps.showToast === 'function'
       ? deps.showToast
       : function () {};
@@ -53,19 +58,57 @@
     toggleBtn.type = 'button';
     toggleBtn.id = 'wholeTreeCommentsToggle';
     toggleBtn.className = 'tree-comments-toggle';
-    toggleBtn.textContent = i18n('tree_comments_toggle', '트리 전체 댓글');
+    toggleBtn.textContent = getText('tree_comments_toggle', '트리 전체 댓글');
     toggleBtn.setAttribute('aria-expanded', 'false');
     toggleBtn.setAttribute('aria-controls', 'wholeTreeCommentsPanel');
+    toggleBtn.style.display = 'inline-flex';
+    toggleBtn.style.alignItems = 'center';
+    toggleBtn.style.justifyContent = 'center';
+    toggleBtn.style.gap = '6px';
+    toggleBtn.style.minHeight = '32px';
+    toggleBtn.style.padding = '4px 12px';
+    toggleBtn.style.borderRadius = '999px';
+    toggleBtn.style.fontSize = '12px';
+    toggleBtn.style.fontWeight = '700';
+    toggleBtn.style.cursor = 'pointer';
+    toggleBtn.style.transition = 'transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease, border-color 0.18s ease';
+    toggleBtn.style.border = '1px solid rgba(144,73,81,0.10)';
+    toggleBtn.style.boxShadow = '0 6px 16px rgba(75, 64, 57, 0.06)';
+    toggleBtn.style.background = 'linear-gradient(180deg, rgba(255,255,255,0.98), rgba(247,242,239,0.96))';
+    toggleBtn.style.color = 'var(--primary)';
+    toggleBtn.addEventListener('mouseenter', function () {
+      toggleBtn.style.transform = 'translateY(-1px)';
+    });
+    toggleBtn.addEventListener('mouseleave', function () {
+      toggleBtn.style.transform = 'translateY(0)';
+    });
 
     var panel = document.createElement('div');
     panel.id = 'wholeTreeCommentsPanel';
     panel.className = 'tree-comments-panel';
     panel.hidden = true;
+    panel.style.width = '100%';
+    panel.style.boxSizing = 'border-box';
+    panel.style.background = 'linear-gradient(180deg, rgba(255,255,255,0.99), rgba(250,246,244,0.97))';
+    panel.style.border = '1px solid rgba(144,73,81,0.10)';
+    panel.style.borderRadius = '16px';
+    panel.style.padding = '16px 18px';
+    panel.style.maxHeight = '420px';
+    panel.style.overflowY = 'auto';
+    panel.style.display = 'flex';
+    panel.style.flexDirection = 'column';
+    panel.style.gap = '10px';
 
     var heading = document.createElement('h4');
     heading.id = 'wholeTreeCommentsHeading';
     heading.tabIndex = -1;
-    heading.textContent = i18n('tree_comments_heading', '트리 전체 댓글');
+    heading.textContent = getText('tree_comments_heading', '트리 전체 댓글');
+    heading.style.margin = '0';
+    heading.style.padding = '0';
+    heading.style.fontSize = '13px';
+    heading.style.fontWeight = '800';
+    heading.style.color = 'var(--on-surface)';
+    heading.style.lineHeight = '1.4';
 
     var status = document.createElement('div');
     status.id = 'wholeTreeCommentsStatus';
@@ -75,6 +118,12 @@
     var list = document.createElement('ul');
     list.id = 'wholeTreeCommentsList';
     list.className = 'tree-comments-list';
+    list.style.margin = '0';
+    list.style.padding = '0';
+    list.style.listStyle = 'none';
+    list.style.display = 'flex';
+    list.style.flexDirection = 'column';
+    list.style.gap = '12px';
 
     panel.appendChild(heading);
     panel.appendChild(status);
@@ -87,8 +136,29 @@
       retryBtn = document.createElement('button');
       retryBtn.type = 'button';
       retryBtn.id = 'wholeTreeCommentsRetry';
-      retryBtn.textContent = i18n('tree_comments_retry', '다시 시도');
-      retryBtn.setAttribute('aria-label', i18n('tree_comments_retry_label', '트리 전체 댓글 다시 불러오기'));
+      retryBtn.textContent = getText('tree_comments_retry', '다시 시도');
+      retryBtn.setAttribute('aria-label', getText('tree_comments_retry_label', '트리 전체 댓글 다시 불러오기'));
+      retryBtn.style.display = 'inline-flex';
+      retryBtn.style.alignItems = 'center';
+      retryBtn.style.justifyContent = 'center';
+      retryBtn.style.gap = '6px';
+      retryBtn.style.minHeight = '32px';
+      retryBtn.style.padding = '4px 12px';
+      retryBtn.style.borderRadius = '999px';
+      retryBtn.style.fontSize = '12px';
+      retryBtn.style.fontWeight = '700';
+      retryBtn.style.cursor = 'pointer';
+      retryBtn.style.transition = 'transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease, border-color 0.18s ease';
+      retryBtn.style.border = '1px solid rgba(144,73,81,0.10)';
+      retryBtn.style.boxShadow = '0 6px 16px rgba(75, 64, 57, 0.06)';
+      retryBtn.style.background = 'linear-gradient(180deg, rgba(255,255,255,0.98), rgba(247,242,239,0.96))';
+      retryBtn.style.color = 'var(--primary)';
+      retryBtn.addEventListener('mouseenter', function () {
+        retryBtn.style.transform = 'translateY(-1px)';
+      });
+      retryBtn.addEventListener('mouseleave', function () {
+        retryBtn.style.transform = 'translateY(0)';
+      });
       retryBtn.addEventListener('click', function () {
         // Explicit retry: exactly one new fetch per click.
         performFetch();
@@ -125,22 +195,34 @@
     }
 
     function renderLoading() {
-      status.textContent = i18n('tree_comments_loading', '트리 전체 댓글을 불러오는 중이에요.');
+      status.textContent = getText('tree_comments_loading', '트리 전체 댓글을 불러오는 중이에요.');
       removeRetryButton();
     }
 
     function renderList() {
       clearList();
       if (!cachedComments.length) {
-        status.textContent = i18n('tree_comments_empty', '아직 트리 전체에 남겨진 댓글이 없어요.');
+        status.textContent = getText('tree_comments_empty', '아직 트리 전체에 남겨진 댓글이 없어요.');
         return;
       }
       status.textContent = '';
       cachedComments.forEach(function (c) {
         var li = document.createElement('li');
+        li.style.display = 'flex';
+        li.style.flexDirection = 'column';
+        li.style.gap = '4px';
         var bodyEl = document.createElement('p');
         bodyEl.className = 'tree-comment-body';
         bodyEl.textContent = c.body || '';
+        bodyEl.style.margin = '0';
+        bodyEl.style.padding = '0';
+        bodyEl.style.fontSize = '13px';
+        bodyEl.style.fontWeight = '500';
+        bodyEl.style.color = 'var(--on-surface)';
+        bodyEl.style.lineHeight = '1.6';
+        bodyEl.style.whiteSpace = 'pre-wrap';
+        bodyEl.style.overflowWrap = 'anywhere';
+        bodyEl.style.wordBreak = 'break-word';
         var metaEl = document.createElement('div');
         metaEl.className = 'tree-comment-meta';
         var parts = [];
@@ -148,6 +230,10 @@
         var date = formatSafeDate(c.createdAt);
         if (date) parts.push(date);
         metaEl.textContent = parts.join(' · ');
+        metaEl.style.fontSize = '11px';
+        metaEl.style.fontWeight = '600';
+        metaEl.style.color = 'var(--on-surface-variant)';
+        metaEl.style.lineHeight = '1.5';
         li.appendChild(bodyEl);
         li.appendChild(metaEl);
         list.appendChild(li);
@@ -156,11 +242,11 @@
 
     function errorCopyFor(state) {
       if (state === 'upstream_timeout') {
-        return i18n('tree_comments_timeout', '댓글을 불러오는 데 시간이 걸리고 있어요. 다시 시도해 주세요.');
+        return getText('tree_comments_timeout', '댓글을 불러오는 데 시간이 걸리고 있어요. 다시 시도해 주세요.');
       }
       // not_found_private_non_public / upstream_unavailable / unexpected_safe_error /
       // invalid_tree_id all collapse to the same safe unavailable copy (no private exposure).
-      return i18n('tree_comments_unavailable', '트리 전체 댓글을 불러오지 못했어요. 다시 시도해 주세요.');
+      return getText('tree_comments_unavailable', '트리 전체 댓글을 불러오지 못했어요. 다시 시도해 주세요.');
     }
 
     function renderError(state) {

@@ -622,15 +622,16 @@ test('detail-ui creates tree comments control for public tree (integration smoke
 // ─── 29. Scout / backend / #3075 scope guards ──────────────────────────────
 
 test('no Scout files, backend route/reader, or moment-comment files changed by this PR', () => {
-  const status = require('node:child_process').execSync('git status --porcelain', { cwd: ROOT }).toString();
-  for (const line of status.split('\n')) {
-    if (/js\/scout\//.test(line)) assert.fail(`Scout file changed: ${line}`);
-    if (/functions\/api\/trees\/\[tree_id\]\/comments\.js|modal_compute\/tree_comments\.py|modal_compute\/app\.py/.test(line)) {
-      assert.fail(`Backend route/reader changed: ${line}`);
-    }
-    if (/memories\/\[memory_id\]\/comments\.js|modal_compute\/comments\.py|public-viewer-authenticated-comment-composer\.js/.test(line)) {
-      assert.fail(`Moment comment file changed: ${line}`);
-    }
+  const diff = require('node:child_process').execSync('git diff --name-only origin/main...HEAD', { cwd: ROOT }).toString();
+  const changed = diff.split('\n').filter(Boolean);
+  for (const file of changed) {
+    if (/^js\/scout\//.test(file)) assert.fail(`Scout file changed: ${file}`);
+    if (/^functions\/api\/trees\/\[tree_id\]\/comments\.js$/.test(file)) assert.fail(`Backend route changed: ${file}`);
+    if (/^modal_compute\/tree_comments\.py$/.test(file)) assert.fail(`Backend reader changed: ${file}`);
+    if (/^modal_compute\/app\.py$/.test(file)) assert.fail(`Backend app changed: ${file}`);
+    if (/^memories\/\[memory_id\]\/comments\.js$/.test(file)) assert.fail(`Moment comment route changed: ${file}`);
+    if (/^modal_compute\/comments\.py$/.test(file)) assert.fail(`Moment comment helper changed: ${file}`);
+    if (/^public-viewer-authenticated-comment-composer\.js$/.test(file)) assert.fail(`Moment comment composer changed: ${file}`);
   }
 });
 
@@ -639,4 +640,182 @@ test('this test suite does not import runtime/network/browser clients', () => {
   assert.ok(!/require\(['"]axios['"]\)/i.test(self), 'must not import axios');
   assert.ok(!/require\(['"]playwright['"]\)|require\(['"]puppeteer['"]\)/i.test(self), 'must not import browser automation');
   assert.ok(!/require\(['"]jsdom['"]\)/i.test(self), 'must not import jsdom (uses deterministic mock)');
+});
+
+// ─── 31. detail-ui no longer calls reset on same-tree render (Blocker 1) ────
+
+test('detail-ui does NOT call .reset(treeId) in the same-tree render path', () => {
+  const src = fs.readFileSync(DETAIL_UI_PATH, 'utf8');
+  // The same-tree render path must not call .reset(treeId) on the cached
+  // tree comments control. It should only null the cached instance on
+  // tree ID change (line ~616).
+  const resetCallCount = (src.match(/\.reset\(/g) || []).length;
+  // There should be zero .reset( calls for tree comments.
+  // The tree-like control also has no .reset( pattern.
+  assert.equal(resetCallCount, 0,
+    'same-tree render must not call .reset() on cached tree comments control. ' +
+    'Reset is only done by nulling the cache on tree ID change (line ~616). ' +
+    'Remove the .reset(treeId) call from the same-tree render path.');
+});
+
+// ─── 32. production-equivalent i18n fallback (Blocker 2) ─────────────────────
+
+test('production-equivalent key-returning i18n still displays Korean fallback', () => {
+  const dom = createDom();
+  // Production i18n for unknown keys: function(k) { return k; }
+  const ns = loadModules(dom, async () => ({ ok: true, state: 'loaded_empty', comments: [] }));
+  const control = ns.createTreeCommentsReadOnlyControl({
+    i18n: function (k) { return k; },
+    treeId: VALID_TREE_ID
+  });
+  const btn = control.getElement();
+  assert.equal(btn.textContent, '트리 전체 댓글',
+    'Korean fallback must show even when i18n returns the key');
+});
+
+test('production-equivalent key-returning i18n renders all Korean fallbacks', async () => {
+  const dom = createDom();
+  const ns = loadModules(dom, async () => ({ ok: false, state: 'not_found_private_non_public' }));
+  const control = ns.createTreeCommentsReadOnlyControl({
+    i18n: function (k) { return k; },
+    treeId: VALID_TREE_ID
+  });
+  const panel = control.getPanelElement();
+  const heading = dom.document.getElementById('wholeTreeCommentsHeading');
+  assert.equal(heading.textContent, '트리 전체 댓글', 'heading Korean fallback');
+  control.open();
+  await flush();
+  const status = dom.document.getElementById('wholeTreeCommentsStatus');
+  assert.equal(status.textContent, '트리 전체 댓글을 불러오지 못했어요. 다시 시도해 주세요.',
+    'error status Korean fallback');
+});
+
+test('i18n returns translated text when key is registered', () => {
+  const dom = createDom();
+  const translations = {
+    tree_comments_toggle: 'Tree Comments',
+    tree_comments_heading: 'Tree Comments',
+    tree_comments_loading: 'Loading tree comments...',
+    tree_comments_empty: 'No comments yet.',
+  };
+  const ns = loadModules(dom, async () => ({ ok: true, state: 'loaded_empty', comments: [] }));
+  const control = ns.createTreeCommentsReadOnlyControl({
+    i18n: function (k) { return translations[k] || k; },
+    treeId: VALID_TREE_ID
+  });
+  const btn = control.getElement();
+  assert.equal(btn.textContent, 'Tree Comments',
+    'registered i18n translation must take priority over fallback');
+});
+
+// ─── 33. toggle button style contract (Blocker 3) ───────────────────────────
+
+test('toggle button has pill shape styles matching tree-like visual family', () => {
+  const dom = createDom();
+  const ns = loadModules(dom, async () => ({ ok: true, state: 'loaded_empty', comments: [] }));
+  const control = ns.createTreeCommentsReadOnlyControl({ i18n: (k, fb) => fb, treeId: VALID_TREE_ID });
+  const btn = control.getElement();
+  assert.equal(btn.style.borderRadius, '999px', 'pill shape');
+  assert.ok(
+    /^\d+px$/.test(btn.style.minHeight) && parseInt(btn.style.minHeight, 10) >= 32,
+    'minHeight >= 32px'
+  );
+  assert.ok(btn.style.display === 'inline-flex' || /flex/.test(btn.style.display),
+    'display is inline-flex');
+  assert.ok(
+    btn.style.background && btn.style.background.includes('gradient'),
+    'has gradient background'
+  );
+});
+
+// ─── 34. panel style contract ───────────────────────────────────────────────
+
+test('panel has full-width, max-height, overflow-y auto, and warm surface', () => {
+  const dom = createDom();
+  const ns = loadModules(dom, async () => ({ ok: true, state: 'loaded_empty', comments: [] }));
+  const control = ns.createTreeCommentsReadOnlyControl({ i18n: (k, fb) => fb, treeId: VALID_TREE_ID });
+  const panel = control.getPanelElement();
+  assert.equal(panel.style.width, '100%', 'full width');
+  assert.equal(panel.style.boxSizing, 'border-box', 'border-box sizing');
+  assert.ok(
+    /^\d+px$/.test(panel.style.maxHeight) && parseInt(panel.style.maxHeight, 10) > 0,
+    'positive maxHeight for scroll containment'
+  );
+  assert.equal(panel.style.overflowY, 'auto', 'overflow-y auto for long lists');
+  assert.ok(
+    panel.style.background && panel.style.background.includes('gradient'),
+    'warm surface gradient background'
+  );
+});
+
+// ─── 35. list style contract ────────────────────────────────────────────────
+
+test('list removes default ul styles and uses flex column layout', () => {
+  const dom = createDom();
+  const ns = loadModules(dom, async () => ({ ok: true, state: 'loaded_empty', comments: [] }));
+  const control = ns.createTreeCommentsReadOnlyControl({ i18n: (k, fb) => fb, treeId: VALID_TREE_ID });
+  control.open();
+  const list = dom.document.getElementById('wholeTreeCommentsList');
+  // Must not render browser default bullet markers
+  assert.equal(list.style.listStyle, 'none', 'no list bullets');
+  assert.equal(list.style.margin, '0', 'no default margin');
+  assert.equal(list.style.padding, '0', 'no default padding');
+  assert.equal(list.style.display, 'flex', 'flex display');
+  assert.equal(list.style.flexDirection, 'column', 'column direction');
+});
+
+// ─── 36. comment body wrapping contract ─────────────────────────────────────
+
+test('comment body has pre-wrap and overflow-wrap to prevent layout breakage', async () => {
+  const dom = createDom();
+  const ns = loadModules(dom, async () => ({
+    ok: true, state: 'loaded_with_comments',
+    comments: [{ id: 'c1', treeId: VALID_TREE_ID, body: 'https://example.com/very-long-url-that-should-not-break-layout', createdAt: 't', updatedAt: 't', authorDisplayLabel: 'a' }],
+  }));
+  const control = ns.createTreeCommentsReadOnlyControl({ i18n: (k, fb) => fb, treeId: VALID_TREE_ID });
+  control.open();
+  await flush();
+  const li = dom.document.getElementById('wholeTreeCommentsList').children[0];
+  const bodyP = li.children[0];
+  assert.equal(bodyP.style.whiteSpace, 'pre-wrap', 'pre-wrap for newline preservation');
+  assert.ok(
+    bodyP.style.overflowWrap === 'anywhere' || bodyP.style.wordBreak === 'break-word',
+    'overflow protection for long content'
+  );
+  const meta = li.children[1];
+  assert.ok(meta.style.fontSize && parseInt(meta.style.fontSize, 10) <= 12,
+    'meta text is smaller (<=12px)');
+  assert.ok(meta.style.color !== '', 'meta has a color set');
+});
+
+// ─── 37. retry button is a proper styled button ────────────────────────────
+
+test('retry button is a proper button with secondary pill style', async () => {
+  const dom = createDom();
+  const ns = loadModules(dom, async () => ({ ok: false, state: 'upstream_unavailable' }));
+  const control = ns.createTreeCommentsReadOnlyControl({ i18n: (k, fb) => fb, treeId: VALID_TREE_ID });
+  control.open();
+  await flush();
+  const panel = control.getPanelElement();
+  const retry = panel.querySelector('#wholeTreeCommentsRetry');
+  assert.ok(retry, 'retry button exists in error state');
+  assert.equal(retry.tagName, 'BUTTON');
+  assert.equal(retry.type, 'button');
+  assert.equal(retry.style.borderRadius, '999px', 'pill shape');
+  assert.ok(retry.getAttribute('aria-label'), 'retry has accessible label');
+});
+
+// ─── 38. tree comments control does not modify tree-like or share controls ──
+
+test('tree comments control does not modify tree-like or share button DOM', () => {
+  const dom = createDom();
+  const ns = loadModules(dom, async () => ({ ok: true, state: 'loaded_empty', comments: [] }));
+  const control = ns.createTreeCommentsReadOnlyControl({ i18n: (k, fb) => fb, treeId: VALID_TREE_ID });
+  const btn = control.getElement();
+  // The control must not interfere with other action elements
+  assert.equal(btn.id, 'wholeTreeCommentsToggle', 'dedicated toggle id');
+  const panel = control.getPanelElement();
+  assert.equal(panel.id, 'wholeTreeCommentsPanel', 'dedicated panel id');
+  // No global class names that collide with existing controls
+  assert.ok(!btn.className.includes('vv-'), 'no vv- namespace collision');
 });

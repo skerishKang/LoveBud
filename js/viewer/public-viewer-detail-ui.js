@@ -679,9 +679,10 @@
                     }
                 }
                 if (_cachedTreeCommentsControl) {
-                    if (typeof _cachedTreeCommentsControl.reset === 'function') {
-                        _cachedTreeCommentsControl.reset(treeId);
-                    }
+                    // reset(treeId) is deliberately NOT called here.
+                    // The cached control is only nulled (line ~616) when treeId
+                    // actually changes. A same-tree rerender (e.g. selected
+                    // moment switch) must preserve panel state and cache.
                     if (_cachedTreeCommentsControl.getElement) {
                         treeCommentsControlEl = _cachedTreeCommentsControl.getElement();
                     }
