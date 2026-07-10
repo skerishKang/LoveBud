@@ -143,6 +143,12 @@ Global focus/visibility hardening 판단이 필요하면 아래를 추가로 읽
 - [USER_FLOW.md](./product/USER_FLOW.md) - 사용자 흐름
 - [DATA_NAMING_RULE.md](./product/DATA_NAMING_RULE.md) - 데이터 명명 규칙
 - [READONLY_SHARE_SCOPE.md](./product/READONLY_SHARE_SCOPE.md) - 읽기 전용 공유 범위
+- [lovebud-tree-comment-storage-schema-boundary-audit.md](./product/lovebud-tree-comment-storage-schema-boundary-audit.md) - #3382/#3388 tree-level comment storage schema boundary audit (source-only, no migration)
+- [lovebud-tree-comments-legacy-schema-reconciliation-runbook.md](./product/lovebud-tree-comments-legacy-schema-reconciliation-runbook.md) - #3423/#3418 legacy `tree_comments` reconciliation runbook (in-place ALTER, fail-closed, no destructive ops, rollback script prepared)
+- [scripts/migration-reconcile-tree-comments-legacy-schema.sql](./scripts/migration-reconcile-tree-comments-legacy-schema.sql) - #3423 legacy `tree_comments` → canonical reconcile migration (static-only, not applied)
+- [scripts/rollback-tree-comments-legacy-reconcile.sql](./scripts/rollback-tree-comments-legacy-reconcile.sql) - #3423 rollback to exact legacy 8-column schema (explicit approval only, zero-row guard)
+- [tests/contracts/migration-tree-comments-legacy-reconcile-contract.test.cjs](./tests/contracts/migration-tree-comments-legacy-reconcile-contract.test.cjs) - #3423 reconcile migration contract test
+- [tests/contracts/rollback-tree-comments-legacy-reconcile-contract.test.cjs](./tests/contracts/rollback-tree-comments-legacy-reconcile-contract.test.cjs) - #3423 rollback script contract test
 
 ## design 문서군
 
