@@ -194,6 +194,7 @@ Reference 문서는 `docs/reference/` 아래에 정리됩니다.
    - [PUBLIC_VIEWER_SHELL_SPLIT_AUDIT.md](./engineering/PUBLIC_VIEWER_SHELL_SPLIT_AUDIT.md) - #2686 public viewer shell responsibility map, global namespace inventory, DOM ownership, low-risk split candidates, one-file-at-a-time follow-up plan
    - [AUTH_FLOW_OWNERSHIP_AUDIT.md](./engineering/AUTH_FLOW_OWNERSHIP_AUDIT.md) - #2712 auth entrypoints by page, Firebase init/listener ownership, cached-session lifecycle, protected-route lifecycle, login-page lifecycle, duplicated responsibilities, staged refactor plan
    - [global-namespace-bridges-audit-report.md](./audit/global-namespace-bridges-audit-report.md) - #3120 Global namespace bridges (window.*) audit report by boundary
+  - [lovebud-changeability-production-parity-audit.md](./engineering/lovebud-changeability-production-parity-audit.md) - #3425 read-only architecture audit foundation: schema drift, test-layer gaps, deployment revision gaps, CSS scoping risks, legacy retention, domain boundaries, change-risk model, child-issue candidates (no rewrite, no production mutation)
 
 ## security 문서군
 
