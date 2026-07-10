@@ -54,75 +54,210 @@ LOCK TABLE public.tree_comments IN SHARE ROW EXCLUSIVE MODE;
 DO $$
 DECLARE
   v_rows bigint;
-  v_rec_ok integer;
-  v_legacy_ok integer;
-  v_comments integer;
-  v_canon_cols integer;
-  v_body integer;
-  v_owner integer;
-  v_target_kind integer;
-  v_target_id integer;
-  v_pkid text;
-  v_pkcdef text;
-  v_canon_check integer;
-  v_added_idx integer;
+  v_total_cols integer;
+  v_legacy_markers integer;
+  v_canon_extra integer;
+  v_trees_id_type text;
+  v_trees_id_udt text;
+  v_trees_id_null text;
+  v_pk_cols text[];
+  v_all_con integer;
+  v_check_con integer;
+  v_fk_total integer;
+  v_fk_tree integer;
+  v_fk_author integer;
+  v_chk_kind integer;
+  v_chk_tid integer;
+  v_inbound_fk integer;
+  v_idx_tree integer;
+  v_idx_owner integer;
+  v_idx_created integer;
+  v_trig integer;
+  v_rls integer;
+  v_views integer;
+  v_matviews integer;
 BEGIN
-  -- Zero-row guard: rollback is only safe when nothing has been written.
+  -- ── Zero-row guard: rollback is only safe when nothing has been written. ─────
   SELECT count(*) INTO v_rows FROM public.tree_comments;
   IF v_rows <> 0 THEN
     RAISE EXCEPTION 'ROLLBACK PRECONDITION FAIL: tree_comments row_count=% (expected 0); abort to avoid data loss', v_rows;
   END IF;
 
-  -- Confirm the table is in the EXACT reconciled shape before reverting.
-  SELECT count(*) INTO v_body FROM information_schema.columns WHERE table_schema='public' AND table_name='tree_comments' AND column_name='body';
-  SELECT count(*) INTO v_owner FROM information_schema.columns WHERE table_schema='public' AND table_name='tree_comments' AND column_name='owner_id';
-  SELECT count(*) INTO v_target_kind FROM information_schema.columns WHERE table_schema='public' AND table_name='tree_comments' AND column_name='target_kind';
-  SELECT count(*) INTO v_target_id FROM information_schema.columns WHERE table_schema='public' AND table_name='tree_comments' AND column_name='target_id';
-  IF NOT (v_body > 0 AND v_owner > 0 AND v_target_kind > 0 AND v_target_id > 0) THEN
-    RAISE EXCEPTION 'ROLLBACK PRECONDITION FAIL: table is not the reconciled shape (body=% owner_id=% target_kind=% target_id=%); abort',
-      v_body, v_owner, v_target_kind, v_target_id;
+  -- ── Runtime assertion that public.trees.id is text (FK compatibility premise) ─
+  SELECT data_type, udt_name, is_nullable INTO v_trees_id_type, v_trees_id_udt, v_trees_id_null
+  FROM information_schema.columns
+  WHERE table_schema = 'public' AND table_name = 'trees' AND column_name = 'id';
+  IF v_trees_id_type IS NULL THEN
+    RAISE EXCEPTION 'PREFLIGHT FAIL: public.trees.id must be text (column not found)';
+  END IF;
+  IF v_trees_id_type <> 'text' OR v_trees_id_udt <> 'text' OR v_trees_id_null <> 'NO' THEN
+    RAISE EXCEPTION 'PREFLIGHT FAIL: public.trees.id must be text (got %/%/%)', v_trees_id_type, v_trees_id_udt, v_trees_id_null;
   END IF;
 
-  -- Canonical PK (id) must be present.
-  SELECT conname, pg_get_constraintdef(oid) INTO v_pkid, v_pkcdef
-  FROM pg_constraint WHERE conrelid='public.tree_comments'::regclass AND contype='p';
-  IF v_pkcdef IS NULL OR v_pkcdef NOT ILIKE '%PRIMARY KEY%id%' OR v_pkcdef ILIKE '%tree_id%' THEN
-    RAISE EXCEPTION 'ROLLBACK PRECONDITION FAIL: canonical PRIMARY KEY (id) not present, got %', v_pkcdef;
+  -- ── Exact reconciled 12-column shape (8 legacy markers + 4 canonical-only) ───
+  SELECT count(*) INTO v_total_cols
+  FROM information_schema.columns
+  WHERE table_schema='public' AND table_name='tree_comments';
+  SELECT count(*) INTO v_legacy_markers
+  FROM information_schema.columns
+  WHERE table_schema='public' AND table_name='tree_comments'
+    AND column_name IN ('id','tree_id','author_id','author_display_name','is_deleted','created_at','updated_at','payload');
+  SELECT count(*) INTO v_canon_extra
+  FROM information_schema.columns
+  WHERE table_schema='public' AND table_name='tree_comments'
+    AND column_name IN ('owner_id','body','target_kind','target_id');
+  IF NOT (v_total_cols = 12 AND v_legacy_markers = 8 AND v_canon_extra = 4) THEN
+    RAISE EXCEPTION 'ROLLBACK PRECONDITION FAIL: table is not the exact reconciled 12-column shape (total=%, legacy_markers=%, canonical_only=%)',
+      v_total_cols, v_legacy_markers, v_canon_extra;
   END IF;
 
-  -- Canonical CHECK constraints must be present.
-  SELECT count(*) INTO v_canon_check
-  FROM pg_constraint
+  -- ── Exact canonical column metadata (type / udt / length / nullable / default)
+  -- id: text NOT NULL, no default
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='tree_comments'
+    AND column_name='id' AND data_type='text' AND udt_name='text' AND is_nullable='NO' AND column_default IS NULL) THEN
+    RAISE EXCEPTION 'ROLLBACK PRECONDITION FAIL: id must be text NOT NULL with no default';
+  END IF;
+  -- tree_id: text NOT NULL, no default
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='tree_comments'
+    AND column_name='tree_id' AND data_type='text' AND udt_name='text' AND is_nullable='NO' AND column_default IS NULL) THEN
+    RAISE EXCEPTION 'ROLLBACK PRECONDITION FAIL: tree_id must be text NOT NULL with no default';
+  END IF;
+  -- owner_id: varchar(128) NOT NULL, no default
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='tree_comments'
+    AND column_name='owner_id' AND data_type='character varying' AND udt_name='varchar'
+    AND character_maximum_length=128 AND is_nullable='NO' AND column_default IS NULL) THEN
+    RAISE EXCEPTION 'ROLLBACK PRECONDITION FAIL: owner_id must be varchar(128) NOT NULL with no default';
+  END IF;
+  -- body: text NOT NULL, no default
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='tree_comments'
+    AND column_name='body' AND data_type='text' AND udt_name='text' AND is_nullable='NO' AND column_default IS NULL) THEN
+    RAISE EXCEPTION 'ROLLBACK PRECONDITION FAIL: body must be text NOT NULL with no default';
+  END IF;
+  -- target_kind: varchar(16) NOT NULL DEFAULT 'tree'
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='tree_comments'
+    AND column_name='target_kind' AND data_type='character varying' AND udt_name='varchar'
+    AND character_maximum_length=16 AND is_nullable='NO' AND column_default ILIKE '%''tree''%') THEN
+    RAISE EXCEPTION 'ROLLBACK PRECONDITION FAIL: target_kind must be varchar(16) NOT NULL DEFAULT ''tree''';
+  END IF;
+  -- target_id: text NULL
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='tree_comments'
+    AND column_name='target_id' AND data_type='text' AND udt_name='text' AND is_nullable='YES') THEN
+    RAISE EXCEPTION 'ROLLBACK PRECONDITION FAIL: target_id must be text NULL';
+  END IF;
+  -- created_at: timestamptz NOT NULL DEFAULT now()
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='tree_comments'
+    AND column_name='created_at' AND data_type='timestamp with time zone' AND udt_name='timestamptz'
+    AND is_nullable='NO' AND column_default ILIKE '%now()%') THEN
+    RAISE EXCEPTION 'ROLLBACK PRECONDITION FAIL: created_at must be timestamptz NOT NULL DEFAULT now()';
+  END IF;
+  -- updated_at: timestamptz NOT NULL DEFAULT now()
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='tree_comments'
+    AND column_name='updated_at' AND data_type='timestamp with time zone' AND udt_name='timestamptz'
+    AND is_nullable='NO' AND column_default ILIKE '%now()%') THEN
+    RAISE EXCEPTION 'ROLLBACK PRECONDITION FAIL: updated_at must be timestamptz NOT NULL DEFAULT now()';
+  END IF;
+
+  -- ── Exact canonical PRIMARY KEY = [id] (catalog array comparison) ────────────
+  SELECT array_agg(a.attname::text ORDER BY k.ord)
+  INTO v_pk_cols
+  FROM pg_constraint c
+  CROSS JOIN LATERAL unnest(c.conkey) WITH ORDINALITY AS k(attnum, ord)
+  JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = k.attnum
+  WHERE c.conrelid='public.tree_comments'::regclass AND c.contype='p';
+  IF v_pk_cols IS DISTINCT FROM ARRAY['id']::text[] THEN
+    RAISE EXCEPTION 'ROLLBACK PRECONDITION FAIL: canonical PRIMARY KEY must be exactly [id], got %', v_pk_cols;
+  END IF;
+
+  -- ── Exact allowed constraint set: 1 PK + 2 FK + 2 CHECK = 5, nothing else ────
+  SELECT count(*) INTO v_all_con FROM pg_constraint WHERE conrelid='public.tree_comments'::regclass;
+  IF v_all_con <> 5 THEN
+    RAISE EXCEPTION 'ROLLBACK PRECONDITION FAIL: reconciled constraint set must be exactly 5 (1 PK + 2 FK + 2 CHECK), got %', v_all_con;
+  END IF;
+  -- Reject any UNIQUE (u) / EXCLUDE (x) / other constraint type.
+  SELECT count(*) INTO v_check_con FROM pg_constraint
+  WHERE conrelid='public.tree_comments'::regclass AND contype NOT IN ('p','f','c');
+  IF v_check_con <> 0 THEN
+    RAISE EXCEPTION 'ROLLBACK PRECONDITION FAIL: unexpected UNIQUE/EXCLUDE constraint(s) present (count=%)', v_check_con;
+  END IF;
+  SELECT count(*) INTO v_fk_total FROM pg_constraint WHERE conrelid='public.tree_comments'::regclass AND contype='f';
+  IF v_fk_total <> 2 THEN
+    RAISE EXCEPTION 'ROLLBACK PRECONDITION FAIL: expected exactly 2 FKs, got %', v_fk_total;
+  END IF;
+
+  -- Legacy tree FK: tree_id -> public.trees(id) ON DELETE CASCADE (exact catalog).
+  SELECT count(*) INTO v_fk_tree
+  FROM pg_constraint c
+  JOIN pg_attribute a  ON a.attrelid = c.conrelid  AND a.attnum = c.conkey[1]
+  JOIN pg_attribute fa ON fa.attrelid = c.confrelid AND fa.attnum = c.confkey[1]
+  WHERE c.conrelid='public.tree_comments'::regclass AND c.contype='f'
+    AND array_length(c.conkey,1)=1 AND array_length(c.confkey,1)=1
+    AND a.attname='tree_id' AND c.confrelid='public.trees'::regclass AND fa.attname='id'
+    AND c.confdeltype='c';
+  IF v_fk_tree <> 1 THEN
+    RAISE EXCEPTION 'ROLLBACK PRECONDITION FAIL: legacy tree FK tree_id -> public.trees(id) ON DELETE CASCADE not exact (matches=%)', v_fk_tree;
+  END IF;
+  -- Legacy author FK: author_id -> public.users(id) ON DELETE SET NULL (exact catalog).
+  SELECT count(*) INTO v_fk_author
+  FROM pg_constraint c
+  JOIN pg_attribute a  ON a.attrelid = c.conrelid  AND a.attnum = c.conkey[1]
+  JOIN pg_attribute fa ON fa.attrelid = c.confrelid AND fa.attnum = c.confkey[1]
+  WHERE c.conrelid='public.tree_comments'::regclass AND c.contype='f'
+    AND array_length(c.conkey,1)=1 AND array_length(c.confkey,1)=1
+    AND a.attname='author_id' AND c.confrelid='public.users'::regclass AND fa.attname='id'
+    AND c.confdeltype='n';
+  IF v_fk_author <> 1 THEN
+    RAISE EXCEPTION 'ROLLBACK PRECONDITION FAIL: legacy author FK author_id -> public.users(id) ON DELETE SET NULL not exact (matches=%)', v_fk_author;
+  END IF;
+
+  -- Canonical CHECK constraints must both be present (target_kind + target_id/tree_id).
+  SELECT count(*) INTO v_chk_kind FROM pg_constraint
   WHERE conrelid='public.tree_comments'::regclass AND contype='c'
-    AND (pg_get_constraintdef(oid) ILIKE '%target_kind%=%''tree''%'
-         OR pg_get_constraintdef(oid) ILIKE '%target_id IS NULL OR target_id = tree_id%');
-  IF v_canon_check <> 2 THEN
-    RAISE EXCEPTION 'ROLLBACK PRECONDITION FAIL: canonical CHECK constraints missing (count=%)', v_canon_check;
+    AND pg_get_constraintdef(oid) ILIKE '%target_kind%=%''tree''%';
+  SELECT count(*) INTO v_chk_tid FROM pg_constraint
+  WHERE conrelid='public.tree_comments'::regclass AND contype='c'
+    AND pg_get_constraintdef(oid) ILIKE '%target_id IS NULL OR target_id = tree_id%';
+  IF v_chk_kind <> 1 OR v_chk_tid <> 1 THEN
+    RAISE EXCEPTION 'ROLLBACK PRECONDITION FAIL: canonical CHECK constraints missing (kind=% tid=%)', v_chk_kind, v_chk_tid;
   END IF;
 
-  -- Migration-added indexes must be present.
-  SELECT count(*) INTO v_added_idx
-  FROM pg_indexes
+  -- ── No unexpected inbound foreign keys referencing tree_comments ────────────
+  SELECT count(*) INTO v_inbound_fk
+  FROM pg_constraint WHERE contype='f' AND confrelid='public.tree_comments'::regclass;
+  IF v_inbound_fk <> 0 THEN
+    RAISE EXCEPTION 'ROLLBACK PRECONDITION FAIL: unexpected inbound FK(s) reference tree_comments (count=%)', v_inbound_fk;
+  END IF;
+
+  -- ── Exact indexes: migration-added (owner_id, created_at) + legacy (tree_id) ─
+  -- Verify not just names but the indexed column via indexdef.
+  SELECT count(*) INTO v_idx_tree FROM pg_indexes
   WHERE schemaname='public' AND tablename='tree_comments'
-    AND indexname IN ('idx_tree_comments_owner_id', 'idx_tree_comments_created_at');
-  IF v_added_idx <> 2 THEN
-    RAISE EXCEPTION 'ROLLBACK PRECONDITION FAIL: migration-added indexes missing (count=%)', v_added_idx;
+    AND indexname='idx_tree_comments_tree_id' AND indexdef ILIKE '%(tree_id)%';
+  SELECT count(*) INTO v_idx_owner FROM pg_indexes
+  WHERE schemaname='public' AND tablename='tree_comments'
+    AND indexname='idx_tree_comments_owner_id' AND indexdef ILIKE '%(owner_id)%';
+  SELECT count(*) INTO v_idx_created FROM pg_indexes
+  WHERE schemaname='public' AND tablename='tree_comments'
+    AND indexname='idx_tree_comments_created_at' AND indexdef ILIKE '%(created_at)%';
+  IF v_idx_tree <> 1 THEN
+    RAISE EXCEPTION 'ROLLBACK PRECONDITION FAIL: legacy idx_tree_comments_tree_id ON (tree_id) missing';
+  END IF;
+  IF v_idx_owner <> 1 OR v_idx_created <> 1 THEN
+    RAISE EXCEPTION 'ROLLBACK PRECONDITION FAIL: migration-added indexes missing (owner=% created=%)', v_idx_owner, v_idx_created;
   END IF;
 
-  -- Legacy-only columns must still be present (preserved by migration).
-  SELECT count(*) INTO v_legacy_ok FROM information_schema.columns
-  WHERE table_schema='public' AND table_name='tree_comments'
-    AND column_name IN ('author_id', 'author_display_name', 'is_deleted', 'payload');
-  IF v_legacy_ok <> 4 THEN
-    RAISE EXCEPTION 'ROLLBACK PRECONDITION FAIL: legacy columns missing (count=%), unexpected schema', v_legacy_ok;
+  -- ── No risky dependent objects (triggers / RLS / views / matviews) ──────────
+  SELECT count(*) INTO v_trig FROM pg_trigger WHERE tgrelid='public.tree_comments'::regclass AND NOT tgisinternal;
+  IF v_trig <> 0 THEN
+    RAISE EXCEPTION 'ROLLBACK PRECONDITION FAIL: unexpected triggers present on tree_comments (count=%)', v_trig;
   END IF;
-
-  -- Extra unexpected columns => fail closed.
-  SELECT count(*) INTO v_canon_cols FROM information_schema.columns
-  WHERE table_schema='public' AND table_name='tree_comments'
-    AND column_name IN ('id','tree_id','author_id','author_display_name','is_deleted','created_at','updated_at','payload','owner_id','body','target_kind','target_id');
-  IF v_canon_cols <> 12 THEN
-    RAISE EXCEPTION 'ROLLBACK PRECONDITION FAIL: unexpected column count=% (expected 12 reconciled), abort', v_canon_cols;
+  SELECT count(*) INTO v_rls FROM pg_class WHERE oid='public.tree_comments'::regclass AND relrowsecurity;
+  IF v_rls <> 0 THEN
+    RAISE EXCEPTION 'ROLLBACK PRECONDITION FAIL: RLS enabled on tree_comments';
+  END IF;
+  SELECT count(*) INTO v_views FROM pg_class c JOIN pg_depend d ON d.refobjid='public.tree_comments'::regclass AND d.objid=c.oid WHERE c.relkind='v';
+  SELECT count(*) INTO v_matviews FROM pg_class c JOIN pg_depend d ON d.refobjid='public.tree_comments'::regclass AND d.objid=c.oid WHERE c.relkind='m';
+  IF v_views <> 0 OR v_matviews <> 0 THEN
+    RAISE EXCEPTION 'ROLLBACK PRECONDITION FAIL: dependent view/materialized view references tree_comments (v=% m=%)', v_views, v_matviews;
   END IF;
 END $$;
 
@@ -141,21 +276,26 @@ ALTER TABLE public.tree_comments
 DO $$
 DECLARE
   v_pkid text;
-  v_pkcdef text;
+  v_pk_cols text[];
 BEGIN
-  SELECT conname, pg_get_constraintdef(oid) INTO v_pkid, v_pkcdef
+  SELECT conname INTO v_pkid
   FROM pg_constraint
   WHERE conrelid='public.tree_comments'::regclass AND contype='p';
 
-  IF v_pkid IS NULL OR v_pkcdef IS NULL THEN
+  IF v_pkid IS NULL THEN
     RAISE EXCEPTION 'PK LOOKUP FAIL: no PRIMARY KEY found on tree_comments';
   END IF;
 
-  IF v_pkcdef NOT ILIKE '%PRIMARY KEY%'
-     OR regexp_replace(v_pkcdef, '.*\((.*)\)', '\1', 'i') NOT ILIKE '%id%'
-     OR regexp_replace(v_pkcdef, '.*\((.*)\)', '\1', 'i') ILIKE '%tree_id%'
-  THEN
-    RAISE EXCEPTION 'PK LOOKUP FAIL: canonical PK definition is not exactly (id): %', v_pkcdef;
+  -- Confirm the canonical PK is EXACTLY [id] via catalog arrays before touching it.
+  SELECT array_agg(a.attname::text ORDER BY k.ord)
+  INTO v_pk_cols
+  FROM pg_constraint c
+  CROSS JOIN LATERAL unnest(c.conkey) WITH ORDINALITY AS k(attnum, ord)
+  JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = k.attnum
+  WHERE c.conrelid='public.tree_comments'::regclass AND c.contype='p';
+
+  IF v_pk_cols IS DISTINCT FROM ARRAY['id']::text[] THEN
+    RAISE EXCEPTION 'PK LOOKUP FAIL: canonical PK is not exactly [id]: %', v_pk_cols;
   END IF;
 
   EXECUTE format('ALTER TABLE public.tree_comments DROP CONSTRAINT %I', v_pkid);
@@ -166,10 +306,11 @@ END $$;
 ALTER TABLE public.tree_comments
   ADD CONSTRAINT tree_comments_pkey PRIMARY KEY (tree_id, id);
 
--- 3. Remove migration-added indexes.
-DROP INDEX IF EXISTS idx_tree_comments_owner_id;
-DROP INDEX IF EXISTS idx_tree_comments_created_at;
--- Note: idx_tree_comments_tree_id is a legacy list-read index and is preserved.
+-- 3. Remove migration-added indexes (schema-qualified so a same-named index in
+-- another schema is never targeted by mistake).
+DROP INDEX IF EXISTS public.idx_tree_comments_owner_id;
+DROP INDEX IF EXISTS public.idx_tree_comments_created_at;
+-- Note: public.idx_tree_comments_tree_id is a legacy list-read index and is preserved.
 
 -- 4. Remove migration-added columns.
 ALTER TABLE public.tree_comments
@@ -198,83 +339,157 @@ ALTER TABLE public.tree_comments
 DO $$
 DECLARE
   v_cols integer;
+  v_legacy_markers integer;
+  v_canon_extra integer;
   v_rows bigint;
-  v_pkid text;
-  v_pkcdef text;
+  v_pk_cols text[];
+  v_all_con integer;
+  v_bad_con integer;
+  v_fk_total integer;
   v_fk_author integer;
   v_fk_tree integer;
-  v_body integer;
-  v_owner integer;
-  v_target_kind integer;
-  v_target_id integer;
+  v_chk_any integer;
+  v_idx_tree integer;
   v_idx_owner integer;
   v_idx_created integer;
   v_trig integer;
   v_rls integer;
   v_views integer;
+  v_matviews integer;
 BEGIN
-  -- Exactly 8 columns remain.
+  -- ── Exactly 8 columns remain = 8 legacy markers, 0 canonical-only. ──────────
   SELECT count(*) INTO v_cols FROM information_schema.columns
   WHERE table_schema='public' AND table_name='tree_comments';
-  IF v_cols <> 8 THEN
-    RAISE EXCEPTION 'ROLLBACK POST-VERIFY FAIL: column count=% (expected 8)', v_cols;
+  SELECT count(*) INTO v_legacy_markers FROM information_schema.columns
+  WHERE table_schema='public' AND table_name='tree_comments'
+    AND column_name IN ('id','tree_id','author_id','author_display_name','is_deleted','created_at','updated_at','payload');
+  SELECT count(*) INTO v_canon_extra FROM information_schema.columns
+  WHERE table_schema='public' AND table_name='tree_comments'
+    AND column_name IN ('owner_id','body','target_kind','target_id');
+  IF v_cols <> 8 OR v_legacy_markers <> 8 OR v_canon_extra <> 0 THEN
+    RAISE EXCEPTION 'ROLLBACK POST-VERIFY FAIL: not exact legacy 8-column shape (total=%, legacy_markers=%, canonical_only=%)',
+      v_cols, v_legacy_markers, v_canon_extra;
   END IF;
 
-  -- Canonical columns must be gone.
-  SELECT count(*) INTO v_body FROM information_schema.columns WHERE table_schema='public' AND table_name='tree_comments' AND column_name='body';
-  SELECT count(*) INTO v_owner FROM information_schema.columns WHERE table_schema='public' AND table_name='tree_comments' AND column_name='owner_id';
-  SELECT count(*) INTO v_target_kind FROM information_schema.columns WHERE table_schema='public' AND table_name='tree_comments' AND column_name='target_kind';
-  SELECT count(*) INTO v_target_id FROM information_schema.columns WHERE table_schema='public' AND table_name='tree_comments' AND column_name='target_id';
-  IF v_body > 0 OR v_owner > 0 OR v_target_kind > 0 OR v_target_id > 0 THEN
-    RAISE EXCEPTION 'ROLLBACK POST-VERIFY FAIL: canonical columns still present (body=% owner_id=% target_kind=% target_id=%)',
-      v_body, v_owner, v_target_kind, v_target_id;
+  -- ── Exact legacy column metadata (type / udt / nullable / default) ──────────
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='tree_comments'
+    AND column_name='id' AND data_type='text' AND udt_name='text' AND is_nullable='NO' AND column_default IS NULL) THEN
+    RAISE EXCEPTION 'ROLLBACK POST-VERIFY FAIL: id must be text NOT NULL with no default';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='tree_comments'
+    AND column_name='tree_id' AND data_type='text' AND udt_name='text' AND is_nullable='NO' AND column_default IS NULL) THEN
+    RAISE EXCEPTION 'ROLLBACK POST-VERIFY FAIL: tree_id must be text NOT NULL with no default';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='tree_comments'
+    AND column_name='author_id' AND data_type='text' AND udt_name='text' AND is_nullable='YES' AND column_default IS NULL) THEN
+    RAISE EXCEPTION 'ROLLBACK POST-VERIFY FAIL: author_id must be text NULL with no default';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='tree_comments'
+    AND column_name='author_display_name' AND data_type='text' AND udt_name='text' AND is_nullable='YES' AND column_default IS NULL) THEN
+    RAISE EXCEPTION 'ROLLBACK POST-VERIFY FAIL: author_display_name must be text NULL with no default';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='tree_comments'
+    AND column_name='is_deleted' AND data_type='boolean' AND udt_name='bool' AND is_nullable='NO' AND column_default IN ('false','FALSE')) THEN
+    RAISE EXCEPTION 'ROLLBACK POST-VERIFY FAIL: is_deleted must be boolean NOT NULL DEFAULT false';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='tree_comments'
+    AND column_name='created_at' AND data_type='timestamp with time zone' AND udt_name='timestamptz' AND is_nullable='YES' AND column_default IS NULL) THEN
+    RAISE EXCEPTION 'ROLLBACK POST-VERIFY FAIL: created_at must be timestamptz NULL with no default';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='tree_comments'
+    AND column_name='updated_at' AND data_type='timestamp with time zone' AND udt_name='timestamptz' AND is_nullable='YES' AND column_default IS NULL) THEN
+    RAISE EXCEPTION 'ROLLBACK POST-VERIFY FAIL: updated_at must be timestamptz NULL with no default';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='tree_comments'
+    AND column_name='payload' AND data_type='jsonb' AND udt_name='jsonb' AND is_nullable='NO' AND column_default = '''{}''::jsonb') THEN
+    RAISE EXCEPTION 'ROLLBACK POST-VERIFY FAIL: payload must be jsonb NOT NULL DEFAULT ''{}''::jsonb';
   END IF;
 
-  -- Legacy composite PK restored.
-  SELECT conname, pg_get_constraintdef(oid) INTO v_pkid, v_pkcdef
-  FROM pg_constraint WHERE conrelid='public.tree_comments'::regclass AND contype='p';
-  IF v_pkcdef IS NULL OR v_pkcdef NOT ILIKE '%PRIMARY KEY%' OR v_pkcdef NOT ILIKE '%tree_id%id%' THEN
-    RAISE EXCEPTION 'ROLLBACK POST-VERIFY FAIL: legacy composite PK (tree_id, id) not restored, got %', v_pkcdef;
+  -- ── Legacy composite PRIMARY KEY exactly [tree_id, id] (catalog array). ──────
+  SELECT array_agg(a.attname::text ORDER BY k.ord)
+  INTO v_pk_cols
+  FROM pg_constraint c
+  CROSS JOIN LATERAL unnest(c.conkey) WITH ORDINALITY AS k(attnum, ord)
+  JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = k.attnum
+  WHERE c.conrelid='public.tree_comments'::regclass AND c.contype='p';
+  IF v_pk_cols IS DISTINCT FROM ARRAY['tree_id','id']::text[] THEN
+    RAISE EXCEPTION 'ROLLBACK POST-VERIFY FAIL: legacy PRIMARY KEY must be exactly [tree_id, id], got %', v_pk_cols;
   END IF;
 
-  -- Legacy FKs preserved.
-  SELECT count(*) INTO v_fk_author FROM pg_constraint
-  WHERE conrelid='public.tree_comments'::regclass AND contype='f'
-    AND pg_get_constraintdef(oid) ILIKE '%FOREIGN KEY %(author_id)%REFERENCES %users%(id)%ON DELETE SET NULL%';
-  SELECT count(*) INTO v_fk_tree FROM pg_constraint
-  WHERE conrelid='public.tree_comments'::regclass AND contype='f'
-    AND pg_get_constraintdef(oid) ILIKE '%FOREIGN KEY %(tree_id)%REFERENCES %trees%(id)%ON DELETE CASCADE%';
+  -- ── Exact allowed constraint set: 1 PK + 2 FK = 3, no CHECK/UNIQUE/EXCLUDE. ──
+  SELECT count(*) INTO v_all_con FROM pg_constraint WHERE conrelid='public.tree_comments'::regclass;
+  IF v_all_con <> 3 THEN
+    RAISE EXCEPTION 'ROLLBACK POST-VERIFY FAIL: legacy constraint set must be exactly 3 (1 PK + 2 FK), got %', v_all_con;
+  END IF;
+  -- Migration-added CHECK constraints must be gone; no unexpected UNIQUE/EXCLUDE.
+  SELECT count(*) INTO v_bad_con FROM pg_constraint
+  WHERE conrelid='public.tree_comments'::regclass AND contype NOT IN ('p','f');
+  IF v_bad_con <> 0 THEN
+    RAISE EXCEPTION 'ROLLBACK POST-VERIFY FAIL: migration-added CHECK / unexpected constraint(s) still present (count=%)', v_bad_con;
+  END IF;
+  SELECT count(*) INTO v_chk_any FROM pg_constraint
+  WHERE conrelid='public.tree_comments'::regclass AND contype='c';
+  IF v_chk_any <> 0 THEN
+    RAISE EXCEPTION 'ROLLBACK POST-VERIFY FAIL: canonical CHECK constraints not removed (count=%)', v_chk_any;
+  END IF;
+  SELECT count(*) INTO v_fk_total FROM pg_constraint WHERE conrelid='public.tree_comments'::regclass AND contype='f';
+  IF v_fk_total <> 2 THEN
+    RAISE EXCEPTION 'ROLLBACK POST-VERIFY FAIL: expected exactly 2 legacy FKs, got %', v_fk_total;
+  END IF;
+
+  -- ── Legacy FKs preserved exactly (catalog conkey/confkey/confrelid/confdeltype)
+  SELECT count(*) INTO v_fk_author
+  FROM pg_constraint c
+  JOIN pg_attribute a  ON a.attrelid = c.conrelid  AND a.attnum = c.conkey[1]
+  JOIN pg_attribute fa ON fa.attrelid = c.confrelid AND fa.attnum = c.confkey[1]
+  WHERE c.conrelid='public.tree_comments'::regclass AND c.contype='f'
+    AND array_length(c.conkey,1)=1 AND array_length(c.confkey,1)=1
+    AND a.attname='author_id' AND c.confrelid='public.users'::regclass AND fa.attname='id'
+    AND c.confdeltype='n';
+  SELECT count(*) INTO v_fk_tree
+  FROM pg_constraint c
+  JOIN pg_attribute a  ON a.attrelid = c.conrelid  AND a.attnum = c.conkey[1]
+  JOIN pg_attribute fa ON fa.attrelid = c.confrelid AND fa.attnum = c.confkey[1]
+  WHERE c.conrelid='public.tree_comments'::regclass AND c.contype='f'
+    AND array_length(c.conkey,1)=1 AND array_length(c.confkey,1)=1
+    AND a.attname='tree_id' AND c.confrelid='public.trees'::regclass AND fa.attname='id'
+    AND c.confdeltype='c';
   IF v_fk_author <> 1 OR v_fk_tree <> 1 THEN
-    RAISE EXCEPTION 'ROLLBACK POST-VERIFY FAIL: legacy FKs not preserved (author=% tree=%)', v_fk_author, v_fk_tree;
+    RAISE EXCEPTION 'ROLLBACK POST-VERIFY FAIL: legacy FKs not preserved exactly (author=% tree=%)', v_fk_author, v_fk_tree;
   END IF;
 
-  -- Migration-added indexes gone.
+  -- ── No unexpected inbound FK referencing tree_comments. ─────────────────────
+  SELECT count(*) INTO v_all_con FROM pg_constraint WHERE contype='f' AND confrelid='public.tree_comments'::regclass;
+  IF v_all_con <> 0 THEN
+    RAISE EXCEPTION 'ROLLBACK POST-VERIFY FAIL: unexpected inbound FK(s) reference tree_comments (count=%)', v_all_con;
+  END IF;
+
+  -- ── Migration-added indexes gone; legacy tree_id index preserved (indexdef). ─
   SELECT count(*) INTO v_idx_owner FROM pg_indexes WHERE schemaname='public' AND tablename='tree_comments' AND indexname='idx_tree_comments_owner_id';
   SELECT count(*) INTO v_idx_created FROM pg_indexes WHERE schemaname='public' AND tablename='tree_comments' AND indexname='idx_tree_comments_created_at';
   IF v_idx_owner <> 0 OR v_idx_created <> 0 THEN
     RAISE EXCEPTION 'ROLLBACK POST-VERIFY FAIL: migration-added indexes still present (owner=% created=%)', v_idx_owner, v_idx_created;
   END IF;
-
-  -- created_at / updated_at back to NULLABLE.
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='tree_comments' AND column_name='created_at' AND is_nullable='YES') THEN
-    RAISE EXCEPTION 'ROLLBACK POST-VERIFY FAIL: created_at not reverted to NULLABLE';
-  END IF;
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='tree_comments' AND column_name='updated_at' AND is_nullable='YES') THEN
-    RAISE EXCEPTION 'ROLLBACK POST-VERIFY FAIL: updated_at not reverted to NULLABLE';
+  SELECT count(*) INTO v_idx_tree FROM pg_indexes
+  WHERE schemaname='public' AND tablename='tree_comments'
+    AND indexname='idx_tree_comments_tree_id' AND indexdef ILIKE '%(tree_id)%';
+  IF v_idx_tree <> 1 THEN
+    RAISE EXCEPTION 'ROLLBACK POST-VERIFY FAIL: legacy idx_tree_comments_tree_id ON (tree_id) not preserved';
   END IF;
 
-  -- Row count still 0.
+  -- ── Row count still 0. ──────────────────────────────────────────────────────
   SELECT count(*) INTO v_rows FROM public.tree_comments;
   IF v_rows <> 0 THEN
     RAISE EXCEPTION 'ROLLBACK POST-VERIFY FAIL: row count=% after rollback (expected 0)', v_rows;
   END IF;
 
-  -- No risky dependent objects introduced.
+  -- ── No risky dependent objects (triggers / RLS / views / matviews). ─────────
   SELECT count(*) INTO v_trig FROM pg_trigger WHERE tgrelid='public.tree_comments'::regclass AND NOT tgisinternal;
   SELECT count(*) INTO v_rls FROM pg_class WHERE oid='public.tree_comments'::regclass AND relrowsecurity;
   SELECT count(*) INTO v_views FROM pg_class c JOIN pg_depend d ON d.refobjid='public.tree_comments'::regclass AND d.objid=c.oid WHERE c.relkind='v';
-  IF v_trig <> 0 OR v_rls <> 0 OR v_views <> 0 THEN
-    RAISE EXCEPTION 'ROLLBACK POST-VERIFY FAIL: unexpected trigger/RLS/dependent view appeared after rollback';
+  SELECT count(*) INTO v_matviews FROM pg_class c JOIN pg_depend d ON d.refobjid='public.tree_comments'::regclass AND d.objid=c.oid WHERE c.relkind='m';
+  IF v_trig <> 0 OR v_rls <> 0 OR v_views <> 0 OR v_matviews <> 0 THEN
+    RAISE EXCEPTION 'ROLLBACK POST-VERIFY FAIL: unexpected trigger/RLS/dependent view/materialized view appeared after rollback';
   END IF;
 END $$;
 

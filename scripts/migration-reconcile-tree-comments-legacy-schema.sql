@@ -88,25 +88,31 @@ LOCK TABLE public.tree_comments IN SHARE ROW EXCLUSIVE MODE;
 DO $$
 DECLARE
   v_exists integer;
-  v_cols integer;
+  v_total_cols integer;
+  v_legacy_markers integer;   -- how many of the 8 legacy columns are present
+  v_canon_extra integer;      -- how many of the 4 canonical-only columns are present
   v_rows  bigint;
-  v_tree_id_type text;
-  v_tree_id_udt text;
-  v_tree_id_null text;
+  v_trees_id_type text;
+  v_trees_id_udt text;
+  v_trees_id_null text;
   v_id_type text;
   v_id_udt text;
   v_id_null text;
-  v_body integer;
-  v_owner integer;
-  v_target_kind integer;
-  v_target_id integer;
-  v_rec_ok integer;
-  v_legacy_ok integer;
+  v_id_def text;
+  v_tree_id_type text;
+  v_tree_id_udt text;
+  v_tree_id_null text;
+  v_tree_id_def text;
   v_inbound_fk integer;
-  v_pkid text;
-  v_cdef text;
+  v_all_con integer;
+  v_bad_con integer;
+  v_fk_total integer;
+  v_fk_tree integer;
+  v_fk_author integer;
+  v_pk_cols text[];
+  v_matviews integer;
 BEGIN
-  -- Table existence
+  -- ── Step 1: Table existence ────────────────────────────────────────────────
   SELECT count(*) INTO v_exists
   FROM information_schema.tables
   WHERE table_schema = 'public' AND table_name = 'tree_comments';
@@ -114,121 +120,202 @@ BEGIN
     RAISE EXCEPTION 'PREFLIGHT FAIL: tree_comments table existence=% (expected 1)', v_exists;
   END IF;
 
-  -- Exact legacy column count (8)
-  SELECT count(*) INTO v_cols
+  -- ── Step 2: Collect full column metadata (counts before any enforcement) ────
+  SELECT count(*) INTO v_total_cols
   FROM information_schema.columns
   WHERE table_schema = 'public' AND table_name = 'tree_comments';
-  IF v_cols <> 8 THEN
-    RAISE EXCEPTION 'PREFLIGHT FAIL: legacy column count=% (expected 8)', v_cols;
+
+  -- Legacy marker columns present (the exact legacy 8-column set).
+  SELECT count(*) INTO v_legacy_markers
+  FROM information_schema.columns
+  WHERE table_schema='public' AND table_name='tree_comments'
+    AND column_name IN ('id','tree_id','author_id','author_display_name','is_deleted','created_at','updated_at','payload');
+
+  -- Canonical-only columns present (the 4 columns the reconciliation adds).
+  SELECT count(*) INTO v_canon_extra
+  FROM information_schema.columns
+  WHERE table_schema='public' AND table_name='tree_comments'
+    AND column_name IN ('owner_id','body','target_kind','target_id');
+
+  -- ── Step 3: State classifier (exclusive legacy / reconciled / partial) ──────
+  -- This runs BEFORE any legacy-only count enforcement so a reconciled 12-column
+  -- table reaches the explicit STOP branch instead of a spurious count failure.
+  --
+  --   * RECONCILED : exactly 12 columns = 8 legacy markers + 4 canonical-only.
+  --   * LEGACY     : exactly 8 columns  = 8 legacy markers + 0 canonical-only.
+  --   * otherwise  : partial / unexpected schema => fail closed.
+
+  IF v_total_cols = 12 AND v_legacy_markers = 8 AND v_canon_extra = 4 THEN
+    -- Fully reconciled canonical+legacy 12-column shape: explicit STOP, no mutation.
+    RAISE EXCEPTION 'PREFLIGHT STOP: tree_comments already reconciled';
+  ELSIF v_total_cols = 8 AND v_legacy_markers = 8 AND v_canon_extra = 0 THEN
+    -- Exact legacy 8-column shape: fall through to detailed legacy assertions.
+    NULL;
+  ELSE
+    RAISE EXCEPTION 'PREFLIGHT FAIL: tree_comments is neither exact legacy (8-col) nor reconciled (12-col) shape (total=%, legacy_markers=%, canonical_only=%)',
+      v_total_cols, v_legacy_markers, v_canon_extra;
   END IF;
 
-  -- Exact legacy column-set (names only; types/nullability/default asserted separately)
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='tree_comments' AND column_name='id') OR
-     NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='tree_comments' AND column_name='tree_id') OR
-     NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='tree_comments' AND column_name='author_id') OR
-     NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='tree_comments' AND column_name='author_display_name') OR
-     NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='tree_comments' AND column_name='is_deleted') OR
-     NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='tree_comments' AND column_name='created_at') OR
-     NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='tree_comments' AND column_name='updated_at') OR
-     NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='tree_comments' AND column_name='payload')
-  THEN
-    RAISE EXCEPTION 'PREFLIGHT FAIL: legacy column-set does not match expected 8-column shape';
-  END IF;
-
-  -- Exact legacy type / udt / nullability for id (expected: text / text / NO)
-  SELECT data_type, udt_name, is_nullable INTO v_id_type, v_id_udt, v_id_null
+  -- ── Step 4: Exact legacy column metadata (type / udt / nullable / default) ──
+  -- id: text / text / NO / default NULL
+  SELECT data_type, udt_name, is_nullable, column_default INTO v_id_type, v_id_udt, v_id_null, v_id_def
   FROM information_schema.columns
   WHERE table_schema='public' AND table_name='tree_comments' AND column_name='id';
-  IF v_id_type <> 'text' OR v_id_udt <> 'text' OR v_id_null <> 'NO' THEN
-    RAISE EXCEPTION 'PREFLIGHT FAIL: expected id/tree_id text, id expected text/text NOT NULL, got %/%/%', v_id_type, v_id_udt, v_id_null;
+  IF v_id_type <> 'text' OR v_id_udt <> 'text' OR v_id_null <> 'NO' OR v_id_def IS NOT NULL THEN
+    RAISE EXCEPTION 'PREFLIGHT FAIL: id expected text/text NOT NULL with no default, got %/%/% default=%', v_id_type, v_id_udt, v_id_null, v_id_def;
   END IF;
 
-  -- Exact legacy type / udt / nullability for tree_id (expected: text / text / NO)
-  SELECT data_type, udt_name, is_nullable INTO v_tree_id_type, v_tree_id_udt, v_tree_id_null
+  -- tree_id: text / text / NO / default NULL
+  SELECT data_type, udt_name, is_nullable, column_default INTO v_tree_id_type, v_tree_id_udt, v_tree_id_null, v_tree_id_def
   FROM information_schema.columns
   WHERE table_schema='public' AND table_name='tree_comments' AND column_name='tree_id';
-  IF v_tree_id_type <> 'text' OR v_tree_id_udt <> 'text' OR v_tree_id_null <> 'NO' THEN
-    RAISE EXCEPTION 'PREFLIGHT FAIL: tree_id expected text/text NOT NULL, got %/%/%', v_tree_id_type, v_tree_id_udt, v_tree_id_null;
+  IF v_tree_id_type <> 'text' OR v_tree_id_udt <> 'text' OR v_tree_id_null <> 'NO' OR v_tree_id_def IS NOT NULL THEN
+    RAISE EXCEPTION 'PREFLIGHT FAIL: tree_id expected text/text NOT NULL with no default, got %/%/% default=%', v_tree_id_type, v_tree_id_udt, v_tree_id_null, v_tree_id_def;
   END IF;
 
-  -- Exact legacy type/nullability/default for the 6 remaining legacy columns.
-  -- author_id: text NULL ; author_display_name: text NULL
+  -- author_id: text / text / YES / default NULL
   IF NOT EXISTS (
     SELECT 1 FROM information_schema.columns
     WHERE table_schema='public' AND table_name='tree_comments'
-      AND column_name='author_id' AND data_type='text' AND is_nullable='YES'
+      AND column_name='author_id' AND data_type='text' AND udt_name='text'
+      AND is_nullable='YES' AND column_default IS NULL
   ) THEN
-    RAISE EXCEPTION 'PREFLIGHT FAIL: author_id expected text NULL';
+    RAISE EXCEPTION 'PREFLIGHT FAIL: author_id expected text NULL with no default';
   END IF;
+
+  -- author_display_name: text / text / YES / default NULL
   IF NOT EXISTS (
     SELECT 1 FROM information_schema.columns
     WHERE table_schema='public' AND table_name='tree_comments'
-      AND column_name='author_display_name' AND data_type='text' AND is_nullable='YES'
+      AND column_name='author_display_name' AND data_type='text' AND udt_name='text'
+      AND is_nullable='YES' AND column_default IS NULL
   ) THEN
-    RAISE EXCEPTION 'PREFLIGHT FAIL: author_display_name expected text NULL';
+    RAISE EXCEPTION 'PREFLIGHT FAIL: author_display_name expected text NULL with no default';
   END IF;
-  -- is_deleted: boolean NOT NULL DEFAULT false
+
+  -- is_deleted: boolean / bool / NO / default false
   IF NOT EXISTS (
     SELECT 1 FROM information_schema.columns
     WHERE table_schema='public' AND table_name='tree_comments'
-      AND column_name='is_deleted' AND data_type='boolean' AND is_nullable='NO'
-      AND column_default IN ('false', 'FALSE')
+      AND column_name='is_deleted' AND data_type='boolean' AND udt_name='bool'
+      AND is_nullable='NO' AND column_default IN ('false', 'FALSE')
   ) THEN
     RAISE EXCEPTION 'PREFLIGHT FAIL: is_deleted expected boolean NOT NULL DEFAULT false';
   END IF;
-  -- created_at: timestamptz NULL
+
+  -- created_at: timestamptz / timestamptz / YES / default NULL
   IF NOT EXISTS (
     SELECT 1 FROM information_schema.columns
     WHERE table_schema='public' AND table_name='tree_comments'
-      AND column_name='created_at' AND data_type='timestamp with time zone' AND is_nullable='YES'
+      AND column_name='created_at' AND data_type='timestamp with time zone' AND udt_name='timestamptz'
+      AND is_nullable='YES' AND column_default IS NULL
   ) THEN
-    RAISE EXCEPTION 'PREFLIGHT FAIL: created_at expected timestamptz NULL';
+    RAISE EXCEPTION 'PREFLIGHT FAIL: created_at expected timestamptz NULL with no default';
   END IF;
-  -- updated_at: timestamptz NULL
+
+  -- updated_at: timestamptz / timestamptz / YES / default NULL
   IF NOT EXISTS (
     SELECT 1 FROM information_schema.columns
     WHERE table_schema='public' AND table_name='tree_comments'
-      AND column_name='updated_at' AND data_type='timestamp with time zone' AND is_nullable='YES'
+      AND column_name='updated_at' AND data_type='timestamp with time zone' AND udt_name='timestamptz'
+      AND is_nullable='YES' AND column_default IS NULL
   ) THEN
-    RAISE EXCEPTION 'PREFLIGHT FAIL: updated_at expected timestamptz NULL';
+    RAISE EXCEPTION 'PREFLIGHT FAIL: updated_at expected timestamptz NULL with no default';
   END IF;
-  -- payload: jsonb NOT NULL DEFAULT '{}'::jsonb
+
+  -- payload: jsonb / jsonb / NO / default '{}'::jsonb
   IF NOT EXISTS (
     SELECT 1 FROM information_schema.columns
     WHERE table_schema='public' AND table_name='tree_comments'
-      AND column_name='payload' AND data_type='jsonb' AND is_nullable='NO'
-      AND column_default = '''{}''::jsonb'
+      AND column_name='payload' AND data_type='jsonb' AND udt_name='jsonb'
+      AND is_nullable='NO' AND column_default = '''{}''::jsonb'
   ) THEN
     RAISE EXCEPTION 'PREFLIGHT FAIL: payload expected jsonb NOT NULL DEFAULT ''{}''::jsonb';
   END IF;
 
-  -- Exact legacy PRIMARY KEY must be (tree_id, id)
-  SELECT conname, pg_get_constraintdef(oid) INTO v_pkid, v_cdef
+  -- ── Step 5: Runtime assertion that public.trees.id is text ──────────────────
+  -- FK compatibility (tree_id -> trees(id)) and the TEXT key-type correction both
+  -- depend on the live production type of trees.id, so assert it directly.
+  SELECT data_type, udt_name, is_nullable INTO v_trees_id_type, v_trees_id_udt, v_trees_id_null
+  FROM information_schema.columns
+  WHERE table_schema = 'public' AND table_name = 'trees' AND column_name = 'id';
+  IF v_trees_id_type IS NULL THEN
+    RAISE EXCEPTION 'PREFLIGHT FAIL: public.trees.id must be text (column not found)';
+  END IF;
+  IF v_trees_id_type <> 'text' OR v_trees_id_udt <> 'text' OR v_trees_id_null <> 'NO' THEN
+    RAISE EXCEPTION 'PREFLIGHT FAIL: public.trees.id must be text (got %/%/%)', v_trees_id_type, v_trees_id_udt, v_trees_id_null;
+  END IF;
+
+  -- ── Step 6: Exact legacy PRIMARY KEY = [tree_id, id] via catalog arrays ──────
+  -- Build the ordered PK column-name array from pg_constraint.conkey / pg_attribute.attnum.
+  -- String matching (ILIKE '%tree_id%id%') is intentionally NOT used: it would accept
+  -- (tree_id, author_id), (id, tree_id), (tree_id, id, author_id), wrong order, etc.
+  SELECT array_agg(a.attname::text ORDER BY k.ord)
+  INTO v_pk_cols
+  FROM pg_constraint c
+  CROSS JOIN LATERAL unnest(c.conkey) WITH ORDINALITY AS k(attnum, ord)
+  JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = k.attnum
+  WHERE c.conrelid = 'public.tree_comments'::regclass AND c.contype = 'p';
+  IF v_pk_cols IS DISTINCT FROM ARRAY['tree_id','id']::text[] THEN
+    RAISE EXCEPTION 'PREFLIGHT FAIL: legacy PRIMARY KEY must be exactly [tree_id, id], got %', v_pk_cols;
+  END IF;
+
+  -- ── Step 7: Exact allowed constraint set (1 PK + 2 FK, nothing else) ────────
+  SELECT count(*) INTO v_all_con
+  FROM pg_constraint WHERE conrelid='public.tree_comments'::regclass;
+  IF v_all_con <> 3 THEN
+    RAISE EXCEPTION 'PREFLIGHT FAIL: legacy constraint set must be exactly 3 (1 PK + 2 FK), got %', v_all_con;
+  END IF;
+  -- Reject any UNIQUE (u) / CHECK (c) / EXCLUDE (x) / other constraint type.
+  SELECT count(*) INTO v_bad_con
   FROM pg_constraint
-  WHERE conrelid='public.tree_comments'::regclass AND contype='p';
-  IF v_cdef IS NULL OR v_cdef NOT ILIKE '%tree_id%id%' OR v_cdef NOT ILIKE '%PRIMARY KEY%' THEN
-    RAISE EXCEPTION 'PREFLIGHT FAIL: legacy PRIMARY KEY expected (tree_id, id), got %', v_cdef;
+  WHERE conrelid='public.tree_comments'::regclass AND contype NOT IN ('p','f');
+  IF v_bad_con <> 0 THEN
+    RAISE EXCEPTION 'PREFLIGHT FAIL: unexpected UNIQUE/CHECK/EXCLUDE constraint(s) present (count=%)', v_bad_con;
+  END IF;
+  -- Exactly 2 outbound FKs.
+  SELECT count(*) INTO v_fk_total
+  FROM pg_constraint WHERE conrelid='public.tree_comments'::regclass AND contype='f';
+  IF v_fk_total <> 2 THEN
+    RAISE EXCEPTION 'PREFLIGHT FAIL: expected exactly 2 legacy FKs, got %', v_fk_total;
   END IF;
 
-  -- Exact legacy FOREIGN KEYs:
-  --   author_id -> users(id) ON DELETE SET NULL
-  --   tree_id   -> trees(id) ON DELETE CASCADE
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_constraint
-    WHERE conrelid='public.tree_comments'::regclass AND contype='f'
-      AND pg_get_constraintdef(oid) ILIKE '%FOREIGN KEY %(author_id)%REFERENCES %users%(id)%ON DELETE SET NULL%'
-  ) THEN
-    RAISE EXCEPTION 'PREFLIGHT FAIL: FK author_id -> users(id) ON DELETE SET NULL not found/changed';
-  END IF;
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_constraint
-    WHERE conrelid='public.tree_comments'::regclass AND contype='f'
-      AND pg_get_constraintdef(oid) ILIKE '%FOREIGN KEY %(tree_id)%REFERENCES %trees%(id)%ON DELETE CASCADE%'
-  ) THEN
-    RAISE EXCEPTION 'PREFLIGHT FAIL: FK tree_id -> trees(id) ON DELETE CASCADE not found/changed';
+  -- ── Step 8: Exact legacy FK verification via conkey/confkey/confrelid/confdeltype
+  -- tree_id -> public.trees(id) ON DELETE CASCADE (confdeltype='c')
+  SELECT count(*) INTO v_fk_tree
+  FROM pg_constraint c
+  JOIN pg_attribute a  ON a.attrelid = c.conrelid  AND a.attnum = c.conkey[1]
+  JOIN pg_attribute fa ON fa.attrelid = c.confrelid AND fa.attnum = c.confkey[1]
+  WHERE c.conrelid = 'public.tree_comments'::regclass
+    AND c.contype = 'f'
+    AND array_length(c.conkey, 1) = 1
+    AND array_length(c.confkey, 1) = 1
+    AND a.attname = 'tree_id'
+    AND c.confrelid = 'public.trees'::regclass
+    AND fa.attname = 'id'
+    AND c.confdeltype = 'c';
+  IF v_fk_tree <> 1 THEN
+    RAISE EXCEPTION 'PREFLIGHT FAIL: FK tree_id -> public.trees(id) ON DELETE CASCADE not found/exact (matches=%)', v_fk_tree;
   END IF;
 
-  -- No unexpected INBOUND foreign keys referencing tree_comments.
+  -- author_id -> public.users(id) ON DELETE SET NULL (confdeltype='n')
+  SELECT count(*) INTO v_fk_author
+  FROM pg_constraint c
+  JOIN pg_attribute a  ON a.attrelid = c.conrelid  AND a.attnum = c.conkey[1]
+  JOIN pg_attribute fa ON fa.attrelid = c.confrelid AND fa.attnum = c.confkey[1]
+  WHERE c.conrelid = 'public.tree_comments'::regclass
+    AND c.contype = 'f'
+    AND array_length(c.conkey, 1) = 1
+    AND array_length(c.confkey, 1) = 1
+    AND a.attname = 'author_id'
+    AND c.confrelid = 'public.users'::regclass
+    AND fa.attname = 'id'
+    AND c.confdeltype = 'n';
+  IF v_fk_author <> 1 THEN
+    RAISE EXCEPTION 'PREFLIGHT FAIL: FK author_id -> public.users(id) ON DELETE SET NULL not found/exact (matches=%)', v_fk_author;
+  END IF;
+
+  -- ── Step 9: No unexpected inbound foreign keys referencing tree_comments ─────
   SELECT count(*) INTO v_inbound_fk
   FROM pg_constraint c
   WHERE c.contype='f' AND c.confrelid='public.tree_comments'::regclass;
@@ -236,29 +323,13 @@ BEGIN
     RAISE EXCEPTION 'PREFLIGHT FAIL: unexpected inbound FK(s) reference tree_comments (count=%)', v_inbound_fk;
   END IF;
 
-  -- Missing canonical columns (must be absent in legacy shape)
-  SELECT count(*) INTO v_body FROM information_schema.columns WHERE table_schema='public' AND table_name='tree_comments' AND column_name='body';
-  SELECT count(*) INTO v_owner FROM information_schema.columns WHERE table_schema='public' AND table_name='tree_comments' AND column_name='owner_id';
-  SELECT count(*) INTO v_target_kind FROM information_schema.columns WHERE table_schema='public' AND table_name='tree_comments' AND column_name='target_kind';
-  SELECT count(*) INTO v_target_id FROM information_schema.columns WHERE table_schema='public' AND table_name='tree_comments' AND column_name='target_id';
-  IF v_body > 0 OR v_owner > 0 OR v_target_kind > 0 OR v_target_id > 0 THEN
-    -- All four canonical columns present => fully reconciled => explicit STOP.
-    -- Some but not all present => partial migration => fail closed.
-    IF v_body > 0 AND v_owner > 0 AND v_target_kind > 0 AND v_target_id > 0 THEN
-      RAISE EXCEPTION 'PREFLIGHT STOP: tree_comments already reconciled';
-    ELSE
-      RAISE EXCEPTION 'PREFLIGHT FAIL: partial canonical schema detected (body=% owner_id=% target_kind=% target_id=%); abort',
-        v_body, v_owner, v_target_kind, v_target_id;
-    END IF;
-  END IF;
-
-  -- Zero-row guard (no data to migrate, no DELETE needed)
+  -- ── Step 10: Zero-row guard (no data to migrate, no DELETE needed) ──────────
   SELECT count(*) INTO v_rows FROM public.tree_comments;
   IF v_rows <> 0 THEN
     RAISE EXCEPTION 'PREFLIGHT FAIL: tree_comments row_count=% (expected 0); abort to avoid destructive copy', v_rows;
   END IF;
 
-  -- No risky dependent objects (triggers / RLS / dependent views)
+  -- ── Step 11: No risky dependent objects (triggers / RLS / views / matviews) ──
   IF EXISTS (
     SELECT 1 FROM pg_trigger
     WHERE tgrelid='public.tree_comments'::regclass AND NOT tgisinternal
@@ -278,23 +349,12 @@ BEGIN
   ) THEN
     RAISE EXCEPTION 'PREFLIGHT FAIL: dependent views reference tree_comments';
   END IF;
-
-  -- Canonical-state discrimination (final defense): if the table already matches
-  -- the full canonical shape, it is reconciled -> explicit STOP.
-  SELECT count(*) INTO v_rec_ok FROM information_schema.columns
-  WHERE table_schema='public' AND table_name='tree_comments'
-    AND column_name IN ('id','tree_id','owner_id','body','target_kind','target_id','created_at','updated_at');
-  IF v_rec_ok = 8 THEN
-    RAISE EXCEPTION 'PREFLIGHT STOP: tree_comments already reconciled';
-  END IF;
-
-  -- Legacy-only discrimination: the legacy shape has exactly 8 columns and none of the
-  -- canonical ones. If we reach here, the table is the exact legacy shape -> proceed.
-  SELECT count(*) INTO v_legacy_ok FROM information_schema.columns
-  WHERE table_schema='public' AND table_name='tree_comments'
-    AND column_name IN ('id','tree_id','author_id','author_display_name','is_deleted','created_at','updated_at','payload');
-  IF v_legacy_ok <> 8 THEN
-    RAISE EXCEPTION 'PREFLIGHT FAIL: tree_comments is neither exact legacy nor reconciled (partial/unexpected schema)';
+  SELECT count(*) INTO v_matviews
+  FROM pg_class c
+  JOIN pg_depend d ON d.refobjid='public.tree_comments'::regclass AND d.objid=c.oid
+  WHERE c.relkind='m';
+  IF v_matviews <> 0 THEN
+    RAISE EXCEPTION 'PREFLIGHT FAIL: dependent materialized views reference tree_comments (count=%)', v_matviews;
   END IF;
 END $$;
 
@@ -347,23 +407,26 @@ ALTER TABLE public.tree_comments
 DO $$
 DECLARE
   v_pkid text;
-  v_pkcdef text;
+  v_pk_cols text[];
 BEGIN
-  SELECT conname, pg_get_constraintdef(oid) INTO v_pkid, v_pkcdef
+  SELECT conname INTO v_pkid
   FROM pg_constraint
   WHERE conrelid='public.tree_comments'::regclass AND contype='p';
 
-  IF v_pkid IS NULL OR v_pkcdef IS NULL THEN
+  IF v_pkid IS NULL THEN
     RAISE EXCEPTION 'PK LOOKUP FAIL: no PRIMARY KEY found on tree_comments';
   END IF;
 
-  -- Confirm the legacy PK is exactly (tree_id, id) before touching it.
-  IF v_pkcdef NOT ILIKE '%PRIMARY KEY%'
-     OR regexp_replace(v_pkcdef, '.*\((.*)\)', '\1', 'i') NOT ILIKE '%tree_id%id%'
-     OR regexp_replace(v_pkcdef, '.*\((.*)\)', '\1', 'i') ILIKE '%owner_id%'
-     OR regexp_replace(v_pkcdef, '.*\((.*)\)', '\1', 'i') ILIKE '%target_id%'
-  THEN
-    RAISE EXCEPTION 'PK LOOKUP FAIL: legacy PK definition is not exactly (tree_id, id): %', v_pkcdef;
+  -- Confirm the legacy PK is EXACTLY [tree_id, id] via catalog arrays before touching it.
+  SELECT array_agg(a.attname::text ORDER BY k.ord)
+  INTO v_pk_cols
+  FROM pg_constraint c
+  CROSS JOIN LATERAL unnest(c.conkey) WITH ORDINALITY AS k(attnum, ord)
+  JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = k.attnum
+  WHERE c.conrelid='public.tree_comments'::regclass AND c.contype='p';
+
+  IF v_pk_cols IS DISTINCT FROM ARRAY['tree_id','id']::text[] THEN
+    RAISE EXCEPTION 'PK LOOKUP FAIL: legacy PK is not exactly [tree_id, id]: %', v_pk_cols;
   END IF;
 
   EXECUTE format('ALTER TABLE public.tree_comments DROP CONSTRAINT %I', v_pkid);
@@ -389,8 +452,7 @@ DECLARE
   v_created_def integer;
   v_updated_def integer;
   v_target_kind_default integer;
-  v_pkid text;
-  v_pkcdef text;
+  v_pk_cols text[];
   v_fk_tree integer;
   v_chk_kind integer;
   v_chk_tid integer;
@@ -404,6 +466,7 @@ DECLARE
   v_trig integer;
   v_rls integer;
   v_views integer;
+  v_matviews integer;
   v_sentinel integer;
 BEGIN
   -- Canonical columns present
@@ -438,11 +501,15 @@ BEGIN
     RAISE EXCEPTION 'POST-VERIFY FAIL: created_at/updated_at must default to NOW()';
   END IF;
 
-  -- PRIMARY KEY (id)
-  SELECT conname, pg_get_constraintdef(oid) INTO v_pkid, v_pkcdef
-  FROM pg_constraint WHERE conrelid='public.tree_comments'::regclass AND contype='p';
-  IF v_pkcdef IS NULL OR v_pkcdef NOT ILIKE '%PRIMARY KEY%id%' OR v_pkcdef ILIKE '%tree_id%' THEN
-    RAISE EXCEPTION 'POST-VERIFY FAIL: PRIMARY KEY must be (id), got %', v_pkcdef;
+  -- PRIMARY KEY must be exactly [id] (catalog array comparison, not string match)
+  SELECT array_agg(a.attname::text ORDER BY k.ord)
+  INTO v_pk_cols
+  FROM pg_constraint c
+  CROSS JOIN LATERAL unnest(c.conkey) WITH ORDINALITY AS k(attnum, ord)
+  JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = k.attnum
+  WHERE c.conrelid='public.tree_comments'::regclass AND c.contype='p';
+  IF v_pk_cols IS DISTINCT FROM ARRAY['id']::text[] THEN
+    RAISE EXCEPTION 'POST-VERIFY FAIL: PRIMARY KEY must be exactly [id], got %', v_pk_cols;
   END IF;
 
   -- tree_id FK preserved
@@ -498,8 +565,9 @@ BEGIN
   SELECT count(*) INTO v_trig FROM pg_trigger WHERE tgrelid='public.tree_comments'::regclass AND NOT tgisinternal;
   SELECT count(*) INTO v_rls FROM pg_class WHERE oid='public.tree_comments'::regclass AND relrowsecurity;
   SELECT count(*) INTO v_views FROM pg_class c JOIN pg_depend d ON d.refobjid='public.tree_comments'::regclass AND d.objid=c.oid WHERE c.relkind='v';
-  IF v_trig <> 0 OR v_rls <> 0 OR v_views <> 0 THEN
-    RAISE EXCEPTION 'POST-VERIFY FAIL: unexpected trigger/RLS/dependent view appeared after migration';
+  SELECT count(*) INTO v_matviews FROM pg_class c JOIN pg_depend d ON d.refobjid='public.tree_comments'::regclass AND d.objid=c.oid WHERE c.relkind='m';
+  IF v_trig <> 0 OR v_rls <> 0 OR v_views <> 0 OR v_matviews <> 0 THEN
+    RAISE EXCEPTION 'POST-VERIFY FAIL: unexpected trigger/RLS/dependent view/materialized view appeared after migration';
   END IF;
 END $$;
 

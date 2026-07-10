@@ -93,46 +93,108 @@ test('reconcile migration does not use invalid ADD CONSTRAINT IF NOT EXISTS synt
   );
 });
 
-// ─── 3. Exact eight-column legacy shape assertion ───────────────────────────
+// ─── 3. Re-run state classifier (reconciled / legacy / partial, exclusive) ───
 
-test('reconcile migration asserts exact 8-column legacy shape', () => {
-  assert.match(sql, /legacy\s+column\s+count[^;]*expected\s+8/i, 'Must assert legacy column count = 8');
+test('reconcile migration classifies reconciled/legacy/partial before legacy-only enforcement', () => {
+  // Exclusive state classifier: exact 12-col reconciled, exact 8-col legacy, else fail.
+  assert.match(sql, /v_total_cols\s*=\s*12\s+AND\s+v_legacy_markers\s*=\s*8\s+AND\s+v_canon_extra\s*=\s*4/i,
+    'Must classify exact reconciled 12-column shape');
+  assert.match(sql, /v_total_cols\s*=\s*8\s+AND\s+v_legacy_markers\s*=\s*8\s+AND\s+v_canon_extra\s*=\s*0/i,
+    'Must classify exact legacy 8-column shape');
+});
+
+test('reconcile migration reconciled STOP is reachable BEFORE detailed legacy metadata checks', () => {
+  // The reconciled STOP must appear before the legacy id/tree_id type assertions so a
+  // 12-column reconciled table hits the explicit STOP instead of a spurious count failure.
+  const stopIdx = sql.indexOf('PREFLIGHT STOP: tree_comments already reconciled');
+  const legacyIdTypeIdx = sql.indexOf('id expected text/text NOT NULL with no default');
+  const legacyPkIdx = sql.indexOf('legacy PRIMARY KEY must be exactly [tree_id, id]');
+  assert.ok(stopIdx > 0, 'STOP branch must exist');
+  assert.ok(legacyIdTypeIdx > 0, 'legacy id metadata assertion must exist');
+  assert.ok(legacyPkIdx > 0, 'legacy PK assertion must exist');
+  assert.ok(stopIdx < legacyIdTypeIdx, 'reconciled STOP must precede legacy id metadata assertion');
+  assert.ok(stopIdx < legacyPkIdx, 'reconciled STOP must precede legacy PK enforcement');
+});
+
+test('reconcile migration does NOT enforce a legacy-only column count before classification', () => {
+  // The old failing pattern "legacy column count ... expected 8" ran before canonical
+  // discrimination and made the reconciled STOP unreachable. It must be gone.
+  assert.equal(/legacy\s+column\s+count[^\n]*expected\s+8/i.test(sql), false,
+    'Must NOT enforce a standalone legacy column-count=8 check before state classification');
+});
+
+// ─── 4. Exact eight-column legacy metadata (type/udt/nullable/default) ───────
+
+test('reconcile migration references all eight legacy columns', () => {
   for (const col of ['id', 'tree_id', 'author_id', 'author_display_name', 'is_deleted', 'created_at', 'updated_at', 'payload']) {
     assert.ok(
-      new RegExp(`column_name='${col}'`, 'i').test(sql) || new RegExp(`column_name="${col}"`, 'i').test(sql),
+      new RegExp(`column_name='${col}'`, 'i').test(sql),
       `Preflight must reference legacy column ${col}`
     );
   }
 });
 
 test('reconcile migration asserts exact legacy column metadata (type/udt/nullable/default)', () => {
-  // id: text / text / NO
-  assert.match(sql, /id expected text\/text NOT NULL/i, 'Must assert id = text NOT NULL');
-  // tree_id: text / text / NO
-  assert.match(sql, /tree_id expected text\/text NOT NULL/i, 'Must assert tree_id = text NOT NULL');
-  // payload: jsonb NOT NULL DEFAULT '{}'::jsonb
+  assert.match(sql, /id expected text\/text NOT NULL with no default/i, 'Must assert id = text NOT NULL, no default');
+  assert.match(sql, /tree_id expected text\/text NOT NULL with no default/i, 'Must assert tree_id = text NOT NULL, no default');
+  assert.match(sql, /author_id expected text NULL with no default/i, 'Must assert author_id = text NULL, no default');
+  assert.match(sql, /author_display_name expected text NULL with no default/i, 'Must assert author_display_name = text NULL, no default');
+  assert.match(sql, /is_deleted expected boolean NOT NULL DEFAULT false/i, 'Must assert is_deleted default false');
+  assert.match(sql, /created_at expected timestamptz NULL with no default/i, 'Must assert created_at = timestamptz NULL, no default');
+  assert.match(sql, /updated_at expected timestamptz NULL with no default/i, 'Must assert updated_at = timestamptz NULL, no default');
   assert.match(sql, /payload expected jsonb NOT NULL DEFAULT/i, 'Must assert payload = jsonb NOT NULL DEFAULT');
-  // created_at/updated_at timestamptz NULL
-  assert.match(sql, /created_at expected timestamptz NULL/i, 'Must assert created_at = timestamptz NULL');
-  assert.match(sql, /updated_at expected timestamptz NULL/i, 'Must assert updated_at = timestamptz NULL');
+});
+
+test('reconcile migration asserts default absence for nullable legacy columns via column_default IS NULL', () => {
+  // author_id / author_display_name / created_at / updated_at must assert no default.
+  assert.match(sql, /author_id[\s\S]*?is_nullable='YES'\s+AND\s+column_default IS NULL/i, 'author_id must assert no default');
+  assert.match(sql, /created_at[\s\S]*?is_nullable='YES'\s+AND\s+column_default IS NULL/i, 'created_at must assert no default');
+  assert.match(sql, /updated_at[\s\S]*?is_nullable='YES'\s+AND\s+column_default IS NULL/i, 'updated_at must assert no default');
+  // id / tree_id likewise assert no default.
+  assert.match(sql, /v_id_def IS NOT NULL/i, 'id must assert column_default IS NULL');
+  assert.match(sql, /v_tree_id_def IS NOT NULL/i, 'tree_id must assert column_default IS NULL');
 });
 
 test('reconcile migration asserts table existence', () => {
   assert.match(sql, /tree_comments table existence/i, 'Must assert table existence in preflight');
 });
 
-// ─── 5. Exact PK / FK guard ─────────────────────────────────────────────────
+// ─── 5. Runtime public.trees.id guard ────────────────────────────────────────
 
-test('reconcile migration asserts exact legacy PRIMARY KEY (tree_id, id)', () => {
-  assert.match(sql, /legacy PRIMARY KEY expected \(tree_id, id\)/i, 'Must assert legacy PK (tree_id, id)');
+test('reconcile migration runtime-asserts public.trees.id is text', () => {
+  assert.match(
+    sql,
+    /table_schema\s*=\s*'public'\s+AND\s+table_name\s*=\s*'trees'\s+AND\s+column_name\s*=\s*'id'/i,
+    'Must query information_schema.columns for public.trees.id metadata'
+  );
+  assert.match(sql, /PREFLIGHT FAIL: public\.trees\.id must be text/i, 'Must fail closed if trees.id is not text');
 });
 
-test('reconcile migration asserts exact legacy FK tree_id -> trees ON DELETE CASCADE', () => {
-  assert.match(sql, /FK tree_id -> trees\(id\) ON DELETE CASCADE not found\/changed/i, 'Must assert legacy FK tree_id cascade');
+// ─── 6. Exact PK / FK guard (catalog arrays, not string matching) ────────────
+
+test('reconcile migration compares legacy PK via conkey/attnum array, not ILIKE', () => {
+  assert.match(sql, /unnest\(c\.conkey\)\s+WITH\s+ORDINALITY/i, 'Must derive PK columns from conkey ordinality');
+  assert.match(sql, /pg_attribute a ON a\.attrelid = c\.conrelid AND a\.attnum/i, 'Must join pg_attribute on attnum');
+  assert.match(sql, /ARRAY\['tree_id','id'\]::text\[\]/i, 'Must compare PK to exact [tree_id, id] array');
+  assert.match(sql, /legacy PRIMARY KEY must be exactly \[tree_id, id\]/i, 'Must fail closed unless PK is exactly [tree_id, id]');
+  // The loose string match must not be used for PK discrimination (ignore comments).
+  assert.equal(/ILIKE\s+'%tree_id%id%'/i.test(content), false, "Must NOT use ILIKE '%tree_id%id%' for PK discrimination");
 });
 
-test('reconcile migration asserts exact legacy FK author_id -> users ON DELETE SET NULL', () => {
-  assert.match(sql, /FK author_id -> users\(id\) ON DELETE SET NULL/i, 'Must assert legacy FK author_id SET NULL');
+test('reconcile migration verifies exact legacy FKs via conkey/confkey/confrelid/confdeltype', () => {
+  assert.match(sql, /c\.confrelid\s*=\s*'public\.trees'::regclass/i, 'Must verify tree FK references public.trees');
+  assert.match(sql, /c\.confrelid\s*=\s*'public\.users'::regclass/i, 'Must verify author FK references public.users');
+  assert.match(sql, /c\.confdeltype\s*=\s*'c'/i, 'Must verify ON DELETE CASCADE via confdeltype=c');
+  assert.match(sql, /c\.confdeltype\s*=\s*'n'/i, 'Must verify ON DELETE SET NULL via confdeltype=n');
+  assert.match(sql, /FK tree_id -> public\.trees\(id\) ON DELETE CASCADE not found\/exact/i, 'Must fail closed on tree FK mismatch');
+  assert.match(sql, /FK author_id -> public\.users\(id\) ON DELETE SET NULL not found\/exact/i, 'Must fail closed on author FK mismatch');
+});
+
+test('reconcile migration enforces exact allowed constraint set (1 PK + 2 FK, nothing else)', () => {
+  assert.match(sql, /legacy constraint set must be exactly 3 \(1 PK \+ 2 FK\)/i, 'Must enforce exactly 3 constraints');
+  assert.match(sql, /unexpected UNIQUE\/CHECK\/EXCLUDE constraint/i, 'Must reject UNIQUE/CHECK/EXCLUDE constraints');
+  assert.match(sql, /expected exactly 2 legacy FKs/i, 'Must enforce exactly 2 outbound FKs');
+  assert.match(sql, /contype NOT IN \('p','f'\)/i, 'Must reject any non-PK/FK constraint types');
 });
 
 test('reconcile migration guards against unexpected inbound FK', () => {
@@ -140,18 +202,23 @@ test('reconcile migration guards against unexpected inbound FK', () => {
 });
 
 test('reconcile migration does not drop the legacy PK by guessed name; reads it from catalog', () => {
-  // PK name must NOT be hard-coded; the migration reads the exact constraint name
-  // from the catalog and drops it only when its definition is exactly (tree_id, id).
   assert.equal(/DROP CONSTRAINT tree_comments_pkey/i.test(content), false, 'Must not hard-code/drop a guessed PK name');
-  assert.match(sql, /PK LOOKUP FAIL/i, 'Must read PK from catalog and fail closed if not exactly (tree_id, id)');
+  assert.match(sql, /PK LOOKUP FAIL/i, 'Must read PK from catalog and fail closed if not exactly [tree_id, id]');
   assert.equal(/DROP CONSTRAINT.*CASCADE/i.test(content), false, 'Must not DROP CONSTRAINT ... CASCADE');
   assert.equal(/DROP CONSTRAINT IF EXISTS/i.test(content), false, 'Must not guess/IF EXISTS drop constraints');
 });
 
-// ─── 6. Zero-row / fail-closed guards ───────────────────────────────────────
+// ─── 7. View / dependency guards (view + materialized view) ──────────────────
+
+test('reconcile migration guards normal views and materialized views', () => {
+  assert.match(sql, /relkind='v'/i, 'Must check for dependent normal views (relkind v)');
+  assert.match(sql, /relkind='m'/i, 'Must check for dependent materialized views (relkind m)');
+  assert.match(sql, /dependent materialized views reference tree_comments/i, 'Must fail closed on dependent materialized views');
+});
+
+// ─── 8. Zero-row / fail-closed guards ───────────────────────────────────────
 
 test('reconcile migration enforces row count = 0 guard', () => {
-  assert.match(sql, /row count\s*=\s*0/i, 'Must assert row count = 0 in preflight');
   assert.match(sql, /v_rows\s*<>\s*0/i, 'Must fail closed when row count <> 0');
   assert.match(sql, /abort to avoid destructive copy/i, 'Must fail closed when rows are present');
 });
@@ -165,13 +232,13 @@ test('reconcile migration stops explicitly when already reconciled', () => {
 });
 
 test('reconcile migration fails closed on unexpected/partial schema', () => {
-  assert.match(sql, /PREFLIGHT FAIL: tree_comments is neither exact legacy nor reconciled/i, 'Must fail closed on partial/unexpected schema');
+  assert.match(sql, /PREFLIGHT FAIL: tree_comments is neither exact legacy \(8-col\) nor reconciled \(12-col\)/i, 'Must fail closed on partial/unexpected schema');
   assert.match(sql, /PREFLIGHT FAIL: unexpected triggers/i, 'Must fail closed on unexpected triggers');
   assert.match(sql, /PREFLIGHT FAIL: RLS enabled/i, 'Must fail closed on RLS enabled');
   assert.match(sql, /PREFLIGHT FAIL: dependent views/i, 'Must fail closed on dependent views');
 });
 
-// ─── 7. Reader / writer required columns ────────────────────────────────────
+// ─── 9. Reader / writer required columns ────────────────────────────────────
 
 test('reconcile migration adds reader-required column body', () => {
   assert.match(sql, /ADD\s+COLUMN\s+body\s+TEXT\s+NOT\s+NULL/i, 'Must add reader-required body TEXT NOT NULL');
@@ -183,23 +250,21 @@ test('reconcile migration adds writer-required columns', () => {
   assert.match(sql, /ADD\s+COLUMN\s+target_id\s+TEXT/i, 'Must add writer-required target_id (text)');
 });
 
-// ─── 8. Production key-type compatibility (trees.id = text) ─────────────────
+// ─── 10. Production key-type compatibility (trees.id = text) ─────────────────
 
 test('reconcile migration uses TEXT key type compatible with production trees.id', () => {
   assert.equal(/tree_id\s+UUID/i.test(content), false, 'tree_id must NOT be UUID (production trees.id is text)');
-  assert.match(sql, /expected id\/tree_id text/i, 'Preflight must assert legacy id/tree_id are text');
   assert.match(sql, /ADD\s+COLUMN\s+target_id\s+TEXT/i, 'target_id must be TEXT (compatible with trees.id)');
 });
 
-// ─── 9. Canonical PRIMARY KEY (id) conversion ───────────────────────────────
+// ─── 11. Canonical PRIMARY KEY (id) conversion ──────────────────────────────
 
 test('reconcile migration converts PRIMARY KEY to (id)', () => {
   assert.match(sql, /ADD\s+CONSTRAINT\s+tree_comments_pkey\s+PRIMARY\s+KEY\s*\(id\)/i, 'Must add PRIMARY KEY (id) for writer replay uniqueness');
-  // Post-verification must confirm PK (id) and NOT (tree_id, id).
-  assert.match(sql, /PRIMARY KEY must be \(id\)/i, 'Post-verify must confirm PRIMARY KEY (id)');
+  assert.match(sql, /PRIMARY KEY must be exactly \[id\]/i, 'Post-verify must confirm PRIMARY KEY exactly [id]');
 });
 
-// ─── 10. PK / FK / CHECK / DEFAULT / INDEX ──────────────────────────────────
+// ─── 12. PK / FK / CHECK / DEFAULT / INDEX (apply phase) ─────────────────────
 
 test('reconcile migration adds target invariants via explicit ADD CONSTRAINT', () => {
   assert.match(
@@ -219,7 +284,6 @@ test('reconcile migration enforces created_at/updated_at NOT NULL DEFAULT NOW()'
   assert.match(sql, /ALTER\s+COLUMN\s+updated_at\s+SET\s+DEFAULT\s+NOW\(\)/i, 'updated_at must DEFAULT NOW()');
   assert.match(sql, /ALTER\s+COLUMN\s+created_at\s+SET\s+NOT\s+NULL/i, 'created_at must be NOT NULL');
   assert.match(sql, /ALTER\s+COLUMN\s+updated_at\s+SET\s+NOT\s+NULL/i, 'updated_at must be NOT NULL');
-  // The obsolete backfill UPDATEs must be gone.
   assert.equal(/UPDATE\s+public\.tree_comments\s+SET\s+created_at\s*=\s*NOW\(\)/i.test(content), false, 'Must not UPDATE created_at');
   assert.equal(/UPDATE\s+public\.tree_comments\s+SET\s+updated_at\s*=\s*NOW\(\)/i.test(content), false, 'Must not UPDATE updated_at');
 });
@@ -230,14 +294,14 @@ test('reconcile migration adds canonical indexes', () => {
   assert.match(sql, /idx_tree_comments_created_at\s+ON\s+public\.tree_comments\s*\(created_at\)/i, 'Must add idx_tree_comments_created_at');
 });
 
-// ─── 11. Sentinel defaults forbidden ────────────────────────────────────────
+// ─── 13. Sentinel defaults forbidden ────────────────────────────────────────
 
 test('reconcile migration forbids sentinel defaults for owner_id and body', () => {
   assert.equal(/owner_id\s+VARCHAR\(128\)\s+NOT\s+NULL\s+DEFAULT\s+'unknown'/i.test(content), false, "owner_id must NOT default to sentinel 'unknown'");
   assert.equal(/body\s+TEXT\s+NOT\s+NULL\s+DEFAULT\s+''/i.test(content), false, 'body must NOT default to sentinel empty string');
 });
 
-// ─── 12. Legacy preservation / rollback posture ──────────────────────────────
+// ─── 14. Legacy preservation / post-verification ─────────────────────────────
 
 test('reconcile migration preserves legacy columns (no destructive drop of legacy fields)', () => {
   assert.equal(/DROP\s+COLUMN\s+author_id/i.test(content), false, 'Must not DROP legacy author_id');
@@ -246,17 +310,15 @@ test('reconcile migration preserves legacy columns (no destructive drop of legac
   assert.match(sql, /POST-VERIFY FAIL: legacy-only columns/i, 'Must verify legacy columns preserved after migration');
 });
 
-test('reconcile migration post-verification is complete (sentinel/row-count/triggers)', () => {
+test('reconcile migration post-verification is complete (sentinel/row-count/triggers/matviews)', () => {
   assert.match(sql, /sentinel defaults.*detected/i, 'Post-verify must reject sentinel defaults');
   assert.match(sql, /row count=.*after migration \(expected 0\)/i, 'Post-verify must confirm row count still 0');
-  assert.match(sql, /unexpected trigger\/RLS\/dependent view appeared/i, 'Post-verify must confirm no new risky deps');
+  assert.match(sql, /unexpected trigger\/RLS\/dependent view\/materialized view appeared after migration/i, 'Post-verify must confirm no new risky deps incl matviews');
 });
 
-// ─── 13. No concrete DB role/user string, no production/staging apply ─────────
+// ─── 15. No concrete DB role/user string, no production/staging apply ─────────
 
 test('reconcile migration does not embed a concrete production DB role/user string', () => {
-  // Generalization required: "Existing table ownership and ACLs are preserved by in-place ALTER."
-  // Concrete role names (e.g. neondb_owner) must not appear.
   assert.equal(/neondb_owner/i.test(sql), false, 'Must not embed concrete production role name');
   assert.equal(/postgres\s+role|role\s*=\s*['"][a-z0-9_]+['"]/i.test(sql), false, 'Must not embed concrete role assignment');
 });
@@ -266,7 +328,7 @@ test('reconcile migration does not reference production/staging execution', () =
   assert.equal(/apply.*staging/i.test(sql), false, 'Must not reference staging apply');
 });
 
-// ─── 14. References / no-close hygiene ──────────────────────────────────────
+// ─── 16. References / no-close hygiene ──────────────────────────────────────
 
 test('reconcile migration references #3423, #3418, #3188, #3075, #1882', () => {
   assert.ok(/#3423/.test(sql), 'Must reference #3423');
@@ -283,7 +345,7 @@ test('reconcile migration does not use close keywords for parent issues', () => 
   assert.equal(/\bCloses\s+#1882\b/i.test(sql), false, 'Must not use Closes #1882');
 });
 
-// ─── 16. No private / no runtime / no production apply ──────────────────────
+// ─── 17. No private / no runtime / no production apply ───────────────────────
 
 test('reconcile migration does not modify runtime, UI, Scout, or moment files', () => {
   assert.equal(/modal_compute\/tree_comments\.py/i.test(sql), false, 'Must not embed/modify runtime source');
