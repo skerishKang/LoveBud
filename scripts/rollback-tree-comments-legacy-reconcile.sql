@@ -69,9 +69,12 @@ DECLARE
   v_chk_kind integer;
   v_chk_tid integer;
   v_inbound_fk integer;
+  v_idx_compound integer;
   v_idx_tree integer;
   v_idx_owner integer;
   v_idx_created integer;
+  v_idx_pk integer;
+  v_idx_unexpected integer;
   v_trig integer;
   v_rls integer;
   v_views integer;
@@ -227,22 +230,68 @@ BEGIN
     RAISE EXCEPTION 'ROLLBACK PRECONDITION FAIL: unexpected inbound FK(s) reference tree_comments (count=%)', v_inbound_fk;
   END IF;
 
-  -- ── Exact indexes: migration-added (owner_id, created_at) + legacy (tree_id) ─
-  -- Verify not just names but the indexed column via indexdef.
-  SELECT count(*) INTO v_idx_tree FROM pg_indexes
-  WHERE schemaname='public' AND tablename='tree_comments'
-    AND indexname='idx_tree_comments_tree_id' AND indexdef ILIKE '%(tree_id)%';
-  SELECT count(*) INTO v_idx_owner FROM pg_indexes
-  WHERE schemaname='public' AND tablename='tree_comments'
-    AND indexname='idx_tree_comments_owner_id' AND indexdef ILIKE '%(owner_id)%';
-  SELECT count(*) INTO v_idx_created FROM pg_indexes
-  WHERE schemaname='public' AND tablename='tree_comments'
-    AND indexname='idx_tree_comments_created_at' AND indexdef ILIKE '%(created_at)%';
-  IF v_idx_tree <> 1 THEN
-    RAISE EXCEPTION 'ROLLBACK PRECONDITION FAIL: legacy idx_tree_comments_tree_id ON (tree_id) missing';
+  -- ── Exact index inventory (audited production legacy + migration-added) ─
+  -- The original compound legacy index (tree_id, created_at) must still exist,
+  -- the three migration-added indexes (tree_id, owner_id, created_at) must
+  -- exist, the canonical PK backing index (id) must exist, and there must
+  -- be NO unexpected index. Verified via pg_index.indkey/attnum ordered
+  -- column arrays + uniqueness, not by indexdef substring.
+  SELECT count(*) INTO v_idx_compound
+  FROM pg_index i
+  WHERE i.indrelid='public.tree_comments'::regclass AND NOT i.indisprimary
+    AND i.indnatts=2 AND NOT i.indisunique
+    AND (SELECT array_agg(a.attname::text ORDER BY ord)
+        FROM unnest(i.indkey) WITH ORDINALITY AS k(attnum, ord)
+        JOIN pg_attribute a ON a.attrelid=i.indrelid AND a.attnum=k.attnum) = ARRAY['tree_id','created_at']::text[];
+  IF v_idx_compound <> 1 THEN
+    RAISE EXCEPTION 'ROLLBACK PRECONDITION FAIL: original compound legacy index (tree_id, created_at) not found (count=%)', v_idx_compound;
   END IF;
-  IF v_idx_owner <> 1 OR v_idx_created <> 1 THEN
-    RAISE EXCEPTION 'ROLLBACK PRECONDITION FAIL: migration-added indexes missing (owner=% created=%)', v_idx_owner, v_idx_created;
+
+  SELECT count(*) INTO v_idx_tree FROM pg_index i JOIN pg_class c ON c.oid=i.indexrelid
+  WHERE i.indrelid='public.tree_comments'::regclass AND NOT i.indisprimary
+    AND c.relname='idx_tree_comments_tree_id'
+    AND i.indnatts=1
+    AND (SELECT array_agg(a.attname::text ORDER BY ord)
+        FROM unnest(i.indkey) WITH ORDINALITY AS k(attnum, ord)
+        JOIN pg_attribute a ON a.attrelid=i.indrelid AND a.attnum=k.attnum) = ARRAY['tree_id']::text[];
+  SELECT count(*) INTO v_idx_owner FROM pg_index i JOIN pg_class c ON c.oid=i.indexrelid
+  WHERE i.indrelid='public.tree_comments'::regclass AND NOT i.indisprimary
+    AND c.relname='idx_tree_comments_owner_id'
+    AND i.indnatts=1
+    AND (SELECT array_agg(a.attname::text ORDER BY ord)
+        FROM unnest(i.indkey) WITH ORDINALITY AS k(attnum, ord)
+        JOIN pg_attribute a ON a.attrelid=i.indrelid AND a.attnum=k.attnum) = ARRAY['owner_id']::text[];
+  SELECT count(*) INTO v_idx_created FROM pg_index i JOIN pg_class c ON c.oid=i.indexrelid
+  WHERE i.indrelid='public.tree_comments'::regclass AND NOT i.indisprimary
+    AND c.relname='idx_tree_comments_created_at'
+    AND i.indnatts=1
+    AND (SELECT array_agg(a.attname::text ORDER BY ord)
+        FROM unnest(i.indkey) WITH ORDINALITY AS k(attnum, ord)
+        JOIN pg_attribute a ON a.attrelid=i.indrelid AND a.attnum=k.attnum) = ARRAY['created_at']::text[];
+  IF v_idx_tree <> 1 OR v_idx_owner <> 1 OR v_idx_created <> 1 THEN
+    RAISE EXCEPTION 'ROLLBACK PRECONDITION FAIL: migration-added indexes missing (tree=% owner=% created=%)', v_idx_tree, v_idx_owner, v_idx_created;
+  END IF;
+
+  SELECT count(*) INTO v_pk_idx FROM pg_index i
+  WHERE i.indrelid='public.tree_comments'::regclass AND i.indisprimary;
+  IF v_pk_idx <> 1 THEN
+    RAISE EXCEPTION 'ROLLBACK PRECONDITION FAIL: canonical PK backing index (id) not found (count=%)', v_pk_idx;
+  END IF;
+
+  SELECT count(*) INTO v_idx_unexpected
+  FROM pg_index i JOIN pg_class c ON c.oid=i.indexrelid
+  WHERE i.indrelid='public.tree_comments'::regclass AND NOT i.indisprimary
+    AND NOT (
+      (i.indnatts=2 AND NOT i.indisunique
+        AND (SELECT array_agg(a.attname::text ORDER BY ord)
+            FROM unnest(i.indkey) WITH ORDINALITY AS k(attnum, ord)
+            JOIN pg_attribute a ON a.attrelid=i.indrelid AND a.attnum=k.attnum) = ARRAY['tree_id','created_at']::text[])
+      OR c.relname='idx_tree_comments_tree_id'
+      OR c.relname='idx_tree_comments_owner_id'
+      OR c.relname='idx_tree_comments_created_at'
+    );
+  IF v_idx_unexpected <> 0 THEN
+    RAISE EXCEPTION 'ROLLBACK PRECONDITION FAIL: unexpected index(es) present before rollback (count=%)', v_idx_unexpected;
   END IF;
 
   -- ── No risky dependent objects (triggers / RLS / views / matviews) ──────────
@@ -306,11 +355,12 @@ END $$;
 ALTER TABLE public.tree_comments
   ADD CONSTRAINT tree_comments_pkey PRIMARY KEY (tree_id, id);
 
--- 3. Remove migration-added indexes (schema-qualified so a same-named index in
--- another schema is never targeted by mistake).
+-- 3. Remove the three migration-added indexes (schema-qualified so a
+-- same-named index in another schema is never targeted by mistake).
+DROP INDEX IF EXISTS public.idx_tree_comments_tree_id;
 DROP INDEX IF EXISTS public.idx_tree_comments_owner_id;
 DROP INDEX IF EXISTS public.idx_tree_comments_created_at;
--- Note: public.idx_tree_comments_tree_id is a legacy list-read index and is preserved.
+-- Note: the original compound legacy index public.idx_..._tree_id_created_at (tree_id, created_at) is PRESERVED.
 
 -- 4. Remove migration-added columns.
 ALTER TABLE public.tree_comments
@@ -352,6 +402,9 @@ DECLARE
   v_idx_tree integer;
   v_idx_owner integer;
   v_idx_created integer;
+  v_idx_pk integer;
+  v_idx_compound integer;
+  v_idx_unexpected integer;
   v_trig integer;
   v_rls integer;
   v_views integer;
@@ -464,17 +517,48 @@ BEGIN
     RAISE EXCEPTION 'ROLLBACK POST-VERIFY FAIL: unexpected inbound FK(s) reference tree_comments (count=%)', v_all_con;
   END IF;
 
-  -- ── Migration-added indexes gone; legacy tree_id index preserved (indexdef). ─
-  SELECT count(*) INTO v_idx_owner FROM pg_indexes WHERE schemaname='public' AND tablename='tree_comments' AND indexname='idx_tree_comments_owner_id';
-  SELECT count(*) INTO v_idx_created FROM pg_indexes WHERE schemaname='public' AND tablename='tree_comments' AND indexname='idx_tree_comments_created_at';
-  IF v_idx_owner <> 0 OR v_idx_created <> 0 THEN
-    RAISE EXCEPTION 'ROLLBACK POST-VERIFY FAIL: migration-added indexes still present (owner=% created=%)', v_idx_owner, v_idx_created;
+  -- ── Exact final legacy index inventory ──────────────────────────────────
+  -- After dropping the 3 migration-added indexes, only the restored legacy
+  -- PK backing index (tree_id, id) and the original compound legacy
+  -- list-read index (tree_id, created_at) must remain. No single-column
+  -- tree_id / owner_id / created_at index, and no unexpected index.
+  SELECT count(*) INTO v_idx_compound
+  FROM pg_index i
+  WHERE i.indrelid='public.tree_comments'::regclass AND NOT i.indisprimary
+    AND i.indnatts=2 AND NOT i.indisunique
+    AND (SELECT array_agg(a.attname::text ORDER BY ord)
+        FROM unnest(i.indkey) WITH ORDINALITY AS k(attnum, ord)
+        JOIN pg_attribute a ON a.attrelid=i.indrelid AND a.attnum=k.attnum) = ARRAY['tree_id','created_at']::text[];
+  IF v_idx_compound <> 1 THEN
+    RAISE EXCEPTION 'ROLLBACK POST-VERIFY FAIL: original compound legacy index (tree_id, created_at) not preserved (count=%)', v_idx_compound;
   END IF;
-  SELECT count(*) INTO v_idx_tree FROM pg_indexes
-  WHERE schemaname='public' AND tablename='tree_comments'
-    AND indexname='idx_tree_comments_tree_id' AND indexdef ILIKE '%(tree_id)%';
-  IF v_idx_tree <> 1 THEN
-    RAISE EXCEPTION 'ROLLBACK POST-VERIFY FAIL: legacy idx_tree_comments_tree_id ON (tree_id) not preserved';
+
+  SELECT count(*) INTO v_idx_pk FROM pg_index i WHERE i.indrelid='public.tree_comments'::regclass AND i.indisprimary;
+  SELECT count(*) INTO v_idx_tree FROM pg_index i JOIN pg_class c ON c.oid=i.indexrelid
+  WHERE i.indrelid='public.tree_comments'::regclass AND NOT i.indisprimary
+    AND c.relname='idx_tree_comments_tree_id';
+  SELECT count(*) INTO v_idx_owner FROM pg_index i JOIN pg_class c ON c.oid=i.indexrelid
+  WHERE i.indrelid='public.tree_comments'::regclass AND NOT i.indisprimary
+    AND c.relname='idx_tree_comments_owner_id';
+  SELECT count(*) INTO v_idx_created FROM pg_index i JOIN pg_class c ON c.oid=i.indexrelid
+  WHERE i.indrelid='public.tree_comments'::regclass AND NOT i.indisprimary
+    AND c.relname='idx_tree_comments_created_at';
+  IF v_idx_pk <> 1 OR v_idx_tree <> 0 OR v_idx_owner <> 0 OR v_idx_created <> 0 THEN
+    RAISE EXCEPTION 'ROLLBACK POST-VERIFY FAIL: final index inventory wrong (pk=% tree=% owner=% created=%)',
+      v_idx_pk, v_idx_tree, v_idx_owner, v_idx_created;
+  END IF;
+
+  SELECT count(*) INTO v_idx_unexpected
+  FROM pg_index i JOIN pg_class c ON c.oid=i.indexrelid
+  WHERE i.indrelid='public.tree_comments'::regclass AND NOT i.indisprimary
+    AND NOT (
+      i.indnatts=2 AND NOT i.indisunique
+      AND (SELECT array_agg(a.attname::text ORDER BY ord)
+          FROM unnest(i.indkey) WITH ORDINALITY AS k(attnum, ord)
+          JOIN pg_attribute a ON a.attrelid=i.indrelid AND a.attnum=k.attnum) = ARRAY['tree_id','created_at']::text[]
+    );
+  IF v_idx_unexpected <> 0 THEN
+    RAISE EXCEPTION 'ROLLBACK POST-VERIFY FAIL: unexpected index(es) after rollback (count=%)', v_idx_unexpected;
   END IF;
 
   -- ── Row count still 0. ──────────────────────────────────────────────────────

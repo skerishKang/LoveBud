@@ -7,7 +7,7 @@
 > **Contract test:** `tests/contracts/migration-tree-comments-legacy-reconcile-contract.test.cjs`
 > **Rollback contract test:** `tests/contracts/rollback-tree-comments-legacy-reconcile-contract.test.cjs`
 > **Strategy:** In-place ALTER (Strategy A), fail-closed, transaction-wrapped
-> **Destructive operations:** NONE (no DROP TABLE / TRUNCATE / DELETE / DROP COLUMN)
+> **Destructive operations:** NONE unconditionally. The migration never issues DROP TABLE / TRUNCATE / DELETE. The conditional rollback drops only the 4 canonical columns and 3 migration-added indexes, under a zero-row exact-state guard (no CASCADE).
 
 ---
 
@@ -82,9 +82,20 @@ DELETE, or DROP COLUMN. Legacy columns are preserved (never dropped). `created_a
 backfill UPDATE, no sentinel values).
 
 **Primary key conversion:** the legacy PK `(tree_id, id)` is dropped (only the known
-`tree_comments_pkey` constraint) and replaced with `PRIMARY KEY (id)`. The writer replays
-by `WHERE id = %s`, so `id` must be DB-level unique. The `tree_id` index is preserved for
-list reads.
+`tree_comments_pkey` constraint, read from the catalog) and replaced with `PRIMARY KEY (id)`. The writer replays
+by `WHERE id = %s`, so `id` must be DB-level unique.
+
+**Legacy secondary index:** the production legacy table already has a compound
+list-read index on `(tree_id, created_at)`. This is **preserved** across both
+the migration and the rollback.
+
+**Migration-added indexes:** the migration additionally creates three canonical
+read indexes — `idx_tree_comments_tree_id` on `(tree_id)`,
+`idx_tree_comments_owner_id` on `(owner_id)`, and
+`idx_tree_comments_created_at` on `(created_at)`. The single-column
+`idx_tree_comments_tree_id` is therefore **a canonical migration-added index,
+not a legacy index**; it is removed by the rollback, while the compound
+`(tree_id, created_at)` legacy index is preserved.
 
 **Rollback:** the migration is a single committed transaction. If the post-verification
 block raises, the whole transaction rolls back automatically (atomic) — no partial ALTER
@@ -94,9 +105,12 @@ reverts the reconciled schema to the exact legacy 8-column shape. The rollback s
 
 - is a separate, explicitly-approved operation (never auto-run);
 - fails closed unless the table is in the exact reconciled shape with row count = 0;
-- drops only the canonical columns/CHECKs/PK/indexes added by the migration;
+- drops only the 4 canonical columns and the 3 migration-added indexes
+  (`idx_tree_comments_tree_id`, `idx_tree_comments_owner_id`,
+  `idx_tree_comments_created_at`);
 - restores the legacy composite PK `(tree_id, id)` from the catalog (no name guessing);
-- preserves legacy columns, FKs, and the `tree_id` list-read index;
+- preserves legacy columns, FKs, and the original compound legacy index
+  `(tree_id, created_at)`;
 - uses no CASCADE, no DELETE/TRUNCATE, and embeds no credentials.
 
 If the rollback preconditions are not met (data present, writer/composer active, or

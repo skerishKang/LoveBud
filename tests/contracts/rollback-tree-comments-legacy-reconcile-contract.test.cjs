@@ -114,10 +114,12 @@ test('rollback script preflight enforces exact reconciled constraint set (1 PK +
   assert.match(sql, /c\.confdeltype='n'/i, 'Must verify ON DELETE SET NULL via confdeltype');
 });
 
-test('rollback script preflight verifies index definitions (indexdef target columns)', () => {
-  assert.match(sql, /idx_tree_comments_tree_id' AND indexdef ILIKE '%\(tree_id\)%'/i, 'Must verify legacy tree_id index target column');
-  assert.match(sql, /idx_tree_comments_owner_id' AND indexdef ILIKE '%\(owner_id\)%'/i, 'Must verify owner_id index target column');
-  assert.match(sql, /idx_tree_comments_created_at' AND indexdef ILIKE '%\(created_at\)%'/i, 'Must verify created_at index target column');
+test('rollback script preflight verifies exact index inventory (catalog arrays)', () => {
+  assert.match(sql, /original compound legacy index \(tree_id, created_at\) not found/i, 'Must verify the compound legacy index exists');
+  assert.match(sql, /migration-added indexes missing/i, 'Must verify 3 migration-added indexes exist');
+  assert.match(sql, /canonical PK backing index \(id\) not found/i, 'Must verify canonical PK backing index exists');
+  assert.match(sql, /unexpected index\(es\) present before rollback/i, 'Must reject any unexpected index');
+  assert.match(sql, /unnest\(i\.indkey\)\s+WITH\s+ORDINALITY/i, 'Must use pg_index.indkey ordered column arrays (not indexdef)');
 });
 
 test('rollback script preflight guards triggers/RLS/views/matviews and inbound FK', () => {
@@ -171,13 +173,20 @@ test('rollback script reads canonical PK from catalog (no guessed name, array co
 
 // ─── 6. Schema-qualified index removal (migration-added only) ────────────────
 
-test('rollback script removes migration-added indexes with schema qualification', () => {
+test('rollback script removes the three migration-added indexes (schema-qualified)', () => {
+  assert.match(sql, /DROP\s+INDEX\s+IF\s+EXISTS\s+public\.idx_tree_comments_tree_id/i, 'Must schema-qualify DROP INDEX tree_id');
   assert.match(sql, /DROP\s+INDEX\s+IF\s+EXISTS\s+public\.idx_tree_comments_owner_id/i, 'Must schema-qualify DROP INDEX owner_id');
   assert.match(sql, /DROP\s+INDEX\s+IF\s+EXISTS\s+public\.idx_tree_comments_created_at/i, 'Must schema-qualify DROP INDEX created_at');
 });
 
-test('rollback script preserves legacy tree_id index', () => {
-  assert.equal(/DROP\s+INDEX\s+IF\s+EXISTS\s+(public\.)?idx_tree_comments_tree_id/i.test(content), false, 'Must preserve legacy idx_tree_comments_tree_id');
+test('rollback script preserves the original compound legacy index (tree_id, created_at)', () => {
+  // The audited production legacy index is compound (tree_id, created_at); it must
+  // be preserved (NOT dropped) while the 3 migration-added indexes are removed.
+  assert.equal(/DROP\s+INDEX\s+IF\s+EXISTS\s+(public\.)?idx_tree_comments_tree_id_created_at/i.test(content), false,
+    'Must NOT drop the original compound legacy index');
+  assert.match(sql, /idx_\.\.\._tree_id_created_at \(tree_id, created_at\) is PRESERVED/i,
+    'Must state the compound legacy index is preserved');
+  assert.match(sql, /v_idx_compound/i, 'Must verify the compound legacy index in preflight/post-verify');
 });
 
 // ─── 7. Timestamp nullable / default reversion ─────────────────────────────
@@ -211,12 +220,16 @@ test('rollback script post-verifies exact legacy PK/FK/constraint set via catalo
   assert.match(sql, /c\.confdeltype='n'/i, 'Must verify author FK set null via confdeltype');
 });
 
-test('rollback script post-verifies canonical columns gone and indexes handled', () => {
-  assert.match(sql, /v_canon_extra <> 0/i, 'Must confirm no canonical-only columns remain');
-  assert.match(sql, /migration-added indexes still present/i, 'Must confirm added indexes gone');
-  assert.match(sql, /legacy idx_tree_comments_tree_id ON \(tree_id\) not preserved/i, 'Must confirm legacy index preserved with correct target');
-  assert.match(sql, /row count=.*after rollback \(expected 0\)/i, 'Must confirm row count still 0');
-  assert.match(sql, /unexpected trigger\/RLS\/dependent view\/materialized view appeared after rollback/i, 'Must confirm no risky deps incl matviews');
+test('rollback script post-verifies exact final legacy index inventory', () => {
+  assert.match(sql, /ROLLBACK POST-VERIFY FAIL: original compound legacy index \(tree_id, created_at\) not preserved/i,
+    'Must confirm compound legacy index preserved');
+  assert.match(sql, /ROLLBACK POST-VERIFY FAIL: final index inventory wrong/i,
+    'Must confirm PK backing + compound legacy remain, 3 migration-added gone');
+  assert.match(sql, /ROLLBACK POST-VERIFY FAIL: unexpected index\(es\) after rollback/i,
+    'Must confirm no unexpected index remains');
+  assert.equal(/migration-added indexes still present/i.test(sql), false, 'Old "migration-added indexes still present" assertion removed');
+  assert.equal(/idx_tree_comments_tree_id ON \(tree_id\) not preserved/i.test(sql), false,
+    'Old single-column legacy tree_id preservation assertion removed');
 });
 
 // ─── 9. No automatic execution / no private info ───────────────────────────

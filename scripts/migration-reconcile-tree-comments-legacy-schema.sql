@@ -83,6 +83,63 @@ SET LOCAL statement_timeout = '30s';
 -- Take a brief, bounded table lock so the shape cannot change under us mid-migration.
 LOCK TABLE public.tree_comments IN SHARE ROW EXCLUSIVE MODE;
 
+-- ── Exact reconciled-state validator (top-level, dropped before COMMIT) ──
+-- OUT ok = 1 when the table EXACTLY matches the canonical reconciled shape
+-- (12 columns + exact metadata, PK [id], 2 FKs, 2 CHECKs, exact index
+-- inventory, no risky deps); otherwise ok = 0 and msg carries the detail.
+-- Used by the preflight (BEFORE the explicit STOP) and by post-verification.
+CREATE FUNCTION _lb_reconciled_validator(OUT ok integer, OUT msg text)
+RETURNS record AS $$
+DECLARE
+  v_c integer; v_pk_arr text[]; v_f1 integer; v_f2 integer; v_c2 integer;
+  v_i1 integer; v_i2 integer; v_i3 integer; v_i4 integer; v_i5 integer; v_iu integer;
+  v_t integer; v_r integer; v_v integer; v_mv integer; v_m text := '';
+BEGIN
+  ok := 1; msg := '';
+  SELECT count(*) INTO v_c FROM information_schema.columns
+  WHERE table_schema='public' AND table_name='tree_comments'
+    AND column_name IN ('id','tree_id','author_id','author_display_name','is_deleted','created_at','updated_at','payload','owner_id','body','target_kind','target_id');
+  IF v_c <> 12 THEN ok := 0; v_m := v_m || 'cols=' || v_c || '; '; END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='tree_comments' AND column_name='id' AND data_type='text' AND udt_name='text' AND is_nullable='NO' AND column_default IS NULL) THEN ok := 0; v_m := v_m || 'id; '; END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='tree_comments' AND column_name='tree_id' AND data_type='text' AND udt_name='text' AND is_nullable='NO' AND column_default IS NULL) THEN ok := 0; v_m := v_m || 'tree_id; '; END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='tree_comments' AND column_name='owner_id' AND data_type='character varying' AND udt_name='varchar' AND character_maximum_length=128 AND is_nullable='NO' AND column_default IS NULL) THEN ok := 0; v_m := v_m || 'owner_id; '; END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='tree_comments' AND column_name='body' AND data_type='text' AND udt_name='text' AND is_nullable='NO' AND column_default IS NULL) THEN ok := 0; v_m := v_m || 'body; '; END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='tree_comments' AND column_name='target_kind' AND data_type='character varying' AND udt_name='varchar' AND character_maximum_length=16 AND is_nullable='NO' AND column_default ILIKE '%''tree''%') THEN ok := 0; v_m := v_m || 'target_kind; '; END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='tree_comments' AND column_name='target_id' AND data_type='text' AND udt_name='text' AND is_nullable='YES') THEN ok := 0; v_m := v_m || 'target_id; '; END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='tree_comments' AND column_name='author_id' AND data_type='text' AND udt_name='text' AND is_nullable='YES' AND column_default IS NULL) THEN ok := 0; v_m := v_m || 'author_id; '; END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='tree_comments' AND column_name='author_display_name' AND data_type='text' AND udt_name='text' AND is_nullable='YES' AND column_default IS NULL) THEN ok := 0; v_m := v_m || 'author_display_name; '; END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='tree_comments' AND column_name='is_deleted' AND data_type='boolean' AND udt_name='bool' AND is_nullable='NO' AND column_default IN ('false','FALSE')) THEN ok := 0; v_m := v_m || 'is_deleted; '; END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='tree_comments' AND column_name='created_at' AND data_type='timestamp with time zone' AND udt_name='timestamptz' AND is_nullable='NO' AND column_default ILIKE '%now()%') THEN ok := 0; v_m := v_m || 'created_at; '; END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='tree_comments' AND column_name='updated_at' AND data_type='timestamp with time zone' AND udt_name='timestamptz' AND is_nullable='NO' AND column_default ILIKE '%now()%') THEN ok := 0; v_m := v_m || 'updated_at; '; END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='tree_comments' AND column_name='payload' AND data_type='jsonb' AND udt_name='jsonb' AND is_nullable='NO' AND column_default = '''{}''::jsonb') THEN ok := 0; v_m := v_m || 'payload; '; END IF;
+  SELECT array_agg(a.attname::text ORDER BY k.ord) INTO v_pk_arr
+  FROM pg_constraint c CROSS JOIN LATERAL unnest(c.conkey) WITH ORDINALITY AS k(attnum, ord)
+  JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = k.attnum
+  WHERE c.conrelid='public.tree_comments'::regclass AND c.contype='p';
+  IF v_pk_arr IS DISTINCT FROM ARRAY['id']::text[] THEN ok := 0; v_m := v_m || 'pk=' || COALESCE(v_pk_arr::text,'null') || '; '; END IF;
+  SELECT count(*) INTO v_f1 FROM pg_constraint c JOIN pg_attribute a ON a.attrelid=c.conrelid AND a.attnum=c.conkey[1] JOIN pg_attribute fa ON fa.attrelid=c.confrelid AND fa.attnum=c.confkey[1]
+  WHERE c.conrelid='public.tree_comments'::regclass AND c.contype='f' AND array_length(c.conkey,1)=1 AND array_length(c.confkey,1)=1 AND a.attname='tree_id' AND c.confrelid='public.trees'::regclass AND fa.attname='id' AND c.confdeltype='c';
+  SELECT count(*) INTO v_f2 FROM pg_constraint c JOIN pg_attribute a ON a.attrelid=c.conrelid AND a.attnum=c.conkey[1] JOIN pg_attribute fa ON fa.attrelid=c.confrelid AND fa.attnum=c.confkey[1]
+  WHERE c.conrelid='public.tree_comments'::regclass AND c.contype='f' AND array_length(c.conkey,1)=1 AND array_length(c.confkey,1)=1 AND a.attname='author_id' AND c.confrelid='public.users'::regclass AND fa.attname='id' AND c.confdeltype='n';
+  IF v_f1 <> 1 OR v_f2 <> 1 THEN ok := 0; v_m := v_m || 'fk=' || v_f1 || '/' || v_f2 || '; '; END IF;
+  SELECT count(*) INTO v_c2 FROM pg_constraint WHERE conrelid='public.tree_comments'::regclass AND contype='c';
+  IF v_c2 <> 2 THEN ok := 0; v_m := v_m || 'checks=' || v_c2 || '; '; END IF;
+  SELECT count(*) INTO v_i1 FROM pg_index i WHERE i.indrelid='public.tree_comments'::regclass AND i.indisprimary;
+  SELECT count(*) INTO v_i2 FROM pg_index i WHERE i.indrelid='public.tree_comments'::regclass AND NOT i.indisprimary AND i.indnatts=2 AND NOT i.indisunique AND (SELECT array_agg(a.attname::text ORDER BY ord) FROM unnest(i.indkey) WITH ORDINALITY AS k(attnum, ord) JOIN pg_attribute a ON a.attrelid=i.indrelid AND a.attnum=k.attnum)=ARRAY['tree_id','created_at']::text[];
+  SELECT count(*) INTO v_i3 FROM pg_index i JOIN pg_class c ON c.oid=i.indexrelid WHERE i.indrelid='public.tree_comments'::regclass AND NOT i.indisprimary AND c.relname='idx_tree_comments_tree_id' AND i.indnatts=1 AND (SELECT array_agg(a.attname::text ORDER BY ord) FROM unnest(i.indkey) WITH ORDINALITY AS k(attnum, ord) JOIN pg_attribute a ON a.attrelid=i.indrelid AND a.attnum=k.attnum)=ARRAY['tree_id']::text[];
+  SELECT count(*) INTO v_i4 FROM pg_index i JOIN pg_class c ON c.oid=i.indexrelid WHERE i.indrelid='public.tree_comments'::regclass AND NOT i.indisprimary AND c.relname='idx_tree_comments_owner_id' AND i.indnatts=1 AND (SELECT array_agg(a.attname::text ORDER BY ord) FROM unnest(i.indkey) WITH ORDINALITY AS k(attnum, ord) JOIN pg_attribute a ON a.attrelid=i.indrelid AND a.attnum=k.attnum)=ARRAY['owner_id']::text[];
+  SELECT count(*) INTO v_i5 FROM pg_index i JOIN pg_class c ON c.oid=i.indexrelid WHERE i.indrelid='public.tree_comments'::regclass AND NOT i.indisprimary AND c.relname='idx_tree_comments_created_at' AND i.indnatts=1 AND (SELECT array_agg(a.attname::text ORDER BY ord) FROM unnest(i.indkey) WITH ORDINALITY AS k(attnum, ord) JOIN pg_attribute a ON a.attrelid=i.indrelid AND a.attnum=k.attnum)=ARRAY['created_at']::text[];
+  SELECT count(*) INTO v_iu FROM pg_index i JOIN pg_class c ON c.oid=i.indexrelid WHERE i.indrelid='public.tree_comments'::regclass AND NOT i.indisprimary AND c.relname NOT IN ('idx_tree_comments_tree_id','idx_tree_comments_owner_id','idx_tree_comments_created_at') AND NOT (i.indnatts=2 AND NOT i.indisunique AND (SELECT array_agg(a.attname::text ORDER BY ord) FROM unnest(i.indkey) WITH ORDINALITY AS k(attnum, ord) JOIN pg_attribute a ON a.attrelid=i.indrelid AND a.attnum=k.attnum)=ARRAY['tree_id','created_at']::text[]);
+  IF v_i1 <> 1 OR v_i2 <> 1 OR v_i3 <> 1 OR v_i4 <> 1 OR v_i5 <> 1 OR v_iu <> 0 THEN ok := 0; v_m := v_m || 'idx=' || v_i1||'/'||v_i2||'/'||v_i3||'/'||v_i4||'/'||v_i5||'/'||v_iu || '; '; END IF;
+  SELECT count(*) INTO v_t FROM pg_trigger WHERE tgrelid='public.tree_comments'::regclass AND NOT tgisinternal;
+  SELECT count(*) INTO v_r FROM pg_class WHERE oid='public.tree_comments'::regclass AND relrowsecurity;
+  SELECT count(*) INTO v_v FROM pg_class c JOIN pg_depend d ON d.refobjid='public.tree_comments'::regclass AND d.objid=c.oid WHERE c.relkind='v';
+  SELECT count(*) INTO v_mv FROM pg_class c JOIN pg_depend d ON d.refobjid='public.tree_comments'::regclass AND d.objid=c.oid WHERE c.relkind='m';
+  IF v_t <> 0 OR v_r <> 0 OR v_v <> 0 OR v_mv <> 0 THEN ok := 0; v_m := v_m || 'deps; '; END IF;
+  msg := v_m;
+END;
+$$ LANGUAGE plpgsql;
+
 -- ─── Preflight assertions (fail/stop closed on any mismatch) ─────────────────
 
 DO $$
@@ -110,7 +167,13 @@ DECLARE
   v_fk_tree integer;
   v_fk_author integer;
   v_pk_cols text[];
-  v_matviews integer;
+  v_pk_idx text;
+  v_idx_compound integer;
+  v_idx_single_tree integer;
+  v_idx_unexpected integer;
+  v_reconciled_ok integer;
+  v_rc integer;
+  v_msg text;
 BEGIN
   -- ── Step 1: Table existence ────────────────────────────────────────────────
   SELECT count(*) INTO v_exists
@@ -146,8 +209,15 @@ BEGIN
   --   * otherwise  : partial / unexpected schema => fail closed.
 
   IF v_total_cols = 12 AND v_legacy_markers = 8 AND v_canon_extra = 4 THEN
-    -- Fully reconciled canonical+legacy 12-column shape: explicit STOP, no mutation.
-    RAISE EXCEPTION 'PREFLIGHT STOP: tree_comments already reconciled';
+    -- candidate_reconciled: run the FULL exact canonical validation BEFORE the STOP.
+    -- If it matches exactly -> explicit STOP (no mutation). If it diverges
+    -- (a malformed 12-column table) -> fail closed with the divergence detail.
+    SELECT ok, msg INTO v_reconciled_ok, v_msg FROM _lb_reconciled_validator();
+    IF v_reconciled_ok = 1 THEN
+      RAISE EXCEPTION 'PREFLIGHT STOP: tree_comments already reconciled';
+    ELSE
+      RAISE EXCEPTION 'PREFLIGHT FAIL: 12-column schema is not exact reconciled state (%', v_msg;
+    END IF;
   ELSIF v_total_cols = 8 AND v_legacy_markers = 8 AND v_canon_extra = 0 THEN
     -- Exact legacy 8-column shape: fall through to detailed legacy assertions.
     NULL;
@@ -329,7 +399,63 @@ BEGIN
     RAISE EXCEPTION 'PREFLIGHT FAIL: tree_comments row_count=% (expected 0); abort to avoid destructive copy', v_rows;
   END IF;
 
-  -- ── Step 11: No risky dependent objects (triggers / RLS / views / matviews) ──
+  -- ── Step 11: Exact legacy index inventory (audited production state) ──────────
+  -- Confirmed production legacy index set is exactly ONE secondary index:
+  --   * compound (tree_id, created_at)  -- the legacy list-read index
+  -- There is NO single-column idx_tree_comments_tree_id in the legacy state; that
+  -- index is CREATED by this migration (canonical). The PK (tree_id, id) has its
+  -- own backing index but is exercised via the PK constraint, not counted here.
+  -- Reject any unexpected index (e.g. single-column tree_id/owner_id/created_at)
+  -- via exact column arrays + uniqueness flags from pg_index / pg_attribute.
+  SELECT count(*) INTO v_idx_compound
+  FROM (
+    SELECT i.indexrelid
+    FROM pg_index i
+    WHERE i.indrelid='public.tree_comments'::regclass AND NOT i.indisprimary
+      AND i.indnatts=2
+      AND NOT i.indisunique
+      AND (SELECT array_agg(a.attname::text ORDER BY ord)
+          FROM unnest(i.indkey) WITH ORDINALITY AS k(attnum, ord)
+          JOIN pg_attribute a ON a.attrelid=i.indrelid AND a.attnum=k.attnum) = ARRAY['tree_id','created_at']::text[]
+  ) s;
+  IF v_idx_compound <> 1 THEN
+    RAISE EXCEPTION 'PREFLIGHT FAIL: legacy compound index (tree_id, created_at) not found exactly (count=%)', v_idx_compound;
+  END IF;
+
+  SELECT count(*) INTO v_idx_single_tree
+  FROM (
+    SELECT i.indexrelid
+    FROM pg_index i
+    WHERE i.indrelid='public.tree_comments'::regclass AND NOT i.indisprimary
+      AND i.indnatts=1
+      AND (SELECT array_agg(a.attname::text ORDER BY ord)
+          FROM unnest(i.indkey) WITH ORDINALITY AS k(attnum, ord)
+          JOIN pg_attribute a ON a.attrelid=i.indrelid AND a.attnum=k.attnum) = ARRAY['tree_id']::text[]
+  ) s;
+  IF v_idx_single_tree <> 0 THEN
+    RAISE EXCEPTION 'PREFLIGHT FAIL: single-column tree_id index must NOT exist before migration (legacy state mismatch)';
+  END IF;
+
+  SELECT count(*) INTO v_idx_unexpected
+  FROM (
+    SELECT c.oid
+    FROM pg_index i
+    JOIN pg_class c ON c.oid = i.indexrelid
+    WHERE i.indrelid='public.tree_comments'::regclass AND NOT i.indisprimary
+      AND NOT EXISTS (
+        SELECT 1 FROM pg_index j
+        WHERE j.indrelid='public.tree_comments'::regclass AND NOT j.indisprimary
+          AND j.indnatts=2 AND NOT j.indisunique
+          AND (SELECT array_agg(a.attname::text ORDER BY ord)
+              FROM unnest(j.indkey) WITH ORDINALITY AS k(attnum, ord)
+              JOIN pg_attribute a ON a.attrelid=j.indrelid AND a.attnum=k.attnum) = ARRAY['tree_id','created_at']::text[]
+      )
+  ) s;
+  IF v_idx_unexpected <> 0 THEN
+    RAISE EXCEPTION 'PREFLIGHT FAIL: unexpected legacy index(es) present (count=%)', v_idx_unexpected;
+  END IF;
+
+  -- ── Step 12: No risky dependent objects (triggers / RLS / views / matviews) ──
   IF EXISTS (
     SELECT 1 FROM pg_trigger
     WHERE tgrelid='public.tree_comments'::regclass AND NOT tgisinternal
@@ -436,6 +562,11 @@ ALTER TABLE public.tree_comments
   ADD CONSTRAINT tree_comments_pkey PRIMARY KEY (id);
 
 -- ─── Indexes (mirror canonical migration) ──────────────────────────────────
+-- The legacy compound (tree_id, created_at) list-read index already exists
+-- (audited production state) and is PRESERVED. This migration adds three
+-- canonical read indexes; all are created idempotently. If a same-named
+-- index already exists with a WRONG definition, the post-verify below will
+-- fail closed and roll back the whole transaction.
 CREATE INDEX IF NOT EXISTS idx_tree_comments_tree_id ON public.tree_comments(tree_id);
 CREATE INDEX IF NOT EXISTS idx_tree_comments_owner_id ON public.tree_comments(owner_id);
 CREATE INDEX IF NOT EXISTS idx_tree_comments_created_at ON public.tree_comments(created_at);
@@ -459,6 +590,8 @@ DECLARE
   v_idx_tree integer;
   v_idx_owner integer;
   v_idx_created integer;
+  v_idx_pk integer;
+  v_idx_compound integer;
   v_legacy_author integer;
   v_legacy_payload integer;
   v_legacy_deleted integer;
@@ -468,6 +601,8 @@ DECLARE
   v_views integer;
   v_matviews integer;
   v_sentinel integer;
+  v_reconciled_ok integer;
+  v_msg text;
 BEGIN
   -- Canonical columns present
   SELECT count(*) INTO v_body FROM information_schema.columns WHERE table_schema='public' AND table_name='tree_comments' AND column_name='body';
@@ -539,6 +674,21 @@ BEGIN
     RAISE EXCEPTION 'POST-VERIFY FAIL: required indexes missing (tree_id/owner_id/created_at)';
   END IF;
 
+  -- Exact index inventory: PK backing (id) + original compound legacy
+  -- (tree_id, created_at) + 3 migration-added (tree_id, owner_id, created_at).
+  SELECT count(*) INTO v_idx_pk FROM pg_index i WHERE i.indrelid='public.tree_comments'::regclass AND i.indisprimary;
+  SELECT count(*) INTO v_idx_compound
+  FROM pg_index i
+  WHERE i.indrelid='public.tree_comments'::regclass AND NOT i.indisprimary
+    AND i.indnatts=2 AND NOT i.indisunique
+    AND (SELECT array_agg(a.attname::text ORDER BY ord)
+        FROM unnest(i.indkey) WITH ORDINALITY AS k(attnum, ord)
+        JOIN pg_attribute a ON a.attrelid=i.indrelid AND a.attnum=k.attnum) = ARRAY['tree_id','created_at']::text[];
+  IF v_idx_tree <> 1 OR v_idx_owner <> 1 OR v_idx_created <> 1 OR v_idx_pk <> 1 OR v_idx_compound <> 1 THEN
+    RAISE EXCEPTION 'POST-VERIFY FAIL: PK backing + compound (tree_id, created_at) + 3 migration added index inventory wrong (tree=% owner=% created=% pk=% comp=%',
+      v_idx_tree, v_idx_owner, v_idx_created, v_idx_pk, v_idx_compound;
+  END IF;
+
   -- Legacy-only columns preserved
   SELECT count(*) INTO v_legacy_author FROM information_schema.columns WHERE table_schema='public' AND table_name='tree_comments' AND column_name='author_id';
   SELECT count(*) INTO v_legacy_payload FROM information_schema.columns WHERE table_schema='public' AND table_name='tree_comments' AND column_name='payload';
@@ -569,6 +719,15 @@ BEGIN
   IF v_trig <> 0 OR v_rls <> 0 OR v_views <> 0 OR v_matviews <> 0 THEN
     RAISE EXCEPTION 'POST-VERIFY FAIL: unexpected trigger/RLS/dependent view/materialized view appeared after migration';
   END IF;
+
+  -- Final exact reconciled-state validation (same validator as preflight STOP).
+  SELECT ok, msg INTO v_reconciled_ok, v_msg FROM _lb_reconciled_validator();
+  IF v_reconciled_ok <> 1 THEN
+    RAISE EXCEPTION 'POST-VERIFY FAIL: final state is not exact reconciled (%', v_msg;
+  END IF;
 END $$;
+
+-- Drop the local validator (created inside this transaction; auto-removed on COMMIT anyway).
+DROP FUNCTION IF EXISTS _lb_reconciled_validator();
 
 COMMIT;

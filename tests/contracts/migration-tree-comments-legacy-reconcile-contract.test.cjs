@@ -123,6 +123,36 @@ test('reconcile migration does NOT enforce a legacy-only column count before cla
     'Must NOT enforce a standalone legacy column-count=8 check before state classification');
 });
 
+test('reconcile migration does NOT STOP on 12-column names without exact canonical validation', () => {
+  // A malformed 12-column table must NOT silently STOP. The STOP must be
+  // reached only AFTER the exact reconciled-state validator passes.
+  assert.equal(/12-column schema is not exact reconciled/i.test(sql), true,
+    'Must distinguish a 12-column name-only state (fail closed) from exact reconciled');
+  assert.match(sql, /_lb_reconciled_validator\(\)/, 'Must define/call the exact reconciled-state validator');
+  const stopIdx = sql.indexOf("RAISE EXCEPTION 'PREFLIGHT STOP: tree_comments already reconciled");
+  const validIdx = sql.indexOf('candidate_reconciled: run the FULL exact canonical validation BEFORE the STOP');
+  assert.ok(stopIdx > 0 && validIdx > 0, 'STOP and validator call must both exist');
+  assert.ok(validIdx < stopIdx, 'Exact canonical validation must run before the explicit STOP');
+});
+
+test('reconcile migration asserts audited legacy compound index (tree_id, created_at)', () => {
+  // The actual production legacy secondary index is compound (tree_id, created_at),
+  // NOT a single-column idx_tree_comments_tree_id (that one is migration-added).
+  assert.match(sql, /legacy compound index \(tree_id, created_at\)/i, 'Must reference the legacy compound index');
+  assert.match(sql, /v_idx_compound/i, 'Must count the compound legacy index in preflight');
+  assert.match(sql, /single-column tree_id index must NOT exist before migration/i,
+    'Must assert single-column tree_id index is NOT present in legacy state');
+});
+
+test('reconcile migration post-verification checks exact index inventory', () => {
+  assert.match(sql, /final exact reconciled-state validation/i, 'Post-verify must run the exact-state validator');
+  assert.match(sql, /PK backing \+ compound \(tree_id, created_at\) \+ 3 migration added index inventory wrong/i,
+    'Post-verify must assert the full index inventory');
+  // The single-column tree_id index is CREATED by the migration (canonical), not legacy.
+  assert.match(sql, /idx_tree_comments_tree_id ON public\.tree_comments\(tree_id\)/i,
+    'Migration must create the canonical single-column tree_id index');
+});
+
 // ─── 4. Exact eight-column legacy metadata (type/udt/nullable/default) ───────
 
 test('reconcile migration references all eight legacy columns', () => {
