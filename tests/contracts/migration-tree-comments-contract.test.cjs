@@ -61,8 +61,8 @@ test('tree comment migration does not DROP/RENAME/ALTER existing social tables',
 test('tree_comments uses tree_id FK and never memory_id', () => {
   assert.match(
     sql,
-    /tree_id\s+UUID\s+NOT\s+NULL\s+REFERENCES\s+trees\(id\)\s+ON\s+DELETE\s+CASCADE/i,
-    'tree_comments.tree_id must be a non-null FK to trees with cascade delete'
+    /tree_id\s+TEXT\s+NOT\s+NULL\s+REFERENCES\s+trees\(id\)\s+ON\s+DELETE\s+CASCADE/i,
+    'tree_comments.tree_id must be a non-null FK to trees with cascade delete (TEXT, matches production trees.id)'
   );
   assert.equal(
     /memory_id/i.test(sql),
@@ -89,7 +89,7 @@ test('tree_comments has tree-scoped indexes for list reads', () => {
 test('tree_comments carries generic target_kind/target_id for idempotency/audit reuse', () => {
   assert.match(sql, /target_kind\s+VARCHAR\(16\)\s+NOT\s+NULL\s+DEFAULT\s+'tree'/i);
   assert.match(sql, /CHECK\s*\(target_kind\s*=\s*'tree'\)/i);
-  assert.match(sql, /target_id\s+UUID/i);
+  assert.match(sql, /target_id\s+TEXT/i);
   assert.match(
     sql,
     /tree_comments_target_id_matches_tree_id\s+CHECK\s*\(target_id\s+IS\s+NULL\s+OR\s+target_id\s*=\s*tree_id\)/i
