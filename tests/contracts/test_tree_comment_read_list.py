@@ -201,7 +201,41 @@ class TestFetchTreeComments(unittest.TestCase):
             tree_comments.fetch_tree_comments("not-a-uuid")
         self.assertEqual(ctx.exception.status_code, 400)
 
-    def test_no_memory_id_in_tree_read_path(self):
+    def test_public_reader_select_projection_excludes_owner_id(self):
+        # The public read/list SELECT must not project owner_id, because the
+        # production schema (deployed table) omits that column and the safe
+        # public DTO never returns the raw account identifier.
+        import inspect
+
+        src = inspect.getsource(tree_comments.fetch_tree_comments)
+        self.assertNotIn(
+            "owner_id",
+            src,
+            "fetch_tree_comments must not SELECT owner_id (safe public read projection)",
+        )
+
+    def test_read_succeeds_without_owner_id_in_row(self):
+        # A row without owner_id must still normalize into the safe public DTO.
+        # This proves the reader no longer depends on the production-missing column.
+        self.store.comments = [
+            {
+                "id": "c-ownerless",
+                "tree_id": TREE_ID,
+                "body": "no owner column here",
+                "target_kind": "tree",
+                "target_id": TREE_ID,
+                "created_at": datetime(2026, 3, 1, tzinfo=timezone.utc).isoformat(),
+                "updated_at": datetime(2026, 3, 1, tzinfo=timezone.utc).isoformat(),
+            }
+        ]
+        result = tree_comments.fetch_tree_comments(TREE_ID)
+        self.assertEqual(len(result["comments"]), 1)
+        c = result["comments"][0]
+        self.assertNotIn("ownerId", c)
+        self.assertNotIn("owner_id", c)
+        for field in ("id", "treeId", "body", "createdAt", "updatedAt", "authorDisplayLabel"):
+            self.assertIn(field, c)
+
         # The reader must not carry/emit memory_id; only tree-scoped fields.
         result = tree_comments.fetch_tree_comments(TREE_ID)
         for c in result["comments"]:

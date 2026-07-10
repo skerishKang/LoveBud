@@ -66,7 +66,7 @@ def fetch_tree_comments(tree_id: str, limit: int = 20) -> dict[str, Any]:
             with conn.cursor() as cur:
                 cur.execute(
                     """
-                    SELECT id, tree_id, owner_id, body, created_at, updated_at
+                    SELECT id, tree_id, body, created_at, updated_at
                     FROM tree_comments
                     WHERE tree_id = %s
                     ORDER BY created_at ASC, id ASC
