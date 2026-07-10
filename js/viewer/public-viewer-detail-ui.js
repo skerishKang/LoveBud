@@ -585,6 +585,7 @@
         }
 
         var _cachedTreeLikeControl = null;
+        var _cachedTreeCommentsControl = null;
         var _lastTreeId = null;
 
         return function updatePublicViewerTreeMeta(data) {
@@ -595,6 +596,8 @@
             var treeState = getTreeState();
             var isEmptyState = !!(data && data.isNewTree) && !treeState.hasMoments;
             var localSaveMode = getLocalSaveMode();
+            var visibility = currentTree.visibility || 'public';
+            var isPublic = visibility === 'public';
             var treeId = currentTree.id || new URLSearchParams(window.location.search).get('tree');
 
             var model = boundary.buildTreeMetaRenderModel({
@@ -610,6 +613,7 @@
             if (treeId && treeId !== _lastTreeId) {
                 _lastTreeId = treeId;
                 _cachedTreeLikeControl = null;
+                _cachedTreeCommentsControl = null;
             }
             if (treeId && !_cachedTreeLikeControl) {
                 var treeLikeFactory = window.LoveBudTreeLikeControl;
@@ -658,7 +662,36 @@
                 treeLikeControlEl = _cachedTreeLikeControl.getElement();
             }
 
-            boundary.renderTreeMetaBoundary(treeMetaMount, model, treeId, data, treeLikeControlEl);
+            // Create read-only whole-tree comments control once per treeId.
+            // Only for public trees; non-public trees get no control/panel.
+            var treeCommentsControlEl = null;
+            var treeCommentsPanelEl = null;
+            if (treeId && isPublic) {
+                if (!_cachedTreeCommentsControl) {
+                    var treeCommentsFactory = window.LoveBudPublicViewerTreeComments;
+                    if (treeCommentsFactory && typeof treeCommentsFactory.createTreeCommentsReadOnlyControl === 'function') {
+                        var tcc = treeCommentsFactory.createTreeCommentsReadOnlyControl({
+                            i18n: i18n,
+                            showToast: showToast,
+                            treeId: treeId
+                        });
+                        _cachedTreeCommentsControl = tcc;
+                    }
+                }
+                if (_cachedTreeCommentsControl) {
+                    if (typeof _cachedTreeCommentsControl.reset === 'function') {
+                        _cachedTreeCommentsControl.reset(treeId);
+                    }
+                    if (_cachedTreeCommentsControl.getElement) {
+                        treeCommentsControlEl = _cachedTreeCommentsControl.getElement();
+                    }
+                    if (_cachedTreeCommentsControl.getPanelElement) {
+                        treeCommentsPanelEl = _cachedTreeCommentsControl.getPanelElement();
+                    }
+                }
+            }
+
+            boundary.renderTreeMetaBoundary(treeMetaMount, model, treeId, data, treeLikeControlEl, treeCommentsControlEl, treeCommentsPanelEl);
         };
     }
 

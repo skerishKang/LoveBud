@@ -75,7 +75,9 @@
             isPublic,
             countLabel,
             shareButtonEl = null,
-            treeLikeControlEl = null   // optional tree-level like control element
+            treeLikeControlEl = null,   // optional tree-level like control element
+            treeCommentsControlEl = null,   // optional whole-tree comments toggle button
+            treeCommentsPanelEl = null       // optional whole-tree comments panel (tree-scope)
         }) => {
             const wrap = document.createElement('div');
             wrap.style.padding = '20px 20px 18px';
@@ -168,9 +170,17 @@
             actionsRow.style.paddingTop = '2px';
 
             if (treeLikeControlEl) actionsRow.appendChild(treeLikeControlEl);
+            if (treeCommentsControlEl) actionsRow.appendChild(treeCommentsControlEl);
             if (shareButtonEl) actionsRow.appendChild(shareButtonEl);
 
             wrap.appendChild(actionsRow);
+
+            // Whole-tree comments panel lives in the tree-scope area, below the
+            // actions row. Never inside a selected-moment detail card.
+            if (treeCommentsPanelEl) {
+                treeCommentsPanelEl.style.marginTop = '12px';
+                wrap.appendChild(treeCommentsPanelEl);
+            }
 
             return wrap;
         };
@@ -214,7 +224,7 @@
             };
         };
 
-        const renderTreeMetaBoundary = (treeMetaMount, model, treeId, data, treeLikeControlEl) => {
+        const renderTreeMetaBoundary = (treeMetaMount, model, treeId, data, treeLikeControlEl, treeCommentsControlEl, treeCommentsPanelEl) => {
             if (!treeMetaMount) return;
 
             treeMetaMount.replaceChildren();
@@ -226,7 +236,9 @@
                 isPublic: model.isPublic,
                 countLabel: model.countLabel,
                 shareButtonEl: model.shareButtonEl,
-                treeLikeControlEl: treeLikeControlEl || null
+                treeLikeControlEl: treeLikeControlEl || null,
+                treeCommentsControlEl: treeCommentsControlEl || null,
+                treeCommentsPanelEl: treeCommentsPanelEl || null
             });
             treeMetaMount.appendChild(block);
 
