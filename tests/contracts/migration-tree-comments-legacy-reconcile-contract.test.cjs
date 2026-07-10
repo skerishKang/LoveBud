@@ -532,3 +532,61 @@ test('reconcile migration does not modify runtime, UI, Scout, or moment files', 
   assert.equal(/functions\/api/i.test(sql), false, 'Must not embed route files');
   assert.equal(/Scout/i.test(sql), false, 'Must not reference Scout modification');
 });
+
+// ─── 18. Migration / rollback command uses ON_ERROR_STOP=1 (fail-fast) ────────
+
+const RUNBOOK_PATH = path.join(ROOT, 'docs', 'product', 'lovebud-tree-comments-legacy-schema-reconciliation-runbook.md');
+const runbook = readFile(RUNBOOK_PATH);
+
+// The bare single-line command (no fail-fast flag) is forbidden everywhere.
+const BARE_MIGRATION_CMD =
+  /psql\s+"\$DATABASE_URL"\s+-f\s+scripts\/migration-reconcile-tree-comments-legacy-schema\.sql/;
+const ON_ERROR_STOP_RE = /-v\s+ON_ERROR_STOP=1/;
+
+test('reconcile migration SQL usage comment uses fail-fast ON_ERROR_STOP=1', () => {
+  // The usage command lives in the SQL header comment block; verify the actual
+  // command (not a prose mention) includes -v ON_ERROR_STOP=1.
+  const usageIdx = sql.indexOf('Usage (apply ONLY under separate approval');
+  assert.ok(usageIdx > 0, 'Migration SQL must contain a usage comment');
+  const usageTail = sql.slice(usageIdx, usageIdx + 700);
+  assert.match(usageTail, ON_ERROR_STOP_RE, 'Usage command block must include -v ON_ERROR_STOP=1');
+});
+
+test('reconcile migration forbids the bare psql command (no ON_ERROR_STOP)', () => {
+  // The bare form must not appear as an actual command in the SQL or the runbook.
+  assert.equal(BARE_MIGRATION_CMD.test(sql), false, 'Migration SQL must not contain the bare psql command');
+  assert.equal(BARE_MIGRATION_CMD.test(runbook), false, 'Runbook must not contain the bare psql command');
+});
+
+test('reconcile runbook migration command block uses ON_ERROR_STOP=1', () => {
+  // Target the section 8 command block specifically (the operator-runnable command).
+  const sec8 = runbook.slice(runbook.indexOf('## 8. Migration command format'));
+  const nextSec = sec8.indexOf('## 9.');
+  const block = nextSec > 0 ? sec8.slice(0, nextSec) : sec8;
+  assert.match(
+    block,
+    /psql\s+"\$DATABASE_URL"\s+-v\s+ON_ERROR_STOP=1\s+\\\s*\n\s*-f\s+scripts\/migration-reconcile-tree-comments-legacy-schema\.sql/,
+    'Runbook migration command block must use psql -v ON_ERROR_STOP=1 -f ...'
+  );
+  assert.equal(BARE_MIGRATION_CMD.test(block), false, 'Runbook migration command block must not be the bare form');
+});
+
+test('reconcile runbook rollback command continues to use ON_ERROR_STOP=1', () => {
+  const sec11 = runbook.slice(runbook.indexOf('## 11. Rollback procedure'));
+  const nextSec = sec11.indexOf('## 12.');
+  const block = nextSec > 0 ? sec11.slice(0, nextSec) : sec11;
+  assert.match(
+    block,
+    /psql\s+"\$DATABASE_URL"\s+-v\s+ON_ERROR_STOP=1\s+\\\s*\n\s*-f\s+scripts\/rollback-tree-comments-legacy-reconcile\.sql/,
+    'Runbook rollback command must continue to use psql -v ON_ERROR_STOP=1 -f ...'
+  );
+});
+
+test('reconcile runbook does not claim the migration/rollback were actually executed', () => {
+  assert.match(runbook, /actual DB migration\/rollback was NOT executed/i,
+    'Runbook must state the DB migration/rollback was NOT executed');
+  assert.equal(/full PostgreSQL grammar parse of both SQL files via `pglast`/i.test(runbook), false,
+    'Runbook must not claim a pglast parse success');
+  assert.match(runbook, /pglast:\s*NOT RUN on this final head/i,
+    'Runbook must record pglast: NOT RUN on this final head');
+});

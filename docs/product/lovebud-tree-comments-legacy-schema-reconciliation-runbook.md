@@ -231,8 +231,17 @@ If any preflight fails, **do not apply**. Investigate before proceeding.
 ## 8. Migration command format
 
 ```sh
-psql "$DATABASE_URL" -f scripts/migration-reconcile-tree-comments-legacy-schema.sql
+psql "$DATABASE_URL" -v ON_ERROR_STOP=1 \
+  -f scripts/migration-reconcile-tree-comments-legacy-schema.sql
 ```
+
+The `-v ON_ERROR_STOP=1` flag is REQUIRED (do not use the bare single-line form that
+omits `-v ON_ERROR_STOP=1`). On any SQL error psql exits non-zero immediately. The whole script is wrapped
+in a single transaction (`BEGIN` … `COMMIT`), so the abort rolls the transaction
+back. Without `ON_ERROR_STOP=1`, psql would keep executing later statements and could
+end with exit 0, misreporting a failure as success. On command failure the rollback
+script is NOT run automatically — first confirm the transaction was rolled back, then
+run the rollback script (section 11) only as a separate, explicitly-approved step.
 
 The script itself enforces: explicit `BEGIN`, bounded timeouts, a `SHARE ROW EXCLUSIVE`
 lock, full preflight assertions, and post-migration verification. On a second apply it
@@ -271,16 +280,21 @@ This reconciliation was prepared with **source-level static verification only**:
 Verification consists of the contract tests (migration + rollback), the existing
 tree-comments migration contract, the Python reader test, the route implementation
 contract, the client adapter contract, `npm run lint` / `npm run build` /
-`npm run verify`, and a full PostgreSQL grammar parse of both SQL files via `pglast`
-(offline).
+`npm run verify`, and the Node.js `--test` contract suite. The normalizer behavior is
+verified only by the pure-JS mirror tests; the SQL/PLpgSQL behavior remains static-only.
 
-**Limitation: pglast does not validate PL/pgSQL variable declarations.** A
-dollar-quoted `DO $$ ... $$` block or `CREATE FUNCTION ... AS $$ ... $$` may parse
-correctly at the top-level SQL grammar level while a used variable (`v_matviews`)
-is missing from that block's `DECLARE` section. Only actual PostgreSQL execution
-(or a PL/pgSQL-aware static analyzer) can catch undeclared-variable errors. The
-contract tests explicitly verify declaration presence for all `v_*` variables used
-in each PL/pgSQL block.
+pglast: NOT RUN on this final head
+actual PostgreSQL execution: NO
+normalizer behavior: pure-JS mirror tests
+SQL/PLpgSQL behavior remains static-only until approved DB execution
+
+**Limitation: the pure-JS normalizer mirror tests do not validate PL/pgSQL variable
+declarations.** A dollar-quoted `DO $$ ... $$` block or `CREATE FUNCTION ... AS $$ ... $$`
+may be modeled correctly at the top-level SQL grammar level while a used variable is
+missing from that block's `DECLARE` section. Only actual PostgreSQL execution (or a
+PL/pgSQL-aware static analyzer) can catch undeclared-variable errors. The contract
+tests explicitly verify declaration presence for all `v_*` variables used in each
+PL/pgSQL block.
 
 **The actual DB migration/rollback was NOT executed in this step — no
 Neon production/staging execution.**

@@ -69,7 +69,16 @@
 --       and aborts WITHOUT changing anything.
 --
 -- Usage (apply ONLY under separate approval, never automatically):
---   psql "$DATABASE_URL" -f scripts/migration-reconcile-tree-comments-legacy-schema.sql
+--   psql "$DATABASE_URL" -v ON_ERROR_STOP=1 \
+--     -f scripts/migration-reconcile-tree-comments-legacy-schema.sql
+--
+-- The `-v ON_ERROR_STOP=1` flag is REQUIRED so that a SQL error aborts psql with a
+-- non-zero exit immediately. The whole script is wrapped in a single transaction
+-- (BEGIN ... COMMIT), so psql aborting on error rolls the transaction back. Without
+-- this flag psql would keep processing subsequent statements and could finish with a
+-- zero exit, misreporting failure as success. On command failure the rollback script
+-- is NOT run automatically; first confirm the transaction was rolled back, then run
+-- scripts/rollback-tree-comments-legacy-reconcile.sql only as a separate approved step.
 --
 -- This file is schema-foundation only. It does NOT enable the writer/route/UI,
 -- does NOT modify runtime source, and must not be auto-applied.
