@@ -263,6 +263,39 @@ test('missing glob directory is detected as failure', () => {
   assert.equal(check.missingGlobDirectories, true, 'missing glob directory not detected');
 });
 
+test('exact-file token is rejected (unsupported glob shape)', () => {
+  const inv = reporter.loadInventory();
+  const check = reporter.checkPackageTestCommand('node --test tests/contracts/foo.test.cjs', inv.defaultCiGlobs);
+  assert.equal(check.unsupportedTestCommand, true, 'exact-file token must be unsupported');
+});
+
+test('partial wildcard token is rejected (unsupported glob shape)', () => {
+  const inv = reporter.loadInventory();
+  const check = reporter.checkPackageTestCommand('node --test tests/contracts/foo*.test.cjs', inv.defaultCiGlobs);
+  assert.equal(check.unsupportedTestCommand, true, 'partial wildcard must be unsupported');
+});
+
+test('recursive wildcard token is rejected (unsupported glob shape)', () => {
+  const inv = reporter.loadInventory();
+  const check = reporter.checkPackageTestCommand('node --test tests/contracts/**/*.test.cjs', inv.defaultCiGlobs);
+  assert.equal(check.unsupportedTestCommand, true, 'recursive wildcard must be unsupported');
+});
+
+test('traversal and absolute glob tokens are rejected (unsupported glob shape)', () => {
+  const inv = reporter.loadInventory();
+  const up = reporter.checkPackageTestCommand('node --test ../tests/contracts/*.test.cjs', inv.defaultCiGlobs);
+  assert.equal(up.unsupportedTestCommand, true, 'parent traversal must be unsupported');
+  const abs = reporter.checkPackageTestCommand('node --test /tests/contracts/*.test.cjs', inv.defaultCiGlobs);
+  assert.equal(abs.unsupportedTestCommand, true, 'absolute path must be unsupported');
+});
+
+test('current default-CI package globs parse as supported', () => {
+  const inv = reporter.loadInventory();
+  const check = reporter.checkPackageTestCommand('node --test tests/smoke/*.test.cjs tests/routes/*.test.cjs tests/contracts/*.test.cjs', inv.defaultCiGlobs);
+  assert.equal(check.unsupportedTestCommand, false, 'supported package globs must parse');
+  assert.deepEqual(check.globs, ['tests/smoke/*.test.cjs', 'tests/routes/*.test.cjs', 'tests/contracts/*.test.cjs']);
+});
+
 test('known My Trees continuation-hub media contract is SOURCE_STATIC', () => {
   const inv = reporter.loadInventory();
   const e = inv.entries.find((x) => x.path === 'tests/contracts/my-trees-continuation-hub-media-contract.test.cjs');
@@ -341,4 +374,29 @@ test('supplemental invalid metadata (empty rationale / invalid layer / non-py) i
   assert.ok(result.supplementalEmptyRationale.includes('tests/contracts/__synthetic_a__.py'), 'empty rationale not detected');
   assert.ok(result.supplementalInvalid.includes('tests/contracts/__synthetic_b__.py'), 'invalid layer not detected');
   assert.ok(result.supplementalInvalid.includes('tests/contracts/__synthetic_c__.test.cjs'), 'non-py supplemental not detected');
+});
+
+test('supplemental missing capabilities is detected as invalid', () => {
+  const inv = reporter.loadInventory();
+  const enumerated = reporter.enumerateDefaultCi();
+  const dup = JSON.parse(JSON.stringify(inv));
+  dup.supplemental.push({ path: 'tests/contracts/test_fork_tree.py', defaultCi: false, layer: 'SUPPLEMENTAL_PYTHON', rationale: 'x' });
+  const result = reporter.classify(dup, enumerated);
+  assert.ok(result.supplementalInvalidCapabilities.includes('tests/contracts/test_fork_tree.py'), 'missing capabilities not detected');
+});
+
+test('supplemental non-array capabilities (string) is detected as invalid', () => {
+  const inv = reporter.loadInventory();
+  const enumerated = reporter.enumerateDefaultCi();
+  const dup = JSON.parse(JSON.stringify(inv));
+  dup.supplemental.push({ path: 'tests/contracts/test_fork_tree.py', defaultCi: false, layer: 'SUPPLEMENTAL_PYTHON', rationale: 'x', capabilities: 'none' });
+  const result = reporter.classify(dup, enumerated);
+  assert.ok(result.supplementalInvalidCapabilities.includes('tests/contracts/test_fork_tree.py'), 'string capabilities not detected');
+});
+
+test('all committed supplemental entries have array capabilities (bucket is 0)', () => {
+  const inv = reporter.loadInventory();
+  const enumerated = reporter.enumerateDefaultCi();
+  const result = reporter.classify(inv, enumerated);
+  assert.equal(result.supplementalInvalidCapabilities.length, 0, 'committed supplemental capabilities must be arrays');
 });

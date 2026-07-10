@@ -88,11 +88,59 @@ function parseNodeTestGlobs(testCommand) {
     throw new Error('UNSUPPORTED_TEST_COMMAND: no globs');
   }
   for (const g of globs) {
-    if (typeof g !== 'string' || !g.endsWith('.test.cjs')) {
-      throw new Error('UNSUPPORTED_TEST_COMMAND: invalid glob ' + g);
-    }
+    validateGlobShape(g);
   }
   return globs;
+}
+
+/**
+ * Fail-closed validation of a single supported glob token.
+ *
+ * The only supported shape is a normalized, relative repository path of the
+ * form `<existing-directory>/*.test.cjs`, where `<existing-directory>` is a
+ * literal (non-wildcard) relative path and the basename is exactly the
+ * single-level `*.test.cjs` wildcard.
+ *
+ * The following are explicitly rejected (fail-closed):
+ *   - absolute paths (leading slash, drive letter, path.isAbsolute)
+ *   - `..` path traversal
+ *   - an empty directory part (bare `*.test.cjs`)
+ *   - a basename that is not exactly `*.test.cjs` (exact-file, partial/recursive
+ *     wildcard, etc.)
+ *   - wildcard characters (`*`, `?`) anywhere in the directory part
+ */
+function validateGlobShape(glob) {
+  if (typeof glob !== 'string' || !glob.trim()) {
+    throw new Error('UNSUPPORTED_TEST_COMMAND: invalid glob ' + String(glob));
+  }
+  if (path.isAbsolute(glob)) {
+    throw new Error('UNSUPPORTED_TEST_COMMAND: absolute path ' + glob);
+  }
+  // Normalize OS separators to POSIX for consistent, OS-independent checks.
+  const norm = glob.split(path.sep).join('/');
+  if (norm.startsWith('/')) {
+    throw new Error('UNSUPPORTED_TEST_COMMAND: absolute path ' + glob);
+  }
+  if (/^[A-Za-z]:/.test(norm)) {
+    throw new Error('UNSUPPORTED_TEST_COMMAND: absolute path ' + glob);
+  }
+  const parts = norm.split('/').filter((p) => p.length > 0);
+  if (parts.includes('..')) {
+    throw new Error('UNSUPPORTED_TEST_COMMAND: path traversal ' + glob);
+  }
+  const basename = parts[parts.length - 1];
+  const dirParts = parts.slice(0, -1);
+  if (dirParts.length === 0) {
+    throw new Error('UNSUPPORTED_TEST_COMMAND: missing directory ' + glob);
+  }
+  if (basename !== '*.test.cjs') {
+    throw new Error('UNSUPPORTED_TEST_COMMAND: invalid glob shape ' + glob);
+  }
+  for (const d of dirParts) {
+    if (d.includes('*') || d.includes('?')) {
+      throw new Error('UNSUPPORTED_TEST_COMMAND: unsupported wildcard in directory ' + glob);
+    }
+  }
 }
 
 /**
@@ -168,6 +216,7 @@ function validateSupplemental(inv, enumeratedSet) {
   const inDefaultCi = [];
   const invalid = [];
   const emptyRationale = [];
+  const invalidCapabilities = [];
   const seen = new Set();
   for (const s of suppEntries) {
     const sp = s && typeof s.path === 'string' ? s.path.split(path.sep).join('/') : '';
@@ -181,11 +230,12 @@ function validateSupplemental(inv, enumeratedSet) {
     if (!SUPPLEMENTAL_VOCABULARY.includes(s.layer)) invalid.push(sp);
     if (!sp.endsWith('.py')) invalid.push(sp);
     if (!s.rationale || !String(s.rationale).trim()) emptyRationale.push(sp);
+    if (!Array.isArray(s.capabilities)) invalidCapabilities.push(sp);
     if (enumeratedSet.has(sp)) inDefaultCi.push(sp);
     const fp = path.join(ROOT, sp);
     if (!fs.existsSync(fp)) stale.push(sp);
   }
-  return { stale, duplicates, inDefaultCi, invalid, emptyRationale };
+  return { stale, duplicates, inDefaultCi, invalid, emptyRationale, invalidCapabilities };
 }
 
 function classify(inv, enumerated) {
@@ -248,6 +298,7 @@ function classify(inv, enumerated) {
     supplementalInDefaultCi: supp.inDefaultCi,
     supplementalInvalid: supp.invalid,
     supplementalEmptyRationale: supp.emptyRationale,
+    supplementalInvalidCapabilities: supp.invalidCapabilities,
     totalClassified:
       enumerated.length -
       unclassified.length -
@@ -304,6 +355,7 @@ function run() {
   lines.push('Supplemental in default-CI: ' + result.supplementalInDefaultCi.length);
   lines.push('Supplemental invalid: ' + result.supplementalInvalid.length);
   lines.push('Supplemental empty rationale: ' + result.supplementalEmptyRationale.length);
+  lines.push('Supplemental invalid capabilities: ' + result.supplementalInvalidCapabilities.length);
   lines.push('');
   // Explicitly surfaced per Issue #3429 requirements.
   lines.push('DB_ENGINE_EXECUTION: ' + result.counts.DB_ENGINE_EXECUTION);
@@ -329,7 +381,8 @@ function run() {
     result.supplementalDuplicates.length > 0 ||
     result.supplementalInDefaultCi.length > 0 ||
     result.supplementalInvalid.length > 0 ||
-    result.supplementalEmptyRationale.length > 0;
+    result.supplementalEmptyRationale.length > 0 ||
+    result.supplementalInvalidCapabilities.length > 0;
 
   if (failed) {
     if (result.unclassified.length) console.error('UNCLASSIFIED:\n  ' + result.unclassified.join('\n  '));
@@ -346,6 +399,7 @@ function run() {
     if (result.supplementalInDefaultCi.length) console.error('SUPPLEMENTAL_IN_DEFAULT_CI:\n  ' + result.supplementalInDefaultCi.join('\n  '));
     if (result.supplementalInvalid.length) console.error('SUPPLEMENTAL_INVALID:\n  ' + result.supplementalInvalid.join('\n  '));
     if (result.supplementalEmptyRationale.length) console.error('SUPPLEMENTAL_EMPTY_RATIONALE:\n  ' + result.supplementalEmptyRationale.join('\n  '));
+    if (result.supplementalInvalidCapabilities.length) console.error('SUPPLEMENTAL_INVALID_CAPABILITIES:\n  ' + result.supplementalInvalidCapabilities.join('\n  '));
     process.exitCode = 1;
   }
   return { inv, enumerated, result };
@@ -362,6 +416,7 @@ module.exports = {
   checkPackageTestCommand,
   enumerateDefaultCi,
   validateSupplemental,
+  validateGlobShape,
   classify,
   run,
   DEFAULT_CI_GLOBS,
