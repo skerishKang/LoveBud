@@ -60,6 +60,19 @@ Legacy-only columns preserved: `author_id`, `author_display_name`, `is_deleted`,
 
 ---
 
+## 2b. Corrected production evidence (Issue #3431)
+
+> The previously recorded compound-index assumption was **incorrect**. A later
+> approved read-only preflight confirmed the production legacy `tree_comments`
+> table has **zero non-primary (secondary) indexes** — the assumed compound
+> `(tree_id, created_at)` index does not exist. No production mutation occurred
+> during this discovery. The migration and rollback were corrected (this PR) to
+> match the real zero-secondary-index production state: the reconciliation creates
+> only the three canonical secondary indexes and no compound index, and rollback
+> restores the exact legacy zero-secondary-index state.
+
+---
+
 ## 3. Strategy and rationale
 
 **Selected: In-place ALTER (Strategy A).**
@@ -85,30 +98,29 @@ backfill UPDATE, no sentinel values).
 `tree_comments_pkey` constraint, read from the catalog) and replaced with `PRIMARY KEY (id)`. The writer replays
 by `WHERE id = %s`, so `id` must be DB-level unique.
 
-**Legacy secondary index:** the production legacy table already has a compound
-list-read index on `(tree_id, created_at)`. This is **preserved** across both
-the migration and the rollback.
+**Legacy secondary index:** approved read-only preflight confirmed the production
+legacy `tree_comments` table has **zero non-primary (secondary) indexes**. The
+previously assumed compound `(tree_id, created_at)` legacy index does **not**
+exist in production. The reconciliation therefore creates only the three canonical
+secondary indexes and **no** compound index.
 
-**Migration-added indexes:** the migration additionally creates three canonical
-read indexes — `idx_tree_comments_tree_id` on `(tree_id)`,
+**Migration-added indexes:** the migration creates three canonical read indexes —
+`idx_tree_comments_tree_id` on `(tree_id)`,
 `idx_tree_comments_owner_id` on `(owner_id)`, and
-`idx_tree_comments_created_at` on `(created_at)`. The single-column
-`idx_tree_comments_tree_id` is therefore **a canonical migration-added index,
-not a legacy index**; it is removed by the rollback, while the compound
-`(tree_id, created_at)` legacy index is preserved.
+`idx_tree_comments_created_at` on `(created_at)`. The compound
+`(tree_id, created_at)` index is **not** created. The single-column
+`idx_tree_comments_tree_id` is **a canonical migration-added index, not a legacy
+index**; it is removed by the rollback.
 
-**Reconciled total index count = 5:** 1 primary backing index `(id)` + 4 secondary
-indexes (the compound legacy `(tree_id, created_at)` + the 3 migration-added
-`(tree_id)` / `(owner_id)` / `(created_at)`). Each secondary index is verified by its
-ordered key array, uniqueness, non-partial / non-expression status, and absence of
-INCLUDE columns (`indnkeyatts = indnatts`); the migration-added indexes are also
-verified by exact name. The legacy state instead allows **exactly one** secondary
-index — the compound `(tree_id, created_at)` — and rejects any single-column
-`tree_id` / `owner_id` / `created_at`, different compound, partial, expression,
-unique, or INCLUDE index. The legacy unexpected-index guard is per-index (it counts
-the total secondary index and matches the compound exactly), not a global
-uncorrelated `NOT EXISTS` that would hide an unexpected index whenever the compound
-index exists.
+**Reconciled total index count = 4:** 1 primary backing index `(id)` + 3 secondary
+indexes (the three canonical `(tree_id)` / `(owner_id)` / `(created_at)`). Each
+secondary index is verified by its ordered key array, uniqueness, non-partial /
+non-expression status, and absence of INCLUDE columns (`indnkeyatts = indnatts`);
+the migration-added indexes are also verified by exact name. The legacy state
+instead allows **exactly zero** secondary indexes and rejects any single-column
+`tree_id` / `owner_id` / `created_at`, compound, partial, expression, unique, or
+INCLUDE index. The legacy unexpected-index guard fails closed on any non-primary
+index (total secondary count = 0).
 
 **Exact reconciled-state validator (`_lb_reconciled_validator()`):** the migration
 runs this top-level function (dropped before `COMMIT`) both *before* the reconciled
@@ -127,7 +139,8 @@ and verifies, inside a single transaction:
 - the **exact total constraint set of 5** (1 PK + 2 FK + 2 CHECK) with **0 UNIQUE /
   0 EXCLUDE / 0 other** constraint types;
 - **0 inbound FK** referencing `tree_comments`;
-- the exact **5-index inventory** described above;
+- the exact **4-index inventory** described above (PK `(id)` + 3 canonical secondary,
+  compound = 0, unexpected = 0);
 - no triggers / RLS / dependent views / materialized views.
 
 A malformed 12-column table (name-only match) fails the validator and raises
@@ -136,7 +149,8 @@ STOP is reached only when the entire canonical shape matches exactly.
 
 **Rollback / validator contract consistency:** the rollback preflight uses the same
 contract — exact 12-column metadata, exact 5-constraint set, exact CHECK definitions,
-0 inbound FK, `trees.id` text, exact 5-index inventory, and no triggers/RLS/views/
+0 inbound FK, `trees.id` text, exact 4-index inventory (PK `(id)` + 3 canonical
+secondary, compound = 0, unexpected = 0), and no triggers/RLS/views/
 matviews — so the two scripts agree on what "reconciled" means.
 
 **Rollback:** the migration is a single committed transaction. If the post-verification
@@ -151,8 +165,8 @@ reverts the reconciled schema to the exact legacy 8-column shape. The rollback s
   (`idx_tree_comments_tree_id`, `idx_tree_comments_owner_id`,
   `idx_tree_comments_created_at`);
 - restores the legacy composite PK `(tree_id, id)` from the catalog (no name guessing);
-- preserves legacy columns, FKs, and the original compound legacy index
-  `(tree_id, created_at)`;
+- restores the exact legacy **zero-secondary-index** state (no compound index is
+  preserved or dropped, because none exists);
 - uses no CASCADE, no DELETE/TRUNCATE, and embeds no credentials.
 
 If the rollback preconditions are not met (data present, writer/composer active, or
