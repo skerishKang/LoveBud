@@ -101,8 +101,8 @@ test('document documents the client adapter/module candidate but does NOT implem
     'Document must state the client adapter is not implemented in this PR'
   );
   assert.ok(
-    !fs.existsSync(CLIENT_CANDIDATE_PATH),
-    'This PR must not create the candidate client adapter file'
+    fs.existsSync(CLIENT_CANDIDATE_PATH),
+    'Candidate client adapter is now implemented by the follow-up #3414 (Refs #3414), so the file must exist on main'
   );
 });
 
@@ -251,8 +251,10 @@ test('document and this PR add no drawer/modal/Tree Workspace integration', () =
   const doc = readDoc();
   assert.ok(/no drawer \/ modal implementation/i.test(doc) || /No drawer \/ modal/i.test(doc), 'Document must forbid drawer/modal implementation');
   assert.ok(/do \*\*not\*\* integrate Tree Workspace/i.test(doc) || /no.*Tree Workspace/i.test(doc), 'Document must forbid Tree Workspace integration');
-  // Candidate client file must not exist (no implementation added).
-  assert.ok(!fs.existsSync(CLIENT_CANDIDATE_PATH), 'No client adapter file created by this PR');
+  // The client adapter file now exists because the follow-up #3414 (Refs #3414)
+  // implements it; this #3413 child still added no drawer/modal/Tree Workspace
+  // surface, only the documentation + contract test.
+  assert.ok(fs.existsSync(CLIENT_CANDIDATE_PATH), 'Client adapter implemented by follow-up #3414 (Refs #3414)');
 });
 
 // ─── 14. No Scout files touched ─────────────────────────────────────────────
