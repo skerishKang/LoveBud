@@ -16,12 +16,18 @@
 -- This is a schema foundation only. No writer, route, reader, client adapter,
 -- or UI is implemented by this migration. Apply under separate approval.
 --
+-- Key-type correction (TEXT): production `trees.id` is TEXT (observed via approved
+-- read-only inspection during #3422/#3423), so id/tree_id/target_id use TEXT here
+-- to stay byte-compatible with the existing trees PK and with the legacy
+-- reconciliation migration (scripts/migration-reconcile-tree-comments-legacy-schema.sql).
+-- Refs #3423, #3418, #3422.
+--
 -- Usage:
 --   psql "$DATABASE_URL" -f scripts/migration-add-tree-comments.sql
 
 CREATE TABLE IF NOT EXISTS tree_comments (
-    id UUID PRIMARY KEY,
-    tree_id UUID NOT NULL REFERENCES trees(id) ON DELETE CASCADE,
+    id TEXT PRIMARY KEY,
+    tree_id TEXT NOT NULL REFERENCES trees(id) ON DELETE CASCADE,
     owner_id VARCHAR(128) NOT NULL,
     body TEXT NOT NULL,
     -- Generic social target pair (mirrors social_idempotency / social_audit_log).
@@ -29,7 +35,7 @@ CREATE TABLE IF NOT EXISTS tree_comments (
     -- idempotency/audit infrastructure with target_kind = 'tree', target_id = treeId.
     target_kind VARCHAR(16) NOT NULL DEFAULT 'tree'
         CHECK (target_kind = 'tree'),
-    target_id UUID,
+    target_id TEXT,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     CONSTRAINT tree_comments_target_id_matches_tree_id

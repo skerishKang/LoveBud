@@ -143,6 +143,8 @@ Global focus/visibility hardening 판단이 필요하면 아래를 추가로 읽
 - [USER_FLOW.md](./product/USER_FLOW.md) - 사용자 흐름
 - [DATA_NAMING_RULE.md](./product/DATA_NAMING_RULE.md) - 데이터 명명 규칙
 - [READONLY_SHARE_SCOPE.md](./product/READONLY_SHARE_SCOPE.md) - 읽기 전용 공유 범위
+- [lovebud-tree-comment-storage-schema-boundary-audit.md](./product/lovebud-tree-comment-storage-schema-boundary-audit.md) - #3382/#3388 tree-level comment storage schema boundary audit (source-only, no migration)
+- [lovebud-tree-comments-legacy-schema-reconciliation-runbook.md](./product/lovebud-tree-comments-legacy-schema-reconciliation-runbook.md) - #3423/#3418/#3422 legacy `tree_comments` reconciliation runbook (in-place ALTER, fail-closed, no destructive ops)
 
 ## design 문서군
 
