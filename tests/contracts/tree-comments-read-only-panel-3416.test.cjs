@@ -165,9 +165,12 @@ function createDom() {
     return el;
   }
 
-  const document = {
+    const document = {
     body: makeEl('body'),
     createElement: makeEl,
+    createTextNode(text) {
+      return { nodeType: 3, textContent: String(text == null ? '' : text), parentNode: null };
+    },
     getElementById(id) { return idMap.get(id) || null; },
     get activeElement() { return activeElement; },
   };
@@ -619,19 +622,14 @@ test('detail-ui creates tree comments control for public tree (integration smoke
   assert.ok(/isPublic/.test(src), 'detail-ui gates on public visibility');
 });
 
-// ─── 29. Scout / backend / #3075 scope guards ──────────────────────────────
+// ─── 29. Scout / backend / #3075 scope guards (file-content based, CI-safe) ─
 
-test('no Scout files, backend route/reader, or moment-comment files changed by this PR', () => {
-  const diff = require('node:child_process').execSync('git diff --name-only origin/main...HEAD', { cwd: ROOT }).toString();
-  const changed = diff.split('\n').filter(Boolean);
-  for (const file of changed) {
-    if (/^js\/scout\//.test(file)) assert.fail(`Scout file changed: ${file}`);
-    if (/^functions\/api\/trees\/\[tree_id\]\/comments\.js$/.test(file)) assert.fail(`Backend route changed: ${file}`);
-    if (/^modal_compute\/tree_comments\.py$/.test(file)) assert.fail(`Backend reader changed: ${file}`);
-    if (/^modal_compute\/app\.py$/.test(file)) assert.fail(`Backend app changed: ${file}`);
-    if (/^memories\/\[memory_id\]\/comments\.js$/.test(file)) assert.fail(`Moment comment route changed: ${file}`);
-    if (/^modal_compute\/comments\.py$/.test(file)) assert.fail(`Moment comment helper changed: ${file}`);
-    if (/^public-viewer-authenticated-comment-composer\.js$/.test(file)) assert.fail(`Moment comment composer changed: ${file}`);
+test('tree-comments module source has no Scout, backend, or moment-comment references', () => {
+  const src = fs.readFileSync(WTREE_COMMENTS_PATH, 'utf8');
+  const metaSrc = fs.readFileSync(TREE_META_PATH, 'utf8');
+  for (const needle of ['scout', 'Scout', 'modal_compute', 'postgres', 'Neon']) {
+    assert.ok(!src.includes(needle), `panel module must not reference "${needle}"`);
+    assert.ok(!metaSrc.includes(needle), `tree-meta module must not reference "${needle}"`);
   }
 });
 
@@ -642,20 +640,183 @@ test('this test suite does not import runtime/network/browser clients', () => {
   assert.ok(!/require\(['"]jsdom['"]\)/i.test(self), 'must not import jsdom (uses deterministic mock)');
 });
 
-// ─── 31. detail-ui no longer calls reset on same-tree render (Blocker 1) ────
+// ─── 31. same-tree lifecycle integration test (Blocker 1 — real updater) ─────
 
-test('detail-ui does NOT call .reset(treeId) in the same-tree render path', () => {
-  const src = fs.readFileSync(DETAIL_UI_PATH, 'utf8');
-  // The same-tree render path must not call .reset(treeId) on the cached
-  // tree comments control. It should only null the cached instance on
-  // tree ID change (line ~616).
-  const resetCallCount = (src.match(/\.reset\(/g) || []).length;
-  // There should be zero .reset( calls for tree comments.
-  // The tree-like control also has no .reset( pattern.
-  assert.equal(resetCallCount, 0,
-    'same-tree render must not call .reset() on cached tree comments control. ' +
-    'Reset is only done by nulling the cache on tree ID change (line ~616). ' +
-    'Remove the .reset(treeId) call from the same-tree render path.');
+function loadDetailUI(dom, adapterMock) {
+  var factoryCalls = [];
+  var lastTreeIds = [];
+
+  var sandbox = {
+    window: {
+      location: { pathname: '/pages/view.html', origin: 'https://example.com' },
+      LoveBudTreeComments: { fetchTreeComments: adapterMock },
+      LoveBudPublicViewerTreeComments: null,
+      createPublicViewerDetailTreeMetaBoundary: null,
+      createEditorDetailTreeMetaBoundary: null,
+      LoveBudTreeLikeControl: null,
+    },
+    document: dom.document,
+    console: console,
+    Promise: Promise,
+    setTimeout: setTimeout,
+    clearTimeout: clearTimeout,
+    URLSearchParams: (typeof URLSearchParams !== 'undefined') ? URLSearchParams : (function () {
+      function SSP() { this.params = {}; }
+      SSP.prototype.get = function () { return null; };
+      return SSP;
+    })(),
+  };
+  vm.createContext(sandbox);
+
+  // Load tree-meta boundary first
+  vm.runInContext(fs.readFileSync(TREE_META_PATH, 'utf8'), sandbox, { filename: TREE_META_PATH });
+  assert.ok(sandbox.window.createPublicViewerDetailTreeMetaBoundary, 'tree-meta boundary must load');
+
+  // Load tree-comments control
+  vm.runInContext(fs.readFileSync(WTREE_COMMENTS_PATH, 'utf8'), sandbox, { filename: WTREE_COMMENTS_PATH });
+  assert.ok(sandbox.window.LoveBudPublicViewerTreeComments, 'tree-comments module must load');
+
+  // Track factory calls to the tree-comments control
+  var realFactory = sandbox.window.LoveBudPublicViewerTreeComments.createTreeCommentsReadOnlyControl;
+  sandbox.window.LoveBudPublicViewerTreeComments.createTreeCommentsReadOnlyControl = function (deps) {
+    factoryCalls.push(deps);
+    lastTreeIds.push(deps && deps.treeId);
+    return realFactory(deps);
+  };
+
+  // Load detail-ui
+  vm.runInContext(fs.readFileSync(DETAIL_UI_PATH, 'utf8'), sandbox, { filename: DETAIL_UI_PATH });
+  assert.ok(sandbox.window.LoveBudPublicViewerDetailUI, 'detail-ui module must load');
+
+  var currentTreeDataRef = { value: { id: VALID_TREE_ID, visibility: 'public', title: 'Tree A' } };
+  var treeMemoriesData = [];
+  var canonicalRootIdValue = null;
+
+  function callFactory() {
+    var deps = {
+      i18n: function (k) { return k; },
+      resolveTreeTitleText: function (t) { return t || '러브트리'; },
+      isRootMemory: function () { return false; },
+      getCanonicalRootId: function () { return canonicalRootIdValue; },
+      getTreeMemories: function () { return treeMemoriesData; },
+      getCurrentTreeData: function () { return currentTreeDataRef.value; },
+      getLocalSaveMode: function () { return false; },
+      showToast: function () {},
+    };
+    var factory = sandbox.window.LoveBudPublicViewerDetailUI.createPublicViewerTreeMetaBoundary;
+    return factory(deps);
+  }
+
+  return {
+    sandbox: sandbox,
+    factoryCalls: factoryCalls,
+    lastTreeIds: lastTreeIds,
+    callFactory: callFactory,
+    currentTreeDataRef: currentTreeDataRef,
+  };
+}
+
+test('same-tree rerender preserves panel state, cache, and control instance', async () => {
+  var adapterCalls = 0;
+  var dom = createDom();
+  var mount = dom.document.createElement('div');
+  mount.id = 'detailTreeMetaMount';
+  dom.document.body.appendChild(mount);
+
+  var h = loadDetailUI(dom, async function () {
+    adapterCalls++;
+    return { ok: true, state: 'loaded_with_comments', comments: [{ id: 'c1', treeId: VALID_TREE_ID, body: 'same-tree comment', createdAt: '2024-01-01T00:00:00Z', updatedAt: 't', authorDisplayLabel: '익명' }] };
+  });
+
+  var updater = h.callFactory();
+
+  // First render: tree A
+  updater({ id: VALID_TREE_ID });
+  assert.equal(h.factoryCalls.length, 1, 'factory called once after first render');
+
+  // Open the tree-comments panel and load data
+  var panel = dom.document.getElementById('wholeTreeCommentsPanel');
+  var toggle = dom.document.getElementById('wholeTreeCommentsToggle');
+  assert.ok(panel, 'panel exists after first render');
+  assert.ok(toggle, 'toggle exists after first render');
+  toggle.click();
+  await flush();
+  assert.equal(adapterCalls, 1, 'adapter called once on first open');
+
+  // Verify panel has loaded content
+  var list = dom.document.getElementById('wholeTreeCommentsList');
+  assert.ok(list.textContent.includes('same-tree comment'), 'first render loaded comments');
+
+  var firstPanel = panel;
+  var firstToggle = toggle;
+
+  // Second render: same tree A, different moment data
+  updater({ id: VALID_TREE_ID, isNewTree: false });
+  assert.equal(h.factoryCalls.length, 1, 'factory still called only once after same-tree rerender');
+
+  // Same control and panel objects preserved
+  var panel2 = dom.document.getElementById('wholeTreeCommentsPanel');
+  var toggle2 = dom.document.getElementById('wholeTreeCommentsToggle');
+  assert.equal(panel2, firstPanel, 'same panel object preserved on same-tree rerender');
+  assert.equal(toggle2, firstToggle, 'same toggle object preserved on same-tree rerender');
+
+  // Panel stays open after same-tree rerender
+  assert.equal(panel2.hidden, false, 'panel remains open after same-tree rerender');
+
+  // Cached comments preserved
+  assert.ok(dom.document.getElementById('wholeTreeCommentsList').textContent.includes('same-tree comment'),
+    'cached comments preserved after same-tree rerender');
+
+  // No new adapter call
+  assert.equal(adapterCalls, 1, 'no additional adapter call on same-tree rerender');
+});
+
+test('tree change creates new control instance and does not reuse stale results', async () => {
+  var adapterCalls = 0;
+  var dom = createDom();
+  var mount = dom.document.createElement('div');
+  mount.id = 'detailTreeMetaMount';
+  dom.document.body.appendChild(mount);
+
+  var h = loadDetailUI(dom, async function (id) {
+    adapterCalls++;
+    await tick();
+    return { ok: true, state: 'loaded_with_comments', comments: [{ id: 'c', treeId: id, body: 'comment-for-' + id, createdAt: 't', updatedAt: 't', authorDisplayLabel: 'u' }] };
+  });
+
+  var updater = h.callFactory();
+
+  // Render tree A
+  h.currentTreeData = { id: VALID_TREE_ID, visibility: 'public', title: 'Tree A' };
+  updater({ id: VALID_TREE_ID });
+  assert.equal(h.factoryCalls.length, 1, 'factory called for tree A');
+
+  // Open panel for tree A
+  var toggleA = dom.document.getElementById('wholeTreeCommentsToggle');
+  toggleA.click();
+  await flush();
+  assert.equal(adapterCalls, 1, 'adapter called for tree A');
+
+  // Switch to tree B (simulate tree change)
+  h.currentTreeDataRef.value = { id: OTHER_TREE_ID, visibility: 'public', title: 'Tree B' };
+  updater({ id: OTHER_TREE_ID });
+  assert.equal(h.factoryCalls.length, 2, 'factory called again for tree B (new instance)');
+
+  // Open panel for tree B
+  var toggleB = dom.document.getElementById('wholeTreeCommentsToggle');
+  toggleB.click();
+  await flush();
+
+  // Tree B panel gets its own data
+  assert.equal(adapterCalls, 2, 'adapter called again for tree B');
+  assert.ok(
+    dom.document.getElementById('wholeTreeCommentsList').textContent.includes('comment-for-' + OTHER_TREE_ID),
+    'tree B panel shows tree B comments'
+  );
+  assert.ok(
+    !dom.document.getElementById('wholeTreeCommentsList').textContent.includes('comment-for-' + VALID_TREE_ID),
+    'tree B panel does not show tree A comments'
+  );
 });
 
 // ─── 32. production-equivalent i18n fallback (Blocker 2) ─────────────────────
