@@ -184,3 +184,58 @@ test('audit does not claim implementation code exists', () => {
       !doc.includes('this PR deploys')
   );
 });
+
+// --- Regression guards added for the blocking review (컴2 correction) ---
+
+test('audit does not cite the non-existent nested CSS path', () => {
+  const doc = readAudit();
+  assert.ok(
+    !doc.includes('css/editor/editor.css'),
+    'Wrong nested path css/editor/editor.css must not appear as evidence'
+  );
+  assert.ok(doc.includes('css/editor.css'), 'Correct editor stylesheet path css/editor.css must be referenced');
+});
+
+test('audit cites the confirmed editor-overrides.css broad-rule evidence', () => {
+  const doc = readAudit();
+  assert.ok(
+    doc.includes('css/editor/editor-overrides.css'),
+    'Confirmed #3419 evidence path css/editor/editor-overrides.css must be present'
+  );
+  assert.ok(
+    doc.toLowerCase().includes('editor-tree-meta-section'),
+    'The shared .editor-tree-meta-section cross-surface case should be described'
+  );
+});
+
+test('audit does not mix Scout #1882 into Social ownership', () => {
+  const doc = readAudit().toLowerCase();
+  assert.ok(
+    !doc.includes('social migration plan (#3188/#3075/#1882)'),
+    'Social migration plan must not list Scout #1882'
+  );
+  assert.ok(
+    !doc.includes('owned by #3424/#3188/#3075/#1882'),
+    'Ownership string must not mix Scout #1882 with Social issues'
+  );
+});
+
+test('audit classifies baseline migration tests as source/static/regex with no actual PostgreSQL execution', () => {
+  const doc = readAudit().toLowerCase();
+  assert.ok(doc.includes('source/static'), 'Baseline classification should include source/static');
+  assert.ok(doc.includes('regex'), 'Baseline classification should include regex SQL-text');
+  assert.ok(
+    doc.includes('no actual postgresql execution'),
+    'Baseline classification should state no actual PostgreSQL execution'
+  );
+});
+
+test('Candidate G reconciles with the closed #3120 global namespace audit', () => {
+  const doc = readAudit();
+  assert.ok(doc.includes('### G. Editor/public-viewer shared-state cleanup'));
+  const lower = doc.toLowerCase();
+  assert.ok(
+    lower.includes('#3120') && lower.includes('global namespace'),
+    'Candidate G must reference the #3120 global namespace bridges audit and its relationship'
+  );
+});

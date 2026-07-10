@@ -24,15 +24,22 @@ modified, checked out, or depended upon here.
 
 ## Executive findings
 
-1. **Schema is source-of-truth in SQL files, but there is no applied-migration ledger or schema-version
-   table in the repository** (CONFIRMED). The deployed production schema state cannot be reconstructed
-   or verified from the repository alone.
+1. **Repository SQL files encode partial migration/schema intent, not a complete authoritative
+   current-schema source of truth** (CONFIRMED). They are not a complete authoritative source of truth
+   because: no complete `CREATE TABLE` definition exists for all production-critical tables such as
+   `trees`; no applied-migration ledger / schema-version record exists; and the deployed schema cannot be
+   reconstructed from repository artifacts alone.
 2. **Migrations use `CREATE TABLE IF NOT EXISTS` / `CREATE INDEX IF NOT EXISTS`** (CONFIRMED). If an
    incompatible object already exists in production, a migration can silently preserve the wrong shape.
-3. **Migration contract tests are parser/static only** (CONFIRMED). They assert the SQL text, not that
-   the SQL executes against PostgreSQL. A green CI does not prove a migration runs.
-4. **No CI test executes SQL against a real PostgreSQL engine** (CONFIRMED). `pg`/`Pool`/`DATABASE_URL`
-   appear only in out-of-CI ops scripts (`scripts/verify-*.cjs`, `scripts/seed-*.cjs`).
+3. **Migration contract tests are source/static/regex SQL-text only** (CONFIRMED). On current `main` they
+   assert the SQL text via regex (no grammar parse); PR #3424's branch additionally adds a `pglast` grammar
+   parse as static validation. Neither executes SQL against PostgreSQL. A green CI does not prove a
+   migration runs.
+4. **No CI test executes SQL against a real PostgreSQL engine** (CONFIRMED). Across `tests/smoke`,
+   `tests/routes`, `tests/contracts`, `.github/workflows/ci.yml`, and `package.json`, `pg`/`Pool`/`psql`/
+   `pool.query`/`DATABASE_URL`/`postgres` appear only in out-of-CI ops scripts (`scripts/verify-*.cjs`,
+   `scripts/seed-*.cjs`); `ci.yml` defines no PostgreSQL service/container or DB execution step. There is
+   **no actual PostgreSQL execution** in CI.
 5. **`npm run ci` is static/structural plus mocked-logic contracts** (CONFIRMED). It guarantees lint
    hygiene, `index.html` presence, JS syntax, i18n key consistency, route *file* existence, and
    fake/mock contract logic — not real Cloudflare/Modal/Neon runtime, applied schema, or browser behavior.
@@ -66,6 +73,11 @@ domain-separated child issues (see Recommended child issues).
   implementation code exists.
 
 ## Database schema source of truth
+
+> Repository `scripts/*.sql` files encode *partial* migration/schema intent. They are **not** a complete
+> authoritative current-schema source of truth: the repository has no complete `CREATE` definition for all
+> production-critical tables (e.g. `trees`), no applied-migration ledger / schema-version record exists, and
+> the deployed schema cannot be reconstructed from repository artifacts alone.
 
 **Repository migrations (CONFIRMED, `scripts/*.sql`):**
 
@@ -105,13 +117,15 @@ branch. Rollback is only documented as commented DDL inside
 rollback scripts or rollback contract tests are present here. (Note: PR #3424's branch carries
 `scripts/rollback-tree-comments-legacy-reconcile.sql`; that is 컴1 work and not part of this audit.)
 
-**Migration contract tests are parser/static (CONFIRMED):**
+**Migration contract tests are source/static/regex SQL-text (CONFIRMED):**
 - `tests/contracts/migration-reactions-comments-contract.test.cjs:8` — `fs.readFileSync` + regex; no DB.
 - `tests/contracts/migration-tree-comments-contract.test.cjs:10` — header states "All assertions are
   source-level. No database connection, psql, subprocess…".
 - `tests/contracts/generic-social-targets-migration-a-contract.test.cjs:8` and
   `...-b-contract.test.cjs:8` — static BEGIN/COMMIT, `to_regclass` prereq, ADD COLUMN IF NOT EXISTS,
   trigger/function, runbook assertions; no SQL execution.
+- (PR #3424's branch adds a `pglast` grammar parse as *additional static validation*; that is 컴1 branch
+  context and is **not** mixed into this audit's `main` baseline evidence.)
 
 **Real PostgreSQL execution in migration tests (CONFIRMED — NO):** Grep over `tests/contracts` for
 `pg`/`Pool`/`psql`/`pool.query` finds no matches. `pg`/`DATABASE_URL`/`Pool` appear only in
@@ -198,9 +212,16 @@ build, which Modal build, and which DB schema revision are live together.
     …) loaded on every page. `GLOBAL_CSS_TOKEN_READINESS_AUDIT.md` (#510) flags `lovetree-*` as `WATCH`
     ("Future changes affect Search/Browse and other shared surfaces").
   - `css/editor/editor-overrides.css:372-379` — Group G `display:none !important` block (HOLD in #516).
-  - `css/editor/editor.css:63` — `.editor-readonly .branch-port-handle { display: none !important; }`;
-    `branch-port-handle` is a canvas class that may also exist in the public viewer canvas →
-    cross-surface regression risk.
+    This is the **confirmed** cross-surface case from #3419: the rule hides `.editor-tree-meta-section`, a
+    class reused by both `js/editor/templates/editor-detail-view-mode-template.js:4` and
+    `js/viewer/public-viewer-detail-view-mode-template.js:4`; the public viewer tree-meta action surface
+    (whole-tree like/comments/share) is therefore hidden by an editor-only presentation override.
+  - `css/editor.css:63` — `.editor-readonly .branch-port-handle { display: none !important; }`. Because the
+    rule is scoped to `.editor-readonly`, it applies only when that ancestor is present; it is **not** asserted
+    as a CONFIRMED public-viewer cross-surface regression. Classified **LIKELY / UNKNOWN** until repository
+    evidence shows the public viewer renders under an `.editor-readonly` ancestor that loads this stylesheet.
+    (Note: an earlier draft cited a non-existent nested path for this stylesheet; the real file is
+    `css/editor.css`.)
   - `css/search/search-controls.css:108` and `css/search/search-tree-card/fallback.css:23,64` —
     `display:none !important` in shared Search/Browse surfaces.
 - **Existing audit docs (extension, not duplication):** #510 (token/readiness), #511 (global focus/
@@ -219,7 +240,7 @@ Evidence level: CONFIRMED unless noted.
 | Shared mutable `window.*` globals | `window.currentTreeData`, `window.currentTreeMemories`, `window.__viewerTreeData` set in `js/viewer/public-canvas-bridge.js:115-116`, `js/editor/editor-tree-helpers.js:67-89`; read across editor/viewer | Editor/viewer state bridge during refactor | editor.js, viewer handlers | Couples editor authoring state with viewer runtime | Canonical in-memory store replaces globals | Migrate to explicit store; remove aliases | Editor/viewer shared-state cleanup |
 | Editor global bridge | `js/editor/editor-canvas.js:839,849` ("Bridge to window for legacy editor.js compatibility", #1495) | Legacy `editor.js` compatibility | `editor.js` | Hidden coupling via globals | `editor.js` modernized off bridge | Remove bridge post-migration | Editor/viewer shared-state cleanup |
 | Legacy key guard | `functions/_shared/legacy-key-guard.js:1-45` (rejects legacy localization keys; imported by `functions/api/trees.js:1`, `functions/_shared/memory-route-proxy.js:1,243`) | Reject deprecated localization keys at boundary | trees/memory routes | Guard must stay until all clients send canonical keys | All clients send canonical keys | Keep guard; document removal trigger | Legacy retirement registry |
-| Legacy social storage columns | `docs/product/lovebud-tree-comment-storage-schema-boundary-audit.md:116-163` (`target_memory_id/memory_id` retained; Migration B only relaxes NOT NULL) | Social storage migration in progress | tree/moment social | Two social storage models coexist | Migration completed; canonical model sole writer | Track in Social migration plan (#3188/#3075/#1882) | (context only — owned by #3424/#3188) |
+| Legacy social storage columns | `docs/product/lovebud-tree-comment-storage-schema-boundary-audit.md:116-163` (`target_memory_id/memory_id` retained; Migration B only relaxes NOT NULL) | Social storage migration in progress | tree/moment social | Two social storage models coexist | Migration completed; canonical model sole writer | Track in Social migration plan (#3188/#3075) | (context only — owned by #3424/#3188) |
 | Netlify legacy artifact | `netlify/README.md:1,5,21-23`, `netlify/functions/README.md:1,11-15` | Legacy / fallback / artifact (not active) | none (removal candidate) | Accidental reactivation | CTO approval per AGENTS.md | Keep removed-from-active; document | Legacy retirement registry |
 | Vercel legacy fallback | `vercel.json:3` (`x-lovebud-runtime-note: Deprecated transitional fallback only`) | Transitional/secondary entry | none (active=Cloudflare/Modal) | Misuse as primary | Confirm Cloudflare/Modal sole active | Keep documented as legacy | Legacy retirement registry |
 
@@ -236,17 +257,19 @@ Evidence level: CONFIRMED unless noted.
   read/write orchestration. Routing/blame split across two runtimes.
 - **Tree-level vs moment-level Social (CONFIRMED):** `js/social/tree-comments-client.js` (tree) vs
   `modal_compute/comments.py` (moment, legacy). Two social storage models coexist
-  (`docs/product/lovebud-tree-comment-storage-schema-boundary-audit.md:160`). This is owned by
-  #3424/#3188/#3075/#1882; this audit records it as context only and does **not** mix Social
-  implementation into this PR.
+  (`docs/product/lovebud-tree-comment-storage-schema-boundary-audit.md:160`). Ownership separation:
+  Tree Social = #3424 / #3188; Moment Social = #3075; Scout = #1882 (separate domain). This audit records
+  the Social split only as context and does **not** mix Social implementation into this PR. Scout (#1882)
+  remains separate, untouched, and is **not** part of the Social migration plan.
 - **Scout vs Social (LIKELY):** `js/scout/*` is cleanly isolated from `js/social/*`, but Scout logic is
   duplicated across client (`js/scout/*`), ~14 `functions/api/scout/*` files, and Modal. Cross-layer
   scattering increases change cost.
 - **Legacy vs canonical storage (CONFIRMED):** public-tree-adapter transitional/canonical split mirrors
   `modal_compute/public_reads.py:776` legacy (`payload/name`) vs modern (`title`) branch selection.
-- **Large files mixing responsibilities (CONFIRMED, per `CODE_ARCHITECTURE.md`):** `js/editor.js` ≈ 786
-  lines (EXTRACTION_CANDIDATE #225/#422/#518-521); `modal_compute/app.py` ≈ 588 (AUDIT_NEEDED #423);
-  `modal_compute/public_reads.py` ≈ 685; `functions/api/[[path]].js` ≈ 500 (WATCH).
+- **Large files mixing responsibilities (CONFIRMED, per `CODE_ARCHITECTURE.md`):** `js/editor.js` = 883
+  lines (EXTRACTION_CANDIDATE #225/#422/#518-521; exceeds the 500-line budget); `modal_compute/app.py` = 678
+  lines (AUDIT_NEEDED #423; exceeds the 500-line budget); `modal_compute/public_reads.py` = 780 (exceeds the
+  500-line budget); `functions/api/[[path]].js` = 677 (exceeds the 500-line budget; WATCH).
 
 ## Change-risk model
 
@@ -259,7 +282,7 @@ For each change type, the minimum verification bar. This is a draft standard, no
 | API contract | route contract + real-call contract (mock) | Cloudflare preview API call | route revert | preview API check | yes (same-origin `/api`) | mocking the exact response shape only |
 | runtime/backend (Modal) | unit + integration on Modal staging | Modal staging call | Modal prior build | staging + prod health | yes | skipping staging because unit passed |
 | deployment | build + deploy gate | preview deploy + revision record | prior deploy revert | manifest check | yes | deploy without recording revision |
-| schema migration | SQL parser contract **+ isolated PG execution (separate approval)** | staging DB apply + drift check | documented rollback SQL | applied-state check | yes | parser-only test as proof of execution |
+| schema migration | SQL parser contract **+ isolated PG execution (separate approval)** | staging DB apply + drift check | documented rollback SQL | applied-state check | yes | source/static/regex SQL-text test as proof of execution |
 | destructive/irreversible | execution test + staged rollout | staging + explicit sign-off | tested rollback SQL | post-apply verification | yes | DDL without rollback; `IF NOT EXISTS` masking drift |
 
 ## Prioritized risk register
@@ -276,9 +299,9 @@ right precondition. P0 is intentionally not overused.
 
 ---
 
-**RK-01 — No applied-migration ledger / schema-version table**
-- risk: Deployed schema state is not reconstructable or verifiable from the repository.
-- evidence: repo-wide grep finds no `schema_migrations|applied_migrations|schema_version|migration_ledger`; no `CREATE TABLE` in `functions/api`.
+**RK-01 — No applied-migration ledger / schema-version table (repo encodes only partial schema intent)**
+- risk: Repository `scripts/*.sql` encode only partial migration/schema intent; deployed schema state is not reconstructable or verifiable from the repository alone.
+- evidence: repo-wide grep finds no `schema_migrations|applied_migrations|schema_version|migration_ledger`; no complete `CREATE TABLE` for `trees` in `scripts/` or `functions/api`; no `CREATE TABLE` in `functions/api`.
 - severity: P1 — likelihood: certain (gap exists) — blast radius: all migrations / prod schema.
 - current control: migrations carry "Apply under separate approval" posture.
 - control gap: no automated verification of applied state after deploy.
@@ -291,12 +314,12 @@ right precondition. P0 is intentionally not overused.
 - severity: P1 — likelihood: conditional (requires pre-existing incompatible object) — blast radius: affected table.
 - current control: guarded `ADD COLUMN IF NOT EXISTS`, inline `CHECK` constraints.
 - control gap: cannot repair an incompatible existing object; drift is invisible.
-- recommended next action: drift detection before apply (child issue).
+- recommended next action: drift detection before apply, comparing repo-encoded migration intent to live schema (child issue).
 - dependency: RK-01.
 
-**RK-03 — Migration contract tests are parser/static only**
+**RK-03 — Migration contract tests are source/static/regex SQL-text only**
 - risk: Green CI does not prove a migration executes against PostgreSQL.
-- evidence: `migration-tree-comments-contract.test.cjs:10`; `generic-social-targets-migration-a/b-contract.test.cjs:8` (no DB/psql/subprocess).
+- evidence: `migration-tree-comments-contract.test.cjs:10`; `generic-social-targets-migration-a/b-contract.test.cjs:8` (source-level regex, no DB/psql/subprocess). PR #3424's branch adds a `pglast` grammar parse as *additional static validation* — that is 컴1 branch context, not part of this audit's `main` baseline evidence.
 - severity: P2 — likelihood: always — blast radius: migration confidence.
 - current control: SQL text assertions (order, columns, constraints).
 - control gap: no execution guarantee.
@@ -305,7 +328,10 @@ right precondition. P0 is intentionally not overused.
 
 **RK-04 — No real PostgreSQL execution in CI tests**
 - risk: SQL syntax/behavior differences from the production engine are not caught pre-merge.
-- evidence: grep over `tests/contracts` for `pg`/`Pool`/`psql` finds none; `pg`/`DATABASE_URL` only in `scripts/verify-*.cjs`, `scripts/seed-*.cjs`.
+- evidence: a repo-wide scan of `tests/smoke`, `tests/routes`, `tests/contracts`, `.github/workflows/ci.yml`,
+  and `package.json` for `pg`/`Pool`/`psql`/`pool.query`/`DATABASE_URL`/`postgres` finds no execution path;
+  `ci.yml` defines no PostgreSQL service/container and no DB execution step. `pg`/`DATABASE_URL`/`Pool`
+  appear only in out-of-CI `scripts/verify-*.cjs` and `scripts/seed-*.cjs`.
 - severity: P2 — likelihood: always — blast radius: all SQL-bearing changes.
 - current control: out-of-CI `verify:remote` requires `DATABASE_URL`.
 - control gap: not part of `npm run ci`.
@@ -332,7 +358,12 @@ right precondition. P0 is intentionally not overused.
 
 **RK-07 — Cross-surface CSS risk from shared editor/public-viewer classes + broad `!important`**
 - risk: A global or editor rule can hide/restyle the public viewer (or vice versa).
-- evidence: shared `memory-node`/`detail-panel`/`editor-current-moment-card`/`diary-note`; `css/editor/editor.css:63` `branch-port-handle { display:none !important }`; `css/global.css:15-110` global classes; 299 `!important` total.
+- evidence: shared `memory-node`/`detail-panel`/`editor-current-moment-card`/`diary-note`; **confirmed**
+  `#3419` case — `css/editor/editor-overrides.css:372-379` hides `.editor-tree-meta-section`, a class reused
+  by both editor and public viewer templates (`js/editor/templates/editor-detail-view-mode-template.js:4`,
+  `js/viewer/public-viewer-detail-view-mode-template.js:4`); `css/global.css:15-110` global classes; 299
+  `!important` total. (`css/editor.css:63` `.editor-readonly .branch-port-handle` is scoped to
+  `.editor-readonly` and is NOT treated as a CONFIRMED cross-surface case.)
 - severity: P1 — likelihood: medium — blast radius: editor + public viewer + shared surfaces.
 - current control: #510/#511/#516 audit docs (token/focus/editor-hidden scope), not the shared-class overlap.
 - control gap: no explicit view scoping for shared classes.
@@ -377,7 +408,7 @@ right precondition. P0 is intentionally not overused.
 
 **RK-12 — Large files mixing responsibilities**
 - risk: Changes require touching broad files; blast radius and review cost are high.
-- evidence: `js/editor.js` ≈ 786 lines; `modal_compute/app.py` ≈ 588; `modal_compute/public_reads.py` ≈ 685; `functions/api/[[path]].js` ≈ 500.
+- evidence: `js/editor.js` = 883 lines; `modal_compute/app.py` = 678; `modal_compute/public_reads.py` = 780; `functions/api/[[path]].js` = 677 (all exceed the 500-line budget). This file-size decomposition relates to the already-closed `#1698` (editor core orchestrator/canvas split) and `#1711` (public viewer lightweight entrypoint split); those issues are not reopened here.
 - severity: P2 — likelihood: always — blast radius: change cost.
 - current control: `CODE_ARCHITECTURE.md` thin-entrypoint policy; `LARGE_FILE_MODULARIZATION_CANDIDATES.md`.
 - control gap: extraction not yet completed for these files.
@@ -390,7 +421,7 @@ right precondition. P0 is intentionally not overused.
 - severity: P2 — likelihood: medium — blast radius: Social features.
 - current control: storage schema boundary audit doc; PR #3424 reconciliation work.
 - control gap: canonical model not yet sole writer.
-- recommended next action: track within Social migration plan (#3188/#3075/#1882); NOT owned by this PR.
+- recommended next action: track within Social migration plan (#3188/#3075); NOT owned by this PR.
 - dependency: #3424 (컴1).
 
 ## Recommended child issues
@@ -398,7 +429,8 @@ right precondition. P0 is intentionally not overused.
 These are **candidates only**. No GitHub issue is created by this PR. Each is domain-separated and small.
 
 ### A. DB migration execution testing
-- Problem: Migration contract tests are parser-only; SQL is never executed in CI.
+- Problem: Migration contract tests are source/static/regex SQL-text only (PR #3424's branch adds a
+  `pglast` grammar parse as static validation); SQL is never executed in CI.
 - Exact scope: add an isolated PostgreSQL execution tier for `scripts/*.sql` under separate approval.
 - Files/areas: `scripts/*.sql`, `tests/contracts/*migration*`, new `tests/db/` (approval-gated).
 - Dependencies: RK-03, RK-04.
@@ -408,8 +440,8 @@ These are **candidates only**. No GitHub issue is created by this PR. Each is do
 - Suggested priority: P2.
 
 ### B. Schema drift detection + applied-migration ledger
-- Problem: No record of which migrations are applied; `IF NOT EXISTS` can mask drift.
-- Exact scope: design a ledger (e.g. `schema_migrations` table) + a read-only drift-diff script comparing repo expectations to live schema.
+- Problem: Repository `scripts/*.sql` encode only partial schema intent; no record of which migrations are applied, and `IF NOT EXISTS` can mask drift.
+- Exact scope: design a ledger (e.g. `schema_migrations` table) + a read-only drift-diff script comparing repo-encoded migration intent to live schema.
 - Files/areas: `scripts/inspect-schema.cjs`, new ledger migration, docs.
 - Dependencies: RK-01, RK-02.
 - Non-goals: no automatic apply; no prod mutation without sign-off.
@@ -428,8 +460,12 @@ These are **candidates only**. No GitHub issue is created by this PR. Each is do
 - Suggested priority: P1.
 
 ### D. CSS/view scope isolation
-- Problem: Shared editor/public-viewer classes and broad `!important` can regress the other surface.
-- Exact scope: add explicit view scoping (e.g. `[data-view="editor"]` / `[data-view="public-viewer"]`) and split the four shared classes.
+- Problem: Shared editor/public-viewer classes and broad `!important` can regress the other surface. The
+  confirmed `#3419` case shows `css/editor/editor-overrides.css:372-379` hides `.editor-tree-meta-section`,
+  which the public viewer reuses, hiding whole-tree like/comments/share controls in the public viewer.
+- Exact scope: add explicit view scoping (e.g. `[data-view="editor"]` / `[data-view="public-viewer"]`) and
+  split the four shared classes; give the public viewer a narrow, view-scoped visibility rule instead of
+  relying on editor-only hide rules.
 - Files/areas: `css/global.css`, `css/editor/*`, `css/viewer/*`, `js/editor/templates/*`, `js/viewer/*`.
 - Dependencies: RK-07, RK-08.
 - Non-goals: no visual rewrite; no global restyle beyond scoping.
@@ -466,6 +502,15 @@ These are **candidates only**. No GitHub issue is created by this PR. Each is do
 - Required validation: fixed-slot smoke for editor save + public viewer read.
 - Rollback/post-merge verification: JS revert; preview smoke PASS.
 - Suggested priority: P1.
+- **Existing-issue reconciliation (do not duplicate #3120):** classified `NEW_NARROW_GAP_REQUIRED` that
+  references the closed `#3120` (global namespace bridges audit). `#3120` already completed an audit-first,
+  behavior-preserving plan to reduce *internal* global namespace coupling by boundary. The remaining concrete
+  gap this candidate addresses is the specific editor↔viewer shared `window.*` state bridge
+  (`window.currentTreeData`/`currentTreeMemories`/`__viewerTreeData`), which #3120 enumerated at a boundary
+  level but did not close as a concrete extraction child. No follow-up issue is reopened; this is a new narrow
+  child that builds on the #3120 plan without re-auditing global namespaces wholesale. Related large-file work
+  is covered by already-closed `#1698` (editor split) and `#1711` (public viewer split), which are not
+  reopened.
 
 ### H. Runtime smoke evidence standard
 - Problem: Production-critical read paths lack a bounded smoke standard in CI.
@@ -498,7 +543,8 @@ This audit and its PR deliberately:
 - Perform **no production/staging access**, **no DB migration or schema mutation**, **no Cloudflare/Modal
   deployment**, **no Docker/local PostgreSQL**, **no runtime/source/CSS/SQL modification**.
 - Do **not** mix Social and Scout implementation. Scout and Social are treated as separate domains;
-  tree-level vs moment-level Social is recorded only as context owned by #3424/#3188/#3075/#1882.
+  tree-level vs moment-level Social is recorded only as context: Tree Social = #3424/#3188; Moment Social =
+  #3075; Scout = #1882 (separate, untouched).
 - Do **not** modify PR #3424 (`db/tree-comments-legacy-reconcile-3423`) or its branch.
 - Do **not** close #3425. #3425 remains the open parent tracking issue.
 - Do **not** assert that any implementation code exists. The companion contract test validates document
