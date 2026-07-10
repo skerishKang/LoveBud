@@ -123,8 +123,8 @@ test('rollback script preflight verifies exact index inventory (catalog arrays)'
 });
 
 test('rollback script preflight verifies exact CHECK definitions (not count-only)', () => {
-  assert.match(sql, /_lb_norm_expr\(pg_get_constraintdef\(oid\)\) = 'target_kind = ''tree'''/i, 'Rollback preflight must check target_kind = tree CHECK definition via exact normalized comparison');
-  assert.match(sql, /_lb_norm_expr\(pg_get_constraintdef\(oid\)\) = 'target_id is null or target_id = tree_id'/i, 'Rollback preflight must check target_id/tree_id CHECK definition via exact normalized comparison');
+  assert.match(sql, /_lb_norm_check\(pg_get_constraintdef\(oid\)\) = 'target_kind = ''tree'''/i, 'Rollback preflight must check target_kind = tree CHECK definition via exact normalized comparison');
+  assert.match(sql, /_lb_norm_check\(pg_get_constraintdef\(oid\)\) = 'target_id is null or target_id = tree_id'/i, 'Rollback preflight must check target_id/tree_id CHECK definition via exact normalized comparison');
 });
 
 test('rollback script preflight verifies all 12 column metadata (incl. 4 legacy-preserved columns)', () => {
@@ -141,19 +141,25 @@ test('rollback script preflight verifies all 12 column metadata (incl. 4 legacy-
 });
 
 test('rollback script preflight uses exact normalized comparison for defaults (no substring)', () => {
-  assert.match(sql, /_lb_norm_expr\(column_default\) = 'tree'/i,
+  assert.match(sql, /_lb_norm_default\(column_default\) = 'tree'/i,
     'Rollback preflight must check target_kind default via exact normalized comparison');
-  assert.match(sql, /_lb_norm_expr\(column_default\) = 'now\(\)'/i,
+  assert.match(sql, /_lb_norm_default\(column_default\) = 'now\(\)'/i,
     'Rollback preflight must check created_at/updated_at defaults via exact normalized comparison');
   assert.equal(/column_default ILIKE/i.test(sql), false,
     'Rollback preflight must NOT use ILIKE substring matching for defaults or CHECKs');
 });
 
-test('rollback script creates and drops _lb_norm_expr normalizer', () => {
-  assert.match(sql, /CREATE FUNCTION _lb_norm_expr\(p_expr text\)/i,
-    'Rollback must create the _lb_norm_expr normalizer function');
-  assert.match(sql, /DROP FUNCTION IF EXISTS _lb_norm_expr\(text\);/i,
-    'Rollback must drop the _lb_norm_expr function before COMMIT');
+test('rollback script creates and drops purpose-specific normalizers', () => {
+  assert.match(sql, /CREATE FUNCTION _lb_norm_default\(p_expr text\)/i,
+    'Rollback must create the _lb_norm_default normalizer function');
+  assert.match(sql, /CREATE FUNCTION _lb_norm_check\(p_expr text\)/i,
+    'Rollback must create the _lb_norm_check normalizer function');
+  assert.match(sql, /DROP FUNCTION IF EXISTS _lb_norm_default\(text\);/i,
+    'Rollback must drop the _lb_norm_default function before COMMIT');
+  assert.match(sql, /DROP FUNCTION IF EXISTS _lb_norm_check\(text\);/i,
+    'Rollback must drop the _lb_norm_check function before COMMIT');
+  assert.equal(/_lb_norm_expr/.test(sql), false,
+    'Rollback must no longer define the shared _lb_norm_expr normalizer');
 });
 
 test('rollback script preflight verifies exact total index count = 5', () => {

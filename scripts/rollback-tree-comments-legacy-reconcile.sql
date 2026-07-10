@@ -49,23 +49,85 @@ SET LOCAL statement_timeout = '30s';
 -- Take a brief, bounded table lock so the shape cannot change under us mid-rollback.
 LOCK TABLE public.tree_comments IN SHARE ROW EXCLUSIVE MODE;
 
--- ── Exact-expression normalizer (top-level, dropped before COMMIT) ──
--- Normalizes a catalog constraint/default expression for EXACT comparison so a
--- substring ILIKE match cannot accept a schema with extra conjuncts/disjuncts,
--- extra casts, or different punctuation. PostgreSQL only adds deterministic
--- casts (::text, ::character varying, ::bpchar, ::boolean, ::jsonb, ::timestamp
--- with time zone, ::timestamptz, ::integer, ::bigint), parentheses, and
--- whitespace, which this normalizer strips. It does NOT accept alternative
--- expressions (e.g. `target_kind = 'tree' OR body <> ''` fails to match exactly).
-CREATE FUNCTION _lb_norm_expr(p_expr text) RETURNS text AS $$
+-- ── Purpose-specific normalizers (top-level, dropped before COMMIT) ──
+-- These MUST stay byte-for-byte in sync with the migration script's
+-- _lb_norm_default / _lb_norm_check so the rollback accepts exactly the same
+-- reconciled schema the migration produces. See the migration file for the full
+-- behavioral contract and the schema-qualification / collision policy.
+CREATE FUNCTION _lb_norm_default(p_expr text) RETURNS text AS $$
 DECLARE
   v text := lower(coalesce(p_expr, ''));
 BEGIN
+  v := regexp_replace(v, '\s+', ' ', 'g');
+  v := regexp_replace(v, '::(character varying|varchar|timestamp with time zone|timestamptz|text|bpchar|boolean|jsonb|integer|bigint)', '', 'g');
+  v := regexp_replace(v, '^\s+|\s+$', '', 'g');
+  v := regexp_replace(v, '^''(.*)''$', '\1');   -- strip surrounding quotes of a string-literal default
+  RETURN v;
+END;
+$$ LANGUAGE plpgsql IMMUTABLE;
+
+CREATE FUNCTION _lb_norm_check(p_expr text) RETURNS text AS $$
+DECLARE
+  v text := lower(coalesce(p_expr, ''));
+  n integer;
+  i integer;
+  j integer;
+  k integer;
+  m integer;
+  d integer;
+  prev text;
+  nxt text;
+  inner_txt text;
+  changed boolean := true;
+BEGIN
   v := regexp_replace(v, '^check\s*\(', '', 'i');   -- strip leading CHECK (
-  v := regexp_replace(v, '\)$', '');                  -- strip trailing )
-  v := regexp_replace(v, '^\((.*)\)$', '\1');         -- strip one outer (...)
-  v := regexp_replace(v, '\s+', ' ', 'g');             -- collapse whitespace
-  v := regexp_replace(v, '::(character varying|timestamp with time zone|timestamptz|text|bpchar|boolean|jsonb|integer|bigint)', '', 'g');
+  v := regexp_replace(v, '\)$', '');                  -- strip CHECK's trailing )
+  v := regexp_replace(v, '::(character varying|varchar|timestamp with time zone|timestamptz|text|bpchar|boolean|jsonb|integer|bigint)', '', 'g');
+  v := regexp_replace(v, '\s+', ' ', 'g');
+  v := regexp_replace(v, '^\s+|\s+$', '', 'g');
+  WHILE changed LOOP
+    changed := false;
+    n := length(v);
+    IF n > 0 AND left(v, 1) = '(' AND right(v, 1) = ')' THEN
+      d := 0; j := 0;
+      FOR k IN 1..n LOOP
+        IF substring(v FROM k FOR 1) = '(' THEN d := d + 1;
+        ELSIF substring(v FROM k FOR 1) = ')' THEN
+          d := d - 1;
+          IF d = 0 THEN j := k; EXIT; END IF;
+        END IF;
+      END LOOP;
+      IF j = n THEN
+        v := substring(v FROM 2 FOR n - 2);
+        changed := true;
+        CONTINUE;
+      END IF;
+    END IF;
+    i := 0;
+    FOR k IN 1..n LOOP
+      IF substring(v FROM k FOR 1) = '(' THEN
+        d := 0;
+        FOR m IN k..n LOOP
+          IF substring(v FROM m FOR 1) = '(' THEN d := d + 1;
+          ELSIF substring(v FROM m FOR 1) = ')' THEN
+            d := d - 1;
+            IF d = 0 THEN j := m; EXIT; END IF;
+          END IF;
+        END LOOP;
+        prev := CASE WHEN k = 1 THEN '' ELSE substring(v FROM k - 1 FOR 1) END;
+        nxt := CASE WHEN j = n THEN '' ELSE substring(v FROM j + 1 FOR 1) END;
+        inner_txt := substring(v FROM k + 1 FOR j - k - 1);
+        IF (k = 1 OR prev IN ('(', ' ', ','))
+           AND (j = n OR nxt IN (')', ' ', ','))
+           AND inner_txt !~* '\s(or|and)\s'
+        THEN
+          v := left(v, k - 1) || inner_txt || substring(v FROM j + 1);
+          changed := true;
+          EXIT;
+        END IF;
+      END IF;
+    END LOOP;
+  END LOOP;
   RETURN v;
 END;
 $$ LANGUAGE plpgsql IMMUTABLE;
@@ -161,7 +223,7 @@ BEGIN
   -- target_kind: varchar(16) NOT NULL DEFAULT 'tree'
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='tree_comments'
     AND column_name='target_kind' AND data_type='character varying' AND udt_name='varchar'
-    AND character_maximum_length=16 AND is_nullable='NO' AND column_default IS NOT NULL AND _lb_norm_expr(column_default) = 'tree') THEN
+    AND character_maximum_length=16 AND is_nullable='NO' AND column_default IS NOT NULL AND _lb_norm_default(column_default) = 'tree') THEN
     RAISE EXCEPTION 'ROLLBACK PRECONDITION FAIL: target_kind must be varchar(16) NOT NULL DEFAULT ''tree''';
   END IF;
   -- target_id: text NULL, no default
@@ -172,13 +234,13 @@ BEGIN
   -- created_at: timestamptz NOT NULL DEFAULT now()
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='tree_comments'
     AND column_name='created_at' AND data_type='timestamp with time zone' AND udt_name='timestamptz'
-    AND is_nullable='NO' AND column_default IS NOT NULL AND _lb_norm_expr(column_default) = 'now()') THEN
+    AND is_nullable='NO' AND column_default IS NOT NULL AND _lb_norm_default(column_default) = 'now()') THEN
     RAISE EXCEPTION 'ROLLBACK PRECONDITION FAIL: created_at must be timestamptz NOT NULL DEFAULT now()';
   END IF;
   -- updated_at: timestamptz NOT NULL DEFAULT now()
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='tree_comments'
     AND column_name='updated_at' AND data_type='timestamp with time zone' AND udt_name='timestamptz'
-    AND is_nullable='NO' AND column_default IS NOT NULL AND _lb_norm_expr(column_default) = 'now()') THEN
+    AND is_nullable='NO' AND column_default IS NOT NULL AND _lb_norm_default(column_default) = 'now()') THEN
     RAISE EXCEPTION 'ROLLBACK PRECONDITION FAIL: updated_at must be timestamptz NOT NULL DEFAULT now()';
   END IF;
 
@@ -255,10 +317,10 @@ BEGIN
   -- Canonical CHECK constraints must both be present (exact normalized expression).
   SELECT count(*) INTO v_chk_kind FROM pg_constraint
   WHERE conrelid='public.tree_comments'::regclass AND contype='c'
-    AND _lb_norm_expr(pg_get_constraintdef(oid)) = 'target_kind = ''tree''';
+    AND _lb_norm_check(pg_get_constraintdef(oid)) = 'target_kind = ''tree''';
   SELECT count(*) INTO v_chk_tid FROM pg_constraint
   WHERE conrelid='public.tree_comments'::regclass AND contype='c'
-    AND _lb_norm_expr(pg_get_constraintdef(oid)) = 'target_id is null or target_id = tree_id';
+    AND _lb_norm_check(pg_get_constraintdef(oid)) = 'target_id is null or target_id = tree_id';
   IF v_chk_kind <> 1 OR v_chk_tid <> 1 THEN
     RAISE EXCEPTION 'ROLLBACK PRECONDITION FAIL: canonical CHECK constraints missing or incorrect (kind=% tid=%)', v_chk_kind, v_chk_tid;
   END IF;
@@ -613,7 +675,8 @@ BEGIN
   END IF;
 END $$;
 
--- Drop the normalizer (created inside this transaction; auto-removed on COMMIT anyway).
-DROP FUNCTION IF EXISTS _lb_norm_expr(text);
+-- Drop the normalizer (created inside this transaction; auto-removed on COMMIT on success, never persisted on transaction abort).
+DROP FUNCTION IF EXISTS _lb_norm_default(text);
+DROP FUNCTION IF EXISTS _lb_norm_check(text);
 
 COMMIT;

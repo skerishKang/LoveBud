@@ -196,9 +196,9 @@ test('reconcile validator verifies public.trees.id guard (STOP path coverage)', 
 test('reconcile validator verifies exact CHECK definitions (not count-only)', () => {
   // Must check BOTH catalog CHECK definitions via exact normalized expression comparison,
   // not a substring ILIKE match. The normalizer strips casts/parens/whitespace.
-  assert.match(validatorBody, /_lb_norm_expr\(pg_get_constraintdef\(c\.oid\)\) = 'target_kind = ''tree'''/i,
+  assert.match(validatorBody, /_lb_norm_check\(pg_get_constraintdef\(c\.oid\)\) = 'target_kind = ''tree'''/i,
     'Validator must check target_kind = tree CHECK definition via exact normalized comparison');
-  assert.match(validatorBody, /_lb_norm_expr\(pg_get_constraintdef\(c\.oid\)\) = 'target_id is null or target_id = tree_id'/i,
+  assert.match(validatorBody, /_lb_norm_check\(pg_get_constraintdef\(c\.oid\)\) = 'target_id is null or target_id = tree_id'/i,
     'Validator must check target_id/tree_id CHECK definition via exact normalized comparison');
   // Forbid a validator that only counts CHECKs (count <> 2 style) without definitions.
   assert.equal(/contype='c'[\s\S]*?\n\s*IF v_c2 <> 2/i.test(validatorBody), false,
@@ -231,21 +231,21 @@ test('reconcile validator verifies reconciled total index count = 5', () => {
 
 test('reconcile validator uses exact normalized comparison for target_kind default (no substring)', () => {
   // Must NOT use column_default ILIKE '%tree%' substring; must use exact normalized.
-  assert.match(validatorBody, /_lb_norm_expr\(column_default\) = 'tree'/i,
+  assert.match(validatorBody, /_lb_norm_default\(column_default\) = 'tree'/i,
     'Validator must check target_kind default via exact normalized comparison');
   assert.equal(/column_default ILIKE/i.test(validatorBody), false,
     'Validator must not use ILIKE substring matching for any default or CHECK');
 });
 
 test('reconcile validator uses exact normalized comparison for created_at / updated_at defaults', () => {
-  assert.match(validatorBody, /_lb_norm_expr\(column_default\) = 'now\(\)'/i,
+  assert.match(validatorBody, /_lb_norm_default\(column_default\) = 'now\(\)'/i,
     'Validator must check created_at default via exact normalized comparison');
 });
 
 test('reconcile migration post-verify uses exact normalized comparison for defaults', () => {
-  assert.match(sql, /_lb_norm_expr\(column_default\) = 'tree'/i,
+  assert.match(sql, /_lb_norm_default\(column_default\) = 'tree'/i,
     'Post-verify must check target_kind default via exact normalized comparison');
-  assert.match(sql, /_lb_norm_expr\(column_default\) = 'now\(\)'/i,
+  assert.match(sql, /_lb_norm_default\(column_default\) = 'now\(\)'/i,
     'Post-verify must check created_at/updated_at defaults via exact normalized comparison');
   // The sentinel-rejection check (post-verify lines) may still use ILIKE, which is
   // acceptable — it rejects disallowed patterns rather than verifying an exact value.
@@ -253,11 +253,34 @@ test('reconcile migration post-verify uses exact normalized comparison for defau
   // comparison. These live in the validator body and are already covered above.
 });
 
-test('reconcile migration creates and drops _lb_norm_expr normalizer', () => {
-  assert.match(sql, /CREATE FUNCTION _lb_norm_expr\(p_expr text\)/i,
-    'Migration must create the _lb_norm_expr normalizer function');
-  assert.match(sql, /DROP FUNCTION IF EXISTS _lb_norm_expr\(text\);/i,
-    'Migration must drop the _lb_norm_expr function before COMMIT');
+test('reconcile migration creates and drops purpose-specific normalizers', () => {
+  assert.match(sql, /CREATE FUNCTION _lb_norm_default\(p_expr text\)/i,
+    'Migration must create the _lb_norm_default normalizer function');
+  assert.match(sql, /CREATE FUNCTION _lb_norm_check\(p_expr text\)/i,
+    'Migration must create the _lb_norm_check normalizer function');
+  assert.match(sql, /DROP FUNCTION IF EXISTS _lb_norm_default\(text\);/i,
+    'Migration must drop the _lb_norm_default function before COMMIT');
+  assert.match(sql, /DROP FUNCTION IF EXISTS _lb_norm_check\(text\);/i,
+    'Migration must drop the _lb_norm_check function before COMMIT');
+  // The shared default/CHECK normalizer must be gone (split per purpose).
+  assert.equal(/_lb_norm_expr/.test(sql), false,
+    'Migration must no longer define the shared _lb_norm_expr normalizer');
+});
+
+test('reconcile migration uses _lb_norm_default for defaults and _lb_norm_check for CHECKs', () => {
+  // Defaults
+  assert.match(sql, /_lb_norm_default\(column_default\) = 'tree'/i,
+    'target_kind default must use _lb_norm_default');
+  assert.match(sql, /_lb_norm_default\(column_default\) = 'now\(\)'/i,
+    'created_at/updated_at defaults must use _lb_norm_default');
+  // CHECKs
+  assert.match(sql, /_lb_norm_check\(pg_get_constraintdef\(c?\.?oid\)\) = 'target_kind = ''tree'''/i,
+    'target_kind CHECK must use _lb_norm_check');
+  assert.match(sql, /_lb_norm_check\(pg_get_constraintdef\(c?\.?oid\)\) = 'target_id is null or target_id = tree_id'/i,
+    'target_id/tree_id CHECK must use _lb_norm_check');
+  // The shared normalizer must not be used anywhere.
+  assert.equal(/_lb_norm_expr/.test(sql), false,
+    'Must not use the shared _lb_norm_expr normalizer for any comparison');
 });
 
 // ─── 3c. Legacy preflight index guard (no uncorrelated global NOT EXISTS) ───
