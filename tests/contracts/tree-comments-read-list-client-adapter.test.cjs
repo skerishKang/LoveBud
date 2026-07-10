@@ -328,8 +328,8 @@ test('no Scout files, backend route/reader, or moment adapter are modified by th
   const status = require('node:child_process').execSync('git status --porcelain', { cwd: ROOT }).toString();
   for (const line of status.split('\n')) {
     if (/js\/scout\//.test(line)) assert.fail(`Scout file changed: ${line}`);
-    if (/functions\/api\/trees\/\[tree_id\]\/comments\.js|modal_compute\/app\.py/.test(line)) {
-      assert.fail(`Backend route/app changed: ${line}`);
+    if (/functions\/api\/trees\/\[tree_id\]\/comments\.js|modal_compute\/tree_comments\.py|modal_compute\/app\.py/.test(line)) {
+      assert.fail(`Backend route/reader changed: ${line}`);
     }
     if (/memories\/\[memory_id\]\/comments\.js|modal_compute\/comments\.py/.test(line)) {
       assert.fail(`Moment comment route/helper changed: ${line}`);
