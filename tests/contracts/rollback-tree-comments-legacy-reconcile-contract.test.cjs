@@ -122,6 +122,22 @@ test('rollback script preflight verifies exact index inventory (catalog arrays)'
   assert.match(sql, /unnest\(i\.indkey\)\s+WITH\s+ORDINALITY/i, 'Must use pg_index.indkey ordered column arrays (not indexdef)');
 });
 
+test('rollback script preflight verifies exact CHECK definitions (not count-only)', () => {
+  assert.match(sql, /target_kind%=%''tree''%/i, 'Rollback preflight must check target_kind = tree CHECK definition');
+  assert.match(sql, /target_id IS NULL OR target_id = tree_id/i, 'Rollback preflight must check target_id/tree_id CHECK definition');
+});
+
+test('rollback script preflight verifies exact total index count = 5', () => {
+  assert.match(sql, /expected exactly 4 secondary indexes/i, 'Rollback preflight must require exactly 4 secondary indexes (5 total incl PK)');
+  assert.match(sql, /canonical PK backing index \(id\) not found/i, 'Rollback preflight must require the PK backing index');
+});
+
+test('rollback script rejects partial / expression / INCLUDE secondary indexes', () => {
+  assert.match(sql, /indpred IS NULL/i, 'Rollback index checks must reject partial indexes');
+  assert.match(sql, /indexprs IS NULL/i, 'Rollback index checks must reject expression indexes');
+  assert.match(sql, /indnkeyatts\s*(=|<>)\s*i\.indnatts/i, 'Rollback index checks must reject INCLUDE-column indexes');
+});
+
 test('rollback script preflight guards triggers/RLS/views/matviews and inbound FK', () => {
   assert.match(sql, /unexpected triggers present on tree_comments/i, 'Must guard triggers');
   assert.match(sql, /RLS enabled on tree_comments/i, 'Must guard RLS');
@@ -230,6 +246,11 @@ test('rollback script post-verifies exact final legacy index inventory', () => {
   assert.equal(/migration-added indexes still present/i.test(sql), false, 'Old "migration-added indexes still present" assertion removed');
   assert.equal(/idx_tree_comments_tree_id ON \(tree_id\) not preserved/i.test(sql), false,
     'Old single-column legacy tree_id preservation assertion removed');
+});
+
+test('rollback script post-verify requires exactly one secondary index (total 2)', () => {
+  assert.match(sql, /expected exactly 1 secondary index after rollback/i,
+    'Post-verify must require exactly 1 secondary index (compound legacy) + PK backing = 2 total');
 });
 
 // ─── 9. No automatic execution / no private info ───────────────────────────

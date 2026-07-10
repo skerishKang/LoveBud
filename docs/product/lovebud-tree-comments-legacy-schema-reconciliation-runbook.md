@@ -97,6 +97,48 @@ read indexes — `idx_tree_comments_tree_id` on `(tree_id)`,
 not a legacy index**; it is removed by the rollback, while the compound
 `(tree_id, created_at)` legacy index is preserved.
 
+**Reconciled total index count = 5:** 1 primary backing index `(id)` + 4 secondary
+indexes (the compound legacy `(tree_id, created_at)` + the 3 migration-added
+`(tree_id)` / `(owner_id)` / `(created_at)`). Each secondary index is verified by its
+ordered key array, uniqueness, non-partial / non-expression status, and absence of
+INCLUDE columns (`indnkeyatts = indnatts`); the migration-added indexes are also
+verified by exact name. The legacy state instead allows **exactly one** secondary
+index — the compound `(tree_id, created_at)` — and rejects any single-column
+`tree_id` / `owner_id` / `created_at`, different compound, partial, expression,
+unique, or INCLUDE index. The legacy unexpected-index guard is per-index (it counts
+the total secondary index and matches the compound exactly), not a global
+uncorrelated `NOT EXISTS` that would hide an unexpected index whenever the compound
+index exists.
+
+**Exact reconciled-state validator (`_lb_reconciled_validator()`):** the migration
+runs this top-level function (dropped before `COMMIT`) both *before* the reconciled
+`PREFLIGHT STOP` and again in post-verification. It is the authoritative exact check
+and verifies, inside a single transaction:
+
+- all 12 columns with exact metadata (types / UDTs / nullability / defaults),
+  including `target_id` having **no default** (`column_default IS NULL`);
+- the runtime **`public.trees.id` guard** (`text` / `text` / `NO`) — so the STOP path
+  also aborts when the parent key type is incompatible;
+- PRIMARY KEY exactly `[id]`;
+- exactly **2 FKs** via catalog `conkey`/`confkey`/`confrelid`/`confdeltype`;
+- exactly **2 CHECK definitions** verified by their catalog expressions —
+  `target_kind = 'tree'` and `target_id IS NULL OR target_id = tree_id` (not a
+  count-only check);
+- the **exact total constraint set of 5** (1 PK + 2 FK + 2 CHECK) with **0 UNIQUE /
+  0 EXCLUDE / 0 other** constraint types;
+- **0 inbound FK** referencing `tree_comments`;
+- the exact **5-index inventory** described above;
+- no triggers / RLS / dependent views / materialized views.
+
+A malformed 12-column table (name-only match) fails the validator and raises
+`PREFLIGHT FAIL: 12-column schema is not exact reconciled state`, so the reconciled
+STOP is reached only when the entire canonical shape matches exactly.
+
+**Rollback / validator contract consistency:** the rollback preflight uses the same
+contract — exact 12-column metadata, exact 5-constraint set, exact CHECK definitions,
+0 inbound FK, `trees.id` text, exact 5-index inventory, and no triggers/RLS/views/
+matviews — so the two scripts agree on what "reconciled" means.
+
 **Rollback:** the migration is a single committed transaction. If the post-verification
 block raises, the whole transaction rolls back automatically (atomic) — no partial ALTER
 is committed. For a committed apply that fails post-schema verification or API smoke,
@@ -228,8 +270,10 @@ This reconciliation was prepared with **source-level static verification only**:
 
 Verification consists of the contract tests (migration + rollback), the existing
 tree-comments migration contract, the Python reader test, the route implementation
-contract, the client adapter contract, and `npm run lint` / `npm run build` /
-`npm run verify`. **The actual DB migration was NOT executed in this step.**
+contract, the client adapter contract, `npm run lint` / `npm run build` /
+`npm run verify`, and a full PostgreSQL grammar parse of both SQL files via `pglast`
+(offline). **The actual DB migration/rollback was NOT executed in this step — no
+Neon production/staging execution.**
 
 The final production schema verification and API smoke test are performed only inside
 an approved Neon production change window, as a separate approved task after this PR is

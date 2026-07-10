@@ -37,6 +37,24 @@ function stripSqlComments(sql) {
 const sql = readFile(MIGRATION_PATH);
 const content = stripSqlComments(sql);
 
+// Extract the exact reconciled-state validator body so assertions can require the
+// checks to live INSIDE the validator, not just somewhere in the file (e.g. comments).
+const validatorBody = (() => {
+  const m = sql.match(/CREATE FUNCTION _lb_reconciled_validator[\s\S]*?\$\$ LANGUAGE plpgsql;/i);
+  return m ? m[0] : '';
+})();
+assert.ok(validatorBody.length > 0, 'Validator function body must be extractable');
+
+// Extract the legacy preflight index section to assert the unexpected-index query
+// is per-index (no uncorrelated global NOT EXISTS).
+const preflightLegacyIndexSection = (() => {
+  const start = sql.indexOf('Step 11: Exact legacy index inventory');
+  const end = sql.indexOf('Step 12:', start);
+  if (start < 0) return '';
+  return end < 0 ? sql.slice(start) : sql.slice(start, end);
+})();
+assert.ok(preflightLegacyIndexSection.length > 0, 'Legacy preflight index section must be extractable');
+
 // ─── 1. Migration artifact exists and is transactional / guarded ─────────────
 
 test('reconcile migration SQL file exists', () => {
@@ -140,8 +158,13 @@ test('reconcile migration asserts audited legacy compound index (tree_id, create
   // NOT a single-column idx_tree_comments_tree_id (that one is migration-added).
   assert.match(sql, /legacy compound index \(tree_id, created_at\)/i, 'Must reference the legacy compound index');
   assert.match(sql, /v_idx_compound/i, 'Must count the compound legacy index in preflight');
-  assert.match(sql, /single-column tree_id index must NOT exist before migration/i,
-    'Must assert single-column tree_id index is NOT present in legacy state');
+  // Legacy state must allow EXACTLY ONE secondary index (the compound). The guarded
+  // extra check rejects a single-column tree_id / partial / expression / unique /
+  // INCLUDE secondary index in the legacy state.
+  assert.match(sql, /legacy secondary index count must be exactly 1/i,
+    'Must require exactly one legacy secondary index (the compound)');
+  assert.match(sql, /unexpected legacy secondary index present \(single-column tree_id \/ partial \/ expression \/ unique \/ INCLUDE\)/i,
+    'Must reject single-column tree_id / partial / expression / unique / INCLUDE secondary indexes in legacy state');
 });
 
 test('reconcile migration post-verification checks exact index inventory', () => {
@@ -151,6 +174,76 @@ test('reconcile migration post-verification checks exact index inventory', () =>
   // The single-column tree_id index is CREATED by the migration (canonical), not legacy.
   assert.match(sql, /idx_tree_comments_tree_id ON public\.tree_comments\(tree_id\)/i,
     'Migration must create the canonical single-column tree_id index');
+});
+
+// ─── 3b. Exact reconciled-state validator (inside _lb_reconciled_validator) ───
+
+test('reconcile validator verifies target_id default NULL (not just nullable)', () => {
+  // Must check column_default IS NULL for the target_id column (not only is_nullable).
+  assert.match(validatorBody, /column_name='target_id'[\s\S]*?column_default IS NULL/i,
+    'Validator must assert target_id has no default (column_default IS NULL)');
+});
+
+test('reconcile validator verifies public.trees.id guard (STOP path coverage)', () => {
+  assert.match(validatorBody, /table_name='trees' AND column_name='id'/i,
+    'Validator must query public.trees.id metadata');
+  assert.match(validatorBody, /trees\.id/i, 'Validator must reference the trees.id guard');
+  assert.match(validatorBody,
+    /v_trees_id_type IS NULL OR v_trees_id_type <> 'text' OR v_trees_id_udt <> 'text' OR v_trees_id_null <> 'NO'/i,
+    'Validator must fail closed when trees.id is not text/text/NO');
+});
+
+test('reconcile validator verifies exact CHECK definitions (not count-only)', () => {
+  // Must check BOTH catalog CHECK definitions, not just a count of 2.
+  assert.match(validatorBody, /target_kind%=%''tree''%/i, 'Validator must check target_kind = tree CHECK definition');
+  assert.match(validatorBody, /target_id IS NULL OR target_id = tree_id/i, 'Validator must check target_id/tree_id CHECK definition');
+  // Forbid a validator that only counts CHECKs (count <> 2 style) without definitions.
+  assert.equal(/contype='c'[\s\S]*?\n\s*IF v_c2 <> 2/i.test(validatorBody), false,
+    'Validator must not rely on a CHECK count-only guard');
+});
+
+test('reconcile validator verifies exact total constraint count = 5', () => {
+  assert.match(validatorBody, /v_total_con <> 5/i, 'Validator must assert total constraints = 5');
+  assert.match(validatorBody, /v_u <> 0/i, 'Validator must reject UNIQUE constraints');
+  assert.match(validatorBody, /v_x <> 0/i, 'Validator must reject EXCLUDE constraints');
+  assert.match(validatorBody, /contype NOT IN \('p','f','c','u','x'\)/i, 'Validator must reject any other constraint type');
+});
+
+test('reconcile validator checks inbound FK = 0 (inside the validator)', () => {
+  assert.match(validatorBody, /confrelid='public\.tree_comments'::regclass/i,
+    'Validator must check for inbound FKs referencing tree_comments');
+  assert.match(validatorBody, /inbound_fk=/i, 'Validator must record the inbound FK count in its message');
+});
+
+test('reconcile validator verifies reconciled total index count = 5', () => {
+  // 1 primary + 4 secondary (compound legacy + 3 migration-added).
+  assert.match(validatorBody, /v_i1 <> 1 OR v_is <> 4/i, 'Validator must assert 1 primary + 4 secondary = 5 total');
+  assert.match(validatorBody, /v_i2 <> 1 OR v_i3 <> 1 OR v_i4 <> 1 OR v_i5 <> 1 OR v_iu <> 0/i,
+    'Validator must assert the 4 secondary indexes (compound + 3 migration-added) and no unexpected');
+  // Per-index attributes: non-partial / non-expression / no INCLUDE columns.
+  assert.match(validatorBody, /indpred IS NULL/i, 'Validator must reject partial indexes');
+  assert.match(validatorBody, /indexprs IS NULL/i, 'Validator must reject expression indexes');
+  assert.match(validatorBody, /indnkeyatts\s*(=|<>)\s*i\.indnatts/i, 'Validator must reject INCLUDE-column indexes');
+});
+
+// ─── 3c. Legacy preflight index guard (no uncorrelated global NOT EXISTS) ───
+
+test('reconcile legacy preflight requires exactly one secondary index', () => {
+  assert.match(preflightLegacyIndexSection, /v_secondary_total/i, 'Legacy preflight must count total secondary indexes');
+  assert.match(preflightLegacyIndexSection, /legacy secondary index count must be exactly 1/i,
+    'Legacy preflight must require exactly 1 secondary index');
+});
+
+test('reconcile legacy preflight unexpected-index query is per-index (no global NOT EXISTS)', () => {
+  // The buggy uncorrelated query `NOT EXISTS (SELECT 1 FROM pg_index j ...)` must be gone.
+  assert.equal(/FROM pg_index j/i.test(preflightLegacyIndexSection), false,
+    'Legacy preflight must not use an uncorrelated global NOT EXISTS over pg_index j');
+  // The compound match must be per-index (indnatts / indkey array), rejecting
+  // partial / expression / unique / INCLUDE / differently-named secondary indexes.
+  assert.match(preflightLegacyIndexSection, /unexpected legacy secondary index present/i,
+    'Legacy preflight must reject unexpected/partial/expression/unique/INCLUDE secondary indexes');
+  assert.match(preflightLegacyIndexSection, /indpred IS NULL/i, 'Legacy preflight must reject partial indexes');
+  assert.match(preflightLegacyIndexSection, /indexprs IS NULL/i, 'Legacy preflight must reject expression indexes');
 });
 
 // ─── 4. Exact eight-column legacy metadata (type/udt/nullable/default) ───────

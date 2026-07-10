@@ -74,6 +74,7 @@ DECLARE
   v_idx_owner integer;
   v_idx_created integer;
   v_idx_pk integer;
+  v_idx_secondary integer;
   v_idx_unexpected integer;
   v_trig integer;
   v_rls integer;
@@ -231,15 +232,27 @@ BEGIN
   END IF;
 
   -- ── Exact index inventory (audited production legacy + migration-added) ─
-  -- The original compound legacy index (tree_id, created_at) must still exist,
-  -- the three migration-added indexes (tree_id, owner_id, created_at) must
-  -- exist, the canonical PK backing index (id) must exist, and there must
-  -- be NO unexpected index. Verified via pg_index.indkey/attnum ordered
-  -- column arrays + uniqueness, not by indexdef substring.
+  -- Original compound legacy index (tree_id, created_at) + 3 migration-added
+  -- indexes (tree_id, owner_id, created_at) + canonical PK backing (id) = 5 total
+  -- (1 primary + 4 secondary). Verified via pg_index.indkey/attnum ordered column
+  -- arrays + uniqueness + non-partial + non-expression + no INCLUDE columns, not by
+  -- indexdef substring. Each secondary index is checked individually.
+  SELECT count(*) INTO v_idx_secondary
+  FROM pg_index i WHERE i.indrelid='public.tree_comments'::regclass AND NOT i.indisprimary;
+  IF v_idx_secondary <> 4 THEN
+    RAISE EXCEPTION 'ROLLBACK PRECONDITION FAIL: expected exactly 4 secondary indexes (got %)', v_idx_secondary;
+  END IF;
+
+  SELECT count(*) INTO v_idx_pk FROM pg_index i
+  WHERE i.indrelid='public.tree_comments'::regclass AND i.indisprimary;
+  IF v_idx_pk <> 1 THEN
+    RAISE EXCEPTION 'ROLLBACK PRECONDITION FAIL: canonical PK backing index (id) not found (count=%)', v_idx_pk;
+  END IF;
+
   SELECT count(*) INTO v_idx_compound
   FROM pg_index i
   WHERE i.indrelid='public.tree_comments'::regclass AND NOT i.indisprimary
-    AND i.indnatts=2 AND NOT i.indisunique
+    AND i.indnatts=2 AND i.indnkeyatts=2 AND i.indnkeyatts = i.indnatts AND NOT i.indisunique AND i.indpred IS NULL AND i.indexprs IS NULL
     AND (SELECT array_agg(a.attname::text ORDER BY ord)
         FROM unnest(i.indkey) WITH ORDINALITY AS k(attnum, ord)
         JOIN pg_attribute a ON a.attrelid=i.indrelid AND a.attnum=k.attnum) = ARRAY['tree_id','created_at']::text[];
@@ -249,47 +262,26 @@ BEGIN
 
   SELECT count(*) INTO v_idx_tree FROM pg_index i JOIN pg_class c ON c.oid=i.indexrelid
   WHERE i.indrelid='public.tree_comments'::regclass AND NOT i.indisprimary
-    AND c.relname='idx_tree_comments_tree_id'
-    AND i.indnatts=1
-    AND (SELECT array_agg(a.attname::text ORDER BY ord)
-        FROM unnest(i.indkey) WITH ORDINALITY AS k(attnum, ord)
-        JOIN pg_attribute a ON a.attrelid=i.indrelid AND a.attnum=k.attnum) = ARRAY['tree_id']::text[];
+    AND c.relname='idx_tree_comments_tree_id' AND i.indnatts=1 AND i.indnkeyatts=1 AND i.indnkeyatts = i.indnatts AND NOT i.indisunique AND i.indpred IS NULL AND i.indexprs IS NULL
+    AND (SELECT array_agg(a.attname::text ORDER BY ord) FROM unnest(i.indkey) WITH ORDINALITY AS k(attnum, ord) JOIN pg_attribute a ON a.attrelid=i.indrelid AND a.attnum=k.attnum) = ARRAY['tree_id']::text[];
   SELECT count(*) INTO v_idx_owner FROM pg_index i JOIN pg_class c ON c.oid=i.indexrelid
   WHERE i.indrelid='public.tree_comments'::regclass AND NOT i.indisprimary
-    AND c.relname='idx_tree_comments_owner_id'
-    AND i.indnatts=1
-    AND (SELECT array_agg(a.attname::text ORDER BY ord)
-        FROM unnest(i.indkey) WITH ORDINALITY AS k(attnum, ord)
-        JOIN pg_attribute a ON a.attrelid=i.indrelid AND a.attnum=k.attnum) = ARRAY['owner_id']::text[];
+    AND c.relname='idx_tree_comments_owner_id' AND i.indnatts=1 AND i.indnkeyatts=1 AND i.indnkeyatts = i.indnatts AND NOT i.indisunique AND i.indpred IS NULL AND i.indexprs IS NULL
+    AND (SELECT array_agg(a.attname::text ORDER BY ord) FROM unnest(i.indkey) WITH ORDINALITY AS k(attnum, ord) JOIN pg_attribute a ON a.attrelid=i.indrelid AND a.attnum=k.attnum) = ARRAY['owner_id']::text[];
   SELECT count(*) INTO v_idx_created FROM pg_index i JOIN pg_class c ON c.oid=i.indexrelid
   WHERE i.indrelid='public.tree_comments'::regclass AND NOT i.indisprimary
-    AND c.relname='idx_tree_comments_created_at'
-    AND i.indnatts=1
-    AND (SELECT array_agg(a.attname::text ORDER BY ord)
-        FROM unnest(i.indkey) WITH ORDINALITY AS k(attnum, ord)
-        JOIN pg_attribute a ON a.attrelid=i.indrelid AND a.attnum=k.attnum) = ARRAY['created_at']::text[];
+    AND c.relname='idx_tree_comments_created_at' AND i.indnatts=1 AND i.indnkeyatts=1 AND i.indnkeyatts = i.indnatts AND NOT i.indisunique AND i.indpred IS NULL AND i.indexprs IS NULL
+    AND (SELECT array_agg(a.attname::text ORDER BY ord) FROM unnest(i.indkey) WITH ORDINALITY AS k(attnum, ord) JOIN pg_attribute a ON a.attrelid=i.indrelid AND a.attnum=k.attnum) = ARRAY['created_at']::text[];
   IF v_idx_tree <> 1 OR v_idx_owner <> 1 OR v_idx_created <> 1 THEN
     RAISE EXCEPTION 'ROLLBACK PRECONDITION FAIL: migration-added indexes missing (tree=% owner=% created=%)', v_idx_tree, v_idx_owner, v_idx_created;
-  END IF;
-
-  SELECT count(*) INTO v_pk_idx FROM pg_index i
-  WHERE i.indrelid='public.tree_comments'::regclass AND i.indisprimary;
-  IF v_pk_idx <> 1 THEN
-    RAISE EXCEPTION 'ROLLBACK PRECONDITION FAIL: canonical PK backing index (id) not found (count=%)', v_pk_idx;
   END IF;
 
   SELECT count(*) INTO v_idx_unexpected
   FROM pg_index i JOIN pg_class c ON c.oid=i.indexrelid
   WHERE i.indrelid='public.tree_comments'::regclass AND NOT i.indisprimary
-    AND NOT (
-      (i.indnatts=2 AND NOT i.indisunique
-        AND (SELECT array_agg(a.attname::text ORDER BY ord)
-            FROM unnest(i.indkey) WITH ORDINALITY AS k(attnum, ord)
-            JOIN pg_attribute a ON a.attrelid=i.indrelid AND a.attnum=k.attnum) = ARRAY['tree_id','created_at']::text[])
-      OR c.relname='idx_tree_comments_tree_id'
-      OR c.relname='idx_tree_comments_owner_id'
-      OR c.relname='idx_tree_comments_created_at'
-    );
+    AND NOT (i.indnatts=2 AND i.indnkeyatts=2 AND i.indnkeyatts = i.indnatts AND NOT i.indisunique AND i.indpred IS NULL AND i.indexprs IS NULL
+      AND (SELECT array_agg(a.attname::text ORDER BY ord) FROM unnest(i.indkey) WITH ORDINALITY AS k(attnum, ord) JOIN pg_attribute a ON a.attrelid=i.indrelid AND a.attnum=k.attnum) = ARRAY['tree_id','created_at']::text[])
+    AND c.relname NOT IN ('idx_tree_comments_tree_id','idx_tree_comments_owner_id','idx_tree_comments_created_at');
   IF v_idx_unexpected <> 0 THEN
     RAISE EXCEPTION 'ROLLBACK PRECONDITION FAIL: unexpected index(es) present before rollback (count=%)', v_idx_unexpected;
   END IF;
@@ -404,6 +396,7 @@ DECLARE
   v_idx_created integer;
   v_idx_pk integer;
   v_idx_compound integer;
+  v_idx_secondary integer;
   v_idx_unexpected integer;
   v_trig integer;
   v_rls integer;
@@ -521,11 +514,19 @@ BEGIN
   -- After dropping the 3 migration-added indexes, only the restored legacy
   -- PK backing index (tree_id, id) and the original compound legacy
   -- list-read index (tree_id, created_at) must remain. No single-column
-  -- tree_id / owner_id / created_at index, and no unexpected index.
+  -- tree_id / owner_id / created_at index, and no unexpected index. The
+  -- compound is verified for exact ordered columns, non-unique, non-partial,
+  -- non-expression and no INCLUDE columns.
+  SELECT count(*) INTO v_idx_secondary
+  FROM pg_index i WHERE i.indrelid='public.tree_comments'::regclass AND NOT i.indisprimary;
+  IF v_idx_secondary <> 1 THEN
+    RAISE EXCEPTION 'ROLLBACK POST-VERIFY FAIL: expected exactly 1 secondary index after rollback (got %)', v_idx_secondary;
+  END IF;
+
   SELECT count(*) INTO v_idx_compound
   FROM pg_index i
   WHERE i.indrelid='public.tree_comments'::regclass AND NOT i.indisprimary
-    AND i.indnatts=2 AND NOT i.indisunique
+    AND i.indnatts=2 AND i.indnkeyatts=2 AND i.indnkeyatts = i.indnatts AND NOT i.indisunique AND i.indpred IS NULL AND i.indexprs IS NULL
     AND (SELECT array_agg(a.attname::text ORDER BY ord)
         FROM unnest(i.indkey) WITH ORDINALITY AS k(attnum, ord)
         JOIN pg_attribute a ON a.attrelid=i.indrelid AND a.attnum=k.attnum) = ARRAY['tree_id','created_at']::text[];
@@ -551,12 +552,8 @@ BEGIN
   SELECT count(*) INTO v_idx_unexpected
   FROM pg_index i JOIN pg_class c ON c.oid=i.indexrelid
   WHERE i.indrelid='public.tree_comments'::regclass AND NOT i.indisprimary
-    AND NOT (
-      i.indnatts=2 AND NOT i.indisunique
-      AND (SELECT array_agg(a.attname::text ORDER BY ord)
-          FROM unnest(i.indkey) WITH ORDINALITY AS k(attnum, ord)
-          JOIN pg_attribute a ON a.attrelid=i.indrelid AND a.attnum=k.attnum) = ARRAY['tree_id','created_at']::text[]
-    );
+    AND NOT (i.indnatts=2 AND i.indnkeyatts=2 AND i.indnkeyatts = i.indnatts AND NOT i.indisunique AND i.indpred IS NULL AND i.indexprs IS NULL
+      AND (SELECT array_agg(a.attname::text ORDER BY ord) FROM unnest(i.indkey) WITH ORDINALITY AS k(attnum, ord) JOIN pg_attribute a ON a.attrelid=i.indrelid AND a.attnum=k.attnum) = ARRAY['tree_id','created_at']::text[]);
   IF v_idx_unexpected <> 0 THEN
     RAISE EXCEPTION 'ROLLBACK POST-VERIFY FAIL: unexpected index(es) after rollback (count=%)', v_idx_unexpected;
   END IF;
