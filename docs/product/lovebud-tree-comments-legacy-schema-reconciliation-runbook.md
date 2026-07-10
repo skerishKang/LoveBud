@@ -1,11 +1,13 @@
 # LoveBud Tree Comments Legacy Schema Reconciliation Runbook
 
 > **Issue:** #3423
-> **Refs:** #3418 (BLOCKED_MIGRATION_REQUIRED), #3422 (root-cause diagnosis), #3188, #3075, #1882
+> **Refs:** #3418 (BLOCKED_MIGRATION_REQUIRED), #3188, #3075, #1882
 > **Migration:** `scripts/migration-reconcile-tree-comments-legacy-schema.sql`
+> **Rollback:** `scripts/rollback-tree-comments-legacy-reconcile.sql`
 > **Contract test:** `tests/contracts/migration-tree-comments-legacy-reconcile-contract.test.cjs`
+> **Rollback contract test:** `tests/contracts/rollback-tree-comments-legacy-reconcile-contract.test.cjs`
 > **Strategy:** In-place ALTER (Strategy A), fail-closed, transaction-wrapped
-> **Destructive operations:** NONE (no DROP TABLE / TRUNCATE / DELETE)
+> **Destructive operations:** NONE (no DROP TABLE / TRUNCATE / DELETE / DROP COLUMN)
 
 ---
 
@@ -21,7 +23,8 @@ failing: fetch_tree_comments() -> SELECT id, tree_id, body, created_at, updated_
 ```
 
 The reader needs `body`; the writer additionally needs `owner_id`, `target_kind`, `target_id`.
-None of these exist on the production `public.tree_comments` table.
+None of these exist on the production `public.tree_comments` table. The reader failure
+manifests as SQLSTATE 42703 (UndefinedColumn: column "body" does not exist).
 
 ### Sanitized schema delta (production vs canonical)
 
@@ -38,7 +41,7 @@ None of these exist on the production `public.tree_comments` table.
 
 Legacy-only columns preserved: `author_id`, `author_display_name`, `is_deleted`, `payload`.
 
-**Verdict (from #3422):** `MIGRATION_REQUIRED`.
+**Verdict:** `MIGRATION_REQUIRED`.
 
 ---
 
@@ -51,7 +54,7 @@ Legacy-only columns preserved: `author_id`, `author_display_name`, `is_deleted`,
 - Triggers: none
 - RLS: disabled
 - Dependent views: none
-- Table owner / grants: `neondb_owner` (owner, full privileges). Preserved automatically by ALTER (no relation/ACL change).
+- Table ownership and ACLs are preserved by in-place ALTER (no relation/ACL change performed by this migration).
 
 **Private information exposure:** NONE. No DB URL, host, user, credential, raw UUID, or row content is recorded here.
 
@@ -65,34 +68,63 @@ Rationale — all conditions satisfied at preflight:
 
 1. Row count = 0 → no data to copy, no DELETE/TRUNCATE needed.
 2. Exact legacy 8-column shape confirmed and asserted before ALTER.
-3. No risky dependent objects (no triggers, no RLS, no dependent views).
+3. No risky dependent objects (no triggers, no RLS, no dependent views, no unexpected inbound FK).
 4. Type/PK changes performed safely inside a single transaction with bounded `lock_timeout`/`statement_timeout`.
-5. Owner/grants/RLS preserved naturally (ALTER keeps the relation and its ACLs).
+5. Existing table ownership and ACLs are preserved naturally by in-place ALTER.
 
 **Why not rename + replacement (Strategy B):** unnecessary complexity for a zero-row,
 dependency-free table; in-place ALTER keeps the relation OID, indexes, FKs, and grants
 intact, which is the safest reversible path here.
 
 **Destructive operation required:** NO. The migration never issues DROP TABLE, TRUNCATE,
-or DELETE. Legacy columns are preserved (not dropped). Only `created_at`/`updated_at` are
-made NOT NULL, safe only because row count = 0 (NULLs backfilled to `NOW()` before the
-NOT NULL switch).
+DELETE, or DROP COLUMN. Legacy columns are preserved (never dropped). `created_at`/
+`updated_at` become NOT NULL with `DEFAULT NOW()` — safe because row count = 0 (no
+backfill UPDATE, no sentinel values).
+
+**Primary key conversion:** the legacy PK `(tree_id, id)` is dropped (only the known
+`tree_comments_pkey` constraint) and replaced with `PRIMARY KEY (id)`. The writer replays
+by `WHERE id = %s`, so `id` must be DB-level unique. The `tree_id` index is preserved for
+list reads.
 
 **Rollback:** the migration is a single committed transaction. If the post-verification
-block raises, the whole transaction rolls back automatically (atomic). For a committed
-apply, rollback is a manual, separately-approved operation (e.g. drop the four added
-columns / revert NOT NULL) — out of scope for this artifact and must never be auto-run.
+block raises, the whole transaction rolls back automatically (atomic) — no partial ALTER
+is committed. For a committed apply that fails post-schema verification or API smoke,
+the dedicated rollback script `scripts/rollback-tree-comments-legacy-reconcile.sql`
+reverts the reconciled schema to the exact legacy 8-column shape. The rollback script:
+
+- is a separate, explicitly-approved operation (never auto-run);
+- fails closed unless the table is in the exact reconciled shape with row count = 0;
+- drops only the canonical columns/CHECKs/PK/indexes added by the migration;
+- restores the legacy composite PK `(tree_id, id)` from the catalog (no name guessing);
+- preserves legacy columns, FKs, and the `tree_id` list-read index;
+- uses no CASCADE, no DELETE/TRUNCATE, and embeds no credentials.
+
+If the rollback preconditions are not met (data present, writer/composer active, or
+unexpected schema), automatic rollback is forbidden and #3418 stays open.
 
 ---
 
-## 4. Preflight queries (run read-only BEFORE approval)
+## 4. Re-run policy (explicit stop, NOT silent NO-OP)
+
+A second execution is **not** a success "no-op":
+
+- **exact legacy schema** → migration runs (adds canonical columns, converts PK).
+- **already reconciled schema** → migration raises
+  `PREFLIGHT STOP: tree_comments already reconciled`
+  and aborts **without changing anything**.
+- **partial / unexpected schema** → migration raises `PREFLIGHT FAIL` and aborts **without
+  changing anything**.
+
+---
+
+## 5. Preflight queries (run read-only BEFORE approval)
 
 ```sql
 -- 1. Table existence
 SELECT to_regclass('public.tree_comments');
 
 -- 2. Exact legacy shape (expect 8 columns, id/tree_id text)
-SELECT column_name, data_type, is_nullable, column_default
+SELECT column_name, data_type, udt_name, is_nullable, column_default
 FROM information_schema.columns
 WHERE table_schema = 'public' AND table_name = 'tree_comments'
 ORDER BY ordinal_position;
@@ -116,7 +148,7 @@ If any preflight fails, **do not apply**. Investigate before proceeding.
 
 ---
 
-## 5. Execution approval gate
+## 6. Execution approval gate
 
 - [ ] Issue #3418 confirmed `BLOCKED_MIGRATION_REQUIRED`
 - [ ] Preflight queries above all pass (8 legacy cols, text keys, 0 rows, no risky deps)
@@ -126,7 +158,7 @@ If any preflight fails, **do not apply**. Investigate before proceeding.
 
 ---
 
-## 6. Backup / rollback strategy
+## 7. Backup / rollback strategy
 
 - Take a schema-only backup before applying:
   ```sh
@@ -134,41 +166,89 @@ If any preflight fails, **do not apply**. Investigate before proceeding.
   ```
 - Because row count = 0, no data backup is required, but a full pre-change snapshot is
   recommended per environment policy.
-- Rollback (if needed, separately approved): reverse the added columns / NOT NULL switches.
-  This artifact does NOT perform rollback automatically.
+- Existing table ownership and ACLs are preserved by in-place ALTER.
+- Rollback (if needed, separately approved): reverse the added columns / NOT NULL switches /
+  PK. This artifact does NOT perform rollback automatically.
 
 ---
 
-## 7. Migration command format
+## 8. Migration command format
 
 ```sh
 psql "$DATABASE_URL" -f scripts/migration-reconcile-tree-comments-legacy-schema.sql
 ```
 
 The script itself enforces: explicit `BEGIN`, bounded timeouts, a `SHARE ROW EXCLUSIVE`
-lock, full preflight assertions, and post-migration verification. It is a safe NO-OP on a
-second apply (it detects the reconciled state and does not re-ALTER).
+lock, full preflight assertions, and post-migration verification. On a second apply it
+raises `PREFLIGHT STOP: tree_comments already reconciled` (explicit stop, not a silent
+NO-OP).
 
 ---
 
-## 8. Post-migration schema verification
+## 9. Post-migration schema verification
 
 ```sql
-SELECT column_name, data_type, is_nullable
+SELECT column_name, data_type, is_nullable, column_default
 FROM information_schema.columns
 WHERE table_schema='public' AND table_name='tree_comments'
 ORDER BY ordinal_position;
--- Expect: id, tree_id, author_id, author_display_name, is_deleted,
---         owner_id (varchar 128, NOT NULL), body (text, NOT NULL),
---         target_kind (varchar 16, NOT NULL), target_id (text),
---         created_at (timestamptz, NOT NULL), updated_at (timestamptz, NOT NULL), payload
+-- Expect 12 columns: id (text PK), tree_id (text FK), author_id (text NULL),
+--   author_display_name (text NULL), is_deleted (bool NOT NULL),
+--   owner_id (varchar 128 NOT NULL), body (text NOT NULL),
+--   target_kind (varchar 16 NOT NULL DEFAULT 'tree'), target_id (text),
+--   created_at (timestamptz NOT NULL DEFAULT NOW()),
+--   updated_at (timestamptz NOT NULL DEFAULT NOW()), payload (jsonb NOT NULL)
 ```
 
 ---
 
-## 9. Smoke test (read path only)
+## 10. Static verification only (no Docker / no local PostgreSQL / no executable rehearsal)
 
-After apply, the public comments GET should no longer raise 42703:
+This reconciliation was prepared with **source-level static verification only**:
+
+- No Docker container was used.
+- No local PostgreSQL instance was installed or run.
+- No temporary/disposable PostgreSQL service was created.
+- No executable rehearsal (PG17 / Docker) was performed.
+- No connection to Neon production or any shared database was opened.
+
+Verification consists of the contract tests (migration + rollback), the existing
+tree-comments migration contract, the Python reader test, the route implementation
+contract, the client adapter contract, and `npm run lint` / `npm run build` /
+`npm run verify`. **The actual DB migration was NOT executed in this step.**
+
+The final production schema verification and API smoke test are performed only inside
+an approved Neon production change window, as a separate approved task after this PR is
+merged. This choice carries operational-apply risk, so the rollback script and the
+zero-row guard are mandatory preparation.
+
+---
+
+## 11. Rollback procedure (separate, explicitly-approved task)
+
+If post-schema verification or the API smoke test fails after the migration is applied
+to Neon production, run the rollback script **only** when all preconditions hold:
+
+- `tree_comments` row count = 0
+- writer / composer still disabled
+- exact reconciled schema present
+- no unexpected dependencies
+
+```sh
+psql "$DATABASE_URL" -v ON_ERROR_STOP=1 \
+  -f scripts/rollback-tree-comments-legacy-reconcile.sql
+```
+
+After rollback, read-only confirm: exact legacy 8-column schema, legacy composite PK
+`(tree_id, id)`, existing FKs/indexes, no added canonical columns, row count = 0.
+Keep #3418 open and report the failure cause.
+
+---
+
+## 12. Smoke test (read path only)
+
+After apply (in the approved change window), the public comments GET should no longer
+raise 42703:
 
 ```sh
 curl -s "https://<approved-public-endpoint>/modal/private/trees/<publicTreeA>/comments?limit=20"
@@ -179,7 +259,7 @@ Do **not** enable the writer / composer in this step.
 
 ---
 
-## 10. Boundary — writer NOT activated here
+## 13. Boundary — writer NOT activated here
 
 This reconciliation provisions storage only. The comment writer (`POST`), composer UI,
 and #3419 UI work remain explicitly out of scope and must NOT be activated by this
@@ -187,19 +267,19 @@ migration. After apply, only the read path is expected to recover.
 
 ---
 
-## 11. Failure stop criteria
+## 14. Failure stop criteria
 
 Abort and do not retry blindly if:
 
 - Preflight reports an unexpected column set, a non-zero row count, or unexpected
-  triggers/RLS/dependent views.
-- The migration raises `PREFLIGHT FAIL` or `POST-VERIFY FAIL`.
+  triggers/RLS/dependent views / inbound FK.
+- The migration raises `PREFLIGHT FAIL` or `PREFLIGHT STOP` or `POST-VERIFY FAIL`.
 - The apply times out (bounded by `statement_timeout = 30s`, `lock_timeout = 3s`).
 - Any post-apply smoke test returns 5xx other than the expected empty-list 200.
 
 ---
 
-## 12. Private information
+## 15. Private information
 
 No private information (DB URL, host, user, credential, raw UUID, request ID, dashboard
 URL, or row content) is recorded in this runbook.

@@ -17,10 +17,10 @@
 -- or UI is implemented by this migration. Apply under separate approval.
 --
 -- Key-type correction (TEXT): production `trees.id` is TEXT (observed via approved
--- read-only inspection during #3422/#3423), so id/tree_id/target_id use TEXT here
+-- read-only inspection during #3423), so id/tree_id/target_id use TEXT here
 -- to stay byte-compatible with the existing trees PK and with the legacy
 -- reconciliation migration (scripts/migration-reconcile-tree-comments-legacy-schema.sql).
--- Refs #3423, #3418, #3422.
+-- Refs #3423, #3418.
 --
 -- Usage:
 --   psql "$DATABASE_URL" -f scripts/migration-add-tree-comments.sql
