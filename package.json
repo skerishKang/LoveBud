@@ -8,6 +8,7 @@
     "lint": "node scripts/lint-static.js",
     "build": "node scripts/build-static.js",
     "test": "node --test tests/smoke/*.test.cjs tests/routes/*.test.cjs tests/contracts/*.test.cjs",
+    "test:layers": "node scripts/report-test-layers.cjs",
     "verify": "node scripts/pre-deploy.cjs",
     "verify:full": "node scripts/pre-deploy.cjs --full",
     "verify:remote": "node scripts/pre-deploy.cjs --remote",
