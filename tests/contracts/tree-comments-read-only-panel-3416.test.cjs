@@ -196,11 +196,20 @@ function loadModules(dom, adapterMock) {
   return sandbox.window.LoveBudPublicViewerTreeComments;
 }
 
+function createDeferred() {
+  var resolve, reject;
+  var promise = new Promise(function (res, rej) {
+    resolve = res;
+    reject = rej;
+  });
+  return { promise: promise, resolve: resolve, reject: reject };
+}
+
 function tick() {
-  return new Promise((resolve) => setTimeout(resolve, 0));
+  return new Promise(function (resolve) { setTimeout(resolve, 0); });
 }
 async function flush() {
-  for (let i = 0; i < 5; i++) await tick();
+  for (var i = 0; i < 5; i++) await tick();
 }
 
 // ─── 1. view.html script dependency order ──────────────────────────────────
@@ -771,8 +780,12 @@ test('same-tree rerender preserves panel state, cache, and control instance', as
   assert.equal(adapterCalls, 1, 'no additional adapter call on same-tree rerender');
 });
 
-test('tree change creates new control instance and does not reuse stale results', async () => {
+test('tree change creates new control instance with deferred stale-response guard', async () => {
   var adapterCalls = 0;
+  var deferredA = createDeferred();
+  var deferredB = createDeferred();
+  var createdControls = [];
+
   var dom = createDom();
   var mount = dom.document.createElement('div');
   mount.id = 'detailTreeMetaMount';
@@ -780,43 +793,112 @@ test('tree change creates new control instance and does not reuse stale results'
 
   var h = loadDetailUI(dom, async function (id) {
     adapterCalls++;
-    await tick();
-    return { ok: true, state: 'loaded_with_comments', comments: [{ id: 'c', treeId: id, body: 'comment-for-' + id, createdAt: 't', updatedAt: 't', authorDisplayLabel: 'u' }] };
+    if (id === VALID_TREE_ID) return deferredA.promise;
+    if (id === OTHER_TREE_ID) return deferredB.promise;
+    throw new Error('unexpected tree id');
   });
+
+  // Track created control instances for identity checks
+  var realFactory = h.sandbox.window.LoveBudPublicViewerTreeComments.createTreeCommentsReadOnlyControl;
+  h.sandbox.window.LoveBudPublicViewerTreeComments.createTreeCommentsReadOnlyControl = function (deps) {
+    var control = realFactory(deps);
+    createdControls.push(control);
+    return control;
+  };
 
   var updater = h.callFactory();
 
-  // Render tree A
-  h.currentTreeData = { id: VALID_TREE_ID, visibility: 'public', title: 'Tree A' };
+  // Step 1: tree A render
   updater({ id: VALID_TREE_ID });
-  assert.equal(h.factoryCalls.length, 1, 'factory called for tree A');
+  assert.equal(h.factoryCalls.length, 1, '1: factory call count = 1');
 
-  // Open panel for tree A
-  var toggleA = dom.document.getElementById('wholeTreeCommentsToggle');
-  toggleA.click();
-  await flush();
-  assert.equal(adapterCalls, 1, 'adapter called for tree A');
+  // Step 2: open tree A panel — starts adapter request (pending in microtask)
+  var controlA = createdControls[0];
+  assert.ok(typeof controlA.open === 'function', 'control A has open()');
+  controlA.open();
 
-  // Switch to tree B (simulate tree change)
+  // Step 3: wait for microtask so performFetch calls the adapter
+  await tick();
+  assert.equal(adapterCalls, 1, '3: adapter call count = 1 (A pending)');
+
+  // Step 4: factory count still 1
+  assert.equal(h.factoryCalls.length, 1, '4: factory count still 1');
+
+  // Step 5-6: switch to tree B
   h.currentTreeDataRef.value = { id: OTHER_TREE_ID, visibility: 'public', title: 'Tree B' };
   updater({ id: OTHER_TREE_ID });
-  assert.equal(h.factoryCalls.length, 2, 'factory called again for tree B (new instance)');
 
-  // Open panel for tree B
-  var toggleB = dom.document.getElementById('wholeTreeCommentsToggle');
-  toggleB.click();
+  // Step 7: factory count = 2
+  assert.equal(h.factoryCalls.length, 2, '7: factory count = 2 after tree change');
+
+  // Step 8-9: tree B control is a different instance
+  assert.ok(createdControls.length >= 2, '8: at least 2 controls created');
+  assert.notEqual(createdControls[0], createdControls[1], '9: tree B control !== tree A control');
+
+  // Step 10: open tree B panel
+  var controlB = createdControls[1];
+  assert.ok(typeof controlB.open === 'function', 'control B has open()');
+  controlB.open();
+
+  // Wait for microtask so performFetch calls the adapter for B
+  await tick();
+  assert.equal(adapterCalls, 2, '11: adapter call count = 2 (A + B)');
+
+  // Step 12: resolve B first (before A)
+  deferredB.resolve({
+    ok: true,
+    state: 'loaded_with_comments',
+    comments: [{ id: 'c-b', treeId: OTHER_TREE_ID, body: 'comment-for-B', createdAt: 't', updatedAt: 't', authorDisplayLabel: 'u' }]
+  });
+
+  // Step 13: flush
   await flush();
 
-  // Tree B panel gets its own data
-  assert.equal(adapterCalls, 2, 'adapter called again for tree B');
-  assert.ok(
-    dom.document.getElementById('wholeTreeCommentsList').textContent.includes('comment-for-' + OTHER_TREE_ID),
-    'tree B panel shows tree B comments'
-  );
-  assert.ok(
-    !dom.document.getElementById('wholeTreeCommentsList').textContent.includes('comment-for-' + VALID_TREE_ID),
-    'tree B panel does not show tree A comments'
-  );
+  // Step 14: tree B panel shows B comment
+  var list = dom.document.getElementById('wholeTreeCommentsList');
+  assert.ok(list.textContent.includes('comment-for-B'), '14: B panel shows B comment');
+
+  // Step 15: tree B state is loaded_with_comments
+  assert.equal(createdControls[1].getState(), 'loaded_with_comments', '15: B state = loaded_with_comments');
+
+  // Step 16: B cached comments contain B treeId
+  var bComments = createdControls[1].getComments();
+  var bTreeIds = bComments.map(function (item) { return item.treeId; });
+  assert.equal(bTreeIds.length, 1, '16a: B has 1 cached comment');
+  assert.equal(bTreeIds[0], OTHER_TREE_ID, '16b: B cached comment has B treeId');
+
+  // Step 17: A comment NOT in B panel
+  assert.ok(!list.textContent.includes('comment-for-A'), '17: A comment absent from B panel');
+
+  // Step 18: now resolve A (late — should be ignored)
+  deferredA.resolve({
+    ok: true,
+    state: 'loaded_with_comments',
+    comments: [{ id: 'c-a', treeId: VALID_TREE_ID, body: 'comment-for-A', createdAt: 't', updatedAt: 't', authorDisplayLabel: 'u' }]
+  });
+
+  // Step 19: flush
+  await flush();
+
+  // Step 20: B panel still shows B comment
+  assert.ok(list.textContent.includes('comment-for-B'), '20: B panel still shows B comment after late A resolve');
+
+  // Step 21: B state unchanged
+  assert.equal(createdControls[1].getState(), 'loaded_with_comments', '21: B state unchanged');
+
+  // Step 22: B cached comments unchanged
+  var bComments2 = createdControls[1].getComments();
+  assert.equal(bComments2.length, 1, '22a: B still has 1 cached comment');
+  assert.equal(bComments2[0].treeId, OTHER_TREE_ID, '22b: B cached comment treeId unchanged');
+
+  // Step 23: A comment still not in B panel
+  assert.ok(!list.textContent.includes('comment-for-A'), '23: A comment absent from B panel after late resolve');
+
+  // Step 24: adapter count still 2
+  assert.equal(adapterCalls, 2, '24: adapter count unchanged (2)');
+
+  // Step 25: factory count still 2
+  assert.equal(h.factoryCalls.length, 2, '25: factory count unchanged (2)');
 });
 
 // ─── 32. production-equivalent i18n fallback (Blocker 2) ─────────────────────
