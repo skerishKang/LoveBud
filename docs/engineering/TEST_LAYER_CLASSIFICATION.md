@@ -2,7 +2,7 @@
 
 - Issue: #3429
 - Parent: #3425 (architecture audit / hardening)
-- Sibling context: #3427 (legacy compatibility registry), #3428 (expected-head fix)
+- Sibling context: #3427 and merged PR #3428 (legacy compatibility registry)
 - Scope: classification metadata, reporting tooling, documentation, and a focused contract test only.
 
 ## Purpose
@@ -191,13 +191,13 @@ come from the live reporter, not this table):
 
 | Layer | Count |
 | --- | --- |
-| `SOURCE_STATIC` | 520 |
+| `SOURCE_STATIC` | 524 |
 | `EXECUTED_FAKE` | 145 |
-| `EXECUTED_REAL_LOCAL` | 3 |
+| `EXECUTED_REAL_LOCAL` | 2 |
 | `EXTERNAL_INTEGRATION` | 0 |
 | `PRODUCTION_SMOKE` | 0 |
 | `DB_ENGINE_EXECUTION` | 0 |
-| **Default-CI total** | **668** |
+| **Default-CI total** | **671** |
 | Supplemental (Python, out-of-CI) | 10 |
 
 ## Future DB engine / production smoke children need separate approval
@@ -216,10 +216,22 @@ Until then, the default CI counts for those layers remain `0` by design.
 
 - `tests/test-layer-classification.json` — machine-readable classification
   (inventory). Source of truth for the reporter and contract test.
-- `scripts/report-test-layers.cjs` — deterministic reporter. Enumerates the
-  default-CI directories, classifies each file exactly once, prints counts, and
-  exits non-zero on unclassified/conflicting/stale/invalid entries. No network,
-  DB, browser, or deployment access. No secret/private data in output.
+- `scripts/report-test-layers.cjs` — deterministic reporter. The enumeration
+  source of truth is `package.json` → `scripts.test` (parsed into globs), not a
+  hardcoded glob list. It compares the parsed package globs, in exact ordered
+  form, against the manifest `defaultCiGlobs` and fails closed (non-zero exit)
+  on package/manifest glob mismatch, unsupported command shape, duplicate glob,
+  or missing glob directory. It classifies each enumerated file exactly once,
+  prints counts, and exits non-zero on
+  unclassified/conflicting/stale/invalid entries. It also validates the
+  supplemental (out-of-default-CI) inventory (stale, duplicate, default-CI
+  overlap, invalid metadata, empty rationale). No network, DB, browser, or
+  deployment access. No secret/private data in output.
+
+  The reporter is a committed inventory **validator/reporter**. It does **not**
+  claim to automatically infer every test's layer as a classifier. Each layer
+  decision is recorded via source-content review of the test file. If a test
+  file's content changes, its layer rationale must be re-reviewed.
 - `tests/contracts/test-layer-classification-contract.test.cjs` — focused
   validator enforcing the vocabulary, complete single classification, no
   migration-as-DB, no fake-as-external, `DB_ENGINE_EXECUTION = 0`,

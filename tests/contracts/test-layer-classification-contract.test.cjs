@@ -210,3 +210,135 @@ test('reporter exits zero on the committed inventory', () => {
     process.exitCode = prev;
   }
 });
+
+test('synthetic unclassified file is detected (pure function)', () => {
+  const inv = reporter.loadInventory();
+  const enumerated = reporter.enumerateDefaultCi();
+  const synthetic = [...enumerated, 'tests/contracts/__synthetic_unclassified__.test.cjs'];
+  const result = reporter.classify(inv, synthetic);
+  assert.deepEqual(result.unclassified, ['tests/contracts/__synthetic_unclassified__.test.cjs']);
+});
+
+test('empty rationale is detected as a failure', () => {
+  const inv = reporter.loadInventory();
+  const enumerated = reporter.enumerateDefaultCi();
+  const dup = JSON.parse(JSON.stringify(inv));
+  dup.entries[0] = { path: dup.entries[0].path, layer: dup.entries[0].layer, rationale: '   ', capabilities: [] };
+  const result = reporter.classify(dup, enumerated);
+  assert.ok(result.emptyRationale.length >= 1, 'empty rationale not detected');
+});
+
+test('package.json scripts.test parses to the exact three default-CI globs', () => {
+  const inv = reporter.loadInventory();
+  const command = reporter.readPackageTestCommand();
+  const check = reporter.checkPackageTestCommand(command, inv.defaultCiGlobs);
+  assert.deepEqual(check.globs, ['tests/smoke/*.test.cjs', 'tests/routes/*.test.cjs', 'tests/contracts/*.test.cjs']);
+  assert.equal(check.packageGlobMismatch, false, 'unexpected glob mismatch');
+  assert.equal(check.unsupportedTestCommand, false, 'unexpected unsupported command');
+  assert.equal(check.duplicateGlobs, false, 'unexpected duplicate glob');
+  assert.equal(check.missingGlobDirectories, false, 'unexpected missing glob directory');
+});
+
+test('package/manifest glob mismatch is detected as failure', () => {
+  const inv = reporter.loadInventory();
+  const check = reporter.checkPackageTestCommand('node --test tests/smoke/*.test.cjs', inv.defaultCiGlobs);
+  assert.equal(check.packageGlobMismatch, true, 'package/manifest glob mismatch not detected');
+});
+
+test('unsupported package test command fails closed', () => {
+  const inv = reporter.loadInventory();
+  const check = reporter.checkPackageTestCommand('node --test tests/contracts/*.test.cjs && npm run something', inv.defaultCiGlobs);
+  assert.equal(check.unsupportedTestCommand, true, 'unsupported package test command not detected');
+});
+
+test('duplicate glob is detected as failure', () => {
+  const inv = reporter.loadInventory();
+  const check = reporter.checkPackageTestCommand('node --test tests/contracts/*.test.cjs tests/contracts/*.test.cjs', inv.defaultCiGlobs);
+  assert.equal(check.duplicateGlobs, true, 'duplicate glob not detected');
+});
+
+test('missing glob directory is detected as failure', () => {
+  const inv = reporter.loadInventory();
+  const check = reporter.checkPackageTestCommand('node --test tests/does-not-exist-xyz/*.test.cjs', inv.defaultCiGlobs);
+  assert.equal(check.missingGlobDirectories, true, 'missing glob directory not detected');
+});
+
+test('known My Trees continuation-hub media contract is SOURCE_STATIC', () => {
+  const inv = reporter.loadInventory();
+  const e = inv.entries.find((x) => x.path === 'tests/contracts/my-trees-continuation-hub-media-contract.test.cjs');
+  assert.ok(e, 'entry missing');
+  assert.equal(e.layer, 'SOURCE_STATIC', 'my-trees media contract must be SOURCE_STATIC (source read only, no execution)');
+  assert.notEqual(e.layer, 'EXECUTED_REAL_LOCAL');
+});
+
+test('new tree-comments normalizer contract is SOURCE_STATIC', () => {
+  const inv = reporter.loadInventory();
+  const e = inv.entries.find((x) => x.path === 'tests/contracts/normalizer-tree-comments-reconcile.test.cjs');
+  assert.ok(e, 'normalizer entry missing');
+  assert.equal(e.layer, 'SOURCE_STATIC', 'normalizer contract must be SOURCE_STATIC (pure-JS mirror, SQL source read only)');
+  assert.notEqual(e.layer, 'DB_ENGINE_EXECUTION');
+});
+
+test('every EXECUTED_REAL_LOCAL entry has a file-specific rationale (no generic phrasing)', () => {
+  const inv = reporter.loadInventory();
+  const GENERIC = /executes production functions in a local node process without replacing the core claimed behavior with fakes/i;
+  const realLocal = inv.entries.filter((e) => e.layer === 'EXECUTED_REAL_LOCAL');
+  assert.ok(realLocal.length >= 1, 'expected at least one EXECUTED_REAL_LOCAL entry');
+  for (const e of realLocal) {
+    assert.ok(e.rationale && e.rationale.trim().length > 0, `empty rationale for ${e.path}`);
+    assert.ok(!GENERIC.test(e.rationale), `REAL_LOCAL entry ${e.path} still uses the generic rationale`);
+    assert.ok(e.rationale.length > 90, `REAL_LOCAL entry ${e.path} rationale is not file-specific`);
+    assert.ok(/scripts\//.test(e.rationale), `REAL_LOCAL entry ${e.path} rationale must name the executed production module`);
+  }
+});
+
+test('supplemental stale (nonexistent path) is detected', () => {
+  const inv = reporter.loadInventory();
+  const enumerated = reporter.enumerateDefaultCi();
+  const dup = JSON.parse(JSON.stringify(inv));
+  dup.supplemental.push({ path: 'tests/contracts/__synthetic_missing__.py', defaultCi: false, layer: 'SUPPLEMENTAL_PYTHON', rationale: 'x', capabilities: [] });
+  const result = reporter.classify(dup, enumerated);
+  assert.ok(result.supplementalStale.includes('tests/contracts/__synthetic_missing__.py'), 'supplemental stale not detected');
+});
+
+test('supplemental duplicate path is detected', () => {
+  const inv = reporter.loadInventory();
+  const enumerated = reporter.enumerateDefaultCi();
+  const dup = JSON.parse(JSON.stringify(inv));
+  const first = dup.supplemental[0].path;
+  dup.supplemental.push({ path: first, defaultCi: false, layer: 'SUPPLEMENTAL_PYTHON', rationale: 'x', capabilities: [] });
+  const result = reporter.classify(dup, enumerated);
+  assert.ok(result.supplementalDuplicates.includes(first), 'supplemental duplicate not detected');
+});
+
+test('supplemental defaultCi:true is detected as default-CI overlap', () => {
+  const inv = reporter.loadInventory();
+  const enumerated = reporter.enumerateDefaultCi();
+  const dup = JSON.parse(JSON.stringify(inv));
+  dup.supplemental.push({ path: 'tests/contracts/__synthetic_defaultci__.py', defaultCi: true, layer: 'SUPPLEMENTAL_PYTHON', rationale: 'x', capabilities: [] });
+  const result = reporter.classify(dup, enumerated);
+  assert.ok(result.supplementalInDefaultCi.includes('tests/contracts/__synthetic_defaultci__.py'), 'defaultCi:true not detected');
+});
+
+test('supplemental default-CI .test.cjs path overlap is detected', () => {
+  const inv = reporter.loadInventory();
+  const enumerated = reporter.enumerateDefaultCi();
+  const dup = JSON.parse(JSON.stringify(inv));
+  const ciPath = enumerated[0];
+  dup.supplemental.push({ path: ciPath, defaultCi: false, layer: 'SUPPLEMENTAL_PYTHON', rationale: 'x', capabilities: [] });
+  const result = reporter.classify(dup, enumerated);
+  assert.ok(result.supplementalInDefaultCi.includes(ciPath), 'default-CI path in supplemental not detected');
+});
+
+test('supplemental invalid metadata (empty rationale / invalid layer / non-py) is detected', () => {
+  const inv = reporter.loadInventory();
+  const enumerated = reporter.enumerateDefaultCi();
+  const dup = JSON.parse(JSON.stringify(inv));
+  dup.supplemental.push({ path: 'tests/contracts/__synthetic_a__.py', defaultCi: false, layer: 'SUPPLEMENTAL_PYTHON', rationale: '   ', capabilities: [] });
+  dup.supplemental.push({ path: 'tests/contracts/__synthetic_b__.py', defaultCi: false, layer: 'NOT_A_LAYER', rationale: 'x', capabilities: [] });
+  dup.supplemental.push({ path: 'tests/contracts/__synthetic_c__.test.cjs', defaultCi: false, layer: 'SUPPLEMENTAL_PYTHON', rationale: 'x', capabilities: [] });
+  const result = reporter.classify(dup, enumerated);
+  assert.ok(result.supplementalEmptyRationale.includes('tests/contracts/__synthetic_a__.py'), 'empty rationale not detected');
+  assert.ok(result.supplementalInvalid.includes('tests/contracts/__synthetic_b__.py'), 'invalid layer not detected');
+  assert.ok(result.supplementalInvalid.includes('tests/contracts/__synthetic_c__.test.cjs'), 'non-py supplemental not detected');
+});

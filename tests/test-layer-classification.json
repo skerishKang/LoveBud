@@ -1669,13 +1669,13 @@
     {
       "path": "tests/contracts/lovebud-loop-policy-loader-contract.test.cjs",
       "layer": "EXECUTED_REAL_LOCAL",
-      "rationale": "Executes production functions in a local Node process without replacing the core claimed behavior with fakes; no production/staging resource used.",
+      "rationale": "Imports and executes the real production functions parseYamlConfig, validatePolicy, toPolicyObject, and loadPolicy from scripts/loop/policy-loader.mjs against the actual config/lovebud-loop.yml, and exercises determineStatus from scripts/loop/build-queue.mjs; the core parsing/validation/status logic runs for real with no fakes and no production/staging resource.",
       "capabilities": []
     },
     {
       "path": "tests/contracts/lovebud-loop-triage-contract.test.cjs",
       "layer": "EXECUTED_REAL_LOCAL",
-      "rationale": "Executes production functions in a local Node process without replacing the core claimed behavior with fakes; no production/staging resource used.",
+      "rationale": "Imports and executes the real production pure functions classifyLane, determineStatus, and build from scripts/loop/build-queue.mjs with fixture input, asserting real lane classification and queue-building behavior; no fakes replace the core logic and no production/staging resource is used.",
       "capabilities": []
     },
     {
@@ -1854,8 +1854,8 @@
     },
     {
       "path": "tests/contracts/my-trees-continuation-hub-media-contract.test.cjs",
-      "layer": "EXECUTED_REAL_LOCAL",
-      "rationale": "Executes production functions in a local Node process without replacing the core claimed behavior with fakes; no production/staging resource used.",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Reads HTML, JavaScript, and CSS source files and applies regex/string/order assertions only; it does not execute the asserted My Trees production behavior.",
       "capabilities": []
     },
     {
@@ -4022,6 +4022,24 @@
       "path": "tests/smoke/routes.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/migration-tree-comments-legacy-reconcile-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Reads the migration SQL source text and applies regex/string/order assertions only; it does not execute the SQL against a PostgreSQL engine or open a database connection (migration SQL contract).",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/rollback-tree-comments-legacy-reconcile-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Reads the rollback SQL source text and applies regex/string/order assertions only; it does not execute the SQL against a PostgreSQL engine or open a database connection (rollback SQL contract).",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/normalizer-tree-comments-reconcile.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Executes a pure-JS mirror and reads the migration/rollback SQL source, but does not execute the shipped PL/pgSQL helpers or PostgreSQL engine; evidence for the database behavior remains SOURCE_STATIC.",
       "capabilities": []
     }
   ],
