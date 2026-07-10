@@ -327,3 +327,110 @@ test('registry contains no private endpoint, DB URL, raw UUID, token, request ID
     'No raw UUID should appear'
   );
 });
+
+// --- Correction checks (컴2 fix: evidence overclaim hardening) ---
+
+test('registry identifies Issue #3427', () => {
+  const lower = readRegistry().toLowerCase();
+  assert.ok(lower.includes('issue #3427'), 'Registry must identify Issue #3427');
+});
+
+test('registry identifies PR #3428', () => {
+  const lower = readRegistry().toLowerCase();
+  assert.ok(lower.includes('pr #3428'), 'Registry must identify PR #3428');
+});
+
+test('registry does not use the incorrect "PR #3427" expression', () => {
+  const text = readRegistry();
+  assert.ok(!/PR #3427/i.test(text), 'Registry must not refer to "PR #3427"');
+});
+
+test('registry states initial inventory is non-exhaustive', () => {
+  const text = readRegistry();
+  const lower = text.toLowerCase();
+  assert.ok(lower.includes('initial inventory'), 'Registry must call LC-001..LC-005 the initial inventory');
+  assert.ok(
+    /not claimed to be exhaustive/.test(lower) ||
+      /initial inventory.*not.*exhaustive/i.test(text) ||
+      /not.*exhaustive/.test(lower),
+    'Registry must state the initial inventory is not claimed exhaustive'
+  );
+  assert.ok(
+    !/all legacy artifacts have been inventoried/i.test(lower),
+    'Registry must not claim all legacy artifacts are inventoried'
+  );
+});
+
+test('LC-001 declares live-response necessity as UNKNOWN', () => {
+  const block = getItemBlock(readRegistry(), 'LC-001');
+  assert.ok(
+    /live responses/i.test(block) && /UNKNOWN/.test(block),
+    'LC-001 must state that live-response legacy necessity is UNKNOWN'
+  );
+});
+
+test('LC-001 does not assert current production payloads are received', () => {
+  const block = getItemBlock(readRegistry(), 'LC-001');
+  assert.ok(
+    !/still receive(s)? payloads/i.test(block),
+    'LC-001 must not assert that paths still receive legacy payloads in production'
+  );
+});
+
+test('LC-001 does not overclaim "every public browse/search card"', () => {
+  const block = getItemBlock(readRegistry(), 'LC-001');
+  assert.ok(
+    !/every public browse\/search card/i.test(block),
+    'LC-001 must not overclaim every browse/search card depends on legacy normalization'
+  );
+});
+
+test('LC-002 declares deployed legacy-record state as UNKNOWN', () => {
+  const block = getItemBlock(readRegistry(), 'LC-002');
+  assert.ok(
+    /deployed/.test(block) && /UNKNOWN/.test(block),
+    'LC-002 must state that current deployed legacy-record/schema necessity is UNKNOWN'
+  );
+});
+
+test('LC-002 does not assert the memories table is currently missing', () => {
+  const block = getItemBlock(readRegistry(), 'LC-002');
+  assert.ok(
+    !/(?<!if )(the )?memories table (is|currently is) (missing|absent)/i.test(block),
+    'LC-002 must not assert the memories table is currently missing in production'
+  );
+});
+
+test('LC-002 requires a future separately approved read-only data/schema audit', () => {
+  const block = getItemBlock(readRegistry(), 'LC-002');
+  const lower = block.toLowerCase();
+  assert.ok(
+    /separately approved read-only data\/schema audit/.test(lower) ||
+      /approved read-only (data|schema) audit/.test(lower),
+    'LC-002 must require a future separately approved read-only data/schema audit'
+  );
+  assert.ok(
+    !/repository-wide search confirms zero remaining legacy (payload\/nodes shaped )?records?/i.test(block),
+    'LC-002 must not claim a repository search confirms zero legacy records'
+  );
+});
+
+test('registry does not claim this PR performed a production/staging query', () => {
+  const lower = readRegistry().toLowerCase();
+  assert.ok(
+    lower.includes('not performed by this pr') || lower.includes('never queried'),
+    'Registry must state no production/staging/DB query was performed by this PR'
+  );
+  assert.ok(
+    !/(this pr|we|the agent) (queried|ran|executed) (production|staging|the database|postgres)/i.test(lower),
+    'Registry must not claim it queried/ran production/staging/DB'
+  );
+});
+
+test('registry preserves a documentation-only (3-file) boundary', () => {
+  const text = readRegistry();
+  assert.ok(
+    /no runtime file/i.test(text) && /modified, deleted, moved, or reactivated/i.test(text),
+    'Registry must declare it modifies/deletes/moves/reactivates no runtime file'
+  );
+});

@@ -2,9 +2,15 @@
 
 ## Purpose
 
-This registry is the single authoritative inventory of legacy and transitional
-structures that LoveBud still retains in the repository. It is **not** a removal
-list and does not authorize deletion of any runtime artifact.
+This document defines the repository-owned registry format and the initial inventory
+of legacy and transitional structures that LoveBud still retains. It is **not** a
+removal list and does not authorize deletion of any runtime artifact.
+
+The registry field set and vocabulary defined here are the official operational
+format for tracking legacy/transitional artifacts. The recorded items (LC-001
+through LC-005) constitute the **initial inventory**; this inventory is not claimed to be exhaustive. Other legacy or transitional artifacts may exist elsewhere
+in the repository. Any newly identified artifact must go through a separate evidence
+review before a registry item is added.
 
 For every entry it records:
 
@@ -15,8 +21,9 @@ For every entry it records:
 - which verification must pass before any future removal.
 
 The registry supports the architecture changeability and production-parity work
-tracked under parent Issue #3425. It was established by PR #3427 as a follow-up to
-the audit foundation merged in PR #3426 (`docs/engineering/lovebud-changeability-production-parity-audit.md`).
+tracked under parent Issue #3425. It was created for Issue #3427 through PR #3428,
+following the audit foundation merged in PR #3426
+(`docs/engineering/lovebud-changeability-production-parity-audit.md`).
 
 ## Rules
 
@@ -29,6 +36,13 @@ the audit foundation merged in PR #3426 (`docs/engineering/lovebud-changeability
      from source.
    - `UNKNOWN` — consumer or removal safety is not established from source.
    Do not force an `UNKNOWN` into a conclusion.
+   The item-level `Evidence level` classifies the artifact's existence and its
+   primary source evidence (file present, self-described role, source consumers
+   found). Individual operational or removal-safety claims inside the item must
+   still be tagged `CONFIRMED`, `LIKELY`, or `UNKNOWN` separately when they differ
+   from the item-level classification. Source consumer existence can be `CONFIRMED`;
+   live payload necessity, deployed legacy-record existence, and client/server
+   responsibility overlap are typically `LIKELY` or `UNKNOWN`.
 3. Production, staging, databases, and Docker are never queried to fill `UNKNOWN`
    values. The registry stays within repository-source evidence.
 4. Classification uses a fixed vocabulary:
@@ -96,12 +110,14 @@ Status: `RETAIN`, `REVIEW_REQUIRED`, `REMOVAL_BLOCKED`,
   - Whether every production page still depends on the legacy `{ data }` unwrap
     path versus only the canonical camelCase path is `UNKNOWN` from source alone.
 - Reason retained:
-  - Public read/search/browse paths still receive payloads wrapped in a legacy
-    `{ data }` envelope and/or snake_case fields (`tree_id`, `created_at`,
-    `owner_id`, `emotion_tags`). The adapter normalizes both legacy and canonical
-    shapes so old and new responses render identically.
-  - `postgres-client.js` reads the adapter at module load, so removal would break
-    the script-loading contract documented in `PUBLIC_TREE_ADAPTER_BOUNDARY_AUDIT.md`.
+  - Confirmed source consumers (listed under Known consumers) still load or call the
+    adapter at runtime start, and the adapter contract still supports legacy
+    `{ data }` envelopes and snake_case fields (`tree_id`, `created_at`, `owner_id`,
+    `emotion_tags`). Whether current live responses still require each legacy branch
+    is `UNKNOWN` from repository source alone.
+  - `postgres-client.js` reads the adapter at module load, so removal would break the
+    current source-loading contract documented in
+    `PUBLIC_TREE_ADAPTER_BOUNDARY_AUDIT.md`. Live legacy-shape necessity is `UNKNOWN`.
 - Known consumers:
   - `js/viewer/public-canvas-bridge.js`
   - `js/search/search-index.js`
@@ -109,11 +125,13 @@ Status: `RETAIN`, `REVIEW_REQUIRED`, `REMOVAL_BLOCKED`,
   - `js/postgres-client.js`
   - `js/my-trees/my-trees-card-visuals.js`
   - `js/browse-prefetch.js`
-  - (Also consumed indirectly by `window.__LoveBudApiClientInternals` consumers.)
+  - (Potential indirect consumers via `window.__LoveBudApiClientInternals` are
+    `UNKNOWN`; no additional indirect consumer is claimed without exact source
+    evidence.)
 - Compatibility/change risk:
   - High for the public viewer/read path: removing the adapter breaks
-    `postgres-client.js` initialization and every public browse/search card that
-    depends on snake_case or `{ data }` normalization.
+    `postgres-client.js` initialization and the confirmed browse/search/viewer
+    consumers listed above that depend on snake_case or `{ data }` normalization.
   - The Modal normalization in `modal_compute/public_reads.py` returns canonical
     camelCase, so part of the client-side legacy unwrap may be redundant once the
     API response shape is guaranteed canonical; that overlap is `LIKELY` but not
@@ -182,11 +200,14 @@ Status: `RETAIN`, `REVIEW_REQUIRED`, `REMOVAL_BLOCKED`,
     + YouTube canonicalization, Modal handles DB-row legacy payload. Exact overlap
     ownership is `UNKNOWN` without tracing every live response shape.
 - Reason retained:
-  - Records still exist in the legacy `payload`/`nodes` shape (or the `memories`
-    table may be absent in some deployments), so the legacy path must keep serving
-    public reads until all production data is on the modern schema.
-  - The legacy fallback is the safety net that prevents public browse from
-    returning empty results during schema migration.
+  - The source retains compatibility for deployments or records that may still use
+    the legacy `payload.nodes` shape or lack the modern `memories` table. The legacy
+    fallback remains reachable in source and the public-read functions are called by
+    the app routes, so the fallback path must stay wired until a future data/schema
+    review says otherwise.
+  - Whether any currently deployed data or schema still requires this fallback is
+    `UNKNOWN` from repository source alone. Removal therefore remains blocked until
+    that future evidence is obtained.
 - Known consumers:
   - `modal_compute/app.py` FastAPI routes (public tree list, growing trees, public
     memories, single public memory).
@@ -198,12 +219,16 @@ Status: `RETAIN`, `REVIEW_REQUIRED`, `REMOVAL_BLOCKED`,
   - Single-ownership transfer to the client adapter is risky until the API response
     contract is guaranteed canonical end-to-end.
 - Removal preconditions:
-  - Repository-wide search confirms zero remaining legacy `payload`/`nodes` shaped
-    records served through these endpoints (verified via contract tests, not
-    production queries).
-  - `modal_compute.validation` modern normalizers are the sole path and the legacy
-    helper functions are unused by any route.
-  - Public read contract tests pass with the legacy branch deleted.
+  - A separately approved read-only data/schema audit confirms that no deployed
+    environment in scope requires the legacy `payload.nodes` fallback and that the
+    modern `memories` table/columns are present. This audit is **not** performed by
+    this PR; it is a future verification requirement.
+  - The audit result must be sanitized and must not expose DB credentials, raw
+    records, raw UUIDs, or private endpoints.
+  - Executable fixtures cover both the previous legacy input and canonical input and
+    prove canonical-only behavior before removal.
+  - Repository source search confirms no route still calls the legacy helper
+    functions after the approved migration/cutover.
 - Required verification before removal:
   - `node --test` and the Modal public-read contract suite
     (`tests/contracts/test_public_legacy_memory_visibility.py`) pass with the
