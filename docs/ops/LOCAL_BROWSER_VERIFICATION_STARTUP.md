@@ -47,7 +47,7 @@ A local/browser verifier must start with these rules:
 - Do not use guessed preview URLs.
 - Do not use another PR's preview URL.
 - A fixed test slot is an evidence option, not a permission gate. Use one when assigned, but its absence is not an automatic blocker (canonical policy).
-- Do not mutate production data.
+- Do not perform destructive or out-of-scope production data/schema/security mutation without owner approval; ordinary task-scoped test-data create/edit/delete is allowed when appropriate.
 - Do not expose tokens, cookies, passwords, Authorization headers, raw Firebase credentials, or private content in evidence.
 - Do not modify PR #7 or prototype/reference/demo/variant paths.
 
@@ -235,7 +235,7 @@ Use precise labels:
 ## 11. Ready, merge, and issue state rules
 
 - Draft to ready transition is at the worker's discretion (canonical policy: draft-by-default is advisory, not mandatory). Move to ready when appropriate.
-- Merge requires CTO approval and expected head SHA confirmation.
+- Routine PRs may be squash-merged without repeated owner/CTO approval: only after independent remote diff review, green CI, and expected PR head SHA confirmation; do not merge on red or pending CI.
 - Issue close requires explicit instruction and correct close keyword hygiene.
 - Use `Refs #<issue>` unless the task explicitly authorizes `Fixes`, `Closes`, or `Resolves`.
 - Do not close parent tracking issues when only one phase or one backlog item is complete.

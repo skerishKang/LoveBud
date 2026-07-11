@@ -247,7 +247,7 @@ Use this report format for browser verification:
 Browser verifiers do not infer ready or merge authority.
 
 - Ready transition requires explicit task instruction.
-- Merge requires explicit CTO merge approval.
+- Routine PRs may be squash-merged without repeated CTO approval after independent remote diff review, green CI, and expected PR head SHA confirmation; do not merge on red or pending CI.
 - Issues remain open unless explicit close approval is given.
 - PR #7 and prototype/reference/demo/variant paths are never modified or closed during verification.
 

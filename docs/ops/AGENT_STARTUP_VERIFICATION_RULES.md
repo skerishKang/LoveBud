@@ -60,7 +60,7 @@ A dirty worktree does not authorize cleanup. Cleanup is a separate decision.
 - Use one branch per task.
 - Use PR-only merge flow.
 - Prefer squash merge unless the CTO explicitly approves another method.
-- Merge requires CTO approval.
+- Routine PRs may be squash-merged without repeated CTO approval after independent remote diff review, green CI, and expected PR head SHA confirmation; do not merge on red or pending CI.
 - PR creation and additional commits require scope discipline.
 - Stop if unauthorized files change.
 - Do not mix UI work with docs/ops/backend/security/runtime work unless explicitly scoped.
