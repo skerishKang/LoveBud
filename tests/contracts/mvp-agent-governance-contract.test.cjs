@@ -335,7 +335,7 @@ test('new restriction protocol: canonical hard rule #3 has marker (sanity check)
 // ─── 11. B.3: Merge approval regression (focused) ────────────────────────────
 
 test('no active guidance contains repeated general merge approval requirement', () => {
-  const mergeApprovalRE = /merge\s+requires\s+(explicit\s+)?(CTO\s+|owner\s+)?approval|repeated\s+(owner|CTO)\s+approval\s+required\s+for\s+routine\s+merge|repeated\s+CTO\s+approval\s+required/i;
+  const mergeApprovalRE = /merge\s+requires\s+(explicit\s+)?(CTO\s+|owner\s+)?approval|repeated\s+(owner|CTO)\s+approval\s+required\s+for\s+routine\s+merge|(?<!no\s)(?<!without\s)(?<!not\s)repeated\s+(owner|CTO)\s+approval\s+required/i;
   for (const rel of ACTIVE_DOCS) {
     const norm = normative(read(rel));
     assert.ok(
