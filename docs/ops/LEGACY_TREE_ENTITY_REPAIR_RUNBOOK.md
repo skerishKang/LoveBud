@@ -27,8 +27,12 @@ files:
   Private visibility requires explicit evidence classification
   (`PLUS_ENTITLEMENT_CONFIRMED` or `GRANDFATHERED_PRIVATE_CONFIRMED`).
 - **Browse eligibility is separate from tree entity identity.** `publicMomentCount >= 3`
-  determines Browse listing eligibility. Growing trees have `publicMomentCount 0–2`.
+  determines Browse listing eligibility. Public trees with `publicMomentCount 0–2`
+  remain public but are **not listed in Browse/Search** until they reach 3 public moments.
   Private records are excluded from both Browse-eligible and growing counts.
+- **`growingCount` is an operational aggregate only.** It classifies public trees with
+  0–2 public moments for internal reporting. It does NOT imply a "Growing section"
+  exists in Browse/Search.
 - **TEXT ID preservation.** Original TEXT tree IDs are preserved exactly as-is.
   UUID-shaped strings are valid TEXT values and are accepted.
 - **No dependent data mutation.** The repair inserts only the tree entity row.
@@ -221,9 +225,9 @@ BEGIN;
 -- Verify no unexpected existing entities
 -- Verify mapping/preflight provenance
 
-INSERT INTO public.trees (id, owner_id, title, visibility)
+INSERT INTO public.trees (id, owner_id, title, visibility, group_name, keywords, created_at, updated_at)
 VALUES
-  ($1, $2, $3, $4),
+  ($1, $2, $3, $4, $5, $6, $7, $8),
   ... ;
 
 -- Verify inserted count matches planned count
@@ -258,7 +262,9 @@ After successful COMMIT:
 Verify the repaired trees appear correctly in Browse:
 
 - [ ] Public trees with publicMomentCount >= 3 appear in Browse listing
-- [ ] Public trees with publicMomentCount 0–2 appear in Growing section
+- [ ] Public trees with publicMomentCount 0–2 remain public but are NOT listed in Browse/Search
+- [ ] >=3 public moments: expected in Browse/Search
+- [ ] 0–2 public moments: expected absent from Browse/Search, entity remains public
 - [ ] Title and metadata render correctly
 - [ ] Tree detail page loads without errors
 
@@ -309,8 +315,8 @@ repair_id:        REPAIR-YYYY-MMDD-N
 mapping_hash:     <sha256 of mapping file>
 preflight_hash:   <sha256 of preflight file>
 plan_hash:        <sha256 of generated plan>
-inserted:         N
-existing_skipped: N (preflight conflicts)
+existing_conflicts: 0
+planned_inserts:  N
 rollback:         YES/NO (pre-commit only)
 approver:         <CTO name>
 ```

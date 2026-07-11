@@ -31,6 +31,13 @@ const crypto = require('node:crypto');
 const PACKAGE_VERSION = '1.0.0';
 const SUPPORTED_SCHEMA_VERSION = 1;
 const REPO_ROOT = path.resolve(__dirname, '..');
+const REPO_REAL_ROOT = (() => {
+  try {
+    return fs.realpathSync(REPO_ROOT);
+  } catch {
+    return path.resolve(REPO_ROOT);
+  }
+})();
 
 const ALLOWED_SOURCE_CLASSIFICATIONS = [
   'AUTHORITATIVE_BROWSER_RECOVERY_SOURCE_FOUND',
@@ -81,33 +88,31 @@ function isExternalPath(inputPath, allowMissing) {
     resolved = resolveReal(inputPath);
   } catch {
     if (allowMissing) {
-      // For output: parent directory must exist and be external
       const parent = resolveReal(path.dirname(inputPath));
-      return !isParentOf(REPO_ROOT, parent) && parent !== REPO_ROOT;
+      return !isParentOf(REPO_REAL_ROOT, parent) && parent !== REPO_REAL_ROOT;
     }
     return false;
   }
 
-  // Must be outside repo root
-  if (isParentOf(REPO_ROOT, resolved) || resolved === REPO_ROOT) {
+  // Must be outside repo root (using REPO_REAL_ROOT for all comparisons)
+  if (isParentOf(REPO_REAL_ROOT, resolved) || resolved === REPO_REAL_ROOT) {
     return false;
   }
 
   // On Windows: case-insensitive comparison
   const resolvedLower = resolved.toLowerCase();
-  const repoLower = path.resolve(REPO_ROOT).toLowerCase();
+  const repoLower = REPO_REAL_ROOT.toLowerCase();
   if (resolvedLower.startsWith(repoLower + path.sep.toLowerCase()) || resolvedLower === repoLower) {
     return false;
   }
 
-  // Check for symlink pointing into repo
+  // Check for symlink/reparse point pointing into repo
   try {
     const stat = fs.lstatSync(inputPath);
     if (stat.isSymbolicLink()) {
       return false;
     }
   } catch {
-    // stat failure is OK for non-existent output
     if (!allowMissing) {
       return false;
     }
@@ -155,10 +160,6 @@ function checkOutputPathExternal(outputPath) {
 
 function isBlank(s) {
   return typeof s === 'string' && s.trim().length === 0;
-}
-
-function escapeRegExp(s) {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 function validateMapping(mapping) {
@@ -246,11 +247,17 @@ function validateMapping(mapping) {
       errors.push({ index: idx, field: 'title', code: 'TITLE_TOO_LONG' });
     }
 
-    // provenance
-    if (record.ownerProvenance && record.ownerProvenance !== REQUIRED_PROVENANCE) {
+    // ownerProvenance (required)
+    if (!record.ownerProvenance) {
+      errors.push({ index: idx, field: 'ownerProvenance', code: 'MISSING_OWNER_PROVENANCE' });
+    } else if (record.ownerProvenance !== REQUIRED_PROVENANCE) {
       errors.push({ index: idx, field: 'ownerProvenance', code: 'INVALID_OWNER_PROVENANCE' });
     }
-    if (record.titleProvenance && record.titleProvenance !== REQUIRED_PROVENANCE) {
+
+    // titleProvenance (required)
+    if (!record.titleProvenance) {
+      errors.push({ index: idx, field: 'titleProvenance', code: 'MISSING_TITLE_PROVENANCE' });
+    } else if (record.titleProvenance !== REQUIRED_PROVENANCE) {
       errors.push({ index: idx, field: 'titleProvenance', code: 'INVALID_TITLE_PROVENANCE' });
     }
 
@@ -267,14 +274,21 @@ function validateMapping(mapping) {
       }
     }
 
-    // groupName
-    if (record.groupName !== undefined && record.groupName !== null &&
-        typeof record.groupName !== 'string') {
-      errors.push({ index: idx, field: 'groupName', code: 'INVALID_GROUP_NAME_TYPE' });
+    // groupName: null or nonblank string
+    if (record.groupName !== undefined && record.groupName !== null) {
+      if (typeof record.groupName !== 'string') {
+        errors.push({ index: idx, field: 'groupName', code: 'INVALID_GROUP_NAME_TYPE' });
+      } else if (isBlank(record.groupName)) {
+        errors.push({ index: idx, field: 'groupName', code: 'BLANK_GROUP_NAME' });
+      }
+      // provenance required when value present
+      if (!record.groupNameProvenance || record.groupNameProvenance !== REQUIRED_PROVENANCE) {
+        errors.push({ index: idx, field: 'groupNameProvenance', code: 'INVALID_GROUP_NAME_PROVENANCE' });
+      }
     }
 
-    // keywords
-    if (record.keywords !== undefined) {
+    // keywords: null or string array, no blank/duplicate
+    if (record.keywords !== undefined && record.keywords !== null) {
       if (!Array.isArray(record.keywords)) {
         errors.push({ index: idx, field: 'keywords', code: 'INVALID_KEYWORDS_TYPE' });
       } else if (record.keywords.length > MAX_KEYWORDS_COUNT) {
@@ -294,9 +308,13 @@ function validateMapping(mapping) {
           seenKw.add(kw);
         });
       }
+      // provenance required when value present
+      if (!record.keywordsProvenance || record.keywordsProvenance !== REQUIRED_PROVENANCE) {
+        errors.push({ index: idx, field: 'keywordsProvenance', code: 'INVALID_KEYWORDS_PROVENANCE' });
+      }
     }
 
-    // createdAt / updatedAt
+    // createdAt: null or canonical ISO-8601 timestamp
     if (record.createdAt !== undefined && record.createdAt !== null) {
       if (typeof record.createdAt !== 'string') {
         errors.push({ index: idx, field: 'createdAt', code: 'INVALID_CREATED_AT_TYPE' });
@@ -306,7 +324,13 @@ function validateMapping(mapping) {
           errors.push({ index: idx, field: 'createdAt', code: 'INVALID_CREATED_AT_DATE' });
         }
       }
+      // provenance required when value present
+      if (!record.createdAtProvenance || record.createdAtProvenance !== REQUIRED_PROVENANCE) {
+        errors.push({ index: idx, field: 'createdAtProvenance', code: 'INVALID_CREATED_AT_PROVENANCE' });
+      }
     }
+
+    // updatedAt: null or canonical ISO-8601 timestamp
     if (record.updatedAt !== undefined && record.updatedAt !== null) {
       if (typeof record.updatedAt !== 'string') {
         errors.push({ index: idx, field: 'updatedAt', code: 'INVALID_UPDATED_AT_TYPE' });
@@ -316,6 +340,25 @@ function validateMapping(mapping) {
           errors.push({ index: idx, field: 'updatedAt', code: 'INVALID_UPDATED_AT_DATE' });
         }
       }
+      // provenance required when value present
+      if (!record.updatedAtProvenance || record.updatedAtProvenance !== REQUIRED_PROVENANCE) {
+        errors.push({ index: idx, field: 'updatedAtProvenance', code: 'INVALID_UPDATED_AT_PROVENANCE' });
+      }
+    }
+
+    // createdAt/updatedAt chronology: if both present, updatedAt >= createdAt
+    if (record.createdAt !== undefined && record.createdAt !== null &&
+        record.updatedAt !== undefined && record.updatedAt !== null) {
+      const created = new Date(record.createdAt);
+      const updated = new Date(record.updatedAt);
+      if (!isNaN(created.getTime()) && !isNaN(updated.getTime()) && updated.getTime() < created.getTime()) {
+        errors.push({ index: idx, field: 'updatedAt', code: 'UPDATED_BEFORE_CREATED' });
+      }
+    }
+
+    // contradictory: public record with privateEvidenceClassification
+    if (record.visibility === 'public' && record.privateEvidenceClassification) {
+      errors.push({ index: idx, field: 'privateEvidenceClassification', code: 'CONTRADICTORY_PRIVATE_EVIDENCE_ON_PUBLIC' });
     }
   });
 
@@ -382,14 +425,18 @@ function validatePreflight(preflight, mappingRecordIds) {
       }
     }
 
-    if (record.entityExists !== undefined && typeof record.entityExists !== 'boolean') {
+    // entityExists required: must be boolean, not null, not string, not 0/1
+    if (record.entityExists === undefined || record.entityExists === null) {
+      errors.push({ index: idx, field: 'entityExists', code: 'MISSING_ENTITY_EXISTS' });
+    } else if (typeof record.entityExists !== 'boolean') {
       errors.push({ index: idx, field: 'entityExists', code: 'INVALID_ENTITY_EXISTS_TYPE' });
     }
 
-    if (record.publicMomentCount !== undefined) {
-      if (!Number.isInteger(record.publicMomentCount) || record.publicMomentCount < 0) {
-        errors.push({ index: idx, field: 'publicMomentCount', code: 'INVALID_MOMENT_COUNT' });
-      }
+    // publicMomentCount required: must be integer >= 0, not string, not null, not float, not negative
+    if (record.publicMomentCount === undefined || record.publicMomentCount === null) {
+      errors.push({ index: idx, field: 'publicMomentCount', code: 'MISSING_PUBLIC_MOMENT_COUNT' });
+    } else if (typeof record.publicMomentCount !== 'number' || !Number.isInteger(record.publicMomentCount) || record.publicMomentCount < 0) {
+      errors.push({ index: idx, field: 'publicMomentCount', code: 'INVALID_MOMENT_COUNT' });
     }
   });
 
@@ -418,8 +465,16 @@ function joinRecords(mappingRecords, preflightRecords) {
       ownerId: mr.ownerId,
       title: mr.title,
       visibility: mr.visibility,
-      entityExists: pr ? !!pr.entityExists : false,
-      publicMomentCount: pr && typeof pr.publicMomentCount === 'number' ? pr.publicMomentCount : 0,
+      groupName: mr.groupName !== undefined ? mr.groupName : null,
+      keywords: mr.keywords !== undefined ? mr.keywords : null,
+      createdAt: mr.createdAt !== undefined ? mr.createdAt : null,
+      updatedAt: mr.updatedAt !== undefined ? mr.updatedAt : null,
+      ownerProvenance: mr.ownerProvenance,
+      titleProvenance: mr.titleProvenance,
+      privateEvidenceClassification: mr.privateEvidenceClassification || null,
+      // No defaults: use validated exact fields only
+      entityExists: pr ? pr.entityExists : null,
+      publicMomentCount: pr ? pr.publicMomentCount : null,
     };
   });
 }
@@ -436,17 +491,17 @@ function calculateAggregate(joined, mapping, preflight) {
 
   // Browse-eligible: visibility = public AND publicMomentCount >= 3
   const browseEligible = joined.filter(
-    r => r.visibility === 'public' && r.publicMomentCount >= 3
+    r => r.visibility === 'public' && typeof r.publicMomentCount === 'number' && r.publicMomentCount >= 3
   ).length;
 
   // Growing: visibility = public AND publicMomentCount between 0 and 2
+  // This is an operational aggregate for internal classification only.
+  // It does NOT imply a "Growing section" exists in Browse/Search.
   const growing = joined.filter(
-    r => r.visibility === 'public' && r.publicMomentCount >= 0 && r.publicMomentCount <= 2
+    r => r.visibility === 'public' && typeof r.publicMomentCount === 'number' && r.publicMomentCount >= 0 && r.publicMomentCount <= 2
   ).length;
 
   const existingConflicts = joined.filter(r => r.entityExists === true).length;
-
-  // Planned inserts: valid joined records where entityExists = false
   const plannedInserts = joined.filter(r => r.entityExists !== true).length;
 
   return {
@@ -476,23 +531,15 @@ function printAggregate(agg) {
   console.log(`  Existing-row conflicts:   ${agg.existingConflicts}`);
   console.log(`  Planned inserts:          ${agg.plannedInserts}`);
   console.log(`\nℹ️  Browse-eligible requires visibility=public AND publicMomentCount>=3`);
-  console.log(`ℹ️  Growing requires visibility=public AND publicMomentCount 0-2`);
+  console.log(`ℹ️  Public trees with publicMomentCount 0-2 remain public but`);
+  console.log(`ℹ️  are not listed in Browse/Search until they reach 3 public moments.`);
   console.log(`ℹ️  Private records are excluded from Browse/growing counts`);
   console.log(`ℹ️  No raw tree ID, owner ID, or title values are displayed.`);
 }
 
 // ─── Plan generation ───────────────────────────────────────────────────────
 
-function generatePlan(mapping, preflight, joined, agg, planPath) {
-  const mappingHash = mapping.mappingArtifactSha256 || crypto.createHash('sha256')
-    .update(JSON.stringify(mapping.records))
-    .digest('hex');
-
-  const preflightRaw = JSON.stringify(preflight.records);
-  const preflightHash = crypto.createHash('sha256')
-    .update(preflightRaw)
-    .digest('hex');
-
+function generatePlan(mapping, preflight, joined, agg, planPath, mappingInputSha256, preflightInputSha256) {
   const planRecords = joined
     .filter(r => r.entityExists !== true)
     .map(r => ({
@@ -500,22 +547,59 @@ function generatePlan(mapping, preflight, joined, agg, planPath) {
       ownerId: r.ownerId,
       title: r.title,
       visibility: r.visibility,
+      groupName: r.groupName,
+      keywords: r.keywords,
+      createdAt: r.createdAt,
+      updatedAt: r.updatedAt,
+      publicMomentCount: r.publicMomentCount,
+      ownerProvenance: r.ownerProvenance,
+      titleProvenance: r.titleProvenance,
+      privateEvidenceClassification: r.privateEvidenceClassification || null,
     }));
 
   const plan = {
     schemaVersion: SUPPORTED_SCHEMA_VERSION,
-    mappingArtifactSha256: mappingHash,
-    preflightArtifactSha256: preflightHash,
+    mappingInputSha256: mappingInputSha256,
+    preflightInputSha256: preflightInputSha256,
     createdByPackageVersion: PACKAGE_VERSION,
     recordCount: planRecords.length,
     publicCount: agg.publicRecords,
     privateCount: agg.explicitPrivate,
     browseEligibleCount: agg.browseEligible,
     growingCount: agg.growing,
+    existingConflicts: agg.existingConflicts,
+    plannedInserts: agg.plannedInserts,
     records: planRecords,
   };
 
-  fs.writeFileSync(planPath, JSON.stringify(plan, null, 2), 'utf8');
+  // Check if output already exists
+  try {
+    fs.accessSync(planPath, fs.constants.F_OK);
+    console.error('❌ Output file already exists');
+    process.exit(1);
+  } catch {
+    // File does not exist — proceed
+  }
+
+  const planJson = JSON.stringify(plan, null, 2);
+
+  // Write to temporary sibling file with exclusive create, flush/fsync, then atomic rename
+  const tmpPath = planPath + '.tmp.' + process.pid;
+  let fd;
+  try {
+    fd = fs.openSync(tmpPath, 'wx', 0o600);
+    fs.writeFileSync(fd, planJson, { encoding: 'utf8' });
+    fs.fsyncSync(fd);
+    fs.closeSync(fd);
+    fd = null;
+    fs.renameSync(tmpPath, planPath);
+  } catch (err) {
+    // Clean up temp file on failure
+    try { if (fd !== null) fs.closeSync(fd); } catch { /* ignore */ }
+    try { fs.unlinkSync(tmpPath); } catch { /* ignore */ }
+    console.error('❌ Output write failed');
+    process.exit(1);
+  }
 
   // Compute plan hash after writing
   const planRaw = fs.readFileSync(planPath, 'utf8');
@@ -616,6 +700,16 @@ function main() {
   const outputPath = outIdx !== -1 ? args[outIdx + 1] : null;
 
   // Validate mode-specific options
+  // Reject incompatible option combinations
+  if (mode === '--validate' && (preflightPath || outputPath)) {
+    console.error(`❌ --validate does not accept --preflight or --out`);
+    process.exit(1);
+  }
+  if (mode === '--dry-run' && outputPath) {
+    console.error(`❌ --dry-run does not accept --out`);
+    process.exit(1);
+  }
+
   if ((mode === '--dry-run' || mode === '--prepare-plan') && !preflightPath) {
     console.error(`❌ ${mode} requires --preflight <preflight.json>`);
     process.exit(1);
@@ -627,11 +721,11 @@ function main() {
   }
 
   // Check for missing option values
-  if (preflightPath && preflightPath.startsWith('--')) {
+  if (preflightIdx !== -1 && (preflightIdx + 1 >= args.length || !args[preflightIdx + 1] || args[preflightIdx + 1].startsWith('--'))) {
     console.error('❌ Missing value for --preflight option');
     process.exit(1);
   }
-  if (outputPath && outputPath.startsWith('--')) {
+  if (outIdx !== -1 && (outIdx + 1 >= args.length || !args[outIdx + 1] || args[outIdx + 1].startsWith('--'))) {
     console.error('❌ Missing value for --out option');
     process.exit(1);
   }
@@ -735,7 +829,11 @@ function main() {
 
   // ── Prepare plan ──
   if (mode === '--prepare-plan') {
-    const planHash = generatePlan(mapping, preflight, joined, agg, outputPath);
+    // Compute input hashes from actual raw bytes
+    const mappingInputSha256 = crypto.createHash('sha256').update(mappingRaw).digest('hex');
+    const preflightInputSha256 = crypto.createHash('sha256').update(preflightRaw).digest('hex');
+
+    const planHash = generatePlan(mapping, preflight, joined, agg, outputPath, mappingInputSha256, preflightInputSha256);
     console.log(`\n📋 Plan created: YES`);
     console.log(`   Record count: ${agg.plannedInserts}`);
     console.log(`   Plan SHA-256: ${planHash}`);

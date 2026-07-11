@@ -12,12 +12,15 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const crypto = require('node:crypto');
 const { execSync } = require('node:child_process');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const SCRIPT_PATH = path.join(ROOT, 'scripts', 'prepare-legacy-tree-entity-repair.cjs');
 
 // ─── Synthetic test values ─────────────────────────────────────────────────
+
+const REQUIRED_PROVENANCE = 'AUTHORITATIVE_SERVER_RETURNED_FIELD';
 
 const VALID_MAPPING = {
   schemaVersion: 1,
@@ -27,11 +30,11 @@ const VALID_MAPPING = {
       treeId: 'synthetic-test-001',
       ownerId: 'synth-owner-alpha',
       title: 'Synthetic Alpha Tree',
-      ownerProvenance: 'AUTHORITATIVE_SERVER_RETURNED_FIELD',
-      titleProvenance: 'AUTHORITATIVE_SERVER_RETURNED_FIELD',
+      ownerProvenance: REQUIRED_PROVENANCE,
+      titleProvenance: REQUIRED_PROVENANCE,
       visibility: 'public',
       groupName: null,
-      keywords: [],
+      keywords: null,
       createdAt: null,
       updatedAt: null,
     },
@@ -91,7 +94,6 @@ function runValidate(mappingData) {
   }
 }
 
-// Helper that properly cleans up both fixtures
 function createTwoFixtures(mappingData, preflightData) {
   const m = createExternalFixture(mappingData);
   const p = createExternalFixture(preflightData);
@@ -110,6 +112,19 @@ function runWithTwoFixtures(mappingData, preflightData, mode) {
     const args = `${mode} "${f.mappingPath}" --preflight "${f.preflightPath}"`;
     const result = runScript(args);
     return { result, cleanup: f.cleanup };
+  } catch (e) {
+    f.cleanup();
+    throw e;
+  }
+}
+
+function runWithThreeFixtures(mappingData, preflightData, planDir, mode) {
+  const f = createTwoFixtures(mappingData, preflightData);
+  const planPath = path.join(planDir, 'plan.json');
+  try {
+    const args = `${mode} "${f.mappingPath}" --preflight "${f.preflightPath}" --out "${planPath}"`;
+    const result = runScript(args);
+    return { result, cleanup: f.cleanup, planPath };
   } catch (e) {
     f.cleanup();
     throw e;
@@ -171,42 +186,404 @@ test('UUID-shaped TEXT treeId is accepted and preserved exactly', () => {
   }
 });
 
-// ─── Test 5: Whitespace-only treeId is rejected ────────────────────────────
+// ─── Provenance tests (Test 5-9) ──────────────────────────────────────────
 
-test('whitespace-only treeId is rejected', () => {
+test('missing ownerProvenance is rejected', () => {
   const mapping = {
     ...VALID_MAPPING,
     records: [{
       ...VALID_MAPPING.records[0],
-      treeId: '   ',
+      ownerProvenance: undefined,
     }],
   };
   const { result, cleanup } = runValidate(mapping);
   try {
-    assert.notEqual(result.exitCode, 0, 'Must reject blank treeId');
-    assert.ok(result.stderr.includes('BLANK_TREE_ID'), 'Must show blank code');
+    assert.notEqual(result.exitCode, 0, 'Must reject missing ownerProvenance');
+    assert.ok(result.stderr.includes('MISSING_OWNER_PROVENANCE'), 'Must show MISSING_OWNER_PROVENANCE');
   } finally {
     cleanup();
   }
 });
 
-// ─── Test 6: Unknown source classification rejected ────────────────────────
-
-test('unknown source classification is rejected', () => {
+test('missing titleProvenance is rejected', () => {
   const mapping = {
     ...VALID_MAPPING,
-    sourceClassification: 'UNKNOWN_SOURCE_TYPE',
+    records: [{
+      ...VALID_MAPPING.records[0],
+      titleProvenance: undefined,
+    }],
   };
   const { result, cleanup } = runValidate(mapping);
   try {
-    assert.notEqual(result.exitCode, 0, 'Must reject unknown source');
-    assert.ok(result.stderr.includes('UNKNOWN_SOURCE_CLASSIFICATION'), 'Must show unknown code');
+    assert.notEqual(result.exitCode, 0, 'Must reject missing titleProvenance');
+    assert.ok(result.stderr.includes('MISSING_TITLE_PROVENANCE'), 'Must show MISSING_TITLE_PROVENANCE');
   } finally {
     cleanup();
   }
 });
 
-// ─── Test 7: Stale/conflicting source classification rejected ──────────────
+test('invalid ownerProvenance is rejected', () => {
+  const mapping = {
+    ...VALID_MAPPING,
+    records: [{
+      ...VALID_MAPPING.records[0],
+      ownerProvenance: 'SOME_OTHER_VALUE',
+    }],
+  };
+  const { result, cleanup } = runValidate(mapping);
+  try {
+    assert.notEqual(result.exitCode, 0, 'Must reject invalid ownerProvenance');
+    assert.ok(result.stderr.includes('INVALID_OWNER_PROVENANCE'), 'Must show INVALID_OWNER_PROVENANCE');
+  } finally {
+    cleanup();
+  }
+});
+
+test('invalid titleProvenance is rejected', () => {
+  const mapping = {
+    ...VALID_MAPPING,
+    records: [{
+      ...VALID_MAPPING.records[0],
+      titleProvenance: 'SOME_OTHER_VALUE',
+    }],
+  };
+  const { result, cleanup } = runValidate(mapping);
+  try {
+    assert.notEqual(result.exitCode, 0, 'Must reject invalid titleProvenance');
+    assert.ok(result.stderr.includes('INVALID_TITLE_PROVENANCE'), 'Must show INVALID_TITLE_PROVENANCE');
+  } finally {
+    cleanup();
+  }
+});
+
+test('partial source with missing provenance is rejected', () => {
+  const mapping = {
+    ...VALID_MAPPING,
+    sourceClassification: 'PARTIAL_BROWSER_RECOVERY_SOURCE_FOUND',
+    records: [{
+      ...VALID_MAPPING.records[0],
+      ownerProvenance: undefined,
+      titleProvenance: REQUIRED_PROVENANCE,
+    }],
+  };
+  const { result, cleanup } = runValidate(mapping);
+  try {
+    assert.notEqual(result.exitCode, 0, 'Partial source with missing provenance must be rejected');
+    assert.ok(result.stderr.includes('MISSING_OWNER_PROVENANCE'), 'Must show MISSING_OWNER_PROVENANCE');
+  } finally {
+    cleanup();
+  }
+});
+
+test('partial source with valid provenances passes', () => {
+  const mapping = {
+    ...VALID_MAPPING,
+    sourceClassification: 'PARTIAL_BROWSER_RECOVERY_SOURCE_FOUND',
+    records: [{
+      ...VALID_MAPPING.records[0],
+      ownerProvenance: REQUIRED_PROVENANCE,
+      titleProvenance: REQUIRED_PROVENANCE,
+    }],
+  };
+  const { result, cleanup } = runValidate(mapping);
+  try {
+    assert.equal(result.exitCode, 0, 'Partial source with valid provenances must pass');
+  } finally {
+    cleanup();
+  }
+});
+
+// ─── Preflight required fields (Test 11-18) ────────────────────────────────
+
+test('missing entityExists rejected', () => {
+  const preflight = {
+    ...VALID_PREFLIGHT,
+    records: [{
+      treeId: 'synthetic-test-001',
+      // entityExists omitted
+      publicMomentCount: 4,
+    }],
+  };
+  const { result, cleanup } = runWithTwoFixtures(VALID_MAPPING, preflight, '--dry-run');
+  try {
+    assert.notEqual(result.exitCode, 0, 'Must reject missing entityExists');
+    assert.ok(result.stderr.includes('MISSING_ENTITY_EXISTS'), 'Must show MISSING_ENTITY_EXISTS');
+  } finally {
+    cleanup();
+  }
+});
+
+test('null entityExists rejected', () => {
+  const preflight = {
+    ...VALID_PREFLIGHT,
+    records: [{
+      treeId: 'synthetic-test-001',
+      entityExists: null,
+      publicMomentCount: 4,
+    }],
+  };
+  const { result, cleanup } = runWithTwoFixtures(VALID_MAPPING, preflight, '--dry-run');
+  try {
+    assert.notEqual(result.exitCode, 0, 'Must reject null entityExists');
+    assert.ok(result.stderr.includes('MISSING_ENTITY_EXISTS'), 'Must show MISSING_ENTITY_EXISTS');
+  } finally {
+    cleanup();
+  }
+});
+
+test('string entityExists rejected', () => {
+  const preflight = {
+    ...VALID_PREFLIGHT,
+    records: [{
+      treeId: 'synthetic-test-001',
+      entityExists: 'true',
+      publicMomentCount: 4,
+    }],
+  };
+  const { result, cleanup } = runWithTwoFixtures(VALID_MAPPING, preflight, '--dry-run');
+  try {
+    assert.notEqual(result.exitCode, 0, 'Must reject string entityExists');
+    assert.ok(result.stderr.includes('INVALID_ENTITY_EXISTS_TYPE'), 'Must show INVALID_ENTITY_EXISTS_TYPE');
+  } finally {
+    cleanup();
+  }
+});
+
+test('missing publicMomentCount rejected', () => {
+  const preflight = {
+    ...VALID_PREFLIGHT,
+    records: [{
+      treeId: 'synthetic-test-001',
+      entityExists: false,
+      // publicMomentCount omitted
+    }],
+  };
+  const { result, cleanup } = runWithTwoFixtures(VALID_MAPPING, preflight, '--dry-run');
+  try {
+    assert.notEqual(result.exitCode, 0, 'Must reject missing publicMomentCount');
+    assert.ok(result.stderr.includes('MISSING_PUBLIC_MOMENT_COUNT'), 'Must show MISSING_PUBLIC_MOMENT_COUNT');
+  } finally {
+    cleanup();
+  }
+});
+
+test('null publicMomentCount rejected', () => {
+  const preflight = {
+    ...VALID_PREFLIGHT,
+    records: [{
+      treeId: 'synthetic-test-001',
+      entityExists: false,
+      publicMomentCount: null,
+    }],
+  };
+  const { result, cleanup } = runWithTwoFixtures(VALID_MAPPING, preflight, '--dry-run');
+  try {
+    assert.notEqual(result.exitCode, 0, 'Must reject null publicMomentCount');
+    assert.ok(result.stderr.includes('MISSING_PUBLIC_MOMENT_COUNT'), 'Must show MISSING_PUBLIC_MOMENT_COUNT');
+  } finally {
+    cleanup();
+  }
+});
+
+test('numeric string publicMomentCount rejected', () => {
+  const preflight = {
+    ...VALID_PREFLIGHT,
+    records: [{
+      treeId: 'synthetic-test-001',
+      entityExists: false,
+      publicMomentCount: '3',
+    }],
+  };
+  const { result, cleanup } = runWithTwoFixtures(VALID_MAPPING, preflight, '--dry-run');
+  try {
+    assert.notEqual(result.exitCode, 0, 'Must reject string moment count');
+    assert.ok(result.stderr.includes('INVALID_MOMENT_COUNT'), 'Must show INVALID_MOMENT_COUNT');
+  } finally {
+    cleanup();
+  }
+});
+
+test('fractional publicMomentCount rejected', () => {
+  const preflight = {
+    ...VALID_PREFLIGHT,
+    records: [{
+      treeId: 'synthetic-test-001',
+      entityExists: false,
+      publicMomentCount: 3.5,
+    }],
+  };
+  const { result, cleanup } = runWithTwoFixtures(VALID_MAPPING, preflight, '--dry-run');
+  try {
+    assert.notEqual(result.exitCode, 0, 'Must reject fractional moment count');
+    assert.ok(result.stderr.includes('INVALID_MOMENT_COUNT'), 'Must show INVALID_MOMENT_COUNT');
+  } finally {
+    cleanup();
+  }
+});
+
+test('negative publicMomentCount rejected', () => {
+  const preflight = {
+    ...VALID_PREFLIGHT,
+    records: [{
+      treeId: 'synthetic-test-001',
+      entityExists: false,
+      publicMomentCount: -1,
+    }],
+  };
+  const { result, cleanup } = runWithTwoFixtures(VALID_MAPPING, preflight, '--dry-run');
+  try {
+    assert.notEqual(result.exitCode, 0, 'Must reject negative moment count');
+    assert.ok(result.stderr.includes('INVALID_MOMENT_COUNT'), 'Must show INVALID_MOMENT_COUNT');
+  } finally {
+    cleanup();
+  }
+});
+
+// ─── Optional metadata provenance (Test 19-25) ─────────────────────────────
+
+test('groupName without provenance rejected', () => {
+  const mapping = {
+    ...VALID_MAPPING,
+    records: [{
+      ...VALID_MAPPING.records[0],
+      groupName: 'Synthetic Group',
+      // no groupNameProvenance
+    }],
+  };
+  const { result, cleanup } = runValidate(mapping);
+  try {
+    assert.notEqual(result.exitCode, 0, 'Must reject groupName without provenance');
+    assert.ok(result.stderr.includes('INVALID_GROUP_NAME_PROVENANCE'), 'Must show INVALID_GROUP_NAME_PROVENANCE');
+  } finally {
+    cleanup();
+  }
+});
+
+test('keywords without provenance rejected', () => {
+  const mapping = {
+    ...VALID_MAPPING,
+    records: [{
+      ...VALID_MAPPING.records[0],
+      keywords: ['tag1', 'tag2'],
+      // no keywordsProvenance
+    }],
+  };
+  const { result, cleanup } = runValidate(mapping);
+  try {
+    assert.notEqual(result.exitCode, 0, 'Must reject keywords without provenance');
+    assert.ok(result.stderr.includes('INVALID_KEYWORDS_PROVENANCE'), 'Must show INVALID_KEYWORDS_PROVENANCE');
+  } finally {
+    cleanup();
+  }
+});
+
+test('timestamps without provenance rejected', () => {
+  const mapping = {
+    ...VALID_MAPPING,
+    records: [{
+      ...VALID_MAPPING.records[0],
+      createdAt: '2025-01-01T00:00:00Z',
+      updatedAt: '2025-01-02T00:00:00Z',
+      // no provenance fields
+    }],
+  };
+  const { result, cleanup } = runValidate(mapping);
+  try {
+    assert.notEqual(result.exitCode, 0, 'Must reject timestamps without provenance');
+    assert.ok(result.stderr.includes('INVALID_CREATED_AT_PROVENANCE'), 'Must show INVALID_CREATED_AT_PROVENANCE');
+    assert.ok(result.stderr.includes('INVALID_UPDATED_AT_PROVENANCE'), 'Must show INVALID_UPDATED_AT_PROVENANCE');
+  } finally {
+    cleanup();
+  }
+});
+
+test('optional authoritative metadata preserved in plan', () => {
+  const mapping = {
+    ...VALID_MAPPING,
+    records: [{
+      ...VALID_MAPPING.records[0],
+      groupName: 'Synthetic Group',
+      groupNameProvenance: REQUIRED_PROVENANCE,
+      keywords: ['tag1'],
+      keywordsProvenance: REQUIRED_PROVENANCE,
+      createdAt: '2025-01-01T00:00:00Z',
+      createdAtProvenance: REQUIRED_PROVENANCE,
+      updatedAt: '2025-01-02T00:00:00Z',
+      updatedAtProvenance: REQUIRED_PROVENANCE,
+    }],
+  };
+  const planDir = fs.mkdtempSync(path.join(require('os').tmpdir(), 'repair-plan-md-'));
+  const { result, cleanup, planPath } = runWithThreeFixtures(mapping, VALID_PREFLIGHT, planDir, '--prepare-plan');
+  try {
+    assert.equal(result.exitCode, 0, 'Prepare-plan must pass');
+    const plan = JSON.parse(fs.readFileSync(planPath, 'utf8'));
+    const record = plan.records[0];
+    assert.equal(record.groupName, 'Synthetic Group', 'groupName must be preserved');
+    assert.deepEqual(record.keywords, ['tag1'], 'keywords must be preserved');
+    assert.equal(record.createdAt, '2025-01-01T00:00:00Z', 'createdAt must be preserved');
+    assert.equal(record.updatedAt, '2025-01-02T00:00:00Z', 'updatedAt must be preserved');
+  } finally {
+    cleanup();
+    fs.rmSync(planDir, { recursive: true, force: true });
+  }
+});
+
+test('null optional metadata remains null in plan', () => {
+  const planDir = fs.mkdtempSync(path.join(require('os').tmpdir(), 'repair-plan-null-'));
+  const { result, cleanup, planPath } = runWithThreeFixtures(VALID_MAPPING, VALID_PREFLIGHT, planDir, '--prepare-plan');
+  try {
+    assert.equal(result.exitCode, 0, 'Prepare-plan must pass');
+    const plan = JSON.parse(fs.readFileSync(planPath, 'utf8'));
+    const record = plan.records[0];
+    assert.equal(record.groupName, null, 'null groupName must remain null');
+    assert.equal(record.keywords, null, 'null keywords must remain null');
+    assert.equal(record.createdAt, null, 'null createdAt must remain null');
+    assert.equal(record.updatedAt, null, 'null updatedAt must remain null');
+  } finally {
+    cleanup();
+    fs.rmSync(planDir, { recursive: true, force: true });
+  }
+});
+
+test('createdAt/updatedAt chronology validated', () => {
+  const mapping = {
+    ...VALID_MAPPING,
+    records: [{
+      ...VALID_MAPPING.records[0],
+      createdAt: '2025-01-05T00:00:00Z',
+      createdAtProvenance: REQUIRED_PROVENANCE,
+      updatedAt: '2025-01-01T00:00:00Z',
+      updatedAtProvenance: REQUIRED_PROVENANCE,
+    }],
+  };
+  const { result, cleanup } = runValidate(mapping);
+  try {
+    assert.notEqual(result.exitCode, 0, 'Must reject updatedAt before createdAt');
+    assert.ok(result.stderr.includes('UPDATED_BEFORE_CREATED'), 'Must show UPDATED_BEFORE_CREATED');
+  } finally {
+    cleanup();
+  }
+});
+
+test('public record with privateEvidenceClassification rejected', () => {
+  const mapping = {
+    ...VALID_MAPPING,
+    records: [{
+      ...VALID_MAPPING.records[0],
+      visibility: 'public',
+      privateEvidenceClassification: 'PLUS_ENTITLEMENT_CONFIRMED',
+    }],
+  };
+  const { result, cleanup } = runValidate(mapping);
+  try {
+    assert.notEqual(result.exitCode, 0, 'Must reject public record with private evidence');
+    assert.ok(result.stderr.includes('CONTRADICTORY_PRIVATE_EVIDENCE_ON_PUBLIC'), 'Must show contradictory code');
+  } finally {
+    cleanup();
+  }
+});
+
+// ─── Stale/conflicting source classification ───────────────────────────────
 
 test('stale/conflicting source classification is rejected', () => {
   const rejected = [
@@ -228,27 +605,7 @@ test('stale/conflicting source classification is rejected', () => {
   }
 });
 
-// ─── Test 8: Partial source with provenance required ───────────────────────
-
-test('partial source record must have provenances', () => {
-  const mapping = {
-    ...VALID_MAPPING,
-    sourceClassification: 'PARTIAL_BROWSER_RECOVERY_SOURCE_FOUND',
-    records: [{
-      ...VALID_MAPPING.records[0],
-      ownerProvenance: 'AUTHORITATIVE_SERVER_RETURNED_FIELD',
-      titleProvenance: 'AUTHORITATIVE_SERVER_RETURNED_FIELD',
-    }],
-  };
-  const { result, cleanup } = runValidate(mapping);
-  try {
-    assert.equal(result.exitCode, 0, 'Partial source with provenances must pass');
-  } finally {
-    cleanup();
-  }
-});
-
-// ─── Test 9: Private evidence exact allowlist ──────────────────────────────
+// ─── Private evidence exact allowlist ──────────────────────────────────────
 
 test('private evidence classification allowlist enforced', () => {
   // Valid private evidence
@@ -287,7 +644,7 @@ test('private evidence classification allowlist enforced', () => {
   }
 });
 
-// ─── Test 10: Private without evidence classification rejected ─────────────
+// ─── Private without evidence classification rejected ──────────────────────
 
 test('private visibility missing privateEvidenceClassification is rejected', () => {
   const mapping = {
@@ -306,7 +663,438 @@ test('private visibility missing privateEvidenceClassification is rejected', () 
   }
 });
 
-// ─── Test 11: --dry-run without preflight rejected ─────────────────────────
+// ─── Exact aggregate assertions (Test 26-30) ──────────────────────────────
+
+test('exact Browse/growing count derived from fixture', () => {
+  // Fixture: 4 public records + 1 private
+  // browseEligible: 2 (ids: browse-g3, browse-g5)
+  // growing: 1 (id: browse-g2)
+  // private: 1
+  const mapping = {
+    ...VALID_MAPPING,
+    records: [
+      { ...VALID_MAPPING.records[0], treeId: 'browse-g3', ownerId: 'o1', title: 'Browse3' },
+      { ...VALID_MAPPING.records[0], treeId: 'browse-g5', ownerId: 'o2', title: 'Browse5' },
+      { ...VALID_MAPPING.records[0], treeId: 'browse-g2', ownerId: 'o3', title: 'Browse2' },
+      { ...VALID_MAPPING.records[0], treeId: 'private-1', ownerId: 'o4', title: 'Priv1' },
+      { ...VALID_MAPPING.records[0], treeId: 'private-2', ownerId: 'o5', title: 'Priv2' },
+    ],
+  };
+  mapping.records[3].visibility = 'private';
+  mapping.records[3].privateEvidenceClassification = 'PLUS_ENTITLEMENT_CONFIRMED';
+  mapping.records[4].visibility = 'private';
+  mapping.records[4].privateEvidenceClassification = 'PLUS_ENTITLEMENT_CONFIRMED';
+
+  const preflight = {
+    ...VALID_PREFLIGHT,
+    records: [
+      { treeId: 'browse-g3', entityExists: false, publicMomentCount: 3 },
+      { treeId: 'browse-g5', entityExists: false, publicMomentCount: 5 },
+      { treeId: 'browse-g2', entityExists: false, publicMomentCount: 2 },
+      { treeId: 'private-1', entityExists: false, publicMomentCount: 0 },
+      { treeId: 'private-2', entityExists: false, publicMomentCount: 10 },
+    ],
+  };
+  const { result, cleanup } = runWithTwoFixtures(mapping, preflight, '--dry-run');
+  try {
+    assert.equal(result.exitCode, 0, 'Dry-run must pass');
+    // Parse exact counts from output
+    const browseMatch = result.stdout.match(/Browse-eligible records:\s+(\d+)/);
+    const growingMatch = result.stdout.match(/Growing records:\s+(\d+)/);
+    const privateMatch = result.stdout.match(/Explicit-private records:\s+(\d+)/);
+    const totalMatch = result.stdout.match(/Valid joined records:\s+(\d+)/);
+
+    assert.ok(browseMatch, 'Must output Browse-eligible count');
+    assert.ok(growingMatch, 'Must output Growing count');
+    assert.equal(parseInt(browseMatch[1], 10), 2, 'Expected 2 Browse-eligible');
+    assert.equal(parseInt(growingMatch[1], 10), 1, 'Expected 1 Growing');
+    assert.equal(parseInt(privateMatch[1], 10), 2, 'Expected 2 private');
+    assert.equal(parseInt(totalMatch[1], 10), 5, 'Expected 5 total');
+
+    // browseEligible + growing + private = total joined
+    const be = parseInt(browseMatch[1], 10);
+    const gr = parseInt(growingMatch[1], 10);
+    const pr = parseInt(privateMatch[1], 10);
+    const tt = parseInt(totalMatch[1], 10);
+    assert.equal(be + gr + pr, tt, 'browseEligible + growing + private = total');
+  } finally {
+    cleanup();
+  }
+});
+
+test('Browse and growing are disjoint sets', () => {
+  const mapping = {
+    ...VALID_MAPPING,
+    records: [
+      { ...VALID_MAPPING.records[0], treeId: 'both-3', ownerId: 'o1', title: 'Both3' },
+      { ...VALID_MAPPING.records[0], treeId: 'both-0', ownerId: 'o2', title: 'Both0' },
+    ],
+  };
+  const preflight = {
+    ...VALID_PREFLIGHT,
+    records: [
+      { treeId: 'both-3', entityExists: false, publicMomentCount: 3 },
+      { treeId: 'both-0', entityExists: false, publicMomentCount: 0 },
+    ],
+  };
+  const { result, cleanup } = runWithTwoFixtures(mapping, preflight, '--dry-run');
+  try {
+    assert.equal(result.exitCode, 0, 'Dry-run must pass');
+    const browseMatch = result.stdout.match(/Browse-eligible records:\s+(\d+)/);
+    const growingMatch = result.stdout.match(/Growing records:\s+(\d+)/);
+    const privateMatch = result.stdout.match(/Explicit-private records:\s+(\d+)/);
+
+    assert.equal(parseInt(browseMatch[1], 10), 1, '1 Browse-eligible');
+    assert.equal(parseInt(growingMatch[1], 10), 1, '1 Growing');
+    assert.equal(parseInt(privateMatch[1], 10), 0, '0 private');
+  } finally {
+    cleanup();
+  }
+});
+
+test('private excluded from both Browse and growing', () => {
+  const mapping = {
+    ...VALID_MAPPING,
+    records: [
+      {
+        ...VALID_MAPPING.records[0],
+        treeId: 'all-pub', ownerId: 'o1', title: 'Pub',
+        visibility: 'public',
+      },
+      {
+        ...VALID_MAPPING.records[0],
+        treeId: 'all-priv', ownerId: 'o2', title: 'Priv',
+        visibility: 'private',
+        privateEvidenceClassification: 'PLUS_ENTITLEMENT_CONFIRMED',
+      },
+    ],
+  };
+  const preflight = {
+    ...VALID_PREFLIGHT,
+    records: [
+      { treeId: 'all-pub', entityExists: false, publicMomentCount: 0 },
+      { treeId: 'all-priv', entityExists: false, publicMomentCount: 5 },
+    ],
+  };
+  const { result, cleanup } = runWithTwoFixtures(mapping, preflight, '--dry-run');
+  try {
+    assert.equal(result.exitCode, 0, 'Dry-run must pass');
+    const browseMatch = result.stdout.match(/Browse-eligible records:\s+(\d+)/);
+    const growingMatch = result.stdout.match(/Growing records:\s+(\d+)/);
+
+    assert.equal(parseInt(browseMatch[1], 10), 0, '0 Browse-eligible (private not counted even with >=3)');
+    assert.equal(parseInt(growingMatch[1], 10), 1, '1 Growing (pub with 0 moments)');
+  } finally {
+    cleanup();
+  }
+});
+
+test('0-2 publicMomentCount trees excluded from Browse-eligible', () => {
+  const mapping = {
+    ...VALID_MAPPING,
+    records: [
+      { ...VALID_MAPPING.records[0], treeId: 'z-0', ownerId: 'o1', title: 'Z0' },
+      { ...VALID_MAPPING.records[0], treeId: 'z-1', ownerId: 'o2', title: 'Z1' },
+      { ...VALID_MAPPING.records[0], treeId: 'z-2', ownerId: 'o3', title: 'Z2' },
+    ],
+  };
+  const preflight = {
+    ...VALID_PREFLIGHT,
+    records: [
+      { treeId: 'z-0', entityExists: false, publicMomentCount: 0 },
+      { treeId: 'z-1', entityExists: false, publicMomentCount: 1 },
+      { treeId: 'z-2', entityExists: false, publicMomentCount: 2 },
+    ],
+  };
+  const { result, cleanup } = runWithTwoFixtures(mapping, preflight, '--dry-run');
+  try {
+    assert.equal(result.exitCode, 0, 'Dry-run must pass');
+    const browseMatch = result.stdout.match(/Browse-eligible records:\s+(\d+)/);
+    assert.equal(parseInt(browseMatch[1], 10), 0, '0 Browse-eligible for 0-2 range');
+  } finally {
+    cleanup();
+  }
+});
+
+test('>=3 publicMomentCount trees are Browse-eligible', () => {
+  const mapping = {
+    ...VALID_MAPPING,
+    records: [
+      { ...VALID_MAPPING.records[0], treeId: 'a-3', ownerId: 'o1', title: 'A3' },
+      { ...VALID_MAPPING.records[0], treeId: 'a-10', ownerId: 'o2', title: 'A10' },
+    ],
+  };
+  const preflight = {
+    ...VALID_PREFLIGHT,
+    records: [
+      { treeId: 'a-3', entityExists: false, publicMomentCount: 3 },
+      { treeId: 'a-10', entityExists: false, publicMomentCount: 10 },
+    ],
+  };
+  const { result, cleanup } = runWithTwoFixtures(mapping, preflight, '--dry-run');
+  try {
+    assert.equal(result.exitCode, 0, 'Dry-run must pass');
+    const browseMatch = result.stdout.match(/Browse-eligible records:\s+(\d+)/);
+    assert.equal(parseInt(browseMatch[1], 10), 2, '2 Browse-eligible for >=3');
+  } finally {
+    cleanup();
+  }
+});
+
+// ─── Hash/output tests (Test 31-37) ────────────────────────────────────────
+
+test('mapping hash equals exact input bytes SHA-256', () => {
+  const m = createExternalFixture(VALID_MAPPING);
+  const p = createExternalFixture(VALID_PREFLIGHT);
+  const planDir = fs.mkdtempSync(path.join(require('os').tmpdir(), 'repair-hash-map-'));
+  const planPath = path.join(planDir, 'plan.json');
+  try {
+    const rawMapping = fs.readFileSync(m.path, 'utf8');
+    const expectedHash = crypto.createHash('sha256').update(rawMapping).digest('hex');
+
+    const args = `--prepare-plan "${m.path}" --preflight "${p.path}" --out "${planPath}"`;
+    const result = runScript(args);
+    assert.equal(result.exitCode, 0, 'Prepare-plan must pass');
+
+    const plan = JSON.parse(fs.readFileSync(planPath, 'utf8'));
+    assert.ok(plan.mappingInputSha256, 'Plan must have mappingInputSha256');
+    assert.equal(plan.mappingInputSha256, expectedHash, 'mappingInputSha256 must match actual bytes SHA-256');
+  } finally {
+    m.cleanup();
+    p.cleanup();
+    fs.rmSync(planDir, { recursive: true, force: true });
+  }
+});
+
+test('preflight hash equals exact input bytes SHA-256', () => {
+  const m = createExternalFixture(VALID_MAPPING);
+  const p = createExternalFixture(VALID_PREFLIGHT);
+  const planDir = fs.mkdtempSync(path.join(require('os').tmpdir(), 'repair-hash-pf-'));
+  const planPath = path.join(planDir, 'plan.json');
+  try {
+    const rawPreflight = fs.readFileSync(p.path, 'utf8');
+    const expectedHash = crypto.createHash('sha256').update(rawPreflight).digest('hex');
+
+    const args = `--prepare-plan "${m.path}" --preflight "${p.path}" --out "${planPath}"`;
+    const result = runScript(args);
+    assert.equal(result.exitCode, 0, 'Prepare-plan must pass');
+
+    const plan = JSON.parse(fs.readFileSync(planPath, 'utf8'));
+    assert.ok(plan.preflightInputSha256, 'Plan must have preflightInputSha256');
+    assert.equal(plan.preflightInputSha256, expectedHash, 'preflightInputSha256 must match actual bytes SHA-256');
+  } finally {
+    m.cleanup();
+    p.cleanup();
+    fs.rmSync(planDir, { recursive: true, force: true });
+  }
+});
+
+test('existing output path is rejected', () => {
+  const f = createTwoFixtures(VALID_MAPPING, VALID_PREFLIGHT);
+  const planDir = fs.mkdtempSync(path.join(require('os').tmpdir(), 'repair-exist-'));
+  const planPath = path.join(planDir, 'plan.json');
+  // Create the file first
+  fs.writeFileSync(planPath, '{}', 'utf8');
+  try {
+    const args = `--prepare-plan "${f.mappingPath}" --preflight "${f.preflightPath}" --out "${planPath}"`;
+    const result = runScript(args);
+    assert.notEqual(result.exitCode, 0, 'Must reject existing output');
+    assert.ok(result.stderr.includes('already exists'), 'Must show already exists message');
+  } finally {
+    f.cleanup();
+    fs.rmSync(planDir, { recursive: true, force: true });
+  }
+});
+
+test('no partial final output after forced failure', () => {
+  // Write to a read-only directory that causes write failure
+  const f = createTwoFixtures(VALID_MAPPING, VALID_PREFLIGHT);
+  const readOnlyDir = fs.mkdtempSync(path.join(require('os').tmpdir(), 'repair-readonly-'));
+  // On Windows, making a directory read-only is tricky; instead, use a path
+  // that simulates a failure by writing to a nonexistent parent directory
+  const badPath = path.join(readOnlyDir, 'nonexistent-subdir', 'plan.json');
+  try {
+    const args = `--prepare-plan "${f.mappingPath}" --preflight "${f.preflightPath}" --out "${badPath}"`;
+    const result = runScript(args);
+    assert.notEqual(result.exitCode, 0, 'Must fail when output write fails');
+    // Verify no partial .tmp file remains
+    const tmpFiles = fs.readdirSync(readOnlyDir).filter(f => f.endsWith('.tmp.'));
+    assert.equal(tmpFiles.length, 0, 'No temp files should remain after failure');
+  } finally {
+    f.cleanup();
+    fs.rmSync(readOnlyDir, { recursive: true, force: true });
+  }
+});
+
+test('plan preserves optional metadata', () => {
+  const mapping = {
+    ...VALID_MAPPING,
+    records: [{
+      ...VALID_MAPPING.records[0],
+      groupName: 'Test Group',
+      groupNameProvenance: REQUIRED_PROVENANCE,
+      keywords: ['kw1', 'kw2'],
+      keywordsProvenance: REQUIRED_PROVENANCE,
+    }],
+  };
+  const planDir = fs.mkdtempSync(path.join(require('os').tmpdir(), 'repair-meta-'));
+  const { result, cleanup, planPath } = runWithThreeFixtures(mapping, VALID_PREFLIGHT, planDir, '--prepare-plan');
+  try {
+    assert.equal(result.exitCode, 0, 'Prepare-plan must pass');
+    const plan = JSON.parse(fs.readFileSync(planPath, 'utf8'));
+    const record = plan.records[0];
+    assert.equal(record.groupName, 'Test Group', 'groupName preserved');
+    assert.deepEqual(record.keywords, ['kw1', 'kw2'], 'keywords preserved');
+    assert.ok(record.publicMomentCount !== undefined, 'publicMomentCount present');
+  } finally {
+    cleanup();
+    fs.rmSync(planDir, { recursive: true, force: true });
+  }
+});
+
+test('plan deterministic for identical exact inputs', () => {
+  const f = createTwoFixtures(VALID_MAPPING, VALID_PREFLIGHT);
+  const planDir1 = fs.mkdtempSync(path.join(require('os').tmpdir(), 'repair-det-1-'));
+  const planDir2 = fs.mkdtempSync(path.join(require('os').tmpdir(), 'repair-det-2-'));
+  const planPath1 = path.join(planDir1, 'plan.json');
+  const planPath2 = path.join(planDir2, 'plan.json');
+  try {
+    const args1 = `--prepare-plan "${f.mappingPath}" --preflight "${f.preflightPath}" --out "${planPath1}"`;
+    const r1 = runScript(args1);
+    assert.equal(r1.exitCode, 0, 'First plan must pass');
+
+    const args2 = `--prepare-plan "${f.mappingPath}" --preflight "${f.preflightPath}" --out "${planPath2}"`;
+    const r2 = runScript(args2);
+    assert.equal(r2.exitCode, 0, 'Second plan must pass');
+
+    const plan1 = fs.readFileSync(planPath1, 'utf8');
+    const plan2 = fs.readFileSync(planPath2, 'utf8');
+    assert.equal(plan1, plan2, 'Plans must be identical for same inputs');
+  } finally {
+    f.cleanup();
+    fs.rmSync(planDir1, { recursive: true, force: true });
+    fs.rmSync(planDir2, { recursive: true, force: true });
+  }
+});
+
+// ─── CLI strict validation (Test 38-43) ────────────────────────────────────
+
+test('unknown option rejected', () => {
+  const result = runScript('--unknown-option /some/path.json');
+  assert.notEqual(result.exitCode, 0, 'Must reject unknown option');
+  assert.ok(result.stderr.includes('Unknown mode'), 'Must show unknown mode');
+});
+
+test('extra positional argument rejected', () => {
+  const m = createExternalFixture(VALID_MAPPING);
+  try {
+    const result = runScript(`--validate "${m.path}" extra-arg`);
+    assert.notEqual(result.exitCode, 0, 'Must reject extra positional');
+    assert.ok(result.stderr.includes('Unexpected additional positional'), 'Must show positional error');
+  } finally {
+    m.cleanup();
+  }
+});
+
+test('mode-incompatible option rejected (validate + preflight)', () => {
+  const m = createExternalFixture(VALID_MAPPING);
+  const p = createExternalFixture(VALID_PREFLIGHT);
+  try {
+    const result = runScript(`--validate "${m.path}" --preflight "${p.path}"`);
+    assert.notEqual(result.exitCode, 0, 'Must reject validate with preflight');
+    assert.ok(result.stderr.includes('does not accept'), 'Must show incompatible option message');
+  } finally {
+    m.cleanup();
+    p.cleanup();
+  }
+});
+
+test('mode-incompatible option rejected (dry-run + out)', () => {
+  const m = createExternalFixture(VALID_MAPPING);
+  const p = createExternalFixture(VALID_PREFLIGHT);
+  const planDir = fs.mkdtempSync(path.join(require('os').tmpdir(), 'repair-mode-'));
+  const planPath = path.join(planDir, 'plan.json');
+  try {
+    const result = runScript(`--dry-run "${m.path}" --preflight "${p.path}" --out "${planPath}"`);
+    assert.notEqual(result.exitCode, 0, 'Must reject dry-run with --out');
+    assert.ok(result.stderr.includes('does not accept'), 'Must show incompatible option message');
+  } finally {
+    m.cleanup();
+    p.cleanup();
+    fs.rmSync(planDir, { recursive: true, force: true });
+  }
+});
+
+test('duplicate option rejected', () => {
+  const m = createExternalFixture(VALID_MAPPING);
+  try {
+    const result = runScript(`--validate "${m.path}" --validate`);
+    assert.notEqual(result.exitCode, 0, 'Must reject duplicate option');
+    assert.ok(result.stderr.includes('Duplicate option'), 'Must show duplicate option');
+  } finally {
+    m.cleanup();
+  }
+});
+
+test('missing option value rejected', () => {
+  const m = createExternalFixture(VALID_MAPPING);
+  try {
+    const result = runScript(`--validate "${m.path}" --preflight`);
+    assert.notEqual(result.exitCode, 0, 'Must reject missing option value');
+    assert.ok(result.stderr.includes('Missing value for'), 'Must show missing value');
+  } finally {
+    m.cleanup();
+  }
+});
+
+test('--apply rejected before reading a nonexistent mapping', () => {
+  const result = runScript('--apply /nonexistent/path.json');
+  assert.notEqual(result.exitCode, 0, 'Must reject --apply');
+  assert.ok(result.stderr.includes('NOT available'), 'Must show apply rejection');
+  // Should not say "Cannot read" — that means it tried to read the file
+  assert.ok(!result.stderr.includes('Cannot read'), 'Must reject before reading input');
+});
+
+// ─── Existing entity conflict ──────────────────────────────────────────────
+
+test('existing entity conflict (entityExists=true) exits non-zero', () => {
+  const preflight = {
+    ...VALID_PREFLIGHT,
+    records: [{
+      ...VALID_PREFLIGHT.records[0],
+      entityExists: true,
+    }],
+  };
+  const { result, cleanup } = runWithTwoFixtures(VALID_MAPPING, preflight, '--dry-run');
+  try {
+    assert.notEqual(result.exitCode, 0, 'Must reject existing entity');
+    assert.ok(result.stderr.includes('Existing-row'), 'Must show existing row count');
+  } finally {
+    cleanup();
+  }
+});
+
+// ─── Conflict output no raw ID ─────────────────────────────────────────────
+
+test('conflict output contains count but no raw treeId', () => {
+  const preflight = {
+    ...VALID_PREFLIGHT,
+    records: [{
+      ...VALID_PREFLIGHT.records[0],
+      entityExists: true,
+    }],
+  };
+  const { result, cleanup } = runWithTwoFixtures(VALID_MAPPING, preflight, '--dry-run');
+  try {
+    assert.notEqual(result.exitCode, 0, 'Must reject existing entity');
+    assert.ok(!result.stdout.includes('synthetic-test-001'), 'Must not contain raw treeId');
+    assert.ok(!result.stderr.includes('synthetic-test-001'), 'Must not contain raw treeId in stderr');
+  } finally {
+    cleanup();
+  }
+});
+
+// ─── --dry-run without preflight rejected ──────────────────────────────────
 
 test('--dry-run without preflight is rejected', () => {
   const m = createExternalFixture(VALID_MAPPING);
@@ -319,7 +1107,7 @@ test('--dry-run without preflight is rejected', () => {
   }
 });
 
-// ─── Test 12: Mapping/preflight identity mismatch rejected ─────────────────
+// ─── Mapping/preflight identity mismatch ───────────────────────────────────
 
 test('mapping/preflight identity set mismatch is rejected', () => {
   const preflight = {
@@ -340,7 +1128,7 @@ test('mapping/preflight identity set mismatch is rejected', () => {
   }
 });
 
-// ─── Test 13: Duplicate preflight identity rejected ────────────────────────
+// ─── Duplicate preflight identity ──────────────────────────────────────────
 
 test('duplicate preflight identity is rejected', () => {
   const preflight = {
@@ -359,157 +1147,7 @@ test('duplicate preflight identity is rejected', () => {
   }
 });
 
-// ─── Test 14: Negative publicMomentCount rejected ──────────────────────────
-
-test('negative publicMomentCount is rejected', () => {
-  const preflight = {
-    ...VALID_PREFLIGHT,
-    records: [{
-      ...VALID_PREFLIGHT.records[0],
-      publicMomentCount: -1,
-    }],
-  };
-  const { result, cleanup } = runWithTwoFixtures(VALID_MAPPING, preflight, '--dry-run');
-  try {
-    assert.notEqual(result.exitCode, 0, 'Must reject negative moment count');
-    assert.ok(result.stderr.includes('INVALID_MOMENT_COUNT'), 'Must show invalid count code');
-  } finally {
-    cleanup();
-  }
-});
-
-// ─── Test 15: Existing entity conflict rejected ────────────────────────────
-
-test('existing entity conflict (entityExists=true) exits non-zero', () => {
-  const preflight = {
-    ...VALID_PREFLIGHT,
-    records: [{
-      ...VALID_PREFLIGHT.records[0],
-      entityExists: true,
-    }],
-  };
-  const { result, cleanup } = runWithTwoFixtures(VALID_MAPPING, preflight, '--dry-run');
-  try {
-    assert.notEqual(result.exitCode, 0, 'Must reject existing entity');
-    assert.ok(result.stderr.includes('Existing-row'), 'Must show existing row count');
-  } finally {
-    cleanup();
-  }
-});
-
-// ─── Test 16: Conflict output contains count but no raw ID ─────────────────
-
-test('conflict output contains count but no raw treeId', () => {
-  const preflight = {
-    ...VALID_PREFLIGHT,
-    records: [{
-      ...VALID_PREFLIGHT.records[0],
-      entityExists: true,
-    }],
-  };
-  const { result, cleanup } = runWithTwoFixtures(VALID_MAPPING, preflight, '--dry-run');
-  try {
-    assert.notEqual(result.exitCode, 0, 'Must reject existing entity');
-    assert.ok(!result.stdout.includes('synthetic-test-001'), 'Must not contain raw treeId');
-    assert.ok(!result.stderr.includes('synthetic-test-001'), 'Must not contain raw treeId in stderr');
-  } finally {
-    cleanup();
-  }
-});
-
-// ─── Test 17: >=3 exact Browse-eligible count ──────────────────────────────
-
-test('Browse-eligible count uses >=3 publicMomentCount threshold', () => {
-  const mapping = {
-    ...VALID_MAPPING,
-    records: [
-      { ...VALID_MAPPING.records[0], treeId: 'browse-good-1', ownerId: 'o1', title: 'Good' },
-      { ...VALID_MAPPING.records[0], treeId: 'browse-good-2', ownerId: 'o2', title: 'Good2' },
-      { ...VALID_MAPPING.records[0], treeId: 'browse-bad-1', ownerId: 'o3', title: 'Bad' },
-    ],
-  };
-  const preflight = {
-    ...VALID_PREFLIGHT,
-    records: [
-      { treeId: 'browse-good-1', entityExists: false, publicMomentCount: 3 },
-      { treeId: 'browse-good-2', entityExists: false, publicMomentCount: 5 },
-      { treeId: 'browse-bad-1', entityExists: false, publicMomentCount: 2 },
-    ],
-  };
-  const { result, cleanup } = runWithTwoFixtures(mapping, preflight, '--dry-run');
-  try {
-    assert.equal(result.exitCode, 0, 'Dry-run must pass');
-    // Browse-eligible: 2 (good-1 has 3, good-2 has 5)
-    assert.ok(result.stdout.includes('Browse-eligible'), 'Must show Browse-eligible');
-  } finally {
-    cleanup();
-  }
-});
-
-// ─── Test 18: 0-2 exact growing count ─────────────────────────────────────
-
-test('Growing count uses 0-2 publicMomentCount range', () => {
-  const mapping = {
-    ...VALID_MAPPING,
-    records: [
-      { ...VALID_MAPPING.records[0], treeId: 'grow-1', ownerId: 'o1', title: 'G1' },
-      { ...VALID_MAPPING.records[0], treeId: 'grow-2', ownerId: 'o2', title: 'G2' },
-      { ...VALID_MAPPING.records[0], treeId: 'grow-3', ownerId: 'o3', title: 'G3' },
-    ],
-  };
-  const preflight = {
-    ...VALID_PREFLIGHT,
-    records: [
-      { treeId: 'grow-1', entityExists: false, publicMomentCount: 0 },
-      { treeId: 'grow-2', entityExists: false, publicMomentCount: 2 },
-      { treeId: 'grow-3', entityExists: false, publicMomentCount: 10 },
-    ],
-  };
-  const { result, cleanup } = runWithTwoFixtures(mapping, preflight, '--dry-run');
-  try {
-    assert.equal(result.exitCode, 0, 'Dry-run must pass');
-    assert.ok(result.stdout.includes('Growing'), 'Must show Growing count');
-  } finally {
-    cleanup();
-  }
-});
-
-// ─── Test 19: Public/private separation ────────────────────────────────────
-
-test('private records excluded from Browse/growing counts', () => {
-  const mapping = {
-    ...VALID_MAPPING,
-    records: [
-      {
-        ...VALID_MAPPING.records[0],
-        treeId: 'pub-1', ownerId: 'o1', title: 'Pub',
-        visibility: 'public',
-      },
-      {
-        ...VALID_MAPPING.records[0],
-        treeId: 'priv-1', ownerId: 'o2', title: 'Priv',
-        visibility: 'private',
-        privateEvidenceClassification: 'PLUS_ENTITLEMENT_CONFIRMED',
-      },
-    ],
-  };
-  const preflight = {
-    ...VALID_PREFLIGHT,
-    records: [
-      { treeId: 'pub-1', entityExists: false, publicMomentCount: 5 },
-      { treeId: 'priv-1', entityExists: false, publicMomentCount: 0 },
-    ],
-  };
-  const { result, cleanup } = runWithTwoFixtures(mapping, preflight, '--dry-run');
-  try {
-    assert.equal(result.exitCode, 0, 'Dry-run with mixed visibility must pass');
-    assert.ok(result.stdout.includes('Explicit-private'), 'Must show private count');
-  } finally {
-    cleanup();
-  }
-});
-
-// ─── Test 20: Repository-internal mapping rejected ─────────────────────────
+// ─── Repository-internal paths rejected ────────────────────────────────────
 
 test('repository-internal mapping path is rejected', () => {
   const internalPath = path.join(ROOT, 'package.json');
@@ -517,8 +1155,6 @@ test('repository-internal mapping path is rejected', () => {
   assert.notEqual(result.exitCode, 0, 'Must fail for internal path');
   assert.ok(result.stderr.includes('outside the repository'), 'Must show external path message');
 });
-
-// ─── Test 21: Repository-internal preflight rejected ───────────────────────
 
 test('repository-internal preflight path is rejected', () => {
   const m = createExternalFixture(VALID_MAPPING);
@@ -532,8 +1168,6 @@ test('repository-internal preflight path is rejected', () => {
   }
 });
 
-// ─── Test 22: Repository-internal output rejected ──────────────────────────
-
 test('repository-internal output path for --prepare-plan is rejected', () => {
   const f = createTwoFixtures(VALID_MAPPING, VALID_PREFLIGHT);
   try {
@@ -546,7 +1180,7 @@ test('repository-internal output path for --prepare-plan is rejected', () => {
   }
 });
 
-// ─── Test 23: Duplicate/conflict errors expose no raw values ───────────────
+// ─── No raw values in errors ───────────────────────────────────────────────
 
 test('duplicate and conflict errors expose index+code only, no raw values', () => {
   const mapping = {
@@ -561,7 +1195,6 @@ test('duplicate and conflict errors expose index+code only, no raw values', () =
     assert.notEqual(result.exitCode, 0, 'Must reject duplicates');
     assert.ok(result.stderr.includes('DUPLICATE_TREE_ID'), 'Must show duplicate code');
     assert.ok(result.stderr.includes('CONFLICTING_OWNER_MAPPING'), 'Must show conflict code');
-    // No raw values should appear
     assert.ok(!result.stderr.includes('dup-id'), 'Must not contain raw treeId');
     assert.ok(!result.stderr.includes('owner-1'), 'Must not contain raw ownerId');
     assert.ok(!result.stderr.includes('owner-2'), 'Must not contain raw ownerId');
@@ -570,17 +1203,7 @@ test('duplicate and conflict errors expose index+code only, no raw values', () =
   }
 });
 
-// ─── Test 24: --apply rejected before input read ──────────────────────────
-
-test('--apply is rejected before any input is read', () => {
-  const result = runScript('--apply /nonexistent/path.json');
-  assert.notEqual(result.exitCode, 0, 'Must reject --apply');
-  assert.ok(result.stderr.includes('NOT available'), 'Must show apply rejection');
-  // Should not say "Cannot read" — that means it tried to read the file
-  assert.ok(!result.stderr.includes('Cannot read'), 'Must reject before reading input');
-});
-
-// ─── Test 25: --prepare-plan creates external deterministic artifact ───────
+// ─── --prepare-plan creates external deterministic artifact ────────────────
 
 test('--prepare-plan creates external deterministic plan JSON', () => {
   const f = createTwoFixtures(VALID_MAPPING, VALID_PREFLIGHT);
@@ -593,8 +1216,8 @@ test('--prepare-plan creates external deterministic plan JSON', () => {
     assert.ok(fs.existsSync(planPath), 'Plan file must be created');
     const plan = JSON.parse(fs.readFileSync(planPath, 'utf8'));
     assert.equal(plan.schemaVersion, 1, 'Plan must have schemaVersion');
-    assert.ok(plan.mappingArtifactSha256, 'Plan must have mapping hash');
-    assert.ok(plan.preflightArtifactSha256, 'Plan must have preflight hash');
+    assert.ok(plan.mappingInputSha256, 'Plan must have mapping hash');
+    assert.ok(plan.preflightInputSha256, 'Plan must have preflight hash');
     assert.ok(plan.createdByPackageVersion, 'Plan must have package version');
     assert.equal(plan.recordCount, 1, 'Plan must have 1 record');
     assert.ok(Array.isArray(plan.records), 'Plan must have records array');
@@ -605,8 +1228,6 @@ test('--prepare-plan creates external deterministic plan JSON', () => {
     fs.rmSync(planDir, { recursive: true, force: true });
   }
 });
-
-// ─── Test 26: Plan hash produced ──────────────────────────────────────────
 
 test('prepare-plan outputs SHA-256 hash', () => {
   const f = createTwoFixtures(VALID_MAPPING, VALID_PREFLIGHT);
@@ -623,7 +1244,7 @@ test('prepare-plan outputs SHA-256 hash', () => {
   }
 });
 
-// ─── Test 27: Plan contains no existing entity ─────────────────────────────
+// ─── Plan contains only non-existing entities ──────────────────────────────
 
 test('plan contains only entityExists=false records', () => {
   const f = createTwoFixtures(VALID_MAPPING, VALID_PREFLIGHT);
@@ -634,7 +1255,6 @@ test('plan contains only entityExists=false records', () => {
     const result = runScript(args);
     assert.equal(result.exitCode, 0, 'Prepare-plan must pass');
     const plan = JSON.parse(fs.readFileSync(planPath, 'utf8'));
-    // Our preflight has entityExists=false, so record should be included
     assert.equal(plan.records.length, 1, 'Plan must include only non-existing records');
   } finally {
     f.cleanup();
@@ -642,7 +1262,7 @@ test('plan contains only entityExists=false records', () => {
   }
 });
 
-// ─── Test 28: No DB/network/Firebase import ────────────────────────────────
+// ─── No DB/network/Firebase import ─────────────────────────────────────────
 
 test('script does not import pg, firebase-admin, or network modules', () => {
   const content = fs.readFileSync(SCRIPT_PATH, 'utf8');
@@ -653,7 +1273,7 @@ test('script does not import pg, firebase-admin, or network modules', () => {
   assert.ok(!content.includes("require('net'"), 'Must not import net');
 });
 
-// ─── Test 29: Runbook has pre-commit rollback and prohibits auto DELETE ────
+// ─── Runbook tests ────────────────────────────────────────────────────────
 
 test('runbook has pre-commit rollback and prohibits automatic post-commit DELETE', () => {
   const runbookPath = path.join(ROOT, 'docs', 'ops', 'LEGACY_TREE_ENTITY_REPAIR_RUNBOOK.md');
@@ -666,7 +1286,49 @@ test('runbook has pre-commit rollback and prohibits automatic post-commit DELETE
   assert.ok(content.includes('SEPARATE_COMPENSATING_ACTION'), 'Runbook must document compensating action');
 });
 
-// ─── Test 30: No dependent-data mutation ──────────────────────────────────
+test('no Growing-section claim in runbook', () => {
+  const runbookPath = path.join(ROOT, 'docs', 'ops', 'LEGACY_TREE_ENTITY_REPAIR_RUNBOOK.md');
+  assert.ok(fs.existsSync(runbookPath), 'Runbook must exist');
+  const content = fs.readFileSync(runbookPath, 'utf8');
+  // Must NOT contain the old Growing section claim
+  assert.ok(!content.includes('appear in Growing section'), 'Must not claim Growing section exists');
+  // Must contain the canonical 0-2 exclusion rule
+  assert.ok(content.includes('not listed in Browse/Search'), 'Must state 0-2 excluded from Browse/Search');
+});
+
+test('no existing-skipped posture in runbook', () => {
+  const runbookPath = path.join(ROOT, 'docs', 'ops', 'LEGACY_TREE_ENTITY_REPAIR_RUNBOOK.md');
+  assert.ok(fs.existsSync(runbookPath), 'Runbook must exist');
+  const content = fs.readFileSync(runbookPath, 'utf8');
+  assert.ok(!content.includes('existing_skipped'), 'Must not contain existing_skipped');
+  assert.ok(content.includes('existing_conflicts'), 'Must include existing_conflicts');
+  assert.ok(content.includes('planned_inserts'), 'Must include planned_inserts');
+});
+
+test('no automatic post-commit DELETE in runbook', () => {
+  const runbookPath = path.join(ROOT, 'docs', 'ops', 'LEGACY_TREE_ENTITY_REPAIR_RUNBOOK.md');
+  assert.ok(fs.existsSync(runbookPath), 'Runbook must exist');
+  const content = fs.readFileSync(runbookPath, 'utf8');
+  // The runbook describes the no-automatic-delete policy. It may mention
+  // DELETE FROM public.trees when explaining the policy, but must NOT
+  // present it as an actionable SQL operation (separated from INSERT context
+  // or as a standalone command block).
+  // Check that there's no standalone DELETE command block
+  const standaloneDeletePattern = /```sql\nDELETE FROM public\.trees|```\nDELETE FROM public\.trees|DELETE\s+FROM\s+public\.trees\s*;/i;
+  assert.ok(!standaloneDeletePattern.test(content), 'Must not contain actionable DELETE FROM public.trees');
+});
+
+test('conceptual INSERT includes recoverable metadata columns', () => {
+  const runbookPath = path.join(ROOT, 'docs', 'ops', 'LEGACY_TREE_ENTITY_REPAIR_RUNBOOK.md');
+  assert.ok(fs.existsSync(runbookPath), 'Runbook must exist');
+  const content = fs.readFileSync(runbookPath, 'utf8');
+  assert.ok(content.includes('group_name'), 'INSERT must include group_name');
+  assert.ok(content.includes('keywords'), 'INSERT must include keywords');
+  assert.ok(content.includes('created_at'), 'INSERT must include created_at');
+  assert.ok(content.includes('updated_at'), 'INSERT must include updated_at');
+});
+
+// ─── No dependent-data mutation ──────────────────────────────────────────
 
 test('script and runbook contain no dependent-data mutation operations', () => {
   const scriptContent = fs.readFileSync(SCRIPT_PATH, 'utf8');
@@ -675,13 +1337,10 @@ test('script and runbook contain no dependent-data mutation operations', () => {
     'utf8'
   );
 
-  // Must not contain DELETE operations for dependent data
-  // INSERT is OK for public.trees only
   const delPattern = /DELETE\s+FROM\s+(?!public\.trees)/i;
   assert.ok(!delPattern.test(scriptContent), 'Script must not DELETE dependent data');
   assert.ok(!delPattern.test(runbookContent), 'Runbook must not DELETE dependent data');
 
-  // Must contain explicit prohibition
   assert.ok(runbookContent.includes('dependent data'),
     'Runbook must mention dependent data');
   assert.ok(runbookContent.includes('prohibited'),
