@@ -32,6 +32,14 @@ false positives (product copy, user-facing text, legitimate named-context CTO
 approvals, security implementations) and excluded from the agent-governance
 inventory where they are not repo-wide automatic-blocker claims.
 
+All root and subdirectory `README.md` files (16 found) were additionally
+scanned with the same restriction lexicon. README CTO-approval gates
+(`functions/README.md`, `modal_compute/README.md`, `netlify/README.md`,
+`netlify/functions/README.md`, `netlify/sql/README.md`) are all API/runtime/
+backend/DB scoped and excluded per Section 6; CSS-archive and secret-handling
+READMEs contain no agent-governance process restriction. README scan completed
+with no additional qualifying agent-governance item.
+
 **Out of scope per task Section 6:** PR #3432, branch
 `db/tree-comments-zero-secondary-reconcile-3431`, tree comments migration,
 Scout, moment Social, runtime JS, Cloudflare Functions, Modal, API, UI/CSS,
@@ -87,8 +95,10 @@ MVP-de-escalated item as an automatic blocker/approval/stop gate.
 - **Deeper follow-up than minimal first tranche** (reachable only via secondary
   references, partially conflicting): `TEST_PREVIEW_SLOTS.md`,
   `VERIFICATION_TARGET_ALLOWLIST.md`, `UI_SCREENSHOT_CTO_REVIEW_POLICY.md`.
-- **Legitimate context-specific / security scope with owner approval** (not a
-  general over-restriction): `FIREBASE_API_KEY_RESTRICTION_RUNBOOK.md`,
+- **Legitimate context-specific / security scope** (supported by canonical hard
+  rule #3442 comment `4947327550`; not a general over-restriction, and a
+  restriction appearing in the doc is **not** itself approval evidence):
+  `FIREBASE_API_KEY_RESTRICTION_RUNBOOK.md`,
   `PUBLIC_DEFAULT_VISIBILITY_AUDIT_PLAN.md`.
 
 ## Disposition rules applied

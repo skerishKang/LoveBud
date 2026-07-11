@@ -127,12 +127,14 @@ test('inventory JSON parses and every entry has required fields', () => {
 
 // ─── 2. Tranche counts ─────────────────────────────────────────────────────
 
-test('inventory tranche counts: >=6 NOW and >=13 DEFER', () => {
+test('inventory exact tranche counts: 19 total, 6 NOW, 13 DEFER', () => {
   const data = JSON.parse(read(INVENTORY));
   const now = data.inventory.filter((i) => i.tranche === 'NOW');
   const defer = data.inventory.filter((i) => i.tranche === 'DEFER');
-  assert.ok(now.length >= 6, `expected >=6 NOW items, found ${now.length}`);
-  assert.ok(defer.length >= 13, `expected >=13 DEFER items, found ${defer.length}`);
+  assert.equal(data.inventory.length, 19, `expected exactly 19 inventory items, found ${data.inventory.length}`);
+  assert.equal(now.length, 6, `expected exactly 6 NOW items, found ${now.length}`);
+  assert.equal(defer.length, 13, `expected exactly 13 DEFER items, found ${defer.length}`);
+  assert.equal(data.inventory.length, now.length + defer.length, 'total must equal NOW + DEFER');
 });
 
 // ─── 3. NOW items match the corrected documents ───────────────────────────
@@ -215,6 +217,54 @@ test('secret-handling hard rule retained in GITHUB_AUTH_TOKEN_USAGE.md', () => {
 test('destructive production mutation approval protection retained in canonical governance', () => {
   const src = read(CANONICAL);
   assert.ok(/destructive\s+production[\s\S]*?approval/i.test(src), 'canonical document must retain destructive production approval protection');
+});
+
+// ─── 10. Strengthened assertions (CTO correction #4948036193) ────────────
+// Exact counts, path existence, valid line ranges, README survey coverage,
+// NOW-set equality, and no self-referential approval provenance.
+
+test('every inventory path exists on disk', () => {
+  const data = JSON.parse(read(INVENTORY));
+  for (const item of data.inventory) {
+    assert.ok(fs.existsSync(path.join(ROOT, item.path)), `inventory path must exist: ${item.path}`);
+  }
+});
+
+test('every inventory line range is valid against the real file', () => {
+  const data = JSON.parse(read(INVENTORY));
+  for (const item of data.inventory) {
+    assert.ok(item.line_start >= 1, `${item.path}.line_start must be >= 1`);
+    assert.ok(item.line_end >= item.line_start, `${item.path}.line_end must be >= line_start`);
+    const abs = path.join(ROOT, item.path);
+    const total = fs.readFileSync(abs, 'utf8').split('\n').length;
+    assert.ok(item.line_end <= total, `${item.path}.line_end ${item.line_end} exceeds file total ${total}`);
+  }
+});
+
+test('surveyMethod records root/subdirectory README coverage', () => {
+  const data = JSON.parse(read(INVENTORY));
+  assert.ok(/README\.md/i.test(data.surveyMethod), 'surveyMethod must mention README scanning');
+  assert.ok(/no additional qualifying/i.test(data.surveyMethod), 'surveyMethod must record README scan result');
+});
+
+test('NOW path set exactly matches the corrected-document set', () => {
+  const data = JSON.parse(read(INVENTORY));
+  const nowPaths = new Set(data.inventory.filter((i) => i.tranche === 'NOW').map((i) => i.path));
+  const expected = new Set(NOW_DOCS.map((d) => d.rel));
+  assert.equal(nowPaths.size, expected.size, `NOW path set size mismatch: ${nowPaths.size} vs ${expected.size}`);
+  for (const p of expected) {
+    assert.ok(nowPaths.has(p), `NOW set must include ${p}`);
+  }
+});
+
+test('no self-referential approval provenance (named in doc) remains', () => {
+  const data = JSON.parse(read(INVENTORY));
+  for (const item of data.inventory) {
+    assert.ok(
+      !/named in doc/i.test(item.owner_approval_reference || ''),
+      `${item.path} must not use self-referential approval provenance, found: ${item.owner_approval_reference}`
+    );
+  }
 });
 
 // ─── 9. This contract is source-static (no runtime/browser/network/DB/deploy)
