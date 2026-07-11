@@ -1727,6 +1727,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/migration-repair-trees-schema-3435-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Reads the reviewed migration SQL artifact and performs static string, regex, structure, and syntax-marker assertions only; it does not execute PostgreSQL, connect to a database, or verify production runtime behavior.",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/migration-tree-comments-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads migration SQL text via fs.readFileSync and applies regex/string/source-ordering assertions; does not execute SQL against any engine.",

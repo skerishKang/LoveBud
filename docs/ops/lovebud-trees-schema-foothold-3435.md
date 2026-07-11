@@ -88,10 +88,9 @@ Verify no other migration or schema operation is in progress.
 
 ### 3b. Execution
 
-```bash
-# Apply the reviewed migration exactly once
-psql "$DATABASE_URL" -f scripts/migration-repair-trees-schema-3435.sql
-```
+Use the approved existing secret-bound operator mechanism. The operator process receives the production lovebud-db binding through the existing protected secret mechanism, reads the exact migration artifact from the merged main commit, and must not print, echo, serialize, log, or place DATABASE_URL in a command argument.
+
+No API key, database password, connection URL, host, user, or secret value is copied into PowerShell, terminal history, GitHub, logs, or documentation.
 
 **If the migration succeeds:** It will print `COMMIT` at the end. Proceed to post-check.
 
@@ -234,7 +233,7 @@ If the Modal runtime is rolled back to a pre-foothold revision:
 
 - The database schema still has the 7 columns — this is forward-compatible with older runtime code (older code simply does not use the new columns).
 - No DB schema rollback is needed for runtime rollback.
-- The old runtime will still fail on the damaged legacy rows (NULL `owner_id`, `visibility`), same as before.
+- After the columns exist, legacy rows with NULL owner_id or visibility are filtered out of owner/public list queries. They remain inaccessible and unresolved, but their NULL values do not themselves cause the previous undefined-column failure.
 
 ### Orphan data preservation
 
@@ -253,17 +252,26 @@ The `DB_STATEMENT_TIMEOUT_MS` setting in `modal_compute/db.py` (20s) is unrelate
 
 ---
 
-## 9. Files
+## 9. Modal deploy condition
+
+This PR contains no runtime source changes. A Modal deploy is not automatically required.
+
+Inspect production revision parity after merge and migration apply. Deploy Modal only if the currently running revision does not contain the already-reviewed owner/public reader and writer contract expected by main.
+
+---
+
+## 10. Files
 
 | Path | Purpose |
 |---|---|
 | `scripts/migration-repair-trees-schema-3435.sql` | Migration artifact |
 | `tests/contracts/migration-repair-trees-schema-3435-contract.test.cjs` | Static/grammar contract tests |
+| `tests/test-layer-classification.json` | Default-CI test-layer inventory |
 | `docs/ops/lovebud-trees-schema-foothold-3435.md` | Apply / runbook (this file) |
 
 ---
 
-## 10. Issue references
+## 11. Issue references
 
 ```
 Refs #3435

@@ -34,10 +34,9 @@
 --   UUID conversion, synthetic value assignment
 --   Dependent table mutation, orphan row creation/modification
 --
--- Usage:
---   psql "$DATABASE_URL" -f scripts/migration-repair-trees-schema-3435.sql
---
 -- Apply under separate post-merge approval only.
+-- Use the approved existing secret-bound operator mechanism.
+-- DATABASE_URL must NOT appear in command arguments, shell history, or logs.
 
 BEGIN;
 
@@ -91,17 +90,21 @@ DO $$ BEGIN
     END IF;
 END $$;
 
--- id must be primary key
+-- id must be the sole primary key column
 DO $$ BEGIN
     IF NOT EXISTS (
-        SELECT 1 FROM information_schema.table_constraints tc
-        JOIN information_schema.key_column_usage kcu
-          ON tc.constraint_name = kcu.constraint_name
-        WHERE tc.table_schema = 'public' AND tc.table_name = 'trees'
-          AND tc.constraint_type = 'PRIMARY KEY'
-          AND kcu.column_name = 'id'
+        SELECT 1 FROM pg_catalog.pg_class c
+        JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+        JOIN pg_catalog.pg_index i ON i.indrelid = c.oid
+        JOIN pg_catalog.pg_attribute a ON a.attrelid = c.oid
+          AND a.attnum = ANY(i.indkey)
+          AND a.attisdropped = FALSE
+        WHERE n.nspname = 'public' AND c.relname = 'trees'
+          AND i.indisprimary
+          AND i.indnatts = 1
+          AND a.attname = 'id'
     ) THEN
-        RAISE EXCEPTION 'PRECONDITION_FAILED: public.trees.id is not primary key';
+        RAISE EXCEPTION 'PRECONDITION_FAILED: public.trees.id is not the sole primary key column';
     END IF;
 END $$;
 
@@ -114,9 +117,16 @@ DO $$ BEGIN
     IF EXISTS (
         SELECT 1 FROM information_schema.columns
         WHERE table_schema = 'public' AND table_name = 'trees' AND column_name = 'owner_id'
-          AND data_type NOT IN ('text', 'character varying', 'character')
     ) THEN
-        RAISE EXCEPTION 'TYPE_MISMATCH: public.trees.owner_id exists with incompatible type';
+        IF NOT EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_schema = 'public' AND table_name = 'trees' AND column_name = 'owner_id'
+              AND udt_schema = 'pg_catalog' AND udt_name = 'text'
+              AND is_nullable = 'YES'
+              AND column_default IS NULL
+        ) THEN
+            RAISE EXCEPTION 'TYPE_MISMATCH: public.trees.owner_id must be pg_catalog.text, nullable, no-dflt';
+        END IF;
     END IF;
 END $$;
 
@@ -124,9 +134,16 @@ DO $$ BEGIN
     IF EXISTS (
         SELECT 1 FROM information_schema.columns
         WHERE table_schema = 'public' AND table_name = 'trees' AND column_name = 'title'
-          AND data_type NOT IN ('text', 'character varying', 'character')
     ) THEN
-        RAISE EXCEPTION 'TYPE_MISMATCH: public.trees.title exists with incompatible type';
+        IF NOT EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_schema = 'public' AND table_name = 'trees' AND column_name = 'title'
+              AND udt_schema = 'pg_catalog' AND udt_name = 'text'
+              AND is_nullable = 'YES'
+              AND column_default IS NULL
+        ) THEN
+            RAISE EXCEPTION 'TYPE_MISMATCH: public.trees.title must be pg_catalog.text, nullable, no-dflt';
+        END IF;
     END IF;
 END $$;
 
@@ -134,9 +151,16 @@ DO $$ BEGIN
     IF EXISTS (
         SELECT 1 FROM information_schema.columns
         WHERE table_schema = 'public' AND table_name = 'trees' AND column_name = 'visibility'
-          AND data_type NOT IN ('text', 'character varying', 'character')
     ) THEN
-        RAISE EXCEPTION 'TYPE_MISMATCH: public.trees.visibility exists with incompatible type';
+        IF NOT EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_schema = 'public' AND table_name = 'trees' AND column_name = 'visibility'
+              AND udt_schema = 'pg_catalog' AND udt_name = 'text'
+              AND is_nullable = 'YES'
+              AND column_default IS NULL
+        ) THEN
+            RAISE EXCEPTION 'TYPE_MISMATCH: public.trees.visibility must be pg_catalog.text, nullable, no-dflt';
+        END IF;
     END IF;
 END $$;
 
@@ -144,9 +168,16 @@ DO $$ BEGIN
     IF EXISTS (
         SELECT 1 FROM information_schema.columns
         WHERE table_schema = 'public' AND table_name = 'trees' AND column_name = 'group_name'
-          AND data_type NOT IN ('text', 'character varying', 'character')
     ) THEN
-        RAISE EXCEPTION 'TYPE_MISMATCH: public.trees.group_name exists with incompatible type';
+        IF NOT EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_schema = 'public' AND table_name = 'trees' AND column_name = 'group_name'
+              AND udt_schema = 'pg_catalog' AND udt_name = 'text'
+              AND is_nullable = 'YES'
+              AND column_default IS NULL
+        ) THEN
+            RAISE EXCEPTION 'TYPE_MISMATCH: public.trees.group_name must be pg_catalog.text, nullable, no-dflt';
+        END IF;
     END IF;
 END $$;
 
@@ -154,9 +185,17 @@ DO $$ BEGIN
     IF EXISTS (
         SELECT 1 FROM information_schema.columns
         WHERE table_schema = 'public' AND table_name = 'trees' AND column_name = 'keywords'
-          AND data_type != 'ARRAY'
     ) THEN
-        RAISE EXCEPTION 'TYPE_MISMATCH: public.trees.keywords exists and is not ARRAY';
+        IF NOT EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_schema = 'public' AND table_name = 'trees' AND column_name = 'keywords'
+              AND data_type = 'ARRAY'
+              AND udt_schema = 'pg_catalog' AND udt_name = '_text'
+              AND is_nullable = 'YES'
+              AND column_default IS NULL
+        ) THEN
+            RAISE EXCEPTION 'TYPE_MISMATCH: public.trees.keywords must be pg_catalog._text (TEXT[]), nullable, no-dflt';
+        END IF;
     END IF;
 END $$;
 
@@ -164,10 +203,17 @@ DO $$ BEGIN
     IF EXISTS (
         SELECT 1 FROM information_schema.columns
         WHERE table_schema = 'public' AND table_name = 'trees' AND column_name = 'created_at'
-          AND data_type NOT IN ('timestamp with time zone', 'timestamp without time zone',
-                                'timestamptz', 'timestamp')
     ) THEN
-        RAISE EXCEPTION 'TYPE_MISMATCH: public.trees.created_at exists with incompatible type';
+        IF NOT EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_schema = 'public' AND table_name = 'trees' AND column_name = 'created_at'
+              AND data_type = 'timestamp with time zone'
+              AND udt_schema = 'pg_catalog' AND udt_name = 'timestamptz'
+              AND is_nullable = 'YES'
+              AND column_default IS NULL
+        ) THEN
+            RAISE EXCEPTION 'TYPE_MISMATCH: public.trees.created_at must be pg_catalog.timestamptz, nullable, no-dflt';
+        END IF;
     END IF;
 END $$;
 
@@ -175,10 +221,17 @@ DO $$ BEGIN
     IF EXISTS (
         SELECT 1 FROM information_schema.columns
         WHERE table_schema = 'public' AND table_name = 'trees' AND column_name = 'updated_at'
-          AND data_type NOT IN ('timestamp with time zone', 'timestamp without time zone',
-                                'timestamptz', 'timestamp')
     ) THEN
-        RAISE EXCEPTION 'TYPE_MISMATCH: public.trees.updated_at exists with incompatible type';
+        IF NOT EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_schema = 'public' AND table_name = 'trees' AND column_name = 'updated_at'
+              AND data_type = 'timestamp with time zone'
+              AND udt_schema = 'pg_catalog' AND udt_name = 'timestamptz'
+              AND is_nullable = 'YES'
+              AND column_default IS NULL
+        ) THEN
+            RAISE EXCEPTION 'TYPE_MISMATCH: public.trees.updated_at must be pg_catalog.timestamptz, nullable, no-dflt';
+        END IF;
     END IF;
 END $$;
 
@@ -253,9 +306,11 @@ DO $$ BEGIN
     IF NOT EXISTS (
         SELECT 1 FROM information_schema.columns
         WHERE table_schema = 'public' AND table_name = 'trees' AND column_name = 'owner_id'
-          AND data_type IN ('text', 'character varying', 'character')
+          AND udt_schema = 'pg_catalog' AND udt_name = 'text'
+          AND is_nullable = 'YES'
+          AND column_default IS NULL
     ) THEN
-        RAISE EXCEPTION 'POSTCONDITION_FAILED: owner_id absent or wrong type';
+        RAISE EXCEPTION 'POSTCONDITION_FAILED: public.trees.owner_id must be pg_catalog.text, nullable, no-dflt';
     END IF;
 END $$;
 
@@ -263,9 +318,11 @@ DO $$ BEGIN
     IF NOT EXISTS (
         SELECT 1 FROM information_schema.columns
         WHERE table_schema = 'public' AND table_name = 'trees' AND column_name = 'title'
-          AND data_type IN ('text', 'character varying', 'character')
+          AND udt_schema = 'pg_catalog' AND udt_name = 'text'
+          AND is_nullable = 'YES'
+          AND column_default IS NULL
     ) THEN
-        RAISE EXCEPTION 'POSTCONDITION_FAILED: title absent or wrong type';
+        RAISE EXCEPTION 'POSTCONDITION_FAILED: public.trees.title must be pg_catalog.text, nullable, no-dflt';
     END IF;
 END $$;
 
@@ -273,9 +330,11 @@ DO $$ BEGIN
     IF NOT EXISTS (
         SELECT 1 FROM information_schema.columns
         WHERE table_schema = 'public' AND table_name = 'trees' AND column_name = 'visibility'
-          AND data_type IN ('text', 'character varying', 'character')
+          AND udt_schema = 'pg_catalog' AND udt_name = 'text'
+          AND is_nullable = 'YES'
+          AND column_default IS NULL
     ) THEN
-        RAISE EXCEPTION 'POSTCONDITION_FAILED: visibility absent or wrong type';
+        RAISE EXCEPTION 'POSTCONDITION_FAILED: public.trees.visibility must be pg_catalog.text, nullable, no-dflt';
     END IF;
 END $$;
 
@@ -283,9 +342,11 @@ DO $$ BEGIN
     IF NOT EXISTS (
         SELECT 1 FROM information_schema.columns
         WHERE table_schema = 'public' AND table_name = 'trees' AND column_name = 'group_name'
-          AND data_type IN ('text', 'character varying', 'character')
+          AND udt_schema = 'pg_catalog' AND udt_name = 'text'
+          AND is_nullable = 'YES'
+          AND column_default IS NULL
     ) THEN
-        RAISE EXCEPTION 'POSTCONDITION_FAILED: group_name absent or wrong type';
+        RAISE EXCEPTION 'POSTCONDITION_FAILED: public.trees.group_name must be pg_catalog.text, nullable, no-dflt';
     END IF;
 END $$;
 
@@ -294,8 +355,11 @@ DO $$ BEGIN
         SELECT 1 FROM information_schema.columns
         WHERE table_schema = 'public' AND table_name = 'trees' AND column_name = 'keywords'
           AND data_type = 'ARRAY'
+          AND udt_schema = 'pg_catalog' AND udt_name = '_text'
+          AND is_nullable = 'YES'
+          AND column_default IS NULL
     ) THEN
-        RAISE EXCEPTION 'POSTCONDITION_FAILED: keywords absent or wrong type';
+        RAISE EXCEPTION 'POSTCONDITION_FAILED: public.trees.keywords must be pg_catalog._text (TEXT[]), nullable, no-dflt';
     END IF;
 END $$;
 
@@ -303,10 +367,12 @@ DO $$ BEGIN
     IF NOT EXISTS (
         SELECT 1 FROM information_schema.columns
         WHERE table_schema = 'public' AND table_name = 'trees' AND column_name = 'created_at'
-          AND data_type IN ('timestamp with time zone', 'timestamp without time zone',
-                            'timestamptz', 'timestamp')
+          AND data_type = 'timestamp with time zone'
+          AND udt_schema = 'pg_catalog' AND udt_name = 'timestamptz'
+          AND is_nullable = 'YES'
+          AND column_default IS NULL
     ) THEN
-        RAISE EXCEPTION 'POSTCONDITION_FAILED: created_at absent or wrong type';
+        RAISE EXCEPTION 'POSTCONDITION_FAILED: public.trees.created_at must be pg_catalog.timestamptz, nullable, no-dflt';
     END IF;
 END $$;
 
@@ -314,10 +380,12 @@ DO $$ BEGIN
     IF NOT EXISTS (
         SELECT 1 FROM information_schema.columns
         WHERE table_schema = 'public' AND table_name = 'trees' AND column_name = 'updated_at'
-          AND data_type IN ('timestamp with time zone', 'timestamp without time zone',
-                            'timestamptz', 'timestamp')
+          AND data_type = 'timestamp with time zone'
+          AND udt_schema = 'pg_catalog' AND udt_name = 'timestamptz'
+          AND is_nullable = 'YES'
+          AND column_default IS NULL
     ) THEN
-        RAISE EXCEPTION 'POSTCONDITION_FAILED: updated_at absent or wrong type';
+        RAISE EXCEPTION 'POSTCONDITION_FAILED: public.trees.updated_at must be pg_catalog.timestamptz, nullable, no-dflt';
     END IF;
 END $$;
 

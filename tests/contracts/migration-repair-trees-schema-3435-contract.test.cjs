@@ -20,6 +20,7 @@ const path = require('node:path');
 const ROOT = path.resolve(__dirname, '..', '..');
 const MIGRATION_PATH = path.join(ROOT, 'scripts/migration-repair-trees-schema-3435.sql');
 const EXISTING_METADATA_MIGRATION_PATH = path.join(ROOT, 'scripts/migration-add-tree-metadata.sql');
+const CLASSIFICATION_PATH = path.join(ROOT, 'tests/test-layer-classification.json');
 
 function readFile(filePath) {
   assert.ok(fs.existsSync(filePath), `File must exist at ${filePath}`);
@@ -302,7 +303,195 @@ test('3435 migration is unrelated to tree comment migration files', () => {
   }
 });
 
-// ─── 12. Idempotent add-if-absent for each column ───────────────────────────
+// ─── 13. UDT-level exact-type enforcement in preconditions ──────────────────
+
+test('3435 migration keywords type check requires pg_catalog._text, not just ARRAY', () => {
+  // The keywords type-mismatch check must verify udt_name = '_text'
+  // Reject integer[], varchar[], jsonb[], uuid[], etc.
+  const keywordsTypeBlock = sql.split(/END\s*\$\$\s*;/i).find(block =>
+    /KEY_MISMATCH.*keywords|TYPE_MISMATCH.*keywords/i.test(block)
+  );
+  assert.ok(keywordsTypeBlock, 'Must have a TYPE_MISMATCH block for keywords');
+  assert.ok(/_text|udt_name.*_text/i.test(keywordsTypeBlock),
+    'keywords type check must reference pg_catalog._text');
+});
+
+test('3435 migration created_at requires pg_catalog.timestamptz', () => {
+  const createdBlocks = sql.split(/END\s*\$\$\s*;/i).filter(block =>
+    /created_at/i.test(block) &&
+    /TYPE_MISMATCH|POSTCONDITION_FAILED/i.test(block)
+  );
+  for (const block of createdBlocks) {
+    assert.ok(/timestamptz|timestamp with time zone/i.test(block),
+      `created_at check block must reference timestamptz, got: ${block.slice(0, 100)}`);
+  }
+});
+
+test('3435 migration updated_at requires pg_catalog.timestamptz', () => {
+  const updatedBlocks = sql.split(/END\s*\$\$\s*;/i).filter(block =>
+    /updated_at/i.test(block) &&
+    /TYPE_MISMATCH|POSTCONDITION_FAILED/i.test(block)
+  );
+  for (const block of updatedBlocks) {
+    assert.ok(/timestamptz|timestamp with time zone/i.test(block),
+      `updated_at check block must reference timestamptz, got: ${block.slice(0, 100)}`);
+  }
+});
+
+test('3435 migration does not accept timestamp without time zone for timestamps', () => {
+  // The SQL must NOT allow 'timestamp without time zone' as a valid type
+  // for created_at or updated_at in any type-mismatch or postcondition check
+  const timestampBlocks = sql.split(/END\s*\$\$\s*;/i).filter(block =>
+    /created_at|updated_at/i.test(block) &&
+    /TYPE_MISMATCH|POSTCONDITION_FAILED/i.test(block)
+  );
+  for (const block of timestampBlocks) {
+    assert.equal(/without time zone/i.test(block), false,
+      `timestamp block must not accept timestamp without time zone`);
+    assert.equal(/'timestamp'(?!\s+with)/i.test(block), false,
+      `timestamp block must not accept bare 'timestamp'`);
+  }
+});
+
+test('3435 migration owner_id/title/visibility/group_name require exact pg_catalog.text, not varchar', () => {
+  const textCols = ['owner_id', 'title', 'visibility', 'group_name'];
+  const checkBlocks = sql.split(/END\s*\$\$\s*;/i).filter(block =>
+    textCols.some(c => block.includes(c)) &&
+    /TYPE_MISMATCH|POSTCONDITION_FAILED/i.test(block)
+  );
+  for (const block of checkBlocks) {
+    assert.ok(/udt_name\s*=\s*'text'/i.test(block) || /udt_schema\s*=\s*'pg_catalog'/i.test(block),
+      `Text-column check must require pg_catalog.text`);
+    // Must not accept character varying / varchar / char
+    assert.equal(/character varying/i.test(block), false,
+      `Text-column check must not accept character varying`);
+    assert.equal(/varchar/i.test(block), false,
+      `Text-column check must not accept varchar`);
+  }
+});
+
+// ─── 14. Existing-column nullable and no-default verification ────────────────
+
+test('3435 migration TYPE_MISMATCH blocks verify is_nullable = YES for all target columns', () => {
+  const targetCols = ['owner_id', 'title', 'visibility', 'group_name',
+    'keywords', 'created_at', 'updated_at'];
+  const typeMismatchBlocks = sql.split(/END\s*\$\$\s*;/i).filter(block =>
+    targetCols.some(c => block.includes(c)) &&
+    /TYPE_MISMATCH/i.test(block)
+  );
+  assert.equal(typeMismatchBlocks.length, 7,
+    'Must have exactly 7 TYPE_MISMATCH blocks (one per column)');
+  for (const block of typeMismatchBlocks) {
+    assert.ok(/is_nullable\s*=\s*'YES'/i.test(block),
+      'TYPE_MISMATCH block must require is_nullable = YES');
+  }
+});
+
+test('3435 migration TYPE_MISMATCH blocks verify column_default IS NULL for all target columns', () => {
+  const targetCols = ['owner_id', 'title', 'visibility', 'group_name',
+    'keywords', 'created_at', 'updated_at'];
+  const typeMismatchBlocks = sql.split(/END\s*\$\$\s*;/i).filter(block =>
+    targetCols.some(c => block.includes(c)) &&
+    /TYPE_MISMATCH/i.test(block)
+  );
+  assert.equal(typeMismatchBlocks.length, 7,
+    'Must have exactly 7 TYPE_MISMATCH blocks (one per column)');
+  for (const block of typeMismatchBlocks) {
+    assert.ok(/column_default\s+IS\s+NULL/i.test(block),
+      'TYPE_MISMATCH block must require column_default IS NULL');
+  }
+});
+
+// ─── 15. Postcondition nullable and no-default verification ──────────────────
+
+test('3435 migration postcondition blocks verify is_nullable = YES for all 7 columns', () => {
+  const targetCols = ['owner_id', 'title', 'visibility', 'group_name',
+    'keywords', 'created_at', 'updated_at'];
+  const postconditionBlocks = sql.split(/END\s*\$\$\s*;/i).filter(block =>
+    targetCols.some(c => block.includes(c)) &&
+    /POSTCONDITION_FAILED/i.test(block)
+  );
+  assert.equal(postconditionBlocks.length, 7,
+    'Must have exactly 7 POSTCONDITION_FAILED blocks (one per column)');
+  for (const block of postconditionBlocks) {
+    assert.ok(/is_nullable\s*=\s*'YES'/i.test(block),
+      'Postcondition block must require is_nullable = YES');
+  }
+});
+
+test('3435 migration postcondition blocks verify column_default IS NULL for all 7 columns', () => {
+  const targetCols = ['owner_id', 'title', 'visibility', 'group_name',
+    'keywords', 'created_at', 'updated_at'];
+  const postconditionBlocks = sql.split(/END\s*\$\$\s*;/i).filter(block =>
+    targetCols.some(c => block.includes(c)) &&
+    /POSTCONDITION_FAILED/i.test(block)
+  );
+  assert.equal(postconditionBlocks.length, 7,
+    'Must have exactly 7 POSTCONDITION_FAILED blocks (one per column)');
+  for (const block of postconditionBlocks) {
+    assert.ok(/column_default\s+IS\s+NULL/i.test(block),
+      'Postcondition block must require column_default IS NULL');
+  }
+});
+
+// ─── 16. PK validation is schema/table-safe, single-column, exact id ────────
+
+test('3435 migration PK precondition avoids constraint_name join (schema/table-safe)', () => {
+  // Must not use constraint_name-based join which could match wrong schema/constraint
+  assert.equal(/constraint_name\s*=\s*kcu\.constraint_name/i.test(clean), false,
+    'PK precondition must not use constraint_name join');
+});
+
+test('3435 migration PK precondition requires exactly one PK column', () => {
+  assert.ok(/indnatts\s*=\s*1/i.test(sql),
+    'PK precondition must verify exactly one PK column via indnatts = 1');
+  assert.ok(/indisprimary/i.test(sql),
+    'PK precondition must use indisprimary');
+});
+
+test('3435 migration PK precondition requires the single PK column to be id', () => {
+  assert.ok(/attname\s*=\s*'id'/i.test(sql),
+    'PK precondition must require the PK column is id');
+});
+
+// ─── 17. Test-layer inventory contract ──────────────────────────────────────
+
+test('3435 migration contract appears in test-layer classification exactly once', () => {
+  const classification = readFile(CLASSIFICATION_PATH);
+  const classificationJson = JSON.parse(classification);
+  const entries = classificationJson.entries;
+  const matchingEntries = entries.filter(e =>
+    e.path === 'tests/contracts/migration-repair-trees-schema-3435-contract.test.cjs'
+  );
+  assert.equal(matchingEntries.length, 1,
+    'Must appear exactly once in test-layer classification');
+});
+
+test('3435 migration contract test-layer classification layer is SOURCE_STATIC', () => {
+  const classification = readFile(CLASSIFICATION_PATH);
+  const classificationJson = JSON.parse(classification);
+  const entry = classificationJson.entries.find(e =>
+    e.path === 'tests/contracts/migration-repair-trees-schema-3435-contract.test.cjs'
+  );
+  assert.ok(entry, 'Must have an entry in classification');
+  assert.equal(entry.layer, 'SOURCE_STATIC',
+    'Layer must be SOURCE_STATIC');
+});
+
+test('3435 migration contract test-layer classification capabilities is an empty array', () => {
+  const classification = readFile(CLASSIFICATION_PATH);
+  const classificationJson = JSON.parse(classification);
+  const entry = classificationJson.entries.find(e =>
+    e.path === 'tests/contracts/migration-repair-trees-schema-3435-contract.test.cjs'
+  );
+  assert.ok(entry, 'Must have an entry in classification');
+  assert.ok(Array.isArray(entry.capabilities),
+    'capabilities must be an array');
+  assert.equal(entry.capabilities.length, 0,
+    'capabilities must be empty');
+});
+
+// ─── 18. Idempotent add-if-absent for each column ───────────────────────────
 
 test('3435 migration uses IF NOT EXISTS guard per column', () => {
   const guardedCols = [
