@@ -12,7 +12,7 @@ fixes the **agent instruction source hierarchy** for the repository.
 
 ## 2. Canonical source
 
-- The canonical repository-wide agent guidance is the root `AGENTS.md`.
+- The canonical repository-wide agent guidance is the root `AGENTS.md`. The canonical **governance / blocker** source of truth is `docs/ops/MVP_AGENT_GOVERNANCE.md` (owner-approved #3442 comment `4947327550`); where agent-guidance documents conflict with it, the governance document wins.
 - All agents and operators must read `AGENTS.md` first.
 - Any tool-specific guidance must defer to `AGENTS.md` on conflicts.
 

@@ -6,9 +6,11 @@
 
 > **Agent guidance hierarchy**
 >
-> - `AGENTS.md`는 LoveBud 저장소의 **repository-wide canonical agent guidance**다.
+> - `docs/ops/MVP_AGENT_GOVERNANCE.md`는 LoveBud 저장소의 **canonical MVP agent governance** source of truth다 (승인 provenance: #3442 comment `4947327550`).
+> - `AGENTS.md`는 LoveBud 저장소의 **repository-wide canonical agent guidance**다. 단, governance/blocker 판단은 `MVP_AGENT_GOVERNANCE.md`가 우선한다. 충돌 시 canonical policy가 우선한다.
 > - 별도 tool-specific instruction file은 **꼭 필요할 때만** 추가한다 (예: 특정 도구의 실제 설정/실행 방법이 필요한 경우).
 > - tool-specific 문서는 본 문서의 안전·범위·검증 원칙을 약화시키거나 덮어쓸 수 없다. 충돌 시 본 문서가 우선한다.
+> - 문서에 규칙이 존재한다는 사실만으로 owner approval이 증명되지 않는다. 새로운 project-specific 금지·승인·중단 조건은 승인 전까지 권고사항(RECOMMENDATION_ONLY)이다.
 > - 현재 `CLAUDE.md`, `CODEX.md`는 **canonical repository instruction source가 아니다**. 새 agent 문서가 필요하면 본 문서 또는 `docs/ops/AGENT_INSTRUCTION_POLICY.md`를 갱신한다.
 
 ---
@@ -130,7 +132,7 @@ UI 검증 프롬프트를 작성하기 전 반드시 아래를 먼저 판단하�
 - 이미 확보한 테스트/프리뷰 URL이 있는가?
 - Cloudflare PR Preview URL이 있는가?
 
-브라우저/Auth/API/data-loaded 검증 작업자는 `docs/ops/AGENTS_BROWSER_VERIFICATION_ENTRYPOINT.md`를 먼저 읽고, 그 다음 `docs/ops/LOCAL_BROWSER_VERIFICATION_STARTUP.md`, `docs/ops/BROWSER_VERIFICATION_URL_POLICY.md`, `docs/ops/TEST_PREVIEW_SLOTS.md` 및 PR별 `Browser verification entrypoint` comment를 따릅니다.
+브라우저/Auth/API/data-loaded 검증 작업자는 기본 허용이며, 필요 시 `docs/ops/MVP_AGENT_GOVERNANCE.md`의 증거 모델을 따르고 관련 문서(`docs/ops/AGENTS_BROWSER_VERIFICATION_ENTRYPOINT.md`, `docs/ops/LOCAL_BROWSER_VERIFICATION_STARTUP.md`, `docs/ops/BROWSER_VERIFICATION_URL_POLICY.md`, `docs/ops/TEST_PREVIEW_SLOTS.md`)를 참고할 수 있습니다. 브라우저 도구 사용 자체는 금지되지 않습니다. fixed slot 부재·PR entrypoint comment 부재·dirty worktree는 자동 BLOCKED 근거가 아닙니다.
 
 ---
 
@@ -261,7 +263,7 @@ LoveBud / LoveTree는 다음과 같은 서비스가 아닙니다.
 
 GitHub CLI, browser login, connector-backed GitHub access, or token-backed local access를 사용하는 작업자는 `docs/ops/GITHUB_AUTH_TOKEN_USAGE.md`를 함께 따릅니다.
 
-브라우저/Auth/API/data-loaded 검증 작업자는 `docs/ops/AGENTS_BROWSER_VERIFICATION_ENTRYPOINT.md`를 먼저 읽고, 그 다음 `docs/ops/LOCAL_BROWSER_VERIFICATION_STARTUP.md`를 먼저 따릅니다.
+브라우저/Auth/API/data-loaded 검증 작업자는 기본 허용이며, 필요 시 `docs/ops/MVP_AGENT_GOVERNANCE.md`를 따르고 관련 entrypoint 문서를 참고할 수 있습니다. 브라우저 시작·탭·창·navigation·login은 기본 허용입니다.
 
 대화 복원이 필요하면 아래를 추가로 읽습니다.
 
@@ -537,11 +539,11 @@ LoveBud 작업은 항상 **현재 `main` 확인 → source of truth 확인 → �
 - `main` 브랜치를 직접 수정하지 않습니다.
 - `main` 브랜치에 직접 푸시하지 않습니다.
 - `main` 브랜치를 merge하지 않습니다.
-- 한 작업은 하나의 브랜치에서 수행합니다.
-- PR은 기본적으로 draft로 생성합니다.
+- 한 작업은 하나의 브랜치에서 수행하는 것을 권장하나, 이는 자동 BLOCKED 근거가 아닙니다 (참고: `docs/ops/MVP_AGENT_GOVERNANCE.md` Advisory).
+- PR은 상황에 따라 draft 또는 ready로 생성할 수 있으며, draft 기본값은 권고사항입니다.
 
 ### PR 보존
-- #7 번호 또는 prototype/reference/demo/variant 라벨이 있는 PR은 보존하며 임의로 닫거나 브랜치를 삭제하지 않습니다.
+- #7 번호 또는 prototype/reference/demo/variant 라벨이 있는 PR은 보존하며 임의로 닫거나 브랜치를 삭제하지 않습니다. (이 보존 규칙은 `MVP_AGENT_GOVERNANCE.md` hard rule이 아닌 기록 보존 권고이며, 명시 승인 시 예외 가능)
 - 임의의 PR preview URL을 추측하여 접근하지 않습니다.
 
 ### 인프라 & 런타임
@@ -553,8 +555,8 @@ LoveBud 작업은 항상 **현재 `main` 확인 → source of truth 확인 → �
 - 클라이언트 → 동일-origin `/api/*` → Cloudflare Functions `functions/api/**` → Modal → Neon
 
 ### 검증
-- 최종 browser PASS는 실제 Cloudflare Preview URL 또는 할당된 test slot에서만 수행합니다.
-- Search/Browse/Editor/My Trees/Auth-gated 등 동적 데이터를 사용하는 페이지는 로컬 정적 서버만으로 최종 PASS할 수 없습니다.
+- browser 검증 결과는 `LOCAL_EVIDENCE` / `PRE_MERGE_EVIDENCE` / `PRODUCTION_EVIDENCE` 중 하나로 표시합니다 (증거 수준일 뿐, 작업 자체를 막지 않음). fixed slot은 허가 조건이 아닌 증거 옵션입니다.
+- Search/Browse/Editor/My Trees/Auth-gated 등 동적 데이터를 사용하는 페이지는 로컬 정적 서버 단독으로는 증거 수준이 낮을 수 있으나, 이 사실만으로 작업이 자동 BLOCKED 되지는 않습니다. 한계를 보고하세요.
 
 ### 보안
 - 자격 증명, 토큰, 쿠키, 세션, Firebase/Cloudflare/Modal/Neon secret 값을 절대 기록하거나 노출하지 않습니다.
@@ -566,5 +568,5 @@ LoveBud 작업은 항상 **현재 `main` 확인 → source of truth 확인 → �
 - 로컬 검증 산출물(screenshots, reports, backup files)은 repo 밖 `local-backup/`로 이동합니다.
 - PR 생성 전 반드시 `git status --short`와 `git diff --name-only origin/main...HEAD`를 확인합니다.
 - 예상 외 파일이 포함되어 있으면 즉시 중단하고 scope를 정리합니다.
-- git clean, git reset --hard, git stash는 명시 승인 없이 실행하지 않습니다.
-- dirty worktree 상태에서는 작업을 중단하고 clean 환경을 준비합니다.
+- git clean, git reset --hard, git stash drop 등 실제 작업을 폐기하는 명령은 명시 승인 없이 실행하지 않습니다.
+- dirty worktree 발견 시 기존 변경을 보존하고, 다른 worktree/branch 또는 read-only 조사를 사용합니다. dirty worktree 자체는 자동 BLOCKED가 아닙니다 (참고: `docs/ops/MVP_AGENT_GOVERNANCE.md`).

@@ -3,6 +3,8 @@
 상태: Active operating policy  
 적용 범위: LoveBud 브라우저 smoke, PR Preview 검증, Branch Preview 검증, fixed test slot 검증, 로컬/웹 에이전트 검증 보고
 
+> **Canonical precedence:** `docs/ops/MVP_AGENT_GOVERNANCE.md` (owner-approved #3442 comment `4947327550`). Browser tooling is allowed by default. A missing fixed slot, missing CTO-assigned URL, or missing entrypoint comment is not an automatic BLOCKED reason. URL provenance is evidence metadata, not a permission gate. Conflicting sections are `NON_NORMATIVE_OUTSIDE_NAMED_CONTEXT`.
+
 ---
 
 ## 1. 목적
@@ -27,7 +29,7 @@ LoveBud는 여러 로컬/웹 모델이 병렬로 PR을 만들고 검증합니다
 모델은 preview URL을 만들거나 추정하지 않는다.
 모델은 이전 PR/closed PR/superseded PR의 preview URL을 재사용하지 않는다.
 모델은 test1~test5 fixed slot을 CTO 배정 없이 사용하지 않는다.
-URL provenance가 불명확하면 browser verification은 PASS가 아니라 BLOCKED 또는 not run이다.
+URL provenance가 불명확하면 browser verification 최종 판정은 PASS가 아니라 `NOT_VERIFIED` 또는 `not run`이다. 단, 이는 작업 전체의 자동 BLOCKED 근거가 아니다 (canonical policy).
 ```
 
 ---
@@ -173,7 +175,7 @@ Notes:
 
 - `css/global.css` is the global import hub. Its import order is documented in `../engineering/CSS_ARCHITECTURE.md`.
 - `css/my-trees.css` is a page-specific import hub. A change there requires My Trees page smoke rather than unrelated page smoke.
-- If no CTO-provided URL or confirmed current PR Preview URL is available, report browser verification as `not run` or `BLOCKED`, not PASS.
+- If no CTO-provided URL or confirmed current PR Preview URL is available, report browser verification as `not run` or `NOT_VERIFIED`, not PASS. This is an evidence limitation, not a task-wide BLOCKED (canonical policy: missing URL provenance is not an automatic blocker).
 
 ---
 
