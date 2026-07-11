@@ -8,6 +8,30 @@
 
 ---
 
+## Supersession and precedence
+
+This document is the canonical source of truth for current LoveBud
+publication, privacy, tree visibility, private storage, and Browse/Search
+eligibility decisions.
+
+(이 문서는 현재 LoveBud 공개/비공개, tree visibility, private storage, 그리고 Browse/Search
+소개 자격 판단의 유일한 canonical 근거입니다.)
+
+For current product, incident, migration, recovery, API, runtime, and UX
+decisions, this document supersedes:
+
+- `tree-visibility-default-and-control-placement-decision.md`
+- `VISIBILITY_AND_PRIVATE_STORAGE_POLICY_REVIEW.md`
+
+Those documents are retained only as historical decision/audit provenance.
+Their former private-first observations must not override this canonical
+public-first policy.
+
+(위 두 문서는 역사적 결정/감사 기록(provenance)으로만 보존됩니다. 과거의 private-first
+관찰은 이 canonical public-first 정책을 무시하거나 덮어쓰는 데 쓰일 수 없습니다.)
+
+---
+
 ## 1. Canonical policy summary
 
 1. **New trees default to public.**
