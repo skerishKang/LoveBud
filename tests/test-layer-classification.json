@@ -1613,6 +1613,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/legacy-tree-entity-repair-package-contract.test.cjs",
+      "layer": "EXECUTED_REAL_LOCAL",
+      "rationale": "Executes the scripts/prepare-legacy-tree-entity-repair.cjs repair package in a local process with synthetic external fixture files; validates provenance, preflight, metadata, aggregate, hash, CLI, and runbook assertions against the script stdout/stderr/exitCode. No real external system, DB connection, browser, or production resource used.",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/localization-key-display-contract.test.cjs",
       "layer": "EXECUTED_FAKE",
       "rationale": "Reads production module source and executes it in a local process with injected fake/mock/stub dependencies (e.g., vm context with fake DOM or mocked fetch/localStorage); no real external system or production resource used.",
