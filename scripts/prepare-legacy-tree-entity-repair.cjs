@@ -1,187 +1,335 @@
 #!/usr/bin/env node
 /**
- * LoveBud — Legacy Orphan Tree Entity Repair Package
- * Issue #3455
+ * LoveBud — Legacy Orphan Tree Entity Repair Package (corrected)
+ * Issue #3455 / PR #3456
  *
- * This script validates and dry-runs a private-input repair package for orphan
- * tree entities identified by the #3441 browser recovery audit.
+ * Private-input validation, dry-run, and plan preparation for orphan tree
+ * entities identified by the #3441 browser recovery audit.
  *
- * Required modes (--validate / --dry-run):
- *   --validate   Validate the input JSON schema and business rules only
- *   --dry-run    Validate + print aggregate stats (no raw values, no DB writes)
+ * Modes:
+ *   --validate <mapping.json>
+ *   --dry-run <mapping.json> --preflight <preflight.json>
+ *   --prepare-plan <mapping.json> --preflight <preflight.json> --out <plan.json>
  *
  * Safety guarantees:
- *   - Input must be from a repository-external path
- *   - Production apply is NOT available without explicit separate approval
- *   - No raw tree ID / owner ID / title is printed in output
- *   - No dependent table mutation (memories, social, etc.)
- *   - Existing entity IDs are rejected
- *   - Owner inference is prohibited
- *   - TEXT ID preservation is enforced
- *   - Public-first default, private only with authoritative evidence
- *
- * Usage:
- *   node scripts/prepare-legacy-tree-entity-repair.cjs --validate /path/to/input.json
- *   node scripts/prepare-legacy-tree-entity-repair.cjs --dry-run /path/to/input.json
+ *   - All inputs/outputs must be repository-external (symlink-safe check)
+ *   - No raw treeId, ownerId, title, or payload values in output
+ *   - Duplicate/conflict errors use index+code only (no raw values)
+ *   - Owner inference from memory/social data is prohibited
+ *   - --apply is unconditionally rejected before any input is read
+ *   - TEXT IDs are preserved exactly (UUID shape is valid TEXT)
+ *   - Public-first default; private requires explicit evidence classification
+ *   - Browse eligibility separated from tree entity identity
  */
 
 const fs = require('node:fs');
 const path = require('node:path');
+const crypto = require('node:crypto');
 
 // ─── Constants ─────────────────────────────────────────────────────────────
 
+const PACKAGE_VERSION = '1.0.0';
 const SUPPORTED_SCHEMA_VERSION = 1;
 const REPO_ROOT = path.resolve(__dirname, '..');
-const ALLOWED_VISIBILITY_VALUES = ['public', 'private'];
-const EXTERNAL_PATH_GUARD_MESSAGE = 'Input path must be outside the repository directory';
 
-// ─── Schema ────────────────────────────────────────────────────────────────
+const ALLOWED_SOURCE_CLASSIFICATIONS = [
+  'AUTHORITATIVE_BROWSER_RECOVERY_SOURCE_FOUND',
+  'PARTIAL_BROWSER_RECOVERY_SOURCE_FOUND',
+];
 
-/**
- * Expected input JSON schema:
- *
- * {
- *   "schemaVersion": 1,
- *   "sourceClassification": "AUTHORITATIVE_BROWSER_RECOVERY_SOURCE_FOUND",
- *   "records": [
- *     {
- *       "treeId": "synthetic-tree-001",       // TEXT, original ID
- *       "ownerId": "synthetic-owner-001",      // Authoritative owner
- *       "title": "Synthetic Recovery Test Tree", // Original or reconstructed title
- *       "visibility": "public",                // 'public' or 'private'
- *       "groupName": null,                     // Optional group label
- *       "keywords": [],                        // Optional search keywords
- *       "createdAt": "2025-01-01T00:00:00.000Z",
- *       "updatedAt": "2025-01-02T00:00:00.000Z"
- *     }
- *   ]
- * }
- */
+const REJECTED_SOURCE_CLASSIFICATIONS = [
+  'STALE_OR_CONFLICTING_BROWSER_RECOVERY_SOURCE',
+  'NO_BROWSER_RECOVERY_DATA_FOUND',
+  'BLOCKED_PRIVATE_BROWSER_ACCESS',
+  'FABRICATED',
+  'FALLBACK',
+];
+
+const ALLOWED_VISIBILITY = ['public', 'private'];
+
+const ALLOWED_PRIVATE_EVIDENCE = [
+  'PLUS_ENTITLEMENT_CONFIRMED',
+  'GRANDFATHERED_PRIVATE_CONFIRMED',
+];
+
+const REQUIRED_PROVENANCE = 'AUTHORITATIVE_SERVER_RETURNED_FIELD';
+
+const MAX_TREE_ID_LENGTH = 1024;
+const MAX_OWNER_ID_LENGTH = 1024;
+const MAX_TITLE_LENGTH = 4096;
+const MAX_KEYWORD_LENGTH = 256;
+const MAX_KEYWORDS_COUNT = 50;
+
+// ─── Path safety ───────────────────────────────────────────────────────────
+
+function resolveReal(p) {
+  try {
+    return fs.realpathSync(p);
+  } catch {
+    return path.resolve(p);
+  }
+}
+
+function isParentOf(parent, child) {
+  const relative = path.relative(parent, child);
+  return relative !== '' && !relative.startsWith('..') && !path.isAbsolute(relative);
+}
+
+function isExternalPath(inputPath, allowMissing) {
+  let resolved;
+  try {
+    resolved = resolveReal(inputPath);
+  } catch {
+    if (allowMissing) {
+      // For output: parent directory must exist and be external
+      const parent = resolveReal(path.dirname(inputPath));
+      return !isParentOf(REPO_ROOT, parent) && parent !== REPO_ROOT;
+    }
+    return false;
+  }
+
+  // Must be outside repo root
+  if (isParentOf(REPO_ROOT, resolved) || resolved === REPO_ROOT) {
+    return false;
+  }
+
+  // On Windows: case-insensitive comparison
+  const resolvedLower = resolved.toLowerCase();
+  const repoLower = path.resolve(REPO_ROOT).toLowerCase();
+  if (resolvedLower.startsWith(repoLower + path.sep.toLowerCase()) || resolvedLower === repoLower) {
+    return false;
+  }
+
+  // Check for symlink pointing into repo
+  try {
+    const stat = fs.lstatSync(inputPath);
+    if (stat.isSymbolicLink()) {
+      return false;
+    }
+  } catch {
+    // stat failure is OK for non-existent output
+    if (!allowMissing) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+function checkExternalWithSymlinkGuard(inputPath, label) {
+  if (!isExternalPath(inputPath, false)) {
+    console.error(`❌ ${label}: Input path must be outside the repository directory`);
+    process.exit(1);
+  }
+  // Symlink guard: if lstat says symlink, reject
+  try {
+    const stat = fs.lstatSync(inputPath);
+    if (stat.isSymbolicLink()) {
+      console.error(`❌ ${label}: Path is a symlink pointing into repository`);
+      process.exit(1);
+    }
+  } catch {
+    // File might not exist yet for output pre-check
+  }
+}
+
+function checkOutputPathExternal(outputPath) {
+  const parentDir = path.dirname(path.resolve(outputPath));
+  if (!isExternalPath(parentDir, true)) {
+    console.error('❌ Output parent directory must be outside the repository');
+    process.exit(1);
+  }
+  // If output already exists and is a symlink, reject
+  try {
+    const stat = fs.lstatSync(outputPath);
+    if (stat.isSymbolicLink()) {
+      console.error('❌ Output path is a symlink');
+      process.exit(1);
+    }
+  } catch {
+    // OK — output doesn't exist yet
+  }
+}
 
 // ─── Validation helpers ────────────────────────────────────────────────────
 
-class ValidationError extends Error {
-  constructor(message, code) {
-    super(message);
-    this.name = 'ValidationError';
-    this.code = code;
-  }
+function isBlank(s) {
+  return typeof s === 'string' && s.trim().length === 0;
 }
 
-function isExternalPath(inputPath) {
-  const resolved = path.resolve(inputPath);
-  const repoResolved = path.resolve(REPO_ROOT);
-  // Must be outside the repo root
-  return !resolved.startsWith(repoResolved + path.sep) && resolved !== repoResolved;
+function escapeRegExp(s) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-function validateInput(input) {
+function validateMapping(mapping) {
   const errors = [];
 
-  // 1. Must be an object
-  if (!input || typeof input !== 'object' || Array.isArray(input)) {
-    errors.push({ field: 'root', message: 'Input must be a JSON object' });
+  if (!mapping || typeof mapping !== 'object' || Array.isArray(mapping)) {
+    errors.push({ index: null, field: 'root', code: 'MUST_BE_OBJECT' });
     return errors;
   }
 
-  // 2. schemaVersion
-  if (!input.schemaVersion) {
-    errors.push({ field: 'schemaVersion', message: 'Missing schemaVersion' });
-  } else if (input.schemaVersion !== SUPPORTED_SCHEMA_VERSION) {
-    errors.push({ field: 'schemaVersion', message: `Unsupported schema version: ${input.schemaVersion}. Supported: ${SUPPORTED_SCHEMA_VERSION}` });
+  // schemaVersion
+  if (mapping.schemaVersion === undefined || mapping.schemaVersion === null) {
+    errors.push({ index: null, field: 'schemaVersion', code: 'MISSING_SCHEMA_VERSION' });
+  } else if (mapping.schemaVersion !== SUPPORTED_SCHEMA_VERSION) {
+    errors.push({ index: null, field: 'schemaVersion', code: 'UNSUPPORTED_SCHEMA_VERSION' });
   }
 
-  // 3. sourceClassification
-  if (!input.sourceClassification) {
-    errors.push({ field: 'sourceClassification', message: 'Missing sourceClassification' });
-  } else if (input.sourceClassification === 'FABRICATED' || input.sourceClassification === 'FALLBACK') {
-    errors.push({ field: 'sourceClassification', message: `Fabricated/fallback source classification is rejected: ${input.sourceClassification}` });
+  // sourceClassification
+  if (!mapping.sourceClassification) {
+    errors.push({ index: null, field: 'sourceClassification', code: 'MISSING_SOURCE_CLASSIFICATION' });
+  } else if (REJECTED_SOURCE_CLASSIFICATIONS.includes(mapping.sourceClassification)) {
+    errors.push({ index: null, field: 'sourceClassification', code: 'REJECTED_SOURCE_CLASSIFICATION' });
+  } else if (!ALLOWED_SOURCE_CLASSIFICATIONS.includes(mapping.sourceClassification)) {
+    errors.push({ index: null, field: 'sourceClassification', code: 'UNKNOWN_SOURCE_CLASSIFICATION' });
   }
 
-  // 4. records must be a non-empty array
-  if (!Array.isArray(input.records)) {
-    errors.push({ field: 'records', message: 'records must be an array' });
+  // mappingArtifactSha256
+  if (mapping.mappingArtifactSha256 !== undefined &&
+      !/^[0-9a-f]{64}$/i.test(mapping.mappingArtifactSha256)) {
+    errors.push({ index: null, field: 'mappingArtifactSha256', code: 'INVALID_ARTIFACT_HASH' });
+  }
+
+  // records
+  if (!Array.isArray(mapping.records)) {
+    errors.push({ index: null, field: 'records', code: 'MUST_BE_ARRAY' });
     return errors;
   }
-  if (input.records.length === 0) {
-    errors.push({ field: 'records', message: 'records array must not be empty' });
+  if (mapping.records.length === 0) {
+    errors.push({ index: null, field: 'records', code: 'EMPTY_ARRAY' });
     return errors;
   }
 
-  // 5. Validate each record
-  const seenIds = new Set();
-  input.records.forEach((record, idx) => {
-    const prefix = `records[${idx}]`;
+  const seenIds = new Map();
 
+  mapping.records.forEach((record, idx) => {
     // treeId
     if (!record.treeId) {
-      errors.push({ field: `${prefix}.treeId`, message: 'Missing treeId' });
+      errors.push({ index: idx, field: 'treeId', code: 'MISSING_TREE_ID' });
     } else if (typeof record.treeId !== 'string') {
-      errors.push({ field: `${prefix}.treeId`, message: 'treeId must be a string (TEXT)' });
+      errors.push({ index: idx, field: 'treeId', code: 'INVALID_TREE_ID_TYPE' });
+    } else if (isBlank(record.treeId)) {
+      errors.push({ index: idx, field: 'treeId', code: 'BLANK_TREE_ID' });
+    } else if (record.treeId.length > MAX_TREE_ID_LENGTH) {
+      errors.push({ index: idx, field: 'treeId', code: 'TREE_ID_TOO_LONG' });
+    } else if (/[\x00-\x1f]/.test(record.treeId)) {
+      errors.push({ index: idx, field: 'treeId', code: 'CONTROL_CHAR_IN_TREE_ID' });
     } else {
-      // Duplicate check
+      // Duplicate check — no raw ID in error
       if (seenIds.has(record.treeId)) {
-        errors.push({ field: `${prefix}.treeId`, message: `Duplicate treeId: ${record.treeId}` });
-      }
-      seenIds.add(record.treeId);
-
-      // TEXT compatibility: must not look like a UUID (original TEXT IDs only)
-      // This is a heuristic - actual TEXT IDs may vary
-      if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(record.treeId)) {
-        errors.push({ field: `${prefix}.treeId`, message: 'treeId appears to be a UUID, not a TEXT-compatible ID. Original TEXT ID required.' });
+        errors.push({ index: idx, field: 'treeId', code: 'DUPLICATE_TREE_ID' });
+      } else {
+        seenIds.set(record.treeId, idx);
       }
     }
 
     // ownerId
     if (!record.ownerId) {
-      errors.push({ field: `${prefix}.ownerId`, message: 'Missing ownerId' });
+      errors.push({ index: idx, field: 'ownerId', code: 'MISSING_OWNER_ID' });
     } else if (typeof record.ownerId !== 'string') {
-      errors.push({ field: `${prefix}.ownerId`, message: 'ownerId must be a string' });
+      errors.push({ index: idx, field: 'ownerId', code: 'INVALID_OWNER_ID_TYPE' });
+    } else if (isBlank(record.ownerId)) {
+      errors.push({ index: idx, field: 'ownerId', code: 'BLANK_OWNER_ID' });
+    } else if (record.ownerId.length > MAX_OWNER_ID_LENGTH) {
+      errors.push({ index: idx, field: 'ownerId', code: 'OWNER_ID_TOO_LONG' });
     }
 
     // title
     if (!record.title) {
-      errors.push({ field: `${prefix}.title`, message: 'Missing title' });
+      errors.push({ index: idx, field: 'title', code: 'MISSING_TITLE' });
     } else if (typeof record.title !== 'string') {
-      errors.push({ field: `${prefix}.title`, message: 'title must be a string' });
+      errors.push({ index: idx, field: 'title', code: 'INVALID_TITLE_TYPE' });
+    } else if (isBlank(record.title)) {
+      errors.push({ index: idx, field: 'title', code: 'BLANK_TITLE' });
+    } else if (record.title.length > MAX_TITLE_LENGTH) {
+      errors.push({ index: idx, field: 'title', code: 'TITLE_TOO_LONG' });
+    }
+
+    // provenance
+    if (record.ownerProvenance && record.ownerProvenance !== REQUIRED_PROVENANCE) {
+      errors.push({ index: idx, field: 'ownerProvenance', code: 'INVALID_OWNER_PROVENANCE' });
+    }
+    if (record.titleProvenance && record.titleProvenance !== REQUIRED_PROVENANCE) {
+      errors.push({ index: idx, field: 'titleProvenance', code: 'INVALID_TITLE_PROVENANCE' });
     }
 
     // visibility
     if (!record.visibility) {
-      errors.push({ field: `${prefix}.visibility`, message: 'Missing visibility' });
-    } else if (!ALLOWED_VISIBILITY_VALUES.includes(record.visibility)) {
-      errors.push({ field: `${prefix}.visibility`, message: `Invalid visibility: ${record.visibility}. Allowed: ${ALLOWED_VISIBILITY_VALUES.join(', ')}` });
+      errors.push({ index: idx, field: 'visibility', code: 'MISSING_VISIBILITY' });
+    } else if (!ALLOWED_VISIBILITY.includes(record.visibility)) {
+      errors.push({ index: idx, field: 'visibility', code: 'INVALID_VISIBILITY' });
     } else if (record.visibility === 'private') {
-      // Private without authoritative private evidence
-      if (!record.explicitPrivateEvidence) {
-        errors.push({ field: `${prefix}.visibility`, message: 'Private visibility requires explicit authoritative private evidence (explicitPrivateEvidence field)' });
+      if (!record.privateEvidenceClassification) {
+        errors.push({ index: idx, field: 'privateEvidenceClassification', code: 'MISSING_PRIVATE_EVIDENCE' });
+      } else if (!ALLOWED_PRIVATE_EVIDENCE.includes(record.privateEvidenceClassification)) {
+        errors.push({ index: idx, field: 'privateEvidenceClassification', code: 'INVALID_PRIVATE_EVIDENCE' });
+      }
+    }
+
+    // groupName
+    if (record.groupName !== undefined && record.groupName !== null &&
+        typeof record.groupName !== 'string') {
+      errors.push({ index: idx, field: 'groupName', code: 'INVALID_GROUP_NAME_TYPE' });
+    }
+
+    // keywords
+    if (record.keywords !== undefined) {
+      if (!Array.isArray(record.keywords)) {
+        errors.push({ index: idx, field: 'keywords', code: 'INVALID_KEYWORDS_TYPE' });
+      } else if (record.keywords.length > MAX_KEYWORDS_COUNT) {
+        errors.push({ index: idx, field: 'keywords', code: 'KEYWORDS_TOO_MANY' });
+      } else {
+        const seenKw = new Set();
+        record.keywords.forEach((kw, ki) => {
+          if (typeof kw !== 'string') {
+            errors.push({ index: idx, field: `keywords[${ki}]`, code: 'INVALID_KEYWORD_TYPE' });
+          } else if (isBlank(kw)) {
+            errors.push({ index: idx, field: `keywords[${ki}]`, code: 'BLANK_KEYWORD' });
+          } else if (kw.length > MAX_KEYWORD_LENGTH) {
+            errors.push({ index: idx, field: `keywords[${ki}]`, code: 'KEYWORD_TOO_LONG' });
+          } else if (seenKw.has(kw)) {
+            errors.push({ index: idx, field: `keywords[${ki}]`, code: 'DUPLICATE_KEYWORD' });
+          }
+          seenKw.add(kw);
+        });
       }
     }
 
     // createdAt / updatedAt
-    if (record.createdAt) {
-      const created = new Date(record.createdAt);
-      if (isNaN(created.getTime())) {
-        errors.push({ field: `${prefix}.createdAt`, message: `Invalid createdAt date: ${record.createdAt}` });
-      }
-    }
-    if (record.updatedAt) {
-      const updated = new Date(record.updatedAt);
-      if (isNaN(updated.getTime())) {
-        errors.push({ field: `${prefix}.updatedAt`, message: `Invalid updatedAt date: ${record.updatedAt}` });
-      }
-    }
-
-    // conflicting duplicate (same treeId but different ownerId)
-    const existingRecord = seenIds.has(record.treeId) && record.treeId;
-    if (existingRecord) {
-      // Already reported as duplicate above; check for conflicting values
-      const firstIdx = input.records.findIndex(r => r.treeId === record.treeId);
-      if (firstIdx !== -1 && firstIdx !== idx) {
-        const firstRecord = input.records[firstIdx];
-        if (firstRecord.ownerId !== record.ownerId) {
-          errors.push({ field: `${prefix}.ownerId`, message: `Conflicting duplicate: treeId ${record.treeId} has different ownerId than records[${firstIdx}]` });
+    if (record.createdAt !== undefined && record.createdAt !== null) {
+      if (typeof record.createdAt !== 'string') {
+        errors.push({ index: idx, field: 'createdAt', code: 'INVALID_CREATED_AT_TYPE' });
+      } else {
+        const d = new Date(record.createdAt);
+        if (isNaN(d.getTime())) {
+          errors.push({ index: idx, field: 'createdAt', code: 'INVALID_CREATED_AT_DATE' });
         }
+      }
+    }
+    if (record.updatedAt !== undefined && record.updatedAt !== null) {
+      if (typeof record.updatedAt !== 'string') {
+        errors.push({ index: idx, field: 'updatedAt', code: 'INVALID_UPDATED_AT_TYPE' });
+      } else {
+        const d = new Date(record.updatedAt);
+        if (isNaN(d.getTime())) {
+          errors.push({ index: idx, field: 'updatedAt', code: 'INVALID_UPDATED_AT_DATE' });
+        }
+      }
+    }
+  });
+
+  // Conflicting duplicate check (different ownerId for same treeId)
+  const ownerMap = new Map();
+  mapping.records.forEach((record, idx) => {
+    if (record.treeId && !isBlank(record.treeId) && record.ownerId && !isBlank(record.ownerId)) {
+      if (ownerMap.has(record.treeId)) {
+        const firstOwner = ownerMap.get(record.treeId);
+        if (firstOwner !== record.ownerId) {
+          errors.push({ index: idx, field: 'ownerId', code: 'CONFLICTING_OWNER_MAPPING' });
+        }
+      } else {
+        ownerMap.set(record.treeId, record.ownerId);
       }
     }
   });
@@ -189,64 +337,220 @@ function validateInput(input) {
   return errors;
 }
 
-function countByVisibility(records) {
-  return records.reduce((acc, r) => {
-    const v = r.visibility || 'public';
-    acc[v] = (acc[v] || 0) + 1;
-    return acc;
-  }, {});
-}
+function validatePreflight(preflight, mappingRecordIds) {
+  const errors = [];
 
-function countBrowseEligible(records) {
-  // Browse eligibility requires publicMomentCount >= 3, but at the tree-entity
-  // level we only track the tree record. Actual moment count verification
-  // happens at a later stage.
-  return records.filter(r => r.visibility === 'public').length;
-}
-
-// ─── Main ──────────────────────────────────────────────────────────────────
-
-function printUsage() {
-  console.log(`
-LoveBud — Legacy Orphan Tree Entity Repair Package (Issue #3455)
-
-Usage:
-  node scripts/prepare-legacy-tree-entity-repair.cjs --validate <input.json>
-  node scripts/prepare-legacy-tree-entity-repair.cjs --dry-run <input.json>
-
-Modes:
-  --validate     Validate input JSON schema and business rules
-  --dry-run      Validate + print aggregate repair stats (no raw values)
-
-Input:
-  Must be a repository-external file path.
-  
-  Schema:
-  {
-    "schemaVersion": 1,
-    "sourceClassification": "AUTHORITATIVE_BROWSER_RECOVERY_SOURCE_FOUND",
-    "records": [
-      {
-        "treeId": "text-id-001",
-        "ownerId": "owner-uid",
-        "title": "Recovery Tree Title",
-        "visibility": "public",
-        "groupName": null,
-        "keywords": [],
-        "createdAt": "2025-01-01T00:00:00.000Z",
-        "updatedAt": "2025-01-02T00:00:00.000Z"
-      }
-    ]
+  if (!preflight || typeof preflight !== 'object' || Array.isArray(preflight)) {
+    errors.push({ index: null, field: 'root', code: 'MUST_BE_OBJECT' });
+    return errors;
   }
 
+  if (preflight.schemaVersion !== SUPPORTED_SCHEMA_VERSION) {
+    errors.push({ index: null, field: 'schemaVersion', code: 'UNSUPPORTED_SCHEMA_VERSION' });
+  }
+
+  if (preflight.sourceClassification !== 'PRODUCTION_READ_ONLY_PREFLIGHT') {
+    errors.push({ index: null, field: 'sourceClassification', code: 'UNEXPECTED_CLASSIFICATION' });
+  }
+
+  if (!Array.isArray(preflight.records)) {
+    errors.push({ index: null, field: 'records', code: 'MUST_BE_ARRAY' });
+    return errors;
+  }
+
+  if (preflight.records.length === 0) {
+    errors.push({ index: null, field: 'records', code: 'EMPTY_ARRAY' });
+    return errors;
+  }
+
+  const mappingIdSet = new Set(mappingRecordIds);
+  const preflightIdSet = new Set();
+  const seenIds = new Set();
+
+  preflight.records.forEach((record, idx) => {
+    if (!record.treeId || typeof record.treeId !== 'string') {
+      errors.push({ index: idx, field: 'treeId', code: 'MISSING_OR_INVALID_TREE_ID' });
+    } else {
+      if (seenIds.has(record.treeId)) {
+        errors.push({ index: idx, field: 'treeId', code: 'DUPLICATE_PREFLIGHT_ENTITY' });
+      }
+      seenIds.add(record.treeId);
+      preflightIdSet.add(record.treeId);
+
+      if (!mappingIdSet.has(record.treeId)) {
+        errors.push({ index: idx, field: 'treeId', code: 'UNMATCHED_PREFLIGHT_ENTITY' });
+      }
+    }
+
+    if (record.entityExists !== undefined && typeof record.entityExists !== 'boolean') {
+      errors.push({ index: idx, field: 'entityExists', code: 'INVALID_ENTITY_EXISTS_TYPE' });
+    }
+
+    if (record.publicMomentCount !== undefined) {
+      if (!Number.isInteger(record.publicMomentCount) || record.publicMomentCount < 0) {
+        errors.push({ index: idx, field: 'publicMomentCount', code: 'INVALID_MOMENT_COUNT' });
+      }
+    }
+  });
+
+  // Check mapping IDs missing from preflight
+  for (const mappingId of mappingRecordIds) {
+    if (!preflightIdSet.has(mappingId)) {
+      // Don't expose the raw ID
+      errors.push({ index: null, field: 'records', code: 'MAPPING_ID_MISSING_FROM_PREFLIGHT' });
+      break; // One error is enough
+    }
+  }
+
+  return errors;
+}
+
+// ─── Join mapping and preflight ────────────────────────────────────────────
+
+function joinRecords(mappingRecords, preflightRecords) {
+  const preflightMap = new Map();
+  preflightRecords.forEach(r => preflightMap.set(r.treeId, r));
+
+  return mappingRecords.map(mr => {
+    const pr = preflightMap.get(mr.treeId);
+    return {
+      treeId: mr.treeId,
+      ownerId: mr.ownerId,
+      title: mr.title,
+      visibility: mr.visibility,
+      entityExists: pr ? !!pr.entityExists : false,
+      publicMomentCount: pr && typeof pr.publicMomentCount === 'number' ? pr.publicMomentCount : 0,
+    };
+  });
+}
+
+// ─── Aggregate calculation ────────────────────────────────────────────────
+
+function calculateAggregate(joined, mapping, preflight) {
+  const totalMapping = mapping.records.length;
+  const totalPreflight = preflight.records.length;
+
+  const validJoined = joined.length;
+  const publicRecords = joined.filter(r => r.visibility === 'public').length;
+  const explicitPrivate = joined.filter(r => r.visibility === 'private').length;
+
+  // Browse-eligible: visibility = public AND publicMomentCount >= 3
+  const browseEligible = joined.filter(
+    r => r.visibility === 'public' && r.publicMomentCount >= 3
+  ).length;
+
+  // Growing: visibility = public AND publicMomentCount between 0 and 2
+  const growing = joined.filter(
+    r => r.visibility === 'public' && r.publicMomentCount >= 0 && r.publicMomentCount <= 2
+  ).length;
+
+  const existingConflicts = joined.filter(r => r.entityExists === true).length;
+
+  // Planned inserts: valid joined records where entityExists = false
+  const plannedInserts = joined.filter(r => r.entityExists !== true).length;
+
+  return {
+    totalMapping,
+    totalPreflight,
+    validJoined,
+    publicRecords,
+    explicitPrivate,
+    browseEligible,
+    growing,
+    existingConflicts,
+    plannedInserts,
+  };
+}
+
+// ─── Print aggregate (no raw values) ───────────────────────────────────────
+
+function printAggregate(agg) {
+  console.log(`\n📊 Aggregate summary:`);
+  console.log(`  Mapping records:          ${agg.totalMapping}`);
+  console.log(`  Preflight records:        ${agg.totalPreflight}`);
+  console.log(`  Valid joined records:     ${agg.validJoined}`);
+  console.log(`  Public records:           ${agg.publicRecords}`);
+  console.log(`  Explicit-private records: ${agg.explicitPrivate}`);
+  console.log(`  Browse-eligible records:  ${agg.browseEligible}`);
+  console.log(`  Growing records:          ${agg.growing}`);
+  console.log(`  Existing-row conflicts:   ${agg.existingConflicts}`);
+  console.log(`  Planned inserts:          ${agg.plannedInserts}`);
+  console.log(`\nℹ️  Browse-eligible requires visibility=public AND publicMomentCount>=3`);
+  console.log(`ℹ️  Growing requires visibility=public AND publicMomentCount 0-2`);
+  console.log(`ℹ️  Private records are excluded from Browse/growing counts`);
+  console.log(`ℹ️  No raw tree ID, owner ID, or title values are displayed.`);
+}
+
+// ─── Plan generation ───────────────────────────────────────────────────────
+
+function generatePlan(mapping, preflight, joined, agg, planPath) {
+  const mappingHash = mapping.mappingArtifactSha256 || crypto.createHash('sha256')
+    .update(JSON.stringify(mapping.records))
+    .digest('hex');
+
+  const preflightRaw = JSON.stringify(preflight.records);
+  const preflightHash = crypto.createHash('sha256')
+    .update(preflightRaw)
+    .digest('hex');
+
+  const planRecords = joined
+    .filter(r => r.entityExists !== true)
+    .map(r => ({
+      treeId: r.treeId,
+      ownerId: r.ownerId,
+      title: r.title,
+      visibility: r.visibility,
+    }));
+
+  const plan = {
+    schemaVersion: SUPPORTED_SCHEMA_VERSION,
+    mappingArtifactSha256: mappingHash,
+    preflightArtifactSha256: preflightHash,
+    createdByPackageVersion: PACKAGE_VERSION,
+    recordCount: planRecords.length,
+    publicCount: agg.publicRecords,
+    privateCount: agg.explicitPrivate,
+    browseEligibleCount: agg.browseEligible,
+    growingCount: agg.growing,
+    records: planRecords,
+  };
+
+  fs.writeFileSync(planPath, JSON.stringify(plan, null, 2), 'utf8');
+
+  // Compute plan hash after writing
+  const planRaw = fs.readFileSync(planPath, 'utf8');
+  const planHash = crypto.createHash('sha256').update(planRaw).digest('hex');
+
+  return planHash;
+}
+
+// ─── CLI ───────────────────────────────────────────────────────────────────
+
+function printUsage() {
+  console.log(`\nLoveBud — Legacy Orphan Tree Entity Repair Package (Issue #3455)
+
+Usage:
+  node scripts/prepare-legacy-tree-entity-repair.cjs --validate <mapping.json>
+  node scripts/prepare-legacy-tree-entity-repair.cjs --dry-run <mapping.json> --preflight <preflight.json>
+  node scripts/prepare-legacy-tree-entity-repair.cjs --prepare-plan <mapping.json> --preflight <preflight.json> --out <plan.json>
+
+Modes:
+  --validate       Validate mapping JSON schema and business rules only
+  --dry-run        Validate + generate aggregate from joined mapping+preflight
+  --prepare-plan   Validate + generate external deterministic repair plan JSON
+
+Options:
+  --preflight      Path to production read-only preflight JSON (required for
+                   --dry-run and --prepare-plan)
+  --out            Output path for --prepare-plan plan JSON (must be external)
+
 Safety:
-  - No production DB connection or mutation
+  - All input/output paths must be outside the repository (symlink-safe)
   - No raw tree ID / owner ID / title in output
-  - No dependent table mutation
-  - Owner inference prohibited
-  - Public-first default
-  - Existing entity IDs rejected
-  - TEXT ID preservation enforced
+  - No production DB connection or mutation
+  - No owner inference
+  - TEXT IDs preserved exactly (UUID shape is valid TEXT)
+  - --apply is unconditionally rejected
 `);
 }
 
@@ -258,104 +562,188 @@ function main() {
     process.exit(0);
   }
 
-  const mode = args[0];
-  if (mode !== '--validate' && mode !== '--dry-run') {
-    console.error(`❌ Unknown mode: ${mode}`);
-    console.error('   Use --validate or --dry-run');
-    process.exit(1);
-  }
-
-  const inputPath = args[1];
-  if (!inputPath) {
-    console.error('❌ Missing input file path');
-    process.exit(1);
-  }
-
-  // ── External path enforcement ──
-  if (!isExternalPath(inputPath)) {
-    console.error('❌ ' + EXTERNAL_PATH_GUARD_MESSAGE);
-    console.error(`   Input path: ${inputPath}`);
-    console.error(`   Repository root: ${REPO_ROOT}`);
-    process.exit(1);
-  }
-
-  // ── Read input ──
-  let rawInput;
-  try {
-    rawInput = fs.readFileSync(inputPath, 'utf8');
-  } catch (err) {
-    console.error(`❌ Cannot read input file: ${inputPath}`);
-    console.error(`   ${err.message}`);
-    process.exit(1);
-  }
-
-  let input;
-  try {
-    input = JSON.parse(rawInput);
-  } catch (err) {
-    console.error('❌ Malformed JSON:', err.message);
-    process.exit(1);
-  }
-
-  // ── Validate ──
-  const errors = validateInput(input);
-
-  if (errors.length > 0) {
-    console.error(`\n❌ Validation FAILED: ${errors.length} error(s)`);
-    errors.forEach(e => {
-      console.error(`   [${e.field}] ${e.message}`);
-    });
-    process.exit(1);
-  }
-
-  console.log('✅ Validation PASSED');
-
-  // ── Dry-run mode ──
-  if (mode === '--dry-run') {
-    const records = input.records;
-    const visibilityCount = countByVisibility(records);
-    const publicCount = visibilityCount.public || 0;
-    const privateCount = visibilityCount.private || 0;
-    const browseEligible = countBrowseEligible(records);
-    const growingRecords = records.filter(r => {
-      // Trees with >= 3 public moments are eligible for Browse listing
-      // At tree-entity level, this is a placeholder count
-      return r.visibility === 'public';
-    });
-    const existingRowConflicts = 0; // Placeholder — requires Production read
-    const plannedInserts = records.length;
-
-    console.log(`
-📊 Dry-run aggregate summary:
-  Total input records:        ${records.length}
-  Valid records:              ${records.length}
-  Invalid records:            0
-  Duplicate records:          0
-  Public records:             ${publicCount}
-  Explicit-private records:   ${privateCount}
-  Browse-eligible records:    ${browseEligible}
-  Growing records:            ${growingRecords.length}
-  Existing-row conflicts:     ${existingRowConflicts} (requires production preflight)
-  Planned inserts:            ${plannedInserts}
-
-ℹ️  No raw tree ID, owner ID, or title values are displayed.
-ℹ️  No production connection was established.
-ℹ️  Actual Browse eligibility requires publicMomentCount >= 3 verification.
-`);
-  }
-
-  // ── Production apply check ──
+  // ── Reject --apply unconditionally, before any input read ──
   if (args.includes('--apply')) {
-    console.error('❌ Production apply mode is NOT available in this package.');
-    console.error('   This repair package prepares validation and dry-run only.');
-    console.error('   Actual production execution requires:');
-    console.error('     1. Explicit CTO approval');
-    console.error('     2. Separate execution runbook step');
-    console.error('     3. Transaction with rollback prepared');
+    console.error('❌ --apply mode is NOT available in this package.');
+    console.error('   Production execution requires separate CTO approval and a');
+    console.error('   dedicated execution artifact with its own hash and runbook.');
     process.exit(1);
   }
 
-  process.exit(0);
+  const mode = args[0];
+  if (!['--validate', '--dry-run', '--prepare-plan'].includes(mode)) {
+    console.error(`❌ Unknown mode: ${mode}`);
+    process.exit(1);
+  }
+
+  // Check for duplicate options
+  const optionCounts = {};
+  args.forEach(a => {
+    if (a.startsWith('--')) {
+      optionCounts[a] = (optionCounts[a] || 0) + 1;
+    }
+  });
+  for (const [opt, count] of Object.entries(optionCounts)) {
+    if (count > 1) {
+      console.error(`❌ Duplicate option: ${opt}`);
+      process.exit(1);
+    }
+  }
+
+  const mappingPath = args[1];
+  if (!mappingPath || mappingPath.startsWith('--')) {
+    console.error('❌ Missing mapping input file path');
+    process.exit(1);
+  }
+
+  // Check for extra positional arguments (only count before first known option)
+  const knownOpts = ['--preflight', '--out'];
+  const firstOptIdx = args.findIndex(a => knownOpts.includes(a));
+  const positionalBeforeOptions = args
+    .slice(1, firstOptIdx >= 0 ? firstOptIdx : undefined)
+    .filter(a => !a.startsWith('--'));
+  // After known options, existing values might look positional — that's OK
+  // But anything unexpected before the first known option is an error
+  if (positionalBeforeOptions.length > 1) {
+    console.error('❌ Unexpected additional positional argument(s)');
+    process.exit(1);
+  }
+
+  // Parse options
+  const preflightIdx = args.indexOf('--preflight');
+  const preflightPath = preflightIdx !== -1 ? args[preflightIdx + 1] : null;
+  const outIdx = args.indexOf('--out');
+  const outputPath = outIdx !== -1 ? args[outIdx + 1] : null;
+
+  // Validate mode-specific options
+  if ((mode === '--dry-run' || mode === '--prepare-plan') && !preflightPath) {
+    console.error(`❌ ${mode} requires --preflight <preflight.json>`);
+    process.exit(1);
+  }
+
+  if (mode === '--prepare-plan' && !outputPath) {
+    console.error('❌ --prepare-plan requires --out <plan.json>');
+    process.exit(1);
+  }
+
+  // Check for missing option values
+  if (preflightPath && preflightPath.startsWith('--')) {
+    console.error('❌ Missing value for --preflight option');
+    process.exit(1);
+  }
+  if (outputPath && outputPath.startsWith('--')) {
+    console.error('❌ Missing value for --out option');
+    process.exit(1);
+  }
+
+  // ── External path enforcement (symlink-safe) ──
+  checkExternalWithSymlinkGuard(mappingPath, 'Mapping input');
+  if (preflightPath) {
+    checkExternalWithSymlinkGuard(preflightPath, 'Preflight input');
+  }
+  if (outputPath) {
+    checkOutputPathExternal(outputPath);
+  }
+
+  // ── Read mapping ──
+  let mappingRaw;
+  try {
+    mappingRaw = fs.readFileSync(mappingPath, 'utf8');
+  } catch (err) {
+    console.error('❌ Cannot read mapping input file');
+    process.exit(1);
+  }
+
+  let mapping;
+  try {
+    mapping = JSON.parse(mappingRaw);
+  } catch (err) {
+    console.error('❌ Mapping: Malformed JSON');
+    process.exit(1);
+  }
+
+  // ── Validate mapping ──
+  const mappingErrors = validateMapping(mapping);
+
+  if (mappingErrors.length > 0) {
+    console.error(`\n❌ Mapping validation FAILED: ${mappingErrors.length} error(s)`);
+    mappingErrors.forEach(e => {
+      const idx = e.index !== null ? `records[${e.index}]` : '';
+      console.error(`   ${idx}${e.field}: ${e.code}`);
+    });
+    process.exit(1);
+  }
+
+  console.log('✅ Mapping validation PASSED');
+
+  // ── For --validate only, exit here ──
+  if (mode === '--validate') {
+    process.exit(0);
+  }
+
+  // ── For --dry-run and --prepare-plan: read and validate preflight ──
+  let preflightRaw;
+  try {
+    preflightRaw = fs.readFileSync(preflightPath, 'utf8');
+  } catch (err) {
+    console.error('❌ Cannot read preflight input file');
+    process.exit(1);
+  }
+
+  let preflight;
+  try {
+    preflight = JSON.parse(preflightRaw);
+  } catch (err) {
+    console.error('❌ Preflight: Malformed JSON');
+    process.exit(1);
+  }
+
+  const mappingRecordIds = mapping.records
+    .filter(r => r.treeId && !isBlank(r.treeId))
+    .map(r => r.treeId);
+
+  const preflightErrors = validatePreflight(preflight, mappingRecordIds);
+
+  if (preflightErrors.length > 0) {
+    console.error(`\n❌ Preflight validation FAILED: ${preflightErrors.length} error(s)`);
+    preflightErrors.forEach(e => {
+      const idx = e.index !== null ? `preflight[${e.index}]` : '';
+      console.error(`   ${idx}${e.field}: ${e.code}`);
+    });
+    process.exit(1);
+  }
+
+  console.log('✅ Preflight validation PASSED');
+
+  // ── Join records ──
+  const joined = joinRecords(mapping.records, preflight.records);
+  const agg = calculateAggregate(joined, mapping, preflight);
+
+  // ── Existing entity fail-closed ──
+  if (agg.existingConflicts > 0) {
+    console.error(`\n❌ Existing-row conflicts detected: ${agg.existingConflicts}`);
+    console.error('   Resolve conflicts in the private mapping or preflight');
+    console.error('   and create a new artifact before proceeding.');
+    process.exit(1);
+  }
+
+  // ── Dry-run output ──
+  if (mode === '--dry-run') {
+    printAggregate(agg);
+    process.exit(0);
+  }
+
+  // ── Prepare plan ──
+  if (mode === '--prepare-plan') {
+    const planHash = generatePlan(mapping, preflight, joined, agg, outputPath);
+    console.log(`\n📋 Plan created: YES`);
+    console.log(`   Record count: ${agg.plannedInserts}`);
+    console.log(`   Plan SHA-256: ${planHash}`);
+    console.log(`\nℹ️  Plan contains entityExists=false records only.`);
+    console.log(`ℹ️  No raw values or output path displayed.`);
+    console.log(`ℹ️  Plan does not contain DB connection, SQL, or apply capability.`);
+    process.exit(0);
+  }
 }
 
 main();

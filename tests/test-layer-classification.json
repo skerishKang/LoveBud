@@ -1613,6 +1613,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/legacy-tree-entity-repair-package-contract.test.cjs",
+      "layer": "EXECUTED_REAL_LOCAL",
+      "rationale": "Executes the real local scripts/prepare-legacy-tree-entity-repair.cjs in child processes against external temporary JSON fixture files. Asserts validation return codes, error-code-only output, source classification allowlists, private evidence rules, mapping/preflight identity-set alignment, Browse-eligible publicMomentCount threshold logic, existing-entity fail-closed behavior, and prepare-plan hash generation. Does not access production, run a browser, connect to a database or network, carry raw recovery values, or mutate any system.",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/localization-key-display-contract.test.cjs",
       "layer": "EXECUTED_FAKE",
       "rationale": "Reads production module source and executes it in a local process with injected fake/mock/stub dependencies (e.g., vm context with fake DOM or mocked fetch/localStorage); no real external system or production resource used.",
