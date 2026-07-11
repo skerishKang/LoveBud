@@ -199,6 +199,12 @@ function validateMapping(mapping) {
   const seenIds = new Map();
 
   mapping.records.forEach((record, idx) => {
+    // Guard: reject non-object records (null, number, string, array)
+    if (!record || typeof record !== 'object' || Array.isArray(record)) {
+      errors.push({ index: idx, field: 'record', code: 'INVALID_RECORD_TYPE' });
+      return;
+    }
+
     // treeId
     if (!record.treeId) {
       errors.push({ index: idx, field: 'treeId', code: 'MISSING_TREE_ID' });
@@ -266,6 +272,20 @@ function validateMapping(mapping) {
       } else if (!ALLOWED_PRIVATE_EVIDENCE.includes(record.privateEvidenceClassification)) {
         errors.push({ index: idx, field: 'privateEvidenceClassification', code: 'INVALID_PRIVATE_EVIDENCE' });
       }
+    }
+
+    // ── Strict pair validation: metadata null/absent → provenance null/absent ──
+    if ((record.groupName === undefined || record.groupName === null) && record.groupNameProvenance !== undefined && record.groupNameProvenance !== null) {
+      errors.push({ index: idx, field: 'groupNameProvenance', code: 'PROVENANCE_WITHOUT_VALUE' });
+    }
+    if ((record.keywords === undefined || record.keywords === null) && record.keywordsProvenance !== undefined && record.keywordsProvenance !== null) {
+      errors.push({ index: idx, field: 'keywordsProvenance', code: 'PROVENANCE_WITHOUT_VALUE' });
+    }
+    if ((record.createdAt === undefined || record.createdAt === null) && record.createdAtProvenance !== undefined && record.createdAtProvenance !== null) {
+      errors.push({ index: idx, field: 'createdAtProvenance', code: 'PROVENANCE_WITHOUT_VALUE' });
+    }
+    if ((record.updatedAt === undefined || record.updatedAt === null) && record.updatedAtProvenance !== undefined && record.updatedAtProvenance !== null) {
+      errors.push({ index: idx, field: 'updatedAtProvenance', code: 'PROVENANCE_WITHOUT_VALUE' });
     }
 
     // groupName: null or nonblank string
@@ -357,8 +377,10 @@ function validateMapping(mapping) {
   });
 
   // Conflicting duplicate check (different ownerId for same treeId)
+  // Guard: skip non-object records (already reported by main loop)
   const ownerMap = new Map();
   mapping.records.forEach((record, idx) => {
+    if (!record || typeof record !== 'object' || Array.isArray(record)) return;
     if (record.treeId && !isBlank(record.treeId) && record.ownerId && !isBlank(record.ownerId)) {
       if (ownerMap.has(record.treeId)) {
         const firstOwner = ownerMap.get(record.treeId);
@@ -405,6 +427,12 @@ function validatePreflight(preflight, mappingRecordIds) {
   const seenIds = new Set();
 
   preflight.records.forEach((record, idx) => {
+    // Guard: reject non-object records (null, number, string, array)
+    if (!record || typeof record !== 'object' || Array.isArray(record)) {
+      errors.push({ index: idx, field: 'record', code: 'INVALID_RECORD_TYPE' });
+      return;
+    }
+
     if (!record.treeId || typeof record.treeId !== 'string') {
       errors.push({ index: idx, field: 'treeId', code: 'MISSING_OR_INVALID_TREE_ID' });
     } else {
@@ -653,16 +681,27 @@ function parseArgs(tokens) {
     '--prepare-plan':  ['MODE', 'MAPPING', '--preflight', 'PREFLIGHT', '--out', 'OUTPUT'],
   };
 
+  // Help-only tokens: exact single --help or -h, nothing else
+  if (tokens.length === 1 && (tokens[0] === '--help' || tokens[0] === '-h')) {
+    printUsage();
+    process.exit(0);
+  }
+
   if (tokens.length === 0) {
-    console.error('❌ No arguments provided');
+    console.error('❌ MISSING_ARGUMENTS');
     process.exit(1);
   }
 
-  // ── Reject --apply unconditionally, before any input read ──
+  // ── Reject --apply unconditionally, before any input read or help output ──
   if (tokens.some(t => t === '--apply')) {
-    console.error('❌ --apply mode is NOT available in this package.');
-    console.error('   Production execution requires separate CTO approval and a');
-    console.error('   dedicated execution artifact with its own hash and runbook.');
+    console.error('❌ APPLY_NOT_AVAILABLE');
+    console.error('   Production execution requires separate CTO approval');
+    process.exit(1);
+  }
+
+  // Exact help tokens are already handled above. Any remaining --help/-h is invalid (has extra args)
+  if (tokens[0] === '--help' || tokens[0] === '-h') {
+    console.error('❌ UNEXPECTED_ARGUMENTS_WITH_HELP');
     process.exit(1);
   }
 
@@ -670,11 +709,7 @@ function parseArgs(tokens) {
   const shape = SHAPES[rawMode];
 
   if (!shape) {
-    if (rawMode && rawMode.startsWith('--')) {
-      console.error(`❌ Unknown mode: ${rawMode}`);
-    } else {
-      console.error(`❌ Expected mode (--validate, --dry-run, or --prepare-plan), got: ${rawMode}`);
-    }
+    console.error('❌ UNKNOWN_MODE');
     process.exit(1);
   }
 
@@ -699,23 +734,23 @@ function parseArgs(tokens) {
     if (expected.startsWith('--')) {
       if (actual !== expected) {
         if (actual === undefined) {
-          console.error(`❌ Missing option: ${expected} <value>`);
+          console.error('❌ MISSING_OPTION_VALUE');
         } else if (isOption(actual)) {
-          console.error(`❌ Expected ${expected}, got: ${actual}`);
+          console.error('❌ UNEXPECTED_OPTION');
         } else {
-          console.error(`❌ Expected ${expected}, got positional argument: ${actual}`);
+          console.error('❌ UNEXPECTED_POSITIONAL');
         }
         process.exit(1);
       }
       // Option matched — next token must be its value (not an option, not missing)
       const nextIdx = i + 1;
       if (nextIdx >= tokens.length) {
-        console.error(`❌ Missing value for ${expected}`);
+        console.error('❌ MISSING_OPTION_VALUE');
         process.exit(1);
       }
       const value = tokens[nextIdx];
       if (value === undefined || isOption(value)) {
-        console.error(`❌ Missing value for ${expected}`);
+        console.error('❌ MISSING_OPTION_VALUE');
         process.exit(1);
       }
       // Assign the value based on the option
@@ -730,9 +765,7 @@ function parseArgs(tokens) {
 
     // Positional value slot like MAPPING, PREFLIGHT, OUTPUT
     if (actual === undefined || isOption(actual)) {
-      // Use better error messages
-      const slotNames = { MAPPING: 'mapping', PREFLIGHT: 'preflight', OUTPUT: 'output' };
-      console.error(`❌ Missing ${slotNames[expected] || expected} file path`);
+      console.error('❌ MISSING_OPTION_VALUE');
       process.exit(1);
     }
     if (expected === 'MAPPING') mappingPath = actual;
@@ -744,26 +777,21 @@ function parseArgs(tokens) {
   if (remaining.length > 0) {
     const next = remaining[0];
     if (isOption(next)) {
-      console.error(`❌ Unexpected option after complete command: ${next}`);
+      console.error('❌ UNEXPECTED_OPTION');
     } else {
-      console.error('❌ Unexpected additional positional argument');
+      console.error('❌ UNEXPECTED_POSITIONAL');
     }
     process.exit(1);
   }
 
-  // Mode-specific incompatibility checks
-  // These are enforced by shape, but double-check for safety
-  if (rawMode === '--validate') {
-    if (tokens.includes('--preflight') || tokens.includes('--out')) {
-      console.error('❌ --validate does not accept --preflight or --out');
-      process.exit(1);
-    }
+  // Mode-specific incompatibility checks (shape-enforced, but double-check)
+  if (rawMode === '--validate' && (tokens.includes('--preflight') || tokens.includes('--out'))) {
+    console.error('❌ UNEXPECTED_OPTION');
+    process.exit(1);
   }
-  if (rawMode === '--dry-run') {
-    if (tokens.includes('--out')) {
-      console.error('❌ --dry-run does not accept --out');
-      process.exit(1);
-    }
+  if (rawMode === '--dry-run' && tokens.includes('--out')) {
+    console.error('❌ UNEXPECTED_OPTION');
+    process.exit(1);
   }
 
   return { mode: rawMode, mappingPath, preflightPath, outputPath };
@@ -772,12 +800,7 @@ function parseArgs(tokens) {
 function main() {
   const args = process.argv.slice(2);
 
-  if (args.length === 0 || args[0] === '--help' || args[0] === '-h') {
-    printUsage();
-    process.exit(0);
-  }
-
-  // ── Token-by-token parse (exits on invalid) ──
+  // ── Token-by-token parse (exits on invalid; --apply checked before anything) ──
   const { mode, mappingPath, preflightPath, outputPath } = parseArgs(args);
 
   // ── External path enforcement (symlink-safe) ──

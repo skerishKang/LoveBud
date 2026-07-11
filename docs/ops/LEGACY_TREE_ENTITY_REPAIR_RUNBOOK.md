@@ -160,7 +160,7 @@ a new artifact created. Existing entities are never auto-skipped.
 ### Step 5: Production Read-Only Preflight
 
 This step is performed independently to produce the preflight input file used
-in Step 5. Verify:
+in Step 4. Verify:
 
 - [ ] Mapping tree ID set matches preflight tree ID set exactly
 - [ ] `entityExists` flags correctly reflect `public.trees` state
@@ -211,7 +211,7 @@ The plan:
 
 ### Step 8: Execute Transaction Repair (Conceptual)
 
-The plan JSON from Step 8 is the source of truth for production execution.
+The plan JSON from Step 7 is the source of truth for production execution.
 The following is a **parameterized conceptual transaction** — not a command
 that can be copied and pasted with raw values.
 
@@ -323,7 +323,7 @@ approver:         <CTO name>
 The `--apply` flag is **unconditionally rejected** in the
 `prepare-legacy-tree-entity-repair` script. Production execution requires:
 
-1. This runbook followed through Step 8
+1. This runbook followed through Step 7
 2. Generated plan hash verified against recorded hash
 3. CTO explicit sign-off
 4. Separate execution command (not provided in this package)

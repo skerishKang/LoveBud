@@ -293,7 +293,65 @@ test('partial source with valid provenances passes', () => {
   }
 });
 
-// ─── Preflight required fields (Test 11-18) ────────────────────────────────
+// ─── Malformed record handling (Fix 1) ─────────────────────────────────────
+
+test('mapping record null rejected with INVALID_RECORD_TYPE', () => {
+  const mapping = { ...VALID_MAPPING, records: [null] };
+  const { result, cleanup } = runValidate(mapping);
+  try {
+    assert.notEqual(result.exitCode, 0, 'Must reject null record');
+    assert.ok(result.stderr.includes('INVALID_RECORD_TYPE'), 'Must show INVALID_RECORD_TYPE');
+    assert.ok(!result.stderr.includes('null'), 'Must not contain raw null in error');
+  } finally {
+    cleanup();
+  }
+});
+
+test('mapping record number rejected with INVALID_RECORD_TYPE', () => {
+  const mapping = { ...VALID_MAPPING, records: [1] };
+  const { result, cleanup } = runValidate(mapping);
+  try {
+    assert.notEqual(result.exitCode, 0, 'Must reject number record');
+    assert.ok(result.stderr.includes('INVALID_RECORD_TYPE'), 'Must show INVALID_RECORD_TYPE');
+  } finally {
+    cleanup();
+  }
+});
+
+test('mapping record string rejected with INVALID_RECORD_TYPE', () => {
+  const mapping = { ...VALID_MAPPING, records: ['text'] };
+  const { result, cleanup } = runValidate(mapping);
+  try {
+    assert.notEqual(result.exitCode, 0, 'Must reject string record');
+    assert.ok(result.stderr.includes('INVALID_RECORD_TYPE'), 'Must show INVALID_RECORD_TYPE');
+  } finally {
+    cleanup();
+  }
+});
+
+test('mapping record array rejected with INVALID_RECORD_TYPE', () => {
+  const mapping = { ...VALID_MAPPING, records: [[]] };
+  const { result, cleanup } = runValidate(mapping);
+  try {
+    assert.notEqual(result.exitCode, 0, 'Must reject array record');
+    assert.ok(result.stderr.includes('INVALID_RECORD_TYPE'), 'Must show INVALID_RECORD_TYPE');
+  } finally {
+    cleanup();
+  }
+});
+
+test('preflight record null rejected with INVALID_RECORD_TYPE', () => {
+  const preflight = { ...VALID_PREFLIGHT, records: [null] };
+  const { result, cleanup } = runWithTwoFixtures(VALID_MAPPING, preflight, '--dry-run');
+  try {
+    assert.notEqual(result.exitCode, 0, 'Must reject null preflight record');
+    assert.ok(result.stderr.includes('INVALID_RECORD_TYPE'), 'Must show INVALID_RECORD_TYPE');
+  } finally {
+    cleanup();
+  }
+});
+
+// ─── Preflight required fields ────────────────────────────────────────────
 
 test('missing entityExists rejected', () => {
   const preflight = {
@@ -439,7 +497,45 @@ test('negative publicMomentCount rejected', () => {
   }
 });
 
-// ─── Optional metadata provenance (Test 19-28) ─────────────────────────────
+// ─── Strict provenance pair validation (Fix 3) ──────────────────────────
+
+test('provenance without value rejected (groupName null + provenance present)', () => {
+  const mapping = {
+    ...VALID_MAPPING,
+    records: [{
+      ...VALID_MAPPING.records[0],
+      groupName: null,
+      groupNameProvenance: 'AUTHORITATIVE_SERVER_RETURNED_FIELD',
+    }],
+  };
+  const { result, cleanup } = runValidate(mapping);
+  try {
+    assert.notEqual(result.exitCode, 0, 'Must reject provenance without value');
+    assert.ok(result.stderr.includes('PROVENANCE_WITHOUT_VALUE'), 'Must show PROVENANCE_WITHOUT_VALUE');
+  } finally {
+    cleanup();
+  }
+});
+
+test('provenance without value rejected (null keywords + provenance present)', () => {
+  const mapping = {
+    ...VALID_MAPPING,
+    records: [{
+      ...VALID_MAPPING.records[0],
+      keywords: null,
+      keywordsProvenance: 'AUTHORITATIVE_SERVER_RETURNED_FIELD',
+    }],
+  };
+  const { result, cleanup } = runValidate(mapping);
+  try {
+    assert.notEqual(result.exitCode, 0, 'Must reject null keywords with provenance');
+    assert.ok(result.stderr.includes('PROVENANCE_WITHOUT_VALUE'), 'Must show PROVENANCE_WITHOUT_VALUE');
+  } finally {
+    cleanup();
+  }
+});
+
+// ─── Optional metadata provenance ─────────────────────────────────────────
 
 test('groupName without provenance rejected', () => {
   const mapping = {
@@ -911,23 +1007,26 @@ test('existing output path is rejected', () => {
   }
 });
 
-test('no partial final output after forced failure', () => {
-  // Write to a read-only directory that causes write failure
+test('no partial temp file remains after linkSync EEXIST and final content unchanged', () => {
   const f = createTwoFixtures(VALID_MAPPING, VALID_PREFLIGHT);
-  const readOnlyDir = fs.mkdtempSync(path.join(require('os').tmpdir(), 'repair-readonly-'));
-  // On Windows, making a directory read-only is tricky; instead, use a path
-  // that simulates a failure by writing to a nonexistent parent directory
-  const badPath = path.join(readOnlyDir, 'nonexistent-subdir', 'plan.json');
+  const planDir = fs.mkdtempSync(path.join(require('os').tmpdir(), 'repair-linkfail-'));
+  const planPath = path.join(planDir, 'plan.json');
+  const sentinelContent = 'SENTINEL_UNCHANGED';
+  // Create the output first so linkSync fails with EEXIST
+  fs.writeFileSync(planPath, sentinelContent, 'utf8');
   try {
-    const args = `--prepare-plan "${f.mappingPath}" --preflight "${f.preflightPath}" --out "${badPath}"`;
+    const args = `--prepare-plan "${f.mappingPath}" --preflight "${f.preflightPath}" --out "${planPath}"`;
     const result = runScript(args);
-    assert.notEqual(result.exitCode, 0, 'Must fail when output write fails');
-    // Verify no partial .tmp file remains
-    const tmpFiles = fs.readdirSync(readOnlyDir).filter(f => f.endsWith('.tmp.'));
+    assert.notEqual(result.exitCode, 0, 'Must fail when output exists (linkSync EEXIST)');
+    // Verify final content is unchanged
+    const finalContent = fs.readFileSync(planPath, 'utf8');
+    assert.equal(finalContent, sentinelContent, 'Final file content must remain unchanged after failure');
+    // Verify no .tmp.* files remain
+    const tmpFiles = fs.readdirSync(planDir).filter(fn => fn.startsWith('plan.json.tmp.'));
     assert.equal(tmpFiles.length, 0, 'No temp files should remain after failure');
   } finally {
     f.cleanup();
-    fs.rmSync(readOnlyDir, { recursive: true, force: true });
+    fs.rmSync(planDir, { recursive: true, force: true });
   }
 });
 
@@ -989,7 +1088,9 @@ test('plan deterministic for identical exact inputs', () => {
 test('unknown mode rejected', () => {
   const result = runScript('--unknown-option /some/path.json');
   assert.notEqual(result.exitCode, 0, 'Must reject unknown option');
-  assert.ok(result.stderr.includes('Unknown mode'), 'Must show unknown mode');
+  assert.ok(result.stderr.includes('UNKNOWN_MODE'), 'Must show UNKNOWN_MODE');
+  assert.ok(!result.stderr.includes('/some/path.json'), 'Must not leak path in error');
+  assert.ok(!result.stderr.includes('--unknown-option'), 'Must not leak option token in error');
 });
 
 test('extra positional argument rejected', () => {
@@ -997,7 +1098,7 @@ test('extra positional argument rejected', () => {
   try {
     const result = runScript(`--validate "${m.path}" extra-arg`);
     assert.notEqual(result.exitCode, 0, 'Must reject extra positional');
-    assert.ok(result.stderr.includes('Unexpected additional positional argument'), 'Must show positional error');
+    assert.ok(result.stderr.includes('UNEXPECTED_POSITIONAL'), 'Must show UNEXPECTED_POSITIONAL');
   } finally {
     m.cleanup();
   }
@@ -1010,7 +1111,7 @@ test('mode-incompatible option rejected (validate + preflight)', () => {
     const result = runScript(`--validate "${m.path}" --preflight "${p.path}"`);
     assert.notEqual(result.exitCode, 0, 'Must reject validate with preflight');
     // Token parser consumes '--validate <mapping>', then sees --preflight as unexpected
-    assert.ok(result.stderr.includes('Unexpected option after complete command'), 'Must show unexpected option');
+    assert.ok(result.stderr.includes('UNEXPECTED_OPTION'), 'Must show UNEXPECTED_OPTION');
   } finally {
     m.cleanup();
     p.cleanup();
@@ -1027,7 +1128,7 @@ test('mode-incompatible option rejected (dry-run + out)', () => {
     assert.notEqual(result.exitCode, 0, 'Must reject dry-run with --out');
     // Token parser consumes '--dry-run <mapping> --preflight <preflight>',
     // then sees --out as unexpected option after complete command
-    assert.ok(result.stderr.includes('Unexpected option after complete command'), 'Must show unexpected option');
+    assert.ok(result.stderr.includes('UNEXPECTED_OPTION'), 'Must show UNEXPECTED_OPTION');
   } finally {
     m.cleanup();
     p.cleanup();
@@ -1040,7 +1141,7 @@ test('duplicate option rejected', () => {
   try {
     const result = runScript(`--validate "${m.path}" --validate`);
     assert.notEqual(result.exitCode, 0, 'Must reject duplicate option');
-    assert.ok(result.stderr.includes('Unexpected option after complete command'), 'Must show unexpected option');
+    assert.ok(result.stderr.includes('UNEXPECTED_OPTION'), 'Must show UNEXPECTED_OPTION');
   } finally {
     m.cleanup();
   }
@@ -1051,7 +1152,7 @@ test('missing option value rejected', () => {
   try {
     const result = runScript(`--dry-run "${m.path}" --preflight`);
     assert.notEqual(result.exitCode, 0, 'Must reject missing option value');
-    assert.ok(result.stderr.includes('Missing value for'), 'Must show missing value');
+    assert.ok(result.stderr.includes('MISSING_OPTION_VALUE'), 'Must show MISSING_OPTION_VALUE');
   } finally {
     m.cleanup();
   }
@@ -1060,9 +1161,45 @@ test('missing option value rejected', () => {
 test('--apply rejected before reading a nonexistent mapping', () => {
   const result = runScript('--apply /nonexistent/path.json');
   assert.notEqual(result.exitCode, 0, 'Must reject --apply');
-  assert.ok(result.stderr.includes('NOT available'), 'Must show apply rejection');
+  assert.ok(result.stderr.includes('APPLY_NOT_AVAILABLE'), 'Must show apply rejection');
   // Should not say "Cannot read" — that means it tried to read the file
   assert.ok(!result.stderr.includes('Cannot read'), 'Must reject before reading input');
+});
+
+test('--help --apply rejected before help output', () => {
+  const result = runScript('--help --apply');
+  assert.notEqual(result.exitCode, 0, 'Must reject --help --apply');
+  assert.ok(result.stderr.includes('APPLY_NOT_AVAILABLE'), 'Must show APPLY_NOT_AVAILABLE');
+});
+
+test('-h --apply rejected before help output', () => {
+  const result = runScript('-h --apply');
+  assert.notEqual(result.exitCode, 0, 'Must reject -h --apply');
+  assert.ok(result.stderr.includes('APPLY_NOT_AVAILABLE'), 'Must show APPLY_NOT_AVAILABLE');
+});
+
+test('--help with extra argument rejected', () => {
+  const result = runScript('--help extra');
+  assert.notEqual(result.exitCode, 0, 'Must reject --help with extra arg');
+  assert.ok(result.stderr.includes('UNEXPECTED_ARGUMENTS_WITH_HELP'), 'Must show UNEXPECTED_ARGUMENTS_WITH_HELP');
+});
+
+test('-h with extra argument rejected', () => {
+  const result = runScript('-h extra');
+  assert.notEqual(result.exitCode, 0, 'Must reject -h with extra arg');
+  assert.ok(result.stderr.includes('UNEXPECTED_ARGUMENTS_WITH_HELP'), 'Must show UNEXPECTED_ARGUMENTS_WITH_HELP');
+});
+
+test('--help alone succeeds', () => {
+  const result = runScript('--help');
+  assert.equal(result.exitCode, 0, '--help alone must succeed');
+  assert.ok(result.stdout.includes('Usage'), 'Must show usage');
+});
+
+test('-h alone succeeds', () => {
+  const result = runScript('-h');
+  assert.equal(result.exitCode, 0, '-h alone must succeed');
+  assert.ok(result.stdout.includes('Usage'), 'Must show usage');
 });
 
 test('--out before --preflight rejected', () => {
@@ -1073,7 +1210,7 @@ test('--out before --preflight rejected', () => {
   try {
     const result = runScript(`--prepare-plan "${m.path}" --out "${planPath}" --preflight "${p.path}"`);
     assert.notEqual(result.exitCode, 0, 'Must reject --out before --preflight');
-    assert.ok(result.stderr.includes('Expected --preflight'), 'Must show expected --preflight');
+    assert.ok(result.stderr.includes('UNEXPECTED_OPTION'), 'Must show UNEXPECTED_OPTION');
   } finally {
     m.cleanup();
     p.cleanup();
@@ -1089,7 +1226,7 @@ test('extra positional after complete --prepare-plan rejected', () => {
     const args = `--prepare-plan "${f.mappingPath}" --preflight "${f.preflightPath}" --out "${planPath}" extra-arg`;
     const result = runScript(args);
     assert.notEqual(result.exitCode, 0, 'Must reject extra positional after complete command');
-    assert.ok(result.stderr.includes('Unexpected additional positional argument'), 'Must show positional error');
+    assert.ok(result.stderr.includes('UNEXPECTED_POSITIONAL'), 'Must show UNEXPECTED_POSITIONAL');
   } finally {
     f.cleanup();
     fs.rmSync(planDir, { recursive: true, force: true });
@@ -1104,7 +1241,7 @@ test('unknown option after complete --prepare-plan rejected', () => {
     const args = `--prepare-plan "${f.mappingPath}" --preflight "${f.preflightPath}" --out "${planPath}" --unknown-option`;
     const result = runScript(args);
     assert.notEqual(result.exitCode, 0, 'Must reject unknown option after complete command');
-    assert.ok(result.stderr.includes('Unexpected option after complete command'), 'Must show unexpected option');
+    assert.ok(result.stderr.includes('UNEXPECTED_OPTION'), 'Must show UNEXPECTED_OPTION');
   } finally {
     f.cleanup();
     fs.rmSync(planDir, { recursive: true, force: true });
@@ -1116,7 +1253,7 @@ test('--validate with unknown option rejected', () => {
   try {
     const result = runScript(`--validate "${m.path}" --unknown`);
     assert.notEqual(result.exitCode, 0, 'Must reject --validate with unknown option');
-    assert.ok(result.stderr.includes('Unexpected option after complete command'), 'Must show unexpected option');
+    assert.ok(result.stderr.includes('UNEXPECTED_OPTION'), 'Must show UNEXPECTED_OPTION');
   } finally {
     m.cleanup();
   }
@@ -1127,7 +1264,7 @@ test('--dry-run mapping --preflight preflight extra-arg rejected', () => {
   try {
     const result = runScript(`--dry-run "${f.mappingPath}" --preflight "${f.preflightPath}" extra-arg`);
     assert.notEqual(result.exitCode, 0, 'Must reject extra positional');
-    assert.ok(result.stderr.includes('Unexpected additional positional argument'), 'Must show positional error');
+    assert.ok(result.stderr.includes('UNEXPECTED_POSITIONAL'), 'Must show UNEXPECTED_POSITIONAL');
   } finally {
     f.cleanup();
   }
@@ -1179,7 +1316,7 @@ test('--dry-run without preflight is rejected', () => {
   try {
     const result = runScript(`--dry-run "${m.path}"`);
     assert.notEqual(result.exitCode, 0, 'Must reject dry-run without preflight');
-    assert.ok(result.stderr.includes('--preflight'), 'Must mention --preflight');
+    assert.ok(result.stderr.includes('MISSING_OPTION_VALUE'), 'Must show MISSING_OPTION_VALUE');
   } finally {
     m.cleanup();
   }
