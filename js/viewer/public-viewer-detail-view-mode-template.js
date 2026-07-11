@@ -1,7 +1,7 @@
 (function() {
     const template = `
                 <div id="detailViewMode" class="editor-hidden-initial">
-                    <div class="editor-tree-meta-section" aria-hidden="true">
+                    <div class="editor-tree-meta-section">
                         <div class="editor-section-eyebrow" id="detailTreeStatusLabel">현재 트리</div>
                         <div id="detailTreeMetaMount"></div>
                     </div>
