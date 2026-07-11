@@ -5,7 +5,10 @@ const test = require('node:test');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const MANIFEST_PATH = path.join(ROOT, 'css', 'login.css');
-const HTML_PATH = path.join(ROOT, 'pages', 'login.html');
+const LOGIN_HTML_PATH = path.join(ROOT, 'pages', 'login.html');
+const SIGNUP_HTML_PATH = path.join(ROOT, 'pages', 'signup.html');
+
+const AUTH_CSS_VERSION = '20260712-3451-1';
 
 const SPLIT_FILES = [
   'base.css',
@@ -16,18 +19,47 @@ const SPLIT_FILES = [
   'responsive.css',
 ];
 
+// Expected @import URLs in exact order with cache version policy:
+// base.css / layout.css / sections.css / responsive.css: unversioned
+// components.css / forms.css: versioned with AUTH_CSS_VERSION
+const EXPECTED_IMPORTS = [
+  './login/base.css',
+  './login/layout.css',
+  `./login/components.css?v=${AUTH_CSS_VERSION}`,
+  `./login/forms.css?v=${AUTH_CSS_VERSION}`,
+  './login/sections.css',
+  './login/responsive.css',
+];
+
 test('css/login.css is an import manifest (<= 20 lines)', () => {
   const content = fs.readFileSync(MANIFEST_PATH, 'utf8');
   const lines = content.split('\n');
 
-  // Verify line count <= 20
   assert.ok(lines.length <= 20, `Manifest must be <= 20 lines, currently: ${lines.length}`);
 
-  // Verify all @import lines are present
   SPLIT_FILES.forEach(file => {
-    const importRegex = new RegExp(`@import\\s+url\\(['"]\\.\\/login\\/${file}['"]\\);`);
+    // Allow optional query string (?v=...) for versioned imports
+    const importRegex = new RegExp(`@import\\s+url\\(['"]\\.\\/login\\/${file}(\\?[^'"]*)?['"]\\);`);
     assert.match(content, importRegex, `Manifest must import ./login/${file}`);
   });
+});
+
+test('css/login.css @import URLs match exact order and cache version policy', () => {
+  const content = fs.readFileSync(MANIFEST_PATH, 'utf8');
+  const importRegex = /@import\s+url\((['"])(.+?)\1\);/g;
+  const actualImports = [];
+  let match;
+  while ((match = importRegex.exec(content)) !== null) {
+    actualImports.push(match[2]);
+  }
+
+  assert.deepEqual(
+    actualImports,
+    EXPECTED_IMPORTS,
+    `@import URLs must match expected order and versions.\n` +
+    `Expected: ${JSON.stringify(EXPECTED_IMPORTS, null, 2)}\n` +
+    `Actual:   ${JSON.stringify(actualImports, null, 2)}`
+  );
 });
 
 test('all split CSS files exist in the file system', () => {
@@ -37,14 +69,45 @@ test('all split CSS files exist in the file system', () => {
   });
 });
 
-test('login.html references the original login.css file and version query parameter', () => {
-  const html = fs.readFileSync(HTML_PATH, 'utf8');
-  // Check exact link reference tag
+test('login.html references exact login.css parent version', () => {
+  const html = fs.readFileSync(LOGIN_HTML_PATH, 'utf8');
+  const expectedHref = `../css/login.css?v=${AUTH_CSS_VERSION}`;
   assert.match(
     html,
-    /href="\.\.\/css\/login\.css\?v=20260504-642"/,
-    'login.html must continue to load css/login.css?v=20260504-642'
+    new RegExp(`href="${escapeRegExp(expectedHref)}"`),
+    `login.html must load ${expectedHref}`
   );
+});
+
+test('signup.html references exact login.css parent version', () => {
+  const html = fs.readFileSync(SIGNUP_HTML_PATH, 'utf8');
+  const expectedHref = `../css/login.css?v=${AUTH_CSS_VERSION}`;
+  assert.match(
+    html,
+    new RegExp(`href="${escapeRegExp(expectedHref)}"`),
+    `signup.html must load ${expectedHref}`
+  );
+});
+
+test('login and signup parent CSS URLs are identical', () => {
+  const loginHtml = fs.readFileSync(LOGIN_HTML_PATH, 'utf8');
+  const signupHtml = fs.readFileSync(SIGNUP_HTML_PATH, 'utf8');
+
+  const loginMatch = loginHtml.match(/href="(\.\.\/css\/login\.css\?v=[^"]+)"/);
+  const signupMatch = signupHtml.match(/href="(\.\.\/css\/login\.css\?v=[^"]+)"/);
+
+  assert.ok(loginMatch, 'login.html must have a login.css href');
+  assert.ok(signupMatch, 'signup.html must have a login.css href');
+  assert.equal(loginMatch[1], signupMatch[1], 'login and signup must use the same login.css version');
+});
+
+test('old CSS version 20260504-642 is absent from login.html and signup.html', () => {
+  const loginHtml = fs.readFileSync(LOGIN_HTML_PATH, 'utf8');
+  const signupHtml = fs.readFileSync(SIGNUP_HTML_PATH, 'utf8');
+
+  // Scope check to login.css href only (not other assets like i18n-login.js)
+  assert.doesNotMatch(loginHtml, /href="\.\.\/css\/login\.css\?v=20260504-642"/, 'login.html must not reference old version 20260504-642 in login.css href');
+  assert.doesNotMatch(signupHtml, /href="\.\.\/css\/login\.css\?v=20260504-642"/, 'signup.html must not reference old version 20260504-642 in login.css href');
 });
 
 test('representative classes exist in their respective split files', () => {
@@ -73,3 +136,7 @@ test('representative classes exist in their respective split files', () => {
     );
   });
 });
+
+function escapeRegExp(str) {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
