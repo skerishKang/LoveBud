@@ -1,5 +1,16 @@
 # Visibility and Private Storage Policy Review
 
+**Classification**: HISTORICAL_AUDIT / SUPERSEDED_POLICY_REVIEW
+**Snapshot baseline**: `b78bf17ded7882b95c3cf18f7d8b2af953c169dc`
+**Current authority**:
+[`PUBLICATION_AND_PRIVACY_UX_POLICY.md`](PUBLICATION_AND_PRIVACY_UX_POLICY.md)
+
+> Sections describing private-first behavior are historical observations
+> of the recorded snapshot, not current policy or current runtime truth.
+>
+> Current decisions must use the canonical public-first policy and verify
+> current runtime behavior separately.
+
 작성 기준: GitHub `main` commit `b78bf17ded7882b95c3cf18f7d8b2af953c169dc`  
 작업 유형: 문서/설계 only  
 코드 수정: 없음

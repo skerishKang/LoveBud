@@ -4047,6 +4047,12 @@
       "layer": "SOURCE_STATIC",
       "rationale": "Executes a pure-JS mirror and reads the migration/rollback SQL source, but does not execute the shipped PL/pgSQL helpers or PostgreSQL engine; evidence for the database behavior remains SOURCE_STATIC.",
       "capabilities": []
+    },
+    {
+      "path": "tests/contracts/public-first-policy-doc-hygiene-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Reads repository Markdown and index files and asserts static source-of-truth, supersession, and policy-routing markers only; it does not execute runtime code, connect to a database or network, use a browser, deploy, or verify production behavior.",
+      "capabilities": []
     }
   ],
   "supplemental": [
