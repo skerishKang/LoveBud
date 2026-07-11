@@ -3,6 +3,8 @@
 **Status:** Active startup runbook
 **Owner:** CTO / Ops Lead
 **Scope:** Local browser verification, browser smoke, PR Preview checks, fixed test slot checks, and local-only visual checks
+>
+> **Canonical precedence:** `docs/ops/MVP_AGENT_GOVERNANCE.md` (owner-approved #3442 comment `4947327550`) is the source of truth. Browser tooling is allowed by default; dirty worktree, missing fixed slot, and missing CTO-assigned URL are not automatic BLOCKED reasons. Conflicting sections are `NON_NORMATIVE_OUTSIDE_NAMED_CONTEXT`.
 
 ---
 
@@ -44,12 +46,12 @@ A local/browser verifier must start with these rules:
 - Do not force push except for a CTO-assigned fixed test slot update that explicitly allows `--force-with-lease`.
 - Do not use guessed preview URLs.
 - Do not use another PR's preview URL.
-- Do not use a fixed test slot unless CTO assigns that slot to the current PR/task.
+- A fixed test slot is an evidence option, not a permission gate. Use one when assigned, but its absence is not an automatic blocker (canonical policy).
 - Do not mutate production data.
 - Do not expose tokens, cookies, passwords, Authorization headers, raw Firebase credentials, or private content in evidence.
 - Do not modify PR #7 or prototype/reference/demo/variant paths.
 
-If a local working tree is dirty before the task begins, stop and report `BLOCKED`. Do not run restore/reset/stash/clean unless the CTO explicitly approves that recovery operation.
+NON_NORMATIVE_OUTSIDE_NAMED_CONTEXT: historically "If a local working tree is dirty before the task begins, stop and report `BLOCKED`." Under canonical policy, a dirty worktree is preserved and bypassed with another worktree/branch or read-only inspection; it is not an automatic blocker. Only `clean`/`reset`/`stash drop`/overwrite requires explicit approval.
 
 ---
 
@@ -91,7 +93,7 @@ Browser verification is valid only when the URL source is valid.
 
 Allowed URL sources:
 
-1. A URL explicitly provided by CTO in the task prompt.
+1. A URL explicitly provided by CTO in the task prompt, OR a URL the worker confirms via a general method (e.g., current PR Preview from GitHub/Cloudflare, or a fixed slot assigned to this PR).
 2. A current PR Preview URL copied from the current PR's actual GitHub/Cloudflare deployment status.
 3. A fixed test slot explicitly assigned by CTO to the current PR/task.
 4. `localhost` only when the task allows local verification or when the result is clearly reported as `LOCAL_ONLY`.
@@ -103,7 +105,7 @@ Forbidden URL sources:
 - closed or superseded PR preview URL;
 - preview URL from another PR;
 - unassigned fixed test slot;
-- production URL unless CTO requests production verification;
+- production URL is allowed by default after merge/deploy (evidence=PRODUCTION_EVIDENCE); pre-merge PR Preview is the usual pre-merge target;
 - any URL whose provenance is unclear.
 
 Localhost verification is useful for early visual smoke, but it is not final PASS for Browse/Search/API/Auth/data-loaded flows unless the task explicitly accepts local-only verification.
@@ -232,7 +234,7 @@ Use precise labels:
 
 ## 11. Ready, merge, and issue state rules
 
-- Draft to ready transition requires CTO instruction or explicit task authorization.
+- Draft to ready transition is at the worker's discretion (canonical policy: draft-by-default is advisory, not mandatory). Move to ready when appropriate.
 - Merge requires CTO approval and expected head SHA confirmation.
 - Issue close requires explicit instruction and correct close keyword hygiene.
 - Use `Refs #<issue>` unless the task explicitly authorizes `Fixes`, `Closes`, or `Resolves`.

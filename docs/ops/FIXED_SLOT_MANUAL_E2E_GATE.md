@@ -3,6 +3,8 @@
 > **This document is a manual gate runbook.**
 > It is NOT a CI workflow implementation.
 > It defines how to safely use fixed test slots for manual E2E smoke verification
+>
+> **Canonical precedence:** `docs/ops/MVP_AGENT_GOVERNANCE.md` (owner-approved #3442 comment `4947327550`). Fixed slots are an evidence option, not a permission gate. A missing/unknown slot is advisory, not an automatic BLOCKED. Conflicting sections are `NON_NORMATIVE_OUTSIDE_NAMED_CONTEXT`.
 > while automated Cloudflare Pages-based E2E smoke is not yet in place.
 
 ---

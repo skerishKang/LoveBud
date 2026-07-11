@@ -4053,6 +4053,12 @@
       "layer": "SOURCE_STATIC",
       "rationale": "Reads repository Markdown and index files and asserts static source-of-truth, supersession, and policy-routing markers only; it does not execute runtime code, connect to a database or network, use a browser, deploy, or verify production behavior.",
       "capabilities": []
+    },
+    {
+      "path": "tests/contracts/mvp-agent-governance-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Reads repository governance Markdown and agent-guidance files and verifies static owner-approved policy, precedence, and non-blocking workflow markers only; it does not execute runtime code, use a browser, connect to a database or network, deploy, or mutate production.",
+      "capabilities": []
     }
   ],
   "supplemental": [
