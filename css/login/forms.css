@@ -108,6 +108,24 @@
     cursor: pointer;
     color: var(--on-surface-variant);
     opacity: 0.6;
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: opacity 0.2s, background 0.2s;
+}
+
+.login-email-close:hover {
+    opacity: 1;
+    background: rgba(0,0,0,0.04);
+}
+
+.login-email-close:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+    opacity: 1;
 }
 
 .login-auth-mode-badge {
