@@ -1,5 +1,9 @@
 # Cloudflare Preview Provenance Runbook
 
+> **Disposition:** `NON_NORMATIVE_OUTSIDE_NAMED_CONTEXT` for agent-governance blocker/approval interpretations.
+> Canonical agent-governance authority: `docs/ops/MVP_AGENT_GOVERNANCE.md` (owner-approved #3442 comment `4947327550`).
+> This Issue #668 runbook's CTO-assigned-fixed-slot gate and production/localhost-as-pre-merge-proof ban are retained only within the URL-provenance context named here and are **not** repo-wide automatic-blocker authority. Under canonical policy, production, PR preview, localhost, and fixed slot are allowed by default and fixed-slot absence / CTO-assigned URL are advisory, not blockers. SHA-provenance reporting guidance is preserved.
+
 **Status:** Active ops runbook  
 **Owner:** CTO / Ops Lead  
 **Related issue:** #668

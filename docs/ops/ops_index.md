@@ -14,6 +14,8 @@
 
 ---
 
+> **Agent-governance authority:** The canonical source of truth for agent / development / browser blocker and approval judgments is `docs/ops/MVP_AGENT_GOVERNANCE.md` (owner-approved #3442 comment `4947327550`). The browser/slot verification docs listed below are evidence-depth guidance; where any of them classifies an MVP-de-escalated item (one-task-per-branch, draft-by-default, fixed-slot absence, missing entrypoint comment, dirty worktree, CTO-assigned URL, routine merge, production/localhost as pre-merge proof) as an automatic blocker, that is **not** repo-wide automatic-blocker authority and is superseded by `MVP_AGENT_GOVERNANCE.md`.
+
 ## 먼저 읽기
 
 1. [OPERATIONS.md](OPERATIONS.md) - 현재 운영 전략과 계층 정의

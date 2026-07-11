@@ -1,5 +1,9 @@
 # Active Work Board and Parallel PR Ownership Policy
 
+> **Disposition:** `NON_NORMATIVE_OUTSIDE_NAMED_CONTEXT` for agent-governance blocker/approval interpretations.
+> Canonical agent-governance authority: `docs/ops/MVP_AGENT_GOVERNANCE.md` (owner-approved #3442 comment `4947327550`).
+> This Issue #426 policy's "STOP if `git status --short` is not empty" and slot-SHA/assignment gate language is retained only within the parallel-work coordination context named here and is **not** repo-wide automatic-blocker authority. Under canonical policy, a dirty worktree is not an automatic blocker and fixed-slot absence is advisory. Parallel-work coordination content is preserved.
+
 ## Purpose
 
 Prevent conflicts when multiple AI models, workers, computers, and fixed test slots work in parallel. Provide visibility into active work so the CTO does not need to manually remember every active PR, branch, file scope, and test slot. Maintain existing principles: no direct `main` pushes, PR-only merge flow, and PR #7/prototype/reference/demo/variant protection.
