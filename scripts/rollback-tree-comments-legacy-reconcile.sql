@@ -431,8 +431,9 @@ BEGIN
   EXECUTE format('ALTER TABLE public.tree_comments DROP CONSTRAINT %I', v_pkid);
 END $$;
 
--- Restore legacy composite PRIMARY KEY (tree_id, id). This reuses the legacy
--- definition captured at migration time; the migration preserved the original PK.
+-- Restore legacy composite PRIMARY KEY (tree_id, id). Rollback validates the
+-- canonical PK is exactly [id], drops it by catalog-discovered constraint name,
+-- then explicitly recreates PRIMARY KEY (tree_id, id).
 ALTER TABLE public.tree_comments
   ADD CONSTRAINT tree_comments_pkey PRIMARY KEY (tree_id, id);
 

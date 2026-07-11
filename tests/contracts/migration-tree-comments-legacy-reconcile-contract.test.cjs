@@ -604,3 +604,104 @@ test('reconcile runbook does not claim the migration/rollback were actually exec
   assert.match(runbook, /pglast:\s*NOT RUN on this final head/i,
     'Runbook must record pglast: NOT RUN on this final head');
 });
+
+// ─── 19. Operational runbook correction (Issue #3431) ───────────────────────
+
+// Runbook legacy preflight must include the real pg_index catalog query and
+// require secondary_index_count = 0.
+const sec5 = runbook.slice(runbook.indexOf('## 5. Preflight queries'));
+const sec6 = sec5.indexOf('## 6.');
+const sec5Block = sec6 > 0 ? sec5.slice(0, sec6) : sec5;
+
+test('reconcile runbook preflight includes the pg_index catalog query', () => {
+  assert.match(sec5Block, /pg_index/i, 'Runbook Sec 5 must include the pg_index catalog query');
+});
+
+test('reconcile runbook preflight requires secondary_index_count = 0', () => {
+  assert.match(sec5Block, /secondary_index_count/i, 'Runbook Sec 5 must count secondary indexes');
+  assert.match(sec5Block, /secondary_index_count = 0/i, 'Runbook Sec 5 must expect secondary_index_count = 0');
+});
+
+test('reconcile runbook approval checklist requires zero legacy secondary index', () => {
+  const sec6b = runbook.slice(runbook.indexOf('## 6. Execution approval gate'));
+  const next = sec6b.indexOf('## 7.');
+  const block = next > 0 ? sec6b.slice(0, next) : sec6b;
+  assert.match(block, /Legacy non-primary secondary index count = 0/i,
+    'Runbook approval checklist must require legacy non-primary secondary index count = 0');
+});
+
+test('reconcile runbook failure-stop criteria includes unexpected index', () => {
+  const sec14 = runbook.slice(runbook.indexOf('## 14. Failure stop criteria'));
+  assert.match(sec14, /unexpected index or secondary index count != 0/i,
+    'Runbook failure-stop criteria must include an unexpected index / secondary count != 0');
+});
+
+// Runbook Sec 9 post-migration exact index query.
+const sec9 = runbook.slice(runbook.indexOf('## 9. Post-migration schema verification'));
+const sec9Next = sec9.indexOf('## 10.');
+const sec9Block = sec9Next > 0 ? sec9.slice(0, sec9Next) : sec9;
+
+test('reconcile runbook post-migration includes exact 3 canonical indexes', () => {
+  assert.match(sec9Block, /secondary total = 3/i, 'Runbook Sec 9 must expect secondary total = 3');
+  assert.match(sec9Block, /idx_tree_comments_tree_id/i, 'Runbook Sec 9 must name idx_tree_comments_tree_id');
+  assert.match(sec9Block, /idx_tree_comments_owner_id/i, 'Runbook Sec 9 must name idx_tree_comments_owner_id');
+  assert.match(sec9Block, /idx_tree_comments_created_at/i, 'Runbook Sec 9 must name idx_tree_comments_created_at');
+});
+
+test('reconcile runbook post-migration compound count = 0 and unexpected count = 0', () => {
+  assert.match(sec9Block, /compound \[tree_id, created_at\] count = 0/i,
+    'Runbook Sec 9 must expect compound [tree_id, created_at] count = 0');
+  assert.match(sec9Block, /unexpected secondary count = 0/i,
+    'Runbook Sec 9 must expect unexpected secondary count = 0');
+});
+
+// Runbook Sec 12 smoke test must use the public Pages route, not the private Modal route.
+const sec12 = runbook.slice(runbook.indexOf('## 12. Smoke test'));
+const sec12Next = sec12.indexOf('## 13.');
+const sec12Block = sec12Next > 0 ? sec12.slice(0, sec12Next) : sec12;
+
+test('reconcile runbook smoke test uses the public Pages /api/trees/ route', () => {
+  assert.match(sec12Block, /https:\/\/lovebud\.pages\.dev\/api\/trees\//i,
+    'Runbook Sec 12 must use the public Pages /api/trees/ route');
+  assert.match(sec12Block, /\$\{PRIVATE_TREE_ID\}\/comments\?limit=20/i,
+    'Runbook Sec 12 must use a bounded limit=20 smoke');
+  assert.match(sec12Block, /Expect 400/i, 'Runbook Sec 12 must include invalid-tree-id => 400');
+  assert.match(sec12Block, /Expect 404/i, 'Runbook Sec 12 must include missing/non-public tree => 404');
+});
+
+test('reconcile runbook smoke test must not use the private Modal route', () => {
+  assert.equal(/modal\/private\//i.test(runbook), false,
+    'Runbook must not reference the private /modal/private/ route');
+  assert.equal(/<approved-public-endpoint>/i.test(runbook), false,
+    'Runbook must not use the placeholder <approved-public-endpoint>');
+});
+
+// Runbook Sec 7 secure schema-only backup.
+const sec7 = runbook.slice(runbook.indexOf('## 7. Backup / rollback strategy'));
+const sec7Next = sec7.indexOf('## 8.');
+const sec7Block = sec7Next > 0 ? sec7.slice(0, sec7Next) : sec7;
+
+test('reconcile runbook secure backup uses umask/mktemp and --no-owner/--no-privileges', () => {
+  assert.match(sec7Block, /umask 077/i, 'Runbook Sec 7 must set umask 077');
+  assert.match(sec7Block, /mktemp -d/i, 'Runbook Sec 7 must use mktemp -d for an external dir');
+  assert.match(sec7Block, /--no-owner/i, 'Runbook Sec 7 backup must use --no-owner');
+  assert.match(sec7Block, /--no-privileges/i, 'Runbook Sec 7 backup must use --no-privileges');
+  assert.match(sec7Block, /never .*git add.* or committed/i,
+    'Runbook Sec 7 must state the backup is never git added / committed');
+});
+
+// Runbook Sec 10 production-evidence wording must not make the false blanket claim.
+test('reconcile runbook does not make a false "no production connection was opened" claim', () => {
+  assert.equal(/No connection to Neon production or any shared database was opened\.\s*$/m.test(runbook), false,
+    'Runbook must NOT claim "No connection ... was opened" as a bare standalone statement');
+  assert.match(runbook, /approved production read-only catalog inspection: YES/i,
+    'Runbook must distinguish approved production read-only inspection = YES');
+  assert.match(runbook, /production\/staging DB access: NO/i,
+    'Runbook must state this PR production/staging DB access = NO');
+});
+
+// Migration SQL must not carry the stale "tree_id index is preserved for list reads" comment.
+test('reconcile migration SQL does not carry the stale "tree_id index is preserved" comment', () => {
+  assert.equal(/tree_id index is preserved for list reads/i.test(sql), false,
+    'Migration SQL must not contain the stale "tree_id index is preserved for list reads" comment');
+});

@@ -682,7 +682,9 @@ ALTER TABLE public.tree_comments
 -- Writer replay reads by WHERE id = %s, so id must be DB-level unique.
 -- The exact legacy PK constraint name is NOT assumed; it is read from the catalog
 -- and dropped ONLY when its definition is exactly (tree_id, id). Guessing the
--- constraint name is forbidden. tree_id index is preserved for list reads.
+-- constraint name is forbidden. The legacy PK backing index is removed with the
+-- legacy PK; the migration then creates the canonical single-column tree_id
+-- secondary index.
 DO $$
 DECLARE
   v_pkid text;

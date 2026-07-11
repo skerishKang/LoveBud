@@ -320,3 +320,41 @@ test('rollback script does not use close keywords for parent issues', () => {
   assert.equal(/\bCloses\s+#3075\b/i.test(sql), false, 'Must not use Closes #3075');
   assert.equal(/\bCloses\s+#1882\b/i.test(sql), false, 'Must not use Closes #1882');
 });
+
+// ─── 11. Operational runbook correction (Issue #3431) ───────────────────────
+
+// Runbook post-rollback must require secondary count = 0, canonical 3 names
+// absent, PK [tree_id, id], compound absent. The stale "captured/preserved
+// original PK" wording must be absent from the runbook and SQL.
+const RUNBOOK_PATH = path.join(ROOT, 'docs', 'product', 'lovebud-tree-comments-legacy-schema-reconciliation-runbook.md');
+const runbook = readFile(RUNBOOK_PATH);
+
+const sec11 = runbook.slice(runbook.indexOf('## 11. Rollback procedure'));
+const sec12 = sec11.indexOf('## 12.');
+const sec11Block = sec12 > 0 ? sec11.slice(0, sec12) : sec11;
+
+test('rollback runbook post-rollback requires secondary count = 0', () => {
+  assert.match(sec11Block, /secondary_index_count = 0/i,
+    'Runbook Sec 11 post-rollback must expect secondary_index_count = 0');
+  assert.match(sec11Block, /canonical_index_count = 0/i,
+    'Runbook Sec 11 post-rollback must expect canonical index count = 0');
+});
+
+test('rollback runbook post-rollback PK = [tree_id, id] and compound absent', () => {
+  assert.match(sec11Block, /PK ordered columns = \[tree_id, id\]/i,
+    'Runbook Sec 11 post-rollback must expect PK ordered columns = [tree_id, id]');
+  assert.match(sec11Block, /compound_tree_created_count = 0/i,
+    'Runbook Sec 11 post-rollback must expect compound [tree_id, created_at] count = 0');
+});
+
+test('rollback runbook / SQL do not carry stale "captured/preserved original PK" wording', () => {
+  assert.equal(/captured at migration time/i.test(runbook), false,
+    'Runbook must not claim the original PK was captured at migration time');
+  assert.equal(/migration preserved the original PK/i.test(runbook), false,
+    'Runbook must not claim the migration preserved the original PK');
+  assert.equal(/captured at migration time/i.test(sql), false,
+    'Rollback SQL must not claim the original PK was captured at migration time');
+  assert.equal(/migration preserved the original PK/i.test(sql), false,
+    'Rollback SQL must not claim the migration preserved the original PK');
+});
+
