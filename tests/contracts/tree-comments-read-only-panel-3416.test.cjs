@@ -22,6 +22,9 @@ const TREE_COMMENTS_CLIENT_PATH = path.join(ROOT, 'js', 'social', 'tree-comments
 const TREE_META_PATH = path.join(ROOT, 'js', 'viewer', 'public-viewer-detail-tree-meta.js');
 const DETAIL_UI_PATH = path.join(ROOT, 'js', 'viewer', 'public-viewer-detail-ui.js');
 const VIEW_HTML_PATH = path.join(ROOT, 'pages', 'view.html');
+const EDITOR_OVERRIDES_PATH = path.join(ROOT, 'css', 'editor', 'editor-overrides.css');
+const EDITOR_CSS_PATH = path.join(ROOT, 'css', 'editor.css');
+const VIEW_MODE_TEMPLATE_PATH = path.join(ROOT, 'js', 'viewer', 'public-viewer-detail-view-mode-template.js');
 
 const VALID_TREE_ID = '11111111-1111-4111-8111-111111111111';
 const OTHER_TREE_ID = '22222222-2222-4222-8222-222222222222';
@@ -1061,4 +1064,128 @@ test('tree comments control does not modify tree-like or share button DOM', () =
   assert.equal(panel.id, 'wholeTreeCommentsPanel', 'dedicated panel id');
   // No global class names that collide with existing controls
   assert.ok(!btn.className.includes('vv-'), 'no vv- namespace collision');
+});
+
+// ─── 39. Broad hide rule retains .editor-tree-meta-section ───────────────────
+
+test('broad editor hide rule retains .editor-tree-meta-section', () => {
+  const css = fs.readFileSync(EDITOR_OVERRIDES_PATH, 'utf8');
+  // Find the broad hide rule block (starts with .editor-status-section > h3)
+  const hideRuleStart = css.indexOf('.editor-status-section > h3');
+  assert.ok(hideRuleStart !== -1, 'broad hide rule must exist');
+  const hideBlock = css.slice(hideRuleStart, css.indexOf('}', hideRuleStart) + 1);
+  assert.ok(hideBlock.includes('.editor-tree-meta-section'),
+    'editor-tree-meta-section must remain in the broad hide rule');
+  assert.match(hideBlock, /display:\s*none\s*!important/,
+    'broad hide rule must use display: none !important');
+});
+
+// ─── 40. Public viewer override exists with correct selector ────────────────
+
+test('public viewer override restores tree-meta visibility', () => {
+  const css = fs.readFileSync(EDITOR_OVERRIDES_PATH, 'utf8');
+  assert.match(
+    css,
+    /body\.editor-readonly\s+\.editor-tree-meta-section\s*\{[^}]*display:\s*block\s*!important/,
+    'public override must use body.editor-readonly .editor-tree-meta-section'
+  );
+});
+
+// ─── 41. Public override does not restore other hidden selectors ────────────
+
+test('public override does not restore other editor-only hidden selectors', () => {
+  const css = fs.readFileSync(EDITOR_OVERRIDES_PATH, 'utf8');
+  const overrideBlock = css.match(/body\.editor-readonly\s+\.editor-tree-meta-section\s*\{[^}]*\}/);
+  assert.ok(overrideBlock, 'public override block must exist');
+  // The override block must reference only .editor-tree-meta-section
+  assert.ok(!overrideBlock[0].includes('editor-status-section'), 'must not restore status-section');
+  assert.ok(!overrideBlock[0].includes('editor-flow-lead'), 'must not restore flow-lead');
+  assert.ok(!overrideBlock[0].includes('sidebarMomentCount'), 'must not restore sidebarMomentCount');
+  assert.ok(!overrideBlock[0].includes('editor-add-section-bottom'), 'must not restore add-section-bottom');
+  assert.ok(!overrideBlock[0].includes('detailEmptyStartBtn'), 'must not restore detailEmptyStartBtn');
+});
+
+// ─── 42. Public viewer template has no hardcoded aria-hidden on tree-meta-section ─
+
+test('public viewer template has no hardcoded aria-hidden on tree-meta-section', () => {
+  const template = fs.readFileSync(VIEW_MODE_TEMPLATE_PATH, 'utf8');
+  assert.doesNotMatch(
+    template,
+    /editor-tree-meta-section[^>]*aria-hidden/,
+    'public viewer tree-meta-section must not have hardcoded aria-hidden="true"'
+  );
+});
+
+// ─── 43. Whole-tree comments panel still uses hidden state ──────────────────
+
+test('whole-tree comments panel still uses hidden state', () => {
+  const src = fs.readFileSync(WTREE_COMMENTS_PATH, 'utf8');
+  assert.match(src, /\.hidden\s*=\s*true/, 'panel must use .hidden = true for closed state');
+  assert.match(src, /\.hidden\s*=\s*false/, 'panel must use .hidden = false for open state');
+});
+
+// ─── 44. Action append order: like → comments → share ──────────────────────
+
+test('action append order is treeLikeControlEl → treeCommentsControlEl → shareButtonEl', () => {
+  const metaSrc = fs.readFileSync(TREE_META_PATH, 'utf8');
+  // Find the actionsRow.appendChild block where the three controls are appended
+  const appendLike = metaSrc.indexOf('actionsRow.appendChild(treeLikeControlEl)');
+  const appendComments = metaSrc.indexOf('actionsRow.appendChild(treeCommentsControlEl)');
+  const appendShare = metaSrc.indexOf('actionsRow.appendChild(shareButtonEl)');
+
+  assert.ok(appendLike !== -1, 'actionsRow.appendChild(treeLikeControlEl) must exist');
+  assert.ok(appendComments !== -1, 'actionsRow.appendChild(treeCommentsControlEl) must exist');
+  assert.ok(appendShare !== -1, 'actionsRow.appendChild(shareButtonEl) must exist');
+
+  assert.ok(appendLike < appendComments, 'treeLikeControlEl must append before treeCommentsControlEl');
+  assert.ok(appendComments < appendShare, 'treeCommentsControlEl must append before shareButtonEl');
+});
+
+// ─── 45. view.html uses exact parent editor.css version ────────────────────
+
+test('pages/view.html references exact parent editor.css version', () => {
+  const html = fs.readFileSync(VIEW_HTML_PATH, 'utf8');
+  assert.match(
+    html,
+    /href="\.\.\/css\/editor\.css\?v=20260712-3419-1"/,
+    'view.html must load ../css/editor.css?v=20260712-3419-1'
+  );
+});
+
+// ─── 46. editor.css uses exact child editor-overrides.css version ───────────
+
+test('css/editor.css references exact child editor-overrides.css version', () => {
+  const css = fs.readFileSync(EDITOR_CSS_PATH, 'utf8');
+  assert.match(
+    css,
+    /@import\s+url\("\.\/editor\/editor-overrides\.css\?v=20260712-3419-1"\)/,
+    'editor.css must import editor-overrides.css?v=20260712-3419-1'
+  );
+});
+
+// ─── 47. #3075 selected-moment DOM unchanged (file-content guard) ───────────
+
+test('#3075 selected-moment DOM, adapter, and route unchanged', () => {
+  // Check that selected-moment comment-related files are not modified
+  const treeCommentsSrc = fs.readFileSync(WTREE_COMMENTS_PATH, 'utf8');
+  const treeMetaSrc = fs.readFileSync(TREE_META_PATH, 'utf8');
+  // Must not reference selected-moment specific concepts
+  assert.ok(!/selectedMoment|selected_moment/.test(treeCommentsSrc), 'tree-comments must not reference selectedMoment');
+  assert.ok(!/selectedMoment|selected_moment/.test(treeMetaSrc), 'tree-meta must not reference selectedMoment');
+  // Must not reference moment comment adapters
+  assert.ok(!/momentComments/.test(treeCommentsSrc), 'tree-comments must not reference momentComments');
+  assert.ok(!/momentComments/.test(treeMetaSrc), 'tree-meta must not reference momentComments');
+});
+
+// ─── 48. Scout files unchanged (file-content guard) ─────────────────────────
+
+test('Scout files are not modified', () => {
+  const treeCommentsSrc = fs.readFileSync(WTREE_COMMENTS_PATH, 'utf8');
+  const treeMetaSrc = fs.readFileSync(TREE_META_PATH, 'utf8');
+  const detailUiSrc = fs.readFileSync(DETAIL_UI_PATH, 'utf8');
+  for (const needle of ['scout', 'Scout', 'LoveBudScout', 'modal_compute']) {
+    assert.ok(!treeCommentsSrc.includes(needle), `panel module must not reference "${needle}"`);
+    assert.ok(!treeMetaSrc.includes(needle), `tree-meta module must not reference "${needle}"`);
+    assert.ok(!detailUiSrc.includes(needle), `detail-ui module must not reference "${needle}"`);
+  }
 });
