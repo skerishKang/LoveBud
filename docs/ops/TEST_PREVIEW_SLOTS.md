@@ -11,6 +11,8 @@
 
 Fixed Test Preview Slots provide stable Cloudflare Pages domains for verification when a PR Preview is insufficient or unsuitable. They are used to separate product/code failures from preview infrastructure, Firebase Auth domain, login redirect, API routing, or test data availability issues.
 
+**Governance:** A fixed test slot is an **evidence option, not a permission gate**. A missing fixed-slot assignment does not by itself block an unrelated task, implementation, test, PR, or merge. Where this document treats an MVP-de-escalated item (fixed-slot absence, CTO-assigned URL, dirty worktree, PR Preview as preliminary proof) as an automatic blocker, that is **not** repo-wide automatic-blocker authority and is superseded by `docs/ops/MVP_AGENT_GOVERNANCE.md` (owner-approved #3442 comment `4947327550`). Verification environments indicate the *strength of a claim*, not whether work may proceed.
+
 Use this document as the source of truth for:
 
 - Browser / Web / Local role boundaries
@@ -170,7 +172,7 @@ A PR Preview must not be treated as final PASS when the required user flow depen
 - Clipboard/deep-link verification is being used for merge approval.
 - CTO explicitly assigns `test1` through `test10`.
 
-PR Preview URLs are not sufficient for final PASS on login/auth/API/domain-sensitive UI flows. Browser/UI verification should use a CTO-assigned fixed test preview slot when stable domain behavior matters.
+For login/auth/API/domain-sensitive UI flows, a PR Preview alone is a weaker claim than a CTO-assigned fixed test preview slot; it does not by itself prove final PASS. This is a claim-strength statement, not a blocker on the whole task. When no slot is assigned, report the verification environment actually used and its claim status (for example `NOT_VERIFIED_ON_FIXED_SLOT` or `PARTIAL`) rather than treating the task as `BLOCKED`.
 
 ### 5.3 Decision matrix
 
@@ -233,6 +235,7 @@ Verification judgments must separate what was observed from what was not observe
 | Actual page opens but no valid test data is available | PARTIAL | no mutation; identify missing test data |
 | Browser verified viewport + console + network | PASS candidate | still separate warnings from blockers |
 | New console exception or API 5xx tied to PR change | BLOCKED or revision needed | include endpoint/status/viewport/screenshot reference |
+| Fixed slot was not assigned for the task | FIXED_SLOT_NOT_ASSIGNED / NOT_VERIFIED_ON_FIXED_SLOT | report which verifiable environment was used; this does not make the whole task BLOCKED |
 
 Terminology:
 
@@ -242,6 +245,8 @@ Terminology:
 - `FAIL`: observed product behavior does not meet the expected result.
 
 Do not turn PARTIAL into PASS without the missing observation.
+
+Fixed-slot absence is a claim-status result, not a project-wide blocker. If no fixed slot was assigned, the verifier may report `FIXED_SLOT_NOT_ASSIGNED`, `NOT_VERIFIED_ON_FIXED_SLOT`, or `PARTIAL` for the fixed-slot-specific claim. None of these make the whole task, PR, implementation, test, or merge `BLOCKED`. The task proceeds; only the strength of the fixed-slot claim is lowered.
 
 ---
 
@@ -374,12 +379,12 @@ Cache invalidation requires CTO approval.
 - plain `--force` is prohibited.
 - Fixed slot assignment must be explicit.
 - Available fixed slots are `test1` through `test10`.
-- PR Preview URLs are not sufficient for final PASS on login/auth/API/domain-sensitive UI flows.
+- For login/auth/API/domain-sensitive UI flows a PR Preview alone is a weaker claim than a fixed slot; this is a claim-strength statement, not a project-wide blocker (see `docs/ops/MVP_AGENT_GOVERNANCE.md`).
 - A verifier must not silently choose a slot when no slot has been assigned.
 - A verifier must not claim final UI PASS from PR Preview when the CTO requested fixed slot verification.
 - production data write/delete is prohibited unless separately approved.
 - token/password/cookie/raw credential logging is prohibited.
-- PR #7 prototype and prototype/reference/demo folders are not slot cleanup targets.
+- Prototype/reference/demo folders are excluded from slot-cleanup only within their original named issue context; this is evidence/hygiene guidance, not an automatic blocker on other work.
 - API/backend code changes are not part of slot verification.
 - Browser-only verification must not be replaced by GitHub metadata when the task requires rendered UI proof.
 
@@ -387,6 +392,7 @@ Cache invalidation requires CTO approval.
 
 ## 14. Reference docs
 
+- [MVP_AGENT_GOVERNANCE.md](MVP_AGENT_GOVERNANCE.md) - canonical agent / development / browser blocker and approval authority (owner-approved #3442 comment `4947327550`)
 - [DEPLOY_CHECKLIST.md](DEPLOY_CHECKLIST.md) - deployment verification checklist
 - [RUNBOOK.md](RUNBOOK.md) - operations runbook
 - [PR_CHECKLIST.md](PR_CHECKLIST.md) - PR review checklist
@@ -395,5 +401,7 @@ Cache invalidation requires CTO approval.
 
 ---
 
-Document version: 1.4  
+Document version: 1.5
 Next review: CTO approval after next fixed-slot verification cycle
+
+Follow-up: Issue #3448 de-escalated the fixed-slot automatic-blocker language. Fixed-slot absence is now a claim-status result (`FIXED_SLOT_NOT_ASSIGNED` / `NOT_VERIFIED_ON_FIXED_SLOT` / `PARTIAL`), not a project-wide blocker. Blocker/permission authority is `docs/ops/MVP_AGENT_GOVERNANCE.md`. Evidence-quality guidance (provenance/SHA reporting, secret/token/cookie protection, production write/delete approval, main protection) is preserved.

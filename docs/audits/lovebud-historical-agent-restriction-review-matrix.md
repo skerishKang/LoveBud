@@ -113,6 +113,31 @@ MVP-de-escalated item as an automatic blocker/approval/stop gate.
   approval protection, SHA-provenance reporting, parallel-work coordination.
 - **Not weakened:** security/destructive-production hard rules.
 
+## Follow-up disposition applied by #3448
+
+Issue #3448 de-escalated the fixed-slot and verification-target automatic
+blocker language that was deferred from the first tranche (DEFER, not NOW).
+
+- Target docs: `docs/ops/TEST_PREVIEW_SLOTS.md`, `docs/ops/VERIFICATION_TARGET_ALLOWLIST.md`.
+- These two entries were `tranche: DEFER` in the #3445 snapshot and **remain
+  DEFER**; #3448 is a follow-up applied to the deferred entries, not a tranche
+  reclassification.
+- Automatic blocker removal: fixed-slot absence, CTO-assigned URL absence, and
+  provenance/SHA uncertainty no longer produce a project-wide `BLOCKED`; they
+  lower the claim status (`FIXED_SLOT_NOT_ASSIGNED`, `NOT_VERIFIED_ON_FIXED_SLOT`,
+  `PARTIAL`, `NOT_VERIFIED`, `INVALID_FOR_TARGET_CLAIM`).
+- Evidence-quality guidance preserved: SHA-provenance reporting, Netlify/
+  lovebudold invalid for current Cloudflare + Modal runtime proof, secret/token/
+  cookie/private payload protection, production write/delete approval protection,
+  main direct push/force-push protection.
+- Canonical blocker authority is `docs/ops/MVP_AGENT_GOVERNANCE.md`; the
+  self-precedence clause in `VERIFICATION_TARGET_ALLOWLIST.md` was removed and
+  the `Ready transition: NO` / `Merge: NO` / `Issue close: NO` automatic results
+  were removed (merge is governed only by canonical hard rules).
+- Inventory follow-up metadata added to both target entries:
+  `followup_issue: 3448`, `followup_status: "APPLIED"`,
+  `followup_disposition: "PRESERVE_AS_EVIDENCE_QUALITY_GUIDANCE"`.
+
 ## Validation
 
 - Inventory JSON parses and carries required fields (see contract

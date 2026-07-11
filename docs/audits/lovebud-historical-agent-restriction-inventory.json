@@ -115,7 +115,10 @@
       "owner_approval_reference": null,
       "recommended_disposition": "DEFER_DEEPER_FOLLOWUP",
       "tranche": "DEFER",
-      "reason": "Not in ops_index read-first; reachable only via secondary links and other docs. Largely aligned to MVP hard rules (main protection, destructive production approval). The slot-assignment gate is a deeper follow-up than the minimal first tranche. Deferred."
+      "reason": "Not in ops_index read-first; reachable only via secondary links and other docs. Largely aligned to MVP hard rules (main protection, destructive production approval). The slot-assignment gate is a deeper follow-up than the minimal first tranche. Deferred.",
+      "followup_issue": 3448,
+      "followup_status": "APPLIED",
+      "followup_disposition": "PRESERVE_AS_EVIDENCE_QUALITY_GUIDANCE"
     },
     {
       "path": "docs/ops/VERIFICATION_TARGET_ALLOWLIST.md",
@@ -129,7 +132,10 @@
       "owner_approval_reference": null,
       "recommended_disposition": "DEFER_DEEPER_FOLLOWUP",
       "tranche": "DEFER",
-      "reason": "Reachable only via references from slot docs, not from read-first. Conflicts with MVP on fixed-slot absence and CTO-assigned URL as blockers, but is a deeper follow-up than the minimal first tranche. Deferred."
+      "reason": "Reachable only via references from slot docs, not from read-first. Conflicts with MVP on fixed-slot absence and CTO-assigned URL as blockers, but is a deeper follow-up than the minimal first tranche. Deferred.",
+      "followup_issue": 3448,
+      "followup_status": "APPLIED",
+      "followup_disposition": "PRESERVE_AS_EVIDENCE_QUALITY_GUIDANCE"
     },
     {
       "path": "docs/ops/UI_SCREENSHOT_CTO_REVIEW_POLICY.md",
