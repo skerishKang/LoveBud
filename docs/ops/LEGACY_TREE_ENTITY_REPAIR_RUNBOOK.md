@@ -133,7 +133,16 @@ Common failures:
 - Duplicate or conflicting tree ID mappings
 - Invalid keyword or date format
 
-### Step 4: Run `--dry-run` (with preflight)
+### Step 4: Production Read-Only Preflight
+
+Perform a read-only production database query to produce the preflight input
+file used in Step 5. Verify:
+
+- [ ] Mapping tree ID set matches preflight tree ID set exactly
+- [ ] `entityExists` flags correctly reflect `public.trees` state
+- [ ] `publicMomentCount` values are accurate
+
+### Step 5: Run `--dry-run` (with preflight)
 
 ```bash
 node scripts/prepare-legacy-tree-entity-repair.cjs \
@@ -156,15 +165,6 @@ Review the aggregate:
 **Important:** If any `entityExists: true` exists in the preflight, the script
 will exit with non-zero. The private mapping or preflight must be reviewed and
 a new artifact created. Existing entities are never auto-skipped.
-
-### Step 5: Production Read-Only Preflight
-
-This step is performed independently to produce the preflight input file used
-in Step 4. Verify:
-
-- [ ] Mapping tree ID set matches preflight tree ID set exactly
-- [ ] `entityExists` flags correctly reflect `public.trees` state
-- [ ] `publicMomentCount` values are accurate
 
 ### Step 6: Review Exact Aggregate and Obtain Approval
 

@@ -1488,6 +1488,20 @@ test('script does not import pg, firebase-admin, or network modules', () => {
   assert.ok(!content.includes("require('net'"), 'Must not import net');
 });
 
+// ─── Runbook step order contract ───────────────────────────────────────────
+
+test('runbook Step 4 preflight creation precedes Step 5 dry-run', () => {
+  const runbookPath = path.join(ROOT, 'docs', 'ops', 'LEGACY_TREE_ENTITY_REPAIR_RUNBOOK.md');
+  assert.ok(fs.existsSync(runbookPath), 'Runbook must exist');
+  const content = fs.readFileSync(runbookPath, 'utf8');
+  const step4Idx = content.indexOf('Step 4: Production Read-Only Preflight');
+  const step5Idx = content.indexOf('Step 5: Run');
+  assert.ok(step4Idx >= 0, 'Step 4 must exist');
+  assert.ok(step5Idx >= 0, 'Step 5 must exist');
+  assert.ok(step4Idx < step5Idx,
+    'Step 4 (Production Read-Only Preflight) must appear before Step 5 (Run --dry-run) in the document');
+});
+
 // ─── Runbook tests ────────────────────────────────────────────────────────
 
 test('runbook has pre-commit rollback and prohibits automatic post-commit DELETE', () => {
