@@ -1,5 +1,9 @@
 # GitHub Auth Token Usage
 
+> **Disposition:** `NON_NORMATIVE_OUTSIDE_NAMED_CONTEXT` for the merge-approval interpretation.
+> Canonical agent-governance authority: `docs/ops/MVP_AGENT_GOVERNANCE.md` (owner-approved #3442 comment `4947327550`).
+> The "merge requires explicit CTO approval in the current task" language is retained only as non-normative guidance outside routine merges; under canonical policy a routine squash merge may proceed after remote diff review, CI green, and expected-head confirmation, without repeated CTO approval. All secret-handling / HARD_SECURITY content in this document remains in force and unchanged.
+
 **Status:** Active ops guidance
 **Owner:** CTO / Ops Lead
 **Scope:** GitHub CLI login, browser login sessions, connector-backed GitHub access, and local verification agents

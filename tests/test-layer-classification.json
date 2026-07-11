@@ -335,6 +335,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/historical-agent-guidance-disposition-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Reads repository governance Markdown, the historical-agent-restriction inventory JSON, and agent-guidance index files; asserts on disposition markers, canonical links, preserved historical body, and absence of re-introduced unconditional blockers. Does not execute runtime code, launch a browser, connect to a database or network, deploy, or mutate production.",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/channel-metadata-payload-contract.test.cjs",
       "layer": "EXECUTED_FAKE",
       "rationale": "Reads production module source and executes it in a local process with injected fake/mock/stub dependencies (e.g., vm context with fake DOM or mocked fetch/localStorage); no real external system or production resource used.",
