@@ -74,7 +74,6 @@ symlinks pointing into the repository.
 {
   "schemaVersion": 1,
   "sourceClassification": "AUTHORITATIVE_BROWSER_RECOVERY_SOURCE_FOUND",
-  "mappingArtifactSha256": "<64-hex-sha256>",
   "records": [
     {
       "treeId": "original-text-id",
@@ -84,7 +83,7 @@ symlinks pointing into the repository.
       "titleProvenance": "AUTHORITATIVE_SERVER_RETURNED_FIELD",
       "visibility": "public",
       "groupName": null,
-      "keywords": [],
+      "keywords": null,
       "createdAt": null,
       "updatedAt": null
     }
@@ -113,16 +112,7 @@ symlinks pointing into the repository.
 - `entityExists` must be boolean
 - `publicMomentCount` must be integer >= 0
 
-### Step 3: Compute Artifact Hashes
-
-```bash
-sha256sum /path/to/mapping.json > /path/to/mapping.json.sha256
-sha256sum /path/to/preflight.json > /path/to/preflight.json.sha256
-```
-
-Record both hashes for audit trail.
-
-### Step 4: Run `--validate`
+### Step 3: Run `--validate`
 
 ```bash
 node scripts/prepare-legacy-tree-entity-repair.cjs \
@@ -143,7 +133,7 @@ Common failures:
 - Duplicate or conflicting tree ID mappings
 - Invalid keyword or date format
 
-### Step 5: Run `--dry-run` (with preflight)
+### Step 4: Run `--dry-run` (with preflight)
 
 ```bash
 node scripts/prepare-legacy-tree-entity-repair.cjs \
@@ -167,7 +157,7 @@ Review the aggregate:
 will exit with non-zero. The private mapping or preflight must be reviewed and
 a new artifact created. Existing entities are never auto-skipped.
 
-### Step 6: Production Read-Only Preflight
+### Step 5: Production Read-Only Preflight
 
 This step is performed independently to produce the preflight input file used
 in Step 5. Verify:
@@ -176,7 +166,7 @@ in Step 5. Verify:
 - [ ] `entityExists` flags correctly reflect `public.trees` state
 - [ ] `publicMomentCount` values are accurate
 
-### Step 7: Review Exact Aggregate and Obtain Approval
+### Step 6: Review Exact Aggregate and Obtain Approval
 
 Compare the dry-run aggregate with the production preflight results.
 Document any discrepancies.
@@ -190,7 +180,7 @@ Required approvals before proceeding to plan generation:
 - [ ] Rollback plan confirmed (pre-commit)
 - [ ] CTO sign-off
 
-### Step 8: Generate Repair Plan
+### Step 7: Generate Repair Plan
 
 ```bash
 node scripts/prepare-legacy-tree-entity-repair.cjs \
@@ -208,11 +198,18 @@ Expected output:
 
 The plan:
 - Contains only records where `entityExists = false`
-- Includes treeId, ownerId, title, and visibility
-- Is created as a repository-external JSON file
+- Each plan record includes:
+  - `treeId`, `ownerId`, `title`, `visibility`
+  - `groupName`, `keywords`, `createdAt`, `updatedAt`
+  - `publicMomentCount`, `privateEvidenceClassification`
+  - `ownerProvenance`, `titleProvenance`
+  - `groupNameProvenance`, `keywordsProvenance`
+  - `createdAtProvenance`, `updatedAtProvenance`
+- Is created as a repository-external JSON file via atomic no-clobber publication
+  (temp file with exclusive create → hard-link to final path → temp unlink)
 - Has no DB connection, SQL, or apply capability
 
-### Step 9: Execute Transaction Repair (Conceptual)
+### Step 8: Execute Transaction Repair (Conceptual)
 
 The plan JSON from Step 8 is the source of truth for production execution.
 The following is a **parameterized conceptual transaction** — not a command
@@ -247,7 +244,7 @@ COMMIT;
 **This package does not include or execute a production apply command.**
 The `--apply` flag is unconditionally rejected before any input is read.
 
-### Step 10: Post-Verify
+### Step 9: Post-Verify
 
 After successful COMMIT:
 
@@ -257,7 +254,7 @@ After successful COMMIT:
 - [ ] Run `SELECT COUNT(*) FROM public.trees` for baseline
 - [ ] Confirm no unintended side effects on dependent tables
 
-### Step 11: Browse Production Verification
+### Step 10: Browse Production Verification
 
 Verify the repaired trees appear correctly in Browse:
 
@@ -268,11 +265,11 @@ Verify the repaired trees appear correctly in Browse:
 - [ ] Title and metadata render correctly
 - [ ] Tree detail page loads without errors
 
-### Step 12: Rollback Conditions
+### Step 11: Rollback Conditions
 
 #### Pre-commit rollback (within transaction)
 
-ROLLBACK immediately if any of the following occurs during Step 9:
+ROLLBACK immediately if any of the following occurs during Step 8:
 
 1. **Wrong count:** Number of rows to insert != planned insert count
 2. **Wrong owner:** Post-verify reveals incorrect owner assignment

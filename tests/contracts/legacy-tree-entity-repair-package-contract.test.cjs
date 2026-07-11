@@ -439,7 +439,7 @@ test('negative publicMomentCount rejected', () => {
   }
 });
 
-// ─── Optional metadata provenance (Test 19-25) ─────────────────────────────
+// ─── Optional metadata provenance (Test 19-28) ─────────────────────────────
 
 test('groupName without provenance rejected', () => {
   const mapping = {
@@ -497,7 +497,7 @@ test('timestamps without provenance rejected', () => {
   }
 });
 
-test('optional authoritative metadata preserved in plan', () => {
+test('optional authoritative metadata preserved in plan with provenance', () => {
   const mapping = {
     ...VALID_MAPPING,
     records: [{
@@ -522,6 +522,11 @@ test('optional authoritative metadata preserved in plan', () => {
     assert.deepEqual(record.keywords, ['tag1'], 'keywords must be preserved');
     assert.equal(record.createdAt, '2025-01-01T00:00:00Z', 'createdAt must be preserved');
     assert.equal(record.updatedAt, '2025-01-02T00:00:00Z', 'updatedAt must be preserved');
+    // Provenance fields must be preserved in plan
+    assert.equal(record.groupNameProvenance, REQUIRED_PROVENANCE, 'groupNameProvenance must be preserved');
+    assert.equal(record.keywordsProvenance, REQUIRED_PROVENANCE, 'keywordsProvenance must be preserved');
+    assert.equal(record.createdAtProvenance, REQUIRED_PROVENANCE, 'createdAtProvenance must be preserved');
+    assert.equal(record.updatedAtProvenance, REQUIRED_PROVENANCE, 'updatedAtProvenance must be preserved');
   } finally {
     cleanup();
     fs.rmSync(planDir, { recursive: true, force: true });
@@ -849,7 +854,7 @@ test('mapping hash equals exact input bytes SHA-256', () => {
   const planDir = fs.mkdtempSync(path.join(require('os').tmpdir(), 'repair-hash-map-'));
   const planPath = path.join(planDir, 'plan.json');
   try {
-    const rawMapping = fs.readFileSync(m.path, 'utf8');
+    const rawMapping = fs.readFileSync(m.path);
     const expectedHash = crypto.createHash('sha256').update(rawMapping).digest('hex');
 
     const args = `--prepare-plan "${m.path}" --preflight "${p.path}" --out "${planPath}"`;
@@ -872,7 +877,7 @@ test('preflight hash equals exact input bytes SHA-256', () => {
   const planDir = fs.mkdtempSync(path.join(require('os').tmpdir(), 'repair-hash-pf-'));
   const planPath = path.join(planDir, 'plan.json');
   try {
-    const rawPreflight = fs.readFileSync(p.path, 'utf8');
+    const rawPreflight = fs.readFileSync(p.path);
     const expectedHash = crypto.createHash('sha256').update(rawPreflight).digest('hex');
 
     const args = `--prepare-plan "${m.path}" --preflight "${p.path}" --out "${planPath}"`;
@@ -898,8 +903,8 @@ test('existing output path is rejected', () => {
   try {
     const args = `--prepare-plan "${f.mappingPath}" --preflight "${f.preflightPath}" --out "${planPath}"`;
     const result = runScript(args);
-    assert.notEqual(result.exitCode, 0, 'Must reject existing output');
-    assert.ok(result.stderr.includes('already exists'), 'Must show already exists message');
+    assert.notEqual(result.exitCode, 0, 'Must reject existing output (linkSync EEXIST)');
+    assert.ok(result.stderr.includes('Output write failed'), 'Must show write failure');
   } finally {
     f.cleanup();
     fs.rmSync(planDir, { recursive: true, force: true });
@@ -926,7 +931,7 @@ test('no partial final output after forced failure', () => {
   }
 });
 
-test('plan preserves optional metadata', () => {
+test('plan preserves optional metadata with provenance', () => {
   const mapping = {
     ...VALID_MAPPING,
     records: [{
@@ -945,6 +950,8 @@ test('plan preserves optional metadata', () => {
     const record = plan.records[0];
     assert.equal(record.groupName, 'Test Group', 'groupName preserved');
     assert.deepEqual(record.keywords, ['kw1', 'kw2'], 'keywords preserved');
+    assert.equal(record.groupNameProvenance, REQUIRED_PROVENANCE, 'groupNameProvenance preserved');
+    assert.equal(record.keywordsProvenance, REQUIRED_PROVENANCE, 'keywordsProvenance preserved');
     assert.ok(record.publicMomentCount !== undefined, 'publicMomentCount present');
   } finally {
     cleanup();
@@ -977,9 +984,9 @@ test('plan deterministic for identical exact inputs', () => {
   }
 });
 
-// ─── CLI strict validation (Test 38-43) ────────────────────────────────────
+// ─── CLI strict validation ────────────────────────────────────────────────
 
-test('unknown option rejected', () => {
+test('unknown mode rejected', () => {
   const result = runScript('--unknown-option /some/path.json');
   assert.notEqual(result.exitCode, 0, 'Must reject unknown option');
   assert.ok(result.stderr.includes('Unknown mode'), 'Must show unknown mode');
@@ -990,7 +997,7 @@ test('extra positional argument rejected', () => {
   try {
     const result = runScript(`--validate "${m.path}" extra-arg`);
     assert.notEqual(result.exitCode, 0, 'Must reject extra positional');
-    assert.ok(result.stderr.includes('Unexpected additional positional'), 'Must show positional error');
+    assert.ok(result.stderr.includes('Unexpected additional positional argument'), 'Must show positional error');
   } finally {
     m.cleanup();
   }
@@ -1002,7 +1009,8 @@ test('mode-incompatible option rejected (validate + preflight)', () => {
   try {
     const result = runScript(`--validate "${m.path}" --preflight "${p.path}"`);
     assert.notEqual(result.exitCode, 0, 'Must reject validate with preflight');
-    assert.ok(result.stderr.includes('does not accept'), 'Must show incompatible option message');
+    // Token parser consumes '--validate <mapping>', then sees --preflight as unexpected
+    assert.ok(result.stderr.includes('Unexpected option after complete command'), 'Must show unexpected option');
   } finally {
     m.cleanup();
     p.cleanup();
@@ -1017,7 +1025,9 @@ test('mode-incompatible option rejected (dry-run + out)', () => {
   try {
     const result = runScript(`--dry-run "${m.path}" --preflight "${p.path}" --out "${planPath}"`);
     assert.notEqual(result.exitCode, 0, 'Must reject dry-run with --out');
-    assert.ok(result.stderr.includes('does not accept'), 'Must show incompatible option message');
+    // Token parser consumes '--dry-run <mapping> --preflight <preflight>',
+    // then sees --out as unexpected option after complete command
+    assert.ok(result.stderr.includes('Unexpected option after complete command'), 'Must show unexpected option');
   } finally {
     m.cleanup();
     p.cleanup();
@@ -1030,7 +1040,7 @@ test('duplicate option rejected', () => {
   try {
     const result = runScript(`--validate "${m.path}" --validate`);
     assert.notEqual(result.exitCode, 0, 'Must reject duplicate option');
-    assert.ok(result.stderr.includes('Duplicate option'), 'Must show duplicate option');
+    assert.ok(result.stderr.includes('Unexpected option after complete command'), 'Must show unexpected option');
   } finally {
     m.cleanup();
   }
@@ -1039,7 +1049,7 @@ test('duplicate option rejected', () => {
 test('missing option value rejected', () => {
   const m = createExternalFixture(VALID_MAPPING);
   try {
-    const result = runScript(`--validate "${m.path}" --preflight`);
+    const result = runScript(`--dry-run "${m.path}" --preflight`);
     assert.notEqual(result.exitCode, 0, 'Must reject missing option value');
     assert.ok(result.stderr.includes('Missing value for'), 'Must show missing value');
   } finally {
@@ -1053,6 +1063,74 @@ test('--apply rejected before reading a nonexistent mapping', () => {
   assert.ok(result.stderr.includes('NOT available'), 'Must show apply rejection');
   // Should not say "Cannot read" — that means it tried to read the file
   assert.ok(!result.stderr.includes('Cannot read'), 'Must reject before reading input');
+});
+
+test('--out before --preflight rejected', () => {
+  const m = createExternalFixture(VALID_MAPPING);
+  const p = createExternalFixture(VALID_PREFLIGHT);
+  const planDir = fs.mkdtempSync(path.join(require('os').tmpdir(), 'repair-order-'));
+  const planPath = path.join(planDir, 'plan.json');
+  try {
+    const result = runScript(`--prepare-plan "${m.path}" --out "${planPath}" --preflight "${p.path}"`);
+    assert.notEqual(result.exitCode, 0, 'Must reject --out before --preflight');
+    assert.ok(result.stderr.includes('Expected --preflight'), 'Must show expected --preflight');
+  } finally {
+    m.cleanup();
+    p.cleanup();
+    fs.rmSync(planDir, { recursive: true, force: true });
+  }
+});
+
+test('extra positional after complete --prepare-plan rejected', () => {
+  const f = createTwoFixtures(VALID_MAPPING, VALID_PREFLIGHT);
+  const planDir = fs.mkdtempSync(path.join(require('os').tmpdir(), 'repair-extra-'));
+  const planPath = path.join(planDir, 'plan.json');
+  try {
+    const args = `--prepare-plan "${f.mappingPath}" --preflight "${f.preflightPath}" --out "${planPath}" extra-arg`;
+    const result = runScript(args);
+    assert.notEqual(result.exitCode, 0, 'Must reject extra positional after complete command');
+    assert.ok(result.stderr.includes('Unexpected additional positional argument'), 'Must show positional error');
+  } finally {
+    f.cleanup();
+    fs.rmSync(planDir, { recursive: true, force: true });
+  }
+});
+
+test('unknown option after complete --prepare-plan rejected', () => {
+  const f = createTwoFixtures(VALID_MAPPING, VALID_PREFLIGHT);
+  const planDir = fs.mkdtempSync(path.join(require('os').tmpdir(), 'repair-unknown-'));
+  const planPath = path.join(planDir, 'plan.json');
+  try {
+    const args = `--prepare-plan "${f.mappingPath}" --preflight "${f.preflightPath}" --out "${planPath}" --unknown-option`;
+    const result = runScript(args);
+    assert.notEqual(result.exitCode, 0, 'Must reject unknown option after complete command');
+    assert.ok(result.stderr.includes('Unexpected option after complete command'), 'Must show unexpected option');
+  } finally {
+    f.cleanup();
+    fs.rmSync(planDir, { recursive: true, force: true });
+  }
+});
+
+test('--validate with unknown option rejected', () => {
+  const m = createExternalFixture(VALID_MAPPING);
+  try {
+    const result = runScript(`--validate "${m.path}" --unknown`);
+    assert.notEqual(result.exitCode, 0, 'Must reject --validate with unknown option');
+    assert.ok(result.stderr.includes('Unexpected option after complete command'), 'Must show unexpected option');
+  } finally {
+    m.cleanup();
+  }
+});
+
+test('--dry-run mapping --preflight preflight extra-arg rejected', () => {
+  const f = createTwoFixtures(VALID_MAPPING, VALID_PREFLIGHT);
+  try {
+    const result = runScript(`--dry-run "${f.mappingPath}" --preflight "${f.preflightPath}" extra-arg`);
+    assert.notEqual(result.exitCode, 0, 'Must reject extra positional');
+    assert.ok(result.stderr.includes('Unexpected additional positional argument'), 'Must show positional error');
+  } finally {
+    f.cleanup();
+  }
 });
 
 // ─── Existing entity conflict ──────────────────────────────────────────────

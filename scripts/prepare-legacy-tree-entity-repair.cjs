@@ -186,12 +186,6 @@ function validateMapping(mapping) {
     errors.push({ index: null, field: 'sourceClassification', code: 'UNKNOWN_SOURCE_CLASSIFICATION' });
   }
 
-  // mappingArtifactSha256
-  if (mapping.mappingArtifactSha256 !== undefined &&
-      !/^[0-9a-f]{64}$/i.test(mapping.mappingArtifactSha256)) {
-    errors.push({ index: null, field: 'mappingArtifactSha256', code: 'INVALID_ARTIFACT_HASH' });
-  }
-
   // records
   if (!Array.isArray(mapping.records)) {
     errors.push({ index: null, field: 'records', code: 'MUST_BE_ARRAY' });
@@ -471,6 +465,10 @@ function joinRecords(mappingRecords, preflightRecords) {
       updatedAt: mr.updatedAt !== undefined ? mr.updatedAt : null,
       ownerProvenance: mr.ownerProvenance,
       titleProvenance: mr.titleProvenance,
+      groupNameProvenance: mr.groupNameProvenance !== undefined ? mr.groupNameProvenance : null,
+      keywordsProvenance: mr.keywordsProvenance !== undefined ? mr.keywordsProvenance : null,
+      createdAtProvenance: mr.createdAtProvenance !== undefined ? mr.createdAtProvenance : null,
+      updatedAtProvenance: mr.updatedAtProvenance !== undefined ? mr.updatedAtProvenance : null,
       privateEvidenceClassification: mr.privateEvidenceClassification || null,
       // No defaults: use validated exact fields only
       entityExists: pr ? pr.entityExists : null,
@@ -554,6 +552,10 @@ function generatePlan(mapping, preflight, joined, agg, planPath, mappingInputSha
       publicMomentCount: r.publicMomentCount,
       ownerProvenance: r.ownerProvenance,
       titleProvenance: r.titleProvenance,
+      groupNameProvenance: r.groupNameProvenance,
+      keywordsProvenance: r.keywordsProvenance,
+      createdAtProvenance: r.createdAtProvenance,
+      updatedAtProvenance: r.updatedAtProvenance,
       privateEvidenceClassification: r.privateEvidenceClassification || null,
     }));
 
@@ -572,18 +574,9 @@ function generatePlan(mapping, preflight, joined, agg, planPath, mappingInputSha
     records: planRecords,
   };
 
-  // Check if output already exists
-  try {
-    fs.accessSync(planPath, fs.constants.F_OK);
-    console.error('❌ Output file already exists');
-    process.exit(1);
-  } catch {
-    // File does not exist — proceed
-  }
-
   const planJson = JSON.stringify(plan, null, 2);
 
-  // Write to temporary sibling file with exclusive create, flush/fsync, then atomic rename
+  // Atomic no-clobber: write temp with exclusive create, then hard-link publish
   const tmpPath = planPath + '.tmp.' + process.pid;
   let fd;
   try {
@@ -592,7 +585,10 @@ function generatePlan(mapping, preflight, joined, agg, planPath, mappingInputSha
     fs.fsyncSync(fd);
     fs.closeSync(fd);
     fd = null;
-    fs.renameSync(tmpPath, planPath);
+
+    // Exclusive hard-link publication: linkSync fails with EEXIST if planPath exists
+    fs.linkSync(tmpPath, planPath);
+    fs.unlinkSync(tmpPath);
   } catch (err) {
     // Clean up temp file on failure
     try { if (fd !== null) fs.closeSync(fd); } catch { /* ignore */ }
@@ -608,7 +604,7 @@ function generatePlan(mapping, preflight, joined, agg, planPath, mappingInputSha
   return planHash;
 }
 
-// ─── CLI ───────────────────────────────────────────────────────────────────
+// ─── Token-by-token CLI parser ─────────────────────────────────────────────
 
 function printUsage() {
   console.log(`\nLoveBud — Legacy Orphan Tree Entity Repair Package (Issue #3455)
@@ -638,6 +634,141 @@ Safety:
 `);
 }
 
+/**
+ * Exact token-by-token CLI parser.
+ *
+ * Only accepts:
+ *   --validate <mapping>
+ *   --dry-run <mapping> --preflight <preflight>
+ *   --prepare-plan <mapping> --preflight <preflight> --out <plan>
+ *
+ * Rejects unknown options, extra positionals, duplicates, missing values,
+ * mode-incompatible options, and --apply before any input read.
+ */
+function parseArgs(tokens) {
+  // Shape definitions: exact token sequences per mode
+  const SHAPES = {
+    '--validate':      ['MODE', 'MAPPING'],
+    '--dry-run':       ['MODE', 'MAPPING', '--preflight', 'PREFLIGHT'],
+    '--prepare-plan':  ['MODE', 'MAPPING', '--preflight', 'PREFLIGHT', '--out', 'OUTPUT'],
+  };
+
+  if (tokens.length === 0) {
+    console.error('❌ No arguments provided');
+    process.exit(1);
+  }
+
+  // ── Reject --apply unconditionally, before any input read ──
+  if (tokens.some(t => t === '--apply')) {
+    console.error('❌ --apply mode is NOT available in this package.');
+    console.error('   Production execution requires separate CTO approval and a');
+    console.error('   dedicated execution artifact with its own hash and runbook.');
+    process.exit(1);
+  }
+
+  const rawMode = tokens[0];
+  const shape = SHAPES[rawMode];
+
+  if (!shape) {
+    if (rawMode && rawMode.startsWith('--')) {
+      console.error(`❌ Unknown mode: ${rawMode}`);
+    } else {
+      console.error(`❌ Expected mode (--validate, --dry-run, or --prepare-plan), got: ${rawMode}`);
+    }
+    process.exit(1);
+  }
+
+  // Token-by-token consumption
+  let mappingPath = null;
+  let preflightPath = null;
+  let outputPath = null;
+
+  // Helper: check if an argument looks like an option (starts with --)
+  function isOption(s) { return typeof s === 'string' && s.startsWith('--'); }
+
+  for (let i = 0; i < shape.length; i++) {
+    const expected = shape[i];
+    const actual = i < tokens.length ? tokens[i] : undefined;
+
+    if (expected === 'MODE') {
+      // Already validated by shape lookup
+      continue;
+    }
+
+    // Literal option like --preflight or --out
+    if (expected.startsWith('--')) {
+      if (actual !== expected) {
+        if (actual === undefined) {
+          console.error(`❌ Missing option: ${expected} <value>`);
+        } else if (isOption(actual)) {
+          console.error(`❌ Expected ${expected}, got: ${actual}`);
+        } else {
+          console.error(`❌ Expected ${expected}, got positional argument: ${actual}`);
+        }
+        process.exit(1);
+      }
+      // Option matched — next token must be its value (not an option, not missing)
+      const nextIdx = i + 1;
+      if (nextIdx >= tokens.length) {
+        console.error(`❌ Missing value for ${expected}`);
+        process.exit(1);
+      }
+      const value = tokens[nextIdx];
+      if (value === undefined || isOption(value)) {
+        console.error(`❌ Missing value for ${expected}`);
+        process.exit(1);
+      }
+      // Assign the value based on the option
+      if (expected === '--preflight') {
+        preflightPath = value;
+      } else if (expected === '--out') {
+        outputPath = value;
+      }
+      i++; // Skip the value token
+      continue;
+    }
+
+    // Positional value slot like MAPPING, PREFLIGHT, OUTPUT
+    if (actual === undefined || isOption(actual)) {
+      // Use better error messages
+      const slotNames = { MAPPING: 'mapping', PREFLIGHT: 'preflight', OUTPUT: 'output' };
+      console.error(`❌ Missing ${slotNames[expected] || expected} file path`);
+      process.exit(1);
+    }
+    if (expected === 'MAPPING') mappingPath = actual;
+    // PREFLIGHT and OUTPUT are assigned via option handlers above
+  }
+
+  // ── After consuming exact shape, reject any remaining tokens ──
+  const remaining = tokens.slice(shape.length);
+  if (remaining.length > 0) {
+    const next = remaining[0];
+    if (isOption(next)) {
+      console.error(`❌ Unexpected option after complete command: ${next}`);
+    } else {
+      console.error('❌ Unexpected additional positional argument');
+    }
+    process.exit(1);
+  }
+
+  // Mode-specific incompatibility checks
+  // These are enforced by shape, but double-check for safety
+  if (rawMode === '--validate') {
+    if (tokens.includes('--preflight') || tokens.includes('--out')) {
+      console.error('❌ --validate does not accept --preflight or --out');
+      process.exit(1);
+    }
+  }
+  if (rawMode === '--dry-run') {
+    if (tokens.includes('--out')) {
+      console.error('❌ --dry-run does not accept --out');
+      process.exit(1);
+    }
+  }
+
+  return { mode: rawMode, mappingPath, preflightPath, outputPath };
+}
+
 function main() {
   const args = process.argv.slice(2);
 
@@ -646,89 +777,8 @@ function main() {
     process.exit(0);
   }
 
-  // ── Reject --apply unconditionally, before any input read ──
-  if (args.includes('--apply')) {
-    console.error('❌ --apply mode is NOT available in this package.');
-    console.error('   Production execution requires separate CTO approval and a');
-    console.error('   dedicated execution artifact with its own hash and runbook.');
-    process.exit(1);
-  }
-
-  const mode = args[0];
-  if (!['--validate', '--dry-run', '--prepare-plan'].includes(mode)) {
-    console.error(`❌ Unknown mode: ${mode}`);
-    process.exit(1);
-  }
-
-  // Check for duplicate options
-  const optionCounts = {};
-  args.forEach(a => {
-    if (a.startsWith('--')) {
-      optionCounts[a] = (optionCounts[a] || 0) + 1;
-    }
-  });
-  for (const [opt, count] of Object.entries(optionCounts)) {
-    if (count > 1) {
-      console.error(`❌ Duplicate option: ${opt}`);
-      process.exit(1);
-    }
-  }
-
-  const mappingPath = args[1];
-  if (!mappingPath || mappingPath.startsWith('--')) {
-    console.error('❌ Missing mapping input file path');
-    process.exit(1);
-  }
-
-  // Check for extra positional arguments (only count before first known option)
-  const knownOpts = ['--preflight', '--out'];
-  const firstOptIdx = args.findIndex(a => knownOpts.includes(a));
-  const positionalBeforeOptions = args
-    .slice(1, firstOptIdx >= 0 ? firstOptIdx : undefined)
-    .filter(a => !a.startsWith('--'));
-  // After known options, existing values might look positional — that's OK
-  // But anything unexpected before the first known option is an error
-  if (positionalBeforeOptions.length > 1) {
-    console.error('❌ Unexpected additional positional argument(s)');
-    process.exit(1);
-  }
-
-  // Parse options
-  const preflightIdx = args.indexOf('--preflight');
-  const preflightPath = preflightIdx !== -1 ? args[preflightIdx + 1] : null;
-  const outIdx = args.indexOf('--out');
-  const outputPath = outIdx !== -1 ? args[outIdx + 1] : null;
-
-  // Validate mode-specific options
-  // Reject incompatible option combinations
-  if (mode === '--validate' && (preflightPath || outputPath)) {
-    console.error(`❌ --validate does not accept --preflight or --out`);
-    process.exit(1);
-  }
-  if (mode === '--dry-run' && outputPath) {
-    console.error(`❌ --dry-run does not accept --out`);
-    process.exit(1);
-  }
-
-  if ((mode === '--dry-run' || mode === '--prepare-plan') && !preflightPath) {
-    console.error(`❌ ${mode} requires --preflight <preflight.json>`);
-    process.exit(1);
-  }
-
-  if (mode === '--prepare-plan' && !outputPath) {
-    console.error('❌ --prepare-plan requires --out <plan.json>');
-    process.exit(1);
-  }
-
-  // Check for missing option values
-  if (preflightIdx !== -1 && (preflightIdx + 1 >= args.length || !args[preflightIdx + 1] || args[preflightIdx + 1].startsWith('--'))) {
-    console.error('❌ Missing value for --preflight option');
-    process.exit(1);
-  }
-  if (outIdx !== -1 && (outIdx + 1 >= args.length || !args[outIdx + 1] || args[outIdx + 1].startsWith('--'))) {
-    console.error('❌ Missing value for --out option');
-    process.exit(1);
-  }
+  // ── Token-by-token parse (exits on invalid) ──
+  const { mode, mappingPath, preflightPath, outputPath } = parseArgs(args);
 
   // ── External path enforcement (symlink-safe) ──
   checkExternalWithSymlinkGuard(mappingPath, 'Mapping input');
@@ -739,10 +789,10 @@ function main() {
     checkOutputPathExternal(outputPath);
   }
 
-  // ── Read mapping ──
-  let mappingRaw;
+  // ── Read mapping (as Buffer for hash, UTF-8 decode for JSON parse) ──
+  let mappingBuffer;
   try {
-    mappingRaw = fs.readFileSync(mappingPath, 'utf8');
+    mappingBuffer = fs.readFileSync(mappingPath);
   } catch (err) {
     console.error('❌ Cannot read mapping input file');
     process.exit(1);
@@ -750,7 +800,7 @@ function main() {
 
   let mapping;
   try {
-    mapping = JSON.parse(mappingRaw);
+    mapping = JSON.parse(mappingBuffer.toString('utf8'));
   } catch (err) {
     console.error('❌ Mapping: Malformed JSON');
     process.exit(1);
@@ -776,9 +826,9 @@ function main() {
   }
 
   // ── For --dry-run and --prepare-plan: read and validate preflight ──
-  let preflightRaw;
+  let preflightBuffer;
   try {
-    preflightRaw = fs.readFileSync(preflightPath, 'utf8');
+    preflightBuffer = fs.readFileSync(preflightPath);
   } catch (err) {
     console.error('❌ Cannot read preflight input file');
     process.exit(1);
@@ -786,7 +836,7 @@ function main() {
 
   let preflight;
   try {
-    preflight = JSON.parse(preflightRaw);
+    preflight = JSON.parse(preflightBuffer.toString('utf8'));
   } catch (err) {
     console.error('❌ Preflight: Malformed JSON');
     process.exit(1);
@@ -829,9 +879,9 @@ function main() {
 
   // ── Prepare plan ──
   if (mode === '--prepare-plan') {
-    // Compute input hashes from actual raw bytes
-    const mappingInputSha256 = crypto.createHash('sha256').update(mappingRaw).digest('hex');
-    const preflightInputSha256 = crypto.createHash('sha256').update(preflightRaw).digest('hex');
+    // Compute input hashes from actual raw Buffer bytes
+    const mappingInputSha256 = crypto.createHash('sha256').update(mappingBuffer).digest('hex');
+    const preflightInputSha256 = crypto.createHash('sha256').update(preflightBuffer).digest('hex');
 
     const planHash = generatePlan(mapping, preflight, joined, agg, outputPath, mappingInputSha256, preflightInputSha256);
     console.log(`\n📋 Plan created: YES`);
