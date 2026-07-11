@@ -269,6 +269,93 @@ test('no self-referential approval provenance (named in doc) remains', () => {
 
 // ─── 9. This contract is source-static (no runtime/browser/network/DB/deploy)
 
+// ─── 11. Issue #3448 follow-up: de-escalated verification-target blockers ───
+// These checks extend (not replace) the minimal first tranche. They must NOT
+// change the 19/6/13 tranche counts (the two target entries remain DEFER).
+
+const FOLLOWUP_DOCS = [
+  'docs/ops/TEST_PREVIEW_SLOTS.md',
+  'docs/ops/VERIFICATION_TARGET_ALLOWLIST.md',
+];
+
+test('Issue #3448: both target docs link canonical governance', () => {
+  for (const rel of FOLLOWUP_DOCS) {
+    const src = read(rel);
+    assert.ok(src.includes('MVP_AGENT_GOVERNANCE.md'), `${rel} must link canonical governance`);
+  }
+});
+
+test('Issue #3448: fixed-slot absence is not a whole-work automatic blocker', () => {
+  for (const rel of FOLLOWUP_DOCS) {
+    const src = read(rel);
+    const deEscalated = /does not (make|block)[^.]{0,60}(whole task|whole project|unrelated work)|not a project-wide blocker|does not by itself (make|block)[^.]{0,40}(whole project|unrelated work)/i.test(src);
+    assert.ok(deEscalated, `${rel} must state fixed-slot absence is not a whole-work blocker`);
+  }
+});
+
+test('Issue #3448: production / PR Preview / localhost are not blanket-banned environments', () => {
+  const blanketBanRE = /production (URL|site)[^.]{0,80}(must not (be )?used|prohibited|forbidden|금지)|PR Preview URL\(s\)\?[^.]{0,80}(prohibited|forbidden|must not)|localhost[^.]{0,60}(prohibited|forbidden|not valid|invalid for)/i;
+  for (const rel of FOLLOWUP_DOCS) {
+    const src = read(rel);
+    assert.ok(!blanketBanRE.test(src), `${rel} must not blanket-ban production/PR Preview/localhost as environments`);
+  }
+});
+
+test('Issue #3448: provenance/SHA uncertainty lowers claim status', () => {
+  for (const rel of FOLLOWUP_DOCS) {
+    const src = read(rel);
+    const status = /NOT_VERIFIED|INVALID_FOR_TARGET_CLAIM|PARTIAL|FIXED_SLOT_NOT_ASSIGNED|NOT_VERIFIED_ON_FIXED_SLOT/i.test(src);
+    assert.ok(status, `${rel} must lower claim status on provenance/SHA uncertainty`);
+  }
+});
+
+test('Issue #3448: Netlify/lovebudold remains invalid for current Cloudflare runtime proof', () => {
+  const src = read('docs/ops/VERIFICATION_TARGET_ALLOWLIST.md');
+  assert.ok(/Netlify/.test(src) && /lovebudold/.test(src), 'allowlist must still reference Netlify/lovebudold');
+  assert.ok(/Cloudflare \+ Modal active runtime/i.test(src), 'allowlist must still state Netlify cannot prove current runtime');
+  assert.ok(/must not be presented as current-runtime proof/i.test(src), 'allowlist must forbid presenting Netlify as current-runtime proof');
+});
+
+test('Issue #3448: secret/token/cookie/private payload protection retained', () => {
+  for (const rel of FOLLOWUP_DOCS) {
+    const src = read(rel);
+    assert.ok(/secret|token|cookie|private payload/i.test(src), `${rel} must retain secret/token/cookie/private-payload protection`);
+  }
+});
+
+test('Issue #3448: production write/delete approval protection retained', () => {
+  for (const rel of FOLLOWUP_DOCS) {
+    const src = read(rel);
+    assert.ok(/production[^.]{0,80}(write\/delete|mutation)[^.]{0,60}(prohibited|approval|without separate)/i.test(src), `${rel} must retain production write/delete approval protection`);
+  }
+});
+
+test('Issue #3448: no permanent global PR #7 protection remains in target docs', () => {
+  for (const rel of FOLLOWUP_DOCS) {
+    const src = read(rel);
+    assert.ok(!src.includes('PR #7'), `${rel} must not retain a permanent global PR #7 protection`);
+  }
+});
+
+test('Issue #3448: inventory target entries carry #3448 follow-up disposition', () => {
+  const data = JSON.parse(read(INVENTORY));
+  const targets = data.inventory.filter(
+    (i) => i.path === 'docs/ops/TEST_PREVIEW_SLOTS.md' || i.path === 'docs/ops/VERIFICATION_TARGET_ALLOWLIST.md'
+  );
+  assert.equal(targets.length, 2, 'expected exactly two #3448 target entries');
+  for (const item of targets) {
+    assert.equal(item.followup_issue, 3448, `${item.path} must carry followup_issue 3448`);
+    assert.equal(item.followup_status, 'APPLIED', `${item.path} must carry followup_status APPLIED`);
+    assert.equal(item.followup_disposition, 'PRESERVE_AS_EVIDENCE_QUALITY_GUIDANCE', `${item.path} must carry followup_disposition`);
+    assert.equal(item.tranche, 'DEFER', `${item.path} must remain DEFER (snapshot meaning preserved)`);
+  }
+});
+
+test('Issue #3448: this contract extension is source-static (no runtime/browser/network/DB/deploy)', () => {
+  const self = read('tests/contracts/historical-agent-guidance-disposition-contract.test.cjs');
+  assert.ok(!/require\(['"]child_process|require\(['"]http|require\(['"]https|require\(['"]playwright|require\(['"]puppeteer/i.test(self), 'contract must not import runtime/browser/network modules');
+});
+
 test('contract is source-static: only reads files, no runtime execution', () => {
   // Sanity: referenced files exist; no child_process / network modules imported.
   for (const rel of [CANONICAL, INVENTORY, ...NOW_DOCS.map((d) => d.rel)]) {
