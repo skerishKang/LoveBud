@@ -35,6 +35,25 @@ function read(rel) {
   return fs.readFileSync(abs, 'utf8');
 }
 
+// Bounded H2 section extraction: from `heading` to the next H2 or EOF.
+function extractH2Section(source, heading) {
+  const lines = source.split(/\r?\n/);
+  const start = lines.findIndex((line) => line.trim() === heading);
+  assert.notEqual(start, -1, `Missing section: ${heading}`);
+  const remaining = lines.slice(start + 1);
+  const nextHeading = remaining.findIndex((line) => /^##\s+/.test(line));
+  return nextHeading === -1
+    ? remaining.join('\n')
+    : remaining.slice(0, nextHeading).join('\n');
+}
+
+// Locate the single markdown index table row that references a basename.
+function findIndexRow(source, basename) {
+  const line = source.split(/\r?\n/).find((l) => l.includes(basename));
+  assert.notEqual(line, undefined, `Expected index row for ${basename}`);
+  return line;
+}
+
 // ─── 1. Canonical policy ─────────────────────────────────────────────────────
 
 test('canonical policy file exists', () => {
@@ -112,7 +131,7 @@ test('former decision top metadata declares Status: SUPERSEDED', () => {
   const src = read(FORMER_DECISION);
   const head = src.split('\n').slice(0, 12).join('\n');
   assert.ok(
-    /Status\*\*?:\s*SUPERSEDED/i.test(head),
+    /Status\*\*:?\s*SUPERSEDED/i.test(head),
     `${FORMER_DECISION} top metadata must declare "Status: SUPERSEDED"`
   );
 });
@@ -121,7 +140,7 @@ test('former decision declares Classification: HISTORICAL_DECISION', () => {
   const src = read(FORMER_DECISION);
   const head = src.split('\n').slice(0, 12).join('\n');
   assert.ok(
-    /Classification\*\*?:\s*HISTORICAL_DECISION/i.test(head),
+    /Classification\*\*:?\s*HISTORICAL_DECISION/i.test(head),
     `${FORMER_DECISION} top metadata must declare "Classification: HISTORICAL_DECISION"`
   );
 });
@@ -224,7 +243,7 @@ test('policy review preserves historical review body (allowed)', () => {
   );
 });
 
-// ─── 4. Product index ────────────────────────────────────────────────────────
+// ─── 4. Product index — index-row contract (strengthened) ────────────────────
 
 test('product index exists', () => {
   assert.ok(fs.existsSync(path.join(ROOT, PRODUCT_INDEX)), `Missing ${PRODUCT_INDEX}`);
@@ -238,52 +257,76 @@ test('product index classifies canonical policy as SOURCE_OF_TRUTH', () => {
   );
 });
 
-test('product index classifies review as historical/superseded', () => {
+test('former decision index row carries required markers and no forbidden markers', () => {
   const src = read(PRODUCT_INDEX);
+  const row = findIndexRow(src, FORMER_DECISION_BASENAME);
+  assert.ok(/SUPERSEDED/.test(row), `${FORMER_DECISION_BASENAME} row must include SUPERSEDED`);
+  assert.ok(/HISTORICAL_DECISION/.test(row), `${FORMER_DECISION_BASENAME} row must include HISTORICAL_DECISION`);
   assert.ok(
-    /VISIBILITY_AND_PRIVATE_STORAGE_POLICY_REVIEW\.md[^\n]*HISTORICAL_AUDIT \/ SUPERSEDED_POLICY_REVIEW/i.test(src),
-    `${PRODUCT_INDEX} must classify the review doc as HISTORICAL_AUDIT / SUPERSEDED_POLICY_REVIEW`
+    /PUBLICATION_AND_PRIVACY_UX_POLICY\.md|current policy/i.test(row),
+    `${FORMER_DECISION_BASENAME} row must point to the canonical policy`
   );
+  // Stale rows must never be expressed as source of truth, active, or current.
+  assert.ok(!/SOURCE_OF_TRUTH/i.test(row), `${FORMER_DECISION_BASENAME} row must not be SOURCE_OF_TRUTH`);
+  assert.ok(!/active decision/i.test(row), `${FORMER_DECISION_BASENAME} row must not be an active decision`);
+  assert.ok(!/current decision/i.test(row), `${FORMER_DECISION_BASENAME} row must not be a current decision`);
+  assert.ok(!/current policy source/i.test(row), `${FORMER_DECISION_BASENAME} row must not be the current policy source`);
 });
 
-test('product index classifies former decision as superseded historical decision', () => {
+test('policy review index row carries required markers and no forbidden markers', () => {
   const src = read(PRODUCT_INDEX);
+  const row = findIndexRow(src, POLICY_REVIEW_BASENAME);
+  assert.ok(/HISTORICAL_AUDIT/.test(row), `${POLICY_REVIEW_BASENAME} row must include HISTORICAL_AUDIT`);
+  assert.ok(/SUPERSEDED_POLICY_REVIEW/.test(row), `${POLICY_REVIEW_BASENAME} row must include SUPERSEDED_POLICY_REVIEW`);
   assert.ok(
-    /tree-visibility-default-and-control-placement-decision\.md[^\n]*SUPERSEDED HISTORICAL_DECISION/i.test(src),
-    `${PRODUCT_INDEX} must classify the former decision doc as SUPERSEDED HISTORICAL_DECISION`
+    /current authority is PUBLICATION_AND_PRIVACY_UX_POLICY\.md/i.test(row),
+    `${POLICY_REVIEW_BASENAME} row must state current authority is PUBLICATION_AND_PRIVACY_UX_POLICY.md`
   );
+  assert.ok(!/SOURCE_OF_TRUTH/i.test(row), `${POLICY_REVIEW_BASENAME} row must not be SOURCE_OF_TRUTH`);
+  assert.ok(!/active decision/i.test(row), `${POLICY_REVIEW_BASENAME} row must not be an active decision`);
+  assert.ok(!/current decision/i.test(row), `${POLICY_REVIEW_BASENAME} row must not be a current decision`);
 });
 
-test('product index does not present stale docs as current decision or source of truth', () => {
-  const src = read(PRODUCT_INDEX);
-  const reviewLine = src.split('\n').find((l) => l.includes(POLICY_REVIEW_BASENAME));
-  const decisionLine = src.split('\n').find((l) => l.includes(FORMER_DECISION_BASENAME));
-  for (const line of [reviewLine, decisionLine]) {
-    assert.ok(line != null, 'expected index rows present');
-    assert.ok(
-      !/SOURCE_OF_TRUTH(?!.*SUPERSEDED)/i.test(line) || /SUPERSEDED|HISTORICAL/.test(line),
-      `stale doc row must not be expressed as source of truth: ${line}`
-    );
-  }
-});
+// ─── 5. Product index — read-first order (bounded section) ───────────────────
 
-test('product index keeps canonical policy in read-first order', () => {
+test('canonical policy is present in read-first order', () => {
   const src = read(PRODUCT_INDEX);
-  const readFirst = src.split('## 먼저 읽기 순서')[1] || '';
+  const section = extractH2Section(src, '## 먼저 읽기 순서');
   assert.ok(
-    /PUBLICATION_AND_PRIVACY_UX_POLICY\.md/.test(readFirst),
+    /PUBLICATION_AND_PRIVACY_UX_POLICY\.md/.test(section),
     `${PRODUCT_INDEX} must keep PUBLICATION_AND_PRIVACY_UX_POLICY.md in the read-first order`
   );
+});
+
+test('former decision must not appear in read-first order', () => {
+  const src = read(PRODUCT_INDEX);
+  const section = extractH2Section(src, '## 먼저 읽기 순서');
   assert.ok(
-    !/tree-visibility-default-and-control-placement-decision\.md/.test(readFirst.split('## 참조')[0] || readFirst) ||
-      true,
-    `${PRODUCT_INDEX} must not add the former decision doc to read-first order`
+    !section.includes(FORMER_DECISION_BASENAME),
+    `${FORMER_DECISION_BASENAME} must not appear in read-first order`
   );
-  // Ensure neither stale doc was added to read-first order as a primary read.
-  const readFirstBody = (readFirst.split('## 참조')[0] || readFirst);
+});
+
+test('policy review must not appear in read-first order', () => {
+  const src = read(PRODUCT_INDEX);
+  const section = extractH2Section(src, '## 먼저 읽기 순서');
   assert.ok(
-    !new RegExp(`${FORMER_DECISION_BASENAME}`).test(readFirstBody) ||
-      !/^\s*\d+\.\s*\*\*tree-visibility/.test(readFirstBody),
-    `${PRODUCT_INDEX} must not add the former decision doc to read-first order`
+    !section.includes(POLICY_REVIEW_BASENAME),
+    `${POLICY_REVIEW_BASENAME} must not appear in read-first order`
+  );
+});
+
+// ─── 6. Canonical supersession — bounded section ─────────────────────────────
+
+test('canonical supersession section names both stale documents', () => {
+  const src = read(CANONICAL);
+  const section = extractH2Section(src, '## Supersession and precedence');
+  assert.ok(
+    section.includes(FORMER_DECISION_BASENAME),
+    `${CANONICAL} supersession section must name ${FORMER_DECISION_BASENAME}`
+  );
+  assert.ok(
+    section.includes(POLICY_REVIEW_BASENAME),
+    `${CANONICAL} supersession section must name ${POLICY_REVIEW_BASENAME}`
   );
 });
