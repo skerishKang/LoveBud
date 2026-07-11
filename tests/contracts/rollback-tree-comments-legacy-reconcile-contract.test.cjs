@@ -347,6 +347,26 @@ test('rollback runbook post-rollback PK = [tree_id, id] and compound absent', ()
     'Runbook Sec 11 post-rollback must expect compound [tree_id, created_at] count = 0');
 });
 
+test('rollback runbook post-rollback PK query has no undefined pg_index alias', () => {
+  assert.equal(
+    /SELECT\s+i\.indisprimary[\s\S]*?FROM\s+pg_constraint\s+c/i.test(sec11Block),
+    false,
+    'Runbook Sec 11 must not reference undefined alias i in the PK constraint query'
+  );
+
+  assert.match(
+    sec11Block,
+    /unnest\(c\.conkey\)\s+WITH\s+ORDINALITY/i,
+    'Runbook Sec 11 must derive PK columns from pg_constraint.conkey'
+  );
+
+  assert.match(
+    sec11Block,
+    /primary_index_count\s*=\s*1/i,
+    'Runbook Sec 11 must separately verify exactly one primary index'
+  );
+});
+
 test('rollback runbook / SQL do not carry stale "captured/preserved original PK" wording', () => {
   assert.equal(/captured at migration time/i.test(runbook), false,
     'Runbook must not claim the original PK was captured at migration time');

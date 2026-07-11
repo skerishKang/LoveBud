@@ -465,7 +465,6 @@ After rollback, read-only confirm via the exact catalog SQL below:
 ```sql
 -- PK ordered columns = [tree_id, id]; primary index count = 1
 SELECT
-  i.indisprimary,
   (
     SELECT array_agg(a.attname::text ORDER BY k.ord)
     FROM unnest(c.conkey) WITH ORDINALITY AS k(attnum, ord)
