@@ -251,23 +251,335 @@ test('editor-detail-ui delegates social I/O to explicit controllers', () => {
   );
 });
 
-test('reactions controller boundary owns reaction I/O entrypoints', () => {
+// ── Controller boundary & selection-switch regression ──
+
+const FakeElement = (id) => {
+  const el = {};
+  let _textContent = '';
+  Object.defineProperties(el, {
+    style: { value: {}, writable: true },
+    dataset: { value: {}, writable: true },
+    textContent: {
+      get: () => _textContent,
+      set: (v) => { _textContent = String(v); },
+      enumerable: true, configurable: true
+    },
+    onclick: { value: null, writable: true },
+    querySelector: { value: () => null, writable: true },
+    id: { value: id }
+  });
+  return el;
+};
+
+function fakeApiClient() {
+  const calls = { fetchReactionSummary: [], toggleReaction: [] };
+  const client = {
+    fetchReactionSummary: (id) => {
+      calls.fetchReactionSummary.push(id);
+      return Promise.resolve({
+        like_count: 3,
+        comment_count: 1,
+        user_reacted: false
+      });
+    },
+    toggleReaction: (id, type) => {
+      calls.toggleReaction.push({ id, type });
+      return Promise.resolve({
+        like_count: 4,
+        user_reacted: true
+      });
+    }
+  };
+  return { client, calls };
+}
+
+function fakeIsRootMemory(data, canonicalRootId) {
+  return false;
+}
+
+test('reactions controller selection-switch regression suite', async (t) => {
   const src = readRepoFile(editorDetailFile);
+  const ctx = runInSandbox(editorDetailFile);
+  const factory = ctx.window.makeMomentReactionsController;
+
+  assert.ok(typeof factory === 'function', 'makeMomentReactionsController factory must be exported');
+
+  // ── Scenario: extract controller boundary source (static check) ──
+
+  // updateDetailPanel body must not contain direct reaction I/O
+  const updateDetailPanelMatch = src.match(/const updateDetailPanel = \(data\) => \{[\s\S]*?\n    \};/);
+  assert.ok(updateDetailPanelMatch, 'updateDetailPanel function must exist');
+  const renderBody = updateDetailPanelMatch[0];
+
+  assert.doesNotMatch(
+    renderBody,
+    /window\.apiClient\.fetchReactionSummary\(/,
+    'updateDetailPanel render must not call fetchReactionSummary directly'
+  );
+  assert.doesNotMatch(
+    renderBody,
+    /window\.apiClient\.toggleReaction\(/,
+    'updateDetailPanel render must not call toggleReaction directly'
+  );
+  assert.doesNotMatch(
+    renderBody,
+    /\.save\(|\.delete\(|fetch\(/,
+    'updateDetailPanel render must not contain direct save/delete/fetch calls'
+  );
+  assert.match(
+    renderBody,
+    /commentsController\.update/,
+    'updateDetailPanel must preserve commentsController.update delegation'
+  );
+
+  // Controller source must contain fetchReactionSummary and toggleReaction
   assert.match(
     src,
-    /momentReactionsController/,
-    'source must define momentReactionsController'
+    /apiClient\.fetchReactionSummary/,
+    'controller source must contain fetchReactionSummary call'
   );
   assert.match(
     src,
-    /window\.apiClient\.fetchReactionSummary/,
-    'fetchReactionSummary must exist in source (reactions controller)'
+    /apiClient\.toggleReaction/,
+    'controller source must contain toggleReaction call'
   );
-  assert.match(
+
+  // Source must NOT contain the forbidden early-return pattern
+  assert.doesNotMatch(
     src,
-    /window\.apiClient\.toggleReaction/,
-    'toggleReaction must exist in source (reactions controller)'
+    /currentMemoryId && currentMemoryId !== data\.id/,
+    'forbidden early-return pattern (currentMemoryId !== data.id) must not exist'
   );
+
+  // ── Scenario 1: A update then B update ──
+
+  await t.test('A-to-B: both updates proceed, B handler is attached', async () => {
+    const { client, calls } = fakeApiClient();
+    const card = FakeElement('momentReactionsCard');
+    const likeBtn = FakeElement('momentLikeBtn');
+    const likeIcon = { textContent: '' };
+    likeBtn.querySelector = () => likeIcon;
+    const likeCount = FakeElement('momentLikeCount');
+    const commentCount = FakeElement('momentCommentCount');
+
+    const els = {
+      momentReactionsCard: card,
+      momentLikeBtn: likeBtn,
+      momentLikeCount: likeCount,
+      momentCommentCount: commentCount
+    };
+
+    const ctrl = factory({
+      getElementById: (id) => els[id] || null,
+      apiClient: client,
+      showToast: () => {},
+      i18n: (k) => k
+    });
+
+    // Select A
+    ctrl.update({ data: { id: 'A' }, canonicalRootId: 'root', isRootMemoryFn: fakeIsRootMemory });
+
+    assert.equal(calls.fetchReactionSummary.length, 1, 'A triggers fetchReactionSummary');
+    assert.equal(calls.fetchReactionSummary[0], 'A', 'A fetchReactionSummary called with A');
+    assert.ok(typeof likeBtn.onclick === 'function', 'A handler is attached');
+    assert.equal(card.style.display, '', 'reactions card is visible after A');
+
+    // Select B
+    ctrl.update({ data: { id: 'B' }, canonicalRootId: 'root', isRootMemoryFn: fakeIsRootMemory });
+
+    assert.equal(calls.fetchReactionSummary.length, 2, 'B also triggers fetchReactionSummary');
+    assert.equal(calls.fetchReactionSummary[1], 'B', 'B fetchReactionSummary called with B');
+    assert.ok(typeof likeBtn.onclick === 'function', 'B handler is attached');
+    assert.equal(card.style.display, '', 'reactions card is visible after B');
+  });
+
+  // ── Scenario 2: stale A response does not overwrite B UI ──
+
+  await t.test('stale A response suppressed after B selection', async () => {
+    let resolveA = null;
+    const aPromise = new Promise(r => { resolveA = r; });
+
+    const calls = { fetchReactionSummary: [], toggleReaction: [] };
+    const client = {
+      fetchReactionSummary: (id) => {
+        calls.fetchReactionSummary.push(id);
+        if (id === 'A') return aPromise;
+        return Promise.resolve({ like_count: 5, comment_count: 2, user_reacted: true });
+      },
+      toggleReaction: () => Promise.resolve({ like_count: 1, user_reacted: true })
+    };
+
+    const card = FakeElement('momentReactionsCard');
+    const likeBtn = FakeElement('momentLikeBtn');
+    const likeIcon = { textContent: '' };
+    likeBtn.querySelector = () => likeIcon;
+    const likeCount = FakeElement('momentLikeCount');
+    const commentCount = FakeElement('momentCommentCount');
+
+    const els = {
+      momentReactionsCard: card,
+      momentLikeBtn: likeBtn,
+      momentLikeCount: likeCount,
+      momentCommentCount: commentCount
+    };
+
+    const ctrl = factory({
+      getElementById: (id) => els[id] || null,
+      apiClient: client,
+      showToast: () => {},
+      i18n: (k) => k
+    });
+
+    // Select A (summary stalls)
+    ctrl.update({ data: { id: 'A' }, canonicalRootId: 'root', isRootMemoryFn: fakeIsRootMemory });
+    assert.equal(likeCount.textContent, '0', 'A: initial like count is 0');
+
+    // Select B (summary resolves immediately with like_count=5, user_reacted=true)
+    ctrl.update({ data: { id: 'B' }, canonicalRootId: 'root', isRootMemoryFn: fakeIsRootMemory });
+
+    // B summary applied synchronously (fake resolves immediately)
+    // Wait microtask
+    await new Promise(r => setTimeout(r, 0));
+    assert.equal(likeCount.textContent, '5', 'B: like count reflects B summary');
+    assert.equal(likeBtn.dataset.reacted, 'true', 'B: user_reacted true from B summary');
+    assert.equal(likeIcon.textContent, '❤️', 'B: heart icon from B summary');
+
+    // Now resolve A's stalled summary
+    resolveA({ like_count: 99, comment_count: 99, user_reacted: false });
+    await new Promise(r => setTimeout(r, 0));
+
+    // B UI must NOT be overwritten by A's stale result
+    assert.equal(likeCount.textContent, '5', 'stale A response must not overwrite B like count');
+    assert.equal(likeBtn.dataset.reacted, 'true', 'stale A response must not overwrite B reacted state');
+    assert.equal(likeIcon.textContent, '❤️', 'stale A response must not overwrite B heart icon');
+  });
+
+  // ── Scenario 3: A → B → A (generation guard) ──
+
+  await t.test('A-to-B-to-A: epochs distinguish first A from second A', async () => {
+    let resolveFirstA = null;
+    const firstAPromise = new Promise(r => { resolveFirstA = r; });
+
+    const calls = { fetchReactionSummary: [], toggleReaction: [] };
+    const client = {
+      fetchReactionSummary: (id) => {
+        calls.fetchReactionSummary.push(id);
+        if (id === 'A' && calls.fetchReactionSummary.filter(x => x === 'A').length === 1) {
+          return firstAPromise;
+        }
+        // Second A resolves immediately with different values
+        if (id === 'A') {
+          return Promise.resolve({ like_count: 42, comment_count: 42, user_reacted: true });
+        }
+        return Promise.resolve({ like_count: 10, comment_count: 3, user_reacted: false });
+      },
+      toggleReaction: () => Promise.resolve({ like_count: 1, user_reacted: true })
+    };
+
+    const card = FakeElement('momentReactionsCard');
+    const likeBtn = FakeElement('momentLikeBtn');
+    const likeIcon = { textContent: '' };
+    likeBtn.querySelector = () => likeIcon;
+    const likeCount = FakeElement('momentLikeCount');
+    const commentCount = FakeElement('momentCommentCount');
+
+    const els = {
+      momentReactionsCard: card,
+      momentLikeBtn: likeBtn,
+      momentLikeCount: likeCount,
+      momentCommentCount: commentCount
+    };
+
+    const ctrl = factory({
+      getElementById: (id) => els[id] || null,
+      apiClient: client,
+      showToast: () => {},
+      i18n: (k) => k
+    });
+
+    // First A (stalls)
+    ctrl.update({ data: { id: 'A' }, canonicalRootId: 'root', isRootMemoryFn: fakeIsRootMemory });
+    assert.equal(likeCount.textContent, '0');
+
+    // Switch to B
+    ctrl.update({ data: { id: 'B' }, canonicalRootId: 'root', isRootMemoryFn: fakeIsRootMemory });
+    await new Promise(r => setTimeout(r, 0));
+    assert.equal(likeCount.textContent, '10', 'B: like count is 10');
+
+    // Switch back to A (second A resolves immediately with 42)
+    ctrl.update({ data: { id: 'A' }, canonicalRootId: 'root', isRootMemoryFn: fakeIsRootMemory });
+    await new Promise(r => setTimeout(r, 0));
+    assert.equal(likeCount.textContent, '42', 'second A: like count is 42');
+    assert.equal(likeBtn.dataset.reacted, 'true', 'second A: user_reacted is true');
+
+    // Now resolve first A's stalled summary (99)
+    resolveFirstA({ like_count: 99, comment_count: 99, user_reacted: false });
+    await new Promise(r => setTimeout(r, 0));
+
+    // Second A state must not be overwritten by first A's stale result
+    assert.equal(likeCount.textContent, '42', 'first A stale result must not overwrite second A like count');
+    assert.equal(likeBtn.dataset.reacted, 'true', 'first A stale result must not overwrite second A reacted state');
+    assert.equal(likeIcon.textContent, '❤️', 'first A stale result must not overwrite second A heart icon');
+  });
+
+  // ── Scenario 4: hide invalidates pending requests ──
+
+  await t.test('hide invalidates pending responses and clears handler', async () => {
+    let resolveA = null;
+    const aPromise = new Promise(r => { resolveA = r; });
+
+    const calls = { fetchReactionSummary: [], toggleReaction: [] };
+    const client = {
+      fetchReactionSummary: (id) => {
+        calls.fetchReactionSummary.push(id);
+        return aPromise;
+      },
+      toggleReaction: () => Promise.resolve({ like_count: 1, user_reacted: true })
+    };
+
+    const card = FakeElement('momentReactionsCard');
+    const likeBtn = FakeElement('momentLikeBtn');
+    const likeIcon = { textContent: '' };
+    likeBtn.querySelector = () => likeIcon;
+    const likeCount = FakeElement('momentLikeCount');
+    const commentCount = FakeElement('momentCommentCount');
+
+    const els = {
+      momentReactionsCard: card,
+      momentLikeBtn: likeBtn,
+      momentLikeCount: likeCount,
+      momentCommentCount: commentCount
+    };
+
+    const ctrl = factory({
+      getElementById: (id) => els[id] || null,
+      apiClient: client,
+      showToast: () => {},
+      i18n: (k) => k
+    });
+
+    // Select A (summary stalls)
+    ctrl.update({ data: { id: 'A' }, canonicalRootId: 'root', isRootMemoryFn: fakeIsRootMemory });
+    assert.equal(likeCount.textContent, '0');
+    // Set up optimistic values manually to verify they don't get overwritten later
+    likeCount.textContent = '55';
+    commentCount.textContent = '7';
+
+    // Hide
+    ctrl.hide();
+
+    assert.equal(card.style.display, 'none', 'card hidden after hide');
+    assert.equal(likeBtn.onclick, null, 'handler cleared after hide');
+
+    // Resolve stalled A
+    resolveA({ like_count: 99, comment_count: 99, user_reacted: true });
+    await new Promise(r => setTimeout(r, 0));
+
+    // Hidden card must not reappear or have counts changed
+    assert.equal(card.style.display, 'none', 'card remains hidden after stale resolve');
+    assert.equal(likeCount.textContent, '55', 'hidden card like count must not change from stale response');
+    assert.equal(commentCount.textContent, '7', 'hidden card comment count must not change from stale response');
+  });
 });
 
 test('editor-canvas-node has no save/update/delete/fetch in render', () => {
