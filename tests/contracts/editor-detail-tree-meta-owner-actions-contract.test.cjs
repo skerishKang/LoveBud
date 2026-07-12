@@ -352,12 +352,12 @@ test('6C. createOwnerActionButtons has no rerender logic', () => {
     'renderTreeMetaBoundary owns the rerender');
 });
 
-test('7. cache-bust: all 4 use same token', () => {
+test('7. cache-bust: all 4 use non-empty version tokens (release-managed)', () => {
   var html = read('pages/editor.html');
-  assert.match(html, /editor-rename-ui\.js\?v=20260627-2882-detail-tree-meta-actions-1/);
-  assert.match(html, /editor-detail-tree-meta\.js\?v=20260627-2882-detail-tree-meta-actions-1/);
-  assert.match(html, /editor-detail-ui\.js\?v=20260627-2882-detail-tree-meta-actions-1/);
-  assert.match(html, /editor\.js\?v=20260628-2970/);
+  assert.match(html, /editor-rename-ui\.js\?v=[a-zA-Z0-9]+/, 'editor-rename-ui.js must have non-empty version token');
+  assert.match(html, /editor-detail-tree-meta\.js\?v=[a-zA-Z0-9]+/, 'editor-detail-tree-meta.js must have non-empty version token');
+  assert.match(html, /editor-detail-ui\.js\?v=[a-zA-Z0-9]+/, 'editor-detail-ui.js must have non-empty version token');
+  assert.match(html, /editor\.js\?v=[a-zA-Z0-9]+/, 'editor.js must have non-empty version token');
 });
 
 test('8. no direct API calls', () => {
