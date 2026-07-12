@@ -377,6 +377,21 @@
     cursor: default;
 }
 
+/* Owner mode (viewer): the current mode button must read as active/primary,
+   not just disabled. Otherwise first entry looks edit-leaning because the
+   enabled 편집 CTA dominates a greyed-out 보기/감상 button.
+   updateOwnerModeUI already marks the active button with aria-current="true". */
+#viewerModeGroup .editor-canvas-tool-btn[aria-current="true"] {
+    background: var(--primary, rgba(144, 73, 81, 0.92));
+    border-color: var(--primary, rgba(144, 73, 81, 0.92));
+    color: #fff;
+    opacity: 1;
+    cursor: default;
+}
+.public-viewer-sidebar .viewer-sidebar-mode-actions .sidebar-btn[aria-current="true"] {
+    opacity: 1;
+}
+
 .public-viewer-moment-social-card {
     display: grid !important;
     gap: 12px !important;
