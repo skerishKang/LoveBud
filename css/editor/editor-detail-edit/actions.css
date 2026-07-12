@@ -79,6 +79,14 @@
     border-top: 1px solid rgba(144,73,81,0.10);
 }
 
+.editor-connect-section-copy {
+    margin: 0 0 10px;
+    font-size: 12px;
+    line-height: 1.6;
+    color: var(--on-surface-variant);
+    text-align: center;
+}
+
 .editor-connect-pending-hint,
 .editor-connect-confirm-hint {
     margin: 0 0 10px;

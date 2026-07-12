@@ -1,4 +1,4 @@
-// Cache-bust marker for #3294 production no-change feedback rollout.
+// Cache-bust marker for editor sidebar/detail polish.
 export function buildDetailPanelShellTemplate() {
     return `
         <aside class="detail-panel memory-detail-section reveal-fade" id="detailPanel">
@@ -14,6 +14,7 @@ export function buildDetailPanelShellTemplate() {
                 <div id="editorDetailEditModeTemplateMount"></div>
 
                 <div id="connectExistingCtaSection" class="editor-connect-existing-section" style="display: none;">
+                    <p class="editor-connect-section-copy">이미 기록한 다른 순간과 자연스럽게 이어 붙이고 싶을 때 사용해요.</p>
                     <button id="connectExistingCtaBtn" type="button" class="editor-action-btn editor-action-btn-secondary">
                         <span class="material-symbols-outlined" aria-hidden="true">link</span>
                         <span class="editor-action-btn-label" id="connectExistingCtaLabel">기존 순간 연결하기</span>
@@ -21,7 +22,7 @@ export function buildDetailPanelShellTemplate() {
                 </div>
 
                 <div id="connectExistingPendingSection" class="editor-connect-existing-section" style="display: none;">
-                    <p class="editor-connect-pending-hint" id="connectExistingPendingHint">연결할 대상 순간을 클릭하세요</p>
+                    <p class="editor-connect-pending-hint" id="connectExistingPendingHint">연결할 대상 순간을 클릭해 주세요.</p>
                     <div class="editor-connect-pending-actions">
                         <button id="connectExistingCancelBtn" type="button" class="btn-round btn-outline editor-form-action-btn">취소</button>
                     </div>
