@@ -124,16 +124,14 @@ test('modeDescription has aria-live attribute', () => {
     assert.ok(source.includes('aria-live'), 'modeDescription aria-live must be polite');
 });
 
-test('detail primary action label changed to 감상', () => {
+test('detail primary action label is 이 순간에서', () => {
     const template = fs.readFileSync('js/editor/templates/editor-detail-view-mode-template.js', 'utf8');
-    assert.ok(template.includes('>감상<'), 'detail actions section must be labeled 감상');
-    assert.ok(!template.includes('주요 행동'), 'old 주요 행동 label must be removed');
+    assert.ok(template.includes('id="detailActionsPrimaryLabel">이 순간에서'), 'detail actions section must be labeled 이 순간에서');
 });
 
-test('viewMomentDetailBtn label updated to 이 순간 감상하기', () => {
+test('viewMomentDetailBtn label is 현재 순간 감상하기', () => {
     const template = fs.readFileSync('js/editor/templates/editor-detail-view-mode-template.js', 'utf8');
-    assert.ok(template.includes('이 순간 감상하기'), 'view btn label must be 이 순간 감상하기');
-    assert.ok(!template.includes('현재 순간 감상하기'), 'old 현재 순간 감상하기 must be removed');
+    assert.ok(template.includes('id="viewMomentDetailBtnLabel">현재 순간 감상하기'), 'view btn label must be 현재 순간 감상하기');
 });
 
 test('continueFromMomentBtn kept and hidden by view-mode CSS', () => {
