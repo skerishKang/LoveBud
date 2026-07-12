@@ -452,7 +452,7 @@ function createEditorCanvasGrowthAffordance(deps) {
         if (canEdit === false) return;
         if (!anchorMem) return;
         const opts = options || {};
-        const labelText = opts.labelText || (i18n('editor_add_memory') || '새 순간 이어가기');
+        const labelText = opts.labelText || (i18n('editor_continue_from_moment') || '이 순간에서 이어가기');
         const isFirstStep = opts.isFirstStep;
         const helperText = opts.helperText
             || (isFirstStep

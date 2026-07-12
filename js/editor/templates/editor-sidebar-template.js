@@ -8,20 +8,28 @@ export function buildSidebarTemplate() {
                 </a>
             </div>
             <section class="editor-status-section">
-                <h3 id="editorFlowHeading">트리 정보</h3>
-                <p id="editorFlowLead" class="editor-flow-lead">트리 제목과 현재 흐름을 차분하게 정리해두는 공간이에요.</p>
+                <h3 id="editorFlowHeading">현재 트리</h3>
+                <p id="editorFlowLead" class="editor-flow-lead">현재 트리의 이어진 순간을 보고 있어요.</p>
                 <div class="editor-status-card">
                     <div class="editor-space-between-row editor-sidebar-header-row">
-                        <div class="editor-reference-kicker" aria-hidden="true">내가 키우는 러브트리</div>
+                        <div class="editor-reference-kicker">현재 트리</div>
                         <button type="button" id="renameTreeBtn" class="icon-menu-btn editor-rename-btn" aria-label="트리 제목 수정" title="트리 제목 수정">수정</button>
                     </div>
                     <div class="editor-title-row">
                         <strong id="sidebarTreeTitle">러브트리</strong>
                     </div>
                     <div id="sidebarFlowSummary" class="editor-flow-summary"></div>
-                    <div class="editor-sidebar-rail-note" aria-hidden="true">
-                        <span class="editor-sidebar-rail-note-kicker">한눈에 보기</span>
-                        <p class="editor-sidebar-rail-note-copy">왼쪽에서 트리 정보를, 가운데에서 흐름을, 오른쪽에서 지금 선택한 순간을 정리해요.</p>
+                    <div id="editorTreeReactions" class="editor-tree-reactions" aria-label="트리 전체 반응">
+                        <span class="editor-tree-reaction-metric" title="트리 전체 좋아요">
+                            <span class="material-symbols-outlined" aria-hidden="true">favorite</span>
+                            <span>트리 좋아요</span>
+                            <strong id="editorTreeLikeCount">—</strong>
+                        </span>
+                        <span class="editor-tree-reaction-metric" title="트리 전체 댓글">
+                            <span class="material-symbols-outlined" aria-hidden="true">chat_bubble</span>
+                            <span>트리 댓글</span>
+                            <strong id="editorTreeCommentCount">—</strong>
+                        </span>
                     </div>
                 </div>
             </section>

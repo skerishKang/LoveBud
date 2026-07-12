@@ -33,34 +33,43 @@
                     '아직 첫 순간을 기다리고 있어요.'
                 );
             } else {
-                const titleText = String(currentTreeData.title || '').trim() || '러브트리';
-                const safeTitle = escapeHtml(titleText);
                 const safeTimeRange = escapeHtml(timeRange);
 
                 if (timeRange) {
-                    // Mirror My Trees hub summary template (.my-trees-hub-summary
-                    // / patchSummaryWithTimeRange) verbatim so the editor
-                    // left rail looks identical to the My Trees hub body line:
-                    //   "<p class="preview-summary-line"><strong>{title}</strong>에
-                    //    담긴 <strong>{count}개의 순간</strong>이 <strong>{timeRange}</strong>
-                    //    에 걸쳐 이어졌어요.</p>"
-                    // The title is bolded for context (matches hub pattern);
-                    // count / timeRange keep emphasis. CSS .editor-flow-summary
-                    // strong override keeps the prose-sized rhythm even though
-                    // .editor-status-card strong would otherwise inherit 1.42rem.
                     flowSummaryEl.innerHTML = formatI18nText(
-                        'sidebar_flow_summary_connected_with_range',
-                        '<p class="preview-summary-line"><strong>{title}</strong>에 담긴 <strong>{count}개의 순간</strong>이 <strong>{timeRange}</strong>에 걸쳐 이어졌어요.</p>',
-                        { title: safeTitle, count: String(count), timeRange: safeTimeRange }
+                        'editor_sidebar_tree_summary_with_range',
+                        '<p class="preview-summary-line">이 트리에 담긴 <strong>{count}개의 순간</strong>이 <strong>{timeRange}</strong>에 걸쳐 이어졌어요.</p>',
+                        { count: String(count), timeRange: safeTimeRange }
                     );
                 } else {
                     flowSummaryEl.innerHTML = formatI18nText(
-                        'sidebar_flow_summary_connected',
-                        '<p class="preview-summary-line"><strong>{title}</strong>에 담긴 <strong>{count}개의 순간</strong>이 이어졌어요.</p>',
-                        { title: safeTitle, count: String(count) }
+                        'editor_sidebar_tree_summary',
+                        '<p class="preview-summary-line">이 트리에 담긴 <strong>{count}개의 순간</strong>이 이어졌어요.</p>',
+                        { count: String(count) }
                     );
                 }
             }
+        };
+
+        const resolveCount = (source, keys) => {
+            for (let index = 0; index < keys.length; index += 1) {
+                const rawValue = source?.[keys[index]];
+                if (rawValue === undefined || rawValue === null || rawValue === '') continue;
+                if (typeof rawValue !== 'number' && typeof rawValue !== 'string') continue;
+                const value = Number(rawValue);
+                if (Number.isFinite(value) && value >= 0) return Math.floor(value);
+            }
+            return null;
+        };
+
+        const updateTreeReactions = (currentTreeData) => {
+            const likeCountEl = document.getElementById('editorTreeLikeCount');
+            const commentCountEl = document.getElementById('editorTreeCommentCount');
+            const likeCount = resolveCount(currentTreeData, ['likeCount', 'like_count', 'likesCount', 'likes']);
+            const commentCount = resolveCount(currentTreeData, ['commentCount', 'comment_count', 'commentsCount']);
+
+            if (likeCountEl) likeCountEl.textContent = likeCount === null ? '—' : String(likeCount);
+            if (commentCountEl) commentCountEl.textContent = commentCount === null ? '—' : String(commentCount);
         };
 
         const updateSidebarStatus = () => {
@@ -74,6 +83,7 @@
 
             // Tree-level summary (replaces moment-selected summary, #1128)
             updateFlowSummary(treeState);
+            updateTreeReactions(currentTreeData || {});
 
             const addMemoryBtnLabel = document.getElementById('addMemoryBtnLabel');
             const addMemoryEyebrow = document.getElementById('addMemoryEyebrow');

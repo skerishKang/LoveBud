@@ -10,11 +10,11 @@
  */
 @import url("./editor/editor-base.css");
 @import url("./editor/editor-layout.css?v=20260504-775");
-@import url("./editor/editor-sidebar.css?v=20260625-2884-left-rail-2");
+@import url("./editor/editor-sidebar.css?v=20260712-editor-ui-followup-1");
 @import url("./editor/editor-canvas.css?v=20260504-787");
 @import url("./editor/editor-canvas-affordance.css?v=20260623-2806-A");
 @import url("./editor/editor-canvas-toolbar.css?v=20260512-1041");
-@import url("./editor/editor-floating-toolbar.css?v=20260518-1");
+@import url("./editor/editor-floating-toolbar.css?v=20260712-editor-ui-followup-1");
 @import url("./editor/editor-mobile-action-bar.css?v=20260518-1");
 @import url("./editor/editor-memory-form-canvas.css");
 @import url("./editor/editor-memory-form-sidebar.css");
@@ -29,10 +29,11 @@
 @import url("./editor/editor-detail-actions.css?v=20260518-1");
 @import url("./editor/editor-detail-edit.css?v=20260518-1");
 @import url("./editor/editor-responsive.css");
-@import url("./editor/editor-mode-selection.css");
+@import url("./editor/editor-mode-selection.css?v=20260712-editor-ui-followup-1");
 @import url("./editor/editor-status-settings.css");
 @import url("./editor/editor-memory-edit.css");
 @import url("./editor/editor-overrides.css?v=20260712-3419-1");
+@import url("./editor/editor-detail-comments.css?v=20260712-editor-ui-followup-1");
 @import url("./editor/editor-responsive-tail.css");
 @import url("./editor/editor-mobile-panel-hierarchy.css?v=20260629-3000");
 
@@ -58,6 +59,7 @@
 .editor-readonly [data-action="delete"],
 .editor-readonly #ftbBranchBtn,
 .editor-readonly #ftbForkBtn,
+.editor-readonly .editor-ftb-branch-divider,
 .editor-readonly #ftbContinueBtn,
 .editor-readonly #continueFromMomentBtn,
 .editor-readonly .branch-port-handle { display: none !important; }

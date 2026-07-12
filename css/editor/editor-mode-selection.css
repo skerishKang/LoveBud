@@ -62,6 +62,16 @@
     opacity: 0.72;
 }
 
+.editor-mode-card {
+    display: grid;
+    gap: 8px;
+    padding: 12px;
+    border-radius: 20px;
+    background: rgba(255, 252, 249, 0.76);
+    border: 1px solid rgba(144, 73, 81, 0.10);
+    box-shadow: 0 10px 24px rgba(75, 64, 57, 0.05);
+}
+
 .editor-desktop-mode-toggle {
     display: flex;
     gap: 6px;
@@ -71,7 +81,9 @@
     border-radius: 999px;
     background: rgba(144, 73, 81, 0.06);
     border: 1px solid rgba(144, 73, 81, 0.10);
-    margin: 0 auto 10px;
+    width: 100%;
+    margin: 0;
+    box-sizing: border-box;
 }
 
 .editor-mode-btn {
@@ -88,6 +100,8 @@
     cursor: pointer;
     transition: all 0.18s ease;
     line-height: 1.2;
+    flex: 1 1 0;
+    justify-content: center;
 }
 
 .editor-mode-btn[aria-checked="true"] {
@@ -101,8 +115,26 @@
     cursor: not-allowed;
 }
 
+.editor-mode-btn[aria-checked="true"]:disabled {
+    opacity: 1;
+}
+
 .editor-mode-btn .material-symbols-outlined {
     font-size: 16px;
+}
+
+.editor-mode-description-wrap {
+    min-width: 0;
+}
+
+.editor-mode-description {
+    margin: 0;
+    color: var(--on-surface-variant);
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.55;
+    text-align: center;
+    word-break: keep-all;
 }
 
 .editor-mobile-mode-toggle {
@@ -139,6 +171,7 @@
 [data-editor-interaction-mode="view"] #ftbContinueBtn,
 [data-editor-interaction-mode="view"] #ftbQuickAdd,
 [data-editor-interaction-mode="view"] #ftbBranchBtn,
-[data-editor-interaction-mode="view"] #ftbForkBtn {
+[data-editor-interaction-mode="view"] #ftbForkBtn,
+[data-editor-interaction-mode="view"] .editor-ftb-branch-divider {
     display: none !important;
 }

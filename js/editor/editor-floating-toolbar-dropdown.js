@@ -53,6 +53,23 @@
    */
   function positionDropdown(dropdown, moreBtn) {
     if (!dropdown || !moreBtn) return;
+    var toolbar = moreBtn.closest('.editor-floating-toolbar');
+    if (toolbar && toolbar.contains(dropdown)) {
+      var triggerRect = moreBtn.getBoundingClientRect();
+      var toolbarRect = toolbar.getBoundingClientRect();
+      var ddW = dropdown.offsetWidth || 210;
+      var ddH = dropdown.offsetHeight || 280;
+      var openUpward = triggerRect.bottom + 8 + ddH > window.innerHeight - 8;
+      var alignLeft = toolbarRect.right - ddW < 8;
+
+      dropdown.style.left = alignLeft ? '0' : 'auto';
+      dropdown.style.right = alignLeft ? 'auto' : '0';
+      dropdown.style.top = openUpward ? 'auto' : 'calc(100% + 8px)';
+      dropdown.style.bottom = openUpward ? 'calc(100% + 8px)' : 'auto';
+      dropdown.style.transformOrigin = (openUpward ? 'bottom ' : 'top ') + (alignLeft ? 'left' : 'right');
+      return;
+    }
+
     var rect = moreBtn.getBoundingClientRect();
     var ddW = dropdown.offsetWidth || 180;
 

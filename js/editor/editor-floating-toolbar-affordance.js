@@ -61,15 +61,8 @@
    */
   function updateAdaptiveState(ctx) {
     if (!ctx || !ctx.toolbar) return;
-    var connecting = isConnectionMode(ctx);
-    ctx.toolbar.classList.toggle(IS_CONNECTING_CLASS, connecting);
-
-    // Hide quick add in connection mode
-    if (connecting) {
-      hideQuickAdd(ctx);
-    } else if (ctx.toolbar.classList.contains(IS_VISIBLE_CLASS)) {
-      showQuickAdd(ctx);
-    }
+    ctx.toolbar.classList.remove(IS_CONNECTING_CLASS);
+    hideQuickAdd(ctx);
   }
 
   /**
@@ -98,32 +91,25 @@
    * Wire up the branch and fork connection-mode buttons.
    */
   function bindConnectionButtons(ctx) {
+    function startBranch() {
+      var continueBtnDetail = document.getElementById('continueFromMomentBtn');
+      if (continueBtnDetail) continueBtnDetail.click();
+    }
+
     if (ctx.branchBtn) {
       ctx.branchBtn.addEventListener('click', function (e) {
         e.stopPropagation();
-        // Trigger branch via existing branch button in detail panel
-        var createBranchBtn = document.getElementById('createBranchBtn');
-        if (createBranchBtn) {
-          createBranchBtn.click();
-          return;
+        if (window.LoveBudFloatingToolbarDropdown) {
+          window.LoveBudFloatingToolbarDropdown.hide(ctx.dropdown, ctx.moreBtn);
         }
-        // Fallback: assume continue flow
-        var continueBtnDetail = document.getElementById('continueFromMomentBtn');
-        if (continueBtnDetail) {
-          continueBtnDetail.click();
-        }
+        startBranch();
       });
     }
 
     if (ctx.forkBtn) {
       ctx.forkBtn.addEventListener('click', function (e) {
         e.stopPropagation();
-        // Fork: similar to branch but might trigger a different flow
-        var createBranchBtn = document.getElementById('createBranchBtn');
-        if (createBranchBtn) {
-          createBranchBtn.click();
-          return;
-        }
+        startBranch();
       });
     }
   }

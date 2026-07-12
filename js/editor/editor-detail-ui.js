@@ -53,6 +53,9 @@ function createEditorDetailUI(deps) {
     const atlasPreviewPanel = typeof createEditorMemoryAtlasPreviewPanel === 'function'
         ? createEditorMemoryAtlasPreviewPanel({})
         : null;
+    const commentsController = typeof window.createEditorMomentCommentsController === 'function'
+        ? window.createEditorMomentCommentsController()
+        : null;
 
     const treeMetaBoundary = window.createEditorDetailTreeMetaBoundary({
         i18n,
@@ -382,7 +385,7 @@ function createEditorDetailUI(deps) {
         if (isEmpty) resetDetailViewState();
 
         if (emptyState) emptyState.style.display = isEmpty ? 'block' : 'none';
-        if (viewMode) viewMode.style.display = isEmpty ? 'none' : 'block';
+        if (viewMode) viewMode.style.display = isEmpty ? 'none' : 'grid';
         if (editMode) editMode.style.display = 'none';
         if (actions) actions.style.display = isEmpty ? 'none' : 'flex';
         if (indicator && isEmpty) indicator.style.display = 'none';
@@ -471,6 +474,7 @@ function createEditorDetailUI(deps) {
         const atlasPreviewMount = document.getElementById('detailAtlasPreviewMount');
 
         if (isEmptyState) {
+            if (commentsController) commentsController.hide();
             if (badgeEl) badgeEl.textContent = formatI18nText('waiting_first_moment', '첫 순간을 기다리고 있어요');
             if (titleEl) titleEl.textContent = formatI18nText('editor_current_moment_empty_title', '이 트리의 첫 장면을 심어 보세요');
             if (hintEl) {
@@ -711,18 +715,15 @@ function createEditorDetailUI(deps) {
                         }
                     };
 
-                    const commentBtn = document.getElementById('momentCommentBtn');
-                    if (commentBtn) {
-                        commentBtn.onclick = () => {
-                            if (!data.id || !treeId) return;
-                            const basePath = typeof window.getEditorBasePath === 'function' ? window.getEditorBasePath() : '../pages/';
-                            window.location.href = basePath
-                                + 'detail.html?id=' + encodeURIComponent(data.id)
-                                + '&tree=' + encodeURIComponent(treeId)
-                                + '&from=editor';
-                        };
-                    }
                 }
+            }
+        }
+
+        if (commentsController) {
+            if (isEmptyState || !data?.id || isRootMemory(data, canonicalRootId)) {
+                commentsController.hide();
+            } else {
+                commentsController.update({ memoryId: data.id, treeId, data });
             }
         }
 
