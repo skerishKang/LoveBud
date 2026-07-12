@@ -223,14 +223,51 @@ test('public-viewer-detail-ui safeDisplayTitle delegates to classifier', () => {
 
 // ── Regression: no mutation, no write API ──
 
-test('editor-detail-ui has no save/update/delete/fetch in render path', () => {
+test('editor-detail-ui delegates social I/O to explicit controllers', () => {
   const src = readRepoFile(editorDetailFile);
-  // updateDetailPanel is the main render function; check it does not call API I/O
-  const renderFn = src.match(/const updateDetailPanel = \(data\) => \{[\s\S]*?\n    \};/);
-  if (renderFn) {
-    assert.doesNotMatch(renderFn[0], /\.save\(|\.update\(|\.delete\(|fetch\(/,
-      'render path must not contain save/update/delete/fetch calls');
-  }
+  const updateDetailPanelFn = src.match(/const updateDetailPanel = \(data\) => \{[\s\S]*?\n    \};/);
+  assert.ok(updateDetailPanelFn, 'updateDetailPanel function must exist');
+  const renderBody = updateDetailPanelFn[0];
+
+  assert.doesNotMatch(
+    renderBody,
+    /window\.apiClient\.fetchReactionSummary\(/,
+    'render path must not call fetchReactionSummary directly'
+  );
+  assert.doesNotMatch(
+    renderBody,
+    /window\.apiClient\.toggleReaction\(/,
+    'render path must not call toggleReaction directly'
+  );
+  assert.doesNotMatch(
+    renderBody,
+    /\.save\(|\.delete\(|fetch\(/,
+    'render path must not contain direct save/delete/fetch calls'
+  );
+  assert.match(
+    renderBody,
+    /commentsController\.update/,
+    'render path must preserve commentsController.update delegation'
+  );
+});
+
+test('reactions controller boundary owns reaction I/O entrypoints', () => {
+  const src = readRepoFile(editorDetailFile);
+  assert.match(
+    src,
+    /momentReactionsController/,
+    'source must define momentReactionsController'
+  );
+  assert.match(
+    src,
+    /window\.apiClient\.fetchReactionSummary/,
+    'fetchReactionSummary must exist in source (reactions controller)'
+  );
+  assert.match(
+    src,
+    /window\.apiClient\.toggleReaction/,
+    'toggleReaction must exist in source (reactions controller)'
+  );
 });
 
 test('editor-canvas-node has no save/update/delete/fetch in render', () => {
