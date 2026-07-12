@@ -112,7 +112,7 @@ test('link mode copy stays English when new i18n keys are missing', () => {
     refs.supportNoteText.textContent,
     'Video links open a moment preview, while channel links open a source preview. Please refine the title and note yourself.'
   );
-  assert.equal(refs.confirmBtn.textContent, 'Continue this moment');
+  assert.equal(refs.confirmBtn.textContent, 'Continue from this moment');
 });
 
 test('link mode copy can still be localized by i18n keys', () => {

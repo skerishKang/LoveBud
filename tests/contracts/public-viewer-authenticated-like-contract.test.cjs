@@ -314,7 +314,7 @@ test('confirmed auth with valid userReactions shows actionable button', async fu
   assert.equal(elements.momentReactionsCard.getAttribute('data-read-only-summary'), undefined, 'data-read-only-summary removed');
   assert.equal(elements.momentReactionsCard.classList.contains('is-read-only'), false, 'is-read-only removed');
   assert.equal(elements.momentReactionsCard.getAttribute('aria-label'), '순간 반응', 'aria-label updated');
-  assert.equal(elements.momentReactionNote.textContent, '댓글 기능은 준비 중이에요.', 'comment note updated');
+  assert.equal(elements.momentReactionNote.textContent, '댓글을 바로 읽고 남길 수 있어요.', 'comment note updated');
 });
 
 test('confirmed auth with unpressed state shows actionable button', async function() {
@@ -598,7 +598,7 @@ test('actionable semantics on successful load', async function() {
     'actionable card no is-read-only');
   assert.equal(elements.momentReactionsCard.getAttribute('aria-label'), '순간 반응',
     'actionable card aria-label');
-  assert.equal(elements.momentReactionNote.textContent, '댓글 기능은 준비 중이에요.',
+  assert.equal(elements.momentReactionNote.textContent, '댓글을 바로 읽고 남길 수 있어요.',
     'actionable card note');
 });
 

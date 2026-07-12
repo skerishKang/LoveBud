@@ -176,7 +176,7 @@ test('7. View mode template has entity search mount element', () => {
     'View mode template must include detailEntitySearchLabel'
   );
   assert.ok(
-    templateCode.includes('연결된 지식'),
+    templateCode.includes('연결 단서'),
     'Entity search label should be present'
   );
 });

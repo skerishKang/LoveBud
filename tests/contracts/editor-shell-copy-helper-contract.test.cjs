@@ -38,7 +38,7 @@ test('applyEditorShellCopy preserves sidebar and canvas shell copy targets', () 
   const requiredTargets = [
     ['backToMyTreesLabel', 'editor_back_to_my_trees', '내 러브트리로 돌아가기'],
     ['editorFlowHeading', 'sidebar_flow_heading', '트리 정보'],
-    ['editorFlowLead', 'sidebar_flow_lead', '트리 이름과 공개 상태를 여기서 정리하고, 가운데 캔버스에서는 흐름만 살펴보세요.'],
+    ['editorFlowLead', 'sidebar_flow_lead', '첫 순간부터 지금까지 이어진 마음을 확인하고 있어요.'],
     ['recenterCanvasBtnLabel', 'sidebar_recenter_tree', '트리 한눈에 보기'],
     ['canvasEmptyGuideEyebrow', 'editor_canvas_empty_eyebrow', '시작하기'],
     ['canvasEmptyGuideTitle', 'editor_canvas_empty_title', '이 트리의 첫 순간을 기록해볼까요?'],
@@ -116,7 +116,7 @@ test('applyEditorShellCopy preserves detail panel copy targets', () => {
     ['editMemoryBtn', 'editor_edit', '순간 수정'],
     ['viewMomentDetailBtnLabel', 'editor_view_moment_detail', '현재 순간 감상하기'],
     ['continueFromMomentBtnLabel', 'editor_continue_from_moment', '이 순간에서 이어가기'],
-    ['detailActionsPrimaryLabel', 'editor_actions_primary', '주요 행동'],
+    ['detailActionsPrimaryLabel', 'editor_actions_primary', '이 순간에서'],
     ['deleteMemoryBtn', 'editor_delete', '순간 삭제']
   ];
 

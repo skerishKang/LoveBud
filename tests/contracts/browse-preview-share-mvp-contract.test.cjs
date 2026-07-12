@@ -162,13 +162,11 @@ test('social shell shows likeCount 0 and commentCount 0 as zero', () => {
   assert.ok(html.includes('aria-label="댓글 0"'), 'aria-label must show zero');
 });
 
-test('social shell shows em-dash when likeCount and commentCount unavailable', () => {
+test('social shell omits likes/comments when likeCount and commentCount unavailable', () => {
   var link = loadShareLink({ sharedUtils: makeSharedUtils(5) });
   var html = link.renderPreviewSocialShell({ id: 't1' });
-  assert.ok(html.includes('>&mdash;</strong>'), 'likeCount must show — when unavailable');
-  assert.ok(html.includes('aria-label="좋아요 정보 없음"'), 'aria-label must say 정보 없음');
-  assert.ok(html.includes('>&mdash;</strong>'), 'commentCount must show — when unavailable');
-  assert.ok(html.includes('aria-label="댓글 정보 없음"'), 'aria-label must say 정보 없음');
+  assert.ok(!html.includes('favorite'), 'likeCount must not render when unavailable');
+  assert.ok(!html.includes('chat_bubble'), 'commentCount must not render when unavailable');
 });
 
 test('social shell never contains literal undefined/null/NaN string', () => {

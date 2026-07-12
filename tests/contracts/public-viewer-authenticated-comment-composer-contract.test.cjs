@@ -26,6 +26,8 @@ function makeEl() {
     removeAttribute(n) { delete this.attributes[n]; if (n === 'disabled') this._disabled = false; },
     getAttribute(n) { return this.attributes[n]; },
     appendChild(c) { this.children.push(c); c.parentElement = this; c.parentNode = this; },
+    append(...nodes) { for (const n of nodes) { this.children.push(n); n.parentElement = this; n.parentNode = this; } },
+    replaceChildren(...nodes) { this.children.length = 0; for (const n of nodes) { this.children.push(n); n.parentElement = this; n.parentNode = this; } },
     removeChild(c) { const i = this.children.indexOf(c); if (i !== -1) { this.children.splice(i, 1); c.parentElement = null; c.parentNode = null; } },
     parentElement: null, closest() { return this.parentElement || this; },
     querySelector() { return null; },
@@ -103,11 +105,7 @@ function createEnv() {
   async function openPanel(memoryId) {
     els.momentCommentsPanel.hidden = false;
     ui.updateDetailPanel({ id: memoryId || 'mem-1', treeId: 'tree-1' });
-    await new Promise(r => setTimeout(r, 20));
-    if (els.momentReactionCommentStatus && els.momentReactionCommentStatus.onclick) {
-      els.momentReactionCommentStatus.onclick();
-      await new Promise(r => setTimeout(r, 5));
-    }
+    await new Promise(r => setTimeout(r, 50));
   }
 
   function findBtn(p) { function f(e) { if (e.textContent === '등록') return e; if (e.children) for (const c of e.children) { const r = f(c); if (r) return r; } return null; } return f(p); }
@@ -123,7 +121,7 @@ function createEnv() {
     ccCount: () => ccCount, lastKey: () => lastKey, publicReadCount: () => publicReadCalls.length,
     setAuth: (v) => { auth = !!v; },
     findSuccess: (p) => { function f(e) { if (e.tagName === 'P' && e.textContent && e.textContent.includes('남겼어요')) return e; if (e.children) for (const c of e.children) { const r = f(c); if (r) return r; } return null; } return f(p); },
-    findCancel: (p) => { function f(e) { if (e.tagName === 'BUTTON' && e.textContent && e.textContent.includes('입력 취소')) return e; if (e.children) for (const c of e.children) { const r = f(c); if (r) return r; } return null; } return f(p); },
+    findCancel: (p) => { function f(e) { if (e.tagName === 'BUTTON' && e.textContent && e.textContent.includes('지우기')) return e; if (e.children) for (const c of e.children) { const r = f(c); if (r) return r; } return null; } return f(p); },
     findValidation: (p) => { function f(e) { if (e.tagName === 'P' && e.textContent && e.textContent.trim() === '댓글 내용을 입력해 주세요.') return e; if (e.children) for (const c of e.children) { const r = f(c); if (r) return r; } return null; } return f(p); },
     findGuestNote: (p) => { function f(e) { if (e.getAttribute && e.getAttribute('data-guest-comment-note') === '1') return e; if (e.children) for (const c of e.children) { const r = f(c); if (r) return r; } return null; } return f(p); },
   };
@@ -546,16 +544,8 @@ it('25. close/reopen clears success status', async () => {
   env.resolve({ id: 'c-25' });
   await flush();
   assert.ok(env.findSuccess(env.els.momentCommentsPanel), 'success visible');
-  // Close
-  if (env.els.momentReactionCommentStatus && env.els.momentReactionCommentStatus.onclick) {
-    env.els.momentReactionCommentStatus.onclick();
-  }
-  await flush();
-  // Reopen
-  if (env.els.momentReactionCommentStatus && env.els.momentReactionCommentStatus.onclick) {
-    env.els.momentReactionCommentStatus.onclick();
-  }
-  await flush();
+  // Re-trigger detail panel update: re-fetch resets panel, clears stale success state
+  await env.openPanel('mem-1');
   const el = env.findSuccess(env.els.momentCommentsPanel);
   assert.equal(el.style.display, 'none', 'success hidden after reopen');
 });
@@ -616,7 +606,7 @@ it('29. authenticated composer has cancel button with Korean accessible name', a
   assert.ok(btn, 'cancel button exists');
   assert.equal(btn.type, 'button', 'type=button');
   assert.equal(btn.getAttribute('aria-label'), '댓글 입력 취소', 'aria-label');
-  assert.ok(btn.textContent.includes('입력 취소'), 'text contains 입력 취소');
+  assert.ok(btn.textContent.includes('지우기'), 'text contains 지우기');
 });
 
 it('30. cancel clears draft, preserves panel, no API call', async () => {
@@ -1067,13 +1057,10 @@ it('52. guest→auth transition: guest note removed, composer shown', async () =
   assert.ok(env.findGuestNote(panel), 'guest note visible');
   assert.equal(env.findBtn(panel), null, 'no composer');
 
-  // Close panel, then auth + reopen to force fresh evaluation
-  if (env.els.momentReactionCommentStatus && env.els.momentReactionCommentStatus.onclick) {
-    env.els.momentReactionCommentStatus.onclick();
-  }
-  await flush();
+  // Switch to auth and re-trigger detail panel update with force=true
   env.setAuth(true);
-  await env.openPanel('mem-1');
+  env.ui.updateDetailPanel({ id: 'mem-1', treeId: 'tree-1' }, true);
+  await new Promise(r => setTimeout(r, 50));
   assert.equal(env.findGuestNote(panel), null, 'guest note removed after auth');
   assert.ok(env.findBtn(panel), 'composer shown after auth');
 });
@@ -1085,13 +1072,10 @@ it('53. auth→guest transition: composer removed, guest note shown', async () =
   assert.ok(env.findBtn(panel), 'composer visible when auth');
   assert.equal(env.findGuestNote(panel), null, 'no guest note');
 
-  // Close panel, then guest + reopen to force fresh evaluation
-  if (env.els.momentReactionCommentStatus && env.els.momentReactionCommentStatus.onclick) {
-    env.els.momentReactionCommentStatus.onclick();
-  }
-  await flush();
+  // Switch to guest and re-trigger detail panel update with force=true
   env.setAuth(false);
-  await env.openPanel('mem-1');
+  env.ui.updateDetailPanel({ id: 'mem-1', treeId: 'tree-1' }, true);
+  await new Promise(r => setTimeout(r, 50));
   assert.equal(env.hasBtn(panel), false, 'composer removed after guest');
   assert.ok(env.findGuestNote(panel), 'guest note shown after guest');
 });
@@ -1111,7 +1095,7 @@ it('54. composer source file has no .focus() or activeElement references', () =>
 function findGuestNote(p) { function f(e) { if (e.getAttribute && e.getAttribute('data-guest-comment-note') === '1') return e; if (e.children) for (var i = 0; i < e.children.length; i++) { var r = f(e.children[i]); if (r) return r; } return null; } return f(p); }
 function findBtn(p) { function f(e) { if (e.textContent === '등록') return e; if (e.children) for (var i = 0; i < e.children.length; i++) { var r = f(e.children[i]); if (r) return r; } return null; } return f(p); }
 function findTA(p) { function f(e) { if (e.tagName === 'TEXTAREA') return e; if (e.children) for (var i = 0; i < e.children.length; i++) { var r = f(e.children[i]); if (r) return r; } return null; } return f(p); }
-function findCancel(p) { function f(e) { if (e.tagName === 'BUTTON' && e.textContent && e.textContent.indexOf('입력 취소') !== -1) return e; if (e.children) for (var i = 0; i < e.children.length; i++) { var r = f(e.children[i]); if (r) return r; } return null; } return f(p); }
+function findCancel(p) { function f(e) { if (e.tagName === 'BUTTON' && e.textContent && e.textContent.indexOf('지우기') !== -1) return e; if (e.children) for (var i = 0; i < e.children.length; i++) { var r = f(e.children[i]); if (r) return r; } return null; } return f(p); }
 
 function createStandaloneComposer() {
   var ccCount = 0;
@@ -1133,7 +1117,7 @@ function createStandaloneComposer() {
       createElement: function(tag) {
         var e = {
           tagName: (tag || 'div').toUpperCase(), textContent: '', children: [],
-          style: {}, attributes: {}, onclick: null, value: '', _hidden: false, _listeners: {},
+          style: {}, dataset: {}, attributes: {}, onclick: null, value: '', _hidden: false, _listeners: {},
           get hidden() { return this._hidden; },
           set hidden(v) { this._hidden = !!v; },
           classList: { classes: new Set(), add: function(c) { this.classes.add(c); }, remove: function(c) { this.classes.delete(c); }, contains: function(c) { return this.classes.has(c); } },

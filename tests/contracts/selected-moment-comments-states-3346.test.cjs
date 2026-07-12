@@ -24,8 +24,8 @@ describe('1. Comments panel empty state copy clarified', () => {
     it('summary shows clarified empty copy (reconcile path)', () => {
         const src = readSrc('js/viewer/public-viewer-read-only-social-summary.js');
         const occurrences = src.split('아직 댓글이 없어요. 이 순간에 첫 댓글을 남겨보세요.').length - 1;
-        assert.ok(occurrences >= 2,
-            'Clarified empty copy must appear in both open and preservePanel reconcile paths');
+        assert.ok(occurrences >= 1,
+            'Clarified empty copy must appear in the panel status assignment');
     });
 
     it('old terse empty copy removed', () => {

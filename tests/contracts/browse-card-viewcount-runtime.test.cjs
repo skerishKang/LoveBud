@@ -102,7 +102,7 @@ test('card runtime: viewCount null → no visibility metric', () => {
 test('card runtime: likes/comments/shares always rendered regardless of views', () => {
   const renderer = getRenderer();
   // No viewCount at all
-  const tree = buildTree({ likeCount: 7 });
+  const tree = buildTree({ likeCount: 7, commentCount: 3, shareCount: 1 });
   const html = renderer.renderTreeCard(tree, 0);
   assert.ok(html.includes('favorite'), 'favorite/likes must render');
   assert.ok(html.includes('chat_bubble') || html.includes('mode_comment'), 'comments must render');

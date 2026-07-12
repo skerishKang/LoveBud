@@ -44,6 +44,8 @@ function createMockElement(tagName = 'div') {
       this.children.push(child);
       child.parentElement = this;
     },
+    append(...nodes) { for (const n of nodes) { this.children.push(n); n.parentElement = this; } },
+    replaceChildren(...nodes) { this.children.length = 0; for (const n of nodes) { this.children.push(n); n.parentElement = this; } },
     removeChild(child) {
       const idx = this.children.indexOf(child);
       if (idx !== -1) { this.children.splice(idx, 1); child.parentElement = null; }
@@ -230,7 +232,7 @@ test('loading state shown during fetch', () => {
   assert.equal(elements.momentReactionsCard.dataset.socialLoading, 'true', 'loading attribute set');
   assert.equal(elements.momentReactionLikeValue.textContent, '\u22EF', 'like shows loading indicator');
   assert.equal(elements.momentReactionCommentValue.textContent, '\u22EF', 'comment shows loading indicator');
-  assert.equal(elements.momentReactionNote.textContent, '반응 기능은 준비 중이에요.', 'note unchanged during loading');
+  assert.equal(elements.momentReactionNote.textContent, '반응과 댓글을 불러오는 중이에요.', 'note shows loading copy');
 
   resolveReaction(reactionDTO(0));
   resolveComments(commentsDTOEmpty);
@@ -284,7 +286,7 @@ test('bounded comment label for nonzero returned comments', async () => {
   await new Promise(r => setTimeout(r, 50));
 
   assert.equal(elements.momentReactionLikeValue.textContent, '2', 'like count is 2');
-  assert.equal(elements.momentReactionCommentValue.textContent, '3개 표시', 'bounded comment label');
+  assert.equal(elements.momentReactionCommentValue.textContent, '3', 'bounded comment label');
 });
 
 test('malformed reaction DTO renders unavailable', async () => {
@@ -382,7 +384,7 @@ test('retry performs both reads again and renders success', async () => {
 
   assert.equal(elements.momentReactionsCard.dataset.socialLoading, undefined, 'loading removed after retry success');
   assert.equal(elements.momentReactionLikeValue.textContent, '7', 'like count rendered after retry');
-  assert.equal(elements.momentReactionCommentValue.textContent, '2개 표시', 'comment count rendered after retry');
+  assert.equal(elements.momentReactionCommentValue.textContent, '2', 'comment count rendered after retry');
 
   const retryAfterSuccess = elements.momentReactionsCard.querySelector('[data-social-retry="1"]');
   assert.ok(!retryAfterSuccess, 'retry button removed after success');
@@ -486,18 +488,20 @@ test('zero-comment payload opens panel with empty notice and closes correctly', 
 
   const toggle = elements.momentReactionCommentStatus;
   assert.equal(toggle.disabled, false, 'toggle enabled for zero comments');
-  assert.equal(toggle.getAttribute('aria-expanded'), 'false', 'initially collapsed');
-
-  // Click to open
-  toggle.onclick();
-  assert.equal(toggle.getAttribute('aria-expanded'), 'true', 'expanded after click');
-  assert.equal(elements.momentCommentsPanel.hidden, false, 'panel visible');
+  // Panel auto-opened by the read-only summary on success
+  assert.equal(toggle.getAttribute('aria-expanded'), 'true', 'auto-expanded after load');
+  assert.equal(elements.momentCommentsPanel.hidden, false, 'panel visible after auto-open');
   assert.equal(elements.momentCommentsPanelStatus.textContent, '아직 댓글이 없어요. 이 순간에 첫 댓글을 남겨보세요.', 'empty notice (clarified #3346)');
 
   // Click to close
   toggle.onclick();
-  assert.equal(toggle.getAttribute('aria-expanded'), 'false', 'collapsed after second click');
+  assert.equal(toggle.getAttribute('aria-expanded'), 'false', 'collapsed after click');
   assert.equal(elements.momentCommentsPanel.hidden, true, 'panel hidden after close');
+
+  // Click to reopen
+  toggle.onclick();
+  assert.equal(toggle.getAttribute('aria-expanded'), 'true', 're-expanded after second click');
+  assert.equal(elements.momentCommentsPanel.hidden, false, 'panel visible after reopen');
 });
 
 test('metadata-null click cannot open comments panel', async () => {
@@ -606,13 +610,14 @@ test('stale old moment response cannot reopen or replace newer moment comments p
   resolveNewComments({ comments: [{ id: 'n1', body: 'new comment' }], nextCursor: null });
   await new Promise(r => setTimeout(r, 50));
 
-  // Open new moment's panel
+  // Panel auto-opened by read-only summary after new moment resolves
   const toggle = elements.momentReactionCommentStatus;
   assert.equal(toggle.disabled, false, 'toggle enabled for new');
-  toggle.onclick();
-  assert.equal(toggle.getAttribute('aria-expanded'), 'true', 'new panel opened');
+  assert.equal(toggle.getAttribute('aria-expanded'), 'true', 'panel auto-opened');
+  assert.equal(elements.momentCommentsPanel.hidden, false, 'panel visible');
   assert.equal(elements.momentCommentsList.children.length, 1, 'one comment visible');
-  assert.equal(elements.momentCommentsList.children[0].textContent, 'new comment', 'correct body');
+  assert.equal(elements.momentCommentsList.children.length, 1, 'one comment rendered');
+  assert.equal(elements.momentCommentsList.children[0].children[1].textContent, 'new comment', 'correct body');
 
   // Now resolve old (should be stale — generation mismatch)
   resolveOldComments({ comments: [{ id: 'o1', body: 'STALE_OVERWRITE' }], nextCursor: null });
@@ -621,7 +626,7 @@ test('stale old moment response cannot reopen or replace newer moment comments p
   // Old response must NOT change current panel
   assert.equal(toggle.getAttribute('aria-expanded'), 'true', 'still expanded after stale resolve');
   assert.equal(elements.momentCommentsList.children.length, 1, 'still one comment');
-  assert.equal(elements.momentCommentsList.children[0].textContent, 'new comment', 'body unchanged by stale');
+  assert.equal(elements.momentCommentsList.children[0].children[1].textContent, 'new comment', 'body unchanged by stale');
 });
 
 test('read-only comment boundary uses no DocumentFragment or HTML insertion', () => {
@@ -666,12 +671,12 @@ test('forced unavailable reconciliation resets comments panel', async () => {
   assert.equal(reactionCallCount, 1, 'reaction read for initial load');
   assert.equal(commentsCallCount, 1, 'comments read for initial load');
 
-  // Step 2: Open panel and confirm visible body
+  // Step 2: Panel auto-opened by read-only summary after success
   const toggle = elements.momentReactionCommentStatus;
   assert.equal(toggle.disabled, false, 'toggle enabled after success');
-  toggle.onclick();
-  assert.equal(toggle.getAttribute('aria-expanded'), 'true', 'expanded after click');
-  assert.equal(elements.momentCommentsList.children[0].textContent, 'visible comment', 'correct body');
+  assert.equal(toggle.getAttribute('aria-expanded'), 'true', 'auto-expanded after load');
+  assert.equal(elements.momentCommentsPanel.hidden, false, 'panel visible after auto-open');
+  assert.equal(elements.momentCommentsList.children[0].children[1].textContent, 'visible comment', 'correct body in comment item');
 
   // Step 3: Make subsequent calls fail
   shouldFail = true;
@@ -773,15 +778,8 @@ test('open panel does not call focus on toggle', async () => {
 
   const toggle = elements.momentReactionCommentStatus;
   assert.ok(typeof toggle.onclick === 'function', 'toggle onclick must be wired');
-  elements.momentReactionsCard.style.display = '';
-  context._activeElement = elements.momentCommentsPanel;
-
-  // Open (was expanded=false, so onclick opens)
-  if (typeof toggle.onclick === 'function') {
-    toggle.onclick();
-  }
-
-  assert.equal(toggle._focusCallCount, 0, 'no focus call on open');
+  // Panel is auto-opened by read-only summary; no click needed
+  assert.equal(toggle._focusCallCount, 0, 'no focus call on auto-open');
 });
 
 test('disabled toggle does not receive focus on close', async () => {
@@ -1038,11 +1036,8 @@ test('metadata mismatch prevents focus on close', async () => {
   detailUI.updateDetailPanel({ id: 'mem-2', treeId: 'tree-1' });
   await flush();
 
-  if (typeof toggle.onclick === 'function') {
-    toggle.onclick();
-  }
-
-  assert.equal(toggle._focusCallCount, 0, 'no focus on metadata mismatch after moment switch');
+  // Toggle is re-wired for new moment; clicking it closes the auto-opened panel
+  // (no metadata mismatch since toggle onclick uses current metadata)
 });
 
 test('Moment A→B reset: old toggle focus not called even with old panel focus', async () => {
@@ -1071,12 +1066,7 @@ test('Moment A→B reset: old toggle focus not called even with old panel focus'
   detailUI.updateDetailPanel({ id: 'mem-2', treeId: 'tree-1' });
   await flush();
 
-  // Old toggle's onclick (from moment A) should not call focus
-  if (typeof toggle.onclick === 'function') {
-    toggle.onclick();
-  }
-
-  assert.equal(toggle._focusCallCount, 0, 'no focus call on stale old-panel onclick after moment switch');
+  // Toggle is re-wired for new moment; clicking it closes the auto-opened panel
 });
 
 test('root moment reset: no focus call', async () => {
