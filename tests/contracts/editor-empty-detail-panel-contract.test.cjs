@@ -15,7 +15,7 @@ test('editor detail panel hides selected-memory UI when no memory is selected', 
   assert.match(source, /if \(isEmptyState\) \{[\s\S]*?setDetailEmptyState\(true\);[\s\S]*?return;[\s\S]*?\}/);
   assert.match(source, /if \(reactionsCard && isEmpty\) reactionsCard\.style\.display = 'none';/);
   assert.match(source, /if \(isEmptyState \|\| !data\?\.id \|\| isRootMemory\(data, canonicalRootId\)\) \{[\s\S]*?reactionsCard\.style\.display = 'none';/);
-  assert.match(source, /const viewMode = document\.getElementById\('detailViewMode'\);[\s\S]*?const editMode = document\.getElementById\('detailEditMode'\);[\s\S]*?if \(viewMode\) viewMode\.style\.display = isEmpty \? 'none' : 'block';[\s\S]*?if \(editMode\) editMode\.style\.display = 'none';/);
+  assert.match(source, /const viewMode = document\.getElementById\('detailViewMode'\);[\s\S]*?const editMode = document\.getElementById\('detailEditMode'\);[\s\S]*?if \(viewMode\) viewMode\.style\.display = isEmpty \? 'none' : 'grid';[\s\S]*?if \(editMode\) editMode\.style\.display = 'none';/);
   assert.match(source, /id="detailEmptyStartBtn"/);
   assert.match(source, /formatI18nText\('create_first_moment', '첫 순간 만들기'\)/);
 });
