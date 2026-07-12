@@ -228,7 +228,7 @@ function createEditorMemoryForm(deps) {
     function applyOpenCopy(isFirstMoment) {
         setText(refs.formEyebrow, isFirstMoment
             ? (i18n('editor_add_first_memory') || '첫 순간 심기')
-            : (i18n('editor_add_next_memory') || '새 순간 이어가기'));
+            : (i18n('editor_add_next_memory') || '이 순간에서 이어가기'));
         setText(refs.formTitle, isFirstMoment
             ? (i18n('editor_add_first_memory_title') || '이 트리의 첫 순간을 심어볼까요?')
             : (i18n('editor_add_next_memory_title') || '어떤 순간이 이어졌나요?'));

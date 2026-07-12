@@ -270,7 +270,7 @@
     setText('recenterCanvasBtnLabel', 'sidebar_recenter_tree', '트리 한눈에 보기');
     setText('addMemoryEyebrow', 'editor_add_memory_eyebrow', '다음 순간 심기');
     setText('addMemoryIntro', 'editor_add_memory_intro', '지금 선택한 순간 다음에 새로운 장면을 이어 심어 보세요. 첫 순간이라면 여기서 러브트리가 시작됩니다.');
-    setText('addMemoryBtnLabel', 'editor_add_memory', '새 순간 이어가기');
+    setText('addMemoryBtnLabel', 'editor_add_memory', '이 순간에서 이어가기');
     setText('addMemoryFormTitle', 'editor_new_memory', '어떤 순간이 이어졌나요?');
     setText('memoryUrlLabel', 'editor_youtube_link', 'YouTube 장면 링크');
     setText('memoryTitleLabel', 'editor_memory_title', '순간 제목');
@@ -292,7 +292,7 @@
     setText('editMemoryBtnLabel', 'editor_edit', '순간 수정');
     setText('viewMomentDetailBtnLabel', 'editor_view_moment_detail', '현재 순간 감상하기');
     setText('continueFromMomentBtnLabel', 'editor_continue_from_moment', '이 순간에서 이어가기');
-    setText('detailActionsPrimaryLabel', 'editor_actions_primary', '주요 행동');
+    setText('detailActionsPrimaryLabel', 'editor_actions_primary', '이 순간에서');
     setText('deleteMemoryBtn', 'editor_delete', '순간 삭제');
     setText('editTitleLabel', 'editor_memory_title', '순간 제목');
     setText('editMemoLabel', 'editor_note_label', '감정 메모');

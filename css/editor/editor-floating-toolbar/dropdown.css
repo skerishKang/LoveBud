@@ -13,7 +13,7 @@
  * Secondary actions dropdown (triggered by "..." button)
  */
 .editor-ftb-dropdown {
-    position: fixed;
+    position: absolute;
     z-index: 15;
     display: flex;
     flex-direction: column;
@@ -24,7 +24,12 @@
     border: 1px solid rgba(230,207,194,0.78);
     box-shadow: 0 10px 28px rgba(75,64,57,0.16);
     backdrop-filter: blur(10px);
-    min-width: 180px;
+    top: calc(100% + 8px);
+    right: 0;
+    left: auto;
+    min-width: 210px;
+    max-height: min(360px, calc(100vh - 24px));
+    overflow-y: auto;
     pointer-events: none;
     opacity: 0;
     transform: translateY(-4px) scale(0.96);
@@ -57,6 +62,20 @@
 .editor-ftb-dropdown-item:focus-visible {
     background: rgba(144,73,81,0.08);
     color: var(--primary, rgba(144,73,81,0.92));
+}
+
+.editor-ftb-dropdown-divider {
+    height: 1px;
+    margin: 4px 6px;
+    background: rgba(144,73,81,0.10);
+}
+
+.editor-ftb-dropdown-item-danger {
+    color: #9a3f49;
+}
+
+.editor-ftb-dropdown-item[hidden] {
+    display: none !important;
 }
 .editor-ftb-dropdown-item:active {
     background: rgba(144,73,81,0.14);

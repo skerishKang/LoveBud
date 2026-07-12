@@ -142,15 +142,14 @@
 
       toolbar.classList.remove(IS_HIDDEN_CLASS);
       toolbar.style.display = '';
+      var canvasArea = document.getElementById('canvasArea');
+      if (canvasArea) canvasArea.classList.add('editor-floating-toolbar-active');
       // Force reflow for transition
       void toolbar.offsetWidth;
       toolbar.classList.add(IS_VISIBLE_CLASS);
 
       if (window.LoveBudFloatingToolbarPositioning && window.LoveBudFloatingToolbarPositioning.positionToolbar) {
         window.LoveBudFloatingToolbarPositioning.positionToolbar(posCtx);
-      }
-      if (window.LoveBudFloatingToolbarAffordance && window.LoveBudFloatingToolbarAffordance.showQuickAdd) {
-        window.LoveBudFloatingToolbarAffordance.showQuickAdd(posCtx);
       }
     }
 
@@ -164,6 +163,8 @@
       toolbar.classList.remove(IS_VISIBLE_CLASS);
       toolbar.classList.add(IS_HIDDEN_CLASS);
       toolbar.style.display = 'none';
+      var canvasArea = document.getElementById('canvasArea');
+      if (canvasArea) canvasArea.classList.remove('editor-floating-toolbar-active');
 
       posCtx.lastX = -1;
       posCtx.lastY = -1;
@@ -268,9 +269,6 @@
         editBtn: editBtn,
         continueBtn: continueBtn,
         viewBtn: viewBtn,
-        moreBtn: moreBtn,
-        branchBtn: branchBtn,
-        forkBtn: forkBtn,
         getTitle: getSelectedMomentTitle
       });
     }

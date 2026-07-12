@@ -1,0 +1,249 @@
+#detailViewMode {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+}
+
+.editor-moment-social-card {
+    display: grid !important;
+    width: 100%;
+    gap: 14px !important;
+    padding: 18px !important;
+    border-radius: 22px !important;
+    box-sizing: border-box;
+    background: linear-gradient(180deg, rgba(255, 253, 250, 0.96), rgba(255, 247, 241, 0.86)) !important;
+    border: 1px solid rgba(144, 73, 81, 0.10) !important;
+    box-shadow: 0 12px 28px rgba(156, 116, 94, 0.08);
+    color: var(--on-surface);
+}
+
+.editor-moment-social-head {
+    display: grid;
+    gap: 12px;
+}
+
+.editor-moment-social-copy {
+    margin: 5px 0 0;
+    color: var(--on-surface-variant);
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1.55;
+}
+
+.editor-moment-reactions-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.editor-moment-social-card .editor-moment-reaction {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    min-height: 34px;
+    padding: 0 12px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.78);
+    border: 1px solid rgba(144, 73, 81, 0.12);
+    color: var(--on-surface-variant);
+    font: inherit;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.16s ease, border-color 0.16s ease, color 0.16s ease, transform 0.16s ease;
+}
+
+.editor-moment-social-card .editor-moment-reaction:hover,
+.editor-moment-social-card .editor-moment-reaction:focus-visible {
+    background: rgba(144, 73, 81, 0.09);
+    border-color: rgba(144, 73, 81, 0.22);
+    color: var(--primary);
+    outline: none;
+}
+
+.editor-moment-social-card .editor-moment-reaction:active {
+    transform: translateY(1px);
+}
+
+.editor-moment-social-card .editor-reaction-comment-icon {
+    font-size: 16px;
+}
+
+.editor-moment-comments-panel {
+    display: grid;
+    gap: 12px;
+    margin: 0 !important;
+    padding: 14px 0 0 !important;
+    border-top: 1px solid rgba(144, 73, 81, 0.10) !important;
+}
+
+.editor-moment-comments-status {
+    margin: 0 !important;
+    padding: 0 !important;
+    color: var(--on-surface-variant) !important;
+    font-size: 12px !important;
+    line-height: 1.55;
+}
+
+.editor-moment-comments-status:empty {
+    display: none;
+}
+
+.editor-moment-comments-list {
+    display: grid;
+    gap: 8px;
+    max-height: 220px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow-y: auto;
+    list-style: none;
+    scrollbar-width: thin;
+}
+
+.editor-moment-comment-item {
+    display: grid;
+    gap: 5px;
+    padding: 10px 12px !important;
+    border: 1px solid rgba(144, 73, 81, 0.08) !important;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.68);
+}
+
+.editor-moment-comment-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.editor-moment-comment-meta strong {
+    color: var(--on-surface);
+    font-size: 11px;
+    font-weight: 800;
+}
+
+.editor-moment-comment-meta time {
+    color: var(--on-surface-note);
+    font-size: 10px;
+    font-weight: 600;
+}
+
+.editor-moment-comment-item p {
+    margin: 0;
+    color: var(--on-surface);
+    font-size: 13px;
+    line-height: 1.55;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.editor-moment-comment-composer {
+    display: grid;
+    gap: 8px;
+}
+
+.editor-moment-comment-composer > label {
+    color: var(--on-surface-variant);
+    font-size: 11px;
+    font-weight: 800;
+}
+
+.editor-moment-comment-input-row {
+    display: flex;
+    align-items: stretch;
+    gap: 8px;
+}
+
+.editor-moment-comment-input-row textarea {
+    flex: 1 1 auto;
+    min-width: 0;
+    min-height: 68px;
+    resize: vertical;
+    padding: 11px 12px;
+    border-radius: 14px;
+    border: 1px solid rgba(144, 73, 81, 0.14);
+    background: rgba(255, 253, 250, 0.96);
+    color: var(--on-surface);
+    font: inherit;
+    font-size: 13px;
+    line-height: 1.5;
+    box-sizing: border-box;
+}
+
+.editor-moment-comment-input-row textarea::placeholder {
+    color: var(--on-surface-note);
+}
+
+.editor-moment-comment-input-row textarea:focus {
+    outline: none;
+    border-color: rgba(144, 73, 81, 0.34);
+    box-shadow: 0 0 0 4px rgba(144, 73, 81, 0.08);
+}
+
+.editor-moment-comment-input-row button {
+    display: inline-flex;
+    flex: 0 0 auto;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    min-width: 58px;
+    padding: 8px 10px;
+    border: 0;
+    border-radius: 14px;
+    background: var(--primary);
+    color: white;
+    font: inherit;
+    font-size: 11px;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.editor-moment-comment-input-row button .material-symbols-outlined {
+    font-size: 17px;
+}
+
+.editor-moment-comment-input-row button:disabled,
+.editor-moment-comment-input-row textarea:disabled {
+    opacity: 0.55;
+    cursor: wait;
+}
+
+.editor-moment-comment-feedback {
+    min-height: 18px;
+    margin: 0;
+    color: var(--on-surface-variant);
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1.5;
+}
+
+.editor-moment-comment-feedback[data-tone="error"] {
+    color: #a13f49;
+}
+
+.editor-moment-comment-feedback[data-tone="success"] {
+    color: #497254;
+}
+
+.editor-moment-actions-card .editor-connect-existing-section {
+    margin-top: 2px;
+    padding-top: 14px;
+}
+
+.editor-moment-actions-card .editor-connect-section-copy {
+    margin-bottom: 8px;
+    text-align: left;
+}
+
+@media (max-width: 480px) {
+    .editor-moment-comment-input-row {
+        flex-direction: column;
+    }
+
+    .editor-moment-comment-input-row button {
+        min-height: 42px;
+        flex-direction: row;
+    }
+}

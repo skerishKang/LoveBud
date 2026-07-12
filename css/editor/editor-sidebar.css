@@ -117,6 +117,15 @@
 
 .editor-status-card .editor-flow-summary {
     display: block !important;
+    margin: 0 !important;
+    color: var(--on-surface-variant);
+    font-size: 13.5px;
+    line-height: 1.65;
+}
+
+.editor-status-section {
+    display: grid;
+    gap: 12px;
 }
 
 .editor-status-card .editor-title-settings-panel {
@@ -189,7 +198,7 @@
 }
 
 .editor-status-card .editor-title-row {
-    margin-bottom: 12px !important;
+    margin-bottom: 10px !important;
 }
 
 .editor-status-card .editor-title-row #sidebarTreeTitle {
@@ -197,6 +206,54 @@
     overflow-wrap: break-word !important;
     line-height: 1.35 !important;
     display: block !important;
+}
+
+.editor-status-card .editor-flow-summary strong {
+    display: inline !important;
+    font-size: inherit !important;
+    font-weight: 800 !important;
+    line-height: inherit !important;
+    letter-spacing: 0 !important;
+    color: var(--on-surface) !important;
+}
+
+.editor-tree-reactions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 1px solid rgba(144, 73, 81, 0.10);
+}
+
+.editor-tree-reaction-metric {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    min-height: 30px;
+    padding: 0 10px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.72);
+    border: 1px solid rgba(144, 73, 81, 0.10);
+    color: var(--on-surface-variant);
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.editor-tree-reaction-metric .material-symbols-outlined {
+    color: var(--primary);
+    font-size: 15px;
+}
+
+.editor-status-card .editor-tree-reaction-metric strong {
+    display: inline !important;
+    min-width: 1ch;
+    font-size: 11px !important;
+    font-weight: 900 !important;
+    line-height: 1 !important;
+    letter-spacing: 0 !important;
+    color: var(--on-surface) !important;
 }
 
 .editor-sidebar-rail-note {
