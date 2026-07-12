@@ -378,9 +378,8 @@ body .editor-memory-mode-chip.is-active {
     display: none !important;
 }
 
-/* #3419 — Public viewer restores tree-meta section visibility */
-body.editor-readonly .editor-tree-meta-section {
-    display: block !important;
+.editor-sidebar-rail-note {
+    display: grid !important;
 }
 
 .editor-canvas-empty-guide__desc {
