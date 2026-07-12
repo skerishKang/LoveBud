@@ -4071,6 +4071,12 @@
       "layer": "SOURCE_STATIC",
       "rationale": "Reads repository governance Markdown and agent-guidance files and verifies static owner-approved policy, precedence, and non-blocking workflow markers only; it does not execute runtime code, use a browser, connect to a database or network, deploy, or mutate production.",
       "capabilities": []
+    },
+    {
+      "path": "tests/contracts/migration-provenance-gate-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Reads the migration provenance manifests and exercises only the local pure-JS comparison core with synthetic ledger/catalog evidence; it does not connect to a database, network, browser, deploy target, or production system.",
+      "capabilities": []
     }
   ],
   "supplemental": [

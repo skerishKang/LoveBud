@@ -1,0 +1,33 @@
+{
+  "format_version": "1.0",
+  "relation_name": "schema_migration_ledger",
+  "purpose": "Authoritative applied-migration evidence. The relation is introduced only by a separately approved bootstrap migration.",
+  "required_record_fields": [
+    "migration_id",
+    "content_checksum",
+    "applied_at",
+    "runner_version",
+    "environment_class",
+    "deployed_commit",
+    "transaction_outcome"
+  ],
+  "immutable_fields": [
+    "migration_id",
+    "content_checksum",
+    "applied_at",
+    "runner_version",
+    "environment_class",
+    "deployed_commit"
+  ],
+  "prohibited_record_fields": [
+    "operator_email",
+    "operator_user_id",
+    "credential",
+    "connection_string",
+    "raw_catalog_payload"
+  ],
+  "ordering_rule": "Canonical migration manifest order is append-only; applied records must match that order exactly.",
+  "concurrency_rule": "A runner must hold one database-scoped advisory lock before evaluating or writing ledger state.",
+  "partial_apply_rule": "A transaction outcome other than committed blocks subsequent application and requires an explicit forward-fix or approved recovery decision.",
+  "retry_rule": "Retry is allowed only after the gate confirms that the same immutable id and checksum are not already committed."
+}
