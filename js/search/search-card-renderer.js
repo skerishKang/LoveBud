@@ -128,10 +128,13 @@
 
     function getFirstFiniteCount(tree, keys) {
         for (const key of keys) {
-            const value = Number(tree?.[key]);
+            const rawValue = tree?.[key];
+            if (rawValue === undefined || rawValue === null || rawValue === '') continue;
+            if (typeof rawValue !== 'number' && typeof rawValue !== 'string') continue;
+            const value = Number(rawValue);
             if (Number.isFinite(value) && value >= 0) return value;
         }
-        return 0;
+        return null;
     }
 
     function formatCompactCount(value) {
@@ -161,10 +164,12 @@
         const counts = getTreeReactionCounts(tree);
         const metrics = [
             counts.views !== null ? { icon: 'visibility', label: '조회수', value: counts.views } : null,
-            { icon: 'favorite', label: '좋아요', value: counts.likes },
-            { icon: 'chat_bubble', label: '댓글', value: counts.comments },
-            { icon: 'share', label: '공유', value: counts.shares }
+            counts.likes !== null ? { icon: 'favorite', label: '좋아요', value: counts.likes } : null,
+            counts.comments !== null ? { icon: 'chat_bubble', label: '댓글', value: counts.comments } : null,
+            counts.shares !== null ? { icon: 'share', label: '공유', value: counts.shares } : null
         ].filter(Boolean);
+
+        if (metrics.length === 0) return '';
 
         return `
             <div class="tree-card-reaction-metrics" aria-label="트리 반응 요약">

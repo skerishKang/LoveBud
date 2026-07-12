@@ -692,6 +692,19 @@
                 }
             }
 
+            // Tree reactions belong with the tree identity in the left rail.
+            // The right panel stays scoped to the currently selected moment.
+            var sidebarTreeSocialMount = document.getElementById('viewerSidebarTreeSocial');
+            if (sidebarTreeSocialMount) {
+                sidebarTreeSocialMount.replaceChildren();
+                if (treeLikeControlEl) sidebarTreeSocialMount.appendChild(treeLikeControlEl);
+                if (treeCommentsControlEl) sidebarTreeSocialMount.appendChild(treeCommentsControlEl);
+                if (treeCommentsPanelEl) sidebarTreeSocialMount.appendChild(treeCommentsPanelEl);
+                treeLikeControlEl = null;
+                treeCommentsControlEl = null;
+                treeCommentsPanelEl = null;
+            }
+
             boundary.renderTreeMetaBoundary(treeMetaMount, model, treeId, data, treeLikeControlEl, treeCommentsControlEl, treeCommentsPanelEl);
         };
     }

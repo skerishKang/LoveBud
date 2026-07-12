@@ -36,6 +36,7 @@
     function applyPreviewStyles(refs) {
         const preview = refs?.preview || document.getElementById('memoryLinkPreview');
         if (!preview) return;
+        preview.classList.remove('is-hidden');
         preview.classList.add('is-enhanced');
         preview.classList.remove('is-source-record-preview');
         preview.style.display = 'flex';
@@ -127,6 +128,7 @@
         preview.classList.add('is-hidden');
         preview.classList.remove('is-enhanced');
         preview.classList.remove('is-source-record-preview');
+        preview.style.display = 'none';
         setPreviewConfirmState(refs, false);
         restoreStartTimeHint(refs);
     }

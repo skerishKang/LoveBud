@@ -17,12 +17,13 @@ export function buildPublicSidebarTemplate() {
                     </div>
                     <div id="viewerSidebarSummary" class="editor-flow-summary" style="display: none;"></div>
                     <div id="viewerSidebarMomentCount" class="viewer-sidebar-moment-count" aria-live="polite">불러오는 중…</div>
+                    <div id="viewerSidebarTreeSocial" class="viewer-sidebar-tree-social" aria-label="트리 반응"></div>
                 </div>
             </section>
             <section id="viewerSidebarOwnerMode" class="viewer-sidebar-owner-mode" style="display: none;">
                 <div class="viewer-sidebar-mode-actions">
-                    <button type="button" class="sidebar-btn" id="viewerSidebarViewBtn" disabled>보기</button>
-                    <button type="button" class="sidebar-btn sidebar-btn-primary" id="viewerSidebarEditBtn">편집</button>
+                    <button type="button" class="sidebar-btn sidebar-btn-primary" id="viewerSidebarViewBtn" disabled>보기</button>
+                    <button type="button" class="sidebar-btn" id="viewerSidebarEditBtn">편집</button>
                 </div>
             </section>
         </aside>

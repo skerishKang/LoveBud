@@ -36,6 +36,7 @@
 @import url("./editor/editor-detail-comments.css?v=20260712-editor-ui-followup-1");
 @import url("./editor/editor-responsive-tail.css");
 @import url("./editor/editor-mobile-panel-hierarchy.css?v=20260629-3000");
+@import url("./editor/editor-product-ux-pass.css?v=20260712-product-ux-pass-1");
 
 /* Editor read-only mode — hides mutation controls when .editor-readonly class is on body */
 .editor-readonly #addMemoryBtn,

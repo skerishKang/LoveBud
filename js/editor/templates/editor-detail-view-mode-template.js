@@ -38,8 +38,8 @@ export function buildDetailViewModeTemplate() {
 
                     <div class="detail-info-group detail-info-group-knowledge">
                         <div class="detail-info-heading-with-copy">
-                            <label id="detailEntitySearchLabel">연결된 지식</label>
-                            <p class="detail-field-helper" id="detailEntitySearchHelper">인물, 팀, 곡처럼 이 순간과 이어지는 단서를 남겨두면 나중에 다시 찾기 쉬워져요.</p>
+                            <label id="detailEntitySearchLabel">연결 단서</label>
+                            <p class="detail-field-helper" id="detailEntitySearchHelper">나중에 다시 찾고 싶은 인물, 팀, 곡을 연결해요.</p>
                         </div>
                         <div id="detailEntitySearchMount"></div>
                     </div>

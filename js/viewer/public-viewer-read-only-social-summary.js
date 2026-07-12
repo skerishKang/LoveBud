@@ -96,14 +96,14 @@
                 cardEl.setAttribute('data-read-only-summary', 'true');
                 cardEl.classList.add('is-read-only');
                 cardEl.classList.add('is-public-readonly');
-                cardEl.setAttribute('aria-label', '순간 반응 (읽기 전용)');
+                cardEl.setAttribute('aria-label', '순간 반응과 댓글');
                 likeValueEl.textContent = '⋯';
                 commentValueEl.textContent = '⋯';
                 var likeStatus = likeValueEl.parentElement;
                 var commentStatus = commentValueEl.parentElement;
                 if (likeStatus) likeStatus.setAttribute('aria-label', '좋아요 불러오는 중');
                 if (commentToggleEl) commentToggleEl.setAttribute('aria-label', '댓글 불러오는 중');
-                noteEl.textContent = '반응 기능은 준비 중이에요.';
+                noteEl.textContent = '반응과 댓글을 불러오는 중이에요.';
                 commentToggleEl.setAttribute('disabled', '');
                 commentToggleEl.setAttribute('aria-expanded', 'false');
             }
@@ -169,6 +169,62 @@
             return null;
         }
 
+        function formatCommentDate(value) {
+            if (!value) return '';
+            var date = new Date(value);
+            if (Number.isNaN(date.getTime())) return '';
+            try {
+                return new Intl.DateTimeFormat('ko-KR', {
+                    month: 'numeric',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                }).format(date);
+            } catch (e) {
+                return '';
+            }
+        }
+
+        function appendCommentItem(comment) {
+            if (!commentsListEl || !comment) return;
+            var item = document.createElement('li');
+            item.className = 'editor-moment-comment-item';
+
+            var meta = document.createElement('div');
+            meta.className = 'editor-moment-comment-meta';
+
+            var author = document.createElement('strong');
+            author.textContent = String(comment.authorDisplayLabel || '익명');
+            meta.appendChild(author);
+
+            var dateText = formatCommentDate(comment.createdAt || comment.created_at);
+            if (dateText) {
+                var time = document.createElement('time');
+                time.textContent = dateText;
+                meta.appendChild(time);
+            }
+
+            var body = document.createElement('p');
+            body.textContent = comment.body;
+            item.append(meta, body);
+            commentsListEl.appendChild(item);
+        }
+
+        function renderCommentItems(commentItems) {
+            if (!commentsListEl || !commentsPanelStatusEl) return;
+            commentsListEl.textContent = '';
+            commentsPanelStatusEl.textContent = '';
+
+            if (!commentItems || !Array.isArray(commentItems) || commentItems.length === 0) {
+                commentsPanelStatusEl.textContent = '아직 댓글이 없어요. 이 순간에 첫 댓글을 남겨보세요.';
+                return;
+            }
+
+            for (var i = 0; i < commentItems.length; i++) {
+                appendCommentItem(commentItems[i]);
+            }
+        }
+
         function renderSuccess(likeCount, commentCount, force) {
             if (!getElements()) return;
             delete cardEl.dataset.socialLoading;
@@ -181,9 +237,13 @@
                 commentValueEl.textContent = '0';
                 if (commentToggleEl) commentToggleEl.setAttribute('aria-label', '댓글 없음');
             } else {
-                commentValueEl.textContent = commentCount + '개 표시';
+                commentValueEl.textContent = String(commentCount);
                 if (commentToggleEl) commentToggleEl.setAttribute('aria-label', '댓글 ' + commentCount + '개 보기');
             }
+
+            noteEl.textContent = commentCount > 0
+                ? '남겨진 댓글을 바로 확인해요.'
+                : '이 순간에 첫 댓글을 남겨보세요.';
 
             removeRetryButton();
             commentToggleEl.removeAttribute('disabled');
@@ -203,22 +263,9 @@
 
         function openCommentPanel(commentItems) {
             if (!commentPanelEl || !commentsListEl || !commentsPanelStatusEl) return;
-            commentsListEl.textContent = '';
-
-            if (!commentItems || !Array.isArray(commentItems) || commentItems.length === 0) {
-                commentsPanelStatusEl.textContent = '아직 댓글이 없어요. 이 순간에 첫 댓글을 남겨보세요.';
-                commentPanelEl.hidden = false;
-                emitPanelState(true);
-                return;
-            }
-
-            for (var i = 0; i < commentItems.length; i++) {
-                var li = document.createElement('li');
-                li.textContent = commentItems[i].body;
-                commentsListEl.appendChild(li);
-            }
-            commentsPanelStatusEl.textContent = '';
+            renderCommentItems(commentItems);
             commentPanelEl.hidden = false;
+            if (commentToggleEl) commentToggleEl.setAttribute('aria-expanded', 'true');
             emitPanelState(true);
         }
 
@@ -322,20 +369,9 @@
                         if (!force || !commentToggleEl.onclick) {
                             wireCommentToggle(generation, memoryId);
                         }
-                        // If preserving panel, re-render comments display
-                        if (preservePanel && commentPanelEl && !commentPanelEl.hidden) {
-                            if (commentsListEl) commentsListEl.textContent = '';
-                            if (commentsPanelStatusEl) commentsPanelStatusEl.textContent = '';
-                            if (!valid.comments || valid.comments.length === 0) {
-                                commentsPanelStatusEl.textContent = '아직 댓글이 없어요. 이 순간에 첫 댓글을 남겨보세요.';
-                            } else {
-                                for (var i = 0; i < valid.comments.length; i++) {
-                                    var li = document.createElement('li');
-                                    li.textContent = valid.comments[i].body;
-                                    commentsListEl.appendChild(li);
-                                }
-                            }
-                        }
+                        // Comments are visible by default so reading and writing
+                        // stay in the selected-moment panel instead of another page.
+                        openCommentPanel(valid.comments);
                     } else {
                         if (sharedGenRef) {
                             sharedGenRef.publicSummaryValid = false;

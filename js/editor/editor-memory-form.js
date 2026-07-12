@@ -112,6 +112,17 @@ function createEditorMemoryForm(deps) {
     function setEmptyGuideSuppressed(isSuppressed) {
         const canvasArea = refs.addMemoryForm?.closest('.canvas-area');
         if (canvasArea) canvasArea.classList.toggle('is-memory-form-open', isSuppressed);
+        const editorLayout = refs.addMemoryForm?.closest('.editor-layout');
+        const detailContent = document.getElementById('detailContent');
+        const formContext = document.getElementById('editorMemoryFormContext');
+        if (editorLayout) editorLayout.classList.toggle('is-memory-form-open', isSuppressed);
+        if (detailContent) {
+            detailContent.setAttribute('aria-hidden', isSuppressed ? 'true' : 'false');
+            if ('inert' in detailContent) detailContent.inert = isSuppressed;
+        }
+        if (formContext) {
+            formContext.setAttribute('aria-hidden', isSuppressed ? 'false' : 'true');
+        }
         if (refs.canvasTopbar) {
             if (isSuppressed) {
                 refs.canvasTopbar.dataset.previousAriaHidden = refs.canvasTopbar.getAttribute('aria-hidden') || '';

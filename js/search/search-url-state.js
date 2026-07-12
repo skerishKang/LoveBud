@@ -14,10 +14,11 @@
                     query: params.get('q') || '',
                     category: params.get('category') || '',
                     sort: params.get('sort') || '',
-                    limit: params.get('limit') || ''
+                    limit: params.get('limit') || '',
+                    tree: params.get('tree') || ''
                 };
             } catch {
-                return { query: '', category: '', sort: '', limit: '' };
+                return { query: '', category: '', sort: '', limit: '', tree: '' };
             }
         }
 
@@ -68,10 +69,11 @@
             window.updateUrlState = writeUrlState;
             window.restoreStateFromUrl = restoreStateFromUrl;
 
-            const { query, category, sort, limit } = readUrlState();
+            const { query, category, sort, limit, tree } = readUrlState();
             state.isRestoringUrlState = true;
 
             state.currentQuery = query || '';
+            state.selectedTreeId = tree || null;
             if (category) state.currentCategory = category;
             else state.currentCategory = DEFAULT_CATEGORY;
 

@@ -33,9 +33,13 @@
 
         function selectTree(tree, activeCard, options = {}) {
             if (!tree) return;
-            const { openMobilePreview = true } = options;
+            const { openMobilePreview = true, syncUrl = true } = options;
             state.selectedTreeId = tree.id;
             ui.markActiveCard(activeCard);
+
+            if (syncUrl && typeof window.updateUrlState === 'function') {
+                window.updateUrlState();
+            }
 
             if (openMobilePreview && ui.isMobilePreviewMode()) {
                 ui.setMobilePreviewOpen(true);
@@ -50,10 +54,14 @@
             dataApi.hydrateSelectedTreePreview(tree);
         }
 
-        async function applySelectedTreeFromUrl() {
-            if (state.initialTreeDeepLinkApplied) return;
+        async function applySelectedTreeFromUrl(options = {}) {
+            const force = Boolean(options.force);
+            if (state.initialTreeDeepLinkApplied && !force) return;
             const treeId = readSelectedTreeFromUrl();
-            if (!treeId) return;
+            if (!treeId) {
+                state.initialTreeDeepLinkApplied = true;
+                return;
+            }
 
             let targetTree = state.allTrees.find(t => t.id === treeId) || state.growingTrees.find(t => t.id === treeId);
 
@@ -70,7 +78,10 @@
                 return;
             }
 
-            selectTree(targetTree, findRenderedTreeCard(treeId), { openMobilePreview: false });
+            selectTree(targetTree, findRenderedTreeCard(treeId), {
+                openMobilePreview: false,
+                syncUrl: false
+            });
             state.initialTreeDeepLinkApplied = true;
         }
 

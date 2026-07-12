@@ -122,7 +122,7 @@
             errorEl.textContent = '';
             statusRegionEl.style.display = 'none';
             statusRegionEl.textContent = '';
-            noteEl.textContent = '반응 기능은 준비 중이에요.';
+            noteEl.textContent = '댓글은 아래에서 바로 읽을 수 있어요.';
         }
 
         function updateLikeButtonUI(pressed) {
@@ -159,7 +159,7 @@
             statusRegionEl.style.display = 'none';
             statusRegionEl.textContent = '';
             if (likeStatusEl) likeStatusEl.setAttribute('aria-label', '좋아요 ' + (parseInt(likeValueEl.textContent, 10) || 0) + '개');
-            noteEl.textContent = '댓글 기능은 준비 중이에요.';
+            noteEl.textContent = '댓글을 바로 읽고 남길 수 있어요.';
         }
 
         function showAuthUnavailable() {
@@ -173,7 +173,7 @@
             errorEl.textContent = '';
             statusRegionEl.style.display = 'none';
             statusRegionEl.textContent = '';
-            noteEl.textContent = '반응 기능은 준비 중이에요.';
+            noteEl.textContent = '좋아요를 불러오지 못했지만 댓글은 계속 확인할 수 있어요.';
         }
 
         function showPoliteNotice(message) {

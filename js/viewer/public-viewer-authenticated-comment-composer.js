@@ -99,8 +99,7 @@
             composerInputEl.placeholder = '댓글을 입력하세요...';
             composerInputEl.rows = 2;
             composerInputEl.maxLength = 5000;
-            composerInputEl.style.width = '100%';
-            composerInputEl.style.boxSizing = 'border-box';
+            composerInputEl.className = 'public-viewer-comment-input';
             composerInputEl.addEventListener('input', function() {
                 // Clear local validation only when trimmed non-empty correction is available
                 if (composerValidationActive && (composerInputEl.value || '').trim() !== '') {
@@ -113,43 +112,40 @@
             var submitBtn = document.createElement('button');
             submitBtn.textContent = '등록';
             submitBtn.type = 'button';
+            submitBtn.className = 'public-viewer-comment-submit';
 
             composerCancelBtn = document.createElement('button');
-            composerCancelBtn.textContent = '입력 취소';
+            composerCancelBtn.textContent = '지우기';
             composerCancelBtn.type = 'button';
             composerCancelBtn.setAttribute('aria-label', '댓글 입력 취소');
+            composerCancelBtn.className = 'public-viewer-comment-cancel';
 
             composerErrorEl = document.createElement('p');
             composerErrorEl.setAttribute('aria-live', 'polite');
-            composerErrorEl.style.color = 'red';
-            composerErrorEl.style.fontSize = '0.85em';
-            composerErrorEl.style.margin = '4px 0 0';
+            composerErrorEl.className = 'editor-moment-comment-feedback public-viewer-comment-feedback';
+            composerErrorEl.dataset.tone = 'error';
             composerErrorEl.style.display = 'none';
 
             composerSuccessEl = document.createElement('p');
             composerSuccessEl.setAttribute('aria-live', 'polite');
             composerSuccessEl.textContent = '댓글을 남겼어요.';
-            composerSuccessEl.style.color = 'green';
-            composerSuccessEl.style.fontSize = '0.85em';
-            composerSuccessEl.style.margin = '4px 0 0';
+            composerSuccessEl.className = 'editor-moment-comment-feedback public-viewer-comment-feedback';
+            composerSuccessEl.dataset.tone = 'success';
             composerSuccessEl.style.display = 'none';
 
-            composerFormEl = document.createElement('div');
-            composerFormEl.style.display = 'flex';
-            composerFormEl.style.flexDirection = 'column';
-            composerFormEl.style.gap = '4px';
-            composerFormEl.style.marginTop = '8px';
+            composerFormEl = document.createElement('form');
+            composerFormEl.className = 'editor-moment-comment-composer public-viewer-comment-composer';
+            composerFormEl.addEventListener('submit', function(event) {
+                event.preventDefault();
+                submitBtn.click();
+            });
 
             var inputRow = document.createElement('div');
-            inputRow.style.display = 'flex';
-            inputRow.style.gap = '8px';
-            inputRow.style.alignItems = 'flex-start';
+            inputRow.className = 'editor-moment-comment-input-row public-viewer-comment-input-row';
             inputRow.appendChild(composerInputEl);
 
             var btnGroup = document.createElement('div');
-            btnGroup.style.display = 'flex';
-            btnGroup.style.gap = '4px';
-            btnGroup.style.flexShrink = '0';
+            btnGroup.className = 'public-viewer-comment-actions';
             btnGroup.appendChild(submitBtn);
             btnGroup.appendChild(composerCancelBtn);
             inputRow.appendChild(btnGroup);

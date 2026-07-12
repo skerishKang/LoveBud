@@ -14,7 +14,7 @@
         const textBindings = [
             ['backToMyTreesLabel', 'editor_back_to_my_trees', '내 러브트리로 돌아가기'],
             ['editorFlowHeading', 'sidebar_flow_heading', '트리 정보'],
-            ['editorFlowLead', 'sidebar_flow_lead', '트리 이름과 공개 상태를 여기서 정리하고, 가운데 캔버스에서는 흐름만 살펴보세요.'],
+            ['editorFlowLead', 'sidebar_flow_lead', '첫 순간부터 지금까지 이어진 마음을 확인하고 있어요.'],
             ['sidebarVisibilityToggleBtnLabel', 'editor_make_public', '이 트리 공개하기'],
             ['recenterCanvasBtnLabel', 'sidebar_recenter_tree', '트리 한눈에 보기'],
             ['addMemoryEyebrow', 'editor_add_memory_eyebrow', '다음 순간 심기'],

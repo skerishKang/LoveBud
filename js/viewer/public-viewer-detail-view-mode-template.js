@@ -40,43 +40,51 @@
                     </div>
 
                     <div
-                        class="editor-moment-reactions-card is-read-only is-public-readonly"
+                        class="editor-moment-reactions-card editor-moment-social-card public-viewer-moment-social-card is-read-only is-public-readonly"
                         id="momentReactionsCard"
-                        aria-label="순간 반응 (읽기 전용)"
+                        aria-label="순간 반응과 댓글"
                         data-read-only-summary="true"
                         data-social-loading="true"
                         style="font-variant-numeric:tabular-nums;"
                     >
-                        <div
-                            class="public-viewer-social-status"
-                            id="momentReactionLikeStatus"
-                            role="status"
-                            aria-label="좋아요 불러오는 중"
-                        >
-                            <span class="editor-reaction-like-icon" aria-hidden="true">🤍</span>
-                            <span class="editor-reaction-label">좋아요</span>
-                            <span class="public-viewer-social-status-value" id="momentReactionLikeValue">⋯</span>
+                        <div class="editor-moment-social-head">
+                            <div>
+                                <div class="editor-section-eyebrow">반응과 댓글</div>
+                                <p class="editor-moment-social-copy">이 순간에 남겨진 마음을 바로 확인해요.</p>
+                            </div>
+                            <div class="editor-moment-reactions-row">
+                                <div
+                                    class="public-viewer-social-status"
+                                    id="momentReactionLikeStatus"
+                                    role="status"
+                                    aria-label="좋아요 불러오는 중"
+                                >
+                                    <span class="editor-reaction-like-icon" aria-hidden="true">♡</span>
+                                    <span class="editor-reaction-label">좋아요</span>
+                                    <span class="public-viewer-social-status-value" id="momentReactionLikeValue">⋯</span>
+                                </div>
+                                <button type="button" id="momentReactionLikeButton"
+                                  class="editor-moment-reaction editor-like-button"
+                                  aria-label="좋아요 누르기"
+                                  aria-pressed="false"
+                                  disabled
+                                  style="display:none"></button>
+                                <button type="button" id="momentReactionCommentStatus"
+                                  class="public-viewer-social-status editor-comment-toggle"
+                                  aria-label="댓글 불러오는 중"
+                                  aria-expanded="false"
+                                  aria-controls="momentCommentsPanel"
+                                  disabled
+                                >
+                                    <span class="material-symbols-outlined editor-reaction-comment-icon" aria-hidden="true">chat_bubble</span>
+                                    <span class="editor-reaction-label">댓글</span>
+                                    <span class="public-viewer-social-status-value" id="momentReactionCommentValue">⋯</span>
+                                </button>
+                            </div>
                         </div>
-                        <button type="button" id="momentReactionLikeButton"
-                          class="editor-like-button"
-                          aria-label="좋아요 누르기"
-                          aria-pressed="false"
-                          disabled
-                          style="display:none"></button>
-                        <p id="momentReactionLikeGuestNote" style="display:none">로그인하면 이 순간에 반응하고 댓글을 남길 수 있어요.</p>
+                        <p id="momentReactionLikeGuestNote" class="public-viewer-social-note" style="display:none">로그인하면 이 순간에 반응하고 댓글을 남길 수 있어요.</p>
                         <div aria-live="polite" role="status" id="momentReactionLikeStatusRegion" style="display:none"></div>
                         <p id="momentReactionWriteError" class="editor-like-error" role="alert" style="display:none"></p>
-                        <button type="button" id="momentReactionCommentStatus"
-                          class="public-viewer-social-status editor-comment-toggle"
-                          aria-label="댓글 불러오는 중"
-                          aria-expanded="false"
-                          aria-controls="momentCommentsPanel"
-                          disabled
-                        >
-                            <span class="editor-reaction-comment-icon" aria-hidden="true">💬</span>
-                            <span class="editor-reaction-label">댓글</span>
-                            <span class="public-viewer-social-status-value" id="momentReactionCommentValue">⋯</span>
-                        </button>
                         <section
                           id="momentCommentsPanel"
                           class="editor-moment-comments-panel"

@@ -18,17 +18,24 @@ export function buildSidebarTemplate() {
                     <div class="editor-title-row">
                         <strong id="sidebarTreeTitle">러브트리</strong>
                     </div>
+                    <div id="sidebarMomentJourney" class="editor-sidebar-journey" hidden>
+                        <div class="editor-sidebar-journey-label">
+                            <span class="material-symbols-outlined" aria-hidden="true">route</span>
+                            <span>이어진 흐름</span>
+                        </div>
+                        <div id="sidebarMomentFlow" class="editor-sidebar-moment-flow"></div>
+                    </div>
                     <div id="sidebarFlowSummary" class="editor-flow-summary"></div>
                     <div id="editorTreeReactions" class="editor-tree-reactions" aria-label="트리 전체 반응">
-                        <span class="editor-tree-reaction-metric" title="트리 전체 좋아요">
+                        <span id="editorTreeLikeMetric" class="editor-tree-reaction-metric" title="트리 전체 좋아요" hidden>
                             <span class="material-symbols-outlined" aria-hidden="true">favorite</span>
                             <span>트리 좋아요</span>
-                            <strong id="editorTreeLikeCount">—</strong>
+                            <strong id="editorTreeLikeCount">0</strong>
                         </span>
-                        <span class="editor-tree-reaction-metric" title="트리 전체 댓글">
+                        <span id="editorTreeCommentMetric" class="editor-tree-reaction-metric" title="트리 전체 댓글" hidden>
                             <span class="material-symbols-outlined" aria-hidden="true">chat_bubble</span>
                             <span>트리 댓글</span>
-                            <strong id="editorTreeCommentCount">—</strong>
+                            <strong id="editorTreeCommentCount">0</strong>
                         </span>
                     </div>
                 </div>

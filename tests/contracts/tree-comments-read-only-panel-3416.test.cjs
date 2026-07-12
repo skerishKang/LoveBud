@@ -1147,8 +1147,8 @@ test('pages/view.html references exact parent editor.css version', () => {
   const html = fs.readFileSync(VIEW_HTML_PATH, 'utf8');
   assert.match(
     html,
-    /href="\.\.\/css\/editor\.css\?v=20260712-3419-1"/,
-    'view.html must load ../css/editor.css?v=20260712-3419-1'
+    /href="\.\.\/css\/editor\.css\?v=20260712-product-ux-pass-1"/,
+    'view.html must load ../css/editor.css?v=20260712-product-ux-pass-1'
   );
 });
 
@@ -1158,8 +1158,8 @@ test('css/editor.css references exact child editor-overrides.css version', () =>
   const css = fs.readFileSync(EDITOR_CSS_PATH, 'utf8');
   assert.match(
     css,
-    /@import\s+url\("\.\/editor\/editor-overrides\.css\?v=20260712-3419-1"\)/,
-    'editor.css must import editor-overrides.css?v=20260712-3419-1'
+    /@import\s+url\("\.\/editor\/editor-product-ux-pass\.css\?v=20260712-product-ux-pass-1"\)/,
+    'editor.css must import editor-product-ux-pass.css?v=20260712-product-ux-pass-1'
   );
 });
 

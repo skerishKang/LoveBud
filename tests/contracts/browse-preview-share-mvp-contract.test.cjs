@@ -398,8 +398,8 @@ test('search.html share-link uses new cache version', () => {
   var html = read('pages/search.html');
   var match = html.match(/search-share-link\.js\?v=([\w-]+)/);
   assert.ok(match, 'search-share-link.js must have a cache version');
-  assert.strictEqual(match[1], '20260629-2772-1',
-    'search-share-link.js cache version must be 20260629-2772-1');
+  assert.strictEqual(match[1], '20260712-product-ux-pass-1',
+    'search-share-link.js cache version must be 20260712-product-ux-pass-1');
 });
 
 test('search.html has only one share-link script reference', () => {

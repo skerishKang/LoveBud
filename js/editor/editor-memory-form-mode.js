@@ -39,8 +39,8 @@
             en: 'Plant first moment'
         },
         confirmAddNext: {
-            ko: '이 순간 이어가기',
-            en: 'Continue this moment'
+            ko: '이 순간에서 이어가기',
+            en: 'Continue from this moment'
         },
         confirmAddFirstText: {
             ko: '이 마음으로 시작하기',

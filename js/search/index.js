@@ -140,9 +140,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const selectTree = (tree, activeCard, options = {}) => {
             if (!tree) return;
-            const { openMobilePreview = true } = options;
+            const { openMobilePreview = true, syncUrl = true } = options;
             state.selectedTreeId = tree.id;
             ui.markActiveCard(activeCard);
+
+            if (syncUrl && typeof window.updateUrlState === 'function') {
+                window.updateUrlState();
+            }
 
             if (openMobilePreview && ui.isMobilePreviewMode()) {
                 ui.setMobilePreviewOpen(true);
@@ -157,15 +161,22 @@ document.addEventListener('DOMContentLoaded', async () => {
             dataApi.hydrateSelectedTreePreview(tree);
         };
 
-        const applySelectedTreeFromUrl = () => {
-            if (state.initialTreeDeepLinkApplied) return;
+        const applySelectedTreeFromUrl = (options = {}) => {
+            const force = Boolean(options.force);
+            if (state.initialTreeDeepLinkApplied && !force) return;
             const treeId = readSelectedTreeFromUrl();
-            if (!treeId) return;
+            if (!treeId) {
+                state.initialTreeDeepLinkApplied = true;
+                return;
+            }
 
             const targetTree = state.allTrees.find(t => t.id === treeId);
             if (!targetTree) return;
 
-            selectTree(targetTree, findRenderedTreeCard(treeId), { openMobilePreview: false });
+            selectTree(targetTree, findRenderedTreeCard(treeId), {
+                openMobilePreview: false,
+                syncUrl: false
+            });
             state.initialTreeDeepLinkApplied = true;
         };
 
@@ -218,7 +229,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!state.selectedTreeId && resetPreviewWhenNoSelection && filtered.length > 0) {
             const firstTree = filtered[0];
             const firstCard = findRenderedTreeCard(firstTree.id);
-            previewController.selectTree(firstTree, firstCard, { openMobilePreview: false });
+            previewController.selectTree(firstTree, firstCard, {
+                openMobilePreview: false,
+                syncUrl: false
+            });
             return;
         }
 
@@ -319,8 +333,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (previousSort !== state.currentSort || previousLimit !== state.currentLimit) {
             await dataApi.loadPublicTrees({ resetSelection: true });
         } else {
-            renderResults(false);
+            renderResults(!state.selectedTreeId);
         }
+        await previewController.applySelectedTreeFromUrl({ force: true });
         ui.syncBrowseHead();
     });
 });

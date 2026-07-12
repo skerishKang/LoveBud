@@ -85,8 +85,8 @@ test('public viewer detail UI uses the #3218 cache-refresh version', () => {
   const scripts = getRawScriptSrcs();
 
   assert.ok(
-    scripts.includes('../js/viewer/public-viewer-detail-ui.js?v=20260705-3218-1'),
-    'viewer detail UI script must use #3218 cache version'
+    scripts.includes('../js/viewer/public-viewer-detail-ui.js?v=20260712-product-ux-pass-1'),
+    'viewer detail UI script must use product-ux-pass cache version'
   );
 });
 
@@ -94,8 +94,8 @@ test('public viewer detail view-mode template uses the #3419 cache-refresh versi
   const scripts = getRawScriptSrcs();
 
   assert.ok(
-    scripts.includes('../js/viewer/public-viewer-detail-view-mode-template.js?v=20260712-3419-1'),
-    'viewer detail view-mode template must use #3419 cache version'
+    scripts.includes('../js/viewer/public-viewer-detail-view-mode-template.js?v=20260712-product-ux-pass-1'),
+    'viewer detail view-mode template must use product-ux-pass cache version'
   );
 });
 
@@ -120,7 +120,7 @@ test('public viewer loads social split scripts before detail-ui', () => {
 test('view.html loads editor.css with #3419 cache version', () => {
   const html = fs.readFileSync('pages/view.html', 'utf8');
   assert.ok(
-    html.includes('../css/editor.css?v=20260712-3419-1'),
-    'view.html must load editor.css with #3419 cache version'
+    html.includes('../css/editor.css?v=20260712-product-ux-pass-1'),
+    'view.html must load editor.css with product-ux-pass cache version'
   );
 });

@@ -36,10 +36,6 @@
     var canvasToolbar = document.querySelector('.editor-canvas-toolbar');
     if (canvasToolbar && canvasToolbar.classList.contains(compactCls)) return false;
 
-    // Check if we're in structured layout mode
-    var bodyClass = document.body.className;
-    if (bodyClass.indexOf('layout-structured') !== -1) return false;
-
     // Check tree owner / auth context
     var canvasEmptyGuide = document.getElementById('canvasEmptyGuide');
     if (canvasEmptyGuide && !canvasEmptyGuide.classList.contains('editor-canvas-empty-guide-hidden')) return false;

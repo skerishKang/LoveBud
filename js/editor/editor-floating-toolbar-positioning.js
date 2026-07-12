@@ -14,11 +14,34 @@
   var IS_HIDDEN = 'is-hidden';
 
   /**
-   * Get the selected node's bounding rect from its inline styles.
+   * Resolve the selected node in canvas coordinates. Bounding rectangles are
+   * required here because structured layout, pan and zoom can all transform
+   * the rendered node away from its raw inline left/top values.
    */
   function getSelectedNodePosition(ctx) {
     var selectedEl = (ctx && ctx.getSelectedNode) ? ctx.getSelectedNode() : null;
     if (!selectedEl) return null;
+
+    var canvasArea = document.getElementById('canvasArea');
+    if (canvasArea && selectedEl.getBoundingClientRect) {
+      var nodeRect = selectedEl.getBoundingClientRect();
+      var canvasRect = canvasArea.getBoundingClientRect();
+      var renderedWidth = nodeRect.width || 88;
+      var renderedHeight = nodeRect.height || 88;
+      var renderedLeft = nodeRect.left - canvasRect.left;
+      var renderedTop = nodeRect.top - canvasRect.top;
+
+      return {
+        left: renderedLeft,
+        top: renderedTop,
+        right: renderedLeft + renderedWidth,
+        bottom: renderedTop + renderedHeight,
+        width: renderedWidth,
+        height: renderedHeight,
+        centerX: renderedLeft + renderedWidth / 2,
+        centerY: renderedTop + renderedHeight / 2
+      };
+    }
 
     var left = parseFloat(selectedEl.style.left) || 0;
     var top = parseFloat(selectedEl.style.top) || 0;

@@ -17,9 +17,9 @@ export function buildFloatingToolbarTemplate() {
                 <span class="material-symbols-outlined" aria-hidden="true">more_horiz</span>
             </button>
             <div id="ftbDropdown" class="editor-ftb-dropdown is-hidden" role="menu" aria-label="추가 행동" style="display:none;">
-                <button type="button" class="editor-ftb-dropdown-item" id="ftbBranchBtn" role="menuitem" aria-label="새 가지로 이어가기" title="현재 순간에서 다른 흐름을 시작해요">
-                    <span class="material-symbols-outlined" aria-hidden="true">call_split</span>
-                    <span>새 가지로 이어가기</span>
+                <button type="button" class="editor-ftb-dropdown-item" id="ftbBranchBtn" role="menuitem" aria-label="기존 순간 연결하기" title="이미 기록한 순간을 현재 흐름에 이어 붙여요">
+                    <span class="material-symbols-outlined" aria-hidden="true">link</span>
+                    <span>기존 순간 연결하기</span>
                 </button>
                 <button type="button" class="editor-ftb-dropdown-item" id="ftbForkBtn" role="menuitem" aria-label="분기하기" aria-hidden="true" tabindex="-1" hidden style="display:none;">
                     <span class="material-symbols-outlined" aria-hidden="true">fork_right</span>

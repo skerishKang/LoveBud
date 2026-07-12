@@ -88,12 +88,22 @@
   }
 
   /**
-   * Wire up the branch and fork connection-mode buttons.
+   * Keep one clear continuation action. The legacy branch control now opens
+   * the existing-moment connector instead of duplicating "continue".
    */
   function bindConnectionButtons(ctx) {
     function startBranch() {
       var continueBtnDetail = document.getElementById('continueFromMomentBtn');
       if (continueBtnDetail) continueBtnDetail.click();
+    }
+
+    function connectExistingMoment() {
+      var connectBtn = document.getElementById('connectExistingCtaBtn');
+      if (connectBtn) {
+        connectBtn.click();
+        return;
+      }
+      startBranch();
     }
 
     if (ctx.branchBtn) {
@@ -102,7 +112,7 @@
         if (window.LoveBudFloatingToolbarDropdown) {
           window.LoveBudFloatingToolbarDropdown.hide(ctx.dropdown, ctx.moreBtn);
         }
-        startBranch();
+        connectExistingMoment();
       });
     }
 

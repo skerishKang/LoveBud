@@ -51,6 +51,39 @@
             }
         };
 
+        const updateMomentFlow = (treeState) => {
+            const journeyEl = document.getElementById('sidebarMomentJourney');
+            const flowEl = document.getElementById('sidebarMomentFlow');
+            if (!journeyEl || !flowEl) return;
+
+            const memories = Array.isArray(treeState.treeMemories) ? treeState.treeMemories : [];
+            flowEl.replaceChildren();
+            journeyEl.hidden = memories.length === 0;
+            if (memories.length === 0) return;
+
+            memories.slice(0, 3).forEach((memory, index) => {
+                const chip = document.createElement('span');
+                chip.className = 'editor-sidebar-moment-chip';
+
+                const order = document.createElement('strong');
+                order.textContent = String(index + 1);
+
+                const title = document.createElement('span');
+                title.textContent = String(memory?.title || memory?.name || `순간 ${index + 1}`);
+
+                chip.append(order, title);
+                flowEl.appendChild(chip);
+            });
+
+            if (memories.length > 3) {
+                const more = document.createElement('span');
+                more.className = 'editor-sidebar-moment-more';
+                more.textContent = `+${memories.length - 3}`;
+                more.setAttribute('aria-label', `이어진 순간 ${memories.length - 3}개 더 있음`);
+                flowEl.appendChild(more);
+            }
+        };
+
         const resolveCount = (source, keys) => {
             for (let index = 0; index < keys.length; index += 1) {
                 const rawValue = source?.[keys[index]];
@@ -63,13 +96,19 @@
         };
 
         const updateTreeReactions = (currentTreeData) => {
+            const reactionsEl = document.getElementById('editorTreeReactions');
+            const likeMetricEl = document.getElementById('editorTreeLikeMetric');
+            const commentMetricEl = document.getElementById('editorTreeCommentMetric');
             const likeCountEl = document.getElementById('editorTreeLikeCount');
             const commentCountEl = document.getElementById('editorTreeCommentCount');
             const likeCount = resolveCount(currentTreeData, ['likeCount', 'like_count', 'likesCount', 'likes']);
             const commentCount = resolveCount(currentTreeData, ['commentCount', 'comment_count', 'commentsCount']);
 
-            if (likeCountEl) likeCountEl.textContent = likeCount === null ? '—' : String(likeCount);
-            if (commentCountEl) commentCountEl.textContent = commentCount === null ? '—' : String(commentCount);
+            if (likeCountEl && likeCount !== null) likeCountEl.textContent = String(likeCount);
+            if (commentCountEl && commentCount !== null) commentCountEl.textContent = String(commentCount);
+            if (likeMetricEl) likeMetricEl.hidden = likeCount === null;
+            if (commentMetricEl) commentMetricEl.hidden = commentCount === null;
+            if (reactionsEl) reactionsEl.hidden = likeCount === null && commentCount === null;
         };
 
         const updateSidebarStatus = () => {
@@ -82,6 +121,7 @@
             }
 
             // Tree-level summary (replaces moment-selected summary, #1128)
+            updateMomentFlow(treeState);
             updateFlowSummary(treeState);
             updateTreeReactions(currentTreeData || {});
 

@@ -33,6 +33,7 @@
         for (var i = 0; i < keys.length; i++) {
             var val = tree[keys[i]];
             if (val !== null && val !== undefined && val !== '' && val !== 'undefined' && val !== 'null') {
+                if (typeof val !== 'number' && typeof val !== 'string') continue;
                 var num = Number(val);
                 if (isFinite(num) && num >= 0) return num;
             }
@@ -123,8 +124,6 @@
                 '" role="status"><span class="material-symbols-outlined" aria-hidden="true">favorite</span><strong>' +
                 escapeHtml(String(likeCount)) +
                 '</strong><span>좋아요</span></div>';
-        } else {
-            likesHtml = '<div class="preview-social-action preview-social-stat" aria-label="좋아요 정보 없음" role="status"><span class="material-symbols-outlined" aria-hidden="true">favorite</span><strong>&mdash;</strong><span>좋아요</span></div>';
         }
 
         // ---- Comment count stat ----
@@ -135,8 +134,6 @@
                 '" role="status"><span class="material-symbols-outlined" aria-hidden="true">chat_bubble</span><strong>' +
                 escapeHtml(String(commentCount)) +
                 '</strong><span>댓글</span></div>';
-        } else {
-            commentsHtml = '<div class="preview-social-action preview-social-stat" aria-label="댓글 정보 없음" role="status"><span class="material-symbols-outlined" aria-hidden="true">chat_bubble</span><strong>&mdash;</strong><span>댓글</span></div>';
         }
 
         // ---- Share button (only when tree ID is valid) ----

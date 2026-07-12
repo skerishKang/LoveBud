@@ -21,7 +21,7 @@
 
         setText('backToMyTreesLabel', 'editor_back_to_my_trees', '내 러브트리로 돌아가기');
         setText('editorFlowHeading', 'sidebar_flow_heading', '트리 정보');
-        setText('editorFlowLead', 'sidebar_flow_lead', '트리 이름과 공개 상태를 여기서 정리하고, 가운데 캔버스에서는 흐름만 살펴보세요.');
+        setText('editorFlowLead', 'sidebar_flow_lead', '첫 순간부터 지금까지 이어진 마음을 확인하고 있어요.');
         setText('recenterCanvasBtnLabel', 'sidebar_recenter_tree', '트리 한눈에 보기');
         setText('addMemoryEyebrow', 'editor_add_memory_eyebrow', '다음 순간 심기');
         setText('addMemoryIntro', 'editor_add_memory_intro', '지금 마음이 머문 다음 장면을 이어 심어 보세요. 첫 순간이라면 여기서 러브트리가 시작됩니다.');

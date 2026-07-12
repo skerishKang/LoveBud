@@ -1,0 +1,474 @@
+/* Product-level Editor and public viewer polish.
+ * Loaded last so it can reconcile older component layers without changing
+ * their API or DOM contracts.
+ */
+
+.editor-visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* Form state must be truthful: an empty or text-only link is not a preview. */
+.memory-link-preview.is-hidden {
+    display: none !important;
+}
+
+/* While creating a moment, replace stale selected-moment details with one
+ * quiet piece of guidance instead of showing unrelated actions and comments. */
+.editor-memory-form-context {
+    display: none;
+    margin: 22px;
+    padding: 28px 24px;
+    align-content: center;
+    justify-items: center;
+    gap: 10px;
+    flex: 1;
+    min-height: 0;
+    border: 1px solid rgba(144, 73, 81, 0.10);
+    border-radius: 24px;
+    background:
+        radial-gradient(circle at 50% 0%, rgba(230, 177, 157, 0.16), transparent 46%),
+        linear-gradient(180deg, rgba(255, 253, 250, 0.96), rgba(255, 247, 241, 0.82));
+    text-align: center;
+}
+
+.editor-layout.is-memory-form-open .detail-content,
+.editor-layout.is-memory-form-open .editor-save-status-card {
+    display: none !important;
+}
+
+.editor-layout.is-memory-form-open .editor-memory-form-context {
+    display: grid;
+}
+
+.editor-memory-form-context-icon {
+    display: grid;
+    width: 54px;
+    height: 54px;
+    place-items: center;
+    border-radius: 18px;
+    color: var(--primary);
+    background: rgba(144, 73, 81, 0.08);
+    border: 1px solid rgba(144, 73, 81, 0.12);
+}
+
+.editor-memory-form-context-icon .material-symbols-outlined {
+    font-size: 26px;
+}
+
+.editor-memory-form-context h4,
+.editor-memory-form-context p {
+    margin: 0;
+}
+
+.editor-memory-form-context h4 {
+    max-width: 280px;
+    font-size: 20px;
+    line-height: 1.35;
+    color: var(--on-surface);
+}
+
+.editor-memory-form-context p {
+    max-width: 300px;
+    font-size: 13px;
+    line-height: 1.7;
+    color: var(--on-surface-variant);
+}
+
+/* Left rail: tree identity, journey, summary, then real tree reactions. */
+.editor-status-card {
+    padding: 18px !important;
+    border-radius: 24px !important;
+    background:
+        radial-gradient(circle at 100% 0%, rgba(231, 184, 166, 0.12), transparent 42%),
+        rgba(255, 253, 250, 0.94) !important;
+}
+
+.editor-sidebar-journey {
+    display: grid;
+    gap: 9px;
+    margin: 14px 0;
+    padding: 13px;
+    border: 1px solid rgba(144, 73, 81, 0.09);
+    border-radius: 17px;
+    background: rgba(255, 255, 255, 0.64);
+}
+
+.editor-sidebar-journey[hidden],
+.editor-tree-reaction-metric[hidden],
+.editor-tree-reactions[hidden] {
+    display: none !important;
+}
+
+.editor-sidebar-journey-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--on-surface-variant);
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+}
+
+.editor-sidebar-journey-label .material-symbols-outlined {
+    color: var(--primary);
+    font-size: 15px;
+}
+
+.editor-sidebar-moment-flow {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.editor-sidebar-moment-chip,
+.editor-sidebar-moment-more {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    min-width: 0;
+    min-height: 28px;
+    padding: 0 9px;
+    border: 1px solid rgba(144, 73, 81, 0.10);
+    border-radius: 10px;
+    background: rgba(255, 251, 248, 0.94);
+    color: var(--on-surface-variant);
+    font-size: 10px;
+    font-weight: 700;
+}
+
+.editor-sidebar-moment-chip {
+    max-width: 100%;
+}
+
+.editor-sidebar-moment-chip strong {
+    flex: 0 0 auto;
+    color: var(--primary);
+    font-size: 10px !important;
+}
+
+.editor-sidebar-moment-chip span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.editor-sidebar-moment-more {
+    color: var(--primary);
+}
+
+.editor-status-card .editor-flow-summary {
+    margin-top: 2px !important;
+    padding-top: 13px;
+    border-top: 1px solid rgba(144, 73, 81, 0.09);
+    font-size: 12.5px;
+    line-height: 1.7;
+}
+
+.editor-tree-reactions {
+    justify-content: flex-end;
+    margin-top: 13px;
+    padding-top: 12px;
+}
+
+/* Selected moment panel: compact, readable hierarchy. */
+.detail-content {
+    gap: 12px;
+    padding: 16px 18px 22px;
+    scrollbar-color: rgba(144, 73, 81, 0.20) transparent;
+    scrollbar-width: thin;
+}
+
+.detail-content::-webkit-scrollbar,
+.editor-moment-comments-list::-webkit-scrollbar {
+    width: 6px;
+}
+
+.detail-content::-webkit-scrollbar-thumb,
+.editor-moment-comments-list::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: rgba(144, 73, 81, 0.18);
+}
+
+.editor-current-moment-card,
+.editor-moment-info-card,
+.editor-moment-actions-card,
+.editor-moment-social-card {
+    padding: 16px !important;
+    border-radius: 20px !important;
+}
+
+.editor-moment-info-card {
+    display: grid !important;
+    grid-template-columns: minmax(0, 0.42fr) minmax(0, 0.58fr);
+    gap: 14px 18px !important;
+}
+
+.editor-moment-info-card > .editor-section-eyebrow,
+.editor-moment-info-card > .detail-info-group-knowledge,
+.editor-moment-info-card > .detail-info-group:last-child {
+    grid-column: 1 / -1;
+}
+
+.detail-info-heading-with-copy {
+    display: grid;
+    gap: 4px;
+}
+
+.detail-field-helper {
+    margin: 0 !important;
+    max-width: 34em;
+    color: var(--on-surface-note) !important;
+    font-size: 11px !important;
+    line-height: 1.55 !important;
+}
+
+#detailEntitySearchMount input,
+#detailEntitySearchMount [role="combobox"] {
+    width: 100%;
+    min-height: 42px;
+    box-sizing: border-box;
+    border-radius: 14px;
+    border: 1px solid rgba(144, 73, 81, 0.12);
+    background: rgba(255, 253, 250, 0.94);
+}
+
+.editor-moment-actions-card {
+    gap: 10px;
+}
+
+.editor-action-list {
+    gap: 8px;
+}
+
+.editor-action-btn {
+    min-height: 43px;
+    padding: 9px 14px;
+    font-size: 13px;
+}
+
+[data-editor-interaction-mode="edit"] #continueFromMomentBtn {
+    border-color: transparent;
+    background: linear-gradient(180deg, rgba(164, 82, 91, 0.98), rgba(144, 73, 81, 0.96));
+    color: #fff;
+    box-shadow: 0 10px 22px rgba(144, 73, 81, 0.18);
+}
+
+[data-editor-interaction-mode="edit"] #viewMomentDetailBtn {
+    background: rgba(255, 255, 255, 0.82);
+    color: var(--on-surface-variant);
+    box-shadow: none;
+}
+
+/* Instagram-like inline comments: list first, compact composer last. */
+.editor-moment-social-head {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+    gap: 12px;
+}
+
+.editor-moment-reactions-row {
+    justify-content: flex-end;
+    flex-wrap: wrap;
+}
+
+.editor-moment-comments-list {
+    max-height: 190px !important;
+}
+
+.editor-moment-comment-input-row {
+    align-items: center;
+    gap: 5px;
+    padding: 4px;
+    border: 1px solid rgba(144, 73, 81, 0.13);
+    border-radius: 18px;
+    background: rgba(255, 253, 250, 0.96);
+}
+
+.editor-moment-comment-input-row textarea {
+    min-height: 42px;
+    max-height: 96px;
+    padding: 10px 11px;
+    resize: none;
+    border: 0 !important;
+    border-radius: 14px;
+    background: transparent !important;
+    box-shadow: none !important;
+}
+
+.editor-moment-comment-input-row button {
+    flex: 0 0 auto;
+    min-width: 42px;
+    width: 42px;
+    min-height: 42px;
+    height: 42px;
+    padding: 0;
+    border-radius: 14px;
+}
+
+.editor-moment-comment-input-row button span:not(.material-symbols-outlined) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* The selected-node toolbar now works in both free and structured layouts. */
+.editor-floating-toolbar {
+    z-index: 30;
+    padding: 5px;
+    border-radius: 15px;
+    box-shadow: 0 12px 30px rgba(75, 64, 57, 0.16);
+}
+
+.editor-ftb-dropdown {
+    z-index: 40;
+    min-width: 196px;
+    overflow-x: hidden;
+}
+
+[data-editor-interaction-mode="view"] #ftbScoutAction,
+[data-editor-interaction-mode="view"] #ftbDeleteAction,
+[data-editor-interaction-mode="view"] #ftbBranchBtn,
+[data-editor-interaction-mode="view"] .editor-ftb-branch-divider {
+    display: none !important;
+}
+
+/* Public viewer: whole-tree reactions live with the tree identity. */
+.viewer-sidebar-tree-social {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+    margin-top: 14px;
+    padding-top: 13px;
+    border-top: 1px solid rgba(144, 73, 81, 0.09);
+}
+
+.viewer-sidebar-tree-social:empty {
+    display: none;
+}
+
+.viewer-sidebar-tree-social > .tree-comments-panel {
+    flex: 1 0 100%;
+    max-height: 260px !important;
+    margin-top: 2px !important;
+    padding: 12px !important;
+}
+
+.public-viewer-sidebar .viewer-sidebar-owner-mode {
+    margin-top: 0;
+}
+
+.public-viewer-sidebar #viewerSidebarViewBtn:disabled {
+    opacity: 1;
+    cursor: default;
+}
+
+.public-viewer-moment-social-card {
+    display: grid !important;
+    gap: 12px !important;
+}
+
+.public-viewer-moment-social-card .public-viewer-social-status {
+    min-height: 34px !important;
+    padding: 0 11px !important;
+    border: 1px solid rgba(144, 73, 81, 0.12) !important;
+    border-radius: 999px !important;
+    background: rgba(255, 255, 255, 0.78) !important;
+    font-size: 12px;
+    font-weight: 700 !important;
+}
+
+.public-viewer-moment-social-card .editor-comment-toggle:not(:disabled) {
+    pointer-events: auto !important;
+    cursor: pointer !important;
+}
+
+.public-viewer-moment-social-card .editor-moment-reaction-readonly-note {
+    margin: 0;
+    color: var(--on-surface-note);
+    font-size: 11px;
+}
+
+.public-viewer-comment-composer {
+    margin-top: 2px;
+}
+
+.public-viewer-comment-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex: 0 0 auto;
+}
+
+.public-viewer-comment-input-row .public-viewer-comment-cancel {
+    min-width: auto;
+    width: auto;
+    padding: 0 10px;
+    border: 0;
+    background: transparent;
+    color: var(--on-surface-note);
+    box-shadow: none;
+}
+
+.public-viewer-comment-feedback {
+    margin: 0;
+}
+
+[data-guest-comment-note="1"] {
+    margin: 4px 0 0 !important;
+    color: var(--on-surface-note) !important;
+    font-size: 11px !important;
+}
+
+.node-skeleton.error {
+    background:
+        radial-gradient(circle at 25% 20%, rgba(236, 184, 164, 0.28), transparent 38%),
+        linear-gradient(145deg, rgba(250, 239, 233, 0.96), rgba(242, 231, 224, 0.92));
+}
+
+.node-skeleton.error::after {
+    content: 'notes';
+    color: var(--primary);
+    opacity: 0.45;
+}
+
+@media (max-width: 480px) {
+    .editor-moment-info-card {
+        grid-template-columns: 1fr;
+    }
+
+    .editor-moment-info-card > * {
+        grid-column: 1 !important;
+    }
+
+    .editor-moment-social-head {
+        grid-template-columns: 1fr;
+    }
+
+    .editor-moment-reactions-row {
+        justify-content: flex-start;
+    }
+
+    .editor-moment-comment-input-row {
+        flex-direction: row;
+    }
+
+    .editor-memory-form-context {
+        margin: 14px;
+        padding: 22px 18px;
+    }
+}

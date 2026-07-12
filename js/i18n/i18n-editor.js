@@ -15,7 +15,7 @@ Object.assign(window.i18nEditor, {
     editor_add_first_memory_text_intro: { ko: '제목과 메모만으로도 첫 순간을 심을 수 있어요.', en: 'You can plant the first moment with only a title and note.' },
     editor_add_next_memory_text_intro: { ko: '짧은 제목과 메모만으로도 다음 순간을 남길 수 있어요.', en: 'A short title and note are enough for the next moment.' },
     editor_confirm_add_first: { ko: '첫 순간 심기', en: 'Plant first moment' },
-    editor_confirm_add_next: { ko: '이 순간 이어가기', en: 'Continue this moment' },
+    editor_confirm_add_next: { ko: '이 순간에서 이어가기', en: 'Continue from this moment' },
     editor_confirm_add_first_text: { ko: '이 마음으로 시작하기', en: 'Start with this feeling' },
     editor_confirm_add_next_text: { ko: '이 메모 이어붙이기', en: 'Continue with this note' },
     editor_default_first_title: { ko: '첫 순간', en: 'First moment' },
