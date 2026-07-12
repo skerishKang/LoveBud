@@ -25,7 +25,7 @@ function createMockElement(tagName = 'div') {
     parentElement: null,
     children: [],
     attributes: {},
-    textContent: '',
+    _textContent: '',
     onclick: null,
     _disabled: false,
     _focusCallCount: 0,
@@ -70,6 +70,15 @@ function createMockElement(tagName = 'div') {
     },
     focus() { this._focusCallCount++; },
   };
+  Object.defineProperty(element, 'textContent', {
+    get() { return this._textContent; },
+    set(val) {
+      this._textContent = val;
+      if (val === '') this.children.length = 0;
+    },
+    enumerable: true,
+    configurable: true
+  });
   Object.defineProperty(element, 'disabled', {
     get() { return this._disabled; },
     set(val) {
@@ -1015,7 +1024,11 @@ test('generation mismatch prevents focus on close', async () => {
 test('metadata mismatch prevents focus on close', async () => {
   const { elements, detailUI, deps, context } = createDetailUI(
     async () => ({ counts: { like: 0 }, total: 0 }),
-    async () => ({ comments: [], nextCursor: null })
+    async (treeId, memoryId) => {
+      if (memoryId === 'mem-1') return { comments: [{ id: 'c-a', body: 'moment-a comment' }], nextCursor: null };
+      if (memoryId === 'mem-2') return { comments: [{ id: 'c-b', body: 'moment-b comment' }], nextCursor: null };
+      return { comments: [], nextCursor: null };
+    }
   );
 
   elements.momentReactionCommentStatus.removeAttribute('disabled');
@@ -1026,24 +1039,47 @@ test('metadata mismatch prevents focus on close', async () => {
   await flush();
 
   const toggle = elements.momentReactionCommentStatus;
-  toggle.setAttribute('aria-expanded', 'true');
-  elements.momentReactionsCard.style.display = '';
-  context._activeElement = elements.momentCommentsPanel;
+  // Capture A's closure (gen=1, memId='mem-1')
+  const oldOnClick = toggle.onclick;
 
-  // Switch moment — old toggle's onclick references old metadata
+  // Switch to Moment B with force=true: same generation, but commentMemoryMeta
+  // memoryId becomes 'mem-2' while the existing onclick closure is preserved.
   deps.currentSelectedId = 'mem-2';
   deps.treeMemories = [{ id: 'mem-2', treeId: 'tree-1' }];
-  detailUI.updateDetailPanel({ id: 'mem-2', treeId: 'tree-1' });
+  detailUI.updateDetailPanel({ id: 'mem-2', treeId: 'tree-1' }, true);
   await flush();
 
-  // Toggle is re-wired for new moment; clicking it closes the auto-opened panel
-  // (no metadata mismatch since toggle onclick uses current metadata)
+  // Preconditions: B panel is auto-open with B content, stale A closure preserved
+  assert.equal(toggle.getAttribute('aria-expanded'), 'true', 'B panel auto-open after force load');
+  assert.equal(elements.momentCommentsPanel.hidden, false, 'B panel visible');
+  assert.equal(elements.momentCommentsList.children.length, 1, 'B has exactly one comment');
+  assert.equal(elements.momentCommentsList.children[0].children[1].textContent, 'moment-b comment', 'B comment body rendered');
+  assert.equal(toggle.onclick, oldOnClick, 'stale A closure preserved (not rewired by force path)');
+
+  // Focus inside current B panel
+  const focusNode = createMockElement();
+  elements.momentCommentsPanel.appendChild(focusNode);
+  context._activeElement = focusNode;
+
+  // Run stale A closure — generation matches (force path) but metadata memoryId differs
+  oldOnClick();
+
+  // Metadata/memoryId guard must block close + focus restoration
+  assert.equal(toggle._focusCallCount, 0, 'no focus on metadata mismatch');
+  assert.equal(toggle.getAttribute('aria-expanded'), 'true', 'B stays expanded after stale A click');
+  assert.equal(elements.momentCommentsPanel.hidden, false, 'B panel stays visible after stale A click');
+  assert.equal(elements.momentCommentsList.children.length, 1, 'B comment count unchanged after stale A click');
+  assert.equal(elements.momentCommentsList.children[0].children[1].textContent, 'moment-b comment', 'B comment body unchanged after stale A click');
 });
 
 test('Moment A→B reset: old toggle focus not called even with old panel focus', async () => {
   const { elements, detailUI, deps, context } = createDetailUI(
     async () => ({ counts: { like: 0 }, total: 0 }),
-    async () => ({ comments: [], nextCursor: null })
+    async (treeId, memoryId) => {
+      if (memoryId === 'mem-1') return { comments: [{ id: 'c-a', body: 'moment-a comment' }], nextCursor: null };
+      if (memoryId === 'mem-2') return { comments: [{ id: 'c-b', body: 'moment-b comment' }], nextCursor: null };
+      return { comments: [], nextCursor: null };
+    }
   );
 
   elements.momentReactionCommentStatus.removeAttribute('disabled');
@@ -1054,19 +1090,35 @@ test('Moment A→B reset: old toggle focus not called even with old panel focus'
   await flush();
 
   const toggle = elements.momentReactionCommentStatus;
-  toggle.setAttribute('aria-expanded', 'true');
-  elements.momentReactionsCard.style.display = '';
+  // Capture A's closure (gen=1, memId='mem-1')
+  const oldOnClick = toggle.onclick;
 
-  // Simulate old focus inside old panel
-  context._activeElement = elements.momentCommentsPanel;
+  // Separate focus descendant inside A panel
+  const oldPanelFocusNode = createMockElement();
+  elements.momentCommentsPanel.appendChild(oldPanelFocusNode);
+  context._activeElement = oldPanelFocusNode;
 
-  // Switch to Moment B — old toggle onclick is now stale
+  // Normal switch to Moment B — advances generation and rewires toggle.onclick
   deps.currentSelectedId = 'mem-2';
   deps.treeMemories = [{ id: 'mem-2', treeId: 'tree-1' }];
   detailUI.updateDetailPanel({ id: 'mem-2', treeId: 'tree-1' });
   await flush();
 
-  // Toggle is re-wired for new moment; clicking it closes the auto-opened panel
+  // Preconditions: toggle rewired to B closure, B panel auto-open with B content
+  assert.notEqual(toggle.onclick, oldOnClick, 'toggle onclick replaced with B closure');
+  assert.equal(toggle.getAttribute('aria-expanded'), 'true', 'B panel auto-open');
+  assert.equal(elements.momentCommentsPanel.hidden, false, 'B panel visible');
+  assert.equal(elements.momentCommentsList.children.length, 1, 'B has exactly one comment');
+  assert.equal(elements.momentCommentsList.children[0].children[1].textContent, 'moment-b comment', 'B comment body rendered');
+
+  // Run stale A closure — generation mismatch path must block focus + mutation
+  oldOnClick();
+
+  assert.equal(toggle._focusCallCount, 0, 'no focus on stale A closure');
+  assert.equal(toggle.getAttribute('aria-expanded'), 'true', 'B stays expanded after stale A click');
+  assert.equal(elements.momentCommentsPanel.hidden, false, 'B panel stays visible after stale A click');
+  assert.equal(elements.momentCommentsList.children.length, 1, 'B comment count unchanged after stale A click');
+  assert.equal(elements.momentCommentsList.children[0].children[1].textContent, 'moment-b comment', 'B comment body unchanged after stale A click');
 });
 
 test('root moment reset: no focus call', async () => {
