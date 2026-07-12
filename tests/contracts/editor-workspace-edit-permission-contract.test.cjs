@@ -17,6 +17,10 @@ function sourceContains(file, pattern) {
   return src.indexOf(pattern) !== -1;
 }
 
+function assertVersionedAsset(html, assetPattern, message) {
+  assert.match(html, new RegExp(assetPattern + "\\?v=[A-Za-z0-9][A-Za-z0-9._-]*['\"]"), message);
+}
+
 // ── Shared permission helper ──────────────────────────────────────
 
 test('0. shared helper file exists with correct API', () => {
@@ -452,9 +456,9 @@ test('22. deferred poller starts only after initial owner mode evaluation', () =
 test('23. editor auth-late reconciliation contracts and dynamic VM assertions', async () => {
   const editorHtml = readSource('pages/editor.html');
   // RELEASE_TOKEN: tree-workspace-permission.js must have non-empty version token
-  assert.match(editorHtml, /tree-workspace-permission\.js\?v=[a-zA-Z0-9]+/, 'tree-workspace-permission.js version must be non-empty');
+  assertVersionedAsset(editorHtml, 'tree-workspace-permission\\.js', 'tree-workspace-permission.js version must be non-empty');
   // RELEASE_TOKEN: editor.js must have non-empty version token (not hardcoded literal)
-  assert.match(editorHtml, /editor\.js\?v=[a-zA-Z0-9]+/, 'editor.js version must be non-empty');
+  assertVersionedAsset(editorHtml, 'editor\\.js', 'editor.js version must be non-empty');
 
   const editorJsSrc = readSource('js/editor.js');
   assert.ok(editorJsSrc.includes('registerEditorAuthStart'), 'Editor must delegate auth start to page helpers');

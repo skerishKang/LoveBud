@@ -37,6 +37,10 @@ function loadRootHelpers() {
   return context.window.LoveBudEditorUtils;
 }
 
+function assertVersionedAsset(html, assetPattern, message) {
+  assert.match(html, new RegExp(assetPattern + "\\?v=[A-Za-z0-9][A-Za-z0-9._-]*['\"]"), message);
+}
+
 test('hasRealMomentContent detects real moment from each strong signal', () => {
   const utils = loadRootHelpers();
   assert.equal(typeof utils.hasRealMomentContent, 'function');
@@ -208,7 +212,7 @@ test('editor page cache-busts root helpers and CTA files to PR #2448/#2449', () 
   assert.match(editorPage, /\.\.\/js\/editor\/editor-shell-memory\.js\?v=20260613-2448/);
   assert.match(editorPage, /\.\.\/js\/editor\/editor-shell-helpers\.js\?v=20260613-2448/);
   // RELEASE_TOKEN: editor.js must have non-empty version token, not hardcoded literal
-  assert.match(editorPage, /\.\.\/js\/editor\.js\?v=[a-zA-Z0-9]+/, 'editor.js must have non-empty version token');
+  assertVersionedAsset(editorPage, '\\.\\./js/editor\\.js', 'editor.js must have non-empty version token');
 
   // PR #2449: editor-empty-guide-ui.js + editor-page-event-bindings.js + editor-empty-guide-template.js
   // + editor-panel-history.js 모두 ?v=20260613-2449로 bust

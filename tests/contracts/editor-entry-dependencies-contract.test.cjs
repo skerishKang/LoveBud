@@ -19,6 +19,10 @@ function sourceIndex(sources, needle) {
   return sources.findIndex((src) => src.includes(needle));
 }
 
+function assertVersionedAsset(html, assetPattern, message) {
+  assert.match(html, new RegExp(assetPattern + "\\?v=[A-Za-z0-9][A-Za-z0-9._-]*['\"]"), message);
+}
+
 test('editor entry dependencies helper loads before editor entry', () => {
   const sources = scriptSources();
   const dependencyHelper = sourceIndex(sources, 'js/editor/editor-entry-dependencies.js');
@@ -220,6 +224,6 @@ test('editor page cache-busts editor.js with non-empty release token', () => {
   const editorPage = read('pages/editor.html');
 
   // RELEASE_TOKEN policy: editor.js must have non-empty version token
-  assert.match(editorPage, /\.\.\/js\/editor\.js\?v=[a-zA-Z0-9]+/, 'editor.js must have non-empty version token');
+  assertVersionedAsset(editorPage, '\\.\\./js/editor\\.js', 'editor.js must have non-empty version token');
   assert.doesNotMatch(editorPage, /\.\.\/js\/editor\.js\?v=20260502-1/, 'editor.js must not use stale token 20260502-1');
 });
