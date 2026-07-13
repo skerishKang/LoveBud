@@ -961,3 +961,226 @@ test('delete_private_memory calls delete_owner_memory with user uid and memory_i
     'delete_private_memory must call delete_owner_memory with user uid and memory_id'
   );
 });
+
+// ─── #3481 owner binding fail-closed contracts ─────────────────────────────
+
+const AUTH_PY = path.join(ROOT, 'modal_compute', 'auth.py');
+const TREES_PROXY = path.join(ROOT, 'functions', 'api', 'trees.js');
+
+function readAuthPy() {
+  return fs.readFileSync(AUTH_PY, 'utf8');
+}
+
+function readTreesProxy() {
+  return fs.readFileSync(TREES_PROXY, 'utf8');
+}
+
+test('require_firebase_user derives identity from uid or sub only', () => {
+  const source = readAuthPy();
+  const body = getFunctionBody(source, 'require_firebase_user');
+  const normalized = compact(body);
+
+  assert.match(
+    normalized,
+    /uid=decoded\.get\("uid"\)ordecoded\.get\("sub"\)/i,
+    'require_firebase_user must resolve identity from decoded.uid or decoded.sub'
+  );
+
+  assert.match(
+    normalized,
+    /ifnotuid:raisehttpexception\(status_code=401/i,
+    'require_firebase_user must reject missing UID with 401'
+  );
+
+  assert.doesNotMatch(
+    body,
+    /@lovebud\.local|@test\.com|@example\.com/i,
+    'require_firebase_user must not branch ownership by email domain'
+  );
+  assert.doesNotMatch(
+    normalized,
+    /email.*split|local.?part|domain.*allow|domain.*deny/i,
+    'require_firebase_user must not derive UID from email local-part or domain lists'
+  );
+});
+
+test('auth and tree write sources have no email-domain ownership branches', () => {
+  const sources = [
+    readAuthPy(),
+    fs.readFileSync(TREE_WRITES, 'utf8'),
+    readModalApp(),
+    readTreesProxy(),
+  ].join('\n');
+
+  assert.doesNotMatch(
+    sources,
+    /@lovebud\.local|@test\.com|@example\.com/i,
+    'runtime ownership path must not hard-code lovebud.local / test.com / example.com'
+  );
+});
+
+test('post_private_tree passes verified email only as optional owner_email metadata', () => {
+  const source = readModalApp();
+  const body = getRouteFunctionBody(source, '/modal/private/trees', 'post');
+  const normalized = compact(body);
+
+  assert.match(
+    normalized,
+    /create_owner_tree\(user\["uid"\],payload,owner_email=user\.get\("email"\)or"",?\)/i,
+    'post_private_tree must pass verified UID as owner and email only as owner_email metadata'
+  );
+
+  assert.doesNotMatch(
+    normalized,
+    /create_owner_tree\(\s*user\.get\("email"\)|create_owner_tree\(\s*user\["email"\]/i,
+    'post_private_tree must not use email as the ownership identity argument'
+  );
+});
+
+test('create_owner_tree rejects blank authenticated owner before mutation', () => {
+  const source = fs.readFileSync(TREE_WRITES, 'utf8');
+  const body = getFunctionBody(source, 'create_owner_tree');
+  const normalized = compact(body);
+
+  assert.match(
+    normalized,
+    /owner_id=str\(owner_idor""\)\.strip\(\)/i,
+    'create_owner_tree must normalize owner_id'
+  );
+
+  assert.match(
+    normalized,
+    /ifnotowner_id:raisehttpexception\(status_code=401/i,
+    'create_owner_tree must reject blank owner_id with 401'
+  );
+
+  const blankRejectIndex = normalized.search(/ifnotowner_id:raisehttpexception\(status_code=401/i);
+  const insertIndex = normalized.search(/insertinto/i);
+  const ensureIndex = normalized.search(/ensure_owner_user_exists/i);
+
+  assert.ok(blankRejectIndex >= 0, 'blank owner reject must exist');
+  assert.ok(insertIndex > blankRejectIndex, 'blank UID reject must run before INSERT');
+  assert.ok(ensureIndex > blankRejectIndex, 'blank UID reject must run before ensure_owner_user_exists');
+});
+
+test('create_owner_tree INSERT includes owner_id bound to authenticated UID', () => {
+  const source = fs.readFileSync(TREE_WRITES, 'utf8');
+  const body = getFunctionBody(source, 'create_owner_tree');
+  const normalized = compact(body);
+
+  assert.match(
+    normalized,
+    /insertinto.*trees.*\(id,owner_id,/i,
+    'create_owner_tree INSERT must include owner_id column'
+  );
+
+  assert.match(
+    normalized,
+    /cur\.execute\(\s*query,\s*\(\s*str\(uuid\.uuid4\(\)\),\s*owner_id,/i,
+    'create_owner_tree INSERT params must bind authenticated owner_id'
+  );
+});
+
+test('create_owner_tree passes verified email only to ensure_owner_user_exists metadata', () => {
+  const source = fs.readFileSync(TREE_WRITES, 'utf8');
+  const body = getFunctionBody(source, 'create_owner_tree');
+  const normalized = compact(body);
+
+  assert.match(
+    normalized,
+    /ensure_owner_user_exists\(owner_id,owner_email\)/i,
+    'create_owner_tree must pass owner_email only as users metadata bootstrap'
+  );
+
+  assert.doesNotMatch(
+    normalized,
+    /owner_id\s*=\s*owner_email|owner_id\s*=\s*email/i,
+    'create_owner_tree must never assign email to owner_id'
+  );
+});
+
+test('create_owner_tree verifies returned owner_id before commit and rolls back on mismatch', () => {
+  const source = fs.readFileSync(TREE_WRITES, 'utf8');
+  const body = getFunctionBody(source, 'create_owner_tree');
+  const normalized = compact(body);
+
+  assert.match(
+    normalized,
+    /returned_owner_id=str\(\(rowor\{\}\)\.get\("owner_id"\)or""\)\.strip\(\)/i,
+    'create_owner_tree must read returned owner_id from INSERT row'
+  );
+
+  assert.match(
+    normalized,
+    /ifnotroworreturned_owner_id!=owner_id/i,
+    'create_owner_tree must reject missing/blank/mismatched returned owner_id'
+  );
+
+  assert.match(
+    normalized,
+    /conn\.rollback\(\)/i,
+    'create_owner_tree must rollback on owner binding failure'
+  );
+
+  assert.match(
+    normalized,
+    /treeownerbindingfailed/i,
+    'create_owner_tree must use a safe Tree owner binding failed error'
+  );
+
+  const verifyIndex = normalized.search(/ifnotroworreturned_owner_id!=owner_id/i);
+  const rollbackIndex = normalized.search(/conn\.rollback\(\)/i);
+  const commitIndex = normalized.search(/conn\.commit\(\)/i);
+
+  assert.ok(verifyIndex >= 0, 'owner verification must exist');
+  assert.ok(rollbackIndex > verifyIndex, 'rollback must follow failed verification');
+  assert.ok(commitIndex > verifyIndex, 'commit must come after verification');
+  // commit must not appear before the mismatch branch ends with rollback+raise
+  const mismatchBlock = normalized.slice(verifyIndex, commitIndex);
+  assert.match(
+    mismatchBlock,
+    /conn\.rollback\(\).*raisehttpexception/i,
+    'mismatch path must rollback and raise before any commit'
+  );
+
+  assert.doesNotMatch(
+    body,
+    /Tree owner binding failed.*\{|detail=f["'].*owner|detail=.*owner_id|detail=.*email|detail=.*token/i,
+    'owner binding failure must not interpolate UID, email, or token into the error'
+  );
+});
+
+test('create_owner_tree success path still normalizes row with owner metadata', () => {
+  const source = fs.readFileSync(TREE_WRITES, 'utf8');
+  const body = getFunctionBody(source, 'create_owner_tree');
+  const normalized = compact(body);
+
+  assert.match(
+    normalized,
+    /normalize_tree_row\(row,0,include_owner_metadata=true\)/i,
+    'successful create must still return normalized tree with owner metadata'
+  );
+});
+
+test('cloudflare trees proxy forwards Authorization without ownerId injection or domain routing', () => {
+  const source = readTreesProxy();
+  const normalized = compact(source);
+
+  assert.match(
+    normalized,
+    /authorization:request\.headers\.get\('authorization'\)/i,
+    'trees.js must forward Authorization header to Modal upstream'
+  );
+
+  assert.doesNotMatch(
+    source,
+    /@lovebud\.local|@test\.com|@example\.com/i,
+    'trees.js must not route by email domain'
+  );
+
+  assert.doesNotMatch(
+    normalized,
+    /ownerid\s*[:=]|body\.ownerid|payload\.ownerid/i,
+    'trees.js must not inject or trust client ownerId into the request body'
+  );
+});
