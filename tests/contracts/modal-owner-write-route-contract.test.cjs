@@ -961,8 +961,7 @@ test('delete_private_memory calls delete_owner_memory with user uid and memory_i
     'delete_private_memory must call delete_owner_memory with user uid and memory_id'
   );
 });
-
-// ─── #3481 owner binding fail-closed contracts ─────────────────────────────
+// --- #3481 owner binding fail-closed contracts ---
 
 const AUTH_PY = path.join(ROOT, 'modal_compute', 'auth.py');
 const TREES_PROXY = path.join(ROOT, 'functions', 'api', 'trees.js');

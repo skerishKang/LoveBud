@@ -31,7 +31,7 @@ function loadInternals(options = {}) {
   const authPolicySource = fs.readFileSync(AUTH_POLICY_PATH, 'utf8');
   const publicTreeAdapterSource = fs.readFileSync(PUBLIC_TREE_ADAPTER_PATH, 'utf8');
   const source = fs.readFileSync(POSTGRES_CLIENT_PATH, 'utf8');
-
+  
   const sandbox = {
     window: {
       __LOVEBUD_AUTH_WAIT_MS: options.authWaitMs || 2000,
@@ -54,7 +54,7 @@ function loadInternals(options = {}) {
   };
 
   vm.createContext(sandbox);
-
+  
   // Load auth policy first
   vm.runInContext(authPolicySource, sandbox, { filename: AUTH_POLICY_PATH });
   // Load public tree adapter
