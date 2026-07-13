@@ -89,11 +89,30 @@
 
   /**
    * Wire up the branch and fork connection-mode buttons.
+   *
+   * #3483: keep "new moment" (continueFromMomentBtn → add form) distinct from
+   * "connect existing moment" (connectExistingCtaBtn). The branch control
+   * prefers the existing-moment connector; continue/quick-add keep new-moment.
    */
   function bindConnectionButtons(ctx) {
-    function startBranch() {
+    function startNewMomentFromSelection() {
       var continueBtnDetail = document.getElementById('continueFromMomentBtn');
-      if (continueBtnDetail) continueBtnDetail.click();
+      if (continueBtnDetail) {
+        continueBtnDetail.click();
+        return;
+      }
+      var addMemoryBtn = document.getElementById('addMemoryBtn');
+      if (addMemoryBtn) addMemoryBtn.click();
+    }
+
+    function connectExistingMoment() {
+      var connectBtn = document.getElementById('connectExistingCtaBtn');
+      if (connectBtn) {
+        connectBtn.click();
+        return;
+      }
+      // Fallback only when connect CTA is unavailable in this shell state.
+      startNewMomentFromSelection();
     }
 
     if (ctx.branchBtn) {
@@ -102,14 +121,15 @@
         if (window.LoveBudFloatingToolbarDropdown) {
           window.LoveBudFloatingToolbarDropdown.hide(ctx.dropdown, ctx.moreBtn);
         }
-        startBranch();
+        connectExistingMoment();
       });
     }
 
     if (ctx.forkBtn) {
       ctx.forkBtn.addEventListener('click', function (e) {
         e.stopPropagation();
-        startBranch();
+        // Fork remains a new-moment continuation, not an existing-moment link.
+        startNewMomentFromSelection();
       });
     }
   }

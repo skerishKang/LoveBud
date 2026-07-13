@@ -63,13 +63,22 @@
         };
 
         const updateTreeReactions = (currentTreeData) => {
+            const reactionsEl = document.getElementById('editorTreeReactions');
+            const likeMetricEl = document.getElementById('editorTreeLikeMetric') ||
+                (document.getElementById('editorTreeLikeCount') && document.getElementById('editorTreeLikeCount').closest('.editor-tree-reaction-metric'));
+            const commentMetricEl = document.getElementById('editorTreeCommentMetric') ||
+                (document.getElementById('editorTreeCommentCount') && document.getElementById('editorTreeCommentCount').closest('.editor-tree-reaction-metric'));
             const likeCountEl = document.getElementById('editorTreeLikeCount');
             const commentCountEl = document.getElementById('editorTreeCommentCount');
             const likeCount = resolveCount(currentTreeData, ['likeCount', 'like_count', 'likesCount', 'likes']);
             const commentCount = resolveCount(currentTreeData, ['commentCount', 'comment_count', 'commentsCount']);
 
-            if (likeCountEl) likeCountEl.textContent = likeCount === null ? '—' : String(likeCount);
-            if (commentCountEl) commentCountEl.textContent = commentCount === null ? '—' : String(commentCount);
+            // Truthful metrics: hide unknown values; preserve authoritative zero.
+            if (likeCountEl && likeCount !== null) likeCountEl.textContent = String(likeCount);
+            if (commentCountEl && commentCount !== null) commentCountEl.textContent = String(commentCount);
+            if (likeMetricEl) likeMetricEl.hidden = likeCount === null;
+            if (commentMetricEl) commentMetricEl.hidden = commentCount === null;
+            if (reactionsEl) reactionsEl.hidden = likeCount === null && commentCount === null;
         };
 
         const updateSidebarStatus = () => {

@@ -167,6 +167,10 @@
  */
 [data-editor-interaction-mode="view"] #editMemoryBtn,
 [data-editor-interaction-mode="view"] #continueFromMomentBtn,
+[data-editor-interaction-mode="view"] #connectExistingCtaSection,
+[data-editor-interaction-mode="view"] #connectExistingCtaBtn,
+[data-editor-interaction-mode="view"] #connectExistingPendingSection,
+[data-editor-interaction-mode="view"] #connectExistingConfirmSection,
 [data-editor-interaction-mode="view"] #ftbEditBtn,
 [data-editor-interaction-mode="view"] #ftbContinueBtn,
 [data-editor-interaction-mode="view"] #ftbQuickAdd,
@@ -174,4 +178,17 @@
 [data-editor-interaction-mode="view"] #ftbForkBtn,
 [data-editor-interaction-mode="view"] .editor-ftb-branch-divider {
     display: none !important;
+}
+
+/* #3483: inactive detail region while new-memory form is open (supports inert polyfill). */
+#detailContent[inert],
+#detailContent[aria-hidden="true"] {
+    pointer-events: none;
+    user-select: none;
+}
+
+.editor-layout.is-memory-form-open .editor-floating-toolbar {
+    /* Authoring form owns the interaction surface; toolbar remains JS-gated too. */
+    visibility: hidden;
+    pointer-events: none;
 }

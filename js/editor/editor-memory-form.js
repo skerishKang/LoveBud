@@ -112,6 +112,31 @@ function createEditorMemoryForm(deps) {
     function setEmptyGuideSuppressed(isSuppressed) {
         const canvasArea = refs.addMemoryForm?.closest('.canvas-area');
         if (canvasArea) canvasArea.classList.toggle('is-memory-form-open', isSuppressed);
+
+        // Mark the editor shell so inactive detail/toolbar regions can gate interaction.
+        const editorLayout = refs.addMemoryForm?.closest('.editor-layout');
+        if (editorLayout) editorLayout.classList.toggle('is-memory-form-open', isSuppressed);
+
+        // Inactive detail region must not remain interactive while the form is open.
+        // The authoring form itself stays outside #detailContent and remains operable.
+        const detailContent = document.getElementById('detailContent');
+        if (detailContent) {
+            detailContent.setAttribute('aria-hidden', isSuppressed ? 'true' : 'false');
+            if ('inert' in detailContent) {
+                detailContent.inert = Boolean(isSuppressed);
+            } else if (isSuppressed) {
+                detailContent.setAttribute('inert', '');
+            } else {
+                detailContent.removeAttribute('inert');
+            }
+        }
+
+        const formContext = document.getElementById('editorMemoryFormContext') || refs.addMemoryForm;
+        if (formContext) {
+            // Active authoring region must never be aria-hidden while open.
+            formContext.setAttribute('aria-hidden', isSuppressed ? 'false' : 'true');
+        }
+
         if (refs.canvasTopbar) {
             if (isSuppressed) {
                 refs.canvasTopbar.dataset.previousAriaHidden = refs.canvasTopbar.getAttribute('aria-hidden') || '';
