@@ -335,6 +335,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/canonical-appreciation-render-model-runtime-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes the browser-global pure appreciation render-model helper in node:vm with injected window context and asserts normalization, field omission, detached outputs, and fail-closed capabilities. No real browser, network, auth provider, database, deployment, or Production resource is used.",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/canonical-format-guard.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads the tests/contracts directory and asserts file-name and extension structure; does not execute application runtime behavior, connect to a network, database, or browser, deploy, or mutate Production.",
