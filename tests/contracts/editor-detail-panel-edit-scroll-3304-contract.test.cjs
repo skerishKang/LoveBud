@@ -35,12 +35,14 @@ const LAYOUT_CSS = path.join(ROOT, 'css/editor/editor-layout.css');
 const PANEL_CSS = path.join(ROOT, 'css/editor/editor-detail-panel.css');
 const EDIT_MODE_TEMPLATE = path.join(ROOT, 'js/editor/templates/editor-detail-edit-mode-template.js');
 const PANEL_TEMPLATE = path.join(ROOT, 'js/editor/templates/editor-detail-panel-shell-template.js');
+const VIEW_MODE_TEMPLATE = path.join(ROOT, 'js/editor/templates/editor-detail-view-mode-template.js');
 const HTML = path.join(ROOT, 'pages/editor.html');
 
 const layoutCss = fs.readFileSync(LAYOUT_CSS, 'utf8');
 const panelCss = fs.readFileSync(PANEL_CSS, 'utf8');
 const editModeTemplate = fs.readFileSync(EDIT_MODE_TEMPLATE, 'utf8');
 const panelTemplate = fs.readFileSync(PANEL_TEMPLATE, 'utf8');
+const viewModeTemplate = fs.readFileSync(VIEW_MODE_TEMPLATE, 'utf8');
 const html = fs.readFileSync(HTML, 'utf8');
 
 // ---------------------------------------------------------------------------
@@ -162,8 +164,8 @@ test('G. detail panel shell template and edit form mount structure unchanged', (
   assert.ok(editModeTemplate.includes('id="cancelEditBtn"'), 'cancelEditBtn must be present');
   assert.ok(editModeTemplate.includes('id="saveEditBtn"'), 'saveEditBtn must be present');
   assert.ok(editModeTemplate.includes('id="deleteMemoryBtn"'), 'deleteMemoryBtn must be present');
-  // connectExistingCtaBtn lives in the shell template, not the edit template.
-  assert.ok(panelTemplate.includes('id="connectExistingCtaBtn"'), 'connectExistingCtaBtn must be present');
+  // connectExistingCtaBtn lives in the detail view-mode template, not the shell or edit template.
+  assert.ok(viewModeTemplate.includes('id="connectExistingCtaBtn"'), 'connectExistingCtaBtn must be present');
 });
 
 // ---------------------------------------------------------------------------
@@ -173,8 +175,8 @@ test('H. production-confirmed target controls retained (cancel/save/delete/conne
   assert.ok(editModeTemplate.includes('cancelEditBtn'), 'cancelEditBtn id retained');
   assert.ok(editModeTemplate.includes('saveEditBtn'), 'saveEditBtn id retained');
   assert.ok(editModeTemplate.includes('deleteMemoryBtn'), 'deleteMemoryBtn id retained');
-  assert.ok(panelTemplate.includes('connectExistingCtaBtn'), 'connectExistingCtaBtn id retained');
-  assert.ok(panelTemplate.includes('기존 순간 연결하기'), 'connect CTA text hook retained');
+  assert.ok(viewModeTemplate.includes('connectExistingCtaBtn'), 'connectExistingCtaBtn id retained');
+  assert.ok(viewModeTemplate.includes('기존 순간 연결하기'), 'connect CTA text hook retained');
 });
 
 // ---------------------------------------------------------------------------

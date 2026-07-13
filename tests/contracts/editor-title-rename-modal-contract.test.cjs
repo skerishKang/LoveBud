@@ -274,7 +274,7 @@ test('editor title rename modal contract: sidebar copy and cache-bust', () => {
   const editorHtml = fs.readFileSync(EDITOR_HTML_PATH, 'utf8');
   const i18nRefresh = fs.readFileSync(I18N_REFRESH_PATH, 'utf8');
 
-  assert.match(sidebar, /내가 키우는 러브트리/, 'sidebar badge should use natural Korean copy');
+  assert.match(sidebar, /현재 트리/, 'sidebar badge should use natural Korean copy');
   assert.doesNotMatch(sidebar, /Our LoveTree/, 'old English sidebar badge should be removed');
   assert.match(sidebar, />수정<\/button>/, 'rename button text should be short');
 
