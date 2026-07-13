@@ -16,6 +16,16 @@
       panelHistoryBound: false
     };
 
+    // Bind a click handler exactly once per element using a dataset flag.
+    // Mirrors the helper in editor-bindings.js to keep this module self-contained.
+    function bindButtonOnce(button, bindingKey, handler) {
+      if (!button || typeof handler !== 'function') return false;
+      if (button.dataset[bindingKey] === '1') return false;
+      button.dataset[bindingKey] = '1';
+      button.addEventListener('click', handler);
+      return true;
+    }
+
     // ─────────────────────────────────────────────────────────────────────
     // PR #2449 (UX): browser Back 버튼이 panel을 닫게 함
     //
@@ -61,7 +71,59 @@
     var wrappedShowAddMemoryForm = function () {
       if (panelHistory) panelHistory.pushOnOpen();
       if (typeof originalShow === 'function') originalShow();
+      updateFormConnectEntryVisibility();
     };
+
+    // ── Form-level existing-moment connection entry (#3502) ──
+    // While the new-moment form is open, #detailContent is inert + aria-hidden,
+    // so the detail "기존 순간 연결하기" CTA is unreachable. This entry lives
+    // inside the active form surface and routes through the existing guarded
+    // connect controller — it never proxies the inert detail CTA and never
+    // falls back to new-moment creation.
+    var formConnectBtn = (typeof document !== 'undefined')
+      ? document.getElementById('connectExistingFromFormBtn')
+      : null;
+
+    function updateFormConnectEntryVisibility() {
+      var btn = formConnectBtn;
+      if (!btn) return;
+      var controller = opts.connectExistingController;
+      var available = Boolean(
+        controller &&
+        typeof controller.isConnectEntryAvailable === 'function' &&
+        controller.isConnectEntryAvailable()
+      );
+      if (available) {
+        btn.hidden = false;
+        btn.disabled = false;
+        btn.setAttribute('aria-hidden', 'false');
+      } else {
+        btn.hidden = true;
+        btn.disabled = true;
+        btn.setAttribute('aria-hidden', 'true');
+      }
+    }
+
+    if (formConnectBtn && opts.connectExistingController && typeof opts.connectExistingController.startConnectMode === 'function') {
+      bindButtonOnce(formConnectBtn, 'formConnectEntryBound', function (e) {
+        if (e && typeof e.preventDefault === 'function') e.preventDefault();
+        if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
+        // Close the new-moment form through the existing wrapped lifecycle
+        // (restores #detailContent inert/aria and consumes panel history),
+        // then enter connect mode via the existing guarded controller.
+        if (typeof wrappedHideAddMemoryForm === 'function') {
+          wrappedHideAddMemoryForm();
+        }
+        opts.connectExistingController.startConnectMode();
+      });
+    }
+
+    // Keep the form entry visibility in sync with mode/selection changes.
+    if (typeof window !== 'undefined' && window.LoveBudEditorInteractionMode && typeof window.LoveBudEditorInteractionMode.subscribe === 'function') {
+      window.LoveBudEditorInteractionMode.subscribe(function () {
+        updateFormConnectEntryVisibility();
+      });
+    }
     var wrappedHideAddMemoryForm = function () {
       if (typeof originalHide === 'function') originalHide();
       if (panelHistory) panelHistory.closeAndConsume();

@@ -600,3 +600,12 @@ test('repeat click: form open called once via no-duplicate binding', function() 
 
   assert.equal(openCount, 3, 'each click dispatches to handler; no duplicate-prevention in bindMemoryCreateControls itself');
 });
+
+test('FORM_CONNECT_ENTRY_RENDERED: template exposes form-level connect entry', function() {
+  const tpl = fs.readFileSync(path.join(ROOT, 'js/editor/templates/editor-add-memory-form-template.js'), 'utf8');
+  assert.ok(tpl.includes('id="connectExistingFromFormBtn"'), 'connect entry button present in new-moment form template');
+  assert.ok(tpl.includes('type="button"'), 'entry is type="button" (not submit)');
+  assert.ok(!tpl.includes('type="submit"'), 'entry is never a submit button');
+  assert.ok(tpl.includes('editor-form-connect-entry'), 'entry has distinct connect-entry styling hook');
+  assert.ok(!tpl.includes('role="tab"'), 'no ARIA tab role invented for the entry');
+});

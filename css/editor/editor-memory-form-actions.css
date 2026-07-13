@@ -28,3 +28,28 @@
         padding: 10px 16px 14px;
     }
 }
+
+.editor-memory-form-modal .editor-form-connect-row {
+    flex-shrink: 0;
+    padding: 12px 24px 0;
+    border-top: 1px solid rgba(144, 73, 81, 0.10);
+    background: linear-gradient(180deg, rgba(255,255,255,0.96), rgba(250,246,244,0.995));
+}
+
+.editor-memory-form-modal .editor-form-connect-entry {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+    justify-content: center;
+}
+
+.editor-memory-form-modal .editor-form-connect-entry[hidden] {
+    display: none;
+}
+
+@media (max-width: 560px) {
+    .editor-memory-form-modal .editor-form-connect-row {
+        padding: 10px 16px 0;
+    }
+}

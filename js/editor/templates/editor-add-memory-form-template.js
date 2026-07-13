@@ -60,6 +60,12 @@ export function buildAddMemoryFormTemplate() {
                     </div>
                 </div>
             </div>
+            <div class="editor-form-connect-row" id="connectExistingFromFormRow">
+                <button type="button" id="connectExistingFromFormBtn" class="btn-round btn-outline editor-form-connect-entry">
+                    <span class="material-symbols-outlined" aria-hidden="true">link</span>
+                    <span class="editor-form-connect-entry-label">기존 순간 연결하기</span>
+                </button>
+            </div>
             <div class="editor-form-actions">
                 <button id="cancelAddMemory" class="btn-round btn-outline editor-form-action-btn">...</button>
                 <button id="confirmAddMemory" class="btn-round btn-primary editor-form-action-btn">...</button>

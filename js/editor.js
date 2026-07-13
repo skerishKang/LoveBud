@@ -733,7 +733,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     enterEditMode,
                     deleteMemory,
                     exitEditMode,
-                    saveMemoryEdit
+                    saveMemoryEdit,
+                    connectExistingController
                 });
             }
 
