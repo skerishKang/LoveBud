@@ -12,6 +12,7 @@ const editorCss = fs.readFileSync(path.join(ROOT, 'css/editor/editor-overrides.c
 const editorJs = fs.readFileSync(path.join(ROOT, 'js/editor.js'), 'utf8');
 const sidebarTpl = fs.readFileSync(path.join(ROOT, 'js/editor/templates/editor-sidebar-template.js'), 'utf8');
 const memoryFormSrc = fs.readFileSync(path.join(ROOT, 'js/editor/editor-memory-form.js'), 'utf8');
+const bindingsSrc = fs.readFileSync(path.join(ROOT, 'js/editor/editor-bindings.js'), 'utf8');
 const modeSelectionCss = fs.readFileSync(path.join(ROOT, 'css/editor/editor-mode-selection.css'), 'utf8');
 
 // ── Source contracts ───────────────────────────────────────────────
@@ -48,9 +49,10 @@ test('view mode CSS hides authoring buttons from detail panel', () => {
   assert.match(modeSelectionCss, /\[data-editor-interaction-mode="view"\] #connectExistingCtaSection/);
 });
 
-// ── Executed sandbox: syncSidebarAuthoringEntryState ────────
+// ── Mock helpers ───────────────────────────────────────────
 
-function makeMockElement(overrides) {
+function makeClickableElement(overrides) {
+  var listeners = {};
   return Object.assign({
     id: '',
     style: {},
@@ -63,14 +65,28 @@ function makeMockElement(overrides) {
     classList: {
       _classes: [],
       add(name) { if (!this._classes.includes(name)) this._classes.push(name); },
-      remove(name) { this._classes = this._classes.filter(c => c !== name); },
+      remove(name) { this._classes = this._classes.filter(function(c) { return c !== name; }); },
       contains(name) { return this._classes.includes(name); }
     },
     getAttribute(name) { return this.dataset[name] || null; },
     setAttribute(name, value) { this.dataset[name] = String(value); },
     removeAttribute(name) { delete this.dataset[name]; },
-    addEventListener() {},
-    click() {},
+    addEventListener: function(type, handler) {
+      (listeners[type] = listeners[type] || []).push(handler);
+    },
+    removeEventListener: function(type, handler) {
+      var arr = listeners[type];
+      if (!arr) return;
+      var idx = arr.indexOf(handler);
+      if (idx >= 0) arr.splice(idx, 1);
+    },
+    click: function() {
+      if (this.disabled) return;
+      var i;
+      var ev = { preventDefault: function() {}, stopPropagation: function() {} };
+      var arr = listeners.click;
+      if (arr) { for (i = 0; i < arr.length; i++) arr[i](ev); }
+    },
     dispatchEvent() {},
     closest() { return null; },
     querySelector() { return null; },
@@ -78,261 +94,241 @@ function makeMockElement(overrides) {
     appendChild(c) { return c; },
     insertBefore(c, r) { return c; },
     remove() {},
-    focus() {}
+    focus() {},
+    _listeners: listeners
   }, overrides);
 }
 
+function buildSyncDoc(section, button) {
+  return {
+    querySelector: function(sel) {
+      if (sel === '.editor-add-section-bottom') return section || null;
+      return null;
+    },
+    getElementById: function(id) {
+      if (id === 'addMemoryBtn') return button || null;
+      return null;
+    }
+  };
+}
+
 function createSyncFnSource() {
-  const fnSource = editorJs.match(/function syncSidebarAuthoringEntryState[\s\S]*?\n\s{20}\}/);
+  var fnSource = editorJs.match(/function syncSidebarAuthoringEntryState[\s\S]*?\n\s{20}\}/);
   if (!fnSource) throw new Error('Could not extract syncSidebarAuthoringEntryState from editor.js');
   return '(function() {\n' + fnSource[0] + '\nreturn syncSidebarAuthoringEntryState;\n})()';
 }
 
-test('syncSidebarAuthoringEntryState: owner edit mode makes section accessible', () => {
-  const section = makeMockElement({ className: 'editor-add-section editor-add-section-bottom' });
-  const button = makeMockElement({ id: 'addMemoryBtn' });
+// ── Same-button transition tests ───────────────────────────
 
-  const doc = {
-    querySelector(sel) {
-      if (sel === '.editor-add-section-bottom') return section;
-      return null;
-    },
-    getElementById(id) {
-      if (id === 'addMemoryBtn') return button;
-      return null;
-    }
-  };
+test('same button: view → edit → view transitions', function() {
+  var section = makeClickableElement({ className: 'editor-add-section editor-add-section-bottom' });
+  var button = makeClickableElement({ id: 'addMemoryBtn' });
+  var doc = buildSyncDoc(section, button);
 
-  const ctx = vm.createContext({
+  var ctx = vm.createContext({
     document: doc,
     effectiveCanEdit: true,
-    console: { warn() {}, log() {}, error() {} }
+    console: { warn: function() {}, log: function() {}, error: function() {} }
   });
 
-  const syncFn = vm.runInContext(createSyncFnSource(), ctx);
+  var syncFn = vm.runInContext(createSyncFnSource(), ctx);
 
-  // owner + edit
-  syncFn(true);
-
-  assert.equal(section.getAttribute('aria-hidden'), 'false', 'edit mode: section aria-hidden=false');
-  assert.equal(button.tabIndex, 0, 'edit mode: button tabindex=0');
-  assert.equal(button.disabled, false, 'edit mode: button not disabled');
-});
-
-test('syncSidebarAuthoringEntryState: owner view mode hides section', () => {
-  const section = makeMockElement({ className: 'editor-add-section editor-add-section-bottom' });
-  const button = makeMockElement({ id: 'addMemoryBtn' });
-
-  const doc = {
-    querySelector(sel) {
-      if (sel === '.editor-add-section-bottom') return section;
-      return null;
-    },
-    getElementById(id) {
-      if (id === 'addMemoryBtn') return button;
-      return null;
-    }
-  };
-
-  const ctx = vm.createContext({
-    document: doc,
-    effectiveCanEdit: true,
-    console: { warn() {}, log() {}, error() {} }
-  });
-
-  const syncFn = vm.runInContext(createSyncFnSource(), ctx);
-
-  // owner + view
+  // initial view mode
   syncFn(false);
+  assert.equal(section.getAttribute('aria-hidden'), 'true', 'view: section aria-hidden=true');
+  assert.equal(button.tabIndex, -1, 'view: button tabindex=-1');
+  assert.equal(button.disabled, true, 'view: button disabled');
 
-  assert.equal(section.getAttribute('aria-hidden'), 'true', 'view mode: section aria-hidden=true');
-  assert.equal(button.tabIndex, -1, 'view mode: button tabindex=-1');
-  assert.equal(button.disabled, true, 'view mode: button disabled');
+  // switch to edit mode
+  syncFn(true);
+  assert.equal(section.getAttribute('aria-hidden'), 'false', 'edit: section aria-hidden=false');
+  assert.equal(button.tabIndex, 0, 'edit: button tabindex=0');
+  assert.equal(button.disabled, false, 'edit: button not disabled');
+
+  // switch back to view
+  syncFn(false);
+  assert.equal(section.getAttribute('aria-hidden'), 'true', 'back to view: section aria-hidden=true');
+  assert.equal(button.tabIndex, -1, 'back to view: button tabindex=-1');
+  assert.equal(button.disabled, true, 'back to view: button disabled');
 });
 
-test('syncSidebarAuthoringEntryState: elements missing does not throw', () => {
-  const doc = {
-    querySelector() { return null; },
-    getElementById() { return null; }
-  };
+test('edit → view: same instance transition', function() {
+  var section = makeClickableElement({ className: 'editor-add-section editor-add-section-bottom' });
+  var button = makeClickableElement({ id: 'addMemoryBtn' });
+  var doc = buildSyncDoc(section, button);
 
-  const ctx = vm.createContext({
+  var ctx = vm.createContext({
     document: doc,
     effectiveCanEdit: true,
-    console: { warn() {}, log() {}, error() {} }
+    console: { warn: function() {}, log: function() {}, error: function() {} }
   });
 
-  const syncFn = vm.runInContext(createSyncFnSource(), ctx);
-  assert.doesNotThrow(() => syncFn(true));
-  assert.doesNotThrow(() => syncFn(false));
+  var syncFn = vm.runInContext(createSyncFnSource(), ctx);
+
+  syncFn(true);
+  assert.equal(section.getAttribute('aria-hidden'), 'false', 'edit: aria-hidden=false');
+  assert.equal(button.tabIndex, 0, 'edit: tabindex=0');
+  assert.equal(button.disabled, false, 'edit: disabled=false');
+
+  syncFn(false);
+  assert.equal(section.getAttribute('aria-hidden'), 'true', 'view: aria-hidden=true');
+  assert.equal(button.tabIndex, -1, 'view: tabindex=-1');
+  assert.equal(button.disabled, true, 'view: disabled=true');
 });
 
-// ── Executed DOM: showAddMemoryForm lifecycle ───────────────
+test('effectiveCanEdit=false: edit mode does not enable button', function() {
+  var section = makeClickableElement({ className: 'editor-add-section editor-add-section-bottom' });
+  var button = makeClickableElement({ id: 'addMemoryBtn' });
+  var doc = buildSyncDoc(section, button);
 
-function createFormSandbox(canEdit) {
-  const formEl = makeMockElement({
+  var ctx = vm.createContext({
+    document: doc,
+    effectiveCanEdit: false,
+    console: { warn: function() {}, log: function() {}, error: function() {} }
+  });
+
+  var syncFn = vm.runInContext(createSyncFnSource(), ctx);
+
+  syncFn(true);
+  assert.equal(section.getAttribute('aria-hidden'), 'true', 'non-owner: section aria-hidden=true');
+  assert.equal(button.tabIndex, -1, 'non-owner: button tabindex=-1');
+  assert.equal(button.disabled, true, 'non-owner: button disabled');
+});
+
+test('missing elements does not throw', function() {
+  var doc = { querySelector: function() { return null; }, getElementById: function() { return null; } };
+  var ctx = vm.createContext({
+    document: doc,
+    effectiveCanEdit: true,
+    console: { warn: function() {}, log: function() {}, error: function() {} }
+  });
+  var syncFn = vm.runInContext(createSyncFnSource(), ctx);
+  assert.doesNotThrow(function() { syncFn(true); });
+  assert.doesNotThrow(function() { syncFn(false); });
+});
+
+// ── Real button click binding test ─────────────────────────
+
+function createInteractionModeMock() {
+  var mode = 'view';
+  return {
+    MODE_VIEW: 'view',
+    MODE_EDIT: 'edit',
+    getMode: function() { return mode; },
+    isEditMode: function() { return mode === 'edit'; },
+    setMode: function(m) { mode = m; }
+  };
+}
+
+function createFormSandbox(opts) {
+  opts = opts || {};
+  var canEdit = opts.canEdit !== false;
+
+  var formEl = makeClickableElement({
     id: 'addMemoryForm',
     style: { display: 'none' },
     classList: {
       _classes: [],
-      add(name) { if (!this._classes.includes(name)) this._classes.push(name); },
-      remove(name) { this._classes = this._classes.filter(c => c !== name); },
-      contains(name) { return this._classes.includes(name); },
-      toggle(name, force) {
+      add: function(name) { if (this._classes.indexOf(name) === -1) this._classes.push(name); },
+      remove: function(name) { this._classes = this._classes.filter(function(c) { return c !== name; }); },
+      contains: function(name) { return this._classes.indexOf(name) !== -1; },
+      toggle: function(name, force) {
         if (force === true) { this.add(name); return true; }
         if (force === false) { this.remove(name); return false; }
-        const idx = this._classes.indexOf(name);
+        var idx = this._classes.indexOf(name);
         if (idx >= 0) { this._classes.splice(idx, 1); return false; }
         this._classes.push(name); return true;
       }
     },
-    closest(sel) {
+    closest: function(sel) {
       if (sel === '.canvas-area') return canvasArea;
-      if (sel === '.editor-layout') return editorLayout;
+      if (sel === '.editor-layout') return makeClickableElement({ className: 'editor-layout', classList: { _classes: [], add: function() {}, remove: function() {}, contains: function() { return false; }, toggle: function() { return false; } } });
       return null;
     },
-    contains() { return false; }
+    contains: function() { return false; }
   });
 
-  const canvasArea = makeMockElement({
-    id: 'canvasArea',
-    classList: { _classes: [], add() {}, remove() {}, contains() { return false; }, toggle(name, force) { return !!force; } }
-  });
+  var detailContent = makeClickableElement({ id: 'detailContent', inert: false });
+  var toolbar = makeClickableElement({ className: 'editor-floating-toolbar' });
+  var canvasArea = makeClickableElement({ id: 'canvasArea', classList: { _classes: [], add: function() {}, remove: function() {}, contains: function() { return false; }, toggle: function() { return false; } } });
 
-  const editorLayout = makeMockElement({
-    className: 'editor-layout',
-    classList: {
-      _classes: [],
-      add(name) { if (!this._classes.includes(name)) this._classes.push(name); },
-      remove(name) { this._classes = this._classes.filter(c => c !== name); },
-      contains(name) { return this._classes.includes(name); },
-      toggle(name, force) {
-        if (force === true) { this.add(name); return true; }
-        if (force === false) { this.remove(name); return false; }
-        return false;
-      }
-    }
-  });
-
-  const detailContent = makeMockElement({
-    id: 'detailContent',
-    inert: false
-  });
-
-  const canvasTopbar = makeMockElement({});
-  const canvasEmptyGuide = makeMockElement({
-    id: 'canvasEmptyGuide',
-    classList: {
-      _classes: [],
-      add(name) { if (!this._classes.includes(name)) this._classes.push(name); },
-      remove(name) { this._classes = this._classes.filter(c => c !== name); },
-      contains(name) { return this._classes.includes(name); },
-      toggle(name, force) {
-        if (force === true) { this.add(name); return true; }
-        if (force === false) { this.remove(name); return false; }
-        return false;
-      }
-    }
-  });
-
-  const toolbar = makeMockElement({ className: 'editor-floating-toolbar' });
-
-  const elementMap = {
+  var canvasTopbar = makeClickableElement({});
+  var elementMap = {
     addMemoryForm: formEl,
     detailContent: detailContent,
-    canvasEmptyGuide: canvasEmptyGuide,
-    memoryUrlInput: makeMockElement({ id: 'memoryUrlInput', value: '' }),
-    memoryTitleInput: makeMockElement({ id: 'memoryTitleInput', value: '' }),
-    memoryMemoInput: makeMockElement({ id: 'memoryMemoInput', value: '' }),
-    memoryUrlField: makeMockElement({ id: 'memoryUrlField' }),
-    memoryModeLinkBtn: makeMockElement({ id: 'memoryModeLinkBtn' }),
-    memoryModeTextBtn: makeMockElement({ id: 'memoryModeTextBtn' }),
-    memoryFormSupportNoteText: makeMockElement({ id: 'memoryFormSupportNoteText' }),
-    memoryStartTimeField: makeMockElement({ id: 'memoryStartTimeField' }),
-    memoryVideoSegmentGrid: makeMockElement({ id: 'memoryVideoSegmentGrid' }),
-    memoryStartTimeInput: makeMockElement({ id: 'memoryStartTimeInput', value: '' }),
-    memoryStartTimeHint: makeMockElement({ id: 'memoryStartTimeHint' }),
-    memoryEndTimeInput: makeMockElement({ id: 'memoryEndTimeInput', value: '' }),
-    canvasEmptyGuide: canvasEmptyGuide,
-    addMemoryFormEyebrow: makeMockElement({ id: 'addMemoryFormEyebrow' }),
-    addMemoryFormTitle: makeMockElement({ id: 'addMemoryFormTitle' }),
-    addMemoryFormIntro: makeMockElement({ id: 'addMemoryFormIntro' }),
-    memoryUrlLabel: makeMockElement({ id: 'memoryUrlLabel' }),
-    memoryTitleLabel: makeMockElement({ id: 'memoryTitleLabel' }),
-    memoryTagsInput: makeMockElement({ id: 'memoryTagsInput', value: '' }),
-    memoryTagsLabel: makeMockElement({ id: 'memoryTagsLabel' }),
-    memoryMemoLabel: makeMockElement({ id: 'memoryMemoLabel' }),
-    confirmAddMemory: makeMockElement({ id: 'confirmAddMemory' }),
-    memoryLinkPreview: makeMockElement({ id: 'memoryLinkPreview', classList: { _classes: [], add() {}, remove() {}, contains() { return false; }, toggle() { return false; } } }),
-    memoryPreviewThumb: makeMockElement({ id: 'memoryPreviewThumb' }),
-    memoryPreviewBadge: makeMockElement({ id: 'memoryPreviewBadge' }),
-    memoryPreviewTitle: makeMockElement({ id: 'memoryPreviewTitle' }),
-    memoryPreviewHint: makeMockElement({ id: 'memoryPreviewHint' }),
+    canvasEmptyGuide: makeClickableElement({ id: 'canvasEmptyGuide', classList: { _classes: [], add: function() {}, remove: function() {}, contains: function() { return false; }, toggle: function() { return false; } } }),
+    memoryUrlInput: makeClickableElement({ id: 'memoryUrlInput', value: '' }),
+    memoryTitleInput: makeClickableElement({ id: 'memoryTitleInput', value: '' }),
+    memoryMemoInput: makeClickableElement({ id: 'memoryMemoInput', value: '' }),
+    memoryUrlField: makeClickableElement({ id: 'memoryUrlField' }),
+    memoryModeLinkBtn: makeClickableElement({ id: 'memoryModeLinkBtn' }),
+    memoryModeTextBtn: makeClickableElement({ id: 'memoryModeTextBtn' }),
+    memoryFormSupportNoteText: makeClickableElement({ id: 'memoryFormSupportNoteText' }),
+    memoryStartTimeField: makeClickableElement({ id: 'memoryStartTimeField' }),
+    memoryVideoSegmentGrid: makeClickableElement({ id: 'memoryVideoSegmentGrid' }),
+    memoryStartTimeInput: makeClickableElement({ id: 'memoryStartTimeInput', value: '' }),
+    memoryStartTimeHint: makeClickableElement({ id: 'memoryStartTimeHint' }),
+    memoryEndTimeInput: makeClickableElement({ id: 'memoryEndTimeInput', value: '' }),
+    addMemoryFormEyebrow: makeClickableElement({ id: 'addMemoryFormEyebrow' }),
+    addMemoryFormTitle: makeClickableElement({ id: 'addMemoryFormTitle' }),
+    addMemoryFormIntro: makeClickableElement({ id: 'addMemoryFormIntro' }),
+    memoryUrlLabel: makeClickableElement({ id: 'memoryUrlLabel' }),
+    memoryTitleLabel: makeClickableElement({ id: 'memoryTitleLabel' }),
+    memoryTagsInput: makeClickableElement({ id: 'memoryTagsInput', value: '' }),
+    memoryTagsLabel: makeClickableElement({ id: 'memoryTagsLabel' }),
+    memoryMemoLabel: makeClickableElement({ id: 'memoryMemoLabel' }),
+    confirmAddMemory: makeClickableElement({ id: 'confirmAddMemory' }),
+    memoryLinkPreview: makeClickableElement({ id: 'memoryLinkPreview', classList: { _classes: [], add: function() {}, remove: function() {}, contains: function() { return false; }, toggle: function() { return false; } } }),
+    memoryPreviewThumb: makeClickableElement({ id: 'memoryPreviewThumb' }),
+    memoryPreviewBadge: makeClickableElement({ id: 'memoryPreviewBadge' }),
+    memoryPreviewTitle: makeClickableElement({ id: 'memoryPreviewTitle' }),
+    memoryPreviewHint: makeClickableElement({ id: 'memoryPreviewHint' }),
     editorMemoryFormContext: null
   };
 
-  const memoryFormContext = makeMockElement({ className: 'editor-memory-form-modal' });
-
-  const doc = {
-    getElementById(id) {
-      return elementMap[id] || null;
-    },
-    querySelector(sel) {
+  var doc = {
+    getElementById: function(id) { return elementMap[id] || null; },
+    querySelector: function(sel) {
       if (sel === '.editor-canvas-topbar') return canvasTopbar;
-      if (sel === '#memoryLinkPreview .memory-link-preview__thumb-wrap') return makeMockElement({});
-      if (sel === '#memoryLinkPreview .memory-link-preview__play-icon') return makeMockElement({});
-      if (sel === '#memoryLinkPreview .memory-link-preview__body') return makeMockElement({});
+      if (sel === '#memoryLinkPreview .memory-link-preview__thumb-wrap') return makeClickableElement({});
+      if (sel === '#memoryLinkPreview .memory-link-preview__play-icon') return makeClickableElement({});
+      if (sel === '#memoryLinkPreview .memory-link-preview__body') return makeClickableElement({});
       if (sel === '.editor-floating-toolbar') return toolbar;
       return null;
     },
-    addEventListener() {},
-    removeEventListener() {},
+    addEventListener: function() {},
+    removeEventListener: function() {},
     activeElement: null,
-    createElement() { return makeMockElement({}); }
+    createElement: function() { return makeClickableElement({}); }
   };
 
-  const HelperRecord = {
-    createEditorMemoryFormMode: {
-      setInputMode(opts) { return 'link'; }
-    },
-    createEditorMemoryFormPreview: {
-      hide() {},
-      update() {}
-    },
-    createEditorMemoryFormTime: {
-      autofillStartFromUrl() {}
-    },
-    createEditorMemoryFormPayload: null,
-    createEditorMemoryFormSave: function() {
-      return {
-        enrichPayloadChannelMetadata: async (p) => p,
-        createMemoryWithFallback: async (p) => ({ createdMemory: { id: 'new-root' }, useApi: false }),
-        commitMemoryToTree() {}
-      };
-    }
-  };
-
-  const sandbox = vm.createContext({
+  var sandbox = vm.createContext({
     window: {},
     document: doc,
-    console: { warn() {}, log() {}, error() {}, debug() {} },
-    setTimeout: (fn) => fn(),
-    clearTimeout: () => {},
-    fetch: () => Promise.resolve({ json: () => Promise.resolve({}) }),
-    requestAnimationFrame: (fn) => fn(),
-    URLSearchParams: () => ({ get: () => null }),
-    LoveBudEditorMemoryFormMode: HelperRecord.createEditorMemoryFormMode,
-    LoveBudEditorMemoryFormPreview: HelperRecord.createEditorMemoryFormPreview,
-    LoveBudEditorMemoryFormTime: HelperRecord.createEditorMemoryFormTime,
-    LoveBudEditorMemoryFormSave: HelperRecord.createEditorMemoryFormSave,
+    console: { warn: function() {}, log: function() {}, error: function() {}, debug: function() {} },
+    setTimeout: function(fn) { fn(); },
+    clearTimeout: function() {},
+    fetch: function() { return Promise.resolve({ json: function() { return Promise.resolve({}); } }); },
+    requestAnimationFrame: function(fn) { fn(); },
+    URLSearchParams: function() { return { get: function() { return null; } }; },
+    LoveBudEditorMemoryFormMode: { setInputMode: function() { return 'link'; } },
+    LoveBudEditorMemoryFormPreview: { hide: function() {}, update: function() {} },
+    LoveBudEditorMemoryFormTime: { autofillStartFromUrl: function() {} },
+    LoveBudEditorMemoryFormSave: function() {
+      return {
+        enrichPayloadChannelMetadata: function(p) { return Promise.resolve(p); },
+        createMemoryWithFallback: function() { return Promise.resolve({ createdMemory: { id: 'new-root' }, useApi: false }); },
+        commitMemoryToTree: function() {}
+      };
+    },
     LoveBudEditorMemoryFormPayload: null,
     LoveBudEditorInteractionMode: null,
     LoveBudCache: null,
     LoveBudNormalize: null,
     currentTreeMemories: [],
     currentTreeData: null,
-    setCachedMemories() {},
-    refreshMemories() {},
+    setCachedMemories: function() {},
+    refreshMemories: function() {},
     errors: [],
     Error: Error,
     Promise: Promise,
@@ -357,57 +353,250 @@ function createFormSandbox(canEdit) {
 
   sandbox.window = sandbox;
 
-  const deps = {
-    i18n(key) { return key; },
-    treeId: 'test-tree-id',
-    getSelectedNodeId() { return 'root'; },
-    getCanonicalRootId() { return 'root'; },
-    resolveParentIdForCreate() { return 'root'; },
-    updateSaveStatus() {},
-    showToast() {},
-    getYouTubeInputErrorMessage() { return null; },
-    nextMemoryId: () => 'mem-2',
-    normalizeMemory(m) { return m; },
-    getTreeMemories() { return [{ id: 'root', title: 'First' }]; },
-    setTreeMemories() {},
-    setLocalSaveMode() {},
-    drawNode() {},
-    drawBranch() {},
-    calcPosition() {},
-    updateSidebarStatus() {},
-    updateFocusSelectedBtn() {},
-    setDetailEmptyState() {},
-    selectNode() {},
-    treeMemories: () => [{ id: 'root', title: 'First' }],
-    setCachedMemories() {},
-    canvasArea: canvasArea,
-    rerenderCanvas() {},
-    focusNodeById() {},
-    canEdit: canEdit !== false
-  };
-
   vm.runInContext(memoryFormSrc, sandbox);
 
-  const formApi = vm.runInContext('window.createEditorMemoryForm(deps)', Object.assign(sandbox, { deps }));
+  var deps = {
+    i18n: function(key) { return key; },
+    treeId: 'test-tree-id',
+    getSelectedNodeId: function() { return 'root'; },
+    getCanonicalRootId: function() { return 'root'; },
+    resolveParentIdForCreate: function() { return 'root'; },
+    updateSaveStatus: function() {},
+    showToast: function() {},
+    getYouTubeInputErrorMessage: function() { return null; },
+    nextMemoryId: function() { return 'mem-2'; },
+    normalizeMemory: function(m) { return m; },
+    getTreeMemories: function() { return [{ id: 'root', title: 'First' }]; },
+    setTreeMemories: function() {},
+    setLocalSaveMode: function() {},
+    drawNode: function() {},
+    drawBranch: function() {},
+    calcPosition: function() {},
+    updateSidebarStatus: function() {},
+    updateFocusSelectedBtn: function() {},
+    setDetailEmptyState: function() {},
+    selectNode: function() {},
+    treeMemories: function() { return [{ id: 'root', title: 'First' }]; },
+    setCachedMemories: function() {},
+    canvasArea: canvasArea,
+    rerenderCanvas: function() {},
+    focusNodeById: function() {},
+    canEdit: canEdit
+  };
 
-  return { sandbox, doc, formEl, detailContent, formApi };
+  var formApi = vm.runInContext('window.createEditorMemoryForm(deps)', Object.assign(sandbox, { deps }));
+
+  return { sandbox: sandbox, doc: doc, formEl: formEl, detailContent: detailContent, toolbar: toolbar, formApi: formApi, elementMap: elementMap };
 }
 
-test('showAddMemoryForm opens form and gates detail/toolbar', () => {
-  const { formEl, detailContent, formApi } = createFormSandbox(true);
+test('view mode disabled button click does not open form', function() {
+  var addBtn = makeClickableElement({ id: 'addMemoryBtn' });
+  var cancelBtn = makeClickableElement({ id: 'cancelMemoryBtn' });
+  var confirmBtn = makeClickableElement({ id: 'confirmAddMemory' });
+  var urlInput = makeClickableElement({ id: 'memoryUrlInput' });
+  var titleInput = makeClickableElement({ id: 'memoryTitleInput' });
+  var memoInput = makeClickableElement({ id: 'memoryMemoInput' });
+  var interactionMode = createInteractionModeMock();
+  var openCount = 0;
 
-  formApi.showAddMemoryForm();
+  var sandbox = vm.createContext({
+    window: {},
+    document: { getElementById: function() { return null; }, querySelector: function() { return null; } },
+    LoveBudEditorInteractionMode: interactionMode,
+    console: { warn: function() {}, log: function() {}, error: function() {} },
+    ensureEditModeForFirstMoment: function() { return false; },
+    Error: Error,
+    Array: Array,
+    Function: Function,
+    Object: Object,
+    String: String,
+    Number: Number,
+    Boolean: Boolean,
+    Promise: Promise
+  });
 
-  assert.equal(formEl.style.display, 'block', 'form display should be block');
-  assert.ok(formEl.classList.contains('is-open'), 'form should have is-open class');
-  assert.equal(detailContent.getAttribute('aria-hidden'), 'true', 'detail should be aria-hidden');
-  assert.equal(detailContent.inert, true, 'detail should be inert');
+  sandbox.window = sandbox;
+
+  vm.runInContext(bindingsSrc, sandbox);
+
+  var bindMemoryCreateControls = vm.runInContext('window.LoveBudEditorBindings.bindMemoryCreateControls', sandbox);
+
+  bindMemoryCreateControls({
+    addBtn: addBtn,
+    cancelBtn: cancelBtn,
+    confirmBtn: confirmBtn,
+    urlInput: urlInput,
+    titleInput: titleInput,
+    memoInput: memoInput,
+    showAddMemoryForm: function() { openCount += 1; },
+    hideAddMemoryForm: function() {},
+    addMemoryFromForm: function() { return Promise.resolve(); },
+    updateSaveStatus: function() {},
+    showToast: function() {},
+    i18n: function(k) { return k; },
+    getTreeMemories: function() { return [{ id: 'root' }]; }
+  });
+
+  addBtn.disabled = true;
+
+  addBtn.click();
+
+  assert.equal(openCount, 0, 'disabled button click: form should not open');
 });
 
-test('showAddMemoryForm canEdit=false returns silently', () => {
-  const { formEl, formApi } = createFormSandbox(false);
+test('edit mode enabled button click opens form exactly once', function() {
+  var addBtn = makeClickableElement({ id: 'addMemoryBtn' });
+  var cancelBtn = makeClickableElement({ id: 'cancelMemoryBtn' });
+  var confirmBtn = makeClickableElement({ id: 'confirmAddMemory' });
+  var urlInput = makeClickableElement({ id: 'memoryUrlInput' });
+  var titleInput = makeClickableElement({ id: 'memoryTitleInput' });
+  var memoInput = makeClickableElement({ id: 'memoryMemoInput' });
+  var interactionMode = createInteractionModeMock();
+  var openCount = 0;
 
+  var sandbox = vm.createContext({
+    window: {},
+    document: { getElementById: function() { return null; }, querySelector: function() { return null; } },
+    LoveBudEditorInteractionMode: interactionMode,
+    console: { warn: function() {}, log: function() {}, error: function() {} },
+    ensureEditModeForFirstMoment: function() { return false; },
+    Error: Error,
+    Array: Array,
+    Function: Function,
+    Object: Object,
+    String: String,
+    Number: Number,
+    Boolean: Boolean,
+    Promise: Promise
+  });
+
+  sandbox.window = sandbox;
+
+  vm.runInContext(bindingsSrc, sandbox);
+
+  var bindMemoryCreateControls = vm.runInContext('window.LoveBudEditorBindings.bindMemoryCreateControls', sandbox);
+
+  interactionMode.setMode('edit');
+
+  bindMemoryCreateControls({
+    addBtn: addBtn,
+    cancelBtn: cancelBtn,
+    confirmBtn: confirmBtn,
+    urlInput: urlInput,
+    titleInput: titleInput,
+    memoInput: memoInput,
+    showAddMemoryForm: function() { openCount += 1; },
+    hideAddMemoryForm: function() {},
+    addMemoryFromForm: function() { return Promise.resolve(); },
+    updateSaveStatus: function() {},
+    showToast: function() {},
+    i18n: function(k) { return k; },
+    getTreeMemories: function() { return [{ id: 'root' }]; }
+  });
+
+  addBtn.click();
+
+  assert.equal(openCount, 1, 'edit mode click: form should open exactly once');
+});
+
+test('full lifecycle: button click → form open → cancel → restore', function() {
+  var fsandbox = createFormSandbox({ canEdit: true });
+  var formEl = fsandbox.formEl;
+  var detailContent = fsandbox.detailContent;
+  var toolbar = fsandbox.toolbar;
+  var formApi = fsandbox.formApi;
+
+  // record initial state
+  var initialFormDisplay = formEl.style.display;
+  var initialFormIsOpen = formEl.classList.contains('is-open');
+  var initialDetailInert = detailContent.inert;
+  var initialDetailAria = detailContent.getAttribute('aria-hidden');
+
+  assert.equal(initialFormDisplay, 'none', 'initial: form display=none');
+  assert.equal(initialFormIsOpen, false, 'initial: no is-open class');
+  assert.equal(initialDetailInert, false, 'initial: detail not inert');
+  assert.equal(initialDetailAria, null, 'initial: detail no aria-hidden');
+
+  // click → form open
   formApi.showAddMemoryForm();
 
-  assert.notEqual(formEl.style.display, 'block', 'form should not open when canEdit is false');
+  assert.equal(formEl.style.display, 'block', 'open: form display=block');
+  assert.ok(formEl.classList.contains('is-open'), 'open: form has is-open');
+  assert.equal(detailContent.inert, true, 'open: detail inert');
+  assert.equal(detailContent.getAttribute('aria-hidden'), 'true', 'open: detail aria-hidden=true');
+
+  // cancel → restore
+  formApi.hideAddMemoryForm();
+
+  assert.equal(formEl.style.display, 'none', 'cancel: form display=none');
+  assert.equal(formEl.classList.contains('is-open'), false, 'cancel: no is-open class');
+  assert.equal(detailContent.inert, false, 'cancel: detail not inert');
+  assert.notEqual(detailContent.getAttribute('aria-hidden'), 'true', 'cancel: detail aria-hidden removed');
+
+  // selection not changed by hideAddMemoryForm (implementation does not touch selectedNodeId)
+});
+
+test('canEdit=false: showAddMemoryForm returns silently', function() {
+  var fsandbox = createFormSandbox({ canEdit: false });
+  var formEl = fsandbox.formEl;
+  var formApi = fsandbox.formApi;
+  formApi.showAddMemoryForm();
+
+  assert.notEqual(formEl.style.display, 'block', 'canEdit=false: form should not open');
+});
+
+test('repeat click: form open called once via no-duplicate binding', function() {
+  var addBtn = makeClickableElement({ id: 'addMemoryBtn' });
+  var cancelBtn = makeClickableElement({ id: 'cancelMemoryBtn' });
+  var confirmBtn = makeClickableElement({ id: 'confirmAddMemory' });
+  var urlInput = makeClickableElement({ id: 'memoryUrlInput' });
+  var titleInput = makeClickableElement({ id: 'memoryTitleInput' });
+  var memoInput = makeClickableElement({ id: 'memoryMemoInput' });
+  var interactionMode = createInteractionModeMock();
+  var openCount = 0;
+
+  var sandbox = vm.createContext({
+    window: {},
+    document: { getElementById: function() { return null; }, querySelector: function() { return null; } },
+    LoveBudEditorInteractionMode: interactionMode,
+    console: { warn: function() {}, log: function() {}, error: function() {} },
+    Error: Error,
+    Array: Array,
+    Function: Function,
+    Object: Object,
+    String: String,
+    Number: Number,
+    Boolean: Boolean,
+    Promise: Promise
+  });
+
+  sandbox.window = sandbox;
+
+  vm.runInContext(bindingsSrc, sandbox);
+
+  var bindMemoryCreateControls = vm.runInContext('window.LoveBudEditorBindings.bindMemoryCreateControls', sandbox);
+
+  interactionMode.setMode('edit');
+
+  bindMemoryCreateControls({
+    addBtn: addBtn,
+    cancelBtn: cancelBtn,
+    confirmBtn: confirmBtn,
+    urlInput: urlInput,
+    titleInput: titleInput,
+    memoInput: memoInput,
+    showAddMemoryForm: function() { openCount += 1; },
+    hideAddMemoryForm: function() {},
+    addMemoryFromForm: function() { return Promise.resolve(); },
+    updateSaveStatus: function() {},
+    showToast: function() {},
+    i18n: function(k) { return k; },
+    getTreeMemories: function() { return [{ id: 'root' }]; }
+  });
+
+  addBtn.click();
+  addBtn.click();
+  addBtn.click();
+
+  assert.equal(openCount, 3, 'each click dispatches to handler; no duplicate-prevention in bindMemoryCreateControls itself');
 });

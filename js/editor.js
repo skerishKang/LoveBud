@@ -830,9 +830,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         }
                         if (button) {
                             button.tabIndex = canAuthor ? 0 : -1;
-                            if (!canAuthor) {
-                                button.disabled = true;
-                            }
+                            button.disabled = !canAuthor;
                         }
                     }
 
