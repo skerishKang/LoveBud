@@ -325,7 +325,11 @@ async def post_private_tree(
 ) -> dict:
     user = require_firebase_user(authorization)
     payload = await parse_json_body(request)
-    return create_owner_tree(user["uid"], payload)
+    return create_owner_tree(
+        user["uid"],
+        payload,
+        owner_email=user.get("email") or "",
+    )
 
 
 @web_app.get("/modal/private/trees/{tree_id}")

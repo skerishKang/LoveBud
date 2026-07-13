@@ -26,6 +26,31 @@
     } catch (e) {}
   }
 
+  function resolveExpectedAuthUid() {
+    // Prefer live Firebase currentUser; fall back to confirmed session cache.
+    // When neither is available (normal bootstrap), return null so a session
+    // token may still be used without forcing logout.
+    try {
+      if (window.firebase && firebase.auth) {
+        const user = firebase.auth().currentUser;
+        if (user && user.uid) {
+          return String(user.uid);
+        }
+      }
+    } catch (e) {}
+    try {
+      if (localStorage.getItem(AUTH_CONFIRMED_KEY) === 'true') {
+        const raw = localStorage.getItem(AUTH_CACHE_KEY);
+        if (!raw || raw === 'null') return null;
+        const parsed = JSON.parse(raw);
+        if (parsed && parsed.uid) {
+          return String(parsed.uid);
+        }
+      }
+    } catch (e) {}
+    return null;
+  }
+
   function getCachedTokenRecord() {
     removeLegacyDurableTokenRecord();
     try {
@@ -38,6 +63,16 @@
       if (Date.now() >= Number(parsed.expiresAt) - 30000) {
         storage.removeItem(AUTH_TOKEN_KEY);
         return null;
+      }
+      // Reject cached tokens that belong to a different authenticated user
+      // (e.g. account switch with a stale session-scoped token).
+      const expectedUid = resolveExpectedAuthUid();
+      if (expectedUid) {
+        const tokenUid = parsed.uid ? String(parsed.uid) : '';
+        if (!tokenUid || tokenUid !== expectedUid) {
+          storage.removeItem(AUTH_TOKEN_KEY);
+          return null;
+        }
       }
       return parsed;
     } catch (e) {
