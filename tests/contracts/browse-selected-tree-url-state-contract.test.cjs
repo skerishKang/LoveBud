@@ -177,3 +177,355 @@ test('buildReadOnlyTreeUrl uses selected tree id (share contract)', () => {
     ''
   );
 });
+
+test('search-controls reconcilies selection on query/category change (renderResults true)', () => {
+  const controlsSrc = fs.readFileSync(path.join(ROOT, 'js/search/search-controls.js'), 'utf8');
+  assert.match(controlsSrc, /callbacks\.renderResults\(true\)/);
+  assert.equal(controlsSrc.includes('callbacks.renderResults(false)'), false);
+  assert.match(controlsSrc, /historyMode:\s*'replace'/);
+});
+
+test('index always clears filtered-out selection without first-card substitution', () => {
+  assert.match(indexSrc, /state\.selectedTreeId && !selectedTree/);
+  assert.match(indexSrc, /clearStaleSelection|historyMode:\s*'replace'/);
+  assert.match(indexSrc, /treePassesCurrentFilter|filterTrees\(\[tree\]/);
+});
+
+// ── Behavioral controller tests ─────────────────────────────────────────────
+
+function loadPreviewControllerHarness(initial) {
+  const historyCalls = [];
+  const location = {
+    pathname: '/pages/search.html',
+    search: initial.search || '',
+  };
+  function applyUrl(url) {
+    if (!url || !url.startsWith('/')) return;
+    const q = url.indexOf('?');
+    location.pathname = q >= 0 ? url.slice(0, q) : url;
+    location.search = q >= 0 ? url.slice(q) : '';
+  }
+  const history = {
+    pushState: (_s, _t, url) => {
+      historyCalls.push({ type: 'push', url });
+      applyUrl(url);
+    },
+    replaceState: (_s, _t, url) => {
+      historyCalls.push({ type: 'replace', url });
+      applyUrl(url);
+    }
+  };
+
+  const previewCalls = [];
+  const clearCalls = [];
+  const hydrateCalls = [];
+  const fetchCalls = [];
+
+  const state = {
+    allTrees: initial.allTrees || [],
+    growingTrees: initial.growingTrees || [],
+    selectedTreeId: initial.selectedTreeId || null,
+    currentQuery: initial.currentQuery || '',
+    currentCategory: initial.currentCategory || '전체',
+    initialTreeDeepLinkApplied: initial.initialTreeDeepLinkApplied || false,
+    pendingUnknownTreeDeepLink: initial.pendingUnknownTreeDeepLink || false,
+    urlStateReady: true,
+    isRestoringUrlState: false
+  };
+
+  const sandbox = {
+    URLSearchParams,
+    URL,
+    console,
+    history,
+    location,
+    window: null,
+    apiClient: {
+      getPublicTreePreview: async ({ id }) => {
+        fetchCalls.push(id);
+        if (initial.fetchTree && initial.fetchTree.id === id) return initial.fetchTree;
+        throw new Error('not found');
+      }
+    }
+  };
+  sandbox.window = sandbox;
+  sandbox.window.location = location;
+  sandbox.window.history = history;
+  sandbox.window.LoveBudSearchAdapter = {
+    filterTrees(trees, query, category) {
+      if (!Array.isArray(trees)) return [];
+      return trees.filter((t) => {
+        const qOk = !query || String(t.title || '').toLowerCase().includes(String(query).toLowerCase());
+        const cOk = !category || category === '전체' || category === '전체 경로' || t.stage === category;
+        return qOk && cOk;
+      });
+    }
+  };
+
+  // URL writer matching production semantics used by the controller.
+  sandbox.window.updateUrlState = function updateUrlState(options) {
+    const historyMode = options && options.historyMode ? options.historyMode : 'push';
+    if (historyMode === 'none') return;
+    if (state.isRestoringUrlState || !state.urlStateReady) return;
+    const params = new URLSearchParams(location.search);
+    if (state.selectedTreeId) params.set('tree', String(state.selectedTreeId));
+    else params.delete('tree');
+    const newSearch = params.toString();
+    const newUrl = newSearch ? `${location.pathname}?${newSearch}` : location.pathname;
+    const currentUrl = location.pathname + location.search;
+    if (newUrl === currentUrl) return;
+    if (historyMode === 'replace') history.replaceState(null, '', newUrl);
+    else history.pushState(null, '', newUrl);
+  };
+
+  vm.createContext(sandbox);
+  vm.runInContext(previewSrc, sandbox, { filename: 'search-preview-controller.js' });
+
+  const ui = {
+    markActiveCard() {},
+    isMobilePreviewMode() { return false; },
+    setMobilePreviewOpen() {},
+    clearSelectedPreview() {
+      clearCalls.push(true);
+      state.selectedTreeId = null;
+    }
+  };
+  const previewCacheApi = {
+    writePreviewCache() {},
+  };
+  const dataApi = {
+    hydrateSelectedTreePreview(tree) {
+      hydrateCalls.push(tree && tree.id);
+    }
+  };
+  const PreviewRenderer = {
+    updatePreview(tree) {
+      previewCalls.push(tree && tree.id);
+    }
+  };
+
+  const controller = sandbox.window.LoveBudSearchPreviewController.createSearchPreviewController({
+    refs: { resultsList: null, growingList: null },
+    state,
+    ui,
+    previewCacheApi,
+    dataApi,
+    PreviewRenderer
+  });
+
+  return {
+    controller,
+    state,
+    historyCalls,
+    clearCalls,
+    hydrateCalls,
+    fetchCalls,
+    previewCalls,
+    location
+  };
+}
+
+test('selection survives query filter when tree still matches', async () => {
+  const treeA = { id: 'a', title: 'alpha heart', stage: '입덕', memories: [{ id: 'm1' }] };
+  const treeB = { id: 'b', title: 'beta path', stage: '성장', memories: [{ id: 'm2' }] };
+  const h = loadPreviewControllerHarness({
+    allTrees: [treeA, treeB],
+    selectedTreeId: 'a',
+    currentQuery: 'alpha',
+    search: '?tree=a'
+  });
+  h.state.initialTreeDeepLinkApplied = false;
+  await h.controller.applySelectedTreeFromUrl({ historyMode: 'none' });
+  assert.equal(h.state.selectedTreeId, 'a');
+  assert.equal(h.clearCalls.length, 0);
+  assert.ok(h.previewCalls.includes('a') || h.hydrateCalls.includes('a') || h.state.selectedTreeId === 'a');
+});
+
+test('query filter excluding selected tree clears selection and tree query via replace', async () => {
+  const treeA = { id: 'a', title: 'alpha', stage: '입덕', memories: [{ id: 'm1' }] };
+  const treeB = { id: 'b', title: 'beta', stage: '성장', memories: [{ id: 'm2' }] };
+  const h = loadPreviewControllerHarness({
+    allTrees: [treeA, treeB],
+    selectedTreeId: 'a',
+    currentQuery: 'zzzz-no-match',
+    search: '?tree=a',
+    initialTreeDeepLinkApplied: false
+  });
+  // Simulate filter reconciliation: tree is loaded but fails filter.
+  await h.controller.applySelectedTreeFromUrl({ force: true, historyMode: 'none' });
+  assert.equal(h.state.selectedTreeId, null);
+  assert.ok(h.clearCalls.length >= 1);
+  assert.equal(h.historyCalls.some((c) => c.type === 'push'), false, 'must not push');
+  assert.ok(h.historyCalls.some((c) => c.type === 'replace'), 'must replace to drop tree');
+  assert.equal(/tree=/.test(h.location.search), false);
+  assert.equal(h.state.pendingUnknownTreeDeepLink, false);
+});
+
+test('category filter excluding selected tree clears selection', async () => {
+  const treeA = { id: 'a', title: 'alpha', stage: '입덕', memories: [{ id: 'm1' }] };
+  const h = loadPreviewControllerHarness({
+    allTrees: [treeA],
+    selectedTreeId: 'a',
+    currentCategory: '성장',
+    search: '?tree=a',
+    initialTreeDeepLinkApplied: false
+  });
+  await h.controller.applySelectedTreeFromUrl({ force: true, historyMode: 'none' });
+  assert.equal(h.state.selectedTreeId, null);
+  assert.equal(/tree=/.test(h.location.search), false);
+  assert.equal(h.historyCalls.some((c) => c.type === 'push'), false);
+});
+
+test('loaded but filtered-out URL tree is not selected and not replaced by first card', async () => {
+  const treeA = { id: 'a', title: 'alpha', stage: '입덕', memories: [{ id: 'm1' }] };
+  const treeB = { id: 'b', title: 'beta', stage: '성장', memories: [{ id: 'm2' }] };
+  const h = loadPreviewControllerHarness({
+    allTrees: [treeA, treeB],
+    currentQuery: 'beta',
+    search: '?tree=a',
+    initialTreeDeepLinkApplied: false
+  });
+  await h.controller.applySelectedTreeFromUrl({ historyMode: 'none' });
+  assert.equal(h.state.selectedTreeId, null);
+  assert.equal(h.state.selectedTreeId === 'b', false, 'must not substitute first/other card');
+  assert.equal(h.fetchCalls.length, 0, 'must not fetch when tree is already loaded');
+});
+
+test('no-filter unloaded deep link may fetch preview', async () => {
+  const fetched = { id: 'far', title: 'far tree', stage: '입덕', memories: [{ id: 'm9' }] };
+  const h = loadPreviewControllerHarness({
+    allTrees: [],
+    currentQuery: '',
+    currentCategory: '전체',
+    search: '?tree=far',
+    fetchTree: fetched,
+    initialTreeDeepLinkApplied: false
+  });
+  await h.controller.applySelectedTreeFromUrl({ historyMode: 'none' });
+  assert.deepEqual(h.fetchCalls, ['far']);
+  assert.equal(h.state.selectedTreeId, 'far');
+  assert.equal(h.state.pendingUnknownTreeDeepLink, false);
+});
+
+test('active filter blocks unloaded deep-link fetch bypass', async () => {
+  const fetched = { id: 'far', title: 'far tree', stage: '입덕', memories: [{ id: 'm9' }] };
+  const h = loadPreviewControllerHarness({
+    allTrees: [],
+    currentQuery: 'something',
+    currentCategory: '전체',
+    search: '?tree=far',
+    fetchTree: fetched,
+    initialTreeDeepLinkApplied: false
+  });
+  await h.controller.applySelectedTreeFromUrl({ historyMode: 'none' });
+  assert.equal(h.fetchCalls.length, 0, 'must not fetch when client filter is active');
+  assert.equal(h.state.selectedTreeId, null);
+  assert.equal(h.state.pendingUnknownTreeDeepLink, true);
+});
+
+test('fetched tree that fails post-fetch filter recheck is not selected', async () => {
+  const fetched = { id: 'far', title: 'zzz', stage: '입덕', memories: [{ id: 'm9' }] };
+  const location = { pathname: '/pages/search.html', search: '?tree=far' };
+  function applyUrl(url) {
+    const q = url.indexOf('?');
+    location.pathname = q >= 0 ? url.slice(0, q) : url;
+    location.search = q >= 0 ? url.slice(q) : '';
+  }
+  const historyCalls = [];
+  const history = {
+    pushState: (_s, _t, url) => { historyCalls.push({ type: 'push' }); applyUrl(url); },
+    replaceState: (_s, _t, url) => { historyCalls.push({ type: 'replace' }); applyUrl(url); }
+  };
+  const state = {
+    allTrees: [],
+    growingTrees: [],
+    selectedTreeId: null,
+    currentQuery: '',
+    currentCategory: '전체',
+    initialTreeDeepLinkApplied: false,
+    pendingUnknownTreeDeepLink: false,
+    urlStateReady: true,
+    isRestoringUrlState: false
+  };
+  const sandbox = {
+    URLSearchParams,
+    URL,
+    console,
+    history,
+    location,
+    apiClient: { getPublicTreePreview: async () => fetched },
+    // No active client filter (전체 + empty query) so fetch is allowed, but post-fetch recheck fails.
+    LoveBudSearchAdapter: { filterTrees: () => [] }
+  };
+  sandbox.window = sandbox;
+  sandbox.window.updateUrlState = (options) => {
+    const mode = options && options.historyMode ? options.historyMode : 'push';
+    if (mode === 'none') return;
+    const params = new URLSearchParams(location.search);
+    if (state.selectedTreeId) params.set('tree', String(state.selectedTreeId));
+    else params.delete('tree');
+    const newSearch = params.toString();
+    const newUrl = newSearch ? `${location.pathname}?${newSearch}` : location.pathname;
+    if (newUrl === location.pathname + location.search) return;
+    if (mode === 'replace') history.replaceState(null, '', newUrl);
+    else history.pushState(null, '', newUrl);
+  };
+  vm.createContext(sandbox);
+  vm.runInContext(previewSrc, sandbox, { filename: 'search-preview-controller.js' });
+  const controller = sandbox.window.LoveBudSearchPreviewController.createSearchPreviewController({
+    refs: { resultsList: null },
+    state,
+    ui: {
+      markActiveCard() {},
+      isMobilePreviewMode() { return false; },
+      setMobilePreviewOpen() {},
+      clearSelectedPreview() { state.selectedTreeId = null; }
+    },
+    previewCacheApi: { writePreviewCache() {} },
+    dataApi: { hydrateSelectedTreePreview() {} },
+    PreviewRenderer: { updatePreview() {} }
+  });
+  await controller.applySelectedTreeFromUrl({ historyMode: 'none' });
+  assert.equal(state.selectedTreeId, null, 'post-fetch filter failure must not select');
+  assert.equal(state.pendingUnknownTreeDeepLink, true);
+  assert.equal(historyCalls.some((c) => c.type === 'push'), false);
+});
+
+test('popstate filtered-out tree is not selected and does not push', async () => {
+  const treeA = { id: 'a', title: 'alpha', stage: '입덕', memories: [{ id: 'm1' }] };
+  const h = loadPreviewControllerHarness({
+    allTrees: [treeA],
+    currentQuery: 'zzz',
+    search: '?tree=a',
+    selectedTreeId: 'a',
+    initialTreeDeepLinkApplied: true
+  });
+  await h.controller.applySelectedTreeFromUrl({ force: true, historyMode: 'none' });
+  assert.equal(h.state.selectedTreeId, null);
+  assert.equal(h.historyCalls.some((c) => c.type === 'push'), false);
+  assert.ok(h.historyCalls.every((c) => c.type === 'replace' || c.type === 'push'));
+  assert.equal(h.historyCalls.filter((c) => c.type === 'push').length, 0);
+});
+
+test('valid card selection clears pendingUnknownTreeDeepLink', () => {
+  const treeA = { id: 'a', title: 'alpha', stage: '입덕', memories: [{ id: 'm1' }] };
+  const h = loadPreviewControllerHarness({
+    allTrees: [treeA],
+    pendingUnknownTreeDeepLink: true,
+    search: ''
+  });
+  h.controller.selectTree(treeA, null, { historyMode: 'push' });
+  assert.equal(h.state.pendingUnknownTreeDeepLink, false);
+  assert.equal(h.state.selectedTreeId, 'a');
+});
+
+test('missing tree query clears pendingUnknownTreeDeepLink', async () => {
+  const h = loadPreviewControllerHarness({
+    allTrees: [],
+    search: '',
+    pendingUnknownTreeDeepLink: true,
+    initialTreeDeepLinkApplied: false
+  });
+  await h.controller.applySelectedTreeFromUrl({ historyMode: 'none' });
+  assert.equal(h.state.pendingUnknownTreeDeepLink, false);
+});

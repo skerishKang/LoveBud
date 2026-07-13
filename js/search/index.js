@@ -139,12 +139,33 @@ document.addEventListener('DOMContentLoaded', async () => {
             return refs.resultsList ? refs.resultsList.querySelector(selector) : null;
         };
 
+        const treePassesCurrentFilter = (tree) => {
+            if (!tree) return false;
+            const matched = Adapter.filterTrees([tree], state.currentQuery, state.currentCategory);
+            return Array.isArray(matched) && matched.length > 0;
+        };
+
+        const hasActiveClientFilter = () => {
+            const query = String(state.currentQuery || '').trim();
+            const category = state.currentCategory || '전체';
+            return query !== '' || (category !== '전체' && category !== '전체 경로');
+        };
+
+        const clearSelectionAndTreeQuery = () => {
+            ui.clearSelectedPreview();
+            state.pendingUnknownTreeDeepLink = false;
+            if (typeof window.updateUrlState === 'function') {
+                window.updateUrlState({ historyMode: 'replace' });
+            }
+        };
+
         const selectTree = (tree, activeCard, options = {}) => {
             if (!tree) return;
             const openMobilePreview = options.openMobilePreview !== false;
             const historyMode = options.historyMode || 'push';
             const previousId = state.selectedTreeId;
             state.selectedTreeId = tree.id;
+            state.pendingUnknownTreeDeepLink = false;
             ui.markActiveCard(activeCard);
 
             if (openMobilePreview && ui.isMobilePreviewMode()) {
@@ -177,15 +198,39 @@ document.addEventListener('DOMContentLoaded', async () => {
             const treeId = readSelectedTreeFromUrl();
             if (!treeId) {
                 state.initialTreeDeepLinkApplied = true;
+                state.pendingUnknownTreeDeepLink = false;
                 if (force && state.selectedTreeId) ui.clearSelectedPreview();
                 return;
             }
 
-            const targetTree = state.allTrees.find(t => t.id === treeId);
+            let targetTree = state.allTrees.find(t => t.id === treeId) || null;
+            if (targetTree) {
+                if (!treePassesCurrentFilter(targetTree)) {
+                    state.initialTreeDeepLinkApplied = true;
+                    clearSelectionAndTreeQuery();
+                    return;
+                }
+            } else {
+                const allowFetch = !force && !hasActiveClientFilter();
+                if (allowFetch && window.apiClient && window.apiClient.getPublicTreePreview) {
+                    try {
+                        targetTree = await window.apiClient.getPublicTreePreview({ id: treeId });
+                    } catch (error) {
+                        targetTree = null;
+                    }
+                    if (targetTree && !treePassesCurrentFilter(targetTree)) {
+                        targetTree = null;
+                    }
+                }
+            }
+
             if (!targetTree) {
                 state.initialTreeDeepLinkApplied = true;
+                ui.clearSelectedPreview();
+                if (typeof window.updateUrlState === 'function') {
+                    window.updateUrlState({ historyMode: 'replace' });
+                }
                 state.pendingUnknownTreeDeepLink = true;
-                if (force && state.selectedTreeId) ui.clearSelectedPreview();
                 return;
             }
 
@@ -201,7 +246,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             getSelectedTreeFromFiltered,
             readSelectedTreeFromUrl,
             selectTree,
-            applySelectedTreeFromUrl
+            applySelectedTreeFromUrl,
+            treePassesCurrentFilter,
+            hasActiveClientFilter,
+            clearSelectionAndTreeQuery
         };
     };
 
@@ -223,6 +271,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     function renderResults(resetPreviewWhenNoSelection = true) {
         const filtered = getFilteredTrees();
 
+        const clearStaleSelection = () => {
+            ui.clearSelectedPreview();
+            state.pendingUnknownTreeDeepLink = false;
+            if (typeof urlState.updateUrlState === 'function') {
+                urlState.updateUrlState({ historyMode: 'replace' });
+            }
+        };
+
         if (filtered.length === 0) {
             const hasNoData = state.loadError === null && state.allTrees.length === 0;
             const isApiFailure = state.loadError !== null && !state.isFromCache && state.allTrees.length === 0;
@@ -231,10 +287,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                 ui.renderLoadErrorState();
             } else if (hasNoData) {
                 refs.resultsList.innerHTML = CardRenderer.renderNoTreesState();
-                ui.clearSelectedPreview();
             } else {
                 refs.resultsList.innerHTML = CardRenderer.renderEmptySearchState();
-                ui.clearSelectedPreview();
+            }
+            // Empty filtered set: never keep a stale selection/preview/tree query.
+            if (state.selectedTreeId || resetPreviewWhenNoSelection) {
+                clearStaleSelection();
             }
             return;
         }
@@ -247,6 +305,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         ui.syncActiveCard();
 
         const selectedTree = previewController.getSelectedTreeFromFiltered(filtered);
+
+        // Always drop selection that no longer appears in the current filtered set.
+        // Do not substitute the first card.
+        if (state.selectedTreeId && !selectedTree) {
+            clearStaleSelection();
+        }
 
         // Do not auto-select the first card while a deep-link tree is pending
         // or when an unknown deep-link ID was already resolved as unselected.
@@ -277,10 +341,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         if (!state.selectedTreeId && resetPreviewWhenNoSelection) {
-            ui.clearSelectedPreview();
-            if (typeof urlState.updateUrlState === 'function') {
-                urlState.updateUrlState({ historyMode: 'replace' });
-            }
+            clearStaleSelection();
             return;
         }
 
@@ -288,12 +349,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             previewCacheApi.writePreviewCache(selectedTree.id, selectedTree);
             PreviewRenderer.updatePreview(selectedTree);
             ui.syncPreviewVisibility();
-        } else if (!selectedTree && resetPreviewWhenNoSelection) {
-            // Selected tree dropped out of current filter results.
-            ui.clearSelectedPreview();
-            if (typeof urlState.updateUrlState === 'function') {
-                urlState.updateUrlState({ historyMode: 'replace' });
-            }
         }
     }
 
