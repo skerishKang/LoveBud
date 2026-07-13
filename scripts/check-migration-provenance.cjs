@@ -1,7 +1,7 @@
 const path = require('node:path');
 
 const {
-  evaluateProvenance,
+  evaluateProvenanceWithSource,
   loadJson,
   validateSourceConfiguration
 } = require('./migration-provenance-core.cjs');
@@ -17,7 +17,12 @@ function parseArguments(argv) {
     const argument = argv[index];
     if (!argument.startsWith('--')) continue;
     const next = argv[index + 1];
-    argumentsByName.set(argument, next && !next.startsWith('--') ? next : true);
+    if (!next || next.startsWith('--')) {
+      argumentsByName.set(argument, null);
+    } else {
+      argumentsByName.set(argument, next);
+      index += 1;
+    }
   }
   return argumentsByName;
 }
@@ -26,45 +31,109 @@ function report(result) {
   process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
 }
 
-function main() {
-  const argumentsByName = parseArguments(process.argv.slice(2));
-  const inventory = loadJson(INVENTORY_PATH);
-  const migrationManifest = loadJson(MIGRATION_MANIFEST_PATH);
-  const expectedSchemaManifest = loadJson(EXPECTED_SCHEMA_PATH);
-  const sourceResult = validateSourceConfiguration({
-    repoRoot: REPO_ROOT,
-    inventory,
-    migrationManifest,
-    expectedSchemaManifest
+function failClosed(mode, blockers, extra = {}) {
+  report({
+    mode,
+    decision: 'FAIL_CLOSED',
+    blockers: [...new Set(blockers)].sort(),
+    ...extra
   });
+  process.exitCode = 1;
+}
 
-  if (argumentsByName.has('--source-only')) {
-    report({ mode: 'SOURCE_ONLY', decision: sourceResult.ok ? 'PASS' : 'FAIL_CLOSED', ...sourceResult });
-    process.exitCode = sourceResult.ok ? 0 : 1;
-    return;
+function loadEvidence(label, relativeOrAbsolute) {
+  try {
+    const resolved = path.isAbsolute(relativeOrAbsolute)
+      ? relativeOrAbsolute
+      : path.resolve(REPO_ROOT, relativeOrAbsolute);
+    return { ok: true, value: loadJson(resolved) };
+  } catch (error) {
+    if (error && error.name === 'SyntaxError') {
+      return { ok: false, blockers: [`GATE_EVIDENCE_JSON_INVALID:${label}`] };
+    }
+    return { ok: false, blockers: [`GATE_EVIDENCE_READ_FAILED:${label}`] };
   }
+}
 
-  const ledgerPath = argumentsByName.get('--ledger-evidence');
-  const catalogPath = argumentsByName.get('--catalog-evidence');
-  if (!ledgerPath || !catalogPath) {
+function main() {
+  try {
+    const argumentsByName = parseArguments(process.argv.slice(2));
+
+    // Fail closed when a flag is present without a value.
+    for (const [flag, value] of argumentsByName.entries()) {
+      if (flag !== '--source-only' && value === null) {
+        failClosed('PROVENANCE_GATE', ['GATE_EVIDENCE_ARGUMENTS_REQUIRED']);
+        return;
+      }
+    }
+
+    let inventory;
+    let migrationManifest;
+    let expectedSchemaManifest;
+    try {
+      inventory = loadJson(INVENTORY_PATH);
+      migrationManifest = loadJson(MIGRATION_MANIFEST_PATH);
+      expectedSchemaManifest = loadJson(EXPECTED_SCHEMA_PATH);
+    } catch (error) {
+      failClosed('SOURCE_ONLY', ['GATE_SOURCE_CONFIGURATION_INVALID']);
+      return;
+    }
+
+    const sourceResult = validateSourceConfiguration({
+      repoRoot: REPO_ROOT,
+      inventory,
+      migrationManifest,
+      expectedSchemaManifest
+    });
+
+    if (argumentsByName.has('--source-only')) {
+      report({
+        mode: 'SOURCE_ONLY',
+        decision: sourceResult.ok ? 'PASS' : 'FAIL_CLOSED',
+        ...sourceResult
+      });
+      process.exitCode = sourceResult.ok ? 0 : 1;
+      return;
+    }
+
+    const ledgerPath = argumentsByName.get('--ledger-evidence');
+    const catalogPath = argumentsByName.get('--catalog-evidence');
+    if (!ledgerPath || !catalogPath) {
+      failClosed('PROVENANCE_GATE', ['GATE_EVIDENCE_ARGUMENTS_REQUIRED'], {
+        source: sourceResult.summary
+      });
+      return;
+    }
+
+    const ledgerLoad = loadEvidence('ledger', ledgerPath);
+    const catalogLoad = loadEvidence('catalog', catalogPath);
+    if (!ledgerLoad.ok || !catalogLoad.ok) {
+      const blockers = [
+        ...(ledgerLoad.ok ? [] : ledgerLoad.blockers),
+        ...(catalogLoad.ok ? [] : catalogLoad.blockers)
+      ];
+      if (!sourceResult.ok) blockers.push('GATE_SOURCE_CONFIGURATION_INVALID');
+      failClosed('PROVENANCE_GATE', blockers, { source: sourceResult.summary });
+      return;
+    }
+
+    const gateResult = evaluateProvenanceWithSource({
+      sourceResult,
+      migrationManifest,
+      expectedSchemaManifest,
+      ledgerEvidence: ledgerLoad.value,
+      catalogEvidence: catalogLoad.value
+    });
+
     report({
       mode: 'PROVENANCE_GATE',
-      decision: 'FAIL_CLOSED',
-      blockers: ['GATE_EVIDENCE_ARGUMENTS_REQUIRED'],
-      source: sourceResult.summary
+      source: sourceResult.summary,
+      ...gateResult
     });
-    process.exitCode = 1;
-    return;
+    process.exitCode = gateResult.decision === 'PASS' ? 0 : 1;
+  } catch (error) {
+    failClosed('PROVENANCE_GATE', ['GATE_EVIDENCE_READ_FAILED']);
   }
-
-  const gateResult = evaluateProvenance({
-    migrationManifest,
-    expectedSchemaManifest,
-    ledgerEvidence: loadJson(path.resolve(REPO_ROOT, ledgerPath)),
-    catalogEvidence: loadJson(path.resolve(REPO_ROOT, catalogPath))
-  });
-  report({ mode: 'PROVENANCE_GATE', source: sourceResult.summary, ...gateResult });
-  process.exitCode = sourceResult.ok && gateResult.decision === 'PASS' ? 0 : 1;
 }
 
 main();

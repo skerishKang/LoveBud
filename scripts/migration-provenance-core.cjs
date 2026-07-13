@@ -54,9 +54,10 @@ const SHA256_PATTERN = /^sha256:[a-f0-9]{64}$/;
 const SCHEMA_DDL_PATTERN = /\b(?:CREATE|ALTER|DROP|TRUNCATE)\s+(?:TABLE|INDEX|TYPE|SCHEMA|VIEW|MATERIALIZED\s+VIEW|FUNCTION|TRIGGER|POLICY|ROLE)\b/i;
 const DESTRUCTIVE_SQL_PATTERN = /\b(?:DROP\s+(?:TABLE|INDEX|COLUMN|CONSTRAINT|FUNCTION|TRIGGER|TYPE)|TRUNCATE\b|ALTER\s+TABLE[\s\S]{0,120}?\bDROP\s+COLUMN|ALTER\s+TABLE[\s\S]{0,120}?\bSET\s+NOT\s+NULL)\b/i;
 const SENSITIVE_MARKER_PATTERN = /(?:postgres(?:ql)?:\/\/|(?:api[_-]?key|token|secret|password)\s*[:=]|-----BEGIN(?: [A-Z]+)? PRIVATE KEY-----)/i;
+const DOC_OPERATOR_PATTERN = /\b(?:ON_ERROR_STOP|migration-[\w.-]+\.sql|-f\s+scripts\/|pg_dump[\s\S]{0,160}--(?:schema-only|table=)|BEGIN\s+TRANSACTION|psql\s+["'$]|pg_dump\s+["'$])/i;
 
 function normalizePath(filePath) {
-  return filePath.split(path.sep).join('/');
+  return String(filePath || '').split(path.sep).join('/').replace(/^\.?\//, '');
 }
 
 function sha256(value) {
@@ -91,6 +92,7 @@ function walkFiles(directory) {
   if (!fs.existsSync(directory)) return [];
   const files = [];
   for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+    if (entry.name === 'node_modules' || entry.name === '.git') continue;
     const entryPath = path.join(directory, entry.name);
     if (entry.isDirectory()) files.push(...walkFiles(entryPath));
     if (entry.isFile()) files.push(entryPath);
@@ -100,28 +102,36 @@ function walkFiles(directory) {
 
 function discoverRepositoryPaths(repoRoot) {
   const scriptsDirectory = path.join(repoRoot, 'scripts');
-  const scriptPaths = fs.existsSync(scriptsDirectory)
-    ? fs.readdirSync(scriptsDirectory, { withFileTypes: true })
-      .filter((entry) => entry.isFile())
-      .filter((entry) => {
-        if (/\.sql$/i.test(entry.name)) return true;
-        return /^(?:inspect-schema|verify-db|seed-)/i.test(entry.name);
-      })
-      .map((entry) => normalizePath(path.relative(repoRoot, path.join(scriptsDirectory, entry.name))))
-    : [];
+  const scriptPaths = walkFiles(scriptsDirectory)
+    .filter((filePath) => {
+      const base = path.basename(filePath);
+      if (/\.sql$/i.test(base)) return true;
+      return /^(?:inspect-schema|verify-db|seed-)/i.test(base);
+    })
+    .map((filePath) => normalizePath(path.relative(repoRoot, filePath)));
 
   const documentationRoots = [
     path.join(repoRoot, 'docs', 'migration'),
     path.join(repoRoot, 'docs', 'ops'),
     path.join(repoRoot, 'docs', 'product')
   ];
-  const documentationPaths = documentationRoots.flatMap((directory) => walkFiles(directory))
+  const documentationPaths = documentationRoots
+    .flatMap((directory) => walkFiles(directory))
     .filter((filePath) => /\.md$/i.test(filePath))
-    .filter((filePath) => /\bpsql\b/i.test(fs.readFileSync(filePath, 'utf8')))
+    .filter((filePath) => {
+      // Exclude provenance design docs from self-classification as operator paths.
+      const relative = normalizePath(path.relative(repoRoot, filePath));
+      if (relative.startsWith('docs/architecture/')) return false;
+      if (/DB_MIGRATION_PROVENANCE/i.test(relative)) return false;
+      const content = fs.readFileSync(filePath, 'utf8');
+      if (!/\b(?:psql|pg_dump)\b/i.test(content)) return false;
+      return DOC_OPERATOR_PATTERN.test(content);
+    })
     .map((filePath) => normalizePath(path.relative(repoRoot, filePath)));
 
   const runtimeRoots = [path.join(repoRoot, 'modal_compute'), path.join(repoRoot, 'functions')];
-  const runtimeDdlPaths = runtimeRoots.flatMap((directory) => walkFiles(directory))
+  const runtimeDdlPaths = runtimeRoots
+    .flatMap((directory) => walkFiles(directory))
     .filter((filePath) => /\.(?:py|js|cjs|mjs)$/i.test(filePath))
     .filter((filePath) => SCHEMA_DDL_PATTERN.test(fs.readFileSync(filePath, 'utf8')))
     .map((filePath) => normalizePath(path.relative(repoRoot, filePath)));
@@ -191,6 +201,10 @@ function validateInventory(inventory, repoRoot) {
   return { ok: errors.length === 0, errors, discoveredPaths };
 }
 
+function isNonEmptyString(value) {
+  return typeof value === 'string' && value.trim().length > 0;
+}
+
 function validateMigrationManifest(manifest, repoRoot) {
   const errors = [];
   if (!manifest || !Array.isArray(manifest.migrations)) {
@@ -228,53 +242,124 @@ function validateMigrationManifest(manifest, repoRoot) {
   }
 
   const migrationIds = new Set();
-  for (const migration of manifest.migrations) {
+  const migrations = Array.isArray(manifest.migrations) ? manifest.migrations : [];
+  migrations.forEach((migration, migrationIndex) => {
+    const migrationId = migration && migration.id ? migration.id : `<index:${migrationIndex}>`;
     for (const field of REQUIRED_MIGRATION_FIELDS) {
-      if (migration[field] === undefined || migration[field] === null) {
-        errors.push(`MIGRATION_FIELD_MISSING:${migration.id || '<unknown>'}:${field}`);
+      if (!migration || migration[field] === undefined || migration[field] === null) {
+        errors.push(`MIGRATION_FIELD_MISSING:${migrationId}:${field}`);
       }
     }
-    if (!MIGRATION_ID_PATTERN.test(migration.id || '')) {
-      errors.push(`MIGRATION_ID_INVALID:${migration.id || '<unknown>'}`);
+    if (!MIGRATION_ID_PATTERN.test((migration && migration.id) || '')) {
+      errors.push(`MIGRATION_ID_INVALID:${migrationId}`);
     }
-    if (migrationIds.has(migration.id)) {
+    if (migration && migrationIds.has(migration.id)) {
       errors.push(`MIGRATION_ID_DUPLICATE:${migration.id}`);
     }
-    migrationIds.add(migration.id);
-    if (!SHA256_PATTERN.test(migration.checksum || '')) {
-      errors.push(`MIGRATION_CHECKSUM_INVALID:${migration.id || '<unknown>'}`);
+    if (migration && migration.id) migrationIds.add(migration.id);
+
+    if (!isNonEmptyString(migration && migration.name)) {
+      errors.push(`MIGRATION_NAME_INVALID:${migrationId}`);
     }
-    if (!Array.isArray(migration.depends_on) || !Array.isArray(migration.destructive_operations)) {
-      errors.push(`MIGRATION_ARRAY_FIELD_INVALID:${migration.id || '<unknown>'}`);
+    if (!isNonEmptyString(migration && migration.owner_domain)) {
+      errors.push(`MIGRATION_OWNER_DOMAIN_INVALID:${migrationId}`);
     }
-    if (!['ADDITIVE', 'COMPATIBILITY', 'DESTRUCTIVE', 'ADOPTION'].includes(migration.risk_class)) {
-      errors.push(`MIGRATION_RISK_CLASS_INVALID:${migration.id || '<unknown>'}`);
+    if (!isNonEmptyString(migration && migration.path)) {
+      errors.push(`MIGRATION_PATH_INVALID:${migrationId}`);
     }
-    if (!['REQUIRED', 'PROHIBITED', 'EXPLICIT'].includes(migration.transaction_mode)) {
-      errors.push(`MIGRATION_TRANSACTION_MODE_INVALID:${migration.id || '<unknown>'}`);
+    if (!SHA256_PATTERN.test((migration && migration.checksum) || '')) {
+      errors.push(`MIGRATION_CHECKSUM_INVALID:${migrationId}`);
     }
-    if (migration.destructive_operations.length > 0 && (!migration.approval_reference || migration.risk_class !== 'DESTRUCTIVE')) {
-      errors.push(`MIGRATION_DESTRUCTIVE_APPROVAL_MISSING:${migration.id || '<unknown>'}`);
+
+    const dependsOnIsArray = Array.isArray(migration && migration.depends_on);
+    const destructiveIsArray = Array.isArray(migration && migration.destructive_operations);
+    const preconditionsIsArray = Array.isArray(migration && migration.expected_preconditions);
+    const postconditionsIsArray = Array.isArray(migration && migration.expected_postconditions);
+
+    if (!dependsOnIsArray) {
+      errors.push(`MIGRATION_DEPENDS_ON_TYPE_INVALID:${migrationId}`);
     }
+    if (!destructiveIsArray) {
+      errors.push(`MIGRATION_DESTRUCTIVE_OPERATIONS_TYPE_INVALID:${migrationId}`);
+    }
+    if (!preconditionsIsArray) {
+      errors.push(`MIGRATION_PRECONDITIONS_TYPE_INVALID:${migrationId}`);
+    }
+    if (!postconditionsIsArray) {
+      errors.push(`MIGRATION_POSTCONDITIONS_TYPE_INVALID:${migrationId}`);
+    }
+    if (!dependsOnIsArray || !destructiveIsArray) {
+      errors.push(`MIGRATION_ARRAY_FIELD_INVALID:${migrationId}`);
+    }
+
+    const dependsOn = dependsOnIsArray ? migration.depends_on : [];
+    const destructiveOperations = destructiveIsArray ? migration.destructive_operations : [];
+
+    if (!['ADDITIVE', 'COMPATIBILITY', 'DESTRUCTIVE', 'ADOPTION'].includes(migration && migration.risk_class)) {
+      errors.push(`MIGRATION_RISK_CLASS_INVALID:${migrationId}`);
+    }
+    if (!['REQUIRED', 'PROHIBITED', 'EXPLICIT'].includes(migration && migration.transaction_mode)) {
+      errors.push(`MIGRATION_TRANSACTION_MODE_INVALID:${migrationId}`);
+    }
+    if (destructiveOperations.length > 0) {
+      if (!isNonEmptyString(migration && migration.approval_reference) || migration.risk_class !== 'DESTRUCTIVE') {
+        errors.push(`MIGRATION_DESTRUCTIVE_APPROVAL_MISSING:${migrationId}`);
+      }
+    }
+
+    // Dependency graph validation (for ACTIVE/manifest with entries).
+    const seenDeps = new Set();
+    for (const dependency of dependsOn) {
+      if (!isNonEmptyString(dependency)) {
+        errors.push(`MIGRATION_DEPENDENCY_INVALID:${migrationId}`);
+        continue;
+      }
+      if (dependency === migration.id) {
+        errors.push(`MIGRATION_DEPENDENCY_SELF:${migrationId}`);
+      }
+      if (seenDeps.has(dependency)) {
+        errors.push(`MIGRATION_DEPENDENCY_DUPLICATE:${migrationId}:${dependency}`);
+      }
+      seenDeps.add(dependency);
+    }
+
     try {
-      const sourcePath = resolveRepositoryPath(repoRoot, migration.path);
-      if (!fs.existsSync(sourcePath)) {
-        errors.push(`MIGRATION_SOURCE_MISSING:${migration.path}`);
-      } else {
-        const source = fs.readFileSync(sourcePath, 'utf8');
-        if (sha256(source) !== migration.checksum) {
-          errors.push(`MIGRATION_SOURCE_CHECKSUM_MISMATCH:${migration.id}`);
-        }
-        if (DESTRUCTIVE_SQL_PATTERN.test(source) && migration.destructive_operations.length === 0) {
-          errors.push(`MIGRATION_DESTRUCTIVE_OPERATION_UNDECLARED:${migration.id}`);
+      if (isNonEmptyString(migration && migration.path)) {
+        const sourcePath = resolveRepositoryPath(repoRoot, migration.path);
+        if (!fs.existsSync(sourcePath)) {
+          errors.push(`MIGRATION_SOURCE_MISSING:${migration.path}`);
+        } else {
+          const source = fs.readFileSync(sourcePath, 'utf8');
+          if (SHA256_PATTERN.test(migration.checksum || '') && sha256(source) !== migration.checksum) {
+            errors.push(`MIGRATION_SOURCE_CHECKSUM_MISMATCH:${migrationId}`);
+          }
+          if (DESTRUCTIVE_SQL_PATTERN.test(source) && destructiveOperations.length === 0) {
+            errors.push(`MIGRATION_DESTRUCTIVE_OPERATION_UNDECLARED:${migrationId}`);
+          }
         }
       }
     } catch (error) {
-      errors.push(`MIGRATION_SOURCE_UNSAFE:${migration.path || '<unknown>'}`);
+      errors.push(`MIGRATION_SOURCE_UNSAFE:${(migration && migration.path) || '<unknown>'}`);
     }
-  }
+  });
 
-  return { ok: errors.length === 0, errors, migrations: manifest.migrations };
+  // Cross-entry dependency existence and ordering.
+  const idToIndex = new Map(migrations.map((migration, index) => [migration && migration.id, index]));
+  migrations.forEach((migration, migrationIndex) => {
+    if (!migration || !Array.isArray(migration.depends_on)) return;
+    for (const dependency of migration.depends_on) {
+      if (!idToIndex.has(dependency)) {
+        errors.push(`MIGRATION_DEPENDENCY_UNKNOWN:${migration.id || `<index:${migrationIndex}>`}:${dependency}`);
+        continue;
+      }
+      const dependencyIndex = idToIndex.get(dependency);
+      if (dependencyIndex > migrationIndex) {
+        errors.push(`MIGRATION_DEPENDENCY_ORDERING:${migration.id}:${dependency}`);
+      }
+    }
+  });
+
+  return { ok: errors.length === 0, errors, migrations };
 }
 
 function validateExpectedSchemaManifest(manifest) {
@@ -285,10 +370,16 @@ function validateExpectedSchemaManifest(manifest) {
   if (!['ADOPTION_REQUIRED', 'ACTIVE'].includes(manifest.status)) {
     errors.push('EXPECTED_SCHEMA_STATUS_INVALID');
   }
+  const seenNames = new Set();
   for (const object of manifest.critical_objects) {
-    if (!object.name || !SHA256_PATTERN.test(object.fingerprint || '')) {
-      errors.push(`EXPECTED_SCHEMA_OBJECT_INVALID:${object.name || '<unknown>'}`);
+    if (!object || !object.name || !SHA256_PATTERN.test(object.fingerprint || '')) {
+      errors.push(`EXPECTED_SCHEMA_OBJECT_INVALID:${(object && object.name) || '<unknown>'}`);
+      continue;
     }
+    if (seenNames.has(object.name)) {
+      errors.push(`EXPECTED_SCHEMA_OBJECT_DUPLICATE:${object.name}`);
+    }
+    seenNames.add(object.name);
   }
   return { ok: errors.length === 0, errors };
 }
@@ -302,10 +393,10 @@ function validateSourceConfiguration({ repoRoot, inventory, migrationManifest, e
     ok: errors.length === 0,
     errors,
     summary: {
-      inventory_rows: Array.isArray(inventory.entries) ? inventory.entries.length : 0,
+      inventory_rows: Array.isArray(inventory && inventory.entries) ? inventory.entries.length : 0,
       discovered_paths: inventoryResult.discoveredPaths.length,
       canonical_migrations: migrationResult.migrations.length,
-      expected_schema_objects: Array.isArray(expectedSchemaManifest.critical_objects)
+      expected_schema_objects: Array.isArray(expectedSchemaManifest && expectedSchemaManifest.critical_objects)
         ? expectedSchemaManifest.critical_objects.length
         : 0
     }
@@ -317,7 +408,9 @@ function compareLedger(expectedMigrations, ledgerEvidence) {
   if (!ledgerEvidence || !Array.isArray(ledgerEvidence.applied_migrations)) {
     return ['GATE_LEDGER_EVIDENCE_UNAVAILABLE'];
   }
-  const expectedById = new Map(expectedMigrations.map((migration, index) => [migration.id, { migration, index }]));
+  const expectedById = new Map(
+    (Array.isArray(expectedMigrations) ? expectedMigrations : []).map((migration, index) => [migration.id, { migration, index }])
+  );
   const appliedIds = new Set();
   ledgerEvidence.applied_migrations.forEach((applied, index) => {
     if (!applied || !applied.id || !SHA256_PATTERN.test(applied.checksum || '')) {
@@ -338,7 +431,7 @@ function compareLedger(expectedMigrations, ledgerEvidence) {
       blockers.push(`GATE_REORDERED_MIGRATION:${applied.id}`);
     }
   });
-  for (const migration of expectedMigrations) {
+  for (const migration of expectedMigrations || []) {
     if (!appliedIds.has(migration.id)) blockers.push(`GATE_MISSING_APPLIED_MIGRATION:${migration.id}`);
   }
   return blockers;
@@ -349,12 +442,18 @@ function compareSchema(expectedSchemaManifest, catalogEvidence) {
     return ['GATE_CATALOG_EVIDENCE_UNAVAILABLE'];
   }
   const blockers = [];
-  const expectedByName = new Map(expectedSchemaManifest.critical_objects.map((object) => [object.name, object]));
+  const expectedObjects = Array.isArray(expectedSchemaManifest && expectedSchemaManifest.critical_objects)
+    ? expectedSchemaManifest.critical_objects
+    : [];
+  const expectedByName = new Map(expectedObjects.map((object) => [object.name, object]));
   const catalogNames = new Set();
   for (const object of catalogEvidence.objects) {
     if (!object || !object.name || !SHA256_PATTERN.test(object.fingerprint || '')) {
       blockers.push('GATE_CATALOG_RECORD_INVALID');
       continue;
+    }
+    if (catalogNames.has(object.name)) {
+      blockers.push(`GATE_DUPLICATE_SCHEMA_OBJECT:${object.name}`);
     }
     catalogNames.add(object.name);
     const expected = expectedByName.get(object.name);
@@ -364,7 +463,7 @@ function compareSchema(expectedSchemaManifest, catalogEvidence) {
       blockers.push(`GATE_SCHEMA_FINGERPRINT_MISMATCH:${object.name}`);
     }
   }
-  for (const object of expectedSchemaManifest.critical_objects) {
+  for (const object of expectedObjects) {
     if (!catalogNames.has(object.name)) blockers.push(`GATE_MISSING_SCHEMA_OBJECT:${object.name}`);
   }
   return blockers;
@@ -372,23 +471,64 @@ function compareSchema(expectedSchemaManifest, catalogEvidence) {
 
 function evaluateProvenance({ migrationManifest, expectedSchemaManifest, ledgerEvidence, catalogEvidence }) {
   const blockers = [];
-  if (migrationManifest.status !== 'ACTIVE' || expectedSchemaManifest.status !== 'ACTIVE') {
-    blockers.push('GATE_ADOPTION_BASELINE_REQUIRED');
+  const migrations = Array.isArray(migrationManifest && migrationManifest.migrations)
+    ? migrationManifest.migrations
+    : [];
+  const criticalObjects = Array.isArray(expectedSchemaManifest && expectedSchemaManifest.critical_objects)
+    ? expectedSchemaManifest.critical_objects
+    : [];
+
+  if (!migrationManifest || (migrationManifest.status !== 'ACTIVE' || (expectedSchemaManifest && expectedSchemaManifest.status !== 'ACTIVE'))) {
+    if (!migrationManifest || migrationManifest.status !== 'ACTIVE' || !expectedSchemaManifest || expectedSchemaManifest.status !== 'ACTIVE') {
+      blockers.push('GATE_ADOPTION_BASELINE_REQUIRED');
+    }
   }
   if (!ledgerEvidence || ledgerEvidence.adoption_status !== 'ATTESTED') {
     blockers.push('GATE_ADOPTION_EVIDENCE_UNAVAILABLE');
   }
-  blockers.push(...compareLedger(migrationManifest.migrations, ledgerEvidence));
-  blockers.push(...compareSchema(expectedSchemaManifest, catalogEvidence));
+  blockers.push(...compareLedger(migrations, ledgerEvidence));
+  blockers.push(...compareSchema(expectedSchemaManifest || { critical_objects: [] }, catalogEvidence));
   const uniqueBlockers = [...new Set(blockers)].sort();
   return {
     decision: uniqueBlockers.length === 0 ? 'PASS' : 'FAIL_CLOSED',
     blockers: uniqueBlockers,
     summary: {
-      expected_migrations: migrationManifest.migrations.length,
-      applied_migrations: Array.isArray(ledgerEvidence?.applied_migrations) ? ledgerEvidence.applied_migrations.length : 0,
-      expected_schema_objects: expectedSchemaManifest.critical_objects.length,
-      observed_schema_objects: Array.isArray(catalogEvidence?.objects) ? catalogEvidence.objects.length : 0
+      expected_migrations: migrations.length,
+      applied_migrations: Array.isArray(ledgerEvidence && ledgerEvidence.applied_migrations)
+        ? ledgerEvidence.applied_migrations.length
+        : 0,
+      expected_schema_objects: criticalObjects.length,
+      observed_schema_objects: Array.isArray(catalogEvidence && catalogEvidence.objects)
+        ? catalogEvidence.objects.length
+        : 0
+    }
+  };
+}
+
+function evaluateProvenanceWithSource({
+  sourceResult,
+  migrationManifest,
+  expectedSchemaManifest,
+  ledgerEvidence,
+  catalogEvidence
+}) {
+  const gateResult = evaluateProvenance({
+    migrationManifest,
+    expectedSchemaManifest,
+    ledgerEvidence,
+    catalogEvidence
+  });
+  const blockers = [...gateResult.blockers];
+  if (!sourceResult || sourceResult.ok !== true) {
+    blockers.push('GATE_SOURCE_CONFIGURATION_INVALID');
+  }
+  const uniqueBlockers = [...new Set(blockers)].sort();
+  return {
+    decision: uniqueBlockers.length === 0 ? 'PASS' : 'FAIL_CLOSED',
+    blockers: uniqueBlockers,
+    summary: {
+      ...gateResult.summary,
+      source_ok: !!(sourceResult && sourceResult.ok)
     }
   };
 }
@@ -401,10 +541,12 @@ module.exports = {
   sha256,
   sha256File,
   loadJson,
+  normalizePath,
   discoverRepositoryPaths,
   validateInventory,
   validateMigrationManifest,
   validateExpectedSchemaManifest,
   validateSourceConfiguration,
-  evaluateProvenance
+  evaluateProvenance,
+  evaluateProvenanceWithSource
 };
