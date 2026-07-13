@@ -65,20 +65,42 @@ test('workflow keeps verify-static and adds independent db-engine-tree-comments 
   assert.match(ci, /timeout-minutes:\s*15/);
   assert.match(ci, /image:\s*postgres:17\.4-bookworm/);
   assert.match(ci, /POSTGRES_USER:\s*lovebud_ci/);
-  assert.match(ci, /POSTGRES_PASSWORD:\s*ci-\$\{\{\s*github\.run_id\s*\}\}-\$\{\{\s*github\.run_attempt\s*\}\}/);
   assert.match(ci, /POSTGRES_DB:\s*lovebud_ci_admin/);
   assert.match(ci, /LB_TEST_PGHOST:\s*127\.0\.0\.1/);
   assert.match(ci, /LB_TEST_PGUSER:\s*lovebud_ci/);
-  assert.match(ci, /LB_TEST_PGPASSWORD:\s*ci-\$\{\{\s*github\.run_id\s*\}\}-\$\{\{\s*github\.run_attempt\s*\}\}/);
   assert.match(ci, /LB_TEST_PGADMIN_DB:\s*lovebud_ci_admin/);
-  assert.match(ci, /PGPASSWORD:\s*ci-\$\{\{\s*github\.run_id\s*\}\}-\$\{\{\s*github\.run_attempt\s*\}\}/);
   assert.match(ci, /npm run test:db-engine:tree-comments/);
   assert.match(ci, /server_version_num/);
   assert.match(ci, /170004/);
+
+  // Extract password assignments and require one expression-only value shared by all three.
+  function extractAssignment(key) {
+    const re = new RegExp(`^\\s*${key}:\\s*(.+?)\\s*$`, 'm');
+    const m = ci.match(re);
+    assert.ok(m, `missing assignment for ${key}`);
+    return m[1].trim();
+  }
+  const postgresPassword = extractAssignment('POSTGRES_PASSWORD');
+  const lbPassword = extractAssignment('LB_TEST_PGPASSWORD');
+  const pgPassword = extractAssignment('PGPASSWORD');
+  assert.equal(postgresPassword, lbPassword, 'POSTGRES_PASSWORD and LB_TEST_PGPASSWORD must match');
+  assert.equal(lbPassword, pgPassword, 'LB_TEST_PGPASSWORD and PGPASSWORD must match');
+  const shared = postgresPassword;
+  // Expression-only: entire value is a single ${{ ... }} with no surrounding literal text.
+  assert.match(shared, /^\$\{\{\s*.+\s*\}\}$/, 'password value must be expression-only');
+  assert.match(shared, /github\.run_id/, 'expression must derive from github.run_id');
+  assert.match(shared, /github\.run_attempt/, 'expression must derive from github.run_attempt');
+  assert.equal(
+    /^[^$]/.test(shared) || /[^}]$/.test(shared),
+    false,
+    'password assignment must not wrap the expression with literal prefix/suffix'
+  );
+  assert.equal(/ci-\$\{\{/i.test(shared), false, 'must not use ci-${{ ... }} mixed literal/expression pattern');
+  assert.equal(/lovebud_ci_only/i.test(ci), false, 'workflow must not use fixed password-like literal');
   assert.equal(/secrets\./i.test(ci), false, 'workflow must not reference secrets.*');
   assert.equal(/DATABASE_URL/i.test(ci), false, 'workflow must not reference DATABASE_URL');
   assert.equal(/NEON_API_KEY/i.test(ci), false, 'workflow must not reference NEON_API_KEY');
-  assert.equal(/lovebud_ci_only/i.test(ci), false, 'workflow must not use fixed password-like literal');
+  assert.equal(/github\.token/i.test(ci), false, 'workflow must not reference github.token');
   assert.equal(/POSTGRES_HOST_AUTH_METHOD\s*:\s*trust/i.test(ci), false, 'must not use trust auth');
 });
 
