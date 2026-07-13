@@ -338,12 +338,17 @@ test('i18n key sidebar_flow_summary_connected_with_range mirrors My Trees hub su
     'en template must wrap {timeRange} in <strong>');
 });
 
-test('editor-detail-sidebar-status-boundary.js fallback template mirrors My Trees hub pattern', () => {
+test('editor-detail-sidebar-status-boundary.js summary uses the shared preview-summary-line pattern without duplicating the tree title', () => {
   const source = fs.readFileSync(SIDEBAR_BOUNDARY_FILE, 'utf8');
   assert.match(source, /<p\s+class="preview-summary-line">/,
     'fallback template must wrap summary in <p class="preview-summary-line"> (My Trees hub pattern)');
-  assert.match(source, /<strong>\s*\{title\}\s*<\/strong>/,
-    'fallback template must wrap {title} in <strong> (My Trees hub pattern)');
+  // The editor renders the tree title separately in #sidebarTreeTitle, so the
+  // summary intentionally leads with the title-less "이 트리에 담긴" copy instead
+  // of duplicating the heading-style title (main ec4d7a03c).
+  assert.match(source, /이 트리에 담긴/,
+    'fallback template must lead with the title-less "이 트리에 담긴" summary copy');
+  assert.doesNotMatch(source, /<strong>\s*\{title\}\s*<\/strong>/,
+    'summary must NOT duplicate the heading-style tree title (rendered separately in #sidebarTreeTitle)');
   assert.match(source, /<strong>\s*\{count\}개의\s*순간\s*<\/strong>/);
   assert.match(source, /<strong>\s*\{timeRange\}\s*<\/strong>/);
 });
@@ -356,43 +361,36 @@ test('editor-i18n-refresh.js must NOT carry summary renderer (#2970)', () => {
     'editor-i18n-refresh.js must not contain summary HTML template');
 });
 
-test('editor summary innerHTML matches My Trees hub patchSummaryWithTimeRange template exactly', () => {
-  // Verbatim-mirror test: editor's innerHTML string must equal the
-  // My Trees hub template so the only divergence between the two
-  // body sentences is the language.
+test('editor summary shares the My Trees hub count/timeRange emphasis while leading with a title-less summary', () => {
+  // The editor summary shares the My Trees hub count→timeRange emphasis
+  // structure, but intentionally leads with the title-less "이 트리에 담긴"
+  // copy because the tree title is rendered separately in #sidebarTreeTitle
+  // (main ec4d7a03c). The head is therefore no longer a verbatim hub mirror.
   const hubSource = fs.readFileSync(
     path.join(ROOT, 'js/my-trees/my-trees-preview-state.js'), 'utf8'
   );
   // My Trees template uses string concatenation. Extract the static
   // segments before / after the runtime values (title, count, timeRange).
-  // Pattern: "'<p class...><strong>' + escapeHtml(summaryTitle) + '</strong>에 담긴 <strong>' + memoryCount + '개의 순간</strong>이 <strong>' + escapeHtml(timeRange) + '</strong>에 걸쳐 ... .</p>'"
   const hubMatch = hubSource.match(
     /summaryEl\.innerHTML\s*=\s*'([^']+)'\s*\+\s*escapeHtml\(summaryTitle\)\s*\+\s*'([^']+)'\s*\+\s*memoryCount\s*\+\s*'([^']+)'\s*\+\s*escapeHtml\(timeRange\)\s*\+\s*'([^']+)'/
   );
   assert.ok(hubMatch, 'My Trees patchSummaryWithTimeRange template must exist');
-  const hubHead = hubMatch[1];
-  const hubMid1 = hubMatch[2];
-  const hubMid2 = hubMatch[3];
-  const hubTail = hubMatch[4];
+  const hubMid2 = hubMatch[3]; // "개의 순간</strong>이 <strong>" — count → timeRange emphasis
+  const hubTail = hubMatch[4]; // "</strong>에 걸쳐 이어졌어요.</p>" — closing prose
 
   const editorBoundary = fs.readFileSync(SIDEBAR_BOUNDARY_FILE, 'utf8');
-  // Editor now uses <div> container (same as My Trees hub) so the same
-  // <p class="preview-summary-line"> template can be used verbatim.
-  assert.ok(
-    editorBoundary.indexOf(hubHead) !== -1,
-    'editor must contain the My Trees hub head (before title); hubHead=' + hubHead
-  );
-  assert.ok(
-    editorBoundary.indexOf(hubMid1) !== -1,
-    'editor must contain the My Trees hub middle (after title); hubMid1=' + hubMid1
-  );
   assert.ok(
     editorBoundary.indexOf(hubMid2) !== -1,
-    'editor must contain the My Trees hub middle (after count); hubMid2=' + hubMid2
+    'editor must share the My Trees hub count→timeRange emphasis; hubMid2=' + hubMid2
   );
   assert.ok(
     editorBoundary.indexOf(hubTail) !== -1,
-    'editor must contain the My Trees hub tail (after timeRange); hubTail=' + hubTail
+    'editor must share the My Trees hub closing prose; hubTail=' + hubTail
+  );
+  assert.match(
+    editorBoundary,
+    /<p class="preview-summary-line">이 트리에 담긴 <strong>/,
+    'editor summary must lead with the title-less "이 트리에 담긴" copy'
   );
 });
 

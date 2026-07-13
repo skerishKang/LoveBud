@@ -1,3 +1,104 @@
+function makeMomentReactionsController(deps) {
+    const {
+        getElementById,
+        apiClient,
+        showToast,
+        i18n
+    } = deps;
+
+    let currentMemoryId = null;
+    let selectionEpoch = 0;
+
+    function hideReactionsCard() {
+        const reactionsCard = getElementById('momentReactionsCard');
+        if (reactionsCard) reactionsCard.style.display = 'none';
+        selectionEpoch += 1;
+        currentMemoryId = null;
+        const likeBtn = getElementById('momentLikeBtn');
+        if (likeBtn) likeBtn.onclick = null;
+    }
+
+    return {
+        update({ data, canonicalRootId, isRootMemoryFn }) {
+            const reactionsCard = getElementById('momentReactionsCard');
+            if (!reactionsCard) return;
+
+            if (!data?.id || (typeof isRootMemoryFn === 'function' && isRootMemoryFn(data, canonicalRootId))) {
+                hideReactionsCard();
+                return;
+            }
+
+            const memoryId = String(data.id);
+            selectionEpoch += 1;
+
+            const requestEpoch = selectionEpoch;
+            const requestMemoryId = memoryId;
+            currentMemoryId = requestMemoryId;
+
+            reactionsCard.style.display = '';
+
+            const likeBtn = getElementById('momentLikeBtn');
+            const likeCount = getElementById('momentLikeCount');
+            const commentCount = getElementById('momentCommentCount');
+
+            if (!likeBtn || !likeCount || !commentCount) return;
+
+            likeBtn.dataset.reacted = 'false';
+            likeBtn.querySelector('.editor-reaction-like-icon').textContent = '🤍';
+            likeCount.textContent = '0';
+            commentCount.textContent = '0';
+
+            if (apiClient?.fetchReactionSummary) {
+                apiClient.fetchReactionSummary(requestMemoryId)
+                    .then(summary => {
+                        if (!summary || currentMemoryId !== requestMemoryId || selectionEpoch !== requestEpoch) return;
+                        likeCount.textContent = summary.like_count ?? summary.likeCount ?? 0;
+                        commentCount.textContent = summary.comment_count ?? summary.commentCount ?? 0;
+                        const userReacted = summary.user_reacted ?? summary.userReacted ?? false;
+                        likeBtn.dataset.reacted = userReacted ? 'true' : 'false';
+                        likeBtn.querySelector('.editor-reaction-like-icon').textContent = userReacted ? '❤️' : '🤍';
+                    })
+                    .catch(() => {});
+            }
+
+            const boundMemoryId = requestMemoryId;
+            const boundEpoch = requestEpoch;
+
+            likeBtn.onclick = async () => {
+                if (currentMemoryId !== boundMemoryId || selectionEpoch !== boundEpoch) return;
+                const wasReacted = likeBtn.dataset.reacted === 'true';
+                const prevCount = parseInt(likeCount.textContent) || 0;
+
+                const nextReacted = !wasReacted;
+                const nextCount = nextReacted ? prevCount + 1 : Math.max(0, prevCount - 1);
+                likeBtn.dataset.reacted = nextReacted ? 'true' : 'false';
+                likeBtn.querySelector('.editor-reaction-like-icon').textContent = nextReacted ? '❤️' : '🤍';
+                likeCount.textContent = nextCount;
+
+                try {
+                    const result = await apiClient.toggleReaction(boundMemoryId, 'like');
+                    if (result && currentMemoryId === boundMemoryId && selectionEpoch === boundEpoch) {
+                        likeCount.textContent = result.like_count ?? result.likeCount ?? nextCount;
+                        const serverReacted = result.user_reacted ?? result.userReacted ?? nextReacted;
+                        likeBtn.dataset.reacted = serverReacted ? 'true' : 'false';
+                        likeBtn.querySelector('.editor-reaction-like-icon').textContent = serverReacted ? '❤️' : '🤍';
+                    }
+                } catch (e) {
+                    if (currentMemoryId !== boundMemoryId || selectionEpoch !== boundEpoch) return;
+                    likeBtn.dataset.reacted = wasReacted ? 'true' : 'false';
+                    likeBtn.querySelector('.editor-reaction-like-icon').textContent = wasReacted ? '❤️' : '🤍';
+                    likeCount.textContent = prevCount;
+                    showToast(i18n('reaction_failed') || '반응을 저장하지 못했어요.', 'error');
+                }
+            };
+        },
+
+        hide() {
+            hideReactionsCard();
+        }
+    };
+}
+
 function createEditorDetailUI(deps) {
     const {
         detailPanel,
@@ -56,6 +157,13 @@ function createEditorDetailUI(deps) {
     const commentsController = typeof window.createEditorMomentCommentsController === 'function'
         ? window.createEditorMomentCommentsController()
         : null;
+
+    const momentReactionsController = makeMomentReactionsController({
+        getElementById: (id) => document.getElementById(id),
+        apiClient: window.apiClient,
+        showToast: showToast,
+        i18n: i18n
+    });
 
     const treeMetaBoundary = window.createEditorDetailTreeMetaBoundary({
         i18n,
@@ -380,16 +488,17 @@ function createEditorDetailUI(deps) {
         const editMode = document.getElementById('detailEditMode');
         const actions = detailContent.querySelector('.memory-actions');
         const indicator = document.getElementById('saveStatusIndicator');
-        const reactionsCard = document.getElementById('momentReactionsCard');
 
-        if (isEmpty) resetDetailViewState();
+        if (isEmpty) {
+            resetDetailViewState();
+            momentReactionsController.hide();
+        }
 
         if (emptyState) emptyState.style.display = isEmpty ? 'block' : 'none';
         if (viewMode) viewMode.style.display = isEmpty ? 'none' : 'grid';
         if (editMode) editMode.style.display = 'none';
         if (actions) actions.style.display = isEmpty ? 'none' : 'flex';
         if (indicator && isEmpty) indicator.style.display = 'none';
-        if (reactionsCard && isEmpty) reactionsCard.style.display = 'none';
         const footer = document.getElementById('detailPanelFooter');
         if (footer) footer.style.display = 'none';
     };
@@ -662,60 +771,13 @@ function createEditorDetailUI(deps) {
         const reactionsCard = document.getElementById('momentReactionsCard');
         if (reactionsCard) {
             if (isEmptyState || !data?.id || isRootMemory(data, canonicalRootId)) {
-                reactionsCard.style.display = 'none';
+                momentReactionsController.hide();
             } else {
-                reactionsCard.style.display = '';
-
-                const likeBtn = document.getElementById('momentLikeBtn');
-                const likeCount = document.getElementById('momentLikeCount');
-                const commentCount = document.getElementById('momentCommentCount');
-
-                if (likeBtn && likeCount && commentCount) {
-                    likeBtn.dataset.reacted = 'false';
-                    likeBtn.querySelector('.editor-reaction-like-icon').textContent = '🤍';
-                    likeCount.textContent = '0';
-                    commentCount.textContent = '0';
-
-                    if (window.apiClient?.fetchReactionSummary) {
-                        window.apiClient.fetchReactionSummary(data.id)
-                            .then(summary => {
-                                if (!summary) return;
-                                likeCount.textContent = summary.like_count ?? summary.likeCount ?? 0;
-                                commentCount.textContent = summary.comment_count ?? summary.commentCount ?? 0;
-                                const userReacted = summary.user_reacted ?? summary.userReacted ?? false;
-                                likeBtn.dataset.reacted = userReacted ? 'true' : 'false';
-                                likeBtn.querySelector('.editor-reaction-like-icon').textContent = userReacted ? '❤️' : '🤍';
-                            })
-                            .catch(() => {});
-                    }
-
-                    likeBtn.onclick = async () => {
-                        const wasReacted = likeBtn.dataset.reacted === 'true';
-                        const prevCount = parseInt(likeCount.textContent) || 0;
-
-                        const nextReacted = !wasReacted;
-                        const nextCount = nextReacted ? prevCount + 1 : Math.max(0, prevCount - 1);
-                        likeBtn.dataset.reacted = nextReacted ? 'true' : 'false';
-                        likeBtn.querySelector('.editor-reaction-like-icon').textContent = nextReacted ? '❤️' : '🤍';
-                        likeCount.textContent = nextCount;
-
-                        try {
-                            const result = await window.apiClient.toggleReaction(data.id, 'like');
-                            if (result) {
-                                likeCount.textContent = result.like_count ?? result.likeCount ?? nextCount;
-                                const serverReacted = result.user_reacted ?? result.userReacted ?? nextReacted;
-                                likeBtn.dataset.reacted = serverReacted ? 'true' : 'false';
-                                likeBtn.querySelector('.editor-reaction-like-icon').textContent = serverReacted ? '❤️' : '🤍';
-                            }
-                        } catch (e) {
-                            likeBtn.dataset.reacted = wasReacted ? 'true' : 'false';
-                            likeBtn.querySelector('.editor-reaction-like-icon').textContent = wasReacted ? '❤️' : '🤍';
-                            likeCount.textContent = prevCount;
-                            showToast(i18n('reaction_failed') || '반응을 저장하지 못했어요.', 'error');
-                        }
-                    };
-
-                }
+                momentReactionsController.update({
+                    data,
+                    canonicalRootId,
+                    isRootMemoryFn: isRootMemory
+                });
             }
         }
 
@@ -771,4 +833,5 @@ function createEditorDetailUI(deps) {
 
 if (typeof window !== 'undefined') {
     window.createEditorDetailUI = createEditorDetailUI;
+    window.makeMomentReactionsController = makeMomentReactionsController;
 }

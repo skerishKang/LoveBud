@@ -1245,7 +1245,7 @@ test('editor.html references shell template with matching SHA256 fingerprint', (
     `shell template fingerprint in editor.html (${fingerprintFromHtml}) must match computed SHA256[:12] (${computedFingerprint})`);
 });
 
-test('editor.html references js/editor.js with correct cache-bust URL (3296, no stray -3294 suffix)', () => {
+test('editor.html references js/editor.js with a non-empty cache-bust and no stale 3294 suffix', () => {
   const EDITOR_PATH = path.join(ROOT, 'pages/editor.html');
   const editorHtml = fs.readFileSync(EDITOR_PATH, 'utf8');
 
@@ -1255,12 +1255,13 @@ test('editor.html references js/editor.js with correct cache-bust URL (3296, no 
   assert.ok(jsMatch, 'js/editor.js script tag must exist in editor.html');
 
   const url = jsMatch[1];
-  assert.ok(url.includes('3296'),
-    `js/editor.js URL must reference 3296 suffix: ${url}`);
+  assert.ok(url.startsWith('../js/editor.js?v='),
+    `js/editor.js URL must use the exact cache-bust prefix: ${url}`);
+  const value = url.slice('../js/editor.js?v='.length);
+  assert.ok(value.length > 0,
+    `js/editor.js cache-bust value must be non-empty: ${url}`);
   assert.ok(!url.includes('3294'),
-    `js/editor.js URL must not contain stray 3294 suffix: ${url}`);
-  assert.ok(url.endsWith('3296'),
-    `js/editor.js URL must end with 3296, got: ${url}`);
+    `js/editor.js URL must not contain stale 3294 suffix: ${url}`);
 });
 
 function traceInvoke(trace, label) {

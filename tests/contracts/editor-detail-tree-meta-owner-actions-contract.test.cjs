@@ -12,6 +12,10 @@ function read(file) {
   return fs.readFileSync(path.join(ROOT, file), 'utf8');
 }
 
+function assertVersionedAsset(html, assetPattern, message) {
+  assert.match(html, new RegExp(assetPattern + "\\?v=[A-Za-z0-9][A-Za-z0-9._-]*['\"]"), message);
+}
+
 function collectText(node) {
   var result = '';
   if (!node) return result;
@@ -352,12 +356,12 @@ test('6C. createOwnerActionButtons has no rerender logic', () => {
     'renderTreeMetaBoundary owns the rerender');
 });
 
-test('7. cache-bust: all 4 use same token', () => {
+test('7. cache-bust: all 4 use non-empty version tokens (release-managed)', () => {
   var html = read('pages/editor.html');
-  assert.match(html, /editor-rename-ui\.js\?v=20260627-2882-detail-tree-meta-actions-1/);
-  assert.match(html, /editor-detail-tree-meta\.js\?v=20260627-2882-detail-tree-meta-actions-1/);
-  assert.match(html, /editor-detail-ui\.js\?v=20260627-2882-detail-tree-meta-actions-1/);
-  assert.match(html, /editor\.js\?v=20260628-2970/);
+  assertVersionedAsset(html, 'editor-rename-ui\\.js', 'editor-rename-ui.js must have non-empty version token');
+  assertVersionedAsset(html, 'editor-detail-tree-meta\\.js', 'editor-detail-tree-meta.js must have non-empty version token');
+  assertVersionedAsset(html, 'editor-detail-ui\\.js', 'editor-detail-ui.js must have non-empty version token');
+  assertVersionedAsset(html, 'editor\\.js', 'editor.js must have non-empty version token');
 });
 
 test('8. no direct API calls', () => {

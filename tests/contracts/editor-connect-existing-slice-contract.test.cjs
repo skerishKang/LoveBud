@@ -468,19 +468,22 @@ test('connect-existing sections are NOT inside #detailEditMode template', () => 
     'CTA section must NOT be in edit mode template');
 });
 
-test('connect-existing sections ARE in shell template outside detailEditMode', () => {
-  var shell = readSource('js/editor/templates/editor-detail-panel-shell-template.js');
-  assert.match(shell, /connectExistingCtaSection/,
-    'CTA section must be in shell template');
-  assert.match(shell, /connectExistingPendingSection/,
-    'pending section must be in shell template');
-  assert.match(shell, /connectExistingConfirmSection/,
-    'confirm section must be in shell template');
+test('connect-existing sections ARE in the detail view-mode template outside detailEditMode', () => {
+  // connectExisting* sections live in the detail view-mode template (mounted at
+  // editorDetailViewModeTemplateMount in the shell), not in the shell template itself.
+  var viewMode = readSource('js/editor/templates/editor-detail-view-mode-template.js');
+  assert.match(viewMode, /connectExistingCtaSection/,
+    'CTA section must be in the view-mode template');
+  assert.match(viewMode, /connectExistingPendingSection/,
+    'pending section must be in the view-mode template');
+  assert.match(viewMode, /connectExistingConfirmSection/,
+    'confirm section must be in the view-mode template');
 
-  var editModeIdx = shell.indexOf('editorDetailEditModeTemplateMount');
-  var ctaIdx = shell.indexOf('connectExistingCtaSection');
-  assert.ok(ctaIdx > editModeIdx,
-    'connect-existing sections must be AFTER edit mode mount in shell template DOM order');
+  var primaryActionIdx = viewMode.indexOf('continueFromMomentBtn');
+  var ctaIdx = viewMode.indexOf('connectExistingCtaSection');
+  assert.ok(primaryActionIdx !== -1, 'primary moment action must exist in the view-mode template');
+  assert.ok(ctaIdx > primaryActionIdx,
+    'connect-existing sections must follow the primary moment actions in view-mode DOM order');
 });
 
 // ── 12. No new API/endpoint calls ─────────────────────────────────────

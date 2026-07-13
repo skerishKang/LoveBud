@@ -15,6 +15,18 @@ function escapeRegExp(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+function findVersionedScriptIndex(html, assetPath) {
+  const escaped = escapeRegExp(assetPath);
+  const pattern = new RegExp(
+    '<script\\s+[^>]*src=["\']'
+      + escaped
+      + '\\?v=[A-Za-z0-9][A-Za-z0-9._-]*["\'][^>]*>',
+    'i'
+  );
+  const match = pattern.exec(html);
+  return match ? match.index : -1;
+}
+
 function createFakeDocument() {
   const elements = new Map();
 
@@ -192,9 +204,9 @@ test('Relationship hints UI controller keeps current hint unchanged on rejected 
 
 test('editor.html loads relationship hints helper scripts before editor.js', () => {
   const html = read('pages/editor.html');
-  const stateMachineIndex = html.indexOf('../js/editor/relationship-hints-state-machine.js?v=20260613-2462');
-  const uiControllerIndex = html.indexOf('../js/editor/relationship-hints-ui-controller.js?v=20260613-2462');
-  const editorIndex = html.indexOf('../js/editor.js?v=20260628-2970');
+  const stateMachineIndex = findVersionedScriptIndex(html, '../js/editor/relationship-hints-state-machine.js');
+  const uiControllerIndex = findVersionedScriptIndex(html, '../js/editor/relationship-hints-ui-controller.js');
+  const editorIndex = findVersionedScriptIndex(html, '../js/editor.js');
 
   assert.notEqual(stateMachineIndex, -1, 'relationship-hints-state-machine.js must be loaded');
   assert.notEqual(uiControllerIndex, -1, 'relationship-hints-ui-controller.js must be loaded');
