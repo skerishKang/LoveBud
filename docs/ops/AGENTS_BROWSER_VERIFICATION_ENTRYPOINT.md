@@ -3,6 +3,8 @@
 > **Status:** operational entrypoint  
 > **Scope:** browser/Auth/data-loaded verification only  
 > **Primary reader:** new agent/new session assigned to browser verification
+>
+> **Canonical precedence:** `docs/ops/MVP_AGENT_GOVERNANCE.md` (owner-approved #3442 comment `4947327550`) is the source of truth for blocker / allowed-by-default decisions. Browser tooling (start, new tab/window, navigation, login, screenshots, DevTools, Playwright) is **allowed by default**. Missing fixed slot, missing PR entrypoint comment, dirty worktree, and draft status are **not** automatic BLOCKED reasons. Where this document conflicts with the canonical policy, the canonical policy wins. Sections below that state otherwise are `NON_NORMATIVE_OUTSIDE_NAMED_CONTEXT`.
 
 This document is the browser verification entrypoint that should be linked from `AGENTS.md`.
 
@@ -23,7 +25,7 @@ The verifier must not invent or infer:
 - account values
 - ready/merge authority
 
-If a required value is missing, the result is `BLOCKED`, not guessed.
+If a required value is missing for a *named* verification target, the result is `NOT_VERIFIED`/not-guessed, not `BLOCKED` for the whole task. Browser tooling itself remains allowed (canonical policy: missing entrypoint/fixed slot is not an automatic blocker).
 
 ---
 
@@ -68,7 +70,7 @@ Merge allowed: NO unless explicitly CTO-approved
 If this comment is missing for an Auth/API/data-loaded page, report:
 
 ```text
-Final status: BLOCKED — missing Browser verification entrypoint comment
+NON_NORMATIVE_OUTSIDE_NAMED_CONTEXT: historically `Final status: BLOCKED — missing Browser verification entrypoint comment`. Under canonical policy, a missing entrypoint comment is advisory, not an automatic blocker.
 ```
 
 ---
@@ -95,7 +97,7 @@ Do not use these as final PASS for Auth/API/data-loaded pages:
 
 - local static server
 - guessed Cloudflare URL
-- production URL before merge
+- production URL before merge — allowed by default after merge/deploy (canonical policy: production is allowed by default; pre-merge PR Preview is the usual target, but this is not an automatic BLOCKED)
 - stale test slot with unknown branch/SHA
 - any URL whose provenance is not documented
 
@@ -245,7 +247,7 @@ Use this report format for browser verification:
 Browser verifiers do not infer ready or merge authority.
 
 - Ready transition requires explicit task instruction.
-- Merge requires explicit CTO merge approval.
+- Routine PRs may be squash-merged without repeated CTO approval after independent remote diff review, green CI, and expected PR head SHA confirmation; do not merge on red or pending CI.
 - Issues remain open unless explicit close approval is given.
 - PR #7 and prototype/reference/demo/variant paths are never modified or closed during verification.
 
@@ -270,7 +272,7 @@ Verification cannot proceed because prerequisite information or access is missin
 
 Examples:
 - no assigned URL
-- missing Browser verification entrypoint comment
+- NON_NORMATIVE: missing Browser verification entrypoint comment (canonical policy: not an automatic blocker)
 - missing credential source
 - credential file absent
 - required account type unavailable

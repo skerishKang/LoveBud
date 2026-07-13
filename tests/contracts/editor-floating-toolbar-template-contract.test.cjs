@@ -28,10 +28,14 @@ test('Floating Toolbar branch controls stay out of the default action row', () =
     assert.ok(helperCode.includes('id="ftbMoreBtn"'), 'more menu must remain the intentional overflow affordance');
     assert.ok(helperCode.includes('id="ftbBranchBtn"'), 'branch button must remain available for deliberate flows');
     assert.ok(helperCode.includes('id="ftbForkBtn"'), 'fork button must remain available for deliberate flows');
-    assert.ok(helperCode.includes('class="editor-floating-toolbar-btn editor-ftb-branch-btn" id="ftbBranchBtn"'), 'branch button must be scoped as a branch action');
-    assert.ok(helperCode.includes('class="editor-floating-toolbar-btn editor-ftb-branch-btn" id="ftbForkBtn"'), 'fork button must be scoped as a branch action');
-    assert.ok(helperCode.includes('id="ftbBranchBtn" aria-label="가지 만들기" title="가지 만들기" style="display:none;"'), 'branch button must stay hidden by default');
-    assert.ok(helperCode.includes('id="ftbForkBtn" aria-label="분기하기" title="분기하기" style="display:none;"'), 'fork button must stay hidden by default');
+    assert.ok(helperCode.includes('class="editor-ftb-dropdown-item" id="ftbBranchBtn"'), 'branch button must be scoped as an overflow dropdown action');
+    assert.ok(helperCode.includes('class="editor-ftb-dropdown-item" id="ftbForkBtn"'), 'fork button must be scoped as an overflow dropdown action');
+
+    const dropdownIdx = helperCode.indexOf('id="ftbDropdown"');
+    assert.ok(dropdownIdx !== -1, 'overflow dropdown container must exist');
+    assert.ok(helperCode.indexOf('id="ftbBranchBtn"') > dropdownIdx, 'branch button must live inside the overflow dropdown, out of the default action row');
+    assert.ok(helperCode.indexOf('id="ftbForkBtn"') > dropdownIdx, 'fork button must live inside the overflow dropdown, out of the default action row');
+    assert.ok(helperCode.includes('id="ftbForkBtn" role="menuitem" aria-label="분기하기" aria-hidden="true" tabindex="-1" hidden style="display:none;"'), 'fork button must stay hidden by default');
 });
 
 test('editor.html uses template mount and removes raw floating toolbar markup', () => {

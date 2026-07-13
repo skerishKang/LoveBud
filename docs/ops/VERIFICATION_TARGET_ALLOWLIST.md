@@ -1,14 +1,27 @@
-# Verification Target Allowlist
+# Verification Target Classification and Provenance
 
-Issue: follow-up from PR #537 verification target contamination
+Issue: follow-up from PR #537 verification target contamination; de-escalated by Issue #3448.
 
-This document defines the allowed and invalid browser/runtime verification targets for LoveBud. It is docs/process-only and does not authorize runtime, deployment, workflow, package, API, or infrastructure changes.
+This document classifies browser/runtime verification targets for LoveBud by
+**what each target can prove**, given its provenance. It is docs/process-only
+and does not authorize runtime, deployment, workflow, package, API, or
+infrastructure changes.
+
+**Blocker/permission authority:** The canonical source of truth for agent /
+development / browser blocker and approval judgments is
+`docs/ops/MVP_AGENT_GOVERNANCE.md` (owner-approved #3442 comment
+`4947327550`). This document is evidence-depth guidance; it is **not** itself a
+repo-wide permission gate. A target's provenance determines *claim strength*,
+not whether unrelated work may proceed.
 
 ## Purpose
 
-A PR #537 browser verification attempt used a `lovebudold.netlify.app` URL and reported the result as a fixed test slot verification. That target is invalid for the current LoveBud runtime posture.
-
-This document prevents recurrence by making the target allowlist explicit and by classifying Netlify/lovebudold URLs as invalid verification targets for active runtime work.
+A PR #537 browser verification attempt used a `lovebudold.netlify.app` URL and
+reported the result as a fixed test slot verification. That target cannot prove
+the current Cloudflare + Modal runtime posture. This document prevents
+recurrence by making target classification and provenance explicit, while
+de-escalating automatic-blocker language: an evidence limit lowers a claim's
+status, it does not make the whole task `BLOCKED`.
 
 ## Active runtime posture
 
@@ -18,50 +31,102 @@ The active runtime path is:
 Browser -> same-origin /api/* -> Cloudflare Pages Functions -> Modal -> Neon
 ```
 
-Active browser-facing deployment targets must therefore be Cloudflare Pages URLs unless the CTO explicitly requests a production-only observation.
+Active browser-facing deployment targets must therefore be Cloudflare Pages
+URLs unless the CTO explicitly requests a production-only observation.
 
-## Allowed verification targets
+## Target classification and provenance
 
-| Target class | Allowed URL pattern | Use |
-| --- | --- | --- |
-| Production after merge | `https://lovebud.pages.dev/` | Post-merge production observation only. Do not use for pre-merge final PASS. |
-| Cloudflare PR Preview | `https://<hash>.lovebud.pages.dev/` | Preliminary or public/static checks when SHA provenance is clear. |
-| Cloudflare Branch Preview | `https://<branch-slug>.lovebud.pages.dev/` | Branch preview checks when Cloudflare reports the expected commit. |
-| Fixed test slot | `https://test1.lovebud.pages.dev/` through `https://test10.lovebud.pages.dev/` | Runtime/API/Auth/domain-sensitive verification after explicit assignment and SHA match. |
-| Local static server | `http://localhost:*` or equivalent | Local-only development observation. Not valid final PASS for API/Auth/runtime/data-loaded flows. |
+| Target class | Allowed? | What it can prove | Claim-status limit |
+| --- | --- | --- | --- |
+| Production (post-merge) | Yes (observation) | The currently deployed production state. | Cannot by itself prove an unmerged branch. |
+| Cloudflare PR Preview | Yes | Rendered/static behavior for the deployed preview SHA. | Auth/API/domain-sensitive proof strength depends on actual preview wiring. |
+| Cloudflare Branch Preview | Yes (when expected SHA provenance is known) | Branch preview behavior for the reported commit. | Unknown provenance lowers claim status. |
+| Fixed test slot | Yes (evidence option) | Runtime/API/Auth/domain-sensitive behavior after explicit assignment and SHA match. | Missing assignment does not block unrelated work. |
+| Local static server | Yes (development observation) | Local UI/layout behavior. | Claim strength is limited for production/Auth/API/data-loaded behavior. |
+| Netlify / `lovebudold` | Invalid for active-runtime proof | Only legacy/artifact investigation when explicitly scoped. | Must not be presented as current-runtime proof. |
+| Vercel / other hosts | Not verified for active runtime | May be observed only when explicitly scoped. | `NOT_VERIFIED_FOR_ACTIVE_RUNTIME` / `INVALID_FOR_TARGET_CLAIM`. |
 
-## Invalid verification targets
+### Production
 
-The following must not be used for active LoveBud PR verification:
+Allowed observation environment. Can prove the currently deployed production
+state. Cannot by itself prove an unmerged branch. Production is an environment,
+not a banned target; it is allowed by default under `MVP_AGENT_GOVERNANCE.md`.
 
-| Invalid target | Reason | Required report status |
-| --- | --- | --- |
-| `*.netlify.app` | Netlify is legacy/fallback/artifact, not active runtime. | `INVALID_VERIFICATION_TARGET` or `BLOCKED` |
-| `lovebudold.netlify.app` or Netlify deploy aliases | Old Netlify project does not prove Cloudflare + Modal runtime behavior. | `INVALID_VERIFICATION_TARGET` |
-| Vercel URLs | Vercel is secondary/transitional unless explicitly scoped. | `BLOCKED` unless CTO explicitly assigned it |
-| Any URL with deployed SHA mismatch | Does not prove the target PR. | `BLOCKED` |
-| Any unassigned fixed slot URL | Slot provenance is unknown. | `BLOCKED` |
-| Any URL chosen from local memory, bookmarks, previous tasks, or browser history | Source of truth not established. | `BLOCKED` |
+### PR Preview
 
-## Hard stop rule
+Allowed. Can prove rendered/static behavior for the deployed preview SHA.
+Auth/API/domain-sensitive proof strength depends on the actual preview wiring.
+Being a PR Preview is not, by itself, a blocker.
 
-If a verifier sees any of the following, they must stop before browser claims:
+### Branch Preview
 
-- target URL is not on the allowlist;
-- target is a Netlify or `lovebudold` URL;
-- fixed slot assignment was not explicit;
-- deployed SHA does not match the expected PR head SHA;
-- the URL came from a local bookmark/history/old deployment rather than the task or GitHub/Cloudflare evidence.
+Allowed when expected SHA provenance is known.
 
-The report must say:
+### Fixed slot
+
+Allowed evidence option. Explicit assignment and SHA match strengthen a
+fixed-slot-specific claim. Missing assignment does not block unrelated work;
+report `FIXED_SLOT_NOT_ASSIGNED` / `NOT_VERIFIED_ON_FIXED_SLOT` / `PARTIAL` for
+the fixed-slot-specific claim.
+
+### Localhost
+
+Allowed development observation. Claim strength is limited for
+production/Auth/API/data-loaded behavior. It is an environment, not a banned
+target.
+
+### Netlify / `lovebudold`
+
+Invalid for proving the current Cloudflare + Modal active runtime. May still be
+observed only for legacy/artifact investigation when explicitly scoped. Must not
+be presented as current-runtime proof. Report `INVALID_FOR_TARGET_CLAIM` for an
+active-runtime claim made on Netlify/lovebudold.
+
+### Vercel / other hosts
+
+Not verified for the active runtime. Handle as
+`NOT_VERIFIED_FOR_ACTIVE_RUNTIME` or `INVALID_FOR_TARGET_CLAIM`. Absence of a
+CTO assignment on another host does not by itself make the whole project
+`BLOCKED`.
+
+### SHA mismatch / unknown provenance
+
+Lower the claim status to one of:
+
+- `NOT_VERIFIED`
+- `INVALID_FOR_TARGET_CLAIM`
+- `PARTIAL`
+
+This is an evidence-limit result, not a project-wide `BLOCKED`.
+
+## Canonical blocker authority
+
+This document does **not** take precedence over other governance documents, and
+it is **not** itself the blocker/permission authority. The canonical blocker
+and approval authority is:
 
 ```text
-Final status: INVALID_VERIFICATION_TARGET
-Reason: target URL is not an allowed Cloudflare Pages PR Preview, Branch Preview, fixed test slot, or approved production observation.
-Ready transition: NO
-Merge: NO
-Issue close: NO
+Blocker/permission authority: docs/ops/MVP_AGENT_GOVERNANCE.md
 ```
+
+If another document appears to allow Netlify, Vercel, an old deployment, or an
+unassigned URL as final active-runtime proof, the evidence-quality guidance
+here still applies, but any normative blocker/permission judgment defers to
+`MVP_AGENT_GOVERNANCE.md`.
+
+## Hard stop rule (slot infra / security only)
+
+If a verifier sees a target that is a Netlify/`lovebudold` URL used as
+current-runtime proof, they should report:
+
+```text
+Claim status: INVALID_FOR_TARGET_CLAIM
+Reason: Netlify/lovebudold does not prove Cloudflare + Modal active runtime.
+```
+
+This stops only the *claim on that target*, not the whole task. CI red/pending
+or expected-head mismatch remains a canonical merge hard rule under
+`MVP_AGENT_GOVERNANCE.md` and is handled separately.
 
 ## Fixed slot domain rules
 
@@ -80,7 +145,9 @@ https://test9.lovebud.pages.dev/
 https://test10.lovebud.pages.dev/
 ```
 
-A label such as `test7` is not enough. The URL must be the matching Cloudflare Pages domain. Any `test7` assignment that resolves to Netlify or another host is invalid.
+A label such as `test7` is not enough. The URL must be the matching Cloudflare
+Pages domain. Any `test7` assignment that resolves to Netlify or another host is
+invalid for the active runtime.
 
 ## Required verification report fields
 
@@ -94,8 +161,8 @@ Every browser/runtime verification report must include:
 5. Expected PR head SHA:
 6. Deployed SHA:
 7. SHA match: YES / NO / NOT_VERIFIED
-8. If URL host allowed is NO: INVALID_VERIFICATION_TARGET and STOP
-9. If SHA match is NO/NOT_VERIFIED for a required slot: BLOCKED and STOP
+8. Claim status (when host not allowed or SHA unconfirmed):
+   NOT_VERIFIED / INVALID_FOR_TARGET_CLAIM / PARTIAL / FIXED_SLOT_NOT_ASSIGNED / NOT_VERIFIED_ON_FIXED_SLOT
 ```
 
 ## Relationship to existing docs
@@ -106,9 +173,6 @@ Use this document together with:
 - `docs/ops/FIXED_SLOT_MANUAL_E2E_GATE.md`
 - `docs/ops/BROWSER_VERIFICATION_URL_POLICY.md`
 - `docs/ops/AGENT_STARTUP_VERIFICATION_RULES.md`
-- `docs/ops/NETLIFY_VERCEL_LEGACY_ARTIFACT_AUDIT.md`
-
-If another document appears to allow Netlify, Vercel, an old deployment, or an unassigned URL as final active-runtime proof, this allowlist takes precedence until the CTO records a newer source of truth.
 
 ## Guardrails
 
@@ -117,7 +181,23 @@ If another document appears to allow Netlify, Vercel, an old deployment, or an u
 - No slot branch updates.
 - No workflow/package changes.
 - No runtime/API/backend/Auth changes.
-- No production mutation.
+- No production mutation without separate approval.
 - No secret/token/session/cookie/API key/private payload output.
-- No PR #7/prototype/reference/demo/variant changes.
-- No PR #450 changes.
+- Prototype/reference/demo/variant folders are preserved only within their original named issue context (canonical preservation guidance in `docs/doc_index.md`); this is not an automatic blocker on other work.
+
+Follow-up: Issue #3448 de-escalated the automatic-blocker language. Provenance
+and SHA uncertainty now lower a claim's status (`NOT_VERIFIED` /
+`INVALID_FOR_TARGET_CLAIM` / `PARTIAL`) instead of making the project `BLOCKED`.
+The automatic `Ready transition: NO` / `Merge: NO` / `Issue close: NO` results
+were removed; merge is governed only by canonical `MVP_AGENT_GOVERNANCE.md` hard
+rules (CI red/pending, expected-head mismatch). Evidence-quality guidance
+(provenance/SHA reporting, Netlify/lovebudold invalid-for-active-runtime,
+secret/token/cookie protection, production write/delete approval) is preserved.
+
+Refs #3448
+Refs #3442
+Refs #3445
+Refs #3441
+Refs #3437
+Refs #3435
+Refs #1882

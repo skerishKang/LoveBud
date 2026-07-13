@@ -7,8 +7,8 @@
     display: flex;
     flex-direction: column;
     gap: 12px;
-    padding: 16px;
-    border-radius: 18px;
+    padding: 18px;
+    border-radius: 22px;
     background: white;
     border: 1px solid rgba(144, 73, 81, 0.05);
     box-shadow: 0 4px 12px rgba(75, 64, 57, 0.03);
@@ -19,16 +19,16 @@
 }
 
 .editor-moment-info-card {
-    background: var(--surface-container-low);
-    border-color: rgba(144,73,81,0.06);
-    box-shadow: none;
+    background: linear-gradient(180deg, rgba(255, 252, 249, 0.94), rgba(255, 247, 241, 0.82));
+    border-color: rgba(144,73,81,0.08);
+    box-shadow: 0 12px 28px rgba(156, 116, 94, 0.08);
 }
 
 .editor-current-moment-card {
-    gap: 9px;
-    background: var(--surface-container-lowest);
-    border: 1px solid rgba(144, 73, 81, 0.12);
-    box-shadow: 0 6px 16px rgba(75, 64, 57, 0.05);
+    gap: 12px;
+    background: linear-gradient(180deg, rgba(255, 253, 250, 0.98), rgba(255, 248, 242, 0.88));
+    border: 1px solid rgba(144, 73, 81, 0.14);
+    box-shadow: 0 16px 34px rgba(156, 116, 94, 0.10);
 }
 
 /* ── Section eyebrow ───────────────────────────────────── */

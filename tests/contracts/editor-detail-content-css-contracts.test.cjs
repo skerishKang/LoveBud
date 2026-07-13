@@ -162,8 +162,8 @@ test('responsive.css — editor-memo-heading-edit-button responsive preserved', 
 // ---------------------------------------------------------------------------
 // 6. Property values preserved
 // ---------------------------------------------------------------------------
-test('section-cards.css — border-radius 18px preserved', () => {
-  assert.match(sectionCards, /border-radius:\s*18px/);
+test('section-cards.css — border-radius 22px preserved', () => {
+  assert.match(sectionCards, /border-radius:\s*22px/);
 });
 
 test('moment-card.css — memory-edit-button content edit preserved', () => {

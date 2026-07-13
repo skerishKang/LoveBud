@@ -1,7 +1,19 @@
 # Tree Visibility Default and Control Placement Decision
 
 **Date**: 2026-06-28
-**Status**: Decided
+**Status**: SUPERSEDED
+**Classification**: HISTORICAL_DECISION
+**Superseded by**:
+[`PUBLICATION_AND_PRIVACY_UX_POLICY.md`](PUBLICATION_AND_PRIVACY_UX_POLICY.md)
+
+> This document records the former private-first decision and is retained
+> only for historical provenance. It must not guide current product,
+> incident, migration, recovery, API, runtime, or UX decisions.
+>
+> Current policy is public-first: new trees default to public, private
+> storage requires Plus entitlement, and `publicMomentCount >= 3` is a
+> Browse/Search listing condition rather than a visibility-toggle condition.
+
 **Authors**: LoveBud team
 **Refs**: #2935, #2934, #2882, #1882
 

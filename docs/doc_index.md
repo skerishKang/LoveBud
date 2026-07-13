@@ -29,6 +29,8 @@
 
 ---
 
+> **Agent-governance authority:** The canonical source of truth for agent / development / browser blocker and approval judgments is `docs/ops/MVP_AGENT_GOVERNANCE.md` (owner-approved #3442 comment `4947327550`). The browser/slot verification docs referenced below are evidence-depth guidance; where any of them classifies an MVP-de-escalated item (one-task-per-branch, draft-by-default, fixed-slot absence, missing entrypoint comment, dirty worktree, CTO-assigned URL, routine merge, production/localhost as pre-merge proof) as an automatic blocker, that is **not** repo-wide automatic-blocker authority and is superseded by `MVP_AGENT_GOVERNANCE.md`.
+
 ## 먼저 읽기
 
 새 작업을 시작할 때 권장 순서는 아래와 같습니다.
@@ -202,6 +204,7 @@ Reference 문서는 `docs/reference/` 아래에 정리됩니다.
    - [global-namespace-bridges-audit-report.md](./audit/global-namespace-bridges-audit-report.md) - #3120 Global namespace bridges (window.*) audit report by boundary
    - [lovebud-changeability-production-parity-audit.md](./engineering/lovebud-changeability-production-parity-audit.md) - #3425 read-only architecture audit foundation: schema drift, test-layer gaps, deployment revision gaps, CSS scoping risks, legacy retention, domain boundaries, change-risk model, child-issue candidates (no rewrite, no production mutation)
   - [LEGACY_COMPATIBILITY_REGISTRY.md](./engineering/LEGACY_COMPATIBILITY_REGISTRY.md) - #3427 legacy/transitional artifact inventory, evidence, owner, exit conditions, verification, recovery
+  - [TEST_LAYER_CLASSIFICATION.md](./engineering/TEST_LAYER_CLASSIFICATION.md) - #3429 default-CI Node test evidence-layer classification: vocabulary, reporter/contract, SOURCE_STATIC vs EXECUTED_FAKE vs real-local distinction, default CI vs supplemental separation
 
 ## security 문서군
 

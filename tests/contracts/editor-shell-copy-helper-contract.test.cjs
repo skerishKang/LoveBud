@@ -116,7 +116,7 @@ test('applyEditorShellCopy preserves detail panel copy targets', () => {
     ['editMemoryBtn', 'editor_edit', '순간 수정'],
     ['viewMomentDetailBtnLabel', 'editor_view_moment_detail', '현재 순간 감상하기'],
     ['continueFromMomentBtnLabel', 'editor_continue_from_moment', '이 순간에서 이어가기'],
-    ['detailActionsPrimaryLabel', 'editor_actions_primary', '주요 행동'],
+    ['detailActionsPrimaryLabel', 'editor_actions_primary', '이 순간에서'],
     ['deleteMemoryBtn', 'editor_delete', '순간 삭제']
   ];
 

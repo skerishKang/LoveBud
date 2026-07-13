@@ -61,6 +61,16 @@
     background: rgba(144,73,81,0.12);
     border-color: rgba(144,73,81,0.35);
 }
+.editor-floating-toolbar-btn-primary {
+    background: rgba(144,73,81,0.10);
+    border-color: rgba(144,73,81,0.20);
+    color: var(--primary, rgba(144,73,81,0.96));
+}
+.editor-floating-toolbar-btn-primary:hover:not(:disabled),
+.editor-floating-toolbar-btn-primary:focus-visible:not(:disabled) {
+    background: rgba(144,73,81,0.15);
+    border-color: rgba(144,73,81,0.32);
+}
 .editor-floating-toolbar-btn:focus-visible {
     outline: 2px solid var(--control-focus-ring, rgba(144,73,81,0.32));
     outline-offset: 2px;
@@ -99,13 +109,11 @@
     opacity: 1;
 }
 
-/**
- * Connection mode toolbar state
- * Shows branch-related buttons instead of primary actions
- */
-.editor-floating-toolbar.is-connecting .editor-floating-toolbar-btn:not(.editor-ftb-branch-btn):not(.editor-ftb-more-btn) {
-    display: none;
-}
-.editor-floating-toolbar.is-connecting .editor-ftb-branch-btn {
-    display: inline-flex !important;
+/* The toolbar owns the desktop continue action, so the older canvas bubble
+   stays available only when this toolbar is not active. */
+.canvas-area.editor-floating-toolbar-active .memory-add-affordance,
+.canvas-area.editor-floating-toolbar-active .branch-line-affordance {
+    opacity: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
 }

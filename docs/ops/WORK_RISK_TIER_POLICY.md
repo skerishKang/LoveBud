@@ -8,13 +8,15 @@ The default operating model is no longer one-size-fits-all. Small, low-risk task
 
 Use this policy to avoid over-processing simple changes while preserving safety for auth, backend, database, privacy, and destructive flows.
 
+> **Canonical precedence:** `docs/ops/MVP_AGENT_GOVERNANCE.md` (owner-approved #3442 comment `4947327550`). Risk tier is a verification-depth tool, not a permission system. Routine work is allowed by default; only the 6 hard rules are mandatory blockers. Conflicting sections are `NON_NORMATIVE_OUTSIDE_NAMED_CONTEXT`.
+
 Agents should classify each task before execution as one of:
 
 - Low risk: fast lane
 - Medium risk: standard lane
 - High risk: strict lane
 
-If uncertain, choose the higher tier. Do not ask for confirmation unless the issue scope is genuinely ambiguous or blocked.
+Risk tier adjusts verification *depth*, not permission. Routine browser/code/test work needs no separate approval. Only actual destructive production mutation or secret/private-data risk is an approval target. When genuinely uncertain, pick the depth that matches real impact; do not default to the top tier as a blanket rule (canonical: `docs/ops/MVP_AGENT_GOVERNANCE.md`).
 
 ## Tier 1 — Low risk / fast lane
 

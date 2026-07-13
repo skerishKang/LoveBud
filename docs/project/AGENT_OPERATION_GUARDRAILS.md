@@ -7,6 +7,8 @@ This document defines operational guidance for LoveBud agents when a broad `AGEN
 ## Purpose
 
 Agents must be safe, but safety must not block legitimate repository inspection, implementation, and browser verification.
+>
+> **Canonical precedence:** `docs/ops/MVP_AGENT_GOVERNANCE.md` (owner-approved #3442 comment `4947327550`) is the source of truth for blocker / allowed-by-default decisions. Browser tooling and routine work are allowed by default; only the 6 hard rules are mandatory. Conflicting sections are `NON_NORMATIVE_OUTSIDE_NAMED_CONTEXT`.
 
 The intended model is:
 
@@ -163,4 +165,4 @@ Completion reports must separate:
 - implementation done versus merge candidate;
 - merge done versus issue closure disposition.
 
-For runtime-sensitive work, final PASS requires the required fixed-slot/SHA-match evidence unless a user or CTO explicitly downgrades the task to static-only review.
+For runtime-sensitive work, fixed-slot/SHA-match evidence strengthens the claim (PRODUCTION_EVIDENCE / PRE_MERGE_EVIDENCE) but its absence is not an automatic BLOCKED; report the evidence limitation. Browser tooling itself is allowed by default (canonical policy).

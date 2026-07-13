@@ -31,19 +31,19 @@ test('mode buttons have aria-label and title attributes', () => {
     assert.ok(source.includes("title', '편집 모드'"), 'edit button must have title');
 });
 
-test('view description mentions edit mode transition', () => {
+test('view description explains playback and emotion-flow viewing', () => {
     const source = fs.readFileSync('js/editor.js', 'utf8');
     assert.ok(
-        source.includes('수정하려면 편집 모드로 전환하세요'),
-        'view description must guide user to switch to edit mode'
+        source.includes('감상 중 · 순간을 재생하고 감정 흐름을 살펴봐요.'),
+        'view description must explain playback and emotion-flow viewing'
     );
 });
 
-test('edit description mentions edit and continue', () => {
+test('edit description explains editing and continuing the flow', () => {
     const source = fs.readFileSync('js/editor.js', 'utf8');
     assert.ok(
-        source.includes('순간 수정과 이어서 기록하기를 할 수 있어요'),
-        'edit description must mention edit and continue actions'
+        source.includes('편집 중 · 순간을 수정하거나 다음 흐름을 이어갈 수 있어요.'),
+        'edit description must explain editing and continuing the flow'
     );
 });
 
@@ -124,16 +124,14 @@ test('modeDescription has aria-live attribute', () => {
     assert.ok(source.includes('aria-live'), 'modeDescription aria-live must be polite');
 });
 
-test('detail primary action label changed to 감상', () => {
+test('detail primary action label is 이 순간에서', () => {
     const template = fs.readFileSync('js/editor/templates/editor-detail-view-mode-template.js', 'utf8');
-    assert.ok(template.includes('>감상<'), 'detail actions section must be labeled 감상');
-    assert.ok(!template.includes('주요 행동'), 'old 주요 행동 label must be removed');
+    assert.ok(template.includes('id="detailActionsPrimaryLabel">이 순간에서'), 'detail actions section must be labeled 이 순간에서');
 });
 
-test('viewMomentDetailBtn label updated to 이 순간 감상하기', () => {
+test('viewMomentDetailBtn label is 현재 순간 감상하기', () => {
     const template = fs.readFileSync('js/editor/templates/editor-detail-view-mode-template.js', 'utf8');
-    assert.ok(template.includes('이 순간 감상하기'), 'view btn label must be 이 순간 감상하기');
-    assert.ok(!template.includes('현재 순간 감상하기'), 'old 현재 순간 감상하기 must be removed');
+    assert.ok(template.includes('id="viewMomentDetailBtnLabel">현재 순간 감상하기'), 'view btn label must be 현재 순간 감상하기');
 });
 
 test('continueFromMomentBtn kept and hidden by view-mode CSS', () => {

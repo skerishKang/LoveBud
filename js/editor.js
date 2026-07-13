@@ -774,6 +774,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     var existing = document.getElementById('editorDesktopModeToggle');
                     if (existing) return;
 
+                    var modeCard = document.createElement('div');
+                    modeCard.className = 'editor-mode-card';
+
                     var toggle = document.createElement('div');
                     toggle.id = 'editorDesktopModeToggle';
                     toggle.className = 'editor-desktop-mode-toggle';
@@ -801,7 +804,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     var modeDescription = document.createElement('p');
                     modeDescription.className = 'editor-mode-description';
                     modeDescription.setAttribute('aria-live', 'polite');
-                    modeDescription.textContent = '감상 모드예요. 재생과 탐색만 가능하며, 수정하려면 편집 모드로 전환하세요.';
+                    modeDescription.textContent = '감상 중 · 순간을 재생하고 감정 흐름을 살펴봐요.';
 
                     function syncToggle() {
                         var mode = window.LoveBudEditorInteractionMode;
@@ -812,8 +815,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         editBtn.disabled = isEdit;
                         if (modeDescription) {
                             modeDescription.textContent = isEdit
-                                ? '편집 모드예요. 순간 수정과 이어서 기록하기를 할 수 있어요.'
-                                : '감상 모드예요. 재생과 탐색만 가능하며, 수정하려면 편집 모드로 전환하세요.';
+                                ? '편집 중 · 순간을 수정하거나 다음 흐름을 이어갈 수 있어요.'
+                                : '감상 중 · 순간을 재생하고 감정 흐름을 살펴봐요.';
                         }
                     }
 
@@ -857,13 +860,15 @@ document.addEventListener('DOMContentLoaded', () => {
                     descriptionWrap.className = 'editor-mode-description-wrap';
                     descriptionWrap.appendChild(modeDescription);
 
-                    var target = sidebar.querySelector('.editor-status-section .editor-space-between-row') || sidebar.querySelector('.editor-status-section');
-                    if (target) {
-                        target.parentElement.insertBefore(toggle, target.nextSibling);
-                        target.parentElement.insertBefore(descriptionWrap, toggle.nextSibling);
+                    modeCard.appendChild(toggle);
+                    modeCard.appendChild(descriptionWrap);
+
+                    var statusSection = sidebar.querySelector('.editor-status-section');
+                    var statusCard = statusSection && statusSection.querySelector('.editor-status-card');
+                    if (statusSection && statusCard) {
+                        statusSection.insertBefore(modeCard, statusCard);
                     } else {
-                        sidebar.insertBefore(toggle, sidebar.firstChild);
-                        sidebar.insertBefore(descriptionWrap, toggle.nextSibling);
+                        sidebar.insertBefore(modeCard, sidebar.firstChild);
                     }
 
                     handleModeChange(window.LoveBudEditorInteractionMode.getMode());

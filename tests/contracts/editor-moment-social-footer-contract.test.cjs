@@ -3,6 +3,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
+const crypto = require('node:crypto');
 
 const templatePath = 'js/editor/templates/editor-detail-view-mode-template.js';
 const toolbarTemplatePath = 'js/editor/templates/editor-floating-toolbar-template.js';
@@ -12,13 +13,13 @@ const cssOverridePath = 'css/editor/editor-overrides.css';
 test('editor selected moment reactions render as labeled inline footer actions', () => {
   const source = fs.readFileSync(templatePath, 'utf8');
 
-  assert.match(source, /id="momentReactionsCard" aria-label="순간 반응"/, 'reaction footer must have a clear grouped aria label');
+  assert.match(source, /id="momentReactionsCard" aria-label="순간 반응과 댓글"/, 'reaction footer must have a clear grouped aria label');
   assert.match(source, /class="editor-moment-reaction editor-reaction-like-btn"/, 'like action must use the shared inline reaction class');
   assert.match(source, /class="editor-moment-reaction editor-reaction-comment-btn"/, 'comment action must use the shared inline reaction class');
   assert.match(source, /<span class="editor-reaction-label">좋아요<\/span>/, 'like action must include a readable label');
   assert.match(source, /<span class="editor-reaction-label">댓글<\/span>/, 'comment action must include a readable label');
-  assert.match(source, /aria-hidden="true">🤍<\/span>/, 'decorative like icon must not be the only accessible text');
-  assert.match(source, /aria-hidden="true">💬<\/span>/, 'decorative comment icon must not be the only accessible text');
+  assert.match(source, /class="editor-reaction-like-icon" aria-hidden="true">♡<\/span>/, 'like decorative icon must be ♡ and aria-hidden');
+  assert.match(source, /class="material-symbols-outlined editor-reaction-comment-icon" aria-hidden="true">chat_bubble<\/span>/, 'comment decorative icon must be material chat_bubble and aria-hidden');
 });
 
 test('editor selected moment reaction footer uses soft card-like styling', () => {
@@ -33,8 +34,21 @@ test('editor selected moment reaction footer uses soft card-like styling', () =>
 test('editor page cache-busts the social footer stylesheet and template', () => {
   const source = fs.readFileSync(editorPagePath, 'utf8');
 
-  assert.match(source, /editor\.css\?v=20260614-2465/, 'editor stylesheet entrypoint must be cache-busted for this slice');
-  assert.match(source, /editor-detail-view-mode-template\.js\?v=fd957a097b3b/, 'detail view template must be cache-busted');
+  // editor.css is not under the content-SHA fingerprint policy; verify a non-empty cache-bust value exists.
+  const cssMatch = source.match(/editor\.css\?v=([^"']+)/);
+  assert.ok(cssMatch, 'editor stylesheet entrypoint must be cache-busted');
+  assert.ok(cssMatch[1].length > 0, 'editor stylesheet cache-bust value must be non-empty');
+
+  // detail view template is a tracked fingerprint asset; verify editor.html matches its content SHA-256[:12].
+  const templateSource = fs.readFileSync(templatePath, 'utf8').replace(/\r\n/g, '\n');
+  const expectedFingerprint = crypto.createHash('sha256').update(templateSource, 'utf8').digest('hex').slice(0, 12);
+  const tplMatch = source.match(/editor-detail-view-mode-template\.js\?v=([^"']+)/);
+  assert.ok(tplMatch, 'detail view template must be cache-busted in editor.html');
+  assert.strictEqual(
+    tplMatch[1],
+    expectedFingerprint,
+    `detail view template ?v must match content SHA-256[:12] (expected ${expectedFingerprint})`
+  );
 });
 
 test('editor branch creation affordance remains in floating toolbar without being a primary visible CTA', () => {

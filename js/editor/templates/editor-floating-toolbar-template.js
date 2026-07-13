@@ -5,9 +5,9 @@ export function buildFloatingToolbarTemplate() {
                 <span class="material-symbols-outlined" aria-hidden="true">edit</span>
                 <span class="editor-floating-toolbar-label">순간 수정</span>
             </button>
-            <button type="button" class="editor-floating-toolbar-btn" id="ftbContinueBtn" aria-label="이어가기" title="이어가기">
+            <button type="button" class="editor-floating-toolbar-btn editor-floating-toolbar-btn-primary" id="ftbContinueBtn" aria-label="이 순간에서 이어가기" title="이 순간에서 이어가기">
                 <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span>
-                <span class="editor-floating-toolbar-label">이어가기</span>
+                <span class="editor-floating-toolbar-label">이 순간에서 이어가기</span>
             </button>
             <button type="button" class="editor-floating-toolbar-btn" id="ftbViewBtn" aria-label="감상하기" title="감상하기">
                 <span class="material-symbols-outlined" aria-hidden="true">visibility</span>
@@ -16,15 +16,34 @@ export function buildFloatingToolbarTemplate() {
             <button type="button" class="editor-floating-toolbar-btn editor-ftb-more-btn" id="ftbMoreBtn" aria-label="더 보기" title="더 보기" aria-expanded="false" aria-haspopup="true">
                 <span class="material-symbols-outlined" aria-hidden="true">more_horiz</span>
             </button>
-            <!-- Branch/connection-mode buttons (hidden by default, shown via JS) -->
-            <button type="button" class="editor-floating-toolbar-btn editor-ftb-branch-btn" id="ftbBranchBtn" aria-label="가지 만들기" title="가지 만들기" style="display:none;">
-                <span class="material-symbols-outlined" aria-hidden="true">call_split</span>
-                <span class="editor-floating-toolbar-label">가지</span>
-            </button>
-            <button type="button" class="editor-floating-toolbar-btn editor-ftb-branch-btn" id="ftbForkBtn" aria-label="분기하기" title="분기하기" style="display:none;">
-                <span class="material-symbols-outlined" aria-hidden="true">fork_right</span>
-                <span class="editor-floating-toolbar-label">분기</span>
-            </button>
+            <div id="ftbDropdown" class="editor-ftb-dropdown is-hidden" role="menu" aria-label="추가 행동" style="display:none;">
+                <button type="button" class="editor-ftb-dropdown-item" id="ftbBranchBtn" role="menuitem" aria-label="새 가지로 이어가기" title="현재 순간에서 다른 흐름을 시작해요">
+                    <span class="material-symbols-outlined" aria-hidden="true">call_split</span>
+                    <span>새 가지로 이어가기</span>
+                </button>
+                <button type="button" class="editor-ftb-dropdown-item" id="ftbForkBtn" role="menuitem" aria-label="분기하기" aria-hidden="true" tabindex="-1" hidden style="display:none;">
+                    <span class="material-symbols-outlined" aria-hidden="true">fork_right</span>
+                    <span>분기하기</span>
+                </button>
+                <div class="editor-ftb-dropdown-divider editor-ftb-branch-divider" aria-hidden="true"></div>
+                <button type="button" class="editor-ftb-dropdown-item" id="ftbScoutAction" role="menuitem" data-action="scout" aria-label="Scout로 순간 저장">
+                    <span class="material-symbols-outlined" aria-hidden="true">scanner</span>
+                    <span data-i18n="scout_trigger_label">Scout로 순간 저장</span>
+                </button>
+                <button type="button" class="editor-ftb-dropdown-item" id="ftbFocusAction" role="menuitem" data-action="focus" aria-label="선택한 순간 보기">
+                    <span class="material-symbols-outlined" aria-hidden="true">center_focus_strong</span>
+                    <span>선택한 순간 보기</span>
+                </button>
+                <button type="button" class="editor-ftb-dropdown-item" id="ftbShareAction" role="menuitem" data-action="share" aria-label="링크 복사">
+                    <span class="material-symbols-outlined" aria-hidden="true">link</span>
+                    <span>링크 복사</span>
+                </button>
+                <button type="button" class="editor-ftb-dropdown-item editor-ftb-dropdown-item-danger" id="ftbDeleteAction" role="menuitem" data-action="delete" aria-label="순간 삭제">
+                    <span class="material-symbols-outlined" aria-hidden="true">delete</span>
+                    <span>순간 삭제</span>
+                    <span class="editor-ftb-shortcut-hint">Del</span>
+                </button>
+            </div>
         </div>
         <!-- Floating toolbar tooltip (moment info on hover) -->
         <div id="ftbTooltip" class="editor-floating-tooltip is-hidden" role="tooltip" aria-hidden="true" style="display:none;"></div>
@@ -32,26 +51,6 @@ export function buildFloatingToolbarTemplate() {
         <button type="button" id="ftbQuickAdd" class="editor-floating-quick-add is-hidden" aria-label="빠른 추가" title="빠른 추가" style="display:none;">
             <span class="material-symbols-outlined" aria-hidden="true">add</span>
         </button>
-        <!-- Secondary actions dropdown for "..." button -->
-        <div id="ftbDropdown" class="editor-ftb-dropdown is-hidden" role="menu" aria-label="추가 행동" style="display:none;">
-            <button type="button" class="editor-ftb-dropdown-item" id="ftbScoutAction" role="menuitem" data-action="scout" aria-label="Scout로 순간 저장">
-                <span class="material-symbols-outlined" aria-hidden="true">scanner</span>
-                <span data-i18n="scout_trigger_label">Scout로 순간 저장</span>
-            </button>
-            <button type="button" class="editor-ftb-dropdown-item" id="ftbDeleteAction" role="menuitem" data-action="delete" aria-label="순간 삭제">
-                <span class="material-symbols-outlined" aria-hidden="true">delete</span>
-                <span>순간 삭제</span>
-                <span class="editor-ftb-shortcut-hint">Del</span>
-            </button>
-            <button type="button" class="editor-ftb-dropdown-item" id="ftbShareAction" role="menuitem" data-action="share" aria-label="링크 복사">
-                <span class="material-symbols-outlined" aria-hidden="true">link</span>
-                <span>링크 복사</span>
-            </button>
-            <button type="button" class="editor-ftb-dropdown-item" id="ftbFocusAction" role="menuitem" data-action="focus" aria-label="선택한 순간 보기">
-                <span class="material-symbols-outlined" aria-hidden="true">center_focus_strong</span>
-                <span>선택한 순간 보기</span>
-            </button>
-        </div>
     `;
 }
 

@@ -3,6 +3,10 @@
 Issue: #521
 Related: #519, #520, #422, #223, #400
 
+> **Disposition:** `NON_NORMATIVE_OUTSIDE_NAMED_CONTEXT` for agent-governance blocker/approval interpretations.
+> Canonical agent-governance authority: `docs/ops/MVP_AGENT_GOVERNANCE.md` (owner-approved #3442 comment `4947327550`).
+> This Issue #521 checklist's stricter fixed-slot / missing-slot (`BLOCKED_SLOT_DECISION_MISSING`) language is retained only within the editor-detail UI verification context named here and is **not** repo-wide automatic-blocker authority. Under canonical policy, fixed-slot absence is advisory, not an automatic blocker. Secret/private-payload protections remain in force.
+
 This checklist defines the minimum browser smoke requirements for future editor detail UI implementation PRs. It is docs-only. It does not modify `pages/editor.html`, editor JavaScript, CSS, Auth, API, backend, workflow, package, deployment, prototype, reference, demo, or variant files.
 
 ## Purpose

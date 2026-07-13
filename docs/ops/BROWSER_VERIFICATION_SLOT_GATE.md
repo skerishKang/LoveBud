@@ -4,6 +4,8 @@ Status: Active ops guardrail
 Owner: CTO / Ops Lead
 Scope: browser, network, Auth, API, data-loaded, and fixed-slot verification prompts
 
+> **Canonical precedence:** `docs/ops/MVP_AGENT_GOVERNANCE.md` (owner-approved #3442 comment `4947327550`). A missing fixed slot is **not** an automatic BLOCKED reason; the slot gate is advisory evidence guidance. Conflicting sections are `NON_NORMATIVE_OUTSIDE_NAMED_CONTEXT`.
+
 ## Purpose
 
 This document closes a repeated workflow gap: browser verification tasks sometimes start without an explicit fixed test slot even when the target flow requires one.
@@ -27,7 +29,7 @@ Before assigning any browser/network verification task, the requester must write
 If none of those lines is present, the browser verifier must stop before opening URLs and report:
 
 ```text
-Final status: BLOCKED_SLOT_DECISION_MISSING
+NON_NORMATIVE_OUTSIDE_NAMED_CONTEXT: historically `Final status: BLOCKED_SLOT_DECISION_MISSING`. Under canonical policy, a missing slot decision is advisory, not an automatic task blocker.
 Reason: browser/network verification requires an explicit final PASS target decision.
 Required CTO action: assign a fixed slot, approve PR Preview as final PASS, approve local-only verification, or classify as docs-only.
 ```
@@ -70,7 +72,7 @@ At the start of a browser/network verification task, the executor must answer:
 2. Does it involve Auth/API/data/cache/prefetch/deep-link behavior? YES/NO
 3. Is a final PASS target explicitly assigned? YES/NO
 4. If fixed slot is required, which slot was assigned?
-5. If no slot was assigned, stop with BLOCKED_SLOT_DECISION_MISSING.
+5. If no slot was assigned, report limited evidence (`NOT_VERIFIED`/partial) rather than stopping the whole task — canonical policy treats missing fixed slot as advisory.
 ```
 
 Do not spend time trying guessed URLs when the slot decision is missing.
@@ -100,7 +102,7 @@ Use this exact short report when no slot decision exists:
 ```text
 Browser verification blocked before runtime execution.
 
-Final status: BLOCKED_SLOT_DECISION_MISSING
+NON_NORMATIVE_OUTSIDE_NAMED_CONTEXT: historically `Final status: BLOCKED_SLOT_DECISION_MISSING`. Under canonical policy, a missing slot decision is advisory, not an automatic task blocker.
 Reason:
 - This task requires browser/network verification.
 - The task did not explicitly approve PR Preview final PASS, local-only final PASS, or a fixed slot.

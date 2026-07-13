@@ -61,12 +61,12 @@ test('toolbar.css — .ftb-key-hint selector preserved', () => {
   assert.match(toolbar, /\.ftb-key-hint/);
 });
 
-test('toolbar.css — .is-connecting state preserved', () => {
-  assert.match(toolbar, /\.is-connecting/);
+test('toolbar.css — legacy .is-connecting state is not reintroduced', () => {
+  assert.doesNotMatch(toolbar, /\.is-connecting\b/);
 });
 
-test('toolbar.css — .is-connecting !important preserved', () => {
-  assert.match(toolbar, /\.is-connecting[\s\S]*?!important/);
+test('toolbar.css — legacy .is-connecting !important variant is not reintroduced', () => {
+  assert.doesNotMatch(toolbar, /\.is-connecting[\s\S]*?!important/);
 });
 
 // ---------------------------------------------------------------------------

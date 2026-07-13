@@ -3,6 +3,8 @@
 Issue: #464
 
 This runbook defines the mandatory startup and verification rules for LoveBud agents before GitHub, browser, runtime, fixed-slot, or repository work.
+>
+> **Canonical precedence:** `docs/ops/MVP_AGENT_GOVERNANCE.md` (owner-approved #3442 comment `4947327550`). The mandatory startup report is simplified to a minimal baseline; dirty worktree, missing fixed slot, and missing entrypoint comment are not automatic blockers. Conflicting sections are `NON_NORMATIVE_OUTSIDE_NAMED_CONTEXT`.
 
 It is docs/process-only. It does not authorize product UI changes, backend changes, Auth changes, database changes, package changes, workflow changes, secret inspection, branch deletion, or merge actions.
 
@@ -25,43 +27,29 @@ This document standardizes:
 Before any GitHub, browser, runtime, local repository, or fixed test slot task, the agent report must include or explicitly confirm:
 
 ```text
-Agent Startup Checklist
+Agent Startup Checklist (minimal baseline — canonical policy)
 
-1. Repository:
-2. Current branch/worktree:
-3. git status --short:
-4. Dirty worktree status:
-5. If dirty, STOP performed:
-6. main direct push prohibited acknowledged:
-7. Merge requires CTO approval acknowledged:
-8. PR #7/prototype/reference/demo/variant protected acknowledged:
-9. PR #450 protected if active/relevant acknowledged:
-10. Secret/token/cookie/session/credential output prohibited acknowledged:
-11. Browser verification classification:
-12. Fixed test slot required:
-13. Assigned test slot:
-14. Slot deployed SHA matches PR head SHA:
-15. If no fixed slot, browser result status:
+1. Repository: LoveBud
+2. Current main SHA:
+3. Target issue / PR:
+4. Working environment (local / fixed slot / GitHub):
+
+Remaining fields are recorded only when the task needs them. A dirty
+worktree is preserved and bypassed; it is not an automatic STOP. Routine
+squash merge proceeds after remote diff, CI green, and expected-head
+confirmation — no repeated CTO approval required.
 ```
 
 If the task is GitHub Web/API-only and no local repository is used, write `not applicable - GitHub Web/API-only` for local branch/worktree fields rather than inventing values.
 
 ## Dirty worktree policy
 
-If `git status --short` is not empty:
+NON_NORMATIVE_OUTSIDE_NAMED_CONTEXT (superseded by `docs/ops/MVP_AGENT_GOVERNANCE.md`): historically this required an immediate STOP on a dirty worktree. Under canonical policy:
 
-- STOP immediately.
-- Do not commit.
-- Do not stash.
-- Do not restore files.
-- Do not checkout files to discard changes.
-- Do not reset.
-- Do not clean.
-- Do not push.
-- Do not merge.
-- Preserve dirty and untracked files.
+- Preserve dirty and untracked files (do not commit/stash/restore/checkout-to-discard/reset/clean/push/merge destructively without approval).
+- Do not proceed with the task in the dirty worktree; use another worktree/branch or read-only inspection.
 - Report the dirty paths without exposing sensitive values.
-- Wait for a clean worktree assignment or explicit CTO disposition.
+- A dirty worktree is not an automatic blocker. Only `clean`/`reset`/`stash drop`/overwrite requires explicit approval.
 
 A dirty worktree does not authorize cleanup. Cleanup is a separate decision.
 
@@ -72,7 +60,7 @@ A dirty worktree does not authorize cleanup. Cleanup is a separate decision.
 - Use one branch per task.
 - Use PR-only merge flow.
 - Prefer squash merge unless the CTO explicitly approves another method.
-- Merge requires CTO approval.
+- Routine PRs may be squash-merged without repeated CTO approval after independent remote diff review, green CI, and expected PR head SHA confirmation; do not merge on red or pending CI.
 - PR creation and additional commits require scope discipline.
 - Stop if unauthorized files change.
 - Do not mix UI work with docs/ops/backend/security/runtime work unless explicitly scoped.

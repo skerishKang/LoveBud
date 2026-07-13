@@ -378,6 +378,15 @@ body .editor-memory-mode-chip.is-active {
     display: none !important;
 }
 
+/* Public viewer restores tree-meta visibility without exposing other editor-only sections. */
+body.editor-readonly .editor-tree-meta-section {
+    display: block !important;
+}
+
+.editor-sidebar-rail-note {
+    display: grid !important;
+}
+
 .editor-canvas-empty-guide__desc {
     max-width: 260px;
     margin-left: auto;
