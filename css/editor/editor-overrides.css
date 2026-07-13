@@ -383,8 +383,8 @@ body.editor-readonly .editor-tree-meta-section {
     display: block !important;
 }
 
-/* Editor edit mode restores add-section visibility when not read-only. */
-body:not(.editor-readonly) .editor-add-section-bottom {
+/* Editor edit mode restores add-section visibility only for owner edit. */
+body:not(.editor-readonly)[data-editor-interaction-mode="edit"] .editor-add-section-bottom {
     display: flow-root !important;
 }
 

@@ -820,6 +820,22 @@ document.addEventListener('DOMContentLoaded', () => {
                         }
                     }
 
+                    function syncSidebarAuthoringEntryState(isEdit) {
+                        var section = document.querySelector('.editor-add-section-bottom');
+                        var button = document.getElementById('addMemoryBtn');
+                        var canAuthor = effectiveCanEdit === true && isEdit === true;
+
+                        if (section) {
+                            section.setAttribute('aria-hidden', canAuthor ? 'false' : 'true');
+                        }
+                        if (button) {
+                            button.tabIndex = canAuthor ? 0 : -1;
+                            if (!canAuthor) {
+                                button.disabled = true;
+                            }
+                        }
+                    }
+
                     function handleModeChange(modeValue) {
                         var isEdit = modeValue === window.LoveBudEditorInteractionMode.MODE_EDIT;
                         if (isEdit) {
@@ -842,6 +858,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             if (viewModeEl) viewModeEl.style.display = '';
                         }
                         syncToggle();
+                        syncSidebarAuthoringEntryState(isEdit);
                     }
 
                     viewBtn.addEventListener('click', function () {
