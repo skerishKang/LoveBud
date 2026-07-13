@@ -2212,7 +2212,6 @@
       "rationale": "Reads production module source and executes it in a local process with injected fake/mock/stub dependencies (e.g., vm context with fake DOM or mocked fetch/localStorage); no real external system or production resource used.",
       "capabilities": []
     },
-
     {
       "path": "tests/contracts/public-viewer-authenticated-like-contract.test.cjs",
       "layer": "EXECUTED_FAKE",
@@ -2847,6 +2846,12 @@
       "path": "tests/contracts/scout-save-memory-target-tree-selection-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/scout-save-memory-target-tree-selection-model-runtime-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes the pure Scout save-memory target-tree selection model in node:vm and verifies explicit selection, fail-closed missing/stale/unavailable states, no auto-selection, prototype-safe dedupe, detached outputs, and gated save-memory persistence without browser, navigation, auth provider, network, storage, database, provider, or Production resource.",
       "capabilities": []
     },
     {
