@@ -376,7 +376,10 @@ test('editor detail UI core contract remains explicit for future viewer renderer
   assert.ok(source.includes('updateSidebarStatus'), 'detail UI core return contract includes updateSidebarStatus');
   assert.ok(source.includes('updateDetailPanel'), 'detail UI core return contract includes updateDetailPanel');
   assert.ok(source.includes('toggleReaction'), 'editor detail core still owns full reaction write behavior');
-  assert.ok(source.includes('from=editor'), 'editor detail core still owns editor detail navigation context');
+  assert.ok(source.includes('openCurrentMomentDetail,'), 'editor detail core receives current moment navigation as a dependency');
+  assert.ok(source.includes("viewMomentDetailBtn.addEventListener('click'"), 'editor detail core binds the current moment detail action');
+  assert.ok(source.includes('openCurrentMomentDetail();'), 'editor detail core delegates current moment navigation through the injected callback');
+  assert.equal(source.includes('from=editor'), false, 'editor detail core must not own the raw editor detail URL context');
   assert.ok(source.includes('window.createEditorDetailTreeMetaBoundary'), 'detail UI core depends on tree meta boundary');
   assert.ok(source.includes('window.createEditorDetailUIBuilders'), 'detail UI core depends on detail UI builders');
   assert.ok(source.includes('window.createEditorDetailInlineEditBoundary'), 'detail UI core depends on inline edit boundary fallback');
