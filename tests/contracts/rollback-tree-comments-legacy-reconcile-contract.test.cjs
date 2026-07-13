@@ -377,4 +377,3 @@ test('rollback runbook / SQL do not carry stale "captured/preserved original PK"
   assert.equal(/migration preserved the original PK/i.test(sql), false,
     'Rollback SQL must not claim the migration preserved the original PK');
 });
-
