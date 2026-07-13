@@ -60,7 +60,7 @@ PR **#3487** (now on main) closed several Editor-side authoring/appreciation bou
 
 PR **#3469** remains a **stale closed PR**. Its Viewer findings are classified below as reference only. Whole-merge and cherry-pick of #3469 are forbidden.
 
-This audit freezes the safe shared boundary and proposes five small implementation slices with explicit issue ownership.
+This audit freezes the safe shared boundary and proposes **five implementation slices plus one optional Production visual-verification gate**, with explicit issue ownership.
 
 ---
 
@@ -338,6 +338,8 @@ Capability flags are **computed by the route adapter**, not by shared presentati
 
 ## K. Implementation slices
 
+This section defines **five implementation slices** (Slices 1–5) **plus one optional Production visual-verification gate** (Optional Slice 6). Optional Slice 6 is **not** a code implementation slice; it is a post-implementation verification gate only.
+
 ### Slice 1 — Shared canonical appreciation render model / pure presentation boundary
 
 | Field | Content |
@@ -348,23 +350,99 @@ Capability flags are **computed by the route adapter**, not by shared presentati
 | dependencies | This audit merged |
 | non-goals | No route migration; no social write activation; no Editor import into Viewer; no CSS redesign |
 | permission risks | Accidental inclusion of private fields / ownerId display |
-| required tests | SOURCE_STATIC contracts for model fields, forbidden keys, capability fail-closed defaults |
+| required tests | **Primary: EXECUTED_FAKE** unit/behavior tests that import or VM-run the pure helper (see list below). **Secondary only:** SOURCE_STATIC scope guards. **Principle:** SOURCE_STATIC tests are scope guards only. They do not replace executed render-model behavior tests. |
 | merge order | 1 (first) |
 | issue ownership | #3475 |
+
+#### Slice 1 executed unit/behavior tests (required)
+
+Layer: repository taxonomy **`EXECUTED_FAKE`** (execute production pure-helper logic with injected fakes / no real network or DB).
+
+The pure helper must be actually imported or VM-executed and verified for at least:
+
+1. public-safe raw input → canonical render model conversion
+2. camelCase / snake_case input normalization
+3. missing optional field → explicit `null` or omit policy
+4. unknown like/comment count → **must not** fabricate fake `0`
+5. persisted numeric zero → preserve `0`
+6. raw `ownerId` → removed from presentation display model
+7. raw Firebase UID → removed
+8. Authorization / token / session values → removed
+9. private-only metadata → removed
+10. must not return the unfiltered API object reference as the output
+11. missing capabilities → all false
+12. capability `undefined`, `null`, or unknown key → fail closed
+13. only explicitly true capabilities are true
+14. no input mutation
+15. output object does not include route mutation handlers
+
+#### Slice 1 SOURCE_STATIC scope guards (secondary only)
+
+Allowed as **scope guards only** (not a substitute for executed behavior tests):
+
+- Editor import ban
+- Firebase / Auth import ban
+- network / fetch ban
+- Modal / API client import ban
+- mutation handler name ban
+
+```text
+SOURCE_STATIC tests are scope guards only.
+They do not replace executed render-model behavior tests.
+```
 
 ### Slice 2 — Public Viewer selected-moment hierarchy convergence
 
 | Field | Content |
 | --- | --- |
 | title | Public Viewer selected-moment hierarchy convergence |
-| goal | Align Viewer detail hierarchy with Editor appreciation shell (identity, media, date, tags, memo, optional knowledge display) without owner controls |
+| goal | Align Viewer detail hierarchy with Editor appreciation shell (identity, media, date, tags, memo, and knowledge/context **only when public-safe payload is proven**) without owner controls |
 | exact expected files | `js/viewer/public-viewer-detail-view-mode-template.js`, `js/viewer/public-viewer-detail-ui.js`, related Viewer CSS under `css/viewer/*` or visitor-viewer only if required, Viewer contracts |
-| dependencies | Slice 1 |
-| non-goals | No Editor runtime import; no edit/continue/connect; no #3075 write completion; no #3188 tree social redesign |
-| permission risks | Rendering private knowledge; enabling owner chips |
-| required tests | public-viewer detail template contracts; public-safe field assertions; regression that owner buttons remain absent |
+| dependencies | Slice 1; **Public-safe knowledge/context payload availability must be proven by current public API/adapter evidence before rendering the section.** |
+| non-goals | No Editor runtime import; no edit/continue/connect; no #3075 write completion; no #3188 tree social redesign; no owner/private knowledge fallback |
+| permission risks | Rendering private knowledge; enabling owner chips; fabricating empty knowledge sections; calling owner/private endpoints from Viewer |
+| required tests | public-viewer detail template contracts; public-safe field assertions; owner buttons absent; knowledge payload gate tests (below) |
 | merge order | 2 |
 | issue ownership | #3475 |
+
+#### Slice 2 public knowledge/context payload gate (fail-closed)
+
+Current data-parity judgment: public knowledge payload support is **U / unproven**.
+
+**Public-safe knowledge/context payload availability must be proven by current public API/adapter evidence before rendering the section.**
+
+When payload **is** proven, only public-safe fields may be used:
+
+- display label
+- safe title
+- safe type/category
+- safe public source/context label
+
+Forbidden even if present in accidental raw input:
+
+- private entity ID
+- owner-local relation metadata
+- account ID
+- raw database key
+- private note
+- hidden/draft context
+- unfiltered entity object
+
+When payload is **not** proven (current default until evidence lands):
+
+- knowledge/context section **omitted or hidden**
+- no empty fake section
+- no private owner payload fallback
+- no Editor owner API request
+- no fabricated placeholder data
+
+#### Slice 2 required knowledge-gate tests
+
+1. public-safe knowledge present → safe display allowed
+2. knowledge field absent → section hidden
+3. private-only knowledge present in accidental raw input → stripped
+4. Viewer must not call owner/private endpoints for knowledge
+5. raw entity/account identifiers must not appear in the DOM model
 
 ### Slice 3 — My Trees / Browse explicit entry routes
 
@@ -408,7 +486,9 @@ Capability flags are **computed by the route adapter**, not by shared presentati
 | merge order | Parallel; independent of Slices 1–3 |
 | issue ownership | **#3188** |
 
-### Optional Slice 6 — Production visual verification gate
+### Optional Slice 6 — Production visual verification gate (not a code implementation slice)
+
+This is **one optional Production visual-verification gate**, not a sixth implementation slice.
 
 | Field | Content |
 | --- | --- |
@@ -416,11 +496,24 @@ Capability flags are **computed by the route adapter**, not by shared presentati
 | goal | Cloudflare Preview / fixed test slot screenshots comparing Editor appreciation vs Public Viewer after Slices 1–2 |
 | exact expected files | none required (ops evidence only) or verification note under docs/reports if process requires |
 | dependencies | Slices 1–2 merged; Preview URL policy |
-| non-goals | New features |
+| non-goals | New features; no code product change required solely for this gate |
 | permission risks | None if read-only browsing of public fixtures |
 | required tests | Manual checklist + browser verification entrypoint docs |
-| merge order | After Slice 2 |
+| merge order | After Slice 2 (post-implementation verification) |
 | issue ownership | #3475 (verification), keep issue OPEN until done |
+
+### Merge-order summary
+
+```text
+5 implementation slices
++ 1 optional Production visual-verification gate
+
+Slice 1 → Slice 2 → Slice 3
+Slices 4–5 parallel under #3075 / #3188
+Optional visual gate after Slices 1–2 (and preferred after hierarchy convergence is reviewable)
+```
+
+Do **not** count the optional visual gate as an additional implementation slice.
 
 ---
 
@@ -467,4 +560,6 @@ Capability flags are **computed by the route adapter**, not by shared presentati
 
 **Classification:** `ISSUE3475_CANONICAL_APPRECIATION_BOUNDARY_AUDIT_READY`
 
-Next action: orchestrator reviews this doc, then schedules Slice 1 (pure render model) without social write activation and without stale PR #3469 reuse.
+Plan shape: **five implementation slices plus one optional Production visual-verification gate**.
+
+Next action: orchestrator reviews this doc, then schedules Slice 1 (pure render model with **EXECUTED_FAKE** behavior tests) without social write activation and without stale PR #3469 reuse.
