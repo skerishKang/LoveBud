@@ -7,7 +7,9 @@
 
         function readSelectedTreeFromUrl() {
             try {
-                return new URLSearchParams(window.location.search).get('tree') || '';
+                const raw = new URLSearchParams(window.location.search).get('tree') || '';
+                const trimmed = String(raw).trim();
+                return trimmed;
             } catch {
                 return '';
             }
@@ -31,14 +33,35 @@
             return null;
         }
 
+        /**
+         * Select a tree for preview and optionally sync history.
+         * @param {object} tree
+         * @param {Element|null} activeCard
+         * @param {{ openMobilePreview?: boolean, historyMode?: 'push'|'replace'|'none' }} [options]
+         */
         function selectTree(tree, activeCard, options = {}) {
             if (!tree) return;
-            const { openMobilePreview = true } = options;
+            const openMobilePreview = options.openMobilePreview !== false;
+            const historyMode = options.historyMode || 'push';
+            const previousId = state.selectedTreeId;
+
             state.selectedTreeId = tree.id;
             ui.markActiveCard(activeCard);
 
             if (openMobilePreview && ui.isMobilePreviewMode()) {
                 ui.setMobilePreviewOpen(true);
+            }
+
+            // Same-tree reselect must not create a history entry.
+            const effectiveHistory =
+                historyMode === 'none'
+                    ? 'none'
+                    : previousId === tree.id
+                        ? 'none'
+                        : historyMode;
+
+            if (typeof window.updateUrlState === 'function') {
+                window.updateUrlState({ historyMode: effectiveHistory });
             }
 
             if (Array.isArray(tree.memories) && tree.memories.length > 0) {
@@ -50,14 +73,35 @@
             dataApi.hydrateSelectedTreePreview(tree);
         }
 
-        async function applySelectedTreeFromUrl() {
-            if (state.initialTreeDeepLinkApplied) return;
+        /**
+         * Apply tree selection from URL once (or force on popstate).
+         * Never substitutes an arbitrary first card for an unknown ID.
+         * @param {{ force?: boolean, historyMode?: 'push'|'replace'|'none' }} [options]
+         */
+        async function applySelectedTreeFromUrl(options = {}) {
+            const force = Boolean(options.force);
+            const historyMode = options.historyMode || 'none';
+
+            if (state.initialTreeDeepLinkApplied && !force) return;
+
             const treeId = readSelectedTreeFromUrl();
-            if (!treeId) return;
+            if (!treeId) {
+                state.initialTreeDeepLinkApplied = true;
+                if (force && state.selectedTreeId) {
+                    ui.clearSelectedPreview();
+                }
+                return;
+            }
 
-            let targetTree = state.allTrees.find(t => t.id === treeId) || state.growingTrees.find(t => t.id === treeId);
+            let targetTree =
+                state.allTrees.find(t => t.id === treeId) ||
+                (Array.isArray(state.growingTrees)
+                    ? state.growingTrees.find(t => t.id === treeId)
+                    : null);
 
-            if (!targetTree && window.apiClient && window.apiClient.getPublicTreePreview) {
+            // Only fetch on initial deep-link when list does not yet include the tree.
+            // Popstate force path stays within currently loaded results (no surprise network).
+            if (!targetTree && !force && window.apiClient && window.apiClient.getPublicTreePreview) {
                 try {
                     targetTree = await window.apiClient.getPublicTreePreview({ id: treeId });
                 } catch (error) {
@@ -66,11 +110,20 @@
             }
 
             if (!targetTree) {
+                // Unknown / filtered-out ID: leave unselected; do not pick the first card.
                 state.initialTreeDeepLinkApplied = true;
+                state.pendingUnknownTreeDeepLink = true;
+                if (force && state.selectedTreeId) {
+                    ui.clearSelectedPreview();
+                }
                 return;
             }
 
-            selectTree(targetTree, findRenderedTreeCard(treeId), { openMobilePreview: false });
+            state.pendingUnknownTreeDeepLink = false;
+            selectTree(targetTree, findRenderedTreeCard(treeId), {
+                openMobilePreview: false,
+                historyMode
+            });
             state.initialTreeDeepLinkApplied = true;
         }
 

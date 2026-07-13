@@ -162,13 +162,14 @@ test('social shell shows likeCount 0 and commentCount 0 as zero', () => {
   assert.ok(html.includes('aria-label="댓글 0"'), 'aria-label must show zero');
 });
 
-test('social shell shows em-dash when likeCount and commentCount unavailable', () => {
+test('social shell hides likeCount and commentCount when unavailable (no em-dash fake)', () => {
   var link = loadShareLink({ sharedUtils: makeSharedUtils(5) });
   var html = link.renderPreviewSocialShell({ id: 't1' });
-  assert.ok(html.includes('>&mdash;</strong>'), 'likeCount must show — when unavailable');
-  assert.ok(html.includes('aria-label="좋아요 정보 없음"'), 'aria-label must say 정보 없음');
-  assert.ok(html.includes('>&mdash;</strong>'), 'commentCount must show — when unavailable');
-  assert.ok(html.includes('aria-label="댓글 정보 없음"'), 'aria-label must say 정보 없음');
+  assert.ok(!html.includes('>&mdash;</strong>'), 'must not render em-dash for unavailable metrics');
+  assert.ok(!html.includes('aria-label="좋아요 정보 없음"'), 'must hide unavailable likes entirely');
+  assert.ok(!html.includes('aria-label="댓글 정보 없음"'), 'must hide unavailable comments entirely');
+  assert.ok(!html.includes('favorite') || html.includes('visibility'), 'likes icon only when a value is available');
+  assert.ok(html.includes('data-preview-share-tree-id'), 'share button remains when tree id is valid');
 });
 
 test('social shell never contains literal undefined/null/NaN string', () => {
@@ -398,8 +399,8 @@ test('search.html share-link uses new cache version', () => {
   var html = read('pages/search.html');
   var match = html.match(/search-share-link\.js\?v=([\w-]+)/);
   assert.ok(match, 'search-share-link.js must have a cache version');
-  assert.strictEqual(match[1], '20260629-2772-1',
-    'search-share-link.js cache version must be 20260629-2772-1');
+  assert.strictEqual(match[1], '20260713-3482-1',
+    'search-share-link.js cache version must be 20260713-3482-1');
 });
 
 test('search.html has only one share-link script reference', () => {
