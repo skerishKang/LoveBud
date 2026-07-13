@@ -1919,6 +1919,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/my-trees-entry-target-resolver-runtime-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes the pure My Trees entry-target resolver in node:vm and verifies canonical route construction, public/private access gating, detached output, URL encoding, and fail-closed invalid-input behavior without a real browser, navigation, auth provider, network, database, deployment, or Production resource.",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/my-trees-flow-stage-cache-bust-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
