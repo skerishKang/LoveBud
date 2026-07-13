@@ -238,6 +238,157 @@ test('accepts memoryId / videoUrl aliases used by detail UI', () => {
   assert.equal(model.moment.thumbnailUrl, 'https://example.com/t.jpg');
 });
 
+// ── Current Viewer playback aliases (usable-string fall-through) ───────────
+
+test('playback alias: url alone maps to sourceUrl', () => {
+  const api = loadApi();
+  const model = api.createAppreciationRenderModel(
+    { url: 'https://example.com/from-url' },
+    {}
+  );
+  assert.equal(model.moment.sourceUrl, 'https://example.com/from-url');
+});
+
+test('playback alias: linkUrl alone maps to sourceUrl', () => {
+  const api = loadApi();
+  const model = api.createAppreciationRenderModel(
+    { linkUrl: 'https://example.com/from-linkUrl' },
+    {}
+  );
+  assert.equal(model.moment.sourceUrl, 'https://example.com/from-linkUrl');
+});
+
+test('playback alias: link_url alone maps to sourceUrl', () => {
+  const api = loadApi();
+  const model = api.createAppreciationRenderModel(
+    { link_url: 'https://example.com/from-link_url' },
+    {}
+  );
+  assert.equal(model.moment.sourceUrl, 'https://example.com/from-link_url');
+});
+
+test('playback alias: empty sourceUrl falls through to videoUrl', () => {
+  const api = loadApi();
+  const model = api.createAppreciationRenderModel(
+    {
+      sourceUrl: '',
+      videoUrl: 'https://fallback.example/video',
+    },
+    {}
+  );
+  assert.equal(model.moment.sourceUrl, 'https://fallback.example/video');
+});
+
+test('playback alias: null sourceUrl falls through to url', () => {
+  const api = loadApi();
+  const model = api.createAppreciationRenderModel(
+    {
+      sourceUrl: null,
+      url: 'https://fallback.example/from-url',
+    },
+    {}
+  );
+  assert.equal(model.moment.sourceUrl, 'https://fallback.example/from-url');
+});
+
+test('playback alias: non-string sourceUrl falls through to linkUrl', () => {
+  const api = loadApi();
+  const model = api.createAppreciationRenderModel(
+    {
+      sourceUrl: 12345,
+      linkUrl: 'https://fallback.example/from-linkUrl',
+    },
+    {}
+  );
+  assert.equal(model.moment.sourceUrl, 'https://fallback.example/from-linkUrl');
+});
+
+test('playback alias: whitespace sourceUrl falls through to source_url', () => {
+  const api = loadApi();
+  const model = api.createAppreciationRenderModel(
+    {
+      sourceUrl: '   ',
+      source_url: 'https://fallback.example/from-source_url',
+    },
+    {}
+  );
+  assert.equal(model.moment.sourceUrl, 'https://fallback.example/from-source_url');
+});
+
+test('playback alias: valid sourceUrl wins over later usable aliases', () => {
+  const api = loadApi();
+  const model = api.createAppreciationRenderModel(
+    {
+      sourceUrl: 'https://canonical.example/video',
+      source_url: 'https://snake.example/video',
+      videoUrl: 'https://fallback.example/video',
+      video_url: 'https://snake-video.example/video',
+      url: 'https://url.example/video',
+      linkUrl: 'https://link.example/video',
+      link_url: 'https://link-snake.example/video',
+    },
+    {}
+  );
+  assert.equal(model.moment.sourceUrl, 'https://canonical.example/video');
+});
+
+test('playback alias: all invalid aliases yield null sourceUrl', () => {
+  const api = loadApi();
+  const model = api.createAppreciationRenderModel(
+    {
+      sourceUrl: '',
+      source_url: null,
+      videoUrl: '   ',
+      video_url: 0,
+      url: {},
+      linkUrl: [],
+      link_url: function () {},
+    },
+    {}
+  );
+  assert.equal(model.moment.sourceUrl, null);
+});
+
+// ── Thumbnail usable-string aliases ────────────────────────────────────────
+
+test('thumbnail alias: empty thumbnailUrl falls through to thumbnail', () => {
+  const api = loadApi();
+  const model = api.createAppreciationRenderModel(
+    {
+      thumbnailUrl: '',
+      thumbnail: 'https://example.com/thumb.jpg',
+    },
+    {}
+  );
+  assert.equal(model.moment.thumbnailUrl, 'https://example.com/thumb.jpg');
+});
+
+test('thumbnail alias: valid thumbnailUrl wins over later aliases', () => {
+  const api = loadApi();
+  const model = api.createAppreciationRenderModel(
+    {
+      thumbnailUrl: 'https://example.com/canonical-thumb.jpg',
+      thumbnail_url: 'https://example.com/snake-thumb.jpg',
+      thumbnail: 'https://example.com/thumb.jpg',
+    },
+    {}
+  );
+  assert.equal(model.moment.thumbnailUrl, 'https://example.com/canonical-thumb.jpg');
+});
+
+test('thumbnail alias: all invalid aliases yield null thumbnailUrl', () => {
+  const api = loadApi();
+  const model = api.createAppreciationRenderModel(
+    {
+      thumbnailUrl: '',
+      thumbnail_url: null,
+      thumbnail: 42,
+    },
+    {}
+  );
+  assert.equal(model.moment.thumbnailUrl, null);
+});
+
 // ── Invalid / empty inputs ─────────────────────────────────────────────────
 
 test('null source is safe', () => {
@@ -322,6 +473,62 @@ test('normalizes tag string arrays and drops invalid items', () => {
     {}
   );
   assert.deepEqual(hostValue(model.moment.emotionTags), ['a', 'b', 'c']);
+});
+
+test('preserves constructor and toString tags via prototype-safe dedupe', () => {
+  const api = loadApi();
+  const model = api.createAppreciationRenderModel(
+    {
+      emotionTags: ['constructor', 'toString', 'valueOf', '__proto__'],
+    },
+    {}
+  );
+  assert.deepEqual(hostValue(model.moment.emotionTags), [
+    'constructor',
+    'toString',
+    'valueOf',
+    '__proto__',
+  ]);
+});
+
+test('dedupes prototype-name tags without dropping first occurrence', () => {
+  const api = loadApi();
+  const model = api.createAppreciationRenderModel(
+    {
+      emotionTags: ['constructor', 'toString', 'constructor', 'toString', 'ok'],
+    },
+    {}
+  );
+  assert.deepEqual(hostValue(model.moment.emotionTags), [
+    'constructor',
+    'toString',
+    'ok',
+  ]);
+});
+
+test('tag normalization keeps ordinary tags and order after prototype-safe fix', () => {
+  const api = loadApi();
+  const model = api.createAppreciationRenderModel(
+    {
+      emotionTags: ['설렘', '  응원  ', '설렘', '', '감동'],
+    },
+    {}
+  );
+  assert.deepEqual(hostValue(model.moment.emotionTags), ['설렘', '응원', '감동']);
+});
+
+test('does not mutate source emotionTags array while normalizing', () => {
+  const api = loadApi();
+  const tags = ['constructor', '  a  ', 'toString', 'a'];
+  const tagsBefore = tags.slice();
+  const model = api.createAppreciationRenderModel({ emotionTags: tags }, {});
+  assert.deepEqual(tags, tagsBefore);
+  assert.notEqual(model.moment.emotionTags, tags);
+  assert.deepEqual(hostValue(model.moment.emotionTags), [
+    'constructor',
+    'a',
+    'toString',
+  ]);
 });
 
 // ── Knowledge gate ─────────────────────────────────────────────────────────

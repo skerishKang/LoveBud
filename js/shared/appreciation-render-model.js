@@ -41,6 +41,7 @@
   /**
    * Read first present key (including null) from allowlisted aliases.
    * Does not invent defaults; missing → undefined.
+   * Used for non-string fields (ids, counts) where presence matters.
    */
   function pickFirst(source, keys) {
     if (!isPlainObject(source)) return undefined;
@@ -65,6 +66,22 @@
   }
 
   /**
+   * First usable trimmed non-empty string across presentation aliases.
+   * Skips missing keys, null, empty/whitespace, and non-string values.
+   * Does not invent defaults; all unusable → null.
+   */
+  function pickFirstUsableString(source, keys) {
+    if (!isPlainObject(source)) return null;
+    var i;
+    for (i = 0; i < keys.length; i += 1) {
+      if (!hasOwn(source, keys[i])) continue;
+      var normalized = normalizeOptionalString(source[keys[i]]);
+      if (normalized !== null) return normalized;
+    }
+    return null;
+  }
+
+  /**
    * Authoritative non-negative integer count, or null when unknown/invalid.
    * Preserves genuine 0. Never fabricates 0 from missing values.
    * Does not parse numeric strings (no evidence they are authoritative).
@@ -80,7 +97,9 @@
   function normalizeEmotionTags(value) {
     if (!Array.isArray(value)) return [];
     var out = [];
-    var seen = {};
+    // Null-prototype map so tags like "constructor" / "toString" are not
+    // treated as inherited Object.prototype properties.
+    var seen = Object.create(null);
     var i;
     for (i = 0; i < value.length; i += 1) {
       var item = value[i];
@@ -200,12 +219,20 @@
       pickFirst(source, ['title', 'memoryTitle', 'memory_title'])
     );
 
-    var sourceUrl = normalizeOptionalString(
-      pickFirst(source, ['sourceUrl', 'source_url', 'videoUrl', 'video_url'])
-    );
-    var thumbnailUrl = normalizeOptionalString(
-      pickFirst(source, ['thumbnailUrl', 'thumbnail_url', 'thumbnail'])
-    );
+    var sourceUrl = pickFirstUsableString(source, [
+      'sourceUrl',
+      'source_url',
+      'videoUrl',
+      'video_url',
+      'url',
+      'linkUrl',
+      'link_url'
+    ]);
+    var thumbnailUrl = pickFirstUsableString(source, [
+      'thumbnailUrl',
+      'thumbnail_url',
+      'thumbnail'
+    ]);
     var rememberedAt = normalizeOptionalString(
       pickFirst(source, ['rememberedAt', 'remembered_at', 'timestamp'])
     );
