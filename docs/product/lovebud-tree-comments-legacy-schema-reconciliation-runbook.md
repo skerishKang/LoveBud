@@ -268,8 +268,36 @@ index, or any other non-primary index — **do not apply** the migration.
   is written to a repository-external, permission-restricted temp directory; it is
   never `git add`ed or committed, its path is never printed in this runbook or the PR,
   and its contents are never published.
+- **Primary operator path: Windows-native PowerShell + `pg_dump.exe`.**
+  Use a **direct non-pooler** Production URI in process memory (for example
+  `$env:LOVE_BUD_PRODUCTION_DIRECT_DATABASE_URL`). Do **not** overwrite the runtime
+  pooled secret in `.secrets/lovebud-runtime.env` for migration backups.
+- Never print the connection string, password, host, or backup path in chat/PR logs.
+- If `pg_dump.exe` is missing, **stop and report**. Do **not** auto-fallback to WSL.
 
-  Unix / WSL:
+  Windows (primary):
+  ```powershell
+  $pgDump = Get-Command pg_dump.exe -ErrorAction Stop
+  $backupRoot = Join-Path $env:LOCALAPPDATA "LoveBud\private-backups"
+  New-Item -ItemType Directory -Force -Path $backupRoot | Out-Null
+  # Restrict ACL to the current user only (operator machine policy).
+  $backupFile = Join-Path $backupRoot "tree_comments_schema_pre.sql"
+
+  & $pgDump.Source `
+    $env:LOVE_BUD_PRODUCTION_DIRECT_DATABASE_URL `
+    --schema-only `
+    --no-owner `
+    --no-privileges `
+    --table=public.tree_comments `
+    --file=$backupFile
+
+  if (-not (Test-Path $backupFile) -or (Get-Item $backupFile).Length -le 0) {
+    throw "schema backup missing or empty"
+  }
+  Write-Host "backup ok (size only; path not printed)"
+  ```
+
+  Unix / WSL (**explicitly authorized alternative only** — not the default):
   ```sh
   umask 077
   backup_dir="$(mktemp -d)"
@@ -286,11 +314,6 @@ index, or any other non-primary index — **do not apply** the migration.
   test -s "$backup_dir/tree_comments_schema_pre.sql" && echo "backup ok"
   ```
 
-  Windows: write to a current-user-only ACL-protected directory (e.g. a directory
-  created under `%LOCALAPPDATA%` with an explicit per-user DACL), apply the same
-  `umask`-equivalent permission policy, and confirm the file is non-empty. Never
-  place the backup inside the repository working tree.
-
 - Because row count = 0, no data backup is required, but a full pre-change snapshot is
   recommended per environment policy.
 - Existing table ownership and ACLs are preserved by in-place ALTER.
@@ -301,6 +324,22 @@ index, or any other non-primary index — **do not apply** the migration.
 
 ## 8. Migration command format
 
+**Primary operator path: Windows-native PowerShell + `psql.exe`.**
+Use the **direct non-pooler** Production URI. Do not use the runtime pooled endpoint
+for this migration. Do not print the URI. If `psql.exe` is missing, stop — no WSL fallback.
+
+Windows (primary):
+```powershell
+$psql = Get-Command psql.exe -ErrorAction Stop
+
+& $psql.Source `
+  $env:LOVE_BUD_PRODUCTION_DIRECT_DATABASE_URL `
+  -X `
+  -v ON_ERROR_STOP=1 `
+  -f "scripts/migration-reconcile-tree-comments-legacy-schema.sql"
+```
+
+Unix / WSL (**explicitly authorized alternative only**):
 ```sh
 psql "$DATABASE_URL" -v ON_ERROR_STOP=1 \
   -f scripts/migration-reconcile-tree-comments-legacy-schema.sql
@@ -455,6 +494,18 @@ to Neon production, run the rollback script **only** when all preconditions hold
 - exact reconciled schema present
 - no unexpected dependencies
 
+Windows (primary, when rollback is separately approved):
+```powershell
+$psql = Get-Command psql.exe -ErrorAction Stop
+
+& $psql.Source `
+  $env:LOVE_BUD_PRODUCTION_DIRECT_DATABASE_URL `
+  -X `
+  -v ON_ERROR_STOP=1 `
+  -f "scripts/rollback-tree-comments-legacy-reconcile.sql"
+```
+
+Unix / WSL (**explicitly authorized alternative only**):
 ```sh
 psql "$DATABASE_URL" -v ON_ERROR_STOP=1 \
   -f scripts/rollback-tree-comments-legacy-reconcile.sql
