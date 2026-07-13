@@ -321,10 +321,27 @@ BEGIN
   END IF;
 
   -- No risky dependent objects (trigger / RLS / view / matview).
+  -- View/matview query dependencies are recorded via pg_rewrite rules, not as
+  -- direct pg_depend.objid = pg_class.oid edges. Traverse:
+  --   pg_depend (classid=pg_rewrite) -> pg_rewrite -> pg_class (ev_class)
   SELECT count(*) INTO v_t FROM pg_trigger WHERE tgrelid='public.tree_comments'::regclass AND NOT tgisinternal;
   SELECT count(*) INTO v_r FROM pg_class WHERE oid='public.tree_comments'::regclass AND relrowsecurity;
-  SELECT count(*) INTO v_v FROM pg_class c JOIN pg_depend d ON d.refobjid='public.tree_comments'::regclass AND d.objid=c.oid WHERE c.relkind='v';
-  SELECT count(*) INTO v_mv FROM pg_class c JOIN pg_depend d ON d.refobjid='public.tree_comments'::regclass AND d.objid=c.oid WHERE c.relkind='m';
+  SELECT count(DISTINCT c.oid) INTO v_v
+  FROM pg_depend d
+  JOIN pg_rewrite r ON r.oid = d.objid
+  JOIN pg_class c ON c.oid = r.ev_class
+  WHERE d.refobjid = 'public.tree_comments'::regclass
+    AND d.refclassid = 'pg_class'::regclass
+    AND d.classid = 'pg_rewrite'::regclass
+    AND c.relkind = 'v';
+  SELECT count(DISTINCT c.oid) INTO v_mv
+  FROM pg_depend d
+  JOIN pg_rewrite r ON r.oid = d.objid
+  JOIN pg_class c ON c.oid = r.ev_class
+  WHERE d.refobjid = 'public.tree_comments'::regclass
+    AND d.refclassid = 'pg_class'::regclass
+    AND d.classid = 'pg_rewrite'::regclass
+    AND c.relkind = 'm';
   IF v_t <> 0 OR v_r <> 0 OR v_v <> 0 OR v_mv <> 0 THEN ok := 0; v_m := v_m || 'deps; '; END IF;
 
   msg := v_m;
@@ -621,17 +638,27 @@ BEGIN
   ) THEN
     RAISE EXCEPTION 'PREFLIGHT FAIL: RLS enabled on tree_comments (preserve policy not yet modeled)';
   END IF;
+  -- Dependent views/matviews via rewrite-rule dependency (not direct class oid).
   IF EXISTS (
-    SELECT 1 FROM pg_class c
-    JOIN pg_depend d ON d.refobjid='public.tree_comments'::regclass AND d.objid=c.oid
-    WHERE c.relkind='v'
+    SELECT 1
+    FROM pg_depend d
+    JOIN pg_rewrite r ON r.oid = d.objid
+    JOIN pg_class c ON c.oid = r.ev_class
+    WHERE d.refobjid = 'public.tree_comments'::regclass
+      AND d.refclassid = 'pg_class'::regclass
+      AND d.classid = 'pg_rewrite'::regclass
+      AND c.relkind = 'v'
   ) THEN
     RAISE EXCEPTION 'PREFLIGHT FAIL: dependent views reference tree_comments';
   END IF;
-  SELECT count(*) INTO v_matviews
-  FROM pg_class c
-  JOIN pg_depend d ON d.refobjid='public.tree_comments'::regclass AND d.objid=c.oid
-  WHERE c.relkind='m';
+  SELECT count(DISTINCT c.oid) INTO v_matviews
+  FROM pg_depend d
+  JOIN pg_rewrite r ON r.oid = d.objid
+  JOIN pg_class c ON c.oid = r.ev_class
+  WHERE d.refobjid = 'public.tree_comments'::regclass
+    AND d.refclassid = 'pg_class'::regclass
+    AND d.classid = 'pg_rewrite'::regclass
+    AND c.relkind = 'm';
   IF v_matviews <> 0 THEN
     RAISE EXCEPTION 'PREFLIGHT FAIL: dependent materialized views reference tree_comments (count=%)', v_matviews;
   END IF;
@@ -867,8 +894,22 @@ BEGIN
   -- No risky dependent objects introduced
   SELECT count(*) INTO v_trig FROM pg_trigger WHERE tgrelid='public.tree_comments'::regclass AND NOT tgisinternal;
   SELECT count(*) INTO v_rls FROM pg_class WHERE oid='public.tree_comments'::regclass AND relrowsecurity;
-  SELECT count(*) INTO v_views FROM pg_class c JOIN pg_depend d ON d.refobjid='public.tree_comments'::regclass AND d.objid=c.oid WHERE c.relkind='v';
-  SELECT count(*) INTO v_matviews FROM pg_class c JOIN pg_depend d ON d.refobjid='public.tree_comments'::regclass AND d.objid=c.oid WHERE c.relkind='m';
+  SELECT count(DISTINCT c.oid) INTO v_views
+  FROM pg_depend d
+  JOIN pg_rewrite r ON r.oid = d.objid
+  JOIN pg_class c ON c.oid = r.ev_class
+  WHERE d.refobjid = 'public.tree_comments'::regclass
+    AND d.refclassid = 'pg_class'::regclass
+    AND d.classid = 'pg_rewrite'::regclass
+    AND c.relkind = 'v';
+  SELECT count(DISTINCT c.oid) INTO v_matviews
+  FROM pg_depend d
+  JOIN pg_rewrite r ON r.oid = d.objid
+  JOIN pg_class c ON c.oid = r.ev_class
+  WHERE d.refobjid = 'public.tree_comments'::regclass
+    AND d.refclassid = 'pg_class'::regclass
+    AND d.classid = 'pg_rewrite'::regclass
+    AND c.relkind = 'm';
   IF v_trig <> 0 OR v_rls <> 0 OR v_views <> 0 OR v_matviews <> 0 THEN
     RAISE EXCEPTION 'POST-VERIFY FAIL: unexpected trigger/RLS/dependent view/materialized view appeared after migration';
   END IF;

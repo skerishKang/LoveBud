@@ -384,10 +384,29 @@ BEGIN
   IF v_rls <> 0 THEN
     RAISE EXCEPTION 'ROLLBACK PRECONDITION FAIL: RLS enabled on tree_comments';
   END IF;
-  SELECT count(*) INTO v_views FROM pg_class c JOIN pg_depend d ON d.refobjid='public.tree_comments'::regclass AND d.objid=c.oid WHERE c.relkind='v';
-  SELECT count(*) INTO v_matviews FROM pg_class c JOIN pg_depend d ON d.refobjid='public.tree_comments'::regclass AND d.objid=c.oid WHERE c.relkind='m';
-  IF v_views <> 0 OR v_matviews <> 0 THEN
-    RAISE EXCEPTION 'ROLLBACK PRECONDITION FAIL: dependent view/materialized view references tree_comments (v=% m=%)', v_views, v_matviews;
+  -- Dependent views/matviews via rewrite-rule dependency (not direct class oid).
+  -- Traverse: pg_depend (classid=pg_rewrite) -> pg_rewrite -> pg_class (ev_class).
+  SELECT count(DISTINCT c.oid) INTO v_views
+  FROM pg_depend d
+  JOIN pg_rewrite r ON r.oid = d.objid
+  JOIN pg_class c ON c.oid = r.ev_class
+  WHERE d.refobjid = 'public.tree_comments'::regclass
+    AND d.refclassid = 'pg_class'::regclass
+    AND d.classid = 'pg_rewrite'::regclass
+    AND c.relkind = 'v';
+  SELECT count(DISTINCT c.oid) INTO v_matviews
+  FROM pg_depend d
+  JOIN pg_rewrite r ON r.oid = d.objid
+  JOIN pg_class c ON c.oid = r.ev_class
+  WHERE d.refobjid = 'public.tree_comments'::regclass
+    AND d.refclassid = 'pg_class'::regclass
+    AND d.classid = 'pg_rewrite'::regclass
+    AND c.relkind = 'm';
+  IF v_views <> 0 THEN
+    RAISE EXCEPTION 'ROLLBACK PRECONDITION FAIL: dependent view references tree_comments';
+  END IF;
+  IF v_matviews <> 0 THEN
+    RAISE EXCEPTION 'ROLLBACK PRECONDITION FAIL: dependent materialized view references tree_comments';
   END IF;
 END $$;
 
@@ -645,8 +664,22 @@ BEGIN
   -- ── No risky dependent objects (triggers / RLS / views / matviews). ─────────
   SELECT count(*) INTO v_trig FROM pg_trigger WHERE tgrelid='public.tree_comments'::regclass AND NOT tgisinternal;
   SELECT count(*) INTO v_rls FROM pg_class WHERE oid='public.tree_comments'::regclass AND relrowsecurity;
-  SELECT count(*) INTO v_views FROM pg_class c JOIN pg_depend d ON d.refobjid='public.tree_comments'::regclass AND d.objid=c.oid WHERE c.relkind='v';
-  SELECT count(*) INTO v_matviews FROM pg_class c JOIN pg_depend d ON d.refobjid='public.tree_comments'::regclass AND d.objid=c.oid WHERE c.relkind='m';
+  SELECT count(DISTINCT c.oid) INTO v_views
+  FROM pg_depend d
+  JOIN pg_rewrite r ON r.oid = d.objid
+  JOIN pg_class c ON c.oid = r.ev_class
+  WHERE d.refobjid = 'public.tree_comments'::regclass
+    AND d.refclassid = 'pg_class'::regclass
+    AND d.classid = 'pg_rewrite'::regclass
+    AND c.relkind = 'v';
+  SELECT count(DISTINCT c.oid) INTO v_matviews
+  FROM pg_depend d
+  JOIN pg_rewrite r ON r.oid = d.objid
+  JOIN pg_class c ON c.oid = r.ev_class
+  WHERE d.refobjid = 'public.tree_comments'::regclass
+    AND d.refclassid = 'pg_class'::regclass
+    AND d.classid = 'pg_rewrite'::regclass
+    AND c.relkind = 'm';
   IF v_trig <> 0 OR v_rls <> 0 OR v_views <> 0 OR v_matviews <> 0 THEN
     RAISE EXCEPTION 'ROLLBACK POST-VERIFY FAIL: unexpected trigger/RLS/dependent view/materialized view appeared after rollback';
   END IF;

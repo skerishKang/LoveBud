@@ -65,18 +65,21 @@ test('workflow keeps verify-static and adds independent db-engine-tree-comments 
   assert.match(ci, /timeout-minutes:\s*15/);
   assert.match(ci, /image:\s*postgres:17\.4-bookworm/);
   assert.match(ci, /POSTGRES_USER:\s*lovebud_ci/);
-  assert.match(ci, /POSTGRES_PASSWORD:\s*lovebud_ci_only/);
+  assert.match(ci, /POSTGRES_PASSWORD:\s*ci-\$\{\{\s*github\.run_id\s*\}\}-\$\{\{\s*github\.run_attempt\s*\}\}/);
   assert.match(ci, /POSTGRES_DB:\s*lovebud_ci_admin/);
   assert.match(ci, /LB_TEST_PGHOST:\s*127\.0\.0\.1/);
   assert.match(ci, /LB_TEST_PGUSER:\s*lovebud_ci/);
-  assert.match(ci, /LB_TEST_PGPASSWORD:\s*lovebud_ci_only/);
+  assert.match(ci, /LB_TEST_PGPASSWORD:\s*ci-\$\{\{\s*github\.run_id\s*\}\}-\$\{\{\s*github\.run_attempt\s*\}\}/);
   assert.match(ci, /LB_TEST_PGADMIN_DB:\s*lovebud_ci_admin/);
+  assert.match(ci, /PGPASSWORD:\s*ci-\$\{\{\s*github\.run_id\s*\}\}-\$\{\{\s*github\.run_attempt\s*\}\}/);
   assert.match(ci, /npm run test:db-engine:tree-comments/);
   assert.match(ci, /server_version_num/);
   assert.match(ci, /170004/);
   assert.equal(/secrets\./i.test(ci), false, 'workflow must not reference secrets.*');
   assert.equal(/DATABASE_URL/i.test(ci), false, 'workflow must not reference DATABASE_URL');
   assert.equal(/NEON_API_KEY/i.test(ci), false, 'workflow must not reference NEON_API_KEY');
+  assert.equal(/lovebud_ci_only/i.test(ci), false, 'workflow must not use fixed password-like literal');
+  assert.equal(/POSTGRES_HOST_AUTH_METHOD\s*:\s*trust/i.test(ci), false, 'must not use trust auth');
 });
 
 test('engine harness uses loopback host guard and synthetic env only', () => {
@@ -114,11 +117,20 @@ test('engine harness includes apply/verify/rollback/reapply and adversarial phas
   assert.match(harness, /nonempty/i);
   assert.match(harness, /duplicate/i);
   assert.match(harness, /unexpected.*index|badidx/i);
-  assert.match(harness, /dependent view|depview/i);
+  assert.match(harness, /migration dependent view|depview/i);
+  assert.match(harness, /migration dependent matview|depmatview/i);
+  assert.match(harness, /rollback dependent view|rbdepview/i);
+  assert.match(harness, /rollback dependent matview|rbdepmat/i);
   assert.match(harness, /changed constraint|badfk/i);
   assert.match(harness, /mismatched parent|uuidparent/i);
   assert.match(harness, /rollback nonempty|rbnonempty/i);
   assert.match(harness, /PREFLIGHT STOP: tree_comments already reconciled/);
+  // Each adversarial scenario must preserve pre-state fingerprint after fail-closed.
+  assert.match(harness, /assertNoMutation/);
+  assert.ok(
+    (harness.match(/await assertNoMutation\(client, before\)/g) || []).length >= 8,
+    'expected pre-state-preservation assertions on adversarial scenarios'
+  );
 });
 
 test('legacy fixture and catalog helpers exist with exact legacy shape markers', () => {
@@ -132,6 +144,13 @@ test('legacy fixture and catalog helpers exist with exact legacy shape markers',
   assert.match(helper, /assertCanonicalCatalog/);
   assert.match(helper, /EXPECTED_COLUMN_COUNT_12/);
   assert.match(helper, /idx_tree_comments_tree_id/);
+  assert.match(helper, /pg_rewrite/);
+  assert.match(helper, /count\(DISTINCT c\.oid\)/);
+  assert.equal(
+    /d\.objid\s*=\s*c\.oid/i.test(helper),
+    false,
+    'catalog helper must not use obsolete direct view dependency join'
+  );
 });
 
 test('migration and rollback SQL artifacts remain present (this contract does not require SQL edits)', () => {

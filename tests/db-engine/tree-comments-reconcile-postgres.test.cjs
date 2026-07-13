@@ -363,7 +363,7 @@ test('tree-comments unexpected secondary index fail closed', { concurrency: fals
   });
 });
 
-test('tree-comments dependent view fail closed', { concurrency: false }, async () => {
+test('tree-comments migration dependent view fail closed', { concurrency: false }, async () => {
   await withDisposableDb('depview', LEGACY_FIXTURE, async ({ client, runSql }) => {
     await client.query(
       `CREATE VIEW public.tree_comments_dep_view AS SELECT id, tree_id FROM public.tree_comments`
@@ -375,8 +375,30 @@ test('tree-comments dependent view fail closed', { concurrency: false }, async (
     }
     if ((await catalog.getDependentViewCount(client)) < 1) failMutation();
     if ((await catalog.getCanonicalOnlyColumnCount(client)) !== 0) failMutation();
+    const cols = await catalog.getColumnNames(client);
+    if (cols.length !== 8) failMutation();
     await assertNoMutation(client, before);
-    pass('tree-comments dependent view guard');
+    pass('tree-comments migration dependent view guard');
+  });
+});
+
+test('tree-comments migration dependent matview fail closed', { concurrency: false }, async () => {
+  await withDisposableDb('depmatview', LEGACY_FIXTURE, async ({ client, runSql }) => {
+    await client.query(
+      `CREATE MATERIALIZED VIEW public.tree_comments_dep_matview AS
+       SELECT id, tree_id FROM public.tree_comments`
+    );
+    const before = await catalog.getCatalogFingerprint(client);
+    const res = runSql(MIGRATION_SQL);
+    if (res.status === 0) {
+      boundedFail('depmatview', 'migration', 'DEPENDENT_MATVIEW_SHOULD_FAIL', 0, 'nonzero', '0');
+    }
+    if ((await catalog.getDependentMatviewCount(client)) < 1) failMutation();
+    if ((await catalog.getCanonicalOnlyColumnCount(client)) !== 0) failMutation();
+    const cols = await catalog.getColumnNames(client);
+    if (cols.length !== 8) failMutation();
+    await assertNoMutation(client, before);
+    pass('tree-comments migration dependent matview guard');
   });
 });
 
@@ -517,6 +539,72 @@ test('tree-comments rollback nonempty fail closed', { concurrency: false }, asyn
     if (idxs.length !== 3) failMutation();
     await assertNoMutation(client, before);
     pass('tree-comments rollback nonempty guard');
+  });
+});
+
+test('tree-comments rollback dependent view fail closed', { concurrency: false }, async () => {
+  await withDisposableDb('rbdepview', LEGACY_FIXTURE, async ({ client, runSql }) => {
+    const apply = runSql(MIGRATION_SQL);
+    if (apply.status !== 0) {
+      boundedFail(
+        'rbdepview',
+        'migration_apply',
+        classifyMigrationError(combinedOutput(apply)),
+        apply.status,
+        'exit_0',
+        `exit_${apply.status}`
+      );
+    }
+    await catalog.assertCanonicalCatalog(client);
+    await client.query(
+      `CREATE VIEW public.tree_comments_rb_dep_view AS
+       SELECT id, tree_id, body FROM public.tree_comments`
+    );
+    const before = await catalog.getCatalogFingerprint(client);
+    const rb = runSql(ROLLBACK_SQL);
+    if (rb.status === 0) {
+      boundedFail('rbdepview', 'rollback', 'ROLLBACK_DEPENDENT_VIEW_SHOULD_FAIL', 0, 'nonzero', '0');
+    }
+    if ((await catalog.getDependentViewCount(client)) < 1) failMutation();
+    const cols = await catalog.getColumnNames(client);
+    if (cols.length !== 12) failMutation();
+    const idxs = await catalog.getSecondaryIndexes(client);
+    if (idxs.length !== 3) failMutation();
+    await assertNoMutation(client, before);
+    pass('tree-comments rollback dependent view guard');
+  });
+});
+
+test('tree-comments rollback dependent matview fail closed', { concurrency: false }, async () => {
+  await withDisposableDb('rbdepmat', LEGACY_FIXTURE, async ({ client, runSql }) => {
+    const apply = runSql(MIGRATION_SQL);
+    if (apply.status !== 0) {
+      boundedFail(
+        'rbdepmat',
+        'migration_apply',
+        classifyMigrationError(combinedOutput(apply)),
+        apply.status,
+        'exit_0',
+        `exit_${apply.status}`
+      );
+    }
+    await catalog.assertCanonicalCatalog(client);
+    await client.query(
+      `CREATE MATERIALIZED VIEW public.tree_comments_rb_dep_matview AS
+       SELECT id, tree_id, body FROM public.tree_comments`
+    );
+    const before = await catalog.getCatalogFingerprint(client);
+    const rb = runSql(ROLLBACK_SQL);
+    if (rb.status === 0) {
+      boundedFail('rbdepmat', 'rollback', 'ROLLBACK_DEPENDENT_MATVIEW_SHOULD_FAIL', 0, 'nonzero', '0');
+    }
+    if ((await catalog.getDependentMatviewCount(client)) < 1) failMutation();
+    const cols = await catalog.getColumnNames(client);
+    if (cols.length !== 12) failMutation();
+    const idxs = await catalog.getSecondaryIndexes(client);
+    if (idxs.length !== 3) failMutation();
+    await assertNoMutation(client, before);
+    pass('tree-comments rollback dependent matview guard');
   });
 });
 

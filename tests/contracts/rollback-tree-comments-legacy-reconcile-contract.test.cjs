@@ -176,9 +176,23 @@ test('rollback script rejects partial / expression / INCLUDE secondary indexes',
 test('rollback script preflight guards triggers/RLS/views/matviews and inbound FK', () => {
   assert.match(sql, /unexpected triggers present on tree_comments/i, 'Must guard triggers');
   assert.match(sql, /RLS enabled on tree_comments/i, 'Must guard RLS');
-  assert.match(sql, /relkind='m'/i, 'Must guard materialized views');
-  assert.match(sql, /dependent view\/materialized view references tree_comments/i, 'Must guard views + matviews before mutation');
+  assert.match(sql, /relkind\s*=\s*'m'/i, 'Must guard materialized views');
+  assert.match(sql, /dependent view references tree_comments/i, 'Must guard dependent views before mutation');
+  assert.match(sql, /dependent materialized view references tree_comments/i, 'Must guard dependent matviews before mutation');
   assert.match(sql, /unexpected inbound FK\(s\) reference tree_comments/i, 'Must guard inbound FK');
+});
+
+test('rollback script detects view dependencies through pg_rewrite traversal', () => {
+  assert.match(sql, /pg_rewrite/i, 'Must join pg_rewrite for view dependency detection');
+  assert.match(sql, /r\.ev_class|ev_class/i, 'Must connect rewrite rules via ev_class to pg_class');
+  assert.match(sql, /classid\s*=\s*'pg_rewrite'::regclass/i, 'Must require depend classid = pg_rewrite');
+  assert.match(sql, /refclassid\s*=\s*'pg_class'::regclass/i, 'Must require depend refclassid = pg_class');
+  assert.match(sql, /count\s*\(\s*DISTINCT\s+c\.oid\s*\)/i, 'Must count DISTINCT relation oids');
+  assert.equal(
+    /JOIN\s+pg_depend\s+d\s+ON\s+d\.refobjid\s*=\s*'public\.tree_comments'::regclass\s+AND\s+d\.objid\s*=\s*c\.oid/i.test(sql),
+    false,
+    'Must not use obsolete direct pg_depend.objid = pg_class.oid view join'
+  );
 });
 
 test('rollback script runtime-asserts public.trees.id is text', () => {

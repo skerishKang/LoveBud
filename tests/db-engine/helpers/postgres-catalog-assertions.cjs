@@ -161,12 +161,18 @@ async function getRlsEnabled(client) {
 }
 
 async function getDependentViewCount(client) {
+  // PostgreSQL records view query deps via rewrite rules:
+  // pg_depend (classid=pg_rewrite) -> pg_rewrite -> pg_class.ev_class
   const rows = await query(
     client,
-    `SELECT count(*)::int AS n
-     FROM pg_class c
-     JOIN pg_depend d ON d.refobjid = 'public.tree_comments'::regclass AND d.objid = c.oid
-     WHERE c.relkind = 'v'`
+    `SELECT count(DISTINCT c.oid)::int AS n
+     FROM pg_depend d
+     JOIN pg_rewrite r ON r.oid = d.objid
+     JOIN pg_class c ON c.oid = r.ev_class
+     WHERE d.refobjid = 'public.tree_comments'::regclass
+       AND d.refclassid = 'pg_class'::regclass
+       AND d.classid = 'pg_rewrite'::regclass
+       AND c.relkind = 'v'`
   );
   return rows[0].n;
 }
@@ -174,10 +180,14 @@ async function getDependentViewCount(client) {
 async function getDependentMatviewCount(client) {
   const rows = await query(
     client,
-    `SELECT count(*)::int AS n
-     FROM pg_class c
-     JOIN pg_depend d ON d.refobjid = 'public.tree_comments'::regclass AND d.objid = c.oid
-     WHERE c.relkind = 'm'`
+    `SELECT count(DISTINCT c.oid)::int AS n
+     FROM pg_depend d
+     JOIN pg_rewrite r ON r.oid = d.objid
+     JOIN pg_class c ON c.oid = r.ev_class
+     WHERE d.refobjid = 'public.tree_comments'::regclass
+       AND d.refclassid = 'pg_class'::regclass
+       AND d.classid = 'pg_rewrite'::regclass
+       AND c.relkind = 'm'`
   );
   return rows[0].n;
 }
