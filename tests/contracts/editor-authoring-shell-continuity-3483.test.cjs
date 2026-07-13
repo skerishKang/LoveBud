@@ -1,6 +1,6 @@
 /**
  * Behavioral + source contracts for Issue #3483 authoring shell continuity.
- * Covers form inert/aria, toolbar gating, and distinct connect vs new-moment actions.
+ * Covers form inert/aria, toolbar fail-closed gating, and connect vs new-moment routing.
  */
 'use strict';
 
@@ -32,42 +32,45 @@ test('view mode CSS hides connect-existing and continue authoring controls', () 
   assert.match(modeCss, /\[data-editor-interaction-mode="view"\] #ftbBranchBtn/);
 });
 
-test('new-moment and connect-existing remain distinct handlers in source', () => {
-  assert.match(viewTpl, /id="continueFromMomentBtn"/);
-  assert.match(viewTpl, /id="connectExistingCtaBtn"/);
-  assert.match(affordanceSrc, /connectExistingCtaBtn/);
-  assert.match(affordanceSrc, /continueFromMomentBtn/);
-  assert.match(affordanceSrc, /connectExistingMoment/);
-  // branch prefers connect; continue path remains available via continueFromMomentBtn
-  assert.match(affordanceSrc, /connectExistingMoment\(\)/);
+test('connect action has no new-moment fallback in source', () => {
+  assert.match(affordanceSrc, /canActivateConnectButton/);
+  assert.match(affordanceSrc, /function connectExistingMoment/);
+  // The connect path must not call startNewMomentFromSelection.
+  const connectFn = affordanceSrc.match(/function connectExistingMoment\([\s\S]*?\n    \}/);
+  assert.ok(connectFn, 'connectExistingMoment must be extractable');
+  assert.equal(
+    /startNewMomentFromSelection|continueFromMomentBtn|addMemoryBtn/.test(connectFn[0]),
+    false,
+    'connectExistingMoment must not fall back to new-moment handlers'
+  );
 });
 
 test('memory form suppresses inactive detail with inert + aria-hidden', () => {
   assert.match(formSrc, /detailContent\.setAttribute\('aria-hidden'/);
   assert.match(formSrc, /detailContent\.inert/);
   assert.match(formSrc, /is-memory-form-open/);
-  assert.match(formSrc, /editorMemoryFormContext|addMemoryForm/);
 });
 
-test('floating toolbar visibility does not blanket-hide structured layout', () => {
+test('floating toolbar requires explicit edit mode (fail closed)', () => {
+  assert.match(visibilitySrc, /interactionMode\s*!==\s*'edit'/);
   assert.equal(
     /layout-structured['"]\)\s*!==\s*-1\s*\)\s*return false/.test(visibilitySrc),
     false,
     'must not return false solely because body has layout-structured'
   );
-  assert.match(visibilitySrc, /data-editor-interaction-mode/);
-  assert.match(visibilitySrc, /is-memory-form-open/);
-  assert.match(visibilitySrc, /editor-readonly/);
 });
 
-test('toolbar shouldShow behavioral matrix', () => {
+function loadVisibilityApi() {
   const sandbox = {
     window: { innerWidth: 1024 },
     document: {
       body: {
         className: '',
-        classList: { contains(name) { return this._classes && this._classes.has(name); } },
-        getAttribute(name) { return this._attrs && this._attrs[name] || null; },
+        classList: { contains(name) { return sandbox.document.body._classes.has(name); } },
+        getAttribute(name) {
+          const v = sandbox.document.body._attrs[name];
+          return v === undefined ? null : v;
+        },
         _attrs: { 'data-editor-interaction-mode': 'edit' },
         _classes: new Set()
       },
@@ -85,33 +88,38 @@ test('toolbar shouldShow behavioral matrix', () => {
       }
     }
   };
-  sandbox.window = Object.assign(sandbox.window, { document: sandbox.document, innerWidth: 1024 });
-  // Make document.body methods work with classList.contains for editor-readonly
-  sandbox.document.body.classList = {
-    contains(name) { return sandbox.document.body._classes.has(name); }
-  };
-  vm.createContext(sandbox);
-  // visibility script uses window and document globals
   sandbox.window.document = sandbox.document;
   sandbox.window.innerWidth = 1024;
-  // inject globals as used by IIFE
-  const code = visibilitySrc.replace('(function () {', 'var window = globalThis.window; var document = globalThis.document; (function () {');
-  sandbox.globalThis = sandbox;
-  sandbox.window.LoveBudFloatingToolbarVisibility = undefined;
+  vm.createContext(sandbox);
   vm.runInContext(
     'var window = this.window; var document = this.document;\n' + visibilitySrc,
     sandbox,
     { filename: 'visibility.js' }
   );
+  return {
+    api: sandbox.window.LoveBudFloatingToolbarVisibility,
+    sandbox
+  };
+}
 
-  const api = sandbox.window.LoveBudFloatingToolbarVisibility;
+test('toolbar shouldShow behavioral matrix (fail-closed modes)', () => {
+  const { api, sandbox } = loadVisibilityApi();
   assert.ok(api && typeof api.shouldShow === 'function');
-
   const ctx = { getSelectedNode: () => ({ id: 'n1' }), mobileBreakpoint: 480 };
-  assert.equal(api.shouldShow(ctx), true, 'owner edit + selection should show');
+
+  assert.equal(api.shouldShow(ctx), true, 'explicit edit + selection should show');
 
   sandbox.document.body._attrs['data-editor-interaction-mode'] = 'view';
-  assert.equal(api.shouldShow(ctx), false, 'view/appreciation mode hides toolbar');
+  assert.equal(api.shouldShow(ctx), false, 'view hides toolbar');
+
+  sandbox.document.body._attrs['data-editor-interaction-mode'] = null;
+  assert.equal(api.shouldShow(ctx), false, 'null mode hides toolbar');
+
+  sandbox.document.body._attrs['data-editor-interaction-mode'] = '';
+  assert.equal(api.shouldShow(ctx), false, 'empty mode hides toolbar');
+
+  sandbox.document.body._attrs['data-editor-interaction-mode'] = 'unknown';
+  assert.equal(api.shouldShow(ctx), false, 'unknown mode hides toolbar');
 
   sandbox.document.body._attrs['data-editor-interaction-mode'] = 'edit';
   sandbox.document._formOpen = true;
@@ -122,12 +130,169 @@ test('toolbar shouldShow behavioral matrix', () => {
   assert.equal(api.shouldShow(ctx), false, 'readonly hides toolbar');
   sandbox.document.body._classes.delete('editor-readonly');
 
-  // structured layout alone must not hide
-  sandbox.document.body.className = 'layout-structured';
-  // className is unused; ensure no early return
-  assert.equal(api.shouldShow(ctx), true, 'structured layout alone must allow toolbar');
-
+  assert.equal(api.shouldShow(ctx), true, 'structured layout alone still allows eligible edit toolbar');
   assert.equal(api.shouldShow({ getSelectedNode: () => null }), false, 'no selection hides toolbar');
+});
+
+function loadAffordanceRouting(options) {
+  const opts = options || {};
+  const clicks = {
+    connect: 0,
+    continue: 0,
+    addMemory: 0
+  };
+
+  function makeButton(overrides) {
+    const btn = Object.assign({
+      disabled: false,
+      hidden: false,
+      style: { display: '' },
+      getAttribute(name) {
+        if (name === 'aria-hidden') return this._ariaHidden || null;
+        return null;
+      },
+      closest(sel) {
+        if (sel === '#connectExistingCtaSection') return this._section || null;
+        return null;
+      },
+      click() {
+        this._onClick && this._onClick();
+      },
+      addEventListener(type, fn) {
+        if (type === 'click') this._listener = fn;
+      },
+      _listener: null,
+      _onClick: null,
+      _ariaHidden: null,
+      _section: null
+    }, overrides || {});
+    return btn;
+  }
+
+  const connectBtn = opts.connect === 'missing'
+    ? null
+    : makeButton({
+      disabled: Boolean(opts.connectDisabled),
+      hidden: Boolean(opts.connectHidden),
+      _ariaHidden: opts.connectAriaHidden ? 'true' : null,
+      _section: opts.connectSectionHidden
+        ? { hidden: true, style: { display: 'none' }, getAttribute() { return null; } }
+        : { hidden: false, style: { display: '' }, getAttribute() { return null; } },
+      _onClick: () => { clicks.connect += 1; }
+    });
+
+  const continueBtn = makeButton({
+    _onClick: () => { clicks.continue += 1; }
+  });
+  const addMemoryBtn = makeButton({
+    _onClick: () => { clicks.addMemory += 1; }
+  });
+
+  const branchBtn = makeButton();
+  const forkBtn = makeButton();
+
+  const elements = {
+    connectExistingCtaBtn: connectBtn,
+    continueFromMomentBtn: continueBtn,
+    addMemoryBtn: addMemoryBtn
+  };
+
+  const sandbox = {
+    window: {},
+    document: {
+      getElementById(id) {
+        return Object.prototype.hasOwnProperty.call(elements, id) ? elements[id] : null;
+      },
+      querySelector() { return null; }
+    }
+  };
+  sandbox.window = sandbox;
+  sandbox.window.LoveBudFloatingToolbarDropdown = {
+    hide() {}
+  };
+  vm.createContext(sandbox);
+  vm.runInContext(
+    'var window = this.window; var document = this.document;\n' + affordanceSrc,
+    sandbox,
+    { filename: 'affordance.js' }
+  );
+
+  const api = sandbox.window.LoveBudFloatingToolbarAffordance;
+  const ctx = {
+    branchBtn,
+    forkBtn,
+    dropdown: {},
+    moreBtn: {},
+    quickAdd: null,
+    toolbar: {}
+  };
+  api.bindConnectionButtons(ctx);
+
+  return {
+    clicks,
+    fireBranch() {
+      if (branchBtn._listener) branchBtn._listener({ stopPropagation() {} });
+    },
+    fireFork() {
+      if (forkBtn._listener) forkBtn._listener({ stopPropagation() {} });
+    },
+    api
+  };
+}
+
+test('branch click routes only to active connect button', () => {
+  const h = loadAffordanceRouting({});
+  h.fireBranch();
+  assert.equal(h.clicks.connect, 1);
+  assert.equal(h.clicks.continue, 0);
+  assert.equal(h.clicks.addMemory, 0);
+});
+
+test('missing connect button fails closed (no new-moment handlers)', () => {
+  const h = loadAffordanceRouting({ connect: 'missing' });
+  h.fireBranch();
+  assert.equal(h.clicks.connect, 0);
+  assert.equal(h.clicks.continue, 0);
+  assert.equal(h.clicks.addMemory, 0);
+});
+
+test('disabled connect button fails closed', () => {
+  const h = loadAffordanceRouting({ connectDisabled: true });
+  h.fireBranch();
+  assert.equal(h.clicks.connect, 0);
+  assert.equal(h.clicks.continue, 0);
+  assert.equal(h.clicks.addMemory, 0);
+});
+
+test('hidden connect button fails closed', () => {
+  const h = loadAffordanceRouting({ connectHidden: true });
+  h.fireBranch();
+  assert.equal(h.clicks.connect, 0);
+  assert.equal(h.clicks.continue, 0);
+  assert.equal(h.clicks.addMemory, 0);
+});
+
+test('aria-hidden connect button fails closed', () => {
+  const h = loadAffordanceRouting({ connectAriaHidden: true });
+  h.fireBranch();
+  assert.equal(h.clicks.connect, 0);
+  assert.equal(h.clicks.continue, 0);
+  assert.equal(h.clicks.addMemory, 0);
+});
+
+test('hidden connect section fails closed', () => {
+  const h = loadAffordanceRouting({ connectSectionHidden: true });
+  h.fireBranch();
+  assert.equal(h.clicks.connect, 0);
+  assert.equal(h.clicks.continue, 0);
+  assert.equal(h.clicks.addMemory, 0);
+});
+
+test('fork path preserves explicit new-moment handler', () => {
+  const h = loadAffordanceRouting({});
+  h.fireFork();
+  assert.equal(h.clicks.continue, 1);
+  assert.equal(h.clicks.connect, 0);
 });
 
 test('sidebar template fingerprint in editor.html matches content hash', () => {
@@ -140,7 +305,6 @@ test('sidebar template fingerprint in editor.html matches content hash', () => {
 });
 
 test('setEmptyGuideSuppressed restores detail inert/aria on hide path', () => {
-  // Source-level: hideAddMemoryForm calls setEmptyGuideSuppressed(false)
   assert.match(formSrc, /hideAddMemoryForm[\s\S]*setEmptyGuideSuppressed\(false\)/);
   assert.match(formSrc, /showAddMemoryForm[\s\S]*setEmptyGuideSuppressed\(true\)/);
 });

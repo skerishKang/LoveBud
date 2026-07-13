@@ -88,11 +88,33 @@
   }
 
   /**
+   * True only when the connect-existing CTA is present and actually activatable.
+   * Missing / disabled / hidden / aria-hidden controls fail closed (no-op).
+   */
+  function canActivateConnectButton(button) {
+    if (!button) return false;
+    if (button.disabled) return false;
+    if (button.hidden) return false;
+    if (button.getAttribute && button.getAttribute('aria-hidden') === 'true') return false;
+    // Section-level hide (inline style or hidden attribute) also blocks activation.
+    var section = null;
+    if (typeof button.closest === 'function') {
+      section = button.closest('#connectExistingCtaSection');
+    }
+    if (section) {
+      if (section.hidden) return false;
+      if (section.getAttribute && section.getAttribute('aria-hidden') === 'true') return false;
+      if (section.style && section.style.display === 'none') return false;
+    }
+    return true;
+  }
+
+  /**
    * Wire up the branch and fork connection-mode buttons.
    *
-   * #3483: keep "new moment" (continueFromMomentBtn → add form) distinct from
-   * "connect existing moment" (connectExistingCtaBtn). The branch control
-   * prefers the existing-moment connector; continue/quick-add keep new-moment.
+   * #3483 / fail-closed follow-up:
+   * - branch/connect → only #connectExistingCtaBtn (no new-moment fallback)
+   * - fork/continue/quick-add → explicit new-moment path
    */
   function bindConnectionButtons(ctx) {
     function startNewMomentFromSelection() {
@@ -107,12 +129,11 @@
 
     function connectExistingMoment() {
       var connectBtn = document.getElementById('connectExistingCtaBtn');
-      if (connectBtn) {
-        connectBtn.click();
+      if (!canActivateConnectButton(connectBtn)) {
+        // Fail closed: never route connect → new-moment handlers.
         return;
       }
-      // Fallback only when connect CTA is unavailable in this shell state.
-      startNewMomentFromSelection();
+      connectBtn.click();
     }
 
     if (ctx.branchBtn) {
@@ -153,6 +174,7 @@
     updateAdaptiveState: updateAdaptiveState,
     bindQuickAdd: bindQuickAdd,
     bindConnectionButtons: bindConnectionButtons,
+    canActivateConnectButton: canActivateConnectButton,
     bind: bind
   };
 })();

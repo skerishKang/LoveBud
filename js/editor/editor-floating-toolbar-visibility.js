@@ -24,9 +24,10 @@
     var selectedEl = ctx.getSelectedNode ? ctx.getSelectedNode() : null;
     if (!selectedEl) return false;
 
-    // Appreciation / view interaction mode: hide owner authoring toolbar
+    // Fail-closed: only explicit edit interaction mode may show the toolbar.
+    // null / "" / unknown / view all hide authoring actions.
     var interactionMode = document.body.getAttribute('data-editor-interaction-mode');
-    if (interactionMode === 'view') return false;
+    if (interactionMode !== 'edit') return false;
 
     // Public/read-only shell
     if (document.body.classList.contains('editor-readonly')) return false;
