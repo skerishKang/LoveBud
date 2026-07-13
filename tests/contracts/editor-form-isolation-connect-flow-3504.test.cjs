@@ -40,8 +40,9 @@ function makeClickableElement(overrides) {
         this._classes.push(name); return true;
       }
     },
-    getAttribute(name) { return this.dataset[name] || null; },
+    getAttribute(name) { return Object.prototype.hasOwnProperty.call(this.dataset, name) ? this.dataset[name] : null; },
     setAttribute(name, value) { this.dataset[name] = String(value); },
+    hasAttribute(name) { return Object.prototype.hasOwnProperty.call(this.dataset, name); },
     removeAttribute(name) { delete this.dataset[name]; },
     addEventListener: function(type, handler) {
       (listeners[type] = listeners[type] || []).push(handler);
@@ -694,4 +695,516 @@ test('floating toolbar visibility returns false for: no selection, view mode, re
   };
   var editModeHiddenResult = shouldShow(makeCtx({ getSelectedNode: function() { return {}; } }));
   assert.equal(editModeHiddenResult, true, 'edit mode + selection + no conflicts: visible');
+});
+
+// ── 12. Production alias → actual DOM/source mapping ──
+
+test('production aliases map to real CTA selectors (no ARIA tab invented)', function() {
+  // Production browser report used nicknames `newMomentTab` / `connectTab`.
+  // They are NOT ARIA tabs; they are two separate CTA flows in the
+  // detail "이 순간에서" action card.
+  var viewTpl = readSource('js/editor/templates/editor-detail-view-mode-template.js');
+  var sidebarTpl = readSource('js/editor/templates/editor-sidebar-template.js');
+
+  // new-moment authoring route: detail continue ("이 순간에서 이어가기") + sidebar ("새 순간 만들기")
+  assert.ok(viewTpl.includes('id="continueFromMomentBtn"'), 'new-moment route: continueFromMomentBtn in detail view template');
+  assert.ok(sidebarTpl.includes('id="addMemoryBtn"'), 'new-moment route: addMemoryBtn in sidebar template');
+  assert.ok(!viewTpl.includes('role="tab"'), 'new-moment alias is not an ARIA tab');
+
+  // connect-existing route: detail CTA ("기존 순간 연결하기")
+  assert.ok(viewTpl.includes('id="connectExistingCtaBtn"'), 'connect-existing route: connectExistingCtaBtn in detail view template');
+  assert.ok(viewTpl.includes('id="connectExistingCtaSection"'), 'connect-existing route: connectExistingCtaSection container');
+  assert.ok(!viewTpl.includes('role="tab"'), 'connect alias is not an ARIA tab');
+});
+
+// ── 13. Connect-existing controller — real source, executed route ──
+
+function createConnectControllerSandbox(opts) {
+  opts = opts || {};
+  var connectMemoryCalls = 0;
+
+  function makeEl(id) {
+    return makeClickableElement({ id: id, style: { display: 'none' } });
+  }
+  var els = {
+    connectExistingCtaSection: makeEl('connectExistingCtaSection'),
+    connectExistingCtaBtn: makeEl('connectExistingCtaBtn'),
+    connectExistingPendingSection: makeEl('connectExistingPendingSection'),
+    connectExistingCancelBtn: makeEl('connectExistingCancelBtn'),
+    connectExistingConfirmSection: makeEl('connectExistingConfirmSection'),
+    connectExistingConfirmHint: makeEl('connectExistingConfirmHint'),
+    connectExistingConfirmBtn: makeEl('connectExistingConfirmBtn'),
+    connectExistingConfirmCancelBtn: makeEl('connectExistingConfirmCancelBtn')
+  };
+
+  var interactionMode = {
+    MODE_VIEW: 'view',
+    MODE_EDIT: 'edit',
+    _mode: opts.mode || 'edit',
+    getMode: function() { return this._mode; },
+    isEditMode: function() { return this._mode === 'edit'; },
+    subscribe: function() { return function() {}; }
+  };
+
+  var editorCanvas = {
+    _pendingSourceId: null,
+    getPendingConnectSourceId: function() { return this._pendingSourceId; },
+    setPendingConnect: function(id) { this._pendingSourceId = id; },
+    clearPendingConnect: function() { this._pendingSourceId = null; },
+    calcPosition: function() { return { x: 0, y: 0 }; },
+    drawConnectPreview: function() {},
+    setOnPendingConnectCleared: function() {}
+  };
+
+  var doc = {
+    getElementById: function(id) { return els[id] || null; },
+    querySelector: function() { return null; },
+    addEventListener: function() {},
+    removeEventListener: function() {}
+  };
+
+  var sandbox = vm.createContext({
+    window: {},
+    document: doc,
+    console: { warn: function() {}, log: function() {}, error: function() {}, debug: function() {} },
+    setTimeout: function(fn) { fn(); },
+    clearTimeout: function() {},
+    Error: Error, Promise: Promise, JSON: JSON, Math: Math, Date: Date,
+    RegExp: RegExp, String: String, Number: Number, Boolean: Boolean,
+    Array: Array, Object: Object, Map: Map, Set: Set,
+    isNaN: isNaN, isFinite: isFinite,
+    encodeURIComponent: encodeURIComponent, decodeURIComponent: decodeURIComponent,
+    parseInt: parseInt, parseFloat: parseFloat
+  });
+  sandbox.window = sandbox;
+  sandbox.LoveBudEditorInteractionMode = interactionMode;
+
+  vm.runInContext(readSource('js/editor/editor-bindings.js'), sandbox);
+
+  var controller = sandbox.window.LoveBudEditorBindings.createConnectExistingController({
+    canEdit: opts.canEdit !== false,
+    getCurrentEditingMemory: opts.getCurrentEditingMemory || function() { return null; },
+    isRootMemory: opts.isRootMemory || function() { return false; },
+    getCanonicalRootId: opts.getCanonicalRootId || function() { return 'root'; },
+    showToast: function() {},
+    i18n: function(k) { return k; }
+  });
+  // Mirror editor.js wiring: canvas + late-bound connectMemory/validateConnectCandidate.
+  controller.setEditorCanvas(editorCanvas);
+  controller.setConnectMemory(function() {
+    connectMemoryCalls++;
+    return Promise.resolve(true);
+  });
+  controller.setValidateConnectCandidate(opts.validateConnectCandidate || function() { return { ok: true }; });
+  controller.bindControls();
+  controller.updateCtaNow();
+
+  return {
+    controller: controller,
+    editorCanvas: editorCanvas,
+    els: els,
+    getConnectMemoryCalls: function() { return connectMemoryCalls; }
+  };
+}
+
+test('connect-existing: allowed route executes controller and connectMemory exactly once', function() {
+  var nonRootMem = { id: 'mem-child', title: 'Child' };
+  var targetMem = { id: 'mem-target', title: 'Target' };
+
+  var s = createConnectControllerSandbox({
+    canEdit: true,
+    mode: 'edit',
+    getCurrentEditingMemory: function() { return nonRootMem; },
+    isRootMemory: function(m, rootId) { return !!m && m.id === rootId; },
+    getCanonicalRootId: function() { return 'root'; }
+  });
+
+  assert.notEqual(s.els.connectExistingCtaSection.style.display, 'none', 'allowed: CTA section visible');
+  assert.equal(s.getConnectMemoryCalls(), 0, 'pre: no connectMemory yet');
+
+  s.els.connectExistingCtaBtn.click();
+  assert.equal(s.editorCanvas.getPendingConnectSourceId(), 'mem-child', 'CTA click → enterConnectMode → pending source set');
+  assert.notEqual(s.els.connectExistingPendingSection.style.display, 'none', 'pending section visible after CTA click');
+
+  s.controller.handleConnectTargetSelect(targetMem, { x: 1, y: 1 });
+  assert.notEqual(s.els.connectExistingConfirmSection.style.display, 'none', 'confirm section reached after valid candidate');
+
+  s.els.connectExistingConfirmBtn.click();
+  assert.equal(s.getConnectMemoryCalls(),1, 'CONNECT_MEMORY_CALL_COUNT: 1 (exactly once)');
+  // resetConnectFlow runs in the connectMemory().then microtask.
+  return Promise.resolve().then(function() {
+    assert.equal(s.editorCanvas.getPendingConnectSourceId(), null, 'connect flow reset pending after confirm');
+  });
+});
+
+test('connect-existing: allowed route shows NO new-moment fallback', function() {
+  var nonRootMem = { id: 'mem-child' };
+  var targetMem = { id: 'mem-target' };
+  var s = createConnectControllerSandbox({
+    canEdit: true, mode: 'edit',
+    getCurrentEditingMemory: function() { return nonRootMem; },
+    isRootMemory: function(m, rootId) { return m && m.id === rootId; }
+  });
+
+  s.els.connectExistingCtaBtn.click();
+  s.controller.handleConnectTargetSelect(targetMem, { x: 1, y: 1 });
+  s.els.connectExistingConfirmBtn.click();
+
+  assert.equal(s.getConnectMemoryCalls(), 1, 'connectMemory called once');
+  // Controller has no addMemoryBtn / continueFromMomentBtn / showAddMemoryForm reference.
+  var src = readSource('js/editor/editor-bindings.js');
+  var bindStart = src.indexOf('function bindControls');
+  var bindEnd = src.indexOf('function', bindStart + 20);
+  var bindText = src.slice(bindStart, bindEnd);
+  assert.ok(!bindText.includes('addMemoryBtn'), 'NO addMemoryBtn fallback in connect handlers');
+  assert.ok(!bindText.includes('continueFromMomentBtn'), 'NO continueFromMomentBtn fallback in connect handlers');
+  assert.ok(!bindText.includes('showAddMemoryForm'), 'NO showAddMemoryForm fallback in connect handlers');
+});
+
+test('connect-existing: root memory fails closed (CTA hidden, no connectMemory)', function() {
+  var rootMem = { id: 'root', title: 'Root' };
+  var s = createConnectControllerSandbox({
+    canEdit: true, mode: 'edit',
+    getCurrentEditingMemory: function() { return rootMem; },
+    isRootMemory: function(m, rootId) { return m && m.id === rootId; },
+    getCanonicalRootId: function() { return 'root'; }
+  });
+
+  assert.equal(s.els.connectExistingCtaSection.style.display, 'none', 'ROOT_FAIL_CLOSED: CTA hidden');
+  s.els.connectExistingCtaBtn.click();
+  assert.equal(s.editorCanvas.getPendingConnectSourceId(), null, 'root: enterConnectMode blocked');
+  assert.equal(s.getConnectMemoryCalls(), 0, 'root: connectMemory 0');
+});
+
+test('connect-existing: missing currentEditingMemory fails closed', function() {
+  var s = createConnectControllerSandbox({
+    canEdit: true, mode: 'edit',
+    getCurrentEditingMemory: function() { return null; }
+  });
+
+  assert.equal(s.els.connectExistingCtaSection.style.display, 'none', 'MISSING_CURRENT_MEMORY_FAIL_CLOSED: CTA hidden');
+  s.els.connectExistingCtaBtn.click();
+  assert.equal(s.getConnectMemoryCalls(), 0, 'missing memory: connectMemory 0');
+});
+
+test('connect-existing: view mode fails closed', function() {
+  var mem = { id: 'mem-child' };
+  var s = createConnectControllerSandbox({
+    canEdit: true, mode: 'view',
+    getCurrentEditingMemory: function() { return mem; },
+    isRootMemory: function(m, rootId) { return m && m.id === rootId; }
+  });
+
+  assert.equal(s.els.connectExistingCtaSection.style.display, 'none', 'VIEW_MODE_FAIL_CLOSED: CTA hidden');
+  s.els.connectExistingCtaBtn.click();
+  assert.equal(s.getConnectMemoryCalls(), 0, 'view mode: connectMemory 0');
+});
+
+test('connect-existing: read-only / non-owner fails closed', function() {
+  var mem = { id: 'mem-child' };
+  var s = createConnectControllerSandbox({
+    canEdit: false, mode: 'edit',
+    getCurrentEditingMemory: function() { return mem; },
+    isRootMemory: function(m, rootId) { return m && m.id === rootId; }
+  });
+
+  assert.equal(s.els.connectExistingCtaSection.style.display, 'none', 'READONLY_NONOWNER_FAIL_CLOSED: CTA hidden');
+  s.els.connectExistingCtaBtn.click();
+  assert.equal(s.getConnectMemoryCalls(), 0, 'read-only: connectMemory 0');
+});
+
+test('connect-existing: invalid candidate fails closed (no confirm, no connectMemory)', function() {
+  var mem = { id: 'mem-child' };
+  var target = { id: 'mem-target' };
+  var s = createConnectControllerSandbox({
+    canEdit: true, mode: 'edit',
+    getCurrentEditingMemory: function() { return mem; },
+    isRootMemory: function(m, rootId) { return m && m.id === rootId; },
+    validateConnectCandidate: function() { return { ok: false, reason: 'self_connection' }; }
+  });
+
+  s.els.connectExistingCtaBtn.click();
+  s.controller.handleConnectTargetSelect(target, { x: 1, y: 1 });
+  assert.equal(s.els.connectExistingConfirmSection.style.display, 'none', 'INVALID_CANDIDATE_FAIL_CLOSED: confirm not shown');
+  assert.equal(s.getConnectMemoryCalls(), 0, 'invalid candidate: connectMemory 0');
+});
+
+test('connect-existing: cancel clears pending and returns to CTA', function() {
+  var mem = { id: 'mem-child' };
+  var s = createConnectControllerSandbox({
+    canEdit: true, mode: 'edit',
+    getCurrentEditingMemory: function() { return mem; },
+    isRootMemory: function(m, rootId) { return m && m.id === rootId; }
+  });
+
+  s.els.connectExistingCtaBtn.click();
+  assert.notEqual(s.els.connectExistingPendingSection.style.display, 'none', 'pending visible');
+  s.els.connectExistingCancelBtn.click();
+  assert.equal(s.editorCanvas.getPendingConnectSourceId(), null, 'MODE_SWITCH_CLEARS_CONNECT_STATE: cancel clears pending');
+  assert.equal(s.els.connectExistingPendingSection.style.display, 'none', 'pending hidden after cancel');
+});
+
+// ── 14. Form isolation — executed native inert + attribute fallback ──
+
+function createFormIsolationSandbox(opts) {
+  opts = opts || {};
+  var s = createFormSandbox({ canEdit: opts.canEdit !== false });
+  if (opts.inertProperty === false) {
+    // Simulate an element without native `inert` property support.
+    delete s.detailContent.inert;
+  }
+  return s;
+}
+
+test('form isolation: native inert path open/close + active form stays operable', function() {
+  var s = createFormIsolationSandbox({ canEdit: true, inertProperty: true });
+
+  assert.equal('inert' in s.detailContent, true, 'NATIVE_INERT_PATH: native inert supported');
+  assert.equal(s.detailContent.inert, false, 'pre: detail not inert');
+
+  s.formApi.showAddMemoryForm();
+  assert.equal(s.detailContent.inert, true, 'open: detailContent.inert = true');
+  assert.equal(s.detailContent.getAttribute('aria-hidden'), 'true', 'open: detail aria-hidden = true');
+  assert.notEqual(s.formEl.inert, true, 'ACTIVE_FORM_NOT_INERT: form remains operable');
+  assert.ok(!s.detailContent.contains(s.formEl), 'FORM_NOT_DESCENDANT: form is sibling outside #detailContent');
+
+  s.formApi.hideAddMemoryForm();
+  assert.equal(s.detailContent.inert, false, 'close: detailContent.inert = false');
+  assert.equal(s.detailContent.getAttribute('aria-hidden'), 'false', 'close restores aria-hidden (established contract)');
+});
+
+test('form isolation: attribute fallback path when inert property unsupported', function() {
+  var s = createFormIsolationSandbox({ canEdit: true, inertProperty: false });
+
+  assert.equal('inert' in s.detailContent, false, 'ATTRIBUTE_FALLBACK_PATH: no native inert property');
+  assert.equal(s.detailContent.inert, undefined, 'pre: native inert unused');
+
+  s.formApi.showAddMemoryForm();
+  assert.equal(s.detailContent.inert, undefined, 'open: native inert still unused');
+  assert.equal(s.detailContent.hasAttribute('inert'), true, 'open: inert attribute set (fallback)');
+  assert.equal(s.detailContent.getAttribute('aria-hidden'), 'true', 'open: detail aria-hidden = true');
+  assert.ok(!s.detailContent.contains(s.formEl), 'FORM_NOT_DESCENDANT: form outside #detailContent');
+
+  s.formApi.hideAddMemoryForm();
+  assert.equal(s.detailContent.hasAttribute('inert'), false, 'close: inert attribute removed');
+});
+
+test('form isolation: canEdit=false does not apply inert or aria-hidden', function() {
+  var s = createFormIsolationSandbox({ canEdit: false, inertProperty: true });
+  s.formApi.showAddMemoryForm();
+  assert.equal(s.detailContent.inert, false, 'canEdit=false: detail not made inert');
+  assert.notEqual(s.detailContent.getAttribute('aria-hidden'), 'true', 'canEdit=false: detail aria-hidden not applied');
+});
+
+// ── 15. Focus trap — executed Tab/Shift+Tab within form inputs ──
+
+function createFocusTrapSandbox() {
+  var keydownHandlers = [];
+
+  function makeInput(id) {
+    var el = makeClickableElement({ id: id, value: '' });
+    var focusCalls = 0;
+    el.focus = function() { focusCalls++; el.__focused = true; };
+    el.getFocusCalls = function() { return focusCalls; };
+    return el;
+  }
+
+  var inputs = {
+    memoryUrlInput: makeInput('memoryUrlInput'),
+    memoryStartTimeInput: makeInput('memoryStartTimeInput'),
+    memoryEndTimeInput: makeInput('memoryEndTimeInput'),
+    memoryTitleInput: makeInput('memoryTitleInput'),
+    memoryTagsInput: makeInput('memoryTagsInput'),
+    memoryMemoInput: makeInput('memoryMemoInput')
+  };
+
+  var detailContent = makeClickableElement({ id: 'detailContent', inert: false });
+  var canvasArea = makeClickableElement({ id: 'canvasArea', classList: { _classes: ['canvas-area'], add: function(n){this._classes.push(n);}, remove: function(n){this._classes=this._classes.filter(function(c){return c!==n;});}, contains: function(n){return this._classes.indexOf(n)>=0;}, toggle: function(n){} } });
+  var editorLayout = makeClickableElement({ id: 'editorLayout', classList: { _classes: ['editor-layout'], add: function(n){this._classes.push(n);}, remove: function(n){this._classes=this._classes.filter(function(c){return c!==n;});}, contains: function(n){return this._classes.indexOf(n)>=0;}, toggle: function(n){} } });
+  var canvasTopbar = makeClickableElement({ className: 'editor-canvas-topbar' });
+  var canvasEmptyGuide = makeClickableElement({ id: 'canvasEmptyGuide', classList: { _classes: [], add: function(){}, remove: function(){}, contains: function(){return false;}, toggle: function(){return false;} } });
+  var addMemoryForm = makeClickableElement({ id: 'addMemoryForm', style: { display: 'none' } });
+
+  inputs.memoryUrlInput.closest = function(sel) {
+    if (sel === '.canvas-area') return canvasArea;
+    if (sel === '.editor-layout') return editorLayout;
+    return null;
+  };
+  addMemoryForm.closest = function(sel) {
+    if (sel === '.canvas-area') return canvasArea;
+    if (sel === '.editor-layout') return editorLayout;
+    return null;
+  };
+
+  var elementMap = {
+    addMemoryForm: addMemoryForm,
+    detailContent: detailContent,
+    canvasArea: canvasArea,
+    canvasEmptyGuide: canvasEmptyGuide,
+    memoryUrlInput: inputs.memoryUrlInput,
+    memoryStartTimeInput: inputs.memoryStartTimeInput,
+    memoryEndTimeInput: inputs.memoryEndTimeInput,
+    memoryTitleInput: inputs.memoryTitleInput,
+    memoryTagsInput: inputs.memoryTagsInput,
+    memoryMemoInput: inputs.memoryMemoInput,
+    memoryUrlField: makeClickableElement({ id: 'memoryUrlField' }),
+    memoryModeLinkBtn: makeClickableElement({ id: 'memoryModeLinkBtn' }),
+    memoryModeTextBtn: makeClickableElement({ id: 'memoryModeTextBtn' }),
+    memoryFormSupportNoteText: makeClickableElement({ id: 'memoryFormSupportNoteText' }),
+    memoryStartTimeField: makeClickableElement({ id: 'memoryStartTimeField' }),
+    memoryVideoSegmentGrid: makeClickableElement({ id: 'memoryVideoSegmentGrid' }),
+    memoryStartTimeHint: makeClickableElement({ id: 'memoryStartTimeHint' }),
+    memoryEndTimeInput: inputs.memoryEndTimeInput,
+    addMemoryFormEyebrow: makeClickableElement({ id: 'addMemoryFormEyebrow' }),
+    addMemoryFormTitle: makeClickableElement({ id: 'addMemoryFormTitle' }),
+    addMemoryFormIntro: makeClickableElement({ id: 'addMemoryFormIntro' }),
+    memoryUrlLabel: makeClickableElement({ id: 'memoryUrlLabel' }),
+    memoryTitleLabel: makeClickableElement({ id: 'memoryTitleLabel' }),
+    memoryTagsLabel: makeClickableElement({ id: 'memoryTagsLabel' }),
+    memoryMemoLabel: makeClickableElement({ id: 'memoryMemoLabel' }),
+    confirmAddMemory: makeClickableElement({ id: 'confirmAddMemory' }),
+    memoryLinkPreview: makeClickableElement({ id: 'memoryLinkPreview', classList: { _classes: [], add: function(){}, remove: function(){}, contains: function(){return false;}, toggle: function(){return false;} } }),
+    memoryPreviewThumb: makeClickableElement({ id: 'memoryPreviewThumb' }),
+    memoryPreviewBadge: makeClickableElement({ id: 'memoryPreviewBadge' }),
+    memoryPreviewTitle: makeClickableElement({ id: 'memoryPreviewTitle' }),
+    memoryPreviewHint: makeClickableElement({ id: 'memoryPreviewHint' })
+  };
+
+  var activeElement = null;
+  var doc = {
+    getElementById: function(id) { return elementMap[id] || null; },
+    querySelector: function(sel) {
+      if (sel === '.editor-canvas-topbar') return canvasTopbar;
+      return null;
+    },
+    addEventListener: function(type, handler) { if (type === 'keydown') keydownHandlers.push(handler); },
+    removeEventListener: function(type, handler) {
+      if (type === 'keydown') keydownHandlers = keydownHandlers.filter(function(h){ return h !== handler; });
+    },
+    createElement: function() { return makeClickableElement({}); },
+    body: makeClickableElement({ dataset: {} }),
+    get activeElement() { return activeElement; },
+    set activeElement(v) { activeElement = v; }
+  };
+
+  var sandbox = vm.createContext({
+    window: {},
+    document: doc,
+    console: { warn: function() {}, log: function() {}, error: function() {}, debug: function() {} },
+    setTimeout: function(fn) { fn(); },
+    clearTimeout: function() {},
+    requestAnimationFrame: function(fn) { fn(); },
+    fetch: function() { return Promise.resolve({ json: function() { return Promise.resolve({}); } }); },
+    URLSearchParams: function() { return { get: function() { return null; } }; },
+    LoveBudEditorMemoryFormMode: { setInputMode: function() { return 'link'; } },
+    LoveBudEditorMemoryFormPreview: { hide: function() {}, update: function() {} },
+    LoveBudEditorMemoryFormTime: { autofillStartFromUrl: function() {} },
+    LoveBudEditorMemoryFormSave: function() {
+      return {
+        enrichPayloadChannelMetadata: function(p) { return Promise.resolve(p); },
+        createMemoryWithFallback: function() { return Promise.resolve({ createdMemory: { id: 'mem-2' }, useApi: false }); },
+        commitMemoryToTree: function() {}
+      };
+    },
+    LoveBudEditorMemoryFormPayload: null,
+    LoveBudEditorInteractionMode: null,
+    LoveBudCache: null,
+    LoveBudNormalize: null,
+    currentTreeMemories: [{ id: 'mem-root', title: 'Root' }],
+    currentTreeData: null,
+    setCachedMemories: function() {},
+    refreshMemories: function() {},
+    errors: [],
+    Error: Error, Promise: Promise, JSON: JSON, parseInt: parseInt, parseFloat: parseFloat,
+    Math: Math, Date: Date, RegExp: RegExp, String: String, Number: Number,
+    Boolean: Boolean, Array: Array, Object: Object, Map: Map, Set: Set,
+    isNaN: isNaN, isFinite: isFinite, encodeURIComponent: encodeURIComponent, decodeURIComponent: decodeURIComponent
+  });
+  sandbox.window = sandbox;
+
+  vm.runInContext(readSource('js/editor/editor-memory-form.js'), sandbox);
+
+  var deps = {
+    i18n: function(k) { return k; },
+    treeId: 'test-tree-id',
+    getSelectedNodeId: function() { return 'mem-root'; },
+    getCanonicalRootId: function() { return 'root'; },
+    resolveParentIdForCreate: function() { return 'mem-root'; },
+    updateSaveStatus: function() {},
+    showToast: function() {},
+    getYouTubeInputErrorMessage: function() { return null; },
+    nextMemoryId: function() { return 'mem-2'; },
+    normalizeMemory: function(m) { return m; },
+    getTreeMemories: function() { return [{ id: 'mem-root', title: 'Root' }]; },
+    setTreeMemories: function() {},
+    setLocalSaveMode: function() {},
+    drawNode: function() {},
+    drawBranch: function() {},
+    calcPosition: function() {},
+    updateSidebarStatus: function() {},
+    updateFocusSelectedBtn: function() {},
+    setDetailEmptyState: function() {},
+    selectNode: function() {},
+    treeMemories: function() { return [{ id: 'mem-root', title: 'Root' }]; },
+    setCachedMemories: function() {},
+    rerenderCanvas: function() {},
+    focusNodeById: function() {},
+    canEdit: true
+  };
+
+  var formApi = vm.runInContext('window.createEditorMemoryForm(deps)', Object.assign(sandbox, { deps }));
+
+  return {
+    sandbox: sandbox, doc: doc, formApi: formApi, inputs: inputs,
+    getKeydownHandlers: function() { return keydownHandlers; }
+  };
+}
+
+test('focus trap: executed Tab/Shift+Tab wraps within form inputs', function() {
+  var ft = createFocusTrapSandbox();
+  var f = ft.formApi;
+  f.showAddMemoryForm();
+
+  var handlers = ft.getKeydownHandlers();
+  assert.ok(handlers.length >= 1, 'FOCUS_TRAP_EXECUTED: keydown handler registered');
+  // focusTrap is the first keydown handler registered by showAddMemoryForm.
+  var focusTrap = handlers[0];
+
+  var first = ft.inputs.memoryUrlInput;
+  var middle = ft.inputs.memoryTitleInput;
+  var last = ft.inputs.memoryMemoInput;
+
+  // showAddMemoryForm focuses the first input once; capture baselines.
+  var firstBaseline = first.getFocusCalls();
+  var lastBaseline = last.getFocusCalls();
+  var middleBaseline = middle.getFocusCalls();
+
+  function dispatch(evt) {
+    var prevented = false;
+    focusTrap(Object.assign({ preventDefault: function() { prevented = true; } }, evt));
+    return prevented;
+  }
+
+  // last input + Tab → wrap to first input
+  ft.doc.activeElement = last;
+  var p1 = dispatch({ key: 'Tab' });
+  assert.equal(p1, true, 'last + Tab: preventDefault');
+  assert.equal(first.getFocusCalls(), firstBaseline + 1, 'last + Tab → first input focused');
+
+  // first input + Shift+Tab → wrap to last input
+  ft.doc.activeElement = first;
+  var p2 = dispatch({ key: 'Tab', shiftKey: true });
+  assert.equal(p2, true, 'first + Shift+Tab: preventDefault');
+  assert.equal(last.getFocusCalls(), lastBaseline + 1, 'first + Shift+Tab → last input focused');
+
+  // middle input + Tab → normal flow, no preventDefault
+  ft.doc.activeElement = middle;
+  var p3 = dispatch({ key: 'Tab' });
+  assert.equal(p3, false, 'middle + Tab: no preventDefault (normal flow)');
+  assert.equal(middle.getFocusCalls(), middleBaseline, 'middle + Tab: middle not re-focused');
+
+  // When form is closed, focus trap is removed → dispatch is a no-op.
+  f.hideAddMemoryForm();
+  var handlersAfter = ft.getKeydownHandlers();
+  assert.equal(handlersAfter.indexOf(focusTrap), -1, 'CANCEL_RESTORES_ISOLATION: trap removed after close');
 });
