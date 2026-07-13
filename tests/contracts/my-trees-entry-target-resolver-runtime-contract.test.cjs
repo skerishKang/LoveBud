@@ -376,25 +376,30 @@ test('31. Korean ID is safely encoded', () => {
 test('32. raw source URL injection is blocked', () => {
   const api = loadApi();
   const tree = {
-    id: 'safe-id',
+    id: 'safe-tree',
     visibility: 'public',
     url: 'javascript:alert(1)',
-    href: 'https://evil.example/phish',
+    href: 'https://evil.example/',
+    route: '//evil.example/',
+    redirect: '../admin',
+    next: '?next=evil',
+    basePath: 'data:text/html,evil',
+    onClick: function onClick() {},
+    navigate: function navigate() {},
     target: '_blank',
-    route: '/pages/editor?treeId=hijack',
-    redirect: 'https://evil.example',
-    next: 'https://evil.example',
     returnUrl: 'https://evil.example',
   };
   const model = api.resolveMyTreesEntryTargets(tree);
-  assert.equal(model.primary.href, 'editor?treeId=safe-id');
-  assert.equal(model.edit.href, 'editor?treeId=safe-id&mode=edit');
-  assert.equal(model.publicView.href, 'view.html?treeId=safe-id');
+  assert.equal(model.primary.href, 'editor?treeId=safe-tree');
+  assert.equal(model.edit.href, 'editor?treeId=safe-tree&mode=edit');
+  assert.equal(model.publicView.href, 'view.html?treeId=safe-tree');
   for (const href of [model.primary.href, model.edit.href, model.publicView.href]) {
     assert.equal(href.includes('javascript:'), false);
+    assert.equal(href.includes('data:'), false);
     assert.equal(href.includes('evil.example'), false);
-    assert.equal(href.includes('hijack'), false);
-    assert.equal(href.startsWith('data:'), false);
+    assert.equal(href.includes('../'), false);
+    assert.equal(href.includes('next='), false);
+    assert.equal(href.startsWith('//'), false);
   }
 });
 
@@ -504,7 +509,29 @@ test('45. DB/Modal dependency absent', () => {
   assert.doesNotMatch(HELPER_SOURCE, /postgres/i);
 });
 
-// ── Extra: aliases, normalize, basePath ──────────────────────────────
+// ── Fixed canonical routes / context ignore / alias fallback ─────────
+
+function assertFixedSafeTreeHrefs(model) {
+  assert.equal(model.primary.href, 'editor?treeId=safe-tree');
+  assert.equal(model.edit.href, 'editor?treeId=safe-tree&mode=edit');
+  assert.equal(model.publicView.href, 'view.html?treeId=safe-tree');
+  assert.ok(model.primary.href.startsWith('editor?treeId='));
+  assert.ok(model.edit.href.startsWith('editor?treeId='));
+  assert.ok(model.publicView.href.startsWith('view.html?treeId='));
+  assert.equal(model.primary.href.includes('mode=edit'), false);
+  assert.ok(model.edit.href.endsWith('&mode=edit'));
+  assert.equal(model.publicView.href.includes('mode='), false);
+  for (const href of [model.primary.href, model.edit.href, model.publicView.href]) {
+    assert.equal(href.includes('javascript:'), false);
+    assert.equal(href.includes('data:'), false);
+    assert.equal(href.includes('http://'), false);
+    assert.equal(href.includes('https://'), false);
+    assert.equal(href.includes('//evil'), false);
+    assert.equal(href.includes('../'), false);
+    assert.equal(href.includes('#fragment'), false);
+    assert.equal(href.includes('next='), false);
+  }
+}
 
 test('treeId and tree_id aliases resolve when id is absent', () => {
   const api = loadApi();
@@ -528,20 +555,163 @@ test('normalizeMyTreesAccessState is case-sensitive canonical only', () => {
   assert.equal(api.normalizeMyTreesAccessState(null), 'unknown');
 });
 
-test('optional basePath is applied without reading forbidden context fields', () => {
+test('context basePath and route-prefix injection cannot affect hrefs', () => {
   const api = loadApi();
-  const model = api.resolveMyTreesEntryTargets(
-    { id: 't-base', visibility: 'public' },
-    {
-      basePath: 'pages/',
-      url: 'javascript:alert(1)',
-      href: 'https://evil.example',
-      navigate: () => {},
-    }
+  const contexts = [
+    { basePath: 'javascript:' },
+    { basePath: 'data:text/html,' },
+    { basePath: 'https://evil.example/' },
+    { basePath: 'http://evil.example/' },
+    { basePath: '//evil.example/' },
+    { basePath: '\\\\evil.example\\' },
+    { basePath: '../' },
+    { basePath: '../../' },
+    { basePath: '?next=https://evil.example/' },
+    { basePath: '#fragment' },
+    { basePath: '/arbitrary-prefix/' },
+    { href: 'https://evil.example/' },
+    { route: 'javascript:' },
+    { redirect: '//evil.example/' },
+    { next: 'https://evil.example/' },
+  ];
+  for (const context of contexts) {
+    const model = api.resolveMyTreesEntryTargets(
+      { id: 'safe-tree', visibility: 'public' },
+      context
+    );
+    assertFixedSafeTreeHrefs(model);
+  }
+});
+
+test('context is ignored for private and unknown trees too', () => {
+  const api = loadApi();
+  const context = { basePath: 'https://evil.example/' };
+  const privateModel = api.resolveMyTreesEntryTargets(
+    { id: 'safe-tree', visibility: 'private' },
+    context
   );
-  assert.equal(model.primary.href, 'pages/editor?treeId=t-base');
-  assert.equal(model.edit.href, 'pages/editor?treeId=t-base&mode=edit');
-  assert.equal(model.publicView.href, 'pages/view.html?treeId=t-base');
+  assert.equal(privateModel.primary.href, 'editor?treeId=safe-tree');
+  assert.equal(privateModel.edit.href, 'editor?treeId=safe-tree&mode=edit');
+  assert.equal(privateModel.publicView.href, null);
+  const unknownModel = api.resolveMyTreesEntryTargets({ id: 'safe-tree' }, context);
+  assert.equal(unknownModel.primary.href, 'editor?treeId=safe-tree');
+  assert.equal(unknownModel.publicView.available, false);
+});
+
+test('source static: no resolveBasePath and no caller basePath concatenation', () => {
+  assert.doesNotMatch(HELPER_SOURCE, /resolveBasePath/);
+  assert.doesNotMatch(HELPER_SOURCE, /basePath\s*\+/);
+  assert.doesNotMatch(HELPER_SOURCE, /context\.basePath/);
+  assert.match(HELPER_SOURCE, /function buildEditorAppreciationHref\(treeId\)/);
+  assert.match(HELPER_SOURCE, /function buildEditorEditHref\(treeId\)/);
+  assert.match(HELPER_SOURCE, /function buildPublicViewerHref\(treeId\)/);
+});
+
+test('alias fallback: id null + valid treeId', () => {
+  const api = loadApi();
+  const model = api.resolveMyTreesEntryTargets({
+    id: null,
+    treeId: 'valid-tree',
+    visibility: 'public',
+  });
+  assert.equal(model.treeId, 'valid-tree');
+  assert.equal(model.primary.href, 'editor?treeId=valid-tree');
+  assert.equal(model.primary.available, true);
+});
+
+test('alias fallback: blank id + valid treeId', () => {
+  const api = loadApi();
+  const model = api.resolveMyTreesEntryTargets({
+    id: '',
+    treeId: 'valid-tree',
+    visibility: 'public',
+  });
+  assert.equal(model.treeId, 'valid-tree');
+  assert.equal(model.edit.href, 'editor?treeId=valid-tree&mode=edit');
+});
+
+test('alias fallback: object id + valid tree_id', () => {
+  const api = loadApi();
+  const model = api.resolveMyTreesEntryTargets({
+    id: { nested: 'x' },
+    tree_id: 'legacy-tree',
+    visibility: 'private',
+  });
+  assert.equal(model.treeId, 'legacy-tree');
+  assert.equal(model.primary.href, 'editor?treeId=legacy-tree');
+});
+
+test('alias fallback: whitespace id + valid tree_id', () => {
+  const api = loadApi();
+  const model = api.resolveMyTreesEntryTargets({
+    id: '   ',
+    treeId: ' ',
+    tree_id: 'legacy-tree',
+    visibility: 'public',
+  });
+  assert.equal(model.treeId, 'legacy-tree');
+  assert.equal(model.publicView.href, 'view.html?treeId=legacy-tree');
+});
+
+test('alias precedence: valid id wins over later aliases', () => {
+  const api = loadApi();
+  const model = api.resolveMyTreesEntryTargets({
+    id: 'canonical-tree',
+    treeId: 'later-tree',
+    tree_id: 'legacy-tree',
+    visibility: 'public',
+  });
+  assert.equal(model.treeId, 'canonical-tree');
+  assert.equal(model.primary.href, 'editor?treeId=canonical-tree');
+  assert.equal(model.primary.href.includes('later-tree'), false);
+});
+
+test('alias fallback: all aliases invalid → all unavailable', () => {
+  const api = loadApi();
+  assertAllUnavailable(
+    api.resolveMyTreesEntryTargets({
+      id: null,
+      treeId: '',
+      tree_id: '  ',
+      visibility: 'public',
+    })
+  );
+  assertAllUnavailable(
+    api.resolveMyTreesEntryTargets({
+      id: 1,
+      treeId: {},
+      tree_id: [],
+      visibility: 'public',
+    })
+  );
+});
+
+test('alias fallback selected ID is URL-encoded', () => {
+  const api = loadApi();
+  const id = 'a&b=#?';
+  const model = api.resolveMyTreesEntryTargets({
+    id: null,
+    treeId: id,
+    visibility: 'public',
+  });
+  const encoded = encodeURIComponent(id);
+  assert.equal(model.treeId, id);
+  assert.equal(model.primary.href, `editor?treeId=${encoded}`);
+  assert.equal(model.edit.href, `editor?treeId=${encoded}&mode=edit`);
+  assert.equal(model.publicView.href, `view.html?treeId=${encoded}`);
+});
+
+test('alias fallback does not mutate multi-alias input', () => {
+  const api = loadApi();
+  const tree = {
+    id: null,
+    treeId: 'valid-tree',
+    visibility: 'public',
+    extra: 1,
+  };
+  const before = deepClone(tree);
+  api.resolveMyTreesEntryTargets(tree);
+  assert.deepEqual(tree, before);
 });
 
 test('private tree does not fallback public-view to editor appreciation', () => {

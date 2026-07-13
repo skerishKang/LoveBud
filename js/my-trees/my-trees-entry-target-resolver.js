@@ -17,6 +17,9 @@
  *   - Public Viewer:       view.html?treeId=<id>
  *   - tree id query key:   treeId
  *   - visibility: exact "public" | "private" (case-sensitive)
+ *
+ * Hrefs are fixed canonical relative routes plus encodeURIComponent(treeId).
+ * Caller context cannot inject route prefixes, origins, schemes, or fragments.
  */
 (function () {
   'use strict';
@@ -47,8 +50,9 @@
   }
 
   /**
-   * Fail-closed tree id: non-empty trimmed string only.
-   * Numbers/objects/arrays/functions/null/undefined/whitespace → invalid.
+   * Fail-closed tree id: first usable non-empty trimmed string among aliases.
+   * missing / null / undefined / empty / whitespace / non-string → try next.
+   * All aliases unusable → null.
    */
   function resolveTreeId(tree) {
     if (!isPlainObject(tree)) return null;
@@ -57,9 +61,9 @@
       var key = TREE_ID_KEYS[i];
       if (!hasOwn(tree, key)) continue;
       var raw = tree[key];
-      if (typeof raw !== 'string') return null;
+      if (typeof raw !== 'string') continue;
       var trimmed = raw.replace(/^\s+|\s+$/g, '');
-      if (!trimmed) return null;
+      if (!trimmed) continue;
       return trimmed;
     }
     return null;
@@ -82,24 +86,16 @@
     return normalizeMyTreesAccessState(tree.visibility);
   }
 
-  function resolveBasePath(context) {
-    if (!isPlainObject(context)) return '';
-    if (!hasOwn(context, 'basePath')) return '';
-    var base = context.basePath;
-    if (typeof base !== 'string') return '';
-    return base;
+  function buildEditorAppreciationHref(treeId) {
+    return 'editor?treeId=' + encodeURIComponent(treeId);
   }
 
-  function buildEditorAppreciationHref(basePath, treeId) {
-    return basePath + 'editor?treeId=' + encodeURIComponent(treeId);
+  function buildEditorEditHref(treeId) {
+    return 'editor?treeId=' + encodeURIComponent(treeId) + '&mode=edit';
   }
 
-  function buildEditorEditHref(basePath, treeId) {
-    return basePath + 'editor?treeId=' + encodeURIComponent(treeId) + '&mode=edit';
-  }
-
-  function buildPublicViewerHref(basePath, treeId) {
-    return basePath + 'view.html?treeId=' + encodeURIComponent(treeId);
+  function buildPublicViewerHref(treeId) {
+    return 'view.html?treeId=' + encodeURIComponent(treeId);
   }
 
   function createTarget(available, href, action, interactionMode, routeSurface) {
@@ -145,17 +141,19 @@
    * Pure: no navigation, no input mutation, detached plain objects only.
    *
    * @param {object} tree - allowlisted fields: id | treeId | tree_id, visibility
-   * @param {object} [context] - optional { basePath: string }
+   * @param {object} [context] - reserved for signature compatibility; ignored
    * @returns {object} detached target model
    */
   function resolveMyTreesEntryTargets(tree, context) {
+    // context is intentionally unused: hrefs are fixed canonical routes only.
+    void context;
+
     var treeId = resolveTreeId(tree);
     if (!treeId) {
       return createUnavailableBundle();
     }
 
     var accessState = resolveAccessState(tree);
-    var basePath = resolveBasePath(context);
     var publicAvailable = accessState === ACCESS_PUBLIC;
 
     return {
@@ -163,21 +161,21 @@
       accessState: accessState,
       primary: createTarget(
         true,
-        buildEditorAppreciationHref(basePath, treeId),
+        buildEditorAppreciationHref(treeId),
         ACTION_APPRECIATION,
         INTERACTION_APPRECIATION,
         SURFACE_EDITOR
       ),
       publicView: createTarget(
         publicAvailable,
-        publicAvailable ? buildPublicViewerHref(basePath, treeId) : null,
+        publicAvailable ? buildPublicViewerHref(treeId) : null,
         ACTION_PUBLIC_VIEW,
         INTERACTION_NONE,
         SURFACE_PUBLIC_VIEWER
       ),
       edit: createTarget(
         true,
-        buildEditorEditHref(basePath, treeId),
+        buildEditorEditHref(treeId),
         ACTION_EDIT,
         INTERACTION_EDIT,
         SURFACE_EDITOR
