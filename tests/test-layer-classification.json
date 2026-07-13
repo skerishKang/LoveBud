@@ -917,6 +917,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/editor-form-isolation-connect-flow-3504.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Tests form isolation (inert/aria-hidden/focus trap), connect-existing flow guard gates, and floating toolbar routing. Executes production source in vm with fake DOM; no real external system or production resource used.",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/editor-growth-affordance-contract.test.cjs",
       "layer": "EXECUTED_FAKE",
       "rationale": "Reads production module source and executes it in a local process with injected fake/mock/stub dependencies (e.g., vm context with fake DOM or mocked fetch/localStorage); no real external system or production resource used.",
