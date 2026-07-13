@@ -179,9 +179,11 @@ test('canonical boundary produces complete count summary for populated tree', fu
   boundary.updateSidebarStatus();
 
   assert.ok(formatCallArgs !== null, 'formatI18nText should be called');
-  assert.equal(formatCallArgs.key, 'sidebar_flow_summary_connected_with_range');
+  assert.equal(formatCallArgs.key, 'editor_sidebar_tree_summary_with_range');
   assert.equal(formatCallArgs.replacements.count, '12');
+  assert.equal(formatCallArgs.replacements.timeRange, '2025-01 ~ 2025-06');
   assert.equal(flowSummaryEl.innerHTML.includes('12'), true, 'summary should include count 12');
+  assert.equal(flowSummaryEl.innerHTML.includes('2025-01 ~ 2025-06'), true, 'summary should include time range');
 });
 
 // ── Test 6: Empty tree produces complete empty fallback ──

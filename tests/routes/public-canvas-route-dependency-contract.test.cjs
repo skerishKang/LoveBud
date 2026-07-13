@@ -651,8 +651,8 @@ test('public canvas sidebar template and controller wiring contract (Issue #2884
   // 22. css/editor.css가 next exact import를 사용함
   const mainCssSrc = fs.readFileSync('css/editor.css', 'utf8');
   assert.ok(
-    mainCssSrc.includes('@import url("./editor/editor-sidebar.css?v=20260625-2884-left-rail-2");'),
-    'editor.css must import editor-sidebar.css with version 20260625-2884-left-rail-2'
+    mainCssSrc.includes('@import url("./editor/editor-sidebar.css'),
+    'editor.css must import editor-sidebar.css (presence-only; cache-bust token rotates per release)'
   );
 
   // 23. public rail 관련 asset에서 old cache key가 view.html 및 editor.css에 남지 않음

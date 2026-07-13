@@ -30,6 +30,27 @@
 
 ---
 
+## Current local execution environment
+
+LoveBud 로컬 작업의 **현재 기본 OS는 Windows**다.
+
+1. **Primary OS:** Windows
+2. **Primary shell:** PowerShell 7 (`pwsh.exe`). Windows PowerShell 5.1은 필요 시 명시적 fallback만 허용한다.
+3. **Primary paths / tools:** Windows 드라이브 경로와 Windows-native executable (`git.exe`, `node.exe`, `npm`, `gh.exe`, `psql.exe`, `pg_dump.exe` 등).
+4. 작업 시작 전 실제 shell과 tool resolution을 확인한다 (`Get-Location`, `$PSVersionTable`, `Get-Command`).
+5. PowerShell, CMD, bash 문법을 한 작업에서 혼합하지 않는다.
+6. 모델 종류(Codex, Kilo, Hermes 등)나 tool 이름만으로 WSL/bash를 추론하지 않는다.
+7. **WSL은 현재 task 또는 operator가 명시적으로 승인한 경우에만** 사용한다. 기본 금지.
+8. `wsl.exe`, `/mnt/*`, Linux 바이너리는 **implicit fallback이 아니다**.
+9. 필수 Windows-native 도구가 없으면 **중단·보고**한다. WSL로 자동 우회하지 않는다.
+10. historical WSL 문서(예: `docs/ops/REMOTE_ACCESS_AND_WSL.md`의 과거 기록)는 현재 root guidance를 override하지 않는다.
+
+상세 path/shell source of truth: `docs/ops/PATHS_AND_SHELLS.md`.
+
+이 섹션은 `docs/ops/MVP_AGENT_GOVERNANCE.md`의 governance 권한을 약화시키지 않는다. governance/blocker 판단 충돌 시 canonical policy가 우선한다.
+
+---
+
 ## 2. 제품 / 브랜드 source of truth
 
 제품과 UX 판단이 필요할 때 아래 문서를 최우선으로 봅니다.

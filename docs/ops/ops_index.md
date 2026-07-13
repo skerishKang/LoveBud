@@ -11,6 +11,9 @@
 - active backend target: **Modal** (browse summary, private/community read/write compute)
 - Vercel은 upstream / secondary / transitional 계층
 - Netlify는 legacy artifact / removal candidate입니다. active production fallback이 아닙니다.
+- **local execution default: Windows-native**
+- **preferred shell: PowerShell 7 (`pwsh.exe`)**
+- **WSL: explicit authorization only** (implicit fallback 금지; 상세: `PATHS_AND_SHELLS.md`)
 
 ---
 
@@ -62,8 +65,8 @@
 | [OPERATOR_WRITING_AND_VERIFICATION_POLICY.md](OPERATOR_WRITING_AND_VERIFICATION_POLICY.md) | prose-first Issue/PR 작성, valid runtime verification, QA credential safe reporting, batch verification 운영 기준 |
 | [AGENT_STARTUP_VERIFICATION_RULES.md](AGENT_STARTUP_VERIFICATION_RULES.md) | Issue #464 agent startup checklist, fixed-slot verification, dirty worktree stop, token/secret-safe reporting 기준 |
 | [SOURCE_OF_TRUTH_HYGIENE_DISPOSITION.md](SOURCE_OF_TRUTH_HYGIENE_DISPOSITION.md) | Issue #425 docs source-of-truth hierarchy, stale-doc classification, update routing, archive and index maintenance rules |
-| [PATHS_AND_SHELLS.md](PATHS_AND_SHELLS.md) | 경로 / 셸 기준 |
-| [REMOTE_ACCESS_AND_WSL.md](REMOTE_ACCESS_AND_WSL.md) | 원격 접근 / WSL 기준 |
+| [PATHS_AND_SHELLS.md](PATHS_AND_SHELLS.md) | **current** Windows-native path/shell source of truth (PowerShell 7 default; WSL explicit exception only) |
+| [REMOTE_ACCESS_AND_WSL.md](REMOTE_ACCESS_AND_WSL.md) | **historical/superseded** WSL and remote-access audit — not current execution authority |
 | [GIT_SSH_SETUP.md](GIT_SSH_SETUP.md) | Git / SSH 설정 |
 | [OPERATIONS.md](OPERATIONS.md) | 현재 운영 전략 및 인프라 우선순위 |
 

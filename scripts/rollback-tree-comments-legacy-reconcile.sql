@@ -152,7 +152,6 @@ DECLARE
   v_chk_kind integer;
   v_chk_tid integer;
   v_inbound_fk integer;
-  v_idx_compound integer;
   v_idx_tree integer;
   v_idx_owner integer;
   v_idx_created integer;
@@ -332,33 +331,24 @@ BEGIN
     RAISE EXCEPTION 'ROLLBACK PRECONDITION FAIL: unexpected inbound FK(s) reference tree_comments (count=%)', v_inbound_fk;
   END IF;
 
-  -- ── Exact index inventory (audited production legacy + migration-added) ─
-  -- Original compound legacy index (tree_id, created_at) + 3 migration-added
-  -- indexes (tree_id, owner_id, created_at) + canonical PK backing (id) = 5 total
-  -- (1 primary + 4 secondary). Verified via pg_index.indkey/attnum ordered column
-  -- arrays + uniqueness + non-partial + non-expression + no INCLUDE columns, not by
-  -- indexdef substring. Each secondary index is checked individually.
+  -- ── Exact index inventory (corrected: zero-secondary-index legacy state) ──
+  -- The corrected migration creates ONLY three canonical secondary indexes and NO
+  -- compound (tree_id, created_at) index. The rolledback state therefore has exactly
+  -- 3 secondary indexes + the canonical PK backing (id) = 4 total. The legacy PK
+  -- (tree_id, id) is restored separately by the apply phase below; its backing index
+  -- is the legacy PK backing index, not the canonical [id] one. Rollback preflight
+  -- expects the EXACT canonical reconciled index set: PK (id) + 3 canonical secondary,
+  -- compound = 0, unexpected = 0.
   SELECT count(*) INTO v_idx_secondary
   FROM pg_index i WHERE i.indrelid='public.tree_comments'::regclass AND NOT i.indisprimary;
-  IF v_idx_secondary <> 4 THEN
-    RAISE EXCEPTION 'ROLLBACK PRECONDITION FAIL: expected exactly 4 secondary indexes (got %)', v_idx_secondary;
+  IF v_idx_secondary <> 3 THEN
+    RAISE EXCEPTION 'ROLLBACK PRECONDITION FAIL: expected exactly 3 secondary indexes (canonical, no compound) (got %)', v_idx_secondary;
   END IF;
 
   SELECT count(*) INTO v_idx_pk FROM pg_index i
   WHERE i.indrelid='public.tree_comments'::regclass AND i.indisprimary;
   IF v_idx_pk <> 1 THEN
     RAISE EXCEPTION 'ROLLBACK PRECONDITION FAIL: canonical PK backing index (id) not found (count=%)', v_idx_pk;
-  END IF;
-
-  SELECT count(*) INTO v_idx_compound
-  FROM pg_index i
-  WHERE i.indrelid='public.tree_comments'::regclass AND NOT i.indisprimary
-    AND i.indnatts=2 AND i.indnkeyatts=2 AND i.indnkeyatts = i.indnatts AND NOT i.indisunique AND i.indpred IS NULL AND i.indexprs IS NULL
-    AND (SELECT array_agg(a.attname::text ORDER BY ord)
-        FROM unnest(i.indkey) WITH ORDINALITY AS k(attnum, ord)
-        JOIN pg_attribute a ON a.attrelid=i.indrelid AND a.attnum=k.attnum) = ARRAY['tree_id','created_at']::text[];
-  IF v_idx_compound <> 1 THEN
-    RAISE EXCEPTION 'ROLLBACK PRECONDITION FAIL: original compound legacy index (tree_id, created_at) not found (count=%)', v_idx_compound;
   END IF;
 
   SELECT count(*) INTO v_idx_tree FROM pg_index i JOIN pg_class c ON c.oid=i.indexrelid
@@ -380,8 +370,6 @@ BEGIN
   SELECT count(*) INTO v_idx_unexpected
   FROM pg_index i JOIN pg_class c ON c.oid=i.indexrelid
   WHERE i.indrelid='public.tree_comments'::regclass AND NOT i.indisprimary
-    AND NOT (i.indnatts=2 AND i.indnkeyatts=2 AND i.indnkeyatts = i.indnatts AND NOT i.indisunique AND i.indpred IS NULL AND i.indexprs IS NULL
-      AND (SELECT array_agg(a.attname::text ORDER BY ord) FROM unnest(i.indkey) WITH ORDINALITY AS k(attnum, ord) JOIN pg_attribute a ON a.attrelid=i.indrelid AND a.attnum=k.attnum) = ARRAY['tree_id','created_at']::text[])
     AND c.relname NOT IN ('idx_tree_comments_tree_id','idx_tree_comments_owner_id','idx_tree_comments_created_at');
   IF v_idx_unexpected <> 0 THEN
     RAISE EXCEPTION 'ROLLBACK PRECONDITION FAIL: unexpected index(es) present before rollback (count=%)', v_idx_unexpected;
@@ -443,8 +431,9 @@ BEGIN
   EXECUTE format('ALTER TABLE public.tree_comments DROP CONSTRAINT %I', v_pkid);
 END $$;
 
--- Restore legacy composite PRIMARY KEY (tree_id, id). This reuses the legacy
--- definition captured at migration time; the migration preserved the original PK.
+-- Restore legacy composite PRIMARY KEY (tree_id, id). Rollback validates the
+-- canonical PK is exactly [id], drops it by catalog-discovered constraint name,
+-- then explicitly recreates PRIMARY KEY (tree_id, id).
 ALTER TABLE public.tree_comments
   ADD CONSTRAINT tree_comments_pkey PRIMARY KEY (tree_id, id);
 
@@ -453,7 +442,9 @@ ALTER TABLE public.tree_comments
 DROP INDEX IF EXISTS public.idx_tree_comments_tree_id;
 DROP INDEX IF EXISTS public.idx_tree_comments_owner_id;
 DROP INDEX IF EXISTS public.idx_tree_comments_created_at;
--- Note: the original compound legacy index public.idx_..._tree_id_created_at (tree_id, created_at) is PRESERVED.
+-- The corrected migration creates NO compound (tree_id, created_at) index, so
+-- there is nothing compound to preserve or drop. Rollback restores the exact
+-- legacy zero-secondary-index state.
 
 -- 4. Remove migration-added columns.
 ALTER TABLE public.tree_comments
@@ -496,7 +487,6 @@ DECLARE
   v_idx_owner integer;
   v_idx_created integer;
   v_idx_pk integer;
-  v_idx_compound integer;
   v_idx_secondary integer;
   v_idx_unexpected integer;
   v_trig integer;
@@ -612,27 +602,16 @@ BEGIN
   END IF;
 
   -- ── Exact final legacy index inventory ──────────────────────────────────
-  -- After dropping the 3 migration-added indexes, only the restored legacy
-  -- PK backing index (tree_id, id) and the original compound legacy
-  -- list-read index (tree_id, created_at) must remain. No single-column
-  -- tree_id / owner_id / created_at index, and no unexpected index. The
-  -- compound is verified for exact ordered columns, non-unique, non-partial,
-  -- non-expression and no INCLUDE columns.
+  -- After dropping the 3 migration-added indexes, the table returns to the exact
+  -- legacy zero-secondary-index state: only the legacy PK backing index
+  -- (tree_id, id) remains. No compound (tree_id, created_at), no single-column
+  -- tree_id / owner_id / created_at index, and no unexpected index. The compound
+  -- is verified for exact ordered columns, non-unique, non-partial, non-expression
+  -- and no INCLUDE columns and MUST be absent (count = 0).
   SELECT count(*) INTO v_idx_secondary
   FROM pg_index i WHERE i.indrelid='public.tree_comments'::regclass AND NOT i.indisprimary;
-  IF v_idx_secondary <> 1 THEN
-    RAISE EXCEPTION 'ROLLBACK POST-VERIFY FAIL: expected exactly 1 secondary index after rollback (got %)', v_idx_secondary;
-  END IF;
-
-  SELECT count(*) INTO v_idx_compound
-  FROM pg_index i
-  WHERE i.indrelid='public.tree_comments'::regclass AND NOT i.indisprimary
-    AND i.indnatts=2 AND i.indnkeyatts=2 AND i.indnkeyatts = i.indnatts AND NOT i.indisunique AND i.indpred IS NULL AND i.indexprs IS NULL
-    AND (SELECT array_agg(a.attname::text ORDER BY ord)
-        FROM unnest(i.indkey) WITH ORDINALITY AS k(attnum, ord)
-        JOIN pg_attribute a ON a.attrelid=i.indrelid AND a.attnum=k.attnum) = ARRAY['tree_id','created_at']::text[];
-  IF v_idx_compound <> 1 THEN
-    RAISE EXCEPTION 'ROLLBACK POST-VERIFY FAIL: original compound legacy index (tree_id, created_at) not preserved (count=%)', v_idx_compound;
+  IF v_idx_secondary <> 0 THEN
+    RAISE EXCEPTION 'ROLLBACK POST-VERIFY FAIL: expected exactly 0 secondary indexes after rollback (got %)', v_idx_secondary;
   END IF;
 
   SELECT count(*) INTO v_idx_pk FROM pg_index i WHERE i.indrelid='public.tree_comments'::regclass AND i.indisprimary;
@@ -652,9 +631,7 @@ BEGIN
 
   SELECT count(*) INTO v_idx_unexpected
   FROM pg_index i JOIN pg_class c ON c.oid=i.indexrelid
-  WHERE i.indrelid='public.tree_comments'::regclass AND NOT i.indisprimary
-    AND NOT (i.indnatts=2 AND i.indnkeyatts=2 AND i.indnkeyatts = i.indnatts AND NOT i.indisunique AND i.indpred IS NULL AND i.indexprs IS NULL
-      AND (SELECT array_agg(a.attname::text ORDER BY ord) FROM unnest(i.indkey) WITH ORDINALITY AS k(attnum, ord) JOIN pg_attribute a ON a.attrelid=i.indrelid AND a.attnum=k.attnum) = ARRAY['tree_id','created_at']::text[]);
+  WHERE i.indrelid='public.tree_comments'::regclass AND NOT i.indisprimary;
   IF v_idx_unexpected <> 0 THEN
     RAISE EXCEPTION 'ROLLBACK POST-VERIFY FAIL: unexpected index(es) after rollback (count=%)', v_idx_unexpected;
   END IF;

@@ -4,8 +4,8 @@
  *
  * Split by responsibility.
  */
-@import url('editor-floating-toolbar/toolbar.css');
+@import url('editor-floating-toolbar/toolbar.css?v=20260712-editor-ui-followup-1');
 @import url('editor-floating-toolbar/quick-add.css');
 @import url('editor-floating-toolbar/tooltip.css');
-@import url('editor-floating-toolbar/dropdown.css');
+@import url('editor-floating-toolbar/dropdown.css?v=20260712-editor-ui-followup-1');
 @import url('editor-floating-toolbar/responsive.css');

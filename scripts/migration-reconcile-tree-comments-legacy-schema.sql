@@ -286,11 +286,15 @@ BEGIN
     ok := 0; v_m := v_m || 'trees.id; ';
   END IF;
 
-  -- Exact index inventory: total 5 (1 primary + 4 secondary). Each secondary is
-  -- verified by ordered key array + uniqueness + non-partial + non-expression +
-  -- no INCLUDE columns (indnkeyatts = indnatts); migration-added indexes by exact name.
+  -- Exact index inventory: total 4 (1 primary + 3 secondary). The audited production
+  -- legacy state has ZERO non-primary indexes; the reconciliation creates ONLY the
+  -- three canonical secondary indexes. Each secondary is verified by ordered key
+  -- array + uniqueness + non-partial + non-expression + no INCLUDE columns
+  -- (indnkeyatts = indnatts); migration-added indexes by exact name. NO compound
+  -- (tree_id, created_at) index exists or is expected in the reconciled state.
   SELECT count(*) INTO v_i1 FROM pg_index i WHERE i.indrelid='public.tree_comments'::regclass AND i.indisprimary;
   SELECT count(*) INTO v_is FROM pg_index i WHERE i.indrelid='public.tree_comments'::regclass AND NOT i.indisprimary;
+  -- Compound (tree_id, created_at) MUST NOT be present in the reconciled state.
   SELECT count(*) INTO v_i2 FROM pg_index i
   WHERE i.indrelid='public.tree_comments'::regclass AND NOT i.indisprimary
     AND i.indnatts=2 AND i.indnkeyatts=2 AND i.indnkeyatts = i.indnatts AND NOT i.indisunique AND i.indpred IS NULL AND i.indexprs IS NULL
@@ -307,13 +311,12 @@ BEGIN
   WHERE i.indrelid='public.tree_comments'::regclass AND NOT i.indisprimary
     AND c.relname='idx_tree_comments_created_at' AND i.indnatts=1 AND i.indnkeyatts=1 AND i.indnkeyatts = i.indnatts AND NOT i.indisunique AND i.indpred IS NULL AND i.indexprs IS NULL
     AND (SELECT array_agg(a.attname::text ORDER BY ord) FROM unnest(i.indkey) WITH ORDINALITY AS k(attnum, ord) JOIN pg_attribute a ON a.attrelid=i.indrelid AND a.attnum=k.attnum) = ARRAY['created_at']::text[];
-  -- Unexpected secondary: not the compound match and not one of the 3 migration-added exact names.
+  -- Unexpected secondary: anything that is not one of the 3 migration-added exact
+  -- names (a compound (tree_id, created_at) index is itself unexpected and rejected).
   SELECT count(*) INTO v_iu FROM pg_index i JOIN pg_class c ON c.oid=i.indexrelid
   WHERE i.indrelid='public.tree_comments'::regclass AND NOT i.indisprimary
-    AND NOT (i.indnatts=2 AND i.indnkeyatts=2 AND i.indnkeyatts = i.indnatts AND NOT i.indisunique AND i.indpred IS NULL AND i.indexprs IS NULL
-      AND (SELECT array_agg(a.attname::text ORDER BY ord) FROM unnest(i.indkey) WITH ORDINALITY AS k(attnum, ord) JOIN pg_attribute a ON a.attrelid=i.indrelid AND a.attnum=k.attnum) = ARRAY['tree_id','created_at']::text[])
     AND c.relname NOT IN ('idx_tree_comments_tree_id','idx_tree_comments_owner_id','idx_tree_comments_created_at');
-  IF v_i1 <> 1 OR v_is <> 4 OR v_i2 <> 1 OR v_i3 <> 1 OR v_i4 <> 1 OR v_i5 <> 1 OR v_iu <> 0 THEN
+  IF v_i1 <> 1 OR v_is <> 3 OR v_i2 <> 0 OR v_i3 <> 1 OR v_i4 <> 1 OR v_i5 <> 1 OR v_iu <> 0 THEN
     ok := 0; v_m := v_m || 'idx=' || v_i1||'/'||v_is||'/'||v_i2||'/'||v_i3||'/'||v_i4||'/'||v_i5||'/'||v_iu || '; ';
   END IF;
 
@@ -356,8 +359,6 @@ DECLARE
   v_fk_author integer;
   v_pk_cols text[];
   v_pk_idx text;
-  v_idx_compound integer;
-  v_idx_single_tree integer;
   v_secondary_total integer;
   v_reconciled_ok integer;
   v_rc integer;
@@ -588,52 +589,23 @@ BEGIN
     RAISE EXCEPTION 'PREFLIGHT FAIL: tree_comments row_count=% (expected 0); abort to avoid destructive copy', v_rows;
   END IF;
 
-  -- ── Step 11: Exact legacy index inventory (audited production state) ──────────
-  -- Confirmed production legacy index set is EXACTLY ONE secondary index:
-  --   * compound (tree_id, created_at)  -- the legacy list-read index
-  -- There is NO single-column idx_tree_comments_tree_id in the legacy state; that
-  -- index is CREATED by this migration (canonical). The PK (tree_id, id) has its
-  -- own backing index but is exercised via the PK constraint, not counted here.
+  -- ── Step 11: Exact legacy index inventory (audited zero-secondary-index production state) ──
+  -- Approved read-only preflight confirmed the production legacy table has ZERO
+  -- non-primary secondary indexes. The PK (tree_id, id) has its own backing index
+  -- but is exercised via the PK constraint, not counted here.
   --
-  -- Enforced per-index (NOT a global uncorrelated NOT EXISTS, which would hide an
-  -- unexpected index whenever the compound index exists): the total secondary count
-  -- must be exactly 1 AND the compound match must be exactly 1 simultaneously.
+  -- Fail closed on ANY non-primary secondary index: single-column, compound,
+  -- unique, partial, expression, INCLUDE, or any other secondary index. The
+  -- total secondary count must be exactly 0.
   SELECT count(*) INTO v_secondary_total
   FROM pg_index i
-  WHERE i.indrelid='public.tree_comments'::regclass AND NOT i.indisprimary;
-  IF v_secondary_total <> 1 THEN
-    RAISE EXCEPTION 'PREFLIGHT FAIL: legacy secondary index count must be exactly 1 (got %)', v_secondary_total;
-  END IF;
+  WHERE i.indrelid = 'public.tree_comments'::regclass
+    AND NOT i.indisprimary;
 
-  SELECT count(*) INTO v_idx_compound
-  FROM pg_index i
-  WHERE i.indrelid='public.tree_comments'::regclass AND NOT i.indisprimary
-    AND i.indnatts=2 AND i.indnkeyatts=2 AND i.indnkeyatts = i.indnatts AND NOT i.indisunique
-    AND i.indpred IS NULL AND i.indexprs IS NULL
-    AND (SELECT array_agg(a.attname::text ORDER BY ord)
-        FROM unnest(i.indkey) WITH ORDINALITY AS k(attnum, ord)
-        JOIN pg_attribute a ON a.attrelid=i.indrelid AND a.attnum=k.attnum) = ARRAY['tree_id','created_at']::text[];
-  IF v_idx_compound <> 1 THEN
-    RAISE EXCEPTION 'PREFLIGHT FAIL: legacy compound index (tree_id, created_at) not found exactly (count=%)', v_idx_compound;
-  END IF;
-
-  -- Defense in depth: a single-column tree_id index must NOT exist in the legacy
-  -- state (it is migration-added). If present, the total secondary count above is
-  -- already > 1; this is an explicit secondary guard that also rejects partial /
-  -- expression / unique / INCLUDE / differently-named secondary indexes.
-  SELECT count(*) INTO v_idx_single_tree
-  FROM pg_index i
-  WHERE i.indrelid='public.tree_comments'::regclass AND NOT i.indisprimary
-    AND (i.indnatts=1
-      AND (SELECT array_agg(a.attname::text ORDER BY ord)
-          FROM unnest(i.indkey) WITH ORDINALITY AS k(attnum, ord)
-          JOIN pg_attribute a ON a.attrelid=i.indrelid AND a.attnum=k.attnum) = ARRAY['tree_id']::text[]
-      OR i.indpred IS NOT NULL
-      OR i.indexprs IS NOT NULL
-      OR i.indnkeyatts <> i.indnatts
-      OR i.indisunique);
-  IF v_idx_single_tree <> 0 THEN
-    RAISE EXCEPTION 'PREFLIGHT FAIL: unexpected legacy secondary index present (single-column tree_id / partial / expression / unique / INCLUDE)';
+  IF v_secondary_total <> 0 THEN
+    RAISE EXCEPTION
+      'PREFLIGHT FAIL: legacy secondary index count must be exactly 0 (got %)',
+      v_secondary_total;
   END IF;
 
   -- ── Step 12: No risky dependent objects (triggers / RLS / views / matviews) ──
@@ -710,7 +682,9 @@ ALTER TABLE public.tree_comments
 -- Writer replay reads by WHERE id = %s, so id must be DB-level unique.
 -- The exact legacy PK constraint name is NOT assumed; it is read from the catalog
 -- and dropped ONLY when its definition is exactly (tree_id, id). Guessing the
--- constraint name is forbidden. tree_id index is preserved for list reads.
+-- constraint name is forbidden. The legacy PK backing index is removed with the
+-- legacy PK; the migration then creates the canonical single-column tree_id
+-- secondary index.
 DO $$
 DECLARE
   v_pkid text;
@@ -743,11 +717,11 @@ ALTER TABLE public.tree_comments
   ADD CONSTRAINT tree_comments_pkey PRIMARY KEY (id);
 
 -- ─── Indexes (mirror canonical migration) ──────────────────────────────────
--- The legacy compound (tree_id, created_at) list-read index already exists
--- (audited production state) and is PRESERVED. This migration adds three
--- canonical read indexes; all are created idempotently. If a same-named
--- index already exists with a WRONG definition, the post-verify below will
--- fail closed and roll back the whole transaction.
+-- The audited production legacy state has zero non-primary indexes. This
+-- reconciliation creates ONLY the three canonical secondary indexes. The
+-- compound (tree_id, created_at) index is NOT created. All three are created
+-- idempotently; if a same-named index already exists with a WRONG definition,
+-- the post-verify below will fail closed and roll back the whole transaction.
 CREATE INDEX IF NOT EXISTS idx_tree_comments_tree_id ON public.tree_comments(tree_id);
 CREATE INDEX IF NOT EXISTS idx_tree_comments_owner_id ON public.tree_comments(owner_id);
 CREATE INDEX IF NOT EXISTS idx_tree_comments_created_at ON public.tree_comments(created_at);
@@ -852,8 +826,9 @@ BEGIN
     RAISE EXCEPTION 'POST-VERIFY FAIL: required indexes missing (tree_id/owner_id/created_at)';
   END IF;
 
-  -- Exact index inventory: PK backing (id) + original compound legacy
-  -- (tree_id, created_at) + 3 migration-added (tree_id, owner_id, created_at).
+  -- Exact index inventory: PK backing (id) + 3 canonical migration-added
+  -- indexes (tree_id, owner_id, created_at). NO compound (tree_id, created_at)
+  -- index is created or expected.
   SELECT count(*) INTO v_idx_pk FROM pg_index i WHERE i.indrelid='public.tree_comments'::regclass AND i.indisprimary;
   SELECT count(*) INTO v_idx_compound
   FROM pg_index i
@@ -862,8 +837,8 @@ BEGIN
     AND (SELECT array_agg(a.attname::text ORDER BY ord)
         FROM unnest(i.indkey) WITH ORDINALITY AS k(attnum, ord)
         JOIN pg_attribute a ON a.attrelid=i.indrelid AND a.attnum=k.attnum) = ARRAY['tree_id','created_at']::text[];
-  IF v_idx_tree <> 1 OR v_idx_owner <> 1 OR v_idx_created <> 1 OR v_idx_pk <> 1 OR v_idx_compound <> 1 THEN
-    RAISE EXCEPTION 'POST-VERIFY FAIL: PK backing + compound (tree_id, created_at) + 3 migration added index inventory wrong (tree=% owner=% created=% pk=% comp=%',
+  IF v_idx_tree <> 1 OR v_idx_owner <> 1 OR v_idx_created <> 1 OR v_idx_pk <> 1 OR v_idx_compound <> 0 THEN
+    RAISE EXCEPTION 'POST-VERIFY FAIL: expected PK backing (id) + 3 canonical secondary indexes + NO compound (tree_id, created_at) (tree=% owner=% created=% pk=% comp=%',
       v_idx_tree, v_idx_owner, v_idx_created, v_idx_pk, v_idx_compound;
   END IF;
 

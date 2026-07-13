@@ -1,0 +1,23 @@
+{
+  "format_version": "1.0",
+  "status": "ADOPTION_REQUIRED",
+  "fingerprint_algorithm": "sha256",
+  "critical_objects": [],
+  "adoption_rule": "No live catalog snapshot or historical application record is committed here. A separately approved read-only adoption procedure must create sanitized object fingerprints before ACTIVE status is allowed.",
+  "comparison_scope": [
+    "columns",
+    "types",
+    "nullability",
+    "defaults",
+    "primary_keys",
+    "unique_constraints",
+    "foreign_keys",
+    "indexes",
+    "triggers",
+    "row_level_security",
+    "views",
+    "materialized_views",
+    "grants",
+    "table_kind"
+  ]
+}

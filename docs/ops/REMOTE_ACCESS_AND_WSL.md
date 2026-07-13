@@ -1,6 +1,16 @@
 # Remote Access And WSL
 
-이 문서는 컴1에서 컴2로 원격 접근할 때의 SSH 설정, 컴2의 WSL 드라이브 마운트 문제, Windows Codex 셸 실행기 이슈를 기록합니다.
+> **Classification: HISTORICAL_AUDIT / SUPERSEDED_FOR_CURRENT_EXECUTION**
+>
+> - 이 문서는 **현재 agent startup guidance가 아니다**.
+> - **WSL 사용을 승인하지 않는다.**
+> - 현재 local execution authority:
+>   1. root `AGENTS.md` (Current local execution environment)
+>   2. `docs/ops/PATHS_AND_SHELLS.md` (Windows-native path/shell source of truth)
+> - 과거 컴퓨터 라벨, `/mnt/g`, `/mnt/padiem_g`, Google Drive mount, root SSH, WSL wrapper 정보는 **historical context**다.
+> - 현재 LoveBud 로컬 작업 기본값은 **Windows-native + PowerShell 7**이다.
+
+이 문서는 컴1에서 컴2로 원격 접근할 때의 SSH 설정, 컴2의 WSL 드라이브 마운트 문제, Windows Codex 셸 실행기 이슈를 **과거 사건 기록**으로 보존한다. 광범위 재작성 대상이 아니다.
 
 ## 적용 대상
 

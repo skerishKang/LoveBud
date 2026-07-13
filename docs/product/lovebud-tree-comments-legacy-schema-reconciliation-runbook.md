@@ -60,6 +60,19 @@ Legacy-only columns preserved: `author_id`, `author_display_name`, `is_deleted`,
 
 ---
 
+## 2b. Corrected production evidence (Issue #3431)
+
+> The previously recorded compound-index assumption was **incorrect**. A later
+> approved read-only preflight confirmed the production legacy `tree_comments`
+> table has **zero non-primary (secondary) indexes** — the assumed compound
+> `(tree_id, created_at)` index does not exist. No production mutation occurred
+> during this discovery. The migration and rollback were corrected (this PR) to
+> match the real zero-secondary-index production state: the reconciliation creates
+> only the three canonical secondary indexes and no compound index, and rollback
+> restores the exact legacy zero-secondary-index state.
+
+---
+
 ## 3. Strategy and rationale
 
 **Selected: In-place ALTER (Strategy A).**
@@ -85,30 +98,29 @@ backfill UPDATE, no sentinel values).
 `tree_comments_pkey` constraint, read from the catalog) and replaced with `PRIMARY KEY (id)`. The writer replays
 by `WHERE id = %s`, so `id` must be DB-level unique.
 
-**Legacy secondary index:** the production legacy table already has a compound
-list-read index on `(tree_id, created_at)`. This is **preserved** across both
-the migration and the rollback.
+**Legacy secondary index:** approved read-only preflight confirmed the production
+legacy `tree_comments` table has **zero non-primary (secondary) indexes**. The
+previously assumed compound `(tree_id, created_at)` legacy index does **not**
+exist in production. The reconciliation therefore creates only the three canonical
+secondary indexes and **no** compound index.
 
-**Migration-added indexes:** the migration additionally creates three canonical
-read indexes — `idx_tree_comments_tree_id` on `(tree_id)`,
+**Migration-added indexes:** the migration creates three canonical read indexes —
+`idx_tree_comments_tree_id` on `(tree_id)`,
 `idx_tree_comments_owner_id` on `(owner_id)`, and
-`idx_tree_comments_created_at` on `(created_at)`. The single-column
-`idx_tree_comments_tree_id` is therefore **a canonical migration-added index,
-not a legacy index**; it is removed by the rollback, while the compound
-`(tree_id, created_at)` legacy index is preserved.
+`idx_tree_comments_created_at` on `(created_at)`. The compound
+`(tree_id, created_at)` index is **not** created. The single-column
+`idx_tree_comments_tree_id` is **a canonical migration-added index, not a legacy
+index**; it is removed by the rollback.
 
-**Reconciled total index count = 5:** 1 primary backing index `(id)` + 4 secondary
-indexes (the compound legacy `(tree_id, created_at)` + the 3 migration-added
-`(tree_id)` / `(owner_id)` / `(created_at)`). Each secondary index is verified by its
-ordered key array, uniqueness, non-partial / non-expression status, and absence of
-INCLUDE columns (`indnkeyatts = indnatts`); the migration-added indexes are also
-verified by exact name. The legacy state instead allows **exactly one** secondary
-index — the compound `(tree_id, created_at)` — and rejects any single-column
-`tree_id` / `owner_id` / `created_at`, different compound, partial, expression,
-unique, or INCLUDE index. The legacy unexpected-index guard is per-index (it counts
-the total secondary index and matches the compound exactly), not a global
-uncorrelated `NOT EXISTS` that would hide an unexpected index whenever the compound
-index exists.
+**Reconciled total index count = 4:** 1 primary backing index `(id)` + 3 secondary
+indexes (the three canonical `(tree_id)` / `(owner_id)` / `(created_at)`). Each
+secondary index is verified by its ordered key array, uniqueness, non-partial /
+non-expression status, and absence of INCLUDE columns (`indnkeyatts = indnatts`);
+the migration-added indexes are also verified by exact name. The legacy state
+instead allows **exactly zero** secondary indexes and rejects any single-column
+`tree_id` / `owner_id` / `created_at`, compound, partial, expression, unique, or
+INCLUDE index. The legacy unexpected-index guard fails closed on any non-primary
+index (total secondary count = 0).
 
 **Exact reconciled-state validator (`_lb_reconciled_validator()`):** the migration
 runs this top-level function (dropped before `COMMIT`) both *before* the reconciled
@@ -127,7 +139,8 @@ and verifies, inside a single transaction:
 - the **exact total constraint set of 5** (1 PK + 2 FK + 2 CHECK) with **0 UNIQUE /
   0 EXCLUDE / 0 other** constraint types;
 - **0 inbound FK** referencing `tree_comments`;
-- the exact **5-index inventory** described above;
+- the exact **4-index inventory** described above (PK `(id)` + 3 canonical secondary,
+  compound = 0, unexpected = 0);
 - no triggers / RLS / dependent views / materialized views.
 
 A malformed 12-column table (name-only match) fails the validator and raises
@@ -136,7 +149,8 @@ STOP is reached only when the entire canonical shape matches exactly.
 
 **Rollback / validator contract consistency:** the rollback preflight uses the same
 contract — exact 12-column metadata, exact 5-constraint set, exact CHECK definitions,
-0 inbound FK, `trees.id` text, exact 5-index inventory, and no triggers/RLS/views/
+0 inbound FK, `trees.id` text, exact 4-index inventory (PK `(id)` + 3 canonical
+secondary, compound = 0, unexpected = 0), and no triggers/RLS/views/
 matviews — so the two scripts agree on what "reconciled" means.
 
 **Rollback:** the migration is a single committed transaction. If the post-verification
@@ -151,8 +165,8 @@ reverts the reconciled schema to the exact legacy 8-column shape. The rollback s
   (`idx_tree_comments_tree_id`, `idx_tree_comments_owner_id`,
   `idx_tree_comments_created_at`);
 - restores the legacy composite PK `(tree_id, id)` from the catalog (no name guessing);
-- preserves legacy columns, FKs, and the original compound legacy index
-  `(tree_id, created_at)`;
+- restores the exact legacy **zero-secondary-index** state (no compound index is
+  preserved or dropped, because none exists);
 - uses no CASCADE, no DELETE/TRUNCATE, and embeds no credentials.
 
 If the rollback preconditions are not met (data present, writer/composer active, or
@@ -198,9 +212,42 @@ SELECT relrowsecurity FROM pg_class WHERE oid='public.tree_comments'::regclass; 
 
 -- 5. Zero-row guard
 SELECT COUNT(*) AS row_count FROM public.tree_comments;  -- must be 0
+
+-- 6. Legacy secondary index inventory (audited zero-secondary-index production state)
+--   PRIMARY KEY backing index = (tree_id, id); non-primary secondary index count = 0.
+SELECT
+  c.relname AS index_name,
+  i.indisprimary,
+  i.indisunique,
+  i.indnkeyatts,
+  i.indnatts,
+  i.indpred IS NOT NULL AS is_partial,
+  i.indexprs IS NOT NULL AS is_expression,
+  (
+    SELECT array_agg(a.attname::text ORDER BY k.ord)
+    FROM unnest(i.indkey) WITH ORDINALITY AS k(attnum, ord)
+    JOIN pg_attribute a
+      ON a.attrelid = i.indrelid
+     AND a.attnum = k.attnum
+  ) AS ordered_columns
+FROM pg_index i
+JOIN pg_class c ON c.oid = i.indexrelid
+WHERE i.indrelid = 'public.tree_comments'::regclass
+ORDER BY i.indisprimary DESC, c.relname;
+
+-- Separate count of non-primary secondary indexes.
+SELECT count(*) AS secondary_index_count
+FROM pg_index
+WHERE indrelid = 'public.tree_comments'::regclass
+  AND NOT indisprimary;
+-- Expected: secondary_index_count = 0
 ```
 
 If any preflight fails, **do not apply**. Investigate before proceeding.
+
+If any non-primary secondary index exists — a single-column index, a compound
+index, a unique secondary index, a partial index, an expression index, an INCLUDE
+index, or any other non-primary index — **do not apply** the migration.
 
 ---
 
@@ -208,6 +255,7 @@ If any preflight fails, **do not apply**. Investigate before proceeding.
 
 - [ ] Issue #3418 confirmed `BLOCKED_MIGRATION_REQUIRED`
 - [ ] Preflight queries above all pass (8 legacy cols, text keys, 0 rows, no risky deps)
+- [ ] Legacy non-primary secondary index count = 0
 - [ ] Approved change window confirmed
 - [ ] Database credential available to an authorized operator only
 - [ ] This is a **manual, separately-approved** apply — never automatic / never in CI
@@ -216,10 +264,113 @@ If any preflight fails, **do not apply**. Investigate before proceeding.
 
 ## 7. Backup / rollback strategy
 
-- Take a schema-only backup before applying:
-  ```sh
-  pg_dump "$DATABASE_URL" --schema-only --table=public.tree_comments > tree_comments_schema_pre.sql
+- Take a schema-only backup **outside the repository** before applying. The backup
+  is written to a repository-external, permission-restricted temp directory; it is
+  never `git add`ed or committed, its path is never printed in this runbook or the PR,
+  and its contents are never published.
+- **Primary operator path: Windows-native PowerShell + `pg_dump.exe`.**
+  Use a **direct non-pooler** Production URI in process memory (for example
+  `$env:LOVE_BUD_PRODUCTION_DIRECT_DATABASE_URL`). Do **not** overwrite the runtime
+  pooled secret in `.secrets/lovebud-runtime.env` for migration backups.
+- Never print the connection string, password, host, or backup path in chat/PR logs.
+- If `pg_dump.exe` is missing, **stop and report**. Do **not** auto-fallback to WSL.
+
+  Windows (primary):
+  ```powershell
+  $pgDump = Get-Command pg_dump.exe -ErrorAction Stop
+
+  $backupRoot = Join-Path `
+    $env:LOCALAPPDATA `
+    ("LoveBud\private-backups\" + [Guid]::NewGuid().ToString("N"))
+
+  New-Item -ItemType Directory -Path $backupRoot -ErrorAction Stop |
+    Out-Null
+
+  $currentIdentity = `
+    [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
+
+  $directorySecurity = `
+    [System.Security.AccessControl.DirectorySecurity]::new()
+
+  $directorySecurity.SetAccessRuleProtection($true, $false)
+
+  $currentUserRule = `
+    [System.Security.AccessControl.FileSystemAccessRule]::new(
+      $currentIdentity,
+      [System.Security.AccessControl.FileSystemRights]::FullControl,
+      [System.Security.AccessControl.InheritanceFlags]"ContainerInherit, ObjectInherit",
+      [System.Security.AccessControl.PropagationFlags]::None,
+      [System.Security.AccessControl.AccessControlType]::Allow
+    )
+
+  $directorySecurity.SetAccessRule($currentUserRule)
+
+  Set-Acl `
+    -Path $backupRoot `
+    -AclObject $directorySecurity `
+    -ErrorAction Stop
+
+  $appliedAcl = Get-Acl -Path $backupRoot -ErrorAction Stop
+
+  if (-not $appliedAcl.AreAccessRulesProtected) {
+    throw "backup directory ACL inheritance is not disabled"
+  }
+
+  $unexpectedAllowRules = @(
+    $appliedAcl.Access | Where-Object {
+      $_.AccessControlType -eq `
+        [System.Security.AccessControl.AccessControlType]::Allow -and
+      $_.IdentityReference.Value -ne $currentIdentity
+    }
+  )
+
+  if ($unexpectedAllowRules.Count -ne 0) {
+    throw "backup directory contains an unexpected allow rule"
+  }
+
+  $backupFile = Join-Path `
+    $backupRoot `
+    "tree_comments_schema_pre.sql"
+
+  & $pgDump.Source `
+    $env:LOVE_BUD_PRODUCTION_DIRECT_DATABASE_URL `
+    --schema-only `
+    --no-owner `
+    --no-privileges `
+    --table=public.tree_comments `
+    --file=$backupFile
+
+  if ($LASTEXITCODE -ne 0) {
+    throw "pg_dump failed"
+  }
+
+  if (
+    -not (Test-Path $backupFile) -or
+    (Get-Item $backupFile).Length -le 0
+  ) {
+    throw "schema backup missing or empty"
+  }
+
+  Write-Host "schema backup created with protected ACL"
   ```
+
+  Unix / WSL (**explicitly authorized alternative only** — not the default):
+  ```sh
+  umask 077
+  backup_dir="$(mktemp -d)"
+
+  pg_dump "$LOVE_BUD_PRODUCTION_DIRECT_DATABASE_URL" \
+    --schema-only \
+    --no-owner \
+    --no-privileges \
+    --table=public.tree_comments \
+    > "$backup_dir/tree_comments_schema_pre.sql"
+  ```
+  Confirm locally only that the file is non-empty:
+  ```sh
+  test -s "$backup_dir/tree_comments_schema_pre.sql" && echo "backup ok"
+  ```
+
 - Because row count = 0, no data backup is required, but a full pre-change snapshot is
   recommended per environment policy.
 - Existing table ownership and ACLs are preserved by in-place ALTER.
@@ -230,8 +381,24 @@ If any preflight fails, **do not apply**. Investigate before proceeding.
 
 ## 8. Migration command format
 
+**Primary operator path: Windows-native PowerShell + `psql.exe`.**
+Use the **direct non-pooler** Production URI. Do not use the runtime pooled endpoint
+for this migration. Do not print the URI. If `psql.exe` is missing, stop — no WSL fallback.
+
+Windows (primary):
+```powershell
+$psql = Get-Command psql.exe -ErrorAction Stop
+
+& $psql.Source `
+  $env:LOVE_BUD_PRODUCTION_DIRECT_DATABASE_URL `
+  -X `
+  -v ON_ERROR_STOP=1 `
+  -f "scripts/migration-reconcile-tree-comments-legacy-schema.sql"
+```
+
+Unix / WSL (**explicitly authorized alternative only**):
 ```sh
-psql "$DATABASE_URL" -v ON_ERROR_STOP=1 \
+psql "$LOVE_BUD_PRODUCTION_DIRECT_DATABASE_URL" -v ON_ERROR_STOP=1 \
   -f scripts/migration-reconcile-tree-comments-legacy-schema.sql
 ```
 
@@ -263,6 +430,60 @@ ORDER BY ordinal_position;
 --   target_kind (varchar 16 NOT NULL DEFAULT 'tree'), target_id (text),
 --   created_at (timestamptz NOT NULL DEFAULT NOW()),
 --   updated_at (timestamptz NOT NULL DEFAULT NOW()), payload (jsonb NOT NULL)
+
+-- Exact index inventory after migration (read-only, operator-runnable SQL).
+-- PK backing index ordered columns = [id]
+-- secondary total = 3
+-- idx_tree_comments_tree_id     ordered columns = [tree_id]   (non-unique, non-partial,
+--                                                             non-expression, indnkeyatts = indnatts)
+-- idx_tree_comments_owner_id    ordered columns = [owner_id]  (same per-index checks)
+-- idx_tree_comments_created_at  ordered columns = [created_at] (same per-index checks)
+-- compound [tree_id, created_at] count = 0
+-- unexpected secondary count = 0
+SELECT
+  c.relname AS index_name,
+  i.indisprimary,
+  i.indisunique,
+  i.indnkeyatts,
+  i.indnatts,
+  i.indpred IS NOT NULL AS is_partial,
+  i.indexprs IS NOT NULL AS is_expression,
+  (
+    SELECT array_agg(a.attname::text ORDER BY k.ord)
+    FROM unnest(i.indkey) WITH ORDINALITY AS k(attnum, ord)
+    JOIN pg_attribute a
+      ON a.attrelid = i.indrelid
+     AND a.attnum = k.attnum
+  ) AS ordered_columns
+FROM pg_index i
+JOIN pg_class c ON c.oid = i.indexrelid
+WHERE i.indrelid = 'public.tree_comments'::regclass
+ORDER BY i.indisprimary DESC, c.relname;
+
+SELECT count(*) AS secondary_index_count
+FROM pg_index
+WHERE indrelid = 'public.tree_comments'::regclass
+  AND NOT indisprimary;
+-- Expected: secondary_index_count = 3
+
+SELECT count(*) AS compound_tree_created_count
+FROM pg_index i
+WHERE i.indrelid = 'public.tree_comments'::regclass
+  AND NOT i.indisprimary
+  AND i.indnatts = 2
+  AND (SELECT array_agg(a.attname::text ORDER BY ord)
+       FROM unnest(i.indkey) WITH ORDINALITY AS k(attnum, ord)
+       JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = k.attnum)
+      = ARRAY['tree_id','created_at']::text[];
+-- Expected: compound_tree_created_count = 0
+
+SELECT count(*) AS unexpected_index_count
+FROM pg_index i
+JOIN pg_class c ON c.oid = i.indexrelid
+WHERE i.indrelid = 'public.tree_comments'::regclass
+  AND NOT i.indisprimary
+  AND c.relname NOT IN ('idx_tree_comments_tree_id','idx_tree_comments_owner_id','idx_tree_comments_created_at');
+-- Expected: unexpected_index_count = 0
 ```
 
 ---
@@ -275,7 +496,10 @@ This reconciliation was prepared with **source-level static verification only**:
 - No local PostgreSQL instance was installed or run.
 - No temporary/disposable PostgreSQL service was created.
 - No executable rehearsal (PG17 / Docker) was performed.
-- No connection to Neon production or any shared database was opened.
+- No connection to Neon production or any shared database was opened **by this PR** for
+  apply or rollback. (Note: an earlier approved read-only production catalog preflight
+  was already performed as part of discovery — see "Corrected production evidence"
+  below.)
 
 Verification consists of the contract tests (migration + rollback), the existing
 tree-comments migration contract, the Python reader test, the route implementation
@@ -284,9 +508,20 @@ contract, the client adapter contract, `npm run lint` / `npm run build` /
 verified only by the pure-JS mirror tests; the SQL/PLpgSQL behavior remains static-only.
 
 pglast: NOT RUN on this final head
-actual PostgreSQL execution: NO
 normalizer behavior: pure-JS mirror tests
 SQL/PLpgSQL behavior remains static-only until approved DB execution
+
+**Production evidence — precise distinction:**
+
+- approved production read-only catalog inspection: YES
+- production mutation during discovery: NO
+
+This PR implementation (the work in this branch):
+
+- production/staging DB access: NO
+- migration script execution: NO
+- rollback script execution: NO
+- local/disposable PostgreSQL execution: NO
 
 **Limitation: the pure-JS normalizer mirror tests do not validate PL/pgSQL variable
 declarations.** A dollar-quoted `DO $$ ... $$` block or `CREATE FUNCTION ... AS $$ ... $$`
@@ -316,26 +551,108 @@ to Neon production, run the rollback script **only** when all preconditions hold
 - exact reconciled schema present
 - no unexpected dependencies
 
+Windows (primary, when rollback is separately approved):
+```powershell
+$psql = Get-Command psql.exe -ErrorAction Stop
+
+& $psql.Source `
+  $env:LOVE_BUD_PRODUCTION_DIRECT_DATABASE_URL `
+  -X `
+  -v ON_ERROR_STOP=1 `
+  -f "scripts/rollback-tree-comments-legacy-reconcile.sql"
+```
+
+Unix / WSL (**explicitly authorized alternative only**):
 ```sh
-psql "$DATABASE_URL" -v ON_ERROR_STOP=1 \
+psql "$LOVE_BUD_PRODUCTION_DIRECT_DATABASE_URL" -v ON_ERROR_STOP=1 \
   -f scripts/rollback-tree-comments-legacy-reconcile.sql
 ```
 
-After rollback, read-only confirm: exact legacy 8-column schema, legacy composite PK
-`(tree_id, id)`, existing FKs/indexes, no added canonical columns, row count = 0.
+After rollback, read-only confirm via the exact catalog SQL below:
+
+```sql
+-- PK ordered columns = [tree_id, id]; primary index count = 1
+SELECT
+  (
+    SELECT array_agg(a.attname::text ORDER BY k.ord)
+    FROM unnest(c.conkey) WITH ORDINALITY AS k(attnum, ord)
+    JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = k.attnum
+  ) AS pk_ordered_columns
+FROM pg_constraint c
+WHERE c.conrelid = 'public.tree_comments'::regclass AND c.contype = 'p';
+
+SELECT count(*) AS primary_index_count
+FROM pg_index
+WHERE indrelid = 'public.tree_comments'::regclass AND indisprimary;
+-- Expected: primary_index_count = 1
+
+SELECT count(*) AS secondary_index_count
+FROM pg_index
+WHERE indrelid = 'public.tree_comments'::regclass AND NOT indisprimary;
+-- Expected: secondary_index_count = 0
+
+SELECT count(*) AS canonical_index_count
+FROM pg_index i
+JOIN pg_class c ON c.oid = i.indexrelid
+WHERE i.indrelid = 'public.tree_comments'::regclass
+  AND NOT i.indisprimary
+  AND c.relname IN ('idx_tree_comments_tree_id','idx_tree_comments_owner_id','idx_tree_comments_created_at');
+-- Expected: canonical_index_count = 0
+
+SELECT count(*) AS compound_tree_created_count
+FROM pg_index i
+WHERE i.indrelid = 'public.tree_comments'::regclass
+  AND NOT i.indisprimary
+  AND i.indnatts = 2
+  AND (SELECT array_agg(a.attname::text ORDER BY ord)
+       FROM unnest(i.indkey) WITH ORDINALITY AS k(attnum, ord)
+       JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = k.attnum)
+      = ARRAY['tree_id','created_at']::text[];
+-- Expected: compound_tree_created_count = 0
+```
+
 Keep #3418 open and report the failure cause.
 
 ---
 
-## 12. Smoke test (read path only)
+## 12. Smoke test (read path only, public Pages route)
 
 After apply (in the approved change window), the public comments GET should no longer
-raise 42703:
+raise 42703. Use the **public production route only** (Cloudflare Pages). The actual
+tree ID is kept in a private shell variable and is NEVER printed in this runbook, in
+stdout, or in the PR.
 
 ```sh
-curl -s "https://<approved-public-endpoint>/modal/private/trees/<publicTreeA>/comments?limit=20"
-# Expect 200 with { "comments": [] } for a tree with no comments.
+# PRIVATE_TREE_ID holds a known public tree id; do not echo it.
+curl -s -o /tmp/tc_smoke.json -w '%{http_code}' \
+  "https://lovebud.pages.dev/api/trees/${PRIVATE_TREE_ID}/comments?limit=20"
+# Expect 200; body has { "comments": [] } for a tree with no comments.
+
+curl -s -o /tmp/tc_smoke1.json -w '%{http_code}' \
+  "https://lovebud.pages.dev/api/trees/${PRIVATE_TREE_ID}/comments?limit=1"
+# Expect 200.
+
+curl -s -o /dev/null -w '%{http_code}' \
+  "https://lovebud.pages.dev/api/trees/invalid-tree-id/comments?limit=20"
+# Expect 400.
+
+curl -s -o /dev/null -w '%{http_code}' \
+  "https://lovebud.pages.dev/api/trees/00000000-0000-0000-0000-000000000000/comments?limit=20"
+# Expect 404 (missing / non-public tree).
 ```
+
+Verification (do NOT print the full response or any raw row content):
+
+- a `comments` array is present;
+- no 500 / 5xx other than the expected empty-list 200;
+- no SQLSTATE / traceback / raw DB error;
+- no raw owner / account identifier in the response.
+
+Allowed response fields: `id`, `treeId`, `body`, `createdAt`, `updatedAt`,
+`authorDisplayLabel`.
+
+Forbidden response fields: `ownerId`, `owner_id`, `authorId`, `author_id`, `userId`,
+`user_id`, `accountId`, `account_id`.
 
 Do **not** enable the writer / composer in this step.
 
@@ -355,6 +672,7 @@ Abort and do not retry blindly if:
 
 - Preflight reports an unexpected column set, a non-zero row count, or unexpected
   triggers/RLS/dependent views / inbound FK.
+- An unexpected index or secondary index count != 0 is present in the legacy preflight.
 - The migration raises `PREFLIGHT FAIL` or `PREFLIGHT STOP` or `POST-VERIFY FAIL`.
 - The apply times out (bounded by `statement_timeout = 30s`, `lock_timeout = 3s`).
 - Any post-apply smoke test returns 5xx other than the expected empty-list 200.
