@@ -6,8 +6,13 @@
  * Consumes an already-canonicalized appreciation render model
  * (window.LoveBudAppreciationRenderModel output shape).
  *
- * Does not re-sanitize raw API payloads, project public-safe fields,
- * or touch DOM / templates / CSS / Auth / network / storage.
+ * Does NOT:
+ * - re-sanitize raw API / public payloads
+ * - resolve aliases
+ * - convert numeric IDs
+ * - fabricate availability
+ * - re-implement canonical count normalization beyond fail-closed acceptance
+ * - touch DOM / templates / CSS / Auth / network / storage
  *
  * Fixed canonical slot order (always 7 slots, independent of availability):
  * 1. identity
@@ -17,6 +22,11 @@
  * 5. connectedKnowledge
  * 6. emotionMemo
  * 7. socialSummary
+ *
+ * Social semantics:
+ * - contentReadOnly: tree/moment content is not editable here
+ * - canReact / canComment: independent participation capabilities
+ *   (literal true only; never combined with a generic read-only action ban)
  */
 (function () {
   'use strict';
@@ -52,6 +62,10 @@
     return typeof value === 'string' && value.replace(/^\s+|\s+$/g, '') !== '';
   }
 
+  /**
+   * Shallow copy of string items only (detached).
+   * Non-array / non-string items fail closed to empty list.
+   */
   function copyStringArray(value) {
     if (!Array.isArray(value)) return [];
     var out = [];
@@ -62,31 +76,34 @@
     return out;
   }
 
-  function copyKnowledgeItems(value) {
+  /**
+   * Copy exact canonical knowledge display shape only:
+   * { label, type?, sourceLabel? }
+   * Detached items; no raw/private field walking.
+   */
+  function copyCanonicalKnowledgeItems(value) {
     if (!Array.isArray(value)) return [];
     var out = [];
     var i;
     for (i = 0; i < value.length; i += 1) {
       var raw = value[i];
       if (!isPlainObject(raw)) continue;
-      // Display-only allowlist already owned upstream; re-emit only present
-      // string display fields without nested private graphs.
-      var item = {};
-      if (typeof raw.label === 'string') item.label = raw.label;
+      if (typeof raw.label !== 'string') continue;
+      var item = { label: raw.label };
       if (typeof raw.type === 'string') item.type = raw.type;
-      if (typeof raw.sourceLabel === 'string') item.sourceLabel = raw.sourceLabel;
-      if (!Object.prototype.hasOwnProperty.call(item, 'label')) continue;
+      if (typeof raw.sourceLabel === 'string') {
+        item.sourceLabel = raw.sourceLabel;
+      }
       out.push(item);
     }
     return out;
   }
 
   /**
-   * Authoritative count passthrough for presentation only.
-   * Accepts non-negative finite integers (including 0).
-   * Unknown / invalid → null (never fabricate 0).
+   * Accept only a value already in canonical authoritative-count form.
+   * Does not parse strings or invent zeros. Invalid → null.
    */
-  function passAuthoritativeCount(value) {
+  function acceptCanonicalCount(value) {
     if (typeof value !== 'number') return null;
     if (!isFinite(value)) return null;
     if (value !== Math.floor(value)) return null;
@@ -141,39 +158,48 @@
     return slot;
   }
 
+  function emptySocialValue() {
+    return {
+      likeCount: null,
+      commentCount: null,
+      likeCountAvailable: false,
+      commentCountAvailable: false,
+      canReact: false,
+      canComment: false
+    };
+  }
+
   function emptyPresentation() {
     var capabilities = readCanonicalCapabilities(null);
     return {
       slots: [
         unavailableSlot('identity', {
-          value: { id: null, title: '' }
+          value: { id: null, title: '' },
+          contentReadOnly: true
         }),
         unavailableSlot('media', {
-          value: { sourceUrl: null, thumbnailUrl: null }
+          value: { sourceUrl: null, thumbnailUrl: null },
+          contentReadOnly: true
         }),
         unavailableSlot('rememberedDate', {
-          value: null
+          value: null,
+          contentReadOnly: true
         }),
         unavailableSlot('emotionTags', {
-          items: []
+          items: [],
+          contentReadOnly: true
         }),
         unavailableSlot('connectedKnowledge', {
           items: [],
-          readOnly: true
+          contentReadOnly: true
         }),
         unavailableSlot('emotionMemo', {
-          value: null
+          value: null,
+          contentReadOnly: true
         }),
         unavailableSlot('socialSummary', {
-          value: {
-            likeCount: null,
-            commentCount: null,
-            likeCountAvailable: false,
-            commentCountAvailable: false,
-            canReact: false,
-            canComment: false
-          },
-          readOnly: true
+          value: emptySocialValue(),
+          contentReadOnly: true
         })
       ],
       capabilities: capabilities
@@ -181,15 +207,10 @@
   }
 
   function buildIdentitySlot(moment) {
+    // Canonical shape only: id is string | null. No numeric ID conversion.
     var id = null;
-    if (typeof moment.id === 'string') {
+    if (typeof moment.id === 'string' && moment.id) {
       id = moment.id;
-    } else if (moment.id === null || moment.id === undefined) {
-      id = null;
-    } else if (typeof moment.id === 'number' && isFinite(moment.id)) {
-      id = String(moment.id);
-    } else {
-      id = null;
     }
 
     var title = typeof moment.title === 'string' ? moment.title : '';
@@ -201,12 +222,13 @@
       value: {
         id: available ? id : null,
         title: available ? title : ''
-      }
+      },
+      contentReadOnly: true
     };
   }
 
   function buildMediaSlot(moment) {
-    // Canonical model already normalizes empty strings to null; accept string only.
+    // Canonical already normalizes empty → null; accept non-empty string only.
     var sourceUrl = null;
     if (typeof moment.sourceUrl === 'string' && moment.sourceUrl) {
       sourceUrl = moment.sourceUrl;
@@ -224,7 +246,8 @@
       value: {
         sourceUrl: sourceUrl,
         thumbnailUrl: thumbnailUrl
-      }
+      },
+      contentReadOnly: true
     };
   }
 
@@ -236,7 +259,8 @@
     return {
       key: 'rememberedDate',
       available: rememberedAt !== null,
-      value: rememberedAt
+      value: rememberedAt,
+      contentReadOnly: true
     };
   }
 
@@ -245,22 +269,19 @@
     return {
       key: 'emotionTags',
       available: items.length > 0,
-      items: items
+      items: items,
+      contentReadOnly: true
     };
   }
 
-  function buildConnectedKnowledgeSlot(moment, availability) {
-    var items = copyKnowledgeItems(moment.knowledgeItems);
-    var availableFromFlag =
-      isPlainObject(availability) && availability.knowledge === true;
-    var available = items.length > 0 || availableFromFlag;
-    // Prefer actual items; if flag says true but items empty after filter, unavailable.
-    if (items.length === 0) available = false;
+  function buildConnectedKnowledgeSlot(moment) {
+    // Do not fabricate availability from flags alone; items are source of truth.
+    var items = copyCanonicalKnowledgeItems(moment.knowledgeItems);
     return {
       key: 'connectedKnowledge',
-      available: available,
+      available: items.length > 0,
       items: items,
-      readOnly: true
+      contentReadOnly: true
     };
   }
 
@@ -272,43 +293,43 @@
     return {
       key: 'emotionMemo',
       available: memo !== null,
-      value: memo
+      value: memo,
+      contentReadOnly: true
     };
   }
 
+  /**
+   * Social summary presentation.
+   *
+   * contentReadOnly: true → tree/moment content is not editable in this surface.
+   * canReact / canComment → independent participation flags (literal true only).
+   * Never emits a generic read-only flag while advertising action capabilities.
+   *
+   * Counts:
+   * - trust canonical availability boolean when literal true
+   * - accept only already-canonical non-negative integer counts (incl. 0)
+   * - unknown / invalid → unavailable + null (never fabricate 0)
+   */
   function buildSocialSummarySlot(social, availability, capabilities) {
-    var likeCount = passAuthoritativeCount(
-      isPlainObject(social) ? social.likeCount : null
-    );
-    var commentCount = passAuthoritativeCount(
-      isPlainObject(social) ? social.commentCount : null
-    );
-
-    // Prefer explicit availability flags from canonical model when boolean;
-    // otherwise derive from non-null authoritative counts.
+    var likeCount = null;
+    var commentCount = null;
     var likeCountAvailable = false;
     var commentCountAvailable = false;
-    if (isPlainObject(availability)) {
-      if (availability.likeCount === true) {
-        likeCountAvailable = likeCount !== null;
-      } else if (availability.likeCount === false) {
-        likeCountAvailable = false;
-        likeCount = null;
-      } else {
-        likeCountAvailable = likeCount !== null;
-      }
 
-      if (availability.commentCount === true) {
-        commentCountAvailable = commentCount !== null;
-      } else if (availability.commentCount === false) {
-        commentCountAvailable = false;
-        commentCount = null;
-      } else {
-        commentCountAvailable = commentCount !== null;
-      }
-    } else {
+    if (isPlainObject(availability) && availability.likeCount === true) {
+      likeCount = acceptCanonicalCount(
+        isPlainObject(social) ? social.likeCount : null
+      );
       likeCountAvailable = likeCount !== null;
+      if (!likeCountAvailable) likeCount = null;
+    }
+
+    if (isPlainObject(availability) && availability.commentCount === true) {
+      commentCount = acceptCanonicalCount(
+        isPlainObject(social) ? social.commentCount : null
+      );
       commentCountAvailable = commentCount !== null;
+      if (!commentCountAvailable) commentCount = null;
     }
 
     var canReact = capabilities.canReact === true;
@@ -331,7 +352,7 @@
         canReact: canReact,
         canComment: canComment
       },
-      readOnly: true
+      contentReadOnly: true
     };
   }
 
@@ -363,7 +384,7 @@
       buildMediaSlot(moment),
       buildRememberedDateSlot(moment),
       buildEmotionTagsSlot(moment),
-      buildConnectedKnowledgeSlot(moment, availability),
+      buildConnectedKnowledgeSlot(moment),
       buildEmotionMemoSlot(moment),
       buildSocialSummarySlot(social, availability, capabilities)
     ];

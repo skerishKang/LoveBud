@@ -6,6 +6,7 @@
  * Secondary: SOURCE_STATIC scope guards on helper source text.
  *
  * Consumes canonical appreciation-model shape only (no raw API re-projection).
+ * Private-field stripping is proven via adapter → canonical → presentation chain.
  * No browser, network, auth provider, database, or Production.
  */
 
@@ -21,6 +22,10 @@ const HELPER_PATH = path.join(
   'js/viewer/public-viewer-appreciation-presentation-model.js'
 );
 const CANONICAL_PATH = path.join(ROOT, 'js/shared/appreciation-render-model.js');
+const ADAPTER_PATH = path.join(
+  ROOT,
+  'js/viewer/public-viewer-appreciation-model-adapter.js'
+);
 
 const EXPECTED_SLOT_ORDER = [
   'identity',
@@ -73,6 +78,22 @@ function loadWithCanonical() {
   };
 }
 
+function loadFullChain() {
+  const canonicalSource = fs.readFileSync(CANONICAL_PATH, 'utf8');
+  const adapterSource = fs.readFileSync(ADAPTER_PATH, 'utf8');
+  const presentationSource = fs.readFileSync(HELPER_PATH, 'utf8');
+  const context = { window: {} };
+  vm.createContext(context);
+  vm.runInNewContext(canonicalSource, context);
+  vm.runInNewContext(adapterSource, context);
+  vm.runInNewContext(presentationSource, context);
+  return {
+    presentation: context.window.LoveBudPublicViewerAppreciationPresentationModel,
+    adapter: context.window.LoveBudPublicViewerAppreciationModelAdapter,
+    canonical: context.window.LoveBudAppreciationRenderModel,
+  };
+}
+
 function assertNoFunctions(value, pathLabel) {
   if (value === null || value === undefined) return;
   assert.notEqual(typeof value, 'function', `${pathLabel} must not be a function`);
@@ -89,7 +110,6 @@ function assertNoFunctions(value, pathLabel) {
 function assertSlotOrder(presentation) {
   assert.ok(Array.isArray(presentation.slots));
   assert.equal(presentation.slots.length, 7);
-  // Project VM-realm arrays into host JSON before deepEqual.
   assert.deepEqual(
     hostValue(presentation.slots.map((s) => s.key)),
     EXPECTED_SLOT_ORDER
@@ -98,6 +118,58 @@ function assertSlotOrder(presentation) {
 
 function slotByKey(presentation, key) {
   return presentation.slots.find((s) => s.key === key);
+}
+
+function baseMoment(overrides) {
+  return Object.assign(
+    {
+      id: 'm',
+      title: 't',
+      sourceUrl: null,
+      thumbnailUrl: null,
+      rememberedAt: null,
+      emotionTags: [],
+      memo: null,
+      knowledgeItems: [],
+    },
+    overrides || {}
+  );
+}
+
+function baseCaps(overrides) {
+  return Object.assign(
+    {
+      canEdit: false,
+      canContinue: false,
+      canConnect: false,
+      canReact: false,
+      canComment: false,
+      canDelete: false,
+      canSwitchMode: false,
+      isOwner: false,
+      isPublicRoute: false,
+    },
+    overrides || {}
+  );
+}
+
+function present(partial) {
+  const api = loadApi();
+  return api.createPublicViewerAppreciationPresentationModel(
+    Object.assign(
+      {
+        moment: baseMoment(),
+        social: { likeCount: null, commentCount: null },
+        availability: {
+          knowledge: false,
+          likeCount: false,
+          commentCount: false,
+        },
+        capabilities: baseCaps(),
+      },
+      partial || {}
+    )
+  );
 }
 
 function completeCanonicalModel() {
@@ -123,7 +195,7 @@ function completeCanonicalModel() {
       likeCount: true,
       commentCount: true,
     },
-    capabilities: {
+    capabilities: baseCaps({
       canEdit: true,
       canContinue: true,
       canConnect: true,
@@ -133,7 +205,7 @@ function completeCanonicalModel() {
       canSwitchMode: true,
       isOwner: true,
       isPublicRoute: true,
-    },
+    }),
   };
 }
 
@@ -172,41 +244,48 @@ test('exact canonical slot order is always fixed length 7', () => {
 
 test('complete canonical model marks all content slots available', () => {
   const api = loadApi();
-  const model = completeCanonicalModel();
-  const presentation = api.createPublicViewerAppreciationPresentationModel(model);
+  const presentation = api.createPublicViewerAppreciationPresentationModel(
+    completeCanonicalModel()
+  );
   assertSlotOrder(presentation);
 
   const identity = slotByKey(presentation, 'identity');
   assert.equal(identity.available, true);
+  assert.equal(identity.contentReadOnly, true);
   assert.deepEqual(hostValue(identity.value), { id: 'm1', title: 'Hello' });
 
   const media = slotByKey(presentation, 'media');
   assert.equal(media.available, true);
+  assert.equal(media.contentReadOnly, true);
   assert.equal(media.value.sourceUrl, 'https://example.com/video');
   assert.equal(media.value.thumbnailUrl, 'https://example.com/thumb.jpg');
 
   const date = slotByKey(presentation, 'rememberedDate');
   assert.equal(date.available, true);
+  assert.equal(date.contentReadOnly, true);
   assert.equal(date.value, '2024-01-01');
 
   const tags = slotByKey(presentation, 'emotionTags');
   assert.equal(tags.available, true);
+  assert.equal(tags.contentReadOnly, true);
   assert.deepEqual(hostValue(tags.items), ['설렘', '응원']);
 
   const knowledge = slotByKey(presentation, 'connectedKnowledge');
   assert.equal(knowledge.available, true);
-  assert.equal(knowledge.readOnly, true);
+  assert.equal(knowledge.contentReadOnly, true);
   assert.deepEqual(hostValue(knowledge.items), [
     { label: 'Group A', type: 'team', sourceLabel: 'public context' },
   ]);
 
   const memo = slotByKey(presentation, 'emotionMemo');
   assert.equal(memo.available, true);
+  assert.equal(memo.contentReadOnly, true);
   assert.equal(memo.value, 'a note');
 
   const social = slotByKey(presentation, 'socialSummary');
   assert.equal(social.available, true);
-  assert.equal(social.readOnly, true);
+  assert.equal(social.contentReadOnly, true);
+  assert.equal(Object.prototype.hasOwnProperty.call(social, 'readOnly'), false);
   assert.equal(social.value.likeCount, 3);
   assert.equal(social.value.commentCount, 2);
   assert.equal(social.value.likeCountAvailable, true);
@@ -218,35 +297,8 @@ test('complete canonical model marks all content slots available', () => {
 // ── Partial model ──────────────────────────────────────────────────────────
 
 test('partial model keeps order and marks missing sections unavailable', () => {
-  const api = loadApi();
-  const presentation = api.createPublicViewerAppreciationPresentationModel({
-    moment: {
-      id: 'only-id',
-      title: '',
-      sourceUrl: null,
-      thumbnailUrl: null,
-      rememberedAt: null,
-      emotionTags: [],
-      memo: null,
-      knowledgeItems: [],
-    },
-    social: { likeCount: null, commentCount: null },
-    availability: {
-      knowledge: false,
-      likeCount: false,
-      commentCount: false,
-    },
-    capabilities: {
-      canEdit: false,
-      canContinue: false,
-      canConnect: false,
-      canReact: false,
-      canComment: false,
-      canDelete: false,
-      canSwitchMode: false,
-      isOwner: false,
-      isPublicRoute: false,
-    },
+  const presentation = present({
+    moment: baseMoment({ id: 'only-id', title: '' }),
   });
 
   assertSlotOrder(presentation);
@@ -275,117 +327,173 @@ test('malformed/non-object input fails closed', () => {
   }
 });
 
-// ── Social counts: zero vs unknown ─────────────────────────────────────────
-
-test('genuine zero social counts are preserved and available', () => {
-  const api = loadApi();
-  const presentation = api.createPublicViewerAppreciationPresentationModel({
-    moment: {
-      id: 'm',
-      title: 't',
-      sourceUrl: null,
-      thumbnailUrl: null,
-      rememberedAt: null,
-      emotionTags: [],
-      memo: null,
-      knowledgeItems: [],
-    },
-    social: { likeCount: 0, commentCount: 0 },
+test('non-canonical field values fail closed without renormalization', () => {
+  const presentation = present({
+    moment: baseMoment({
+      id: 42, // numeric ID is not renormalized to string
+      title: { text: 'obj' },
+      sourceUrl: ['https://example.com'],
+      rememberedAt: 20240101,
+      emotionTags: 'not-array',
+      memo: { body: 'x' },
+      knowledgeItems: { label: 'x' },
+    }),
+    social: { likeCount: '0', commentCount: { n: 1 } },
     availability: {
-      knowledge: false,
+      knowledge: true,
       likeCount: true,
       commentCount: true,
     },
-    capabilities: {
-      canReact: false,
-      canComment: false,
-      canEdit: false,
-      canContinue: false,
-      canConnect: false,
-      canDelete: false,
-      canSwitchMode: false,
-      isOwner: false,
-      isPublicRoute: true,
-    },
   });
 
+  assert.equal(slotByKey(presentation, 'identity').available, false);
+  assert.equal(slotByKey(presentation, 'identity').value.id, null);
+  assert.equal(slotByKey(presentation, 'media').available, false);
+  assert.equal(slotByKey(presentation, 'rememberedDate').available, false);
+  assert.equal(slotByKey(presentation, 'emotionTags').available, false);
+  assert.equal(slotByKey(presentation, 'connectedKnowledge').available, false);
+  assert.equal(slotByKey(presentation, 'emotionMemo').available, false);
+  assert.equal(
+    slotByKey(presentation, 'socialSummary').value.likeCountAvailable,
+    false
+  );
+  assert.equal(slotByKey(presentation, 'socialSummary').value.likeCount, null);
+  assert.equal(
+    slotByKey(presentation, 'socialSummary').value.commentCountAvailable,
+    false
+  );
+});
+
+// ── Social state matrix ────────────────────────────────────────────────────
+
+test('social matrix: counts only', () => {
+  const presentation = present({
+    social: { likeCount: 4, commentCount: 1 },
+    availability: { knowledge: false, likeCount: true, commentCount: true },
+    capabilities: baseCaps(),
+  });
   const social = slotByKey(presentation, 'socialSummary');
   assert.equal(social.available, true);
+  assert.equal(social.contentReadOnly, true);
+  assert.equal(Object.prototype.hasOwnProperty.call(social, 'readOnly'), false);
+  assert.equal(social.value.likeCount, 4);
+  assert.equal(social.value.commentCount, 1);
+  assert.equal(social.value.likeCountAvailable, true);
+  assert.equal(social.value.commentCountAvailable, true);
+  assert.equal(social.value.canReact, false);
+  assert.equal(social.value.canComment, false);
+});
+
+test('social matrix: react only', () => {
+  const presentation = present({
+    capabilities: baseCaps({ canReact: true }),
+  });
+  const social = slotByKey(presentation, 'socialSummary');
+  assert.equal(social.available, true);
+  assert.equal(social.contentReadOnly, true);
+  assert.equal(social.value.likeCountAvailable, false);
+  assert.equal(social.value.commentCountAvailable, false);
+  assert.equal(social.value.likeCount, null);
+  assert.equal(social.value.commentCount, null);
+  assert.equal(social.value.canReact, true);
+  assert.equal(social.value.canComment, false);
+});
+
+test('social matrix: comment only', () => {
+  const presentation = present({
+    capabilities: baseCaps({ canComment: true }),
+  });
+  const social = slotByKey(presentation, 'socialSummary');
+  assert.equal(social.available, true);
+  assert.equal(social.contentReadOnly, true);
+  assert.equal(social.value.canReact, false);
+  assert.equal(social.value.canComment, true);
+  assert.equal(social.value.likeCountAvailable, false);
+  assert.equal(social.value.commentCountAvailable, false);
+});
+
+test('social matrix: react + comment', () => {
+  const presentation = present({
+    capabilities: baseCaps({ canReact: true, canComment: true }),
+  });
+  const social = slotByKey(presentation, 'socialSummary');
+  assert.equal(social.available, true);
+  assert.equal(social.contentReadOnly, true);
+  assert.equal(social.value.canReact, true);
+  assert.equal(social.value.canComment, true);
+  assert.equal(Object.prototype.hasOwnProperty.call(social, 'readOnly'), false);
+});
+
+test('social matrix: no counts + no actions', () => {
+  const presentation = present({});
+  const social = slotByKey(presentation, 'socialSummary');
+  assert.equal(social.available, false);
+  assert.equal(social.contentReadOnly, true);
+  assert.equal(social.value.likeCount, null);
+  assert.equal(social.value.commentCount, null);
+  assert.equal(social.value.likeCountAvailable, false);
+  assert.equal(social.value.commentCountAvailable, false);
+  assert.equal(social.value.canReact, false);
+  assert.equal(social.value.canComment, false);
+});
+
+test('social matrix: unknown counts + actions', () => {
+  const presentation = present({
+    social: { likeCount: null, commentCount: null },
+    availability: { knowledge: false, likeCount: false, commentCount: false },
+    capabilities: baseCaps({ canReact: true, canComment: true }),
+  });
+  const social = slotByKey(presentation, 'socialSummary');
+  assert.equal(social.available, true);
+  assert.equal(social.contentReadOnly, true);
+  assert.equal(social.value.likeCount, null);
+  assert.equal(social.value.commentCount, null);
+  assert.equal(social.value.likeCountAvailable, false);
+  assert.equal(social.value.commentCountAvailable, false);
+  assert.equal(social.value.canReact, true);
+  assert.equal(social.value.canComment, true);
+});
+
+test('social matrix: genuine zero counts + no actions', () => {
+  const presentation = present({
+    social: { likeCount: 0, commentCount: 0 },
+    availability: { knowledge: false, likeCount: true, commentCount: true },
+    capabilities: baseCaps(),
+  });
+  const social = slotByKey(presentation, 'socialSummary');
+  assert.equal(social.available, true);
+  assert.equal(social.contentReadOnly, true);
   assert.equal(social.value.likeCount, 0);
   assert.equal(social.value.commentCount, 0);
   assert.equal(social.value.likeCountAvailable, true);
   assert.equal(social.value.commentCountAvailable, true);
+  assert.equal(social.value.canReact, false);
+  assert.equal(social.value.canComment, false);
 });
 
 test('unknown social metrics stay unavailable and are not fabricated as 0', () => {
-  const api = loadApi();
-  const presentation = api.createPublicViewerAppreciationPresentationModel({
-    moment: {
-      id: 'm',
-      title: 't',
-      sourceUrl: null,
-      thumbnailUrl: null,
-      rememberedAt: null,
-      emotionTags: [],
-      memo: null,
-      knowledgeItems: [],
-    },
+  const presentation = present({
     social: { likeCount: null, commentCount: null },
-    availability: {
-      knowledge: false,
-      likeCount: false,
-      commentCount: false,
-    },
-    capabilities: {
-      canReact: false,
-      canComment: false,
-      canEdit: false,
-      canContinue: false,
-      canConnect: false,
-      canDelete: false,
-      canSwitchMode: false,
-      isOwner: false,
-      isPublicRoute: false,
-    },
+    availability: { knowledge: false, likeCount: false, commentCount: false },
   });
-
   const social = slotByKey(presentation, 'socialSummary');
   assert.equal(social.value.likeCount, null);
   assert.equal(social.value.commentCount, null);
   assert.equal(social.value.likeCountAvailable, false);
   assert.equal(social.value.commentCountAvailable, false);
-  // Slot itself unavailable when neither counts nor action capabilities exist.
   assert.equal(social.available, false);
 });
 
-// ── Tags and knowledge ─────────────────────────────────────────────────────
+// ── Tags and knowledge (canonical display shape only) ──────────────────────
 
-test('tags and knowledge retain safe detached values only', () => {
-  const api = loadApi();
+test('tags and knowledge copy detached canonical display values', () => {
   const tags = ['a', 'b'];
   const knowledgeItems = [
-    {
-      label: 'Public',
-      type: 'person',
-      sourceLabel: 'ctx',
-      entityId: 'SHOULD-NOT-APPEAR',
-      ownerId: 'OWNER',
-    },
+    { label: 'Public', type: 'person', sourceLabel: 'ctx' },
   ];
-  const presentation = api.createPublicViewerAppreciationPresentationModel({
-    moment: {
-      id: 'm',
-      title: 't',
-      sourceUrl: null,
-      thumbnailUrl: null,
-      rememberedAt: null,
-      emotionTags: tags,
-      memo: null,
-      knowledgeItems,
-    },
-    social: { likeCount: null, commentCount: null },
+  const presentation = present({
+    moment: baseMoment({ emotionTags: tags, knowledgeItems }),
     availability: { knowledge: true, likeCount: false, commentCount: false },
-    capabilities: {},
   });
 
   const tagSlot = slotByKey(presentation, 'emotionTags');
@@ -399,44 +507,21 @@ test('tags and knowledge retain safe detached values only', () => {
     type: 'person',
     sourceLabel: 'ctx',
   });
-  assert.equal(
-    Object.prototype.hasOwnProperty.call(knowledgeSlot.items[0], 'entityId'),
-    false
-  );
-  assert.equal(
-    Object.prototype.hasOwnProperty.call(knowledgeSlot.items[0], 'ownerId'),
-    false
-  );
+  assert.equal(knowledgeSlot.contentReadOnly, true);
 });
 
 // ── Capabilities ───────────────────────────────────────────────────────────
 
 test('owner/editor capabilities are forced false/unavailable', () => {
-  const api = loadApi();
-  const presentation = api.createPublicViewerAppreciationPresentationModel({
-    moment: {
-      id: 'm',
-      title: 't',
-      sourceUrl: null,
-      thumbnailUrl: null,
-      rememberedAt: null,
-      emotionTags: [],
-      memo: null,
-      knowledgeItems: [],
-    },
-    social: { likeCount: null, commentCount: null },
-    availability: { knowledge: false, likeCount: false, commentCount: false },
-    capabilities: {
+  const presentation = present({
+    capabilities: baseCaps({
       canEdit: true,
       canContinue: true,
       canConnect: true,
       canDelete: true,
       canSwitchMode: true,
       isOwner: true,
-      canReact: false,
-      canComment: false,
-      isPublicRoute: false,
-    },
+    }),
   });
 
   assert.equal(presentation.capabilities.canEdit, false);
@@ -448,25 +533,12 @@ test('owner/editor capabilities are forced false/unavailable', () => {
 });
 
 test('public reaction/comment capabilities require literal true only', () => {
-  const api = loadApi();
-  const rejected = api.createPublicViewerAppreciationPresentationModel({
-    moment: {
-      id: 'm',
-      title: 't',
-      sourceUrl: null,
-      thumbnailUrl: null,
-      rememberedAt: null,
-      emotionTags: [],
-      memo: null,
-      knowledgeItems: [],
-    },
-    social: { likeCount: null, commentCount: null },
-    availability: { knowledge: false, likeCount: false, commentCount: false },
-    capabilities: {
+  const rejected = present({
+    capabilities: baseCaps({
       canReact: 'true',
       canComment: 1,
       isPublicRoute: {},
-    },
+    }),
   });
   assert.equal(rejected.capabilities.canReact, false);
   assert.equal(rejected.capabilities.canComment, false);
@@ -474,30 +546,19 @@ test('public reaction/comment capabilities require literal true only', () => {
   assert.equal(slotByKey(rejected, 'socialSummary').value.canReact, false);
   assert.equal(slotByKey(rejected, 'socialSummary').value.canComment, false);
 
-  const accepted = api.createPublicViewerAppreciationPresentationModel({
-    moment: {
-      id: 'm',
-      title: 't',
-      sourceUrl: null,
-      thumbnailUrl: null,
-      rememberedAt: null,
-      emotionTags: [],
-      memo: null,
-      knowledgeItems: [],
-    },
-    social: { likeCount: null, commentCount: null },
-    availability: { knowledge: false, likeCount: false, commentCount: false },
-    capabilities: {
+  const accepted = present({
+    capabilities: baseCaps({
       canReact: true,
       canComment: true,
       isPublicRoute: true,
-    },
+    }),
   });
   assert.equal(accepted.capabilities.canReact, true);
   assert.equal(accepted.capabilities.canComment, true);
   assert.equal(accepted.capabilities.isPublicRoute, true);
   const social = slotByKey(accepted, 'socialSummary');
   assert.equal(social.available, true);
+  assert.equal(social.contentReadOnly, true);
   assert.equal(social.value.canReact, true);
   assert.equal(social.value.canComment, true);
 });
@@ -547,11 +608,14 @@ test('output contains no functions or DOM-like nodes', () => {
   assertNoFunctions(presentation, 'presentation');
 });
 
-// ── Integration with real canonical helper (behavior preservation) ─────────
+// ── Full chain private-field proof ─────────────────────────────────────────
 
-test('consumes real canonical helper output without re-projecting raw private fields', () => {
-  const { presentation, canonical } = loadWithCanonical();
-  const canonicalModel = canonical.createAppreciationRenderModel(
+test('raw → adapter → canonical → presentation strips private fields', () => {
+  const { adapter, presentation } = loadFullChain();
+  assert.ok(adapter);
+  assert.ok(presentation);
+
+  const canonicalModel = adapter.createPublicViewerAppreciationModel(
     {
       id: 'm9',
       title: 'From raw',
@@ -565,14 +629,23 @@ test('consumes real canonical helper output without re-projecting raw private fi
         {
           label: 'K',
           type: 'person',
-          entityId: 'PRIVATE',
-          ownerId: 'OWNER',
+          entityId: 'ENTITY-PRIVATE',
+          ownerId: 'OWNER-PRIVATE',
+          privateNote: 'NOTE-PRIVATE',
+          nested: { token: 'NESTED-TOKEN-PRIVATE' },
         },
       ],
       ownerId: 'ROOT-OWNER',
-      token: 'TOKEN',
+      owner_id: 'ROOT-OWNER-SNAKE',
+      uid: 'ROOT-UID',
+      email: 'root@example.com',
+      token: 'ROOT-TOKEN',
+      auth: { session: 'SESSION-PRIVATE' },
+      raw: { full: true },
+      dbRow: { id: 1 },
+      privateMetadata: { secret: 'META-PRIVATE' },
     },
-    { canReact: true, canEdit: true, isOwner: true }
+    { canReact: true, canEdit: true, isOwner: true, canComment: false }
   );
 
   const view = presentation.createPublicViewerAppreciationPresentationModel(
@@ -587,21 +660,98 @@ test('consumes real canonical helper output without re-projecting raw private fi
     slotByKey(view, 'socialSummary').value.commentCountAvailable,
     false
   );
+  assert.equal(slotByKey(view, 'socialSummary').contentReadOnly, true);
+  assert.equal(slotByKey(view, 'socialSummary').value.canReact, true);
   assert.equal(view.capabilities.canEdit, false);
   assert.equal(view.capabilities.isOwner, false);
   assert.equal(view.capabilities.canReact, true);
   assert.equal(slotByKey(view, 'connectedKnowledge').available, true);
-  assert.equal(
-    Object.prototype.hasOwnProperty.call(
-      slotByKey(view, 'connectedKnowledge').items[0],
-      'entityId'
-    ),
-    false
+  assert.deepEqual(
+    hostValue(slotByKey(view, 'connectedKnowledge').items[0]),
+    { label: 'K', type: 'person' }
   );
+
+  const keys = [];
+  (function collect(value, seen) {
+    if (value === null || typeof value !== 'object') return;
+    if (seen.has(value)) return;
+    seen.add(value);
+    if (Array.isArray(value)) {
+      value.forEach((item) => collect(item, seen));
+      return;
+    }
+    for (const key of Object.keys(value)) {
+      keys.push(key);
+      collect(value[key], seen);
+    }
+  })(view, new WeakSet());
+
+  for (const forbidden of [
+    'ownerId',
+    'owner_id',
+    'uid',
+    'email',
+    'token',
+    'auth',
+    'raw',
+    'dbRow',
+    'entityId',
+    'privateNote',
+    'privateMetadata',
+    'nested',
+  ]) {
+    assert.ok(
+      !keys.includes(forbidden),
+      `presentation output must not contain key ${forbidden}`
+    );
+  }
+
   const json = JSON.stringify(hostValue(view));
-  assert.ok(!json.includes('ROOT-OWNER'));
-  assert.ok(!json.includes('TOKEN'));
-  assert.ok(!json.includes('PRIVATE'));
+  for (const sentinel of [
+    'ROOT-OWNER',
+    'ROOT-OWNER-SNAKE',
+    'ROOT-UID',
+    'ROOT-TOKEN',
+    'ENTITY-PRIVATE',
+    'OWNER-PRIVATE',
+    'NOTE-PRIVATE',
+    'NESTED-TOKEN-PRIVATE',
+    'META-PRIVATE',
+    'SESSION-PRIVATE',
+  ]) {
+    assert.ok(
+      !json.includes(sentinel),
+      `presentation output must not contain sentinel ${sentinel}`
+    );
+  }
+});
+
+test('consumes real canonical helper output for public fields', () => {
+  const { presentation, canonical } = loadWithCanonical();
+  const canonicalModel = canonical.createAppreciationRenderModel(
+    {
+      id: 'm9',
+      title: 'From raw',
+      sourceUrl: 'https://example.com/v',
+      rememberedAt: '2024-02-02',
+      emotionTags: ['calm'],
+      memo: 'memo',
+      likeCount: 0,
+      commentCount: null,
+      publicKnowledgeItems: [{ label: 'K', type: 'person' }],
+    },
+    { canReact: true, canEdit: true, isOwner: true }
+  );
+
+  const view = presentation.createPublicViewerAppreciationPresentationModel(
+    canonicalModel
+  );
+  assertSlotOrder(view);
+  assert.equal(slotByKey(view, 'identity').value.id, 'm9');
+  assert.equal(slotByKey(view, 'socialSummary').value.likeCount, 0);
+  assert.equal(slotByKey(view, 'socialSummary').contentReadOnly, true);
+  assert.equal(view.capabilities.canEdit, false);
+  assert.equal(view.capabilities.canReact, true);
 });
 
 // ── Source-static scope guards ─────────────────────────────────────────────
@@ -614,6 +764,9 @@ test('helper source has no DOM/Auth/network/storage/DB/Editor/MyTrees deps', () 
   assert.ok(src.includes('createPublicViewerAppreciationPresentationModel'));
   assert.ok(src.includes('identity'));
   assert.ok(src.includes('socialSummary'));
+  assert.ok(src.includes('contentReadOnly'));
+  // Social must not advertise contradictory generic readOnly property.
+  assert.ok(!/\breadOnly\s*:/.test(src));
 
   assert.ok(!/\bfetch\s*\(/.test(src));
   assert.ok(!/XMLHttpRequest/.test(src));
@@ -640,4 +793,6 @@ test('helper source has no DOM/Auth/network/storage/DB/Editor/MyTrees deps', () 
   assert.ok(!/memory_id/.test(src));
   assert.ok(!/owner_id/.test(src));
   assert.ok(!/projectPublicSafeSource/.test(src));
+  // no numeric ID → string conversion (String constructor / cast)
+  assert.ok(!/\bString\s*\(/.test(src));
 });
