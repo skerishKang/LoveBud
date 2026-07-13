@@ -95,10 +95,6 @@ function makeMomentReactionsController(deps) {
 
         hide() {
             hideReactionsCard();
-        },
-
-        _testInspect() {
-            return { currentMemoryId, selectionEpoch };
         }
     };
 }
@@ -492,16 +488,17 @@ function createEditorDetailUI(deps) {
         const editMode = document.getElementById('detailEditMode');
         const actions = detailContent.querySelector('.memory-actions');
         const indicator = document.getElementById('saveStatusIndicator');
-        const reactionsCard = document.getElementById('momentReactionsCard');
 
-        if (isEmpty) resetDetailViewState();
+        if (isEmpty) {
+            resetDetailViewState();
+            momentReactionsController.hide();
+        }
 
         if (emptyState) emptyState.style.display = isEmpty ? 'block' : 'none';
         if (viewMode) viewMode.style.display = isEmpty ? 'none' : 'grid';
         if (editMode) editMode.style.display = 'none';
         if (actions) actions.style.display = isEmpty ? 'none' : 'flex';
         if (indicator && isEmpty) indicator.style.display = 'none';
-        if (reactionsCard && isEmpty) reactionsCard.style.display = 'none';
         const footer = document.getElementById('detailPanelFooter');
         if (footer) footer.style.display = 'none';
     };
