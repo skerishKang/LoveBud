@@ -66,8 +66,8 @@ test('search.html has index.js with new cache version', () => {
   const html = read('pages/search.html');
   const match = html.match(/search\/index\.js\?v=([\w-]+)/);
   assert.ok(match, 'index.js must have cache version');
-  assert.strictEqual(match[1], '20260629-2772-bootstrap-1',
-    'index.js cache version must be 20260629-2772-bootstrap-1');
+  assert.strictEqual(match[1], '20260713-3482-2',
+    'index.js cache version must be 20260713-3482-2');
 });
 
 test('search.html loads search-share-link.js before index.js', () => {

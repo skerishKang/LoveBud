@@ -126,17 +126,28 @@
         return 'empty';
     }
 
+    /**
+     * Resolve an authoritative non-negative finite count.
+     * Missing / null / undefined / '' / NaN / negative → null (unknown).
+     * Persisted zero (0) is returned as 0.
+     */
     function getFirstFiniteCount(tree, keys) {
+        if (!tree) return null;
         for (const key of keys) {
-            const value = Number(tree?.[key]);
+            if (!Object.prototype.hasOwnProperty.call(tree, key)) continue;
+            const rawValue = tree[key];
+            if (rawValue === undefined || rawValue === null || rawValue === '') continue;
+            if (typeof rawValue !== 'number' && typeof rawValue !== 'string') continue;
+            const value = Number(rawValue);
             if (Number.isFinite(value) && value >= 0) return value;
         }
-        return 0;
+        return null;
     }
 
     function formatCompactCount(value) {
-        const count = Number(value || 0);
-        if (!Number.isFinite(count) || count <= 0) return '0';
+        const count = Number(value);
+        if (!Number.isFinite(count) || count < 0) return '';
+        if (count === 0) return '0';
         if (count >= 1000000) return `${Math.floor(count / 100000) / 10}M`;
         if (count >= 1000) return `${Math.floor(count / 100) / 10}K`;
         return String(count);
@@ -152,19 +163,18 @@
         };
     }
 
-    // PR #2760: restore 댓글·공유 metric alongside 조회/좋아요 so the card
-    // reaction row is symmetric with the hub pill row (4 metrics). The
-    // earlier Issue #1488 #1490 removal of 댓글·공유 predated the hub
-    // pill parity work; restoring them here keeps Browse ↔ My Trees
-    // cards visually identical.
+    // Truthful metrics: only render items with an authoritative value.
+    // Unknown metrics are hidden (never coerced to 0 or "—").
     function renderTreeReactionMetrics(tree) {
         const counts = getTreeReactionCounts(tree);
         const metrics = [
             counts.views !== null ? { icon: 'visibility', label: '조회수', value: counts.views } : null,
-            { icon: 'favorite', label: '좋아요', value: counts.likes },
-            { icon: 'chat_bubble', label: '댓글', value: counts.comments },
-            { icon: 'share', label: '공유', value: counts.shares }
+            counts.likes !== null ? { icon: 'favorite', label: '좋아요', value: counts.likes } : null,
+            counts.comments !== null ? { icon: 'chat_bubble', label: '댓글', value: counts.comments } : null,
+            counts.shares !== null ? { icon: 'share', label: '공유', value: counts.shares } : null
         ].filter(Boolean);
+
+        if (metrics.length === 0) return '';
 
         return `
             <div class="tree-card-reaction-metrics" aria-label="트리 반응 요약">
