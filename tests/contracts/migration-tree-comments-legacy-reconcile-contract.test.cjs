@@ -153,27 +153,38 @@ test('reconcile migration does NOT STOP on 12-column names without exact canonic
   assert.ok(validIdx < stopIdx, 'Exact canonical validation must run before the explicit STOP');
 });
 
-test('reconcile migration asserts audited legacy compound index (tree_id, created_at)', () => {
-  // The actual production legacy secondary index is compound (tree_id, created_at),
-  // NOT a single-column idx_tree_comments_tree_id (that one is migration-added).
-  assert.match(sql, /legacy compound index \(tree_id, created_at\)/i, 'Must reference the legacy compound index');
-  assert.match(sql, /v_idx_compound/i, 'Must count the compound legacy index in preflight');
-  // Legacy state must allow EXACTLY ONE secondary index (the compound). The guarded
-  // extra check rejects a single-column tree_id / partial / expression / unique /
-  // INCLUDE secondary index in the legacy state.
-  assert.match(sql, /legacy secondary index count must be exactly 1/i,
-    'Must require exactly one legacy secondary index (the compound)');
-  assert.match(sql, /unexpected legacy secondary index present \(single-column tree_id \/ partial \/ expression \/ unique \/ INCLUDE\)/i,
-    'Must reject single-column tree_id / partial / expression / unique / INCLUDE secondary indexes in legacy state');
+test('reconcile migration asserts zero non-primary legacy secondary indexes (corrected)', () => {
+  // Approved read-only preflight confirmed the production legacy table has ZERO
+  // non-primary secondary indexes. The previously assumed compound (tree_id,
+  // created_at) legacy index does NOT exist.
+  assert.match(sql, /legacy secondary index count must be exactly 0/i,
+    'Must require exactly zero legacy secondary indexes');
+  // No compound legacy index assumption / preservation language remains.
+  assert.equal(/legacy compound index \(tree_id, created_at\)/i.test(sql), false,
+    'Must NOT reference a legacy compound index assumption');
+  assert.equal(/legacy secondary index count must be exactly 1/i.test(sql), false,
+    'Must NOT require exactly one legacy secondary index');
+  assert.equal(/unexpected legacy secondary index present/i.test(sql), false,
+    'Old compound-based single-column guard must be removed');
 });
 
-test('reconcile migration post-verification checks exact index inventory', () => {
+test('reconcile migration fails closed on any non-primary secondary index', () => {
+  // The preflight must fail closed whenever v_secondary_total <> 0 (any single-column,
+  // compound, unique, partial, expression, INCLUDE, or other secondary index).
+  assert.match(sql, /PREFLIGHT FAIL: legacy secondary index count must be exactly 0/i,
+    'Legacy preflight must fail closed when any secondary index is present');
+});
+
+test('reconcile migration post-verification checks exact index inventory (no compound)', () => {
   assert.match(sql, /final exact reconciled-state validation/i, 'Post-verify must run the exact-state validator');
-  assert.match(sql, /PK backing \+ compound \(tree_id, created_at\) \+ 3 migration added index inventory wrong/i,
-    'Post-verify must assert the full index inventory');
+  assert.match(sql, /expected PK backing \(id\) \+ 3 canonical secondary indexes \+ NO compound/i,
+    'Post-verify must assert the corrected index inventory (PK + 3 canonical, compound = 0)');
   // The single-column tree_id index is CREATED by the migration (canonical), not legacy.
   assert.match(sql, /idx_tree_comments_tree_id ON public\.tree_comments\(tree_id\)/i,
     'Migration must create the canonical single-column tree_id index');
+  // No compound (tree_id, created_at) index is created.
+  assert.equal(/CREATE\s+INDEX[^;]*tree_id,\s*created_at/i.test(sql), false,
+    'Must NOT CREATE a compound (tree_id, created_at) index');
 });
 
 // ─── 3b. Exact reconciled-state validator (inside _lb_reconciled_validator) ───
@@ -218,15 +229,15 @@ test('reconcile validator checks inbound FK = 0 (inside the validator)', () => {
   assert.match(validatorBody, /inbound_fk=/i, 'Validator must record the inbound FK count in its message');
 });
 
-test('reconcile validator verifies reconciled total index count = 5', () => {
-  // 1 primary + 4 secondary (compound legacy + 3 migration-added).
-  assert.match(validatorBody, /v_i1 <> 1 OR v_is <> 4/i, 'Validator must assert 1 primary + 4 secondary = 5 total');
-  assert.match(validatorBody, /v_i2 <> 1 OR v_i3 <> 1 OR v_i4 <> 1 OR v_i5 <> 1 OR v_iu <> 0/i,
-    'Validator must assert the 4 secondary indexes (compound + 3 migration-added) and no unexpected');
+test('reconcile validator verifies reconciled total index count = 4 (no compound)', () => {
+  // 1 primary + 3 secondary (3 canonical migration-added, NO compound legacy).
+  assert.match(validatorBody, /v_i1 <> 1 OR v_is <> 3/i, 'Validator must assert 1 primary + 3 secondary = 4 total');
+  assert.match(validatorBody, /v_i2 <> 0 OR v_i3 <> 1 OR v_i4 <> 1 OR v_i5 <> 1 OR v_iu <> 0/i,
+    'Validator must assert the 3 canonical secondary indexes (compound v_i2 = 0) and no unexpected');
   // Per-index attributes: non-partial / non-expression / no INCLUDE columns.
   assert.match(validatorBody, /indpred IS NULL/i, 'Validator must reject partial indexes');
   assert.match(validatorBody, /indexprs IS NULL/i, 'Validator must reject expression indexes');
-  assert.match(validatorBody, /indnkeyatts\s*(=|<>)\s*i\.indnatts/i, 'Validator must reject INCLUDE-column indexes');
+  assert.match(validatorBody, /indnkeyatts\s*(=|<>)+\s*i\.indnatts/i, 'Validator must reject INCLUDE-column indexes');
 });
 
 test('reconcile validator uses exact normalized comparison for target_kind default (no substring)', () => {
@@ -285,22 +296,25 @@ test('reconcile migration uses _lb_norm_default for defaults and _lb_norm_check 
 
 // ─── 3c. Legacy preflight index guard (no uncorrelated global NOT EXISTS) ───
 
-test('reconcile legacy preflight requires exactly one secondary index', () => {
+test('reconcile legacy preflight requires exactly zero secondary indexes (corrected)', () => {
   assert.match(preflightLegacyIndexSection, /v_secondary_total/i, 'Legacy preflight must count total secondary indexes');
-  assert.match(preflightLegacyIndexSection, /legacy secondary index count must be exactly 1/i,
-    'Legacy preflight must require exactly 1 secondary index');
+  assert.match(preflightLegacyIndexSection, /legacy secondary index count must be exactly 0/i,
+    'Legacy preflight must require exactly 0 secondary indexes');
+  assert.equal(/legacy secondary index count must be exactly 1/i.test(preflightLegacyIndexSection), false,
+    'Legacy preflight must NOT require exactly 1 secondary index');
 });
 
 test('reconcile legacy preflight unexpected-index query is per-index (no global NOT EXISTS)', () => {
   // The buggy uncorrelated query `NOT EXISTS (SELECT 1 FROM pg_index j ...)` must be gone.
   assert.equal(/FROM pg_index j/i.test(preflightLegacyIndexSection), false,
     'Legacy preflight must not use an uncorrelated global NOT EXISTS over pg_index j');
-  // The compound match must be per-index (indnatts / indkey array), rejecting
-  // partial / expression / unique / INCLUDE / differently-named secondary indexes.
-  assert.match(preflightLegacyIndexSection, /unexpected legacy secondary index present/i,
-    'Legacy preflight must reject unexpected/partial/expression/unique/INCLUDE secondary indexes');
-  assert.match(preflightLegacyIndexSection, /indpred IS NULL/i, 'Legacy preflight must reject partial indexes');
-  assert.match(preflightLegacyIndexSection, /indexprs IS NULL/i, 'Legacy preflight must reject expression indexes');
+  // Any non-primary secondary index (single-column / compound / partial / expression /
+  // unique / INCLUDE / other) must trigger fail-closed via the total count guard.
+  assert.match(preflightLegacyIndexSection, /PREFLIGHT FAIL: legacy secondary index count must be exactly 0/i,
+    'Legacy preflight must fail closed on any non-primary secondary index');
+  // The corrected guard counts the total non-primary index count and rejects any > 0.
+  assert.match(preflightLegacyIndexSection, /v_secondary_total <> 0/i,
+    'Legacy preflight must fail closed via the total secondary count guard');
 });
 
 // ─── 4. Exact eight-column legacy metadata (type/udt/nullable/default) ───────
@@ -589,4 +603,105 @@ test('reconcile runbook does not claim the migration/rollback were actually exec
     'Runbook must not claim a pglast parse success');
   assert.match(runbook, /pglast:\s*NOT RUN on this final head/i,
     'Runbook must record pglast: NOT RUN on this final head');
+});
+
+// ─── 19. Operational runbook correction (Issue #3431) ───────────────────────
+
+// Runbook legacy preflight must include the real pg_index catalog query and
+// require secondary_index_count = 0.
+const sec5 = runbook.slice(runbook.indexOf('## 5. Preflight queries'));
+const sec6 = sec5.indexOf('## 6.');
+const sec5Block = sec6 > 0 ? sec5.slice(0, sec6) : sec5;
+
+test('reconcile runbook preflight includes the pg_index catalog query', () => {
+  assert.match(sec5Block, /pg_index/i, 'Runbook Sec 5 must include the pg_index catalog query');
+});
+
+test('reconcile runbook preflight requires secondary_index_count = 0', () => {
+  assert.match(sec5Block, /secondary_index_count/i, 'Runbook Sec 5 must count secondary indexes');
+  assert.match(sec5Block, /secondary_index_count = 0/i, 'Runbook Sec 5 must expect secondary_index_count = 0');
+});
+
+test('reconcile runbook approval checklist requires zero legacy secondary index', () => {
+  const sec6b = runbook.slice(runbook.indexOf('## 6. Execution approval gate'));
+  const next = sec6b.indexOf('## 7.');
+  const block = next > 0 ? sec6b.slice(0, next) : sec6b;
+  assert.match(block, /Legacy non-primary secondary index count = 0/i,
+    'Runbook approval checklist must require legacy non-primary secondary index count = 0');
+});
+
+test('reconcile runbook failure-stop criteria includes unexpected index', () => {
+  const sec14 = runbook.slice(runbook.indexOf('## 14. Failure stop criteria'));
+  assert.match(sec14, /unexpected index or secondary index count != 0/i,
+    'Runbook failure-stop criteria must include an unexpected index / secondary count != 0');
+});
+
+// Runbook Sec 9 post-migration exact index query.
+const sec9 = runbook.slice(runbook.indexOf('## 9. Post-migration schema verification'));
+const sec9Next = sec9.indexOf('## 10.');
+const sec9Block = sec9Next > 0 ? sec9.slice(0, sec9Next) : sec9;
+
+test('reconcile runbook post-migration includes exact 3 canonical indexes', () => {
+  assert.match(sec9Block, /secondary total = 3/i, 'Runbook Sec 9 must expect secondary total = 3');
+  assert.match(sec9Block, /idx_tree_comments_tree_id/i, 'Runbook Sec 9 must name idx_tree_comments_tree_id');
+  assert.match(sec9Block, /idx_tree_comments_owner_id/i, 'Runbook Sec 9 must name idx_tree_comments_owner_id');
+  assert.match(sec9Block, /idx_tree_comments_created_at/i, 'Runbook Sec 9 must name idx_tree_comments_created_at');
+});
+
+test('reconcile runbook post-migration compound count = 0 and unexpected count = 0', () => {
+  assert.match(sec9Block, /compound \[tree_id, created_at\] count = 0/i,
+    'Runbook Sec 9 must expect compound [tree_id, created_at] count = 0');
+  assert.match(sec9Block, /unexpected secondary count = 0/i,
+    'Runbook Sec 9 must expect unexpected secondary count = 0');
+});
+
+// Runbook Sec 12 smoke test must use the public Pages route, not the private Modal route.
+const sec12 = runbook.slice(runbook.indexOf('## 12. Smoke test'));
+const sec12Next = sec12.indexOf('## 13.');
+const sec12Block = sec12Next > 0 ? sec12.slice(0, sec12Next) : sec12;
+
+test('reconcile runbook smoke test uses the public Pages /api/trees/ route', () => {
+  assert.match(sec12Block, /https:\/\/lovebud\.pages\.dev\/api\/trees\//i,
+    'Runbook Sec 12 must use the public Pages /api/trees/ route');
+  assert.match(sec12Block, /\$\{PRIVATE_TREE_ID\}\/comments\?limit=20/i,
+    'Runbook Sec 12 must use a bounded limit=20 smoke');
+  assert.match(sec12Block, /Expect 400/i, 'Runbook Sec 12 must include invalid-tree-id => 400');
+  assert.match(sec12Block, /Expect 404/i, 'Runbook Sec 12 must include missing/non-public tree => 404');
+});
+
+test('reconcile runbook smoke test must not use the private Modal route', () => {
+  assert.equal(/modal\/private\//i.test(runbook), false,
+    'Runbook must not reference the private /modal/private/ route');
+  assert.equal(/<approved-public-endpoint>/i.test(runbook), false,
+    'Runbook must not use the placeholder <approved-public-endpoint>');
+});
+
+// Runbook Sec 7 secure schema-only backup.
+const sec7 = runbook.slice(runbook.indexOf('## 7. Backup / rollback strategy'));
+const sec7Next = sec7.indexOf('## 8.');
+const sec7Block = sec7Next > 0 ? sec7.slice(0, sec7Next) : sec7;
+
+test('reconcile runbook secure backup uses umask/mktemp and --no-owner/--no-privileges', () => {
+  assert.match(sec7Block, /umask 077/i, 'Runbook Sec 7 must set umask 077');
+  assert.match(sec7Block, /mktemp -d/i, 'Runbook Sec 7 must use mktemp -d for an external dir');
+  assert.match(sec7Block, /--no-owner/i, 'Runbook Sec 7 backup must use --no-owner');
+  assert.match(sec7Block, /--no-privileges/i, 'Runbook Sec 7 backup must use --no-privileges');
+  assert.match(sec7Block, /never .*git add.* or committed/i,
+    'Runbook Sec 7 must state the backup is never git added / committed');
+});
+
+// Runbook Sec 10 production-evidence wording must not make the false blanket claim.
+test('reconcile runbook does not make a false "no production connection was opened" claim', () => {
+  assert.equal(/No connection to Neon production or any shared database was opened\.\s*$/m.test(runbook), false,
+    'Runbook must NOT claim "No connection ... was opened" as a bare standalone statement');
+  assert.match(runbook, /approved production read-only catalog inspection: YES/i,
+    'Runbook must distinguish approved production read-only inspection = YES');
+  assert.match(runbook, /production\/staging DB access: NO/i,
+    'Runbook must state this PR production/staging DB access = NO');
+});
+
+// Migration SQL must not carry the stale "tree_id index is preserved for list reads" comment.
+test('reconcile migration SQL does not carry the stale "tree_id index is preserved" comment', () => {
+  assert.equal(/tree_id index is preserved for list reads/i.test(sql), false,
+    'Migration SQL must not contain the stale "tree_id index is preserved for list reads" comment');
 });

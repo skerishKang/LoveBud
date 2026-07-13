@@ -114,8 +114,8 @@ test('rollback script preflight enforces exact reconciled constraint set (1 PK +
   assert.match(sql, /c\.confdeltype='n'/i, 'Must verify ON DELETE SET NULL via confdeltype');
 });
 
-test('rollback script preflight verifies exact index inventory (catalog arrays)', () => {
-  assert.match(sql, /original compound legacy index \(tree_id, created_at\) not found/i, 'Must verify the compound legacy index exists');
+test('rollback script preflight verifies exact index inventory (catalog arrays, no compound)', () => {
+  assert.match(sql, /expected exactly 3 secondary indexes/i, 'Rollback preflight must require exactly 3 canonical secondary indexes (no compound)');
   assert.match(sql, /migration-added indexes missing/i, 'Must verify 3 migration-added indexes exist');
   assert.match(sql, /canonical PK backing index \(id\) not found/i, 'Must verify canonical PK backing index exists');
   assert.match(sql, /unexpected index\(es\) present before rollback/i, 'Must reject any unexpected index');
@@ -162,8 +162,8 @@ test('rollback script creates and drops purpose-specific normalizers', () => {
     'Rollback must no longer define the shared _lb_norm_expr normalizer');
 });
 
-test('rollback script preflight verifies exact total index count = 5', () => {
-  assert.match(sql, /expected exactly 4 secondary indexes/i, 'Rollback preflight must require exactly 4 secondary indexes (5 total incl PK)');
+test('rollback script preflight verifies exact total index count = 4 (PK + 3 canonical, no compound)', () => {
+  assert.match(sql, /expected exactly 3 secondary indexes/i, 'Rollback preflight must require exactly 3 secondary indexes (corrected)');
   assert.match(sql, /canonical PK backing index \(id\) not found/i, 'Rollback preflight must require the PK backing index');
 });
 
@@ -230,14 +230,15 @@ test('rollback script removes the three migration-added indexes (schema-qualifie
   assert.match(sql, /DROP\s+INDEX\s+IF\s+EXISTS\s+public\.idx_tree_comments_created_at/i, 'Must schema-qualify DROP INDEX created_at');
 });
 
-test('rollback script preserves the original compound legacy index (tree_id, created_at)', () => {
-  // The audited production legacy index is compound (tree_id, created_at); it must
-  // be preserved (NOT dropped) while the 3 migration-added indexes are removed.
+test('rollback script does NOT create or drop a compound (tree_id, created_at) index (corrected)', () => {
+  // The corrected reconciled state has NO compound index, so rollback neither
+  // creates nor drops one. It restores the exact legacy zero-secondary-index state.
   assert.equal(/DROP\s+INDEX\s+IF\s+EXISTS\s+(public\.)?idx_tree_comments_tree_id_created_at/i.test(content), false,
-    'Must NOT drop the original compound legacy index');
-  assert.match(sql, /idx_\.\.\._tree_id_created_at \(tree_id, created_at\) is PRESERVED/i,
-    'Must state the compound legacy index is preserved');
-  assert.match(sql, /v_idx_compound/i, 'Must verify the compound legacy index in preflight/post-verify');
+    'Must NOT drop a compound legacy index that does not exist');
+  assert.equal(/idx_\.\.\._tree_id_created_at \(tree_id, created_at\) is PRESERVED/i.test(sql), false,
+    'Must NOT claim the compound legacy index is preserved');
+  assert.equal(/v_idx_compound/i.test(sql), false,
+    'Old compound legacy index variable/check must be removed from preflight/post-verify');
 });
 
 // ─── 7. Timestamp nullable / default reversion ─────────────────────────────
@@ -271,21 +272,23 @@ test('rollback script post-verifies exact legacy PK/FK/constraint set via catalo
   assert.match(sql, /c\.confdeltype='n'/i, 'Must verify author FK set null via confdeltype');
 });
 
-test('rollback script post-verifies exact final legacy index inventory', () => {
-  assert.match(sql, /ROLLBACK POST-VERIFY FAIL: original compound legacy index \(tree_id, created_at\) not preserved/i,
-    'Must confirm compound legacy index preserved');
+test('rollback script post-verifies exact final legacy index inventory (zero secondary)', () => {
+  assert.match(sql, /ROLLBACK POST-VERIFY FAIL: expected exactly 0 secondary indexes after rollback/i,
+    'Must confirm zero secondary indexes after rollback');
   assert.match(sql, /ROLLBACK POST-VERIFY FAIL: final index inventory wrong/i,
-    'Must confirm PK backing + compound legacy remain, 3 migration-added gone');
+    'Must confirm PK backing + 0 secondary (legacy zero-secondary-index state)');
   assert.match(sql, /ROLLBACK POST-VERIFY FAIL: unexpected index\(es\) after rollback/i,
     'Must confirm no unexpected index remains');
+  assert.equal(/original compound legacy index \(tree_id, created_at\) not preserved/i.test(sql), false,
+    'Old "compound legacy index not preserved" assertion removed');
   assert.equal(/migration-added indexes still present/i.test(sql), false, 'Old "migration-added indexes still present" assertion removed');
   assert.equal(/idx_tree_comments_tree_id ON \(tree_id\) not preserved/i.test(sql), false,
     'Old single-column legacy tree_id preservation assertion removed');
 });
 
-test('rollback script post-verify requires exactly one secondary index (total 2)', () => {
-  assert.match(sql, /expected exactly 1 secondary index after rollback/i,
-    'Post-verify must require exactly 1 secondary index (compound legacy) + PK backing = 2 total');
+test('rollback script post-verify requires exactly zero secondary indexes (total 1 = PK only)', () => {
+  assert.match(sql, /expected exactly 0 secondary indexes after rollback/i,
+    'Post-verify must require exactly 0 secondary indexes (legacy zero-secondary-index state)');
 });
 
 // ─── 9. No automatic execution / no private info ───────────────────────────
@@ -316,4 +319,61 @@ test('rollback script does not use close keywords for parent issues', () => {
   assert.equal(/\bCloses\s+#3188\b/i.test(sql), false, 'Must not use Closes #3188');
   assert.equal(/\bCloses\s+#3075\b/i.test(sql), false, 'Must not use Closes #3075');
   assert.equal(/\bCloses\s+#1882\b/i.test(sql), false, 'Must not use Closes #1882');
+});
+
+// ─── 11. Operational runbook correction (Issue #3431) ───────────────────────
+
+// Runbook post-rollback must require secondary count = 0, canonical 3 names
+// absent, PK [tree_id, id], compound absent. The stale "captured/preserved
+// original PK" wording must be absent from the runbook and SQL.
+const RUNBOOK_PATH = path.join(ROOT, 'docs', 'product', 'lovebud-tree-comments-legacy-schema-reconciliation-runbook.md');
+const runbook = readFile(RUNBOOK_PATH);
+
+const sec11 = runbook.slice(runbook.indexOf('## 11. Rollback procedure'));
+const sec12 = sec11.indexOf('## 12.');
+const sec11Block = sec12 > 0 ? sec11.slice(0, sec12) : sec11;
+
+test('rollback runbook post-rollback requires secondary count = 0', () => {
+  assert.match(sec11Block, /secondary_index_count = 0/i,
+    'Runbook Sec 11 post-rollback must expect secondary_index_count = 0');
+  assert.match(sec11Block, /canonical_index_count = 0/i,
+    'Runbook Sec 11 post-rollback must expect canonical index count = 0');
+});
+
+test('rollback runbook post-rollback PK = [tree_id, id] and compound absent', () => {
+  assert.match(sec11Block, /PK ordered columns = \[tree_id, id\]/i,
+    'Runbook Sec 11 post-rollback must expect PK ordered columns = [tree_id, id]');
+  assert.match(sec11Block, /compound_tree_created_count = 0/i,
+    'Runbook Sec 11 post-rollback must expect compound [tree_id, created_at] count = 0');
+});
+
+test('rollback runbook post-rollback PK query has no undefined pg_index alias', () => {
+  assert.equal(
+    /SELECT\s+i\.indisprimary[\s\S]*?FROM\s+pg_constraint\s+c/i.test(sec11Block),
+    false,
+    'Runbook Sec 11 must not reference undefined alias i in the PK constraint query'
+  );
+
+  assert.match(
+    sec11Block,
+    /unnest\(c\.conkey\)\s+WITH\s+ORDINALITY/i,
+    'Runbook Sec 11 must derive PK columns from pg_constraint.conkey'
+  );
+
+  assert.match(
+    sec11Block,
+    /primary_index_count\s*=\s*1/i,
+    'Runbook Sec 11 must separately verify exactly one primary index'
+  );
+});
+
+test('rollback runbook / SQL do not carry stale "captured/preserved original PK" wording', () => {
+  assert.equal(/captured at migration time/i.test(runbook), false,
+    'Runbook must not claim the original PK was captured at migration time');
+  assert.equal(/migration preserved the original PK/i.test(runbook), false,
+    'Runbook must not claim the migration preserved the original PK');
+  assert.equal(/captured at migration time/i.test(sql), false,
+    'Rollback SQL must not claim the original PK was captured at migration time');
+  assert.equal(/migration preserved the original PK/i.test(sql), false,
+    'Rollback SQL must not claim the migration preserved the original PK');
 });
