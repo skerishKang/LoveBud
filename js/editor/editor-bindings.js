@@ -30,7 +30,9 @@
         e.preventDefault();
         e.stopPropagation();
         var mode = window.LoveBudEditorInteractionMode;
-        if (!mode || (!mode.isEditMode() && !ensureEditModeForFirstMoment(options && options.getTreeMemories))) return;
+        var isEdit = mode && mode.isEditMode();
+        var ensureResult = !isEdit && ensureEditModeForFirstMoment(options && options.getTreeMemories);
+        if (!mode || (!isEdit && !ensureResult)) return;
         if (typeof showAddMemoryForm === 'function') {
           showAddMemoryForm();
         }
