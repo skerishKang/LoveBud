@@ -145,8 +145,57 @@ test('runbook treats Unix/WSL as explicit alternative only', () => {
   assert.match(runbook, /Do \*\*not\*\* auto-fallback to WSL|no WSL fallback/i);
 });
 
-test('this PR scope does not rewrite migration or rollback SQL files', () => {
-  // Guardrail for the contract suite itself: SQL files must exist (unchanged elsewhere).
+test('runbook Windows backup applies and verifies current-user ACL before dump', () => {
+  const sec7 = runbook.slice(runbook.indexOf('## 7. Backup / rollback strategy'));
+  const next = sec7.indexOf('## 8.');
+  const block = next > 0 ? sec7.slice(0, next) : sec7;
+  // Executable ACL markers (not comment-only).
+  assert.match(block, /Set-Acl/);
+  assert.match(block, /Get-Acl/);
+  assert.match(block, /SetAccessRuleProtection/);
+  assert.match(block, /AreAccessRulesProtected/);
+  assert.match(block, /WindowsIdentity/);
+  // ACL before backup file creation: Set-Acl appears before --file= backup path.
+  const setAclIdx = block.indexOf('Set-Acl');
+  const fileDumpIdx = block.indexOf('--file=$backupFile');
+  assert.ok(setAclIdx > 0, 'Set-Acl must be present in Sec 7');
+  assert.ok(fileDumpIdx > setAclIdx, 'ACL must be applied before pg_dump --file backup');
+  assert.match(block, /AreAccessRulesProtected/);
+  assert.match(block, /unexpected allow rule/i);
+  assert.match(block, /pg_dump failed|LASTEXITCODE/);
+});
+
+test('runbook executable backup/migration/rollback use direct URI variable only', () => {
+  assert.match(runbook, /LOVE_BUD_PRODUCTION_DIRECT_DATABASE_URL/);
+  // Generic executable patterns must not remain for operator commands.
+  assert.equal(
+    /pg_dump\s+"\$DATABASE_URL"/.test(runbook),
+    false,
+    'executable pg_dump must not use generic $DATABASE_URL'
+  );
+  assert.equal(
+    /psql\s+"\$DATABASE_URL"/.test(runbook),
+    false,
+    'executable psql must not use generic $DATABASE_URL'
+  );
+  // Direct variable used in Unix alternatives for backup, migration, rollback.
+  assert.match(
+    runbook,
+    /pg_dump\s+"\$LOVE_BUD_PRODUCTION_DIRECT_DATABASE_URL"/
+  );
+  assert.match(
+    runbook,
+    /psql\s+"\$LOVE_BUD_PRODUCTION_DIRECT_DATABASE_URL"\s+-v\s+ON_ERROR_STOP=1\s+\\\s*\n\s*-f\s+scripts\/migration-reconcile-tree-comments-legacy-schema\.sql/
+  );
+  assert.match(
+    runbook,
+    /psql\s+"\$LOVE_BUD_PRODUCTION_DIRECT_DATABASE_URL"\s+-v\s+ON_ERROR_STOP=1\s+\\\s*\n\s*-f\s+scripts\/rollback-tree-comments-legacy-reconcile\.sql/
+  );
+});
+
+test('migration and rollback SQL artifacts remain present', () => {
+  // Presence-only guardrail in this contract. Whether SQL is unchanged vs main
+  // is verified separately by the orchestrator via git diff against the base SHA.
   const mig = path.join(ROOT, 'scripts', 'migration-reconcile-tree-comments-legacy-schema.sql');
   const rb = path.join(ROOT, 'scripts', 'rollback-tree-comments-legacy-reconcile.sql');
   assert.ok(fs.existsSync(mig), 'migration SQL must exist');

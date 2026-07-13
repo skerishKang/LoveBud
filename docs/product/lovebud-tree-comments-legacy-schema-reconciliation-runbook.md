@@ -278,10 +278,59 @@ index, or any other non-primary index — **do not apply** the migration.
   Windows (primary):
   ```powershell
   $pgDump = Get-Command pg_dump.exe -ErrorAction Stop
-  $backupRoot = Join-Path $env:LOCALAPPDATA "LoveBud\private-backups"
-  New-Item -ItemType Directory -Force -Path $backupRoot | Out-Null
-  # Restrict ACL to the current user only (operator machine policy).
-  $backupFile = Join-Path $backupRoot "tree_comments_schema_pre.sql"
+
+  $backupRoot = Join-Path `
+    $env:LOCALAPPDATA `
+    ("LoveBud\private-backups\" + [Guid]::NewGuid().ToString("N"))
+
+  New-Item -ItemType Directory -Path $backupRoot -ErrorAction Stop |
+    Out-Null
+
+  $currentIdentity = `
+    [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
+
+  $directorySecurity = `
+    [System.Security.AccessControl.DirectorySecurity]::new()
+
+  $directorySecurity.SetAccessRuleProtection($true, $false)
+
+  $currentUserRule = `
+    [System.Security.AccessControl.FileSystemAccessRule]::new(
+      $currentIdentity,
+      [System.Security.AccessControl.FileSystemRights]::FullControl,
+      [System.Security.AccessControl.InheritanceFlags]"ContainerInherit, ObjectInherit",
+      [System.Security.AccessControl.PropagationFlags]::None,
+      [System.Security.AccessControl.AccessControlType]::Allow
+    )
+
+  $directorySecurity.SetAccessRule($currentUserRule)
+
+  Set-Acl `
+    -Path $backupRoot `
+    -AclObject $directorySecurity `
+    -ErrorAction Stop
+
+  $appliedAcl = Get-Acl -Path $backupRoot -ErrorAction Stop
+
+  if (-not $appliedAcl.AreAccessRulesProtected) {
+    throw "backup directory ACL inheritance is not disabled"
+  }
+
+  $unexpectedAllowRules = @(
+    $appliedAcl.Access | Where-Object {
+      $_.AccessControlType -eq `
+        [System.Security.AccessControl.AccessControlType]::Allow -and
+      $_.IdentityReference.Value -ne $currentIdentity
+    }
+  )
+
+  if ($unexpectedAllowRules.Count -ne 0) {
+    throw "backup directory contains an unexpected allow rule"
+  }
+
+  $backupFile = Join-Path `
+    $backupRoot `
+    "tree_comments_schema_pre.sql"
 
   & $pgDump.Source `
     $env:LOVE_BUD_PRODUCTION_DIRECT_DATABASE_URL `
@@ -291,10 +340,18 @@ index, or any other non-primary index — **do not apply** the migration.
     --table=public.tree_comments `
     --file=$backupFile
 
-  if (-not (Test-Path $backupFile) -or (Get-Item $backupFile).Length -le 0) {
+  if ($LASTEXITCODE -ne 0) {
+    throw "pg_dump failed"
+  }
+
+  if (
+    -not (Test-Path $backupFile) -or
+    (Get-Item $backupFile).Length -le 0
+  ) {
     throw "schema backup missing or empty"
   }
-  Write-Host "backup ok (size only; path not printed)"
+
+  Write-Host "schema backup created with protected ACL"
   ```
 
   Unix / WSL (**explicitly authorized alternative only** — not the default):
@@ -302,7 +359,7 @@ index, or any other non-primary index — **do not apply** the migration.
   umask 077
   backup_dir="$(mktemp -d)"
 
-  pg_dump "$DATABASE_URL" \
+  pg_dump "$LOVE_BUD_PRODUCTION_DIRECT_DATABASE_URL" \
     --schema-only \
     --no-owner \
     --no-privileges \
@@ -341,7 +398,7 @@ $psql = Get-Command psql.exe -ErrorAction Stop
 
 Unix / WSL (**explicitly authorized alternative only**):
 ```sh
-psql "$DATABASE_URL" -v ON_ERROR_STOP=1 \
+psql "$LOVE_BUD_PRODUCTION_DIRECT_DATABASE_URL" -v ON_ERROR_STOP=1 \
   -f scripts/migration-reconcile-tree-comments-legacy-schema.sql
 ```
 
@@ -507,7 +564,7 @@ $psql = Get-Command psql.exe -ErrorAction Stop
 
 Unix / WSL (**explicitly authorized alternative only**):
 ```sh
-psql "$DATABASE_URL" -v ON_ERROR_STOP=1 \
+psql "$LOVE_BUD_PRODUCTION_DIRECT_DATABASE_URL" -v ON_ERROR_STOP=1 \
   -f scripts/rollback-tree-comments-legacy-reconcile.sql
 ```
 
