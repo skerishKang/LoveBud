@@ -2207,11 +2207,18 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/public-viewer-appreciation-composer-runtime-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes the Public Viewer appreciation composer with adapter/presentation spies and the real adapter→canonical→presentation chain in node:vm, proving exact orchestration order, fail-closed dependency errors, private-sentinel exclusion, and unknown-vs-zero social preservation without a real browser, network, auth provider, database, deployment, or Production resource.",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/public-viewer-appreciation-model-adapter-runtime-contract.test.cjs",
       "layer": "EXECUTED_FAKE",
       "rationale": "Executes the canonical appreciation render model and Public Viewer route-owned adapter in node:vm, proving public-safe projection, detached output, social-count preservation, and fail-closed Viewer capabilities without a real browser, network, auth provider, database, deployment, or Production resource.",
       "capabilities": []
     },
+
     {
       "path": "tests/contracts/public-viewer-appreciation-presentation-model-runtime-contract.test.cjs",
       "layer": "EXECUTED_FAKE",
