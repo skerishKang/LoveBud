@@ -176,6 +176,73 @@ function loadAdapterWithoutCanonical() {
   return context.window.LoveBudPublicViewerAppreciationModelAdapter;
 }
 
+/**
+ * Test-only spy harness: captures exact adapter→canonical arguments.
+ * Production adapter does not export projection helpers.
+ */
+function loadAdapterWithCanonicalSpy() {
+  const adapterSource = fs.readFileSync(ADAPTER_PATH, 'utf8');
+  const captured = {
+    source: null,
+    capabilities: null,
+  };
+  const context = {
+    window: {
+      LoveBudAppreciationRenderModel: {
+        createAppreciationRenderModel(source, capabilities) {
+          captured.source = source;
+          captured.capabilities = capabilities;
+          return { captured: true };
+        },
+      },
+    },
+  };
+  vm.createContext(context);
+  vm.runInNewContext(adapterSource, context);
+  return {
+    api: context.window.LoveBudPublicViewerAppreciationModelAdapter,
+    captured,
+  };
+}
+
+const CAPTURED_FORBIDDEN_KEYS = [
+  'ownerId',
+  'owner_id',
+  'uid',
+  'firebaseUid',
+  'accountId',
+  'account_id',
+  'email',
+  'token',
+  'session',
+  'cookie',
+  'credential',
+  'privateMetadata',
+  'draftMetadata',
+  'moderation',
+  'entityId',
+  'entity_id',
+  'privateNote',
+  'private_note',
+  'raw',
+  'dbRow',
+];
+
+const CAPTURED_FORBIDDEN_SENTINELS = [
+  'TAG-PRIVATE',
+  'ENTITY-PRIVATE',
+  'OWNER-PRIVATE',
+  'ACCOUNT-PRIVATE',
+  'NOTE-PRIVATE',
+  'TOKEN-PRIVATE',
+  'ROOT-OWNER',
+  'ROOT-UID',
+  'ROOT-TOKEN',
+  'ROOT-PRIVATE',
+  'TITLE-OBJECT',
+  'URL-ARRAY',
+];
+
 // ── API · dependency ───────────────────────────────────────────────────────
 
 test('global API exists with required functions', () => {
@@ -916,6 +983,308 @@ test('public knowledge array and items are detached', () => {
   assert.equal(item.label, 'k');
   item.label = 'source-changed';
   assert.equal(model.moment.knowledgeItems[0].label, 'mutated-k');
+});
+
+// ── Adapter→canonical input boundary (spy) ─────────────────────────────────
+
+test('spy: projected source is exact public-safe allowlist', () => {
+  const { api, captured } = loadAdapterWithCanonicalSpy();
+  const raw = {
+    id: 'moment-1',
+    title: 'Public moment',
+    sourceUrl: 'https://example.com/video',
+    emotionTags: ['joy', { ownerId: 'TAG-PRIVATE' }],
+    publicKnowledgeItems: [
+      {
+        label: 'Public label',
+        type: 'person',
+        sourceLabel: 'Public context',
+        entityId: 'ENTITY-PRIVATE',
+        ownerId: 'OWNER-PRIVATE',
+        accountId: 'ACCOUNT-PRIVATE',
+        privateNote: 'NOTE-PRIVATE',
+        nested: {
+          token: 'TOKEN-PRIVATE',
+        },
+      },
+    ],
+    ownerId: 'ROOT-OWNER',
+    uid: 'ROOT-UID',
+    email: 'root@example.com',
+    token: 'ROOT-TOKEN',
+    privateMetadata: {
+      secret: 'ROOT-PRIVATE',
+    },
+  };
+
+  api.createPublicViewerAppreciationModel(raw, { canReact: true });
+
+  assert.deepEqual(hostValue(captured.source), {
+    id: 'moment-1',
+    title: 'Public moment',
+    sourceUrl: 'https://example.com/video',
+    emotionTags: ['joy'],
+    publicKnowledgeItems: [
+      {
+        label: 'Public label',
+        type: 'person',
+        sourceLabel: 'Public context',
+      },
+    ],
+  });
+});
+
+test('spy: captured source has no forbidden keys (recursive)', () => {
+  const { api, captured } = loadAdapterWithCanonicalSpy();
+  api.createPublicViewerAppreciationModel(
+    {
+      id: 'moment-1',
+      title: 'Public moment',
+      sourceUrl: 'https://example.com/video',
+      emotionTags: ['joy', { ownerId: 'TAG-PRIVATE' }],
+      publicKnowledgeItems: [
+        {
+          label: 'Public label',
+          type: 'person',
+          sourceLabel: 'Public context',
+          entityId: 'ENTITY-PRIVATE',
+          ownerId: 'OWNER-PRIVATE',
+          accountId: 'ACCOUNT-PRIVATE',
+          privateNote: 'NOTE-PRIVATE',
+          nested: { token: 'TOKEN-PRIVATE' },
+        },
+      ],
+      ownerId: 'ROOT-OWNER',
+      uid: 'ROOT-UID',
+      email: 'root@example.com',
+      token: 'ROOT-TOKEN',
+      privateMetadata: { secret: 'ROOT-PRIVATE' },
+    },
+    {}
+  );
+
+  const keys = [];
+  collectKeys(captured.source, keys, new WeakSet());
+  for (const forbidden of CAPTURED_FORBIDDEN_KEYS) {
+    assert.ok(
+      !keys.includes(forbidden),
+      `captured source must not contain forbidden key: ${forbidden}`
+    );
+  }
+});
+
+test('spy: captured source has no forbidden sentinel values', () => {
+  const { api, captured } = loadAdapterWithCanonicalSpy();
+  api.createPublicViewerAppreciationModel(
+    {
+      id: 'moment-1',
+      title: 'Public moment',
+      sourceUrl: 'https://example.com/video',
+      emotionTags: ['joy', { ownerId: 'TAG-PRIVATE' }],
+      publicKnowledgeItems: [
+        {
+          label: 'Public label',
+          type: 'person',
+          sourceLabel: 'Public context',
+          entityId: 'ENTITY-PRIVATE',
+          ownerId: 'OWNER-PRIVATE',
+          accountId: 'ACCOUNT-PRIVATE',
+          privateNote: 'NOTE-PRIVATE',
+          nested: { token: 'TOKEN-PRIVATE' },
+        },
+      ],
+      ownerId: 'ROOT-OWNER',
+      uid: 'ROOT-UID',
+      email: 'root@example.com',
+      token: 'ROOT-TOKEN',
+      privateMetadata: { secret: 'ROOT-PRIVATE' },
+    },
+    {}
+  );
+
+  const json = JSON.stringify(hostValue(captured.source));
+  for (const sentinel of CAPTURED_FORBIDDEN_SENTINELS) {
+    assert.ok(
+      !json.includes(sentinel),
+      `captured source must not contain sentinel: ${sentinel}`
+    );
+  }
+});
+
+test('spy: projected structures are detached from raw source', () => {
+  const { api, captured } = loadAdapterWithCanonicalSpy();
+  const tagPrivate = { ownerId: 'TAG-PRIVATE' };
+  const nested = { token: 'TOKEN-PRIVATE' };
+  const knowledgeItem = {
+    label: 'Public label',
+    type: 'person',
+    sourceLabel: 'Public context',
+    entityId: 'ENTITY-PRIVATE',
+    nested,
+  };
+  const tags = ['joy', tagPrivate];
+  const knowledgeList = [knowledgeItem];
+  const raw = {
+    id: 'moment-1',
+    title: 'Public moment',
+    sourceUrl: 'https://example.com/video',
+    emotionTags: tags,
+    publicKnowledgeItems: knowledgeList,
+  };
+
+  api.createPublicViewerAppreciationModel(raw, {});
+
+  assert.notEqual(captured.source, raw);
+  assert.notEqual(captured.source.emotionTags, tags);
+  assert.notEqual(captured.source.publicKnowledgeItems, knowledgeList);
+  assert.notEqual(captured.source.publicKnowledgeItems[0], knowledgeItem);
+  assert.equal(
+    Object.prototype.hasOwnProperty.call(
+      captured.source.publicKnowledgeItems[0],
+      'nested'
+    ),
+    false
+  );
+  assert.equal(
+    Object.prototype.hasOwnProperty.call(
+      captured.source.publicKnowledgeItems[0],
+      'entityId'
+    ),
+    false
+  );
+});
+
+test('spy: invalid scalar references are not projected', () => {
+  const { api, captured } = loadAdapterWithCanonicalSpy();
+  api.createPublicViewerAppreciationModel(
+    {
+      title: { secret: 'TITLE-OBJECT' },
+      sourceUrl: ['URL-ARRAY'],
+      memo: function () {},
+      likeCount: { value: 3 },
+      id: { nested: true },
+      memoryId: ['x'],
+      commentCount: '0',
+    },
+    {}
+  );
+
+  assert.deepEqual(hostValue(captured.source), {});
+  const json = JSON.stringify(hostValue(captured.source));
+  assert.ok(!json.includes('TITLE-OBJECT'));
+  assert.ok(!json.includes('URL-ARRAY'));
+});
+
+test('spy: non-array public knowledge containers are omitted', () => {
+  const { api, captured } = loadAdapterWithCanonicalSpy();
+  api.createPublicViewerAppreciationModel(
+    {
+      title: 'ok',
+      publicKnowledge: {
+        label: 'object container',
+        ownerId: 'PRIVATE',
+      },
+      public_knowledge: 'string-container',
+      publicKnowledgeItems: 42,
+      public_knowledge_items: function () {},
+    },
+    {}
+  );
+
+  assert.deepEqual(hostValue(captured.source), { title: 'ok' });
+  assert.equal(
+    Object.prototype.hasOwnProperty.call(captured.source, 'publicKnowledge'),
+    false
+  );
+  assert.equal(
+    Object.prototype.hasOwnProperty.call(captured.source, 'public_knowledge'),
+    false
+  );
+  assert.equal(
+    Object.prototype.hasOwnProperty.call(
+      captured.source,
+      'publicKnowledgeItems'
+    ),
+    false
+  );
+  assert.equal(
+    Object.prototype.hasOwnProperty.call(
+      captured.source,
+      'public_knowledge_items'
+    ),
+    false
+  );
+});
+
+test('spy: capability argument shape is exact and detached', () => {
+  const { api, captured } = loadAdapterWithCanonicalSpy();
+  const rawCaps = {
+    canReact: true,
+    canComment: 'true',
+    isPublicRoute: true,
+    canEdit: true,
+    isOwner: true,
+    canNuke: true,
+    admin: true,
+  };
+
+  api.createPublicViewerAppreciationModel({ title: 'x' }, rawCaps);
+
+  assert.notEqual(captured.capabilities, rawCaps);
+  assert.deepEqual(hostValue(captured.capabilities), {
+    canEdit: false,
+    canContinue: false,
+    canConnect: false,
+    canReact: true,
+    canComment: false,
+    canDelete: false,
+    canSwitchMode: false,
+    isOwner: false,
+    isPublicRoute: true,
+  });
+  assert.deepEqual(
+    Object.keys(captured.capabilities).sort(),
+    CAPABILITY_KEYS.slice().sort()
+  );
+  assert.equal(
+    Object.prototype.hasOwnProperty.call(captured.capabilities, 'canNuke'),
+    false
+  );
+  assert.equal(
+    Object.prototype.hasOwnProperty.call(captured.capabilities, 'admin'),
+    false
+  );
+});
+
+test('spy: tag projection forwards string items only', () => {
+  const { api, captured } = loadAdapterWithCanonicalSpy();
+  api.createPublicViewerAppreciationModel(
+    {
+      emotionTags: [
+        ' happy ',
+        { ownerId: 'TAG-PRIVATE' },
+        function () {},
+        'calm',
+        ['nested'],
+        3,
+      ],
+    },
+    {}
+  );
+  assert.deepEqual(hostValue(captured.source.emotionTags), [' happy ', 'calm']);
+});
+
+test('spy: finite numeric id is forwarded; invalid id types are not', () => {
+  const { api, captured } = loadAdapterWithCanonicalSpy();
+  api.createPublicViewerAppreciationModel({ id: 42 }, {});
+  assert.equal(captured.source.id, 42);
+
+  const { api: api2, captured: captured2 } = loadAdapterWithCanonicalSpy();
+  api2.createPublicViewerAppreciationModel(
+    { id: NaN, memoryId: Infinity, memory_id: true },
+    {}
+  );
+  assert.deepEqual(hostValue(captured2.source), {});
 });
 
 // ── Source-static scope guards (secondary) ─────────────────────────────────

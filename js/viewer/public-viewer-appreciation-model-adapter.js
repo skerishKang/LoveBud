@@ -6,16 +6,23 @@
  * Projects explicit public-safe selected-memory fields, then delegates to
  * window.LoveBudAppreciationRenderModel. No DOM, network, Auth, Editor,
  * mutation handlers, or page wiring.
+ *
+ * Input boundary policy: only type-safe allowlisted primitives/fields are
+ * forwarded to the canonical helper. Private keys, nested objects, raw
+ * references, and invalid container types never cross this boundary.
  */
 (function () {
   'use strict';
 
   var ERROR_PREFIX = '[public-viewer-appreciation-model-adapter]';
 
-  var SCALAR_KEYS = [
+  var ID_KEYS = [
     'id',
     'memoryId',
-    'memory_id',
+    'memory_id'
+  ];
+
+  var TEXT_KEYS = [
     'title',
     'memoryTitle',
     'memory_title',
@@ -34,7 +41,10 @@
     'timestamp',
     'memo',
     'emotionMemo',
-    'emotion_memo',
+    'emotion_memo'
+  ];
+
+  var COUNT_KEYS = [
     'likeCount',
     'like_count',
     'commentCount',
@@ -53,6 +63,25 @@
     'public_knowledge_items'
   ];
 
+  var KNOWLEDGE_LABEL_KEYS = [
+    'label',
+    'title',
+    'displayLabel',
+    'display_label'
+  ];
+
+  var KNOWLEDGE_TYPE_KEYS = [
+    'type',
+    'category'
+  ];
+
+  var KNOWLEDGE_SOURCE_LABEL_KEYS = [
+    'sourceLabel',
+    'source_label',
+    'contextLabel',
+    'context_label'
+  ];
+
   function hasOwn(obj, key) {
     return !!obj && Object.prototype.hasOwnProperty.call(obj, key);
   }
@@ -63,6 +92,22 @@
 
   function isLiteralTrue(value) {
     return value === true;
+  }
+
+  function isAllowedIdValue(value) {
+    if (typeof value === 'string') return true;
+    if (typeof value === 'number') {
+      return isFinite(value);
+    }
+    return false;
+  }
+
+  function isAllowedCountValue(value) {
+    if (typeof value !== 'number') return false;
+    if (!isFinite(value)) return false;
+    if (value !== Math.floor(value)) return false;
+    if (value < 0) return false;
+    return true;
   }
 
   /**
@@ -95,33 +140,68 @@
     };
   }
 
-  function projectKnowledgeItem(raw) {
-    if (!isPlainObject(raw)) {
-      return raw;
-    }
-
-    // Detached own-property copy; never keep the raw item reference.
-    // Functions and nested raw wrappers are not projected as handlers.
-    var out = {};
-    var keys = Object.keys(raw);
+  function copyStringOwnFields(raw, keys, out) {
     var i;
     for (i = 0; i < keys.length; i += 1) {
       var key = keys[i];
+      if (!hasOwn(raw, key)) continue;
       var value = raw[key];
-      if (typeof value === 'function') continue;
+      if (typeof value !== 'string') continue;
       out[key] = value;
+    }
+  }
+
+  /**
+   * Public knowledge item projection: display-field allowlist only.
+   * Returns null when no display-label field is present.
+   */
+  function projectKnowledgeItem(raw) {
+    if (!isPlainObject(raw)) {
+      return null;
+    }
+
+    var out = {};
+    copyStringOwnFields(raw, KNOWLEDGE_LABEL_KEYS, out);
+    copyStringOwnFields(raw, KNOWLEDGE_TYPE_KEYS, out);
+    copyStringOwnFields(raw, KNOWLEDGE_SOURCE_LABEL_KEYS, out);
+
+    var hasLabel = false;
+    var i;
+    for (i = 0; i < KNOWLEDGE_LABEL_KEYS.length; i += 1) {
+      if (hasOwn(out, KNOWLEDGE_LABEL_KEYS[i])) {
+        hasLabel = true;
+        break;
+      }
+    }
+    if (!hasLabel) {
+      return null;
     }
     return out;
   }
 
   function projectKnowledgeList(value) {
     if (!Array.isArray(value)) {
-      return value;
+      return null;
     }
     var out = [];
     var i;
     for (i = 0; i < value.length; i += 1) {
-      out.push(projectKnowledgeItem(value[i]));
+      var projected = projectKnowledgeItem(value[i]);
+      if (projected) out.push(projected);
+    }
+    return out;
+  }
+
+  function projectTagList(value) {
+    if (!Array.isArray(value)) {
+      return null;
+    }
+    var out = [];
+    var i;
+    for (i = 0; i < value.length; i += 1) {
+      var item = value[i];
+      if (typeof item !== 'string') continue;
+      out.push(item);
     }
     return out;
   }
@@ -130,6 +210,7 @@
    * Allowlisted public-safe projection only.
    * Does not preserve the raw source object reference.
    * Does not walk private/circular non-allowlisted graphs.
+   * Only type-safe primitives and string tag/knowledge display fields pass.
    */
   function projectPublicSafeSource(source) {
     if (!isPlainObject(source)) {
@@ -141,36 +222,44 @@
     var key;
     var value;
 
-    for (i = 0; i < SCALAR_KEYS.length; i += 1) {
-      key = SCALAR_KEYS[i];
+    for (i = 0; i < ID_KEYS.length; i += 1) {
+      key = ID_KEYS[i];
       if (!hasOwn(source, key)) continue;
       value = source[key];
-      if (typeof value === 'function') continue;
+      if (!isAllowedIdValue(value)) continue;
+      out[key] = value;
+    }
+
+    for (i = 0; i < TEXT_KEYS.length; i += 1) {
+      key = TEXT_KEYS[i];
+      if (!hasOwn(source, key)) continue;
+      value = source[key];
+      if (typeof value !== 'string') continue;
+      out[key] = value;
+    }
+
+    for (i = 0; i < COUNT_KEYS.length; i += 1) {
+      key = COUNT_KEYS[i];
+      if (!hasOwn(source, key)) continue;
+      value = source[key];
+      if (!isAllowedCountValue(value)) continue;
       out[key] = value;
     }
 
     for (i = 0; i < TAG_KEYS.length; i += 1) {
       key = TAG_KEYS[i];
       if (!hasOwn(source, key)) continue;
-      value = source[key];
-      if (typeof value === 'function') continue;
-      if (Array.isArray(value)) {
-        out[key] = value.slice();
-      } else {
-        out[key] = value;
-      }
+      value = projectTagList(source[key]);
+      if (value === null) continue;
+      out[key] = value;
     }
 
     for (i = 0; i < PUBLIC_KNOWLEDGE_KEYS.length; i += 1) {
       key = PUBLIC_KNOWLEDGE_KEYS[i];
       if (!hasOwn(source, key)) continue;
-      value = source[key];
-      if (typeof value === 'function') continue;
-      if (Array.isArray(value)) {
-        out[key] = projectKnowledgeList(value);
-      } else {
-        out[key] = value;
-      }
+      value = projectKnowledgeList(source[key]);
+      if (value === null) continue;
+      out[key] = value;
     }
 
     return out;
