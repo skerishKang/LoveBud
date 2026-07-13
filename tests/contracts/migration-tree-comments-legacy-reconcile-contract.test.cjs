@@ -553,8 +553,9 @@ const RUNBOOK_PATH = path.join(ROOT, 'docs', 'product', 'lovebud-tree-comments-l
 const runbook = readFile(RUNBOOK_PATH);
 
 // The bare single-line command (no fail-fast flag) is forbidden everywhere.
+// Direct migration URI variable is required for operator examples (#3477).
 const BARE_MIGRATION_CMD =
-  /psql\s+"\$DATABASE_URL"\s+-f\s+scripts\/migration-reconcile-tree-comments-legacy-schema\.sql/;
+  /psql\s+"\$(?:DATABASE_URL|LOVE_BUD_PRODUCTION_DIRECT_DATABASE_URL)"\s+-f\s+scripts\/migration-reconcile-tree-comments-legacy-schema\.sql/;
 const ON_ERROR_STOP_RE = /-v\s+ON_ERROR_STOP=1/;
 
 test('reconcile migration SQL usage comment uses fail-fast ON_ERROR_STOP=1', () => {
@@ -579,8 +580,8 @@ test('reconcile runbook migration command block uses ON_ERROR_STOP=1', () => {
   const block = nextSec > 0 ? sec8.slice(0, nextSec) : sec8;
   assert.match(
     block,
-    /psql\s+"\$DATABASE_URL"\s+-v\s+ON_ERROR_STOP=1\s+\\\s*\n\s*-f\s+scripts\/migration-reconcile-tree-comments-legacy-schema\.sql/,
-    'Runbook migration command block must use psql -v ON_ERROR_STOP=1 -f ...'
+    /psql\s+"\$LOVE_BUD_PRODUCTION_DIRECT_DATABASE_URL"\s+-v\s+ON_ERROR_STOP=1\s+\\\s*\n\s*-f\s+scripts\/migration-reconcile-tree-comments-legacy-schema\.sql/,
+    'Runbook migration command block must use direct URI + psql -v ON_ERROR_STOP=1 -f ...'
   );
   assert.equal(BARE_MIGRATION_CMD.test(block), false, 'Runbook migration command block must not be the bare form');
 });
@@ -591,8 +592,8 @@ test('reconcile runbook rollback command continues to use ON_ERROR_STOP=1', () =
   const block = nextSec > 0 ? sec11.slice(0, nextSec) : sec11;
   assert.match(
     block,
-    /psql\s+"\$DATABASE_URL"\s+-v\s+ON_ERROR_STOP=1\s+\\\s*\n\s*-f\s+scripts\/rollback-tree-comments-legacy-reconcile\.sql/,
-    'Runbook rollback command must continue to use psql -v ON_ERROR_STOP=1 -f ...'
+    /psql\s+"\$LOVE_BUD_PRODUCTION_DIRECT_DATABASE_URL"\s+-v\s+ON_ERROR_STOP=1\s+\\\s*\n\s*-f\s+scripts\/rollback-tree-comments-legacy-reconcile\.sql/,
+    'Runbook rollback command must continue to use direct URI + psql -v ON_ERROR_STOP=1 -f ...'
   );
 });
 
