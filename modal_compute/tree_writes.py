@@ -28,8 +28,18 @@ from modal_compute.validation import (
 )
 
 
-def create_owner_tree(owner_id: str, payload: dict[str, Any]) -> dict[str, Any]:
-    ensure_owner_user_exists(owner_id)
+def create_owner_tree(
+    owner_id: str,
+    payload: dict[str, Any],
+    owner_email: str = "",
+) -> dict[str, Any]:
+    # Ownership identity is always the verified Firebase uid/sub. Email is
+    # optional users-table metadata only and must never become owner_id.
+    owner_id = str(owner_id or "").strip()
+    if not owner_id:
+        raise HTTPException(status_code=401, detail="Authentication required")
+
+    ensure_owner_user_exists(owner_id, owner_email)
     title = validate_optional_string(payload.get("title"), 200) or "My LoveTree"
     visibility = validate_visibility(payload.get("visibility"), "public")
     require_plus_for_private_storage(owner_id, visibility)
@@ -46,14 +56,34 @@ def create_owner_tree(owner_id: str, payload: dict[str, Any]) -> dict[str, Any]:
     """
 
     with get_db_connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                query,
-                (str(uuid.uuid4()), owner_id, title, visibility,
-                 group_name, keywords),
-            )
-            row = cur.fetchone()
-        conn.commit()
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    query,
+                    (str(uuid.uuid4()), owner_id, title, visibility,
+                     group_name, keywords),
+                )
+                row = cur.fetchone()
+
+            # Fail closed before commit: never persist a tree whose returned
+            # owner_id does not exactly match the authenticated UID.
+            returned_owner_id = str((row or {}).get("owner_id") or "").strip()
+            if not row or returned_owner_id != owner_id:
+                conn.rollback()
+                raise HTTPException(
+                    status_code=500,
+                    detail="Tree owner binding failed",
+                )
+
+            conn.commit()
+        except HTTPException:
+            raise
+        except Exception:
+            try:
+                conn.rollback()
+            except Exception:
+                pass
+            raise
 
     return normalize_tree_row(row, 0, include_owner_metadata=True)
 

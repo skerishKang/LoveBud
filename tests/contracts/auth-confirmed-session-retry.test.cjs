@@ -273,3 +273,115 @@ test('private tree api fetch still attaches authorization from session-scoped ca
 
   assert.equal(capturedHeaders.Authorization, 'Bearer safe-test-token');
 });
+
+test('cached token uid mismatch with confirmed user drops stale token and does not authorize with it', async () => {
+  const localStorageMock = createStorageMock({
+    lovebud_auth_confirmed: 'true',
+    lovebud_auth_cache: JSON.stringify({
+      uid: 'current-user',
+      email: 'current@example.com',
+    }),
+  });
+  const sessionStorageMock = createStorageMock({
+    lovebud_auth_token: JSON.stringify({
+      uid: 'previous-user',
+      token: 'stale-previous-token',
+      expiresAt: Date.now() + 60000,
+    }),
+  });
+  const freshUser = {
+    uid: 'current-user',
+    getIdTokenResult: async () => ({
+      token: 'fresh-current-token',
+      expirationTime: new Date(Date.now() + 60000).toISOString(),
+    }),
+  };
+  const firebaseMock = {
+    auth: () => ({
+      currentUser: freshUser,
+    }),
+  };
+
+  const sandbox = {
+    window: {
+      __LOVEBUD_AUTH_WAIT_MS: 200,
+      __lovebudAuthReady: true,
+      localStorage: localStorageMock,
+      sessionStorage: sessionStorageMock,
+      firebase: firebaseMock,
+      LoveBudAuthState: null,
+    },
+    localStorage: localStorageMock,
+    sessionStorage: sessionStorageMock,
+    firebase: firebaseMock,
+    console,
+    setTimeout,
+    clearTimeout,
+    CustomEvent: function CustomEvent(type, init) {
+      this.type = type;
+      this.detail = init && init.detail;
+    },
+  };
+
+  vm.createContext(sandbox);
+  vm.runInContext(fs.readFileSync(AUTH_POLICY_PATH, 'utf8'), sandbox, { filename: AUTH_POLICY_PATH });
+  vm.runInContext(fs.readFileSync(BASE_API_FETCH_PATH, 'utf8'), sandbox, { filename: BASE_API_FETCH_PATH });
+
+  const cached = sandbox.window.LoveTreeBaseApiFetch.getCachedTokenRecord();
+  assert.equal(cached, null, 'mismatched cached token must be cleared');
+  assert.equal(
+    sessionStorageMock.getItem('lovebud_auth_token'),
+    null,
+    'stale token record must be removed from session storage'
+  );
+
+  const headers = await sandbox.window.LoveTreeBaseApiFetch.getAuthHeaders({
+    requireAuth: true,
+  });
+  assert.equal(headers.Authorization, 'Bearer fresh-current-token');
+  assert.notEqual(headers.Authorization, 'Bearer stale-previous-token');
+});
+
+test('bootstrap without expected uid still allows matching session-scoped cached token', async () => {
+  const localStorageMock = createStorageMock();
+  const sessionStorageMock = createStorageMock({
+    lovebud_auth_token: JSON.stringify({
+      uid: 'bootstrap-user',
+      token: 'bootstrap-token',
+      expiresAt: Date.now() + 60000,
+    }),
+  });
+  const sandbox = {
+    window: {
+      __LOVEBUD_AUTH_WAIT_MS: 200,
+      __lovebudAuthReady: false,
+      localStorage: localStorageMock,
+      sessionStorage: sessionStorageMock,
+      firebase: null,
+      LoveBudAuthState: null,
+    },
+    localStorage: localStorageMock,
+    sessionStorage: sessionStorageMock,
+    firebase: null,
+    console,
+    setTimeout,
+    clearTimeout,
+    CustomEvent: function CustomEvent(type, init) {
+      this.type = type;
+      this.detail = init && init.detail;
+    },
+  };
+
+  vm.createContext(sandbox);
+  vm.runInContext(fs.readFileSync(AUTH_POLICY_PATH, 'utf8'), sandbox, { filename: AUTH_POLICY_PATH });
+  vm.runInContext(fs.readFileSync(BASE_API_FETCH_PATH, 'utf8'), sandbox, { filename: BASE_API_FETCH_PATH });
+
+  const cached = sandbox.window.LoveTreeBaseApiFetch.getCachedTokenRecord();
+  assert.ok(cached);
+  assert.equal(cached.token, 'bootstrap-token');
+
+  const headers = await sandbox.window.LoveTreeBaseApiFetch.getAuthHeaders();
+  assert.equal(headers.Authorization, 'Bearer bootstrap-token');
+  // Confirmed session must remain untouched during bootstrap-only token use.
+  assert.equal(localStorageMock.getItem('lovebud_auth_confirmed'), null);
+});
