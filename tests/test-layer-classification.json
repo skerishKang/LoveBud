@@ -1639,7 +1639,7 @@
     {
       "path": "tests/contracts/legacy-compatibility-registry-contract.test.cjs",
       "layer": "SOURCE_STATIC",
-      "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
+      "rationale": "Reads the LEGACY_COMPATIBILITY_REGISTRY.md document and asserts on its structure, fields, classifications, and content markers; does not execute any runtime behavior or access external resources.",
       "capabilities": []
     },
     {

@@ -1,466 +1,461 @@
 # Legacy Compatibility Retirement Registry
 
-## Purpose
+Canonical record of legacy interfaces, compatibility boundaries, and transitional
+artifacts remaining in the LoveBud / LoveTree codebase.
 
-This document defines the repository-owned registry format and the initial inventory
-of legacy and transitional structures that LoveBud still retains. It is **not** a
-removal list and does not authorize deletion of any runtime artifact.
+**This registry does not authorize removal, refactoring, or migration.**
+It records evidence, ownership, risk, consumers, and preconditions so that
+future removal decisions can be made with verified facts.
 
-The registry field set and vocabulary defined here are the official operational
-format for tracking legacy/transitional artifacts. The recorded items (LC-001
-through LC-005) constitute the **initial inventory**; this inventory is not claimed to be exhaustive. Other legacy or transitional artifacts may exist elsewhere
-in the repository. Any newly identified artifact must go through a separate evidence
-review before a registry item is added.
+## Parent issue
 
-For every entry it records:
+- #3425 (Keep OPEN)
 
-- why the artifact is still retained,
-- which consumers have been confirmed or are only suspected,
-- what is explicitly not yet confirmed,
-- when removal review may become possible,
-- which verification must pass before any future removal.
+## Related issues
 
-The registry supports the architecture changeability and production-parity work
-tracked under parent Issue #3425. It was created for Issue #3427 through PR #3428,
-following the audit foundation merged in PR #3426
-(`docs/engineering/lovebud-changeability-production-parity-audit.md`).
-
-## Rules
-
-1. Registry entries are documentation only. No runtime file in this repository is
-   modified, deleted, moved, or reactivated by this document.
-2. Every factual claim is tagged with an evidence level:
-   - `CONFIRMED` — verified directly in the repository source (file content,
-     grep/import search) at the recorded `Last-reviewed main SHA`.
-   - `LIKELY` — strongly inferred from indirect evidence but not directly proven
-     from source.
-   - `UNKNOWN` — consumer or removal safety is not established from source.
-   Do not force an `UNKNOWN` into a conclusion.
-   The item-level `Evidence level` classifies the artifact's existence and its
-   primary source evidence (file present, self-described role, source consumers
-   found). Individual operational or removal-safety claims inside the item must
-   still be tagged `CONFIRMED`, `LIKELY`, or `UNKNOWN` separately when they differ
-   from the item-level classification. Source consumer existence can be `CONFIRMED`;
-   live payload necessity, deployed legacy-record existence, and client/server
-   responsibility overlap are typically `LIKELY` or `UNKNOWN`.
-3. Production, staging, databases, and Docker are never queried to fill `UNKNOWN`
-   values. The registry stays within repository-source evidence.
-4. Classification uses a fixed vocabulary:
-   `TRANSITIONAL_ADAPTER`, `COMPATIBILITY_ALIAS`, `DUAL_NORMALIZATION_PATH`,
-   `LEGACY_DEPLOYMENT_ARTIFACT`, `PERMANENT_SUPPORT_CANDIDATE`.
-   A new value is added only with an explicit written justification in the entry.
-5. Status uses a fixed vocabulary:
-   `RETAIN`, `REVIEW_REQUIRED`, `REMOVAL_BLOCKED`, `PERMANENT_SUPPORT_PENDING`.
-6. New GitHub removal issues are not created from this registry. If a concrete
-   narrow gap is found, the follow-up decision records `NEW_NARROW_GAP_REQUIRED`
-   or `FOLLOW_UP_UNDECIDED` for separate CTO judgment after merge.
-
-## Domain ownership
-
-Each entry declares a single domain owner so cross-domain concerns are not mixed:
-
-- `PUBLIC_READ_COMPATIBILITY` — public browse/viewer read normalization and adapters.
-- `EDITOR_VIEWER_SHARED_STATE` — shared mutable globals between editor and viewer.
-- `DEPLOYMENT_LEGACY` — legacy deployment configuration and artifacts.
-
-These must not be confused with other domain owners:
-
-- Tree Social: #3188 / PR #3424 context
-- Moment Social: #3075
-- Scout: #1882 (Scout is **not** a Social owner; it is a separate discovery surface)
-- Architecture parent: #3425
-
-Scout (#1882) is referenced only as a boundary; it is neither implemented nor
-extended by this registry work.
-
-## Registry vocabulary reference
-
-Evidence levels: `CONFIRMED`, `LIKELY`, `UNKNOWN`.
-Classification: `TRANSITIONAL_ADAPTER`, `COMPATIBILITY_ALIAS`,
-`DUAL_NORMALIZATION_PATH`, `LEGACY_DEPLOYMENT_ARTIFACT`,
-`PERMANENT_SUPPORT_CANDIDATE`.
-Status: `RETAIN`, `REVIEW_REQUIRED`, `REMOVAL_BLOCKED`,
-`PERMANENT_SUPPORT_PENDING`.
+- #3075 (Social: moment-level — Keep OPEN)
+- #3188 (Social: tree-level — Keep OPEN)
+- #1882 (Keep OPEN)
+- #3454 (this registry — closes on merge)
 
 ---
 
-## LC-001 — public tree client adapter
+## Classification vocabulary
 
-- Registry ID: LC-001
-- Artifact / path: `js/api/public-tree-adapter.js`
-- Domain owner: PUBLIC_READ_COMPATIBILITY
-- Classification: TRANSITIONAL_ADAPTER
-- Evidence level: CONFIRMED
-- Evidence:
-  - File contents read directly at `js/api/public-tree-adapter.js` (271 lines).
-  - The adapter's own header states it is `Transitional compatibility only for
-    public browse paths` and `Handles legacy { data } wrapper and tree_id,
-    created_at, owner_id, emotion_tags`. (CONFIRMED)
-  - Consumers found by repository-wide search:
-    - `js/viewer/public-canvas-bridge.js:58` reads `window.LoveTreePublicTreeAdapter`. (CONFIRMED)
-    - `js/search/search-index.js:262` calls `buildPublicTreeSummaryModels`. (CONFIRMED)
-    - `js/search/search-data-adapter.js:13` returns the adapter. (CONFIRMED)
-    - `js/postgres-client.js:2` captures `window.LoveTreePublicTreeAdapter` at
-      module-evaluation time and throws `'LoveTreePublicTreeAdapter not loaded'`
-      if absent. (CONFIRMED)
-    - `js/my-trees/my-trees-card-visuals.js:95` uses the adapter. (CONFIRMED)
-    - `js/browse-prefetch.js:38` uses `buildPublicTreeSummaryModels`. (CONFIRMED)
-  - The adapter also assigns YouTube helpers to `window.__LoveBudApiClientInternals`
-    when present. (CONFIRMED)
-  - Whether every production page still depends on the legacy `{ data }` unwrap
-    path versus only the canonical camelCase path is `UNKNOWN` from source alone.
+Five allowed values. Each entry must carry exactly one.
+
+| Classification | Meaning |
+|---|---|
+| `RETAIN_TEMPORARILY` | Current consumers exist and a replacement is not yet complete. Must stay until preconditions are met. |
+| `PERMANENT_COMPATIBILITY_BOUNDARY` | Product intentionally commits to supporting this boundary indefinitely. |
+| `REMOVAL_CANDIDATE` | Evidence of absent consumers or completed replacement exists, but a separate removal issue and verification are required. |
+| `OWNED_BY_OTHER_TRACK` | Owned by another product or migration track. This registry records compatibility context only. |
+| `EVIDENCE_REQUIRED` | Safe classification cannot be determined from current `main` evidence alone. |
+
+---
+
+## Entry 1: Transitional public-tree adapter
+
+- Evidence paths:
+  - `js/api/public-tree-adapter.js`
+  - `index.html` (script include)
+  - `pages/search.html` (script include)
+  - `pages/my-trees.html` (script include)
+- Owner domain: Frontend — public browse / search
+- Classification: `RETAIN_TEMPORARILY`
 - Reason retained:
-  - Confirmed source consumers (listed under Known consumers) still load or call the
-    adapter at runtime start, and the adapter contract still supports legacy
-    `{ data }` envelopes and snake_case fields (`tree_id`, `created_at`, `owner_id`,
-    `emotion_tags`). Whether current live responses still require each legacy branch
-    is `UNKNOWN` from repository source alone.
-  - `postgres-client.js` reads the adapter at module load, so removal would break the
-    current source-loading contract documented in
-    `PUBLIC_TREE_ADAPTER_BOUNDARY_AUDIT.md`. Live legacy-shape necessity is `UNKNOWN`.
+  Provides `window.LoveTreePublicTreeAdapter` with `normalizeBrowseTreeRecord`,
+  `normalizeBrowseMemoryRecord`, `buildPublicTreeSummaryModels`,
+  `buildPublicTreeViewModels`, and YouTube canonicalization helpers.
+  Also injects into `window.__LoveBudApiClientInternals` via
+  `js/postgres-client.js:238` for internal API client consumption.
+  Multiple contract tests parse and execute this module.
 - Known consumers:
-  - `js/viewer/public-canvas-bridge.js`
-  - `js/search/search-index.js`
-  - `js/search/search-data-adapter.js`
-  - `js/postgres-client.js`
-  - `js/my-trees/my-trees-card-visuals.js`
-  - `js/browse-prefetch.js`
-  - (Potential indirect consumers via `window.__LoveBudApiClientInternals` are
-    `UNKNOWN`; no additional indirect consumer is claimed without exact source
-    evidence.)
+  - `index.html:85` — page-level script include
+  - `pages/search.html:148` — page-level script include
+  - `pages/my-trees.html:132` — page-level script include
+  - `js/viewer/public-canvas-bridge.js:58-59` — reads `window.LoveTreePublicTreeAdapter`
+  - `js/postgres-client.js:238` — sets `window.__LoveBudApiClientInternals`
+  - `tests/contracts/public-tree-adapter-*.test.cjs` — 5+ contract tests parse source
+  - `tests/contracts/tree-thumbnail-normalization-contract.test.cjs`
+  - `tests/contracts/naming-canonical-namespace.test.cjs`
+  - `tests/contracts/auth-offline-mode.test.cjs`
+  - `tests/contracts/auth-confirmed-session-retry.test.cjs`
+  - `tests/contracts/my-trees-visibility-display-contract.test.cjs`
+  - `tests/routes/search-script-order-contract.test.cjs` / `.js`
 - Compatibility/change risk:
-  - High for the public viewer/read path: removing the adapter breaks
-    `postgres-client.js` initialization and the confirmed browse/search/viewer
-    consumers listed above that depend on snake_case or `{ data }` normalization.
-  - The Modal normalization in `modal_compute/public_reads.py` returns canonical
-    camelCase, so part of the client-side legacy unwrap may be redundant once the
-    API response shape is guaranteed canonical; that overlap is `LIKELY` but not
-    proven safe to drop from the client.
-- Removal preconditions:
-  - Repository-wide import/reference search for `LoveTreePublicTreeAdapter` returns
-    zero production consumers outside this transitional adapter contract.
-  - `postgres-client.js` no longer captures the adapter at module load, or a
-    canonical replacement is wired before removal.
-  - Public browse/search/viewer fixed-slot contracts pass using only canonical
-    camelCase responses with the `{ data }` unwrap path removed.
-  - `PUBLIC_TREE_ADAPTER_BOUNDARY_AUDIT.md` loading-order contract is updated and
-    the script tag is removed from all referencing `pages/*.html`.
-- Required verification before removal:
-  - `node --test tests/contracts/public-tree-adapter-module.test.cjs` and the
-    namespace/loading contract tests pass without the adapter present.
-  - Preview deployment smoke for `/search.html`, `/detail.html`, and the public
-    viewer passes after adapter removal.
-  - Rollback is a single commit revert with no data/schema mutation.
-- Rollback/recovery expectation:
-  - Source revert only. Re-add `js/api/public-tree-adapter.js` and its script tag;
-    no DB or schema change is involved.
-- Existing issue/audit relationship:
-  - Parent: #3425.
-  - Audit foundation: PR #3426 (`lovebud-changeability-production-parity-audit.md`,
-    editor/viewer + public-read legacy retention section).
-  - Related audit: `PUBLIC_TREE_ADAPTER_BOUNDARY_AUDIT.md` (#412),
-    `PUBLIC_TREE_YOUTUBE_UTILITY_SPLIT_AUDIT.md`,
-    `JS_SCRIPT_LOADING_NAMESPACE_CONTRACT.md`.
-  - This is a concrete gap beyond those audit acceptances, so follow-up is
-    `NEW_NARROW_GAP_REQUIRED` scoped to client adapter retirement only.
-- Follow-up decision: NEW_NARROW_GAP_REQUIRED
-- Status: REMOVAL_BLOCKED
-- Last-reviewed main SHA: 81d01bb6b5085e0333d901d2e6c929f9b197349e
+  Breaking the adapter surface breaks all public browse pages, the public canvas
+  bridge, and many contract tests. Snake_case → camelCase normalization is the
+  core transitional shape. Removing the adapter requires every consumer to read
+  canonical camelCase fields directly.
+- Exact removal preconditions:
+  - All 3 HTML script includes removed (adapter no longer served to browsers)
+  - `window.__LoveBudApiClientInternals` injection relocated or removed
+  - `public-canvas-bridge.js` reads canonical fields directly without adapter
+  - All adapter-dependent contract tests migrated to canonical shape
+  - `window.LoveTreePublicTreeAdapter` has zero runtime callers
+- Permanent-support decision: (not applicable — classified RETAIN_TEMPORARILY)
+- Verification before removal:
+  - repository-wide `LoveTreePublicTreeAdapter` reference count = 0
+  - repository-wide `__LoveBudApiClientInternals` reference count = 0
+  - all browse/search/my-trees pages load and render without the adapter script
+  - public canvas bridge loads public tree data without adapter dependency
+- Rollback/restore expectation:
+  Revert the commit that removes the script includes and adapter file. All
+  contract tests will re-pass.
+- Linked issue or future-child candidate: (none yet — created as part of #3454)
+- Last evidence baseline:
+  - SHA: `0c3b283a235d760a661b1e7fff61f6e3a44d466e`
+  - Date: `2026-07-14`
 
 ---
 
-## LC-002 — Modal public read normalization
+## Entry 2: Modal legacy public-read normalization
 
-- Registry ID: LC-002
-- Artifact / path: `modal_compute/public_reads.py`
-- Domain owner: PUBLIC_READ_COMPATIBILITY
-- Classification: DUAL_NORMALIZATION_PATH
-- Evidence level: CONFIRMED
-- Evidence:
-  - File contents read directly at `modal_compute/public_reads.py` (780 lines).
-  - The module imports `normalize_row`, `normalize_memory_row`, `normalize_tree_row`
-    from `modal_compute.validation` for the modern path. (CONFIRMED)
-  - Legacy normalization helpers are present and named explicitly:
-    `_is_public_legacy_node`, `_get_legacy_memory_from_payload`,
-    `_legacy_payload_node_to_memory_row`, `_normalize_legacy_tree_row`,
-    `_normalize_legacy_memory_row`. They convert the legacy
-    `name/is_public/payload` tree shape and `payload.nodes` into the canonical
-    memory/tree shape expected by the frontend. (CONFIRMED)
-  - Multiple public-read functions document a modern/memories-table path with a
-    `Falls back to legacy trees.payload format if memories table is missing`
-    branch: `fetch_latest_public_tree_snapshots`,
-    `fetch_growing_public_tree_snapshots`, `fetch_public_memories`,
-    `fetch_public_memory`. (CONFIRMED)
-  - API entrypoints confirmed in `modal_compute/app.py`:
-    `fetch_latest_public_tree_snapshots` (app.py:157),
-    `fetch_growing_public_tree_snapshots` (app.py:178),
-    `fetch_public_memories` (app.py:205), `fetch_public_memory` (app.py:225). (CONFIRMED)
-  - The client adapter (LC-001) and this module overlap on snake_case/legacy
-    unwrap, but the boundary is `LIKELY` split: client handles response envelope
-    + YouTube canonicalization, Modal handles DB-row legacy payload. Exact overlap
-    ownership is `UNKNOWN` without tracing every live response shape.
+- Evidence paths:
+  - `modal_compute/public_reads.py`
+  - `modal_compute/app.py` (imports from `public_reads` at lines 25-27)
+  - `modal_compute/validation.py` (normalize_row, normalize_memory_row, etc.)
+- Owner domain: Modal compute — public read endpoints
+- Classification: `RETAIN_TEMPORARILY`
 - Reason retained:
-  - The source retains compatibility for deployments or records that may still use
-    the legacy `payload.nodes` shape or lack the modern `memories` table. The legacy
-    fallback remains reachable in source and the public-read functions are called by
-    the app routes, so the fallback path must stay wired until a future data/schema
-    review says otherwise.
-  - Whether any currently deployed data or schema still requires this fallback is
-    `UNKNOWN` from repository source alone. Removal therefore remains blocked until
-    that future evidence is obtained.
+  `modal_compute/public_reads.py` (780 lines) contains the canonical public
+  browse/detail query layer with legacy normalization fallbacks:
+  - `_is_public_legacy_node()` (line 76) — checks legacy payload shape for public visibility
+  - `normalize_row()` with `include_like_count` — builds camelCase output from snake_case DB columns
+  - `_build_reaction_counts()` — wraps raw counts with `total` key
+  - `_table_exists` / `_table_has_column` caching — accommodates gradual schema evolution
+  - `like_count` / `view_count` column detection and conditional query building
+  - `fetch_public_tree_like_count` consumed by `app.py:254`
+  - Browse sort by `likes` / `views` with conditional column presence
 - Known consumers:
-  - `modal_compute/app.py` FastAPI routes (public tree list, growing trees, public
-    memories, single public memory).
-  - Frontend public read paths that consume the normalized camelCase output
-    (search/browse/detail/viewer via LC-001).
+  - `modal_compute/app.py:25-27` — imports `fetch_public_tree_list`, `fetch_public_tree_detail`, etc.
+  - `modal_compute/app.py:254` — calls `fetch_public_tree_like_count`
+  - Dozens of contract tests read and assert on `modal_compute/public_reads.py` content
 - Compatibility/change risk:
-  - High if removed while any legacy-shaped record or missing `memories` table
-    remains: public reads would silently drop trees/memories.
-  - Single-ownership transfer to the client adapter is risky until the API response
-    contract is guaranteed canonical end-to-end.
-- Removal preconditions:
-  - A separately approved read-only data/schema audit confirms that no deployed
-    environment in scope requires the legacy `payload.nodes` fallback and that the
-    modern `memories` table/columns are present. This audit is **not** performed by
-    this PR; it is a future verification requirement.
-  - The audit result must be sanitized and must not expose DB credentials, raw
-    records, raw UUIDs, or private endpoints.
-  - Executable fixtures cover both the previous legacy input and canonical input and
-    prove canonical-only behavior before removal.
-  - Repository source search confirms no route still calls the legacy helper
-    functions after the approved migration/cutover.
-- Required verification before removal:
-  - `node --test` and the Modal public-read contract suite
-    (`tests/contracts/test_public_legacy_memory_visibility.py`) pass with the
-    legacy branch removed.
-  - Preview deployment smoke for public browse/search/viewer returns equivalent
-    results to the dual-path baseline.
-  - Rollback is a single commit revert with no data/schema mutation.
-- Rollback/recovery expectation:
-  - Source revert only (restore the legacy fallback branch). No DB or schema change.
-- Existing issue/audit relationship:
-  - Parent: #3425.
-  - Audit foundation: PR #3426.
-  - This entry is deliberately scoped away from PR #3424 (`tree_comments`
-    migration), tree-level Social (#3188), and moment-level Social (#3075). Those
-    are separate owners and must not be conflated with public-read normalization.
-  - Concrete gap beyond the audit acceptance → `NEW_NARROW_GAP_REQUIRED` scoped to
-    Modal legacy normalization retirement only.
-- Follow-up decision: NEW_NARROW_GAP_REQUIRED
-- Status: REMOVAL_BLOCKED
-- Last-reviewed main SHA: 81d01bb6b5085e0333d901d2e6c929f9b197349e
+  Normalization layer is deeply embedded in the public read query pipeline.
+  Removing it requires schema-level `like_count`/`view_count` column guarantee
+  and all consumers to accept raw DB shapes.
+- Exact removal preconditions:
+  - `tree_social_counts.like_count` and `tree_social_counts.view_count` columns guaranteed present in all environments (no conditional column detection)
+  - All public read endpoints return canonical camelCase payloads without normalization
+  - `public_reads.py` legacy fallback code (`_is_public_legacy_node`, column-detection SQL paths) has zero callers
+  - Contract tests updated to assert canonical shapes only
+- Permanent-support decision: (not applicable — classified RETAIN_TEMPORARILY)
+- Verification before removal:
+  - Deployment with schema migration completes successfully
+  - Browse/search/detail public endpoints return correct payloads without `public_reads.py` normalization
+  - Sort-by-likes and sort-by-views work without conditional column detection
+- Rollback/restore expectation:
+  Revert the `public_reads.py` change and re-deploy Modal. Pre-removal
+  normalization resumes.
+- Linked issue or future-child candidate: (future child for `public_reads.py` decomposition)
+- Last evidence baseline:
+  - SHA: `0c3b283a235d760a661b1e7fff61f6e3a44d466e`
+  - Date: `2026-07-14`
 
 ---
 
-## LC-003 — editor/public-viewer compatibility globals
+## Entry 3: Shared Viewer/Editor state aliases
 
-- Registry ID: LC-003
-- Artifact / path:
-  - `window.currentTreeData` (write: `js/viewer/public-canvas-bridge.js:115`,
-    `js/editor/editor-tree-helpers.js:67`, `js/editor/editor-rename-ui.js:240,246`;
-    read: editor + viewer handlers)
-  - `window.currentTreeMemories` (write: `js/viewer/public-canvas-bridge.js:116`,
-    `js/editor/editor-data-loader.js:204,243,268`,
-    `js/editor/editor-data-loader-fallbacks.js:195,230,297`, `js/editor.js:559,610`;
-    read: editor + viewer)
-  - `window.__viewerTreeData` (write: `js/viewer/public-canvas-init.js:697`;
-    read: `js/viewer/public-canvas-init.js:700,749,771,802,840`)
-- Domain owner: EDITOR_VIEWER_SHARED_STATE
-- Classification: COMPATIBILITY_ALIAS
-- Evidence level: CONFIRMED
-- Evidence:
-  - Write/read sites located by repository-wide search of `window.currentTreeData`,
-    `window.currentTreeMemories`, `window.__viewerTreeData`. (CONFIRMED)
-  - `window.currentTreeData` is written in both the viewer bridge and editor
-    helpers/rename UI, and read across editor sidebar/rename/memory-actions and
-    viewer handler/canvas entry. (CONFIRMED)
-  - `window.currentTreeMemories` is written by both editor loaders and the viewer
-    bridge, and read across editor and viewer surfaces. (CONFIRMED)
-  - `window.__viewerTreeData` is written in exactly one place
-    (`public-canvas-init.js:697`) and read only within the same file as an alias
-    that falls back to `window.currentTreeData`. (CONFIRMED)
-  - The changeability audit (PR #3426) records these globals as the editor/viewer
-    shared-state bridge coupling. (CONFIRMED)
-  - Whether every read site can move to an explicit store without behavior change
-    is `UNKNOWN` from source alone.
+### 3a. `window.currentTreeData`
+
+- Evidence paths:
+  - Producer: `js/viewer/public-canvas-bridge.js:115`
+  - Producer: `js/editor/editor-tree-helpers.js:67`
+  - Producer: `js/editor/editor-rename-ui.js:240`
+  - Consumer: `js/editor.js:226`
+  - Consumer: `js/editor/editor-canvas.js:27`
+  - Consumer: `js/editor/editor-detail-sidebar-status-boundary.js:26`
+  - Consumer: `js/editor/editor-memory-actions.js:269`
+  - Consumer: `js/editor/editor-page-helpers.js:174`
+  - Consumer: `js/editor/editor-rename-ui.js:50`
+  - Consumer: `js/viewer/public-canvas-init.js:362`
+  - Consumer: `js/viewer/public-viewer-canvas-entry.js:162`
+  - Consumer: `js/viewer/viewer-handler-factory.js:33`
+  - Many test files set and read this value
+- Owner domain: Editor + Viewer shared runtime
+- Classification: `RETAIN_TEMPORARILY`
 - Reason retained:
-  - During the editor/viewer refactor these globals acted as the shared mutable
-    bridge so editor authoring state and the public viewer runtime could exchange
-    the active tree/memories without a formal store.
-  - Existing contract tests pin the globals (e.g. `public-canvas-bridge.js` must
-    still set `currentTreeData`), so they are load-bearing for current tests.
-- Known consumers:
-  - Editor: `editor-tree-helpers.js`, `editor-sidebar-ui.js`, `editor-rename-ui.js`,
-    `editor-memory-actions.js`, `editor-detail-sidebar-status-boundary.js`,
-    `editor-data-loader.js`, `editor-data-loader-fallbacks.js`, `editor.js`.
-  - Viewer: `public-canvas-bridge.js`, `public-viewer-canvas-entry.js`,
-    `public-canvas-init.js`, `viewer-handler-factory.js`.
-- Compatibility/change risk:
-  - Medium-High: the alias couples editor authoring state with viewer runtime; a
-    wrong migration order can desync the displayed tree.
-  - `window.__viewerTreeData` is a thin alias of `window.currentTreeData` and is the
-    lowest-risk to consolidate first.
-- Removal preconditions:
-  - An explicit editor↔viewer store exists and is wired into every current
-    write/read site listed above.
-  - Repository-wide search for `currentTreeData`/`currentTreeMemories`/
-    `__viewerTreeData` returns zero production consumers outside the store boundary.
-  - Editor save and public-viewer read fixed-slot contracts pass without the alias
-    globals.
-- Required verification before removal:
-  - Editor workspace and public-viewer contract tests
-    (`editor-tree-visibility-state-helper-contract`,
-    `public-canvas-config-helper-contract`, `public-view-normalize-utils-route-contract`)
-    pass with the globals removed.
-  - Preview deployment smoke for `/editor.html` and the public viewer passes after
-    the alias globals are removed.
-  - Rollback is a single commit revert with no data/schema mutation.
-- Rollback/recovery expectation:
-  - Source revert only. Restore the global assignments; no DB or schema change.
-- Existing issue/audit relationship:
-  - References completed global namespace audit #3120 (do **not** reopen #3120;
-    this registry records only the concrete editor↔viewer bridge state, not a
-    repeat of the generic global-namespace re-audit).
-  - References completed editor large-file track #1698 and completed public-viewer
-    split track #1711 (both remain completed; do **not** reopen them). The gap
-    recorded here is the residual shared-state alias that those completions left
-    outside their acceptance scope.
-  - Parent: #3425; audit foundation: PR #3426.
-  - Concrete residual gap beyond #1698/#1711 acceptance →
-    `NEW_NARROW_GAP_REQUIRED` scoped to editor↔viewer alias consolidation only.
-- Follow-up decision: NEW_NARROW_GAP_REQUIRED
-- Status: REVIEW_REQUIRED
-- Last-reviewed main SHA: 81d01bb6b5085e0333d901d2e6c929f9b197349e
+  Global mutable state alias used as the primary tree-data conduit between
+  the editor shell, viewer canvas bridge, and legacy `editor.js` entry point.
+  The viewer public-canvas-bridge sets it; the editor reads it on startup.
+- Known consumers: (see evidence paths above — ~40+ references across editor, viewer, tests)
+- Compatibility/change risk: Breaking removes the editor data-loading contract.
+- Exact removal preconditions: All direct `window.currentTreeData` reads replaced with
+  a scoped data-sharing mechanism; editor.js entry flow no longer depends on the global.
+- Verification before removal:
+  - repository-wide `currentTreeData` direct reference count = 0
+  - editor and viewer both load and operate without relying on the global
+- Rollback/restore expectation:
+  Re-instate `window.currentTreeData` assignment in the producer files.
+- Linked issue or future-child candidate: (related to editor data-flow refactoring)
+- Last evidence baseline:
+  - SHA: `0c3b283a235d760a661b1e7fff61f6e3a44d466e`
+  - Date: `2026-07-14`
 
----
+### 3b. `window.currentTreeMemories`
 
-## LC-004 — Netlify legacy deployment artifacts
+- Evidence paths:
+  - Producer: `js/viewer/public-canvas-bridge.js:116`
+  - Producer: `js/editor/editor-data-loader.js:204,243,268`
+  - Producer: `js/editor/editor-data-loader-fallbacks.js:195,230,297`
+  - Consumer: `js/editor.js:558-559`
+  - Consumer: `js/editor/editor-canvas.js:863`
+  - Consumer: `js/editor/editor-floating-toolbar-selection.js:47-48`
+  - Consumer: `js/editor/editor-initial-load-flow.js:90`
+  - Consumer: `js/editor/editor-page-helpers.js:174`
+  - Consumer: `js/viewer/public-canvas-init.js:92`
+  - Many test files
+- Owner domain: Editor + Viewer shared runtime
+- Classification: `RETAIN_TEMPORARILY`
+- Reason retained: Same pattern as `currentTreeData` — mutable global array for memories.
+- Known consumers: ~30+ references
+- Compatibility/change risk: Same as currentTreeData — removing breaks memory data availability.
+- Exact removal preconditions: Same as `currentTreeData` — all direct reads replaced.
+- Verification before removal:
+  - repository-wide `currentTreeMemories` direct reference count = 0
+  - editor memory operations work without the global array
+- Rollback/restore expectation:
+  Re-instate `window.currentTreeMemories` assignment in producer files.
+- Linked issue or future-child candidate: (same as 3a)
+- Last evidence baseline:
+  - SHA: `0c3b283a235d760a661b1e7fff61f6e3a44d466e`
+  - Date: `2026-07-14`
 
-- Registry ID: LC-004
-- Artifact / path: `netlify/` (currently `netlify/README.md`,
-  `netlify/functions/README.md`, `netlify/sql/README.md`)
-- Domain owner: DEPLOYMENT_LEGACY
-- Classification: LEGACY_DEPLOYMENT_ARTIFACT
-- Evidence level: CONFIRMED
-- Evidence:
-  - Directory listing confirms `netlify/` currently contains only README files
-    (no live functions or SQL scripts). (CONFIRMED)
-  - `netlify/README.md` explicitly states the folder is legacy/fallback/artifact
-    only and is **not** the active production backend; the active path is
-    `Cloudflare Pages (functions/) → Modal compute (modal_compute/)`. (CONFIRMED)
-  - `netlify/functions/README.md` and `netlify/sql/README.md` repeat the
-    not-active-production rule and forbid new backend policy, reactivation,
-    deletion, or movement without CTO approval. (CONFIRMED)
-  - AGENTS.md classifies Netlify as legacy artifact and removal candidate, not used
-    for active production. (CONFIRMED)
-  - Whether any historical CI/build still references `netlify/` is `UNKNOWN` from
-    source alone.
+### 3c. `window.__viewerTreeData`
+
+- Evidence paths:
+  - Producer: `js/viewer/public-canvas-init.js:697`
+  - Consumer: `js/viewer/public-canvas-init.js:350,700,749,771,802,840`
+- Owner domain: Viewer runtime
+- Classification: `RETAIN_TEMPORARILY`
 - Reason retained:
-  - Historical reference and fallback artifact; explicitly preserved (do not delete
-    or move) under current ownership rules pending CTO-approved archive.
-- Known consumers:
-  - None confirmed as active production consumers. Documented rule states Netlify is
-    not in the active production path.
-- Compatibility/change risk:
-  - Low for runtime (no live functions), but deleting/moving could break historical
-    build references or archive expectations if a CI job still points at the folder.
-- Removal preconditions:
-  - Repository-wide search confirms zero active CI/build/deploy references to
-    `netlify/`.
-  - CTO approves archive/history relocation of the legacy README artifacts.
-- Required verification before removal:
-  - Grep of CI/workflow/deploy docs returns zero live `netlify/` references.
-  - No production/staging path depends on the folder (confirmed from docs, not by
-    querying production).
-  - Rollback is a single commit revert (restore the folder) with no data/schema
-    mutation.
-- Rollback/recovery expectation:
-  - Deployment config restore: re-add the `netlify/` folder from git history.
-  - No DB or schema change.
-- Existing issue/audit relationship:
-  - Parent: #3425; audit foundation: PR #3426 (deployment revision gap section).
-  - The active production path is owned by Cloudflare Pages + Modal, not Netlify;
-    this is a legacy ownership boundary, not a Social or Scout concern.
-  - No concrete removal gap beyond the documented legacy rule →
-    `FOLLOW_UP_UNDECIDED` pending CTO archive decision.
-- Follow-up decision: FOLLOW_UP_UNDECIDED
-- Status: RETAIN
-- Last-reviewed main SHA: 81d01bb6b5085e0333d901d2e6c929f9b197349e
+  Viewer-specific tree data cache used within `public-canvas-init.js` to track
+  the active viewer tree data independently of `currentTreeData`. Used as a
+  fallback source and for periodic refresh checks.
+- Known consumers: Only within `public-canvas-init.js` (6 references) plus
+  `tests/contracts/modal-tree-capability-contract.test.cjs` (4 references)
+- Compatibility/change risk: Low — confined to `public-canvas-init.js` and one test file.
+- Exact removal preconditions:
+  - `public-canvas-init.js` references replaced by scoped variable or closure state
+  - Contract test mocks updated
+- Verification before removal:
+  - repository-wide `__viewerTreeData` reference count = 0
+  - public viewer canvas initialization works without the alias
+- Rollback/restore expectation:
+  Re-instate `window.__viewerTreeData` assignment in `public-canvas-init.js`.
+- Linked issue or future-child candidate: (viewer state management)
+- Last evidence baseline:
+  - SHA: `0c3b283a235d760a661b1e7fff61f6e3a44d466e`
+  - Date: `2026-07-14`
 
 ---
 
-## LC-005 — Vercel legacy configuration
+## Entry 4: Editor canvas global compatibility bridge
 
-- Registry ID: LC-005
-- Artifact / path: `vercel.json`
-- Domain owner: DEPLOYMENT_LEGACY
-- Classification: LEGACY_DEPLOYMENT_ARTIFACT
-- Evidence level: CONFIRMED
-- Evidence:
-  - File contents read directly at `vercel.json` (20 lines). (CONFIRMED)
-  - The file carries an explicit `x-lovebud-runtime-note`:
-    `Deprecated transitional fallback only. Active user-facing runtime is Cloudflare
-    Pages ... This config is not active for production.` (CONFIRMED)
-  - It defines `rewrites` mapping `/intro.html`, `/login.html`, `/search.html`,
-    `/detail.html`, `/editor.html`, `/my-trees.html` to `pages/*.html`, which
-    duplicates the Cloudflare Pages routing contract. (CONFIRMED)
-  - AGENTS.md classifies `vercel.json` as a Vercel secondary entry / rewrite
-    contract fragment, not a deletion candidate by default. (CONFIRMED)
-  - Whether any live Vercel project still consumes this file is `UNKNOWN` from
-    source alone and must not be filled by querying production.
+- Evidence paths:
+  - `js/editor/editor-canvas.js:841-853` — defines `window.LoveBudEditorCanvas` and `window.LoveBudEditor`
+  - `js/editor/editor-canvas.js:27` — reads `window.currentTreeData` and `window.currentTreeMemories`
+  - `js/editor.js:496` — calls `window.createEditorCanvas({...})`
+  - `js/viewer/public-canvas-init.js:58` — calls `window.createEditorCanvas(canvasOptions)`
+  - `js/viewer/public-viewer-canvas-entry.js:7-9` — resolves `LoveBudEditorCanvas` or `createEditorCanvas`
+  - `js/viewer/public-canvas-bridge.js:114-116` — sets globals expected by `createEditorCanvas`
+- Owner domain: Editor canvas runtime
+- Classification: `RETAIN_TEMPORARILY`
 - Reason retained:
-  - Historical compatibility artifact preserving the `/<page>.html` rewrite contract
-    for any secondary Vercel entry; explicitly marked deprecated and non-active.
+  `window.createEditorCanvas` and `window.LoveBudEditorCanvas` are the primary
+  entry points for creating the tree canvas in both the editor and public viewer.
+  The viewer (public-canvas-init.js, public-canvas-bridge.js) depends on these
+  globals to render the interactive tree canvas for public read-only display.
+  Additionally, `window.LoveBudEditor` (root namespace with `.canEdit`, `.initCanvas`,
+  `.refresh`, `.render`) is the legacy entry surface for `editor.js`.
 - Known consumers:
-  - No active production consumer confirmed in repository source. Treated as
-    historical/secondary only.
+  - `js/viewer/public-canvas-init.js:52,58` — calls `window.createEditorCanvas`
+  - `js/viewer/public-viewer-canvas-entry.js:7-9,18` — resolves canvas entry
+  - `js/viewer/public-canvas-adapter.js:7` — reads `createEditorCanvas` from options
+  - `js/editor.js:62,301,496` — orchestrates canvas creation
+  - `js/editor/editor-shell-guards.js:74` — checks `createEditorCanvas` presence
+  - Multiple `window.LoveBudEditor*` namespace consumers across `js/editor/` and `js/viewer/`
 - Compatibility/change risk:
-  - Low for runtime, but removing it could break a secondary Vercel entry or
-    doc/deploy references that still cite the rewrite contract.
-- Removal preconditions:
-  - Repository-wide search confirms zero active CI/deploy/docs references that
-    depend on `vercel.json` rewrites for a live environment.
-  - CTO approves removal of the deprecated transitional config.
-- Required verification before removal:
-  - Grep of CI/workflow/deploy docs returns zero live dependency on `vercel.json`.
-  - No production/staging path depends on the file (confirmed from docs, not by
-    querying production).
-  - Rollback is a single commit revert (restore `vercel.json`) with no data/schema
-    mutation.
-- Rollback/recovery expectation:
-  - Deployment config restore: re-add `vercel.json` from git history.
-  - No DB or schema change.
-- Existing issue/audit relationship:
-  - Parent: #3425; audit foundation: PR #3426 (deployment revision gap section).
-  - Cross-references acceptable as boundary only: Tree Social #3188, Moment Social
-    #3075, Scout #1882 — none of these own `vercel.json`; #1882 is Scout, not a
-    Social owner.
-  - No concrete removal gap beyond the documented deprecated rule →
-    `FOLLOW_UP_UNDECIDED` pending CTO decision.
-- Follow-up decision: FOLLOW_UP_UNDECIDED
-- Status: RETAIN
-- Last-reviewed main SHA: 81d01bb6b5085e0333d901d2e6c929f9b197349e
+  Removing these globals breaks both the editor page and the public viewer
+  canvas rendering. The bridge is the sole mechanism for the viewer to reuse
+  the editor canvas rendering pipeline.
+- Exact removal preconditions:
+  - Viewer canvas no longer depends on editor canvas globals (viewer uses its own rendering pipeline)
+  - `editor.js` entry flow uses dependency injection instead of global `window.createEditorCanvas`
+  - `window.LoveBudEditor` namespace fully replaced by scoped module system
+  - All `window.LoveBudEditor*` global namespace consumers migrated
+- Permanent-support decision: (not applicable — classified RETAIN_TEMPORARILY)
+- Verification before removal:
+  - Editor page loads and renders canvas without global function
+  - Public viewer loads and renders canvas without global function
+  - All contract tests that assert on `createEditorCanvas` presence updated
+- Rollback/restore expectation:
+  Revert the commit. Both editor and public viewer canvas rendering resume
+  via globals.
+- Linked issue or future-child candidate: (future child for editor canvas module decomposition)
+- Last evidence baseline:
+  - SHA: `0c3b283a235d760a661b1e7fff61f6e3a44d466e`
+  - Date: `2026-07-14`
 
 ---
 
-## Cross-reference summary
+## Entry 5: Legacy key guard
 
-| Registry ID | Classification | Domain owner | Status | Evidence |
-| --- | --- | --- | --- | --- |
-| LC-001 | TRANSITIONAL_ADAPTER | PUBLIC_READ_COMPATIBILITY | REMOVAL_BLOCKED | CONFIRMED |
-| LC-002 | DUAL_NORMALIZATION_PATH | PUBLIC_READ_COMPATIBILITY | REMOVAL_BLOCKED | CONFIRMED |
-| LC-003 | COMPATIBILITY_ALIAS | EDITOR_VIEWER_SHARED_STATE | REVIEW_REQUIRED | CONFIRMED |
-| LC-004 | LEGACY_DEPLOYMENT_ARTIFACT | DEPLOYMENT_LEGACY | RETAIN | CONFIRMED |
-| LC-005 | LEGACY_DEPLOYMENT_ARTIFACT | DEPLOYMENT_LEGACY | RETAIN | CONFIRMED |
+- Evidence paths:
+  - `functions/_shared/legacy-key-guard.js`
+  - `functions/_shared/memory-route-proxy.js:1` (imports `validateWritePayload`)
+  - `functions/api/trees.js:1` (imports `validateWritePayload`)
+- Owner domain: Cloudflare Functions — write boundary
+- Classification: `RETAIN_TEMPORARILY`
+- Reason retained:
+  Server-side guard that rejects legacy localization keys (dot-separated or
+  underscore-separated patterns) in write payloads with HTTP 400.
+  Mirrors client-side logic in `js/shared/localization-key-utils.js` (#2940).
+  Imported by the memory route proxy and the trees API function.
+- Known consumers:
+  - `functions/_shared/memory-route-proxy.js:1` — ESM import
+  - `functions/api/trees.js:1` — ESM import
+  - `tests/contracts/localization-key-write-rejection-contract.test.cjs` — 15+ test assertions
+- Compatibility/change risk:
+  Removing the guard before all clients send canonical keys would allow legacy
+  localization key strings (e.g. `tree.title`, `editor_url_only_youtube_title`)
+  to be persisted as actual title/memo values.
+- Exact removal preconditions:
+  - All write-sending clients (web, test, any automation) send canonical (non-legacy) title/memo values
+  - `localization-key-write-rejection-contract.test.cjs` updated or removed
+  - No legacy localization key observed in production write payloads for ≥1 release cycle
+- Permanent-support decision: (not applicable — classified RETAIN_TEMPORARILY)
+- Verification before removal:
+  - Monitor production write logs: zero legacy-key rejections over a full release cycle
+  - Remove the import from `memory-route-proxy.js` and `trees.js`
+  - Deploy and verify no 400 errors for legitimate writes
+- Rollback/restore expectation:
+  Re-instate the import in both consumer files and re-deploy Cloudflare Functions.
+- Linked issue or future-child candidate: #2940 (legacy localization key removal tracking)
+- Last evidence baseline:
+  - SHA: `0c3b283a235d760a661b1e7fff61f6e3a44d466e`
+  - Date: `2026-07-14`
 
-Issue relationships (no issue is closed or reopened by this registry):
+---
 
-- #3425 — parent (OPEN, unchanged).
-- #3426 — merged audit foundation (reference only).
-- #3120 — completed global namespace audit (reference only; not reopened).
-- #1698 — completed editor large-file track (reference only; not reopened).
-- #1711 — completed public-viewer split track (reference only; not reopened).
-- #3188 / #3075 / #1882 — boundary references only; #1882 is Scout, not a Social owner.
+## Entry 6: Legacy moment/tree Social storage
 
-No new GitHub issues are created by this PR. Actual removal issues are deferred to
-separate CTO judgment after this registry merges.
+### 6a. Moment-level Social
+
+- Evidence paths:
+  - `modal_compute/reactions.py` — `like_count` handling for moments
+  - `modal_compute/comments.py` — `comment_count` handling for moments
+  - `modal_compute/app.py` — routes for `/modal/private/memories/{id}/reactions` and `/modal/public/trees/{tid}/memories/{mid}/reactions`
+  - Client consumers: `js/detail/detail-loader.js:250-251`, `js/editor/editor-detail-ui.js:55-56`, `js/editor/editor-detail-sidebar-status-boundary.js:73-74`
+- Owner domain: Social feature track
+- Classification: `OWNED_BY_OTHER_TRACK`
+- Reason retained: Moment-level social (reactions, comments) is owned by the Social
+  feature track (#3075). This registry records compatibility context only.
+- Known consumers: See evidence paths above.
+- Compatibility/change risk: Owned by #3075. Schema changes affect moment-level reaction/comment counts.
+- Exact removal preconditions:
+  - Handled by #3075 Social track. This registry does not authorize moment-level
+    Social implementation, schema migration, column deletion, endpoint activation,
+    or scope merging.
+- Permanent-support decision: (not applicable — OWNED_BY_OTHER_TRACK)
+- Verification before removal: Per #3075 scope.
+- Rollback/restore expectation: Per #3075 scope.
+- Linked issue or future-child candidate: #3075 (Keep OPEN)
+- Last evidence baseline:
+  - SHA: `0c3b283a235d760a661b1e7fff61f6e3a44d466e`
+  - Date: `2026-07-14`
+
+**Important:**
+This registry records compatibility context only. It does not authorize Social
+implementation, schema migration, column deletion, endpoint activation, or scope
+merging.
+
+### 6b. Tree-level Social
+
+- Evidence paths:
+  - `modal_compute/tree_likes.py` — `tree_social_counts.like_count`, `toggle_tree_like`, `fetch_public_tree_like_count`
+  - `modal_compute/tree_views.py` — `tree_social_counts.view_count`, `record_public_tree_view`, `fetch_public_tree_view_count`
+  - `modal_compute/public_reads.py` — conditional SQL with `like_count`/`view_count` column detection
+  - `modal_compute/validation.py:128-168` — `normalize_row` with `include_like_count`
+  - Client consumers: `js/my-trees/my-trees-preview-hub.js:528-530`, `js/my-trees/my-trees-ui.js:354-356`, `js/search/search-card-renderer.js:161`, `js/search/search-share-link.js:104-105`, `js/shared/appreciation-render-model.js:250-253`
+- Owner domain: Social feature track
+- Classification: `OWNED_BY_OTHER_TRACK`
+- Reason retained: Tree-level social (likes, views, comments) is owned by the Social
+  feature track (#3188). This registry records compatibility context only.
+- Known consumers: See evidence paths above.
+- Compatibility/change risk: Owned by #3188. Schema changes affect tree-level like/view/comment counts.
+- Exact removal preconditions:
+  - Handled by #3188 Social track. This registry does not authorize tree-level
+    Social implementation, schema migration, column deletion, endpoint activation,
+    or scope merging.
+- Permanent-support decision: (not applicable — OWNED_BY_OTHER_TRACK)
+- Verification before removal: Per #3188 scope.
+- Rollback/restore expectation: Per #3188 scope.
+- Linked issue or future-child candidate: #3188 (Keep OPEN)
+- Last evidence baseline:
+  - SHA: `0c3b283a235d760a661b1e7fff61f6e3a44d466e`
+  - Date: `2026-07-14`
+
+**Important:**
+This registry records compatibility context only. It does not authorize Social
+implementation, schema migration, column deletion, endpoint activation, or scope
+merging.
+
+---
+
+## Entry 7: Deprecated Netlify artifacts
+
+- Evidence paths:
+  - `netlify/README.md`
+  - `netlify/functions/README.md`
+  - `netlify/sql/README.md`
+  - `scripts/check-pr-guardrails.js:25` and `scripts/check-pr-guardrails.cjs:25` reference `netlify/`
+- Owner domain: Infrastructure / Ops
+- Classification: `REMOVAL_CANDIDATE`
+- Reason retained:
+  Netlify is documented as legacy (see `netlify/README.md:1`: "Legacy / Fallback /
+  Artifact (NOT Active Production Backend)"). Files are README-only with no
+  active runtime code. No production traffic is served through Netlify.
+  However, the infra team may retain these for historical reference or
+  emergency rollback documentation.
+- Known consumers:
+  - `scripts/check-pr-guardrails.js:25` — lists `netlify/` in forbidden-change paths for docs-only PRs
+  - `scripts/check-pr-guardrails.cjs:25` — same
+  - `netlify/README.md` notes: "Do not delete, move, or reactivate any file in this folder without CTO approval."
+- Compatibility/change risk:
+  Low — no active runtime depends on `netlify/`. The check-pr-guardrails
+  reference actively prevents new Netlify changes from entering docs-only PRs.
+- Exact removal preconditions:
+  - CTO approval obtained (per `netlify/README.md` ownership rule)
+  - `scripts/check-pr-guardrails.js` and `.cjs` `netlify/` entry removed
+  - Historical reference preserved in `git log`
+- Permanent-support decision: (not applicable — classified REMOVAL_CANDIDATE)
+- Verification before removal:
+  - Confirm zero active references to Netlify in Cloudflare or Modal configuration
+  - Confirm no production traffic routed through Netlify
+  - Remove directory and update guardrail scripts
+- Rollback/restore expectation:
+  `git revert` of the removal commit restores all files.
+- Linked issue or future-child candidate: (Netlify cleanup issue)
+- Last evidence baseline:
+  - SHA: `0c3b283a235d760a661b1e7fff61f6e3a44d466e`
+  - Date: `2026-07-14`
+
+---
+
+## Entry 8: Transitional Vercel fallback
+
+- Evidence paths:
+  - `vercel.json`
+  - `docs/ops/OPERATIONS.md` (referenced in vercel.json `x-lovebud-runtime-docs`)
+  - `docs/migration/VERCEL_MODAL_MIGRATION_RUNBOOK.md` (referenced in vercel.json)
+- Owner domain: Infrastructure / Ops
+- Classification: `RETAIN_TEMPORARILY`
+- Reason retained:
+  `vercel.json` defines page rewrites (e.g., `/intro.html` → `/pages/intro.html`)
+  and is marked as "Deprecated transitional fallback only" with the note that
+  "Active user-facing runtime is Cloudflare Pages". It is retained as a
+  secondary/transitional entry point for potential rollback or parallel-run scenarios.
+- Known consumers:
+  - Vercel deployment pipeline (if active)
+  - Historical reference in `docs/migration/VERCEL_MODAL_MIGRATION_RUNBOOK.md`
+- Compatibility/change risk:
+  Low — Cloudflare Pages is the active production frontend. The vercel.json
+  rewrite rules mirror Cloudflare Pages behavior but are not actively serving
+  production traffic.
+- Exact removal preconditions:
+  - Cloudflare Pages deployment parity confirmed (all page routes work without Vercel rewrites)
+  - Migration runbook updated to reflect Vercel as fully decommissioned
+  - No consumer or CI pipeline depends on Vercel deployment
+- Permanent-support decision: (not applicable — classified RETAIN_TEMPORARILY)
+- Verification before removal:
+  - Confirm all page routes (`/intro.html`, `/login.html`, `/search.html`, `/detail.html`, `/editor.html`, `/my-trees.html`) resolve correctly via Cloudflare Pages
+  - Confirm no CI/CD workflow references Vercel deployment
+- Rollback/restore expectation:
+  Re-instate `vercel.json` from `git revert` if Vercel fallback is needed again.
+- Linked issue or future-child candidate: (Vercel decommission tracking)
+- Last evidence baseline:
+  - SHA: `0c3b283a235d760a661b1e7fff61f6e3a44d466e`
+  - Date: `2026-07-14`
