@@ -73,6 +73,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         isRestoringUrlState: false,
         urlStateReady: false,
         initialTreeDeepLinkApplied: false,
+        pendingUnknownTreeDeepLink: false,
         isLoadingMore: false,
         hasMoreTrees: true,
         currentPublicTreeRequestId: 0
@@ -138,14 +139,47 @@ document.addEventListener('DOMContentLoaded', async () => {
             return refs.resultsList ? refs.resultsList.querySelector(selector) : null;
         };
 
+        const treePassesCurrentFilter = (tree) => {
+            if (!tree) return false;
+            const matched = Adapter.filterTrees([tree], state.currentQuery, state.currentCategory);
+            return Array.isArray(matched) && matched.length > 0;
+        };
+
+        const hasActiveClientFilter = () => {
+            const query = String(state.currentQuery || '').trim();
+            const category = state.currentCategory || '전체';
+            return query !== '' || (category !== '전체' && category !== '전체 경로');
+        };
+
+        const clearSelectionAndTreeQuery = () => {
+            ui.clearSelectedPreview();
+            state.pendingUnknownTreeDeepLink = false;
+            if (typeof window.updateUrlState === 'function') {
+                window.updateUrlState({ historyMode: 'replace' });
+            }
+        };
+
         const selectTree = (tree, activeCard, options = {}) => {
             if (!tree) return;
-            const { openMobilePreview = true } = options;
+            const openMobilePreview = options.openMobilePreview !== false;
+            const historyMode = options.historyMode || 'push';
+            const previousId = state.selectedTreeId;
             state.selectedTreeId = tree.id;
+            state.pendingUnknownTreeDeepLink = false;
             ui.markActiveCard(activeCard);
 
             if (openMobilePreview && ui.isMobilePreviewMode()) {
                 ui.setMobilePreviewOpen(true);
+            }
+
+            const effectiveHistory =
+                historyMode === 'none'
+                    ? 'none'
+                    : previousId === tree.id
+                        ? 'none'
+                        : historyMode;
+            if (typeof window.updateUrlState === 'function') {
+                window.updateUrlState({ historyMode: effectiveHistory });
             }
 
             if (Array.isArray(tree.memories) && tree.memories.length > 0) {
@@ -157,19 +191,66 @@ document.addEventListener('DOMContentLoaded', async () => {
             dataApi.hydrateSelectedTreePreview(tree);
         };
 
-        const applySelectedTreeFromUrl = () => {
-            if (state.initialTreeDeepLinkApplied) return;
+        const applySelectedTreeFromUrl = async (options = {}) => {
+            const force = Boolean(options.force);
+            const historyMode = options.historyMode || 'none';
+            if (state.initialTreeDeepLinkApplied && !force) return;
             const treeId = readSelectedTreeFromUrl();
-            if (!treeId) return;
+            if (!treeId) {
+                state.initialTreeDeepLinkApplied = true;
+                state.pendingUnknownTreeDeepLink = false;
+                if (force && state.selectedTreeId) ui.clearSelectedPreview();
+                return;
+            }
 
-            const targetTree = state.allTrees.find(t => t.id === treeId);
-            if (!targetTree) return;
+            let targetTree = state.allTrees.find(t => t.id === treeId) || null;
+            if (targetTree) {
+                if (!treePassesCurrentFilter(targetTree)) {
+                    state.initialTreeDeepLinkApplied = true;
+                    clearSelectionAndTreeQuery();
+                    return;
+                }
+            } else {
+                const allowFetch = !force && !hasActiveClientFilter();
+                if (allowFetch && window.apiClient && window.apiClient.getPublicTreePreview) {
+                    try {
+                        targetTree = await window.apiClient.getPublicTreePreview({ id: treeId });
+                    } catch (error) {
+                        targetTree = null;
+                    }
+                    if (targetTree && !treePassesCurrentFilter(targetTree)) {
+                        targetTree = null;
+                    }
+                }
+            }
 
-            selectTree(targetTree, findRenderedTreeCard(treeId), { openMobilePreview: false });
+            if (!targetTree) {
+                state.initialTreeDeepLinkApplied = true;
+                ui.clearSelectedPreview();
+                if (typeof window.updateUrlState === 'function') {
+                    window.updateUrlState({ historyMode: 'replace' });
+                }
+                state.pendingUnknownTreeDeepLink = true;
+                return;
+            }
+
+            state.pendingUnknownTreeDeepLink = false;
+            selectTree(targetTree, findRenderedTreeCard(treeId), {
+                openMobilePreview: false,
+                historyMode
+            });
             state.initialTreeDeepLinkApplied = true;
         };
 
-        return { getSelectedTreeFromFiltered, selectTree, applySelectedTreeFromUrl };
+        return {
+            getSelectedTreeFromFiltered,
+            readSelectedTreeFromUrl,
+            selectTree,
+            applySelectedTreeFromUrl,
+            treePassesCurrentFilter,
+            hasActiveClientFilter,
+            clearSelectionAndTreeQuery
+        };
     };
 
     const previewController = window.LoveBudSearchPreviewController?.createSearchPreviewController
@@ -190,6 +271,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     function renderResults(resetPreviewWhenNoSelection = true) {
         const filtered = getFilteredTrees();
 
+        const clearStaleSelection = () => {
+            ui.clearSelectedPreview();
+            state.pendingUnknownTreeDeepLink = false;
+            if (typeof urlState.updateUrlState === 'function') {
+                urlState.updateUrlState({ historyMode: 'replace' });
+            }
+        };
+
         if (filtered.length === 0) {
             const hasNoData = state.loadError === null && state.allTrees.length === 0;
             const isApiFailure = state.loadError !== null && !state.isFromCache && state.allTrees.length === 0;
@@ -198,10 +287,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                 ui.renderLoadErrorState();
             } else if (hasNoData) {
                 refs.resultsList.innerHTML = CardRenderer.renderNoTreesState();
-                ui.clearSelectedPreview();
             } else {
                 refs.resultsList.innerHTML = CardRenderer.renderEmptySearchState();
-                ui.clearSelectedPreview();
+            }
+            // Empty filtered set: never keep a stale selection/preview/tree query.
+            if (state.selectedTreeId || resetPreviewWhenNoSelection) {
+                clearStaleSelection();
             }
             return;
         }
@@ -215,15 +306,42 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const selectedTree = previewController.getSelectedTreeFromFiltered(filtered);
 
-        if (!state.selectedTreeId && resetPreviewWhenNoSelection && filtered.length > 0) {
+        // Always drop selection that no longer appears in the current filtered set.
+        // Do not substitute the first card.
+        if (state.selectedTreeId && !selectedTree) {
+            clearStaleSelection();
+        }
+
+        // Do not auto-select the first card while a deep-link tree is pending
+        // or when an unknown deep-link ID was already resolved as unselected.
+        const pendingUrlTree = (() => {
+            try {
+                return Boolean(new URLSearchParams(window.location.search).get('tree'));
+            } catch {
+                return false;
+            }
+        })();
+        const blockAutoSelect =
+            state.pendingUnknownTreeDeepLink ||
+            (!state.initialTreeDeepLinkApplied && pendingUrlTree);
+
+        if (
+            !state.selectedTreeId &&
+            resetPreviewWhenNoSelection &&
+            filtered.length > 0 &&
+            !blockAutoSelect
+        ) {
             const firstTree = filtered[0];
             const firstCard = findRenderedTreeCard(firstTree.id);
-            previewController.selectTree(firstTree, firstCard, { openMobilePreview: false });
+            previewController.selectTree(firstTree, firstCard, {
+                openMobilePreview: false,
+                historyMode: 'replace'
+            });
             return;
         }
 
         if (!state.selectedTreeId && resetPreviewWhenNoSelection) {
-            ui.clearSelectedPreview();
+            clearStaleSelection();
             return;
         }
 
@@ -231,8 +349,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             previewCacheApi.writePreviewCache(selectedTree.id, selectedTree);
             PreviewRenderer.updatePreview(selectedTree);
             ui.syncPreviewVisibility();
-        } else if (!selectedTree && resetPreviewWhenNoSelection) {
-            ui.clearSelectedPreview();
         }
     }
 
@@ -309,18 +425,29 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     await dataApi.loadPublicTrees({ resetSelection: true });
 
-    await previewController.applySelectedTreeFromUrl();
+    await previewController.applySelectedTreeFromUrl({ historyMode: 'none' });
     state.urlStateReady = true;
+    // Sync URL once after initial deep-link / selection settles (replace, not push).
+    urlState.updateUrlState({ historyMode: 'replace' });
 
     window.addEventListener('popstate', async () => {
         const previousSort = state.currentSort;
         const previousLimit = state.currentLimit;
+        // History already moved; never pushState from this path.
+        state.isRestoringUrlState = true;
         urlState.restoreStateFromUrl();
+        state.isRestoringUrlState = false;
+
         if (previousSort !== state.currentSort || previousLimit !== state.currentLimit) {
-            await dataApi.loadPublicTrees({ resetSelection: true });
+            await dataApi.loadPublicTrees({ resetSelection: false });
         } else {
             renderResults(false);
         }
+
+        await previewController.applySelectedTreeFromUrl({
+            force: true,
+            historyMode: 'none'
+        });
         ui.syncBrowseHead();
     });
 });

@@ -17,8 +17,10 @@
                 if (searchInputTimer) clearTimeout(searchInputTimer);
                 searchInputTimer = setTimeout(() => {
                     resetPaginationState();
-                    callbacks.renderResults(false);
-                    callbacks.updateUrlState();
+                    // Reconcile selection against the new filtered set (clear stale
+                    // preview/URL when the selected tree drops out of results).
+                    callbacks.renderResults(true);
+                    callbacks.updateUrlState({ historyMode: 'replace' });
                     ui?.syncControlsFromState?.();
                 }, 180);
             });
@@ -33,8 +35,9 @@
                     chip.classList.add('active');
                     state.currentCategory = chip.dataset.category || chip.textContent.trim();
                     resetPaginationState();
-                    callbacks.renderResults(false);
-                    callbacks.updateUrlState();
+                    // Same reconciliation as query input: drop filtered-out selection.
+                    callbacks.renderResults(true);
+                    callbacks.updateUrlState({ historyMode: 'replace' });
                     ui?.syncControlsFromState?.();
                 });
             });

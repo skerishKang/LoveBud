@@ -1,6 +1,6 @@
 /**
  * LoveBud Browse Preview Share Helper
- * v20260629-2772-1
+ * v20260713-3482-1
  *
  * Manages the read-only LoveTree share URL for the Browse preview hub.
  * Produces canonical /pages/view.html?treeId=<encoded> links and handles
@@ -115,7 +115,7 @@
                 '</strong><span>조회수</span></div>';
         }
 
-        // ---- Like count stat ----
+        // ---- Like count stat (hide when unavailable; preserve authoritative 0) ----
         var likesHtml = '';
         if (likeCount !== null) {
             likesHtml = '<div class="preview-social-action preview-social-stat" aria-label="좋아요 ' +
@@ -123,11 +123,9 @@
                 '" role="status"><span class="material-symbols-outlined" aria-hidden="true">favorite</span><strong>' +
                 escapeHtml(String(likeCount)) +
                 '</strong><span>좋아요</span></div>';
-        } else {
-            likesHtml = '<div class="preview-social-action preview-social-stat" aria-label="좋아요 정보 없음" role="status"><span class="material-symbols-outlined" aria-hidden="true">favorite</span><strong>&mdash;</strong><span>좋아요</span></div>';
         }
 
-        // ---- Comment count stat ----
+        // ---- Comment count stat (hide when unavailable; preserve authoritative 0) ----
         var commentsHtml = '';
         if (commentCount !== null) {
             commentsHtml = '<div class="preview-social-action preview-social-stat" aria-label="댓글 ' +
@@ -135,8 +133,6 @@
                 '" role="status"><span class="material-symbols-outlined" aria-hidden="true">chat_bubble</span><strong>' +
                 escapeHtml(String(commentCount)) +
                 '</strong><span>댓글</span></div>';
-        } else {
-            commentsHtml = '<div class="preview-social-action preview-social-stat" aria-label="댓글 정보 없음" role="status"><span class="material-symbols-outlined" aria-hidden="true">chat_bubble</span><strong>&mdash;</strong><span>댓글</span></div>';
         }
 
         // ---- Share button (only when tree ID is valid) ----

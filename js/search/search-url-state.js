@@ -14,14 +14,21 @@
                     query: params.get('q') || '',
                     category: params.get('category') || '',
                     sort: params.get('sort') || '',
-                    limit: params.get('limit') || ''
+                    limit: params.get('limit') || '',
+                    tree: params.get('tree') || ''
                 };
             } catch {
-                return { query: '', category: '', sort: '', limit: '' };
+                return { query: '', category: '', sort: '', limit: '', tree: '' };
             }
         }
 
-        function writeUrlState() {
+        /**
+         * Write current Browse filter/sort/selection to the URL.
+         * @param {{ historyMode?: 'push'|'replace'|'none' }} [options]
+         */
+        function writeUrlState(options) {
+            const historyMode = options && options.historyMode ? options.historyMode : 'push';
+            if (historyMode === 'none') return;
             if (state.isRestoringUrlState || !state.urlStateReady) return;
 
             try {
@@ -48,16 +55,21 @@
                     params.delete('limit');
                 }
 
-                // Preserve the existing selected-tree deep link contract while this
-                // module owns only q/category/sort/limit state transitions.
-                if (state.selectedTreeId) params.set('tree', state.selectedTreeId);
+                // Selected tree deep-link / selection sync.
+                if (state.selectedTreeId) params.set('tree', String(state.selectedTreeId));
+                else params.delete('tree');
 
                 const newSearch = params.toString();
                 const newUrl = newSearch
                     ? `${window.location.pathname}?${newSearch}`
                     : window.location.pathname;
 
-                if (newUrl !== (window.location.pathname + window.location.search)) {
+                const currentUrl = window.location.pathname + window.location.search;
+                if (newUrl === currentUrl) return;
+
+                if (historyMode === 'replace' && typeof history.replaceState === 'function') {
+                    history.replaceState(null, '', newUrl);
+                } else if (typeof history.pushState === 'function') {
                     history.pushState(null, '', newUrl);
                 }
             } catch { /* ignore URL sync failures */ }

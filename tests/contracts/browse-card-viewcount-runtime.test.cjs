@@ -84,11 +84,11 @@ test('card runtime: viewCount:0 → visibility metric with 0 rendered', () => {
 
 test('card runtime: viewCount absent → no visibility metric', () => {
   const renderer = getRenderer();
-  const tree = buildTree({});  // no viewCount
+  const tree = buildTree({});  // no viewCount; default likeCount:2 remains
   const html = renderer.renderTreeCard(tree, 0);
   assert.ok(!html.includes('visibility'), 'visibility icon must NOT be present when viewCount absent');
-  // likes/comments/shares must still render
-  assert.ok(html.includes('favorite'), 'likes icon must still be present');
+  // available likeCount must still render
+  assert.ok(html.includes('favorite'), 'likes icon must still be present when likeCount is available');
 });
 
 test('card runtime: viewCount null → no visibility metric', () => {
@@ -96,17 +96,34 @@ test('card runtime: viewCount null → no visibility metric', () => {
   const tree = buildTree({ viewCount: null });
   const html = renderer.renderTreeCard(tree, 0);
   assert.ok(!html.includes('visibility'), 'visibility icon must NOT be present when viewCount null');
-  assert.ok(html.includes('favorite'), 'likes icon must still be present');
+  assert.ok(html.includes('favorite'), 'likes icon must still be present when likeCount is available');
 });
 
-test('card runtime: likes/comments/shares always rendered regardless of views', () => {
+test('card runtime: only available metrics render (truthful; no unknown→0)', () => {
   const renderer = getRenderer();
-  // No viewCount at all
+  // likeCount present; comments/shares/views absent
   const tree = buildTree({ likeCount: 7 });
+  delete tree.viewCount;
+  delete tree.commentCount;
+  delete tree.shareCount;
   const html = renderer.renderTreeCard(tree, 0);
-  assert.ok(html.includes('favorite'), 'favorite/likes must render');
-  assert.ok(html.includes('chat_bubble') || html.includes('mode_comment'), 'comments must render');
-  assert.ok(html.includes('share'), 'share must render');
-  // Verify likes count is in output
+  assert.ok(html.includes('favorite'), 'favorite/likes must render when available');
   assert.ok(html.includes('>7<') || html.includes('"7"'), 'like count 7 must be rendered');
+  assert.ok(!html.includes('visibility'), 'views must be hidden when unavailable');
+  assert.ok(!html.includes('chat_bubble') && !html.includes('mode_comment'), 'comments must be hidden when unavailable');
+  assert.ok(!html.includes('>share<') && !/material-symbols-outlined[^>]*>share</.test(html),
+    'share metric must be hidden when unavailable');
+});
+
+test('card runtime: likeCount 0 is shown; missing likeCount is hidden', () => {
+  const renderer = getRenderer();
+  const zeroHtml = renderer.renderTreeCard(buildTree({ likeCount: 0, viewCount: 1 }), 0);
+  assert.ok(zeroHtml.includes('favorite'), 'persisted zero likes must show favorite');
+  assert.ok(zeroHtml.includes('>0<') || zeroHtml.includes('"0"'), 'persisted zero must render as 0');
+
+  const missing = buildTree({ viewCount: 1 });
+  delete missing.likeCount;
+  const missingHtml = renderer.renderTreeCard(missing, 0);
+  assert.ok(!missingHtml.includes('favorite'), 'missing likeCount must hide likes metric');
+  assert.ok(missingHtml.includes('visibility'), 'available viewCount must still show');
 });
