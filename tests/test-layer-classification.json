@@ -323,6 +323,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/canonical-format-guard.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Reads the tests/contracts directory and asserts file-name and extension structure; does not execute application runtime behavior, connect to a network, database, or browser, deploy, or mutate Production.",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/card-surface-parity-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
