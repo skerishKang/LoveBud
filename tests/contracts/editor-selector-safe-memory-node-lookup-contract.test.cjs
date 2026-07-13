@@ -320,19 +320,26 @@ test('version — editor.html loads editor-canvas.js at -3', function () {
   );
 });
 
-test('version — editor-canvas-viewport-actions.js and editor-memory-form.js remain at -2', function () {
+test('version — viewport actions retains selector-safe version and memory form remains cache-busted', function () {
   const source = fs.readFileSync(
     path.join(ROOT, 'pages/editor.html'),
     'utf8'
   );
-  // These must stay at -2 since their contents do not change in this correction
+  // viewport-actions source was not changed in the UI follow-up; keep the exact guard
   assert.ok(
     source.includes('editor-canvas-viewport-actions.js?v=20260628-2971-selector-safe-lookup-2'),
-    'viewport-actions must remain at -2'
+    'viewport-actions must retain the selector-safe version'
   );
-  assert.ok(
-    source.includes('editor-memory-form.js?v=20260628-2971-selector-safe-lookup-2'),
-    'memory-form must remain at -2'
+  // memory-form source was legitimately changed; reject stale pin, require non-empty cache-bust
+  assert.doesNotMatch(
+    source,
+    /editor-memory-form\.js\?v=20260628-2971-selector-safe-lookup-2/,
+    'memory-form must not revert to the stale pre-followup asset version'
+  );
+  assert.match(
+    source,
+    /editor-memory-form\.js\?v=[^"'\s>]+/,
+    'memory-form must retain a non-empty cache-bust'
   );
 });
 
