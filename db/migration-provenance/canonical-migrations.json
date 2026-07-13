@@ -1,0 +1,22 @@
+{
+  "format_version": "1.0",
+  "status": "ADOPTION_REQUIRED",
+  "canonical_directory": "db/migrations",
+  "ledger": {
+    "contract_path": "db/migration-provenance/ledger-contract.json",
+    "required_record_fields": [
+      "migration_id",
+      "content_checksum",
+      "applied_at",
+      "runner_version",
+      "environment_class",
+      "deployed_commit",
+      "transaction_outcome"
+    ]
+  },
+  "migration_id_format": "YYYYMMDDHHMMSS_slug",
+  "checksum_algorithm": "sha256",
+  "migrations": [],
+  "activation_rule": "No existing scripts are retroactively declared applied. A separately approved adoption baseline must be attested before this manifest changes to ACTIVE.",
+  "destructive_ddl_rule": "A canonical migration containing destructive DDL must declare DESTRUCTIVE risk, list every destructive operation, and carry a non-empty approval reference."
+}

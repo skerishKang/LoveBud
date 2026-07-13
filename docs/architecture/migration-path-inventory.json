@@ -1,0 +1,563 @@
+{
+  "schema_version": "1.0",
+  "baseline_sha": "5d601154cfa45a4885e30fc190446ce3b9623aa0",
+  "classification_enum": [
+    "CANONICAL_CANDIDATE",
+    "LEGACY_COMPATIBILITY",
+    "MANUAL_ONLY",
+    "INCIDENT_REPAIR_ONLY",
+    "ROLLBACK_ONLY",
+    "TEST_FIXTURE_ONLY",
+    "DEPRECATED",
+    "PROHIBITED_FOR_NEW_USE",
+    "UNCLEAR_REQUIRES_DECISION"
+  ],
+  "entries": [
+    {
+      "path": "docs/migration/POSTGRES_MIGRATION.md",
+      "operation_class": "historical_migration_guidance",
+      "schema_objects": [
+        "historical PostgreSQL migration guidance"
+      ],
+      "invocation_path": "manual operator reference",
+      "current_owner_domain": "database architecture",
+      "classification": "DEPRECATED",
+      "transaction_behavior": "not executable from this document",
+      "idempotency_claim": "not a canonical contract",
+      "rollback_claim": "not a canonical rollback authority",
+      "production_relevance": "historical reference only",
+      "evidence": "pre-ledger migration guidance",
+      "risk": "can be mistaken for the canonical runner",
+      "recommended_disposition": "retain as history; prohibit new execution",
+      "linked_issue": "#3458",
+      "baseline_sha": "5d601154cfa45a4885e30fc190446ce3b9623aa0",
+      "content_checksum": "sha256:1da7818eea15616f10dea67dc19b4372648bb17ffe007bef1990bdb0ffa8433e"
+    },
+    {
+      "path": "docs/ops/generic-social-targets-migration-a-runbook.md",
+      "operation_class": "manual_migration_runbook",
+      "schema_objects": [
+        "social_idempotency",
+        "social_audit_log"
+      ],
+      "invocation_path": "separate approval operator command",
+      "current_owner_domain": "social schema",
+      "classification": "MANUAL_ONLY",
+      "transaction_behavior": "delegates to referenced SQL artifact",
+      "idempotency_claim": "artifact-specific",
+      "rollback_claim": "no automatic rollback",
+      "production_relevance": "requires explicit apply approval",
+      "evidence": "runbook contains direct database command",
+      "risk": "not represented in applied ledger",
+      "recommended_disposition": "supersede with canonical manifest metadata",
+      "linked_issue": "#3262, #3458",
+      "baseline_sha": "5d601154cfa45a4885e30fc190446ce3b9623aa0",
+      "content_checksum": "sha256:d9c784e40515c662a4e4895c41eec422a4592e431beb58cb52a78cdc90e4684d"
+    },
+    {
+      "path": "docs/ops/generic-social-targets-migration-b-runbook.md",
+      "operation_class": "manual_migration_runbook",
+      "schema_objects": [
+        "social_idempotency",
+        "social_audit_log"
+      ],
+      "invocation_path": "separate approval operator command",
+      "current_owner_domain": "social schema",
+      "classification": "MANUAL_ONLY",
+      "transaction_behavior": "delegates to referenced SQL artifact",
+      "idempotency_claim": "artifact-specific",
+      "rollback_claim": "no automatic rollback",
+      "production_relevance": "requires explicit apply approval",
+      "evidence": "runbook contains direct database command",
+      "risk": "compatibility cutover without applied ledger",
+      "recommended_disposition": "supersede with canonical manifest metadata",
+      "linked_issue": "#3352, #3458",
+      "baseline_sha": "5d601154cfa45a4885e30fc190446ce3b9623aa0",
+      "content_checksum": "sha256:747f2746e5ec4dbf79cde88955048d6ef350d777a70890cdb619e1633337cd88"
+    },
+    {
+      "path": "docs/ops/lovebud-trees-schema-foothold-3435.md",
+      "operation_class": "incident_schema_repair_runbook",
+      "schema_objects": [
+        "public.trees"
+      ],
+      "invocation_path": "separate approval operator command",
+      "current_owner_domain": "tree schema recovery",
+      "classification": "INCIDENT_REPAIR_ONLY",
+      "transaction_behavior": "delegates to guarded transactional artifact",
+      "idempotency_claim": "artifact-specific",
+      "rollback_claim": "forward recovery preferred",
+      "production_relevance": "incident-specific and approval-gated",
+      "evidence": "service-restoration foothold runbook",
+      "risk": "could be misread as reusable migration history",
+      "recommended_disposition": "retain for incident traceability only",
+      "linked_issue": "#3435, #3458",
+      "baseline_sha": "5d601154cfa45a4885e30fc190446ce3b9623aa0",
+      "content_checksum": "sha256:af39efe62dc2dfbafc4235d50dab91588939576f718b35422299c6aadadd1f16"
+    },
+    {
+      "path": "docs/ops/MIGRATE_BULK_PUBLIC_20260419.md",
+      "operation_class": "manual_data_migration_runbook",
+      "schema_objects": [
+        "legacy public-state bulk update"
+      ],
+      "invocation_path": "manual operator procedure",
+      "current_owner_domain": "operations",
+      "classification": "DEPRECATED",
+      "transaction_behavior": "historical operator procedure",
+      "idempotency_claim": "not ledger verified",
+      "rollback_claim": "separate operator decision",
+      "production_relevance": "historical procedure only",
+      "evidence": "dated direct-operation runbook",
+      "risk": "manual state mutation without provenance evidence",
+      "recommended_disposition": "prohibit new use; replace with approved canonical work",
+      "linked_issue": "#3458",
+      "baseline_sha": "5d601154cfa45a4885e30fc190446ce3b9623aa0",
+      "content_checksum": "sha256:08c5125aa65b6c55d624aeb52660c68d64e42e5f84a2f578ed45aa16c9992f80"
+    },
+    {
+      "path": "docs/ops/moment-social-write-hardening-migration-runbook.md",
+      "operation_class": "manual_migration_runbook",
+      "schema_objects": [
+        "social write support tables"
+      ],
+      "invocation_path": "separate approval operator command",
+      "current_owner_domain": "moment social schema",
+      "classification": "MANUAL_ONLY",
+      "transaction_behavior": "delegates to referenced SQL artifact",
+      "idempotency_claim": "artifact-specific",
+      "rollback_claim": "separate approval expected",
+      "production_relevance": "approval-gated",
+      "evidence": "runbook contains apply instructions",
+      "risk": "manual ordering can diverge from repository expectation",
+      "recommended_disposition": "supersede with canonical manifest metadata",
+      "linked_issue": "#3177, #3458",
+      "baseline_sha": "5d601154cfa45a4885e30fc190446ce3b9623aa0",
+      "content_checksum": "sha256:42fa69472c34af7c9b9e8be3ceceb65a73f2cca38ddbeaddec8eb16af8d7bf39"
+    },
+    {
+      "path": "docs/product/lovebud-tree-comments-legacy-schema-reconciliation-runbook.md",
+      "operation_class": "manual_incident_reconcile_runbook",
+      "schema_objects": [
+        "public.tree_comments"
+      ],
+      "invocation_path": "separate approval operator command",
+      "current_owner_domain": "tree comments recovery",
+      "classification": "INCIDENT_REPAIR_ONLY",
+      "transaction_behavior": "delegates to guarded reconcile artifact",
+      "idempotency_claim": "precondition-bound only",
+      "rollback_claim": "paired rollback artifact exists",
+      "production_relevance": "incident-specific and approval-gated",
+      "evidence": "runbook binds a legacy zero-state reconciliation",
+      "risk": "unsafe if applied to a different catalog state",
+      "recommended_disposition": "prohibit reuse as general migration runner",
+      "linked_issue": "#3431, #3458",
+      "baseline_sha": "5d601154cfa45a4885e30fc190446ce3b9623aa0",
+      "content_checksum": "sha256:b821fba5acefa77386e62aca31e30ebfc5c65f8195c861b30959acfb4d5de8c1"
+    },
+    {
+      "path": "scripts/inspect-schema.cjs",
+      "operation_class": "manual_catalog_inspection",
+      "schema_objects": [
+        "legacy diagnostic database path"
+      ],
+      "invocation_path": "local direct database script",
+      "current_owner_domain": "legacy operator tooling",
+      "classification": "PROHIBITED_FOR_NEW_USE",
+      "transaction_behavior": "read-only script with no sanitized evidence envelope",
+      "idempotency_claim": "not applicable",
+      "rollback_claim": "not applicable",
+      "production_relevance": "legacy local diagnostic only",
+      "evidence": "direct connection tooling predates provenance boundary",
+      "risk": "can reveal private rows or payloads",
+      "recommended_disposition": "replace with sanitized catalog evidence adapter",
+      "linked_issue": "#3458",
+      "baseline_sha": "5d601154cfa45a4885e30fc190446ce3b9623aa0",
+      "content_checksum": "sha256:544a7d14330a8e7b57c50be63ff52455faa84415900f3693392e44edfb01f169"
+    },
+    {
+      "path": "scripts/inspect-schema.js",
+      "operation_class": "manual_catalog_inspection_alias",
+      "schema_objects": [
+        "legacy diagnostic database path"
+      ],
+      "invocation_path": "local direct database script",
+      "current_owner_domain": "legacy operator tooling",
+      "classification": "PROHIBITED_FOR_NEW_USE",
+      "transaction_behavior": "read-only script with no sanitized evidence envelope",
+      "idempotency_claim": "not applicable",
+      "rollback_claim": "not applicable",
+      "production_relevance": "legacy local diagnostic only",
+      "evidence": "direct connection tooling predates provenance boundary",
+      "risk": "can reveal private rows or payloads",
+      "recommended_disposition": "replace with sanitized catalog evidence adapter",
+      "linked_issue": "#3458",
+      "baseline_sha": "5d601154cfa45a4885e30fc190446ce3b9623aa0",
+      "content_checksum": "sha256:544a7d14330a8e7b57c50be63ff52455faa84415900f3693392e44edfb01f169"
+    },
+    {
+      "path": "scripts/migration-add-channel-fields.sql",
+      "operation_class": "legacy_schema_migration",
+      "schema_objects": [
+        "channel-related fields"
+      ],
+      "invocation_path": "manual SQL artifact",
+      "current_owner_domain": "legacy schema evolution",
+      "classification": "LEGACY_COMPATIBILITY",
+      "transaction_behavior": "artifact-specific",
+      "idempotency_claim": "artifact-specific",
+      "rollback_claim": "not recorded in canonical ledger",
+      "production_relevance": "historical compatibility artifact",
+      "evidence": "pre-ledger SQL file in scripts root",
+      "risk": "no immutable applied record or canonical ordering",
+      "recommended_disposition": "do not execute as new work",
+      "linked_issue": "#3458",
+      "baseline_sha": "5d601154cfa45a4885e30fc190446ce3b9623aa0",
+      "content_checksum": "sha256:20899f37c3d0cd0e21ffe2b7c88aa20400491dd8ce600f188fa9120f9fc2b359"
+    },
+    {
+      "path": "scripts/migration-add-generic-social-targets.sql",
+      "operation_class": "legacy_schema_migration",
+      "schema_objects": [
+        "social_idempotency",
+        "social_audit_log"
+      ],
+      "invocation_path": "manual SQL artifact",
+      "current_owner_domain": "social schema",
+      "classification": "LEGACY_COMPATIBILITY",
+      "transaction_behavior": "explicit transaction in artifact",
+      "idempotency_claim": "artifact-specific",
+      "rollback_claim": "no automatic rollback",
+      "production_relevance": "approval-gated historical artifact",
+      "evidence": "paired manual runbook and source contract",
+      "risk": "backfill and trigger changes lack ledger provenance",
+      "recommended_disposition": "do not run outside canonical manifest workflow",
+      "linked_issue": "#3262, #3458",
+      "baseline_sha": "5d601154cfa45a4885e30fc190446ce3b9623aa0",
+      "content_checksum": "sha256:c70707d4dfeaa81fa516208a29e4ca5679e2afbeecb31481e52046cdba9cfe64"
+    },
+    {
+      "path": "scripts/migration-add-reactions-comments.sql",
+      "operation_class": "legacy_schema_migration",
+      "schema_objects": [
+        "reactions",
+        "comments"
+      ],
+      "invocation_path": "manual SQL artifact",
+      "current_owner_domain": "legacy schema evolution",
+      "classification": "LEGACY_COMPATIBILITY",
+      "transaction_behavior": "artifact-specific",
+      "idempotency_claim": "artifact-specific",
+      "rollback_claim": "not recorded in canonical ledger",
+      "production_relevance": "historical compatibility artifact",
+      "evidence": "pre-ledger SQL file in scripts root",
+      "risk": "no immutable applied record or canonical ordering",
+      "recommended_disposition": "do not execute as new work",
+      "linked_issue": "#3458",
+      "baseline_sha": "5d601154cfa45a4885e30fc190446ce3b9623aa0",
+      "content_checksum": "sha256:3507230fb8ea04cc363a96834cb1ac6cd934bfbfb47ffa7027eea5f966e2877f"
+    },
+    {
+      "path": "scripts/migration-add-tree-comments.sql",
+      "operation_class": "legacy_schema_migration",
+      "schema_objects": [
+        "tree comments"
+      ],
+      "invocation_path": "manual SQL artifact",
+      "current_owner_domain": "legacy schema evolution",
+      "classification": "LEGACY_COMPATIBILITY",
+      "transaction_behavior": "artifact-specific",
+      "idempotency_claim": "artifact-specific",
+      "rollback_claim": "not recorded in canonical ledger",
+      "production_relevance": "historical compatibility artifact",
+      "evidence": "pre-ledger SQL file in scripts root",
+      "risk": "no immutable applied record or canonical ordering",
+      "recommended_disposition": "do not execute as new work",
+      "linked_issue": "#3458",
+      "baseline_sha": "5d601154cfa45a4885e30fc190446ce3b9623aa0",
+      "content_checksum": "sha256:6dedb7c34e3935f2729798b0acacea2619c785692c49c4e4b41ef2be784cd583"
+    },
+    {
+      "path": "scripts/migration-add-tree-metadata.sql",
+      "operation_class": "legacy_schema_migration",
+      "schema_objects": [
+        "trees metadata"
+      ],
+      "invocation_path": "manual SQL artifact",
+      "current_owner_domain": "legacy schema evolution",
+      "classification": "LEGACY_COMPATIBILITY",
+      "transaction_behavior": "artifact-specific",
+      "idempotency_claim": "artifact-specific",
+      "rollback_claim": "not recorded in canonical ledger",
+      "production_relevance": "historical compatibility artifact",
+      "evidence": "pre-ledger SQL file in scripts root",
+      "risk": "no immutable applied record or canonical ordering",
+      "recommended_disposition": "do not execute as new work",
+      "linked_issue": "#3458",
+      "baseline_sha": "5d601154cfa45a4885e30fc190446ce3b9623aa0",
+      "content_checksum": "sha256:511c3e0e3c7d14cefa508e4f59272c1be99efad5fe2a775537dc36081e0010f2"
+    },
+    {
+      "path": "scripts/migration-add-tree-social-counts.sql",
+      "operation_class": "legacy_schema_migration",
+      "schema_objects": [
+        "tree_likes",
+        "tree_social_counts"
+      ],
+      "invocation_path": "manual SQL artifact",
+      "current_owner_domain": "legacy schema evolution",
+      "classification": "LEGACY_COMPATIBILITY",
+      "transaction_behavior": "artifact-specific",
+      "idempotency_claim": "artifact-specific",
+      "rollback_claim": "not recorded in canonical ledger",
+      "production_relevance": "historical compatibility artifact",
+      "evidence": "pre-ledger SQL file in scripts root",
+      "risk": "no immutable applied record or canonical ordering",
+      "recommended_disposition": "do not execute as new work",
+      "linked_issue": "#3188, #3458",
+      "baseline_sha": "5d601154cfa45a4885e30fc190446ce3b9623aa0",
+      "content_checksum": "sha256:68240a48b9715626e221ec46cc25c2e1d381095edafc344b68c8c9df12e6c263"
+    },
+    {
+      "path": "scripts/migration-add-tree-view-tracking.sql",
+      "operation_class": "legacy_schema_migration",
+      "schema_objects": [
+        "tree view tracking"
+      ],
+      "invocation_path": "manual SQL artifact",
+      "current_owner_domain": "legacy schema evolution",
+      "classification": "LEGACY_COMPATIBILITY",
+      "transaction_behavior": "artifact-specific",
+      "idempotency_claim": "artifact-specific",
+      "rollback_claim": "not recorded in canonical ledger",
+      "production_relevance": "historical compatibility artifact",
+      "evidence": "pre-ledger SQL file in scripts root",
+      "risk": "no immutable applied record or canonical ordering",
+      "recommended_disposition": "do not execute as new work",
+      "linked_issue": "#3458",
+      "baseline_sha": "5d601154cfa45a4885e30fc190446ce3b9623aa0",
+      "content_checksum": "sha256:8ead567645c87fb7bbecf2de6c26722bd150e4949a47e11c118b865ec4b1cd53"
+    },
+    {
+      "path": "scripts/migration-b-generic-social-targets-cutover.sql",
+      "operation_class": "legacy_compatibility_cutover",
+      "schema_objects": [
+        "social_idempotency",
+        "social_audit_log"
+      ],
+      "invocation_path": "manual SQL artifact",
+      "current_owner_domain": "social schema",
+      "classification": "LEGACY_COMPATIBILITY",
+      "transaction_behavior": "explicit transaction in artifact",
+      "idempotency_claim": "guarded compatibility cutover",
+      "rollback_claim": "no automatic rollback",
+      "production_relevance": "approval-gated historical artifact",
+      "evidence": "paired manual runbook and source contract",
+      "risk": "constraint changes require explicit catalog proof",
+      "recommended_disposition": "do not run outside canonical manifest workflow",
+      "linked_issue": "#3352, #3458",
+      "baseline_sha": "5d601154cfa45a4885e30fc190446ce3b9623aa0",
+      "content_checksum": "sha256:f5b7034a29ca165e0a947c09db995695155a573ea9d0af14a910f259d63e3317"
+    },
+    {
+      "path": "scripts/migration-harden-moment-social-writes.sql",
+      "operation_class": "legacy_schema_migration",
+      "schema_objects": [
+        "social write support tables"
+      ],
+      "invocation_path": "manual SQL artifact",
+      "current_owner_domain": "legacy schema evolution",
+      "classification": "LEGACY_COMPATIBILITY",
+      "transaction_behavior": "artifact-specific",
+      "idempotency_claim": "artifact-specific",
+      "rollback_claim": "not recorded in canonical ledger",
+      "production_relevance": "historical compatibility artifact",
+      "evidence": "pre-ledger SQL file in scripts root",
+      "risk": "no immutable applied record or canonical ordering",
+      "recommended_disposition": "do not execute as new work",
+      "linked_issue": "#3177, #3458",
+      "baseline_sha": "5d601154cfa45a4885e30fc190446ce3b9623aa0",
+      "content_checksum": "sha256:7719c4e0ba0948bc07159917b460f61ff6720fab81d6c743ba8514fd31bdaf4e"
+    },
+    {
+      "path": "scripts/migration-reconcile-tree-comments-legacy-schema.sql",
+      "operation_class": "incident_schema_reconcile",
+      "schema_objects": [
+        "public.tree_comments"
+      ],
+      "invocation_path": "manual incident SQL artifact",
+      "current_owner_domain": "tree comments recovery",
+      "classification": "INCIDENT_REPAIR_ONLY",
+      "transaction_behavior": "guarded transaction with exact preconditions",
+      "idempotency_claim": "precondition-bound only",
+      "rollback_claim": "paired rollback artifact exists",
+      "production_relevance": "incident-specific and approval-gated",
+      "evidence": "legacy reconciliation source",
+      "risk": "destructive constraint and function changes if misapplied",
+      "recommended_disposition": "do not generalize; use future canonical migrations",
+      "linked_issue": "#3431, #3458",
+      "baseline_sha": "5d601154cfa45a4885e30fc190446ce3b9623aa0",
+      "content_checksum": "sha256:9f5ff89d8a1bb77c65426948577d4fca0ae98d9ad40adac19112c16afde8f155"
+    },
+    {
+      "path": "scripts/migration-repair-trees-schema-3435.sql",
+      "operation_class": "incident_schema_repair",
+      "schema_objects": [
+        "public.trees"
+      ],
+      "invocation_path": "manual incident SQL artifact",
+      "current_owner_domain": "tree schema recovery",
+      "classification": "INCIDENT_REPAIR_ONLY",
+      "transaction_behavior": "guarded transaction with metadata preconditions",
+      "idempotency_claim": "add-if-absent and type-checked",
+      "rollback_claim": "forward recovery preferred",
+      "production_relevance": "incident-specific and approval-gated",
+      "evidence": "service-restoration foothold source",
+      "risk": "does not establish historical migration provenance",
+      "recommended_disposition": "retain for incident evidence only",
+      "linked_issue": "#3435, #3458",
+      "baseline_sha": "5d601154cfa45a4885e30fc190446ce3b9623aa0",
+      "content_checksum": "sha256:0b44ea24ff083813724d6309fc03cc4e8361836d5d8ce279277f94e11c406ed7"
+    },
+    {
+      "path": "scripts/rollback-tree-comments-legacy-reconcile.sql",
+      "operation_class": "explicit_rollback_artifact",
+      "schema_objects": [
+        "public.tree_comments"
+      ],
+      "invocation_path": "manual rollback SQL artifact",
+      "current_owner_domain": "tree comments recovery",
+      "classification": "ROLLBACK_ONLY",
+      "transaction_behavior": "guarded transaction with exact preconditions",
+      "idempotency_claim": "not safe to rerun after successful rollback",
+      "rollback_claim": "explicit rollback artifact, not generic down migration",
+      "production_relevance": "requires isolated rehearsal and explicit approval",
+      "evidence": "paired source-level rollback contract",
+      "risk": "column and index removal if preconditions are misunderstood",
+      "recommended_disposition": "never auto-run; require approved recovery decision",
+      "linked_issue": "#3423, #3458",
+      "baseline_sha": "5d601154cfa45a4885e30fc190446ce3b9623aa0",
+      "content_checksum": "sha256:311e58aec22da944f77a88f8730da49fad4e9275f0afb58947c107f6561c18ef"
+    },
+    {
+      "path": "scripts/seed-public-multi-branch-fixture.cjs",
+      "operation_class": "test_fixture_seed",
+      "schema_objects": [
+        "fixture tree and moment records"
+      ],
+      "invocation_path": "local fixture script",
+      "current_owner_domain": "test fixtures",
+      "classification": "TEST_FIXTURE_ONLY",
+      "transaction_behavior": "fixture-specific",
+      "idempotency_claim": "fixture-specific",
+      "rollback_claim": "fixture cleanup is separate from schema rollback",
+      "production_relevance": "not a production migration path",
+      "evidence": "seed-named local fixture source",
+      "risk": "must not be used as schema reconstruction source",
+      "recommended_disposition": "keep isolated from canonical migrations",
+      "linked_issue": "#3458",
+      "baseline_sha": "5d601154cfa45a4885e30fc190446ce3b9623aa0",
+      "content_checksum": "sha256:6ec74250922a08a284da8768c7849d5545126d2334daa5184136d88673c7c713"
+    },
+    {
+      "path": "scripts/seed-public-multi-branch-fixture.js",
+      "operation_class": "test_fixture_seed_alias",
+      "schema_objects": [
+        "fixture tree and moment records"
+      ],
+      "invocation_path": "local fixture script",
+      "current_owner_domain": "test fixtures",
+      "classification": "TEST_FIXTURE_ONLY",
+      "transaction_behavior": "fixture-specific",
+      "idempotency_claim": "fixture-specific",
+      "rollback_claim": "fixture cleanup is separate from schema rollback",
+      "production_relevance": "not a production migration path",
+      "evidence": "seed-named local fixture source",
+      "risk": "must not be used as schema reconstruction source",
+      "recommended_disposition": "keep isolated from canonical migrations",
+      "linked_issue": "#3458",
+      "baseline_sha": "5d601154cfa45a4885e30fc190446ce3b9623aa0",
+      "content_checksum": "sha256:6ec74250922a08a284da8768c7849d5545126d2334daa5184136d88673c7c713"
+    },
+    {
+      "path": "scripts/seed-public-trees.cjs",
+      "operation_class": "test_fixture_seed",
+      "schema_objects": [
+        "fixture tree records"
+      ],
+      "invocation_path": "local fixture script",
+      "current_owner_domain": "test fixtures",
+      "classification": "TEST_FIXTURE_ONLY",
+      "transaction_behavior": "fixture-specific",
+      "idempotency_claim": "fixture-specific",
+      "rollback_claim": "fixture cleanup is separate from schema rollback",
+      "production_relevance": "not a production migration path",
+      "evidence": "seed-named local fixture source",
+      "risk": "must not be used as schema reconstruction source",
+      "recommended_disposition": "keep isolated from canonical migrations",
+      "linked_issue": "#3458",
+      "baseline_sha": "5d601154cfa45a4885e30fc190446ce3b9623aa0",
+      "content_checksum": "sha256:4d2b0f87fc30222e01374d81e80787641704f2fdfa9db77757634a97ab214612"
+    },
+    {
+      "path": "scripts/seed-public-trees.js",
+      "operation_class": "test_fixture_seed_alias",
+      "schema_objects": [
+        "fixture tree records"
+      ],
+      "invocation_path": "local fixture script",
+      "current_owner_domain": "test fixtures",
+      "classification": "TEST_FIXTURE_ONLY",
+      "transaction_behavior": "fixture-specific",
+      "idempotency_claim": "fixture-specific",
+      "rollback_claim": "fixture cleanup is separate from schema rollback",
+      "production_relevance": "not a production migration path",
+      "evidence": "duplicate fixture source",
+      "risk": "must not be used as schema reconstruction source",
+      "recommended_disposition": "keep isolated from canonical migrations",
+      "linked_issue": "#3458",
+      "baseline_sha": "5d601154cfa45a4885e30fc190446ce3b9623aa0",
+      "content_checksum": "sha256:4d2b0f87fc30222e01374d81e80787641704f2fdfa9db77757634a97ab214612"
+    },
+    {
+      "path": "scripts/verify-db.cjs",
+      "operation_class": "manual_database_verification",
+      "schema_objects": [
+        "legacy diagnostic database path"
+      ],
+      "invocation_path": "local direct database script",
+      "current_owner_domain": "legacy operator tooling",
+      "classification": "PROHIBITED_FOR_NEW_USE",
+      "transaction_behavior": "read-only script with no sanitized evidence envelope",
+      "idempotency_claim": "not applicable",
+      "rollback_claim": "not applicable",
+      "production_relevance": "legacy local diagnostic only",
+      "evidence": "direct connection tooling predates provenance boundary",
+      "risk": "can reveal private rows or payloads",
+      "recommended_disposition": "replace with sanitized catalog evidence adapter",
+      "linked_issue": "#3458",
+      "baseline_sha": "5d601154cfa45a4885e30fc190446ce3b9623aa0",
+      "content_checksum": "sha256:0bb71fa6450899241fbcfe3c169bf1995ac1e97d05389d9e01ac4b6516654ec8"
+    },
+    {
+      "path": "scripts/verify-db.js",
+      "operation_class": "manual_database_verification_alias",
+      "schema_objects": [
+        "legacy trees verification"
+      ],
+      "invocation_path": "local direct database script",
+      "current_owner_domain": "legacy operator tooling",
+      "classification": "PROHIBITED_FOR_NEW_USE",
+      "transaction_behavior": "read-only script with no sanitized evidence envelope",
+      "idempotency_claim": "not applicable",
+      "rollback_claim": "not applicable",
+      "production_relevance": "legacy local diagnostic only",
+      "evidence": "duplicate direct connection diagnostic source",
+      "risk": "can reveal private rows or payloads",
+      "recommended_disposition": "replace with sanitized catalog evidence adapter",
+      "linked_issue": "#3458",
+      "baseline_sha": "5d601154cfa45a4885e30fc190446ce3b9623aa0",
+      "content_checksum": "sha256:0bb71fa6450899241fbcfe3c169bf1995ac1e97d05389d9e01ac4b6516654ec8"
+    }
+  ]
+}
