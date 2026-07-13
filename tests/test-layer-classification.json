@@ -2207,7 +2207,14 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/public-viewer-appreciation-presentation-model-runtime-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes the pure Public Viewer appreciation presentation-slot helper in node:vm, proving fixed canonical slot order, unavailable-vs-zero social semantics, detached read-only knowledge, and fail-closed owner/editor capabilities without a real browser, network, auth provider, database, deployment, or Production resource.",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/public-viewer-authenticated-comment-composer-contract.test.cjs",
+
       "layer": "EXECUTED_FAKE",
       "rationale": "Reads production module source and executes it in a local process with injected fake/mock/stub dependencies (e.g., vm context with fake DOM or mocked fetch/localStorage); no real external system or production resource used.",
       "capabilities": []
