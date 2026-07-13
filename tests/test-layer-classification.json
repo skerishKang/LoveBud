@@ -329,6 +329,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/canonical-appreciation-boundary-audit-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Reads the canonical appreciation boundary audit Markdown and asserts required sections, tables, safety bans, social issue separation, implementation-slice fields, and keep-open issue language. Does not execute Viewer/Editor runtime, launch a browser, connect to a database or network, deploy, or mutate production.",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/canonical-format-guard.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads the tests/contracts directory and asserts file-name and extension structure; does not execute application runtime behavior, connect to a network, database, or browser, deploy, or mutate Production.",
