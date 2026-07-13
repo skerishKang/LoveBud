@@ -2201,11 +2201,18 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/public-viewer-appreciation-model-adapter-runtime-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes the canonical appreciation render model and Public Viewer route-owned adapter in node:vm, proving public-safe projection, detached output, social-count preservation, and fail-closed Viewer capabilities without a real browser, network, auth provider, database, deployment, or Production resource.",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/public-viewer-authenticated-comment-composer-contract.test.cjs",
       "layer": "EXECUTED_FAKE",
       "rationale": "Reads production module source and executes it in a local process with injected fake/mock/stub dependencies (e.g., vm context with fake DOM or mocked fetch/localStorage); no real external system or production resource used.",
       "capabilities": []
     },
+
     {
       "path": "tests/contracts/public-viewer-authenticated-like-contract.test.cjs",
       "layer": "EXECUTED_FAKE",
