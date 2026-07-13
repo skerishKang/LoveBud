@@ -57,6 +57,7 @@ test('owner editing actions hidden in view mode via CSS', () => {
     const viewSelectors = [
         '#editMemoryBtn',
         '#continueFromMomentBtn',
+        '#connectExistingCtaSection',
         '#ftbEditBtn',
         '#ftbContinueBtn',
         '#ftbQuickAdd'

@@ -19,16 +19,16 @@ export function buildSidebarTemplate() {
                         <strong id="sidebarTreeTitle">러브트리</strong>
                     </div>
                     <div id="sidebarFlowSummary" class="editor-flow-summary"></div>
-                    <div id="editorTreeReactions" class="editor-tree-reactions" aria-label="트리 전체 반응">
-                        <span class="editor-tree-reaction-metric" title="트리 전체 좋아요">
+                    <div id="editorTreeReactions" class="editor-tree-reactions" aria-label="트리 전체 반응" hidden>
+                        <span id="editorTreeLikeMetric" class="editor-tree-reaction-metric" title="트리 전체 좋아요" hidden>
                             <span class="material-symbols-outlined" aria-hidden="true">favorite</span>
                             <span>트리 좋아요</span>
-                            <strong id="editorTreeLikeCount">—</strong>
+                            <strong id="editorTreeLikeCount"></strong>
                         </span>
-                        <span class="editor-tree-reaction-metric" title="트리 전체 댓글">
+                        <span id="editorTreeCommentMetric" class="editor-tree-reaction-metric" title="트리 전체 댓글" hidden>
                             <span class="material-symbols-outlined" aria-hidden="true">chat_bubble</span>
                             <span>트리 댓글</span>
-                            <strong id="editorTreeCommentCount">—</strong>
+                            <strong id="editorTreeCommentCount"></strong>
                         </span>
                     </div>
                 </div>

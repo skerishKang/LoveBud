@@ -479,6 +479,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/editor-authoring-shell-continuity-3483.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Reads Editor authoring shell source and exercises floating-toolbar visibility pure rules in a local vm with fake DOM state; does not connect to a network, database, browser, or production system.",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/editor-bootstrap-guard-inventory-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
