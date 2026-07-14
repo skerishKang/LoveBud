@@ -101,6 +101,7 @@
             summary: document.getElementById('myTreesHubSummary'),
             actions: document.getElementById('myTreesHubActions'),
             openBtn: document.getElementById('myTreesHubOpenBtn'),
+            publicViewBtn: document.getElementById('myTreesHubPublicViewBtn'),
             editBtn: document.getElementById('myTreesHubEditBtn'),
             shareBtn: document.getElementById('myTreesHubShareBtn'),
             noMoments: document.getElementById('myTreesHubNoMoments'),
@@ -361,15 +362,28 @@
             basePath = window.location.pathname.indexOf('/pages/') !== -1 ? '' : 'pages/';
         }
 
-        if (els.openBtn && tree && tree.id) {
-            var isPublicTree = (tree.visibility === 'public');
-            els.openBtn.href = isPublicTree
-                ? basePath + 'view.html?treeId=' + encodeURIComponent(tree.id) + '&from=my-trees'
-                : basePath + 'editor?treeId=' + encodeURIComponent(tree.id) + '&from=my-trees';
+        var targets = null;
+        try {
+            if (window.LoveBudMyTreesEntryTargetResolver && typeof window.LoveBudMyTreesEntryTargetResolver.resolveMyTreesEntryTargets === 'function') {
+                targets = window.LoveBudMyTreesEntryTargetResolver.resolveMyTreesEntryTargets(tree);
+            }
+        } catch (e) {
+            targets = null;
         }
-        if (els.editBtn && tree && tree.id) {
-            els.editBtn.href = basePath + 'editor?treeId=' + encodeURIComponent(tree.id) + '&from=my-trees';
+
+        function buildSafeHref(target) {
+            if (!target || target.available !== true || typeof target.href !== 'string' || !target.href) {
+                return null;
+            }
+            if (target.href.indexOf('://') !== -1 || target.href.indexOf('//') === 0 || target.href.indexOf('javascript:') === 0 || target.href.indexOf('#') === 0) {
+                return null;
+            }
+            return basePath + target.href;
         }
+
+        var openHref = targets ? buildSafeHref(targets.primary) : null;
+        var publicViewHref = targets ? buildSafeHref(targets.publicView) : null;
+        var editHref = targets ? buildSafeHref(targets.edit) : null;
 
         /* ── Share button — copy share URL to clipboard ── */
         if (els.shareBtn && tree && tree.id) {
@@ -495,18 +509,41 @@
         /* ── Actions ── */
         if (els.actions) {
             els.actions.hidden = false;
-            if (els.openBtn && tree && tree.id) {
-                var isPublicTree = (tree.visibility === 'public');
-                els.openBtn.href = isPublicTree
-                    ? basePath + 'view.html?treeId=' + encodeURIComponent(tree.id) + '&from=my-trees'
-                    : basePath + 'editor?treeId=' + encodeURIComponent(tree.id) + '&from=my-trees';
-                els.openBtn.innerHTML = '<span class="material-symbols-outlined">account_tree</span>' +
-                    escapeHtml(i18nHub('', '트리 열기', 'Open tree'));
+            
+            if (els.openBtn) {
+                if (openHref) {
+                    els.openBtn.href = openHref;
+                    els.openBtn.hidden = false;
+                    els.openBtn.innerHTML = '<span class="material-symbols-outlined">account_tree</span><span data-i18n="myTrees.entry_appreciation">' +
+                        escapeHtml(i18nHub('myTrees.entry_appreciation', '감상하기', 'Appreciate')) + '</span>';
+                } else {
+                    els.openBtn.removeAttribute('href');
+                    els.openBtn.hidden = true;
+                }
             }
-            if (els.editBtn && tree && tree.id) {
-                els.editBtn.href = basePath + 'editor?treeId=' + encodeURIComponent(tree.id) + '&from=my-trees';
-                els.editBtn.innerHTML = '<span class="material-symbols-outlined">edit</span>' +
-                    escapeHtml(i18nHub('', '편집하기', 'Edit'));
+            
+            if (els.publicViewBtn) {
+                if (publicViewHref) {
+                    els.publicViewBtn.href = publicViewHref;
+                    els.publicViewBtn.hidden = false;
+                    els.publicViewBtn.innerHTML = '<span class="material-symbols-outlined">visibility</span><span data-i18n="myTrees.entry_public_view">' +
+                        escapeHtml(i18nHub('myTrees.entry_public_view', '공개 화면 보기', 'View public screen')) + '</span>';
+                } else {
+                    els.publicViewBtn.removeAttribute('href');
+                    els.publicViewBtn.hidden = true;
+                }
+            }
+            
+            if (els.editBtn) {
+                if (editHref) {
+                    els.editBtn.href = editHref;
+                    els.editBtn.hidden = false;
+                    els.editBtn.innerHTML = '<span class="material-symbols-outlined">edit</span><span data-i18n="myTrees.entry_edit">' +
+                        escapeHtml(i18nHub('myTrees.entry_edit', '편집하기', 'Edit')) + '</span>';
+                } else {
+                    els.editBtn.removeAttribute('href');
+                    els.editBtn.hidden = true;
+                }
             }
         }
 
@@ -601,18 +638,64 @@
             } else {
                 basePath = window.location.pathname.indexOf('/pages/') !== -1 ? '' : 'pages/';
             }
-            if (els.openBtn && tree && tree.id) {
-                var isPublicTree = (tree.visibility === 'public');
-                els.openBtn.href = isPublicTree
-                    ? basePath + 'view.html?treeId=' + encodeURIComponent(tree.id) + '&from=my-trees'
-                    : basePath + 'editor?treeId=' + encodeURIComponent(tree.id) + '&from=my-trees';
-                els.openBtn.innerHTML = '<span class="material-symbols-outlined">account_tree</span> ' +
-                    escapeHtml(i18nHub('', '트리 열기', 'Open tree'));
+            
+            var targets = null;
+            try {
+                if (window.LoveBudMyTreesEntryTargetResolver && typeof window.LoveBudMyTreesEntryTargetResolver.resolveMyTreesEntryTargets === 'function') {
+                    targets = window.LoveBudMyTreesEntryTargetResolver.resolveMyTreesEntryTargets(tree);
+                }
+            } catch (e) {
+                targets = null;
             }
-            if (els.editBtn && tree && tree.id) {
-                els.editBtn.href = basePath + 'editor?treeId=' + encodeURIComponent(tree.id) + '&from=my-trees';
-                els.editBtn.innerHTML = '<span class="material-symbols-outlined">edit</span> ' +
-                    escapeHtml(i18nHub('', '편집하기', 'Edit'));
+
+            function buildSafeHref(target) {
+                if (!target || target.available !== true || typeof target.href !== 'string' || !target.href) {
+                    return null;
+                }
+                if (target.href.indexOf('://') !== -1 || target.href.indexOf('//') === 0 || target.href.indexOf('javascript:') === 0 || target.href.indexOf('#') === 0) {
+                    return null;
+                }
+                return basePath + target.href;
+            }
+
+            var openHref = targets ? buildSafeHref(targets.primary) : null;
+            var publicViewHref = targets ? buildSafeHref(targets.publicView) : null;
+            var editHref = targets ? buildSafeHref(targets.edit) : null;
+
+            if (els.openBtn) {
+                if (openHref) {
+                    els.openBtn.href = openHref;
+                    els.openBtn.hidden = false;
+                    els.openBtn.innerHTML = '<span class="material-symbols-outlined">account_tree</span><span data-i18n="myTrees.entry_appreciation">' +
+                        escapeHtml(i18nHub('myTrees.entry_appreciation', '감상하기', 'Appreciate')) + '</span>';
+                } else {
+                    els.openBtn.removeAttribute('href');
+                    els.openBtn.hidden = true;
+                }
+            }
+            
+            if (els.publicViewBtn) {
+                if (publicViewHref) {
+                    els.publicViewBtn.href = publicViewHref;
+                    els.publicViewBtn.hidden = false;
+                    els.publicViewBtn.innerHTML = '<span class="material-symbols-outlined">visibility</span><span data-i18n="myTrees.entry_public_view">' +
+                        escapeHtml(i18nHub('myTrees.entry_public_view', '공개 화면 보기', 'View public screen')) + '</span>';
+                } else {
+                    els.publicViewBtn.removeAttribute('href');
+                    els.publicViewBtn.hidden = true;
+                }
+            }
+            
+            if (els.editBtn) {
+                if (editHref) {
+                    els.editBtn.href = editHref;
+                    els.editBtn.hidden = false;
+                    els.editBtn.innerHTML = '<span class="material-symbols-outlined">edit</span><span data-i18n="myTrees.entry_edit">' +
+                        escapeHtml(i18nHub('myTrees.entry_edit', '편집하기', 'Edit')) + '</span>';
+                } else {
+                    els.editBtn.removeAttribute('href');
+                    els.editBtn.hidden = true;
+                }
             }
         }
     }

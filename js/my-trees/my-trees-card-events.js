@@ -2,7 +2,7 @@
   'use strict';
 
   function isInteractiveTarget(target) {
-    return !!(target && target.closest && target.closest('.tree-card-open-link, .tree-card-edit-link, button, a[href]'));
+    return !!(target && target.closest && target.closest('.tree-card-open-link, .tree-card-public-view-link, .tree-card-edit-link, button, a[href]'));
   }
 
   function isActivationKey(event) {
@@ -43,6 +43,13 @@
       });
     }
 
+    var publicViewLink = card.querySelector('.tree-card-public-view-link');
+    if (publicViewLink) {
+      publicViewLink.addEventListener('click', function (event) {
+        event.stopPropagation();
+      });
+    }
+
     return openLink;
   }
 
@@ -52,16 +59,24 @@
       return openLink.getAttribute('href');
     }
 
-    var basePath = (typeof window.LoveBudPath !== 'undefined' && window.LoveBudPath.getBasePath)
-      ? window.LoveBudPath.getBasePath()
-      : (window.location.pathname.indexOf('/pages/') !== -1 ? '' : 'pages/');
-
-    var isPublicTree = tree && (tree.visibility === 'public');
-    if (isPublicTree) {
-      return basePath + 'view.html?treeId=' + encodeURIComponent((tree && tree.id) || '') + '&from=my-trees';
-    } else {
-      return basePath + 'editor?treeId=' + encodeURIComponent((tree && tree.id) || '') + '&from=my-trees';
+    if (window.LoveBudMyTreesEntryTargetResolver && typeof window.LoveBudMyTreesEntryTargetResolver.resolveMyTreesEntryTargets === 'function') {
+      try {
+        var targets = window.LoveBudMyTreesEntryTargetResolver.resolveMyTreesEntryTargets(tree);
+        if (targets && targets.primary && targets.primary.available === true && typeof targets.primary.href === 'string') {
+          var href = targets.primary.href;
+          if (href && href.indexOf('://') === -1 && href.indexOf('//') !== 0 && href.indexOf('javascript:') !== 0 && href.indexOf('#') !== 0) {
+            var basePath = (typeof window.LoveBudPath !== 'undefined' && window.LoveBudPath.getBasePath)
+              ? window.LoveBudPath.getBasePath()
+              : (window.location.pathname.indexOf('/pages/') !== -1 ? '' : 'pages/');
+            return basePath + href;
+          }
+        }
+      } catch (e) {
+        return null;
+      }
     }
+
+    return null;
   }
 
   function cloneCardWithoutListeners(card) {

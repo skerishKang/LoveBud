@@ -64,14 +64,29 @@
     if (!el) return;
     var locale = window.i18n?.currentLang || document.documentElement?.lang || 'ko';
     var isEnglish = String(locale).toLowerCase().startsWith('en');
-    var label = isEnglish ? 'Open tree' : '트리 열기';
+    var label = isEnglish ? 'Appreciate' : '감상하기';
     if (typeof window.t === 'function') {
-      var translated = window.t('myTrees.hub_open');
-      if (typeof translated === 'string' && translated.trim() && translated !== 'myTrees.hub_open') {
+      var translated = window.t('myTrees.entry_appreciation');
+      if (typeof translated === 'string' && translated.trim() && translated !== 'myTrees.entry_appreciation') {
         label = translated;
       }
     }
     el.innerHTML = '<span class="material-symbols-outlined">account_tree</span><span>' + label + '</span>';
+  }
+
+  function setHubPublicViewBtn() {
+    var el = document.getElementById('myTreesHubPublicViewBtn');
+    if (!el) return;
+    var locale = window.i18n?.currentLang || document.documentElement?.lang || 'ko';
+    var isEnglish = String(locale).toLowerCase().startsWith('en');
+    var label = isEnglish ? 'View public screen' : '공개 화면 보기';
+    if (typeof window.t === 'function') {
+      var translated = window.t('myTrees.entry_public_view');
+      if (typeof translated === 'string' && translated.trim() && translated !== 'myTrees.entry_public_view') {
+        label = translated;
+      }
+    }
+    el.innerHTML = '<span class="material-symbols-outlined">visibility</span><span>' + label + '</span>';
   }
 
   function setHubShareBtn() {
@@ -117,8 +132,9 @@
 
     setText('myTreesHubTitle', 'myTrees.hub_title', '내 러브트리');
     setText('myTreesHubBadge', 'myTrees.hub_badge', '선택한 내 트리');
-    setText('myTreesHubEditBtn', 'myTrees.hub_edit', '편집하기');
+    setText('myTreesHubEditBtn', 'myTrees.entry_edit', '편집하기');
     setHubOpenBtn();
+    setHubPublicViewBtn();
     setHubShareBtn();
 
     var retryBtn = document.getElementById('retryLoadBtn');

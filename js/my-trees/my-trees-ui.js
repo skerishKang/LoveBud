@@ -302,11 +302,34 @@
       : ((typeof window.LoveBudPath !== 'undefined' && window.LoveBudPath.getBasePath)
         ? window.LoveBudPath.getBasePath()
         : (window.location.pathname.indexOf('/pages/') !== -1 ? '' : 'pages/'));
-    var isPublicTree = (normalizedTree.visibility === 'public');
-    var viewHref = isPublicTree
-      ? (basePath + 'view.html?treeId=' + encodeURIComponent(normalizedTree.id || '') + '&from=my-trees')
-      : (basePath + 'editor?treeId=' + encodeURIComponent(normalizedTree.id || '') + '&from=my-trees');
-    var editHref = basePath + 'editor?treeId=' + encodeURIComponent(normalizedTree.id || '') + '&from=my-trees';
+    var targets = null;
+    try {
+      if (window.LoveBudMyTreesEntryTargetResolver && typeof window.LoveBudMyTreesEntryTargetResolver.resolveMyTreesEntryTargets === 'function') {
+        targets = window.LoveBudMyTreesEntryTargetResolver.resolveMyTreesEntryTargets(normalizedTree);
+      }
+    } catch (err) {
+      targets = null;
+    }
+
+    function buildSafeHref(target) {
+      if (!target || target.available !== true || typeof target.href !== 'string' || !target.href) {
+        return null;
+      }
+      if (target.href.indexOf('://') !== -1 || target.href.indexOf('//') === 0 || target.href.indexOf('javascript:') === 0 || target.href.indexOf('#') === 0) {
+        return null;
+      }
+      return basePath + target.href;
+    }
+
+    var openHref = null;
+    var publicViewHref = null;
+    var editHref = null;
+
+    if (targets && typeof targets === 'object') {
+      openHref = buildSafeHref(targets.primary);
+      publicViewHref = buildSafeHref(targets.publicView);
+      editHref = buildSafeHref(targets.edit);
+    }
 
     var card = document.createElement('div');
     card.className = 'tree-card' + selectedClass;
@@ -326,11 +349,13 @@
     };
 
     card.addEventListener('click', function (e) {
-      if (e.target.closest('.tree-card-open-link, .tree-card-edit-link, button, a[href]')) {
+      if (e.target.closest('.tree-card-open-link, .tree-card-public-view-link, .tree-card-edit-link, button, a[href]')) {
         return;
       }
       if (window.innerWidth < 480) {
-        window.location.href = viewHref;
+        if (openHref) {
+          window.location.href = openHref;
+        }
         return;
       }
       handleCardSelect();
@@ -340,7 +365,9 @@
       if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
         if (window.innerWidth < 480) {
-          window.location.href = viewHref;
+          if (openHref) {
+            window.location.href = openHref;
+          }
           return;
         }
         handleCardSelect();
@@ -348,8 +375,9 @@
     });
 
     // i18n-safe labels via getI18nText helper
-    var viewLabel = getI18nText(i18n, 'myTrees.card_view', '트리 열기');
-    var editLabel = getI18nText(i18n, 'myTrees.card_edit', '편집하기');
+    var openLabel = getI18nText(i18n, 'myTrees.entry_appreciation', '감상하기');
+    var publicViewLabel = getI18nText(i18n, 'myTrees.entry_public_view', '공개 화면 보기');
+    var editLabel = getI18nText(i18n, 'myTrees.entry_edit', '편집하기');
     var viewCountLabel = getI18nText(i18n, 'myTrees.view_count', '조회수');
     var likeCountLabel = getI18nText(i18n, 'myTrees.like_count', '좋아요');
     var commentCountLabel = getI18nText(i18n, 'myTrees.comment_count', '댓글');
@@ -388,10 +416,9 @@
             '</div>',
           '</div>',
           '<div class="tree-meta-right">',
-            '<a class="tree-card-open-link" href="' + escapeHtml(viewHref) + '" target="_self">',
-              '<span class="material-symbols-outlined" aria-hidden="true">account_tree</span>',
-              viewLabel,
-            '</a>',
+            (openHref ? '<a class="tree-card-open-link" href="' + escapeHtml(openHref) + '" target="_self"><span class="material-symbols-outlined" aria-hidden="true">account_tree</span>' + escapeHtml(openLabel) + '</a>' : ''),
+            (publicViewHref ? '<a class="tree-card-public-view-link" href="' + escapeHtml(publicViewHref) + '" target="_self"><span class="material-symbols-outlined" aria-hidden="true">visibility</span>' + escapeHtml(publicViewLabel) + '</a>' : ''),
+            (editHref ? '<a class="tree-card-edit-link" href="' + escapeHtml(editHref) + '" target="_self"><span class="material-symbols-outlined" aria-hidden="true">edit</span>' + escapeHtml(editLabel) + '</a>' : ''),
           '</div>',
         '</div>',
       '</div>'
@@ -400,6 +427,12 @@
     var openLink = card.querySelector('.tree-card-open-link');
     if (openLink) {
       openLink.addEventListener('click', function (e) {
+        e.stopPropagation();
+      });
+    }
+    var publicViewLink = card.querySelector('.tree-card-public-view-link');
+    if (publicViewLink) {
+      publicViewLink.addEventListener('click', function (e) {
         e.stopPropagation();
       });
     }
