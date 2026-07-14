@@ -225,6 +225,7 @@ test('handleConfirm routes to connectMemory, not new-moment creation', function(
 
 function createFormSandbox(opts) {
   opts = opts || {};
+  var omitConnectController = opts.omitConnectController === true;
   var canEdit = opts.canEdit !== false;
 
   var formEl = makeClickableElement({
@@ -729,6 +730,7 @@ test('production aliases map to real CTA selectors (no ARIA tab invented)', func
 
 function createConnectControllerSandbox(opts) {
   opts = opts || {};
+  var omitConnectController = opts.omitConnectController === true;
   var connectMemoryCalls = 0;
 
   function makeEl(id) {
@@ -789,14 +791,17 @@ function createConnectControllerSandbox(opts) {
 
   vm.runInContext(readSource('js/editor/editor-bindings.js'), sandbox);
 
-  var controller = sandbox.window.LoveBudEditorBindings.createConnectExistingController({
-    canEdit: opts.canEdit !== false,
-    getCurrentEditingMemory: opts.getCurrentEditingMemory || function() { return null; },
-    isRootMemory: opts.isRootMemory || function() { return false; },
-    getCanonicalRootId: opts.getCanonicalRootId || function() { return 'root'; },
-    showToast: function() {},
-    i18n: function(k) { return k; }
-  });
+  var controller = null;
+  if (!omitConnectController) {
+      var controller = sandbox.window.LoveBudEditorBindings.createConnectExistingController({
+        canEdit: opts.canEdit !== false,
+        getCurrentEditingMemory: opts.getCurrentEditingMemory || function() { return null; },
+        isRootMemory: opts.isRootMemory || function() { return false; },
+        getCanonicalRootId: opts.getCanonicalRootId || function() { return 'root'; },
+        showToast: function() {},
+        i18n: function(k) { return k; }
+      });
+  }
   // Mirror editor.js wiring: canvas + late-bound connectMemory/validateConnectCandidate.
   controller.setEditorCanvas(editorCanvas);
   controller.setConnectMemory(function() {
@@ -956,6 +961,7 @@ test('connect-existing: cancel clears pending and returns to CTA', function() {
 
 function createFormIsolationSandbox(opts) {
   opts = opts || {};
+  var omitConnectController = opts.omitConnectController === true;
   var s = createFormSandbox({ canEdit: opts.canEdit !== false });
   if (opts.inertProperty === false) {
     // Simulate an element without native `inert` property support.
@@ -1224,6 +1230,7 @@ test('focus trap: executed Tab/Shift+Tab wraps within form inputs', function() {
 
 function createFormConnectIntegrationSandbox(opts) {
   opts = opts || {};
+  var omitConnectController = opts.omitConnectController === true;
   var canEdit = opts.canEdit !== false;
 
   var counters = {
@@ -1301,8 +1308,8 @@ function createFormConnectIntegrationSandbox(opts) {
     editorMemoryFormContext: null,
     addMemoryBtn: makeClickableElement({ id: 'addMemoryBtn', disabled: false }),
     cancelAddMemory: makeClickableElement({ id: 'cancelAddMemory' }),
-    connectExistingFromFormBtn: makeClickableElement({ id: 'connectExistingFromFormBtn', hidden: false, closest: function(sel) { return sel === '.editor-memory-form-modal' ? formEl : null; } }),
-    connectExistingFromFormRow: makeClickableElement({ id: 'connectExistingFromFormRow', hidden: false }),
+    connectExistingFromFormBtn: makeClickableElement({ id: 'connectExistingFromFormBtn', hidden: true, disabled: true, tabIndex: -1, dataset: { 'aria-hidden': 'true' }, closest: function(sel) { return sel === '.editor-memory-form-modal' ? formEl : null; } }),
+    connectExistingFromFormRow: makeClickableElement({ id: 'connectExistingFromFormRow', hidden: true }),
     detailPanel: makeClickableElement({ id: 'detailPanel' }),
     connectExistingCtaSection: makeClickableElement({ id: 'connectExistingCtaSection', style: { display: 'none' } }),
     connectExistingCtaBtn: makeClickableElement({ id: 'connectExistingCtaBtn', style: { display: 'none' } }),
@@ -1432,28 +1439,35 @@ function createFormConnectIntegrationSandbox(opts) {
     setOnPendingConnectCleared: function() {}
   };
 
-  var controller = sandbox.window.LoveBudEditorBindings.createConnectExistingController({
-    canEdit: canEdit,
-    getCurrentEditingMemory: opts.getCurrentEditingMemory || function() { return null; },
-    isRootMemory: opts.isRootMemory || function() { return false; },
-    getCanonicalRootId: function() { return opts.getCanonicalRootId || 'root'; },
-    showToast: function() {},
-    i18n: function(k) { return k; }
-  });
-  controller.setEditorCanvas(editorCanvas);
-  controller.setConnectMemory(function() { counters.connectMemory++; return Promise.resolve(true); });
-  controller.setValidateConnectCandidate(opts.validateConnectCandidate || function() { return { ok: true }; });
-  controller.bindControls();
-  controller.updateCtaNow();
+  var controller = null;
+  if (!omitConnectController) {
+      var controller = sandbox.window.LoveBudEditorBindings.createConnectExistingController({
+        canEdit: canEdit,
+        getCurrentEditingMemory: opts.getCurrentEditingMemory || function() { return null; },
+        isRootMemory: opts.isRootMemory || function() { return false; },
+        getCanonicalRootId: function() { return opts.getCanonicalRootId || 'root'; },
+        showToast: function() {},
+        i18n: function(k) { return k; }
+      });
+  }
+  if (controller) {
+    controller.setEditorCanvas(editorCanvas);
+    controller.setConnectMemory(function() { counters.connectMemory++; return Promise.resolve(true); });
+    controller.setValidateConnectCandidate(opts.validateConnectCandidate || function() { return { ok: true }; });
+    controller.bindControls();
+    controller.updateCtaNow();
+  }
 
   // Counting wrappers (bound before page-event wiring so the form-level
   // entry handler uses the counted versions).
-  var origStart = controller.startConnectMode;
-  controller.startConnectMode = function() {
-    var result = origStart.apply(controller, arguments);
-    if (result === true) counters.connectStart++;
-    return result;
-  };
+  var origStart = controller ? controller.startConnectMode : null;
+  if (controller) {
+    controller.startConnectMode = function() {
+      var result = origStart.apply(controller, arguments);
+      if (result === true) counters.connectStart++;
+      return result;
+    };
+  }
   var rawShow = formApi.showAddMemoryForm;
   formApi.showAddMemoryForm = function() { counters.showAddMemoryForm++; return rawShow.apply(formApi, arguments); };
   var rawHide = formApi.hideAddMemoryForm;
@@ -1681,8 +1695,12 @@ test('FORM_CONNECT_ENTRY_NEGATIVE_MATRIX: root / missing / view / readonly fail 
     // the visibility update which should hide the connect entry.
     s.elementMap.addMemoryBtn.click();
     var connectBtn = s.elementMap.connectExistingFromFormBtn;
+    var row = s.elementMap.connectExistingFromFormRow;
     return {
-      hidden: connectBtn.hidden, disabled: connectBtn.disabled,
+      rowHidden: row.hidden,
+      buttonHidden: connectBtn.hidden, buttonDisabled: connectBtn.disabled,
+      buttonTabIndex: connectBtn.tabIndex,
+      buttonAriaHidden: connectBtn.getAttribute('aria-hidden'),
       available: s.controller.isConnectEntryAvailable(),
       startResult: s.controller.startConnectMode(),
       connectStart: s.counters.connectStart, connectMemory: s.counters.connectMemory
@@ -1696,8 +1714,12 @@ test('FORM_CONNECT_ENTRY_NEGATIVE_MATRIX: root / missing / view / readonly fail 
     });
     s.elementMap.addMemoryBtn.click();
     var connectBtn = s.elementMap.connectExistingFromFormBtn;
+    var row = s.elementMap.connectExistingFromFormRow;
     return {
-      hidden: connectBtn.hidden, disabled: connectBtn.disabled,
+      rowHidden: row.hidden,
+      buttonHidden: connectBtn.hidden, buttonDisabled: connectBtn.disabled,
+      buttonTabIndex: connectBtn.tabIndex,
+      buttonAriaHidden: connectBtn.getAttribute('aria-hidden'),
       available: s.controller.isConnectEntryAvailable(),
       startResult: s.controller.startConnectMode(),
       connectMemory: s.counters.connectMemory
@@ -1711,8 +1733,12 @@ test('FORM_CONNECT_ENTRY_NEGATIVE_MATRIX: root / missing / view / readonly fail 
     });
     // View mode: form does not open via addMemoryBtn (gated by isEditMode).
     var connectBtn = s.elementMap.connectExistingFromFormBtn;
+    var row = s.elementMap.connectExistingFromFormRow;
     return {
-      hidden: connectBtn.hidden, disabled: connectBtn.disabled,
+      rowHidden: row.hidden,
+      buttonHidden: connectBtn.hidden, buttonDisabled: connectBtn.disabled,
+      buttonTabIndex: connectBtn.tabIndex,
+      buttonAriaHidden: connectBtn.getAttribute('aria-hidden'),
       available: s.controller.isConnectEntryAvailable(),
       startResult: s.controller.startConnectMode(),
       connectMemory: s.counters.connectMemory
@@ -1726,8 +1752,12 @@ test('FORM_CONNECT_ENTRY_NEGATIVE_MATRIX: root / missing / view / readonly fail 
     });
     // Read-only: form does not open (canEdit false).
     var connectBtn = s.elementMap.connectExistingFromFormBtn;
+    var row = s.elementMap.connectExistingFromFormRow;
     return {
-      hidden: connectBtn.hidden, disabled: connectBtn.disabled,
+      rowHidden: row.hidden,
+      buttonHidden: connectBtn.hidden, buttonDisabled: connectBtn.disabled,
+      buttonTabIndex: connectBtn.tabIndex,
+      buttonAriaHidden: connectBtn.getAttribute('aria-hidden'),
       available: s.controller.isConnectEntryAvailable(),
       startResult: s.controller.startConnectMode(),
       connectMemory: s.counters.connectMemory
@@ -1737,7 +1767,11 @@ test('FORM_CONNECT_ENTRY_NEGATIVE_MATRIX: root / missing / view / readonly fail 
   // root moment
   var root = runRootCase();
   assert.equal(root.available, false, 'ROOT_FAIL_CLOSED: not available');
-  assert.equal(root.hidden, true, 'ROOT_FAIL_CLOSED: hidden');
+  assert.equal(root.rowHidden, true, 'ROOT_ROW_HIDDEN: row hidden');
+  assert.equal(root.buttonHidden, true, 'ROOT_FAIL_CLOSED: hidden');
+  assert.equal(root.buttonDisabled, true, 'ROOT_FAIL_CLOSED: disabled');
+  assert.equal(root.buttonTabIndex, -1, 'ROOT_FAIL_CLOSED: tabIndex -1');
+  assert.equal(root.buttonAriaHidden, 'true', 'ROOT_FAIL_CLOSED: aria-hidden true');
   assert.equal(root.startResult, false, 'ROOT_FAIL_CLOSED: direct start false');
   assert.equal(root.connectStart, 0, 'root: connectStart 0');
   assert.equal(root.connectMemory, 0, 'root: connectMemory 0');
@@ -1745,19 +1779,33 @@ test('FORM_CONNECT_ENTRY_NEGATIVE_MATRIX: root / missing / view / readonly fail 
   // missing currentEditingMemory
   var missing = runMissingCase();
   assert.equal(missing.available, false, 'MISSING_FAIL_CLOSED: not available');
-  assert.equal(missing.hidden, true, 'MISSING_FAIL_CLOSED: hidden');
+  assert.equal(missing.rowHidden, true, 'MISSING_MEMORY_ROW_HIDDEN: row hidden');
+  assert.equal(missing.buttonHidden, true, 'MISSING_FAIL_CLOSED: hidden');
+  assert.equal(missing.buttonDisabled, true, 'MISSING_FAIL_CLOSED: disabled');
+  assert.equal(missing.buttonTabIndex, -1, 'MISSING_FAIL_CLOSED: tabIndex -1');
+  assert.equal(missing.buttonAriaHidden, 'true', 'MISSING_FAIL_CLOSED: aria-hidden true');
   assert.equal(missing.startResult, false, 'MISSING_FAIL_CLOSED: direct start false');
   assert.equal(missing.connectMemory, 0, 'missing memory: connectMemory 0');
 
   // view mode
   var view = runViewCase();
   assert.equal(view.available, false, 'VIEW_FAIL_CLOSED: not available');
+  assert.equal(view.rowHidden, true, 'VIEW_ROW_HIDDEN: row hidden');
+  assert.equal(view.buttonHidden, true, 'VIEW_FAIL_CLOSED: hidden');
+  assert.equal(view.buttonDisabled, true, 'VIEW_FAIL_CLOSED: disabled');
+  assert.equal(view.buttonTabIndex, -1, 'VIEW_FAIL_CLOSED: tabIndex -1');
+  assert.equal(view.buttonAriaHidden, 'true', 'VIEW_FAIL_CLOSED: aria-hidden true');
   assert.equal(view.startResult, false, 'VIEW_FAIL_CLOSED: direct start false');
   assert.equal(view.connectMemory, 0, 'view mode: connectMemory 0');
 
   // read-only / non-owner
   var readonly = runReadonlyCase();
   assert.equal(readonly.available, false, 'READONLY_FAIL_CLOSED: not available');
+  assert.equal(readonly.rowHidden, true, 'READONLY_ROW_HIDDEN: row hidden');
+  assert.equal(readonly.buttonHidden, true, 'READONLY_FAIL_CLOSED: hidden');
+  assert.equal(readonly.buttonDisabled, true, 'READONLY_FAIL_CLOSED: disabled');
+  assert.equal(readonly.buttonTabIndex, -1, 'READONLY_FAIL_CLOSED: tabIndex -1');
+  assert.equal(readonly.buttonAriaHidden, 'true', 'READONLY_FAIL_CLOSED: aria-hidden true');
   assert.equal(readonly.startResult, false, 'READONLY_FAIL_CLOSED: direct start false');
   assert.equal(readonly.connectMemory, 0, 'read-only: connectMemory 0');
 });
@@ -1779,6 +1827,41 @@ test('PR_3503_REGRESSION_PRESERVED: form-level connect entry lives in active for
   assert.equal(s.detailContent.inert, true, 'form open keeps detail inert (#3503)');
   assert.equal(s.detailContent.getAttribute('aria-hidden'), 'true', 'form open keeps detail aria-hidden (#3503)');
   assert.equal(s.formEl.inert, false, 'active form not inert');
+});
+
+
+// ── 18. Missing controller executed fail-closed ──
+
+test('MISSING_CONTROLLER_EXECUTED_FAIL_CLOSED: bindEditorPageEvents with no controller shows row/button hidden, click no-op', function() {
+  var mem = { id: 'mem-child' };
+  var s = createFormConnectIntegrationSandbox({
+    canEdit: true, mode: 'edit',
+    omitConnectController: true,
+    getCurrentEditingMemory: function() { return mem; },
+    isRootMemory: function(m, rootId) { return m && m.id === rootId; }
+  });
+
+  var row = s.elementMap.connectExistingFromFormRow;
+  var btn = s.elementMap.connectExistingFromFormBtn;
+
+  // Controller is null — page-event-bindings must guard with fail-closed defaults
+  assert.equal(row.hidden, true, 'MISSING_CONTROLLER_ROW_HIDDEN: row hidden');
+  assert.equal(btn.hidden, true, 'MISSING_CONTROLLER_BUTTON_HIDDEN: button hidden');
+  assert.equal(btn.disabled, true, 'MISSING_CONTROLLER_BUTTON_DISABLED: button disabled');
+  assert.equal(btn.tabIndex, -1, 'MISSING_CONTROLLER_BUTTON_TABINDEX: tabIndex -1');
+  assert.equal(btn.getAttribute('aria-hidden'), 'true', 'MISSING_CONTROLLER_BUTTON_ARIA_HIDDEN: aria-hidden true');
+
+  // Button click should be a no-op
+  assert.equal(btn._listeners.click ? btn._listeners.click.length : 0, 0, 'MISSING_CONTROLLER_CLICK_LISTENER_COUNT: 0');
+  btn.click();
+  assert.equal(s.editorCanvas.getPendingConnectSourceId(), null, 'MISSING_CONTROLLER_PENDING_SOURCE: null after click');
+
+  // Open the form via addMemoryBtn to verify form itself works
+  s.elementMap.addMemoryBtn.click();
+  assert.equal(s.formEl.classList.contains('is-open'), true, 'MISSING_CONTROLLER_FORM_STILL_OPENS: form opens without connect controller');
+  assert.equal(s.counters.connectStart, 0, 'MISSING_CONTROLLER_CONNECT_START: 0');
+  assert.equal(s.counters.newMomentCreate, 0, 'MISSING_CONTROLLER_NEW_MOMENT_CREATE: 0');
+  assert.equal(s.counters.connectMemory, 0, 'MISSING_CONTROLLER_CONNECT_MEMORY: 0');
 });
 
 // ── 17. Fail-closed and stale state tests (Blocker 1 & 2) ──

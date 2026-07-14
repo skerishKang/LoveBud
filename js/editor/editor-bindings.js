@@ -525,7 +525,7 @@
       targetData = { mem: targetMem, pos: targetPos };
       if (confirmHint) {
         var label = targetMem.title || '';
-        confirmHint.textContent = (label ? '\"' + label + '\" ' : '') + '(으)로 연결할까요?';
+        confirmHint.textContent = (label ? '"' + label + '" ' : '') + '(으)로 연결할까요?';
       }
       showSection('confirm');
     }
