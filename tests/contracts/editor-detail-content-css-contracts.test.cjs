@@ -179,6 +179,74 @@ test('detail-info.css — diary-note border-left preserved', () => {
 });
 
 // ---------------------------------------------------------------------------
+// 8. Hidden detail group contract (issue #3509)
+// ---------------------------------------------------------------------------
+test('detail-info.css — .detail-info-group[hidden] selector exists', () => {
+  assert.match(detailInfo, /\.detail-info-group\[hidden\]\s*\{/);
+});
+
+test('detail-info.css — hidden rule display must be none', () => {
+  const hiddenBlock = detailInfo.match(/\.detail-info-group\[hidden\]\s*\{([^}]*)\}/);
+  assert.ok(hiddenBlock, 'hidden rule block must be extractable');
+  assert.match(hiddenBlock[1], /display:\s*none/);
+});
+
+test('detail-info.css — hidden rule must be after base display:grid', () => {
+  const gridIdx = detailInfo.indexOf('.detail-info-group {\n    display: grid');
+  const hiddenIdx = detailInfo.indexOf('.detail-info-group[hidden]');
+  assert.ok(gridIdx >= 0, 'base display:grid must exist');
+  assert.ok(hiddenIdx >= 0, 'hidden rule must exist');
+  assert.ok(hiddenIdx > gridIdx, 'hidden rule must be after base grid rule');
+});
+
+test('detail-info.css — hidden rule must be after .is-compact display:flex', () => {
+  const flexIdx = detailInfo.indexOf('.detail-info-group.is-compact {\n    display: flex');
+  const hiddenIdx = detailInfo.indexOf('.detail-info-group[hidden]');
+  assert.ok(flexIdx >= 0, 'base display:flex must exist');
+  assert.ok(hiddenIdx >= 0, 'hidden rule must exist');
+  assert.ok(hiddenIdx > flexIdx, 'hidden rule must be after compact flex rule');
+});
+
+test('detail-info.css — no standalone global [hidden] override created', () => {
+  // Only .detail-info-group[hidden] is permitted, not bare [hidden] as a standalone rule
+  const bareHiddenMatches = detailInfo.match(/^\s*\[hidden\]\s*\{/gm);
+  assert.equal(bareHiddenMatches, null, 'bare standalone [hidden] rule must not exist; .memory-preview-overlay[hidden] is exempt');
+});
+
+test('detail-info.css — detail-info.css import token matches leaf SHA-256 first 12', () => {
+  const crypto = require('node:crypto');
+  const leafContent = fs.readFileSync(DETAIL_INFO, 'utf8');
+  const leafHash = crypto.createHash('sha256').update(leafContent).digest('hex').slice(0, 24);
+  const importLine = manifest.match(/@import url\('editor-detail-content\/detail-info\.css\?v=([^']+)'\)/);
+  assert.ok(importLine, 'import token must be present');
+  assert.equal(importLine[1], '20260715-3509-' + leafHash, 'import token must match leaf hash');
+});
+
+test('detail-info.css — leaf import token contains 3509', () => {
+  const importLine = manifest.match(/@import url\('editor-detail-content\/detail-info\.css\?v=([^']+)'\)/);
+  assert.ok(importLine, 'import token must be present');
+  assert.ok(importLine[1].includes('3509'), 'import token must contain 3509');
+});
+
+// editor.css must also be checked for the manifest import token
+test('detail-info.css — editor.css manifest import token matches manifest SHA-256 first 12', () => {
+  const crypto = require('node:crypto');
+  const editorCss = fs.readFileSync(path.join(ROOT, 'css/editor.css'), 'utf8');
+  const manifestContent = fs.readFileSync(MANIFEST, 'utf8');
+  const manifestHash = crypto.createHash('sha256').update(manifestContent).digest('hex').slice(0, 24);
+  const importLine = editorCss.match(/@import url\("\.\/editor\/editor-detail-content\.css\?v=([^"]+)"\)/);
+  assert.ok(importLine, 'editor.css manifest import token must be present');
+  assert.equal(importLine[1], '20260715-3509-' + manifestHash, 'editor.css import token must match manifest hash');
+});
+
+test('detail-info.css — manifest import token contains 3509', () => {
+  const editorCss = fs.readFileSync(path.join(ROOT, 'css/editor.css'), 'utf8');
+  const importLine = editorCss.match(/@import url\("\.\/editor\/editor-detail-content\.css\?v=([^"]+)"\)/);
+  assert.ok(importLine, 'manifest import token must be present');
+  assert.ok(importLine[1].includes('3509'), 'manifest import token must contain 3509');
+});
+
+// ---------------------------------------------------------------------------
 // 7. No @keyframes in any file
 // ---------------------------------------------------------------------------
 test('no @keyframes in any split file', () => {
