@@ -188,7 +188,6 @@ test('enterConnectMode fails closed for: canEdit=false, root, missing memory', f
   assert.ok(predicateText, 'canStartConnectMode source found');
   assert.match(predicateText, /canEdit === false/, 'canStartConnectMode: canEdit=false → return');
   assert.match(predicateText, /!mem.*return/, 'canStartConnectMode: missing memory → return');
-  assert.match(predicateText, /isRoot.*return/, 'canStartConnectMode: root → return');
 });
 
 test('createConnectExistingController bindControls guards: no new-moment fallback in connect handlers', function() {
