@@ -16,6 +16,16 @@
       panelHistoryBound: false
     };
 
+    // Bind a click handler exactly once per element using a dataset flag.
+    // Mirrors the helper in editor-bindings.js to keep this module self-contained.
+    function bindButtonOnce(button, bindingKey, handler) {
+      if (!button || typeof handler !== 'function') return false;
+      if (button.dataset[bindingKey] === '1') return false;
+      button.dataset[bindingKey] = '1';
+      button.addEventListener('click', handler);
+      return true;
+    }
+
     // ─────────────────────────────────────────────────────────────────────
     // PR #2449 (UX): browser Back 버튼이 panel을 닫게 함
     //
@@ -61,7 +71,88 @@
     var wrappedShowAddMemoryForm = function () {
       if (panelHistory) panelHistory.pushOnOpen();
       if (typeof originalShow === 'function') originalShow();
+      updateFormConnectEntryVisibility();
     };
+
+    // ── Form-level existing-moment connection entry (#3502) ──
+    // While the new-moment form is open, #detailContent is inert + aria-hidden,
+    // so the detail "기존 순간 연결하기" CTA is unreachable. This entry lives
+    // inside the active form surface and routes through the existing guarded
+    // connect controller — it never proxies the inert detail CTA and never
+    // falls back to new-moment creation.
+    var formConnectRow = (typeof document !== 'undefined')
+      ? document.getElementById('connectExistingFromFormRow')
+      : null;
+    var formConnectBtn = (typeof document !== 'undefined')
+      ? document.getElementById('connectExistingFromFormBtn')
+      : null;
+
+    function updateFormConnectEntryVisibility() {
+      var controller = opts.connectExistingController;
+      var available = Boolean(
+        formConnectRow &&
+        formConnectBtn &&
+        controller &&
+        typeof controller.isConnectEntryAvailable === 'function' &&
+        controller.isConnectEntryAvailable()
+      );
+
+      if (formConnectRow) {
+        formConnectRow.hidden = !available;
+      }
+
+      if (formConnectBtn) {
+        formConnectBtn.hidden = !available;
+        formConnectBtn.disabled = !available;
+        formConnectBtn.tabIndex = available ? 0 : -1;
+        formConnectBtn.setAttribute(
+          'aria-hidden',
+          available ? 'false' : 'true'
+        );
+      }
+
+      return available;
+    }
+
+    if (formConnectBtn && opts.connectExistingController && typeof opts.connectExistingController.startConnectMode === 'function') {
+      bindButtonOnce(formConnectBtn, 'formConnectEntryBound', function (event) {
+        if (event && typeof event.preventDefault === 'function') {
+          event.preventDefault();
+        }
+
+        if (event && typeof event.stopPropagation === 'function') {
+          event.stopPropagation();
+        }
+
+        var controller = opts.connectExistingController;
+
+        var available = Boolean(
+          controller &&
+          typeof controller.isConnectEntryAvailable === 'function' &&
+          controller.isConnectEntryAvailable()
+        );
+
+        if (!available) {
+          updateFormConnectEntryVisibility();
+          return;
+        }
+
+        if (typeof wrappedHideAddMemoryForm === 'function') {
+          wrappedHideAddMemoryForm();
+        }
+
+        controller.startConnectMode();
+      });
+    }
+
+    // Keep the form entry synchronized with interaction-mode changes.
+    // Selection/current-memory eligibility is revalidated whenever the form
+    // opens and immediately before the form-level connect action executes.
+    if (typeof window !== 'undefined' && window.LoveBudEditorInteractionMode && typeof window.LoveBudEditorInteractionMode.subscribe === 'function') {
+      window.LoveBudEditorInteractionMode.subscribe(function () {
+        updateFormConnectEntryVisibility();
+      });
+    }
     var wrappedHideAddMemoryForm = function () {
       if (typeof originalHide === 'function') originalHide();
       if (panelHistory) panelHistory.closeAndConsume();
@@ -159,6 +250,9 @@
         helpController.open();
       });
     }
+
+    // Initial fail-closed synchronization
+    updateFormConnectEntryVisibility();
 
     return results;
   }
