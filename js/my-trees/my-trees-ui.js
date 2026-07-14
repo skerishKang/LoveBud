@@ -11,12 +11,62 @@
 
   var _manageSummary = window.LoveBudMyTreesManageSummary || null;
 
-  /**
-   * i18n fallback helper.
-   * Treats missing, empty, or key-echo results as a failed lookup
-   * and returns the Korean fallback instead.
-   * Prevents raw keys like "myTrees.card_edit" from leaking into UI.
-   */
+    /**
+     * Canonical entry target validator.
+     * Returns safe basePath-prefixed href or null.
+     * Rejects malformed, mismatched metadata, non-available, non-string targets.
+     */
+    function validateEntryTarget(target, expectedAction, expectedInteractionMode, expectedRouteSurface) {
+      if (!target || typeof target !== 'object') return null;
+      if (target.available !== true) return null;
+      if (typeof target.href !== 'string' || !target.href) return null;
+      if (target.action !== expectedAction) return null;
+      if (target.interactionMode !== expectedInteractionMode) return null;
+      if (target.routeSurface !== expectedRouteSurface) return null;
+      if (target.href.indexOf('://') !== -1 || target.href.indexOf('//') === 0 || target.href.indexOf('javascript:') === 0 || target.href.indexOf('#') === 0) return null;
+      return target.href;
+    }
+
+    function resolveSafeBasePath() {
+      if (typeof window.LoveBudPath !== 'undefined' && window.LoveBudPath.getBasePath) {
+        var bp = window.LoveBudPath.getBasePath();
+        if (bp === '' || bp === 'pages/') return bp;
+      }
+      return window.location.pathname.indexOf('/pages/') !== -1 ? '' : 'pages/';
+    }
+
+    function validateAndResolveEntryTargets(tree) {
+      var targets = null;
+      try {
+        if (window.LoveBudMyTreesEntryTargetResolver && typeof window.LoveBudMyTreesEntryTargetResolver.resolveMyTreesEntryTargets === 'function') {
+          targets = window.LoveBudMyTreesEntryTargetResolver.resolveMyTreesEntryTargets(tree);
+        }
+      } catch (e) {
+        targets = null;
+      }
+      if (!targets || typeof targets !== 'object') {
+        return { treeId: null, accessState: 'unknown', primary: null, publicView: null, edit: null };
+      }
+      var basePath = resolveSafeBasePath();
+      function buildHref(target, action, mode, surface) {
+        var href = validateEntryTarget(target, action, mode, surface);
+        return href !== null ? basePath + href : null;
+      }
+      return {
+        treeId: targets.treeId || null,
+        accessState: targets.accessState || 'unknown',
+        primary: buildHref(targets.primary, 'appreciation', 'appreciation', 'editor'),
+        publicView: buildHref(targets.publicView, 'public-view', 'none', 'public-viewer'),
+        edit: buildHref(targets.edit, 'edit', 'edit', 'editor')
+      };
+    }
+
+    /**
+     * i18n fallback helper.
+     * Treats missing, empty, or key-echo results as a failed lookup
+     * and returns the Korean fallback instead.
+     * Prevents raw keys like "myTrees.card_edit" from leaking into UI.
+     */
   function getI18nText(i18n, key, fallback) {
     var value = typeof i18n === 'function' ? i18n(key) : '';
     if (!value || value === key || String(value).toLowerCase() === String(key).toLowerCase()) {
@@ -297,39 +347,10 @@
     var title = cardMeta.title;
 
     var selectedClass = typeof isSelected === 'function' && isSelected(normalizedTree.id) ? ' is-selected is-active' : '';
-    var basePath = options && typeof options.basePath === 'string'
-      ? options.basePath
-      : ((typeof window.LoveBudPath !== 'undefined' && window.LoveBudPath.getBasePath)
-        ? window.LoveBudPath.getBasePath()
-        : (window.location.pathname.indexOf('/pages/') !== -1 ? '' : 'pages/'));
-    var targets = null;
-    try {
-      if (window.LoveBudMyTreesEntryTargetResolver && typeof window.LoveBudMyTreesEntryTargetResolver.resolveMyTreesEntryTargets === 'function') {
-        targets = window.LoveBudMyTreesEntryTargetResolver.resolveMyTreesEntryTargets(normalizedTree);
-      }
-    } catch (err) {
-      targets = null;
-    }
-
-    function buildSafeHref(target) {
-      if (!target || target.available !== true || typeof target.href !== 'string' || !target.href) {
-        return null;
-      }
-      if (target.href.indexOf('://') !== -1 || target.href.indexOf('//') === 0 || target.href.indexOf('javascript:') === 0 || target.href.indexOf('#') === 0) {
-        return null;
-      }
-      return basePath + target.href;
-    }
-
-    var openHref = null;
-    var publicViewHref = null;
-    var editHref = null;
-
-    if (targets && typeof targets === 'object') {
-      openHref = buildSafeHref(targets.primary);
-      publicViewHref = buildSafeHref(targets.publicView);
-      editHref = buildSafeHref(targets.edit);
-    }
+    var resolved = validateAndResolveEntryTargets(normalizedTree);
+    var openHref = resolved.primary;
+    var publicViewHref = resolved.publicView;
+    var editHref = resolved.edit;
 
     var card = document.createElement('div');
     card.className = 'tree-card' + selectedClass;
@@ -416,9 +437,9 @@
             '</div>',
           '</div>',
           '<div class="tree-meta-right">',
-            (openHref ? '<a class="tree-card-open-link" href="' + escapeHtml(openHref) + '" target="_self"><span class="material-symbols-outlined" aria-hidden="true">account_tree</span>' + escapeHtml(openLabel) + '</a>' : ''),
-            (publicViewHref ? '<a class="tree-card-public-view-link" href="' + escapeHtml(publicViewHref) + '" target="_self"><span class="material-symbols-outlined" aria-hidden="true">visibility</span>' + escapeHtml(publicViewLabel) + '</a>' : ''),
-            (editHref ? '<a class="tree-card-edit-link" href="' + escapeHtml(editHref) + '" target="_self"><span class="material-symbols-outlined" aria-hidden="true">edit</span>' + escapeHtml(editLabel) + '</a>' : ''),
+            (openHref ? '<a class="tree-card-open-link" href="' + escapeHtml(openHref) + '" target="_self"><span class="material-symbols-outlined" aria-hidden="true">account_tree</span><span data-i18n="myTrees.entry_appreciation">' + escapeHtml(openLabel) + '</span></a>' : ''),
+            (publicViewHref ? '<a class="tree-card-public-view-link" href="' + escapeHtml(publicViewHref) + '" target="_self"><span class="material-symbols-outlined" aria-hidden="true">visibility</span><span data-i18n="myTrees.entry_public_view">' + escapeHtml(publicViewLabel) + '</span></a>' : ''),
+            (editHref ? '<a class="tree-card-edit-link" href="' + escapeHtml(editHref) + '" target="_self"><span class="material-symbols-outlined" aria-hidden="true">edit</span><span data-i18n="myTrees.entry_edit">' + escapeHtml(editLabel) + '</span></a>' : ''),
           '</div>',
         '</div>',
       '</div>'
@@ -605,7 +626,10 @@
     buildTreeThumbVisual: buildTreeThumbVisual,
     updateManageSummary: updateManageSummary,
     buildTreeCard: buildTreeCard,
-    renderTrees: renderTrees
+    renderTrees: renderTrees,
+    validateEntryTarget: validateEntryTarget,
+    resolveSafeBasePath: resolveSafeBasePath,
+    validateAndResolveEntryTargets: validateAndResolveEntryTargets
   };
 
   window.LoveBudMyTreesUI = api;

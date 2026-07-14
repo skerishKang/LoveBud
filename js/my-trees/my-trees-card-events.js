@@ -59,18 +59,11 @@
       return openLink.getAttribute('href');
     }
 
-    if (window.LoveBudMyTreesEntryTargetResolver && typeof window.LoveBudMyTreesEntryTargetResolver.resolveMyTreesEntryTargets === 'function') {
+    var UI = window.LoveBudMyTreesUI || window.LoveTreeMyTreesUI;
+    if (UI && typeof UI.validateAndResolveEntryTargets === 'function') {
       try {
-        var targets = window.LoveBudMyTreesEntryTargetResolver.resolveMyTreesEntryTargets(tree);
-        if (targets && targets.primary && targets.primary.available === true && typeof targets.primary.href === 'string') {
-          var href = targets.primary.href;
-          if (href && href.indexOf('://') === -1 && href.indexOf('//') !== 0 && href.indexOf('javascript:') !== 0 && href.indexOf('#') !== 0) {
-            var basePath = (typeof window.LoveBudPath !== 'undefined' && window.LoveBudPath.getBasePath)
-              ? window.LoveBudPath.getBasePath()
-              : (window.location.pathname.indexOf('/pages/') !== -1 ? '' : 'pages/');
-            return basePath + href;
-          }
-        }
+        var resolved = UI.validateAndResolveEntryTargets(tree);
+        return resolved && resolved.primary ? resolved.primary : null;
       } catch (e) {
         return null;
       }
@@ -112,7 +105,9 @@
       var action = getCardActivationAction(event, window);
       if (action === 'ignore') return;
       if (action === 'open') {
-        window.location.href = openHref;
+        if (typeof openHref === 'string' && openHref) {
+          window.location.href = openHref;
+        }
         return;
       }
       if (typeof onSelect === 'function') {
@@ -125,7 +120,9 @@
       if (action === 'ignore') return;
       event.preventDefault();
       if (action === 'open') {
-        window.location.href = openHref;
+        if (typeof openHref === 'string' && openHref) {
+          window.location.href = openHref;
+        }
         return;
       }
       if (typeof onSelect === 'function') {

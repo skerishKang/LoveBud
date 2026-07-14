@@ -26,7 +26,7 @@ test('My Trees hub preserves its runtime ids and owner actions', () => {
     assert.match(html, new RegExp(`id=["']${id}["']`), `My Trees hub must retain #${id}`);
   }
 
-  assert.match(html, /id=["']myTreesHubOpenBtn["'][^>]*>\s*[\s\S]*?트리\s*열기/, 'primary owner action must be 트리 열기 (Browse parity, Step 5)');
+  assert.match(html, /id=["']myTreesHubOpenBtn["'][^>]*>\s*[\s\S]*?감상하기/, 'primary owner action must be 감상하기');
   assert.match(html, /id=["']myTreesHubEditBtn["'][^>]*>\s*[\s\S]*?편집하기/, 'secondary owner action must remain 편집하기');
 
   // Verify rep block removal

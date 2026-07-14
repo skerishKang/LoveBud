@@ -20,18 +20,21 @@ test('display/edit mode static constraints', () => {
   // 1. Browse renderOpenTreeButton() uses view.html?treeId=
   assert.match(searchHelper, /view\.html\?treeId=/);
 
-  // 2. My LoveTree hub display/view href uses view.html?treeId=
-  assert.match(previewHub, /view\.html\?treeId=/);
+  // 2. My LoveTree hub delegates actions to UI.validateAndResolveEntryTargets
+  // which resolves canonical routes. The validator reads from the resolver.
+  assert.match(myTreesUi, /validateAndResolveEntryTargets/);
 
-  // 3. My LoveTree edit href uses editor?treeId=
-  assert.match(previewHub, /editor\?treeId=/);
+  // 3. Resolver builds canonical editor?treeId= routes
+  var resolver = read('js/my-trees/my-trees-entry-target-resolver.js');
+  assert.match(resolver, /editor\?treeId=/);
+  assert.match(resolver, /view\.html\?treeId=/);
 
-  // 4. My LoveTree copy uses 트리 열기 / 편집하기 (Browse parity, Step 5) as
-  // both primary copy and i18n fallback. The legacy '감상하기' marker is
-  // retained for non-i18n contexts (e.g. card link fallback before refresh).
-  assert.match(previewHub, /'트리\s*열기'/);
+  // 4. My LoveTree copy uses 감상하기 / 편집하기 / 공개 화면 보기
+  // (entry action labels from my-trees-ui.js).
+  assert.match(previewHub, /'감상하기'/);
   assert.match(previewHub, /'편집하기'/);
-  assert.match(myTreesUi, /'트리\s*열기'/);
+  assert.match(previewHub, /'공개 화면 보기'/);
+  assert.match(myTreesUi, /'감상하기'/);
   assert.match(myTreesUi, /'편집하기'/);
 
   // 5. Raw ownerId/user ID must not be directly displayed in UI text
@@ -122,6 +125,7 @@ test('public-viewer-detail-tree-meta no longer has async owner verification or a
 });
 
 test('My LoveTrees routing contract for public and private trees', () => {
+  const resolverSource = read('js/my-trees/my-trees-entry-target-resolver.js');
   const uiSource = read('js/my-trees/my-trees-ui.js');
   const eventsSource = read('js/my-trees/my-trees-card-events.js');
 
@@ -130,6 +134,7 @@ test('My LoveTrees routing contract for public and private trees', () => {
     const dataset = {};
     const listeners = {};
     const children = [];
+    const innerStates = { hidden: false, innerHTML: '' };
     return {
       tagName: tagName.toUpperCase(),
       style: {},
@@ -137,23 +142,27 @@ test('My LoveTrees routing contract for public and private trees', () => {
       dataset,
       listeners,
       children,
+      hidden: false,
+      innerHTML: '',
       setAttribute(k, v) { attrs[k] = v; },
-      getAttribute(k) { return attrs[k]; },
+      getAttribute(k) { return attrs[k] !== undefined ? attrs[k] : null; },
+      removeAttribute(k) { delete attrs[k]; },
       addEventListener(name, fn) {
         if (!listeners[name]) listeners[name] = [];
         listeners[name].push(fn);
       },
+      cloneNode(deep) {
+        const clone = createMockElement(tagName);
+        clone.attrs = Object.assign({}, attrs);
+        clone.dataset = Object.assign({}, dataset);
+        clone.hidden = this.hidden;
+        clone.innerHTML = this.innerHTML;
+        return clone;
+      },
       appendChild(c) { children.push(c); },
       replaceChildren() { children.length = 0; },
-      querySelector(sel) {
-        if (sel === '.tree-card-open-link') {
-          return {
-            getAttribute(k) { return attrs[k] || this[k]; },
-            addEventListener() {}
-          };
-        }
-        return null;
-      }
+      querySelector(sel) { return null; },
+      closest() { return null; }
     };
   }
 
@@ -178,6 +187,7 @@ test('My LoveTrees routing contract for public and private trees', () => {
   context.window = context;
 
   vm.createContext(context);
+  vm.runInContext(resolverSource, context);
   vm.runInContext(uiSource, context);
   vm.runInContext(eventsSource, context);
 
@@ -186,6 +196,7 @@ test('My LoveTrees routing contract for public and private trees', () => {
 
   const i18n = (k) => k;
 
+  /* ── Public tree: primary → editor (appreciation) ── */
   const publicCard = UI.buildTreeCard({
     id: 'tree-public-1',
     title: 'Public Tree',
@@ -193,13 +204,33 @@ test('My LoveTrees routing contract for public and private trees', () => {
     stage: 0
   }, { i18n });
 
-  const CardEvents = context.window.LoveBudMyTreesCardEvents;
-  const publicOpenHref = CardEvents.resolveOpenHref(publicCard, {
-    id: 'tree-public-1',
-    visibility: 'public'
-  });
-  assert.ok(publicOpenHref.includes('view.html?treeId=tree-public-1'), 'Public tree view link must target view.html');
+  // Note: mock DOM stores innerHTML as string without parsing child elements.
+  // We extract the href from each <a> tag using a regex that matches the full tag.
+  var html = publicCard.innerHTML;
 
+  function getLinkHref(html, className) {
+    var m = html.match(new RegExp('<a[^>]*class="[^"]*' + className + '[^"]*"[^>]*href="([^"]*)"'));
+    return m ? m[1] : null;
+  }
+
+  var publicHref = getLinkHref(html, 'tree-card-open-link');
+  assert.ok(publicHref, 'Public tree must have open link');
+  assert.ok(publicHref.includes('editor?treeId=tree-public-1'), 'Public tree open link must target editor');
+  assert.equal(publicHref.includes('view.html'), false, 'Public tree open link must NOT target view.html');
+  assert.equal(publicHref.includes('mode=edit'), false, 'Public tree open link must NOT have mode=edit');
+
+  /* ── Public tree: public-view action → view.html ── */
+  var publicViewHref = getLinkHref(html, 'tree-card-public-view-link');
+  assert.ok(publicViewHref, 'Public tree must have public-view link');
+  assert.ok(publicViewHref.includes('view.html?treeId=tree-public-1'), 'Public tree public-view must target view.html');
+
+  /* ── Public tree: edit → editor + mode=edit ── */
+  var editHref = getLinkHref(html, 'tree-card-edit-link');
+  assert.ok(editHref, 'Public tree must have edit link');
+  assert.ok(editHref.includes('editor?treeId=tree-public-1'), 'Public tree edit must target editor');
+  assert.ok(editHref.includes('mode=edit'), 'Public tree edit must have mode=edit');
+
+  /* ── Private tree → primary targets editor ── */
   const privateCard = UI.buildTreeCard({
     id: 'tree-private-1',
     title: 'Private Tree',
@@ -207,13 +238,16 @@ test('My LoveTrees routing contract for public and private trees', () => {
     stage: 0
   }, { i18n });
 
-  const privateOpenHref = CardEvents.resolveOpenHref(privateCard, {
-    id: 'tree-private-1',
-    visibility: 'private'
-  });
-  assert.ok(privateOpenHref.includes('editor?treeId=tree-private-1'), 'Private tree view link must target editor');
-  assert.equal(privateOpenHref.includes('view.html'), false, 'Private tree view link must NOT target view.html');
+  var privHtml = privateCard.innerHTML;
+  var privHref = getLinkHref(privHtml, 'tree-card-open-link');
+  assert.ok(privHref, 'Private tree must have open link');
+  assert.ok(privHref.includes('editor?treeId=tree-private-1'), 'Private tree open link must target editor');
+  assert.equal(privHref.includes('view.html'), false, 'Private tree open link must NOT target view.html');
 
+  /* ── Private tree: no public-view link ── */
+  assert.equal(privHtml.includes('tree-card-public-view-link'), false, 'Private tree must NOT have public-view link');
+
+  /* ── Unlisted tree → primary targets editor ── */
   const unlistedCard = UI.buildTreeCard({
     id: 'tree-unlisted-1',
     title: 'Unlisted Tree',
@@ -221,12 +255,11 @@ test('My LoveTrees routing contract for public and private trees', () => {
     stage: 0
   }, { i18n });
 
-  const unlistedOpenHref = CardEvents.resolveOpenHref(unlistedCard, {
-    id: 'tree-unlisted-1',
-    visibility: 'unlisted'
-  });
-  assert.ok(unlistedOpenHref.includes('editor?treeId=tree-unlisted-1'), 'Unlisted tree view link must target editor');
+  var unlistedHref = getLinkHref(unlistedCard.innerHTML, 'tree-card-open-link');
+  assert.ok(unlistedHref, 'Unlisted tree must have open link');
+  assert.ok(unlistedHref.includes('editor?treeId=tree-unlisted-1'), 'Unlisted tree open link must target editor');
 
+  /* ── Unknown/null visibility → primary targets editor ── */
   const unknownCard = UI.buildTreeCard({
     id: 'tree-unknown-1',
     title: 'Unknown Tree',
@@ -234,10 +267,8 @@ test('My LoveTrees routing contract for public and private trees', () => {
     stage: 0
   }, { i18n });
 
-  const unknownOpenHref = CardEvents.resolveOpenHref(unknownCard, {
-    id: 'tree-unknown-1',
-    visibility: null
-  });
-  assert.ok(unknownOpenHref.includes('editor?treeId=tree-unknown-1'), 'Null visibility tree view link must target editor');
-  assert.equal(unknownOpenHref.includes('view.html'), false, 'Null visibility tree view link must NOT target view.html');
+  var unknownHref = getLinkHref(unknownCard.innerHTML, 'tree-card-open-link');
+  assert.ok(unknownHref, 'Unknown tree must have open link');
+  assert.ok(unknownHref.includes('editor?treeId=tree-unknown-1'), 'Null visibility tree open link must target editor');
+  assert.equal(unknownHref.includes('view.html'), false, 'Null visibility tree open link must NOT target view.html');
 });

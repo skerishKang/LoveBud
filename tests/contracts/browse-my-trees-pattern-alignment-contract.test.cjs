@@ -289,11 +289,14 @@ test('12. No sort=likes/views or social sort exposure changes', () => {
   assert.ok(!uiSource.includes('sort=likes') && !uiSource.includes('sort=views'), 'Should not introduce likes or views sort exposure in Browse UI');
 });
 
-test('13. Existing open/edit/create href generation strings remain present', () => {
+test('13. Existing open/edit/create href generation strings remain present in canonical resolver', () => {
+  const resolverSource = read('js/my-trees/my-trees-entry-target-resolver.js');
+  assert.ok(resolverSource.includes('editor?treeId='), 'my-trees-entry-target-resolver.js must contain editor?treeId= pattern');
+  assert.ok(resolverSource.includes('view.html?treeId='), 'my-trees-entry-target-resolver.js must contain view.html?treeId= pattern');
   const hubSource = read('js/my-trees/my-trees-preview-hub.js');
   const uiSource = read('js/my-trees/my-trees-ui.js');
-  assert.ok(hubSource.includes('editor?treeId=') || hubSource.includes('view.html?treeId='), 'my-trees-preview-hub.js must preserve href generation');
-  assert.ok(uiSource.includes('editor?treeId=') || uiSource.includes('view.html?treeId='), 'my-trees-ui.js must preserve href generation');
+  assert.ok(hubSource.includes('validateAndResolveEntryTargets') || hubSource.includes('applyHubActions'), 'my-trees-preview-hub.js must delegate via validator');
+  assert.ok(uiSource.includes('validateAndResolveEntryTargets'), 'my-trees-ui.js must validate via shared resolver');
 });
 
 test('14. Runtime cache-busts updated for changed JS/CSS', () => {
@@ -301,7 +304,7 @@ test('14. Runtime cache-busts updated for changed JS/CSS', () => {
   const myTreesHtml = read('pages/my-trees.html');
   const myTreesCss = read('css/my-trees.css');
   assert.match(searchHtml, /search-preview-state\.js\?v=20260616-2532-1/);
-  assert.match(myTreesHtml, /my-trees-ui\.js\?v=20260626-2824-visibility-state-2/);
+  assert.match(myTreesHtml, /my-trees-ui\.js\?v=20260715-3511-2/);
   // Softened: any non-empty cache-bust on my-trees-preview-hub.js plus
   // a guard that the pre-#2829 baseline value is gone. Future
   // cache-bust bumps should not require updating this assertion
@@ -328,8 +331,8 @@ test('14. Runtime cache-busts updated for changed JS/CSS', () => {
     /my-trees-preview-state\.js\?v=20260622-step9-1/,
     'my-trees-preview-state.js must not still pin the pre-#2835 cache-bust 20260622-step9-1'
   );
-  assert.match(myTreesHtml, /my-trees-i18n-refresh\.js\?v=20260622-hub-social-dedupe-1/);
-  assert.match(myTreesHtml, /i18n-my-trees\.js\?v=20260619-2710-1/);
+  assert.match(myTreesHtml, /my-trees-i18n-refresh\.js\?v=20260715-3511-2/);
+  assert.match(myTreesHtml, /i18n-my-trees\.js\?v=20260715-3511-2/);
   assert.match(
     myTreesHtml,
     /my-trees\.css\?v=[^"'\s>]+/,

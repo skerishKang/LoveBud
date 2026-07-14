@@ -1937,6 +1937,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/my-trees-entry-actions-runtime-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes resolver, UI, card-events, and preview-hub in node:vm with fake DOM and verifies 26 enumerated entry-action requirements: navigation gating, canonical routes, share visibility, stale-state cleanup, and fail-closed behavior. No real browser, network, auth, database, deployment, or Production resource.",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/my-trees-flow-stage-cache-bust-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
