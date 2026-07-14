@@ -36,6 +36,10 @@
     background: linear-gradient(180deg, rgba(255,255,255,0.96), rgba(250,246,244,0.995));
 }
 
+.editor-memory-form-modal .editor-form-connect-row[hidden] {
+    display: none;
+}
+
 .editor-memory-form-modal .editor-form-connect-entry {
     display: inline-flex;
     align-items: center;

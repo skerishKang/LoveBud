@@ -80,45 +80,74 @@
     // inside the active form surface and routes through the existing guarded
     // connect controller — it never proxies the inert detail CTA and never
     // falls back to new-moment creation.
+    var formConnectRow = (typeof document !== 'undefined')
+      ? document.getElementById('connectExistingFromFormRow')
+      : null;
     var formConnectBtn = (typeof document !== 'undefined')
       ? document.getElementById('connectExistingFromFormBtn')
       : null;
 
     function updateFormConnectEntryVisibility() {
-      var btn = formConnectBtn;
-      if (!btn) return;
       var controller = opts.connectExistingController;
       var available = Boolean(
+        formConnectRow &&
+        formConnectBtn &&
         controller &&
         typeof controller.isConnectEntryAvailable === 'function' &&
         controller.isConnectEntryAvailable()
       );
-      if (available) {
-        btn.hidden = false;
-        btn.disabled = false;
-        btn.setAttribute('aria-hidden', 'false');
-      } else {
-        btn.hidden = true;
-        btn.disabled = true;
-        btn.setAttribute('aria-hidden', 'true');
+
+      if (formConnectRow) {
+        formConnectRow.hidden = !available;
       }
+
+      if (formConnectBtn) {
+        formConnectBtn.hidden = !available;
+        formConnectBtn.disabled = !available;
+        formConnectBtn.tabIndex = available ? 0 : -1;
+        formConnectBtn.setAttribute(
+          'aria-hidden',
+          available ? 'false' : 'true'
+        );
+      }
+
+      return available;
     }
 
     if (formConnectBtn && opts.connectExistingController && typeof opts.connectExistingController.startConnectMode === 'function') {
-      bindButtonOnce(formConnectBtn, 'formConnectEntryBound', function (e) {
-        if (e && typeof e.preventDefault === 'function') e.preventDefault();
-        if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
-        // Close the new-moment form through the existing wrapped lifecycle
-        // (restores #detailContent inert/aria and consumes panel history),
-        // then enter connect mode via the existing guarded controller.
+      bindButtonOnce(formConnectBtn, 'formConnectEntryBound', function (event) {
+        if (event && typeof event.preventDefault === 'function') {
+          event.preventDefault();
+        }
+
+        if (event && typeof event.stopPropagation === 'function') {
+          event.stopPropagation();
+        }
+
+        var controller = opts.connectExistingController;
+
+        var available = Boolean(
+          controller &&
+          typeof controller.isConnectEntryAvailable === 'function' &&
+          controller.isConnectEntryAvailable()
+        );
+
+        if (!available) {
+          updateFormConnectEntryVisibility();
+          return;
+        }
+
         if (typeof wrappedHideAddMemoryForm === 'function') {
           wrappedHideAddMemoryForm();
         }
-        opts.connectExistingController.startConnectMode();
+
+        controller.startConnectMode();
       });
     }
 
-    // Keep the form entry visibility in sync with mode/selection changes.
+    // Keep the form entry synchronized with interaction-mode changes.
+    // Selection/current-memory eligibility is revalidated whenever the form
+    // opens and immediately before the form-level connect action executes.
     if (typeof window !== 'undefined' && window.LoveBudEditorInteractionMode && typeof window.LoveBudEditorInteractionMode.subscribe === 'function') {
       window.LoveBudEditorInteractionMode.subscribe(function () {
         updateFormConnectEntryVisibility();
@@ -221,6 +250,9 @@
         helpController.open();
       });
     }
+
+    // Initial fail-closed synchronization
+    updateFormConnectEntryVisibility();
 
     return results;
   }

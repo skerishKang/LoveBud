@@ -171,16 +171,24 @@ test('enterConnectMode fails closed for: canEdit=false, root, missing memory', f
   var src = readSource('js/editor/editor-bindings.js');
 
   var fnStart = src.indexOf('function enterConnectMode');
-  var fnEnd = src.indexOf('\n    function ', fnStart + 10);
+  var fnEnd = src.indexOf('\\n    function ', fnStart + 10);
   var fnText = fnEnd > fnStart ? src.slice(fnStart, fnEnd) : src.slice(fnStart);
   assert.ok(fnText, 'enterConnectMode source found');
-  assert.match(fnText, /canEdit === false/, 'canEdit=false → return');
+  assert.match(fnText, /canStartConnectMode/, 'delegates to canStartConnectMode predicate');
   assert.match(fnText, /루트 순간은 연결할 수 없어요/, 'root → toast');
-  assert.match(fnText, /!mem.*return/, 'missing memory → return');
   assert.ok(!fnText.includes('addMemoryBtn'), 'no addMemoryBtn fallback in enterConnectMode');
   assert.ok(!fnText.includes('continueFromMomentBtn'), 'no continueFromMomentBtn fallback in enterConnectMode');
   assert.ok(!fnText.includes('showAddMemoryForm'), 'no showAddMemoryForm fallback');
   assert.ok(!fnText.includes('addMemoryFromForm'), 'no addMemoryFromForm fallback');
+
+  // Verify canStartConnectMode has the actual guard gates
+  var predicateStart = src.indexOf('function canStartConnectMode');
+  var predicateEnd = src.indexOf('\\n    function ', predicateStart + 10);
+  var predicateText = predicateEnd > predicateStart ? src.slice(predicateStart, predicateEnd) : src.slice(predicateStart);
+  assert.ok(predicateText, 'canStartConnectMode source found');
+  assert.match(predicateText, /canEdit === false/, 'canStartConnectMode: canEdit=false → return');
+  assert.match(predicateText, /!mem.*return/, 'canStartConnectMode: missing memory → return');
+  assert.match(predicateText, /isRoot.*return/, 'canStartConnectMode: root → return');
 });
 
 test('createConnectExistingController bindControls guards: no new-moment fallback in connect handlers', function() {
@@ -1294,6 +1302,7 @@ function createFormConnectIntegrationSandbox(opts) {
     addMemoryBtn: makeClickableElement({ id: 'addMemoryBtn', disabled: false }),
     cancelAddMemory: makeClickableElement({ id: 'cancelAddMemory' }),
     connectExistingFromFormBtn: makeClickableElement({ id: 'connectExistingFromFormBtn', hidden: false, closest: function(sel) { return sel === '.editor-memory-form-modal' ? formEl : null; } }),
+    connectExistingFromFormRow: makeClickableElement({ id: 'connectExistingFromFormRow', hidden: false }),
     detailPanel: makeClickableElement({ id: 'detailPanel' }),
     connectExistingCtaSection: makeClickableElement({ id: 'connectExistingCtaSection', style: { display: 'none' } }),
     connectExistingCtaBtn: makeClickableElement({ id: 'connectExistingCtaBtn', style: { display: 'none' } }),
@@ -1770,4 +1779,131 @@ test('PR_3503_REGRESSION_PRESERVED: form-level connect entry lives in active for
   assert.equal(s.detailContent.inert, true, 'form open keeps detail inert (#3503)');
   assert.equal(s.detailContent.getAttribute('aria-hidden'), 'true', 'form open keeps detail aria-hidden (#3503)');
   assert.equal(s.formEl.inert, false, 'active form not inert');
+});
+
+// ── 17. Fail-closed and stale state tests (Blocker 1 & 2) ──
+
+test('CSS ROW_HIDDEN_RULE: .editor-form-connect-row[hidden] has display:none', function() {
+  var css = readSource('css/editor/editor-memory-form-actions.css');
+  assert.match(css, /\.editor-form-connect-row\[hidden\]/);
+  assert.match(css, /display:\s*none/);
+});
+
+test('ROW_AND_BUTTON_SYNC: row and button are synchronized in allowed state', function() {
+  var mem = { id: 'mem-child' };
+  var s = createFormConnectIntegrationSandbox({
+    canEdit: true, mode: 'edit',
+    getCurrentEditingMemory: function() { return mem; },
+    isRootMemory: function(m, rootId) { return m && m.id === rootId; }
+  });
+
+  var row = s.elementMap.connectExistingFromFormRow;
+  var btn = s.elementMap.connectExistingFromFormBtn;
+
+  // Open form (triggers updateFormConnectEntryVisibility)
+  s.elementMap.addMemoryBtn.click();
+
+  assert.equal(row.hidden, false, 'ROW_ALLOWED: row visible');
+  assert.equal(btn.hidden, false, 'BTN_ALLOWED: button visible');
+  assert.equal(btn.disabled, false, 'BTN_ALLOWED: button enabled');
+  assert.equal(btn.tabIndex, 0, 'BTN_ALLOWED: tabIndex 0');
+  assert.equal(btn.getAttribute('aria-hidden'), 'false', 'BTN_ALLOWED: aria-hidden false');
+});
+
+test('STALE_ROOT_FORM_REMAINS_OPEN: stale non-root → root keeps form open', function() {
+  var currentMem = { id: 'mem-child' };
+  var s = createFormConnectIntegrationSandbox({
+    canEdit: true, mode: 'edit',
+    getCurrentEditingMemory: function() { return currentMem; },
+    isRootMemory: function(m, rootId) { return m && m.id === rootId; },
+    getCanonicalRootId: 'root'
+  });
+
+  // Open form with non-root memory
+  s.elementMap.addMemoryBtn.click();
+  assert.equal(s.formEl.classList.contains('is-open'), true, 'form open before stale transition');
+  assert.equal(s.detailContent.inert, true, 'detail inert before stale transition');
+
+  // Change to root memory before click (simulating stale state)
+  currentMem.id = 'root';
+
+  // Click connect button
+  s.elementMap.connectExistingFromFormBtn.click();
+
+  assert.equal(s.formEl.classList.contains('is-open'), true, 'STALE_ROOT_FORM_REMAINS_OPEN: form remains open');
+  assert.equal(s.detailContent.inert, true, 'STALE_ROOT_DETAIL_REMAINS_INERT: detail remains inert');
+  assert.equal(s.counters.connectStart, 0, 'STALE_ROOT_CONNECT_START_COUNT: 0');
+  assert.equal(s.counters.connectMemory, 0, 'stale root: connectMemory 0');
+  assert.equal(s.counters.newMomentCreate, 0, 'stale root: no new moment fallback');
+
+  // Row and button should be hidden after revalidation
+  assert.equal(s.elementMap.connectExistingFromFormRow.hidden, true, 'stale root: row hidden');
+  assert.equal(s.elementMap.connectExistingFromFormBtn.hidden, true, 'stale root: button hidden');
+});
+
+test('STALE_MISSING_FORM_REMAINS_OPEN: stale non-root → null keeps form open', function() {
+  var currentMem = { id: 'mem-child' };
+  var s = createFormConnectIntegrationSandbox({
+    canEdit: true, mode: 'edit',
+    getCurrentEditingMemory: function() { return currentMem; },
+    isRootMemory: function(m, rootId) { return m && m.id === rootId; }
+  });
+
+  s.elementMap.addMemoryBtn.click();
+  assert.equal(s.formEl.classList.contains('is-open'), true, 'form open before stale null');
+
+  // Change to null
+  currentMem.id = null;
+
+  s.elementMap.connectExistingFromFormBtn.click();
+
+  assert.equal(s.formEl.classList.contains('is-open'), true, 'STALE_MISSING_FORM_REMAINS_OPEN: form remains open');
+  assert.equal(s.counters.connectStart, 0, 'STALE_MISSING_CONNECT_START_COUNT: 0');
+  assert.equal(s.counters.newMomentCreate, 0, 'stale missing: no new moment fallback');
+  assert.equal(s.counters.connectMemory, 0, 'stale missing: connectMemory 0');
+});
+
+test('PENDING_SOURCE_FORM_REMAINS_OPEN: pending source injected before click', function() {
+  var currentMem = { id: 'mem-child' };
+  var s = createFormConnectIntegrationSandbox({
+    canEdit: true, mode: 'edit',
+    getCurrentEditingMemory: function() { return currentMem; },
+    isRootMemory: function(m, rootId) { return m && m.id === rootId; }
+  });
+
+  s.elementMap.addMemoryBtn.click();
+  assert.equal(s.formEl.classList.contains('is-open'), true, 'form open before pending source injection');
+
+  // Inject pending source directly via canvas
+  s.editorCanvas.setPendingConnect('mem-child', { x: 1, y: 1 });
+
+  s.elementMap.connectExistingFromFormBtn.click();
+
+  assert.equal(s.formEl.classList.contains('is-open'), true, 'PENDING_SOURCE_FORM_REMAINS_OPEN: form remains open');
+  assert.equal(s.counters.connectStart, 0, 'PENDING_SOURCE_CONNECT_START_COUNT: 0');
+  assert.equal(s.counters.newMomentCreate, 0, 'pending source: no new moment fallback');
+  assert.equal(s.counters.connectMemory, 0, 'pending source: connectMemory 0');
+});
+
+test('ALLOWED_FORM_TO_CONNECT_ROUTE: allowed click closes form, starts controller', function() {
+  var mem = { id: 'mem-child' };
+  var s = createFormConnectIntegrationSandbox({
+    canEdit: true, mode: 'edit',
+    getCurrentEditingMemory: function() { return mem; },
+    isRootMemory: function(m, rootId) { return m && m.id === rootId; },
+    getCanonicalRootId: 'root'
+  });
+
+  s.elementMap.addMemoryBtn.click();
+  assert.equal(s.counters.showAddMemoryForm, 1, 'form opened');
+
+  // Allowed click
+  s.elementMap.connectExistingFromFormBtn.click();
+
+  assert.equal(s.formEl.classList.contains('is-open'), false, 'ALLOWED_FORM_CLOSES: form closed after allowed click');
+  assert.equal(s.detailContent.inert, false, 'ALLOWED_CONNECT: detail inert removed');
+  assert.equal(s.counters.connectStart, 1, 'ALLOWED_CONTROLLER_STARTED: controller started');
+  assert.equal(s.editorCanvas.getPendingConnectSourceId(), 'mem-child', 'ALLOWED_PENDING_SOURCE: pending source set');
+  assert.notEqual(s.elementMap.connectExistingPendingSection.style.display, 'none', 'ALLOWED_PENDING_SECTION_VISIBLE: pending section visible');
+  assert.equal(s.counters.newMomentCreate, 0, 'ALLOWED: no new moment fallback');
 });

@@ -424,30 +424,12 @@
       updateCtaVisibility();
     }
 
-    function isConnectEntryAvailable() {
-      if (canEdit === false) return false;
-      var mode = window.LoveBudEditorInteractionMode;
-      if (!mode || typeof mode.isEditMode !== 'function' || !mode.isEditMode()) return false;
-
-      var mem = getCurrentEditingMemory ? getCurrentEditingMemory() : null;
-      if (!mem || !mem.id) return false;
-
-      var canonicalRootId = typeof getCanonicalRootId === 'function'
-        ? getCanonicalRootId() : 'root';
-      var isRoot = typeof isRootMemory === 'function' && isRootMemory(mem, canonicalRootId);
-      if (isRoot) return false;
-
-      var sourceId = editorCanvas ? editorCanvas.getPendingConnectSourceId() : null;
-      if (sourceId) return false;
-
-      return true;
-    }
-
-    function enterConnectMode() {
+    function canStartConnectMode() {
       if (canEdit === false) return false;
       var mode = window.LoveBudEditorInteractionMode;
       if (!mode || typeof mode.isEditMode !== 'function') return false;
       if (!mode.isEditMode()) return false;
+
       var sourceId = editorCanvas ? editorCanvas.getPendingConnectSourceId() : null;
       if (sourceId) return false;
 
@@ -456,14 +438,32 @@
 
       var canonicalRootId = typeof getCanonicalRootId === 'function'
         ? getCanonicalRootId() : 'root';
-      var isRoot = typeof isRootMemory === 'function' && isRootMemory(mem, canonicalRootId);
-      if (isRoot) {
-        if (typeof showToast === 'function') {
-          showToast('루트 순간은 연결할 수 없어요', 'error');
+      if (typeof isRootMemory === 'function' && isRootMemory(mem, canonicalRootId)) {
+        return false;
+      }
+
+      return true;
+    }
+
+    function isConnectEntryAvailable() {
+      return canStartConnectMode();
+    }
+
+    function enterConnectMode() {
+      if (!canStartConnectMode()) {
+        // Show root-specific toast for root memory
+        var mem = getCurrentEditingMemory ? getCurrentEditingMemory() : null;
+        var canonicalRootId = typeof getCanonicalRootId === 'function'
+          ? getCanonicalRootId() : 'root';
+        if (mem && typeof isRootMemory === 'function' && isRootMemory(mem, canonicalRootId)) {
+          if (typeof showToast === 'function') {
+            showToast('루트 순간은 연결할 수 없어요', 'error');
+          }
         }
         return false;
       }
 
+      var mem = getCurrentEditingMemory ? getCurrentEditingMemory() : null;
       var posFn = editorCanvas.calcPosition;
       var pos = typeof posFn === 'function' ? posFn(mem) : null;
       editorCanvas.setPendingConnect(mem.id, pos);
@@ -525,7 +525,7 @@
       targetData = { mem: targetMem, pos: targetPos };
       if (confirmHint) {
         var label = targetMem.title || '';
-        confirmHint.textContent = (label ? '"' + label + '" ' : '') + '(으)로 연결할까요?';
+        confirmHint.textContent = (label ? '\"' + label + '\" ' : '') + '(으)로 연결할까요?';
       }
       showSection('confirm');
     }

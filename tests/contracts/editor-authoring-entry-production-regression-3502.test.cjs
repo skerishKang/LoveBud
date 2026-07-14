@@ -14,16 +14,19 @@ const sidebarTpl = fs.readFileSync(path.join(ROOT, 'js/editor/templates/editor-s
 const memoryFormSrc = fs.readFileSync(path.join(ROOT, 'js/editor/editor-memory-form.js'), 'utf8');
 const bindingsSrc = fs.readFileSync(path.join(ROOT, 'js/editor/editor-bindings.js'), 'utf8');
 const modeSelectionCss = fs.readFileSync(path.join(ROOT, 'css/editor/editor-mode-selection.css'), 'utf8');
+const memoryFormTpl = fs.readFileSync(path.join(ROOT, 'js/editor/templates/editor-add-memory-form-template.js'), 'utf8');
+const pageEventBindingsSrc = fs.readFileSync(path.join(ROOT, 'js/editor/editor-page-event-bindings.js'), 'utf8');
+const memoryFormCss = fs.readFileSync(path.join(ROOT, 'css/editor/editor-memory-form-actions.css'), 'utf8');
 
 // ── Source contracts ───────────────────────────────────────────────
 
 test('CSS restores add-section only with edit mode selector', () => {
-  const match = editorCss.match(/body:not\(\.editor-readonly\)\[data-editor-interaction-mode="edit"\] \.editor-add-section-bottom/);
+  const match = editorCss.match(/body:not\(\\.editor-readonly\)\[data-editor-interaction-mode="edit"\] \.editor-add-section-bottom/);
   assert.ok(match, 'CSS must gate add-section by editor-readonly + interaction-mode=edit');
 });
 
 test('CSS does not use overly broad selector without interaction mode', () => {
-  const bare = editorCss.match(/body:not\(\.editor-readonly\) \.editor-add-section-bottom\b/);
+  const bare = editorCss.match(/body:not\(\\.editor-readonly\) \.editor-add-section-bottom\b/);
   if (bare) {
     assert.match(bare[0], /data-editor-interaction-mode/, 'add-section restore must require interaction-mode');
   }
@@ -601,11 +604,49 @@ test('repeat click: form open called once via no-duplicate binding', function() 
   assert.equal(openCount, 3, 'each click dispatches to handler; no duplicate-prevention in bindMemoryCreateControls itself');
 });
 
-test('FORM_CONNECT_ENTRY_RENDERED: template exposes form-level connect entry', function() {
-  const tpl = fs.readFileSync(path.join(ROOT, 'js/editor/templates/editor-add-memory-form-template.js'), 'utf8');
-  assert.ok(tpl.includes('id="connectExistingFromFormBtn"'), 'connect entry button present in new-moment form template');
-  assert.ok(tpl.includes('type="button"'), 'entry is type="button" (not submit)');
-  assert.ok(!tpl.includes('type="submit"'), 'entry is never a submit button');
+// ── Form-level connect entry template default fail-closed ──
+
+test('FORM_CONNECT_ENTRY_RENDERED: template exposes form-level connect entry with fail-closed defaults', function() {
+  const tpl = memoryFormTpl;
+  // Row has hidden attribute by default
+  assert.ok(tpl.includes('id=\"connectExistingFromFormRow\"'), 'connect entry row present');
+  assert.ok(tpl.includes('id=\"connectExistingFromFormRow\"\\n[\\s\\S]*?hidden', 'g') === false || tpl.match(/connectExistingFromFormRow[\s\S]{0,80}hidden/), 'row has hidden attribute');
+  // Button has all fail-closed defaults
+  assert.ok(tpl.includes('id=\"connectExistingFromFormBtn\"'), 'connect entry button present');
+  assert.ok(tpl.includes('type=\"button\"'), 'entry is type=\"button\" (not submit)');
+  assert.ok(!tpl.includes('type=\"submit\"'), 'entry is never a submit button');
   assert.ok(tpl.includes('editor-form-connect-entry'), 'entry has distinct connect-entry styling hook');
-  assert.ok(!tpl.includes('role="tab"'), 'no ARIA tab role invented for the entry');
+  assert.ok(!tpl.includes('role=\"tab\"'), 'no ARIA tab role invented for the entry');
+});
+
+test('TEMPLATE_DEFAULT_FAIL_CLOSED: template row hidden, button hidden disabled aria-hidden', function() {
+  const tpl = memoryFormTpl;
+
+  // Row has `hidden` attribute
+  assert.ok(tpl.includes('hidden'), 'template has hidden attribute');
+  assert.match(tpl, /connectExistingFromFormRow[\s\S]{0,80}hidden/, 'row opening tag has hidden');
+
+  // Button has hidden, disabled, aria-hidden=true
+  assert.match(tpl, /connectExistingFromFormBtn[\s\S]{0,200}hidden/, 'button opening tag has hidden');
+  assert.match(tpl, /connectExistingFromFormBtn[\s\S]{0,200}disabled/, 'button opening tag has disabled');
+  assert.match(tpl, /aria-hidden="true"/, 'template button has aria-hidden="true"');
+  assert.match(tpl, /type="button"/, 'template button has type="button"');
+});
+
+test('MISSING_CONTROLLER_FAIL_CLOSED: page-event-bindings guards against missing connectExistingController', function() {
+  // When controller is undefined, the bindButtonOnce guard prevents handler attachment
+  assert.match(pageEventBindingsSrc, /opts\.connectExistingController/, 'bindings reference opts.connectExistingController');
+  assert.match(pageEventBindingsSrc, /controller &&/, 'bindings guard against missing controller');
+  assert.match(pageEventBindingsSrc, /typeof controller\.isConnectEntryAvailable/, 'bindings guard against missing isConnectEntryAvailable method');
+
+  // When controller is undefined or lacks method, updateFormConnectEntryVisibility
+  // must still toggle row/button to hidden/disabled via the same guard pattern.
+  assert.match(pageEventBindingsSrc, /formConnectRow &&\n        formConnectBtn &&\n        controller &&/, 'updateFormConnectEntryVisibility guards all dependencies');
+
+  // Verify the actual production guard: bindButtonOnce is inside a conditional
+  assert.match(pageEventBindingsSrc, /formConnectBtn && opts\.connectExistingController &&/, 'handler wiring conditional on controller');
+
+  // CSS fallback: hidden row has no visible padding/border
+  assert.match(memoryFormCss, /\.editor-form-connect-row\[hidden\]/, 'CSS has .editor-form-connect-row[hidden] rule');
+  assert.match(memoryFormCss, /display:\s*none/, 'CSS has display:none for hidden state');
 });
