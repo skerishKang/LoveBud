@@ -216,7 +216,7 @@ test('detail-info.css — no standalone global [hidden] override created', () =>
 test('detail-info.css — detail-info.css import token matches leaf SHA-256 first 12', () => {
   const crypto = require('node:crypto');
   const leafContent = fs.readFileSync(DETAIL_INFO, 'utf8');
-  const leafHash = crypto.createHash('sha256').update(leafContent).digest('hex').slice(0, 24);
+  const leafHash = crypto.createHash('sha256').update(leafContent).digest('hex').slice(0, 12);
   const importLine = manifest.match(/@import url\('editor-detail-content\/detail-info\.css\?v=([^']+)'\)/);
   assert.ok(importLine, 'import token must be present');
   assert.equal(importLine[1], '20260715-3509-' + leafHash, 'import token must match leaf hash');
@@ -233,7 +233,7 @@ test('detail-info.css — editor.css manifest import token matches manifest SHA-
   const crypto = require('node:crypto');
   const editorCss = fs.readFileSync(path.join(ROOT, 'css/editor.css'), 'utf8');
   const manifestContent = fs.readFileSync(MANIFEST, 'utf8');
-  const manifestHash = crypto.createHash('sha256').update(manifestContent).digest('hex').slice(0, 24);
+  const manifestHash = crypto.createHash('sha256').update(manifestContent).digest('hex').slice(0, 12);
   const importLine = editorCss.match(/@import url\("\.\/editor\/editor-detail-content\.css\?v=([^"]+)"\)/);
   assert.ok(importLine, 'editor.css manifest import token must be present');
   assert.equal(importLine[1], '20260715-3509-' + manifestHash, 'editor.css import token must match manifest hash');
