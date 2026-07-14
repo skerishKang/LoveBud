@@ -718,6 +718,8 @@
 
     function createPublicViewerDetailUI(deps) {
         var metadataText = window.LoveBudPublicViewerDetailMetadataText;
+        var composer = window.LoveBudPublicViewerAppreciationComposer;
+        var domRenderer = window.LoveBudPublicViewerAppreciationDomRenderer;
 
         if (
             !metadataText ||
@@ -728,6 +730,22 @@
         ) {
             throw new Error('[public-viewer-detail] Metadata text dependency not loaded');
         }
+
+        if (
+            !composer ||
+            typeof composer.composePublicViewerAppreciationPresentation !== 'function'
+        ) {
+            throw new Error('[public-viewer-detail-ui] LoveBudPublicViewerAppreciationComposer.composePublicViewerAppreciationPresentation is required');
+        }
+
+        if (
+            !domRenderer ||
+            typeof domRenderer.createPublicViewerAppreciationDomRenderer !== 'function'
+        ) {
+            throw new Error('[public-viewer-detail-ui] LoveBudPublicViewerAppreciationDomRenderer.createPublicViewerAppreciationDomRenderer is required');
+        }
+
+        var appreciationRenderer = domRenderer.createPublicViewerAppreciationDomRenderer();
 
         // Resolve social boundary factories from current window state
         var socialFactories = resolvePublicViewerSocialFactories();
@@ -881,13 +899,38 @@
             updateDetailHeading();
             updateTreeMeta(data);
             updateCurrentMomentBadge(data);
-            updateCurrentMomentTitle(data);
             updatePublicViewerDetailChannelLink(data);
             metadataText.updatePublicViewerCurrentMomentHint();
             updateCurrentMomentImage(data);
-            metadataText.updatePublicViewerCurrentMomentDate(data);
-            updateMemoBody(data);
-            updateCurrentMomentTags(data);
+
+            var isEmptyState = !!(data && data.isNewTree);
+            if (isEmptyState) {
+                updateCurrentMomentTitle(data);
+                metadataText.updatePublicViewerCurrentMomentDate(data);
+                updateMemoBody(data);
+                updateCurrentMomentTags(data);
+                appreciationRenderer.reset();
+            } else {
+                var presentation = composer.composePublicViewerAppreciationPresentation(data, {
+                    isPublicRoute: true,
+                    canReact: false,
+                    canComment: false
+                });
+                appreciationRenderer.render(presentation);
+
+                var rootId = deps && typeof deps.getCanonicalRootId === 'function' ? deps.getCanonicalRootId() : null;
+                var isRoot = rootId && data && typeof deps.isRootMemory === 'function' && deps.isRootMemory(data, rootId);
+                if (isRoot) {
+                    var rawTags = Array.isArray(data && data.emotionTags) ? data.emotionTags.filter(Boolean) : [];
+                    if (rawTags.length === 0) {
+                        updateCurrentMomentTags(data);
+                    }
+                    if (!data.memo) {
+                        updateMemoBody(data);
+                    }
+                }
+            }
+
             if (force) {
                 updateReadOnlyReactionSummary(data, force);
             } else {

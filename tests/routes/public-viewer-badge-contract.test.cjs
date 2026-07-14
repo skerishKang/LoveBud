@@ -35,10 +35,8 @@ test('viewer badge boundary owns badge states', () => {
 test('viewer badge boundary order is stable', () => {
   const delegatedIndex = detailUiSource.indexOf('delegatedUpdateDetailPanel(data);');
   const badgeIndex = detailUiSource.indexOf('updateCurrentMomentBadge(data);');
-  const titleIndex = detailUiSource.indexOf('updateCurrentMomentTitle(data);');
-  const hintIndex = detailUiSource.indexOf('metadataText.updatePublicViewerCurrentMomentHint();');
+  const channelLinkIndex = detailUiSource.indexOf('updatePublicViewerDetailChannelLink(data);');
 
   assert.ok(delegatedIndex < badgeIndex);
-  assert.ok(badgeIndex < titleIndex);
-  assert.ok(titleIndex < hintIndex);
+  assert.ok(badgeIndex < channelLinkIndex);
 });
