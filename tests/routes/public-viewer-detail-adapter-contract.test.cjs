@@ -60,9 +60,9 @@ test('public viewer detail adapter owns detail render flow from heading boundary
     .forEach((index) => assert.notEqual(index, -1));
 
   assert.ok(headingCall < badgeCall);
-  assert.ok(badgeCall < titleCall);
-  assert.ok(titleCall < hintCall);
+  assert.ok(badgeCall < hintCall);
   assert.ok(hintCall < imageCall);
+  assert.ok(imageCall < titleCall);
   assert.ok(imageCall < dateCall);
   assert.ok(dateCall < memoCall);
   assert.ok(memoCall < tagsCall);

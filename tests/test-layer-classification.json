@@ -4152,6 +4152,12 @@
       "layer": "SOURCE_STATIC",
       "rationale": "Reads the migration provenance manifests and exercises only the local pure-JS comparison core with synthetic ledger/catalog evidence; it does not connect to a database, network, browser, deploy target, or production system.",
       "capabilities": []
+    },
+    {
+      "path": "tests/contracts/public-viewer-canonical-appreciation-dom-wiring-3507.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes the production Public Viewer appreciation composer, DOM renderer, and detail integration in a fake DOM/VM boundary without real network, Auth, database, or Production resources.",
+      "capabilities": []
     }
   ],
   "supplemental": [

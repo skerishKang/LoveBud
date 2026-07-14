@@ -113,6 +113,14 @@ function createTestContext(fetchReactionSummaryFn, toggleReactionFn, hasConfirme
   vm.runInContext(authLikeCode, context);
   var authComposerCode = fs.readFileSync(path.join(ROOT, 'js/viewer/public-viewer-authenticated-comment-composer.js'), 'utf8');
   vm.runInContext(authComposerCode, context);
+  context.window.LoveBudPublicViewerAppreciationComposer = {
+    composePublicViewerAppreciationPresentation: function() { return { slots: [] }; }
+  };
+  context.window.LoveBudPublicViewerAppreciationDomRenderer = {
+    createPublicViewerAppreciationDomRenderer: function() {
+      return { render: function() {}, reset: function() {} };
+    }
+  };
   vm.runInContext(scriptSource, context);
 
   var sharedGenerationRef = { value: 0 };

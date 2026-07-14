@@ -23,17 +23,29 @@
                     <div class="editor-moment-info-card">
                         <div class="editor-section-eyebrow" id="detailMomentInfoLabel">...</div>
 
-                        <div class="detail-info-group is-compact">
+                        <div class="detail-info-group is-compact" id="detailDateGroup">
                             <label id="detailDateLabel">...</label>
                             <p id="detailDateText"></p>
                         </div>
 
-                        <div class="detail-info-group is-compact">
+                        <div class="detail-info-group is-compact" id="detailTagsGroup">
                             <label id="detailTagsLabel">...</label>
                             <div class="tags-container" id="detailTags"></div>
                         </div>
 
-                        <div class="detail-info-group">
+                        <div
+                            class="detail-info-group detail-info-group-knowledge"
+                            id="detailPublicKnowledgeGroup"
+                            hidden
+                        >
+                            <label id="detailPublicKnowledgeLabel">연결된 지식</label>
+                            <ul
+                                id="detailPublicKnowledgeList"
+                                class="public-viewer-knowledge-list"
+                            ></ul>
+                        </div>
+
+                        <div class="detail-info-group" id="detailMemoGroup">
                             <label id="detailMemoLabel">...</label>
                             <div class="diary-note" id="detailMemo"></div>
                         </div>

@@ -253,6 +253,16 @@ describe('social boundary split contract', () => {
     vm.runInContext(read('js/viewer/public-viewer-detail-metadata-text.js'), ctx);
     vm.runInContext(read('js/viewer/public-viewer-detail-ui.js'), ctx);
 
+    // Provide composer/renderer stubs to reach social validation layer
+    ctx.window.LoveBudPublicViewerAppreciationComposer = {
+      composePublicViewerAppreciationPresentation: function() { return { slots: [] }; }
+    };
+    ctx.window.LoveBudPublicViewerAppreciationDomRenderer = {
+      createPublicViewerAppreciationDomRenderer: function() {
+        return { render: function() {}, reset: function() {} };
+      }
+    };
+
     // Prepare enough deps to reach social validation
     var deps = {
       getSelectedNodeId: () => null,
@@ -369,6 +379,16 @@ describe('social boundary split contract', () => {
 
     // Now load social modules in correct order
     loadAllSocialModules(ctx);
+
+    // Provide composer/renderer stubs for canonical appreciation chain
+    ctx.window.LoveBudPublicViewerAppreciationComposer = {
+      composePublicViewerAppreciationPresentation: function() { return { slots: [] }; }
+    };
+    ctx.window.LoveBudPublicViewerAppreciationDomRenderer = {
+      createPublicViewerAppreciationDomRenderer: function() {
+        return { render: function() {}, reset: function() {} };
+      }
+    };
 
     // Now call createPublicViewerDetailUI with proper deps — must not throw TypeError (stale null)
     var deps = {

@@ -141,6 +141,14 @@ function createDetailUI(fetchReactionSummary, fetchComments) {
   vm.runInContext(authLikeCode, context);
   const authComposerCode = fs.readFileSync(path.join(ROOT, 'js/viewer/public-viewer-authenticated-comment-composer.js'), 'utf8');
   vm.runInContext(authComposerCode, context);
+  context.window.LoveBudPublicViewerAppreciationComposer = {
+    composePublicViewerAppreciationPresentation: function() { return { slots: [] }; }
+  };
+  context.window.LoveBudPublicViewerAppreciationDomRenderer = {
+    createPublicViewerAppreciationDomRenderer: function() {
+      return { render: function() {}, reset: function() {} };
+    }
+  };
   vm.runInContext(scriptSource, context);
 
   const deps = {
