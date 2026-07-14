@@ -209,6 +209,12 @@
     font-size: 11px;
 }
 
+/* ── Hidden group contract (issue #3509) ──────────────── */
+
+.detail-info-group[hidden] {
+    display: none;
+}
+
 /* ── Tags ──────────────────────────────────────────────── */
 
 .tags-container {

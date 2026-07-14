@@ -236,6 +236,8 @@ test('composer -> renderer: actual selected memory full render', function (t) {
   var dateGroup = context.document.getElementById('detailDateGroup');
   var tagsGroup = context.document.getElementById('detailTagsGroup');
   var memoGroup = context.document.getElementById('detailMemoGroup');
+  var knowledgeGroup = context.document.getElementById('detailPublicKnowledgeGroup');
+  var knowledgeList = context.document.getElementById('detailPublicKnowledgeList');
 
   // Load canonical model
   vm.runInContext(loadScript('js/shared/appreciation-render-model.js'), ctx);
@@ -298,9 +300,15 @@ test('composer -> renderer: actual selected memory full render', function (t) {
   });
   assert.ok(tagTexts.some(function (t) { return t.indexOf('기쁨') >= 0; }), 'emotion tag must be rendered');
   assert.ok(tagTexts.some(function (t) { return t.indexOf('감동') >= 0; }), 'emotion tag must be rendered');
+  assert.equal(tagsGroup.hidden, false, 'tags group must be visible');
 
   // Assert memo rendered
   assert.equal(memoEl.textContent, '이 순간의 마음', 'memo must be rendered');
+  assert.equal(memoGroup.hidden, false, 'memo group must be visible');
+
+  // Assert knowledge absent → hidden (test data has no public connectedKnowledge)
+  assert.equal(knowledgeGroup.hidden, true, 'knowledge group must be hidden when absent');
+  assert.equal(knowledgeList.childNodes.length, 0, 'knowledge list must be empty when absent');
 
   // Assert no private sentinels in DOM
   assert.equal(titleEl.textContent.indexOf('PRIVATE_OWNER_SENTINEL'), -1, 'ownerId sentinel must not be rendered');
@@ -351,6 +359,10 @@ test('composer -> renderer: safe knowledge text-only', function (t) {
   // Knowledge group should be visible
   assert.equal(knowledgeGroup.hidden, false, 'knowledge group must be visible when items present');
 
+  // Memo group must also be hidden for this unavailable presentation
+  var memoGroup = context.document.getElementById('detailMemoGroup');
+  assert.equal(memoGroup.hidden, true, 'memo group must be hidden when unavailable');
+
   // List should have items
   assert.ok(knowledgeList.childNodes.length > 0, 'knowledge list must have items');
 
@@ -400,6 +412,129 @@ test('composer -> renderer: knowledge absent hides group', function (t) {
 
   assert.equal(knowledgeGroup.hidden, true, 'knowledge group must be hidden when absent');
   assert.equal(knowledgeList.childNodes.length, 0, 'knowledge list must be empty when absent');
+});
+
+// ---------------------------------------------------------------------------
+// All-unavailable presentation — every group hidden
+// ---------------------------------------------------------------------------
+test('composer -> renderer: all unavailable hides date, tags, memo, knowledge groups', function (t) {
+  var context = createVMContext();
+  var ctx = vm.createContext(context);
+
+  var dateEl = context.document.getElementById('detailDateText');
+  var tagsContainer = context.document.getElementById('detailTags');
+  var memoEl = context.document.getElementById('detailMemo');
+  var dateGroup = context.document.getElementById('detailDateGroup');
+  var tagsGroup = context.document.getElementById('detailTagsGroup');
+  var memoGroup = context.document.getElementById('detailMemoGroup');
+  var knowledgeGroup = context.document.getElementById('detailPublicKnowledgeGroup');
+  var knowledgeList = context.document.getElementById('detailPublicKnowledgeList');
+
+  vm.runInContext(loadScript('js/shared/appreciation-render-model.js'), ctx);
+  vm.runInContext(loadScript('js/viewer/public-viewer-appreciation-model-adapter.js'), ctx);
+  vm.runInContext(loadScript('js/viewer/public-viewer-appreciation-presentation-model.js'), ctx);
+  vm.runInContext(loadScript('js/viewer/public-viewer-appreciation-composer.js'), ctx);
+  vm.runInContext(loadScript('js/viewer/public-viewer-appreciation-dom-renderer.js'), ctx);
+
+  var domRenderer = context.LoveBudPublicViewerAppreciationDomRenderer;
+  var renderer = domRenderer.createPublicViewerAppreciationDomRenderer();
+
+  // All slots unavailable
+  renderer.render({
+    slots: [
+      { key: 'identity', available: false, value: { id: null, title: '' }, contentReadOnly: true },
+      { key: 'media', available: false, value: { sourceUrl: null, thumbnailUrl: null }, contentReadOnly: true },
+      { key: 'rememberedDate', available: false, value: null, contentReadOnly: true },
+      { key: 'emotionTags', available: false, items: [], contentReadOnly: true },
+      { key: 'connectedKnowledge', available: false, items: [], contentReadOnly: true },
+      { key: 'emotionMemo', available: false, value: null, contentReadOnly: true },
+      { key: 'socialSummary', available: false, value: {}, contentReadOnly: true }
+    ],
+    capabilities: { canEdit: false, canContinue: false, canConnect: false, canReact: false, canComment: false, canDelete: false, canSwitchMode: false, isOwner: false, isPublicRoute: true }
+  });
+
+  assert.equal(dateEl.textContent, '', 'date text must be cleared');
+  assert.equal(dateGroup.hidden, true, 'date group must be hidden');
+
+  assert.equal(tagsContainer.childNodes.length, 0, 'tags children must be 0');
+  assert.equal(tagsGroup.hidden, true, 'tags group must be hidden');
+
+  assert.equal(knowledgeList.childNodes.length, 0, 'knowledge children must be 0');
+  assert.equal(knowledgeGroup.hidden, true, 'knowledge group must be hidden');
+
+  assert.equal(memoEl.childNodes.length, 0, 'memo children must be 0');
+  assert.equal(memoGroup.hidden, true, 'memo group must be hidden');
+});
+
+// ---------------------------------------------------------------------------
+// Malformed items fail-closed — valid item count 0 keeps group hidden
+// ---------------------------------------------------------------------------
+test('composer -> renderer: malformed tags (valid count 0) keeps group hidden', function (t) {
+  var context = createVMContext();
+  var ctx = vm.createContext(context);
+
+  var tagsContainer = context.document.getElementById('detailTags');
+  var tagsGroup = context.document.getElementById('detailTagsGroup');
+
+  vm.runInContext(loadScript('js/shared/appreciation-render-model.js'), ctx);
+  vm.runInContext(loadScript('js/viewer/public-viewer-appreciation-model-adapter.js'), ctx);
+  vm.runInContext(loadScript('js/viewer/public-viewer-appreciation-presentation-model.js'), ctx);
+  vm.runInContext(loadScript('js/viewer/public-viewer-appreciation-composer.js'), ctx);
+  vm.runInContext(loadScript('js/viewer/public-viewer-appreciation-dom-renderer.js'), ctx);
+
+  var domRenderer = context.LoveBudPublicViewerAppreciationDomRenderer;
+  var renderer = domRenderer.createPublicViewerAppreciationDomRenderer();
+
+  // Tags available but all items invalid (numbers, objects — not strings)
+  renderer.render({
+    slots: [
+      { key: 'identity', available: false, value: { id: null, title: '' }, contentReadOnly: true },
+      { key: 'media', available: false, value: { sourceUrl: null, thumbnailUrl: null }, contentReadOnly: true },
+      { key: 'rememberedDate', available: false, value: null, contentReadOnly: true },
+      { key: 'emotionTags', available: true, items: [42, null, { label: 'invalid' }], contentReadOnly: true },
+      { key: 'connectedKnowledge', available: false, items: [], contentReadOnly: true },
+      { key: 'emotionMemo', available: false, value: null, contentReadOnly: true },
+      { key: 'socialSummary', available: false, value: {}, contentReadOnly: true }
+    ],
+    capabilities: { canEdit: false, canContinue: false, canConnect: false, canReact: false, canComment: false, canDelete: false, canSwitchMode: false, isOwner: false, isPublicRoute: true }
+  });
+
+  assert.equal(tagsContainer.childNodes.length, 0, 'tags children must be 0 for malformed items');
+  assert.equal(tagsGroup.hidden, true, 'tags group must be hidden when valid count is 0');
+});
+
+test('composer -> renderer: malformed knowledge (valid count 0) keeps group hidden', function (t) {
+  var context = createVMContext();
+  var ctx = vm.createContext(context);
+
+  var knowledgeGroup = context.document.getElementById('detailPublicKnowledgeGroup');
+  var knowledgeList = context.document.getElementById('detailPublicKnowledgeList');
+
+  vm.runInContext(loadScript('js/shared/appreciation-render-model.js'), ctx);
+  vm.runInContext(loadScript('js/viewer/public-viewer-appreciation-model-adapter.js'), ctx);
+  vm.runInContext(loadScript('js/viewer/public-viewer-appreciation-presentation-model.js'), ctx);
+  vm.runInContext(loadScript('js/viewer/public-viewer-appreciation-composer.js'), ctx);
+  vm.runInContext(loadScript('js/viewer/public-viewer-appreciation-dom-renderer.js'), ctx);
+
+  var domRenderer = context.LoveBudPublicViewerAppreciationDomRenderer;
+  var renderer = domRenderer.createPublicViewerAppreciationDomRenderer();
+
+  // Knowledge available but all items invalid (missing label, non-objects)
+  renderer.render({
+    slots: [
+      { key: 'identity', available: false, value: { id: null, title: '' }, contentReadOnly: true },
+      { key: 'media', available: false, value: { sourceUrl: null, thumbnailUrl: null }, contentReadOnly: true },
+      { key: 'rememberedDate', available: false, value: null, contentReadOnly: true },
+      { key: 'emotionTags', available: false, items: [], contentReadOnly: true },
+      { key: 'connectedKnowledge', available: true, items: [42, null, { type: 'artist' }, { label: '', type: 'empty' }], contentReadOnly: true },
+      { key: 'emotionMemo', available: false, value: null, contentReadOnly: true },
+      { key: 'socialSummary', available: false, value: {}, contentReadOnly: true }
+    ],
+    capabilities: { canEdit: false, canContinue: false, canConnect: false, canReact: false, canComment: false, canDelete: false, canSwitchMode: false, isOwner: false, isPublicRoute: true }
+  });
+
+  assert.equal(knowledgeList.childNodes.length, 0, 'knowledge children must be 0 for malformed items');
+  assert.equal(knowledgeGroup.hidden, true, 'knowledge group must be hidden when valid count is 0');
 });
 
 // ---------------------------------------------------------------------------
