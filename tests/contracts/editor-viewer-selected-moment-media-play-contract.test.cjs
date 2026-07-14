@@ -395,6 +395,16 @@ test('Public viewer detail UI selected moment playback contract (read-only)', ()
     vm.runInContext(fs.readFileSync(sf, 'utf8'), context);
   });
 
+  // Provide composer/renderer stubs for canonical appreciation chain
+  context.window.LoveBudPublicViewerAppreciationComposer = {
+    composePublicViewerAppreciationPresentation: function() { return { slots: [] }; }
+  };
+  context.window.LoveBudPublicViewerAppreciationDomRenderer = {
+    createPublicViewerAppreciationDomRenderer: function() {
+      return { render: function() {}, reset: function() {} };
+    }
+  };
+
   runScriptInContext(publicViewerDetailUIFile, context);
 
   const detailUI = context.window.createPublicViewerDetailUI({

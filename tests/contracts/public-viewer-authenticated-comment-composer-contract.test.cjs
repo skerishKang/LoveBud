@@ -64,6 +64,14 @@ function createEnv() {
   vm.runInContext(authLikeCode, ctx);
   const authComposerCode = fs.readFileSync(path.join(ROOT, 'js/viewer/public-viewer-authenticated-comment-composer.js'), 'utf8');
   vm.runInContext(authComposerCode, ctx);
+  ctx.window.LoveBudPublicViewerAppreciationComposer = {
+    composePublicViewerAppreciationPresentation: function() { return { slots: [] }; }
+  };
+  ctx.window.LoveBudPublicViewerAppreciationDomRenderer = {
+    createPublicViewerAppreciationDomRenderer: function() {
+      return { render: function() {}, reset: function() {} };
+    }
+  };
   vm.runInContext(scriptSource, ctx);
 
   let ccCount = 0, lastKey = null, resCmt, rejCmt, pendingP = null, auth = true;

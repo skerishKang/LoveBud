@@ -62,20 +62,20 @@
   function renderEmotionTagsSlot(slot) {
     var container = getElement('detailTags');
     if (!container) return;
+    clearChildren(container);
     if (slot && slot.available && Array.isArray(slot.items) && slot.items.length > 0) {
-      clearChildren(container);
-      var i;
-      for (i = 0; i < slot.items.length; i++) {
+      var validCount = 0;
+      for (var i = 0; i < slot.items.length; i++) {
         var item = slot.items[i];
         if (typeof item !== 'string') continue;
         var chip = document.createElement('span');
         chip.className = 'tag tag-primary';
         chip.textContent = item;
         container.appendChild(chip);
+        validCount++;
       }
-      setGroupHidden('detailTagsGroup', false);
+      setGroupHidden('detailTagsGroup', validCount === 0);
     } else {
-      clearChildren(container);
       setGroupHidden('detailTagsGroup', true);
     }
   }
@@ -106,13 +106,13 @@
     var listEl = getElement('detailPublicKnowledgeList');
     var groupEl = getElement('detailPublicKnowledgeGroup');
     if (!listEl) return;
+    clearChildren(listEl);
     if (
       slot && slot.available &&
       Array.isArray(slot.items) && slot.items.length > 0
     ) {
-      clearChildren(listEl);
-      var i;
-      for (i = 0; i < slot.items.length; i++) {
+      var validCount = 0;
+      for (var i = 0; i < slot.items.length; i++) {
         var item = slot.items[i];
         if (!isPlainObject(item)) continue;
         if (typeof item.label !== 'string' || !item.label) continue;
@@ -127,10 +127,10 @@
         }
         li.textContent = text;
         listEl.appendChild(li);
+        validCount++;
       }
-      if (groupEl) groupEl.hidden = false;
+      if (groupEl) groupEl.hidden = validCount === 0;
     } else {
-      clearChildren(listEl);
       if (groupEl) groupEl.hidden = true;
     }
   }
