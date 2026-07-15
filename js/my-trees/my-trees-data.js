@@ -130,14 +130,28 @@
     return memory;
   }
 
-  function hasAuthHeaderPresent() {
-    try {
-      var storage = window.sessionStorage;
-      if (!storage) return false;
-      return !!storage.getItem('lovebud_auth_token');
-    } catch (e) {
-      return false;
-    }
+  var VALID_PHASES = {
+    loaded: true, fetch_rejected: true, parse: true, invalid_payload: true,
+    auth: true, client: true, server: true, generic: true, none: true
+  };
+  var VALID_STATUS_CLASSES = { success: true, client: true, server: true, none: true };
+
+  function normalizePhase(v) {
+    return VALID_PHASES[v] ? v : 'generic';
+  }
+
+  function normalizeStatusClass(v) {
+    return VALID_STATUS_CLASSES[v] ? v : 'none';
+  }
+
+  function sanitizeRequestLifecycle(meta) {
+    if (!meta || typeof meta !== 'object') return {};
+    return {
+      attempt: meta.attempt === 2 ? 2 : 1,
+      retried: meta.retried === true,
+      authHeaderPresent: meta.authHeaderPresent === true,
+      statusClass: normalizeStatusClass(meta.statusClass)
+    };
   }
 
   function emitLifecycleDiagnostic(event) {
@@ -147,9 +161,24 @@
     try {
       var sink = window.__LoveBudMyTreesDiagnosticSink;
       if (sink && typeof sink === 'object' && typeof sink.emit === 'function') {
-        sink.emit(event);
+        var safeEvent = Object.freeze({
+          phase: normalizePhase(event.phase),
+          attempt: event.attempt === 2 ? 2 : 1,
+          retried: event.retried === true,
+          authHeaderPresent: event.authHeaderPresent === true,
+          cachePresent: event.cachePresent === true,
+          cacheUsed: event.cacheUsed === true,
+          statusClass: normalizeStatusClass(event.statusClass),
+          resultCountBucket: normalizeCountBucket(event.resultCountBucket)
+        });
+        sink.emit(safeEvent);
       }
     } catch (e) {}
+  }
+
+  function normalizeCountBucket(v) {
+    if (v === 'positive' || v === 'zero') return v;
+    return 'unknown';
   }
 
   function sortMemoriesByFirstMoment(memories) {
@@ -275,8 +304,19 @@
 
     try {
       var trees;
+      var requestLifecycle = {
+        attempt: 1,
+        retried: false,
+        authHeaderPresent: false,
+        statusClass: 'none'
+      };
+
       if (window.apiClient && window.apiClient.getTrees) {
-        trees = await window.apiClient.getTrees();
+        trees = await window.apiClient.getTrees({
+          onLifecycle: function(meta) {
+            requestLifecycle = sanitizeRequestLifecycle(meta);
+          }
+        });
       } else {
         throw new Error('apiClient.getTrees is not available');
       }
@@ -295,12 +335,12 @@
 
         emitLifecycleDiagnostic({
           phase: 'loaded',
-          attempt: 1,
-          authHeaderPresent: hasAuthHeaderPresent(),
-          retried: false,
+          attempt: requestLifecycle.attempt,
+          authHeaderPresent: requestLifecycle.authHeaderPresent,
+          retried: requestLifecycle.retried,
           cachePresent: !!cachedTrees,
           cacheUsed: false,
-          statusClass: 'success',
+          statusClass: requestLifecycle.statusClass,
           resultCountBucket: trees.length > 0 ? 'positive' : 'zero'
         });
 
@@ -325,16 +365,20 @@
       var errorType = classifyLoadError(e);
       console.error('[my-trees-data] loadTrees error (type=' + errorType + ')');
 
+      var errorAttempt = Number(e._attempt) || requestLifecycle.attempt;
+      var errorRetried = e._retried === true || requestLifecycle.retried;
+      var errorAuthHeaderPresent = e._authHeaderPresent === true || requestLifecycle.authHeaderPresent;
+
       emitLifecycleDiagnostic({
         phase: errorType,
-        attempt: 1,
-        authHeaderPresent: hasAuthHeaderPresent(),
-        retried: false,
+        attempt: errorAttempt,
+        authHeaderPresent: errorAuthHeaderPresent,
+        retried: errorRetried,
         cachePresent: !!cachedTrees,
         cacheUsed: !!(cachedTrees && Array.isArray(cachedTrees)),
         statusClass: (function() {
           var s = extractHttpStatus(e);
-          return s >= 500 ? 'server' : s >= 400 ? 'client' : s > 0 ? 'success' : 'none';
+          return s >= 500 ? 'server' : s >= 400 ? 'client' : s > 0 ? 'success' : requestLifecycle.statusClass;
         })(),
         resultCountBucket: 'unknown'
       });

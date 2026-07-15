@@ -566,7 +566,14 @@ test('diagnostic: successful load emits phase=loaded with resultCountBucket', as
   const mockSink = { emit(event) { emitted.push(event); } };
 
   const { sandbox } = createSandbox({
-    apiClient: { getTrees: async () => [{ id: 't1' }, { id: 't2' }] },
+    apiClient: {
+      getTrees: async (options) => {
+        if (options && typeof options.onLifecycle === 'function') {
+          options.onLifecycle({ attempt: 1, retried: false, authHeaderPresent: false, statusClass: 'success' });
+        }
+        return [{ id: 't1' }, { id: 't2' }];
+      },
+    },
     LOVEBUD_MY_TREES_DEBUG: false,
     diagnosticSink: mockSink,
   });
@@ -602,4 +609,205 @@ test('diagnostic: empty array load emits resultCountBucket=zero', async () => {
   const loadedEvents = emitted.filter(e => e.phase === 'loaded');
   assert.ok(loadedEvents.length >= 1, 'must emit loaded event');
   assert.equal(loadedEvents[0].resultCountBucket, 'zero', 'empty array must be zero');
+});
+
+test('diagnostic: lifecycle callback delivers real attempt/retried metadata', async () => {
+  const emitted = [];
+  const mockSink = { emit(event) { emitted.push(event); } };
+
+  const { sandbox } = createSandbox({
+    apiClient: {
+      getTrees: async (options) => {
+        if (options && typeof options.onLifecycle === 'function') {
+          options.onLifecycle({ attempt: 2, retried: true, authHeaderPresent: true, statusClass: 'success' });
+        }
+        return [{ id: 't1' }];
+      },
+    },
+    LOVEBUD_MY_TREES_DEBUG: false,
+    diagnosticSink: mockSink,
+  });
+
+  await sandbox.window.LoveBudMyTreesData.loadTrees({
+    setState: () => {},
+    stateEnum: { LOADING: 'LOADING', ERROR: 'ERROR' },
+    renderTrees: () => {},
+  });
+
+  const loadedEvents = emitted.filter(e => e.phase === 'loaded');
+  assert.ok(loadedEvents.length >= 1, 'must emit loaded event');
+  assert.equal(loadedEvents[0].attempt, 2, 'must preserve attempt from lifecycle callback');
+  assert.equal(loadedEvents[0].retried, true, 'must preserve retried from lifecycle callback');
+  assert.equal(loadedEvents[0].authHeaderPresent, true, 'must preserve authHeaderPresent from lifecycle callback');
+});
+
+test('diagnostic: error event preserves error metadata fallback (attempt, retried, authHeaderPresent)', async () => {
+  const emitted = [];
+  const mockSink = { emit(event) { emitted.push(event); } };
+
+  const { sandbox } = createSandbox({
+    apiClient: {
+      getTrees: async () => {
+        const err = new Error('fetch failed');
+        err._phase = 'fetch_rejected';
+        err._attempt = 2;
+        err._retried = true;
+        err._authHeaderPresent = true;
+        throw err;
+      },
+    },
+    LOVEBUD_MY_TREES_DEBUG: false,
+    diagnosticSink: mockSink,
+  });
+
+  await sandbox.window.LoveBudMyTreesData.loadTrees({
+    setState: () => {},
+    stateEnum: { LOADING: 'LOADING', ERROR: 'ERROR' },
+  });
+
+  const failureEvents = emitted.filter(e => e.phase === 'fetch_rejected');
+  assert.ok(failureEvents.length >= 1, 'must emit fetch_rejected event');
+  assert.equal(failureEvents[0].attempt, 2, 'must use error._attempt fallback');
+  assert.equal(failureEvents[0].retried, true, 'must use error._retried fallback');
+  assert.equal(failureEvents[0].authHeaderPresent, true, 'must use error._authHeaderPresent fallback');
+});
+
+test('diagnostic: allowlist projection drops extra fields from event', async () => {
+  const emitted = [];
+  const mockSink = { emit(event) { emitted.push(event); } };
+
+  const { sandbox } = createSandbox({
+    apiClient: { getTrees: async () => [] },
+    LOVEBUD_MY_TREES_DEBUG: false,
+    diagnosticSink: mockSink,
+  });
+
+  await sandbox.window.LoveBudMyTreesData.loadTrees({
+    setState: () => {},
+    stateEnum: { LOADING: 'LOADING', ERROR: 'ERROR' },
+    renderTrees: () => {},
+  });
+
+  assert.ok(emitted.length >= 1, 'must emit events');
+  const event = emitted[0];
+  const keys = Object.keys(event);
+  const expectedKeys = ['phase', 'attempt', 'retried', 'authHeaderPresent', 'cachePresent', 'cacheUsed', 'statusClass', 'resultCountBucket'];
+  assert.deepEqual(keys.sort(), expectedKeys.sort(), 'event must only contain allowlisted keys');
+});
+
+test('diagnostic: extra fields in caller event are dropped in sink output', async () => {
+  const emitted = [];
+  const mockSink = { emit(event) { emitted.push(event); } };
+
+  const { sandbox } = createSandbox({
+    apiClient: {
+      getTrees: async (options) => {
+        if (options && typeof options.onLifecycle === 'function') {
+          options.onLifecycle({
+            attempt: 2, retried: true, authHeaderPresent: true, statusClass: 'success',
+            token: 'secret', uid: 'secret', endpoint: '/trees?private=value',
+            responseBody: { secret: true }, title: 'private',
+          });
+        }
+        return [];
+      },
+    },
+    LOVEBUD_MY_TREES_DEBUG: false,
+    diagnosticSink: mockSink,
+  });
+
+  await sandbox.window.LoveBudMyTreesData.loadTrees({
+    setState: () => {},
+    stateEnum: { LOADING: 'LOADING', ERROR: 'ERROR' },
+    renderTrees: () => {},
+  });
+
+  assert.ok(emitted.length >= 1, 'must emit events');
+  const serialized = JSON.stringify(emitted);
+  assert.ok(!serialized.includes('token'), 'must not contain token');
+  assert.ok(!serialized.includes('uid'), 'must not contain uid');
+  assert.ok(!serialized.includes('endpoint'), 'must not contain endpoint');
+  assert.ok(!serialized.includes('responseBody'), 'must not contain responseBody');
+  assert.ok(!serialized.includes('title'), 'must not contain title');
+  assert.ok(!serialized.includes('secret'), 'must not contain secret');
+});
+
+test('diagnostic: hasAuthHeaderPresent (sessionStorage inference) is not used', async () => {
+  const { sandbox } = createSandbox();
+  const src = fs.readFileSync(MY_TREES_DATA_PATH, 'utf8');
+  assert.ok(
+    !src.includes('function hasAuthHeaderPresent'),
+    'hasAuthHeaderPresent must be removed from my-trees-data.js'
+  );
+});
+
+test('sanitizeRequestLifecycle: exists as function and is used in loadTrees', () => {
+  const src = fs.readFileSync(MY_TREES_DATA_PATH, 'utf8');
+  assert.ok(src.includes('function sanitizeRequestLifecycle'), 'sanitizeRequestLifecycle must be defined');
+  assert.ok(src.includes('requestLifecycle = sanitizeRequestLifecycle(meta)'), 'loadTrees must call sanitizeRequestLifecycle');
+});
+
+test('normalizePhase: bounded enum validation exists', () => {
+  const src = fs.readFileSync(MY_TREES_DATA_PATH, 'utf8');
+  assert.ok(src.includes('function normalizePhase'), 'normalizePhase must be defined');
+  assert.ok(src.includes("'generic'"), 'normalizePhase must have generic fallback');
+});
+
+test('normalizeStatusClass: bounded enum validation exists', () => {
+  const src = fs.readFileSync(MY_TREES_DATA_PATH, 'utf8');
+  assert.ok(src.includes('function normalizeStatusClass'), 'normalizeStatusClass must be defined');
+  assert.ok(src.includes("VALID_STATUS_CLASSES"), 'normalizeStatusClass must use VALID_STATUS_CLASSES map');
+});
+
+test('normalizeCountBucket: bounded enum validation exists', () => {
+  const src = fs.readFileSync(MY_TREES_DATA_PATH, 'utf8');
+  assert.ok(src.includes('function normalizeCountBucket'), 'normalizeCountBucket must be defined');
+  assert.ok(src.includes("'unknown'"), 'normalizeCountBucket must have unknown fallback');
+});
+
+test('emitLifecycleDiagnostic: uses Object.freeze for safe event', () => {
+  const src = fs.readFileSync(MY_TREES_DATA_PATH, 'utf8');
+  assert.ok(src.includes('Object.freeze'), 'emitLifecycleDiagnostic must use Object.freeze');
+});
+
+test('loadTrees: apiClient.getTrees receives onLifecycle callback option', () => {
+  const src = fs.readFileSync(MY_TREES_DATA_PATH, 'utf8');
+  assert.ok(
+    src.includes('onLifecycle'),
+    'loadTrees must pass onLifecycle to apiClient.getTrees'
+  );
+  assert.ok(
+    src.includes('getTrees({'),
+    'loadTrees must call getTrees with options object'
+  );
+});
+
+test('postgres-client getTrees: forwards onLifecycle to base-api-fetch', () => {
+  const src = fs.readFileSync(path.join(ROOT, 'js', 'postgres-client.js'), 'utf8');
+  assert.ok(
+    src.includes('onLifecycle'),
+    'postgres-client.js getTrees must forward onLifecycle option'
+  );
+  assert.ok(
+    src.includes("typeof options.onLifecycle === 'function'"),
+    'postgres-client.js must check onLifecycle is a function'
+  );
+});
+
+test('postgres-client getTrees: backward-compatible with no arguments', () => {
+  const src = fs.readFileSync(path.join(ROOT, 'js', 'postgres-client.js'), 'utf8');
+  assert.ok(
+    src.includes('getTrees: async (options = {})'),
+    'postgres-client.js getTrees must default options to {}'
+  );
+});
+
+test('postgres-client: only getTrees forwards onLifecycle, other methods do not', () => {
+  const src = fs.readFileSync(path.join(ROOT, 'js', 'postgres-client.js'), 'utf8');
+  const getTreeSection = src.match(/getTree:\s*async[^}]+}/);
+  assert.ok(getTreeSection, 'getTree method must exist');
+  assert.ok(
+    !getTreeSection[0].includes('onLifecycle'),
+    'getTree must not forward onLifecycle'
+  );
 });

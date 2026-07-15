@@ -192,12 +192,34 @@
     return headers;
   }
 
+  function resolveStatusClass(status) {
+    if (!status || status === 0) return 'none';
+    if (status >= 500) return 'server';
+    if (status >= 400) return 'client';
+    return 'success';
+  }
+
+  function emitSafeLifecycle(onLifecycle, payload) {
+    if (!onLifecycle) return;
+    try {
+      onLifecycle({
+        phase: payload.phase,
+        attempt: payload.attempt === 2 ? 2 : 1,
+        retried: payload.retried === true,
+        authHeaderPresent: payload.authHeaderPresent === true,
+        statusClass: payload.statusClass || 'none'
+      });
+    } catch (e) {}
+  }
+
   async function apiFetch(endpoint, options = {}) {
     const policy = window.LoveTreeAuthPolicy;
     const skipAuth = options.skipAuth === true || options.publicRead === true;
+    const onLifecycle = typeof options.onLifecycle === 'function' ? options.onLifecycle : null;
     const fetchOptions = { ...options };
     delete fetchOptions.skipAuth;
     delete fetchOptions.publicRead;
+    delete fetchOptions.onLifecycle;
     const requiresAuth = !skipAuth && policy.endpointLikelyRequiresAuth(endpoint);
     const authHeaders = await getAuthHeaders({
       forceLongWait: requiresAuth && policy.hasConfirmedAuthSession(),
@@ -205,6 +227,10 @@
       skipAuth
     });
     const hadAuthHeader = !!authHeaders.Authorization;
+
+    let attempt = 1;
+    let retried = false;
+    let requestAuthHeaderPresent = hadAuthHeader;
 
     const stripAuthorizationHeader = (headers) => {
       const safeHeaders = { ...headers };
@@ -234,6 +260,16 @@
     } catch (fetchErr) {
       const error = new Error(fetchErr && fetchErr.message ? fetchErr.message : 'Network request failed');
       error._phase = 'fetch_rejected';
+      error._attempt = attempt;
+      error._retried = retried;
+      error._authHeaderPresent = requestAuthHeaderPresent;
+      emitSafeLifecycle(onLifecycle, {
+        phase: 'fetch_rejected',
+        attempt: attempt,
+        retried: retried,
+        authHeaderPresent: requestAuthHeaderPresent,
+        statusClass: 'none'
+      });
       throw error;
     }
 
@@ -246,12 +282,25 @@
       await waitForAuthToken(Math.min(1200, policy.AUTH_WAIT_MS));
       const retryHeaders = await getAuthHeaders({ forceLongWait: true, requireAuth: true });
       if (retryHeaders.Authorization) {
+        attempt = 2;
+        retried = true;
+        requestAuthHeaderPresent = true;
         config = buildConfig(retryHeaders);
         try {
           response = await fetch(`/api${endpoint}`, config);
         } catch (retryFetchErr) {
           const error = new Error(retryFetchErr && retryFetchErr.message ? retryFetchErr.message : 'Network request failed');
           error._phase = 'fetch_rejected';
+          error._attempt = attempt;
+          error._retried = retried;
+          error._authHeaderPresent = requestAuthHeaderPresent;
+          emitSafeLifecycle(onLifecycle, {
+            phase: 'fetch_rejected',
+            attempt: attempt,
+            retried: retried,
+            authHeaderPresent: requestAuthHeaderPresent,
+            statusClass: 'none'
+          });
           throw error;
         }
       }
@@ -275,6 +324,9 @@
       error.status = response.status;
       error.statusCode = response.status;
       error._phase = 'http_error';
+      error._attempt = attempt;
+      error._retried = retried;
+      error._authHeaderPresent = requestAuthHeaderPresent;
 
       if (errorData) {
         error.data = errorData;
@@ -283,16 +335,41 @@
         }
       }
 
+      emitSafeLifecycle(onLifecycle, {
+        phase: 'http_error',
+        attempt: attempt,
+        retried: retried,
+        authHeaderPresent: requestAuthHeaderPresent,
+        statusClass: resolveStatusClass(response.status)
+      });
       throw error;
     }
 
     try {
-      return await response.json();
+      const parsed = await response.json();
+      emitSafeLifecycle(onLifecycle, {
+        phase: 'response_ok',
+        attempt: attempt,
+        retried: retried,
+        authHeaderPresent: requestAuthHeaderPresent,
+        statusClass: 'success'
+      });
+      return parsed;
     } catch (parseErr) {
       const error = new Error('Failed to parse response');
       error.status = response.status;
       error.statusCode = response.status;
       error._phase = 'json_parse_failed';
+      error._attempt = attempt;
+      error._retried = retried;
+      error._authHeaderPresent = requestAuthHeaderPresent;
+      emitSafeLifecycle(onLifecycle, {
+        phase: 'json_parse_failed',
+        attempt: attempt,
+        retried: retried,
+        authHeaderPresent: requestAuthHeaderPresent,
+        statusClass: 'success'
+      });
       throw error;
     }
   }

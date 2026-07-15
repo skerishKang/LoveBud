@@ -18,7 +18,13 @@
 
     function createTreeApi() {
         return {
-            getTrees: async () => BaseApiFetch.apiFetch('/trees'),
+            getTrees: async (options = {}) =>
+                BaseApiFetch.apiFetch('/trees', {
+                    onLifecycle:
+                        typeof options.onLifecycle === 'function'
+                            ? options.onLifecycle
+                            : undefined
+                }),
             getTree: async (treeId) => BaseApiFetch.apiFetch(`/trees/${treeId}`),
             getPublicTree: async (treeId) => BaseApiFetch.apiFetch(`/trees/${treeId}`, { publicRead: true }),
             getFirstTree: async () => {
