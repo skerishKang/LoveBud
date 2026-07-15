@@ -1535,6 +1535,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/generic-social-a-db-engine-harness-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Reads package.json, CI workflow, generic-social Migration A harness/fixture/helper sources and asserts separate package script, PostgreSQL 17.4 job pin, Migration A-only path, full-row hash markers, and supplemental classification without executing PostgreSQL (#3534).",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/generic-social-a-execution-guard-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads validator SQL, runbook, inventory, package/CI, and guard harness sources; asserts historical Migration A checksum stability, read-only validators, direct-execution prohibition, and supplemental DB_ENGINE classification without executing PostgreSQL (#3536).",
@@ -4334,6 +4340,17 @@
       "defaultCi": false,
       "layer": "DB_ENGINE_EXECUTION",
       "rationale": "Executes scripts/migration-repair-trees-schema-3435.sql against synthetic disposable PostgreSQL 17.4 databases in isolated CI; proves seven-column foothold apply, idempotent re-apply, partial converge, and fail-closed preservation without Production/Neon/staging access (#3532).",
+      "capabilities": [
+        "postgresql",
+        "child_process",
+        "filesystem"
+      ]
+    },
+    {
+      "path": "tests/db-engine/generic-social-a-postgres.test.cjs",
+      "defaultCi": false,
+      "layer": "DB_ENGINE_EXECUTION",
+      "rationale": "Executes scripts/migration-add-generic-social-targets.sql against synthetic disposable PostgreSQL 17.4 databases in isolated CI; proves legacy backfill, catalog CHECKs/triggers, compatibility writes, second-apply no-op, and fail-closed preservation without Production/Neon/staging access (#3534).",
       "capabilities": [
         "postgresql",
         "child_process",
