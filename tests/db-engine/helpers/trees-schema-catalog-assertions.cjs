@@ -127,6 +127,24 @@ async function getTreesRlsEnabled(client) {
   return Boolean(rows[0] && rows[0].enabled);
 }
 
+async function getTreesOwnerAclFingerprint(client) {
+  if (!(await tableExists(client, 'trees'))) {
+    return { owner: '', acl: '' };
+  }
+  const rows = await query(
+    client,
+    `SELECT pg_get_userbyid(c.relowner) AS owner,
+            coalesce(array_to_string(c.relacl::text[], ','), '') AS acl
+     FROM pg_class c
+     WHERE c.oid = 'public.trees'::regclass`
+  );
+  return {
+    owner: rows[0] ? String(rows[0].owner) : '',
+    // Normalize empty/null ACL only; do not log the raw string in tests.
+    acl: rows[0] && rows[0].acl ? 'present' : 'empty',
+  };
+}
+
 async function getTreesRowFingerprint(client) {
   if (!(await tableExists(client, 'trees'))) {
     return { count: 0, idFp: '' };
@@ -215,6 +233,7 @@ async function getCatalogFingerprint(client) {
     triggers: await getTreesUserTriggerCount(client),
     rls: await getTreesRlsEnabled(client),
     rows: await getTreesRowFingerprint(client),
+    ownerAcl: await getTreesOwnerAclFingerprint(client),
     sentinel: await getSentinelFingerprint(client),
     unrelated: await getUnrelatedFingerprint(client),
   };
@@ -303,6 +322,7 @@ module.exports = {
   getTreesSecondaryIndexes,
   getTreesUserTriggerCount,
   getTreesRlsEnabled,
+  getTreesOwnerAclFingerprint,
   getTreesRowFingerprint,
   getNonNullTargetCount,
   getPublicRelations,

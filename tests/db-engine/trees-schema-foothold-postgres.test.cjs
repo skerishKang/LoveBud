@@ -167,6 +167,29 @@ test('trees-schema fully repaired state is no-op', { concurrency: false }, async
   });
 });
 
+test('trees-schema multi partial owner_id+title+visibility converges', { concurrency: false }, async () => {
+  await withDisposableDb('multi_partial', null, async ({ client, runSql }) => {
+    await client.query(`
+      CREATE TABLE public.trees (
+        id text NOT NULL PRIMARY KEY
+      );
+      INSERT INTO public.trees (id) VALUES ('tree_syn_a');
+      ALTER TABLE public.trees ADD COLUMN owner_id text;
+      ALTER TABLE public.trees ADD COLUMN title text;
+      ALTER TABLE public.trees ADD COLUMN visibility text;
+    `);
+    await seedSentinels(client);
+    const beforeRows = await catalog.getTreesRowFingerprint(client);
+    const beforeOwnerAcl = await catalog.getTreesOwnerAclFingerprint(client);
+    expectOk(runSql(MIGRATION_SQL), 'multi_partial', 'migration_apply');
+    await catalog.assertRepairedCatalog(client);
+    const afterRows = await catalog.getTreesRowFingerprint(client);
+    assert.equal(afterRows.idFp, beforeRows.idFp);
+    assert.deepEqual(await catalog.getTreesOwnerAclFingerprint(client), beforeOwnerAcl);
+    pass('trees-schema multi partial converge');
+  });
+});
+
 // ─── Fail-closed fixtures ────────────────────────────────────────────────────
 
 test('trees-schema missing table fail closed', { concurrency: false }, async () => {
@@ -204,7 +227,7 @@ test('trees-schema id missing fail closed', { concurrency: false }, async () => 
   });
 });
 
-test('trees-schema id non-text fail closed', { concurrency: false }, async () => {
+test('trees-schema id non-text uuid fail closed', { concurrency: false }, async () => {
   await withDisposableDb('id_uuid', null, async ({ client, runSql }) => {
     await client.query(
       `CREATE TABLE public.trees (id uuid NOT NULL PRIMARY KEY DEFAULT gen_random_uuid())`
@@ -214,7 +237,62 @@ test('trees-schema id non-text fail closed', { concurrency: false }, async () =>
     const res = runSql(MIGRATION_SQL);
     expectFail(res, 'id_uuid', 'migration');
     await assertNoMutation(client, before);
-    pass('trees-schema id non-text');
+    pass('trees-schema id non-text uuid');
+  });
+});
+
+test('trees-schema id non-text integer fail closed', { concurrency: false }, async () => {
+  await withDisposableDb('id_int', null, async ({ client, runSql }) => {
+    await client.query(`CREATE TABLE public.trees (id integer NOT NULL PRIMARY KEY)`);
+    await seedSentinels(client);
+    const before = await catalog.getCatalogFingerprint(client);
+    const res = runSql(MIGRATION_SQL);
+    expectFail(res, 'id_int', 'migration');
+    await assertNoMutation(client, before);
+    pass('trees-schema id non-text integer');
+  });
+});
+
+test('trees-schema no primary key fail closed', { concurrency: false }, async () => {
+  await withDisposableDb('no_pk', null, async ({ client, runSql }) => {
+    await client.query(`CREATE TABLE public.trees (id text NOT NULL)`);
+    await seedSentinels(client);
+    const before = await catalog.getCatalogFingerprint(client);
+    const res = runSql(MIGRATION_SQL);
+    expectFail(res, 'no_pk', 'migration');
+    await assertNoMutation(client, before);
+    pass('trees-schema no primary key');
+  });
+});
+
+test('trees-schema other-column-only PK fail closed', { concurrency: false }, async () => {
+  await withDisposableDb('other_pk', null, async ({ client, runSql }) => {
+    await client.query(`
+      CREATE TABLE public.trees (
+        sid text NOT NULL PRIMARY KEY,
+        id text NOT NULL
+      );
+    `);
+    await seedSentinels(client);
+    const before = await catalog.getCatalogFingerprint(client);
+    const res = runSql(MIGRATION_SQL);
+    expectFail(res, 'other_pk', 'migration');
+    await assertNoMutation(client, before);
+    pass('trees-schema other-column-only PK');
+  });
+});
+
+test('trees-schema materialized view fail closed', { concurrency: false }, async () => {
+  await withDisposableDb('matview_trees', null, async ({ client, runSql }) => {
+    await client.query(
+      `CREATE MATERIALIZED VIEW public.trees AS SELECT 'x'::text AS id`
+    );
+    await seedSentinels(client);
+    const before = await catalog.getCatalogFingerprint(client);
+    const res = runSql(MIGRATION_SQL);
+    expectFail(res, 'matview_trees', 'migration');
+    await assertNoMutation(client, before);
+    pass('trees-schema matview non-ordinary');
   });
 });
 
@@ -259,22 +337,25 @@ test('trees-schema id not sole PK fail closed', { concurrency: false }, async ()
 });
 
 test('trees-schema incompatible target type fail closed', { concurrency: false }, async () => {
-  for (const col of TARGET_COLUMNS) {
+  // Exact UDT-contract mismatches (similar types also fail).
+  const typeFixtures = [
+    { name: 'owner_id', ddl: 'owner_id uuid' },
+    { name: 'title', ddl: 'title integer' },
+    { name: 'visibility', ddl: 'visibility boolean' },
+    { name: 'group_name', ddl: 'group_name jsonb' },
+    { name: 'keywords', ddl: 'keywords text' }, // must be text[], not text
+    { name: 'created_at', ddl: 'created_at timestamp without time zone' },
+    { name: 'updated_at', ddl: 'updated_at date' },
+  ];
+  for (const col of typeFixtures) {
     await withDisposableDb(`badtype_${col.name}`, null, async ({ client, runSql }) => {
       await client.query(`
         CREATE TABLE public.trees (
-          id text NOT NULL PRIMARY KEY
+          id text NOT NULL PRIMARY KEY,
+          ${col.ddl}
         );
         INSERT INTO public.trees (id) VALUES ('tree_syn_a');
       `);
-      // Wrong type for this target column only.
-      if (col.name === 'keywords') {
-        await client.query(`ALTER TABLE public.trees ADD COLUMN keywords integer`);
-      } else if (col.udt === 'timestamptz') {
-        await client.query(`ALTER TABLE public.trees ADD COLUMN ${col.name} text`);
-      } else {
-        await client.query(`ALTER TABLE public.trees ADD COLUMN ${col.name} integer`);
-      }
       await seedSentinels(client);
       const before = await catalog.getCatalogFingerprint(client);
       const res = runSql(MIGRATION_SQL);
