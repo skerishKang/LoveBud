@@ -41,6 +41,57 @@ function sha256(p) {
 const MUTATION_RE =
   /\b(CREATE|ALTER|DROP|TRUNCATE|INSERT|UPDATE|DELETE|GRANT|REVOKE)\b/i;
 
+const REQUIRED_CHECK = [
+  'check_wrong_pair',
+  'check_wrong_vocab',
+  'check_not_valid',
+  'check_weak_semantics',
+  'check_shadow',
+];
+
+const REQUIRED_FN = [
+  'fn_lang_sql_overload',
+  'fn_overload_plpgsql',
+  'fn_wrong_body',
+  'fn_early_return',
+  'fn_no_tree_reject',
+  'fn_missing_rejection',
+  'fn_secdef',
+  'fn_volatility',
+  'fn_parallel',
+  'fn_ret_type',
+];
+
+const REQUIRED_TG = [
+  'tg_wrong_fn',
+  'tg_after',
+  'tg_before_insert',
+  'tg_update_only',
+  'tg_statement',
+  'tg_disabled',
+  'tg_always',
+  'tg_replica',
+  'tg_delete',
+  'tg_wrong_relation',
+];
+
+const REQUIRED_LEGACY = [
+  'legacy_missing_idem',
+  'legacy_null_idem',
+  'legacy_type_idem',
+  'legacy_def_idem',
+  'legacy_missing_audit',
+  'legacy_null_audit',
+  'legacy_type_audit',
+  'legacy_def_audit',
+];
+
+const REQUIRED_MIXED = [
+  'mixed_audit_partial',
+  'mixed_idem_exact_post',
+  'mixed_audit_wrong_shape',
+];
+
 test('historical Migration A SQL unchanged checksum', () => {
   const inv = JSON.parse(read(INV));
   const entry = inv.entries.find((e) => e.path === 'scripts/migration-add-generic-social-targets.sql');
@@ -69,7 +120,45 @@ test('validators exist, are read-only, and encode exact catalog checks', () => {
   assert.match(pre, /sha256/);
   assert.match(pre, /encode/);
   assert.equal(/position\s*\(.*\s+IN\s+.*\)\s*=\s*0/i.test(pre), false, 'CHECK/function substring-only validation 없어야 함');
+
+  // Exact zero-arg identity for functions and trigger expected OID
+  assert.match(pre, /to_regprocedure\('public\.sync_social_idempotency_generic_target_from_legacy_memory\(\)'\)/);
+  assert.match(pre, /to_regprocedure\('public\.sync_social_audit_generic_target_from_legacy_memory\(\)'\)/);
+  assert.match(post, /to_regprocedure\('public\.sync_social_idempotency_generic_target_from_legacy_memory\(\)'\)/);
+  assert.match(post, /to_regprocedure\('public\.sync_social_audit_generic_target_from_legacy_memory\(\)'\)/);
+
+  // No proname-only SELECT for trigger expected function lookup
+  const pronameOnlyTriggerLookup =
+    /SELECT\s+p\.oid\s+INTO\s+expected_func\s+FROM\s+pg_proc\s+p\s+JOIN\s+pg_namespace\s+n\s+ON\s+n\.oid\s*=\s*p\.pronamespace\s+WHERE\s+n\.nspname\s*=\s*'public'\s+AND\s+p\.proname\s*=\s*'sync_/i;
+  assert.equal(pronameOnlyTriggerLookup.test(pre), false, 'preflight must not use proname-only trigger function lookup');
+  assert.equal(pronameOnlyTriggerLookup.test(post), false, 'postcondition must not use proname-only trigger function lookup');
+
+  // Catalog-wide duplicate same-name constraint uniqueness
+  assert.match(pre, /SELECT count\(\*\)::int INTO n FROM pg_constraint WHERE conname = 'social_idempotency_generic_target_pair_check'/);
+  assert.match(pre, /IF n <> 1 THEN RAISE EXCEPTION 'GENERIC_SOCIAL_A_CHECK_DEFINITION_MISMATCH'/);
+  assert.match(pre, /SELECT count\(\*\)::int INTO n FROM pg_constraint WHERE conname = 'social_audit_log_generic_target_pair_check'/);
+  assert.match(post, /SELECT count\(\*\)::int INTO n FROM pg_constraint WHERE conname = 'social_idempotency_generic_target_pair_check'/);
+  assert.match(post, /SELECT count\(\*\)::int INTO n FROM pg_constraint WHERE conname = 'social_audit_log_generic_target_kind_check'/);
+  assert.match(post, /IF n <> 1 THEN RAISE EXCEPTION 'GENERIC_SOCIAL_A_POSTCONDITION_FAILED'/);
+
+  // Postcondition bounded category only for all failures
   assert.match(post, /GENERIC_SOCIAL_A_POSTCONDITION_FAILED/);
+  assert.equal(
+    /GENERIC_SOCIAL_A_FUNCTION_DEFINITION_MISMATCH/.test(post),
+    false,
+    'postcondition must not raise function-specific category'
+  );
+  assert.equal(
+    /GENERIC_SOCIAL_A_CHECK_DEFINITION_MISMATCH/.test(post),
+    false,
+    'postcondition must not raise check-specific category'
+  );
+  assert.equal(
+    /GENERIC_SOCIAL_A_TRIGGER_DEFINITION_MISMATCH/.test(post),
+    false,
+    'postcondition must not raise trigger-specific category'
+  );
+
   assert.match(post, /t_type\s*<>\s*23/);
   assert.match(post, /t_enabled\s*<>\s*'O'/);
   assert.match(post, /prosrc/);
@@ -104,8 +193,11 @@ test('runbook prohibits direct new Migration A execution', () => {
   assert.match(rb, /preflight/i);
   assert.match(rb, /postcondition/i);
   assert.match(rb, /Historical command/i);
-  assert.equal(/psql "\$DATABASE_URL" -f scripts\/migration-add-generic-social-targets\.sql/.test(rb) &&
-    !/Historical command/i.test(rb), false);
+  assert.equal(
+    /psql "\$DATABASE_URL" -f scripts\/migration-add-generic-social-targets\.sql/.test(rb) &&
+      !/Historical command/i.test(rb),
+    false
+  );
 });
 
 test('inventory records validators and keeps Migration A checksum stable', () => {
@@ -132,7 +224,7 @@ test('inventory records validators and keeps Migration A checksum stable', () =>
   assert.equal(migB.content_checksum, sha256(MIG_B));
 });
 
-test('engine harness encodes guarded sequence and rejection matrix', () => {
+test('engine harness encodes guarded sequence and full rejection matrix', () => {
   const h = read(HARNESS);
   assert.match(h, /validate-generic-social-a-preflight\.sql/);
   assert.match(h, /migration-add-generic-social-targets\.sql/);
@@ -140,25 +232,58 @@ test('engine harness encodes guarded sequence and rejection matrix', () => {
   assert.match(h, /guarded happy path/);
   assert.match(h, /second apply/);
   assert.match(h, /assertNoMutation/);
+  assert.match(h, /runGuardedSequence/);
   assert.match(h, /assert\.equal\(cat,\s*expectedCategory\)/, 'strict category equality');
   assert.equal(/startsWith\('GENERIC_SOCIAL_A_'\)/.test(h), false, 'permissive fallback 없어야 함');
-  assert.match(h, /check_wrong_pair/);
-  assert.match(h, /check_wrong_vocab/);
-  assert.match(h, /tg_wrong_fn/);
-  assert.match(h, /data_partial/);
-  assert.match(h, /mixed_audit_partial/);
-  assert.match(h, /wrong_check/);
-  assert.match(h, /sec_def_function/);
+  assert.equal(
+    /assert\.match\(cat,\s*\/\^GENERIC_SOCIAL_A_/.test(h),
+    false,
+    'prefix-only category match 금지'
+  );
+
+  for (const name of REQUIRED_CHECK) {
+    assert.match(h, new RegExp(name), `missing CHECK scenario ${name}`);
+  }
+  for (const name of REQUIRED_FN) {
+    assert.match(h, new RegExp(name), `missing Function scenario ${name}`);
+  }
+  for (const name of REQUIRED_TG) {
+    assert.match(h, new RegExp(name), `missing Trigger scenario ${name}`);
+  }
+  for (const name of REQUIRED_LEGACY) {
+    assert.match(h, new RegExp(name), `missing Legacy scenario ${name}`);
+  }
+  for (const name of REQUIRED_MIXED) {
+    assert.match(h, new RegExp(name), `missing Mixed scenario ${name}`);
+  }
+
+  // Postcondition independent scenarios
+  assert.match(h, /fn_lang_sql_overload/);
+  assert.match(h, /fn_overload_plpgsql/);
+  assert.match(h, /wrong_function_body|fn_wrong_body/);
+  assert.match(h, /sec_def_function|fn_secdef/);
+  assert.match(h, /fn_missing_rejection/);
+  assert.match(h, /check_shadow/);
+  assert.match(h, /GENERIC_SOCIAL_A_POSTCONDITION_FAILED/);
+
+  // Guarded short-circuit proof
   assert.match(h, /Migration A invocation count = 0/);
   assert.match(h, /postcondition invocation count = 0/);
+  assert.match(h, /preflight invocation = 1/);
+  assert.match(h, /counts\.migA/);
+  assert.match(h, /counts\.postcond/);
   assert.match(h, /row_to_json|rowFp/);
-  assert.equal(/(?:^|[^=])\s*runSql\s*\(\s*MIG_B\s*\)/m.test(h), false);
+  assert.match(h, /getCatalogFingerprint/);
+  assert.match(h, /getFullRowFingerprint\(client,\s*'idem'\)/);
+  assert.match(h, /getFullRowFingerprint\(client,\s*'audit'\)/);
+
+  assert.equal(/(?:^|[^=])\s*runSql\s*\(\s*MIG_B\s*\)/m.test(h), false, 'Migration B 실행 없음');
+  assert.equal(/GENERIC_SOCIAL_A_CAPTURE_FINGERPRINTS/.test(h), false, 'temporary capture 없음');
   assert.ok(fs.existsSync(FIXTURE));
   assert.ok(fs.existsSync(HELPER));
   const helper = read(HELPER);
   assert.match(helper, /row_to_json/);
   assert.equal(/console\.(log|info)/.test(helper), false);
-  assert.equal(/GENERIC_SOCIAL_A_CAPTURE_FINGERPRINTS/.test(h), false, 'temporary capture 없음');
 });
 
 test('classification inventory includes guard contract and engine test', () => {

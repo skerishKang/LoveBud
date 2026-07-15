@@ -208,35 +208,61 @@ BEGIN
   WHERE target_kind = 'tree' OR (target_kind = 'memory' AND target_id IS DISTINCT FROM memory_id);
   IF n > 0 THEN RAISE EXCEPTION 'GENERIC_SOCIAL_A_GENERIC_COLUMN_SHAPE_MISMATCH'; END IF;
 
-  -- ── CHECK constraints exact ─────────────────────────────────────────────
-  -- social_idempotency_generic_target_pair_check
-  PERFORM 1 FROM pg_constraint WHERE conname = 'social_idempotency_generic_target_pair_check' AND conrelid = 'public.social_idempotency'::regclass AND contype = 'c' AND convalidated;
+  -- ── CHECK constraints exact (catalog-wide uniqueness + expected relation) ─
+  -- Each intended name must exist exactly once in the entire catalog so that
+  -- shadow/duplicate same-name objects on other relations fail closed.
+  SELECT count(*)::int INTO n FROM pg_constraint WHERE conname = 'social_idempotency_generic_target_pair_check';
+  IF n <> 1 THEN RAISE EXCEPTION 'GENERIC_SOCIAL_A_CHECK_DEFINITION_MISMATCH'; END IF;
+  PERFORM 1 FROM pg_constraint
+  WHERE conname = 'social_idempotency_generic_target_pair_check'
+    AND conrelid = 'public.social_idempotency'::regclass
+    AND contype = 'c' AND convalidated;
   IF NOT FOUND THEN RAISE EXCEPTION 'GENERIC_SOCIAL_A_CHECK_DEFINITION_MISMATCH'; END IF;
-  SELECT pg_get_constraintdef(oid, false) INTO c_def FROM pg_constraint WHERE conname = 'social_idempotency_generic_target_pair_check' AND conrelid = 'public.social_idempotency'::regclass;
+  SELECT pg_get_constraintdef(oid, false) INTO c_def FROM pg_constraint
+  WHERE conname = 'social_idempotency_generic_target_pair_check'
+    AND conrelid = 'public.social_idempotency'::regclass;
   c_norm := trim(both from regexp_replace(replace(replace(c_def, E'\r\n', E'\n'), E'\r', E'\n'), E'\\s+', ' ', 'g'));
   actual_hash := encode(sha256(convert_to(concat_ws(E'\n', 'public', 'social_idempotency', 'social_idempotency_generic_target_pair_check', 'c', 'true', c_norm), 'utf8')), 'hex');
   IF actual_hash <> 'c77f0945aee59e0335790265e8df825ea52dd013082b30b2d59b916d98d3db8d' THEN RAISE EXCEPTION 'GENERIC_SOCIAL_A_CHECK_DEFINITION_MISMATCH'; END IF;
 
-  -- social_idempotency_generic_target_kind_check
-  PERFORM 1 FROM pg_constraint WHERE conname = 'social_idempotency_generic_target_kind_check' AND conrelid = 'public.social_idempotency'::regclass AND contype = 'c' AND convalidated;
+  SELECT count(*)::int INTO n FROM pg_constraint WHERE conname = 'social_idempotency_generic_target_kind_check';
+  IF n <> 1 THEN RAISE EXCEPTION 'GENERIC_SOCIAL_A_CHECK_DEFINITION_MISMATCH'; END IF;
+  PERFORM 1 FROM pg_constraint
+  WHERE conname = 'social_idempotency_generic_target_kind_check'
+    AND conrelid = 'public.social_idempotency'::regclass
+    AND contype = 'c' AND convalidated;
   IF NOT FOUND THEN RAISE EXCEPTION 'GENERIC_SOCIAL_A_CHECK_DEFINITION_MISMATCH'; END IF;
-  SELECT pg_get_constraintdef(oid, false) INTO c_def FROM pg_constraint WHERE conname = 'social_idempotency_generic_target_kind_check' AND conrelid = 'public.social_idempotency'::regclass;
+  SELECT pg_get_constraintdef(oid, false) INTO c_def FROM pg_constraint
+  WHERE conname = 'social_idempotency_generic_target_kind_check'
+    AND conrelid = 'public.social_idempotency'::regclass;
   c_norm := trim(both from regexp_replace(replace(replace(c_def, E'\r\n', E'\n'), E'\r', E'\n'), E'\\s+', ' ', 'g'));
   actual_hash := encode(sha256(convert_to(concat_ws(E'\n', 'public', 'social_idempotency', 'social_idempotency_generic_target_kind_check', 'c', 'true', c_norm), 'utf8')), 'hex');
   IF actual_hash <> '007a87be5a8c9a7cd5884cd13218eb0172cc6ad62a4428a455caddeaca0f6f48' THEN RAISE EXCEPTION 'GENERIC_SOCIAL_A_CHECK_DEFINITION_MISMATCH'; END IF;
 
-  -- social_audit_log_generic_target_pair_check
-  PERFORM 1 FROM pg_constraint WHERE conname = 'social_audit_log_generic_target_pair_check' AND conrelid = 'public.social_audit_log'::regclass AND contype = 'c' AND convalidated;
+  SELECT count(*)::int INTO n FROM pg_constraint WHERE conname = 'social_audit_log_generic_target_pair_check';
+  IF n <> 1 THEN RAISE EXCEPTION 'GENERIC_SOCIAL_A_CHECK_DEFINITION_MISMATCH'; END IF;
+  PERFORM 1 FROM pg_constraint
+  WHERE conname = 'social_audit_log_generic_target_pair_check'
+    AND conrelid = 'public.social_audit_log'::regclass
+    AND contype = 'c' AND convalidated;
   IF NOT FOUND THEN RAISE EXCEPTION 'GENERIC_SOCIAL_A_CHECK_DEFINITION_MISMATCH'; END IF;
-  SELECT pg_get_constraintdef(oid, false) INTO c_def FROM pg_constraint WHERE conname = 'social_audit_log_generic_target_pair_check' AND conrelid = 'public.social_audit_log'::regclass;
+  SELECT pg_get_constraintdef(oid, false) INTO c_def FROM pg_constraint
+  WHERE conname = 'social_audit_log_generic_target_pair_check'
+    AND conrelid = 'public.social_audit_log'::regclass;
   c_norm := trim(both from regexp_replace(replace(replace(c_def, E'\r\n', E'\n'), E'\r', E'\n'), E'\\s+', ' ', 'g'));
   actual_hash := encode(sha256(convert_to(concat_ws(E'\n', 'public', 'social_audit_log', 'social_audit_log_generic_target_pair_check', 'c', 'true', c_norm), 'utf8')), 'hex');
   IF actual_hash <> '5da1378af245ad9a1386748e12b2a5e6ffa1f993159657660b074f696cec91a9' THEN RAISE EXCEPTION 'GENERIC_SOCIAL_A_CHECK_DEFINITION_MISMATCH'; END IF;
 
-  -- social_audit_log_generic_target_kind_check
-  PERFORM 1 FROM pg_constraint WHERE conname = 'social_audit_log_generic_target_kind_check' AND conrelid = 'public.social_audit_log'::regclass AND contype = 'c' AND convalidated;
+  SELECT count(*)::int INTO n FROM pg_constraint WHERE conname = 'social_audit_log_generic_target_kind_check';
+  IF n <> 1 THEN RAISE EXCEPTION 'GENERIC_SOCIAL_A_CHECK_DEFINITION_MISMATCH'; END IF;
+  PERFORM 1 FROM pg_constraint
+  WHERE conname = 'social_audit_log_generic_target_kind_check'
+    AND conrelid = 'public.social_audit_log'::regclass
+    AND contype = 'c' AND convalidated;
   IF NOT FOUND THEN RAISE EXCEPTION 'GENERIC_SOCIAL_A_CHECK_DEFINITION_MISMATCH'; END IF;
-  SELECT pg_get_constraintdef(oid, false) INTO c_def FROM pg_constraint WHERE conname = 'social_audit_log_generic_target_kind_check' AND conrelid = 'public.social_audit_log'::regclass;
+  SELECT pg_get_constraintdef(oid, false) INTO c_def FROM pg_constraint
+  WHERE conname = 'social_audit_log_generic_target_kind_check'
+    AND conrelid = 'public.social_audit_log'::regclass;
   c_norm := trim(both from regexp_replace(replace(replace(c_def, E'\r\n', E'\n'), E'\r', E'\n'), E'\\s+', ' ', 'g'));
   actual_hash := encode(sha256(convert_to(concat_ws(E'\n', 'public', 'social_audit_log', 'social_audit_log_generic_target_kind_check', 'c', 'true', c_norm), 'utf8')), 'hex');
   IF actual_hash <> '62558ce79f045d9ff015a5e35a839d6a4136358b3fa664d30db463c3f8bcad28' THEN RAISE EXCEPTION 'GENERIC_SOCIAL_A_CHECK_DEFINITION_MISMATCH'; END IF;
@@ -286,9 +312,11 @@ BEGIN
 
   IF NOT FOUND THEN RAISE EXCEPTION 'GENERIC_SOCIAL_A_TRIGGER_DEFINITION_MISMATCH'; END IF;
   IF t_type <> 23 OR t_enabled <> 'O' THEN RAISE EXCEPTION 'GENERIC_SOCIAL_A_TRIGGER_DEFINITION_MISMATCH'; END IF;
-  
-  SELECT p.oid INTO expected_func FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace WHERE n.nspname = 'public' AND p.proname = 'sync_social_idempotency_generic_target_from_legacy_memory';
-  IF t_func IS DISTINCT FROM expected_func THEN RAISE EXCEPTION 'GENERIC_SOCIAL_A_TRIGGER_DEFINITION_MISMATCH'; END IF;
+
+  expected_func := to_regprocedure('public.sync_social_idempotency_generic_target_from_legacy_memory()');
+  IF expected_func IS NULL OR t_func IS DISTINCT FROM expected_func THEN
+    RAISE EXCEPTION 'GENERIC_SOCIAL_A_TRIGGER_DEFINITION_MISMATCH';
+  END IF;
 
   c_norm := trim(both from regexp_replace(replace(replace(t_def, E'\r\n', E'\n'), E'\r', E'\n'), E'\\s+', ' ', 'g'));
   actual_hash := encode(sha256(convert_to(concat_ws(E'\n', 'public', 'social_idempotency', 'trg_social_idempotency_sync_generic_target', t_isinternal::text, t_type::text, t_enabled, tf_schema, tf_name, coalesce(tf_args, ''), c_norm), 'utf8')), 'hex');
@@ -302,8 +330,10 @@ BEGIN
   IF NOT FOUND THEN RAISE EXCEPTION 'GENERIC_SOCIAL_A_TRIGGER_DEFINITION_MISMATCH'; END IF;
   IF t_type <> 23 OR t_enabled <> 'O' THEN RAISE EXCEPTION 'GENERIC_SOCIAL_A_TRIGGER_DEFINITION_MISMATCH'; END IF;
 
-  SELECT p.oid INTO expected_func FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace WHERE n.nspname = 'public' AND p.proname = 'sync_social_audit_generic_target_from_legacy_memory';
-  IF t_func IS DISTINCT FROM expected_func THEN RAISE EXCEPTION 'GENERIC_SOCIAL_A_TRIGGER_DEFINITION_MISMATCH'; END IF;
+  expected_func := to_regprocedure('public.sync_social_audit_generic_target_from_legacy_memory()');
+  IF expected_func IS NULL OR t_func IS DISTINCT FROM expected_func THEN
+    RAISE EXCEPTION 'GENERIC_SOCIAL_A_TRIGGER_DEFINITION_MISMATCH';
+  END IF;
 
   c_norm := trim(both from regexp_replace(replace(replace(t_def, E'\r\n', E'\n'), E'\r', E'\n'), E'\\s+', ' ', 'g'));
   actual_hash := encode(sha256(convert_to(concat_ws(E'\n', 'public', 'social_audit_log', 'trg_social_audit_log_sync_generic_target', t_isinternal::text, t_type::text, t_enabled, tf_schema, tf_name, coalesce(tf_args, ''), c_norm), 'utf8')), 'hex');

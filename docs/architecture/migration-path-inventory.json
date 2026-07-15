@@ -231,7 +231,7 @@
       "production_relevance": "historically applied artifact; direct new execution prohibited",
       "evidence": "paired historical runbook; Issue #3536 execution guards",
       "risk": "IF NOT EXISTS object creation can accept incompatible same-name objects without exact-state preflight",
-      "recommended_disposition": "retain historical SQL unchanged; new work must use preflight\u2192artifact\u2192postcondition validators only",
+      "recommended_disposition": "retain historical SQL unchanged; new work must use preflight→artifact→postcondition validators only",
       "linked_issue": "#3262, #3458, #3536",
       "baseline_sha": "5d601154cfa45a4885e30fc190446ce3b9623aa0",
       "content_checksum": "sha256:c70707d4dfeaa81fa516208a29e4ca5679e2afbeecb31481e52046cdba9cfe64"
@@ -578,11 +578,11 @@
       "recommended_disposition": "required before any future historical Migration A re-execution",
       "linked_issue": "#3536, #3534, #3262, #3458",
       "baseline_sha": "5d601154cfa45a4885e30fc190446ce3b9623aa0",
-      "content_checksum": "sha256:57eeb1a320ebeddb8a636300e6ed9f294966ba7dbd7349a240e2d7b0daa0414a"
+      "content_checksum": "sha256:7fe83a814b64f5f895c3c7ad53def08124f6d6808fac6855e639dcf051a6d593"
     },
     {
       "path": "scripts/validate-generic-social-a-postcondition.sql",
-      "content_checksum": "sha256:f72fb805b7cfcaac61d9e4d4b85c873fc2d39628f4299478e511a46efa1df272",
+      "content_checksum": "sha256:a425367c7c8d4b1aba927f31856ed2b2ec476ec8f1bfa98be73141d69f2f087b",
       "layer": "DB_ENGINE_EXECUTION",
       "operation_class": "POSTCONDITION_VALIDATOR_READ_ONLY",
       "classification": "CANONICAL_CANDIDATE",
