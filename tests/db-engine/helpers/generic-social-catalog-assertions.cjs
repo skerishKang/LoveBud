@@ -183,6 +183,34 @@ async function getSecondaryIndexNames(client, table) {
   return rows.map((r) => r.name);
 }
 
+/**
+ * Complete index projection including primary indexes.
+ * Unlike getSecondaryIndexNames, this is suitable for legacy preservation evidence.
+ */
+async function getCompleteIndexProjection(client, table) {
+  if (!(await tableExistsOrdinary(client, table))) return [];
+  const rows = await query(
+    client,
+    `SELECT c.relname AS name,
+            i.indisprimary AS is_primary,
+            i.indisunique AS is_unique,
+            i.indisvalid AS is_valid,
+            pg_get_indexdef(i.indexrelid) AS indexdef
+     FROM pg_index i
+     JOIN pg_class c ON c.oid = i.indexrelid
+     WHERE i.indrelid = ($1::text)::regclass
+     ORDER BY c.relname`,
+    [`public.${table}`]
+  );
+  return rows.map((r) => ({
+    name: r.name,
+    is_primary: r.is_primary === true,
+    is_unique: r.is_unique === true,
+    is_valid: r.is_valid === true,
+    indexdef_norm: normalizeCatalogText(r.indexdef),
+  }));
+}
+
 async function getOwnerAcl(client, table) {
   if (!(await tableExistsOrdinary(client, table))) return { owner: '', acl: 'empty' };
   const rows = await query(
@@ -196,6 +224,110 @@ async function getOwnerAcl(client, table) {
   return {
     owner: rows[0] ? String(rows[0].owner) : '',
     acl: rows[0] && rows[0].acl ? 'present' : 'empty',
+  };
+}
+
+function normalizeCatalogText(text) {
+  if (text == null) return '';
+  return String(text)
+    .replace(/\r\n/g, '\n')
+    .replace(/\r/g, '\n')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+const MIGRATION_A_CHECK_NAMES = new Set(EXPECTED_CHECKS);
+const MIGRATION_A_TRIGGER_NAMES = new Set(EXPECTED_TRIGGERS.map((t) => t.name));
+const MIGRATION_A_GENERIC_COLS = new Set(GENERIC_COLS);
+
+/**
+ * Legacy-only catalog projection for first-apply preservation evidence.
+ * Intentionally excludes Migration A objects (generic columns, A CHECKs,
+ * compatibility triggers/functions) so before/after apply can deep-equal.
+ */
+async function getLegacyCatalogFingerprint(client) {
+  async function tableLegacy(table) {
+    if (!(await tableExistsOrdinary(client, table))) {
+      return {
+        schema: 'public',
+        name: table,
+        exists: false,
+        relkind: null,
+        owner: '',
+        acl: 'empty',
+        columns: [],
+        constraints: [],
+        indexes: [],
+      };
+    }
+
+    const relRows = await query(
+      client,
+      `SELECT c.relkind::text AS relkind,
+              pg_get_userbyid(c.relowner) AS owner,
+              coalesce(array_to_string(c.relacl::text[], ','), '') AS acl
+       FROM pg_class c
+       JOIN pg_namespace n ON n.oid = c.relnamespace
+       WHERE n.nspname = 'public' AND c.relname = $1`,
+      [table]
+    );
+    const rel = relRows[0] || {};
+    const ownerAcl = {
+      owner: rel.owner != null ? String(rel.owner) : '',
+      acl: rel.acl ? 'present' : 'empty',
+    };
+
+    const cols = (await getColumnMeta(client, table))
+      .filter((c) => !MIGRATION_A_GENERIC_COLS.has(c.column_name))
+      .map((c) => ({
+        name: c.column_name,
+        data_type: c.data_type,
+        udt_name: c.udt_name,
+        char_len: c.character_maximum_length,
+        nullable: c.is_nullable,
+        default_expr:
+          c.column_default == null ? 'no-default' : normalizeCatalogText(c.column_default),
+      }));
+
+    const cons = await query(
+      client,
+      `SELECT c.conname AS name,
+              c.contype::text AS contype,
+              c.convalidated AS convalidated,
+              pg_get_constraintdef(c.oid, true) AS def
+       FROM pg_constraint c
+       WHERE c.conrelid = ($1::text)::regclass
+       ORDER BY c.conname`,
+      [`public.${table}`]
+    );
+    const constraints = cons
+      .filter((c) => !MIGRATION_A_CHECK_NAMES.has(c.name))
+      .map((c) => ({
+        name: c.name,
+        contype: c.contype,
+        validated: c.convalidated === true,
+        def_norm: normalizeCatalogText(c.def),
+      }));
+
+    // Complete indexes including primary; Migration A does not add indexes.
+    const indexes = await getCompleteIndexProjection(client, table);
+
+    return {
+      schema: 'public',
+      name: table,
+      exists: true,
+      relkind: rel.relkind || null,
+      owner: ownerAcl.owner,
+      acl: ownerAcl.acl,
+      columns: cols,
+      constraints,
+      indexes,
+    };
+  }
+
+  return {
+    idem: await tableLegacy(TABLES.idem),
+    audit: await tableLegacy(TABLES.audit),
   };
 }
 
@@ -374,11 +506,14 @@ module.exports = {
   getTriggerNames,
   getFunctionDefHash,
   getSecondaryIndexNames,
+  getCompleteIndexProjection,
   getOwnerAcl,
   getBackfillStats,
   getGenericColumnMeta,
   assertLegacySchema,
   assertMigrationACatalog,
   getCatalogFingerprint,
+  getLegacyCatalogFingerprint,
   fingerprintEqual,
+  normalizeCatalogText,
 };

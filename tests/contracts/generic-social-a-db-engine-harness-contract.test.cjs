@@ -209,14 +209,41 @@ test('engine harness encodes happy path, second apply, triggers, and matrices', 
   assert.match(harness, /rehearsal happy path guarded sequence/);
   assert.match(harness, /rehearsal second apply full guarded no-op/);
   assert.match(harness, /rehearsal trigger compatibility statements/);
-  assert.match(harness, /legacy-only insert/);
-  assert.match(harness, /matching memory pair/);
-  assert.match(harness, /partial pair reject/);
-  assert.match(harness, /tree kind reject/);
-  assert.match(harness, /unknown kind reject/);
-  assert.match(harness, /memory mismatch reject/);
-  assert.match(harness, /update mismatch preserve/);
   assert.match(harness, /assertMigrationACatalog/);
+
+  // Legacy catalog preservation evidence
+  assert.match(harness, /getLegacyCatalogFingerprint/);
+  assert.match(harness, /legacy catalog before\/after preservation|legacy catalog before\/after deep equality/);
+  assert.match(harness, /beforeLegacyCat/);
+  assert.match(harness, /afterLegacyCat/);
+
+  // Symmetric per-table compatibility helpers (not just the word "compatibility")
+  assert.match(harness, /async function assertIdempotencyCompatibility/);
+  assert.match(harness, /async function assertAuditCompatibility/);
+  assert.match(harness, /assertIdempotencyCompatibility\(client,\s*'first'\)/);
+  assert.match(harness, /assertAuditCompatibility\(client,\s*'first'\)/);
+  assert.match(harness, /assertIdempotencyCompatibility\(client,\s*'second'\)/);
+  assert.match(harness, /assertAuditCompatibility\(client,\s*'second'\)/);
+
+  // Table-specific scenario markers for both phases
+  for (const phase of ['first', 'second']) {
+    for (const table of ['idempotency', 'audit']) {
+      const prefix = `compat_${phase}_${table}`;
+      assert.match(harness, new RegExp(`${prefix}_legacy_only`), `${prefix}_legacy_only`);
+      assert.match(harness, new RegExp(`${prefix}_matching_pair`), `${prefix}_matching_pair`);
+      assert.match(harness, new RegExp(`${prefix}_partial_pair`), `${prefix}_partial_pair`);
+      assert.match(harness, new RegExp(`${prefix}_tree`), `${prefix}_tree`);
+      assert.match(harness, new RegExp(`${prefix}_unknown`), `${prefix}_unknown`);
+      assert.match(harness, new RegExp(`${prefix}_mismatch`), `${prefix}_mismatch`);
+      assert.match(harness, new RegExp(`${prefix}_update_mismatch`), `${prefix}_update_mismatch`);
+    }
+  }
+
+  // Second apply: no-op fingerprint proof before compatibility writes
+  assert.match(harness, /second_apply_noop_before_compatibility/);
+  const noopIdx = harness.indexOf('rehearsal second apply no-op');
+  const secondCompatIdx = harness.indexOf("assertIdempotencyCompatibility(client, 'second')");
+  assert.ok(noopIdx > 0 && secondCompatIdx > noopIdx, 'second apply no-op before second compatibility');
 
   for (const name of REQUIRED_CHECK) {
     assert.match(harness, new RegExp(name), `missing CHECK scenario ${name}`);
@@ -262,6 +289,13 @@ test('fixture and helper encode legacy social schema and full-row hashing', () =
   assert.match(helper, /row_to_json/i);
   assert.match(helper, /getFullRowFingerprint/);
   assert.match(helper, /assertMigrationACatalog/);
+  assert.match(helper, /getLegacyCatalogFingerprint/);
+  assert.match(helper, /getCompleteIndexProjection/);
+  assert.match(helper, /indisprimary/);
+  assert.match(helper, /default_expr|no-default/);
+  assert.match(helper, /pg_get_constraintdef/);
+  assert.match(helper, /pg_get_indexdef/);
+  assert.match(helper, /relowner|pg_get_userbyid/);
   assert.match(helper, /sync_social_idempotency_generic_target_from_legacy_memory/);
   assert.equal(/string_agg\s*\(\s*id::text/i.test(helper), false);
   assert.equal(/console\.(log|info|debug)/.test(helper), false);

@@ -33,6 +33,7 @@ const {
   assertLegacySchema,
   assertMigrationACatalog,
   getCatalogFingerprint,
+  getLegacyCatalogFingerprint,
   fingerprintEqual,
   getFullRowFingerprint,
   getColumnNames,
@@ -43,13 +44,29 @@ const {
 } = catalog;
 
 // Synthetic deterministic IDs (not Production). Not logged as payloads.
-const SYN = {
-  mem: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
-  mem2: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
-  id1: '11111111-1111-4111-8111-111111111111',
-  id2: '22222222-2222-4222-8222-222222222222',
-  id3: '33333333-3333-4333-8333-333333333333',
-};
+const MEM = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+const MEM2 = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
+
+/** Phase + table specific synthetic UUID sets (hex-only) to avoid collisions. */
+function synthIds(phase, tableKind) {
+  // phase: 'first' | 'second'; tableKind: 'idem' | 'audit'
+  // Uses only 0-9a-f so values are valid UUIDs.
+  const p = phase === 'second' ? '2' : '1';
+  const t = tableKind === 'audit' ? 'a' : '0';
+  const mk = (n) => {
+    const x = String(n);
+    return `${p}${t}${x}${x}${x}${x}${x}${x}${x}${x}-${p}${t}${x}${x}-4${t}${x}${x}-8${t}${x}${x}-${p}${t}${x}${x}${x}${x}${x}${x}${x}${x}${x}${x}${x}${x}`;
+  };
+  return {
+    legacyOnly: mk(1),
+    match: mk(2),
+    partial: mk(3),
+    tree: mk(4),
+    unknown: mk(5),
+    mismatch: mk(6),
+    updateBase: mk(7),
+  };
+}
 
 function pass(name) {
   process.stdout.write(`${name}: PASS\n`);
@@ -189,23 +206,361 @@ async function applyGuardedHappy(client, runSql, scenario) {
   return seq;
 }
 
+async function rowExists(client, table, id) {
+  const r = await client.query(`SELECT count(*)::int AS n FROM public.${table} WHERE id = $1`, [id]);
+  return r.rows[0].n > 0;
+}
+
+/**
+ * Full A–H compatibility matrix for social_idempotency (independent of audit).
+ * Markers: phase first|second + table idempotency.
+ */
+async function assertIdempotencyCompatibility(client, phase) {
+  const ids = synthIds(phase, 'idem');
+  // Static contract locks these exact phase+table markers as string literals in source.
+  const MARK = {
+    first: {
+      legacy_only: 'compat_first_idempotency_legacy_only',
+      matching_pair: 'compat_first_idempotency_matching_pair',
+      partial_pair: 'compat_first_idempotency_partial_pair',
+      tree: 'compat_first_idempotency_tree',
+      unknown: 'compat_first_idempotency_unknown',
+      mismatch: 'compat_first_idempotency_mismatch',
+      update_mismatch: 'compat_first_idempotency_update_mismatch',
+      catalog_preserve: 'compat_first_idempotency_catalog_preserve_after_failures',
+    },
+    second: {
+      legacy_only: 'compat_second_idempotency_legacy_only',
+      matching_pair: 'compat_second_idempotency_matching_pair',
+      partial_pair: 'compat_second_idempotency_partial_pair',
+      tree: 'compat_second_idempotency_tree',
+      unknown: 'compat_second_idempotency_unknown',
+      mismatch: 'compat_second_idempotency_mismatch',
+      update_mismatch: 'compat_second_idempotency_update_mismatch',
+      catalog_preserve: 'compat_second_idempotency_catalog_preserve_after_failures',
+    },
+  }[phase];
+  const beforeCat = await getCatalogFingerprint(client);
+  const beforeUnrel = await getFullRowFingerprint(client, 'unrelated');
+  const beforeRows = await getFullRowFingerprint(client, 'idem');
+
+  // A. legacy-only INSERT → generic memory pair filled
+  await client.query(
+    `INSERT INTO public.social_idempotency (
+       id, actor_id, operation, idempotency_key, request_fingerprint, target_memory_id
+     ) VALUES ($1, $2, 'comment.create', $3, $4, $5)`,
+    [ids.legacyOnly, `syn_${phase}_idem`, `key_leg_${phase}_i`, `fp_leg_${phase}_i`, MEM]
+  );
+  const rLeg = await client.query(
+    `SELECT target_kind, target_id::text AS tid FROM public.social_idempotency WHERE id = $1`,
+    [ids.legacyOnly]
+  );
+  assert.equal(rLeg.rows[0].target_kind, 'memory');
+  assert.equal(rLeg.rows[0].tid, MEM);
+  pass(MARK.legacy_only);
+
+  // B. complete matching memory pair
+  await client.query(
+    `INSERT INTO public.social_idempotency (
+       id, actor_id, operation, idempotency_key, request_fingerprint,
+       target_memory_id, target_kind, target_id
+     ) VALUES ($1, $2, 'comment.create', $3, $4, $5, 'memory', $5)`,
+    [ids.match, `syn_${phase}_idem`, `key_match_${phase}_i`, `fp_match_${phase}_i`, MEM]
+  );
+  assert.equal(await rowExists(client, 'social_idempotency', ids.match), true);
+  pass(MARK.matching_pair);
+
+  // C. partial pair
+  let failed = false;
+  try {
+    await client.query(
+      `INSERT INTO public.social_idempotency (
+         id, actor_id, operation, idempotency_key, request_fingerprint,
+         target_memory_id, target_kind
+       ) VALUES ($1, $2, 'comment.create', $3, $4, $5, 'memory')`,
+      [ids.partial, `syn_${phase}_idem`, `key_part_${phase}_i`, `fp_part_${phase}_i`, MEM]
+    );
+  } catch {
+    failed = true;
+  }
+  assert.equal(failed, true);
+  assert.equal(await rowExists(client, 'social_idempotency', ids.partial), false);
+  pass(MARK.partial_pair);
+
+  // D. tree pair
+  failed = false;
+  try {
+    await client.query(
+      `INSERT INTO public.social_idempotency (
+         id, actor_id, operation, idempotency_key, request_fingerprint,
+         target_memory_id, target_kind, target_id
+       ) VALUES ($1, $2, 'comment.create', $3, $4, $5, 'tree', $6)`,
+      [ids.tree, `syn_${phase}_idem`, `key_tree_${phase}_i`, `fp_tree_${phase}_i`, MEM, MEM2]
+    );
+  } catch {
+    failed = true;
+  }
+  assert.equal(failed, true);
+  assert.equal(await rowExists(client, 'social_idempotency', ids.tree), false);
+  pass(MARK.tree);
+
+  // E. unknown kind
+  failed = false;
+  try {
+    await client.query(
+      `INSERT INTO public.social_idempotency (
+         id, actor_id, operation, idempotency_key, request_fingerprint,
+         target_memory_id, target_kind, target_id
+       ) VALUES ($1, $2, 'comment.create', $3, $4, $5, 'unknown', $5)`,
+      [ids.unknown, `syn_${phase}_idem`, `key_unk_${phase}_i`, `fp_unk_${phase}_i`, MEM]
+    );
+  } catch {
+    failed = true;
+  }
+  assert.equal(failed, true);
+  assert.equal(await rowExists(client, 'social_idempotency', ids.unknown), false);
+  pass(MARK.unknown);
+
+  // F. generic/legacy memory mismatch
+  failed = false;
+  try {
+    await client.query(
+      `INSERT INTO public.social_idempotency (
+         id, actor_id, operation, idempotency_key, request_fingerprint,
+         target_memory_id, target_kind, target_id
+       ) VALUES ($1, $2, 'comment.create', $3, $4, $5, 'memory', $6)`,
+      [ids.mismatch, `syn_${phase}_idem`, `key_mis_${phase}_i`, `fp_mis_${phase}_i`, MEM, MEM2]
+    );
+  } catch {
+    failed = true;
+  }
+  assert.equal(failed, true);
+  assert.equal(await rowExists(client, 'social_idempotency', ids.mismatch), false);
+  pass(MARK.mismatch);
+
+  // G. UPDATE mismatch on a complete matching row
+  await client.query(
+    `INSERT INTO public.social_idempotency (
+       id, actor_id, operation, idempotency_key, request_fingerprint,
+       target_memory_id, target_kind, target_id
+     ) VALUES ($1, $2, 'comment.create', $3, $4, $5, 'memory', $5)`,
+    [ids.updateBase, `syn_${phase}_idem`, `key_upd_${phase}_i`, `fp_upd_${phase}_i`, MEM]
+  );
+  const beforeUpd = await getFullRowFingerprint(client, 'idem');
+  failed = false;
+  try {
+    await client.query(`UPDATE public.social_idempotency SET target_id = $1 WHERE id = $2`, [
+      MEM2,
+      ids.updateBase,
+    ]);
+  } catch {
+    failed = true;
+  }
+  assert.equal(failed, true);
+  assert.equal((await getFullRowFingerprint(client, 'idem')).rowFp, beforeUpd.rowFp);
+  pass(MARK.update_mismatch);
+
+  // H. catalog/object preservation after failures (+ unrelated sentinel)
+  const afterCat = await getCatalogFingerprint(client);
+  assert.deepEqual(afterCat.idem.checks, beforeCat.idem.checks);
+  assert.deepEqual(afterCat.audit.checks, beforeCat.audit.checks);
+  assert.deepEqual(afterCat.idem.triggers, beforeCat.idem.triggers);
+  assert.deepEqual(afterCat.audit.triggers, beforeCat.audit.triggers);
+  assert.deepEqual(afterCat.funcs, beforeCat.funcs);
+  assert.deepEqual(await getFullRowFingerprint(client, 'unrelated'), beforeUnrel);
+  // Successful inserts changed row set; baseline before success inserts is not equal — only failures preserve
+  assert.notEqual((await getFullRowFingerprint(client, 'idem')).rowFp, beforeRows.rowFp);
+  pass(MARK.catalog_preserve);
+}
+
+/**
+ * Full A–H compatibility matrix for social_audit_log (independent of idempotency).
+ * Markers: phase first|second + table audit.
+ */
+async function assertAuditCompatibility(client, phase) {
+  const ids = synthIds(phase, 'audit');
+  // Static contract locks these exact phase+table markers as string literals in source.
+  const mark = {
+    first: {
+      legacy_only: 'compat_first_audit_legacy_only',
+      matching_pair: 'compat_first_audit_matching_pair',
+      partial_pair: 'compat_first_audit_partial_pair',
+      tree: 'compat_first_audit_tree',
+      unknown: 'compat_first_audit_unknown',
+      mismatch: 'compat_first_audit_mismatch',
+      update_mismatch: 'compat_first_audit_update_mismatch',
+      catalog_preserve: 'compat_first_audit_catalog_preserve_after_failures',
+    },
+    second: {
+      legacy_only: 'compat_second_audit_legacy_only',
+      matching_pair: 'compat_second_audit_matching_pair',
+      partial_pair: 'compat_second_audit_partial_pair',
+      tree: 'compat_second_audit_tree',
+      unknown: 'compat_second_audit_unknown',
+      mismatch: 'compat_second_audit_mismatch',
+      update_mismatch: 'compat_second_audit_update_mismatch',
+      catalog_preserve: 'compat_second_audit_catalog_preserve_after_failures',
+    },
+  }[phase];
+  const beforeCat = await getCatalogFingerprint(client);
+  const beforeUnrel = await getFullRowFingerprint(client, 'unrelated');
+
+  // A. legacy-only INSERT
+  await client.query(
+    `INSERT INTO public.social_audit_log (
+       id, actor_id, memory_id, action, outcome_code
+     ) VALUES ($1, $2, $3, 'comment.create', 'success')`,
+    [ids.legacyOnly, `syn_${phase}_audit`, MEM]
+  );
+  const rLeg = await client.query(
+    `SELECT target_kind, target_id::text AS tid FROM public.social_audit_log WHERE id = $1`,
+    [ids.legacyOnly]
+  );
+  assert.equal(rLeg.rows[0].target_kind, 'memory');
+  assert.equal(rLeg.rows[0].tid, MEM);
+  pass(mark.legacy_only);
+
+  // B. complete matching memory pair
+  await client.query(
+    `INSERT INTO public.social_audit_log (
+       id, actor_id, memory_id, action, outcome_code, target_kind, target_id
+     ) VALUES ($1, $2, $3, 'comment.create', 'success', 'memory', $3)`,
+    [ids.match, `syn_${phase}_audit`, MEM]
+  );
+  assert.equal(await rowExists(client, 'social_audit_log', ids.match), true);
+  pass(mark.matching_pair);
+
+  // C. partial pair
+  let failed = false;
+  try {
+    await client.query(
+      `INSERT INTO public.social_audit_log (
+         id, actor_id, memory_id, action, outcome_code, target_kind
+       ) VALUES ($1, $2, $3, 'comment.create', 'success', 'memory')`,
+      [ids.partial, `syn_${phase}_audit`, MEM]
+    );
+  } catch {
+    failed = true;
+  }
+  assert.equal(failed, true);
+  assert.equal(await rowExists(client, 'social_audit_log', ids.partial), false);
+  pass(mark.partial_pair);
+
+  // D. tree pair
+  failed = false;
+  try {
+    await client.query(
+      `INSERT INTO public.social_audit_log (
+         id, actor_id, memory_id, action, outcome_code, target_kind, target_id
+       ) VALUES ($1, $2, $3, 'comment.create', 'success', 'tree', $4)`,
+      [ids.tree, `syn_${phase}_audit`, MEM, MEM2]
+    );
+  } catch {
+    failed = true;
+  }
+  assert.equal(failed, true);
+  assert.equal(await rowExists(client, 'social_audit_log', ids.tree), false);
+  pass(mark.tree);
+
+  // E. unknown kind
+  failed = false;
+  try {
+    await client.query(
+      `INSERT INTO public.social_audit_log (
+         id, actor_id, memory_id, action, outcome_code, target_kind, target_id
+       ) VALUES ($1, $2, $3, 'comment.create', 'success', 'unknown', $3)`,
+      [ids.unknown, `syn_${phase}_audit`, MEM]
+    );
+  } catch {
+    failed = true;
+  }
+  assert.equal(failed, true);
+  assert.equal(await rowExists(client, 'social_audit_log', ids.unknown), false);
+  pass(mark.unknown);
+
+  // F. mismatch
+  failed = false;
+  try {
+    await client.query(
+      `INSERT INTO public.social_audit_log (
+         id, actor_id, memory_id, action, outcome_code, target_kind, target_id
+       ) VALUES ($1, $2, $3, 'comment.create', 'success', 'memory', $4)`,
+      [ids.mismatch, `syn_${phase}_audit`, MEM, MEM2]
+    );
+  } catch {
+    failed = true;
+  }
+  assert.equal(failed, true);
+  assert.equal(await rowExists(client, 'social_audit_log', ids.mismatch), false);
+  pass(mark.mismatch);
+
+  // G. UPDATE mismatch
+  await client.query(
+    `INSERT INTO public.social_audit_log (
+       id, actor_id, memory_id, action, outcome_code, target_kind, target_id
+     ) VALUES ($1, $2, $3, 'comment.create', 'success', 'memory', $3)`,
+    [ids.updateBase, `syn_${phase}_audit`, MEM]
+  );
+  const beforeUpd = await getFullRowFingerprint(client, 'audit');
+  failed = false;
+  try {
+    await client.query(`UPDATE public.social_audit_log SET target_id = $1 WHERE id = $2`, [
+      MEM2,
+      ids.updateBase,
+    ]);
+  } catch {
+    failed = true;
+  }
+  assert.equal(failed, true);
+  assert.equal((await getFullRowFingerprint(client, 'audit')).rowFp, beforeUpd.rowFp);
+  pass(mark.update_mismatch);
+
+  // H. catalog preserve
+  const afterCat = await getCatalogFingerprint(client);
+  assert.deepEqual(afterCat.idem.checks, beforeCat.idem.checks);
+  assert.deepEqual(afterCat.audit.checks, beforeCat.audit.checks);
+  assert.deepEqual(afterCat.idem.triggers, beforeCat.idem.triggers);
+  assert.deepEqual(afterCat.audit.triggers, beforeCat.audit.triggers);
+  assert.deepEqual(afterCat.funcs, beforeCat.funcs);
+  assert.deepEqual(await getFullRowFingerprint(client, 'unrelated'), beforeUnrel);
+  pass(mark.catalog_preserve);
+}
+
 // ─── Happy path: exact legacy → preflight → Migration A → postcondition ──────
 
 test('rehearsal happy path guarded sequence apply backfill catalog', { concurrency: false }, async () => {
   await withDisposableDb('happy', LEGACY_FIXTURE, async ({ client, runSql }) => {
     await assertLegacySchema(client);
+    const beforeLegacyCat = await getLegacyCatalogFingerprint(client);
     const beforeColsIdem = await getColumnNames(client, TABLES.idem);
     const beforeColsAudit = await getColumnNames(client, TABLES.audit);
     const beforeIdem = await getFullRowFingerprint(client, 'idem');
     const beforeAudit = await getFullRowFingerprint(client, 'audit');
     const beforeUnrel = await getFullRowFingerprint(client, 'unrelated');
     pass('rehearsal legacy preflight schema');
+    pass('rehearsal legacy catalog fingerprint recorded');
 
     const seq = await applyGuardedHappy(client, runSql, 'happy');
     assert.equal(seq.counts.preflight, 1, 'guarded happy-path preflight = 1');
     assert.equal(seq.counts.migA, 1, 'guarded happy-path Migration A = 1');
     assert.equal(seq.counts.postcond, 1, 'guarded happy-path postcondition = 1');
     pass('rehearsal guarded happy sequence');
+
+    // Legacy catalog invariants preserved (excludes Migration A objects)
+    const afterLegacyCat = await getLegacyCatalogFingerprint(client);
+    assert.deepEqual(afterLegacyCat, beforeLegacyCat, 'legacy catalog before/after deep equality');
+    // Explicit anchors
+    const idemLeg = afterLegacyCat.idem.columns.find((c) => c.name === LEGACY_IDEM);
+    const auditLeg = afterLegacyCat.audit.columns.find((c) => c.name === LEGACY_AUDIT);
+    assert.ok(idemLeg && idemLeg.udt_name === 'uuid' && idemLeg.nullable === 'NO');
+    assert.ok(auditLeg && auditLeg.udt_name === 'uuid' && auditLeg.nullable === 'NO');
+    assert.ok(afterLegacyCat.idem.constraints.some((c) => c.contype === 'p'));
+    assert.ok(afterLegacyCat.audit.constraints.some((c) => c.contype === 'p'));
+    assert.ok(afterLegacyCat.idem.indexes.some((i) => i.is_primary));
+    assert.ok(afterLegacyCat.audit.indexes.some((i) => i.is_primary));
+    assert.ok(afterLegacyCat.idem.owner);
+    assert.ok(afterLegacyCat.audit.owner);
+    pass('rehearsal legacy catalog before/after preservation');
 
     // Independent #3535 catalog assertions (not only validator success)
     await assertMigrationACatalog(client);
@@ -231,10 +586,15 @@ test('rehearsal happy path guarded sequence apply backfill catalog', { concurren
     assert.equal(stI.mismatch, 0);
     assert.equal(stA.mismatch, 0);
     pass('rehearsal backfill+catalog independent');
+
+    // First-apply symmetric compatibility matrices
+    await assertIdempotencyCompatibility(client, 'first');
+    await assertAuditCompatibility(client, 'first');
+    pass('rehearsal first-apply both-table compatibility');
   });
 });
 
-// ─── Second apply complete no-op ─────────────────────────────────────────────
+// ─── Second apply complete no-op, then compatibility re-proof ────────────────
 
 test('rehearsal second apply full guarded no-op', { concurrency: false }, async () => {
   await withDisposableDb('second', LEGACY_FIXTURE, async ({ client, runSql }) => {
@@ -248,6 +608,7 @@ test('rehearsal second apply full guarded no-op', { concurrency: false }, async 
     const tgI = await getTriggerNames(client, TABLES.idem);
     const tgA = await getTriggerNames(client, TABLES.audit);
 
+    // Second guarded sequence (no-op evidence BEFORE compatibility writes)
     const second = runGuardedSequence(runSql);
     assert.equal(second.counts.preflight, 1);
     assert.equal(second.counts.migA, 1);
@@ -266,147 +627,23 @@ test('rehearsal second apply full guarded no-op', { concurrency: false }, async 
     assert.deepEqual(await getTriggerNames(client, TABLES.idem), tgI);
     assert.deepEqual(await getTriggerNames(client, TABLES.audit), tgA);
     pass('rehearsal second apply no-op');
+    pass('rehearsal second_apply_noop_before_compatibility');
+
+    // Fresh synthetic IDs for second-phase compatibility (after no-op proof)
+    await assertIdempotencyCompatibility(client, 'second');
+    await assertAuditCompatibility(client, 'second');
+    pass('rehearsal second-apply both-table compatibility');
   });
 });
 
-// ─── Trigger compatibility (real statements after guarded apply) ─────────────
+// ─── First-apply dedicated compatibility suite (explicit matrix markers) ─────
 
 test('rehearsal trigger compatibility statements', { concurrency: false }, async () => {
   await withDisposableDb('triggers', LEGACY_FIXTURE, async ({ client, runSql }) => {
     await applyGuardedHappy(client, runSql, 'triggers');
-    const beforeCat = await getCatalogFingerprint(client);
-
-    // 1) Legacy-only INSERT → trigger fills memory pair
-    await client.query(
-      `INSERT INTO public.social_idempotency (
-         id, actor_id, operation, idempotency_key, request_fingerprint, target_memory_id
-       ) VALUES ($1, 'syn_actor_t', 'comment.create', 'syn_key_leg', 'syn_fp_leg', $2)`,
-      [SYN.id1, SYN.mem]
-    );
-    const r1 = await client.query(
-      `SELECT target_kind, target_id::text AS tid FROM public.social_idempotency WHERE id = $1`,
-      [SYN.id1]
-    );
-    assert.equal(r1.rows[0].target_kind, 'memory');
-    assert.equal(r1.rows[0].tid, SYN.mem);
-    pass('rehearsal legacy-only insert');
-
-    // 2) Complete matching memory pair
-    await client.query(
-      `INSERT INTO public.social_audit_log (
-         id, actor_id, memory_id, action, outcome_code, target_kind, target_id
-       ) VALUES ($1, 'syn_actor_t', $2, 'comment.create', 'success', 'memory', $2)`,
-      [SYN.id2, SYN.mem]
-    );
-    pass('rehearsal matching memory pair');
-
-    // 3) Partial generic pair → fail, no persistent row
-    let failed = false;
-    try {
-      await client.query(
-        `INSERT INTO public.social_idempotency (
-           id, actor_id, operation, idempotency_key, request_fingerprint,
-           target_memory_id, target_kind
-         ) VALUES ($1, 'syn_actor_t', 'comment.create', 'syn_key_part', 'syn_fp_part', $2, 'memory')`,
-        [SYN.id3, SYN.mem]
-      );
-    } catch {
-      failed = true;
-    }
-    assert.equal(failed, true);
-    assert.equal(
-      (await client.query(`SELECT count(*)::int AS n FROM public.social_idempotency WHERE id = $1`, [SYN.id3]))
-        .rows[0].n,
-      0
-    );
-    pass('rehearsal partial pair reject');
-
-    // 4) tree kind rejected in Migration A
-    failed = false;
-    const treeId = '44444444-4444-4444-8444-444444444444';
-    try {
-      await client.query(
-        `INSERT INTO public.social_idempotency (
-           id, actor_id, operation, idempotency_key, request_fingerprint,
-           target_memory_id, target_kind, target_id
-         ) VALUES ($1, 'syn_actor_t', 'comment.create', 'syn_key_tree', 'syn_fp_tree', $2, 'tree', $3)`,
-        [treeId, SYN.mem, SYN.mem2]
-      );
-    } catch {
-      failed = true;
-    }
-    assert.equal(failed, true);
-    assert.equal(
-      (await client.query(`SELECT count(*)::int AS n FROM public.social_idempotency WHERE id = $1`, [treeId]))
-        .rows[0].n,
-      0
-    );
-    pass('rehearsal tree kind reject');
-
-    // 5) unknown kind
-    failed = false;
-    const unkId = '55555555-5555-4555-8555-555555555555';
-    try {
-      await client.query(
-        `INSERT INTO public.social_audit_log (
-           id, actor_id, memory_id, action, outcome_code, target_kind, target_id
-         ) VALUES ($1, 'syn_actor_t', $2, 'comment.create', 'success', 'unknown', $2)`,
-        [unkId, SYN.mem]
-      );
-    } catch {
-      failed = true;
-    }
-    assert.equal(failed, true);
-    assert.equal(
-      (await client.query(`SELECT count(*)::int AS n FROM public.social_audit_log WHERE id = $1`, [unkId])).rows[0]
-        .n,
-      0
-    );
-    pass('rehearsal unknown kind reject');
-
-    // 6) memory mismatch
-    failed = false;
-    const misId = '66666666-6666-4666-8666-666666666666';
-    try {
-      await client.query(
-        `INSERT INTO public.social_idempotency (
-           id, actor_id, operation, idempotency_key, request_fingerprint,
-           target_memory_id, target_kind, target_id
-         ) VALUES ($1, 'syn_actor_t', 'comment.create', 'syn_key_mis', 'syn_fp_mis', $2, 'memory', $3)`,
-        [misId, SYN.mem, SYN.mem2]
-      );
-    } catch {
-      failed = true;
-    }
-    assert.equal(failed, true);
-    assert.equal(
-      (await client.query(`SELECT count(*)::int AS n FROM public.social_idempotency WHERE id = $1`, [misId])).rows[0]
-        .n,
-      0
-    );
-    pass('rehearsal memory mismatch reject');
-
-    // 7) UPDATE mismatch — original complete-row fingerprint preserved
-    const beforeUpd = await getFullRowFingerprint(client, 'idem');
-    failed = false;
-    try {
-      await client.query(`UPDATE public.social_idempotency SET target_id = $1 WHERE id = $2`, [SYN.mem2, SYN.id1]);
-    } catch {
-      failed = true;
-    }
-    assert.equal(failed, true);
-    assert.equal((await getFullRowFingerprint(client, 'idem')).rowFp, beforeUpd.rowFp);
-    pass('rehearsal update mismatch preserve');
-
-    // 8) After failures: trigger/function/constraint state unchanged vs post-apply baseline shape
-    // (row state changed by successful inserts only; catalog objects unchanged)
-    const afterCat = await getCatalogFingerprint(client);
-    assert.deepEqual(afterCat.idem.checks, beforeCat.idem.checks);
-    assert.deepEqual(afterCat.audit.checks, beforeCat.audit.checks);
-    assert.deepEqual(afterCat.idem.triggers, beforeCat.idem.triggers);
-    assert.deepEqual(afterCat.audit.triggers, beforeCat.audit.triggers);
-    assert.deepEqual(afterCat.funcs, beforeCat.funcs);
-    pass('rehearsal failed statement catalog preserve');
+    await assertIdempotencyCompatibility(client, 'first');
+    await assertAuditCompatibility(client, 'first');
+    pass('rehearsal first-apply symmetric compatibility matrix');
   });
 });
 
