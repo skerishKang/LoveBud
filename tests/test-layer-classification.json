@@ -1541,6 +1541,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/generic-social-b-db-engine-harness-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Reads package.json, CI workflow, Migration B rehearsal harness/fixture/helper sources and asserts separate package script, PostgreSQL 17.4 job pin, B_PRE→MIG_B→B_POST order, multi-row/empty/second-apply markers, exact B object fingerprints, and supplemental classification without executing PostgreSQL (#3540).",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/generic-social-a-execution-guard-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads validator SQL, runbook, inventory, package/CI, and guard harness sources; asserts historical Migration A checksum stability, read-only validators, direct-execution prohibition, and supplemental DB_ENGINE classification without executing PostgreSQL (#3536).",
@@ -4379,6 +4385,17 @@
       "defaultCi": false,
       "layer": "DB_ENGINE_EXECUTION",
       "rationale": "Executes read-only Migration B preflight/postcondition validators and the unchanged historical Migration B artifact against disposable PostgreSQL 17.4; proves STATE_A/STATE_B acceptance, rejection short-circuit without calling Migration B after failed preflight, and second-apply no-op without Production access (#3538).",
+      "capabilities": [
+        "postgresql",
+        "child_process",
+        "filesystem"
+      ]
+    },
+    {
+      "path": "tests/db-engine/generic-social-b-postgres.test.cjs",
+      "defaultCi": false,
+      "layer": "DB_ENGINE_EXECUTION",
+      "rationale": "Independent supported-state Migration B rehearsal on disposable PostgreSQL 17.4: guarded A→STATE_A, non-empty/empty/STATE_B-rerun paths, approved catalog delta, both-table compatibility A–K, second-apply no-op; does not duplicate B guard adversarial matrix (#3540).",
       "capabilities": [
         "postgresql",
         "child_process",
