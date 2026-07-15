@@ -145,23 +145,89 @@ async function getTreesOwnerAclFingerprint(client) {
   };
 }
 
-async function getTreesRowFingerprint(client) {
-  if (!(await tableExists(client, 'trees'))) {
-    return { count: 0, idFp: '' };
+/**
+ * Allowed fingerprint table keys only — never interpolate untrusted identifiers.
+ * Full-row hashing is computed inside PostgreSQL; only count + hash leave the DB.
+ */
+const ALLOWED_FINGERPRINT_TABLES = new Map([
+  ['trees', { schema: 'public', table: 'trees' }],
+  ['sentinel', { schema: 'public', table: 'lb_sentinel_dependent' }],
+  ['unrelated', { schema: 'public', table: 'lb_unrelated_marker' }],
+]);
+
+/**
+ * Deterministic full-row fingerprint for an ordinary table.
+ * Uses DB-side row_to_json over all current columns (or an optional column projection).
+ * Does not return or log raw row payloads.
+ *
+ * @param {import('pg').Client} client
+ * @param {'trees'|'sentinel'|'unrelated'} tableKey
+ * @param {{ columns?: string[] }} [opts]
+ * @returns {Promise<{count:number,rowFp:string}>}
+ */
+async function getFullRowFingerprint(client, tableKey, opts) {
+  const mapping = ALLOWED_FINGERPRINT_TABLES.get(tableKey);
+  if (!mapping) {
+    fail(`FINGERPRINT_TABLE_NOT_ALLOWED_${String(tableKey)}`);
   }
-  // Damaged/unsupported shapes may lack id; fingerprint without assuming the column.
-  const names = await getTreesColumnNames(client);
-  if (!names.includes('id')) {
-    const rows = await query(client, `SELECT count(*)::int AS n FROM public.trees`);
-    return { count: rows[0].n, idFp: 'NO_ID_COLUMN' };
+  const relName = mapping.table;
+  if (!(await tableExists(client, relName))) {
+    return { count: 0, rowFp: '' };
   }
-  const rows = await query(
-    client,
-    `SELECT count(*)::int AS n,
-            coalesce(md5(string_agg(id::text, '|' ORDER BY id::text)), '') AS id_fp
-     FROM public.trees`
-  );
-  return { count: rows[0].n, idFp: rows[0].id_fp };
+
+  const options = opts || {};
+  let columnList = null;
+  if (Array.isArray(options.columns) && options.columns.length > 0) {
+    columnList = [];
+    for (const c of options.columns) {
+      if (typeof c !== 'string' || !/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(c)) {
+        fail('FINGERPRINT_INVALID_COLUMN_IDENT');
+      }
+      columnList.push(c);
+    }
+  }
+
+  // Full current row (all columns) or fixed projection of approved identifiers.
+  // string_agg keeps duplicates (no DISTINCT). Ordering is by per-row hash for determinism.
+  let sql;
+  if (columnList) {
+    const proj = columnList.map((c) => quoteIdent(c)).join(', ');
+    sql = `
+      SELECT count(*)::int AS n,
+             coalesce(
+               md5(
+                 string_agg(
+                   md5(row_to_json(s)::text),
+                   '|' ORDER BY md5(row_to_json(s)::text)
+                 )
+               ),
+               ''
+             ) AS row_fp
+      FROM (
+        SELECT ${proj}
+        FROM ${quoteIdent(mapping.schema)}.${quoteIdent(mapping.table)}
+      ) AS s`;
+  } else {
+    sql = `
+      SELECT count(*)::int AS n,
+             coalesce(
+               md5(
+                 string_agg(
+                   md5(row_to_json(t)::text),
+                   '|' ORDER BY md5(row_to_json(t)::text)
+                 )
+               ),
+               ''
+             ) AS row_fp
+      FROM ${quoteIdent(mapping.schema)}.${quoteIdent(mapping.table)} AS t`;
+  }
+
+  const rows = await query(client, sql);
+  return { count: rows[0].n, rowFp: rows[0].row_fp };
+}
+
+async function getTreesRowFingerprint(client, opts) {
+  return getFullRowFingerprint(client, 'trees', opts);
 }
 
 async function getNonNullTargetCount(client) {
@@ -195,29 +261,12 @@ async function getPublicRelations(client) {
 }
 
 async function getSentinelFingerprint(client) {
-  if (!(await tableExists(client, 'lb_sentinel_dependent'))) {
-    return { count: 0, fp: '' };
-  }
-  const rows = await query(
-    client,
-    `SELECT count(*)::int AS n,
-            coalesce(md5(string_agg(id || ':' || tree_id, '|' ORDER BY id)), '') AS fp
-     FROM public.lb_sentinel_dependent`
-  );
-  return { count: rows[0].n, fp: rows[0].fp };
+  // Full row including id, tree_id, body (and any future columns).
+  return getFullRowFingerprint(client, 'sentinel');
 }
 
 async function getUnrelatedFingerprint(client) {
-  if (!(await tableExists(client, 'lb_unrelated_marker'))) {
-    return { count: 0, fp: '' };
-  }
-  const rows = await query(
-    client,
-    `SELECT count(*)::int AS n,
-            coalesce(md5(string_agg(id || ':' || v, '|' ORDER BY id)), '') AS fp
-     FROM public.lb_unrelated_marker`
-  );
-  return { count: rows[0].n, fp: rows[0].fp };
+  return getFullRowFingerprint(client, 'unrelated');
 }
 
 async function getCatalogFingerprint(client) {
@@ -304,8 +353,9 @@ async function assertRepairedCatalog(client) {
     expectTargetMeta(byName, col);
   }
 
-  const nonNullTargets = await getNonNullTargetCount(client);
-  if (nonNullTargets !== 0) fail(`EXPECTED_ALL_NEW_COLS_NULL_ACTUAL_${nonNullTargets}`);
+  // Note: pre-existing compatible partial columns may hold synthetic non-NULL values.
+  // Callers that started from an exact damaged state should additionally assert
+  // getNonNullTargetCount(client) === 0 for the seven foothold fields.
 
   // No secondary indexes / FK / CHECK / triggers / RLS introduced by foothold.
   const idxs = await getTreesSecondaryIndexes(client);
@@ -320,6 +370,7 @@ async function assertRepairedCatalog(client) {
 module.exports = {
   TARGET_COLUMNS,
   TARGET_NAMES,
+  ALLOWED_FINGERPRINT_TABLES,
   tableExists,
   getTreesColumnMeta,
   getTreesColumnNames,
@@ -329,6 +380,7 @@ module.exports = {
   getTreesUserTriggerCount,
   getTreesRlsEnabled,
   getTreesOwnerAclFingerprint,
+  getFullRowFingerprint,
   getTreesRowFingerprint,
   getNonNullTargetCount,
   getPublicRelations,

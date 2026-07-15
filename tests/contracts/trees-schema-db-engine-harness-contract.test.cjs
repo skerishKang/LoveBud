@@ -107,8 +107,31 @@ test('engine harness targets exact foothold migration and required phases', () =
   assert.match(harness, /mixed early-absent later-incompatible/);
   assert.match(harness, /assertNoMutation/);
   assert.match(harness, /getTreesOwnerAclFingerprint|ownerAcl/);
+  assert.match(harness, /trees non-ID value mutation changes rowFp/);
+  assert.match(harness, /sentinel body mutation changes rowFp/);
+  assert.match(harness, /\.rowFp/);
   assert.equal(/rollback-.*trees/i.test(harness), false, 'must not invent trees rollback SQL');
   assert.equal(/DATABASE_URL/i.test(harness), false);
+});
+
+test('catalog helper uses full-row fingerprinting (not id-only)', () => {
+  assert.match(helper, /row_to_json/i);
+  assert.match(helper, /rowFp|row_fp/);
+  assert.match(helper, /getFullRowFingerprint/);
+  assert.match(helper, /ALLOWED_FINGERPRINT_TABLES/);
+  assert.equal(
+    /string_agg\s*\(\s*id::text/i.test(helper),
+    false,
+    'must not hash id-only string_agg'
+  );
+  assert.equal(
+    /id\s*\|\|\s*':'?\s*\|\|\s*tree_id/i.test(helper),
+    false,
+    'must not use id||tree_id-only sentinel fingerprint'
+  );
+  assert.equal(/NO_ID_COLUMN/.test(helper), false, 'must not use NO_ID_COLUMN fallback');
+  assert.equal(/console\.(log|info|debug|warn)/.test(helper), false);
+  assert.equal(/JSON\.stringify\s*\(\s*rows/.test(helper), false);
 });
 
 test('damaged fixture and catalog helpers encode seven-column foothold contract', () => {

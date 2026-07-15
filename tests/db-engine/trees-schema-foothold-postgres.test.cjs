@@ -97,6 +97,7 @@ async function seedSentinels(client) {
 test('trees-schema happy path apply and idempotent second apply', { concurrency: false }, async () => {
   await withDisposableDb('happy', DAMAGED_FIXTURE, async ({ client, runSql }) => {
     await catalog.assertDamagedCatalog(client);
+    const beforeCols = await catalog.getTreesColumnNames(client);
     const beforeRows = await catalog.getTreesRowFingerprint(client);
     const beforeSentinel = await catalog.getSentinelFingerprint(client);
     const beforeUnrelated = await catalog.getUnrelatedFingerprint(client);
@@ -107,9 +108,12 @@ test('trees-schema happy path apply and idempotent second apply', { concurrency:
     pass('trees-schema happy apply');
 
     await catalog.assertRepairedCatalog(client);
-    const afterRows = await catalog.getTreesRowFingerprint(client);
-    assert.equal(afterRows.count, beforeRows.count);
-    assert.equal(afterRows.idFp, beforeRows.idFp);
+    // Full-row values of pre-migration columns preserved (new null cols excluded via projection).
+    const afterBase = await catalog.getTreesRowFingerprint(client, { columns: beforeCols });
+    assert.equal(afterBase.count, beforeRows.count);
+    assert.equal(afterBase.rowFp, beforeRows.rowFp);
+    // Exact damaged start → all seven foothold fields NULL on pre-existing rows.
+    assert.equal(await catalog.getNonNullTargetCount(client), 0);
     assert.deepEqual(await catalog.getSentinelFingerprint(client), beforeSentinel);
     assert.deepEqual(await catalog.getUnrelatedFingerprint(client), beforeUnrelated);
     pass('trees-schema happy catalog+row verify');
@@ -134,24 +138,37 @@ test('trees-schema compatible partial columns converge', { concurrency: false },
         );
         INSERT INTO public.trees (id) VALUES ('tree_syn_a');
       `);
-      // Pre-present exactly one approved column.
+      // Pre-present exactly one approved column with synthetic non-NULL value.
       if (col.name === 'keywords') {
         await client.query(`ALTER TABLE public.trees ADD COLUMN keywords text[]`);
+        await client.query(
+          `UPDATE public.trees SET keywords = ARRAY['syn_kw']::text[] WHERE id = 'tree_syn_a'`
+        );
       } else if (col.udt === 'timestamptz') {
         await client.query(
           `ALTER TABLE public.trees ADD COLUMN ${col.name} timestamptz`
         );
+        await client.query(
+          `UPDATE public.trees SET ${col.name} = TIMESTAMPTZ '2020-01-02T03:04:05Z' WHERE id = 'tree_syn_a'`
+        );
       } else {
         await client.query(`ALTER TABLE public.trees ADD COLUMN ${col.name} text`);
+        await client.query(
+          `UPDATE public.trees SET ${col.name} = 'syn_partial_val' WHERE id = 'tree_syn_a'`
+        );
       }
       await seedSentinels(client);
+      const beforeCols = await catalog.getTreesColumnNames(client);
       const beforeRows = await catalog.getTreesRowFingerprint(client);
+      const beforeSentinel = await catalog.getSentinelFingerprint(client);
 
       const res = runSql(MIGRATION_SQL);
       expectOk(res, `partial_${col.name}`, 'migration_apply');
       await catalog.assertRepairedCatalog(client);
-      const afterRows = await catalog.getTreesRowFingerprint(client);
-      assert.equal(afterRows.idFp, beforeRows.idFp);
+      const afterBase = await catalog.getTreesRowFingerprint(client, { columns: beforeCols });
+      assert.equal(afterBase.count, beforeRows.count);
+      assert.equal(afterBase.rowFp, beforeRows.rowFp, 'pre-existing full-row values preserved');
+      assert.deepEqual(await catalog.getSentinelFingerprint(client), beforeSentinel);
       pass(`trees-schema partial ${col.name}`);
     });
   }
@@ -177,16 +194,64 @@ test('trees-schema multi partial owner_id+title+visibility converges', { concurr
       ALTER TABLE public.trees ADD COLUMN owner_id text;
       ALTER TABLE public.trees ADD COLUMN title text;
       ALTER TABLE public.trees ADD COLUMN visibility text;
+      UPDATE public.trees
+         SET owner_id = 'syn_owner',
+             title = 'syn_title',
+             visibility = 'public'
+       WHERE id = 'tree_syn_a';
     `);
     await seedSentinels(client);
+    const beforeCols = await catalog.getTreesColumnNames(client);
     const beforeRows = await catalog.getTreesRowFingerprint(client);
     const beforeOwnerAcl = await catalog.getTreesOwnerAclFingerprint(client);
+    const beforeSentinel = await catalog.getSentinelFingerprint(client);
     expectOk(runSql(MIGRATION_SQL), 'multi_partial', 'migration_apply');
     await catalog.assertRepairedCatalog(client);
-    const afterRows = await catalog.getTreesRowFingerprint(client);
-    assert.equal(afterRows.idFp, beforeRows.idFp);
+    const afterBase = await catalog.getTreesRowFingerprint(client, { columns: beforeCols });
+    assert.equal(afterBase.rowFp, beforeRows.rowFp);
     assert.deepEqual(await catalog.getTreesOwnerAclFingerprint(client), beforeOwnerAcl);
+    assert.deepEqual(await catalog.getSentinelFingerprint(client), beforeSentinel);
     pass('trees-schema multi partial converge');
+  });
+});
+
+// ─── Fingerprint sensitivity (helper contract; not migration behavior) ───────
+
+test('trees non-ID value mutation changes rowFp', { concurrency: false }, async () => {
+  await withDisposableDb('fp_trees_mut', null, async ({ client }) => {
+    await client.query(`
+      CREATE TABLE public.trees (
+        id text NOT NULL PRIMARY KEY,
+        owner_id text NULL
+      );
+      INSERT INTO public.trees (id, owner_id) VALUES ('tree_syn_a', 'before_val');
+    `);
+    const a = await catalog.getTreesRowFingerprint(client);
+    await client.query(
+      `UPDATE public.trees SET owner_id = 'after_val' WHERE id = 'tree_syn_a'`
+    );
+    const b = await catalog.getTreesRowFingerprint(client);
+    assert.equal(a.count, b.count);
+    assert.notEqual(a.rowFp, b.rowFp, 'non-id value change must alter full-row fingerprint');
+    pass('trees-schema fingerprint sensitivity trees');
+  });
+});
+
+test('sentinel body mutation changes rowFp', { concurrency: false }, async () => {
+  await withDisposableDb('fp_sent_mut', null, async ({ client }) => {
+    await seedSentinels(client);
+    // Ensure base trees table exists for unrelated schema noise only.
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS public.trees (id text NOT NULL PRIMARY KEY);
+    `);
+    const a = await catalog.getSentinelFingerprint(client);
+    await client.query(
+      `UPDATE public.lb_sentinel_dependent SET body = 'mutated-sentinel-body' WHERE id = 'dep_syn_1'`
+    );
+    const b = await catalog.getSentinelFingerprint(client);
+    assert.equal(a.count, b.count);
+    assert.notEqual(a.rowFp, b.rowFp, 'sentinel body change must alter full-row fingerprint');
+    pass('trees-schema fingerprint sensitivity sentinel');
   });
 });
 
