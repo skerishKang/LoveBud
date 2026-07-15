@@ -13,9 +13,12 @@ const cssOverridePath = 'css/editor/editor-overrides.css';
 test('editor selected moment reactions render as labeled inline footer actions', () => {
   const source = fs.readFileSync(templatePath, 'utf8');
 
-  assert.match(source, /id="momentReactionsCard"\s+aria-label="순간 반응과 댓글"/, 'reaction footer must have a clear grouped aria label');
-  assert.match(source, /class="public-viewer-social-status"/, 'like status must use the canonical status class');
-  assert.match(source, /class="public-viewer-social-status editor-comment-toggle"/, 'comment status must use the canonical toggle class');
+  assert.match(source, /id="momentReactionsCard"[\s\S]*?aria-label="순간 반응과 댓글"/, 'reaction footer must have a clear grouped aria label');
+  assert.match(source, /class="[^"]*public-viewer-social-status[^"]*editor-like-button/, 'like control must use the canonical status class on an interactive button');
+  assert.match(source, /class="[^"]*public-viewer-social-status[^"]*editor-comment-toggle/, 'comment control must use the canonical toggle class');
+  assert.match(source, /id="momentReactionLikeButton"/, 'owner like button id must remain interactive');
+  assert.match(source, /id="momentReactionCommentStatus"/, 'owner comment toggle id must remain interactive');
+  assert.doesNotMatch(source, /is-public-readonly|data-read-only-summary/, 'owner social card must not be public-readonly');
   assert.match(source, /<span class="editor-reaction-label">\s*좋아요\s*<\/span>/, 'like action must include a readable label');
   assert.match(source, /<span class="editor-reaction-label">\s*댓글\s*<\/span>/, 'comment action must include a readable label');
   assert.match(source, /class="editor-reaction-like-icon" aria-hidden="true">\s*🤍\s*<\/span>/, 'like decorative icon must be 🤍 and aria-hidden');

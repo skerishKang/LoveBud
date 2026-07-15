@@ -201,6 +201,8 @@ test('view.html loads canonical chain scripts before detail-ui', function () {
 
   var canonicalScripts = [
     '../js/shared/appreciation-render-model.js',
+    '../js/shared/appreciation-presentation-slots.js',
+    '../js/shared/appreciation-slot-dom.js',
     '../js/viewer/public-viewer-appreciation-model-adapter.js',
     '../js/viewer/public-viewer-appreciation-presentation-model.js',
     '../js/viewer/public-viewer-appreciation-composer.js',
@@ -241,6 +243,8 @@ test('composer -> renderer: actual selected memory full render', function (t) {
 
   // Load canonical model
   vm.runInContext(loadScript('js/shared/appreciation-render-model.js'), ctx);
+  vm.runInContext(loadScript('js/shared/appreciation-presentation-slots.js'), ctx);
+  vm.runInContext(loadScript('js/shared/appreciation-slot-dom.js'), ctx);
   // Load adapter
   vm.runInContext(loadScript('js/viewer/public-viewer-appreciation-model-adapter.js'), ctx);
   // Load presentation model
@@ -327,6 +331,8 @@ test('composer -> renderer: safe knowledge text-only', function (t) {
   var knowledgeList = context.document.getElementById('detailPublicKnowledgeList');
 
   vm.runInContext(loadScript('js/shared/appreciation-render-model.js'), ctx);
+  vm.runInContext(loadScript('js/shared/appreciation-presentation-slots.js'), ctx);
+  vm.runInContext(loadScript('js/shared/appreciation-slot-dom.js'), ctx);
   vm.runInContext(loadScript('js/viewer/public-viewer-appreciation-model-adapter.js'), ctx);
   vm.runInContext(loadScript('js/viewer/public-viewer-appreciation-presentation-model.js'), ctx);
   vm.runInContext(loadScript('js/viewer/public-viewer-appreciation-composer.js'), ctx);
@@ -389,6 +395,8 @@ test('composer -> renderer: knowledge absent hides group', function (t) {
   var knowledgeList = context.document.getElementById('detailPublicKnowledgeList');
 
   vm.runInContext(loadScript('js/shared/appreciation-render-model.js'), ctx);
+  vm.runInContext(loadScript('js/shared/appreciation-presentation-slots.js'), ctx);
+  vm.runInContext(loadScript('js/shared/appreciation-slot-dom.js'), ctx);
   vm.runInContext(loadScript('js/viewer/public-viewer-appreciation-model-adapter.js'), ctx);
   vm.runInContext(loadScript('js/viewer/public-viewer-appreciation-presentation-model.js'), ctx);
   vm.runInContext(loadScript('js/viewer/public-viewer-appreciation-composer.js'), ctx);
@@ -431,6 +439,8 @@ test('composer -> renderer: all unavailable hides date, tags, memo, knowledge gr
   var knowledgeList = context.document.getElementById('detailPublicKnowledgeList');
 
   vm.runInContext(loadScript('js/shared/appreciation-render-model.js'), ctx);
+  vm.runInContext(loadScript('js/shared/appreciation-presentation-slots.js'), ctx);
+  vm.runInContext(loadScript('js/shared/appreciation-slot-dom.js'), ctx);
   vm.runInContext(loadScript('js/viewer/public-viewer-appreciation-model-adapter.js'), ctx);
   vm.runInContext(loadScript('js/viewer/public-viewer-appreciation-presentation-model.js'), ctx);
   vm.runInContext(loadScript('js/viewer/public-viewer-appreciation-composer.js'), ctx);
@@ -477,6 +487,8 @@ test('composer -> renderer: malformed tags (valid count 0) keeps group hidden', 
   var tagsGroup = context.document.getElementById('detailTagsGroup');
 
   vm.runInContext(loadScript('js/shared/appreciation-render-model.js'), ctx);
+  vm.runInContext(loadScript('js/shared/appreciation-presentation-slots.js'), ctx);
+  vm.runInContext(loadScript('js/shared/appreciation-slot-dom.js'), ctx);
   vm.runInContext(loadScript('js/viewer/public-viewer-appreciation-model-adapter.js'), ctx);
   vm.runInContext(loadScript('js/viewer/public-viewer-appreciation-presentation-model.js'), ctx);
   vm.runInContext(loadScript('js/viewer/public-viewer-appreciation-composer.js'), ctx);
@@ -511,6 +523,8 @@ test('composer -> renderer: malformed knowledge (valid count 0) keeps group hidd
   var knowledgeList = context.document.getElementById('detailPublicKnowledgeList');
 
   vm.runInContext(loadScript('js/shared/appreciation-render-model.js'), ctx);
+  vm.runInContext(loadScript('js/shared/appreciation-presentation-slots.js'), ctx);
+  vm.runInContext(loadScript('js/shared/appreciation-slot-dom.js'), ctx);
   vm.runInContext(loadScript('js/viewer/public-viewer-appreciation-model-adapter.js'), ctx);
   vm.runInContext(loadScript('js/viewer/public-viewer-appreciation-presentation-model.js'), ctx);
   vm.runInContext(loadScript('js/viewer/public-viewer-appreciation-composer.js'), ctx);
@@ -568,6 +582,8 @@ test('composer -> renderer: A then B, final DOM belongs to B', function (t) {
   var dateGroup = context.document.getElementById('detailDateGroup');
 
   vm.runInContext(loadScript('js/shared/appreciation-render-model.js'), ctx);
+  vm.runInContext(loadScript('js/shared/appreciation-presentation-slots.js'), ctx);
+  vm.runInContext(loadScript('js/shared/appreciation-slot-dom.js'), ctx);
   vm.runInContext(loadScript('js/viewer/public-viewer-appreciation-model-adapter.js'), ctx);
   vm.runInContext(loadScript('js/viewer/public-viewer-appreciation-presentation-model.js'), ctx);
   vm.runInContext(loadScript('js/viewer/public-viewer-appreciation-composer.js'), ctx);

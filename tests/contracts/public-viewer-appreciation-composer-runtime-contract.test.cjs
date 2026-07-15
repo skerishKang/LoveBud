@@ -30,6 +30,10 @@ const PRESENTATION_PATH = path.join(
   ROOT,
   'js/viewer/public-viewer-appreciation-presentation-model.js'
 );
+const SHARED_SLOTS_PATH = path.join(
+  ROOT,
+  'js/shared/appreciation-presentation-slots.js'
+);
 
 const EXPECTED_SLOT_ORDER = [
   'identity',
@@ -78,6 +82,7 @@ function loadFullChain() {
   vm.createContext(context);
   vm.runInNewContext(fs.readFileSync(CANONICAL_PATH, 'utf8'), context);
   vm.runInNewContext(fs.readFileSync(ADAPTER_PATH, 'utf8'), context);
+  vm.runInNewContext(fs.readFileSync(SHARED_SLOTS_PATH, 'utf8'), context);
   vm.runInNewContext(fs.readFileSync(PRESENTATION_PATH, 'utf8'), context);
   vm.runInNewContext(fs.readFileSync(COMPOSER_PATH, 'utf8'), context);
   return {

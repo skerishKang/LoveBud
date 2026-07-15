@@ -26,25 +26,29 @@ export function buildDetailViewModeTemplate() {
                 <div class="editor-moment-info-card">
                     <div class="editor-section-eyebrow" id="detailMomentInfoLabel">기록</div>
 
-                    <div class="detail-info-group is-compact">
+                    <div class="detail-info-group is-compact" id="detailDateGroup">
                         <label id="detailDateLabel">기억한 날</label>
                         <p id="detailDateText"></p>
                     </div>
 
-                    <div class="detail-info-group is-compact">
+                    <div class="detail-info-group is-compact" id="detailTagsGroup">
                         <label id="detailTagsLabel">감정 태그</label>
                         <div class="tags-container" id="detailTags"></div>
                     </div>
 
-                    <div class="detail-info-group detail-info-group-knowledge">
-                        <div class="detail-info-heading-with-copy">
-                            <label id="detailEntitySearchLabel">연결된 지식</label>
-                            <p class="detail-field-helper" id="detailEntitySearchHelper">인물, 팀, 곡처럼 이 순간과 이어지는 단서를 남겨두면 나중에 다시 찾기 쉬워져요.</p>
-                        </div>
-                        <div id="detailEntitySearchMount"></div>
+                    <div
+                        class="detail-info-group detail-info-group-knowledge"
+                        id="detailOwnerKnowledgeGroup"
+                        hidden
+                    >
+                        <label id="detailOwnerKnowledgeLabel">연결된 지식</label>
+                        <ul
+                            id="detailOwnerKnowledgeList"
+                            class="editor-owner-knowledge-list"
+                        ></ul>
                     </div>
 
-                    <div class="detail-info-group">
+                    <div class="detail-info-group" id="detailMemoGroup">
                         <label id="detailMemoLabel">감정 메모</label>
                         <div class="diary-note" id="detailMemo"></div>
                     </div>
@@ -68,38 +72,35 @@ export function buildDetailViewModeTemplate() {
                 </div>
 
                 <div
-                    class="editor-moment-reactions-card is-read-only is-public-readonly"
+                    class="editor-moment-reactions-card editor-moment-social-card"
                     id="momentReactionsCard"
                     aria-label="순간 반응과 댓글"
-                    data-read-only-summary="true"
-                    data-social-loading="true"
+                    data-social-state="hidden"
                     style="font-variant-numeric:tabular-nums;"
                 >
-                    <div
-                        class="public-viewer-social-status"
-                        id="momentReactionLikeStatus"
-                        role="status"
-                        aria-label="좋아요 불러오는 중"
+                    <button
+                        type="button"
+                        id="momentReactionLikeButton"
+                        class="public-viewer-social-status editor-like-button editor-moment-reaction"
+                        aria-label="좋아요 누르기"
+                        aria-pressed="false"
+                        disabled
                     >
                         <span class="editor-reaction-like-icon" aria-hidden="true">🤍</span>
                         <span class="editor-reaction-label">좋아요</span>
                         <span class="public-viewer-social-status-value" id="momentReactionLikeValue">⋯</span>
-                    </div>
-                    <button type="button" id="momentReactionLikeButton"
-                      class="editor-like-button"
-                      aria-label="좋아요 누르기"
-                      aria-pressed="false"
-                      disabled
-                      style="display:none"></button>
+                    </button>
                     <p id="momentReactionLikeGuestNote" style="display:none">로그인하면 이 순간에 반응하고 댓글을 남길 수 있어요.</p>
                     <div aria-live="polite" role="status" id="momentReactionLikeStatusRegion" style="display:none"></div>
                     <p id="momentReactionWriteError" class="editor-like-error" role="alert" style="display:none"></p>
-                    <button type="button" id="momentReactionCommentStatus"
-                      class="public-viewer-social-status editor-comment-toggle"
-                      aria-label="댓글 불러오는 중"
-                      aria-expanded="false"
-                      aria-controls="momentCommentsPanel"
-                      disabled
+                    <button
+                        type="button"
+                        id="momentReactionCommentStatus"
+                        class="public-viewer-social-status editor-comment-toggle editor-moment-reaction"
+                        aria-label="댓글 열기"
+                        aria-expanded="false"
+                        aria-controls="momentCommentsPanel"
+                        disabled
                     >
                         <span class="editor-reaction-comment-icon" aria-hidden="true">💬</span>
                         <span class="editor-reaction-label">댓글</span>

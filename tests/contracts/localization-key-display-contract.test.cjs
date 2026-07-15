@@ -254,7 +254,29 @@ test('editor-detail-ui delegates social I/O to explicit controllers', () => {
 // ── Controller boundary & selection-switch regression ──
 
 const FakeElement = (id) => {
-  const el = {};
+  const el = {
+    attributes: Object.create(null),
+    disabled: false,
+    hidden: false,
+    classList: {
+      _set: new Set(),
+      add(...names) { names.forEach((n) => this._set.add(n)); },
+      remove(...names) { names.forEach((n) => this._set.delete(n)); },
+      contains(name) { return this._set.has(name); },
+    },
+    setAttribute(name, value) {
+      this.attributes[name] = String(value);
+    },
+    getAttribute(name) {
+      return Object.prototype.hasOwnProperty.call(this.attributes, name)
+        ? this.attributes[name]
+        : null;
+    },
+    removeAttribute(name) {
+      delete this.attributes[name];
+    },
+    addEventListener() {},
+  };
   let _textContent = '';
   Object.defineProperties(el, {
     style: { value: {}, writable: true },
@@ -432,7 +454,7 @@ test('reactions controller selection-switch regression suite', async (t) => {
 
     // Select A (summary stalls)
     ctrl.update({ data: { id: 'A' }, canonicalRootId: 'root', isRootMemoryFn: fakeIsRootMemory });
-    assert.equal(likeCount.textContent, '0', 'A: initial like count is 0');
+    assert.equal(likeCount.textContent, '⋯', 'A: initial like count stays unknown until authoritative summary');
 
     // Select B (summary resolves immediately with like_count=5, user_reacted=true)
     ctrl.update({ data: { id: 'B' }, canonicalRootId: 'root', isRootMemoryFn: fakeIsRootMemory });
@@ -499,7 +521,7 @@ test('reactions controller selection-switch regression suite', async (t) => {
 
     // First A (stalls)
     ctrl.update({ data: { id: 'A' }, canonicalRootId: 'root', isRootMemoryFn: fakeIsRootMemory });
-    assert.equal(likeCount.textContent, '0');
+    assert.equal(likeCount.textContent, '⋯');
 
     // Switch to B
     ctrl.update({ data: { id: 'B' }, canonicalRootId: 'root', isRootMemoryFn: fakeIsRootMemory });
@@ -560,25 +582,24 @@ test('reactions controller selection-switch regression suite', async (t) => {
 
     // Select A (summary stalls)
     ctrl.update({ data: { id: 'A' }, canonicalRootId: 'root', isRootMemoryFn: fakeIsRootMemory });
-    assert.equal(likeCount.textContent, '0');
-    // Set up optimistic values manually to verify they don't get overwritten later
-    likeCount.textContent = '55';
-    commentCount.textContent = '7';
+    assert.equal(likeCount.textContent, '⋯');
 
-    // Hide
+    // Hide resets unknown/loading presentation and invalidates pending requests
     ctrl.hide();
 
     assert.equal(card.style.display, 'none', 'card hidden after hide');
     assert.equal(likeBtn.onclick, null, 'handler cleared after hide');
+    assert.equal(likeCount.textContent, '⋯', 'hide returns counts to unknown');
+    assert.equal(commentCount.textContent, '⋯', 'hide returns comment count to unknown');
 
     // Resolve stalled A
     resolveA({ like_count: 99, comment_count: 99, user_reacted: true });
     await new Promise(r => setTimeout(r, 0));
 
-    // Hidden card must not reappear or have counts changed
+    // Hidden card must not reappear or accept stale authoritative counts
     assert.equal(card.style.display, 'none', 'card remains hidden after stale resolve');
-    assert.equal(likeCount.textContent, '55', 'hidden card like count must not change from stale response');
-    assert.equal(commentCount.textContent, '7', 'hidden card comment count must not change from stale response');
+    assert.equal(likeCount.textContent, '⋯', 'stale response must not apply like count after hide');
+    assert.equal(commentCount.textContent, '⋯', 'stale response must not apply comment count after hide');
   });
 });
 

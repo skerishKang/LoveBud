@@ -1,6 +1,6 @@
 /**
  * LoveBud — Public Viewer appreciation composition boundary
- * Issue #3499 / parent #3475
+ * Issue #3499 / parent #3475 / corrective #3519
  *
  * Pure orchestration only:
  *   source + capabilities
@@ -8,6 +8,7 @@
  *         .createPublicViewerAppreciationModel
  *     → LoveBudPublicViewerAppreciationPresentationModel
  *         .createPublicViewerAppreciationPresentationModel
+ *         (delegates to shared presentation slots with public hard-close)
  *     → presentation result
  *
  * Does not inspect, clone, sanitize, or normalize raw source fields.

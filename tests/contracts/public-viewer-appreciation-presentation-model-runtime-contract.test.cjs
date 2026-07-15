@@ -21,6 +21,10 @@ const HELPER_PATH = path.join(
   ROOT,
   'js/viewer/public-viewer-appreciation-presentation-model.js'
 );
+const SHARED_SLOTS_PATH = path.join(
+  ROOT,
+  'js/shared/appreciation-presentation-slots.js'
+);
 const CANONICAL_PATH = path.join(ROOT, 'js/shared/appreciation-render-model.js');
 const ADAPTER_PATH = path.join(
   ROOT,
@@ -57,10 +61,16 @@ function hostValue(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
+function loadSharedSlots(context) {
+  const sharedSource = fs.readFileSync(SHARED_SLOTS_PATH, 'utf8');
+  vm.runInNewContext(sharedSource, context);
+}
+
 function loadApi() {
   const source = fs.readFileSync(HELPER_PATH, 'utf8');
   const context = { window: {} };
   vm.createContext(context);
+  loadSharedSlots(context);
   vm.runInNewContext(source, context);
   return context.window.LoveBudPublicViewerAppreciationPresentationModel;
 }
@@ -71,6 +81,7 @@ function loadWithCanonical() {
   const context = { window: {} };
   vm.createContext(context);
   vm.runInNewContext(canonicalSource, context);
+  loadSharedSlots(context);
   vm.runInNewContext(presentationSource, context);
   return {
     presentation: context.window.LoveBudPublicViewerAppreciationPresentationModel,
@@ -86,6 +97,7 @@ function loadFullChain() {
   vm.createContext(context);
   vm.runInNewContext(canonicalSource, context);
   vm.runInNewContext(adapterSource, context);
+  loadSharedSlots(context);
   vm.runInNewContext(presentationSource, context);
   return {
     presentation: context.window.LoveBudPublicViewerAppreciationPresentationModel,
@@ -758,15 +770,19 @@ test('consumes real canonical helper output for public fields', () => {
 
 test('helper source has no DOM/Auth/network/storage/DB/Editor/MyTrees deps', () => {
   const src = fs.readFileSync(HELPER_PATH, 'utf8');
+  const sharedSrc = fs.readFileSync(SHARED_SLOTS_PATH, 'utf8');
   assert.ok(
     src.includes('window.LoveBudPublicViewerAppreciationPresentationModel')
   );
   assert.ok(src.includes('createPublicViewerAppreciationPresentationModel'));
+  assert.ok(src.includes('LoveBudAppreciationPresentationSlots'));
   assert.ok(src.includes('identity'));
   assert.ok(src.includes('socialSummary'));
-  assert.ok(src.includes('contentReadOnly'));
+  // Presentation visual grammar (contentReadOnly) lives in the shared slots helper.
+  assert.ok(sharedSrc.includes('contentReadOnly'));
   // Social must not advertise contradictory generic readOnly property.
   assert.ok(!/\breadOnly\s*:/.test(src));
+  assert.ok(!/\breadOnly\s*:/.test(sharedSrc));
 
   assert.ok(!/\bfetch\s*\(/.test(src));
   assert.ok(!/XMLHttpRequest/.test(src));

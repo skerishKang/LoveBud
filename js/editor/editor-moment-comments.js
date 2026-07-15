@@ -194,10 +194,23 @@
                     if (elements.feedback?.dataset.tone === 'error') setFeedback('', '');
                 });
             }
-            if (elements.commentButton) {
-                elements.commentButton.addEventListener('click', function () {
+            // Comment panel open/close + nested navigation stop is owned by
+            // makeMomentReactionsController. Keep a focus-assist fallback only
+            // when the reactions controller has not bound the toggle yet.
+            if (elements.commentButton && elements.commentButton.dataset.ownerToggleBound !== '1') {
+                elements.commentButton.addEventListener('click', function (event) {
+                    if (event) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                    }
                     var currentElements = getElements();
                     if (!currentElements.input) return;
+                    if (currentElements.panel) {
+                        currentElements.panel.hidden = false;
+                        if (currentElements.commentButton) {
+                            currentElements.commentButton.setAttribute('aria-expanded', 'true');
+                        }
+                    }
                     currentElements.input.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
                     currentElements.input.focus({ preventScroll: true });
                 });
@@ -215,7 +228,14 @@
             var changed = currentMemoryId !== memoryId;
             currentMemoryId = memoryId;
             var elements = getElements();
-            if (elements.panel) elements.panel.hidden = false;
+            // Comments panel stays collapsed until the owner opens it.
+            // Keep the toggle itself controllable via the reactions controller.
+            if (elements.panel && changed) {
+                elements.panel.hidden = true;
+                if (elements.commentButton) {
+                    elements.commentButton.setAttribute('aria-expanded', 'false');
+                }
+            }
 
             if (changed) {
                 generation += 1;
@@ -237,6 +257,10 @@
             if (elements.list) elements.list.replaceChildren();
             if (elements.status) elements.status.textContent = '';
             if (elements.input) elements.input.value = '';
+            if (elements.panel) elements.panel.hidden = true;
+            if (elements.commentButton) {
+                elements.commentButton.setAttribute('aria-expanded', 'false');
+            }
             setFeedback('', '');
         }
 
