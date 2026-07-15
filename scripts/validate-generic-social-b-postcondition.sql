@@ -102,7 +102,7 @@ BEGIN
   actual_hash := encode(sha256(convert_to(concat_ws(E'\n', 'public', 'social_audit_log', 'social_audit_log_generic_target_kind_check', 'c', 'true', c_norm), 'utf8')), 'hex');
   IF actual_hash <> '62558ce79f045d9ff015a5e35a839d6a4136358b3fa664d30db463c3f8bcad28' THEN RAISE EXCEPTION 'GENERIC_SOCIAL_B_POSTCONDITION_FAILED'; END IF;
 
-  -- B CHECKs
+  -- B CHECKs (exact normalized definition hash)
   SELECT count(*)::int INTO n FROM pg_constraint WHERE conname='social_idempotency_memory_legacy_match_check';
   IF n <> 1 THEN RAISE EXCEPTION 'GENERIC_SOCIAL_B_POSTCONDITION_FAILED'; END IF;
   SELECT pg_get_constraintdef(oid,false) INTO c_def FROM pg_constraint
@@ -110,9 +110,9 @@ BEGIN
   IF NOT FOUND THEN RAISE EXCEPTION 'GENERIC_SOCIAL_B_POSTCONDITION_FAILED'; END IF;
   c_norm := trim(both from regexp_replace(replace(replace(c_def, E'\r\n', E'\n'), E'\r', E'\n'), E'\\s+', ' ', 'g'));
   actual_hash := encode(sha256(convert_to(concat_ws(E'\n', 'public', 'social_idempotency', 'social_idempotency_memory_legacy_match_check', 'c', 'true', c_norm), 'utf8')), 'hex');
-  IF position('IS DISTINCT FROM' in c_norm) = 0 OR position('memory' in c_norm) = 0 OR position('target_memory_id' in c_norm) = 0 OR position('target_id' in c_norm) = 0 THEN
-      RAISE EXCEPTION 'GENERIC_SOCIAL_B_POSTCONDITION_FAILED';
-    END IF;
+  IF actual_hash <> 'a9426625ade8fee8c60a0f806b081ee98dc30c718bfc47c3e1940bc465534138' THEN
+    RAISE EXCEPTION 'GENERIC_SOCIAL_B_POSTCONDITION_FAILED';
+  END IF;
 
   SELECT count(*)::int INTO n FROM pg_constraint WHERE conname='social_idempotency_tree_legacy_null_check';
   IF n <> 1 THEN RAISE EXCEPTION 'GENERIC_SOCIAL_B_POSTCONDITION_FAILED'; END IF;
@@ -121,9 +121,9 @@ BEGIN
   IF NOT FOUND THEN RAISE EXCEPTION 'GENERIC_SOCIAL_B_POSTCONDITION_FAILED'; END IF;
   c_norm := trim(both from regexp_replace(replace(replace(c_def, E'\r\n', E'\n'), E'\r', E'\n'), E'\\s+', ' ', 'g'));
   actual_hash := encode(sha256(convert_to(concat_ws(E'\n', 'public', 'social_idempotency', 'social_idempotency_tree_legacy_null_check', 'c', 'true', c_norm), 'utf8')), 'hex');
-  IF position('IS DISTINCT FROM' in c_norm) = 0 OR position('tree' in c_norm) = 0 OR position('target_memory_id' in c_norm) = 0 THEN
-      RAISE EXCEPTION 'GENERIC_SOCIAL_B_POSTCONDITION_FAILED';
-    END IF;
+  IF actual_hash <> '719a0529b5e72e2428e62316ec68e01a0ab67f7c7ee4b7af9895b7cd7624a833' THEN
+    RAISE EXCEPTION 'GENERIC_SOCIAL_B_POSTCONDITION_FAILED';
+  END IF;
 
   SELECT count(*)::int INTO n FROM pg_constraint WHERE conname='social_audit_log_memory_legacy_match_check';
   IF n <> 1 THEN RAISE EXCEPTION 'GENERIC_SOCIAL_B_POSTCONDITION_FAILED'; END IF;
@@ -132,9 +132,9 @@ BEGIN
   IF NOT FOUND THEN RAISE EXCEPTION 'GENERIC_SOCIAL_B_POSTCONDITION_FAILED'; END IF;
   c_norm := trim(both from regexp_replace(replace(replace(c_def, E'\r\n', E'\n'), E'\r', E'\n'), E'\\s+', ' ', 'g'));
   actual_hash := encode(sha256(convert_to(concat_ws(E'\n', 'public', 'social_audit_log', 'social_audit_log_memory_legacy_match_check', 'c', 'true', c_norm), 'utf8')), 'hex');
-  IF position('IS DISTINCT FROM' in c_norm) = 0 OR position('memory' in c_norm) = 0 OR position('memory_id' in c_norm) = 0 OR position('target_id' in c_norm) = 0 THEN
-      RAISE EXCEPTION 'GENERIC_SOCIAL_B_POSTCONDITION_FAILED';
-    END IF;
+  IF actual_hash <> '0cc87d4fd35f8664aac7f0193f35735fa2becf6fcf7f44962097064cbab9388b' THEN
+    RAISE EXCEPTION 'GENERIC_SOCIAL_B_POSTCONDITION_FAILED';
+  END IF;
 
   SELECT count(*)::int INTO n FROM pg_constraint WHERE conname='social_audit_log_tree_legacy_null_check';
   IF n <> 1 THEN RAISE EXCEPTION 'GENERIC_SOCIAL_B_POSTCONDITION_FAILED'; END IF;
@@ -143,11 +143,11 @@ BEGIN
   IF NOT FOUND THEN RAISE EXCEPTION 'GENERIC_SOCIAL_B_POSTCONDITION_FAILED'; END IF;
   c_norm := trim(both from regexp_replace(replace(replace(c_def, E'\r\n', E'\n'), E'\r', E'\n'), E'\\s+', ' ', 'g'));
   actual_hash := encode(sha256(convert_to(concat_ws(E'\n', 'public', 'social_audit_log', 'social_audit_log_tree_legacy_null_check', 'c', 'true', c_norm), 'utf8')), 'hex');
-  IF position('IS DISTINCT FROM' in c_norm) = 0 OR position('tree' in c_norm) = 0 OR position('memory_id' in c_norm) = 0 THEN
-      RAISE EXCEPTION 'GENERIC_SOCIAL_B_POSTCONDITION_FAILED';
-    END IF;
+  IF actual_hash <> 'e860bb84955b8be15627c0943077d6710243831d9a1ecaa90316bf90f7783a1b' THEN
+    RAISE EXCEPTION 'GENERIC_SOCIAL_B_POSTCONDITION_FAILED';
+  END IF;
 
-  -- Functions B
+  -- Functions B (exact body hash; same expected hashes as preflight STATE_B)
   expected_func := to_regprocedure('public.sync_social_idempotency_generic_target_from_legacy_memory()');
   IF expected_func IS NULL THEN RAISE EXCEPTION 'GENERIC_SOCIAL_B_POSTCONDITION_FAILED'; END IF;
   SELECT count(*)::int INTO n FROM pg_proc p JOIN pg_namespace ns ON ns.oid=p.pronamespace
@@ -157,17 +157,21 @@ BEGIN
          COALESCE((SELECT string_agg(cfg,',' ORDER BY cfg) FROM unnest(COALESCE(p.proconfig,ARRAY[]::text[])) AS cfg),''), p.prosrc
   INTO f_args, f_ret, f_lang, f_sec, f_vol, f_par, f_leak, f_strict, f_config, f_src
   FROM pg_proc p JOIN pg_language l ON l.oid=p.prolang WHERE p.oid=expected_func;
-  IF NOT FOUND OR f_ret IS DISTINCT FROM 'trigger' OR f_lang IS DISTINCT FROM 'plpgsql' OR f_sec THEN RAISE EXCEPTION 'GENERIC_SOCIAL_B_POSTCONDITION_FAILED'; END IF;
+  IF NOT FOUND OR f_ret IS DISTINCT FROM 'trigger' OR f_lang IS DISTINCT FROM 'plpgsql' OR f_sec
+     OR f_vol IS DISTINCT FROM 'v' OR f_par IS DISTINCT FROM 'u' OR f_leak OR f_strict THEN
+    RAISE EXCEPTION 'GENERIC_SOCIAL_B_POSTCONDITION_FAILED';
+  END IF;
   f_norm := trim(both from regexp_replace(replace(replace(f_src, E'\r\n', E'\n'), E'\r', E'\n'), E'\\s+', ' ', 'g'));
-  IF position('Tree targets must not populate legacy target_memory_id' in f_src)=0 OR position('target_kind = ''tree''' in f_src)=0 THEN
+  actual_hash := encode(sha256(convert_to(concat_ws(E'\n', 'public', 'sync_social_idempotency_generic_target_from_legacy_memory', coalesce(f_args, ''), coalesce(f_ret, ''), f_lang, f_sec::text, f_vol, f_par, f_leak::text, f_strict::text, f_config, f_norm), 'utf8')), 'hex');
+  IF actual_hash <> 'e5f8ccacb82525bc43d5d6b95f61b0dc6c33b59b5a81591d4d0d4d350ceafebe' THEN
     RAISE EXCEPTION 'GENERIC_SOCIAL_B_POSTCONDITION_FAILED';
   END IF;
   IF position('Tree targets must not populate legacy target_memory_id' in f_src) = 0
-       OR position('Unknown target_kind' in f_src) = 0
-       OR position('target_kind = ''tree''' in f_src) = 0
-       OR position('Partial generic target pair' in f_src) = 0 THEN
-      RAISE EXCEPTION 'GENERIC_SOCIAL_B_POSTCONDITION_FAILED';
-    END IF;
+     OR position('Unknown target_kind' in f_src) = 0
+     OR position('target_kind = ''tree''' in f_src) = 0
+     OR position('Partial generic target pair' in f_src) = 0 THEN
+    RAISE EXCEPTION 'GENERIC_SOCIAL_B_POSTCONDITION_FAILED';
+  END IF;
 
   expected_func := to_regprocedure('public.sync_social_audit_generic_target_from_legacy_memory()');
   IF expected_func IS NULL THEN RAISE EXCEPTION 'GENERIC_SOCIAL_B_POSTCONDITION_FAILED'; END IF;
@@ -178,17 +182,21 @@ BEGIN
          COALESCE((SELECT string_agg(cfg,',' ORDER BY cfg) FROM unnest(COALESCE(p.proconfig,ARRAY[]::text[])) AS cfg),''), p.prosrc
   INTO f_args, f_ret, f_lang, f_sec, f_vol, f_par, f_leak, f_strict, f_config, f_src
   FROM pg_proc p JOIN pg_language l ON l.oid=p.prolang WHERE p.oid=expected_func;
-  IF NOT FOUND OR f_ret IS DISTINCT FROM 'trigger' OR f_lang IS DISTINCT FROM 'plpgsql' OR f_sec THEN RAISE EXCEPTION 'GENERIC_SOCIAL_B_POSTCONDITION_FAILED'; END IF;
+  IF NOT FOUND OR f_ret IS DISTINCT FROM 'trigger' OR f_lang IS DISTINCT FROM 'plpgsql' OR f_sec
+     OR f_vol IS DISTINCT FROM 'v' OR f_par IS DISTINCT FROM 'u' OR f_leak OR f_strict THEN
+    RAISE EXCEPTION 'GENERIC_SOCIAL_B_POSTCONDITION_FAILED';
+  END IF;
   f_norm := trim(both from regexp_replace(replace(replace(f_src, E'\r\n', E'\n'), E'\r', E'\n'), E'\\s+', ' ', 'g'));
-  IF position('Tree targets must not populate legacy memory_id' in f_src)=0 OR position('target_kind = ''tree''' in f_src)=0 THEN
+  actual_hash := encode(sha256(convert_to(concat_ws(E'\n', 'public', 'sync_social_audit_generic_target_from_legacy_memory', coalesce(f_args, ''), coalesce(f_ret, ''), f_lang, f_sec::text, f_vol, f_par, f_leak::text, f_strict::text, f_config, f_norm), 'utf8')), 'hex');
+  IF actual_hash <> 'd50e3d4a69272ccfb81689a70718099b5e48ba7fb0648a9f0e16695e5763d3d0' THEN
     RAISE EXCEPTION 'GENERIC_SOCIAL_B_POSTCONDITION_FAILED';
   END IF;
   IF position('Tree targets must not populate legacy memory_id' in f_src) = 0
-       OR position('Unknown target_kind' in f_src) = 0
-       OR position('target_kind = ''tree''' in f_src) = 0
-       OR position('Partial generic target pair' in f_src) = 0 THEN
-      RAISE EXCEPTION 'GENERIC_SOCIAL_B_POSTCONDITION_FAILED';
-    END IF;
+     OR position('Unknown target_kind' in f_src) = 0
+     OR position('target_kind = ''tree''' in f_src) = 0
+     OR position('Partial generic target pair' in f_src) = 0 THEN
+    RAISE EXCEPTION 'GENERIC_SOCIAL_B_POSTCONDITION_FAILED';
+  END IF;
 
   -- Triggers
   SELECT count(*)::int INTO n FROM pg_trigger WHERE NOT tgisinternal AND tgname IN (
