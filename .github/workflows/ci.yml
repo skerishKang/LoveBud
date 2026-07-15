@@ -200,5 +200,12 @@ jobs:
           echo "server_version_num=${VER}"
           test "${VER}" = "170004"
 
+      # Temporary Stage-1 capture: prints only 8 SHA-256 fingerprint labels (no raw defs).
+      # Removed in Stage-2 finalization once allowlists are fixed.
+      - name: Capture Migration A canonical fingerprints
+        env:
+          GENERIC_SOCIAL_A_CAPTURE_FINGERPRINTS: "1"
+        run: node tests/db-engine/capture-generic-social-a-fingerprints.cjs
+
       - name: Run generic-social Migration A execution-guard tests
         run: npm run test:db-engine:generic-social-a-guard
