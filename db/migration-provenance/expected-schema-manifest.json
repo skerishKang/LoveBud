@@ -2,6 +2,8 @@
   "format_version": "1.0",
   "status": "ADOPTION_REQUIRED",
   "fingerprint_algorithm": "sha256",
+  "normalizer_version": "1.0",
+  "metadata_contract_path": "db/migration-provenance/catalog-metadata-contract.json",
   "critical_objects": [],
   "adoption_rule": "No live catalog snapshot or historical application record is committed here. A separately approved read-only adoption procedure must create sanitized object fingerprints before ACTIVE status is allowed.",
   "comparison_scope": [

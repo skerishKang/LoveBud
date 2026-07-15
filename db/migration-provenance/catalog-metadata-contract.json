@@ -1,0 +1,231 @@
+{
+  "format_version": "1.0",
+  "normalizer_version": "1.0",
+  "allowed_top_level_fields": [
+    "format_version",
+    "normalizer_version",
+    "objects"
+  ],
+  "supported_object_kinds": [
+    "TABLE",
+    "VIEW",
+    "MATERIALIZED_VIEW"
+  ],
+  "object_identity_fields": [
+    "schema",
+    "object_name",
+    "object_kind"
+  ],
+  "canonical_name_templates": {
+    "TABLE": "table:<schema>.<object_name>",
+    "VIEW": "view:<schema>.<object_name>",
+    "MATERIALIZED_VIEW": "materialized_view:<schema>.<object_name>"
+  },
+  "identifier_contract": {
+    "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+    "max_length": 63,
+    "min_length": 1,
+    "allow_quoted_forms": false,
+    "notes": "Unqualified objects are prohibited. Schema and object_name must be explicit PostgreSQL-like identifiers without control characters, path segments, or whitespace-only values."
+  },
+  "table_required_fields": [
+    "schema",
+    "object_name",
+    "object_kind",
+    "relation_kind",
+    "columns",
+    "constraints",
+    "indexes",
+    "triggers",
+    "row_level_security",
+    "grants",
+    "view_definition"
+  ],
+  "view_required_fields": [
+    "schema",
+    "object_name",
+    "object_kind",
+    "relation_kind",
+    "columns",
+    "constraints",
+    "indexes",
+    "triggers",
+    "row_level_security",
+    "grants",
+    "view_definition"
+  ],
+  "relation_kind_by_object_kind": {
+    "TABLE": "r",
+    "VIEW": "v",
+    "MATERIALIZED_VIEW": "m"
+  },
+  "object_shape_rules": {
+    "TABLE": {
+      "view_definition": "must_be_null",
+      "constraints": "array_allowed",
+      "indexes": "array_allowed",
+      "triggers": "array_allowed"
+    },
+    "VIEW": {
+      "view_definition": "must_be_non_null_string",
+      "constraints": "must_be_empty_array",
+      "indexes": "must_be_empty_array",
+      "triggers": "must_be_empty_array"
+    },
+    "MATERIALIZED_VIEW": {
+      "view_definition": "must_be_non_null_string",
+      "constraints": "must_be_empty_array",
+      "indexes": "array_allowed",
+      "triggers": "must_be_empty_array"
+    }
+  },
+  "column_fields": [
+    "name",
+    "type_identity",
+    "nullable",
+    "default_definition",
+    "generated_kind",
+    "identity_kind"
+  ],
+  "constraint_fields": [
+    "name",
+    "constraint_kind",
+    "validated",
+    "definition",
+    "fk_on_update",
+    "fk_on_delete"
+  ],
+  "index_fields": [
+    "name",
+    "primary",
+    "unique",
+    "valid",
+    "definition"
+  ],
+  "trigger_fields": [
+    "name",
+    "timing",
+    "events",
+    "level",
+    "enabled",
+    "function_identity",
+    "definition"
+  ],
+  "rls_fields": [
+    "enabled",
+    "forced",
+    "policies"
+  ],
+  "policy_fields": [
+    "name",
+    "command",
+    "permissive",
+    "role_scope",
+    "using_expression",
+    "check_expression"
+  ],
+  "grant_fields": [
+    "grantee_class",
+    "privileges",
+    "grantable"
+  ],
+  "enums": {
+    "generated_kind": ["NONE", "STORED"],
+    "identity_kind": ["NONE", "ALWAYS", "BY_DEFAULT"],
+    "constraint_kind": ["PRIMARY_KEY", "UNIQUE", "CHECK", "FOREIGN_KEY", "EXCLUSION"],
+    "fk_action": ["NO_ACTION", "RESTRICT", "CASCADE", "SET_NULL", "SET_DEFAULT"],
+    "trigger_timing": ["BEFORE", "AFTER", "INSTEAD_OF"],
+    "trigger_event": ["INSERT", "UPDATE", "DELETE", "TRUNCATE"],
+    "trigger_level": ["ROW", "STATEMENT"],
+    "trigger_enabled": ["ORIGIN", "DISABLED", "REPLICA", "ALWAYS"],
+    "policy_command": ["ALL", "SELECT", "INSERT", "UPDATE", "DELETE"],
+    "role_scope": ["PUBLIC", "APPLICATION", "AUTHENTICATED", "SERVICE", "OWNER_CLASS"],
+    "grantee_class": ["PUBLIC", "APPLICATION", "AUTHENTICATED", "SERVICE", "OWNER_CLASS"],
+    "privilege": ["SELECT", "INSERT", "UPDATE", "DELETE", "TRUNCATE", "REFERENCES", "TRIGGER"]
+  },
+  "limits": {
+    "max_objects": 256,
+    "max_columns_per_object": 256,
+    "max_constraints_per_object": 256,
+    "max_indexes_per_object": 256,
+    "max_triggers_per_object": 128,
+    "max_policies_per_object": 128,
+    "max_grants_per_object": 128,
+    "max_definition_length": 65536,
+    "max_input_bytes": 1048576,
+    "max_identifier_length": 63
+  },
+  "prohibited_object_fields": [
+    "fingerprint",
+    "checksum",
+    "owner",
+    "owner_id",
+    "operator",
+    "operator_id",
+    "operator_email",
+    "user_id",
+    "account_id",
+    "tree_id",
+    "memory_id",
+    "rows",
+    "row_values",
+    "values",
+    "payload",
+    "raw_catalog",
+    "connection_string",
+    "database_url",
+    "host",
+    "database",
+    "username",
+    "password",
+    "credential",
+    "secret",
+    "token",
+    "cookie",
+    "authorization",
+    "request_id",
+    "endpoint",
+    "url"
+  ],
+  "sensitive_content_markers": [
+    "postgres://",
+    "postgresql://",
+    "Authorization:",
+    "Bearer ",
+    "BEGIN PRIVATE KEY",
+    "password=",
+    "token=",
+    "secret="
+  ],
+  "sql_definition_rules": {
+    "input_contract": "pg_get_*def-style canonical definition strings only; not free-form hand-authored SQL",
+    "states": ["NORMAL", "SINGLE_QUOTED", "DOUBLE_QUOTED", "DOLLAR_QUOTED"],
+    "crlf_to_lf": true,
+    "unicode_nfc": true,
+    "trim_outer_whitespace": true,
+    "collapse_normal_ascii_whitespace": true,
+    "preserve_quoted_content": true,
+    "comments_outside_quotes": "fail_closed",
+    "unterminated_quotes": "fail_closed",
+    "control_characters": "fail_closed",
+    "locale_case_folding": false
+  },
+  "fingerprint": {
+    "domain": "lovebud:migration-catalog-object",
+    "algorithm": "sha256",
+    "prefix": "sha256:",
+    "hex_case": "lowercase",
+    "envelope_fields": [
+      "domain",
+      "format_version",
+      "normalizer_version",
+      "object"
+    ]
+  },
+  "output_contract": {
+    "format_version": "1.0",
+    "normalizer_version": "1.0",
+    "objects_item_fields": ["name", "fingerprint"],
+    "objects_sorted_by": "name_code_point"
+  }
+}

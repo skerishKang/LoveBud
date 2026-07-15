@@ -1,0 +1,274 @@
+{
+  "format_version": "1.0",
+  "normalizer_version": "1.0",
+  "objects": [
+    {
+      "schema": "public",
+      "object_name": "example_tree",
+      "object_kind": "TABLE",
+      "relation_kind": "r",
+      "columns": [
+        {
+          "name": "id",
+          "type_identity": "uuid",
+          "nullable": false,
+          "default_definition": null,
+          "generated_kind": "NONE",
+          "identity_kind": "NONE"
+        },
+        {
+          "name": "title",
+          "type_identity": "character varying(200)",
+          "nullable": true,
+          "default_definition": null,
+          "generated_kind": "NONE",
+          "identity_kind": "NONE"
+        },
+        {
+          "name": "owner_class",
+          "type_identity": "character varying(32)",
+          "nullable": false,
+          "default_definition": "'APPLICATION'",
+          "generated_kind": "NONE",
+          "identity_kind": "NONE"
+        }
+      ],
+      "constraints": [
+        {
+          "name": "example_tree_pkey",
+          "constraint_kind": "PRIMARY_KEY",
+          "validated": true,
+          "definition": "PRIMARY KEY (id)",
+          "fk_on_update": null,
+          "fk_on_delete": null
+        },
+        {
+          "name": "example_tree_title_check",
+          "constraint_kind": "CHECK",
+          "validated": true,
+          "definition": "CHECK ((title IS NULL) OR (char_length(title) > 0))",
+          "fk_on_update": null,
+          "fk_on_delete": null
+        },
+        {
+          "name": "example_tree_owner_fk",
+          "constraint_kind": "FOREIGN_KEY",
+          "validated": true,
+          "definition": "FOREIGN KEY (owner_class) REFERENCES public.owner_classes(code)",
+          "fk_on_update": "NO_ACTION",
+          "fk_on_delete": "RESTRICT"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "example_tree_pkey",
+          "primary": true,
+          "unique": true,
+          "valid": true,
+          "definition": "CREATE UNIQUE INDEX example_tree_pkey ON public.example_tree USING btree (id)"
+        },
+        {
+          "name": "example_tree_title_idx",
+          "primary": false,
+          "unique": false,
+          "valid": true,
+          "definition": "CREATE INDEX example_tree_title_idx ON public.example_tree USING btree (title)"
+        }
+      ],
+      "triggers": [
+        {
+          "name": "trg_example_tree_touch",
+          "timing": "BEFORE",
+          "events": [
+            "UPDATE",
+            "INSERT"
+          ],
+          "level": "ROW",
+          "enabled": "ORIGIN",
+          "function_identity": "public.touch_example_tree()",
+          "definition": "CREATE TRIGGER trg_example_tree_touch BEFORE INSERT OR UPDATE ON public.example_tree FOR EACH ROW EXECUTE FUNCTION public.touch_example_tree()"
+        }
+      ],
+      "row_level_security": {
+        "enabled": true,
+        "forced": false,
+        "policies": [
+          {
+            "name": "example_tree_select",
+            "command": "SELECT",
+            "permissive": true,
+            "role_scope": "AUTHENTICATED",
+            "using_expression": "true",
+            "check_expression": null
+          }
+        ]
+      },
+      "grants": [
+        {
+          "grantee_class": "AUTHENTICATED",
+          "privileges": [
+            "UPDATE",
+            "SELECT"
+          ],
+          "grantable": false
+        }
+      ],
+      "view_definition": null
+    },
+    {
+      "schema": "public",
+      "object_name": "example_tree_public",
+      "object_kind": "VIEW",
+      "relation_kind": "v",
+      "columns": [
+        {
+          "name": "id",
+          "type_identity": "uuid",
+          "nullable": false,
+          "default_definition": null,
+          "generated_kind": "NONE",
+          "identity_kind": "NONE"
+        },
+        {
+          "name": "title",
+          "type_identity": "character varying(200)",
+          "nullable": true,
+          "default_definition": null,
+          "generated_kind": "NONE",
+          "identity_kind": "NONE"
+        }
+      ],
+      "constraints": [],
+      "indexes": [],
+      "triggers": [],
+      "row_level_security": {
+        "enabled": false,
+        "forced": false,
+        "policies": []
+      },
+      "grants": [
+        {
+          "grantee_class": "PUBLIC",
+          "privileges": [
+            "SELECT"
+          ],
+          "grantable": false
+        }
+      ],
+      "view_definition": "SELECT id, title FROM public.example_tree WHERE title IS NOT NULL"
+    },
+    {
+      "schema": "public",
+      "object_name": "example_tree",
+      "object_kind": "TABLE",
+      "relation_kind": "r",
+      "columns": [
+        {
+          "name": "id",
+          "type_identity": "uuid",
+          "nullable": false,
+          "default_definition": null,
+          "generated_kind": "NONE",
+          "identity_kind": "NONE"
+        },
+        {
+          "name": "title",
+          "type_identity": "character varying(200)",
+          "nullable": true,
+          "default_definition": null,
+          "generated_kind": "NONE",
+          "identity_kind": "NONE"
+        },
+        {
+          "name": "owner_class",
+          "type_identity": "character varying(32)",
+          "nullable": false,
+          "default_definition": "'APPLICATION'",
+          "generated_kind": "NONE",
+          "identity_kind": "NONE"
+        }
+      ],
+      "constraints": [
+        {
+          "name": "example_tree_pkey",
+          "constraint_kind": "PRIMARY_KEY",
+          "validated": true,
+          "definition": "PRIMARY KEY (id)",
+          "fk_on_update": null,
+          "fk_on_delete": null
+        },
+        {
+          "name": "example_tree_title_check",
+          "constraint_kind": "CHECK",
+          "validated": true,
+          "definition": "CHECK ((title IS NULL) OR (char_length(title) > 0))",
+          "fk_on_update": null,
+          "fk_on_delete": null
+        },
+        {
+          "name": "example_tree_owner_fk",
+          "constraint_kind": "FOREIGN_KEY",
+          "validated": true,
+          "definition": "FOREIGN KEY (owner_class) REFERENCES public.owner_classes(code)",
+          "fk_on_update": "NO_ACTION",
+          "fk_on_delete": "RESTRICT"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "example_tree_pkey",
+          "primary": true,
+          "unique": true,
+          "valid": true,
+          "definition": "CREATE UNIQUE INDEX example_tree_pkey ON public.example_tree USING btree (id)"
+        },
+        {
+          "name": "example_tree_title_idx",
+          "primary": false,
+          "unique": false,
+          "valid": true,
+          "definition": "CREATE INDEX example_tree_title_idx ON public.example_tree USING btree (title)"
+        }
+      ],
+      "triggers": [
+        {
+          "name": "trg_example_tree_touch",
+          "timing": "BEFORE",
+          "events": [
+            "UPDATE",
+            "INSERT"
+          ],
+          "level": "ROW",
+          "enabled": "ORIGIN",
+          "function_identity": "public.touch_example_tree()",
+          "definition": "CREATE TRIGGER trg_example_tree_touch BEFORE INSERT OR UPDATE ON public.example_tree FOR EACH ROW EXECUTE FUNCTION public.touch_example_tree()"
+        }
+      ],
+      "row_level_security": {
+        "enabled": true,
+        "forced": false,
+        "policies": [
+          {
+            "name": "example_tree_select",
+            "command": "SELECT",
+            "permissive": true,
+            "role_scope": "AUTHENTICATED",
+            "using_expression": "true",
+            "check_expression": null
+          }
+        ]
+      },
+      "grants": [
+        {
+          "grantee_class": "AUTHENTICATED",
+          "privileges": [
+            "UPDATE",
+            "SELECT"
+          ],
+          "grantable": false
+        }
+      ],
+      "view_definition": null
+    }
+  ]
+}

@@ -62,6 +62,9 @@ function activeFixture() {
     },
     expectedSchemaManifest: {
       status: 'ACTIVE',
+      format_version: '1.0',
+      normalizer_version: '1.0',
+      metadata_contract_path: 'db/migration-provenance/catalog-metadata-contract.json',
       critical_objects: [{ name: 'table:example', fingerprint: schemaFingerprint }]
     },
     ledgerEvidence: {
@@ -72,6 +75,8 @@ function activeFixture() {
       ]
     },
     catalogEvidence: {
+      format_version: '1.0',
+      normalizer_version: '1.0',
       objects: [{ name: 'table:example', fingerprint: schemaFingerprint }]
     }
   };
