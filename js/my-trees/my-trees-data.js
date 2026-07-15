@@ -131,7 +131,7 @@
   }
 
   var VALID_PHASES = {
-    loaded: true, fetch_rejected: true, parse: true, invalid_payload: true,
+    loaded: true, fetch_rejected: true, auth_prepare_failed: true, parse: true, invalid_payload: true,
     auth: true, client: true, server: true, generic: true, none: true
   };
   var VALID_STATUS_CLASSES = { success: true, client: true, server: true, none: true };
@@ -253,14 +253,14 @@
 
   /**
    * Classify an API error into one of:
-   * - fetch_rejected    : fetch() itself rejected (phase metadata, checked first)
-   * - parse             : JSON parse failure after successful HTTP response (phase metadata, checked second)
-   * - invalid_payload   : successful HTTP response with non-array payload (phase metadata, checked third)
-   * - auth              : HTTP 401 or 403
-   * - server            : HTTP 5xx
-   * - client            : HTTP 4xx other than 401/403
-   * - fetch_rejected    : status===0 with no phase (backward compat fallback)
-   * - generic           : anything else / unknown
+   * - fetch_rejected       : explicit fetch rejection phase only
+   * - auth_prepare_failed  : fetch() never called, auth/token prep failed
+   * - parse                : JSON parse failure after successful HTTP response (phase metadata, checked third)
+   * - invalid_payload      : successful HTTP response with non-array payload (phase metadata, checked fourth)
+   * - auth                 : HTTP 401 or 403
+   * - server               : HTTP 5xx
+   * - client               : HTTP 4xx other than 401/403
+   * - generic              : unphased/status-less unexpected client failure
    *
    * Phase checks precede status checks so that HTTP 200 parse failures
    * and invalid payloads are classified by phase, not by status code.
@@ -269,13 +269,13 @@
    */
   function classifyLoadError(error) {
     if (error && error._phase === 'fetch_rejected') return 'fetch_rejected';
+    if (error && error._phase === 'auth_prepare_failed') return 'auth_prepare_failed';
     if (error && error._phase === 'json_parse_failed') return 'parse';
     if (error && error._phase === 'invalid_success_payload') return 'invalid_payload';
     var status = extractHttpStatus(error);
     if (status === 401 || status === 403) return 'auth';
     if (status >= 500 && status < 600) return 'server';
     if (status >= 400 && status < 500) return 'client';
-    if (status === 0) return 'fetch_rejected';
     return 'generic';
   }
 

@@ -804,10 +804,220 @@ test('postgres-client getTrees: backward-compatible with no arguments', () => {
 
 test('postgres-client: only getTrees forwards onLifecycle, other methods do not', () => {
   const src = fs.readFileSync(path.join(ROOT, 'js', 'postgres-client.js'), 'utf8');
-  const getTreeSection = src.match(/getTree:\s*async[^}]+}/);
-  assert.ok(getTreeSection, 'getTree method must exist');
+    const getTreeSection = src.match(/getTree:\s*async[^}]+}/);
+    assert.ok(getTreeSection, 'getTree method must exist');
+    assert.ok(
+      !getTreeSection[0].includes('onLifecycle'),
+      'getTree must not forward onLifecycle'
+    );
+  });
+
+test('classifyLoadError: auth_prepare_failed for _phase=auth_prepare_failed', () => {
+  const { sandbox } = createSandbox();
+  const src = fs.readFileSync(MY_TREES_DATA_PATH, 'utf8');
+  assert.ok(src.includes("_phase === 'auth_prepare_failed'"), 'classifyLoadError must check _phase=auth_prepare_failed');
+  assert.ok(src.includes("'auth_prepare_failed'"), 'classifyLoadError must return auth_prepare_failed');
+});
+
+test('classifyLoadError: auth_prepare_failed is checked before status 401/403', () => {
+  const src = fs.readFileSync(MY_TREES_DATA_PATH, 'utf8');
+  const fnMatch = src.match(/function classifyLoadError\(error\)\s*\{([\s\S]*?)^\s*\}/m);
+  assert.ok(fnMatch, 'classifyLoadError function must exist');
+  const fnBody = fnMatch[1];
+
+  const phaseAuthPrepareIdx = fnBody.indexOf("_phase === 'auth_prepare_failed'");
+  const authIdx = fnBody.indexOf("status === 401 || status === 403");
+
+  assert.ok(phaseAuthPrepareIdx >= 0, '_phase=auth_prepare_failed check must exist');
+  assert.ok(authIdx >= 0, 'status 401/403 check must exist');
+  assert.ok(phaseAuthPrepareIdx < authIdx, '_phase=auth_prepare_failed must be checked before status 401/403');
+});
+
+test('classifyLoadError: status===0 without phase returns generic (not fetch_rejected)', () => {
+  const { sandbox } = createSandbox();
+  const src = fs.readFileSync(MY_TREES_DATA_PATH, 'utf8');
+  assert.ok(src.includes("return 'generic'"), 'classifyLoadError must have generic fallback');
   assert.ok(
-    !getTreeSection[0].includes('onLifecycle'),
-    'getTree must not forward onLifecycle'
+    !src.match(/status === 0\s*\)\s*return\s+'fetch_rejected'/),
+    'classifyLoadError must NOT return fetch_rejected for status===0 without phase'
   );
+});
+
+test('loadTrees: auth_prepare_failed preserves cached list when cache exists', async () => {
+  const cachedData = [{ id: 't1', title: 'Cached Tree' }];
+  const cacheStore = { my_trees_list: cachedData };
+  const mockCache = {
+    get(key) { return cacheStore[key] || null; },
+    set(key, value) { cacheStore[key] = value; },
+  };
+
+  const { sandbox } = createSandbox({
+    cache: mockCache,
+    apiClient: {
+      getTrees: async () => {
+        const err = new Error('Failed to prepare request authentication');
+        err._phase = 'auth_prepare_failed';
+        err._attempt = 1;
+        err._retried = false;
+        err._authHeaderPresent = false;
+        throw err;
+      },
+    },
+    localStorage: {
+      lovebud_my_trees_list_cache: JSON.stringify({
+        data: cachedData,
+        expiry: Date.now() + 60000,
+        cachedAt: Date.now(),
+      }),
+    },
+  });
+
+  const rendered = [];
+  const stateUpdates = [];
+  const toastMessages = [];
+  await sandbox.window.LoveBudMyTreesData.loadTrees({
+    setState: (state, detail) => stateUpdates.push({ state, detail }),
+    stateEnum: { LOADING: 'LOADING', ERROR: 'ERROR' },
+    renderTrees: (trees) => rendered.push(trees),
+    showToast: (msg, type) => toastMessages.push({ msg, type }),
+  });
+
+  assert.ok(rendered.length >= 1, 'must render cached trees');
+  assert.ok(
+    !stateUpdates.some(u => u.state === 'ERROR'),
+    'must not transition to ERROR when cache exists'
+  );
+});
+
+test('loadTrees: auth_prepare_failed transitions to error state when no cache', async () => {
+  const { sandbox } = createSandbox({
+    apiClient: {
+      getTrees: async () => {
+        const err = new Error('Failed to prepare request authentication');
+        err._phase = 'auth_prepare_failed';
+        err._attempt = 1;
+        err._retried = false;
+        err._authHeaderPresent = false;
+        throw err;
+      },
+    },
+  });
+
+  const stateUpdates = [];
+  const rendered = [];
+  await sandbox.window.LoveBudMyTreesData.loadTrees({
+    setState: (state, detail) => stateUpdates.push({ state, detail }),
+    stateEnum: { LOADING: 'LOADING', ERROR: 'ERROR' },
+    renderTrees: (trees) => rendered.push(trees),
+  });
+
+  assert.equal(rendered.length, 0, 'must not render anything');
+  assert.ok(
+    stateUpdates.some(u => u.state === 'ERROR' && u.detail && u.detail.errorType === 'auth_prepare_failed'),
+    'must transition to ERROR state with errorType=auth_prepare_failed'
+  );
+});
+
+test('loadTrees: auth_prepare_failed must not clear confirmed auth state', async () => {
+  const { sandbox, localStorageMock } = createSandbox({
+    apiClient: {
+      getTrees: async () => {
+        const err = new Error('Failed to prepare request authentication');
+        err._phase = 'auth_prepare_failed';
+        err._attempt = 1;
+        err._retried = false;
+        err._authHeaderPresent = false;
+        throw err;
+      },
+    },
+    localStorage: {
+      lovebud_auth_confirmed: 'true',
+      lovebud_auth_cache: JSON.stringify({ uid: 'test-user' }),
+    },
+  });
+
+  await sandbox.window.LoveBudMyTreesData.loadTrees({
+    setState: () => {},
+    stateEnum: { LOADING: 'LOADING', ERROR: 'ERROR' },
+  });
+
+  assert.equal(localStorageMock.getItem('lovebud_auth_confirmed'), 'true', 'confirmed auth state must not be cleared');
+  assert.ok(localStorageMock.getItem('lovebud_auth_cache'), 'auth cache must not be cleared');
+});
+
+test('loadTrees: unphased status-less error classifies as generic (not fetch_rejected)', async () => {
+  const { sandbox } = createSandbox({
+    apiClient: {
+      getTrees: async () => { throw new Error('unexpected client exception'); },
+    },
+  });
+
+  const stateUpdates = [];
+  const rendered = [];
+  await sandbox.window.LoveBudMyTreesData.loadTrees({
+    setState: (state, detail) => stateUpdates.push({ state, detail }),
+    stateEnum: { LOADING: 'LOADING', ERROR: 'ERROR' },
+    renderTrees: (trees) => rendered.push(trees),
+  });
+
+  const errorState = stateUpdates.find(u => u.state === 'ERROR');
+  assert.ok(errorState, 'must transition to ERROR state');
+  assert.equal(errorState.detail.errorType, 'generic', 'unphased error must classify as generic');
+  assert.notEqual(errorState.detail.errorType, 'fetch_rejected', 'unphased error must NOT classify as fetch_rejected');
+});
+
+test('loadTrees: explicit _phase=fetch_rejected classifies as fetch_rejected', async () => {
+  const { sandbox } = createSandbox({
+    apiClient: {
+      getTrees: async () => {
+        const err = new Error('fetch failed');
+        err._phase = 'fetch_rejected';
+        throw err;
+      },
+    },
+  });
+
+  const stateUpdates = [];
+  const rendered = [];
+  await sandbox.window.LoveBudMyTreesData.loadTrees({
+    setState: (state, detail) => stateUpdates.push({ state, detail }),
+    stateEnum: { LOADING: 'LOADING', ERROR: 'ERROR' },
+    renderTrees: (trees) => rendered.push(trees),
+  });
+
+  const errorState = stateUpdates.find(u => u.state === 'ERROR');
+  assert.ok(errorState, 'must transition to ERROR state');
+  assert.equal(errorState.detail.errorType, 'fetch_rejected', 'explicit fetch_rejected phase must classify as fetch_rejected');
+});
+
+test('loadTrees: auth_prepare_failed diagnostic event does not contain sensitive fields', async () => {
+  const emitted = [];
+  const mockSink = { emit(event) { emitted.push(event); } };
+
+  const { sandbox } = createSandbox({
+    apiClient: {
+      getTrees: async () => {
+        const err = new Error('Failed to prepare request authentication');
+        err._phase = 'auth_prepare_failed';
+        err._attempt = 1;
+        err._retried = false;
+        err._authHeaderPresent = false;
+        throw err;
+      },
+    },
+    LOVEBUD_MY_TREES_DEBUG: false,
+    diagnosticSink: mockSink,
+  });
+
+  await sandbox.window.LoveBudMyTreesData.loadTrees({
+    setState: () => {},
+    stateEnum: { LOADING: 'LOADING', ERROR: 'ERROR' },
+  });
+
+  assert.ok(emitted.length >= 1, 'must emit diagnostic event');
+  const serialized = JSON.stringify(emitted);
+  assert.ok(!serialized.includes('Authorization'), 'must not contain Authorization');
+  assert.ok(!serialized.includes('token'), 'must not contain token');
+  assert.ok(!serialized.includes('uid'), 'must not contain uid');
+  assert.ok(!serialized.includes('email'), 'must not contain email');
 });

@@ -672,3 +672,166 @@ test('auth retry: initial 401 + retry parse failure delivers attempt=2, retried=
     assert.equal(parseEvent.retried, true);
   }
 });
+
+test('ERROR_PHASE includes AUTH_PREPARE_FAILED', () => {
+  const sandbox = loadBaseApiFetch();
+  const ep = sandbox.window.LoveTreeBaseApiFetch.ERROR_PHASE;
+  assert.equal(ep.AUTH_PREPARE_FAILED, 'auth_prepare_failed');
+  assert.equal(typeof ep.AUTH_PREPARE_FAILED, 'string');
+});
+
+test('apiFetch sets _phase=auth_prepare_failed when initial getAuthHeaders rejects and fetch call count = 0', async () => {
+  let fetchCallCount = 0;
+  const firebaseMock = {
+    auth: () => ({
+      currentUser: {
+        uid: 'test-user',
+        getIdTokenResult: async () => { throw new Error('provider detail must not leak'); },
+      },
+    }),
+  };
+  const sandbox = loadBaseApiFetch({
+    localStorage: {
+      lovebud_auth_confirmed: 'true',
+      lovebud_auth_cache: JSON.stringify({ uid: 'test-user' }),
+    },
+    authReady: true,
+    firebase: firebaseMock,
+    authBootstrap: { getSnapshot: () => ({ ready: true }), whenReady: () => Promise.resolve() },
+    fetch: async () => { fetchCallCount++; return { ok: true, json: async () => [] }; },
+  });
+
+  try {
+    await sandbox.window.LoveTreeBaseApiFetch.apiFetch('/trees');
+    assert.fail('should have thrown');
+  } catch (err) {
+    assert.equal(fetchCallCount, 0, 'fetch must not be called when auth preparation fails');
+    assert.equal(err._phase, 'auth_prepare_failed');
+    assert.equal(err._attempt, 1);
+    assert.equal(err._retried, false);
+    assert.equal(err._authHeaderPresent, false);
+    assert.ok(!err.message.includes('provider detail'), 'error must not leak provider details');
+  }
+});
+
+test('apiFetch sets _phase=auth_prepare_failed when retry getAuthHeaders rejects (after 401)', async () => {
+  let callCount = 0;
+  let authReadCount = 0;
+  const events = [];
+
+  const localStorageMock = createStorageMock({
+    lovebud_auth_confirmed: 'true',
+    lovebud_auth_cache: JSON.stringify({ uid: 'test-user' }),
+  });
+  const throwingUser = {
+    uid: 'test-user',
+    getIdTokenResult: async () => { throw new Error('provider detail must not leak'); },
+  };
+  const firebaseMock = {
+    auth: () => ({
+      get currentUser() {
+        authReadCount += 1;
+        return authReadCount <= 1 ? null : throwingUser;
+      },
+    }),
+  };
+
+  const sandbox = {
+    window: {
+      __LOVEBUD_AUTH_WAIT_MS: 50,
+      __lovebudAuthReady: true,
+      LOVEBUD_AUTH_WAIT_MS: 50,
+      localStorage: localStorageMock,
+      sessionStorage: createStorageMock(),
+      firebase: firebaseMock,
+      LoveBudAuthState: null,
+      LoveBudAuthBootstrap: { getSnapshot: () => ({ ready: true }), whenReady: () => Promise.resolve() },
+    },
+    localStorage: localStorageMock,
+    sessionStorage: createStorageMock(),
+    firebase: firebaseMock,
+    console,
+    fetch: async (_url, config) => {
+      callCount++;
+      if (callCount === 1) {
+        return { ok: false, status: 401, json: async () => ({ error: 'Unauthorized' }) };
+      }
+      throw new Error('second fetch must not be called');
+    },
+    setTimeout,
+    clearTimeout,
+    CustomEvent: function CustomEvent(type, init) {
+      this.type = type;
+      this.detail = init && init.detail;
+    },
+  };
+
+  vm.createContext(sandbox);
+  vm.runInContext(fs.readFileSync(AUTH_POLICY_PATH, 'utf8'), sandbox, { filename: AUTH_POLICY_PATH });
+  vm.runInContext(fs.readFileSync(BASE_API_FETCH_PATH, 'utf8'), sandbox, { filename: BASE_API_FETCH_PATH });
+
+  try {
+    await sandbox.window.LoveTreeBaseApiFetch.apiFetch('/trees', {
+      onLifecycle: function(meta) { events.push(meta); },
+    });
+    assert.fail('should have thrown');
+  } catch (err) {
+    assert.equal(callCount, 1, 'first fetch must be called, second must not');
+    assert.equal(err._phase, 'auth_prepare_failed');
+    assert.equal(err._attempt, 2);
+    assert.equal(err._retried, true);
+    assert.equal(err._authHeaderPresent, false);
+
+    const authPrepareEvent = events.find(e => e.phase === 'auth_prepare_failed');
+    assert.ok(authPrepareEvent, 'must emit auth_prepare_failed lifecycle');
+    assert.equal(authPrepareEvent.attempt, 2);
+    assert.equal(authPrepareEvent.retried, true);
+    assert.equal(authPrepareEvent.authHeaderPresent, false);
+    assert.equal(authPrepareEvent.statusClass, 'none');
+  }
+});
+
+test('apiFetch actual fetch rejection regression: _phase=fetch_rejected and fetch call count = 1', async () => {
+  let callCount = 0;
+  const sandbox = loadBaseApiFetch({
+    fetch: async () => { callCount++; throw new TypeError('Failed to fetch'); },
+  });
+
+  try {
+    await sandbox.window.LoveTreeBaseApiFetch.apiFetch('/trees');
+    assert.fail('should have thrown');
+  } catch (err) {
+    assert.equal(callCount, 1, 'fetch must be called exactly once for direct rejection');
+    assert.equal(err._phase, 'fetch_rejected');
+  }
+});
+
+test('apiFetch auth_prepare_failed serialized error does not leak provider details', async () => {
+  const firebaseMock = {
+    auth: () => ({
+      currentUser: {
+        uid: 'test-user',
+        getIdTokenResult: async () => { throw new Error('provider detail must not leak'); },
+      },
+    }),
+  };
+  const sandbox = loadBaseApiFetch({
+    localStorage: {
+      lovebud_auth_confirmed: 'true',
+      lovebud_auth_cache: JSON.stringify({ uid: 'test-user' }),
+    },
+    authReady: true,
+    firebase: firebaseMock,
+    authBootstrap: { getSnapshot: () => ({ ready: true }), whenReady: () => Promise.resolve() },
+  });
+
+  try {
+    await sandbox.window.LoveTreeBaseApiFetch.apiFetch('/trees');
+    assert.fail('should have thrown');
+  } catch (err) {
+    const serialized = JSON.stringify(err);
+    assert.ok(!serialized.includes('provider'), 'serialized error must not contain provider details');
+    assert.ok(!serialized.includes('token'), 'serialized error must not contain token');
+    assert.ok(!serialized.includes('uid'), 'serialized error must not contain uid');
+  }
+});

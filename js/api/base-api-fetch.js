@@ -221,11 +221,28 @@
     delete fetchOptions.publicRead;
     delete fetchOptions.onLifecycle;
     const requiresAuth = !skipAuth && policy.endpointLikelyRequiresAuth(endpoint);
-    const authHeaders = await getAuthHeaders({
-      forceLongWait: requiresAuth && policy.hasConfirmedAuthSession(),
-      requireAuth: requiresAuth,
-      skipAuth
-    });
+    let authHeaders;
+    try {
+      authHeaders = await getAuthHeaders({
+        forceLongWait: requiresAuth && policy.hasConfirmedAuthSession(),
+        requireAuth: requiresAuth,
+        skipAuth
+      });
+    } catch (authPrepareErr) {
+      const error = new Error('Failed to prepare request authentication');
+      error._phase = 'auth_prepare_failed';
+      error._attempt = 1;
+      error._retried = false;
+      error._authHeaderPresent = false;
+      emitSafeLifecycle(onLifecycle, {
+        phase: 'auth_prepare_failed',
+        attempt: 1,
+        retried: false,
+        authHeaderPresent: false,
+        statusClass: 'none'
+      });
+      throw error;
+    }
     const hadAuthHeader = !!authHeaders.Authorization;
 
     let attempt = 1;
@@ -280,7 +297,24 @@
       policy.hasConfirmedAuthSession()
     ) {
       await waitForAuthToken(Math.min(1200, policy.AUTH_WAIT_MS));
-      const retryHeaders = await getAuthHeaders({ forceLongWait: true, requireAuth: true });
+      let retryHeaders;
+      try {
+        retryHeaders = await getAuthHeaders({ forceLongWait: true, requireAuth: true });
+      } catch (retryAuthPrepareErr) {
+        const error = new Error('Failed to prepare retry authentication');
+        error._phase = 'auth_prepare_failed';
+        error._attempt = 2;
+        error._retried = true;
+        error._authHeaderPresent = false;
+        emitSafeLifecycle(onLifecycle, {
+          phase: 'auth_prepare_failed',
+          attempt: 2,
+          retried: true,
+          authHeaderPresent: false,
+          statusClass: 'none'
+        });
+        throw error;
+      }
       if (retryHeaders.Authorization) {
         attempt = 2;
         retried = true;
@@ -376,6 +410,7 @@
 
   window.LoveTreeBaseApiFetch = {
     ERROR_PHASE: {
+      AUTH_PREPARE_FAILED: 'auth_prepare_failed',
       FETCH_REJECTED: 'fetch_rejected',
       HTTP_ERROR: 'http_error',
       JSON_PARSE_FAILED: 'json_parse_failed',
