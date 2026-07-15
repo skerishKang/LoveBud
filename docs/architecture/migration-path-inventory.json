@@ -625,7 +625,7 @@
     },
     {
       "path": "scripts/validate-generic-social-b-postcondition.sql",
-      "content_checksum": "sha256:9288a868c18b55f3660c93083fbc74fbcdbe9a1078429d884248c7702f771a47",
+      "content_checksum": "sha256:7386d0c6f8bc4179a8f13a021d623bff1400488857c000fb7c0c82a41f616453",
       "operation_class": "POSTCONDITION_VALIDATOR_READ_ONLY",
       "classification": "CANONICAL_CANDIDATE",
       "schema_objects": [

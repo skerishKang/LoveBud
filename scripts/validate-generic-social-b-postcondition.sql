@@ -110,7 +110,7 @@ BEGIN
   IF NOT FOUND THEN RAISE EXCEPTION 'GENERIC_SOCIAL_B_POSTCONDITION_FAILED'; END IF;
   c_norm := trim(both from regexp_replace(replace(replace(c_def, E'\r\n', E'\n'), E'\r', E'\n'), E'\\s+', ' ', 'g'));
   actual_hash := encode(sha256(convert_to(concat_ws(E'\n', 'public', 'social_idempotency', 'social_idempotency_memory_legacy_match_check', 'c', 'true', c_norm), 'utf8')), 'hex');
-  IF actual_hash <> 'f9848c95749a0a46552ba39e3d94c235ae6cd164c8f8103f9210f4118886a32c' THEN RAISE EXCEPTION 'GENERIC_SOCIAL_B_POSTCONDITION_FAILED'; END IF;
+  IF actual_hash <> 'f9848c95749a0a46552ba39e3d94c235ae6cd164c8f8103f9210f4118886a32c' THEN RAISE EXCEPTION 'GENERIC_SOCIAL_B_POSTCONDITION_FAILED check_hash=% def=%', actual_hash, c_norm; END IF;
 
   SELECT count(*)::int INTO n FROM pg_constraint WHERE conname='social_idempotency_tree_legacy_null_check';
   IF n <> 1 THEN RAISE EXCEPTION 'GENERIC_SOCIAL_B_POSTCONDITION_FAILED'; END IF;
@@ -155,7 +155,7 @@ BEGIN
     RAISE EXCEPTION 'GENERIC_SOCIAL_B_POSTCONDITION_FAILED';
   END IF;
   actual_hash := encode(sha256(convert_to(concat_ws(E'\n', 'public', 'sync_social_idempotency_generic_target_from_legacy_memory', coalesce(f_args,''), coalesce(f_ret,''), f_lang, f_sec::text, f_vol, f_par, f_leak::text, f_strict::text, f_config, f_norm), 'utf8')), 'hex');
-  IF actual_hash <> 'e5f8ccacb82525bc43d5d6b95f61b0dc6c33b59b5a81591d4d0d4d350ceafebe' THEN RAISE EXCEPTION 'GENERIC_SOCIAL_B_POSTCONDITION_FAILED'; END IF;
+  IF actual_hash <> 'e5f8ccacb82525bc43d5d6b95f61b0dc6c33b59b5a81591d4d0d4d350ceafebe' THEN RAISE EXCEPTION 'GENERIC_SOCIAL_B_POSTCONDITION_FAILED fn_hash=%', actual_hash; END IF;
 
   expected_func := to_regprocedure('public.sync_social_audit_generic_target_from_legacy_memory()');
   IF expected_func IS NULL THEN RAISE EXCEPTION 'GENERIC_SOCIAL_B_POSTCONDITION_FAILED'; END IF;
