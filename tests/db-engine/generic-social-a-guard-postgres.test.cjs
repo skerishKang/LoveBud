@@ -301,16 +301,34 @@ test('preflight rejects CHECK / trigger / function collisions', { concurrency: f
     'GENERIC_SOCIAL_A_'
   );
 
-  // SQL-language wrong function
+  // Wrong-language/security-definer function collision (SQL cannot return trigger).
   await rejectWithoutMigration(
-    'fn_sql',
+    'fn_secdef',
     LEGACY_BASE + `
       ALTER TABLE public.social_idempotency ADD COLUMN target_kind VARCHAR(16), ADD COLUMN target_id UUID;
       ALTER TABLE public.social_audit_log ADD COLUMN target_kind VARCHAR(16), ADD COLUMN target_id UUID;
       CREATE FUNCTION public.sync_social_idempotency_generic_target_from_legacy_memory()
-        RETURNS trigger LANGUAGE sql AS $$ SELECT NULL::trigger $$;
+        RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER AS $f$
+        BEGIN
+          NEW.target_kind := 'memory';
+          NEW.target_id := NEW.target_memory_id;
+          RETURN NEW;
+        END;
+        $f$;
       CREATE FUNCTION public.sync_social_audit_generic_target_from_legacy_memory()
-        RETURNS trigger LANGUAGE plpgsql AS $f$ BEGIN RETURN NEW; END; $f$;
+        RETURNS trigger LANGUAGE plpgsql AS $f$
+        BEGIN
+          NEW.target_kind := 'memory';
+          NEW.target_id := NEW.memory_id;
+          RETURN NEW;
+        END;
+        $f$;
+      CREATE TRIGGER trg_social_idempotency_sync_generic_target
+        BEFORE INSERT OR UPDATE ON public.social_idempotency
+        FOR EACH ROW EXECUTE FUNCTION public.sync_social_idempotency_generic_target_from_legacy_memory();
+      CREATE TRIGGER trg_social_audit_log_sync_generic_target
+        BEFORE INSERT OR UPDATE ON public.social_audit_log
+        FOR EACH ROW EXECUTE FUNCTION public.sync_social_audit_generic_target_from_legacy_memory();
     `,
     'GENERIC_SOCIAL_A_FUNCTION'
   );

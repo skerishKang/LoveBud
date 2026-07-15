@@ -71,6 +71,9 @@ async function getFullRowFingerprint(client, key, opts) {
 
 async function getCatalogFingerprint(client) {
   async function tableFp(table) {
+    if (!(await ordinaryExists(client, table))) {
+      return { exists: false, cols: [], checks: [], triggers: [] };
+    }
     const cols = await query(
       client,
       `SELECT column_name, udt_name, is_nullable, (column_default IS NOT NULL) AS has_default,
@@ -93,7 +96,7 @@ async function getCatalogFingerprint(client) {
       [`public.${table}`]
     );
     return {
-      exists: await ordinaryExists(client, table),
+      exists: true,
       cols: cols.map((c) => ({
         n: c.column_name,
         u: c.udt_name,
