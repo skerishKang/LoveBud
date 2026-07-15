@@ -60,7 +60,15 @@ These relationships are not ownership evidence.
 ## D. Visibility reconstruction
 
 1. **Ordinary recovered legacy tree visibility defaults to public.**
-2. **Private requires explicit Plus or grandfathered-private evidence.**
+2. **Private requires explicit authoritative evidence.**
+
+   The only accepted private-evidence classifications are:
+
+   - PLUS_ENTITLEMENT_CONFIRMED
+   - GRANDFATHERED_PRIVATE_CONFIRMED
+
+   Any missing, inferred, ambiguous, or unsupported private evidence defaults to
+   the ordinary recovered visibility rule: public.
 3. **`publicMomentCount >= 3` is Browse/Search eligibility only.**
 4. **`publicMomentCount 0-2` does not make a tree private.**
 5. **Missing visibility metadata does not imply private.**
