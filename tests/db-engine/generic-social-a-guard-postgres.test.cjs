@@ -323,7 +323,10 @@ const POST_BASE = LEGACY_BASE + `
   ALTER TABLE public.social_idempotency ADD CONSTRAINT social_idempotency_generic_target_pair_check CHECK (((target_kind IS NULL) AND (target_id IS NULL)) OR ((target_kind IS NOT NULL) AND (target_id IS NOT NULL)));
   ALTER TABLE public.social_idempotency ADD CONSTRAINT social_idempotency_generic_target_kind_check CHECK (((target_kind IS NULL) OR ((target_kind)::text = ANY ((ARRAY['memory'::character varying, 'tree'::character varying])::text[]))));
   ALTER TABLE public.social_audit_log ADD CONSTRAINT social_audit_log_generic_target_pair_check CHECK (((target_kind IS NULL) AND (target_id IS NULL)) OR ((target_kind IS NOT NULL) AND (target_id IS NOT NULL)));
-  ALTER TABLE public.social_audit_log ADD CONSTRAINT social_audit_lotest('preflight CHECK fixtures', { concurrency: false }, async () => {
+  ALTER TABLE public.social_audit_log ADD CONSTRAINT social_audit_log_generic_target_kind_check CHECK (((target_kind IS NULL) OR ((target_kind)::text = ANY ((ARRAY['memory'::character varying, 'tree'::character varying])::text[]))));
+`;
+
+test('preflight CHECK fixtures', { concurrency: false }, async () => {
   const mutations = [
     ['check_wrong_pair', `ALTER TABLE public.social_audit_log DROP CONSTRAINT social_audit_log_generic_target_pair_check; ALTER TABLE public.social_audit_log ADD CONSTRAINT social_audit_log_generic_target_pair_check CHECK (target_kind IS NOT NULL);`, 'GENERIC_SOCIAL_A_CHECK_DEFINITION_MISMATCH'],
     ['check_wrong_vocab', `ALTER TABLE public.social_audit_log DROP CONSTRAINT social_audit_log_generic_target_kind_check; ALTER TABLE public.social_audit_log ADD CONSTRAINT social_audit_log_generic_target_kind_check CHECK (target_kind IS NULL OR target_kind IN ('memory', 'something'));`, 'GENERIC_SOCIAL_A_CHECK_DEFINITION_MISMATCH'],
