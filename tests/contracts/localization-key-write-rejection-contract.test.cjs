@@ -4,11 +4,17 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const { importAbsolute } = require('../helpers/import-absolute.cjs');
 
 const ROOT = path.resolve(__dirname, '..', '..');
+const LEGACY_KEY_GUARD_PATH = path.join(ROOT, 'functions/_shared/legacy-key-guard.js');
 
 function readRepoFile(relativePath) {
   return fs.readFileSync(path.join(ROOT, relativePath), 'utf8');
+}
+
+function loadLegacyKeyGuard() {
+  return importAbsolute(LEGACY_KEY_GUARD_PATH);
 }
 
 // ─── Shared guard module: legacy-key-guard.js ─────────────────────────────
@@ -19,13 +25,13 @@ test('legacy-key-guard exists at functions/_shared/legacy-key-guard.js', () => {
 });
 
 test('legacy-key-guard exports isLegacyLocalizationKey and validateWritePayload', async () => {
-  const mod = await import(path.join(ROOT, 'functions/_shared/legacy-key-guard.js'));
+  const mod = await loadLegacyKeyGuard();
   assert.equal(typeof mod.isLegacyLocalizationKey, 'function');
   assert.equal(typeof mod.validateWritePayload, 'function');
 });
 
 test('isLegacyLocalizationKey detects dot-separated legacy keys', async () => {
-  const { isLegacyLocalizationKey } = await import(path.join(ROOT, 'functions/_shared/legacy-key-guard.js'));
+  const { isLegacyLocalizationKey } = await loadLegacyKeyGuard();
   assert.equal(isLegacyLocalizationKey('tree.title'), true);
   assert.equal(isLegacyLocalizationKey('memory.content'), true);
   assert.equal(isLegacyLocalizationKey('editor.current.moment'), true);
@@ -34,14 +40,14 @@ test('isLegacyLocalizationKey detects dot-separated legacy keys', async () => {
 });
 
 test('isLegacyLocalizationKey detects underscore-separated legacy keys', async () => {
-  const { isLegacyLocalizationKey } = await import(path.join(ROOT, 'functions/_shared/legacy-key-guard.js'));
+  const { isLegacyLocalizationKey } = await loadLegacyKeyGuard();
   assert.equal(isLegacyLocalizationKey('editor_url_only_youtube_title'), true);
   assert.equal(isLegacyLocalizationKey('viewer_tree_title'), true);
   assert.equal(isLegacyLocalizationKey('waiting_first_moment'), true);
 });
 
 test('isLegacyLocalizationKey rejects plain user titles and non-strings', async () => {
-  const { isLegacyLocalizationKey } = await import(path.join(ROOT, 'functions/_shared/legacy-key-guard.js'));
+  const { isLegacyLocalizationKey } = await loadLegacyKeyGuard();
   assert.equal(isLegacyLocalizationKey('제목 없음'), false);
   assert.equal(isLegacyLocalizationKey('My Video Title'), false);
   assert.equal(isLegacyLocalizationKey('hello world'), false);
@@ -53,13 +59,13 @@ test('isLegacyLocalizationKey rejects plain user titles and non-strings', async 
 });
 
 test('validateWritePayload returns null for clean payload', async () => {
-  const { validateWritePayload } = await import(path.join(ROOT, 'functions/_shared/legacy-key-guard.js'));
+  const { validateWritePayload } = await loadLegacyKeyGuard();
   const result = validateWritePayload({ title: 'My Tree', memo: 'A nice memory' }, ['title', 'memo']);
   assert.equal(result, null);
 });
 
 test('validateWritePayload returns 400 for title containing legacy key', async () => {
-  const { validateWritePayload } = await import(path.join(ROOT, 'functions/_shared/legacy-key-guard.js'));
+  const { validateWritePayload } = await loadLegacyKeyGuard();
   const result = validateWritePayload({ title: 'tree.title', memo: 'ok' }, ['title', 'memo']);
   assert.ok(result, 'must return a Response');
   assert.equal(result.status, 400);
@@ -70,7 +76,7 @@ test('validateWritePayload returns 400 for title containing legacy key', async (
 });
 
 test('validateWritePayload returns 400 for memo containing legacy key', async () => {
-  const { validateWritePayload } = await import(path.join(ROOT, 'functions/_shared/legacy-key-guard.js'));
+  const { validateWritePayload } = await loadLegacyKeyGuard();
   const result = validateWritePayload({ title: 'ok', memo: 'memory.content' }, ['title', 'memo']);
   assert.ok(result, 'must return a Response');
   assert.equal(result.status, 400);
@@ -80,14 +86,14 @@ test('validateWritePayload returns 400 for memo containing legacy key', async ()
 });
 
 test('validateWritePayload returns null for empty payload or missing paths', async () => {
-  const { validateWritePayload } = await import(path.join(ROOT, 'functions/_shared/legacy-key-guard.js'));
+  const { validateWritePayload } = await loadLegacyKeyGuard();
   assert.equal(validateWritePayload(null, ['title']), null);
   assert.equal(validateWritePayload({}, []), null);
   assert.equal(validateWritePayload(undefined, ['title']), null);
 });
 
 test('validateWritePayload resolves nested field paths', async () => {
-  const { validateWritePayload } = await import(path.join(ROOT, 'functions/_shared/legacy-key-guard.js'));
+  const { validateWritePayload } = await loadLegacyKeyGuard();
   const result = validateWritePayload({ tree: { title: 'tree.title' } }, ['tree.title']);
   assert.ok(result, 'must return a Response for nested legacy key');
   assert.equal(result.status, 400);
@@ -186,7 +192,7 @@ test('memories/[id].js guard precedes upstream fetch call', () => {
 // ─── Guard result includes structured error body ─────────────────────────
 
 test('validateWritePayload 400 body has error, field, and value', async () => {
-  const { validateWritePayload } = await import(path.join(ROOT, 'functions/_shared/legacy-key-guard.js'));
+  const { validateWritePayload } = await loadLegacyKeyGuard();
   const result = validateWritePayload({ title: 'search.title' }, ['title']);
   assert.equal(result.status, 400);
   const body = JSON.parse(await result.text());
@@ -198,14 +204,14 @@ test('validateWritePayload 400 body has error, field, and value', async () => {
 // ─── Underscore key rejection ────────────────────────────────────────────
 
 test('validateWritePayload rejects underscore-separated legacy keys', async () => {
-  const { validateWritePayload } = await import(path.join(ROOT, 'functions/_shared/legacy-key-guard.js'));
+  const { validateWritePayload } = await loadLegacyKeyGuard();
   const result = validateWritePayload({ title: 'editor_url_only_youtube_title' }, ['title']);
   assert.ok(result, 'underscore legacy key must be rejected');
   assert.equal(result.status, 400);
 });
 
 test('validateWritePayload allows short two-segment underscore strings', async () => {
-  const { validateWritePayload } = await import(path.join(ROOT, 'functions/_shared/legacy-key-guard.js'));
+  const { validateWritePayload } = await loadLegacyKeyGuard();
   // 'selected_moment' is only two underscore segments — NOT a legacy key
   const result = validateWritePayload({ title: 'selected_moment' }, ['title']);
   assert.equal(result, null, 'two-segment underscore is not a legacy key');
@@ -214,14 +220,14 @@ test('validateWritePayload allows short two-segment underscore strings', async (
 // ─── Whitespace edge cases ───────────────────────────────────────────────
 
 test('validateWritePayload trims whitespace before checking', async () => {
-  const { validateWritePayload } = await import(path.join(ROOT, 'functions/_shared/legacy-key-guard.js'));
+  const { validateWritePayload } = await loadLegacyKeyGuard();
   const result = validateWritePayload({ title: '  tree.title  ' }, ['title']);
   assert.ok(result, 'whitespace-padded legacy key must be rejected');
   assert.equal(result.status, 400);
 });
 
 test('validateWritePayload passes through empty-string fields', async () => {
-  const { validateWritePayload } = await import(path.join(ROOT, 'functions/_shared/legacy-key-guard.js'));
+  const { validateWritePayload } = await loadLegacyKeyGuard();
   const result = validateWritePayload({ title: '', memo: '' }, ['title', 'memo']);
   assert.equal(result, null, 'empty strings are not legacy keys');
 });
