@@ -149,6 +149,12 @@ async function getTreesRowFingerprint(client) {
   if (!(await tableExists(client, 'trees'))) {
     return { count: 0, idFp: '' };
   }
+  // Damaged/unsupported shapes may lack id; fingerprint without assuming the column.
+  const names = await getTreesColumnNames(client);
+  if (!names.includes('id')) {
+    const rows = await query(client, `SELECT count(*)::int AS n FROM public.trees`);
+    return { count: rows[0].n, idFp: 'NO_ID_COLUMN' };
+  }
   const rows = await query(
     client,
     `SELECT count(*)::int AS n,
