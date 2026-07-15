@@ -6,7 +6,7 @@
 @import url('./shared/preview-hub-content-slots.css');
 @import url('./my-trees/my-trees-header.css?v=20260702-2710-shared-rhythm-1');
 @import url('./my-trees/my-trees-finder.css?v=20260702-2710-shared-rhythm-1');
-@import url('./my-trees/my-trees-cards.css');
+@import url('./my-trees/my-trees-cards.css?v=20260715-3511-2');
 @import url('./my-trees/my-trees-states.css');
 @import url('./my-trees/my-trees-create-modal.css');
 @import url('./my-trees/my-trees-visibility-gate.css');

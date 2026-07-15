@@ -59,19 +59,38 @@
     el.appendChild(document.createTextNode(secondLine));
   }
 
-  function setHubOpenBtn() {
-    var el = document.getElementById('myTreesHubOpenBtn');
+  function updateButtonLabel(el, key, fallbackKo, fallbackEn) {
     if (!el) return;
     var locale = window.i18n?.currentLang || document.documentElement?.lang || 'ko';
     var isEnglish = String(locale).toLowerCase().startsWith('en');
-    var label = isEnglish ? 'Open tree' : '트리 열기';
+    var label = isEnglish ? fallbackEn : fallbackKo;
     if (typeof window.t === 'function') {
-      var translated = window.t('myTrees.hub_open');
-      if (typeof translated === 'string' && translated.trim() && translated !== 'myTrees.hub_open') {
+      var translated = window.t(key);
+      if (typeof translated === 'string' && translated.trim() && translated !== key) {
         label = translated;
       }
     }
-    el.innerHTML = '<span class="material-symbols-outlined">account_tree</span><span>' + label + '</span>';
+    var labelSpan = el.querySelector('[data-i18n]');
+    if (labelSpan) {
+      labelSpan.textContent = label;
+    } else {
+      var existing = el.querySelector('span:last-child');
+      if (existing && existing !== el.querySelector('.material-symbols-outlined')) {
+        existing.textContent = label;
+      }
+    }
+  }
+
+  function setHubOpenBtn() {
+    updateButtonLabel(document.getElementById('myTreesHubOpenBtn'), 'myTrees.entry_appreciation', '감상하기', 'Open appreciation view');
+  }
+
+  function setHubPublicViewBtn() {
+    updateButtonLabel(document.getElementById('myTreesHubPublicViewBtn'), 'myTrees.entry_public_view', '공개 화면 보기', 'View public page');
+  }
+
+  function setHubEditBtn() {
+    updateButtonLabel(document.getElementById('myTreesHubEditBtn'), 'myTrees.entry_edit', '편집하기', 'Edit');
   }
 
   function setHubShareBtn() {
@@ -117,8 +136,9 @@
 
     setText('myTreesHubTitle', 'myTrees.hub_title', '내 러브트리');
     setText('myTreesHubBadge', 'myTrees.hub_badge', '선택한 내 트리');
-    setText('myTreesHubEditBtn', 'myTrees.hub_edit', '편집하기');
     setHubOpenBtn();
+    setHubPublicViewBtn();
+    setHubEditBtn();
     setHubShareBtn();
 
     var retryBtn = document.getElementById('retryLoadBtn');
@@ -147,6 +167,16 @@
       if (count !== null) {
         el.textContent = tText('myTrees.moment_count_compact', '순간 {count}개').replace('{count}', count);
       }
+    });
+
+    document.querySelectorAll('.tree-card-open-link[data-i18n], .tree-card-open-link [data-i18n]').forEach(function(el) {
+      el.textContent = tText('myTrees.entry_appreciation', '감상하기');
+    });
+    document.querySelectorAll('.tree-card-public-view-link[data-i18n], .tree-card-public-view-link [data-i18n]').forEach(function(el) {
+      el.textContent = tText('myTrees.entry_public_view', '공개 화면 보기');
+    });
+    document.querySelectorAll('.tree-card-edit-link[data-i18n], .tree-card-edit-link [data-i18n]').forEach(function(el) {
+      el.textContent = tText('myTrees.entry_edit', '편집하기');
     });
   }
 

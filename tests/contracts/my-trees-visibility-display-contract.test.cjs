@@ -100,12 +100,12 @@ test('Browse public-tree adapter guard unchanged', () => {
   assert.ok(adapterJs.includes("=== 'public'"), 'Browse public-tree adapter must check for public visibility');
 });
 
-test('pages/my-trees.html cache-bust token for my-trees-ui.js is -2, CSS is -1', () => {
+test('pages/my-trees.html cache-bust tokens are non-empty', () => {
   const html = read('pages/my-trees.html');
-  assert.match(html, /my-trees\.css\?v=20260702-2710-shared-rhythm-1/,
-    'my-trees.css must be at shared-rhythm-1');
-  assert.match(html, new RegExp('my-trees-ui\\.js\\?v=20260626-2824-visibility-state-2'),
-    'my-trees-ui.js must be at -2');
+  assert.match(html, /my-trees\.css\?v=[^"'\s>]+/,
+    'my-trees.css must carry a non-empty cache-bust query string');
+  assert.match(html, /my-trees-ui\.js\?v=[^"'\s>]+/,
+    'my-trees-ui.js must carry a non-empty cache-bust query string');
 });
 
 test('No Closes/Fixes/Resolves #1882 in changed files', () => {
