@@ -476,12 +476,14 @@ test('preflight CHECK fixtures', { concurrency: false }, async () => {
     ],
     [
       'check_anchor_kind_null',
-      `ALTER TABLE public.social_audit_log DROP CONSTRAINT social_audit_log_generic_target_pair_check; ALTER TABLE public.social_audit_log ADD CONSTRAINT social_audit_log_generic_target_pair_check CHECK (target_kind IS NULL);`,
+      // Existing post-Migration A rows have target_kind='memory'; clear rows so the
+      // adversarial CHECK can be installed as a validated object for preflight rejection.
+      `ALTER TABLE public.social_audit_log DROP CONSTRAINT social_audit_log_generic_target_pair_check; DELETE FROM public.social_audit_log; ALTER TABLE public.social_audit_log ADD CONSTRAINT social_audit_log_generic_target_pair_check CHECK (target_kind IS NULL);`,
       'GENERIC_SOCIAL_A_CHECK_DEFINITION_MISMATCH',
     ],
     [
       'check_anchor_id_null',
-      `ALTER TABLE public.social_audit_log DROP CONSTRAINT social_audit_log_generic_target_pair_check; ALTER TABLE public.social_audit_log ADD CONSTRAINT social_audit_log_generic_target_pair_check CHECK (target_id IS NULL);`,
+      `ALTER TABLE public.social_audit_log DROP CONSTRAINT social_audit_log_generic_target_pair_check; DELETE FROM public.social_audit_log; ALTER TABLE public.social_audit_log ADD CONSTRAINT social_audit_log_generic_target_pair_check CHECK (target_id IS NULL);`,
       'GENERIC_SOCIAL_A_CHECK_DEFINITION_MISMATCH',
     ],
     [
