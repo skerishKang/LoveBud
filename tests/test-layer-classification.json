@@ -3527,6 +3527,18 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/tree-comments-write-client-3527.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Reads production module source and executes js/social/tree-comments-write-client.js in a local process with mocked LoveTreeBaseApiFetch; asserts POST contract, validation, and safe DTO normalization for whole-tree comments (#3527).",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/public-viewer-tree-comment-composer-3527.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Reads production module source and executes public-viewer tree comment composer + panel in a local process with fake DOM and injectable createTreeComment; asserts guest/auth UX, idempotency, stale guards, and tree-vs-moment separation (#3527).",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/tree-layout-persistence-ownership-audit-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",

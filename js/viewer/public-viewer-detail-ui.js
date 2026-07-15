@@ -586,7 +586,54 @@
 
         var _cachedTreeLikeControl = null;
         var _cachedTreeCommentsControl = null;
+        var _cachedTreeCommentComposer = null;
         var _lastTreeId = null;
+
+        function getHasConfirmedAuthSession() {
+            if (window.LoveBudAuthPolicy && typeof window.LoveBudAuthPolicy.hasConfirmedAuthSession === 'function') {
+                return !!window.LoveBudAuthPolicy.hasConfirmedAuthSession();
+            }
+            if (window.LoveBudAuth && typeof window.LoveBudAuth.hasConfirmedAuthSession === 'function') {
+                return !!window.LoveBudAuth.hasConfirmedAuthSession();
+            }
+            return false;
+        }
+
+        function ensureTreeCommentComposer(treeCommentsControl, treeId) {
+            if (!treeCommentsControl || !treeId) return null;
+            if (_cachedTreeCommentComposer) return _cachedTreeCommentComposer;
+
+            var factory = window.LoveBudPublicViewerTreeCommentComposer;
+            if (!factory || typeof factory.createPublicViewerTreeCommentComposerBoundary !== 'function') {
+                return null;
+            }
+
+            var writeApi = window.LoveBudTreeCommentsWrite;
+            var createTreeComment = writeApi && typeof writeApi.createTreeComment === 'function'
+                ? function (id, body, key) {
+                    return writeApi.createTreeComment(id, body, key);
+                }
+                : null;
+
+            _cachedTreeCommentComposer = factory.createPublicViewerTreeCommentComposerBoundary({
+                i18n: i18n,
+                hasConfirmedAuthSession: getHasConfirmedAuthSession,
+                createTreeComment: createTreeComment,
+                onCreated: function (comment) {
+                    if (_cachedTreeCommentsControl &&
+                        typeof _cachedTreeCommentsControl.applyCreatedComment === 'function') {
+                        _cachedTreeCommentsControl.applyCreatedComment(comment);
+                    }
+                },
+                refreshTreeComments: function () {
+                    if (_cachedTreeCommentsControl &&
+                        typeof _cachedTreeCommentsControl.refresh === 'function') {
+                        _cachedTreeCommentsControl.refresh();
+                    }
+                }
+            });
+            return _cachedTreeCommentComposer;
+        }
 
         return function updatePublicViewerTreeMeta(data) {
             var treeMetaMount = document.getElementById('detailTreeMetaMount');
@@ -612,8 +659,12 @@
             var treeLikeControlEl = null;
             if (treeId && treeId !== _lastTreeId) {
                 _lastTreeId = treeId;
+                if (_cachedTreeCommentComposer && typeof _cachedTreeCommentComposer.destroy === 'function') {
+                    _cachedTreeCommentComposer.destroy();
+                }
                 _cachedTreeLikeControl = null;
                 _cachedTreeCommentsControl = null;
+                _cachedTreeCommentComposer = null;
             }
             if (treeId && !_cachedTreeLikeControl) {
                 var treeLikeFactory = window.LoveBudTreeLikeControl;
@@ -673,9 +724,35 @@
                         var tcc = treeCommentsFactory.createTreeCommentsReadOnlyControl({
                             i18n: i18n,
                             showToast: showToast,
-                            treeId: treeId
+                            treeId: treeId,
+                            onPanelOpen: function (ctx) {
+                                var composer = ensureTreeCommentComposer(_cachedTreeCommentsControl, treeId);
+                                if (!composer || typeof composer.update !== 'function') return;
+                                var mount =
+                                    (ctx && ctx.mountEl) ||
+                                    (_cachedTreeCommentsControl.getComposerMountElement &&
+                                        _cachedTreeCommentsControl.getComposerMountElement());
+                                composer.update({
+                                    open: true,
+                                    treeId: (ctx && ctx.treeId) || treeId,
+                                    generation: ctx && typeof ctx.generation === 'number'
+                                        ? ctx.generation
+                                        : (_cachedTreeCommentsControl.getGeneration
+                                            ? _cachedTreeCommentsControl.getGeneration()
+                                            : 0),
+                                    mountEl: mount
+                                });
+                            },
+                            onPanelClose: function () {
+                                if (_cachedTreeCommentComposer &&
+                                    typeof _cachedTreeCommentComposer.update === 'function') {
+                                    _cachedTreeCommentComposer.update({ open: false });
+                                }
+                            }
                         });
                         _cachedTreeCommentsControl = tcc;
+                        // Pre-create composer so first open can mount immediately.
+                        ensureTreeCommentComposer(tcc, treeId);
                     }
                 }
                 if (_cachedTreeCommentsControl) {
