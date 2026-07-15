@@ -81,12 +81,12 @@ test('public viewer excludes editor authoring-only script stacks', () => {
   });
 });
 
-test('public viewer detail UI uses the #3527 cache-refresh version', () => {
+test('public viewer detail UI uses the #3529 cache-refresh version', () => {
   const scripts = getRawScriptSrcs();
 
   assert.ok(
-    scripts.includes('../js/viewer/public-viewer-detail-ui.js?v=20260715-3527-1'),
-    'viewer detail UI script must use #3527 cache version (tree comment composer wiring)'
+    scripts.includes('../js/viewer/public-viewer-detail-ui.js?v=20260715-3529-1'),
+    'viewer detail UI script must use #3529 cache version (canonical LoveTreeAuthPolicy)'
   );
 });
 

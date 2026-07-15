@@ -590,11 +590,21 @@
         var _lastTreeId = null;
 
         function getHasConfirmedAuthSession() {
-            if (window.LoveBudAuthPolicy && typeof window.LoveBudAuthPolicy.hasConfirmedAuthSession === 'function') {
-                return !!window.LoveBudAuthPolicy.hasConfirmedAuthSession();
+            // Canonical export is window.LoveTreeAuthPolicy (js/api/auth-policy.js). Refs #3529.
+            try {
+                if (window.LoveTreeAuthPolicy &&
+                    typeof window.LoveTreeAuthPolicy.hasConfirmedAuthSession === 'function') {
+                    return !!window.LoveTreeAuthPolicy.hasConfirmedAuthSession();
+                }
+            } catch (e) {
+                // Fail closed: throwing policy must not enable write UI.
             }
-            if (window.LoveBudAuth && typeof window.LoveBudAuth.hasConfirmedAuthSession === 'function') {
-                return !!window.LoveBudAuth.hasConfirmedAuthSession();
+            try {
+                if (window.LoveBudAuth && typeof window.LoveBudAuth.hasConfirmedAuthSession === 'function') {
+                    return !!window.LoveBudAuth.hasConfirmedAuthSession();
+                }
+            } catch (e) {
+                // Fail closed.
             }
             return false;
         }
