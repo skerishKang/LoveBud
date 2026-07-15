@@ -402,12 +402,26 @@ test('reconcile migration does not drop the legacy PK by guessed name; reads it 
   assert.equal(/DROP CONSTRAINT IF EXISTS/i.test(content), false, 'Must not guess/IF EXISTS drop constraints');
 });
 
-// ─── 7. View / dependency guards (view + materialized view) ──────────────────
+// ─── 7. View / dependency guards (view + materialized view via pg_rewrite) ───
 
 test('reconcile migration guards normal views and materialized views', () => {
-  assert.match(sql, /relkind='v'/i, 'Must check for dependent normal views (relkind v)');
-  assert.match(sql, /relkind='m'/i, 'Must check for dependent materialized views (relkind m)');
+  assert.match(sql, /relkind\s*=\s*'v'/i, 'Must check for dependent normal views (relkind v)');
+  assert.match(sql, /relkind\s*=\s*'m'/i, 'Must check for dependent materialized views (relkind m)');
   assert.match(sql, /dependent materialized views reference tree_comments/i, 'Must fail closed on dependent materialized views');
+});
+
+test('reconcile migration detects view dependencies through pg_rewrite traversal', () => {
+  assert.match(sql, /pg_rewrite/i, 'Must join pg_rewrite for view dependency detection');
+  assert.match(sql, /r\.ev_class|ev_class/i, 'Must connect rewrite rules via ev_class to pg_class');
+  assert.match(sql, /classid\s*=\s*'pg_rewrite'::regclass/i, 'Must require depend classid = pg_rewrite');
+  assert.match(sql, /refclassid\s*=\s*'pg_class'::regclass/i, 'Must require depend refclassid = pg_class');
+  assert.match(sql, /count\s*\(\s*DISTINCT\s+c\.oid\s*\)/i, 'Must count DISTINCT relation oids to avoid column-level double counts');
+  // Obsolete direct join must not remain for view/matview dependency detection.
+  assert.equal(
+    /JOIN\s+pg_depend\s+d\s+ON\s+d\.refobjid\s*=\s*'public\.tree_comments'::regclass\s+AND\s+d\.objid\s*=\s*c\.oid/i.test(sql),
+    false,
+    'Must not use obsolete direct pg_depend.objid = pg_class.oid view join'
+  );
 });
 
 // ─── 8. Zero-row / fail-closed guards ───────────────────────────────────────

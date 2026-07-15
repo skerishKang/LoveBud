@@ -2123,6 +2123,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/tree-comments-db-engine-harness-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Reads package.json, CI workflow, and the db-engine harness source and asserts script separation, pinned postgres service markers, loopback guards, and phase markers; does not execute PostgreSQL, migration SQL, or any external system.",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/ops-next-work-recommendation-loop-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
@@ -3546,7 +3552,6 @@
     },
     {
       "path": "tests/contracts/tree-layout-persistence-ownership-audit-contract.test.cjs",
-
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
       "capabilities": []
@@ -4300,6 +4305,17 @@
       "layer": "SUPPLEMENTAL_PYTHON",
       "rationale": "Python test executed outside the default Node CI chain (separate command/manual run); not enumerated by package.json test script.",
       "capabilities": []
+    },
+    {
+      "path": "tests/db-engine/tree-comments-reconcile-postgres.test.cjs",
+      "defaultCi": false,
+      "layer": "DB_ENGINE_EXECUTION",
+      "rationale": "Executes repository migration and rollback SQL against a synthetic disposable PostgreSQL 17.4 database in an isolated CI service; it does not contact Production, staging, Neon, or any shared environment.",
+      "capabilities": [
+        "postgresql",
+        "child_process",
+        "filesystem"
+      ]
     }
   ]
 }

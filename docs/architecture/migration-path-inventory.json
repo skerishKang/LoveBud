@@ -397,7 +397,7 @@
       "recommended_disposition": "do not generalize; use future canonical migrations",
       "linked_issue": "#3431, #3458",
       "baseline_sha": "5d601154cfa45a4885e30fc190446ce3b9623aa0",
-      "content_checksum": "sha256:9f5ff89d8a1bb77c65426948577d4fca0ae98d9ad40adac19112c16afde8f155"
+      "content_checksum": "sha256:23c1c1fe22fdd65f52d5dabb578ab66988bca2e6e978dbe76dd7e65ab119bb17"
     },
     {
       "path": "scripts/migration-repair-trees-schema-3435.sql",
@@ -437,7 +437,7 @@
       "recommended_disposition": "never auto-run; require approved recovery decision",
       "linked_issue": "#3423, #3458",
       "baseline_sha": "5d601154cfa45a4885e30fc190446ce3b9623aa0",
-      "content_checksum": "sha256:311e58aec22da944f77a88f8730da49fad4e9275f0afb58947c107f6561c18ef"
+      "content_checksum": "sha256:9c611ec2707ec050c9c3b9f3aeccc71be1f5696bc85775fabb3609f9626c5710"
     },
     {
       "path": "scripts/seed-public-multi-branch-fixture.cjs",

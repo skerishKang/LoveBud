@@ -30,7 +30,10 @@ const PACKAGE_PATH = path.join(ROOT, 'package.json');
 // truth for enumeration; it reads package.json.scripts.test instead.
 const DEFAULT_CI_GLOBS = ['tests/smoke/*.test.cjs', 'tests/routes/*.test.cjs', 'tests/contracts/*.test.cjs'];
 
-const SUPPLEMENTAL_VOCABULARY = ['SUPPLEMENTAL_PYTHON'];
+// Supplemental layers allowed outside default-CI enumeration.
+// SUPPLEMENTAL_PYTHON: Python tests (path must end with .py)
+// DB_ENGINE_EXECUTION: disposable PostgreSQL engine tests (path must end with .cjs)
+const SUPPLEMENTAL_VOCABULARY = ['SUPPLEMENTAL_PYTHON', 'DB_ENGINE_EXECUTION'];
 
 // Shell operators / constructs that are not supported in the test command.
 const SHELL_OPERATORS = ['&&', '||', ';'];
@@ -205,9 +208,13 @@ function enumerateDefaultCi(globs) {
 
 /**
  * Validate the supplemental (out-of-default-CI) inventory entries.
- * Each entry must be a real `.py` file, flagged `defaultCi: false`, use the
- * allowed supplemental layer, carry a non-empty rationale, not overlap the
- * default-CI enumerated set, and not be duplicated.
+ *
+ * Allowed shapes:
+ * - SUPPLEMENTAL_PYTHON: real `.py` path, defaultCi:false
+ * - DB_ENGINE_EXECUTION: real `.cjs` path under tests/db-engine/, defaultCi:false
+ *
+ * All entries must carry a non-empty rationale, array capabilities, not overlap
+ * the default-CI enumerated set, and not be duplicated.
  */
 function validateSupplemental(inv, enumeratedSet) {
   const suppEntries = Array.isArray(inv.supplemental) ? inv.supplemental : [];
@@ -227,8 +234,14 @@ function validateSupplemental(inv, enumeratedSet) {
     if (seen.has(sp)) duplicates.push(sp);
     else seen.add(sp);
     if (s.defaultCi !== false) inDefaultCi.push(sp);
-    if (!SUPPLEMENTAL_VOCABULARY.includes(s.layer)) invalid.push(sp);
-    if (!sp.endsWith('.py')) invalid.push(sp);
+    if (!SUPPLEMENTAL_VOCABULARY.includes(s.layer)) {
+      invalid.push(sp);
+    } else if (s.layer === 'SUPPLEMENTAL_PYTHON') {
+      if (!sp.endsWith('.py')) invalid.push(sp);
+    } else if (s.layer === 'DB_ENGINE_EXECUTION') {
+      if (!sp.endsWith('.cjs')) invalid.push(sp);
+      if (!sp.startsWith('tests/db-engine/')) invalid.push(sp);
+    }
     if (!s.rationale || !String(s.rationale).trim()) emptyRationale.push(sp);
     if (!Array.isArray(s.capabilities)) invalidCapabilities.push(sp);
     if (enumeratedSet.has(sp)) inDefaultCi.push(sp);
