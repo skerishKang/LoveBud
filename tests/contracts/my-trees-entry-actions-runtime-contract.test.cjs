@@ -166,6 +166,7 @@ function createFakeWindow() {
   win.LoveBudSecurity = { escapeHtml: function(v) { return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); } };
   win.Math = Math;
   win.JSON = JSON;
+  win.URL = URL;
   win.encodeURIComponent = function(s) { return global.encodeURIComponent(s); };
   return win;
 }
@@ -225,6 +226,10 @@ function buildFakePreloadedWindow() {
 function triggerClick(el) {
   var fns = el.listeners && el.listeners['click'];
   if (fns) fns.forEach(function(fn) { fn({ type: 'click', target: el, preventDefault: function() {}, stopPropagation: function() {} }); });
+  // Also invoke a direct onclick property (used by hub action buttons).
+  if (typeof el.onclick === 'function') {
+    el.onclick({ type: 'click', target: el, preventDefault: function() {}, stopPropagation: function() {} });
+  }
 }
 
 function triggerKeydown(el, key) {
@@ -735,4 +740,375 @@ test('22. arbitrary URL or route injection is blocked in resolveMyTreesEntryTarg
   assert.equal(model.primary.href.indexOf('https://'), -1);
   assert.equal(model.primary.href.indexOf('//'), -1);
   assert.equal(model.primary.href, 'editor?treeId=safe');
+});
+
+/* ── Helpers for malformed resolver output tests (Section 4) ── */
+
+// Build a UI context with a fake resolver overriding the real one.
+function buildUIContextWithFakeResolver(fakeResolver) {
+  var ctx = createVMContext();
+  var api = require('node:vm');
+  api.createContext(ctx);
+  api.runInContext(read('js/my-trees/my-trees-entry-target-resolver.js'), ctx);
+  api.runInContext(read('js/my-trees/my-trees-ui.js'), ctx);
+  // Override with the fake implementation.
+  ctx.window.LoveBudMyTreesEntryTargetResolver = fakeResolver;
+  return ctx;
+}
+
+// A fully canonical resolver bundle factory for a given id/visibility,
+// so tests can override only the malformed field.
+function canonicalBundle(id, visibility) {
+  var encId = encodeURIComponent(id);
+  return {
+    treeId: id,
+    accessState: visibility === 'public' ? 'public' : (visibility === 'private' ? 'private' : 'unknown'),
+    primary: { available: true, href: 'editor?treeId=' + encId, action: 'appreciation', interactionMode: 'appreciation', routeSurface: 'editor' },
+    publicView: visibility === 'public'
+      ? { available: true, href: 'view.html?treeId=' + encId, action: 'public-view', interactionMode: 'none', routeSurface: 'public-viewer' }
+      : { available: false, href: null, action: 'public-view', interactionMode: 'none', routeSurface: 'public-viewer' },
+    edit: { available: true, href: 'editor?treeId=' + encId + '&mode=edit', action: 'edit', interactionMode: 'edit', routeSurface: 'editor' }
+  };
+}
+
+// Each malformed case: run validateAndResolveEntryTargets and assert the
+// expected fail-closed result. Conflicting metadata → whole bundle null.
+test('23. malformed: primary href targets view.html but metadata editor/appreciation → bundle null', function() {
+  var id = 't1';
+  var bundle = canonicalBundle(id, 'public');
+  bundle.primary.href = 'view.html?treeId=' + encodeURIComponent(id);
+  var ctx = buildUIContextWithFakeResolver({ resolveMyTreesEntryTargets: function() { return bundle; } });
+  var UI = ctx.window.LoveBudMyTreesUI;
+  var resolved = UI.validateAndResolveEntryTargets({ id: id, visibility: 'public' });
+  assert.equal(resolved.primary, null);
+  assert.equal(resolved.publicView, null);
+  assert.equal(resolved.edit, null);
+});
+
+test('24. malformed: primary href is arbitrary-relative-page → bundle null', function() {
+  var id = 't1';
+  var bundle = canonicalBundle(id, 'public');
+  bundle.primary.href = 'some-other-page?treeId=' + encodeURIComponent(id);
+  var ctx = buildUIContextWithFakeResolver({ resolveMyTreesEntryTargets: function() { return bundle; } });
+  var UI = ctx.window.LoveBudMyTreesUI;
+  var resolved = UI.validateAndResolveEntryTargets({ id: id, visibility: 'public' });
+  assert.equal(resolved.primary, null);
+  assert.equal(resolved.edit, null);
+});
+
+test('25. malformed: primary href tree id differs from input id → bundle null', function() {
+  var id = 't1';
+  var bundle = canonicalBundle(id, 'public');
+  bundle.primary.href = 'editor?treeId=other-id';
+  var ctx = buildUIContextWithFakeResolver({ resolveMyTreesEntryTargets: function() { return bundle; } });
+  var UI = ctx.window.LoveBudMyTreesUI;
+  var resolved = UI.validateAndResolveEntryTargets({ id: id, visibility: 'public' });
+  assert.equal(resolved.primary, null);
+  assert.equal(resolved.publicView, null);
+  assert.equal(resolved.edit, null);
+});
+
+test('26. malformed: primary href has extra query → bundle null', function() {
+  var id = 't1';
+  var bundle = canonicalBundle(id, 'public');
+  bundle.primary.href = 'editor?treeId=' + encodeURIComponent(id) + '&extra=1';
+  var ctx = buildUIContextWithFakeResolver({ resolveMyTreesEntryTargets: function() { return bundle; } });
+  var UI = ctx.window.LoveBudMyTreesUI;
+  var resolved = UI.validateAndResolveEntryTargets({ id: id, visibility: 'public' });
+  assert.equal(resolved.primary, null);
+});
+
+test('27. malformed: primary href has fragment → bundle null', function() {
+  var id = 't1';
+  var bundle = canonicalBundle(id, 'public');
+  bundle.primary.href = 'editor?treeId=' + encodeURIComponent(id) + '#frag';
+  var ctx = buildUIContextWithFakeResolver({ resolveMyTreesEntryTargets: function() { return bundle; } });
+  var UI = ctx.window.LoveBudMyTreesUI;
+  var resolved = UI.validateAndResolveEntryTargets({ id: id, visibility: 'public' });
+  assert.equal(resolved.primary, null);
+});
+
+test('28. malformed: edit href missing mode=edit → bundle null (fail-closed)', function() {
+  var id = 't1';
+  var bundle = canonicalBundle(id, 'public');
+  bundle.edit.href = 'editor?treeId=' + encodeURIComponent(id);
+  var ctx = buildUIContextWithFakeResolver({ resolveMyTreesEntryTargets: function() { return bundle; } });
+  var UI = ctx.window.LoveBudMyTreesUI;
+  var resolved = UI.validateAndResolveEntryTargets({ id: id, visibility: 'public' });
+  assert.equal(resolved.primary, null, 'bundle fail-closed: primary null');
+  assert.equal(resolved.edit, null, 'bundle fail-closed: edit null');
+  assert.equal(resolved.publicView, null, 'bundle fail-closed: publicView null');
+});
+
+test('29. malformed: edit href tree id mismatch → bundle null (fail-closed)', function() {
+  var id = 't1';
+  var bundle = canonicalBundle(id, 'public');
+  bundle.edit.href = 'editor?treeId=other-id&mode=edit';
+  var ctx = buildUIContextWithFakeResolver({ resolveMyTreesEntryTargets: function() { return bundle; } });
+  var UI = ctx.window.LoveBudMyTreesUI;
+  var resolved = UI.validateAndResolveEntryTargets({ id: id, visibility: 'public' });
+  assert.equal(resolved.primary, null, 'bundle fail-closed: primary null');
+  assert.equal(resolved.edit, null, 'bundle fail-closed: edit null');
+  assert.equal(resolved.publicView, null, 'bundle fail-closed: publicView null');
+});
+
+test('30. malformed: publicView href is editor route → publicView null', function() {
+  var id = 't1';
+  var bundle = canonicalBundle(id, 'public');
+  bundle.publicView.href = 'editor?treeId=' + encodeURIComponent(id);
+  var ctx = buildUIContextWithFakeResolver({ resolveMyTreesEntryTargets: function() { return bundle; } });
+  var UI = ctx.window.LoveBudMyTreesUI;
+  var resolved = UI.validateAndResolveEntryTargets({ id: id, visibility: 'public' });
+  assert.equal(resolved.publicView, null);
+});
+
+test('31. malformed: publicView href extra query/fragment → publicView null', function() {
+  var id = 't1';
+  var bundle = canonicalBundle(id, 'public');
+  bundle.publicView.href = 'view.html?treeId=' + encodeURIComponent(id) + '&x=1#f';
+  var ctx = buildUIContextWithFakeResolver({ resolveMyTreesEntryTargets: function() { return bundle; } });
+  var UI = ctx.window.LoveBudMyTreesUI;
+  var resolved = UI.validateAndResolveEntryTargets({ id: id, visibility: 'public' });
+  assert.equal(resolved.publicView, null);
+});
+
+test('32. malformed: private input but targets.accessState=public → bundle null', function() {
+  var id = 't1';
+  var bundle = canonicalBundle(id, 'private');
+  bundle.accessState = 'public';
+  bundle.publicView = { available: true, href: 'view.html?treeId=' + encodeURIComponent(id), action: 'public-view', interactionMode: 'none', routeSurface: 'public-viewer' };
+  var ctx = buildUIContextWithFakeResolver({ resolveMyTreesEntryTargets: function() { return bundle; } });
+  var UI = ctx.window.LoveBudMyTreesUI;
+  var resolved = UI.validateAndResolveEntryTargets({ id: id, visibility: 'private' });
+  assert.equal(resolved.primary, null);
+  assert.equal(resolved.publicView, null);
+  assert.equal(resolved.edit, null);
+});
+
+test('33. malformed: private input but publicView.available=true → bundle null', function() {
+  var id = 't1';
+  var bundle = canonicalBundle(id, 'private');
+  bundle.publicView = { available: true, href: 'view.html?treeId=' + encodeURIComponent(id), action: 'public-view', interactionMode: 'none', routeSurface: 'public-viewer' };
+  // accessState stays 'private' (correct), but publicView wrongly available.
+  var ctx = buildUIContextWithFakeResolver({ resolveMyTreesEntryTargets: function() { return bundle; } });
+  var UI = ctx.window.LoveBudMyTreesUI;
+  var resolved = UI.validateAndResolveEntryTargets({ id: id, visibility: 'private' });
+  assert.equal(resolved.primary, null);
+  assert.equal(resolved.publicView, null);
+  assert.equal(resolved.edit, null);
+});
+
+test('34. malformed: targets.treeId != input tree id → bundle null', function() {
+  var id = 't1';
+  var bundle = canonicalBundle(id, 'public');
+  bundle.treeId = 'different-id';
+  var ctx = buildUIContextWithFakeResolver({ resolveMyTreesEntryTargets: function() { return bundle; } });
+  var UI = ctx.window.LoveBudMyTreesUI;
+  var resolved = UI.validateAndResolveEntryTargets({ id: id, visibility: 'public' });
+  assert.equal(resolved.primary, null);
+  assert.equal(resolved.publicView, null);
+  assert.equal(resolved.edit, null);
+});
+
+test('35. malformed: accessState is not a canonical value → bundle null', function() {
+  var id = 't1';
+  var bundle = canonicalBundle(id, 'public');
+  bundle.accessState = 'PUBLIC';
+  var ctx = buildUIContextWithFakeResolver({ resolveMyTreesEntryTargets: function() { return bundle; } });
+  var UI = ctx.window.LoveBudMyTreesUI;
+  var resolved = UI.validateAndResolveEntryTargets({ id: id, visibility: 'public' });
+  assert.equal(resolved.primary, null);
+  assert.equal(resolved.publicView, null);
+  assert.equal(resolved.edit, null);
+});
+
+test('36. card with malformed resolver output → zero navigation assignments', function() {
+  var id = 't1';
+  var bundle = canonicalBundle(id, 'public');
+  bundle.primary.href = 'view.html?treeId=' + encodeURIComponent(id); // malformed
+  var win = buildFakePreloadedWindow();
+  win.innerWidth = 375;
+  var ctx = win;
+  ctx.window = ctx;
+  var api = require('node:vm');
+  api.createContext(ctx);
+  api.runInContext(read('js/my-trees/my-trees-entry-target-resolver.js'), ctx);
+  api.runInContext(read('js/my-trees/my-trees-ui.js'), ctx);
+  api.runInContext(read('js/my-trees/my-trees-card-events.js'), ctx);
+  ctx.window.LoveBudMyTreesEntryTargetResolver = { resolveMyTreesEntryTargets: function() { return bundle; } };
+
+  var navLog = [];
+  Object.defineProperty(ctx.window.location, 'href', {
+    set: function(v) { navLog.push(v); },
+    get: function() { return navLog[navLog.length - 1] || ''; }
+  });
+
+  var card = ctx.window.LoveBudMyTreesUI.buildTreeCard(
+    { id: id, visibility: 'public', title: 'T' },
+    { i18n: function(k) { return k; } }
+  );
+  triggerClick(card);
+  triggerKeydown(card, 'Enter');
+  assert.equal(navLog.length, 0, 'malformed resolver output should produce zero navigation assignments');
+});
+
+test('37. hub with malformed resolver output → actions hidden, share hidden', function() {
+  var id = 't1';
+  var bundle = canonicalBundle(id, 'public');
+  bundle.primary.href = 'view.html?treeId=' + encodeURIComponent(id); // malformed
+  var ctx = buildFakePreloadedWindow();
+  var api = require('node:vm');
+  api.createContext(ctx);
+  api.runInContext(read('js/my-trees/my-trees-entry-target-resolver.js'), ctx);
+  api.runInContext(read('js/my-trees/my-trees-ui.js'), ctx);
+  api.runInContext(read('js/my-trees/my-trees-preview-hub.js'), ctx);
+  ctx.window.LoveBudMyTreesEntryTargetResolver = { resolveMyTreesEntryTargets: function() { return bundle; } };
+
+  var hub = ctx.window.LoveBudMyTreesPreviewHub;
+  var openBtn = ctx.document.getElementById('myTreesHubOpenBtn');
+  var publicViewBtn = ctx.document.getElementById('myTreesHubPublicViewBtn');
+  var editBtn = ctx.document.getElementById('myTreesHubEditBtn');
+  var shareBtn = ctx.document.getElementById('myTreesHubShareBtn');
+
+  hub.showContent({ id: id, visibility: 'public', title: 'T' });
+
+  assert.equal(openBtn.hidden, true, 'malformed bundle should hide open button');
+  assert.equal(publicViewBtn.hidden, true, 'malformed bundle should hide public-view button');
+  assert.equal(editBtn.hidden, true, 'malformed bundle should hide edit button');
+  assert.equal(shareBtn.hidden, true, 'malformed bundle should hide share button');
+});
+
+/* ── Section 5: Share clipboard URL execution ── */
+
+function buildShareContext(currentHref) {
+  var ctx = buildFakePreloadedWindow();
+  var api = require('node:vm');
+  api.createContext(ctx);
+  api.runInContext(read('js/my-trees/my-trees-entry-target-resolver.js'), ctx);
+  api.runInContext(read('js/my-trees/my-trees-ui.js'), ctx);
+  api.runInContext(read('js/my-trees/my-trees-preview-hub.js'), ctx);
+
+  // Set the current document URL for share URL resolution.
+  Object.defineProperty(ctx.window.location, 'href', {
+    configurable: true,
+    get: function() { return currentHref; },
+    set: function() {}
+  });
+  ctx.window.location.origin = currentHref.split('?')[0].split('/pages/')[0].split('/my-trees')[0];
+  ctx.window.location.pathname = currentHref.split('?')[0].replace(ctx.window.location.origin, '');
+
+  // Base path resolver must reflect the actual deploy context:
+  // on /pages/* the relative hrefs are already rooted, elsewhere prefix 'pages/'.
+  ctx.window.LoveBudPath = {
+    getBasePath: function() {
+      return ctx.window.location.pathname.indexOf('/pages/') !== -1 ? '' : 'pages/';
+    }
+  };
+
+  // Fake clipboard log.
+  var clipboardLog = [];
+  ctx.window.navigator.clipboard = {
+    writeText: function(value) {
+      clipboardLog.push(value);
+      return Promise.resolve();
+    }
+  };
+  ctx._clipboardLog = clipboardLog;
+  return ctx;
+}
+
+test('38. public tree share clipboard URL is exact (pages context)', function() {
+  var currentHref = 'http://localhost/pages/my-trees.html';
+  var ctx = buildShareContext(currentHref);
+  var hub = ctx.window.LoveBudMyTreesPreviewHub;
+  var shareBtn = ctx.document.getElementById('myTreesHubShareBtn');
+
+  hub.showContent({ id: 'pub-tree', visibility: 'public', title: 'Pub' });
+  assert.equal(shareBtn.hidden, false, 'public share should be visible');
+
+  triggerClick(shareBtn);
+
+  assert.equal(ctx._clipboardLog.length, 1, 'clipboard should be called exactly once');
+  var written = ctx._clipboardLog[0];
+  var url = new URL(written);
+  assert.equal(url.origin, 'http://localhost');
+  assert.equal(url.pathname, '/pages/view.html');
+  assert.equal(url.searchParams.get('treeId'), 'pub-tree');
+  assert.equal(url.searchParams.get('from'), 'shared');
+});
+
+test('39. public tree share clipboard URL is exact (root context)', function() {
+  var currentHref = 'http://localhost/my-trees';
+  var ctx = buildShareContext(currentHref);
+  var hub = ctx.window.LoveBudMyTreesPreviewHub;
+  var shareBtn = ctx.document.getElementById('myTreesHubShareBtn');
+
+  hub.showContent({ id: 'pub-tree', visibility: 'public', title: 'Pub' });
+  assert.equal(shareBtn.hidden, false, 'public share should be visible');
+
+  triggerClick(shareBtn);
+
+  assert.equal(ctx._clipboardLog.length, 1, 'clipboard should be called exactly once');
+  var written = ctx._clipboardLog[0];
+  var url = new URL(written);
+  assert.equal(url.origin, 'http://localhost');
+  assert.equal(url.pathname, '/pages/view.html');
+  assert.equal(url.searchParams.get('treeId'), 'pub-tree');
+  assert.equal(url.searchParams.get('from'), 'shared');
+});
+
+test('40. private tree share clipboard calls = 0', function() {
+  var ctx = buildShareContext('http://localhost/pages/my-trees.html');
+  var hub = ctx.window.LoveBudMyTreesPreviewHub;
+  var shareBtn = ctx.document.getElementById('myTreesHubShareBtn');
+
+  hub.showContent({ id: 'priv-tree', visibility: 'private', title: 'Priv' });
+  assert.equal(shareBtn.hidden, true, 'private share should be hidden');
+
+  if (typeof shareBtn.onclick === 'function') triggerClick(shareBtn);
+  assert.equal(ctx._clipboardLog.length, 0, 'private tree should never call clipboard');
+});
+
+test('41. unknown tree share clipboard calls = 0', function() {
+  var ctx = buildShareContext('http://localhost/pages/my-trees.html');
+  var hub = ctx.window.LoveBudMyTreesPreviewHub;
+  var shareBtn = ctx.document.getElementById('myTreesHubShareBtn');
+
+  hub.showContent({ id: 'unk-tree', visibility: null, title: 'Unk' });
+  assert.equal(shareBtn.hidden, true, 'unknown share should be hidden');
+
+  if (typeof shareBtn.onclick === 'function') triggerClick(shareBtn);
+  assert.equal(ctx._clipboardLog.length, 0, 'unknown tree should never call clipboard');
+});
+
+test('42. invalid id tree share clipboard calls = 0', function() {
+  var ctx = buildShareContext('http://localhost/pages/my-trees.html');
+  var hub = ctx.window.LoveBudMyTreesPreviewHub;
+  var shareBtn = ctx.document.getElementById('myTreesHubShareBtn');
+
+  hub.showContent({ id: '', visibility: 'public', title: 'Empty' });
+  assert.equal(shareBtn.hidden, true, 'invalid id share should be hidden');
+
+  if (typeof shareBtn.onclick === 'function') triggerClick(shareBtn);
+  assert.equal(ctx._clipboardLog.length, 0, 'invalid id tree should never call clipboard');
+});
+
+test('43. public→private transition removes stale share handler (no clipboard)', function() {
+  var ctx = buildShareContext('http://localhost/pages/my-trees.html');
+  var hub = ctx.window.LoveBudMyTreesPreviewHub;
+  var shareBtn = ctx.document.getElementById('myTreesHubShareBtn');
+
+  hub.showContent({ id: 'pub-tree', visibility: 'public', title: 'Pub' });
+  assert.equal(shareBtn.hidden, false, 'public share visible');
+  assert.equal(typeof shareBtn.onclick, 'function', 'public share handler attached');
+
+  triggerClick(shareBtn);
+  assert.equal(ctx._clipboardLog.length, 1, 'public click should write clipboard once');
+
+  hub.showContent({ id: 'priv-tree', visibility: 'private', title: 'Priv' });
+  assert.equal(shareBtn.hidden, true, 'private transition hides share');
+  assert.equal(shareBtn.onclick, null, 'stale public onclick removed');
+
+  if (typeof shareBtn.onclick === 'function') triggerClick(shareBtn);
+  assert.equal(ctx._clipboardLog.length, 1, 'after private transition clipboard must not be called again');
 });

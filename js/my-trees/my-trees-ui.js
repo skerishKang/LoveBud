@@ -12,18 +12,55 @@
   var _manageSummary = window.LoveBudMyTreesManageSummary || null;
 
     /**
-     * Canonical entry target validator.
-     * Returns safe basePath-prefixed href or null.
-     * Rejects malformed, mismatched metadata, non-available, non-string targets.
+     * Extract the first usable input tree ID from the allowlist order.
+     * Mirrors the resolver's id resolution so validated output can be
+     * checked against the exact input the user clicked.
      */
-    function validateEntryTarget(target, expectedAction, expectedInteractionMode, expectedRouteSurface) {
+    function getInputTreeId(tree) {
+      if (!tree || typeof tree !== 'object') return null;
+      var keys = ['id', 'treeId', 'tree_id'];
+      for (var i = 0; i < keys.length; i++) {
+        var raw = tree[keys[i]];
+        if (typeof raw === 'string') {
+          var trimmed = raw.replace(/^\s+|\s+$/g, '');
+          if (trimmed) return trimmed;
+        }
+      }
+      return null;
+    }
+
+    /**
+     * Expected accessState derived purely from the input visibility.
+     * Case-sensitive canonical only — no coercion.
+     */
+    function getExpectedAccessState(visibility) {
+      if (visibility === 'public') return 'public';
+      if (visibility === 'private') return 'private';
+      return 'unknown';
+    }
+
+    /**
+     * Strict canonical entry-target validator.
+     * Returns the raw target href only when every canonical field matches
+     * exactly, including the precise expected href string. Rejects any
+     * scheme, fragment, extra query, mode param, or mismatched tree id.
+     * Returns null on any deviation (fail-closed for that target).
+     */
+    function validateEntryTarget(target, expectedAction, expectedInteractionMode, expectedRouteSurface, expectedHref) {
       if (!target || typeof target !== 'object') return null;
       if (target.available !== true) return null;
       if (typeof target.href !== 'string' || !target.href) return null;
       if (target.action !== expectedAction) return null;
       if (target.interactionMode !== expectedInteractionMode) return null;
       if (target.routeSurface !== expectedRouteSurface) return null;
-      if (target.href.indexOf('://') !== -1 || target.href.indexOf('//') === 0 || target.href.indexOf('javascript:') === 0 || target.href.indexOf('#') === 0) return null;
+      // Reject dangerous schemes / fragments / protocol-relative before exact match.
+      if (target.href.indexOf('://') !== -1) return null;
+      if (target.href.indexOf('//') === 0) return null;
+      if (target.href.indexOf('javascript:') === 0) return null;
+      if (target.href.indexOf('#') === 0) return null;
+      // Exact canonical href — no mode param, no extra query, no fragment,
+      // no other tree id, no other relative route.
+      if (expectedHref !== null && target.href !== expectedHref) return null;
       return target.href;
     }
 
@@ -35,7 +72,23 @@
       return window.location.pathname.indexOf('/pages/') !== -1 ? '' : 'pages/';
     }
 
+    /**
+     * Resolve and strictly validate the owned-tree entry targets.
+     *
+     * Fail-closed rules:
+     *  - resolver missing / throws / non-object → all targets null
+     *  - no valid input tree id → all targets null
+     *  - targets.treeId !== input id → bundle fail closed (all null)
+     *  - targets.accessState !== expected (from visibility) → bundle fail closed
+     *  - private/unknown input but publicView.available === true → bundle fail closed
+     *  - per-target malformed href/metadata → that target null only
+     *
+     * Only the validated canonical href receives a safe base path ('' or 'pages/').
+     */
     function validateAndResolveEntryTargets(tree) {
+      var inputId = getInputTreeId(tree);
+      var expectedAccessState = getExpectedAccessState(tree ? tree.visibility : null);
+
       var targets = null;
       try {
         if (window.LoveBudMyTreesEntryTargetResolver && typeof window.LoveBudMyTreesEntryTargetResolver.resolveMyTreesEntryTargets === 'function') {
@@ -44,20 +97,53 @@
       } catch (e) {
         targets = null;
       }
-      if (!targets || typeof targets !== 'object') {
-        return { treeId: null, accessState: 'unknown', primary: null, publicView: null, edit: null };
-      }
+
+      var nullBundle = { treeId: null, accessState: 'unknown', primary: null, publicView: null, edit: null };
+
+      if (!targets || typeof targets !== 'object') return nullBundle;
+      if (!inputId) return nullBundle;
+      if (targets.treeId !== inputId) return nullBundle;
+      if (targets.accessState !== expectedAccessState) return nullBundle;
+
       var basePath = resolveSafeBasePath();
-      function buildHref(target, action, mode, surface) {
-        var href = validateEntryTarget(target, action, mode, surface);
+      var encId = encodeURIComponent(inputId);
+      var primaryHref = 'editor?treeId=' + encId;
+      var editHref = 'editor?treeId=' + encId + '&mode=edit';
+      var publicHref = 'view.html?treeId=' + encId;
+
+      function build(target, action, mode, surface, expectedHref) {
+        var href = validateEntryTarget(target, action, mode, surface, expectedHref);
         return href !== null ? basePath + href : null;
       }
+
+      var primary = build(targets.primary, 'appreciation', 'appreciation', 'editor', primaryHref);
+      var edit = build(targets.edit, 'edit', 'edit', 'editor', editHref);
+
+      var publicView = null;
+      if (expectedAccessState === 'public') {
+        publicView = build(targets.publicView, 'public-view', 'none', 'public-viewer', publicHref);
+      } else {
+        // private/unknown: public target must stay unavailable.
+        if (targets.publicView && targets.publicView.available === true) {
+          return nullBundle;
+        }
+        publicView = null;
+      }
+
+      // Bundle-level fail-closed: if a required target (primary or edit) is
+      // malformed, or a public tree's publicView is malformed, the entire
+      // bundle is untrusted and must be fully rejected (no partial actions).
+      // For private/unknown trees publicView is intentionally null (no public
+      // surface), which is NOT a malformation and must not trigger fail-closed.
+      if (primary === null || edit === null) return nullBundle;
+      if (expectedAccessState === 'public' && publicView === null) return nullBundle;
+
       return {
-        treeId: targets.treeId || null,
-        accessState: targets.accessState || 'unknown',
-        primary: buildHref(targets.primary, 'appreciation', 'appreciation', 'editor'),
-        publicView: buildHref(targets.publicView, 'public-view', 'none', 'public-viewer'),
-        edit: buildHref(targets.edit, 'edit', 'edit', 'editor')
+        treeId: inputId,
+        accessState: expectedAccessState,
+        primary: primary,
+        publicView: publicView,
+        edit: edit
       };
     }
 

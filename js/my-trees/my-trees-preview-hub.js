@@ -551,8 +551,17 @@
             els.shareBtn.onclick = (function(shareHref) {
                 return function(ev) {
                     ev.preventDefault();
-                    var url = window.location.origin + (shareHref.charAt(0) === '/' ? '' : '/') + shareHref + '&from=shared';
-                    var labelEl = els.shareBtn.querySelector('[data-i18n="myTrees.hub_share"]');
+                    // Resolve the validated publicView relative href against the
+                    // current document URL so the result is always correct
+                    // regardless of whether we are on /pages/my-trees.html or /my-trees.
+                    // This avoids the previous bug where a bare relative href was
+                    // concatenated to location.origin and produced /view.html.
+                    var currentHref = window.location.href ||
+                        (window.location.origin + window.location.pathname);
+                    var shareUrl = new URL(shareHref, currentHref);
+                    shareUrl.searchParams.set('from', 'shared');
+                    var url = shareUrl.toString();
+                    var labelEl = els.shareBtn.querySelector('[data-i18n=\"myTrees.hub_share\"]');
                     var origLabel = labelEl ? labelEl.textContent : '';
                     var copyFromInput = function(text) {
                         if (navigator.clipboard && navigator.clipboard.writeText) {
