@@ -789,7 +789,7 @@ test('accessibility: labels, live regions, submit/cancel names present', async (
 
 // ─── Failed refresh does not wipe successful list ───────────────────────────
 
-test('panel refresh failure preserves cached successful list', async () => {
+test('cached refresh failure preserves list, state, close/reopen without auto GET', async () => {
   let n = 0;
   const dom = createDom();
   const win = loadPanelAndComposer(dom, async () => {
@@ -819,14 +819,201 @@ test('panel refresh failure preserves cached successful list', async () => {
   });
   panel.open();
   await flush();
+  assert.equal(panel.getState(), 'loaded_with_comments', 'initial state');
   assert.equal(panel.getComments().length, 1);
+  assert.equal(n, 1, 'initial open issues one GET');
+
   panel.refresh();
   await flush();
-  assert.equal(panel.getComments().length, 1, 'failed refresh must not clear cache');
+  assert.equal(n, 2, 'refresh issues one GET');
+  assert.equal(panel.getComments().length, 1, 'cache preserved after refresh failure');
   assert.equal(
     dom.document.getElementById('wholeTreeCommentsList').children.length,
-    1
+    1,
+    'DOM list preserved'
   );
+  assert.equal(
+    panel.getState(),
+    'loaded_with_comments',
+    'state remains loaded_with_comments after cached refresh failure'
+  );
+  const status = dom.document.getElementById('wholeTreeCommentsStatus');
+  assert.ok(status && /불러오지 못했어요|다시 시도/.test(status.textContent));
+  const retry = panel.getPanelElement().querySelector('#wholeTreeCommentsRetry');
+  assert.ok(retry, 'explicit retry affordance present after cached refresh failure');
+
+  const getCountBeforeClose = n;
+  panel.close();
+  panel.open();
+  await flush();
+  assert.equal(n, getCountBeforeClose, 'reopen must not issue an automatic GET when cache is loaded');
+  assert.equal(panel.getComments().length, 1, 'cache still present after close/reopen');
+  assert.equal(
+    dom.document.getElementById('wholeTreeCommentsList').children.length,
+    1,
+    'DOM still shows cached comment after close/reopen'
+  );
+  assert.equal(panel.getState(), 'loaded_with_comments');
+});
+
+// ─── Late pre-write GET must not overwrite successful POST append ───────────
+
+test('late initial GET after successful POST does not drop created comment', async () => {
+  let getResolve;
+  let getCount = 0;
+  const getPromise = new Promise((resolve) => {
+    getResolve = resolve;
+  });
+
+  const posts = [];
+  const dom = createDom();
+  const sandbox = {
+    window: {
+      LoveBudTreeComments: {
+        fetchTreeComments: async () => {
+          getCount += 1;
+          return getPromise;
+        }
+      },
+      LoveBudTreeCommentsWrite: {
+        generateIdempotencyKey() {
+          return 'tc-race-key-0001';
+        }
+      }
+    },
+    document: dom.document,
+    console,
+    Promise,
+    setTimeout,
+    clearTimeout
+  };
+  vm.createContext(sandbox);
+  vm.runInContext(fs.readFileSync(PANEL_PATH, 'utf8'), sandbox, { filename: PANEL_PATH });
+  vm.runInContext(fs.readFileSync(COMPOSER_PATH, 'utf8'), sandbox, {
+    filename: COMPOSER_PATH
+  });
+  const win = sandbox.window;
+
+  const panel = win.LoveBudPublicViewerTreeComments.createTreeCommentsReadOnlyControl({
+    i18n: (k, fb) => fb || k,
+    treeId: VALID_TREE_ID
+  });
+
+  const composer =
+    win.LoveBudPublicViewerTreeCommentComposer.createPublicViewerTreeCommentComposerBoundary({
+      i18n: (k, fb) => fb || k,
+      hasConfirmedAuthSession: () => true,
+      createTreeComment: async (treeId, body, key) => {
+        posts.push({ treeId, body, key });
+        return {
+          ok: true,
+          state: 'created',
+          comment: {
+            id: 'c-created-race',
+            treeId: VALID_TREE_ID,
+            body: body,
+            createdAt: '2026-07-15T00:00:00Z',
+            updatedAt: '2026-07-15T00:00:00Z',
+            authorDisplayLabel: 'fan'
+          },
+          idempotencyKey: key
+        };
+      },
+      onCreated: (c) => {
+        panel.applyCreatedComment(c);
+      },
+      refreshTreeComments: () => {
+        panel.refresh();
+      }
+    });
+
+  // 1-2: open panel → initial GET pending
+  panel.open();
+  await Promise.resolve();
+  assert.equal(getCount, 1, 'initial open starts one GET');
+  assert.equal(panel.getState(), 'loading');
+
+  // 3: mount authenticated composer while GET is still pending
+  composer.update({
+    open: true,
+    treeId: VALID_TREE_ID,
+    generation: panel.getGeneration(),
+    mountEl: panel.getComposerMountElement()
+  });
+  await flush();
+
+  const input = dom.document.getElementById('wholeTreeCommentInput');
+  const submit = dom.document.getElementById('wholeTreeCommentSubmit');
+  assert.ok(input && submit, 'authenticated composer mounted during pending GET');
+
+  // 4-5: POST succeeds first
+  input.value = 'created before late GET';
+  submit.click();
+  await flush();
+
+  assert.equal(posts.length, 1, 'POST exactly once');
+  assert.equal(posts[0].treeId, VALID_TREE_ID);
+  assert.ok(!/memory|moment/i.test(JSON.stringify(posts[0])));
+
+  // 6: created comment appears once
+  let list = dom.document.getElementById('wholeTreeCommentsList');
+  let createdItems = list.children.filter(
+    (li) => li.getAttribute && li.getAttribute('data-tree-comment-id') === 'c-created-race'
+  );
+  assert.equal(createdItems.length, 1, 'created item rendered once after POST');
+  assert.equal(panel.getComments().some((c) => c.id === 'c-created-race'), true);
+  assert.equal(panel.getState(), 'loaded_with_comments');
+
+  // 7: initial GET resolves later with older list that omits created comment
+  getResolve({
+    ok: true,
+    state: 'loaded_with_comments',
+    comments: [
+      {
+        id: 'existing-old',
+        treeId: VALID_TREE_ID,
+        body: 'old snapshot without created',
+        createdAt: '2025-01-01T00:00:00Z',
+        updatedAt: '2025-01-01T00:00:00Z',
+        authorDisplayLabel: 'reader'
+      }
+    ]
+  });
+  await flush();
+
+  // 8-11: created comment remains; no overwrite; no duplicate
+  assert.equal(getCount, 1, 'no extra GET from create path');
+  assert.equal(posts.length, 1, 'still one POST');
+  assert.equal(panel.getState(), 'loaded_with_comments');
+  const cached = panel.getComments();
+  assert.equal(cached.some((c) => c.id === 'c-created-race'), true, 'cache keeps created');
+  assert.equal(
+    cached.filter((c) => c.id === 'c-created-race').length,
+    1,
+    'created id once in cache'
+  );
+  // Late GET must not replace cache with old-only snapshot.
+  assert.equal(
+    cached.some((c) => c.id === 'existing-old' && cached.length === 1),
+    false,
+    'must not be only the late GET old list'
+  );
+
+  list = dom.document.getElementById('wholeTreeCommentsList');
+  createdItems = list.children.filter(
+    (li) => li.getAttribute && li.getAttribute('data-tree-comment-id') === 'c-created-race'
+  );
+  assert.equal(createdItems.length, 1, 'DOM still shows created comment once');
+  assert.equal(
+    list.children.length,
+    cached.length,
+    'DOM list length matches cachedComments'
+  );
+  assert.ok(
+    list.textContent.includes('created before late GET'),
+    'created body still visible'
+  );
+  assert.ok(!/memories|memory_id/.test(JSON.stringify({ posts, cached })));
 });
 
 // ─── Separation: write client endpoint only ─────────────────────────────────

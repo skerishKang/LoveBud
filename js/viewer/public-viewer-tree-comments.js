@@ -276,6 +276,13 @@
       if (id && seenIds[id]) {
         return false; // replay / duplicate
       }
+
+      // Successful local create wins over any in-flight pre-write GET.
+      // Invalidate the current fetch generation so a late GET snapshot cannot
+      // replace cachedComments/DOM and drop the created comment.
+      generation += 1;
+      inFlight = false;
+
       if (id) seenIds[id] = true;
       cachedComments = cachedComments.concat([comment]);
       hasLoaded = true;
@@ -294,8 +301,10 @@
     }
 
     function refresh() {
-      // Explicit refresh (e.g. after create without body DTO). Invalidates in-flight gens.
-      hasLoaded = false;
+      // Explicit refresh (e.g. after create without body DTO).
+      // Do NOT clear hasLoaded: a failed refresh must preserve a prior
+      // successful cache (list + loaded_* state). performFetch still bumps
+      // generation to invalidate older in-flight responses.
       performFetch();
     }
 
@@ -327,10 +336,18 @@
         renderList();
         return;
       }
-      // Preserve successful cache on failed refresh — do not wipe list.
-      if (hasLoaded && cachedComments.length > 0) {
-        setState('loaded_with_comments');
-        renderList();
+      // Preserve prior successful load on failed refresh/revalidate.
+      // hasLoaded remains true across refresh() so this branch stays reachable.
+      // Distinguish from first-load failure (hasLoaded === false).
+      if (hasLoaded) {
+        if (cachedComments.length > 0) {
+          setState('loaded_with_comments');
+          // Re-render preserved cache; do not treat failure as authoritative empty.
+          renderList();
+        } else {
+          setState('loaded_empty');
+          renderList();
+        }
         status.textContent = errorCopyFor((result && result.state) || 'unexpected_safe_error');
         ensureRetryButton();
         return;
