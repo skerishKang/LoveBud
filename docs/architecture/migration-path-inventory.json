@@ -73,7 +73,7 @@
       "recommended_disposition": "supersede with canonical manifest metadata",
       "linked_issue": "#3352, #3458",
       "baseline_sha": "5d601154cfa45a4885e30fc190446ce3b9623aa0",
-      "content_checksum": "sha256:747f2746e5ec4dbf79cde88955048d6ef350d777a70890cdb619e1633337cd88"
+      "content_checksum": "sha256:3f7a36a83bbb40c53f7951dbab67175de094c7d318b689f3a0138cbb075c8291"
     },
     {
       "path": "docs/ops/lovebud-trees-schema-foothold-3435.md",
@@ -600,6 +600,48 @@
       "risk": "does not replace catalog proof for Production apply approval",
       "recommended_disposition": "required before any future historical Migration A re-execution",
       "linked_issue": "#3536, #3534, #3262, #3458",
+      "baseline_sha": "5d601154cfa45a4885e30fc190446ce3b9623aa0"
+    },
+    {
+      "path": "scripts/validate-generic-social-b-preflight.sql",
+      "operation_class": "read_only_execution_guard",
+      "schema_objects": [
+        "social_idempotency",
+        "social_audit_log"
+      ],
+      "invocation_path": "disposable/canonical guarded workflow only",
+      "current_owner_domain": "social schema",
+      "classification": "CANONICAL_CANDIDATE",
+      "transaction_behavior": "read-only DO blocks; no schema mutation",
+      "idempotency_claim": "fail-closed validation only",
+      "rollback_claim": "not applicable (no mutation)",
+      "production_relevance": "execution guard only; not a migration ledger",
+      "evidence": "read-only Migration B preflight guard; Issue #3538",
+      "risk": "does not replace catalog proof for Production apply approval",
+      "recommended_disposition": "required before any future historical Migration B re-execution",
+      "linked_issue": "#3538, #3459, #3458, #3425, #1882",
+      "baseline_sha": "5d601154cfa45a4885e30fc190446ce3b9623aa0",
+      "content_checksum": "sha256:4569a636649e4f001a041eab11708d5003063c8f139eb00fe7778e16755b94f4"
+    },
+    {
+      "path": "scripts/validate-generic-social-b-postcondition.sql",
+      "content_checksum": "sha256:d6bcf5fca09e9db3e281b73b8d27ad655c3bcec2a5484ea0dd5e65b0e80653ad",
+      "operation_class": "POSTCONDITION_VALIDATOR_READ_ONLY",
+      "classification": "CANONICAL_CANDIDATE",
+      "schema_objects": [
+        "social_idempotency",
+        "social_audit_log"
+      ],
+      "invocation_path": "disposable/canonical guarded workflow only",
+      "current_owner_domain": "social schema",
+      "transaction_behavior": "read-only DO blocks; no schema mutation",
+      "idempotency_claim": "fail-closed validation only",
+      "rollback_claim": "not applicable (no mutation)",
+      "production_relevance": "execution guard only; not a migration ledger",
+      "evidence": "read-only Migration B postcondition guard; Issue #3538",
+      "risk": "does not replace catalog proof for Production apply approval",
+      "recommended_disposition": "required before any future historical Migration B re-execution",
+      "linked_issue": "#3538, #3459, #3458, #3425, #1882",
       "baseline_sha": "5d601154cfa45a4885e30fc190446ce3b9623aa0"
     }
   ]

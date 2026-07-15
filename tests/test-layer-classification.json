@@ -4251,6 +4251,12 @@
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
       "capabilities": []
+    },
+    {
+      "path": "tests/contracts/generic-social-b-execution-guard-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Reads B validator SQL, runbook, inventory, package/CI, and B guard harness; asserts historical Migration B checksum stability, read-only validators, direct-execution prohibition, and supplemental DB_ENGINE classification without executing PostgreSQL (#3538).",
+      "capabilities": []
     }
   ],
   "supplemental": [
@@ -4362,6 +4368,17 @@
       "defaultCi": false,
       "layer": "DB_ENGINE_EXECUTION",
       "rationale": "Executes read-only Migration A preflight/postcondition validators and the unchanged historical Migration A artifact against disposable PostgreSQL 17.4; proves exact-state acceptance, adversarial rejection without calling Migration A after failed preflight, and second-apply no-op without Production access (#3536).",
+      "capabilities": [
+        "postgresql",
+        "child_process",
+        "filesystem"
+      ]
+    },
+    {
+      "path": "tests/db-engine/generic-social-b-guard-postgres.test.cjs",
+      "defaultCi": false,
+      "layer": "DB_ENGINE_EXECUTION",
+      "rationale": "Executes read-only Migration B preflight/postcondition validators and the unchanged historical Migration B artifact against disposable PostgreSQL 17.4; proves STATE_A/STATE_B acceptance, rejection short-circuit without calling Migration B after failed preflight, and second-apply no-op without Production access (#3538).",
       "capabilities": [
         "postgresql",
         "child_process",
