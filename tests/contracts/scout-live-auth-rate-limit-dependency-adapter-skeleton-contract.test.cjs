@@ -22,6 +22,7 @@
 const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
+const { importAbsolute } = require('../helpers/import-absolute.cjs');
 
 const ROOT = path.resolve(__dirname, '../..');
 const ADAPTER_PATH = path.join(ROOT, 'functions/api/scout/live-auth-rate-limit-dependency-adapter.js');
@@ -64,7 +65,7 @@ const endpointClientCode = readFileSafe(ENDPOINT_CLIENT_PATH);
 let adapterModulePromise = null;
 async function loadAdapterModule() {
   if (!adapterModulePromise) {
-    adapterModulePromise = import(ADAPTER_PATH);
+    adapterModulePromise = importAbsolute(ADAPTER_PATH);
   }
   return adapterModulePromise;
 }

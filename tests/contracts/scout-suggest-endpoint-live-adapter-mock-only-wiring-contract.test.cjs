@@ -9,6 +9,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const { importAbsolute } = require('../helpers/import-absolute.cjs');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const SUGGEST_PATH = path.join(ROOT, 'functions/api/scout/suggest.js');
@@ -40,13 +41,13 @@ function createMockRequest(options = {}) {
 }
 
 async function getOnRequestPost() {
-  const mod = await import(SUGGEST_PATH);
+  const mod = await importAbsolute(SUGGEST_PATH);
   return mod.onRequestPost;
 }
 
 const TRANSPORT_PATH = path.join(ROOT, 'functions/api/scout/live-provider-api-key-transport.js');
 async function getAllowedProvider() {
-  const mod = await import(TRANSPORT_PATH);
+  const mod = await importAbsolute(TRANSPORT_PATH);
   return mod.SCOUT_LIVE_PROVIDER_TRANSPORT_ALLOWED_PROVIDER;
 }
 

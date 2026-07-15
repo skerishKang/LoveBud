@@ -20,6 +20,7 @@
 const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
+const { importAbsolute } = require('../helpers/import-absolute.cjs');
 
 const ROOT = path.resolve(__dirname, '../..');
 const VERIFIER_PATH = path.join(ROOT, 'functions/api/scout/live-auth-verifier-adapter.js');
@@ -33,7 +34,7 @@ const suggestCode = fs.readFileSync(SUGGEST_PATH, 'utf-8');
 let verifierModulePromise = null;
 async function loadVerifierModule() {
   if (!verifierModulePromise) {
-    verifierModulePromise = import(VERIFIER_PATH);
+    verifierModulePromise = importAbsolute(VERIFIER_PATH);
   }
   return verifierModulePromise;
 }
@@ -41,7 +42,7 @@ async function loadVerifierModule() {
 let depAdapterModulePromise = null;
 async function loadDepAdapterModule() {
   if (!depAdapterModulePromise) {
-    depAdapterModulePromise = import(DEP_ADAPTER_PATH);
+    depAdapterModulePromise = importAbsolute(DEP_ADAPTER_PATH);
   }
   return depAdapterModulePromise;
 }

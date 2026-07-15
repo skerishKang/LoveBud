@@ -22,6 +22,7 @@
 const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
+const { importAbsolute } = require('../helpers/import-absolute.cjs');
 
 const ROOT = path.resolve(__dirname, '../..');
 const STORAGE_ADAPTER_PATH = path.join(ROOT, 'functions/api/scout/live-rate-limit-storage-adapter.js');
@@ -58,7 +59,7 @@ const endpointClientCode = readFileSafe(ENDPOINT_CLIENT_PATH);
 let storageModulePromise = null;
 async function loadStorageModule() {
   if (!storageModulePromise) {
-    storageModulePromise = import(STORAGE_ADAPTER_PATH);
+    storageModulePromise = importAbsolute(STORAGE_ADAPTER_PATH);
   }
   return storageModulePromise;
 }

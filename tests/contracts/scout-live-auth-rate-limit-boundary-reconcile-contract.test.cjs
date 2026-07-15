@@ -20,6 +20,7 @@
 const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
+const { importAbsolute } = require('../helpers/import-absolute.cjs');
 
 const ROOT = path.resolve(__dirname, '../..');
 const OFFICIAL_BOUNDARY_PATH = path.join(ROOT, 'functions/api/scout/live-auth-rate-limit-boundary.js');
@@ -85,7 +86,7 @@ tests.push({
 tests.push({
   name: 'Official boundary exports the PR #2278 API',
   fn: async () => {
-    const mod = await import(OFFICIAL_BOUNDARY_PATH);
+    const mod = await importAbsolute(OFFICIAL_BOUNDARY_PATH);
     assert.ok(mod.SCOUT_LIVE_AUTH_RATE_LIMIT_STATUS, 'SCOUT_LIVE_AUTH_RATE_LIMIT_STATUS exported');
     assert.ok(mod.SCOUT_LIVE_AUTH_RATE_LIMIT_ERROR_CODES, 'SCOUT_LIVE_AUTH_RATE_LIMIT_ERROR_CODES exported');
     assert.strictEqual(typeof mod.createScoutLiveAuthBoundary, 'function');

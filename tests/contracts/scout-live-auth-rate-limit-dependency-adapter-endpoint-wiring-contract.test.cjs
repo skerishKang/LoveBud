@@ -28,6 +28,7 @@
 const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
+const { importAbsolute } = require('../helpers/import-absolute.cjs');
 
 const ROOT = path.resolve(__dirname, '../..');
 const SUGGEST_PATH = path.join(ROOT, 'functions/api/scout/suggest.js');
@@ -66,7 +67,7 @@ const endpointClientCode = readFileSafe(ENDPOINT_CLIENT_PATH);
 let suggestModulePromise = null;
 async function loadSuggestModule() {
   if (!suggestModulePromise) {
-    suggestModulePromise = import(SUGGEST_PATH);
+    suggestModulePromise = importAbsolute(SUGGEST_PATH);
   }
   return suggestModulePromise;
 }

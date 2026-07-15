@@ -22,6 +22,7 @@
 const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
+const { importAbsolute } = require('../helpers/import-absolute.cjs');
 
 const ROOT = path.resolve(__dirname, '../..');
 const TAXONOMY_DOC = path.join(ROOT, 'docs/product/lovebud-scout-live-endpoint-error-taxonomy-contract.md');
@@ -68,7 +69,7 @@ function cleanSource(code) {
 let handlerPromise = null;
 async function getOnRequestPost() {
   if (!handlerPromise) {
-    handlerPromise = import(SUGGEST_PATH).then(m => m.onRequestPost);
+    handlerPromise = importAbsolute(SUGGEST_PATH).then(m => m.onRequestPost);
   }
   return handlerPromise;
 }

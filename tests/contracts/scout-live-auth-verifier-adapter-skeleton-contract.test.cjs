@@ -25,6 +25,7 @@
 const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
+const { importAbsolute } = require('../helpers/import-absolute.cjs');
 
 const ROOT = path.resolve(__dirname, '../..');
 const VERIFIER_PATH = path.join(ROOT, 'functions/api/scout/live-auth-verifier-adapter.js');
@@ -64,7 +65,7 @@ const endpointClientCode = readFileSafe(ENDPOINT_CLIENT_PATH);
 let verifierModulePromise = null;
 async function loadVerifierModule() {
   if (!verifierModulePromise) {
-    verifierModulePromise = import(VERIFIER_PATH);
+    verifierModulePromise = importAbsolute(VERIFIER_PATH);
   }
   return verifierModulePromise;
 }

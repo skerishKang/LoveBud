@@ -11,6 +11,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const { importAbsolute } = require('../helpers/import-absolute.cjs');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const ADAPTER_PATH = path.join(ROOT, 'functions/api/scout/live-provider-adapter.js');
@@ -21,7 +22,7 @@ function readAdapterCode() {
 }
 
 async function importAdapter() {
-  return await import(ADAPTER_PATH);
+  return await importAbsolute(ADAPTER_PATH);
 }
 
 // ─── STATIC CONTRACT CHECKS ─────────────────────────────────────────────────
