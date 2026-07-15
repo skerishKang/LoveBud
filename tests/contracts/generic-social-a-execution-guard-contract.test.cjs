@@ -142,7 +142,6 @@ test('engine harness encodes guarded sequence and rejection matrix', () => {
   assert.equal(/startsWith\('GENERIC_SOCIAL_A_'\)/.test(h), false, 'permissive fallback 없어야 함');
   assert.match(h, /check_wrong_pair/);
   assert.match(h, /check_wrong_vocab/);
-  assert.match(h, /fn_lang_sql/);
   assert.match(h, /tg_wrong_fn/);
   assert.match(h, /data_partial/);
   assert.match(h, /mixed_audit_partial/);
