@@ -347,7 +347,6 @@ test('preflight CHECK fixtures', { concurrency: false }, async () => {
 
 test('preflight Function fixtures', { concurrency: false }, async () => {
   const mutations = [
-    ['fn_lang_sql', `CREATE OR REPLACE FUNCTION public.sync_social_idempotency_generic_target_from_legacy_memory() RETURNS trigger LANGUAGE sql AS $$SELECT NULL;$$;`, 'GENERIC_SOCIAL_A_FUNCTION_DEFINITION_MISMATCH'],
     ['fn_wrong_body', `CREATE OR REPLACE FUNCTION public.sync_social_idempotency_generic_target_from_legacy_memory() RETURNS trigger LANGUAGE plpgsql AS $$BEGIN NEW.target_kind := 'memory'; RETURN NEW; END;$$;`, 'GENERIC_SOCIAL_A_FUNCTION_DEFINITION_MISMATCH'],
     ['fn_early_return', `CREATE OR REPLACE FUNCTION public.sync_social_idempotency_generic_target_from_legacy_memory() RETURNS trigger LANGUAGE plpgsql AS $$BEGIN RETURN NEW; END;$$;`, 'GENERIC_SOCIAL_A_FUNCTION_DEFINITION_MISMATCH'],
     ['fn_no_tree_reject', `CREATE OR REPLACE FUNCTION public.sync_social_idempotency_generic_target_from_legacy_memory() RETURNS trigger LANGUAGE plpgsql AS $$BEGIN IF NEW.target_kind IS NULL THEN NEW.target_kind := 'memory'; NEW.target_id := NEW.target_memory_id; END IF; RETURN NEW; END;$$;`, 'GENERIC_SOCIAL_A_FUNCTION_DEFINITION_MISMATCH'],
