@@ -228,7 +228,14 @@
     };
 
     let config = buildConfig(authHeaders);
-    let response = await fetch(`/api${endpoint}`, config);
+    let response;
+    try {
+      response = await fetch(`/api${endpoint}`, config);
+    } catch (fetchErr) {
+      const error = new Error(fetchErr && fetchErr.message ? fetchErr.message : 'Network request failed');
+      error._phase = 'fetch_rejected';
+      throw error;
+    }
 
     if (
       (response.status === 401 || response.status === 403) &&
@@ -240,7 +247,13 @@
       const retryHeaders = await getAuthHeaders({ forceLongWait: true, requireAuth: true });
       if (retryHeaders.Authorization) {
         config = buildConfig(retryHeaders);
-        response = await fetch(`/api${endpoint}`, config);
+        try {
+          response = await fetch(`/api${endpoint}`, config);
+        } catch (retryFetchErr) {
+          const error = new Error(retryFetchErr && retryFetchErr.message ? retryFetchErr.message : 'Network request failed');
+          error._phase = 'fetch_rejected';
+          throw error;
+        }
       }
     }
 
@@ -261,6 +274,7 @@
       const error = new Error(errorMsg);
       error.status = response.status;
       error.statusCode = response.status;
+      error._phase = 'http_error';
 
       if (errorData) {
         error.data = errorData;
@@ -272,10 +286,23 @@
       throw error;
     }
 
-    return await response.json();
+    try {
+      return await response.json();
+    } catch (parseErr) {
+      const error = new Error('Failed to parse response');
+      error.status = response.status;
+      error.statusCode = response.status;
+      error._phase = 'json_parse_failed';
+      throw error;
+    }
   }
 
   window.LoveTreeBaseApiFetch = {
+    ERROR_PHASE: {
+      FETCH_REJECTED: 'fetch_rejected',
+      HTTP_ERROR: 'http_error',
+      JSON_PARSE_FAILED: 'json_parse_failed',
+    },
     getTokenStorage,
     getCachedTokenRecord,
     setCachedTokenRecord,

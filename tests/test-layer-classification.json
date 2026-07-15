@@ -71,6 +71,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/base-api-fetch-error-phase-runtime-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Reads production module source and executes it in a local process with injected fake/mock/stub dependencies (e.g., vm context with fake DOM or mocked fetch/localStorage); no real external system or production resource used.",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/auth-email-entry-contract.test.cjs",
       "layer": "EXECUTED_FAKE",
       "rationale": "Reads production module source and executes it in a local process with injected fake/mock/stub dependencies (e.g., vm context with fake DOM or mocked fetch/localStorage); no real external system or production resource used.",
@@ -1982,6 +1988,12 @@
       "path": "tests/contracts/my-trees-layout-probe-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/my-trees-owner-list-lifecycle-runtime-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Reads production module source and executes it in a local process with injected fake/mock/stub dependencies (e.g., vm context with fake DOM or mocked fetch/localStorage); no real external system or production resource used.",
       "capabilities": []
     },
     {
