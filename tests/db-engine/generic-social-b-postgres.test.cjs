@@ -132,10 +132,10 @@ async function reachStateA(client, runSql, scenario) {
 }
 
 function phaseUuids(fixture, phase, table) {
-  // fixture: n|e  phase: f|s  table: i|a  scenario digit → valid 8-4-4-4-12
-  const f = fixture === 'empty' ? 'e' : 'n';
-  const p = phase === 'second' ? 's' : 'f';
-  const t = table === 'audit' ? 'a' : 'i';
+  // All components must be hex. fixture: b|e  phase: 1|2  table: d|a  scenario digit.
+  const f = fixture === 'empty' ? 'e' : 'b';
+  const p = phase === 'second' ? '2' : '1';
+  const t = table === 'audit' ? 'a' : 'd';
   const mk = (c) => {
     const g1 = `${f}${p}${t}${c}${c}${c}${c}${c}`; // 8
     const g2 = `${f}${p}${t}${c}`; // 4
