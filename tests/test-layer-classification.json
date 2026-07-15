@@ -4301,5 +4301,16 @@
       "rationale": "Python test executed outside the default Node CI chain (separate command/manual run); not enumerated by package.json test script.",
       "capabilities": []
     }
-  ]
+  ,{
+    "path": "tests/db-engine/tree-comments-reconcile-postgres.test.cjs",
+    "defaultCi": false,
+    "layer": "DB_ENGINE_EXECUTION",
+    "rationale": "Executes repository migration and rollback SQL against a synthetic disposable PostgreSQL 17.4 database in an isolated CI service; it does not contact Production, staging, Neon, or any shared environment.",
+    "capabilities": [
+      "postgresql",
+      "child_process",
+      "filesystem"
+    ]
+  }
+]
 }

@@ -141,11 +141,37 @@ test('Python supplemental tests are excluded from default-CI classification', ()
   assert.ok(enumerated.every((f) => !f.endsWith('.py')), 'default-CI enumeration must not include .py files');
   // Supplemental entries are flagged out of default CI.
   const supp = Array.isArray(inv.supplemental) ? inv.supplemental : [];
-  assert.ok(supp.length >= 1, 'expected supplemental Python inventory');
-  for (const s of supp) {
+  assert.ok(supp.length >= 1, 'expected supplemental inventory');
+  const pythonSupp = supp.filter((s) => s.layer === 'SUPPLEMENTAL_PYTHON');
+  assert.ok(pythonSupp.length >= 1, 'expected supplemental Python inventory');
+  for (const s of pythonSupp) {
     assert.equal(s.defaultCi, false, `${s.path} must be defaultCi:false`);
     assert.ok(s.path.endsWith('.py'), `${s.path} should be a Python test`);
   }
+});
+
+test('DB engine supplemental entries are separate from Python supplemental and default-CI', () => {
+  const inv = reporter.loadInventory();
+  const enumerated = reporter.enumerateDefaultCi();
+  const enumeratedSet = new Set(enumerated);
+  const supp = Array.isArray(inv.supplemental) ? inv.supplemental : [];
+  const dbEngine = supp.filter((s) => s.layer === 'DB_ENGINE_EXECUTION');
+  assert.ok(dbEngine.length >= 1, 'expected at least one DB_ENGINE_EXECUTION supplemental entry');
+  for (const s of dbEngine) {
+    assert.equal(s.defaultCi, false, `${s.path} must be defaultCi:false`);
+    assert.equal(s.layer, 'DB_ENGINE_EXECUTION', `${s.path} must be DB_ENGINE_EXECUTION`);
+    assert.ok(s.path.endsWith('.cjs'), `${s.path} must be a .cjs engine test`);
+    assert.ok(s.path.startsWith('tests/db-engine/'), `${s.path} must live under tests/db-engine/`);
+    assert.ok(!enumeratedSet.has(s.path), `${s.path} must not be in default-CI enumeration`);
+    assert.notEqual(s.layer, 'PRODUCTION_SMOKE');
+    assert.notEqual(s.layer, 'EXTERNAL_INTEGRATION');
+    assert.ok(Array.isArray(s.capabilities), `${s.path} capabilities must be an array`);
+    assert.ok(!s.capabilities.some((c) => /neon|production|secret|database_url/i.test(String(c))),
+      `${s.path} must not declare Production/Neon credential capabilities`);
+  }
+  // default-CI count of DB_ENGINE_EXECUTION remains 0
+  const result = reporter.classify(inv, enumerated);
+  assert.equal(result.counts.DB_ENGINE_EXECUTION, 0);
 });
 
 test('classification structure is not filename-only (rationale + content basis)', () => {
@@ -370,10 +396,13 @@ test('supplemental invalid metadata (empty rationale / invalid layer / non-py) i
   dup.supplemental.push({ path: 'tests/contracts/__synthetic_a__.py', defaultCi: false, layer: 'SUPPLEMENTAL_PYTHON', rationale: '   ', capabilities: [] });
   dup.supplemental.push({ path: 'tests/contracts/__synthetic_b__.py', defaultCi: false, layer: 'NOT_A_LAYER', rationale: 'x', capabilities: [] });
   dup.supplemental.push({ path: 'tests/contracts/__synthetic_c__.test.cjs', defaultCi: false, layer: 'SUPPLEMENTAL_PYTHON', rationale: 'x', capabilities: [] });
+  // DB engine path outside tests/db-engine/ is invalid even with DB_ENGINE_EXECUTION layer.
+  dup.supplemental.push({ path: 'tests/contracts/__synthetic_d__.test.cjs', defaultCi: false, layer: 'DB_ENGINE_EXECUTION', rationale: 'x', capabilities: [] });
   const result = reporter.classify(dup, enumerated);
   assert.ok(result.supplementalEmptyRationale.includes('tests/contracts/__synthetic_a__.py'), 'empty rationale not detected');
   assert.ok(result.supplementalInvalid.includes('tests/contracts/__synthetic_b__.py'), 'invalid layer not detected');
-  assert.ok(result.supplementalInvalid.includes('tests/contracts/__synthetic_c__.test.cjs'), 'non-py supplemental not detected');
+  assert.ok(result.supplementalInvalid.includes('tests/contracts/__synthetic_c__.test.cjs'), 'non-py SUPPLEMENTAL_PYTHON not detected');
+  assert.ok(result.supplementalInvalid.includes('tests/contracts/__synthetic_d__.test.cjs'), 'DB engine path outside tests/db-engine not detected');
 });
 
 test('supplemental missing capabilities is detected as invalid', () => {
