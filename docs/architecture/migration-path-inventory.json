@@ -46,13 +46,13 @@
       "transaction_behavior": "delegates to referenced SQL artifact",
       "idempotency_claim": "artifact-specific",
       "rollback_claim": "no automatic rollback",
-      "production_relevance": "requires explicit apply approval",
-      "evidence": "runbook contains direct database command",
+      "production_relevance": "direct new execution prohibited; historical guidance only",
+      "evidence": "Issue #3536 direct-execution prohibition and validator sequence",
       "risk": "not represented in applied ledger",
-      "recommended_disposition": "supersede with canonical manifest metadata",
-      "linked_issue": "#3262, #3458",
+      "recommended_disposition": "use validator-guarded sequence only when separately approved; no ad-hoc Production apply",
+      "linked_issue": "#3262, #3458, #3536",
       "baseline_sha": "5d601154cfa45a4885e30fc190446ce3b9623aa0",
-      "content_checksum": "sha256:d9c784e40515c662a4e4895c41eec422a4592e431beb58cb52a78cdc90e4684d"
+      "content_checksum": "sha256:64f37c8d71d404c6d81173930133e43cb381bb0f9f0bb3a3d06c1713502884d1"
     },
     {
       "path": "docs/ops/generic-social-targets-migration-b-runbook.md",
@@ -228,11 +228,11 @@
       "transaction_behavior": "explicit transaction in artifact",
       "idempotency_claim": "artifact-specific",
       "rollback_claim": "no automatic rollback",
-      "production_relevance": "approval-gated historical artifact",
-      "evidence": "paired manual runbook and source contract",
-      "risk": "backfill and trigger changes lack ledger provenance",
-      "recommended_disposition": "do not run outside canonical manifest workflow",
-      "linked_issue": "#3262, #3458",
+      "production_relevance": "historically applied artifact; direct new execution prohibited",
+      "evidence": "paired historical runbook; Issue #3536 execution guards",
+      "risk": "IF NOT EXISTS object creation can accept incompatible same-name objects without exact-state preflight",
+      "recommended_disposition": "retain historical SQL unchanged; new work must use preflight→artifact→postcondition validators only",
+      "linked_issue": "#3262, #3458, #3536",
       "baseline_sha": "5d601154cfa45a4885e30fc190446ce3b9623aa0",
       "content_checksum": "sha256:c70707d4dfeaa81fa516208a29e4ca5679e2afbeecb31481e52046cdba9cfe64"
     },
@@ -558,6 +558,49 @@
       "linked_issue": "#3458",
       "baseline_sha": "5d601154cfa45a4885e30fc190446ce3b9623aa0",
       "content_checksum": "sha256:0bb71fa6450899241fbcfe3c169bf1995ac1e97d05389d9e01ac4b6516654ec8"
+    },
+    {
+      "path": "scripts/validate-generic-social-a-preflight.sql",
+      "operation_class": "read_only_execution_guard",
+      "schema_objects": [
+        "social_idempotency",
+        "social_audit_log"
+      ],
+      "invocation_path": "disposable/canonical guarded workflow only",
+      "current_owner_domain": "social schema",
+      "classification": "CANONICAL_CANDIDATE",
+      "transaction_behavior": "read-only DO blocks; no schema mutation",
+      "idempotency_claim": "fail-closed validation only",
+      "rollback_claim": "not applicable (no mutation)",
+      "production_relevance": "execution guard only; not a migration ledger",
+      "evidence": "read-only Migration A preflight guard; Issue #3536",
+      "risk": "does not replace catalog proof for Production apply approval",
+      "recommended_disposition": "required before any future historical Migration A re-execution",
+      "linked_issue": "#3536, #3534, #3262, #3458",
+      "baseline_sha": "5d601154cfa45a4885e30fc190446ce3b9623aa0",
+      "content_checksum": "sha256:7fe83a814b64f5f895c3c7ad53def08124f6d6808fac6855e639dcf051a6d593"
+    },
+    {
+      "path": "scripts/validate-generic-social-a-postcondition.sql",
+      "content_checksum": "sha256:a425367c7c8d4b1aba927f31856ed2b2ec476ec8f1bfa98be73141d69f2f087b",
+      "layer": "DB_ENGINE_EXECUTION",
+      "operation_class": "POSTCONDITION_VALIDATOR_READ_ONLY",
+      "classification": "CANONICAL_CANDIDATE",
+      "schema_objects": [
+        "social_idempotency",
+        "social_audit_log"
+      ],
+      "invocation_path": "disposable/canonical guarded workflow only",
+      "current_owner_domain": "social schema",
+      "transaction_behavior": "read-only DO blocks; no schema mutation",
+      "idempotency_claim": "fail-closed validation only",
+      "rollback_claim": "not applicable (no mutation)",
+      "production_relevance": "execution guard only; not a migration ledger",
+      "evidence": "read-only Migration A postcondition guard; Issue #3536",
+      "risk": "does not replace catalog proof for Production apply approval",
+      "recommended_disposition": "required before any future historical Migration A re-execution",
+      "linked_issue": "#3536, #3534, #3262, #3458",
+      "baseline_sha": "5d601154cfa45a4885e30fc190446ce3b9623aa0"
     }
   ]
 }
