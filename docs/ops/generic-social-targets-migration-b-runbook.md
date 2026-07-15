@@ -1,5 +1,27 @@
 # Generic Social Targets Migration B — Runbook
 
+## Execution status (Issue #3538)
+
+- **Historical applied artifact.** `scripts/migration-b-generic-social-targets-cutover.sql`
+  is retained for audit/history and migration inventory checksum continuity.
+- **Direct new execution is prohibited.** Do not run the historical SQL file
+  as a standalone new apply path.
+- Validators are **read-only execution guards**, not a migration ledger.
+  They do **not** create or rewrite applied-ledger records.
+- Future disposable/canonical rehearsal or guarded execution, when separately
+  approved, **must** use this order only:
+
+  1. `scripts/validate-generic-social-b-preflight.sql`
+  2. exact unchanged `scripts/migration-b-generic-social-targets-cutover.sql`
+  3. `scripts/validate-generic-social-b-postcondition.sql`
+
+- Preflight accepts only exact **STATE_A** (Migration A post-state on both
+  tables) or exact **STATE_B** (Migration B post-state on both tables).
+- **Production execution is not approved by this issue.** No Production,
+  Neon, staging, Modal, or shared-database apply is authorized here.
+- This documentation does not apply the migration. Any future apply requires
+  separate CTO approval after exact-state preflight and postcondition proof.
+
 ## Overview
 
 This runbook documents Migration B of the staged generic social write target
@@ -13,10 +35,6 @@ after Verification Gate A (#3264):
   - future tree writers may use `target_kind = 'tree'` with null legacy fields
   - partial pairs, unknown kinds, memory mismatches, and tree IDs in legacy
     memory fields are rejected
-
-**This PR only prepares the artifact. It does not apply the migration.**
-
-Database execution requires separate CTO approval.
 
 ## Migration file
 
@@ -33,21 +51,21 @@ Migration B is only valid after:
 3. No tree runtime writer has been deployed that depends on generic tree
    targets before this cutover is approved
 
-The migration preflight fails atomically if:
+Exact-state preflight (Issue #3538) accepts only:
 
-- `public.social_idempotency` or `public.social_audit_log` is missing
-- Migration A generic columns or compatibility triggers are missing
-- Any row lacks a complete generic pair, has a partial pair, a memory
-  generic/legacy mismatch, a tree row with legacy memory populated, or an
-  unknown `target_kind`
+- both tables exact Migration A post-state (STATE_A), or
+- both tables exact Migration B post-state (STATE_B)
 
-## Separate-approval apply command
+All mixed, partial, or same-name incompatible objects fail closed.
+
+## Historical command — do not execute as new work
 
 ```bash
 psql "$DATABASE_URL" -f scripts/migration-b-generic-social-targets-cutover.sql
 ```
 
-**Do not execute this command in this task.** Apply requires CTO approval.
+**Historical command only.** Do not execute as new work without the validator
+sequence above and separate CTO approval.
 
 ## What changes
 
