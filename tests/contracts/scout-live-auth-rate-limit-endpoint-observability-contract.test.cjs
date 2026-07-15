@@ -23,6 +23,7 @@
 const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
+const { importAbsolute } = require('../helpers/import-absolute.cjs');
 
 const ROOT = path.resolve(__dirname, '../..');
 const HELPER_PATH = path.join(ROOT, 'functions/api/scout/live-auth-rate-limit-observability.js');
@@ -64,7 +65,7 @@ function cleanSource(code) {
 let handlerPromise = null;
 async function getOnRequestPost() {
   if (!handlerPromise) {
-    handlerPromise = import(SUGGEST_PATH).then(m => m.onRequestPost);
+    handlerPromise = importAbsolute(SUGGEST_PATH).then(m => m.onRequestPost);
   }
   return handlerPromise;
 }
@@ -93,7 +94,7 @@ tests.push({
   name: 'Helper module exists with required exports (allowlist / decisions / builders / safe invoker / observer factory)',
   fn: async () => {
     assert.ok(helperCode.length > 0, 'live-auth-rate-limit-observability.js must exist');
-    const mod = await import(HELPER_PATH);
+    const mod = await importAbsolute(HELPER_PATH);
     assert.ok(mod.SCOUT_LIVE_OBSERVABILITY_FIELDS, 'must export SCOUT_LIVE_OBSERVABILITY_FIELDS');
     assert.ok(mod.SCOUT_LIVE_OBSERVABILITY_DECISIONS, 'must export SCOUT_LIVE_OBSERVABILITY_DECISIONS');
     assert.ok(typeof mod.buildScoutLiveAuthEvent === 'function', 'must export buildScoutLiveAuthEvent');
@@ -108,7 +109,7 @@ tests.push({
 tests.push({
   name: 'Allowlist contains only the documented safe fields (no token/api key/prompt/excerpt/sourceUrl)',
   fn: async () => {
-    const mod = await import(HELPER_PATH);
+    const mod = await importAbsolute(HELPER_PATH);
     const fields = mod.SCOUT_LIVE_OBSERVABILITY_FIELDS;
     assert.ok(Array.isArray(fields), 'FIELDS must be an array');
     const expected = [
@@ -130,7 +131,7 @@ tests.push({
 tests.push({
   name: 'Live missing Authorization emits sanitized AUTH_REQUIRED event',
   fn: async () => {
-    const mod = await import(HELPER_PATH);
+    const mod = await importAbsolute(HELPER_PATH);
     const observer = mod.createScoutLiveBoundaryObserver();
     const handler = await getOnRequestPost();
     const req = createMockRequest({
@@ -155,7 +156,7 @@ tests.push({
 tests.push({
   name: 'Live malformed Authorization emits sanitized AUTH_INVALID event',
   fn: async () => {
-    const mod = await import(HELPER_PATH);
+    const mod = await importAbsolute(HELPER_PATH);
     const observer = mod.createScoutLiveBoundaryObserver();
     const handler = await getOnRequestPost();
     const req = createMockRequest({
@@ -185,7 +186,7 @@ tests.push({
 tests.push({
   name: 'Live auth ok + missing limiter emits RATE_LIMIT_UNAVAILABLE event',
   fn: async () => {
-    const mod = await import(HELPER_PATH);
+    const mod = await importAbsolute(HELPER_PATH);
     const observer = mod.createScoutLiveBoundaryObserver();
     const handler = await getOnRequestPost();
     const req = createMockRequest({
@@ -219,7 +220,7 @@ tests.push({
 tests.push({
   name: 'Live rate-limited emits RATE_LIMITED event with retryAfterSeconds',
   fn: async () => {
-    const mod = await import(HELPER_PATH);
+    const mod = await importAbsolute(HELPER_PATH);
     const observer = mod.createScoutLiveBoundaryObserver();
     const handler = await getOnRequestPost();
     const req = createMockRequest({
@@ -254,7 +255,7 @@ tests.push({
 tests.push({
   name: 'Live allowed emits RATE_LIMIT_ALLOWED event before provider safe-fail',
   fn: async () => {
-    const mod = await import(HELPER_PATH);
+    const mod = await importAbsolute(HELPER_PATH);
     const observer = mod.createScoutLiveBoundaryObserver();
     const handler = await getOnRequestPost();
     const req = createMockRequest({
@@ -289,7 +290,7 @@ tests.push({
 tests.push({
   name: 'Observer is not called for default stub (no live auth/rate-limit event)',
   fn: async () => {
-    const mod = await import(HELPER_PATH);
+    const mod = await importAbsolute(HELPER_PATH);
     const observer = mod.createScoutLiveBoundaryObserver();
     const handler = await getOnRequestPost();
     const req = createMockRequest({
@@ -308,7 +309,7 @@ tests.push({
 tests.push({
   name: 'Observer is not called for explicit stub (no live auth/rate-limit event)',
   fn: async () => {
-    const mod = await import(HELPER_PATH);
+    const mod = await importAbsolute(HELPER_PATH);
     const observer = mod.createScoutLiveBoundaryObserver();
     const handler = await getOnRequestPost();
     const req = createMockRequest({
@@ -348,7 +349,7 @@ tests.push({
 tests.push({
   name: 'Observability event has only allowlist fields (no token / api key / prompt / sourceUrl)',
   fn: async () => {
-    const mod = await import(HELPER_PATH);
+    const mod = await importAbsolute(HELPER_PATH);
     const observer = mod.createScoutLiveBoundaryObserver();
     const handler = await getOnRequestPost();
     const req = createMockRequest({
@@ -382,7 +383,7 @@ tests.push({
 tests.push({
   name: 'Observability event excludes raw token',
   fn: async () => {
-    const mod = await import(HELPER_PATH);
+    const mod = await importAbsolute(HELPER_PATH);
     const observer = mod.createScoutLiveBoundaryObserver();
     const handler = await getOnRequestPost();
     const secretToken = 'TEST_FIXTURE_TOKEN_xyz_observability_exclude_token';
@@ -413,7 +414,7 @@ tests.push({
 tests.push({
   name: 'Observability event excludes API key value',
   fn: async () => {
-    const mod = await import(HELPER_PATH);
+    const mod = await importAbsolute(HELPER_PATH);
     const observer = mod.createScoutLiveBoundaryObserver();
     const handler = await getOnRequestPost();
     const secretApiKey = 'TEST_FIXTURE_API_KEY_xyz_observability_exclude_apikey';
@@ -444,7 +445,7 @@ tests.push({
 tests.push({
   name: 'Observability event excludes prompt / excerpt / full sourceUrl',
   fn: async () => {
-    const mod = await import(HELPER_PATH);
+    const mod = await importAbsolute(HELPER_PATH);
     const observer = mod.createScoutLiveBoundaryObserver();
     const handler = await getOnRequestPost();
     const req = createMockRequest({
@@ -480,7 +481,7 @@ tests.push({
 tests.push({
   name: 'Limiter payload remains sanitized (regression — no token/api key/prompt/excerpt/sourceUrl)',
   fn: async () => {
-    const mod = await import(HELPER_PATH);
+    const mod = await importAbsolute(HELPER_PATH);
     const observer = mod.createScoutLiveBoundaryObserver();
     const handler = await getOnRequestPost();
     let limiterPayload = null;

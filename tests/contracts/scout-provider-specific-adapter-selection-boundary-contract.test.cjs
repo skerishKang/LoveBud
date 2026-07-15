@@ -25,6 +25,7 @@
 const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
+const { importAbsolute } = require('../helpers/import-absolute.cjs');
 
 const ROOT = path.resolve(__dirname, '../..');
 const ADAPTER_PATH = path.join(ROOT, 'functions/api/scout/provider-specific-adapter.js');
@@ -61,7 +62,7 @@ const srcSelCode = readFileSafe(SOURCE_SELECTOR_PATH);
 const auditDocCode = readFileSafe(AUDIT_DOC_PATH);
 
 async function importAdapter() {
-  const module = await import(ADAPTER_PATH);
+  const module = await importAbsolute(ADAPTER_PATH);
   return module;
 }
 
