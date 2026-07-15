@@ -362,30 +362,26 @@ test('preflight Trigger fixtures', { concurrency: false }, async () => {
 
 // Postcondition adversarial evidence
 test('postcondition validator rejects mutated states', { concurrency: false }, async () => {
-  await withDisposableDb('post_adv', FIXTURE, async ({ client, runSql }) => {
-    expectOk(runSql(PREFLIGHT), 'post_adv', 'preflight');
-    expectOk(runSql(MIG_A), 'post_adv', 'mig');
-    
-    // Store valid fingerprint
-    const validFp = await catalog.getCatalogFingerprint(client);
-    
-    const mutations = [
-      ['wrong_check', `ALTER TABLE public.social_idempotency DROP CONSTRAINT social_idempotency_generic_target_pair_check; ALTER TABLE public.social_idempotency ADD CONSTRAINT social_idempotency_generic_target_pair_check CHECK (target_kind IS NOT NULL);`],
-      ['unvalidated_check', `ALTER TABLE public.social_idempotency DROP CONSTRAINT social_idempotency_generic_target_pair_check; ALTER TABLE public.social_idempotency ADD CONSTRAINT social_idempotency_generic_target_pair_check CHECK (((target_kind IS NULL) AND (target_id IS NULL)) OR ((target_kind IS NOT NULL) AND (target_id IS NOT NULL))) NOT VALID;`],
-      ['wrong_function_body', `CREATE OR REPLACE FUNCTION public.sync_social_idempotency_generic_target_from_legacy_memory() RETURNS trigger LANGUAGE plpgsql AS $$BEGIN RETURN NEW; END;$$;`],
-      ['sec_def_function', `CREATE OR REPLACE FUNCTION public.sync_social_idempotency_generic_target_from_legacy_memory() RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER AS $$BEGIN NEW.target_kind := 'memory'; NEW.target_id := NEW.target_memory_id; RETURN NEW; END;$$;`],
-      ['tg_disabled', `ALTER TABLE public.social_idempotency DISABLE TRIGGER trg_social_idempotency_sync_generic_target;`],
-      ['tg_always', `ALTER TABLE public.social_idempotency ENABLE ALWAYS TRIGGER trg_social_idempotency_sync_generic_target;`],
-      ['tg_replica', `ALTER TABLE public.social_idempotency ENABLE REPLICA TRIGGER trg_social_idempotency_sync_generic_target;`],
-      ['tg_insert_only', `DROP TRIGGER trg_social_idempotency_sync_generic_target ON public.social_idempotency; CREATE TRIGGER trg_social_idempotency_sync_generic_target BEFORE INSERT ON public.social_idempotency FOR EACH ROW EXECUTE FUNCTION public.sync_social_idempotency_generic_target_from_legacy_memory();`],
-      ['wrong_trigger_function', `DROP TRIGGER trg_social_idempotency_sync_generic_target ON public.social_idempotency; CREATE TRIGGER trg_social_idempotency_sync_generic_target BEFORE INSERT OR UPDATE ON public.social_idempotency FOR EACH ROW EXECUTE FUNCTION public.sync_social_audit_generic_target_from_legacy_memory();`],
-      ['target_kind_default', `ALTER TABLE public.social_idempotency ALTER COLUMN target_kind SET DEFAULT 'memory';`],
-      ['target_id_not_null', `ALTER TABLE public.social_idempotency ALTER COLUMN target_id SET NOT NULL;`],
-      ['wrong_generic_type', `ALTER TABLE public.social_idempotency ALTER COLUMN target_kind TYPE VARCHAR(32);`],
-    ];
+  const mutations = [
+    ['wrong_check', `ALTER TABLE public.social_idempotency DROP CONSTRAINT social_idempotency_generic_target_pair_check; ALTER TABLE public.social_idempotency ADD CONSTRAINT social_idempotency_generic_target_pair_check CHECK (target_kind IS NOT NULL);`],
+    ['unvalidated_check', `ALTER TABLE public.social_idempotency DROP CONSTRAINT social_idempotency_generic_target_pair_check; ALTER TABLE public.social_idempotency ADD CONSTRAINT social_idempotency_generic_target_pair_check CHECK (((target_kind IS NULL) AND (target_id IS NULL)) OR ((target_kind IS NOT NULL) AND (target_id IS NOT NULL))) NOT VALID;`],
+    ['wrong_function_body', `CREATE OR REPLACE FUNCTION public.sync_social_idempotency_generic_target_from_legacy_memory() RETURNS trigger LANGUAGE plpgsql AS $$BEGIN RETURN NEW; END;$$;`],
+    ['sec_def_function', `CREATE OR REPLACE FUNCTION public.sync_social_idempotency_generic_target_from_legacy_memory() RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER AS $$BEGIN NEW.target_kind := 'memory'; NEW.target_id := NEW.target_memory_id; RETURN NEW; END;$$;`],
+    ['tg_disabled', `ALTER TABLE public.social_idempotency DISABLE TRIGGER trg_social_idempotency_sync_generic_target;`],
+    ['tg_always', `ALTER TABLE public.social_idempotency ENABLE ALWAYS TRIGGER trg_social_idempotency_sync_generic_target;`],
+    ['tg_replica', `ALTER TABLE public.social_idempotency ENABLE REPLICA TRIGGER trg_social_idempotency_sync_generic_target;`],
+    ['tg_insert_only', `DROP TRIGGER trg_social_idempotency_sync_generic_target ON public.social_idempotency; CREATE TRIGGER trg_social_idempotency_sync_generic_target BEFORE INSERT ON public.social_idempotency FOR EACH ROW EXECUTE FUNCTION public.sync_social_idempotency_generic_target_from_legacy_memory();`],
+    ['wrong_trigger_function', `DROP TRIGGER trg_social_idempotency_sync_generic_target ON public.social_idempotency; CREATE TRIGGER trg_social_idempotency_sync_generic_target BEFORE INSERT OR UPDATE ON public.social_idempotency FOR EACH ROW EXECUTE FUNCTION public.sync_social_audit_generic_target_from_legacy_memory();`],
+    ['target_kind_default', `ALTER TABLE public.social_idempotency ALTER COLUMN target_kind SET DEFAULT 'memory';`],
+    ['target_id_not_null', `ALTER TABLE public.social_idempotency ALTER COLUMN target_id SET NOT NULL;`],
+    ['wrong_generic_type', `ALTER TABLE public.social_idempotency ALTER COLUMN target_kind TYPE VARCHAR(32);`],
+  ];
 
-    for (const [name, sql] of mutations) {
-      await client.query('BEGIN');
+  for (const [name, sql] of mutations) {
+    await withDisposableDb(`post_adv_${name}`, FIXTURE, async ({ client, runSql }) => {
+      expectOk(runSql(PREFLIGHT), 'post_adv', 'preflight');
+      expectOk(runSql(MIG_A), 'post_adv', 'mig');
+      
       await client.query(sql);
       
       const mutatedFp = await catalog.getCatalogFingerprint(client);
@@ -395,10 +391,8 @@ test('postcondition validator rejects mutated states', { concurrency: false }, a
       
       const afterFp = await catalog.getCatalogFingerprint(client);
       assert.ok(catalog.fingerprintEqual(mutatedFp, afterFp), `Validator must not mutate state during ${name}`);
-      
-      await client.query('ROLLBACK');
-    }
-  });
+    });
+  }
 });
 
 test('suite never executes Migration B', () => {
