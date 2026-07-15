@@ -1,6 +1,12 @@
 # Local Browser Verification Startup
 
 **Status:** Active startup runbook
+> **Status:** OPTIONAL / CURRENTLY UNAVAILABLE AS A REQUIRED GATE
+>
+> 이 절차는 환경이 실제로 사용 가능하고 CTO가 명시적으로 지정한
+> 경우에만 사용합니다. 해당 환경의 부재는 merge blocker가 아닙니다.
+> 자세한 내용은 `docs/ops/MERGE_FIRST_PRODUCTION_VERIFICATION_WORKFLOW.md`를 참고하세요.
+
 **Owner:** CTO / Ops Lead
 **Scope:** Local browser verification, browser smoke, PR Preview checks, fixed test slot checks, and local-only visual checks
 >

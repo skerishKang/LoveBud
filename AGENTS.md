@@ -87,52 +87,22 @@ LoveBud 로컬 작업의 **현재 기본 OS는 Windows**다.
 
 ### UI 검증 환경 우선순위
 
-LoveBud UI 작업에서는 로컬 정적 서버를 최종 검증 환경으로 자동 가정하지 않습니다.
+LoveBud의 UI 검증은 **Merge-First Production Verification** 워크플로우를 기본으로 합니다.
+자세한 내용은 `docs/ops/MERGE_FIRST_PRODUCTION_VERIFICATION_WORKFLOW.md`를 참고하세요.
 
-PR 병합 전 UI 검증 우선순위는 아래와 같습니다.
+핵심 원칙:
+- **Pre-merge browser verification (fixed slot / PR Preview)**: OPTIONAL. 부재 시 merge blocker가 아닙니다.
+- **Post-merge Production verification**: UI/Auth/runtime 동작의 최종 확인 단계입니다.
+- **로컬 정적 서버**: 정적 레이아웃 참고용 fallback으로만 사용합니다.
+- **GitHub CI + 로컬 자동 테스트**: pre-merge mandatory gate로 유지됩니다.
 
-1. **Cloudflare Pages PR Preview URL**
-2. **해당 작업을 위해 이미 확보한 테스트/프리뷰 페이지 URL**
-3. **로컬 서버** — 정적 레이아웃 참고용 fallback
+Pre-merge browser 환경(Cloudflare Preview, fixed test slot)은 CTO가 명시적으로 할당한 경우에만 선택적 추가 증거로 활용합니다.
+환경 부재 시 `NOT_AVAILABLE` / `NOT_USED`로 정직하게 기록하며, PASS로 추정하지 않습니다.
 
-**중요: 브라우저 테스트 슬롯 사용 순서**
-
-브라우저 테스트 슬롯(test2, test3 등)을 사용하여 UI 검증을 수행하려면:
-
-1. 먼저 해당 PR을 Cloudflare Pages에 배포하여 PR Preview URL을 생성합니다
-2. 그 다음에 할당된 테스트 슬롯에 해당 코드를 배포합니다
-3. 배포가 완료된 후에 브라우저 테스트 슬롯 URL을 사용하여 검증을 수행합니다
-
-즉, **PR push → Cloudflare Preview 배포 → 테스트 슬롯 배포 → 브라우저 검증** 순서를 따릅니다. 배포 없이 브라우저 테스트 슬롯을 사용하면 최신 코드가 반영되지 않습니다.
-
-### Wrangler fixed-slot 배포 규칙
-
-LoveBud의 fixed test slot 배포는 Cloudflare Pages Wrangler를 사용합니다.
-
-중요:
-- Wrangler 배포는 기본적으로 **브라우저 로그인 세션(wrangler login)** 기반 인증을 사용합니다.
-- CLOUDFLARE_API_TOKEN 방식은 권한(User Details Read 등)이 부족하면 실패할 수 있습니다.
-
-우선순위:
-1. wrangler login (브라우저 로그인)
-2. CLOUDFLARE_API_TOKEN (fallback)
-
-배포 전 확인:
-- npx wrangler whoami → PASS/FAIL만 확인
-
-금지 영역:
-- 인증 상태 없이 slot 배포 시도 금지
-- token 권한 불명 상태에서 반복 배포 금지
-
-정의:
-- Wrangler 배포는 단순 CLI가 아니라 **인증 상태 포함 작업**으로 간주합니다.
-
-중요:
-- `https://lovebud.pages.dev/`는 병합 전 PR 검증 기준이 아닙니다. production 도메인은 현재 `main`을 반영하므로, 아직 병합되지 않은 PR branch의 source of truth가 될 수 없습니다.
-- production 도메인 검증은 PR이 `main`에 병합되고 배포된 뒤 수행합니다.
+기존의 Wrangler fixed-slot 배포 절차와 브라우저 테스트 슬롯 사용 절차는 `docs/ops/`의 참고 문서로 유지되며,
+CTO 할당 시에만 사용합니다. 해당 절차의 부재는 merge blocker가 아닙니다.
 
 아래 화면/흐름은 로컬 정적 서버 단독으로 최종 판단하지 않습니다.
-
 - Browse / Search 페이지
 - Editor 페이지
 - My Trees 페이지
@@ -142,19 +112,7 @@ LoveBud의 fixed test slot 배포는 Cloudflare Pages Wrangler를 사용합니�
 - Modal upstream에 의존하는 페이지
 - Firebase authentication 또는 session state에 의존하는 페이지
 
-이런 화면에서는 로컬 서버 결과를 참고로만 사용하고, 병합 전 최종 판단은 Cloudflare Preview 또는 준비된 테스트/프리뷰 URL 기준으로 수행합니다.
-
-UI 검증 프롬프트를 작성하기 전 반드시 아래를 먼저 판단하고 명시합니다.
-
-- 정적-only 페이지인가?
-- `/api/*`를 호출하는가?
-- 인증 또는 세션 상태가 필요한가?
-- Cloudflare Functions 또는 Modal에 의존하는가?
-- 이미 확보한 테스트/프리뷰 URL이 있는가?
-- Cloudflare PR Preview URL이 있는가?
-
-브라우저/Auth/API/data-loaded 검증 작업자는 기본 허용이며, 필요 시 `docs/ops/MVP_AGENT_GOVERNANCE.md`의 증거 모델을 따르고 관련 문서(`docs/ops/AGENTS_BROWSER_VERIFICATION_ENTRYPOINT.md`, `docs/ops/LOCAL_BROWSER_VERIFICATION_STARTUP.md`, `docs/ops/BROWSER_VERIFICATION_URL_POLICY.md`, `docs/ops/TEST_PREVIEW_SLOTS.md`)를 참고할 수 있습니다. 브라우저 도구 사용 자체는 금지되지 않습니다. fixed slot 부재·PR entrypoint comment 부재·dirty worktree는 자동 BLOCKED 근거가 아닙니다.
-
+이런 화면에서는 로컬 서버 결과를 참고용으로만 사용하고, post-merge Production verification으로 최종 확인합니다.
 ---
 
 ## 4. 제품 / 용어 해석 가드레일

@@ -4164,6 +4164,12 @@
       "layer": "EXECUTED_FAKE",
       "rationale": "Executes the production Public Viewer appreciation composer, DOM renderer, and detail integration in a fake DOM/VM boundary without real network, Auth, database, or Production resources.",
       "capabilities": []
+    },
+    {
+      "path": "tests/contracts/merge-first-production-verification-governance-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Reads the canonical MERGE_FIRST_PRODUCTION_VERIFICATION_WORKFLOW.md, AGENTS.md, and .kilocode rules; asserts on string existence, section presence, and policy language. Does not execute runtime code, launch a browser, connect to a database or network, deploy, or mutate production.",
+      "capabilities": []
     }
   ],
   "supplemental": [
