@@ -479,3 +479,80 @@ test('b-guard suite never executes Migration B outside helper', () => {
   assert.equal(/process\.env\.DATABASE_URL/i.test(src), false);
   pass('b-guard no unguarded Migration B');
 });
+
+// Temporary catalog fingerprint probe (remove after exact B hashes captured).
+test('b-guard probe STATE_B object fingerprints', { concurrency: false }, async () => {
+  await withDisposableDb('b_probe', FIXTURE, async ({ client, runSql }) => {
+    await reachStateA(client, runSql, 'b_probe');
+    const seq = runGuardedMigrationBSequence(runSql);
+    assert.equal(seq.stoppedAt, 'done');
+    const checks = await client.query(`
+      SELECT
+        n.nspname AS schema,
+        rel.relname AS relation,
+        c.conname,
+        c.contype::text AS contype,
+        c.convalidated::text AS convalidated,
+        trim(both from regexp_replace(replace(replace(pg_get_constraintdef(c.oid,false), E'\\r\\n', E'\\n'), E'\\r', E'\\n'), E'\\\\s+', ' ', 'g')) AS c_norm,
+        encode(sha256(convert_to(concat_ws(E'\\n', n.nspname, rel.relname, c.conname, c.contype::text, c.convalidated::text,
+          trim(both from regexp_replace(replace(replace(pg_get_constraintdef(c.oid,false), E'\\r\\n', E'\\n'), E'\\r', E'\\n'), E'\\\\s+', ' ', 'g'))
+        ), 'utf8')), 'hex') AS actual_hash
+      FROM pg_constraint c
+      JOIN pg_class rel ON rel.oid = c.conrelid
+      JOIN pg_namespace n ON n.oid = rel.relnamespace
+      WHERE c.conname IN (
+        'social_idempotency_memory_legacy_match_check',
+        'social_idempotency_tree_legacy_null_check',
+        'social_audit_log_memory_legacy_match_check',
+        'social_audit_log_tree_legacy_null_check'
+      )
+      ORDER BY c.conname
+    `);
+    const funcs = await client.query(`
+      SELECT
+        ns.nspname AS schema,
+        p.proname,
+        pg_get_function_identity_arguments(p.oid) AS args,
+        pg_get_function_result(p.oid) AS result,
+        l.lanname AS language,
+        p.prosecdef::text AS security,
+        p.provolatile::text AS volatility,
+        p.proparallel::text AS parallel,
+        p.proleakproof::text AS leakproof,
+        p.proisstrict::text AS strict,
+        COALESCE((SELECT string_agg(cfg, ',' ORDER BY cfg) FROM unnest(COALESCE(p.proconfig, ARRAY[]::text[])) AS cfg), '') AS config,
+        trim(both from regexp_replace(replace(replace(p.prosrc, E'\\r\\n', E'\\n'), E'\\r', E'\\n'), E'\\\\s+', ' ', 'g')) AS f_norm,
+        encode(sha256(convert_to(concat_ws(E'\\n', ns.nspname, p.proname,
+          pg_get_function_identity_arguments(p.oid),
+          pg_get_function_result(p.oid),
+          l.lanname,
+          p.prosecdef::text,
+          p.provolatile::text,
+          p.proparallel::text,
+          p.proleakproof::text,
+          p.proisstrict::text,
+          COALESCE((SELECT string_agg(cfg, ',' ORDER BY cfg) FROM unnest(COALESCE(p.proconfig, ARRAY[]::text[])) AS cfg), ''),
+          trim(both from regexp_replace(replace(replace(p.prosrc, E'\\r\\n', E'\\n'), E'\\r', E'\\n'), E'\\\\s+', ' ', 'g'))
+        ), 'utf8')), 'hex') AS actual_hash
+      FROM pg_proc p
+      JOIN pg_namespace ns ON ns.oid = p.pronamespace
+      JOIN pg_language l ON l.oid = p.prolang
+      WHERE ns.nspname = 'public'
+        AND p.proname IN (
+          'sync_social_idempotency_generic_target_from_legacy_memory',
+          'sync_social_audit_generic_target_from_legacy_memory'
+        )
+        AND pg_get_function_identity_arguments(p.oid) = ''
+      ORDER BY p.proname
+    `);
+    for (const row of checks.rows) {
+      process.stdout.write(`B_CHECK_HASH ${row.conname} ${row.actual_hash} DEF ${row.c_norm}\n`);
+    }
+    for (const row of funcs.rows) {
+      process.stdout.write(
+        `B_FUNC_HASH ${row.proname} ${row.actual_hash} vol=${row.volatility} par=${row.parallel} sec=${row.security} lang=${row.language} ret=${row.result}\n`
+      );
+    }
+    pass('b-guard probe STATE_B object fingerprints');
+  });
+});
