@@ -231,7 +231,7 @@
       "production_relevance": "historically applied artifact; direct new execution prohibited",
       "evidence": "paired historical runbook; Issue #3536 execution guards",
       "risk": "IF NOT EXISTS object creation can accept incompatible same-name objects without exact-state preflight",
-      "recommended_disposition": "retain historical SQL unchanged; new work must use preflight→artifact→postcondition validators only",
+      "recommended_disposition": "retain historical SQL unchanged; new work must use preflight\u2192artifact\u2192postcondition validators only",
       "linked_issue": "#3262, #3458, #3536",
       "baseline_sha": "5d601154cfa45a4885e30fc190446ce3b9623aa0",
       "content_checksum": "sha256:c70707d4dfeaa81fa516208a29e4ca5679e2afbeecb31481e52046cdba9cfe64"
@@ -578,18 +578,20 @@
       "recommended_disposition": "required before any future historical Migration A re-execution",
       "linked_issue": "#3536, #3534, #3262, #3458",
       "baseline_sha": "5d601154cfa45a4885e30fc190446ce3b9623aa0",
-      "content_checksum": "sha256:5528efa9de0657bc242942d8194d927688de6b544a7c3b44c32c1d03ec20ea60"
+      "content_checksum": "sha256:164f5fd0c804a21218661493ab19af2028b58f4bab639d84f3ed0aa8cf09462b"
     },
     {
       "path": "scripts/validate-generic-social-a-postcondition.sql",
-      "operation_class": "read_only_execution_guard",
+      "content_checksum": "sha256:d2b2d2fc73ebb08545c930feba55325c4aa796196ce58b28c52d4e2f651e6b81",
+      "layer": "DB_ENGINE_EXECUTION",
+      "operation_class": "POSTCONDITION_VALIDATOR_READ_ONLY",
+      "classification": "CANONICAL_CANDIDATE",
       "schema_objects": [
         "social_idempotency",
         "social_audit_log"
       ],
       "invocation_path": "disposable/canonical guarded workflow only",
       "current_owner_domain": "social schema",
-      "classification": "CANONICAL_CANDIDATE",
       "transaction_behavior": "read-only DO blocks; no schema mutation",
       "idempotency_claim": "fail-closed validation only",
       "rollback_claim": "not applicable (no mutation)",
@@ -598,8 +600,7 @@
       "risk": "does not replace catalog proof for Production apply approval",
       "recommended_disposition": "required before any future historical Migration A re-execution",
       "linked_issue": "#3536, #3534, #3262, #3458",
-      "baseline_sha": "5d601154cfa45a4885e30fc190446ce3b9623aa0",
-      "content_checksum": "sha256:cc4fb17c3380ddfabd845c9ee2f44ef4c26b51d9f41699c05d78d0faf2e81146"
+      "baseline_sha": "5d601154cfa45a4885e30fc190446ce3b9623aa0"
     }
   ]
 }

@@ -204,7 +204,6 @@ jobs:
       # Removed in Stage-2 finalization once allowlists are fixed.
       - name: Capture Migration A canonical fingerprints
         env:
-          GENERIC_SOCIAL_A_CAPTURE_FINGERPRINTS: "1"
         run: node tests/db-engine/capture-generic-social-a-fingerprints.cjs
 
       - name: Run generic-social Migration A execution-guard tests

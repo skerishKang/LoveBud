@@ -61,13 +61,18 @@ test('validators exist, are read-only, and encode exact catalog checks', () => {
   assert.match(pre, /GENERIC_SOCIAL_A_TRIGGER_DEFINITION_MISMATCH/);
   assert.match(pre, /GENERIC_SOCIAL_A_MIXED_STATE_REJECTED/);
   assert.match(pre, /pg_get_constraintdef/);
-  assert.match(pre, /tgtype/);
-  assert.match(pre, /tgfoid/);
+  assert.match(pre, /t_type\s*<>\s*23/);
+  assert.match(pre, /t_enabled\s*<>\s*'O'/);
   assert.match(pre, /prosrc/);
-  assert.match(pre, /plpgsql/);
+  assert.match(pre, /sha256/);
+  assert.match(pre, /encode/);
+  assert.equal(/position\s*\(.*\s+IN\s+.*\)\s*=\s*0/i.test(pre), false, 'CHECK/function substring-only validation 없어야 함');
   assert.match(post, /GENERIC_SOCIAL_A_POSTCONDITION_FAILED/);
-  assert.match(post, /tgtype/);
+  assert.match(post, /t_type\s*<>\s*23/);
+  assert.match(post, /t_enabled\s*<>\s*'O'/);
   assert.match(post, /prosrc/);
+  assert.match(post, /sha256/);
+  assert.equal(/position\s*\(.*\s+IN\s+.*\)\s*=\s*0/i.test(post), false, 'post CHECK/function substring-only validation 없어야 함');
   assert.equal(/RAISE NOTICE/i.test(pre), false);
   assert.equal(/SELECT \* FROM social_/i.test(pre), false);
 });
@@ -132,8 +137,19 @@ test('engine harness encodes guarded sequence and rejection matrix', () => {
   assert.match(h, /validate-generic-social-a-postcondition\.sql/);
   assert.match(h, /guarded happy path/);
   assert.match(h, /second apply/);
-  assert.match(h, /preflight rejects/);
   assert.match(h, /assertNoMutation/);
+  assert.match(h, /assert\.equal\(cat,\s*expectedCategory\)/, 'strict category equality');
+  assert.equal(/startsWith\('GENERIC_SOCIAL_A_'\)/.test(h), false, 'permissive fallback 없어야 함');
+  assert.match(h, /check_wrong_pair/);
+  assert.match(h, /check_wrong_vocab/);
+  assert.match(h, /fn_lang_sql/);
+  assert.match(h, /tg_wrong_fn/);
+  assert.match(h, /data_partial/);
+  assert.match(h, /mixed_audit_partial/);
+  assert.match(h, /wrong_check/);
+  assert.match(h, /sec_def_function/);
+  assert.match(h, /Migration A invocation count = 0/);
+  assert.match(h, /postcondition invocation count = 0/);
   assert.match(h, /row_to_json|rowFp/);
   assert.equal(/(?:^|[^=])\s*runSql\s*\(\s*MIG_B\s*\)/m.test(h), false);
   assert.ok(fs.existsSync(FIXTURE));
@@ -141,6 +157,7 @@ test('engine harness encodes guarded sequence and rejection matrix', () => {
   const helper = read(HELPER);
   assert.match(helper, /row_to_json/);
   assert.equal(/console\.(log|info)/.test(helper), false);
+  assert.equal(/GENERIC_SOCIAL_A_CAPTURE_FINGERPRINTS/.test(h), false, 'temporary capture 없음');
 });
 
 test('classification inventory includes guard contract and engine test', () => {
