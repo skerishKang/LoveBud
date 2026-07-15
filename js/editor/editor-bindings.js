@@ -387,6 +387,7 @@
     var editorCanvas = null;
     var targetData = null;
 
+    var parentCard = document.getElementById('editConnectExistingCard');
     var ctaSection = document.getElementById('connectExistingCtaSection');
     var ctaBtn = document.getElementById('connectExistingCtaBtn');
     var pendingSection = document.getElementById('connectExistingPendingSection');
@@ -397,6 +398,19 @@
     var confirmCancelBtn = document.getElementById('connectExistingConfirmCancelBtn');
 
     var _bindMode = false;
+
+    function setParentCardVisible(visible) {
+      if (!parentCard) return;
+      if (visible) {
+        parentCard.hidden = false;
+        parentCard.style.display = '';
+        parentCard.removeAttribute('aria-hidden');
+      } else {
+        parentCard.hidden = true;
+        parentCard.style.display = 'none';
+        parentCard.setAttribute('aria-hidden', 'true');
+      }
+    }
 
     function setEditorCanvas(canvas) {
       editorCanvas = canvas;
@@ -476,7 +490,11 @@
     }
 
     function showSection(name) {
-      hideAll();
+      // Show parent first, then only the selected child state section.
+      setParentCardVisible(true);
+      if (ctaSection) ctaSection.style.display = 'none';
+      if (pendingSection) pendingSection.style.display = 'none';
+      if (confirmSection) confirmSection.style.display = 'none';
       if (name === 'cta' && ctaSection) ctaSection.style.display = '';
       if (name === 'pending' && pendingSection) pendingSection.style.display = '';
       if (name === 'confirm' && confirmSection) confirmSection.style.display = '';
@@ -486,6 +504,7 @@
       if (ctaSection) ctaSection.style.display = 'none';
       if (pendingSection) pendingSection.style.display = 'none';
       if (confirmSection) confirmSection.style.display = 'none';
+      setParentCardVisible(false);
     }
 
     function handleConnectTargetSelect(targetMem, targetPos) {

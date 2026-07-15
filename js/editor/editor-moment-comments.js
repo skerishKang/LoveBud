@@ -114,8 +114,9 @@
             var api = window.apiClient;
             var memoryId = currentMemoryId;
 
-            if (!memoryId || !elements.panel) return;
-            elements.panel.hidden = false;
+            // Background load must never force panel open. Panel visibility is
+            // owned by makeMomentReactionsController's comment toggle only.
+            if (!memoryId || !elements.list || !elements.status) return;
             if (!preserveFeedback) setFeedback('', '');
 
             if (!api || typeof api.fetchComments !== 'function') {

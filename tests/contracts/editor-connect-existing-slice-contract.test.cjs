@@ -464,18 +464,25 @@ test('editor.js wires controller via setConnectMemory and setValidateConnectCand
 
 test('connect-existing sections ARE inside #detailEditMode template', () => {
   var template = readSource('js/editor/templates/editor-detail-edit-mode-template.js');
+  assert.match(template, /id="editConnectExistingCard"/,
+    'editConnectExistingCard parent must exist in edit-mode template');
   assert.match(template, /connectExistingCtaSection/,
     'connectExistingCtaSection should be in edit-mode template');
   assert.match(template, /connectExistingPendingSection/,
     'connectExistingPendingSection should be in edit-mode template');
   assert.match(template, /connectExistingConfirmSection/,
     'connectExistingConfirmSection should be in edit-mode template');
-    
-  var primaryActionIdx = template.indexOf('continueFromMomentBtn');
+
+  // Edit mode must not clone appreciation-only action IDs mounted in view mode.
+  assert.doesNotMatch(template, /id="viewMomentDetailBtn"/);
+  assert.doesNotMatch(template, /id="continueFromMomentBtn"/);
+  assert.doesNotMatch(template, /id="detailActionsPrimaryLabel"/);
+
+  var parentIdx = template.indexOf('editConnectExistingCard');
   var ctaIdx = template.indexOf('connectExistingCtaSection');
-  assert.ok(primaryActionIdx !== -1, 'primary moment action must exist in the edit-mode template');
-  assert.ok(ctaIdx > primaryActionIdx,
-    'connect-existing sections must follow the primary moment actions in edit-mode DOM order');
+  assert.ok(parentIdx !== -1, 'parent connect card must exist in the edit-mode template');
+  assert.ok(ctaIdx > parentIdx,
+    'connect-existing child sections must be nested after the parent card open');
 });
 
 test('connect-existing sections are NOT in the detail view-mode template outside detailEditMode', () => {

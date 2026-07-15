@@ -485,6 +485,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/editor-appreciation-edit-boundary-runtime-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes Editor view/edit template ID uniqueness extraction, moment comments controller panel visibility/generation guards, and connect-existing parent card visibility gating in node:vm with fake DOM/API without a real browser, network, auth provider, database, deployment, or Production resource.",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/editor-appreciation-order-qa-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",

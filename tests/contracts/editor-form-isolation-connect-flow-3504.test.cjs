@@ -127,11 +127,13 @@ test('CSS hides canvas empty guide when form is open', function() {
 
 test('connect-existing sections are in the template', function() {
   var tpl = readSource('js/editor/templates/editor-detail-edit-mode-template.js');
+  assert.match(tpl, /id="editConnectExistingCard"/);
   assert.match(tpl, /connectExistingCtaSection/);
   assert.match(tpl, /connectExistingCtaBtn/);
   assert.match(tpl, /connectExistingPendingSection/);
   assert.match(tpl, /connectExistingConfirmSection/);
-  assert.match(tpl, /continueFromMomentBtn/);
+  assert.doesNotMatch(tpl, /id="continueFromMomentBtn"/);
+  assert.doesNotMatch(tpl, /id="viewMomentDetailBtn"/);
   assert.ok(!tpl.includes('role="tab"'), 'no ARIA tab role used; existing button section pattern retained');
 });
 

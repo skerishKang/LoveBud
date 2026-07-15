@@ -320,10 +320,30 @@ test('modified browser assets have non-stale tokens and protected base-api-fetch
 
   // Date-token assets must be bumped for this corrective pass.
   assert.match(editorHtml, /editor-detail-ui\.js\?v=20260715-3519-1/);
-  assert.match(editorHtml, /editor-moment-comments\.js\?v=20260715-3519-1/);
   assert.match(editorHtml, /editor-i18n-refresh\.js\?v=20260715-3519-1/);
   assert.match(editorHtml, /i18n-editor\.js\?v=20260715-3519-1/);
-  assert.match(editorHtml, /editor-detail-edit-mode-template\.js\?v=20260715-3519-1/);
+
+  // Content-fingerprint assets modified in final corrective pass.
+  const finalFingerprintAssets = [
+    {
+      file: 'js/editor/templates/editor-detail-edit-mode-template.js',
+      pattern: /editor-detail-edit-mode-template\.js\?v=([^"']+)/,
+    },
+    {
+      file: 'js/editor/editor-moment-comments.js',
+      pattern: /editor-moment-comments\.js\?v=([^"']+)/,
+    },
+    {
+      file: 'js/editor/editor-bindings.js',
+      pattern: /editor-bindings\.js\?v=([^"']+)/,
+    },
+  ];
+  for (const asset of finalFingerprintAssets) {
+    const expected = sha12(asset.file);
+    const match = editorHtml.match(asset.pattern);
+    assert.ok(match, `token missing for ${asset.file}`);
+    assert.equal(match[1], expected, `${asset.file} token must match content sha12`);
+  }
 
   // Same shared assets must stay synchronized across routes.
   const editorSlots = editorHtml.match(/appreciation-presentation-slots\.js\?v=([^"']+)/)[1];

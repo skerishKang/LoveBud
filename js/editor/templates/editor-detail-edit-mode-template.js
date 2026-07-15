@@ -29,19 +29,12 @@ export function buildDetailEditModeTemplate() {
                     <button id="saveEditBtn" class="btn-round btn-primary editor-form-action-btn">...</button>
                 </div>
 
-                <div class="editor-moment-actions-card" style="margin-top: 24px;">
-                    <div class="editor-section-eyebrow" id="detailActionsPrimaryLabel">이 순간에서</div>
-                    <div class="editor-action-list">
-                        <button type="button" class="editor-action-btn editor-action-btn-primary" id="viewMomentDetailBtn">
-                            <span class="material-symbols-outlined" aria-hidden="true">visibility</span>
-                            <span class="editor-action-btn-label" id="viewMomentDetailBtnLabel">현재 순간 감상하기</span>
-                        </button>
-                        <button type="button" class="editor-action-btn editor-action-btn-secondary" id="continueFromMomentBtn">
-                            <span class="material-symbols-outlined" aria-hidden="true">add_circle</span>
-                            <span class="editor-action-btn-label" id="continueFromMomentBtnLabel">이 순간에서 이어가기</span>
-                        </button>
-                    </div>
-
+                <div
+                    id="editConnectExistingCard"
+                    class="editor-moment-actions-card editor-connect-existing-card"
+                    style="margin-top: 24px; display: none;"
+                    hidden
+                >
                     <div id="connectExistingCtaSection" class="editor-connect-existing-section" style="display: none;">
                         <p class="editor-connect-section-copy">이미 기록한 순간을 현재 흐름에 이어 붙여요.</p>
                         <button id="connectExistingCtaBtn" type="button" class="editor-action-btn editor-action-btn-secondary">
