@@ -2129,6 +2129,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/trees-schema-db-engine-harness-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Reads package.json, CI workflow, trees-schema db-engine harness source, damaged fixture markers, and classification inventory; asserts loopback guards, seven-column foothold phase markers, and supplemental DB_ENGINE_EXECUTION placement without executing PostgreSQL (#3532).",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/ops-next-work-recommendation-loop-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
@@ -4311,6 +4317,17 @@
       "defaultCi": false,
       "layer": "DB_ENGINE_EXECUTION",
       "rationale": "Executes repository migration and rollback SQL against a synthetic disposable PostgreSQL 17.4 database in an isolated CI service; it does not contact Production, staging, Neon, or any shared environment.",
+      "capabilities": [
+        "postgresql",
+        "child_process",
+        "filesystem"
+      ]
+    },
+    {
+      "path": "tests/db-engine/trees-schema-foothold-postgres.test.cjs",
+      "defaultCi": false,
+      "layer": "DB_ENGINE_EXECUTION",
+      "rationale": "Executes scripts/migration-repair-trees-schema-3435.sql against synthetic disposable PostgreSQL 17.4 databases in isolated CI; proves seven-column foothold apply, idempotent re-apply, partial converge, and fail-closed preservation without Production/Neon/staging access (#3532).",
       "capabilities": [
         "postgresql",
         "child_process",
