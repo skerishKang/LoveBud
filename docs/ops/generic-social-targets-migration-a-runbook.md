@@ -1,5 +1,25 @@
 # Generic Social Targets Migration A — Runbook
 
+## Execution status (Issue #3536)
+
+- **Historical applied artifact.** `scripts/migration-add-generic-social-targets.sql`
+  is retained for audit/history and migration inventory checksum continuity.
+- **Direct new execution is prohibited.** Do not run the historical SQL file
+  as a standalone new apply path.
+- Validators are **read-only execution guards**, not a migration ledger.
+  They do **not** create or rewrite applied-ledger records.
+- Future disposable/canonical rehearsal or guarded execution, when separately
+  approved, **must** use this order only:
+
+  1. `scripts/validate-generic-social-a-preflight.sql`
+  2. exact unchanged `scripts/migration-add-generic-social-targets.sql`
+  3. `scripts/validate-generic-social-a-postcondition.sql`
+
+- **Production execution is not approved by this issue.** No Production,
+  Neon, staging, Modal, or shared-database apply is authorized here.
+- This documentation does not apply the migration. Any future apply requires
+  separate CTO approval after exact-state preflight and postcondition proof.
+
 ## Overview
 
 This runbook documents Migration A of the staged generic social write target
@@ -7,9 +27,6 @@ schema (Issue #3260). Migration A is strictly additive preparation: it adds
 generic target columns, backfills existing rows, installs legacy-memory
 compatibility triggers, and enforces pair-level CHECK constraints.
 
-**This PR only prepares the artifact. It does not apply the migration.**
-
-Database execution requires separate CTO approval.
 
 ## Migration file
 
@@ -22,21 +39,24 @@ scripts/migration-add-generic-social-targets.sql
 Migration A is only valid after the moment social hardening schema exists
 (from `scripts/migration-harden-moment-social-writes.sql`, Issues #3177).
 
-The migration's preflight checks confirm both required legacy tables exist:
+Exact-state preflight (Issue #3536) accepts only:
 
-- `public.social_idempotency`
-- `public.social_audit_log`
+- exact legacy pre-A state (no generic columns / no A objects), or
+- exact Migration A post-state (for second-apply only).
 
-If either table is absent, the migration fails atomically with a clear
-exception referencing the prerequisite.
+All mixed, partial, or same-name incompatible objects fail closed.
 
-## Separate-approval apply command
+## Historical command — do not execute as new work
 
 ```bash
+# Historical command — do not execute as new work
 psql "$DATABASE_URL" -f scripts/migration-add-generic-social-targets.sql
 ```
 
-**Do not execute this command in this task.** Apply requires CTO approval.
+Direct new execution of the historical artifact is prohibited. Use the
+validator-guarded sequence only when a future task explicitly authorizes
+disposable/canonical rehearsal (still never via ad-hoc Production apply
+from this runbook).
 
 ## Post-apply aggregate-only evidence
 

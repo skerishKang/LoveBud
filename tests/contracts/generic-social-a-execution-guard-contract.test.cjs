@@ -1,0 +1,298 @@
+/**
+ * Source-static contract for Migration A execution-guard validators.
+ * Does not execute PostgreSQL.
+ *
+ * Refs: #3536, #3534, #3262, #3459, #3458, #1882
+ */
+
+'use strict';
+
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const crypto = require('node:crypto');
+
+const ROOT = path.resolve(__dirname, '..', '..');
+const PKG = path.join(ROOT, 'package.json');
+const CI = path.join(ROOT, '.github/workflows/ci.yml');
+const PRE = path.join(ROOT, 'scripts/validate-generic-social-a-preflight.sql');
+const POST = path.join(ROOT, 'scripts/validate-generic-social-a-postcondition.sql');
+const MIG_A = path.join(ROOT, 'scripts/migration-add-generic-social-targets.sql');
+const MIG_B = path.join(ROOT, 'scripts/migration-b-generic-social-targets-cutover.sql');
+const RUNBOOK = path.join(ROOT, 'docs/ops/generic-social-targets-migration-a-runbook.md');
+const INV = path.join(ROOT, 'docs/architecture/migration-path-inventory.json');
+const HARNESS = path.join(ROOT, 'tests/db-engine/generic-social-a-guard-postgres.test.cjs');
+const FIXTURE = path.join(ROOT, 'tests/db-engine/fixtures/generic-social-a-guard-legacy.sql');
+const HELPER = path.join(ROOT, 'tests/db-engine/helpers/generic-social-a-guard-catalog.cjs');
+const CLASS = path.join(ROOT, 'tests/test-layer-classification.json');
+
+function read(p) {
+  assert.ok(fs.existsSync(p), `missing ${path.relative(ROOT, p)}`);
+  return fs.readFileSync(p, 'utf8');
+}
+
+function sha256(p) {
+  const buf = fs.readFileSync(p);
+  const lfBytes = Buffer.from(buf.toString('utf8').replace(/\r\n/g, '\n'));
+  return 'sha256:' + crypto.createHash('sha256').update(lfBytes).digest('hex');
+}
+
+const MUTATION_RE =
+  /\b(CREATE|ALTER|DROP|TRUNCATE|INSERT|UPDATE|DELETE|GRANT|REVOKE)\b/i;
+
+const REQUIRED_CHECK = [
+  'check_wrong_pair',
+  'check_wrong_vocab',
+  'check_not_valid',
+  'check_weak_semantics',
+  'check_shadow',
+];
+
+const REQUIRED_FN = [
+  'fn_lang_sql_overload',
+  'fn_overload_plpgsql',
+  'fn_wrong_body',
+  'fn_early_return',
+  'fn_no_tree_reject',
+  'fn_missing_rejection',
+  'fn_secdef',
+  'fn_volatility',
+  'fn_parallel',
+  'fn_ret_type',
+];
+
+const REQUIRED_TG = [
+  'tg_wrong_fn',
+  'tg_after',
+  'tg_before_insert',
+  'tg_update_only',
+  'tg_statement',
+  'tg_disabled',
+  'tg_always',
+  'tg_replica',
+  'tg_delete',
+  'tg_wrong_relation',
+];
+
+const REQUIRED_LEGACY = [
+  'legacy_missing_idem',
+  'legacy_null_idem',
+  'legacy_type_idem',
+  'legacy_def_idem',
+  'legacy_missing_audit',
+  'legacy_null_audit',
+  'legacy_type_audit',
+  'legacy_def_audit',
+];
+
+const REQUIRED_MIXED = [
+  'mixed_audit_partial',
+  'mixed_idem_exact_post',
+  'mixed_audit_wrong_shape',
+];
+
+test('historical Migration A SQL unchanged checksum', () => {
+  const inv = JSON.parse(read(INV));
+  const entry = inv.entries.find((e) => e.path === 'scripts/migration-add-generic-social-targets.sql');
+  assert.ok(entry);
+  assert.equal(entry.content_checksum, sha256(MIG_A));
+  assert.match(entry.recommended_disposition || entry.evidence || '', /direct|prohibit|historical|canonical/i);
+});
+
+test('validators exist, are read-only, and encode exact catalog checks', () => {
+  const pre = read(PRE);
+  const post = read(POST);
+  assert.equal(MUTATION_RE.test(pre.replace(/--.*/g, '')), false, 'preflight must not mutate');
+  assert.equal(MUTATION_RE.test(post.replace(/--.*/g, '')), false, 'postcondition must not mutate');
+  assert.match(pre, /GENERIC_SOCIAL_A_RELATION_PRECONDITION_FAILED/);
+  assert.match(pre, /GENERIC_SOCIAL_A_LEGACY_COLUMN_SHAPE_MISMATCH/);
+  assert.match(pre, /GENERIC_SOCIAL_A_GENERIC_COLUMN_PARTIAL_STATE/);
+  assert.match(pre, /GENERIC_SOCIAL_A_GENERIC_COLUMN_SHAPE_MISMATCH/);
+  assert.match(pre, /GENERIC_SOCIAL_A_CHECK_DEFINITION_MISMATCH/);
+  assert.match(pre, /GENERIC_SOCIAL_A_FUNCTION_DEFINITION_MISMATCH/);
+  assert.match(pre, /GENERIC_SOCIAL_A_TRIGGER_DEFINITION_MISMATCH/);
+  assert.match(pre, /GENERIC_SOCIAL_A_MIXED_STATE_REJECTED/);
+  assert.match(pre, /pg_get_constraintdef/);
+  assert.match(pre, /t_type\s*<>\s*23/);
+  assert.match(pre, /t_enabled\s*<>\s*'O'/);
+  assert.match(pre, /prosrc/);
+  assert.match(pre, /sha256/);
+  assert.match(pre, /encode/);
+  assert.equal(/position\s*\(.*\s+IN\s+.*\)\s*=\s*0/i.test(pre), false, 'CHECK/function substring-only validation 없어야 함');
+
+  // Exact zero-arg identity for functions and trigger expected OID
+  assert.match(pre, /to_regprocedure\('public\.sync_social_idempotency_generic_target_from_legacy_memory\(\)'\)/);
+  assert.match(pre, /to_regprocedure\('public\.sync_social_audit_generic_target_from_legacy_memory\(\)'\)/);
+  assert.match(post, /to_regprocedure\('public\.sync_social_idempotency_generic_target_from_legacy_memory\(\)'\)/);
+  assert.match(post, /to_regprocedure\('public\.sync_social_audit_generic_target_from_legacy_memory\(\)'\)/);
+
+  // No proname-only SELECT for trigger expected function lookup
+  const pronameOnlyTriggerLookup =
+    /SELECT\s+p\.oid\s+INTO\s+expected_func\s+FROM\s+pg_proc\s+p\s+JOIN\s+pg_namespace\s+n\s+ON\s+n\.oid\s*=\s*p\.pronamespace\s+WHERE\s+n\.nspname\s*=\s*'public'\s+AND\s+p\.proname\s*=\s*'sync_/i;
+  assert.equal(pronameOnlyTriggerLookup.test(pre), false, 'preflight must not use proname-only trigger function lookup');
+  assert.equal(pronameOnlyTriggerLookup.test(post), false, 'postcondition must not use proname-only trigger function lookup');
+
+  // Catalog-wide duplicate same-name constraint uniqueness
+  assert.match(pre, /SELECT count\(\*\)::int INTO n FROM pg_constraint WHERE conname = 'social_idempotency_generic_target_pair_check'/);
+  assert.match(pre, /IF n <> 1 THEN RAISE EXCEPTION 'GENERIC_SOCIAL_A_CHECK_DEFINITION_MISMATCH'/);
+  assert.match(pre, /SELECT count\(\*\)::int INTO n FROM pg_constraint WHERE conname = 'social_audit_log_generic_target_pair_check'/);
+  assert.match(post, /SELECT count\(\*\)::int INTO n FROM pg_constraint WHERE conname = 'social_idempotency_generic_target_pair_check'/);
+  assert.match(post, /SELECT count\(\*\)::int INTO n FROM pg_constraint WHERE conname = 'social_audit_log_generic_target_kind_check'/);
+  assert.match(post, /IF n <> 1 THEN RAISE EXCEPTION 'GENERIC_SOCIAL_A_POSTCONDITION_FAILED'/);
+
+  // Postcondition bounded category only for all failures
+  assert.match(post, /GENERIC_SOCIAL_A_POSTCONDITION_FAILED/);
+  assert.equal(
+    /GENERIC_SOCIAL_A_FUNCTION_DEFINITION_MISMATCH/.test(post),
+    false,
+    'postcondition must not raise function-specific category'
+  );
+  assert.equal(
+    /GENERIC_SOCIAL_A_CHECK_DEFINITION_MISMATCH/.test(post),
+    false,
+    'postcondition must not raise check-specific category'
+  );
+  assert.equal(
+    /GENERIC_SOCIAL_A_TRIGGER_DEFINITION_MISMATCH/.test(post),
+    false,
+    'postcondition must not raise trigger-specific category'
+  );
+
+  assert.match(post, /t_type\s*<>\s*23/);
+  assert.match(post, /t_enabled\s*<>\s*'O'/);
+  assert.match(post, /prosrc/);
+  assert.match(post, /sha256/);
+  assert.equal(/position\s*\(.*\s+IN\s+.*\)\s*=\s*0/i.test(post), false, 'post CHECK/function substring-only validation 없어야 함');
+  assert.equal(/RAISE NOTICE/i.test(pre), false);
+  assert.equal(/SELECT \* FROM social_/i.test(pre), false);
+});
+
+test('package script and CI job for guard engine', () => {
+  const pkg = JSON.parse(read(PKG));
+  assert.match(pkg.scripts['test:db-engine:generic-social-a-guard'], /generic-social-a-guard-postgres/);
+  assert.equal(
+    pkg.scripts.test,
+    'node --test tests/smoke/*.test.cjs tests/routes/*.test.cjs tests/contracts/*.test.cjs'
+  );
+  const ci = read(CI);
+  assert.match(ci, /db-engine-generic-social-a-guard\s*:/);
+  assert.match(ci, /npm run test:db-engine:generic-social-a-guard/);
+  assert.match(ci, /postgres:17\.4-bookworm/);
+  assert.match(ci, /170004/);
+  assert.match(ci, /db-engine-tree-comments\s*:/);
+  assert.match(ci, /db-engine-trees-schema\s*:/);
+  assert.equal(/DATABASE_URL/i.test(ci), false);
+  assert.equal(/secrets\./i.test(ci), false);
+});
+
+test('runbook prohibits direct new Migration A execution', () => {
+  const rb = read(RUNBOOK);
+  assert.match(rb, /direct new execution prohibited|Direct new execution is prohibited/i);
+  assert.match(rb, /historical applied artifact|historically applied/i);
+  assert.match(rb, /preflight/i);
+  assert.match(rb, /postcondition/i);
+  assert.match(rb, /Historical command/i);
+  assert.equal(
+    /psql "\$DATABASE_URL" -f scripts\/migration-add-generic-social-targets\.sql/.test(rb) &&
+      !/Historical command/i.test(rb),
+    false
+  );
+});
+
+test('inventory records validators and keeps Migration A checksum stable', () => {
+  const inv = JSON.parse(read(INV));
+  const migA = inv.entries.find((e) => e.path === 'scripts/migration-add-generic-social-targets.sql');
+  assert.equal(migA.content_checksum, sha256(MIG_A));
+  assert.match(JSON.stringify(migA), /direct|prohibit|historical/i);
+
+  const pre = inv.entries.find((e) => e.path === 'scripts/validate-generic-social-a-preflight.sql');
+  const post = inv.entries.find((e) => e.path === 'scripts/validate-generic-social-a-postcondition.sql');
+  assert.ok(pre);
+  assert.ok(post);
+  assert.equal(pre.content_checksum, sha256(PRE));
+  assert.equal(post.content_checksum, sha256(POST));
+  assert.equal(pre.classification, 'CANONICAL_CANDIDATE');
+  assert.equal(post.classification, 'CANONICAL_CANDIDATE');
+  assert.match(pre.operation_class || '', /read.?only|validator|guard/i);
+
+  const rb = inv.entries.find((e) => e.path === 'docs/ops/generic-social-targets-migration-a-runbook.md');
+  assert.ok(rb);
+  assert.equal(rb.content_checksum, sha256(RUNBOOK));
+
+  const migB = inv.entries.find((e) => e.path === 'scripts/migration-b-generic-social-targets-cutover.sql');
+  assert.equal(migB.content_checksum, sha256(MIG_B));
+});
+
+test('engine harness encodes guarded sequence and full rejection matrix', () => {
+  const h = read(HARNESS);
+  assert.match(h, /validate-generic-social-a-preflight\.sql/);
+  assert.match(h, /migration-add-generic-social-targets\.sql/);
+  assert.match(h, /validate-generic-social-a-postcondition\.sql/);
+  assert.match(h, /guarded happy path/);
+  assert.match(h, /second apply/);
+  assert.match(h, /assertNoMutation/);
+  assert.match(h, /runGuardedSequence/);
+  assert.match(h, /assert\.equal\(cat,\s*expectedCategory\)/, 'strict category equality');
+  assert.equal(/startsWith\('GENERIC_SOCIAL_A_'\)/.test(h), false, 'permissive fallback 없어야 함');
+  assert.equal(
+    /assert\.match\(cat,\s*\/\^GENERIC_SOCIAL_A_/.test(h),
+    false,
+    'prefix-only category match 금지'
+  );
+
+  for (const name of REQUIRED_CHECK) {
+    assert.match(h, new RegExp(name), `missing CHECK scenario ${name}`);
+  }
+  for (const name of REQUIRED_FN) {
+    assert.match(h, new RegExp(name), `missing Function scenario ${name}`);
+  }
+  for (const name of REQUIRED_TG) {
+    assert.match(h, new RegExp(name), `missing Trigger scenario ${name}`);
+  }
+  for (const name of REQUIRED_LEGACY) {
+    assert.match(h, new RegExp(name), `missing Legacy scenario ${name}`);
+  }
+  for (const name of REQUIRED_MIXED) {
+    assert.match(h, new RegExp(name), `missing Mixed scenario ${name}`);
+  }
+
+  // Postcondition independent scenarios
+  assert.match(h, /fn_lang_sql_overload/);
+  assert.match(h, /fn_overload_plpgsql/);
+  assert.match(h, /wrong_function_body|fn_wrong_body/);
+  assert.match(h, /sec_def_function|fn_secdef/);
+  assert.match(h, /fn_missing_rejection/);
+  assert.match(h, /check_shadow/);
+  assert.match(h, /GENERIC_SOCIAL_A_POSTCONDITION_FAILED/);
+
+  // Guarded short-circuit proof
+  assert.match(h, /Migration A invocation count = 0/);
+  assert.match(h, /postcondition invocation count = 0/);
+  assert.match(h, /preflight invocation = 1/);
+  assert.match(h, /counts\.migA/);
+  assert.match(h, /counts\.postcond/);
+  assert.match(h, /row_to_json|rowFp/);
+  assert.match(h, /getCatalogFingerprint/);
+  assert.match(h, /getFullRowFingerprint\(client,\s*'idem'\)/);
+  assert.match(h, /getFullRowFingerprint\(client,\s*'audit'\)/);
+
+  assert.equal(/(?:^|[^=])\s*runSql\s*\(\s*MIG_B\s*\)/m.test(h), false, 'Migration B 실행 없음');
+  assert.equal(/GENERIC_SOCIAL_A_CAPTURE_FINGERPRINTS/.test(h), false, 'temporary capture 없음');
+  assert.ok(fs.existsSync(FIXTURE));
+  assert.ok(fs.existsSync(HELPER));
+  const helper = read(HELPER);
+  assert.match(helper, /row_to_json/);
+  assert.equal(/console\.(log|info)/.test(helper), false);
+});
+
+test('classification inventory includes guard contract and engine test', () => {
+  const inv = JSON.parse(read(CLASS));
+  const contract = 'tests/contracts/generic-social-a-execution-guard-contract.test.cjs';
+  const engine = 'tests/db-engine/generic-social-a-guard-postgres.test.cjs';
+  assert.ok(inv.entries.some((e) => e.path === contract && e.layer === 'SOURCE_STATIC'));
+  const supp = inv.supplemental.find((s) => s.path === engine);
+  assert.ok(supp);
+  assert.equal(supp.layer, 'DB_ENGINE_EXECUTION');
+  assert.equal(supp.defaultCi, false);
+});
