@@ -8,20 +8,124 @@ function makeMomentReactionsController(deps) {
 
     let currentMemoryId = null;
     let selectionEpoch = 0;
+    let socialState = 'hidden';
+    let likeCountKnown = false;
+    let commentCountKnown = false;
+    let likeCountValue = null;
+    let commentCountValue = null;
+    let isSubmitting = false;
+
+    function getControls() {
+        return {
+            card: getElementById('momentReactionsCard'),
+            likeBtn: getElementById('momentReactionLikeButton'),
+            likeCount: getElementById('momentReactionLikeValue'),
+            commentBtn: getElementById('momentReactionCommentStatus'),
+            commentCount: getElementById('momentReactionCommentValue'),
+            errorEl: getElementById('momentReactionWriteError')
+        };
+    }
+
+    function setError(message) {
+        const { errorEl } = getControls();
+        if (!errorEl) return;
+        errorEl.textContent = message || '';
+        errorEl.style.display = message ? '' : 'none';
+    }
+
+    function formatCount(value, known) {
+        if (!known || value === null || value === undefined) return '⋯';
+        return String(value);
+    }
+
+    function syncAriaPressed(likeBtn, reacted) {
+        if (!likeBtn) return;
+        likeBtn.dataset.reacted = reacted ? 'true' : 'false';
+        likeBtn.setAttribute('aria-pressed', reacted ? 'true' : 'false');
+        const likeIcon = likeBtn.querySelector('.editor-reaction-like-icon');
+        if (likeIcon) likeIcon.textContent = reacted ? '❤️' : '🤍';
+    }
+
+    function setInteractiveEnabled(enabled) {
+        const { likeBtn, commentBtn } = getControls();
+        const canUse = !!enabled && !isSubmitting;
+        if (likeBtn) {
+            likeBtn.disabled = !canUse;
+            if (canUse) likeBtn.removeAttribute('aria-disabled');
+            else likeBtn.setAttribute('aria-disabled', 'true');
+        }
+        if (commentBtn) {
+            commentBtn.disabled = !canUse;
+            if (canUse) commentBtn.removeAttribute('aria-disabled');
+            else commentBtn.setAttribute('aria-disabled', 'true');
+        }
+    }
+
+    function applySocialState(nextState) {
+        socialState = nextState;
+        const { card } = getControls();
+        if (card) {
+            card.dataset.socialState = nextState;
+            card.style.display = nextState === 'hidden' ? 'none' : '';
+            // Never mark owner social as public/read-only.
+            if (card.classList && typeof card.classList.remove === 'function') {
+                card.classList.remove('is-read-only');
+                card.classList.remove('is-public-readonly');
+            }
+            if (typeof card.removeAttribute === 'function') {
+                card.removeAttribute('data-read-only-summary');
+            }
+            if (card.dataset) {
+                delete card.dataset.readOnlySummary;
+            }
+        }
+
+        if (nextState === 'loading') {
+            setInteractiveEnabled(false);
+        } else if (nextState === 'ready') {
+            setInteractiveEnabled(true);
+        } else if (nextState === 'submitting') {
+            setInteractiveEnabled(false);
+        } else if (nextState === 'error') {
+            // Keep controls usable after a non-fatal summary error when counts remain unknown.
+            setInteractiveEnabled(true);
+        } else if (nextState === 'hidden') {
+            setInteractiveEnabled(false);
+        }
+    }
+
+    function paintCounts() {
+        const { likeCount, commentCount } = getControls();
+        if (likeCount) likeCount.textContent = formatCount(likeCountValue, likeCountKnown);
+        if (commentCount) commentCount.textContent = formatCount(commentCountValue, commentCountKnown);
+    }
+
+    function resetUnknownCounts() {
+        likeCountKnown = false;
+        commentCountKnown = false;
+        likeCountValue = null;
+        commentCountValue = null;
+        paintCounts();
+    }
 
     function hideReactionsCard() {
-        const reactionsCard = getElementById('momentReactionsCard');
-        if (reactionsCard) reactionsCard.style.display = 'none';
         selectionEpoch += 1;
         currentMemoryId = null;
-        const likeBtn = getElementById('momentLikeBtn');
+        isSubmitting = false;
+        const { likeBtn, commentBtn } = getControls();
         if (likeBtn) likeBtn.onclick = null;
+        if (commentBtn && commentBtn.dataset.ownerToggleBound === '1') {
+            // keep bound once; state is gated by disabled/selection epoch
+        }
+        setError('');
+        resetUnknownCounts();
+        applySocialState('hidden');
     }
 
     return {
         update({ data, canonicalRootId, isRootMemoryFn }) {
-            const reactionsCard = getElementById('momentReactionsCard');
-            if (!reactionsCard) return;
+            const { card, likeBtn, likeCount, commentCount, commentBtn } = getControls();
+            if (!card || !likeBtn || !likeCount || !commentCount) return;
 
             if (!data?.id || (typeof isRootMemoryFn === 'function' && isRootMemoryFn(data, canonicalRootId))) {
                 hideReactionsCard();
@@ -30,67 +134,132 @@ function makeMomentReactionsController(deps) {
 
             const memoryId = String(data.id);
             selectionEpoch += 1;
-
             const requestEpoch = selectionEpoch;
             const requestMemoryId = memoryId;
             currentMemoryId = requestMemoryId;
-
-            reactionsCard.style.display = '';
-
-            const likeBtn = getElementById('momentLikeBtn');
-            const likeCount = getElementById('momentLikeCount');
-            const commentCount = getElementById('momentCommentCount');
-
-            if (!likeBtn || !likeCount || !commentCount) return;
-
-            likeBtn.dataset.reacted = 'false';
-            likeBtn.querySelector('.editor-reaction-like-icon').textContent = '🤍';
-            likeCount.textContent = '0';
-            commentCount.textContent = '0';
+            isSubmitting = false;
+            setError('');
+            resetUnknownCounts();
+            syncAriaPressed(likeBtn, false);
+            applySocialState('loading');
 
             if (apiClient?.fetchReactionSummary) {
                 apiClient.fetchReactionSummary(requestMemoryId)
-                    .then(summary => {
-                        if (!summary || currentMemoryId !== requestMemoryId || selectionEpoch !== requestEpoch) return;
-                        likeCount.textContent = summary.like_count ?? summary.likeCount ?? 0;
-                        commentCount.textContent = summary.comment_count ?? summary.commentCount ?? 0;
+                    .then((summary) => {
+                        if (currentMemoryId !== requestMemoryId || selectionEpoch !== requestEpoch) return;
+                        if (!summary || typeof summary !== 'object') {
+                            applySocialState('error');
+                            return;
+                        }
+
+                        const rawLike = summary.like_count ?? summary.likeCount;
+                        const rawComment = summary.comment_count ?? summary.commentCount;
+                        if (typeof rawLike === 'number' && Number.isFinite(rawLike) && rawLike >= 0) {
+                            likeCountKnown = true;
+                            likeCountValue = Math.floor(rawLike);
+                        }
+                        if (typeof rawComment === 'number' && Number.isFinite(rawComment) && rawComment >= 0) {
+                            commentCountKnown = true;
+                            commentCountValue = Math.floor(rawComment);
+                        }
+                        paintCounts();
+
                         const userReacted = summary.user_reacted ?? summary.userReacted ?? false;
-                        likeBtn.dataset.reacted = userReacted ? 'true' : 'false';
-                        likeBtn.querySelector('.editor-reaction-like-icon').textContent = userReacted ? '❤️' : '🤍';
+                        syncAriaPressed(likeBtn, !!userReacted);
+                        applySocialState('ready');
                     })
-                    .catch(() => {});
+                    .catch(() => {
+                        if (currentMemoryId !== requestMemoryId || selectionEpoch !== requestEpoch) return;
+                        // Do not fabricate authoritative zeros on failure.
+                        paintCounts();
+                        applySocialState('error');
+                    });
+            } else {
+                applySocialState('error');
             }
 
             const boundMemoryId = requestMemoryId;
             const boundEpoch = requestEpoch;
 
-            likeBtn.onclick = async () => {
+            likeBtn.onclick = async (event) => {
+                if (event) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
                 if (currentMemoryId !== boundMemoryId || selectionEpoch !== boundEpoch) return;
-                const wasReacted = likeBtn.dataset.reacted === 'true';
-                const prevCount = parseInt(likeCount.textContent) || 0;
+                if (isSubmitting || likeBtn.disabled) return;
+                if (!apiClient || typeof apiClient.toggleReaction !== 'function') {
+                    setError(i18n('reaction_failed') || '반응을 저장하지 못했어요.');
+                    return;
+                }
 
+                const wasReacted = likeBtn.dataset.reacted === 'true';
+                const prevKnown = likeCountKnown;
+                const prevCount = likeCountValue;
                 const nextReacted = !wasReacted;
-                const nextCount = nextReacted ? prevCount + 1 : Math.max(0, prevCount - 1);
-                likeBtn.dataset.reacted = nextReacted ? 'true' : 'false';
-                likeBtn.querySelector('.editor-reaction-like-icon').textContent = nextReacted ? '❤️' : '🤍';
-                likeCount.textContent = nextCount;
+                const optimisticCount = nextReacted
+                    ? (prevKnown ? prevCount + 1 : 1)
+                    : Math.max(0, (prevKnown ? prevCount : 1) - 1);
+
+                isSubmitting = true;
+                applySocialState('submitting');
+                syncAriaPressed(likeBtn, nextReacted);
+                likeCountKnown = true;
+                likeCountValue = optimisticCount;
+                paintCounts();
+                setError('');
 
                 try {
                     const result = await apiClient.toggleReaction(boundMemoryId, 'like');
-                    if (result && currentMemoryId === boundMemoryId && selectionEpoch === boundEpoch) {
-                        likeCount.textContent = result.like_count ?? result.likeCount ?? nextCount;
+                    if (currentMemoryId !== boundMemoryId || selectionEpoch !== boundEpoch) return;
+                    if (result && typeof result === 'object') {
+                        const serverLike = result.like_count ?? result.likeCount;
+                        if (typeof serverLike === 'number' && Number.isFinite(serverLike) && serverLike >= 0) {
+                            likeCountKnown = true;
+                            likeCountValue = Math.floor(serverLike);
+                        }
                         const serverReacted = result.user_reacted ?? result.userReacted ?? nextReacted;
-                        likeBtn.dataset.reacted = serverReacted ? 'true' : 'false';
-                        likeBtn.querySelector('.editor-reaction-like-icon').textContent = serverReacted ? '❤️' : '🤍';
+                        syncAriaPressed(likeBtn, !!serverReacted);
+                        paintCounts();
                     }
+                    isSubmitting = false;
+                    applySocialState('ready');
                 } catch (e) {
                     if (currentMemoryId !== boundMemoryId || selectionEpoch !== boundEpoch) return;
-                    likeBtn.dataset.reacted = wasReacted ? 'true' : 'false';
-                    likeBtn.querySelector('.editor-reaction-like-icon').textContent = wasReacted ? '❤️' : '🤍';
-                    likeCount.textContent = prevCount;
-                    showToast(i18n('reaction_failed') || '반응을 저장하지 못했어요.', 'error');
+                    syncAriaPressed(likeBtn, wasReacted);
+                    likeCountKnown = prevKnown;
+                    likeCountValue = prevCount;
+                    paintCounts();
+                    isSubmitting = false;
+                    applySocialState('ready');
+                    setError(i18n('reaction_failed') || '반응을 저장하지 못했어요.');
+                    if (typeof showToast === 'function') {
+                        showToast(i18n('reaction_failed') || '반응을 저장하지 못했어요.', 'error');
+                    }
                 }
             };
+
+            if (commentBtn && commentBtn.dataset.ownerToggleBound !== '1') {
+                commentBtn.dataset.ownerToggleBound = '1';
+                commentBtn.addEventListener('click', (event) => {
+                    if (event) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                    }
+                    if (commentBtn.disabled) return;
+                    const panel = getElementById('momentCommentsPanel');
+                    if (!panel) return;
+                    const nextOpen = panel.hidden;
+                    panel.hidden = !nextOpen;
+                    commentBtn.setAttribute('aria-expanded', nextOpen ? 'true' : 'false');
+                    if (nextOpen) {
+                        const input = getElementById('momentCommentInput');
+                        if (input && typeof input.focus === 'function') {
+                            input.focus({ preventScroll: true });
+                        }
+                    }
+                });
+            }
         },
 
         hide() {
@@ -522,37 +691,6 @@ function createEditorDetailUI(deps) {
     });
     const { updateSidebarStatus } = sidebarStatusBoundary;
 
-    const prepareMemoHeadingActionSlot = () => {
-        const memoLabel = document.getElementById('detailMemoLabel');
-        if (!memoLabel) return null;
-
-        const memoGroup = memoLabel.closest('.detail-info-group');
-        if (!memoGroup) return null;
-
-        memoGroup.classList.add('editor-memo-section-group');
-
-        let headingRow = memoGroup.querySelector('.editor-memo-heading-row');
-        if (!headingRow) {
-            headingRow = document.createElement('div');
-            headingRow.className = 'editor-memo-heading-row';
-            memoGroup.insertBefore(headingRow, memoLabel);
-        }
-
-        if (memoLabel.parentElement !== headingRow) {
-            headingRow.insertBefore(memoLabel, headingRow.firstChild);
-        }
-
-        let actionSlot = headingRow.querySelector('.editor-memo-heading-action-slot');
-        if (!actionSlot) {
-            actionSlot = document.createElement('div');
-            actionSlot.className = 'editor-memo-heading-action-slot';
-            headingRow.appendChild(actionSlot);
-        }
-
-        actionSlot.innerHTML = '';
-        return actionSlot;
-    };
-
     const updateDetailPanel = (data) => {
         const currentTree = getCurrentTreeData() || {};
         const treeId = currentTree.id || new URLSearchParams(window.location.search).get('tree');
@@ -575,10 +713,6 @@ function createEditorDetailUI(deps) {
         const treeMetaMount = document.getElementById('detailTreeMetaMount');
         const imgEl = detailPanel.querySelector('.detail-video img');
         const mediaWrap = detailPanel.querySelector('.detail-video');
-        const dateEl = document.getElementById('detailDateText');
-        const tagsContainer = detailPanel.querySelector('.tags-container');
-        const noteEl = document.querySelector('.diary-note');
-        const memoEditButtonMount = prepareMemoHeadingActionSlot();
         const memoryActions = detailPanel.querySelector('.memory-actions');
         const atlasPreviewMount = document.getElementById('detailAtlasPreviewMount');
 
@@ -589,6 +723,23 @@ function createEditorDetailUI(deps) {
             if (hintEl) {
                 hintEl.textContent = '';
                 hintEl.hidden = true;
+            }
+            const slotDom = window.LoveBudAppreciationSlotDom;
+            if (slotDom && typeof slotDom.createAppreciationSlotDomRenderer === 'function') {
+                slotDom.createAppreciationSlotDomRenderer({
+                    ids: {
+                        title: 'detailCurrentMomentTitle',
+                        date: 'detailDateText',
+                        dateGroup: 'detailDateGroup',
+                        tags: 'detailTags',
+                        tagsGroup: 'detailTagsGroup',
+                        knowledgeList: 'detailOwnerKnowledgeList',
+                        knowledgeGroup: 'detailOwnerKnowledgeGroup',
+                        knowledgeItemClass: 'editor-owner-knowledge-item',
+                        memo: 'detailMemo',
+                        memoGroup: 'detailMemoGroup'
+                    }
+                }).reset();
             }
             if (atlasPreviewPanel && atlasPreviewMount) atlasPreviewPanel.render(atlasPreviewMount, null);
             setDetailEmptyState(true);
@@ -614,32 +765,6 @@ function createEditorDetailUI(deps) {
             badgeEl.textContent = isRootSelected
                 ? formatI18nText('start_moment', '시작 순간')
                 : formatI18nText('selected_moment', '선택된 순간');
-        }
-
-        if (titleEl) {
-            titleEl.innerHTML = '';
-
-            const titleContainer = document.createElement('div');
-            titleContainer.className = 'memory-inline-edit';
-            titleContainer.style.width = '100%';
-            titleContainer.style.display = 'flex';
-            titleContainer.style.alignItems = 'flex-start';
-
-            const titleText = document.createElement('span');
-            titleText.style.flex = '1';
-            titleText.textContent = sanitizeMomentTitle(data.title, formatI18nText('editor_current_moment_title', '지금 마음이 머문 장면'));
-
-            titleContainer.appendChild(titleText);
-
-            createTitleEditBoundary(titleContainer, data, {
-                updateSelectedMemoryFields,
-                showToast,
-                formatI18nText,
-                i18n,
-                isEmptyState
-            });
-
-            titleEl.appendChild(titleContainer);
         }
 
         if (hintEl) {
@@ -676,74 +801,81 @@ function createEditorDetailUI(deps) {
             }
         }
 
-        if (dateEl) {
-            dateEl.textContent = data?.timestamp || '';
-        }
+        const editorComposer = window.LoveBudEditorAppreciationComposer;
+        const slotDom = window.LoveBudAppreciationSlotDom;
 
-        if (tagsContainer) {
-            tagsContainer.innerHTML = '';
-            const displayTags = getDisplayEmotionTags(data, { isRootSelected, isEmptyState });
-            displayTags.forEach((tag) => {
-                const tagEl = document.createElement('span');
-                tagEl.className = 'tag tag-primary';
-                tagEl.textContent = tag;
-                tagsContainer.appendChild(tagEl);
+        if (
+            editorComposer &&
+            typeof editorComposer.composeEditorAppreciationPresentation === 'function' &&
+            slotDom &&
+            typeof slotDom.createAppreciationSlotDomRenderer === 'function'
+        ) {
+            const appreciationRenderer = slotDom.createAppreciationSlotDomRenderer({
+                ids: {
+                    title: 'detailCurrentMomentTitle',
+                    date: 'detailDateText',
+                    dateGroup: 'detailDateGroup',
+                    tags: 'detailTags',
+                    tagsGroup: 'detailTagsGroup',
+                    knowledgeList: 'detailOwnerKnowledgeList',
+                    knowledgeGroup: 'detailOwnerKnowledgeGroup',
+                    knowledgeItemClass: 'editor-owner-knowledge-item',
+                    memo: 'detailMemo',
+                    memoGroup: 'detailMemoGroup'
+                }
             });
+            const canOwnerEdit = canEdit !== false;
+            const presentation = editorComposer.composeEditorAppreciationPresentation(data, {
+                isPublicRoute: false,
+                isOwner: true,
+                canEdit: canOwnerEdit,
+                canSwitchMode: canOwnerEdit,
+                canReact: true,
+                canComment: true,
+                canContinue: false,
+                canConnect: false,
+                canDelete: false
+            });
+            appreciationRenderer.render(presentation);
+
+            const detailMemo = document.getElementById('detailMemo');
+            if (detailMemo && (isRootSelected || data.parentId)) {
+                const memoHint = document.createElement('div');
+                memoHint.style.marginTop = '12px';
+                memoHint.style.fontSize = '12px';
+                memoHint.style.lineHeight = '1.65';
+
+                if (isRootSelected) {
+                    memoHint.style.color = 'var(--primary)';
+                    const icon = document.createElement('span');
+                    icon.className = 'material-symbols-outlined';
+                    icon.style.fontSize = '14px';
+                    icon.style.verticalAlign = 'middle';
+                    icon.style.marginRight = '4px';
+                    icon.textContent = 'star';
+                    memoHint.appendChild(icon);
+                    memoHint.appendChild(
+                        document.createTextNode(
+                            formatI18nText('root_moment_hint', '이 순간은 현재 트리의 시작점입니다')
+                        )
+                    );
+                } else if (data.parentId) {
+                    memoHint.style.paddingTop = '12px';
+                    memoHint.style.borderTop = '1px solid var(--outline-variant)';
+                }
+                detailMemo.appendChild(memoHint);
+            }
         }
 
-        // ── Entity search (Knowledge Link) ────────────────────
+        // Knowledge authoring UI is edit-mode only (mount lives in edit template).
         const entitySearchMount = document.getElementById('detailEntitySearchMount');
         if (entitySearchMount) {
             const entitySearchUI = window.LoveBudEditorKnowledgeLinkUI;
             if (entitySearchUI && typeof entitySearchUI.renderEntitySearch === 'function') {
-                // Only render once; reuse existing UI on subsequent updates
                 if (!entitySearchMount.dataset.entitySearchInitialized) {
                     entitySearchUI.renderEntitySearch(entitySearchMount, null, null);
                     entitySearchMount.dataset.entitySearchInitialized = '1';
                 }
-            }
-        }
-
-        if (noteEl) {
-            noteEl.innerHTML = '';
-
-            const memoContainer = document.createElement('div');
-            memoContainer.style.width = '100%';
-
-            const memoBody = document.createElement('div');
-            memoBody.style.lineHeight = '1.8';
-            memoBody.style.fontSize = '0.95rem';
-            memoBody.style.color = 'var(--on-surface)';
-            memoBody.style.whiteSpace = 'pre-line';
-            memoBody.textContent = data.memo || formatI18nText('emptyMemoryNote', '아직 메모가 남겨지지 않았어요');
-            memoContainer.appendChild(memoBody);
-
-            createMemoEditBoundary(memoContainer, data, {
-                updateSelectedMemoryFields,
-                showToast,
-                formatI18nText,
-                getMemoFallbackText,
-                isEmptyState,
-                editButtonMount: memoEditButtonMount
-            });
-
-            noteEl.appendChild(memoContainer);
-
-            const memoHint = document.createElement('div');
-            memoHint.style.marginTop = '12px';
-            memoHint.style.fontSize = '12px';
-            memoHint.style.lineHeight = '1.65';
-
-            if (isRootSelected) {
-                memoHint.style.color = 'var(--primary)';
-                memoHint.innerHTML = `<span class="material-symbols-outlined" style="font-size:14px;vertical-align:middle;margin-right:4px;">star</span> ${formatI18nText('root_moment_hint', '이 순간은 현재 트리의 시작점입니다')}`;
-            } else if (data.parentId) {
-                memoHint.style.paddingTop = '12px';
-                memoHint.style.borderTop = '1px solid var(--outline-variant)';
-            }
-
-            if (memoHint.innerHTML) {
-                noteEl.appendChild(memoHint);
             }
         }
 

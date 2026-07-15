@@ -59,6 +59,18 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/appreciation-cross-route-convergence-runtime-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes Public Viewer and Editor appreciation chains in node:vm with a shared presentation/slot boundary and fake DOM, proving route-owned adapters, canonical slot order, public-safe knowledge gating, owner knowledge display, unknown-vs-zero social counts, and safe textContent rendering without a real browser, network, auth provider, database, deployment, or Production resource.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/appreciation-route-authority-boundary-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes the Editor owner reactions controller lifecycle in node:vm with a fake DOM and asserts loading/ready/submitting/selection-switch behavior, nested click stopPropagation, mode-transition labels, and focused asset-token correctness without a real browser, network, auth provider, database, deployment, or Production resource.",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/auth-bootstrap-contract.test.cjs",
       "layer": "EXECUTED_FAKE",
       "rationale": "Reads production module source and executes it in a local process with injected fake/mock/stub dependencies (e.g., vm context with fake DOM or mocked fetch/localStorage); no real external system or production resource used.",
@@ -66,12 +78,6 @@
     },
     {
       "path": "tests/contracts/auth-confirmed-session-retry.test.cjs",
-      "layer": "EXECUTED_FAKE",
-      "rationale": "Reads production module source and executes it in a local process with injected fake/mock/stub dependencies (e.g., vm context with fake DOM or mocked fetch/localStorage); no real external system or production resource used.",
-      "capabilities": []
-    },
-    {
-      "path": "tests/contracts/base-api-fetch-error-phase-runtime-contract.test.cjs",
       "layer": "EXECUTED_FAKE",
       "rationale": "Reads production module source and executes it in a local process with injected fake/mock/stub dependencies (e.g., vm context with fake DOM or mocked fetch/localStorage); no real external system or production resource used.",
       "capabilities": []
@@ -140,6 +146,12 @@
       "path": "tests/contracts/authenticated-moment-comment-write-boundary-audit-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/base-api-fetch-error-phase-runtime-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Reads production module source and executes it in a local process with injected fake/mock/stub dependencies (e.g., vm context with fake DOM or mocked fetch/localStorage); no real external system or production resource used.",
       "capabilities": []
     },
     {
@@ -275,15 +287,15 @@
       "capabilities": []
     },
     {
-      "path": "tests/contracts/browse-selected-tree-url-state-contract.test.cjs",
-      "layer": "EXECUTED_FAKE",
-      "rationale": "Reads Browse URL-state and share-link source and executes pure URL sync helpers in a local vm with fake location/history; does not connect to a network, database, browser, or production system.",
-      "capabilities": []
-    },
-    {
       "path": "tests/contracts/browse-public-tree-metadata-contract.test.cjs",
       "layer": "EXECUTED_FAKE",
       "rationale": "Reads production module source and executes it in a local process with injected fake/mock/stub dependencies (e.g., vm context with fake DOM or mocked fetch/localStorage); no real external system or production resource used.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/browse-selected-tree-url-state-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Reads Browse URL-state and share-link source and executes pure URL sync helpers in a local vm with fake location/history; does not connect to a network, database, browser, or production system.",
       "capabilities": []
     },
     {
@@ -362,12 +374,6 @@
       "path": "tests/contracts/changeability-production-parity-audit-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
-      "capabilities": []
-    },
-    {
-      "path": "tests/contracts/historical-agent-guidance-disposition-contract.test.cjs",
-      "layer": "SOURCE_STATIC",
-      "rationale": "Reads repository governance Markdown, the historical-agent-restriction inventory JSON, and agent-guidance index files; asserts on disposition markers, canonical links, preserved historical body, and absence of re-introduced unconditional blockers. Does not execute runtime code, launch a browser, connect to a database or network, deploy, or mutate production.",
       "capabilities": []
     },
     {
@@ -479,6 +485,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/editor-appreciation-edit-boundary-runtime-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes Editor view/edit template ID uniqueness extraction, moment comments controller panel visibility/generation guards, and connect-existing parent card visibility gating in node:vm with fake DOM/API without a real browser, network, auth provider, database, deployment, or Production resource.",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/editor-appreciation-order-qa-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
@@ -494,6 +506,12 @@
       "path": "tests/contracts/editor-auth-early-callback-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/editor-authoring-entry-production-regression-3502.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Reads Editor source (CSS, JS, template) and executes the syncSidebarAuthoringEntryState helper and showAddMemoryForm lifecycle in a local vm with fake DOM; does not connect to a network, database, browser, or production system.",
       "capabilities": []
     },
     {
@@ -866,12 +884,6 @@
       "path": "tests/contracts/editor-empty-guide-updater-delegation-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
-      "capabilities": []
-    },
-    {
-      "path": "tests/contracts/editor-authoring-entry-production-regression-3502.test.cjs",
-      "layer": "EXECUTED_FAKE",
-      "rationale": "Reads Editor source (CSS, JS, template) and executes the syncSidebarAuthoringEntryState helper and showAddMemoryForm lifecycle in a local vm with fake DOM; does not connect to a network, database, browser, or production system.",
       "capabilities": []
     },
     {
@@ -1553,6 +1565,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/historical-agent-guidance-disposition-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Reads repository governance Markdown, the historical-agent-restriction inventory JSON, and agent-guidance index files; asserts on disposition markers, canonical links, preserved historical body, and absence of re-introduced unconditional blockers. Does not execute runtime code, launch a browser, connect to a database or network, deploy, or mutate production.",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/home-growth-stage-visual-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
@@ -1659,6 +1677,12 @@
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
       "capabilities": []
+    },
+    {
+      "path": "tests/contracts/legacy-tree-entity-recovery-design-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "capabilities": [],
+      "rationale": "Static source contract verifying the canonical recovery design document (docs/product/lovebud-legacy-tree-entity-recovery-contract.md) against 38 policy assertions: identity preservation, evidence hierarchy, visibility reconstruction, Browse eligibility separation, ownership inference prohibitions, unresolved metadata states, new-vs-legacy isolation, dependent data preservation, future execution gates, rollback posture, privacy hygiene, and runbook consistency. No DB, network, browser, or production access used."
     },
     {
       "path": "tests/contracts/legacy-tree-entity-repair-package-contract.test.cjs",
@@ -1781,6 +1805,18 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/merge-first-production-verification-governance-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Reads the canonical MERGE_FIRST_PRODUCTION_VERIFICATION_WORKFLOW.md, AGENTS.md, and .kilocode rules; asserts on string existence, section presence, and policy language. Does not execute runtime code, launch a browser, connect to a database or network, deploy, or mutate production.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/migration-provenance-gate-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Reads the migration provenance manifests and exercises only the local pure-JS comparison core with synthetic ledger/catalog evidence; it does not connect to a database, network, browser, deploy target, or production system.",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/migration-reactions-comments-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads migration SQL text via fs.readFileSync and applies regex/string/source-ordering assertions; does not execute SQL against any engine.",
@@ -1796,6 +1832,12 @@
       "path": "tests/contracts/migration-tree-comments-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads migration SQL text via fs.readFileSync and applies regex/string/source-ordering assertions; does not execute SQL against any engine.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/migration-tree-comments-legacy-reconcile-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Reads the migration SQL source text and applies regex/string/order assertions only; it does not execute the SQL against a PostgreSQL engine or open a database connection (migration SQL contract).",
       "capabilities": []
     },
     {
@@ -1901,6 +1943,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/mvp-agent-governance-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Reads repository governance Markdown and agent-guidance files and verifies static owner-approved policy, precedence, and non-blocking workflow markers only; it does not execute runtime code, use a browser, connect to a database or network, deploy, or mutate production.",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/my-trees-browse-hub-structure-alignment-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
@@ -1937,15 +1985,15 @@
       "capabilities": []
     },
     {
-      "path": "tests/contracts/my-trees-entry-target-resolver-runtime-contract.test.cjs",
-      "layer": "EXECUTED_FAKE",
-      "rationale": "Executes the pure My Trees entry-target resolver in node:vm and verifies canonical route construction, public/private access gating, detached output, URL encoding, and fail-closed invalid-input behavior without a real browser, navigation, auth provider, network, database, deployment, or Production resource.",
-      "capabilities": []
-    },
-    {
       "path": "tests/contracts/my-trees-entry-actions-runtime-contract.test.cjs",
       "layer": "EXECUTED_FAKE",
       "rationale": "Executes resolver, UI, card-events, and preview-hub in node:vm with fake DOM and verifies 26 enumerated entry-action requirements: navigation gating, canonical routes, share visibility, stale-state cleanup, and fail-closed behavior. No real browser, network, auth, database, deployment, or Production resource.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/my-trees-entry-target-resolver-runtime-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes the pure My Trees entry-target resolver in node:vm and verifies canonical route construction, public/private access gating, detached output, URL encoding, and fail-closed invalid-input behavior without a real browser, navigation, auth provider, network, database, deployment, or Production resource.",
       "capabilities": []
     },
     {
@@ -1991,12 +2039,6 @@
       "capabilities": []
     },
     {
-      "path": "tests/contracts/my-trees-owner-list-lifecycle-runtime-contract.test.cjs",
-      "layer": "EXECUTED_FAKE",
-      "rationale": "Reads production module source and executes it in a local process with injected fake/mock/stub dependencies (e.g., vm context with fake DOM or mocked fetch/localStorage); no real external system or production resource used.",
-      "capabilities": []
-    },
-    {
       "path": "tests/contracts/my-trees-mobile-controls-balance-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
@@ -2010,6 +2052,12 @@
     },
     {
       "path": "tests/contracts/my-trees-normalize-social-counts-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Reads production module source and executes it in a local process with injected fake/mock/stub dependencies (e.g., vm context with fake DOM or mocked fetch/localStorage); no real external system or production resource used.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/my-trees-owner-list-lifecycle-runtime-contract.test.cjs",
       "layer": "EXECUTED_FAKE",
       "rationale": "Reads production module source and executes it in a local process with injected fake/mock/stub dependencies (e.g., vm context with fake DOM or mocked fetch/localStorage); no real external system or production resource used.",
       "capabilities": []
@@ -2066,6 +2114,12 @@
       "path": "tests/contracts/no-hardcoded-local-test-paths-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/normalizer-tree-comments-reconcile.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Executes a pure-JS mirror and reads the migration/rollback SQL source, but does not execute the shipped PL/pgSQL helpers or PostgreSQL engine; evidence for the database behavior remains SOURCE_STATIC.",
       "capabilities": []
     },
     {
@@ -2150,6 +2204,12 @@
       "path": "tests/contracts/public-canvas-rootless-structured-layout-contract.test.cjs",
       "layer": "EXECUTED_FAKE",
       "rationale": "Reads production module source and executes it in a local process with injected fake/mock/stub dependencies (e.g., vm context with fake DOM or mocked fetch/localStorage); no real external system or production resource used.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/public-first-policy-doc-hygiene-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Reads repository Markdown and index files and asserts static source-of-truth, supersession, and policy-routing markers only; it does not execute runtime code, connect to a database or network, use a browser, deploy, or verify production behavior.",
       "capabilities": []
     },
     {
@@ -2267,6 +2327,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/public-viewer-canonical-appreciation-dom-wiring-3507.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes the production Public Viewer appreciation composer, DOM renderer, and detail integration in a fake DOM/VM boundary without real network, Auth, database, or Production resources.",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/public-viewer-default-structured-layout-contract.test.cjs",
       "layer": "EXECUTED_FAKE",
       "rationale": "Reads production module source and executes it in a local process with injected fake/mock/stub dependencies (e.g., vm context with fake DOM or mocked fetch/localStorage); no real external system or production resource used.",
@@ -2330,6 +2396,12 @@
       "path": "tests/contracts/request-id-sanitization-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/rollback-tree-comments-legacy-reconcile-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Reads the rollback SQL source text and applies regex/string/order assertions only; it does not execute the SQL against a PostgreSQL engine or open a database connection (rollback SQL contract).",
       "capabilities": []
     },
     {
@@ -4137,60 +4209,6 @@
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
       "capabilities": []
-    },
-    {
-      "path": "tests/contracts/migration-tree-comments-legacy-reconcile-contract.test.cjs",
-      "layer": "SOURCE_STATIC",
-      "rationale": "Reads the migration SQL source text and applies regex/string/order assertions only; it does not execute the SQL against a PostgreSQL engine or open a database connection (migration SQL contract).",
-      "capabilities": []
-    },
-    {
-      "path": "tests/contracts/rollback-tree-comments-legacy-reconcile-contract.test.cjs",
-      "layer": "SOURCE_STATIC",
-      "rationale": "Reads the rollback SQL source text and applies regex/string/order assertions only; it does not execute the SQL against a PostgreSQL engine or open a database connection (rollback SQL contract).",
-      "capabilities": []
-    },
-    {
-      "path": "tests/contracts/normalizer-tree-comments-reconcile.test.cjs",
-      "layer": "SOURCE_STATIC",
-      "rationale": "Executes a pure-JS mirror and reads the migration/rollback SQL source, but does not execute the shipped PL/pgSQL helpers or PostgreSQL engine; evidence for the database behavior remains SOURCE_STATIC.",
-      "capabilities": []
-    },
-    {
-      "path": "tests/contracts/public-first-policy-doc-hygiene-contract.test.cjs",
-      "layer": "SOURCE_STATIC",
-      "rationale": "Reads repository Markdown and index files and asserts static source-of-truth, supersession, and policy-routing markers only; it does not execute runtime code, connect to a database or network, use a browser, deploy, or verify production behavior.",
-      "capabilities": []
-    },
-    {
-      "path": "tests/contracts/mvp-agent-governance-contract.test.cjs",
-      "layer": "SOURCE_STATIC",
-      "rationale": "Reads repository governance Markdown and agent-guidance files and verifies static owner-approved policy, precedence, and non-blocking workflow markers only; it does not execute runtime code, use a browser, connect to a database or network, deploy, or mutate production.",
-      "capabilities": []
-    },
-    {
-      "path": "tests/contracts/migration-provenance-gate-contract.test.cjs",
-      "layer": "SOURCE_STATIC",
-      "rationale": "Reads the migration provenance manifests and exercises only the local pure-JS comparison core with synthetic ledger/catalog evidence; it does not connect to a database, network, browser, deploy target, or production system.",
-      "capabilities": []
-    },
-    {
-      "path": "tests/contracts/public-viewer-canonical-appreciation-dom-wiring-3507.test.cjs",
-      "layer": "EXECUTED_FAKE",
-      "rationale": "Executes the production Public Viewer appreciation composer, DOM renderer, and detail integration in a fake DOM/VM boundary without real network, Auth, database, or Production resources.",
-      "capabilities": []
-    },
-    {
-      "path": "tests/contracts/merge-first-production-verification-governance-contract.test.cjs",
-      "layer": "SOURCE_STATIC",
-      "rationale": "Reads the canonical MERGE_FIRST_PRODUCTION_VERIFICATION_WORKFLOW.md, AGENTS.md, and .kilocode rules; asserts on string existence, section presence, and policy language. Does not execute runtime code, launch a browser, connect to a database or network, deploy, or mutate production.",
-      "capabilities": []
-    },
-    {
-      "path": "tests/contracts/legacy-tree-entity-recovery-design-contract.test.cjs",
-      "layer": "SOURCE_STATIC",
-      "capabilities": [],
-      "rationale": "Static source contract verifying the canonical recovery design document (docs/product/lovebud-legacy-tree-entity-recovery-contract.md) against 38 policy assertions: identity preservation, evidence hierarchy, visibility reconstruction, Browse eligibility separation, ownership inference prohibitions, unresolved metadata states, new-vs-legacy isolation, dependent data preservation, future execution gates, rollback posture, privacy hygiene, and runbook consistency. No DB, network, browser, or production access used."
     }
   ],
   "supplemental": [

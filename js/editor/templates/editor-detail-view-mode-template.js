@@ -26,25 +26,29 @@ export function buildDetailViewModeTemplate() {
                 <div class="editor-moment-info-card">
                     <div class="editor-section-eyebrow" id="detailMomentInfoLabel">기록</div>
 
-                    <div class="detail-info-group is-compact">
+                    <div class="detail-info-group is-compact" id="detailDateGroup">
                         <label id="detailDateLabel">기억한 날</label>
                         <p id="detailDateText"></p>
                     </div>
 
-                    <div class="detail-info-group is-compact">
+                    <div class="detail-info-group is-compact" id="detailTagsGroup">
                         <label id="detailTagsLabel">감정 태그</label>
                         <div class="tags-container" id="detailTags"></div>
                     </div>
 
-                    <div class="detail-info-group detail-info-group-knowledge">
-                        <div class="detail-info-heading-with-copy">
-                            <label id="detailEntitySearchLabel">연결된 지식</label>
-                            <p class="detail-field-helper" id="detailEntitySearchHelper">인물, 팀, 곡처럼 이 순간과 이어지는 단서를 남겨두면 나중에 다시 찾기 쉬워져요.</p>
-                        </div>
-                        <div id="detailEntitySearchMount"></div>
+                    <div
+                        class="detail-info-group detail-info-group-knowledge"
+                        id="detailOwnerKnowledgeGroup"
+                        hidden
+                    >
+                        <label id="detailOwnerKnowledgeLabel">연결된 지식</label>
+                        <ul
+                            id="detailOwnerKnowledgeList"
+                            class="editor-owner-knowledge-list"
+                        ></ul>
                     </div>
 
-                    <div class="detail-info-group">
+                    <div class="detail-info-group" id="detailMemoGroup">
                         <label id="detailMemoLabel">감정 메모</label>
                         <div class="diary-note" id="detailMemo"></div>
                     </div>
@@ -65,63 +69,49 @@ export function buildDetailViewModeTemplate() {
                         </button>
                     </div>
 
-                    <div id="connectExistingCtaSection" class="editor-connect-existing-section" style="display: none;">
-                        <p class="editor-connect-section-copy">이미 기록한 순간을 현재 흐름에 이어 붙여요.</p>
-                        <button id="connectExistingCtaBtn" type="button" class="editor-action-btn editor-action-btn-secondary">
-                            <span class="material-symbols-outlined" aria-hidden="true">link</span>
-                            <span class="editor-action-btn-label" id="connectExistingCtaLabel">기존 순간 연결하기</span>
-                        </button>
-                    </div>
-
-                    <div id="connectExistingPendingSection" class="editor-connect-existing-section" style="display: none;">
-                        <p class="editor-connect-pending-hint" id="connectExistingPendingHint">연결할 대상 순간을 클릭해 주세요.</p>
-                        <div class="editor-connect-pending-actions">
-                            <button id="connectExistingCancelBtn" type="button" class="btn-round btn-outline editor-form-action-btn">취소</button>
-                        </div>
-                    </div>
-
-                    <div id="connectExistingConfirmSection" class="editor-connect-existing-section" style="display: none;">
-                        <p class="editor-connect-confirm-hint" id="connectExistingConfirmHint">이 순간으로 연결할까요?</p>
-                        <div class="editor-connect-confirm-actions">
-                            <button id="connectExistingConfirmBtn" type="button" class="btn-round btn-primary editor-form-action-btn">연결</button>
-                            <button id="connectExistingConfirmCancelBtn" type="button" class="btn-round btn-outline editor-form-action-btn">다시 선택</button>
-                        </div>
-                    </div>
                 </div>
 
-                <div class="editor-moment-reactions-card editor-moment-social-card" id="momentReactionsCard" aria-label="순간 반응과 댓글" style="font-variant-numeric:tabular-nums;">
-                    <div class="editor-moment-social-head">
-                        <div>
-                            <div class="editor-section-eyebrow">반응과 댓글</div>
-                            <p class="editor-moment-social-copy">이 순간에 남겨진 마음을 바로 확인해요.</p>
-                        </div>
-                        <div class="editor-moment-reactions-row">
-                            <button
-                                type="button"
-                                class="editor-moment-reaction editor-reaction-like-btn"
-                                id="momentLikeBtn"
-                                aria-label="좋아요"
-                                data-reacted="false"
-                            >
-                                <span class="editor-reaction-like-icon" aria-hidden="true">♡</span>
-                                <span class="editor-reaction-label">좋아요</span>
-                                <span class="editor-reaction-like-count" id="momentLikeCount">0</span>
-                            </button>
-                            <button
-                                type="button"
-                                class="editor-moment-reaction editor-reaction-comment-btn"
-                                id="momentCommentBtn"
-                                aria-label="댓글 입력으로 이동"
-                                aria-controls="momentCommentInput"
-                            >
-                                <span class="material-symbols-outlined editor-reaction-comment-icon" aria-hidden="true">chat_bubble</span>
-                                <span class="editor-reaction-label">댓글</span>
-                                <span class="editor-reaction-comment-count" id="momentCommentCount">0</span>
-                            </button>
-                        </div>
-                    </div>
-
-                    <section id="momentCommentsPanel" class="editor-moment-comments-panel" aria-label="순간 댓글">
+                <div
+                    class="editor-moment-reactions-card editor-moment-social-card"
+                    id="momentReactionsCard"
+                    aria-label="순간 반응과 댓글"
+                    data-social-state="hidden"
+                    style="font-variant-numeric:tabular-nums;"
+                >
+                    <button
+                        type="button"
+                        id="momentReactionLikeButton"
+                        class="public-viewer-social-status editor-like-button editor-moment-reaction"
+                        aria-label="좋아요 누르기"
+                        aria-pressed="false"
+                        disabled
+                    >
+                        <span class="editor-reaction-like-icon" aria-hidden="true">🤍</span>
+                        <span class="editor-reaction-label">좋아요</span>
+                        <span class="public-viewer-social-status-value" id="momentReactionLikeValue">⋯</span>
+                    </button>
+                    <p id="momentReactionLikeGuestNote" style="display:none">로그인하면 이 순간에 반응하고 댓글을 남길 수 있어요.</p>
+                    <div aria-live="polite" role="status" id="momentReactionLikeStatusRegion" style="display:none"></div>
+                    <p id="momentReactionWriteError" class="editor-like-error" role="alert" style="display:none"></p>
+                    <button
+                        type="button"
+                        id="momentReactionCommentStatus"
+                        class="public-viewer-social-status editor-comment-toggle editor-moment-reaction"
+                        aria-label="댓글 열기"
+                        aria-expanded="false"
+                        aria-controls="momentCommentsPanel"
+                        disabled
+                    >
+                        <span class="editor-reaction-comment-icon" aria-hidden="true">💬</span>
+                        <span class="editor-reaction-label">댓글</span>
+                        <span class="public-viewer-social-status-value" id="momentReactionCommentValue">⋯</span>
+                    </button>
+                    <section
+                      id="momentCommentsPanel"
+                      class="editor-moment-comments-panel"
+                      aria-label="순간 댓글"
+                      hidden
+                    >
                         <p id="momentCommentsPanelStatus" class="editor-moment-comments-status" role="status" aria-live="polite">댓글을 불러오는 중이에요.</p>
                         <ul id="momentCommentsList" class="editor-moment-comments-list"></ul>
                         <form id="momentCommentComposer" class="editor-moment-comment-composer">

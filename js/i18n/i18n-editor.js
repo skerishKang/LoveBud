@@ -34,6 +34,7 @@ Object.assign(window.i18nEditor, {
     editor_memory_title_placeholder: { ko: '이 순간을 어떻게 기억하고 싶은지 적어보세요', en: 'Name this moment the way you want to remember it' },
     editor_memory_memo_placeholder: { ko: '왜 이 장면이 이어졌는지, 지금 마음을 남겨보세요...', en: 'Leave a note about why this scene came next and how you feel now...' },
     editor_cancel: { ko: '취소', en: 'Cancel' },
+    editor_back_to_appreciation: { ko: '감상 모드', en: 'Back to appreciation' },
     editor_confirm_add: { ko: '이 순간 저장하기', en: 'Plant this moment' },
     editor_date_label: { ko: '기억한 날', en: 'Remembered on' },
     editor_tag_label: { ko: '감정 태그', en: 'Emotion tags' },

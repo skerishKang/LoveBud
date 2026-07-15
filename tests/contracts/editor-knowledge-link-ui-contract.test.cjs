@@ -164,20 +164,40 @@ test('6. editor.html loads core module and UI module in correct order', () => {
   );
 });
 
-test('7. View mode template has entity search mount element', () => {
-  const templateCode = fs.readFileSync(VIEW_MODE_TEMPLATE_PATH, 'utf8');
+test('7. Knowledge authoring mount is edit-only; appreciation uses owner display list', () => {
+  const viewTemplate = fs.readFileSync(VIEW_MODE_TEMPLATE_PATH, 'utf8');
+  const editTemplatePath = path.join(
+    ROOT,
+    'js/editor/templates/editor-detail-edit-mode-template.js'
+  );
+  const editTemplate = fs.readFileSync(editTemplatePath, 'utf8');
 
+  // Appreciation mode shows connected knowledge as read-only display only.
   assert.ok(
-    templateCode.includes('id="detailEntitySearchMount"'),
-    'View mode template must include detailEntitySearchMount element'
+    viewTemplate.includes('id="detailOwnerKnowledgeList"'),
+    'View mode template must include owner knowledge display list'
   );
   assert.ok(
-    templateCode.includes('id="detailEntitySearchLabel"'),
-    'View mode template must include detailEntitySearchLabel'
+    viewTemplate.includes('id="detailOwnerKnowledgeGroup"'),
+    'View mode template must include owner knowledge display group'
   );
   assert.ok(
-    templateCode.includes('연결된 지식'),
-    'Entity search label should be present'
+    !viewTemplate.includes('id="detailEntitySearchMount"'),
+    'View mode template must not host knowledge authoring mount'
+  );
+
+  // Authoring UI remains available in edit mode.
+  assert.ok(
+    editTemplate.includes('id="detailEntitySearchMount"'),
+    'Edit mode template must include detailEntitySearchMount element'
+  );
+  assert.ok(
+    editTemplate.includes('id="detailEntitySearchLabel"'),
+    'Edit mode template must include detailEntitySearchLabel'
+  );
+  assert.ok(
+    editTemplate.includes('연결된 지식'),
+    'Entity search label should be present in edit mode'
   );
 });
 
