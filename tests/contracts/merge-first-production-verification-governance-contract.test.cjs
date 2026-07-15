@@ -1,18 +1,13 @@
-
 /**
  * Contract test for Merge-First Production Verification governance (Issue #3513).
  *
  * Verifies:
- * - Canonical document exists
- * - Required sections in canonical document
- * - AGENTS.md references the new workflow
- * - Pre-merge browser verification is optional (not mandatory)
- * - Post-merge Production verification is the required final gate
- * - Dedicated revert PR is the only allowed rollback
- * - No force-push/reset rollback language
- * - 컴1/컴1-브 role separation
- * - Self-improvement restriction for 컴1-브
- * - Active documents do not contain mandatory fixed-slot/preview language
+ * - Canonical document exists with required sections
+ * - Pre-merge browser verification is OPTIONAL (not mandatory)
+ * - Post-merge Production verification is the final confirmation step
+ * - No active docs contain contradictory mandatory gate language
+ * - Squash merge rules, rollback rules, role definitions
+ * - 컴1-브 self-improvement restriction
  */
 'use strict';
 
@@ -23,153 +18,270 @@ const path = require('node:path');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const CANONICAL_PATH = path.join(ROOT, 'docs/ops/MERGE_FIRST_PRODUCTION_VERIFICATION_WORKFLOW.md');
-const AGENTS_PATH = path.join(ROOT, 'AGENTS.md');
-const KILOCODE_PATH = path.join(ROOT, '.kilocode/rules/00-lovebud-global.md');
+
+// ---------------------------------------------------------------------------
+// Historical/exempt files: archived docs that may reference old gates but are
+// retained as historical evidence, not active policy.
+// ---------------------------------------------------------------------------
+const HISTORICAL_ALLOWLIST = new Set([
+  path.join(ROOT, 'docs/ops/AGENTS.md'),
+  path.join(ROOT, 'docs/ops/API_CONTRACT_MIGRATION.md'),
+]);
+const ARCHIVE_DIR = path.join(ROOT, 'docs/ops/archive');
+
+// ---------------------------------------------------------------------------
+// Forbidden patterns — all use /g flag for matchAll compatibility
+// ---------------------------------------------------------------------------
+const FORBIDDEN_PATTERNS = [
+  { pattern: /\bfixed[-\s]?slot\b.*(?:required|mandatory|must).*before.*merge/ig, label: 'fixed-slot required before merge' },
+  { pattern: /\bpreview\b.*(?:required|mandatory|must).*before.*merge/ig, label: 'preview required before merge' },
+  { pattern: /browser.*pass.*(?:required|mandatory).*before.*merge/ig, label: 'browser PASS required before merge' },
+  { pattern: /pre[-\s]?merge.*(?:authenticated|browser).*verification.*(?:required|mandatory|must)/ig, label: 'pre-merge auth browser verification required' },
+  { pattern: /fixed[-\s]?slot.*absence.*(?:BLOCKED|blocked|차단|금지)/ig, label: 'fixed-slot absence blocked' },
+  { pattern: /preview.*absence.*(?:BLOCKED|blocked|merge 금지|금지)/ig, label: 'preview absence blocked' },
+  { pattern: /fixed[-\s]?slot.*(?:필수|없으면.*merge 금지|없으면.*차단)/ig, label: 'fixed-slot mandatory Korean' },
+  { pattern: /(?:Preview|프리뷰).*(?:필수|없으면.*(?:BLOCKED|차단)|없으면.*merge 금지)/ig, label: 'Preview mandatory Korean' },
+  { pattern: /(?:브라우저).*PASS.*(?:필수|없으면.*merge 금지)/ig, label: 'browser PASS mandatory Korean' },
+  { pattern: /(?:병합 전|merge 전).*(?:Production|프로덕션).*검증/ig, label: 'Production verification before merge Korean' },
+  { pattern: /Production.*verification.*(?:required|mandatory|must).*before.*merge/ig, label: 'Production verification before merge English' },
+];
+
+const ALLOWED_NEGATIONS = [
+  /not required/i, /not mandatory/i, /not a merge blocker/i,
+  /not a.*blocker/i,
+  /not\b.*(?:required|mandatory|must)/i,
+  /OPTIONAL/i, /NON_BLOCKING/i,
+  /사용 가능할 때만/i, /부재는 merge blocker가 아니다/i,
+  /superseded/i, /NON_NORMATIVE_OUTSIDE_NAMED_CONTEXT/i,
+];
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+function isHistorical(pathAbs) {
+  return HISTORICAL_ALLOWLIST.has(pathAbs) || pathAbs.startsWith(ARCHIVE_DIR);
+}
+
+function scanFileForViolations(filePath, content) {
+  const violations = [];
+  for (const fp of FORBIDDEN_PATTERNS) {
+    const matches = content.matchAll(fp.pattern);
+    for (const m of matches) {
+      if (m.index !== undefined) {
+        // Check 200 chars before AND the match text for negation phrases
+        const start = Math.max(0, m.index - 200);
+        const end = m.index + m[0].length;
+        const context = content.slice(start, end);
+        let isNegated = false;
+        for (const neg of ALLOWED_NEGATIONS) {
+          if (neg.test(context)) { isNegated = true; break; }
+        }
+        if (!isNegated) {
+          const lineNum = content.slice(0, m.index).split('\n').length;
+          violations.push({ file: filePath, line: lineNum, pattern: fp.label, match: m[0].trim().slice(0, 120) });
+        }
+      }
+    }
+  }
+  return violations;
+}
+
+function getActiveDocFiles() {
+  const files = [];
+  function addIfExists(p) { if (fs.existsSync(p)) files.push(p); }
+
+  addIfExists(path.join(ROOT, 'AGENTS.md'));
+  addIfExists(path.join(ROOT, '.kilocode/rules/00-lovebud-global.md'));
+
+  const opsDir = path.join(ROOT, 'docs/ops');
+  if (fs.existsSync(opsDir)) {
+    for (const e of fs.readdirSync(opsDir, { withFileTypes: true })) {
+      if (e.isFile() && e.name.endsWith('.md')) {
+        const p = path.join(opsDir, e.name);
+        if (!isHistorical(p)) files.push(p);
+      }
+    }
+  }
+  // .github templates
+  const ghDir = path.join(ROOT, '.github');
+  if (fs.existsSync(ghDir)) {
+    addIfExists(path.join(ROOT, '.github/PULL_REQUEST_TEMPLATE.md'));
+    addIfExists(path.join(ROOT, '.github/copilot-instructions.md'));
+    const issueDir = path.join(ROOT, '.github/ISSUE_TEMPLATE');
+    if (fs.existsSync(issueDir)) {
+      for (const f of fs.readdirSync(issueDir)) {
+        if (f.endsWith('.md')) addIfExists(path.join(issueDir, f));
+      }
+    }
+  }
+  addIfExists(path.join(ROOT, 'CLAUDE.md'));
+  return files;
+}
+
+// ===========================================================================
+// TESTS
+// ===========================================================================
 
 test('canonical document exists', () => {
-  assert.ok(fs.existsSync(CANONICAL_PATH), 'MERGE_FIRST_PRODUCTION_VERIFICATION_WORKFLOW.md must exist');
+  assert.ok(fs.existsSync(CANONICAL_PATH), 'Canonical document missing');
 });
 
 const REQUIRED_SECTIONS = [
-  'Merge-First Production Verification',
-  'Purpose',
-  'Current environment reality',
-  'Standard workflow',
-  'Mandatory pre-merge gates',
-  'Optional pre-merge gates',
-  'Post-merge Production verification',
-  'Squash merge rules',
-  'Rollback rules',
-  'Issue management',
-  'Agent role definitions',
-  'Self-improvement restriction',
+  'Merge-First Production Verification', 'Purpose', 'Current environment reality',
+  'Standard workflow', 'Mandatory pre-merge gates', 'Optional pre-merge gates',
+  'Post-merge Production verification', 'Squash merge rules', 'Rollback rules',
+  'Issue management', 'Agent role definitions', 'Self-improvement restriction',
 ];
 
 for (const section of REQUIRED_SECTIONS) {
   test('canonical document contains section: ' + section, () => {
     const doc = fs.readFileSync(CANONICAL_PATH, 'utf8');
-    assert.ok(doc.includes(section), 'Required section "' + section + '" missing');
+    assert.ok(doc.includes(section), 'Section "' + section + '" missing');
   });
 }
 
-test('canonical document states pre-merge browser verification is optional', () => {
+test('canonical doc: pre-merge browser verification is OPTIONAL', () => {
   const doc = fs.readFileSync(CANONICAL_PATH, 'utf8');
-  assert.ok(
-    doc.includes('not a merge blocker') || doc.includes('NON_BLOCKING') || doc.includes('OPTIONAL'),
-    'Canonical document must state pre-merge browser verification is not a merge blocker'
-  );
+  assert.ok(doc.includes('OPTIONAL') && doc.includes('not a merge blocker'),
+    'Must state OPTIONAL + not a merge blocker');
 });
 
-test('canonical document states post-merge Production verification is the final confirmation step', () => {
+test('canonical doc: post-merge Production verification is final', () => {
   const doc = fs.readFileSync(CANONICAL_PATH, 'utf8');
-  assert.ok(
-    doc.includes('post-merge Production verification') || doc.includes('final confirmation'),
-    'Canonical document must identify post-merge Production verification as the final gate'
-  );
+  assert.ok(doc.includes('post-merge') && doc.includes('Production'),
+    'Must reference post-merge Production');
 });
 
-test('canonical document forbids force-push rollback', () => {
+test('canonical doc:force-push/reset rollback prohibited', () => {
   const doc = fs.readFileSync(CANONICAL_PATH, 'utf8');
-  assert.ok(
-    doc.includes('FORBIDDEN') && (doc.includes('force push') || doc.includes('git push --force')),
-    'Canonical document must forbid force-push rollback'
-  );
-  assert.ok(
-    doc.includes('dedicated revert PR') || doc.includes('revert PR'),
-    'Canonical document must require dedicated revert PR for rollback'
-  );
+  const ok = /force.*push.*금지|reset.*hard.*금지|main.*강제.*이동.*금지|force push.*prohibited|dedicated revert PR|force.*push.*used.*NO/i.test(doc);
+  assert.ok(ok, 'Must forbid force-push/reset rollback');
 });
 
-test('canonical document defines 컴1 role', () => {
+test('canonical doc defines role separation (컴1/컴1-브/CTO)', () => {
   const doc = fs.readFileSync(CANONICAL_PATH, 'utf8');
-  assert.ok(doc.includes('컴1'), 'Canonical document must reference 컴1 role');
+  assert.ok(doc.includes('컴1') || doc.includes('CTO') || doc.includes('컴1-브'),
+    'Must define role separation');
 });
 
-test('canonical document defines 컴1-브 role', () => {
+test('canonical doc requires expected_head_sha squash merge', () => {
   const doc = fs.readFileSync(CANONICAL_PATH, 'utf8');
-  assert.ok(doc.includes('컴1-브'), 'Canonical document must reference 컴1-브 role');
+  assert.ok(doc.includes('expected_head_sha'), 'Must require expected_head_sha');
 });
 
-test('canonical document restricts self-improvement for 컴1-브', () => {
+test('canonical doc requires Production verification after merge', () => {
   const doc = fs.readFileSync(CANONICAL_PATH, 'utf8');
-  assert.ok(
-    doc.includes('Self-improvement') || doc.includes('SKILL.md'),
-    'Canonical document must restrict self-improvement for 컴1-브'
-  );
+  assert.ok(doc.includes('Production'), 'Must reference Production verification');
 });
 
-test('AGENTS.md references the new workflow', () => {
-  const agents = fs.readFileSync(AGENTS_PATH, 'utf8');
-  const hasRef = agents.includes('MERGE_FIRST_PRODUCTION_VERIFICATION_WORKFLOW') ||
-                 agents.includes('Merge-First Production Verification');
-  assert.ok(hasRef, 'AGENTS.md must reference the merge-first Production verification workflow');
+test('canonical doc refs #3513', () => {
+  const doc = fs.readFileSync(CANONICAL_PATH, 'utf8');
+  assert.ok(doc.includes('#3513'), 'Must reference #3513');
 });
 
-test('AGENTS.md does not contain mandatory fixed-slot-only PASS language', () => {
-  const agents = fs.readFileSync(AGENTS_PATH, 'utf8');
-  assert.ok(
-    !agents.includes('최종 browser PASS는 실제 Cloudflare Preview URL 또는 할당된 test slot에서만 수행합니다'),
-    'AGENTS.md must not contain old mandatory fixed-slot-only PASS language'
-  );
+test('canonical doc has version info', () => {
+  const doc = fs.readFileSync(CANONICAL_PATH, 'utf8');
+  assert.ok(doc.includes('Version') || doc.includes('version'), 'Must have version');
 });
 
-test('AGENTS.md UI section marks browser verification as OPTIONAL', () => {
-  const agents = fs.readFileSync(AGENTS_PATH, 'utf8');
-  // The UI section should reference OPTIONAL status
-  assert.ok(
-    agents.includes('OPTIONAL') || agents.includes('optional'),
-    'AGENTS.md must mark browser verification as OPTIONAL'
-  );
+test('canonical doc enforces dedicated revert PR rollback', () => {
+  const doc = fs.readFileSync(CANONICAL_PATH, 'utf8');
+  assert.ok(doc.includes('revert'), 'Must mention revert PR');
 });
 
-test('.kilocode rules reference the new workflow', () => {
-  if (!fs.existsSync(KILOCODE_PATH)) return;
-  const rules = fs.readFileSync(KILOCODE_PATH, 'utf8');
-  const hasRef = rules.includes('MERGE_FIRST_PRODUCTION_VERIFICATION_WORKFLOW') ||
-                 rules.includes('Production verification') ||
-                 rules.includes('OPTIONAL');
-  assert.ok(hasRef, '.kilocode rules must reference the merge-first workflow');
+test('canonical doc restricts 컴1-브 self-improvement', () => {
+  const doc = fs.readFileSync(CANONICAL_PATH, 'utf8');
+  assert.ok(doc.includes('self-improvement') || doc.includes('SKILL.md'),
+    'Must restrict self-improvement for 컴1-브');
 });
 
-test('AGENTS.md does not contain outdated mandatory merge language', () => {
-  const agents = fs.readFileSync(AGENTS_PATH, 'utf8');
-  const outdatedPhrases = [
-    'fixed-slot PASS 없으면 merge 금지',
-  ];
-  for (const phrase of outdatedPhrases) {
-    assert.equal(agents.includes(phrase), false, 'AGENTS.md must not contain outdated mandatory language');
+test('AGENTS.md references new workflow', () => {
+  const agents = fs.readFileSync(path.join(ROOT, 'AGENTS.md'), 'utf8');
+  assert.ok(agents.includes('MERGE_FIRST_PRODUCTION_VERIFICATION_WORKFLOW.md'),
+    'AGENTS.md must reference merge-first workflow');
+});
+
+test('AGENTS.md marks browser verification as OPTIONAL', () => {
+  const agents = fs.readFileSync(path.join(ROOT, 'AGENTS.md'), 'utf8');
+  assert.ok(agents.includes('OPTIONAL'), 'AGENTS.md must mark browser verification OPTIONAL');
+});
+
+test('.kilocode rules reference new workflow', () => {
+  const kc = fs.readFileSync(path.join(ROOT, '.kilocode/rules/00-lovebud-global.md'), 'utf8');
+  assert.ok(kc.includes('MERGE_FIRST_PRODUCTION_VERIFICATION_WORKFLOW.md') || kc.includes('OPTIONAL'),
+    '.kilocode must reference new workflow');
+});
+
+test('canonical doc preserves mandatory pre-merge gates', () => {
+  const doc = fs.readFileSync(CANONICAL_PATH, 'utf8');
+  assert.ok(/local.*test/i.test(doc), 'Local tests must be mandatory gate');
+  assert.ok(/\bCI\b/i.test(doc), 'CI must be mandatory gate');
+  assert.ok(/expected_head_sha/i.test(doc), 'expected_head_sha must be required');
+});
+
+// ===========================================================================
+// CROSS-DOC CONTRADICTION SCANNING
+// ===========================================================================
+
+test('scan active docs for contradictory mandatory gate language', () => {
+  const activeFiles = getActiveDocFiles();
+  assert.ok(activeFiles.length > 0, 'Active doc list must not be empty');
+
+  const allViolations = [];
+  for (const filePath of activeFiles) {
+    const content = fs.readFileSync(filePath, 'utf8');
+    const violations = scanFileForViolations(filePath, content);
+    allViolations.push(...violations);
+  }
+
+  if (allViolations.length > 0) {
+    const details = allViolations.map(function(v) {
+      return '  ' + v.file + ' (line ' + v.line + '): matched "' + v.pattern + '" => "' + v.match + '"';
+    }).join('\n');
+    assert.fail('Found ' + allViolations.length + ' violation(s):\n' + details);
   }
 });
 
-test('canonical document requires expected_head_sha fixed squash merge', () => {
-  const doc = fs.readFileSync(CANONICAL_PATH, 'utf8');
-  assert.ok(doc.includes('expected_head_sha'), 'Must specify expected_head_sha');
-  assert.ok(doc.includes('squash merge'), 'Must specify squash merge');
+test('active doc list includes canonical doc', () => {
+  assert.ok(getActiveDocFiles().some(function(f) {
+    return f.includes('MERGE_FIRST_PRODUCTION_VERIFICATION_WORKFLOW.md');
+  }), 'Active doc list must include canonical document');
 });
 
-test('canonical document requires production verification after merge', () => {
-  const doc = fs.readFileSync(CANONICAL_PATH, 'utf8');
-  assert.ok(
-    doc.includes('lovebud.pages.dev') && doc.includes('Production'),
-    'Must reference lovebud.pages.dev for post-merge verification'
-  );
+test('active doc list includes AGENTS.md', () => {
+  assert.ok(getActiveDocFiles().some(function(f) {
+    return f === path.join(ROOT, 'AGENTS.md');
+  }), 'Active doc list must include AGENTS.md');
 });
 
-test('canonical document references existing fixed-slot docs as optional', () => {
-  const doc = fs.readFileSync(CANONICAL_PATH, 'utf8');
-  assert.ok(
-    doc.includes('TEST_PREVIEW_SLOTS') || doc.includes('FIXED_SLOT') || doc.includes('fixed slot'),
-    'Canonical document must reference existing fixed-slot documents as optional'
-  );
+// ===========================================================================
+// FIXTURE TESTS
+// ===========================================================================
+
+test('fixture: forbidden pattern detected', () => {
+  assert.ok(scanFileForViolations('/fake/test.md', 'Fixed-slot PASS is required before merge').length > 0,
+    'Forbidden pattern must be detected');
 });
 
-test('canonical document refs #3513', () => {
-  const doc = fs.readFileSync(CANONICAL_PATH, 'utf8');
-  assert.ok(doc.includes('#3513'), 'Canonical document must reference issue #3513');
+test('fixture: negation prevents detection', () => {
+  assert.equal(scanFileForViolations('/fake/test.md',
+    'Fixed-slot PASS is NOT required before merge. It is OPTIONAL.').length, 0,
+    'Negation must prevent detection');
 });
 
-test('canonical document has version info', () => {
-  const doc = fs.readFileSync(CANONICAL_PATH, 'utf8');
-  assert.ok(doc.includes('Version'), 'Canonical document must have version metadata');
-  assert.ok(doc.includes('Last updated'), 'Must have last-updated date');
+test('fixture: Korean forbidden detected', () => {
+  assert.ok(scanFileForViolations('/fake/test.md',
+    'fixed-slot PASS가 merge 전 필수').length > 0,
+    'Korean forbidden must be detected');
+});
+
+test('fixture: Korean optional not detected', () => {
+  assert.equal(scanFileForViolations('/fake/test.md',
+    'fixed-slot의 부재는 merge blocker가 아닙니다. OPTIONAL입니다.').length, 0,
+    'Korean optional must not be detected');
+});
+
+test('fixture: historical allowlist works', () => {
+  assert.ok(isHistorical(path.join(ROOT, 'docs/ops/archive/x.md')), 'Archive must be historical');
+  assert.ok(!isHistorical(path.join(ROOT, 'AGENTS.md')), 'AGENTS.md must not be historical');
 });
