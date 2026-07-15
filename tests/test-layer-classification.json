@@ -2236,7 +2236,6 @@
       "rationale": "Executes the canonical appreciation render model and Public Viewer route-owned adapter in node:vm, proving public-safe projection, detached output, social-count preservation, and fail-closed Viewer capabilities without a real browser, network, auth provider, database, deployment, or Production resource.",
       "capabilities": []
     },
-
     {
       "path": "tests/contracts/public-viewer-appreciation-presentation-model-runtime-contract.test.cjs",
       "layer": "EXECUTED_FAKE",
@@ -2245,12 +2244,10 @@
     },
     {
       "path": "tests/contracts/public-viewer-authenticated-comment-composer-contract.test.cjs",
-
       "layer": "EXECUTED_FAKE",
       "rationale": "Reads production module source and executes it in a local process with injected fake/mock/stub dependencies (e.g., vm context with fake DOM or mocked fetch/localStorage); no real external system or production resource used.",
       "capabilities": []
     },
-
     {
       "path": "tests/contracts/public-viewer-authenticated-like-contract.test.cjs",
       "layer": "EXECUTED_FAKE",
@@ -4170,6 +4167,12 @@
       "layer": "SOURCE_STATIC",
       "rationale": "Reads the canonical MERGE_FIRST_PRODUCTION_VERIFICATION_WORKFLOW.md, AGENTS.md, and .kilocode rules; asserts on string existence, section presence, and policy language. Does not execute runtime code, launch a browser, connect to a database or network, deploy, or mutate production.",
       "capabilities": []
+    },
+    {
+      "path": "tests/contracts/legacy-tree-entity-recovery-design-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "capabilities": [],
+      "rationale": "Static source contract verifying the canonical recovery design document (docs/product/lovebud-legacy-tree-entity-recovery-contract.md) against 38 policy assertions: identity preservation, evidence hierarchy, visibility reconstruction, Browse eligibility separation, ownership inference prohibitions, unresolved metadata states, new-vs-legacy isolation, dependent data preservation, future execution gates, rollback posture, privacy hygiene, and runbook consistency. No DB, network, browser, or production access used."
     }
   ],
   "supplemental": [
