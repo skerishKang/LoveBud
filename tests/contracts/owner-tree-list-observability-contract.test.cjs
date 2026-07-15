@@ -2,6 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const { importAbsolute } = require('../helpers/import-absolute.cjs');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 
@@ -298,7 +299,7 @@ test('17. Static regression guard: modal_compute/api_response_helpers.py must no
 });
 
 test('18. No-network runtime smoke for POST and GET missing-config', async () => {
-  const treesModule = await import(path.join(ROOT, 'functions/api/trees.js'));
+  const treesModule = await importAbsolute(path.join(ROOT, 'functions/api/trees.js'));
 
   const originalFetch = global.fetch;
   const mockFetch = (url, init) => {
