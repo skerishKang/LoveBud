@@ -295,7 +295,7 @@ test('preflight rejects mixed table states', { concurrency: false }, async () =>
   await rejectWithoutMigration(
     'mixed_audit_partial',
     LEGACY_BASE + `ALTER TABLE public.social_audit_log ADD COLUMN target_kind VARCHAR(16);`,
-    'GENERIC_SOCIAL_A_MIXED_STATE_REJECTED'
+    'GENERIC_SOCIAL_A_GENERIC_COLUMN_PARTIAL_STATE'
   );
   await rejectWithoutMigration(
     'mixed_idem_exact_post',

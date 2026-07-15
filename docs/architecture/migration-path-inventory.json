@@ -578,11 +578,11 @@
       "recommended_disposition": "required before any future historical Migration A re-execution",
       "linked_issue": "#3536, #3534, #3262, #3458",
       "baseline_sha": "5d601154cfa45a4885e30fc190446ce3b9623aa0",
-      "content_checksum": "sha256:164f5fd0c804a21218661493ab19af2028b58f4bab639d84f3ed0aa8cf09462b"
+      "content_checksum": "sha256:2b16f209bb86c8b6583bccb9464352a57d6dab2b79530d697c26cdf03aafa3e6"
     },
     {
       "path": "scripts/validate-generic-social-a-postcondition.sql",
-      "content_checksum": "sha256:d2b2d2fc73ebb08545c930feba55325c4aa796196ce58b28c52d4e2f651e6b81",
+      "content_checksum": "sha256:40fa2ad4d26840c291c29d3779320468b357c919cdb4d5cabd05425dd1845c23",
       "layer": "DB_ENGINE_EXECUTION",
       "operation_class": "POSTCONDITION_VALIDATOR_READ_ONLY",
       "classification": "CANONICAL_CANDIDATE",
