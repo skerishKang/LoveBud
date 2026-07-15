@@ -47,15 +47,15 @@ const {
 const MEM = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 const MEM2 = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
 
-/** Phase + table specific synthetic UUID sets (hex-only) to avoid collisions. */
+/** Phase + table specific synthetic UUID sets (hex-only, 8-4-4-4-12) to avoid collisions. */
 function synthIds(phase, tableKind) {
   // phase: 'first' | 'second'; tableKind: 'idem' | 'audit'
-  // Uses only 0-9a-f so values are valid UUIDs.
   const p = phase === 'second' ? '2' : '1';
   const t = tableKind === 'audit' ? 'a' : '0';
   const mk = (n) => {
-    const x = String(n);
-    return `${p}${t}${x}${x}${x}${x}${x}${x}${x}${x}-${p}${t}${x}${x}-4${t}${x}${x}-8${t}${x}${x}-${p}${t}${x}${x}${x}${x}${x}${x}${x}${x}${x}${x}${x}${x}`;
+    const d = String(n); // single hex digit 1-7
+    // 8-4-4-4-12 with version nibble 4 and RFC variant nibble 8
+    return `${p}${t}${d}00000-${p}${t}${d}0-4${t}${d}0-8${t}${d}0-${p}${t}${d}000000000`;
   };
   return {
     legacyOnly: mk(1),
