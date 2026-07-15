@@ -621,11 +621,11 @@
       "recommended_disposition": "required before any future historical Migration B re-execution",
       "linked_issue": "#3538, #3459, #3458, #3425, #1882",
       "baseline_sha": "5d601154cfa45a4885e30fc190446ce3b9623aa0",
-      "content_checksum": "sha256:6393f734942da8bfc557689c202098f31cd2837b7eb6797cc9b0c8049f1cbe9e"
+      "content_checksum": "sha256:a311843a0473baa631809e26fef5e6b9ef721a31742e36ca3d7c5166951510a2"
     },
     {
       "path": "scripts/validate-generic-social-b-postcondition.sql",
-      "content_checksum": "sha256:7386d0c6f8bc4179a8f13a021d623bff1400488857c000fb7c0c82a41f616453",
+      "content_checksum": "sha256:bb8d936aff769109c2f0400b1f14cf7470ac6c0d76527f5b2f932345d332b88d",
       "operation_class": "POSTCONDITION_VALIDATOR_READ_ONLY",
       "classification": "CANONICAL_CANDIDATE",
       "schema_objects": [

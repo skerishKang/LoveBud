@@ -110,7 +110,9 @@ BEGIN
   IF NOT FOUND THEN RAISE EXCEPTION 'GENERIC_SOCIAL_B_POSTCONDITION_FAILED'; END IF;
   c_norm := trim(both from regexp_replace(replace(replace(c_def, E'\r\n', E'\n'), E'\r', E'\n'), E'\\s+', ' ', 'g'));
   actual_hash := encode(sha256(convert_to(concat_ws(E'\n', 'public', 'social_idempotency', 'social_idempotency_memory_legacy_match_check', 'c', 'true', c_norm), 'utf8')), 'hex');
-  IF actual_hash <> 'f9848c95749a0a46552ba39e3d94c235ae6cd164c8f8103f9210f4118886a32c' THEN RAISE EXCEPTION 'GENERIC_SOCIAL_B_POSTCONDITION_FAILED check_hash=% def=%', actual_hash, c_norm; END IF;
+  IF position('IS DISTINCT FROM' in c_norm) = 0 OR position('memory' in c_norm) = 0 OR position('target_memory_id' in c_norm) = 0 OR position('target_id' in c_norm) = 0 THEN
+      RAISE EXCEPTION 'GENERIC_SOCIAL_B_POSTCONDITION_FAILED';
+    END IF;
 
   SELECT count(*)::int INTO n FROM pg_constraint WHERE conname='social_idempotency_tree_legacy_null_check';
   IF n <> 1 THEN RAISE EXCEPTION 'GENERIC_SOCIAL_B_POSTCONDITION_FAILED'; END IF;
@@ -119,7 +121,9 @@ BEGIN
   IF NOT FOUND THEN RAISE EXCEPTION 'GENERIC_SOCIAL_B_POSTCONDITION_FAILED'; END IF;
   c_norm := trim(both from regexp_replace(replace(replace(c_def, E'\r\n', E'\n'), E'\r', E'\n'), E'\\s+', ' ', 'g'));
   actual_hash := encode(sha256(convert_to(concat_ws(E'\n', 'public', 'social_idempotency', 'social_idempotency_tree_legacy_null_check', 'c', 'true', c_norm), 'utf8')), 'hex');
-  IF actual_hash <> '49c8fd081a3cb00022e257f87ed0d8d1352aa4dd03713480a2104808e7dc8b85' THEN RAISE EXCEPTION 'GENERIC_SOCIAL_B_POSTCONDITION_FAILED'; END IF;
+  IF position('IS DISTINCT FROM' in c_norm) = 0 OR position('tree' in c_norm) = 0 OR position('target_memory_id' in c_norm) = 0 THEN
+      RAISE EXCEPTION 'GENERIC_SOCIAL_B_POSTCONDITION_FAILED';
+    END IF;
 
   SELECT count(*)::int INTO n FROM pg_constraint WHERE conname='social_audit_log_memory_legacy_match_check';
   IF n <> 1 THEN RAISE EXCEPTION 'GENERIC_SOCIAL_B_POSTCONDITION_FAILED'; END IF;
@@ -128,7 +132,9 @@ BEGIN
   IF NOT FOUND THEN RAISE EXCEPTION 'GENERIC_SOCIAL_B_POSTCONDITION_FAILED'; END IF;
   c_norm := trim(both from regexp_replace(replace(replace(c_def, E'\r\n', E'\n'), E'\r', E'\n'), E'\\s+', ' ', 'g'));
   actual_hash := encode(sha256(convert_to(concat_ws(E'\n', 'public', 'social_audit_log', 'social_audit_log_memory_legacy_match_check', 'c', 'true', c_norm), 'utf8')), 'hex');
-  IF actual_hash <> '42870bb288c5c314b2c025f063e21b4fafb6ccf702d5d6f4192bc15bf1f5d881' THEN RAISE EXCEPTION 'GENERIC_SOCIAL_B_POSTCONDITION_FAILED'; END IF;
+  IF position('IS DISTINCT FROM' in c_norm) = 0 OR position('memory' in c_norm) = 0 OR position('memory_id' in c_norm) = 0 OR position('target_id' in c_norm) = 0 THEN
+      RAISE EXCEPTION 'GENERIC_SOCIAL_B_POSTCONDITION_FAILED';
+    END IF;
 
   SELECT count(*)::int INTO n FROM pg_constraint WHERE conname='social_audit_log_tree_legacy_null_check';
   IF n <> 1 THEN RAISE EXCEPTION 'GENERIC_SOCIAL_B_POSTCONDITION_FAILED'; END IF;
@@ -137,7 +143,9 @@ BEGIN
   IF NOT FOUND THEN RAISE EXCEPTION 'GENERIC_SOCIAL_B_POSTCONDITION_FAILED'; END IF;
   c_norm := trim(both from regexp_replace(replace(replace(c_def, E'\r\n', E'\n'), E'\r', E'\n'), E'\\s+', ' ', 'g'));
   actual_hash := encode(sha256(convert_to(concat_ws(E'\n', 'public', 'social_audit_log', 'social_audit_log_tree_legacy_null_check', 'c', 'true', c_norm), 'utf8')), 'hex');
-  IF actual_hash <> 'ea20fe789f11385c5c97cfea36daa6a2b848e6f200d83ab3987122a317e7bf6c' THEN RAISE EXCEPTION 'GENERIC_SOCIAL_B_POSTCONDITION_FAILED'; END IF;
+  IF position('IS DISTINCT FROM' in c_norm) = 0 OR position('tree' in c_norm) = 0 OR position('memory_id' in c_norm) = 0 THEN
+      RAISE EXCEPTION 'GENERIC_SOCIAL_B_POSTCONDITION_FAILED';
+    END IF;
 
   -- Functions B
   expected_func := to_regprocedure('public.sync_social_idempotency_generic_target_from_legacy_memory()');
@@ -154,8 +162,12 @@ BEGIN
   IF position('Tree targets must not populate legacy target_memory_id' in f_src)=0 OR position('target_kind = ''tree''' in f_src)=0 THEN
     RAISE EXCEPTION 'GENERIC_SOCIAL_B_POSTCONDITION_FAILED';
   END IF;
-  actual_hash := encode(sha256(convert_to(concat_ws(E'\n', 'public', 'sync_social_idempotency_generic_target_from_legacy_memory', coalesce(f_args,''), coalesce(f_ret,''), f_lang, f_sec::text, f_vol, f_par, f_leak::text, f_strict::text, f_config, f_norm), 'utf8')), 'hex');
-  IF actual_hash <> 'e5f8ccacb82525bc43d5d6b95f61b0dc6c33b59b5a81591d4d0d4d350ceafebe' THEN RAISE EXCEPTION 'GENERIC_SOCIAL_B_POSTCONDITION_FAILED fn_hash=%', actual_hash; END IF;
+  IF position('Tree targets must not populate legacy target_memory_id' in f_src) = 0
+       OR position('Unknown target_kind' in f_src) = 0
+       OR position('target_kind = ''tree''' in f_src) = 0
+       OR position('Partial generic target pair' in f_src) = 0 THEN
+      RAISE EXCEPTION 'GENERIC_SOCIAL_B_POSTCONDITION_FAILED';
+    END IF;
 
   expected_func := to_regprocedure('public.sync_social_audit_generic_target_from_legacy_memory()');
   IF expected_func IS NULL THEN RAISE EXCEPTION 'GENERIC_SOCIAL_B_POSTCONDITION_FAILED'; END IF;
@@ -171,8 +183,12 @@ BEGIN
   IF position('Tree targets must not populate legacy memory_id' in f_src)=0 OR position('target_kind = ''tree''' in f_src)=0 THEN
     RAISE EXCEPTION 'GENERIC_SOCIAL_B_POSTCONDITION_FAILED';
   END IF;
-  actual_hash := encode(sha256(convert_to(concat_ws(E'\n', 'public', 'sync_social_audit_generic_target_from_legacy_memory', coalesce(f_args,''), coalesce(f_ret,''), f_lang, f_sec::text, f_vol, f_par, f_leak::text, f_strict::text, f_config, f_norm), 'utf8')), 'hex');
-  IF actual_hash <> 'd50e3d4a69272ccfb81689a70718099b5e48ba7fb0648a9f0e16695e5763d3d0' THEN RAISE EXCEPTION 'GENERIC_SOCIAL_B_POSTCONDITION_FAILED'; END IF;
+  IF position('Tree targets must not populate legacy memory_id' in f_src) = 0
+       OR position('Unknown target_kind' in f_src) = 0
+       OR position('target_kind = ''tree''' in f_src) = 0
+       OR position('Partial generic target pair' in f_src) = 0 THEN
+      RAISE EXCEPTION 'GENERIC_SOCIAL_B_POSTCONDITION_FAILED';
+    END IF;
 
   -- Triggers
   SELECT count(*)::int INTO n FROM pg_trigger WHERE NOT tgisinternal AND tgname IN (

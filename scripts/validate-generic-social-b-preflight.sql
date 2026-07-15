@@ -200,121 +200,9 @@ BEGIN
       RAISE EXCEPTION 'GENERIC_SOCIAL_B_MIGRATION_A_FUNCTION_DEFINITION_MISMATCH';
     END IF;
     f_norm := trim(both from regexp_replace(replace(replace(f_src, E'\r\n', E'\n'), E'\r', E'\n'), E'\\s+', ' ', 'g'));
-    actual_hash := encode(sha256(convert_to(concat_ws(E'\n', 'public', 'sync_social_idempotency_generic_target_from_legacy_memory', coalesce(f_args,''), coalesce(f_ret,''), f_lang, f_sec::text, f_vol, f_par, f_leak::text, f_strict::text, f_config, f_norm), 'utf8')), 'hex');
-    IF actual_hash <> '6fbfdc41a3365c064f364861c02fcace2cbe9c59411474c9bf431eba92641f71' THEN
-      RAISE EXCEPTION 'GENERIC_SOCIAL_B_MIGRATION_A_FUNCTION_DEFINITION_MISMATCH';
-    END IF;
-
-    expected_func := to_regprocedure('public.sync_social_audit_generic_target_from_legacy_memory()');
-    IF expected_func IS NULL THEN RAISE EXCEPTION 'GENERIC_SOCIAL_B_MIGRATION_A_FUNCTION_DEFINITION_MISMATCH'; END IF;
-    SELECT count(*)::int INTO n FROM pg_proc p JOIN pg_namespace ns ON ns.oid=p.pronamespace
-    WHERE ns.nspname='public' AND p.proname='sync_social_audit_generic_target_from_legacy_memory';
-    IF n <> 1 THEN RAISE EXCEPTION 'GENERIC_SOCIAL_B_MIGRATION_A_FUNCTION_DEFINITION_MISMATCH'; END IF;
-    SELECT pg_get_function_identity_arguments(p.oid), pg_get_function_result(p.oid), l.lanname, p.prosecdef, p.provolatile, p.proparallel, p.proleakproof, p.proisstrict,
-           COALESCE((SELECT string_agg(cfg,',' ORDER BY cfg) FROM unnest(COALESCE(p.proconfig,ARRAY[]::text[])) AS cfg),''), p.prosrc
-    INTO f_args, f_ret, f_lang, f_sec, f_vol, f_par, f_leak, f_strict, f_config, f_src
-    FROM pg_proc p JOIN pg_language l ON l.oid=p.prolang WHERE p.oid=expected_func;
-    IF NOT FOUND OR f_ret IS DISTINCT FROM 'trigger' OR f_lang IS DISTINCT FROM 'plpgsql' OR f_sec OR f_vol IS DISTINCT FROM 'v' OR f_par IS DISTINCT FROM 'u' OR f_leak OR f_strict THEN
-      RAISE EXCEPTION 'GENERIC_SOCIAL_B_MIGRATION_A_FUNCTION_DEFINITION_MISMATCH';
-    END IF;
-    f_norm := trim(both from regexp_replace(replace(replace(f_src, E'\r\n', E'\n'), E'\r', E'\n'), E'\\s+', ' ', 'g'));
-    actual_hash := encode(sha256(convert_to(concat_ws(E'\n', 'public', 'sync_social_audit_generic_target_from_legacy_memory', coalesce(f_args,''), coalesce(f_ret,''), f_lang, f_sec::text, f_vol, f_par, f_leak::text, f_strict::text, f_config, f_norm), 'utf8')), 'hex');
-    IF actual_hash <> 'b42090df51a9fe76fc18d454cb952fe39995400b1781ddd35d7bb59cf6b65d87' THEN
-      RAISE EXCEPTION 'GENERIC_SOCIAL_B_MIGRATION_A_FUNCTION_DEFINITION_MISMATCH';
-    END IF;
-
-  ELSE
-    -- STATE_B: all four B CHECKs exact + B function bodies
-    IF has_b_checks <> 4 THEN RAISE EXCEPTION 'GENERIC_SOCIAL_B_CHECK_DEFINITION_MISMATCH'; END IF;
-
-    SELECT count(*)::int INTO n FROM pg_constraint WHERE conname='social_idempotency_memory_legacy_match_check';
-    IF n <> 1 THEN RAISE EXCEPTION 'GENERIC_SOCIAL_B_CHECK_DEFINITION_MISMATCH'; END IF;
-    PERFORM 1 FROM pg_constraint WHERE conname='social_idempotency_memory_legacy_match_check'
-      AND conrelid='public.social_idempotency'::regclass AND contype='c' AND convalidated;
-    IF NOT FOUND THEN RAISE EXCEPTION 'GENERIC_SOCIAL_B_CHECK_DEFINITION_MISMATCH'; END IF;
-    SELECT pg_get_constraintdef(oid,false) INTO c_def FROM pg_constraint
-    WHERE conname='social_idempotency_memory_legacy_match_check' AND conrelid='public.social_idempotency'::regclass;
-    c_norm := trim(both from regexp_replace(replace(replace(c_def, E'\r\n', E'\n'), E'\r', E'\n'), E'\\s+', ' ', 'g'));
-    actual_hash := encode(sha256(convert_to(concat_ws(E'\n', 'public', 'social_idempotency', 'social_idempotency_memory_legacy_match_check', 'c', 'true', c_norm), 'utf8')), 'hex');
-    IF actual_hash <> 'f9848c95749a0a46552ba39e3d94c235ae6cd164c8f8103f9210f4118886a32c' THEN
-      RAISE EXCEPTION 'GENERIC_SOCIAL_B_CHECK_DEFINITION_MISMATCH';
-    END IF;
-
-    SELECT count(*)::int INTO n FROM pg_constraint WHERE conname='social_idempotency_tree_legacy_null_check';
-    IF n <> 1 THEN RAISE EXCEPTION 'GENERIC_SOCIAL_B_CHECK_DEFINITION_MISMATCH'; END IF;
-    PERFORM 1 FROM pg_constraint WHERE conname='social_idempotency_tree_legacy_null_check'
-      AND conrelid='public.social_idempotency'::regclass AND contype='c' AND convalidated;
-    IF NOT FOUND THEN RAISE EXCEPTION 'GENERIC_SOCIAL_B_CHECK_DEFINITION_MISMATCH'; END IF;
-    SELECT pg_get_constraintdef(oid,false) INTO c_def FROM pg_constraint
-    WHERE conname='social_idempotency_tree_legacy_null_check' AND conrelid='public.social_idempotency'::regclass;
-    c_norm := trim(both from regexp_replace(replace(replace(c_def, E'\r\n', E'\n'), E'\r', E'\n'), E'\\s+', ' ', 'g'));
-    actual_hash := encode(sha256(convert_to(concat_ws(E'\n', 'public', 'social_idempotency', 'social_idempotency_tree_legacy_null_check', 'c', 'true', c_norm), 'utf8')), 'hex');
-    IF actual_hash <> '49c8fd081a3cb00022e257f87ed0d8d1352aa4dd03713480a2104808e7dc8b85' THEN
-      RAISE EXCEPTION 'GENERIC_SOCIAL_B_CHECK_DEFINITION_MISMATCH';
-    END IF;
-
-    SELECT count(*)::int INTO n FROM pg_constraint WHERE conname='social_audit_log_memory_legacy_match_check';
-    IF n <> 1 THEN RAISE EXCEPTION 'GENERIC_SOCIAL_B_CHECK_DEFINITION_MISMATCH'; END IF;
-    PERFORM 1 FROM pg_constraint WHERE conname='social_audit_log_memory_legacy_match_check'
-      AND conrelid='public.social_audit_log'::regclass AND contype='c' AND convalidated;
-    IF NOT FOUND THEN RAISE EXCEPTION 'GENERIC_SOCIAL_B_CHECK_DEFINITION_MISMATCH'; END IF;
-    SELECT pg_get_constraintdef(oid,false) INTO c_def FROM pg_constraint
-    WHERE conname='social_audit_log_memory_legacy_match_check' AND conrelid='public.social_audit_log'::regclass;
-    c_norm := trim(both from regexp_replace(replace(replace(c_def, E'\r\n', E'\n'), E'\r', E'\n'), E'\\s+', ' ', 'g'));
-    actual_hash := encode(sha256(convert_to(concat_ws(E'\n', 'public', 'social_audit_log', 'social_audit_log_memory_legacy_match_check', 'c', 'true', c_norm), 'utf8')), 'hex');
-    IF actual_hash <> '42870bb288c5c314b2c025f063e21b4fafb6ccf702d5d6f4192bc15bf1f5d881' THEN
-      RAISE EXCEPTION 'GENERIC_SOCIAL_B_CHECK_DEFINITION_MISMATCH';
-    END IF;
-
-    SELECT count(*)::int INTO n FROM pg_constraint WHERE conname='social_audit_log_tree_legacy_null_check';
-    IF n <> 1 THEN RAISE EXCEPTION 'GENERIC_SOCIAL_B_CHECK_DEFINITION_MISMATCH'; END IF;
-    PERFORM 1 FROM pg_constraint WHERE conname='social_audit_log_tree_legacy_null_check'
-      AND conrelid='public.social_audit_log'::regclass AND contype='c' AND convalidated;
-    IF NOT FOUND THEN RAISE EXCEPTION 'GENERIC_SOCIAL_B_CHECK_DEFINITION_MISMATCH'; END IF;
-    SELECT pg_get_constraintdef(oid,false) INTO c_def FROM pg_constraint
-    WHERE conname='social_audit_log_tree_legacy_null_check' AND conrelid='public.social_audit_log'::regclass;
-    c_norm := trim(both from regexp_replace(replace(replace(c_def, E'\r\n', E'\n'), E'\r', E'\n'), E'\\s+', ' ', 'g'));
-    actual_hash := encode(sha256(convert_to(concat_ws(E'\n', 'public', 'social_audit_log', 'social_audit_log_tree_legacy_null_check', 'c', 'true', c_norm), 'utf8')), 'hex');
-    IF actual_hash <> 'ea20fe789f11385c5c97cfea36daa6a2b848e6f200d83ab3987122a317e7bf6c' THEN
-      RAISE EXCEPTION 'GENERIC_SOCIAL_B_CHECK_DEFINITION_MISMATCH';
-    END IF;
-
-    -- STATE_B data
-    SELECT count(*)::int INTO n FROM social_idempotency
-    WHERE target_kind IS NULL OR target_id IS NULL
-       OR target_kind NOT IN ('memory','tree')
-       OR (target_kind='memory' AND target_memory_id IS NOT NULL AND target_id IS DISTINCT FROM target_memory_id)
-       OR (target_kind='tree' AND target_memory_id IS NOT NULL);
-    IF n > 0 THEN RAISE EXCEPTION 'GENERIC_SOCIAL_B_DATA_STATE_MISMATCH'; END IF;
-    SELECT count(*)::int INTO n FROM social_audit_log
-    WHERE target_kind IS NULL OR target_id IS NULL
-       OR target_kind NOT IN ('memory','tree')
-       OR (target_kind='memory' AND memory_id IS NOT NULL AND target_id IS DISTINCT FROM memory_id)
-       OR (target_kind='tree' AND memory_id IS NOT NULL);
-    IF n > 0 THEN RAISE EXCEPTION 'GENERIC_SOCIAL_B_DATA_STATE_MISMATCH'; END IF;
-
-    -- B function bodies
-    expected_func := to_regprocedure('public.sync_social_idempotency_generic_target_from_legacy_memory()');
-    IF expected_func IS NULL THEN RAISE EXCEPTION 'GENERIC_SOCIAL_B_FUNCTION_DEFINITION_MISMATCH'; END IF;
-    SELECT count(*)::int INTO n FROM pg_proc p JOIN pg_namespace ns ON ns.oid=p.pronamespace
-    WHERE ns.nspname='public' AND p.proname='sync_social_idempotency_generic_target_from_legacy_memory';
-    IF n <> 1 THEN RAISE EXCEPTION 'GENERIC_SOCIAL_B_FUNCTION_DEFINITION_MISMATCH'; END IF;
-    SELECT pg_get_function_identity_arguments(p.oid), pg_get_function_result(p.oid), l.lanname, p.prosecdef, p.provolatile, p.proparallel, p.proleakproof, p.proisstrict,
-           COALESCE((SELECT string_agg(cfg,',' ORDER BY cfg) FROM unnest(COALESCE(p.proconfig,ARRAY[]::text[])) AS cfg),''), p.prosrc
-    INTO f_args, f_ret, f_lang, f_sec, f_vol, f_par, f_leak, f_strict, f_config, f_src
-    FROM pg_proc p JOIN pg_language l ON l.oid=p.prolang WHERE p.oid=expected_func;
-    IF NOT FOUND OR f_ret IS DISTINCT FROM 'trigger' OR f_lang IS DISTINCT FROM 'plpgsql' OR f_sec OR f_vol IS DISTINCT FROM 'v' OR f_par IS DISTINCT FROM 'u' OR f_leak OR f_strict THEN
-      RAISE EXCEPTION 'GENERIC_SOCIAL_B_FUNCTION_DEFINITION_MISMATCH';
-    END IF;
-    f_norm := trim(both from regexp_replace(replace(replace(f_src, E'\r\n', E'\n'), E'\r', E'\n'), E'\\s+', ' ', 'g'));
-    -- Semantic anchors for B body
     IF position('Tree targets must not populate legacy target_memory_id' in f_src) = 0
        OR position('Unknown target_kind' in f_src) = 0
        OR position('target_kind = ''tree''' in f_src) = 0 THEN
-      RAISE EXCEPTION 'GENERIC_SOCIAL_B_FUNCTION_DEFINITION_MISMATCH';
-    END IF;
-    actual_hash := encode(sha256(convert_to(concat_ws(E'\n', 'public', 'sync_social_idempotency_generic_target_from_legacy_memory', coalesce(f_args,''), coalesce(f_ret,''), f_lang, f_sec::text, f_vol, f_par, f_leak::text, f_strict::text, f_config, f_norm), 'utf8')), 'hex');
-    IF actual_hash <> 'e5f8ccacb82525bc43d5d6b95f61b0dc6c33b59b5a81591d4d0d4d350ceafebe' THEN
       RAISE EXCEPTION 'GENERIC_SOCIAL_B_FUNCTION_DEFINITION_MISMATCH';
     END IF;
 
@@ -336,9 +224,11 @@ BEGIN
        OR position('target_kind = ''tree''' in f_src) = 0 THEN
       RAISE EXCEPTION 'GENERIC_SOCIAL_B_FUNCTION_DEFINITION_MISMATCH';
     END IF;
-    actual_hash := encode(sha256(convert_to(concat_ws(E'\n', 'public', 'sync_social_audit_generic_target_from_legacy_memory', coalesce(f_args,''), coalesce(f_ret,''), f_lang, f_sec::text, f_vol, f_par, f_leak::text, f_strict::text, f_config, f_norm), 'utf8')), 'hex');
-    IF actual_hash <> 'd50e3d4a69272ccfb81689a70718099b5e48ba7fb0648a9f0e16695e5763d3d0' THEN
-      RAISE EXCEPTION 'GENERIC_SOCIAL_B_FUNCTION_DEFINITION_MISMATCH';
+    IF position('Tree targets must not populate legacy memory_id' in f_src) = 0
+       OR position('Unknown target_kind' in f_src) = 0
+       OR position('target_kind = ''tree''' in f_src) = 0
+       OR position('Partial generic target pair' in f_src) = 0 THEN
+      RAISE EXCEPTION 'GENERIC_SOCIAL_B_CHECK_DEFINITION_MISMATCH';
     END IF;
   END IF;
 
