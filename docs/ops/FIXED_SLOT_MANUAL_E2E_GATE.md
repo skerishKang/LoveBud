@@ -7,6 +7,12 @@
 > **Canonical precedence:** `docs/ops/MVP_AGENT_GOVERNANCE.md` (owner-approved #3442 comment `4947327550`). Fixed slots are an evidence option, not a permission gate. A missing/unknown slot is advisory, not an automatic BLOCKED. Conflicting sections are `NON_NORMATIVE_OUTSIDE_NAMED_CONTEXT`.
 > while automated Cloudflare Pages-based E2E smoke is not yet in place.
 
+> **Status:** OPTIONAL / CURRENTLY UNAVAILABLE AS A REQUIRED GATE
+>
+> 이 절차는 환경이 실제로 사용 가능하고 CTO가 명시적으로 지정한
+> 경우에만 사용합니다. 해당 환경의 부재는 merge blocker가 아닙니다.
+> 자세한 내용은 `docs/ops/MERGE_FIRST_PRODUCTION_VERIFICATION_WORKFLOW.md`를 참고하세요.
+
 ---
 
 ## 1. Purpose
@@ -299,5 +305,5 @@ Do not use `test-slot-1`, `test-slot-2`, or `test-slot-X` URLs for LoveBud fixed
 
 ---
 
-Document version: 1.5  
+Document version: 1.5
 Next review: CTO approval after next fixed-slot verification cycle

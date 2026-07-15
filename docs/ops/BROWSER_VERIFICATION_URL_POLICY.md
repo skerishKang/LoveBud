@@ -1,6 +1,12 @@
 # 브라우저 검증 URL 정책
 
-상태: Active operating policy  
+> **Status:** OPTIONAL / CURRENTLY UNAVAILABLE AS A REQUIRED GATE
+>
+> 이 절차는 환경이 실제로 사용 가능하고 CTO가 명시적으로 지정한
+> 경우에만 사용합니다. 해당 환경의 부재는 merge blocker가 아닙니다.
+> 자세한 내용은 `docs/ops/MERGE_FIRST_PRODUCTION_VERIFICATION_WORKFLOW.md`를 참고하세요.
+
+상태: Active operating policy
 적용 범위: LoveBud 브라우저 smoke, PR Preview 검증, Branch Preview 검증, fixed test slot 검증, 로컬/웹 에이전트 검증 보고
 
 > **Canonical precedence:** `docs/ops/MVP_AGENT_GOVERNANCE.md` (owner-approved #3442 comment `4947327550`). Browser tooling is allowed by default. A missing fixed slot, missing CTO-assigned URL, or missing entrypoint comment is not an automatic BLOCKED reason. URL provenance is evidence metadata, not a permission gate. Conflicting sections are `NON_NORMATIVE_OUTSIDE_NAMED_CONTEXT`.

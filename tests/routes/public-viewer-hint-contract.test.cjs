@@ -19,10 +19,10 @@ test('viewer hint boundary clears and hides hint output', () => {
 });
 
 test('viewer hint boundary order is stable', () => {
-  const titleIndex = detailUiSource.indexOf('updateCurrentMomentTitle(data);');
+  const channelLinkIndex = detailUiSource.indexOf('updatePublicViewerDetailChannelLink(data);');
   const hintIndex = detailUiSource.indexOf('metadataText.updatePublicViewerCurrentMomentHint();');
   const imageIndex = detailUiSource.indexOf('updateCurrentMomentImage(data);');
 
-  assert.ok(titleIndex < hintIndex);
+  assert.ok(channelLinkIndex < hintIndex);
   assert.ok(hintIndex < imageIndex);
 });

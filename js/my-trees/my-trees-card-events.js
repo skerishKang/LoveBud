@@ -2,7 +2,7 @@
   'use strict';
 
   function isInteractiveTarget(target) {
-    return !!(target && target.closest && target.closest('.tree-card-open-link, .tree-card-edit-link, button, a[href]'));
+    return !!(target && target.closest && target.closest('.tree-card-open-link, .tree-card-public-view-link, .tree-card-edit-link, button, a[href]'));
   }
 
   function isActivationKey(event) {
@@ -43,6 +43,13 @@
       });
     }
 
+    var publicViewLink = card.querySelector('.tree-card-public-view-link');
+    if (publicViewLink) {
+      publicViewLink.addEventListener('click', function (event) {
+        event.stopPropagation();
+      });
+    }
+
     return openLink;
   }
 
@@ -52,16 +59,17 @@
       return openLink.getAttribute('href');
     }
 
-    var basePath = (typeof window.LoveBudPath !== 'undefined' && window.LoveBudPath.getBasePath)
-      ? window.LoveBudPath.getBasePath()
-      : (window.location.pathname.indexOf('/pages/') !== -1 ? '' : 'pages/');
-
-    var isPublicTree = tree && (tree.visibility === 'public');
-    if (isPublicTree) {
-      return basePath + 'view.html?treeId=' + encodeURIComponent((tree && tree.id) || '') + '&from=my-trees';
-    } else {
-      return basePath + 'editor?treeId=' + encodeURIComponent((tree && tree.id) || '') + '&from=my-trees';
+    var UI = window.LoveBudMyTreesUI || window.LoveTreeMyTreesUI;
+    if (UI && typeof UI.validateAndResolveEntryTargets === 'function') {
+      try {
+        var resolved = UI.validateAndResolveEntryTargets(tree);
+        return resolved && resolved.primary ? resolved.primary : null;
+      } catch (e) {
+        return null;
+      }
     }
+
+    return null;
   }
 
   function cloneCardWithoutListeners(card) {
@@ -97,7 +105,9 @@
       var action = getCardActivationAction(event, window);
       if (action === 'ignore') return;
       if (action === 'open') {
-        window.location.href = openHref;
+        if (typeof openHref === 'string' && openHref) {
+          window.location.href = openHref;
+        }
         return;
       }
       if (typeof onSelect === 'function') {
@@ -110,7 +120,9 @@
       if (action === 'ignore') return;
       event.preventDefault();
       if (action === 'open') {
-        window.location.href = openHref;
+        if (typeof openHref === 'string' && openHref) {
+          window.location.href = openHref;
+        }
         return;
       }
       if (typeof onSelect === 'function') {

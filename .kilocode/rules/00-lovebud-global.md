@@ -25,6 +25,9 @@ These rules apply to all agents working on the LoveBud project, especially code-
 
 ## Verification
 - Browser evidence is reported as LOCAL_EVIDENCE / PRE_MERGE_EVIDENCE / PRODUCTION_EVIDENCE. A fixed slot is an evidence option, not a permission gate (see docs/ops/MVP_AGENT_GOVERNANCE.md).
+- Pre-merge browser verification (Cloudflare Preview / fixed test slot): OPTIONAL when available and CTO-assigned. Absence is NOT a merge blocker.
+- Post-merge Production verification: Required for UI/Auth/runtime confirmation on https://lovebud.pages.dev/.
+- Local tests and GitHub CI remain mandatory pre-merge gates (see docs/ops/MERGE_FIRST_PRODUCTION_VERIFICATION_WORKFLOW.md).
 - Pages that depend on API, auth, or dynamic data (Search/Browse/Editor/My Trees/Auth-gated) cannot be validated solely with a local static server.
 
 ## Security

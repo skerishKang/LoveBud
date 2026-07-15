@@ -215,11 +215,11 @@ test('public viewer detail UI adapter renders channel link via viewer namespace'
   const panelEnd = source.indexOf('};', panelStart);
   const panelSource = source.slice(panelStart, panelEnd);
 
-  const titleIndex = panelSource.indexOf('updateCurrentMomentTitle(data);');
+  const badgeIndex = panelSource.indexOf('updateCurrentMomentBadge(data);');
   const channelLinkIndex = panelSource.indexOf('updatePublicViewerDetailChannelLink(data);');
   const hintIndex = panelSource.indexOf('metadataText.updatePublicViewerCurrentMomentHint();');
 
-  assert.ok(titleIndex < channelLinkIndex, 'channel link runs after title update');
+  assert.ok(badgeIndex < channelLinkIndex, 'channel link runs after badge update');
   assert.ok(channelLinkIndex < hintIndex, 'channel link runs before hint update');
 });
 

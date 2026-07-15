@@ -156,11 +156,11 @@ const FILE_ALLOWLIST = {
     reason: 'clear-container (×2): grid.innerHTML = empty string'
   },
   'js/my-trees/my-trees-i18n-refresh.js': {
-    count: 6, classification: 'safe',
+    count: 5, classification: 'safe',
     reason: 'Static i18n heading text + material icons; outerHTML read for icon preservation'
   },
   'js/my-trees/my-trees-preview-hub.js': {
-    count: 15, classification: 'safe',
+    count: 14, classification: 'safe',
     reason: 'buildFlowStages template uses escapeHtml; material-icon badges with escapeHtml for count; i18n safeText; clear-container; static toggle buttons; view and edit action buttons; owner-passive social-shell template (Step 5 follow-up) is static markup with escapeHtml-bound counts'
   },
   'js/my-trees/my-trees-preview-state.js': {

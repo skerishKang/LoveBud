@@ -141,28 +141,24 @@ test('My Trees flow card carries the Browse frame surface', () => {
 });
 
 // ── 5) Primary button label parity: 트리 열기 + account_tree ────────────
-test('My Trees primary button HTML placeholder is "트리 열기" + account_tree', () => {
+test('My Trees primary button HTML placeholder uses 감상하기 + account_tree', () => {
     assert.match(
         myTreesHtml,
-        /id=["']myTreesHubOpenBtn["'][\s\S]*?account_tree[\s\S]*?트리\s*열기/,
-        'My Trees primary action must show account_tree icon + "트리 열기" label in HTML placeholder'
+        /id=["']myTreesHubOpenBtn["'][\s\S]*?account_tree[\s\S]*?감상하기/,
+        'My Trees primary action must show account_tree icon + "감상하기" label in HTML placeholder'
     );
 });
 
-test('My Trees primary button JS sets "트리 열기" + account_tree icon', () => {
-    // The runtime label is set via i18nHub('', '트리 열기', 'Open tree').
-    // Both strings must appear together in the runtime-rendering snippet,
-    // separated by the + concatenation operator. Match a permissive
-    // pattern across line breaks / whitespace.
-    const runtimeSnippet = /account_tree<\/span>'\s*\+\s*[\s\S]{0,500}?'트리\s*열기'/;
+test('My Trees primary button JS uses 감상하기 + account_tree icon', () => {
+    // The label is the Korean fallback: '감상하기'
     assert.match(
         myTreesHubJs,
-        runtimeSnippet,
-        'My Trees primary action must render account_tree icon + "트리 열기" label at runtime (concatenated template)'
+        /'감상하기'/,
+        'My Trees primary action must reference 감상하기 at runtime'
     );
     assert.ok(
-        !/i18nHub\('',\s*'감상\s*열기'/.test(myTreesHubJs),
-        'Legacy "감상 열기" label must not return after Step 5'
+        !/트리\s*열기/.test(myTreesHubJs),
+        'Legacy "트리 열기" label must no longer appear in hub JS'
     );
 });
 

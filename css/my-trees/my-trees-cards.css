@@ -252,6 +252,7 @@
     justify-content: flex-end;
     overflow: hidden;
     flex: 1 1 auto;
+    flex-wrap: wrap;
     gap: 6px;
 }
 

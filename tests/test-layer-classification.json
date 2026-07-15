@@ -863,6 +863,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/editor-authoring-entry-production-regression-3502.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Reads Editor source (CSS, JS, template) and executes the syncSidebarAuthoringEntryState helper and showAddMemoryForm lifecycle in a local vm with fake DOM; does not connect to a network, database, browser, or production system.",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/editor-empty-tree-first-moment-view-mode-contract.test.cjs",
       "layer": "EXECUTED_FAKE",
       "rationale": "Reads production module source and executes it in a local process with injected fake/mock/stub dependencies (e.g., vm context with fake DOM or mocked fetch/localStorage); no real external system or production resource used.",
@@ -908,6 +914,12 @@
       "path": "tests/contracts/editor-floating-toolbar-template-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/editor-form-isolation-connect-flow-3504.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Tests form isolation (inert/aria-hidden/focus trap), connect-existing flow guard gates, and floating toolbar routing. Executes production source in vm with fake DOM; no real external system or production resource used.",
       "capabilities": []
     },
     {
@@ -1919,6 +1931,18 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/my-trees-entry-target-resolver-runtime-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes the pure My Trees entry-target resolver in node:vm and verifies canonical route construction, public/private access gating, detached output, URL encoding, and fail-closed invalid-input behavior without a real browser, navigation, auth provider, network, database, deployment, or Production resource.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/my-trees-entry-actions-runtime-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes resolver, UI, card-events, and preview-hub in node:vm with fake DOM and verifies 26 enumerated entry-action requirements: navigation gating, canonical routes, share visibility, stale-state cleanup, and fail-closed behavior. No real browser, network, auth, database, deployment, or Production resource.",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/my-trees-flow-stage-cache-bust-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
@@ -2201,9 +2225,21 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/public-viewer-appreciation-composer-runtime-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes the Public Viewer appreciation composer with adapter/presentation spies and the real adapter→canonical→presentation chain in node:vm, proving exact orchestration order, fail-closed dependency errors, private-sentinel exclusion, and unknown-vs-zero social preservation without a real browser, network, auth provider, database, deployment, or Production resource.",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/public-viewer-appreciation-model-adapter-runtime-contract.test.cjs",
       "layer": "EXECUTED_FAKE",
       "rationale": "Executes the canonical appreciation render model and Public Viewer route-owned adapter in node:vm, proving public-safe projection, detached output, social-count preservation, and fail-closed Viewer capabilities without a real browser, network, auth provider, database, deployment, or Production resource.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/public-viewer-appreciation-presentation-model-runtime-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes the pure Public Viewer appreciation presentation-slot helper in node:vm, proving fixed canonical slot order, unavailable-vs-zero social semantics, detached read-only knowledge, and fail-closed owner/editor capabilities without a real browser, network, auth provider, database, deployment, or Production resource.",
       "capabilities": []
     },
     {
@@ -4125,6 +4161,24 @@
       "layer": "SOURCE_STATIC",
       "rationale": "Reads the migration provenance manifests and exercises only the local pure-JS comparison core with synthetic ledger/catalog evidence; it does not connect to a database, network, browser, deploy target, or production system.",
       "capabilities": []
+    },
+    {
+      "path": "tests/contracts/public-viewer-canonical-appreciation-dom-wiring-3507.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes the production Public Viewer appreciation composer, DOM renderer, and detail integration in a fake DOM/VM boundary without real network, Auth, database, or Production resources.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/merge-first-production-verification-governance-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Reads the canonical MERGE_FIRST_PRODUCTION_VERIFICATION_WORKFLOW.md, AGENTS.md, and .kilocode rules; asserts on string existence, section presence, and policy language. Does not execute runtime code, launch a browser, connect to a database or network, deploy, or mutate production.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/legacy-tree-entity-recovery-design-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "capabilities": [],
+      "rationale": "Static source contract verifying the canonical recovery design document (docs/product/lovebud-legacy-tree-entity-recovery-contract.md) against 38 policy assertions: identity preservation, evidence hierarchy, visibility reconstruction, Browse eligibility separation, ownership inference prohibitions, unresolved metadata states, new-vs-legacy isolation, dependent data preservation, future execution gates, rollback posture, privacy hygiene, and runbook consistency. No DB, network, browser, or production access used."
     }
   ],
   "supplemental": [

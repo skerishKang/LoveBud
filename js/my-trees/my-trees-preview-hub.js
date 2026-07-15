@@ -8,7 +8,7 @@
  * Responsibilities:
  * - Show a compact appreciation panel when a tree card is selected
  * - Display: tree title, moment count, representative info, flow preview
- * - "트리 열기" primary action → opens Editor
+ * - "감상하기" primary action → opens Editor
  * - No management controls (rename, delete, visibility)
  *
  * Structure alignment with Browse:
@@ -101,6 +101,7 @@
             summary: document.getElementById('myTreesHubSummary'),
             actions: document.getElementById('myTreesHubActions'),
             openBtn: document.getElementById('myTreesHubOpenBtn'),
+            publicViewBtn: document.getElementById('myTreesHubPublicViewBtn'),
             editBtn: document.getElementById('myTreesHubEditBtn'),
             shareBtn: document.getElementById('myTreesHubShareBtn'),
             noMoments: document.getElementById('myTreesHubNoMoments'),
@@ -296,6 +297,14 @@
         if (els.badge) els.badge.textContent = i18nHub('myTrees.hub_badge', '선택한 내 트리', 'Selected tree');
         _selectedTree = null;
         _expandedFlowKey = null;
+        resetActionButton(els.openBtn);
+        resetActionButton(els.publicViewBtn);
+        resetActionButton(els.editBtn);
+        if (els.shareBtn) {
+            els.shareBtn.hidden = true;
+            els.shareBtn.onclick = null;
+            els.shareBtn.removeAttribute('data-tree-id');
+        }
     }
 
     function createMyTreesSocialShell() {
@@ -353,61 +362,8 @@
             els.badge.textContent = i18nHub('myTrees.hub_badge', '선택한 내 트리', 'Selected tree');
         }
 
-        /* ── Update action buttons href ── */
-        var basePath = '';
-        if (typeof window.LoveBudPath !== 'undefined' && window.LoveBudPath.getBasePath) {
-            basePath = window.LoveBudPath.getBasePath();
-        } else {
-            basePath = window.location.pathname.indexOf('/pages/') !== -1 ? '' : 'pages/';
-        }
-
-        if (els.openBtn && tree && tree.id) {
-            var isPublicTree = (tree.visibility === 'public');
-            els.openBtn.href = isPublicTree
-                ? basePath + 'view.html?treeId=' + encodeURIComponent(tree.id) + '&from=my-trees'
-                : basePath + 'editor?treeId=' + encodeURIComponent(tree.id) + '&from=my-trees';
-        }
-        if (els.editBtn && tree && tree.id) {
-            els.editBtn.href = basePath + 'editor?treeId=' + encodeURIComponent(tree.id) + '&from=my-trees';
-        }
-
-        /* ── Share button — copy share URL to clipboard ── */
-        if (els.shareBtn && tree && tree.id) {
-            els.shareBtn.setAttribute('data-tree-id', tree.id);
-            els.shareBtn.onclick = function(ev) {
-                ev.preventDefault();
-                var tid = tree.id;
-                var url = window.location.origin + basePath + 'view.html?treeId=' + encodeURIComponent(tid) + '&from=shared';
-                var labelEl = els.shareBtn.querySelector('[data-i18n="myTrees.hub_share"]');
-                var origLabel = labelEl ? labelEl.textContent : '';
-                var copyFromInput = function(text) {
-                    if (navigator.clipboard && navigator.clipboard.writeText) {
-                        return navigator.clipboard.writeText(text);
-                    }
-                    return new Promise(function(resolve, reject) {
-                        try {
-                            var ta = document.createElement('textarea');
-                            ta.value = text;
-                            ta.style.position = 'fixed';
-                            ta.style.opacity = '0';
-                            document.body.appendChild(ta);
-                            ta.focus();
-                            ta.select();
-                            var ok = document.execCommand('copy');
-                            document.body.removeChild(ta);
-                            ok ? resolve() : reject(new Error('copy failed'));
-                        } catch (e) { reject(e); }
-                    });
-                };
-                copyFromInput(url).then(function() {
-                    if (labelEl) labelEl.textContent = i18nHub('', '복사되었어요', 'Copied');
-                    setTimeout(function() { if (labelEl) labelEl.textContent = origLabel; }, 1800);
-                }).catch(function() {
-                    if (labelEl) labelEl.textContent = i18nHub('', '복사 실패', 'Copy failed');
-                    setTimeout(function() { if (labelEl) labelEl.textContent = origLabel; }, 1800);
-                });
-            };
-        }
+        /* ── Update action buttons via shared helper ── */
+        applyHubActions(tree, els);
 
         /* ── Tree title ── */
         if (els.treeTitle) {
@@ -492,24 +448,6 @@
             writeSummary(els.summary, '', true);
         }
 
-        /* ── Actions ── */
-        if (els.actions) {
-            els.actions.hidden = false;
-            if (els.openBtn && tree && tree.id) {
-                var isPublicTree = (tree.visibility === 'public');
-                els.openBtn.href = isPublicTree
-                    ? basePath + 'view.html?treeId=' + encodeURIComponent(tree.id) + '&from=my-trees'
-                    : basePath + 'editor?treeId=' + encodeURIComponent(tree.id) + '&from=my-trees';
-                els.openBtn.innerHTML = '<span class="material-symbols-outlined">account_tree</span>' +
-                    escapeHtml(i18nHub('', '트리 열기', 'Open tree'));
-            }
-            if (els.editBtn && tree && tree.id) {
-                els.editBtn.href = basePath + 'editor?treeId=' + encodeURIComponent(tree.id) + '&from=my-trees';
-                els.editBtn.innerHTML = '<span class="material-symbols-outlined">edit</span>' +
-                    escapeHtml(i18nHub('', '편집하기', 'Edit'));
-            }
-        }
-
         /* ── Social shell (owner passive) ── */
         var socialSlot = els.socialSlot;
         if (socialSlot) {
@@ -549,16 +487,111 @@
         }
     }
     
-    /* ── Helper to navigate back to my trees after editor ── */
-    function getEditorUrl(treeId) {
-        if (!treeId) return '#';
-        var basePath = '';
-        if (typeof window.LoveBudPath !== 'undefined' && window.LoveBudPath.getBasePath) {
-            basePath = window.LoveBudPath.getBasePath();
-        } else {
-            basePath = window.location.pathname.indexOf('/pages/') !== -1 ? '' : 'pages/';
+    /* ── Shared action button helpers ── */
+
+    function resetActionButton(btn) {
+        if (!btn) return;
+        btn.removeAttribute('href');
+        btn.hidden = true;
+        btn.onclick = null;
+        btn.removeAttribute('data-tree-id');
+    }
+
+    function applyHubActions(tree, els) {
+        if (!els || !els.actions) return;
+        els.actions.hidden = false;
+
+        resetActionButton(els.openBtn);
+        resetActionButton(els.publicViewBtn);
+        resetActionButton(els.editBtn);
+        if (els.shareBtn) {
+            els.shareBtn.hidden = true;
+            els.shareBtn.onclick = null;
+            els.shareBtn.removeAttribute('data-tree-id');
         }
-        return basePath + 'editor?treeId=' + encodeURIComponent(treeId);
+
+        var UI = window.LoveBudMyTreesUI || window.LoveTreeMyTreesUI;
+        var resolved = null;
+        if (UI && typeof UI.validateAndResolveEntryTargets === 'function') {
+            try {
+                resolved = UI.validateAndResolveEntryTargets(tree);
+            } catch (e) {
+                resolved = null;
+            }
+        }
+        if (!resolved || typeof resolved !== 'object') {
+            resolved = { treeId: null, accessState: 'unknown', primary: null, publicView: null, edit: null };
+        }
+
+        if (els.openBtn && resolved.primary) {
+            els.openBtn.href = resolved.primary;
+            els.openBtn.hidden = false;
+            els.openBtn.innerHTML = '<span class="material-symbols-outlined">account_tree</span><span data-i18n="myTrees.entry_appreciation">' +
+                escapeHtml(i18nHub('myTrees.entry_appreciation', '감상하기', 'Appreciate')) + '</span>';
+        }
+
+        if (els.publicViewBtn && resolved.publicView) {
+            els.publicViewBtn.href = resolved.publicView;
+            els.publicViewBtn.hidden = false;
+            els.publicViewBtn.innerHTML = '<span class="material-symbols-outlined">visibility</span><span data-i18n="myTrees.entry_public_view">' +
+                escapeHtml(i18nHub('myTrees.entry_public_view', '공개 화면 보기', 'View public screen')) + '</span>';
+        }
+
+        if (els.editBtn && resolved.edit) {
+            els.editBtn.href = resolved.edit;
+            els.editBtn.hidden = false;
+            els.editBtn.innerHTML = '<span class="material-symbols-outlined">edit</span><span data-i18n="myTrees.entry_edit">' +
+                escapeHtml(i18nHub('myTrees.entry_edit', '편집하기', 'Edit')) + '</span>';
+        }
+
+        /* ── Share button: public tree only, use validated publicView href ── */
+        if (els.shareBtn && resolved.accessState === 'public' && resolved.publicView) {
+            els.shareBtn.hidden = false;
+            els.shareBtn.setAttribute('data-tree-id', resolved.treeId || '');
+            els.shareBtn.onclick = (function(shareHref) {
+                return function(ev) {
+                    ev.preventDefault();
+                    // Resolve the validated publicView relative href against the
+                    // current document URL so the result is always correct
+                    // regardless of whether we are on /pages/my-trees.html or /my-trees.
+                    // This avoids the previous bug where a bare relative href was
+                    // concatenated to location.origin and produced /view.html.
+                    var currentHref = window.location.href ||
+                        (window.location.origin + window.location.pathname);
+                    var shareUrl = new URL(shareHref, currentHref);
+                    shareUrl.searchParams.set('from', 'shared');
+                    var url = shareUrl.toString();
+                    var labelEl = els.shareBtn.querySelector('[data-i18n=\"myTrees.hub_share\"]');
+                    var origLabel = labelEl ? labelEl.textContent : '';
+                    var copyFromInput = function(text) {
+                        if (navigator.clipboard && navigator.clipboard.writeText) {
+                            return navigator.clipboard.writeText(text);
+                        }
+                        return new Promise(function(resolve, reject) {
+                            try {
+                                var ta = document.createElement('textarea');
+                                ta.value = text;
+                                ta.style.position = 'fixed';
+                                ta.style.opacity = '0';
+                                document.body.appendChild(ta);
+                                ta.focus();
+                                ta.select();
+                                var ok = document.execCommand('copy');
+                                document.body.removeChild(ta);
+                                ok ? resolve() : reject(new Error('copy failed'));
+                            } catch (e) { reject(e); }
+                        });
+                    };
+                    copyFromInput(url).then(function() {
+                        if (labelEl) labelEl.textContent = i18nHub('', '복사되었어요', 'Copied');
+                        setTimeout(function() { if (labelEl) labelEl.textContent = origLabel; }, 1800);
+                    }).catch(function() {
+                        if (labelEl) labelEl.textContent = i18nHub('', '복사 실패', 'Copy failed');
+                        setTimeout(function() { if (labelEl) labelEl.textContent = origLabel; }, 1800);
+                    });
+                };
+            })(resolved.publicView);
+        }
     }
 
     /* ── Hub loader (loading skeleton) ── */
@@ -593,28 +626,7 @@
             false
         );
 
-        if (els.actions) {
-            els.actions.hidden = false;
-            var basePath = '';
-            if (typeof window.LoveBudPath !== 'undefined' && window.LoveBudPath.getBasePath) {
-                basePath = window.LoveBudPath.getBasePath();
-            } else {
-                basePath = window.location.pathname.indexOf('/pages/') !== -1 ? '' : 'pages/';
-            }
-            if (els.openBtn && tree && tree.id) {
-                var isPublicTree = (tree.visibility === 'public');
-                els.openBtn.href = isPublicTree
-                    ? basePath + 'view.html?treeId=' + encodeURIComponent(tree.id) + '&from=my-trees'
-                    : basePath + 'editor?treeId=' + encodeURIComponent(tree.id) + '&from=my-trees';
-                els.openBtn.innerHTML = '<span class="material-symbols-outlined">account_tree</span> ' +
-                    escapeHtml(i18nHub('', '트리 열기', 'Open tree'));
-            }
-            if (els.editBtn && tree && tree.id) {
-                els.editBtn.href = basePath + 'editor?treeId=' + encodeURIComponent(tree.id) + '&from=my-trees';
-                els.editBtn.innerHTML = '<span class="material-symbols-outlined">edit</span> ' +
-                    escapeHtml(i18nHub('', '편집하기', 'Edit'));
-            }
-        }
+        applyHubActions(tree, els);
     }
 
     /* ── Card selection handler ── */

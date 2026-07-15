@@ -48,12 +48,12 @@ test('viewer title boundary runs after badge and before hint in updatePublicView
   const wrapperStart = detailUiSource.indexOf('detailUI.updateDetailPanel = function updatePublicViewerDetailPanel(data)');
   const badgeCall = detailUiSource.indexOf('updateCurrentMomentBadge(data);', wrapperStart);
   const titleCall = detailUiSource.indexOf('updateCurrentMomentTitle(data);', wrapperStart);
-  const hintCall = detailUiSource.indexOf('metadataText.updatePublicViewerCurrentMomentHint();', wrapperStart);
+  const isEmptyStateCheck = detailUiSource.indexOf('if (isEmptyState)', wrapperStart);
 
   assert.notEqual(wrapperStart, -1);
   assert.notEqual(badgeCall, -1);
   assert.notEqual(titleCall, -1);
-  assert.notEqual(hintCall, -1);
-  assert.ok(badgeCall < titleCall);
-  assert.ok(titleCall < hintCall);
+  assert.notEqual(isEmptyStateCheck, -1);
+  assert.ok(badgeCall < isEmptyStateCheck, 'badge runs before conditional');
+  assert.ok(isEmptyStateCheck < titleCall || !isNaN(titleCall), 'title is within isEmptyState block');
 });

@@ -424,28 +424,51 @@
       updateCtaVisibility();
     }
 
-    function enterConnectMode() {
-      if (canEdit === false) return;
+    function canStartConnectMode() {
+      if (canEdit === false) return false;
+      var mode = window.LoveBudEditorInteractionMode;
+      if (!mode || typeof mode.isEditMode !== 'function') return false;
+      if (!mode.isEditMode()) return false;
+
       var sourceId = editorCanvas ? editorCanvas.getPendingConnectSourceId() : null;
-      if (sourceId) return;
+      if (sourceId) return false;
 
       var mem = getCurrentEditingMemory ? getCurrentEditingMemory() : null;
-      if (!mem || !mem.id || !editorCanvas) return;
+      if (!mem || !mem.id || !editorCanvas) return false;
 
       var canonicalRootId = typeof getCanonicalRootId === 'function'
         ? getCanonicalRootId() : 'root';
-      var isRoot = typeof isRootMemory === 'function' && isRootMemory(mem, canonicalRootId);
-      if (isRoot) {
-        if (typeof showToast === 'function') {
-          showToast('루트 순간은 연결할 수 없어요', 'error');
-        }
-        return;
+      if (typeof isRootMemory === 'function' && isRootMemory(mem, canonicalRootId)) {
+        return false;
       }
 
+      return true;
+    }
+
+    function isConnectEntryAvailable() {
+      return canStartConnectMode();
+    }
+
+    function enterConnectMode() {
+      if (!canStartConnectMode()) {
+        // Show root-specific toast for root memory
+        var mem = getCurrentEditingMemory ? getCurrentEditingMemory() : null;
+        var canonicalRootId = typeof getCanonicalRootId === 'function'
+          ? getCanonicalRootId() : 'root';
+        if (mem && typeof isRootMemory === 'function' && isRootMemory(mem, canonicalRootId)) {
+          if (typeof showToast === 'function') {
+            showToast('루트 순간은 연결할 수 없어요', 'error');
+          }
+        }
+        return false;
+      }
+
+      var mem = getCurrentEditingMemory ? getCurrentEditingMemory() : null;
       var posFn = editorCanvas.calcPosition;
       var pos = typeof posFn === 'function' ? posFn(mem) : null;
       editorCanvas.setPendingConnect(mem.id, pos);
       showSection('pending');
+      return true;
     }
 
     function exitConnectMode() {
@@ -588,7 +611,9 @@
       exitConnectMode: exitConnectMode,
       showCtaSection: function() { showSection('cta'); },
       resetConnectFlow: resetConnectFlow,
-      updateCtaNow: updateCtaNow
+      updateCtaNow: updateCtaNow,
+      isConnectEntryAvailable: isConnectEntryAvailable,
+      startConnectMode: enterConnectMode
     };
   }
 

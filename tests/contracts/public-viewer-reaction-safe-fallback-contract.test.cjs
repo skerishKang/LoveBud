@@ -128,6 +128,14 @@ test('Public read-only social summary never invokes private reaction API and hid
   socialFiles.forEach(function(sf) {
     vm.runInContext(fs.readFileSync(path.join(ROOT, sf), 'utf8'), context);
   });
+  context.window.LoveBudPublicViewerAppreciationComposer = {
+    composePublicViewerAppreciationPresentation: function() { return { slots: [] }; }
+  };
+  context.window.LoveBudPublicViewerAppreciationDomRenderer = {
+    createPublicViewerAppreciationDomRenderer: function() {
+      return { render: function() {}, reset: function() {} };
+    }
+  };
   vm.runInContext(scriptSource, context);
 
   const deps = {

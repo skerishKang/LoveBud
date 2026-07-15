@@ -11,12 +11,148 @@
 
   var _manageSummary = window.LoveBudMyTreesManageSummary || null;
 
-  /**
-   * i18n fallback helper.
-   * Treats missing, empty, or key-echo results as a failed lookup
-   * and returns the Korean fallback instead.
-   * Prevents raw keys like "myTrees.card_edit" from leaking into UI.
-   */
+    /**
+     * Extract the first usable input tree ID from the allowlist order.
+     * Mirrors the resolver's id resolution so validated output can be
+     * checked against the exact input the user clicked.
+     */
+    function getInputTreeId(tree) {
+      if (!tree || typeof tree !== 'object') return null;
+      var keys = ['id', 'treeId', 'tree_id'];
+      for (var i = 0; i < keys.length; i++) {
+        var raw = tree[keys[i]];
+        if (typeof raw === 'string') {
+          var trimmed = raw.replace(/^\s+|\s+$/g, '');
+          if (trimmed) return trimmed;
+        }
+      }
+      return null;
+    }
+
+    /**
+     * Expected accessState derived purely from the input visibility.
+     * Case-sensitive canonical only — no coercion.
+     */
+    function getExpectedAccessState(visibility) {
+      if (visibility === 'public') return 'public';
+      if (visibility === 'private') return 'private';
+      return 'unknown';
+    }
+
+    /**
+     * Strict canonical entry-target validator.
+     * Returns the raw target href only when every canonical field matches
+     * exactly, including the precise expected href string. Rejects any
+     * scheme, fragment, extra query, mode param, or mismatched tree id.
+     * Returns null on any deviation (fail-closed for that target).
+     */
+    function validateEntryTarget(target, expectedAction, expectedInteractionMode, expectedRouteSurface, expectedHref) {
+      if (!target || typeof target !== 'object') return null;
+      if (target.available !== true) return null;
+      if (typeof target.href !== 'string' || !target.href) return null;
+      if (target.action !== expectedAction) return null;
+      if (target.interactionMode !== expectedInteractionMode) return null;
+      if (target.routeSurface !== expectedRouteSurface) return null;
+      // Reject dangerous schemes / fragments / protocol-relative before exact match.
+      if (target.href.indexOf('://') !== -1) return null;
+      if (target.href.indexOf('//') === 0) return null;
+      if (target.href.indexOf('javascript:') === 0) return null;
+      if (target.href.indexOf('#') === 0) return null;
+      // Exact canonical href — no mode param, no extra query, no fragment,
+      // no other tree id, no other relative route.
+      if (expectedHref !== null && target.href !== expectedHref) return null;
+      return target.href;
+    }
+
+    function resolveSafeBasePath() {
+      if (typeof window.LoveBudPath !== 'undefined' && window.LoveBudPath.getBasePath) {
+        var bp = window.LoveBudPath.getBasePath();
+        if (bp === '' || bp === 'pages/') return bp;
+      }
+      return window.location.pathname.indexOf('/pages/') !== -1 ? '' : 'pages/';
+    }
+
+    /**
+     * Resolve and strictly validate the owned-tree entry targets.
+     *
+     * Fail-closed rules:
+     *  - resolver missing / throws / non-object → all targets null
+     *  - no valid input tree id → all targets null
+     *  - targets.treeId !== input id → bundle fail closed (all null)
+     *  - targets.accessState !== expected (from visibility) → bundle fail closed
+     *  - private/unknown input but publicView.available === true → bundle fail closed
+     *  - per-target malformed href/metadata → that target null only
+     *
+     * Only the validated canonical href receives a safe base path ('' or 'pages/').
+     */
+    function validateAndResolveEntryTargets(tree) {
+      var inputId = getInputTreeId(tree);
+      var expectedAccessState = getExpectedAccessState(tree ? tree.visibility : null);
+
+      var targets = null;
+      try {
+        if (window.LoveBudMyTreesEntryTargetResolver && typeof window.LoveBudMyTreesEntryTargetResolver.resolveMyTreesEntryTargets === 'function') {
+          targets = window.LoveBudMyTreesEntryTargetResolver.resolveMyTreesEntryTargets(tree);
+        }
+      } catch (e) {
+        targets = null;
+      }
+
+      var nullBundle = { treeId: null, accessState: 'unknown', primary: null, publicView: null, edit: null };
+
+      if (!targets || typeof targets !== 'object') return nullBundle;
+      if (!inputId) return nullBundle;
+      if (targets.treeId !== inputId) return nullBundle;
+      if (targets.accessState !== expectedAccessState) return nullBundle;
+
+      var basePath = resolveSafeBasePath();
+      var encId = encodeURIComponent(inputId);
+      var primaryHref = 'editor?treeId=' + encId;
+      var editHref = 'editor?treeId=' + encId + '&mode=edit';
+      var publicHref = 'view.html?treeId=' + encId;
+
+      function build(target, action, mode, surface, expectedHref) {
+        var href = validateEntryTarget(target, action, mode, surface, expectedHref);
+        return href !== null ? basePath + href : null;
+      }
+
+      var primary = build(targets.primary, 'appreciation', 'appreciation', 'editor', primaryHref);
+      var edit = build(targets.edit, 'edit', 'edit', 'editor', editHref);
+
+      var publicView = null;
+      if (expectedAccessState === 'public') {
+        publicView = build(targets.publicView, 'public-view', 'none', 'public-viewer', publicHref);
+      } else {
+        // private/unknown: public target must stay unavailable.
+        if (targets.publicView && targets.publicView.available === true) {
+          return nullBundle;
+        }
+        publicView = null;
+      }
+
+      // Bundle-level fail-closed: if a required target (primary or edit) is
+      // malformed, or a public tree's publicView is malformed, the entire
+      // bundle is untrusted and must be fully rejected (no partial actions).
+      // For private/unknown trees publicView is intentionally null (no public
+      // surface), which is NOT a malformation and must not trigger fail-closed.
+      if (primary === null || edit === null) return nullBundle;
+      if (expectedAccessState === 'public' && publicView === null) return nullBundle;
+
+      return {
+        treeId: inputId,
+        accessState: expectedAccessState,
+        primary: primary,
+        publicView: publicView,
+        edit: edit
+      };
+    }
+
+    /**
+     * i18n fallback helper.
+     * Treats missing, empty, or key-echo results as a failed lookup
+     * and returns the Korean fallback instead.
+     * Prevents raw keys like "myTrees.card_edit" from leaking into UI.
+     */
   function getI18nText(i18n, key, fallback) {
     var value = typeof i18n === 'function' ? i18n(key) : '';
     if (!value || value === key || String(value).toLowerCase() === String(key).toLowerCase()) {
@@ -297,16 +433,10 @@
     var title = cardMeta.title;
 
     var selectedClass = typeof isSelected === 'function' && isSelected(normalizedTree.id) ? ' is-selected is-active' : '';
-    var basePath = options && typeof options.basePath === 'string'
-      ? options.basePath
-      : ((typeof window.LoveBudPath !== 'undefined' && window.LoveBudPath.getBasePath)
-        ? window.LoveBudPath.getBasePath()
-        : (window.location.pathname.indexOf('/pages/') !== -1 ? '' : 'pages/'));
-    var isPublicTree = (normalizedTree.visibility === 'public');
-    var viewHref = isPublicTree
-      ? (basePath + 'view.html?treeId=' + encodeURIComponent(normalizedTree.id || '') + '&from=my-trees')
-      : (basePath + 'editor?treeId=' + encodeURIComponent(normalizedTree.id || '') + '&from=my-trees');
-    var editHref = basePath + 'editor?treeId=' + encodeURIComponent(normalizedTree.id || '') + '&from=my-trees';
+    var resolved = validateAndResolveEntryTargets(normalizedTree);
+    var openHref = resolved.primary;
+    var publicViewHref = resolved.publicView;
+    var editHref = resolved.edit;
 
     var card = document.createElement('div');
     card.className = 'tree-card' + selectedClass;
@@ -326,11 +456,13 @@
     };
 
     card.addEventListener('click', function (e) {
-      if (e.target.closest('.tree-card-open-link, .tree-card-edit-link, button, a[href]')) {
+      if (e.target.closest('.tree-card-open-link, .tree-card-public-view-link, .tree-card-edit-link, button, a[href]')) {
         return;
       }
       if (window.innerWidth < 480) {
-        window.location.href = viewHref;
+        if (openHref) {
+          window.location.href = openHref;
+        }
         return;
       }
       handleCardSelect();
@@ -340,7 +472,9 @@
       if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
         if (window.innerWidth < 480) {
-          window.location.href = viewHref;
+          if (openHref) {
+            window.location.href = openHref;
+          }
           return;
         }
         handleCardSelect();
@@ -348,8 +482,9 @@
     });
 
     // i18n-safe labels via getI18nText helper
-    var viewLabel = getI18nText(i18n, 'myTrees.card_view', '트리 열기');
-    var editLabel = getI18nText(i18n, 'myTrees.card_edit', '편집하기');
+    var openLabel = getI18nText(i18n, 'myTrees.entry_appreciation', '감상하기');
+    var publicViewLabel = getI18nText(i18n, 'myTrees.entry_public_view', '공개 화면 보기');
+    var editLabel = getI18nText(i18n, 'myTrees.entry_edit', '편집하기');
     var viewCountLabel = getI18nText(i18n, 'myTrees.view_count', '조회수');
     var likeCountLabel = getI18nText(i18n, 'myTrees.like_count', '좋아요');
     var commentCountLabel = getI18nText(i18n, 'myTrees.comment_count', '댓글');
@@ -388,10 +523,9 @@
             '</div>',
           '</div>',
           '<div class="tree-meta-right">',
-            '<a class="tree-card-open-link" href="' + escapeHtml(viewHref) + '" target="_self">',
-              '<span class="material-symbols-outlined" aria-hidden="true">account_tree</span>',
-              viewLabel,
-            '</a>',
+            (openHref ? '<a class="tree-card-open-link" href="' + escapeHtml(openHref) + '" target="_self"><span class="material-symbols-outlined" aria-hidden="true">account_tree</span><span data-i18n="myTrees.entry_appreciation">' + escapeHtml(openLabel) + '</span></a>' : ''),
+            (publicViewHref ? '<a class="tree-card-public-view-link" href="' + escapeHtml(publicViewHref) + '" target="_self"><span class="material-symbols-outlined" aria-hidden="true">visibility</span><span data-i18n="myTrees.entry_public_view">' + escapeHtml(publicViewLabel) + '</span></a>' : ''),
+            (editHref ? '<a class="tree-card-edit-link" href="' + escapeHtml(editHref) + '" target="_self"><span class="material-symbols-outlined" aria-hidden="true">edit</span><span data-i18n="myTrees.entry_edit">' + escapeHtml(editLabel) + '</span></a>' : ''),
           '</div>',
         '</div>',
       '</div>'
@@ -400,6 +534,12 @@
     var openLink = card.querySelector('.tree-card-open-link');
     if (openLink) {
       openLink.addEventListener('click', function (e) {
+        e.stopPropagation();
+      });
+    }
+    var publicViewLink = card.querySelector('.tree-card-public-view-link');
+    if (publicViewLink) {
+      publicViewLink.addEventListener('click', function (e) {
         e.stopPropagation();
       });
     }
@@ -572,7 +712,10 @@
     buildTreeThumbVisual: buildTreeThumbVisual,
     updateManageSummary: updateManageSummary,
     buildTreeCard: buildTreeCard,
-    renderTrees: renderTrees
+    renderTrees: renderTrees,
+    validateEntryTarget: validateEntryTarget,
+    resolveSafeBasePath: resolveSafeBasePath,
+    validateAndResolveEntryTargets: validateAndResolveEntryTargets
   };
 
   window.LoveBudMyTreesUI = api;
