@@ -161,7 +161,7 @@ test('mounted view/edit templates have unique IDs and no appreciation action dup
 
 // ── B. Comment panel background load stays closed ─────────────────────────
 
-test('comment controller background load never opens panel; A→B stale guard holds', async () => {
+test('comment controller background load never opens panel; late A cannot overwrite B', async () => {
   const store = Object.create(null);
   function get(id) {
     if (!store[id]) store[id] = makeEl(id);
@@ -190,8 +190,12 @@ test('comment controller background load never opens panel; A→B stale guard ho
   commentCount.textContent = '⋯';
 
   let resolveA = null;
+  let aSettled = false;
   const aPromise = new Promise((resolve) => {
-    resolveA = resolve;
+    resolveA = function resolveAWithPayload(payload) {
+      aSettled = true;
+      resolve(payload);
+    };
   });
   let bResolved = false;
   const fetchCalls = [];
@@ -244,15 +248,36 @@ test('comment controller background load never opens panel; A→B stale guard ho
 
   const controller = context.window.createEditorMomentCommentsController();
   assert.equal(typeof controller.update, 'function');
-  assert.equal(panel.hidden, true);
+  assert.equal(panel.hidden, true, 'initial panel is hidden');
 
+  // 1) Select A — fetch begins and stays pending.
   controller.update({ memoryId: 'A' });
   assert.equal(fetchCalls[0], 'A');
+  assert.equal(aSettled, false, 'A fetch remains pending after selection');
+  // 2–3) Panel stays closed while A is in-flight.
   assert.equal(panel.hidden, true, 'A fetch start must not open panel');
+  assert.equal(panel.hidden, true, 'A still pending keeps panel hidden');
 
-  // A still pending: still closed
-  assert.equal(panel.hidden, true);
+  // 4) While A is still pending, select B.
+  controller.update({ memoryId: 'B' });
+  assert.equal(fetchCalls[1], 'B');
+  assert.equal(aSettled, false, 'A is still pending after B selection');
+  assert.equal(panel.hidden, true, 'B selection keeps panel closed');
+  assert.equal(commentBtn.getAttribute('aria-expanded'), 'false');
 
+  // 5–6) Complete B fetch and assert B list/status/count.
+  await new Promise((r) => setTimeout(r, 0));
+  assert.equal(bResolved, true, 'B fetch completes while A is still pending');
+  assert.equal(panel.hidden, true, 'B background resolve must keep panel closed');
+  assert.match(collectText(list), /B comment/);
+  assert.doesNotMatch(collectText(list), /A comment/);
+  assert.equal(commentCount.textContent, '1');
+  assert.equal(status.dataset.state, 'ready');
+  const bListSnapshot = collectText(list);
+  const bCountSnapshot = commentCount.textContent;
+  const bStatusSnapshot = status.dataset.state;
+
+  // 7–8) Resolve late A and allow the event loop to flush.
   resolveA({
     comments: [
       {
@@ -263,35 +288,17 @@ test('comment controller background load never opens panel; A→B stale guard ho
     ],
   });
   await new Promise((r) => setTimeout(r, 0));
-  assert.equal(panel.hidden, true, 'A resolve must not open panel');
-  assert.match(collectText(list), /A comment/);
-  assert.equal(commentCount.textContent, '1');
-  assert.equal(status.dataset.state, 'ready');
-
-  // Owner toggle opens panel
-  commentBtn.dataset.ownerToggleBound = '1';
-  // simulate owner reactions controller ownership: open via direct state
-  // (comments controller fallback is skipped when ownerToggleBound=1)
-  panel.hidden = false;
-  commentBtn.setAttribute('aria-expanded', 'true');
-  assert.equal(panel.hidden, false);
-  assert.equal(commentBtn.getAttribute('aria-expanded'), 'true');
-
-  // Switch to B: panel closes; B background load keeps it closed
-  controller.update({ memoryId: 'B' });
-  assert.equal(panel.hidden, true, 'B selection closes panel');
-  assert.equal(commentBtn.getAttribute('aria-expanded'), 'false');
-
   await new Promise((r) => setTimeout(r, 0));
-  assert.equal(bResolved, true);
-  assert.equal(panel.hidden, true, 'B background resolve must keep panel closed');
-  assert.match(collectText(list), /B comment/);
-  assert.equal(commentCount.textContent, '1');
+  await Promise.resolve();
+  assert.equal(aSettled, true, 'late A fetch actually completed');
 
-  // Late A-like overwrite attempt is already generation-guarded by controller;
-  // force a second late resolve path by calling fetch for A after B loaded is not possible
-  // through public API; assert current B state remains authoritative.
+  // 9–11) B remains authoritative; A never lands; panel stays closed.
+  assert.equal(panel.hidden, true, 'late A resolve must not open panel');
+  assert.equal(collectText(list), bListSnapshot, 'list remains B after late A');
+  assert.match(collectText(list), /B comment/);
   assert.doesNotMatch(collectText(list), /A comment/);
+  assert.equal(commentCount.textContent, bCountSnapshot, 'count remains B after late A');
+  assert.equal(status.dataset.state, bStatusSnapshot, 'status remains B after late A');
   assert.equal(status.dataset.state, 'ready');
 });
 
