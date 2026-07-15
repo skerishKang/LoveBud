@@ -8,6 +8,7 @@
 const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
+const { importAbsolute } = require('../helpers/import-absolute.cjs');
 
 const ROOT = path.resolve(__dirname, '../..');
 const BOUNDARY_PATH = path.join(ROOT, 'functions/api/scout/live-auth-rate-limit-boundary.js');
@@ -61,7 +62,7 @@ function createMockRequest(options = {}) {
 let onRequestPost = null;
 async function getOnRequestPost() {
   if (!onRequestPost) {
-    const mod = await import(SUGGEST_PATH);
+    const mod = await importAbsolute(SUGGEST_PATH);
     onRequestPost = mod.onRequestPost;
   }
   return onRequestPost;

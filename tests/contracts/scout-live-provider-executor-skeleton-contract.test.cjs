@@ -11,6 +11,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const { importAbsolute } = require('../helpers/import-absolute.cjs');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const EXECUTOR_PATH = path.join(ROOT, 'functions/api/scout/live-provider-executor.js');
@@ -22,7 +23,7 @@ function readExecutorCode() {
 
 // Dynamic import helper since the target is an ES module
 async function importExecutor() {
-  return await import(EXECUTOR_PATH);
+  return await importAbsolute(EXECUTOR_PATH);
 }
 
 // ─── STATIC CONTRACT CHECKS ─────────────────────────────────────────────────

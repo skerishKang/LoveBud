@@ -4,6 +4,7 @@ const assert = require('node:assert/strict');
 const { describe, it, before } = require('node:test');
 const path = require('node:path');
 const fs = require('node:fs');
+const { importAbsolute } = require('../helpers/import-absolute.cjs');
 
 const PROJECT_ROOT = path.resolve(__dirname, '../..');
 
@@ -57,7 +58,7 @@ describe('Scout Real Provider Mock Executor Integration Contract', () => {
 
   let adapter;
   before(async () => {
-    adapter = await import(ADAPTER_PATH);
+    adapter = await importAbsolute(ADAPTER_PATH);
   });
 
   // --- 1. ready_for_adapter + injected executor routes through mock pipeline ---

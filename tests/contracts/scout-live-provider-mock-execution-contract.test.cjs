@@ -21,6 +21,7 @@
 const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
+const { importAbsolute } = require('../helpers/import-absolute.cjs');
 
 const ADAPTER_PATH = path.resolve(__dirname, '../../functions/api/scout/live-provider-adapter.js');
 const SUGGEST_PATH = path.resolve(__dirname, '../../functions/api/scout/suggest.js');
@@ -38,7 +39,7 @@ const suggestCode = readFileSafe(SUGGEST_PATH);
 
 // Dynamic import helper for ESM
 async function importAdapter() {
-  const module = await import(ADAPTER_PATH);
+  const module = await importAbsolute(ADAPTER_PATH);
   return module;
 }
 

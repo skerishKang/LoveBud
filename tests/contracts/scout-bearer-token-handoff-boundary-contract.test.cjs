@@ -30,6 +30,7 @@
 const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
+const { importAbsolute } = require('../helpers/import-absolute.cjs');
 
 const ROOT = path.resolve(__dirname, '../..');
 const BOUNDARY_PATH = path.join(
@@ -66,21 +67,21 @@ const sourceSelectorCode = readFileSafe(SOURCE_SELECTOR_PATH);
 
 let boundaryModulePromise = null;
 async function loadBoundaryModule() {
-  if (!boundaryModulePromise) boundaryModulePromise = import(BOUNDARY_PATH);
+  if (!boundaryModulePromise) boundaryModulePromise = importAbsolute(BOUNDARY_PATH);
   return boundaryModulePromise;
 }
 
 let dependencyAdapterModulePromise = null;
 async function loadDependencyAdapterModule() {
   if (!dependencyAdapterModulePromise) {
-    dependencyAdapterModulePromise = import(DEPENDENCY_ADAPTER_PATH);
+    dependencyAdapterModulePromise = importAbsolute(DEPENDENCY_ADAPTER_PATH);
   }
   return dependencyAdapterModulePromise;
 }
 
 let verifierModulePromise = null;
 async function loadVerifierModule() {
-  if (!verifierModulePromise) verifierModulePromise = import(VERIFIER_PATH);
+  if (!verifierModulePromise) verifierModulePromise = importAbsolute(VERIFIER_PATH);
   return verifierModulePromise;
 }
 

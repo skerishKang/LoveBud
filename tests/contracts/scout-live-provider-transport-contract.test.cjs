@@ -20,6 +20,7 @@
 const path = require('path');
 const assert = require('assert');
 const fs = require('fs');
+const { importAbsolute } = require('../helpers/import-absolute.cjs');
 
 // ─── Import subject ──────────────────────────────────────────────────────────
 
@@ -128,7 +129,7 @@ async function run() {
   // ── 1. Dynamic import ───────────────────────────────────────────────────────
   await suite('1. Dynamic import (side-effect-free)', async () => {
     try {
-      const mod = await import(MODULE_PATH);
+      const mod = await importAbsolute(MODULE_PATH);
       createScoutLiveProviderTransport = mod.createScoutLiveProviderTransport;
       createScoutDisabledProviderTransport = mod.createScoutDisabledProviderTransport;
       createScoutInjectedProviderTransport = mod.createScoutInjectedProviderTransport;
