@@ -1,12 +1,13 @@
 /**
- * public-viewer-tree-comments.js — read-only whole-tree comments control
+ * public-viewer-tree-comments.js — whole-tree comments control (public read)
  *
  * Adds a "트리 전체 댓글" disclosure to the public viewer tree-meta area.
  * Reads via window.LoveBudTreeComments.fetchTreeComments (tree-target only).
- * Read-only surface: no write field, no mutation, no auth header.
+ * Public GET remains publicRead (no auth header). Authenticated write is
+ * assembled separately via the tree comment composer (#3527).
  * Strictly separated from #3075 selected-moment comments (different target key).
  *
- * Refs #3416, #3188, #3414, #3415, #3412, #3413, #3408, #3410, #3404, #3372, #3374, #3075, #1882
+ * Refs #3527, #3416, #3188, #3414, #3415, #3412, #3413, #3408, #3410, #3404, #3372, #3374, #3075, #1882
  */
 
 (function () {
@@ -35,6 +36,12 @@
     var showToast = deps && typeof deps.showToast === 'function'
       ? deps.showToast
       : function () {};
+    var onPanelOpen = deps && typeof deps.onPanelOpen === 'function'
+      ? deps.onPanelOpen
+      : null;
+    var onPanelClose = deps && typeof deps.onPanelClose === 'function'
+      ? deps.onPanelClose
+      : null;
 
     var treeId = deps && deps.treeId;
 
@@ -52,6 +59,7 @@
     var cachedComments = [];
     var generation = 0;
     var inFlight = false;
+    var seenIds = Object.create(null);
 
     // --- DOM ---
     var toggleBtn = document.createElement('button');
@@ -125,9 +133,16 @@
     list.style.flexDirection = 'column';
     list.style.gap = '12px';
 
+    var composerMount = document.createElement('div');
+    composerMount.id = 'wholeTreeCommentsComposerMount';
+    composerMount.className = 'tree-comments-composer-mount';
+    composerMount.style.width = '100%';
+    composerMount.style.boxSizing = 'border-box';
+
     panel.appendChild(heading);
     panel.appendChild(status);
     panel.appendChild(list);
+    panel.appendChild(composerMount);
 
     // --- retry button (lazy) ---
     var retryBtn = null;
@@ -199,6 +214,50 @@
       removeRetryButton();
     }
 
+    function appendCommentItem(c) {
+      if (!c || typeof c !== 'object') return;
+      var li = document.createElement('li');
+      li.style.display = 'flex';
+      li.style.flexDirection = 'column';
+      li.style.gap = '4px';
+      if (c.id) {
+        li.setAttribute('data-tree-comment-id', String(c.id));
+      }
+      var bodyEl = document.createElement('p');
+      bodyEl.className = 'tree-comment-body';
+      bodyEl.textContent = c.body || '';
+      bodyEl.style.margin = '0';
+      bodyEl.style.padding = '0';
+      bodyEl.style.fontSize = '13px';
+      bodyEl.style.fontWeight = '500';
+      bodyEl.style.color = 'var(--on-surface)';
+      bodyEl.style.lineHeight = '1.6';
+      bodyEl.style.whiteSpace = 'pre-wrap';
+      bodyEl.style.overflowWrap = 'anywhere';
+      bodyEl.style.wordBreak = 'break-word';
+      var metaEl = document.createElement('div');
+      metaEl.className = 'tree-comment-meta';
+      var parts = [];
+      if (c.authorDisplayLabel) parts.push(String(c.authorDisplayLabel));
+      var date = formatSafeDate(c.createdAt);
+      if (date) parts.push(date);
+      metaEl.textContent = parts.join(' · ');
+      metaEl.style.fontSize = '11px';
+      metaEl.style.fontWeight = '600';
+      metaEl.style.color = 'var(--on-surface-variant)';
+      metaEl.style.lineHeight = '1.5';
+      li.appendChild(bodyEl);
+      li.appendChild(metaEl);
+      list.appendChild(li);
+    }
+
+    function rebuildSeenIds() {
+      seenIds = Object.create(null);
+      cachedComments.forEach(function (c) {
+        if (c && c.id) seenIds[String(c.id)] = true;
+      });
+    }
+
     function renderList() {
       clearList();
       if (!cachedComments.length) {
@@ -207,37 +266,37 @@
       }
       status.textContent = '';
       cachedComments.forEach(function (c) {
-        var li = document.createElement('li');
-        li.style.display = 'flex';
-        li.style.flexDirection = 'column';
-        li.style.gap = '4px';
-        var bodyEl = document.createElement('p');
-        bodyEl.className = 'tree-comment-body';
-        bodyEl.textContent = c.body || '';
-        bodyEl.style.margin = '0';
-        bodyEl.style.padding = '0';
-        bodyEl.style.fontSize = '13px';
-        bodyEl.style.fontWeight = '500';
-        bodyEl.style.color = 'var(--on-surface)';
-        bodyEl.style.lineHeight = '1.6';
-        bodyEl.style.whiteSpace = 'pre-wrap';
-        bodyEl.style.overflowWrap = 'anywhere';
-        bodyEl.style.wordBreak = 'break-word';
-        var metaEl = document.createElement('div');
-        metaEl.className = 'tree-comment-meta';
-        var parts = [];
-        if (c.authorDisplayLabel) parts.push(String(c.authorDisplayLabel));
-        var date = formatSafeDate(c.createdAt);
-        if (date) parts.push(date);
-        metaEl.textContent = parts.join(' · ');
-        metaEl.style.fontSize = '11px';
-        metaEl.style.fontWeight = '600';
-        metaEl.style.color = 'var(--on-surface-variant)';
-        metaEl.style.lineHeight = '1.5';
-        li.appendChild(bodyEl);
-        li.appendChild(metaEl);
-        list.appendChild(li);
+        appendCommentItem(c);
       });
+    }
+
+    function applyCreatedComment(comment) {
+      if (!comment || typeof comment !== 'object') return false;
+      var id = comment.id ? String(comment.id) : '';
+      if (id && seenIds[id]) {
+        return false; // replay / duplicate
+      }
+      if (id) seenIds[id] = true;
+      cachedComments = cachedComments.concat([comment]);
+      hasLoaded = true;
+      removeRetryButton();
+      setState('loaded_with_comments');
+      // Keep existing list; append only the new item when list already painted.
+      if (list.children.length > 0 || cachedComments.length === 1) {
+        if (cachedComments.length === 1) {
+          status.textContent = '';
+        }
+        appendCommentItem(comment);
+      } else {
+        renderList();
+      }
+      return true;
+    }
+
+    function refresh() {
+      // Explicit refresh (e.g. after create without body DTO). Invalidates in-flight gens.
+      hasLoaded = false;
+      performFetch();
     }
 
     function errorCopyFor(state) {
@@ -258,6 +317,7 @@
       if (result && result.ok) {
         hasLoaded = true;
         cachedComments = Array.isArray(result.comments) ? result.comments : [];
+        rebuildSeenIds();
         removeRetryButton();
         if (cachedComments.length > 0) {
           setState('loaded_with_comments');
@@ -265,6 +325,14 @@
           setState('loaded_empty');
         }
         renderList();
+        return;
+      }
+      // Preserve successful cache on failed refresh — do not wipe list.
+      if (hasLoaded && cachedComments.length > 0) {
+        setState('loaded_with_comments');
+        renderList();
+        status.textContent = errorCopyFor((result && result.state) || 'unexpected_safe_error');
+        ensureRetryButton();
         return;
       }
       var errState = (result && result.state) || 'unexpected_safe_error';
@@ -319,12 +387,26 @@
       // already rendered; do NOT auto-fetch again (explicit retry only).
 
       focusHeading();
+      if (onPanelOpen) {
+        try {
+          onPanelOpen({
+            treeId: treeId,
+            generation: generation,
+            mountEl: composerMount
+          });
+        } catch (e) { /* defensive */ }
+      }
     }
 
     function closePanel() {
       if (panel.hidden === true) return;
       panel.hidden = true;
       toggleBtn.setAttribute('aria-expanded', 'false');
+      if (onPanelClose) {
+        try {
+          onPanelClose({ treeId: treeId, generation: generation });
+        } catch (e) { /* defensive */ }
+      }
       // Focus return to the toggle (connection-safe, defensive).
       try {
         if (toggleBtn && typeof toggleBtn.focus === 'function') toggleBtn.focus();
@@ -341,6 +423,7 @@
       inFlight = false;
       hasLoaded = false;
       cachedComments = [];
+      seenIds = Object.create(null);
       currentState = 'idle';
       treeId = newTreeId || treeId;
       panel.hidden = true;
@@ -348,13 +431,22 @@
       clearList();
       status.textContent = '';
       removeRetryButton();
+      if (onPanelClose) {
+        try {
+          onPanelClose({ treeId: treeId, generation: generation, destroyed: true });
+        } catch (e) { /* defensive */ }
+      }
     }
 
     return {
       getElement: function () { return toggleBtn; },
       getPanelElement: function () { return panel; },
+      getComposerMountElement: function () { return composerMount; },
       getState: getState,
       getComments: getComments,
+      getGeneration: function () { return generation; },
+      applyCreatedComment: applyCreatedComment,
+      refresh: refresh,
       reset: reset,
       open: openPanel,
       close: closePanel

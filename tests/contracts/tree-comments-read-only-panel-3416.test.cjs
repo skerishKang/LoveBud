@@ -596,14 +596,19 @@ test('module source does not use moment endpoints or moment comment adapters', (
   assert.ok(!/fetchPublicMomentComments|fetchComments|createComment/.test(src), 'no moment comment adapter reuse');
 });
 
-// ─── 26. no composer / POST / Idempotency-Key ──────────────────────────────
+// ─── 26. panel remains public-read (no write/POST); composer is external ───
+// #3527 adds an additive composer mount + applyCreatedComment/refresh hooks.
+// The panel module itself must still never POST or construct auth headers.
 
-test('module source has no composer, POST, or Idempotency-Key', () => {
+test('module source has no POST write path, Idempotency-Key, or Authorization', () => {
   const src = fs.readFileSync(WTREE_COMMENTS_PATH, 'utf8');
-  assert.ok(!/\bPOST\b/.test(src), 'no POST');
+  assert.ok(!/\bmethod\s*:\s*['"]POST['"]/.test(src), 'no POST method');
   assert.ok(!/Idempotency-Key/.test(src), 'no Idempotency-Key');
-  assert.ok(!/createComment|composer|textarea|input|submit/.test(src), 'no composer/input/submit');
   assert.ok(!/Authorization/.test(src), 'no Authorization header construction');
+  assert.ok(!/\bcreateTreeComment\b/.test(src), 'write adapter not owned by panel');
+  assert.ok(!/<textarea|createElement\(['"]textarea['"]\)/.test(src), 'no textarea write UI in panel');
+  // Additive mount for external authenticated composer is allowed (#3527).
+  assert.ok(/composerMount|getComposerMountElement/.test(src), 'composer mount boundary present');
 });
 
 // ─── 27. adapter is called with treeId only (no moment key) ─────────────────
