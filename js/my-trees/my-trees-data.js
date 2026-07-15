@@ -130,6 +130,57 @@
     return memory;
   }
 
+  var VALID_PHASES = {
+    loaded: true, fetch_rejected: true, auth_prepare_failed: true, parse: true, invalid_payload: true,
+    auth: true, client: true, server: true, generic: true, none: true
+  };
+  var VALID_STATUS_CLASSES = { success: true, client: true, server: true, none: true };
+
+  function normalizePhase(v) {
+    return VALID_PHASES[v] ? v : 'generic';
+  }
+
+  function normalizeStatusClass(v) {
+    return VALID_STATUS_CLASSES[v] ? v : 'none';
+  }
+
+  function sanitizeRequestLifecycle(meta) {
+    if (!meta || typeof meta !== 'object') return {};
+    return {
+      attempt: meta.attempt === 2 ? 2 : 1,
+      retried: meta.retried === true,
+      authHeaderPresent: meta.authHeaderPresent === true,
+      statusClass: normalizeStatusClass(meta.statusClass)
+    };
+  }
+
+  function emitLifecycleDiagnostic(event) {
+    if (!event || typeof event !== 'object') return;
+    var enabled = !!(window.__LoveBudMyTreesDiagnosticSink || window.LOVEBUD_MY_TREES_DEBUG === true);
+    if (!enabled) return;
+    try {
+      var sink = window.__LoveBudMyTreesDiagnosticSink;
+      if (sink && typeof sink === 'object' && typeof sink.emit === 'function') {
+        var safeEvent = Object.freeze({
+          phase: normalizePhase(event.phase),
+          attempt: event.attempt === 2 ? 2 : 1,
+          retried: event.retried === true,
+          authHeaderPresent: event.authHeaderPresent === true,
+          cachePresent: event.cachePresent === true,
+          cacheUsed: event.cacheUsed === true,
+          statusClass: normalizeStatusClass(event.statusClass),
+          resultCountBucket: normalizeCountBucket(event.resultCountBucket)
+        });
+        sink.emit(safeEvent);
+      }
+    } catch (e) {}
+  }
+
+  function normalizeCountBucket(v) {
+    if (v === 'positive' || v === 'zero') return v;
+    return 'unknown';
+  }
+
   function sortMemoriesByFirstMoment(memories) {
     return (Array.isArray(memories) ? memories.slice() : []).sort(function(a, b) {
       var left = new Date((a && (a.createdAt || a.created_at || a.timestamp)) || 0).getTime();
@@ -201,17 +252,30 @@
   }
 
   /**
-   * Classify an API error into one of: 'auth', 'server', 'network', 'generic'.
-   * - auth   : HTTP 401 or 403
-   * - server : HTTP 5xx
-   * - network: no HTTP status (fetch/network failure, offline)
-   * - generic: anything else (4xx other than 401/403, unknown)
+   * Classify an API error into one of:
+   * - fetch_rejected       : explicit fetch rejection phase only
+   * - auth_prepare_failed  : fetch() never called, auth/token prep failed
+   * - parse                : JSON parse failure after successful HTTP response (phase metadata, checked third)
+   * - invalid_payload      : successful HTTP response with non-array payload (phase metadata, checked fourth)
+   * - auth                 : HTTP 401 or 403
+   * - server               : HTTP 5xx
+   * - client               : HTTP 4xx other than 401/403
+   * - generic              : unphased/status-less unexpected client failure
+   *
+   * Phase checks precede status checks so that HTTP 200 parse failures
+   * and invalid payloads are classified by phase, not by status code.
+   *
+   * Privacy-safe: never logs or exposes tokens, UIDs, emails, tree IDs, titles, or response bodies.
    */
   function classifyLoadError(error) {
+    if (error && error._phase === 'fetch_rejected') return 'fetch_rejected';
+    if (error && error._phase === 'auth_prepare_failed') return 'auth_prepare_failed';
+    if (error && error._phase === 'json_parse_failed') return 'parse';
+    if (error && error._phase === 'invalid_success_payload') return 'invalid_payload';
     var status = extractHttpStatus(error);
     if (status === 401 || status === 403) return 'auth';
     if (status >= 500 && status < 600) return 'server';
-    if (status === 0) return 'network';
+    if (status >= 400 && status < 500) return 'client';
     return 'generic';
   }
 
@@ -240,8 +304,19 @@
 
     try {
       var trees;
+      var requestLifecycle = {
+        attempt: 1,
+        retried: false,
+        authHeaderPresent: false,
+        statusClass: 'none'
+      };
+
       if (window.apiClient && window.apiClient.getTrees) {
-        trees = await window.apiClient.getTrees();
+        trees = await window.apiClient.getTrees({
+          onLifecycle: function(meta) {
+            requestLifecycle = sanitizeRequestLifecycle(meta);
+          }
+        });
       } else {
         throw new Error('apiClient.getTrees is not available');
       }
@@ -258,6 +333,17 @@
           renderTrees(trees);
         }
 
+        emitLifecycleDiagnostic({
+          phase: 'loaded',
+          attempt: requestLifecycle.attempt,
+          authHeaderPresent: requestLifecycle.authHeaderPresent,
+          retried: requestLifecycle.retried,
+          cachePresent: !!cachedTrees,
+          cacheUsed: false,
+          statusClass: requestLifecycle.statusClass,
+          resultCountBucket: trees.length > 0 ? 'positive' : 'zero'
+        });
+
         // Optimization: Defer preloading detail/memories to background to ensure TTI is not blocked
         if (window.requestIdleCallback) {
           window.requestIdleCallback(function() {
@@ -269,14 +355,33 @@
           }, 1000);
         }
       } else {
-        console.error('[my-trees-data] Invalid trees response');
-        if (!cachedTrees && typeof setState === 'function' && stateEnum?.ERROR) {
-          setState(stateEnum.ERROR, { errorType: 'generic' });
-        }
+        var invalidPayloadError = new Error('Invalid owner-tree list payload');
+        invalidPayloadError._phase = 'invalid_success_payload';
+        invalidPayloadError.status = 200;
+        invalidPayloadError.statusCode = 200;
+        throw invalidPayloadError;
       }
     } catch (e) {
       var errorType = classifyLoadError(e);
       console.error('[my-trees-data] loadTrees error (type=' + errorType + ')');
+
+      var errorAttempt = Number(e._attempt) || requestLifecycle.attempt;
+      var errorRetried = e._retried === true || requestLifecycle.retried;
+      var errorAuthHeaderPresent = e._authHeaderPresent === true || requestLifecycle.authHeaderPresent;
+
+      emitLifecycleDiagnostic({
+        phase: errorType,
+        attempt: errorAttempt,
+        authHeaderPresent: errorAuthHeaderPresent,
+        retried: errorRetried,
+        cachePresent: !!cachedTrees,
+        cacheUsed: !!(cachedTrees && Array.isArray(cachedTrees)),
+        statusClass: (function() {
+          var s = extractHttpStatus(e);
+          return s >= 500 ? 'server' : s >= 400 ? 'client' : s > 0 ? 'success' : requestLifecycle.statusClass;
+        })(),
+        resultCountBucket: 'unknown'
+      });
 
       // auth errors (401/403): do not silently keep stale cache.
       // Show auth error state regardless of cache presence.
@@ -347,11 +452,16 @@
     } else if (errorType === 'server') {
       if (h2) h2.textContent = '서버 오류가 발생했습니다';
       if (p) p.textContent = '잠시 후 다시 시도해 주세요.';
-    } else if (errorType === 'network') {
+    } else if (errorType === 'fetch_rejected' || errorType === 'network') {
       if (h2) h2.textContent = '불러오기에 실패했습니다';
       if (p) p.textContent = '네트워크 연결을 확인하고 다시 시도해주세요.';
+    } else if (errorType === 'parse') {
+      if (h2) h2.textContent = '불러오기에 실패했습니다';
+      if (p) p.textContent = '데이터를 불러오는데 문제가 발생했습니다. 다시 시도해 주세요.';
+    } else if (errorType === 'invalid_payload') {
+      if (h2) h2.textContent = '데이터를 불러오는데 문제가 발생했습니다';
+      if (p) p.textContent = '올바른 형식의 데이터를 받지 못했습니다. 다시 시도해 주세요.';
     }
-    // generic: leave default HTML as-is
   }
 
   window.LoveBudMyTreesData = {
