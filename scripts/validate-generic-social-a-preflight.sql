@@ -243,10 +243,17 @@ BEGIN
 
   -- ── Functions exact ─────────────────────────────────────────────────────
   -- sync_social_idempotency_generic_target_from_legacy_memory
+  expected_func := to_regprocedure('public.sync_social_idempotency_generic_target_from_legacy_memory()');
+  IF expected_func IS NULL THEN RAISE EXCEPTION 'GENERIC_SOCIAL_A_FUNCTION_DEFINITION_MISMATCH'; END IF;
+
+  SELECT count(*)::int INTO n FROM pg_proc p JOIN pg_namespace ns ON ns.oid = p.pronamespace
+  WHERE ns.nspname = 'public' AND p.proname = 'sync_social_idempotency_generic_target_from_legacy_memory';
+  IF n <> 1 THEN RAISE EXCEPTION 'GENERIC_SOCIAL_A_FUNCTION_DEFINITION_MISMATCH'; END IF;
+
   SELECT pg_get_function_identity_arguments(p.oid), pg_get_function_result(p.oid), l.lanname, p.prosecdef, p.provolatile, p.proparallel, p.proleakproof, p.proisstrict, COALESCE((SELECT string_agg(cfg, ',' ORDER BY cfg) FROM unnest(COALESCE(p.proconfig, ARRAY[]::text[])) AS cfg), ''), p.prosrc
   INTO f_args, f_ret, f_lang, f_sec, f_vol, f_par, f_leak, f_strict, f_config, f_src
-  FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace JOIN pg_language l ON l.oid = p.prolang
-  WHERE n.nspname = 'public' AND p.proname = 'sync_social_idempotency_generic_target_from_legacy_memory';
+  FROM pg_proc p JOIN pg_language l ON l.oid = p.prolang
+  WHERE p.oid = expected_func;
 
   IF NOT FOUND THEN RAISE EXCEPTION 'GENERIC_SOCIAL_A_FUNCTION_DEFINITION_MISMATCH'; END IF;
   f_norm := trim(both from regexp_replace(replace(replace(f_src, E'\r\n', E'\n'), E'\r', E'\n'), E'\\s+', ' ', 'g'));
@@ -254,10 +261,17 @@ BEGIN
   IF actual_hash <> '6fbfdc41a3365c064f364861c02fcace2cbe9c59411474c9bf431eba92641f71' THEN RAISE EXCEPTION 'GENERIC_SOCIAL_A_FUNCTION_DEFINITION_MISMATCH'; END IF;
 
   -- sync_social_audit_generic_target_from_legacy_memory
+  expected_func := to_regprocedure('public.sync_social_audit_generic_target_from_legacy_memory()');
+  IF expected_func IS NULL THEN RAISE EXCEPTION 'GENERIC_SOCIAL_A_FUNCTION_DEFINITION_MISMATCH'; END IF;
+
+  SELECT count(*)::int INTO n FROM pg_proc p JOIN pg_namespace ns ON ns.oid = p.pronamespace
+  WHERE ns.nspname = 'public' AND p.proname = 'sync_social_audit_generic_target_from_legacy_memory';
+  IF n <> 1 THEN RAISE EXCEPTION 'GENERIC_SOCIAL_A_FUNCTION_DEFINITION_MISMATCH'; END IF;
+
   SELECT pg_get_function_identity_arguments(p.oid), pg_get_function_result(p.oid), l.lanname, p.prosecdef, p.provolatile, p.proparallel, p.proleakproof, p.proisstrict, COALESCE((SELECT string_agg(cfg, ',' ORDER BY cfg) FROM unnest(COALESCE(p.proconfig, ARRAY[]::text[])) AS cfg), ''), p.prosrc
   INTO f_args, f_ret, f_lang, f_sec, f_vol, f_par, f_leak, f_strict, f_config, f_src
-  FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace JOIN pg_language l ON l.oid = p.prolang
-  WHERE n.nspname = 'public' AND p.proname = 'sync_social_audit_generic_target_from_legacy_memory';
+  FROM pg_proc p JOIN pg_language l ON l.oid = p.prolang
+  WHERE p.oid = expected_func;
 
   IF NOT FOUND THEN RAISE EXCEPTION 'GENERIC_SOCIAL_A_FUNCTION_DEFINITION_MISMATCH'; END IF;
   f_norm := trim(both from regexp_replace(replace(replace(f_src, E'\r\n', E'\n'), E'\r', E'\n'), E'\\s+', ' ', 'g'));

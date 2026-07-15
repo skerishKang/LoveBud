@@ -66,6 +66,33 @@ function assertCategory(res, expectedCategory) {
   assert.equal(cat, expectedCategory);
 }
 
+async function assertRejectionWithNoMutation(client, originalRunSql, scenario, phase, expectedCategory) {
+  let migAInvocations = 0;
+  let postInvocations = 0;
+  const interceptRunSql = (p) => {
+    if (p === MIG_A) migAInvocations++;
+    if (p === POSTCOND) postInvocations++;
+    return originalRunSql(p);
+  };
+
+  const before = await catalog.getCatalogFingerprint(client);
+  const beforeRowsI = await catalog.getFullRowFingerprint(client, 'social_idempotency');
+  const beforeRowsA = await catalog.getFullRowFingerprint(client, 'social_audit_log');
+
+  const pre = interceptRunSql(PREFLIGHT);
+  expectFail(pre, scenario, phase);
+  assertCategory(pre, expectedCategory);
+
+  assert.equal(migAInvocations, 0, 'Migration A invocation count = 0');
+  assert.equal(postInvocations, 0, 'postcondition invocation count = 0');
+
+  await assertNoMutation(client, before);
+  const afterRowsI = await catalog.getFullRowFingerprint(client, 'social_idempotency');
+  assert.equal(afterRowsI.rowFp, beforeRowsI.rowFp, 'row fingerprint unchanged');
+  const afterRowsA = await catalog.getFullRowFingerprint(client, 'social_audit_log');
+  assert.equal(afterRowsA.rowFp, beforeRowsA.rowFp, 'row fingerprint unchanged');
+}
+
 // ─── Supported guarded sequence ──────────────────────────────────────────────
 
 test('guarded happy path preflight→Migration A→postcondition', { concurrency: false }, async () => {
@@ -193,10 +220,14 @@ test('preflight rejects missing relation', { concurrency: false }, async () => {
 
 test('preflight rejects legacy column shape', { concurrency: false }, async () => {
   const shapes = [
-    ['legacy_missing', LEGACY_BASE.replace('target_memory_id UUID NOT NULL,', '')],
-    ['legacy_null', LEGACY_BASE.replace('target_memory_id UUID NOT NULL', 'target_memory_id UUID')],
-    ['legacy_type', LEGACY_BASE.replace('target_memory_id UUID NOT NULL', 'target_memory_id TEXT NOT NULL')],
-    ['legacy_def', LEGACY_BASE.replace('target_memory_id UUID NOT NULL', 'target_memory_id UUID NOT NULL DEFAULT gen_random_uuid()')],
+    ['legacy_missing_idem', LEGACY_BASE.replace('target_memory_id UUID NOT NULL,', '')],
+    ['legacy_null_idem', LEGACY_BASE.replace('target_memory_id UUID NOT NULL', 'target_memory_id UUID')],
+    ['legacy_type_idem', LEGACY_BASE.replace('target_memory_id UUID NOT NULL', 'target_memory_id TEXT NOT NULL')],
+    ['legacy_def_idem', LEGACY_BASE.replace('target_memory_id UUID NOT NULL', 'target_memory_id UUID NOT NULL DEFAULT gen_random_uuid()')],
+    ['legacy_missing_audit', LEGACY_BASE.replace('memory_id UUID NOT NULL,', '')],
+    ['legacy_null_audit', LEGACY_BASE.replace('memory_id UUID NOT NULL', 'memory_id UUID')],
+    ['legacy_type_audit', LEGACY_BASE.replace('memory_id UUID NOT NULL', 'memory_id TEXT NOT NULL')],
+    ['legacy_def_audit', LEGACY_BASE.replace('memory_id UUID NOT NULL', 'memory_id UUID NOT NULL DEFAULT gen_random_uuid()')],
   ];
   for (const [name, setup] of shapes) {
     await rejectWithoutMigration(name, setup, 'GENERIC_SOCIAL_A_LEGACY_COLUMN_SHAPE_MISMATCH');
@@ -302,66 +333,56 @@ test('preflight rejects mixed table states', { concurrency: false }, async () =>
     LEGACY_BASE + `ALTER TABLE public.social_idempotency ADD COLUMN target_kind VARCHAR(16), ADD COLUMN target_id UUID;`,
     'GENERIC_SOCIAL_A_MIXED_STATE_REJECTED'
   );
-  await rejectWithoutMigration(
-    'mixed_audit_wrong_shape',
-    LEGACY_BASE + `
-      ALTER TABLE public.social_idempotency ADD COLUMN target_kind VARCHAR(16), ADD COLUMN target_id UUID;
-      ALTER TABLE public.social_audit_log ADD COLUMN target_kind integer, ADD COLUMN target_id UUID;
-    `,
-    'GENERIC_SOCIAL_A_GENERIC_COLUMN_SHAPE_MISMATCH'
-  );
+  await withDisposableDb('mixed_audit_wrong_shape', FIXTURE, async ({ client, runSql }) => {
+    await runSql(MIG_A);
+    await client.query(`ALTER TABLE public.social_audit_log ALTER COLUMN target_kind TYPE integer USING 1;`);
+    await assertRejectionWithNoMutation(client, runSql, 'mixed_audit_wrong_shape', 'preflight', 'GENERIC_SOCIAL_A_GENERIC_COLUMN_SHAPE_MISMATCH');
+    pass('guard reject mixed_audit_wrong_shape');
+  });
 });
 
 // CHECK fixtures
-const POST_BASE = LEGACY_BASE + `
-  ALTER TABLE public.social_idempotency ADD COLUMN target_kind VARCHAR(16), ADD COLUMN target_id UUID;
-  ALTER TABLE public.social_audit_log ADD COLUMN target_kind VARCHAR(16), ADD COLUMN target_id UUID;
-  CREATE FUNCTION public.sync_social_idempotency_generic_target_from_legacy_memory() RETURNS trigger LANGUAGE plpgsql AS $$BEGIN NEW.target_kind := 'memory'; NEW.target_id := NEW.target_memory_id; RETURN NEW; END;$$;
-  CREATE FUNCTION public.sync_social_audit_generic_target_from_legacy_memory() RETURNS trigger LANGUAGE plpgsql AS $$BEGIN NEW.target_kind := 'memory'; NEW.target_id := NEW.memory_id; RETURN NEW; END;$$;
-  CREATE TRIGGER trg_social_idempotency_sync_generic_target BEFORE INSERT OR UPDATE ON public.social_idempotency FOR EACH ROW EXECUTE FUNCTION public.sync_social_idempotency_generic_target_from_legacy_memory();
-  CREATE TRIGGER trg_social_audit_log_sync_generic_target BEFORE INSERT OR UPDATE ON public.social_audit_log FOR EACH ROW EXECUTE FUNCTION public.sync_social_audit_generic_target_from_legacy_memory();
-  ALTER TABLE public.social_idempotency ADD CONSTRAINT social_idempotency_generic_target_pair_check CHECK (((target_kind IS NULL) AND (target_id IS NULL)) OR ((target_kind IS NOT NULL) AND (target_id IS NOT NULL)));
-  ALTER TABLE public.social_idempotency ADD CONSTRAINT social_idempotency_generic_target_kind_check CHECK (((target_kind IS NULL) OR ((target_kind)::text = ANY ((ARRAY['memory'::character varying, 'tree'::character varying])::text[]))));
-  ALTER TABLE public.social_audit_log ADD CONSTRAINT social_audit_log_generic_target_pair_check CHECK (((target_kind IS NULL) AND (target_id IS NULL)) OR ((target_kind IS NOT NULL) AND (target_id IS NOT NULL)));
-  ALTER TABLE public.social_audit_log ADD CONSTRAINT social_audit_log_generic_target_kind_check CHECK (((target_kind IS NULL) OR ((target_kind)::text = ANY ((ARRAY['memory'::character varying, 'tree'::character varying])::text[]))));
-`;
-
 test('preflight CHECK fixtures', { concurrency: false }, async () => {
   const mutations = [
     ['check_wrong_pair', `ALTER TABLE public.social_audit_log DROP CONSTRAINT social_audit_log_generic_target_pair_check; ALTER TABLE public.social_audit_log ADD CONSTRAINT social_audit_log_generic_target_pair_check CHECK (target_kind IS NOT NULL);`, 'GENERIC_SOCIAL_A_CHECK_DEFINITION_MISMATCH'],
     ['check_wrong_vocab', `ALTER TABLE public.social_audit_log DROP CONSTRAINT social_audit_log_generic_target_kind_check; ALTER TABLE public.social_audit_log ADD CONSTRAINT social_audit_log_generic_target_kind_check CHECK (target_kind IS NULL OR target_kind IN ('memory', 'something'));`, 'GENERIC_SOCIAL_A_CHECK_DEFINITION_MISMATCH'],
     ['check_not_valid', `ALTER TABLE public.social_audit_log DROP CONSTRAINT social_audit_log_generic_target_pair_check; ALTER TABLE public.social_audit_log ADD CONSTRAINT social_audit_log_generic_target_pair_check CHECK (((target_kind IS NULL) AND (target_id IS NULL)) OR ((target_kind IS NOT NULL) AND (target_id IS NOT NULL))) NOT VALID;`, 'GENERIC_SOCIAL_A_CHECK_DEFINITION_MISMATCH'],
     ['check_malicious', `ALTER TABLE public.social_audit_log DROP CONSTRAINT social_audit_log_generic_target_pair_check; ALTER TABLE public.social_audit_log ADD CONSTRAINT social_audit_log_generic_target_pair_check CHECK (1=1);`, 'GENERIC_SOCIAL_A_CHECK_DEFINITION_MISMATCH'],
-    ['check_wrong_table', `ALTER TABLE public.social_audit_log DROP CONSTRAINT social_audit_log_generic_target_pair_check; ALTER TABLE public.social_idempotency ADD CONSTRAINT social_audit_log_generic_target_pair_check CHECK (((target_kind IS NULL) AND (target_id IS NULL)) OR ((target_kind IS NOT NULL) AND (target_id IS NOT NULL)));`, 'GENERIC_SOCIAL_A_CHECK_DEFINITION_MISMATCH']
+    ['check_wrong_table', `ALTER TABLE public.social_audit_log DROP CONSTRAINT social_audit_log_generic_target_pair_check; ALTER TABLE public.social_idempotency ADD CONSTRAINT social_audit_log_generic_target_pair_check CHECK (((target_kind IS NULL) AND (target_id IS NULL)) OR ((target_kind IS NOT NULL) AND (target_id IS NOT NULL)));`, 'GENERIC_SOCIAL_A_CHECK_DEFINITION_MISMATCH'],
+    ['check_anchor_kind_null', `ALTER TABLE public.social_audit_log DROP CONSTRAINT social_audit_log_generic_target_pair_check; ALTER TABLE public.social_audit_log ADD CONSTRAINT social_audit_log_generic_target_pair_check CHECK (target_kind IS NULL);`, 'GENERIC_SOCIAL_A_CHECK_DEFINITION_MISMATCH'],
+    ['check_anchor_id_null', `ALTER TABLE public.social_audit_log DROP CONSTRAINT social_audit_log_generic_target_pair_check; ALTER TABLE public.social_audit_log ADD CONSTRAINT social_audit_log_generic_target_pair_check CHECK (target_id IS NULL);`, 'GENERIC_SOCIAL_A_CHECK_DEFINITION_MISMATCH'],
+    ['check_anchor_kind_not_null', `ALTER TABLE public.social_audit_log DROP CONSTRAINT social_audit_log_generic_target_pair_check; ALTER TABLE public.social_audit_log ADD CONSTRAINT social_audit_log_generic_target_pair_check CHECK (target_kind IS NOT NULL);`, 'GENERIC_SOCIAL_A_CHECK_DEFINITION_MISMATCH'],
+    ['check_anchor_id_not_null', `ALTER TABLE public.social_audit_log DROP CONSTRAINT social_audit_log_generic_target_pair_check; ALTER TABLE public.social_audit_log ADD CONSTRAINT social_audit_log_generic_target_pair_check CHECK (target_id IS NOT NULL);`, 'GENERIC_SOCIAL_A_CHECK_DEFINITION_MISMATCH'],
+    ['check_weak_semantics', `ALTER TABLE public.social_audit_log DROP CONSTRAINT social_audit_log_generic_target_pair_check; ALTER TABLE public.social_audit_log ADD CONSTRAINT social_audit_log_generic_target_pair_check CHECK (target_kind IS NULL OR target_id IS NULL OR target_kind IS NOT NULL OR target_id IS NOT NULL);`, 'GENERIC_SOCIAL_A_CHECK_DEFINITION_MISMATCH'],
+    ['check_shadow', `CREATE TABLE public.shadow_table (target_kind VARCHAR(16), target_id UUID); ALTER TABLE public.shadow_table ADD CONSTRAINT social_audit_log_generic_target_pair_check CHECK (((target_kind IS NULL) AND (target_id IS NULL)) OR ((target_kind IS NOT NULL) AND (target_id IS NOT NULL)));`, 'GENERIC_SOCIAL_A_CHECK_DEFINITION_MISMATCH']
   ];
   for (const [name, sql, expected] of mutations) {
     await withDisposableDb(`pre_chk_${name}`, FIXTURE, async ({ client, runSql }) => {
       await runSql(MIG_A);
       await client.query(sql);
-      const pre = runSql(PREFLIGHT);
-      expectFail(pre, 'pre_chk', name);
-      assertCategory(pre, expected);
+      await assertRejectionWithNoMutation(client, runSql, 'pre_chk', name, expected);
     });
   }
 });
 
 test('preflight Function fixtures', { concurrency: false }, async () => {
   const mutations = [
+    ['fn_lang_sql_overload', `CREATE FUNCTION public.sync_social_idempotency_generic_target_from_legacy_memory(integer) RETURNS integer LANGUAGE sql AS $$SELECT $1;$$;`, 'GENERIC_SOCIAL_A_FUNCTION_DEFINITION_MISMATCH'],
     ['fn_wrong_body', `CREATE OR REPLACE FUNCTION public.sync_social_idempotency_generic_target_from_legacy_memory() RETURNS trigger LANGUAGE plpgsql AS $$BEGIN NEW.target_kind := 'memory'; RETURN NEW; END;$$;`, 'GENERIC_SOCIAL_A_FUNCTION_DEFINITION_MISMATCH'],
     ['fn_early_return', `CREATE OR REPLACE FUNCTION public.sync_social_idempotency_generic_target_from_legacy_memory() RETURNS trigger LANGUAGE plpgsql AS $$BEGIN RETURN NEW; END;$$;`, 'GENERIC_SOCIAL_A_FUNCTION_DEFINITION_MISMATCH'],
     ['fn_no_tree_reject', `CREATE OR REPLACE FUNCTION public.sync_social_idempotency_generic_target_from_legacy_memory() RETURNS trigger LANGUAGE plpgsql AS $$BEGIN IF NEW.target_kind IS NULL THEN NEW.target_kind := 'memory'; NEW.target_id := NEW.target_memory_id; END IF; RETURN NEW; END;$$;`, 'GENERIC_SOCIAL_A_FUNCTION_DEFINITION_MISMATCH'],
     ['fn_secdef', `CREATE OR REPLACE FUNCTION public.sync_social_idempotency_generic_target_from_legacy_memory() RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER AS $$BEGIN RETURN NEW; END;$$;`, 'GENERIC_SOCIAL_A_FUNCTION_DEFINITION_MISMATCH'],
     ['fn_volatility', `CREATE OR REPLACE FUNCTION public.sync_social_idempotency_generic_target_from_legacy_memory() RETURNS trigger LANGUAGE plpgsql STABLE AS $$BEGIN RETURN NEW; END;$$;`, 'GENERIC_SOCIAL_A_FUNCTION_DEFINITION_MISMATCH'],
     ['fn_parallel', `CREATE OR REPLACE FUNCTION public.sync_social_idempotency_generic_target_from_legacy_memory() RETURNS trigger LANGUAGE plpgsql PARALLEL SAFE AS $$BEGIN RETURN NEW; END;$$;`, 'GENERIC_SOCIAL_A_FUNCTION_DEFINITION_MISMATCH'],
-    ['fn_ret_type', `DROP TRIGGER trg_social_idempotency_sync_generic_target ON public.social_idempotency; DROP FUNCTION public.sync_social_idempotency_generic_target_from_legacy_memory(); CREATE OR REPLACE FUNCTION public.sync_social_idempotency_generic_target_from_legacy_memory() RETURNS void LANGUAGE plpgsql AS $$BEGIN END;$$;`, 'GENERIC_SOCIAL_A_FUNCTION_DEFINITION_MISMATCH']
+    ['fn_ret_type', `DROP TRIGGER trg_social_idempotency_sync_generic_target ON public.social_idempotency; DROP FUNCTION public.sync_social_idempotency_generic_target_from_legacy_memory(); CREATE OR REPLACE FUNCTION public.sync_social_idempotency_generic_target_from_legacy_memory() RETURNS void LANGUAGE plpgsql AS $$BEGIN END;$$;`, 'GENERIC_SOCIAL_A_FUNCTION_DEFINITION_MISMATCH'],
+    ['fn_missing_rejection', `CREATE OR REPLACE FUNCTION public.sync_social_idempotency_generic_target_from_legacy_memory() RETURNS trigger LANGUAGE plpgsql AS $$BEGIN IF NEW.target_kind = 'tree' THEN RAISE EXCEPTION 'GENERIC_SOCIAL_A_IMMUTABLE_TREE_TARGET_REJECTED'; END IF; NEW.target_kind := 'memory'; NEW.target_id := NEW.target_memory_id; RETURN NEW; END;$$;`, 'GENERIC_SOCIAL_A_FUNCTION_DEFINITION_MISMATCH'],
+    ['fn_overload_plpgsql', `CREATE FUNCTION public.sync_social_idempotency_generic_target_from_legacy_memory(a integer) RETURNS integer LANGUAGE plpgsql AS $$BEGIN RETURN a; END;$$;`, 'GENERIC_SOCIAL_A_FUNCTION_DEFINITION_MISMATCH']
   ];
   for (const [name, sql, expected] of mutations) {
     await withDisposableDb(`pre_fn_${name}`, FIXTURE, async ({ client, runSql }) => {
       await runSql(MIG_A);
       await client.query(sql);
-      const pre = runSql(PREFLIGHT);
-      expectFail(pre, 'pre_fn', name);
-      assertCategory(pre, expected);
+      await assertRejectionWithNoMutation(client, runSql, 'pre_fn', name, expected);
     });
   }
 });
@@ -375,15 +396,15 @@ test('preflight Trigger fixtures', { concurrency: false }, async () => {
     ['tg_disabled', `ALTER TABLE public.social_idempotency DISABLE TRIGGER trg_social_idempotency_sync_generic_target;`, 'GENERIC_SOCIAL_A_TRIGGER_DEFINITION_MISMATCH'],
     ['tg_always', `ALTER TABLE public.social_idempotency ENABLE ALWAYS TRIGGER trg_social_idempotency_sync_generic_target;`, 'GENERIC_SOCIAL_A_TRIGGER_DEFINITION_MISMATCH'],
     ['tg_replica', `ALTER TABLE public.social_idempotency ENABLE REPLICA TRIGGER trg_social_idempotency_sync_generic_target;`, 'GENERIC_SOCIAL_A_TRIGGER_DEFINITION_MISMATCH'],
-    ['tg_delete', `DROP TRIGGER trg_social_idempotency_sync_generic_target ON public.social_idempotency; CREATE TRIGGER trg_social_idempotency_sync_generic_target BEFORE INSERT OR UPDATE OR DELETE ON public.social_idempotency FOR EACH ROW EXECUTE FUNCTION public.sync_social_idempotency_generic_target_from_legacy_memory();`, 'GENERIC_SOCIAL_A_TRIGGER_DEFINITION_MISMATCH']
+    ['tg_delete', `DROP TRIGGER trg_social_idempotency_sync_generic_target ON public.social_idempotency; CREATE TRIGGER trg_social_idempotency_sync_generic_target BEFORE INSERT OR UPDATE OR DELETE ON public.social_idempotency FOR EACH ROW EXECUTE FUNCTION public.sync_social_idempotency_generic_target_from_legacy_memory();`, 'GENERIC_SOCIAL_A_TRIGGER_DEFINITION_MISMATCH'],
+    ['tg_update_only', `DROP TRIGGER trg_social_idempotency_sync_generic_target ON public.social_idempotency; CREATE TRIGGER trg_social_idempotency_sync_generic_target BEFORE UPDATE ON public.social_idempotency FOR EACH ROW EXECUTE FUNCTION public.sync_social_idempotency_generic_target_from_legacy_memory();`, 'GENERIC_SOCIAL_A_TRIGGER_DEFINITION_MISMATCH'],
+    ['tg_wrong_relation', `DROP TRIGGER trg_social_audit_log_sync_generic_target ON public.social_audit_log; CREATE TRIGGER trg_social_audit_log_sync_generic_target BEFORE INSERT OR UPDATE ON public.social_idempotency FOR EACH ROW EXECUTE FUNCTION public.sync_social_audit_generic_target_from_legacy_memory();`, 'GENERIC_SOCIAL_A_TRIGGER_DEFINITION_MISMATCH']
   ];
   for (const [name, sql, expected] of mutations) {
     await withDisposableDb(`pre_tg_${name}`, FIXTURE, async ({ client, runSql }) => {
       await runSql(MIG_A);
       await client.query(sql);
-      const pre = runSql(PREFLIGHT);
-      expectFail(pre, 'pre_tg', name);
-      assertCategory(pre, expected);
+      await assertRejectionWithNoMutation(client, runSql, 'pre_tg', name, expected);
     });
   }
 });

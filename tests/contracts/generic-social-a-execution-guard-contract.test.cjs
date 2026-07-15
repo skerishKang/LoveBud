@@ -33,7 +33,9 @@ function read(p) {
 }
 
 function sha256(p) {
-  return 'sha256:' + crypto.createHash('sha256').update(fs.readFileSync(p)).digest('hex');
+  const buf = fs.readFileSync(p);
+  const lfBytes = Buffer.from(buf.toString('utf8').replace(/\r\n/g, '\n'));
+  return 'sha256:' + crypto.createHash('sha256').update(lfBytes).digest('hex');
 }
 
 const MUTATION_RE =
