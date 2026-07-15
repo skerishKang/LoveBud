@@ -236,8 +236,8 @@ const FILE_ALLOWLIST = {
     reason: 'clear-container: treeMetaMount.innerHTML = empty string'
   },
   'js/editor/editor-detail-ui.js': {
-    count: 9, classification: 'safe',
-    reason: 'clear-container (×6); emptyState static HTML with i18n formatI18nText; memoHint material-icon + i18n text'
+    count: 5, classification: 'safe',
+    reason: 'clear-container (×3); emptyState static HTML with i18n formatI18nText; memoHint material-icon + i18n text'
   },
   'js/editor/editor-entry-fallbacks.js': {
     count: 1, classification: 'safe',

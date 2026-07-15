@@ -164,8 +164,8 @@ test('G. detail panel shell template and edit form mount structure unchanged', (
   assert.ok(editModeTemplate.includes('id="cancelEditBtn"'), 'cancelEditBtn must be present');
   assert.ok(editModeTemplate.includes('id="saveEditBtn"'), 'saveEditBtn must be present');
   assert.ok(editModeTemplate.includes('id="deleteMemoryBtn"'), 'deleteMemoryBtn must be present');
-  // connectExistingCtaBtn lives in the detail view-mode template, not the shell or edit template.
-  assert.ok(viewModeTemplate.includes('id="connectExistingCtaBtn"'), 'connectExistingCtaBtn must be present');
+  // connectExistingCtaBtn lives in the edit mode template
+  assert.ok(editModeTemplate.includes('id="connectExistingCtaBtn"'), 'connectExistingCtaBtn must be present');
 });
 
 // ---------------------------------------------------------------------------
@@ -175,8 +175,8 @@ test('H. production-confirmed target controls retained (cancel/save/delete/conne
   assert.ok(editModeTemplate.includes('cancelEditBtn'), 'cancelEditBtn id retained');
   assert.ok(editModeTemplate.includes('saveEditBtn'), 'saveEditBtn id retained');
   assert.ok(editModeTemplate.includes('deleteMemoryBtn'), 'deleteMemoryBtn id retained');
-  assert.ok(viewModeTemplate.includes('connectExistingCtaBtn'), 'connectExistingCtaBtn id retained');
-  assert.ok(viewModeTemplate.includes('기존 순간 연결하기'), 'connect CTA text hook retained');
+  assert.ok(editModeTemplate.includes('connectExistingCtaBtn'), 'connectExistingCtaBtn id retained');
+  assert.ok(editModeTemplate.includes('기존 순간 연결하기'), 'connect CTA text hook retained');
 });
 
 // ---------------------------------------------------------------------------

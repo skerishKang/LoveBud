@@ -17,8 +17,8 @@
                 input: document.getElementById('momentCommentInput'),
                 submit: document.getElementById('momentCommentSubmitBtn'),
                 feedback: document.getElementById('momentCommentFeedback'),
-                commentButton: document.getElementById('momentCommentBtn'),
-                commentCount: document.getElementById('momentCommentCount')
+                commentButton: document.getElementById('momentReactionCommentStatus'),
+                commentCount: document.getElementById('momentReactionCommentValue')
             };
         }
 

@@ -13,13 +13,13 @@ const cssOverridePath = 'css/editor/editor-overrides.css';
 test('editor selected moment reactions render as labeled inline footer actions', () => {
   const source = fs.readFileSync(templatePath, 'utf8');
 
-  assert.match(source, /id="momentReactionsCard" aria-label="순간 반응과 댓글"/, 'reaction footer must have a clear grouped aria label');
-  assert.match(source, /class="editor-moment-reaction editor-reaction-like-btn"/, 'like action must use the shared inline reaction class');
-  assert.match(source, /class="editor-moment-reaction editor-reaction-comment-btn"/, 'comment action must use the shared inline reaction class');
-  assert.match(source, /<span class="editor-reaction-label">좋아요<\/span>/, 'like action must include a readable label');
-  assert.match(source, /<span class="editor-reaction-label">댓글<\/span>/, 'comment action must include a readable label');
-  assert.match(source, /class="editor-reaction-like-icon" aria-hidden="true">♡<\/span>/, 'like decorative icon must be ♡ and aria-hidden');
-  assert.match(source, /class="material-symbols-outlined editor-reaction-comment-icon" aria-hidden="true">chat_bubble<\/span>/, 'comment decorative icon must be material chat_bubble and aria-hidden');
+  assert.match(source, /id="momentReactionsCard"\s+aria-label="순간 반응과 댓글"/, 'reaction footer must have a clear grouped aria label');
+  assert.match(source, /class="public-viewer-social-status"/, 'like status must use the canonical status class');
+  assert.match(source, /class="public-viewer-social-status editor-comment-toggle"/, 'comment status must use the canonical toggle class');
+  assert.match(source, /<span class="editor-reaction-label">\s*좋아요\s*<\/span>/, 'like action must include a readable label');
+  assert.match(source, /<span class="editor-reaction-label">\s*댓글\s*<\/span>/, 'comment action must include a readable label');
+  assert.match(source, /class="editor-reaction-like-icon" aria-hidden="true">\s*🤍\s*<\/span>/, 'like decorative icon must be 🤍 and aria-hidden');
+  assert.match(source, /class="editor-reaction-comment-icon" aria-hidden="true">\s*💬\s*<\/span>/, 'comment decorative icon must be 💬 and aria-hidden');
 });
 
 test('editor selected moment reaction footer uses soft card-like styling', () => {

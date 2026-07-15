@@ -356,17 +356,17 @@ test('reactions controller selection-switch regression suite', async (t) => {
   await t.test('A-to-B: both updates proceed, B handler is attached', async () => {
     const { client, calls } = fakeApiClient();
     const card = FakeElement('momentReactionsCard');
-    const likeBtn = FakeElement('momentLikeBtn');
+    const likeBtn = FakeElement('momentReactionLikeButton');
     const likeIcon = { textContent: '' };
     likeBtn.querySelector = () => likeIcon;
-    const likeCount = FakeElement('momentLikeCount');
-    const commentCount = FakeElement('momentCommentCount');
+    const likeCount = FakeElement('momentReactionLikeValue');
+    const commentCount = FakeElement('momentReactionCommentValue');
 
     const els = {
       momentReactionsCard: card,
-      momentLikeBtn: likeBtn,
-      momentLikeCount: likeCount,
-      momentCommentCount: commentCount
+      momentReactionLikeButton: likeBtn,
+      momentReactionLikeValue: likeCount,
+      momentReactionCommentValue: commentCount
     };
 
     const ctrl = factory({
@@ -410,17 +410,17 @@ test('reactions controller selection-switch regression suite', async (t) => {
     };
 
     const card = FakeElement('momentReactionsCard');
-    const likeBtn = FakeElement('momentLikeBtn');
+    const likeBtn = FakeElement('momentReactionLikeButton');
     const likeIcon = { textContent: '' };
     likeBtn.querySelector = () => likeIcon;
-    const likeCount = FakeElement('momentLikeCount');
-    const commentCount = FakeElement('momentCommentCount');
+    const likeCount = FakeElement('momentReactionLikeValue');
+    const commentCount = FakeElement('momentReactionCommentValue');
 
     const els = {
       momentReactionsCard: card,
-      momentLikeBtn: likeBtn,
-      momentLikeCount: likeCount,
-      momentCommentCount: commentCount
+      momentReactionLikeButton: likeBtn,
+      momentReactionLikeValue: likeCount,
+      momentReactionCommentValue: commentCount
     };
 
     const ctrl = factory({
@@ -477,17 +477,17 @@ test('reactions controller selection-switch regression suite', async (t) => {
     };
 
     const card = FakeElement('momentReactionsCard');
-    const likeBtn = FakeElement('momentLikeBtn');
+    const likeBtn = FakeElement('momentReactionLikeButton');
     const likeIcon = { textContent: '' };
     likeBtn.querySelector = () => likeIcon;
-    const likeCount = FakeElement('momentLikeCount');
-    const commentCount = FakeElement('momentCommentCount');
+    const likeCount = FakeElement('momentReactionLikeValue');
+    const commentCount = FakeElement('momentReactionCommentValue');
 
     const els = {
       momentReactionsCard: card,
-      momentLikeBtn: likeBtn,
-      momentLikeCount: likeCount,
-      momentCommentCount: commentCount
+      momentReactionLikeButton: likeBtn,
+      momentReactionLikeValue: likeCount,
+      momentReactionCommentValue: commentCount
     };
 
     const ctrl = factory({
@@ -538,17 +538,17 @@ test('reactions controller selection-switch regression suite', async (t) => {
     };
 
     const card = FakeElement('momentReactionsCard');
-    const likeBtn = FakeElement('momentLikeBtn');
+    const likeBtn = FakeElement('momentReactionLikeButton');
     const likeIcon = { textContent: '' };
     likeBtn.querySelector = () => likeIcon;
-    const likeCount = FakeElement('momentLikeCount');
-    const commentCount = FakeElement('momentCommentCount');
+    const likeCount = FakeElement('momentReactionLikeValue');
+    const commentCount = FakeElement('momentReactionCommentValue');
 
     const els = {
       momentReactionsCard: card,
-      momentLikeBtn: likeBtn,
-      momentLikeCount: likeCount,
-      momentCommentCount: commentCount
+      momentReactionLikeButton: likeBtn,
+      momentReactionLikeValue: likeCount,
+      momentReactionCommentValue: commentCount
     };
 
     const ctrl = factory({

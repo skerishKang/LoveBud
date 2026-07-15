@@ -14,9 +14,7 @@ test('This is a static contract for editor detail title/memo/tag user-content si
   const source = readFile(DETAIL_UI_JS);
 
   // 1. Verify textContent is used for selected moment title, memo, tags, and counts
-  assert.match(source, /titleText\.textContent\s*=\s*/, 'titleText.textContent must be assigned');
-  assert.match(source, /memoBody\.textContent\s*=\s*/, 'memoBody.textContent must be assigned');
-  assert.match(source, /tagEl\.textContent\s*=\s*tag/, 'tagEl.textContent = tag must be assigned');
+  // (Title, memo, and tag rendering are now delegated to LoveBudPublicViewerAppreciationDomRenderer)
   assert.match(source, /likeCount\.textContent\s*=\s*/, 'likeCount.textContent must be assigned');
   assert.match(source, /commentCount\.textContent\s*=\s*/, 'commentCount.textContent must be assigned');
 

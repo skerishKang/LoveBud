@@ -297,7 +297,7 @@
     setText('editTitleLabel', 'editor_memory_title', '순간 제목');
     setText('editMemoLabel', 'editor_note_label', '감정 메모');
     setText('editTagsLabel', 'editor_edit_tag_label', '감정 태그 (쉼표로 구분)');
-    setText('cancelEditBtn', 'editor_cancel', '취소');
+    setText('cancelEditBtn', 'editor_back_to_appreciation', '감상 모드');
     setText('saveEditBtn', 'editor_save', '저장하기');
 
     setAttr('renameTreeBtn', 'aria-label', 'editor_rename_tree', '트리 제목 수정');

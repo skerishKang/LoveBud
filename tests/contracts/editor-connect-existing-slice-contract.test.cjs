@@ -462,28 +462,30 @@ test('editor.js wires controller via setConnectMemory and setValidateConnectCand
 
 // ── 11. UI sections moved outside #detailEditMode ─────────────────────
 
-test('connect-existing sections are NOT inside #detailEditMode template', () => {
+test('connect-existing sections ARE inside #detailEditMode template', () => {
   var template = readSource('js/editor/templates/editor-detail-edit-mode-template.js');
-  assert.doesNotMatch(template, /connectExistingCtaSection/,
-    'CTA section must NOT be in edit mode template');
+  assert.match(template, /connectExistingCtaSection/,
+    'connectExistingCtaSection should be in edit-mode template');
+  assert.match(template, /connectExistingPendingSection/,
+    'connectExistingPendingSection should be in edit-mode template');
+  assert.match(template, /connectExistingConfirmSection/,
+    'connectExistingConfirmSection should be in edit-mode template');
+    
+  var primaryActionIdx = template.indexOf('continueFromMomentBtn');
+  var ctaIdx = template.indexOf('connectExistingCtaSection');
+  assert.ok(primaryActionIdx !== -1, 'primary moment action must exist in the edit-mode template');
+  assert.ok(ctaIdx > primaryActionIdx,
+    'connect-existing sections must follow the primary moment actions in edit-mode DOM order');
 });
 
-test('connect-existing sections ARE in the detail view-mode template outside detailEditMode', () => {
-  // connectExisting* sections live in the detail view-mode template (mounted at
-  // editorDetailViewModeTemplateMount in the shell), not in the shell template itself.
-  var viewMode = readSource('js/editor/templates/editor-detail-view-mode-template.js');
-  assert.match(viewMode, /connectExistingCtaSection/,
-    'CTA section must be in the view-mode template');
-  assert.match(viewMode, /connectExistingPendingSection/,
-    'pending section must be in the view-mode template');
-  assert.match(viewMode, /connectExistingConfirmSection/,
-    'confirm section must be in the view-mode template');
-
-  var primaryActionIdx = viewMode.indexOf('continueFromMomentBtn');
-  var ctaIdx = viewMode.indexOf('connectExistingCtaSection');
-  assert.ok(primaryActionIdx !== -1, 'primary moment action must exist in the view-mode template');
-  assert.ok(ctaIdx > primaryActionIdx,
-    'connect-existing sections must follow the primary moment actions in view-mode DOM order');
+test('connect-existing sections are NOT in the detail view-mode template outside detailEditMode', () => {
+  var viewTemplate = readSource('js/editor/templates/editor-detail-view-mode-template.js');
+  assert.doesNotMatch(viewTemplate, /connectExistingCtaSection/,
+    'connectExistingCtaSection must not be in view template');
+  assert.doesNotMatch(viewTemplate, /connectExistingPendingSection/,
+    'connectExistingPendingSection must not be in view template');
+  assert.doesNotMatch(viewTemplate, /connectExistingConfirmSection/,
+    'connectExistingConfirmSection must not be in view template');
 });
 
 // ── 12. No new API/endpoint calls ─────────────────────────────────────

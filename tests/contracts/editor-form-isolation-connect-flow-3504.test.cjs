@@ -125,8 +125,8 @@ test('CSS hides canvas empty guide when form is open', function() {
 
 // ── 2. Detail view-mode template: connect-existing sections ──
 
-test('detail view-mode template contains connect-existing sections', function() {
-  var tpl = readSource('js/editor/templates/editor-detail-view-mode-template.js');
+test('connect-existing sections are in the template', function() {
+  var tpl = readSource('js/editor/templates/editor-detail-edit-mode-template.js');
   assert.match(tpl, /connectExistingCtaSection/);
   assert.match(tpl, /connectExistingCtaBtn/);
   assert.match(tpl, /connectExistingPendingSection/);
@@ -135,10 +135,10 @@ test('detail view-mode template contains connect-existing sections', function() 
   assert.ok(!tpl.includes('role="tab"'), 'no ARIA tab role used; existing button section pattern retained');
 });
 
-test('connect-existing sections are NOT inside #detailEditMode template', function() {
-  var editTpl = readSource('js/editor/templates/editor-detail-edit-mode-template.js');
-  assert.ok(!editTpl.includes('connectExistingCtaSection'), 'connect-existing not in edit mode template');
-  assert.ok(!editTpl.includes('connectExistingCtaBtn'), 'connect-existing btn not in edit mode template');
+test('connect-existing sections are NOT inside view mode template', function() {
+  var editTpl = readSource('js/editor/templates/editor-detail-view-mode-template.js');
+  assert.ok(!editTpl.includes('connectExistingCtaSection'), 'connect-existing not in view mode template');
+  assert.ok(!editTpl.includes('connectExistingCtaBtn'), 'connect-existing btn not in view mode template');
 });
 
 // ── 3. Editor-bindings connect-existing controller ────────
@@ -720,9 +720,10 @@ test('production aliases map to real CTA selectors (no ARIA tab invented)', func
   assert.ok(!viewTpl.includes('role="tab"'), 'new-moment alias is not an ARIA tab');
 
   // connect-existing route: detail CTA ("기존 순간 연결하기")
-  assert.ok(viewTpl.includes('id="connectExistingCtaBtn"'), 'connect-existing route: connectExistingCtaBtn in detail view template');
-  assert.ok(viewTpl.includes('id="connectExistingCtaSection"'), 'connect-existing route: connectExistingCtaSection container');
-  assert.ok(!viewTpl.includes('role="tab"'), 'connect alias is not an ARIA tab');
+  var editTpl = readSource('js/editor/templates/editor-detail-edit-mode-template.js');
+  assert.ok(editTpl.includes('id="connectExistingCtaBtn"'), 'connect-existing route: connectExistingCtaBtn in detail edit template');
+  assert.ok(editTpl.includes('id="connectExistingCtaSection"'), 'connect-existing route: connectExistingCtaSection container');
+  assert.ok(!editTpl.includes('role="tab"'), 'connect alias is not an ARIA tab');
 });
 
 // ── 13. Connect-existing controller — real source, executed route ──
