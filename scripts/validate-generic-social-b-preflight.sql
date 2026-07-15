@@ -252,8 +252,9 @@ BEGIN
     END IF;
 
   ELSIF idem_state = 'B' THEN
-    -- STATE_B: all four Migration B CHECKs required, exact relation/validation/uniqueness
-    IF has_b_checks <> 4 THEN
+    -- STATE_B: all four Migration B CHECKs required with exact relation/validation/uniqueness.
+    -- Missing or partial B CHECK sets are mixed; duplicate/shadow names are check-definition failures.
+    IF has_b_checks < 4 THEN
       RAISE EXCEPTION 'GENERIC_SOCIAL_B_MIXED_STATE_REJECTED';
     END IF;
 

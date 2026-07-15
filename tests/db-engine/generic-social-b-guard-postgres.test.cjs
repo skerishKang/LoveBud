@@ -203,11 +203,17 @@ const MEM2 = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
 const TREE2 = 'ffffffff-ffff-4fff-8fff-ffffffffffff';
 
 function phaseUuids(phase, table) {
-  // deterministic unique UUIDs per phase/table/case letter
+  // deterministic unique UUIDs per phase/table/case (RFC-ish 8-4-4-4-12 hex)
   const p = phase === 'first' ? '1' : '2';
   const t = table === 'idem' ? 'a' : 'b';
-  const mk = (c) =>
-    `${p}${t}${c}${c}${c}${c}${c}${c}-${p}${t}${c}${c}-4${t}${c}${c}-8${t}${c}${c}-${p}${t}${c}${c}${c}${c}${c}${c}${c}${c}${c}${c}${c}${c}`;
+  const mk = (c) => {
+    const g1 = `${p}${t}${c}${c}${c}${c}${c}${c}`; // 8
+    const g2 = `${p}${t}${c}${c}`; // 4
+    const g3 = `4${t}${c}${c}`; // 4
+    const g4 = `8${t}${c}${c}`; // 4
+    const g5 = `${p}${t}${c}${c}${c}${c}${c}${c}${c}${c}${c}${c}`; // 12
+    return `${g1}-${g2}-${g3}-${g4}-${g5}`;
+  };
   return {
     A: mk('1'),
     B: mk('2'),
@@ -219,7 +225,7 @@ function phaseUuids(phase, table) {
     H: mk('8'),
     I: mk('9'),
     J: mk('0'),
-    K: mk('a'),
+    K: mk('c'),
   };
 }
 

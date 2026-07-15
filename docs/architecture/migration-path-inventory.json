@@ -621,7 +621,7 @@
       "recommended_disposition": "required before any future historical Migration B re-execution",
       "linked_issue": "#3538, #3459, #3458, #3425, #1882",
       "baseline_sha": "5d601154cfa45a4885e30fc190446ce3b9623aa0",
-      "content_checksum": "sha256:ec0c21e8994b65b12c5cbc76c0963cb7640b8ae9f8c89ef78f62178bf5bb1cb2"
+      "content_checksum": "sha256:4569a636649e4f001a041eab11708d5003063c8f139eb00fe7778e16755b94f4"
     },
     {
       "path": "scripts/validate-generic-social-b-postcondition.sql",
