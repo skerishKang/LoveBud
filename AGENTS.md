@@ -87,7 +87,14 @@ LoveBud 로컬 작업의 **현재 기본 OS는 Windows**다.
 
 ### UI 검증 환경 우선순위
 
-LoveBud UI 작업에서는 로컬 정적 서버를 최종 검증 환경으로 자동 가정하지 않습니다.
+LoveBud의 UI 검증은 **Merge-First Production Verification** 워크플로우를 기본으로 합니다.
+자세한 내용은 를 참고하세요.
+
+핵심 원칙:
+- **Pre-merge browser verification (fixed slot / PR Preview)**: OPTIONAL. 부재 시 merge blocker가 아닙니다.
+- **Post-merge Production verification**: UI/Auth/runtime 동작의 최종 확인 단계입니다.
+- **로컬 정적 서버**: 정적 레이아웃 참고용 fallback으로만 사용합니다.
+- **GitHub CI + 로컬 자동 테스트**: pre-merge mandatory gate로 유지됩니다.
 
 PR 병합 전 UI 검증 우선순위는 아래와 같습니다.
 

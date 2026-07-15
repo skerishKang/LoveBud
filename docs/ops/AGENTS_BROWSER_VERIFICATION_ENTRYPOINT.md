@@ -1,10 +1,16 @@
 # Browser Verification Agent Entrypoint
 
-> **Status:** operational entrypoint  
-> **Scope:** browser/Auth/data-loaded verification only  
+> **Status:** operational entrypoint
+> **Scope:** browser/Auth/data-loaded verification only
 > **Primary reader:** new agent/new session assigned to browser verification
 >
 > **Canonical precedence:** `docs/ops/MVP_AGENT_GOVERNANCE.md` (owner-approved #3442 comment `4947327550`) is the source of truth for blocker / allowed-by-default decisions. Browser tooling (start, new tab/window, navigation, login, screenshots, DevTools, Playwright) is **allowed by default**. Missing fixed slot, missing PR entrypoint comment, dirty worktree, and draft status are **not** automatic BLOCKED reasons. Where this document conflicts with the canonical policy, the canonical policy wins. Sections below that state otherwise are `NON_NORMATIVE_OUTSIDE_NAMED_CONTEXT`.
+
+> **Status:** OPTIONAL / CURRENTLY UNAVAILABLE AS A REQUIRED GATE
+>
+> 이 절차는 환경이 실제로 사용 가능하고 CTO가 명시적으로 지정한
+> 경우에만 사용합니다. 해당 환경의 부재는 merge blocker가 아닙니다.
+> 자세한 내용은 `docs/ops/MERGE_FIRST_PRODUCTION_VERIFICATION_WORKFLOW.md`를 참고하세요.
 
 This document is the browser verification entrypoint that should be linked from `AGENTS.md`.
 
@@ -297,10 +303,10 @@ Use this template as a PR comment before assigning a new browser verifier:
 ```markdown
 ## Browser verification entrypoint
 
-PR: #<number>  
-Branch: `<branch>`  
-Assigned URL: `<url>`  
-URL provenance: `<Cloudflare PR Preview / fixed test slot assignment / production after merge>`  
+PR: #<number>
+Branch: `<branch>`
+Assigned URL: `<url>`
+URL provenance: `<Cloudflare PR Preview / fixed test slot assignment / production after merge>`
 Target pages:
 - `<path>`
 

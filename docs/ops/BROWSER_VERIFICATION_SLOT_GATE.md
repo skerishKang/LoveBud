@@ -1,5 +1,11 @@
 # Browser Verification Slot Assignment Gate
 
+> **Status:** OPTIONAL / CURRENTLY UNAVAILABLE AS A REQUIRED GATE
+>
+> 이 절차는 환경이 실제로 사용 가능하고 CTO가 명시적으로 지정한
+> 경우에만 사용합니다. 해당 환경의 부재는 merge blocker가 아닙니다.
+> 자세한 내용은 `docs/ops/MERGE_FIRST_PRODUCTION_VERIFICATION_WORKFLOW.md`를 참고하세요.
+
 Status: Active ops guardrail
 Owner: CTO / Ops Lead
 Scope: browser, network, Auth, API, data-loaded, and fixed-slot verification prompts
