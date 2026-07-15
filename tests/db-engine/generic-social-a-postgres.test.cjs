@@ -1,12 +1,13 @@
 'use strict';
 
 /**
- * DB_ENGINE_EXECUTION: generic-social Migration A on disposable PostgreSQL 17.4.
+ * DB_ENGINE_EXECUTION: generic-social Migration A rehearsal on disposable PostgreSQL 17.4.
  *
- * Executes scripts/migration-add-generic-social-targets.sql via
- * psql -X -v ON_ERROR_STOP=1 -f. Never reads DATABASE_URL / Production secrets.
+ * Sole approved apply path:
+ *   preflight validator → exact historical Migration A → postcondition validator
  *
- * Does not execute Migration B. Does not invent rollback SQL.
+ * Independent #3535 evidence (catalog/backfill/triggers) is preserved alongside validators.
+ * Never reads DATABASE_URL / Production secrets. Never executes Migration B.
  *
  * Refs: #3534, #3262, #3459, #3458, #3425, #1882
  */
@@ -18,8 +19,10 @@ const harness = require('./helpers/postgres-disposable-harness.cjs');
 const catalog = require('./helpers/generic-social-catalog-assertions.cjs');
 
 const ROOT = path.resolve(__dirname, '..', '..');
-const MIGRATION_A = path.join(ROOT, 'scripts/migration-add-generic-social-targets.sql');
-const MIGRATION_B = path.join(ROOT, 'scripts/migration-b-generic-social-targets-cutover.sql');
+const PREFLIGHT = path.join(ROOT, 'scripts/validate-generic-social-a-preflight.sql');
+const MIG_A = path.join(ROOT, 'scripts/migration-add-generic-social-targets.sql');
+const POSTCOND = path.join(ROOT, 'scripts/validate-generic-social-a-postcondition.sql');
+const MIG_B = path.join(ROOT, 'scripts/migration-b-generic-social-targets-cutover.sql');
 const LEGACY_FIXTURE = path.join(__dirname, 'fixtures/generic-social-a-legacy.sql');
 
 const { withDisposableDb, boundedFail, combinedOutput } = harness;
@@ -34,9 +37,12 @@ const {
   getFullRowFingerprint,
   getColumnNames,
   getBackfillStats,
+  getCheckNames,
+  getTriggerNames,
+  tableExistsOrdinary,
 } = catalog;
 
-// Synthetic deterministic IDs (not Production).
+// Synthetic deterministic IDs (not Production). Not logged as payloads.
 const SYN = {
   mem: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
   mem2: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
@@ -62,14 +68,7 @@ async function assertNoMutation(client, beforeFp) {
 
 function expectOk(res, scenario, phase) {
   if (res.status !== 0) {
-    boundedFail(
-      scenario,
-      phase,
-      classifyError(combinedOutput(res)),
-      res.status,
-      'exit_0',
-      `exit_${res.status}`
-    );
+    boundedFail(scenario, phase, classify(combinedOutput(res)), res.status, 'exit_0', `exit_${res.status}`);
   }
 }
 
@@ -79,19 +78,120 @@ function expectFail(res, scenario, phase) {
   }
 }
 
-function classifyError(out) {
-  if (/Prerequisite table/i.test(out)) return 'PRECONDITION_FAILED';
-  if (/NULL generic pair|partial generic pair|target_kind other|different from legacy/i.test(out)) {
-    return 'POST_BACKFILL_VALIDATION_FAILED';
-  }
-  if (/already exists|duplicate/i.test(out)) return 'OBJECT_COLLISION';
-  if (/syntax error/i.test(out)) return 'MIGRATION_SYNTAX_ERROR';
-  return 'MIGRATION_ENGINE_ERROR';
+function classify(out) {
+  const m = out.match(/GENERIC_SOCIAL_A_[A-Z0-9_]+/);
+  if (m) return m[0];
+  if (/Prerequisite table/i.test(out)) return 'MIGRATION_PRECONDITION_FAILED';
+  return 'ENGINE_ERROR';
 }
 
-// ─── Happy path ──────────────────────────────────────────────────────────────
+function assertCategory(res, expectedCategory) {
+  const cat = classify(combinedOutput(res));
+  assert.equal(cat, expectedCategory);
+}
 
-test('generic-social-a happy path apply backfill catalog and second apply', { concurrency: false }, async () => {
+/**
+ * Real guarded workflow for #3535 rehearsal evidence.
+ * Preflight always runs; Migration A only on preflight success;
+ * postcondition only on Migration A success.
+ */
+function runGuardedSequence(runSql) {
+  const counts = { preflight: 0, migA: 0, postcond: 0 };
+  counts.preflight += 1;
+  const pre = runSql(PREFLIGHT);
+  if (pre.status !== 0) {
+    return { counts, pre, mig: null, post: null, stoppedAt: 'preflight', category: classify(combinedOutput(pre)) };
+  }
+  counts.migA += 1;
+  const mig = runSql(MIG_A);
+  if (mig.status !== 0) {
+    return { counts, pre, mig, post: null, stoppedAt: 'migA', category: classify(combinedOutput(mig)) };
+  }
+  counts.postcond += 1;
+  const post = runSql(POSTCOND);
+  return {
+    counts,
+    pre,
+    mig,
+    post,
+    stoppedAt: post.status === 0 ? 'done' : 'postcond',
+    category: post.status === 0 ? null : classify(combinedOutput(post)),
+  };
+}
+
+async function assertRejectionWithNoMutation(client, runSql, scenario, expectedCategory) {
+  const before = await getCatalogFingerprint(client);
+  const beforeRowsI = await getFullRowFingerprint(client, 'idem');
+  const beforeRowsA = await getFullRowFingerprint(client, 'audit');
+  const beforeU = await getFullRowFingerprint(client, 'unrelated');
+
+  const seq = runGuardedSequence(runSql);
+  assert.equal(seq.counts.preflight, 1, 'preflight invocation = 1');
+  assert.equal(seq.counts.migA, 0, 'Migration A invocation count = 0');
+  assert.equal(seq.counts.postcond, 0, 'postcondition invocation count = 0');
+  assert.equal(seq.stoppedAt, 'preflight');
+  expectFail(seq.pre, scenario, 'preflight');
+  assertCategory(seq.pre, expectedCategory);
+
+  await assertNoMutation(client, before);
+  assert.equal((await getFullRowFingerprint(client, 'idem')).rowFp, beforeRowsI.rowFp, 'idem row fingerprint unchanged');
+  assert.equal((await getFullRowFingerprint(client, 'audit')).rowFp, beforeRowsA.rowFp, 'audit row fingerprint unchanged');
+  assert.deepEqual(await getFullRowFingerprint(client, 'unrelated'), beforeU);
+  pass(`rehearsal reject ${scenario}`);
+}
+
+const IDEM_DDL = `
+  CREATE TABLE public.social_idempotency (
+    id UUID PRIMARY KEY,
+    actor_id VARCHAR(128) NOT NULL,
+    operation VARCHAR(64) NOT NULL,
+    idempotency_key VARCHAR(128) NOT NULL,
+    request_fingerprint VARCHAR(64) NOT NULL,
+    target_memory_id UUID NOT NULL,
+    result_state VARCHAR(20) NOT NULL DEFAULT 'pending',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  );
+`;
+
+const AUDIT_DDL = `
+  CREATE TABLE public.social_audit_log (
+    id UUID PRIMARY KEY,
+    actor_id VARCHAR(128) NOT NULL,
+    memory_id UUID NOT NULL,
+    action VARCHAR(64) NOT NULL,
+    outcome_code VARCHAR(20) NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  );
+`;
+
+const LEGACY_BASE = IDEM_DDL + AUDIT_DDL;
+const UNRELATED = `
+  CREATE TABLE IF NOT EXISTS public.lb_unrelated_marker (id text PRIMARY KEY, v text NOT NULL);
+  INSERT INTO public.lb_unrelated_marker(id,v) VALUES ('u1','keep') ON CONFLICT DO NOTHING;
+`;
+
+async function rejectWithoutMigration(scenario, setupSql, expectedCategory) {
+  await withDisposableDb(scenario, null, async ({ client, runSql }) => {
+    await client.query(setupSql + UNRELATED);
+    await assertRejectionWithNoMutation(client, runSql, scenario, expectedCategory);
+  });
+}
+
+async function applyGuardedHappy(client, runSql, scenario) {
+  const seq = runGuardedSequence(runSql);
+  assert.equal(seq.counts.preflight, 1);
+  assert.equal(seq.counts.migA, 1);
+  assert.equal(seq.counts.postcond, 1);
+  assert.equal(seq.stoppedAt, 'done');
+  expectOk(seq.pre, scenario, 'preflight');
+  expectOk(seq.mig, scenario, 'migration_a');
+  expectOk(seq.post, scenario, 'postcondition');
+  return seq;
+}
+
+// ─── Happy path: exact legacy → preflight → Migration A → postcondition ──────
+
+test('rehearsal happy path guarded sequence apply backfill catalog', { concurrency: false }, async () => {
   await withDisposableDb('happy', LEGACY_FIXTURE, async ({ client, runSql }) => {
     await assertLegacySchema(client);
     const beforeColsIdem = await getColumnNames(client, TABLES.idem);
@@ -99,15 +199,17 @@ test('generic-social-a happy path apply backfill catalog and second apply', { co
     const beforeIdem = await getFullRowFingerprint(client, 'idem');
     const beforeAudit = await getFullRowFingerprint(client, 'audit');
     const beforeUnrel = await getFullRowFingerprint(client, 'unrelated');
-    pass('generic-social-a legacy preflight');
+    pass('rehearsal legacy preflight schema');
 
-    const apply1 = runSql(MIGRATION_A);
-    expectOk(apply1, 'happy', 'migration_apply');
-    pass('generic-social-a apply');
+    const seq = await applyGuardedHappy(client, runSql, 'happy');
+    assert.equal(seq.counts.preflight, 1, 'guarded happy-path preflight = 1');
+    assert.equal(seq.counts.migA, 1, 'guarded happy-path Migration A = 1');
+    assert.equal(seq.counts.postcond, 1, 'guarded happy-path postcondition = 1');
+    pass('rehearsal guarded happy sequence');
 
+    // Independent #3535 catalog assertions (not only validator success)
     await assertMigrationACatalog(client);
 
-    // Base-column full-row projection preserved.
     const afterIdemBase = await getFullRowFingerprint(client, 'idem', { columns: beforeColsIdem });
     const afterAuditBase = await getFullRowFingerprint(client, 'audit', { columns: beforeColsAudit });
     assert.equal(afterIdemBase.count, beforeIdem.count);
@@ -122,21 +224,57 @@ test('generic-social-a happy path apply backfill catalog and second apply', { co
     assert.equal(stA.memory_matched, stA.total);
     assert.equal(stI.null_pair, 0);
     assert.equal(stA.null_pair, 0);
-    pass('generic-social-a backfill+catalog');
-
-    const repairedFp = await getCatalogFingerprint(client);
-    const apply2 = runSql(MIGRATION_A);
-    expectOk(apply2, 'happy', 'second_apply');
-    await assertNoMutation(client, repairedFp);
-    pass('generic-social-a second apply no-op');
+    assert.equal(stI.partial_pair, 0);
+    assert.equal(stA.partial_pair, 0);
+    assert.equal(stI.non_memory, 0);
+    assert.equal(stA.non_memory, 0);
+    assert.equal(stI.mismatch, 0);
+    assert.equal(stA.mismatch, 0);
+    pass('rehearsal backfill+catalog independent');
   });
 });
 
-// ─── Trigger compatibility (real statements) ─────────────────────────────────
+// ─── Second apply complete no-op ─────────────────────────────────────────────
 
-test('generic-social-a trigger compatibility statements', { concurrency: false }, async () => {
+test('rehearsal second apply full guarded no-op', { concurrency: false }, async () => {
+  await withDisposableDb('second', LEGACY_FIXTURE, async ({ client, runSql }) => {
+    await applyGuardedHappy(client, runSql, 'second');
+    const catFp = await getCatalogFingerprint(client);
+    const rowI = await getFullRowFingerprint(client, 'idem');
+    const rowA = await getFullRowFingerprint(client, 'audit');
+    const rowU = await getFullRowFingerprint(client, 'unrelated');
+    const checksI = await getCheckNames(client, TABLES.idem);
+    const checksA = await getCheckNames(client, TABLES.audit);
+    const tgI = await getTriggerNames(client, TABLES.idem);
+    const tgA = await getTriggerNames(client, TABLES.audit);
+
+    const second = runGuardedSequence(runSql);
+    assert.equal(second.counts.preflight, 1);
+    assert.equal(second.counts.migA, 1);
+    assert.equal(second.counts.postcond, 1);
+    assert.equal(second.stoppedAt, 'done');
+    expectOk(second.pre, 'second', 'preflight2');
+    expectOk(second.mig, 'second', 'mig2');
+    expectOk(second.post, 'second', 'post2');
+
+    await assertNoMutation(client, catFp);
+    assert.equal((await getFullRowFingerprint(client, 'idem')).rowFp, rowI.rowFp);
+    assert.equal((await getFullRowFingerprint(client, 'audit')).rowFp, rowA.rowFp);
+    assert.deepEqual(await getFullRowFingerprint(client, 'unrelated'), rowU);
+    assert.deepEqual(await getCheckNames(client, TABLES.idem), checksI);
+    assert.deepEqual(await getCheckNames(client, TABLES.audit), checksA);
+    assert.deepEqual(await getTriggerNames(client, TABLES.idem), tgI);
+    assert.deepEqual(await getTriggerNames(client, TABLES.audit), tgA);
+    pass('rehearsal second apply no-op');
+  });
+});
+
+// ─── Trigger compatibility (real statements after guarded apply) ─────────────
+
+test('rehearsal trigger compatibility statements', { concurrency: false }, async () => {
   await withDisposableDb('triggers', LEGACY_FIXTURE, async ({ client, runSql }) => {
-    expectOk(runSql(MIGRATION_A), 'triggers', 'apply');
+    await applyGuardedHappy(client, runSql, 'triggers');
+    const beforeCat = await getCatalogFingerprint(client);
 
     // 1) Legacy-only INSERT → trigger fills memory pair
     await client.query(
@@ -146,12 +284,12 @@ test('generic-social-a trigger compatibility statements', { concurrency: false }
       [SYN.id1, SYN.mem]
     );
     const r1 = await client.query(
-      `SELECT target_kind, target_id FROM public.social_idempotency WHERE id = $1`,
+      `SELECT target_kind, target_id::text AS tid FROM public.social_idempotency WHERE id = $1`,
       [SYN.id1]
     );
     assert.equal(r1.rows[0].target_kind, 'memory');
-    assert.equal(r1.rows[0].target_id, SYN.mem);
-    pass('generic-social-a legacy-only insert');
+    assert.equal(r1.rows[0].tid, SYN.mem);
+    pass('rehearsal legacy-only insert');
 
     // 2) Complete matching memory pair
     await client.query(
@@ -160,9 +298,9 @@ test('generic-social-a trigger compatibility statements', { concurrency: false }
        ) VALUES ($1, 'syn_actor_t', $2, 'comment.create', 'success', 'memory', $2)`,
       [SYN.id2, SYN.mem]
     );
-    pass('generic-social-a matching memory pair');
+    pass('rehearsal matching memory pair');
 
-    // 3) Partial generic pair → fail, no row
+    // 3) Partial generic pair → fail, no persistent row
     let failed = false;
     try {
       await client.query(
@@ -176,12 +314,12 @@ test('generic-social-a trigger compatibility statements', { concurrency: false }
       failed = true;
     }
     assert.equal(failed, true);
-    const c3 = await client.query(
-      `SELECT count(*)::int AS n FROM public.social_idempotency WHERE id = $1`,
-      [SYN.id3]
+    assert.equal(
+      (await client.query(`SELECT count(*)::int AS n FROM public.social_idempotency WHERE id = $1`, [SYN.id3]))
+        .rows[0].n,
+      0
     );
-    assert.equal(c3.rows[0].n, 0);
-    pass('generic-social-a partial pair reject');
+    pass('rehearsal partial pair reject');
 
     // 4) tree kind rejected in Migration A
     failed = false;
@@ -198,7 +336,12 @@ test('generic-social-a trigger compatibility statements', { concurrency: false }
       failed = true;
     }
     assert.equal(failed, true);
-    pass('generic-social-a tree kind reject');
+    assert.equal(
+      (await client.query(`SELECT count(*)::int AS n FROM public.social_idempotency WHERE id = $1`, [treeId]))
+        .rows[0].n,
+      0
+    );
+    pass('rehearsal tree kind reject');
 
     // 5) unknown kind
     failed = false;
@@ -214,7 +357,12 @@ test('generic-social-a trigger compatibility statements', { concurrency: false }
       failed = true;
     }
     assert.equal(failed, true);
-    pass('generic-social-a unknown kind reject');
+    assert.equal(
+      (await client.query(`SELECT count(*)::int AS n FROM public.social_audit_log WHERE id = $1`, [unkId])).rows[0]
+        .n,
+      0
+    );
+    pass('rehearsal unknown kind reject');
 
     // 6) memory mismatch
     failed = false;
@@ -231,241 +379,534 @@ test('generic-social-a trigger compatibility statements', { concurrency: false }
       failed = true;
     }
     assert.equal(failed, true);
-    pass('generic-social-a memory mismatch reject');
+    assert.equal(
+      (await client.query(`SELECT count(*)::int AS n FROM public.social_idempotency WHERE id = $1`, [misId])).rows[0]
+        .n,
+      0
+    );
+    pass('rehearsal memory mismatch reject');
 
-    // 7) UPDATE mismatch rollback — original fingerprint preserved
-    const beforeUpd = await getFullRowFingerprint(client, 'idem', {
-      columns: await getColumnNames(client, TABLES.idem),
-    });
+    // 7) UPDATE mismatch — original complete-row fingerprint preserved
+    const beforeUpd = await getFullRowFingerprint(client, 'idem');
     failed = false;
     try {
-      await client.query(
-        `UPDATE public.social_idempotency
-         SET target_id = $1
-         WHERE id = $2`,
-        [SYN.mem2, SYN.id1]
-      );
+      await client.query(`UPDATE public.social_idempotency SET target_id = $1 WHERE id = $2`, [SYN.mem2, SYN.id1]);
     } catch {
       failed = true;
     }
     assert.equal(failed, true);
-    const afterUpd = await getFullRowFingerprint(client, 'idem', {
-      columns: await getColumnNames(client, TABLES.idem),
+    assert.equal((await getFullRowFingerprint(client, 'idem')).rowFp, beforeUpd.rowFp);
+    pass('rehearsal update mismatch preserve');
+
+    // 8) After failures: trigger/function/constraint state unchanged vs post-apply baseline shape
+    // (row state changed by successful inserts only; catalog objects unchanged)
+    const afterCat = await getCatalogFingerprint(client);
+    assert.deepEqual(afterCat.idem.checks, beforeCat.idem.checks);
+    assert.deepEqual(afterCat.audit.checks, beforeCat.audit.checks);
+    assert.deepEqual(afterCat.idem.triggers, beforeCat.idem.triggers);
+    assert.deepEqual(afterCat.audit.triggers, beforeCat.audit.triggers);
+    assert.deepEqual(afterCat.funcs, beforeCat.funcs);
+    pass('rehearsal failed statement catalog preserve');
+  });
+});
+
+// ─── A. Relation identity ────────────────────────────────────────────────────
+
+test('rehearsal relation identity fail-closed', { concurrency: false }, async () => {
+  await rejectWithoutMigration(
+    'miss_idem',
+    AUDIT_DDL,
+    'GENERIC_SOCIAL_A_RELATION_PRECONDITION_FAILED'
+  );
+  await rejectWithoutMigration(
+    'miss_audit',
+    IDEM_DDL,
+    'GENERIC_SOCIAL_A_RELATION_PRECONDITION_FAILED'
+  );
+  await rejectWithoutMigration(
+    'view_idem',
+    AUDIT_DDL +
+      `CREATE VIEW public.social_idempotency AS SELECT 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'::uuid AS id;`,
+    'GENERIC_SOCIAL_A_RELATION_PRECONDITION_FAILED'
+  );
+  await rejectWithoutMigration(
+    'view_audit',
+    IDEM_DDL +
+      `CREATE VIEW public.social_audit_log AS SELECT 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'::uuid AS id;`,
+    'GENERIC_SOCIAL_A_RELATION_PRECONDITION_FAILED'
+  );
+});
+
+// ─── B. Legacy column shape (symmetric) ──────────────────────────────────────
+
+test('rehearsal legacy column shape fail-closed', { concurrency: false }, async () => {
+  const shapes = [
+    ['legacy_missing_idem', IDEM_DDL.replace('    target_memory_id UUID NOT NULL,\n', '') + AUDIT_DDL],
+    ['legacy_null_idem', IDEM_DDL.replace('target_memory_id UUID NOT NULL', 'target_memory_id UUID') + AUDIT_DDL],
+    [
+      'legacy_type_idem',
+      IDEM_DDL.replace('target_memory_id UUID NOT NULL', 'target_memory_id TEXT NOT NULL') + AUDIT_DDL,
+    ],
+    [
+      'legacy_def_idem',
+      IDEM_DDL.replace(
+        'target_memory_id UUID NOT NULL',
+        'target_memory_id UUID NOT NULL DEFAULT gen_random_uuid()'
+      ) + AUDIT_DDL,
+    ],
+    ['legacy_missing_audit', IDEM_DDL + AUDIT_DDL.replace('    memory_id UUID NOT NULL,\n', '')],
+    ['legacy_null_audit', IDEM_DDL + AUDIT_DDL.replace('memory_id UUID NOT NULL', 'memory_id UUID')],
+    [
+      'legacy_type_audit',
+      IDEM_DDL + AUDIT_DDL.replace('memory_id UUID NOT NULL', 'memory_id TEXT NOT NULL'),
+    ],
+    [
+      'legacy_def_audit',
+      IDEM_DDL +
+        AUDIT_DDL.replace(
+          'memory_id UUID NOT NULL',
+          'memory_id UUID NOT NULL DEFAULT gen_random_uuid()'
+        ),
+    ],
+  ];
+  for (const [name, setup] of shapes) {
+    await rejectWithoutMigration(name, setup, 'GENERIC_SOCIAL_A_LEGACY_COLUMN_SHAPE_MISMATCH');
+  }
+
+  // nullable legacy + synthetic NULL row still fails legacy shape (nullable itself)
+  await rejectWithoutMigration(
+    'legacy_null_with_row',
+    IDEM_DDL.replace('target_memory_id UUID NOT NULL', 'target_memory_id UUID') +
+      AUDIT_DDL +
+      `INSERT INTO public.social_idempotency (
+         id, actor_id, operation, idempotency_key, request_fingerprint, target_memory_id
+       ) VALUES (
+         'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'a', 'op', 'k', 'fp', NULL
+       );`,
+    'GENERIC_SOCIAL_A_LEGACY_COLUMN_SHAPE_MISMATCH'
+  );
+});
+
+// ─── C. Generic pair/data state ──────────────────────────────────────────────
+
+test('rehearsal generic pair and data state fail-closed', { concurrency: false }, async () => {
+  await rejectWithoutMigration(
+    'gen_partial_idem',
+    LEGACY_BASE + `ALTER TABLE public.social_idempotency ADD COLUMN target_kind VARCHAR(16);`,
+    'GENERIC_SOCIAL_A_GENERIC_COLUMN_PARTIAL_STATE'
+  );
+  await rejectWithoutMigration(
+    'gen_partial_audit',
+    LEGACY_BASE + `ALTER TABLE public.social_audit_log ADD COLUMN target_id UUID;`,
+    'GENERIC_SOCIAL_A_GENERIC_COLUMN_PARTIAL_STATE'
+  );
+
+  // Both tables exact generic shape with row-level partial pair
+  await withDisposableDb('data_partial', LEGACY_FIXTURE, async ({ client, runSql }) => {
+    await applyGuardedHappy(client, runSql, 'data_partial_setup');
+    await client.query(`
+      ALTER TABLE public.social_idempotency DROP CONSTRAINT social_idempotency_generic_target_pair_check;
+      ALTER TABLE public.social_idempotency DISABLE TRIGGER ALL;
+      UPDATE public.social_idempotency SET target_id = NULL WHERE target_kind IS NOT NULL;
+      ALTER TABLE public.social_idempotency ENABLE TRIGGER ALL;
+    `);
+    await assertRejectionWithNoMutation(
+      client,
+      runSql,
+      'data_partial',
+      'GENERIC_SOCIAL_A_GENERIC_COLUMN_PARTIAL_STATE'
+    );
+  });
+
+  await withDisposableDb('data_tree', LEGACY_FIXTURE, async ({ client, runSql }) => {
+    await applyGuardedHappy(client, runSql, 'data_tree_setup');
+    await client.query(`ALTER TABLE public.social_idempotency DISABLE TRIGGER ALL`);
+    await client.query(
+      `UPDATE public.social_idempotency SET target_kind='tree', target_id='eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee'`
+    );
+    await client.query(`ALTER TABLE public.social_idempotency ENABLE TRIGGER ALL`);
+    await assertRejectionWithNoMutation(
+      client,
+      runSql,
+      'data_tree',
+      'GENERIC_SOCIAL_A_GENERIC_COLUMN_SHAPE_MISMATCH'
+    );
+  });
+
+  await withDisposableDb('data_unknown', LEGACY_FIXTURE, async ({ client, runSql }) => {
+    await applyGuardedHappy(client, runSql, 'data_unknown_setup');
+    await client.query(`
+      ALTER TABLE public.social_idempotency DISABLE TRIGGER ALL;
+      ALTER TABLE public.social_idempotency DROP CONSTRAINT social_idempotency_generic_target_kind_check;
+      UPDATE public.social_idempotency SET target_kind='unknown', target_id='eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
+      ALTER TABLE public.social_idempotency ENABLE TRIGGER ALL;
+    `);
+    await assertRejectionWithNoMutation(
+      client,
+      runSql,
+      'data_unknown',
+      'GENERIC_SOCIAL_A_GENERIC_COLUMN_SHAPE_MISMATCH'
+    );
+  });
+
+  await withDisposableDb('data_mis', LEGACY_FIXTURE, async ({ client, runSql }) => {
+    await applyGuardedHappy(client, runSql, 'data_mis_setup');
+    await client.query(`ALTER TABLE public.social_idempotency DISABLE TRIGGER ALL`);
+    await client.query(
+      `UPDATE public.social_idempotency SET target_id='ffffffff-ffff-4fff-8fff-ffffffffffff'`
+    );
+    await client.query(`ALTER TABLE public.social_idempotency ENABLE TRIGGER ALL`);
+    await assertRejectionWithNoMutation(
+      client,
+      runSql,
+      'data_mis',
+      'GENERIC_SOCIAL_A_GENERIC_COLUMN_SHAPE_MISMATCH'
+    );
+  });
+});
+
+// ─── D. Generic column shape (both tables) ───────────────────────────────────
+
+test('rehearsal generic column shape fail-closed', { concurrency: false }, async () => {
+  const kindShapes = [
+    ['kind_int_idem', `ALTER TABLE public.social_idempotency ADD COLUMN target_kind integer, ADD COLUMN target_id UUID;
+      ALTER TABLE public.social_audit_log ADD COLUMN target_kind VARCHAR(16), ADD COLUMN target_id UUID;`],
+    ['kind_v8_audit', `ALTER TABLE public.social_idempotency ADD COLUMN target_kind VARCHAR(16), ADD COLUMN target_id UUID;
+      ALTER TABLE public.social_audit_log ADD COLUMN target_kind VARCHAR(8), ADD COLUMN target_id UUID;`],
+    ['kind_nn_idem', `ALTER TABLE public.social_idempotency ADD COLUMN target_kind VARCHAR(16) NOT NULL, ADD COLUMN target_id UUID;
+      ALTER TABLE public.social_audit_log ADD COLUMN target_kind VARCHAR(16), ADD COLUMN target_id UUID;`],
+    ['kind_def_audit', `ALTER TABLE public.social_idempotency ADD COLUMN target_kind VARCHAR(16), ADD COLUMN target_id UUID;
+      ALTER TABLE public.social_audit_log ADD COLUMN target_kind VARCHAR(16) DEFAULT 'memory', ADD COLUMN target_id UUID;`],
+  ];
+  const idShapes = [
+    ['id_text_idem', `ALTER TABLE public.social_idempotency ADD COLUMN target_kind VARCHAR(16), ADD COLUMN target_id TEXT;
+      ALTER TABLE public.social_audit_log ADD COLUMN target_kind VARCHAR(16), ADD COLUMN target_id UUID;`],
+    ['id_nn_audit', `ALTER TABLE public.social_idempotency ADD COLUMN target_kind VARCHAR(16), ADD COLUMN target_id UUID;
+      ALTER TABLE public.social_audit_log ADD COLUMN target_kind VARCHAR(16), ADD COLUMN target_id UUID NOT NULL;`],
+    [
+      'id_def_idem',
+      `ALTER TABLE public.social_idempotency ADD COLUMN target_kind VARCHAR(16), ADD COLUMN target_id UUID DEFAULT 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+      ALTER TABLE public.social_audit_log ADD COLUMN target_kind VARCHAR(16), ADD COLUMN target_id UUID;`,
+    ],
+  ];
+  for (const [name, alter] of [...kindShapes, ...idShapes]) {
+    await rejectWithoutMigration(
+      name,
+      LEGACY_BASE + alter,
+      'GENERIC_SOCIAL_A_GENERIC_COLUMN_SHAPE_MISMATCH'
+    );
+  }
+});
+
+// ─── E. CHECK collision (post-state mutations) ───────────────────────────────
+
+test('rehearsal CHECK fixtures fail-closed', { concurrency: false }, async () => {
+  const mutations = [
+    [
+      'check_wrong_pair',
+      `ALTER TABLE public.social_audit_log DROP CONSTRAINT social_audit_log_generic_target_pair_check;
+       ALTER TABLE public.social_audit_log ADD CONSTRAINT social_audit_log_generic_target_pair_check CHECK (target_kind IS NOT NULL);`,
+    ],
+    [
+      'check_wrong_vocab',
+      `ALTER TABLE public.social_audit_log DROP CONSTRAINT social_audit_log_generic_target_kind_check;
+       ALTER TABLE public.social_audit_log ADD CONSTRAINT social_audit_log_generic_target_kind_check CHECK (target_kind IS NULL OR target_kind IN ('memory', 'something'));`,
+    ],
+    [
+      'check_not_valid',
+      `ALTER TABLE public.social_audit_log DROP CONSTRAINT social_audit_log_generic_target_pair_check;
+       ALTER TABLE public.social_audit_log ADD CONSTRAINT social_audit_log_generic_target_pair_check CHECK (((target_kind IS NULL) AND (target_id IS NULL)) OR ((target_kind IS NOT NULL) AND (target_id IS NOT NULL))) NOT VALID;`,
+    ],
+    [
+      'check_weak_semantics',
+      `ALTER TABLE public.social_audit_log DROP CONSTRAINT social_audit_log_generic_target_pair_check;
+       ALTER TABLE public.social_audit_log ADD CONSTRAINT social_audit_log_generic_target_pair_check CHECK (target_kind IS NULL OR target_id IS NULL OR target_kind IS NOT NULL OR target_id IS NOT NULL);`,
+    ],
+    [
+      'check_shadow',
+      `CREATE TABLE public.shadow_table (target_kind VARCHAR(16), target_id UUID);
+       ALTER TABLE public.shadow_table ADD CONSTRAINT social_audit_log_generic_target_pair_check CHECK (((target_kind IS NULL) AND (target_id IS NULL)) OR ((target_kind IS NOT NULL) AND (target_id IS NOT NULL)));`,
+    ],
+  ];
+  for (const [name, sql] of mutations) {
+    await withDisposableDb(`chk_${name}`, LEGACY_FIXTURE, async ({ client, runSql }) => {
+      await applyGuardedHappy(client, runSql, `${name}_setup`);
+      await client.query(sql);
+      await assertRejectionWithNoMutation(
+        client,
+        runSql,
+        name,
+        'GENERIC_SOCIAL_A_CHECK_DEFINITION_MISMATCH'
+      );
     });
-    assert.equal(afterUpd.rowFp, beforeUpd.rowFp);
-    pass('generic-social-a update mismatch preserve');
-  });
+  }
+
+  // Legacy state with stray A object → MIXED_STATE_REJECTED
+  await rejectWithoutMigration(
+    'legacy_stray_check',
+    LEGACY_BASE +
+      `ALTER TABLE public.social_idempotency ADD CONSTRAINT social_idempotency_generic_target_pair_check CHECK (true);`,
+    'GENERIC_SOCIAL_A_MIXED_STATE_REJECTED'
+  );
 });
 
-// ─── Fail-closed: missing / non-ordinary ─────────────────────────────────────
+// ─── F. Function collision ───────────────────────────────────────────────────
 
-test('generic-social-a missing tables fail closed', { concurrency: false }, async () => {
-  await withDisposableDb('miss_idem', null, async ({ client, runSql }) => {
-    await client.query(`
-      CREATE TABLE public.social_audit_log (
-        id UUID PRIMARY KEY,
-        actor_id VARCHAR(128) NOT NULL,
-        memory_id UUID NOT NULL,
-        action VARCHAR(64) NOT NULL,
-        outcome_code VARCHAR(20) NOT NULL,
-        request_key_hash VARCHAR(64),
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+test('rehearsal Function fixtures fail-closed', { concurrency: false }, async () => {
+  const mutations = [
+    [
+      'fn_lang_sql_overload',
+      `CREATE FUNCTION public.sync_social_idempotency_generic_target_from_legacy_memory(integer) RETURNS integer LANGUAGE sql AS $$SELECT $1;$$;`,
+    ],
+    [
+      'fn_overload_plpgsql',
+      `CREATE FUNCTION public.sync_social_idempotency_generic_target_from_legacy_memory(a integer) RETURNS integer LANGUAGE plpgsql AS $$BEGIN RETURN a; END;$$;`,
+    ],
+    [
+      'fn_wrong_body',
+      `CREATE OR REPLACE FUNCTION public.sync_social_idempotency_generic_target_from_legacy_memory() RETURNS trigger LANGUAGE plpgsql AS $$BEGIN NEW.target_kind := 'memory'; RETURN NEW; END;$$;`,
+    ],
+    [
+      'fn_early_return',
+      `CREATE OR REPLACE FUNCTION public.sync_social_idempotency_generic_target_from_legacy_memory() RETURNS trigger LANGUAGE plpgsql AS $$BEGIN RETURN NEW; END;$$;`,
+    ],
+    [
+      'fn_no_tree_reject',
+      `CREATE OR REPLACE FUNCTION public.sync_social_idempotency_generic_target_from_legacy_memory() RETURNS trigger LANGUAGE plpgsql AS $$BEGIN IF NEW.target_kind IS NULL THEN NEW.target_kind := 'memory'; NEW.target_id := NEW.target_memory_id; END IF; RETURN NEW; END;$$;`,
+    ],
+    [
+      'fn_missing_rejection',
+      `CREATE OR REPLACE FUNCTION public.sync_social_idempotency_generic_target_from_legacy_memory() RETURNS trigger LANGUAGE plpgsql AS $$BEGIN IF NEW.target_kind = 'tree' THEN RAISE EXCEPTION 'GENERIC_SOCIAL_A_IMMUTABLE_TREE_TARGET_REJECTED'; END IF; NEW.target_kind := 'memory'; NEW.target_id := NEW.target_memory_id; RETURN NEW; END;$$;`,
+    ],
+    [
+      'fn_secdef',
+      `CREATE OR REPLACE FUNCTION public.sync_social_idempotency_generic_target_from_legacy_memory() RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER AS $$BEGIN RETURN NEW; END;$$;`,
+    ],
+    [
+      'fn_volatility',
+      `CREATE OR REPLACE FUNCTION public.sync_social_idempotency_generic_target_from_legacy_memory() RETURNS trigger LANGUAGE plpgsql STABLE AS $$BEGIN RETURN NEW; END;$$;`,
+    ],
+    [
+      'fn_parallel',
+      `CREATE OR REPLACE FUNCTION public.sync_social_idempotency_generic_target_from_legacy_memory() RETURNS trigger LANGUAGE plpgsql PARALLEL SAFE AS $$BEGIN RETURN NEW; END;$$;`,
+    ],
+    [
+      'fn_ret_type',
+      `DROP TRIGGER trg_social_idempotency_sync_generic_target ON public.social_idempotency;
+       DROP FUNCTION public.sync_social_idempotency_generic_target_from_legacy_memory();
+       CREATE OR REPLACE FUNCTION public.sync_social_idempotency_generic_target_from_legacy_memory() RETURNS void LANGUAGE plpgsql AS $$BEGIN END;$$;`,
+    ],
+  ];
+  for (const [name, sql] of mutations) {
+    await withDisposableDb(`fn_${name}`, LEGACY_FIXTURE, async ({ client, runSql }) => {
+      await applyGuardedHappy(client, runSql, `${name}_setup`);
+      await client.query(sql);
+      await assertRejectionWithNoMutation(
+        client,
+        runSql,
+        name,
+        'GENERIC_SOCIAL_A_FUNCTION_DEFINITION_MISMATCH'
       );
-      CREATE TABLE public.lb_unrelated_marker (id text PRIMARY KEY, v text NOT NULL);
-      INSERT INTO public.lb_unrelated_marker VALUES ('u1', 'keep');
-    `);
-    const before = await getCatalogFingerprint(client);
-    const res = runSql(MIGRATION_A);
-    expectFail(res, 'miss_idem', 'migration');
-    await assertNoMutation(client, before);
-    pass('generic-social-a missing idempotency table');
-  });
+    });
+  }
+});
 
-  await withDisposableDb('miss_audit', null, async ({ client, runSql }) => {
-    await client.query(`
-      CREATE TABLE public.social_idempotency (
-        id UUID PRIMARY KEY,
-        actor_id VARCHAR(128) NOT NULL,
-        operation VARCHAR(64) NOT NULL,
-        idempotency_key VARCHAR(128) NOT NULL,
-        request_fingerprint VARCHAR(64) NOT NULL,
-        target_memory_id UUID NOT NULL,
-        result_id VARCHAR(128),
-        result_state VARCHAR(20) NOT NULL DEFAULT 'pending',
-        result_payload JSONB,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+// ─── G. Trigger collision ────────────────────────────────────────────────────
+
+test('rehearsal Trigger fixtures fail-closed', { concurrency: false }, async () => {
+  const mutations = [
+    [
+      'tg_wrong_fn',
+      `DROP TRIGGER trg_social_idempotency_sync_generic_target ON public.social_idempotency;
+       CREATE TRIGGER trg_social_idempotency_sync_generic_target BEFORE INSERT OR UPDATE ON public.social_idempotency FOR EACH ROW EXECUTE FUNCTION public.sync_social_audit_generic_target_from_legacy_memory();`,
+    ],
+    [
+      'tg_after',
+      `DROP TRIGGER trg_social_idempotency_sync_generic_target ON public.social_idempotency;
+       CREATE TRIGGER trg_social_idempotency_sync_generic_target AFTER INSERT OR UPDATE ON public.social_idempotency FOR EACH ROW EXECUTE FUNCTION public.sync_social_idempotency_generic_target_from_legacy_memory();`,
+    ],
+    [
+      'tg_before_insert',
+      `DROP TRIGGER trg_social_idempotency_sync_generic_target ON public.social_idempotency;
+       CREATE TRIGGER trg_social_idempotency_sync_generic_target BEFORE INSERT ON public.social_idempotency FOR EACH ROW EXECUTE FUNCTION public.sync_social_idempotency_generic_target_from_legacy_memory();`,
+    ],
+    [
+      'tg_update_only',
+      `DROP TRIGGER trg_social_idempotency_sync_generic_target ON public.social_idempotency;
+       CREATE TRIGGER trg_social_idempotency_sync_generic_target BEFORE UPDATE ON public.social_idempotency FOR EACH ROW EXECUTE FUNCTION public.sync_social_idempotency_generic_target_from_legacy_memory();`,
+    ],
+    [
+      'tg_statement',
+      `DROP TRIGGER trg_social_idempotency_sync_generic_target ON public.social_idempotency;
+       CREATE TRIGGER trg_social_idempotency_sync_generic_target BEFORE INSERT OR UPDATE ON public.social_idempotency FOR EACH STATEMENT EXECUTE FUNCTION public.sync_social_idempotency_generic_target_from_legacy_memory();`,
+    ],
+    ['tg_disabled', `ALTER TABLE public.social_idempotency DISABLE TRIGGER trg_social_idempotency_sync_generic_target;`],
+    [
+      'tg_always',
+      `ALTER TABLE public.social_idempotency ENABLE ALWAYS TRIGGER trg_social_idempotency_sync_generic_target;`,
+    ],
+    [
+      'tg_replica',
+      `ALTER TABLE public.social_idempotency ENABLE REPLICA TRIGGER trg_social_idempotency_sync_generic_target;`,
+    ],
+    [
+      'tg_delete',
+      `DROP TRIGGER trg_social_idempotency_sync_generic_target ON public.social_idempotency;
+       CREATE TRIGGER trg_social_idempotency_sync_generic_target BEFORE INSERT OR UPDATE OR DELETE ON public.social_idempotency FOR EACH ROW EXECUTE FUNCTION public.sync_social_idempotency_generic_target_from_legacy_memory();`,
+    ],
+    [
+      'tg_wrong_relation',
+      `DROP TRIGGER trg_social_audit_log_sync_generic_target ON public.social_audit_log;
+       CREATE TRIGGER trg_social_audit_log_sync_generic_target BEFORE INSERT OR UPDATE ON public.social_idempotency FOR EACH ROW EXECUTE FUNCTION public.sync_social_audit_generic_target_from_legacy_memory();`,
+    ],
+  ];
+  for (const [name, sql] of mutations) {
+    await withDisposableDb(`tg_${name}`, LEGACY_FIXTURE, async ({ client, runSql }) => {
+      await applyGuardedHappy(client, runSql, `${name}_setup`);
+      await client.query(sql);
+      await assertRejectionWithNoMutation(
+        client,
+        runSql,
+        name,
+        'GENERIC_SOCIAL_A_TRIGGER_DEFINITION_MISMATCH'
       );
-      CREATE TABLE public.lb_unrelated_marker (id text PRIMARY KEY, v text NOT NULL);
-      INSERT INTO public.lb_unrelated_marker VALUES ('u1', 'keep');
-    `);
-    const before = await getCatalogFingerprint(client);
-    const res = runSql(MIGRATION_A);
-    expectFail(res, 'miss_audit', 'migration');
-    await assertNoMutation(client, before);
-    pass('generic-social-a missing audit table');
-  });
+    });
+  }
 });
 
-test('generic-social-a non-ordinary relation fail closed', { concurrency: false }, async () => {
-  await withDisposableDb('view_idem', null, async ({ client, runSql }) => {
+// ─── H. Mixed-table unsupported state ────────────────────────────────────────
+
+test('rehearsal mixed table states fail-closed', { concurrency: false }, async () => {
+  await rejectWithoutMigration(
+    'mixed_audit_partial',
+    LEGACY_BASE + `ALTER TABLE public.social_audit_log ADD COLUMN target_kind VARCHAR(16);`,
+    'GENERIC_SOCIAL_A_GENERIC_COLUMN_PARTIAL_STATE'
+  );
+  await rejectWithoutMigration(
+    'mixed_idem_exact_post',
+    LEGACY_BASE +
+      `ALTER TABLE public.social_idempotency ADD COLUMN target_kind VARCHAR(16), ADD COLUMN target_id UUID;`,
+    'GENERIC_SOCIAL_A_MIXED_STATE_REJECTED'
+  );
+
+  await withDisposableDb('mixed_audit_wrong_shape', LEGACY_FIXTURE, async ({ client, runSql }) => {
+    await applyGuardedHappy(client, runSql, 'mixed_shape_setup');
+    // Keep idempotency exact; rebuild audit generic columns with wrong shape.
     await client.query(`
-      CREATE TABLE public.social_audit_log (
-        id UUID PRIMARY KEY,
-        actor_id VARCHAR(128) NOT NULL,
-        memory_id UUID NOT NULL,
-        action VARCHAR(64) NOT NULL,
-        outcome_code VARCHAR(20) NOT NULL,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-      );
-      CREATE VIEW public.social_idempotency AS
-        SELECT 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'::uuid AS id;
-      CREATE TABLE public.lb_unrelated_marker (id text PRIMARY KEY, v text NOT NULL);
-      INSERT INTO public.lb_unrelated_marker VALUES ('u1', 'keep');
-    `);
-    const before = await getCatalogFingerprint(client);
-    const res = runSql(MIGRATION_A);
-    // to_regclass finds views; ALTER TABLE on view fails → nonzero
-    expectFail(res, 'view_idem', 'migration');
-    await assertNoMutation(client, before);
-    pass('generic-social-a view relation fail');
-  });
-});
-
-// ─── Fail-closed: legacy schema mismatch ─────────────────────────────────────
-
-test('generic-social-a legacy target missing fail closed', { concurrency: false }, async () => {
-  await withDisposableDb('no_legacy_col', null, async ({ client, runSql }) => {
-    await client.query(`
-      CREATE TABLE public.social_idempotency (
-        id UUID PRIMARY KEY,
-        actor_id VARCHAR(128) NOT NULL,
-        operation VARCHAR(64) NOT NULL,
-        idempotency_key VARCHAR(128) NOT NULL,
-        request_fingerprint VARCHAR(64) NOT NULL,
-        result_state VARCHAR(20) NOT NULL DEFAULT 'pending',
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-      );
-      CREATE TABLE public.social_audit_log (
-        id UUID PRIMARY KEY,
-        actor_id VARCHAR(128) NOT NULL,
-        memory_id UUID NOT NULL,
-        action VARCHAR(64) NOT NULL,
-        outcome_code VARCHAR(20) NOT NULL,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-      );
-      CREATE TABLE public.lb_unrelated_marker (id text PRIMARY KEY, v text NOT NULL);
-      INSERT INTO public.lb_unrelated_marker VALUES ('u1', 'keep');
-    `);
-    const before = await getCatalogFingerprint(client);
-    const res = runSql(MIGRATION_A);
-    expectFail(res, 'no_legacy_col', 'migration');
-    await assertNoMutation(client, before);
-    pass('generic-social-a legacy column missing');
-  });
-});
-
-// ─── Fail-closed: pre-existing bad generic data ──────────────────────────────
-
-test('generic-social-a pre-existing partial pair fail closed', { concurrency: false }, async () => {
-  await withDisposableDb('partial_data', LEGACY_FIXTURE, async ({ client, runSql }) => {
-    // Pre-add columns and create partial pair without running Migration A CHECKs yet.
-    await client.query(`
-      ALTER TABLE public.social_idempotency
-        ADD COLUMN target_kind VARCHAR(16),
-        ADD COLUMN target_id UUID;
-      UPDATE public.social_idempotency
-         SET target_kind = 'memory', target_id = NULL;
-    `);
-    const before = await getCatalogFingerprint(client);
-    const res = runSql(MIGRATION_A);
-    // Backfill only fills where BOTH null; partial remains → post-validation fails
-    expectFail(res, 'partial_data', 'migration');
-    await assertNoMutation(client, before);
-    pass('generic-social-a partial data fail');
-  });
-});
-
-test('generic-social-a pre-existing tree pair fail closed', { concurrency: false }, async () => {
-  await withDisposableDb('tree_data', LEGACY_FIXTURE, async ({ client, runSql }) => {
-    await client.query(`
-      ALTER TABLE public.social_idempotency
-        ADD COLUMN target_kind VARCHAR(16),
-        ADD COLUMN target_id UUID;
-      UPDATE public.social_idempotency
-         SET target_kind = 'tree',
-             target_id = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
-    `);
-    const before = await getCatalogFingerprint(client);
-    const res = runSql(MIGRATION_A);
-    expectFail(res, 'tree_data', 'migration');
-    await assertNoMutation(client, before);
-    pass('generic-social-a tree data fail');
-  });
-});
-
-test('generic-social-a pre-existing memory mismatch fail closed', { concurrency: false }, async () => {
-  await withDisposableDb('mis_data', LEGACY_FIXTURE, async ({ client, runSql }) => {
-    await client.query(`
-      ALTER TABLE public.social_idempotency
-        ADD COLUMN target_kind VARCHAR(16),
-        ADD COLUMN target_id UUID;
-      UPDATE public.social_idempotency
-         SET target_kind = 'memory',
-             target_id = 'ffffffff-ffff-4fff-8fff-ffffffffffff';
-    `);
-    const before = await getCatalogFingerprint(client);
-    const res = runSql(MIGRATION_A);
-    expectFail(res, 'mis_data', 'migration');
-    await assertNoMutation(client, before);
-    pass('generic-social-a mismatch data fail');
-  });
-});
-
-// ─── Fail-closed: wrong pre-existing generic schema ──────────────────────────
-
-test('generic-social-a wrong target_kind type fail closed', { concurrency: false }, async () => {
-  await withDisposableDb('bad_kind_type', LEGACY_FIXTURE, async ({ client, runSql }) => {
-    await client.query(`
-      ALTER TABLE public.social_idempotency ADD COLUMN target_kind integer;
-      ALTER TABLE public.social_idempotency ADD COLUMN target_id UUID;
-    `);
-    const before = await getCatalogFingerprint(client);
-    const res = runSql(MIGRATION_A);
-    // ADD IF NOT EXISTS skips; backfill SET target_kind='memory' may fail type or validation
-    expectFail(res, 'bad_kind_type', 'migration');
-    await assertNoMutation(client, before);
-    pass('generic-social-a wrong kind type');
-  });
-});
-
-// ─── Mixed transactional: one table OK shape, other unsupported ──────────────
-
-test('generic-social-a mixed table unsupported preserves pre-state', { concurrency: false }, async () => {
-  await withDisposableDb('mixed_tables', LEGACY_FIXTURE, async ({ client, runSql }) => {
-    // Corrupt audit only: wrong type generic column pre-present.
-    await client.query(`
-      ALTER TABLE public.social_audit_log ADD COLUMN target_kind boolean;
+      DROP TRIGGER IF EXISTS trg_social_audit_log_sync_generic_target ON public.social_audit_log;
+      ALTER TABLE public.social_audit_log
+        DROP CONSTRAINT IF EXISTS social_audit_log_generic_target_pair_check,
+        DROP CONSTRAINT IF EXISTS social_audit_log_generic_target_kind_check;
+      ALTER TABLE public.social_audit_log DROP COLUMN target_kind;
+      ALTER TABLE public.social_audit_log DROP COLUMN target_id;
+      ALTER TABLE public.social_audit_log ADD COLUMN target_kind integer;
       ALTER TABLE public.social_audit_log ADD COLUMN target_id UUID;
     `);
     const before = await getCatalogFingerprint(client);
-    const res = runSql(MIGRATION_A);
-    expectFail(res, 'mixed_tables', 'migration');
-    // Transaction rollback → idempotency also unchanged (no persistent ADD).
+    await assertRejectionWithNoMutation(
+      client,
+      runSql,
+      'mixed_audit_wrong_shape',
+      'GENERIC_SOCIAL_A_GENERIC_COLUMN_SHAPE_MISMATCH'
+    );
+    // Supported table (idem) must not receive further mutation from rejection path
+    assert.equal(await tableExistsOrdinary(client, TABLES.idem), true);
     await assertNoMutation(client, before);
-    const names = await getColumnNames(client, TABLES.idem);
-    assert.equal(names.includes('target_kind'), false);
-    pass('generic-social-a mixed transactional preserve');
   });
 });
 
-// ─── Migration B must not be invoked by this suite ───────────────────────────
+// ─── Postcondition independent evidence ──────────────────────────────────────
 
-test('generic-social-a suite never executes Migration B path', () => {
+test('rehearsal postcondition rejects mutated states', { concurrency: false }, async () => {
+  const mutations = [
+    [
+      'post_wrong_check',
+      `ALTER TABLE public.social_idempotency DROP CONSTRAINT social_idempotency_generic_target_pair_check;
+       ALTER TABLE public.social_idempotency ADD CONSTRAINT social_idempotency_generic_target_pair_check CHECK (target_kind IS NOT NULL);`,
+    ],
+    [
+      'post_unvalidated_check',
+      `ALTER TABLE public.social_idempotency DROP CONSTRAINT social_idempotency_generic_target_pair_check;
+       ALTER TABLE public.social_idempotency ADD CONSTRAINT social_idempotency_generic_target_pair_check CHECK (((target_kind IS NULL) AND (target_id IS NULL)) OR ((target_kind IS NOT NULL) AND (target_id IS NOT NULL))) NOT VALID;`,
+    ],
+    [
+      'post_check_shadow',
+      `CREATE TABLE public.shadow_table_post (target_kind VARCHAR(16), target_id UUID);
+       ALTER TABLE public.shadow_table_post ADD CONSTRAINT social_idempotency_generic_target_pair_check CHECK (((target_kind IS NULL) AND (target_id IS NULL)) OR ((target_kind IS NOT NULL) AND (target_id IS NOT NULL)));`,
+    ],
+    [
+      'post_fn_lang_sql_overload',
+      `CREATE FUNCTION public.sync_social_idempotency_generic_target_from_legacy_memory(integer) RETURNS integer LANGUAGE sql AS $$SELECT $1;$$;`,
+    ],
+    [
+      'post_fn_overload_plpgsql',
+      `CREATE FUNCTION public.sync_social_idempotency_generic_target_from_legacy_memory(a integer) RETURNS integer LANGUAGE plpgsql AS $$BEGIN RETURN a; END;$$;`,
+    ],
+    [
+      'post_wrong_function_body',
+      `CREATE OR REPLACE FUNCTION public.sync_social_idempotency_generic_target_from_legacy_memory() RETURNS trigger LANGUAGE plpgsql AS $$BEGIN RETURN NEW; END;$$;`,
+    ],
+    [
+      'post_sec_def_function',
+      `CREATE OR REPLACE FUNCTION public.sync_social_idempotency_generic_target_from_legacy_memory() RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER AS $$BEGIN NEW.target_kind := 'memory'; NEW.target_id := NEW.target_memory_id; RETURN NEW; END;$$;`,
+    ],
+    [
+      'post_fn_missing_rejection',
+      `CREATE OR REPLACE FUNCTION public.sync_social_idempotency_generic_target_from_legacy_memory() RETURNS trigger LANGUAGE plpgsql AS $$BEGIN IF NEW.target_kind = 'tree' THEN RAISE EXCEPTION 'GENERIC_SOCIAL_A_IMMUTABLE_TREE_TARGET_REJECTED'; END IF; NEW.target_kind := 'memory'; NEW.target_id := NEW.target_memory_id; RETURN NEW; END;$$;`,
+    ],
+    ['post_tg_disabled', `ALTER TABLE public.social_idempotency DISABLE TRIGGER trg_social_idempotency_sync_generic_target;`],
+    [
+      'post_tg_always',
+      `ALTER TABLE public.social_idempotency ENABLE ALWAYS TRIGGER trg_social_idempotency_sync_generic_target;`,
+    ],
+    [
+      'post_tg_replica',
+      `ALTER TABLE public.social_idempotency ENABLE REPLICA TRIGGER trg_social_idempotency_sync_generic_target;`,
+    ],
+    [
+      'post_tg_insert_only',
+      `DROP TRIGGER trg_social_idempotency_sync_generic_target ON public.social_idempotency;
+       CREATE TRIGGER trg_social_idempotency_sync_generic_target BEFORE INSERT ON public.social_idempotency FOR EACH ROW EXECUTE FUNCTION public.sync_social_idempotency_generic_target_from_legacy_memory();`,
+    ],
+    [
+      'post_wrong_trigger_function',
+      `DROP TRIGGER trg_social_idempotency_sync_generic_target ON public.social_idempotency;
+       CREATE TRIGGER trg_social_idempotency_sync_generic_target BEFORE INSERT OR UPDATE ON public.social_idempotency FOR EACH ROW EXECUTE FUNCTION public.sync_social_audit_generic_target_from_legacy_memory();`,
+    ],
+    ['post_target_kind_default', `ALTER TABLE public.social_idempotency ALTER COLUMN target_kind SET DEFAULT 'memory';`],
+    ['post_target_id_not_null', `ALTER TABLE public.social_idempotency ALTER COLUMN target_id SET NOT NULL;`],
+    ['post_wrong_generic_type', `ALTER TABLE public.social_idempotency ALTER COLUMN target_kind TYPE VARCHAR(32);`],
+  ];
+
+  for (const [name, sql] of mutations) {
+    await withDisposableDb(`post_${name}`, LEGACY_FIXTURE, async ({ client, runSql }) => {
+      await applyGuardedHappy(client, runSql, `${name}_setup`);
+      await client.query(sql);
+      const mutatedFp = await getCatalogFingerprint(client);
+      const beforeRowsI = await getFullRowFingerprint(client, 'idem');
+      const beforeRowsA = await getFullRowFingerprint(client, 'audit');
+      const post = runSql(POSTCOND);
+      expectFail(post, name, 'postcondition');
+      assertCategory(post, 'GENERIC_SOCIAL_A_POSTCONDITION_FAILED');
+      assert.ok(fingerprintEqual(mutatedFp, await getCatalogFingerprint(client)), 'postcondition must not mutate');
+      assert.equal((await getFullRowFingerprint(client, 'idem')).rowFp, beforeRowsI.rowFp);
+      assert.equal((await getFullRowFingerprint(client, 'audit')).rowFp, beforeRowsA.rowFp);
+      pass(`rehearsal post reject ${name}`);
+    });
+  }
+});
+
+// ─── Suite never executes Migration B ────────────────────────────────────────
+
+test('rehearsal suite never executes Migration B path', () => {
   const fs = require('node:fs');
   const src = fs.readFileSync(__filename, 'utf8');
-  assert.equal(src.includes('migration-b-generic-social-targets-cutover.sql'), true); // constant only
-  // Ensure runSql is never called with MIGRATION_B
-  assert.equal(/runSql\s*\(\s*MIGRATION_B\s*\)/.test(src), false);
-  assert.ok(require('node:fs').existsSync(MIGRATION_B));
-  pass('generic-social-a no Migration B execution');
+  assert.ok(fs.existsSync(MIG_B));
+  assert.equal(/(?:^|[^=])\s*runSql\s*\(\s*MIG_B\s*\)/m.test(src), false);
+  assert.match(src, /runGuardedSequence/);
+  assert.match(src, /runSql\(PREFLIGHT\)/);
+  assert.match(src, /runSql\(MIG_A\)/);
+  assert.match(src, /runSql\(POSTCOND\)/);
+  assert.equal(/process\.env\.DATABASE_URL/i.test(src), false);
+  pass('rehearsal no Migration B');
 });
