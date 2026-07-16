@@ -388,6 +388,9 @@
     right: auto !important;
     top: auto !important;
     z-index: auto !important;
+    /* Defeat legacy mobile off-canvas visibility at <=768px cascade. */
+    visibility: visible !important;
+    pointer-events: auto !important;
     overflow-x: hidden;
     overflow-y: auto;
   }
@@ -421,23 +424,45 @@
     z-index: auto !important;
     border-left: none !important;
     transition: none !important;
+    /* #3567: defeat editor-mobile-panel-hierarchy closed-state visibility:hidden */
+    visibility: visible !important;
+    pointer-events: auto !important;
+    opacity: 1 !important;
   }
 
   .editor-layout:has(.public-viewer-sidebar[data-appreciation-layout="tree-scope-rail"]) > .detail-panel.open,
   .editor-layout:has(.public-viewer-sidebar[data-appreciation-layout="tree-scope-rail"]) > .detail-panel.is-mobile-panel-open {
     transform: none !important;
+    visibility: visible !important;
   }
 }
 
+/*
+ * #3567: mobile-panel-hierarchy.css loads after this file and sets
+ * .sidebar/.detail-panel { visibility: hidden } at max-width:768px.
+ * Public stacked layout must not require .is-mobile-panel-open.
+ * Owner-only layouts are intentionally excluded (no public-viewer tree-scope rail).
+ */
 @media (max-width: 768px) {
+  .editor-layout:has(.public-viewer-sidebar[data-appreciation-layout="tree-scope-rail"]) > .public-viewer-sidebar[data-appreciation-layout="tree-scope-rail"],
   .editor-layout:has(.public-viewer-sidebar[data-appreciation-layout="tree-scope-rail"]) > .detail-panel,
-  .editor-layout:has(.public-viewer-sidebar[data-appreciation-layout="tree-scope-rail"]) > #detailPanel {
+  .editor-layout:has(.public-viewer-sidebar[data-appreciation-layout="tree-scope-rail"]) > #detailPanel,
+  body.editor-readonly .editor-layout:has(.public-viewer-sidebar[data-appreciation-layout="tree-scope-rail"]) > .detail-panel {
     position: relative !important;
     transform: none !important;
     width: 100% !important;
     max-width: 100% !important;
     height: auto !important;
     z-index: auto !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+    opacity: 1 !important;
+  }
+
+  /* Public stack does not use owner mobile panel chrome. */
+  .editor-layout:has(.public-viewer-sidebar[data-appreciation-layout="tree-scope-rail"]) .editor-mobile-panel-controls,
+  .editor-layout:has(.public-viewer-sidebar[data-appreciation-layout="tree-scope-rail"]) .editor-mobile-panel-backdrop {
+    display: none !important;
   }
 }
 

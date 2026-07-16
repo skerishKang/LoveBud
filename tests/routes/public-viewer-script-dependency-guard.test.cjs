@@ -127,7 +127,7 @@ test('public viewer loads social split scripts before detail-ui', () => {
 test('view.html loads editor.css with #3419 cache version', () => {
   const html = fs.readFileSync('pages/view.html', 'utf8');
   assert.ok(
-    html.includes('../css/editor.css?v=20260716-3562-1'),
+    html.includes('../css/editor.css?v=20260716-3567-1'),
     'view.html must load editor.css with #3419 cache version'
   );
 });
