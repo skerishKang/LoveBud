@@ -215,6 +215,18 @@ test('pure grant mapper: PUBLIC, unmapped, unknown privilege', () => {
       ),
     (e) => e.category === 'CATALOG_ADAPTER_CATALOG_SHAPE_INVALID'
   );
+
+  // PG17 MAINTAIN is known non-fingerprint; must not fail and must not appear.
+  const withMaintain = adapter.mapGrantRows(
+    [
+      { grantee: 'PUBLIC', privilege_type: 'SELECT', is_grantable: false },
+      { grantee: 'PUBLIC', privilege_type: 'MAINTAIN', is_grantable: false },
+    ],
+    roleMap
+  );
+  assert.deepEqual(withMaintain, [
+    { grantee_class: 'PUBLIC', privileges: ['SELECT'], grantable: false },
+  ]);
 });
 
 test('shuffled catalog rows produce identical canonical metadata', () => {

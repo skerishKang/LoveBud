@@ -76,6 +76,8 @@ const PRIVILEGE_MAP = Object.freeze({
   REFERENCES: 'REFERENCES',
   TRIGGER: 'TRIGGER',
 });
+// PostgreSQL 17+ ACL privileges outside the fingerprint contract (not silent "any unknown").
+const NON_FINGERPRINT_PG_PRIVILEGES = new Set(['MAINTAIN']);
 
 /** Repository-owned query constants only. */
 const Q = Object.freeze({
@@ -326,11 +328,19 @@ function mapPolicyCommand(polcmd) {
   }
 }
 
+/**
+ * Map ACL privilege into fingerprint contract privilege.
+ * Returns null for known non-fingerprint PG privileges (e.g. MAINTAIN).
+ * Fails closed on truly unknown privilege strings.
+ */
 function mapPrivilegeType(priv) {
-  if (typeof priv !== 'string' || !PRIVILEGE_MAP[priv]) {
+  if (typeof priv !== 'string' || !priv) {
     fail(ADAPTER_FAILURE.CATALOG_ADAPTER_CATALOG_SHAPE_INVALID, { field: 'privilege' });
   }
-  return PRIVILEGE_MAP[priv];
+  const key = priv.toUpperCase();
+  if (PRIVILEGE_MAP[key]) return PRIVILEGE_MAP[key];
+  if (NON_FINGERPRINT_PG_PRIVILEGES.has(key)) return null;
+  fail(ADAPTER_FAILURE.CATALOG_ADAPTER_CATALOG_SHAPE_INVALID, { field: 'privilege' });
 }
 
 function mapGranteeToClass(grantee, roleMap) {
@@ -557,6 +567,7 @@ function mapGrantRows(rows, roleMap) {
   const buckets = new Map();
   for (const row of rows) {
     const priv = mapPrivilegeType(row.privilege_type);
+    if (priv === null) continue; // known non-fingerprint PG privilege only
     const granteeClass = mapGranteeToClass(row.grantee, roleMap);
     const grantable = row.is_grantable === true || String(row.is_grantable).toUpperCase() === 'YES';
     const key = `${granteeClass}|${grantable ? '1' : '0'}`;
