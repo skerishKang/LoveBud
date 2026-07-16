@@ -521,6 +521,4 @@ module.exports = {
   checkProhibitedFields,
   buildCollectionReceipt,
   serializeCollectionReceipt,
-  // Export WeakSet for testing only
-  _receiptBrand,
 };

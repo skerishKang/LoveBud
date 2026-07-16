@@ -40,6 +40,7 @@ const FAILURE = Object.freeze({
   ADOPTION_ATTESTATION_PATH_INVALID: 'ADOPTION_ATTESTATION_PATH_INVALID',
   ADOPTION_ATTESTATION_BOUNDS_EXCEEDED: 'ADOPTION_ATTESTATION_BOUNDS_EXCEEDED',
   ADOPTION_ATTESTATION_UNATTESTED: 'ADOPTION_ATTESTATION_UNATTESTED',
+  ADOPTION_ATTESTATION_VALUE_INVALID: 'ADOPTION_ATTESTATION_VALUE_INVALID',
 });
 
 const GATE = Object.freeze({
@@ -910,7 +911,16 @@ function validateAdoptionAttestationEvidence(evidence, binding, contract) {
 /**
  * Build a prepared UNATTESTED attestation draft for Production-readonly collection.
  *
- * Takes a preparedPlan (from buildPreparedCollectionPlan) for fixed field values.
+ * Takes a single options argument — NOT destructuring.
+ * Validates all keys via Reflect.ownKeys + Object.getOwnPropertyDescriptors
+ * BEFORE reading any value. Rejects unknown keys including validatePlanFn.
+ *
+ * Accepts exactly four top-level keys:
+ *   - preparedPlan
+ *   - migrationManifest
+ *   - expectedSchemaCandidate
+ *   - catalogEvidence
+ *
  * Prepared plan validated via MODULE-OWNED validatePreparedCollectionPlan —
  * caller CANNOT inject validatePlanFn.
  *
@@ -934,15 +944,49 @@ function validateAdoptionAttestationEvidence(evidence, binding, contract) {
  *
  * No database, network, environment fallback, or file write.
  */
-function buildPreparedUnattestedAttestationDraft({
-  preparedPlan,
-  // NOTE: No validatePlanFn parameter — module-owned validator only
-  migrationManifest,
-  expectedSchemaCandidate,
-  catalogEvidence,
-}) {
-  // ── Reject call-injected validatePlanFn (unknown key) ──
-  // (Already rejected by destructuring — validatePlanFn is not destructured)
+function buildPreparedUnattestedAttestationDraft(options) {
+  // ── Validate options is non-null plain object ──
+  if (!options || typeof options !== 'object' || Array.isArray(options)) {
+    fail(FAILURE.ADOPTION_ATTESTATION_INPUT_INVALID, { field: 'options' });
+  }
+  if (Object.getPrototypeOf(options) !== Object.prototype) {
+    fail(FAILURE.ADOPTION_ATTESTATION_VALUE_INVALID);
+  }
+
+  // ── Validate top-level keys (Reflect.ownKeys + descriptors, no value read yet) ──
+  const ALLOWED_KEYS = new Set([
+    'preparedPlan',
+    'migrationManifest',
+    'expectedSchemaCandidate',
+    'catalogEvidence',
+  ]);
+
+  const ownKeys = Reflect.ownKeys(options);
+  const descriptors = Object.getOwnPropertyDescriptors(options);
+
+  for (const key of ownKeys) {
+    // Reject symbol keys
+    if (typeof key === 'symbol') fail(FAILURE.ADOPTION_ATTESTATION_VALUE_INVALID);
+    // Reject non-string keys
+    if (typeof key !== 'string' || !key) fail(FAILURE.ADOPTION_ATTESTATION_VALUE_INVALID);
+    // Reject accessor descriptors (get or set) without invoking
+    const desc = descriptors[key];
+    if (desc && (typeof desc.get === 'function' || typeof desc.set === 'function')) {
+      fail(FAILURE.ADOPTION_ATTESTATION_VALUE_INVALID);
+    }
+    // Reject non-enumerable fields
+    if (desc && !desc.enumerable) fail(FAILURE.ADOPTION_ATTESTATION_VALUE_INVALID);
+    // Reject unknown key (including validatePlanFn)
+    if (!ALLOWED_KEYS.has(key)) {
+      fail(FAILURE.ADOPTION_ATTESTATION_UNKNOWN_FIELD, { field: key });
+    }
+  }
+
+  // ── All keys validated — now safely read values ──
+  const preparedPlan = options.preparedPlan;
+  const migrationManifest = options.migrationManifest;
+  const expectedSchemaCandidate = options.expectedSchemaCandidate;
+  const catalogEvidence = options.catalogEvidence;
 
   // ── Step 1: Validate prepared plan via MODULE-OWNED trusted validator ──
   const validated = validatePreparedCollectionPlan(preparedPlan);
@@ -996,13 +1040,9 @@ function buildPreparedUnattestedAttestationDraft({
   const expectedDigest = computeObjectDigest(expectedSchemaCandidate);
   const catalogDigest = computeObjectDigest(catalogEvidence);
 
-  // ── applied_migrations from canonical manifest only — strict validation ──
-  const MIGRATION_ID_PATTERN = /^\d{14}_[a-z0-9]+(?:-[a-z0-9]+)*$/;
-  const SHA256_DIGEST = /^sha256:[a-f0-9]{64}$/;
-
+  // ── applied_migrations from canonical manifest only ──
   let migrations = [];
   if (migrationManifest && migrationManifest.status !== 'ADOPTION_REQUIRED') {
-    // Already validated above — extract records
     migrations = migrationManifest.migrations.map((item) => ({
       id: item.id,
       checksum: item.checksum,

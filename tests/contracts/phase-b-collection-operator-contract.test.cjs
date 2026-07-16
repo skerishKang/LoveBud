@@ -178,17 +178,108 @@ describe('Phase B operator collection receipt core', () => {
     }, /RECEIPT_INPUT_INVALID/);
   });
 
+  it('buildPreparedUnattestedAttestationDraft rejects validatePlanFn as unknown key', () => {
+    const plan = buildRealValidatedPlan();
+    // validatePlanFn is an unknown key — should be rejected before any value read
+    assert.throws(() => attestationCore.buildPreparedUnattestedAttestationDraft({
+      preparedPlan: plan,
+      validatePlanFn: (p) => ({ ok: true, plan: p }),
+      migrationManifest: SYNTHETIC_CANONICAL,
+      expectedSchemaCandidate: buildTestCandidate(),
+      catalogEvidence: SYNTHETIC_EVIDENCE,
+    }), (err) => {
+      assert.equal(err.category, 'ADOPTION_ATTESTATION_UNKNOWN_FIELD');
+      return true;
+    });
+  });
+
+  it('buildPreparedUnattestedAttestationDraft rejects arbitrary unknown key', () => {
+    const plan = buildRealValidatedPlan();
+    assert.throws(() => attestationCore.buildPreparedUnattestedAttestationDraft({
+      preparedPlan: plan,
+      someRandomKey: 'value',
+      migrationManifest: SYNTHETIC_CANONICAL,
+      expectedSchemaCandidate: buildTestCandidate(),
+      catalogEvidence: SYNTHETIC_EVIDENCE,
+    }), (err) => {
+      assert.equal(err.category, 'ADOPTION_ATTESTATION_UNKNOWN_FIELD');
+      return true;
+    });
+  });
+
+  it('buildPreparedUnattestedAttestationDraft rejects symbol key', () => {
+    const plan = buildRealValidatedPlan();
+    assert.throws(() => attestationCore.buildPreparedUnattestedAttestationDraft({
+      preparedPlan: plan,
+      [Symbol('test')]: 1,
+      migrationManifest: SYNTHETIC_CANONICAL,
+      expectedSchemaCandidate: buildTestCandidate(),
+      catalogEvidence: SYNTHETIC_EVIDENCE,
+    }), (err) => {
+      assert.equal(err.category, 'ADOPTION_ATTESTATION_VALUE_INVALID');
+      return true;
+    });
+  });
+
+  it('buildPreparedUnattestedAttestationDraft rejects getter on preparedPlan without invoking', () => {
+    const plan = buildRealValidatedPlan();
+    let getterCalls = 0;
+    const opts = {};
+    Object.defineProperty(opts, 'preparedPlan', {
+      enumerable: true,
+      get() { getterCalls += 1; return plan; },
+    });
+    opts.migrationManifest = SYNTHETIC_CANONICAL;
+    opts.expectedSchemaCandidate = buildTestCandidate();
+    opts.catalogEvidence = SYNTHETIC_EVIDENCE;
+    assert.throws(() => attestationCore.buildPreparedUnattestedAttestationDraft(opts), (err) => {
+      assert.equal(err.category, 'ADOPTION_ATTESTATION_VALUE_INVALID');
+      assert.equal(getterCalls, 0, 'getter on preparedPlan must not be invoked');
+      return true;
+    });
+  });
+
+  it('buildPreparedUnattestedAttestationDraft rejects getter on validatePlanFn without invoking', () => {
+    let getterCalls = 0;
+    const opts = { preparedPlan: buildRealValidatedPlan(), migrationManifest: SYNTHETIC_CANONICAL, expectedSchemaCandidate: buildTestCandidate(), catalogEvidence: SYNTHETIC_EVIDENCE };
+    Object.defineProperty(opts, 'validatePlanFn', {
+      enumerable: true,
+      get() { getterCalls += 1; return (p) => ({ ok: true, plan: p }); },
+    });
+    // The descriptor check catches the accessor first → VALUE_INVALID
+    assert.throws(() => attestationCore.buildPreparedUnattestedAttestationDraft(opts), (err) => {
+      assert.equal(err.category, 'ADOPTION_ATTESTATION_VALUE_INVALID');
+      assert.equal(getterCalls, 0, 'getter on validatePlanFn must not be invoked');
+      return true;
+    });
+  });
+
+  it('buildPreparedUnattestedAttestationDraft rejects non-enumerable field', () => {
+    const opts = {};
+    Object.defineProperty(opts, 'preparedPlan', { value: buildRealValidatedPlan(), enumerable: false });
+    Object.defineProperty(opts, 'migrationManifest', { value: SYNTHETIC_CANONICAL, enumerable: true });
+    Object.defineProperty(opts, 'expectedSchemaCandidate', { value: buildTestCandidate(), enumerable: true });
+    Object.defineProperty(opts, 'catalogEvidence', { value: SYNTHETIC_EVIDENCE, enumerable: true });
+    assert.throws(() => attestationCore.buildPreparedUnattestedAttestationDraft(opts), (err) => {
+      assert.equal(err.category, 'ADOPTION_ATTESTATION_VALUE_INVALID');
+      return true;
+    });
+  });
+
   it('buildPreparedUnattestedAttestationDraft has no validatePlanFn parameter', () => {
     const src = require('fs').readFileSync(
       path.resolve(__dirname, '..', '..', 'scripts', 'adoption-attestation-core.cjs'), 'utf8'
     );
-    // Read the function signature from source — destructuring makes toString unreliable
-    // Find the function declaration and check the argument list
-    const fnMatch = src.match(/function buildPreparedUnattestedAttestationDraft\s*\(\s*\{([^}]*)\}/);
-    if (fnMatch) {
-      // Strip comments to only check actual parameter names
-      const clean = fnMatch[1].replace(/\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '');
-      assert.ok(!clean.includes('validatePlanFn'), 'validatePlanFn must not be a destructured parameter');
+    // Function uses single options argument — NOT destructuring
+    // Verify the function signature does not mention validatePlanFn
+    const fnMatch = src.match(/function buildPreparedUnattestedAttestationDraft\s*\(\s*(\w+)\s*\)/);
+    assert.ok(fnMatch, 'function should take a single parameter');
+    assert.equal(fnMatch[1], 'options', 'parameter must be named "options"');
+    // Verify the function definition itself does not contain validatePlanFn
+    const fnDef = src.match(/function buildPreparedUnattestedAttestationDraft[\s\S]*?\{/);
+    if (fnDef) {
+      const cleanDef = fnDef[0].replace(/\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '');
+      assert.ok(!cleanDef.includes('validatePlanFn'), 'validatePlanFn must not be in function parameters');
     }
   });
 
@@ -484,8 +575,20 @@ describe('Phase B operator collection receipt core', () => {
     assert.equal(parsed.outcome, 'COLLECTION_PASS_SANITIZED_EVIDENCE_READY');
   });
 
+  it('_receiptBrand is not exported from receipt core', () => {
+    // WeakSet must be module-private — not accessible from outside
+    assert.equal(Object.prototype.hasOwnProperty.call(receiptCore, '_receiptBrand'), false);
+    assert.equal(Object.keys(receiptCore).filter(k => k.toLowerCase().includes('brand')).length, 0);
+  });
+
   it('serializeCollectionReceipt rejects forged minimal success object', () => {
-    const forged = { outcome: 'COLLECTION_PASS_SANITIZED_EVIDENCE_READY' };
+    const forged = {
+      format_version: '1.0',
+      outcome: 'COLLECTION_PASS_SANITIZED_EVIDENCE_READY',
+      collection_session_count: 1,
+      attestation_status: 'UNATTESTED',
+      manifest_activation: 'NONE',
+    };
     assert.throws(() => receiptCore.serializeCollectionReceipt(forged), /RECEIPT_INPUT_INVALID/);
   });
 
