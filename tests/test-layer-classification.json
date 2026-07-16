@@ -2105,6 +2105,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/my-trees-history-recovery-runtime-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes My Trees history/BFCache owner-list recovery helpers in a local vm with fake DOM, fake auth, and mocked getTrees; asserts single-flight recovery, terminal-state preservation, and privacy-safe restore diagnostics without real network or Production access (#3551).",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/my-trees-preview-hub-css-contracts.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",

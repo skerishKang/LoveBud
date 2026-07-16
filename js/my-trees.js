@@ -378,14 +378,18 @@
     }
   }
 
-  async function loadTrees() {
+  async function loadTrees(options) {
+    options = options || {};
     if (myTreesData && typeof myTreesData.loadTrees === 'function') {
       return myTreesData.loadTrees({
         setState: myTreesPage.setState,
         stateEnum: myTreesPage.STATE,
         renderTrees: renderTrees,
         showToast: showToast,
-        i18n: window.t || function(k) { return k; }
+        i18n: window.t || function(k) { return k; },
+        preserveVisibleList: options.preserveVisibleList === true,
+        reason: options.reason || null,
+        supersedeStaleLoad: options.supersedeStaleLoad === true
       });
     }
 
@@ -399,6 +403,137 @@
   var lastTreesData = [];
   var currentSearchQuery = '';
   var currentFilter = 'all';
+  var historyRestoreListenerBound = false;
+
+  function isStateSectionVisible(el) {
+    if (!el) return false;
+    if (el.classList && el.classList.contains('state-hidden')) return false;
+    if (el.style && el.style.display === 'none') return false;
+    if (el.classList && (el.classList.contains('state-visible') || el.classList.contains('state-visible-block'))) {
+      return true;
+    }
+    try {
+      if (typeof window.getComputedStyle === 'function') {
+        var st = window.getComputedStyle(el);
+        if (st && (st.display === 'none' || st.visibility === 'hidden')) return false;
+      }
+    } catch (e) {}
+    // If neither explicitly shown nor hidden, treat non-empty display as visible.
+    return !(el.style && el.style.display === 'none');
+  }
+
+  function isLoadingVisible() {
+    return isStateSectionVisible(document.getElementById('state-loading'));
+  }
+
+  function hasAuthoritativeTerminalState() {
+    if (isLoadingVisible()) return false;
+    if (isStateSectionVisible(document.getElementById('state-error'))) return true;
+    if (isStateSectionVisible(document.getElementById('state-empty'))) return true;
+    if (isStateSectionVisible(document.getElementById('state-loaded'))) return true;
+    return false;
+  }
+
+  /**
+   * Detect BFCache/history restoration in a browser-portable way.
+   * Isolated for contract tests.
+   */
+  function isHistoryRestoreEvent(event) {
+    if (event && event.persisted === true) return true;
+    try {
+      if (typeof performance !== 'undefined' && performance.getEntriesByType) {
+        var navs = performance.getEntriesByType('navigation');
+        if (navs && navs[0] && navs[0].type === 'back_forward') return true;
+      }
+    } catch (e) {}
+    try {
+      // Legacy PerformanceNavigation.TYPE_BACK_FORWARD === 2
+      if (performance.navigation && Number(performance.navigation.type) === 2) return true;
+    } catch (e2) {}
+    return false;
+  }
+
+  function emitRestoreDiagnostic(phase) {
+    if (myTreesData && typeof myTreesData.emitLifecycleDiagnostic === 'function') {
+      myTreesData.emitLifecycleDiagnostic({
+        phase: phase,
+        attempt: 1,
+        retried: false,
+        authHeaderPresent: false,
+        cachePresent: false,
+        cacheUsed: false,
+        statusClass: 'none',
+        resultCountBucket: 'unknown'
+      });
+    }
+  }
+
+  /**
+   * History/BFCache restore recovery:
+   * - only on restore classification
+   * - only when authenticated and already booted
+   * - supersedes pre-restore in-flight owner-list loads (they may abort)
+   * - exactly one recovery generation (repeated pageshow coalesces)
+   * - never re-binds listeners / reboots page
+   */
+  function maybeRecoverOwnerListFromHistory(event) {
+    if (!myTreesStarted) return;
+
+    if (!isHistoryRestoreEvent(event)) {
+      // Normal pageshow after initial navigation: do not reload.
+      emitRestoreDiagnostic('restore_skipped_not_restore');
+      return;
+    }
+
+    var user = getConfirmedSessionUser();
+    if (!user || !user.uid) return;
+
+    // Terminal authoritative UI: do not force recovery.
+    // (In-flight pre-restore loads are NOT treated as valid recovery here —
+    //  nonterminal/loading restore supersedes them via supersedeStaleLoad.)
+    if (hasAuthoritativeTerminalState() && !isLoadingVisible()) {
+      emitRestoreDiagnostic('restore_skipped_terminal');
+      return;
+    }
+
+    emitRestoreDiagnostic('restore_triggered');
+
+    var loadPromise = loadTrees({
+      preserveVisibleList: true,
+      reason: 'history_recovery',
+      supersedeStaleLoad: true
+    });
+
+    if (loadPromise && typeof loadPromise.then === 'function') {
+      loadPromise.then(function() {
+        if (hasAuthoritativeTerminalState()) {
+          emitRestoreDiagnostic('restore_recovered');
+        } else {
+          emitRestoreDiagnostic('restore_failed');
+        }
+      }, function() {
+        emitRestoreDiagnostic('restore_failed');
+      });
+    }
+  }
+
+  function bindHistoryRestoreListener() {
+    if (historyRestoreListenerBound) return;
+    if (typeof window === 'undefined' || typeof window.addEventListener !== 'function') return;
+    historyRestoreListenerBound = true;
+    window.addEventListener('pageshow', function(event) {
+      maybeRecoverOwnerListFromHistory(event);
+    });
+    // Mark in-flight owner-list generations stale on pagehide without network I/O.
+    window.addEventListener('pagehide', function() {
+      if (myTreesData && typeof myTreesData.markOwnerListEpochStale === 'function') {
+        myTreesData.markOwnerListEpochStale();
+      }
+    });
+  }
+
+  // Bind early so BFCache restore after freeze still has a handler without re-initing boot.
+  bindHistoryRestoreListener();
 
   function getCurrentSortValue() {
     var sortSelect = document.getElementById('sortTreesSelect');
@@ -510,5 +645,14 @@
 
     reconcileBootstrapUser(cachedUser);
   }, { once: true });
+
+  // Test/export surface for focused history-recovery contracts (no secrets).
+  window.LoveBudMyTreesHistoryRecovery = {
+    isHistoryRestoreEvent: isHistoryRestoreEvent,
+    hasAuthoritativeTerminalState: hasAuthoritativeTerminalState,
+    isLoadingVisible: isLoadingVisible,
+    maybeRecoverOwnerListFromHistory: maybeRecoverOwnerListFromHistory,
+    isStarted: function() { return myTreesStarted; }
+  };
 
 })();
