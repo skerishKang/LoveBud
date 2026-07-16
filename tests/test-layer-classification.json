@@ -1541,15 +1541,21 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/generic-social-a-execution-guard-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Reads validator SQL, runbook, inventory, package/CI, and guard harness sources; asserts historical Migration A checksum stability, read-only validators, direct-execution prohibition, and supplemental DB_ENGINE classification without executing PostgreSQL (#3536).",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/generic-social-b-db-engine-harness-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads package.json, CI workflow, Migration B rehearsal harness/fixture/helper sources and asserts separate package script, PostgreSQL 17.4 job pin, B_PRE→MIG_B→B_POST order, multi-row/empty/second-apply markers, exact B object fingerprints, and supplemental classification without executing PostgreSQL (#3540).",
       "capabilities": []
     },
     {
-      "path": "tests/contracts/generic-social-a-execution-guard-contract.test.cjs",
+      "path": "tests/contracts/generic-social-b-execution-guard-contract.test.cjs",
       "layer": "SOURCE_STATIC",
-      "rationale": "Reads validator SQL, runbook, inventory, package/CI, and guard harness sources; asserts historical Migration A checksum stability, read-only validators, direct-execution prohibition, and supplemental DB_ENGINE classification without executing PostgreSQL (#3536).",
+      "rationale": "Reads B validator SQL, runbook, inventory, package/CI, and B guard harness; asserts historical Migration B checksum stability, read-only validators, direct-execution prohibition, and supplemental DB_ENGINE classification without executing PostgreSQL (#3538).",
       "capabilities": []
     },
     {
@@ -1832,6 +1838,12 @@
       "path": "tests/contracts/migration-catalog-fingerprint-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Exercises the deterministic sanitized catalog fingerprint normalizer and CLI with synthetic fixtures only; no PostgreSQL, network, or live catalog access (#3542).",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/migration-catalog-postgres-adapter-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Source-static contract for the disposable pg_catalog fingerprint adapter: explicit connection policy, role mapping, mock expected-fixture equality, CI job pin, and ADOPTION_REQUIRED manifests without live PostgreSQL (#3544).",
       "capabilities": []
     },
     {
@@ -2147,18 +2159,6 @@
       "capabilities": []
     },
     {
-      "path": "tests/contracts/tree-comments-db-engine-harness-contract.test.cjs",
-      "layer": "SOURCE_STATIC",
-      "rationale": "Reads package.json, CI workflow, and the db-engine harness source and asserts script separation, pinned postgres service markers, loopback guards, and phase markers; does not execute PostgreSQL, migration SQL, or any external system.",
-      "capabilities": []
-    },
-    {
-      "path": "tests/contracts/trees-schema-db-engine-harness-contract.test.cjs",
-      "layer": "SOURCE_STATIC",
-      "rationale": "Reads package.json, CI workflow, trees-schema db-engine harness source, damaged fixture markers, and classification inventory; asserts loopback guards, seven-column foothold phase markers, and supplemental DB_ENGINE_EXECUTION placement without executing PostgreSQL (#3532).",
-      "capabilities": []
-    },
-    {
       "path": "tests/contracts/ops-next-work-recommendation-loop-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
@@ -2396,6 +2396,18 @@
       "path": "tests/contracts/public-viewer-social-boundary-split-contract.test.cjs",
       "layer": "EXECUTED_FAKE",
       "rationale": "Reads production module source and executes it in a local process with injected fake/mock/stub dependencies (e.g., vm context with fake DOM or mocked fetch/localStorage); no real external system or production resource used.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/public-viewer-tree-comment-auth-policy-3529.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes public-viewer-detail-ui tree-meta assembly with fake DOM and injectable LoveTreeAuthPolicy to prove authenticated whole-tree composer detection; fails closed for missing/throwing policy and rejects LoveBudAuthPolicy typo (#3529).",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/public-viewer-tree-comment-composer-3527.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Reads production module source and executes public-viewer tree comment composer + panel in a local process with fake DOM and injectable createTreeComment; asserts guest/auth UX, idempotency, stale guards, and tree-vs-moment separation (#3527).",
       "capabilities": []
     },
     {
@@ -3533,6 +3545,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/tree-comments-db-engine-harness-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Reads package.json, CI workflow, and the db-engine harness source and asserts script separation, pinned postgres service markers, loopback guards, and phase markers; does not execute PostgreSQL, migration SQL, or any external system.",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/tree-comments-read-list-boundary-audit-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
@@ -3566,18 +3584,6 @@
       "path": "tests/contracts/tree-comments-write-client-3527.test.cjs",
       "layer": "EXECUTED_FAKE",
       "rationale": "Reads production module source and executes js/social/tree-comments-write-client.js in a local process with mocked LoveTreeBaseApiFetch; asserts POST contract, validation, and safe DTO normalization for whole-tree comments (#3527).",
-      "capabilities": []
-    },
-    {
-      "path": "tests/contracts/public-viewer-tree-comment-composer-3527.test.cjs",
-      "layer": "EXECUTED_FAKE",
-      "rationale": "Reads production module source and executes public-viewer tree comment composer + panel in a local process with fake DOM and injectable createTreeComment; asserts guest/auth UX, idempotency, stale guards, and tree-vs-moment separation (#3527).",
-      "capabilities": []
-    },
-    {
-      "path": "tests/contracts/public-viewer-tree-comment-auth-policy-3529.test.cjs",
-      "layer": "EXECUTED_FAKE",
-      "rationale": "Executes public-viewer-detail-ui tree-meta assembly with fake DOM and injectable LoveTreeAuthPolicy to prove authenticated whole-tree composer detection; fails closed for missing/throwing policy and rejects LoveBudAuthPolicy typo (#3529).",
       "capabilities": []
     },
     {
@@ -3662,6 +3668,12 @@
       "path": "tests/contracts/tree-workspace-view-edit-mode-contract.test.cjs",
       "layer": "EXECUTED_FAKE",
       "rationale": "Reads production module source and executes it in a local process with injected fake/mock/stub dependencies (e.g., vm context with fake DOM or mocked fetch/localStorage); no real external system or production resource used.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/trees-schema-db-engine-harness-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Reads package.json, CI workflow, trees-schema db-engine harness source, damaged fixture markers, and classification inventory; asserts loopback guards, seven-column foothold phase markers, and supplemental DB_ENGINE_EXECUTION placement without executing PostgreSQL (#3532).",
       "capabilities": []
     },
     {
@@ -4263,12 +4275,6 @@
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
       "capabilities": []
-    },
-    {
-      "path": "tests/contracts/generic-social-b-execution-guard-contract.test.cjs",
-      "layer": "SOURCE_STATIC",
-      "rationale": "Reads B validator SQL, runbook, inventory, package/CI, and B guard harness; asserts historical Migration B checksum stability, read-only validators, direct-execution prohibition, and supplemental DB_ENGINE classification without executing PostgreSQL (#3538).",
-      "capabilities": []
     }
   ],
   "supplemental": [
@@ -4343,21 +4349,10 @@
       "capabilities": []
     },
     {
-      "path": "tests/db-engine/tree-comments-reconcile-postgres.test.cjs",
+      "path": "tests/db-engine/generic-social-a-guard-postgres.test.cjs",
       "defaultCi": false,
       "layer": "DB_ENGINE_EXECUTION",
-      "rationale": "Executes repository migration and rollback SQL against a synthetic disposable PostgreSQL 17.4 database in an isolated CI service; it does not contact Production, staging, Neon, or any shared environment.",
-      "capabilities": [
-        "postgresql",
-        "child_process",
-        "filesystem"
-      ]
-    },
-    {
-      "path": "tests/db-engine/trees-schema-foothold-postgres.test.cjs",
-      "defaultCi": false,
-      "layer": "DB_ENGINE_EXECUTION",
-      "rationale": "Executes scripts/migration-repair-trees-schema-3435.sql against synthetic disposable PostgreSQL 17.4 databases in isolated CI; proves seven-column foothold apply, idempotent re-apply, partial converge, and fail-closed preservation without Production/Neon/staging access (#3532).",
+      "rationale": "Executes read-only Migration A preflight/postcondition validators and the unchanged historical Migration A artifact against disposable PostgreSQL 17.4; proves exact-state acceptance, adversarial rejection without calling Migration A after failed preflight, and second-apply no-op without Production access (#3536).",
       "capabilities": [
         "postgresql",
         "child_process",
@@ -4369,17 +4364,6 @@
       "defaultCi": false,
       "layer": "DB_ENGINE_EXECUTION",
       "rationale": "Executes scripts/migration-add-generic-social-targets.sql against synthetic disposable PostgreSQL 17.4 databases in isolated CI; proves legacy backfill, catalog CHECKs/triggers, compatibility writes, second-apply no-op, and fail-closed preservation without Production/Neon/staging access (#3534).",
-      "capabilities": [
-        "postgresql",
-        "child_process",
-        "filesystem"
-      ]
-    },
-    {
-      "path": "tests/db-engine/generic-social-a-guard-postgres.test.cjs",
-      "defaultCi": false,
-      "layer": "DB_ENGINE_EXECUTION",
-      "rationale": "Executes read-only Migration A preflight/postcondition validators and the unchanged historical Migration A artifact against disposable PostgreSQL 17.4; proves exact-state acceptance, adversarial rejection without calling Migration A after failed preflight, and second-apply no-op without Production access (#3536).",
       "capabilities": [
         "postgresql",
         "child_process",
@@ -4402,6 +4386,39 @@
       "defaultCi": false,
       "layer": "DB_ENGINE_EXECUTION",
       "rationale": "Independent supported-state Migration B rehearsal on disposable PostgreSQL 17.4: guarded A→STATE_A, non-empty/empty/STATE_B-rerun paths, approved catalog delta, both-table compatibility A–K, second-apply no-op; does not duplicate B guard adversarial matrix (#3540).",
+      "capabilities": [
+        "postgresql",
+        "child_process",
+        "filesystem"
+      ]
+    },
+    {
+      "path": "tests/db-engine/migration-catalog-postgres-adapter-engine.test.cjs",
+      "defaultCi": false,
+      "layer": "DB_ENGINE_EXECUTION",
+      "rationale": "Collects sanitized catalog metadata from synthetic allowlisted objects on disposable PostgreSQL 17.4 only; proves read-only collection, stable fingerprints, semantic drift, and fail-closed boundaries without Production/Neon/staging access (#3544).",
+      "capabilities": [
+        "postgresql",
+        "child_process",
+        "filesystem"
+      ]
+    },
+    {
+      "path": "tests/db-engine/tree-comments-reconcile-postgres.test.cjs",
+      "defaultCi": false,
+      "layer": "DB_ENGINE_EXECUTION",
+      "rationale": "Executes repository migration and rollback SQL against a synthetic disposable PostgreSQL 17.4 database in an isolated CI service; it does not contact Production, staging, Neon, or any shared environment.",
+      "capabilities": [
+        "postgresql",
+        "child_process",
+        "filesystem"
+      ]
+    },
+    {
+      "path": "tests/db-engine/trees-schema-foothold-postgres.test.cjs",
+      "defaultCi": false,
+      "layer": "DB_ENGINE_EXECUTION",
+      "rationale": "Executes scripts/migration-repair-trees-schema-3435.sql against synthetic disposable PostgreSQL 17.4 databases in isolated CI; proves seven-column foothold apply, idempotent re-apply, partial converge, and fail-closed preservation without Production/Neon/staging access (#3532).",
       "capabilities": [
         "postgresql",
         "child_process",

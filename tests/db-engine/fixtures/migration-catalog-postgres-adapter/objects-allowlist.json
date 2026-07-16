@@ -1,0 +1,24 @@
+{
+  "objects": [
+    {
+      "schema": "synthetic_catalog",
+      "object_name": "example_tree",
+      "object_kind": "TABLE"
+    },
+    {
+      "schema": "synthetic_catalog",
+      "object_name": "example_tree_public",
+      "object_kind": "VIEW"
+    },
+    {
+      "schema": "synthetic_catalog",
+      "object_name": "example_tree_public_mv",
+      "object_kind": "MATERIALIZED_VIEW"
+    },
+    {
+      "schema": "synthetic_catalog",
+      "object_name": "drift_pad",
+      "object_kind": "TABLE"
+    }
+  ]
+}

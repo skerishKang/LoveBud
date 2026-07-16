@@ -113,6 +113,24 @@ Quoted SQL literals preserve internal whitespace; comments outside quotes fail c
 
 The committed manifest remains `ADOPTION_REQUIRED` with no live-object fingerprint. This means it is structurally valid but cannot authorize a target environment. An empty manifest must never be interpreted as an empty production schema.
 
+### Disposable catalog adapter (Issue #3544)
+
+A separate read-only PostgreSQL catalog adapter constructs sanitized metadata from `pg_catalog` for **explicitly allowlisted synthetic objects** only:
+
+- `scripts/migration-catalog-postgres-adapter-core.cjs`
+- `scripts/build-migration-catalog-evidence-from-postgres.cjs` / `npm run build:migration-catalog-evidence-from-postgres`
+- Engine proof: `npm run test:db-engine:migration-catalog-adapter` on disposable `postgres:17.4-bookworm` (`server_version_num=170004`)
+
+Hard boundaries:
+
+- explicit connection arguments only (loopback + `lovebud_ci_*` database names); no `DATABASE_URL` / secrets / environment password fallback
+- repository-owned constant SQL text only; no caller SQL; no shell interpolation
+- `BEGIN READ ONLY` before catalog queries; mutation SQL is not an adapter capability
+- abstract role mapping for grants/policies; raw role names never appear in evidence or failure output
+- output always passes through the #3542 normalizer and emits only gate-compatible `{ name, fingerprint }` evidence
+- does **not** authorize Production/Neon/staging inspection, expected-schema `ACTIVE` transition, or canonical migration adoption
+
+
 ## E. Read-Only Provenance Gate
 
 The gate is a pure comparison engine. It accepts only repository manifests plus two sanitized JSON evidence documents:
