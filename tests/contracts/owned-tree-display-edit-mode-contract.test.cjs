@@ -29,13 +29,13 @@ test('display/edit mode static constraints', () => {
   assert.match(resolver, /editor\?treeId=/);
   assert.match(resolver, /view\.html\?treeId=/);
 
-  // 4. My LoveTree copy uses 감상하기 / 편집하기 / 공개 화면 보기
-  // (entry action labels from my-trees-ui.js).
+  // 4. My LoveTree copy uses 감상하기 / 편집하기 only (#3563).
   assert.match(previewHub, /'감상하기'/);
   assert.match(previewHub, /'편집하기'/);
-  assert.match(previewHub, /'공개 화면 보기'/);
+  assert.doesNotMatch(previewHub, /publicViewBtn\.hidden = false/);
   assert.match(myTreesUi, /'감상하기'/);
   assert.match(myTreesUi, /'편집하기'/);
+  assert.doesNotMatch(myTreesUi, /tree-card-public-view-link/);
 
   // 5. Raw ownerId/user ID must not be directly displayed in UI text
   assert.doesNotMatch(treeMeta, /\.textContent\s*=\s*(currentTree\.)?ownerId/);
@@ -219,10 +219,11 @@ test('My LoveTrees routing contract for public and private trees', () => {
   assert.equal(publicHref.includes('view.html'), false, 'Public tree open link must NOT target view.html');
   assert.equal(publicHref.includes('mode=edit'), false, 'Public tree open link must NOT have mode=edit');
 
-  /* ── Public tree: public-view action → view.html ── */
-  var publicViewHref = getLinkHref(html, 'tree-card-public-view-link');
-  assert.ok(publicViewHref, 'Public tree must have public-view link');
-  assert.ok(publicViewHref.includes('view.html?treeId=tree-public-1'), 'Public tree public-view must target view.html');
+  /* ── Public tree: #3563 no public-view card action (shareTarget internal only) ── */
+  assert.equal(html.includes('tree-card-public-view-link'), false, 'Public tree must NOT render public-view card action');
+  var resolvedPublic = UI.validateAndResolveEntryTargets({ id: 'tree-public-1', visibility: 'public' });
+  assert.ok(resolvedPublic.shareTarget || resolvedPublic.publicView, 'Public tree keeps internal shareTarget');
+  assert.ok((resolvedPublic.shareTarget || resolvedPublic.publicView).includes('view.html?treeId=tree-public-1'));
 
   /* ── Public tree: edit → editor + mode=edit ── */
   var editHref = getLinkHref(html, 'tree-card-edit-link');

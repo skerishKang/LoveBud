@@ -19,7 +19,8 @@ const HELPER_PATH = path.join(ROOT, 'js/my-trees/my-trees-entry-target-resolver.
 const HELPER_SOURCE = fs.readFileSync(HELPER_PATH, 'utf8');
 
 const TARGET_KEYS = ['available', 'href', 'action', 'interactionMode', 'routeSurface'];
-const ROOT_KEYS = ['treeId', 'accessState', 'primary', 'publicView', 'edit'];
+// #3563: shareTarget is an alias of publicView for internal share-link use only.
+const ROOT_KEYS = ['treeId', 'accessState', 'primary', 'publicView', 'shareTarget', 'edit'];
 
 function loadApi() {
   const context = { window: {} };
@@ -77,6 +78,7 @@ function assertStableShape(model) {
   assert.ok(['public', 'private', 'unknown'].includes(model.accessState));
   assertTargetShape(model.primary, 'primary');
   assertTargetShape(model.publicView, 'publicView');
+  assertTargetShape(model.shareTarget, 'shareTarget');
   assertTargetShape(model.edit, 'edit');
 
   assert.equal(model.primary.action, 'appreciation');
@@ -86,6 +88,7 @@ function assertStableShape(model) {
   assert.equal(model.publicView.action, 'public-view');
   assert.equal(model.publicView.interactionMode, 'none');
   assert.equal(model.publicView.routeSurface, 'public-viewer');
+  assert.deepEqual(model.shareTarget, model.publicView, 'shareTarget must alias publicView');
 
   assert.equal(model.edit.action, 'edit');
   assert.equal(model.edit.interactionMode, 'edit');
@@ -99,9 +102,11 @@ function assertAllUnavailable(model) {
   assert.equal(model.treeId, null);
   assert.equal(model.primary.available, false);
   assert.equal(model.publicView.available, false);
+  assert.equal(model.shareTarget.available, false);
   assert.equal(model.edit.available, false);
   assert.equal(model.primary.href, null);
   assert.equal(model.publicView.href, null);
+  assert.equal(model.shareTarget.href, null);
   assert.equal(model.edit.href, null);
 }
 

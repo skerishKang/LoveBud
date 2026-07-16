@@ -644,8 +644,8 @@ test('public canvas sidebar template and controller wiring contract (Issue #2884
     'view.html must load template module with version 20260625-2884-left-rail-2'
   );
   assert.ok(
-    html.includes('src="../js/viewer/public-canvas-init.js?v=20260625-2884-left-rail-2"'),
-    'view.html must load public-canvas-init.js with version 20260625-2884-left-rail-2'
+    html.includes('src="../js/viewer/public-canvas-init.js?v=20260716-3563-1"'),
+    'view.html must load public-canvas-init.js with version 20260716-3563-1'
   );
 
   // 22. css/editor.css가 next exact import를 사용함

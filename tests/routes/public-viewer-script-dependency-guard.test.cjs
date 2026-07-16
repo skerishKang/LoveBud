@@ -94,7 +94,7 @@ test('public viewer detail view-mode template uses the #3419 cache-refresh versi
   const scripts = getRawScriptSrcs();
 
   assert.ok(
-    scripts.includes('../js/viewer/public-viewer-detail-view-mode-template.js?v=20260712-3419-1'),
+    scripts.includes('../js/viewer/public-viewer-detail-view-mode-template.js?v=20260716-3563-1'),
     'viewer detail view-mode template must use #3419 cache version'
   );
 });

@@ -353,6 +353,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/canonical-appreciation-consolidation-3563-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes My Trees entry resolver/UI in a fake DOM and asserts #3563 two-action appreciation+edit model, internal shareTarget, public-safe appreciation surface markers, and #3564 geometry guard; no real browser/network/DB.",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/canonical-appreciation-render-model-runtime-contract.test.cjs",
       "layer": "EXECUTED_FAKE",
       "rationale": "Executes the browser-global pure appreciation render-model helper in node:vm with injected window context and asserts normalization, field omission, detached outputs, and fail-closed capabilities. No real browser, network, auth provider, database, deployment, or Production resource is used.",

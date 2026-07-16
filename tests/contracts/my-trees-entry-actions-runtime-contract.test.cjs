@@ -320,7 +320,7 @@ test('4. valid unknown visibility primary → editor (appreciation)', function()
   assert.equal(href.includes('mode='), false);
 });
 
-test('5. public tree only has public-view link', function() {
+test('5. #3563 cards expose only appreciation+edit; public shareTarget stays internal', function() {
   var ctx = createVMContext();
   var api = require('node:vm');
   api.createContext(ctx);
@@ -331,14 +331,18 @@ test('5. public tree only has public-view link', function() {
   var UI = ctx.window.LoveBudMyTreesUI;
 
   var publicCard = UI.buildTreeCard({ id: 't-pub', visibility: 'public', title: 'T' }, { i18n: function(k) { return k; } });
-  var publicViewLink = publicCard.querySelector('.tree-card-public-view-link');
-  assert.ok(publicViewLink, 'public tree should have public-view link');
-  var pvHref = publicViewLink.getAttribute('href');
-  assert.ok(pvHref.includes('view.html?treeId=t-pub'), 'public-view href should target view.html');
+  assert.equal(publicCard.querySelector('.tree-card-public-view-link'), null, 'public tree must not render public-view action');
+  assert.ok(publicCard.querySelector('.tree-card-open-link'), 'public tree should have appreciation link');
+  assert.ok(publicCard.querySelector('.tree-card-edit-link'), 'public tree should have edit link');
+  var resolvedPublic = UI.validateAndResolveEntryTargets({ id: 't-pub', visibility: 'public' });
+  assert.ok(resolvedPublic.shareTarget || resolvedPublic.publicView, 'public tree keeps internal shareTarget');
+  assert.ok((resolvedPublic.shareTarget || resolvedPublic.publicView).includes('view.html?treeId=t-pub'));
 
   var privateCard = UI.buildTreeCard({ id: 't-priv', visibility: 'private', title: 'T' }, { i18n: function(k) { return k; } });
-  var privateViewLink = privateCard.querySelector('.tree-card-public-view-link');
-  assert.equal(privateViewLink, null, 'private tree should NOT have public-view link');
+  assert.equal(privateCard.querySelector('.tree-card-public-view-link'), null, 'private tree should NOT have public-view link');
+  var resolvedPrivate = UI.validateAndResolveEntryTargets({ id: 't-priv', visibility: 'private' });
+  assert.equal(resolvedPrivate.shareTarget, null, 'private tree has no shareTarget');
+  assert.equal(resolvedPrivate.publicView, null, 'private tree has no publicView');
 });
 
 test('6. edit link has &mode=edit', function() {
@@ -588,7 +592,7 @@ test('14. hub applyHubActions resets and sets properly', function() {
   assert.ok(shareBtn.hidden, 'placeholder should hide share button');
 });
 
-test('15. applyHubActions with public tree produces primary, publicView, edit, share', function() {
+test('15. applyHubActions with public tree produces primary, edit, share (no public-view action)', function() {
   var ctx = buildFakePreloadedWindow();
   var api = require('node:vm');
   api.createContext(ctx);
@@ -613,8 +617,7 @@ test('15. applyHubActions with public tree produces primary, publicView, edit, s
 
   assert.equal(openBtn.hidden, false, 'public tree open btn should be visible');
   assert.ok(openBtn.getAttribute('href').includes('editor?treeId=pub-tree'), 'public open should be editor');
-  assert.equal(publicViewBtn.hidden, false, 'public tree public-view btn should be visible');
-  assert.ok(publicViewBtn.getAttribute('href').includes('view.html?treeId=pub-tree'), 'public-view should target view.html');
+  assert.equal(publicViewBtn.hidden, true, '#3563: public-view action must stay hidden');
   assert.equal(editBtn.hidden, false, 'public tree edit btn should be visible');
   assert.ok(editBtn.getAttribute('href').includes('editor?treeId=pub-tree&mode=edit'), 'edit should have mode=edit');
   assert.equal(shareBtn.hidden, false, 'public tree share btn should be visible');
@@ -693,21 +696,19 @@ test('18. public→private transition clears stale share state', function() {
   assert.equal(shareBtn.onclick, null, 'stale onclick should be removed');
 });
 
-test('19. Korean/English labels are present in i18n file', function() {
+test('19. Korean/English appreciation+edit labels are present in i18n file', function() {
   var i18nSource = read('js/i18n/i18n-my-trees.js');
   assert.match(i18nSource, /'감상하기'/);
-  assert.match(i18nSource, /'공개 화면 보기'/);
   assert.match(i18nSource, /'편집하기'/);
   assert.match(i18nSource, /'Open appreciation view'/);
-  assert.match(i18nSource, /'View public page'/);
   assert.match(i18nSource, /'Edit'/);
 });
 
-test('20. card action links have data-i18n spans', function() {
+test('20. card action links have data-i18n spans for appreciation+edit only', function() {
   var uiSource = read('js/my-trees/my-trees-ui.js');
   assert.match(uiSource, /data-i18n="myTrees\.entry_appreciation"/);
-  assert.match(uiSource, /data-i18n="myTrees\.entry_public_view"/);
   assert.match(uiSource, /data-i18n="myTrees\.entry_edit"/);
+  assert.doesNotMatch(uiSource, /tree-card-public-view-link/, '#3563: public-view card action removed');
 });
 
 test('21. source tree object is not mutated', function() {

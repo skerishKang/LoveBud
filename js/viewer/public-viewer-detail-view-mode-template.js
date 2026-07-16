@@ -1,14 +1,17 @@
 (function() {
+    // #3563: Canonical appreciation presentation shell for public/guest route.
+    // Same selected-moment grammar as Editor appreciation (view mode), without
+    // owner authoring controls (edit chip / continue / connect).
     const template = `
-                <div id="detailViewMode" class="editor-hidden-initial">
-                    <div class="editor-tree-meta-section">
+                <div id="detailViewMode" class="editor-hidden-initial" data-appreciation-surface="canonical" data-route-authority="public-safe">
+                    <div class="editor-tree-meta-section" id="detailTreeMetaSection">
                         <div class="editor-section-eyebrow" id="detailTreeStatusLabel">현재 트리</div>
                         <div id="detailTreeMetaMount"></div>
                     </div>
 
                     <div class="editor-current-moment-card">
                         <div class="editor-current-moment-head">
-                            <div id="detailCurrentMomentBadge" class="editor-current-moment-badge">...</div>
+                            <div id="detailCurrentMomentBadge" class="editor-current-moment-badge">선택한 순간</div>
                         </div>
                         <h4 id="detailCurrentMomentTitle" class="editor-current-moment-title">&nbsp;</h4>
                         <p id="detailCurrentMomentHint" class="editor-current-moment-hint">&nbsp;</p>

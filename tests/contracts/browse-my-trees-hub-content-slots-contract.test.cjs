@@ -124,11 +124,12 @@ test('16. Action semantics preserved — Browse action helper keeps 감상 열�
   assert.ok(helper.includes('트리 열기'), 'Browse action helper must retain 트리 열기');
 });
 
-test('17. Action semantics preserved — My Trees keeps 감상하기, 편집하기, 공개 화면 보기, 감상 링크 복사', () => {
+test('17. Action semantics preserved — My Trees keeps 감상하기, 편집하기, 감상 링크 복사 (#3563 two-action model)', () => {
   const html = read('pages/my-trees.html');
   assert.ok(html.includes('감상하기'), 'My Trees must retain 감상하기 (appreciation)');
   assert.ok(html.includes('편집하기'), 'My Trees must retain 편집하기');
-  assert.ok(html.includes('공개 화면 보기'), 'My Trees must retain 공개 화면 보기');
+  // #3563: public-view is not a user-facing third action (share uses internal shareTarget).
+  assert.ok(!html.includes('공개 화면 보기'), 'My Trees must not show 공개 화면 보기 as a hub action');
   assert.ok(html.includes('감상 링크 복사'), 'My Trees must retain 감상 링크 복사');
 });
 
