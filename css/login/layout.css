@@ -1,20 +1,31 @@
+/* Login shell: outer page chrome only. Wider viewports grow outer whitespace. */
 .login-shell {
     min-height: 100vh;
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 80px 48px 48px;
+    /* Mobile-first gutters; desktop override expands outer padding only. */
+    padding: 72px 16px 24px;
+    width: 100%;
+    box-sizing: border-box;
 }
 
+/*
+ * Canonical login card composition (mobile metrics at every viewport).
+ * max-width matches a typical phone content column after shell gutters.
+ * Interior typography/spacing live in sections.css / components.css — do not
+ * re-scale them in breakpoint rules.
+ */
 .login-card {
     width: 100%;
-    max-width: 480px;
+    max-width: 360px;
     background: white;
-    padding: 48px;
+    padding: 32px 16px;
     border-radius: 3rem;
     box-shadow: 0 40px 100px rgba(0,0,0,0.1);
     text-align: center;
     border: 1px solid rgba(0,0,0,0.02);
+    box-sizing: border-box;
 }
 
 .login-divider {

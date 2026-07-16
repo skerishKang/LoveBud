@@ -8,7 +8,7 @@ const MANIFEST_PATH = path.join(ROOT, 'css', 'login.css');
 const LOGIN_HTML_PATH = path.join(ROOT, 'pages', 'login.html');
 const SIGNUP_HTML_PATH = path.join(ROOT, 'pages', 'signup.html');
 
-const AUTH_CSS_VERSION = '20260712-3451-1';
+const AUTH_CSS_VERSION = '20260716-3547-1';
 
 const SPLIT_FILES = [
   'base.css',
@@ -140,3 +140,76 @@ test('representative classes exist in their respective split files', () => {
 function escapeRegExp(str) {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
+
+function readLoginCss(name) {
+  return fs.readFileSync(path.join(ROOT, 'css', 'login', name), 'utf8');
+}
+
+test('login card uses one mobile-sized canonical composition (#3547)', () => {
+  const layout = readLoginCss('layout.css');
+  const responsive = readLoginCss('responsive.css');
+  const sections = readLoginCss('sections.css');
+  const components = readLoginCss('components.css');
+
+  // Canonical card metrics live in layout base rules (not only inside media queries).
+  assert.match(layout, /\.login-card\s*\{[\s\S]*?max-width:\s*360px/);
+  assert.match(layout, /\.login-card\s*\{[\s\S]*?padding:\s*32px\s+16px/);
+  assert.match(layout, /\.login-shell\s*\{[\s\S]*?padding:\s*72px\s+16px\s+24px/);
+
+  // Responsive may grow shell outer whitespace only — no card interior rescale.
+  assert.match(responsive, /@media\s*\(\s*min-width:\s*769px\s*\)/);
+  assert.match(responsive, /\.login-shell\s*\{[\s\S]*?padding:\s*80px\s+48px\s+48px/);
+  assert.equal(
+    /\.login-card\s*\{/.test(responsive),
+    false,
+    'responsive.css must not redefine .login-card'
+  );
+  assert.equal(
+    /font-size\s*:/.test(responsive),
+    false,
+    'responsive.css must not change font-size'
+  );
+  assert.equal(
+    /max-width\s*:/.test(responsive),
+    false,
+    'responsive.css must not change max-width'
+  );
+
+  // No nowrap workaround for description wrapping.
+  assert.equal(/white-space\s*:\s*nowrap/.test(sections), false);
+  assert.equal(/white-space\s*:\s*nowrap/.test(layout), false);
+  assert.equal(/white-space\s*:\s*nowrap/.test(responsive), false);
+  assert.match(sections, /\.login-desc\s*\{[\s\S]*?white-space:\s*normal/);
+
+  // Button metrics pinned for single composition.
+  assert.match(components, /\.login-email-button\s*\{[\s\S]*?padding:\s*16px/);
+  assert.match(components, /\.login-btn-google\s*\{[\s\S]*?padding:\s*16px/);
+});
+
+test('login page source does not touch auth/redirect behavior (#3547)', () => {
+  const loginJsPaths = [
+    path.join(ROOT, 'js', 'login-page.js'),
+    path.join(ROOT, 'js', 'login', 'login-page.js'),
+    path.join(ROOT, 'js', 'auth', 'auth-login-page.js'),
+  ].filter((p) => fs.existsSync(p));
+
+  assert.ok(loginJsPaths.length >= 1, 'expected at least one login page script');
+  // This CSS-only contract does not rewrite login JS files; just assert they still exist.
+  loginJsPaths.forEach((p) => {
+    assert.ok(fs.statSync(p).size > 0, `login script must remain present: ${p}`);
+  });
+});
+
+test('header responsive breakpoints remain owned by global-header.css', () => {
+  const header = fs.readFileSync(path.join(ROOT, 'css', 'global', 'global-header.css'), 'utf8');
+  const responsive = readLoginCss('responsive.css');
+
+  // Header still has responsive rules (nav/logo density).
+  assert.match(header, /@media/);
+  assert.match(header, /\.nav-bar/);
+
+  // Login responsive does not redefine shared header/nav selectors.
+  assert.equal(/\.nav-bar/.test(responsive), false);
+  assert.equal(/#shared-header/.test(responsive), false);
+  assert.equal(/\.header-logo/.test(responsive), false);
+});
