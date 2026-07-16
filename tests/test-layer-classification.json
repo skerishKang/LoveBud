@@ -1877,6 +1877,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/phase-b-collection-operator-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Source-static contract for the Phase B operator collection CLI and receipt builder: argv boundary, trusted prepared plan, recomputed digest cross-validation, recursive prohibited field/sensitive value scanning, single bounded JSON output, UNATTESTED attestation draft with fixed environment/scope, ADOPTION_REQUIRED candidate, baseline HEAD binding, actual session counting, and no Production DB session (#3573, replacement for CLOSED PR #3574).",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/production-readonly-catalog-boundary-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Source-static contract for the Production-readonly catalog connection boundary: dedicated secret key only, remote TLS URL validation, major-17 version policy, frozen adoption allowlist, abstract role mapping, disposable adapter regression, and no Production DB session (#3570).",

@@ -898,6 +898,108 @@ function validateAdoptionAttestationEvidence(evidence, binding, contract) {
 }
 
 /**
+ * Build a prepared UNATTESTED attestation draft for Production-readonly collection.
+ *
+ * Takes a preparedPlan (from buildPreparedCollectionPlan) for fixed field values.
+ * Accepts NO caller-controlled environment/scope/status parameters.
+ *
+ * Fixed values:
+ *   adoption_status = UNATTESTED
+ *   environment_class = PRODUCTION
+ *   attestation_scope = PRODUCTION_READONLY
+ *   variance_classification = UNKNOWN_DRIFT
+ *
+ * baseline_commit and approval_reference come from preparedPlan.
+ * applied_migrations from repository-owned canonical manifest only.
+ *
+ * No database, network, environment fallback, or file write.
+ */
+function buildPreparedUnattestedAttestationDraft({
+  preparedPlan,
+  migrationManifest,
+  expectedSchemaCandidate,
+  catalogEvidence,
+}) {
+  // Validate preparedPlan
+  if (!preparedPlan || typeof preparedPlan !== 'object' || Array.isArray(preparedPlan)) {
+    fail(FAILURE.ADOPTION_ATTESTATION_INPUT_INVALID, { field: 'preparedPlan' });
+  }
+  if (preparedPlan.plan_status !== 'PREPARED_ONLY') {
+    fail(FAILURE.ADOPTION_ATTESTATION_ENUM_INVALID, { field: 'plan_status' });
+  }
+  if (preparedPlan.environment_class !== 'PRODUCTION') {
+    fail(FAILURE.ADOPTION_ATTESTATION_ENUM_INVALID, { field: 'environment_class' });
+  }
+  if (preparedPlan.attestation_scope !== 'PRODUCTION_READONLY') {
+    fail(FAILURE.ADOPTION_ATTESTATION_ENUM_INVALID, { field: 'attestation_scope' });
+  }
+
+  // Validate expectedSchemaCandidate
+  if (!expectedSchemaCandidate || typeof expectedSchemaCandidate !== 'object' || Array.isArray(expectedSchemaCandidate)) {
+    fail(FAILURE.ADOPTION_ATTESTATION_INPUT_INVALID, { field: 'expectedSchemaCandidate' });
+  }
+  if (expectedSchemaCandidate.status !== 'ADOPTION_REQUIRED') {
+    fail(FAILURE.ADOPTION_ATTESTATION_ENUM_INVALID, { field: 'status' });
+  }
+
+  // Validate migrationManifest structure
+  if (!migrationManifest || typeof migrationManifest !== 'object' || Array.isArray(migrationManifest)) {
+    fail(FAILURE.ADOPTION_ATTESTATION_INPUT_INVALID, { field: 'migrationManifest' });
+  }
+
+  // Catalog evidence validation
+  if (!catalogEvidence || typeof catalogEvidence !== 'object' || Array.isArray(catalogEvidence)) {
+    fail(FAILURE.ADOPTION_ATTESTATION_INPUT_INVALID, { field: 'catalogEvidence' });
+  }
+
+  // Digest computation
+  const canonicalDigest = computeObjectDigest(migrationManifest);
+  const expectedDigest = computeObjectDigest(expectedSchemaCandidate);
+  const catalogDigest = computeObjectDigest(catalogEvidence);
+
+  // applied_migrations from canonical manifest only
+  let migrations = [];
+  if (migrationManifest && migrationManifest.status !== 'ADOPTION_REQUIRED') {
+    if (Array.isArray(migrationManifest.migrations)) {
+      migrations = migrationManifest.migrations.map((item) => ({
+        id: item.id,
+        checksum: item.checksum,
+      }));
+    }
+  }
+
+  const draft = {
+    format_version: '1.0',
+    adoption_status: 'UNATTESTED',
+    environment_class: 'PRODUCTION',
+    baseline_commit: preparedPlan.baseline_commit,
+    canonical_manifest_digest: canonicalDigest,
+    expected_schema_digest: expectedDigest,
+    catalog_evidence_digest: catalogDigest,
+    variance_classification: 'UNKNOWN_DRIFT',
+    approval_reference: preparedPlan.approval_reference,
+    applied_migrations: migrations,
+    contract_path: DEFAULT_CONTRACT_REL,
+    digest_algorithm: 'sha256',
+    attestation_scope: 'PRODUCTION_READONLY',
+  };
+
+  // Prohibited/sensitive field check
+  const staticProhibited = new Set([
+    'host', 'hostname', 'port', 'database', 'database_name',
+    'database_url', 'connection_string', 'url', 'secret', 'token',
+    'password', 'credential', 'operator',
+  ]);
+  for (const key of Object.keys(draft)) {
+    if (staticProhibited.has(key)) {
+      fail(FAILURE.ADOPTION_ATTESTATION_PROHIBITED_FIELD, { field: key });
+    }
+  }
+
+  return draft;
+}
+
+/**
  * Build a synthetic ATTESTED attestation bound to provided artifacts.
  * Pure helper for tests; does not write files or activate manifests.
  */
@@ -966,5 +1068,6 @@ module.exports = {
   resolveRepoConfinedPath,
   readConfinedEvidenceFile,
   validateAdoptionAttestationEvidence,
+  buildPreparedUnattestedAttestationDraft,
   buildSyntheticAttestation,
 };
