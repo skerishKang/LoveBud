@@ -8,7 +8,7 @@ const MANIFEST_PATH = path.join(ROOT, 'css', 'login.css');
 const LOGIN_HTML_PATH = path.join(ROOT, 'pages', 'login.html');
 const SIGNUP_HTML_PATH = path.join(ROOT, 'pages', 'signup.html');
 
-const AUTH_CSS_VERSION = '20260716-3547-1';
+const AUTH_CSS_VERSION = '20260716-3547-2';
 
 const SPLIT_FILES = [
   'base.css',
@@ -151,10 +151,20 @@ test('login card uses one mobile-sized canonical composition (#3547)', () => {
   const sections = readLoginCss('sections.css');
   const components = readLoginCss('components.css');
 
-  // Canonical card metrics live in layout base rules (not only inside media queries).
-  assert.match(layout, /\.login-card\s*\{[\s\S]*?max-width:\s*360px/);
+  // Canonical card metrics = preserved mobile composition (not a new 360px invention).
+  assert.match(layout, /\.login-card\s*\{[\s\S]*?max-width:\s*480px/);
   assert.match(layout, /\.login-card\s*\{[\s\S]*?padding:\s*32px\s+16px/);
-  assert.match(layout, /\.login-shell\s*\{[\s\S]*?padding:\s*72px\s+16px\s+24px/);
+  assert.match(layout, /\.login-shell\s*\{[\s\S]*?padding:\s*16px\b/);
+  assert.equal(
+    /max-width:\s*360px/.test(layout),
+    false,
+    'must not invent a new 360px card max-width'
+  );
+  assert.equal(
+    /padding:\s*72px\s+16px\s+24px/.test(layout),
+    false,
+    'must not change mobile shell to 72px 16px 24px'
+  );
 
   // Responsive may grow shell outer whitespace only — no card interior rescale.
   assert.match(responsive, /@media\s*\(\s*min-width:\s*769px\s*\)/);
