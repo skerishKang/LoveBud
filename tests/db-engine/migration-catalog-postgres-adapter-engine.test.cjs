@@ -102,7 +102,9 @@ async function driftCase(name, ddl, targetName) {
 test('drift: type', { concurrency: false }, async () => {
   await driftCase(
     'drift_type',
-    `ALTER TABLE synthetic_catalog.drift_pad ALTER COLUMN flag TYPE integer USING (CASE WHEN flag THEN 1 ELSE 0 END)`,
+    `ALTER TABLE synthetic_catalog.drift_pad ALTER COLUMN flag DROP DEFAULT;
+     ALTER TABLE synthetic_catalog.drift_pad
+       ALTER COLUMN flag TYPE integer USING (CASE WHEN flag THEN 1 ELSE 0 END)`,
     'table:synthetic_catalog.drift_pad'
   );
 });
