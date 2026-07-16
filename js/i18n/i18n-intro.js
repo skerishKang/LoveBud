@@ -88,6 +88,15 @@
       ko: '단순한 기록을 넘어, 당신의 감정이 어디서 시작되어 어떤 경로로 깊어졌는지 한눈에 마주하는 디지털 감성 정원입니다.',
       en: 'Beyond simple records, it is a digital emotion garden where you can see at a glance where your feelings started and how they deepened.'
     },
+    // Issue #3484 Option B: public-first active Intro claim (no shippable Plus promise)
+    'intro.whatItem3Title': {
+      ko: '공개로 시작해요',
+      en: 'Start in public'
+    },
+    'intro.whatItem3Desc': {
+      ko: '새 러브트리는 공개로 시작하며, 공개 여부는 편집 화면에서 확인할 수 있어요.',
+      en: 'New LoveTrees start public. You can check visibility on the edit screen.'
+    },
 
     // How to 섹션
     'intro.howToTitle': {

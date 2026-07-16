@@ -2,9 +2,69 @@
 
 이 문서는 LoveBud / LoveTree의 공개, 비공개, memory visibility, anonymous public exposure, Browse/Search 소개 UX 정책을 정리합니다.
 
-현재 CTO 확정 정책은 **public-first visibility + Plus private storage + separate browse eligibility + parent visibility public-read guard**입니다. 이 문서는 제품/UX 정책의 canonical source이며, 코드 구현은 별도 frontend/backend 작업으로 분리합니다.
+현재 CTO 확정 정책은 **public-first visibility + Plus private storage (server direction) + separate browse eligibility + parent visibility public-read guard**입니다. 이 문서는 제품/UX 정책의 canonical source이며, 코드 구현은 별도 frontend/backend 작업으로 분리합니다.
 
 중요: 이 문서는 현재 main 코드가 canonical policy의 모든 세부 항목을 구현했다는 의미가 아닙니다. 코드 변경 또는 정책 판단 전에는 현재 구현 상태를 별도로 확인해야 합니다.
+
+---
+
+## Issue #3484 decision (runtime-backed user-facing claim)
+
+**Selected option: Option B — Public-first without a shippable Plus promise**
+
+Recorded for Issue #3484 after remote audit of current creation paths, Modal
+defaults, private-storage guards, and acquisition surfaces. This is the
+approved **user-facing claim** for Intro and related active copy. It does not
+change runtime visibility defaults.
+
+### Decision matrix result
+
+| Option | Status |
+|--------|--------|
+| A — Public-first with shipped Plus private storage | **Rejected** — server private-storage guard exists, but no shippable Plus purchase/upgrade path for ordinary users |
+| **B — Public-first without a shippable Plus promise** | **Selected** |
+| C — Private-first or neutral onboarding | **Rejected** — new trees and omitted tree visibility default to `public` on current runtime |
+| D — Remove the visibility/Plus claim | **Rejected** — runtime evidence is sufficient for a truthful public-first statement |
+
+### Runtime-backed facts (do not reverse without a new audit)
+
+1. **New trees default to public** on active My Trees create, Editor new-tree
+   create, and Modal `create_owner_tree` omitted-field fallback (`public`).
+2. **New moments/memories** omit or inherit parent tree visibility; omitted
+   memory visibility inherits parent (public tree ⇒ public moment path).
+3. **Private tree/moment writes** call `require_plus_for_private_storage`
+   (server-side) when visibility is `private`.
+4. **Plus acquisition is not shipped** for end users. Settings active copy is
+   “Plus에서 준비 중” / “being prepared for Plus”. There is no billing,
+   checkout, or upgrade purchase flow in current runtime.
+5. **Existing private content is not bulk-changed.** Grandfathering remains.
+
+### Approved user-facing claim (Option B)
+
+User-facing product copy **may**:
+
+- state that new LoveTrees start public;
+- state that visibility can be checked on the edit screen;
+- separate tree visibility from Browse/Search introduction;
+- describe Settings private storage as **준비 중 / being prepared**.
+
+User-facing product copy **must not**:
+
+- claim private-first creation (“비공개로 시작해요” as current default);
+- promise “Plus에서 비공개 보관” as an obtainable product today;
+- imply encryption or special security;
+- imply existing content visibility will change automatically;
+- merge tree visibility and moment visibility into one false claim.
+
+### Implementation gap (separate child issues; out of #3484 scope)
+
+- Plus purchase / upgrade / billing acquisition path
+- User-facing entitlement grant UX beyond admin/legacy Firestore fields
+- Any change to creation default visibility behavior
+
+Until acquisition ships and is verified, keep **Option B**. Revisit Option A
+only when public-first creation, private storage, server enforcement, and a
+real user upgrade path are all Production-capable.
 
 ---
 
@@ -242,7 +302,22 @@ Browse/Search introduction 조건:
 
 사용자-facing 문구는 공개 접근과 Browse/Search 소개를 혼동시키지 않아야 합니다.
 
-권장 문구:
+**Issue #3484 Option B** applies to active Intro / onboarding claims until Plus
+acquisition is shipped. Policy direction may still describe private storage as
+Plus-gated at the server layer; user-facing surfaces must not promise that
+users can buy or enable Plus today.
+
+### Approved active Intro / onboarding (KO / EN)
+
+> 공개로 시작해요
+>
+> 새 러브트리는 공개로 시작하며, 공개 여부는 편집 화면에서 확인할 수 있어요.
+
+> Start in public
+>
+> New LoveTrees start public. You can check visibility on the edit screen.
+
+### Other approved guidance
 
 > 새 러브트리는 공개 상태로 시작해요.
 
@@ -250,7 +325,9 @@ Browse/Search introduction 조건:
 
 > 공개된 순간이 3개 이상 쌓이면 둘러보기에서 소개될 수 있어요.
 
-> 비공개 보관은 Plus에서 사용할 수 있어요.
+> 나만 보는 러브트리를 조용히 보관하는 기능은 Plus에서 준비 중이에요.
+>
+> Quiet storage for LoveTrees only you can see is being prepared for Plus.
 
 > 순간의 공개 범위를 따로 고르지 않으면, 러브트리의 공개 상태를 따라가요.
 
@@ -258,12 +335,18 @@ Browse/Search introduction 조건:
 
 > 공개는 링크로 볼 수 있는 상태이고, 둘러보기 소개는 충분히 자란 러브트리를 조용히 보여주는 기준이에요.
 
+### Prohibited active claims under Option B
+
+- `비공개로 시작해요` as the current creation default
+- `Plus에서 비공개로 보관할 수 있어요` / shippable Plus private storage
+- encryption or special-security promises not implemented in runtime
+
 짧은 UI label 후보:
 
 - 공개로 시작
 - 둘러보기 소개 준비 중
 - 공개 순간 3개부터 소개 가능
-- 비공개 보관은 Plus 기능
+- 비공개 보관 준비 중 (Plus)
 - 비공개 트리 안의 순간은 공개 감상에 노출되지 않음
 
 ---
@@ -396,6 +479,8 @@ Policy: Parent tree visibility remains an anonymous public read guard.
 - Modal private tree/memory create 및 private visibility update path는 private storage entitlement guard를 호출함
 - public read path는 parent tree visibility guard를 유지함
 - public visibility와 Browse/Search 자동 노출은 별개임
+- Settings private storage 문구는 Plus 준비 중 (acquisition not shipped)
+- Intro active claim follows **Issue #3484 Option B** (public-first, no shippable Plus promise)
 
 현재 main 코드가 이미 다음을 모두 최종 계약으로 확정했다는 뜻은 아닙니다.
 
@@ -403,7 +488,8 @@ Policy: Parent tree visibility remains an anonymous public read guard.
 - frontend toast/i18n mapping
 - compatibility entitlement fields의 장기 지원 여부
 - grandfathered private 세부 UX
-- Settings/결제 UX
+- Settings/결제 UX / Plus purchase path
 - Browse/Search threshold의 장기 정책화 여부
 
-실제 구현 및 contract 확정은 별도 PR에서 진행합니다.
+실제 구현 및 contract 확정은 별도 PR에서 진행합니다. Issue #3484 only aligns
+policy docs and active user-facing copy with existing runtime behavior.
