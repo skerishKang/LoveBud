@@ -1,0 +1,461 @@
+{
+  "format_version": "1.0",
+  "digest_algorithm": "sha256",
+  "contract_path": "db/migration-provenance/adoption-baseline-collection-plan-contract.json",
+  "purpose": "Repository-owned inactive adoption-baseline collection plan. Status is always PREPARED_ONLY. Defines the exact allowlist, abstract role classes, read-only proofs, and sanitized outputs for a later separately approved target collection. Grants no SQL, DB, attestation, or manifest-activation authority.",
+  "required_top_level_fields": [
+    "format_version",
+    "plan_status",
+    "baseline_commit",
+    "environment_class",
+    "attestation_scope",
+    "approval_reference",
+    "collection_mode",
+    "output_policy",
+    "object_allowlist",
+    "role_mapping_classes",
+    "required_read_only_proofs",
+    "expected_outputs",
+    "contract_path",
+    "digest_algorithm",
+    "collection_plan_contract_digest",
+    "object_allowlist_digest"
+  ],
+  "allowed_top_level_fields": [
+    "format_version",
+    "plan_status",
+    "baseline_commit",
+    "environment_class",
+    "attestation_scope",
+    "approval_reference",
+    "collection_mode",
+    "output_policy",
+    "object_allowlist",
+    "role_mapping_classes",
+    "required_read_only_proofs",
+    "expected_outputs",
+    "contract_path",
+    "digest_algorithm",
+    "collection_plan_contract_digest",
+    "object_allowlist_digest",
+    "plan_digest"
+  ],
+  "object_allowlist_required_fields": [
+    "name",
+    "kind",
+    "metadata_categories",
+    "rationale_code"
+  ],
+  "object_allowlist_allowed_fields": [
+    "name",
+    "kind",
+    "metadata_categories",
+    "rationale_code"
+  ],
+  "fixed_field_values": {
+    "format_version": "1.0",
+    "plan_status": "PREPARED_ONLY",
+    "environment_class": "PRODUCTION",
+    "attestation_scope": "PRODUCTION_READONLY",
+    "collection_mode": "CATALOG_METADATA_ONLY",
+    "output_policy": "SANITIZED_STDOUT_ONLY"
+  },
+  "enums": {
+    "plan_status": ["PREPARED_ONLY"],
+    "environment_class": ["PRODUCTION"],
+    "attestation_scope": ["PRODUCTION_READONLY"],
+    "collection_mode": ["CATALOG_METADATA_ONLY"],
+    "output_policy": ["SANITIZED_STDOUT_ONLY"],
+    "object_kind": ["TABLE", "VIEW", "MATERIALIZED_VIEW"],
+    "metadata_category": [
+      "columns",
+      "types",
+      "nullability",
+      "defaults",
+      "primary_keys",
+      "unique_constraints",
+      "foreign_keys",
+      "indexes",
+      "triggers",
+      "row_level_security",
+      "grants",
+      "table_kind"
+    ],
+    "rationale_code": [
+      "CORE_TREE_IDENTITY",
+      "MOMENT_DEPENDENCY",
+      "TREE_SOCIAL_SURFACE",
+      "MOMENT_SOCIAL_SURFACE",
+      "WRITE_HARDENING_SURFACE"
+    ],
+    "role_mapping_class": [
+      "PUBLIC",
+      "APPLICATION",
+      "AUTHENTICATED",
+      "SERVICE",
+      "OWNER_CLASS"
+    ],
+    "read_only_proof": [
+      "EXPLICIT_READ_ONLY_TRANSACTION",
+      "READ_ONLY_TRANSACTION_CONFIRMED",
+      "REPOSITORY_OWNED_SQL_ONLY",
+      "NO_CALLER_SQL",
+      "ALLOWLISTED_OBJECTS_ONLY",
+      "NO_APPLICATION_ROW_READS",
+      "ABSTRACT_ROLE_MAPPING_ONLY",
+      "NO_RAW_CATALOG_OUTPUT",
+      "NO_PARTIAL_SUCCESS_CLAIM",
+      "BOUNDED_FAILURE_OUTPUT"
+    ],
+    "expected_output": [
+      "SANITIZED_CATALOG_EVIDENCE",
+      "CATALOG_EVIDENCE_DIGEST",
+      "INACTIVE_EXPECTED_SCHEMA_CANDIDATE",
+      "COLLECTION_PLAN_DIGEST",
+      "OBJECT_ALLOWLIST_DIGEST",
+      "PREPARED_ATTESTATION_DRAFT",
+      "BOUNDED_COLLECTION_OUTCOME"
+    ]
+  },
+  "mandatory_read_only_proofs": [
+    "EXPLICIT_READ_ONLY_TRANSACTION",
+    "READ_ONLY_TRANSACTION_CONFIRMED",
+    "REPOSITORY_OWNED_SQL_ONLY",
+    "NO_CALLER_SQL",
+    "ALLOWLISTED_OBJECTS_ONLY",
+    "NO_APPLICATION_ROW_READS",
+    "ABSTRACT_ROLE_MAPPING_ONLY",
+    "NO_RAW_CATALOG_OUTPUT",
+    "NO_PARTIAL_SUCCESS_CLAIM",
+    "BOUNDED_FAILURE_OUTPUT"
+  ],
+  "mandatory_expected_outputs": [
+    "SANITIZED_CATALOG_EVIDENCE",
+    "CATALOG_EVIDENCE_DIGEST",
+    "INACTIVE_EXPECTED_SCHEMA_CANDIDATE",
+    "COLLECTION_PLAN_DIGEST",
+    "OBJECT_ALLOWLIST_DIGEST",
+    "PREPARED_ATTESTATION_DRAFT",
+    "BOUNDED_COLLECTION_OUTCOME"
+  ],
+  "role_mapping_classes": [
+    "PUBLIC",
+    "APPLICATION",
+    "AUTHENTICATED",
+    "SERVICE",
+    "OWNER_CLASS"
+  ],
+  "patterns": {
+    "baseline_commit": "^[a-f0-9]{40}$",
+    "approval_reference": "^(?:issue:\\d+|decision:[A-Za-z0-9][A-Za-z0-9._-]{2,63})$",
+    "object_name": "^(?:table|view|materialized_view):[A-Za-z_][A-Za-z0-9_]*\\.[A-Za-z_][A-Za-z0-9_]*$",
+    "digest": "^sha256:[a-f0-9]{64}$"
+  },
+  "digest_domains": {
+    "collection_plan": "lovebud:adoption-baseline-collection-plan",
+    "object_allowlist": "lovebud:adoption-baseline-object-allowlist"
+  },
+  "prepared_attestation_status": "UNATTESTED",
+  "prohibited_plan_statuses": [
+    "ATTESTED",
+    "ACTIVE",
+    "APPLIED",
+    "APPROVED_FOR_MUTATION"
+  ],
+  "prohibited_fields": [
+    "host",
+    "hostname",
+    "port",
+    "database",
+    "database_name",
+    "database_url",
+    "connection_string",
+    "url",
+    "secret",
+    "token",
+    "password",
+    "credential",
+    "username",
+    "operator",
+    "operator_name",
+    "operator_email",
+    "raw_role",
+    "role_name",
+    "provider_project",
+    "provider_branch",
+    "raw_catalog",
+    "rows",
+    "row_values",
+    "payload",
+    "cookie",
+    "grantee_name",
+    "database_owner"
+  ],
+  "limits": {
+    "max_objects": 64,
+    "max_string_length": 512,
+    "max_input_bytes": 1048576,
+    "max_metadata_categories_per_object": 32,
+    "max_approval_reference_length": 96
+  },
+  "sensitive_content_markers": [
+    "postgres://",
+    "postgresql://",
+    "DATABASE_URL",
+    "password=",
+    "password:",
+    "api_key",
+    "api-key",
+    "secret=",
+    "secret:",
+    "token=",
+    "token:",
+    "BEGIN PRIVATE KEY",
+    "BEGIN RSA PRIVATE KEY",
+    "neon.tech",
+    "cloud.neon"
+  ],
+  "reviewed_object_allowlist": [
+    {
+      "name": "table:public.comments",
+      "kind": "TABLE",
+      "metadata_categories": [
+        "columns",
+        "types",
+        "nullability",
+        "defaults",
+        "primary_keys",
+        "unique_constraints",
+        "foreign_keys",
+        "indexes",
+        "triggers",
+        "row_level_security",
+        "grants",
+        "table_kind"
+      ],
+      "rationale_code": "MOMENT_SOCIAL_SURFACE"
+    },
+    {
+      "name": "table:public.memories",
+      "kind": "TABLE",
+      "metadata_categories": [
+        "columns",
+        "types",
+        "nullability",
+        "defaults",
+        "primary_keys",
+        "unique_constraints",
+        "foreign_keys",
+        "indexes",
+        "triggers",
+        "row_level_security",
+        "grants",
+        "table_kind"
+      ],
+      "rationale_code": "MOMENT_DEPENDENCY"
+    },
+    {
+      "name": "table:public.reactions",
+      "kind": "TABLE",
+      "metadata_categories": [
+        "columns",
+        "types",
+        "nullability",
+        "defaults",
+        "primary_keys",
+        "unique_constraints",
+        "foreign_keys",
+        "indexes",
+        "triggers",
+        "row_level_security",
+        "grants",
+        "table_kind"
+      ],
+      "rationale_code": "MOMENT_SOCIAL_SURFACE"
+    },
+    {
+      "name": "table:public.social_audit_log",
+      "kind": "TABLE",
+      "metadata_categories": [
+        "columns",
+        "types",
+        "nullability",
+        "defaults",
+        "primary_keys",
+        "unique_constraints",
+        "foreign_keys",
+        "indexes",
+        "triggers",
+        "row_level_security",
+        "grants",
+        "table_kind"
+      ],
+      "rationale_code": "WRITE_HARDENING_SURFACE"
+    },
+    {
+      "name": "table:public.social_idempotency",
+      "kind": "TABLE",
+      "metadata_categories": [
+        "columns",
+        "types",
+        "nullability",
+        "defaults",
+        "primary_keys",
+        "unique_constraints",
+        "foreign_keys",
+        "indexes",
+        "triggers",
+        "row_level_security",
+        "grants",
+        "table_kind"
+      ],
+      "rationale_code": "WRITE_HARDENING_SURFACE"
+    },
+    {
+      "name": "table:public.tree_comments",
+      "kind": "TABLE",
+      "metadata_categories": [
+        "columns",
+        "types",
+        "nullability",
+        "defaults",
+        "primary_keys",
+        "unique_constraints",
+        "foreign_keys",
+        "indexes",
+        "triggers",
+        "row_level_security",
+        "grants",
+        "table_kind"
+      ],
+      "rationale_code": "TREE_SOCIAL_SURFACE"
+    },
+    {
+      "name": "table:public.tree_likes",
+      "kind": "TABLE",
+      "metadata_categories": [
+        "columns",
+        "types",
+        "nullability",
+        "defaults",
+        "primary_keys",
+        "unique_constraints",
+        "foreign_keys",
+        "indexes",
+        "triggers",
+        "row_level_security",
+        "grants",
+        "table_kind"
+      ],
+      "rationale_code": "TREE_SOCIAL_SURFACE"
+    },
+    {
+      "name": "table:public.tree_social_counts",
+      "kind": "TABLE",
+      "metadata_categories": [
+        "columns",
+        "types",
+        "nullability",
+        "defaults",
+        "primary_keys",
+        "unique_constraints",
+        "foreign_keys",
+        "indexes",
+        "triggers",
+        "row_level_security",
+        "grants",
+        "table_kind"
+      ],
+      "rationale_code": "TREE_SOCIAL_SURFACE"
+    },
+    {
+      "name": "table:public.trees",
+      "kind": "TABLE",
+      "metadata_categories": [
+        "columns",
+        "types",
+        "nullability",
+        "defaults",
+        "primary_keys",
+        "unique_constraints",
+        "foreign_keys",
+        "indexes",
+        "triggers",
+        "row_level_security",
+        "grants",
+        "table_kind"
+      ],
+      "rationale_code": "CORE_TREE_IDENTITY"
+    }
+  ],
+  "object_selection_evidence": {
+    "table:public.trees": {
+      "repository_evidence": [
+        "scripts/migration-repair-trees-schema-3435.sql",
+        "docs/ops/lovebud-trees-schema-foothold-3435.md",
+        "docs/architecture/migration-path-inventory.json"
+      ],
+      "why_critical": "Primary tree entity and TREE_SCHEMA_DRIFT recovery surface for owner-list and public tree APIs."
+    },
+    "table:public.memories": {
+      "repository_evidence": [
+        "scripts/migration-add-reactions-comments.sql",
+        "scripts/migration-add-channel-fields.sql"
+      ],
+      "why_critical": "Moment/memory dependency table attached to trees; required for moment graph and social write targets."
+    },
+    "table:public.tree_comments": {
+      "repository_evidence": [
+        "scripts/migration-add-tree-comments.sql",
+        "scripts/migration-reconcile-tree-comments-legacy-schema.sql",
+        "docs/architecture/migration-path-inventory.json"
+      ],
+      "why_critical": "Tree-level comment schema used by public viewer and editor social surfaces."
+    },
+    "table:public.tree_likes": {
+      "repository_evidence": [
+        "scripts/migration-add-tree-social-counts.sql"
+      ],
+      "why_critical": "Tree like records for public appreciation and social count consistency."
+    },
+    "table:public.tree_social_counts": {
+      "repository_evidence": [
+        "scripts/migration-add-tree-social-counts.sql"
+      ],
+      "why_critical": "Aggregated tree social counts consumed by browse and public viewer paths."
+    },
+    "table:public.reactions": {
+      "repository_evidence": [
+        "scripts/migration-add-reactions-comments.sql"
+      ],
+      "why_critical": "Moment reaction surface for social writes and read models."
+    },
+    "table:public.comments": {
+      "repository_evidence": [
+        "scripts/migration-add-reactions-comments.sql",
+        "scripts/migration-harden-moment-social-writes.sql"
+      ],
+      "why_critical": "Moment comment table hardened by social write migrations."
+    },
+    "table:public.social_idempotency": {
+      "repository_evidence": [
+        "scripts/migration-harden-moment-social-writes.sql",
+        "scripts/migration-add-generic-social-targets.sql"
+      ],
+      "why_critical": "Write idempotency ledger required before generic social cutover."
+    },
+    "table:public.social_audit_log": {
+      "repository_evidence": [
+        "scripts/migration-harden-moment-social-writes.sql",
+        "scripts/migration-add-generic-social-targets.sql"
+      ],
+      "why_critical": "Bounded social audit log supporting hardened write paths."
+    }
+  },
+  "notes": [
+    "plan_status is always PREPARED_ONLY and never ATTESTED or ACTIVE.",
+    "Merging this contract grants no Production/shared DB access and no SQL authority.",
+    "A future execution child must reuse this reviewed allowlist and proof set unchanged or return for re-review.",
+    "PREPARED_ATTESTATION_DRAFT remains UNATTESTED; overall provenance gate stays FAIL_CLOSED with GATE_ADOPTION_BASELINE_REQUIRED."
+  ]
+}
