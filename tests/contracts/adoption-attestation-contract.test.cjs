@@ -133,9 +133,12 @@ test('committed adoption attestation contract is strict and complete', () => {
     'variance_classification',
     'approval_reference',
     'applied_migrations',
+    'attestation_scope',
   ]) {
     assert.ok(contract.required_top_level_fields.includes(field), field);
   }
+  assert.ok(core.REQUIRED_TRUSTED_BINDING_FIELDS.includes('expected_migrations'));
+  assert.ok(core.REQUIRED_TRUSTED_BINDING_FIELDS.includes('attestation_scope'));
   assert.deepEqual(contract.enums.adoption_status, ['UNATTESTED', 'ATTESTED']);
   assert.ok(contract.enums.environment_class.includes('DISPOSABLE_CI'));
   assert.ok(contract.enums.environment_class.includes('PRODUCTION'));
@@ -196,6 +199,7 @@ test('missing individual trusted binding fields fail closed', () => {
     'approval_reference',
     'environment_class',
     'attestation_scope',
+    'expected_migrations',
   ];
   for (const field of fields) {
     const a = validAttestation();
@@ -208,6 +212,104 @@ test('missing individual trusted binding fields fail closed', () => {
       `expected trust binding required for missing ${field}`
     );
   }
+});
+
+test('expected_migrations non-array bindings fail closed', () => {
+  for (const bad of [null, '[]', {}, 12]) {
+    const a = validAttestation({}, { expected_migrations: bad });
+    const result = core.validateAdoptionAttestationEvidence(a.attestation, a.binding, contract);
+    assert.equal(result.ok, false, String(bad));
+    assert.ok(result.blockers.includes('GATE_ADOPTION_TRUST_BINDING_REQUIRED'));
+  }
+});
+
+test('malformed trusted expected_migrations records fail closed', () => {
+  const a = validAttestation();
+  const checksum = a.arts.firstChecksum;
+  const cases = [
+    [{ id: '20260713090000_example-one' }], // missing checksum
+    [{ checksum }], // missing id
+    [{ id: 'bad-id', checksum }], // invalid id
+    [{ id: '20260713090000_example-one', checksum: 'not-a-digest' }], // invalid checksum
+    [{ id: '20260713090000_example-one', checksum, extra: true }], // unknown field
+    [
+      { id: '20260713090000_example-one', checksum },
+      { id: '20260713090000_example-one', checksum },
+    ], // duplicate trusted ids
+    [null],
+    ['string-record'],
+  ];
+  for (const expected_migrations of cases) {
+    const result = core.validateAdoptionAttestationEvidence(
+      a.attestation,
+      { ...a.binding, expected_migrations },
+      contract
+    );
+    assert.equal(result.ok, false);
+    assert.ok(
+      result.blockers.includes('GATE_ADOPTION_MIGRATION_INVALID') ||
+        result.blockers.includes('GATE_ADOPTION_MIGRATION_DUPLICATE')
+    );
+    assert.equal(JSON.stringify(result).includes(checksum), false);
+  }
+});
+
+test('empty trusted list and empty evidence list pass migration comparison', () => {
+  const a = validAttestation(
+    { applied_migrations: [] },
+    { expected_migrations: [] }
+  );
+  // Digests still bound to original artifacts; applied list empty matches trusted empty.
+  const result = core.validateAdoptionAttestationEvidence(a.attestation, a.binding, contract);
+  assert.equal(result.ok, true);
+  assert.deepEqual(result.blockers, []);
+});
+
+test('trusted empty list with evidence migration is unknown', () => {
+  const a = validAttestation({}, { expected_migrations: [] });
+  const result = core.validateAdoptionAttestationEvidence(a.attestation, a.binding, contract);
+  assert.equal(result.ok, false);
+  assert.ok(result.blockers.includes('GATE_ADOPTION_MIGRATION_UNKNOWN'));
+});
+
+test('trusted list with migrations and empty evidence is missing', () => {
+  const a = validAttestation({ applied_migrations: [] });
+  const result = core.validateAdoptionAttestationEvidence(a.attestation, a.binding, contract);
+  assert.equal(result.ok, false);
+  assert.ok(result.blockers.includes('GATE_ADOPTION_MIGRATION_MISSING'));
+});
+
+test('direct validator cannot return ok without trusted expected_migrations array', () => {
+  const a = validAttestation();
+  const binding = { ...a.binding };
+  delete binding.expected_migrations;
+  const result = core.validateAdoptionAttestationEvidence(a.attestation, binding, contract);
+  assert.equal(result.ok, false);
+  assert.ok(result.blockers.includes('GATE_ADOPTION_TRUST_BINDING_REQUIRED'));
+});
+
+test('evaluateProvenance supplies repository-owned expected migrations', () => {
+  const a = validAttestation();
+  const bindingWithoutMigrations = { ...a.binding };
+  delete bindingWithoutMigrations.expected_migrations;
+  const result = provenance.evaluateProvenance({
+    migrationManifest: {
+      status: 'ACTIVE',
+      migrations: a.arts.migrationManifest.migrations,
+    },
+    expectedSchemaManifest: {
+      status: 'ACTIVE',
+      ...a.arts.expectedSchemaManifest,
+    },
+    ledgerEvidence: a.attestation,
+    catalogEvidence: a.arts.catalogEvidence,
+    adoptionBinding: bindingWithoutMigrations,
+    adoptionContract: contract,
+  });
+  // With ACTIVE manifests + complete other bindings, repo injects expected_migrations.
+  assert.equal(result.blockers.includes('GATE_ADOPTION_TRUST_BINDING_REQUIRED'), false);
+  assert.equal(result.decision, 'PASS');
+  assert.deepEqual(result.blockers, []);
 });
 
 test('approval-reference mismatch fails closed', () => {

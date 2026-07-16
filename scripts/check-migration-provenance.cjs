@@ -155,6 +155,7 @@ function main() {
     }
 
     // Exact-byte digests only: repository-owned file bytes + confined catalog evidence bytes.
+    // expected_migrations always come from the repository-owned canonical manifest, never evidence.
     const adoptionBinding = {
       baseline_commit: baselineCommit,
       approval_reference: approvalReference,
@@ -162,7 +163,13 @@ function main() {
       attestation_scope: attestationScope,
       canonical_manifest_digest: attestation.computeEvidenceDigest(canonicalBytes),
       expected_schema_digest: attestation.computeEvidenceDigest(expectedSchemaBytes),
-      catalog_evidence_digest: catalogLoad.digest
+      catalog_evidence_digest: catalogLoad.digest,
+      expected_migrations: Array.isArray(migrationManifest.migrations)
+        ? migrationManifest.migrations.map((item) => ({
+            id: item.id,
+            checksum: item.checksum
+          }))
+        : []
     };
 
     const gateResult = evaluateProvenanceWithSource({

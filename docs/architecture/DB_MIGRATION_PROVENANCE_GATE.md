@@ -236,7 +236,10 @@ catalog_evidence_digest
 approval_reference
 environment_class
 attestation_scope
+expected_migrations
 ```
+
+`expected_migrations` is the repository-owned canonical migration sequence (`[{ id, checksum }]`). An empty array is valid while the committed canonical manifest remains inactive and empty. The validator never reconstructs this list from attestation evidence.
 
 Target gate mode requires explicit trusted arguments (`--baseline-commit`, `--approval-reference`, `--environment-class`, `--attestation-scope`) plus repository-relative evidence paths. Canonical/expected-schema digests are computed from exact repository file bytes; catalog digests are computed from exact confined catalog-evidence file bytes. Semantically equal JSON with different bytes is a digest mismatch. The gate never constructs trusted digests by re-serializing caller-controlled objects.
 

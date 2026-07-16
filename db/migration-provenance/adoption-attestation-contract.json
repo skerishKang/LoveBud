@@ -13,7 +13,8 @@
     "catalog_evidence_digest",
     "variance_classification",
     "approval_reference",
-    "applied_migrations"
+    "applied_migrations",
+    "attestation_scope"
   ],
   "allowed_top_level_fields": [
     "format_version",

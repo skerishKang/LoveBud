@@ -534,24 +534,32 @@ function evaluateProvenance({
   if (!ledgerEvidence) {
     blockers.push('GATE_ADOPTION_EVIDENCE_UNAVAILABLE');
   } else {
+    // Repository-owned canonical migration sequence (never reconstructed from evidence).
+    const repositoryExpectedMigrations = migrations.map((item) => ({
+      id: item.id,
+      checksum: item.checksum
+    }));
     let binding = adoptionBinding || null;
-    if (attestationCore.hasCompleteTrustedBinding(adoptionBinding)) {
-      binding = {
-        baseline_commit: adoptionBinding.baseline_commit,
-        canonical_manifest_digest: adoptionBinding.canonical_manifest_digest,
-        expected_schema_digest: adoptionBinding.expected_schema_digest,
-        catalog_evidence_digest: adoptionBinding.catalog_evidence_digest,
-        approval_reference: adoptionBinding.approval_reference,
-        environment_class: adoptionBinding.environment_class,
-        attestation_scope: adoptionBinding.attestation_scope,
-        // Repository-owned expected migration list (not evidence-derived trust).
-        expected_migrations: Array.isArray(adoptionBinding.expected_migrations)
-          ? adoptionBinding.expected_migrations
-          : migrations.map((item) => ({
-              id: item.id,
-              checksum: item.checksum
-            }))
+    if (adoptionBinding && typeof adoptionBinding === 'object' && !Array.isArray(adoptionBinding)) {
+      // Always attach repository-owned expected_migrations before completeness check.
+      const bindingCandidate = {
+        ...adoptionBinding,
+        expected_migrations: repositoryExpectedMigrations
       };
+      if (attestationCore.hasCompleteTrustedBinding(bindingCandidate)) {
+        binding = {
+          baseline_commit: bindingCandidate.baseline_commit,
+          canonical_manifest_digest: bindingCandidate.canonical_manifest_digest,
+          expected_schema_digest: bindingCandidate.expected_schema_digest,
+          catalog_evidence_digest: bindingCandidate.catalog_evidence_digest,
+          approval_reference: bindingCandidate.approval_reference,
+          environment_class: bindingCandidate.environment_class,
+          attestation_scope: bindingCandidate.attestation_scope,
+          expected_migrations: repositoryExpectedMigrations
+        };
+      } else {
+        binding = bindingCandidate;
+      }
     }
     const attestationResult = attestationCore.validateAdoptionAttestationEvidence(
       ledgerEvidence,

@@ -71,6 +71,7 @@ const REQUIRED_TRUSTED_BINDING_FIELDS = Object.freeze([
   'approval_reference',
   'environment_class',
   'attestation_scope',
+  'expected_migrations',
 ]);
 
 const FALLBACK_SENSITIVE_MARKERS = Object.freeze([
@@ -336,14 +337,105 @@ function matchPattern(value, pattern) {
 /**
  * True when binding is a complete trusted adoption binding from the invocation boundary.
  * Evidence values are claims and never establish trust by themselves.
+ * expected_migrations must be an array (empty array is valid for inactive canonical manifests).
  */
 function hasCompleteTrustedBinding(binding) {
   if (!binding || typeof binding !== 'object' || Array.isArray(binding)) return false;
   for (const field of REQUIRED_TRUSTED_BINDING_FIELDS) {
     const value = binding[field];
+    if (field === 'expected_migrations') {
+      if (!Array.isArray(value)) return false;
+      continue;
+    }
     if (value === undefined || value === null || value === '') return false;
   }
   return true;
+}
+
+/**
+ * Validate trusted expected_migrations array shape before evidence comparison.
+ * Returns true when the list is usable for authoritative ordered comparison.
+ * Never echoes raw id/checksum values into blockers/errors.
+ */
+function validateTrustedExpectedMigrations(expectedList, options, blockers, errors) {
+  const {
+    allowedMigFields,
+    prohibited,
+    migrationIdPattern,
+    digestPattern,
+    markers,
+    maxMigrations,
+  } = options;
+
+  if (!Array.isArray(expectedList)) {
+    pushUnique(blockers, GATE.GATE_ADOPTION_TRUST_BINDING_REQUIRED);
+    pushUnique(errors, FAILURE.ADOPTION_ATTESTATION_INPUT_INVALID);
+    return false;
+  }
+  if (expectedList.length > maxMigrations) {
+    pushUnique(blockers, GATE.GATE_ADOPTION_MIGRATION_INVALID);
+    pushUnique(errors, FAILURE.ADOPTION_ATTESTATION_BOUNDS_EXCEEDED);
+    return false;
+  }
+
+  const seenIds = new Set();
+  let ok = true;
+  for (let index = 0; index < expectedList.length; index += 1) {
+    const record = expectedList[index];
+    if (!record || typeof record !== 'object' || Array.isArray(record)) {
+      pushUnique(blockers, GATE.GATE_ADOPTION_MIGRATION_INVALID);
+      pushUnique(errors, FAILURE.ADOPTION_ATTESTATION_MIGRATION_INVALID);
+      ok = false;
+      continue;
+    }
+    // Sparse-array hole or non-own index is treated as malformed.
+    if (!Object.prototype.hasOwnProperty.call(expectedList, index)) {
+      pushUnique(blockers, GATE.GATE_ADOPTION_MIGRATION_INVALID);
+      pushUnique(errors, FAILURE.ADOPTION_ATTESTATION_MIGRATION_INVALID);
+      ok = false;
+      continue;
+    }
+    for (const key of Object.keys(record)) {
+      if (prohibited.has(key)) {
+        pushUnique(blockers, GATE.GATE_ADOPTION_SENSITIVE_MARKER_DETECTED);
+        pushUnique(errors, FAILURE.ADOPTION_ATTESTATION_PROHIBITED_FIELD);
+        ok = false;
+      } else if (!allowedMigFields.has(key)) {
+        pushUnique(blockers, GATE.GATE_ADOPTION_MIGRATION_INVALID);
+        pushUnique(errors, FAILURE.ADOPTION_ATTESTATION_UNKNOWN_FIELD);
+        ok = false;
+      }
+    }
+    if (record.id === undefined || record.id === null || record.id === '') {
+      pushUnique(blockers, GATE.GATE_ADOPTION_MIGRATION_INVALID);
+      pushUnique(errors, FAILURE.ADOPTION_ATTESTATION_MIGRATION_INVALID);
+      ok = false;
+    } else if (typeof record.id !== 'string' || !matchPattern(record.id, migrationIdPattern)) {
+      pushUnique(blockers, GATE.GATE_ADOPTION_MIGRATION_INVALID);
+      pushUnique(errors, FAILURE.ADOPTION_ATTESTATION_MIGRATION_INVALID);
+      ok = false;
+    } else if (seenIds.has(record.id)) {
+      pushUnique(blockers, GATE.GATE_ADOPTION_MIGRATION_DUPLICATE);
+      pushUnique(errors, FAILURE.ADOPTION_ATTESTATION_MIGRATION_INVALID);
+      ok = false;
+    } else {
+      seenIds.add(record.id);
+    }
+    if (record.checksum === undefined || record.checksum === null || record.checksum === '') {
+      pushUnique(blockers, GATE.GATE_ADOPTION_MIGRATION_INVALID);
+      pushUnique(errors, FAILURE.ADOPTION_ATTESTATION_MIGRATION_INVALID);
+      ok = false;
+    } else if (
+      typeof record.checksum !== 'string' ||
+      !matchPattern(record.checksum, digestPattern)
+    ) {
+      pushUnique(blockers, GATE.GATE_ADOPTION_MIGRATION_INVALID);
+      pushUnique(errors, FAILURE.ADOPTION_ATTESTATION_MIGRATION_INVALID);
+      ok = false;
+    }
+    scanValueSensitive(record, markers, blockers, errors);
+  }
+  return ok;
 }
 
 /**
@@ -351,8 +443,7 @@ function hasCompleteTrustedBinding(binding) {
  * For ATTESTED evidence, binding must include every REQUIRED_TRUSTED_BINDING_FIELDS value
  * from the protected invocation boundary. Evidence never supplies its own trust source.
  *
- * binding may also include:
- *   expected_migrations: [{id, checksum}]  (repository-owned expected migration list)
+ * expected_migrations is mandatory in the trusted binding (repository-owned list; empty allowed).
  *
  * Returns { ok, blockers, errors } without raw path/content leakage.
  */
@@ -385,6 +476,7 @@ function validateAdoptionAttestationEvidence(evidence, binding, contract) {
         'variance_classification',
         'approval_reference',
         'applied_migrations',
+        'attestation_scope',
       ],
       allowed_top_level_fields: [
         'format_version',
@@ -662,26 +754,57 @@ function validateAdoptionAttestationEvidence(evidence, binding, contract) {
     pushUnique(errors, FAILURE.ADOPTION_ATTESTATION_ENUM_INVALID);
   }
 
+  const requiredMigFields = activeContract.applied_migration_required_fields || ['id', 'checksum'];
+  const allowedMigFields = new Set(
+    activeContract.applied_migration_allowed_fields || ['id', 'checksum']
+  );
+  const migrationIdPattern = patterns.migration_id || '^\\d{14}_[a-z0-9]+(?:-[a-z0-9]+)*$';
+  const digestPattern = patterns.digest || '^sha256:[a-f0-9]{64}$';
+  const maxMigrations = limits.max_applied_migrations || 256;
+
+  // Authoritative trusted migration list only. Never reconstruct from evidence.
+  let trustedExpectedMigrations = null;
+  if (trustedBinding) {
+    const trustedListOk = validateTrustedExpectedMigrations(
+      trustedBinding.expected_migrations,
+      {
+        allowedMigFields,
+        prohibited,
+        migrationIdPattern,
+        digestPattern,
+        markers,
+        maxMigrations,
+      },
+      blockers,
+      errors
+    );
+    if (trustedListOk) {
+      trustedExpectedMigrations = trustedBinding.expected_migrations;
+    }
+  }
+
   if (!Array.isArray(evidence.applied_migrations)) {
     pushUnique(blockers, GATE.GATE_ADOPTION_MIGRATION_INVALID);
     pushUnique(errors, FAILURE.ADOPTION_ATTESTATION_MIGRATION_INVALID);
   } else {
-    const maxMigrations = limits.max_applied_migrations || 256;
     if (evidence.applied_migrations.length > maxMigrations) {
       pushUnique(blockers, GATE.GATE_ADOPTION_MIGRATION_INVALID);
       pushUnique(errors, FAILURE.ADOPTION_ATTESTATION_BOUNDS_EXCEEDED);
     }
 
-    const requiredMigFields = activeContract.applied_migration_required_fields || ['id', 'checksum'];
-    const allowedMigFields = new Set(
-      activeContract.applied_migration_allowed_fields || ['id', 'checksum']
-    );
     const seenIds = new Set();
-    const migrationIdPattern = patterns.migration_id || '^\\d{14}_[a-z0-9]+(?:-[a-z0-9]+)*$';
-    const digestPattern = patterns.digest || '^sha256:[a-f0-9]{64}$';
+    const expectedList = trustedExpectedMigrations;
+    const expectedIds = expectedList
+      ? new Set(expectedList.map((item) => item && item.id).filter(Boolean))
+      : null;
 
     evidence.applied_migrations.forEach((record, index) => {
       if (!record || typeof record !== 'object' || Array.isArray(record)) {
+        pushUnique(blockers, GATE.GATE_ADOPTION_MIGRATION_INVALID);
+        pushUnique(errors, FAILURE.ADOPTION_ATTESTATION_MIGRATION_INVALID);
+        return;
+      }
+      if (!Object.prototype.hasOwnProperty.call(evidence.applied_migrations, index)) {
         pushUnique(blockers, GATE.GATE_ADOPTION_MIGRATION_INVALID);
         pushUnique(errors, FAILURE.ADOPTION_ATTESTATION_MIGRATION_INVALID);
         return;
@@ -718,43 +841,30 @@ function validateAdoptionAttestationEvidence(evidence, binding, contract) {
       }
       scanValueSensitive(record, markers, blockers, errors);
 
-      const expectedList =
-        trustedBinding && Array.isArray(trustedBinding.expected_migrations)
-          ? trustedBinding.expected_migrations
-          : binding && Array.isArray(binding.expected_migrations)
-            ? binding.expected_migrations
-            : null;
+      // Always compare against trusted list when complete binding is present.
+      // Never skip comparison when expectedList is available (including empty list).
       if (expectedList) {
         const expected = expectedList[index];
         if (!expected) {
+          // Evidence entry beyond trusted list, or trusted empty with evidence present.
           pushUnique(blockers, GATE.GATE_ADOPTION_MIGRATION_UNKNOWN);
           pushUnique(errors, FAILURE.ADOPTION_ATTESTATION_MIGRATION_INVALID);
-        } else {
-          if (record.id !== expected.id) {
-            // Wrong id at position: unknown or reordered.
-            const expectedIds = new Set(expectedList.map((item) => item.id));
-            if (!expectedIds.has(record.id)) {
-              pushUnique(blockers, GATE.GATE_ADOPTION_MIGRATION_UNKNOWN);
-            } else {
-              pushUnique(blockers, GATE.GATE_ADOPTION_MIGRATION_REORDERED);
-            }
-            pushUnique(errors, FAILURE.ADOPTION_ATTESTATION_MIGRATION_INVALID);
-          } else if (record.checksum !== expected.checksum) {
-            pushUnique(blockers, GATE.GATE_ADOPTION_MIGRATION_CHECKSUM_MISMATCH);
-            pushUnique(errors, FAILURE.ADOPTION_ATTESTATION_MIGRATION_INVALID);
+        } else if (record.id !== expected.id) {
+          if (expectedIds && expectedIds.has(record.id)) {
+            pushUnique(blockers, GATE.GATE_ADOPTION_MIGRATION_REORDERED);
+          } else {
+            pushUnique(blockers, GATE.GATE_ADOPTION_MIGRATION_UNKNOWN);
           }
+          pushUnique(errors, FAILURE.ADOPTION_ATTESTATION_MIGRATION_INVALID);
+        } else if (record.checksum !== expected.checksum) {
+          pushUnique(blockers, GATE.GATE_ADOPTION_MIGRATION_CHECKSUM_MISMATCH);
+          pushUnique(errors, FAILURE.ADOPTION_ATTESTATION_MIGRATION_INVALID);
         }
       }
     });
 
-    const expectedForMissing =
-      trustedBinding && Array.isArray(trustedBinding.expected_migrations)
-        ? trustedBinding.expected_migrations
-        : binding && Array.isArray(binding.expected_migrations)
-          ? binding.expected_migrations
-          : null;
-    if (Array.isArray(expectedForMissing)) {
-      for (let i = evidence.applied_migrations.length; i < expectedForMissing.length; i += 1) {
+    if (expectedList) {
+      for (let i = evidence.applied_migrations.length; i < expectedList.length; i += 1) {
         pushUnique(blockers, GATE.GATE_ADOPTION_MIGRATION_MISSING);
         pushUnique(errors, FAILURE.ADOPTION_ATTESTATION_MIGRATION_INVALID);
       }
