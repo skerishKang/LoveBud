@@ -1,17 +1,20 @@
 /**
- * Contract: LoveBud #3438 public-first policy documentation hygiene.
+ * Contract: LoveBud #3438 public-first policy documentation hygiene
+ * and Issue #3484 visibility / Plus user-facing claim alignment.
  *
  * Scope grammar:
- * Static documentation contract only.
+ * Static documentation and active surface copy contract only.
  * No runtime, database, browser, network, deployment, or production behavior
  * is executed or verified.
  *
- * This test reads repository Markdown and index files and asserts static
- * source-of-truth, supersession, and policy-routing markers only.
+ * This test reads repository Markdown, index files, and active Intro/settings
+ * copy sources and asserts static source-of-truth, supersession, policy-routing
+ * markers, and #3484 Option B claim alignment only.
  * It does not execute runtime code, connect to a database or network, use a
  * browser, deploy, or verify production behavior.
  *
- * Refs: #3438, #3437, #3435, #1882
+ * Refs: #3438, #3437, #3435, #3484, #1882
+ * Keep #1882 OPEN.
  */
 
 const test = require('node:test');
@@ -25,6 +28,10 @@ const CANONICAL = 'docs/product/PUBLICATION_AND_PRIVACY_UX_POLICY.md';
 const FORMER_DECISION = 'docs/product/tree-visibility-default-and-control-placement-decision.md';
 const POLICY_REVIEW = 'docs/product/VISIBILITY_AND_PRIVATE_STORAGE_POLICY_REVIEW.md';
 const PRODUCT_INDEX = 'docs/product/product_index.md';
+const INTRO_HTML = 'pages/intro.html';
+const INTRO_I18N = 'js/i18n/i18n-intro.js';
+const SETTINGS_HTML = 'pages/settings.html';
+const SETTINGS_I18N = 'js/i18n/i18n-shared.js';
 
 const FORMER_DECISION_BASENAME = 'tree-visibility-default-and-control-placement-decision.md';
 const POLICY_REVIEW_BASENAME = 'VISIBILITY_AND_PRIVATE_STORAGE_POLICY_REVIEW.md';
@@ -329,4 +336,136 @@ test('canonical supersession section names both stale documents', () => {
     section.includes(POLICY_REVIEW_BASENAME),
     `${CANONICAL} supersession section must name ${POLICY_REVIEW_BASENAME}`
   );
+});
+
+// ─── 7. Issue #3484 Option B — policy record + active copy ───────────────────
+
+test('#3484 canonical policy records Option B explicitly', () => {
+  const src = read(CANONICAL);
+  assert.ok(
+    /Selected option:\s*Option B|Option B — Public-first without a shippable Plus promise/i.test(src),
+    `${CANONICAL} must record Issue #3484 Option B explicitly`
+  );
+  assert.ok(
+    /Issue #3484 decision/i.test(src),
+    `${CANONICAL} must include an Issue #3484 decision section`
+  );
+});
+
+test('#3484 Option A is rejected for missing shippable Plus path', () => {
+  const src = read(CANONICAL);
+  assert.ok(
+    /A — Public-first with shipped Plus private storage[\s\S]{0,200}Rejected/i.test(src),
+    `${CANONICAL} must reject Option A when Plus acquisition is not shippable`
+  );
+});
+
+test('#3484 distinguishes tree default from moment inheritance', () => {
+  const src = read(CANONICAL);
+  assert.ok(
+    /New trees default to public|신규 tree.*public/i.test(src),
+    `${CANONICAL} must keep tree default public`
+  );
+  assert.ok(
+    /Memory visibility omitted inherits parent tree visibility|omitted[\s\S]{0,40}inherits parent/i.test(src),
+    `${CANONICAL} must keep moment/memory inheritance separate from tree default`
+  );
+  assert.ok(
+    /merge tree visibility and moment visibility/i.test(src),
+    `${CANONICAL} must forbid falsely merging tree and moment policies in user claims`
+  );
+});
+
+test('#3484 active Intro HTML uses public-first Option B copy', () => {
+  const src = read(INTRO_HTML);
+  assert.ok(
+    /공개로 시작해요/.test(src),
+    `${INTRO_HTML} must claim public-first start`
+  );
+  assert.ok(
+    /새 러브트리는 공개로 시작하며,\s*공개 여부는 편집 화면에서 확인할 수 있어요/.test(src),
+    `${INTRO_HTML} must include approved Option B body copy`
+  );
+  assert.ok(
+    !/비공개로 시작해요/.test(src),
+    `${INTRO_HTML} must not claim private-first start`
+  );
+  assert.ok(
+    !/Plus에서 비공개/.test(src),
+    `${INTRO_HTML} must not promise Plus private storage`
+  );
+});
+
+test('#3484 active Intro i18n aligns Korean and English Option B copy', () => {
+  const src = read(INTRO_I18N);
+  assert.ok(
+    /'intro\.whatItem3Title'/.test(src) || /"intro\.whatItem3Title"/.test(src),
+    `${INTRO_I18N} must define intro.whatItem3Title`
+  );
+  assert.ok(
+    /ko:\s*'공개로 시작해요'/.test(src),
+    `${INTRO_I18N} Korean title must be 공개로 시작해요`
+  );
+  assert.ok(
+    /en:\s*'Start in public'/.test(src),
+    `${INTRO_I18N} English title must be Start in public`
+  );
+  assert.ok(
+    /ko:\s*'새 러브트리는 공개로 시작하며, 공개 여부는 편집 화면에서 확인할 수 있어요\.'/.test(src),
+    `${INTRO_I18N} Korean description must match approved Option B copy`
+  );
+  assert.ok(
+    /en:\s*'New LoveTrees start public\. You can check visibility on the edit screen\.'/.test(src),
+    `${INTRO_I18N} English description must match approved Option B copy`
+  );
+  assert.ok(
+    !/Plus에서 비공개로 보관/.test(src),
+    `${INTRO_I18N} must not promise Plus private storage`
+  );
+});
+
+test('#3484 Settings active copy keeps Plus as not-yet-shipped (준비 중)', () => {
+  const html = read(SETTINGS_HTML);
+  const i18n = read(SETTINGS_I18N);
+  assert.ok(
+    /Plus에서 준비 중/.test(html) || /준비 중이에요/.test(html),
+    `${SETTINGS_HTML} must describe private storage as not-yet-shipped`
+  );
+  assert.ok(
+    /Plus에서 준비 중/.test(i18n),
+    `${SETTINGS_I18N} Korean private storage copy must remain 준비 중`
+  );
+  assert.ok(
+    /being prepared for Plus/i.test(i18n),
+    `${SETTINGS_I18N} English private storage copy must remain prepared/not shipped`
+  );
+  assert.ok(
+    !/Plus에서 비공개로 보관할 수 있어요/.test(html + i18n),
+    'Settings must not claim users can already store privately via Plus'
+  );
+});
+
+test('#3484 historical private-first provenance is not blindly rewritten', () => {
+  const former = read(FORMER_DECISION);
+  const review = read(POLICY_REVIEW);
+  assert.ok(
+    /private by default|private-first|New trees are/i.test(former),
+    `${FORMER_DECISION} historical private-first narrative must remain`
+  );
+  assert.ok(
+    /단계적 B안 전환|private-first|staged public-first transition review/i.test(review),
+    `${POLICY_REVIEW} historical review body must remain`
+  );
+});
+
+test('#3484 does not introduce billing or entitlement implementation paths', () => {
+  // Scope guard for this contract-only PR surface set: policy + active copy only.
+  const changedSurfaces = [CANONICAL, INTRO_HTML, INTRO_I18N, SETTINGS_HTML, SETTINGS_I18N];
+  for (const rel of changedSurfaces) {
+    const src = read(rel);
+    assert.ok(
+      !/stripe\.com|paypal\.com|createCheckoutSession|billingPortal|subscription_create/i.test(src),
+      `${rel} must not introduce billing/checkout implementation`
+    );
+  }
 });
