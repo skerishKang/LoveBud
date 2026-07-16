@@ -24,7 +24,7 @@ const DETAIL_UI_PATH = path.join(ROOT, 'js', 'viewer', 'public-viewer-detail-ui.
 const VIEW_HTML_PATH = path.join(ROOT, 'pages', 'view.html');
 const EDITOR_OVERRIDES_PATH = path.join(ROOT, 'css', 'editor', 'editor-overrides.css');
 const EDITOR_CSS_PATH = path.join(ROOT, 'css', 'editor.css');
-const VIEW_MODE_TEMPLATE_PATH = path.join(ROOT, 'js', 'viewer', 'public-viewer-detail-view-mode-template.js');
+const VIEW_MODE_TEMPLATE_PATH = path.join(ROOT, 'js', 'shared', 'canonical-appreciation-detail-presentation.js');
 
 const VALID_TREE_ID = '11111111-1111-4111-8111-111111111111';
 const OTHER_TREE_ID = '22222222-2222-4222-8222-222222222222';

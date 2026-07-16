@@ -478,11 +478,23 @@ test('pages keep route-owned script boundaries and no cross imports', () => {
   assert.match(viewHtml, /js\/shared\/appreciation-slot-dom\.js/);
   assert.doesNotMatch(viewHtml, /editor-appreciation-(model-adapter|composer)\.js/);
 
-  const editorTpl = load('js/editor/templates/editor-detail-view-mode-template.js');
-  assert.doesNotMatch(editorTpl, /is-public-readonly/);
-  assert.doesNotMatch(editorTpl, /data-read-only-summary/);
-  assert.match(editorTpl, /id="editMemoryBtn"/);
-  assert.match(editorTpl, /id="momentReactionLikeButton"/);
-  assert.match(editorTpl, /id="momentReactionCommentStatus"/);
-  assert.match(editorTpl, /id="detailOwnerKnowledgeList"/);
+  // Shared builder owns both authority modes; execute owner config for owner surface checks.
+  const ctx = { window: {}, globalThis: null };
+  ctx.globalThis = ctx;
+  const vm = require('node:vm');
+  vm.createContext(ctx);
+  vm.runInContext(load('js/shared/canonical-appreciation-detail-presentation.js'), ctx);
+  const ownerHtml = ctx.window.LoveBudCanonicalAppreciationDetailPresentation.buildDetailViewModeHtml({
+    authority: 'owner'
+  });
+  assert.doesNotMatch(ownerHtml, /is-public-readonly/);
+  assert.doesNotMatch(ownerHtml, /data-read-only-summary/);
+  assert.match(ownerHtml, /id="editMemoryBtn"/);
+  assert.match(ownerHtml, /id="momentReactionLikeButton"/);
+  assert.match(ownerHtml, /id="momentReactionCommentStatus"/);
+  assert.match(ownerHtml, /id="detailOwnerKnowledgeList"/);
+
+  const ownerWrapper = load('js/editor/templates/editor-detail-view-mode-template.js');
+  assert.match(ownerWrapper, /LoveBudCanonicalAppreciationDetailPresentation/);
+  assert.match(ownerWrapper, /authority:\s*['"]owner['"]/);
 });

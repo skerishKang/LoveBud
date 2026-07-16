@@ -1,9 +1,23 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
+const path = require('path');
+const vm = require('node:vm');
 
-function readFile(path) {
-  return fs.readFileSync(path, 'utf8');
+const ROOT = path.resolve(__dirname, '..', '..');
+
+function readFile(rel) {
+  return fs.readFileSync(path.join(ROOT, rel), 'utf8');
+}
+
+function buildPublicHtml() {
+  const ctx = { window: {}, globalThis: null };
+  ctx.globalThis = ctx;
+  vm.createContext(ctx);
+  vm.runInContext(readFile('js/shared/canonical-appreciation-detail-presentation.js'), ctx);
+  return ctx.window.LoveBudCanonicalAppreciationDetailPresentation.buildDetailViewModeHtml({
+    authority: 'public-safe'
+  });
 }
 
 const PUBLIC_DETAIL_MOUNTS = [
@@ -22,14 +36,19 @@ const PUBLIC_DETAIL_MOUNTS = [
 
 test('public viewer detail template exposes the current rendered output mounts', () => {
   const templateSrc = readFile('js/viewer/public-viewer-detail-view-mode-template.js');
+  const html = buildPublicHtml();
+
+  // Thin wrapper must not re-own a full independent template.
+  assert.ok(templateSrc.includes('LoveBudCanonicalAppreciationDetailPresentation'));
+  assert.ok(!templateSrc.includes('const template'), 'public wrapper must not embed a second full template literal');
 
   PUBLIC_DETAIL_MOUNTS.forEach((id) => {
-    assert.ok(templateSrc.includes(`id="${id}"`), `public viewer detail template exposes #${id}`);
+    assert.ok(html.includes(`id="${id}"`), `public-safe shared builder output exposes #${id}`);
   });
 
-  assert.equal(templateSrc.includes('id="editMemoryBtn"'), false, 'public viewer output does not expose editor edit action');
-  assert.equal(templateSrc.includes('id="continueFromMomentBtn"'), false, 'public viewer output does not expose editor continue action');
-  assert.equal(templateSrc.includes('id="viewMomentDetailBtn"'), false, 'public viewer output does not expose noop detail action');
+  assert.equal(html.includes('id="editMemoryBtn"'), false, 'public viewer output does not expose editor edit action');
+  assert.equal(html.includes('id="continueFromMomentBtn"'), false, 'public viewer output does not expose editor continue action');
+  assert.equal(html.includes('id="viewMomentDetailBtn"'), false, 'public viewer output does not expose noop detail action');
 });
 
 test('public viewer adapter no longer delegates detail rendering to editor core', () => {

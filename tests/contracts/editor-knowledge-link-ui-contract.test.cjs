@@ -22,7 +22,7 @@ const UI_SCRIPT_PATH = path.join(ROOT, 'js/editor/editor-knowledge-link-ui.js');
 const CORE_SCRIPT_PATH = path.join(ROOT, 'js/editor/editor-knowledge-link-core.js');
 const FIXTURE_PATH = path.join(ROOT, 'data/knowledge/curated-knowledge-fixtures.v1.json');
 const EDITOR_HTML_PATH = path.join(ROOT, 'pages/editor.html');
-const VIEW_MODE_TEMPLATE_PATH = path.join(ROOT, 'js/editor/templates/editor-detail-view-mode-template.js');
+const VIEW_MODE_TEMPLATE_PATH = path.join(ROOT, 'js/shared/canonical-appreciation-detail-presentation.js');
 
 // ── Helpers ──────────────────────────────────────────────────────────
 

@@ -126,8 +126,12 @@ const FILE_ALLOWLIST = {
   },
 
   'js/viewer/public-viewer-detail-view-mode-template.js': {
+    count: 0, classification: 'safe',
+    reason: '#3563 thin public wrapper; mounts via shared builder (no local outerHTML/innerHTML sink)'
+  },
+  'js/shared/canonical-appreciation-detail-presentation.js': {
     count: 1, classification: 'safe',
-    reason: 'mount.outerHTML = template — static public viewer detail view template, no user content'
+    reason: 'mount.outerHTML = buildDetailViewModeHtml(...) — static canonical appreciation shell, no user content'
   },
   'js/viewer/templates/public-viewer-sidebar-template.js': {
     count: 1, classification: 'safe',

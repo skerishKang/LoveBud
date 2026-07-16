@@ -83,14 +83,25 @@ test('edit mode does not permanently hide owner buttons', () => {
     );
 });
 
+function buildOwnerAppreciationHtml() {
+    const vm = require('node:vm');
+    const ctx = { window: {}, globalThis: null };
+    ctx.globalThis = ctx;
+    vm.createContext(ctx);
+    vm.runInContext(fs.readFileSync('js/shared/canonical-appreciation-detail-presentation.js', 'utf8'), ctx);
+    return ctx.window.LoveBudCanonicalAppreciationDetailPresentation.buildDetailViewModeHtml({
+        authority: 'owner'
+    });
+}
+
 test('view mode retains 감상하기 and 재생 actions', () => {
-    const detailTemplate = fs.readFileSync('js/editor/templates/editor-detail-view-mode-template.js', 'utf8');
+    const detailTemplate = buildOwnerAppreciationHtml();
     assert.ok(detailTemplate.includes('viewMomentDetailBtn'), 'viewMomentDetailBtn must exist');
     assert.ok(detailTemplate.includes('play-btn'), 'play button must exist');
 });
 
 test('editMemoryBtn exists in detail template', () => {
-    const detailTemplate = fs.readFileSync('js/editor/templates/editor-detail-view-mode-template.js', 'utf8');
+    const detailTemplate = buildOwnerAppreciationHtml();
     assert.ok(detailTemplate.includes('editMemoryBtn'), 'editMemoryBtn must exist in template');
 });
 
@@ -126,18 +137,18 @@ test('modeDescription has aria-live attribute', () => {
 });
 
 test('detail primary action label is 이 순간에서', () => {
-    const template = fs.readFileSync('js/editor/templates/editor-detail-view-mode-template.js', 'utf8');
+    const template = buildOwnerAppreciationHtml();
     assert.ok(template.includes('id="detailActionsPrimaryLabel">이 순간에서'), 'detail actions section must be labeled 이 순간에서');
 });
 
 test('viewMomentDetailBtn label is 현재 순간 감상하기', () => {
-    const template = fs.readFileSync('js/editor/templates/editor-detail-view-mode-template.js', 'utf8');
+    const template = buildOwnerAppreciationHtml();
     assert.ok(template.includes('id="viewMomentDetailBtnLabel">현재 순간 감상하기'), 'view btn label must be 현재 순간 감상하기');
 });
 
 test('continueFromMomentBtn kept and hidden by view-mode CSS', () => {
     const css = fs.readFileSync('css/editor/editor-mode-selection.css', 'utf8');
-    const template = fs.readFileSync('js/editor/templates/editor-detail-view-mode-template.js', 'utf8');
+    const template = buildOwnerAppreciationHtml();
     assert.ok(template.includes('continueFromMomentBtn'), 'continue button must exist in template');
     assert.ok(css.includes('#continueFromMomentBtn'), 'CSS must hide continueFromMomentBtn in view mode');
 });

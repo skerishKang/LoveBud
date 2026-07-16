@@ -90,13 +90,20 @@ test('public viewer detail UI uses the #3529 cache-refresh version', () => {
   );
 });
 
-test('public viewer detail view-mode template uses the #3419 cache-refresh version', () => {
+test('public viewer detail view-mode template uses the #3563 shared-builder cache version', () => {
   const scripts = getRawScriptSrcs();
 
   assert.ok(
-    scripts.includes('../js/viewer/public-viewer-detail-view-mode-template.js?v=20260716-3563-1'),
-    'viewer detail view-mode template must use #3419 cache version'
+    scripts.some((s) => s.includes('canonical-appreciation-detail-presentation.js')),
+    'viewer must load shared canonical appreciation presentation builder'
   );
+  assert.ok(
+    scripts.includes('../js/viewer/public-viewer-detail-view-mode-template.js?v=e2d926ad0e9c'),
+    'viewer detail view-mode thin wrapper must use content-sha cache version'
+  );
+  const builderIdx = scripts.findIndex((s) => s.includes('canonical-appreciation-detail-presentation.js'));
+  const wrapperIdx = scripts.findIndex((s) => s.includes('public-viewer-detail-view-mode-template.js'));
+  assert.ok(builderIdx >= 0 && wrapperIdx > builderIdx, 'shared builder must load before public detail wrapper');
 });
 
 test('public viewer loads social split scripts before detail-ui', () => {

@@ -355,7 +355,7 @@
     {
       "path": "tests/contracts/canonical-appreciation-consolidation-3563-contract.test.cjs",
       "layer": "EXECUTED_FAKE",
-      "rationale": "Executes My Trees entry resolver/UI in a fake DOM and asserts #3563 two-action appreciation+edit model, internal shareTarget, public-safe appreciation surface markers, and #3564 geometry guard; no real browser/network/DB.",
+      "rationale": "Executes the shared canonical appreciation presentation builder (owner vs public-safe authority) and My Trees entry resolver/UI in a fake DOM; asserts one shared composition boundary, thin route wrappers, authority-only owner controls, two-action My Trees model, internal shareTarget, public-safe loaders, and #3564 geometry guard. No real browser/network/DB.",
       "capabilities": []
     },
     {

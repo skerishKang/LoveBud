@@ -101,8 +101,7 @@
         <div class="my-trees-hub-summary preview-summary-slot" id="myTreesHubSummary"></div>
         <div class="my-trees-hub-actions preview-actions" id="myTreesHubActions" hidden>
           <a class="btn-round btn-primary preview-primary-action my-trees-hub-open-btn" id="myTreesHubOpenBtn" hidden><span class="material-symbols-outlined">account_tree</span><span data-i18n="myTrees.entry_appreciation">감상하기</span></a>
-          <!-- #3563: public-view hub action removed; share uses internal shareTarget only -->
-          <a class="btn-round preview-secondary-action my-trees-hub-public-view-btn" id="myTreesHubPublicViewBtn" hidden aria-hidden="true" tabindex="-1" style="display:none"></a>
+          <!-- #3563: only 감상하기 + 편집하기; shareTarget is internal via myTreesHubShareBtn -->
           <a class="btn-round preview-secondary-action my-trees-hub-edit-btn" id="myTreesHubEditBtn" hidden><span class="material-symbols-outlined">edit</span><span data-i18n="myTrees.entry_edit">편집하기</span></a>
           <button type="button" class="my-trees-hub-share-btn preview-share-action" id="myTreesHubShareBtn"><span class="material-symbols-outlined">link</span><span data-i18n="myTrees.hub_share">감상 링크 복사</span></button>
           <button type="button" class="btn-round my-trees-hub-layout-probe-slot" data-layout-probe-slot hidden style="width:100%;margin-top:10px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;gap:6px;background:var(--primary-container);color:var(--on-primary-container);border:1px solid var(--outline-variant);"><span class="material-symbols-outlined" style="font-size:16px;">content_copy</span><span>내 러브트리로 가져오기</span></button>

@@ -219,7 +219,14 @@ test('owner reactions controller: loading → ready enables like/comment and pre
 });
 
 test('mode transition labels and selection-preserving bindings remain present', () => {
-  const viewTpl = read('js/editor/templates/editor-detail-view-mode-template.js');
+  const ctx = { window: {}, globalThis: null };
+  ctx.globalThis = ctx;
+  const vm = require('node:vm');
+  vm.createContext(ctx);
+  vm.runInContext(read('js/shared/canonical-appreciation-detail-presentation.js'), ctx);
+  const viewTpl = ctx.window.LoveBudCanonicalAppreciationDetailPresentation.buildDetailViewModeHtml({
+    authority: 'owner'
+  });
   const editTpl = read('js/editor/templates/editor-detail-edit-mode-template.js');
   const bindings = read('js/editor/editor-bindings.js');
   const i18nRefresh = read('js/editor/editor-i18n-refresh.js');

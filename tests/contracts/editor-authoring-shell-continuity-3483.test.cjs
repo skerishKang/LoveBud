@@ -19,9 +19,21 @@ const modeCss = fs.readFileSync(path.join(ROOT, 'css/editor/editor-mode-selectio
 const sidebarTpl = fs.readFileSync(path.join(ROOT, 'js/editor/templates/editor-sidebar-template.js'), 'utf8');
 const editorHtml = fs.readFileSync(path.join(ROOT, 'pages/editor.html'), 'utf8');
 const shellCopy = fs.readFileSync(path.join(ROOT, 'js/editor/editor-shell-copy-applier.js'), 'utf8');
-const viewTpl = fs.readFileSync(path.join(ROOT, 'js/editor/templates/editor-detail-view-mode-template.js'), 'utf8');
+function buildOwnerAppreciationHtml() {
+  const ctx = { window: {}, globalThis: null };
+  ctx.globalThis = ctx;
+  vm.createContext(ctx);
+  vm.runInContext(
+    fs.readFileSync(path.join(ROOT, 'js/shared/canonical-appreciation-detail-presentation.js'), 'utf8'),
+    ctx
+  );
+  return ctx.window.LoveBudCanonicalAppreciationDetailPresentation.buildDetailViewModeHtml({
+    authority: 'owner'
+  });
+}
 
 test('accepted detailActionsPrimaryLabel remains 이 순간에서', () => {
+  const viewTpl = buildOwnerAppreciationHtml();
   assert.match(viewTpl, /id="detailActionsPrimaryLabel">이 순간에서/);
   assert.match(shellCopy, /detailActionsPrimaryLabel[\s\S]*이 순간에서/);
 });

@@ -7,7 +7,7 @@ const path = require('node:path');
 
 const ROOT = path.resolve(__dirname, '../..');
 const SUMMARY_PATH = path.join(ROOT, 'js/viewer/public-viewer-read-only-social-summary.js');
-const TEMPLATE_PATH = path.join(ROOT, 'js/viewer/public-viewer-detail-view-mode-template.js');
+const TEMPLATE_PATH = path.join(ROOT, 'js/shared/canonical-appreciation-detail-presentation.js');
 const COMPOSER_PATH = path.join(ROOT, 'js/viewer/public-viewer-authenticated-comment-composer.js');
 
 function readSrc(relPath) {
@@ -45,7 +45,7 @@ describe('2. Comments panel loading state copy clarified', () => {
 
     it('template/summary retains read-only toggle loading aria-label', () => {
         const summary = readSrc('js/viewer/public-viewer-read-only-social-summary.js');
-        const template = readSrc('js/viewer/public-viewer-detail-view-mode-template.js');
+        const template = readSrc('js/shared/canonical-appreciation-detail-presentation.js');
         assert.ok(summary.includes("'댓글 불러오는 중'"),
             'Toggle loading aria-label must be preserved in summary');
         assert.ok(template.includes('aria-label="댓글 불러오는 중"'),
@@ -63,7 +63,7 @@ describe('3. Stable selected-moment comments IDs preserved', () => {
     ];
     for (const id of ids) {
         it('template preserves ID ' + id, () => {
-            const template = readSrc('js/viewer/public-viewer-detail-view-mode-template.js');
+            const template = readSrc('js/shared/canonical-appreciation-detail-presentation.js');
             assert.ok(template.includes('id="' + id + '"'), 'Template must contain ' + id);
         });
     }
@@ -91,7 +91,7 @@ describe('4. Existing error / permission copy preserved (no behavior change)', (
     });
 
     it('guest affordance (like/comment) note preserved', () => {
-        const template = readSrc('js/viewer/public-viewer-detail-view-mode-template.js');
+        const template = readSrc('js/shared/canonical-appreciation-detail-presentation.js');
         assert.ok(template.includes('로그인하면 이 순간에 반응하고 댓글을 남길 수 있어요.'),
             'Guest affordance note from #3345 must be preserved');
     });
@@ -118,7 +118,7 @@ describe('5. No API / auth / runtime behavior change', () => {
     });
 
     it('template has no DB/API/deploy references', () => {
-        const src = readSrc('js/viewer/public-viewer-detail-view-mode-template.js');
+        const src = readSrc('js/shared/canonical-appreciation-detail-presentation.js');
         assert.ok(!src.includes('migration'), 'Template must not reference migration');
         assert.ok(!src.includes('schema'), 'Template must not reference schema');
         assert.ok(!src.includes('deploy'), 'Template must not reference deploy');

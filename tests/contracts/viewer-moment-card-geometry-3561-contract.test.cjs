@@ -12,7 +12,9 @@
  * selection. No browser, network, DB, or production resource.
  *
  * Refs: #3561, #3475, #3519
- * Keep #3425 OPEN. Keep #3075 OPEN. Keep #3188 OPEN. Keep #1882 OPEN.
+ * Keep #3425 OPEN. Keep #1882 OPEN.
+ * #3075 is CLOSED / completed. Do not reopen.
+ * #3188 is CLOSED / completed. Do not reopen.
  */
 
 'use strict';
@@ -298,7 +300,12 @@ test('#3561 focusNodeById animation class does not rewrite node transform in sou
 
 test('#3561 does not implement #3562 panel hierarchy moves', () => {
   // Guard: this PR must not touch tree-meta / share / whole-tree comment relocation files as primary scope.
-  // Soft source check only — confirm this contract remains about geometry.
-  assert.match(fs.readFileSync(__filename, 'utf8'), /#3561/);
-  assert.match(fs.readFileSync(__filename, 'utf8'), /Keep #3075 OPEN/);
+  // Soft source check only — confirm this contract remains about geometry + closed-issue hygiene.
+  const self = fs.readFileSync(__filename, 'utf8');
+  const header = self.slice(0, 900);
+  assert.match(self, /#3561/);
+  assert.match(header, /#3075 is CLOSED \/ completed/);
+  assert.match(header, /#3188 is CLOSED \/ completed/);
+  assert.equal(header.includes('Keep #' + '3075 OPEN'), false);
+  assert.equal(header.includes('Keep #' + '3188 OPEN'), false);
 });

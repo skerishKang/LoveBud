@@ -43,6 +43,7 @@ const CF_COMMENTS_PROXY = path.join(ROOT, 'functions/api/trees/[tree_id]/memorie
 
 const PUBLIC_VIEWER_UI = path.join(ROOT, 'js/viewer/public-viewer-detail-ui.js');
 const PUBLIC_VIEWER_TEMPLATE = path.join(ROOT, 'js/viewer/public-viewer-detail-view-mode-template.js');
+const CANONICAL_PRESENTATION = path.join(ROOT, 'js/shared/canonical-appreciation-detail-presentation.js');
 
 // ─── FILE EXISTENCE ────────────────────────────────────────────────────────────
 
@@ -529,16 +530,22 @@ test('public-viewer-detail-ui.js is not modified', () => {
   );
 });
 
-test('public-viewer-detail-view-mode-template.js is not modified', () => {
-  assert.ok(fs.existsSync(PUBLIC_VIEWER_TEMPLATE), 'public-viewer-detail-view-mode-template.js must exist');
-  const content = readFileContent(PUBLIC_VIEWER_TEMPLATE);
+test('public-safe social presentation keeps read-only shell via shared builder', () => {
+  assert.ok(fs.existsSync(PUBLIC_VIEWER_TEMPLATE), 'public thin wrapper must exist');
+  assert.ok(fs.existsSync(CANONICAL_PRESENTATION), 'shared canonical presentation builder must exist');
+  const wrapper = readFileContent(PUBLIC_VIEWER_TEMPLATE);
+  assert.ok(
+    hasString(wrapper, 'LoveBudCanonicalAppreciationDetailPresentation'),
+    'public wrapper must mount via shared builder'
+  );
+  const content = readFileContent(CANONICAL_PRESENTATION);
   assert.ok(
     hasString(content, 'is-read-only'),
-    'template must still have read-only class'
+    'shared public-safe social shell must still have read-only class'
   );
   assert.ok(
     hasString(content, '반응 정보를 불러오는 중이에요'),
-    'template must have the loading placeholder text'
+    'shared public-safe social shell must have the loading placeholder text'
   );
 });
 

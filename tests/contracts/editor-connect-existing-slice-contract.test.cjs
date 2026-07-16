@@ -486,7 +486,7 @@ test('connect-existing sections ARE inside #detailEditMode template', () => {
 });
 
 test('connect-existing sections are NOT in the detail view-mode template outside detailEditMode', () => {
-  var viewTemplate = readSource('js/editor/templates/editor-detail-view-mode-template.js');
+  var viewTemplate = readSource('js/shared/canonical-appreciation-detail-presentation.js');
   assert.doesNotMatch(viewTemplate, /connectExistingCtaSection/,
     'connectExistingCtaSection must not be in view template');
   assert.doesNotMatch(viewTemplate, /connectExistingPendingSection/,

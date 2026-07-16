@@ -138,7 +138,7 @@ test('connect-existing sections are in the template', function() {
 });
 
 test('connect-existing sections are NOT inside view mode template', function() {
-  var editTpl = readSource('js/editor/templates/editor-detail-view-mode-template.js');
+  var editTpl = readSource('js/shared/canonical-appreciation-detail-presentation.js');
   assert.ok(!editTpl.includes('connectExistingCtaSection'), 'connect-existing not in view mode template');
   assert.ok(!editTpl.includes('connectExistingCtaBtn'), 'connect-existing btn not in view mode template');
 });
@@ -713,7 +713,7 @@ test('production aliases map to real CTA selectors (no ARIA tab invented)', func
   // Production browser report used nicknames `newMomentTab` / `connectTab`.
   // They are NOT ARIA tabs; they are two separate CTA flows in the
   // detail "이 순간에서" action card.
-  var viewTpl = readSource('js/editor/templates/editor-detail-view-mode-template.js');
+  var viewTpl = readSource('js/shared/canonical-appreciation-detail-presentation.js');
   var sidebarTpl = readSource('js/editor/templates/editor-sidebar-template.js');
 
   // new-moment authoring route: detail continue ("이 순간에서 이어가기") + sidebar ("새 순간 만들기")
