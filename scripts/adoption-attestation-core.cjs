@@ -60,6 +60,8 @@ const GATE = Object.freeze({
   GATE_ADOPTION_MIGRATION_MISSING: 'GATE_ADOPTION_MIGRATION_MISSING',
 });
 
+const SHA40_PATTERN = /^[a-f0-9]{40}$/;
+
 const DEFAULT_CONTRACT_REL = 'db/migration-provenance/adoption-attestation-contract.json';
 
 /** Trusted binding fields that must be supplied by the protected invocation boundary. */
@@ -898,6 +900,75 @@ function validateAdoptionAttestationEvidence(evidence, binding, contract) {
 }
 
 /**
+ * Build a prepared UNATTESTED attestation draft for Production-readonly collection.
+ *
+ * This is the operator-safe builder — NEVER produces ATTESTED status.
+ * No database, network, environment fallback, or file write.
+ * Deterministic digest-only.
+ *
+ * Fixed values:
+ *   adoption_status = "UNATTESTED"
+ *   environment_class = "PRODUCTION"
+ *   attestation_scope = "PRODUCTION_READONLY"
+ *   variance_classification = "UNKNOWN_DRIFT"
+ *
+ * applied_migrations comes ONLY from the repository-owned canonical manifest.
+ * If canonical manifest is ADOPTION_REQUIRED/empty, uses empty list.
+ */
+function buildPreparedUnattestedAttestationDraft({
+  baselineCommit,
+  migrationManifest,
+  expectedSchemaCandidate,
+  catalogEvidence,
+  environmentClass = 'PRODUCTION',
+  approvalReference,
+  attestationScope = 'PRODUCTION_READONLY',
+}) {
+  if (!SHA40_PATTERN.test(baselineCommit)) {
+    fail(FAILURE.ADOPTION_ATTESTATION_COMMIT_INVALID, { field: 'baseline_commit' });
+  }
+  const approvalRefPattern = /^(?:issue:\d+|decision:[A-Za-z0-9][A-Za-z0-9._-]{2,63})$/;
+  if (!approvalRefPattern.test(approvalReference)) {
+    fail(FAILURE.ADOPTION_ATTESTATION_APPROVAL_INVALID, { field: 'approval_reference' });
+  }
+
+  const canonicalDigest = computeObjectDigest(migrationManifest);
+  const expectedDigest = computeObjectDigest(expectedSchemaCandidate);
+  const catalogDigest = computeObjectDigest(catalogEvidence);
+
+  // applied_migrations from canonical manifest only — empty if ADOPTION_REQUIRED
+  let migrations = [];
+  if (migrationManifest && migrationManifest.status !== 'ADOPTION_REQUIRED') {
+    if (Array.isArray(migrationManifest.migrations)) {
+      migrations = migrationManifest.migrations.map((item) => ({
+        id: item.id,
+        checksum: item.checksum,
+      }));
+    }
+  }
+
+  const draft = {
+    format_version: '1.0',
+    adoption_status: 'UNATTESTED',
+    environment_class: environmentClass,
+    baseline_commit: baselineCommit,
+    canonical_manifest_digest: canonicalDigest,
+    expected_schema_digest: expectedDigest,
+    catalog_evidence_digest: catalogDigest,
+    variance_classification: 'UNKNOWN_DRIFT',
+    approval_reference: approvalReference,
+    applied_migrations: migrations,
+    contract_path: DEFAULT_CONTRACT_REL,
+    digest_algorithm: 'sha256',
+    attestation_scope: attestationScope,
+  };
+
+  // Structural sanity: UNATTESTED draft must NOT pass attestation gate
+  // (validateAdoptionAttestationEvidence returns EVIDENCE_UNAVAILABLE for UNATTESTED)
+  return draft;
+}
+
+/**
  * Build a synthetic ATTESTED attestation bound to provided artifacts.
  * Pure helper for tests; does not write files or activate manifests.
  */
@@ -966,5 +1037,6 @@ module.exports = {
   resolveRepoConfinedPath,
   readConfinedEvidenceFile,
   validateAdoptionAttestationEvidence,
+  buildPreparedUnattestedAttestationDraft,
   buildSyntheticAttestation,
 };
