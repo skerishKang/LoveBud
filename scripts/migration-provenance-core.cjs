@@ -528,27 +528,31 @@ function evaluateProvenance({
   }
 
   // Strict adoption attestation (#3553). Bare adoption_status is never sufficient.
-  // ledgerEvidence carries the adoption attestation document (includes applied_migrations).
+  // ledgerEvidence is the claim; adoptionBinding is the trusted invocation binding.
+  // Never construct digests/commits from caller-controlled objects as an authorization fallback.
   const attestationCore = require('./adoption-attestation-core.cjs');
   if (!ledgerEvidence) {
     blockers.push('GATE_ADOPTION_EVIDENCE_UNAVAILABLE');
   } else {
-    const binding = {
-      baseline_commit: adoptionBinding && adoptionBinding.baseline_commit,
-      canonical_manifest_digest:
-        (adoptionBinding && adoptionBinding.canonical_manifest_digest) ||
-        (migrationManifest ? attestationCore.computeObjectDigest(migrationManifest) : undefined),
-      expected_schema_digest:
-        (adoptionBinding && adoptionBinding.expected_schema_digest) ||
-        (expectedSchemaManifest ? attestationCore.computeObjectDigest(expectedSchemaManifest) : undefined),
-      catalog_evidence_digest:
-        (adoptionBinding && adoptionBinding.catalog_evidence_digest) ||
-        (catalogEvidence ? attestationCore.computeObjectDigest(catalogEvidence) : undefined),
-      expected_migrations: migrations.map((item) => ({
-        id: item.id,
-        checksum: item.checksum
-      }))
-    };
+    let binding = adoptionBinding || null;
+    if (attestationCore.hasCompleteTrustedBinding(adoptionBinding)) {
+      binding = {
+        baseline_commit: adoptionBinding.baseline_commit,
+        canonical_manifest_digest: adoptionBinding.canonical_manifest_digest,
+        expected_schema_digest: adoptionBinding.expected_schema_digest,
+        catalog_evidence_digest: adoptionBinding.catalog_evidence_digest,
+        approval_reference: adoptionBinding.approval_reference,
+        environment_class: adoptionBinding.environment_class,
+        attestation_scope: adoptionBinding.attestation_scope,
+        // Repository-owned expected migration list (not evidence-derived trust).
+        expected_migrations: Array.isArray(adoptionBinding.expected_migrations)
+          ? adoptionBinding.expected_migrations
+          : migrations.map((item) => ({
+              id: item.id,
+              checksum: item.checksum
+            }))
+      };
+    }
     const attestationResult = attestationCore.validateAdoptionAttestationEvidence(
       ledgerEvidence,
       binding,

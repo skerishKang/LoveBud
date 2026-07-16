@@ -29,6 +29,19 @@ function runCli(args, options = {}) {
   });
 }
 
+function trustedCliBindingArgs() {
+  return [
+    '--baseline-commit',
+    'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+    '--approval-reference',
+    'issue:9999',
+    '--environment-class',
+    'DISPOSABLE_CI',
+    '--attestation-scope',
+    'INACTIVE_BASELINE'
+  ];
+}
+
 function fullMigrationEntry(overrides = {}) {
   const checksum = overrides.checksum || core.sha256('migration-body');
   return {
@@ -92,7 +105,10 @@ function activeFixture() {
       baseline_commit: baselineCommit,
       canonical_manifest_digest: ledgerEvidence.canonical_manifest_digest,
       expected_schema_digest: ledgerEvidence.expected_schema_digest,
-      catalog_evidence_digest: ledgerEvidence.catalog_evidence_digest
+      catalog_evidence_digest: ledgerEvidence.catalog_evidence_digest,
+      approval_reference: 'issue:9999',
+      environment_class: 'DISPOSABLE_CI',
+      attestation_scope: 'DISPOSABLE_RECONSTRUCTION'
     }
   };
 }
@@ -347,7 +363,9 @@ test('valid synthetic attestation still fails closed when committed manifests ar
     migrationManifest: canonical,
     expectedSchemaManifest: expectedSchema,
     catalogEvidence,
-    approvalReference: 'decision:synthetic-attestation-ok'
+    approvalReference: 'decision:synthetic-attestation-ok',
+    environmentClass: 'DISPOSABLE_CI',
+    attestationScope: 'INACTIVE_BASELINE'
   });
   const result = core.evaluateProvenance({
     migrationManifest: canonical,
@@ -358,15 +376,98 @@ test('valid synthetic attestation still fails closed when committed manifests ar
       baseline_commit: baselineCommit,
       canonical_manifest_digest: ledgerEvidence.canonical_manifest_digest,
       expected_schema_digest: ledgerEvidence.expected_schema_digest,
-      catalog_evidence_digest: ledgerEvidence.catalog_evidence_digest
+      catalog_evidence_digest: ledgerEvidence.catalog_evidence_digest,
+      approval_reference: 'decision:synthetic-attestation-ok',
+      environment_class: 'DISPOSABLE_CI',
+      attestation_scope: 'INACTIVE_BASELINE'
     }
   });
   assert.equal(result.decision, 'FAIL_CLOSED');
   assert.ok(result.blockers.includes('GATE_ADOPTION_BASELINE_REQUIRED'));
+  assert.equal(
+    result.blockers.includes('GATE_ADOPTION_TRUST_BINDING_REQUIRED'),
+    false
+  );
   assert.equal(expectedSchema.status, 'ADOPTION_REQUIRED');
   assert.deepEqual(expectedSchema.critical_objects, []);
   assert.equal(canonical.status, 'ADOPTION_REQUIRED');
   assert.deepEqual(canonical.migrations, []);
+});
+
+test('self-consistent ATTESTED evidence without trusted binding fails closed', () => {
+  const fixture = activeFixture();
+  delete fixture.adoptionBinding;
+  const result = core.evaluateProvenance(fixture);
+  assert.equal(result.decision, 'FAIL_CLOSED');
+  assert.ok(result.blockers.includes('GATE_ADOPTION_TRUST_BINDING_REQUIRED'));
+});
+
+test('CLI target mode requires trusted binding arguments', () => {
+  const relCatalog = path
+    .join('tests', 'contracts', 'fixtures', 'migration-provenance', '_tmp-catalog-binding.json')
+    .replace(/\\/g, '/');
+  const relLedger = path
+    .join('tests', 'contracts', 'fixtures', 'migration-provenance', '_tmp-ledger-binding.json')
+    .replace(/\\/g, '/');
+  const catalogPath = path.join(ROOT, relCatalog);
+  const ledgerPath = path.join(ROOT, relLedger);
+  try {
+    fs.writeFileSync(catalogPath, JSON.stringify({ format_version: '1.0', normalizer_version: '1.0', objects: [] }), 'utf8');
+    fs.writeFileSync(ledgerPath, JSON.stringify({ adoption_status: 'ATTESTED', applied_migrations: [] }), 'utf8');
+
+    const missingBaseline = runCli([
+      '--ledger-evidence',
+      relLedger,
+      '--catalog-evidence',
+      relCatalog,
+      '--approval-reference',
+      'issue:1',
+      '--environment-class',
+      'DISPOSABLE_CI',
+      '--attestation-scope',
+      'INACTIVE_BASELINE'
+    ]);
+    assert.equal(missingBaseline.status, 1);
+    const payloadA = JSON.parse(missingBaseline.stdout);
+    assert.equal(payloadA.decision, 'FAIL_CLOSED');
+    assert.ok(payloadA.blockers.includes('GATE_ADOPTION_TRUST_BINDING_REQUIRED'));
+    assert.equal(missingBaseline.stdout.includes('issue:1'), false);
+
+    const missingApproval = runCli([
+      '--ledger-evidence',
+      relLedger,
+      '--catalog-evidence',
+      relCatalog,
+      '--baseline-commit',
+      'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+      '--environment-class',
+      'DISPOSABLE_CI',
+      '--attestation-scope',
+      'INACTIVE_BASELINE'
+    ]);
+    assert.equal(missingApproval.status, 1);
+    assert.ok(
+      JSON.parse(missingApproval.stdout).blockers.includes('GATE_ADOPTION_TRUST_BINDING_REQUIRED')
+    );
+
+    const missingEnvScope = runCli([
+      '--ledger-evidence',
+      relLedger,
+      '--catalog-evidence',
+      relCatalog,
+      '--baseline-commit',
+      'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+      '--approval-reference',
+      'issue:1'
+    ]);
+    assert.equal(missingEnvScope.status, 1);
+    assert.ok(
+      JSON.parse(missingEnvScope.stdout).blockers.includes('GATE_ADOPTION_TRUST_BINDING_REQUIRED')
+    );
+  } finally {
+    if (fs.existsSync(catalogPath)) fs.unlinkSync(catalogPath);
+    if (fs.existsSync(ledgerPath)) fs.unlinkSync(ledgerPath);
+  }
 });
 
 test('source validation failure forces target decision FAIL_CLOSED even with matching evidence', () => {
@@ -465,7 +566,8 @@ test('CLI malformed evidence JSON fails closed with bounded category', () => {
       '--ledger-evidence',
       relLedger,
       '--catalog-evidence',
-      relCatalog
+      relCatalog,
+      ...trustedCliBindingArgs()
     ]);
     assert.equal(child.status, 1);
     const payload = JSON.parse(child.stdout);
@@ -494,7 +596,8 @@ test('CLI unreadable evidence fails closed with bounded category', () => {
       '--ledger-evidence',
       missingLedger,
       '--catalog-evidence',
-      relCatalog
+      relCatalog,
+      ...trustedCliBindingArgs()
     ]);
     assert.equal(child.status, 1);
     const payload = JSON.parse(child.stdout);
@@ -518,7 +621,8 @@ test('CLI absolute evidence path fails closed', () => {
     '--ledger-evidence',
     absCatalog,
     '--catalog-evidence',
-    absCatalog
+    absCatalog,
+    ...trustedCliBindingArgs()
   ]);
   assert.equal(child.status, 1);
   const payload = JSON.parse(child.stdout);

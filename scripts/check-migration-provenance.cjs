@@ -121,8 +121,22 @@ function main() {
 
     const ledgerPath = argumentsByName.get('--ledger-evidence');
     const catalogPath = argumentsByName.get('--catalog-evidence');
+    const baselineCommit = argumentsByName.get('--baseline-commit');
+    const approvalReference = argumentsByName.get('--approval-reference');
+    const environmentClass = argumentsByName.get('--environment-class');
+    const attestationScope = argumentsByName.get('--attestation-scope');
+
     if (!ledgerPath || !catalogPath) {
       failClosed('PROVENANCE_GATE', ['GATE_EVIDENCE_ARGUMENTS_REQUIRED'], {
+        source: sourceResult.summary
+      });
+      return;
+    }
+
+    // Target mode requires explicit trusted binding arguments.
+    // Values are never echoed in failure output.
+    if (!baselineCommit || !approvalReference || !environmentClass || !attestationScope) {
+      failClosed('PROVENANCE_GATE', ['GATE_ADOPTION_TRUST_BINDING_REQUIRED'], {
         source: sourceResult.summary
       });
       return;
@@ -140,8 +154,12 @@ function main() {
       return;
     }
 
+    // Exact-byte digests only: repository-owned file bytes + confined catalog evidence bytes.
     const adoptionBinding = {
-      baseline_commit: argumentsByName.get('--baseline-commit') || undefined,
+      baseline_commit: baselineCommit,
+      approval_reference: approvalReference,
+      environment_class: environmentClass,
+      attestation_scope: attestationScope,
       canonical_manifest_digest: attestation.computeEvidenceDigest(canonicalBytes),
       expected_schema_digest: attestation.computeEvidenceDigest(expectedSchemaBytes),
       catalog_evidence_digest: catalogLoad.digest

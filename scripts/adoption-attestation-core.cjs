@@ -46,6 +46,10 @@ const GATE = Object.freeze({
   GATE_ADOPTION_ENVIRONMENT_CLASS_INVALID: 'GATE_ADOPTION_ENVIRONMENT_CLASS_INVALID',
   GATE_ADOPTION_VARIANCE_BLOCKING: 'GATE_ADOPTION_VARIANCE_BLOCKING',
   GATE_ADOPTION_APPROVAL_REFERENCE_INVALID: 'GATE_ADOPTION_APPROVAL_REFERENCE_INVALID',
+  GATE_ADOPTION_APPROVAL_REFERENCE_MISMATCH: 'GATE_ADOPTION_APPROVAL_REFERENCE_MISMATCH',
+  GATE_ADOPTION_ENVIRONMENT_CLASS_MISMATCH: 'GATE_ADOPTION_ENVIRONMENT_CLASS_MISMATCH',
+  GATE_ADOPTION_SCOPE_MISMATCH: 'GATE_ADOPTION_SCOPE_MISMATCH',
+  GATE_ADOPTION_TRUST_BINDING_REQUIRED: 'GATE_ADOPTION_TRUST_BINDING_REQUIRED',
   GATE_ADOPTION_UNKNOWN_FIELD: 'GATE_ADOPTION_UNKNOWN_FIELD',
   GATE_ADOPTION_SENSITIVE_MARKER_DETECTED: 'GATE_ADOPTION_SENSITIVE_MARKER_DETECTED',
   GATE_ADOPTION_MIGRATION_INVALID: 'GATE_ADOPTION_MIGRATION_INVALID',
@@ -57,6 +61,17 @@ const GATE = Object.freeze({
 });
 
 const DEFAULT_CONTRACT_REL = 'db/migration-provenance/adoption-attestation-contract.json';
+
+/** Trusted binding fields that must be supplied by the protected invocation boundary. */
+const REQUIRED_TRUSTED_BINDING_FIELDS = Object.freeze([
+  'baseline_commit',
+  'canonical_manifest_digest',
+  'expected_schema_digest',
+  'catalog_evidence_digest',
+  'approval_reference',
+  'environment_class',
+  'attestation_scope',
+]);
 
 const FALLBACK_SENSITIVE_MARKERS = Object.freeze([
   'postgres://',
@@ -319,17 +334,29 @@ function matchPattern(value, pattern) {
 }
 
 /**
- * Validate adoption attestation evidence against contract + optional binding.
- * binding may include:
- *   baseline_commit
- *   canonical_manifest_digest
- *   expected_schema_digest
- *   catalog_evidence_digest
- *   expected_migrations: [{id, checksum}]
+ * True when binding is a complete trusted adoption binding from the invocation boundary.
+ * Evidence values are claims and never establish trust by themselves.
+ */
+function hasCompleteTrustedBinding(binding) {
+  if (!binding || typeof binding !== 'object' || Array.isArray(binding)) return false;
+  for (const field of REQUIRED_TRUSTED_BINDING_FIELDS) {
+    const value = binding[field];
+    if (value === undefined || value === null || value === '') return false;
+  }
+  return true;
+}
+
+/**
+ * Validate adoption attestation evidence against contract + mandatory trusted binding.
+ * For ATTESTED evidence, binding must include every REQUIRED_TRUSTED_BINDING_FIELDS value
+ * from the protected invocation boundary. Evidence never supplies its own trust source.
+ *
+ * binding may also include:
+ *   expected_migrations: [{id, checksum}]  (repository-owned expected migration list)
  *
  * Returns { ok, blockers, errors } without raw path/content leakage.
  */
-function validateAdoptionAttestationEvidence(evidence, binding = {}, contract) {
+function validateAdoptionAttestationEvidence(evidence, binding, contract) {
   const blockers = [];
   const errors = [];
 
@@ -516,23 +543,29 @@ function validateAdoptionAttestationEvidence(evidence, binding = {}, contract) {
     return { ok: false, blockers: uniqueSorted(blockers), errors: uniqueSorted(errors) };
   }
 
-  // ATTESTED path requires complete valid binding.
+  // ATTESTED path: trusted binding is mandatory. Evidence is never its own trust source.
+  const trustedBinding = hasCompleteTrustedBinding(binding) ? binding : null;
+  if (!trustedBinding) {
+    pushUnique(blockers, GATE.GATE_ADOPTION_TRUST_BINDING_REQUIRED);
+    pushUnique(errors, FAILURE.ADOPTION_ATTESTATION_INPUT_INVALID);
+  }
+
+  // ATTESTED path requires complete valid binding + evidence structure.
   if (
     typeof evidence.environment_class !== 'string' ||
     !(enums.environment_class || []).includes(evidence.environment_class)
   ) {
     pushUnique(blockers, GATE.GATE_ADOPTION_ENVIRONMENT_CLASS_INVALID);
     pushUnique(errors, FAILURE.ADOPTION_ATTESTATION_ENUM_INVALID);
+  } else if (trustedBinding && evidence.environment_class !== trustedBinding.environment_class) {
+    pushUnique(blockers, GATE.GATE_ADOPTION_ENVIRONMENT_CLASS_MISMATCH);
+    pushUnique(errors, FAILURE.ADOPTION_ATTESTATION_ENUM_INVALID);
   }
 
   if (!matchPattern(evidence.baseline_commit, patterns.baseline_commit || '^[a-f0-9]{40}$')) {
     pushUnique(blockers, GATE.GATE_ADOPTION_BASELINE_COMMIT_INVALID);
     pushUnique(errors, FAILURE.ADOPTION_ATTESTATION_COMMIT_INVALID);
-  } else if (
-    binding &&
-    binding.baseline_commit !== undefined &&
-    evidence.baseline_commit !== binding.baseline_commit
-  ) {
+  } else if (trustedBinding && evidence.baseline_commit !== trustedBinding.baseline_commit) {
     pushUnique(blockers, GATE.GATE_ADOPTION_BASELINE_COMMIT_MISMATCH);
     pushUnique(errors, FAILURE.ADOPTION_ATTESTATION_COMMIT_MISMATCH);
   }
@@ -544,8 +577,7 @@ function validateAdoptionAttestationEvidence(evidence, binding = {}, contract) {
       pushUnique(errors, FAILURE.ADOPTION_ATTESTATION_DIGEST_INVALID);
       return;
     }
-    const expected = binding && binding[field];
-    if (expected !== undefined && value !== expected) {
+    if (trustedBinding && value !== trustedBinding[field]) {
       pushUnique(blockers, mismatchGate);
       pushUnique(errors, FAILURE.ADOPTION_ATTESTATION_DIGEST_MISMATCH);
     }
@@ -614,16 +646,20 @@ function validateAdoptionAttestationEvidence(evidence, binding = {}, contract) {
   } else if (hasSensitive(approval, markers)) {
     pushUnique(blockers, GATE.GATE_ADOPTION_SENSITIVE_MARKER_DETECTED);
     pushUnique(errors, FAILURE.ADOPTION_ATTESTATION_SENSITIVE_MARKER);
+  } else if (trustedBinding && approval !== trustedBinding.approval_reference) {
+    pushUnique(blockers, GATE.GATE_ADOPTION_APPROVAL_REFERENCE_MISMATCH);
+    pushUnique(errors, FAILURE.ADOPTION_ATTESTATION_APPROVAL_INVALID);
   }
 
-  if (evidence.attestation_scope !== undefined) {
-    if (
-      typeof evidence.attestation_scope !== 'string' ||
-      !(enums.attestation_scope || []).includes(evidence.attestation_scope)
-    ) {
-      pushUnique(blockers, GATE.GATE_ADOPTION_EVIDENCE_INVALID);
-      pushUnique(errors, FAILURE.ADOPTION_ATTESTATION_ENUM_INVALID);
-    }
+  if (
+    typeof evidence.attestation_scope !== 'string' ||
+    !(enums.attestation_scope || []).includes(evidence.attestation_scope)
+  ) {
+    pushUnique(blockers, GATE.GATE_ADOPTION_EVIDENCE_INVALID);
+    pushUnique(errors, FAILURE.ADOPTION_ATTESTATION_ENUM_INVALID);
+  } else if (trustedBinding && evidence.attestation_scope !== trustedBinding.attestation_scope) {
+    pushUnique(blockers, GATE.GATE_ADOPTION_SCOPE_MISMATCH);
+    pushUnique(errors, FAILURE.ADOPTION_ATTESTATION_ENUM_INVALID);
   }
 
   if (!Array.isArray(evidence.applied_migrations)) {
@@ -682,9 +718,12 @@ function validateAdoptionAttestationEvidence(evidence, binding = {}, contract) {
       }
       scanValueSensitive(record, markers, blockers, errors);
 
-      const expectedList = Array.isArray(binding.expected_migrations)
-        ? binding.expected_migrations
-        : null;
+      const expectedList =
+        trustedBinding && Array.isArray(trustedBinding.expected_migrations)
+          ? trustedBinding.expected_migrations
+          : binding && Array.isArray(binding.expected_migrations)
+            ? binding.expected_migrations
+            : null;
       if (expectedList) {
         const expected = expectedList[index];
         if (!expected) {
@@ -708,8 +747,14 @@ function validateAdoptionAttestationEvidence(evidence, binding = {}, contract) {
       }
     });
 
-    if (Array.isArray(binding.expected_migrations)) {
-      for (let i = evidence.applied_migrations.length; i < binding.expected_migrations.length; i += 1) {
+    const expectedForMissing =
+      trustedBinding && Array.isArray(trustedBinding.expected_migrations)
+        ? trustedBinding.expected_migrations
+        : binding && Array.isArray(binding.expected_migrations)
+          ? binding.expected_migrations
+          : null;
+    if (Array.isArray(expectedForMissing)) {
+      for (let i = evidence.applied_migrations.length; i < expectedForMissing.length; i += 1) {
         pushUnique(blockers, GATE.GATE_ADOPTION_MIGRATION_MISSING);
         pushUnique(errors, FAILURE.ADOPTION_ATTESTATION_MIGRATION_INVALID);
       }
@@ -795,6 +840,7 @@ module.exports = {
   FAILURE,
   GATE,
   DEFAULT_CONTRACT_REL,
+  REQUIRED_TRUSTED_BINDING_FIELDS,
   compareCodePoint,
   uniqueSorted,
   stableStringify,
@@ -804,6 +850,7 @@ module.exports = {
   loadJson,
   loadAdoptionAttestationContract,
   validateAdoptionAttestationContract,
+  hasCompleteTrustedBinding,
   isPathOutside,
   assertRepoRelativePath,
   resolveRepoConfinedPath,

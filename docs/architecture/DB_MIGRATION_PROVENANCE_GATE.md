@@ -226,9 +226,24 @@ A valid attestation must bind:
 - structured `approval_reference` (`issue:<n>` or `decision:<slug>`), never free-text `"approved"`
 - ordered `applied_migrations` with immutable ids and checksums
 
+The evidence document is only a **claim**. A protected invocation binding must supply the trusted expected values for:
+
+```text
+baseline_commit
+canonical_manifest_digest
+expected_schema_digest
+catalog_evidence_digest
+approval_reference
+environment_class
+attestation_scope
+```
+
+Target gate mode requires explicit trusted arguments (`--baseline-commit`, `--approval-reference`, `--environment-class`, `--attestation-scope`) plus repository-relative evidence paths. Canonical/expected-schema digests are computed from exact repository file bytes; catalog digests are computed from exact confined catalog-evidence file bytes. Semantically equal JSON with different bytes is a digest mismatch. The gate never constructs trusted digests by re-serializing caller-controlled objects.
+
 Hard rules:
 
 - bare `{ "adoption_status": "ATTESTED", "applied_migrations": [] }` fails closed
+- self-consistent ATTESTED evidence without a complete trusted binding fails closed (`GATE_ADOPTION_TRUST_BINDING_REQUIRED`)
 - host, database name, connection string, secret, operator identity, and raw catalog/row fields are prohibited
 - `UNKNOWN_DRIFT` always blocks; `UNSUPPORTED_LEGACY_STATE` blocks without a separate approved policy path
 - `KNOWN_DRIFT` requires bounded `known_variance_codes` and still does not activate manifests
