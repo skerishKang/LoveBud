@@ -505,7 +505,14 @@ function compareSchema(expectedSchemaManifest, catalogEvidence) {
   return blockers;
 }
 
-function evaluateProvenance({ migrationManifest, expectedSchemaManifest, ledgerEvidence, catalogEvidence }) {
+function evaluateProvenance({
+  migrationManifest,
+  expectedSchemaManifest,
+  ledgerEvidence,
+  catalogEvidence,
+  adoptionBinding,
+  adoptionContract
+}) {
   const blockers = [];
   const migrations = Array.isArray(migrationManifest && migrationManifest.migrations)
     ? migrationManifest.migrations
@@ -519,9 +526,39 @@ function evaluateProvenance({ migrationManifest, expectedSchemaManifest, ledgerE
       blockers.push('GATE_ADOPTION_BASELINE_REQUIRED');
     }
   }
-  if (!ledgerEvidence || ledgerEvidence.adoption_status !== 'ATTESTED') {
+
+  // Strict adoption attestation (#3553). Bare adoption_status is never sufficient.
+  // ledgerEvidence carries the adoption attestation document (includes applied_migrations).
+  const attestationCore = require('./adoption-attestation-core.cjs');
+  if (!ledgerEvidence) {
     blockers.push('GATE_ADOPTION_EVIDENCE_UNAVAILABLE');
+  } else {
+    const binding = {
+      baseline_commit: adoptionBinding && adoptionBinding.baseline_commit,
+      canonical_manifest_digest:
+        (adoptionBinding && adoptionBinding.canonical_manifest_digest) ||
+        (migrationManifest ? attestationCore.computeObjectDigest(migrationManifest) : undefined),
+      expected_schema_digest:
+        (adoptionBinding && adoptionBinding.expected_schema_digest) ||
+        (expectedSchemaManifest ? attestationCore.computeObjectDigest(expectedSchemaManifest) : undefined),
+      catalog_evidence_digest:
+        (adoptionBinding && adoptionBinding.catalog_evidence_digest) ||
+        (catalogEvidence ? attestationCore.computeObjectDigest(catalogEvidence) : undefined),
+      expected_migrations: migrations.map((item) => ({
+        id: item.id,
+        checksum: item.checksum
+      }))
+    };
+    const attestationResult = attestationCore.validateAdoptionAttestationEvidence(
+      ledgerEvidence,
+      binding,
+      adoptionContract
+    );
+    if (!attestationResult.ok) {
+      blockers.push(...attestationResult.blockers);
+    }
   }
+
   blockers.push(...compareLedger(migrations, ledgerEvidence));
   blockers.push(...compareSchema(expectedSchemaManifest || { critical_objects: [] }, catalogEvidence));
   const uniqueBlockers = [...new Set(blockers)].sort();
@@ -546,13 +583,17 @@ function evaluateProvenanceWithSource({
   migrationManifest,
   expectedSchemaManifest,
   ledgerEvidence,
-  catalogEvidence
+  catalogEvidence,
+  adoptionBinding,
+  adoptionContract
 }) {
   const gateResult = evaluateProvenance({
     migrationManifest,
     expectedSchemaManifest,
     ledgerEvidence,
-    catalogEvidence
+    catalogEvidence,
+    adoptionBinding,
+    adoptionContract
   });
   const blockers = [...gateResult.blockers];
   if (!sourceResult || sourceResult.ok !== true) {

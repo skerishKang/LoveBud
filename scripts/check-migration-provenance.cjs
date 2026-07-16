@@ -1,3 +1,4 @@
+const fs = require('node:fs');
 const path = require('node:path');
 
 const {
@@ -5,11 +6,18 @@ const {
   loadJson,
   validateSourceConfiguration
 } = require('./migration-provenance-core.cjs');
+const attestation = require('./adoption-attestation-core.cjs');
 
 const REPO_ROOT = path.resolve(__dirname, '..');
 const INVENTORY_PATH = path.join(REPO_ROOT, 'docs', 'architecture', 'migration-path-inventory.json');
 const MIGRATION_MANIFEST_PATH = path.join(REPO_ROOT, 'db', 'migration-provenance', 'canonical-migrations.json');
 const EXPECTED_SCHEMA_PATH = path.join(REPO_ROOT, 'db', 'migration-provenance', 'expected-schema-manifest.json');
+const ADOPTION_CONTRACT_PATH = path.join(
+  REPO_ROOT,
+  'db',
+  'migration-provenance',
+  'adoption-attestation-contract.json'
+);
 
 function parseArguments(argv) {
   const argumentsByName = new Map();
@@ -41,14 +49,22 @@ function failClosed(mode, blockers, extra = {}) {
   process.exitCode = 1;
 }
 
-function loadEvidence(label, relativeOrAbsolute) {
+/**
+ * Load evidence through repository-relative + realpath confinement.
+ * Absolute paths, .. escapes, directories, and symlink escapes fail closed.
+ */
+function loadEvidence(label, relativePath) {
+  if (typeof relativePath !== 'string' || !relativePath) {
+    return { ok: false, blockers: [`GATE_EVIDENCE_READ_FAILED:${label}`] };
+  }
+  if (path.isAbsolute(relativePath)) {
+    return { ok: false, blockers: [`GATE_EVIDENCE_READ_FAILED:${label}`] };
+  }
   try {
-    const resolved = path.isAbsolute(relativeOrAbsolute)
-      ? relativeOrAbsolute
-      : path.resolve(REPO_ROOT, relativeOrAbsolute);
-    return { ok: true, value: loadJson(resolved) };
+    const loaded = attestation.readConfinedEvidenceFile(REPO_ROOT, relativePath);
+    return { ok: true, value: loaded.value, bytes: loaded.bytes, digest: loaded.digest };
   } catch (error) {
-    if (error && error.name === 'SyntaxError') {
+    if (error && error.category === 'ADOPTION_ATTESTATION_INPUT_INVALID') {
       return { ok: false, blockers: [`GATE_EVIDENCE_JSON_INVALID:${label}`] };
     }
     return { ok: false, blockers: [`GATE_EVIDENCE_READ_FAILED:${label}`] };
@@ -70,10 +86,17 @@ function main() {
     let inventory;
     let migrationManifest;
     let expectedSchemaManifest;
+    let adoptionContract;
+    let canonicalBytes;
+    let expectedSchemaBytes;
     try {
       inventory = loadJson(INVENTORY_PATH);
-      migrationManifest = loadJson(MIGRATION_MANIFEST_PATH);
-      expectedSchemaManifest = loadJson(EXPECTED_SCHEMA_PATH);
+      canonicalBytes = fs.readFileSync(MIGRATION_MANIFEST_PATH);
+      expectedSchemaBytes = fs.readFileSync(EXPECTED_SCHEMA_PATH);
+      migrationManifest = JSON.parse(canonicalBytes.toString('utf8'));
+      expectedSchemaManifest = JSON.parse(expectedSchemaBytes.toString('utf8'));
+      adoptionContract = loadJson(ADOPTION_CONTRACT_PATH);
+      attestation.validateAdoptionAttestationContract(adoptionContract);
     } catch (error) {
       failClosed('SOURCE_ONLY', ['GATE_SOURCE_CONFIGURATION_INVALID']);
       return;
@@ -117,12 +140,21 @@ function main() {
       return;
     }
 
+    const adoptionBinding = {
+      baseline_commit: argumentsByName.get('--baseline-commit') || undefined,
+      canonical_manifest_digest: attestation.computeEvidenceDigest(canonicalBytes),
+      expected_schema_digest: attestation.computeEvidenceDigest(expectedSchemaBytes),
+      catalog_evidence_digest: catalogLoad.digest
+    };
+
     const gateResult = evaluateProvenanceWithSource({
       sourceResult,
       migrationManifest,
       expectedSchemaManifest,
       ledgerEvidence: ledgerLoad.value,
-      catalogEvidence: catalogLoad.value
+      catalogEvidence: catalogLoad.value,
+      adoptionBinding,
+      adoptionContract
     });
 
     report({

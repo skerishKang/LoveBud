@@ -1,0 +1,665 @@
+'use strict';
+
+/**
+ * SOURCE_STATIC contract for strict inactive adoption-attestation evidence.
+ * No PostgreSQL, network, Production DB, or shell beyond local CLI spawn.
+ * Refs #3553, #3549, #3458, #3425
+ */
+
+const assert = require('node:assert/strict');
+const { spawnSync } = require('node:child_process');
+const crypto = require('node:crypto');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+const test = require('node:test');
+
+const ROOT = path.resolve(__dirname, '..', '..');
+const CORE = path.join(ROOT, 'scripts', 'adoption-attestation-core.cjs');
+const PROVENANCE = path.join(ROOT, 'scripts', 'migration-provenance-core.cjs');
+const CONTRACT_PATH = path.join(
+  ROOT,
+  'db',
+  'migration-provenance',
+  'adoption-attestation-contract.json'
+);
+const EXPECTED_SCHEMA = path.join(ROOT, 'db', 'migration-provenance', 'expected-schema-manifest.json');
+const CANONICAL = path.join(ROOT, 'db', 'migration-provenance', 'canonical-migrations.json');
+const CLI = path.join(ROOT, 'scripts', 'check-migration-provenance.cjs');
+const CLASS = path.join(ROOT, 'tests', 'test-layer-classification.json');
+const PKG = path.join(ROOT, 'package.json');
+
+const core = require(CORE);
+const provenance = require(PROVENANCE);
+
+function readJson(p) {
+  return JSON.parse(fs.readFileSync(p, 'utf8'));
+}
+
+function sha256File(p) {
+  return crypto.createHash('sha256').update(fs.readFileSync(p)).digest('hex');
+}
+
+function runCli(args) {
+  return spawnSync(process.execPath, [CLI, ...args], {
+    cwd: ROOT,
+    encoding: 'utf8',
+  });
+}
+
+const contract = readJson(CONTRACT_PATH);
+const START_EXPECTED_HASH = sha256File(EXPECTED_SCHEMA);
+const START_CANONICAL_HASH = sha256File(CANONICAL);
+
+function baseArtifacts() {
+  const firstChecksum = provenance.sha256('migration-one');
+  const secondChecksum = provenance.sha256('migration-two');
+  const schemaFingerprint = provenance.sha256('table:example|id:text:not-null');
+  const migrationManifest = {
+    status: 'ACTIVE',
+    migrations: [
+      { id: '20260713090000_example-one', checksum: firstChecksum },
+      { id: '20260713090100_example-two', checksum: secondChecksum },
+    ],
+  };
+  const expectedSchemaManifest = {
+    status: 'ACTIVE',
+    format_version: '1.0',
+    normalizer_version: '1.0',
+    metadata_contract_path: 'db/migration-provenance/catalog-metadata-contract.json',
+    critical_objects: [{ name: 'table:example', fingerprint: schemaFingerprint }],
+  };
+  const catalogEvidence = {
+    format_version: '1.0',
+    normalizer_version: '1.0',
+    objects: [{ name: 'table:example', fingerprint: schemaFingerprint }],
+  };
+  const baselineCommit = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+  return {
+    migrationManifest,
+    expectedSchemaManifest,
+    catalogEvidence,
+    baselineCommit,
+    firstChecksum,
+    secondChecksum,
+  };
+}
+
+function validAttestation(overrides = {}) {
+  const arts = baseArtifacts();
+  const attestation = core.buildSyntheticAttestation({
+    baselineCommit: arts.baselineCommit,
+    migrationManifest: arts.migrationManifest,
+    expectedSchemaManifest: arts.expectedSchemaManifest,
+    catalogEvidence: arts.catalogEvidence,
+    environmentClass: 'DISPOSABLE_CI',
+    varianceClassification: 'MATCH',
+    approvalReference: 'issue:9999',
+    attestationScope: 'DISPOSABLE_RECONSTRUCTION',
+  });
+  return {
+    arts,
+    attestation: { ...attestation, ...overrides },
+    binding: {
+      baseline_commit: arts.baselineCommit,
+      canonical_manifest_digest: attestation.canonical_manifest_digest,
+      expected_schema_digest: attestation.expected_schema_digest,
+      catalog_evidence_digest: attestation.catalog_evidence_digest,
+      expected_migrations: arts.migrationManifest.migrations.map((item) => ({
+        id: item.id,
+        checksum: item.checksum,
+      })),
+    },
+  };
+}
+
+test('committed adoption attestation contract is strict and complete', () => {
+  assert.equal(contract.format_version, '1.0');
+  assert.equal(contract.digest_algorithm, 'sha256');
+  assert.ok(Array.isArray(contract.required_top_level_fields));
+  for (const field of [
+    'format_version',
+    'adoption_status',
+    'environment_class',
+    'baseline_commit',
+    'canonical_manifest_digest',
+    'expected_schema_digest',
+    'catalog_evidence_digest',
+    'variance_classification',
+    'approval_reference',
+    'applied_migrations',
+  ]) {
+    assert.ok(contract.required_top_level_fields.includes(field), field);
+  }
+  assert.deepEqual(contract.enums.adoption_status, ['UNATTESTED', 'ATTESTED']);
+  assert.ok(contract.enums.environment_class.includes('DISPOSABLE_CI'));
+  assert.ok(contract.enums.environment_class.includes('PRODUCTION'));
+  assert.ok(contract.enums.variance_classification.includes('UNKNOWN_DRIFT'));
+  assert.ok(contract.blocking_variance.includes('UNKNOWN_DRIFT'));
+  assert.ok(contract.prohibited_fields.includes('host'));
+  assert.ok(contract.prohibited_fields.includes('database'));
+  assert.ok(contract.prohibited_fields.includes('secret'));
+  assert.ok(contract.prohibited_fields.includes('operator_email'));
+  assert.equal(core.validateAdoptionAttestationContract(contract), true);
+});
+
+test('classification registers adoption attestation contract as SOURCE_STATIC', () => {
+  const classification = readJson(CLASS);
+  const entry = classification.entries.find(
+    (item) => item.path === 'tests/contracts/adoption-attestation-contract.test.cjs'
+  );
+  assert.ok(entry);
+  assert.equal(entry.layer, 'SOURCE_STATIC');
+  assert.deepEqual(entry.capabilities, []);
+});
+
+test('package keeps migration provenance check and does not add DB scripts for attestation', () => {
+  const pkg = readJson(PKG);
+  assert.equal(pkg.scripts['check:migration-provenance'], 'node scripts/check-migration-provenance.cjs --source-only');
+  assert.equal(pkg.scripts['build:expected-schema-candidate'], 'node scripts/build-expected-schema-candidate.cjs');
+});
+
+test('valid synthetic attestation validation passes deterministically', () => {
+  const a = validAttestation();
+  const first = core.validateAdoptionAttestationEvidence(a.attestation, a.binding, contract);
+  const second = core.validateAdoptionAttestationEvidence(a.attestation, a.binding, contract);
+  assert.equal(first.ok, true);
+  assert.deepEqual(first.blockers, []);
+  assert.deepEqual(first, second);
+});
+
+test('bare adoption_status ATTESTED is rejected', () => {
+  const result = core.validateAdoptionAttestationEvidence(
+    {
+      adoption_status: 'ATTESTED',
+      applied_migrations: [],
+    },
+    {},
+    contract
+  );
+  assert.equal(result.ok, false);
+  assert.ok(result.blockers.includes('GATE_ADOPTION_EVIDENCE_INVALID'));
+});
+
+test('missing required field rejected', () => {
+  const a = validAttestation();
+  delete a.attestation.approval_reference;
+  const result = core.validateAdoptionAttestationEvidence(a.attestation, a.binding, contract);
+  assert.equal(result.ok, false);
+  assert.ok(result.blockers.includes('GATE_ADOPTION_EVIDENCE_INVALID'));
+});
+
+test('missing baseline commit rejected', () => {
+  const a = validAttestation();
+  delete a.attestation.baseline_commit;
+  const result = core.validateAdoptionAttestationEvidence(a.attestation, a.binding, contract);
+  assert.equal(result.ok, false);
+  assert.ok(result.blockers.includes('GATE_ADOPTION_EVIDENCE_INVALID'));
+  assert.ok(result.blockers.includes('GATE_ADOPTION_BASELINE_COMMIT_INVALID'));
+});
+
+test('malformed baseline commit rejected', () => {
+  const a = validAttestation({ baseline_commit: 'NOT_A_COMMIT' });
+  const result = core.validateAdoptionAttestationEvidence(a.attestation, a.binding, contract);
+  assert.equal(result.ok, false);
+  assert.ok(result.blockers.includes('GATE_ADOPTION_BASELINE_COMMIT_INVALID'));
+});
+
+test('abbreviated commit rejected', () => {
+  const a = validAttestation({ baseline_commit: 'aaaaaaaaaaaa' });
+  const result = core.validateAdoptionAttestationEvidence(a.attestation, a.binding, contract);
+  assert.equal(result.ok, false);
+  assert.ok(result.blockers.includes('GATE_ADOPTION_BASELINE_COMMIT_INVALID'));
+});
+
+test('uppercase commit rejected', () => {
+  const a = validAttestation({
+    baseline_commit: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+  });
+  const result = core.validateAdoptionAttestationEvidence(a.attestation, a.binding, contract);
+  assert.equal(result.ok, false);
+  assert.ok(result.blockers.includes('GATE_ADOPTION_BASELINE_COMMIT_INVALID'));
+});
+
+test('baseline commit mismatch rejected', () => {
+  const a = validAttestation();
+  const binding = {
+    ...a.binding,
+    baseline_commit: 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+  };
+  const result = core.validateAdoptionAttestationEvidence(a.attestation, binding, contract);
+  assert.equal(result.ok, false);
+  assert.ok(result.blockers.includes('GATE_ADOPTION_BASELINE_COMMIT_MISMATCH'));
+});
+
+test('unknown top-level field rejected', () => {
+  const a = validAttestation({ unexpected_field: true });
+  const result = core.validateAdoptionAttestationEvidence(a.attestation, a.binding, contract);
+  assert.equal(result.ok, false);
+  assert.ok(result.blockers.includes('GATE_ADOPTION_UNKNOWN_FIELD'));
+});
+
+test('invalid environment class rejected', () => {
+  const a = validAttestation({ environment_class: 'local-laptop' });
+  const result = core.validateAdoptionAttestationEvidence(a.attestation, a.binding, contract);
+  assert.equal(result.ok, false);
+  assert.ok(result.blockers.includes('GATE_ADOPTION_ENVIRONMENT_CLASS_INVALID'));
+});
+
+test('forbidden host field rejected', () => {
+  const a = validAttestation({ host: 'db.example.com' });
+  const result = core.validateAdoptionAttestationEvidence(a.attestation, a.binding, contract);
+  assert.equal(result.ok, false);
+  assert.ok(result.blockers.includes('GATE_ADOPTION_SENSITIVE_MARKER_DETECTED'));
+});
+
+test('forbidden database field rejected', () => {
+  const a = validAttestation({ database: 'prod' });
+  const result = core.validateAdoptionAttestationEvidence(a.attestation, a.binding, contract);
+  assert.equal(result.ok, false);
+  assert.ok(result.blockers.includes('GATE_ADOPTION_SENSITIVE_MARKER_DETECTED'));
+});
+
+test('forbidden secret field rejected', () => {
+  const a = validAttestation({ secret: 'x' });
+  const result = core.validateAdoptionAttestationEvidence(a.attestation, a.binding, contract);
+  assert.equal(result.ok, false);
+  assert.ok(result.blockers.includes('GATE_ADOPTION_SENSITIVE_MARKER_DETECTED'));
+});
+
+test('forbidden operator identity field rejected', () => {
+  const a = validAttestation({ operator_email: 'a@b.c' });
+  const result = core.validateAdoptionAttestationEvidence(a.attestation, a.binding, contract);
+  assert.equal(result.ok, false);
+  assert.ok(result.blockers.includes('GATE_ADOPTION_SENSITIVE_MARKER_DETECTED'));
+});
+
+test('sensitive marker rejected without leakage', () => {
+  const a = validAttestation({
+    approval_reference: 'issue:1',
+  });
+  a.attestation.approval_reference = 'issue:1';
+  // inject sensitive via optional scope-like string field abuse: put marker in approval after bypassing pattern - use note via unknown is already blocked.
+  // Use a valid-shaped approval that embeds a marker is hard; use raw string field through applied migration unknown.
+  a.attestation.applied_migrations = [
+    {
+      id: '20260713090000_example-one',
+      checksum: a.arts.firstChecksum,
+    },
+  ];
+  // Put sensitive in a prohibited way via baseline is invalid format.
+  a.attestation.attestation_scope = 'INACTIVE_BASELINE';
+  const poisoned = JSON.parse(JSON.stringify(a.attestation));
+  poisoned.approval_reference = 'decision:postgres://bad';
+  const result = core.validateAdoptionAttestationEvidence(poisoned, a.binding, contract);
+  assert.equal(result.ok, false);
+  assert.ok(
+    result.blockers.includes('GATE_ADOPTION_SENSITIVE_MARKER_DETECTED') ||
+      result.blockers.includes('GATE_ADOPTION_APPROVAL_REFERENCE_INVALID')
+  );
+  assert.equal(JSON.stringify(result).includes('postgres://'), false);
+});
+
+test('missing canonical manifest digest rejected', () => {
+  const a = validAttestation();
+  delete a.attestation.canonical_manifest_digest;
+  const result = core.validateAdoptionAttestationEvidence(a.attestation, a.binding, contract);
+  assert.equal(result.ok, false);
+  assert.ok(result.blockers.includes('GATE_ADOPTION_MANIFEST_DIGEST_INVALID'));
+});
+
+test('malformed canonical manifest digest rejected', () => {
+  const a = validAttestation({ canonical_manifest_digest: 'sha256:deadbeef' });
+  const result = core.validateAdoptionAttestationEvidence(a.attestation, a.binding, contract);
+  assert.equal(result.ok, false);
+  assert.ok(result.blockers.includes('GATE_ADOPTION_MANIFEST_DIGEST_INVALID'));
+});
+
+test('canonical manifest digest mismatch rejected', () => {
+  const a = validAttestation({
+    canonical_manifest_digest:
+      'sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff',
+  });
+  const result = core.validateAdoptionAttestationEvidence(a.attestation, a.binding, contract);
+  assert.equal(result.ok, false);
+  assert.ok(result.blockers.includes('GATE_ADOPTION_MANIFEST_DIGEST_MISMATCH'));
+});
+
+test('missing expected-schema digest rejected', () => {
+  const a = validAttestation();
+  delete a.attestation.expected_schema_digest;
+  const result = core.validateAdoptionAttestationEvidence(a.attestation, a.binding, contract);
+  assert.equal(result.ok, false);
+  assert.ok(result.blockers.includes('GATE_ADOPTION_EXPECTED_SCHEMA_DIGEST_INVALID'));
+});
+
+test('expected-schema digest mismatch rejected', () => {
+  const a = validAttestation({
+    expected_schema_digest:
+      'sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee',
+  });
+  const result = core.validateAdoptionAttestationEvidence(a.attestation, a.binding, contract);
+  assert.equal(result.ok, false);
+  assert.ok(result.blockers.includes('GATE_ADOPTION_EXPECTED_SCHEMA_DIGEST_MISMATCH'));
+});
+
+test('missing catalog digest rejected', () => {
+  const a = validAttestation();
+  delete a.attestation.catalog_evidence_digest;
+  const result = core.validateAdoptionAttestationEvidence(a.attestation, a.binding, contract);
+  assert.equal(result.ok, false);
+  assert.ok(result.blockers.includes('GATE_ADOPTION_CATALOG_DIGEST_INVALID'));
+});
+
+test('catalog digest mismatch rejected', () => {
+  const a = validAttestation({
+    catalog_evidence_digest:
+      'sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd',
+  });
+  const result = core.validateAdoptionAttestationEvidence(a.attestation, a.binding, contract);
+  assert.equal(result.ok, false);
+  assert.ok(result.blockers.includes('GATE_ADOPTION_CATALOG_DIGEST_MISMATCH'));
+});
+
+test('unknown variance enum rejected', () => {
+  const a = validAttestation({ variance_classification: 'MOSTLY_FINE' });
+  const result = core.validateAdoptionAttestationEvidence(a.attestation, a.binding, contract);
+  assert.equal(result.ok, false);
+  assert.ok(result.blockers.includes('GATE_ADOPTION_VARIANCE_BLOCKING'));
+});
+
+test('UNKNOWN_DRIFT blocks', () => {
+  const a = validAttestation({ variance_classification: 'UNKNOWN_DRIFT' });
+  const result = core.validateAdoptionAttestationEvidence(a.attestation, a.binding, contract);
+  assert.equal(result.ok, false);
+  assert.ok(result.blockers.includes('GATE_ADOPTION_VARIANCE_BLOCKING'));
+});
+
+test('UNATTESTED blocks', () => {
+  const a = validAttestation({ adoption_status: 'UNATTESTED' });
+  const result = core.validateAdoptionAttestationEvidence(a.attestation, a.binding, contract);
+  assert.equal(result.ok, false);
+  assert.ok(result.blockers.includes('GATE_ADOPTION_EVIDENCE_UNAVAILABLE'));
+});
+
+test('invalid approval reference rejected', () => {
+  const a = validAttestation({ approval_reference: 'approved' });
+  const result = core.validateAdoptionAttestationEvidence(a.attestation, a.binding, contract);
+  assert.equal(result.ok, false);
+  assert.ok(result.blockers.includes('GATE_ADOPTION_APPROVAL_REFERENCE_INVALID'));
+});
+
+test('duplicate applied migration rejected', () => {
+  const a = validAttestation();
+  a.attestation.applied_migrations = [
+    { id: '20260713090000_example-one', checksum: a.arts.firstChecksum },
+    { id: '20260713090000_example-one', checksum: a.arts.firstChecksum },
+  ];
+  const result = core.validateAdoptionAttestationEvidence(a.attestation, a.binding, contract);
+  assert.equal(result.ok, false);
+  assert.ok(result.blockers.includes('GATE_ADOPTION_MIGRATION_DUPLICATE'));
+});
+
+test('unknown applied migration rejected', () => {
+  const a = validAttestation();
+  a.attestation.applied_migrations = [
+    {
+      id: '20260713090000_example-one',
+      checksum: a.arts.firstChecksum,
+    },
+    {
+      id: '20260713099999_unknown',
+      checksum: a.arts.secondChecksum,
+    },
+  ];
+  const result = core.validateAdoptionAttestationEvidence(a.attestation, a.binding, contract);
+  assert.equal(result.ok, false);
+  assert.ok(result.blockers.includes('GATE_ADOPTION_MIGRATION_UNKNOWN'));
+});
+
+test('reordered applied migration rejected', () => {
+  const a = validAttestation();
+  a.attestation.applied_migrations = [
+    { id: '20260713090100_example-two', checksum: a.arts.secondChecksum },
+    { id: '20260713090000_example-one', checksum: a.arts.firstChecksum },
+  ];
+  const result = core.validateAdoptionAttestationEvidence(a.attestation, a.binding, contract);
+  assert.equal(result.ok, false);
+  assert.ok(result.blockers.includes('GATE_ADOPTION_MIGRATION_REORDERED'));
+});
+
+test('edited migration checksum rejected', () => {
+  const a = validAttestation();
+  a.attestation.applied_migrations = [
+    {
+      id: '20260713090000_example-one',
+      checksum: provenance.sha256('edited'),
+    },
+    {
+      id: '20260713090100_example-two',
+      checksum: a.arts.secondChecksum,
+    },
+  ];
+  const result = core.validateAdoptionAttestationEvidence(a.attestation, a.binding, contract);
+  assert.equal(result.ok, false);
+  assert.ok(result.blockers.includes('GATE_ADOPTION_MIGRATION_CHECKSUM_MISMATCH'));
+});
+
+test('absolute path rejected', () => {
+  assert.throws(
+    () => core.assertRepoRelativePath(ROOT, path.resolve(ROOT, 'x.json')),
+    (error) => error.category === 'ADOPTION_ATTESTATION_PATH_INVALID'
+  );
+});
+
+test('.. path escape rejected', () => {
+  assert.throws(
+    () => core.assertRepoRelativePath(ROOT, '../outside.json'),
+    (error) => error.category === 'ADOPTION_ATTESTATION_PATH_INVALID'
+  );
+});
+
+test('missing file rejected', () => {
+  assert.throws(
+    () =>
+      core.readConfinedEvidenceFile(
+        ROOT,
+        'tests/contracts/fixtures/migration-provenance/_missing-adoption.json'
+      ),
+    (error) => error.category === 'ADOPTION_ATTESTATION_PATH_INVALID'
+  );
+});
+
+test('directory path rejected', () => {
+  assert.throws(
+    () => core.readConfinedEvidenceFile(ROOT, 'tests/contracts/fixtures/migration-provenance'),
+    (error) => error.category === 'ADOPTION_ATTESTATION_PATH_INVALID'
+  );
+});
+
+test('repository-local symlink escape rejected', (t) => {
+  const outsideDir = fs.mkdtempSync(path.join(os.tmpdir(), 'lb-adopt-outside-'));
+  const outsideName = 'external-adoption.json';
+  const outsideFile = path.join(outsideDir, outsideName);
+  const rel = path
+    .join('tests', 'contracts', 'fixtures', 'migration-provenance', '_tmp-adoption-symlink.json')
+    .replace(/\\/g, '/');
+  const linkPath = path.join(ROOT, rel);
+  try {
+    const a = validAttestation();
+    fs.writeFileSync(outsideFile, `${JSON.stringify(a.attestation, null, 2)}\n`, 'utf8');
+    try {
+      fs.symlinkSync(outsideFile, linkPath);
+    } catch (error) {
+      if (process.platform === 'win32' && (error.code === 'EPERM' || error.code === 'EACCES')) {
+        t.skip('Windows symlink privilege unavailable');
+        return;
+      }
+      throw error;
+    }
+    assert.throws(
+      () => core.readConfinedEvidenceFile(ROOT, rel),
+      (error) => {
+        assert.equal(error.category, 'ADOPTION_ATTESTATION_PATH_INVALID');
+        assert.equal(String(error.message).includes(outsideName), false);
+        assert.equal(String(error.message).includes(outsideDir), false);
+        return true;
+      }
+    );
+  } finally {
+    try {
+      fs.lstatSync(linkPath);
+      fs.unlinkSync(linkPath);
+    } catch {
+      // ignore
+    }
+    fs.rmSync(outsideDir, { recursive: true, force: true });
+  }
+});
+
+test('deterministic blocker ordering', () => {
+  const result = core.validateAdoptionAttestationEvidence(
+    {
+      adoption_status: 'ATTESTED',
+      host: 'x',
+      unexpected: true,
+      format_version: '9.9',
+    },
+    {},
+    contract
+  );
+  assert.equal(result.ok, false);
+  const sorted = [...result.blockers].sort(core.compareCodePoint);
+  assert.deepEqual(result.blockers, sorted);
+});
+
+test('no raw file path or content leakage in error result', () => {
+  const a = validAttestation({
+    canonical_manifest_digest:
+      'sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff',
+  });
+  const result = core.validateAdoptionAttestationEvidence(a.attestation, a.binding, contract);
+  const text = JSON.stringify(result);
+  assert.equal(text.includes(ROOT), false);
+  assert.equal(text.includes('ffffffffffffffff'), false);
+  assert.equal(text.includes('postgres://'), false);
+});
+
+test('valid synthetic attestation does not activate manifests', () => {
+  const expected = readJson(EXPECTED_SCHEMA);
+  const canonical = readJson(CANONICAL);
+  const catalogEvidence = {
+    format_version: '1.0',
+    normalizer_version: '1.0',
+    objects: [],
+  };
+  const baselineCommit = 'cccccccccccccccccccccccccccccccccccccccc';
+  const ledgerEvidence = core.buildSyntheticAttestation({
+    baselineCommit,
+    migrationManifest: canonical,
+    expectedSchemaManifest: expected,
+    catalogEvidence,
+    approvalReference: 'decision:synthetic-ok',
+  });
+  const validation = core.validateAdoptionAttestationEvidence(
+    ledgerEvidence,
+    {
+      baseline_commit: baselineCommit,
+      canonical_manifest_digest: ledgerEvidence.canonical_manifest_digest,
+      expected_schema_digest: ledgerEvidence.expected_schema_digest,
+      catalog_evidence_digest: ledgerEvidence.catalog_evidence_digest,
+      expected_migrations: [],
+    },
+    contract
+  );
+  assert.equal(validation.ok, true);
+  assert.equal(expected.status, 'ADOPTION_REQUIRED');
+  assert.deepEqual(expected.critical_objects, []);
+  assert.equal(canonical.status, 'ADOPTION_REQUIRED');
+  assert.deepEqual(canonical.migrations, []);
+});
+
+test('overall provenance gate remains FAIL_CLOSED with GATE_ADOPTION_BASELINE_REQUIRED', () => {
+  const expected = readJson(EXPECTED_SCHEMA);
+  const canonical = readJson(CANONICAL);
+  const catalogEvidence = {
+    format_version: '1.0',
+    normalizer_version: '1.0',
+    objects: [],
+  };
+  const baselineCommit = 'dddddddddddddddddddddddddddddddddddddddd';
+  const ledgerEvidence = core.buildSyntheticAttestation({
+    baselineCommit,
+    migrationManifest: canonical,
+    expectedSchemaManifest: expected,
+    catalogEvidence,
+    approvalReference: 'issue:3553',
+  });
+  const result = provenance.evaluateProvenance({
+    migrationManifest: canonical,
+    expectedSchemaManifest: expected,
+    ledgerEvidence,
+    catalogEvidence,
+    adoptionBinding: {
+      baseline_commit: baselineCommit,
+      canonical_manifest_digest: ledgerEvidence.canonical_manifest_digest,
+      expected_schema_digest: ledgerEvidence.expected_schema_digest,
+      catalog_evidence_digest: ledgerEvidence.catalog_evidence_digest,
+    },
+    adoptionContract: contract,
+  });
+  assert.equal(result.decision, 'FAIL_CLOSED');
+  assert.ok(result.blockers.includes('GATE_ADOPTION_BASELINE_REQUIRED'));
+});
+
+test('canonical and expected-schema manifests remain empty/inactive', () => {
+  const expected = readJson(EXPECTED_SCHEMA);
+  const canonical = readJson(CANONICAL);
+  assert.equal(expected.status, 'ADOPTION_REQUIRED');
+  assert.deepEqual(expected.critical_objects, []);
+  assert.equal(canonical.status, 'ADOPTION_REQUIRED');
+  assert.deepEqual(canonical.migrations, []);
+  assert.equal(sha256File(EXPECTED_SCHEMA), START_EXPECTED_HASH);
+  assert.equal(sha256File(CANONICAL), START_CANONICAL_HASH);
+});
+
+test('CLI source-only still passes and does not require adoption evidence files', () => {
+  const child = runCli(['--source-only']);
+  assert.equal(child.status, 0, child.stderr || child.stdout);
+  const payload = JSON.parse(child.stdout);
+  assert.equal(payload.decision, 'PASS');
+});
+
+test('CLI rejects absolute ledger evidence path', () => {
+  const abs = path.join(ROOT, 'db', 'migration-provenance', 'canonical-migrations.json');
+  const child = runCli([
+    '--ledger-evidence',
+    abs,
+    '--catalog-evidence',
+    'tests/contracts/fixtures/migration-provenance/catalog-baseline.json',
+  ]);
+  assert.equal(child.status, 1);
+  const payload = JSON.parse(child.stdout);
+  assert.equal(payload.decision, 'FAIL_CLOSED');
+  assert.ok(payload.blockers.some((b) => b.startsWith('GATE_EVIDENCE_READ_FAILED')));
+  assert.equal(child.stdout.includes(abs), false);
+});
+
+test('architecture doc describes strict adoption attestation rules', () => {
+  const design = fs.readFileSync(
+    path.join(ROOT, 'docs', 'architecture', 'DB_MIGRATION_PROVENANCE_GATE.md'),
+    'utf8'
+  );
+  assert.ok(design.includes('Strict adoption-attestation evidence'));
+  assert.ok(design.includes('bare'));
+  assert.ok(design.includes('UNKNOWN_DRIFT'));
+  assert.ok(design.includes('baseline_commit'));
+  assert.ok(design.includes('Keep #1882 OPEN.'));
+  assert.doesNotMatch(design, /\b(?:Closes|Fixes|Resolves)\s+#1882\b/i);
+  assert.doesNotMatch(design, /\b(?:Closes|Fixes|Resolves)\s+#3458\b/i);
+});
+
+test('post-suite manifests still unchanged', () => {
+  assert.equal(sha256File(EXPECTED_SCHEMA), START_EXPECTED_HASH);
+  assert.equal(sha256File(CANONICAL), START_CANONICAL_HASH);
+});

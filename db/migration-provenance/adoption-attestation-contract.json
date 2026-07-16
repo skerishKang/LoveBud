@@ -1,0 +1,141 @@
+{
+  "format_version": "1.0",
+  "digest_algorithm": "sha256",
+  "contract_path": "db/migration-provenance/adoption-attestation-contract.json",
+  "purpose": "Strict inactive adoption-attestation evidence. Bare adoption_status strings are never sufficient. Attestation must bind baseline commit and exact digests of canonical migrations, expected-schema, and catalog evidence. Does not activate committed manifests.",
+  "required_top_level_fields": [
+    "format_version",
+    "adoption_status",
+    "environment_class",
+    "baseline_commit",
+    "canonical_manifest_digest",
+    "expected_schema_digest",
+    "catalog_evidence_digest",
+    "variance_classification",
+    "approval_reference",
+    "applied_migrations"
+  ],
+  "allowed_top_level_fields": [
+    "format_version",
+    "adoption_status",
+    "environment_class",
+    "baseline_commit",
+    "canonical_manifest_digest",
+    "expected_schema_digest",
+    "catalog_evidence_digest",
+    "variance_classification",
+    "approval_reference",
+    "applied_migrations",
+    "contract_path",
+    "digest_algorithm",
+    "attestation_scope",
+    "known_variance_codes"
+  ],
+  "applied_migration_required_fields": [
+    "id",
+    "checksum"
+  ],
+  "applied_migration_allowed_fields": [
+    "id",
+    "checksum"
+  ],
+  "enums": {
+    "adoption_status": [
+      "UNATTESTED",
+      "ATTESTED"
+    ],
+    "environment_class": [
+      "DISPOSABLE_CI",
+      "PREVIEW",
+      "STAGING",
+      "PRODUCTION"
+    ],
+    "variance_classification": [
+      "MATCH",
+      "KNOWN_DRIFT",
+      "UNSUPPORTED_LEGACY_STATE",
+      "UNKNOWN_DRIFT"
+    ],
+    "known_variance_codes": [
+      "SCHEMA_COMPAT_KNOWN",
+      "LEGACY_INDEX_VARIANT",
+      "GRANT_SURFACE_KNOWN"
+    ],
+    "attestation_scope": [
+      "INACTIVE_BASELINE",
+      "DISPOSABLE_RECONSTRUCTION",
+      "PREVIEW_READONLY",
+      "STAGING_READONLY",
+      "PRODUCTION_READONLY"
+    ]
+  },
+  "prohibited_fields": [
+    "host",
+    "hostname",
+    "port",
+    "database",
+    "database_name",
+    "database_url",
+    "connection_string",
+    "secret",
+    "secret_name",
+    "secret_value",
+    "username",
+    "password",
+    "operator",
+    "operator_name",
+    "operator_email",
+    "operator_user_id",
+    "raw_role",
+    "credential",
+    "raw_catalog",
+    "raw_catalog_payload",
+    "rows",
+    "row_values",
+    "values",
+    "payload"
+  ],
+  "patterns": {
+    "baseline_commit": "^[a-f0-9]{40}$",
+    "digest": "^sha256:[a-f0-9]{64}$",
+    "migration_id": "^\\d{14}_[a-z0-9]+(?:-[a-z0-9]+)*$",
+    "approval_reference": "^(?:issue:\\d+|decision:[A-Za-z0-9][A-Za-z0-9._-]{2,63})$"
+  },
+  "blocking_variance": [
+    "UNKNOWN_DRIFT",
+    "UNSUPPORTED_LEGACY_STATE"
+  ],
+  "known_drift_requires_codes": true,
+  "limits": {
+    "max_applied_migrations": 256,
+    "max_string_length": 512,
+    "max_input_bytes": 1048576,
+    "max_approval_reference_length": 96,
+    "max_known_variance_codes": 32
+  },
+  "sensitive_content_markers": [
+    "postgres://",
+    "postgresql://",
+    "DATABASE_URL",
+    "password=",
+    "password:",
+    "api_key",
+    "api-key",
+    "secret=",
+    "secret:",
+    "token=",
+    "token:",
+    "BEGIN PRIVATE KEY",
+    "BEGIN RSA PRIVATE KEY",
+    "neon.tech",
+    "cloud.neon"
+  ],
+  "notes": [
+    "ATTESTED is valid only when every required binding field is present and verified.",
+    "Empty applied_migrations is allowed only when the bound canonical migration list is also empty; emptiness alone never proves adoption.",
+    "UNKNOWN_DRIFT always blocks.",
+    "UNSUPPORTED_LEGACY_STATE blocks without a separate approved policy path.",
+    "KNOWN_DRIFT requires bounded known_variance_codes and still does not activate manifests.",
+    "This contract never authorizes Production attestation, SQL execution, or manifest activation."
+  ]
+}
