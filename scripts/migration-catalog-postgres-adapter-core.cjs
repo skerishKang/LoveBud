@@ -899,30 +899,35 @@ async function collectProductionReadonlyCatalogEvidenceFromFiles(options) {
     secretFile: options.secretFile,
     roleMappingFile: options.roleMappingFile,
   });
-  const privateParts = boundary.getPrivateInvocationParts(plan);
-  const pgConfig = privateParts.pgConfig;
-  const contract = loadContract(options.repoRoot);
-  const maxObjects =
-    contract.limits && contract.limits.max_objects ? contract.limits.max_objects : 256;
-  const objects = validateObjectAllowlist(privateParts.objects, maxObjects);
-  const roleMap = validateRoleMapping(privateParts.roleMapping);
 
-  const metadata = await runOwnedReadonlyCatalogCollection({
-    pgConfig,
-    objects,
-    roleMap,
-    contract,
-    assertVersion: (verRaw) => {
-      boundary.assertSupportedProductionServerVersionNum(verRaw);
-    },
-  });
   try {
-    return buildCatalogEvidence(metadata, contract);
-  } catch (error) {
-    if (error && error.category) {
-      fail(ADAPTER_FAILURE.CATALOG_ADAPTER_SANITIZATION_FAILED, { field: error.category });
+    const privateParts = boundary.getPrivateInvocationParts(plan);
+    const pgConfig = privateParts.pgConfig;
+    const contract = loadContract(options.repoRoot);
+    const maxObjects =
+      contract.limits && contract.limits.max_objects ? contract.limits.max_objects : 256;
+    const objects = validateObjectAllowlist(privateParts.objects, maxObjects);
+    const roleMap = validateRoleMapping(privateParts.roleMapping);
+
+    const metadata = await runOwnedReadonlyCatalogCollection({
+      pgConfig,
+      objects,
+      roleMap,
+      contract,
+      assertVersion: (verRaw) => {
+        boundary.assertSupportedProductionServerVersionNum(verRaw);
+      },
+    });
+    try {
+      return buildCatalogEvidence(metadata, contract);
+    } catch (error) {
+      if (error && error.category) {
+        fail(ADAPTER_FAILURE.CATALOG_ADAPTER_SANITIZATION_FAILED, { field: error.category });
+      }
+      fail(ADAPTER_FAILURE.CATALOG_ADAPTER_SANITIZATION_FAILED);
     }
-    fail(ADAPTER_FAILURE.CATALOG_ADAPTER_SANITIZATION_FAILED);
+  } finally {
+    boundary.releaseInvocationPlan(plan);
   }
 }
 

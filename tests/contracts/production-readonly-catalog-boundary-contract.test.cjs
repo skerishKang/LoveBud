@@ -281,11 +281,11 @@ test('forged marker and private handle cannot open Production collector', async 
     ),
     'CATALOG_ADAPTER_INPUT_INVALID'
   );
-  // JSON-cloned handle is not trusted
+  // JSON-cloned handle is not trusted (WeakMap object identity — branded-looking object fails)
   assert.equal(
     catchCategory(() =>
       CORE.toPgClientConfigFromInvocationPlan({
-        handle: { id: 'forged', brand: true },
+        handle: { brand: true },
       })
     ),
     'PRODUCTION_CATALOG_HANDLE_INVALID'
@@ -511,6 +511,8 @@ test('build invocation plan uses opaque handle; no forgeable marker', () => {
   assert.equal(plan.connection, undefined);
   assert.equal(plan.roleMapping, undefined);
   assert.equal(Object.prototype.hasOwnProperty.call(plan, '__productionReadonlyValidated'), false);
+  // handle has no caller-visible id property
+  assert.equal(Object.prototype.hasOwnProperty.call(plan.handle, 'id'), false);
   const cfg = CORE.toPgClientConfigFromInvocationPlan(plan);
   assert.equal(cfg.host, 'db.example.test');
   assert.equal(cfg.ssl.rejectUnauthorized, true);
@@ -521,6 +523,227 @@ test('build invocation plan uses opaque handle; no forgeable marker', () => {
     'PRODUCTION_CATALOG_HANDLE_INVALID'
   );
   CORE.releaseInvocationPlan(plan);
+});
+
+test('WeakMap handle identity: genuine resolves, JSON/spread/forged all fail', () => {
+  const planA = withIsolatedRepo(
+    {
+      'url.env':
+        'LOVEBUD_PRODUCTION_READONLY_DATABASE_URL=' + fixturePgUrl({}) + '\n',
+      'roles.json': JSON.stringify({
+        role_mapping: { synthetic_a: 'APPLICATION' },
+      }),
+    },
+    (root) =>
+      CORE.buildProductionReadonlyInvocationPlan(root, {
+        secretFile: '.secrets/url.env',
+        roleMappingFile: '.secrets/roles.json',
+      })
+  );
+
+  // 1. Genuine plan resolves
+  const cfg = CORE.toPgClientConfigFromInvocationPlan(planA);
+  assert.equal(cfg.host, 'db.example.test');
+  assert.equal(cfg.user, 'fixtureuser');
+
+  // 2. JSON-cloned plan fails (WeakMap object identity)
+  const jsonClone = JSON.parse(JSON.stringify(planA));
+  assert.equal(
+    catchCategory(() => CORE.toPgClientConfigFromInvocationPlan(jsonClone)),
+    'PRODUCTION_CATALOG_HANDLE_INVALID'
+  );
+
+  // 3. Spread-cloned handle fails (different object reference)
+  const spreadHandle = { ...planA.handle };
+  const spreadPlan = Object.freeze({
+    ...planA,
+    handle: Object.freeze(spreadHandle),
+  });
+  assert.equal(
+    catchCategory(() => CORE.toPgClientConfigFromInvocationPlan(spreadPlan)),
+    'PRODUCTION_CATALOG_HANDLE_INVALID'
+  );
+
+  // 4. Forged branded-looking object fails (different object identity, WeakMap cannot match)
+  const forgedHandle = { brand: true };
+  const forgedPlan = Object.freeze({
+    ...planA,
+    handle: Object.freeze(forgedHandle),
+  });
+  assert.equal(
+    catchCategory(() => CORE.toPgClientConfigFromInvocationPlan(forgedPlan)),
+    'PRODUCTION_CATALOG_HANDLE_INVALID'
+  );
+
+  // 5. Forged release cannot invalidate genuine plan
+  const forgedReleaseHandle = Object.freeze({});
+  CORE.releaseInvocationPlan({ handle: forgedReleaseHandle });
+  // Genuine handle still resolves
+  const cfgAfter = CORE.toPgClientConfigFromInvocationPlan(planA);
+  assert.equal(cfgAfter.host, 'db.example.test');
+
+  // 6. StructuredClone (Node 17+) also fails
+  if (typeof structuredClone === 'function') {
+    const structuredCloned = structuredClone(planA);
+    assert.equal(
+      catchCategory(() => CORE.toPgClientConfigFromInvocationPlan(structuredCloned)),
+      'PRODUCTION_CATALOG_HANDLE_INVALID'
+    );
+  }
+
+  CORE.releaseInvocationPlan(planA);
+  // After release, genuine plan also fails
+  assert.equal(
+    catchCategory(() => CORE.toPgClientConfigFromInvocationPlan(planA)),
+    'PRODUCTION_CATALOG_HANDLE_INVALID'
+  );
+});
+
+test('WeakMap release is idempotent and safe on forged/deleted handles', () => {
+  // Repeated release on non-existent handle is safe
+  assert.doesNotThrow(() => CORE.releaseInvocationPlan({ handle: Object.freeze({}) }));
+  assert.doesNotThrow(() => CORE.releaseInvocationPlan(null));
+  assert.doesNotThrow(() => CORE.releaseInvocationPlan(undefined));
+  assert.doesNotThrow(() => CORE.releaseInvocationPlan({}));
+
+  // Repeated release on genuine plan is safe (idempotent)
+  const plan = withIsolatedRepo(
+    {
+      'url.env':
+        'LOVEBUD_PRODUCTION_READONLY_DATABASE_URL=' + fixturePgUrl({}) + '\n',
+      'roles.json': JSON.stringify({
+        role_mapping: { synthetic_b: 'SERVICE' },
+      }),
+    },
+    (root) =>
+      CORE.buildProductionReadonlyInvocationPlan(root, {
+        secretFile: '.secrets/url.env',
+        roleMappingFile: '.secrets/roles.json',
+      })
+  );
+  assert.doesNotThrow(() => CORE.releaseInvocationPlan(plan));
+  assert.doesNotThrow(() => CORE.releaseInvocationPlan(plan));
+  assert.doesNotThrow(() => CORE.releaseInvocationPlan(plan));
+  // After multiple releases, resolve still fails
+  assert.equal(
+    catchCategory(() => CORE.toPgClientConfigFromInvocationPlan(plan)),
+    'PRODUCTION_CATALOG_HANDLE_INVALID'
+  );
+});
+
+test('multiple builds create independent handles; each release isolated', () => {
+  const planA = withIsolatedRepo(
+    {
+      'url.env':
+        'LOVEBUD_PRODUCTION_READONLY_DATABASE_URL=' + fixturePgUrl({ host: 'db.alpha.test', user: 'ua', token: 'pa' }) + '\n',
+      'roles.json': JSON.stringify({
+        role_mapping: { synthetic_a: 'APPLICATION' },
+      }),
+    },
+    (root) =>
+      CORE.buildProductionReadonlyInvocationPlan(root, {
+        secretFile: '.secrets/url.env',
+        roleMappingFile: '.secrets/roles.json',
+      })
+  );
+  const planB = withIsolatedRepo(
+    {
+      'url.env':
+        'LOVEBUD_PRODUCTION_READONLY_DATABASE_URL=' + fixturePgUrl({ host: 'db.beta.test', user: 'ub', token: 'pb' }) + '\n',
+      'roles.json': JSON.stringify({
+        role_mapping: { synthetic_b: 'SERVICE' },
+      }),
+    },
+    (root) =>
+      CORE.buildProductionReadonlyInvocationPlan(root, {
+        secretFile: '.secrets/url.env',
+        roleMappingFile: '.secrets/roles.json',
+      })
+  );
+
+  // Both resolve
+  assert.equal(CORE.toPgClientConfigFromInvocationPlan(planA).host, 'db.alpha.test');
+  assert.equal(CORE.toPgClientConfigFromInvocationPlan(planB).host, 'db.beta.test');
+
+  // Release A only; A fails, B still works
+  CORE.releaseInvocationPlan(planA);
+  assert.equal(
+    catchCategory(() => CORE.toPgClientConfigFromInvocationPlan(planA)),
+    'PRODUCTION_CATALOG_HANDLE_INVALID'
+  );
+  assert.equal(CORE.toPgClientConfigFromInvocationPlan(planB).host, 'db.beta.test');
+
+  CORE.releaseInvocationPlan(planB);
+  assert.equal(
+    catchCategory(() => CORE.toPgClientConfigFromInvocationPlan(planB)),
+    'PRODUCTION_CATALOG_HANDLE_INVALID'
+  );
+
+  // old handles both fail
+  assert.equal(
+    catchCategory(() => CORE.toPgClientConfigFromInvocationPlan(planA)),
+    'PRODUCTION_CATALOG_HANDLE_INVALID'
+  );
+});
+
+test('cleanup: explicit release ensures no credential retention', () => {
+  const plan = withIsolatedRepo(
+    {
+      'url.env':
+        'LOVEBUD_PRODUCTION_READONLY_DATABASE_URL=' + fixturePgUrl({}) + '\n',
+      'roles.json': JSON.stringify({
+        role_mapping: { synthetic_c: 'AUTHENTICATED' },
+      }),
+    },
+    (root) =>
+      CORE.buildProductionReadonlyInvocationPlan(root, {
+        secretFile: '.secrets/url.env',
+        roleMappingFile: '.secrets/roles.json',
+      })
+  );
+
+  // Before release: resolves
+  assert.ok(CORE.toPgClientConfigFromInvocationPlan(plan));
+
+  // After release: fails
+  CORE.releaseInvocationPlan(plan);
+  assert.equal(
+    catchCategory(() => CORE.toPgClientConfigFromInvocationPlan(plan)),
+    'PRODUCTION_CATALOG_HANDLE_INVALID'
+  );
+
+  // No secret values in release path (WeakMap delete is opaque)
+  // This is structural: release never touches raw payload credentials
+});
+
+test('cleanup: no raw values exposed through error contexts', () => {
+  const plan = withIsolatedRepo(
+    {
+      'url.env':
+        'LOVEBUD_PRODUCTION_READONLY_DATABASE_URL=' + fixturePgUrl({}) + '\n',
+      'roles.json': JSON.stringify({
+        role_mapping: { synthetic_d: 'OWNER_CLASS' },
+      }),
+    },
+    (root) =>
+      CORE.buildProductionReadonlyInvocationPlan(root, {
+        secretFile: '.secrets/url.env',
+        roleMappingFile: '.secrets/roles.json',
+      })
+  );
+
+  // After release, the error should not contain raw secret values
+  CORE.releaseInvocationPlan(plan);
+  try {
+    CORE.toPgClientConfigFromInvocationPlan(plan);
+    assert.fail('expected error');
+  } catch (e) {
+    const blob = JSON.stringify(e);
+    assert.equal(blob.includes('fixtureuser'), false, 'no username in error');
+    assert.equal(blob.includes('fixturetoken'), false, 'no password in error');
+    assert.equal(blob.includes('db.example.test'), false, 'no host in error');
+    assert.equal(blob.includes('appdb'), false, 'no database in error');
+  }
 });
 
 test('isolated temp secrets never touch real REPO/.secrets', () => {

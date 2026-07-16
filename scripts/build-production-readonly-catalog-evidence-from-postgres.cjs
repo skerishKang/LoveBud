@@ -98,6 +98,8 @@ function parseArgs(argv) {
 }
 
 async function main() {
+  let plan;
+
   try {
     const { map, validateOnly } = parseArgs(process.argv.slice(2));
     if (!map.has('--secret-file') || !map.has('--role-mapping-file')) {
@@ -105,7 +107,7 @@ async function main() {
       return;
     }
 
-    const plan = buildProductionReadonlyInvocationPlan(REPO_ROOT, {
+    plan = buildProductionReadonlyInvocationPlan(REPO_ROOT, {
       secretFile: map.get('--secret-file'),
       roleMappingFile: map.get('--role-mapping-file'),
     });
@@ -130,7 +132,6 @@ async function main() {
     };
 
     if (validateOnly) {
-      releaseInvocationPlan(plan);
       process.stdout.write(`${JSON.stringify(validationReport, null, 2)}\n`);
       process.exitCode = 0;
       return;
@@ -139,11 +140,12 @@ async function main() {
     // Full connect/collection is intentionally not auto-run by this child.
     // A later Phase B operator child may invoke
     // collectProductionReadonlyCatalogEvidenceFromFiles after dedicated credentials exist.
-    releaseInvocationPlan(plan);
     failClosed([FAILURE.PRODUCTION_CATALOG_POLICY_INVALID]);
   } catch (error) {
     const category = (error && error.category) || FAILURE.PRODUCTION_CATALOG_INPUT_INVALID;
     failClosed([category]);
+  } finally {
+    if (plan) releaseInvocationPlan(plan);
   }
 }
 

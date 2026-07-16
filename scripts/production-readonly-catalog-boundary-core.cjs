@@ -17,7 +17,6 @@
  * Refs #1882 — Keep #1882 OPEN.
  */
 
-const crypto = require('node:crypto');
 const fs = require('node:fs');
 const net = require('node:net');
 const path = require('node:path');
@@ -78,8 +77,12 @@ const KIND_BY_PREFIX = Object.freeze({
   materialized_view: 'MATERIALIZED_VIEW',
 });
 
-/** Module-private store for opaque invocation handles (not forgeable via plain JSON). */
-const privateInvocationStore = new Map();
+/**
+ * Module-private store for opaque invocation handles (not forgeable via plain JSON).
+ * WeakMap uses object identity — a JSON clone, spread clone, or structured plain object
+ * cannot be used as a key. Only the exact handle object reference can resolve or release.
+ */
+const privateInvocationStore = new WeakMap();
 const HANDLE_BRAND = Symbol('lovebud.productionReadonlyInvocation');
 
 function fail(category) {
@@ -628,12 +631,10 @@ function rejectCallerOverrides(options) {
 }
 
 function createOpaqueInvocationHandle(privatePayload) {
-  const id = crypto.randomBytes(24).toString('hex');
   const handle = Object.freeze({
     [HANDLE_BRAND]: true,
-    id,
   });
-  privateInvocationStore.set(id, privatePayload);
+  privateInvocationStore.set(handle, privatePayload);
   return handle;
 }
 
@@ -641,11 +642,10 @@ function resolveOpaqueInvocationHandle(handle) {
   if (!handle || typeof handle !== 'object' || handle[HANDLE_BRAND] !== true) {
     fail(FAILURE.PRODUCTION_CATALOG_HANDLE_INVALID);
   }
-  const payload = privateInvocationStore.get(handle.id);
-  if (!payload) {
+  if (!privateInvocationStore.has(handle)) {
     fail(FAILURE.PRODUCTION_CATALOG_HANDLE_INVALID);
   }
-  return payload;
+  return privateInvocationStore.get(handle);
 }
 
 /**
@@ -713,10 +713,15 @@ function toPgClientConfigFromInvocationPlan(plan) {
   return getPrivateInvocationParts(plan).pgConfig;
 }
 
-/** Test helper: clear private store entries for a plan handle. */
+/**
+ * Release private payload for a plan handle using WeakMap object identity.
+ * Only the exact branded handle object can delete. JSON clones, spread clones,
+ * or forged branded-looking objects cannot invalidate the live payload.
+ * Safe to call multiple times (idempotent — delete on WeakMap with non-existent key is no-op).
+ */
 function releaseInvocationPlan(plan) {
-  if (plan && plan.handle && plan.handle.id) {
-    privateInvocationStore.delete(plan.handle.id);
+  if (plan && plan.handle && typeof plan.handle === 'object') {
+    privateInvocationStore.delete(plan.handle);
   }
 }
 
