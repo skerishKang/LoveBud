@@ -583,6 +583,7 @@ module.exports = {
   validateMigrationManifest,
   validateExpectedSchemaManifest,
   validateSourceConfiguration,
+  compareSchema,
   evaluateProvenance,
   evaluateProvenanceWithSource
 };

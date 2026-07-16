@@ -1835,6 +1835,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/expected-schema-candidate-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Exercises the inactive expected-schema candidate builder and CLI with synthetic catalog evidence only; proves deterministic ADOPTION_REQUIRED candidates without activating committed manifests or contacting PostgreSQL (#3549).",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/migration-catalog-fingerprint-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Exercises the deterministic sanitized catalog fingerprint normalizer and CLI with synthetic fixtures only; no PostgreSQL, network, or live catalog access (#3542).",
@@ -4402,7 +4408,7 @@
       "path": "tests/db-engine/migration-catalog-postgres-adapter-engine.test.cjs",
       "defaultCi": false,
       "layer": "DB_ENGINE_EXECUTION",
-      "rationale": "Collects sanitized catalog metadata from synthetic allowlisted objects on disposable PostgreSQL 17.4 only; proves read-only collection, stable fingerprints, semantic drift, and fail-closed boundaries without Production/Neon/staging access (#3544).",
+      "rationale": "Collects sanitized catalog metadata from synthetic allowlisted objects on disposable PostgreSQL 17.4 only; proves read-only collection, stable fingerprints, semantic drift, inactive expected-schema candidate pipeline (#3549), and fail-closed boundaries without Production/Neon/staging access (#3544).",
       "capabilities": [
         "postgresql",
         "child_process",
