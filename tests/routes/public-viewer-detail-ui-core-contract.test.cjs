@@ -312,8 +312,9 @@ test('public viewer detail UI adapter owns visible detail heading boundary', () 
   assert.ok(source.includes('function createPublicViewerDetailHeadingBoundary(deps)'), 'viewer adapter exposes detail heading boundary factory');
   assert.ok(source.includes("detailPanel.querySelector('h3')"), 'heading boundary uses detailPanel h3 querySelector');
   assert.ok(source.includes("document.querySelector('#detailPanel h3')"), 'heading boundary has fallback selector');
-  assert.ok(source.includes('editor_current_hub_heading'), 'heading boundary references editor_current_hub_heading i18n key');
-  assert.ok(source.includes("'현재 순간 허브'"), 'heading boundary has explicit fallback text');
+  // #3562: right rail heading is selected-moment scope.
+  assert.ok(source.includes('editor_selected_moment_heading'), 'heading boundary references editor_selected_moment_heading i18n key');
+  assert.ok(source.includes("'선택한 순간'"), 'heading boundary has explicit selected-moment fallback text');
   assert.ok(source.includes('headerEl.textContent'), 'heading boundary uses textContent to set heading');
   assert.ok(source.includes('createPublicViewerDetailHeadingBoundary: createPublicViewerDetailHeadingBoundary'), 'viewer adapter publishes heading boundary on namespace');
   assert.ok(source.includes('var updateDetailHeading = createPublicViewerDetailHeadingBoundary(deps)'), 'viewer adapter creates heading updater');

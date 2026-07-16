@@ -1,13 +1,33 @@
+/**
+ * Owner editor left rail — tree-scope host (#3562) + owner add affordance.
+ * Full tree meta renders into #detailTreeMetaMount (shared with public route).
+ * Selected-moment content lives in the right detail panel only.
+ */
 export function buildSidebarTemplate() {
     return `
-        <aside class="sidebar reveal-fade">
+        <aside class="sidebar reveal-fade" data-appreciation-layout="tree-scope-rail">
             <div class="editor-sidebar-back-wrap">
                 <a id="backToMyTreesLink" href="my-trees" class="editor-sidebar-back-link">
                     <span aria-hidden="true" class="editor-sidebar-back-icon">←</span>
                     <span id="backToMyTreesLabel">내 러브트리로 돌아가기</span>
                 </a>
             </div>
-            <section class="editor-status-section">
+
+            <!-- #3562: tree-scope is the left-rail owner of tree meta / whole-tree actions.
+                 Stable IDs are preserved for controllers (getElementById). -->
+            <section
+                class="editor-tree-meta-section appreciation-tree-scope"
+                id="detailTreeMetaSection"
+                data-canonical-section="tree-scope"
+                data-appreciation-region="tree-scope"
+                aria-label="현재 트리"
+            >
+                <div class="editor-section-eyebrow" id="detailTreeStatusLabel">현재 트리</div>
+                <div id="detailTreeMetaMount" data-tree-scope-mount="true"></div>
+            </section>
+
+            <!-- Legacy IDs kept for rename/status controllers; not the primary tree UI. -->
+            <section class="editor-status-section appreciation-tree-scope-legacy" hidden aria-hidden="true">
                 <h3 id="editorFlowHeading">현재 트리</h3>
                 <p id="editorFlowLead" class="editor-flow-lead">현재 트리의 이어진 순간을 보고 있어요.</p>
                 <div class="editor-status-card">

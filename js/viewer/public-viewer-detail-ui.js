@@ -799,7 +799,8 @@
                 ? detailPanel.querySelector('h3')
                 : document.querySelector('#detailPanel h3');
             if (!headerEl) return;
-            headerEl.textContent = getText('editor_current_hub_heading', '현재 순간 허브');
+            // #3562: right rail is selected-moment scope only.
+            headerEl.textContent = getText('editor_selected_moment_heading', '선택한 순간');
         };
     }
 

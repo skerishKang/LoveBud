@@ -11,8 +11,11 @@ test('Sidebar template helper exists and contains markup', () => {
     assert.ok(helperCode.includes('class="sidebar reveal-fade"'), 'must include sidebar wrapper');
     assert.ok(helperCode.includes('id="editorFlowHeading"'), 'must preserve key DOM IDs');
     assert.ok(helperCode.includes('id="renameTreeBtn"'), 'must preserve rename button');
-    assert.ok(helperCode.includes('class="editor-status-section"'), 'must preserve status section class');
+    assert.ok(helperCode.includes('class="editor-status-section'), 'must preserve status section class');
     assert.ok(helperCode.includes('id="addMemoryBtn"'), 'must preserve add button');
+    // #3562: left rail hosts tree-scope mount
+    assert.ok(helperCode.includes('id="detailTreeMetaMount"'), 'must host tree-scope mount');
+    assert.ok(helperCode.includes('data-appreciation-region="tree-scope"'), 'must mark tree-scope region');
 });
 
 test('editor.html uses template mount and removes raw sidebar markup', () => {

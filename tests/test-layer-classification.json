@@ -23,6 +23,18 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/adoption-attestation-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Exercises the strict inactive adoption-attestation contract and pure validator with synthetic digests only; rejects bare ATTESTED evidence and does not contact PostgreSQL, Production, or shared databases (#3553).",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/adoption-baseline-collection-plan-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Exercises the PREPARED_ONLY adoption-baseline collection plan contract and pure builder/CLI with repository-owned allowlists only; grants no SQL, database, network, or target-environment access (#3555).",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/api-body-size-limit-contract.test.cjs",
       "layer": "EXECUTED_FAKE",
       "rationale": "Reads production module source and executes it in a local process with injected fake/mock/stub dependencies (e.g., vm context with fake DOM or mocked fetch/localStorage); no real external system or production resource used.",
@@ -356,6 +368,12 @@
       "path": "tests/contracts/canonical-appreciation-consolidation-3563-contract.test.cjs",
       "layer": "EXECUTED_FAKE",
       "rationale": "Executes the shared canonical appreciation presentation builder (owner vs public-safe authority) and My Trees entry resolver/UI in a fake DOM; asserts one shared composition boundary, thin route wrappers, authority-only owner controls, two-action My Trees model, internal shareTarget, public-safe loaders, and #3564 geometry guard. No real browser/network/DB.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/canonical-appreciation-panel-hierarchy-3562-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes shared canonical appreciation builder for tree-scope vs selected-moment shells and asserts left-rail mount uniqueness, no tree meta in right rail, owner/public section equivalence, and #3561/#3563 safeguards. No real browser/network/DB.",
       "capabilities": []
     },
     {
@@ -1529,6 +1547,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/expected-schema-candidate-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Exercises the inactive expected-schema candidate builder and CLI with synthetic catalog evidence only; proves deterministic ADOPTION_REQUIRED candidates without activating committed manifests or contacting PostgreSQL (#3549).",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/frontend-dom-xss-guardrails.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
@@ -1841,24 +1865,6 @@
       "capabilities": []
     },
     {
-      "path": "tests/contracts/adoption-attestation-contract.test.cjs",
-      "layer": "SOURCE_STATIC",
-      "rationale": "Exercises the strict inactive adoption-attestation contract and pure validator with synthetic digests only; rejects bare ATTESTED evidence and does not contact PostgreSQL, Production, or shared databases (#3553).",
-      "capabilities": []
-    },
-    {
-      "path": "tests/contracts/adoption-baseline-collection-plan-contract.test.cjs",
-      "layer": "SOURCE_STATIC",
-      "rationale": "Exercises the PREPARED_ONLY adoption-baseline collection plan contract and pure builder/CLI with repository-owned allowlists only; grants no SQL, database, network, or target-environment access (#3555).",
-      "capabilities": []
-    },
-    {
-      "path": "tests/contracts/expected-schema-candidate-contract.test.cjs",
-      "layer": "SOURCE_STATIC",
-      "rationale": "Exercises the inactive expected-schema candidate builder and CLI with synthetic catalog evidence only; proves deterministic ADOPTION_REQUIRED candidates without activating committed manifests or contacting PostgreSQL (#3549).",
-      "capabilities": []
-    },
-    {
       "path": "tests/contracts/migration-catalog-fingerprint-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Exercises the deterministic sanitized catalog fingerprint normalizer and CLI with synthetic fixtures only; no PostgreSQL, network, or live catalog access (#3542).",
@@ -2069,6 +2075,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/my-trees-history-recovery-runtime-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes My Trees history/BFCache owner-list recovery helpers in a local vm with fake DOM, fake auth, and mocked getTrees; asserts single-flight recovery, terminal-state preservation, and privacy-safe restore diagnostics without real network or Production access (#3551).",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/my-trees-hydrated-hub-parity-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
@@ -2120,12 +2132,6 @@
       "path": "tests/contracts/my-trees-owner-list-lifecycle-runtime-contract.test.cjs",
       "layer": "EXECUTED_FAKE",
       "rationale": "Reads production module source and executes it in a local process with injected fake/mock/stub dependencies (e.g., vm context with fake DOM or mocked fetch/localStorage); no real external system or production resource used.",
-      "capabilities": []
-    },
-    {
-      "path": "tests/contracts/my-trees-history-recovery-runtime-contract.test.cjs",
-      "layer": "EXECUTED_FAKE",
-      "rationale": "Executes My Trees history/BFCache owner-list recovery helpers in a local vm with fake DOM, fake auth, and mocked getTrees; asserts single-flight recovery, terminal-state preservation, and privacy-safe restore diagnostics without real network or Production access (#3551).",
       "capabilities": []
     },
     {

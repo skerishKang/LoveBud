@@ -289,6 +289,7 @@
 /* Public Viewer Sidebar Styles (Issue #2884) */
 .public-viewer-sidebar {
   display: flex;
+  flex-direction: column;
 }
 
 .public-viewer-sidebar .viewer-sidebar-owner-mode {
@@ -316,8 +317,88 @@
   opacity: 0.8;
 }
 
+/* #3562: tree-scope lives in left rail for both owner and public-safe routes. */
+.sidebar[data-appreciation-layout="tree-scope-rail"] {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sidebar .appreciation-tree-scope {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.sidebar .appreciation-tree-scope #detailTreeMetaMount {
+  min-width: 0;
+}
+
+.sidebar .appreciation-tree-scope #detailTreeMetaMount > * {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+/* Bound long tree visibility/description copy in the left rail. */
+.sidebar .appreciation-tree-scope #detailTreeMetaMount p,
+.sidebar .appreciation-tree-scope #detailTreeMetaMount div[style*="line-height"] {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.sidebar .appreciation-tree-scope-legacy[hidden] {
+  display: none !important;
+}
+
+/* Selected-moment rail must not host tree-scope markers after #3562. */
+#detailViewMode[data-appreciation-region="selected-moment"] #detailTreeMetaSection,
+#detailViewMode[data-appreciation-region="selected-moment"] #detailTreeMetaMount {
+  /* Guard: tree-scope ids belong to left rail only. */
+}
+
 @media (max-width: 1024px) {
-  .public-viewer-sidebar {
+  /* Legacy public sidebars without tree-scope may still hide.
+     Tree-scope rails must remain discoverable (#3562). */
+  .public-viewer-sidebar:not([data-appreciation-layout="tree-scope-rail"]) {
     display: none !important;
+  }
+
+  .public-viewer-sidebar[data-appreciation-layout="tree-scope-rail"] {
+    display: flex !important;
+    flex: 0 0 auto;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    order: -1;
+    max-height: min(42vh, 360px);
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
+  .editor-layout:has(.public-viewer-sidebar[data-appreciation-layout="tree-scope-rail"]) {
+    flex-wrap: wrap;
+    align-content: flex-start;
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
+  .editor-layout:has(.public-viewer-sidebar[data-appreciation-layout="tree-scope-rail"]) > .canvas-area {
+    flex: 1 1 100%;
+    min-height: 42vh;
+    order: 0;
+  }
+
+  .editor-layout:has(.public-viewer-sidebar[data-appreciation-layout="tree-scope-rail"]) > .detail-panel,
+  .editor-layout:has(.public-viewer-sidebar[data-appreciation-layout="tree-scope-rail"]) > #detailPanel {
+    flex: 1 1 100%;
+    width: 100%;
+    max-width: 100%;
+    order: 1;
+  }
+}
+
+@media (max-width: 390px) {
+  .public-viewer-sidebar[data-appreciation-layout="tree-scope-rail"] {
+    max-height: min(48vh, 320px);
   }
 }
