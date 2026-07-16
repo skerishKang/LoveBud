@@ -350,8 +350,11 @@ function buildCollectionReceipt(options) {
   if (!options || typeof options !== 'object' || Array.isArray(options)) {
     fail(FAILURE.RECEIPT_INPUT_INVALID);
   }
+  if (Object.getPrototypeOf(options) !== Object.prototype) {
+    fail(FAILURE.RECEIPT_VALUE_TYPE_INVALID);
+  }
 
-  // ── Reject call-injected validator — module-owned only ──
+  // ── Validate top-level keys via descriptors BEFORE reading any value ──
   const ALLOWED_KEYS = new Set([
     'preparedPlan',
     'boundaryContractBytes',
@@ -363,44 +366,70 @@ function buildCollectionReceipt(options) {
     'preparedAttestationDraft',
     'collectionSessionCount',
   ]);
-  for (const key of Object.keys(options)) {
+
+  const ownKeys = Reflect.ownKeys(options);
+  const descriptors = Object.getOwnPropertyDescriptors(options);
+
+  for (const key of ownKeys) {
+    // Reject symbol keys
+    if (typeof key === 'symbol') fail(FAILURE.RECEIPT_VALUE_TYPE_INVALID);
+    // Reject non-string/empty keys
+    if (typeof key !== 'string' || !key) fail(FAILURE.RECEIPT_VALUE_TYPE_INVALID);
+    // Reject accessor descriptors without invoking
+    const desc = descriptors[key];
+    if (desc && (typeof desc.get === 'function' || typeof desc.set === 'function')) {
+      fail(FAILURE.RECEIPT_INPUT_INVALID);
+    }
+    // Reject non-enumerable fields
+    if (desc && !desc.enumerable) fail(FAILURE.RECEIPT_INPUT_INVALID);
+    // Reject unknown key (including validatePlanFn)
     if (!ALLOWED_KEYS.has(key)) fail(FAILURE.RECEIPT_INPUT_INVALID);
   }
 
+  // ── All keys validated — now safely read values ──
+  const preparedPlan = options.preparedPlan;
+  const boundaryContractBytes = options.boundaryContractBytes;
+  const catalogMetadataContractBytes = options.catalogMetadataContractBytes;
+  const canonicalManifest = options.canonicalManifest;
+  const expectedSchemaManifest = options.expectedSchemaManifest;
+  const catalogEvidence = options.catalogEvidence;
+  const candidate = options.inactiveExpectedSchemaCandidate;
+  const draft = options.preparedAttestationDraft;
+  const sessionCount = options.collectionSessionCount;
+
   // ── Step 0: Validate prepared plan via MODULE-OWNED trusted validator ──
-  const validated = validatePreparedCollectionPlan(options.preparedPlan);
+  const validated = validatePreparedCollectionPlan(preparedPlan);
   if (!validated || validated.ok !== true || !validated.plan) {
     fail(FAILURE.RECEIPT_INPUT_INVALID);
   }
   const trustedPlan = validated.plan;
 
-  // ── Step 1-4: Pre-digest validation of all artifacts ──
-  const evidence = options.catalogEvidence;
-  const candidate = options.inactiveExpectedSchemaCandidate;
-  const draft = options.preparedAttestationDraft;
-  const canonicalManifest = options.canonicalManifest;
-  const expectedSchemaManifest = options.expectedSchemaManifest;
+  // ── Contract bytes must be Buffer — reject string, object, custom toString ──
+  for (const bytes of [boundaryContractBytes, catalogMetadataContractBytes]) {
+    if (bytes !== null && bytes !== undefined) {
+      if (!Buffer.isBuffer(bytes)) fail(FAILURE.RECEIPT_INPUT_INVALID);
+    }
+  }
 
-  for (const artifact of [canonicalManifest, expectedSchemaManifest, evidence, candidate, draft]) {
+  for (const artifact of [canonicalManifest, expectedSchemaManifest, catalogEvidence, candidate, draft]) {
     validateArtifact(artifact);
   }
 
   // ── Step 4b: Session count enforcement for success receipt ──
-  const sessionCount = options.collectionSessionCount;
   if (!Number.isInteger(sessionCount) || sessionCount < 1 || sessionCount > 2) {
     fail(FAILURE.RECEIPT_INPUT_INVALID);
   }
 
   // ── Step 5: Digest computation ──
-  const boundaryContractDigest = options.boundaryContractBytes
-    ? computeDigest(options.boundaryContractBytes)
+  const boundaryContractDigest = boundaryContractBytes
+    ? computeDigest(boundaryContractBytes)
     : null;
-  const catalogMetadataContractDigest = options.catalogMetadataContractBytes
-    ? computeDigest(options.catalogMetadataContractBytes)
+  const catalogMetadataContractDigest = catalogMetadataContractBytes
+    ? computeDigest(catalogMetadataContractBytes)
     : null;
   const canonicalManifestDigest = computeObjectDigest(canonicalManifest);
   const expectedSchemaManifestDigest = computeObjectDigest(expectedSchemaManifest);
-  const catalogEvidenceDigest = computeObjectDigest(evidence);
+  const catalogEvidenceDigest = computeObjectDigest(catalogEvidence);
   const inactiveCandidateDigest = computeObjectDigest(candidate);
   const preparedAttestationDigest = computeObjectDigest(draft);
 
@@ -447,7 +476,7 @@ function buildCollectionReceipt(options) {
     catalog_metadata_contract_digest: catalogMetadataContractDigest,
     canonical_manifest_digest: canonicalManifestDigest,
     expected_schema_manifest_digest: expectedSchemaManifestDigest,
-    catalog_evidence: deepFreeze(evidence),
+    catalog_evidence: deepFreeze(catalogEvidence),
     catalog_evidence_digest: catalogEvidenceDigest,
     inactive_expected_schema_candidate: deepFreeze(candidate),
     inactive_candidate_digest: inactiveCandidateDigest,

@@ -1105,10 +1105,7 @@ function scanDraftSensitive(value, depth) {
   const t = typeof value;
   if (t === 'string') {
     if (value.length > 65536) fail(FAILURE.ADOPTION_ATTESTATION_BOUNDS_EXCEEDED);
-    const markers = ['postgres://', 'DATABASE_URL', 'password=', 'secret=', 'token='];
-    for (const m of markers) {
-      if (value.toLowerCase().includes(m)) fail(FAILURE.ADOPTION_ATTESTATION_SENSITIVE_MARKER);
-    }
+    if (hasSensitive(value, FALLBACK_SENSITIVE_MARKERS)) fail(FAILURE.ADOPTION_ATTESTATION_SENSITIVE_MARKER);
     return;
   }
   if (t === 'number') {
@@ -1123,7 +1120,7 @@ function scanDraftSensitive(value, depth) {
   if (t === 'object') {
     const keys = Object.keys(value);
     for (const key of keys) {
-      if (['postgres://', 'DATABASE_URL', 'password=', 'secret='].some(m => key.toLowerCase().includes(m))) {
+      if (hasSensitive(key, FALLBACK_SENSITIVE_MARKERS)) {
         fail(FAILURE.ADOPTION_ATTESTATION_SENSITIVE_MARKER);
       }
     }
@@ -1189,11 +1186,9 @@ function validateMigrationRecords(migrations) {
     if (typeof item.checksum !== 'string' || !SHA256_DIGEST.test(item.checksum)) {
       fail(FAILURE.ADOPTION_ATTESTATION_DIGEST_INVALID, { field: 'checksum' });
     }
-    // Sensitive check
-    for (const marker of ['postgres://', 'DATABASE_URL', 'password=', 'secret=', 'token=']) {
-      if (item.id.toLowerCase().includes(marker) || item.checksum.toLowerCase().includes(marker)) {
-        fail(FAILURE.ADOPTION_ATTESTATION_SENSITIVE_MARKER, { field: 'applied_migrations' });
-      }
+    // Sensitive check — reuse FALLBACK_SENSITIVE_MARKERS
+    if (hasSensitive(item.id, FALLBACK_SENSITIVE_MARKERS) || hasSensitive(item.checksum, FALLBACK_SENSITIVE_MARKERS)) {
+      fail(FAILURE.ADOPTION_ATTESTATION_SENSITIVE_MARKER, { field: 'applied_migrations' });
     }
   }
 }
@@ -1212,7 +1207,10 @@ function validateCollectionArtifact(value, depth) {
   const t = typeof value;
   if (t === 'boolean' || t === 'number' || t === 'string') {
     if (t === 'number' && !Number.isFinite(value)) fail(FAILURE.ADOPTION_ATTESTATION_VALUE_INVALID);
-    if (t === 'string' && value.length > 65536) fail(FAILURE.ADOPTION_ATTESTATION_BOUNDS_EXCEEDED);
+    if (t === 'string') {
+      if (value.length > 65536) fail(FAILURE.ADOPTION_ATTESTATION_BOUNDS_EXCEEDED);
+      if (hasSensitive(value, FALLBACK_SENSITIVE_MARKERS)) fail(FAILURE.ADOPTION_ATTESTATION_SENSITIVE_MARKER);
+    }
     return;
   }
   if (t === 'symbol' || t === 'function' || t === 'bigint' || t === 'undefined') {
@@ -1250,10 +1248,7 @@ function validateCollectionArtifact(value, depth) {
     for (const key of ownKeys) {
       if (typeof key === 'string') {
         if (PROHIBITED.has(key)) fail(FAILURE.ADOPTION_ATTESTATION_PROHIBITED_FIELD, { field: key });
-        const markers = ['postgres://', 'DATABASE_URL', 'password=', 'secret=', 'token='];
-        for (const m of markers) {
-          if (key.toLowerCase().includes(m)) fail(FAILURE.ADOPTION_ATTESTATION_SENSITIVE_MARKER);
-        }
+        if (hasSensitive(key, FALLBACK_SENSITIVE_MARKERS)) fail(FAILURE.ADOPTION_ATTESTATION_SENSITIVE_MARKER);
       }
     }
     // Recurse into enumerable data properties only

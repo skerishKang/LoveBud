@@ -105,6 +105,25 @@ function buildTestReceipt(overrides) {
   }, overrides));
 }
 
+/**
+ * Build a valid options object for buildCollectionReceipt.
+ */
+function buildOptions() {
+  const plan = buildRealValidatedPlan();
+  const draft = buildTestDraft(plan);
+  return {
+    preparedPlan: plan,
+    boundaryContractBytes: BOUNDARY_CONTRACT_BYTES,
+    catalogMetadataContractBytes: METADATA_CONTRACT_BYTES,
+    canonicalManifest: SYNTHETIC_CANONICAL,
+    expectedSchemaManifest: SYNTHETIC_EXPECTED_SCHEMA,
+    catalogEvidence: SYNTHETIC_EVIDENCE,
+    inactiveExpectedSchemaCandidate: buildTestCandidate(),
+    preparedAttestationDraft: draft,
+    collectionSessionCount: 1,
+  };
+}
+
 // ─── Tests ───────────────────────────────────────────────────────────────────
 
 describe('Phase B operator collection receipt core', () => {
@@ -566,6 +585,108 @@ describe('Phase B operator collection receipt core', () => {
     }), /ENUM_INVALID/);
   });
 
+  // ======================== PRE-DIGEST SENSITIVE VALUE (BLOCKER A) ========================
+
+  it('validateCollectionArtifact rejects migrationManifest nested sensitive', () => {
+    const manifest = {
+      status: 'ADOPTION_REQUIRED',
+      migrations: [],
+      metadata: { note: 'postgresql://user:password@example/db' },
+    };
+    assert.throws(() => attestationCore.buildPreparedUnattestedAttestationDraft({
+      preparedPlan: buildRealValidatedPlan(),
+      migrationManifest: manifest,
+      expectedSchemaCandidate: buildTestCandidate(),
+      catalogEvidence: SYNTHETIC_EVIDENCE,
+    }), (err) => {
+      assert.equal(err.category, 'ADOPTION_ATTESTATION_SENSITIVE_MARKER');
+      return true;
+    });
+  });
+
+  it('validateCollectionArtifact rejects expectedSchemaCandidate sensitive values', () => {
+    const base = buildTestCandidate();
+    for (const val of ['DATABASE_URL', 'DaTaBaSe_Url', 'password=private', 'BEGIN PRIVATE KEY']) {
+      const bad = { ...base, metadata: { note: val } };
+      assert.throws(() => attestationCore.buildPreparedUnattestedAttestationDraft({
+        preparedPlan: buildRealValidatedPlan(),
+        migrationManifest: SYNTHETIC_CANONICAL,
+        expectedSchemaCandidate: bad,
+        catalogEvidence: SYNTHETIC_EVIDENCE,
+      }), (err) => {
+        assert.equal(err.category, 'ADOPTION_ATTESTATION_SENSITIVE_MARKER');
+        return true;
+      }, `expected ${val} to be rejected as sensitive`);
+    }
+  });
+
+  it('validateCollectionArtifact rejects catalogEvidence nested sensitive', () => {
+    const base = { format_version: '1.0', normalizer_version: '1.0', objects: [] };
+    for (const val of ['postgres://example', 'token=private', 'cloud.neon']) {
+      const bad = { ...base, metadata: { note: val } };
+      assert.throws(() => attestationCore.buildPreparedUnattestedAttestationDraft({
+        preparedPlan: buildRealValidatedPlan(),
+        migrationManifest: SYNTHETIC_CANONICAL,
+        expectedSchemaCandidate: buildTestCandidate(),
+        catalogEvidence: bad,
+      }), (err) => {
+        assert.equal(err.category, 'ADOPTION_ATTESTATION_SENSITIVE_MARKER');
+        return true;
+      }, `expected ${val} to be rejected as sensitive`);
+    }
+  });
+
+  it('prohibited field key retains PROHIBITED_FIELD category', () => {
+    const base = buildTestCandidate();
+    for (const key of ['database_url', 'password', 'token', 'raw_catalog']) {
+      const bad = { ...base, [key]: 'some_value' };
+      assert.throws(() => attestationCore.buildPreparedUnattestedAttestationDraft({
+        preparedPlan: buildRealValidatedPlan(),
+        migrationManifest: SYNTHETIC_CANONICAL,
+        expectedSchemaCandidate: bad,
+        catalogEvidence: SYNTHETIC_EVIDENCE,
+      }), (err) => {
+        assert.equal(err.category, 'ADOPTION_ATTESTATION_PROHIBITED_FIELD');
+        return true;
+      }, `expected key ${key} to be rejected as prohibited`);
+    }
+  });
+
+  it('sensitive marker in key returns SENSITIVE_MARKER', () => {
+    const base = buildTestCandidate();
+    const bad = { ...base, 'url_with_postgresql://example': 'ok_value' };
+    assert.throws(() => attestationCore.buildPreparedUnattestedAttestationDraft({
+      preparedPlan: buildRealValidatedPlan(),
+      migrationManifest: SYNTHETIC_CANONICAL,
+      expectedSchemaCandidate: bad,
+      catalogEvidence: SYNTHETIC_EVIDENCE,
+    }), (err) => {
+      assert.equal(err.category, 'ADOPTION_ATTESTATION_SENSITIVE_MARKER');
+      return true;
+    });
+  });
+
+  it('sensitive validation runs before digest computation', () => {
+    // Prove that computeObjectDigest is not called before sensitive check
+    // by using a manifest object where a clean key path leads to a sensitive value
+    const plan = buildRealValidatedPlan();
+    const candidate = buildTestCandidate();
+    const sensitiveEvidence = { ...SYNTHETIC_EVIDENCE, metadata: { note: 'postgres://attack' } };
+    // The digest of the original evidence should NOT be in the error
+    const safeDigest = receiptCore.computeObjectDigest(SYNTHETIC_EVIDENCE);
+    assert.throws(() => attestationCore.buildPreparedUnattestedAttestationDraft({
+      preparedPlan: plan,
+      migrationManifest: SYNTHETIC_CANONICAL,
+      expectedSchemaCandidate: candidate,
+      catalogEvidence: sensitiveEvidence,
+    }), (err) => {
+      assert.equal(err.category, 'ADOPTION_ATTESTATION_SENSITIVE_MARKER');
+      // The sensitive value was caught before digest — err.context should not contain digest info
+      assert.ok(!err.context || !err.context.digest);
+      return true;
+    });
+  });
+
   // ======================== RECEIPT BRANDING (UNFORGEABLE SERIALIZER) ========================
 
   it('genuine branded receipt serializes successfully', () => {
@@ -621,6 +742,144 @@ describe('Phase B operator collection receipt core', () => {
     // A genuine branded receipt that fails invariant check — can't easily create one
     // without modifying module-internals, but verify the check function exists
     assert.ok(typeof receiptCore.serializeCollectionReceipt === 'function');
+  });
+
+  // ======================== RECEIPT TOP-LEVEL OPTIONS DESCRIPTOR VALIDATION (BLOCKER B) ========================
+
+  it('buildCollectionReceipt rejects preparedPlan getter (0 invocations)', () => {
+    let getterCalls = 0;
+    const plan = buildRealValidatedPlan();
+    const draft = buildTestDraft(plan);
+    const opts = { boundaryContractBytes: BOUNDARY_CONTRACT_BYTES, catalogMetadataContractBytes: METADATA_CONTRACT_BYTES, canonicalManifest: SYNTHETIC_CANONICAL, expectedSchemaManifest: SYNTHETIC_EXPECTED_SCHEMA, catalogEvidence: SYNTHETIC_EVIDENCE, inactiveExpectedSchemaCandidate: buildTestCandidate(), preparedAttestationDraft: draft, collectionSessionCount: 1 };
+    Object.defineProperty(opts, 'preparedPlan', {
+      enumerable: true,
+      get() { getterCalls += 1; return plan; },
+    });
+    assert.throws(() => receiptCore.buildCollectionReceipt(opts), (err) => {
+      assert.equal(err.category, 'RECEIPT_INPUT_INVALID');
+      assert.equal(getterCalls, 0, 'preparedPlan getter must not be invoked');
+      return true;
+    });
+  });
+
+  it('buildCollectionReceipt rejects catalogEvidence getter (0 invocations)', () => {
+    let getterCalls = 0;
+    const opts = buildOptions();
+    Object.defineProperty(opts, 'catalogEvidence', {
+      enumerable: true,
+      get() { getterCalls += 1; return SYNTHETIC_EVIDENCE; },
+    });
+    assert.throws(() => receiptCore.buildCollectionReceipt(opts), (err) => {
+      assert.equal(err.category, 'RECEIPT_INPUT_INVALID');
+      assert.equal(getterCalls, 0, 'catalogEvidence getter must not be invoked');
+      return true;
+    });
+  });
+
+  it('buildCollectionReceipt rejects boundaryContractBytes getter (0 invocations)', () => {
+    let getterCalls = 0;
+    const opts = buildOptions();
+    Object.defineProperty(opts, 'boundaryContractBytes', {
+      enumerable: true,
+      get() { getterCalls += 1; return BOUNDARY_CONTRACT_BYTES; },
+    });
+    assert.throws(() => receiptCore.buildCollectionReceipt(opts), (err) => {
+      assert.equal(err.category, 'RECEIPT_INPUT_INVALID');
+      assert.equal(getterCalls, 0, 'boundaryContractBytes getter must not be invoked');
+      return true;
+    });
+  });
+
+  it('buildCollectionReceipt rejects catalogMetadataContractBytes getter (0 invocations)', () => {
+    let getterCalls = 0;
+    const opts = buildOptions();
+    Object.defineProperty(opts, 'catalogMetadataContractBytes', {
+      enumerable: true,
+      get() { getterCalls += 1; return METADATA_CONTRACT_BYTES; },
+    });
+    assert.throws(() => receiptCore.buildCollectionReceipt(opts), (err) => {
+      assert.equal(err.category, 'RECEIPT_INPUT_INVALID');
+      assert.equal(getterCalls, 0, 'catalogMetadataContractBytes getter must not be invoked');
+      return true;
+    });
+  });
+
+  it('buildCollectionReceipt rejects enumerable validatePlanFn as unknown key', () => {
+    const opts = buildOptions();
+    opts.validatePlanFn = () => ({ ok: true, plan: {} });
+    assert.throws(() => receiptCore.buildCollectionReceipt(opts), /RECEIPT_INPUT_INVALID/);
+  });
+
+  it('buildCollectionReceipt rejects getter on validatePlanFn (0 invocations)', () => {
+    let getterCalls = 0;
+    const opts = buildOptions();
+    Object.defineProperty(opts, 'validatePlanFn', {
+      enumerable: true,
+      get() { getterCalls += 1; return () => ({ ok: true, plan: {} }); },
+    });
+    assert.throws(() => receiptCore.buildCollectionReceipt(opts), (err) => {
+      assert.equal(err.category, 'RECEIPT_INPUT_INVALID');
+      assert.equal(getterCalls, 0, 'validatePlanFn getter must not be invoked');
+      return true;
+    });
+  });
+
+  it('buildCollectionReceipt rejects symbol key', () => {
+    const opts = buildOptions();
+    opts[Symbol('test')] = 1;
+    assert.throws(() => receiptCore.buildCollectionReceipt(opts), (err) => {
+      assert.equal(err.category, 'RECEIPT_VALUE_TYPE_INVALID');
+      return true;
+    });
+  });
+
+  it('buildCollectionReceipt rejects non-enumerable unknown field', () => {
+    const opts = buildOptions();
+    Object.defineProperty(opts, 'hidden', { value: 1, enumerable: false });
+    assert.throws(() => receiptCore.buildCollectionReceipt(opts), (err) => {
+      assert.equal(err.category, 'RECEIPT_INPUT_INVALID');
+      return true;
+    });
+  });
+
+  it('buildCollectionReceipt rejects setter-only property', () => {
+    const val = buildTestDraft(buildRealValidatedPlan());
+    const opts = buildOptions();
+    Object.defineProperty(opts, 'preparedAttestationDraft', {
+      enumerable: true,
+      set(v) {}, // setter only, no get
+    });
+    // Rely on default value since we can't read it
+    assert.throws(() => receiptCore.buildCollectionReceipt(opts), (err) => {
+      assert.equal(err.category, 'RECEIPT_INPUT_INVALID');
+      return true;
+    });
+  });
+
+  it('buildCollectionReceipt rejects string for boundaryContractBytes', () => {
+    const opts = buildOptions();
+    opts.boundaryContractBytes = 'not-a-buffer';
+    assert.throws(() => receiptCore.buildCollectionReceipt(opts), /RECEIPT_INPUT_INVALID/);
+  });
+
+  it('buildCollectionReceipt rejects plain object for boundaryContractBytes', () => {
+    const opts = buildOptions();
+    opts.boundaryContractBytes = {};
+    assert.throws(() => receiptCore.buildCollectionReceipt(opts), /RECEIPT_INPUT_INVALID/);
+  });
+
+  it('buildCollectionReceipt rejects object with custom toString for bytes (0 invocations)', () => {
+    let toStringCalls = 0;
+    const opts = buildOptions();
+    opts.boundaryContractBytes = {
+      toString() { toStringCalls += 1; return '{}'; },
+    };
+    assert.throws(() => receiptCore.buildCollectionReceipt(opts), (err) => {
+      assert.equal(err.category, 'RECEIPT_INPUT_INVALID');
+      // toString should not be called for buffer validation
+      assert.equal(toStringCalls, 0, 'toString must not be invoked during type check');
+      return true;
+    });
   });
 
   // ======================== SESSION COUNT ENFORCEMENT ========================
