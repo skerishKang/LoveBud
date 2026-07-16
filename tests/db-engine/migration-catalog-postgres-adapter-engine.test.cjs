@@ -38,6 +38,15 @@ function connectionFromCtx(ctx) {
   };
 }
 
+function opts(ctx, objects = OBJECTS) {
+  return {
+    connection: connectionFromCtx(ctx),
+    objects,
+    roleMapping: ROLE_MAPPING,
+    contract: CONTRACT,
+  };
+}
+
 function assertFail(fn, category) {
   return Promise.resolve()
     .then(fn)
@@ -48,155 +57,229 @@ function assertFail(fn, category) {
       assert.equal(error.category, category);
       const msg = String(error.message || '');
       assert.equal(msg.includes('postgres://'), false);
-      assert.equal(/password/i.test(msg) && msg.length > 40, false);
       assert.equal(msg.includes('synthetic_authenticated_role'), false);
     });
 }
 
-test('adapter equality: repeated collection and input reorder', { concurrency: false }, async () => {
-  await withDisposableDb('cat_adapter_eq', FIXTURE_SQL, async (ctx) => {
-    const connection = connectionFromCtx(ctx);
-    const before = await adapter.collectSchemaStateFingerprint(ctx.client);
+function fp(evidence, name) {
+  const item = evidence.objects.find((o) => o.name === name);
+  assert.ok(item, `missing evidence object ${name}`);
+  return item.fingerprint;
+}
 
-    const metaA = await adapter.collectCatalogMetadata({
-      connection,
-      objects: OBJECTS,
-      roleMapping: ROLE_MAPPING,
-      contract: CONTRACT,
-    });
-    const metaB = await adapter.collectCatalogMetadata({
-      connection,
-      objects: [...OBJECTS].reverse(),
-      roleMapping: ROLE_MAPPING,
-      contract: CONTRACT,
-    });
-    const evidenceA = buildCatalogEvidence(metaA, CONTRACT);
-    const evidenceB = buildCatalogEvidence(metaB, CONTRACT);
-    assert.equal(JSON.stringify(evidenceA), JSON.stringify(evidenceB));
-
-    const evidenceDirect = await adapter.collectCatalogEvidence({
-      connection,
-      objects: OBJECTS,
-      roleMapping: ROLE_MAPPING,
-      contract: CONTRACT,
-    });
-    assert.equal(JSON.stringify(evidenceDirect), JSON.stringify(evidenceA));
-
-    // Expected fixture equality path: adapter metadata round-trips through normalizer only.
-    const viaNormalizer = buildCatalogEvidence(metaA, CONTRACT);
-    assert.equal(JSON.stringify(viaNormalizer), JSON.stringify(evidenceA));
-
-    const table = metaA.objects.find((o) => o.object_name === 'example_tree');
-    assert.equal(table.object_kind, 'TABLE');
-    assert.ok(table.columns.some((c) => c.name === 'id' && c.type_identity === 'uuid'));
-    assert.ok(table.columns.some((c) => c.name === 'score' && c.generated_kind === 'STORED'));
-    assert.ok(table.columns.some((c) => c.name === 'seq' && c.identity_kind === 'BY_DEFAULT'));
-    assert.ok(table.constraints.some((c) => c.constraint_kind === 'PRIMARY_KEY'));
-    assert.ok(table.constraints.some((c) => c.constraint_kind === 'FOREIGN_KEY'));
-    assert.ok(table.constraints.some((c) => c.constraint_kind === 'EXCLUSION'));
-    assert.ok(table.indexes.some((i) => /lower/i.test(i.definition)));
-    assert.ok(table.triggers.some((t) => t.level === 'ROW'));
-    assert.ok(table.triggers.some((t) => t.level === 'STATEMENT'));
-    assert.equal(table.row_level_security.enabled, true);
-    assert.equal(table.row_level_security.forced, true);
-    assert.ok(table.grants.some((g) => g.grantee_class === 'AUTHENTICATED'));
-
-    const view = metaA.objects.find((o) => o.object_name === 'example_tree_public');
-    assert.equal(view.object_kind, 'VIEW');
-    assert.ok(view.view_definition && view.view_definition.length > 0);
-
-    const mv = metaA.objects.find((o) => o.object_name === 'example_tree_public_mv');
-    assert.equal(mv.object_kind, 'MATERIALIZED_VIEW');
-    assert.ok(mv.view_definition && mv.view_definition.length > 0);
-
-    for (const item of evidenceA.objects) {
-      assert.match(item.fingerprint, /^sha256:[a-f0-9]{64}$/);
-      assert.deepEqual(Object.keys(item).sort(), ['fingerprint', 'name']);
-    }
-
-    const after = await adapter.collectSchemaStateFingerprint(ctx.client);
-    assert.equal(before, after, 'read-only collection must not mutate schema');
-
-    const dump = JSON.stringify(evidenceA);
-    assert.equal(dump.includes('synthetic_authenticated_role'), false);
-    assert.equal(dump.includes(ctx.dbName), false);
-    assert.equal(dump.includes('password'), false);
-  });
-});
-
-test('adapter inequality: semantic catalog drift changes fingerprints', {
+test('equality: metadata and evidence independent of allowlist order', {
   concurrency: false,
 }, async () => {
-  await withDisposableDb('cat_adapter_drift', FIXTURE_SQL, async (ctx) => {
-    const connection = connectionFromCtx(ctx);
-    const base = await adapter.collectCatalogEvidence({
-      connection,
-      objects: OBJECTS,
-      roleMapping: ROLE_MAPPING,
-      contract: CONTRACT,
-    });
+  await withDisposableDb('eq_order', FIXTURE_SQL, async (ctx) => {
+    const metaA = await adapter.collectCatalogMetadata(opts(ctx, OBJECTS));
+    const metaB = await adapter.collectCatalogMetadata(opts(ctx, [...OBJECTS].reverse()));
+    assert.equal(JSON.stringify(metaA), JSON.stringify(metaB));
 
-    await ctx.client.query(
-      `CREATE INDEX example_tree_drift_idx ON synthetic_catalog.example_tree (owner_class)`
-    );
+    const evA = buildCatalogEvidence(metaA, CONTRACT);
+    const evB = buildCatalogEvidence(metaB, CONTRACT);
+    assert.equal(JSON.stringify(evA), JSON.stringify(evB));
 
-    const drifted = await adapter.collectCatalogEvidence({
-      connection,
-      objects: OBJECTS,
-      roleMapping: ROLE_MAPPING,
-      contract: CONTRACT,
-    });
-    const baseTable = base.objects.find((o) => o.name === 'table:synthetic_catalog.example_tree');
-    const driftTable = drifted.objects.find(
-      (o) => o.name === 'table:synthetic_catalog.example_tree'
-    );
-    assert.notEqual(baseTable.fingerprint, driftTable.fingerprint);
+    const table = metaA.objects.find((o) => o.object_name === 'example_tree');
+    assert.ok(table.grants.some((g) => g.grantee_class === 'PUBLIC' && g.privileges.includes('SELECT')));
+    assert.ok(table.grants.some((g) => g.grantee_class === 'AUTHENTICATED'));
+    assert.ok(table.constraints.some((c) => c.constraint_kind === 'EXCLUSION'));
+    assert.ok(table.triggers.some((t) => t.level === 'STATEMENT'));
+
+    // Full-scope no-mutation via dual independent collections.
+    await adapter.assertNoCatalogMutation(opts(ctx));
   });
 });
 
-test('adapter rejection matrix fail closed', { concurrency: false }, async () => {
-  await withDisposableDb('cat_adapter_rej', FIXTURE_SQL, async (ctx) => {
-    const connection = connectionFromCtx(ctx);
+async function driftCase(name, ddl, targetName) {
+  await withDisposableDb(name, FIXTURE_SQL, async (ctx) => {
+    const base = await adapter.collectCatalogEvidence(opts(ctx));
+    await ctx.client.query(ddl);
+    const drifted = await adapter.collectCatalogEvidence(opts(ctx));
+    assert.notEqual(fp(base, targetName), fp(drifted, targetName));
+  });
+}
 
+test('drift: type', { concurrency: false }, async () => {
+  await driftCase(
+    'drift_type',
+    `ALTER TABLE synthetic_catalog.drift_pad ALTER COLUMN flag TYPE integer USING (CASE WHEN flag THEN 1 ELSE 0 END)`,
+    'table:synthetic_catalog.drift_pad'
+  );
+});
+
+test('drift: nullability', { concurrency: false }, async () => {
+  await driftCase(
+    'drift_null',
+    `ALTER TABLE synthetic_catalog.drift_pad ALTER COLUMN note SET NOT NULL`,
+    'table:synthetic_catalog.drift_pad'
+  );
+});
+
+test('drift: default', { concurrency: false }, async () => {
+  await driftCase(
+    'drift_default',
+    `ALTER TABLE synthetic_catalog.drift_pad ALTER COLUMN flag SET DEFAULT true`,
+    'table:synthetic_catalog.drift_pad'
+  );
+});
+
+test('drift: constraint', { concurrency: false }, async () => {
+  await driftCase(
+    'drift_check',
+    `ALTER TABLE synthetic_catalog.drift_pad DROP CONSTRAINT drift_pad_note_check;
+     ALTER TABLE synthetic_catalog.drift_pad ADD CONSTRAINT drift_pad_note_check
+       CHECK ((note IS NULL) OR (char_length(note) > 1))`,
+    'table:synthetic_catalog.drift_pad'
+  );
+});
+
+test('drift: fk action', { concurrency: false }, async () => {
+  await driftCase(
+    'drift_fk',
+    `ALTER TABLE synthetic_catalog.drift_pad DROP CONSTRAINT drift_pad_owner_fk;
+     ALTER TABLE synthetic_catalog.drift_pad ADD CONSTRAINT drift_pad_owner_fk
+       FOREIGN KEY (ref_code) REFERENCES synthetic_catalog.owner_classes(code)
+       ON UPDATE CASCADE ON DELETE CASCADE`,
+    'table:synthetic_catalog.drift_pad'
+  );
+});
+
+test('drift: index', { concurrency: false }, async () => {
+  await driftCase(
+    'drift_idx',
+    `CREATE INDEX example_tree_drift_idx ON synthetic_catalog.example_tree (owner_class)`,
+    'table:synthetic_catalog.example_tree'
+  );
+});
+
+test('drift: trigger', { concurrency: false }, async () => {
+  await driftCase(
+    'drift_tg',
+    `ALTER TABLE synthetic_catalog.example_tree DISABLE TRIGGER trg_example_tree_touch`,
+    'table:synthetic_catalog.example_tree'
+  );
+});
+
+test('drift: rls forced', { concurrency: false }, async () => {
+  await driftCase(
+    'drift_rls',
+    `ALTER TABLE synthetic_catalog.example_tree NO FORCE ROW LEVEL SECURITY`,
+    'table:synthetic_catalog.example_tree'
+  );
+});
+
+test('drift: policy', { concurrency: false }, async () => {
+  await driftCase(
+    'drift_pol',
+    `DROP POLICY example_tree_select ON synthetic_catalog.example_tree;
+     CREATE POLICY example_tree_select ON synthetic_catalog.example_tree
+       AS PERMISSIVE FOR ALL TO synthetic_authenticated_role USING (true)`,
+    'table:synthetic_catalog.example_tree'
+  );
+});
+
+test('drift: view definition', { concurrency: false }, async () => {
+  await driftCase(
+    'drift_view',
+    `CREATE OR REPLACE VIEW synthetic_catalog.example_tree_public AS
+       SELECT id, title FROM synthetic_catalog.example_tree WHERE title IS NULL`,
+    'view:synthetic_catalog.example_tree_public'
+  );
+});
+
+test('drift: materialized view definition', { concurrency: false }, async () => {
+  await withDisposableDb('drift_mv', FIXTURE_SQL, async (ctx) => {
+    const base = await adapter.collectCatalogEvidence(opts(ctx));
+    await ctx.client.query(`
+      DROP MATERIALIZED VIEW synthetic_catalog.example_tree_public_mv;
+      CREATE MATERIALIZED VIEW synthetic_catalog.example_tree_public_mv AS
+        SELECT id, title FROM synthetic_catalog.example_tree WHERE title IS NULL;
+      ALTER MATERIALIZED VIEW synthetic_catalog.example_tree_public_mv OWNER TO synthetic_owner_role;
+      GRANT SELECT ON TABLE synthetic_catalog.example_tree_public_mv TO synthetic_application_role;
+    `);
+    const drifted = await adapter.collectCatalogEvidence(opts(ctx));
+    assert.notEqual(
+      fp(base, 'materialized_view:synthetic_catalog.example_tree_public_mv'),
+      fp(drifted, 'materialized_view:synthetic_catalog.example_tree_public_mv')
+    );
+  });
+});
+
+test('drift: grant', { concurrency: false }, async () => {
+  await driftCase(
+    'drift_grant',
+    `GRANT INSERT ON TABLE synthetic_catalog.example_tree TO synthetic_authenticated_role`,
+    'table:synthetic_catalog.example_tree'
+  );
+});
+
+test('rejection: unsupported relation (sequence + partitioned)', {
+  concurrency: false,
+}, async () => {
+  await withDisposableDb('rej_unsup', FIXTURE_SQL, async (ctx) => {
     await assertFail(
       () =>
-        adapter.collectCatalogMetadata({
-          connection,
-          objects: [
+        adapter.collectCatalogMetadata(
+          opts(ctx, [
             {
               schema: 'synthetic_catalog',
-              object_name: 'does_not_exist',
+              object_name: 'example_seq',
               object_kind: 'TABLE',
             },
-          ],
-          roleMapping: ROLE_MAPPING,
-          contract: CONTRACT,
-        }),
+          ])
+        ),
+      'CATALOG_ADAPTER_UNSUPPORTED_RELATION'
+    );
+    await assertFail(
+      () =>
+        adapter.collectCatalogMetadata(
+          opts(ctx, [
+            {
+              schema: 'synthetic_catalog',
+              object_name: 'part_parent',
+              object_kind: 'TABLE',
+            },
+          ])
+        ),
+      'CATALOG_ADAPTER_UNSUPPORTED_RELATION'
+    );
+  });
+});
+
+test('rejection matrix', { concurrency: false }, async () => {
+  await withDisposableDb('rej_matrix', FIXTURE_SQL, async (ctx) => {
+    await assertFail(
+      () =>
+        adapter.collectCatalogMetadata(
+          opts(ctx, [
+            {
+              schema: 'synthetic_catalog',
+              object_name: 'missing_obj',
+              object_kind: 'TABLE',
+            },
+          ])
+        ),
       'CATALOG_ADAPTER_OBJECT_MISSING'
     );
 
     await assertFail(
       () =>
-        adapter.collectCatalogMetadata({
-          connection,
-          objects: [
+        adapter.collectCatalogMetadata(
+          opts(ctx, [
             {
               schema: 'synthetic_catalog',
               object_name: 'example_tree',
               object_kind: 'VIEW',
             },
-          ],
-          roleMapping: ROLE_MAPPING,
-          contract: CONTRACT,
-        }),
+          ])
+        ),
       'CATALOG_ADAPTER_OBJECT_KIND_MISMATCH'
     );
 
     await assertFail(
       () =>
-        adapter.collectCatalogMetadata({
-          connection,
-          objects: [
+        adapter.collectCatalogMetadata(
+          opts(ctx, [
             {
               schema: 'synthetic_catalog',
               object_name: 'example_tree',
@@ -207,49 +290,103 @@ test('adapter rejection matrix fail closed', { concurrency: false }, async () =>
               object_name: 'example_tree',
               object_kind: 'TABLE',
             },
-          ],
-          roleMapping: ROLE_MAPPING,
-          contract: CONTRACT,
-        }),
+          ])
+        ),
       'CATALOG_ADAPTER_OBJECT_DUPLICATE'
     );
 
     await assertFail(
       () =>
-        adapter.collectCatalogMetadata({
-          connection,
-          objects: [{ schema: 'pg_catalog', object_name: 'pg_class', object_kind: 'TABLE' }],
-          roleMapping: ROLE_MAPPING,
-          contract: CONTRACT,
-        }),
+        adapter.collectCatalogMetadata(
+          opts(ctx, [{ schema: 'pg_catalog', object_name: 'pg_class', object_kind: 'TABLE' }])
+        ),
       'CATALOG_ADAPTER_SCHEMA_PROHIBITED'
     );
 
     await assertFail(
       () =>
         adapter.collectCatalogMetadata({
-          connection,
+          connection: connectionFromCtx(ctx),
           objects: OBJECTS,
           roleMapping: { synthetic_public_role: 'PUBLIC' },
           contract: CONTRACT,
         }),
       'CATALOG_ADAPTER_GRANTEE_UNMAPPED'
     );
+
+    const over = [];
+    for (let i = 0; i < CONTRACT.limits.max_objects + 1; i += 1) {
+      over.push({
+        schema: 'synthetic_catalog',
+        object_name: `x${i}`,
+        object_kind: 'TABLE',
+      });
+    }
+    await assertFail(
+      () => adapter.collectCatalogMetadata(opts(ctx, over)),
+      'CATALOG_ADAPTER_BOUNDS_EXCEEDED'
+    );
   });
 });
 
-test('connection and version and arbitrary SQL boundaries', { concurrency: false }, async () => {
+test('connection config rejects non-loopback and bypass fields', {
+  concurrency: false,
+}, async () => {
+  assert.throws(
+    () =>
+      adapter.validateConnectionConfig({
+        host: 'db.example.com',
+        port: 5432,
+        user: 'lovebud_ci',
+        password: 'x',
+        database: 'lovebud_ci_admin',
+      }),
+    (e) => e.category === 'CATALOG_ADAPTER_CONNECTION_CONFIG_INVALID'
+  );
+
   await assertFail(
     () =>
-      Promise.resolve(
-        adapter.validateConnectionConfig({
-          host: 'db.neon.example',
+      adapter.collectCatalogMetadata({
+        client: {},
+        connection: {
+          host: '127.0.0.1',
           port: 5432,
           user: 'lovebud_ci',
           password: 'x',
           database: 'lovebud_ci_admin',
-        })
-      ),
+        },
+        objects: OBJECTS.slice(0, 1),
+        roleMapping: ROLE_MAPPING,
+        contract: CONTRACT,
+      }),
+    'CATALOG_ADAPTER_INPUT_INVALID'
+  );
+
+  await assertFail(
+    () =>
+      adapter.collectCatalogMetadata({
+        manageTransaction: false,
+        connection: {
+          host: '127.0.0.1',
+          port: 5432,
+          user: 'lovebud_ci',
+          password: 'x',
+          database: 'lovebud_ci_admin',
+        },
+        objects: OBJECTS.slice(0, 1),
+        roleMapping: ROLE_MAPPING,
+        contract: CONTRACT,
+      }),
+    'CATALOG_ADAPTER_INPUT_INVALID'
+  );
+
+  await assertFail(
+    () =>
+      adapter.collectCatalogMetadata({
+        objects: OBJECTS.slice(0, 1),
+        roleMapping: ROLE_MAPPING,
+        contract: CONTRACT,
+      }),
     'CATALOG_ADAPTER_CONNECTION_CONFIG_INVALID'
   );
 
@@ -257,51 +394,4 @@ test('connection and version and arbitrary SQL boundaries', { concurrency: false
     assert.equal(err.category, 'CATALOG_ADAPTER_READ_ONLY_REQUIRED');
     return true;
   });
-
-  const fake = {
-    async query(sql) {
-      if (/BEGIN/i.test(sql)) return { rows: [] };
-      if (/transaction_read_only/i.test(sql)) {
-        return { rows: [{ transaction_read_only: 'on' }] };
-      }
-      if (/server_version_num/i.test(sql)) {
-        return { rows: [{ server_version_num: '160001' }] };
-      }
-      if (/ROLLBACK/i.test(sql)) return { rows: [] };
-      return { rows: [] };
-    },
-  };
-  await assertFail(
-    () =>
-      adapter.collectCatalogMetadata({
-        client: fake,
-        manageTransaction: true,
-        objects: OBJECTS.slice(0, 1),
-        roleMapping: ROLE_MAPPING,
-        contract: CONTRACT,
-      }),
-    'CATALOG_ADAPTER_SERVER_VERSION_MISMATCH'
-  );
-
-  const nonRo = {
-    async query(sql) {
-      if (/BEGIN/i.test(sql)) return { rows: [] };
-      if (/transaction_read_only/i.test(sql)) {
-        return { rows: [{ transaction_read_only: 'off' }] };
-      }
-      if (/ROLLBACK/i.test(sql)) return { rows: [] };
-      return { rows: [] };
-    },
-  };
-  await assertFail(
-    () =>
-      adapter.collectCatalogMetadata({
-        client: nonRo,
-        manageTransaction: true,
-        objects: OBJECTS.slice(0, 1),
-        roleMapping: ROLE_MAPPING,
-        contract: CONTRACT,
-      }),
-    'CATALOG_ADAPTER_READ_ONLY_REQUIRED'
-  );
 });

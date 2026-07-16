@@ -36,6 +36,27 @@ BEGIN
 END;
 $$;
 
+-- Unsupported relkinds for rejection coverage (sequence + partitioned table).
+CREATE SEQUENCE synthetic_catalog.example_seq;
+CREATE TABLE synthetic_catalog.part_parent (
+  id integer NOT NULL,
+  PRIMARY KEY (id)
+) PARTITION BY RANGE (id);
+
+-- Independent pad table for type/nullability/default/constraint drifts without view deps.
+CREATE TABLE synthetic_catalog.drift_pad (
+  id integer NOT NULL,
+  note text NULL,
+  flag boolean NOT NULL DEFAULT false,
+  ref_code character varying(32) NULL,
+  CONSTRAINT drift_pad_pkey PRIMARY KEY (id),
+  CONSTRAINT drift_pad_note_check CHECK ((note IS NULL) OR (char_length(note) > 0)),
+  CONSTRAINT drift_pad_owner_fk
+    FOREIGN KEY (ref_code) REFERENCES synthetic_catalog.owner_classes(code)
+    ON UPDATE NO ACTION
+    ON DELETE RESTRICT
+);
+
 CREATE TABLE synthetic_catalog.example_tree (
   id uuid NOT NULL,
   title character varying(200) NULL,
@@ -93,6 +114,7 @@ CREATE MATERIALIZED VIEW synthetic_catalog.example_tree_public_mv AS
   WHERE title IS NOT NULL;
 
 ALTER TABLE synthetic_catalog.example_tree OWNER TO synthetic_owner_role;
+ALTER TABLE synthetic_catalog.drift_pad OWNER TO synthetic_owner_role;
 ALTER VIEW synthetic_catalog.example_tree_public OWNER TO synthetic_owner_role;
 ALTER MATERIALIZED VIEW synthetic_catalog.example_tree_public_mv OWNER TO synthetic_owner_role;
 ALTER TABLE synthetic_catalog.owner_classes OWNER TO synthetic_owner_role;
@@ -102,7 +124,11 @@ ALTER FUNCTION synthetic_catalog.note_example_tree_truncate() OWNER TO synthetic
 REVOKE ALL ON TABLE synthetic_catalog.example_tree FROM PUBLIC;
 REVOKE ALL ON TABLE synthetic_catalog.example_tree_public FROM PUBLIC;
 REVOKE ALL ON TABLE synthetic_catalog.example_tree_public_mv FROM PUBLIC;
+REVOKE ALL ON TABLE synthetic_catalog.drift_pad FROM PUBLIC;
 
 GRANT SELECT, UPDATE ON TABLE synthetic_catalog.example_tree TO synthetic_authenticated_role;
+GRANT SELECT ON TABLE synthetic_catalog.example_tree TO PUBLIC;
 GRANT SELECT ON TABLE synthetic_catalog.example_tree_public TO synthetic_public_role;
+GRANT SELECT ON TABLE synthetic_catalog.example_tree_public TO PUBLIC;
 GRANT SELECT ON TABLE synthetic_catalog.example_tree_public_mv TO synthetic_application_role;
+GRANT SELECT ON TABLE synthetic_catalog.drift_pad TO synthetic_authenticated_role;
