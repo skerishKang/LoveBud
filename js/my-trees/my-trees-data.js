@@ -132,9 +132,35 @@
 
   var VALID_PHASES = {
     loaded: true, fetch_rejected: true, auth_prepare_failed: true, parse: true, invalid_payload: true,
-    auth: true, client: true, server: true, generic: true, none: true
+    auth: true, client: true, server: true, generic: true, none: true,
+    // history / BFCache recovery lifecycle (privacy-safe bounded enums only)
+    restore_triggered: true,
+    restore_skipped_inflight: true,
+    restore_skipped_not_restore: true,
+    restore_skipped_terminal: true,
+    restore_recovered: true,
+    restore_failed: true
   };
   var VALID_STATUS_CLASSES = { success: true, client: true, server: true, none: true };
+
+  // Single-flight owner-list load guard (initial boot / retry / history recovery)
+  var ownerListLoadPromise = null;
+
+  function isOwnerListLoadInFlight() {
+    return !!ownerListLoadPromise;
+  }
+
+  function hasVisibleLoadedCards() {
+    try {
+      var loaded = document.getElementById('state-loaded');
+      if (!loaded) return false;
+      if (loaded.classList && loaded.classList.contains('state-hidden')) return false;
+      if (loaded.style && loaded.style.display === 'none') return false;
+      return !!(loaded.querySelectorAll && loaded.querySelectorAll('[data-tree-id]').length > 0);
+    } catch (e) {
+      return false;
+    }
+  }
 
   function normalizePhase(v) {
     return VALID_PHASES[v] ? v : 'generic';
@@ -280,30 +306,33 @@
   }
 
   async function loadTrees(options) {
-    var cache = window.LoveBudCache;
-    var i18n = getI18n(options);
-    var setState = options?.setState;
-    var stateEnum = options?.stateEnum;
-    var renderTrees = options?.renderTrees;
-    var showToast = options?.showToast;
+    options = options || {};
 
-    var cachedTrees = cache ? cache.get(TREES_CACHE_KEY) : null;
-    if ((!cachedTrees || !Array.isArray(cachedTrees)) ) {
-      cachedTrees = readPersistentTreesCache();
-      if (cachedTrees && Array.isArray(cachedTrees) && cache) {
-        cache.set(TREES_CACHE_KEY, cachedTrees, PERSISTENT_TREES_CACHE_TTL_MS);
+    // Coalesce concurrent owner-list loads (boot / retry / history recovery).
+    if (ownerListLoadPromise) {
+      if (options.reason === 'history_recovery') {
+        emitLifecycleDiagnostic({
+          phase: 'restore_skipped_inflight',
+          attempt: 1,
+          retried: false,
+          authHeaderPresent: false,
+          cachePresent: false,
+          cacheUsed: false,
+          statusClass: 'none',
+          resultCountBucket: 'unknown'
+        });
       }
+      return ownerListLoadPromise;
     }
 
-    if (cachedTrees && Array.isArray(cachedTrees) && typeof renderTrees === 'function') {
-      myTreesDebugLog('[my-trees-data] Rendering cached trees:', cachedTrees.length);
-      renderTrees(cachedTrees);
-    } else if (typeof setState === 'function' && stateEnum?.LOADING) {
-      setState(stateEnum.LOADING);
-    }
-
-    try {
-      var trees;
+    ownerListLoadPromise = (async function runOwnerListLoad() {
+      var cache = window.LoveBudCache;
+      var i18n = getI18n(options);
+      var setState = options.setState;
+      var stateEnum = options.stateEnum;
+      var renderTrees = options.renderTrees;
+      var showToast = options.showToast;
+      var preserveVisibleList = options.preserveVisibleList === true;
       var requestLifecycle = {
         attempt: 1,
         retried: false,
@@ -311,112 +340,145 @@
         statusClass: 'none'
       };
 
-      if (window.apiClient && window.apiClient.getTrees) {
-        trees = await window.apiClient.getTrees({
-          onLifecycle: function(meta) {
-            requestLifecycle = sanitizeRequestLifecycle(meta);
-          }
-        });
-      } else {
-        throw new Error('apiClient.getTrees is not available');
+      var cachedTrees = cache ? cache.get(TREES_CACHE_KEY) : null;
+      if ((!cachedTrees || !Array.isArray(cachedTrees))) {
+        cachedTrees = readPersistentTreesCache();
+        if (cachedTrees && Array.isArray(cachedTrees) && cache) {
+          cache.set(TREES_CACHE_KEY, cachedTrees, PERSISTENT_TREES_CACHE_TTL_MS);
+        }
       }
 
-      if (Array.isArray(trees)) {
-        trees = normalizeTreesForList(trees);
+      // Prefer cache paint; otherwise keep visible cards during history recovery
+      // instead of blanking the page into LOADING.
+      if (cachedTrees && Array.isArray(cachedTrees) && typeof renderTrees === 'function') {
+        myTreesDebugLog('[my-trees-data] Rendering cached trees:', cachedTrees.length);
+        renderTrees(cachedTrees);
+      } else if (preserveVisibleList && hasVisibleLoadedCards()) {
+        myTreesDebugLog('[my-trees-data] Preserving visible list during recovery load');
+      } else if (typeof setState === 'function' && stateEnum && stateEnum.LOADING) {
+        setState(stateEnum.LOADING);
+      }
 
-        if (cache) {
-          cache.set(TREES_CACHE_KEY, trees, 3 * 60 * 1000);
-        }
-        writePersistentTreesCache(trees);
+      try {
+        var trees;
 
-        if (typeof renderTrees === 'function') {
-          renderTrees(trees);
+        if (window.apiClient && window.apiClient.getTrees) {
+          trees = await window.apiClient.getTrees({
+            onLifecycle: function(meta) {
+              requestLifecycle = sanitizeRequestLifecycle(meta);
+            }
+          });
+        } else {
+          throw new Error('apiClient.getTrees is not available');
         }
+
+        if (Array.isArray(trees)) {
+          trees = normalizeTreesForList(trees);
+
+          if (cache) {
+            cache.set(TREES_CACHE_KEY, trees, 3 * 60 * 1000);
+          }
+          writePersistentTreesCache(trees);
+
+          if (typeof renderTrees === 'function') {
+            renderTrees(trees);
+          }
+
+          emitLifecycleDiagnostic({
+            phase: 'loaded',
+            attempt: requestLifecycle.attempt,
+            authHeaderPresent: requestLifecycle.authHeaderPresent,
+            retried: requestLifecycle.retried,
+            cachePresent: !!cachedTrees,
+            cacheUsed: false,
+            statusClass: requestLifecycle.statusClass,
+            resultCountBucket: trees.length > 0 ? 'positive' : 'zero'
+          });
+
+          // Optimization: Defer preloading detail/memories to background to ensure TTI is not blocked
+          if (window.requestIdleCallback) {
+            window.requestIdleCallback(function() {
+              preloadFirstTreeDetail(trees);
+            }, { timeout: 2000 });
+          } else {
+            setTimeout(function() {
+              preloadFirstTreeDetail(trees);
+            }, 1000);
+          }
+        } else {
+          var invalidPayloadError = new Error('Invalid owner-tree list payload');
+          invalidPayloadError._phase = 'invalid_success_payload';
+          invalidPayloadError.status = 200;
+          invalidPayloadError.statusCode = 200;
+          throw invalidPayloadError;
+        }
+      } catch (e) {
+        var errorType = classifyLoadError(e);
+        console.error('[my-trees-data] loadTrees error (type=' + errorType + ')');
+
+        var errorAttempt = Number(e._attempt) || requestLifecycle.attempt;
+        var errorRetried = e._retried === true || requestLifecycle.retried;
+        var errorAuthHeaderPresent = e._authHeaderPresent === true || requestLifecycle.authHeaderPresent;
 
         emitLifecycleDiagnostic({
-          phase: 'loaded',
-          attempt: requestLifecycle.attempt,
-          authHeaderPresent: requestLifecycle.authHeaderPresent,
-          retried: requestLifecycle.retried,
+          phase: errorType,
+          attempt: errorAttempt,
+          authHeaderPresent: errorAuthHeaderPresent,
+          retried: errorRetried,
           cachePresent: !!cachedTrees,
-          cacheUsed: false,
-          statusClass: requestLifecycle.statusClass,
-          resultCountBucket: trees.length > 0 ? 'positive' : 'zero'
+          cacheUsed: !!(cachedTrees && Array.isArray(cachedTrees)),
+          statusClass: (function() {
+            var s = extractHttpStatus(e);
+            return s >= 500 ? 'server' : s >= 400 ? 'client' : s > 0 ? 'success' : requestLifecycle.statusClass;
+          })(),
+          resultCountBucket: 'unknown'
         });
 
-        // Optimization: Defer preloading detail/memories to background to ensure TTI is not blocked
-        if (window.requestIdleCallback) {
-          window.requestIdleCallback(function() {
-            preloadFirstTreeDetail(trees);
-          }, { timeout: 2000 });
+        // auth errors (401/403): do not silently keep stale cache.
+        // Show auth error state regardless of cache presence.
+        if (errorType === 'auth') {
+          if (typeof setState === 'function' && stateEnum && stateEnum.ERROR) {
+            setState(stateEnum.ERROR, { errorType: 'auth' });
+          } else {
+            // setState not injected — DOM fallback
+            _domFallbackErrorState('auth');
+          }
+          return;
+        }
+
+        // server / fetch_rejected / generic: keep cached fallback if available.
+        // Never fabricate authoritative [] from cancellation/rejection.
+        if (cachedTrees && Array.isArray(cachedTrees)) {
+          myTreesDebugLog('[my-trees-data] Showing cached trees after ' + errorType + ' error');
+          if (typeof renderTrees === 'function') {
+            renderTrees(cachedTrees);
+          }
+          var warnKey = errorType === 'server'
+            ? (i18n('myTrees.server_error_cached') || '서버 오류가 발생했습니다. 저장된 목록을 표시합니다.')
+            : (i18n('myTrees.offline_mode') || '오프라인 모드 - 캐시된 데이터를 표시합니다');
+          if (typeof showToast === 'function') showToast(warnKey, 'warn');
+        } else if (preserveVisibleList && hasVisibleLoadedCards()) {
+          // Keep already-rendered cards; do not blank to EMPTY on cancel/reject.
+          myTreesDebugLog('[my-trees-data] Keeping visible cards after ' + errorType + ' recovery failure');
         } else {
-          setTimeout(function() {
-            preloadFirstTreeDetail(trees);
-          }, 1000);
+          // No cache: transition to error state
+          if (typeof setState === 'function' && stateEnum && stateEnum.ERROR) {
+            setState(stateEnum.ERROR, { errorType: errorType });
+          } else {
+            _domFallbackErrorState(errorType);
+          }
+          var failKey = errorType === 'server'
+            ? (i18n('myTrees.server_load_failed') || '서버 오류로 트리 목록을 불러오지 못했습니다')
+            : (i18n('myTrees.load_failed') || '트리 목록을 불러오는데 실패했습니다');
+          if (typeof showToast === 'function') showToast(failKey, 'error');
         }
-      } else {
-        var invalidPayloadError = new Error('Invalid owner-tree list payload');
-        invalidPayloadError._phase = 'invalid_success_payload';
-        invalidPayloadError.status = 200;
-        invalidPayloadError.statusCode = 200;
-        throw invalidPayloadError;
       }
-    } catch (e) {
-      var errorType = classifyLoadError(e);
-      console.error('[my-trees-data] loadTrees error (type=' + errorType + ')');
+    })();
 
-      var errorAttempt = Number(e._attempt) || requestLifecycle.attempt;
-      var errorRetried = e._retried === true || requestLifecycle.retried;
-      var errorAuthHeaderPresent = e._authHeaderPresent === true || requestLifecycle.authHeaderPresent;
-
-      emitLifecycleDiagnostic({
-        phase: errorType,
-        attempt: errorAttempt,
-        authHeaderPresent: errorAuthHeaderPresent,
-        retried: errorRetried,
-        cachePresent: !!cachedTrees,
-        cacheUsed: !!(cachedTrees && Array.isArray(cachedTrees)),
-        statusClass: (function() {
-          var s = extractHttpStatus(e);
-          return s >= 500 ? 'server' : s >= 400 ? 'client' : s > 0 ? 'success' : requestLifecycle.statusClass;
-        })(),
-        resultCountBucket: 'unknown'
-      });
-
-      // auth errors (401/403): do not silently keep stale cache.
-      // Show auth error state regardless of cache presence.
-      if (errorType === 'auth') {
-        if (typeof setState === 'function' && stateEnum?.ERROR) {
-          setState(stateEnum.ERROR, { errorType: 'auth' });
-        } else {
-          // setState not injected — DOM fallback
-          _domFallbackErrorState('auth');
-        }
-        return;
-      }
-
-      // server / network / generic: keep cached fallback if available
-      if (cachedTrees && Array.isArray(cachedTrees)) {
-        myTreesDebugLog('[my-trees-data] Showing cached trees after ' + errorType + ' error');
-        if (typeof renderTrees === 'function') {
-          renderTrees(cachedTrees);
-        }
-        var warnKey = errorType === 'server'
-          ? (i18n('myTrees.server_error_cached') || '서버 오류가 발생했습니다. 저장된 목록을 표시합니다.')
-          : (i18n('myTrees.offline_mode') || '오프라인 모드 - 캐시된 데이터를 표시합니다');
-        showToast?.(warnKey, 'warn');
-      } else {
-        // No cache: transition to error state
-        if (typeof setState === 'function' && stateEnum?.ERROR) {
-          setState(stateEnum.ERROR, { errorType: errorType });
-        } else {
-          _domFallbackErrorState(errorType);
-        }
-        var failKey = errorType === 'server'
-          ? (i18n('myTrees.server_load_failed') || '서버 오류로 트리 목록을 불러오지 못했습니다')
-          : (i18n('myTrees.load_failed') || '트리 목록을 불러오는데 실패했습니다');
-        showToast?.(failKey, 'error');
-      }
+    try {
+      return await ownerListLoadPromise;
+    } finally {
+      ownerListLoadPromise = null;
     }
   }
 
@@ -470,6 +532,9 @@
     TREE_MEMORIES_CACHE_KEY: TREE_MEMORIES_CACHE_KEY,
     PERSISTENT_TREES_CACHE_KEY: PERSISTENT_TREES_CACHE_KEY,
     preloadFirstTreeDetail: preloadFirstTreeDetail,
-    loadTrees: loadTrees
+    loadTrees: loadTrees,
+    isOwnerListLoadInFlight: isOwnerListLoadInFlight,
+    emitLifecycleDiagnostic: emitLifecycleDiagnostic,
+    hasVisibleLoadedCards: hasVisibleLoadedCards
   };
 })();
