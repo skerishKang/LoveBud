@@ -11,6 +11,16 @@
 const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
+const { validatePreparedCollectionPlan } = require('./adoption-baseline-collection-plan-core.cjs');
+
+const PROHIBITED_FIELDS = new Set([
+  'host', 'hostname', 'port', 'database', 'database_name',
+  'database_url', 'connection_string', 'url', 'secret', 'token',
+  'password', 'credential', 'username', 'operator', 'operator_name',
+  'operator_email', 'raw_role', 'role_name', 'provider_project',
+  'provider_branch', 'raw_catalog', 'rows', 'row_values', 'payload',
+  'grantee_name', 'database_owner',
+]);
 
 const FAILURE = Object.freeze({
   ADOPTION_ATTESTATION_INPUT_INVALID: 'ADOPTION_ATTESTATION_INPUT_INVALID',
@@ -901,40 +911,75 @@ function validateAdoptionAttestationEvidence(evidence, binding, contract) {
  * Build a prepared UNATTESTED attestation draft for Production-readonly collection.
  *
  * Takes a preparedPlan (from buildPreparedCollectionPlan) for fixed field values.
- * Prepared plan MUST be validated through validatePreparedCollectionPlan first.
+ * Prepared plan validated via MODULE-OWNED validatePreparedCollectionPlan —
+ * caller CANNOT inject validatePlanFn.
  *
  * Accepts NO caller-controlled environment/scope/status parameters.
  *
- * Fixed values:
- *   adoption_status = UNATTESTED
- *   environment_class = PRODUCTION
- *   attestation_scope = PRODUCTION_READONLY
- *   variance_classification = UNKNOWN_DRIFT
+ * Validation order:
+ *   1. internally validate trusted prepared plan
+ *   2. recursively validate migration manifest
+ *   3. recursively validate expected-schema candidate
+ *   4. recursively validate catalog evidence
+ *   5. validate fixed statuses and structures
+ *   6. compute digests
+ *   7. build draft
+ *   8. final recursive validation
  *
  * baseline_commit and approval_reference come from validated trustedPlan.
  * applied_migrations from repository-owned canonical manifest only —
  * each record is strictly validated.
  *
+ * ADOPTION_REQUIRED + non-empty migrations → fail closed.
+ *
  * No database, network, environment fallback, or file write.
  */
 function buildPreparedUnattestedAttestationDraft({
   preparedPlan,
-  validatePlanFn,
+  // NOTE: No validatePlanFn parameter — module-owned validator only
   migrationManifest,
   expectedSchemaCandidate,
   catalogEvidence,
 }) {
-  // ── Validate prepared plan via trusted validator ──
-  if (typeof validatePlanFn !== 'function') {
-    fail(FAILURE.ADOPTION_ATTESTATION_INPUT_INVALID, { field: 'validatePlanFn' });
-  }
-  const validated = validatePlanFn(preparedPlan);
+  // ── Reject call-injected validatePlanFn (unknown key) ──
+  // (Already rejected by destructuring — validatePlanFn is not destructured)
+
+  // ── Step 1: Validate prepared plan via MODULE-OWNED trusted validator ──
+  const validated = validatePreparedCollectionPlan(preparedPlan);
   if (!validated || validated.ok !== true || !validated.plan) {
     fail(FAILURE.ADOPTION_ATTESTATION_INPUT_INVALID, { field: 'preparedPlan' });
   }
   const trustedPlan = validated.plan;
 
-  // ── Validate expectedSchemaCandidate ──
+  // ── Step 2-4: Pre-digest recursive validation ──
+  validateCollectionArtifact(migrationManifest);
+  validateCollectionArtifact(expectedSchemaCandidate);
+  validateCollectionArtifact(catalogEvidence);
+
+  // ── Step 5: Validate fixed statuses and structures ──
+
+  // Migration manifest rules
+  if (migrationManifest && !Array.isArray(migrationManifest)) {
+    if (typeof migrationManifest === 'object') {
+      const migStatus = migrationManifest.status;
+      const mig = migrationManifest.migrations;
+
+      if (migStatus === 'ADOPTION_REQUIRED') {
+        // migrations field must exist and be an empty array
+        if (!Array.isArray(mig)) fail(FAILURE.ADOPTION_ATTESTATION_INPUT_INVALID, { field: 'migrations' });
+        if (mig.length !== 0) fail(FAILURE.ADOPTION_ATTESTATION_INPUT_INVALID, { field: 'migrations_not_empty' });
+      } else {
+        // Non-ADOPTION_REQUIRED: migrations array must exist, strictly validate each record
+        if (!Array.isArray(mig)) fail(FAILURE.ADOPTION_ATTESTATION_INPUT_INVALID, { field: 'migrations' });
+        validateMigrationRecords(mig);
+      }
+    } else {
+      fail(FAILURE.ADOPTION_ATTESTATION_INPUT_INVALID, { field: 'migrationManifest' });
+    }
+  } else {
+    fail(FAILURE.ADOPTION_ATTESTATION_INPUT_INVALID, { field: 'migrationManifest' });
+  }
+
   if (!expectedSchemaCandidate || typeof expectedSchemaCandidate !== 'object' || Array.isArray(expectedSchemaCandidate)) {
     fail(FAILURE.ADOPTION_ATTESTATION_INPUT_INVALID, { field: 'expectedSchemaCandidate' });
   }
@@ -942,17 +987,11 @@ function buildPreparedUnattestedAttestationDraft({
     fail(FAILURE.ADOPTION_ATTESTATION_ENUM_INVALID, { field: 'status' });
   }
 
-  // ── Validate migrationManifest structure ──
-  if (!migrationManifest || typeof migrationManifest !== 'object' || Array.isArray(migrationManifest)) {
-    fail(FAILURE.ADOPTION_ATTESTATION_INPUT_INVALID, { field: 'migrationManifest' });
-  }
-
-  // ── Catalog evidence validation ──
   if (!catalogEvidence || typeof catalogEvidence !== 'object' || Array.isArray(catalogEvidence)) {
     fail(FAILURE.ADOPTION_ATTESTATION_INPUT_INVALID, { field: 'catalogEvidence' });
   }
 
-  // ── Digest computation ──
+  // ── Step 6: Digest computation ──
   const canonicalDigest = computeObjectDigest(migrationManifest);
   const expectedDigest = computeObjectDigest(expectedSchemaCandidate);
   const catalogDigest = computeObjectDigest(catalogEvidence);
@@ -960,60 +999,17 @@ function buildPreparedUnattestedAttestationDraft({
   // ── applied_migrations from canonical manifest only — strict validation ──
   const MIGRATION_ID_PATTERN = /^\d{14}_[a-z0-9]+(?:-[a-z0-9]+)*$/;
   const SHA256_DIGEST = /^sha256:[a-f0-9]{64}$/;
-  const ALLOWED_MIG_FIELDS = new Set(['id', 'checksum']);
-  const MIGRATION_PROHIBITED = new Set([
-    'host', 'hostname', 'port', 'database', 'database_name',
-    'database_url', 'connection_string', 'url', 'secret', 'token',
-    'password', 'credential', 'operator',
-  ]);
 
   let migrations = [];
   if (migrationManifest && migrationManifest.status !== 'ADOPTION_REQUIRED') {
-    if (Array.isArray(migrationManifest.migrations)) {
-      if (migrationManifest.migrations.length > 256) {
-        fail(FAILURE.ADOPTION_ATTESTATION_BOUNDS_EXCEEDED, { field: 'applied_migrations' });
-      }
-      const seenIds = new Set();
-      for (const item of migrationManifest.migrations) {
-        // Record must be plain object
-        if (!item || typeof item !== 'object' || Array.isArray(item)) {
-          fail(FAILURE.ADOPTION_ATTESTATION_MIGRATION_INVALID, { field: 'applied_migrations' });
-        }
-        // No unknown fields
-        for (const key of Object.keys(item)) {
-          if (!ALLOWED_MIG_FIELDS.has(key)) {
-            fail(FAILURE.ADOPTION_ATTESTATION_UNKNOWN_FIELD, { field: key });
-          }
-          if (MIGRATION_PROHIBITED.has(key)) {
-            fail(FAILURE.ADOPTION_ATTESTATION_PROHIBITED_FIELD, { field: key });
-          }
-        }
-        // id required
-        if (typeof item.id !== 'string' || !item.id) {
-          fail(FAILURE.ADOPTION_ATTESTATION_MIGRATION_INVALID, { field: 'id' });
-        }
-        if (!MIGRATION_ID_PATTERN.test(item.id)) {
-          fail(FAILURE.ADOPTION_ATTESTATION_MIGRATION_INVALID, { field: 'id' });
-        }
-        if (seenIds.has(item.id)) {
-          fail(FAILURE.ADOPTION_ATTESTATION_MIGRATION_INVALID, { field: 'duplicate_id' });
-        }
-        seenIds.add(item.id);
-        // checksum required
-        if (typeof item.checksum !== 'string' || !SHA256_DIGEST.test(item.checksum)) {
-          fail(FAILURE.ADOPTION_ATTESTATION_DIGEST_INVALID, { field: 'checksum' });
-        }
-        // Sensitive check
-        for (const marker of ['postgres://', 'DATABASE_URL', 'password=', 'secret=', 'token=']) {
-          if (item.id.toLowerCase().includes(marker) || item.checksum.toLowerCase().includes(marker)) {
-            fail(FAILURE.ADOPTION_ATTESTATION_SENSITIVE_MARKER, { field: 'applied_migrations' });
-          }
-        }
-        migrations.push({ id: item.id, checksum: item.checksum });
-      }
-    }
+    // Already validated above — extract records
+    migrations = migrationManifest.migrations.map((item) => ({
+      id: item.id,
+      checksum: item.checksum,
+    }));
   }
 
+  // ── Step 7: Build draft ──
   const draft = {
     format_version: '1.0',
     adoption_status: 'UNATTESTED',
@@ -1030,33 +1026,208 @@ function buildPreparedUnattestedAttestationDraft({
     attestation_scope: 'PRODUCTION_READONLY',
   };
 
-  // Recursive prohibited/sensitive check replaces staticProhibited no-op
-  const MIGRATION_STATIC_PROHIBITED = [
+  // ── Step 8: Final recursive prohibited/sensitive check ──
+  recursiveProhibitedCheck(draft, 0);
+  scanDraftSensitive(draft, 0);
+
+  return draft;
+}
+
+/**
+ * Recursive prohibited field check for entire draft tree.
+ */
+function recursiveProhibitedCheck(obj, depth) {
+  if (depth > 20) fail(FAILURE.ADOPTION_ATTESTATION_BOUNDS_EXCEEDED);
+  if (obj === null || obj === undefined) return;
+  if (Array.isArray(obj)) {
+    if (obj.length > 2048) fail(FAILURE.ADOPTION_ATTESTATION_BOUNDS_EXCEEDED);
+    for (const item of obj) recursiveProhibitedCheck(item, depth + 1);
+    return;
+  }
+  if (typeof obj === 'object') {
+    const keys = Object.keys(obj);
+    if (keys.length > 1024) fail(FAILURE.ADOPTION_ATTESTATION_BOUNDS_EXCEEDED);
+    for (const key of keys) {
+      if (PROHIBITED_FIELDS.has(key)) {
+        fail(FAILURE.ADOPTION_ATTESTATION_PROHIBITED_FIELD, { field: key });
+      }
+      recursiveProhibitedCheck(obj[key], depth + 1);
+    }
+  }
+}
+
+/**
+ * Recursive sensitive value scan for entire draft tree.
+ */
+function scanDraftSensitive(value, depth) {
+  if (depth > 20) fail(FAILURE.ADOPTION_ATTESTATION_BOUNDS_EXCEEDED);
+  if (value === null || value === undefined) return;
+  const t = typeof value;
+  if (t === 'string') {
+    if (value.length > 65536) fail(FAILURE.ADOPTION_ATTESTATION_BOUNDS_EXCEEDED);
+    const markers = ['postgres://', 'DATABASE_URL', 'password=', 'secret=', 'token='];
+    for (const m of markers) {
+      if (value.toLowerCase().includes(m)) fail(FAILURE.ADOPTION_ATTESTATION_SENSITIVE_MARKER);
+    }
+    return;
+  }
+  if (t === 'number') {
+    if (!Number.isFinite(value)) fail(FAILURE.ADOPTION_ATTESTATION_VALUE_INVALID);
+    return;
+  }
+  if (t === 'boolean') return;
+  if (Array.isArray(value)) {
+    for (const item of value) scanDraftSensitive(item, depth + 1);
+    return;
+  }
+  if (t === 'object') {
+    const keys = Object.keys(value);
+    for (const key of keys) {
+      if (['postgres://', 'DATABASE_URL', 'password=', 'secret='].some(m => key.toLowerCase().includes(m))) {
+        fail(FAILURE.ADOPTION_ATTESTATION_SENSITIVE_MARKER);
+      }
+    }
+    if (Object.getPrototypeOf(value) !== Object.prototype) {
+      fail(FAILURE.ADOPTION_ATTESTATION_VALUE_INVALID);
+    }
+    for (const key of keys) scanDraftSensitive(value[key], depth + 1);
+    return;
+  }
+  fail(FAILURE.ADOPTION_ATTESTATION_VALUE_INVALID);
+}
+
+/**
+ * Validate migration manifest record.
+ * Checks each record: allowed keys, required fields, patterns, duplicate detection.
+ */
+function validateMigrationRecords(migrations) {
+  if (!Array.isArray(migrations)) fail(FAILURE.ADOPTION_ATTESTATION_INPUT_INVALID, { field: 'migrations' });
+  if (migrations.length > 256) fail(FAILURE.ADOPTION_ATTESTATION_BOUNDS_EXCEEDED, { field: 'migrations' });
+
+  const MIGRATION_ID_PATTERN = /^\d{14}_[a-z0-9]+(?:-[a-z0-9]+)*$/;
+  const SHA256_DIGEST = /^sha256:[a-f0-9]{64}$/;
+  const ALLOWED_MIG_FIELDS = new Set(['id', 'checksum']);
+  const MIGRATION_PROHIBITED = new Set([
     'host', 'hostname', 'port', 'database', 'database_name',
     'database_url', 'connection_string', 'url', 'secret', 'token',
-    'password', 'credential', 'operator', 'operator_name',
-    'raw_role', 'role_name', 'provider_project', 'raw_catalog',
-    'rows', 'row_values', 'payload', 'grantee_name', 'database_owner',
-  ];
-  function recursiveProhibitedCheck(obj, depth) {
-    if (depth > 20) fail(FAILURE.ADOPTION_ATTESTATION_BOUNDS_EXCEEDED);
-    if (obj === null || obj === undefined) return;
-    if (Array.isArray(obj)) {
-      for (const item of obj) recursiveProhibitedCheck(item, depth + 1);
-      return;
+    'password', 'credential', 'operator',
+  ]);
+  const seenIds = new Set();
+
+  for (const item of migrations) {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) {
+      fail(FAILURE.ADOPTION_ATTESTATION_MIGRATION_INVALID, { field: 'applied_migrations' });
     }
-    if (typeof obj === 'object') {
-      for (const key of Object.keys(obj)) {
-        if (MIGRATION_STATIC_PROHIBITED.includes(key)) {
-          fail(FAILURE.ADOPTION_ATTESTATION_PROHIBITED_FIELD, { field: key });
-        }
-        recursiveProhibitedCheck(obj[key], depth + 1);
+    // Check accessor properties (reject without invoking)
+    const descriptors = Object.getOwnPropertyDescriptors(item);
+    for (const key of Object.keys(descriptors)) {
+      if (descriptors[key].get || descriptors[key].set) {
+        fail(FAILURE.ADOPTION_ATTESTATION_MIGRATION_INVALID, { field: 'accessor' });
+      }
+    }
+    // No unknown fields
+    for (const key of Object.keys(item)) {
+      if (!ALLOWED_MIG_FIELDS.has(key)) {
+        fail(FAILURE.ADOPTION_ATTESTATION_UNKNOWN_FIELD, { field: key });
+      }
+      if (MIGRATION_PROHIBITED.has(key)) {
+        fail(FAILURE.ADOPTION_ATTESTATION_PROHIBITED_FIELD, { field: key });
+      }
+    }
+    // id required
+    if (typeof item.id !== 'string' || !item.id) {
+      fail(FAILURE.ADOPTION_ATTESTATION_MIGRATION_INVALID, { field: 'id' });
+    }
+    if (!MIGRATION_ID_PATTERN.test(item.id)) {
+      fail(FAILURE.ADOPTION_ATTESTATION_MIGRATION_INVALID, { field: 'id' });
+    }
+    if (seenIds.has(item.id)) {
+      fail(FAILURE.ADOPTION_ATTESTATION_MIGRATION_INVALID, { field: 'duplicate_id' });
+    }
+    seenIds.add(item.id);
+    // checksum required
+    if (typeof item.checksum !== 'string' || !SHA256_DIGEST.test(item.checksum)) {
+      fail(FAILURE.ADOPTION_ATTESTATION_DIGEST_INVALID, { field: 'checksum' });
+    }
+    // Sensitive check
+    for (const marker of ['postgres://', 'DATABASE_URL', 'password=', 'secret=', 'token=']) {
+      if (item.id.toLowerCase().includes(marker) || item.checksum.toLowerCase().includes(marker)) {
+        fail(FAILURE.ADOPTION_ATTESTATION_SENSITIVE_MARKER, { field: 'applied_migrations' });
       }
     }
   }
-  recursiveProhibitedCheck(draft, 0);
+}
 
-  return draft;
+/**
+ * Pre-digest recursive validation for collection artifacts.
+ * Checks: type, bounds, prototype, prohibited keys, sensitive markers.
+ */
+function validateCollectionArtifact(value, depth) {
+  if (depth === undefined) depth = 0;
+  if (depth > 20) fail(FAILURE.ADOPTION_ATTESTATION_BOUNDS_EXCEEDED);
+  if (value === null || value === undefined) {
+    if (value === undefined) fail(FAILURE.ADOPTION_ATTESTATION_VALUE_INVALID);
+    return;
+  }
+  const t = typeof value;
+  if (t === 'boolean' || t === 'number' || t === 'string') {
+    if (t === 'number' && !Number.isFinite(value)) fail(FAILURE.ADOPTION_ATTESTATION_VALUE_INVALID);
+    if (t === 'string' && value.length > 65536) fail(FAILURE.ADOPTION_ATTESTATION_BOUNDS_EXCEEDED);
+    return;
+  }
+  if (t === 'symbol' || t === 'function' || t === 'bigint' || t === 'undefined') {
+    fail(FAILURE.ADOPTION_ATTESTATION_VALUE_INVALID);
+  }
+  if (Array.isArray(value)) {
+    if (value.length > 2048) fail(FAILURE.ADOPTION_ATTESTATION_BOUNDS_EXCEEDED);
+    for (const item of value) validateCollectionArtifact(item, depth + 1);
+    return;
+  }
+  if (t === 'object') {
+    const proto = Object.getPrototypeOf(value);
+    if (proto !== Object.prototype && proto !== null) {
+      fail(FAILURE.ADOPTION_ATTESTATION_VALUE_INVALID);
+    }
+    const ownKeys = Reflect.ownKeys(value);
+    if (ownKeys.length > 1024) fail(FAILURE.ADOPTION_ATTESTATION_BOUNDS_EXCEEDED);
+    // Reject symbol keys and accessor descriptors
+    const descriptors = Object.getOwnPropertyDescriptors(value);
+    for (const key of ownKeys) {
+      if (typeof key === 'symbol') fail(FAILURE.ADOPTION_ATTESTATION_VALUE_INVALID);
+      if (typeof key !== 'string' || !key) fail(FAILURE.ADOPTION_ATTESTATION_VALUE_INVALID);
+      const desc = descriptors[key];
+      if (desc && (typeof desc.get === 'function' || typeof desc.set === 'function')) {
+        fail(FAILURE.ADOPTION_ATTESTATION_VALUE_INVALID);
+      }
+    }
+    // Check prohibited/sensitive on keys
+    const PROHIBITED = new Set([
+      'host', 'hostname', 'port', 'database', 'database_name',
+      'database_url', 'connection_string', 'url', 'secret', 'token',
+      'password', 'credential', 'operator', 'operator_name',
+      'raw_role', 'role_name', 'provider_project', 'raw_catalog',
+    ]);
+    for (const key of ownKeys) {
+      if (typeof key === 'string') {
+        if (PROHIBITED.has(key)) fail(FAILURE.ADOPTION_ATTESTATION_PROHIBITED_FIELD, { field: key });
+        const markers = ['postgres://', 'DATABASE_URL', 'password=', 'secret=', 'token='];
+        for (const m of markers) {
+          if (key.toLowerCase().includes(m)) fail(FAILURE.ADOPTION_ATTESTATION_SENSITIVE_MARKER);
+        }
+      }
+    }
+    // Recurse into enumerable data properties only
+    for (const key of ownKeys) {
+      if (typeof key === 'string') {
+        const desc = descriptors[key];
+        if (desc && desc.enumerable && !desc.get && !desc.set) {
+          validateCollectionArtifact(value[key], depth + 1);
+        }
+      }
+    }
+    return;
+  }
+  fail(FAILURE.ADOPTION_ATTESTATION_VALUE_INVALID);
 }
 
 /**
