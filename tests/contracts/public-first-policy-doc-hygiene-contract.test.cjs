@@ -1,6 +1,7 @@
 /**
- * Contract: LoveBud #3438 public-first policy documentation hygiene
- * and Issue #3484 visibility / Plus user-facing claim alignment.
+ * Contract: LoveBud #3438 public-first policy documentation hygiene,
+ * Issue #3484 visibility / Plus user-facing claim alignment,
+ * and Issue #3558 Intro CSP duplicate inline shared-header bootstrap cleanup.
  *
  * Scope grammar:
  * Static documentation and active surface copy contract only.
@@ -9,11 +10,11 @@
  *
  * This test reads repository Markdown, index files, and active Intro/settings
  * copy sources and asserts static source-of-truth, supersession, policy-routing
- * markers, and #3484 Option B claim alignment only.
+ * markers, #3484 Option B claim alignment, and Intro header bootstrap hygiene.
  * It does not execute runtime code, connect to a database or network, use a
  * browser, deploy, or verify production behavior.
  *
- * Refs: #3438, #3437, #3435, #3484, #1882
+ * Refs: #3438, #3437, #3435, #3484, #3558, #1882
  * Keep #1882 OPEN.
  */
 
@@ -468,4 +469,110 @@ test('#3484 does not introduce billing or entitlement implementation paths', () 
       `${rel} must not introduce billing/checkout implementation`
     );
   }
+});
+
+// ─── 8. Issue #3558 — Intro CSP: no duplicate inline shared-header bootstrap ─
+
+const INTRO_INIT = 'js/intro/intro-page-init.js';
+
+function collectExecutableInlineScripts(html) {
+  const blocks = [];
+  const scriptTags = Array.from(html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi));
+  for (const [, attrs, content] of scriptTags) {
+    if (/\bsrc\s*=/.test(attrs)) continue;
+    if (/\btype\s*=\s*["']?(?:application|text)\/(?:ld\+)?json["']?/i.test(attrs)) continue;
+    const trimmed = content.trim();
+    if (trimmed !== '') blocks.push(trimmed);
+  }
+  return blocks;
+}
+
+function scriptSrcPositions(html, fragment) {
+  const re = /<script\b[^>]*\bsrc\s*=\s*["']([^"']+)["'][^>]*>/gi;
+  const hits = [];
+  let match;
+  while ((match = re.exec(html)) !== null) {
+    if (match[1].includes(fragment)) hits.push({ index: match.index, src: match[1] });
+  }
+  return hits;
+}
+
+test('#3558 Intro HTML has no executable inline script blocks', () => {
+  const html = read(INTRO_HTML);
+  const inline = collectExecutableInlineScripts(html);
+  assert.deepEqual(
+    inline,
+    [],
+    `${INTRO_HTML} must not contain executable inline <script>...</script> blocks; found: ${JSON.stringify(inline)}`
+  );
+});
+
+test('#3558 Intro still loads shared-header.js before intro-page-init.js', () => {
+  const html = read(INTRO_HTML);
+  const headerHits = scriptSrcPositions(html, 'js/shared-header.js');
+  const initHits = scriptSrcPositions(html, 'js/intro/intro-page-init.js');
+  assert.equal(headerHits.length, 1, `${INTRO_HTML} must load js/shared-header.js exactly once`);
+  assert.equal(initHits.length, 1, `${INTRO_HTML} must load js/intro/intro-page-init.js exactly once`);
+  assert.ok(
+    headerHits[0].index < initHits[0].index,
+    'shared-header.js must appear before intro-page-init.js in script order'
+  );
+});
+
+test('#3558 intro-page-init.js remains the sole renderSharedHeader initializer', () => {
+  const init = read(INTRO_INIT);
+  const html = read(INTRO_HTML);
+  assert.ok(
+    /renderSharedHeader\s*\(/.test(init),
+    `${INTRO_INIT} must call renderSharedHeader()`
+  );
+  assert.ok(
+    /DOMContentLoaded/.test(init),
+    `${INTRO_INIT} must invoke header init from its DOMContentLoaded path`
+  );
+  assert.ok(
+    !/renderSharedHeader\s*\(/.test(html),
+    `${INTRO_HTML} must not call renderSharedHeader() (external initializer owns it)`
+  );
+  // Exactly one active Intro initialization source for shared header.
+  const introJsFiles = [
+    INTRO_INIT,
+    'js/i18n/i18n-intro.js',
+  ];
+  let callSites = 0;
+  for (const rel of introJsFiles) {
+    const src = read(rel);
+    const matches = src.match(/renderSharedHeader\s*\(/g) || [];
+    callSites += matches.length;
+  }
+  assert.equal(
+    callSites,
+    1,
+    'Exactly one active Intro renderSharedHeader() call site must remain (intro-page-init.js)'
+  );
+});
+
+test('#3558 public-first KO/EN copy remains unchanged and private-first stays absent', () => {
+  const html = read(INTRO_HTML);
+  const i18n = read(INTRO_I18N);
+  assert.ok(/공개로 시작해요/.test(html), `${INTRO_HTML} KO title must remain`);
+  assert.ok(
+    /새 러브트리는 공개로 시작하며,\s*공개 여부는 편집 화면에서 확인할 수 있어요/.test(html),
+    `${INTRO_HTML} KO body must remain`
+  );
+  assert.ok(/ko:\s*'공개로 시작해요'/.test(i18n), `${INTRO_I18N} KO title must remain`);
+  assert.ok(/en:\s*'Start in public'/.test(i18n), `${INTRO_I18N} EN title must remain`);
+  assert.ok(
+    /ko:\s*'새 러브트리는 공개로 시작하며, 공개 여부는 편집 화면에서 확인할 수 있어요\.'/.test(i18n),
+    `${INTRO_I18N} KO body must remain`
+  );
+  assert.ok(
+    /en:\s*'New LoveTrees start public\. You can check visibility on the edit screen\.'/.test(i18n),
+    `${INTRO_I18N} EN body must remain`
+  );
+  assert.ok(!/비공개로 시작해요/.test(html + i18n), 'private-first start copy must remain absent');
+  assert.ok(
+    !/Plus에서 비공개|Plus private storage|private storage availability/i.test(html + i18n),
+    'Intro must not add a Plus private-storage availability promise'
+  );
 });
