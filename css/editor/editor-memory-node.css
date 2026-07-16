@@ -13,32 +13,50 @@
     position: absolute;
     z-index: 2;
     width: 108px;
+    /* Canonical base geometry: viewport zoom is applied via inline scale transform.
+       Never clobber transform from hover/selected presentation rules. */
+    min-width: 108px;
+    box-sizing: border-box;
 }
 
-/* Structured layout: no drag cursor */
+/* Structured layout: no free-drag cursor chrome */
 .layout-structured .memory-node {
     cursor: default !important;
     user-select: none;
 }
 
+/*
+ * #3561: Do NOT set transform on .memory-node:hover.
+ * Viewport zoom uses inline style transform: scale(viewportScale).
+ * A previous rule (transform: none !important) cancelled that scale while a
+ * card was hovered/selected via pointer, so the selected card jumped to full
+ * size and the previous card looked crushed after selection moved away.
+ * Selection/hover emphasis belongs on .node-card only.
+ */
 .layout-structured .memory-node:hover {
-    transform: none !important;
     box-shadow: none !important;
 }
 
 .node-card {
     width: 102px;
+    min-width: 102px;
     margin: 0 auto;
     background: rgba(255, 255, 255, 0.92);
     border-radius: 16px;
     border: 1px solid rgba(144, 73, 81, 0.08);
     box-shadow: 0 4px 12px rgba(75, 64, 57, 0.06);
-    transition: all 0.3s ease;
+    /* Presentation-only transitions; avoid width/height animation side effects */
+    transition: transform 0.24s ease, border-color 0.24s ease, box-shadow 0.24s ease, background-color 0.24s ease;
+    box-sizing: border-box;
 }
 
 .node-img-wrapper {
     width: 90px;
+    min-width: 90px;
     height: 90px;
+    min-height: 90px;
+    position: relative;
+    box-sizing: border-box;
 }
 
 .node-info-label {
@@ -139,11 +157,25 @@
     box-shadow: 0 12px 28px rgba(144, 73, 81, 0.10);
 }
 
+/* Selected emphasis is card-local and fully reversible; node shell geometry stays fixed. */
+.memory-node.selected {
+    z-index: 3;
+}
+
 .memory-node.selected .node-card {
     transform: scale(1.01);
     border-color: rgba(144, 73, 81, 0.30);
     box-shadow: 0 10px 24px rgba(144, 73, 81, 0.09);
     transition: transform 0.24s ease, border-color 0.24s ease, box-shadow 0.24s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .node-card,
+    .memory-node.selected .node-card,
+    .memory-node:hover .node-card {
+        transition: none;
+        transform: none;
+    }
 }
 
 .memory-node:focus-visible .node-card {

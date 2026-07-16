@@ -128,15 +128,24 @@
     100% { opacity: 0; }
 }
 
-/* Memory node focus ring animation */
+/* Memory node focus ring animation.
+ * #3561: animate box-shadow only — never transform.
+ * Node shell transform is reserved for viewport zoom (inline scale).
+ */
 .memory-node.focus-animate {
     animation: nodeFocusPulse 0.6s ease-out backwards;
 }
 
 @keyframes nodeFocusPulse {
-    0% { box-shadow: 0 0 0 0 rgba(144, 73, 81, 0.25); transform: scale(1); }
-    50% { box-shadow: 0 0 0 12px rgba(144, 73, 81, 0); transform: scale(1.04); }
-    100% { box-shadow: 0 0 0 0 rgba(144, 73, 81, 0); transform: scale(1); }
+    0% { box-shadow: 0 0 0 0 rgba(144, 73, 81, 0.25); }
+    50% { box-shadow: 0 0 0 12px rgba(144, 73, 81, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(144, 73, 81, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .memory-node.focus-animate {
+        animation: none;
+    }
 }
 
 .canvas-svg {

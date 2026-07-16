@@ -25,3 +25,11 @@ test('memory node base and new-node highlight affordances stay intact', () => {
   assert.match(css, /\.node-card\s*\{[\s\S]*?width:\s*102px/);
   assert.match(css, /\.new-node-highlight \.node-card\s*\{[\s\S]*?animation:\s*newNodePulse 1\.5s ease-in-out 3/);
 });
+
+test('#3561 structured hover never clobbers node transform with none !important', () => {
+  assert.doesNotMatch(
+    css,
+    /\.layout-structured\s+\.memory-node:hover\s*\{[^}]*transform:\s*none\s*!important/i
+  );
+  assert.match(css, /\.memory-node\s*\{[\s\S]*?min-width:\s*108px/);
+});
