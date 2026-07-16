@@ -27,7 +27,8 @@ const {
   FAILURE,
   buildProductionReadonlyInvocationPlan,
   isSupportedProductionServerVersionNum,
-  stripValidatedConnectionForClient,
+  getPrivateInvocationParts,
+  releaseInvocationPlan,
 } = require('./production-readonly-catalog-boundary-core.cjs');
 
 const REPO_ROOT = path.resolve(__dirname, '..');
@@ -110,33 +111,35 @@ async function main() {
     });
 
     // Sanitized validation success — no host/user/db/password/url.
+    const privateParts = getPrivateInvocationParts(plan);
     const validationReport = {
       mode: MODE,
       decision: 'VALIDATION_PASS',
       validate_only: validateOnly === true,
       object_count: plan.objectCount,
-      objects: plan.objects.map(
-        (o) => `${o.object_kind.toLowerCase()}:${o.schema}.${o.object_name}`
-      ),
+      objects: plan.objectNames,
       version_policy: plan.versionPolicy,
       dedicated_secret_key: plan.dedicatedSecretKey,
       disposable_mode_preserved: plan.disposableModePreserved,
       connection_validated: true,
       role_mapping_classes_present: true,
-      // Prove strip helper works without logging secrets.
-      client_config_shape: Object.keys(stripValidatedConnectionForClient(plan.connection)).sort(),
+      // Shape only — never values.
+      client_config_shape: Object.keys(privateParts.pgConfig).sort(),
       production_version_helper_loaded: typeof isSupportedProductionServerVersionNum === 'function',
+      opaque_handle: true,
     };
 
     if (validateOnly) {
+      releaseInvocationPlan(plan);
       process.stdout.write(`${JSON.stringify(validationReport, null, 2)}\n`);
       process.exitCode = 0;
       return;
     }
 
     // Full connect/collection is intentionally not auto-run by this child.
-    // A later Phase B operator child may extend this path after merge + dedicated
-    // credentials. Without explicit engine invocation here, refuse to connect.
+    // A later Phase B operator child may invoke
+    // collectProductionReadonlyCatalogEvidenceFromFiles after dedicated credentials exist.
+    releaseInvocationPlan(plan);
     failClosed([FAILURE.PRODUCTION_CATALOG_POLICY_INVALID]);
   } catch (error) {
     const category = (error && error.category) || FAILURE.PRODUCTION_CATALOG_INPUT_INVALID;

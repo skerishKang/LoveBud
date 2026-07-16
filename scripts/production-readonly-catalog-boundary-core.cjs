@@ -3,16 +3,23 @@
 /**
  * Pure fail-closed Production-readonly catalog connection boundary.
  *
- * Source-only policy helpers for a future Phase B collection child.
- * Does not open sockets, does not load real Production secrets in tests,
- * and never embeds hostnames or raw secret values in errors.
+ * Source-only policy helpers. Does not open sockets in tests.
+ * Never embeds hostnames or raw secret values in errors.
+ *
+ * Trust boundary notes:
+ * - No forgeable boolean markers.
+ * - Invocation plans store pg credentials only in a module-private Map
+ *   keyed by an opaque non-enumerable handle created in this module.
+ * - Generic adapter collect APIs never accept Production mode inputs.
  *
  * Refs #3570, #3458, #3569 (CLOSED)
  * Refs #3425 — Keep #3425 OPEN.
  * Refs #1882 — Keep #1882 OPEN.
  */
 
+const crypto = require('node:crypto');
 const fs = require('node:fs');
+const net = require('node:net');
 const path = require('node:path');
 
 const MODE = 'PRODUCTION_READONLY_CATALOG';
@@ -39,6 +46,7 @@ const FAILURE = Object.freeze({
   PRODUCTION_CATALOG_ROLE_MAPPING_INVALID: 'PRODUCTION_CATALOG_ROLE_MAPPING_INVALID',
   PRODUCTION_CATALOG_CALLER_OVERRIDE_REJECTED: 'PRODUCTION_CATALOG_CALLER_OVERRIDE_REJECTED',
   PRODUCTION_CATALOG_POLICY_INVALID: 'PRODUCTION_CATALOG_POLICY_INVALID',
+  PRODUCTION_CATALOG_HANDLE_INVALID: 'PRODUCTION_CATALOG_HANDLE_INVALID',
 });
 
 const GRANTEE_CLASSES = Object.freeze([
@@ -57,7 +65,6 @@ const PROHIBITED_GENERIC_KEYS = Object.freeze([
   'POSTGRES_URL_NON_POOLING',
 ]);
 
-const LOOPBACK_HOSTS = Object.freeze(new Set(['localhost', '127.0.0.1', '::1']));
 const ALLOWED_SSLMODE = Object.freeze(new Set(['require', 'verify-ca', 'verify-full']));
 const PROHIBITED_SSLMODE = Object.freeze(new Set(['disable', 'allow', 'prefer']));
 const MAX_URL_LENGTH = 4096;
@@ -65,17 +72,19 @@ const MAX_SECRET_FILE_BYTES = 64 * 1024;
 const IDENT_RE = /^[A-Za-z_][A-Za-z0-9_]*$/;
 const OBJECT_NAME_RE =
   /^(table|view|materialized_view):([A-Za-z_][A-Za-z0-9_]*)\.([A-Za-z_][A-Za-z0-9_]*)$/;
-
 const KIND_BY_PREFIX = Object.freeze({
   table: 'TABLE',
   view: 'VIEW',
   materialized_view: 'MATERIALIZED_VIEW',
 });
 
+/** Module-private store for opaque invocation handles (not forgeable via plain JSON). */
+const privateInvocationStore = new Map();
+const HANDLE_BRAND = Symbol('lovebud.productionReadonlyInvocation');
+
 function fail(category) {
   const err = new Error(category);
   err.category = category;
-  // Never attach secret/url/path payloads.
   err.context = {};
   throw err;
 }
@@ -113,10 +122,6 @@ function loadBoundaryContract(repoRoot) {
   return doc;
 }
 
-/**
- * Resolve and confine a secret/config file path under repo/.secrets/.
- * Rejects absolute escapes, symlinks, and non-files without leaking paths.
- */
 function resolveSecretsRelativeFile(repoRoot, relPath) {
   assertNonEmptyString(relPath, FAILURE.PRODUCTION_CATALOG_SECRET_FILE_INVALID);
   if (path.isAbsolute(relPath)) {
@@ -146,7 +151,6 @@ function resolveSecretsRelativeFile(repoRoot, relPath) {
   if (!st.isFile() || st.isSymbolicLink()) {
     fail(FAILURE.PRODUCTION_CATALOG_SECRET_FILE_INVALID);
   }
-  // Extra realpath confinement (Windows/Unix).
   let realFile;
   let realSecrets;
   try {
@@ -162,17 +166,17 @@ function resolveSecretsRelativeFile(repoRoot, relPath) {
 }
 
 /**
- * Minimal KEY=VALUE parser for ignored secret files.
- * Supports optional single/double quotes; rejects exports, multiline, duplicates.
- * Never returns values for non-requested keys to callers that only need presence checks.
+ * KEY=VALUE parser. Dedicated Production secret files may contain ONLY the
+ * dedicated key (plus blank/comment lines). Any other key fails closed.
  */
-function parseSecretFileKeyValues(fileContents) {
+function parseSecretFileKeyValues(fileContents, options) {
   if (typeof fileContents !== 'string') {
     fail(FAILURE.PRODUCTION_CATALOG_SECRET_FILE_INVALID);
   }
   if (fileContents.length > MAX_SECRET_FILE_BYTES) {
     fail(FAILURE.PRODUCTION_CATALOG_SECRET_FILE_INVALID);
   }
+  const dedicatedOnly = !options || options.dedicatedOnly !== false;
   const map = new Map();
   const lines = fileContents.split(/\r?\n/);
   for (const line of lines) {
@@ -202,6 +206,12 @@ function parseSecretFileKeyValues(fileContents) {
     if (value.includes('\n') || value.includes('\r') || value.includes('\0')) {
       fail(FAILURE.PRODUCTION_CATALOG_SECRET_FILE_INVALID);
     }
+    if (dedicatedOnly && key !== DEDICATED_SECRET_KEY) {
+      if (PROHIBITED_GENERIC_KEYS.includes(key)) {
+        fail(FAILURE.PRODUCTION_CATALOG_GENERIC_DATABASE_URL_REJECTED);
+      }
+      fail(FAILURE.PRODUCTION_CATALOG_SECRET_FILE_INVALID);
+    }
     map.set(key, value);
   }
   return map;
@@ -224,46 +234,202 @@ function readSecretFileMap(repoRoot, relPath) {
   } catch {
     fail(FAILURE.PRODUCTION_CATALOG_SECRET_FILE_INVALID);
   }
-  return parseSecretFileKeyValues(text);
+  return parseSecretFileKeyValues(text, { dedicatedOnly: true });
 }
 
-/**
- * Load dedicated Production-readonly database URL only.
- * Generic DATABASE_URL presence alone is rejected (no fallback).
- */
 function loadDedicatedProductionReadonlyDatabaseUrl(repoRoot, secretFileRelPath) {
   const map = readSecretFileMap(repoRoot, secretFileRelPath);
-  for (const banned of PROHIBITED_GENERIC_KEYS) {
-    // Presence of generic keys is allowed in the file, but must not be used as fallback.
-    // If dedicated key is missing, still reject even if generic exists.
-    void banned;
-  }
   if (!map.has(DEDICATED_SECRET_KEY)) {
-    // Distinguish generic-only case without reading generic value into output.
-    const hasGeneric = PROHIBITED_GENERIC_KEYS.some((k) => map.has(k));
-    if (hasGeneric) {
-      fail(FAILURE.PRODUCTION_CATALOG_GENERIC_DATABASE_URL_REJECTED);
-    }
     fail(FAILURE.PRODUCTION_CATALOG_SECRET_REQUIRED);
+  }
+  if (map.size !== 1) {
+    // dedicatedOnly parser already rejects extra keys; belt-and-suspenders.
+    fail(FAILURE.PRODUCTION_CATALOG_SECRET_FILE_INVALID);
   }
   const url = map.get(DEDICATED_SECRET_KEY);
   assertNonEmptyString(url, FAILURE.PRODUCTION_CATALOG_SECRET_REQUIRED);
   return url;
 }
 
-function isLoopbackHost(host) {
-  if (!host) return true;
-  const h = String(host).toLowerCase();
-  if (LOOPBACK_HOSTS.has(h)) return true;
-  if (h.startsWith('127.')) return true;
-  return false;
+/**
+ * Canonicalize hostname/IP forms for loopback detection.
+ * Never throws host strings into error context.
+ */
+function canonicalizeHostForLoopbackCheck(rawHost) {
+  if (typeof rawHost !== 'string' || !rawHost) return '';
+  let h = rawHost.trim().toLowerCase();
+  if (h.endsWith('.')) h = h.slice(0, -1);
+  if (h.startsWith('[') && h.endsWith(']')) {
+    h = h.slice(1, -1);
+  }
+
+  // IPv4-mapped IPv6: ::ffff:127.0.0.1 or ::ffff:7f00:1
+  if (h.startsWith('::ffff:')) {
+    const mapped = h.slice('::ffff:'.length);
+    if (net.isIPv4(mapped)) {
+      return canonicalizeIPv4(mapped) || mapped;
+    }
+    // hex form like 7f00:1
+    const hexParts = mapped.split(':');
+    if (hexParts.length === 2) {
+      const hi = parseInt(hexParts[0], 16);
+      const lo = parseInt(hexParts[1], 16);
+      if (Number.isFinite(hi) && Number.isFinite(lo)) {
+        const a = (hi >> 8) & 255;
+        const b = hi & 255;
+        const c = (lo >> 8) & 255;
+        const d = lo & 255;
+        return `${a}.${b}.${c}.${d}`;
+      }
+    }
+  }
+
+  if (net.isIPv6(h)) {
+    // Expand compressed IPv6 for ::1 comparison via URL/whatwg normalization.
+    try {
+      // Node normalizes some IPv6 forms via URL hostname.
+      const u = new URL(`http://[${h}]/`);
+      return (u.hostname || h).replace(/^\[|\]$/g, '').toLowerCase();
+    } catch {
+      return h;
+    }
+  }
+
+  if (net.isIPv4(h) || looksLikeIPv4Alternate(h)) {
+    const v4 = canonicalizeIPv4(h);
+    if (v4) return v4;
+  }
+
+  // Decimal / hex whole-address IPv4 (e.g. 2130706433, 0x7f000001)
+  const asInt = canonicalizeIPv4Integer(h);
+  if (asInt) return asInt;
+
+  return h;
+}
+
+function looksLikeIPv4Alternate(h) {
+  // 127.1, 127.0.1, 0177.0.0.1, etc.
+  return /^[0-9a-fx.]+$/i.test(h) && h.includes('.');
+}
+
+function parseIPv4Part(part) {
+  if (typeof part !== 'string' || !part) return null;
+  let n;
+  if (/^0x[0-9a-f]+$/i.test(part)) {
+    n = parseInt(part, 16);
+  } else if (/^0[0-7]+$/.test(part)) {
+    n = parseInt(part, 8);
+  } else if (/^\d+$/.test(part)) {
+    n = parseInt(part, 10);
+  } else {
+    return null;
+  }
+  if (!Number.isInteger(n) || n < 0) return null;
+  return n;
 }
 
 /**
- * Pure URL validator / normalizer for Production-readonly catalog mode.
- * Returns a pg Client config object with a private validation marker.
- * Never includes the raw URL in thrown errors.
+ * Canonicalize alternate IPv4 notations to dotted-decimal.
+ * Returns null if not parseable as IPv4.
  */
+function canonicalizeIPv4(input) {
+  if (net.isIPv4(input)) {
+    // Normalize leading zeros via parseInt of each octet.
+    const parts = input.split('.').map((p) => parseInt(p, 10));
+    if (parts.length === 4 && parts.every((n) => n >= 0 && n <= 255)) {
+      return parts.join('.');
+    }
+  }
+
+  const asInt = canonicalizeIPv4Integer(input);
+  if (asInt) return asInt;
+
+  const parts = String(input).split('.');
+  if (parts.length < 1 || parts.length > 4) return null;
+  const nums = [];
+  for (const part of parts) {
+    const n = parseIPv4Part(part);
+    if (n === null) return null;
+    nums.push(n);
+  }
+
+  // Expand short forms: a, a.b, a.b.c, a.b.c.d (POSIX inet_aton style).
+  let a = 0;
+  let b = 0;
+  let c = 0;
+  let d = 0;
+  if (nums.length === 1) {
+    const n = nums[0];
+    if (n > 0xffffffff) return null;
+    a = (n >>> 24) & 255;
+    b = (n >>> 16) & 255;
+    c = (n >>> 8) & 255;
+    d = n & 255;
+  } else if (nums.length === 2) {
+    if (nums[0] > 255 || nums[1] > 0xffffff) return null;
+    a = nums[0];
+    b = (nums[1] >>> 16) & 255;
+    c = (nums[1] >>> 8) & 255;
+    d = nums[1] & 255;
+  } else if (nums.length === 3) {
+    if (nums[0] > 255 || nums[1] > 255 || nums[2] > 0xffff) return null;
+    a = nums[0];
+    b = nums[1];
+    c = (nums[2] >>> 8) & 255;
+    d = nums[2] & 255;
+  } else if (nums.length === 4) {
+    if (nums.some((n) => n > 255)) return null;
+    [a, b, c, d] = nums;
+  } else {
+    return null;
+  }
+  return `${a}.${b}.${c}.${d}`;
+}
+
+function canonicalizeIPv4Integer(input) {
+  const s = String(input);
+  let n;
+  if (/^0x[0-9a-f]+$/i.test(s)) {
+    n = parseInt(s, 16);
+  } else if (/^\d+$/.test(s)) {
+    n = parseInt(s, 10);
+  } else {
+    return null;
+  }
+  if (!Number.isInteger(n) || n < 0 || n > 0xffffffff) return null;
+  const a = (n >>> 24) & 255;
+  const b = (n >>> 16) & 255;
+  const c = (n >>> 8) & 255;
+  const d = n & 255;
+  return `${a}.${b}.${c}.${d}`;
+}
+
+function isLoopbackHost(rawHost) {
+  const h = canonicalizeHostForLoopbackCheck(rawHost);
+  if (!h) return true;
+  if (h === 'localhost') return true;
+  if (h === '::1' || h === '0:0:0:0:0:0:0:1') return true;
+  // Fully expanded forms containing only ::1
+  if (net.isIPv6(h)) {
+    // Compare against normalized ::1 via BigInt if possible
+    try {
+      const expanded = h;
+      if (expanded === '::1') return true;
+      // Strip zeros form
+      if (/^(0{0,4}:){7}1$/.test(expanded) || expanded.endsWith(':0:0:0:0:0:0:1')) return true;
+      if (expanded.replace(/^\[|\]$/g, '') === '::1') return true;
+    } catch {
+      /* ignore */
+    }
+  }
+  const v4 = canonicalizeIPv4(h) || (net.isIPv4(h) ? h : null);
+  if (v4) {
+    const parts = v4.split('.').map((x) => Number(x));
+    if (parts[0] === 127) return true;
+  }
+  return false;
+}
+
 function parseProductionReadonlyDatabaseUrl(urlString) {
   if (typeof urlString !== 'string' || !urlString || urlString.length > MAX_URL_LENGTH) {
     fail(FAILURE.PRODUCTION_CATALOG_URL_INVALID);
@@ -302,7 +468,6 @@ function parseProductionReadonlyDatabaseUrl(urlString) {
     fail(FAILURE.PRODUCTION_CATALOG_LOOPBACK_REJECTED);
   }
 
-  // Reject credential-bearing nested params / unexpected unsafe options.
   for (const key of parsed.searchParams.keys()) {
     const lower = key.toLowerCase();
     if (
@@ -333,19 +498,18 @@ function parseProductionReadonlyDatabaseUrl(urlString) {
     }
   }
 
-  return Object.freeze({
-    __productionReadonlyValidated: true,
+  // Return plain pg fields only — no forgeable trust marker property.
+  return {
     host,
     port,
     user: username,
     password,
     database,
-    ssl: Object.freeze({ rejectUnauthorized: true }),
+    ssl: { rejectUnauthorized: true },
     connectionTimeoutMillis: 10000,
-  });
+  };
 }
 
-/** Pure major-17 version policy for Production-readonly mode. */
 function isSupportedProductionServerVersionNum(value) {
   const n = Number(value);
   if (!Number.isInteger(n)) return false;
@@ -358,10 +522,6 @@ function assertSupportedProductionServerVersionNum(value) {
   }
 }
 
-/**
- * Load frozen adoption allowlist as adapter object descriptors.
- * Caller override of objects is never accepted here.
- */
 function loadFrozenAdoptionAllowlistObjects(repoRoot) {
   const abs = path.resolve(repoRoot, ADOPTION_PLAN_CONTRACT);
   const contract = loadJsonFile(abs, FAILURE.PRODUCTION_CATALOG_ALLOWLIST_REQUIRED);
@@ -380,10 +540,9 @@ function loadFrozenAdoptionAllowlistObjects(repoRoot) {
       fail(FAILURE.PRODUCTION_CATALOG_ALLOWLIST_REQUIRED);
     }
     const m = name.match(OBJECT_NAME_RE);
-    const prefix = m[1];
+    const objectKind = KIND_BY_PREFIX[m[1]];
     const schema = m[2];
     const objectName = m[3];
-    const objectKind = KIND_BY_PREFIX[prefix];
     if (!objectKind) fail(FAILURE.PRODUCTION_CATALOG_ALLOWLIST_REQUIRED);
     if (item.kind && item.kind !== objectKind) {
       fail(FAILURE.PRODUCTION_CATALOG_ALLOWLIST_REQUIRED);
@@ -400,10 +559,6 @@ function loadFrozenAdoptionAllowlistObjects(repoRoot) {
   return out;
 }
 
-/**
- * Load role mapping from an ignored secrets-boundary JSON file.
- * Synthetic keys only in fixtures; raw role names never logged.
- */
 function loadProductionRoleMapping(repoRoot, relPath) {
   if (relPath === undefined || relPath === null || relPath === '') {
     fail(FAILURE.PRODUCTION_CATALOG_ROLE_MAPPING_REQUIRED);
@@ -460,6 +615,10 @@ function rejectCallerOverrides(options) {
     'connectionString',
     'databaseUrl',
     'DATABASE_URL',
+    'connection',
+    'roleMapping',
+    'mode',
+    '__productionReadonlyValidated',
   ];
   for (const key of banned) {
     if (Object.prototype.hasOwnProperty.call(options, key)) {
@@ -468,9 +627,30 @@ function rejectCallerOverrides(options) {
   }
 }
 
+function createOpaqueInvocationHandle(privatePayload) {
+  const id = crypto.randomBytes(24).toString('hex');
+  const handle = Object.freeze({
+    [HANDLE_BRAND]: true,
+    id,
+  });
+  privateInvocationStore.set(id, privatePayload);
+  return handle;
+}
+
+function resolveOpaqueInvocationHandle(handle) {
+  if (!handle || typeof handle !== 'object' || handle[HANDLE_BRAND] !== true) {
+    fail(FAILURE.PRODUCTION_CATALOG_HANDLE_INVALID);
+  }
+  const payload = privateInvocationStore.get(handle.id);
+  if (!payload) {
+    fail(FAILURE.PRODUCTION_CATALOG_HANDLE_INVALID);
+  }
+  return payload;
+}
+
 /**
- * Build a complete Production-readonly invocation package (no network).
- * Used by CLI before optional future connect, and by source-static tests.
+ * Build a Production-readonly invocation plan from secret/role files only.
+ * Public plan fields are sanitized; credentials live only in the private store.
  */
 function buildProductionReadonlyInvocationPlan(repoRoot, options) {
   rejectCallerOverrides(options || {});
@@ -479,39 +659,65 @@ function buildProductionReadonlyInvocationPlan(repoRoot, options) {
   assertNonEmptyString(secretFile, FAILURE.PRODUCTION_CATALOG_SECRET_FILE_INVALID);
 
   const url = loadDedicatedProductionReadonlyDatabaseUrl(repoRoot, secretFile);
-  const connection = parseProductionReadonlyDatabaseUrl(url);
+  const pgConfig = parseProductionReadonlyDatabaseUrl(url);
   const objects = loadFrozenAdoptionAllowlistObjects(repoRoot);
   const roleMapping = loadProductionRoleMapping(repoRoot, roleMappingFile);
+
+  const handle = createOpaqueInvocationHandle({
+    pgConfig,
+    objects,
+    roleMapping,
+  });
 
   return Object.freeze({
     mode: MODE,
     disposableModePreserved: DISPOSABLE_MODE,
     dedicatedSecretKey: DEDICATED_SECRET_KEY,
     objectCount: objects.length,
-    objects,
-    roleMapping,
-    connection,
+    // Public names only (sanitized). Authoritative objects live in private store.
+    objectNames: objects.map(
+      (o) => `${o.object_kind.toLowerCase()}:${o.schema}.${o.object_name}`
+    ),
+    roleMappingClassCount: Object.keys(roleMapping).length,
     versionPolicy: Object.freeze({
       supported_major: 17,
       min_inclusive: 170000,
       max_exclusive: 180000,
     }),
+    // Opaque handle — not a forgeable boolean marker / JSON-cloneable trust bit.
+    handle,
   });
 }
 
-function stripValidatedConnectionForClient(connection) {
-  if (!connection || connection.__productionReadonlyValidated !== true) {
-    fail(FAILURE.PRODUCTION_CATALOG_URL_INVALID);
+function getPrivateInvocationParts(plan) {
+  if (!plan || typeof plan !== 'object') {
+    fail(FAILURE.PRODUCTION_CATALOG_HANDLE_INVALID);
   }
+  const payload = resolveOpaqueInvocationHandle(plan.handle);
   return {
-    host: connection.host,
-    port: connection.port,
-    user: connection.user,
-    password: connection.password,
-    database: connection.database,
-    ssl: connection.ssl,
-    connectionTimeoutMillis: connection.connectionTimeoutMillis || 10000,
+    pgConfig: {
+      host: payload.pgConfig.host,
+      port: payload.pgConfig.port,
+      user: payload.pgConfig.user,
+      password: payload.pgConfig.password,
+      database: payload.pgConfig.database,
+      ssl: { rejectUnauthorized: true },
+      connectionTimeoutMillis: payload.pgConfig.connectionTimeoutMillis || 10000,
+    },
+    objects: payload.objects,
+    roleMapping: payload.roleMapping,
   };
+}
+
+function toPgClientConfigFromInvocationPlan(plan) {
+  return getPrivateInvocationParts(plan).pgConfig;
+}
+
+/** Test helper: clear private store entries for a plan handle. */
+function releaseInvocationPlan(plan) {
+  if (plan && plan.handle && plan.handle.id) {
+    privateInvocationStore.delete(plan.handle.id);
+  }
 }
 
 module.exports = {
@@ -536,6 +742,10 @@ module.exports = {
   loadProductionRoleMapping,
   rejectCallerOverrides,
   buildProductionReadonlyInvocationPlan,
-  stripValidatedConnectionForClient,
+  getPrivateInvocationParts,
+  toPgClientConfigFromInvocationPlan,
+  releaseInvocationPlan,
   isLoopbackHost,
+  canonicalizeHostForLoopbackCheck,
+  canonicalizeIPv4,
 };
