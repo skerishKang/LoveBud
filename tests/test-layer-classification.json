@@ -3743,6 +3743,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/viewer-moment-card-geometry-3561-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes LoveBudEditorSelectionUI in a fake DOM with four media-less moment nodes and asserts #3561 geometry invariants (exactly one selected, preserved viewport scale transform, no residual width/flex mutation) plus CSS/source guards; no real browser/network/DB.",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/viewer-remaining-orchestration-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
