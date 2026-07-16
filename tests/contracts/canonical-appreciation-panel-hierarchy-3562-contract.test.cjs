@@ -314,21 +314,13 @@ test('#3576 sidebar template loads as classic script in editor.html (not deferre
     /<script[^>]*src="[^"]*editor-sidebar-template\.js[^"]*"[^>]*>/g
   );
   assert.ok(sidebarTag && sidebarTag.length === 1, 'exactly one sidebar script tag');
-  assert.equal(
+  assert.ok(
     sidebarTag[0].includes('type="module"'),
-    false,
-    'sidebar template must not be a module script'
+    'sidebar template must be loaded as type="module" (ESM)'
   );
   const sharedIdx = editorHtml.indexOf('canonical-appreciation-detail-presentation.js');
   const sideIdx = editorHtml.indexOf('editor-sidebar-template.js');
   assert.ok(sideIdx > sharedIdx, 'sidebar template after shared builder');
-});
-
-test('#3576 sidebar template source has no export keyword', () => {
-  const src = require('fs').readFileSync(
-    path.join(ROOT, 'js/editor/templates/editor-sidebar-template.js'), 'utf8'
-  );
-  assert.equal(src.includes('export '), false, 'no export keyword in sidebar template');
 });
 
 test('#3576 EXECUTED: sidebar mount creates detailTreeMetaMount', () => {

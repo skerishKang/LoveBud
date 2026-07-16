@@ -377,6 +377,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/execution-order-3576-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Simulates editor.html page execution order in node:vm — shared builder (classic) → deferred sidebar module → DOMContentLoaded → detail UI init. Proves deferred module scripts execute before DOMContentLoaded and #detailTreeMetaMount exists when createEditorDetailUI would run. No real browser/network/DB.",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/canonical-appreciation-render-model-runtime-contract.test.cjs",
       "layer": "EXECUTED_FAKE",
       "rationale": "Executes the browser-global pure appreciation render-model helper in node:vm with injected window context and asserts normalization, field omission, detached outputs, and fail-closed capabilities. No real browser, network, auth provider, database, deployment, or Production resource is used.",
