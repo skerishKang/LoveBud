@@ -1,0 +1,280 @@
+{
+  "format_version": "1.0",
+  "normalizer_version": "1.0",
+  "allowed_top_level_fields": [
+    "format_version",
+    "normalizer_version",
+    "objects"
+  ],
+  "supported_object_kinds": [
+    "TABLE",
+    "VIEW",
+    "MATERIALIZED_VIEW"
+  ],
+  "object_identity_fields": [
+    "schema",
+    "object_name",
+    "object_kind"
+  ],
+  "canonical_name_templates": {
+    "TABLE": "table:<schema>.<object_name>",
+    "VIEW": "view:<schema>.<object_name>",
+    "MATERIALIZED_VIEW": "materialized_view:<schema>.<object_name>"
+  },
+  "identifier_contract": {
+    "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+    "max_length": 63,
+    "min_length": 1,
+    "allow_quoted_forms": false,
+    "notes": "Unqualified objects are prohibited. Schema and object_name must be explicit PostgreSQL-like identifiers without control characters, path segments, or whitespace-only values."
+  },
+  "table_required_fields": [
+    "schema",
+    "object_name",
+    "object_kind",
+    "relation_kind",
+    "columns",
+    "constraints",
+    "indexes",
+    "triggers",
+    "row_level_security",
+    "grants",
+    "view_definition"
+  ],
+  "view_required_fields": [
+    "schema",
+    "object_name",
+    "object_kind",
+    "relation_kind",
+    "columns",
+    "constraints",
+    "indexes",
+    "triggers",
+    "row_level_security",
+    "grants",
+    "view_definition"
+  ],
+  "relation_kind_by_object_kind": {
+    "TABLE": "r",
+    "VIEW": "v",
+    "MATERIALIZED_VIEW": "m"
+  },
+  "object_shape_rules": {
+    "TABLE": {
+      "view_definition": "must_be_null",
+      "constraints": "array_allowed",
+      "indexes": "array_allowed",
+      "triggers": "array_allowed"
+    },
+    "VIEW": {
+      "view_definition": "must_be_non_null_string",
+      "constraints": "must_be_empty_array",
+      "indexes": "must_be_empty_array",
+      "triggers": "must_be_empty_array"
+    },
+    "MATERIALIZED_VIEW": {
+      "view_definition": "must_be_non_null_string",
+      "constraints": "must_be_empty_array",
+      "indexes": "array_allowed",
+      "triggers": "must_be_empty_array"
+    }
+  },
+  "column_fields": [
+    "name",
+    "type_identity",
+    "nullable",
+    "default_definition",
+    "generated_kind",
+    "identity_kind"
+  ],
+  "constraint_fields": [
+    "name",
+    "constraint_kind",
+    "validated",
+    "definition",
+    "fk_on_update",
+    "fk_on_delete"
+  ],
+  "index_fields": [
+    "name",
+    "primary",
+    "unique",
+    "valid",
+    "definition"
+  ],
+  "trigger_fields": [
+    "name",
+    "timing",
+    "events",
+    "level",
+    "enabled",
+    "function_identity",
+    "definition"
+  ],
+  "rls_fields": [
+    "enabled",
+    "forced",
+    "policies"
+  ],
+  "policy_fields": [
+    "name",
+    "command",
+    "permissive",
+    "role_scope",
+    "using_expression",
+    "check_expression"
+  ],
+  "grant_fields": [
+    "grantee_class",
+    "privileges",
+    "grantable"
+  ],
+  "component_duplicate_identity": {
+    "column": ["name"],
+    "constraint": ["name"],
+    "index": ["name"],
+    "trigger": ["name"],
+    "policy": ["name"],
+    "grant": ["grantee_class", "grantable"],
+    "notes": "PostgreSQL policy names are unique within a relation; command/role/expression differences under the same name are near-duplicates and must fail closed. Grant identity is grantee_class + grantable; privileges are sorted payload only and must not split one identity across multiple grant rows."
+  },
+  "type_identity_rules": {
+    "unicode_nfc": true,
+    "trim_outer_whitespace": true,
+    "collapse_internal_ascii_whitespace": false,
+    "control_characters": "fail_closed",
+    "sensitive_markers": "fail_closed",
+    "min_length": 1,
+    "max_length": 512,
+    "allowed_whitespace_code_points": [32],
+    "notes": "type_identity is a deterministic canonical scalar: NFC, outer whitespace trimmed, no C0/DEL controls, no sensitive markers. Outer whitespace is insignificant for equality; internal whitespace is preserved as written."
+  },
+  "definition_value_rules": {
+    "null_allowed_fields": [
+      "default_definition",
+      "using_expression",
+      "check_expression",
+      "view_definition_for_TABLE"
+    ],
+    "non_null_must_be_non_empty_after_canonicalize": true,
+    "whitespace_only_after_canonicalize": "fail_closed",
+    "failure_category": "CATALOG_DEFINITION_INVALID"
+  },
+  "enums": {
+    "generated_kind": ["NONE", "STORED"],
+    "identity_kind": ["NONE", "ALWAYS", "BY_DEFAULT"],
+    "constraint_kind": ["PRIMARY_KEY", "UNIQUE", "CHECK", "FOREIGN_KEY", "EXCLUSION"],
+    "fk_action": ["NO_ACTION", "RESTRICT", "CASCADE", "SET_NULL", "SET_DEFAULT"],
+    "trigger_timing": ["BEFORE", "AFTER", "INSTEAD_OF"],
+    "trigger_event": ["INSERT", "UPDATE", "DELETE", "TRUNCATE"],
+    "trigger_level": ["ROW", "STATEMENT"],
+    "trigger_enabled": ["ORIGIN", "DISABLED", "REPLICA", "ALWAYS"],
+    "policy_command": ["ALL", "SELECT", "INSERT", "UPDATE", "DELETE"],
+    "role_scope": ["PUBLIC", "APPLICATION", "AUTHENTICATED", "SERVICE", "OWNER_CLASS"],
+    "grantee_class": ["PUBLIC", "APPLICATION", "AUTHENTICATED", "SERVICE", "OWNER_CLASS"],
+    "privilege": ["SELECT", "INSERT", "UPDATE", "DELETE", "TRUNCATE", "REFERENCES", "TRIGGER"]
+  },
+  "limits": {
+    "max_objects": 256,
+    "max_columns_per_object": 256,
+    "max_constraints_per_object": 256,
+    "max_indexes_per_object": 256,
+    "max_triggers_per_object": 128,
+    "max_policies_per_object": 128,
+    "max_grants_per_object": 128,
+    "max_definition_length": 65536,
+    "max_type_identity_length": 512,
+    "max_input_bytes": 1048576,
+    "max_identifier_length": 63
+  },
+  "prohibited_object_fields": [
+    "fingerprint",
+    "checksum",
+    "owner",
+    "owner_id",
+    "operator",
+    "operator_id",
+    "operator_email",
+    "user_id",
+    "account_id",
+    "tree_id",
+    "memory_id",
+    "rows",
+    "row_values",
+    "values",
+    "payload",
+    "raw_catalog",
+    "connection_string",
+    "database_url",
+    "host",
+    "database",
+    "username",
+    "password",
+    "credential",
+    "secret",
+    "token",
+    "cookie",
+    "authorization",
+    "request_id",
+    "endpoint",
+    "url"
+  ],
+  "sensitive_content_markers": [
+    "postgres://",
+    "postgresql://",
+    "Authorization:",
+    "Bearer ",
+    "BEGIN PRIVATE KEY",
+    "password=",
+    "token=",
+    "secret="
+  ],
+  "sensitive_content_comparison": {
+    "ascii_case_insensitive": true,
+    "locale_case_folding": false,
+    "source_of_truth": "sensitive_content_markers",
+    "failure_category": "CATALOG_SENSITIVE_MARKER_DETECTED",
+    "echo_raw_content": false,
+    "notes": "Marker detection MUST use contract.sensitive_content_markers only. Comparison is explicit ASCII case-insensitive (A-Z/a-z) so URI schemes, Authorization headers, Bearer/password/token/secret markers cannot be bypassed by case variation. Failure output must not include raw text, paths, secret fragments, or stack traces."
+  },
+  "sql_definition_rules": {
+    "input_contract": "pg_get_*def-style canonical definition strings only; not free-form hand-authored SQL",
+    "states": ["NORMAL", "SINGLE_QUOTED", "DOUBLE_QUOTED", "DOLLAR_QUOTED"],
+    "crlf_to_lf": true,
+    "unicode_nfc": true,
+    "trim_outer_whitespace": true,
+    "collapse_normal_ascii_whitespace": true,
+    "preserve_quoted_content": true,
+    "comments_outside_quotes": "fail_closed",
+    "unterminated_quotes": "fail_closed",
+    "control_characters": "fail_closed",
+    "allowed_whitespace_code_points": [9, 10, 32],
+    "allowed_whitespace_notes": "SPACE (U+0020), TAB (U+0009), and LF (U+000A) only. CRLF and lone CR are normalized to LF before scanning. In NORMAL, allowed whitespace is insignificant and collapsed to a single space. In SINGLE_QUOTED, DOUBLE_QUOTED, and DOLLAR_QUOTED, allowed whitespace is preserved byte-for-byte as content. All other C0 controls (U+0000–U+001F except TAB/LF) and DEL (U+007F) fail closed with CATALOG_DEFINITION_INVALID in every lexical state.",
+    "locale_case_folding": false
+  },
+  "input_encoding": {
+    "encoding": "utf-8",
+    "invalid_sequence": "fail_closed",
+    "replacement_decoding": false,
+    "failure_category": "CATALOG_INPUT_JSON_INVALID",
+    "notes": "Catalog metadata files must be strict UTF-8. Do not use Buffer.toString('utf8') replacement decoding for acceptance."
+  },
+  "fingerprint": {
+    "domain": "lovebud:migration-catalog-object",
+    "algorithm": "sha256",
+    "prefix": "sha256:",
+    "hex_case": "lowercase",
+    "envelope_fields": [
+      "domain",
+      "format_version",
+      "normalizer_version",
+      "object"
+    ]
+  },
+  "output_contract": {
+    "format_version": "1.0",
+    "normalizer_version": "1.0",
+    "objects_item_fields": ["name", "fingerprint"],
+    "objects_sorted_by": "name_code_point"
+  }
+}

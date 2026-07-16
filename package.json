@@ -37,6 +37,7 @@
     "smoke:gate-a": "node scripts/smoke-gate-a-moment-social-write.mjs",
     "check:auth-credentials": "node scripts/ops-auth-credential-preflight.cjs",
     "check:migration-provenance": "node scripts/check-migration-provenance.cjs --source-only",
+    "build:migration-catalog-evidence": "node scripts/build-migration-catalog-evidence.cjs",
     "check:pr-guardrails": "node scripts/check-pr-guardrails.cjs",
     "loop:triage": "node scripts/loop/run-loop.mjs --mode=dry-run",
     "ci": "npm run lint && npm run build && npm run test && npm run verify"

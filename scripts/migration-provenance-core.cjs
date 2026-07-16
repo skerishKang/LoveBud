@@ -370,6 +370,16 @@ function validateExpectedSchemaManifest(manifest) {
   if (!['ADOPTION_REQUIRED', 'ACTIVE'].includes(manifest.status)) {
     errors.push('EXPECTED_SCHEMA_STATUS_INVALID');
   }
+  // Optional normalizer binding (Issue #3542). When present, must match catalog metadata contract.
+  if (manifest.normalizer_version !== undefined && manifest.normalizer_version !== '1.0') {
+    errors.push('EXPECTED_SCHEMA_NORMALIZER_CONTRACT_MISMATCH');
+  }
+  if (
+    manifest.metadata_contract_path !== undefined &&
+    manifest.metadata_contract_path !== 'db/migration-provenance/catalog-metadata-contract.json'
+  ) {
+    errors.push('EXPECTED_SCHEMA_NORMALIZER_CONTRACT_MISMATCH');
+  }
   const seenNames = new Set();
   for (const object of manifest.critical_objects) {
     if (!object || !object.name || !SHA256_PATTERN.test(object.fingerprint || '')) {
@@ -442,6 +452,32 @@ function compareSchema(expectedSchemaManifest, catalogEvidence) {
     return ['GATE_CATALOG_EVIDENCE_UNAVAILABLE'];
   }
   const blockers = [];
+  // Version binding when evidence or expected-schema carries normalizer metadata (#3542).
+  if (
+    catalogEvidence.normalizer_version !== undefined &&
+    expectedSchemaManifest &&
+    expectedSchemaManifest.normalizer_version !== undefined &&
+    catalogEvidence.normalizer_version !== expectedSchemaManifest.normalizer_version
+  ) {
+    blockers.push('GATE_CATALOG_NORMALIZER_VERSION_MISMATCH');
+  }
+  if (
+    catalogEvidence.format_version !== undefined &&
+    expectedSchemaManifest &&
+    expectedSchemaManifest.format_version !== undefined &&
+    catalogEvidence.format_version !== expectedSchemaManifest.format_version
+  ) {
+    blockers.push('GATE_CATALOG_FORMAT_VERSION_MISMATCH');
+  }
+  if (
+    catalogEvidence.normalizer_version !== undefined &&
+    catalogEvidence.normalizer_version !== '1.0'
+  ) {
+    blockers.push('GATE_CATALOG_NORMALIZER_VERSION_MISMATCH');
+  }
+  if (catalogEvidence.format_version !== undefined && catalogEvidence.format_version !== '1.0') {
+    blockers.push('GATE_CATALOG_FORMAT_VERSION_MISMATCH');
+  }
   const expectedObjects = Array.isArray(expectedSchemaManifest && expectedSchemaManifest.critical_objects)
     ? expectedSchemaManifest.critical_objects
     : [];

@@ -96,6 +96,21 @@ fingerprint
 
 The fingerprint input is canonicalized metadata for columns, types, nullability, defaults, primary keys, unique constraints, foreign keys and actions, indexes, triggers, RLS, views, materialized views, grants, and table kind. Raw catalog rows, object owner identities, endpoint names, and values from user data are not committed.
 
+Deterministic fingerprint construction for sanitized structured catalog metadata is implemented as a source-only normalizer (Issue #3542):
+
+- `db/migration-provenance/catalog-metadata-contract.json` — strict metadata contract, enums, bounds, prohibited fields
+- `scripts/migration-catalog-fingerprint-core.cjs` — lexical SQL normalization, stable serialization, SHA-256 object fingerprints
+- `scripts/build-migration-catalog-evidence.cjs` / `npm run build:migration-catalog-evidence` — explicit `--input` CLI that emits gate-compatible `{ name, fingerprint }` evidence only
+
+The normalizer does not open a database, collect a live catalog, or activate expected-schema. Input must already be sanitized structured JSON. Fingerprints use a domain-separated envelope:
+
+```text
+domain = lovebud:migration-catalog-object
+format_version / normalizer_version bound to 1.0
+```
+
+Quoted SQL literals preserve internal whitespace; comments outside quotes fail closed. The expected-schema manifest binds `normalizer_version` and `metadata_contract_path` while remaining `ADOPTION_REQUIRED` with empty `critical_objects`.
+
 The committed manifest remains `ADOPTION_REQUIRED` with no live-object fingerprint. This means it is structurally valid but cannot authorize a target environment. An empty manifest must never be interpreted as an empty production schema.
 
 ## E. Read-Only Provenance Gate
