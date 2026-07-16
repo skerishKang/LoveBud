@@ -255,6 +255,61 @@ Hard rules:
 - Production attestation remains a separately approved future task
 - this child does not open Production/shared databases, execute SQL, or mutate schema
 
+### Inactive adoption-baseline collection plan (Issue #3555)
+
+Phase sequence for Production adoption:
+
+```text
+Phase A:
+source-only PREPARED_ONLY collection plan
+
+Phase B:
+separately approved read-only target catalog collection
+
+Phase C:
+owner review of sanitized evidence and drift classification
+
+Phase D:
+separate manifest activation decision
+
+Phase E:
+ledger bootstrap and approved migration runner
+```
+
+Repository-owned Phase A artifacts:
+
+- `db/migration-provenance/adoption-baseline-collection-plan-contract.json`
+- `scripts/adoption-baseline-collection-plan-core.cjs`
+- `scripts/build-adoption-baseline-collection-plan.cjs` / `npm run build:adoption-baseline-collection-plan`
+
+The plan is always:
+
+```text
+plan_status = PREPARED_ONLY
+environment_class = PRODUCTION
+attestation_scope = PRODUCTION_READONLY
+collection_mode = CATALOG_METADATA_ONLY
+output_policy = SANITIZED_STDOUT_ONLY
+```
+
+It freezes the reviewed object allowlist, abstract role classes (`PUBLIC`, `APPLICATION`, `AUTHENTICATED`, `SERVICE`, `OWNER_CLASS`), mandatory read-only proofs, and sanitized output categories. Digests use domain-separated SHA-256:
+
+```text
+lovebud:adoption-baseline-collection-plan
+lovebud:adoption-baseline-object-allowlist
+```
+
+Hard rules:
+
+- merging #3555 grants **no** target access;
+- merging #3555 grants **no** SQL authority;
+- merging #3555 does **not** attest any environment;
+- merging #3555 does **not** activate manifests;
+- plan outputs never claim `ATTESTED`, `ACTIVE`, `APPLIED`, or mutation approval;
+- prepared attestation drafts remain `UNATTESTED`;
+- the overall provenance gate remains `FAIL_CLOSED` with `GATE_ADOPTION_BASELINE_REQUIRED`;
+- a future execution child must reuse this reviewed plan unchanged or return for re-review.
+
 ## H. Rollback and Forward Fix
 
 Transaction rollback, an explicit rollback artifact, a forward-fix migration, restore from an isolated copy, selective data repair, code rollback, and destructive database restore are different recovery mechanisms.

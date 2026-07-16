@@ -39,6 +39,7 @@
     "check:migration-provenance": "node scripts/check-migration-provenance.cjs --source-only",
     "build:migration-catalog-evidence": "node scripts/build-migration-catalog-evidence.cjs",
     "build:expected-schema-candidate": "node scripts/build-expected-schema-candidate.cjs",
+    "build:adoption-baseline-collection-plan": "node scripts/build-adoption-baseline-collection-plan.cjs",
     "check:pr-guardrails": "node scripts/check-pr-guardrails.cjs",
     "loop:triage": "node scripts/loop/run-loop.mjs --mode=dry-run",
     "ci": "npm run lint && npm run build && npm run test && npm run verify",
