@@ -6,7 +6,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const ROOT = path.resolve(__dirname, '../..');
-const TEMPLATE_PATH = path.join(ROOT, 'js/viewer/public-viewer-detail-view-mode-template.js');
+const TEMPLATE_PATH = path.join(ROOT, 'js/shared/canonical-appreciation-detail-presentation.js');
 const AUTH_LIKE_PATH = path.join(ROOT, 'js/viewer/public-viewer-authenticated-like.js');
 const CANVAS_ENTRY_PATH = path.join(ROOT, 'js/viewer/public-viewer-canvas-entry.js');
 const CANVAS_INIT_PATH = path.join(ROOT, 'js/viewer/public-canvas-init.js');
@@ -21,7 +21,7 @@ function readSrc(relPath) {
 
 describe('1. Guest affordance text in template', () => {
     it('momentReactionLikeGuestNote contains the combined guest affordance text', () => {
-        const src = readSrc('js/viewer/public-viewer-detail-view-mode-template.js');
+        const src = readSrc('js/shared/canonical-appreciation-detail-presentation.js');
         assert.ok(src.includes('momentReactionLikeGuestNote'),
             'momentReactionLikeGuestNote element must exist');
         assert.ok(src.includes('로그인하면 이 순간에 반응하고 댓글을 남길 수 있어요'),
@@ -94,7 +94,7 @@ describe('3. Guest mutation calls remain blocked / read-only', () => {
     });
 
     it('template like button is disabled by default', () => {
-        const src = readSrc('js/viewer/public-viewer-detail-view-mode-template.js');
+        const src = readSrc('js/shared/canonical-appreciation-detail-presentation.js');
         assert.ok(src.includes('id="momentReactionLikeButton"'),
             'Like button element must exist');
         assert.ok(src.includes('disabled'),
@@ -117,7 +117,7 @@ describe('4. Selected-moment social IDs remain stable', () => {
 
     for (const id of requiredIds) {
         it(`preserves element ID: ${id}`, () => {
-            const src = readSrc('js/viewer/public-viewer-detail-view-mode-template.js');
+            const src = readSrc('js/shared/canonical-appreciation-detail-presentation.js');
             assert.ok(src.includes(`id="${id}"`), `Element ID ${id} must exist in template`);
         });
     }
@@ -125,7 +125,7 @@ describe('4. Selected-moment social IDs remain stable', () => {
 
 describe('5. No API/auth/session/runtime behavior changed', () => {
     it('detail-view-mode-template.js has no fetch/toggle API calls', () => {
-        const src = readSrc('js/viewer/public-viewer-detail-view-mode-template.js');
+        const src = readSrc('js/shared/canonical-appreciation-detail-presentation.js');
         assert.ok(!src.includes('fetchReactionSummary'), 'No fetchReactionSummary in template');
         assert.ok(!src.includes('toggleReaction'), 'No toggleReaction in template');
         assert.ok(!src.includes('createComment'), 'No createComment in template');
@@ -144,7 +144,7 @@ describe('5. No API/auth/session/runtime behavior changed', () => {
     });
 
     it('no localStorage or sessionStorage in relevant files', () => {
-        for (const relPath of ['js/viewer/public-viewer-detail-view-mode-template.js']) {
+        for (const relPath of ['js/shared/canonical-appreciation-detail-presentation.js']) {
             const src = readSrc(relPath);
             assert.ok(!src.includes('localStorage'), `${relPath} must not use localStorage`);
             assert.ok(!src.includes('sessionStorage'), `${relPath} must not use sessionStorage`);
@@ -155,7 +155,7 @@ describe('5. No API/auth/session/runtime behavior changed', () => {
 describe('6. No tree-level social, Browse/My Trees/Scout/Editor scope', () => {
     const treePatterns = ['likeTree', 'unlikeTree', 'fetchTreeLikes', 'createTreeComment', 'fetchTreeComments'];
 
-    for (const relPath of ['js/viewer/public-viewer-detail-view-mode-template.js',
+    for (const relPath of ['js/shared/canonical-appreciation-detail-presentation.js',
                            'js/viewer/public-viewer-authenticated-like.js']) {
         for (const pattern of treePatterns) {
             it(`${relPath} does not reference ${pattern}`, () => {
@@ -174,7 +174,7 @@ describe('6. No tree-level social, Browse/My Trees/Scout/Editor scope', () => {
     });
 
     it('template does not reference migration, schema, deploy', () => {
-        const src = readSrc('js/viewer/public-viewer-detail-view-mode-template.js');
+        const src = readSrc('js/shared/canonical-appreciation-detail-presentation.js');
         assert.ok(!src.includes('migration'), 'No migration reference');
         assert.ok(!src.includes('schema'), 'No schema reference');
         assert.ok(!src.includes('deploy'), 'No deploy reference');

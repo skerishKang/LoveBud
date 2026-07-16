@@ -552,10 +552,24 @@ test('composer -> renderer: malformed knowledge (valid count 0) keeps group hidd
 });
 
 // ---------------------------------------------------------------------------
-// Owner controls absent test
+// Owner controls absent test (#3563: public-safe authority output)
 // ---------------------------------------------------------------------------
-test('Viewer template has no owner controls', function (t) {
-  var html = fs.readFileSync(path.join(ROOT, 'js/viewer/public-viewer-detail-view-mode-template.js'), 'utf8');
+test('Viewer public-safe presentation has no owner controls', function (t) {
+  var wrapper = fs.readFileSync(path.join(ROOT, 'js/viewer/public-viewer-detail-view-mode-template.js'), 'utf8');
+  assert.ok(wrapper.includes('LoveBudCanonicalAppreciationDetailPresentation'), 'public wrapper uses shared builder');
+  assert.ok(wrapper.includes("authority: 'public-safe'") || wrapper.includes('authority: "public-safe"'),
+    'public wrapper projects public-safe authority');
+
+  var context = { window: {}, globalThis: null, console: console };
+  context.globalThis = context;
+  var ctx = vm.createContext(context);
+  vm.runInContext(
+    fs.readFileSync(path.join(ROOT, 'js/shared/canonical-appreciation-detail-presentation.js'), 'utf8'),
+    ctx
+  );
+  var html = context.window.LoveBudCanonicalAppreciationDetailPresentation.buildDetailViewModeHtml({
+    authority: 'public-safe'
+  });
 
   var blockedIDs = [
     'editMemoryBtn',
@@ -566,7 +580,7 @@ test('Viewer template has no owner controls', function (t) {
   ];
 
   blockedIDs.forEach(function (id) {
-    assert.equal(html.includes(id), false, 'template must not contain ' + id);
+    assert.equal(html.includes(id), false, 'public-safe output must not contain ' + id);
   });
 });
 

@@ -1,22 +1,42 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
+const path = require('path');
+const vm = require('node:vm');
 
-function readFile(path) {
-  return fs.readFileSync(path, 'utf8');
+const ROOT = path.resolve(__dirname, '..', '..');
+
+function readFile(rel) {
+  return fs.readFileSync(path.join(ROOT, rel), 'utf8');
+}
+
+function buildPublicHtml() {
+  const ctx = { window: {}, globalThis: null };
+  ctx.globalThis = ctx;
+  vm.createContext(ctx);
+  vm.runInContext(readFile('js/shared/canonical-appreciation-detail-presentation.js'), ctx);
+  return ctx.window.LoveBudCanonicalAppreciationDetailPresentation.buildDetailViewModeHtml({
+    authority: 'public-safe'
+  });
 }
 
 test('public viewer detail template omits editor-only and noop controls', () => {
   const templateSrc = readFile('js/viewer/public-viewer-detail-view-mode-template.js');
+  const html = buildPublicHtml();
 
+  assert.ok(templateSrc.includes('LoveBudCanonicalAppreciationDetailPresentation'), 'public wrapper must call shared builder');
   assert.equal(templateSrc.includes('id="editMemoryBtn"'), false, 'public viewer detail template must not render the editor memory edit action');
   assert.equal(templateSrc.includes('id="continueFromMomentBtn"'), false, 'public viewer detail template must not render the editor continue-from-moment action');
   assert.equal(templateSrc.includes('id="saveStatusIndicator"'), false, 'public viewer detail template must not render the editor save-status indicator');
   assert.equal(templateSrc.includes('class="editor-save-status-card"'), false, 'public viewer detail template must not render the editor save-status card');
   assert.equal(templateSrc.includes('id="viewMomentDetailBtn"'), false, 'public viewer detail template must not render a noop read-only detail action');
   assert.equal(templateSrc.includes('id="viewMomentDetailBtnLabel"'), false, 'public viewer detail template must not render noop detail action label');
-  assert.ok(templateSrc.includes('id="momentReactionsCard"'), 'public viewer detail template keeps the reactions summary area');
-  assert.ok(templateSrc.includes('id="detailMemo"'), 'public viewer detail template keeps memo rendering mount');
+
+  assert.equal(html.includes('id="editMemoryBtn"'), false, 'public-safe output must not expose editMemoryBtn');
+  assert.equal(html.includes('id="continueFromMomentBtn"'), false, 'public-safe output must not expose continueFromMomentBtn');
+  assert.equal(html.includes('id="viewMomentDetailBtn"'), false, 'public-safe output must not expose viewMomentDetailBtn');
+  assert.ok(html.includes('id="momentReactionsCard"'), 'public viewer output keeps the reactions summary area');
+  assert.ok(html.includes('id="detailMemo"'), 'public viewer output keeps memo rendering mount');
 });
 
 test('public viewer control visibility helper no longer carries stale editor-only fallback selectors', () => {

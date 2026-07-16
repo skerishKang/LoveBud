@@ -126,8 +126,12 @@ const FILE_ALLOWLIST = {
   },
 
   'js/viewer/public-viewer-detail-view-mode-template.js': {
+    count: 0, classification: 'safe',
+    reason: '#3563 thin public wrapper; mounts via shared builder (no local outerHTML/innerHTML sink)'
+  },
+  'js/shared/canonical-appreciation-detail-presentation.js': {
     count: 1, classification: 'safe',
-    reason: 'mount.outerHTML = template — static public viewer detail view template, no user content'
+    reason: 'mount.outerHTML = buildDetailViewModeHtml(...) — static canonical appreciation shell, no user content'
   },
   'js/viewer/templates/public-viewer-sidebar-template.js': {
     count: 1, classification: 'safe',
@@ -160,8 +164,8 @@ const FILE_ALLOWLIST = {
     reason: 'Static i18n heading text + material icons; outerHTML read for icon preservation'
   },
   'js/my-trees/my-trees-preview-hub.js': {
-    count: 14, classification: 'safe',
-    reason: 'buildFlowStages template uses escapeHtml; material-icon badges with escapeHtml for count; i18n safeText; clear-container; static toggle buttons; view and edit action buttons; owner-passive social-shell template (Step 5 follow-up) is static markup with escapeHtml-bound counts'
+    count: 13, classification: 'safe',
+    reason: 'buildFlowStages template uses escapeHtml; material-icon badges with escapeHtml for count; i18n safeText; clear-container; static toggle buttons; appreciation and edit action buttons only (#3563 removed public-view action sink); owner-passive social-shell template (Step 5 follow-up) is static markup with escapeHtml-bound counts'
   },
   'js/my-trees/my-trees-preview-state.js': {
     count: 3, classification: 'safe',

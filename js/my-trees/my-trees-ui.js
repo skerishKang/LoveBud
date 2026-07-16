@@ -98,7 +98,15 @@
         targets = null;
       }
 
-      var nullBundle = { treeId: null, accessState: 'unknown', primary: null, publicView: null, edit: null };
+      // publicView/shareTarget are internal share-compat hrefs only (#3563).
+      var nullBundle = {
+        treeId: null,
+        accessState: 'unknown',
+        primary: null,
+        publicView: null,
+        shareTarget: null,
+        edit: null
+      };
 
       if (!targets || typeof targets !== 'object') return nullBundle;
       if (!inputId) return nullBundle;
@@ -119,30 +127,31 @@
       var primary = build(targets.primary, 'appreciation', 'appreciation', 'editor', primaryHref);
       var edit = build(targets.edit, 'edit', 'edit', 'editor', editHref);
 
-      var publicView = null;
+      // Internal share/compatibility target only — never rendered as a third action.
+      var shareSource = targets.shareTarget || targets.publicView;
+      var shareTarget = null;
       if (expectedAccessState === 'public') {
-        publicView = build(targets.publicView, 'public-view', 'none', 'public-viewer', publicHref);
+        shareTarget = build(shareSource, 'public-view', 'none', 'public-viewer', publicHref);
       } else {
-        // private/unknown: public target must stay unavailable.
-        if (targets.publicView && targets.publicView.available === true) {
+        // private/unknown: public share target must stay unavailable.
+        if (shareSource && shareSource.available === true) {
           return nullBundle;
         }
-        publicView = null;
+        shareTarget = null;
       }
 
-      // Bundle-level fail-closed: if a required target (primary or edit) is
-      // malformed, or a public tree's publicView is malformed, the entire
-      // bundle is untrusted and must be fully rejected (no partial actions).
-      // For private/unknown trees publicView is intentionally null (no public
-      // surface), which is NOT a malformation and must not trigger fail-closed.
+      // Bundle-level fail-closed: required interaction targets are primary+edit.
+      // Public trees must still resolve a valid shareTarget for share-link copy.
       if (primary === null || edit === null) return nullBundle;
-      if (expectedAccessState === 'public' && publicView === null) return nullBundle;
+      if (expectedAccessState === 'public' && shareTarget === null) return nullBundle;
 
       return {
         treeId: inputId,
         accessState: expectedAccessState,
         primary: primary,
-        publicView: publicView,
+        // Keep publicView key as alias for existing share consumers.
+        publicView: shareTarget,
+        shareTarget: shareTarget,
         edit: edit
       };
     }
@@ -435,7 +444,7 @@
     var selectedClass = typeof isSelected === 'function' && isSelected(normalizedTree.id) ? ' is-selected is-active' : '';
     var resolved = validateAndResolveEntryTargets(normalizedTree);
     var openHref = resolved.primary;
-    var publicViewHref = resolved.publicView;
+    // #3563: public shareTarget is internal only — never a third card action.
     var editHref = resolved.edit;
 
     var card = document.createElement('div');
@@ -456,7 +465,7 @@
     };
 
     card.addEventListener('click', function (e) {
-      if (e.target.closest('.tree-card-open-link, .tree-card-public-view-link, .tree-card-edit-link, button, a[href]')) {
+      if (e.target.closest('.tree-card-open-link, .tree-card-edit-link, button, a[href]')) {
         return;
       }
       if (window.innerWidth < 480) {
@@ -481,9 +490,8 @@
       }
     });
 
-    // i18n-safe labels via getI18nText helper
+    // i18n-safe labels via getI18nText helper (#3563: appreciation + edit only)
     var openLabel = getI18nText(i18n, 'myTrees.entry_appreciation', '감상하기');
-    var publicViewLabel = getI18nText(i18n, 'myTrees.entry_public_view', '공개 화면 보기');
     var editLabel = getI18nText(i18n, 'myTrees.entry_edit', '편집하기');
     var viewCountLabel = getI18nText(i18n, 'myTrees.view_count', '조회수');
     var likeCountLabel = getI18nText(i18n, 'myTrees.like_count', '좋아요');
@@ -524,7 +532,6 @@
           '</div>',
           '<div class="tree-meta-right">',
             (openHref ? '<a class="tree-card-open-link" href="' + escapeHtml(openHref) + '" target="_self"><span class="material-symbols-outlined" aria-hidden="true">account_tree</span><span data-i18n="myTrees.entry_appreciation">' + escapeHtml(openLabel) + '</span></a>' : ''),
-            (publicViewHref ? '<a class="tree-card-public-view-link" href="' + escapeHtml(publicViewHref) + '" target="_self"><span class="material-symbols-outlined" aria-hidden="true">visibility</span><span data-i18n="myTrees.entry_public_view">' + escapeHtml(publicViewLabel) + '</span></a>' : ''),
             (editHref ? '<a class="tree-card-edit-link" href="' + escapeHtml(editHref) + '" target="_self"><span class="material-symbols-outlined" aria-hidden="true">edit</span><span data-i18n="myTrees.entry_edit">' + escapeHtml(editLabel) + '</span></a>' : ''),
           '</div>',
         '</div>',
@@ -534,12 +541,6 @@
     var openLink = card.querySelector('.tree-card-open-link');
     if (openLink) {
       openLink.addEventListener('click', function (e) {
-        e.stopPropagation();
-      });
-    }
-    var publicViewLink = card.querySelector('.tree-card-public-view-link');
-    if (publicViewLink) {
-      publicViewLink.addEventListener('click', function (e) {
         e.stopPropagation();
       });
     }

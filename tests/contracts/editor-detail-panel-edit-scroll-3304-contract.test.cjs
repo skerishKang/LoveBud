@@ -35,7 +35,7 @@ const LAYOUT_CSS = path.join(ROOT, 'css/editor/editor-layout.css');
 const PANEL_CSS = path.join(ROOT, 'css/editor/editor-detail-panel.css');
 const EDIT_MODE_TEMPLATE = path.join(ROOT, 'js/editor/templates/editor-detail-edit-mode-template.js');
 const PANEL_TEMPLATE = path.join(ROOT, 'js/editor/templates/editor-detail-panel-shell-template.js');
-const VIEW_MODE_TEMPLATE = path.join(ROOT, 'js/editor/templates/editor-detail-view-mode-template.js');
+const VIEW_MODE_TEMPLATE = path.join(ROOT, 'js/shared/canonical-appreciation-detail-presentation.js');
 const HTML = path.join(ROOT, 'pages/editor.html');
 
 const layoutCss = fs.readFileSync(LAYOUT_CSS, 'utf8');

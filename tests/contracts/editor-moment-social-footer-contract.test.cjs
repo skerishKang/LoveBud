@@ -5,13 +5,23 @@ const assert = require('node:assert/strict');
 const fs = require('fs');
 const crypto = require('node:crypto');
 
-const templatePath = 'js/editor/templates/editor-detail-view-mode-template.js';
+const templatePath = 'js/shared/canonical-appreciation-detail-presentation.js';
+const ownerWrapperPath = 'js/editor/templates/editor-detail-view-mode-template.js';
 const toolbarTemplatePath = 'js/editor/templates/editor-floating-toolbar-template.js';
 const editorPagePath = 'pages/editor.html';
 const cssOverridePath = 'css/editor/editor-overrides.css';
 
 test('editor selected moment reactions render as labeled inline footer actions', () => {
-  const source = fs.readFileSync(templatePath, 'utf8');
+  // #3563: execute owner authority HTML from shared builder (source also contains public-safe social).
+  const vm = require('node:vm');
+  const ctx = { window: {}, globalThis: null };
+  ctx.globalThis = ctx;
+  vm.createContext(ctx);
+  vm.runInContext(fs.readFileSync(templatePath, 'utf8'), ctx);
+  const source = ctx.window.LoveBudCanonicalAppreciationDetailPresentation.buildDetailViewModeHtml({
+    authority: 'owner',
+    socialMode: 'owner-interactive'
+  });
 
   assert.match(source, /id="momentReactionsCard"[\s\S]*?aria-label="순간 반응과 댓글"/, 'reaction footer must have a clear grouped aria label');
   assert.match(source, /class="[^"]*public-viewer-social-status[^"]*editor-like-button/, 'like control must use the canonical status class on an interactive button');
@@ -42,9 +52,9 @@ test('editor page cache-busts the social footer stylesheet and template', () => 
   assert.ok(cssMatch, 'editor stylesheet entrypoint must be cache-busted');
   assert.ok(cssMatch[1].length > 0, 'editor stylesheet cache-bust value must be non-empty');
 
-  // detail view template is a tracked fingerprint asset; verify editor.html matches its content SHA-256[:12].
-  const templateSource = fs.readFileSync(templatePath, 'utf8').replace(/\r\n/g, '\n');
-  const expectedFingerprint = crypto.createHash('sha256').update(templateSource, 'utf8').digest('hex').slice(0, 12);
+  // Owner thin wrapper is a tracked fingerprint asset; shared builder is also cache-busted.
+  const wrapperSource = fs.readFileSync(ownerWrapperPath, 'utf8').replace(/\r\n/g, '\n');
+  const expectedFingerprint = crypto.createHash('sha256').update(wrapperSource, 'utf8').digest('hex').slice(0, 12);
   const tplMatch = source.match(/editor-detail-view-mode-template\.js\?v=([^"']+)/);
   assert.ok(tplMatch, 'detail view template must be cache-busted in editor.html');
   assert.strictEqual(
@@ -52,6 +62,11 @@ test('editor page cache-busts the social footer stylesheet and template', () => 
     expectedFingerprint,
     `detail view template ?v must match content SHA-256[:12] (expected ${expectedFingerprint})`
   );
+  const sharedMatch = source.match(/canonical-appreciation-detail-presentation\.js\?v=([^"']+)/);
+  assert.ok(sharedMatch, 'shared canonical presentation builder must be cache-busted in editor.html');
+  const sharedSource = fs.readFileSync(templatePath, 'utf8').replace(/\r\n/g, '\n');
+  const sharedFp = crypto.createHash('sha256').update(sharedSource, 'utf8').digest('hex').slice(0, 12);
+  assert.strictEqual(sharedMatch[1], sharedFp, `shared builder ?v must match content SHA-256[:12] (expected ${sharedFp})`);
 });
 
 test('editor branch creation affordance remains in floating toolbar without being a primary visible CTA', () => {

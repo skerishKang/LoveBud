@@ -38,6 +38,12 @@
             body.classList.add('editor-readonly');
             body.classList.remove('editor-preload');
         }
+        // #3563: mark public compatibility route as canonical appreciation (public-safe).
+        if (body && typeof body.setAttribute === 'function') {
+            body.setAttribute('data-editor-interaction-mode', 'view');
+            body.setAttribute('data-appreciation-surface', 'canonical');
+            body.setAttribute('data-route-authority', 'public-safe');
+        }
 
         return {
             treeId: treeId

@@ -2,7 +2,7 @@
   'use strict';
 
   function isInteractiveTarget(target) {
-    return !!(target && target.closest && target.closest('.tree-card-open-link, .tree-card-public-view-link, .tree-card-edit-link, button, a[href]'));
+    return !!(target && target.closest && target.closest('.tree-card-open-link, .tree-card-edit-link, button, a[href]'));
   }
 
   function isActivationKey(event) {

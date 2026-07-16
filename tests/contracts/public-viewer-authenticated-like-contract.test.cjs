@@ -177,7 +177,7 @@ test('authenticated like boundary is exported on namespace', function() {
 });
 
 test('template has like button with required attributes', function() {
-  var tmpl = fs.readFileSync(path.join(ROOT, 'js/viewer/public-viewer-detail-view-mode-template.js'), 'utf8');
+  var tmpl = fs.readFileSync(path.join(ROOT, 'js/shared/canonical-appreciation-detail-presentation.js'), 'utf8');
   assert.ok(tmpl.indexOf('momentReactionLikeButton') !== -1, 'template has like button');
   assert.ok(tmpl.indexOf('aria-pressed') !== -1, 'button has aria-pressed');
   assert.ok(tmpl.indexOf('aria-label') !== -1, 'button has aria-label');
@@ -185,7 +185,7 @@ test('template has like button with required attributes', function() {
 });
 
 test('template has guest note and error elements', function() {
-  var tmpl = fs.readFileSync(path.join(ROOT, 'js/viewer/public-viewer-detail-view-mode-template.js'), 'utf8');
+  var tmpl = fs.readFileSync(path.join(ROOT, 'js/shared/canonical-appreciation-detail-presentation.js'), 'utf8');
   assert.ok(tmpl.indexOf('momentReactionLikeGuestNote') !== -1, 'template has guest note');
   assert.ok(tmpl.indexOf('momentReactionWriteError') !== -1, 'template has error element');
   assert.ok(tmpl.indexOf('role="alert"') !== -1, 'error has role=alert');

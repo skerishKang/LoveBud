@@ -353,6 +353,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/canonical-appreciation-consolidation-3563-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes the shared canonical appreciation presentation builder (owner vs public-safe authority) and My Trees entry resolver/UI in a fake DOM; asserts one shared composition boundary, thin route wrappers, authority-only owner controls, two-action My Trees model, internal shareTarget, public-safe loaders, and #3564 geometry guard. No real browser/network/DB.",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/canonical-appreciation-render-model-runtime-contract.test.cjs",
       "layer": "EXECUTED_FAKE",
       "rationale": "Executes the browser-global pure appreciation render-model helper in node:vm with injected window context and asserts normalization, field omission, detached outputs, and fail-closed capabilities. No real browser, network, auth provider, database, deployment, or Production resource is used.",

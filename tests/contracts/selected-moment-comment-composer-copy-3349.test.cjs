@@ -8,7 +8,7 @@ const path = require('node:path');
 const ROOT = path.resolve(__dirname, '../..');
 const COMPOSER_PATH = path.join(ROOT, 'js/viewer/public-viewer-authenticated-comment-composer.js');
 const SUMMARY_PATH = path.join(ROOT, 'js/viewer/public-viewer-read-only-social-summary.js');
-const TEMPLATE_PATH = path.join(ROOT, 'js/viewer/public-viewer-detail-view-mode-template.js');
+const TEMPLATE_PATH = path.join(ROOT, 'js/shared/canonical-appreciation-detail-presentation.js');
 
 function readSrc(relPath) {
     return fs.readFileSync(path.resolve(ROOT, relPath), 'utf-8');
@@ -76,7 +76,7 @@ describe('3. Stable composer IDs and accessibility semantics preserved', () => {
     });
 
     it('template still exposes momentCommentsPanel', () => {
-        const template = readSrc('js/viewer/public-viewer-detail-view-mode-template.js');
+        const template = readSrc('js/shared/canonical-appreciation-detail-presentation.js');
         assert.ok(template.includes('id="momentCommentsPanel"'), 'Template must expose momentCommentsPanel');
     });
 
@@ -160,7 +160,7 @@ describe('5. No out-of-scope changes (tree social / #3264 / Netlify / Browse / M
     });
 
     it('template has no DB/API/deploy references', () => {
-        const template = readSrc('js/viewer/public-viewer-detail-view-mode-template.js');
+        const template = readSrc('js/shared/canonical-appreciation-detail-presentation.js');
         assert.ok(!template.includes('migration'), 'Template must not reference migration');
         assert.ok(!template.includes('schema'), 'Template must not reference schema');
         assert.ok(!template.includes('deploy'), 'Template must not reference deploy');

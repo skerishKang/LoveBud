@@ -477,8 +477,17 @@
 
         var params = new URLSearchParams(window.location.search);
         var treeId = params.get('treeId');
-        document.body.classList.add('editor-readonly');
-        document.body.classList.remove('editor-preload');
+        if (document.body && document.body.classList) {
+            document.body.classList.add('editor-readonly');
+            document.body.classList.remove('editor-preload');
+        }
+        // #3563: public compatibility route presents canonical appreciation,
+        // not a separate product "Public Viewer" mode.
+        if (document.body && typeof document.body.setAttribute === 'function') {
+            document.body.setAttribute('data-editor-interaction-mode', 'view');
+            document.body.setAttribute('data-appreciation-surface', 'canonical');
+            document.body.setAttribute('data-route-authority', 'public-safe');
+        }
         return { treeId: treeId };
     }
 

@@ -520,7 +520,14 @@
             }
         }
         if (!resolved || typeof resolved !== 'object') {
-            resolved = { treeId: null, accessState: 'unknown', primary: null, publicView: null, edit: null };
+            resolved = {
+                treeId: null,
+                accessState: 'unknown',
+                primary: null,
+                publicView: null,
+                shareTarget: null,
+                edit: null
+            };
         }
 
         if (els.openBtn && resolved.primary) {
@@ -530,11 +537,11 @@
                 escapeHtml(i18nHub('myTrees.entry_appreciation', '감상하기', 'Appreciate')) + '</span>';
         }
 
-        if (els.publicViewBtn && resolved.publicView) {
-            els.publicViewBtn.href = resolved.publicView;
-            els.publicViewBtn.hidden = false;
-            els.publicViewBtn.innerHTML = '<span class="material-symbols-outlined">visibility</span><span data-i18n="myTrees.entry_public_view">' +
-                escapeHtml(i18nHub('myTrees.entry_public_view', '공개 화면 보기', 'View public screen')) + '</span>';
+        // #3563: never surface a third “공개 화면 보기” interaction action.
+        // publicView/shareTarget remain internal for share-link copy only.
+        if (els.publicViewBtn) {
+            resetActionButton(els.publicViewBtn);
+            els.publicViewBtn.hidden = true;
         }
 
         if (els.editBtn && resolved.edit) {
@@ -544,8 +551,9 @@
                 escapeHtml(i18nHub('myTrees.entry_edit', '편집하기', 'Edit')) + '</span>';
         }
 
-        /* ── Share button: public tree only, use validated publicView href ── */
-        if (els.shareBtn && resolved.accessState === 'public' && resolved.publicView) {
+        /* ── Share button: public tree only; use shareTarget (alias publicView) ── */
+        var shareHref = resolved.shareTarget || resolved.publicView;
+        if (els.shareBtn && resolved.accessState === 'public' && shareHref) {
             els.shareBtn.hidden = false;
             els.shareBtn.setAttribute('data-tree-id', resolved.treeId || '');
             els.shareBtn.onclick = (function(shareHref) {
@@ -590,7 +598,7 @@
                         setTimeout(function() { if (labelEl) labelEl.textContent = origLabel; }, 1800);
                     });
                 };
-            })(resolved.publicView);
+            })(shareHref);
         }
     }
 

@@ -9,7 +9,7 @@ const vm = require('node:vm');
 const ROOT = path.resolve(__dirname, '..', '..');
 const PANEL_PATH = path.join(ROOT, 'js/editor/editor-memory-atlas-preview-panel.js');
 const EDITOR_HTML_PATH = path.join(ROOT, 'pages/editor.html');
-const DETAIL_TEMPLATE_PATH = path.join(ROOT, 'js/editor/templates/editor-detail-view-mode-template.js');
+const DETAIL_TEMPLATE_PATH = path.join(ROOT, 'js/shared/canonical-appreciation-detail-presentation.js');
 const DETAIL_UI_PATH = path.join(ROOT, 'js/editor/editor-detail-ui.js');
 
 const panelSource = fs.readFileSync(PANEL_PATH, 'utf8');

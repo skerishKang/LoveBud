@@ -1,20 +1,25 @@
 /**
  * LoveBud — My Trees explicit entry-target resolver
- * Issue #3492 / parent #3475
+ * Issue #3492 / parent #3475 / product correction #3563
  *
- * Pure navigation target model for owned-tree open intents:
- *   - primary  → owner appreciation (Editor, default interaction mode)
- *   - publicView → Public Viewer (public access only)
- *   - edit     → owner Editor edit mode (mode=edit)
+ * Pure navigation target model for owned-tree open intents.
+ *
+ * User-visible interaction modes (#3563):
+ *   - primary / appreciation → 감상하기 (Editor default interaction mode)
+ *   - edit                   → 편집하기 (Editor mode=edit)
+ *
+ * Internal only (NOT a third UI action):
+ *   - publicView / shareTarget → public compatibility href (view.html) for
+ *     share-link copy on public trees. Do not render as “공개 화면 보기”.
  *
  * Separates access state, interaction mode, and route surface.
  * Does not navigate, mutate inputs, touch DOM, credentials, network,
  * storage, or load Editor/Viewer runtime modules.
  *
- * Canonical routes (current main evidence):
- *   - Editor appreciation: editor?treeId=<id>  (no mode param; defaults to view)
- *   - Editor edit:         editor?treeId=<id>&mode=edit
- *   - Public Viewer:       view.html?treeId=<id>
+ * Canonical routes:
+ *   - Owner appreciation: editor?treeId=<id>  (no mode param; defaults to view)
+ *   - Owner edit:         editor?treeId=<id>&mode=edit
+ *   - Public compatibility / share: view.html?treeId=<id>
  *   - tree id query key:   treeId
  *   - visibility: exact "public" | "private" (case-sensitive)
  *
@@ -109,6 +114,13 @@
   }
 
   function createUnavailableBundle() {
+    var unavailableShare = createTarget(
+      false,
+      null,
+      ACTION_PUBLIC_VIEW,
+      INTERACTION_NONE,
+      SURFACE_PUBLIC_VIEWER
+    );
     return {
       treeId: null,
       accessState: ACCESS_UNKNOWN,
@@ -119,13 +131,8 @@
         INTERACTION_APPRECIATION,
         SURFACE_EDITOR
       ),
-      publicView: createTarget(
-        false,
-        null,
-        ACTION_PUBLIC_VIEW,
-        INTERACTION_NONE,
-        SURFACE_PUBLIC_VIEWER
-      ),
+      publicView: unavailableShare,
+      shareTarget: unavailableShare,
       edit: createTarget(
         false,
         null,
@@ -137,8 +144,11 @@
   }
 
   /**
-   * Resolve the three My Trees entry targets for an owned tree record.
+   * Resolve My Trees entry targets for an owned tree record.
    * Pure: no navigation, no input mutation, detached plain objects only.
+   *
+   * Interaction targets: primary (appreciation) + edit.
+   * publicView/shareTarget: internal share/compatibility href only (#3563).
    *
    * @param {object} tree - allowlisted fields: id | treeId | tree_id, visibility
    * @param {object} [context] - reserved for signature compatibility; ignored
@@ -155,6 +165,13 @@
 
     var accessState = resolveAccessState(tree);
     var publicAvailable = accessState === ACCESS_PUBLIC;
+    var shareTarget = createTarget(
+      publicAvailable,
+      publicAvailable ? buildPublicViewerHref(treeId) : null,
+      ACTION_PUBLIC_VIEW,
+      INTERACTION_NONE,
+      SURFACE_PUBLIC_VIEWER
+    );
 
     return {
       treeId: treeId,
@@ -166,13 +183,9 @@
         INTERACTION_APPRECIATION,
         SURFACE_EDITOR
       ),
-      publicView: createTarget(
-        publicAvailable,
-        publicAvailable ? buildPublicViewerHref(treeId) : null,
-        ACTION_PUBLIC_VIEW,
-        INTERACTION_NONE,
-        SURFACE_PUBLIC_VIEWER
-      ),
+      // Keep publicView key for existing consumers; prefer shareTarget for new code.
+      publicView: shareTarget,
+      shareTarget: shareTarget,
       edit: createTarget(
         true,
         buildEditorEditHref(treeId),

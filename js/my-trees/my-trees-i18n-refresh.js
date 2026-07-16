@@ -86,7 +86,12 @@
   }
 
   function setHubPublicViewBtn() {
-    updateButtonLabel(document.getElementById('myTreesHubPublicViewBtn'), 'myTrees.entry_public_view', '공개 화면 보기', 'View public page');
+    // #3563: hub public-view action is retired (shareTarget is not user-facing).
+    var retiredPublicViewBtn = document.getElementById('myTreesHubPublicViewBtn');
+    if (retiredPublicViewBtn) {
+      retiredPublicViewBtn.hidden = true;
+      retiredPublicViewBtn.setAttribute('aria-hidden', 'true');
+    }
   }
 
   function setHubEditBtn() {
@@ -172,9 +177,7 @@
     document.querySelectorAll('.tree-card-open-link[data-i18n], .tree-card-open-link [data-i18n]').forEach(function(el) {
       el.textContent = tText('myTrees.entry_appreciation', '감상하기');
     });
-    document.querySelectorAll('.tree-card-public-view-link[data-i18n], .tree-card-public-view-link [data-i18n]').forEach(function(el) {
-      el.textContent = tText('myTrees.entry_public_view', '공개 화면 보기');
-    });
+    // #3563: tree-card public-view links are no longer rendered.
     document.querySelectorAll('.tree-card-edit-link[data-i18n], .tree-card-edit-link [data-i18n]').forEach(function(el) {
       el.textContent = tText('myTrees.entry_edit', '편집하기');
     });
