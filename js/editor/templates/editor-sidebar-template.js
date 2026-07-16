@@ -24,7 +24,7 @@ function buildTreeScopeRegion() {
   });
 }
 
-export function buildSidebarTemplate() {
+function buildSidebarTemplate() {
   return (
     `
         <aside class="sidebar reveal-fade" data-appreciation-layout="tree-scope-rail">
