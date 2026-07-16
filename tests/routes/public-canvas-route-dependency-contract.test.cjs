@@ -640,8 +640,8 @@ test('public canvas sidebar template and controller wiring contract (Issue #2884
     'view.html must load editor.css with a non-empty cache version'
   );
   assert.ok(
-    html.includes('src="../js/viewer/templates/public-viewer-sidebar-template.js?v=20260625-2884-left-rail-2"'),
-    'view.html must load template module with version 20260625-2884-left-rail-2'
+    html.includes('src="../js/viewer/templates/public-viewer-sidebar-template.js?v=56d2e38c8b53"'),
+    'view.html must load public-viewer-sidebar-template with #3562 content-sha version'
   );
   assert.ok(
     html.includes('src="../js/viewer/public-canvas-init.js?v=20260716-3563-1"'),

@@ -191,7 +191,32 @@
   }
 
   /**
-   * Build the full detailViewMode HTML string.
+   * Tree-scope shell for the left rail (#3562).
+   * Controllers still resolve #detailTreeMetaMount by stable id.
+   * This must not appear inside selected-moment detailViewMode.
+   * @param {object} [options]
+   * @returns {string}
+   */
+  function buildTreeScopeShellHtml(options) {
+    var opts = mergeOptions(options);
+    var authority = opts.routeAuthority || opts.authority || 'owner';
+    return (
+      '<section class="editor-tree-meta-section appreciation-tree-scope" id="detailTreeMetaSection" ' +
+      'data-canonical-section="tree-scope" data-appreciation-region="tree-scope" ' +
+      'data-route-authority="' + authority + '" ' +
+      'data-presentation-builder="LoveBudCanonicalAppreciationDetailPresentation" ' +
+      'data-tree-scope-source="LoveBudCanonicalAppreciationDetailPresentation" ' +
+      'aria-label="' + opts.treeStatusLabel + '">' +
+      '<div class="editor-section-eyebrow" id="detailTreeStatusLabel">' + opts.treeStatusLabel + '</div>' +
+      '<div id="detailTreeMetaMount" data-tree-scope-mount="true" ' +
+      'data-tree-scope-source="LoveBudCanonicalAppreciationDetailPresentation"></div>' +
+      '</section>'
+    );
+  }
+
+  /**
+   * Selected-moment detailViewMode HTML (right rail). Issue #3562:
+   * tree-level content is owned by tree-scope (left), not this shell.
    * @param {object} [options]
    * @returns {string}
    */
@@ -203,11 +228,9 @@
     return (
       '<div id="detailViewMode"' + hiddenAttr +
       ' data-appreciation-surface="canonical"' +
+      ' data-appreciation-region="selected-moment"' +
       ' data-route-authority="' + opts.routeAuthority + '"' +
       ' data-presentation-builder="LoveBudCanonicalAppreciationDetailPresentation">' +
-      '<div class="editor-tree-meta-section" id="detailTreeMetaSection" data-canonical-section="tree-meta">' +
-      '<div class="editor-section-eyebrow" id="detailTreeStatusLabel">' + opts.treeStatusLabel + '</div>' +
-      '<div id="detailTreeMetaMount"></div></div>' +
       '<div class="editor-current-moment-card" data-canonical-section="selected-moment">' +
       '<div class="editor-current-moment-head">' +
       '<div id="detailCurrentMomentBadge" class="editor-current-moment-badge">' + opts.momentBadgeLabel + '</div>' +
@@ -288,14 +311,28 @@
     return sections;
   }
 
+  /**
+   * Selected-moment region section markers only (no tree-scope).
+   * Tree-scope markers live on the left-rail shell from buildTreeScopeShellHtml.
+   */
+  function listSelectedMomentSections(html) {
+    return listCanonicalSections(html).filter(function (s) {
+      return s !== 'tree-scope' && s !== 'tree-meta';
+    });
+  }
+
   var api = {
+    buildTreeScopeShellHtml: buildTreeScopeShellHtml,
     buildDetailViewModeHtml: buildDetailViewModeHtml,
     mountDetailViewMode: mountDetailViewMode,
     normalizeBasePresentationHtml: normalizeBasePresentationHtml,
     listCanonicalSections: listCanonicalSections,
+    listSelectedMomentSections: listSelectedMomentSections,
     DEFAULT_OWNER: DEFAULT_OWNER,
     DEFAULT_PUBLIC_SAFE: DEFAULT_PUBLIC_SAFE,
-    BUILDER_ID: 'LoveBudCanonicalAppreciationDetailPresentation'
+    BUILDER_ID: 'LoveBudCanonicalAppreciationDetailPresentation',
+    TREE_SCOPE_MOUNT_ID: 'detailTreeMetaMount',
+    TREE_SCOPE_SECTION_ID: 'detailTreeMetaSection'
   };
 
   global.LoveBudCanonicalAppreciationDetailPresentation = api;

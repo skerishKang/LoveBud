@@ -289,6 +289,7 @@
 /* Public Viewer Sidebar Styles (Issue #2884) */
 .public-viewer-sidebar {
   display: flex;
+  flex-direction: column;
 }
 
 .public-viewer-sidebar .viewer-sidebar-owner-mode {
@@ -316,8 +317,132 @@
   opacity: 0.8;
 }
 
+/* #3562: tree-scope lives in left rail for both owner and public-safe routes. */
+.sidebar[data-appreciation-layout="tree-scope-rail"] {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sidebar .appreciation-tree-scope {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.sidebar .appreciation-tree-scope #detailTreeMetaMount {
+  min-width: 0;
+}
+
+.sidebar .appreciation-tree-scope #detailTreeMetaMount > * {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+/* Bound long tree visibility/description copy in the left rail. */
+.sidebar .appreciation-tree-scope #detailTreeMetaMount p,
+.sidebar .appreciation-tree-scope #detailTreeMetaMount div[style*="line-height"] {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.sidebar .appreciation-tree-scope-legacy[hidden] {
+  display: none !important;
+}
+
+/* Selected-moment rail must not host tree-scope markers after #3562. */
+#detailViewMode[data-appreciation-region="selected-moment"] #detailTreeMetaSection,
+#detailViewMode[data-appreciation-region="selected-moment"] #detailTreeMetaMount {
+  /* Guard: tree-scope ids belong to left rail only. */
+}
+
+/*
+ * #3562 Option A — public-safe semantic stack at tablet/mobile:
+ * tree scope → canvas → selected-moment detail (in-flow, not off-canvas).
+ * Owner editor off-canvas behavior is preserved (selectors require public tree-scope rail).
+ */
 @media (max-width: 1024px) {
-  .public-viewer-sidebar {
+  .public-viewer-sidebar:not([data-appreciation-layout="tree-scope-rail"]) {
     display: none !important;
+  }
+
+  .editor-layout:has(.public-viewer-sidebar[data-appreciation-layout="tree-scope-rail"]) {
+    flex-direction: column;
+    flex-wrap: nowrap;
+    align-content: stretch;
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
+  .public-viewer-sidebar[data-appreciation-layout="tree-scope-rail"] {
+    display: flex !important;
+    flex: 0 0 auto;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    height: auto !important;
+    max-height: min(42vh, 360px);
+    order: -1;
+    position: relative !important;
+    transform: none !important;
+    right: auto !important;
+    top: auto !important;
+    z-index: auto !important;
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
+  .editor-layout:has(.public-viewer-sidebar[data-appreciation-layout="tree-scope-rail"]) > .canvas-area {
+    flex: 1 1 auto;
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: 42vh;
+    order: 0;
+    position: relative !important;
+    transform: none !important;
+  }
+
+  /* Reset tablet.css / mobile-panel off-canvas detail for public tree-scope layout only. */
+  .editor-layout:has(.public-viewer-sidebar[data-appreciation-layout="tree-scope-rail"]) > .detail-panel,
+  .editor-layout:has(.public-viewer-sidebar[data-appreciation-layout="tree-scope-rail"]) > #detailPanel,
+  body.editor-readonly .editor-layout:has(.public-viewer-sidebar[data-appreciation-layout="tree-scope-rail"]) > .detail-panel {
+    position: relative !important;
+    right: auto !important;
+    top: auto !important;
+    left: auto !important;
+    bottom: auto !important;
+    height: auto !important;
+    max-height: none !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    flex: 0 0 auto;
+    order: 1;
+    transform: none !important;
+    z-index: auto !important;
+    border-left: none !important;
+    transition: none !important;
+  }
+
+  .editor-layout:has(.public-viewer-sidebar[data-appreciation-layout="tree-scope-rail"]) > .detail-panel.open,
+  .editor-layout:has(.public-viewer-sidebar[data-appreciation-layout="tree-scope-rail"]) > .detail-panel.is-mobile-panel-open {
+    transform: none !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .editor-layout:has(.public-viewer-sidebar[data-appreciation-layout="tree-scope-rail"]) > .detail-panel,
+  .editor-layout:has(.public-viewer-sidebar[data-appreciation-layout="tree-scope-rail"]) > #detailPanel {
+    position: relative !important;
+    transform: none !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    z-index: auto !important;
+  }
+}
+
+@media (max-width: 390px) {
+  .public-viewer-sidebar[data-appreciation-layout="tree-scope-rail"] {
+    max-height: min(48vh, 320px);
   }
 }

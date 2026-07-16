@@ -1,13 +1,46 @@
+/**
+ * Owner editor left rail — thin wrapper around shared tree-scope builder (#3562).
+ * Requires classic script js/shared/canonical-appreciation-detail-presentation.js first.
+ */
+
+function getSharedPresentationBuilder() {
+  if (
+    typeof window !== 'undefined' &&
+    window.LoveBudCanonicalAppreciationDetailPresentation &&
+    typeof window.LoveBudCanonicalAppreciationDetailPresentation.buildTreeScopeShellHtml === 'function'
+  ) {
+    return window.LoveBudCanonicalAppreciationDetailPresentation;
+  }
+  throw new Error(
+    'LoveBudCanonicalAppreciationDetailPresentation.buildTreeScopeShellHtml missing — ' +
+      'load js/shared/canonical-appreciation-detail-presentation.js before editor-sidebar-template.js'
+  );
+}
+
+function buildTreeScopeRegion() {
+  return getSharedPresentationBuilder().buildTreeScopeShellHtml({
+    authority: 'owner',
+    routeAuthority: 'owner'
+  });
+}
+
 export function buildSidebarTemplate() {
-    return `
-        <aside class="sidebar reveal-fade">
+  return (
+    `
+        <aside class="sidebar reveal-fade" data-appreciation-layout="tree-scope-rail">
             <div class="editor-sidebar-back-wrap">
                 <a id="backToMyTreesLink" href="my-trees" class="editor-sidebar-back-link">
                     <span aria-hidden="true" class="editor-sidebar-back-icon">←</span>
                     <span id="backToMyTreesLabel">내 러브트리로 돌아가기</span>
                 </a>
             </div>
-            <section class="editor-status-section">
+
+            ` +
+    buildTreeScopeRegion() +
+    `
+
+            <!-- Legacy IDs kept for rename/status controllers; not the primary tree UI. -->
+            <section class="editor-status-section appreciation-tree-scope-legacy" hidden aria-hidden="true">
                 <h3 id="editorFlowHeading">현재 트리</h3>
                 <p id="editorFlowLead" class="editor-flow-lead">현재 트리의 이어진 순간을 보고 있어요.</p>
                 <div class="editor-status-card">
@@ -47,10 +80,11 @@ export function buildSidebarTemplate() {
                 </div>
             </section>
         </aside>
-    `;
+    `
+  );
 }
 
 const mount = document.getElementById('editorSidebarTemplateMount');
 if (mount) {
-    mount.outerHTML = buildSidebarTemplate();
+  mount.outerHTML = buildSidebarTemplate();
 }

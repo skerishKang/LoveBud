@@ -1152,8 +1152,8 @@ test('pages/view.html references exact parent editor.css version', () => {
   const html = fs.readFileSync(VIEW_HTML_PATH, 'utf8');
   assert.match(
     html,
-    /href="\.\.\/css\/editor\.css\?v=20260712-3419-1"/,
-    'view.html must load ../css/editor.css?v=20260712-3419-1'
+    /href="\.\.\/css\/editor\.css\?v=20260716-3562-1"/,
+    'view.html must load ../css/editor.css?v=20260716-3562-1'
   );
 });
 

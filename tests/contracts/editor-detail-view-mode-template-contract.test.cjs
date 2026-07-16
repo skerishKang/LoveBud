@@ -37,7 +37,8 @@ test('Detail View Mode template helper exists and mounts via shared canonical bu
 
   const html = buildOwnerHtml();
   assert.ok(html.includes('id="detailViewMode"'), 'must include detail view mode root id');
-  assert.ok(html.includes('id="detailTreeMetaMount"'), 'must include detail tree meta mount id');
+  // #3562: tree meta mount lives in left-rail tree-scope, not selected-moment shell.
+  assert.ok(!html.includes('id="detailTreeMetaMount"'), 'selected-moment shell must not include tree meta mount');
   assert.ok(html.includes('id="detailCurrentMomentBadge"'), 'must include badge id');
   assert.ok(html.includes('id="editMemoryBtn"'), 'must include edit btn id');
   assert.ok(html.includes('id="detailCurrentMomentTitle"'), 'must include title id');

@@ -158,12 +158,19 @@ function createMinimalDomCardContext() {
 
 test('#3563 shared builder exists as sole full presentation implementation', () => {
   const shared = read(SHARED_BUILDER);
+  const api = loadSharedBuilder();
   assert.match(shared, /LoveBudCanonicalAppreciationDetailPresentation/);
   assert.match(shared, /function buildDetailViewModeHtml/);
-  assert.match(shared, /data-canonical-section="tree-meta"/);
+  // #3562: tree-scope is a separate left-rail shell; selected-moment shell owns moment sections.
+  assert.match(shared, /data-canonical-section="tree-scope"/);
+  assert.match(shared, /function buildTreeScopeShellHtml/);
   assert.match(shared, /data-canonical-section="selected-moment"/);
   assert.match(shared, /data-canonical-section="moment-info"/);
   assert.match(shared, /data-canonical-section="moment-social"/);
+  // Selected-moment shell must not re-embed tree-meta after hierarchy split.
+  const momentHtml = api.buildDetailViewModeHtml({ authority: 'public-safe' });
+  assert.doesNotMatch(momentHtml, /id="detailTreeMetaMount"/);
+  assert.doesNotMatch(momentHtml, /data-canonical-section="tree-meta"/);
   // Substantive markup lives here, not in route wrappers.
   assert.match(shared, /id="detailCurrentMomentTitle"/);
   assert.match(shared, /id="detailMemo"/);
@@ -174,12 +181,16 @@ test('#3563 EXECUTED: owner and public-safe share the same canonical sections', 
   const api = loadSharedBuilder();
   const ownerHtml = api.buildDetailViewModeHtml({ authority: 'owner' });
   const publicHtml = api.buildDetailViewModeHtml({ authority: 'public-safe' });
+  const treeScope = api.buildTreeScopeShellHtml({ authority: 'public-safe' });
 
   // Normalize across vm realms (host vs sandbox arrays).
   const ownerSections = Array.from(api.listCanonicalSections(ownerHtml)).map(String);
   const publicSections = Array.from(api.listCanonicalSections(publicHtml)).map(String);
   assert.equal(ownerSections.join('|'), publicSections.join('|'), 'canonical section markers must match');
-  assert.equal(ownerSections.join('|'), 'tree-meta|selected-moment|moment-info|moment-social');
+  // #3562: selected-moment shell no longer embeds tree-meta.
+  assert.equal(ownerSections.join('|'), 'selected-moment|moment-info|moment-social');
+  assert.match(treeScope, /data-canonical-section="tree-scope"/);
+  assert.match(treeScope, /id="detailTreeMetaMount"/);
 
   assert.match(ownerHtml, /data-presentation-builder="LoveBudCanonicalAppreciationDetailPresentation"/);
   assert.match(publicHtml, /data-presentation-builder="LoveBudCanonicalAppreciationDetailPresentation"/);
@@ -214,8 +225,8 @@ test('#3563 EXECUTED: owner authority slots present only for owner config', () =
 test('#3563 EXECUTED: common tree/moment content structure from shared builder', () => {
   const api = loadSharedBuilder();
   const publicHtml = api.buildDetailViewModeHtml({ authority: 'public-safe' });
-  const required = [
-    'detailTreeMetaMount',
+  const treeScope = api.buildTreeScopeShellHtml({ authority: 'public-safe' });
+  const requiredMoment = [
     'detailCurrentMomentBadge',
     'detailCurrentMomentTitle',
     'detailCurrentMomentHint',
@@ -226,9 +237,11 @@ test('#3563 EXECUTED: common tree/moment content structure from shared builder',
     'momentReactionsCard',
     'momentCommentsPanel'
   ];
-  for (const id of required) {
-    assert.match(publicHtml, new RegExp('id="' + id + '"'), 'shared public-safe html must expose #' + id);
+  for (const id of requiredMoment) {
+    assert.match(publicHtml, new RegExp('id="' + id + '"'), 'shared public-safe moment html must expose #' + id);
   }
+  assert.match(treeScope, /id="detailTreeMetaMount"/, 'tree-scope shell owns #detailTreeMetaMount');
+  assert.doesNotMatch(publicHtml, /id="detailTreeMetaMount"/, 'selected-moment shell must not own tree mount');
 });
 
 test('#3563 route wrappers are thin and reference the shared builder', () => {

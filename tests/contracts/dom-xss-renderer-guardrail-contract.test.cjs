@@ -240,8 +240,8 @@ const FILE_ALLOWLIST = {
     reason: 'clear-container: treeMetaMount.innerHTML = empty string'
   },
   'js/editor/editor-detail-ui.js': {
-    count: 4, classification: 'safe',
-    reason: 'clear-container sinks only; selected-moment title/memo/tags render via shared appreciation slot DOM (textContent); root memo hint uses createElement/textContent'
+    count: 3, classification: 'safe',
+    reason: 'clear-container sinks only (#3562 no longer clears left-rail tree meta via innerHTML); selected-moment title/memo/tags render via shared appreciation slot DOM (textContent)'
   },
   'js/editor/editor-entry-fallbacks.js': {
     count: 1, classification: 'safe',

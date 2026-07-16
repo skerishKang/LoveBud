@@ -574,13 +574,14 @@ function createEditorDetailUI(deps) {
     const resetDetailViewState = () => {
         const headerEl = detailPanel.querySelector('h3');
         if (headerEl) {
-            headerEl.textContent = formatI18nText('editor_current_hub_heading', '현재 순간 허브');
+            // #3562: right rail is selected-moment scope only.
+            headerEl.textContent = formatI18nText('editor_selected_moment_heading', '선택한 순간');
         }
 
         clearDetailMedia();
 
-        const treeMetaMount = document.getElementById('detailTreeMetaMount');
-        if (treeMetaMount) treeMetaMount.innerHTML = '';
+        // Tree-scope mount lives in the left rail; do not clear it when resetting
+        // selected-moment presentation. Controllers re-render tree meta by tree id.
 
         const atlasPreviewMount = document.getElementById('detailAtlasPreviewMount');
         if (atlasPreviewMount) {
@@ -704,17 +705,32 @@ function createEditorDetailUI(deps) {
 
         const headerEl = detailPanel.querySelector('h3');
         if (headerEl) {
-            headerEl.textContent = formatI18nText('editor_current_hub_heading', '현재 순간 허브');
+            // #3562: right rail title is selected-moment scope only.
+            headerEl.textContent = formatI18nText('editor_selected_moment_heading', '선택한 순간');
         }
 
         const badgeEl = document.getElementById('detailCurrentMomentBadge');
         const titleEl = document.getElementById('detailCurrentMomentTitle');
         const hintEl = document.getElementById('detailCurrentMomentHint');
+        // Left-rail tree-scope mount (stable id). Not inside selected-moment panel.
         const treeMetaMount = document.getElementById('detailTreeMetaMount');
         const imgEl = detailPanel.querySelector('.detail-video img');
         const mediaWrap = detailPanel.querySelector('.detail-video');
         const memoryActions = detailPanel.querySelector('.memory-actions');
         const atlasPreviewMount = document.getElementById('detailAtlasPreviewMount');
+
+        // #3562: tree-scope updates independently of selected-moment presence.
+        // Empty/no-selection must still populate left-rail title/status/owner actions.
+        const treeMetaModel = buildTreeMetaRenderModel({
+            currentTree: currentTree || {},
+            treeState,
+            data,
+            isEmptyState,
+            localSaveMode
+        });
+        if (treeMetaMount) {
+            renderTreeMetaBoundary(treeMetaMount, treeMetaModel, treeId, data);
+        }
 
         if (isEmptyState) {
             if (commentsController) commentsController.hide();
@@ -748,18 +764,6 @@ function createEditorDetailUI(deps) {
         }
 
         setDetailEmptyState(false);
-
-        const treeMetaModel = buildTreeMetaRenderModel({
-            currentTree: currentTree || {},
-            treeState,
-            data,
-            isEmptyState,
-            localSaveMode
-        });
-
-        if (treeMetaMount) {
-            renderTreeMetaBoundary(treeMetaMount, treeMetaModel, treeId, data);
-        }
 
         if (badgeEl) {
             badgeEl.textContent = isRootSelected
