@@ -1,0 +1,84 @@
+-- Synthetic disposable schema for catalog adapter engine tests.
+-- Fixture-only. Not a Production migration. Refs #3544
+
+CREATE ROLE synthetic_public_role NOLOGIN;
+CREATE ROLE synthetic_application_role NOLOGIN;
+CREATE ROLE synthetic_authenticated_role NOLOGIN;
+CREATE ROLE synthetic_service_role NOLOGIN;
+CREATE ROLE synthetic_owner_role NOLOGIN;
+
+CREATE SCHEMA synthetic_catalog AUTHORIZATION CURRENT_USER;
+
+CREATE TABLE synthetic_catalog.owner_classes (
+  code text NOT NULL PRIMARY KEY
+);
+
+INSERT INTO synthetic_catalog.owner_classes (code) VALUES ('APPLICATION');
+
+CREATE OR REPLACE FUNCTION synthetic_catalog.touch_example_tree()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  RETURN NEW;
+END;
+$$;
+
+CREATE TABLE synthetic_catalog.example_tree (
+  id uuid NOT NULL,
+  title character varying(200) NULL,
+  owner_class character varying(32) NOT NULL DEFAULT 'APPLICATION',
+  score integer GENERATED ALWAYS AS (1) STORED,
+  CONSTRAINT example_tree_pkey PRIMARY KEY (id),
+  CONSTRAINT example_tree_title_check CHECK ((title IS NULL) OR (char_length(title) > 0)),
+  CONSTRAINT example_tree_owner_fk
+    FOREIGN KEY (owner_class) REFERENCES synthetic_catalog.owner_classes(code)
+    ON UPDATE NO ACTION
+    ON DELETE RESTRICT
+);
+
+CREATE UNIQUE INDEX example_tree_owner_title_uidx
+  ON synthetic_catalog.example_tree (owner_class, title)
+  WHERE title IS NOT NULL;
+
+CREATE INDEX example_tree_title_idx
+  ON synthetic_catalog.example_tree USING btree (title);
+
+CREATE TRIGGER trg_example_tree_touch
+  BEFORE INSERT OR UPDATE ON synthetic_catalog.example_tree
+  FOR EACH ROW
+  EXECUTE FUNCTION synthetic_catalog.touch_example_tree();
+
+ALTER TABLE synthetic_catalog.example_tree ENABLE ROW LEVEL SECURITY;
+ALTER TABLE synthetic_catalog.example_tree FORCE ROW LEVEL SECURITY;
+
+CREATE POLICY example_tree_select
+  ON synthetic_catalog.example_tree
+  AS PERMISSIVE
+  FOR SELECT
+  TO synthetic_authenticated_role
+  USING (true);
+
+CREATE VIEW synthetic_catalog.example_tree_public AS
+  SELECT id, title
+  FROM synthetic_catalog.example_tree
+  WHERE title IS NOT NULL;
+
+CREATE MATERIALIZED VIEW synthetic_catalog.example_tree_public_mv AS
+  SELECT id, title
+  FROM synthetic_catalog.example_tree
+  WHERE title IS NOT NULL;
+
+ALTER TABLE synthetic_catalog.example_tree OWNER TO synthetic_owner_role;
+ALTER VIEW synthetic_catalog.example_tree_public OWNER TO synthetic_owner_role;
+ALTER MATERIALIZED VIEW synthetic_catalog.example_tree_public_mv OWNER TO synthetic_owner_role;
+ALTER TABLE synthetic_catalog.owner_classes OWNER TO synthetic_owner_role;
+ALTER FUNCTION synthetic_catalog.touch_example_tree() OWNER TO synthetic_owner_role;
+
+REVOKE ALL ON TABLE synthetic_catalog.example_tree FROM PUBLIC;
+REVOKE ALL ON TABLE synthetic_catalog.example_tree_public FROM PUBLIC;
+REVOKE ALL ON TABLE synthetic_catalog.example_tree_public_mv FROM PUBLIC;
+
+GRANT SELECT, UPDATE ON TABLE synthetic_catalog.example_tree TO synthetic_authenticated_role;
+GRANT SELECT ON TABLE synthetic_catalog.example_tree_public TO synthetic_public_role;
+GRANT SELECT ON TABLE synthetic_catalog.example_tree_public_mv TO synthetic_application_role;

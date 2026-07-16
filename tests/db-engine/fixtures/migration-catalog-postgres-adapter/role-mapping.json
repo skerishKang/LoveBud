@@ -1,0 +1,9 @@
+{
+  "role_mapping": {
+    "synthetic_public_role": "PUBLIC",
+    "synthetic_application_role": "APPLICATION",
+    "synthetic_authenticated_role": "AUTHENTICATED",
+    "synthetic_service_role": "SERVICE",
+    "synthetic_owner_role": "OWNER_CLASS"
+  }
+}

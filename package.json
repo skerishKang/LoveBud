@@ -40,7 +40,9 @@
     "build:migration-catalog-evidence": "node scripts/build-migration-catalog-evidence.cjs",
     "check:pr-guardrails": "node scripts/check-pr-guardrails.cjs",
     "loop:triage": "node scripts/loop/run-loop.mjs --mode=dry-run",
-    "ci": "npm run lint && npm run build && npm run test && npm run verify"
+    "ci": "npm run lint && npm run build && npm run test && npm run verify",
+    "test:db-engine:migration-catalog-adapter": "node --test --test-concurrency=1 tests/db-engine/migration-catalog-postgres-adapter-engine.test.cjs",
+    "build:migration-catalog-evidence-from-postgres": "node scripts/build-migration-catalog-evidence-from-postgres.cjs"
   },
   "dependencies": {
     "firebase-admin": "^12.0.0",
