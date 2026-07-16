@@ -32,7 +32,9 @@ const FAILURE = Object.freeze({
   COLLECTION_PLAN_BOUNDS_EXCEEDED: 'COLLECTION_PLAN_BOUNDS_EXCEEDED',
   COLLECTION_PLAN_PATH_INVALID: 'COLLECTION_PLAN_PATH_INVALID',
   COLLECTION_PLAN_DIGEST_MISMATCH: 'COLLECTION_PLAN_DIGEST_MISMATCH',
+  COLLECTION_PLAN_CONTRACT_DIGEST_MISMATCH: 'COLLECTION_PLAN_CONTRACT_DIGEST_MISMATCH',
   COLLECTION_PLAN_OUTPUT_PROHIBITED: 'COLLECTION_PLAN_OUTPUT_PROHIBITED',
+  COLLECTION_PLAN_POLICY_INVALID: 'COLLECTION_PLAN_POLICY_INVALID',
 });
 
 const DEFAULT_CONTRACT_REL =
@@ -43,6 +45,61 @@ const COMMITTED_CANONICAL_REL =
   'db/migration-provenance/canonical-migrations.json';
 const COMMITTED_ATTESTATION_REL =
   'db/migration-provenance/adoption-attestation-contract.json';
+
+/** Source constants — safety invariants independent of any caller/file override. */
+const CANONICAL_FIXED = Object.freeze({
+  format_version: '1.0',
+  plan_status: 'PREPARED_ONLY',
+  environment_class: 'PRODUCTION',
+  attestation_scope: 'PRODUCTION_READONLY',
+  collection_mode: 'CATALOG_METADATA_ONLY',
+  output_policy: 'SANITIZED_STDOUT_ONLY',
+});
+const CANONICAL_PREPARED_ATTESTATION_STATUS = 'UNATTESTED';
+const CANONICAL_DIGEST_ALGORITHM = 'sha256';
+const CANONICAL_PROHIBITED_STATUSES = Object.freeze([
+  'ATTESTED',
+  'ACTIVE',
+  'APPLIED',
+  'APPROVED_FOR_MUTATION',
+]);
+const CANONICAL_ROLE_CLASSES = Object.freeze([
+  'PUBLIC',
+  'APPLICATION',
+  'AUTHENTICATED',
+  'SERVICE',
+  'OWNER_CLASS',
+]);
+const CANONICAL_PROOFS = Object.freeze([
+  'EXPLICIT_READ_ONLY_TRANSACTION',
+  'READ_ONLY_TRANSACTION_CONFIRMED',
+  'REPOSITORY_OWNED_SQL_ONLY',
+  'NO_CALLER_SQL',
+  'ALLOWLISTED_OBJECTS_ONLY',
+  'NO_APPLICATION_ROW_READS',
+  'ABSTRACT_ROLE_MAPPING_ONLY',
+  'NO_RAW_CATALOG_OUTPUT',
+  'NO_PARTIAL_SUCCESS_CLAIM',
+  'BOUNDED_FAILURE_OUTPUT',
+]);
+const CANONICAL_OUTPUTS = Object.freeze([
+  'SANITIZED_CATALOG_EVIDENCE',
+  'CATALOG_EVIDENCE_DIGEST',
+  'INACTIVE_EXPECTED_SCHEMA_CANDIDATE',
+  'COLLECTION_PLAN_DIGEST',
+  'OBJECT_ALLOWLIST_DIGEST',
+  'PREPARED_ATTESTATION_DRAFT',
+  'BOUNDED_COLLECTION_OUTCOME',
+]);
+const CANONICAL_DIGEST_DOMAINS = Object.freeze({
+  collection_plan: 'lovebud:adoption-baseline-collection-plan',
+  object_allowlist: 'lovebud:adoption-baseline-object-allowlist',
+});
+const CANONICAL_BASELINE_COMMIT_PATTERN = '^[a-f0-9]{40}$';
+const CANONICAL_APPROVAL_REFERENCE_PATTERN =
+  '^(?:issue:\\d+|decision:[A-Za-z0-9][A-Za-z0-9._-]{2,63})$';
+const MAX_CONTRACT_BYTES = 1048576;
+const MODULE_REPO_ROOT = path.resolve(__dirname, '..');
 
 const PLAN_KEY_ORDER = Object.freeze([
   'format_version',
@@ -59,6 +116,7 @@ const PLAN_KEY_ORDER = Object.freeze([
   'expected_outputs',
   'contract_path',
   'digest_algorithm',
+  'collection_plan_contract_digest',
   'object_allowlist_digest',
   'plan_digest',
 ]);
@@ -124,44 +182,183 @@ function matchPattern(value, pattern) {
   }
 }
 
-function loadJson(filePath) {
-  return JSON.parse(fs.readFileSync(filePath, 'utf8'));
-}
-
 function defaultContractPath(repoRoot) {
   return path.join(repoRoot, 'db', 'migration-provenance', 'adoption-baseline-collection-plan-contract.json');
 }
 
-function loadCollectionPlanContract(repoRoot) {
-  return loadJson(defaultContractPath(repoRoot));
+function exactStringArrayEqual(actual, expected) {
+  if (!Array.isArray(actual) || actual.length !== expected.length) return false;
+  for (let i = 0; i < expected.length; i += 1) {
+    if (actual[i] !== expected[i]) return false;
+  }
+  return true;
 }
 
-function validateCollectionPlanContract(contract) {
+function setEqual(actual, expected) {
+  if (!Array.isArray(actual) || actual.length !== expected.length) return false;
+  const left = new Set(actual);
+  if (left.size !== expected.length) return false;
+  for (const value of expected) {
+    if (!left.has(value)) return false;
+  }
+  return true;
+}
+
+function computeExactBytesDigest(buffer) {
+  return `sha256:${crypto.createHash('sha256').update(buffer).digest('hex')}`;
+}
+
+/**
+ * Strict repository-owned policy validation (used only after trusted load).
+ * Not a public authorization surface for caller-supplied contracts.
+ */
+function validateCollectionPlanContract(contract, repoRoot) {
   if (!contract || typeof contract !== 'object' || Array.isArray(contract)) {
-    fail(FAILURE.COLLECTION_PLAN_INPUT_INVALID, { field: 'contract' });
+    fail(FAILURE.COLLECTION_PLAN_POLICY_INVALID, { field: 'contract' });
   }
   if (contract.format_version !== '1.0') fail(FAILURE.COLLECTION_PLAN_FORMAT_MISMATCH);
-  for (const key of [
-    'required_top_level_fields',
-    'allowed_top_level_fields',
-    'fixed_field_values',
-    'enums',
-    'patterns',
-    'limits',
-    'reviewed_object_allowlist',
-    'mandatory_read_only_proofs',
-    'mandatory_expected_outputs',
-    'role_mapping_classes',
-    'digest_domains',
-  ]) {
-    if (contract[key] === undefined) {
-      fail(FAILURE.COLLECTION_PLAN_FIELD_MISSING, { field: key });
+  if (contract.digest_algorithm !== CANONICAL_DIGEST_ALGORITHM) {
+    fail(FAILURE.COLLECTION_PLAN_POLICY_INVALID, { field: 'digest_algorithm' });
+  }
+  if (contract.contract_path !== DEFAULT_CONTRACT_REL) {
+    fail(FAILURE.COLLECTION_PLAN_POLICY_INVALID, { field: 'contract_path' });
+  }
+  if (contract.prepared_attestation_status !== CANONICAL_PREPARED_ATTESTATION_STATUS) {
+    fail(FAILURE.COLLECTION_PLAN_POLICY_INVALID, { field: 'prepared_attestation_status' });
+  }
+
+  const fixed = contract.fixed_field_values || {};
+  for (const [key, expected] of Object.entries(CANONICAL_FIXED)) {
+    if (fixed[key] !== expected) {
+      fail(FAILURE.COLLECTION_PLAN_POLICY_INVALID, { field: key });
     }
   }
+
+  if (!setEqual(contract.prohibited_plan_statuses || [], CANONICAL_PROHIBITED_STATUSES)) {
+    fail(FAILURE.COLLECTION_PLAN_POLICY_INVALID, { field: 'prohibited_plan_statuses' });
+  }
+  if (!setEqual(contract.role_mapping_classes || [], CANONICAL_ROLE_CLASSES)) {
+    fail(FAILURE.COLLECTION_PLAN_POLICY_INVALID, { field: 'role_mapping_classes' });
+  }
+  if (!setEqual(contract.mandatory_read_only_proofs || [], CANONICAL_PROOFS)) {
+    fail(FAILURE.COLLECTION_PLAN_POLICY_INVALID, { field: 'mandatory_read_only_proofs' });
+  }
+  if (!setEqual(contract.mandatory_expected_outputs || [], CANONICAL_OUTPUTS)) {
+    fail(FAILURE.COLLECTION_PLAN_POLICY_INVALID, { field: 'mandatory_expected_outputs' });
+  }
+  if (
+    !contract.digest_domains ||
+    contract.digest_domains.collection_plan !== CANONICAL_DIGEST_DOMAINS.collection_plan ||
+    contract.digest_domains.object_allowlist !== CANONICAL_DIGEST_DOMAINS.object_allowlist
+  ) {
+    fail(FAILURE.COLLECTION_PLAN_POLICY_INVALID, { field: 'digest_domains' });
+  }
+
+  const patterns = contract.patterns || {};
+  if (patterns.baseline_commit !== CANONICAL_BASELINE_COMMIT_PATTERN) {
+    fail(FAILURE.COLLECTION_PLAN_POLICY_INVALID, { field: 'baseline_commit_pattern' });
+  }
+  if (patterns.approval_reference !== CANONICAL_APPROVAL_REFERENCE_PATTERN) {
+    fail(FAILURE.COLLECTION_PLAN_POLICY_INVALID, { field: 'approval_reference_pattern' });
+  }
+
   if (!Array.isArray(contract.reviewed_object_allowlist) || contract.reviewed_object_allowlist.length < 1) {
     fail(FAILURE.COLLECTION_PLAN_OBJECT_INVALID, { field: 'reviewed_object_allowlist' });
   }
+  if (!contract.object_selection_evidence || typeof contract.object_selection_evidence !== 'object') {
+    fail(FAILURE.COLLECTION_PLAN_POLICY_INVALID, { field: 'object_selection_evidence' });
+  }
+
+  const allowNames = contract.reviewed_object_allowlist.map((item) => item && item.name).sort(compareCodePoint);
+  const evidenceNames = Object.keys(contract.object_selection_evidence).sort(compareCodePoint);
+  if (!exactStringArrayEqual(allowNames, evidenceNames)) {
+    fail(FAILURE.COLLECTION_PLAN_POLICY_INVALID, { field: 'object_selection_evidence' });
+  }
+
+  const root = path.resolve(repoRoot || MODULE_REPO_ROOT);
+  for (const name of evidenceNames) {
+    const evidence = contract.object_selection_evidence[name];
+    if (!evidence || !Array.isArray(evidence.repository_evidence) || evidence.repository_evidence.length < 1) {
+      fail(FAILURE.COLLECTION_PLAN_POLICY_INVALID, { field: 'repository_evidence' });
+    }
+    for (const rel of evidence.repository_evidence) {
+      if (typeof rel !== 'string' || !rel) {
+        fail(FAILURE.COLLECTION_PLAN_POLICY_INVALID, { field: 'repository_evidence' });
+      }
+      // Existence only — never echo path or content.
+      try {
+        const { realPath } = resolveRepoConfinedPath(root, rel);
+        const stat = fs.statSync(realPath);
+        if (!stat.isFile()) fail(FAILURE.COLLECTION_PLAN_POLICY_INVALID, { field: 'repository_evidence' });
+      } catch {
+        fail(FAILURE.COLLECTION_PLAN_POLICY_INVALID, { field: 'repository_evidence' });
+      }
+    }
+  }
+
+  // Ensure reviewed allowlist objects themselves are well-formed under this contract.
+  canonicalizeObjectAllowlist(contract.reviewed_object_allowlist, contract);
   return true;
+}
+
+/**
+ * Canonical trusted policy loader. Fixed repository path only.
+ * Returns contract object, exact file bytes, and exact-byte digest.
+ */
+function loadTrustedCollectionPlanContract() {
+  const repoRoot = MODULE_REPO_ROOT;
+  const lexicalPath = path.join(repoRoot, ...DEFAULT_CONTRACT_REL.split('/'));
+  let realRoot;
+  let realPath;
+  try {
+    realRoot = fs.realpathSync.native(path.resolve(repoRoot));
+    realPath = fs.realpathSync.native(lexicalPath);
+  } catch {
+    fail(FAILURE.COLLECTION_PLAN_POLICY_INVALID, { field: 'contract' });
+  }
+  if (isPathOutside(realRoot, realPath) || realPath === realRoot) {
+    fail(FAILURE.COLLECTION_PLAN_POLICY_INVALID, { field: 'contract' });
+  }
+  let stat;
+  try {
+    stat = fs.statSync(realPath);
+  } catch {
+    fail(FAILURE.COLLECTION_PLAN_POLICY_INVALID, { field: 'contract' });
+  }
+  if (!stat.isFile() || stat.size > MAX_CONTRACT_BYTES) {
+    fail(FAILURE.COLLECTION_PLAN_POLICY_INVALID, { field: 'contract' });
+  }
+  let bytes;
+  try {
+    bytes = fs.readFileSync(realPath);
+  } catch {
+    fail(FAILURE.COLLECTION_PLAN_POLICY_INVALID, { field: 'contract' });
+  }
+  if (bytes.length > MAX_CONTRACT_BYTES) {
+    fail(FAILURE.COLLECTION_PLAN_POLICY_INVALID, { field: 'contract' });
+  }
+  const text = decodeUtf8Strict(bytes);
+  let contract;
+  try {
+    contract = JSON.parse(text);
+  } catch {
+    fail(FAILURE.COLLECTION_PLAN_POLICY_INVALID, { field: 'contract' });
+  }
+  validateCollectionPlanContract(contract, repoRoot);
+  return {
+    contract,
+    contractBytes: bytes,
+    contractDigest: computeExactBytesDigest(bytes),
+    repoRoot,
+  };
+}
+
+/** @deprecated Prefer loadTrustedCollectionPlanContract — kept for path helper tests only. */
+function loadCollectionPlanContract(repoRoot) {
+  if (repoRoot && path.resolve(repoRoot) !== path.resolve(MODULE_REPO_ROOT)) {
+    fail(FAILURE.COLLECTION_PLAN_POLICY_INVALID, { field: 'contract' });
+  }
+  return loadTrustedCollectionPlanContract().contract;
 }
 
 function isPathOutside(parent, child) {
@@ -436,7 +633,7 @@ function validateBoundedSortedEnumList(values, allowed, field, options = {}) {
   return sorted;
 }
 
-function validateRoleMappingClasses(values, contract) {
+function validateRoleMappingClasses(values) {
   // Reject raw role-like labels that are not abstract classes.
   const rawLike = new Set([
     'raw_role',
@@ -456,15 +653,10 @@ function validateRoleMappingClasses(values, contract) {
       fail(FAILURE.COLLECTION_PLAN_ROLE_INVALID);
     }
   }
-  const sorted = validateBoundedSortedEnumList(
-    values,
-    contract.enums.role_mapping_class,
-    'role_mapping_classes',
-    {
-      mandatory: contract.role_mapping_classes,
-      requireSorted: true,
-    }
-  );
+  const sorted = validateBoundedSortedEnumList(values, CANONICAL_ROLE_CLASSES, 'role_mapping_classes', {
+    mandatory: CANONICAL_ROLE_CLASSES,
+    requireSorted: true,
+  });
   return sorted;
 }
 
@@ -477,37 +669,74 @@ function computeDomainDigest(domain, payload) {
   return `sha256:${crypto.createHash('sha256').update(serialized, 'utf8').digest('hex')}`;
 }
 
-function computeObjectAllowlistDigest(objectAllowlist, contract) {
-  const domain =
-    (contract.digest_domains && contract.digest_domains.object_allowlist) ||
-    'lovebud:adoption-baseline-object-allowlist';
-  return computeDomainDigest(domain, objectAllowlist);
-}
-
-function computeCollectionPlanDigest(planWithoutDigests, contract) {
-  const domain =
-    (contract.digest_domains && contract.digest_domains.collection_plan) ||
-    'lovebud:adoption-baseline-collection-plan';
-  // Digests are never self-authorizing: hash excludes plan_digest and object_allowlist_digest.
-  const payload = { ...planWithoutDigests };
-  delete payload.plan_digest;
-  delete payload.object_allowlist_digest;
-  return computeDomainDigest(domain, payload);
+function computeObjectAllowlistDigest(objectAllowlist) {
+  return computeDomainDigest(CANONICAL_DIGEST_DOMAINS.object_allowlist, objectAllowlist);
 }
 
 /**
- * Validate a prepared collection plan against the repository-owned contract.
+ * Plan digest binds every emitted field except plan_digest itself.
+ * Includes contract_path, digest_algorithm, collection_plan_contract_digest,
+ * and object_allowlist_digest.
  */
-function validatePreparedCollectionPlan(plan, contract) {
-  validateCollectionPlanContract(contract);
+function computeCollectionPlanDigest(planWithoutPlanDigest) {
+  const payload = { ...planWithoutPlanDigest };
+  delete payload.plan_digest;
+  return computeDomainDigest(CANONICAL_DIGEST_DOMAINS.collection_plan, payload);
+}
+
+/**
+ * Unconditional safety invariants from source constants.
+ * Never depend solely on caller- or file-provided fixed_field_values.
+ */
+function assertUnconditionalSafetyInvariants(plan) {
+  if (!plan || typeof plan !== 'object' || Array.isArray(plan)) {
+    fail(FAILURE.COLLECTION_PLAN_INPUT_INVALID, { field: 'plan' });
+  }
+  if (
+    typeof plan.plan_status === 'string' &&
+    CANONICAL_PROHIBITED_STATUSES.includes(plan.plan_status)
+  ) {
+    fail(FAILURE.COLLECTION_PLAN_STATUS_INVALID);
+  }
+  if (plan.plan_status !== CANONICAL_FIXED.plan_status) {
+    fail(FAILURE.COLLECTION_PLAN_STATUS_INVALID);
+  }
+  if (plan.environment_class !== CANONICAL_FIXED.environment_class) {
+    fail(FAILURE.COLLECTION_PLAN_ENUM_INVALID, { field: 'environment_class' });
+  }
+  if (plan.attestation_scope !== CANONICAL_FIXED.attestation_scope) {
+    fail(FAILURE.COLLECTION_PLAN_ENUM_INVALID, { field: 'attestation_scope' });
+  }
+  if (plan.collection_mode !== CANONICAL_FIXED.collection_mode) {
+    fail(FAILURE.COLLECTION_PLAN_ENUM_INVALID, { field: 'collection_mode' });
+  }
+  if (plan.output_policy !== CANONICAL_FIXED.output_policy) {
+    fail(FAILURE.COLLECTION_PLAN_ENUM_INVALID, { field: 'output_policy' });
+  }
+  if (plan.format_version !== CANONICAL_FIXED.format_version) {
+    fail(FAILURE.COLLECTION_PLAN_FORMAT_MISMATCH);
+  }
+}
+
+/**
+ * Validate a prepared collection plan against the repository-owned trusted contract.
+ * Second positional argument is ignored and never used as policy authority.
+ */
+function validatePreparedCollectionPlan(plan /* , ignoredCallerContract */) {
+  const trusted = loadTrustedCollectionPlanContract();
+  const contract = trusted.contract;
+
   if (!plan || typeof plan !== 'object' || Array.isArray(plan)) {
     fail(FAILURE.COLLECTION_PLAN_INPUT_INVALID, { field: 'plan' });
   }
 
+  // Unconditional source-constant guards run even if trusted contract were malformed
+  // after load (defense in depth; load already validates).
+  assertUnconditionalSafetyInvariants(plan);
+
   const prohibited = new Set(contract.prohibited_fields || []);
   const allowed = new Set(contract.allowed_top_level_fields || []);
   const required = contract.required_top_level_fields || [];
-  const fixed = contract.fixed_field_values || {};
   const markers = contract.sensitive_content_markers || [];
   const limits = contract.limits || {};
   const patterns = contract.patterns || {};
@@ -524,22 +753,21 @@ function validatePreparedCollectionPlan(plan, contract) {
 
   scanValueSensitive(plan, markers, 'plan');
 
-  for (const [key, expected] of Object.entries(fixed)) {
+  // Re-assert fixed fields against source constants AND trusted contract fixed values.
+  for (const [key, expected] of Object.entries(CANONICAL_FIXED)) {
+    if (plan[key] !== expected) {
+      if (key === 'plan_status') fail(FAILURE.COLLECTION_PLAN_STATUS_INVALID);
+      fail(FAILURE.COLLECTION_PLAN_ENUM_INVALID, { field: key });
+    }
+  }
+  for (const [key, expected] of Object.entries(contract.fixed_field_values || {})) {
     if (plan[key] !== expected) {
       if (key === 'plan_status') fail(FAILURE.COLLECTION_PLAN_STATUS_INVALID);
       fail(FAILURE.COLLECTION_PLAN_ENUM_INVALID, { field: key });
     }
   }
 
-  const prohibitedStatuses = new Set(contract.prohibited_plan_statuses || []);
-  if (prohibitedStatuses.has(plan.plan_status)) {
-    fail(FAILURE.COLLECTION_PLAN_STATUS_INVALID);
-  }
-  if (plan.plan_status === 'ATTESTED' || plan.plan_status === 'ACTIVE') {
-    fail(FAILURE.COLLECTION_PLAN_STATUS_INVALID);
-  }
-
-  if (!matchPattern(plan.baseline_commit, patterns.baseline_commit || '^[a-f0-9]{40}$')) {
+  if (!matchPattern(plan.baseline_commit, CANONICAL_BASELINE_COMMIT_PATTERN)) {
     fail(FAILURE.COLLECTION_PLAN_COMMIT_INVALID);
   }
   if (plan.baseline_commit !== plan.baseline_commit.toLowerCase()) {
@@ -554,58 +782,80 @@ function validatePreparedCollectionPlan(plan, contract) {
     plan.approval_reference === 'approved' ||
     plan.approval_reference === 'yes' ||
     plan.approval_reference === 'owner-approved' ||
-    !matchPattern(plan.approval_reference, patterns.approval_reference)
+    !matchPattern(plan.approval_reference, CANONICAL_APPROVAL_REFERENCE_PATTERN)
   ) {
     fail(FAILURE.COLLECTION_PLAN_APPROVAL_INVALID);
   }
 
   const objectAllowlist = canonicalizeObjectAllowlist(plan.object_allowlist, contract);
-  const roleClasses = validateRoleMappingClasses(plan.role_mapping_classes, contract);
+  const roleClasses = validateRoleMappingClasses(plan.role_mapping_classes);
+  // Exact mandatory sets from source constants (not only file-provided lists).
+  if (!setEqual(roleClasses, CANONICAL_ROLE_CLASSES)) {
+    fail(FAILURE.COLLECTION_PLAN_ROLE_INVALID);
+  }
   const proofs = validateBoundedSortedEnumList(
     plan.required_read_only_proofs,
-    contract.enums.read_only_proof,
+    CANONICAL_PROOFS,
     'required_read_only_proofs',
-    { mandatory: contract.mandatory_read_only_proofs }
+    { mandatory: CANONICAL_PROOFS }
   );
   const outputs = validateBoundedSortedEnumList(
     plan.expected_outputs,
-    contract.enums.expected_output,
+    CANONICAL_OUTPUTS,
     'expected_outputs',
-    { mandatory: contract.mandatory_expected_outputs }
+    { mandatory: CANONICAL_OUTPUTS }
   );
 
-  // Structural rejection of attestation/activation semantics in outputs list already via enum.
-  // Explicit hard reject for forbidden words if ever smuggled through unknown path.
   for (const out of outputs) {
-    if (out === 'ATTESTED' || out === 'ACTIVE' || out === 'APPLIED') {
+    if (
+      out === 'ATTESTED' ||
+      out === 'ACTIVE' ||
+      out === 'APPLIED' ||
+      out === 'APPROVED_FOR_MUTATION'
+    ) {
       fail(FAILURE.COLLECTION_PLAN_OUTPUT_INVALID);
     }
   }
 
-  if (plan.contract_path !== undefined && plan.contract_path !== DEFAULT_CONTRACT_REL) {
+  if (plan.contract_path !== DEFAULT_CONTRACT_REL) {
     fail(FAILURE.COLLECTION_PLAN_INPUT_INVALID, { field: 'contract_path' });
   }
-  if (plan.digest_algorithm !== undefined && plan.digest_algorithm !== 'sha256') {
+  if (plan.digest_algorithm !== CANONICAL_DIGEST_ALGORITHM) {
     fail(FAILURE.COLLECTION_PLAN_INPUT_INVALID, { field: 'digest_algorithm' });
   }
 
+  const trustedContractDigest = trusted.contractDigest;
+  if (
+    typeof plan.collection_plan_contract_digest !== 'string' ||
+    !matchPattern(plan.collection_plan_contract_digest, patterns.digest || '^sha256:[a-f0-9]{64}$') ||
+    plan.collection_plan_contract_digest !== trustedContractDigest
+  ) {
+    fail(FAILURE.COLLECTION_PLAN_CONTRACT_DIGEST_MISMATCH, {
+      field: 'collection_plan_contract_digest',
+    });
+  }
+
+  const allowlistDigest = computeObjectAllowlistDigest(objectAllowlist);
   const planBody = {
-    format_version: plan.format_version,
-    plan_status: plan.plan_status,
+    format_version: CANONICAL_FIXED.format_version,
+    plan_status: CANONICAL_FIXED.plan_status,
     baseline_commit: plan.baseline_commit,
-    environment_class: plan.environment_class,
-    attestation_scope: plan.attestation_scope,
+    environment_class: CANONICAL_FIXED.environment_class,
+    attestation_scope: CANONICAL_FIXED.attestation_scope,
     approval_reference: plan.approval_reference,
-    collection_mode: plan.collection_mode,
-    output_policy: plan.output_policy,
+    collection_mode: CANONICAL_FIXED.collection_mode,
+    output_policy: CANONICAL_FIXED.output_policy,
     object_allowlist: objectAllowlist,
     role_mapping_classes: roleClasses,
     required_read_only_proofs: proofs,
     expected_outputs: outputs,
+    contract_path: DEFAULT_CONTRACT_REL,
+    digest_algorithm: CANONICAL_DIGEST_ALGORITHM,
+    collection_plan_contract_digest: trustedContractDigest,
+    object_allowlist_digest: allowlistDigest,
   };
 
-  const allowlistDigest = computeObjectAllowlistDigest(objectAllowlist, contract);
-  const planDigest = computeCollectionPlanDigest(planBody, contract);
+  const planDigest = computeCollectionPlanDigest(planBody);
 
   if (plan.object_allowlist_digest !== undefined) {
     if (
@@ -630,20 +880,23 @@ function validatePreparedCollectionPlan(plan, contract) {
     ok: true,
     plan: {
       ...planBody,
-      contract_path: DEFAULT_CONTRACT_REL,
-      digest_algorithm: 'sha256',
-      object_allowlist_digest: allowlistDigest,
       plan_digest: planDigest,
     },
   };
 }
 
 /**
- * Build repository-owned prepared plan. Caller may only supply baselineCommit and approvalReference.
+ * Build repository-owned prepared plan.
+ * Caller may only supply baselineCommit and approvalReference.
+ * Second positional argument is ignored and never used as policy authority.
  */
-function buildPreparedCollectionPlan({ baselineCommit, approvalReference }, contract) {
-  validateCollectionPlanContract(contract);
-  if (typeof baselineCommit !== 'string' || !matchPattern(baselineCommit, contract.patterns.baseline_commit)) {
+function buildPreparedCollectionPlan(input /* , ignoredCallerContract */) {
+  const trusted = loadTrustedCollectionPlanContract();
+  const contract = trusted.contract;
+  const baselineCommit = input && input.baselineCommit;
+  const approvalReference = input && input.approvalReference;
+
+  if (typeof baselineCommit !== 'string' || !matchPattern(baselineCommit, CANONICAL_BASELINE_COMMIT_PATTERN)) {
     fail(FAILURE.COLLECTION_PLAN_COMMIT_INVALID);
   }
   if (baselineCommit !== baselineCommit.toLowerCase()) {
@@ -657,30 +910,36 @@ function buildPreparedCollectionPlan({ baselineCommit, approvalReference }, cont
     approvalReference === 'approved' ||
     approvalReference === 'yes' ||
     approvalReference === 'owner-approved' ||
-    !matchPattern(approvalReference, contract.patterns.approval_reference)
+    !matchPattern(approvalReference, CANONICAL_APPROVAL_REFERENCE_PATTERN)
   ) {
     fail(FAILURE.COLLECTION_PLAN_APPROVAL_INVALID);
   }
   scanValueSensitive(approvalReference, contract.sensitive_content_markers || [], 'approval_reference');
 
-  const fixed = contract.fixed_field_values;
   const objectAllowlist = canonicalizeObjectAllowlist(contract.reviewed_object_allowlist, contract);
+  const allowlistDigest = computeObjectAllowlistDigest(objectAllowlist);
   const plan = {
-    format_version: fixed.format_version,
-    plan_status: fixed.plan_status,
+    format_version: CANONICAL_FIXED.format_version,
+    plan_status: CANONICAL_FIXED.plan_status,
     baseline_commit: baselineCommit,
-    environment_class: fixed.environment_class,
-    attestation_scope: fixed.attestation_scope,
+    environment_class: CANONICAL_FIXED.environment_class,
+    attestation_scope: CANONICAL_FIXED.attestation_scope,
     approval_reference: approvalReference,
-    collection_mode: fixed.collection_mode,
-    output_policy: fixed.output_policy,
+    collection_mode: CANONICAL_FIXED.collection_mode,
+    output_policy: CANONICAL_FIXED.output_policy,
     object_allowlist: objectAllowlist,
-    role_mapping_classes: sortCopy(contract.role_mapping_classes),
-    required_read_only_proofs: sortCopy(contract.mandatory_read_only_proofs),
-    expected_outputs: sortCopy(contract.mandatory_expected_outputs),
+    role_mapping_classes: sortCopy([...CANONICAL_ROLE_CLASSES]),
+    required_read_only_proofs: sortCopy([...CANONICAL_PROOFS]),
+    expected_outputs: sortCopy([...CANONICAL_OUTPUTS]),
+    contract_path: DEFAULT_CONTRACT_REL,
+    digest_algorithm: CANONICAL_DIGEST_ALGORITHM,
+    collection_plan_contract_digest: trusted.contractDigest,
+    object_allowlist_digest: allowlistDigest,
   };
+  plan.plan_digest = computeCollectionPlanDigest(plan);
 
-  const validated = validatePreparedCollectionPlan(plan, contract);
+  // Round-trip through validator (still loads trusted contract; ignores any second arg).
+  const validated = validatePreparedCollectionPlan(plan);
   return validated.plan;
 }
 
@@ -731,15 +990,23 @@ module.exports = {
   DEFAULT_CONTRACT_REL,
   COMMITTED_EXPECTED_SCHEMA_REL,
   COMMITTED_CANONICAL_REL,
+  CANONICAL_FIXED,
+  CANONICAL_PROOFS,
+  CANONICAL_OUTPUTS,
+  CANONICAL_ROLE_CLASSES,
+  CANONICAL_PROHIBITED_STATUSES,
+  CANONICAL_DIGEST_DOMAINS,
   PLAN_KEY_ORDER,
   compareCodePoint,
   stableStringify,
   defaultContractPath,
+  loadTrustedCollectionPlanContract,
   loadCollectionPlanContract,
   validateCollectionPlanContract,
   validatePreparedCollectionPlan,
   buildPreparedCollectionPlan,
   serializePreparedCollectionPlan,
+  computeExactBytesDigest,
   computeCollectionPlanDigest,
   computeObjectAllowlistDigest,
   isPathOutside,

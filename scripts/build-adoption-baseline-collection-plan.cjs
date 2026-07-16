@@ -3,19 +3,16 @@
 /**
  * CLI: build repository-owned PREPARED_ONLY adoption-baseline collection plan.
  * Explicit arguments only. Stdout-only. No DB, network, shell, secrets, or env fallback.
+ * Uses the same trusted contract loader as the programmatic API.
  *
  * Refs #3555, #3458
  */
 
-const path = require('node:path');
 const {
   FAILURE,
-  loadCollectionPlanContract,
   buildPreparedCollectionPlan,
   serializePreparedCollectionPlan,
 } = require('./adoption-baseline-collection-plan-core.cjs');
-
-const REPO_ROOT = path.resolve(__dirname, '..');
 
 function parseArgs(argv) {
   const map = new Map();
@@ -61,14 +58,12 @@ function main() {
       failClosed([FAILURE.COLLECTION_PLAN_INPUT_INVALID]);
       return;
     }
-    const contract = loadCollectionPlanContract(REPO_ROOT);
-    const plan = buildPreparedCollectionPlan(
-      {
-        baselineCommit: args.get('--baseline-commit'),
-        approvalReference: args.get('--approval-reference'),
-      },
-      contract
-    );
+    // Public builder loads the canonical repository contract internally.
+    // No caller path, env, or second-arg contract injection.
+    const plan = buildPreparedCollectionPlan({
+      baselineCommit: args.get('--baseline-commit'),
+      approvalReference: args.get('--approval-reference'),
+    });
     process.stdout.write(serializePreparedCollectionPlan(plan));
     process.exitCode = 0;
   } catch (error) {

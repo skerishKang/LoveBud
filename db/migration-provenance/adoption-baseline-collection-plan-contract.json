@@ -15,7 +15,11 @@
     "object_allowlist",
     "role_mapping_classes",
     "required_read_only_proofs",
-    "expected_outputs"
+    "expected_outputs",
+    "contract_path",
+    "digest_algorithm",
+    "collection_plan_contract_digest",
+    "object_allowlist_digest"
   ],
   "allowed_top_level_fields": [
     "format_version",
@@ -32,8 +36,9 @@
     "expected_outputs",
     "contract_path",
     "digest_algorithm",
-    "plan_digest",
-    "object_allowlist_digest"
+    "collection_plan_contract_digest",
+    "object_allowlist_digest",
+    "plan_digest"
   ],
   "object_allowlist_required_fields": [
     "name",

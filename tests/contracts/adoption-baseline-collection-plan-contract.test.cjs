@@ -67,6 +67,8 @@ const START_CANONICAL_HASH = sha256File(CANONICAL);
 
 test('contract validates and exposes exact fixed policy fields', () => {
   assert.equal(core.validateCollectionPlanContract(contract), true);
+  const trusted = core.loadTrustedCollectionPlanContract();
+  assert.equal(trusted.contractDigest, core.computeExactBytesDigest(fs.readFileSync(CONTRACT_PATH)));
   assert.deepEqual(contract.fixed_field_values, {
     format_version: '1.0',
     plan_status: 'PREPARED_ONLY',
@@ -88,6 +90,10 @@ test('contract validates and exposes exact fixed policy fields', () => {
     'role_mapping_classes',
     'required_read_only_proofs',
     'expected_outputs',
+    'contract_path',
+    'digest_algorithm',
+    'collection_plan_contract_digest',
+    'object_allowlist_digest',
   ]) {
     assert.ok(contract.required_top_level_fields.includes(field), field);
   }
@@ -116,10 +122,10 @@ test('classification and package wiring', () => {
 });
 
 test('builder emits fixed PREPARED_ONLY PRODUCTION plan with reviewed allowlist', () => {
-  const plan = core.buildPreparedCollectionPlan(
-    { baselineCommit: BASELINE, approvalReference: APPROVAL },
-    contract
-  );
+  const plan = core.buildPreparedCollectionPlan({
+    baselineCommit: BASELINE,
+    approvalReference: APPROVAL,
+  });
   assert.equal(plan.plan_status, 'PREPARED_ONLY');
   assert.equal(plan.environment_class, 'PRODUCTION');
   assert.equal(plan.attestation_scope, 'PRODUCTION_READONLY');
@@ -132,6 +138,13 @@ test('builder emits fixed PREPARED_ONLY PRODUCTION plan with reviewed allowlist'
   assert.deepEqual(names, [...names].sort(core.compareCodePoint));
   assert.match(plan.plan_digest, /^sha256:[a-f0-9]{64}$/);
   assert.match(plan.object_allowlist_digest, /^sha256:[a-f0-9]{64}$/);
+  assert.match(plan.collection_plan_contract_digest, /^sha256:[a-f0-9]{64}$/);
+  assert.equal(
+    plan.collection_plan_contract_digest,
+    core.computeExactBytesDigest(fs.readFileSync(CONTRACT_PATH))
+  );
+  assert.equal(plan.contract_path, 'db/migration-provenance/adoption-baseline-collection-plan-contract.json');
+  assert.equal(plan.digest_algorithm, 'sha256');
   assert.ok(plan.role_mapping_classes.includes('PUBLIC'));
   assert.ok(plan.role_mapping_classes.includes('AUTHENTICATED'));
   assert.ok(plan.required_read_only_proofs.includes('NO_CALLER_SQL'));
@@ -140,48 +153,48 @@ test('builder emits fixed PREPARED_ONLY PRODUCTION plan with reviewed allowlist'
 });
 
 test('deterministic serialization and digests', () => {
-  const a = core.buildPreparedCollectionPlan(
-    { baselineCommit: BASELINE, approvalReference: APPROVAL },
-    contract
-  );
-  const b = core.buildPreparedCollectionPlan(
-    { baselineCommit: BASELINE, approvalReference: APPROVAL },
-    contract
-  );
+  const a = core.buildPreparedCollectionPlan({
+    baselineCommit: BASELINE,
+    approvalReference: APPROVAL,
+  });
+  const b = core.buildPreparedCollectionPlan({
+    baselineCommit: BASELINE,
+    approvalReference: APPROVAL,
+  });
   assert.equal(core.serializePreparedCollectionPlan(a), core.serializePreparedCollectionPlan(b));
   assert.equal(a.plan_digest, b.plan_digest);
   assert.equal(a.object_allowlist_digest, b.object_allowlist_digest);
+  assert.equal(a.collection_plan_contract_digest, b.collection_plan_contract_digest);
 
   const reversed = {
     ...a,
     object_allowlist: [...a.object_allowlist].reverse(),
   };
   delete reversed.plan_digest;
-  delete reversed.object_allowlist_digest;
-  const validated = core.validatePreparedCollectionPlan(reversed, contract).plan;
+  const validated = core.validatePreparedCollectionPlan(reversed).plan;
   assert.equal(validated.plan_digest, a.plan_digest);
   assert.equal(validated.object_allowlist_digest, a.object_allowlist_digest);
 });
 
 test('missing/malformed baseline commit fails', () => {
   assertFail(
-    () => core.buildPreparedCollectionPlan({ baselineCommit: '', approvalReference: APPROVAL }, contract),
+    () => core.buildPreparedCollectionPlan({ baselineCommit: '', approvalReference: APPROVAL }),
     'COLLECTION_PLAN_COMMIT_INVALID'
   );
   assertFail(
     () =>
-      core.buildPreparedCollectionPlan(
-        { baselineCommit: '79ba1085b7b7860ca4910acc39cacdb16ed63a4', approvalReference: APPROVAL },
-        contract
-      ),
+      core.buildPreparedCollectionPlan({
+        baselineCommit: '79ba1085b7b7860ca4910acc39cacdb16ed63a4',
+        approvalReference: APPROVAL,
+      }),
     'COLLECTION_PLAN_COMMIT_INVALID'
   );
   assertFail(
     () =>
-      core.buildPreparedCollectionPlan(
-        { baselineCommit: BASELINE.toUpperCase(), approvalReference: APPROVAL },
-        contract
-      ),
+      core.buildPreparedCollectionPlan({
+        baselineCommit: BASELINE.toUpperCase(),
+        approvalReference: APPROVAL,
+      }),
     'COLLECTION_PLAN_COMMIT_INVALID'
   );
 });
@@ -189,220 +202,227 @@ test('missing/malformed baseline commit fails', () => {
 test('malformed and free-text approval fails', () => {
   for (const bad of ['approved', 'yes', 'owner-approved', 'ok', 'issue:', 'decision:']) {
     assertFail(
-      () =>
-        core.buildPreparedCollectionPlan({ baselineCommit: BASELINE, approvalReference: bad }, contract),
+      () => core.buildPreparedCollectionPlan({ baselineCommit: BASELINE, approvalReference: bad }),
       'COLLECTION_PLAN_APPROVAL_INVALID'
     );
   }
 });
 
 test('missing or empty allowlist fails', () => {
-  const plan = core.buildPreparedCollectionPlan(
-    { baselineCommit: BASELINE, approvalReference: APPROVAL },
-    contract
-  );
-  delete plan.object_allowlist;
-  delete plan.plan_digest;
-  delete plan.object_allowlist_digest;
-  assertFail(() => core.validatePreparedCollectionPlan(plan, contract), 'COLLECTION_PLAN_FIELD_MISSING');
+  const plan = core.buildPreparedCollectionPlan({
+    baselineCommit: BASELINE,
+    approvalReference: APPROVAL,
+  });
+  const missing = { ...plan };
+  delete missing.object_allowlist;
+  delete missing.plan_digest;
+  assertFail(() => core.validatePreparedCollectionPlan(missing), 'COLLECTION_PLAN_FIELD_MISSING');
 
-  plan.object_allowlist = [];
-  assertFail(() => core.validatePreparedCollectionPlan(plan, contract), 'COLLECTION_PLAN_OBJECT_INVALID');
+  const empty = { ...plan, object_allowlist: [] };
+  delete empty.plan_digest;
+  assertFail(() => core.validatePreparedCollectionPlan(empty), 'COLLECTION_PLAN_OBJECT_INVALID');
 });
 
 test('duplicate / unknown / malformed object records fail', () => {
-  const plan = core.buildPreparedCollectionPlan(
-    { baselineCommit: BASELINE, approvalReference: APPROVAL },
-    contract
-  );
+  const plan = core.buildPreparedCollectionPlan({
+    baselineCommit: BASELINE,
+    approvalReference: APPROVAL,
+  });
   const base = plan.object_allowlist[0];
-  delete plan.plan_digest;
-  delete plan.object_allowlist_digest;
 
-  plan.object_allowlist = [...plan.object_allowlist, { ...base }];
-  assertFail(() => core.validatePreparedCollectionPlan(plan, contract), 'COLLECTION_PLAN_OBJECT_DUPLICATE');
+  assertFail(
+    () =>
+      core.validatePreparedCollectionPlan({
+        ...plan,
+        object_allowlist: [...plan.object_allowlist, { ...base }],
+      }),
+    'COLLECTION_PLAN_OBJECT_DUPLICATE'
+  );
 
-  plan.object_allowlist = [
-    ...contract.reviewed_object_allowlist.slice(0, -1),
-    {
-      name: 'table:public.not_in_review',
-      kind: 'TABLE',
-      metadata_categories: base.metadata_categories,
-      rationale_code: base.rationale_code,
-    },
-  ];
-  assertFail(() => core.validatePreparedCollectionPlan(plan, contract), 'COLLECTION_PLAN_OBJECT_UNKNOWN');
+  assertFail(
+    () =>
+      core.validatePreparedCollectionPlan({
+        ...plan,
+        object_allowlist: [
+          ...contract.reviewed_object_allowlist.slice(0, -1),
+          {
+            name: 'table:public.not_in_review',
+            kind: 'TABLE',
+            metadata_categories: base.metadata_categories,
+            rationale_code: base.rationale_code,
+          },
+        ],
+      }),
+    'COLLECTION_PLAN_OBJECT_UNKNOWN'
+  );
 
-  plan.object_allowlist = [
-    {
-      name: 'public.trees',
-      kind: 'TABLE',
-      metadata_categories: base.metadata_categories,
-      rationale_code: base.rationale_code,
-    },
-  ];
-  assertFail(() => core.validatePreparedCollectionPlan(plan, contract), 'COLLECTION_PLAN_OBJECT_INVALID');
+  assertFail(
+    () =>
+      core.validatePreparedCollectionPlan({
+        ...plan,
+        object_allowlist: [
+          {
+            name: 'public.trees',
+            kind: 'TABLE',
+            metadata_categories: base.metadata_categories,
+            rationale_code: base.rationale_code,
+          },
+        ],
+      }),
+    'COLLECTION_PLAN_OBJECT_INVALID'
+  );
 
-  plan.object_allowlist = [
-    {
-      name: 'table:public.trees',
-      kind: 'VIEW',
-      metadata_categories: base.metadata_categories,
-      rationale_code: 'CORE_TREE_IDENTITY',
-    },
-  ];
-  assertFail(() => core.validatePreparedCollectionPlan(plan, contract), 'COLLECTION_PLAN_OBJECT_INVALID');
+  assertFail(
+    () =>
+      core.validatePreparedCollectionPlan({
+        ...plan,
+        object_allowlist: [
+          {
+            name: 'table:public.trees',
+            kind: 'VIEW',
+            metadata_categories: base.metadata_categories,
+            rationale_code: 'CORE_TREE_IDENTITY',
+          },
+        ],
+      }),
+    'COLLECTION_PLAN_OBJECT_INVALID'
+  );
 
-  plan.object_allowlist = [
-    {
-      name: 'table:public.trees',
-      kind: 'TABLE',
-      metadata_categories: ['not_a_category'],
-      rationale_code: 'CORE_TREE_IDENTITY',
-    },
-  ];
-  assertFail(() => core.validatePreparedCollectionPlan(plan, contract), 'COLLECTION_PLAN_ENUM_INVALID');
+  assertFail(
+    () =>
+      core.validatePreparedCollectionPlan({
+        ...plan,
+        object_allowlist: [
+          {
+            name: 'table:public.trees',
+            kind: 'TABLE',
+            metadata_categories: ['not_a_category'],
+            rationale_code: 'CORE_TREE_IDENTITY',
+          },
+        ],
+      }),
+    'COLLECTION_PLAN_ENUM_INVALID'
+  );
 
-  plan.object_allowlist = [
-    {
-      name: 'table:public.trees',
-      kind: 'TABLE',
-      metadata_categories: base.metadata_categories,
-      rationale_code: 'CORE_TREE_IDENTITY',
-      owner: 'x',
-    },
-  ];
-  assertFail(() => core.validatePreparedCollectionPlan(plan, contract), 'COLLECTION_PLAN_UNKNOWN_FIELD');
+  assertFail(
+    () =>
+      core.validatePreparedCollectionPlan({
+        ...plan,
+        object_allowlist: [
+          {
+            name: 'table:public.trees',
+            kind: 'TABLE',
+            metadata_categories: base.metadata_categories,
+            rationale_code: 'CORE_TREE_IDENTITY',
+            owner: 'x',
+          },
+        ],
+      }),
+    'COLLECTION_PLAN_UNKNOWN_FIELD'
+  );
 });
 
 test('wrong fixed status/environment/scope/mode/policy fails', () => {
-  const plan = core.buildPreparedCollectionPlan(
-    { baselineCommit: BASELINE, approvalReference: APPROVAL },
-    contract
-  );
-  delete plan.plan_digest;
-  delete plan.object_allowlist_digest;
+  const plan = core.buildPreparedCollectionPlan({
+    baselineCommit: BASELINE,
+    approvalReference: APPROVAL,
+  });
   for (const [field, value, category] of [
     ['plan_status', 'ATTESTED', 'COLLECTION_PLAN_STATUS_INVALID'],
     ['plan_status', 'ACTIVE', 'COLLECTION_PLAN_STATUS_INVALID'],
+    ['plan_status', 'APPLIED', 'COLLECTION_PLAN_STATUS_INVALID'],
+    ['plan_status', 'APPROVED_FOR_MUTATION', 'COLLECTION_PLAN_STATUS_INVALID'],
     ['environment_class', 'STAGING', 'COLLECTION_PLAN_ENUM_INVALID'],
     ['attestation_scope', 'DISPOSABLE_CI', 'COLLECTION_PLAN_ENUM_INVALID'],
     ['collection_mode', 'ROW_SCAN', 'COLLECTION_PLAN_ENUM_INVALID'],
     ['output_policy', 'WRITE_FILES', 'COLLECTION_PLAN_ENUM_INVALID'],
   ]) {
     const mutated = { ...plan, [field]: value };
-    assertFail(() => core.validatePreparedCollectionPlan(mutated, contract), category);
+    assertFail(() => core.validatePreparedCollectionPlan(mutated), category);
   }
 });
 
 test('raw role fields and values fail', () => {
-  const plan = core.buildPreparedCollectionPlan(
-    { baselineCommit: BASELINE, approvalReference: APPROVAL },
-    contract
-  );
-  delete plan.plan_digest;
-  delete plan.object_allowlist_digest;
+  const plan = core.buildPreparedCollectionPlan({
+    baselineCommit: BASELINE,
+    approvalReference: APPROVAL,
+  });
   assertFail(
-    () =>
-      core.validatePreparedCollectionPlan(
-        { ...plan, raw_role: 'postgres' },
-        contract
-      ),
+    () => core.validatePreparedCollectionPlan({ ...plan, raw_role: 'postgres' }),
     'COLLECTION_PLAN_SENSITIVE_INPUT'
   );
   assertFail(
-    () =>
-      core.validatePreparedCollectionPlan(
-        { ...plan, role_mapping_classes: ['postgres'] },
-        contract
-      ),
+    () => core.validatePreparedCollectionPlan({ ...plan, role_mapping_classes: ['postgres'] }),
     'COLLECTION_PLAN_ROLE_INVALID'
   );
   assertFail(
-    () =>
-      core.validatePreparedCollectionPlan(
-        { ...plan, role_mapping_classes: ['UNKNOWN_CLASS'] },
-        contract
-      ),
+    () => core.validatePreparedCollectionPlan({ ...plan, role_mapping_classes: ['UNKNOWN_CLASS'] }),
     'COLLECTION_PLAN_ENUM_INVALID'
   );
 });
 
 test('proof and output enums are mandatory and exact', () => {
-  const plan = core.buildPreparedCollectionPlan(
-    { baselineCommit: BASELINE, approvalReference: APPROVAL },
-    contract
-  );
-  delete plan.plan_digest;
-  delete plan.object_allowlist_digest;
+  const plan = core.buildPreparedCollectionPlan({
+    baselineCommit: BASELINE,
+    approvalReference: APPROVAL,
+  });
 
   assertFail(
     () =>
-      core.validatePreparedCollectionPlan(
-        { ...plan, required_read_only_proofs: plan.required_read_only_proofs.slice(1) },
-        contract
-      ),
+      core.validatePreparedCollectionPlan({
+        ...plan,
+        required_read_only_proofs: plan.required_read_only_proofs.slice(1),
+      }),
     'COLLECTION_PLAN_ENUM_INVALID'
   );
   assertFail(
     () =>
-      core.validatePreparedCollectionPlan(
-        {
-          ...plan,
-          required_read_only_proofs: [...plan.required_read_only_proofs, 'UNKNOWN_PROOF'],
-        },
-        contract
-      ),
+      core.validatePreparedCollectionPlan({
+        ...plan,
+        required_read_only_proofs: [...plan.required_read_only_proofs, 'UNKNOWN_PROOF'],
+      }),
     'COLLECTION_PLAN_ENUM_INVALID'
   );
   assertFail(
     () =>
-      core.validatePreparedCollectionPlan(
-        {
-          ...plan,
-          required_read_only_proofs: [
-            ...plan.required_read_only_proofs,
-            plan.required_read_only_proofs[0],
-          ],
-        },
-        contract
-      ),
+      core.validatePreparedCollectionPlan({
+        ...plan,
+        required_read_only_proofs: [
+          ...plan.required_read_only_proofs,
+          plan.required_read_only_proofs[0],
+        ],
+      }),
     'COLLECTION_PLAN_ENUM_INVALID'
   );
   assertFail(
     () =>
-      core.validatePreparedCollectionPlan(
-        { ...plan, expected_outputs: plan.expected_outputs.slice(1) },
-        contract
-      ),
+      core.validatePreparedCollectionPlan({
+        ...plan,
+        expected_outputs: plan.expected_outputs.slice(1),
+      }),
     'COLLECTION_PLAN_ENUM_INVALID'
   );
   assertFail(
     () =>
-      core.validatePreparedCollectionPlan(
-        { ...plan, expected_outputs: [...plan.expected_outputs, 'ATTESTED'] },
-        contract
-      ),
+      core.validatePreparedCollectionPlan({
+        ...plan,
+        expected_outputs: [...plan.expected_outputs, 'ATTESTED'],
+      }),
     'COLLECTION_PLAN_ENUM_INVALID'
   );
 });
 
 test('sensitive nested values and oversized inputs fail', () => {
-  const plan = core.buildPreparedCollectionPlan(
-    { baselineCommit: BASELINE, approvalReference: APPROVAL },
-    contract
-  );
-  delete plan.plan_digest;
-  delete plan.object_allowlist_digest;
+  const plan = core.buildPreparedCollectionPlan({
+    baselineCommit: BASELINE,
+    approvalReference: APPROVAL,
+  });
   assertFail(
     () =>
-      core.validatePreparedCollectionPlan(
-        {
-          ...plan,
-          approval_reference: 'decision:postgres://bad',
-        },
-        contract
-      ),
+      core.validatePreparedCollectionPlan({
+        ...plan,
+        approval_reference: 'decision:postgres://bad',
+      }),
     'COLLECTION_PLAN_SENSITIVE_INPUT'
   );
   const huge = Array.from({ length: 100 }, (_, i) => ({
@@ -412,7 +432,7 @@ test('sensitive nested values and oversized inputs fail', () => {
     rationale_code: 'CORE_TREE_IDENTITY',
   }));
   assertFail(
-    () => core.validatePreparedCollectionPlan({ ...plan, object_allowlist: huge }, contract),
+    () => core.validatePreparedCollectionPlan({ ...plan, object_allowlist: huge }),
     'COLLECTION_PLAN_BOUNDS_EXCEEDED'
   );
 });
@@ -470,10 +490,10 @@ test('repository-local symlink escape fails', (t) => {
     .replace(/\\/g, '/');
   const linkPath = path.join(ROOT, rel);
   try {
-    const plan = core.buildPreparedCollectionPlan(
-      { baselineCommit: BASELINE, approvalReference: APPROVAL },
-      contract
-    );
+    const plan = core.buildPreparedCollectionPlan({
+      baselineCommit: BASELINE,
+      approvalReference: APPROVAL,
+    });
     fs.writeFileSync(outsideFile, core.serializePreparedCollectionPlan(plan), 'utf8');
     try {
       fs.symlinkSync(outsideFile, linkPath);
@@ -552,10 +572,10 @@ test('manifests remain inactive/empty and gate keeps adoption baseline blocker',
   assert.equal(sha256File(EXPECTED_SCHEMA), START_EXPECTED_HASH);
   assert.equal(sha256File(CANONICAL), START_CANONICAL_HASH);
 
-  const plan = core.buildPreparedCollectionPlan(
-    { baselineCommit: BASELINE, approvalReference: APPROVAL },
-    contract
-  );
+  const plan = core.buildPreparedCollectionPlan({
+    baselineCommit: BASELINE,
+    approvalReference: APPROVAL,
+  });
   const result = provenance.evaluateProvenance({
     migrationManifest: canonical,
     expectedSchemaManifest: expected,
@@ -583,6 +603,239 @@ test('architecture doc records phase sequence and non-claims', () => {
   assert.ok(design.includes('grants **no** target access'));
   assert.ok(design.includes('Keep #1882 OPEN.'));
   assert.doesNotMatch(design, /\b(?:Closes|Fixes|Resolves)\s+#1882\b/i);
+});
+
+function maliciousContract(overrides) {
+  return {
+    ...structuredClone(contract),
+    ...overrides,
+    fixed_field_values: {
+      ...contract.fixed_field_values,
+      ...(overrides.fixed_field_values || {}),
+    },
+    patterns: {
+      ...contract.patterns,
+      ...(overrides.patterns || {}),
+    },
+    digest_domains: {
+      ...contract.digest_domains,
+      ...(overrides.digest_domains || {}),
+    },
+    limits: {
+      ...contract.limits,
+      ...(overrides.limits || {}),
+    },
+  };
+}
+
+function assertCanonicalPlan(plan) {
+  assert.equal(plan.plan_status, 'PREPARED_ONLY');
+  assert.equal(plan.environment_class, 'PRODUCTION');
+  assert.equal(plan.attestation_scope, 'PRODUCTION_READONLY');
+  assert.equal(plan.collection_mode, 'CATALOG_METADATA_ONLY');
+  assert.equal(plan.output_policy, 'SANITIZED_STDOUT_ONLY');
+  assert.equal(plan.contract_path, core.DEFAULT_CONTRACT_REL);
+  assert.equal(plan.digest_algorithm, 'sha256');
+  assert.deepEqual(
+    plan.object_allowlist.map((o) => o.name).sort(core.compareCodePoint),
+    contract.reviewed_object_allowlist.map((o) => o.name).sort(core.compareCodePoint)
+  );
+  assert.deepEqual([...plan.role_mapping_classes].sort(), [...core.CANONICAL_ROLE_CLASSES].sort());
+  assert.deepEqual([...plan.required_read_only_proofs].sort(), [...core.CANONICAL_PROOFS].sort());
+  assert.deepEqual([...plan.expected_outputs].sort(), [...core.CANONICAL_OUTPUTS].sort());
+  assert.equal(
+    plan.collection_plan_contract_digest,
+    core.computeExactBytesDigest(fs.readFileSync(CONTRACT_PATH))
+  );
+}
+
+test('adversarial second-arg contract cannot override public builder policy', () => {
+  const canonical = core.buildPreparedCollectionPlan({
+    baselineCommit: BASELINE,
+    approvalReference: APPROVAL,
+  });
+  const cases = [
+    maliciousContract({ fixed_field_values: { plan_status: 'APPLIED' } }),
+    maliciousContract({ fixed_field_values: { environment_class: 'STAGING' } }),
+    maliciousContract({ fixed_field_values: { attestation_scope: 'DISPOSABLE_CI' } }),
+    maliciousContract({
+      reviewed_object_allowlist: [
+        {
+          name: 'table:public.evil',
+          kind: 'TABLE',
+          metadata_categories: ['columns'],
+          rationale_code: 'CORE_TREE_IDENTITY',
+        },
+      ],
+      object_selection_evidence: {
+        'table:public.evil': {
+          repository_evidence: ['package.json'],
+          why_critical: 'evil',
+        },
+      },
+    }),
+    maliciousContract({ mandatory_read_only_proofs: [] }),
+    maliciousContract({ mandatory_expected_outputs: [] }),
+    maliciousContract({
+      mandatory_expected_outputs: [...contract.mandatory_expected_outputs, 'ATTESTED'],
+    }),
+    maliciousContract({
+      role_mapping_classes: ['PUBLIC', 'postgres', 'DATABASE_OWNER'],
+      enums: {
+        ...contract.enums,
+        role_mapping_class: ['PUBLIC', 'postgres', 'DATABASE_OWNER'],
+      },
+    }),
+    maliciousContract({ prohibited_plan_statuses: [] }),
+    maliciousContract({
+      patterns: { baseline_commit: '.*', approval_reference: '.*' },
+    }),
+    maliciousContract({ sensitive_content_markers: [] }),
+    maliciousContract({
+      digest_domains: {
+        collection_plan: 'evil:domain',
+        object_allowlist: 'evil:allowlist',
+      },
+    }),
+    maliciousContract({ limits: { max_objects: 1 } }),
+    maliciousContract({
+      contract_path: 'db/migration-provenance/evil-contract.json',
+    }),
+    maliciousContract({ digest_algorithm: 'sha1' }),
+  ];
+
+  for (const evil of cases) {
+    const plan = core.buildPreparedCollectionPlan(
+      { baselineCommit: BASELINE, approvalReference: APPROVAL },
+      evil
+    );
+    assertCanonicalPlan(plan);
+    assert.equal(plan.plan_digest, canonical.plan_digest);
+    assert.equal(core.serializePreparedCollectionPlan(plan), core.serializePreparedCollectionPlan(canonical));
+  }
+});
+
+test('public builder and validator use only canonical trusted contract', () => {
+  const plan = core.buildPreparedCollectionPlan({
+    baselineCommit: BASELINE,
+    approvalReference: APPROVAL,
+  });
+  assertCanonicalPlan(plan);
+  const validated = core.validatePreparedCollectionPlan(plan).plan;
+  assert.equal(validated.plan_digest, plan.plan_digest);
+  const withEvil = core.validatePreparedCollectionPlan(
+    plan,
+    maliciousContract({ fixed_field_values: { plan_status: 'APPLIED' } })
+  ).plan;
+  assert.equal(withEvil.plan_digest, plan.plan_digest);
+  assert.equal(withEvil.plan_status, 'PREPARED_ONLY');
+});
+
+test('exact-byte contract digest and whitespace-only difference', () => {
+  const bytes = fs.readFileSync(CONTRACT_PATH);
+  const exact = core.computeExactBytesDigest(bytes);
+  const plan = core.buildPreparedCollectionPlan({
+    baselineCommit: BASELINE,
+    approvalReference: APPROVAL,
+  });
+  assert.equal(plan.collection_plan_contract_digest, exact);
+  const whitespaceDiff = core.computeExactBytesDigest(Buffer.concat([bytes, Buffer.from(' ')]));
+  assert.notEqual(exact, whitespaceDiff);
+  assert.match(exact, /^sha256:[a-f0-9]{64}$/);
+});
+
+test('modified contract digest / path / algorithm fail closed', () => {
+  const plan = core.buildPreparedCollectionPlan({
+    baselineCommit: BASELINE,
+    approvalReference: APPROVAL,
+  });
+  assertFail(
+    () =>
+      core.validatePreparedCollectionPlan({
+        ...plan,
+        collection_plan_contract_digest:
+          'sha256:0000000000000000000000000000000000000000000000000000000000000000',
+      }),
+    'COLLECTION_PLAN_CONTRACT_DIGEST_MISMATCH'
+  );
+  assertFail(
+    () =>
+      core.validatePreparedCollectionPlan({
+        ...plan,
+        contract_path: 'db/migration-provenance/evil-contract.json',
+      }),
+    'COLLECTION_PLAN_INPUT_INVALID'
+  );
+  assertFail(
+    () =>
+      core.validatePreparedCollectionPlan({
+        ...plan,
+        digest_algorithm: 'sha1',
+      }),
+    'COLLECTION_PLAN_INPUT_INVALID'
+  );
+});
+
+test('plan digest binds contract path, algorithm, contract digest, allowlist digest', () => {
+  const plan = core.buildPreparedCollectionPlan({
+    baselineCommit: BASELINE,
+    approvalReference: APPROVAL,
+  });
+  const payload = { ...plan };
+  delete payload.plan_digest;
+  const recomputed = core.computeCollectionPlanDigest(payload);
+  assert.equal(recomputed, plan.plan_digest);
+
+  // Changing bound fields without matching plan_digest fails.
+  assertFail(
+    () =>
+      core.validatePreparedCollectionPlan({
+        ...plan,
+        contract_path: 'db/migration-provenance/evil-contract.json',
+        plan_digest: plan.plan_digest,
+      }),
+    'COLLECTION_PLAN_INPUT_INVALID'
+  );
+
+  // Allowlist digest mismatch.
+  assertFail(
+    () =>
+      core.validatePreparedCollectionPlan({
+        ...plan,
+        object_allowlist_digest:
+          'sha256:1111111111111111111111111111111111111111111111111111111111111111',
+      }),
+    'COLLECTION_PLAN_DIGEST_MISMATCH'
+  );
+
+  // plan_digest must include object_allowlist_digest in its payload.
+  const withoutAllowlistDigest = { ...payload };
+  delete withoutAllowlistDigest.object_allowlist_digest;
+  assert.notEqual(core.computeCollectionPlanDigest(withoutAllowlistDigest), plan.plan_digest);
+
+  const withoutContractDigest = { ...payload };
+  delete withoutContractDigest.collection_plan_contract_digest;
+  assert.notEqual(core.computeCollectionPlanDigest(withoutContractDigest), plan.plan_digest);
+
+  const withoutPath = { ...payload };
+  delete withoutPath.contract_path;
+  assert.notEqual(core.computeCollectionPlanDigest(withoutPath), plan.plan_digest);
+
+  const withoutAlgo = { ...payload };
+  delete withoutAlgo.digest_algorithm;
+  assert.notEqual(core.computeCollectionPlanDigest(withoutAlgo), plan.plan_digest);
+});
+
+test('CLI and programmatic builder produce the same canonical plan', () => {
+  const programmatic = core.buildPreparedCollectionPlan({
+    baselineCommit: BASELINE,
+    approvalReference: APPROVAL,
+  });
+  const ok = runCli(['--baseline-commit', BASELINE, '--approval-reference', APPROVAL]);
+  assert.equal(ok.status, 0, ok.stderr || ok.stdout);
+  assert.equal(ok.stdout, core.serializePreparedCollectionPlan(programmatic));
+  const again = runCli(['--baseline-commit', BASELINE, '--approval-reference', APPROVAL]);
+  assert.equal(again.stdout, ok.stdout);
 });
 
 test('post-suite manifests still unchanged', () => {
