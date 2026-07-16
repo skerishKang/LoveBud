@@ -366,6 +366,13 @@ function validateConnectionConfig(connection) {
   if (!connection || typeof connection !== 'object' || Array.isArray(connection)) {
     fail(ADAPTER_FAILURE.CATALOG_ADAPTER_CONNECTION_CONFIG_INVALID);
   }
+  // Reject forgeable Production marker objects — disposable path only.
+  if (
+    Object.prototype.hasOwnProperty.call(connection, '__productionReadonlyValidated') ||
+    Object.prototype.hasOwnProperty.call(connection, 'mode')
+  ) {
+    fail(ADAPTER_FAILURE.CATALOG_ADAPTER_CONNECTION_CONFIG_INVALID, { field: 'host' });
+  }
   const { host, port, user, password, database } = connection;
   if (
     typeof host !== 'string' ||
@@ -747,29 +754,18 @@ async function fetchRawObject(client, target, roleMap) {
 }
 
 /**
- * Public collection API — always owns connection and READ ONLY transaction.
- * No options.client / manageTransaction.
+ * Internal owned READ ONLY collection engine.
+ * Not a public trust boundary for Production inputs — callers must supply
+ * already policy-validated pg config + objects + role map.
  */
-async function collectCatalogMetadata(options) {
-  rejectBypassOptions(options);
-  const contract = options.contract;
-  if (!contract) fail(ADAPTER_FAILURE.CATALOG_ADAPTER_INPUT_INVALID, { field: 'contract' });
-  try {
-    validateCatalogMetadataContract(contract);
-  } catch {
-    fail(ADAPTER_FAILURE.CATALOG_ADAPTER_SANITIZATION_FAILED);
-  }
-
-  if (options.connection === undefined || options.connection === null) {
-    fail(ADAPTER_FAILURE.CATALOG_ADAPTER_CONNECTION_CONFIG_INVALID);
-  }
-  const cfg = validateConnectionConfig(options.connection);
-  const maxObjects =
-    contract.limits && contract.limits.max_objects ? contract.limits.max_objects : 256;
-  const objects = validateObjectAllowlist(options.objects, maxObjects);
-  const roleMap = validateRoleMapping(options.roleMapping);
-
-  const client = new Client(cfg);
+async function runOwnedReadonlyCatalogCollection({
+  pgConfig,
+  objects,
+  roleMap,
+  contract,
+  assertVersion,
+}) {
+  const client = new Client(pgConfig);
   let startedTxn = false;
   try {
     try {
@@ -789,9 +785,7 @@ async function collectCatalogMetadata(options) {
 
     const ver = await safeQuery(client, Q.SHOW_VER, []);
     const verRaw = ver.rows[0] && (ver.rows[0].server_version_num || Object.values(ver.rows[0])[0]);
-    if (parseServerVersionNum(verRaw) !== REQUIRED_SERVER_VERSION_NUM) {
-      fail(ADAPTER_FAILURE.CATALOG_ADAPTER_SERVER_VERSION_MISMATCH);
-    }
+    assertVersion(verRaw);
 
     const rawObjects = [];
     for (const target of objects) {
@@ -799,8 +793,6 @@ async function collectCatalogMetadata(options) {
     }
 
     const metadata = toCanonicalMetadata(rawObjects, contract);
-
-    // Prove evidence path accepts this metadata.
     try {
       buildCatalogEvidence(metadata, contract);
     } catch (error) {
@@ -809,7 +801,6 @@ async function collectCatalogMetadata(options) {
       }
       fail(ADAPTER_FAILURE.CATALOG_ADAPTER_SANITIZATION_FAILED);
     }
-
     return metadata;
   } finally {
     if (startedTxn) {
@@ -827,6 +818,46 @@ async function collectCatalogMetadata(options) {
   }
 }
 
+/**
+ * Public disposable collection API — always owns connection and READ ONLY transaction.
+ * Disposable CI policy only. Production mode is not accepted here.
+ * No options.client / manageTransaction / mode.
+ */
+async function collectCatalogMetadata(options) {
+  rejectBypassOptions(options);
+  if (options && Object.prototype.hasOwnProperty.call(options, 'mode')) {
+    fail(ADAPTER_FAILURE.CATALOG_ADAPTER_INPUT_INVALID, { field: 'mode' });
+  }
+  const contract = options.contract;
+  if (!contract) fail(ADAPTER_FAILURE.CATALOG_ADAPTER_INPUT_INVALID, { field: 'contract' });
+  try {
+    validateCatalogMetadataContract(contract);
+  } catch {
+    fail(ADAPTER_FAILURE.CATALOG_ADAPTER_SANITIZATION_FAILED);
+  }
+
+  if (options.connection === undefined || options.connection === null) {
+    fail(ADAPTER_FAILURE.CATALOG_ADAPTER_CONNECTION_CONFIG_INVALID);
+  }
+  const cfg = validateConnectionConfig(options.connection);
+  const maxObjects =
+    contract.limits && contract.limits.max_objects ? contract.limits.max_objects : 256;
+  const objects = validateObjectAllowlist(options.objects, maxObjects);
+  const roleMap = validateRoleMapping(options.roleMapping);
+
+  return runOwnedReadonlyCatalogCollection({
+    pgConfig: cfg,
+    objects,
+    roleMap,
+    contract,
+    assertVersion: (verRaw) => {
+      if (parseServerVersionNum(verRaw) !== REQUIRED_SERVER_VERSION_NUM) {
+        fail(ADAPTER_FAILURE.CATALOG_ADAPTER_SERVER_VERSION_MISMATCH);
+      }
+    },
+  });
+}
+
 async function collectCatalogEvidence(options) {
   const metadata = await collectCatalogMetadata(options);
   try {
@@ -836,6 +867,81 @@ async function collectCatalogEvidence(options) {
       fail(ADAPTER_FAILURE.CATALOG_ADAPTER_SANITIZATION_FAILED, { field: error.category });
     }
     fail(ADAPTER_FAILURE.CATALOG_ADAPTER_SANITIZATION_FAILED);
+  }
+}
+
+/**
+ * Dedicated Production-readonly entrypoint (live collector).
+ * Accepts ONLY secretFile + roleMappingFile — no caller-controlled root.
+ * Caller cannot supply connection, objects, roleMapping, mode, SQL, client,
+ * or any policy-root override (repoRoot, root, contractRoot, etc.).
+ * Loads frozen allowlist + secrets + contracts from the authoritative repository root only.
+ */
+async function collectProductionReadonlyCatalogEvidenceFromFiles(options) {
+  if (!options || typeof options !== 'object' || Array.isArray(options)) {
+    fail(ADAPTER_FAILURE.CATALOG_ADAPTER_INPUT_INVALID);
+  }
+  const allowedKeys = new Set(['secretFile', 'roleMappingFile']);
+  for (const key of Object.keys(options)) {
+    if (!allowedKeys.has(key)) {
+      fail(ADAPTER_FAILURE.CATALOG_ADAPTER_INPUT_INVALID, { field: key });
+    }
+  }
+  if (Object.prototype.hasOwnProperty.call(options, 'client')) {
+    fail(ADAPTER_FAILURE.CATALOG_ADAPTER_INPUT_INVALID, { field: 'client' });
+  }
+  if (Object.prototype.hasOwnProperty.call(options, 'manageTransaction')) {
+    fail(ADAPTER_FAILURE.CATALOG_ADAPTER_INPUT_INVALID, { field: 'manageTransaction' });
+  }
+
+  // Lazy require avoids circular init and keeps disposable path free of Production surface.
+  const boundary = require('./production-readonly-catalog-boundary-core.cjs');
+
+  // Repository-owned root — caller cannot override.
+  const REPO_ROOT = path.resolve(__dirname, '..');
+
+  // Validate boundary contract before building any plan.
+  const boundaryContract = boundary.loadBoundaryContract(REPO_ROOT);
+  // loadBoundaryContract already asserts:
+  //   mode === PRODUCTION_READONLY_CATALOG
+  //   dedicated_secret_key === LOVEBUD_PRODUCTION_READONLY_DATABASE_URL
+  if (!boundaryContract) {
+    fail(ADAPTER_FAILURE.CATALOG_ADAPTER_INPUT_INVALID);
+  }
+
+  const plan = boundary.buildProductionReadonlyInvocationPlan({
+    secretFile: options.secretFile,
+    roleMappingFile: options.roleMappingFile,
+  });
+
+  try {
+    const privateParts = boundary.getPrivateInvocationParts(plan);
+    const pgConfig = privateParts.pgConfig;
+    const contract = loadContract(REPO_ROOT);
+    const maxObjects =
+      contract.limits && contract.limits.max_objects ? contract.limits.max_objects : 256;
+    const objects = validateObjectAllowlist(privateParts.objects, maxObjects);
+    const roleMap = validateRoleMapping(privateParts.roleMapping);
+
+    const metadata = await runOwnedReadonlyCatalogCollection({
+      pgConfig,
+      objects,
+      roleMap,
+      contract,
+      assertVersion: (verRaw) => {
+        boundary.assertSupportedProductionServerVersionNum(verRaw);
+      },
+    });
+    try {
+      return buildCatalogEvidence(metadata, contract);
+    } catch (error) {
+      if (error && error.category) {
+        fail(ADAPTER_FAILURE.CATALOG_ADAPTER_SANITIZATION_FAILED, { field: error.category });
+      }
+      fail(ADAPTER_FAILURE.CATALOG_ADAPTER_SANITIZATION_FAILED);
+    }
+  } finally {
+    boundary.releaseInvocationPlan(plan);
   }
 }
 
@@ -869,6 +975,7 @@ module.exports = {
   validateObjectAllowlist,
   collectCatalogMetadata,
   collectCatalogEvidence,
+  collectProductionReadonlyCatalogEvidenceFromFiles,
   assertNoCatalogMutation,
   loadContract,
   executeArbitrarySql,

@@ -310,6 +310,72 @@ Hard rules:
 - the overall provenance gate remains `FAIL_CLOSED` with `GATE_ADOPTION_BASELINE_REQUIRED`;
 - a future execution child must reuse this reviewed plan unchanged or return for re-review.
 
+### Production-readonly catalog connection boundary (Issue #3570)
+
+Follow-up from #3569 (`COLLECTION_NOT_RUN_CONNECTION_BOUNDARY`).
+
+#3569 confirmed the disposable catalog adapter is intentionally CI-only:
+
+```text
+mode = DISPOSABLE_CI
+allowed host = loopback only
+database prefix = lovebud_ci_
+server version = exact 170004
+explicit synthetic connection flags
+no DATABASE_URL fallback
+```
+
+Those disposable restrictions remain exact. Production support is a **separate** fail-closed mode:
+
+```text
+mode = PRODUCTION_READONLY_CATALOG
+purpose = catalog metadata collection only
+objects = frozen adoption allowlist only
+transaction = owned internally (BEGIN READ ONLY → confirm → queries → ROLLBACK)
+output = sanitized catalog evidence only
+```
+
+Repository-owned boundary artifacts:
+
+- `db/migration-provenance/production-readonly-catalog-boundary-contract.json`
+- `scripts/production-readonly-catalog-boundary-core.cjs`
+- `scripts/build-production-readonly-catalog-evidence-from-postgres.cjs`
+- `npm run build:production-readonly-catalog-evidence-from-postgres`
+
+Secret input policy:
+
+- dedicated key only: `LOVEBUD_PRODUCTION_READONLY_DATABASE_URL`
+- explicit repo-relative path under `.secrets/`
+- no `--password` / `--host` / `--user` / `--database` argv
+- no generic `DATABASE_URL` fallback
+- secret values never appear in stdout/stderr/error context
+
+URL / TLS policy:
+
+- `postgres:` / `postgresql:` only
+- remote non-loopback host required
+- TLS required (`sslmode=require|verify-ca|verify-full` or equivalent)
+- no hostname / provider project literals in source
+
+Version policy:
+
+- disposable CI: exact `server_version_num = 170004`
+- Production-readonly: major 17 window (`170000 <= version < 180000`)
+
+Role mapping:
+
+- ignored local mapping file only
+- abstract classes: `PUBLIC`, `APPLICATION`, `AUTHENTICATED`, `SERVICE`, `OWNER_CLASS`
+- unknown raw role → fail closed; raw role names never logged or committed
+
+Hard rules for #3570 itself:
+
+- this child does **not** open a Production DB session;
+- this child does **not** collect catalog evidence from Production;
+- this child does **not** create/rotate credentials;
+- this child does **not** activate manifests;
+- a later Phase B collection child may use the boundary only after dedicated read-only credentials and role mapping exist.
+
 ## H. Rollback and Forward Fix
 
 Transaction rollback, an explicit rollback artifact, a forward-fix migration, restore from an isolated copy, selective data repair, code rollback, and destructive database restore are different recovery mechanisms.

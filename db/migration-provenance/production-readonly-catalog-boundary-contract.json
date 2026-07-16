@@ -1,0 +1,76 @@
+{
+  "format_version": "1.0",
+  "contract_path": "db/migration-provenance/production-readonly-catalog-boundary-contract.json",
+  "purpose": "Fail-closed Production-readonly catalog connection boundary for a future Phase B collection child. Source-only policy; grants no live collection authority, no secret creation, and no disposable-adapter relaxation.",
+  "mode": "PRODUCTION_READONLY_CATALOG",
+  "disposable_mode_preserved": "DISPOSABLE_CI",
+  "dedicated_secret_key": "LOVEBUD_PRODUCTION_READONLY_DATABASE_URL",
+  "prohibited_secret_keys": [
+    "DATABASE_URL",
+    "NETLIFY_DATABASE_URL",
+    "POSTGRES_URL",
+    "POSTGRES_PRISMA_URL",
+    "POSTGRES_URL_NON_POOLING"
+  ],
+  "secret_file_boundary": ".secrets/",
+  "role_mapping_classes": [
+    "PUBLIC",
+    "APPLICATION",
+    "AUTHENTICATED",
+    "SERVICE",
+    "OWNER_CLASS"
+  ],
+  "version_policy": {
+    "supported_major": 17,
+    "server_version_num_min_inclusive": 170000,
+    "server_version_num_max_exclusive": 180000
+  },
+  "url_policy": {
+    "allowed_schemes": ["postgres:", "postgresql:"],
+    "require_tls": true,
+    "reject_loopback": true,
+    "max_url_length": 4096,
+    "prohibited_sslmode": ["disable", "allow", "prefer"],
+    "allowed_sslmode": ["require", "verify-ca", "verify-full"]
+  },
+  "object_source": "db/migration-provenance/adoption-baseline-collection-plan-contract.json",
+  "object_source_field": "reviewed_object_allowlist",
+  "caller_object_override": false,
+  "caller_sql": false,
+  "cli_forbidden_flags": [
+    "--password",
+    "--host",
+    "--user",
+    "--database",
+    "--port",
+    "--objects",
+    "--sql"
+  ],
+  "transaction": {
+    "begin": "BEGIN READ ONLY",
+    "confirm": "SHOW transaction_read_only",
+    "require_on": true,
+    "commit": false,
+    "end": "ROLLBACK"
+  },
+  "failure_categories": [
+    "PRODUCTION_CATALOG_INPUT_INVALID",
+    "PRODUCTION_CATALOG_SECRET_REQUIRED",
+    "PRODUCTION_CATALOG_SECRET_FILE_INVALID",
+    "PRODUCTION_CATALOG_GENERIC_DATABASE_URL_REJECTED",
+    "PRODUCTION_CATALOG_URL_INVALID",
+    "PRODUCTION_CATALOG_TLS_REQUIRED",
+    "PRODUCTION_CATALOG_LOOPBACK_REJECTED",
+    "PRODUCTION_CATALOG_SERVER_VERSION_UNSUPPORTED",
+    "PRODUCTION_CATALOG_ALLOWLIST_REQUIRED",
+    "PRODUCTION_CATALOG_ROLE_MAPPING_REQUIRED",
+    "PRODUCTION_CATALOG_ROLE_MAPPING_INVALID",
+    "PRODUCTION_CATALOG_CALLER_OVERRIDE_REJECTED",
+    "PRODUCTION_CATALOG_POLICY_INVALID"
+  ],
+  "notes": [
+    "This contract does not authorize a Production DB session by itself.",
+    "Disposable CI adapter restrictions remain exact: loopback, lovebud_ci_*, server_version_num=170004.",
+    "No hostname, provider project, or raw role names are embedded in source."
+  ]
+}
