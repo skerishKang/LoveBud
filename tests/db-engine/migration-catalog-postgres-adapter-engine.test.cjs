@@ -144,8 +144,9 @@ test('semantic catalog drift changes fingerprints', { concurrency: false }, asyn
       contract: CONTRACT,
     });
 
+    // Prefer additive index drift: column type changes are blocked while views depend on title.
     await ctx.client.query(
-      `ALTER TABLE synthetic_catalog.example_tree ALTER COLUMN title TYPE character varying(201)`
+      `CREATE INDEX example_tree_drift_idx ON synthetic_catalog.example_tree (owner_class)`
     );
 
     const drifted = await adapter.collectCatalogEvidence({
