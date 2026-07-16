@@ -130,6 +130,21 @@ Hard boundaries:
 - output always passes through the #3542 normalizer and emits only gate-compatible `{ name, fingerprint }` evidence
 - does **not** authorize Production/Neon/staging inspection, expected-schema `ACTIVE` transition, or canonical migration adoption
 
+### Inactive expected-schema candidate builder (Issue #3549)
+
+Sanitized catalog evidence can be converted into a **reviewable inactive candidate** without activating committed manifests:
+
+- `scripts/expected-schema-candidate-core.cjs` — pure validation, deterministic ordering, repository-owned fixed fields, existing-validator round-trip
+- `scripts/build-expected-schema-candidate.cjs` / `npm run build:expected-schema-candidate -- --evidence <repo-relative.json>` — explicit evidence path, stdout-only candidate JSON
+
+Hard boundaries:
+
+- candidate `status` is always `ADOPTION_REQUIRED` (never `ACTIVE`)
+- repository-owned fields (`fingerprint_algorithm`, `normalizer_version`, `metadata_contract_path`, `adoption_rule`, `comparison_scope`) come from the committed inactive template, not the caller
+- `critical_objects` are built only from evidence `{ name, fingerprint }` in canonical code-point order
+- committed `expected-schema-manifest.json` and `canonical-migrations.json` remain empty/inactive; the builder must not write them
+- same-evidence `compareSchema(candidate, evidence)` has no schema mismatch, but overall provenance evaluation remains `GATE_ADOPTION_BASELINE_REQUIRED`
+- no database driver, `DATABASE_URL`, network, shell, or stdin
 
 ## E. Read-Only Provenance Gate
 

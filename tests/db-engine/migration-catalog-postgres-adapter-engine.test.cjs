@@ -397,3 +397,84 @@ test('connection config rejects non-loopback and bypass fields', {
     return true;
   });
 });
+
+// ─── Issue #3549: inactive expected-schema candidate pipeline on disposable PG ───
+const candidateCore = require('../../scripts/expected-schema-candidate-core.cjs');
+const provenanceCore = require('../../scripts/migration-provenance-core.cjs');
+const EXPECTED_SCHEMA_PATH = path.join(
+  ROOT,
+  'db',
+  'migration-provenance',
+  'expected-schema-manifest.json'
+);
+const CANONICAL_PATH = path.join(ROOT, 'db', 'migration-provenance', 'canonical-migrations.json');
+
+test('pipeline: adapter evidence → inactive candidate → same-evidence match → drift mismatch', {
+  concurrency: false,
+}, async () => {
+  await withDisposableDb('cand_pipe', FIXTURE_SQL, async (ctx) => {
+    const version = await ctx.client.query('SHOW server_version_num');
+    assert.equal(String(version.rows[0].server_version_num), '170004');
+
+    const evidence = await adapter.collectCatalogEvidence(opts(ctx));
+    assert.ok(Array.isArray(evidence.objects));
+    assert.ok(evidence.objects.length >= 1);
+
+    const template = candidateCore.loadCommittedInactiveTemplate(ROOT);
+    const candidate = candidateCore.buildExpectedSchemaCandidate(evidence, template);
+    assert.equal(candidate.status, 'ADOPTION_REQUIRED');
+    assert.notEqual(candidate.status, 'ACTIVE');
+    assert.equal(candidate.critical_objects.length, evidence.objects.length);
+
+    const validated = provenanceCore.validateExpectedSchemaManifest(candidate);
+    assert.equal(validated.ok, true);
+
+    const sameBlockers = provenanceCore.compareSchema(candidate, evidence);
+    assert.deepEqual(sameBlockers, []);
+
+    const gate = provenanceCore.evaluateProvenance({
+      migrationManifest: loadJson(CANONICAL_PATH),
+      expectedSchemaManifest: candidate,
+      ledgerEvidence: null,
+      catalogEvidence: evidence,
+    });
+    assert.equal(gate.decision, 'FAIL_CLOSED');
+    assert.ok(gate.blockers.includes('GATE_ADOPTION_BASELINE_REQUIRED'));
+    assert.ok(gate.blockers.includes('GATE_ADOPTION_EVIDENCE_UNAVAILABLE'));
+    assert.equal(
+      gate.blockers.some((b) => b.startsWith('GATE_SCHEMA_FINGERPRINT_MISMATCH:')),
+      false
+    );
+
+    // Meaningful synthetic drift (column default) then re-collect evidence.
+    await ctx.client.query(
+      `ALTER TABLE synthetic_catalog.drift_pad ALTER COLUMN flag SET DEFAULT true`
+    );
+    const driftedEvidence = await adapter.collectCatalogEvidence(opts(ctx));
+    const driftBlockers = provenanceCore.compareSchema(candidate, driftedEvidence);
+    assert.ok(
+      driftBlockers.some((b) => b.startsWith('GATE_SCHEMA_FINGERPRINT_MISMATCH:')),
+      'expected fingerprint mismatch after drift'
+    );
+    assert.equal(candidate.status, 'ADOPTION_REQUIRED');
+
+    const gateAfterDrift = provenanceCore.evaluateProvenance({
+      migrationManifest: loadJson(CANONICAL_PATH),
+      expectedSchemaManifest: candidate,
+      ledgerEvidence: null,
+      catalogEvidence: driftedEvidence,
+    });
+    assert.equal(gateAfterDrift.decision, 'FAIL_CLOSED');
+    assert.ok(gateAfterDrift.blockers.includes('GATE_ADOPTION_BASELINE_REQUIRED'));
+
+    // Adapter/candidate builder no-mutation of committed manifests.
+    const expected = loadJson(EXPECTED_SCHEMA_PATH);
+    const canonical = loadJson(CANONICAL_PATH);
+    assert.equal(expected.status, 'ADOPTION_REQUIRED');
+    assert.deepEqual(expected.critical_objects, []);
+    assert.equal(canonical.status, 'ADOPTION_REQUIRED');
+    assert.deepEqual(canonical.migrations, []);
+
+    await adapter.assertNoCatalogMutation(opts(ctx));
+  });
+});
