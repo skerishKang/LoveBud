@@ -1,11 +1,12 @@
 -- Synthetic disposable schema for catalog adapter engine tests.
 -- Fixture-only. Not a Production migration. Refs #3544
+-- Roles are cluster-global; create is idempotent across disposable DBs.
 
-CREATE ROLE synthetic_public_role NOLOGIN;
-CREATE ROLE synthetic_application_role NOLOGIN;
-CREATE ROLE synthetic_authenticated_role NOLOGIN;
-CREATE ROLE synthetic_service_role NOLOGIN;
-CREATE ROLE synthetic_owner_role NOLOGIN;
+DO $$ BEGIN CREATE ROLE synthetic_public_role NOLOGIN; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN CREATE ROLE synthetic_application_role NOLOGIN; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN CREATE ROLE synthetic_authenticated_role NOLOGIN; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN CREATE ROLE synthetic_service_role NOLOGIN; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN CREATE ROLE synthetic_owner_role NOLOGIN; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 CREATE SCHEMA synthetic_catalog AUTHORIZATION CURRENT_USER;
 
