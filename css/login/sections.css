@@ -60,6 +60,9 @@
     font-size: 1rem;
     line-height: 1.6;
     font-weight: 400;
+    /* Natural wrap only — never nowrap / overflow-hide workarounds (#3547). */
+    white-space: normal;
+    overflow-wrap: break-word;
 }
 
 .login-signup-section {

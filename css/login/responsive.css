@@ -1,9 +1,14 @@
-@media (max-width: 768px) {
-    .login-shell {
-        padding: 16px;
-    }
+/*
+ * Login responsive policy (#3547):
+ * - One mobile-sized login-card composition is canonical at all widths.
+ * - Breakpoints may only grow outer shell whitespace (and never card interior).
+ * - Site header/navigation remains handled by global-header.css.
+ */
 
-    .login-card {
-        padding: 32px 16px;
+/* Desktop/tablet: more outer page padding only — no card max-width, padding,
+ * font-size, gap, or button height overrides. */
+@media (min-width: 769px) {
+    .login-shell {
+        padding: 80px 48px 48px;
     }
 }

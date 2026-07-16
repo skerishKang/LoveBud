@@ -1,20 +1,31 @@
+/* Login shell: outer page chrome only. Wider viewports grow outer whitespace. */
 .login-shell {
     min-height: 100vh;
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 80px 48px 48px;
+    /* Preserve existing mobile shell gutters (pre-#3547 mobile rule). */
+    padding: 16px;
+    width: 100%;
+    box-sizing: border-box;
 }
 
+/*
+ * Canonical login card = existing mobile interior composition (#3547).
+ * Keep pre-existing mobile max-width: 480px (do not invent a new 360px width).
+ * Card padding is the mobile value (32px 16px) at every viewport.
+ * Desktop must not enlarge typography, padding, or recompose the card.
+ */
 .login-card {
     width: 100%;
     max-width: 480px;
     background: white;
-    padding: 48px;
+    padding: 32px 16px;
     border-radius: 3rem;
     box-shadow: 0 40px 100px rgba(0,0,0,0.1);
     text-align: center;
     border: 1px solid rgba(0,0,0,0.02);
+    box-sizing: border-box;
 }
 
 .login-divider {

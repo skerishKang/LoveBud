@@ -119,11 +119,14 @@
     height: 20px;
 }
 
+/* Pin email CTA metrics so global .btn-round mobile media query cannot diverge. */
 .login-email-button {
     width: 100%;
     border-radius: 1.25rem;
     padding: 16px;
     font-size: 15px;
+    min-height: 52px;
+    box-sizing: border-box;
 }
 
 .login-later-link {
