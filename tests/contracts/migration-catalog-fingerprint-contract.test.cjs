@@ -57,6 +57,14 @@ test('committed metadata contract is strict and complete', () => {
   assert.ok(contract.enums.constraint_kind.includes('FOREIGN_KEY'));
   assert.ok(contract.enums.role_scope.includes('PUBLIC'));
   assert.equal(contract.sql_definition_rules.comments_outside_quotes, 'fail_closed');
+  assert.equal(contract.sql_definition_rules.control_characters, 'fail_closed');
+  assert.deepEqual(contract.sql_definition_rules.allowed_whitespace_code_points, [9, 10, 32]);
+  assert.deepEqual(contract.component_duplicate_identity.policy, ['name']);
+  assert.deepEqual(contract.component_duplicate_identity.grant, ['grantee_class', 'grantable']);
+  assert.ok(contract.type_identity_rules.max_length >= 1);
+  assert.equal(contract.sensitive_content_comparison.ascii_case_insensitive, true);
+  assert.equal(contract.input_encoding.replacement_decoding, false);
+  assert.ok(Array.isArray(contract.sensitive_content_markers));
   assert.equal(core.validateCatalogMetadataContract(contract), true);
 });
 
@@ -184,7 +192,7 @@ test('duplicate trigger fails', () => {
   assertFail(() => core.buildCatalogEvidence(base, contract), 'CATALOG_COMPONENT_DUPLICATE');
 });
 
-test('duplicate policy fails', () => {
+test('duplicate policy fails (exact clone)', () => {
   const base = loadFixture('catalog-baseline.json');
   base.objects[0].row_level_security.policies.push(
     JSON.parse(JSON.stringify(base.objects[0].row_level_security.policies[0]))
@@ -192,9 +200,31 @@ test('duplicate policy fails', () => {
   assertFail(() => core.buildCatalogEvidence(base, contract), 'CATALOG_COMPONENT_DUPLICATE');
 });
 
-test('duplicate grant fails', () => {
+test('near-duplicate policy same name different command fails', () => {
+  const base = loadFixture('catalog-baseline.json');
+  const clone = JSON.parse(JSON.stringify(base.objects[0].row_level_security.policies[0]));
+  clone.command = 'ALL';
+  clone.role_scope = 'PUBLIC';
+  clone.using_expression = 'true';
+  base.objects[0].row_level_security.policies.push(clone);
+  assertFail(() => core.buildCatalogEvidence(base, contract), 'CATALOG_COMPONENT_DUPLICATE');
+});
+
+test('duplicate grant fails (exact clone)', () => {
   const base = loadFixture('catalog-baseline.json');
   base.objects[0].grants.push(JSON.parse(JSON.stringify(base.objects[0].grants[0])));
+  assertFail(() => core.buildCatalogEvidence(base, contract), 'CATALOG_COMPONENT_DUPLICATE');
+});
+
+test('near-duplicate grant same identity split privileges fails', () => {
+  const base = loadFixture('catalog-baseline.json');
+  // Table already has AUTHENTICATED/false with SELECT+UPDATE. A second AUTHENTICATED/false
+  // row with a different privilege set is a near-duplicate of the same canonical identity.
+  base.objects[0].grants.push({
+    grantee_class: 'AUTHENTICATED',
+    privileges: ['INSERT'],
+    grantable: false,
+  });
   assertFail(() => core.buildCatalogEvidence(base, contract), 'CATALOG_COMPONENT_DUPLICATE');
 });
 
@@ -223,6 +253,27 @@ test('sensitive marker fails without echoing raw content', () => {
     () => core.buildCatalogEvidence(loadFixture('catalog-sensitive-marker.json'), contract),
     'CATALOG_SENSITIVE_MARKER_DETECTED'
   );
+});
+
+test('sensitive marker detection is ASCII case-insensitive via contract markers', () => {
+  const cases = [
+    "CHECK (title = 'POSTGRES://user:pass@host/db')",
+    "CHECK (title = 'PostgreSQL://user:pass@host/db')",
+    "CHECK (title = 'authorization: Bearer abc')",
+    "CHECK (title = 'BEARER tokenvalue')",
+    "CHECK (title = 'Password=secret')",
+    "CHECK (title = 'TOKEN=abc')",
+    "CHECK (title = 'Secret=xyz')",
+  ];
+  for (const definition of cases) {
+    const base = loadFixture('catalog-baseline.json');
+    base.objects[0].constraints[1].definition = definition;
+    assertFail(() => core.buildCatalogEvidence(base, contract), 'CATALOG_SENSITIVE_MARKER_DETECTED');
+  }
+  // No hardcoded second marker list in core — contract is source of truth.
+  const coreSrc = fs.readFileSync(CORE, 'utf8');
+  assert.equal(coreSrc.includes("const markers = [\n    'postgres://'"), false);
+  assert.match(coreSrc, /contract\.sensitive_content_markers/);
 });
 
 test('bounds exceeded fails', () => {
@@ -278,6 +329,108 @@ test('comments outside quotes fail closed', () => {
   );
 });
 
+test('disallowed C0 control characters fail closed in every SQL lexical state', () => {
+  const bel = '\u0007';
+  // NORMAL
+  {
+    const base = loadFixture('catalog-baseline.json');
+    base.objects[0].constraints[1].definition = `CHECK ((title IS NULL)${bel}OR (char_length(title) > 0))`;
+    assertFail(() => core.buildCatalogEvidence(base, contract), 'CATALOG_DEFINITION_INVALID');
+  }
+  // SINGLE_QUOTED
+  {
+    const base = loadFixture('catalog-baseline.json');
+    base.objects[0].columns[2].default_definition = `'hello${bel}world'`;
+    assertFail(() => core.buildCatalogEvidence(base, contract), 'CATALOG_DEFINITION_INVALID');
+  }
+  // DOUBLE_QUOTED
+  {
+    const base = loadFixture('catalog-baseline.json');
+    base.objects[0].indexes[1].definition =
+      `CREATE INDEX "example${bel}title_idx" ON public.example_tree USING btree (title)`;
+    assertFail(() => core.buildCatalogEvidence(base, contract), 'CATALOG_DEFINITION_INVALID');
+  }
+  // DOLLAR_QUOTED
+  {
+    const base = loadFixture('catalog-baseline.json');
+    base.objects[0].constraints[1].definition = `CHECK (title = $tag$ok${bel}bad$tag$)`;
+    assertFail(() => core.buildCatalogEvidence(base, contract), 'CATALOG_DEFINITION_INVALID');
+  }
+  // TAB/LF remain allowed (NORMAL collapses; quoted preserves)
+  {
+    const base = loadFixture('catalog-baseline.json');
+    base.objects[0].constraints[1].definition =
+      'CHECK ((title IS NULL)\tOR\n(char_length(title) > 0))';
+    assert.ok(core.buildCatalogEvidence(base, contract));
+  }
+});
+
+test('non-null definitions reject empty or whitespace-only after canonicalize', () => {
+  {
+    const base = loadFixture('catalog-baseline.json');
+    base.objects[0].constraints[1].definition = '   \t\n  ';
+    assertFail(() => core.buildCatalogEvidence(base, contract), 'CATALOG_DEFINITION_INVALID');
+  }
+  {
+    const base = loadFixture('catalog-baseline.json');
+    base.objects[0].indexes[1].definition = '';
+    assertFail(() => core.buildCatalogEvidence(base, contract), 'CATALOG_DEFINITION_INVALID');
+  }
+  {
+    const base = loadFixture('catalog-baseline.json');
+    base.objects[0].triggers[0].definition = ' \n ';
+    assertFail(() => core.buildCatalogEvidence(base, contract), 'CATALOG_DEFINITION_INVALID');
+  }
+  {
+    const base = loadFixture('catalog-baseline.json');
+    base.objects[0].columns[2].default_definition = '   ';
+    assertFail(() => core.buildCatalogEvidence(base, contract), 'CATALOG_DEFINITION_INVALID');
+  }
+  {
+    const base = loadFixture('catalog-baseline.json');
+    base.objects[0].row_level_security.policies[0].using_expression = '\t  ';
+    assertFail(() => core.buildCatalogEvidence(base, contract), 'CATALOG_DEFINITION_INVALID');
+  }
+});
+
+test('type_identity strict validation and outer-whitespace equality', () => {
+  // Empty / whitespace-only
+  {
+    const base = loadFixture('catalog-baseline.json');
+    base.objects[0].columns[0].type_identity = '   ';
+    assertFail(() => core.buildCatalogEvidence(base, contract), 'CATALOG_FIELD_TYPE_INVALID');
+  }
+  // Control character
+  {
+    const base = loadFixture('catalog-baseline.json');
+    base.objects[0].columns[0].type_identity = 'uuid\u0001';
+    assertFail(() => core.buildCatalogEvidence(base, contract), 'CATALOG_FIELD_TYPE_INVALID');
+  }
+  // Oversized
+  {
+    const base = loadFixture('catalog-baseline.json');
+    base.objects[0].columns[0].type_identity = `x${'y'.repeat(contract.type_identity_rules.max_length)}`;
+    assertFail(() => core.buildCatalogEvidence(base, contract), 'CATALOG_BOUNDS_EXCEEDED');
+  }
+  // Sensitive marker
+  {
+    const base = loadFixture('catalog-baseline.json');
+    base.objects[0].columns[0].type_identity = 'password=secret_type';
+    assertFail(() => core.buildCatalogEvidence(base, contract), 'CATALOG_SENSITIVE_MARKER_DETECTED');
+  }
+  // Outer whitespace is insignificant → same fingerprint
+  {
+    const left = loadFixture('catalog-baseline.json');
+    const right = loadFixture('catalog-baseline.json');
+    left.objects[0].columns[0].type_identity = 'uuid';
+    right.objects[0].columns[0].type_identity = '  uuid  ';
+    assert.deepEqual(
+      core.buildCatalogEvidence(left, contract),
+      core.buildCatalogEvidence(right, contract)
+    );
+  }
+});
+
 test('CLI missing input / unknown flag / invalid JSON fail closed', () => {
   const missing = runCli([]);
   assert.equal(missing.status, 1);
@@ -290,22 +443,64 @@ test('CLI missing input / unknown flag / invalid JSON fail closed', () => {
   assert.equal(JSON.parse(unknown.stdout).decision, 'FAIL_CLOSED');
 
   const tmp = path.join(os.tmpdir(), `catalog-bad-${process.pid}.json`);
-  fs.writeFileSync(tmp, '{not-json');
-  // outside repo root should fail closed without echoing path content
-  const outside = runCli(['--input', tmp]);
-  assert.equal(outside.status, 1);
-  assert.equal(JSON.parse(outside.stdout).decision, 'FAIL_CLOSED');
-  assert.equal(outside.stdout.includes(tmp), false);
-  fs.unlinkSync(tmp);
+  try {
+    fs.writeFileSync(tmp, '{not-json');
+    // outside repo root should fail closed without echoing path content
+    const outside = runCli(['--input', tmp]);
+    assert.equal(outside.status, 1);
+    assert.equal(JSON.parse(outside.stdout).decision, 'FAIL_CLOSED');
+    assert.equal(outside.stdout.includes(tmp), false);
+  } finally {
+    try {
+      fs.unlinkSync(tmp);
+    } catch {
+      /* ignore */
+    }
+  }
 
-  const invalidInside = path.join(FIX, '_tmp-invalid.json');
-  fs.writeFileSync(invalidInside, '{not-json');
-  const inv = runCli(['--input', 'tests/contracts/fixtures/migration-provenance/_tmp-invalid.json']);
-  assert.equal(inv.status, 1);
-  const invBody = JSON.parse(inv.stdout);
-  assert.equal(invBody.decision, 'FAIL_CLOSED');
-  assert.ok(invBody.blockers.includes('CATALOG_INPUT_JSON_INVALID'));
-  fs.unlinkSync(invalidInside);
+  const invalidInside = path.join(FIX, `_tmp-invalid-${process.pid}.json`);
+  try {
+    fs.writeFileSync(invalidInside, '{not-json');
+    const inv = runCli([
+      '--input',
+      `tests/contracts/fixtures/migration-provenance/_tmp-invalid-${process.pid}.json`,
+    ]);
+    assert.equal(inv.status, 1);
+    const invBody = JSON.parse(inv.stdout);
+    assert.equal(invBody.decision, 'FAIL_CLOSED');
+    assert.ok(invBody.blockers.includes('CATALOG_INPUT_JSON_INVALID'));
+  } finally {
+    try {
+      fs.unlinkSync(invalidInside);
+    } catch {
+      /* ignore */
+    }
+  }
+});
+
+test('CLI invalid UTF-8 fails closed without replacement decoding', () => {
+  const name = `_tmp-invalid-utf8-${process.pid}.bin.json`;
+  const invalidInside = path.join(FIX, name);
+  try {
+    // Invalid UTF-8 sequence (0xFF) inside otherwise JSON-shaped bytes.
+    fs.writeFileSync(invalidInside, Buffer.from([0x7b, 0x22, 0x61, 0x22, 0x3a, 0xff, 0x7d]));
+    const res = runCli([
+      '--input',
+      `tests/contracts/fixtures/migration-provenance/${name}`,
+    ]);
+    assert.equal(res.status, 1);
+    const body = JSON.parse(res.stdout);
+    assert.equal(body.decision, 'FAIL_CLOSED');
+    assert.ok(body.blockers.includes('CATALOG_INPUT_JSON_INVALID'));
+    assert.equal(res.stdout.includes('stack'), false);
+    assert.equal(res.stdout.includes(name), false);
+  } finally {
+    try {
+      fs.unlinkSync(invalidInside);
+    } catch {
+      /* ignore */
+    }
+  }
 });
 
 test('CLI success output exact shape', () => {

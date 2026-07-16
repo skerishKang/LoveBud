@@ -92,18 +92,55 @@ function validateCatalogMetadataContract(contract) {
     'enums',
     'fingerprint',
     'prohibited_object_fields',
+    'sensitive_content_markers',
+    'component_duplicate_identity',
+    'type_identity_rules',
+    'sql_definition_rules',
   ]) {
     if (contract[key] === undefined) fail(FAILURE.CATALOG_REQUIRED_FIELD_MISSING, { field: key });
   }
   return true;
 }
 
-function hasControlOrNul(text) {
+/** True when code point is a disallowed C0 control or DEL (TAB/LF allowed). */
+function isDisallowedControlCode(code) {
+  if (code === 0x09 || code === 0x0a) return false;
+  return code < 0x20 || code === 0x7f;
+}
+
+/** True when text contains any disallowed control (TAB/LF permitted). */
+function hasDisallowedControl(text) {
   for (let i = 0; i < text.length; i += 1) {
-    const code = text.charCodeAt(i);
-    if (code === 0 || (code < 32 && code !== 9 && code !== 10 && code !== 13)) return true;
+    if (isDisallowedControlCode(text.charCodeAt(i))) return true;
   }
   return false;
+}
+
+/** True when text contains any C0/DEL control including TAB/LF/CR. */
+function hasAnyControlIncludingWhitespace(text) {
+  for (let i = 0; i < text.length; i += 1) {
+    const code = text.charCodeAt(i);
+    if (code < 0x20 || code === 0x7f) return true;
+  }
+  return false;
+}
+
+function asciiLowerCase(text) {
+  let out = '';
+  for (let i = 0; i < text.length; i += 1) {
+    const code = text.charCodeAt(i);
+    if (code >= 0x41 && code <= 0x5a) {
+      out += String.fromCharCode(code + 0x20);
+    } else {
+      out += text[i];
+    }
+  }
+  return out;
+}
+
+function includesAsciiCaseInsensitive(haystack, needle) {
+  if (!needle) return false;
+  return asciiLowerCase(haystack).includes(asciiLowerCase(needle));
 }
 
 function assertIdentifier(value, field) {
@@ -112,7 +149,7 @@ function assertIdentifier(value, field) {
     fail(FAILURE.CATALOG_OBJECT_IDENTITY_INVALID, { field });
   }
   if (value.length > 63) fail(FAILURE.CATALOG_BOUNDS_EXCEEDED, { field });
-  if (hasControlOrNul(value) || value.includes('/') || value.includes('\\') || value.includes('.')) {
+  if (hasAnyControlIncludingWhitespace(value) || value.includes('/') || value.includes('\\') || value.includes('.')) {
     fail(FAILURE.CATALOG_OBJECT_IDENTITY_INVALID, { field });
   }
   if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(value)) {
@@ -130,34 +167,22 @@ function assertEnum(value, allowed, field) {
   }
 }
 
-function assertNoSensitive(text, field) {
+/**
+ * Contract-driven sensitive marker detection.
+ * Uses contract.sensitive_content_markers with ASCII case-insensitive match.
+ * Never echoes raw content into Error.message (category-only).
+ */
+function assertNoSensitive(text, field, contract) {
   if (typeof text !== 'string') return;
-  const lower = text;
-  const markers = [
-    'postgres://',
-    'postgresql://',
-    'Authorization:',
-    'Bearer ',
-    'BEGIN PRIVATE KEY',
-    'password=',
-    'token=',
-    'secret=',
-  ];
+  const markers = contract && Array.isArray(contract.sensitive_content_markers)
+    ? contract.sensitive_content_markers
+    : [];
   for (const marker of markers) {
-    if (lower.includes(marker)) {
+    if (typeof marker !== 'string' || !marker) continue;
+    if (includesAsciiCaseInsensitive(text, marker)) {
       fail(FAILURE.CATALOG_SENSITIVE_MARKER_DETECTED, { field });
     }
   }
-}
-
-function assertStringOrNull(value, field, maxLen) {
-  if (value === null) return;
-  if (typeof value !== 'string') fail(FAILURE.CATALOG_FIELD_TYPE_INVALID, { field });
-  if (value.length > maxLen) fail(FAILURE.CATALOG_BOUNDS_EXCEEDED, { field });
-  if (hasControlOrNul(value.replace(/\t|\n|\r/g, ''))) {
-    // allow common whitespace in definitions; control chars otherwise fail in normalizer
-  }
-  assertNoSensitive(value, field);
 }
 
 function assertExactKeys(obj, allowed, categoryUnknown, categoryProhibited, prohibited) {
@@ -170,10 +195,15 @@ function assertExactKeys(obj, allowed, categoryUnknown, categoryProhibited, proh
   }
 }
 
-function normalizeSqlDefinition(input) {
+/**
+ * SQL definition lexical normalizer.
+ * Allowed whitespace: SPACE, TAB, LF (CRLF/CR → LF first).
+ * NORMAL: collapse allowed whitespace; quoted states: preserve content.
+ * Disallowed C0/DEL fail-closed in every state.
+ */
+function normalizeSqlDefinition(input, field = 'definition') {
   if (input === null) return null;
-  if (typeof input !== 'string') fail(FAILURE.CATALOG_FIELD_TYPE_INVALID, { field: 'definition' });
-  if (input.includes('\u0000')) fail(FAILURE.CATALOG_DEFINITION_INVALID, { field: 'definition' });
+  if (typeof input !== 'string') fail(FAILURE.CATALOG_FIELD_TYPE_INVALID, { field });
 
   let text = input.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
   text = text.normalize('NFC');
@@ -194,11 +224,14 @@ function normalizeSqlDefinition(input) {
     const code = text.charCodeAt(i);
 
     if (state === 'NORMAL') {
+      if (isDisallowedControlCode(code)) {
+        fail(FAILURE.CATALOG_DEFINITION_INVALID, { field });
+      }
       if (ch === '-' && text[i + 1] === '-') {
-        fail(FAILURE.CATALOG_DEFINITION_COMMENT_UNSUPPORTED, { field: 'definition' });
+        fail(FAILURE.CATALOG_DEFINITION_COMMENT_UNSUPPORTED, { field });
       }
       if (ch === '/' && text[i + 1] === '*') {
-        fail(FAILURE.CATALOG_DEFINITION_COMMENT_UNSUPPORTED, { field: 'definition' });
+        fail(FAILURE.CATALOG_DEFINITION_COMMENT_UNSUPPORTED, { field });
       }
       if (ch === "'") {
         flushSpace();
@@ -215,7 +248,6 @@ function normalizeSqlDefinition(input) {
         continue;
       }
       if (ch === '$') {
-        // dollar quote: $tag$
         let j = i + 1;
         while (j < text.length && /[A-Za-z0-9_]/.test(text[j])) j += 1;
         if (text[j] === '$') {
@@ -227,12 +259,11 @@ function normalizeSqlDefinition(input) {
           continue;
         }
       }
-      if (ch === ' ' || ch === '\t' || ch === '\n' || ch === '\f' || ch === '\v') {
+      if (ch === ' ' || ch === '\t' || ch === '\n') {
         pendingSpace = true;
         i += 1;
         continue;
       }
-      if (code < 32) fail(FAILURE.CATALOG_DEFINITION_INVALID, { field: 'definition' });
       flushSpace();
       out += ch;
       i += 1;
@@ -240,6 +271,9 @@ function normalizeSqlDefinition(input) {
     }
 
     if (state === 'SINGLE_QUOTED') {
+      if (isDisallowedControlCode(code)) {
+        fail(FAILURE.CATALOG_DEFINITION_INVALID, { field });
+      }
       out += ch;
       if (ch === "'" && text[i + 1] === "'") {
         out += "'";
@@ -251,12 +285,14 @@ function normalizeSqlDefinition(input) {
         i += 1;
         continue;
       }
-      if (code === 0) fail(FAILURE.CATALOG_DEFINITION_INVALID, { field: 'definition' });
       i += 1;
       continue;
     }
 
     if (state === 'DOUBLE_QUOTED') {
+      if (isDisallowedControlCode(code)) {
+        fail(FAILURE.CATALOG_DEFINITION_INVALID, { field });
+      }
       out += ch;
       if (ch === '"' && text[i + 1] === '"') {
         out += '"';
@@ -268,7 +304,6 @@ function normalizeSqlDefinition(input) {
         i += 1;
         continue;
       }
-      if (code === 0) fail(FAILURE.CATALOG_DEFINITION_INVALID, { field: 'definition' });
       i += 1;
       continue;
     }
@@ -281,15 +316,60 @@ function normalizeSqlDefinition(input) {
         dollarTag = null;
         continue;
       }
-      if (code === 0) fail(FAILURE.CATALOG_DEFINITION_INVALID, { field: 'definition' });
+      if (isDisallowedControlCode(code)) {
+        fail(FAILURE.CATALOG_DEFINITION_INVALID, { field });
+      }
       out += ch;
       i += 1;
       continue;
     }
   }
 
-  if (state !== 'NORMAL') fail(FAILURE.CATALOG_DEFINITION_UNTERMINATED_QUOTE, { field: 'definition' });
+  if (state !== 'NORMAL') fail(FAILURE.CATALOG_DEFINITION_UNTERMINATED_QUOTE, { field });
   return out.trim();
+}
+
+/** Non-null SQL definitions must be non-empty after canonicalization. */
+function requireCanonicalDefinition(normalized, field) {
+  if (normalized === null) return null;
+  if (typeof normalized !== 'string' || normalized.length === 0) {
+    fail(FAILURE.CATALOG_DEFINITION_INVALID, { field });
+  }
+  return normalized;
+}
+
+function normalizeTypeIdentity(value, contract, field = 'type_identity') {
+  if (typeof value !== 'string') fail(FAILURE.CATALOG_FIELD_TYPE_INVALID, { field });
+  const rules = contract.type_identity_rules || {};
+  let text = value;
+  if (rules.unicode_nfc !== false) {
+    text = text.normalize('NFC');
+  }
+  // type_identity rejects all C0/DEL controls (including TAB/LF/CR), not only disallowed SQL controls.
+  if (hasAnyControlIncludingWhitespace(text)) {
+    fail(FAILURE.CATALOG_FIELD_TYPE_INVALID, { field });
+  }
+  if (rules.trim_outer_whitespace !== false) {
+    text = text.trim();
+  }
+  const minLen = typeof rules.min_length === 'number' ? rules.min_length : 1;
+  const maxLen =
+    typeof rules.max_length === 'number'
+      ? rules.max_length
+      : contract.limits.max_type_identity_length || 512;
+  if (text.length < minLen) fail(FAILURE.CATALOG_FIELD_TYPE_INVALID, { field });
+  if (text.length > maxLen) fail(FAILURE.CATALOG_BOUNDS_EXCEEDED, { field });
+  assertNoSensitive(text, field, contract);
+  return text;
+}
+
+function componentIdentityKey(component, item, contract) {
+  const fields =
+    contract.component_duplicate_identity && contract.component_duplicate_identity[component];
+  if (!Array.isArray(fields) || fields.length === 0) {
+    fail(FAILURE.CATALOG_REQUIRED_FIELD_MISSING, { field: `component_duplicate_identity.${component}` });
+  }
+  return fields.map((f) => String(item[f])).join('|');
 }
 
 function canonicalName(schema, objectName, objectKind) {
@@ -312,7 +392,7 @@ function sortByKey(items, keyFn) {
   return [...items].sort((a, b) => compareCodePoint(keyFn(a), keyFn(b)));
 }
 
-function normalizeColumns(columns, contract, objectOrdinal) {
+function normalizeColumns(columns, contract) {
   if (!Array.isArray(columns)) fail(FAILURE.CATALOG_FIELD_TYPE_INVALID, { field: 'columns' });
   if (columns.length > contract.limits.max_columns_per_object) {
     fail(FAILURE.CATALOG_BOUNDS_EXCEEDED, { field: 'columns' });
@@ -320,39 +400,46 @@ function normalizeColumns(columns, contract, objectOrdinal) {
   const allowed = contract.column_fields;
   const out = [];
   for (const col of columns) {
-    assertExactKeys(col, allowed, FAILURE.CATALOG_OBJECT_FIELD_UNKNOWN, FAILURE.CATALOG_FIELD_PROHIBITED, contract.prohibited_object_fields);
+    assertExactKeys(
+      col,
+      allowed,
+      FAILURE.CATALOG_OBJECT_FIELD_UNKNOWN,
+      FAILURE.CATALOG_FIELD_PROHIBITED,
+      contract.prohibited_object_fields
+    );
     for (const f of allowed) {
       if (col[f] === undefined) fail(FAILURE.CATALOG_REQUIRED_FIELD_MISSING, { field: f });
     }
     assertIdentifier(col.name, 'column.name');
-    if (typeof col.type_identity !== 'string' || !col.type_identity.trim()) {
-      fail(FAILURE.CATALOG_FIELD_TYPE_INVALID, { field: 'type_identity' });
-    }
-    assertNoSensitive(col.type_identity, 'type_identity');
+    const typeIdentity = normalizeTypeIdentity(col.type_identity, contract, 'type_identity');
     assertBoolean(col.nullable, 'nullable');
     if (col.default_definition !== null && typeof col.default_definition !== 'string') {
       fail(FAILURE.CATALOG_FIELD_TYPE_INVALID, { field: 'default_definition' });
     }
+    let defaultDefinition = null;
     if (typeof col.default_definition === 'string') {
-      assertNoSensitive(col.default_definition, 'default_definition');
+      assertNoSensitive(col.default_definition, 'default_definition', contract);
       if (col.default_definition.length > contract.limits.max_definition_length) {
         fail(FAILURE.CATALOG_BOUNDS_EXCEEDED, { field: 'default_definition' });
       }
+      defaultDefinition = requireCanonicalDefinition(
+        normalizeSqlDefinition(col.default_definition, 'default_definition'),
+        'default_definition'
+      );
     }
     assertEnum(col.generated_kind, contract.enums.generated_kind, 'generated_kind');
     assertEnum(col.identity_kind, contract.enums.identity_kind, 'identity_kind');
     out.push({
       name: col.name,
-      type_identity: col.type_identity,
+      type_identity: typeIdentity,
       nullable: col.nullable,
-      default_definition:
-        col.default_definition === null ? null : normalizeSqlDefinition(col.default_definition),
+      default_definition: defaultDefinition,
       generated_kind: col.generated_kind,
       identity_kind: col.identity_kind,
     });
   }
-  uniqueBy(out, (c) => c.name, 'column');
-  return sortByKey(out, (c) => c.name);
+  uniqueBy(out, (c) => componentIdentityKey('column', c, contract), 'column');
+  return sortByKey(out, (c) => componentIdentityKey('column', c, contract));
 }
 
 function normalizeConstraints(constraints, contract) {
@@ -363,7 +450,13 @@ function normalizeConstraints(constraints, contract) {
   const allowed = contract.constraint_fields;
   const out = [];
   for (const c of constraints) {
-    assertExactKeys(c, allowed, FAILURE.CATALOG_OBJECT_FIELD_UNKNOWN, FAILURE.CATALOG_FIELD_PROHIBITED, contract.prohibited_object_fields);
+    assertExactKeys(
+      c,
+      allowed,
+      FAILURE.CATALOG_OBJECT_FIELD_UNKNOWN,
+      FAILURE.CATALOG_FIELD_PROHIBITED,
+      contract.prohibited_object_fields
+    );
     for (const f of allowed) {
       if (c[f] === undefined) fail(FAILURE.CATALOG_REQUIRED_FIELD_MISSING, { field: f });
     }
@@ -374,26 +467,28 @@ function normalizeConstraints(constraints, contract) {
     if (c.definition.length > contract.limits.max_definition_length) {
       fail(FAILURE.CATALOG_BOUNDS_EXCEEDED, { field: 'definition' });
     }
+    assertNoSensitive(c.definition, 'definition', contract);
     const isFk = c.constraint_kind === 'FOREIGN_KEY';
     if (isFk) {
       assertEnum(c.fk_on_update, contract.enums.fk_action, 'fk_on_update');
       assertEnum(c.fk_on_delete, contract.enums.fk_action, 'fk_on_delete');
-    } else {
-      if (c.fk_on_update !== null || c.fk_on_delete !== null) {
-        fail(FAILURE.CATALOG_OBJECT_SHAPE_INVALID, { field: 'fk_action' });
-      }
+    } else if (c.fk_on_update !== null || c.fk_on_delete !== null) {
+      fail(FAILURE.CATALOG_OBJECT_SHAPE_INVALID, { field: 'fk_action' });
     }
     out.push({
       name: c.name,
       constraint_kind: c.constraint_kind,
       validated: c.validated,
-      definition: normalizeSqlDefinition(c.definition),
+      definition: requireCanonicalDefinition(
+        normalizeSqlDefinition(c.definition, 'definition'),
+        'definition'
+      ),
       fk_on_update: isFk ? c.fk_on_update : null,
       fk_on_delete: isFk ? c.fk_on_delete : null,
     });
   }
-  uniqueBy(out, (c) => c.name, 'constraint');
-  return sortByKey(out, (c) => c.name);
+  uniqueBy(out, (c) => componentIdentityKey('constraint', c, contract), 'constraint');
+  return sortByKey(out, (c) => componentIdentityKey('constraint', c, contract));
 }
 
 function normalizeIndexes(indexes, contract) {
@@ -404,7 +499,13 @@ function normalizeIndexes(indexes, contract) {
   const allowed = contract.index_fields;
   const out = [];
   for (const idx of indexes) {
-    assertExactKeys(idx, allowed, FAILURE.CATALOG_OBJECT_FIELD_UNKNOWN, FAILURE.CATALOG_FIELD_PROHIBITED, contract.prohibited_object_fields);
+    assertExactKeys(
+      idx,
+      allowed,
+      FAILURE.CATALOG_OBJECT_FIELD_UNKNOWN,
+      FAILURE.CATALOG_FIELD_PROHIBITED,
+      contract.prohibited_object_fields
+    );
     for (const f of allowed) {
       if (idx[f] === undefined) fail(FAILURE.CATALOG_REQUIRED_FIELD_MISSING, { field: f });
     }
@@ -416,16 +517,20 @@ function normalizeIndexes(indexes, contract) {
     if (idx.definition.length > contract.limits.max_definition_length) {
       fail(FAILURE.CATALOG_BOUNDS_EXCEEDED, { field: 'definition' });
     }
+    assertNoSensitive(idx.definition, 'definition', contract);
     out.push({
       name: idx.name,
       primary: idx.primary,
       unique: idx.unique,
       valid: idx.valid,
-      definition: normalizeSqlDefinition(idx.definition),
+      definition: requireCanonicalDefinition(
+        normalizeSqlDefinition(idx.definition, 'definition'),
+        'definition'
+      ),
     });
   }
-  uniqueBy(out, (i) => i.name, 'index');
-  return sortByKey(out, (i) => i.name);
+  uniqueBy(out, (i) => componentIdentityKey('index', i, contract), 'index');
+  return sortByKey(out, (i) => componentIdentityKey('index', i, contract));
 }
 
 function normalizeTriggers(triggers, contract) {
@@ -436,7 +541,13 @@ function normalizeTriggers(triggers, contract) {
   const allowed = contract.trigger_fields;
   const out = [];
   for (const tg of triggers) {
-    assertExactKeys(tg, allowed, FAILURE.CATALOG_OBJECT_FIELD_UNKNOWN, FAILURE.CATALOG_FIELD_PROHIBITED, contract.prohibited_object_fields);
+    assertExactKeys(
+      tg,
+      allowed,
+      FAILURE.CATALOG_OBJECT_FIELD_UNKNOWN,
+      FAILURE.CATALOG_FIELD_PROHIBITED,
+      contract.prohibited_object_fields
+    );
     for (const f of allowed) {
       if (tg[f] === undefined) fail(FAILURE.CATALOG_REQUIRED_FIELD_MISSING, { field: f });
     }
@@ -459,8 +570,7 @@ function normalizeTriggers(triggers, contract) {
     if (typeof tg.function_identity !== 'string' || !tg.function_identity.trim()) {
       fail(FAILURE.CATALOG_FIELD_TYPE_INVALID, { field: 'function_identity' });
     }
-    assertNoSensitive(tg.function_identity, 'function_identity');
-    // schema-qualified signature-ish form: public.fn()
+    assertNoSensitive(tg.function_identity, 'function_identity', contract);
     if (!/^[A-Za-z_][A-Za-z0-9_]*\.[A-Za-z_][A-Za-z0-9_]*\([^)]*\)$/.test(tg.function_identity)) {
       fail(FAILURE.CATALOG_OBJECT_SHAPE_INVALID, { field: 'function_identity' });
     }
@@ -468,6 +578,7 @@ function normalizeTriggers(triggers, contract) {
     if (tg.definition.length > contract.limits.max_definition_length) {
       fail(FAILURE.CATALOG_BOUNDS_EXCEEDED, { field: 'definition' });
     }
+    assertNoSensitive(tg.definition, 'definition', contract);
     out.push({
       name: tg.name,
       timing: tg.timing,
@@ -475,11 +586,14 @@ function normalizeTriggers(triggers, contract) {
       level: tg.level,
       enabled: tg.enabled,
       function_identity: tg.function_identity,
-      definition: normalizeSqlDefinition(tg.definition),
+      definition: requireCanonicalDefinition(
+        normalizeSqlDefinition(tg.definition, 'definition'),
+        'definition'
+      ),
     });
   }
-  uniqueBy(out, (t) => t.name, 'trigger');
-  return sortByKey(out, (t) => t.name);
+  uniqueBy(out, (t) => componentIdentityKey('trigger', t, contract), 'trigger');
+  return sortByKey(out, (t) => componentIdentityKey('trigger', t, contract));
 }
 
 function normalizeRls(rls, contract) {
@@ -502,7 +616,13 @@ function normalizeRls(rls, contract) {
   const allowed = contract.policy_fields;
   const policies = [];
   for (const p of rls.policies) {
-    assertExactKeys(p, allowed, FAILURE.CATALOG_OBJECT_FIELD_UNKNOWN, FAILURE.CATALOG_FIELD_PROHIBITED, contract.prohibited_object_fields);
+    assertExactKeys(
+      p,
+      allowed,
+      FAILURE.CATALOG_OBJECT_FIELD_UNKNOWN,
+      FAILURE.CATALOG_FIELD_PROHIBITED,
+      contract.prohibited_object_fields
+    );
     for (const f of allowed) {
       if (p[f] === undefined) fail(FAILURE.CATALOG_REQUIRED_FIELD_MISSING, { field: f });
     }
@@ -516,34 +636,43 @@ function normalizeRls(rls, contract) {
     if (p.check_expression !== null && typeof p.check_expression !== 'string') {
       fail(FAILURE.CATALOG_FIELD_TYPE_INVALID, { field: 'check_expression' });
     }
+    let usingExpression = null;
     if (typeof p.using_expression === 'string') {
-      assertNoSensitive(p.using_expression, 'using_expression');
+      assertNoSensitive(p.using_expression, 'using_expression', contract);
       if (p.using_expression.length > contract.limits.max_definition_length) {
         fail(FAILURE.CATALOG_BOUNDS_EXCEEDED, { field: 'using_expression' });
       }
+      usingExpression = requireCanonicalDefinition(
+        normalizeSqlDefinition(p.using_expression, 'using_expression'),
+        'using_expression'
+      );
     }
+    let checkExpression = null;
     if (typeof p.check_expression === 'string') {
-      assertNoSensitive(p.check_expression, 'check_expression');
+      assertNoSensitive(p.check_expression, 'check_expression', contract);
       if (p.check_expression.length > contract.limits.max_definition_length) {
         fail(FAILURE.CATALOG_BOUNDS_EXCEEDED, { field: 'check_expression' });
       }
+      checkExpression = requireCanonicalDefinition(
+        normalizeSqlDefinition(p.check_expression, 'check_expression'),
+        'check_expression'
+      );
     }
     policies.push({
       name: p.name,
       command: p.command,
       permissive: p.permissive,
       role_scope: p.role_scope,
-      using_expression:
-        p.using_expression === null ? null : normalizeSqlDefinition(p.using_expression),
-      check_expression:
-        p.check_expression === null ? null : normalizeSqlDefinition(p.check_expression),
+      using_expression: usingExpression,
+      check_expression: checkExpression,
     });
   }
-  uniqueBy(policies, (p) => `${p.name}|${p.command}|${p.role_scope}`, 'policy');
+  // Canonical policy identity: relation-local policy name only.
+  uniqueBy(policies, (p) => componentIdentityKey('policy', p, contract), 'policy');
   return {
     enabled: rls.enabled,
     forced: rls.forced,
-    policies: sortByKey(policies, (p) => `${p.name}|${p.command}|${p.role_scope}`),
+    policies: sortByKey(policies, (p) => componentIdentityKey('policy', p, contract)),
   };
 }
 
@@ -555,7 +684,13 @@ function normalizeGrants(grants, contract) {
   const allowed = contract.grant_fields;
   const out = [];
   for (const g of grants) {
-    assertExactKeys(g, allowed, FAILURE.CATALOG_OBJECT_FIELD_UNKNOWN, FAILURE.CATALOG_FIELD_PROHIBITED, contract.prohibited_object_fields);
+    assertExactKeys(
+      g,
+      allowed,
+      FAILURE.CATALOG_OBJECT_FIELD_UNKNOWN,
+      FAILURE.CATALOG_FIELD_PROHIBITED,
+      contract.prohibited_object_fields
+    );
     for (const f of allowed) {
       if (g[f] === undefined) fail(FAILURE.CATALOG_REQUIRED_FIELD_MISSING, { field: f });
     }
@@ -579,11 +714,12 @@ function normalizeGrants(grants, contract) {
       grantable: g.grantable,
     });
   }
-  uniqueBy(out, (g) => `${g.grantee_class}|${g.grantable}|${g.privileges.join(',')}`, 'grant');
-  return sortByKey(out, (g) => `${g.grantee_class}|${g.grantable}|${g.privileges.join(',')}`);
+  // Canonical grant identity: grantee_class + grantable; privileges are payload only.
+  uniqueBy(out, (g) => componentIdentityKey('grant', g, contract), 'grant');
+  return sortByKey(out, (g) => componentIdentityKey('grant', g, contract));
 }
 
-function canonicalizeCatalogObject(rawObject, contract, ordinal) {
+function canonicalizeCatalogObject(rawObject, contract) {
   if (!rawObject || typeof rawObject !== 'object' || Array.isArray(rawObject)) {
     fail(FAILURE.CATALOG_FIELD_TYPE_INVALID, { field: 'object' });
   }
@@ -593,9 +729,8 @@ function canonicalizeCatalogObject(rawObject, contract, ordinal) {
     }
   }
 
-  const required = rawObject.object_kind === 'TABLE'
-    ? contract.table_required_fields
-    : contract.view_required_fields;
+  const required =
+    rawObject.object_kind === 'TABLE' ? contract.table_required_fields : contract.view_required_fields;
 
   for (const f of required) {
     if (rawObject[f] === undefined) fail(FAILURE.CATALOG_REQUIRED_FIELD_MISSING, { field: f });
@@ -625,8 +760,11 @@ function canonicalizeCatalogObject(rawObject, contract, ordinal) {
     if (viewDefinition.length > contract.limits.max_definition_length) {
       fail(FAILURE.CATALOG_BOUNDS_EXCEEDED, { field: 'view_definition' });
     }
-    assertNoSensitive(viewDefinition, 'view_definition');
-    viewDefinition = normalizeSqlDefinition(viewDefinition);
+    assertNoSensitive(viewDefinition, 'view_definition', contract);
+    viewDefinition = requireCanonicalDefinition(
+      normalizeSqlDefinition(viewDefinition, 'view_definition'),
+      'view_definition'
+    );
   }
 
   const requireEmpty = (arr, field, rule) => {
@@ -639,7 +777,7 @@ function canonicalizeCatalogObject(rawObject, contract, ordinal) {
   requireEmpty(rawObject.indexes, 'indexes', shape.indexes);
   requireEmpty(rawObject.triggers, 'triggers', shape.triggers);
 
-  const columns = normalizeColumns(rawObject.columns, contract, ordinal);
+  const columns = normalizeColumns(rawObject.columns, contract);
   const constraints =
     shape.constraints === 'must_be_empty_array'
       ? []
@@ -673,7 +811,6 @@ function fingerprintObject(canonicalObject, contract) {
     normalizer_version: contract.normalizer_version,
     object: canonicalObject,
   };
-  // Fixed key order (not alphabetical generic) for the envelope.
   const serialized =
     `{"domain":${JSON.stringify(envelope.domain)}` +
     `,"format_version":${JSON.stringify(envelope.format_version)}` +
@@ -713,8 +850,8 @@ function buildCatalogEvidence(input, contract) {
   validateCatalogMetadata(input, contract);
   const names = new Set();
   const objects = [];
-  input.objects.forEach((raw, index) => {
-    const canonical = canonicalizeCatalogObject(raw, contract, index);
+  input.objects.forEach((raw) => {
+    const canonical = canonicalizeCatalogObject(raw, contract);
     const name = canonicalName(canonical.schema, canonical.object_name, canonical.object_kind);
     if (names.has(name)) fail(FAILURE.CATALOG_OBJECT_DUPLICATE, { field: 'name' });
     names.add(name);
@@ -727,6 +864,15 @@ function buildCatalogEvidence(input, contract) {
     normalizer_version: contract.normalizer_version,
     objects,
   };
+}
+
+function decodeUtf8Strict(buffer) {
+  try {
+    const decoder = new TextDecoder('utf-8', { fatal: true });
+    return decoder.decode(buffer);
+  } catch {
+    fail(FAILURE.CATALOG_INPUT_JSON_INVALID);
+  }
 }
 
 function readCatalogMetadataFile(inputPath, options = {}) {
@@ -746,9 +892,10 @@ function readCatalogMetadataFile(inputPath, options = {}) {
     fail(FAILURE.CATALOG_INPUT_READ_FAILED);
   }
   if (raw.length > maxBytes) fail(FAILURE.CATALOG_INPUT_TOO_LARGE);
+  const text = decodeUtf8Strict(raw);
   let parsed;
   try {
-    parsed = JSON.parse(raw.toString('utf8'));
+    parsed = JSON.parse(text);
   } catch {
     fail(FAILURE.CATALOG_INPUT_JSON_INVALID);
   }
@@ -769,12 +916,16 @@ function bindExpectedSchemaNormalizer(expectedSchemaManifest, contract) {
     return { ok: false, errors: [FAILURE.EXPECTED_SCHEMA_NORMALIZER_CONTRACT_MISMATCH] };
   }
   const errors = [];
-  if (expectedSchemaManifest.normalizer_version && expectedSchemaManifest.normalizer_version !== contract.normalizer_version) {
+  if (
+    expectedSchemaManifest.normalizer_version &&
+    expectedSchemaManifest.normalizer_version !== contract.normalizer_version
+  ) {
     errors.push(FAILURE.EXPECTED_SCHEMA_NORMALIZER_CONTRACT_MISMATCH);
   }
   if (
     expectedSchemaManifest.metadata_contract_path &&
-    expectedSchemaManifest.metadata_contract_path !== 'db/migration-provenance/catalog-metadata-contract.json'
+    expectedSchemaManifest.metadata_contract_path !==
+      'db/migration-provenance/catalog-metadata-contract.json'
   ) {
     errors.push(FAILURE.EXPECTED_SCHEMA_NORMALIZER_CONTRACT_MISMATCH);
   }
@@ -801,6 +952,7 @@ module.exports = {
   validateCatalogMetadataContract,
   validateCatalogMetadata,
   normalizeSqlDefinition,
+  normalizeTypeIdentity,
   canonicalizeCatalogObject,
   buildCatalogEvidence,
   stableStringify,
@@ -812,4 +964,6 @@ module.exports = {
   bindExpectedSchemaNormalizer,
   bindCatalogEvidenceVersions,
   compareCodePoint,
+  decodeUtf8Strict,
+  includesAsciiCaseInsensitive,
 };

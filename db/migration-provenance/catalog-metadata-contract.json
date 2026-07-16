@@ -129,6 +129,37 @@
     "privileges",
     "grantable"
   ],
+  "component_duplicate_identity": {
+    "column": ["name"],
+    "constraint": ["name"],
+    "index": ["name"],
+    "trigger": ["name"],
+    "policy": ["name"],
+    "grant": ["grantee_class", "grantable"],
+    "notes": "PostgreSQL policy names are unique within a relation; command/role/expression differences under the same name are near-duplicates and must fail closed. Grant identity is grantee_class + grantable; privileges are sorted payload only and must not split one identity across multiple grant rows."
+  },
+  "type_identity_rules": {
+    "unicode_nfc": true,
+    "trim_outer_whitespace": true,
+    "collapse_internal_ascii_whitespace": false,
+    "control_characters": "fail_closed",
+    "sensitive_markers": "fail_closed",
+    "min_length": 1,
+    "max_length": 512,
+    "allowed_whitespace_code_points": [32],
+    "notes": "type_identity is a deterministic canonical scalar: NFC, outer whitespace trimmed, no C0/DEL controls, no sensitive markers. Outer whitespace is insignificant for equality; internal whitespace is preserved as written."
+  },
+  "definition_value_rules": {
+    "null_allowed_fields": [
+      "default_definition",
+      "using_expression",
+      "check_expression",
+      "view_definition_for_TABLE"
+    ],
+    "non_null_must_be_non_empty_after_canonicalize": true,
+    "whitespace_only_after_canonicalize": "fail_closed",
+    "failure_category": "CATALOG_DEFINITION_INVALID"
+  },
   "enums": {
     "generated_kind": ["NONE", "STORED"],
     "identity_kind": ["NONE", "ALWAYS", "BY_DEFAULT"],
@@ -152,6 +183,7 @@
     "max_policies_per_object": 128,
     "max_grants_per_object": 128,
     "max_definition_length": 65536,
+    "max_type_identity_length": 512,
     "max_input_bytes": 1048576,
     "max_identifier_length": 63
   },
@@ -197,6 +229,14 @@
     "token=",
     "secret="
   ],
+  "sensitive_content_comparison": {
+    "ascii_case_insensitive": true,
+    "locale_case_folding": false,
+    "source_of_truth": "sensitive_content_markers",
+    "failure_category": "CATALOG_SENSITIVE_MARKER_DETECTED",
+    "echo_raw_content": false,
+    "notes": "Marker detection MUST use contract.sensitive_content_markers only. Comparison is explicit ASCII case-insensitive (A-Z/a-z) so URI schemes, Authorization headers, Bearer/password/token/secret markers cannot be bypassed by case variation. Failure output must not include raw text, paths, secret fragments, or stack traces."
+  },
   "sql_definition_rules": {
     "input_contract": "pg_get_*def-style canonical definition strings only; not free-form hand-authored SQL",
     "states": ["NORMAL", "SINGLE_QUOTED", "DOUBLE_QUOTED", "DOLLAR_QUOTED"],
@@ -208,7 +248,16 @@
     "comments_outside_quotes": "fail_closed",
     "unterminated_quotes": "fail_closed",
     "control_characters": "fail_closed",
+    "allowed_whitespace_code_points": [9, 10, 32],
+    "allowed_whitespace_notes": "SPACE (U+0020), TAB (U+0009), and LF (U+000A) only. CRLF and lone CR are normalized to LF before scanning. In NORMAL, allowed whitespace is insignificant and collapsed to a single space. In SINGLE_QUOTED, DOUBLE_QUOTED, and DOLLAR_QUOTED, allowed whitespace is preserved byte-for-byte as content. All other C0 controls (U+0000–U+001F except TAB/LF) and DEL (U+007F) fail closed with CATALOG_DEFINITION_INVALID in every lexical state.",
     "locale_case_folding": false
+  },
+  "input_encoding": {
+    "encoding": "utf-8",
+    "invalid_sequence": "fail_closed",
+    "replacement_decoding": false,
+    "failure_category": "CATALOG_INPUT_JSON_INVALID",
+    "notes": "Catalog metadata files must be strict UTF-8. Do not use Buffer.toString('utf8') replacement decoding for acceptance."
   },
   "fingerprint": {
     "domain": "lovebud:migration-catalog-object",
