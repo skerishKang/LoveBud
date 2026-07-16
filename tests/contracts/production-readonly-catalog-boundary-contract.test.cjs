@@ -218,10 +218,44 @@ test('forged marker and private handle cannot open Production collector', async 
       return e.category || e.message;
     }
   }
+
+  // repoRoot is now rejected by the live collector (allowedKeys = ['secretFile', 'roleMappingFile'])
   assert.equal(
     await cat(() =>
       ADAPTER.collectProductionReadonlyCatalogEvidenceFromFiles({
         repoRoot: REPO,
+        secretFile: '.secrets/nope.env',
+        roleMappingFile: '.secrets/nope.json',
+      })
+    ),
+    'CATALOG_ADAPTER_INPUT_INVALID'
+  );
+  // root also rejected
+  assert.equal(
+    await cat(() =>
+      ADAPTER.collectProductionReadonlyCatalogEvidenceFromFiles({
+        root: REPO,
+        secretFile: '.secrets/nope.env',
+        roleMappingFile: '.secrets/nope.json',
+      })
+    ),
+    'CATALOG_ADAPTER_INPUT_INVALID'
+  );
+  // contractRoot rejected
+  assert.equal(
+    await cat(() =>
+      ADAPTER.collectProductionReadonlyCatalogEvidenceFromFiles({
+        contractRoot: '/tmp',
+        secretFile: '.secrets/nope.env',
+        roleMappingFile: '.secrets/nope.json',
+      })
+    ),
+    'CATALOG_ADAPTER_INPUT_INVALID'
+  );
+  // objects rejected
+  assert.equal(
+    await cat(() =>
+      ADAPTER.collectProductionReadonlyCatalogEvidenceFromFiles({
         secretFile: '.secrets/nope.env',
         roleMappingFile: '.secrets/nope.json',
         objects: [{ schema: 'public', object_name: 'trees', object_kind: 'TABLE' }],
@@ -229,10 +263,10 @@ test('forged marker and private handle cannot open Production collector', async 
     ),
     'CATALOG_ADAPTER_INPUT_INVALID'
   );
+  // connection rejected
   assert.equal(
     await cat(() =>
       ADAPTER.collectProductionReadonlyCatalogEvidenceFromFiles({
-        repoRoot: REPO,
         secretFile: '.secrets/nope.env',
         roleMappingFile: '.secrets/nope.json',
         connection: { __productionReadonlyValidated: true, host: 'x' },
@@ -240,10 +274,10 @@ test('forged marker and private handle cannot open Production collector', async 
     ),
     'CATALOG_ADAPTER_INPUT_INVALID'
   );
+  // roleMapping rejected
   assert.equal(
     await cat(() =>
       ADAPTER.collectProductionReadonlyCatalogEvidenceFromFiles({
-        repoRoot: REPO,
         secretFile: '.secrets/nope.env',
         roleMappingFile: '.secrets/nope.json',
         roleMapping: { public: 'PUBLIC' },
@@ -251,10 +285,10 @@ test('forged marker and private handle cannot open Production collector', async 
     ),
     'CATALOG_ADAPTER_INPUT_INVALID'
   );
+  // mode rejected
   assert.equal(
     await cat(() =>
       ADAPTER.collectProductionReadonlyCatalogEvidenceFromFiles({
-        repoRoot: REPO,
         secretFile: '.secrets/nope.env',
         roleMappingFile: '.secrets/nope.json',
         mode: 'PRODUCTION_READONLY_CATALOG',
@@ -469,6 +503,35 @@ test('frozen allowlist and caller override rejection', () => {
     catchCategory(() => CORE.rejectCallerOverrides({ __productionReadonlyValidated: true })),
     'PRODUCTION_CATALOG_CALLER_OVERRIDE_REJECTED'
   );
+  // Root overrides also rejected
+  assert.equal(
+    catchCategory(() => CORE.rejectCallerOverrides({ repoRoot: '/tmp' })),
+    'PRODUCTION_CATALOG_CALLER_OVERRIDE_REJECTED'
+  );
+  assert.equal(
+    catchCategory(() => CORE.rejectCallerOverrides({ root: '/tmp' })),
+    'PRODUCTION_CATALOG_CALLER_OVERRIDE_REJECTED'
+  );
+  assert.equal(
+    catchCategory(() => CORE.rejectCallerOverrides({ contractRoot: '/tmp' })),
+    'PRODUCTION_CATALOG_CALLER_OVERRIDE_REJECTED'
+  );
+  assert.equal(
+    catchCategory(() => CORE.rejectCallerOverrides({ policyRoot: '/tmp' })),
+    'PRODUCTION_CATALOG_CALLER_OVERRIDE_REJECTED'
+  );
+  assert.equal(
+    catchCategory(() => CORE.rejectCallerOverrides({ baseDir: '/tmp' })),
+    'PRODUCTION_CATALOG_CALLER_OVERRIDE_REJECTED'
+  );
+  assert.equal(
+    catchCategory(() => CORE.rejectCallerOverrides({ cwd: '/tmp' })),
+    'PRODUCTION_CATALOG_CALLER_OVERRIDE_REJECTED'
+  );
+  assert.equal(
+    catchCategory(() => CORE.rejectCallerOverrides({ repositoryRoot: '/tmp' })),
+    'PRODUCTION_CATALOG_CALLER_OVERRIDE_REJECTED'
+  );
 });
 
 test('role mapping synthetic valid; missing required', () => {
@@ -490,7 +553,7 @@ test('role mapping synthetic valid; missing required', () => {
   );
 });
 
-test('build invocation plan uses opaque handle; no forgeable marker', () => {
+test('buildProductionReadonlyInvocationPlanForRoot uses explicit root (pure/test helper)', () => {
   const plan = withIsolatedRepo(
     {
       'url.env':
@@ -500,7 +563,7 @@ test('build invocation plan uses opaque handle; no forgeable marker', () => {
       }),
     },
     (root) =>
-      CORE.buildProductionReadonlyInvocationPlan(root, {
+      CORE.buildProductionReadonlyInvocationPlanForRoot(root, {
         secretFile: '.secrets/url.env',
         roleMappingFile: '.secrets/roles.json',
       })
@@ -525,6 +588,20 @@ test('build invocation plan uses opaque handle; no forgeable marker', () => {
   CORE.releaseInvocationPlan(plan);
 });
 
+test('buildProductionReadonlyInvocationPlan (fixed-root) uses REPO_ROOT from core module', () => {
+  // Fixed-root variant must not accept repoRoot nor any root override.
+  assert.equal(
+    catchCategory(() =>
+      CORE.buildProductionReadonlyInvocationPlan({
+        secretFile: '.secrets/nope.env',
+        roleMappingFile: '.secrets/nope.json',
+        repoRoot: '/tmp',
+      })
+    ),
+    'PRODUCTION_CATALOG_CALLER_OVERRIDE_REJECTED'
+  );
+});
+
 test('WeakMap handle identity: genuine resolves, JSON/spread/forged all fail', () => {
   const planA = withIsolatedRepo(
     {
@@ -535,7 +612,7 @@ test('WeakMap handle identity: genuine resolves, JSON/spread/forged all fail', (
       }),
     },
     (root) =>
-      CORE.buildProductionReadonlyInvocationPlan(root, {
+      CORE.buildProductionReadonlyInvocationPlanForRoot(root, {
         secretFile: '.secrets/url.env',
         roleMappingFile: '.secrets/roles.json',
       })
@@ -616,7 +693,7 @@ test('WeakMap release is idempotent and safe on forged/deleted handles', () => {
       }),
     },
     (root) =>
-      CORE.buildProductionReadonlyInvocationPlan(root, {
+      CORE.buildProductionReadonlyInvocationPlanForRoot(root, {
         secretFile: '.secrets/url.env',
         roleMappingFile: '.secrets/roles.json',
       })
@@ -641,7 +718,7 @@ test('multiple builds create independent handles; each release isolated', () => 
       }),
     },
     (root) =>
-      CORE.buildProductionReadonlyInvocationPlan(root, {
+      CORE.buildProductionReadonlyInvocationPlanForRoot(root, {
         secretFile: '.secrets/url.env',
         roleMappingFile: '.secrets/roles.json',
       })
@@ -655,7 +732,7 @@ test('multiple builds create independent handles; each release isolated', () => 
       }),
     },
     (root) =>
-      CORE.buildProductionReadonlyInvocationPlan(root, {
+      CORE.buildProductionReadonlyInvocationPlanForRoot(root, {
         secretFile: '.secrets/url.env',
         roleMappingFile: '.secrets/roles.json',
       })
@@ -696,7 +773,7 @@ test('cleanup: explicit release ensures no credential retention', () => {
       }),
     },
     (root) =>
-      CORE.buildProductionReadonlyInvocationPlan(root, {
+      CORE.buildProductionReadonlyInvocationPlanForRoot(root, {
         secretFile: '.secrets/url.env',
         roleMappingFile: '.secrets/roles.json',
       })
@@ -726,7 +803,7 @@ test('cleanup: no raw values exposed through error contexts', () => {
       }),
     },
     (root) =>
-      CORE.buildProductionReadonlyInvocationPlan(root, {
+      CORE.buildProductionReadonlyInvocationPlanForRoot(root, {
         secretFile: '.secrets/url.env',
         roleMappingFile: '.secrets/roles.json',
       })
@@ -746,6 +823,97 @@ test('cleanup: no raw values exposed through error contexts', () => {
   }
 });
 
+test('boundary contract validates mode, dedicated_secret_key, and policy constraints', () => {
+  // loadBoundaryContract from the authoritative REPO_ROOT must validate the real contract.
+  const bc = CORE.loadBoundaryContract(REPO);
+  assert.equal(bc.mode, 'PRODUCTION_READONLY_CATALOG');
+  assert.equal(bc.dedicated_secret_key, 'LOVEBUD_PRODUCTION_READONLY_DATABASE_URL');
+  assert.equal(bc.caller_object_override, false);
+  assert.equal(bc.disposable_mode_preserved, 'DISPOSABLE_CI');
+  assert.equal(bc.caller_sql, false);
+  assert.ok(Array.isArray(bc.prohibited_secret_keys));
+});
+
+test('alternate-root policy substitution is impossible via live collector', async () => {
+  // Create an alternate root with custom boundary contract, allowlist, and secrets.
+  // The live collector must reject it because it can't accept an alternate root.
+  const altRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'lb-alt-'));
+  const altSecrets = path.join(altRoot, '.secrets');
+  const altProv = path.join(altRoot, 'db', 'migration-provenance');
+  fs.mkdirSync(altSecrets, { recursive: true });
+  fs.mkdirSync(altProv, { recursive: true });
+
+  // Custom boundary contract with different mode
+  const tamperedBoundary = JSON.parse(read(BOUNDARY_CONTRACT));
+  tamperedBoundary.mode = 'TAMPERED_MODE';
+  fs.writeFileSync(
+    path.join(altProv, 'production-readonly-catalog-boundary-contract.json'),
+    JSON.stringify(tamperedBoundary),
+    'utf8'
+  );
+
+  const tamperedAdoption = JSON.parse(read(ADOPTION_CONTRACT));
+  tamperedAdoption.reviewed_object_allowlist = [
+    { name: 'table:public.tampered_table' },
+  ];
+  fs.writeFileSync(
+    path.join(altProv, 'adoption-baseline-collection-plan-contract.json'),
+    JSON.stringify(tamperedAdoption),
+    'utf8'
+  );
+
+  fs.writeFileSync(
+    path.join(altSecrets, 'fake.env'),
+    'LOVEBUD_PRODUCTION_READONLY_DATABASE_URL=' + fixturePgUrl({}) + '\n',
+    'utf8'
+  );
+  fs.writeFileSync(
+    path.join(altSecrets, 'fake.json'),
+    JSON.stringify({ role_mapping: { public: 'PUBLIC' } }),
+    'utf8'
+  );
+
+  async function cat(fn) {
+    try {
+      await fn();
+      return null;
+    } catch (e) {
+      return e.category || e.message;
+    }
+  }
+
+  // 1. Live collector rejects repoRoot parameter altogether
+  assert.equal(
+    await cat(() =>
+      ADAPTER.collectProductionReadonlyCatalogEvidenceFromFiles({
+        secretFile: '.secrets/fake.env',
+        roleMappingFile: '.secrets/fake.json',
+        repoRoot: altRoot,
+      })
+    ),
+    'CATALOG_ADAPTER_INPUT_INVALID'
+  );
+
+  // 2. Pure helper can use alternate root (isolated test), but live collector can't
+  const altPlan = CORE.buildProductionReadonlyInvocationPlanForRoot(altRoot, {
+    secretFile: '.secrets/fake.env',
+    roleMappingFile: '.secrets/fake.json',
+  });
+  assert.equal(altPlan.objectCount, 1);
+  assert.equal(altPlan.objectNames[0], 'table:public.tampered_table');
+
+  // 3. Actual repository frozen allowlist remains unchanged (9 objects)
+  const realObjects = CORE.loadFrozenAdoptionAllowlistObjects(REPO);
+  assert.equal(realObjects.length, 9);
+
+  // 4. Repository boundary contract is unaffected
+  const realBoundary = CORE.loadBoundaryContract(REPO);
+  assert.equal(realBoundary.mode, 'PRODUCTION_READONLY_CATALOG');
+
+  CORE.releaseInvocationPlan(altPlan);
+  fs.rmSync(altRoot, { recursive: true, force: true });
+});
+
 test('isolated temp secrets never touch real REPO/.secrets', () => {
   const before = listRepoSecretsIfAny();
   const sentinelName = 'do-not-touch-sentinel-3570.env';
@@ -763,7 +931,7 @@ test('isolated temp secrets never touch real REPO/.secrets', () => {
       (root) => {
         assert.notEqual(path.resolve(root), path.resolve(REPO));
         assert.ok(fs.existsSync(path.join(root, '.secrets', 'url.env')));
-        CORE.buildProductionReadonlyInvocationPlan(root, {
+        CORE.buildProductionReadonlyInvocationPlanForRoot(root, {
           secretFile: '.secrets/url.env',
           roleMappingFile: '.secrets/roles.json',
         });
@@ -800,14 +968,14 @@ test('Production CLI surface and validate-only on isolated fixtures', () => {
   assert.equal(report.decision, 'FAIL_CLOSED');
 });
 
-test('CLI validate-only with synthetic secrets via temporary chdir into isolated root', () => {
-  // Spawn node with cwd=isolated root but CLI still resolves REPO_ROOT from __dirname.
-  // So CLI always uses real REPO root — cannot pass isolated secrets without writing REPO/.secrets.
-  // Contract: Production CLI validate-only is covered by plan builder; CLI path rejection covered.
-  // Explicitly document that CLI uses package root, not process.cwd(), so tests never write REPO/.secrets.
+test('CLI uses fixed-root buildProductionReadonlyInvocationPlan (no caller-controlled root)', () => {
+  // CLI removed its own REPO_ROOT constant; relies on core module's fixed root.
   const cli = read(CLI_PATH);
-  assert.match(cli, /path\.resolve\(__dirname, '\.\.'\)/);
+  // CLI no longer imports path directly nor defines REPO_ROOT
+  assert.doesNotMatch(cli, /REPO_ROOT\s*=/);
   assert.doesNotMatch(cli, /process\.cwd\(\)/);
+  // CLI calls fixed-root buildProductionReadonlyInvocationPlan (no leading REPO_ROOT argument)
+  assert.match(cli, /buildProductionReadonlyInvocationPlan\(\{/);
 });
 
 test('adapter source: no Production mode on generic collect; has dedicated file entrypoint', () => {

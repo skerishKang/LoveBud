@@ -29,6 +29,13 @@ const ADOPTION_PLAN_CONTRACT =
 const BOUNDARY_CONTRACT =
   'db/migration-provenance/production-readonly-catalog-boundary-contract.json';
 
+/**
+ * Authoritative repository root for Production-readonly catalog operations.
+ * Fixed — never caller-controlled. Pure helpers may accept alternate roots
+ * for testing via buildProductionReadonlyInvocationPlanForRoot().
+ */
+const REPO_ROOT = path.resolve(__dirname, '..');
+
 const FAILURE = Object.freeze({
   PRODUCTION_CATALOG_INPUT_INVALID: 'PRODUCTION_CATALOG_INPUT_INVALID',
   PRODUCTION_CATALOG_SECRET_REQUIRED: 'PRODUCTION_CATALOG_SECRET_REQUIRED',
@@ -120,6 +127,13 @@ function loadBoundaryContract(repoRoot) {
   const abs = path.resolve(repoRoot, BOUNDARY_CONTRACT);
   const doc = loadJsonFile(abs, FAILURE.PRODUCTION_CATALOG_POLICY_INVALID);
   if (!doc || doc.mode !== MODE || doc.dedicated_secret_key !== DEDICATED_SECRET_KEY) {
+    fail(FAILURE.PRODUCTION_CATALOG_POLICY_INVALID);
+  }
+  // Belt-and-suspenders: verify policy constraints that must never be caller-controlled.
+  if (doc.caller_object_override !== false) {
+    fail(FAILURE.PRODUCTION_CATALOG_POLICY_INVALID);
+  }
+  if (doc.caller_sql !== false) {
     fail(FAILURE.PRODUCTION_CATALOG_POLICY_INVALID);
   }
   return doc;
@@ -622,6 +636,14 @@ function rejectCallerOverrides(options) {
     'roleMapping',
     'mode',
     '__productionReadonlyValidated',
+    // Policy root overrides — live collector must reject all root forms.
+    'repoRoot',
+    'root',
+    'repositoryRoot',
+    'contractRoot',
+    'policyRoot',
+    'baseDir',
+    'cwd',
   ];
   for (const key of banned) {
     if (Object.prototype.hasOwnProperty.call(options, key)) {
@@ -650,9 +672,13 @@ function resolveOpaqueInvocationHandle(handle) {
 
 /**
  * Build a Production-readonly invocation plan from secret/role files only.
+ * Accepts caller-provided repoRoot for isolated test use.
  * Public plan fields are sanitized; credentials live only in the private store.
+ *
+ * This is the pure/test/internal helper that accepts an explicit root path.
+ * For the fixed-root live collector entrypoint, use buildProductionReadonlyInvocationPlan().
  */
-function buildProductionReadonlyInvocationPlan(repoRoot, options) {
+function buildProductionReadonlyInvocationPlanForRoot(repoRoot, options) {
   rejectCallerOverrides(options || {});
   const secretFile = options && options.secretFile;
   const roleMappingFile = options && options.roleMappingFile;
@@ -687,6 +713,15 @@ function buildProductionReadonlyInvocationPlan(repoRoot, options) {
     // Opaque handle — not a forgeable boolean marker / JSON-cloneable trust bit.
     handle,
   });
+}
+
+/**
+ * Fixed-root wrapper for live Production-readonly invocation plan building.
+ * Uses the authoritative repository root (REPO_ROOT).
+ * The caller cannot control the contract/secrets root.
+ */
+function buildProductionReadonlyInvocationPlan(options) {
+  return buildProductionReadonlyInvocationPlanForRoot(REPO_ROOT, options);
 }
 
 function getPrivateInvocationParts(plan) {
@@ -731,6 +766,7 @@ module.exports = {
   DEDICATED_SECRET_KEY,
   ADOPTION_PLAN_CONTRACT,
   BOUNDARY_CONTRACT,
+  REPO_ROOT,
   FAILURE,
   GRANTEE_CLASSES,
   PROHIBITED_GENERIC_KEYS,
@@ -747,6 +783,7 @@ module.exports = {
   loadProductionRoleMapping,
   rejectCallerOverrides,
   buildProductionReadonlyInvocationPlan,
+  buildProductionReadonlyInvocationPlanForRoot,
   getPrivateInvocationParts,
   toPgClientConfigFromInvocationPlan,
   releaseInvocationPlan,

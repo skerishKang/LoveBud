@@ -871,16 +871,17 @@ async function collectCatalogEvidence(options) {
 }
 
 /**
- * Dedicated Production-readonly entrypoint.
- * Accepts ONLY repoRoot + secret/role-mapping file relative paths.
- * Caller cannot supply connection, objects, roleMapping, mode, SQL, or client.
- * Loads frozen allowlist + secrets internally via production boundary core.
+ * Dedicated Production-readonly entrypoint (live collector).
+ * Accepts ONLY secretFile + roleMappingFile — no caller-controlled root.
+ * Caller cannot supply connection, objects, roleMapping, mode, SQL, client,
+ * or any policy-root override (repoRoot, root, contractRoot, etc.).
+ * Loads frozen allowlist + secrets + contracts from the authoritative repository root only.
  */
 async function collectProductionReadonlyCatalogEvidenceFromFiles(options) {
   if (!options || typeof options !== 'object' || Array.isArray(options)) {
     fail(ADAPTER_FAILURE.CATALOG_ADAPTER_INPUT_INVALID);
   }
-  const allowedKeys = new Set(['repoRoot', 'secretFile', 'roleMappingFile']);
+  const allowedKeys = new Set(['secretFile', 'roleMappingFile']);
   for (const key of Object.keys(options)) {
     if (!allowedKeys.has(key)) {
       fail(ADAPTER_FAILURE.CATALOG_ADAPTER_INPUT_INVALID, { field: key });
@@ -895,7 +896,20 @@ async function collectProductionReadonlyCatalogEvidenceFromFiles(options) {
 
   // Lazy require avoids circular init and keeps disposable path free of Production surface.
   const boundary = require('./production-readonly-catalog-boundary-core.cjs');
-  const plan = boundary.buildProductionReadonlyInvocationPlan(options.repoRoot, {
+
+  // Repository-owned root — caller cannot override.
+  const REPO_ROOT = path.resolve(__dirname, '..');
+
+  // Validate boundary contract before building any plan.
+  const boundaryContract = boundary.loadBoundaryContract(REPO_ROOT);
+  // loadBoundaryContract already asserts:
+  //   mode === PRODUCTION_READONLY_CATALOG
+  //   dedicated_secret_key === LOVEBUD_PRODUCTION_READONLY_DATABASE_URL
+  if (!boundaryContract) {
+    fail(ADAPTER_FAILURE.CATALOG_ADAPTER_INPUT_INVALID);
+  }
+
+  const plan = boundary.buildProductionReadonlyInvocationPlan({
     secretFile: options.secretFile,
     roleMappingFile: options.roleMappingFile,
   });
@@ -903,7 +917,7 @@ async function collectProductionReadonlyCatalogEvidenceFromFiles(options) {
   try {
     const privateParts = boundary.getPrivateInvocationParts(plan);
     const pgConfig = privateParts.pgConfig;
-    const contract = loadContract(options.repoRoot);
+    const contract = loadContract(REPO_ROOT);
     const maxObjects =
       contract.limits && contract.limits.max_objects ? contract.limits.max_objects : 256;
     const objects = validateObjectAllowlist(privateParts.objects, maxObjects);

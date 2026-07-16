@@ -21,7 +21,6 @@
  * #3569 is CLOSED / completed. Do not reopen.
  */
 
-const path = require('node:path');
 const {
   MODE,
   FAILURE,
@@ -30,8 +29,6 @@ const {
   getPrivateInvocationParts,
   releaseInvocationPlan,
 } = require('./production-readonly-catalog-boundary-core.cjs');
-
-const REPO_ROOT = path.resolve(__dirname, '..');
 
 const ALLOWED_FLAGS = new Set([
   '--secret-file',
@@ -107,7 +104,7 @@ async function main() {
       return;
     }
 
-    plan = buildProductionReadonlyInvocationPlan(REPO_ROOT, {
+    plan = buildProductionReadonlyInvocationPlan({
       secretFile: map.get('--secret-file'),
       roleMappingFile: map.get('--role-mapping-file'),
     });
