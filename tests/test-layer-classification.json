@@ -2285,6 +2285,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/public-mobile-detail-visibility-3567-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Source guards plus Playwright local static computed-style checks prove public-safe mobile detail visibility override at <=768px while owner off-canvas closed visibility remains hidden. No Production, network DB, or credentials.",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/public-moment-social-read-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
