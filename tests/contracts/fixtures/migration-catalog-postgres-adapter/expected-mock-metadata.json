@@ -1,0 +1,72 @@
+{
+  "format_version": "1.0",
+  "normalizer_version": "1.0",
+  "objects": [
+    {
+      "schema": "synthetic_catalog",
+      "object_name": "t",
+      "object_kind": "TABLE",
+      "relation_kind": "r",
+      "columns": [
+        {
+          "name": "id",
+          "type_identity": "uuid",
+          "nullable": false,
+          "default_definition": null,
+          "generated_kind": "NONE",
+          "identity_kind": "NONE"
+        },
+        {
+          "name": "title",
+          "type_identity": "text",
+          "nullable": true,
+          "default_definition": null,
+          "generated_kind": "NONE",
+          "identity_kind": "NONE"
+        }
+      ],
+      "constraints": [
+        {
+          "name": "t_pkey",
+          "constraint_kind": "PRIMARY_KEY",
+          "validated": true,
+          "definition": "PRIMARY KEY (id)",
+          "fk_on_update": null,
+          "fk_on_delete": null
+        }
+      ],
+      "indexes": [
+        {
+          "name": "t_pkey",
+          "primary": true,
+          "unique": true,
+          "valid": true,
+          "definition": "CREATE UNIQUE INDEX t_pkey ON synthetic_catalog.t USING btree (id)"
+        }
+      ],
+      "triggers": [],
+      "row_level_security": {
+        "enabled": true,
+        "forced": false,
+        "policies": [
+          {
+            "name": "t_select",
+            "command": "SELECT",
+            "permissive": true,
+            "role_scope": "PUBLIC",
+            "using_expression": "true",
+            "check_expression": null
+          }
+        ]
+      },
+      "grants": [
+        {
+          "grantee_class": "AUTHENTICATED",
+          "privileges": ["SELECT"],
+          "grantable": false
+        }
+      ],
+      "view_definition": null
+    }
+  ]
+}
