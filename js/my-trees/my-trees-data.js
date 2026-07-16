@@ -139,15 +139,35 @@
     restore_skipped_not_restore: true,
     restore_skipped_terminal: true,
     restore_recovered: true,
-    restore_failed: true
+    restore_failed: true,
+    // stale-generation / supersede lifecycle
+    restore_superseded_stale: true,
+    restore_coalesced_current: true,
+    stale_result_ignored: true
   };
   var VALID_STATUS_CLASSES = { success: true, client: true, server: true, none: true };
 
-  // Single-flight owner-list load guard (initial boot / retry / history recovery)
-  var ownerListLoadPromise = null;
+  // Generation/epoch owner-list load guard.
+  // - Normal boot/retry: single-flight coalesce on activeOwnerListLoad.promise
+  // - History restore with supersedeStaleLoad: bump generation so pre-restore
+  //   loads become stale and cannot write UI/cache after a recovery starts
+  var ownerListGeneration = 0;
+  var activeOwnerListLoad = null; // { generation, promise, reason }
 
   function isOwnerListLoadInFlight() {
-    return !!ownerListLoadPromise;
+    return !!(activeOwnerListLoad && activeOwnerListLoad.promise);
+  }
+
+  function isCurrentOwnerListGeneration(generation) {
+    return Number(generation) === Number(ownerListGeneration);
+  }
+
+  /**
+   * Mark any in-flight owner-list generation stale without starting a network
+   * request. Used on pagehide so pre-restore loads cannot write after restore.
+   */
+  function markOwnerListEpochStale() {
+    ownerListGeneration += 1;
   }
 
   function hasVisibleLoadedCards() {
@@ -307,12 +327,44 @@
 
   async function loadTrees(options) {
     options = options || {};
+    var supersedeStaleLoad = options.supersedeStaleLoad === true;
+    var reason = options.reason || null;
 
-    // Coalesce concurrent owner-list loads (boot / retry / history recovery).
-    if (ownerListLoadPromise) {
-      if (options.reason === 'history_recovery') {
+    // Coalesce concurrent loads.
+    // - Normal: always share active promise.
+    // - History restore supersede: share only when the active load is already
+    //   the current history_recovery generation; otherwise start a new epoch.
+    if (activeOwnerListLoad && activeOwnerListLoad.promise) {
+      if (supersedeStaleLoad) {
+        if (
+          activeOwnerListLoad.reason === 'history_recovery' &&
+          activeOwnerListLoad.generation === ownerListGeneration
+        ) {
+          emitLifecycleDiagnostic({
+            phase: 'restore_coalesced_current',
+            attempt: 1,
+            retried: false,
+            authHeaderPresent: false,
+            cachePresent: false,
+            cacheUsed: false,
+            statusClass: 'none',
+            resultCountBucket: 'unknown'
+          });
+          // restore_skipped_inflight reserved for same-generation recovery coalescing only
+          emitLifecycleDiagnostic({
+            phase: 'restore_skipped_inflight',
+            attempt: 1,
+            retried: false,
+            authHeaderPresent: false,
+            cachePresent: false,
+            cacheUsed: false,
+            statusClass: 'none',
+            resultCountBucket: 'unknown'
+          });
+          return activeOwnerListLoad.promise;
+        }
         emitLifecycleDiagnostic({
-          phase: 'restore_skipped_inflight',
+          phase: 'restore_superseded_stale',
           attempt: 1,
           retried: false,
           authHeaderPresent: false,
@@ -321,11 +373,15 @@
           statusClass: 'none',
           resultCountBucket: 'unknown'
         });
+        // Fall through: start a new generation without awaiting the stale load.
+      } else {
+        return activeOwnerListLoad.promise;
       }
-      return ownerListLoadPromise;
     }
 
-    ownerListLoadPromise = (async function runOwnerListLoad() {
+    var generation = ++ownerListGeneration;
+
+    var runPromise = (async function runOwnerListLoad() {
       var cache = window.LoveBudCache;
       var i18n = getI18n(options);
       var setState = options.setState;
@@ -340,16 +396,39 @@
         statusClass: 'none'
       };
 
+      function stillCurrent() {
+        return isCurrentOwnerListGeneration(generation);
+      }
+
+      function ignoreIfStale(phaseHint) {
+        if (stillCurrent()) return false;
+        emitLifecycleDiagnostic({
+          phase: phaseHint || 'stale_result_ignored',
+          attempt: 1,
+          retried: false,
+          authHeaderPresent: false,
+          cachePresent: false,
+          cacheUsed: false,
+          statusClass: 'none',
+          resultCountBucket: 'unknown'
+        });
+        return true;
+      }
+
       var cachedTrees = cache ? cache.get(TREES_CACHE_KEY) : null;
       if ((!cachedTrees || !Array.isArray(cachedTrees))) {
         cachedTrees = readPersistentTreesCache();
-        if (cachedTrees && Array.isArray(cachedTrees) && cache) {
+        if (cachedTrees && Array.isArray(cachedTrees) && cache && stillCurrent()) {
           cache.set(TREES_CACHE_KEY, cachedTrees, PERSISTENT_TREES_CACHE_TTL_MS);
         }
       }
 
       // Prefer cache paint; otherwise keep visible cards during history recovery
       // instead of blanking the page into LOADING.
+      if (!stillCurrent()) {
+        ignoreIfStale('stale_result_ignored');
+        return;
+      }
       if (cachedTrees && Array.isArray(cachedTrees) && typeof renderTrees === 'function') {
         myTreesDebugLog('[my-trees-data] Rendering cached trees:', cachedTrees.length);
         renderTrees(cachedTrees);
@@ -365,12 +444,16 @@
         if (window.apiClient && window.apiClient.getTrees) {
           trees = await window.apiClient.getTrees({
             onLifecycle: function(meta) {
+              if (!stillCurrent()) return;
               requestLifecycle = sanitizeRequestLifecycle(meta);
             }
           });
         } else {
           throw new Error('apiClient.getTrees is not available');
         }
+
+        // Await returned after possible supersede — refuse stale writes.
+        if (ignoreIfStale('stale_result_ignored')) return;
 
         if (Array.isArray(trees)) {
           trees = normalizeTreesForList(trees);
@@ -398,10 +481,12 @@
           // Optimization: Defer preloading detail/memories to background to ensure TTI is not blocked
           if (window.requestIdleCallback) {
             window.requestIdleCallback(function() {
+              if (!stillCurrent()) return;
               preloadFirstTreeDetail(trees);
             }, { timeout: 2000 });
           } else {
             setTimeout(function() {
+              if (!stillCurrent()) return;
               preloadFirstTreeDetail(trees);
             }, 1000);
           }
@@ -413,6 +498,9 @@
           throw invalidPayloadError;
         }
       } catch (e) {
+        // Stale generation: never surface ERROR/EMPTY/toast from pre-restore loads.
+        if (ignoreIfStale('stale_result_ignored')) return;
+
         var errorType = classifyLoadError(e);
         console.error('[my-trees-data] loadTrees error (type=' + errorType + ')');
 
@@ -475,10 +563,19 @@
       }
     })();
 
+    activeOwnerListLoad = {
+      generation: generation,
+      promise: runPromise,
+      reason: reason
+    };
+
     try {
-      return await ownerListLoadPromise;
+      return await runPromise;
     } finally {
-      ownerListLoadPromise = null;
+      // Never let a stale generation clear a newer active recovery guard.
+      if (activeOwnerListLoad && activeOwnerListLoad.generation === generation) {
+        activeOwnerListLoad = null;
+      }
     }
   }
 
@@ -534,6 +631,9 @@
     preloadFirstTreeDetail: preloadFirstTreeDetail,
     loadTrees: loadTrees,
     isOwnerListLoadInFlight: isOwnerListLoadInFlight,
+    isCurrentOwnerListGeneration: isCurrentOwnerListGeneration,
+    markOwnerListEpochStale: markOwnerListEpochStale,
+    getOwnerListGeneration: function() { return ownerListGeneration; },
     emitLifecycleDiagnostic: emitLifecycleDiagnostic,
     hasVisibleLoadedCards: hasVisibleLoadedCards
   };

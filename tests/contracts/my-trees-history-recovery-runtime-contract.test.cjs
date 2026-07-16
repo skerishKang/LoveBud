@@ -59,6 +59,8 @@ function createHistorySandbox(options = {}) {
   });
   const sessionStorageMock = createStorageMock(options.sessionStorage || {});
   const stateNodes = {
+    // Required by LoveBudMyTreesPage.setState — without it, state transitions no-op.
+    treesContainer: makeStateNode(true, 0),
     'state-loading': makeStateNode(options.loadingVisible === true, 0),
     'state-error': makeStateNode(options.errorVisible === true, 0),
     'state-empty': makeStateNode(options.emptyVisible === true, 0),
@@ -67,13 +69,14 @@ function createHistorySandbox(options = {}) {
 
   const listeners = {};
   let getTreesCalls = 0;
-  let resolveFetch = null;
-  const fetchGate = options.gateFetch
-    ? new Promise((resolve) => { resolveFetch = resolve; })
-    : Promise.resolve();
+  /** @type {Array<{callIndex:number, resolve:Function, reject:Function}>} */
+  const pendingCalls = [];
+  let resolveFetch = null; // legacy: resolve all open deferred calls successfully
+  const useDeferred = options.gateFetch === true || options.deferredCalls === true;
 
   const rendered = [];
   const stateUpdates = [];
+  const treeMarkersByCall = options.treeMarkersByCall || null;
 
   const sandbox = {
     window: {
@@ -87,8 +90,26 @@ function createHistorySandbox(options = {}) {
       apiClient: {
         getTrees: async () => {
           getTreesCalls += 1;
-          await fetchGate;
-          if (options.getTreesError) throw options.getTreesError;
+          const callIndex = getTreesCalls;
+          if (useDeferred) {
+            await new Promise((resolve, reject) => {
+              pendingCalls.push({ callIndex, resolve, reject });
+              // legacy single-gate resolver support
+              if (!resolveFetch) {
+                resolveFetch = () => {
+                  // resolve all currently pending with default success payload
+                  const batch = pendingCalls.splice(0, pendingCalls.length);
+                  batch.forEach((p) => p.resolve());
+                };
+              }
+            });
+          }
+          if (options.getTreesError && (!options.errorOnCall || options.errorOnCall === callIndex)) {
+            throw options.getTreesError;
+          }
+          if (treeMarkersByCall && treeMarkersByCall[callIndex]) {
+            return [{ id: treeMarkersByCall[callIndex] }];
+          }
           if (Object.prototype.hasOwnProperty.call(options, 'trees')) return options.trees;
           return [{ id: 'tree-a' }];
         },
@@ -209,22 +230,68 @@ function createHistorySandbox(options = {}) {
     listeners,
     rendered,
     stateUpdates,
+    pendingCalls,
     getTreesCalls: () => getTreesCalls,
-    resolveFetch: () => { if (resolveFetch) resolveFetch(); },
+    resolveFetch: () => {
+      if (typeof resolveFetch === 'function') resolveFetch();
+      else {
+        const batch = pendingCalls.splice(0, pendingCalls.length);
+        batch.forEach((p) => p.resolve());
+      }
+    },
+    resolveCall(callIndex) {
+      const idx = pendingCalls.findIndex((p) => p.callIndex === callIndex);
+      assert.ok(idx >= 0, 'pending call ' + callIndex + ' must exist');
+      const [item] = pendingCalls.splice(idx, 1);
+      item.resolve();
+    },
+    rejectCall(callIndex, err) {
+      const idx = pendingCalls.findIndex((p) => p.callIndex === callIndex);
+      assert.ok(idx >= 0, 'pending call ' + callIndex + ' must exist');
+      const [item] = pendingCalls.splice(idx, 1);
+      item.reject(err || Object.assign(new Error('aborted'), { _phase: 'fetch_rejected' }));
+    },
+    forceLoadingNonterminal() {
+      const loading = sandbox.document.getElementById('state-loading');
+      const loaded = sandbox.document.getElementById('state-loaded');
+      const error = sandbox.document.getElementById('state-error');
+      const empty = sandbox.document.getElementById('state-empty');
+      for (const el of [loaded, error, empty]) {
+        el.classList.remove('state-visible', 'state-visible-block');
+        el.classList.add('state-hidden');
+        el.style.display = 'none';
+      }
+      loading.classList.remove('state-hidden');
+      loading.classList.add('state-visible');
+      loading.style.display = '';
+    },
     firePageshow(event) {
       const list = listeners.pageshow || [];
       for (const fn of list) fn(event || { persisted: false });
     },
-    async boot() {
+    firePagehide() {
+      const list = listeners.pagehide || [];
+      for (const fn of list) fn({});
+    },
+    async boot({ settle = true } = {}) {
       const dom = listeners.DOMContentLoaded || [];
       for (const fn of dom) {
         // handlers may be async
         // eslint-disable-next-line no-await-in-loop
         await fn();
       }
+      if (!settle) {
+        // Wait only until first getTrees call is observed (may remain pending).
+        const startedAt = Date.now();
+        while (Date.now() - startedAt < 500 && getTreesCalls < 1) {
+          // eslint-disable-next-line no-await-in-loop
+          await new Promise((r) => setTimeout(r, 5));
+        }
+        return;
+      }
       // settle initial owner-list load (startMyTrees does not await loadTrees)
       const startedAt = Date.now();
-      while (Date.now() - startedAt < 500) {
+      while (Date.now() - startedAt < 800) {
         const inflight = sandbox.window.LoveBudMyTreesData
           && sandbox.window.LoveBudMyTreesData.isOwnerListLoadInFlight
           && sandbox.window.LoveBudMyTreesData.isOwnerListLoadInFlight();
@@ -237,7 +304,7 @@ function createHistorySandbox(options = {}) {
   };
 }
 
-test('source: restore phases and single-flight guard exist in my-trees-data.js', () => {
+test('source: restore phases and generation supersede guard exist in my-trees-data.js', () => {
   const src = fs.readFileSync(MY_TREES_DATA_PATH, 'utf8');
   for (const phase of [
     'restore_triggered',
@@ -246,13 +313,19 @@ test('source: restore phases and single-flight guard exist in my-trees-data.js',
     'restore_skipped_terminal',
     'restore_recovered',
     'restore_failed',
+    'restore_superseded_stale',
+    'restore_coalesced_current',
+    'stale_result_ignored',
   ]) {
     assert.ok(src.includes(phase), `missing phase ${phase}`);
   }
-  assert.ok(src.includes('ownerListLoadPromise'), 'must have in-flight promise guard');
+  assert.ok(src.includes('ownerListGeneration'), 'must have generation epoch');
+  assert.ok(src.includes('activeOwnerListLoad'), 'must have active load record');
+  assert.ok(src.includes('supersedeStaleLoad'), 'must support supersedeStaleLoad');
   assert.ok(src.includes('isOwnerListLoadInFlight'), 'must export in-flight check');
   assert.ok(src.includes('preserveVisibleList'), 'must support preserveVisibleList');
   assert.ok(src.includes('history_recovery'), 'must recognize history_recovery reason');
+  assert.ok(src.includes('activeOwnerListLoad.generation === generation'), 'old finally must not clear new load');
 });
 
 test('source: my-trees.js pageshow recovery does not rebind boot listeners', () => {
@@ -261,11 +334,18 @@ test('source: my-trees.js pageshow recovery does not rebind boot listeners', () 
   assert.ok(src.includes('maybeRecoverOwnerListFromHistory'), 'recovery entry required');
   assert.ok(src.includes('isHistoryRestoreEvent'), 'restore classifier required');
   assert.ok(src.includes('historyRestoreListenerBound'), 'single bind guard required');
+  assert.ok(src.includes('supersedeStaleLoad: true'), 'restore must supersede pre-restore loads');
+  assert.ok(src.includes("addEventListener('pagehide'"), 'pagehide epoch marker required');
   const recoveryFn = src.match(/function maybeRecoverOwnerListFromHistory[\s\S]*?\n  \}/);
   assert.ok(recoveryFn, 'recovery function must exist');
   assert.ok(!recoveryFn[0].includes('bootMyTrees('), 'recovery must not call bootMyTrees');
   assert.ok(!recoveryFn[0].includes('setupHeaderCreateButton'), 'recovery must not rebind header');
   assert.ok(!recoveryFn[0].includes('bindFinderControls'), 'recovery must not rebind filters');
+  // Must not skip restore solely because a pre-restore load is in flight.
+  assert.ok(
+    !recoveryFn[0].includes("emitRestoreDiagnostic('restore_skipped_inflight')"),
+    'must not skip restore on pre-restore in-flight'
+  );
 });
 
 test('isHistoryRestoreEvent: persisted pageshow', () => {
@@ -339,29 +419,141 @@ test('persisted pageshow after nonterminal UI: recovery load exactly once', asyn
   assert.ok(emitted.some((e) => e.phase === 'restore_triggered'), 'must emit restore_triggered');
 });
 
-test('repeated pageshow while recovery in flight: duplicate load 0', async () => {
+test('Test A: pending initial load + pageshow supersede race (exact production order)', async () => {
   const emitted = [];
   const ctx = createHistorySandbox({
     navType: 'navigate',
     loadingVisible: true,
     loadedVisible: false,
-    gateFetch: true,
+    deferredCalls: true,
+    treeMarkersByCall: { 1: 'marker-old', 2: 'marker-recovery' },
     diagnosticSink: { emit(e) { emitted.push(e); } },
   });
-  // Start boot but keep fetch pending
-  const bootPromise = ctx.boot();
-  // While in-flight, fire restore pageshow twice
-  await new Promise((r) => setTimeout(r, 5));
+
+  // 1-2: boot starts unresolved request; UI remains LOADING
+  await ctx.boot({ settle: false });
+  assert.equal(ctx.getTreesCalls(), 1, 'initial request started');
+  assert.ok(ctx.sandbox.window.LoveBudMyTreesHistoryRecovery.isStarted());
+  ctx.forceLoadingNonterminal();
+
+  // 3-5: persisted pageshow starts exactly one recovery request (total 2)
+  ctx.firePageshow({ persisted: true });
+  await new Promise((r) => setTimeout(r, 20));
+  assert.equal(ctx.getTreesCalls(), 2, 'recovery request must start while old is pending');
+  assert.ok(emitted.some((e) => e.phase === 'restore_triggered'));
+  assert.ok(emitted.some((e) => e.phase === 'restore_superseded_stale'));
+
+  // 6-7: repeated pageshow must not create a third request
   ctx.firePageshow({ persisted: true });
   ctx.firePageshow({ persisted: true });
-  ctx.resolveFetch();
-  await bootPromise;
-  await new Promise((r) => setTimeout(r, 30));
-  assert.equal(ctx.getTreesCalls(), 1, 'in-flight recovery must not duplicate getTrees');
+  await new Promise((r) => setTimeout(r, 20));
+  assert.equal(ctx.getTreesCalls(), 2, 'repeated pageshow must coalesce on recovery generation');
   assert.ok(
-    emitted.some((e) => e.phase === 'restore_skipped_inflight') || ctx.getTreesCalls() === 1,
-    'must skip or coalesce while in-flight'
+    emitted.some((e) => e.phase === 'restore_coalesced_current' || e.phase === 'restore_skipped_inflight'),
+    'must coalesce current recovery'
   );
+
+  // 8-9: old request aborts — must not ERROR/EMPTY/toast overwrite
+  const statesBeforeAbort = ctx.stateUpdates.length;
+  ctx.rejectCall(1, Object.assign(new Error('aborted'), { _phase: 'fetch_rejected' }));
+  await new Promise((r) => setTimeout(r, 20));
+  assert.ok(emitted.some((e) => e.phase === 'stale_result_ignored'), 'stale rejection ignored');
+  const postAbortStates = ctx.stateUpdates.slice(statesBeforeAbort);
+  assert.ok(!postAbortStates.some((u) => u.state === 'error' || u.state === 'ERROR' || u.state === 'empty' || u.state === 'EMPTY'),
+    'stale abort must not write ERROR/EMPTY');
+
+  // 10-12: recovery success → LOADED, no permanent loading
+  ctx.resolveCall(2);
+  await new Promise((r) => setTimeout(r, 40));
+  assert.ok(ctx.stateUpdates.some((u) => u.state === 'loaded' || u.state === ctx.sandbox.window.LoveBudMyTreesPage.STATE.LOADED),
+    'recovery must reach LOADED');
+  assert.ok(ctx.rendered.some((trees) => Array.isArray(trees) && trees[0] && trees[0].id === 'marker-recovery'),
+    'recovery marker list rendered');
+  assert.equal(ctx.sandbox.window.LoveBudMyTreesHistoryRecovery.isLoadingVisible(), false, 'no permanent loading');
+  assert.ok(emitted.some((e) => e.phase === 'restore_recovered' || e.phase === 'loaded'));
+});
+
+test('Test B: old request never settles — recovery still completes', async () => {
+  const emitted = [];
+  const ctx = createHistorySandbox({
+    navType: 'navigate',
+    loadingVisible: true,
+    deferredCalls: true,
+    treeMarkersByCall: { 1: 'marker-old', 2: 'marker-recovery' },
+    diagnosticSink: { emit(e) { emitted.push(e); } },
+  });
+  await ctx.boot({ settle: false });
+  ctx.forceLoadingNonterminal();
+  ctx.firePageshow({ persisted: true });
+  await new Promise((r) => setTimeout(r, 20));
+  assert.equal(ctx.getTreesCalls(), 2);
+
+  // Never resolve call 1 — only recovery
+  ctx.resolveCall(2);
+  await new Promise((r) => setTimeout(r, 40));
+  assert.ok(ctx.rendered.some((trees) => trees[0] && trees[0].id === 'marker-recovery'));
+  assert.ok(ctx.stateUpdates.some((u) => u.state === 'loaded' || u.state === ctx.sandbox.window.LoveBudMyTreesPage.STATE.LOADED));
+  assert.equal(ctx.sandbox.window.LoveBudMyTreesHistoryRecovery.isLoadingVisible(), false);
+  assert.ok(emitted.some((e) => e.phase === 'restore_superseded_stale'));
+});
+
+test('Test C: stale success must not overwrite recovery list/cache/state', async () => {
+  const emitted = [];
+  const ctx = createHistorySandbox({
+    navType: 'navigate',
+    loadingVisible: true,
+    deferredCalls: true,
+    treeMarkersByCall: { 1: 'marker-old', 2: 'marker-recovery' },
+    diagnosticSink: { emit(e) { emitted.push(e); } },
+  });
+  await ctx.boot({ settle: false });
+  ctx.forceLoadingNonterminal();
+  ctx.firePageshow({ persisted: true });
+  await new Promise((r) => setTimeout(r, 20));
+  assert.equal(ctx.getTreesCalls(), 2);
+
+  // Recovery succeeds first
+  ctx.resolveCall(2);
+  await new Promise((r) => setTimeout(r, 40));
+  const recoveryRenderCount = ctx.rendered.filter((t) => t[0] && t[0].id === 'marker-recovery').length;
+  assert.ok(recoveryRenderCount >= 1);
+
+  // Old success arrives later — must be ignored
+  ctx.resolveCall(1);
+  await new Promise((r) => setTimeout(r, 40));
+  assert.ok(emitted.some((e) => e.phase === 'stale_result_ignored'), 'stale success ignored');
+  const oldRendersAfter = ctx.rendered.filter((t) => t[0] && t[0].id === 'marker-old');
+  // Initial cache paint might not use old marker; after supersede, no old marker render allowed after recovery
+  const lastRender = ctx.rendered[ctx.rendered.length - 1];
+  assert.ok(lastRender && lastRender[0] && lastRender[0].id === 'marker-recovery', 'final render stays recovery');
+  assert.ok(oldRendersAfter.length === 0, 'stale old success must not render');
+});
+
+test('Test D: repeated restore while recovery in-flight coalesces', async () => {
+  const emitted = [];
+  const ctx = createHistorySandbox({
+    navType: 'navigate',
+    loadingVisible: true,
+    deferredCalls: true,
+    diagnosticSink: { emit(e) { emitted.push(e); } },
+  });
+  await ctx.boot({ settle: false });
+  ctx.forceLoadingNonterminal();
+  ctx.firePageshow({ persisted: true });
+  await new Promise((r) => setTimeout(r, 15));
+  assert.equal(ctx.getTreesCalls(), 2);
+  ctx.firePageshow({ persisted: true });
+  ctx.firePageshow({ persisted: true });
+  await new Promise((r) => setTimeout(r, 15));
+  assert.equal(ctx.getTreesCalls(), 2, 'no third recovery request');
+  assert.ok(emitted.some((e) => e.phase === 'restore_coalesced_current' || e.phase === 'restore_skipped_inflight'));
+  // Finish recovery
+  ctx.resolveCall(2);
+  await new Promise((r) => setTimeout(r, 30));
+  // Old can abort without damage
+  ctx.rejectCall(1);
+  await new Promise((r) => setTimeout(r, 20));
+  assert.ok(emitted.some((e) => e.phase === 'stale_result_ignored'));
 });
 
 test('back_forward classification enters recovery path when nonterminal', async () => {
@@ -607,6 +799,6 @@ test('diagnostics: restore events are privacy-safe bounded phases only', async (
 
 test('asset version tokens updated for recovery scripts', () => {
   const html = fs.readFileSync(path.join(ROOT, 'pages', 'my-trees.html'), 'utf8');
-  assert.ok(html.includes('my-trees-data.js?v=20260716-3551-1'), 'data script token');
-  assert.ok(html.includes('my-trees.js?v=20260716-3551-1'), 'entry script token');
+  assert.ok(html.includes('my-trees-data.js?v=20260716-3551-2'), 'data script token');
+  assert.ok(html.includes('my-trees.js?v=20260716-3551-2'), 'entry script token');
 });

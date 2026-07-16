@@ -388,7 +388,8 @@
         showToast: showToast,
         i18n: window.t || function(k) { return k; },
         preserveVisibleList: options.preserveVisibleList === true,
-        reason: options.reason || null
+        reason: options.reason || null,
+        supersedeStaleLoad: options.supersedeStaleLoad === true
       });
     }
 
@@ -471,7 +472,8 @@
    * History/BFCache restore recovery:
    * - only on restore classification
    * - only when authenticated and already booted
-   * - exactly one recovery load (coalesced by data-layer in-flight guard)
+   * - supersedes pre-restore in-flight owner-list loads (they may abort)
+   * - exactly one recovery generation (repeated pageshow coalesces)
    * - never re-binds listeners / reboots page
    */
   function maybeRecoverOwnerListFromHistory(event) {
@@ -486,12 +488,9 @@
     var user = getConfirmedSessionUser();
     if (!user || !user.uid) return;
 
-    if (myTreesData && typeof myTreesData.isOwnerListLoadInFlight === 'function' && myTreesData.isOwnerListLoadInFlight()) {
-      emitRestoreDiagnostic('restore_skipped_inflight');
-      return;
-    }
-
-    // Prior cancel / nonterminal UI / missing authoritative terminal state.
+    // Terminal authoritative UI: do not force recovery.
+    // (In-flight pre-restore loads are NOT treated as valid recovery here —
+    //  nonterminal/loading restore supersedes them via supersedeStaleLoad.)
     if (hasAuthoritativeTerminalState() && !isLoadingVisible()) {
       emitRestoreDiagnostic('restore_skipped_terminal');
       return;
@@ -501,7 +500,8 @@
 
     var loadPromise = loadTrees({
       preserveVisibleList: true,
-      reason: 'history_recovery'
+      reason: 'history_recovery',
+      supersedeStaleLoad: true
     });
 
     if (loadPromise && typeof loadPromise.then === 'function') {
@@ -523,6 +523,12 @@
     historyRestoreListenerBound = true;
     window.addEventListener('pageshow', function(event) {
       maybeRecoverOwnerListFromHistory(event);
+    });
+    // Mark in-flight owner-list generations stale on pagehide without network I/O.
+    window.addEventListener('pagehide', function() {
+      if (myTreesData && typeof myTreesData.markOwnerListEpochStale === 'function') {
+        myTreesData.markOwnerListEpochStale();
+      }
     });
   }
 
