@@ -434,11 +434,13 @@ test('rejection: caller activation metadata', () => {
 });
 
 test('rejection: sensitive input markers in evidence file text', () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'lb-esc-sens-'));
+  const rel = path
+    .join('tests', 'contracts', 'fixtures', 'migration-provenance', '_tmp-sensitive-evidence.json')
+    .replace(/\\/g, '/');
+  const abs = path.join(ROOT, rel);
   try {
-    const p = path.join(dir, 'bad.json');
     fs.writeFileSync(
-      p,
+      abs,
       [
         '{',
         '  "format_version": "1.0",',
@@ -450,7 +452,7 @@ test('rejection: sensitive input markers in evidence file text', () => {
       'utf8'
     );
     assert.throws(
-      () => core.readEvidenceFile(p),
+      () => core.readEvidenceFile(ROOT, rel),
       (error) => {
         assert.equal(error.category, 'EXPECTED_SCHEMA_CANDIDATE_SENSITIVE_INPUT');
         assert.equal(String(error.message).includes('postgres://'), false);
@@ -458,7 +460,7 @@ test('rejection: sensitive input markers in evidence file text', () => {
       }
     );
   } finally {
-    fs.rmSync(dir, { recursive: true, force: true });
+    if (fs.existsSync(abs)) fs.unlinkSync(abs);
   }
 });
 
@@ -559,6 +561,74 @@ test('CLI rejects invalid JSON fail-closed', () => {
   } finally {
     if (fs.existsSync(abs)) fs.unlinkSync(abs);
   }
+});
+
+test('CLI rejects repository-local symlink escaping root', (t) => {
+  const outsideDir = fs.mkdtempSync(path.join(os.tmpdir(), 'lb-esc-outside-'));
+  const outsideFileName = 'external-escape-evidence.json';
+  const outsideFile = path.join(outsideDir, outsideFileName);
+  const rel = path
+    .join(
+      'tests',
+      'contracts',
+      'fixtures',
+      'migration-provenance',
+      '_tmp-symlink-escape-evidence.json'
+    )
+    .replace(/\\/g, '/');
+  const linkPath = path.join(ROOT, rel);
+  try {
+    fs.writeFileSync(outsideFile, `${JSON.stringify(sampleEvidence(), null, 2)}\n`, 'utf8');
+    try {
+      if (fs.existsSync(linkPath)) fs.unlinkSync(linkPath);
+      fs.symlinkSync(outsideFile, linkPath);
+    } catch (error) {
+      if (
+        process.platform === 'win32' &&
+        (error.code === 'EPERM' || error.code === 'EACCES')
+      ) {
+        t.skip('Windows symlink privilege unavailable');
+        return;
+      }
+      throw error;
+    }
+
+    const result = runCli(['--evidence', rel]);
+    assert.notEqual(result.status, 0);
+    const payload = JSON.parse(result.stdout);
+    assert.equal(payload.decision, 'FAIL_CLOSED');
+    assert.equal(payload.mode, 'EXPECTED_SCHEMA_CANDIDATE_BUILD');
+    assert.ok(payload.blockers.includes('EXPECTED_SCHEMA_CANDIDATE_INPUT_INVALID'));
+    assert.equal(result.stdout.includes(outsideFile), false);
+    assert.equal(result.stdout.includes(outsideDir), false);
+    assert.equal(result.stdout.includes(outsideFileName), false);
+    assert.equal(result.stdout.includes('critical_objects'), false);
+    assert.equal(/"status"\s*:\s*"ADOPTION_REQUIRED"/.test(result.stdout), false);
+  } finally {
+    try {
+      fs.lstatSync(linkPath);
+      fs.unlinkSync(linkPath);
+    } catch {
+      // best-effort cleanup when link was never created or already removed
+    }
+    fs.rmSync(outsideDir, { recursive: true, force: true });
+  }
+});
+
+test('readEvidenceFile rejects absolute path argument as relative input', () => {
+  assertFail(
+    () => core.readEvidenceFile(ROOT, path.resolve(ROOT, 'package.json')),
+    'EXPECTED_SCHEMA_CANDIDATE_INPUT_INVALID'
+  );
+});
+
+test('resolveRepoConfinedEvidencePath accepts in-repo regular file', () => {
+  const rel = path
+    .join('tests', 'contracts', 'fixtures', 'migration-provenance', 'catalog-baseline.json')
+    .replace(/\\/g, '/');
+  const resolved = core.resolveRepoConfinedEvidencePath(ROOT, rel);
+  assert.ok(resolved.realEvidence);
+  assert.equal(core.isPathOutside(resolved.realRoot, resolved.realEvidence), false);
 });
 
 test('post-suite committed manifests still unchanged', () => {

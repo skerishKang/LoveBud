@@ -378,6 +378,24 @@ function decodeUtf8Strict(buffer) {
   }
 }
 
+/**
+ * True when child is outside parent using path.relative (not case-sensitive startsWith).
+ * Handles Windows separators and absolute relative results.
+ */
+function isPathOutside(parent, child) {
+  const relative = path.relative(parent, child);
+  if (!relative) return false;
+  return (
+    relative === '..' ||
+    relative.startsWith(`..${path.sep}`) ||
+    path.isAbsolute(relative)
+  );
+}
+
+/**
+ * Lexical repository-relative path validation only.
+ * Does not follow symlinks. Returns the lexical absolute candidate path.
+ */
 function assertRepoRelativePath(repoRoot, relativePath) {
   if (typeof relativePath !== 'string' || !relativePath) {
     fail(FAILURE.EXPECTED_SCHEMA_CANDIDATE_INPUT_INVALID, { field: 'path' });
@@ -389,33 +407,76 @@ function assertRepoRelativePath(repoRoot, relativePath) {
   if (
     normalized.startsWith('/') ||
     normalized.includes('://') ||
-    normalized.split('/').some((part) => part === '..')
+    normalized.split('/').some((part) => part === '..' || part === '')
   ) {
+    // Empty segments (leading/double slash forms) are also rejected after normalization.
+    // Allow simple "a/b" only; reject "//a" already via startsWith('/') after replace.
     fail(FAILURE.EXPECTED_SCHEMA_CANDIDATE_INPUT_INVALID, { field: 'path' });
   }
+  // Reject empty path segments from forms like "a//b" (split yields '')
+  // Already covered: normalized.split('/').some(part => part === '')
 
   const root = path.resolve(repoRoot);
   const resolved = path.resolve(root, relativePath);
-  if (resolved !== root && !resolved.startsWith(`${root}${path.sep}`)) {
+  if (isPathOutside(root, resolved) || resolved === root) {
+    // Evidence must be a file under the root, not the root itself.
     fail(FAILURE.EXPECTED_SCHEMA_CANDIDATE_INPUT_INVALID, { field: 'path' });
   }
   return resolved;
+}
+
+/**
+ * Lexical + realpath repository confinement for evidence paths.
+ * Returns { realRoot, realEvidence } only when the resolved file is inside the real repo root.
+ */
+function resolveRepoConfinedEvidencePath(repoRoot, repoRelativePath) {
+  const lexicalPath = assertRepoRelativePath(repoRoot, repoRelativePath);
+
+  let realRoot;
+  try {
+    realRoot = fs.realpathSync.native(path.resolve(repoRoot));
+  } catch {
+    fail(FAILURE.EXPECTED_SCHEMA_CANDIDATE_INPUT_INVALID, { field: 'path' });
+  }
+
+  let realEvidence;
+  try {
+    realEvidence = fs.realpathSync.native(lexicalPath);
+  } catch {
+    fail(FAILURE.EXPECTED_SCHEMA_CANDIDATE_INPUT_INVALID, { field: 'evidence' });
+  }
+
+  if (isPathOutside(realRoot, realEvidence) || realEvidence === realRoot) {
+    fail(FAILURE.EXPECTED_SCHEMA_CANDIDATE_INPUT_INVALID, { field: 'evidence' });
+  }
+
+  return { realRoot, realEvidence, lexicalPath };
 }
 
 function assertOutputNotCommittedManifest(repoRoot, relativePath) {
   const resolved = assertRepoRelativePath(repoRoot, relativePath);
   const prohibited = path.resolve(repoRoot, COMMITTED_EXPECTED_SCHEMA_REL);
-  if (resolved === prohibited) {
+  if (path.resolve(resolved) === path.resolve(prohibited)) {
     fail(FAILURE.EXPECTED_SCHEMA_CANDIDATE_OUTPUT_PROHIBITED);
   }
   return resolved;
 }
 
-function readEvidenceFile(absolutePath, options = {}) {
-  const maxBytes = options.maxInputBytes || LIMITS.max_input_bytes;
+/**
+ * Repository-bound evidence reader.
+ * Accepts only (repoRoot, repo-relative path). Never reads arbitrary absolute paths.
+ * Order: lexical → realpath root → realpath evidence → containment → regular file → bounds → read.
+ */
+function readEvidenceFile(repoRoot, repoRelativePath, options = {}) {
+  if (arguments.length < 2 || typeof repoRelativePath !== 'string') {
+    fail(FAILURE.EXPECTED_SCHEMA_CANDIDATE_INPUT_INVALID, { field: 'evidence' });
+  }
+  const maxBytes = (options && options.maxInputBytes) || LIMITS.max_input_bytes;
+  const { realEvidence } = resolveRepoConfinedEvidencePath(repoRoot, repoRelativePath);
+
   let stat;
   try {
-    stat = fs.statSync(absolutePath);
+    stat = fs.statSync(realEvidence);
   } catch {
     fail(FAILURE.EXPECTED_SCHEMA_CANDIDATE_INPUT_INVALID, { field: 'evidence' });
   }
@@ -425,15 +486,17 @@ function readEvidenceFile(absolutePath, options = {}) {
   if (stat.size > maxBytes) {
     fail(FAILURE.EXPECTED_SCHEMA_CANDIDATE_BOUNDS_EXCEEDED, { field: 'evidence' });
   }
+
   let raw;
   try {
-    raw = fs.readFileSync(absolutePath);
+    raw = fs.readFileSync(realEvidence);
   } catch {
     fail(FAILURE.EXPECTED_SCHEMA_CANDIDATE_INPUT_INVALID, { field: 'evidence' });
   }
   if (raw.length > maxBytes) {
     fail(FAILURE.EXPECTED_SCHEMA_CANDIDATE_BOUNDS_EXCEEDED, { field: 'evidence' });
   }
+
   const text = decodeUtf8Strict(raw);
   scanSensitive(text, 'evidence');
   let parsed;
@@ -486,7 +549,9 @@ module.exports = {
   buildExpectedSchemaCandidate,
   serializeExpectedSchemaCandidate,
   validateCandidateAgainstContract,
+  isPathOutside,
   assertRepoRelativePath,
+  resolveRepoConfinedEvidencePath,
   assertOutputNotCommittedManifest,
   readEvidenceFile,
   loadCommittedInactiveTemplate,

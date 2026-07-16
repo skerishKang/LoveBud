@@ -144,6 +144,7 @@ Hard boundaries:
 - `critical_objects` are built only from evidence `{ name, fingerprint }` in canonical code-point order
 - committed `expected-schema-manifest.json` and `canonical-migrations.json` remain empty/inactive; the builder must not write them
 - same-evidence `compareSchema(candidate, evidence)` has no schema mismatch, but overall provenance evaluation remains `GATE_ADOPTION_BASELINE_REQUIRED`
+- evidence paths use repository-bound reads only: lexical confinement plus `realpath` containment so repository-local symlinks cannot escape the real repository root
 - no database driver, `DATABASE_URL`, network, shell, or stdin
 
 ## E. Read-Only Provenance Gate

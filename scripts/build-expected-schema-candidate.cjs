@@ -12,7 +12,6 @@ const {
   FAILURE,
   buildExpectedSchemaCandidate,
   serializeExpectedSchemaCandidate,
-  assertRepoRelativePath,
   readEvidenceFile,
   loadCommittedInactiveTemplate,
 } = require('./expected-schema-candidate-core.cjs');
@@ -69,8 +68,9 @@ function main() {
       return;
     }
     const evidenceArg = args.get('--evidence');
-    const resolved = assertRepoRelativePath(REPO_ROOT, evidenceArg);
-    const evidence = readEvidenceFile(resolved);
+    // Repository-bound reader only: lexical + realpath confinement inside core.
+    // No unconfined absolute-path read path is exposed to the CLI.
+    const evidence = readEvidenceFile(REPO_ROOT, evidenceArg);
     const template = loadCommittedInactiveTemplate(REPO_ROOT);
     const candidate = buildExpectedSchemaCandidate(evidence, template);
     process.stdout.write(serializeExpectedSchemaCandidate(candidate));
