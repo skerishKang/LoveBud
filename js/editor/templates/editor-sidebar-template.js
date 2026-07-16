@@ -1,10 +1,32 @@
 /**
- * Owner editor left rail — tree-scope host (#3562) + owner add affordance.
- * Full tree meta renders into #detailTreeMetaMount (shared with public route).
- * Selected-moment content lives in the right detail panel only.
+ * Owner editor left rail — thin wrapper around shared tree-scope builder (#3562).
+ * Requires classic script js/shared/canonical-appreciation-detail-presentation.js first.
  */
+
+function getSharedPresentationBuilder() {
+  if (
+    typeof window !== 'undefined' &&
+    window.LoveBudCanonicalAppreciationDetailPresentation &&
+    typeof window.LoveBudCanonicalAppreciationDetailPresentation.buildTreeScopeShellHtml === 'function'
+  ) {
+    return window.LoveBudCanonicalAppreciationDetailPresentation;
+  }
+  throw new Error(
+    'LoveBudCanonicalAppreciationDetailPresentation.buildTreeScopeShellHtml missing — ' +
+      'load js/shared/canonical-appreciation-detail-presentation.js before editor-sidebar-template.js'
+  );
+}
+
+function buildTreeScopeRegion() {
+  return getSharedPresentationBuilder().buildTreeScopeShellHtml({
+    authority: 'owner',
+    routeAuthority: 'owner'
+  });
+}
+
 export function buildSidebarTemplate() {
-    return `
+  return (
+    `
         <aside class="sidebar reveal-fade" data-appreciation-layout="tree-scope-rail">
             <div class="editor-sidebar-back-wrap">
                 <a id="backToMyTreesLink" href="my-trees" class="editor-sidebar-back-link">
@@ -13,18 +35,9 @@ export function buildSidebarTemplate() {
                 </a>
             </div>
 
-            <!-- #3562: tree-scope is the left-rail owner of tree meta / whole-tree actions.
-                 Stable IDs are preserved for controllers (getElementById). -->
-            <section
-                class="editor-tree-meta-section appreciation-tree-scope"
-                id="detailTreeMetaSection"
-                data-canonical-section="tree-scope"
-                data-appreciation-region="tree-scope"
-                aria-label="현재 트리"
-            >
-                <div class="editor-section-eyebrow" id="detailTreeStatusLabel">현재 트리</div>
-                <div id="detailTreeMetaMount" data-tree-scope-mount="true"></div>
-            </section>
+            ` +
+    buildTreeScopeRegion() +
+    `
 
             <!-- Legacy IDs kept for rename/status controllers; not the primary tree UI. -->
             <section class="editor-status-section appreciation-tree-scope-legacy" hidden aria-hidden="true">
@@ -67,10 +80,11 @@ export function buildSidebarTemplate() {
                 </div>
             </section>
         </aside>
-    `;
+    `
+  );
 }
 
 const mount = document.getElementById('editorSidebarTemplateMount');
 if (mount) {
-    mount.outerHTML = buildSidebarTemplate();
+  mount.outerHTML = buildSidebarTemplate();
 }

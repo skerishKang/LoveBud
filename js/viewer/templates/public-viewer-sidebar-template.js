@@ -1,10 +1,32 @@
 /**
- * Public-safe left rail — tree-scope host (#3562).
- * Whole-tree meta/actions mount into #detailTreeMetaMount (same id as owner route).
- * Selected-moment content stays in the right detail panel only.
+ * Public-safe left rail — thin wrapper around shared tree-scope builder (#3562).
+ * Requires classic script js/shared/canonical-appreciation-detail-presentation.js first.
  */
+
+function getSharedPresentationBuilder() {
+  if (
+    typeof window !== 'undefined' &&
+    window.LoveBudCanonicalAppreciationDetailPresentation &&
+    typeof window.LoveBudCanonicalAppreciationDetailPresentation.buildTreeScopeShellHtml === 'function'
+  ) {
+    return window.LoveBudCanonicalAppreciationDetailPresentation;
+  }
+  throw new Error(
+    'LoveBudCanonicalAppreciationDetailPresentation.buildTreeScopeShellHtml missing — ' +
+      'load js/shared/canonical-appreciation-detail-presentation.js before public-viewer-sidebar-template.js'
+  );
+}
+
+function buildTreeScopeRegion() {
+  return getSharedPresentationBuilder().buildTreeScopeShellHtml({
+    authority: 'public-safe',
+    routeAuthority: 'public-safe'
+  });
+}
+
 export function buildPublicSidebarTemplate() {
-    return `
+  return (
+    `
         <aside class="sidebar public-viewer-sidebar reveal-fade" data-appreciation-layout="tree-scope-rail">
             <div class="editor-sidebar-back-wrap">
                 <a id="viewerSidebarBackLink" href="search" class="editor-sidebar-back-link">
@@ -13,17 +35,9 @@ export function buildPublicSidebarTemplate() {
                 </a>
             </div>
 
-            <!-- #3562: primary tree-scope region (shared mount id with owner appreciation). -->
-            <section
-                class="editor-tree-meta-section appreciation-tree-scope"
-                id="detailTreeMetaSection"
-                data-canonical-section="tree-scope"
-                data-appreciation-region="tree-scope"
-                aria-label="현재 트리"
-            >
-                <div class="editor-section-eyebrow" id="detailTreeStatusLabel">현재 트리</div>
-                <div id="detailTreeMetaMount" data-tree-scope-mount="true"></div>
-            </section>
+            ` +
+    buildTreeScopeRegion() +
+    `
 
             <!-- Legacy summary IDs retained for public-canvas-init writers; not primary UI. -->
             <section class="editor-status-section appreciation-tree-scope-legacy" hidden aria-hidden="true">
@@ -46,10 +60,11 @@ export function buildPublicSidebarTemplate() {
                 </div>
             </section>
         </aside>
-    `;
+    `
+  );
 }
 
 const mount = document.getElementById('publicViewerSidebarTemplateMount');
 if (mount) {
-    mount.outerHTML = buildPublicSidebarTemplate();
+  mount.outerHTML = buildPublicSidebarTemplate();
 }

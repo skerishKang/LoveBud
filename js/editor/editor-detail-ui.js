@@ -719,6 +719,19 @@ function createEditorDetailUI(deps) {
         const memoryActions = detailPanel.querySelector('.memory-actions');
         const atlasPreviewMount = document.getElementById('detailAtlasPreviewMount');
 
+        // #3562: tree-scope updates independently of selected-moment presence.
+        // Empty/no-selection must still populate left-rail title/status/owner actions.
+        const treeMetaModel = buildTreeMetaRenderModel({
+            currentTree: currentTree || {},
+            treeState,
+            data,
+            isEmptyState,
+            localSaveMode
+        });
+        if (treeMetaMount) {
+            renderTreeMetaBoundary(treeMetaMount, treeMetaModel, treeId, data);
+        }
+
         if (isEmptyState) {
             if (commentsController) commentsController.hide();
             if (badgeEl) badgeEl.textContent = formatI18nText('waiting_first_moment', '첫 순간을 기다리고 있어요');
@@ -751,18 +764,6 @@ function createEditorDetailUI(deps) {
         }
 
         setDetailEmptyState(false);
-
-        const treeMetaModel = buildTreeMetaRenderModel({
-            currentTree: currentTree || {},
-            treeState,
-            data,
-            isEmptyState,
-            localSaveMode
-        });
-
-        if (treeMetaMount) {
-            renderTreeMetaBoundary(treeMetaMount, treeMetaModel, treeId, data);
-        }
 
         if (badgeEl) {
             badgeEl.textContent = isRootSelected

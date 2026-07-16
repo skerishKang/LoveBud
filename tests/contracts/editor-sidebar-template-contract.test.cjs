@@ -13,9 +13,9 @@ test('Sidebar template helper exists and contains markup', () => {
     assert.ok(helperCode.includes('id="renameTreeBtn"'), 'must preserve rename button');
     assert.ok(helperCode.includes('class="editor-status-section'), 'must preserve status section class');
     assert.ok(helperCode.includes('id="addMemoryBtn"'), 'must preserve add button');
-    // #3562: left rail hosts tree-scope mount
-    assert.ok(helperCode.includes('id="detailTreeMetaMount"'), 'must host tree-scope mount');
-    assert.ok(helperCode.includes('data-appreciation-region="tree-scope"'), 'must mark tree-scope region');
+    // #3562: left rail consumes shared tree-scope builder (not hard-coded markup)
+    assert.ok(helperCode.includes('buildTreeScopeShellHtml'), 'must call shared tree-scope builder');
+    assert.ok(helperCode.includes('LoveBudCanonicalAppreciationDetailPresentation'), 'must use shared presentation builder');
 });
 
 test('editor.html uses template mount and removes raw sidebar markup', () => {

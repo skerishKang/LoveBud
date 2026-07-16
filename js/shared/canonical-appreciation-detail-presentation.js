@@ -199,13 +199,17 @@
    */
   function buildTreeScopeShellHtml(options) {
     var opts = mergeOptions(options);
+    var authority = opts.routeAuthority || opts.authority || 'owner';
     return (
       '<section class="editor-tree-meta-section appreciation-tree-scope" id="detailTreeMetaSection" ' +
       'data-canonical-section="tree-scope" data-appreciation-region="tree-scope" ' +
+      'data-route-authority="' + authority + '" ' +
       'data-presentation-builder="LoveBudCanonicalAppreciationDetailPresentation" ' +
+      'data-tree-scope-source="LoveBudCanonicalAppreciationDetailPresentation" ' +
       'aria-label="' + opts.treeStatusLabel + '">' +
       '<div class="editor-section-eyebrow" id="detailTreeStatusLabel">' + opts.treeStatusLabel + '</div>' +
-      '<div id="detailTreeMetaMount" data-tree-scope-mount="true"></div>' +
+      '<div id="detailTreeMetaMount" data-tree-scope-mount="true" ' +
+      'data-tree-scope-source="LoveBudCanonicalAppreciationDetailPresentation"></div>' +
       '</section>'
     );
   }

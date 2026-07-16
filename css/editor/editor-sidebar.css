@@ -356,44 +356,88 @@
   /* Guard: tree-scope ids belong to left rail only. */
 }
 
+/*
+ * #3562 Option A — public-safe semantic stack at tablet/mobile:
+ * tree scope → canvas → selected-moment detail (in-flow, not off-canvas).
+ * Owner editor off-canvas behavior is preserved (selectors require public tree-scope rail).
+ */
 @media (max-width: 1024px) {
-  /* Legacy public sidebars without tree-scope may still hide.
-     Tree-scope rails must remain discoverable (#3562). */
   .public-viewer-sidebar:not([data-appreciation-layout="tree-scope-rail"]) {
     display: none !important;
+  }
+
+  .editor-layout:has(.public-viewer-sidebar[data-appreciation-layout="tree-scope-rail"]) {
+    flex-direction: column;
+    flex-wrap: nowrap;
+    align-content: stretch;
+    overflow-x: hidden;
+    overflow-y: auto;
   }
 
   .public-viewer-sidebar[data-appreciation-layout="tree-scope-rail"] {
     display: flex !important;
     flex: 0 0 auto;
-    width: 100%;
-    max-width: 100%;
-    min-width: 0;
-    order: -1;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    height: auto !important;
     max-height: min(42vh, 360px);
-    overflow-x: hidden;
-    overflow-y: auto;
-  }
-
-  .editor-layout:has(.public-viewer-sidebar[data-appreciation-layout="tree-scope-rail"]) {
-    flex-wrap: wrap;
-    align-content: flex-start;
+    order: -1;
+    position: relative !important;
+    transform: none !important;
+    right: auto !important;
+    top: auto !important;
+    z-index: auto !important;
     overflow-x: hidden;
     overflow-y: auto;
   }
 
   .editor-layout:has(.public-viewer-sidebar[data-appreciation-layout="tree-scope-rail"]) > .canvas-area {
-    flex: 1 1 100%;
+    flex: 1 1 auto;
+    width: 100% !important;
+    min-width: 0 !important;
     min-height: 42vh;
     order: 0;
+    position: relative !important;
+    transform: none !important;
   }
 
+  /* Reset tablet.css / mobile-panel off-canvas detail for public tree-scope layout only. */
+  .editor-layout:has(.public-viewer-sidebar[data-appreciation-layout="tree-scope-rail"]) > .detail-panel,
+  .editor-layout:has(.public-viewer-sidebar[data-appreciation-layout="tree-scope-rail"]) > #detailPanel,
+  body.editor-readonly .editor-layout:has(.public-viewer-sidebar[data-appreciation-layout="tree-scope-rail"]) > .detail-panel {
+    position: relative !important;
+    right: auto !important;
+    top: auto !important;
+    left: auto !important;
+    bottom: auto !important;
+    height: auto !important;
+    max-height: none !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    flex: 0 0 auto;
+    order: 1;
+    transform: none !important;
+    z-index: auto !important;
+    border-left: none !important;
+    transition: none !important;
+  }
+
+  .editor-layout:has(.public-viewer-sidebar[data-appreciation-layout="tree-scope-rail"]) > .detail-panel.open,
+  .editor-layout:has(.public-viewer-sidebar[data-appreciation-layout="tree-scope-rail"]) > .detail-panel.is-mobile-panel-open {
+    transform: none !important;
+  }
+}
+
+@media (max-width: 768px) {
   .editor-layout:has(.public-viewer-sidebar[data-appreciation-layout="tree-scope-rail"]) > .detail-panel,
   .editor-layout:has(.public-viewer-sidebar[data-appreciation-layout="tree-scope-rail"]) > #detailPanel {
-    flex: 1 1 100%;
-    width: 100%;
-    max-width: 100%;
-    order: 1;
+    position: relative !important;
+    transform: none !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    z-index: auto !important;
   }
 }
 
