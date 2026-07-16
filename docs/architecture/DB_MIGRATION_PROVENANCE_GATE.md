@@ -208,6 +208,53 @@ Adoption is a separate, read-only, explicitly approved change. Its required sequ
 
 The adoption baseline does not claim which historical scripts ran. It is an attested starting point, not fabricated migration history. No destructive mutation, backfill, cleanup, or repair is permitted merely to make adoption easier.
 
+### Strict adoption-attestation evidence (Issue #3553)
+
+Adoption evidence is **not** a bare status string. The repository-owned contract is:
+
+- `db/migration-provenance/adoption-attestation-contract.json`
+- pure validator: `scripts/adoption-attestation-core.cjs`
+
+A valid attestation must bind:
+
+- `baseline_commit` — exact lowercase 40-character Git SHA
+- `canonical_manifest_digest` — SHA-256 of exact canonical manifest bytes
+- `expected_schema_digest` — SHA-256 of exact expected-schema candidate/manifest bytes
+- `catalog_evidence_digest` — SHA-256 of exact sanitized catalog evidence bytes
+- abstract `environment_class` only (`DISPOSABLE_CI`, `PREVIEW`, `STAGING`, `PRODUCTION`)
+- bounded `variance_classification` (`MATCH`, `KNOWN_DRIFT`, `UNSUPPORTED_LEGACY_STATE`, `UNKNOWN_DRIFT`)
+- structured `approval_reference` (`issue:<n>` or `decision:<slug>`), never free-text `"approved"`
+- ordered `applied_migrations` with immutable ids and checksums
+
+The evidence document is only a **claim**. A protected invocation binding must supply the trusted expected values for:
+
+```text
+baseline_commit
+canonical_manifest_digest
+expected_schema_digest
+catalog_evidence_digest
+approval_reference
+environment_class
+attestation_scope
+expected_migrations
+```
+
+`expected_migrations` is the repository-owned canonical migration sequence (`[{ id, checksum }]`). An empty array is valid while the committed canonical manifest remains inactive and empty. The validator never reconstructs this list from attestation evidence.
+
+Target gate mode requires explicit trusted arguments (`--baseline-commit`, `--approval-reference`, `--environment-class`, `--attestation-scope`) plus repository-relative evidence paths. Canonical/expected-schema digests are computed from exact repository file bytes; catalog digests are computed from exact confined catalog-evidence file bytes. Semantically equal JSON with different bytes is a digest mismatch. The gate never constructs trusted digests by re-serializing caller-controlled objects.
+
+Hard rules:
+
+- bare `{ "adoption_status": "ATTESTED", "applied_migrations": [] }` fails closed
+- self-consistent ATTESTED evidence without a complete trusted binding fails closed (`GATE_ADOPTION_TRUST_BINDING_REQUIRED`)
+- host, database name, connection string, secret, operator identity, and raw catalog/row fields are prohibited
+- `UNKNOWN_DRIFT` always blocks; `UNSUPPORTED_LEGACY_STATE` blocks without a separate approved policy path
+- `KNOWN_DRIFT` requires bounded `known_variance_codes` and still does not activate manifests
+- valid synthetic attestation never auto-activates committed manifests
+- inactive committed manifests keep the overall gate at `FAIL_CLOSED` with `GATE_ADOPTION_BASELINE_REQUIRED`
+- Production attestation remains a separately approved future task
+- this child does not open Production/shared databases, execute SQL, or mutate schema
+
 ## H. Rollback and Forward Fix
 
 Transaction rollback, an explicit rollback artifact, a forward-fix migration, restore from an isolated copy, selective data repair, code rollback, and destructive database restore are different recovery mechanisms.

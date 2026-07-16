@@ -1835,6 +1835,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/adoption-attestation-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Exercises the strict inactive adoption-attestation contract and pure validator with synthetic digests only; rejects bare ATTESTED evidence and does not contact PostgreSQL, Production, or shared databases (#3553).",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/expected-schema-candidate-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Exercises the inactive expected-schema candidate builder and CLI with synthetic catalog evidence only; proves deterministic ADOPTION_REQUIRED candidates without activating committed manifests or contacting PostgreSQL (#3549).",
