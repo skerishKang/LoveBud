@@ -6,6 +6,17 @@
  * No database, network, shell, or environment fallback.
  * No file writes, no activation, no mutation.
  *
+ * Validation ordering:
+ *   1. plain JSON-compatible type validation
+ *   2. recursion/array/key/string bounds + prototype + cyclic
+ *   3. prohibited-key recursive scan
+ *   4. sensitive-value recursive scan
+ *   5. digest computation
+ *   6. cross-binding verification
+ *   7. receipt construction
+ *   8. final recursive scan
+ *   9. serialization
+ *
  * Digest is recomputed from provided artifacts — caller-supplied digest
  * strings are NOT trusted. Full cross-validation against attestation binding.
  *
@@ -47,6 +58,12 @@ const MAX_RECURSION_DEPTH = 20;
 const MAX_ARRAY_ITEMS = 2048;
 const MAX_OBJECT_KEYS = 1024;
 const MAX_STRING_LENGTH = 65536;
+
+// Cyclic detection set — only live during validateJsonArtifact
+let _seen = null;
+
+function startValidation() { _seen = new WeakSet(); }
+function endValidation() { _seen = null; }
 
 function fail(category) {
   const err = new Error(category);
@@ -90,13 +107,80 @@ function stableStringify(value) {
 }
 
 /**
+ * Strict JSON-artifact type-and-bounds validation.
+ * Rejects: cyclic, custom prototype, Date/Map/Set/Buffer, getter-backed,
+ * undefined, function, symbol, bigint, NaN, Infinity, excessive depth/array/key/string.
+ */
+function validateJsonArtifact(value, depth = 0) {
+  if (depth > MAX_RECURSION_DEPTH) fail(FAILURE.RECEIPT_BOUNDS_EXCEEDED);
+
+  if (value === null || value === undefined) {
+    // undefined is rejected — only null or valid JSON types allowed
+    if (value === undefined) fail(FAILURE.RECEIPT_VALUE_TYPE_INVALID);
+    return;
+  }
+
+  const t = typeof value;
+
+  if (t === 'boolean') return;
+  if (t === 'number') {
+    if (!Number.isFinite(value)) fail(FAILURE.RECEIPT_VALUE_TYPE_INVALID);
+    return;
+  }
+  if (t === 'string') {
+    if (value.length > MAX_STRING_LENGTH) fail(FAILURE.RECEIPT_BOUNDS_EXCEEDED);
+    return;
+  }
+  if (t === 'symbol' || t === 'function' || t === 'bigint' || t === 'undefined') {
+    fail(FAILURE.RECEIPT_VALUE_TYPE_INVALID);
+  }
+
+  // Must be object or array
+  if (Array.isArray(value)) {
+    if (value.length > MAX_ARRAY_ITEMS) fail(FAILURE.RECEIPT_BOUNDS_EXCEEDED);
+    for (const item of value) validateJsonArtifact(item, depth + 1);
+    return;
+  }
+
+  if (t === 'object') {
+    // Cyclic check
+    if (_seen) {
+      if (_seen.has(value)) fail(FAILURE.RECEIPT_VALUE_TYPE_INVALID);
+    }
+    // Prototype check
+    if (Object.getPrototypeOf(value) !== Object.prototype) {
+      // Special: Buffer is Uint8Array, Date has different prototype
+      if (typeof value.getTime === 'function') fail(FAILURE.RECEIPT_VALUE_TYPE_INVALID);
+      if (value instanceof Map || value instanceof Set) fail(FAILURE.RECEIPT_VALUE_TYPE_INVALID);
+      if (Buffer.isBuffer(value)) fail(FAILURE.RECEIPT_VALUE_TYPE_INVALID);
+      if (Object.getPrototypeOf(value) !== Object.prototype) {
+        fail(FAILURE.RECEIPT_VALUE_TYPE_INVALID);
+      }
+    }
+    if (_seen) _seen.add(value);
+
+    const keys = Object.keys(value);
+    if (keys.length > MAX_OBJECT_KEYS) fail(FAILURE.RECEIPT_BOUNDS_EXCEEDED);
+    for (const key of keys) {
+      if (typeof key !== 'string' || !key) fail(FAILURE.RECEIPT_VALUE_TYPE_INVALID);
+      validateJsonArtifact(value[key], depth + 1);
+    }
+    return;
+  }
+
+  fail(FAILURE.RECEIPT_VALUE_TYPE_INVALID);
+}
+
+/**
  * Recursive sanitization with bounds checking.
  * Scans ALL nested values for prohibited keys and sensitive markers.
  */
 function scanSensitive(value, depth = 0) {
   if (depth > MAX_RECURSION_DEPTH) fail(FAILURE.RECEIPT_BOUNDS_EXCEEDED);
 
-  if (value === null || value === undefined) return;
+  // Reject undefined explicitly
+  if (value === undefined) fail(FAILURE.RECEIPT_VALUE_TYPE_INVALID);
+  if (value === null) return;
 
   const t = typeof value;
 
@@ -139,7 +223,7 @@ function scanSensitive(value, depth = 0) {
     return;
   }
 
-  // symbol, bigint, function, undefined at top level (null handled above)
+  // symbol, bigint, function, undefined (null handled above)
   fail(FAILURE.RECEIPT_VALUE_TYPE_INVALID);
 }
 
@@ -148,7 +232,10 @@ function scanSensitive(value, depth = 0) {
  */
 function checkProhibitedFields(obj, depth = 0) {
   if (depth > MAX_RECURSION_DEPTH) fail(FAILURE.RECEIPT_BOUNDS_EXCEEDED);
-  if (obj === null || obj === undefined) return;
+  if (obj === null || obj === undefined) {
+    if (obj === undefined) fail(FAILURE.RECEIPT_VALUE_TYPE_INVALID);
+    return;
+  }
   const t = typeof obj;
 
   // Traverse arrays
@@ -175,12 +262,28 @@ function checkProhibitedFields(obj, depth = 0) {
 }
 
 /**
+ * Full pre-digest validation of a collection artifact.
+ * Performs validateJsonArtifact + checkProhibitedFields + scanSensitive in order.
+ */
+function validateArtifact(value) {
+  startValidation();
+  try {
+    validateJsonArtifact(value);
+  } finally {
+    endValidation();
+  }
+  checkProhibitedFields(value);
+  scanSensitive(value);
+}
+
+/**
  * Build a deterministic receipt from artifacts.
  * DIGESTS ARE RECOMPUTED INTERNALLY — caller-supplied digest strings
- * are NOT trusted. Cross-validation against attestation draft.
+ * are NOT trusted. Full pre-digest validation + cross-binding verification.
  *
  * @param {object} options
  * @param {object} options.preparedPlan — output of buildPreparedCollectionPlan
+ * @param {function} options.validatePlanFn — validatePreparedCollectionPlan fn
  * @param {Buffer} options.boundaryContractBytes — exact file bytes
  * @param {Buffer} options.catalogMetadataContractBytes — exact file bytes
  * @param {object} options.canonicalManifest — parsed canonical-migrations.json
@@ -188,51 +291,67 @@ function checkProhibitedFields(obj, depth = 0) {
  * @param {object} options.catalogEvidence — sanitized evidence from collector
  * @param {object} options.inactiveExpectedSchemaCandidate — candidate object
  * @param {object} options.preparedAttestationDraft — UNATTESTED draft
- * @param {number} options.collectionSessionCount — 0, 1, or 2
+ * @param {number} options.collectionSessionCount — 1 or 2 for success
  */
 function buildCollectionReceipt(options) {
   if (!options || typeof options !== 'object' || Array.isArray(options)) {
     fail(FAILURE.RECEIPT_INPUT_INVALID);
   }
 
-  const plan = options.preparedPlan;
-  if (!plan || typeof plan !== 'object' || plan.plan_status !== 'PREPARED_ONLY') {
+  // ── Step 0: Validate prepared plan via trusted validator ──
+  const validatePlanFn = options.validatePlanFn;
+  if (typeof validatePlanFn !== 'function') fail(FAILURE.RECEIPT_INPUT_INVALID);
+  const validated = validatePlanFn(options.preparedPlan);
+  if (!validated || validated.ok !== true || !validated.plan) {
+    fail(FAILURE.RECEIPT_INPUT_INVALID);
+  }
+  const trustedPlan = validated.plan;
+
+  // ── Step 1-4: Pre-digest validation of all artifacts ──
+  const evidence = options.catalogEvidence;
+  const candidate = options.inactiveExpectedSchemaCandidate;
+  const draft = options.preparedAttestationDraft;
+  const canonicalManifest = options.canonicalManifest;
+  const expectedSchemaManifest = options.expectedSchemaManifest;
+
+  for (const artifact of [canonicalManifest, expectedSchemaManifest, evidence, candidate, draft]) {
+    validateArtifact(artifact);
+  }
+
+  // ── Step 4b: Session count enforcement for success receipt ──
+  const sessionCount = options.collectionSessionCount;
+  if (!Number.isInteger(sessionCount) || sessionCount < 1 || sessionCount > 2) {
     fail(FAILURE.RECEIPT_INPUT_INVALID);
   }
 
-  // ── Recomputed digests from artifacts ──
+  // ── Step 5: Digest computation ──
   const boundaryContractDigest = options.boundaryContractBytes
     ? computeDigest(options.boundaryContractBytes)
     : null;
   const catalogMetadataContractDigest = options.catalogMetadataContractBytes
     ? computeDigest(options.catalogMetadataContractBytes)
     : null;
-  const canonicalManifestDigest = computeObjectDigest(options.canonicalManifest);
-  const expectedSchemaManifestDigest = computeObjectDigest(options.expectedSchemaManifest);
-  const catalogEvidenceDigest = computeObjectDigest(options.catalogEvidence);
-  const inactiveCandidateDigest = computeObjectDigest(options.inactiveExpectedSchemaCandidate);
-  const preparedAttestationDigest = computeObjectDigest(options.preparedAttestationDraft);
+  const canonicalManifestDigest = computeObjectDigest(canonicalManifest);
+  const expectedSchemaManifestDigest = computeObjectDigest(expectedSchemaManifest);
+  const catalogEvidenceDigest = computeObjectDigest(evidence);
+  const inactiveCandidateDigest = computeObjectDigest(candidate);
+  const preparedAttestationDigest = computeObjectDigest(draft);
 
-  // ── Use prepared plan digests ──
-  const collectionPlanDigest = plan.plan_digest;
-  const objectAllowlistDigest = plan.object_allowlist_digest;
-  const collectionPlanContractDigest = plan.collection_plan_contract_digest;
+  // Use validated trusted plan digests
+  const collectionPlanDigest = trustedPlan.plan_digest;
+  const objectAllowlistDigest = trustedPlan.object_allowlist_digest;
+  const collectionPlanContractDigest = trustedPlan.collection_plan_contract_digest;
 
   // ── SHA-256 format validation ──
   const sha64 = /^sha256:[a-f0-9]{64}$/;
-  if (!sha64.test(collectionPlanDigest)) fail(FAILURE.RECEIPT_INPUT_INVALID);
-  if (!sha64.test(objectAllowlistDigest)) fail(FAILURE.RECEIPT_INPUT_INVALID);
-  if (!sha64.test(collectionPlanContractDigest)) fail(FAILURE.RECEIPT_INPUT_INVALID);
-  if (!sha64.test(boundaryContractDigest)) fail(FAILURE.RECEIPT_INPUT_INVALID);
-  if (!sha64.test(catalogMetadataContractDigest)) fail(FAILURE.RECEIPT_INPUT_INVALID);
-  if (!sha64.test(canonicalManifestDigest)) fail(FAILURE.RECEIPT_INPUT_INVALID);
-  if (!sha64.test(expectedSchemaManifestDigest)) fail(FAILURE.RECEIPT_INPUT_INVALID);
-  if (!sha64.test(catalogEvidenceDigest)) fail(FAILURE.RECEIPT_INPUT_INVALID);
-  if (!sha64.test(inactiveCandidateDigest)) fail(FAILURE.RECEIPT_INPUT_INVALID);
-  if (!sha64.test(preparedAttestationDigest)) fail(FAILURE.RECEIPT_INPUT_INVALID);
+  for (const d of [collectionPlanDigest, objectAllowlistDigest, collectionPlanContractDigest,
+    boundaryContractDigest, catalogMetadataContractDigest,
+    canonicalManifestDigest, expectedSchemaManifestDigest,
+    catalogEvidenceDigest, inactiveCandidateDigest, preparedAttestationDigest]) {
+    if (!sha64.test(d)) fail(FAILURE.RECEIPT_INPUT_INVALID);
+  }
 
-  // ── Cross-validate digests against attestation draft ──
-  const draft = options.preparedAttestationDraft;
+  // ── Step 6: Cross-binding verification ──
   if (catalogEvidenceDigest !== draft.catalog_evidence_digest) {
     fail(FAILURE.RECEIPT_DIGEST_MISMATCH);
   }
@@ -243,36 +362,17 @@ function buildCollectionReceipt(options) {
     fail(FAILURE.RECEIPT_DIGEST_MISMATCH);
   }
 
-  // ── Validate evidence/candidate/draft ──
-  const evidence = options.catalogEvidence;
-  if (!evidence || typeof evidence !== 'object' || Array.isArray(evidence)) {
-    fail(FAILURE.RECEIPT_INPUT_INVALID);
-  }
-  const candidate = options.inactiveExpectedSchemaCandidate;
-  if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) {
-    fail(FAILURE.RECEIPT_INPUT_INVALID);
-  }
+  // Candidate/draft status checks
   if (candidate.status !== 'ADOPTION_REQUIRED') fail(FAILURE.RECEIPT_INPUT_INVALID);
   if (draft.adoption_status !== 'UNATTESTED') fail(FAILURE.RECEIPT_INPUT_INVALID);
 
-  checkProhibitedFields(evidence);
-  checkProhibitedFields(candidate);
-  checkProhibitedFields(draft);
-  scanSensitive(evidence);
-  scanSensitive(candidate);
-  scanSensitive(draft);
-
-  if (!Number.isInteger(options.collectionSessionCount) || options.collectionSessionCount < 0) {
-    fail(FAILURE.RECEIPT_INPUT_INVALID);
-  }
-
-  // ── Build receipt — all digests recomputed internally ──
+  // ── Step 7: Receipt construction ──
   const receipt = {
     format_version: FORMAT_VERSION,
     outcome: 'COLLECTION_PASS_SANITIZED_EVIDENCE_READY',
-    baseline_main_sha: plan.baseline_commit,
-    approval_reference: plan.approval_reference,
-    collection_session_count: options.collectionSessionCount,
+    baseline_main_sha: trustedPlan.baseline_commit,
+    approval_reference: trustedPlan.approval_reference,
+    collection_session_count: sessionCount,
     collection_plan_digest: collectionPlanDigest,
     object_allowlist_digest: objectAllowlistDigest,
     collection_plan_contract_digest: collectionPlanContractDigest,
@@ -286,7 +386,7 @@ function buildCollectionReceipt(options) {
     inactive_candidate_digest: inactiveCandidateDigest,
     prepared_attestation_draft: draft,
     prepared_attestation_digest: preparedAttestationDigest,
-    read_only_proofs: plan.required_read_only_proofs || [],
+    read_only_proofs: trustedPlan.required_read_only_proofs || [],
     attestation_status: 'UNATTESTED',
     manifest_activation: 'NONE',
     schema_mutation: 'NONE',
@@ -295,7 +395,7 @@ function buildCollectionReceipt(options) {
     privilege_change: 'NONE',
   };
 
-  // Final full recursive scan
+  // ── Step 8: Final recursive scan ──
   checkProhibitedFields(receipt);
   scanSensitive(receipt);
 
@@ -306,7 +406,12 @@ function serializeCollectionReceipt(receipt) {
   if (!receipt || typeof receipt !== 'object' || Array.isArray(receipt)) {
     fail(FAILURE.RECEIPT_INPUT_INVALID);
   }
-  scanSensitive(receipt);
+  // Independent full validation — cannot bypass buildCollectionReceipt checks
+  validateArtifact(receipt);
+  // Verify outcome is a success receipt (should already be validated, but defense in depth)
+  if (receipt.outcome !== 'COLLECTION_PASS_SANITIZED_EVIDENCE_READY') {
+    fail(FAILURE.RECEIPT_INPUT_INVALID);
+  }
   return `${JSON.stringify(receipt, null, 2)}\n`;
 }
 
@@ -320,6 +425,8 @@ module.exports = {
   computeDigest,
   computeObjectDigest,
   stableStringify,
+  validateJsonArtifact,
+  validateArtifact,
   scanSensitive,
   checkProhibitedFields,
   buildCollectionReceipt,

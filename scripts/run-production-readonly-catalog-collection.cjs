@@ -21,7 +21,6 @@
  */
 
 const path = require('node:path');
-const crypto = require('node:crypto');
 const fs = require('node:fs');
 
 // ─── Repository-owned core modules (NO require('pg')) ────────────────────────
@@ -39,10 +38,10 @@ const {
 const {
   buildCollectionReceipt,
   serializeCollectionReceipt,
-  computeDigest,
 } = require(path.resolve(__dirname, 'phase-b-collection-receipt-core.cjs'));
 const {
   buildPreparedCollectionPlan,
+  validatePreparedCollectionPlan,
 } = require(path.resolve(__dirname, 'adoption-baseline-collection-plan-core.cjs'));
 
 // ─── Fixed repository root ─────────────────────────────────────────────────
@@ -66,6 +65,8 @@ const FORBIDDEN_FLAGS = new Set([
   '--output', '--output-file', '--manifest', '--activate', '--attest',
 ]);
 
+// ─── Approved bounded failure outcomes ─────────────────────────────────────
+
 const VALID_OUTCOMES = Object.freeze([
   'COLLECTION_PASS_SANITIZED_EVIDENCE_READY',
   'COLLECTION_NOT_RUN_CONNECTION_BOUNDARY',
@@ -75,14 +76,82 @@ const VALID_OUTCOMES = Object.freeze([
   'COLLECTION_FAIL_PARTIAL_OR_UNKNOWN',
 ]);
 
+/**
+ * Approved bounded failure mapping table.
+ * Maps internal error categories to public approved outcome strings.
+ * No raw internal error.category, error.message, or stack ever reaches output.
+ */
+function mapFailure(category) {
+  if (!category) return 'COLLECTION_NOT_RUN_CONNECTION_BOUNDARY';
+
+  // Input / path / credential / connection / version — before any collection
+  if (category === 'INPUT_INVALID' ||
+      category.startsWith('COLLECTION_PLAN_') ||
+      category === 'HEAD_UNRESOLVABLE' ||
+      category === 'BASELINE_HEAD_MISMATCH' ||
+      category === 'CONTRACT_LOAD_FAILED') {
+    return 'COLLECTION_NOT_RUN_CONNECTION_BOUNDARY';
+  }
+
+  // Transaction / read-only proof failure from adapter
+  if (category.startsWith('CATALOG_ADAPTER_')) {
+    // CATALOG_ADAPTER_ subcategories
+    if (category === 'CATALOG_ADAPTER_READ_ONLY_REQUIRED' ||
+        category === 'CATALOG_ADAPTER_MUTATION_DETECTED') {
+      return 'COLLECTION_FAIL_READONLY_PROOF';
+    }
+    // Connection/config failures are boundary, not proof
+    if (category === 'CATALOG_ADAPTER_CONNECTION_CONFIG_INVALID' ||
+        category === 'CATALOG_ADAPTER_QUERY_FAILED') {
+      return 'COLLECTION_NOT_RUN_CONNECTION_BOUNDARY';
+    }
+    // Allowlist/object/catalog shape/metadata contract
+    if (category === 'CATALOG_ADAPTER_INPUT_INVALID' ||
+        category === 'CATALOG_ADAPTER_GRANTEE_UNMAPPED' ||
+        category.startsWith('CATALOG_ADAPTER_CATALOG_SHAPE_')) {
+      return 'COLLECTION_FAIL_ALLOWLIST_OR_METADATA_CONTRACT';
+    }
+    // Server version
+    if (category === 'CATALOG_ADAPTER_SERVER_VERSION_MISMATCH') {
+      return 'COLLECTION_NOT_RUN_CONNECTION_BOUNDARY';
+    }
+    // Sanitization
+    if (category === 'CATALOG_ADAPTER_SANITIZATION_FAILED') {
+      return 'COLLECTION_FAIL_SANITIZATION';
+    }
+    // Default: read-only proof since unknown adapter errors are safety-relevant
+    return 'COLLECTION_FAIL_READONLY_PROOF';
+  }
+
+  // Sanitization / normalization / candidate / attestation / receipt
+  if (category === 'CANDIDATE_FAILED' ||
+      category === 'ATTESTATION_DRAFT_FAILED' ||
+      category.startsWith('RECEIPT_')) {
+    return 'COLLECTION_FAIL_SANITIZATION';
+  }
+
+  // Repeat mismatch
+  if (category === 'REPEAT_MISMATCH') {
+    return 'COLLECTION_FAIL_PARTIAL_OR_UNKNOWN';
+  }
+
+  // Query failure after attempt / unclassified runtime
+  if (category === 'COLLECTOR_FAILED') {
+    return 'COLLECTION_FAIL_PARTIAL_OR_UNKNOWN';
+  }
+
+  // Default fallback — safe bounded category
+  return 'COLLECTION_NOT_RUN_CONNECTION_BOUNDARY';
+}
+
 // ─── Single bounded output writer ───────────────────────────────────────────
 
-function printOutput(outcome, category, sessionCount) {
+function printOutput(outcome, sessionCount) {
   if (!VALID_OUTCOMES.includes(outcome)) outcome = 'COLLECTION_NOT_RUN_CONNECTION_BOUNDARY';
   const out = {
     format_version: '1.0',
     outcome,
-    bounded_category: category || outcome,
+    bounded_category: outcome,
     collection_session_count: typeof sessionCount === 'number' ? sessionCount : 0,
     attestation_status: 'UNATTESTED',
     manifest_activation: 'NONE',
@@ -95,7 +164,7 @@ function printOutput(outcome, category, sessionCount) {
   process.exitCode = outcome === 'COLLECTION_PASS_SANITIZED_EVIDENCE_READY' ? 0 : 1;
 }
 
-// ─── Scoped helper for git HEAD check ──────────────────────────────────────
+// ─── Scoped helpers ─────────────────────────────────────────────────────────
 
 function loadJson(relPath) {
   const abs = path.resolve(REPO_ROOT, relPath);
@@ -114,24 +183,23 @@ async function main() {
   let attemptedSessions = 0;
 
   // ── Parse args (no output in parser — throw up to main) ──
+  let parseError = false;
   try {
     for (let i = 0; i < args.length; i += 1) {
       const arg = args[i];
-      if (!arg.startsWith('--')) throw Object.assign(new Error('unknown'), { category: 'INPUT_INVALID' });
-      if (FORBIDDEN_FLAGS.has(arg)) throw Object.assign(new Error('forbidden'), { category: 'INPUT_INVALID' });
+      if (!arg.startsWith('--')) { parseError = true; break; }
+      if (FORBIDDEN_FLAGS.has(arg)) { parseError = true; break; }
       if (arg === '--repeat') {
         const val = args[i + 1];
-        if (!val || val.startsWith('--')) throw Object.assign(new Error('missing'), { category: 'INPUT_INVALID' });
+        if (!val || val.startsWith('--')) { parseError = true; break; }
         repeat = parseInt(val, 10);
-        if (!Number.isInteger(repeat) || repeat < 1 || repeat > 2) {
-          throw Object.assign(new Error('out_of_range'), { category: 'INPUT_INVALID' });
-        }
+        if (!Number.isInteger(repeat) || repeat < 1 || repeat > 2) { parseError = true; break; }
         i += 1;
         continue;
       }
-      if (!ALLOWED_FLAGS.has(arg)) throw Object.assign(new Error('unknown'), { category: 'INPUT_INVALID' });
+      if (!ALLOWED_FLAGS.has(arg)) { parseError = true; break; }
       const next = args[i + 1];
-      if (!next || next.startsWith('--')) throw Object.assign(new Error('missing'), { category: 'INPUT_INVALID' });
+      if (!next || next.startsWith('--')) { parseError = true; break; }
       switch (arg) {
         case '--secret-file': secretFile = next; break;
         case '--role-mapping-file': roleMappingFile = next; break;
@@ -140,26 +208,29 @@ async function main() {
       }
       i += 1;
     }
-  } catch (err) {
-    printOutput('COLLECTION_NOT_RUN_CONNECTION_BOUNDARY', err.category || 'INPUT_INVALID', 0);
+  } catch {
+    parseError = true;
+  }
+  if (parseError) {
+    printOutput('COLLECTION_NOT_RUN_CONNECTION_BOUNDARY', 0);
     return;
   }
 
   // ── Required fields check ──
   if (!secretFile || !roleMappingFile || !baselineCommit || !approvalReference) {
-    printOutput('COLLECTION_NOT_RUN_CONNECTION_BOUNDARY', 'INPUT_INVALID', 0);
+    printOutput('COLLECTION_NOT_RUN_CONNECTION_BOUNDARY', 0);
     return;
   }
 
   // ── Baseline commit validation ──
   if (!/^[a-f0-9]{40}$/.test(baselineCommit)) {
-    printOutput('COLLECTION_NOT_RUN_CONNECTION_BOUNDARY', 'BASELINE_INVALID', 0);
+    printOutput('COLLECTION_NOT_RUN_CONNECTION_BOUNDARY', 0);
     return;
   }
 
-  // ── Approving reference validation ──
+  // ── Approval reference validation ──
   if (!/^(?:issue:\d+|decision:[A-Za-z0-9][A-Za-z0-9._-]{2,63})$/.test(approvalReference)) {
-    printOutput('COLLECTION_NOT_RUN_CONNECTION_BOUNDARY', 'APPROVAL_INVALID', 0);
+    printOutput('COLLECTION_NOT_RUN_CONNECTION_BOUNDARY', 0);
     return;
   }
 
@@ -173,25 +244,20 @@ async function main() {
       maxBuffer: 1024,
     }).trim();
   } catch {
-    printOutput('COLLECTION_NOT_RUN_CONNECTION_BOUNDARY', 'HEAD_UNRESOLVABLE', 0);
+    printOutput('COLLECTION_NOT_RUN_CONNECTION_BOUNDARY', 0);
     return;
   }
-
-  const sha40 = /^[a-f0-9]{40}$/;
-  if (!sha40.test(actualHead) || actualHead !== baselineCommit) {
-    printOutput('COLLECTION_NOT_RUN_CONNECTION_BOUNDARY', 'BASELINE_HEAD_MISMATCH', 0);
+  if (!/^[a-f0-9]{40}$/.test(actualHead) || actualHead !== baselineCommit) {
+    printOutput('COLLECTION_NOT_RUN_CONNECTION_BOUNDARY', 0);
     return;
   }
 
   // ── Build trusted prepared plan ──
   let preparedPlan;
   try {
-    preparedPlan = buildPreparedCollectionPlan({
-      baselineCommit,
-      approvalReference,
-    });
+    preparedPlan = buildPreparedCollectionPlan({ baselineCommit, approvalReference });
   } catch {
-    printOutput('COLLECTION_NOT_RUN_CONNECTION_BOUNDARY', 'PLAN_FAILED', 0);
+    printOutput('COLLECTION_NOT_RUN_CONNECTION_BOUNDARY', 0);
     return;
   }
 
@@ -203,7 +269,7 @@ async function main() {
     boundaryContractBytes = readFileBytes('db/migration-provenance/production-readonly-catalog-boundary-contract.json');
     catalogMetadataContractBytes = readFileBytes('db/migration-provenance/catalog-metadata-contract.json');
   } catch {
-    printOutput('COLLECTION_NOT_RUN_CONNECTION_BOUNDARY', 'CONTRACT_LOAD_FAILED', 0);
+    printOutput('COLLECTION_NOT_RUN_CONNECTION_BOUNDARY', 0);
     return;
   }
 
@@ -216,14 +282,12 @@ async function main() {
       roleMappingFile,
     });
   } catch (err) {
-    const cat = err.category && err.category.startsWith('CATALOG_ADAPTER_')
-      ? 'COLLECTION_FAIL_READONLY_PROOF'
-      : 'COLLECTION_NOT_RUN_CONNECTION_BOUNDARY';
-    printOutput(cat, err.category || 'COLLECTOR_FAILED', attemptedSessions);
+    const outcome = mapFailure(err && err.category);
+    printOutput(outcome, attemptedSessions);
     return;
   }
 
-  // ── Round 2: if --repeat 2 ──
+  // ── Round 2: if --repeat 2, canonical comparison ──
   if (repeat === 2) {
     let evidence2;
     try {
@@ -233,29 +297,26 @@ async function main() {
         roleMappingFile,
       });
     } catch (err) {
-      const cat = err.category && err.category.startsWith('CATALOG_ADAPTER_')
-        ? 'COLLECTION_FAIL_READONLY_PROOF'
-        : 'COLLECTION_NOT_RUN_CONNECTION_BOUNDARY';
-      printOutput(cat, err.category || 'COLLECTOR_FAILED', attemptedSessions);
+      const outcome = mapFailure(err && err.category);
+      printOutput(outcome, attemptedSessions);
       return;
     }
 
-    // Canonical serialization comparison (not JSON.stringify insertion order)
-    const json1 = JSON.stringify(evidence1);
-    const json2 = JSON.stringify(evidence2);
-    if (json1 !== json2) {
-      printOutput('COLLECTION_FAIL_PARTIAL_OR_UNKNOWN', 'REPEAT_MISMATCH', 2);
+    // Canonical comparison via computeObjectDigest (stable, insertion-order independent)
+    const dig1 = computeObjectDigest(evidence1);
+    const dig2 = computeObjectDigest(evidence2);
+    if (dig1 !== dig2) {
+      printOutput('COLLECTION_FAIL_PARTIAL_OR_UNKNOWN', 2);
       return;
     }
   }
 
   // ── Build inactive expected-schema candidate ──
-  let schemaCandidate, candidateJson;
+  let schemaCandidate;
   try {
     schemaCandidate = buildExpectedSchemaCandidate(evidence1, expectedSchemaManifest);
-    candidateJson = serializeExpectedSchemaCandidate(schemaCandidate);
   } catch {
-    printOutput('COLLECTION_FAIL_SANITIZATION', 'CANDIDATE_FAILED', attemptedSessions);
+    printOutput(mapFailure('CANDIDATE_FAILED'), attemptedSessions);
     return;
   }
 
@@ -264,20 +325,22 @@ async function main() {
   try {
     attestationDraft = buildPreparedUnattestedAttestationDraft({
       preparedPlan,
+      validatePlanFn: validatePreparedCollectionPlan,
       migrationManifest: canonicalManifest,
       expectedSchemaCandidate: schemaCandidate,
       catalogEvidence: evidence1,
     });
   } catch {
-    printOutput('COLLECTION_FAIL_SANITIZATION', 'ATTESTATION_DRAFT_FAILED', attemptedSessions);
+    printOutput(mapFailure('ATTESTATION_DRAFT_FAILED'), attemptedSessions);
     return;
   }
 
-  // ── Build final receipt (digests recomputed internally) ──
+  // ── Build final receipt (digests recomputed internally via trusted plan) ──
   let receipt;
   try {
     receipt = buildCollectionReceipt({
       preparedPlan,
+      validatePlanFn: validatePreparedCollectionPlan,
       boundaryContractBytes,
       catalogMetadataContractBytes,
       canonicalManifest,
@@ -288,10 +351,8 @@ async function main() {
       collectionSessionCount: attemptedSessions,
     });
   } catch (err) {
-    const cat = err.category === 'RECEIPT_DIGEST_MISMATCH'
-      ? 'COLLECTION_FAIL_PARTIAL_OR_UNKNOWN'
-      : 'COLLECTION_FAIL_SANITIZATION';
-    printOutput(cat, err.category || 'RECEIPT_FAILED', attemptedSessions);
+    const outcome = mapFailure(err && err.category);
+    printOutput(outcome, attemptedSessions);
     return;
   }
 
@@ -300,10 +361,10 @@ async function main() {
     process.stdout.write(serializeCollectionReceipt(receipt));
     process.exitCode = 0;
   } catch {
-    printOutput('COLLECTION_FAIL_SANITIZATION', 'SERIALIZATION_FAILED', attemptedSessions);
+    printOutput(mapFailure('RECEIPT_SERIALIZATION_FAILED'), attemptedSessions);
   }
 }
 
 main().catch(() => {
-  printOutput('COLLECTION_NOT_RUN_CONNECTION_BOUNDARY', 'UNEXPECTED', 0);
+  printOutput('COLLECTION_NOT_RUN_CONNECTION_BOUNDARY', 0);
 });

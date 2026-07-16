@@ -901,6 +901,8 @@ function validateAdoptionAttestationEvidence(evidence, binding, contract) {
  * Build a prepared UNATTESTED attestation draft for Production-readonly collection.
  *
  * Takes a preparedPlan (from buildPreparedCollectionPlan) for fixed field values.
+ * Prepared plan MUST be validated through validatePreparedCollectionPlan first.
+ *
  * Accepts NO caller-controlled environment/scope/status parameters.
  *
  * Fixed values:
@@ -909,32 +911,30 @@ function validateAdoptionAttestationEvidence(evidence, binding, contract) {
  *   attestation_scope = PRODUCTION_READONLY
  *   variance_classification = UNKNOWN_DRIFT
  *
- * baseline_commit and approval_reference come from preparedPlan.
- * applied_migrations from repository-owned canonical manifest only.
+ * baseline_commit and approval_reference come from validated trustedPlan.
+ * applied_migrations from repository-owned canonical manifest only —
+ * each record is strictly validated.
  *
  * No database, network, environment fallback, or file write.
  */
 function buildPreparedUnattestedAttestationDraft({
   preparedPlan,
+  validatePlanFn,
   migrationManifest,
   expectedSchemaCandidate,
   catalogEvidence,
 }) {
-  // Validate preparedPlan
-  if (!preparedPlan || typeof preparedPlan !== 'object' || Array.isArray(preparedPlan)) {
+  // ── Validate prepared plan via trusted validator ──
+  if (typeof validatePlanFn !== 'function') {
+    fail(FAILURE.ADOPTION_ATTESTATION_INPUT_INVALID, { field: 'validatePlanFn' });
+  }
+  const validated = validatePlanFn(preparedPlan);
+  if (!validated || validated.ok !== true || !validated.plan) {
     fail(FAILURE.ADOPTION_ATTESTATION_INPUT_INVALID, { field: 'preparedPlan' });
   }
-  if (preparedPlan.plan_status !== 'PREPARED_ONLY') {
-    fail(FAILURE.ADOPTION_ATTESTATION_ENUM_INVALID, { field: 'plan_status' });
-  }
-  if (preparedPlan.environment_class !== 'PRODUCTION') {
-    fail(FAILURE.ADOPTION_ATTESTATION_ENUM_INVALID, { field: 'environment_class' });
-  }
-  if (preparedPlan.attestation_scope !== 'PRODUCTION_READONLY') {
-    fail(FAILURE.ADOPTION_ATTESTATION_ENUM_INVALID, { field: 'attestation_scope' });
-  }
+  const trustedPlan = validated.plan;
 
-  // Validate expectedSchemaCandidate
+  // ── Validate expectedSchemaCandidate ──
   if (!expectedSchemaCandidate || typeof expectedSchemaCandidate !== 'object' || Array.isArray(expectedSchemaCandidate)) {
     fail(FAILURE.ADOPTION_ATTESTATION_INPUT_INVALID, { field: 'expectedSchemaCandidate' });
   }
@@ -942,29 +942,75 @@ function buildPreparedUnattestedAttestationDraft({
     fail(FAILURE.ADOPTION_ATTESTATION_ENUM_INVALID, { field: 'status' });
   }
 
-  // Validate migrationManifest structure
+  // ── Validate migrationManifest structure ──
   if (!migrationManifest || typeof migrationManifest !== 'object' || Array.isArray(migrationManifest)) {
     fail(FAILURE.ADOPTION_ATTESTATION_INPUT_INVALID, { field: 'migrationManifest' });
   }
 
-  // Catalog evidence validation
+  // ── Catalog evidence validation ──
   if (!catalogEvidence || typeof catalogEvidence !== 'object' || Array.isArray(catalogEvidence)) {
     fail(FAILURE.ADOPTION_ATTESTATION_INPUT_INVALID, { field: 'catalogEvidence' });
   }
 
-  // Digest computation
+  // ── Digest computation ──
   const canonicalDigest = computeObjectDigest(migrationManifest);
   const expectedDigest = computeObjectDigest(expectedSchemaCandidate);
   const catalogDigest = computeObjectDigest(catalogEvidence);
 
-  // applied_migrations from canonical manifest only
+  // ── applied_migrations from canonical manifest only — strict validation ──
+  const MIGRATION_ID_PATTERN = /^\d{14}_[a-z0-9]+(?:-[a-z0-9]+)*$/;
+  const SHA256_DIGEST = /^sha256:[a-f0-9]{64}$/;
+  const ALLOWED_MIG_FIELDS = new Set(['id', 'checksum']);
+  const MIGRATION_PROHIBITED = new Set([
+    'host', 'hostname', 'port', 'database', 'database_name',
+    'database_url', 'connection_string', 'url', 'secret', 'token',
+    'password', 'credential', 'operator',
+  ]);
+
   let migrations = [];
   if (migrationManifest && migrationManifest.status !== 'ADOPTION_REQUIRED') {
     if (Array.isArray(migrationManifest.migrations)) {
-      migrations = migrationManifest.migrations.map((item) => ({
-        id: item.id,
-        checksum: item.checksum,
-      }));
+      if (migrationManifest.migrations.length > 256) {
+        fail(FAILURE.ADOPTION_ATTESTATION_BOUNDS_EXCEEDED, { field: 'applied_migrations' });
+      }
+      const seenIds = new Set();
+      for (const item of migrationManifest.migrations) {
+        // Record must be plain object
+        if (!item || typeof item !== 'object' || Array.isArray(item)) {
+          fail(FAILURE.ADOPTION_ATTESTATION_MIGRATION_INVALID, { field: 'applied_migrations' });
+        }
+        // No unknown fields
+        for (const key of Object.keys(item)) {
+          if (!ALLOWED_MIG_FIELDS.has(key)) {
+            fail(FAILURE.ADOPTION_ATTESTATION_UNKNOWN_FIELD, { field: key });
+          }
+          if (MIGRATION_PROHIBITED.has(key)) {
+            fail(FAILURE.ADOPTION_ATTESTATION_PROHIBITED_FIELD, { field: key });
+          }
+        }
+        // id required
+        if (typeof item.id !== 'string' || !item.id) {
+          fail(FAILURE.ADOPTION_ATTESTATION_MIGRATION_INVALID, { field: 'id' });
+        }
+        if (!MIGRATION_ID_PATTERN.test(item.id)) {
+          fail(FAILURE.ADOPTION_ATTESTATION_MIGRATION_INVALID, { field: 'id' });
+        }
+        if (seenIds.has(item.id)) {
+          fail(FAILURE.ADOPTION_ATTESTATION_MIGRATION_INVALID, { field: 'duplicate_id' });
+        }
+        seenIds.add(item.id);
+        // checksum required
+        if (typeof item.checksum !== 'string' || !SHA256_DIGEST.test(item.checksum)) {
+          fail(FAILURE.ADOPTION_ATTESTATION_DIGEST_INVALID, { field: 'checksum' });
+        }
+        // Sensitive check
+        for (const marker of ['postgres://', 'DATABASE_URL', 'password=', 'secret=', 'token=']) {
+          if (item.id.toLowerCase().includes(marker) || item.checksum.toLowerCase().includes(marker)) {
+            fail(FAILURE.ADOPTION_ATTESTATION_SENSITIVE_MARKER, { field: 'applied_migrations' });
+          }
+        }
+        migrations.push({ id: item.id, checksum: item.checksum });
+      }
     }
   }
 
@@ -972,29 +1018,43 @@ function buildPreparedUnattestedAttestationDraft({
     format_version: '1.0',
     adoption_status: 'UNATTESTED',
     environment_class: 'PRODUCTION',
-    baseline_commit: preparedPlan.baseline_commit,
+    baseline_commit: trustedPlan.baseline_commit,
     canonical_manifest_digest: canonicalDigest,
     expected_schema_digest: expectedDigest,
     catalog_evidence_digest: catalogDigest,
     variance_classification: 'UNKNOWN_DRIFT',
-    approval_reference: preparedPlan.approval_reference,
+    approval_reference: trustedPlan.approval_reference,
     applied_migrations: migrations,
     contract_path: DEFAULT_CONTRACT_REL,
     digest_algorithm: 'sha256',
     attestation_scope: 'PRODUCTION_READONLY',
   };
 
-  // Prohibited/sensitive field check
-  const staticProhibited = new Set([
+  // Recursive prohibited/sensitive check replaces staticProhibited no-op
+  const MIGRATION_STATIC_PROHIBITED = [
     'host', 'hostname', 'port', 'database', 'database_name',
     'database_url', 'connection_string', 'url', 'secret', 'token',
-    'password', 'credential', 'operator',
-  ]);
-  for (const key of Object.keys(draft)) {
-    if (staticProhibited.has(key)) {
-      fail(FAILURE.ADOPTION_ATTESTATION_PROHIBITED_FIELD, { field: key });
+    'password', 'credential', 'operator', 'operator_name',
+    'raw_role', 'role_name', 'provider_project', 'raw_catalog',
+    'rows', 'row_values', 'payload', 'grantee_name', 'database_owner',
+  ];
+  function recursiveProhibitedCheck(obj, depth) {
+    if (depth > 20) fail(FAILURE.ADOPTION_ATTESTATION_BOUNDS_EXCEEDED);
+    if (obj === null || obj === undefined) return;
+    if (Array.isArray(obj)) {
+      for (const item of obj) recursiveProhibitedCheck(item, depth + 1);
+      return;
+    }
+    if (typeof obj === 'object') {
+      for (const key of Object.keys(obj)) {
+        if (MIGRATION_STATIC_PROHIBITED.includes(key)) {
+          fail(FAILURE.ADOPTION_ATTESTATION_PROHIBITED_FIELD, { field: key });
+        }
+        recursiveProhibitedCheck(obj[key], depth + 1);
+      }
     }
   }
+  recursiveProhibitedCheck(draft, 0);
 
   return draft;
 }

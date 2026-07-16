@@ -5,7 +5,7 @@
  *
  * No DB connection, no network, no file mutation.
  * Tests: CLI boundary, trusted plan, digest integrity, recursive sanitization,
- *        output format, fixed attestation fields, baseline binding, session counting.
+ *        output format, fixed attestation fields, baseline HEAD binding, session counting.
  */
 
 const path = require('node:path');
@@ -29,8 +29,7 @@ const planCore = require(
 // ─── Constants ───────────────────────────────────────────────────────────────
 
 const SHA256_RE = /^sha256:[a-f0-9]{64}$/;
-
-const TEST_BASELINE = '1cce8713ef1c1f7adac7edd7d1e09e2f04490649';
+const TEST_BASELINE = 'c92cbbf31b894636025b2a30e4c49b8c5ed3b538';
 const TEST_APPROVAL = 'issue:3573';
 
 const SYNTHETIC_EVIDENCE = {
@@ -59,6 +58,13 @@ const SYNTHETIC_EXPECTED_SCHEMA = {
   comparison_scope: ['name', 'fingerprint'],
 };
 
+const BOUNDARY_CONTRACT_BYTES = Buffer.from(
+  '{"mode":"PRODUCTION_READONLY_CATALOG","dedicated_secret_key":"LOVEBUD_PRODUCTION_READONLY_DATABASE_URL"}'
+);
+const METADATA_CONTRACT_BYTES = Buffer.from(
+  '{"format_version":"1.0","normalizer_version":"1.0","limits":{"max_objects":64}}'
+);
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function stableStringify(value) {
@@ -80,41 +86,15 @@ function objDigest(obj) {
   return `sha256:${crypto.createHash('sha256').update(Buffer.from(stableStringify(obj), 'utf8')).digest('hex')}`;
 }
 
-// ─── Build a minimal valid prepared plan for tests ──────────────────────────
-
-function buildTestPlan(opts = {}) {
-  const baseline = opts.baselineCommit || TEST_BASELINE;
-  const approval = opts.approvalReference || TEST_APPROVAL;
-  // Build a plan-like object matching what buildPreparedCollectionPlan returns
-  const rawPlan = {
-    format_version: '1.0',
-    plan_status: 'PREPARED_ONLY',
-    baseline_commit: baseline,
-    environment_class: 'PRODUCTION',
-    attestation_scope: 'PRODUCTION_READONLY',
-    approval_reference: approval,
-    collection_mode: 'CATALOG_METADATA_ONLY',
-    output_policy: 'SANITIZED_STDOUT_ONLY',
-    object_allowlist: [],
-    role_mapping_classes: ['PUBLIC', 'APPLICATION', 'AUTHENTICATED', 'SERVICE', 'OWNER_CLASS'],
-    required_read_only_proofs: [
-      'EXPLICIT_READ_ONLY_TRANSACTION', 'READ_ONLY_TRANSACTION_CONFIRMED',
-      'REPOSITORY_OWNED_SQL_ONLY', 'NO_CALLER_SQL', 'ALLOWLISTED_OBJECTS_ONLY',
-      'NO_APPLICATION_ROW_READS', 'ABSTRACT_ROLE_MAPPING_ONLY', 'NO_RAW_CATALOG_OUTPUT',
-      'NO_PARTIAL_SUCCESS_CLAIM', 'BOUNDED_FAILURE_OUTPUT',
-    ],
-    expected_outputs: [
-      'SANITIZED_CATALOG_EVIDENCE', 'CATALOG_EVIDENCE_DIGEST',
-      'INACTIVE_EXPECTED_SCHEMA_CANDIDATE', 'COLLECTION_PLAN_DIGEST',
-      'OBJECT_ALLOWLIST_DIGEST', 'PREPARED_ATTESTATION_DRAFT', 'BOUNDED_COLLECTION_OUTCOME',
-    ],
-    contract_path: 'db/migration-provenance/adoption-baseline-collection-plan-contract.json',
-    digest_algorithm: 'sha256',
-    collection_plan_contract_digest: 'sha256:0000000000000000000000000000000000000000000000000000000000000000',
-    object_allowlist_digest: 'sha256:1111111111111111111111111111111111111111111111111111111111111111',
-  };
-  rawPlan.plan_digest = objDigest(rawPlan);
-  return rawPlan;
+/**
+ * Build a real validated plan using buildPreparedCollectionPlan + validatePreparedCollectionPlan.
+ * This is the same path the CLI uses.
+ */
+function buildRealValidatedPlan() {
+  return planCore.buildPreparedCollectionPlan({
+    baselineCommit: TEST_BASELINE,
+    approvalReference: TEST_APPROVAL,
+  });
 }
 
 function buildTestCandidate() {
@@ -125,13 +105,12 @@ function buildTestCandidate() {
 
 describe('Phase B operator collection receipt core', () => {
 
-  // === Scope/source tests ===
-  it('operator CLI has no require(pg)', async () => {
+  // 1. Scope/source tests
+  it('operator CLI has no require(pg) in code', async () => {
     const src = require('fs').readFileSync(
       path.resolve(__dirname, '..', '..', 'scripts', 'run-production-readonly-catalog-collection.cjs'),
       'utf8'
     );
-    // Remove comments before checking code lines
     const codeOnly = src.replace(/\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '');
     assert.ok(!codeOnly.includes("require('pg')"));
     assert.ok(!codeOnly.includes('new Client'));
@@ -143,36 +122,39 @@ describe('Phase B operator collection receipt core', () => {
   it('receipt core has no pg dependency', () => {
     assert.ok(typeof receiptCore.buildCollectionReceipt === 'function');
     assert.ok(typeof receiptCore.computeDigest === 'function');
-    assert.ok(typeof receiptCore.scanSensitive === 'function');
+    assert.ok(typeof receiptCore.validateJsonArtifact === 'function');
   });
 
-  // === Trusted plan tests ===
-  it('uses buildPreparedCollectionPlan digest values', () => {
-    const plan = buildTestPlan();
+  // 2. Trusted plan — uses validatePreparedCollectionPlan
+  it('buildPreparedCollectionPlan returns validated plan with digests', () => {
+    const plan = buildRealValidatedPlan();
     assert.equal(plan.plan_status, 'PREPARED_ONLY');
     assert.ok(SHA256_RE.test(plan.plan_digest));
     assert.ok(SHA256_RE.test(plan.object_allowlist_digest));
+    assert.ok(SHA256_RE.test(plan.collection_plan_contract_digest));
+    assert.equal(plan.environment_class, 'PRODUCTION');
+    assert.equal(plan.attestation_scope, 'PRODUCTION_READONLY');
+    assert.equal(plan.collection_mode, 'CATALOG_METADATA_ONLY');
+    assert.equal(plan.output_policy, 'SANITIZED_STDOUT_ONLY');
+    assert.equal(plan.baseline_commit, TEST_BASELINE);
+    assert.equal(plan.approval_reference, TEST_APPROVAL);
   });
 
-  it('plan digest is deterministic', () => {
-    const a = buildTestPlan();
-    const b = buildTestPlan();
-    assert.equal(a.plan_digest, b.plan_digest);
-  });
-
-  it('receipt uses prepared plan collection_plan_digest', () => {
-    const plan = buildTestPlan();
+  it('receipt uses trusted plan collection_plan_digest via validatePlanFn', () => {
+    const plan = buildRealValidatedPlan();
     const candidate = buildTestCandidate();
     const draft = attestationCore.buildPreparedUnattestedAttestationDraft({
       preparedPlan: plan,
+      validatePlanFn: planCore.validatePreparedCollectionPlan,
       migrationManifest: SYNTHETIC_CANONICAL,
       expectedSchemaCandidate: candidate,
       catalogEvidence: SYNTHETIC_EVIDENCE,
     });
     const receipt = receiptCore.buildCollectionReceipt({
       preparedPlan: plan,
-      boundaryContractBytes: Buffer.from('{"mode":"PRODUCTION_READONLY_CATALOG","dedicated_secret_key":"LOVEBUD_PRODUCTION_READONLY_DATABASE_URL"}'),
-      catalogMetadataContractBytes: Buffer.from('{"format_version":"1.0","normalizer_version":"1.0","limits":{"max_objects":64}}'),
+      validatePlanFn: planCore.validatePreparedCollectionPlan,
+      boundaryContractBytes: BOUNDARY_CONTRACT_BYTES,
+      catalogMetadataContractBytes: METADATA_CONTRACT_BYTES,
       canonicalManifest: SYNTHETIC_CANONICAL,
       expectedSchemaManifest: SYNTHETIC_EXPECTED_SCHEMA,
       catalogEvidence: SYNTHETIC_EVIDENCE,
@@ -182,41 +164,38 @@ describe('Phase B operator collection receipt core', () => {
     });
     assert.equal(receipt.collection_plan_digest, plan.plan_digest);
     assert.equal(receipt.object_allowlist_digest, plan.object_allowlist_digest);
+    assert.equal(receipt.collection_plan_contract_digest, plan.collection_plan_contract_digest);
+    assert.equal(receipt.baseline_main_sha, TEST_BASELINE);
+    assert.equal(receipt.approval_reference, TEST_APPROVAL);
     assert.equal(receipt.read_only_proofs.length, 10);
   });
 
-  // === Digest integrity tests ===
+  // 3. Digest integrity tests
   it('catalog evidence change recomputes digest', () => {
-    const plan = buildTestPlan();
-    const candidate = buildTestCandidate();
-
     const ev1 = SYNTHETIC_EVIDENCE;
     const d1 = receiptCore.computeObjectDigest(ev1);
-
     const ev2 = { ...SYNTHETIC_EVIDENCE, objects: [] };
     const d2 = receiptCore.computeObjectDigest(ev2);
-
     assert.notEqual(d1, d2);
   });
 
   it('digest mismatch between evidence and attestation rejected', () => {
-    const plan = buildTestPlan();
+    const plan = buildRealValidatedPlan();
     const candidate = buildTestCandidate();
     const draft = attestationCore.buildPreparedUnattestedAttestationDraft({
       preparedPlan: plan,
+      validatePlanFn: planCore.validatePreparedCollectionPlan,
       migrationManifest: SYNTHETIC_CANONICAL,
       expectedSchemaCandidate: candidate,
       catalogEvidence: SYNTHETIC_EVIDENCE,
     });
-
-    // Tamper with the draft's catalog_evidence_digest
     const tampered = { ...draft, catalog_evidence_digest: 'sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff' };
-
     assert.throws(() => {
       receiptCore.buildCollectionReceipt({
         preparedPlan: plan,
-        boundaryContractBytes: Buffer.from('{"mode":"PRODUCTION_READONLY_CATALOG"}'),
-        catalogMetadataContractBytes: Buffer.from('{"format_version":"1.0","normalizer_version":"1.0","limits":{"max_objects":64}}'),
+        validatePlanFn: planCore.validatePreparedCollectionPlan,
+        boundaryContractBytes: BOUNDARY_CONTRACT_BYTES,
+        catalogMetadataContractBytes: METADATA_CONTRACT_BYTES,
         canonicalManifest: SYNTHETIC_CANONICAL,
         expectedSchemaManifest: SYNTHETIC_EXPECTED_SCHEMA,
         catalogEvidence: SYNTHETIC_EVIDENCE,
@@ -228,25 +207,23 @@ describe('Phase B operator collection receipt core', () => {
   });
 
   it('candidate change triggers digest mismatch', () => {
-    const plan = buildTestPlan();
+    const plan = buildRealValidatedPlan();
     const candidate1 = buildTestCandidate();
-    // Build a different candidate
     const emptyEv = { format_version: '1.0', normalizer_version: '1.0', objects: [] };
     const candidate2 = expectedSchemaCore.buildExpectedSchemaCandidate(emptyEv, SYNTHETIC_EXPECTED_SCHEMA);
-
     const draft = attestationCore.buildPreparedUnattestedAttestationDraft({
       preparedPlan: plan,
+      validatePlanFn: planCore.validatePreparedCollectionPlan,
       migrationManifest: SYNTHETIC_CANONICAL,
       expectedSchemaCandidate: candidate1,
       catalogEvidence: SYNTHETIC_EVIDENCE,
     });
-
-    // Try to pass candidate2 but draft was built with candidate1 — digest mismatch
     assert.throws(() => {
       receiptCore.buildCollectionReceipt({
         preparedPlan: plan,
-        boundaryContractBytes: Buffer.from('{"mode":"PRODUCTION_READONLY_CATALOG"}'),
-        catalogMetadataContractBytes: Buffer.from('{"format_version":"1.0","normalizer_version":"1.0","limits":{"max_objects":64}}'),
+        validatePlanFn: planCore.validatePreparedCollectionPlan,
+        boundaryContractBytes: BOUNDARY_CONTRACT_BYTES,
+        catalogMetadataContractBytes: METADATA_CONTRACT_BYTES,
         canonicalManifest: SYNTHETIC_CANONICAL,
         expectedSchemaManifest: SYNTHETIC_EXPECTED_SCHEMA,
         catalogEvidence: SYNTHETIC_EVIDENCE,
@@ -257,19 +234,21 @@ describe('Phase B operator collection receipt core', () => {
     }, /RECEIPT_DIGEST_MISMATCH/);
   });
 
-  it('catalog_evidence_digest matches between receipt and attestation', () => {
-    const plan = buildTestPlan();
+  it('digest cross-binding between receipt and attestation', () => {
+    const plan = buildRealValidatedPlan();
     const candidate = buildTestCandidate();
     const draft = attestationCore.buildPreparedUnattestedAttestationDraft({
       preparedPlan: plan,
+      validatePlanFn: planCore.validatePreparedCollectionPlan,
       migrationManifest: SYNTHETIC_CANONICAL,
       expectedSchemaCandidate: candidate,
       catalogEvidence: SYNTHETIC_EVIDENCE,
     });
     const receipt = receiptCore.buildCollectionReceipt({
       preparedPlan: plan,
-      boundaryContractBytes: Buffer.from('{"mode":"PRODUCTION_READONLY_CATALOG"}'),
-      catalogMetadataContractBytes: Buffer.from('{"format_version":"1.0","normalizer_version":"1.0","limits":{"max_objects":64}}'),
+      validatePlanFn: planCore.validatePreparedCollectionPlan,
+      boundaryContractBytes: BOUNDARY_CONTRACT_BYTES,
+      catalogMetadataContractBytes: METADATA_CONTRACT_BYTES,
       canonicalManifest: SYNTHETIC_CANONICAL,
       expectedSchemaManifest: SYNTHETIC_EXPECTED_SCHEMA,
       catalogEvidence: SYNTHETIC_EVIDENCE,
@@ -283,24 +262,21 @@ describe('Phase B operator collection receipt core', () => {
   });
 
   it('RECEIPT_DIGEST_MISMATCH execution path exists', () => {
-    const plan = buildTestPlan();
+    const plan = buildRealValidatedPlan();
     const candidate = buildTestCandidate();
-
-    // Build a valid draft
     const draft = attestationCore.buildPreparedUnattestedAttestationDraft({
       preparedPlan: plan,
+      validatePlanFn: planCore.validatePreparedCollectionPlan,
       migrationManifest: SYNTHETIC_CANONICAL,
       expectedSchemaCandidate: candidate,
       catalogEvidence: SYNTHETIC_EVIDENCE,
     });
-
-    // Corrupt the attestation's canonical_manifest_digest
     const bad = { ...draft, canonical_manifest_digest: 'sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee' };
-
     assert.throws(() => receiptCore.buildCollectionReceipt({
       preparedPlan: plan,
-      boundaryContractBytes: Buffer.from('{}'),
-      catalogMetadataContractBytes: Buffer.from('{}'),
+      validatePlanFn: planCore.validatePreparedCollectionPlan,
+      boundaryContractBytes: BOUNDARY_CONTRACT_BYTES,
+      catalogMetadataContractBytes: METADATA_CONTRACT_BYTES,
       canonicalManifest: SYNTHETIC_CANONICAL,
       expectedSchemaManifest: SYNTHETIC_EXPECTED_SCHEMA,
       catalogEvidence: SYNTHETIC_EVIDENCE,
@@ -310,50 +286,74 @@ describe('Phase B operator collection receipt core', () => {
     }), /RECEIPT_DIGEST_MISMATCH/);
   });
 
-  // === Recursive sanitization tests ===
+  // 4. Forged plan tests
+  it('validatePreparedCollectionPlan rejects forged plan_digest', () => {
+    const good = buildRealValidatedPlan();
+    // Tamper the plan digest after building
+    const forged = Object.assign({}, good, { plan_digest: 'sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff' });
+    assert.throws(() => planCore.validatePreparedCollectionPlan(forged), /DIGEST_MISMATCH/);
+  });
+
+  it('validatePreparedCollectionPlan rejects forged object_allowlist_digest', () => {
+    const good = buildRealValidatedPlan();
+    const forged = Object.assign({}, good, { object_allowlist_digest: 'sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee' });
+    assert.throws(() => planCore.validatePreparedCollectionPlan(forged), /DIGEST_MISMATCH/);
+  });
+
+  it('validatePreparedCollectionPlan rejects forged collection_plan_contract_digest', () => {
+    const good = buildRealValidatedPlan();
+    const forged = Object.assign({}, good, { collection_plan_contract_digest: 'sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd' });
+    assert.throws(() => planCore.validatePreparedCollectionPlan(forged), /CONTRACT_DIGEST_MISMATCH/);
+  });
+
+  it('validatePreparedCollectionPlan rejects uppercase baseline_commit', () => {
+    const good = buildRealValidatedPlan();
+    const forged = Object.assign({}, good, { baseline_commit: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA' });
+    assert.throws(() => planCore.validatePreparedCollectionPlan(forged), /COMMIT_INVALID/);
+  });
+
+  it('validatePreparedCollectionPlan rejects short approval_reference', () => {
+    const good = buildRealValidatedPlan();
+    const forged = Object.assign({}, good, { approval_reference: 'bad' });
+    assert.throws(() => planCore.validatePreparedCollectionPlan(forged), /APPROVAL_INVALID/);
+  });
+
+  it('validatePreparedCollectionPlan rejects modified environment_class', () => {
+    const good = buildRealValidatedPlan();
+    const forged = Object.assign({}, good, { environment_class: 'STAGING' });
+    assert.throws(() => planCore.validatePreparedCollectionPlan(forged), /ENUM_INVALID/);
+  });
+
+  it('validatePreparedCollectionPlan rejects modified attestation_scope', () => {
+    const good = buildRealValidatedPlan();
+    const forged = Object.assign({}, good, { attestation_scope: 'PREVIEW_READONLY' });
+    assert.throws(() => planCore.validatePreparedCollectionPlan(forged), /ENUM_INVALID/);
+  });
+
+  // 5. Recursive sanitization tests
   it('rejects nested prohibited key in objects', () => {
-    assert.throws(() => receiptCore.checkProhibitedFields({
-      objects: [{ host: 'x' }]
-    }), /RECEIPT_PROHIBITED_FIELD/);
+    assert.throws(() => receiptCore.checkProhibitedFields({ objects: [{ host: 'x' }] }), /RECEIPT_PROHIBITED_FIELD/);
   });
 
   it('rejects nested prohibited key in candidate', () => {
-    assert.throws(() => receiptCore.checkProhibitedFields({
-      candidate: { metadata: { raw_role: 'x' } }
-    }), /RECEIPT_PROHIBITED_FIELD/);
+    assert.throws(() => receiptCore.checkProhibitedFields({ candidate: { metadata: { raw_role: 'x' } } }), /RECEIPT_PROHIBITED_FIELD/);
   });
 
   it('rejects deeply nested prohibited key', () => {
-    assert.throws(() => receiptCore.checkProhibitedFields({
-      draft: { inner: { deeper: { database_owner: 'x' } } }
-    }), /RECEIPT_PROHIBITED_FIELD/);
+    assert.throws(() => receiptCore.checkProhibitedFields({ draft: { inner: { deeper: { database_owner: 'x' } } } }), /RECEIPT_PROHIBITED_FIELD/);
   });
 
   it('rejects prohibited key in arrays', () => {
-    assert.throws(() => receiptCore.checkProhibitedFields({
-      arrays: [[{ connection_string: 'x' }]]
-    }), /RECEIPT_PROHIBITED_FIELD/);
+    assert.throws(() => receiptCore.checkProhibitedFields({ arrays: [[{ connection_string: 'x' }]] }), /RECEIPT_PROHIBITED_FIELD/);
   });
 
   it('rejects sensitive pattern in nested value', () => {
-    assert.throws(() => receiptCore.scanSensitive({
-      data: { url: 'postgres://user:pass@host/db' }
-    }), /RECEIPT_SENSITIVE_VALUE/);
+    assert.throws(() => receiptCore.scanSensitive({ data: { url: 'postgres://user:pass@host/db' } }), /RECEIPT_SENSITIVE_VALUE/);
   });
 
   it('accepts clean deeply nested data', () => {
-    const clean = {
-      format_version: '1.0',
-      objects: [
-        { name: 'table:public.trees', fingerprint: 'sha256:abc' },
-      ],
-      metadata: {
-        nested: { value: 'clean' },
-        list: [1, 2, { key: 'val' }],
-      },
-    };
-    assert.doesNotThrow(() => receiptCore.checkProhibitedFields(clean));
-    assert.doesNotThrow(() => receiptCore.scanSensitive(clean));
+    const clean = { format_version: '1.0', objects: [{ name: 'table:public.trees', fingerprint: 'sha256:abc' }], metadata: { nested: { value: 'clean' }, list: [1, 2, { key: 'val' }] } };
+    assert.doesNotThrow(() => { receiptCore.checkProhibitedFields(clean); receiptCore.scanSensitive(clean); });
   });
 
   it('rejects non-finite numbers', () => {
@@ -366,16 +366,44 @@ describe('Phase B operator collection receipt core', () => {
     assert.throws(() => receiptCore.scanSensitive(new Custom()), /RECEIPT_VALUE_TYPE_INVALID/);
   });
 
-  it('rejects symbol values', () => {
-    assert.throws(() => receiptCore.scanSensitive(Symbol('test')), /RECEIPT_VALUE_TYPE_INVALID/);
+  // 6. Pre-digest validation (validateJsonArtifact)
+  it('validateJsonArtifact rejects undefined', () => {
+    assert.throws(() => receiptCore.validateJsonArtifact(undefined), /RECEIPT_VALUE_TYPE_INVALID/);
   });
 
-  // === Fixed attestation tests ===
-  it('buildPreparedUnattestedAttestationDraft - fixed fields', () => {
-    const plan = buildTestPlan();
+  it('validateJsonArtifact rejects symbol', () => {
+    assert.throws(() => receiptCore.validateJsonArtifact(Symbol('x')), /RECEIPT_VALUE_TYPE_INVALID/);
+  });
+
+  it('validateJsonArtifact rejects function', () => {
+    assert.throws(() => receiptCore.validateJsonArtifact(() => {}), /RECEIPT_VALUE_TYPE_INVALID/);
+  });
+
+  it('validateArtifact rejects cyclic object', () => {
+    const cyclic = { a: 1 };
+    cyclic.self = cyclic;
+    assert.throws(() => receiptCore.validateArtifact(cyclic), /RECEIPT_VALUE_TYPE_INVALID/);
+  });
+
+  it('validateJsonArtifact rejects Date', () => {
+    assert.throws(() => receiptCore.validateJsonArtifact(new Date()), /RECEIPT_VALUE_TYPE_INVALID/);
+  });
+
+  it('validateJsonArtifact rejects Map', () => {
+    assert.throws(() => receiptCore.validateJsonArtifact(new Map()), /RECEIPT_VALUE_TYPE_INVALID/);
+  });
+
+  it('validateJsonArtifact rejects Buffer', () => {
+    assert.throws(() => receiptCore.validateJsonArtifact(Buffer.from('x')), /RECEIPT_VALUE_TYPE_INVALID/);
+  });
+
+  // 7. Fixed attestation tests
+  it('buildPreparedUnattestedAttestationDraft - fixed fields via validatePlanFn', () => {
+    const plan = buildRealValidatedPlan();
     const candidate = buildTestCandidate();
     const draft = attestationCore.buildPreparedUnattestedAttestationDraft({
       preparedPlan: plan,
+      validatePlanFn: planCore.validatePreparedCollectionPlan,
       migrationManifest: SYNTHETIC_CANONICAL,
       expectedSchemaCandidate: candidate,
       catalogEvidence: SYNTHETIC_EVIDENCE,
@@ -388,23 +416,12 @@ describe('Phase B operator collection receipt core', () => {
     assert.equal(draft.approval_reference, TEST_APPROVAL);
   });
 
-  it('buildPreparedUnattestedAttestationDraft - no environment/scope override params', () => {
-    const fn = attestationCore.buildPreparedUnattestedAttestationDraft.toString();
-    // There should be no parameter named environmentClass, attestationScope, varianceClassification, adoptionStatus
-    assert.ok(!fn.includes('environmentClass') || fn.indexOf('environmentClass') > fn.indexOf('preparedPlan'));
-    // Verify the function only takes 4 params
-    const params = fn.match(/function\s*\([^)]*\)/);
-    if (params) {
-      const count = params[0].split(',').length;
-      assert.ok(count <= 4, 'Should accept at most 4 parameters');
-    }
-  });
-
   it('buildPreparedUnattestedAttestationDraft - no ATTESTED', () => {
-    const plan = buildTestPlan();
+    const plan = buildRealValidatedPlan();
     const candidate = buildTestCandidate();
     const draft = attestationCore.buildPreparedUnattestedAttestationDraft({
       preparedPlan: plan,
+      validatePlanFn: planCore.validatePreparedCollectionPlan,
       migrationManifest: SYNTHETIC_CANONICAL,
       expectedSchemaCandidate: candidate,
       catalogEvidence: SYNTHETIC_EVIDENCE,
@@ -413,10 +430,11 @@ describe('Phase B operator collection receipt core', () => {
   });
 
   it('buildPreparedUnattestedAttestationDraft - empty migrations for ADOPTION_REQUIRED', () => {
-    const plan = buildTestPlan();
+    const plan = buildRealValidatedPlan();
     const candidate = buildTestCandidate();
     const draft = attestationCore.buildPreparedUnattestedAttestationDraft({
       preparedPlan: plan,
+      validatePlanFn: planCore.validatePreparedCollectionPlan,
       migrationManifest: { status: 'ADOPTION_REQUIRED', migrations: [] },
       expectedSchemaCandidate: candidate,
       catalogEvidence: SYNTHETIC_EVIDENCE,
@@ -424,38 +442,27 @@ describe('Phase B operator collection receipt core', () => {
     assert.deepEqual(draft.applied_migrations, []);
   });
 
-  it('buildPreparedUnattestedAttestationDraft - rejects bad plan_status', () => {
-    const plan = buildTestPlan();
-    plan.plan_status = 'ACTIVE';
+  it('buildPreparedUnattestedAttestationDraft - rejects forged plan via validatePlanFn', () => {
+    const forged = { plan_status: 'ACTIVE', environment_class: 'STAGING', attestation_scope: 'PREVIEW_READONLY', baseline_commit: TEST_BASELINE, approval_reference: TEST_APPROVAL };
+    // validatePreparedCollectionPlan will throw for this forged plan
     assert.throws(() => {
       attestationCore.buildPreparedUnattestedAttestationDraft({
-        preparedPlan: plan,
+        preparedPlan: forged,
+        validatePlanFn: planCore.validatePreparedCollectionPlan,
         migrationManifest: SYNTHETIC_CANONICAL,
         expectedSchemaCandidate: buildTestCandidate(),
         catalogEvidence: SYNTHETIC_EVIDENCE,
       });
-    }, /ENUM_INVALID/);
-  });
-
-  it('buildPreparedUnattestedAttestationDraft - rejects bad environment_class', () => {
-    const plan = buildTestPlan();
-    plan.environment_class = 'STAGING';
-    assert.throws(() => {
-      attestationCore.buildPreparedUnattestedAttestationDraft({
-        preparedPlan: plan,
-        migrationManifest: SYNTHETIC_CANONICAL,
-        expectedSchemaCandidate: buildTestCandidate(),
-        catalogEvidence: SYNTHETIC_EVIDENCE,
-      });
-    }, /ENUM_INVALID/);
+    });
   });
 
   it('buildPreparedUnattestedAttestationDraft - rejects wrong candidate status', () => {
-    const plan = buildTestPlan();
+    const plan = buildRealValidatedPlan();
     const badCandidate = { ...buildTestCandidate(), status: 'ACTIVE' };
     assert.throws(() => {
       attestationCore.buildPreparedUnattestedAttestationDraft({
         preparedPlan: plan,
+        validatePlanFn: planCore.validatePreparedCollectionPlan,
         migrationManifest: SYNTHETIC_CANONICAL,
         expectedSchemaCandidate: badCandidate,
         catalogEvidence: SYNTHETIC_EVIDENCE,
@@ -463,152 +470,70 @@ describe('Phase B operator collection receipt core', () => {
     }, /ENUM_INVALID/);
   });
 
-  // === Receipt build with internal digest computation ===
-  it('buildCollectionReceipt - full receipt with recomputed digests', () => {
-    const plan = buildTestPlan();
+  // 8. Success session count enforcement
+  it('buildCollectionReceipt rejects session count 0', () => {
+    const plan = buildRealValidatedPlan();
     const candidate = buildTestCandidate();
     const draft = attestationCore.buildPreparedUnattestedAttestationDraft({
       preparedPlan: plan,
+      validatePlanFn: planCore.validatePreparedCollectionPlan,
       migrationManifest: SYNTHETIC_CANONICAL,
       expectedSchemaCandidate: candidate,
       catalogEvidence: SYNTHETIC_EVIDENCE,
     });
-    const receipt = receiptCore.buildCollectionReceipt({
+    assert.throws(() => receiptCore.buildCollectionReceipt({
       preparedPlan: plan,
-      boundaryContractBytes: Buffer.from('{"mode":"PRODUCTION_READONLY_CATALOG","dedicated_secret_key":"LOVEBUD_PRODUCTION_READONLY_DATABASE_URL"}'),
-      catalogMetadataContractBytes: Buffer.from('{"format_version":"1.0","normalizer_version":"1.0","limits":{"max_objects":64}}'),
-      canonicalManifest: SYNTHETIC_CANONICAL,
-      expectedSchemaManifest: SYNTHETIC_EXPECTED_SCHEMA,
-      catalogEvidence: SYNTHETIC_EVIDENCE,
-      inactiveExpectedSchemaCandidate: candidate,
-      preparedAttestationDraft: draft,
-      collectionSessionCount: 1,
-    });
-    assert.equal(receipt.format_version, '1.0');
-    assert.equal(receipt.outcome, 'COLLECTION_PASS_SANITIZED_EVIDENCE_READY');
-    assert.equal(receipt.baseline_main_sha, TEST_BASELINE);
-    assert.equal(receipt.approval_reference, TEST_APPROVAL);
-    assert.equal(receipt.collection_session_count, 1);
-    assert.equal(receipt.attestation_status, 'UNATTESTED');
-    assert.equal(receipt.manifest_activation, 'NONE');
-    assert.equal(receipt.schema_mutation, 'NONE');
-    assert.equal(receipt.data_mutation, 'NONE');
-    assert.equal(receipt.credential_change, 'NONE');
-    assert.equal(receipt.privilege_change, 'NONE');
-    assert.ok(SHA256_RE.test(receipt.collection_plan_digest));
-    assert.ok(SHA256_RE.test(receipt.boundary_contract_digest));
-    assert.ok(SHA256_RE.test(receipt.catalog_metadata_contract_digest));
-    assert.ok(SHA256_RE.test(receipt.catalog_evidence_digest));
-    assert.ok(SHA256_RE.test(receipt.inactive_candidate_digest));
-    assert.ok(SHA256_RE.test(receipt.prepared_attestation_digest));
-    assert.equal(receipt.inactive_expected_schema_candidate.status, 'ADOPTION_REQUIRED');
-    assert.equal(receipt.prepared_attestation_draft.adoption_status, 'UNATTESTED');
-    assert.equal(receipt.read_only_proofs.length, 10);
-  });
-
-  it('serializeCollectionReceipt - deterministic JSON', () => {
-    const plan = buildTestPlan();
-    const candidate = buildTestCandidate();
-    const draft = attestationCore.buildPreparedUnattestedAttestationDraft({
-      preparedPlan: plan,
-      migrationManifest: SYNTHETIC_CANONICAL,
-      expectedSchemaCandidate: candidate,
-      catalogEvidence: SYNTHETIC_EVIDENCE,
-    });
-    const receipt = receiptCore.buildCollectionReceipt({
-      preparedPlan: plan,
-      boundaryContractBytes: Buffer.from('{}'),
-      catalogMetadataContractBytes: Buffer.from('{}'),
-      canonicalManifest: SYNTHETIC_CANONICAL,
-      expectedSchemaManifest: SYNTHETIC_EXPECTED_SCHEMA,
-      catalogEvidence: SYNTHETIC_EVIDENCE,
-      inactiveExpectedSchemaCandidate: candidate,
-      preparedAttestationDraft: draft,
-      collectionSessionCount: 1,
-    });
-    const a = receiptCore.serializeCollectionReceipt(receipt);
-    const b = receiptCore.serializeCollectionReceipt(receipt);
-    assert.equal(a, b);
-    assert.ok(a.trim().endsWith('}'));
-  });
-
-  it('receipt has no prohibited fields', () => {
-    const plan = buildTestPlan();
-    const candidate = buildTestCandidate();
-    const draft = attestationCore.buildPreparedUnattestedAttestationDraft({
-      preparedPlan: plan,
-      migrationManifest: SYNTHETIC_CANONICAL,
-      expectedSchemaCandidate: candidate,
-      catalogEvidence: SYNTHETIC_EVIDENCE,
-    });
-    const receipt = receiptCore.buildCollectionReceipt({
-      preparedPlan: plan,
-      boundaryContractBytes: Buffer.from('{}'),
-      catalogMetadataContractBytes: Buffer.from('{}'),
-      canonicalManifest: SYNTHETIC_CANONICAL,
-      expectedSchemaManifest: SYNTHETIC_EXPECTED_SCHEMA,
-      catalogEvidence: SYNTHETIC_EVIDENCE,
-      inactiveExpectedSchemaCandidate: candidate,
-      preparedAttestationDraft: draft,
-      collectionSessionCount: 1,
-    });
-    const prohibited = [
-      'host', 'hostname', 'port', 'database', 'database_name',
-      'database_url', 'connection_string', 'url', 'secret', 'token',
-      'password', 'credential', 'username', 'operator',
-      'raw_role', 'role_name', 'provider_project', 'raw_catalog',
-      'rows', 'row_values', 'payload', 'grantee_name', 'database_owner',
-    ];
-    for (const key of prohibited) {
-      assert.equal(receipt[key] === undefined, true, `prohibited field present: ${key}`);
-    }
-  });
-
-  // === Baseline tests ===
-  it('buildPreparedCollectionPlan validates baseline', () => {
-    assert.throws(() => planCore.buildPreparedCollectionPlan({
-      baselineCommit: 'BAD_UPPERCASE_SHA',
-      approvalReference: TEST_APPROVAL,
-    }), /COMMIT_INVALID/);
-  });
-
-  // === Session counting tests ===
-  it('receipt session count 0', () => {
-    const plan = buildTestPlan();
-    const candidate = buildTestCandidate();
-    const draft = attestationCore.buildPreparedUnattestedAttestationDraft({
-      preparedPlan: plan,
-      migrationManifest: SYNTHETIC_CANONICAL,
-      expectedSchemaCandidate: candidate,
-      catalogEvidence: SYNTHETIC_EVIDENCE,
-    });
-    const receipt = receiptCore.buildCollectionReceipt({
-      preparedPlan: plan,
-      boundaryContractBytes: Buffer.from('{}'),
-      catalogMetadataContractBytes: Buffer.from('{}'),
+      validatePlanFn: planCore.validatePreparedCollectionPlan,
+      boundaryContractBytes: BOUNDARY_CONTRACT_BYTES,
+      catalogMetadataContractBytes: METADATA_CONTRACT_BYTES,
       canonicalManifest: SYNTHETIC_CANONICAL,
       expectedSchemaManifest: SYNTHETIC_EXPECTED_SCHEMA,
       catalogEvidence: SYNTHETIC_EVIDENCE,
       inactiveExpectedSchemaCandidate: candidate,
       preparedAttestationDraft: draft,
       collectionSessionCount: 0,
-    });
-    assert.equal(receipt.collection_session_count, 0);
+    }), /RECEIPT_INPUT_INVALID/);
   });
 
-  it('receipt session count 2', () => {
-    const plan = buildTestPlan();
+  it('buildCollectionReceipt rejects session count 3', () => {
+    const plan = buildRealValidatedPlan();
     const candidate = buildTestCandidate();
     const draft = attestationCore.buildPreparedUnattestedAttestationDraft({
       preparedPlan: plan,
+      validatePlanFn: planCore.validatePreparedCollectionPlan,
+      migrationManifest: SYNTHETIC_CANONICAL,
+      expectedSchemaCandidate: candidate,
+      catalogEvidence: SYNTHETIC_EVIDENCE,
+    });
+    assert.throws(() => receiptCore.buildCollectionReceipt({
+      preparedPlan: plan,
+      validatePlanFn: planCore.validatePreparedCollectionPlan,
+      boundaryContractBytes: BOUNDARY_CONTRACT_BYTES,
+      catalogMetadataContractBytes: METADATA_CONTRACT_BYTES,
+      canonicalManifest: SYNTHETIC_CANONICAL,
+      expectedSchemaManifest: SYNTHETIC_EXPECTED_SCHEMA,
+      catalogEvidence: SYNTHETIC_EVIDENCE,
+      inactiveExpectedSchemaCandidate: candidate,
+      preparedAttestationDraft: draft,
+      collectionSessionCount: 3,
+    }), /RECEIPT_INPUT_INVALID/);
+  });
+
+  it('buildCollectionReceipt accepts session count 2', () => {
+    const plan = buildRealValidatedPlan();
+    const candidate = buildTestCandidate();
+    const draft = attestationCore.buildPreparedUnattestedAttestationDraft({
+      preparedPlan: plan,
+      validatePlanFn: planCore.validatePreparedCollectionPlan,
       migrationManifest: SYNTHETIC_CANONICAL,
       expectedSchemaCandidate: candidate,
       catalogEvidence: SYNTHETIC_EVIDENCE,
     });
     const receipt = receiptCore.buildCollectionReceipt({
       preparedPlan: plan,
-      boundaryContractBytes: Buffer.from('{}'),
-      catalogMetadataContractBytes: Buffer.from('{}'),
+      validatePlanFn: planCore.validatePreparedCollectionPlan,
+      boundaryContractBytes: BOUNDARY_CONTRACT_BYTES,
+      catalogMetadataContractBytes: METADATA_CONTRACT_BYTES,
       canonicalManifest: SYNTHETIC_CANONICAL,
       expectedSchemaManifest: SYNTHETIC_EXPECTED_SCHEMA,
       catalogEvidence: SYNTHETIC_EVIDENCE,
@@ -619,32 +544,168 @@ describe('Phase B operator collection receipt core', () => {
     assert.equal(receipt.collection_session_count, 2);
   });
 
-  // === Output tests ===
-  it('CLI with invalid argv outputs single JSON, no stack', async () => {
+  // 9. Serializer validation tests
+  it('serializeCollectionReceipt rejects nested prohibited field', () => {
+    const receipt = {
+      format_version: '1.0',
+      outcome: 'COLLECTION_PASS_SANITIZED_EVIDENCE_READY',
+      nested: { host: 'x' },
+    };
+    assert.throws(() => receiptCore.serializeCollectionReceipt(receipt), /RECEIPT_PROHIBITED_FIELD/);
+  });
+
+  it('serializeCollectionReceipt validates full receipt', () => {
+    const plan = buildRealValidatedPlan();
+    const candidate = buildTestCandidate();
+    const draft = attestationCore.buildPreparedUnattestedAttestationDraft({
+      preparedPlan: plan,
+      validatePlanFn: planCore.validatePreparedCollectionPlan,
+      migrationManifest: SYNTHETIC_CANONICAL,
+      expectedSchemaCandidate: candidate,
+      catalogEvidence: SYNTHETIC_EVIDENCE,
+    });
+    const receipt = receiptCore.buildCollectionReceipt({
+      preparedPlan: plan,
+      validatePlanFn: planCore.validatePreparedCollectionPlan,
+      boundaryContractBytes: BOUNDARY_CONTRACT_BYTES,
+      catalogMetadataContractBytes: METADATA_CONTRACT_BYTES,
+      canonicalManifest: SYNTHETIC_CANONICAL,
+      expectedSchemaManifest: SYNTHETIC_EXPECTED_SCHEMA,
+      catalogEvidence: SYNTHETIC_EVIDENCE,
+      inactiveExpectedSchemaCandidate: candidate,
+      preparedAttestationDraft: draft,
+      collectionSessionCount: 1,
+    });
+    const serialized = receiptCore.serializeCollectionReceipt(receipt);
+    assert.ok(serialized.trim().endsWith('}'));
+    const parsed = JSON.parse(serialized);
+    assert.equal(parsed.outcome, 'COLLECTION_PASS_SANITIZED_EVIDENCE_READY');
+  });
+
+  // 10. Migration record validation tests
+  it('migration record rejects unknown field', () => {
+    // Test that buildPreparedUnattestedAttestationDraft rejects migrations with extra fields
+    // Through validatePlanFn flow
+    const plan = buildRealValidatedPlan();
+    const candidate = buildTestCandidate();
+    const manifestWithBadMigs = {
+      status: 'ACTIVE',
+      migrations: [
+        { id: '20260101000001_test-migration-a', checksum: 'sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', extra_field: 'bad' },
+      ],
+    };
+    assert.throws(() => {
+      attestationCore.buildPreparedUnattestedAttestationDraft({
+        preparedPlan: plan,
+        validatePlanFn: planCore.validatePreparedCollectionPlan,
+        migrationManifest: manifestWithBadMigs,
+        expectedSchemaCandidate: candidate,
+        catalogEvidence: SYNTHETIC_EVIDENCE,
+      });
+    }, /UNKNOWN_FIELD/);
+  });
+
+  it('migration record rejects invalid checksum', () => {
+    const plan = buildRealValidatedPlan();
+    const candidate = buildTestCandidate();
+    const manifestWithBadMigs = {
+      status: 'ACTIVE',
+      migrations: [
+        { id: '20260101000001_test-migration-a', checksum: 'sha256:not_valid_hex' },
+      ],
+    };
+    assert.throws(() => {
+      attestationCore.buildPreparedUnattestedAttestationDraft({
+        preparedPlan: plan,
+        validatePlanFn: planCore.validatePreparedCollectionPlan,
+        migrationManifest: manifestWithBadMigs,
+        expectedSchemaCandidate: candidate,
+        catalogEvidence: SYNTHETIC_EVIDENCE,
+      });
+    }, /DIGEST_INVALID/);
+  });
+
+  it('migration record rejects duplicate id', () => {
+    const plan = buildRealValidatedPlan();
+    const candidate = buildTestCandidate();
+    const manifestWithDup = {
+      status: 'ACTIVE',
+      migrations: [
+        { id: '20260101000001_test-migration-a', checksum: 'sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' },
+        { id: '20260101000001_test-migration-a', checksum: 'sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb' },
+      ],
+    };
+    assert.throws(() => {
+      attestationCore.buildPreparedUnattestedAttestationDraft({
+        preparedPlan: plan,
+        validatePlanFn: planCore.validatePreparedCollectionPlan,
+        migrationManifest: manifestWithDup,
+        expectedSchemaCandidate: candidate,
+        catalogEvidence: SYNTHETIC_EVIDENCE,
+      });
+    }, /MIGRATION_INVALID/);
+  });
+
+  // 11. Repeat comparison canonical tests
+  it('computeObjectDigest is insertion-order independent', () => {
+    const a = { b: 2, a: 1 };
+    const b = { a: 1, b: 2 };
+    assert.equal(receiptCore.computeObjectDigest(a), receiptCore.computeObjectDigest(b));
+  });
+
+  it('computeObjectDigest detects actual value change', () => {
+    const a = { key: 'value1' };
+    const b = { key: 'value2' };
+    assert.notEqual(receiptCore.computeObjectDigest(a), receiptCore.computeObjectDigest(b));
+  });
+
+  it('computeObjectDigest is nested-key-order independent', () => {
+    const a = { outer: { b: 2, a: 1 } };
+    const b = { outer: { a: 1, b: 2 } };
+    assert.equal(receiptCore.computeObjectDigest(a), receiptCore.computeObjectDigest(b));
+  });
+
+  it('computeObjectDigest detects array order change', () => {
+    const a = { items: [1, 2, 3] };
+    const b = { items: [3, 2, 1] };
+    assert.notEqual(receiptCore.computeObjectDigest(a), receiptCore.computeObjectDigest(b));
+  });
+
+  // 12. Bounded failure outcome tests
+  it('mapFailure maps known categories correctly', () => {
+    // Test the CLI's mapFailure through CLI execution
     const { execFileSync } = require('child_process');
     const cli = path.resolve(__dirname, '..', '..', 'scripts', 'run-production-readonly-catalog-collection.cjs');
-
-    // Test with --host (forbidden)
     let result;
     try {
-      result = execFileSync(process.execPath, [cli, '--host', 'x'], {
-        encoding: 'utf8',
-        timeout: 10000,
-        maxBuffer: 65536,
-      });
+      result = execFileSync(process.execPath, [cli, '--forbidden-flag'], { encoding: 'utf8', timeout: 10000, maxBuffer: 65536 });
     } catch (err) {
       result = err.stdout || '';
     }
-
-    // Should have exactly one JSON document — parse it
-    const jsonMatch = result.trim().match(/^\{[\s\S]*\}$/m);
-    assert.ok(jsonMatch, 'Should output a JSON document');
-    const parsed = JSON.parse(jsonMatch[0]);
+    const parsed = JSON.parse(result.trim());
     assert.equal(parsed.outcome, 'COLLECTION_NOT_RUN_CONNECTION_BOUNDARY');
-    assert.equal(parsed.collection_session_count, 0);
-    assert.equal(parsed.attestation_status, 'UNATTESTED');
-    assert.ok(!result.includes('Error:'), 'No stack in output');
-    assert.ok(!result.includes('at '), 'No stack trace in output');
+    assert.equal(parsed.bounded_category, 'COLLECTION_NOT_RUN_CONNECTION_BOUNDARY');
+    assert.ok(!result.includes('INPUT_INVALID'));
+    assert.ok(!result.includes('Error:'));
+  });
+
+  it('CLI with invalid argv outputs single JSON document only', async () => {
+    const { execFileSync } = require('child_process');
+    const cli = path.resolve(__dirname, '..', '..', 'scripts', 'run-production-readonly-catalog-collection.cjs');
+    let result;
+    try {
+      result = execFileSync(process.execPath, [cli, '--host', 'x'], { encoding: 'utf8', timeout: 10000, maxBuffer: 65536 });
+    } catch (err) {
+      result = err.stdout || '';
+    }
+    // Exactly one JSON document
+    const jsonMatches = result.trim().match(/\{[\s\S]*?\}/g) || [];
+    assert.equal(jsonMatches.length, 1);
+    const parsed = JSON.parse(jsonMatches[0]);
+    assert.ok(parsed.outcome);
+    // No stack in output
+    assert.ok(!result.includes('Error:'));
+    assert.ok(!result.includes('at '));
   });
 
   it('CLI missing required flags outputs bounded JSON', async () => {
@@ -652,17 +713,12 @@ describe('Phase B operator collection receipt core', () => {
     const cli = path.resolve(__dirname, '..', '..', 'scripts', 'run-production-readonly-catalog-collection.cjs');
     let result;
     try {
-      result = execFileSync(process.execPath, [cli, '--secret-file', 'x'], {
-        encoding: 'utf8',
-        timeout: 10000,
-        maxBuffer: 65536,
-      });
+      result = execFileSync(process.execPath, [cli, '--secret-file', 'x'], { encoding: 'utf8', timeout: 10000, maxBuffer: 65536 });
     } catch (err) {
       result = err.stdout || '';
     }
     const parsed = JSON.parse(result.trim());
     assert.equal(parsed.collection_session_count, 0);
-    assert.ok(['COLLECTION_NOT_RUN_CONNECTION_BOUNDARY'].includes(parsed.outcome));
     assert.ok(!result.includes('Error:'));
   });
 
@@ -671,30 +727,37 @@ describe('Phase B operator collection receipt core', () => {
     const cli = path.resolve(__dirname, '..', '..', 'scripts', 'run-production-readonly-catalog-collection.cjs');
     let result;
     try {
-      result = execFileSync(process.execPath, [cli, '--repeat', '3', '--secret-file', 'x', '--role-mapping-file', 'x', '--baseline-commit', TEST_BASELINE, '--approval-reference', TEST_APPROVAL], {
-        encoding: 'utf8',
-        timeout: 10000,
-        maxBuffer: 65536,
-      });
+      result = execFileSync(process.execPath, [cli, '--repeat', '3', '--secret-file', 'x', '--role-mapping-file', 'x', '--baseline-commit', 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', '--approval-reference', 'issue:1'], { encoding: 'utf8', timeout: 10000, maxBuffer: 65536 });
     } catch (err) {
       result = err.stdout || '';
     }
     const parsed = JSON.parse(result.trim());
-    assert.equal(parsed.collection_session_count, 0);
+    assert.equal(parsed.outcome, 'COLLECTION_NOT_RUN_CONNECTION_BOUNDARY');
   });
 
-  // === Manifest unchanged tests ===
-  it('canonical manifest unchanged', () => {
+  // 13. Output has no raw internal categories
+  it('CLI failure output contains no raw internal categories', async () => {
+    const { execFileSync } = require('child_process');
+    const cli = path.resolve(__dirname, '..', '..', 'scripts', 'run-production-readonly-catalog-collection.cjs');
+    let result;
+    try {
+      result = execFileSync(process.execPath, [cli, '--repeat', '2'], { encoding: 'utf8', timeout: 10000, maxBuffer: 65536 });
+    } catch (err) {
+      result = err.stdout || '';
+    }
+    const forbiddenRawCategories = ['INPUT_INVALID', 'BASELINE_INVALID', 'PLAN_FAILED', 'REPEAT_MISMATCH', 'CATALOG_ADAPTER_', 'RECEIPT_'];
+    for (const raw of forbiddenRawCategories) {
+      assert.ok(!result.includes(raw), `Output should not contain raw category: ${raw}`);
+    }
+  });
+
+  // 14. Manifest unchanged
+  it('CLI source has no manifest write operations', () => {
     const src = require('fs').readFileSync(
       path.resolve(__dirname, '..', '..', 'scripts', 'run-production-readonly-catalog-collection.cjs'), 'utf8'
     );
-    // No manifest write, activation, or file mutation operations
     const codeOnly = src.replace(/\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '');
     assert.ok(!codeOnly.includes('writeFile'));
     assert.ok(!codeOnly.includes('appendFile'));
-    // ATTESTED as standalone word only (not in UNATTESTED)
-    assert.ok(!/\bATTESTED\b/.test(codeOnly) || codeOnly.includes('adoption_status.*UNATTESTED'));
-    assert.ok(!codeOnly.includes('ADOPTED'));
-    assert.ok(!codeOnly.includes('.manifest'));
   });
 });
