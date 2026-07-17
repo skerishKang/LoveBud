@@ -124,10 +124,15 @@ test('public viewer loads social split scripts before detail-ui', () => {
   });
 });
 
-test('view.html loads editor.css with #3419 cache version', () => {
+test('view.html loads editor.css with cache-busted version token', () => {
   const html = fs.readFileSync('pages/view.html', 'utf8');
+  assert.match(
+    html,
+    /href="\.\.\/css\/editor\.css\?v=[^"]+"/,
+    'view.html must load editor.css with a non-empty cache version token'
+  );
   assert.ok(
-    html.includes('../css/editor.css?v=20260716-3567-1'),
-    'view.html must load editor.css with #3419 cache version'
+    !html.includes('../css/editor.css?v=20260716-3567-1'),
+    'view.html must not keep the pre-#3580 editor.css token after tree-scope CSS fix'
   );
 });

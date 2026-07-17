@@ -196,7 +196,7 @@ test('#3567 EXECUTED browser cascade fixture: public 390 visible; owner closed h
   const publicFixture =
     '<!doctype html><html><head><meta charset="utf-8">' +
     '<meta name="viewport" content="width=device-width, initial-scale=1">' +
-    '<link rel="stylesheet" href="/css/editor.css?v=20260716-3567-1">' +
+    '<link rel="stylesheet" href="/css/editor.css?v=20260717-3580-1">' +
     '</head><body class="editor-readonly">' +
     '<div class="editor-layout">' +
     '<aside class="sidebar public-viewer-sidebar" data-appreciation-layout="tree-scope-rail">' +
@@ -209,7 +209,7 @@ test('#3567 EXECUTED browser cascade fixture: public 390 visible; owner closed h
   const ownerFixture =
     '<!doctype html><html><head><meta charset="utf-8">' +
     '<meta name="viewport" content="width=device-width, initial-scale=1">' +
-    '<link rel="stylesheet" href="/css/editor.css?v=20260716-3567-1">' +
+    '<link rel="stylesheet" href="/css/editor.css?v=20260717-3580-1">' +
     '</head><body>' +
     '<div class="editor-layout">' +
     '<aside class="sidebar"><div>tree</div></aside>' +
