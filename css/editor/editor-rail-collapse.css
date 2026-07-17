@@ -1,0 +1,121 @@
+/**
+ * #3585 Independent desktop rail collapse
+ * Desktop (>=1025px) only. Mobile uses existing panel hierarchy.
+ */
+
+@media (min-width: 1025px) {
+  .editor-layout {
+    /* gap already set via overrides; token documents ownership */
+    gap: var(--editor-rail-gap, 18px);
+  }
+
+  .editor-layout > .canvas-area {
+    flex: 1 1 auto;
+    min-width: 0;
+    transition: none;
+  }
+
+  /* Collapsed rail releases space without removing DOM (state preserved) */
+  .editor-layout[data-left-rail-collapsed="true"] > .sidebar,
+  .editor-layout[data-right-rail-collapsed="true"] > .detail-panel {
+    position: absolute;
+    width: 0 !important;
+    min-width: 0 !important;
+    max-width: 0 !important;
+    flex: 0 0 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: 0 !important;
+    overflow: hidden !important;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    z-index: -1;
+  }
+
+  .editor-layout[data-left-rail-collapsed="true"] > .sidebar *,
+  .editor-layout[data-right-rail-collapsed="true"] > .detail-panel * {
+    visibility: hidden !important;
+  }
+
+  .editor-rail-restore-host {
+    position: absolute;
+    inset: 0;
+    z-index: 8;
+    pointer-events: none;
+  }
+
+  .editor-rail-restore {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-height: 44px;
+    min-width: 44px;
+    padding: 10px 12px;
+    border-radius: 999px;
+    border: 1px solid rgba(144, 73, 81, 0.16);
+    background: rgba(255, 250, 244, 0.96);
+    color: var(--primary);
+    font: inherit;
+    font-size: 12px;
+    font-weight: 800;
+    line-height: 1.2;
+    box-shadow: 0 14px 28px rgba(75, 64, 57, 0.12);
+    cursor: pointer;
+    pointer-events: auto;
+    z-index: 9;
+  }
+
+  .editor-rail-restore[hidden] {
+    display: none !important;
+  }
+
+  .editor-rail-restore.is-left {
+    left: 12px;
+  }
+
+  .editor-rail-restore.is-right {
+    right: 12px;
+  }
+
+  .editor-rail-restore:hover {
+    background: rgba(144, 73, 81, 0.1);
+    border-color: rgba(144, 73, 81, 0.26);
+  }
+
+  .editor-rail-restore:focus-visible {
+    outline: 2px solid rgba(144, 73, 81, 0.42);
+    outline-offset: 2px;
+  }
+
+  .editor-rail-restore .material-symbols-outlined {
+    font-size: 18px;
+    line-height: 1;
+  }
+}
+
+@media (max-width: 1024px) {
+  .editor-rail-restore-host,
+  .editor-rail-restore {
+    display: none !important;
+  }
+
+  /* Never leave desktop collapse state active on narrow viewports */
+  .editor-layout[data-left-rail-collapsed="true"] > .sidebar,
+  .editor-layout[data-right-rail-collapsed="true"] > .detail-panel {
+    position: revert;
+    width: revert;
+    min-width: revert;
+    max-width: revert;
+    flex: revert;
+    padding: revert;
+    opacity: revert;
+    visibility: revert;
+    pointer-events: revert;
+    z-index: revert;
+  }
+}

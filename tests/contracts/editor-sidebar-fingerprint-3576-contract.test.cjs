@@ -18,7 +18,6 @@ const ROOT = path.resolve(__dirname, '..', '..');
 const EDITOR_HTML = path.join(ROOT, 'pages', 'editor.html');
 const SIDEBAR_SRC = path.join(ROOT, 'js', 'editor', 'templates', 'editor-sidebar-template.js');
 const OLD_FP = '6d79c66e2fbc';
-const EXPECTED_FP = '38e12fa98ab9';
 
 function sha12(buf) {
   return crypto.createHash('sha256').update(buf).digest('hex').slice(0, 12);
@@ -26,21 +25,26 @@ function sha12(buf) {
 
 test('#3576 fingerprint: sidebar is type=module with new fingerprint only', () => {
   const html = fs.readFileSync(EDITOR_HTML, 'utf8');
+  const src = fs.readFileSync(SIDEBAR_SRC);
+  const expectedFp = sha12(src);
   const tag = html.match(/<script[^>]*editor-sidebar-template\.js[^"]*"[^>]*>/);
   assert.ok(tag, 'sidebar script tag must exist');
   assert.match(tag[0], /type="module"/, 'sidebar must load as type="module"');
   assert.ok(!tag[0].includes(OLD_FP), `old fingerprint ${OLD_FP} must be removed`);
-  assert.ok(tag[0].includes(`v=${EXPECTED_FP}`), `new fingerprint ${EXPECTED_FP} must be present`);
+  assert.ok(tag[0].includes(`v=${expectedFp}`), `HTML fingerprint must match source sha12 ${expectedFp}`);
   assert.equal((html.match(/editor-sidebar-template\.js/g) || []).length, 1, 'exactly one sidebar script reference');
 });
 
 test('#3576 fingerprint: HTML fingerprint matches current sidebar source SHA-256 prefix', () => {
+  const html = fs.readFileSync(EDITOR_HTML, 'utf8');
   const src = fs.readFileSync(SIDEBAR_SRC);
   const actual = sha12(src);
+  const m = html.match(/editor-sidebar-template\.js\?v=([A-Za-z0-9._-]+)/);
+  assert.ok(m, 'sidebar script must include ?v= fingerprint');
   assert.equal(
+    m[1],
     actual,
-    EXPECTED_FP,
-    `sidebar source sha12 must equal HTML fingerprint (got ${actual}, expected ${EXPECTED_FP})`
+    `sidebar HTML ?v= must equal source sha12 (got ${m[1]}, expected ${actual})`
   );
   assert.notEqual(actual, OLD_FP, 'source must not hash to the retired fingerprint');
 });

@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Editor rails #3585 fixture</title>
+  <link rel="stylesheet" href="../../css/editor.css" />
+  <style>
+    /* fixture-only: avoid full app chrome dependency */
+    body { margin: 0; }
+    #shared-header { height: 80px; }
+
+    /*
+     * #3585 state preservation fixture — non-null baseline.
+     * The contract test reads these values from the live DOM via
+     * getComputedStyle / getAttribute, NOT from a hand-written JSON.
+     * Layout mode is expressed on <body data-layout-mode="free">.
+     * Canvas zoom/pan is expressed as an inline CSS transform on
+     * #canvasSvg so getComputedStyle().transform returns a non-trivial
+     * matrix that must be preserved across all rail transitions.
+     */
+    #canvasSvg {
+      transform: translate(84px, -36px) scale(1.25);
+      transform-origin: 0 0;
+    }
+  </style>
+</head>
+<body data-layout-mode="free">
+  <div id="shared-header" data-shared-header="true"></div>
+  <div class="editor-layout">
+    <aside class="sidebar" id="editorSidebarPanel" data-editor-rail="left">
+      <div class="editor-rail-panel-toolbar">
+        <button
+          type="button"
+          id="editorLeftRailCollapseBtn"
+          class="editor-rail-collapse-btn"
+          data-editor-rail-collapse="left"
+          aria-controls="editorSidebarPanel"
+          aria-expanded="true"
+          aria-label="트리 패널 숨기기"
+          title="트리 패널 숨기기"
+        >
+          <span class="material-symbols-outlined" aria-hidden="true">left_panel_close</span>
+          <span class="editor-rail-collapse-label">숨기기</span>
+        </button>
+      </div>
+      <div class="editor-status-card">
+        <strong id="sidebarTreeTitle">Fixture Tree</strong>
+        <p>Tree scope card content for width measurement.</p>
+      </div>
+    </aside>
+
+    <main class="canvas-area" id="canvasArea">
+      <div class="editor-mobile-panel-controls" aria-label="모바일 보조 패널">
+        <button type="button" id="mobileTreePanelToggle" class="editor-mobile-panel-toggle" aria-expanded="false">트리 정보</button>
+        <button type="button" id="mobileDetailPanelToggle" class="editor-mobile-panel-toggle" aria-expanded="false">선택한 순간</button>
+      </div>
+      <svg class="canvas-svg" id="canvasSvg" data-zoom="1.25" data-pan-x="84" data-pan-y="-36">
+        <!-- Fixture moment node: the contract test reads data-id from the
+             .memory-node.selected element to assert selectedMomentId is
+             preserved across rail transitions. Runtime DOM, not JSON. -->
+        <g class="memory-node selected" data-id="fixture-moment-3585" transform="translate(120, 80)">
+          <circle r="14" cx="0" cy="0" fill="#904951" />
+        </g>
+      </svg>
+      <button type="button" id="editorMobilePanelBackdrop" class="editor-mobile-panel-backdrop" hidden aria-hidden="true"></button>
+    </main>
+
+    <aside class="detail-panel" id="detailPanel" data-editor-rail="right">
+      <div class="panel-header">
+        <h3 class="headline editor-panel-headline">선택한 순간</h3>
+        <button
+          type="button"
+          id="editorRightRailCollapseBtn"
+          class="editor-rail-collapse-btn"
+          data-editor-rail-collapse="right"
+          aria-controls="detailPanel"
+          aria-expanded="true"
+          aria-label="순간 패널 숨기기"
+          title="순간 패널 숨기기"
+        >
+          <span class="material-symbols-outlined" aria-hidden="true">right_panel_close</span>
+          <span class="editor-rail-collapse-label">숨기기</span>
+        </button>
+      </div>
+      <div class="detail-content">
+        <div class="editor-status-card">
+          <strong>Fixture Moment</strong>
+          <p>Selected moment detail content for width measurement.</p>
+        </div>
+      </div>
+    </aside>
+  </div>
+  <script src="../../js/editor/editor-mobile-panel-hierarchy.js"></script>
+  <script src="../../js/editor/editor-rail-collapse.js"></script>
+</body>
+</html>

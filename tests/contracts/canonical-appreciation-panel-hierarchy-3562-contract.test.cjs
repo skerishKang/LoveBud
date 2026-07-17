@@ -323,8 +323,8 @@ test('#3576 sidebar template loads as type="module" in editor.html (ESM restored
     'old classic-conversion fingerprint 6d79c66e2fbc must be removed'
   );
   assert.ok(
-    /editor-sidebar-template\.js\?v=38e12fa98ab9/.test(sidebarTag[0]),
-    'sidebar template must use the restored-ESM fingerprint'
+    /editor-sidebar-template\.js\?v=[A-Za-z0-9._-]+/.test(sidebarTag[0]),
+    'sidebar template must carry a non-empty cache-bust fingerprint'
   );
   const sharedIdx = editorHtml.indexOf('canonical-appreciation-detail-presentation.js');
   const sideIdx = editorHtml.indexOf('editor-sidebar-template.js');

@@ -1,9 +1,16 @@
 @import url('../global.css?v=20260415-10');
 
 :root {
-    /* Editor Specific Layout Constants */
-    --sidebar-width: 292px;
-    --detail-panel-width: 436px;
+    /* Editor Specific Layout Constants
+       #3585: one shared rail width token so left tree-scope and right
+       selected-moment rails share visual weight. 360px sits between the
+       prior left 292px and right 436px baselines while keeping a usable
+       canvas at 1440px (layout padding/gap preserved). */
+    --editor-rail-width: 360px;
+    --editor-rail-gap: 18px;
+    --editor-rail-card-padding: 20px;
+    --sidebar-width: var(--editor-rail-width);
+    --detail-panel-width: var(--editor-rail-width);
     --header-height: 80px;
 }
 

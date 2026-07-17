@@ -325,10 +325,24 @@ test('modified browser assets have non-stale tokens and protected base-api-fetch
     );
   }
 
-  // Date-token assets must be bumped for this corrective pass.
+  // Content-fingerprint assets (sha12-based, dynamic).
+  // #3585: i18n-editor.js migrated from date-token to sha12 fingerprint.
+  const dynamicFingerprintAssets = [
+    {
+      file: 'js/i18n/i18n-editor.js',
+      pattern: /i18n-editor\.js\?v=([^"']+)/,
+    },
+  ];
+  for (const asset of dynamicFingerprintAssets) {
+    const expected = sha12(asset.file);
+    const match = editorHtml.match(asset.pattern);
+    assert.ok(match, `token missing for ${asset.file}`);
+    assert.equal(match[1], expected, `${asset.file} token must match content sha12 ${expected}`);
+  }
+
+  // Date-token assets that remain on date-based cache-bust.
   assert.match(editorHtml, /editor-detail-ui\.js\?v=20260715-3519-1/);
   assert.match(editorHtml, /editor-i18n-refresh\.js\?v=20260715-3519-1/);
-  assert.match(editorHtml, /i18n-editor\.js\?v=20260715-3519-1/);
 
   // Content-fingerprint assets modified in final corrective pass.
   const finalFingerprintAssets = [

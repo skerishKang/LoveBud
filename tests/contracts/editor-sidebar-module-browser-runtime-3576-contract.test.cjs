@@ -18,7 +18,6 @@ const http = require('node:http');
 const crypto = require('node:crypto');
 
 const ROOT = path.resolve(__dirname, '..', '..');
-const EXPECTED_FP = '38e12fa98ab9';
 const SIDEBAR_REL = 'js/editor/templates/editor-sidebar-template.js';
 const SHARED_REL = 'js/shared/canonical-appreciation-detail-presentation.js';
 
@@ -92,6 +91,8 @@ test('#3576 BROWSER: actual sidebar module evaluation and mount replacement orde
   const port = server.address().port;
   const base = `http://127.0.0.1:${port}`;
 
+  const sidebarSrc = fs.readFileSync(path.join(ROOT, SIDEBAR_REL));
+  const sidebarFp = crypto.createHash('sha256').update(sidebarSrc).digest('hex').slice(0, 12);
   const fixtureHtml = `<!doctype html>
 <html lang="ko">
 <head>
@@ -101,7 +102,7 @@ test('#3576 BROWSER: actual sidebar module evaluation and mount replacement orde
 <body>
   <div id="editorSidebarTemplateMount"></div>
   <script src="/${SHARED_REL}?v=bed65bd9cb52"></script>
-  <script type="module" src="/${SIDEBAR_REL}?v=${EXPECTED_FP}"></script>
+  <script type="module" src="/${SIDEBAR_REL}?v=${sidebarFp}"></script>
   <script>
     // Classic deferred-classic would run earlier; this classic post-module marker
     // only proves DOMContentLoaded ordering relative to module evaluation.
@@ -251,7 +252,7 @@ test('#3576 BROWSER: actual sidebar module evaluation and mount replacement orde
     assert.ok(sidebarResponse, 'sidebar module request must be observed');
     assert.equal(sidebarResponse.status, 200, 'sidebar module request must succeed');
     assert.ok(
-      sidebarResponse.url.includes(`v=${EXPECTED_FP}`),
+      sidebarResponse.url.includes(`v=${sidebarFp}`),
       `actual browser must request new fingerprint URL, got ${sidebarResponse.url}`
     );
 
@@ -262,7 +263,7 @@ test('#3576 BROWSER: actual sidebar module evaluation and mount replacement orde
     assert.equal(result.mountCount, 1, '#detailTreeMetaMount must exist exactly once');
     assert.equal(result.mountConnected, true, '#detailTreeMetaMount must be a connected DOM node');
     assert.equal(result.mountBeforeDCL, true, 'mount must be created before DOMContentLoaded');
-    assert.ok(result.moduleSrc && result.moduleSrc.includes(EXPECTED_FP), 'module tag must use new fingerprint');
+    assert.ok(result.moduleSrc && result.moduleSrc.includes(sidebarFp), 'module tag must use new fingerprint');
 
     // Expected order markers (subset).
     const events = result.trace.map((e) => e.event);
@@ -302,8 +303,10 @@ test('#3576 BROWSER source: fingerprint and ESM invariants remain', () => {
   const html = fs.readFileSync(path.join(ROOT, 'pages', 'editor.html'), 'utf8');
   const src = fs.readFileSync(path.join(ROOT, SIDEBAR_REL));
   const sha = crypto.createHash('sha256').update(src).digest('hex').slice(0, 12);
-  assert.equal(sha, EXPECTED_FP);
-  assert.match(html, /type="module"\s+src="[^"]*editor-sidebar-template\.js\?v=38e12fa98ab9"/);
+  assert.match(
+    html,
+    new RegExp(`type="module"\\s+src="[^"]*editor-sidebar-template\\.js\\?v=${sha}"`)
+  );
   assert.doesNotMatch(html, /6d79c66e2fbc/);
   assert.match(src.toString('utf8'), /export\s+function\s+buildSidebarTemplate\s*\(/);
 });

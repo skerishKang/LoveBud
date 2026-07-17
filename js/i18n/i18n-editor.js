@@ -2,6 +2,14 @@
 
 Object.assign(window.i18nEditor, {
     more: { ko: '상세로 보기', en: 'View details' },
+    editor_rail_hide_tree: { ko: '트리 패널 숨기기', en: 'Hide tree panel' },
+    editor_rail_show_tree: { ko: '트리 패널 열기', en: 'Show tree panel' },
+    editor_rail_hide_moment: { ko: '순간 패널 숨기기', en: 'Hide moment panel' },
+    editor_rail_show_moment: { ko: '순간 패널 열기', en: 'Show moment panel' },
+    editor_rail_hide_tree_short: { ko: '숨기기', en: 'Hide' },
+    editor_rail_show_tree_short: { ko: '열기', en: 'Show' },
+    editor_rail_hide_moment_short: { ko: '숨기기', en: 'Hide' },
+    editor_rail_show_moment_short: { ko: '열기', en: 'Show' },
     editor_back_to_my_trees: { ko: '내 러브트리로 돌아가기', en: 'Back to my LoveTrees' },
     editor_add_memory: { ko: '이 순간에서 이어가기', en: 'Continue from this moment' },
     editor_add_first_memory: { ko: '첫 순간 심기', en: 'Plant first moment' },

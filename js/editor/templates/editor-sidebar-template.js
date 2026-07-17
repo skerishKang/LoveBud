@@ -28,7 +28,24 @@ function buildTreeScopeRegion() {
 export function buildSidebarTemplate() {
   return (
     `
-        <aside class="sidebar reveal-fade" data-appreciation-layout="tree-scope-rail">
+        <aside class="sidebar reveal-fade" id="editorSidebarPanel" data-appreciation-layout="tree-scope-rail" data-editor-rail="left">
+            <div class="editor-rail-panel-toolbar">
+                <button
+                  type="button"
+                  id="editorLeftRailCollapseBtn"
+                  class="editor-rail-collapse-btn"
+                  data-editor-rail-collapse="left"
+                  aria-controls="editorSidebarPanel"
+                  aria-expanded="true"
+                  data-i18n-aria-label="editor_rail_hide_tree"
+                  data-i18n-title="editor_rail_hide_tree"
+                  aria-label="트리 패널 숨기기"
+                  title="트리 패널 숨기기"
+                >
+                  <span class="material-symbols-outlined" aria-hidden="true">left_panel_close</span>
+                  <span class="editor-rail-collapse-label" data-i18n="editor_rail_hide_tree_short">숨기기</span>
+                </button>
+            </div>
             <div class="editor-sidebar-back-wrap">
                 <a id="backToMyTreesLink" href="my-trees" class="editor-sidebar-back-link">
                     <span aria-hidden="true" class="editor-sidebar-back-icon">←</span>

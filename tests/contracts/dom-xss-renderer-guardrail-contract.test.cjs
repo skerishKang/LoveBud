@@ -263,6 +263,10 @@ const FILE_ALLOWLIST = {
     count: 1, classification: 'safe',
     reason: 'canvas.innerHTML = buildCanvasFallback() — approved template with escapeHtml'
   },
+  'js/editor/editor-rail-collapse.js': {
+    count: 2, classification: 'safe',
+    reason: '#3585 rail collapse restore buttons: leftRestore.innerHTML and rightRestore.innerHTML — static material icon + i18n label markup, no user content'
+  },
 
   // ── Editor Templates (outerHTML pattern) ──────────────────────────
   'js/editor/templates/editor-add-memory-form-template.js': { count: 1, classification: 'safe', reason: 'mount.outerHTML = template — approved template renderer with escapeHtml' },
