@@ -377,6 +377,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/execution-order-simulation-3576-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "SIMULATION only (not actual browser execution). node:vm strips export and fabricates DOMContentLoaded sequencing for editor-sidebar-template; classifies as EXECUTED_FAKE evidence. Does not prove real module evaluation order, network, or Chromium runtime. No real browser/network/DB.",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/canonical-appreciation-render-model-runtime-contract.test.cjs",
       "layer": "EXECUTED_FAKE",
       "rationale": "Executes the browser-global pure appreciation render-model helper in node:vm with injected window context and asserts normalization, field omission, detached outputs, and fail-closed capabilities. No real browser, network, auth provider, database, deployment, or Production resource is used.",
@@ -4334,6 +4340,30 @@
       "path": "tests/smoke/routes.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/editor-sidebar-module-browser-runtime-3576-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Actual Playwright Chromium loads local static editor template assets with type=module, records real MutationObserver/DOMContentLoaded order, and asserts mount replacement for #detailTreeMetaMount. Fails closed when Playwright/Chromium is unavailable. No Production credentials or DB.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/editor-owner-tree-scope-browser-runtime-3576-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Actual Playwright Chromium boots pages/editor.html with localStorage auth fixture and API route interception; traces owner no-moment and with-moments tree-scope left-rail render via real DOM/computed state and LoveBudEditorDebug. Fails closed when Playwright/Chromium is unavailable. No Production write/DB.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/editor-sidebar-fingerprint-3576-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Static contract: sidebar remains type=module, old fingerprint 6d79c66e2fbc is absent, new fingerprint tracks current sidebar source SHA-256 prefix, and loading semantics stay ESM. No browser/network/DB.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/tree-meta-title-resolution-3576-behavior.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes real editor-helpers + owner/public tree-meta boundary factories in node:vm with fake DOM/i18n and asserts buildTreeMetaRenderModel preserves custom titles, locale fallbacks for sentinel keys, moment-independent title stability, owner/viewer agreement, and the 1-arg resolveTreeTitleText clobber regression. No real browser/network/DB.",
       "capabilities": []
     }
   ],

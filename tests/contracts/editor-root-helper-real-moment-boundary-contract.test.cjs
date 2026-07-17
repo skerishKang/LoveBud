@@ -207,12 +207,15 @@ test('editor page cache-busts root helpers and CTA files to PR #2448/#2449', () 
   assert.match(publicCanvas, /\.\.\/js\/editor\/editor-root-helpers\.js\?v=20260613-2448/);
   assert.match(viewPage, /\.\.\/js\/editor\/editor-root-helpers\.js\?v=20260613-2448/);
 
-  // PR #2448: editor.html: editor-shell-canvas-ui/memory/helpers + editor.js도 2448 이상
-  assert.match(editorPage, /\.\.\/js\/editor\/editor-shell-canvas-ui\.js\?v=20260613-2448/);
+  // PR #2448 baseline + later cache-busts: shell canvas/memory/helpers + editor.js stay versioned.
+  // #3576 bumped editor-shell-canvas-ui.js fingerprint after owner initial-selection fix.
+  assert.match(editorPage, /\.\.\/js\/editor\/editor-shell-canvas-ui\.js\?v=[^"'\s>]+/);
+  assert.doesNotMatch(editorPage, /editor-shell-canvas-ui\.js\?v=20260613-2448["']/);
   assert.match(editorPage, /\.\.\/js\/editor\/editor-shell-memory\.js\?v=20260613-2448/);
   assert.match(editorPage, /\.\.\/js\/editor\/editor-shell-helpers\.js\?v=20260613-2448/);
   // RELEASE_TOKEN: editor.js must have non-empty version token, not hardcoded literal
   assertVersionedAsset(editorPage, '\\.\\./js/editor\\.js', 'editor.js must have non-empty version token');
+  assert.doesNotMatch(editorPage, /editor\.js\?v=20260712-editor-ui-followup-1["']/);
 
   // PR #2449: editor-empty-guide-ui.js + editor-page-event-bindings.js + editor-empty-guide-template.js
   // + editor-panel-history.js 모두 ?v=20260613-2449로 bust

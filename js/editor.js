@@ -751,6 +751,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 getCanonicalRootId: () => canonicalRootId,
                 setCurrentEditingMemory: (value) => { currentEditingMemory = value; },
                 setDetailEmptyState: callSetDetailEmptyState,
+                updateDetailPanel: callUpdateDetailPanel,
                 log
             });
 

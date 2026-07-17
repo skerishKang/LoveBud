@@ -215,7 +215,7 @@ test('#3562 EXECUTED empty-tree tree-meta model retains title/status without mom
     formatI18nText: function (_k, fb) {
       return fb;
     },
-    resolveTreeTitleText: function (t) {
+    resolveTreeTitleText: function (_i18n, t) {
       return t || '빈 트리';
     },
     createInlineIcon: function () {
@@ -302,4 +302,131 @@ test('#3562 closed-issue hygiene header', () => {
   assert.match(header, /Keep #3425 OPEN/);
   assert.match(header, /Keep #1882 OPEN/);
   assert.equal(header.includes('Keep #' + '3075 OPEN'), false);
+});
+
+// ─── #3576 Owner appreciation left-rail tree-scope restoration ───
+
+test('#3576 sidebar template loads as type="module" in editor.html (ESM restored)', () => {
+  const editorHtml = require('fs').readFileSync(
+    path.join(ROOT, 'pages/editor.html'), 'utf8'
+  );
+  const sidebarTag = editorHtml.match(
+    /<script[^>]*src="[^"]*editor-sidebar-template\.js[^"]*"[^>]*>/g
+  );
+  assert.ok(sidebarTag && sidebarTag.length === 1, 'exactly one sidebar script tag');
+  assert.ok(
+    sidebarTag[0].includes('type="module"'),
+    'sidebar template must be loaded as type="module" (ESM)'
+  );
+  assert.ok(
+    !sidebarTag[0].includes('6d79c66e2fbc'),
+    'old classic-conversion fingerprint 6d79c66e2fbc must be removed'
+  );
+  assert.ok(
+    /editor-sidebar-template\.js\?v=38e12fa98ab9/.test(sidebarTag[0]),
+    'sidebar template must use the restored-ESM fingerprint'
+  );
+  const sharedIdx = editorHtml.indexOf('canonical-appreciation-detail-presentation.js');
+  const sideIdx = editorHtml.indexOf('editor-sidebar-template.js');
+  assert.ok(sideIdx > sharedIdx, 'sidebar template after shared builder');
+  const sidebarSrc = require('fs').readFileSync(
+    path.join(ROOT, 'js/editor/templates/editor-sidebar-template.js'), 'utf8'
+  );
+  assert.match(sidebarSrc, /export\s+function\s+buildSidebarTemplate\s*\(/);
+});
+
+test('#3576 EXECUTED: sidebar mount creates detailTreeMetaMount', () => {
+  const api = loadShared();
+  const mount = { id: 'editorSidebarTemplateMount', outerHTML: '' };
+  const sidebarHtml = api.buildTreeScopeShellHtml({ authority: 'owner' });
+  mount.outerHTML = '<aside class="sidebar">' + sidebarHtml + '</aside>';
+  assert.ok(mount.outerHTML.includes('id="detailTreeMetaMount"'));
+  assert.equal((mount.outerHTML.match(/id="detailTreeMetaMount"/g) || []).length, 1);
+});
+
+test('#3576 buildTreeMetaRenderModel produces valid model', () => {
+  const sandbox = { window: {}, globalThis: null,
+    document: { createElement: () => {
+      const el = { style: {}, dataset: {}, appendChild() { return this; }, addEventListener() {}, textContent: '' };
+      el.children = []; el.appendChild = function(c) { this.children.push(c); return c; }; return el;
+    }, createTextNode: (t) => ({ textContent: t, nodeType: 3 }) }
+  };
+  sandbox.globalThis = sandbox;
+  vm.createContext(sandbox);
+  vm.runInContext(read(SHARED), sandbox);
+  const treeMetaSrc = read('js/editor/editor-detail-tree-meta.js');
+  const clean = treeMetaSrc.replace(/^\(function\s*\(\)\s*\{/, '').replace(/\}\)\(\);?\s*$/, '');
+  vm.runInContext(clean, sandbox);
+  const boundary = sandbox.window.createEditorDetailTreeMetaBoundary;
+  const d = sandbox.document;
+  const { buildTreeMetaRenderModel } = boundary({
+    i18n: () => '', formatI18nText: (_, f) => f || '',
+    resolveTreeTitleText: (_i18n, t) => t || 'Test Tree',
+    createInlineIcon: (icon) => { const e = d.createElement('span'); e.textContent = icon; return e; },
+    showToast: () => {}, canEdit: true, openRenameTree: () => {},
+    updateTreeVisibility: () => Promise.resolve(), updateDetailPanel: () => () => {},
+  });
+  const m = buildTreeMetaRenderModel({
+    currentTree: { title: 'My LoveTree', visibility: 'public' },
+    treeState: { canonicalRootId: 'root', hasMoments: true, totalMomentCount: 5 },
+    data: { id: 'm1' }, isEmptyState: false, localSaveMode: false,
+  });
+  assert.equal(m.displayTreeTitle, 'My LoveTree');
+  assert.equal(m.isPublic, true);
+  assert.ok(typeof m.countLabel === 'string' && m.countLabel.length > 0);
+});
+
+test('#3576 tree meta preserved on resetDetailViewState', () => {
+  const src = require('fs').readFileSync(path.join(ROOT, 'js/editor/editor-detail-ui.js'), 'utf8');
+  const s = src.indexOf('const resetDetailViewState');
+  const e = src.indexOf('const updateFocusSelectedBtn');
+  const body = (s >= 0 && e > s) ? src.slice(s, e) : '';
+  assert.ok(body.length > 0, 'reset function body found');
+  assert.equal(body.includes('detailTreeMetaMount'), false, 'does not clear tree-scope mount');
+  assert.ok(body.includes('detailAtlasPreviewMount'), 'clears atlas preview (guard)');
+});
+
+test('#3576 right rail has no tree-scope markers', () => {
+  const api = loadShared();
+  const html = api.buildDetailViewModeHtml({ authority: 'owner' });
+  assert.doesNotMatch(html, /id="detailTreeMetaMount"/);
+  assert.doesNotMatch(html, /id="detailTreeMetaSection"/);
+  assert.doesNotMatch(html, /data-canonical-section="tree-scope"/);
+});
+
+test('#3576 updateDetailPanel gets treeMetaMount fresh each call', () => {
+  const src = require('fs').readFileSync(path.join(ROOT, 'js/editor/editor-detail-ui.js'), 'utf8');
+  assert.ok(src.includes("getElementById('detailTreeMetaMount')"));
+});
+
+test('#3576 EXECUTED: empty moment preserves tree scope model', () => {
+  const sandbox = { window: {}, globalThis: null,
+    document: { createElement: () => {
+      const el = { style: {}, dataset: {}, appendChild() { return this; }, addEventListener() {}, textContent: '' };
+      el.children = []; el.appendChild = function(c) { this.children.push(c); return c; }; return el;
+    }, createTextNode: (t) => ({ textContent: t, nodeType: 3 }) }
+  };
+  sandbox.globalThis = sandbox;
+  vm.createContext(sandbox);
+  vm.runInContext(read(SHARED), sandbox);
+  const treeMetaSrc = read('js/editor/editor-detail-tree-meta.js');
+  const clean = treeMetaSrc.replace(/^\(function\s*\(\)\s*\{/, '').replace(/\}\)\(\);?\s*$/, '');
+  vm.runInContext(clean, sandbox);
+  const boundary = sandbox.window.createEditorDetailTreeMetaBoundary;
+  const d = sandbox.document;
+  const { buildTreeMetaRenderModel } = boundary({
+    i18n: () => '', formatI18nText: (_, f) => f || '',
+    resolveTreeTitleText: (_i18n, t) => t || '',
+    createInlineIcon: (icon) => { const e = d.createElement('span'); e.textContent = icon; return e; },
+    showToast: () => {}, canEdit: true, openRenameTree: () => {},
+    updateTreeVisibility: () => Promise.resolve(), updateDetailPanel: () => () => {},
+  });
+  const m = buildTreeMetaRenderModel({
+    currentTree: { title: 'Empty Tree', visibility: 'private' },
+    treeState: { hasMoments: false, totalMomentCount: 0 },
+    data: null, isEmptyState: true, localSaveMode: false,
+  });
+  assert.equal(m.displayTreeTitle, 'Empty Tree');
+  assert.ok(m.visLabel !== undefined);
+  assert.ok(m.countLabel !== undefined);
 });

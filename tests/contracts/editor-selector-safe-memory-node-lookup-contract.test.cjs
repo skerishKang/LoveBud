@@ -309,14 +309,22 @@ test('version — editor-canvas.js imports selection and uiHelpers at -3', funct
   );
 });
 
-test('version — editor.html loads editor-canvas.js at -3', function () {
+test('version — editor.html loads editor-canvas.js with post-selector-safe cache-bust', function () {
   const source = fs.readFileSync(
     path.join(ROOT, 'pages/editor.html'),
     'utf8'
   );
-  assert.ok(
-    source.includes('editor-canvas.js?v=20260628-2971-selector-safe-lookup-3'),
-    'editor.html must load editor-canvas.js at -3 version'
+  // #3576 bumped canvas asset after no-moment updateDetailPanel call.
+  // Reject the stale pre-#3576 pin; require a non-empty cache-bust token.
+  assert.doesNotMatch(
+    source,
+    /editor-canvas\.js\?v=20260628-2971-selector-safe-lookup-3/,
+    'editor-canvas must not revert to the pre-#3576 asset version'
+  );
+  assert.match(
+    source,
+    /editor-canvas\.js\?v=[^"'\s>]+/,
+    'editor.html must load editor-canvas.js with a non-empty version token'
   );
 });
 

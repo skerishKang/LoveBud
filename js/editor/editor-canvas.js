@@ -589,6 +589,11 @@ function createEditorCanvas(deps) {
 
             setDetailEmptyState(!hasVisibleNodes);
             updateFocusSelectedBtn();
+            // #3576: no-moment / no-drawable path previously only toggled empty state and
+            // never invoked updateDetailPanel, so #detailTreeMetaMount stayed unpopulated.
+            if (!hasVisibleNodes && typeof updateDetailPanel === 'function') {
+                updateDetailPanel(null);
+            }
 
             if (shouldRenderRootNode) {
                 console.log(`[editor-canvas] Drawing root node: ${rootMemory.id}`);
