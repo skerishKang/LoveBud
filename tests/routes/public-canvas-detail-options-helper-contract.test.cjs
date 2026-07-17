@@ -17,9 +17,19 @@ test('public canvas init keeps detail UI options behind a local helper', () => {
     initSrc.includes('detailPanel: ctx.detailPanel'),
     'detail UI options helper must preserve detailPanel'
   );
+  // #3586: identity i18n stub removed — must resolve via window.t so raw keys never reach DOM.
   assert.ok(
+    initSrc.includes('function resolveI18n') || initSrc.includes('window.t'),
+    'detail UI options helper must resolve i18n through window.t (not identity stub)'
+  );
+  assert.ok(
+    initSrc.includes('i18n: resolveI18n'),
+    'detail UI options helper must pass resolveI18n into entry/fallback options'
+  );
+  assert.equal(
     initSrc.includes('i18n: function(k) { return k; }'),
-    'detail UI options helper must preserve identity i18n fallback'
+    false,
+    'identity i18n fallback must not remain (exposes raw keys like visibility_public)'
   );
   assert.ok(
     initSrc.includes('publicCanvasConfig: ctx.publicCanvasConfig'),

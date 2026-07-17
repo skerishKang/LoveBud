@@ -186,6 +186,21 @@
     .editor-mobile-mode-status,
     .editor-mobile-mode-toggle {
         display: none !important;
+        visibility: hidden !important;
+        pointer-events: none !important;
+    }
+}
+
+/* #3586 v3: on phone, desktop sidebar mode card must not compete with bottom mode cluster
+   (sidebar is off-canvas, but hard-hide prevents dual count/focus exposure). */
+@media (max-width: 479px) {
+    [data-editor-mode-card],
+    #editorDesktopModeToggle,
+    #editorModeStatusBadge,
+    #editorModeTransitionBtn {
+        display: none !important;
+        visibility: hidden !important;
+        pointer-events: none !important;
     }
 }
 

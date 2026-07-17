@@ -28,15 +28,15 @@ const modeCss = read('css/editor/editor-mode-selection.css');
 const mobileBarCss = read('css/editor/editor-mobile-action-bar.css');
 const editorHtml = read('pages/editor.html');
 
-/** Repo-external screenshot + geometry evidence directory for screenshot review v2. */
-const REVIEW_OUT_V2 = path.join(
+/** Repo-external screenshot + geometry evidence directory for screenshot review v3. */
+const REVIEW_OUT_V3 = path.join(
   'G:',
   'Ddrive',
   'BatangD',
   'task',
   'workdiary',
   'lovebud-review-output',
-  '3586-v2'
+  '3586-v3'
 );
 
 function withTimeout(promise, ms, label) {
@@ -151,6 +151,33 @@ test('#3586 CSS: mobile mode cluster is compact one-line layout', () => {
   assert.match(mobileBarCss, /editor-mobile-mode-status/);
   assert.match(mobileBarCss, /white-space:\s*nowrap/);
   assert.match(mobileBarCss, /is-authoring-hidden/);
+});
+
+test('#3586 CSS: desktop/mobile mode surfaces mutually exclusive by viewport', () => {
+  assert.match(modeCss, /@media \(min-width:\s*480px\)/);
+  assert.match(modeCss, /@media \(max-width:\s*479px\)/);
+  assert.match(modeCss, /#editorModeTransitionBtn/);
+  assert.match(modeCss, /\.editor-mobile-mode-cluster/);
+});
+
+test('#3586 source: narrow canvas metrics avoid 720px floor', () => {
+  const geometrySrc = read('js/editor/editor-canvas-geometry.js');
+  assert.match(geometrySrc, /isNarrowMetrics|width < 560/);
+  assert.match(geometrySrc, /metrics\.width \* 0\.5|width \* 0\.5/);
+});
+
+test('#3586 source: public canvas uses real i18n resolver', () => {
+  const publicInit = read('js/viewer/public-canvas-init.js');
+  assert.match(publicInit, /resolveI18n|window\.t/);
+  assert.doesNotMatch(publicInit, /i18n:\s*function\s*\(\s*k\s*\)\s*\{\s*return\s*k\s*;\s*\}/);
+});
+
+test('#3586 source: view.html loads i18n-index before header mount', () => {
+  const viewHtml = read('pages/view.html');
+  const idx = viewHtml.indexOf('i18n-index.js');
+  const header = viewHtml.indexOf('renderSharedHeader');
+  assert.ok(idx >= 0, 'view.html must load i18n-index.js');
+  assert.ok(header > idx, 'i18n-index must precede renderSharedHeader');
 });
 
 test('#3586 assets: editor page fingerprints bumped for runtime modules', () => {
@@ -508,12 +535,45 @@ function collectMobileGeometry() {
   const topbar = document.querySelector('.editor-canvas-topbar, #editorCanvasTopbar, .canvas-topbar');
   const statusLabel = status && status.querySelector('[data-mobile-mode-status-label]');
   const actionLabel = toggle && toggle.querySelector('[data-mobile-mode-action-label]');
+  const desktopCard = document.querySelector('[data-editor-mode-card]');
+  const desktopStatus = document.getElementById('editorModeStatusBadge');
+  const desktopToggle = document.getElementById('editorModeTransitionBtn');
   const vw = window.innerWidth;
   const vh = window.innerHeight;
+
+  function isDisplayed(el) {
+    if (!el) return false;
+    const st = getComputedStyle(el);
+    if (st.display === 'none' || st.visibility === 'hidden' || Number(st.opacity) === 0) return false;
+    const r = el.getBoundingClientRect();
+    return r.width > 0 && r.height > 0;
+  }
+  function isFocusable(el) {
+    if (!el || !isDisplayed(el)) return false;
+    if (el.disabled || el.getAttribute('aria-hidden') === 'true') return false;
+    if (el.tabIndex < 0 && el.tagName !== 'BUTTON' && el.tagName !== 'A') return false;
+    // Off-canvas / zero-area treated as not focusable for surface ownership.
+    const r = el.getBoundingClientRect();
+    if (r.right < 0 || r.left > vw || r.bottom < 0 || r.top > vh) return false;
+    return true;
+  }
+  function isAriaExposed(el) {
+    if (!el) return false;
+    if (el.getAttribute('aria-hidden') === 'true') return false;
+    if (!isDisplayed(el)) return false;
+    return true;
+  }
+  function intersectionRatio(el) {
+    if (!el) return 1;
+    const r = el.getBoundingClientRect();
+    if (r.width <= 0 || r.height <= 0) return 0;
+    const interW = Math.max(0, Math.min(r.right, vw) - Math.max(r.left, 0));
+    const interH = Math.max(0, Math.min(r.bottom, vh) - Math.max(r.top, 0));
+    return (interW * interH) / (r.width * r.height);
+  }
   function isOneLine(el) {
     if (!el) return true;
     const style = getComputedStyle(el);
-    // Compact chips force nowrap; treat that as the one-line contract.
     if (style.whiteSpace === 'nowrap' || style.whiteSpace === 'pre') return true;
     const lineHeight = parseFloat(style.lineHeight) || parseFloat(style.fontSize) * 1.2;
     const pad =
@@ -529,6 +589,16 @@ function collectMobileGeometry() {
     if (r.width === 0 && r.height === 0) return true;
     return r.left >= -1 && r.top >= -1 && r.right <= vw + 1 && r.bottom <= vh + 1;
   }
+
+  // Surface ownership: only the host status/toggle elements (not nested labels).
+  const statusHosts = [status, desktopStatus].filter(Boolean);
+  const transitionHosts = [toggle, desktopToggle].filter(Boolean);
+  const nodes = [...document.querySelectorAll('.memory-node')].filter((n) => {
+    const r = n.getBoundingClientRect();
+    return r.width > 0 && r.height > 0;
+  });
+  const affordance = document.querySelector('.memory-add-affordance');
+
   return {
     scrollWidth: docEl.scrollWidth,
     clientWidth: docEl.clientWidth,
@@ -542,6 +612,13 @@ function collectMobileGeometry() {
     action: rectOf(action),
     floating: rectOf(ftb),
     topbar: rectOf(topbar),
+    desktopCard: rectOf(desktopCard),
+    desktopStatusDisplayed: isDisplayed(desktopStatus),
+    desktopToggleDisplayed: isDisplayed(desktopToggle),
+    desktopToggleFocusable: isFocusable(desktopToggle),
+    mobileStatusDisplayed: isDisplayed(status),
+    mobileToggleDisplayed: isDisplayed(toggle),
+    mobileToggleFocusable: isFocusable(toggle),
     statusText: (statusLabel && statusLabel.textContent) || (status && status.textContent) || '',
     transitionText: (actionLabel && actionLabel.textContent) || (toggle && toggle.textContent) || '',
     authoringText: (document.getElementById('mobileBottomActionLabel') || {}).textContent || '',
@@ -557,10 +634,35 @@ function collectMobileGeometry() {
       ? action.classList.contains('is-authoring-hidden') || getComputedStyle(action).display === 'none'
       : true,
     legacyModeCopy: /편집하려면 모드 전환/.test(document.body.innerText || ''),
-    modeStatusCount: document.querySelectorAll('#mobileModeStatus, [data-mobile-mode-status-label]').length,
-    modeTransitionCount: document.querySelectorAll(
-      '#mobileModeToggle, [data-mode-action="enter-edit"], [data-mode-action="return-to-appreciation"]'
-    ).length,
+    totalModeStatusCount: statusHosts.length,
+    visibleModeStatusCount: statusHosts.filter(isDisplayed).length,
+    focusableModeStatusCount: statusHosts.filter(isFocusable).length,
+    ariaExposedModeStatusCount: statusHosts.filter(isAriaExposed).length,
+    totalModeTransitionCount: transitionHosts.length,
+    visibleModeTransitionCount: transitionHosts.filter(isDisplayed).length,
+    focusableModeTransitionCount: transitionHosts.filter(isFocusable).length,
+    ariaExposedModeTransitionCount: transitionHosts.filter(isAriaExposed).length,
+    nodes: nodes.map((n, i) => {
+      const r = n.getBoundingClientRect();
+      return {
+        i,
+        ...rectOf(n),
+        intersection: Number(intersectionRatio(n).toFixed(3)),
+        clippedRight: r.right > vw + 1,
+        clippedLeft: r.left < -1
+      };
+    }),
+    affordance: affordance
+      ? {
+          ...rectOf(affordance),
+          display: getComputedStyle(affordance).display,
+          intersection: Number(intersectionRatio(affordance).toFixed(3)),
+          clippedRight: affordance.getBoundingClientRect().right > vw + 1
+        }
+      : null,
+    minNodeIntersection: nodes.length
+      ? Math.min(...nodes.map((n) => intersectionRatio(n)))
+      : 1,
     mode: body.getAttribute('data-editor-interaction-mode')
   };
 }
@@ -666,7 +768,7 @@ test('#3586 BROWSER: appreciation → edit → return → browser back', async (
   const browser = await launchChromiumOrThrow(playwright);
   const server = await startStaticServer();
   const base = `http://127.0.0.1:${server.address().port}`;
-  fs.mkdirSync(REVIEW_OUT_V2, { recursive: true });
+  fs.mkdirSync(REVIEW_OUT_V3, { recursive: true });
 
   try {
     const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
@@ -731,7 +833,7 @@ test('#3586 BROWSER: appreciation → edit → return → browser back', async (
     assert.equal(snap.addDisplay, 'none');
     assert.ok(snap.mountKids >= 1);
     await page.screenshot({
-      path: path.join(REVIEW_OUT_V2, '3586-owner-appreciation-desktop.png'),
+      path: path.join(REVIEW_OUT_V3, '3586-owner-appreciation-desktop.png'),
       fullPage: false
     });
 
@@ -757,7 +859,7 @@ test('#3586 BROWSER: appreciation → edit → return → browser back', async (
     assert.match(String(snap.actionText || ''), /감상으로 돌아가기/);
     assert.ok(snap.mutationCount >= 1, 'edit shows mutation actions');
     await page.screenshot({
-      path: path.join(REVIEW_OUT_V2, '3586-owner-edit-desktop.png'),
+      path: path.join(REVIEW_OUT_V3, '3586-owner-edit-desktop.png'),
       fullPage: false
     });
 
@@ -772,7 +874,7 @@ test('#3586 BROWSER: appreciation → edit → return → browser back', async (
     assert.equal(snap.modeEdit, false);
     assert.equal(snap.mutationCount, 0);
     await page.screenshot({
-      path: path.join(REVIEW_OUT_V2, '3586-owner-returned-appreciation-desktop.png'),
+      path: path.join(REVIEW_OUT_V3, '3586-owner-returned-appreciation-desktop.png'),
       fullPage: false
     });
 
@@ -790,6 +892,12 @@ test('#3586 BROWSER: appreciation → edit → return → browser back', async (
     assert.equal(snap.modeEdit, false);
     assert.equal(snap.queryKeys.includes('treeId') || snap.queryKeys.includes('tree'), true);
 
+    // Desktop: mobile controls must not be visible/focusable
+    const desktopSurface = await page.evaluate(collectMobileGeometry);
+    assert.equal(desktopSurface.mobileStatusDisplayed, false, 'mobile status hidden on desktop');
+    assert.equal(desktopSurface.mobileToggleDisplayed, false, 'mobile toggle hidden on desktop');
+    assert.equal(desktopSurface.mobileToggleFocusable, false, 'mobile toggle not focusable on desktop');
+
     // ── Mobile 375×812: single mode surface, no legacy CTA, geometry ──
     await page.setViewportSize({ width: 375, height: 812 });
     await page.waitForTimeout(250);
@@ -801,6 +909,10 @@ test('#3586 BROWSER: appreciation → edit → return → browser back', async (
         });
       }
       window.dispatchEvent(new Event('resize'));
+      // Product re-layout after narrow metrics apply (not arbitrary pan/zoom).
+      const inst = document.querySelector('#canvasArea') && document.querySelector('#canvasArea').__editorCanvasInstance;
+      if (inst && typeof inst.initCanvas === 'function') inst.initCanvas();
+      if (inst && typeof inst.recenterViewport === 'function') inst.recenterViewport();
     });
     await page.waitForFunction(() => {
       const bar = document.getElementById('mobileBottomBar');
@@ -820,7 +932,7 @@ test('#3586 BROWSER: appreciation → edit → return → browser back', async (
 
     let mobileGeo = await page.evaluate(collectMobileGeometry);
     fs.writeFileSync(
-      path.join(REVIEW_OUT_V2, '3586-owner-appreciation-mobile-geometry.json'),
+      path.join(REVIEW_OUT_V3, '3586-owner-appreciation-mobile-geometry-v3.json'),
       JSON.stringify(mobileGeo, null, 2),
       'utf8'
     );
@@ -835,26 +947,21 @@ test('#3586 BROWSER: appreciation → edit → return → browser back', async (
     assert.ok(mobileGeo.scrollWidth <= mobileGeo.clientWidth + 1);
     assert.equal(mobileGeo.statusInViewport, true);
     assert.equal(mobileGeo.transitionInViewport, true);
-    // Exactly one mobile mode transition action
-    const apprTransitionCount = await page.evaluate(() => {
-      const buttons = [...document.querySelectorAll('#mobileBottomBar button')].filter((b) => {
-        if (b.id === 'mobileBottomAction' && (
-          b.classList.contains('is-authoring-hidden') || getComputedStyle(b).display === 'none'
-        )) return false;
-        const t = (b.textContent || '').trim();
-        return /편집하기|감상으로/.test(t);
-      });
-      return buttons.length;
-    });
-    assert.equal(apprTransitionCount, 1, 'exactly one mobile mode transition in appreciation');
-    const apprStatusCount = await page.evaluate(
-      () => [...document.querySelectorAll('#mobileModeStatus')].filter(
-        (el) => getComputedStyle(el).display !== 'none'
-      ).length
-    );
-    assert.equal(apprStatusCount, 1, 'exactly one 감상 모드 status');
+    assert.equal(mobileGeo.visibleModeStatusCount, 1, 'visible status == 1');
+    assert.equal(mobileGeo.ariaExposedModeStatusCount, 1, 'aria status == 1');
+    assert.equal(mobileGeo.visibleModeTransitionCount, 1, 'visible transition == 1');
+    assert.equal(mobileGeo.focusableModeTransitionCount, 1, 'focusable transition == 1');
+    assert.equal(mobileGeo.ariaExposedModeTransitionCount, 1, 'aria transition == 1');
+    assert.equal(mobileGeo.desktopToggleDisplayed, false, 'desktop mode CTA hidden on mobile');
+    assert.equal(mobileGeo.desktopToggleFocusable, false, 'desktop mode CTA not focusable on mobile');
+    assert.ok(mobileGeo.nodes.length >= 1, 'nodes must render on mobile');
+    assert.ok(mobileGeo.minNodeIntersection >= 0.95, 'all nodes >=95% in viewport');
+    for (const n of mobileGeo.nodes) {
+      assert.equal(n.clippedRight, false, 'node must not clip right edge');
+      assert.equal(n.clippedLeft, false, 'node must not clip left edge');
+    }
     await page.screenshot({
-      path: path.join(REVIEW_OUT_V2, '3586-owner-appreciation-mobile.png'),
+      path: path.join(REVIEW_OUT_V3, '3586-owner-appreciation-mobile.png'),
       fullPage: false
     });
 
@@ -864,6 +971,9 @@ test('#3586 BROWSER: appreciation → edit → return → browser back', async (
         window.LoveBudEditorInteractionMode.setMode(window.LoveBudEditorInteractionMode.MODE_EDIT);
       }
       window.dispatchEvent(new Event('resize'));
+      const inst = document.querySelector('#canvasArea') && document.querySelector('#canvasArea').__editorCanvasInstance;
+      if (inst && typeof inst.updateAffordance === 'function') inst.updateAffordance();
+      if (inst && typeof inst.recenterViewport === 'function') inst.recenterViewport();
     });
     await page.waitForFunction(() => {
       const status = document.getElementById('mobileModeStatus');
@@ -885,7 +995,7 @@ test('#3586 BROWSER: appreciation → edit → return → browser back', async (
 
     mobileGeo = await page.evaluate(collectMobileGeometry);
     fs.writeFileSync(
-      path.join(REVIEW_OUT_V2, '3586-owner-edit-mobile-geometry.json'),
+      path.join(REVIEW_OUT_V3, '3586-owner-edit-mobile-geometry-v3.json'),
       JSON.stringify(mobileGeo, null, 2),
       'utf8'
     );
@@ -903,27 +1013,47 @@ test('#3586 BROWSER: appreciation → edit → return → browser back', async (
     assert.equal(mobileGeo.statusInViewport, true);
     assert.equal(mobileGeo.transitionInViewport, true);
     assert.equal(mobileGeo.actionInViewport, true);
-    // Floating toolbar must be hidden on <480, so no off-screen authoring float.
+    assert.equal(mobileGeo.visibleModeStatusCount, 1);
+    assert.equal(mobileGeo.visibleModeTransitionCount, 1);
+    assert.equal(mobileGeo.focusableModeTransitionCount, 1);
+    assert.equal(mobileGeo.desktopToggleFocusable, false);
+    assert.ok(mobileGeo.minNodeIntersection >= 0.95, 'edit nodes >=95% in viewport');
+    for (const n of mobileGeo.nodes) {
+      assert.equal(n.clippedRight, false);
+    }
+    if (mobileGeo.affordance && mobileGeo.affordance.display !== 'none') {
+      assert.ok(mobileGeo.affordance.intersection >= 0.95, 'affordance >=95% in viewport');
+      assert.equal(mobileGeo.affordance.clippedRight, false, 'affordance not clipped right');
+    }
     assert.ok(
       mobileGeo.floatingDisplay === 'none' || mobileGeo.floatingInViewport,
       'floating control must not sit outside viewport'
     );
-    const editReturnCount = await page.evaluate(() => {
-      const buttons = [...document.querySelectorAll('#mobileBottomBar button')].filter((b) => {
-        const t = (b.textContent || '').trim();
-        return /감상으로/.test(t);
-      });
-      return buttons.length;
-    });
-    assert.equal(editReturnCount, 1, 'exactly one mobile return transition in edit');
-    const editStatusCount = await page.evaluate(
-      () => [...document.querySelectorAll('#mobileModeStatus')].filter(
-        (el) => getComputedStyle(el).display !== 'none'
-      ).length
+
+    // Combined mode surface counts evidence
+    fs.writeFileSync(
+      path.join(REVIEW_OUT_V3, '3586-mode-surface-counts-v3.json'),
+      JSON.stringify(
+        {
+          appreciation: {
+            totalModeStatusCount: mobileGeo.totalModeStatusCount,
+            visibleModeStatusCount: mobileGeo.visibleModeStatusCount,
+            focusableModeStatusCount: mobileGeo.focusableModeStatusCount,
+            ariaExposedModeStatusCount: mobileGeo.ariaExposedModeStatusCount,
+            totalModeTransitionCount: mobileGeo.totalModeTransitionCount,
+            visibleModeTransitionCount: mobileGeo.visibleModeTransitionCount,
+            focusableModeTransitionCount: mobileGeo.focusableModeTransitionCount,
+            ariaExposedModeTransitionCount: mobileGeo.ariaExposedModeTransitionCount
+          }
+        },
+        null,
+        2
+      ),
+      'utf8'
     );
-    assert.equal(editStatusCount, 1, 'exactly one 편집 모드 status');
+
     await page.screenshot({
-      path: path.join(REVIEW_OUT_V2, '3586-owner-edit-mobile.png'),
+      path: path.join(REVIEW_OUT_V3, '3586-owner-edit-mobile.png'),
       fullPage: false
     });
 
@@ -939,7 +1069,7 @@ test('#3586 BROWSER public appreciation has no edit transition', async () => {
   const browser = await launchChromiumOrThrow(playwright);
   const server = await startStaticServer();
   const base = `http://127.0.0.1:${server.address().port}`;
-  fs.mkdirSync(REVIEW_OUT_V2, { recursive: true });
+  fs.mkdirSync(REVIEW_OUT_V3, { recursive: true });
 
   try {
     const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
@@ -1013,8 +1143,33 @@ test('#3586 BROWSER public appreciation has no edit transition', async () => {
       };
     });
 
+    // Enrich with i18n localization evidence
+    const i18nPub = await page.evaluate(() => {
+      const text = document.body ? document.body.innerText || '' : '';
+      const rawKeys = [
+        'nav.home',
+        'nav.intro',
+        'nav.search',
+        'nav.myTrees',
+        'nav.settings',
+        'visibility_public'
+      ].filter((k) => text.includes(k));
+      const header = document.getElementById('shared-header');
+      const headerText = (header && header.textContent) || '';
+      return {
+        rawKeys,
+        hasLocalizedNav:
+          /처음으로|러브트리 소개|둘러보기|내 러브트리|설정/.test(headerText) ||
+          /처음으로|러브트리 소개|둘러보기|내 러브트리|설정/.test(text),
+        hasLocalizedPublic: /공개/.test(text) && !text.includes('visibility_public'),
+        tHome: typeof window.t === 'function' ? window.t('nav.home') : null,
+        tVis: typeof window.t === 'function' ? window.t('visibility_public') : null
+      };
+    });
+    Object.assign(pub, i18nPub);
+
     fs.writeFileSync(
-      path.join(REVIEW_OUT_V2, '3586-public-appreciation-desktop-runtime.json'),
+      path.join(REVIEW_OUT_V3, '3586-public-appreciation-desktop-runtime-v3.json'),
       JSON.stringify(pub, null, 2),
       'utf8'
     );
@@ -1027,9 +1182,12 @@ test('#3586 BROWSER public appreciation has no edit transition', async () => {
     assert.equal(pub.hasModeCard, false, 'public must not expose owner mode transition card');
     assert.equal(pub.mutation, 0);
     assert.equal(pub.editLabels, 0, 'public must not show Edit transition labels');
+    assert.deepEqual(pub.rawKeys, [], 'public must not show raw i18n keys');
+    assert.equal(pub.hasLocalizedNav, true, 'public header must show localized Korean labels');
+    assert.equal(pub.hasLocalizedPublic, true, 'public visibility must be localized 공개');
 
     await page.screenshot({
-      path: path.join(REVIEW_OUT_V2, '3586-public-appreciation-desktop.png'),
+      path: path.join(REVIEW_OUT_V3, '3586-public-appreciation-desktop.png'),
       fullPage: false
     });
     await page.close();
