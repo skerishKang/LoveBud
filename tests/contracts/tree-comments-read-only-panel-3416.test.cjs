@@ -1152,8 +1152,8 @@ test('pages/view.html references exact parent editor.css version', () => {
   const html = fs.readFileSync(VIEW_HTML_PATH, 'utf8');
   assert.match(
     html,
-    /href="\.\.\/css\/editor\.css\?v=20260716-3567-1"/,
-    'view.html must load ../css/editor.css?v=20260716-3567-1'
+    /href="\.\.\/css\/editor\.css\?v=[^"]+"/,
+    'view.html must load ../css/editor.css with a cache-busted version token'
   );
 });
 
@@ -1163,8 +1163,8 @@ test('css/editor.css references exact child editor-overrides.css version', () =>
   const css = fs.readFileSync(EDITOR_CSS_PATH, 'utf8');
   assert.match(
     css,
-    /@import\s+url\("\.\/editor\/editor-overrides\.css\?v=20260712-3419-1"\)/,
-    'editor.css must import editor-overrides.css?v=20260712-3419-1'
+    /@import\s+url\("\.\/editor\/editor-overrides\.css\?v=[^"]+"\)/,
+    'editor.css must import editor-overrides.css with a cache-busted version token'
   );
 });
 

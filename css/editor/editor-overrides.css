@@ -383,6 +383,15 @@ body.editor-readonly .editor-tree-meta-section {
     display: block !important;
 }
 
+/*
+ * #3580 Owner appreciation (interaction mode=view, not editor-readonly) must show
+ * left-rail tree scope. Broad hide above still applies to authoring sections.
+ * Owner edit keeps tree-meta hidden by main policy; only add-section is restored.
+ */
+body:not(.editor-readonly)[data-editor-interaction-mode="view"] .editor-tree-meta-section {
+    display: block !important;
+}
+
 /* Editor edit mode restores add-section visibility only for owner edit. */
 body:not(.editor-readonly)[data-editor-interaction-mode="edit"] .editor-add-section-bottom {
     display: flow-root !important;

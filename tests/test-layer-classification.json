@@ -4365,6 +4365,12 @@
       "layer": "EXECUTED_FAKE",
       "rationale": "Executes real editor-helpers + owner/public tree-meta boundary factories in node:vm with fake DOM/i18n and asserts buildTreeMetaRenderModel preserves custom titles, locale fallbacks for sentinel keys, moment-independent title stability, owner/viewer agreement, and the 1-arg resolveTreeTitleText clobber regression. No real browser/network/DB.",
       "capabilities": []
+    },
+    {
+      "path": "tests/contracts/owner-appreciation-tree-scope-css-3580-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Source selector contracts plus Playwright cascade and owner editor browser runtime for #3580: owner view shows .editor-tree-meta-section, public readonly remains visible, owner edit keeps broad hide, add-section stays edit-only, and mount geometry is positive without right-rail duplication. No Production network/DB.",
+      "capabilities": []
     }
   ],
   "supplemental": [

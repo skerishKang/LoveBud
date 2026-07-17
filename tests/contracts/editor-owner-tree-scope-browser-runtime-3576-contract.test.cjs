@@ -369,6 +369,8 @@ async function collectOwnerSnapshot(page) {
       mountChildren: mount ? mount.childElementCount : 0,
       mountText: mount ? (mount.textContent || '').replace(/\s+/g, ' ').trim() : '',
       mountDisplay: cs ? cs.display : null,
+      mountRectW: mount ? Math.round(mount.getBoundingClientRect().width) : 0,
+      mountRectH: mount ? Math.round(mount.getBoundingClientRect().height) : 0,
       mountVisibility: cs ? cs.visibility : null,
       sectionDisplay: sectionCs ? sectionCs.display : null,
       sectionVisibility: sectionCs ? sectionCs.visibility : null,
@@ -509,6 +511,8 @@ test('#3576 BROWSER owner A: no-moment tree renders left-rail tree meta', async 
     assert.equal(snap.currentTree && snap.currentTree.id, TREE_A.id);
     assert.notEqual(snap.mountDisplay, 'none');
     assert.notEqual(snap.mountVisibility, 'hidden');
+    assert.notEqual(snap.sectionDisplay, 'none', 'sectionDisplay must not be none (#3580)');
+    assert.ok(snap.mountRectW > 0 && snap.mountRectH > 0, 'mount positive geometry (#3580)');
 
     const events = snap.trace.map((e) => e.event);
     assert.ok(events.includes('DOMContentLoaded') || snap.debugLogs.length >= 0, 'trace collected');
