@@ -46,24 +46,27 @@
     var modeUnsubscribe = null;
 
     if (canEdit !== false && window.LoveBudEditorInteractionMode) {
+      // #3586: explicit appreciation/edit transition (not canvas "보기" display).
       modeToggle = document.createElement('button');
       modeToggle.type = 'button';
       modeToggle.id = MODE_TOGGLE_ID;
       modeToggle.className = 'editor-mobile-mode-toggle';
-      modeToggle.setAttribute('aria-label', '보기 모드');
-      modeToggle.textContent = '보기';
+      modeToggle.setAttribute('aria-label', '편집하기');
+      modeToggle.textContent = '편집하기';
       bar.insertBefore(modeToggle, actionBtn);
 
       function syncModeUI() {
         var mode = window.LoveBudEditorInteractionMode;
         var isEdit = mode && mode.isEditMode();
         if (isEdit) {
-          modeToggle.textContent = '편집 중';
-          modeToggle.setAttribute('aria-label', '편집 모드');
+          modeToggle.textContent = '감상으로 돌아가기';
+          modeToggle.setAttribute('aria-label', '감상으로 돌아가기');
+          modeToggle.dataset.modeAction = 'return-to-appreciation';
           actionBtn.disabled = false;
         } else {
-          modeToggle.textContent = '보기';
-          modeToggle.setAttribute('aria-label', '보기 모드');
+          modeToggle.textContent = '편집하기';
+          modeToggle.setAttribute('aria-label', '편집하기');
+          modeToggle.dataset.modeAction = 'enter-edit';
           actionBtn.disabled = true;
         }
         updateBar();

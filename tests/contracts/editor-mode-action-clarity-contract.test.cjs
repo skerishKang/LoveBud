@@ -9,26 +9,30 @@ test('interaction mode default is view', () => {
     assert.ok(source.includes('MODE_VIEW'), 'editor.js must reference MODE_VIEW');
 });
 
-test('desktop toggle uses 감상 모드 / 편집 모드 copy', () => {
+test('desktop mode card uses 감상 모드 / 편집 모드 status copy', () => {
     const source = fs.readFileSync('js/editor.js', 'utf8');
-    assert.ok(source.includes('감상 모드'), 'toggle must include 감상 모드 label');
-    assert.ok(source.includes('편집 모드'), 'toggle must include 편집 모드 label');
+    // #3586: explicit status badge + single transition CTA (not dual radio "보기").
+    assert.ok(source.includes('감상 모드'), 'must include 감상 모드 status label');
+    assert.ok(source.includes('편집 모드'), 'must include 편집 모드 status label');
+    assert.ok(source.includes('편집하기'), 'must include explicit 편집하기 transition');
+    assert.ok(source.includes('감상으로 돌아가기'), 'must include explicit 감상으로 돌아가기 transition');
     assert.ok(!source.includes('<span>보기</span>'), 'old 보기 label must be removed');
-    assert.ok(!source.includes('<span>편집</span>'), 'old 편집 label must be removed');
+    assert.ok(!source.includes('<span>편집</span>'), 'old short 편집 label must be removed');
 });
 
-test('radiogroup aria-label is 편집기 모드 선택', () => {
+test('mode transition group aria-label is 감상과 편집 전환', () => {
     const source = fs.readFileSync('js/editor.js', 'utf8');
-    // setAttribute('aria-label', '편집기 모드 선택')
-    assert.ok(source.includes('편집기 모드 선택'), 'radiogroup aria-label must specify 편집기 모드 선택');
+    // #3586: role=group with clear appreciation/edit transition label (not radiogroup dual mode pick).
+    assert.ok(source.includes('감상과 편집 전환'), 'mode group aria-label must specify 감상과 편집 전환');
+    assert.ok(source.includes("role', 'group'") || source.includes("setAttribute('role', 'group')") || source.includes("setAttribute(\"role\", \"group\")") || source.includes("setAttribute('role', 'group')"), 'mode control uses group role');
 });
 
-test('mode buttons have aria-label and title attributes', () => {
+test('mode transition CTA has aria-label and title attributes', () => {
     const source = fs.readFileSync('js/editor.js', 'utf8');
-    assert.ok(source.includes("aria-label', '감상 모드'"), 'view button must have aria-label');
-    assert.ok(source.includes("aria-label', '편집 모드'"), 'edit button must have aria-label');
-    assert.ok(source.includes("title', '감상 모드'"), 'view button must have title');
-    assert.ok(source.includes("title', '편집 모드'"), 'edit button must have title');
+    assert.ok(source.includes("aria-label', '편집하기'"), 'enter-edit CTA must have aria-label');
+    assert.ok(source.includes("aria-label', '감상으로 돌아가기'"), 'return CTA must have aria-label');
+    assert.ok(source.includes("title', '편집하기'"), 'enter-edit CTA must have title');
+    assert.ok(source.includes("title', '감상으로 돌아가기'"), 'return CTA must have title');
 });
 
 test('view description explains playback and emotion-flow viewing', () => {
