@@ -52,9 +52,50 @@ function makeEl(tag) {
     textContent: '', innerHTML: '', hidden: false, disabled: false,
     dataset: {}, children: [], parentElement: null, nodeType: 1,
     _listeners: {},
-    setAttribute: function(k, v) { el.dataset[k] = v; },
-    getAttribute: function(k) { return el.dataset[k] || null; },
-    removeAttribute: function(k) { delete el.dataset[k]; },
+    classList: {
+      add: function() {
+        for (var i = 0; i < arguments.length; i++) {
+          var token = String(arguments[i] || '').trim();
+          if (!token) continue;
+          var parts = el.className ? el.className.split(/\s+/) : [];
+          if (parts.indexOf(token) === -1) parts.push(token);
+          el.className = parts.join(' ').trim();
+        }
+      },
+      remove: function() {
+        for (var i = 0; i < arguments.length; i++) {
+          var token = String(arguments[i] || '').trim();
+          if (!token) continue;
+          el.className = (el.className || '')
+            .split(/\s+/)
+            .filter(function(part) { return part && part !== token; })
+            .join(' ');
+        }
+      },
+      contains: function(token) {
+        return (' ' + (el.className || '') + ' ').indexOf(' ' + token + ' ') >= 0;
+      }
+    },
+    setAttribute: function(k, v) {
+      if (k === 'class') {
+        el.className = String(v || '');
+        return;
+      }
+      el.dataset[k] = v;
+      // Preserve common aria-* attributes for getAttribute assertions.
+      if (String(k).indexOf('aria-') === 0 || k === 'role' || k === 'title') {
+        el['__attr_' + k] = String(v);
+      }
+    },
+    getAttribute: function(k) {
+      if (k === 'class') return el.className || null;
+      if (el['__attr_' + k] !== undefined) return el['__attr_' + k];
+      return el.dataset[k] !== undefined ? el.dataset[k] : null;
+    },
+    removeAttribute: function(k) {
+      delete el.dataset[k];
+      delete el['__attr_' + k];
+    },
     appendChild: function(c) { if (c) c.parentElement = el; el.children.push(c); return c; },
     insertBefore: function(c) { if (c) c.parentElement = el; el.children.push(c); return c; },
     removeChild: function(c) { var i = el.children.indexOf(c); if (i >= 0) el.children.splice(i, 1); },
@@ -126,8 +167,19 @@ function makeDoc() {
   };
 }
 
-function build(depsOverrides) {
+function setInteractionMode(sb, mode) {
+  var edit = mode === 'edit';
+  sb.window.LoveBudEditorInteractionMode = {
+    MODE_VIEW: 'view',
+    MODE_EDIT: 'edit',
+    isEditMode: function() { return edit === true; },
+    getMode: function() { return edit ? 'edit' : 'view'; }
+  };
+}
+
+function build(depsOverrides, modeOpts) {
   depsOverrides = depsOverrides || {};
+  modeOpts = modeOpts || {};
   var doc = makeDoc();
   var sb = {
     window: { location: { pathname: '/pages/editor.html', origin: 'https://example.com', search: '' } },
@@ -136,6 +188,8 @@ function build(depsOverrides) {
   };
   sb.globalThis = sb;
   sb.window = sb;
+  // #3586: mutations require explicit edit mode. Default view unless tests opt in.
+  setInteractionMode(sb, modeOpts.interactionMode || 'view');
 
   vm.createContext(sb);
   vm.runInContext(read('js/editor/editor-detail-tree-meta.js'), sb);
@@ -160,7 +214,9 @@ function build(depsOverrides) {
 
 function render(depsOverrides, opts) {
   opts = opts || {};
-  var r = build(depsOverrides || {});
+  var r = build(depsOverrides || {}, {
+    interactionMode: opts.interactionMode || 'view'
+  });
   var isPub = opts.isPublic !== undefined ? opts.isPublic : true;
   r.boundary.renderTreeMetaBoundary(r.mount, {
     displayTreeTitle: opts.title || 'Test',
@@ -176,19 +232,27 @@ function render(depsOverrides, opts) {
 var DATA = { id: 'm1', title: 'Test Moment' };
 
 test('1. canEdit:false - owner buttons not rendered', () => {
-  var r = render({ canEdit: false }, { data: DATA });
+  var r = render({ canEdit: false }, { data: DATA, interactionMode: 'edit' });
   assert.ok(collectText(r.mount).indexOf('이름 바꾸기') === -1);
   assert.ok(collectText(r.mount).indexOf('비공개로 전환') === -1);
 });
 
-test('2. canEdit:true public - rename + vis toggle', () => {
-  var r = render({ canEdit: true }, { isPublic: true, data: DATA });
+test('1B. canEdit:true appreciation (view) - owner mutation buttons not rendered', () => {
+  // #3586: rename/visibility mutations belong only in explicit edit mode.
+  var r = render({ canEdit: true }, { isPublic: true, data: DATA, interactionMode: 'view' });
+  assert.ok(collectText(r.mount).indexOf('이름 바꾸기') === -1);
+  assert.ok(collectText(r.mount).indexOf('비공개로 전환') === -1);
+  assert.ok(collectText(r.mount).indexOf('공개로 전환') === -1);
+});
+
+test('2. canEdit:true public edit mode - rename + vis toggle', () => {
+  var r = render({ canEdit: true }, { isPublic: true, data: DATA, interactionMode: 'edit' });
   assert.ok(collectText(r.mount).indexOf('이름 바꾸기') >= 0);
   assert.ok(collectText(r.mount).indexOf('비공개로 전환') >= 0);
 });
 
-test('3. canEdit:true private - 공개로 전환', () => {
-  var r = render({ canEdit: true }, { isPublic: false, data: DATA });
+test('3. canEdit:true private edit mode - 공개로 전환', () => {
+  var r = render({ canEdit: true }, { isPublic: false, data: DATA, interactionMode: 'edit' });
   assert.ok(collectText(r.mount).indexOf('공개로 전환') >= 0);
 });
 
@@ -197,7 +261,7 @@ test('4. rename click calls openRenameTree with canEdit, triggerEl, onSaved', ()
   var r = render({
     canEdit: true,
     openRenameTree: function(o) { captured = o; }
-  }, { isPublic: true, data: DATA });
+  }, { isPublic: true, data: DATA, interactionMode: 'edit' });
 
   var btn = findBtnByText(r.mount, '이름 바꾸기');
   assert.ok(btn !== null, 'Rename button must exist in tree');
@@ -218,7 +282,7 @@ test('5. onSaved passes original data, not {}', () => {
     canEdit: true,
     openRenameTree: function(o) { renameOpts = o; },
     updateDetailPanel: function() { return function(d) { rerenderArgs = d; }; }
-  }, { isPublic: true, data: testData });
+  }, { isPublic: true, data: testData, interactionMode: 'edit' });
 
   var btn = findBtnByText(r.mount, '이름 바꾸기');
   assert.ok(btn !== null, 'Rename button must exist');
@@ -243,7 +307,7 @@ test('6A. public tree visibility toggle - pending state then resolve', async () 
       capturedVis = vis;
       return visPromise;
     }
-  }, { isPublic: true, data: DATA });
+  }, { isPublic: true, data: DATA, interactionMode: 'edit' });
 
   var visBtn = findBtnByText(r.mount, '비공개로 전환');
   assert.ok(visBtn !== null, 'Visibility toggle must exist');
@@ -297,7 +361,7 @@ test('6B. private tree visibility toggle - reject restores original, shows error
       return visPromise;
     },
     showToast: function(msg) { toastMessage = msg; }
-  }, { isPublic: false, data: DATA });
+  }, { isPublic: false, data: DATA, interactionMode: 'edit' });
 
   var visBtn = findBtnByText(r.mount, '공개로 전환');
   assert.ok(visBtn !== null, 'Visibility toggle must exist for private tree');

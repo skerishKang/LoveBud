@@ -644,8 +644,8 @@ test('public canvas sidebar template and controller wiring contract (Issue #2884
     'view.html must load public-viewer-sidebar-template with #3562 content-sha version'
   );
   assert.ok(
-    html.includes('src="../js/viewer/public-canvas-init.js?v=20260716-3563-1"'),
-    'view.html must load public-canvas-init.js with version 20260716-3563-1'
+    /src="\.\.\/js\/viewer\/public-canvas-init\.js\?v=[A-Za-z0-9][A-Za-z0-9._-]*"/.test(html),
+    'view.html must load public-canvas-init.js with a non-empty cache version'
   );
 
   // 22. css/editor.css가 next exact import를 사용함

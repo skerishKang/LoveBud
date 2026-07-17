@@ -320,8 +320,16 @@
 
             if (shareButtonEl) actionsRow.appendChild(shareButtonEl);
             if (openDetailButtonEl) actionsRow.appendChild(openDetailButtonEl);
-            if (canEdit === true) {
+            // #3586: rename/visibility mutations only in explicit owner edit mode.
+            const isEditMode = window.LoveBudEditorInteractionMode
+                && typeof window.LoveBudEditorInteractionMode.isEditMode === 'function'
+                && window.LoveBudEditorInteractionMode.isEditMode() === true;
+            if (canEdit === true && isEditMode) {
                 const [renameBtn, visBtn] = createOwnerActionButtons(isPublic, onRenameSaved);
+                renameBtn.classList.add('editor-owner-mutation-action');
+                renameBtn.dataset.ownerMutation = 'rename';
+                visBtn.classList.add('editor-owner-mutation-action');
+                visBtn.dataset.ownerMutation = 'visibility';
                 actionsRow.appendChild(renameBtn);
                 actionsRow.appendChild(visBtn);
             }

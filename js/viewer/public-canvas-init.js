@@ -210,10 +210,19 @@
         var apiClient = window.apiClient || {};
         var authPolicy = window.LoveTreeAuthPolicy || {};
 
+        // #3586: never stub i18n as identity — raw keys (visibility_public, nav.*) must not reach DOM.
+        function resolveI18n(key) {
+            if (typeof window.t === 'function') {
+                var translated = window.t(key);
+                if (translated != null && translated !== '') return translated;
+            }
+            return key;
+        }
+
         return canvasEntry && typeof canvasEntry.createDetailUIOptions === 'function'
             ? canvasEntry.createDetailUIOptions({
                 detailPanel: ctx.detailPanel,
-                i18n: function(k) { return k; },
+                i18n: resolveI18n,
                 publicCanvasConfig: ctx.publicCanvasConfig,
                 readOnlyActions: ctx.readOnlyActions,
                 selectionState: ctx.selectionState,
@@ -223,7 +232,7 @@
             })
             : {
                 detailPanel: ctx.detailPanel,
-                i18n: function(k) { return k; },
+                i18n: resolveI18n,
                 resolveTreeTitleText: ctx.publicCanvasConfig.resolveTreeTitleText,
                 resolveHintText: ctx.publicCanvasConfig.resolveHintText,
                 resolveInfoText: ctx.publicCanvasConfig.resolveInfoText,

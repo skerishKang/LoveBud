@@ -765,8 +765,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
             finalizeEditorReady();
 
+            // #3586: explicit appreciation/edit modes with URL mode=edit contract.
             if (mode === 'edit' && effectiveCanEdit && window.LoveBudEditorInteractionMode) {
-                window.LoveBudEditorInteractionMode.setMode(window.LoveBudEditorInteractionMode.MODE_EDIT);
+                window.LoveBudEditorInteractionMode.setMode(
+                    window.LoveBudEditorInteractionMode.MODE_EDIT,
+                    { replace: true, forceUrlSync: true }
+                );
+            } else if (effectiveCanEdit && window.LoveBudEditorInteractionMode) {
+                window.LoveBudEditorInteractionMode.setMode(
+                    window.LoveBudEditorInteractionMode.MODE_VIEW,
+                    { replace: true, forceUrlSync: true, syncUrl: true }
+                );
             }
 
             if (effectiveCanEdit && window.LoveBudEditorInteractionMode && typeof window.LoveBudEditorInteractionMode.subscribe === 'function') {
@@ -778,30 +787,30 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     var modeCard = document.createElement('div');
                     modeCard.className = 'editor-mode-card';
+                    modeCard.setAttribute('data-editor-mode-card', '1');
+
+                    // Status label is not a layout control (separated from 정리된 트리 / 자유 배치).
+                    var statusBadge = document.createElement('div');
+                    statusBadge.id = 'editorModeStatusBadge';
+                    statusBadge.className = 'editor-mode-status-badge';
+                    statusBadge.setAttribute('role', 'status');
+                    statusBadge.setAttribute('aria-live', 'polite');
+                    statusBadge.innerHTML = '<span class="material-symbols-outlined" aria-hidden="true">visibility</span><span data-mode-status-label>감상 모드</span>';
 
                     var toggle = document.createElement('div');
                     toggle.id = 'editorDesktopModeToggle';
                     toggle.className = 'editor-desktop-mode-toggle';
-                    toggle.setAttribute('role', 'radiogroup');
-                    toggle.setAttribute('aria-label', '편집기 모드 선택');
+                    toggle.setAttribute('role', 'group');
+                    toggle.setAttribute('aria-label', '감상과 편집 전환');
 
-                    var viewBtn = document.createElement('button');
-                    viewBtn.type = 'button';
-                    viewBtn.className = 'editor-mode-btn editor-mode-btn-view';
-                    viewBtn.setAttribute('role', 'radio');
-                    viewBtn.setAttribute('aria-checked', 'true');
-                    viewBtn.setAttribute('aria-label', '감상 모드');
-                    viewBtn.setAttribute('title', '감상 모드');
-                    viewBtn.innerHTML = '<span class="material-symbols-outlined" aria-hidden="true">visibility</span><span>감상 모드</span>';
-
-                    var editBtn = document.createElement('button');
-                    editBtn.type = 'button';
-                    editBtn.className = 'editor-mode-btn editor-mode-btn-edit';
-                    editBtn.setAttribute('role', 'radio');
-                    editBtn.setAttribute('aria-checked', 'false');
-                    editBtn.setAttribute('aria-label', '편집 모드');
-                    editBtn.setAttribute('title', '편집 모드');
-                    editBtn.innerHTML = '<span class="material-symbols-outlined" aria-hidden="true">edit</span><span>편집 모드</span>';
+                    var actionBtn = document.createElement('button');
+                    actionBtn.type = 'button';
+                    actionBtn.id = 'editorModeTransitionBtn';
+                    actionBtn.className = 'editor-mode-btn editor-mode-btn-action';
+                    actionBtn.setAttribute('data-mode-action', 'enter-edit');
+                    actionBtn.setAttribute('aria-label', '편집하기');
+                    actionBtn.setAttribute('title', '편집하기');
+                    actionBtn.innerHTML = '<span class="material-symbols-outlined" aria-hidden="true">edit</span><span data-mode-action-label>편집하기</span>';
 
                     var modeDescription = document.createElement('p');
                     modeDescription.className = 'editor-mode-description';
@@ -809,12 +818,31 @@ document.addEventListener('DOMContentLoaded', () => {
                     modeDescription.textContent = '감상 중 · 순간을 재생하고 감정 흐름을 살펴봐요.';
 
                     function syncToggle() {
-                        var mode = window.LoveBudEditorInteractionMode;
-                        var isEdit = mode && mode.isEditMode();
-                        viewBtn.setAttribute('aria-checked', isEdit ? 'false' : 'true');
-                        editBtn.setAttribute('aria-checked', isEdit ? 'true' : 'false');
-                        viewBtn.disabled = !isEdit;
-                        editBtn.disabled = isEdit;
+                        var modeApi = window.LoveBudEditorInteractionMode;
+                        var isEdit = modeApi && modeApi.isEditMode();
+                        var statusLabel = statusBadge.querySelector('[data-mode-status-label]');
+                        var statusIcon = statusBadge.querySelector('.material-symbols-outlined');
+                        var actionLabel = actionBtn.querySelector('[data-mode-action-label]');
+                        var actionIcon = actionBtn.querySelector('.material-symbols-outlined');
+
+                        statusBadge.dataset.mode = isEdit ? 'edit' : 'view';
+                        if (statusLabel) statusLabel.textContent = isEdit ? '편집 모드' : '감상 모드';
+                        if (statusIcon) statusIcon.textContent = isEdit ? 'edit' : 'visibility';
+
+                        if (isEdit) {
+                            actionBtn.dataset.modeAction = 'return-to-appreciation';
+                            actionBtn.setAttribute('aria-label', '감상으로 돌아가기');
+                            actionBtn.setAttribute('title', '감상으로 돌아가기');
+                            if (actionLabel) actionLabel.textContent = '감상으로 돌아가기';
+                            if (actionIcon) actionIcon.textContent = 'visibility';
+                        } else {
+                            actionBtn.dataset.modeAction = 'enter-edit';
+                            actionBtn.setAttribute('aria-label', '편집하기');
+                            actionBtn.setAttribute('title', '편집하기');
+                            if (actionLabel) actionLabel.textContent = '편집하기';
+                            if (actionIcon) actionIcon.textContent = 'edit';
+                        }
+
                         if (modeDescription) {
                             modeDescription.textContent = isEdit
                                 ? '편집 중 · 순간을 수정하거나 다음 흐름을 이어갈 수 있어요.'
@@ -859,33 +887,49 @@ document.addEventListener('DOMContentLoaded', () => {
                         }
                         syncToggle();
                         syncSidebarAuthoringEntryState(isEdit);
+                        // Re-render tree-scope so rename/visibility appear only in edit.
+                        if (typeof callUpdateDetailPanel === 'function') {
+                            try {
+                                callUpdateDetailPanel(currentEditingMemory || null);
+                            } catch (err) {
+                                console.warn('[editor] mode-change tree-meta refresh failed', err);
+                            }
+                        }
                     }
 
-                    viewBtn.addEventListener('click', function () {
-                        window.LoveBudEditorInteractionMode.setMode(window.LoveBudEditorInteractionMode.MODE_VIEW);
-                    });
-                    editBtn.addEventListener('click', function () {
-                        window.LoveBudEditorInteractionMode.setMode(window.LoveBudEditorInteractionMode.MODE_EDIT);
+                    actionBtn.addEventListener('click', function () {
+                        var modeApi = window.LoveBudEditorInteractionMode;
+                        if (!modeApi) return;
+                        if (modeApi.isEditMode()) {
+                            modeApi.setMode(modeApi.MODE_VIEW);
+                        } else {
+                            modeApi.setMode(modeApi.MODE_EDIT);
+                        }
                     });
 
                     window.LoveBudEditorInteractionMode.subscribe(handleModeChange);
 
-                    toggle.appendChild(viewBtn);
-                    toggle.appendChild(editBtn);
+                    toggle.appendChild(actionBtn);
 
                     var descriptionWrap = document.createElement('div');
                     descriptionWrap.className = 'editor-mode-description-wrap';
                     descriptionWrap.appendChild(modeDescription);
 
+                    modeCard.appendChild(statusBadge);
                     modeCard.appendChild(toggle);
                     modeCard.appendChild(descriptionWrap);
 
-                    var statusSection = sidebar.querySelector('.editor-status-section');
-                    var statusCard = statusSection && statusSection.querySelector('.editor-status-card');
-                    if (statusSection && statusCard) {
-                        statusSection.insertBefore(modeCard, statusCard);
+                    // Place above tree-scope mount so mode is explicit and separate from layout toolbar.
+                    var treeScopeSection = sidebar.querySelector('.appreciation-tree-scope, #detailTreeMetaSection');
+                    if (treeScopeSection && treeScopeSection.parentElement === sidebar) {
+                        sidebar.insertBefore(modeCard, treeScopeSection);
                     } else {
-                        sidebar.insertBefore(modeCard, sidebar.firstChild);
+                        var backWrap = sidebar.querySelector('.editor-sidebar-back-wrap');
+                        if (backWrap && backWrap.nextSibling) {
+                            sidebar.insertBefore(modeCard, backWrap.nextSibling);
+                        } else {
+                            sidebar.insertBefore(modeCard, sidebar.firstChild);
+                        }
                     }
 
                     handleModeChange(window.LoveBudEditorInteractionMode.getMode());

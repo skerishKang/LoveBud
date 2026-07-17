@@ -13,14 +13,38 @@
     const STRUCTURED_SIBLING_SPACING = 120;
     const STRUCTURED_LEVEL_SPREAD = 1.4;
 
+    // #3586: narrow canvases must use real client metrics. Flooring width to 720
+    // forced root/nodes into a desktop-sized world that clips on 375px viewports.
+    function isNarrowMetrics(metricsOrWidth) {
+        var width = typeof metricsOrWidth === 'number'
+            ? metricsOrWidth
+            : (metricsOrWidth && metricsOrWidth.width) || 0;
+        return width > 0 && width < 560;
+    }
+
     function getMetrics(canvas) {
+        var clientWidth = canvas && canvas.clientWidth ? canvas.clientWidth : 0;
+        var clientHeight = canvas && canvas.clientHeight ? canvas.clientHeight : 0;
+        if (isNarrowMetrics(clientWidth)) {
+            return {
+                width: clientWidth,
+                height: Math.max(clientHeight, 320)
+            };
+        }
         return {
-            width: Math.max(canvas.clientWidth || 0, 720),
-            height: Math.max(canvas.clientHeight || 0, 520)
+            width: Math.max(clientWidth, 720),
+            height: Math.max(clientHeight, 520)
         };
     }
 
     function getRootBasePosition(metrics) {
+        // Mobile/tablet-narrow: center the root inside the real canvas bounds.
+        if (isNarrowMetrics(metrics)) {
+            return {
+                x: Math.round(metrics.width * 0.5),
+                y: Math.round(Math.max(140, Math.min(metrics.height * 0.42, metrics.height - 120)))
+            };
+        }
         return {
             x: Math.max(360, Math.min(Math.round(metrics.width * 0.42), metrics.width - ROOT_RIGHT_GUTTER)),
             y: Math.max(260, Math.min(Math.round(metrics.height * 0.48), metrics.height - ROOT_BOTTOM_GUTTER))
@@ -28,10 +52,16 @@
     }
 
     function getRadiusL1(metrics) {
+        if (isNarrowMetrics(metrics)) {
+            return Math.max(90, Math.min(140, Math.round(metrics.width * 0.28)));
+        }
         return Math.max(180, Math.min(250, Math.round(metrics.width * 0.20)));
     }
 
     function getRadiusL2(metrics) {
+        if (isNarrowMetrics(metrics)) {
+            return Math.max(70, Math.min(110, Math.round(metrics.width * 0.22)));
+        }
         return Math.max(130, Math.min(190, Math.round(metrics.width * 0.14)));
     }
 

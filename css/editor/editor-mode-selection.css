@@ -72,6 +72,32 @@
     box-shadow: 0 10px 24px rgba(75, 64, 57, 0.05);
 }
 
+/* #3586: mode status is separate from canvas layout controls (정리된 트리 / 자유 배치). */
+.editor-mode-status-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-height: 34px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    border: 1px solid rgba(144, 73, 81, 0.12);
+    background: rgba(255, 255, 255, 0.88);
+    color: var(--primary);
+    font-size: 12px;
+    font-weight: 800;
+    line-height: 1.2;
+}
+
+.editor-mode-status-badge .material-symbols-outlined {
+    font-size: 16px;
+}
+
+.editor-mode-status-badge[data-mode="edit"] {
+    border-color: rgba(144, 73, 81, 0.22);
+    background: rgba(144, 73, 81, 0.10);
+}
+
 .editor-desktop-mode-toggle {
     display: flex;
     gap: 6px;
@@ -84,6 +110,22 @@
     width: 100%;
     margin: 0;
     box-sizing: border-box;
+}
+
+.editor-mode-btn-action {
+    width: 100%;
+    flex: 1 1 auto;
+    background: linear-gradient(180deg, rgba(144, 73, 81, 0.98), rgba(144, 73, 81, 0.90));
+    color: #fff;
+    border-color: rgba(144, 73, 81, 0.24);
+    box-shadow: 0 8px 18px rgba(144, 73, 81, 0.16);
+}
+
+.editor-mode-btn-action[data-mode-action="return-to-appreciation"] {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(247, 242, 239, 0.96));
+    color: var(--primary);
+    border-color: rgba(144, 73, 81, 0.14);
+    box-shadow: 0 6px 16px rgba(75, 64, 57, 0.06);
 }
 
 .editor-mode-btn {
@@ -137,27 +179,38 @@
     word-break: keep-all;
 }
 
-.editor-mobile-mode-toggle {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 8px 12px;
-    border-radius: 999px;
-    border: 1px solid rgba(144, 73, 81, 0.14);
-    background: rgba(255, 250, 248, 0.84);
-    color: var(--primary);
-    font-size: 12px;
-    font-weight: 800;
-    cursor: pointer;
-    transition: background 0.2s ease, border-color 0.2s ease;
+/* Mobile mode cluster is owned by editor-mobile-action-bar.css at <480px.
+   Hide the mobile-only surface on wider viewports so desktop mode card remains sole owner. */
+@media (min-width: 480px) {
+    .editor-mobile-mode-cluster,
+    .editor-mobile-mode-status,
+    .editor-mobile-mode-toggle {
+        display: none !important;
+        visibility: hidden !important;
+        pointer-events: none !important;
+    }
 }
 
-.editor-mobile-mode-toggle:active {
-    background: rgba(144, 73, 81, 0.14);
+/* #3586 v3: on phone, desktop sidebar mode card must not compete with bottom mode cluster
+   (sidebar is off-canvas, but hard-hide prevents dual count/focus exposure). */
+@media (max-width: 479px) {
+    [data-editor-mode-card],
+    #editorDesktopModeToggle,
+    #editorModeStatusBadge,
+    #editorModeTransitionBtn {
+        display: none !important;
+        visibility: hidden !important;
+        pointer-events: none !important;
+    }
 }
 
-[data-editor-interaction-mode="view"] .editor-mobile-bottom-action:disabled {
-    opacity: 0.5;
+/* #3586: never show authoring primary as a mode transition proxy. */
+.editor-mobile-bottom-action.is-authoring-hidden {
+    display: none !important;
+}
+
+[data-editor-interaction-mode="view"] .editor-mobile-bottom-action.is-authoring-hidden {
+    display: none !important;
 }
 
 /**
@@ -176,7 +229,11 @@
 [data-editor-interaction-mode="view"] #ftbQuickAdd,
 [data-editor-interaction-mode="view"] #ftbBranchBtn,
 [data-editor-interaction-mode="view"] #ftbForkBtn,
-[data-editor-interaction-mode="view"] .editor-ftb-branch-divider {
+[data-editor-interaction-mode="view"] .editor-ftb-branch-divider,
+/* #3586: appreciation hides tree mutation controls (rename/visibility). */
+[data-editor-interaction-mode="view"] #renameTreeBtn,
+[data-editor-interaction-mode="view"] #sidebarVisibilityToggleBtn,
+[data-editor-interaction-mode="view"] .editor-owner-mutation-action {
     display: none !important;
 }
 

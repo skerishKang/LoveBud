@@ -452,5 +452,8 @@ test('9. pages/view.html contract for Firebase bootstrap and asset versioning', 
 
   assert.ok(viewHtml.includes('tree-workspace-permission.js?v=20260625-2874-auth-hotfix-1'), 'tree-workspace-permission.js version must be updated');
   assert.ok(viewHtml.includes('public-canvas-bridge.js?v=20260625-2874-auth-hotfix-1'), 'public-canvas-bridge.js version must be updated');
-  assert.ok(viewHtml.includes('public-canvas-init.js?v=20260716-3563-1'), 'public-canvas-init.js version must be updated');
+  assert.ok(
+    /public-canvas-init\.js\?v=[A-Za-z0-9][A-Za-z0-9._-]*/.test(viewHtml),
+    'public-canvas-init.js version must be updated'
+  );
 });

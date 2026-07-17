@@ -8,7 +8,7 @@
     <link rel="icon" href="/favicon.ico" sizes="32x32">
     <link rel="stylesheet" href="../css/global.css?v=20260618-2700-1">
     <link rel="stylesheet" href="../css/components/lovebud-ai-panel.css?v=20260616-ai-panel-1">
-    <link rel="stylesheet" href="../css/editor.css?v=20260717-3580-1">
+    <link rel="stylesheet" href="../css/editor.css?v=20260717-3586-3">
     <link rel="stylesheet" href="../css/page-transitions.css?v=20260430-1">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" />
     <style>
@@ -63,7 +63,7 @@
     <script src="../js/editor/editor-canvas-viewport-actions.js?v=20260628-2936-wheel-zoom-2"></script>
     <script src="../js/editor/editor-canvas-viewport-controls.js?v=20260628-2936-wheel-zoom-2"></script>
     <script src="../js/editor/editor-canvas-edges.js?v=20260502-1"></script>
-    <script src="../js/editor/editor-canvas-geometry.js?v=20260502-1"></script>
+    <script src="../js/editor/editor-canvas-geometry.js?v=f97c61a2ad3a"></script>
     <script src="../js/editor/editor-canvas-layout-storage.js?v=20260522-1277"></script>
     <script src="../js/viewer/public-canvas-mobile-layout.js?v=20260525-1"></script>
     <script src="../js/editor/editor-canvas-layout-transition.js?v=20260524-1"></script>
@@ -114,6 +114,8 @@
     <script src="../js/i18n/i18n-editor.js?v=20260525-3"></script>
     <script src="../js/i18n/i18n-search.js?v=20260421-1"></script>
     <script src="../js/i18n/i18n-detail.js?v=20260421-5"></script>
+    <!-- #3586: merge dictionaries into window.t before header/public labels render -->
+    <script src="../js/i18n/i18n-index.js?v=20260421-1"></script>
     <script src="../js/i18n.js?v=20260419-2"></script>
 
     <script src="../js/shared-header.js?v=20260628-2993-1"></script>
@@ -122,9 +124,18 @@
     <script src="../js/viewer/public-viewer-canvas-entry.js?v=20260716-3563-1"></script>
     <script src="../js/viewer/public-viewer-canvas-adapter.js?v=20260529-1"></script>
     <script src="../js/viewer/public-canvas-error-fallback.js?v=20260701-1"></script>
-    <script src="../js/viewer/public-canvas-init.js?v=20260716-3563-1"></script>
+    <script src="../js/viewer/public-canvas-init.js?v=20260717-3586-3"></script>
     <script src="../js/viewer/public-viewer-copy-helper.js?v=20260525-1"></script>
     <script src="../js/viewer/public-viewer-control-visibility-helper.js?v=20260526-1"></script>
     <script src="../js/viewer/public-viewer-copy-polish.js?v=20260525-1"></script>
+    <script>
+      // Mount header only after i18n dictionary is available (localized nav labels).
+      if (typeof renderSharedHeader === 'function') {
+        renderSharedHeader();
+      }
+      if (typeof applyI18n === 'function') {
+        applyI18n();
+      }
+    </script>
 </body>
 </html>

@@ -1,9 +1,9 @@
 /**
  * LoveBud Editor Mobile Action Bar Styles
  * Issue #1278 — CSS split first slice
+ * Issue #3586 — compact mode cluster + single authoring primary
  *
- * Extracted from editor-canvas-toolbar.css.
- * Behavior and class names must remain unchanged.
+ * Behavior and class names must remain stable for contracts.
  */
 
 .editor-mobile-bottom-bar {
@@ -13,19 +13,23 @@
 @media (max-width: 479px) {
     .editor-mobile-bottom-bar {
         display: flex;
+        flex-direction: column;
         position: fixed;
         bottom: 0;
         left: 0;
         right: 0;
         z-index: 100;
-        padding: 12px 16px;
-        padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+        gap: 8px;
+        padding: 10px 12px;
+        padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
         background: var(--surface, #fdfbf7);
         border-top: 1px solid var(--outline-variant, rgba(144,73,81,0.12));
         justify-content: center;
-        align-items: center;
+        align-items: stretch;
         box-shadow: 0 -4px 20px rgba(75, 64, 57, 0.06);
         box-sizing: border-box;
+        max-width: 100vw;
+        overflow: hidden;
         transition: transform 0.2s ease, opacity 0.2s ease;
     }
 
@@ -33,27 +37,116 @@
         display: none !important;
     }
 
+    /* #3586: status + single transition on one compact row */
+    .editor-mobile-mode-cluster {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        width: 100%;
+        min-width: 0;
+        box-sizing: border-box;
+    }
+
+    .editor-mobile-mode-status {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        flex: 0 0 auto;
+        min-height: 36px;
+        max-width: 46%;
+        padding: 6px 10px;
+        border-radius: 999px;
+        border: 1px solid rgba(144, 73, 81, 0.14);
+        background: rgba(255, 255, 255, 0.92);
+        color: var(--primary, #904951);
+        font-family: var(--font-body, 'Noto Sans KR', sans-serif);
+        font-size: 12px;
+        font-weight: 800;
+        line-height: 1.2;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        box-sizing: border-box;
+        pointer-events: none;
+        user-select: none;
+    }
+
+    .editor-mobile-mode-status[data-mode="edit"] {
+        border-color: rgba(144, 73, 81, 0.22);
+        background: rgba(144, 73, 81, 0.10);
+    }
+
+    .editor-mobile-mode-status .material-symbols-outlined {
+        font-size: 15px;
+        flex: 0 0 auto;
+    }
+
+    .editor-mobile-mode-toggle {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        flex: 1 1 auto;
+        min-width: 0;
+        min-height: 36px;
+        padding: 6px 12px;
+        border-radius: 999px;
+        border: 1px solid rgba(144, 73, 81, 0.20);
+        background: linear-gradient(180deg, rgba(144, 73, 81, 0.98), rgba(144, 73, 81, 0.90));
+        color: #fff;
+        font-family: var(--font-body, 'Noto Sans KR', sans-serif);
+        font-size: 13px;
+        font-weight: 800;
+        line-height: 1.2;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        cursor: pointer;
+        box-sizing: border-box;
+        -webkit-tap-highlight-color: transparent;
+        touch-action: manipulation;
+        user-select: none;
+    }
+
+    .editor-mobile-mode-toggle .material-symbols-outlined {
+        font-size: 16px;
+        flex: 0 0 auto;
+    }
+
+    .editor-mobile-mode-toggle:active {
+        transform: scale(0.98);
+        filter: brightness(0.97);
+    }
+
     .editor-mobile-bottom-action {
         width: 100%;
-        max-width: 280px;
-        padding: 14px 28px;
+        max-width: none;
+        min-height: 44px;
+        padding: 12px 20px;
         border-radius: var(--radius-full, 9999px);
         background: var(--primary, #904951);
         color: var(--on-primary, #ffffff);
         border: none;
         font-family: var(--font-body, 'Noto Sans KR', sans-serif);
-        font-size: 16px;
-        font-weight: 600;
-        line-height: 1.4;
+        font-size: 15px;
+        font-weight: 700;
+        line-height: 1.3;
         display: flex;
         align-items: center;
         justify-content: center;
         gap: 8px;
         cursor: pointer;
+        white-space: nowrap;
+        box-sizing: border-box;
         -webkit-tap-highlight-color: transparent;
         touch-action: manipulation;
         user-select: none;
         transition: background 0.15s ease, transform 0.1s ease;
+    }
+
+    .editor-mobile-bottom-action.is-authoring-hidden {
+        display: none !important;
     }
 
     .editor-mobile-bottom-action:active {
@@ -64,7 +157,7 @@
     /* iOS safe-area: account for home indicator */
     @supports (padding-bottom: env(safe-area-inset-bottom)) {
         .editor-mobile-bottom-bar {
-            padding-bottom: calc(12px + env(safe-area-inset-bottom));
+            padding-bottom: calc(10px + env(safe-area-inset-bottom));
         }
     }
 }
