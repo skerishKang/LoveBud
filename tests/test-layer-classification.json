@@ -2429,6 +2429,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/public-viewer-csp-header-3589-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Source contracts for CSP-safe public viewer header bootstrap plus Playwright browser under Production-equivalent CSP; uses local static server and API fixtures only (#3589).",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/public-viewer-default-structured-layout-contract.test.cjs",
       "layer": "EXECUTED_FAKE",
       "rationale": "Reads production module source and executes it in a local process with injected fake/mock/stub dependencies (e.g., vm context with fake DOM or mocked fetch/localStorage); no real external system or production resource used.",
