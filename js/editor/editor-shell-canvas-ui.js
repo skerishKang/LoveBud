@@ -125,6 +125,9 @@
         var getCanonicalRootId = opts.getCanonicalRootId || function() { return null; };
         var setCurrentEditingMemory = opts.setCurrentEditingMemory || function() {};
         var setDetailEmptyState = opts.setDetailEmptyState || function() {};
+        // #3576: tree-scope left rail is populated only inside updateDetailPanel.
+        // Empty / root-only paths must still call it; setDetailEmptyState alone is not enough.
+        var updateDetailPanel = opts.updateDetailPanel || function() {};
         var log = opts.log || function() {};
 
         return function applyEditorInitialSelection() {
@@ -136,14 +139,17 @@
             if (initialSelection && !isRootMemory(initialSelection, getCanonicalRootId())) {
                 setCurrentEditingMemory(initialSelection);
                 setDetailEmptyState(false);
+                updateDetailPanel(initialSelection);
                 log('Initial selection set: ' + initialSelection.id);
             } else {
                 // root placeholder 이거나, validated memories에 selectedNodeId가 없는 경우
                 // (다른 트리에서 남은 stale selected state) → detail panel selected-moment UI 차단
+                // but still render left-rail tree-scope metadata for the loaded tree.
                 setDetailEmptyState(true);
                 if (selectedNodeId) {
                     setSelectedNodeId(null);
                 }
+                updateDetailPanel(null);
             }
 
             return initialSelection;

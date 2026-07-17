@@ -215,7 +215,7 @@ test('#3562 EXECUTED empty-tree tree-meta model retains title/status without mom
     formatI18nText: function (_k, fb) {
       return fb;
     },
-    resolveTreeTitleText: function (t) {
+    resolveTreeTitleText: function (_i18n, t) {
       return t || '빈 트리';
     },
     createInlineIcon: function () {
@@ -306,7 +306,7 @@ test('#3562 closed-issue hygiene header', () => {
 
 // ─── #3576 Owner appreciation left-rail tree-scope restoration ───
 
-test('#3576 sidebar template loads as classic script in editor.html (not deferred)', () => {
+test('#3576 sidebar template loads as type="module" in editor.html (ESM restored)', () => {
   const editorHtml = require('fs').readFileSync(
     path.join(ROOT, 'pages/editor.html'), 'utf8'
   );
@@ -314,14 +314,25 @@ test('#3576 sidebar template loads as classic script in editor.html (not deferre
     /<script[^>]*src="[^"]*editor-sidebar-template\.js[^"]*"[^>]*>/g
   );
   assert.ok(sidebarTag && sidebarTag.length === 1, 'exactly one sidebar script tag');
-  // Sidebar template is now a classic script (not ESM) for synchronous execution during parsing
   assert.ok(
-    !sidebarTag[0].includes('type="module"'),
-    'sidebar template must NOT be loaded as type="module" (classic script for sync execution)'
+    sidebarTag[0].includes('type="module"'),
+    'sidebar template must be loaded as type="module" (ESM)'
+  );
+  assert.ok(
+    !sidebarTag[0].includes('6d79c66e2fbc'),
+    'old classic-conversion fingerprint 6d79c66e2fbc must be removed'
+  );
+  assert.ok(
+    /editor-sidebar-template\.js\?v=38e12fa98ab9/.test(sidebarTag[0]),
+    'sidebar template must use the restored-ESM fingerprint'
   );
   const sharedIdx = editorHtml.indexOf('canonical-appreciation-detail-presentation.js');
   const sideIdx = editorHtml.indexOf('editor-sidebar-template.js');
   assert.ok(sideIdx > sharedIdx, 'sidebar template after shared builder');
+  const sidebarSrc = require('fs').readFileSync(
+    path.join(ROOT, 'js/editor/templates/editor-sidebar-template.js'), 'utf8'
+  );
+  assert.match(sidebarSrc, /export\s+function\s+buildSidebarTemplate\s*\(/);
 });
 
 test('#3576 EXECUTED: sidebar mount creates detailTreeMetaMount', () => {
@@ -350,7 +361,7 @@ test('#3576 buildTreeMetaRenderModel produces valid model', () => {
   const d = sandbox.document;
   const { buildTreeMetaRenderModel } = boundary({
     i18n: () => '', formatI18nText: (_, f) => f || '',
-    resolveTreeTitleText: (t) => t || 'Test Tree',
+    resolveTreeTitleText: (_i18n, t) => t || 'Test Tree',
     createInlineIcon: (icon) => { const e = d.createElement('span'); e.textContent = icon; return e; },
     showToast: () => {}, canEdit: true, openRenameTree: () => {},
     updateTreeVisibility: () => Promise.resolve(), updateDetailPanel: () => () => {},
@@ -405,7 +416,7 @@ test('#3576 EXECUTED: empty moment preserves tree scope model', () => {
   const d = sandbox.document;
   const { buildTreeMetaRenderModel } = boundary({
     i18n: () => '', formatI18nText: (_, f) => f || '',
-    resolveTreeTitleText: (t) => t || '',
+    resolveTreeTitleText: (_i18n, t) => t || '',
     createInlineIcon: (icon) => { const e = d.createElement('span'); e.textContent = icon; return e; },
     showToast: () => {}, canEdit: true, openRenameTree: () => {},
     updateTreeVisibility: () => Promise.resolve(), updateDetailPanel: () => () => {},

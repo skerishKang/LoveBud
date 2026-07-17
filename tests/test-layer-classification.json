@@ -377,9 +377,9 @@
       "capabilities": []
     },
     {
-      "path": "tests/contracts/execution-order-3576-contract.test.cjs",
+      "path": "tests/contracts/execution-order-simulation-3576-contract.test.cjs",
       "layer": "EXECUTED_FAKE",
-      "rationale": "Simulates editor.html page execution order in node:vm — shared builder (classic) → deferred sidebar module → DOMContentLoaded → detail UI init. Proves deferred module scripts execute before DOMContentLoaded and #detailTreeMetaMount exists when createEditorDetailUI would run. No real browser/network/DB.",
+      "rationale": "SIMULATION only (not actual browser execution). node:vm strips export and fabricates DOMContentLoaded sequencing for editor-sidebar-template; classifies as EXECUTED_FAKE evidence. Does not prove real module evaluation order, network, or Chromium runtime. No real browser/network/DB.",
       "capabilities": []
     },
     {
@@ -4340,6 +4340,24 @@
       "path": "tests/smoke/routes.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/editor-sidebar-module-browser-runtime-3576-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Actual Playwright Chromium loads local static editor template assets with type=module, records real MutationObserver/DOMContentLoaded order, and asserts mount replacement for #detailTreeMetaMount. Fails closed when Playwright/Chromium is unavailable. No Production credentials or DB.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/editor-owner-tree-scope-browser-runtime-3576-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Actual Playwright Chromium boots pages/editor.html with localStorage auth fixture and API route interception; traces owner no-moment and with-moments tree-scope left-rail render via real DOM/computed state and LoveBudEditorDebug. Fails closed when Playwright/Chromium is unavailable. No Production write/DB.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/editor-sidebar-fingerprint-3576-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Static contract: sidebar remains type=module, old fingerprint 6d79c66e2fbc is absent, new fingerprint tracks current sidebar source SHA-256 prefix, and loading semantics stay ESM. No browser/network/DB.",
       "capabilities": []
     }
   ],

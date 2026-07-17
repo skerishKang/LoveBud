@@ -1,6 +1,7 @@
 /**
  * Owner editor left rail — thin wrapper around shared tree-scope builder (#3562).
  * Requires classic script js/shared/canonical-appreciation-detail-presentation.js first.
+ * #3576: keep as type=module ESM; mount replacement runs before DOMContentLoaded.
  */
 
 function getSharedPresentationBuilder() {
@@ -24,7 +25,7 @@ function buildTreeScopeRegion() {
   });
 }
 
-function buildSidebarTemplate() {
+export function buildSidebarTemplate() {
   return (
     `
         <aside class="sidebar reveal-fade" data-appreciation-layout="tree-scope-rail">
