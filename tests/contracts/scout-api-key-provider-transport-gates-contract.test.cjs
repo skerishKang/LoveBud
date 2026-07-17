@@ -560,7 +560,7 @@ async function run() {
     // We verify that the new module is a server-side module by checking
     // it's under functions/api/scout/ (not pages/ or js/).
     assert.ok(
-      MODULE_PATH.replace(/\\/g, '/').includes('functions/api/scout/'),
+      MODULE_PATH.includes('functions/api/scout/'),
       'module path is under functions/api/scout/'
     );
     pass('module is under functions/api/scout/ (server-side)');
