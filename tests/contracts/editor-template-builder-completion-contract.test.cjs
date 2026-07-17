@@ -25,7 +25,7 @@ const TEMPLATE_BUILDERS = [
     path: 'js/editor/templates/editor-sidebar-template.js',
     builder: 'buildSidebarTemplate',
     mountId: 'editorSidebarTemplateMount',
-    module: true
+    module: false
   },
   {
     path: 'js/editor/templates/editor-floating-toolbar-template.js',
@@ -93,7 +93,15 @@ test('all editor templates mount through their builder function', () => {
     if (isModule) {
       assert.doesNotMatch(content, /^\(function\(\)\s*\{/, `${path} must not use IIFE wrapper (ESM)`);
     } else {
-      assert.match(content, /^\(function\(\)\s*\{/, `${path} must keep classic IIFE wrapper`);
+      // Sidebar template is a classic script but does NOT use IIFE - it uses direct function declarations
+      // because it has helper functions that need to be shared within the script
+      if (path.includes('editor-sidebar-template.js')) {
+        // Sidebar uses direct function declarations, not IIFE
+        assert.match(content, /function\s+getSharedPresentationBuilder/,
+          `${path} must use direct function declarations (not IIFE)`);
+      } else {
+        assert.match(content, /^\(function\(\)\s*\{/, `${path} must keep classic IIFE wrapper`);
+      }
     }
     assert.match(content, mountPattern, `${path} must target #${mountId}`);
     assert.match(content, mountCallPattern, `${path} must mount via ${builder}()`);

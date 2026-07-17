@@ -314,9 +314,10 @@ test('#3576 sidebar template loads as classic script in editor.html (not deferre
     /<script[^>]*src="[^"]*editor-sidebar-template\.js[^"]*"[^>]*>/g
   );
   assert.ok(sidebarTag && sidebarTag.length === 1, 'exactly one sidebar script tag');
+  // Sidebar template is now a classic script (not ESM) for synchronous execution during parsing
   assert.ok(
-    sidebarTag[0].includes('type="module"'),
-    'sidebar template must be loaded as type="module" (ESM)'
+    !sidebarTag[0].includes('type="module"'),
+    'sidebar template must NOT be loaded as type="module" (classic script for sync execution)'
   );
   const sharedIdx = editorHtml.indexOf('canonical-appreciation-detail-presentation.js');
   const sideIdx = editorHtml.indexOf('editor-sidebar-template.js');

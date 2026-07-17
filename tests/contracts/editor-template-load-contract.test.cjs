@@ -20,7 +20,6 @@ const MODULE_TEMPLATE_SCRIPTS = [
     'js/editor/templates/editor-add-memory-form-template.js',
     'js/editor/templates/editor-canvas-topbar-template.js',
     'js/editor/templates/editor-empty-guide-template.js',
-    'js/editor/templates/editor-sidebar-template.js',
     'js/editor/templates/editor-floating-toolbar-template.js',
     'js/editor/templates/editor-detail-panel-shell-template.js',
     'js/editor/templates/editor-detail-empty-state-template.js',
@@ -125,8 +124,16 @@ test('template files use IIFE pattern with mount.outerHTML replacement', () => {
             assert.doesNotMatch(content, /^\(function\(\)\s*\{/,
                 `module template ${script} must not use IIFE wrapper`);
         } else {
-            assert.match(content, /^\(function\(\)\s*\{/,
-                `template ${script} must start with IIFE pattern`);
+            // Classic scripts: sidebar template uses direct function declarations (not IIFE)
+            // because it has helper functions that need to be shared within the script
+            if (script.includes('editor-sidebar-template.js')) {
+                // Sidebar uses direct function declarations after comments, not IIFE
+                assert.match(content, /function\s+getSharedPresentationBuilder/,
+                    `sidebar template ${script} must contain getSharedPresentationBuilder function`);
+            } else {
+                assert.match(content, /^\(function\(\)\s*\{/,
+                    `template ${script} must start with IIFE pattern`);
+            }
         }
         // All templates: mount.outerHTML = builder call
         assert.match(content, /mount\.outerHTML\s*=\s*build\w+Template\(\)/,
@@ -199,8 +206,9 @@ test('editor-empty-guide-template.js defines buildEmptyGuideTemplate builder', (
 
 test('editor-sidebar-template.js defines buildSidebarTemplate builder', () => {
     const content = fs.readFileSync('js/editor/templates/editor-sidebar-template.js', 'utf8');
-    assert.match(content, /export\s+function buildSidebarTemplate\(\)/,
-        'must define buildSidebarTemplate as exported function');
+    // Sidebar template is now a classic script, so it uses function (not export)
+    assert.match(content, /^function buildSidebarTemplate\(\)/m,
+        'must define buildSidebarTemplate as function (classic script, not exported)');
     assert.match(content, /mount\.outerHTML\s*=\s*buildSidebarTemplate\(\)/,
         'must call buildSidebarTemplate() for mount.outerHTML');
 });
@@ -275,10 +283,13 @@ test('editor-empty-guide-template.js is loaded as type="module" in editor.html',
         'editor-empty-guide-template.js must be loaded with type="module"');
 });
 
-test('editor-sidebar-template.js is loaded as type="module" in editor.html', () => {
+test('editor-sidebar-template.js is loaded as classic script (not type="module")', () => {
     const modulePattern = /<script\s+type="module"\s+src="[^"]*editor-sidebar-template\.js/;
-    assert.match(html, modulePattern,
-        'editor-sidebar-template.js must be loaded with type="module"');
+    assert.doesNotMatch(html, modulePattern,
+        'editor-sidebar-template.js must NOT be loaded with type="module"');
+    const classicPattern = /<script\s+src="[^"]*editor-sidebar-template\.js/;
+    assert.match(html, classicPattern,
+        'editor-sidebar-template.js must be loaded as classic script');
 });
 
 test('editor-floating-toolbar-template.js is loaded as type="module" in editor.html', () => {
@@ -311,14 +322,18 @@ test('editor-detail-edit-mode-template.js is loaded as type="module" in editor.h
         'editor-detail-edit-mode-template.js must be loaded with type="module"');
 });
 
-test('all 9 template scripts are loaded as type="module"', () => {
+test('all 8 template scripts are loaded as type="module"', () => {
     for (const script of TEMPLATE_SCRIPTS) {
-        assert.ok(isModuleTemplate(script), `template ${script} must be in MODULE_TEMPLATE_SCRIPTS`);
+        if (isModuleTemplate(script)) {
+            assert.ok(isModuleTemplate(script), `template ${script} must be in MODULE_TEMPLATE_SCRIPTS`);
+        }
     }
-    assert.equal(MODULE_TEMPLATE_SCRIPTS.length, 9, 'all 9 templates must be ESM modules');
+    assert.equal(MODULE_TEMPLATE_SCRIPTS.length, 8, '8 templates must be ESM modules');
 });
 
-test('remaining 0 template scripts are NOT loaded as type="module"', () => {
+test('remaining 1 template script (sidebar) is NOT loaded as type="module"', () => {
     const classicTemplates = TEMPLATE_SCRIPTS.filter(s => !isModuleTemplate(s));
-    assert.equal(classicTemplates.length, 0, 'no classic templates should remain');
+    assert.equal(classicTemplates.length, 1, 'sidebar template must be classic script');
+    assert.equal(classicTemplates[0], 'js/editor/templates/editor-sidebar-template.js',
+        'sidebar template is the only classic script');
 });

@@ -164,27 +164,30 @@ test('#3576 EXECUTION ORDER: sidebar mount replacement creates #detailTreeMetaMo
 
 test('#3576 EXECUTION ORDER: editor.html module script tag order is correct', () => {
   const editorHtml = read('pages/editor.html');
-  
-  // All 9 template scripts must be type="module"
+
+  // 8 template scripts are type="module" (sidebar is classic script)
   const modulePattern = /<script type="module" src="[^"]*editor-[^"]*-template\.js[^"]*"[^>]*>/g;
   const moduleMatches = editorHtml.match(modulePattern) || [];
-  assert.equal(moduleMatches.length, 9, 'All 9 template scripts must be type="module"');
-  
-  // Sidebar template must be among them
+  assert.equal(moduleMatches.length, 8, '8 template scripts must be type="module"');
+
+  // Sidebar template is NOT a module (it's a classic script for synchronous execution)
   const sidebarMatch = moduleMatches.find(m => m.includes('editor-sidebar-template.js'));
-  assert.ok(sidebarMatch, 'editor-sidebar-template.js must be loaded as type="module"');
-  
+  assert.ok(!sidebarMatch, 'editor-sidebar-template.js must NOT be loaded as type="module"');
+
   // Shared builder must load before any template
   const sharedIdx = editorHtml.indexOf('canonical-appreciation-detail-presentation.js');
   const firstTemplateIdx = editorHtml.indexOf('type="module"');
-  assert.ok(sharedIdx >= 0 && firstTemplateIdx > sharedIdx, 
+  assert.ok(sharedIdx >= 0 && firstTemplateIdx > sharedIdx,
     'Shared presentation builder must load before any module template');
 });
 
-test('#3576 EXECUTION ORDER: template source uses export function pattern', () => {
+test('#3576 EXECUTION ORDER: template source uses function (not export) pattern', () => {
   const src = read(SIDEBAR_TEMPLATE);
-  assert.ok(src.includes('export function buildSidebarTemplate'), 
-    'editor-sidebar-template.js must use export function buildSidebarTemplate');
+  // Sidebar template is a classic script, so it uses function (not export)
+  assert.ok(src.includes('function buildSidebarTemplate'),
+    'editor-sidebar-template.js must use function buildSidebarTemplate (classic script)');
+  assert.ok(!src.includes('export function buildSidebarTemplate'),
+    'editor-sidebar-template.js must NOT use export function (not ESM module)');
 });
 
 test('#3576 tree meta mount exists in DOMContentLoaded handler scope', () => {
