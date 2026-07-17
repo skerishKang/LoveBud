@@ -179,27 +179,23 @@
     word-break: keep-all;
 }
 
-.editor-mobile-mode-toggle {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 8px 12px;
-    border-radius: 999px;
-    border: 1px solid rgba(144, 73, 81, 0.14);
-    background: rgba(255, 250, 248, 0.84);
-    color: var(--primary);
-    font-size: 12px;
-    font-weight: 800;
-    cursor: pointer;
-    transition: background 0.2s ease, border-color 0.2s ease;
+/* Mobile mode cluster is owned by editor-mobile-action-bar.css at <480px.
+   Hide the mobile-only surface on wider viewports so desktop mode card remains sole owner. */
+@media (min-width: 480px) {
+    .editor-mobile-mode-cluster,
+    .editor-mobile-mode-status,
+    .editor-mobile-mode-toggle {
+        display: none !important;
+    }
 }
 
-.editor-mobile-mode-toggle:active {
-    background: rgba(144, 73, 81, 0.14);
+/* #3586: never show authoring primary as a mode transition proxy. */
+.editor-mobile-bottom-action.is-authoring-hidden {
+    display: none !important;
 }
 
-[data-editor-interaction-mode="view"] .editor-mobile-bottom-action:disabled {
-    opacity: 0.5;
+[data-editor-interaction-mode="view"] .editor-mobile-bottom-action.is-authoring-hidden {
+    display: none !important;
 }
 
 /**

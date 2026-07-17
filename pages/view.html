@@ -8,7 +8,7 @@
     <link rel="icon" href="/favicon.ico" sizes="32x32">
     <link rel="stylesheet" href="../css/global.css?v=20260618-2700-1">
     <link rel="stylesheet" href="../css/components/lovebud-ai-panel.css?v=20260616-ai-panel-1">
-    <link rel="stylesheet" href="../css/editor.css?v=20260717-3586-1">
+    <link rel="stylesheet" href="../css/editor.css?v=20260717-3586-2">
     <link rel="stylesheet" href="../css/page-transitions.css?v=20260430-1">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" />
     <style>
@@ -126,5 +126,11 @@
     <script src="../js/viewer/public-viewer-copy-helper.js?v=20260525-1"></script>
     <script src="../js/viewer/public-viewer-control-visibility-helper.js?v=20260526-1"></script>
     <script src="../js/viewer/public-viewer-copy-polish.js?v=20260525-1"></script>
+    <script>
+      // Match editor shell: mount shared LoveBud header into #shared-header.
+      if (typeof renderSharedHeader === 'function') {
+        renderSharedHeader();
+      }
+    </script>
 </body>
 </html>

@@ -15,7 +15,7 @@
 @import url("./editor/editor-canvas-affordance.css?v=20260623-2806-A");
 @import url("./editor/editor-canvas-toolbar.css?v=20260512-1041");
 @import url("./editor/editor-floating-toolbar.css?v=20260712-editor-ui-followup-1");
-@import url("./editor/editor-mobile-action-bar.css?v=20260518-1");
+@import url("./editor/editor-mobile-action-bar.css?v=7aaf3b31174e");
 @import url("./editor/editor-memory-form-canvas.css");
 @import url("./editor/editor-memory-form-sidebar.css");
 @import url("./editor/editor-memory-form-modal-layout.css");
@@ -29,7 +29,7 @@
 @import url("./editor/editor-detail-actions.css?v=20260518-1");
 @import url("./editor/editor-detail-edit.css?v=20260518-1");
 @import url("./editor/editor-responsive.css");
-@import url("./editor/editor-mode-selection.css?v=12bf84207a96");
+@import url("./editor/editor-mode-selection.css?v=fe73c437e03c");
 @import url("./editor/editor-status-settings.css");
 @import url("./editor/editor-memory-edit.css");
 @import url("./editor/editor-overrides.css?v=acaba3275988");

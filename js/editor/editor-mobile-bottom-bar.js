@@ -1,14 +1,15 @@
 /**
  * LoveBud Editor — Mobile Bottom Action Bar
  * Issue #1272 — First slice
+ * Issue #3586 — explicit appreciation/edit mode ownership on mobile
  *
- * Displays a fixed bottom action button on mobile viewport (<480px):
- *  - No selected moment / empty tree: "새 순간 만들기" → triggers addMemoryBtn
- *  - Selected moment exists: "이어가기" → triggers continueFromMomentBtn
- *  - Form open or edit mode: hidden
+ * Mobile owns ONE mode cluster + optional authoring primary:
+ *  - Appreciation: status `감상 모드` + transition `편집하기` only
+ *  - Edit: status `편집 모드` + transition `감상으로` + primary `이어가기`/`새 순간 만들기`
  *
- * Delegates to existing DOM buttons — no new flows or backend changes.
- * No interaction with desktop floating toolbar.
+ * Legacy dual mode CTA (explanatory primary + small transition) is removed.
+ * Delegates authoring to existing DOM buttons — no new flows or backend changes.
+ * No interaction with desktop floating toolbar / desktop mode card.
  * iOS safe-area handled via CSS env(safe-area-inset-bottom).
  */
 
@@ -18,9 +19,12 @@
   var BOTTOM_BAR_ID = 'mobileBottomBar';
   var ACTION_BTN_ID = 'mobileBottomAction';
   var ACTION_LABEL_ID = 'mobileBottomActionLabel';
+  var MODE_CLUSTER_ID = 'mobileModeCluster';
+  var MODE_STATUS_ID = 'mobileModeStatus';
   var MODE_TOGGLE_ID = 'mobileModeToggle';
   var MOBILE_BREAKPOINT = 480;
   var IS_HIDDEN_CLASS = 'is-hidden';
+  var AUTHORING_HIDDEN_CLASS = 'is-authoring-hidden';
   var UPDATE_DEBOUNCE = 120;
 
   function initMobileBottomBar() {
@@ -42,37 +46,94 @@
     // no editor editability state has been published yet.
     var editorNamespace = (typeof window !== 'undefined' && window.LoveBudEditor) || {};
     var canEdit = editorNamespace.canEdit !== false;
+    var modeCluster = null;
+    var modeStatus = null;
+    var modeStatusLabel = null;
+    var modeStatusIcon = null;
     var modeToggle = null;
+    var modeActionLabel = null;
     var modeUnsubscribe = null;
 
     if (canEdit !== false && window.LoveBudEditorInteractionMode) {
-      // #3586: explicit appreciation/edit transition (not canvas "보기" display).
+      // Single mobile mode ownership surface (status + one transition).
+      modeCluster = document.createElement('div');
+      modeCluster.id = MODE_CLUSTER_ID;
+      modeCluster.className = 'editor-mobile-mode-cluster';
+      modeCluster.setAttribute('role', 'group');
+      modeCluster.setAttribute('aria-label', '감상과 편집 전환');
+      modeCluster.setAttribute('data-mobile-mode-cluster', '1');
+
+      modeStatus = document.createElement('div');
+      modeStatus.id = MODE_STATUS_ID;
+      modeStatus.className = 'editor-mobile-mode-status';
+      modeStatus.setAttribute('role', 'status');
+      modeStatus.setAttribute('aria-live', 'polite');
+      modeStatus.setAttribute('data-mode', 'view');
+      modeStatusIcon = document.createElement('span');
+      modeStatusIcon.className = 'material-symbols-outlined';
+      modeStatusIcon.setAttribute('aria-hidden', 'true');
+      modeStatusIcon.textContent = 'visibility';
+      modeStatusLabel = document.createElement('span');
+      modeStatusLabel.setAttribute('data-mobile-mode-status-label', '');
+      modeStatusLabel.textContent = '감상 모드';
+      modeStatus.appendChild(modeStatusIcon);
+      modeStatus.appendChild(modeStatusLabel);
+
       modeToggle = document.createElement('button');
       modeToggle.type = 'button';
       modeToggle.id = MODE_TOGGLE_ID;
       modeToggle.className = 'editor-mobile-mode-toggle';
       modeToggle.setAttribute('aria-label', '편집하기');
-      modeToggle.textContent = '편집하기';
-      bar.insertBefore(modeToggle, actionBtn);
+      modeToggle.setAttribute('title', '편집하기');
+      modeToggle.setAttribute('data-mode-action', 'enter-edit');
+      var modeToggleIcon = document.createElement('span');
+      modeToggleIcon.className = 'material-symbols-outlined';
+      modeToggleIcon.setAttribute('aria-hidden', 'true');
+      modeToggleIcon.textContent = 'edit';
+      modeActionLabel = document.createElement('span');
+      modeActionLabel.setAttribute('data-mobile-mode-action-label', '');
+      modeActionLabel.textContent = '편집하기';
+      modeToggle.appendChild(modeToggleIcon);
+      modeToggle.appendChild(modeActionLabel);
+
+      modeCluster.appendChild(modeStatus);
+      modeCluster.appendChild(modeToggle);
+      bar.insertBefore(modeCluster, actionBtn);
 
       function syncModeUI() {
         var mode = window.LoveBudEditorInteractionMode;
         var isEdit = mode && mode.isEditMode();
-        if (isEdit) {
-          modeToggle.textContent = '감상으로 돌아가기';
-          modeToggle.setAttribute('aria-label', '감상으로 돌아가기');
-          modeToggle.dataset.modeAction = 'return-to-appreciation';
-          actionBtn.disabled = false;
-        } else {
-          modeToggle.textContent = '편집하기';
-          modeToggle.setAttribute('aria-label', '편집하기');
-          modeToggle.dataset.modeAction = 'enter-edit';
-          actionBtn.disabled = true;
+        if (modeStatus) {
+          modeStatus.dataset.mode = isEdit ? 'edit' : 'view';
+        }
+        if (modeStatusLabel) {
+          modeStatusLabel.textContent = isEdit ? '편집 모드' : '감상 모드';
+        }
+        if (modeStatusIcon) {
+          modeStatusIcon.textContent = isEdit ? 'edit' : 'visibility';
+        }
+        if (modeToggle) {
+          // Short mobile return label keeps one line at 375px.
+          if (isEdit) {
+            modeToggle.dataset.modeAction = 'return-to-appreciation';
+            modeToggle.setAttribute('aria-label', '감상으로');
+            modeToggle.setAttribute('title', '감상으로');
+            if (modeActionLabel) modeActionLabel.textContent = '감상으로';
+            var returnIcon = modeToggle.querySelector('.material-symbols-outlined');
+            if (returnIcon) returnIcon.textContent = 'visibility';
+          } else {
+            modeToggle.dataset.modeAction = 'enter-edit';
+            modeToggle.setAttribute('aria-label', '편집하기');
+            modeToggle.setAttribute('title', '편집하기');
+            if (modeActionLabel) modeActionLabel.textContent = '편집하기';
+            var enterIcon = modeToggle.querySelector('.material-symbols-outlined');
+            if (enterIcon) enterIcon.textContent = 'edit';
+          }
         }
         updateBar();
       }
 
-      modeToggle.addEventListener('click', function(e) {
+      modeToggle.addEventListener('click', function (e) {
         e.preventDefault();
         var mode = window.LoveBudEditorInteractionMode;
         if (!mode) return;
@@ -136,9 +197,22 @@
         return;
       }
 
-      // Update label and icon based on selection state (edit mode only)
       var mode = window.LoveBudEditorInteractionMode;
-      if (mode && mode.isEditMode()) {
+      var isEdit = !!(mode && mode.isEditMode());
+
+      // #3586: primary authoring CTA only in edit. Never reuse it as a mode transition.
+      if (!isEdit) {
+        actionBtn.classList.add(AUTHORING_HIDDEN_CLASS);
+        actionBtn.setAttribute('aria-hidden', 'true');
+        actionBtn.disabled = true;
+        actionBtn.tabIndex = -1;
+        // Clear legacy copy so it cannot reappear as a second transition.
+        actionLabel.textContent = '';
+      } else {
+        actionBtn.classList.remove(AUTHORING_HIDDEN_CLASS);
+        actionBtn.setAttribute('aria-hidden', 'false');
+        actionBtn.disabled = false;
+        actionBtn.tabIndex = 0;
         if (hasSelectedMoment()) {
           actionLabel.textContent = '이어가기';
           if (iconEl) iconEl.textContent = 'arrow_forward';
@@ -146,17 +220,15 @@
           actionLabel.textContent = '새 순간 만들기';
           if (iconEl) iconEl.textContent = 'add';
         }
-      } else {
-        actionLabel.textContent = '편집하려면 모드 전환';
-        if (iconEl) iconEl.textContent = 'edit';
       }
 
       bar.classList.remove(IS_HIDDEN_CLASS);
+      bar.dataset.modeSurface = isEdit ? 'edit' : 'view';
     }
 
     /**
      * Handle click on the bottom action button.
-     * Delegates to existing DOM buttons.
+     * Delegates to existing DOM buttons. Never used for mode transition.
      */
     function onActionClick(e) {
       e.preventDefault();
