@@ -377,6 +377,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/execution-order-simulation-3576-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "SIMULATION only (not actual browser execution). node:vm strips export and fabricates DOMContentLoaded sequencing for editor-sidebar-template; classifies as EXECUTED_FAKE evidence. Does not prove real module evaluation order, network, or Chromium runtime. No real browser/network/DB.",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/canonical-appreciation-render-model-runtime-contract.test.cjs",
       "layer": "EXECUTED_FAKE",
       "rationale": "Executes the browser-global pure appreciation render-model helper in node:vm with injected window context and asserts normalization, field omission, detached outputs, and fail-closed capabilities. No real browser, network, auth provider, database, deployment, or Production resource is used.",
@@ -941,12 +947,6 @@
       "capabilities": []
     },
     {
-      "path": "tests/contracts/editor-explicit-appreciation-edit-mode-3586-contract.test.cjs",
-      "layer": "EXECUTED_FAKE",
-      "rationale": "#3586 explicit appreciation/edit mode: URL mode=edit sync, mutation gating, desktop/mobile transition labels, and Playwright mode enter/return/back plus public authority. No Production network/DB.",
-      "capabilities": []
-    },
-    {
       "path": "tests/contracts/editor-first-moment-cta-primary-only-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
@@ -1157,12 +1157,6 @@
       "capabilities": []
     },
     {
-      "path": "tests/contracts/editor-owner-tree-scope-browser-runtime-3576-contract.test.cjs",
-      "layer": "EXECUTED_FAKE",
-      "rationale": "Actual Playwright Chromium boots pages/editor.html with localStorage auth fixture and API route interception; traces owner no-moment and with-moments tree-scope left-rail render via real DOM/computed state and LoveBudEditorDebug. Fails closed when Playwright/Chromium is unavailable. No Production write/DB.",
-      "capabilities": []
-    },
-    {
       "path": "tests/contracts/editor-page-event-bindings-contract.test.cjs",
       "layer": "EXECUTED_FAKE",
       "rationale": "Reads production module source and executes it in a local process with injected fake/mock/stub dependencies (e.g., vm context with fake DOM or mocked fetch/localStorage); no real external system or production resource used.",
@@ -1361,21 +1355,9 @@
       "capabilities": []
     },
     {
-      "path": "tests/contracts/editor-sidebar-fingerprint-3576-contract.test.cjs",
-      "layer": "SOURCE_STATIC",
-      "rationale": "Static contract: sidebar remains type=module, old fingerprint 6d79c66e2fbc is absent, new fingerprint tracks current sidebar source SHA-256 prefix, and loading semantics stay ESM. No browser/network/DB.",
-      "capabilities": []
-    },
-    {
       "path": "tests/contracts/editor-sidebar-flow-summary-single-owner-contract.test.cjs",
       "layer": "EXECUTED_FAKE",
       "rationale": "Reads production module source and executes it in a local process with injected fake/mock/stub dependencies (e.g., vm context with fake DOM or mocked fetch/localStorage); no real external system or production resource used.",
-      "capabilities": []
-    },
-    {
-      "path": "tests/contracts/editor-sidebar-module-browser-runtime-3576-contract.test.cjs",
-      "layer": "EXECUTED_FAKE",
-      "rationale": "Actual Playwright Chromium loads local static editor template assets with type=module, records real MutationObserver/DOMContentLoaded order, and asserts mount replacement for #detailTreeMetaMount. Fails closed when Playwright/Chromium is unavailable. No Production credentials or DB.",
       "capabilities": []
     },
     {
@@ -1568,12 +1550,6 @@
       "path": "tests/contracts/entity-page-contract.test.cjs",
       "layer": "EXECUTED_FAKE",
       "rationale": "Reads production module source and executes it in a local process with injected fake/mock/stub dependencies (e.g., vm context with fake DOM or mocked fetch/localStorage); no real external system or production resource used.",
-      "capabilities": []
-    },
-    {
-      "path": "tests/contracts/execution-order-simulation-3576-contract.test.cjs",
-      "layer": "EXECUTED_FAKE",
-      "rationale": "SIMULATION only (not actual browser execution). node:vm strips export and fabricates DOMContentLoaded sequencing for editor-sidebar-template; classifies as EXECUTED_FAKE evidence. Does not prove real module evaluation order, network, or Chromium runtime. No real browser/network/DB.",
       "capabilities": []
     },
     {
@@ -1904,6 +1880,18 @@
       "path": "tests/contracts/migration-catalog-postgres-adapter-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Source-static contract for the disposable pg_catalog fingerprint adapter: explicit connection policy, role mapping, mock expected-fixture equality, CI job pin, and ADOPTION_REQUIRED manifests without live PostgreSQL (#3544).",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/phase-b-collection-operator-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Source-static contract for the Phase B operator collection CLI and receipt builder: argv boundary, trusted prepared plan, recomputed digest cross-validation, recursive prohibited field/sensitive value scanning, single bounded JSON output, UNATTESTED attestation draft with fixed environment/scope, ADOPTION_REQUIRED candidate, baseline HEAD binding, actual session counting, and no Production DB session (#3573, replacement for CLOSED PR #3574).",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/production-readonly-catalog-boundary-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Source-static contract for the Production-readonly catalog connection boundary: dedicated secret key only, remote TLS URL validation, major-17 version policy, frozen adoption allowlist, abstract role mapping, disposable adapter regression, and no Production DB session (#3570).",
       "capabilities": []
     },
     {
@@ -2249,12 +2237,6 @@
       "capabilities": []
     },
     {
-      "path": "tests/contracts/owner-appreciation-tree-scope-css-3580-contract.test.cjs",
-      "layer": "EXECUTED_FAKE",
-      "rationale": "Source selector contracts plus Playwright cascade and owner editor browser runtime for #3580: owner view shows .editor-tree-meta-section, public readonly remains visible, owner edit keeps broad hide, add-section stays edit-only, and mount geometry is positive without right-rail duplication. No Production network/DB.",
-      "capabilities": []
-    },
-    {
       "path": "tests/contracts/owner-tree-list-observability-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
@@ -2273,12 +2255,6 @@
       "capabilities": []
     },
     {
-      "path": "tests/contracts/phase-b-collection-operator-contract.test.cjs",
-      "layer": "SOURCE_STATIC",
-      "rationale": "Source-static contract for the Phase B operator collection CLI and receipt builder: argv boundary, trusted prepared plan, recomputed digest cross-validation, recursive prohibited field/sensitive value scanning, single bounded JSON output, UNATTESTED attestation draft with fixed environment/scope, ADOPTION_REQUIRED candidate, baseline HEAD binding, actual session counting, and no Production DB session (#3573, replacement for CLOSED PR #3574).",
-      "capabilities": []
-    },
-    {
       "path": "tests/contracts/preview-embed-sanitization-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
@@ -2288,12 +2264,6 @@
       "path": "tests/contracts/preview-hub-canonical-skeleton-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
-      "capabilities": []
-    },
-    {
-      "path": "tests/contracts/production-readonly-catalog-boundary-contract.test.cjs",
-      "layer": "SOURCE_STATIC",
-      "rationale": "Source-static contract for the Production-readonly catalog connection boundary: dedicated secret key only, remote TLS URL validation, major-17 version policy, frozen adoption allowlist, abstract role mapping, disposable adapter regression, and no Production DB session (#3570).",
       "capabilities": []
     },
     {
@@ -3707,12 +3677,6 @@
       "capabilities": []
     },
     {
-      "path": "tests/contracts/tree-meta-title-resolution-3576-behavior.test.cjs",
-      "layer": "EXECUTED_FAKE",
-      "rationale": "Executes real editor-helpers + owner/public tree-meta boundary factories in node:vm with fake DOM/i18n and asserts buildTreeMetaRenderModel preserves custom titles, locale fallbacks for sentinel keys, moment-independent title stability, owner/viewer agreement, and the 1-arg resolveTreeTitleText clobber regression. No real browser/network/DB.",
-      "capabilities": []
-    },
-    {
       "path": "tests/contracts/tree-owner-identity-normalization-contract.test.cjs",
       "layer": "EXECUTED_FAKE",
       "rationale": "Reads production module source and executes it in a local process with injected fake/mock/stub dependencies (e.g., vm context with fake DOM or mocked fetch/localStorage); no real external system or production resource used.",
@@ -4382,6 +4346,42 @@
       "path": "tests/smoke/routes.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/editor-sidebar-module-browser-runtime-3576-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Actual Playwright Chromium loads local static editor template assets with type=module, records real MutationObserver/DOMContentLoaded order, and asserts mount replacement for #detailTreeMetaMount. Fails closed when Playwright/Chromium is unavailable. No Production credentials or DB.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/editor-owner-tree-scope-browser-runtime-3576-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Actual Playwright Chromium boots pages/editor.html with localStorage auth fixture and API route interception; traces owner no-moment and with-moments tree-scope left-rail render via real DOM/computed state and LoveBudEditorDebug. Fails closed when Playwright/Chromium is unavailable. No Production write/DB.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/editor-sidebar-fingerprint-3576-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Static contract: sidebar remains type=module, old fingerprint 6d79c66e2fbc is absent, new fingerprint tracks current sidebar source SHA-256 prefix, and loading semantics stay ESM. No browser/network/DB.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/tree-meta-title-resolution-3576-behavior.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes real editor-helpers + owner/public tree-meta boundary factories in node:vm with fake DOM/i18n and asserts buildTreeMetaRenderModel preserves custom titles, locale fallbacks for sentinel keys, moment-independent title stability, owner/viewer agreement, and the 1-arg resolveTreeTitleText clobber regression. No real browser/network/DB.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/owner-appreciation-tree-scope-css-3580-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Source selector contracts plus Playwright cascade and owner editor browser runtime for #3580: owner view shows .editor-tree-meta-section, public readonly remains visible, owner edit keeps broad hide, add-section stays edit-only, and mount geometry is positive without right-rail duplication. No Production network/DB.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/editor-explicit-appreciation-edit-mode-3586-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "#3586 explicit appreciation/edit mode: URL mode=edit sync, mutation gating, desktop/mobile transition labels, and Playwright mode enter/return/back plus public authority. No Production network/DB.",
       "capabilities": []
     }
   ],

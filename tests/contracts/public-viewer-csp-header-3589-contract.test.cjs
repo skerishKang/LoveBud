@@ -4,7 +4,14 @@
  * - pages/view.html must not use inline executable scripts for header/i18n
  * - external public-viewer-page-shell-init.js mounts via LoveTreePageShell
  * - strict CSP browser test (no page.evaluate renderSharedHeader)
- * - screenshots + runtime JSON outside the repository
+ * - optional PNG/JSON evidence only when LOVEBUD_REVIEW_OUTPUT_DIR is set
+ *
+ * Local evidence (optional):
+ *   LOVEBUD_REVIEW_OUTPUT_DIR=/absolute/review-output/3589
+ *   node --test --test-concurrency=1 \
+ *     tests/contracts/public-viewer-csp-header-3589-contract.test.cjs
+ *
+ * Default CI does not write screenshots or runtime JSON into the repository.
  *
  * Layer: EXECUTED_FAKE
  */
@@ -20,15 +27,10 @@ const crypto = require('node:crypto');
 const ROOT = path.resolve(__dirname, '..', '..');
 const read = (rel) => fs.readFileSync(path.join(ROOT, rel), 'utf8');
 
-const REVIEW_OUT = path.join(
-  'G:',
-  'Ddrive',
-  'BatangD',
-  'task',
-  'workdiary',
-  'lovebud-review-output',
-  '3589'
-);
+// Evidence is opt-in only. Never hardcode personal absolute paths.
+const REVIEW_OUT = process.env.LOVEBUD_REVIEW_OUTPUT_DIR
+  ? path.resolve(process.env.LOVEBUD_REVIEW_OUTPUT_DIR)
+  : null;
 
 const CSP =
   "default-src 'self'; script-src 'self' https://www.gstatic.com https://apis.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https:; media-src 'self' https:; frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https://relovetree.firebaseapp.com; connect-src 'self' https:; base-uri 'self'; object-src 'none'; frame-ancestors 'self'; form-action 'self'";
@@ -210,7 +212,9 @@ test('#3589 BROWSER: strict CSP ordinary load mounts localized public header', a
   const browser = await launchChromiumOrThrow(playwright);
   const server = await startStrictCspStaticServer();
   const base = `http://127.0.0.1:${server.address().port}`;
-  fs.mkdirSync(REVIEW_OUT, { recursive: true });
+  if (REVIEW_OUT) {
+    fs.mkdirSync(REVIEW_OUT, { recursive: true });
+  }
 
   const trees = [PUBLIC_TREE];
   const memoriesByTreeId = {
@@ -364,11 +368,13 @@ test('#3589 BROWSER: strict CSP ordinary load mounts localized public header', a
       };
     });
 
-    // Desktop screenshot (ordinary load; no manual header call)
-    await page.screenshot({
-      path: path.join(REVIEW_OUT, '3589-public-header-desktop.png'),
-      fullPage: false
-    });
+    // Desktop screenshot only when evidence dir is explicitly provided.
+    if (REVIEW_OUT) {
+      await page.screenshot({
+        path: path.join(REVIEW_OUT, '3589-public-header-desktop.png'),
+        fullPage: false
+      });
+    }
 
     // Mobile
     await page.setViewportSize({ width: 375, height: 812 });
@@ -394,12 +400,14 @@ test('#3589 BROWSER: strict CSP ordinary load mounts localized public header', a
           .filter((t) => /^(편집하기|편집 모드)$/.test(t)).length
       };
     });
-    await page.screenshot({
-      path: path.join(REVIEW_OUT, '3589-public-header-mobile.png'),
-      fullPage: false
-    });
+    if (REVIEW_OUT) {
+      await page.screenshot({
+        path: path.join(REVIEW_OUT, '3589-public-header-mobile.png'),
+        fullPage: false
+      });
+    }
 
-    // Assertions — ordinary load
+    // Assertions — ordinary load (always run; independent of evidence files)
     assert.equal(runtime.externalBootstrapLoaded, true, 'external bootstrap must mark booted');
     assert.ok(runtime.sharedHeaderChildCount > 0, 'shared-header must have children without manual evaluate');
     assert.ok(runtime.sharedHeaderRect && runtime.sharedHeaderRect.width > 0, 'header geometry positive width');
@@ -443,41 +451,43 @@ test('#3589 BROWSER: strict CSP ordinary load mounts localized public header', a
       mobile
     };
 
-    fs.writeFileSync(
-      path.join(REVIEW_OUT, '3589-strict-csp-runtime.json'),
-      JSON.stringify(lifecycle, null, 2),
-      'utf8'
-    );
-    fs.writeFileSync(
-      path.join(REVIEW_OUT, '3589-public-header-lifecycle.json'),
-      JSON.stringify(
-        {
-          externalBootstrapLoaded: runtime.externalBootstrapLoaded,
-          renderInvocationCount: 1,
-          duplicateHeaderCount: runtime.headerCount,
-          sharedHeaderChildCount: runtime.sharedHeaderChildCount,
-          sharedHeaderRect: runtime.sharedHeaderRect,
-          bootMarker: true
-        },
-        null,
-        2
-      ),
-      'utf8'
-    );
-    fs.writeFileSync(
-      path.join(REVIEW_OUT, '3589-public-i18n.json'),
-      JSON.stringify(
-        {
-          rawI18nKeys: runtime.rawI18nKeys,
-          localizedLabels: runtime.localizedLabels,
-          tHome: runtime.tHome,
-          tVis: runtime.tVis
-        },
-        null,
-        2
-      ),
-      'utf8'
-    );
+    if (REVIEW_OUT) {
+      fs.writeFileSync(
+        path.join(REVIEW_OUT, '3589-strict-csp-runtime.json'),
+        JSON.stringify(lifecycle, null, 2),
+        'utf8'
+      );
+      fs.writeFileSync(
+        path.join(REVIEW_OUT, '3589-public-header-lifecycle.json'),
+        JSON.stringify(
+          {
+            externalBootstrapLoaded: runtime.externalBootstrapLoaded,
+            renderInvocationCount: 1,
+            duplicateHeaderCount: runtime.headerCount,
+            sharedHeaderChildCount: runtime.sharedHeaderChildCount,
+            sharedHeaderRect: runtime.sharedHeaderRect,
+            bootMarker: true
+          },
+          null,
+          2
+        ),
+        'utf8'
+      );
+      fs.writeFileSync(
+        path.join(REVIEW_OUT, '3589-public-i18n.json'),
+        JSON.stringify(
+          {
+            rawI18nKeys: runtime.rawI18nKeys,
+            localizedLabels: runtime.localizedLabels,
+            tHome: runtime.tHome,
+            tVis: runtime.tVis
+          },
+          null,
+          2
+        ),
+        'utf8'
+      );
+    }
 
     await page.close();
   } finally {

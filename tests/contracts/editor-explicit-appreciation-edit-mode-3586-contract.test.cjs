@@ -28,16 +28,10 @@ const modeCss = read('css/editor/editor-mode-selection.css');
 const mobileBarCss = read('css/editor/editor-mobile-action-bar.css');
 const editorHtml = read('pages/editor.html');
 
-/** Repo-external screenshot + geometry evidence directory for screenshot review v3. */
-const REVIEW_OUT_V3 = path.join(
-  'G:',
-  'Ddrive',
-  'BatangD',
-  'task',
-  'workdiary',
-  'lovebud-review-output',
-  '3586-v3'
-);
+/** Optional evidence dir: set LOVEBUD_REVIEW_OUTPUT_DIR to write PNG/JSON outside the repo. */
+const REVIEW_OUT_V3 = process.env.LOVEBUD_REVIEW_OUTPUT_DIR
+  ? path.resolve(process.env.LOVEBUD_REVIEW_OUTPUT_DIR)
+  : null;
 
 function withTimeout(promise, ms, label) {
   let timer;
@@ -769,7 +763,7 @@ test('#3586 BROWSER: appreciation → edit → return → browser back', async (
   const browser = await launchChromiumOrThrow(playwright);
   const server = await startStaticServer();
   const base = `http://127.0.0.1:${server.address().port}`;
-  fs.mkdirSync(REVIEW_OUT_V3, { recursive: true });
+  if (REVIEW_OUT_V3) fs.mkdirSync(REVIEW_OUT_V3, { recursive: true });
 
   try {
     const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
@@ -833,10 +827,12 @@ test('#3586 BROWSER: appreciation → edit → return → browser back', async (
     assert.equal(snap.renameVisible, false);
     assert.equal(snap.addDisplay, 'none');
     assert.ok(snap.mountKids >= 1);
-    await page.screenshot({
-      path: path.join(REVIEW_OUT_V3, '3586-owner-appreciation-desktop.png'),
-      fullPage: false
-    });
+    if (REVIEW_OUT_V3) {
+      await page.screenshot({
+        path: path.join(REVIEW_OUT_V3, '3586-owner-appreciation-desktop.png'),
+        fullPage: false
+      });
+    }
 
     // Enter edit
     await page.click('#editorModeTransitionBtn');
@@ -859,10 +855,12 @@ test('#3586 BROWSER: appreciation → edit → return → browser back', async (
     assert.match(String(snap.statusText || ''), /편집/);
     assert.match(String(snap.actionText || ''), /감상으로 돌아가기/);
     assert.ok(snap.mutationCount >= 1, 'edit shows mutation actions');
-    await page.screenshot({
-      path: path.join(REVIEW_OUT_V3, '3586-owner-edit-desktop.png'),
-      fullPage: false
-    });
+    if (REVIEW_OUT_V3) {
+      await page.screenshot({
+        path: path.join(REVIEW_OUT_V3, '3586-owner-edit-desktop.png'),
+        fullPage: false
+      });
+    }
 
     // Return to appreciation
     await page.click('#editorModeTransitionBtn');
@@ -874,10 +872,12 @@ test('#3586 BROWSER: appreciation → edit → return → browser back', async (
     assert.equal(snap.mode, 'view');
     assert.equal(snap.modeEdit, false);
     assert.equal(snap.mutationCount, 0);
-    await page.screenshot({
-      path: path.join(REVIEW_OUT_V3, '3586-owner-returned-appreciation-desktop.png'),
-      fullPage: false
-    });
+    if (REVIEW_OUT_V3) {
+      await page.screenshot({
+        path: path.join(REVIEW_OUT_V3, '3586-owner-returned-appreciation-desktop.png'),
+        fullPage: false
+      });
+    }
 
     // Enter edit then browser back
     await page.click('#editorModeTransitionBtn');
@@ -932,11 +932,13 @@ test('#3586 BROWSER: appreciation → edit → return → browser back', async (
     }, { timeout: 10000 });
 
     let mobileGeo = await page.evaluate(collectMobileGeometry);
-    fs.writeFileSync(
-      path.join(REVIEW_OUT_V3, '3586-owner-appreciation-mobile-geometry-v3.json'),
+    if (REVIEW_OUT_V3) {
+      fs.writeFileSync(
+        path.join(REVIEW_OUT_V3, '3586-owner-appreciation-mobile-geometry-v3.json'),
       JSON.stringify(mobileGeo, null, 2),
       'utf8'
-    );
+      );
+    }
     assert.equal(mobileGeo.mode, 'view');
     assert.match(mobileGeo.statusText, /감상 모드/);
     assert.match(mobileGeo.transitionText, /편집하기/);
@@ -961,10 +963,12 @@ test('#3586 BROWSER: appreciation → edit → return → browser back', async (
       assert.equal(n.clippedRight, false, 'node must not clip right edge');
       assert.equal(n.clippedLeft, false, 'node must not clip left edge');
     }
-    await page.screenshot({
-      path: path.join(REVIEW_OUT_V3, '3586-owner-appreciation-mobile.png'),
-      fullPage: false
-    });
+    if (REVIEW_OUT_V3) {
+      await page.screenshot({
+        path: path.join(REVIEW_OUT_V3, '3586-owner-appreciation-mobile.png'),
+        fullPage: false
+      });
+    }
 
     // Edit mobile
     await page.evaluate(() => {
@@ -995,11 +999,13 @@ test('#3586 BROWSER: appreciation → edit → return → browser back', async (
     }, { timeout: 10000 });
 
     mobileGeo = await page.evaluate(collectMobileGeometry);
-    fs.writeFileSync(
-      path.join(REVIEW_OUT_V3, '3586-owner-edit-mobile-geometry-v3.json'),
+    if (REVIEW_OUT_V3) {
+      fs.writeFileSync(
+        path.join(REVIEW_OUT_V3, '3586-owner-edit-mobile-geometry-v3.json'),
       JSON.stringify(mobileGeo, null, 2),
       'utf8'
-    );
+      );
+    }
     assert.equal(mobileGeo.mode, 'edit');
     assert.match(mobileGeo.statusText, /편집 모드/);
     assert.match(mobileGeo.transitionText, /감상으로/);
@@ -1032,8 +1038,9 @@ test('#3586 BROWSER: appreciation → edit → return → browser back', async (
     );
 
     // Combined mode surface counts evidence
-    fs.writeFileSync(
-      path.join(REVIEW_OUT_V3, '3586-mode-surface-counts-v3.json'),
+    if (REVIEW_OUT_V3) {
+      fs.writeFileSync(
+        path.join(REVIEW_OUT_V3, '3586-mode-surface-counts-v3.json'),
       JSON.stringify(
         {
           appreciation: {
@@ -1051,12 +1058,15 @@ test('#3586 BROWSER: appreciation → edit → return → browser back', async (
         2
       ),
       'utf8'
-    );
+      );
+    }
 
-    await page.screenshot({
-      path: path.join(REVIEW_OUT_V3, '3586-owner-edit-mobile.png'),
-      fullPage: false
-    });
+    if (REVIEW_OUT_V3) {
+      await page.screenshot({
+        path: path.join(REVIEW_OUT_V3, '3586-owner-edit-mobile.png'),
+        fullPage: false
+      });
+    }
 
     await page.close();
   } finally {
@@ -1070,7 +1080,7 @@ test('#3586 BROWSER public appreciation has no edit transition', async () => {
   const browser = await launchChromiumOrThrow(playwright);
   const server = await startStaticServer();
   const base = `http://127.0.0.1:${server.address().port}`;
-  fs.mkdirSync(REVIEW_OUT_V3, { recursive: true });
+  if (REVIEW_OUT_V3) fs.mkdirSync(REVIEW_OUT_V3, { recursive: true });
 
   try {
     const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
@@ -1169,11 +1179,13 @@ test('#3586 BROWSER public appreciation has no edit transition', async () => {
     });
     Object.assign(pub, i18nPub);
 
-    fs.writeFileSync(
-      path.join(REVIEW_OUT_V3, '3586-public-appreciation-desktop-runtime-v3.json'),
+    if (REVIEW_OUT_V3) {
+      fs.writeFileSync(
+        path.join(REVIEW_OUT_V3, '3586-public-appreciation-desktop-runtime-v3.json'),
       JSON.stringify(pub, null, 2),
       'utf8'
-    );
+      );
+    }
 
     assert.equal(pub.hasHttpError, false, 'public fixture must not show HTTP/load error');
     assert.ok(pub.treeId, 'public tree must load');
@@ -1187,10 +1199,12 @@ test('#3586 BROWSER public appreciation has no edit transition', async () => {
     assert.equal(pub.hasLocalizedNav, true, 'public header must show localized Korean labels');
     assert.equal(pub.hasLocalizedPublic, true, 'public visibility must be localized 공개');
 
-    await page.screenshot({
-      path: path.join(REVIEW_OUT_V3, '3586-public-appreciation-desktop.png'),
-      fullPage: false
-    });
+    if (REVIEW_OUT_V3) {
+      await page.screenshot({
+        path: path.join(REVIEW_OUT_V3, '3586-public-appreciation-desktop.png'),
+        fullPage: false
+      });
+    }
     await page.close();
   } finally {
     try { await browser.close(); } catch (_) {}
