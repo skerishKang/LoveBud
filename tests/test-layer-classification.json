@@ -4359,6 +4359,12 @@
       "layer": "SOURCE_STATIC",
       "rationale": "Static contract: sidebar remains type=module, old fingerprint 6d79c66e2fbc is absent, new fingerprint tracks current sidebar source SHA-256 prefix, and loading semantics stay ESM. No browser/network/DB.",
       "capabilities": []
+    },
+    {
+      "path": "tests/contracts/tree-meta-title-resolution-3576-behavior.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes real editor-helpers + owner/public tree-meta boundary factories in node:vm with fake DOM/i18n and asserts buildTreeMetaRenderModel preserves custom titles, locale fallbacks for sentinel keys, moment-independent title stability, owner/viewer agreement, and the 1-arg resolveTreeTitleText clobber regression. No real browser/network/DB.",
+      "capabilities": []
     }
   ],
   "supplemental": [

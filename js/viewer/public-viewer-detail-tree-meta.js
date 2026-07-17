@@ -199,7 +199,7 @@
             const visInfo = isPublic
                 ? formatI18nText('editor_tree_public_info', '이 트리 전체가 공개되어 있어요. 링크가 있는 사람은 감상할 수 있습니다.')
                 : formatI18nText('editor_tree_private_info', '이 트리 전체는 비공개예요. 지금은 나만 볼 수 있습니다.');
-            const displayTreeTitle = resolveTreeTitleText(currentTree.title);
+            const displayTreeTitle = resolveTreeTitleText(i18n, currentTree.title);
             const localBadgeText = localSaveMode ? (i18n('local_save_badge') || '로컬 저장') : '';
             const countForLabel = treeState.totalMomentCount;
             const treeCountLabel = treeState.hasMoments
