@@ -172,12 +172,13 @@ test('#3586 source: public canvas uses real i18n resolver', () => {
   assert.doesNotMatch(publicInit, /i18n:\s*function\s*\(\s*k\s*\)\s*\{\s*return\s*k\s*;\s*\}/);
 });
 
-test('#3586 source: view.html loads i18n-index before header mount', () => {
+test('#3586 source: view.html loads i18n-index before CSP-safe header bootstrap', () => {
   const viewHtml = read('pages/view.html');
   const idx = viewHtml.indexOf('i18n-index.js');
-  const header = viewHtml.indexOf('renderSharedHeader');
+  // #3589: header mount is external (public-viewer-page-shell-init), not inline renderSharedHeader.
+  const boot = viewHtml.indexOf('public-viewer-page-shell-init.js');
   assert.ok(idx >= 0, 'view.html must load i18n-index.js');
-  assert.ok(header > idx, 'i18n-index must precede renderSharedHeader');
+  assert.ok(boot > idx, 'i18n-index must precede public-viewer-page-shell-init');
 });
 
 test('#3586 assets: editor page fingerprints bumped for runtime modules', () => {
