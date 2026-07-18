@@ -117,10 +117,13 @@ test('#3580 CSS: owner view restore is mode-gated and narrow', () => {
     /body:not\(\.editor-readonly\)\[data-editor-interaction-mode="view"\]\s+\.editor-tree-meta-section\s*\{\s*display:\s*block\s*!important;/,
     'owner appreciation/view must restore tree-meta via interaction-mode=view'
   );
-  assert.doesNotMatch(
+});
+
+test('#3587 CSS: owner edit restore is mode-gated and narrow', () => {
+  assert.match(
     OVERRIDES,
-    /body:not\(\.editor-readonly\)\[data-editor-interaction-mode="edit"\]\s+\.editor-tree-meta-section/,
-    'owner edit must not get a new tree-meta show rule in this PR'
+    /body:not\(\.editor-readonly\)\[data-editor-interaction-mode="edit"\]\s+\.editor-tree-meta-section\s*\{\s*display:\s*block\s*!important;/,
+    'owner edit must restore tree-meta via interaction-mode=edit (#3587)'
   );
 });
 
@@ -210,7 +213,7 @@ test('#3580 cascade: owner view shows tree-meta; edit keeps hide; readonly shows
     assert.ok(ownerView.mountW > 0 && ownerView.mountH > 0, 'owner view mount positive geometry');
 
     const ownerEdit = await measure('', 'edit');
-    assert.equal(ownerEdit.sectionDisplay, 'none', 'owner edit keeps tree-meta hidden by main policy');
+    assert.notEqual(ownerEdit.sectionDisplay, 'none', 'owner edit restores tree-meta section (#3587)');
     assert.notEqual(ownerEdit.addDisplay, 'none', 'owner edit restores add-section');
 
     const publicRo = await measure('editor-readonly', 'view');

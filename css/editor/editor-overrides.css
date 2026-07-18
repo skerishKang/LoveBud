@@ -392,6 +392,11 @@ body:not(.editor-readonly)[data-editor-interaction-mode="view"] .editor-tree-met
     display: block !important;
 }
 
+/* #3587 Owner edit restores tree-meta so secondary actions (copy link, detail, rename, visibility) are accessible. */
+body:not(.editor-readonly)[data-editor-interaction-mode="edit"] .editor-tree-meta-section {
+    display: block !important;
+}
+
 /* Editor edit mode restores add-section visibility only for owner edit. */
 body:not(.editor-readonly)[data-editor-interaction-mode="edit"] .editor-add-section-bottom {
     display: flow-root !important;
