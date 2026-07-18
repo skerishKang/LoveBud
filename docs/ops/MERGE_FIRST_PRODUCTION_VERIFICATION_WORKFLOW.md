@@ -72,10 +72,11 @@ The following statements are the **current operating mode** of LoveBud Productio
 3. **정상 branch push** — 컴1 pushes to the remote branch.
 4. **원격 cumulative diff와 exact PR head 검토** — CTO reviews the remote diff, changed files, and exact PR head SHA.
 5. **GitHub CI/check 전체 성공** — All CI checks must be green (including lint, build, test, verify, smoke, route tests, contract tests). A pending or red check blocks merge.
-6. **expected_head_sha 고정 squash merge** — CTO performs a squash merge with the exact expected head SHA pinned. Cloudflare Pages then **automatically** reflects main to Production; there is no separate manual Production deploy command.
-7. **자동 반영된 Production에서 실제 화면 확인** — After Cloudflare Pages automatically deploys main to Production, 컴1-브 performs post-merge Production verification with a logged-in real browser at https://lovebud.pages.dev/.
+6. **expected_head_sha 고정 squash merge** — CTO performs a squash merge with the exact expected head SHA pinned.
+7. **Cloudflare Pages가 main을 Production에 자동 반영** — Cloudflare Pages **automatically** reflects main to Production; there is no separate manual Production deploy command.
+8. **로그인한 Production에서 실제 화면 확인** — After Cloudflare Pages automatically deploys main to Production, 컴1-브 performs post-merge Production verification with a logged-in real browser at https://lovebud.pages.dev/.
 9. **PASS면 child issue 종료** — CTO closes the child issue.
-10. **FAIL이면 해당 squash merge 전용 revert PR** — If Production fails, CTO creates a dedicated revert PR (not a force-push rollback).
+10. **FAIL이면 dedicated revert PR** — If Production fails, CTO creates a dedicated revert PR (not a force-push rollback).
 
 ---
 
