@@ -746,7 +746,11 @@ function collectModeSnapshot() {
       : null,
     mutationCount: document.querySelectorAll('.editor-owner-mutation-action').length,
     renameVisible: (() => {
-      const el = document.getElementById('renameTreeBtn');
+      const el = document.querySelector('[data-owner-mutation="rename"]');
+      return el ? getComputedStyle(el).display !== 'none' : false;
+    })(),
+    visToggleVisible: (() => {
+      const el = document.querySelector('[data-owner-mutation="visibility"]');
       return el ? getComputedStyle(el).display !== 'none' : false;
     })(),
     addDisplay: (() => {
@@ -754,6 +758,16 @@ function collectModeSnapshot() {
       return el ? getComputedStyle(el).display : null;
     })(),
     mountKids: (document.getElementById('detailTreeMetaMount') || {}).childElementCount || 0,
+    sectionDisplay: (() => {
+      const el = document.getElementById('detailTreeMetaSection');
+      return el ? getComputedStyle(el).display : null;
+    })(),
+    sectionGeo: (() => {
+      const el = document.getElementById('detailTreeMetaSection');
+      if (!el) return null;
+      const r = el.getBoundingClientRect();
+      return { w: Math.round(r.width), h: Math.round(r.height) };
+    })(),
     headerCount: document.querySelectorAll('header, .shared-header, .site-header').length
   };
 }
@@ -855,6 +869,10 @@ test('#3586 BROWSER: appreciation → edit → return → browser back', async (
     assert.match(String(snap.statusText || ''), /편집/);
     assert.match(String(snap.actionText || ''), /감상으로 돌아가기/);
     assert.ok(snap.mutationCount >= 1, 'edit shows mutation actions');
+    assert.ok(snap.renameVisible === true, 'edit shows rename button (#3587)');
+    assert.ok(snap.visToggleVisible === true, 'edit shows visibility toggle button (#3587)');
+    assert.notEqual(snap.sectionDisplay, 'none', 'edit must show detailTreeMetaSection (#3587)');
+    assert.ok(snap.sectionGeo && snap.sectionGeo.w > 0 && snap.sectionGeo.h > 0, 'edit must have positive section geometry (#3587)');
     if (REVIEW_OUT_V3) {
       await page.screenshot({
         path: path.join(REVIEW_OUT_V3, '3586-owner-edit-desktop.png'),
