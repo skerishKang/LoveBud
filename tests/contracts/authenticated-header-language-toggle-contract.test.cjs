@@ -86,7 +86,7 @@ test('Authenticated Header Language Toggle Contract', async (t) => {
       'shared-header.js must include header-lang-toggle class in output');
   });
 
-  await t.test('all HTML pages use the same shared-header.js cache version 20260628-2993-1', () => {
+  await t.test('all HTML pages use the same shared-header.js cache version 20260718-3577-1', () => {
     const versions = new Set();
     for (const rel of HTML_PAGES) {
       const html = readRepoFile(rel);
@@ -96,14 +96,40 @@ test('Authenticated Header Language Toggle Contract', async (t) => {
     }
     assert.strictEqual(versions.size, 1,
       `shared-header.js version must be the same across all pages; got ${[...versions].join(', ')}`);
-    assert.ok(versions.has('20260628-2993-1'),
-      `shared-header.js version must be 20260628-2993-1; got ${[...versions][0]}`);
+    assert.ok(versions.has('20260718-3577-1'),
+      `shared-header.js version must be 20260718-3577-1; got ${[...versions][0]}`);
   });
 
   await t.test('shared-header.js has the updated cache version in its header comment', () => {
     const headerJs = readRepoFile('js/shared-header.js');
-    assert.ok(headerJs.includes('v20260628-2993-1'),
-      'shared-header.js header must reflect v20260628-2993-1');
+    assert.ok(headerJs.includes('v20260718-3577-1'),
+      'shared-header.js header must reflect v20260718-3577-1');
+  });
+
+  await t.test('#3577: PAGE_ACTIVE_MAP maps editor.html alias to myTrees active', () => {
+    const headerJs = readRepoFile('js/shared-header.js');
+    assert.ok(headerJs.includes("'editor.html': 'myTrees'"),
+      "PAGE_ACTIVE_MAP must map 'editor.html' to 'myTrees'");
+    assert.ok(headerJs.includes("'editor': 'myTrees'"),
+      "PAGE_ACTIVE_MAP must map 'editor' (extensionless) to 'myTrees'");
+  });
+
+  await t.test('#3577: non-editor PAGE_ACTIVE_MAP entries remain unchanged', () => {
+    const headerJs = readRepoFile('js/shared-header.js');
+    // Verify that non-editor mappings are not affected
+    assert.ok(headerJs.includes("'index.html': 'home'"), 'index.html → home');
+    assert.ok(headerJs.includes("'intro.html': 'intro'"), 'intro.html → intro');
+    assert.ok(headerJs.includes("'search.html': 'search'"), 'search.html → search');
+    assert.ok(headerJs.includes("'detail.html': 'search'"), 'detail.html → search');
+    assert.ok(headerJs.includes("'my-trees.html': 'myTrees'"), 'my-trees.html → myTrees');
+    assert.ok(headerJs.includes("'login.html': null"), 'login.html → null');
+    assert.ok(headerJs.includes("'settings.html': 'settings'"), 'settings.html → settings');
+    assert.ok(headerJs.includes("'intro': 'intro'"), 'intro → intro');
+    assert.ok(headerJs.includes("'search': 'search'"), 'search → search');
+    assert.ok(headerJs.includes("'detail': 'search'"), 'detail → search');
+    assert.ok(headerJs.includes("'my-trees': 'myTrees'"), 'my-trees → myTrees');
+    assert.ok(headerJs.includes("'login': null"), 'login → null');
+    assert.ok(headerJs.includes("'settings': 'settings'"), 'settings → settings');
   });
 
   await t.test('mobile header CSS preserves .nav-actions wrap support', () => {

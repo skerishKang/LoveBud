@@ -35,7 +35,7 @@ const IN_SCOPE_PAGES = [
 ];
 
 // Shared header cache version (bumped on each shared-header change)
-const SHARED_HEADER_JS_VERSION = '20260628-2993-1';
+const SHARED_HEADER_JS_VERSION = '20260718-3577-1';
 const GLOBAL_CSS_VERSION = '20260618-2700-1';
 const MY_TREES_GLOBAL_CSS_VERSION = '20260619-2710-1';
 const INDEX_CSS_VERSION = '20260618-2700-1';
@@ -299,4 +299,30 @@ test('shared-header: auth boot keeps desktop #auth-nav reservation at 100px', ()
   const baseMinWidthMatch = baseDecls.match(/min-width:\s*(\d+)px/);
   assert.ok(baseMinWidthMatch, 'base #auth-nav must have a min-width configured in CSS');
   assert.strictEqual(baseMinWidthMatch[1], '36', `base #auth-nav min-width in CSS must be 36px (got ${baseMinWidthMatch[1]}px)`);
+});
+
+// ── #3577: Editor active nav mappings ──
+
+test('#3577: Editor must NOT render editor-specific nav link in buildHeaderHTML', () => {
+  const js = readFile(path.join(ROOT, 'js/shared-header.js'));
+  // The editor nav is defined in MENU_CONFIG.sub but deliberately not rendered
+  // Comment line confirms: "에디터 페이지에서는 \"편집하기\" 메뉴 숨김"
+  assert.ok(js.includes('에디터 페이지에서는 "편집하기" 메뉴 숨김'),
+    'Editor nav hide comment must be present');
+  // menuConfig.editor must never appear anywhere in the file
+  assert.ok(!js.includes('menuConfig.editor'),
+    'buildHeaderHTML must NOT render editor-specific nav link');
+});
+
+test('#3577: Editor routes activate My Trees as the active nav', () => {
+  const js = readFile(path.join(ROOT, 'js/shared-header.js'));
+  // PAGE_ACTIVE_MAP maps both editor aliases to myTrees
+  assert.ok(js.includes("'editor.html': 'myTrees'") && js.includes("'editor': 'myTrees'"),
+    'Both editor route aliases must map to myTrees');
+  // My Trees nav rendering must use activeKey check
+  assert.ok(js.includes("activeKey === 'myTrees'"),
+    'Nav rendering must check activeKey for myTrees');
+  // My Trees nav must preserve nav-highlight class
+  assert.ok(js.includes("myTreesClasses = ['nav-highlight']"),
+    'My Trees nav must have nav-highlight class');
 });

@@ -1,6 +1,6 @@
 /**
  * LoveBud - Shared Header Component
- * v20260628-2993-1
+ * v20260718-3577-1
  *
  * 책임 경계:
  * - shared-header는 실제 header markup과 header-specific behavior를 소유합니다.
@@ -99,14 +99,14 @@
         'search.html': 'search',
         'detail.html': 'search', // detail은 둘러보기 섹션
         'my-trees.html': 'myTrees',
-        'editor.html': 'editor',
+        'editor.html': 'myTrees',
         'login.html': null, // login은 메뉴 active 없음
         'settings.html': 'settings',
         'intro': 'intro',
         'search': 'search',
         'detail': 'search',
         'my-trees': 'myTrees',
-        'editor': 'editor',
+        'editor': 'myTrees',
         'login': null,
         'settings': 'settings'
     };
