@@ -54,8 +54,9 @@ test('getTreeCardMeta generates visibilityBadgeHtml for both public and private'
     'getTreeCardMeta must use buildVisibilityBadgeHtml helper');
   assert.match(uiJs, /'<span class="tree-card-visibility/,
     'Badge markup must contain tree-card-visibility class');
-  assert.match(uiJs, /tree-card-visibility-label/,
-    'Badge must include label span');
+  // #3587: label span must NOT be rendered (quiet icon-only indicator)
+  assert.ok(!uiJs.includes('tree-card-visibility-label'),
+    'Badge must NOT include visible label span (#3587 demotion)');
 });
 
 test('public badge uses public icon, private badge uses lock icon', () => {
@@ -138,8 +139,16 @@ test('delegate exists public card builds tree-card-visibility public badge', () 
     'badge must have public class');
   assert.match(meta.visibilityBadgeHtml, />public</,
     'badge icon must be public');
-  assert.ok(meta.visibilityBadgeHtml.includes('공개'),
-    'badge label must contain 공개');
+  // #3587: no visible label text (only inside aria-label/title attributes)
+  assert.ok(!/>공개</.test(meta.visibilityBadgeHtml),
+    'badge must NOT contain visible 공개 text node (#3587 demotion)');
+  assert.ok(!meta.visibilityBadgeHtml.includes('tree-card-visibility-label'),
+    'badge must NOT contain label span (#3587 demotion)');
+  // #3587: aria-label + title preserved
+  assert.match(meta.visibilityBadgeHtml, /aria-label="공개"/,
+    'badge must preserve aria-label');
+  assert.match(meta.visibilityBadgeHtml, /title="공개"/,
+    'badge must preserve title tooltip');
   assert.equal(meta.title, 'Public Tree', 'title must be preserved');
   assert.ok(meta.mood, 'mood must exist');
 });
@@ -159,8 +168,16 @@ test('delegate exists private card builds tree-card-visibility private badge', (
     'badge must have private class');
   assert.match(meta.visibilityBadgeHtml, />lock</,
     'badge icon must be lock');
-  assert.ok(meta.visibilityBadgeHtml.includes('비공개'),
-    'badge label must contain 비공개');
+  // #3587: no visible label text (only inside aria-label/title attributes)
+  assert.ok(!/>비공개</.test(meta.visibilityBadgeHtml),
+    'badge must NOT contain visible 비공개 text node (#3587 demotion)');
+  assert.ok(!meta.visibilityBadgeHtml.includes('tree-card-visibility-label'),
+    'badge must NOT contain label span (#3587 demotion)');
+  // #3587: aria-label + title preserved
+  assert.match(meta.visibilityBadgeHtml, /aria-label="비공개"/,
+    'badge must preserve aria-label');
+  assert.match(meta.visibilityBadgeHtml, /title="비공개"/,
+    'badge must preserve title tooltip');
   assert.equal(meta.title, 'Private Tree', 'title must be preserved');
 });
 

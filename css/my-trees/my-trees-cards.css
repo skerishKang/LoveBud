@@ -209,9 +209,9 @@
 .tree-card-keywords { display: inline; gap: 4px; }
 .tree-card-keyword { display: inline; font-size: 0.82rem; color: var(--primary); font-weight: 600; margin-left: 4px; }
 .tree-card-date { font-size: 12px; }
-.tree-card-visibility { display: flex; align-items: center; gap: 4px; font-size: 12px; padding: 4px 10px; border-radius: 99px; background: var(--lovetree-chip-bg); border: 1px solid var(--lovetree-chip-border); color: var(--lovetree-chip-text); }
-.tree-card-visibility.public { background: rgba(122, 139, 110, 0.1); color: var(--secondary); }
-.tree-card-visibility.private { background: var(--lovetree-pill-bg); color: var(--lovetree-pill-text); }
+.tree-card-visibility { display: inline-flex; align-items: center; gap: 2px; font-size: 12px; padding: 0; border-radius: 0; background: transparent; border: none; box-shadow: none; color: var(--lovetree-chip-text); }
+.tree-card-visibility.public { background: transparent; color: var(--lovetree-chip-text); }
+.tree-card-visibility.private { background: transparent; color: var(--lovetree-chip-text); }
 
 .tree-card-title-row .tree-card-visibility {
     flex: 0 0 auto;
