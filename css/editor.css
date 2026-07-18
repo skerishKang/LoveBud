@@ -8,9 +8,10 @@
  * them with multiple page-level stylesheet links without editor browser
  * verification across desktop, tablet, and mobile viewports.
  */
-@import url("./editor/editor-base.css");
+@import url("./editor/editor-base.css?v=20260718-3585-1");
 @import url("./editor/editor-layout.css?v=20260504-775");
-@import url("./editor/editor-sidebar.css?v=20260716-3567-1");
+@import url("./editor/editor-sidebar.css?v=20260718-3585-1");
+@import url("./editor/editor-rail-collapse.css?v=20260718-3585-1");
 @import url("./editor/editor-canvas.css?v=20260504-787");
 @import url("./editor/editor-canvas-affordance.css?v=20260623-2806-A");
 @import url("./editor/editor-canvas-toolbar.css?v=20260512-1041");
@@ -24,7 +25,7 @@
 @import url("./editor/editor-memory-form-actions.css");
 @import url("./editor/editor-memory-node.css");
 @import url("./editor/editor-memory-video-segments.css");
-@import url("./editor/editor-detail-panel.css?v=20260708-3304-4d8d48626d90");
+@import url("./editor/editor-detail-panel.css?v=20260718-3304-3585-5e350e1c59bd");
 @import url("./editor/editor-detail-content.css?v=20260715-3509-4a92d33d8af9");
 @import url("./editor/editor-detail-actions.css?v=20260518-1");
 @import url("./editor/editor-detail-edit.css?v=20260518-1");

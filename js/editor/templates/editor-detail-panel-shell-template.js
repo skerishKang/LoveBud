@@ -1,9 +1,24 @@
 // Cache-bust marker for editor sidebar/detail polish.
 export function buildDetailPanelShellTemplate() {
     return `
-        <aside class="detail-panel memory-detail-section reveal-fade" id="detailPanel">
+        <aside class="detail-panel memory-detail-section reveal-fade" id="detailPanel" data-editor-rail="right">
             <div class="panel-header">
                 <h3 class="headline editor-panel-headline"></h3>
+                <button
+                  type="button"
+                  id="editorRightRailCollapseBtn"
+                  class="editor-rail-collapse-btn"
+                  data-editor-rail-collapse="right"
+                  aria-controls="detailPanel"
+                  aria-expanded="true"
+                  data-i18n-aria-label="editor_rail_hide_moment"
+                  data-i18n-title="editor_rail_hide_moment"
+                  aria-label="순간 패널 숨기기"
+                  title="순간 패널 숨기기"
+                >
+                  <span class="material-symbols-outlined" aria-hidden="true">right_panel_close</span>
+                  <span class="editor-rail-collapse-label" data-i18n="editor_rail_hide_moment_short">숨기기</span>
+                </button>
             </div>
 
             <div class="detail-content" id="detailContent">

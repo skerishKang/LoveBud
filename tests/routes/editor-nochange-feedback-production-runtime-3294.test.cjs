@@ -1207,9 +1207,10 @@ test('shell template structural hierarchy: #saveStatusIndicator is outside #deta
     'editor-save-status-card section must contain #saveStatusIndicator');
 
   // Verify detailPanel is the direct container for both
-  const asideOpen = '<aside class="detail-panel memory-detail-section reveal-fade" id="detailPanel">';
+  const asideOpenMatch = html.match(/<aside class="detail-panel memory-detail-section reveal-fade" id="detailPanel"[^>]*>/);
+  assert.ok(asideOpenMatch, 'detailPanel aside must be present');
+  const asideOpen = asideOpenMatch[0];
   const asideIdx = html.indexOf(asideOpen);
-  assert.ok(asideIdx >= 0, 'detailPanel aside must be present');
 
   const asideClose = '</aside>';
   const asideCloseIdx = html.indexOf(asideClose);
