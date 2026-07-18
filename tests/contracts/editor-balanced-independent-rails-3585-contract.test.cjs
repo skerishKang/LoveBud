@@ -207,7 +207,7 @@ test('#3585 asset fingerprints updated for rail collapse entrypoints', () => {
   assert.match(html, /editor-detail-panel-shell-template\.js\?v=dfbb11afc5f7/);
   assert.match(css, /editor-rail-collapse\.css\?v=20260718-3585-1/);
   assert.match(css, /editor-base\.css\?v=20260718-3585-1/);
-  assert.match(css, /editor-detail-panel\.css\?v=20260718-3304-3585-9df15d054e25/);
+  assert.match(css, /editor-detail-panel\.css\?v=20260718-3304-3585-5e350e1c59bd/);
 });
 
 test('#3585 editor page loads collapse controller after mobile hierarchy', () => {

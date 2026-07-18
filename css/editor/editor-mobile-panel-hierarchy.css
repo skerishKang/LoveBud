@@ -117,7 +117,7 @@
 
     .sidebar.is-mobile-panel-open,
     .detail-panel.is-mobile-panel-open {
-        transform: none;
+        transform: translateX(0);
         visibility: visible;
     }
 
