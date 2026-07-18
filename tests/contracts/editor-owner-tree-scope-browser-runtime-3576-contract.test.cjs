@@ -368,6 +368,7 @@ async function collectOwnerSnapshot(page) {
       mountCount: document.querySelectorAll('#detailTreeMetaMount').length,
       mountChildren: mount ? mount.childElementCount : 0,
       mountText: mount ? (mount.textContent || '').replace(/\s+/g, ' ').trim() : '',
+      mountHtml: mount ? (mount.innerHTML || '') : '',
       mountDisplay: cs ? cs.display : null,
       mountRectW: mount ? Math.round(mount.getBoundingClientRect().width) : 0,
       mountRectH: mount ? Math.round(mount.getBoundingClientRect().height) : 0,
@@ -500,7 +501,13 @@ test('#3576 BROWSER owner A: no-moment tree renders left-rail tree meta', async 
     assert.equal(snap.mountCount, 1, 'exactly one #detailTreeMetaMount');
     assert.ok(snap.mountChildren > 0, 'detailTreeMetaMount childElementCount > 0');
     assert.match(snap.mountText, /Owner Tree A/);
-    assert.match(snap.mountText, /비공개|Private|private/i);
+    // #3587: visibility is now a quiet icon-only indicator (no visible text
+    // label). The public/private state is conveyed via aria-label, not text.
+    // We therefore no longer assert a 비공개/private text node here.
+    assert.ok(/editor-tree-visibility/.test(snap.mountHtml),
+      'editor-tree-visibility indicator must be present in mount');
+    assert.match(snap.mountHtml, /aria-label="[^"]*(비공개|Private|private)[^"]*"/i,
+      'visibility indicator aria-label must convey private state');
     assert.ok(
       /0|아직|기다|empty|moment/i.test(snap.mountText),
       `moment count empty-state copy expected, got: ${snap.mountText}`

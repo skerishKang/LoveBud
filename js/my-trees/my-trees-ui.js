@@ -229,9 +229,10 @@
       ? getI18nText(i18n, 'myTrees.summary_public', '공개')
       : getI18nText(i18n, 'myTrees.summary_private', '비공개');
     var visibilityIcon = visibility === 'public' ? 'public' : 'lock';
-    return '<span class="tree-card-visibility ' + visibility + '" aria-label="' + visibilityLabel + '">' +
+    // #3587: demote to quiet icon-only indicator. No visible text label,
+    // transparent background, no border/pill. aria-label + title preserved.
+    return '<span class="tree-card-visibility ' + visibility + '" aria-label="' + visibilityLabel + '" title="' + visibilityLabel + '" data-visibility="' + visibility + '">' +
       '<span class="material-symbols-outlined" aria-hidden="true">' + visibilityIcon + '</span>' +
-      '<span class="tree-card-visibility-label">' + visibilityLabel + '</span>' +
       '</span>';
   }
 

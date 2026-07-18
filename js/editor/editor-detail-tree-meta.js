@@ -278,31 +278,33 @@
             titleWrap.appendChild(count);
 
             const visBadge = document.createElement('span');
-            visBadge.style.padding = '6px 11px';
-            visBadge.style.borderRadius = '999px';
+            visBadge.className = 'editor-tree-visibility editor-tree-visibility-' + (isPublic ? 'public' : 'private');
+            visBadge.setAttribute('aria-label', visLabel);
+            visBadge.setAttribute('title', visLabel);
             visBadge.style.display = 'inline-flex';
             visBadge.style.alignItems = 'center';
-            visBadge.style.gap = '5px';
+            visBadge.style.gap = '4px';
             visBadge.style.fontSize = '12px';
-            visBadge.style.fontWeight = '700';
-            visBadge.style.boxShadow = '0 4px 12px rgba(75,64,57,0.05)';
-            if (isPublic) {
-                visBadge.style.background = 'rgba(76,175,80,0.1)';
-                visBadge.style.color = '#4caf50';
-                visBadge.style.border = '1px solid rgba(76,175,80,0.25)';
-            } else {
-                visBadge.style.background = 'rgba(158,158,158,0.1)';
-                visBadge.style.color = '#757575';
-                visBadge.style.border = '1px solid rgba(158,158,158,0.25)';
-            }
-            visBadge.appendChild(createInlineIcon(visIcon, '12px'));
-            visBadge.appendChild(document.createTextNode(visLabel));
+            visBadge.style.fontWeight = '500';
+            visBadge.style.color = 'var(--on-surface-variant)';
+            visBadge.style.background = 'transparent';
+            visBadge.style.border = 'none';
+            visBadge.style.boxShadow = 'none';
+            visBadge.style.padding = '0';
+            visBadge.style.borderRadius = '0';
+            visBadge.appendChild(createInlineIcon(visIcon, '16px'));
 
             topRow.appendChild(titleWrap);
             topRow.appendChild(visBadge);
             wrap.appendChild(topRow);
 
-            if (visInfo) {
+            // #3587: visibility description sentence only shown in explicit
+            // owner edit mode. In appreciation mode it is NOT rendered so the
+            // tree title / moment count / appreciation content take priority.
+            const editModeForInfo = window.LoveBudEditorInteractionMode
+                && typeof window.LoveBudEditorInteractionMode.isEditMode === 'function'
+                && window.LoveBudEditorInteractionMode.isEditMode() === true;
+            if (visInfo && editModeForInfo) {
                 const info = document.createElement('div');
                 info.textContent = visInfo;
                 info.style.fontSize = '12px';
