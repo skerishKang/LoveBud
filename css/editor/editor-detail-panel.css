@@ -27,8 +27,34 @@
     gap: 12px;
 }
 
+/* #3585: keep the selected-moment title on one horizontal line. The
+   <h3> is a flex item next to the collapse button; without nowrap + a
+   flexible min-width:0 it collapses to a single glyph and wraps
+   vertically on narrow rails (360px desktop / mobile panels). */
+.panel-header h3.editor-panel-headline,
+.panel-header h3 {
+    margin: 0;
+    flex: 1 1 auto;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* #3585: the 360px rail leaves ~273px after the icon-only collapse button.
+   Hiding the verbose "숨기기" label keeps the selected-moment title on one
+   line in both the desktop 360px right rail and mobile panels. aria-label
+   on the button preserves the accessible name. */
+.panel-header .editor-rail-collapse-btn .editor-rail-collapse-label {
+    display: none !important;
+}
+
+/* #3585: collapse button to icon-only width (no fixed width from a later
+   override) so the selected-moment title keeps its line. */
 .panel-header .editor-rail-collapse-btn {
     flex: 0 0 auto;
+    width: auto !important;
+    min-width: 36px;
 }
 
 .editor-detail-more-btn {
