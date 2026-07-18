@@ -91,16 +91,19 @@ LoveBud의 UI 검증은 **Merge-First Production Verification** 워크플로우�
 자세한 내용은 `docs/ops/MERGE_FIRST_PRODUCTION_VERIFICATION_WORKFLOW.md`를 참고하세요.
 
 핵심 원칙:
-- **Pre-merge browser verification (fixed slot / PR Preview)**: OPTIONAL. 부재 시 merge blocker가 아닙니다.
-- **Post-merge Production verification**: UI/Auth/runtime 동작의 최종 확인 단계입니다.
-- **로컬 정적 서버**: 정적 레이아웃 참고용 fallback으로만 사용합니다.
-- **GitHub CI + 로컬 자동 테스트**: pre-merge mandatory gate로 유지됩니다.
+- **Merge-first Production verification is the current default.** Pre-merge Preview/fixed-slot deployment is not normally performed (OPTIONAL, used only when explicitly assigned by CTO).
+- **Pre-merge browser verification (fixed slot / PR Preview)**: 기본적으로 수행하지 않는다(NOT normally performed, OPTIONAL). CTO가 명시적으로 할당한 경우에만 선택적 추가 증거(optional supplementary evidence)로 활용하며, 부재 시 merge blocker가 아니다.
+- 에이전트는 preview URL을 찾거나 Wrangler slot deploy를 시도하지 않는다. CTO가 명시적으로 지정한 경우에만 optional supplementary evidence로 사용한다.
+- **Post-merge Production verification**: UI/Auth/runtime 동작의 최종 확인 단계이며, Cloudflare Pages가 main을 Production에 자동 반영한 뒤 https://lovebud.pages.dev/ 에서 로그인한 실제 화면으로 확인한다. 별도의 수동 Production deploy 명령을 실행하는 절차가 아니다.
+- **로컬 정적 서버**: 정적 레이아웃 참고용 fallback으로만 사용한다.
+- **GitHub CI + 로컬 자동 테스트**: pre-merge mandatory gate로 유지된다.
+- 향후 preview/staging-first 방식으로 전환할 때는 owner 승인과 canonical policy 변경이 먼저 필요하다.
 
 Pre-merge browser 환경(Cloudflare Preview, fixed test slot)은 CTO가 명시적으로 할당한 경우에만 선택적 추가 증거로 활용합니다.
 환경 부재 시 `NOT_AVAILABLE` / `NOT_USED`로 정직하게 기록하며, PASS로 추정하지 않습니다.
 
 기존의 Wrangler fixed-slot 배포 절차와 브라우저 테스트 슬롯 사용 절차는 `docs/ops/`의 참고 문서로 유지되며,
-CTO 할당 시에만 사용합니다. 해당 절차의 부재는 merge blocker가 아닙니다.
+CTO가 명시적으로 지정한 경우에만 optional supplementary evidence로 사용한다. 해당 절차는 기본적으로 수행하지 않으며, 부재는 merge blocker가 아니다.
 
 아래 화면/흐름은 로컬 정적 서버 단독으로 최종 판단하지 않습니다.
 - Browse / Search 페이지

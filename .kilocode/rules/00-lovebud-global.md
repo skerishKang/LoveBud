@@ -18,7 +18,7 @@ These rules apply to all agents working on the LoveBud project, especially code-
 ## Runtime & Infrastructure
 - Active runtime: Cloudflare Pages (frontend) + Modal (compute/backend).
 - Netlify is legacy artifact and removal candidate; not used for active production.
-- Production site `https://lovebud.pages.dev/` is not the source of truth for unmerged PR behavior; production verification is allowed by default after merge/deploy (evidence=PRODUCTION_EVIDENCE). Pre-merge PR Preview is the usual pre-merge target.
+- Production site `https://lovebud.pages.dev/` is not the source of truth for unmerged PR behavior; production verification is allowed by default after merge/deploy (evidence=PRODUCTION_EVIDENCE). Merge-first Production verification is the current default. Pre-merge Preview/fixed-slot deployment is not normally performed and is used only when explicitly assigned by CTO.
 
 ## API Architecture
 - Client requests follow: browser → same-origin `/api/*` → Cloudflare Functions `functions/api/**` → Modal → Neon.

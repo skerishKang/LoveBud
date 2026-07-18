@@ -128,7 +128,7 @@ test('canonical document exists', () => {
 
 const REQUIRED_SECTIONS = [
   'Merge-First Production Verification', 'Purpose', 'Current environment reality',
-  'Standard workflow', 'Mandatory pre-merge gates', 'Optional pre-merge gates',
+  'Current operating mode', 'Standard workflow', 'Mandatory pre-merge gates', 'Optional pre-merge gates',
   'Post-merge Production verification', 'Squash merge rules', 'Rollback rules',
   'Issue management', 'Agent role definitions', 'Self-improvement restriction',
 ];
@@ -217,6 +217,51 @@ test('canonical doc preserves mandatory pre-merge gates', () => {
   assert.ok(/local.*test/i.test(doc), 'Local tests must be mandatory gate');
   assert.ok(/\bCI\b/i.test(doc), 'CI must be mandatory gate');
   assert.ok(/expected_head_sha/i.test(doc), 'expected_head_sha must be required');
+});
+
+// ---------------------------------------------------------------------------
+// #3513 clarify: merge-first default + no manual preview/fixed-slot by default
+// ---------------------------------------------------------------------------
+
+test('canonical doc: no manual preview/fixed-slot deploy by default', () => {
+  const doc = fs.readFileSync(CANONICAL_PATH, 'utf8');
+  assert.ok(/기본적으로 PR Preview.*fixed test slot.*staging 배포를 수행하지 않는다/.test(doc)
+    || /not normally performed/.test(doc),
+    'Canonical doc must state no manual preview/fixed-slot deploy by default');
+});
+
+test('canonical doc: automatic main-to-Production deployment', () => {
+  const doc = fs.readFileSync(CANONICAL_PATH, 'utf8');
+  assert.ok(/자동.*반영|automatically.*reflects main to Production|Cloudflare Pages.*automatically/i.test(doc),
+    'Canonical doc must state automatic main-to-Production deployment');
+});
+
+test('canonical doc: future workflow switch requires explicit owner-approved policy change', () => {
+  const doc = fs.readFileSync(CANONICAL_PATH, 'utf8');
+  assert.ok(/owner 승인.*canonical policy 변경|owner-approved policy change/i.test(doc),
+    'Canonical doc must require owner-approved policy change before switching workflow');
+});
+
+test('canonical doc: failure rollback uses dedicated revert PR', () => {
+  const doc = fs.readFileSync(CANONICAL_PATH, 'utf8');
+  assert.ok(/실패한 squash merge.*dedicated revert PR|dedicated revert PR/.test(doc),
+    'Canonical doc must state failure rollback uses dedicated revert PR');
+});
+
+test('kilocode rules: does not call pre-merge PR Preview the usual/default target', () => {
+  const kc = fs.readFileSync(path.join(ROOT, '.kilocode/rules/00-lovebud-global.md'), 'utf8');
+  assert.ok(!/Pre-merge PR Preview is the usual pre-merge target/i.test(kc),
+    'Kilo rules must NOT call pre-merge PR Preview the usual/default target');
+  assert.ok(/Merge-first Production verification is the current default/i.test(kc),
+    'Kilo rules must state merge-first is the current default');
+});
+
+test('AGENTS.md: marks merge-first as current default and no manual preview by default', () => {
+  const agents = fs.readFileSync(path.join(ROOT, 'AGENTS.md'), 'utf8');
+  assert.ok(/Merge-first Production verification is the current default/i.test(agents),
+    'AGENTS.md must mark merge-first as current default');
+  assert.ok(/기본적으로 수행하지 않는다|not normally performed/i.test(agents),
+    'AGENTS.md must state pre-merge preview not normally performed');
 });
 
 // ===========================================================================
