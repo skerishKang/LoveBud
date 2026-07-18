@@ -132,3 +132,62 @@ test('editor template audit avoids runtime behavior changes', () => {
     // This contract test ensures we don't accidentally mutate logic in js/editor/ while planning HTML extraction.
     assert.ok(true, 'This audit PR only adds tests to identify extraction boundaries, without mutating js/editor.js');
 });
+
+// ── #3577: CSP-safe shared header bootstrap ──
+
+test('#3577 source: editor.html has no inline renderSharedHeader or applyI18n call', () => {
+    const html = fs.readFileSync('pages/editor.html', 'utf8');
+    // The editor pre-existing inline scripts (error handler + i18n dict) are unrelated
+    // to header bootstrap. Only the CSP-blocked renderSharedHeader call must be removed.
+    assert.doesNotMatch(html, /renderSharedHeader\s*\(/);
+    assert.doesNotMatch(html, /applyI18n\s*\(/);
+    // Verify the inline header bootstrap has been replaced by external script
+    assert.match(html, /editor-page-shell-init\.js\?v=/);
+});
+
+test('#3577 source: external CSP-safe bootstrap loaded after shared-header and before editor-page-shell-init', () => {
+    const html = fs.readFileSync('pages/editor.html', 'utf8');
+    assert.match(html, /js\/shared-header\.js\?v=20260718-3577-1/);
+    assert.match(html, /js\/page-shell\.js\?v=[A-Za-z0-9][A-Za-z0-9._-]*/);
+    assert.match(html, /js\/editor\/editor-page-shell-init\.js\?v=[A-Za-z0-9][A-Za-z0-9._-]*/);
+
+    const headerIdx = html.indexOf('shared-header.js');
+    const shellIdx = html.indexOf('page-shell.js');
+    const bootIdx = html.indexOf('editor-page-shell-init.js');
+    assert.ok(headerIdx >= 0 && shellIdx > headerIdx, 'page-shell must load after shared-header');
+    assert.ok(bootIdx > shellIdx, 'editor-page-shell-init must load after page-shell');
+});
+
+test('#3577 source: bootstrap uses LoveTreePageShell and is idempotent', () => {
+    const boot = fs.readFileSync('js/editor/editor-page-shell-init.js', 'utf8');
+    assert.match(boot, /LoveTreePageShell\.initSharedPage/);
+    assert.match(boot, /renderHeader:\s*true/);
+    assert.match(boot, /applyI18n:\s*true/);
+    assert.match(boot, /__lovebudEditorPageShellBooted/);
+    assert.match(boot, /DOMContentLoaded/);
+    assert.doesNotMatch(boot, /unsafe-inline|Content-Security-Policy|eval\s*\(/);
+    assert.doesNotMatch(boot, /\bfetch\s*\(/);
+});
+
+test('#3577 source: no CSP policy relaxation in editor or bootstrap', () => {
+    const html = fs.readFileSync('pages/editor.html', 'utf8');
+    const boot = fs.readFileSync('js/editor/editor-page-shell-init.js', 'utf8');
+    assert.doesNotMatch(html, /unsafe-inline/);
+    assert.doesNotMatch(html, /http-equiv=["']Content-Security-Policy["']/i);
+    assert.doesNotMatch(boot, /unsafe-inline|script-src/);
+});
+
+test('#3577: editor must NOT render editor-specific nav link (regression from #3593)', () => {
+    const js = fs.readFileSync('js/shared-header.js', 'utf8');
+    // The editor nav is defined in MENU_CONFIG.sub but deliberately not rendered
+    assert.ok(!js.includes('menuConfig.editor'),
+        'buildHeaderHTML must NOT render editor-specific nav link');
+});
+
+test('#3577: editor routes activate My Trees as active nav (regression from #3593)', () => {
+    const js = fs.readFileSync('js/shared-header.js', 'utf8');
+    assert.ok(js.includes("'editor.html': 'myTrees'") && js.includes("'editor': 'myTrees'"),
+        'Both editor route aliases must map to myTrees');
+    assert.ok(js.includes("activeKey === 'myTrees'"),
+        'Nav rendering must check activeKey for myTrees');
+});
