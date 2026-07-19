@@ -11,6 +11,20 @@
 
   var _manageSummary = window.LoveBudMyTreesManageSummary || null;
 
+  // #3578 Phase 1: LoveBudTreeCardMetrics is a required dependency of buildTreeCard.
+  // Check lazily at card-build time (not IIFE init) so VM-based tests
+  // that only exercise hub/entry-target code without building cards can run.
+  function requireMetrics() {
+    if (typeof window.LoveBudTreeCardMetrics !== 'object' ||
+        typeof window.LoveBudTreeCardMetrics.getTreeMetrics !== 'function') {
+      throw new Error('[my-trees-ui] LoveBudTreeCardMetrics helper not loaded. ' +
+        'tree-card-metrics.js must be loaded before my-trees-ui.js. ' +
+        'typeof window.LoveBudTreeCardMetrics === "object": ' + (typeof window.LoveBudTreeCardMetrics === 'object') + ', ' +
+        'typeof window.LoveBudTreeCardMetrics.getTreeMetrics === "function": ' + (typeof window.LoveBudTreeCardMetrics && typeof window.LoveBudTreeCardMetrics.getTreeMetrics === 'function'));
+    }
+    return window.LoveBudTreeCardMetrics;
+  }
+
     /**
      * Extract the first usable input tree ID from the allowlist order.
      * Mirrors the resolver's id resolution so validated output can be
@@ -104,8 +118,7 @@
         accessState: 'unknown',
         primary: null,
         publicView: null,
-        shareTarget: null,
-        edit: null
+        shareTarget: null
       };
 
       if (!targets || typeof targets !== 'object') return nullBundle;
@@ -116,7 +129,6 @@
       var basePath = resolveSafeBasePath();
       var encId = encodeURIComponent(inputId);
       var primaryHref = 'editor?treeId=' + encId;
-      var editHref = 'editor?treeId=' + encId + '&mode=edit';
       var publicHref = 'view.html?treeId=' + encId;
 
       function build(target, action, mode, surface, expectedHref) {
@@ -125,7 +137,6 @@
       }
 
       var primary = build(targets.primary, 'appreciation', 'appreciation', 'editor', primaryHref);
-      var edit = build(targets.edit, 'edit', 'edit', 'editor', editHref);
 
       // Internal share/compatibility target only — never rendered as a third action.
       var shareSource = targets.shareTarget || targets.publicView;
@@ -140,9 +151,9 @@
         shareTarget = null;
       }
 
-      // Bundle-level fail-closed: required interaction targets are primary+edit.
+      // Bundle-level fail-closed: primary is required for all entry flows.
       // Public trees must still resolve a valid shareTarget for share-link copy.
-      if (primary === null || edit === null) return nullBundle;
+      if (primary === null) return nullBundle;
       if (expectedAccessState === 'public' && shareTarget === null) return nullBundle;
 
       return {
@@ -151,8 +162,7 @@
         primary: primary,
         // Keep publicView key as alias for existing share consumers.
         publicView: shareTarget,
-        shareTarget: shareTarget,
-        edit: edit
+        shareTarget: shareTarget
       };
     }
 
@@ -203,10 +213,15 @@
   }
 
   function formatCompactCount(value) {
+    var shared = window.LoveBudTreeCardMetrics;
+    if (shared && typeof shared.formatCompactCount === 'function') {
+      return shared.formatCompactCount(value);
+    }
     var Utils = window.LoveBudMyTreesUtils;
     if (Utils && typeof Utils.formatCompactCount === 'function') return Utils.formatCompactCount(value);
-    var count = Number(value || 0);
-    if (!Number.isFinite(count) || count <= 0) return '0';
+    var count = Number(value);
+    if (!Number.isFinite(count) || count < 0) return '';
+    if (count === 0) return '0';
     if (count >= 1000000) return (Math.floor(count / 100000) / 10) + 'M';
     if (count >= 1000) return (Math.floor(count / 100) / 10) + 'K';
     return String(count);
@@ -437,16 +452,12 @@
     }
 
     // Issue #1488: 좋아요 + 조회수로 둘러보기와 통일 (순간수 제거)
-    var likeCount = getTreeLikeCount(tree);
-    var viewCount = getTreeViewCount(tree);
     var cardMeta = getTreeCardMeta(normalizedTree, i18n);
     var title = cardMeta.title;
 
     var selectedClass = typeof isSelected === 'function' && isSelected(normalizedTree.id) ? ' is-selected is-active' : '';
     var resolved = validateAndResolveEntryTargets(normalizedTree);
     var openHref = resolved.primary;
-    // #3563: public shareTarget is internal only — never a third card action.
-    var editHref = resolved.edit;
 
     var card = document.createElement('div');
     card.className = 'tree-card' + selectedClass;
@@ -466,7 +477,7 @@
     };
 
     card.addEventListener('click', function (e) {
-      if (e.target.closest('.tree-card-open-link, .tree-card-edit-link, button, a[href]')) {
+      if (e.target.closest('.tree-card-open-link, button, a[href]')) {
         return;
       }
       if (window.innerWidth < 480) {
@@ -491,15 +502,57 @@
       }
     });
 
-    // i18n-safe labels via getI18nText helper (#3563: appreciation + edit only)
+    // i18n-safe labels via getI18nText helper (#3578: appreciation only, edit removed)
     var openLabel = getI18nText(i18n, 'myTrees.entry_appreciation', '감상하기');
-    var editLabel = getI18nText(i18n, 'myTrees.entry_edit', '편집하기');
     var viewCountLabel = getI18nText(i18n, 'myTrees.view_count', '조회수');
     var likeCountLabel = getI18nText(i18n, 'myTrees.like_count', '좋아요');
     var commentCountLabel = getI18nText(i18n, 'myTrees.comment_count', '댓글');
-    var commentCount = Number(normalizedTree.commentCount || normalizedTree.comment_count || 0);
     var shareCountLabel = getI18nText(i18n, 'myTrees.share_count', '공유');
-    var shareCount = Number(normalizedTree.shareCount || normalizedTree.share_count || 0);
+
+    // Issue #3578: three-state metrics — null/undefined/absent = omit (never coerce to 0)
+    var Metrics = requireMetrics();
+    var getFirstFiniteCount = Metrics.getFirstFiniteCount ? Metrics.getFirstFiniteCount : function(tree, keys) {
+      if (!tree) return null;
+      for (var i = 0; i < keys.length; i++) {
+        var raw = tree[keys[i]];
+        if (raw === undefined || raw === null || raw === '') continue;
+        var val = Number(raw);
+        if (Number.isFinite(val) && val >= 0) return val;
+      }
+      return null;
+    };
+    var viewCount = getFirstFiniteCount(tree, ['viewCount', 'viewsCount', 'views', 'view_count', 'views_count', 'visitorCount', 'visitorsCount', 'visitCount', 'visitsCount', 'visits', 'openCount', 'opensCount', 'open_count']);
+    var likeCount = getFirstFiniteCount(tree, ['likeCount', 'likesCount', 'likes', 'reactionCount', 'reaction_count']);
+    var commentCount = getFirstFiniteCount(tree, ['commentCount', 'commentsCount', 'comments', 'comment_count']);
+    var shareCount = getFirstFiniteCount(tree, ['shareCount', 'sharesCount', 'shares', 'share_count']);
+
+    // Issue #3578 Phase 1: three-state metrics — only render when authoritative value exists
+    var metricsHtml = '<div class="tree-card-reaction-metrics">';
+    if (viewCount !== null) {
+      metricsHtml += '<span class="tree-card-reaction-metric" title="' + escapeHtml(viewCountLabel + ' ' + formatCompactCount(viewCount)) + '">' +
+        '<span class="material-symbols-outlined" aria-hidden="true">visibility</span>' +
+        '<span>' + formatCompactCount(viewCount) + '</span>' +
+        '</span>';
+    }
+    if (likeCount !== null) {
+      metricsHtml += '<span class="tree-card-reaction-metric" title="' + escapeHtml(likeCountLabel + ' ' + formatCompactCount(likeCount)) + '">' +
+        '<span class="material-symbols-outlined" aria-hidden="true">favorite</span>' +
+        '<span>' + formatCompactCount(likeCount) + '</span>' +
+        '</span>';
+    }
+    if (commentCount !== null) {
+      metricsHtml += '<span class="tree-card-reaction-metric" title="' + escapeHtml(commentCountLabel + ' ' + formatCompactCount(commentCount)) + '">' +
+        '<span class="material-symbols-outlined" aria-hidden="true">chat_bubble</span>' +
+        '<span>' + formatCompactCount(commentCount) + '</span>' +
+        '</span>';
+    }
+    if (shareCount !== null) {
+      metricsHtml += '<span class="tree-card-reaction-metric" title="' + escapeHtml(shareCountLabel + ' ' + formatCompactCount(shareCount)) + '">' +
+        '<span class="material-symbols-outlined" aria-hidden="true">share</span>' +
+        '<span>' + formatCompactCount(shareCount) + '</span>' +
+        '</span>';
+    }
+    metricsHtml += '</div>';
 
     card.innerHTML = [
       buildTreeThumbVisual(normalizedTree, i18n),
@@ -511,29 +564,10 @@
         '<div class="tree-card-subcopy">' + cardMeta.mood + '</div>',
         '<div class="tree-meta-row">',
           '<div class="tree-meta-left">',
-            // Issue #1488 #1490: 조회수→좋아요 순서, 순간수 제거
-            '<div class="tree-card-reaction-metrics">',
-              '<span class="tree-card-reaction-metric" title="' + escapeHtml(viewCountLabel + ' ' + formatCompactCount(viewCount)) + '">',
-                '<span class="material-symbols-outlined" aria-hidden="true">visibility</span>',
-                '<span>' + formatCompactCount(viewCount) + '</span>',
-              '</span>',
-              '<span class="tree-card-reaction-metric" title="' + escapeHtml(likeCountLabel + ' ' + formatCompactCount(likeCount)) + '">',
-                '<span class="material-symbols-outlined" aria-hidden="true">favorite</span>',
-                '<span>' + formatCompactCount(likeCount) + '</span>',
-              '</span>',
-              '<span class="tree-card-reaction-metric" title="' + escapeHtml(commentCountLabel + ' ' + formatCompactCount(commentCount)) + '">',
-                '<span class="material-symbols-outlined" aria-hidden="true">chat_bubble</span>',
-                '<span>' + formatCompactCount(commentCount) + '</span>',
-              '</span>',
-              '<span class="tree-card-reaction-metric" title="' + escapeHtml(shareCountLabel + ' ' + formatCompactCount(shareCount)) + '">',
-                '<span class="material-symbols-outlined" aria-hidden="true">share</span>',
-                '<span>' + formatCompactCount(shareCount) + '</span>',
-              '</span>',
-            '</div>',
+            metricsHtml,
           '</div>',
           '<div class="tree-meta-right">',
             (openHref ? '<a class="tree-card-open-link" href="' + escapeHtml(openHref) + '" target="_self"><span class="material-symbols-outlined" aria-hidden="true">account_tree</span><span data-i18n="myTrees.entry_appreciation">' + escapeHtml(openLabel) + '</span></a>' : ''),
-            (editHref ? '<a class="tree-card-edit-link" href="' + escapeHtml(editHref) + '" target="_self"><span class="material-symbols-outlined" aria-hidden="true">edit</span><span data-i18n="myTrees.entry_edit">' + escapeHtml(editLabel) + '</span></a>' : ''),
           '</div>',
         '</div>',
       '</div>'
@@ -542,12 +576,6 @@
     var openLink = card.querySelector('.tree-card-open-link');
     if (openLink) {
       openLink.addEventListener('click', function (e) {
-        e.stopPropagation();
-      });
-    }
-    var editLink = card.querySelector('.tree-card-edit-link');
-    if (editLink) {
-      editLink.addEventListener('click', function (e) {
         e.stopPropagation();
       });
     }

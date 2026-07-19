@@ -42,5 +42,5 @@ test('My LoveTree loads public-tree adapter before card visuals', () => {
 
 test('changed thumbnail runtime files are cache-busted', () => {
   assert.match(searchHtml, /js\/search\/search-data-adapter\.js\?v=20260616-2534-1/);
-  assert.match(myTreesHtml, /js\/my-trees\/my-trees-card-visuals\.js\?v=20260616-2534-1/);
+  assert.match(myTreesHtml, /js\/my-trees\/my-trees-card-visuals\.js\?v=20260719-3578-1/);
 });

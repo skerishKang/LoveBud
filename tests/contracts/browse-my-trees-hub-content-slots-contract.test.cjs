@@ -124,20 +124,20 @@ test('16. Action semantics preserved — Browse action helper keeps 감상 열�
   assert.ok(helper.includes('트리 열기'), 'Browse action helper must retain 트리 열기');
 });
 
-test('17. Action semantics preserved — My Trees keeps 감상하기, 편집하기, 감상 링크 복사 (#3563 two-action model)', () => {
+test('17. Action semantics preserved — My Trees keeps 감상하기, 감상 링크 복사 (#3578 Phase 1: edit removed)', () => {
   const html = read('pages/my-trees.html');
   assert.ok(html.includes('감상하기'), 'My Trees must retain 감상하기 (appreciation)');
-  assert.ok(html.includes('편집하기'), 'My Trees must retain 편집하기');
+  assert.equal(html.includes('편집하기'), false, '#3578 Phase 1: 편집하기 removed from static HTML');
   // #3563: public-view is not a user-facing third action (share uses internal shareTarget).
   assert.ok(!html.includes('공개 화면 보기'), 'My Trees must not show 공개 화면 보기 as a hub action');
   assert.ok(html.includes('감상 링크 복사'), 'My Trees must retain 감상 링크 복사');
 });
 
-test('18. My Trees action IDs remain stable', () => {
+test('18. My Trees action IDs: retained IDs stable, obsolete Edit ID absent', () => {
   const html = read('pages/my-trees.html');
-  assert.ok(html.includes('id="myTreesHubOpenBtn"'), 'myTreesHubOpenBtn ID must be stable');
-  assert.ok(html.includes('id="myTreesHubEditBtn"'), 'myTreesHubEditBtn ID must be stable');
-  assert.ok(html.includes('id="myTreesHubShareBtn"'), 'myTreesHubShareBtn ID must be stable');
+  assert.ok(html.includes('id="myTreesHubOpenBtn"'), 'myTreesHubOpenBtn ID must remain stable');
+  assert.equal(html.includes('id="myTreesHubEditBtn"'), false, '#3578 Phase 1: myTreesHubEditBtn removed from static HTML');
+  assert.ok(html.includes('id="myTreesHubShareBtn"'), 'myTreesHubShareBtn ID must remain stable');
 });
 
 test('19. Audit document contains Phase 2c state', () => {

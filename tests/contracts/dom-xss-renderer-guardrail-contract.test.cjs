@@ -164,8 +164,8 @@ const FILE_ALLOWLIST = {
     reason: 'Static i18n heading text + material icons; outerHTML read for icon preservation'
   },
   'js/my-trees/my-trees-preview-hub.js': {
-    count: 13, classification: 'safe',
-    reason: 'buildFlowStages template uses escapeHtml; material-icon badges with escapeHtml for count; i18n safeText; clear-container; static toggle buttons; appreciation and edit action buttons only (#3563 removed public-view action sink); owner-passive social-shell template (Step 5 follow-up) is static markup with escapeHtml-bound counts'
+    count: 12, classification: 'safe',
+    reason: '#3578 Phase 1 removed the hub Edit button innerHTML sink (edit action no longer rendered in hub); remaining sinks use escapeHtml-bound counts and static markup; social counts now set via textContent with finite-only values (#3563 removed public-view action sink); owner-passive social-shell template is static markup'
   },
   'js/my-trees/my-trees-preview-state.js': {
     count: 3, classification: 'safe',

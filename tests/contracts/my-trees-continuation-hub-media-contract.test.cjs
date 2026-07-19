@@ -108,8 +108,8 @@ test('My Trees hub visually simplifies representative blocks and differentiates 
 
   assert.match(content, /\.my-trees-hub-rep\s*\{\s*display:\s*flex;\s*flex-direction:\s*column;\s*gap:\s*8px;\s*margin-top:\s*16px;\s*padding:\s*0;\s*border-radius:\s*0;\s*background:\s*transparent;\s*border:\s*none;\s*box-shadow:\s*none;\s*\}/s, 'representative block card decorations must be removed');
   assert.match(actions, /\.my-trees-hub-open-btn\s*\{[^}]*background:\s*var\(--primary\);[^}]*color:\s*white;[^}]*\}/s, '감상 열기 (openBtn) must be primary colored');
-  // PR #2750: secondary button is a quieter outline style — transparent
-  // background, muted color (not the bold primary color). The semantic
-  // check is the transparent background; color is intentionally flexible.
-  assert.match(actions, /\.my-trees-hub-edit-btn\s*\{[^}]*background:\s*transparent;[^}]*\}/s, '편집하기 (editBtn) must be styled as a secondary outline (transparent background)');
+  // #3578 Phase 1: the Edit secondary button is removed from the hub.
+  // Appreciation (openBtn) is the only external entry; verify the obsolete
+  // edit-btn secondary outline style is gone.
+  assert.doesNotMatch(actions, /\.my-trees-hub-edit-btn\b/, 'obsolete edit-btn secondary style must be absent (#3578)');
 });

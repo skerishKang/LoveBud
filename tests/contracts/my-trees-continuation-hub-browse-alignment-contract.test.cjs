@@ -19,7 +19,6 @@ test('My Trees hub preserves its runtime ids and owner actions', () => {
     'myTreesHubFlow',
     'myTreesHubSummary',
     'myTreesHubOpenBtn',
-    'myTreesHubEditBtn',
   ];
 
   for (const id of requiredIds) {
@@ -27,7 +26,7 @@ test('My Trees hub preserves its runtime ids and owner actions', () => {
   }
 
   assert.match(html, /id=["']myTreesHubOpenBtn["'][^>]*>\s*[\s\S]*?감상하기/, 'primary owner action must be 감상하기');
-  assert.match(html, /id=["']myTreesHubEditBtn["'][^>]*>\s*[\s\S]*?편집하기/, 'secondary owner action must remain 편집하기');
+  assert.equal(html.includes('편집하기'), false, '#3578 Phase 1: 편집하기 removed from static HTML');
 
   // Verify rep block removal
   assert.ok(!html.includes('id="myTreesHubRep"'), 'myTreesHubRep must be removed from the HTML');
@@ -100,7 +99,8 @@ test('My Trees hub keeps its non-media focus surface and shared visual rhythm', 
 
   assert.match(content, /\.my-trees-hub-rep\s*\{\s*display:\s*flex;\s*flex-direction:\s*column;\s*gap:\s*8px;\s*margin-top:\s*16px;\s*padding:\s*0;\s*border-radius:\s*0;\s*background:\s*transparent;\s*border:\s*none;\s*box-shadow:\s*none;\s*\}/s, 'first-moment block card decorations must be removed for a unified focus surface');
   assert.match(actions, /\.my-trees-hub-open-btn\s*\{[^}]*min-height:\s*50px;[^}]*border-radius:\s*999px;/s, '트리 열기 primary action rhythm');
-  assert.match(actions, /\.my-trees-hub-edit-btn\s*\{[^}]*min-height: 44px;[^}]*border-radius:\s*999px;/s, '편집하기 secondary action rhythm (Browse auxiliary)');
+  // #3578 Phase 1: the edit secondary action is removed; share/visibility retain rhythm.
+  assert.doesNotMatch(actions, /\.my-trees-hub-edit-btn\b/, 'obsolete edit-btn CSS must be absent (#3578)');
   assert.match(actions, /\.my-trees-hub-share-btn[\s\S]*?min-height: 44px;[\s\S]*?border-radius:\s*999px;/, '감상 링크 복사 tertiary action rhythm');
   assert.match(actions, /\.my-trees-hub-visibility-btn[\s\S]*?min-height: 44px;[\s\S]*?border-radius:\s*999px;/, '공개 범위 quaternary action rhythm');
 
@@ -170,11 +170,11 @@ test('My Trees hub summary uses Browse-parity typography (via shared CSS)', () =
 test('My Trees hub actions use Browse-parity heading font and share/visibility font-size', () => {
   const actions = read('css/my-trees/my-trees-preview-hub/actions.css');
 
-  // All four action types must share font-family: var(--font-heading)
+  // All retained action types must share font-family: var(--font-heading)
   assert.match(
     actions,
-    /\.my-trees-hub-open-btn,\s*\.my-trees-hub-edit-btn,\s*\.my-trees-hub-share-btn,\s*\.my-trees-hub-visibility-btn\s*\{[^}]*font-family:\s*var\(--font-heading\);[^}]*\}/s,
-    'all hub action buttons must use var(--font-heading)'
+    /\.my-trees-hub-open-btn,\s*\.my-trees-hub-share-btn,\s*\.my-trees-hub-visibility-btn\s*\{[^}]*font-family:\s*var\(--font-heading\);[^}]*\}/s,
+    'all retained hub action buttons must use var(--font-heading)'
   );
 
   // share/visibility tertiary font-size must be 13px
@@ -187,8 +187,9 @@ test('My Trees hub actions use Browse-parity heading font and share/visibility f
   // Owner action ids must be preserved
   const html = read('pages/my-trees.html');
   assert.match(html, /id=["']myTreesHubOpenBtn["']/, 'myTreesHubOpenBtn must exist');
-  assert.match(html, /id=["']myTreesHubEditBtn["']/, 'myTreesHubEditBtn must exist');
   assert.match(html, /id=["']myTreesHubShareBtn["']/, 'myTreesHubShareBtn must exist');
+  // #3578 Phase 1: the obsolete Edit ID is intentionally removed from the hub
+  assert.doesNotMatch(html, /id=["']myTreesHubEditBtn["']/, 'myTreesHubEditBtn must be absent (#3578)');
 
   // Action gap and margin now owned by shared CSS .preview-actions
   const shared = read('css/shared/preview-hub-content-slots.css');

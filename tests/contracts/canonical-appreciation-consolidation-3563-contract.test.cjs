@@ -305,52 +305,52 @@ test('#3563 browse/shared links still use view.html compatibility route', () => 
   assert.match(share, /view\.html\?treeId=/);
 });
 
-test('#3563 resolver exposes shareTarget without a third interaction mode', () => {
+test('#3578 Phase 1 resolver exposes shareTarget without a third interaction mode', () => {
   var ctx = createMinimalDomCardContext();
   vm.createContext(ctx);
   vm.runInContext(read('js/my-trees/my-trees-entry-target-resolver.js'), ctx);
   var resolve = ctx.window.LoveBudMyTreesEntryTargetResolver.resolveMyTreesEntryTargets;
   var publicTree = resolve({ id: 'p1', visibility: 'public' });
   assert.equal(publicTree.primary.action, 'appreciation');
-  assert.equal(publicTree.edit.action, 'edit');
+  assert.equal(publicTree.edit, undefined, '#3578 Phase 1: edit removed');
   assert.equal(publicTree.shareTarget.available, true);
   assert.equal(publicTree.publicView.href, publicTree.shareTarget.href);
   assert.match(publicTree.shareTarget.href, /view\.html\?treeId=p1/);
   assert.equal(publicTree.primary.routeSurface, 'editor');
-  assert.equal(publicTree.edit.routeSurface, 'editor');
 
   var privateTree = resolve({ id: 'v1', visibility: 'private' });
   assert.equal(privateTree.shareTarget.available, false);
   assert.equal(privateTree.publicView.available, false);
 });
 
-test('#3563 My Trees card renders only 감상하기 and 편집하기', () => {
+test('#3578 My Trees card renders only 감상하기 (Phase 1: edit removed)', () => {
   var ctx = createMinimalDomCardContext();
   vm.createContext(ctx);
   vm.runInContext(read('js/my-trees/my-trees-entry-target-resolver.js'), ctx);
+  vm.runInContext(read('js/shared/tree-card-metrics.js'), ctx);
   vm.runInContext(read('js/my-trees/my-trees-ui.js'), ctx);
   var UI = ctx.window.LoveBudMyTreesUI;
   var card = UI.buildTreeCard({ id: 't1', visibility: 'public', title: 'T' }, { i18n: function () { return ''; } });
   assert.ok(card.querySelector('.tree-card-open-link'));
-  assert.ok(card.querySelector('.tree-card-edit-link'));
+  assert.equal(card.querySelector('.tree-card-edit-link'), null, 'Phase 1: tree-card-edit-link removed');
   assert.equal(card.querySelector('.tree-card-public-view-link'), null);
   assert.ok(card.innerHTML.indexOf('공개 화면 보기') === -1);
 });
 
-test('#3563 My Trees hub has no public-view action; share remains', () => {
+test('#3578 My Trees hub has no Edit button; no public-view action; share remains', () => {
   const html = read('pages/my-trees.html');
   assert.ok(html.includes('myTreesHubOpenBtn'));
-  assert.ok(html.includes('myTreesHubEditBtn'));
+  assert.equal(html.includes('myTreesHubEditBtn'), false, 'Phase 1: myTreesHubEditBtn removed from static HTML');
   assert.ok(html.includes('myTreesHubShareBtn'));
   assert.ok(!html.includes('공개 화면 보기'));
   assert.ok(!html.includes('myTreesHubPublicViewBtn'));
   assert.ok(!html.includes('my-trees-hub-public-view-btn'));
 });
 
-test('#3563 owner appreciation remains editor route (not guest bootstrap)', () => {
+test('#3578 Phase 1 owner appreciation remains editor route; mode=edit removed', () => {
   const resolver = read('js/my-trees/my-trees-entry-target-resolver.js');
   assert.match(resolver, /editor\?treeId=/);
-  assert.match(resolver, /mode=edit/);
+  assert.doesNotMatch(resolver, /mode=edit/, 'Phase 1: mode=edit removed from resolver');
   assert.match(resolver, /view\.html\?treeId=/);
 });
 

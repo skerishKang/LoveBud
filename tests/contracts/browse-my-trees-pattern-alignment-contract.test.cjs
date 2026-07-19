@@ -251,8 +251,10 @@ test('10. My LoveTree card order: thumb -> body/title/subcopy/meta-row/action (B
   const idxSubcopy = templateSection.indexOf('tree-card-subcopy');
   const idxMeta = templateSection.indexOf('cardMeta.visibilityBadgeHtml');
   const idxMetaRow = templateSection.indexOf('tree-meta-row');
-  const idxReaction = templateSection.indexOf('tree-card-reaction-metrics');
   const idxOpen = templateSection.indexOf('tree-card-open-link');
+  // #3578 Phase 1: metrics are computed before the innerHTML block and injected
+  // into tree-meta-row, so the class reference lives earlier in buildTreeCard.
+  const idxReaction = cardFnSection.indexOf('tree-card-reaction-metrics');
   assert.ok(idxThumb !== -1, 'Thumb template helper must exist');
   assert.ok(idxBody !== -1, 'Single tree-card-body container must exist (Browse parity)');
   assert.ok(idxTitle !== -1, 'Title class must exist');
@@ -304,7 +306,7 @@ test('14. Runtime cache-busts updated for changed JS/CSS', () => {
   const myTreesHtml = read('pages/my-trees.html');
   const myTreesCss = read('css/my-trees.css');
   assert.match(searchHtml, /search-preview-state\.js\?v=20260616-2532-1/);
-  assert.match(myTreesHtml, /my-trees-ui\.js\?v=20260719-3587-1/);
+  assert.match(myTreesHtml, /my-trees-ui\.js\?v=20260719-3578-1/);
   // Softened: any non-empty cache-bust on my-trees-preview-hub.js plus
   // a guard that the pre-#2829 baseline value is gone. Future
   // cache-bust bumps should not require updating this assertion
@@ -332,6 +334,9 @@ test('14. Runtime cache-busts updated for changed JS/CSS', () => {
     'my-trees-preview-state.js must not still pin the pre-#2835 cache-bust 20260622-step9-1'
   );
   assert.match(myTreesHtml, /my-trees-i18n-refresh\.js\?v=20260716-3563-1/);
+  // #3578 Phase 1: the new shared metrics helper must be cache-busted and loaded
+  // before my-trees-ui.js (dependency order contract).
+  assert.match(myTreesHtml, /tree-card-metrics\.js\?v=20260719-3578-1/);
   assert.match(myTreesHtml, /i18n-my-trees\.js\?v=20260715-3511-2/);
   assert.match(
     myTreesHtml,

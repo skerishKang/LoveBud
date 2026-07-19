@@ -3607,6 +3607,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/tree-card-metrics-3578-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes the shared tree-card-metrics.js helper in a node:vm fake context; asserts three-state metric semantics (finite 0 renders 0, null/undefined/non-finite omitted, never coerced to 0), fixed order views->likes->comments->shares, and narrow numeric/icon output. No real browser/network/DB (#3578).",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/tree-card-structure-parity-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",

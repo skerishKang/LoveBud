@@ -20,7 +20,7 @@ const HELPER_SOURCE = fs.readFileSync(HELPER_PATH, 'utf8');
 
 const TARGET_KEYS = ['available', 'href', 'action', 'interactionMode', 'routeSurface'];
 // #3563: shareTarget is an alias of publicView for internal share-link use only.
-const ROOT_KEYS = ['treeId', 'accessState', 'primary', 'publicView', 'shareTarget', 'edit'];
+const ROOT_KEYS = ['treeId', 'accessState', 'primary', 'publicView', 'shareTarget'];
 
 function loadApi() {
   const context = { window: {} };
@@ -79,7 +79,7 @@ function assertStableShape(model) {
   assertTargetShape(model.primary, 'primary');
   assertTargetShape(model.publicView, 'publicView');
   assertTargetShape(model.shareTarget, 'shareTarget');
-  assertTargetShape(model.edit, 'edit');
+  // Phase 1: edit target removed
 
   assert.equal(model.primary.action, 'appreciation');
   assert.equal(model.primary.interactionMode, 'appreciation');
@@ -90,10 +90,6 @@ function assertStableShape(model) {
   assert.equal(model.publicView.routeSurface, 'public-viewer');
   assert.deepEqual(model.shareTarget, model.publicView, 'shareTarget must alias publicView');
 
-  assert.equal(model.edit.action, 'edit');
-  assert.equal(model.edit.interactionMode, 'edit');
-  assert.equal(model.edit.routeSurface, 'editor');
-
   assertNoFunctions(model, 'model');
 }
 
@@ -103,11 +99,10 @@ function assertAllUnavailable(model) {
   assert.equal(model.primary.available, false);
   assert.equal(model.publicView.available, false);
   assert.equal(model.shareTarget.available, false);
-  assert.equal(model.edit.available, false);
+  // Phase 1: edit target removed
   assert.equal(model.primary.href, null);
   assert.equal(model.publicView.href, null);
   assert.equal(model.shareTarget.href, null);
-  assert.equal(model.edit.href, null);
 }
 
 // ── API ──────────────────────────────────────────────────────────────
@@ -148,26 +143,24 @@ test('5. valid public tree → public-view available', () => {
   assert.ok(model.publicView.href);
 });
 
-test('6. valid public tree → edit available', () => {
+test('6. valid public tree → edit removed (Phase 1)', () => {
   const api = loadApi();
   const model = api.resolveMyTreesEntryTargets({ id: 'tree-public-1', visibility: 'public' });
-  assert.equal(model.edit.available, true);
-  assert.ok(model.edit.href);
+  assert.equal(model.edit, undefined);
 });
 
-test('7. three target actions are distinct', () => {
+test('7. two target actions are distinct (Phase 1)', () => {
   const api = loadApi();
   const model = api.resolveMyTreesEntryTargets({ id: 'tree-public-1', visibility: 'public' });
-  const actions = [model.primary.action, model.publicView.action, model.edit.action];
-  assert.deepEqual(actions, ['appreciation', 'public-view', 'edit']);
-  assert.equal(new Set(actions).size, 3);
+  assert.equal(model.primary.action, 'appreciation');
+  assert.equal(model.publicView.action, 'public-view');
+  assert.notEqual(model.primary.action, model.publicView.action);
 });
 
-test('8. appreciation and edit use editor route surface', () => {
+test('8. appreciation uses editor route surface', () => {
   const api = loadApi();
   const model = api.resolveMyTreesEntryTargets({ id: 'tree-public-1', visibility: 'public' });
   assert.equal(model.primary.routeSurface, 'editor');
-  assert.equal(model.edit.routeSurface, 'editor');
 });
 
 test('9. public-view uses public-viewer route surface', () => {
@@ -184,10 +177,10 @@ test('10. private tree → appreciation available', () => {
   assert.equal(model.primary.available, true);
 });
 
-test('11. private tree → edit available', () => {
+test('11. private tree → edit removed (Phase 1)', () => {
   const api = loadApi();
   const model = api.resolveMyTreesEntryTargets({ id: 'tree-private-1', visibility: 'private' });
-  assert.equal(model.edit.available, true);
+  assert.equal(model.edit, undefined);
 });
 
 test('12. private tree → public-view unavailable', () => {
@@ -202,15 +195,13 @@ test('13. private tree → public-view href null', () => {
   assert.equal(model.publicView.href, null);
 });
 
-test('14. private is not used as interaction mode', () => {
+test('14. private is not used as interaction mode (Phase 1)', () => {
   const api = loadApi();
   const model = api.resolveMyTreesEntryTargets({ id: 'tree-private-1', visibility: 'private' });
   assert.equal(model.accessState, 'private');
   assert.notEqual(model.primary.interactionMode, 'private');
   assert.notEqual(model.publicView.interactionMode, 'private');
-  assert.notEqual(model.edit.interactionMode, 'private');
   assert.equal(model.primary.interactionMode, 'appreciation');
-  assert.equal(model.edit.interactionMode, 'edit');
   assert.equal(model.publicView.interactionMode, 'none');
 });
 
@@ -223,11 +214,11 @@ test('15. unknown visibility → appreciation available', () => {
   assert.equal(model.primary.available, true);
 });
 
-test('16. unknown visibility → edit available', () => {
+test('16. unknown visibility → edit removed (Phase 1)', () => {
   const api = loadApi();
   const model = api.resolveMyTreesEntryTargets({ id: 'tree-unknown-1', visibility: 'unlisted' });
   assert.equal(model.accessState, 'unknown');
-  assert.equal(model.edit.available, true);
+  assert.equal(model.edit, undefined);
 });
 
 test('17. unknown visibility → public-view unavailable', () => {
@@ -292,11 +283,10 @@ test('23. appreciation URL follows current editor convention (no mode param)', (
   assert.equal(model.primary.href.includes('view.html'), false);
 });
 
-test('24. edit URL follows current editor explicit mode=edit convention', () => {
+test('24. edit target removed (Phase 1)', () => {
   const api = loadApi();
   const model = api.resolveMyTreesEntryTargets({ id: 'abc-123', visibility: 'private' });
-  assert.equal(model.edit.href, 'editor?treeId=abc-123&mode=edit');
-  assert.equal(model.edit.href.includes('view.html'), false);
+  assert.equal(model.edit, undefined);
 });
 
 test('25. public-view URL follows current view.html?treeId convention', () => {
@@ -307,34 +297,29 @@ test('25. public-view URL follows current view.html?treeId convention', () => {
   assert.equal(model.publicView.href.includes('mode='), false);
 });
 
-test('26. target surfaces do not cross (no edit on viewer, no public-view on editor)', () => {
+test('26. target surfaces do not cross (Phase 1)', () => {
   const api = loadApi();
   const model = api.resolveMyTreesEntryTargets({ id: 'abc-123', visibility: 'public' });
   assert.equal(model.primary.routeSurface, 'editor');
-  assert.equal(model.edit.routeSurface, 'editor');
   assert.equal(model.publicView.routeSurface, 'public-viewer');
   assert.ok(model.primary.href.startsWith('editor?'));
-  assert.ok(model.edit.href.startsWith('editor?'));
   assert.ok(model.publicView.href.startsWith('view.html?'));
-  assert.equal(model.edit.href.includes('view.html'), false);
   assert.equal(model.publicView.href.includes('mode=edit'), false);
   assert.equal(model.primary.href.includes('mode=edit'), false);
 });
 
-test('27. public is never an interaction mode', () => {
+test('27. public is never an interaction mode (Phase 1)', () => {
   const api = loadApi();
   const model = api.resolveMyTreesEntryTargets({ id: 'abc-123', visibility: 'public' });
   assert.equal(model.accessState, 'public');
   assert.notEqual(model.primary.interactionMode, 'public');
   assert.notEqual(model.publicView.interactionMode, 'public');
-  assert.notEqual(model.edit.interactionMode, 'public');
   const modes = [
     model.primary.interactionMode,
     model.publicView.interactionMode,
-    model.edit.interactionMode,
   ];
   for (const mode of modes) {
-    assert.ok(['appreciation', 'edit', 'none'].includes(mode));
+    assert.ok(['appreciation', 'none'].includes(mode));
   }
 });
 
@@ -346,7 +331,6 @@ test('28. ampersand ID is safely encoded', () => {
   const model = api.resolveMyTreesEntryTargets({ id, visibility: 'public' });
   const encoded = encodeURIComponent(id);
   assert.equal(model.primary.href, `editor?treeId=${encoded}`);
-  assert.equal(model.edit.href, `editor?treeId=${encoded}&mode=edit`);
   assert.equal(model.publicView.href, `view.html?treeId=${encoded}`);
   assert.equal(model.primary.href.includes('treeId=a&b'), false);
 });
@@ -396,9 +380,8 @@ test('32. raw source URL injection is blocked', () => {
   };
   const model = api.resolveMyTreesEntryTargets(tree);
   assert.equal(model.primary.href, 'editor?treeId=safe-tree');
-  assert.equal(model.edit.href, 'editor?treeId=safe-tree&mode=edit');
   assert.equal(model.publicView.href, 'view.html?treeId=safe-tree');
-  for (const href of [model.primary.href, model.edit.href, model.publicView.href]) {
+  for (const href of [model.primary.href, model.publicView.href]) {
     assert.equal(href.includes('javascript:'), false);
     assert.equal(href.includes('data:'), false);
     assert.equal(href.includes('evil.example'), false);
@@ -518,15 +501,12 @@ test('45. DB/Modal dependency absent', () => {
 
 function assertFixedSafeTreeHrefs(model) {
   assert.equal(model.primary.href, 'editor?treeId=safe-tree');
-  assert.equal(model.edit.href, 'editor?treeId=safe-tree&mode=edit');
   assert.equal(model.publicView.href, 'view.html?treeId=safe-tree');
   assert.ok(model.primary.href.startsWith('editor?treeId='));
-  assert.ok(model.edit.href.startsWith('editor?treeId='));
   assert.ok(model.publicView.href.startsWith('view.html?treeId='));
   assert.equal(model.primary.href.includes('mode=edit'), false);
-  assert.ok(model.edit.href.endsWith('&mode=edit'));
   assert.equal(model.publicView.href.includes('mode='), false);
-  for (const href of [model.primary.href, model.edit.href, model.publicView.href]) {
+  for (const href of [model.primary.href, model.publicView.href]) {
     assert.equal(href.includes('javascript:'), false);
     assert.equal(href.includes('data:'), false);
     assert.equal(href.includes('http://'), false);
@@ -545,7 +525,7 @@ test('treeId and tree_id aliases resolve when id is absent', () => {
   assert.equal(a.treeId, 'alias-a');
   assert.equal(a.primary.href, 'editor?treeId=alias-a');
   assert.equal(b.treeId, 'alias-b');
-  assert.equal(b.edit.href, 'editor?treeId=alias-b&mode=edit');
+  assert.equal(b.primary.href, 'editor?treeId=alias-b');
 });
 
 test('normalizeMyTreesAccessState is case-sensitive canonical only', () => {
@@ -596,7 +576,6 @@ test('context is ignored for private and unknown trees too', () => {
     context
   );
   assert.equal(privateModel.primary.href, 'editor?treeId=safe-tree');
-  assert.equal(privateModel.edit.href, 'editor?treeId=safe-tree&mode=edit');
   assert.equal(privateModel.publicView.href, null);
   const unknownModel = api.resolveMyTreesEntryTargets({ id: 'safe-tree' }, context);
   assert.equal(unknownModel.primary.href, 'editor?treeId=safe-tree');
@@ -608,7 +587,7 @@ test('source static: no resolveBasePath and no caller basePath concatenation', (
   assert.doesNotMatch(HELPER_SOURCE, /basePath\s*\+/);
   assert.doesNotMatch(HELPER_SOURCE, /context\.basePath/);
   assert.match(HELPER_SOURCE, /function buildEditorAppreciationHref\(treeId\)/);
-  assert.match(HELPER_SOURCE, /function buildEditorEditHref\(treeId\)/);
+  assert.doesNotMatch(HELPER_SOURCE, /function buildEditorEditHref\(treeId\)/, 'Phase 1: buildEditorEditHref removed');
   assert.match(HELPER_SOURCE, /function buildPublicViewerHref\(treeId\)/);
 });
 
@@ -632,7 +611,7 @@ test('alias fallback: blank id + valid treeId', () => {
     visibility: 'public',
   });
   assert.equal(model.treeId, 'valid-tree');
-  assert.equal(model.edit.href, 'editor?treeId=valid-tree&mode=edit');
+  assert.equal(model.primary.href, 'editor?treeId=valid-tree');
 });
 
 test('alias fallback: object id + valid tree_id', () => {
@@ -702,7 +681,6 @@ test('alias fallback selected ID is URL-encoded', () => {
   const encoded = encodeURIComponent(id);
   assert.equal(model.treeId, id);
   assert.equal(model.primary.href, `editor?treeId=${encoded}`);
-  assert.equal(model.edit.href, `editor?treeId=${encoded}&mode=edit`);
   assert.equal(model.publicView.href, `view.html?treeId=${encoded}`);
 });
 

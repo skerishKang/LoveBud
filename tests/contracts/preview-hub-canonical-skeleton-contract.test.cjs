@@ -298,17 +298,21 @@ test('Browse preserves all existing IDs', () => {
     }
 });
 
-test('My Trees preserves all existing IDs', () => {
+test('My Trees preserves all retained canonical IDs and drops obsolete Edit ID', () => {
     const requiredIds = [
         'myTreesHubPanel', 'myTreesHubVideoContainer', 'myTreesHubContent',
         'myTreesHubTreeTitle', 'myTreesHubMetaBadge',
         'myTreesHubFlow', 'myTreesHubNoMoments', 'myTreesHubSummary',
-        'myTreesHubOpenBtn', 'myTreesHubEditBtn', 'myTreesHubShareBtn'
+        'myTreesHubOpenBtn', 'myTreesHubShareBtn'
     ];
     for (const id of requiredIds) {
         assert.match(myTreesHtml, new RegExp(`id=["']${id}["']`),
             `My Trees HTML must retain #${id}`);
     }
+    // #3578 Phase 1: direct Edit from the hub is removed; the obsolete Edit ID
+    // must no longer exist in the markup.
+    assert.doesNotMatch(myTreesHtml, /id=["']myTreesHubEditBtn["']/,
+        'My Trees HTML must NOT retain obsolete #myTreesHubEditBtn (#3578)');
 });
 
 // ── 10) Browse reset must NOT destroy canonical slot hosts ─────────────

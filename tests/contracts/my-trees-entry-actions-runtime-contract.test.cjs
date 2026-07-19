@@ -201,14 +201,11 @@ function buildFakePreloadedWindow() {
   var publicViewBtn = new FakeElement('a');
   publicViewBtn.id = 'myTreesHubPublicViewBtn';
   publicViewBtn.hidden = true;
-  var editBtn = new FakeElement('a');
-  editBtn.id = 'myTreesHubEditBtn';
-  editBtn.hidden = true;
   var shareBtn = new FakeElement('button');
   shareBtn.id = 'myTreesHubShareBtn';
   shareBtn.hidden = true;
 
-  hubActions._children = [openBtn, publicViewBtn, editBtn, shareBtn];
+  hubActions._children = [openBtn, publicViewBtn, shareBtn];
   hubContent._children = [hubActions];
   hubPanel._children = [hubContent];
 
@@ -217,7 +214,6 @@ function buildFakePreloadedWindow() {
   doc._elements['myTreesHubActions'] = hubActions;
   doc._elements['myTreesHubOpenBtn'] = openBtn;
   doc._elements['myTreesHubPublicViewBtn'] = publicViewBtn;
-  doc._elements['myTreesHubEditBtn'] = editBtn;
   doc._elements['myTreesHubShareBtn'] = shareBtn;
 
   return ctx;
@@ -243,7 +239,6 @@ function buildMinimalEls() {
     actions: new FakeElement('div'),
     openBtn: new FakeElement('a'),
     publicViewBtn: new FakeElement('a'),
-    editBtn: new FakeElement('a'),
     shareBtn: new FakeElement('button')
   };
 }
@@ -271,6 +266,7 @@ test('2. public primary card href → editor (appreciation)', function() {
   var resolverCode = read('js/my-trees/my-trees-entry-target-resolver.js');
   var uiCode = read('js/my-trees/my-trees-ui.js');
   api.runInContext(resolverCode, ctx);
+  api.runInContext(read('js/shared/tree-card-metrics.js'), ctx);
   api.runInContext(uiCode, ctx);
 
   var UI = ctx.window.LoveBudMyTreesUI;
@@ -290,6 +286,7 @@ test('3. private primary card href → editor (appreciation)', function() {
   api.createContext(ctx);
 
   api.runInContext(read('js/my-trees/my-trees-entry-target-resolver.js'), ctx);
+  api.runInContext(read('js/shared/tree-card-metrics.js'), ctx);
   api.runInContext(read('js/my-trees/my-trees-ui.js'), ctx);
 
   var UI = ctx.window.LoveBudMyTreesUI;
@@ -308,6 +305,7 @@ test('4. valid unknown visibility primary → editor (appreciation)', function()
   api.createContext(ctx);
 
   api.runInContext(read('js/my-trees/my-trees-entry-target-resolver.js'), ctx);
+  api.runInContext(read('js/shared/tree-card-metrics.js'), ctx);
   api.runInContext(read('js/my-trees/my-trees-ui.js'), ctx);
 
   var UI = ctx.window.LoveBudMyTreesUI;
@@ -320,47 +318,54 @@ test('4. valid unknown visibility primary → editor (appreciation)', function()
   assert.equal(href.includes('mode='), false);
 });
 
-test('5. #3563 cards expose only appreciation+edit; public shareTarget stays internal', function() {
+test('5. #3578 Phase 1 cards expose only appreciation; public shareTarget stays internal', function() {
   var ctx = createVMContext();
   var api = require('node:vm');
   api.createContext(ctx);
 
   api.runInContext(read('js/my-trees/my-trees-entry-target-resolver.js'), ctx);
+  api.runInContext(read('js/shared/tree-card-metrics.js'), ctx);
   api.runInContext(read('js/my-trees/my-trees-ui.js'), ctx);
 
   var UI = ctx.window.LoveBudMyTreesUI;
 
   var publicCard = UI.buildTreeCard({ id: 't-pub', visibility: 'public', title: 'T' }, { i18n: function(k) { return k; } });
   assert.equal(publicCard.querySelector('.tree-card-public-view-link'), null, 'public tree must not render public-view action');
+  assert.equal(publicCard.querySelector('.tree-card-edit-link'), null, 'Phase 1: public tree must not render edit link');
   assert.ok(publicCard.querySelector('.tree-card-open-link'), 'public tree should have appreciation link');
-  assert.ok(publicCard.querySelector('.tree-card-edit-link'), 'public tree should have edit link');
   var resolvedPublic = UI.validateAndResolveEntryTargets({ id: 't-pub', visibility: 'public' });
   assert.ok(resolvedPublic.shareTarget || resolvedPublic.publicView, 'public tree keeps internal shareTarget');
   assert.ok((resolvedPublic.shareTarget || resolvedPublic.publicView).includes('view.html?treeId=t-pub'));
+  assert.equal(resolvedPublic.edit, undefined, 'Phase 1: no edit target in resolved bundle');
 
   var privateCard = UI.buildTreeCard({ id: 't-priv', visibility: 'private', title: 'T' }, { i18n: function(k) { return k; } });
   assert.equal(privateCard.querySelector('.tree-card-public-view-link'), null, 'private tree should NOT have public-view link');
+  assert.equal(privateCard.querySelector('.tree-card-edit-link'), null, 'Phase 1: private tree must not render edit link');
   var resolvedPrivate = UI.validateAndResolveEntryTargets({ id: 't-priv', visibility: 'private' });
   assert.equal(resolvedPrivate.shareTarget, null, 'private tree has no shareTarget');
   assert.equal(resolvedPrivate.publicView, null, 'private tree has no publicView');
+  assert.equal(resolvedPrivate.edit, undefined, 'Phase 1: no edit target in resolved bundle');
 });
 
-test('6. edit link has &mode=edit', function() {
+test('6. #3578 Phase 1: no edit link; primary href has no mode param', function() {
   var ctx = createVMContext();
   var api = require('node:vm');
   api.createContext(ctx);
 
   api.runInContext(read('js/my-trees/my-trees-entry-target-resolver.js'), ctx);
+  api.runInContext(read('js/shared/tree-card-metrics.js'), ctx);
   api.runInContext(read('js/my-trees/my-trees-ui.js'), ctx);
 
   var UI = ctx.window.LoveBudMyTreesUI;
   var card = UI.buildTreeCard({ id: 't1', visibility: 'public', title: 'T' }, { i18n: function(k) { return k; } });
 
   var editLink = card.querySelector('.tree-card-edit-link');
-  assert.ok(editLink, 'edit link should exist');
-  var href = editLink.getAttribute('href');
-  assert.ok(href.includes('mode=edit'), 'edit href must contain mode=edit');
-  assert.ok(href.includes('editor?treeId=t1'), 'edit href must target editor');
+  assert.equal(editLink, null, 'Phase 1: no edit link should exist');
+  var openLink = card.querySelector('.tree-card-open-link');
+  assert.ok(openLink, 'appreciation link should exist');
+  var href = openLink.getAttribute('href');
+  assert.ok(href.includes('editor?treeId=t1'), 'appreciation href must target editor');
+  assert.ok(!href.includes('mode='), 'appreciation href must not have mode parameter');
 });
 
 test('7. mobile public click → appreciation navigation', function() {
@@ -379,6 +384,7 @@ test('7. mobile public click → appreciation navigation', function() {
   });
 
   api.runInContext(read('js/my-trees/my-trees-entry-target-resolver.js'), ctx);
+  api.runInContext(read('js/shared/tree-card-metrics.js'), ctx);
   api.runInContext(read('js/my-trees/my-trees-ui.js'), ctx);
   api.runInContext(read('js/my-trees/my-trees-card-events.js'), ctx);
 
@@ -410,6 +416,7 @@ test('8. mobile private click → appreciation navigation', function() {
   });
 
   api.runInContext(read('js/my-trees/my-trees-entry-target-resolver.js'), ctx);
+  api.runInContext(read('js/shared/tree-card-metrics.js'), ctx);
   api.runInContext(read('js/my-trees/my-trees-ui.js'), ctx);
   api.runInContext(read('js/my-trees/my-trees-card-events.js'), ctx);
 
@@ -440,6 +447,7 @@ test('9. mobile Enter/Space → appreciation navigation', function() {
   });
 
   api.runInContext(read('js/my-trees/my-trees-entry-target-resolver.js'), ctx);
+  api.runInContext(read('js/shared/tree-card-metrics.js'), ctx);
   api.runInContext(read('js/my-trees/my-trees-ui.js'), ctx);
   api.runInContext(read('js/my-trees/my-trees-card-events.js'), ctx);
 
@@ -471,6 +479,7 @@ test('10. desktop click does not navigate (selection-only)', function() {
   });
 
   api.runInContext(read('js/my-trees/my-trees-entry-target-resolver.js'), ctx);
+  api.runInContext(read('js/shared/tree-card-metrics.js'), ctx);
   api.runInContext(read('js/my-trees/my-trees-ui.js'), ctx);
   api.runInContext(read('js/my-trees/my-trees-card-events.js'), ctx);
 
@@ -499,6 +508,7 @@ test('11. interactive child click does not activate card', function() {
 
   var selectedTree = null;
   api.runInContext(read('js/my-trees/my-trees-entry-target-resolver.js'), ctx);
+  api.runInContext(read('js/shared/tree-card-metrics.js'), ctx);
   api.runInContext(read('js/my-trees/my-trees-ui.js'), ctx);
   api.runInContext(read('js/my-trees/my-trees-card-events.js'), ctx);
 
@@ -534,6 +544,7 @@ test('12. invalid ID → zero navigation assignments', function() {
   });
 
   api.runInContext(read('js/my-trees/my-trees-entry-target-resolver.js'), ctx);
+  api.runInContext(read('js/shared/tree-card-metrics.js'), ctx);
   api.runInContext(read('js/my-trees/my-trees-ui.js'), ctx);
   api.runInContext(read('js/my-trees/my-trees-card-events.js'), ctx);
 
@@ -561,6 +572,7 @@ test('13. malformed target → zero navigation assignments', function() {
     get: function() { return navLog[navLog.length - 1] || ''; }
   });
 
+  api.runInContext(read('js/shared/tree-card-metrics.js'), ctx);
   api.runInContext(read('js/my-trees/my-trees-ui.js'), ctx);
 
   var card = ctx.window.LoveBudMyTreesUI.buildTreeCard(
@@ -592,7 +604,7 @@ test('14. hub applyHubActions resets and sets properly', function() {
   assert.ok(shareBtn.hidden, 'placeholder should hide share button');
 });
 
-test('15. applyHubActions with public tree produces primary, edit, share (no public-view action)', function() {
+test('15. applyHubActions with public tree produces primary, share (no public-view action, no edit)', function() {
   var ctx = buildFakePreloadedWindow();
   var api = require('node:vm');
   api.createContext(ctx);
@@ -606,7 +618,6 @@ test('15. applyHubActions with public tree produces primary, edit, share (no pub
   // Make applyHubActions a function on the hub's scope by calling showContent with a minimal tree
   var openBtn = ctx.document.getElementById('myTreesHubOpenBtn');
   var publicViewBtn = ctx.document.getElementById('myTreesHubPublicViewBtn');
-  var editBtn = ctx.document.getElementById('myTreesHubEditBtn');
   var shareBtn = ctx.document.getElementById('myTreesHubShareBtn');
 
   hub.showContent({
@@ -618,8 +629,6 @@ test('15. applyHubActions with public tree produces primary, edit, share (no pub
   assert.equal(openBtn.hidden, false, 'public tree open btn should be visible');
   assert.ok(openBtn.getAttribute('href').includes('editor?treeId=pub-tree'), 'public open should be editor');
   assert.equal(publicViewBtn.hidden, true, '#3563: public-view action must stay hidden');
-  assert.equal(editBtn.hidden, false, 'public tree edit btn should be visible');
-  assert.ok(editBtn.getAttribute('href').includes('editor?treeId=pub-tree&mode=edit'), 'edit should have mode=edit');
   assert.equal(shareBtn.hidden, false, 'public tree share btn should be visible');
 });
 
@@ -635,7 +644,6 @@ test('16. applyHubActions with private tree hides public-view and share', functi
   var hub = ctx.window.LoveBudMyTreesPreviewHub;
   var openBtn = ctx.document.getElementById('myTreesHubOpenBtn');
   var publicViewBtn = ctx.document.getElementById('myTreesHubPublicViewBtn');
-  var editBtn = ctx.document.getElementById('myTreesHubEditBtn');
   var shareBtn = ctx.document.getElementById('myTreesHubShareBtn');
 
   hub.showContent({
@@ -648,7 +656,6 @@ test('16. applyHubActions with private tree hides public-view and share', functi
   assert.ok(openBtn.getAttribute('href').includes('editor?treeId=priv-tree'), 'private open should be editor');
   assert.equal(publicViewBtn.hidden, true, 'private tree public-view btn should be hidden');
   assert.equal(shareBtn.hidden, true, 'private tree share btn should be hidden');
-  assert.equal(editBtn.hidden, false, 'private tree edit btn should be visible');
 });
 
 test('17. applyHubActions with unknown tree hides public-view and share', function() {
@@ -696,18 +703,16 @@ test('18. public→private transition clears stale share state', function() {
   assert.equal(shareBtn.onclick, null, 'stale onclick should be removed');
 });
 
-test('19. Korean/English appreciation+edit labels are present in i18n file', function() {
+test('19. Korean/English appreciation labels are present in i18n file', function() {
   var i18nSource = read('js/i18n/i18n-my-trees.js');
   assert.match(i18nSource, /'감상하기'/);
-  assert.match(i18nSource, /'편집하기'/);
   assert.match(i18nSource, /'Open appreciation view'/);
-  assert.match(i18nSource, /'Edit'/);
 });
 
-test('20. card action links have data-i18n spans for appreciation+edit only', function() {
+test('20. card action links have data-i18n spans for appreciation only', function() {
   var uiSource = read('js/my-trees/my-trees-ui.js');
   assert.match(uiSource, /data-i18n="myTrees\.entry_appreciation"/);
-  assert.match(uiSource, /data-i18n="myTrees\.entry_edit"/);
+  assert.doesNotMatch(uiSource, /tree-card-edit-link/, '#3578 Phase 1: edit link removed from card source');
   assert.doesNotMatch(uiSource, /tree-card-public-view-link/, '#3563: public-view card action removed');
 });
 
@@ -767,8 +772,7 @@ function canonicalBundle(id, visibility) {
     primary: { available: true, href: 'editor?treeId=' + encId, action: 'appreciation', interactionMode: 'appreciation', routeSurface: 'editor' },
     publicView: visibility === 'public'
       ? { available: true, href: 'view.html?treeId=' + encId, action: 'public-view', interactionMode: 'none', routeSurface: 'public-viewer' }
-      : { available: false, href: null, action: 'public-view', interactionMode: 'none', routeSurface: 'public-viewer' },
-    edit: { available: true, href: 'editor?treeId=' + encId + '&mode=edit', action: 'edit', interactionMode: 'edit', routeSurface: 'editor' }
+      : { available: false, href: null, action: 'public-view', interactionMode: 'none', routeSurface: 'public-viewer' }
   };
 }
 
@@ -783,7 +787,7 @@ test('23. malformed: primary href targets view.html but metadata editor/apprecia
   var resolved = UI.validateAndResolveEntryTargets({ id: id, visibility: 'public' });
   assert.equal(resolved.primary, null);
   assert.equal(resolved.publicView, null);
-  assert.equal(resolved.edit, null);
+  assert.equal(resolved.edit, undefined);
 });
 
 test('24. malformed: primary href is arbitrary-relative-page → bundle null', function() {
@@ -794,7 +798,7 @@ test('24. malformed: primary href is arbitrary-relative-page → bundle null', f
   var UI = ctx.window.LoveBudMyTreesUI;
   var resolved = UI.validateAndResolveEntryTargets({ id: id, visibility: 'public' });
   assert.equal(resolved.primary, null);
-  assert.equal(resolved.edit, null);
+  assert.equal(resolved.edit, undefined);
 });
 
 test('25. malformed: primary href tree id differs from input id → bundle null', function() {
@@ -806,7 +810,7 @@ test('25. malformed: primary href tree id differs from input id → bundle null'
   var resolved = UI.validateAndResolveEntryTargets({ id: id, visibility: 'public' });
   assert.equal(resolved.primary, null);
   assert.equal(resolved.publicView, null);
-  assert.equal(resolved.edit, null);
+  assert.equal(resolved.edit, undefined);
 });
 
 test('26. malformed: primary href has extra query → bundle null', function() {
@@ -829,28 +833,16 @@ test('27. malformed: primary href has fragment → bundle null', function() {
   assert.equal(resolved.primary, null);
 });
 
-test('28. malformed: edit href missing mode=edit → bundle null (fail-closed)', function() {
-  var id = 't1';
-  var bundle = canonicalBundle(id, 'public');
-  bundle.edit.href = 'editor?treeId=' + encodeURIComponent(id);
-  var ctx = buildUIContextWithFakeResolver({ resolveMyTreesEntryTargets: function() { return bundle; } });
-  var UI = ctx.window.LoveBudMyTreesUI;
-  var resolved = UI.validateAndResolveEntryTargets({ id: id, visibility: 'public' });
-  assert.equal(resolved.primary, null, 'bundle fail-closed: primary null');
-  assert.equal(resolved.edit, null, 'bundle fail-closed: edit null');
-  assert.equal(resolved.publicView, null, 'bundle fail-closed: publicView null');
-});
+test('28. #3578 Phase 1: validateAndResolveEntryTargets returns no edit target', function() {
+  var ctx = createVMContext();
+  var api = require('node:vm');
+  api.createContext(ctx);
+  api.runInContext(read('js/my-trees/my-trees-entry-target-resolver.js'), ctx);
+  api.runInContext(read('js/my-trees/my-trees-ui.js'), ctx);
 
-test('29. malformed: edit href tree id mismatch → bundle null (fail-closed)', function() {
-  var id = 't1';
-  var bundle = canonicalBundle(id, 'public');
-  bundle.edit.href = 'editor?treeId=other-id&mode=edit';
-  var ctx = buildUIContextWithFakeResolver({ resolveMyTreesEntryTargets: function() { return bundle; } });
   var UI = ctx.window.LoveBudMyTreesUI;
-  var resolved = UI.validateAndResolveEntryTargets({ id: id, visibility: 'public' });
-  assert.equal(resolved.primary, null, 'bundle fail-closed: primary null');
-  assert.equal(resolved.edit, null, 'bundle fail-closed: edit null');
-  assert.equal(resolved.publicView, null, 'bundle fail-closed: publicView null');
+  var resolved = UI.validateAndResolveEntryTargets({ id: 't1', visibility: 'public' });
+  assert.equal(resolved.edit, undefined, 'Phase 1: resolved bundle should have no edit key');
 });
 
 test('30. malformed: publicView href is editor route → publicView null', function() {
@@ -873,7 +865,7 @@ test('31. malformed: publicView href extra query/fragment → publicView null', 
   assert.equal(resolved.publicView, null);
 });
 
-test('32. malformed: private input but targets.accessState=public → bundle null', function() {
+test('30. malformed: private input but targets.accessState=public → bundle null', function() {
   var id = 't1';
   var bundle = canonicalBundle(id, 'private');
   bundle.accessState = 'public';
@@ -883,10 +875,10 @@ test('32. malformed: private input but targets.accessState=public → bundle nul
   var resolved = UI.validateAndResolveEntryTargets({ id: id, visibility: 'private' });
   assert.equal(resolved.primary, null);
   assert.equal(resolved.publicView, null);
-  assert.equal(resolved.edit, null);
+  assert.equal(resolved.edit, undefined);
 });
 
-test('33. malformed: private input but publicView.available=true → bundle null', function() {
+test('31. malformed: private input but publicView.available=true → bundle null', function() {
   var id = 't1';
   var bundle = canonicalBundle(id, 'private');
   bundle.publicView = { available: true, href: 'view.html?treeId=' + encodeURIComponent(id), action: 'public-view', interactionMode: 'none', routeSurface: 'public-viewer' };
@@ -896,10 +888,10 @@ test('33. malformed: private input but publicView.available=true → bundle null
   var resolved = UI.validateAndResolveEntryTargets({ id: id, visibility: 'private' });
   assert.equal(resolved.primary, null);
   assert.equal(resolved.publicView, null);
-  assert.equal(resolved.edit, null);
+  assert.equal(resolved.edit, undefined);
 });
 
-test('34. malformed: targets.treeId != input tree id → bundle null', function() {
+test('32. malformed: targets.treeId != input tree id → bundle null', function() {
   var id = 't1';
   var bundle = canonicalBundle(id, 'public');
   bundle.treeId = 'different-id';
@@ -908,10 +900,10 @@ test('34. malformed: targets.treeId != input tree id → bundle null', function(
   var resolved = UI.validateAndResolveEntryTargets({ id: id, visibility: 'public' });
   assert.equal(resolved.primary, null);
   assert.equal(resolved.publicView, null);
-  assert.equal(resolved.edit, null);
+  assert.equal(resolved.edit, undefined);
 });
 
-test('35. malformed: accessState is not a canonical value → bundle null', function() {
+test('33. malformed: accessState is not a canonical value → bundle null', function() {
   var id = 't1';
   var bundle = canonicalBundle(id, 'public');
   bundle.accessState = 'PUBLIC';
@@ -920,7 +912,7 @@ test('35. malformed: accessState is not a canonical value → bundle null', func
   var resolved = UI.validateAndResolveEntryTargets({ id: id, visibility: 'public' });
   assert.equal(resolved.primary, null);
   assert.equal(resolved.publicView, null);
-  assert.equal(resolved.edit, null);
+  assert.equal(resolved.edit, undefined);
 });
 
 test('36. card with malformed resolver output → zero navigation assignments', function() {
@@ -934,6 +926,7 @@ test('36. card with malformed resolver output → zero navigation assignments', 
   var api = require('node:vm');
   api.createContext(ctx);
   api.runInContext(read('js/my-trees/my-trees-entry-target-resolver.js'), ctx);
+  api.runInContext(read('js/shared/tree-card-metrics.js'), ctx);
   api.runInContext(read('js/my-trees/my-trees-ui.js'), ctx);
   api.runInContext(read('js/my-trees/my-trees-card-events.js'), ctx);
   ctx.window.LoveBudMyTreesEntryTargetResolver = { resolveMyTreesEntryTargets: function() { return bundle; } };
@@ -953,7 +946,7 @@ test('36. card with malformed resolver output → zero navigation assignments', 
   assert.equal(navLog.length, 0, 'malformed resolver output should produce zero navigation assignments');
 });
 
-test('37. hub with malformed resolver output → actions hidden, share hidden', function() {
+test('35. hub with malformed resolver output → actions hidden, share hidden', function() {
   var id = 't1';
   var bundle = canonicalBundle(id, 'public');
   bundle.primary.href = 'view.html?treeId=' + encodeURIComponent(id); // malformed
@@ -968,14 +961,12 @@ test('37. hub with malformed resolver output → actions hidden, share hidden', 
   var hub = ctx.window.LoveBudMyTreesPreviewHub;
   var openBtn = ctx.document.getElementById('myTreesHubOpenBtn');
   var publicViewBtn = ctx.document.getElementById('myTreesHubPublicViewBtn');
-  var editBtn = ctx.document.getElementById('myTreesHubEditBtn');
   var shareBtn = ctx.document.getElementById('myTreesHubShareBtn');
 
   hub.showContent({ id: id, visibility: 'public', title: 'T' });
 
   assert.equal(openBtn.hidden, true, 'malformed bundle should hide open button');
   assert.equal(publicViewBtn.hidden, true, 'malformed bundle should hide public-view button');
-  assert.equal(editBtn.hidden, true, 'malformed bundle should hide edit button');
   assert.equal(shareBtn.hidden, true, 'malformed bundle should hide share button');
 });
 
