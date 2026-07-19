@@ -7,7 +7,10 @@
  *   - finite positive → render as compact formatted count
  *   - null/undefined/absent/non-finite → omit (never coerce to 0)
  *
- * This module is consumed by both My Trees and Browse card renderers.
+ * This module is the single source of truth for three-state metric semantics.
+ * Both My Trees and Browse card renderers delegate metric rendering to it via
+ * LoveBudTreeCardComposition (which calls renderTreeReactionMetrics), eliminating
+ * the previous duplicated per-surface metric composers.
  * API/schema changes are not performed.
  */
 (function () {
