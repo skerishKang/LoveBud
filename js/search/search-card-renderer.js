@@ -126,68 +126,6 @@
         return 'empty';
     }
 
-    /**
-     * Resolve an authoritative non-negative finite count.
-     * Missing / null / undefined / '' / NaN / negative → null (unknown).
-     * Persisted zero (0) is returned as 0.
-     */
-    function getFirstFiniteCount(tree, keys) {
-        if (!tree) return null;
-        for (const key of keys) {
-            if (!Object.prototype.hasOwnProperty.call(tree, key)) continue;
-            const rawValue = tree[key];
-            if (rawValue === undefined || rawValue === null || rawValue === '') continue;
-            if (typeof rawValue !== 'number' && typeof rawValue !== 'string') continue;
-            const value = Number(rawValue);
-            if (Number.isFinite(value) && value >= 0) return value;
-        }
-        return null;
-    }
-
-    function formatCompactCount(value) {
-        const count = Number(value);
-        if (!Number.isFinite(count) || count < 0) return '';
-        if (count === 0) return '0';
-        if (count >= 1000000) return `${Math.floor(count / 100000) / 10}M`;
-        if (count >= 1000) return `${Math.floor(count / 100) / 10}K`;
-        return String(count);
-    }
-
-    function getTreeReactionCounts(tree) {
-        var shared = window.LoveBudSearchSharedUtils;
-        return {
-            likes: getFirstFiniteCount(tree, ['likeCount', 'likesCount', 'likes', 'reactionCount', 'reaction_count']),
-            views: shared && typeof shared.getViewCount === 'function' ? shared.getViewCount(tree) : null,
-            comments: getFirstFiniteCount(tree, ['commentCount', 'commentsCount', 'comments', 'comment_count']),
-            shares: getFirstFiniteCount(tree, ['shareCount', 'sharesCount', 'shares', 'share_count'])
-        };
-    }
-
-    // Truthful metrics: only render items with an authoritative value.
-    // Unknown metrics are hidden (never coerced to 0 or "—").
-    function renderTreeReactionMetrics(tree) {
-        const counts = getTreeReactionCounts(tree);
-        const metrics = [
-            counts.views !== null ? { icon: 'visibility', label: '조회수', value: counts.views } : null,
-            counts.likes !== null ? { icon: 'favorite', label: '좋아요', value: counts.likes } : null,
-            counts.comments !== null ? { icon: 'chat_bubble', label: '댓글', value: counts.comments } : null,
-            counts.shares !== null ? { icon: 'share', label: '공유', value: counts.shares } : null
-        ].filter(Boolean);
-
-        if (metrics.length === 0) return '';
-
-        return `
-            <div class="tree-card-reaction-metrics" aria-label="트리 반응 요약">
-                ${metrics.map(metric => `
-                    <span class="tree-card-reaction-metric" title="${escapeHtml(metric.label)} ${formatCompactCount(metric.value)}">
-                        <span class="material-symbols-outlined" aria-hidden="true">${metric.icon}</span>
-                        <span>${escapeHtml(formatCompactCount(metric.value))}</span>
-                    </span>
-                `).join('')}
-            </div>
-        `;
-    }
-
     function hashSeed(value) {
         if (_cardFallback && typeof _cardFallback.hashSeed === 'function') return _cardFallback.hashSeed(value);
         var source = String(value || 'lovetree');
@@ -275,27 +213,26 @@
              ? metadataHelper.renderCardMetadata(tree)
              : '';
 
+         const Composition = window.LoveBudTreeCardComposition;
+         const cardModel = Composition.composeTreeCardModel(
+             tree,
+             {
+                 surface: 'browse',
+                 href: viewerHref,
+                 title: safeTitle,
+                 description: escapeHtml(softMoodLine),
+                 visibilityMode: 'omit'
+             }
+         );
+         const bodyHtml = Composition.renderTreeCardBody(cardModel, {
+             labels: { views: '조회수', likes: '좋아요', comments: '댓글', shares: '공유' }
+         });
+
          return `
              <div class="tree-card ${index === 0 ? 'tree-card-featured' : ''}" id="tree-card-${safeTreeId}" data-tree-id="${safeTreeId}" aria-label="${escapeHtml(cardSelectLabel)}" style="animation-delay: ${index * 0.05}s;">
                  ${renderRepresentativeMedia(tree, firstMem, displayTitleRaw)}
-                 <div class="tree-card-body">
-                     <div class="tree-title">${safeTitle}</div>
-                     <p class="${subtitleClass}">${escapeHtml(softMoodLine)}</p>
-                     ${metadataHtml}
-                     <div class="tree-meta-row">
-                         <div class="tree-meta-left">
-                             ${renderTreeReactionMetrics(tree)}
-                         </div>
-                         <div class="tree-meta-right">
-                             ${viewerHref ? `
-                                 <a href="${escapeHtml(viewerHref)}" class="tree-card-open-link" aria-label="${escapeHtml(viewerLabel)}">
-                                     <span class="material-symbols-outlined" aria-hidden="true">account_tree</span>
-                                     트리 열기
-                                 </a>
-                             ` : ''}
-                         </div>
-                     </div>
-                 </div>
+                 ${bodyHtml}
+                 ${metadataHtml}
              </div>
          `;
      }

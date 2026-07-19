@@ -109,3 +109,101 @@
 #resultsList[data-tree-view-mode="compact"] .tree-public-tag:nth-of-type(n + 3) {
   display: none;
 }
+
+/* ── Shared tree card composition classes (#3578 Phase 2) ──
+   Browse uses .tree-title/.tree-subtitle for its own slots, but the shared
+   composition emits .tree-card-title/.tree-card-subcopy. Mirror the styles so
+   both surfaces render identically. Surface-specific overrides stay here. */
+.tree-card-title {
+  font-family: 'Namsan Light', 'Pretendard Light', 'Apple SD Gothic Neo', sans-serif;
+  font-size: 1.1rem;
+  font-weight: 300;
+  color: var(--lovetree-text-primary, #4a3f3a);
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.tree-card-subcopy {
+  font-size: 0.8125rem;
+  color: var(--lovetree-text-secondary, #7a6e68);
+  line-height: 1.5;
+  margin-top: 0.15rem;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  word-break: break-word;
+}
+
+.tree-meta-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid rgba(75, 64, 57, 0.08);
+  gap: 0.5rem;
+}
+
+.tree-meta-left {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.tree-meta-right {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.tree-card-reaction-metrics {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.tree-card-reaction-metric {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  font-size: 0.75rem;
+  color: var(--lovetree-text-muted, #8c7f7a);
+  white-space: nowrap;
+}
+
+.tree-card-reaction-metric .material-symbols-outlined {
+  font-size: 14px;
+  color: var(--lovetree-text-muted, #8c7f7a);
+}
+
+.tree-card-open-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  color: var(--lovetree-accent-primary, #8c3a4a);
+  text-decoration: none;
+  white-space: nowrap;
+  font-family: 'Namsan Light', 'Pretendard Light', 'Apple SD Gothic Neo', sans-serif;
+  font-weight: 400;
+  transition: opacity 0.2s ease;
+}
+
+.tree-card-open-link:hover {
+  opacity: 0.75;
+}
+
+.tree-card-open-link .material-symbols-outlined {
+  font-size: 13px;
+}
+
+/* Browse has no visibility slot — kept for structural parity only */
+.tree-card-visibility {
+  display: none;
+}

@@ -260,7 +260,8 @@
     var meta = (delegatedMeta && typeof delegatedMeta === 'object')
       ? Object.assign({}, delegatedMeta)
       : {};
-    meta.visibilityBadgeHtml = buildVisibilityBadgeHtml(visibility, i18n);
+    // visibility badge now rendered by shared composition (visibilityMode: 'icon')
+    meta.visibilityBadgeHtml = '';
     meta.title = meta.title || (tree && tree.title);
     meta.mood = meta.mood || (function () {
       // #2880: Show group name + keywords on card subcopy when available,
@@ -509,68 +510,30 @@
     var commentCountLabel = getI18nText(i18n, 'myTrees.comment_count', '댓글');
     var shareCountLabel = getI18nText(i18n, 'myTrees.share_count', '공유');
 
-    // Issue #3578: three-state metrics — null/undefined/absent = omit (never coerce to 0)
-    var Metrics = requireMetrics();
-    var getFirstFiniteCount = Metrics.getFirstFiniteCount ? Metrics.getFirstFiniteCount : function(tree, keys) {
-      if (!tree) return null;
-      for (var i = 0; i < keys.length; i++) {
-        var raw = tree[keys[i]];
-        if (raw === undefined || raw === null || raw === '') continue;
-        var val = Number(raw);
-        if (Number.isFinite(val) && val >= 0) return val;
+    // Issue #3578 Phase 2: use shared composition for card body + metrics
+    var Composition = window.LoveBudTreeCardComposition;
+    var cardModel = Composition.composeTreeCardModel(
+      normalizedTree,
+      {
+        surface: 'my-trees',
+        href: openHref,
+        title: title,
+        description: cardMeta.mood,
+        visibilityMode: 'icon'
       }
-      return null;
-    };
-    var viewCount = getFirstFiniteCount(tree, ['viewCount', 'viewsCount', 'views', 'view_count', 'views_count', 'visitorCount', 'visitorsCount', 'visitCount', 'visitsCount', 'visits', 'openCount', 'opensCount', 'open_count']);
-    var likeCount = getFirstFiniteCount(tree, ['likeCount', 'likesCount', 'likes', 'reactionCount', 'reaction_count']);
-    var commentCount = getFirstFiniteCount(tree, ['commentCount', 'commentsCount', 'comments', 'comment_count']);
-    var shareCount = getFirstFiniteCount(tree, ['shareCount', 'sharesCount', 'shares', 'share_count']);
-
-    // Issue #3578 Phase 1: three-state metrics — only render when authoritative value exists
-    var metricsHtml = '<div class="tree-card-reaction-metrics">';
-    if (viewCount !== null) {
-      metricsHtml += '<span class="tree-card-reaction-metric" title="' + escapeHtml(viewCountLabel + ' ' + formatCompactCount(viewCount)) + '">' +
-        '<span class="material-symbols-outlined" aria-hidden="true">visibility</span>' +
-        '<span>' + formatCompactCount(viewCount) + '</span>' +
-        '</span>';
-    }
-    if (likeCount !== null) {
-      metricsHtml += '<span class="tree-card-reaction-metric" title="' + escapeHtml(likeCountLabel + ' ' + formatCompactCount(likeCount)) + '">' +
-        '<span class="material-symbols-outlined" aria-hidden="true">favorite</span>' +
-        '<span>' + formatCompactCount(likeCount) + '</span>' +
-        '</span>';
-    }
-    if (commentCount !== null) {
-      metricsHtml += '<span class="tree-card-reaction-metric" title="' + escapeHtml(commentCountLabel + ' ' + formatCompactCount(commentCount)) + '">' +
-        '<span class="material-symbols-outlined" aria-hidden="true">chat_bubble</span>' +
-        '<span>' + formatCompactCount(commentCount) + '</span>' +
-        '</span>';
-    }
-    if (shareCount !== null) {
-      metricsHtml += '<span class="tree-card-reaction-metric" title="' + escapeHtml(shareCountLabel + ' ' + formatCompactCount(shareCount)) + '">' +
-        '<span class="material-symbols-outlined" aria-hidden="true">share</span>' +
-        '<span>' + formatCompactCount(shareCount) + '</span>' +
-        '</span>';
-    }
-    metricsHtml += '</div>';
+    );
+    var bodyHtml = Composition.renderTreeCardBody(cardModel, {
+      labels: {
+        views: viewCountLabel,
+        likes: likeCountLabel,
+        comments: commentCountLabel,
+        shares: shareCountLabel
+      }
+    });
 
     card.innerHTML = [
       buildTreeThumbVisual(normalizedTree, i18n),
-      '<div class="tree-card-body">',
-        '<div class="tree-card-title-row">',
-          '<div class="tree-card-title">' + escapeHtml(title) + '</div>',
-          cardMeta.visibilityBadgeHtml,
-        '</div>',
-        '<div class="tree-card-subcopy">' + cardMeta.mood + '</div>',
-        '<div class="tree-meta-row">',
-          '<div class="tree-meta-left">',
-            metricsHtml,
-          '</div>',
-          '<div class="tree-meta-right">',
-            (openHref ? '<a class="tree-card-open-link" href="' + escapeHtml(openHref) + '" target="_self"><span class="material-symbols-outlined" aria-hidden="true">account_tree</span><span data-i18n="myTrees.entry_appreciation">' + escapeHtml(openLabel) + '</span></a>' : ''),
-          '</div>',
-        '</div>',
-      '</div>'
+      bodyHtml
     ].join('');
 
     var openLink = card.querySelector('.tree-card-open-link');
