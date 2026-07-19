@@ -331,6 +331,26 @@
         return shell;
     }
 
+    /* ── Synchronize a single social metric to its authoritative state.
+       value === null means unknown: empty the count and hide the metric item
+       so the previously selected tree's count cannot linger. value !== null
+       (including authoritative 0) writes the count and shows the item. ── */
+    function syncSocialMetric(panelScope, valueSelector, value) {
+        var valueEl = panelScope
+            ? panelScope.querySelector(valueSelector)
+            : document.querySelector(valueSelector);
+        if (!valueEl) return;
+        if (value === null) {
+            valueEl.textContent = '';
+        } else {
+            valueEl.textContent = String(value);
+        }
+        var item = valueEl.closest ? valueEl.closest('.preview-social-action') : null;
+        if (item) {
+            item.hidden = (value === null);
+        }
+    }
+
     function showContent(tree) {
         var els = getEls();
         if (!els) return;
@@ -475,12 +495,22 @@
             var commentCount = getFirstFiniteCount(tree, ['commentCount', 'commentsCount', 'comments', 'comment_count']);
             var viewCount = getFirstFiniteCount(tree, ['viewCount', 'viewsCount', 'views', 'view_count', 'views_count', 'visitorCount', 'visitorsCount', 'visitCount', 'visitsCount', 'visits', 'openCount', 'opensCount', 'open_count']);
 
-            var likeEl = panelScope ? panelScope.querySelector('[data-my-trees-social-likes]') : document.querySelector('[data-my-trees-social-likes]');
-            if (likeEl && likeCount !== null) likeEl.textContent = likeCount;
-            var commentEl = panelScope ? panelScope.querySelector('[data-my-trees-social-comments]') : document.querySelector('[data-my-trees-social-comments]');
-            if (commentEl && commentCount !== null) commentEl.textContent = commentCount;
-            var viewEl = panelScope ? panelScope.querySelector('[data-my-trees-social-views]') : document.querySelector('[data-my-trees-social-views]');
-            if (viewEl && viewCount !== null) viewEl.textContent = viewCount;
+            // #3578 Phase 1 stale-metric fix: synchronize every metric to the
+            // authoritative state on each selection. The social shell is reused
+            // across trees, so a null/unknown value for the newly selected tree
+            // must clear the previous tree's count instead of leaving it behind.
+            // 0 is authoritative and stays visible; unknown values are emptied
+            // and their metric item is hidden.
+            syncSocialMetric(panelScope, '[data-my-trees-social-views]', viewCount);
+            syncSocialMetric(panelScope, '[data-my-trees-social-likes]', likeCount);
+            syncSocialMetric(panelScope, '[data-my-trees-social-comments]', commentCount);
+
+            var shellEl = panelScope
+                ? panelScope.querySelector('[data-my-trees-social-shell]')
+                : document.querySelector('[data-my-trees-social-shell]');
+            if (shellEl) {
+                shellEl.hidden = (viewCount === null && likeCount === null && commentCount === null);
+            }
         }
 
         /* ── Keep like button display-only ── */
