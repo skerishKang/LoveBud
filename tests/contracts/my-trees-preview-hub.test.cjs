@@ -31,5 +31,8 @@ test('3. No optimistic reaction count updates', () => {
 test('4. Display count rendering is preserved', () => {
     const hubSrc = fs.readFileSync(HUB_PATH, 'utf8');
     assert.ok(hubSrc.includes('data-my-trees-social-likes'), 'Like count rendering element not found');
-    assert.ok(hubSrc.includes('String(tree.likeCount || tree.like_count || 0)'), 'Like count rendering logic not found');
+    // #3578 Phase 1: metrics now flow through the shared LoveBudTreeCardMetrics helper
+    // using three-state finite-count resolution (null/undefined omitted, never coerced to 0).
+    assert.ok(hubSrc.includes('LoveBudTreeCardMetrics'), 'Hub must delegate to shared LoveBudTreeCardMetrics helper');
+    assert.ok(hubSrc.includes('getFirstFiniteCount'), 'Hub must use finite-count resolution for metrics');
 });

@@ -2,7 +2,7 @@
   'use strict';
 
   function isInteractiveTarget(target) {
-    return !!(target && target.closest && target.closest('.tree-card-open-link, .tree-card-edit-link, button, a[href]'));
+    return !!(target && target.closest && target.closest('.tree-card-open-link, button, a[href]'));
   }
 
   function isActivationKey(event) {
@@ -32,13 +32,6 @@
     var openLink = card.querySelector('.tree-card-open-link');
     if (openLink) {
       openLink.addEventListener('click', function (event) {
-        event.stopPropagation();
-      });
-    }
-
-    var editLink = card.querySelector('.tree-card-edit-link');
-    if (editLink) {
-      editLink.addEventListener('click', function (event) {
         event.stopPropagation();
       });
     }

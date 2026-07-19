@@ -71,15 +71,15 @@ test('My Trees loads mobile preview sheet script and integrates correctly', () =
         'CSS must define mobile bottom sheet styles with scoped selector #myTreesHubPanel.preview-sidebar'
     );
 
-    // Confirm owner-only actions are preserved
+    // Confirm owner-only actions are preserved (edit removed in #3578 Phase 1)
     assert.match(
         html,
         /id="myTreesHubOpenBtn"/,
         'My Trees must preserve #myTreesHubOpenBtn'
     );
-    assert.match(
+    assert.doesNotMatch(
         html,
         /id="myTreesHubEditBtn"/,
-        'My Trees must preserve #myTreesHubEditBtn'
+        'My Trees must NOT preserve obsolete #myTreesHubEditBtn (#3578)'
     );
 });

@@ -94,10 +94,6 @@
     }
   }
 
-  function setHubEditBtn() {
-    updateButtonLabel(document.getElementById('myTreesHubEditBtn'), 'myTrees.entry_edit', '편집하기', 'Edit');
-  }
-
   function setHubShareBtn() {
     var el = document.getElementById('myTreesHubShareBtn');
     if (!el) return;
@@ -143,7 +139,6 @@
     setText('myTreesHubBadge', 'myTrees.hub_badge', '선택한 내 트리');
     setHubOpenBtn();
     setHubPublicViewBtn();
-    setHubEditBtn();
     setHubShareBtn();
 
     var retryBtn = document.getElementById('retryLoadBtn');
@@ -176,10 +171,6 @@
 
     document.querySelectorAll('.tree-card-open-link[data-i18n], .tree-card-open-link [data-i18n]').forEach(function(el) {
       el.textContent = tText('myTrees.entry_appreciation', '감상하기');
-    });
-    // #3563: tree-card public-view links are no longer rendered.
-    document.querySelectorAll('.tree-card-edit-link[data-i18n], .tree-card-edit-link [data-i18n]').forEach(function(el) {
-      el.textContent = tText('myTrees.entry_edit', '편집하기');
     });
   }
 

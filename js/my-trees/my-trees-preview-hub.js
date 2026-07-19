@@ -102,7 +102,6 @@
             actions: document.getElementById('myTreesHubActions'),
             openBtn: document.getElementById('myTreesHubOpenBtn'),
             publicViewBtn: document.getElementById('myTreesHubPublicViewBtn'),
-            editBtn: document.getElementById('myTreesHubEditBtn'),
             shareBtn: document.getElementById('myTreesHubShareBtn'),
             noMoments: document.getElementById('myTreesHubNoMoments'),
             socialSlot: document.getElementById('myTreesHubSocialSlot')
@@ -299,7 +298,6 @@
         _expandedFlowKey = null;
         resetActionButton(els.openBtn);
         resetActionButton(els.publicViewBtn);
-        resetActionButton(els.editBtn);
         if (els.shareBtn) {
             els.shareBtn.hidden = true;
             els.shareBtn.onclick = null;
@@ -462,12 +460,27 @@
 
         var panelScope = els.panel;
         if (tree) {
+            var Metrics = window.LoveBudTreeCardMetrics;
+            var getFirstFiniteCount = Metrics && Metrics.getFirstFiniteCount ? Metrics.getFirstFiniteCount : function(tree, keys) {
+                if (!tree) return null;
+                for (var i = 0; i < keys.length; i++) {
+                    var raw = tree[keys[i]];
+                    if (raw === undefined || raw === null || raw === '') continue;
+                    var val = Number(raw);
+                    if (Number.isFinite(val) && val >= 0) return val;
+                }
+                return null;
+            };
+            var likeCount = getFirstFiniteCount(tree, ['likeCount', 'likesCount', 'likes', 'reactionCount', 'reaction_count']);
+            var commentCount = getFirstFiniteCount(tree, ['commentCount', 'commentsCount', 'comments', 'comment_count']);
+            var viewCount = getFirstFiniteCount(tree, ['viewCount', 'viewsCount', 'views', 'view_count', 'views_count', 'visitorCount', 'visitorsCount', 'visitCount', 'visitsCount', 'visits', 'openCount', 'opensCount', 'open_count']);
+
             var likeEl = panelScope ? panelScope.querySelector('[data-my-trees-social-likes]') : document.querySelector('[data-my-trees-social-likes]');
-            if (likeEl) likeEl.textContent = String(tree.likeCount || tree.like_count || 0);
+            if (likeEl && likeCount !== null) likeEl.textContent = likeCount;
             var commentEl = panelScope ? panelScope.querySelector('[data-my-trees-social-comments]') : document.querySelector('[data-my-trees-social-comments]');
-            if (commentEl) commentEl.textContent = String(tree.commentCount || tree.comment_count || 0);
+            if (commentEl && commentCount !== null) commentEl.textContent = commentCount;
             var viewEl = panelScope ? panelScope.querySelector('[data-my-trees-social-views]') : document.querySelector('[data-my-trees-social-views]');
-            if (viewEl) viewEl.textContent = String(tree.viewCount || tree.view_count || 0);
+            if (viewEl && viewCount !== null) viewEl.textContent = viewCount;
         }
 
         /* ── Keep like button display-only ── */
@@ -503,7 +516,6 @@
 
         resetActionButton(els.openBtn);
         resetActionButton(els.publicViewBtn);
-        resetActionButton(els.editBtn);
         if (els.shareBtn) {
             els.shareBtn.hidden = true;
             els.shareBtn.onclick = null;
@@ -525,8 +537,7 @@
                 accessState: 'unknown',
                 primary: null,
                 publicView: null,
-                shareTarget: null,
-                edit: null
+                shareTarget: null
             };
         }
 
@@ -544,12 +555,8 @@
             els.publicViewBtn.hidden = true;
         }
 
-        if (els.editBtn && resolved.edit) {
-            els.editBtn.href = resolved.edit;
-            els.editBtn.hidden = false;
-            els.editBtn.innerHTML = '<span class="material-symbols-outlined">edit</span><span data-i18n="myTrees.entry_edit">' +
-                escapeHtml(i18nHub('myTrees.entry_edit', '편집하기', 'Edit')) + '</span>';
-        }
+        // #3578 Phase 1: Edit button removed from hub — appreciation is the only external entry.
+        // Internal owner Edit remains via appreciation flow.
 
         /* ── Share button: public tree only; use shareTarget (alias publicView) ── */
         var shareHref = resolved.shareTarget || resolved.publicView;

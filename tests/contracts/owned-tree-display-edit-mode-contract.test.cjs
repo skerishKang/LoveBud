@@ -20,22 +20,17 @@ test('display/edit mode static constraints', () => {
   // 1. Browse renderOpenTreeButton() uses view.html?treeId=
   assert.match(searchHelper, /view\.html\?treeId=/);
 
-  // 2. My LoveTree hub delegates actions to UI.validateAndResolveEntryTargets
-  // which resolves canonical routes. The validator reads from the resolver.
-  assert.match(myTreesUi, /validateAndResolveEntryTargets/);
-
-  // 3. Resolver builds canonical editor?treeId= routes
-  var resolver = read('js/my-trees/my-trees-entry-target-resolver.js');
-  assert.match(resolver, /editor\?treeId=/);
-  assert.match(resolver, /view\.html\?treeId=/);
-
-  // 4. My LoveTree copy uses 감상하기 / 편집하기 only (#3563).
+  // 4. My LoveTree copy uses 감상하기 only (#3563/#3578: edit removed from card/hub)
   assert.match(previewHub, /'감상하기'/);
-  assert.match(previewHub, /'편집하기'/);
+  assert.doesNotMatch(previewHub, /'편집하기'/, 'Hub must not contain edit copy (#3578)');
   assert.doesNotMatch(previewHub, /publicViewBtn\.hidden = false/);
   assert.match(myTreesUi, /'감상하기'/);
-  assert.match(myTreesUi, /'편집하기'/);
+  assert.doesNotMatch(myTreesUi, /'편집하기'/, 'Card UI must not contain edit copy (#3578)');
   assert.doesNotMatch(myTreesUi, /tree-card-public-view-link/);
+
+  // 4b. #3578 Phase 1: direct Edit DOM must be absent from card and hub
+  assert.doesNotMatch(myTreesUi, /tree-card-edit-link/, 'Card must not render edit link (#3578)');
+  assert.doesNotMatch(previewHub, /my-trees-hub-edit-btn/, 'Hub must not render edit button (#3578)');
 
   // 5. Raw ownerId/user ID must not be directly displayed in UI text
   assert.doesNotMatch(treeMeta, /\.textContent\s*=\s*(currentTree\.)?ownerId/);
@@ -179,6 +174,20 @@ test('My LoveTrees routing contract for public and private trees', () => {
     LoveTreeBaseApiFetch: {
       getCachedTokenRecord() { return null; }
     },
+    // #3578 Phase 1: buildTreeCard requires the shared metrics helper.
+    LoveBudTreeCardMetrics: {
+      getTreeMetrics: function () { return {}; },
+      getFirstFiniteCount: function (tree, keys) {
+        if (!tree) return null;
+        for (var i = 0; i < keys.length; i++) {
+          var raw = tree[keys[i]];
+          if (raw === undefined || raw === null || raw === '') continue;
+          var val = Number(raw);
+          if (Number.isFinite(val) && val >= 0) return val;
+        }
+        return null;
+      }
+    },
     location: {
       pathname: '/pages/my-trees.html',
       origin: 'http://localhost'
@@ -225,11 +234,9 @@ test('My LoveTrees routing contract for public and private trees', () => {
   assert.ok(resolvedPublic.shareTarget || resolvedPublic.publicView, 'Public tree keeps internal shareTarget');
   assert.ok((resolvedPublic.shareTarget || resolvedPublic.publicView).includes('view.html?treeId=tree-public-1'));
 
-  /* ── Public tree: edit → editor + mode=edit ── */
+  /* ── Public tree: #3578 Phase 1 — direct Edit link removed (no mode=edit on card) ── */
   var editHref = getLinkHref(html, 'tree-card-edit-link');
-  assert.ok(editHref, 'Public tree must have edit link');
-  assert.ok(editHref.includes('editor?treeId=tree-public-1'), 'Public tree edit must target editor');
-  assert.ok(editHref.includes('mode=edit'), 'Public tree edit must have mode=edit');
+  assert.equal(editHref, null, 'Public tree must NOT have a direct edit link (#3578)');
 
   /* ── Private tree → primary targets editor ── */
   const privateCard = UI.buildTreeCard({
