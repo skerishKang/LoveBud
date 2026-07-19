@@ -1,262 +1,176 @@
 /**
- * LoveBud — Shared LoveTree Card Composition
+ * LoveBud — Shared Tree Card Composition
  * Issue #3578 Phase 2
  *
- * Boundary (per Phase 2 architecture decision C):
- *   - shared pure view-model  → composeTreeCardModel
- *   - shared body/footer HTML → renderTreeCardBody / renderTreeMetricFooter
- *   - surface-owned outer/media/activation adapter (Browse / My Trees renderers)
+ * Provides a unified tree card body composition API consumed by both
+ * Browse (search) and My Trees renderers.
  *
- * Principles (no DOM access, no navigation, no event listeners, no API calls,
- * no input mutation, deterministic, detached plain object, no raw user HTML):
- *   - composeTreeCardModel: builds a canonical model from a tree + options.
- *   - renderTreeCardBody: renders the shared inner content (title / description /
- *     footer / metrics / primary slot / optional visibility slot).
- *   - renderTreeMetricFooter: delegates to the shared metric helper so both
- *     surfaces render identical metric HTML.
+ * This module is consumed by both My Trees and Browse card renderers.
  *
- * This module does NOT own the outer card wrapper, media slot, or click/
- * keyboard/mobile activation — those remain in each surface renderer.
+ * Design principles:
+ *   - View-model only: produces a plain detached model object
+ *   - DOM-agnostic: returns HTML strings, no direct DOM manipulation
+ *   - No navigation, no event listeners, no API calls
+ *   - Deterministic: same inputs always produce same output
+ *   - No mutation of the input tree object
  */
 (function () {
   'use strict';
 
-  var Metrics = window.LoveBudTreeCardMetrics || null;
+  var METRICS = window.LoveBudTreeCardMetrics || null;
 
-  var SURFACE_LABEL_DEFAULTS = {
-    browse: {
-      view_count: '조회수',
-      like_count: '좋아요',
-      comment_count: '댓글',
-      share_count: '공유',
-      open: '트리 열기',
-      appreciation: '감상하기',
-      public: '공개',
-      private: '비공개'
-    },
-    'my-trees': {
-      view_count: '조회수',
-      like_count: '좋아요',
-      comment_count: '댓글',
-      share_count: '공유',
-      open: '트리 열기',
-      appreciation: '감상하기',
-      public: '공개',
-      private: '비공개'
-    }
+  var METRIC_ORDER = ['views', 'likes', 'comments', 'shares'];
+  var ICON_MAP = {
+    views: 'visibility',
+    likes: 'favorite',
+    comments: 'chat_bubble',
+    shares: 'share'
+  };
+  var DEFAULT_LABELS = {
+    views: '조회수',
+    likes: '좋아요',
+    comments: '댓글',
+    shares: '공유'
   };
 
-  function resolveLabel(labels, surface, key, fallback) {
-    if (labels && typeof labels === 'object' && labels[key] != null) return String(labels[key]);
-    var def = SURFACE_LABEL_DEFAULTS[surface] || SURFACE_LABEL_DEFAULTS['my-trees'];
-    if (def && def[key] != null) return def[key];
-    return fallback;
-  }
-
   /**
-   * Build the canonical card model.
-   * Does not retain the original tree object — only the fields needed for the
-   * shared body/footer are projected.
+   * Build a detached view-model for a tree card body.
    *
-   * @param {object} tree - raw tree record (fields read defensively)
-   * @param {object} options
-   *   surface: 'browse' | 'my-trees'
-   *   href: string | null  (primary appreciation/viewer href)
-   *   selected: boolean
-   *   visibilityMode: 'omit' | 'icon'
-   *   labels: object (i18n overrides)
-   *   title: string (already-resolved display title)
-   *   description: string (already-resolved subcopy)
-   *   metrics: object {views, likes, comments, shares} (raw counts; null = unknown)
-   * @returns {object} detached plain model
+   * Options:
+   *   surface        {string}  'browse' | 'my-trees'
+   *   href           {string}  primary action URL (appreciation / viewer)
+   *   selected       {boolean} selection state (my-trees desktop)
+   *   visibilityMode {string}  'omit' | 'icon' (browse=omit, my-trees=icon)
+   *   title          {string}  card title text
+   *   description    {string}  card subcopy text
+   *   labels         {Object}  i18n labels {views, likes, comments, shares}
+   *
+   * Returns a plain object with no prototype chain dependencies.
    */
   function composeTreeCardModel(tree, options) {
-    options = options || {};
-    var surface = options.surface === 'browse' ? 'browse' : 'my-trees';
-    var treeId = tree && (tree.id != null) ? String(tree.id) : '';
-    var title = options.title != null ? String(options.title) : '';
-    var description = options.description != null ? String(options.description) : '';
-    var href = options.href != null ? String(options.href) : null;
-    var selected = Boolean(options.selected);
-    var visibilityMode = options.visibilityMode === 'omit' ? 'omit' : 'icon';
+    var href = (options && options.href) || '';
+    var title = (options && options.title) || '';
+    var description = (options && options.description) || '';
+    var surface = (options && options.surface) || 'browse';
+    var selected = !!(options && options.selected);
+    var visibilityMode = (options && options.visibilityMode) || 'omit';
+    var labels = (options && options.labels) || DEFAULT_LABELS;
 
-    var labels = options.labels || null;
-
-    // Visibility projection (state resolved by surface before calling).
-    var visibilityState = 'private';
-    if (tree) {
-      var v = tree.visibility;
-      if (v === 'public' || (typeof options.visibility === 'string' && options.visibility === 'public')) {
-        visibilityState = 'public';
-      }
-    }
-    if (typeof options.visibility === 'string') {
-      visibilityState = options.visibility === 'public' ? 'public' : 'private';
+    var metrics;
+    if (METRICS && METRICS.getTreeMetrics) {
+      metrics = METRICS.getTreeMetrics(tree || {});
+    } else {
+      metrics = { views: null, likes: null, comments: null, shares: null };
     }
 
-    var visibility = {
-      mode: visibilityMode,
-      state: visibilityState,
-      icon: visibilityState === 'public' ? 'public' : 'lock',
-      label: resolveLabel(labels, surface, visibilityState, visibilityState === 'public' ? '공개' : '비공개')
-    };
-
-    // Metric projection via shared helper (three-state).
-    var rawMetrics = options.metrics || (Metrics ? Metrics.getTreeMetrics(tree || {}) : {});
     var metricList = [];
-    if (rawMetrics) {
-      var order = ['views', 'likes', 'comments', 'shares'];
-      var icons = { views: 'visibility', likes: 'favorite', comments: 'chat_bubble', shares: 'share' };
-      var labelKeys = { views: 'view_count', likes: 'like_count', comments: 'comment_count', shares: 'share_count' };
-      for (var i = 0; i < order.length; i++) {
-        var key = order[i];
-        var val = rawMetrics[key];
-        if (val === null || val === undefined) continue;
-        metricList.push({
-          key: key,
-          icon: icons[key],
-          value: val,
-          formattedValue: Metrics ? Metrics.formatCompactCount(val) : String(val),
-          label: resolveLabel(labels, surface, labelKeys[key], key)
-        });
-      }
+    for (var i = 0; i < METRIC_ORDER.length; i++) {
+      var key = METRIC_ORDER[i];
+      var val = metrics[key];
+      if (val === null || val === undefined) continue;
+      var icon = ICON_MAP[key] || key;
+      var formatted = METRICS && METRICS.formatCompactCount
+        ? METRICS.formatCompactCount(val)
+        : (val === 0 ? '0' : String(val));
+      var label = labels[key] || DEFAULT_LABELS[key] || key;
+      metricList.push({
+        key: key,
+        icon: icon,
+        label: label,
+        value: val,
+        formattedValue: formatted
+      });
     }
 
     return {
-      surface: surface,
-      treeId: treeId,
+      href: href,
       title: title,
       description: description,
-      href: href,
+      surface: surface,
       selected: selected,
-      visibility: visibility,
+      visibilityMode: visibilityMode,
       metrics: metricList
     };
   }
 
   /**
-   * Render the shared card body (inner content only — no outer wrapper).
-   * Surfaces wrap this output in their own outer card + media slot.
-   *
-   * Common structure produced:
-   *   .love-tree-card-content (.tree-card-body legacy)
-   *     .love-tree-card-title-row (.tree-card-title-row / .tree-title-row legacy)
-   *       .love-tree-card-title (.tree-card-title / .tree-title legacy)
-   *       [optional] .love-tree-card-visibility (.tree-card-visibility legacy)
-   *     .love-tree-card-description (.tree-card-subcopy / .tree-subtitle legacy)
-   *     .love-tree-card-footer (.tree-meta-row legacy)
-   *       .love-tree-card-metrics (.tree-card-reaction-metrics legacy)
-   *       .love-tree-card-primary-slot (.tree-meta-right legacy)
-   *         [optional] .tree-card-open-link
+   * Render the tree card body HTML string using a composed model.
+   * Includes: title-row, description, meta-row with metrics.
    */
   function renderTreeCardBody(model, options) {
-    options = options || {};
-    var escapeHtmlFn = options.escapeHtml || function (s) {
-      return String(s == null ? '' : s)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
-    };
-    var labels = options.labels || null;
-    var surface = model.surface;
+    var safeTitle = escapeHtml(model.title || '');
+    var safeDesc = escapeHtml(model.description || '');
+    var href = escapeHtml(model.href || '');
+    var surface = model.surface || 'browse';
+    var visibilityMode = model.visibilityMode || 'omit';
+    var metricList = model.metrics || [];
 
-    var titleHtml = '<div class="love-tree-card-title-row tree-card-title-row tree-title-row">' +
-      '<div class="love-tree-card-title tree-card-title tree-title">' + escapeHtmlFn(model.title) + '</div>';
+    var html = '<div class="tree-card-body">';
 
-    // Optional visibility slot.
-    if (model.visibility && model.visibility.mode === 'icon') {
-      var v = model.visibility;
-      titleHtml += '<span class="love-tree-card-visibility tree-card-visibility ' + (v.state === 'public' ? 'public' : 'private') +
-        '" title="' + escapeHtmlFn(v.label) + '" aria-label="' + escapeHtmlFn(v.label) + '">' +
-        '<span class="material-symbols-outlined" aria-hidden="true">' + escapeHtmlFn(v.icon) + '</span>' +
-        '</span>';
+    // Title row
+    html += '<div class="tree-card-title-row">';
+    if (visibilityMode === 'icon') {
+      html += '<span class="tree-card-visibility" aria-label="트리 공개 상태"></span>';
     }
-    titleHtml += '</div>';
+    html += '<span class="tree-card-title">' + safeTitle + '</span>';
+    html += '</div>';
 
-    var descriptionHtml = '<div class="love-tree-card-description tree-card-subcopy tree-subtitle">' +
-      escapeHtmlFn(model.description) + '</div>';
+    // Description
+    html += '<div class="tree-card-subcopy">' + safeDesc + '</div>';
 
-    var metricsHtml = renderTreeMetricFooter(model.metrics, options);
-
-    // Primary appreciation/viewer link slot.
-    var primarySlot = '';
-    if (model.href) {
-      var primaryLabel = resolveLabel(labels, surface, 'open', '트리 열기');
-      if (surface === 'my-trees') {
-        primaryLabel = resolveLabel(labels, surface, 'appreciation', '감상하기');
-      }
-      primarySlot = '<a class="love-tree-card-primary-slot tree-card-open-link" href="' + escapeHtmlFn(model.href) +
-        '" target="_self"><span class="material-symbols-outlined" aria-hidden="true">account_tree</span>' +
-        '<span>' + escapeHtmlFn(primaryLabel) + '</span></a>';
+    // Meta row with metrics
+    html += '<div class="tree-meta-row">';
+    html += '<div class="tree-meta-left">';
+    if (metricList.length > 0) {
+      html += renderTreeMetricFooter(metricList, options);
     }
+    html += '</div>';
+    html += '<div class="tree-meta-right">';
+    if (href) {
+      html += '<a href="' + href + '" class="tree-card-open-link">';
+      html += '<span class="material-symbols-outlined" aria-hidden="true">account_tree</span>';
+      html += surface === 'my-trees' ? '감상하기' : '트리 열기';
+      html += '</a>';
+    }
+    html += '</div>';
+    html += '</div>';
 
-    var footerHtml = '<div class="love-tree-card-footer tree-meta-row">' +
-      '<div class="love-tree-card-metrics tree-card-reaction-metrics-anchor tree-meta-left">' + metricsHtml + '</div>' +
-      '<div class="love-tree-card-primary-slot-anchor tree-meta-right">' + primarySlot + '</div>' +
-      '</div>';
-
-    return '<div class="love-tree-card-content tree-card-body">' +
-      titleHtml +
-      descriptionHtml +
-      footerHtml +
-      '</div>';
+    html += '</div>';
+    return html;
   }
 
   /**
-   * Render the metric footer HTML.
-   * Delegates to the shared metric helper so Browse and My Trees emit identical
-   * metric markup. Accepts either the composed metric list or raw metrics.
+   * Render the reaction metric footer HTML string from a metric list.
+   * Requires LoveBudTreeCardMetrics to be available.
    */
-  function renderTreeMetricFooter(metrics, options) {
-    options = options || {};
-    if (!Metrics) {
-      // Fail-closed: no silent partial card. Surface renderers must load the helper.
-      throw new Error('[LoveBudTreeCardComposition] LoveBudTreeCardMetrics helper is required but not loaded.');
+  function renderTreeMetricFooter(metricList, options) {
+    if (!metricList || metricList.length === 0) return '';
+    var labels = (options && options.labels) || DEFAULT_LABELS;
+    var html = '<div class="tree-card-reaction-metrics" aria-label="트리 반응 요약">';
+    for (var i = 0; i < metricList.length; i++) {
+      var m = metricList[i];
+      html += '<span class="tree-card-reaction-metric" title="' + escapeHtml(m.label + ' ' + m.formattedValue) + '">';
+      html += '<span class="material-symbols-outlined" aria-hidden="true">' + escapeHtml(m.icon) + '</span>';
+      html += '<span>' + escapeHtml(m.formattedValue) + '</span>';
+      html += '</span>';
     }
-    var escapeHtmlFn = options.escapeHtml || function (s) {
-      return String(s == null ? '' : s)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
-    };
-    var i18n = options.i18n || null;
-
-    // If a composed metric list was passed, rebuild the inner spans directly so
-    // the markup matches the shared helper exactly.
-    if (Array.isArray(metrics) && metrics.length && typeof metrics[0] === 'object' && 'formattedValue' in metrics[0]) {
-      if (metrics.length === 0) return '';
-      var html = '<div class="tree-card-reaction-metrics" aria-label="트리 반응 요약">';
-      for (var i = 0; i < metrics.length; i++) {
-        var item = metrics[i];
-        if (!item.formattedValue) continue;
-        html += '<span class="tree-card-reaction-metric" title="' + escapeHtmlFn(item.label + ' ' + item.formattedValue) + '">' +
-          '<span class="material-symbols-outlined" aria-hidden="true">' + escapeHtmlFn(item.icon) + '</span>' +
-          '<span>' + escapeHtmlFn(item.formattedValue) + '</span>' +
-          '</span>';
-      }
-      html += '</div>';
-      return html;
-    }
-
-    // Otherwise delegate to the shared helper (raw tree metrics object).
-    return Metrics.renderTreeReactionMetrics(metrics || {}, escapeHtmlFn, i18n);
+    html += '</div>';
+    return html;
   }
 
-  function requireMetrics() {
-    if (!Metrics) {
-      throw new Error('[LoveBudTreeCardComposition] LoveBudTreeCardMetrics helper is required but not loaded.');
-    }
-    return Metrics;
+  function escapeHtml(value) {
+    if (value == null) return '';
+    return String(value)
+      .replace(/&/g, '&')
+      .replace(/</g, '<')
+      .replace(/>/g, '>')
+      .replace(/"/g, '"')
+      .replace(/'/g, "'");
   }
 
   window.LoveBudTreeCardComposition = Object.freeze({
     composeTreeCardModel: composeTreeCardModel,
     renderTreeCardBody: renderTreeCardBody,
-    renderTreeMetricFooter: renderTreeMetricFooter,
-    requireMetrics: requireMetrics
+    renderTreeMetricFooter: renderTreeMetricFooter
   });
 })();

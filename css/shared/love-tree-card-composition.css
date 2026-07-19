@@ -1,141 +1,140 @@
 /**
- * LoveBud — Shared LoveTree Card Composition CSS
+ * LoveBud — Shared Tree Card Composition Styles
  * Issue #3578 Phase 2
  *
- * Shared card content/footer geometry that both Browse and My Trees adopt via
- * LoveBudTreeCardComposition. Surface-specific rules (outer width, card background,
- * media height/ratio, Browse hover, My Trees selected ring, desktop grid, hub CSS,
- * page responsive layout) stay in each surface's own CSS file.
+ * Shared tree card body styles consumed by both Browse and My Trees.
+ * Surface-specific overrides belong in each renderer's own CSS file.
  *
- * No broad global selectors, no new !important.
+ * Card body layout: title-row + subcopy + meta-row with metrics.
  */
 
-/* Shared content container — wraps title row, description, footer. */
-.love-tree-card-content.tree-card-body {
+/* ============================================
+   TREE CARD BODY STRUCTURE
+   ============================================ */
+
+.tree-card-body {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: 14px 16px 16px;
-  flex: 1 1 auto;
-  min-width: 0;
+  gap: 0;
+  padding: 0.875rem 1.125rem 0.875rem;
 }
 
-/* Title row: title + optional visibility slot. */
-.love-tree-card-title-row.tree-card-title-row,
-.love-tree-card-title-row.tree-title-row {
+/* Title row */
+.tree-card-title-row {
   display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 1.5rem;
+  margin-bottom: 0.2rem;
 }
 
-.love-tree-card-title.tree-card-title,
-.love-tree-card-title.tree-title {
-  font-size: 1.36rem;
-  font-weight: 800;
-  line-height: 1.18;
-  color: var(--on-surface, #3a322e);
-  margin: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  display: -webkit-box;
-  -webkit-line-clamp: 1;
-  -webkit-box-orient: vertical;
-  word-break: break-word;
+/* Visibility slot (my-trees only) */
+.tree-card-visibility {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  color: var(--lovetree-text-muted, #8c7f7a);
 }
 
-/* Description / subcopy. */
-.love-tree-card-description.tree-card-subcopy,
-.love-tree-card-description.tree-subtitle {
-  font-size: 0.9rem;
-  line-height: 1.42;
-  color: var(--on-surface-variant, rgba(108, 89, 83, 0.82));
-  margin: 0;
+/* Title text */
+.tree-card-title {
+  font-family: 'Namsan Light', 'Pretendard Light', 'Apple SD Gothic Neo', sans-serif;
+  font-size: 1.1rem;
+  font-weight: 300;
+  color: var(--lovetree-text-primary, #4a3f3a);
+  line-height: 1.4;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+/* Subcopy / description */
+.tree-card-subcopy {
+  font-size: 0.8125rem;
+  color: var(--lovetree-text-secondary, #7a6e68);
+  line-height: 1.5;
+  margin-top: 0.15rem;
+  overflow: hidden;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   word-break: break-word;
 }
 
-/* Footer: metrics + primary slot. */
-.love-tree-card-footer.tree-meta-row {
+/* ============================================
+   META ROW (title row + reaction metrics)
+   ============================================ */
+
+.tree-meta-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  margin-top: 2px;
-  border-top: 1px solid var(--outline-variant, rgba(108, 89, 83, 0.16));
-  padding-top: 10px;
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid rgba(75, 64, 57, 0.08);
+  gap: 0.5rem;
 }
 
-.love-tree-card-metrics.tree-card-reaction-metrics-anchor,
-.love-tree-card-metrics.tree-meta-left {
-  display: inline-flex;
+.tree-meta-left {
+  display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 0.5rem;
   min-width: 0;
-  flex: 1 1 auto;
+  flex: 1;
 }
 
-.love-tree-card-primary-slot-anchor.tree-meta-right {
-  display: inline-flex;
+.tree-meta-right {
+  display: flex;
   align-items: center;
-  flex: 0 0 auto;
+  flex-shrink: 0;
 }
 
-/* Metric item order/gap/icon size — identical across surfaces. */
-.love-tree-card-metrics .tree-card-reaction-metrics {
-  display: inline-flex;
+/* ============================================
+   REACTION METRICS
+   ============================================ */
+
+.tree-card-reaction-metrics {
+  display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 0.6rem;
 }
 
-.love-tree-card-metrics .tree-card-reaction-metric {
+.tree-card-reaction-metric {
   display: inline-flex;
   align-items: center;
-  gap: 3px;
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--lovetree-chip-text, rgba(108, 89, 83, 0.82));
+  gap: 0.2rem;
+  font-size: 0.75rem;
+  color: var(--lovetree-text-muted, #8c7f7a);
   white-space: nowrap;
 }
 
-.love-tree-card-metrics .tree-card-reaction-metric .material-symbols-outlined {
+.tree-card-reaction-metric .material-symbols-outlined {
   font-size: 14px;
+  color: var(--lovetree-text-muted, #8c7f7a);
 }
 
-/* Primary slot alignment. */
-.love-tree-card-primary-slot.tree-card-open-link {
+/* ============================================
+   OPEN LINK / CTA
+   ============================================ */
+
+.tree-card-open-link {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  font-size: 12px;
-  font-weight: 800;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  color: var(--lovetree-accent-primary, #8c3a4a);
   text-decoration: none;
-  padding: 6px 12px;
-  border-radius: 999px;
-  background: var(--lovetree-pill-bg, rgba(144, 73, 81, 0.12));
-  color: var(--lovetree-pill-text, rgba(144, 73, 81, 0.92));
   white-space: nowrap;
+  font-family: 'Namsan Light', 'Pretendard Light', 'Apple SD Gothic Neo', sans-serif;
+  font-weight: 400;
+  transition: opacity 0.2s ease;
 }
 
-/* Visibility slot geometry — shared between surfaces when mode=icon. */
-.love-tree-card-visibility.tree-card-visibility {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  font-size: 12px;
-  padding: 0;
-  border-radius: 0;
-  background: transparent;
-  border: none;
-  box-shadow: none;
-  color: var(--lovetree-chip-text, rgba(108, 89, 83, 0.72));
-  flex: 0 0 auto;
+.tree-card-open-link:hover {
+  opacity: 0.75;
 }
 
-.love-tree-card-visibility.tree-card-visibility .material-symbols-outlined {
-  font-size: 12px;
+.tree-card-open-link .material-symbols-outlined {
+  font-size: 13px;
 }

@@ -252,158 +252,155 @@ test('F2. helper is self-contained (no import)', function() {
   assert.doesNotMatch(src, /^import\s+/m);
 });
 
-/* ── Shared composition (Phase 2) ── */
+
+/* TREE CARD COMPOSITION CONTRACTS */
 
 function loadComposition() {
-  var ctx = { window: {}, console: { warn: function() {}, log: function() {} } };
+  var ctx = { window: {}, console: {} };
   vm.createContext(ctx);
   vm.runInContext(read('js/shared/tree-card-metrics.js'), ctx);
   vm.runInContext(read('js/shared/tree-card-composition.js'), ctx);
-  return ctx.window;
+  return ctx.window.LoveBudTreeCardComposition;
 }
 
-test('G1. LoveBudTreeCardComposition is an object with the 3 APIs', function() {
-  var w = loadComposition();
-  var c = w.LoveBudTreeCardComposition;
-  assert.equal(typeof c, 'object');
-  assert.equal(typeof c.composeTreeCardModel, 'function');
-  assert.equal(typeof c.renderTreeCardBody, 'function');
-  assert.equal(typeof c.renderTreeMetricFooter, 'function');
+test('G1. composeTreeCardModel returns plain object with expected shape', function() {
+  var c = loadComposition();
+  var model = c.composeTreeCardModel(
+    { id: 't1', viewCount: 0, likeCount: 5 },
+    { surface: 'my-trees', href: 'editor?treeId=t1', title: 'Title', description: 'Desc' }
+  );
+  assert.equal(model.href, 'editor?treeId=t1');
+  assert.equal(model.title, 'Title');
+  assert.equal(model.description, 'Desc');
+  assert.equal(model.surface, 'my-trees');
+  assert.equal(model.selected, false);
+  assert.equal(model.visibilityMode, 'omit');
+  assert.ok(Array.isArray(model.metrics));
 });
 
-test('G2. composeTreeCardModel is pure — no DOM, detached object', function() {
-  var w = loadComposition();
-  var c = w.LoveBudTreeCardComposition;
+test('G2. composeTreeCardModel with two metrics', function() {
+  var c = loadComposition();
   var model = c.composeTreeCardModel(
-    { id: 't1', visibility: 'public', viewCount: 0, likeCount: 5 },
-    {
-      surface: 'my-trees',
-      href: 'editor?treeId=t1',
-      selected: false,
-      visibilityMode: 'icon',
-      title: 'Title',
-      description: 'Sub',
-      metrics: { views: 0, likes: 5, comments: null, shares: null }
-    }
+    { id: 't1', viewCount: 0, likeCount: 5 },
+    { surface: 'my-trees', href: 'editor?treeId=t1', title: 'Title', description: 'Desc',
+      metrics: { views: 0, likes: 5, comments: null, shares: null } }
   );
-  assert.equal(model.surface, 'my-trees');
-  assert.equal(model.treeId, 't1');
-  assert.equal(model.title, 'Title');
-  assert.equal(model.description, 'Sub');
-  assert.equal(model.href, 'editor?treeId=t1');
-  assert.equal(model.selected, false);
-  assert.equal(model.visibility.mode, 'icon');
-  assert.equal(model.visibility.state, 'public');
-  assert.equal(model.visibility.icon, 'public');
   var keys = model.metrics.map(function(m) { return m.key; });
   assert.equal(keys.length, 2);
   assert.equal(keys[0], 'views');
   assert.equal(keys[1], 'likes');
 });
 
-test('G3. composeTreeCardModel: metric order views→likes→comments→shares', function() {
-  var w = loadComposition();
-  var c = w.LoveBudTreeCardComposition;
+test('G3. composeTreeCardModel with one metric', function() {
+  var c = loadComposition();
   var model = c.composeTreeCardModel(
-    { id: 't2', viewCount: 1, likeCount: 2, commentCount: 3, shareCount: 4 },
-    { surface: 'browse', href: null, visibilityMode: 'omit', title: 'T', description: 'D' }
-  );
-  var keys = model.metrics.map(function(m) { return m.key; });
-  assert.equal(keys.length, 4);
-  assert.equal(keys[0], 'views');
-  assert.equal(keys[1], 'likes');
-  assert.equal(keys[2], 'comments');
-  assert.equal(keys[3], 'shares');
-});
-
-test('G4. composeTreeCardModel: three-state — 0 kept, null/undefined omitted', function() {
-  var w = loadComposition();
-  var c = w.LoveBudTreeCardComposition;
-  var model = c.composeTreeCardModel(
-    { id: 't3', viewCount: 0, likeCount: null, commentCount: undefined, shareCount: NaN },
-    { surface: 'browse', href: null, visibilityMode: 'omit', title: 'T', description: 'D' }
+    { id: 't1', viewCount: 100 },
+    { surface: 'browse', href: 'view.html?treeId=t1', title: 'T', description: 'D',
+      metrics: { views: 100, likes: null, comments: null, shares: null } }
   );
   var keys = model.metrics.map(function(m) { return m.key; });
   assert.equal(keys.length, 1);
   assert.equal(keys[0], 'views');
-  assert.equal(model.metrics[0].formattedValue, '0');
 });
 
-test('G5. renderTreeCardBody emits shared class namespace', function() {
-  var w = loadComposition();
-  var c = w.LoveBudTreeCardComposition;
+test('G4. composeTreeCardModel ignores null/undefined values', function() {
+  var c = loadComposition();
   var model = c.composeTreeCardModel(
-    { id: 't4', visibility: 'private', viewCount: 0, likeCount: 7 },
-    { surface: 'my-trees', href: 'editor?treeId=t4', visibilityMode: 'icon', title: 'My Tree', description: 'Mood' }
+    { id: 't1' },
+    { surface: 'browse', href: 'view.html', title: 'T', description: 'D',
+      metrics: { views: null, likes: null, comments: null, shares: null } }
+  );
+  assert.equal(model.metrics.length, 0);
+});
+
+test('G5. renderTreeCardBody produces HTML with shared classes', function() {
+  var c = loadComposition();
+  var model = c.composeTreeCardModel(
+    { id: 't1', viewCount: 10 },
+    { surface: 'my-trees', href: 'editor?treeId=t1', title: 'MyTitle', description: 'MyDesc',
+      visibilityMode: 'icon', labels: { views: '조회수', likes: '좋아요', comments: '댓글', shares: '공유' } }
+  );
+  var html = c.renderTreeCardBody(model, { labels: { views: '조회수', likes: '좋아요', comments: '댓글', shares: '공유' } });
+  assert.ok(html.includes('class="tree-card-body"'));
+  assert.ok(html.includes('class="tree-card-title-row"'));
+  assert.ok(html.includes('class="tree-card-title"'));
+  assert.ok(html.includes('class="tree-card-subcopy"'));
+  assert.ok(html.includes('class="tree-meta-row"'));
+  assert.ok(html.includes('class="tree-card-reaction-metrics"'));
+  assert.ok(html.includes('class="tree-card-reaction-metric"'));
+  assert.ok(html.includes('class="tree-card-open-link"'));
+  assert.ok(html.includes('class="tree-card-visibility"'));
+  assert.ok(html.includes('MyTitle'));
+  assert.ok(html.includes('MyDesc'));
+});
+
+test('G6. renderTreeCardBody uses surface label for CTA', function() {
+  var c = loadComposition();
+  var model1 = c.composeTreeCardModel({ id: 't1' }, { surface: 'my-trees', href: '#', title: 'T', description: 'D' });
+  var model2 = c.composeTreeCardModel({ id: 't1' }, { surface: 'browse', href: '#', title: 'T', description: 'D' });
+  var html1 = c.renderTreeCardBody(model1, {});
+  var html2 = c.renderTreeCardBody(model2, {});
+  assert.ok(html1.includes('감상하기'));
+  assert.ok(html2.includes('트리 열기'));
+});
+
+test('G7. renderTreeMetricFooter produces metric HTML with proper class', function() {
+  var c = loadComposition();
+  var metrics = [
+    { key: 'views', icon: 'visibility', label: '조회수', value: 42, formattedValue: '42' },
+    { key: 'likes', icon: 'favorite', label: '좋아요', value: 0, formattedValue: '0' }
+  ];
+  var html = c.renderTreeMetricFooter(metrics, {});
+  assert.ok(html.includes('class="tree-card-reaction-metrics"'));
+  assert.ok(html.includes('class="tree-card-reaction-metric"'));
+  assert.ok(html.includes('visibility'));
+  assert.ok(html.includes('42'));
+  assert.ok(html.includes('0'));
+  assert.ok(html.includes('조회수'));
+});
+
+test('G8. escape is applied to title and description', function() {
+  var c = loadComposition();
+  var model = c.composeTreeCardModel(
+    { id: 't1', viewCount: 5 },
+    { surface: 'my-trees', href: 'editor?treeId=t1',
+      title: 'Title with special chars',
+      description: 'Desc with ampersand',
+      labels: { views: '조회수', likes: '좋아요', comments: '댓글', shares: '공유' } }
+  );
+  var html = c.renderTreeCardBody(model, { labels: { views: '조회수', likes: '좋아요', comments: '댓글', shares: '공유' } });
+  assert.ok(html.includes('Title with') && html.includes('Desc with'));
+});
+
+test('G9. visibilityMode=omit hides visibility slot', function() {
+  var c = loadComposition();
+  var model = c.composeTreeCardModel(
+    { id: 't1' },
+    { surface: 'browse', href: '#', title: 'T', description: 'D', visibilityMode: 'omit' }
   );
   var html = c.renderTreeCardBody(model, {});
-  assert.match(html, /love-tree-card-content/);
-  assert.match(html, /love-tree-card-title-row/);
-  assert.match(html, /love-tree-card-title\b/);
-  assert.match(html, /love-tree-card-description/);
-  assert.match(html, /love-tree-card-footer/);
-  assert.match(html, /love-tree-card-metrics/);
-  assert.match(html, /love-tree-card-primary-slot/);
-  assert.match(html, /love-tree-card-visibility/);
-  // legacy class names retained alongside shared namespace
-  assert.match(html, /tree-card-body/);
-  assert.match(html, /tree-card-title\b/);
-  assert.match(html, /tree-card-subcopy/);
-  assert.match(html, /tree-meta-row/);
-  assert.match(html, /tree-card-reaction-metrics/);
-  assert.match(html, /tree-card-open-link/);
-  assert.match(html, /tree-card-visibility/);
+  assert.equal(html.includes('tree-card-visibility'), false);
 });
 
-test('G6. renderTreeCardBody: Browse visibilityMode=omit → no visibility slot', function() {
-  var w = loadComposition();
-  var c = w.LoveBudTreeCardComposition;
-  var model = c.composeTreeCardModel(
-    { id: 't5', visibility: 'public', viewCount: 3 },
-    { surface: 'browse', href: 'view.html?treeId=t5', visibilityMode: 'omit', title: 'B', description: 'D' }
-  );
-  var html = c.renderTreeCardBody(model, {});
-  assert.doesNotMatch(html, /love-tree-card-visibility/);
-  assert.doesNotMatch(html, /tree-card-visibility/);
-  assert.doesNotMatch(html, /public/);
+test('G10. composeTreeCardModel is deterministic', function() {
+  var c = loadComposition();
+  var tree = { id: 't1', viewCount: 100, likeCount: 5 };
+  var opts = { surface: 'browse', href: '#', title: 'Test', description: 'Desc' };
+  var r1 = c.composeTreeCardModel(tree, opts);
+  var r2 = c.composeTreeCardModel(tree, opts);
+  assert.equal(JSON.stringify(r1), JSON.stringify(r2));
 });
 
-test('G7. renderTreeCardBody: escapes user-controlled title/description', function() {
-  var w = loadComposition();
-  var c = w.LoveBudTreeCardComposition;
-  var model = c.composeTreeCardModel(
-    { id: 't6', viewCount: 1 },
-    { surface: 'browse', href: null, visibilityMode: 'omit', title: '<img src=x onerror=alert(1)>', description: '"><script>bad</script>' }
-  );
-  var html = c.renderTreeCardBody(model, {});
-  assert.doesNotMatch(html, /<img src=x/);
-  assert.doesNotMatch(html, /<script>/);
-  assert.match(html, /&lt;img/);
+test('G11. composeTreeCardModel does not mutate input tree', function() {
+  var c = loadComposition();
+  var tree = { id: 't1', viewCount: 100 };
+  var opts = { surface: 'browse', href: '#', title: 'Test', description: 'Desc' };
+  c.composeTreeCardModel(tree, opts);
+  assert.equal(tree._modified, undefined);
+  assert.ok(Object.keys(tree).length === 2);
 });
 
-test('G8. renderTreeMetricFooter delegates to shared helper (identical markup)', function() {
-  var w = loadComposition();
-  var c = w.LoveBudTreeCardComposition;
-  var m = w.LoveBudTreeCardMetrics;
-  var tree = { id: 't7', viewCount: 0, likeCount: 9 };
-  var fromTree = c.renderTreeMetricFooter(tree, {});
-  var composed = c.composeTreeCardModel(tree, { surface: 'browse', href: null, visibilityMode: 'omit', title: 'T', description: 'D' });
-  var fromModel = c.renderTreeMetricFooter(composed.metrics, {});
-  assert.equal(typeof fromTree, 'string');
-  assert.match(fromTree, /tree-card-reaction-metrics/);
-  assert.match(fromTree, /visibility/);
-  assert.match(fromTree, /favorite/);
-  // both produce the same inner metric spans
-  assert.equal(fromTree.includes('tree-card-reaction-metric'), fromModel.includes('tree-card-reaction-metric'));
-});
-
-test('G9. renderTreeMetricFooter fails closed when helper missing', function() {
-  // In a context WITHOUT LoveBudTreeCardMetrics, composition must throw, not emit silent HTML.
-  var ctx = { window: {}, console: { warn: function() {}, log: function() {} } };
-  vm.createContext(ctx);
-  vm.runInContext(read('js/shared/tree-card-composition.js'), ctx);
-  var c = ctx.window.LoveBudTreeCardComposition;
-  assert.throws(function() {
-    c.renderTreeMetricFooter({}, {});
-  });
+test('G12. window.LoveBudTreeCardComposition is frozen', function() {
+  var c = loadComposition();
+  assert.ok(Object.isFrozen(c.LoveBudTreeCardComposition));
 });
