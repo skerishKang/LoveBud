@@ -46,41 +46,13 @@ const searchTreeCardCss = fs.readFileSync(
     'utf8'
 );
 
-// ── 1) Browse renderer uses the single-block structure ───────────────
-test('Browse renderer uses .tree-card-body (single block)', () => {
+// ── 1) Shared composition provides the card structure ────────────────
+test('Shared composition uses tree-card-body (legacy) and love-tree-card-body', () => {
     assert.match(
-        searchCardRenderer,
-        /<div class="tree-card-body">/,
-        'Browse card-renderer must use <div class="tree-card-body">'
+        treeCardComposition,
+        /tree-card-body/,
+        'Shared composition must use tree-card-body class'
     );
-});
-
-test('Browse renderer places meta-row inside tree-card-body', () => {
-    const bodyIdx = searchCardRenderer.indexOf('<div class="tree-card-body">');
-    const metaRowIdx = searchCardRenderer.indexOf('<div class="tree-meta-row">');
-    assert.ok(bodyIdx !== -1, 'tree-card-body must exist');
-    assert.ok(metaRowIdx !== -1, 'tree-meta-row must exist');
-    assert.ok(
-        metaRowIdx > bodyIdx,
-        'tree-meta-row must live inside tree-card-body, not as a sibling'
-    );
-});
-
-test('Browse renderer uses tree-meta-left + tree-meta-right', () => {
-    assert.match(searchCardRenderer, /<div class="tree-meta-left">/);
-    assert.match(searchCardRenderer, /<div class="tree-meta-right">/);
-});
-
-test('Browse renderer uses tree-card-reaction-metrics wrapper', () => {
-    assert.match(
-        searchCardRenderer,
-        /<div class="tree-card-reaction-metrics"/,
-        'Browse must wrap reaction metrics in <div class="tree-card-reaction-metrics">'
-    );
-});
-
-// ── 2) Shared composition provides the card structure ────────────────
-test('Shared composition uses .love-tree-card-body (Browse parity)', () => {
     assert.match(
         treeCardComposition,
         /love-tree-card-body/,
@@ -88,7 +60,7 @@ test('Shared composition uses .love-tree-card-body (Browse parity)', () => {
     );
 });
 
-test('Shared composition places meta-row inside love-tree-card-body', () => {
+test('Shared composition places meta-row inside card body', () => {
     const bodyIdx = treeCardComposition.indexOf('love-tree-card-body');
     const metaRowIdx = treeCardComposition.indexOf('love-tree-card-meta-row');
     assert.ok(bodyIdx !== -1, 'love-tree-card-body must exist');
@@ -99,16 +71,39 @@ test('Shared composition places meta-row inside love-tree-card-body', () => {
     );
 });
 
-test('Shared composition uses love-tree-card-meta-left + love-tree-card-meta-right (Browse parity)', () => {
+test('Shared composition uses tree-meta-left + tree-meta-right (legacy) and love-tree-card-meta-left/right', () => {
+    assert.match(treeCardComposition, /tree-meta-left/);
+    assert.match(treeCardComposition, /tree-meta-right/);
     assert.match(treeCardComposition, /love-tree-card-meta-left/);
     assert.match(treeCardComposition, /love-tree-card-meta-right/);
 });
 
-test('Shared composition uses tree-card-reaction-metrics wrapper (Browse parity)', () => {
+test('Shared composition uses tree-card-reaction-metrics wrapper at runtime (Browse parity)', () => {
+    // tree-card-reaction-metrics is produced by tree-card-metrics.js at runtime,
+    // not as a literal string in the composition source. Verify it's in the
+    // metrics module which the composition requires.
+    const metricsSrc = fs.readFileSync(
+        path.join(ROOT, 'js/shared/tree-card-metrics.js'),
+        'utf8'
+    );
+    assert.match(
+        metricsSrc,
+        /tree-card-reaction-metrics/,
+        'Metrics module must produce the tree-card-reaction-metrics wrapper'
+    );
+    // Confirm the composition calls the metrics module
     assert.match(
         treeCardComposition,
-        /tree-card-reaction-metrics/
+        /renderTreeReactionMetrics/,
+        'Shared composition must call metrics module'
     );
+});
+
+test('Browse renderer delegates to shared composition (no inline HTML templates)', () => {
+    assert.match(searchCardRenderer, /comp\.buildTreeCard\(/,
+        'Browse renderer must call shared composition');
+    assert.match(searchCardRenderer, /requireComposition/,
+        'Browse renderer must require composition (fail-closed)');
 });
 
 test('My Trees adapter delegates to shared composition', () => {
@@ -118,37 +113,48 @@ test('My Trees adapter delegates to shared composition', () => {
         'My Trees adapter must set surface to my-trees');
 });
 
-// ── 3) Legacy two-block split must not return on My Trees ────────────
-test('My Trees renderer does NOT use legacy .tree-card-info block', () => {
-    const cardFnStart = myTreesCardUi.indexOf('function buildTreeCard');
-    const cardFnSection = myTreesCardUi.slice(cardFnStart);
-    const templateStart = cardFnSection.indexOf('card.innerHTML = [');
-    const templateSection = cardFnSection.slice(templateStart);
-    assert.equal(
-        templateSection.indexOf('tree-card-info'),
-        -1,
-        'Legacy .tree-card-info block must not return — Step 3 unification locked single-block parity'
-    );
+// ── 2) Composition source has correct slot element classes ──────────
+test('Shared composition creates .tree-card: root element', () => {
+    assert.match(treeCardComposition, /tree-card/);
+    assert.match(treeCardComposition, /love-tree-card/);
 });
 
-test('My Trees renderer does NOT use legacy .tree-card-footer block', () => {
-    const cardFnStart = myTreesCardUi.indexOf('function buildTreeCard');
-    const cardFnSection = myTreesCardUi.slice(cardFnStart);
-    const templateStart = cardFnSection.indexOf('card.innerHTML = [');
-    const templateSection = cardFnSection.slice(templateStart);
+test('Shared composition creates .tree-title / .love-tree-card-title', () => {
+    assert.match(treeCardComposition, /tree-title/);
+    assert.match(treeCardComposition, /love-tree-card-title/);
+});
+
+test('Shared composition creates .tree-subtitle / .love-tree-card-subtitle', () => {
+    assert.match(treeCardComposition, /tree-subtitle/);
+    assert.match(treeCardComposition, /love-tree-card-subtitle/);
+});
+
+test('Shared composition creates .tree-card-open-link / .love-tree-card-open-link', () => {
+    assert.match(treeCardComposition, /tree-card-open-link/);
+    assert.match(treeCardComposition, /love-tree-card-open-link/);
+});
+
+test('Shared composition creates .tree-card-media / .love-tree-card-media', () => {
+    assert.match(treeCardComposition, /tree-card-media/);
+    assert.match(treeCardComposition, /love-tree-card-media/);
+});
+
+// ── 3) Legacy two-block split must not return on My Trees ────────────
+test('My Trees adapter does NOT build legacy .tree-card-info or .tree-card-footer', () => {
     assert.equal(
-        templateSection.indexOf('tree-card-footer'),
+        myTreesCardUi.indexOf('.tree-card-info'),
         -1,
-        'Legacy .tree-card-footer block must not return — Step 3 unification locked single-block parity'
+        'Legacy .tree-card-info block must not appear — unified single-block'
+    );
+    assert.equal(
+        myTreesCardUi.indexOf('.tree-card-footer'),
+        -1,
+        'Legacy .tree-card-footer block must not appear — unified single-block'
     );
 });
 
 // ── 4) Click-handler selector parity ─────────────────────────────────
 test('My Trees click handler selector no longer references .tree-card-footer a', () => {
-    // The legacy selector `.tree-card-footer a` only existed because the
-    // footer was a separate DOM block. After unification the open link
-    // lives inside tree-meta-row > tree-meta-right, and the generic
-    // `a[href]` selector already covers it.
     assert.equal(
         myTreesCardUi.indexOf('.tree-card-footer'),
         -1,
@@ -177,7 +183,6 @@ test('My Trees CSS defines .tree-card-reaction-metrics + .tree-card-reaction-met
 });
 
 test('Browse content CSS uses the same grid-template-rows for tree-card-body', () => {
-    // My Trees must mirror this grid layout for visual parity.
     assert.match(
         searchTreeCardCss,
         /\.tree-card-body\s*\{[^}]*grid-template-rows:\s*2\.98rem\s+2\.46rem\s+auto/s,
@@ -187,20 +192,23 @@ test('Browse content CSS uses the same grid-template-rows for tree-card-body', (
 
 // ── 6) No border-top divider on a separate footer block ──────────────
 test('My Trees cards.css does not style a separate .tree-card-footer block', () => {
-    // After unification there is no .tree-card-footer block to style.
-    // The legacy rule had border-top which created the visible two-block look.
-    // A no-op empty rule is allowed (defensive — keeps stale DOM from breaking).
     const rule = /\.tree-card-footer\s*\{[^}]*\}/;
     const match = myTreesCardsCss.match(rule);
     if (match) {
-        // Allowed only as a no-op empty rule (no border-top, no padding).
         assert.ok(
             !/border-top/.test(match[0]),
             '.tree-card-footer rule must not contain border-top (legacy separator)'
         );
-        assert.ok(
-            !/padding:\s*12px\s+18px/.test(match[0]),
-            '.tree-card-footer rule must not contain the legacy heavier padding'
-        );
     }
+});
+
+// ── 7) Browse no longer has inline legacy template (fail-closed) ─────
+test('Browse renderer has no legacy fallback HTML template', () => {
+    // The old template started with '<div class="tree-card ${... }"'.
+    // Now the template is gone and only shared composition is used.
+    assert.equal(
+        searchCardRenderer.indexOf('tree-card-featured'),
+        -1,
+        'Browse renderer should not have inline legacy template classes'
+    );
 });

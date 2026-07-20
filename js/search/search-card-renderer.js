@@ -1,11 +1,20 @@
 /**
  * LoveBud Search Card Renderer
- * v20260523-1490-1
+ * v20260720-3578-3
  * 
  * Rendering layer: tree cards, empty states.
- * DOM-agnostic - returns HTML strings.
+ * Returns HTML strings (DOM-agnostic at public API boundary).
  * 
- * Dependencies: LoveBudPath (for navigation), LoveBudSearchSharedUtils (for shared utilities)
+ * Dependencies: LoveBudPath, LoveBudSearchSharedUtils, LoveBudTreeCardComposition
+ * 
+ * Load order (must be satisfied at runtime):
+ *   js/utils/security.js
+ *   js/shared/tree-card-metrics.js
+ *   js/shared/tree-card-composition.js
+ *   js/search/search-card-renderer.js
+ * 
+ * Fail-closed: LoveBudTreeCardComposition must be loaded or renderTreeCard throws.
+ * No legacy fallback card HTML — missing dependency is always explicit.
  */
 
 (function() {
@@ -13,11 +22,14 @@
 
     var _cardFallback = window.LoveBudSearchCardFallback || null;
 
-    // #3578 Phase 2: optionally use shared composition when loaded
+    // #3578 Phase 2 CTO: fail-closed — require composition, no fallback
     function requireComposition() {
         var c = window.LoveBudTreeCardComposition;
-        if (c && typeof c.buildTreeCard === 'function') return c;
-        return null;
+        if (c && typeof c.buildTreeCard === 'function' && typeof c.htmlToFragment === 'function') return c;
+        throw new Error(
+            '[LoveBudSearchCardRenderer] LoveBudTreeCardComposition not loaded. ' +
+            'tree-card-composition.js must be loaded before search-card-renderer.js.'
+        );
     }
 
     function escapeHtml(value) {
@@ -133,68 +145,6 @@
         return 'empty';
     }
 
-    /**
-     * Resolve an authoritative non-negative finite count.
-     * Missing / null / undefined / '' / NaN / negative → null (unknown).
-     * Persisted zero (0) is returned as 0.
-     */
-    function getFirstFiniteCount(tree, keys) {
-        if (!tree) return null;
-        for (const key of keys) {
-            if (!Object.prototype.hasOwnProperty.call(tree, key)) continue;
-            const rawValue = tree[key];
-            if (rawValue === undefined || rawValue === null || rawValue === '') continue;
-            if (typeof rawValue !== 'number' && typeof rawValue !== 'string') continue;
-            const value = Number(rawValue);
-            if (Number.isFinite(value) && value >= 0) return value;
-        }
-        return null;
-    }
-
-    function formatCompactCount(value) {
-        const count = Number(value);
-        if (!Number.isFinite(count) || count < 0) return '';
-        if (count === 0) return '0';
-        if (count >= 1000000) return `${Math.floor(count / 100000) / 10}M`;
-        if (count >= 1000) return `${Math.floor(count / 100) / 10}K`;
-        return String(count);
-    }
-
-    function getTreeReactionCounts(tree) {
-        var shared = window.LoveBudSearchSharedUtils;
-        return {
-            likes: getFirstFiniteCount(tree, ['likeCount', 'likesCount', 'likes', 'reactionCount', 'reaction_count']),
-            views: shared && typeof shared.getViewCount === 'function' ? shared.getViewCount(tree) : null,
-            comments: getFirstFiniteCount(tree, ['commentCount', 'commentsCount', 'comments', 'comment_count']),
-            shares: getFirstFiniteCount(tree, ['shareCount', 'sharesCount', 'shares', 'share_count'])
-        };
-    }
-
-    // Truthful metrics: only render items with an authoritative value.
-    // Unknown metrics are hidden (never coerced to 0 or "—").
-    function renderTreeReactionMetrics(tree) {
-        const counts = getTreeReactionCounts(tree);
-        const metrics = [
-            counts.views !== null ? { icon: 'visibility', label: '조회수', value: counts.views } : null,
-            counts.likes !== null ? { icon: 'favorite', label: '좋아요', value: counts.likes } : null,
-            counts.comments !== null ? { icon: 'chat_bubble', label: '댓글', value: counts.comments } : null,
-            counts.shares !== null ? { icon: 'share', label: '공유', value: counts.shares } : null
-        ].filter(Boolean);
-
-        if (metrics.length === 0) return '';
-
-        return `
-            <div class="tree-card-reaction-metrics" aria-label="트리 반응 요약">
-                ${metrics.map(metric => `
-                    <span class="tree-card-reaction-metric" title="${escapeHtml(metric.label)} ${formatCompactCount(metric.value)}">
-                        <span class="material-symbols-outlined" aria-hidden="true">${metric.icon}</span>
-                        <span>${escapeHtml(formatCompactCount(metric.value))}</span>
-                    </span>
-                `).join('')}
-            </div>
-        `;
-    }
-
     function hashSeed(value) {
         if (_cardFallback && typeof _cardFallback.hashSeed === 'function') return _cardFallback.hashSeed(value);
         var source = String(value || 'lovetree');
@@ -221,30 +171,21 @@
         return '';
     }
 
-    function sanitizeUrl(value) {
-        if (_cardFallback && typeof _cardFallback.sanitizeUrl === 'function') return _cardFallback.sanitizeUrl(value);
-        var sec = window.LoveBudSecurity;
-        if (sec) return sec.sanitizeUrl(value);
-        var utils = window.LoveBudSearchSharedUtils;
-        if (utils?.sanitizeUrl) return utils.sanitizeUrl(value);
-        if (!value) return '';
-        var raw = String(value).trim();
-        if (!raw) return '';
-        try {
-            var parsed = new URL(raw, window.location.origin);
-            var protocol = parsed.protocol;
-            if (protocol === 'http:' || protocol === 'https:') {
-                return parsed.href;
-            }
-            return '';
-        } catch (e) {
-            return '';
-        }
-    }
-
     function renderRepresentativeMedia(tree, firstMem, titleText) {
         if (_cardFallback && typeof _cardFallback.renderRepresentativeMedia === 'function') return _cardFallback.renderRepresentativeMedia(tree, firstMem, titleText);
         return '';
+    }
+
+    /**
+     * Adapter-owned HTML-to-Node conversion.
+     * Used only for content produced by Browse's own sanitised renderers
+     * (renderRepresentativeMedia, metadata helper). NOT a generic public API.
+     */
+    function htmlToNode(html) {
+        if (!html) return null;
+        var t = document.createElement('div');
+        t.innerHTML = String(html);
+        return t.firstChild || null;
     }
 
     function renderTreeCard(tree, index) {
@@ -261,7 +202,6 @@
 
         const viewerHref = getTreeViewerHref(tree);
         const cardSelectLabel = `${displayTitleRaw} 러브트리를 감상 허브에서 미리보기`;
-        const hasDerivedDescription = Boolean(displayTheme || primaryTag);
         const softMoodLine = displayTheme
             ? `${displayTheme}와 함께 시작된 마음`
             : primaryTag
@@ -270,62 +210,39 @@
                      ? '첫 순간에서 이어진 감정을 천천히 따라가 보세요.'
                      : '이제 막 열리기 시작한 공개 러브트리예요.';
 
-        // Renders tree-public-metadata, data-public-tree-metadata block, and tree-public-tags via helper
+        // Renders tree-public-metadata via helper
         const metadataHelper = window.LoveBudSearchPublicMetadataHelper;
         const metadataHtml = (metadataHelper && typeof metadataHelper.renderCardMetadata === 'function')
             ? metadataHelper.renderCardMetadata(tree)
             : '';
 
-        // #3578 Phase 2: route through shared composition
+        // #3578 Phase 2 CTO: route through shared composition (fail-closed)
         var comp = requireComposition();
-        if (comp) {
-            return comp.buildTreeCard(tree, {
-                surface: 'browse',
-                mediaHtml: renderRepresentativeMedia(tree, firstMem, displayTitleRaw),
-                title: displayTitleRaw,
-                subtitleHtml: '<p class="' + (hasDerivedDescription ? 'love-tree-card-subtitle-derived' : 'love-tree-card-subtitle-fallback') + '">' + escapeHtml(softMoodLine) + '</p>',
-                bodyExtensionHtml: metadataHtml,
-                primaryHref: viewerHref,
-                primaryLabel: '트리 열기',
-                accessibilityLabel: cardSelectLabel,
-                isFeatured: index === 0,
-                index: index,
-                extraClasses: '',
-                dataAttributes: ' id="tree-card-' + escapeHtml(tree.id) + '"'
-            });
+
+        // Convert adapter-owned HTML strings to trusted Nodes
+        // These come from Browse's own sanitised renderers
+        var mediaNode = htmlToNode(renderRepresentativeMedia(tree, firstMem, displayTitleRaw));
+        var metadataNode = htmlToNode(metadataHtml);
+
+        var cardEl = comp.buildTreeCard(tree, {
+            surface: 'browse',
+            mediaNode: mediaNode,
+            title: displayTitleRaw,
+            subtitleText: softMoodLine,
+            bodyExtensionNode: metadataNode,
+            primaryHref: viewerHref,
+            primaryLabel: '트리 열기',
+            accessibilityLabel: cardSelectLabel,
+            isFeatured: index === 0,
+            index: index
+        });
+
+        // Set surface-specific id on the root element before serialising
+        if (cardEl && tree && tree.id) {
+            cardEl.id = 'tree-card-' + escapeHtml(tree.id);
         }
 
-        // Legacy fallback (when shared composition is not loaded)
-        const safeTreeId = escapeHtml(tree.id);
-        const safeTitle = escapeHtml(displayTitleRaw);
-        const viewerLabel = `${displayTitleRaw} 러브트리 열기`;
-        const subtitleClass = hasDerivedDescription
-             ? 'tree-subtitle tree-subtitle-derived'
-             : 'tree-subtitle tree-subtitle-fallback';
-
-        return `
-            <div class="tree-card ${index === 0 ? 'tree-card-featured' : ''}" id="tree-card-${safeTreeId}" data-tree-id="${safeTreeId}" aria-label="${escapeHtml(cardSelectLabel)}" style="animation-delay: ${index * 0.05}s;">
-                ${renderRepresentativeMedia(tree, firstMem, displayTitleRaw)}
-                <div class="tree-card-body">
-                    <div class="tree-title">${safeTitle}</div>
-                    <p class="${subtitleClass}">${escapeHtml(softMoodLine)}</p>
-                    ${metadataHtml}
-                    <div class="tree-meta-row">
-                        <div class="tree-meta-left">
-                            ${renderTreeReactionMetrics(tree)}
-                        </div>
-                        <div class="tree-meta-right">
-                            ${viewerHref ? `
-                                <a href="${escapeHtml(viewerHref)}" class="tree-card-open-link" aria-label="${escapeHtml(viewerLabel)}">
-                                    <span class="material-symbols-outlined" aria-hidden="true">account_tree</span>
-                                    트리 열기
-                                </a>
-                            ` : ''}
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `;
+        return cardEl ? cardEl.outerHTML : '';
     }
 
     function renderNoTreesState() {

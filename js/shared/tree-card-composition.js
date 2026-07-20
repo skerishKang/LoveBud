@@ -1,29 +1,54 @@
 /**
  * LoveBud — Shared LoveTree Card Composition
- * Issue #3578 Phase 2
+ * Issue #3578 Phase 2 — CTO review hardening
  *
  * One safe shared card composition boundary for Browse and My Trees.
  *
  * Dependencies (load order):
- *   1. js/utils/security.js or equivalent (escapeHtml / sanitizeUrl)
- *   2. js/shared/tree-card-metrics.js
+ *   1. js/utils/security.js  (LoveBudSecurity.escapeHtml / sanitizeUrl)
+ *   2. js/shared/tree-card-metrics.js  (LoveBudTreeCardMetrics)
  *   3. js/shared/tree-card-composition.js  ← this file
  *   4. surface renderer (search-card-renderer.js / my-trees-ui.js)
  *
- * Fail-closed: shared helper must be loaded or both surfaces crash explicitly.
+ * Fail-closed:
+ *   - LoveBudTreeCardMetrics must be loaded before this module.
+ *   - Missing shared helper → explicit error thrown, no silent fallback.
  *
  * Security rules:
- *   - All user-provided strings are HTML-escaped by this module.
- *   - URLs are run through sanitizeUrl before rendering.
- *   - No generic `innerHTML` slot accepting arbitrary HTML.
+ *   - All user-provided strings are set via textContent, not innerHTML.
+ *   - URLs are run through sanitizeUrl before assignment to href.
+ *   - No generic HTML string slot accepting arbitrary markup.
+ *   - Complex media / metadata content accepted as Node or DocumentFragment.
+ *   - Dataset keys are allowlist-checked.
+ *   - Class tokens are validated against /^[a-zA-Z0-9_-]+$/.
  *   - No javascript: or protocol-relative URLs accepted.
- *   - Slot inputs are typed (string, boolean, number) and escaped.
  */
 
 (function () {
   'use strict';
 
-  /* ── Helpers (local — no external dependency at load time) ── */
+  /* ── Dependency guard (fail-closed) ── */
+
+  function checkMetricsLoaded() {
+    var m = window.LoveBudTreeCardMetrics;
+    if (!m || typeof m.renderTreeReactionMetrics !== 'function') {
+      throw new Error(
+        '[LoveBudTreeCardComposition] LoveBudTreeCardMetrics not loaded. ' +
+        'tree-card-metrics.js must be loaded before tree-card-composition.js.'
+      );
+    }
+    return m;
+  }
+
+  /* ── Constants ── */
+
+  /** Allowlist of dataset keys the composition will accept. */
+  var ALLOWED_DATASET_KEYS = ['treeId', 'visibility', 'selectedTreeCard'];
+
+  /** Pattern for validating class tokens. */
+  var CLASS_TOKEN_RE = /^[a-zA-Z0-9_-]+$/;
+
+  /* ── Helpers ── */
 
   function escapeHtml(str) {
     var sec = window.LoveBudSecurity;
@@ -51,253 +76,298 @@
       }
       return '';
     } catch (e) {
-      // Relative URL — check for dangerous patterns
       if (/^javascript:/i.test(raw)) return '';
       if (/^\/\//.test(raw)) return '';
-      if (/^#/.test(raw)) return '';
       return raw;
     }
   }
 
-  /* ── Card model ── */
+  function validateClassTokens(tokens) {
+    if (!Array.isArray(tokens)) return [];
+    return tokens.filter(function (t) {
+      return typeof t === 'string' && CLASS_TOKEN_RE.test(t);
+    });
+  }
 
-  /**
-   * @typedef {Object} LoveTreeCardModel
-   * @property {string}  surface              - 'browse' | 'my-trees'
-   * @property {string}  treeId               - raw tree id (for data attribute)
-   *
-   * @property {string}  mediaHtml            - Surface-specific media content (escaped by caller)
-   * @property {string}  title                - Card title (plain text — escaped here)
-   * @property {string}  subtitleHtml         - Subtitle/subcopy (safe HTML — only <span> tags allowed)
-   * @property {string}  bodyExtensionHtml    - Surface-specific body content (escaped by caller)
-   *
-   * @property {string}  metricsHtml          - Reaction metrics HTML from tree-card-metrics
-   * @property {string}  visibilityBadgeHtml  - My Trees visibility badge (empty for Browse)
-   * @property {string}  metaExtensionHtml    - Surface-specific meta row content
-   *
-   * @property {string}  primaryHref          - Canonical appreciation URL
-   * @property {string}  primaryLabel         - Action link text
-   *
-   * @property {string}  accessibilityLabel   - Card aria-label
-   * @property {boolean} isFeatured           - Browse featured card
-   * @property {boolean} isSelected           - My Trees selected state
-   * @property {number}  animationDelay       - Animation delay in seconds
-   * @property {string}  extraClasses         - Additional CSS classes for card root
-   * @property {string}  dataAttributes       - Additional data-* attributes string
-   */
-
-  /**
-   * Build the complete card HTML from a typed model.
-   * All string inputs are either escaped by this function or
-   * assumed to be safe (metricsHtml, mediaHtml, visibilityBadgeHtml).
-   *
-   * @param {LoveTreeCardModel} model
-   * @returns {string} Complete card HTML
-   */
-  function buildCardHtml(model) {
-    if (!model || typeof model !== 'object') {
-      throw new Error('[LoveBudTreeCardComposition] buildCardHtml: model object required');
-    }
-
-    var surface = model.surface === 'my-trees' ? 'my-trees' : 'browse';
-    var treeId = String(model.treeId || '');
-    var safeTitle = escapeHtml(model.title || '');
-    var subtitleHtml = String(model.subtitleHtml || '');
-    var metricsHtml = String(model.metricsHtml || '');
-    var mediaHtml = String(model.mediaHtml || '');
-    var bodyExtensionHtml = String(model.bodyExtensionHtml || '');
-    var visibilityBadgeHtml = String(model.visibilityBadgeHtml || '');
-    var metaExtensionHtml = String(model.metaExtensionHtml || '');
-
-    var primaryHref = sanitizeUrl(model.primaryHref);
-    var primaryLabel = escapeHtml(model.primaryLabel || '감상하기');
-    var accessibilityLabel = escapeHtml(model.accessibilityLabel || '');
-    var extraClasses = String(model.extraClasses || '');
-    var dataAttrs = String(model.dataAttributes || '');
-
-    var featuredClass = model.isFeatured ? ' love-tree-card-featured' : '';
-    var selectedClass = model.isSelected ? ' love-tree-card-selected' : '';
-    var surfaceClass = surface === 'my-trees' ? ' love-tree-card-my-trees' : ' love-tree-card-browse';
-
-    var animStyle = '';
-    if (typeof model.animationDelay === 'number' && model.animationDelay > 0) {
-      animStyle = ' style="animation-delay:' + model.animationDelay + 's;"';
-    }
-
-    /* ── Build HTML ── */
-
-    var html = '<div class="love-tree-card' + featuredClass + selectedClass + surfaceClass + ' ' + extraClasses + '"' +
-      (treeId ? ' data-tree-id="' + escapeHtml(treeId) + '"' : '') +
-      (accessibilityLabel ? ' aria-label="' + accessibilityLabel + '"' : '') +
-      dataAttrs +
-      animStyle +
-      '>';
-
-    // Media slot
-    if (mediaHtml) {
-      html += '<div class="love-tree-card-media">' + mediaHtml + '</div>';
-    }
-
-    // Body
-    html += '<div class="love-tree-card-body">';
-
-    // Title row
-    html += '<div class="love-tree-card-title-row">';
-    html += '<div class="love-tree-card-title">' + safeTitle + '</div>';
-    if (visibilityBadgeHtml) {
-      html += '<div class="love-tree-card-visibility">' + visibilityBadgeHtml + '</div>';
-    }
-    html += '</div>';
-
-    // Subtitle
-    if (subtitleHtml) {
-      html += '<div class="love-tree-card-subtitle">' + subtitleHtml + '</div>';
-    }
-
-    // Body extension
-    if (bodyExtensionHtml) {
-      html += '<div class="love-tree-card-body-extension">' + bodyExtensionHtml + '</div>';
-    }
-
-    // Meta / footer row
-    html += '<div class="love-tree-card-meta-row">';
-    html += '<div class="love-tree-card-meta-left">';
-    html += metricsHtml;
-    if (metaExtensionHtml) {
-      html += metaExtensionHtml;
-    }
-    html += '</div>';
-
-    if (primaryHref) {
-      html += '<div class="love-tree-card-meta-right">' +
-        '<a class="love-tree-card-open-link" href="' + escapeHtml(primaryHref) + '" aria-label="' + escapeHtml(primaryLabel) + ' 감상">' +
-        '<span class="material-symbols-outlined" aria-hidden="true">account_tree</span>' +
-        '<span>' + primaryLabel + '</span>' +
-        '</a>' +
-        '</div>';
-    }
-
-    html += '</div>'; // .love-tree-card-meta-row
-    html += '</div>'; // .love-tree-card-body
-    html += '</div>'; // .love-tree-card
-
-    return html;
+  function validateDataset(obj) {
+    if (!obj || typeof obj !== 'object') return {};
+    var result = {};
+    Object.keys(obj).forEach(function (k) {
+      if (ALLOWED_DATASET_KEYS.indexOf(k) !== -1) {
+        result[k] = String(obj[k]);
+      }
+    });
+    return result;
   }
 
   /**
-   * Build a tree card using the shared metrics helper for reaction metrics.
-   * Convenience wrapper that auto-renders metrics from the tree-card-metrics module.
+   * Safely convert a trusted HTML string to a DocumentFragment.
+   * Used only by surface adapters for content produced by their
+   * own sanitised renderers — NOT a generic public API.
+   */
+  function htmlToFragment(html) {
+    if (!html) return null;
+    var t = document.createElement('div');
+    t.innerHTML = String(html);
+    var frag = document.createDocumentFragment();
+    while (t.firstChild) {
+      frag.appendChild(t.firstChild);
+    }
+    return frag;
+  }
+
+  /* ── Helpers for `buildTreeCard` convenience wrapper ── */
+
+  function _escapeForMetrics(s) {
+    return escapeHtml(s);
+  }
+
+  /* ── Card element builder ── */
+
+  /**
+   * Build a love-tree-card DOM element from a typed model.
    *
-   * @param {object}   tree       - Tree data object
-   * @param {object}   options    - Surface options (same as LoveTreeCardModel except metricsHtml)
-   * @param {function} [options.i18n] - i18n function
-   * @returns {string} Card HTML
+   * Model properties:
+   *   surface          - 'browse' | 'my-trees'
+   *   treeId           - plain text (used for data-tree-id)
+   *   title            - plain text (set via textContent)
+   *   subtitleText     - plain text (set via textContent)
+   *   primaryLabel     - plain text
+   *   primaryHref      - URL (passed through sanitizeUrl)
+   *   accessibilityLabel - plain text (aria-label)
+   *   isFeatured       - boolean
+   *   isSelected       - boolean
+   *   animationDelay   - number (seconds)
+   *   classTokens      - string[] (each validated against CLASS_TOKEN_RE)
+   *   dataset          - { key: value } where keys are in ALLOWED_DATASET_KEYS
+   *   mediaNode        - Node|DocumentFragment (surface-specific media)
+   *   bodyExtensionNode - Node|DocumentFragment (surface-specific body content)
+   *   visibilityNode   - Node (My Trees visibility badge)
+   *   metricsNode      - Node (reaction metrics)
+   *   metaExtensionNode - Node|DocumentFragment (surface-specific meta row content)
+   *
+   * @param {object} model
+   * @returns {HTMLElement} Card root element
+   */
+  function buildCardElement(model) {
+    if (!model || typeof model !== 'object') {
+      throw new Error('[LoveBudTreeCardComposition] buildCardElement: model object required');
+    }
+
+    var surface = model.surface === 'my-trees' ? 'my-trees' : 'browse';
+
+    /* ── Root element ── */
+
+    var root = document.createElement('div');
+
+    // Classes: both legacy and shared
+    var classes = ['tree-card', 'love-tree-card'];
+    classes.push('love-tree-card-' + surface);
+    if (surface === 'my-trees') {
+      // My Trees uses .tree-card as the surface-specific root
+    } else {
+      classes.push('tree-card-browse');
+    }
+    if (model.isFeatured) {
+      classes.push('love-tree-card-featured', 'tree-card-featured');
+    }
+    if (model.isSelected) {
+      classes.push('love-tree-card-selected', 'is-selected', 'is-active');
+    }
+    // Surface-specific extra tokens from adapter
+    var extraTokens = validateClassTokens(model.classTokens);
+    extraTokens.forEach(function (t) { classes.push(t); });
+    root.className = classes.join(' ');
+
+    // Dataset
+    if (model.treeId) {
+      root.dataset.treeId = String(model.treeId);
+    }
+    var safeDataset = validateDataset(model.dataset);
+    Object.keys(safeDataset).forEach(function (k) {
+      root.dataset[k] = safeDataset[k];
+    });
+
+    // Accessibility
+    if (model.accessibilityLabel) {
+      root.setAttribute('aria-label', escapeHtml(model.accessibilityLabel));
+    }
+
+    // Animation delay
+    if (typeof model.animationDelay === 'number' && model.animationDelay > 0) {
+      root.style.animationDelay = model.animationDelay + 's';
+    }
+
+    /* ── Media slot ── */
+
+    if (model.mediaNode) {
+      var mediaWrap = document.createElement('div');
+      mediaWrap.className = 'tree-card-media love-tree-card-media';
+      mediaWrap.appendChild(model.mediaNode);
+      root.appendChild(mediaWrap);
+    }
+
+    /* ── Body ── */
+
+    var body = document.createElement('div');
+    body.className = 'tree-card-body love-tree-card-body';
+
+    // Title row
+    var titleRow = document.createElement('div');
+    titleRow.className = 'tree-card-title-row love-tree-card-title-row';
+    var titleEl = document.createElement('div');
+    titleEl.className = 'tree-title love-tree-card-title';
+    titleEl.textContent = model.title || '';
+    titleRow.appendChild(titleEl);
+
+    // Visibility node (My Trees)
+    if (model.visibilityNode) {
+      var visWrap = document.createElement('div');
+      visWrap.className = 'love-tree-card-visibility';
+      visWrap.appendChild(model.visibilityNode);
+      titleRow.appendChild(visWrap);
+    }
+    body.appendChild(titleRow);
+
+    // Subtitle (subtitleNode takes priority, otherwise subtitleText as plain text)
+    if (model.subtitleNode) {
+      var subtitleEl = document.createElement('div');
+      subtitleEl.className = 'tree-subtitle love-tree-card-subtitle';
+      subtitleEl.appendChild(model.subtitleNode);
+      body.appendChild(subtitleEl);
+    } else if (model.subtitleText) {
+      var subtitleEl = document.createElement('div');
+      subtitleEl.className = 'tree-subtitle love-tree-card-subtitle';
+      subtitleEl.textContent = model.subtitleText;
+      body.appendChild(subtitleEl);
+    }
+
+    // Body extension
+    if (model.bodyExtensionNode) {
+      var extWrap = document.createElement('div');
+      extWrap.className = 'love-tree-card-body-extension tree-card-body-extension';
+      extWrap.appendChild(model.bodyExtensionNode);
+      body.appendChild(extWrap);
+    }
+
+    /* ── Meta / footer row ── */
+
+    var metaRow = document.createElement('div');
+    metaRow.className = 'tree-meta-row love-tree-card-meta-row';
+
+    var metaLeft = document.createElement('div');
+    metaLeft.className = 'tree-meta-left love-tree-card-meta-left';
+
+    if (model.metricsNode) {
+      metaLeft.appendChild(model.metricsNode);
+    }
+    if (model.metaExtensionNode) {
+      metaLeft.appendChild(model.metaExtensionNode);
+    }
+    metaRow.appendChild(metaLeft);
+
+    // Primary action
+    if (model.primaryHref) {
+      var metaRight = document.createElement('div');
+      metaRight.className = 'tree-meta-right love-tree-card-meta-right';
+
+      var link = document.createElement('a');
+      var safeHref = sanitizeUrl(model.primaryHref);
+      if (safeHref) {
+        link.setAttribute('href', safeHref);
+      }
+      link.className = 'tree-card-open-link love-tree-card-open-link';
+      var actionLabel = escapeHtml(model.primaryLabel || '감상하기');
+      link.setAttribute('aria-label', actionLabel + ' 감상');
+
+      var icon = document.createElement('span');
+      icon.className = 'material-symbols-outlined';
+      icon.setAttribute('aria-hidden', 'true');
+      icon.textContent = 'account_tree';
+      link.appendChild(icon);
+
+      var labelSpan = document.createElement('span');
+      labelSpan.textContent = actionLabel;
+      link.appendChild(labelSpan);
+
+      metaRight.appendChild(link);
+      metaRow.appendChild(metaRight);
+    }
+
+    body.appendChild(metaRow);
+    root.appendChild(body);
+
+    return root;
+  }
+
+  /* ── Convenience wrapper ── */
+
+  /**
+   * Convenience wrapper: uses LoveBudTreeCardMetrics to auto-render
+   * reaction metrics from a tree data object.  Returns a DOM element.
+   *
+   * @param {object} tree   - Tree data object
+   * @param {object} options - Options (same as buildCardElement model,
+   *                           minus metricsNode which is auto-resolved)
+   * @returns {HTMLElement|null} Card root element, or null for invalid tree
    */
   function buildTreeCard(tree, options) {
-    if (!tree || typeof tree !== 'object') return '';
+    if (!tree || typeof tree !== 'object') return null;
     options = options || {};
 
-    // Resolve metrics via shared helper
-    var metricsHtml = '';
+    // Require metrics (fail-closed)
+    var Metrics = checkMetricsLoaded();
+
+    // Auto-render metrics via shared helper (trusted source)
+    var metricsNode = null;
     try {
-      var Metrics = window.LoveBudTreeCardMetrics;
-      if (Metrics && typeof Metrics.renderTreeReactionMetrics === 'function') {
-        var i18n = typeof options.i18n === 'function' ? options.i18n : null;
-        metricsHtml = Metrics.renderTreeReactionMetrics(tree, escapeHtml, i18n);
-      } else {
-        // Fallback: extract metrics directly
-        var getFirstFiniteCount = Metrics && Metrics.getFirstFiniteCount;
-        if (!getFirstFiniteCount) {
-          getFirstFiniteCount = function (tree, keys) {
-            if (!tree) return null;
-            for (var i = 0; i < keys.length; i++) {
-              var key = keys[i];
-              if (!Object.prototype.hasOwnProperty.call(tree, key)) continue;
-              var raw = tree[key];
-              if (raw === undefined || raw === null || raw === '') continue;
-              if (typeof raw !== 'number' && typeof raw !== 'string') continue;
-              var val = Number(raw);
-              if (Number.isFinite(val) && val >= 0) return val;
-            }
-            return null;
-          };
-        }
-        var formatCompact = Metrics && Metrics.formatCompactCount;
-        if (!formatCompact) {
-          formatCompact = function (v) {
-            var c = Number(v);
-            if (!Number.isFinite(c) || c < 0) return '';
-            if (c === 0) return '0';
-            if (c >= 1000000) return Math.floor(c / 100000) / 10 + 'M';
-            if (c >= 1000) return Math.floor(c / 100) / 10 + 'K';
-            return String(c);
-          };
-        }
-
-        var icons = ['visibility', 'favorite', 'chat_bubble', 'share'];
-        var labels = ['조회수', '좋아요', '댓글', '공유'];
-        var keySets = [
-          ['viewCount', 'viewsCount', 'views', 'view_count', 'views_count'],
-          ['likeCount', 'likesCount', 'likes', 'reactionCount', 'reaction_count'],
-          ['commentCount', 'commentsCount', 'comments', 'comment_count'],
-          ['shareCount', 'sharesCount', 'shares', 'share_count']
-        ];
-
-        var items = [];
-        for (var i = 0; i < keySets.length; i++) {
-          var val = getFirstFiniteCount(tree, keySets[i]);
-          if (val !== null) {
-            items.push({ icon: icons[i], label: labels[i], value: val });
-          }
-        }
-
-        if (items.length > 0) {
-          metricsHtml = '<div class="tree-card-reaction-metrics" aria-label="트리 반응 요약">';
-          for (var j = 0; j < items.length; j++) {
-            var item = items[j];
-            var formatted = formatCompact(item.value);
-            if (formatted !== '') {
-              metricsHtml += '<span class="tree-card-reaction-metric" title="' + escapeHtml(item.label + ' ' + formatted) + '">' +
-                '<span class="material-symbols-outlined" aria-hidden="true">' + item.icon + '</span>' +
-                '<span>' + escapeHtml(formatted) + '</span>' +
-                '</span>';
-            }
-          }
-          metricsHtml += '</div>';
-        }
+      var metricsHtml = Metrics.renderTreeReactionMetrics(
+        tree,
+        _escapeForMetrics,
+        typeof options.i18n === 'function' ? options.i18n : null
+      );
+      if (metricsHtml) {
+        var frag = htmlToFragment(metricsHtml);
+        metricsNode = frag;
       }
-    } catch (e) {
-      metricsHtml = '';
+    } catch (metricsErr) {
+      // Propagate errors from the metrics module — do not silently swallow
+      throw new Error(
+        '[LoveBudTreeCardComposition] Metrics rendering failed: ' +
+        (metricsErr && metricsErr.message ? metricsErr.message : String(metricsErr))
+      );
     }
 
     var model = {
       surface: options.surface || 'browse',
       treeId: tree.id || tree.treeId || tree.tree_id || '',
-      mediaHtml: options.mediaHtml || '',
       title: options.title || tree.title || '',
-      subtitleHtml: options.subtitleHtml || '',
-      bodyExtensionHtml: options.bodyExtensionHtml || '',
-      metricsHtml: metricsHtml,
-      visibilityBadgeHtml: options.visibilityBadgeHtml || '',
-      metaExtensionHtml: options.metaExtensionHtml || '',
-      primaryHref: options.primaryHref || '',
+      subtitleText: options.subtitleText || '',
+      subtitleNode: options.subtitleNode || null,
       primaryLabel: options.primaryLabel || '감상하기',
+      primaryHref: options.primaryHref || '',
       accessibilityLabel: options.accessibilityLabel || '',
       isFeatured: !!options.isFeatured,
       isSelected: !!options.isSelected,
       animationDelay: options.index != null ? options.index * 0.05 : 0,
-      extraClasses: options.extraClasses || '',
-      dataAttributes: options.dataAttributes || ''
+      classTokens: Array.isArray(options.classTokens) ? options.classTokens : [],
+      dataset: options.dataset || {},
+      mediaNode: options.mediaNode || null,
+      bodyExtensionNode: options.bodyExtensionNode || null,
+      visibilityNode: options.visibilityNode || null,
+      metricsNode: metricsNode,
+      metaExtensionNode: options.metaExtensionNode || null
     };
 
-    return buildCardHtml(model);
+    return buildCardElement(model);
   }
 
   /* ── Expose ── */
 
   var api = {
-    buildCardHtml: buildCardHtml,
+    buildCardElement: buildCardElement,
     buildTreeCard: buildTreeCard,
+    htmlToFragment: htmlToFragment,
     escapeHtml: escapeHtml,
     sanitizeUrl: sanitizeUrl
   };

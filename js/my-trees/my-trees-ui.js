@@ -430,6 +430,23 @@
     return trees || [];
   }
 
+  /**
+   * Adapter-owned HTML-to-fragment conversion.
+   * Used only for content produced by My Trees' own sanitised renderers
+   * (buildTreeThumbVisual, buildVisibilityBadgeHtml, getTreeCardMeta).
+   * NOT a generic public API.
+   */
+  function htmlToFragment(html) {
+    if (!html) return null;
+    var t = document.createElement('div');
+    t.innerHTML = String(html);
+    var frag = document.createDocumentFragment();
+    while (t.firstChild) {
+      frag.appendChild(t.firstChild);
+    }
+    return frag;
+  }
+
   function buildTreeCard(tree, options) {
     var i18n = (options && options.i18n) || window.t || function (k) { return k; };
     var normalizeTree = options && options.normalizeTree;
@@ -467,16 +484,50 @@
     var resolved = validateAndResolveEntryTargets(normalizedTree);
     var openHref = resolved.primary;
 
-    var card = document.createElement('div');
-    card.className = 'tree-card' + selectedClass;
+    // #3578 Phase 2 CTO: use shared composition to get the card root element
+    var Composer = requireComposition();
+    var primaryLabel = getI18nText(i18n, 'myTrees.entry_appreciation', '감상하기');
+    var accessibilityLabel = getI18nText(i18n, 'myTrees.card_accessibility', '') || (title + ' 러브트리');
+
+    // Convert adapter-owned HTML to trusted DocumentFragments
+    var thumbNode = htmlToFragment(buildTreeThumbVisual(normalizedTree, i18n));
+    var subtitleNode = htmlToFragment(cardMeta.mood || '');
+    var visibilityNode = htmlToFragment(cardMeta.visibilityBadgeHtml || '');
+
+    // Build the dataset for allowlisted keys
+    var ds = {};
+    /* treeId is set by composition via treeId param */
+    if (normalizedTree.visibility) {
+      ds.visibility = normalizedTree.visibility;
+    }
+    if (selectedClass) {
+      ds.selectedTreeCard = 'true';
+    }
+
+    // Build card via shared composition — returns the card DOM element directly
+    var card = Composer.buildTreeCard(normalizedTree, {
+      surface: 'my-trees',
+      mediaNode: thumbNode,
+      title: title,
+      subtitleNode: subtitleNode,
+      visibilityNode: visibilityNode,
+      primaryHref: openHref,
+      primaryLabel: primaryLabel,
+      accessibilityLabel: accessibilityLabel,
+      isSelected: !!selectedClass,
+      dataset: ds,
+      i18n: i18n
+    });
+
+    if (!card) {
+      throw new Error('[my-trees-ui] buildTreeCard: shared composition returned null');
+    }
+
+    // Attach surface-specific interaction to the same root element
+    // (no wrapper — the composition element IS the card root)
     card.style.cursor = 'pointer';
     card.setAttribute('role', 'button');
     card.setAttribute('tabindex', '0');
-    card.dataset.treeId = String(normalizedTree.id || '');
-    card.dataset.visibility = normalizedTree.visibility;
-    if (selectedClass) {
-      card.setAttribute('data-selected-tree-card', 'true');
-    }
 
     var handleCardSelect = function () {
       if (typeof onSelect === 'function') {
@@ -509,38 +560,6 @@
         handleCardSelect();
       }
     });
-
-    // #3578 Phase 2: use shared composition for card HTML skeleton
-    var Composer = requireComposition();
-    var primaryLabel = getI18nText(i18n, 'myTrees.entry_appreciation', '감상하기');
-
-    // Build surface-specific content
-    var thumbHtml = buildTreeThumbVisual(normalizedTree, i18n);
-    var subtitleHtml = cardMeta.mood || '';
-    var accessibilityLabel = getI18nText(i18n, 'myTrees.card_accessibility', '') || (title + ' 러브트리');
-    var dataAttributes = ' role="button" tabindex="0" data-visibility="' + escapeHtml(normalizedTree.visibility) + '"';
-    if (selectedClass) {
-      dataAttributes += ' data-selected-tree-card="true"';
-    }
-
-    // Use shared composition for HTML skeleton
-    card.innerHTML = Composer.buildTreeCard(normalizedTree, {
-      surface: 'my-trees',
-      mediaHtml: thumbHtml,
-      title: title,
-      subtitleHtml: subtitleHtml,
-      visibilityBadgeHtml: cardMeta.visibilityBadgeHtml,
-      primaryHref: openHref,
-      primaryLabel: primaryLabel,
-      accessibilityLabel: accessibilityLabel,
-      isSelected: !!selectedClass,
-      extraClasses: '',
-      dataAttributes: dataAttributes,
-      i18n: i18n
-    });
-
-    // Re-add CSS classes that the outer card wrapper needs
-    card.className = 'tree-card' + selectedClass;
 
     var openLink = card.querySelector('.tree-card-open-link');
     if (openLink) {
