@@ -13,6 +13,13 @@
 
     var _cardFallback = window.LoveBudSearchCardFallback || null;
 
+    // #3578 Phase 2: optionally use shared composition when loaded
+    function requireComposition() {
+        var c = window.LoveBudTreeCardComposition;
+        if (c && typeof c.buildTreeCard === 'function') return c;
+        return null;
+    }
+
     function escapeHtml(value) {
         var sec = window.LoveBudSecurity;
         if (sec) return sec.escapeHtml(value);
@@ -246,17 +253,14 @@
         const titleHelper = getSearchTitleHelper();
         const memoryCount = getDisplayMemoryCount(tree.memoryCount);
         const displayTheme = getDisplayThemeLabel(tree.theme);
-        const safeTreeId = escapeHtml(tree.id);
 
         const displayTitleRaw = titleHelper?.getBrowseDisplayTitle
             ? titleHelper.getBrowseDisplayTitle(tree)
             : (String(tree.title || '').trim() || '러브트리');
         const primaryTag = titleHelper?.getPrimaryBrowseTag ? titleHelper.getPrimaryBrowseTag(tree) : '';
 
-        const safeTitle = escapeHtml(displayTitleRaw);
         const viewerHref = getTreeViewerHref(tree);
         const cardSelectLabel = `${displayTitleRaw} 러브트리를 감상 허브에서 미리보기`;
-        const viewerLabel = `${displayTitleRaw} 러브트리 열기`;
         const hasDerivedDescription = Boolean(displayTheme || primaryTag);
         const softMoodLine = displayTheme
             ? `${displayTheme}와 함께 시작된 마음`
@@ -265,40 +269,64 @@
                  : memoryCount > 0
                      ? '첫 순간에서 이어진 감정을 천천히 따라가 보세요.'
                      : '이제 막 열리기 시작한 공개 러브트리예요.';
-         const subtitleClass = hasDerivedDescription
+
+        // Renders tree-public-metadata, data-public-tree-metadata block, and tree-public-tags via helper
+        const metadataHelper = window.LoveBudSearchPublicMetadataHelper;
+        const metadataHtml = (metadataHelper && typeof metadataHelper.renderCardMetadata === 'function')
+            ? metadataHelper.renderCardMetadata(tree)
+            : '';
+
+        // #3578 Phase 2: route through shared composition
+        var comp = requireComposition();
+        if (comp) {
+            return comp.buildTreeCard(tree, {
+                surface: 'browse',
+                mediaHtml: renderRepresentativeMedia(tree, firstMem, displayTitleRaw),
+                title: displayTitleRaw,
+                subtitleHtml: '<p class="' + (hasDerivedDescription ? 'love-tree-card-subtitle-derived' : 'love-tree-card-subtitle-fallback') + '">' + escapeHtml(softMoodLine) + '</p>',
+                bodyExtensionHtml: metadataHtml,
+                primaryHref: viewerHref,
+                primaryLabel: '트리 열기',
+                accessibilityLabel: cardSelectLabel,
+                isFeatured: index === 0,
+                index: index,
+                extraClasses: '',
+                dataAttributes: ' id="tree-card-' + escapeHtml(tree.id) + '"'
+            });
+        }
+
+        // Legacy fallback (when shared composition is not loaded)
+        const safeTreeId = escapeHtml(tree.id);
+        const safeTitle = escapeHtml(displayTitleRaw);
+        const viewerLabel = `${displayTitleRaw} 러브트리 열기`;
+        const subtitleClass = hasDerivedDescription
              ? 'tree-subtitle tree-subtitle-derived'
              : 'tree-subtitle tree-subtitle-fallback';
 
-         // Renders tree-public-metadata, data-public-tree-metadata block, and tree-public-tags via helper
-         const metadataHelper = window.LoveBudSearchPublicMetadataHelper;
-         const metadataHtml = (metadataHelper && typeof metadataHelper.renderCardMetadata === 'function')
-             ? metadataHelper.renderCardMetadata(tree)
-             : '';
-
-         return `
-             <div class="tree-card ${index === 0 ? 'tree-card-featured' : ''}" id="tree-card-${safeTreeId}" data-tree-id="${safeTreeId}" aria-label="${escapeHtml(cardSelectLabel)}" style="animation-delay: ${index * 0.05}s;">
-                 ${renderRepresentativeMedia(tree, firstMem, displayTitleRaw)}
-                 <div class="tree-card-body">
-                     <div class="tree-title">${safeTitle}</div>
-                     <p class="${subtitleClass}">${escapeHtml(softMoodLine)}</p>
-                     ${metadataHtml}
-                     <div class="tree-meta-row">
-                         <div class="tree-meta-left">
-                             ${renderTreeReactionMetrics(tree)}
-                         </div>
-                         <div class="tree-meta-right">
-                             ${viewerHref ? `
-                                 <a href="${escapeHtml(viewerHref)}" class="tree-card-open-link" aria-label="${escapeHtml(viewerLabel)}">
-                                     <span class="material-symbols-outlined" aria-hidden="true">account_tree</span>
-                                     트리 열기
-                                 </a>
-                             ` : ''}
-                         </div>
-                     </div>
-                 </div>
-             </div>
-         `;
-     }
+        return `
+            <div class="tree-card ${index === 0 ? 'tree-card-featured' : ''}" id="tree-card-${safeTreeId}" data-tree-id="${safeTreeId}" aria-label="${escapeHtml(cardSelectLabel)}" style="animation-delay: ${index * 0.05}s;">
+                ${renderRepresentativeMedia(tree, firstMem, displayTitleRaw)}
+                <div class="tree-card-body">
+                    <div class="tree-title">${safeTitle}</div>
+                    <p class="${subtitleClass}">${escapeHtml(softMoodLine)}</p>
+                    ${metadataHtml}
+                    <div class="tree-meta-row">
+                        <div class="tree-meta-left">
+                            ${renderTreeReactionMetrics(tree)}
+                        </div>
+                        <div class="tree-meta-right">
+                            ${viewerHref ? `
+                                <a href="${escapeHtml(viewerHref)}" class="tree-card-open-link" aria-label="${escapeHtml(viewerLabel)}">
+                                    <span class="material-symbols-outlined" aria-hidden="true">account_tree</span>
+                                    트리 열기
+                                </a>
+                            ` : ''}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
 
     function renderNoTreesState() {
         const locale = window.i18n?.currentLang || window.getCurrentLang?.() || document.documentElement?.lang || 'ko';

@@ -326,12 +326,16 @@ test('#3578 Phase 1 resolver exposes shareTarget without a third interaction mod
 test('#3578 My Trees card renders only 감상하기 (Phase 1: edit removed)', () => {
   var ctx = createMinimalDomCardContext();
   vm.createContext(ctx);
-  vm.runInContext(read('js/my-trees/my-trees-entry-target-resolver.js'), ctx);
+  // #3578 Phase 2: load shared composition as dependency
   vm.runInContext(read('js/shared/tree-card-metrics.js'), ctx);
+  vm.runInContext(read('js/shared/tree-card-composition.js'), ctx);
+  vm.runInContext(read('js/my-trees/my-trees-entry-target-resolver.js'), ctx);
   vm.runInContext(read('js/my-trees/my-trees-ui.js'), ctx);
   var UI = ctx.window.LoveBudMyTreesUI;
   var card = UI.buildTreeCard({ id: 't1', visibility: 'public', title: 'T' }, { i18n: function () { return ''; } });
-  assert.ok(card.querySelector('.tree-card-open-link'));
+  // #3578 Phase 2: shared composition uses love-tree-card-open-link
+  assert.ok(card.querySelector('.love-tree-card-open-link') || card.querySelector('.tree-card-open-link'),
+    'open link must exist in card');
   assert.equal(card.querySelector('.tree-card-edit-link'), null, 'Phase 1: tree-card-edit-link removed');
   assert.equal(card.querySelector('.tree-card-public-view-link'), null);
   assert.ok(card.innerHTML.indexOf('공개 화면 보기') === -1);

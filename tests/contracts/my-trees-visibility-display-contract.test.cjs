@@ -67,16 +67,17 @@ test('public badge uses public icon, private badge uses lock icon', () => {
     'visibilityIcon variable must be used in badge markup');
 });
 
-test('badge inserted inside .tree-card-title-row, not after subcopy', () => {
+test('badge inserted via visibilityBadgeHtml slot in shared composition', () => {
   const uiJs = read('js/my-trees/my-trees-ui.js');
-  assert.ok(uiJs.includes('cardMeta.visibilityBadgeHtml'), 'visibilityBadgeHtml must be used');
-  const titleIdx = uiJs.indexOf("'<div class=\"tree-card-title\">'");
-  const badgeIdx = uiJs.indexOf('cardMeta.visibilityBadgeHtml');
-  const subcopyIdx = uiJs.indexOf("'<div class=\"tree-card-subcopy\">'");
-  assert.ok(titleIdx < badgeIdx && badgeIdx < subcopyIdx,
-    'visibilityBadgeHtml must appear in title-row after title, before subcopy');
+  const compJs = read('js/shared/tree-card-composition.js');
+  assert.ok(uiJs.includes('cardMeta.visibilityBadgeHtml'), 'visibilityBadgeHtml must be provided');
+  assert.ok(uiJs.includes('visibilityBadgeHtml: cardMeta.visibilityBadgeHtml'), 'visibilityBadgeHtml slot must be wired');
+  assert.ok(compJs.includes('visibilityBadgeHtml'), 'visibilityBadgeHtml slot must exist in shared composition');
+  // Verify visibility badge is inside title row in shared composition output
+  assert.ok(compJs.indexOf('love-tree-card-visibility') > compJs.indexOf('love-tree-card-title-row'),
+    'visibility badge must be inside title-row');
   assert.ok(!uiJs.includes('cardMeta.privateBadgeHtml'),
-    'privateBadgeHtml must be removed from card.innerHTML');
+    'privateBadgeHtml must not be in my-trees-ui.js');
 });
 
 test('gate CSS does not hide .tree-card-visibility', () => {

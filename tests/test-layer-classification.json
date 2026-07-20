@@ -4409,6 +4409,12 @@
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
       "capabilities": []
+    },
+    {
+      "path": "tests/contracts/tree-card-composition-3578-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes the shared tree-card-composition.js in a local vm with fake DOM, validates Browse and My Trees surface adapters call the shared helper, common slot structure, three-state metric semantics, surface-specific differences (visibility badge, public metadata, no edit), XSS safety, and fail-closed on missing load order. No real browser/network/DB/production resource used.",
+      "capabilities": []
     }
   ],
   "supplemental": [
@@ -4547,6 +4553,12 @@
         "child_process",
         "filesystem"
       ]
+    },
+    {
+      "path": "tests/contracts/tree-card-composition-3578-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes the shared tree-card-composition.js in a local vm with fake DOM, validates Browse and My Trees surface adapters call the shared helper, common slot structure, three-state metric semantics, surface-specific differences (visibility badge, public metadata, no edit), XSS safety, and fail-closed on missing load order. No real browser/network/DB/production resource used.",
+      "capabilities": []
     },
     {
       "path": "tests/db-engine/trees-schema-foothold-postgres.test.cjs",

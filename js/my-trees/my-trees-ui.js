@@ -11,6 +11,14 @@
 
   var _manageSummary = window.LoveBudMyTreesManageSummary || null;
 
+  // #3578 Phase 2: require shared composition (fail-closed when missing)
+  function requireComposition() {
+    var c = window.LoveBudTreeCardComposition;
+    if (c && typeof c.buildTreeCard === 'function') return c;
+    throw new Error('[my-trees-ui] LoveBudTreeCardComposition not loaded. ' +
+      'tree-card-composition.js must be loaded before my-trees-ui.js.');
+  }
+
   // #3578 Phase 1: LoveBudTreeCardMetrics is a required dependency of buildTreeCard.
   // Check lazily at card-build time (not IIFE init) so VM-based tests
   // that only exercise hub/entry-target code without building cards can run.
@@ -502,76 +510,37 @@
       }
     });
 
-    // i18n-safe labels via getI18nText helper (#3578: appreciation only, edit removed)
-    var openLabel = getI18nText(i18n, 'myTrees.entry_appreciation', '감상하기');
-    var viewCountLabel = getI18nText(i18n, 'myTrees.view_count', '조회수');
-    var likeCountLabel = getI18nText(i18n, 'myTrees.like_count', '좋아요');
-    var commentCountLabel = getI18nText(i18n, 'myTrees.comment_count', '댓글');
-    var shareCountLabel = getI18nText(i18n, 'myTrees.share_count', '공유');
+    // #3578 Phase 2: use shared composition for card HTML skeleton
+    var Composer = requireComposition();
+    var primaryLabel = getI18nText(i18n, 'myTrees.entry_appreciation', '감상하기');
 
-    // Issue #3578: three-state metrics — null/undefined/absent = omit (never coerce to 0)
-    var Metrics = requireMetrics();
-    var getFirstFiniteCount = Metrics.getFirstFiniteCount ? Metrics.getFirstFiniteCount : function(tree, keys) {
-      if (!tree) return null;
-      for (var i = 0; i < keys.length; i++) {
-        var raw = tree[keys[i]];
-        if (raw === undefined || raw === null || raw === '') continue;
-        var val = Number(raw);
-        if (Number.isFinite(val) && val >= 0) return val;
-      }
-      return null;
-    };
-    var viewCount = getFirstFiniteCount(tree, ['viewCount', 'viewsCount', 'views', 'view_count', 'views_count', 'visitorCount', 'visitorsCount', 'visitCount', 'visitsCount', 'visits', 'openCount', 'opensCount', 'open_count']);
-    var likeCount = getFirstFiniteCount(tree, ['likeCount', 'likesCount', 'likes', 'reactionCount', 'reaction_count']);
-    var commentCount = getFirstFiniteCount(tree, ['commentCount', 'commentsCount', 'comments', 'comment_count']);
-    var shareCount = getFirstFiniteCount(tree, ['shareCount', 'sharesCount', 'shares', 'share_count']);
+    // Build surface-specific content
+    var thumbHtml = buildTreeThumbVisual(normalizedTree, i18n);
+    var subtitleHtml = cardMeta.mood || '';
+    var accessibilityLabel = getI18nText(i18n, 'myTrees.card_accessibility', '') || (title + ' 러브트리');
+    var dataAttributes = ' role="button" tabindex="0" data-visibility="' + escapeHtml(normalizedTree.visibility) + '"';
+    if (selectedClass) {
+      dataAttributes += ' data-selected-tree-card="true"';
+    }
 
-    // Issue #3578 Phase 1: three-state metrics — only render when authoritative value exists
-    var metricsHtml = '<div class="tree-card-reaction-metrics">';
-    if (viewCount !== null) {
-      metricsHtml += '<span class="tree-card-reaction-metric" title="' + escapeHtml(viewCountLabel + ' ' + formatCompactCount(viewCount)) + '">' +
-        '<span class="material-symbols-outlined" aria-hidden="true">visibility</span>' +
-        '<span>' + formatCompactCount(viewCount) + '</span>' +
-        '</span>';
-    }
-    if (likeCount !== null) {
-      metricsHtml += '<span class="tree-card-reaction-metric" title="' + escapeHtml(likeCountLabel + ' ' + formatCompactCount(likeCount)) + '">' +
-        '<span class="material-symbols-outlined" aria-hidden="true">favorite</span>' +
-        '<span>' + formatCompactCount(likeCount) + '</span>' +
-        '</span>';
-    }
-    if (commentCount !== null) {
-      metricsHtml += '<span class="tree-card-reaction-metric" title="' + escapeHtml(commentCountLabel + ' ' + formatCompactCount(commentCount)) + '">' +
-        '<span class="material-symbols-outlined" aria-hidden="true">chat_bubble</span>' +
-        '<span>' + formatCompactCount(commentCount) + '</span>' +
-        '</span>';
-    }
-    if (shareCount !== null) {
-      metricsHtml += '<span class="tree-card-reaction-metric" title="' + escapeHtml(shareCountLabel + ' ' + formatCompactCount(shareCount)) + '">' +
-        '<span class="material-symbols-outlined" aria-hidden="true">share</span>' +
-        '<span>' + formatCompactCount(shareCount) + '</span>' +
-        '</span>';
-    }
-    metricsHtml += '</div>';
+    // Use shared composition for HTML skeleton
+    card.innerHTML = Composer.buildTreeCard(normalizedTree, {
+      surface: 'my-trees',
+      mediaHtml: thumbHtml,
+      title: title,
+      subtitleHtml: subtitleHtml,
+      visibilityBadgeHtml: cardMeta.visibilityBadgeHtml,
+      primaryHref: openHref,
+      primaryLabel: primaryLabel,
+      accessibilityLabel: accessibilityLabel,
+      isSelected: !!selectedClass,
+      extraClasses: '',
+      dataAttributes: dataAttributes,
+      i18n: i18n
+    });
 
-    card.innerHTML = [
-      buildTreeThumbVisual(normalizedTree, i18n),
-      '<div class="tree-card-body">',
-        '<div class="tree-card-title-row">',
-          '<div class="tree-card-title">' + escapeHtml(title) + '</div>',
-          cardMeta.visibilityBadgeHtml,
-        '</div>',
-        '<div class="tree-card-subcopy">' + cardMeta.mood + '</div>',
-        '<div class="tree-meta-row">',
-          '<div class="tree-meta-left">',
-            metricsHtml,
-          '</div>',
-          '<div class="tree-meta-right">',
-            (openHref ? '<a class="tree-card-open-link" href="' + escapeHtml(openHref) + '" target="_self"><span class="material-symbols-outlined" aria-hidden="true">account_tree</span><span data-i18n="myTrees.entry_appreciation">' + escapeHtml(openLabel) + '</span></a>' : ''),
-          '</div>',
-        '</div>',
-      '</div>'
-    ].join('');
+    // Re-add CSS classes that the outer card wrapper needs
+    card.className = 'tree-card' + selectedClass;
 
     var openLink = card.querySelector('.tree-card-open-link');
     if (openLink) {

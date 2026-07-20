@@ -1,0 +1,233 @@
+/**
+ * LoveBud — Shared LoveTree Card Composition Styles
+ * Issue #3578 Phase 2
+ *
+ * Shared CSS for the common love-tree-card structure used by
+ * both Browse and My Trees card surfaces.
+ *
+ * Load order: after global.css, before surface-specific CSS.
+ *
+ * Surface-specific overrides live in surface CSS files
+ * (css/search/search-tree-card/, css/my-trees/my-trees-cards.css).
+ */
+
+/* ── Card root ── */
+
+.love-tree-card {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  background: var(--lovetree-card-surface-browse);
+  border-radius: var(--lovetree-card-radius-lg);
+  box-shadow:
+    0 20px 48px rgba(75, 64, 57, 0.1),
+    0 0 0 1px rgba(255, 255, 255, 0.62) inset;
+  border: 1px solid var(--lovetree-soft-surface-border);
+  overflow: hidden;
+  cursor: pointer;
+  color: inherit;
+  min-width: 0;
+  text-decoration: none;
+  transition: all 0.3s cubic-bezier(0.165, 0.84, 0.44, 1);
+}
+
+.love-tree-card:hover {
+  transform: translateY(-3px);
+  border-color: var(--lovetree-card-border-hover);
+  box-shadow:
+    var(--lovetree-card-shadow-hover),
+    0 0 0 1px rgba(255, 255, 255, 0.82) inset;
+}
+
+.love-tree-card:focus-visible {
+  outline: 2px solid rgba(122, 139, 110, 0.48);
+  outline-offset: 4px;
+  border-color: rgba(122, 139, 110, 0.24);
+}
+
+/* Accent bars — parity surface accent via subclass */
+.love-tree-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, rgba(200, 116, 128, 0.6), rgba(240, 193, 198, 0.6));
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.love-tree-card::after {
+  content: '';
+  position: absolute;
+  top: 26px;
+  right: 0;
+  bottom: 26px;
+  width: 4px;
+  border-radius: 999px 0 0 999px;
+  background: linear-gradient(180deg, rgba(144, 73, 81, 0.80), rgba(122, 139, 110, 0.68));
+  box-shadow:
+    -10px 0 22px rgba(144, 73, 81, 0.12),
+    -4px 0 12px rgba(122, 139, 110, 0.10);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(4px);
+  transition: opacity 0.24s ease, transform 0.24s ease;
+  z-index: 2;
+}
+
+.love-tree-card:hover::before,
+.love-tree-card-selected::before {
+  opacity: 1;
+}
+
+.love-tree-card-selected::after {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* ── Media slot ── */
+
+.love-tree-card-media {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+/* ── Body ── */
+
+.love-tree-card-body {
+  display: flex;
+  flex-direction: column;
+  padding: 4px 6px 6px;
+  flex: 1;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* ── Title row ── */
+
+.love-tree-card-title-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  min-height: 0;
+}
+
+.love-tree-card-title {
+  flex: 1;
+  min-width: 0;
+  font-size: 1.36rem;
+  font-weight: 900;
+  line-height: 1.18;
+  letter-spacing: 0;
+  display: -webkit-box !important;
+  -webkit-line-clamp: 2 !important;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  word-break: break-word;
+  hyphens: auto;
+  flex-shrink: 0;
+}
+
+/* ── Visibility badge ── */
+
+.love-tree-card-visibility {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+}
+
+/* ── Subtitle ── */
+
+.love-tree-card-subtitle {
+  font-size: 0.9rem;
+  color: var(--on-surface-variant);
+  line-height: 1.52;
+  margin: 0;
+  display: -webkit-box !important;
+  -webkit-line-clamp: 2 !important;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  word-break: break-word;
+  hyphens: auto;
+  min-height: 0;
+  flex-shrink: 0;
+}
+
+/* ── Body extension ── */
+
+.love-tree-card-body-extension {
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* ── Meta / footer row ── */
+
+.love-tree-card-meta-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: auto;
+  padding-top: 4px;
+  gap: 8px;
+  min-height: 0;
+}
+
+.love-tree-card-meta-left {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.love-tree-card-meta-right {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+}
+
+/* ── Open link ── */
+
+.love-tree-card-open-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--primary);
+  text-decoration: none;
+  padding: 6px 10px;
+  border-radius: var(--radius-full);
+  background: rgba(144, 73, 81, 0.08);
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.love-tree-card-open-link:hover {
+  background: rgba(144, 73, 81, 0.18);
+  color: var(--primary);
+}
+
+.love-tree-card-selected .love-tree-card-open-link {
+  background: rgba(144, 73, 81, 0.92);
+  color: #fff;
+}

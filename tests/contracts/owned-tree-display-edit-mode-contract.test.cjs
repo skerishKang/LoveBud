@@ -174,7 +174,23 @@ test('My LoveTrees routing contract for public and private trees', () => {
     LoveTreeBaseApiFetch: {
       getCachedTokenRecord() { return null; }
     },
-    // #3578 Phase 1: buildTreeCard requires the shared metrics helper.
+    // #3578 Phase 2: shared composition mock
+    LoveBudTreeCardComposition: {
+      buildTreeCard: function (tree, opts) {
+        return '<div class="love-tree-card love-tree-card-my-trees" data-tree-id="' + (tree.id || '') + '">' +
+          (opts.mediaHtml || '') +
+          '<div class="love-tree-card-body">' +
+          '<div class="love-tree-card-title-row">' +
+          '<div class="love-tree-card-title">' + (opts.title || '') + '</div>' +
+          (opts.visibilityBadgeHtml || '') +
+          '</div>' +
+          (opts.subtitleHtml ? '<div class="love-tree-card-subtitle">' + opts.subtitleHtml + '</div>' : '') +
+          '<div class="love-tree-card-meta-row">' +
+          '<div class="love-tree-card-meta-left">' + (opts.metricsHtml || '') + '</div>' +
+          (opts.primaryHref ? '<div class="love-tree-card-meta-right"><a class="love-tree-card-open-link" href="' + opts.primaryHref + '">' + opts.primaryLabel + '</a></div>' : '') +
+          '</div></div></div>';
+      }
+    },
     LoveBudTreeCardMetrics: {
       getTreeMetrics: function () { return {}; },
       getFirstFiniteCount: function (tree, keys) {

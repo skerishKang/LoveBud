@@ -33,6 +33,10 @@ const myTreesCardEvents = fs.readFileSync(
     path.join(ROOT, 'js/my-trees/my-trees-card-events.js'),
     'utf8'
 );
+const treeCardComposition = fs.readFileSync(
+    path.join(ROOT, 'js/shared/tree-card-composition.js'),
+    'utf8'
+);
 const myTreesCardsCss = fs.readFileSync(
     path.join(ROOT, 'css/my-trees/my-trees-cards.css'),
     'utf8'
@@ -75,36 +79,43 @@ test('Browse renderer uses tree-card-reaction-metrics wrapper', () => {
     );
 });
 
-// ── 2) My Trees renderer uses the SAME single-block structure ────────
-test('My Trees renderer uses .tree-card-body (Browse parity)', () => {
+// ── 2) Shared composition provides the card structure ────────────────
+test('Shared composition uses .love-tree-card-body (Browse parity)', () => {
     assert.match(
-        myTreesCardUi,
-        /<div class="tree-card-body">/,
-        'My Trees card renderer must use <div class="tree-card-body"> for Browse parity'
+        treeCardComposition,
+        /love-tree-card-body/,
+        'Shared composition must use love-tree-card-body class'
     );
 });
 
-test('My Trees renderer places meta-row inside tree-card-body', () => {
-    const bodyIdx = myTreesCardUi.indexOf('<div class="tree-card-body">');
-    const metaRowIdx = myTreesCardUi.indexOf('<div class="tree-meta-row">');
-    assert.ok(bodyIdx !== -1, 'tree-card-body must exist');
-    assert.ok(metaRowIdx !== -1, 'tree-meta-row must exist');
+test('Shared composition places meta-row inside love-tree-card-body', () => {
+    const bodyIdx = treeCardComposition.indexOf('love-tree-card-body');
+    const metaRowIdx = treeCardComposition.indexOf('love-tree-card-meta-row');
+    assert.ok(bodyIdx !== -1, 'love-tree-card-body must exist');
+    assert.ok(metaRowIdx !== -1, 'love-tree-card-meta-row must exist');
     assert.ok(
         metaRowIdx > bodyIdx,
-        'My Trees tree-meta-row must live inside tree-card-body, not as a sibling'
+        'love-tree-card-meta-row must live inside love-tree-card-body'
     );
 });
 
-test('My Trees renderer uses tree-meta-left + tree-meta-right (Browse parity)', () => {
-    assert.match(myTreesCardUi, /<div class="tree-meta-left">/);
-    assert.match(myTreesCardUi, /<div class="tree-meta-right">/);
+test('Shared composition uses love-tree-card-meta-left + love-tree-card-meta-right (Browse parity)', () => {
+    assert.match(treeCardComposition, /love-tree-card-meta-left/);
+    assert.match(treeCardComposition, /love-tree-card-meta-right/);
 });
 
-test('My Trees renderer uses tree-card-reaction-metrics wrapper (Browse parity)', () => {
+test('Shared composition uses tree-card-reaction-metrics wrapper (Browse parity)', () => {
     assert.match(
-        myTreesCardUi,
-        /<div class="tree-card-reaction-metrics">/
+        treeCardComposition,
+        /tree-card-reaction-metrics/
     );
+});
+
+test('My Trees adapter delegates to shared composition', () => {
+    assert.match(myTreesCardUi, /Composer\.buildTreeCard\(/,
+        'My Trees adapter must call shared composition');
+    assert.match(myTreesCardUi, /surface:\s*'my-trees'/,
+        'My Trees adapter must set surface to my-trees');
 });
 
 // ── 3) Legacy two-block split must not return on My Trees ────────────
