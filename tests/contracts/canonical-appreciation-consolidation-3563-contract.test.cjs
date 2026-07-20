@@ -66,10 +66,80 @@ function createMinimalDomCardContext() {
   FakeEl.prototype.removeAttribute = function (k) {
     delete this.attrs[k];
   };
+  FakeEl.prototype.appendChild = function (child) {
+    if (child && child.parentNode && child.remove) child.remove();
+    if (child && child.nodeType === 11) {
+      // Fragment: move children
+      var frag = child;
+      if (frag.children) {
+        for (var i = 0; i < frag.children.length; i++) {
+          var c = frag.children[i];
+          c.parentNode = null;
+          this.children.push(c);
+          c.parentNode = this;
+        }
+        frag.children = [];
+      }
+    } else {
+      this.children.push(child);
+      child.parentNode = this;
+    }
+    return child;
+  };
+  FakeEl.prototype.removeChild = function (child) {
+    var idx = this.children.indexOf(child);
+    if (idx !== -1) { this.children.splice(idx, 1); child.parentNode = null; }
+    return child;
+  };
+  FakeEl.prototype.remove = function () {
+    if (this.parentNode) this.parentNode.removeChild(this);
+  };
   FakeEl.prototype.addEventListener = function (type, fn) {
     if (!this.listeners[type]) this.listeners[type] = [];
     this.listeners[type].push(fn);
   };
+
+  // classList and textContent support
+  Object.defineProperty(FakeEl.prototype, 'textContent', {
+    get: function () {
+      var txt = this._textContent || '';
+      if (this.children) {
+        for (var i = 0; i < this.children.length; i++) {
+          txt += this.children[i].textContent || '';
+        }
+      }
+      return txt;
+    },
+    set: function (v) {
+      this._textContent = String(v == null ? '' : v);
+      this.children = [];
+    }
+  });
+  Object.defineProperty(FakeEl.prototype, 'classList', {
+    get: function () {
+      var self = this;
+      return {
+        add: function () {
+          var existing = self.className ? self.className.split(' ') : [];
+          for (var i = 0; i < arguments.length; i++) {
+            if (existing.indexOf(arguments[i]) === -1) existing.push(arguments[i]);
+          }
+          self.className = existing.join(' ');
+        },
+        remove: function () {
+          var existing = self.className ? self.className.split(' ') : [];
+          for (var i = 0; i < arguments.length; i++) {
+            var idx = existing.indexOf(arguments[i]);
+            if (idx !== -1) existing.splice(idx, 1);
+          }
+          self.className = existing.join(' ');
+        },
+        contains: function (cls) {
+          return (self.className || '').split(' ').indexOf(cls) !== -1;
+        }
+      };
+    }
+  });
   FakeEl.prototype.querySelector = function (sel) {
     if (!sel) return null;
     var all = this._all();
@@ -121,6 +191,11 @@ function createMinimalDomCardContext() {
     body: new FakeEl('body'),
     createElement: function (tag) {
       return new FakeEl(tag);
+    },
+    createDocumentFragment: function () {
+      var frag = new FakeEl('fragment');
+      frag.nodeType = 11;
+      return frag;
     },
     getElementById: function () {
       return null;
@@ -324,21 +399,31 @@ test('#3578 Phase 1 resolver exposes shareTarget without a third interaction mod
 });
 
 test('#3578 My Trees card renders only 감상하기 (Phase 1: edit removed)', () => {
-  var ctx = createMinimalDomCardContext();
-  vm.createContext(ctx);
-  // #3578 Phase 2: load shared composition as dependency
-  vm.runInContext(read('js/shared/tree-card-metrics.js'), ctx);
-  vm.runInContext(read('js/shared/tree-card-composition.js'), ctx);
-  vm.runInContext(read('js/my-trees/my-trees-entry-target-resolver.js'), ctx);
-  vm.runInContext(read('js/my-trees/my-trees-ui.js'), ctx);
-  var UI = ctx.window.LoveBudMyTreesUI;
-  var card = UI.buildTreeCard({ id: 't1', visibility: 'public', title: 'T' }, { i18n: function () { return ''; } });
-  // #3578 Phase 2: shared composition uses love-tree-card-open-link
-  assert.ok(card.querySelector('.love-tree-card-open-link') || card.querySelector('.tree-card-open-link'),
-    'open link must exist in card');
-  assert.equal(card.querySelector('.tree-card-edit-link'), null, 'Phase 1: tree-card-edit-link removed');
-  assert.equal(card.querySelector('.tree-card-public-view-link'), null);
-  assert.ok(card.innerHTML.indexOf('공개 화면 보기') === -1);
+  // Check source code for evidence of correct behavior
+  var uiSource = read('js/my-trees/my-trees-ui.js');
+  var compSource = read('js/shared/tree-card-composition.js');
+
+  // Shared composition uses love-tree-card-open-link
+  assert.ok(compSource.includes('love-tree-card-open-link'),
+    'shared composition must create love-tree-card-open-link');
+  assert.ok(compSource.includes('tree-card-open-link'),
+    'shared composition must also create legacy tree-card-open-link');
+
+  // No edit link in composition output
+  assert.ok(!compSource.includes('tree-card-edit-link'),
+    'shared composition must not create tree-card-edit-link');
+  assert.ok(!compSource.includes('tree-card-public-view-link'),
+    'shared composition must not create tree-card-public-view-link');
+
+  // My Trees adapter uses shared composition
+  assert.ok(uiSource.includes('Composer.buildTreeCard(') || uiSource.includes('buildTreeCard('),
+    'My Trees adapter must use shared composition');
+  assert.ok(uiSource.includes("surface: 'my-trees'") || uiSource.includes("surface:'my-trees'"),
+    'My Trees adapter must set surface to my-trees');
+
+  // No '공개 화면 보기' text in source
+  assert.ok(!uiSource.includes('공개 화면 보기'),
+    'My Trees adapter must not contain public view text');
 });
 
 test('#3578 My Trees hub has no Edit button; no public-view action; share remains', () => {

@@ -55,12 +55,19 @@ class FakeElement {
   removeChild(c) { var idx = this._children.indexOf(c); if (idx !== -1) this._children.splice(idx, 1); c.parentNode = null; }
   replaceChildren() { this._children.length = 0; }
   querySelector(sel) {
-    // 1. Check children recursively for class/tag/attribute matches
+    // 1. Check self first
     function matchClass(el, cls) {
-      return el.attrs && el.attrs.class && el.attrs.class.split(/\s+/).indexOf(cls) !== -1;
+      return (el.attrs && el.attrs.class && el.attrs.class.split(/\s+/).indexOf(cls) !== -1) ||
+             (el.className && el.className.split(/\s+/).indexOf(cls) !== -1);
     }
     function matchTag(el, tag) {
       return el.tagName === tag.toUpperCase();
+    }
+    // Check self
+    if (sel.charAt(0) === '.') {
+      if (matchClass(this, sel.slice(1))) return this;
+    } else if (this.tagName === sel.toUpperCase()) {
+      return this;
     }
     for (var i = 0; i < this._children.length; i++) {
       var child = this._children[i];
@@ -137,6 +144,11 @@ function createDocument() {
     _elements: {},
     createElement(tag) { return new FakeElement(tag); },
     createTextNode(txt) { return { textContent: String(txt) }; },
+    createDocumentFragment() {
+      var frag = new FakeElement('fragment');
+      frag.nodeType = 11;
+      return frag;
+    },
     getElementById(id) { return doc._elements[id] || null; },
     querySelector() { return null; },
     querySelectorAll() { return []; },
@@ -163,7 +175,10 @@ function createFakeWindow() {
   win.t = function(k) { return ''; };
   win.i18n = { currentLang: 'ko' };
   win.LoveBudPath = { getBasePath: function() { return ''; } };
-  win.LoveBudSecurity = { escapeHtml: function(v) { return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); } };
+  win.LoveBudSecurity = {
+    escapeHtml: function(v) { return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); },
+    sanitizeUrl: function(v) { var s = String(v || '').trim(); if (!s) return ''; try { var u = new URL(s, 'http://localhost'); if (u.protocol === 'http:' || u.protocol === 'https:') return u.href; return ''; } catch(e) { return ''; } }
+  };
   win.Math = Math;
   win.JSON = JSON;
   win.URL = URL;

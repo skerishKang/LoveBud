@@ -25,7 +25,7 @@
     // #3578 Phase 2 CTO: fail-closed — require composition, no fallback
     function requireComposition() {
         var c = window.LoveBudTreeCardComposition;
-        if (c && typeof c.buildTreeCard === 'function' && typeof c.htmlToFragment === 'function') return c;
+        if (c && typeof c.buildTreeCard === 'function') return c;
         throw new Error(
             '[LoveBudSearchCardRenderer] LoveBudTreeCardComposition not loaded. ' +
             'tree-card-composition.js must be loaded before search-card-renderer.js.'
@@ -236,11 +236,6 @@
             isFeatured: index === 0,
             index: index
         });
-
-        // Set surface-specific id on the root element before serialising
-        if (cardEl && tree && tree.id) {
-            cardEl.id = 'tree-card-' + escapeHtml(tree.id);
-        }
 
         return cardEl ? cardEl.outerHTML : '';
     }

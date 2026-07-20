@@ -1,6 +1,6 @@
 /**
  * LoveBud — Shared LoveTree Card Composition
- * Issue #3578 Phase 2 — CTO review hardening
+ * Issue #3578 Phase 2 — CTO review hardening (second round)
  *
  * One safe shared card composition boundary for Browse and My Trees.
  *
@@ -11,23 +11,37 @@
  *   4. surface renderer (search-card-renderer.js / my-trees-ui.js)
  *
  * Fail-closed:
- *   - LoveBudTreeCardMetrics must be loaded before this module.
- *   - Missing shared helper → explicit error thrown, no silent fallback.
+ *   - LoveBudSecurity MUST be loaded — no fallback escape/sanitize.
+ *   - LoveBudTreeCardMetrics MUST be loaded — no self-resolved metrics.
+ *   - Missing shared helper → explicit error thrown.
  *
  * Security rules:
- *   - All user-provided strings are set via textContent, not innerHTML.
+ *   - All user-provided strings are set via textContent / setAttribute / dataset,
+ *     NOT via innerHTML or escaped-HTML-in-DOM-API.
  *   - URLs are run through sanitizeUrl before assignment to href.
  *   - No generic HTML string slot accepting arbitrary markup.
  *   - Complex media / metadata content accepted as Node or DocumentFragment.
  *   - Dataset keys are allowlist-checked.
  *   - Class tokens are validated against /^[a-zA-Z0-9_-]+$/.
  *   - No javascript: or protocol-relative URLs accepted.
+ *   - DOM API values use plain String(), never pre-escaped HTML.
  */
 
 (function () {
   'use strict';
 
   /* ── Dependency guard (fail-closed) ── */
+
+  function checkSecurityLoaded() {
+    var sec = window.LoveBudSecurity;
+    if (!sec || typeof sec.escapeHtml !== 'function' || typeof sec.sanitizeUrl !== 'function') {
+      throw new Error(
+        '[LoveBudTreeCardComposition] LoveBudSecurity not loaded or incomplete. ' +
+        'security.js must be loaded before tree-card-composition.js.'
+      );
+    }
+    return sec;
+  }
 
   function checkMetricsLoaded() {
     var m = window.LoveBudTreeCardMetrics;
@@ -40,6 +54,14 @@
     return m;
   }
 
+  /* Cache security reference at init */
+  var _sec;
+  try {
+    _sec = checkSecurityLoaded();
+  } catch (e) {
+    /* Will re-throw on first buildCardElement call if _sec is null */
+  }
+
   /* ── Constants ── */
 
   /** Allowlist of dataset keys the composition will accept. */
@@ -48,39 +70,10 @@
   /** Pattern for validating class tokens. */
   var CLASS_TOKEN_RE = /^[a-zA-Z0-9_-]+$/;
 
+  /** Pattern for valid DOM ID tokens (no spaces, quotes, angle brackets, control chars). */
+  var SAFE_ID_RE = /^[a-zA-Z0-9_:.\-]+$/;
+
   /* ── Helpers ── */
-
-  function escapeHtml(str) {
-    var sec = window.LoveBudSecurity;
-    if (sec && typeof sec.escapeHtml === 'function') return sec.escapeHtml(str);
-    var s = String(str == null ? '' : str);
-    return s
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#39;');
-  }
-
-  function sanitizeUrl(value) {
-    var sec = window.LoveBudSecurity;
-    if (sec && typeof sec.sanitizeUrl === 'function') return sec.sanitizeUrl(value);
-    if (!value) return '';
-    var raw = String(value).trim();
-    if (!raw) return '';
-    try {
-      var parsed = new URL(raw, window.location.origin);
-      var protocol = parsed.protocol;
-      if (protocol === 'http:' || protocol === 'https:') {
-        return parsed.href;
-      }
-      return '';
-    } catch (e) {
-      if (/^javascript:/i.test(raw)) return '';
-      if (/^\/\//.test(raw)) return '';
-      return raw;
-    }
-  }
 
   function validateClassTokens(tokens) {
     if (!Array.isArray(tokens)) return [];
@@ -101,9 +94,21 @@
   }
 
   /**
+   * Ensure a string is safe for use as a DOM element id.
+   * Returns the token if valid, or generates a safe fallback.
+   */
+  function safeDomId(value) {
+    if (!value) return '';
+    var s = String(value).trim();
+    if (SAFE_ID_RE.test(s)) return s;
+    /* Strip all unsafe characters */
+    return s.replace(/[^a-zA-Z0-9_:.\-]/g, '');
+  }
+
+  /**
    * Safely convert a trusted HTML string to a DocumentFragment.
-   * Used only by surface adapters for content produced by their
-   * own sanitised renderers — NOT a generic public API.
+   * Used only by buildTreeCard for content produced by metrics module
+   * (trusted source) — NOT a generic public API.
    */
   function htmlToFragment(html) {
     if (!html) return null;
@@ -119,7 +124,7 @@
   /* ── Helpers for `buildTreeCard` convenience wrapper ── */
 
   function _escapeForMetrics(s) {
-    return escapeHtml(s);
+    return _sec.escapeHtml(s);
   }
 
   /* ── Card element builder ── */
@@ -153,6 +158,9 @@
     if (!model || typeof model !== 'object') {
       throw new Error('[LoveBudTreeCardComposition] buildCardElement: model object required');
     }
+
+    /* Require security (fail-closed) */
+    var sec = _sec || checkSecurityLoaded();
 
     var surface = model.surface === 'my-trees' ? 'my-trees' : 'browse';
 
@@ -188,9 +196,18 @@
       root.dataset[k] = safeDataset[k];
     });
 
-    // Accessibility
+    // DOM id (safe only)
+    if (model.treeId) {
+      var idToken = safeDomId(model.treeId);
+      if (idToken) {
+        root.id = 'tree-card-' + idToken;
+      }
+    }
+
+    // Accessibility — use plain String(), not escapeHtml().
+    // setAttribute does not interpret HTML; escapeHtml would double-escape.
     if (model.accessibilityLabel) {
-      root.setAttribute('aria-label', escapeHtml(model.accessibilityLabel));
+      root.setAttribute('aria-label', String(model.accessibilityLabel));
     }
 
     // Animation delay
@@ -217,7 +234,7 @@
     titleRow.className = 'tree-card-title-row love-tree-card-title-row';
     var titleEl = document.createElement('div');
     titleEl.className = 'tree-title love-tree-card-title';
-    titleEl.textContent = model.title || '';
+    titleEl.textContent = String(model.title || '');
     titleRow.appendChild(titleEl);
 
     // Visibility node (My Trees)
@@ -238,7 +255,7 @@
     } else if (model.subtitleText) {
       var subtitleEl = document.createElement('div');
       subtitleEl.className = 'tree-subtitle love-tree-card-subtitle';
-      subtitleEl.textContent = model.subtitleText;
+      subtitleEl.textContent = String(model.subtitleText);
       body.appendChild(subtitleEl);
     }
 
@@ -266,18 +283,18 @@
     }
     metaRow.appendChild(metaLeft);
 
-    // Primary action
-    if (model.primaryHref) {
+    // Primary action — only if sanitized URL is valid
+    var safeHref = model.primaryHref ? sec.sanitizeUrl(model.primaryHref) : '';
+    if (safeHref) {
       var metaRight = document.createElement('div');
       metaRight.className = 'tree-meta-right love-tree-card-meta-right';
 
       var link = document.createElement('a');
-      var safeHref = sanitizeUrl(model.primaryHref);
-      if (safeHref) {
-        link.setAttribute('href', safeHref);
-      }
+      link.setAttribute('href', safeHref);
       link.className = 'tree-card-open-link love-tree-card-open-link';
-      var actionLabel = escapeHtml(model.primaryLabel || '감상하기');
+
+      // Plain text for DOM API (not escapeHtml → double-escape)
+      var actionLabel = String(model.primaryLabel || '감상하기');
       link.setAttribute('aria-label', actionLabel + ' 감상');
 
       var icon = document.createElement('span');
@@ -314,6 +331,9 @@
   function buildTreeCard(tree, options) {
     if (!tree || typeof tree !== 'object') return null;
     options = options || {};
+
+    // Require security (fail-closed)
+    _sec = _sec || checkSecurityLoaded();
 
     // Require metrics (fail-closed)
     var Metrics = checkMetricsLoaded();
@@ -362,14 +382,11 @@
     return buildCardElement(model);
   }
 
-  /* ── Expose ── */
+  /* ── Expose (public API only, no htmlToFragment, no escapeHtml, no sanitizeUrl) ── */
 
   var api = {
     buildCardElement: buildCardElement,
-    buildTreeCard: buildTreeCard,
-    htmlToFragment: htmlToFragment,
-    escapeHtml: escapeHtml,
-    sanitizeUrl: sanitizeUrl
+    buildTreeCard: buildTreeCard
   };
 
   window.LoveBudTreeCardComposition = Object.freeze(api);

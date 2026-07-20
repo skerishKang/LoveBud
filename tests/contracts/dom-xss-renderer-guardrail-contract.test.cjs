@@ -177,6 +177,10 @@ const FILE_ALLOWLIST = {
   },
 
   // ── Search ─────────────────────────────────────────────────────────
+  'js/search/search-card-renderer.js': {
+    count: 1, classification: 'safe',
+    reason: 'htmlToNode — innerHTML from adapter-owned sanitized renderRepresentativeMedia/metadataHtml output only; NOT a generic HTML slot'
+  },
   'js/search/search-copy-ui.js': {
     count: 1, classification: 'safe',
     reason: 'renderCopyButton(treeId) — treeId is application-generated UUID, not user content'
@@ -307,6 +311,12 @@ const FILE_ALLOWLIST = {
   'js/utils/ui.js': {
     count: 1, classification: 'safe',
     reason: 'toast.innerHTML — template literal with escapeHtml for toast message content'
+  },
+
+  // ── Shared ─────────────────────────────────────────────────────────
+  'js/shared/tree-card-composition.js': {
+    count: 1, classification: 'safe',
+    reason: 'htmlToFragment — innerHTML from trusted metrics output only (LoveBudTreeCardMetrics.renderTreeReactionMetrics); NOT a generic public API'
   },
 
   // ── Visitor Viewer ───────────────────────────────────────────────────
