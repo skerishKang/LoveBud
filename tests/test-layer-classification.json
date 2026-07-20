@@ -4415,6 +4415,14 @@
       "layer": "EXECUTED_FAKE",
       "rationale": "Executes the shared tree-card-composition.js in a local vm with fake DOM, validates Browse and My Trees surface adapters call the shared helper, common slot structure, three-state metric semantics, surface-specific differences (visibility badge, public metadata, no edit), XSS safety, and fail-closed on missing load order. No real browser/network/DB/production resource used.",
       "capabilities": []
+    },
+    {
+      "path": "tests/contracts/tree-card-composition-3578-browser-contract.test.cjs",
+      "layer": "EXECUTED_REAL_LOCAL",
+      "rationale": "Executes js/utils/security.js, js/shared/tree-card-metrics.js, and js/shared/tree-card-composition.js production functions (escapeHtml/sanitizeUrl, renderTreeReactionMetrics, buildTreeCard) in actual Playwright Chromium. Validates card root structure (tree-card/love-tree-card class on DIV), DOM escaping (textContent prevents <em>/<script> injection), and security fail-closed (missing LoveBudSecurity throws). No scripts/ needed — exercises JS modules directly.",
+      "capabilities": [
+        "chromium_launch"
+      ]
     }
   ],
   "supplemental": [

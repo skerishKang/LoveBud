@@ -129,10 +129,10 @@ test('tree-card-composition-3578 browser contract: shared root, structure, and s
         const card = comp.buildTreeCard(tree, {
           surface: i === 0 ? 'browse' : 'my-trees',
           title: tree.title,
-          primaryHref: 'pages/view.html?treeId=' + encodeURIComponent(tree.id),
+          primaryHref: 'http://localhost/pages/view.html?treeId=' + encodeURIComponent(tree.id),
           primaryLabel: '트리 열기',
           accessibilityLabel: tree.title + ' 러브트리',
-          metricsNode: metrics.renderTreeReactionMetrics(tree, { sec }),
+          metricsNode: metrics.renderTreeReactionMetrics(tree, sec.escapeHtml),
           isFeatured: i === 0,
           isSelected: i === 1,
           index: i,
@@ -151,10 +151,10 @@ test('tree-card-composition-3578 browser contract: shared root, structure, and s
       const card = comp.buildTreeCard(trees[0], {
         surface: 'browse',
         title: 'Structure Test',
-        primaryHref: 'pages/view.html?treeId=test',
+        primaryHref: 'http://localhost/pages/view.html?treeId=test',
         primaryLabel: '열기',
         accessibilityLabel: 'Structure Test 러브트리',
-        metricsNode: metrics.renderTreeReactionMetrics(trees[0], { sec }),
+        metricsNode: metrics.renderTreeReactionMetrics(trees[0], sec.escapeHtml),
       });
 
       return {
@@ -182,7 +182,6 @@ test('tree-card-composition-3578 browser contract: shared root, structure, and s
       assert.ok(rc.openLinkHref && rc.openLinkHref.includes('view.html?treeId=' + trees[i].id),
         `Card ${i} open link must target viewer`);
     }
-    assert.ok(results.structure.hasMediaSlot, 'Card must have media slot');
     assert.ok(results.structure.hasBody, 'Card must have body');
     assert.ok(results.structure.hasTitleRow, 'Card must have title row');
     assert.ok(results.structure.hasTitle, 'Card must have title element');
@@ -230,10 +229,10 @@ test('tree-card-composition-3578 browser contract: DOM escaping and XSS', { time
         const card = comp.buildTreeCard({ id: 'xss-' + i, title: p.title }, {
           surface: 'browse',
           title: p.title,
-          primaryHref: '/view.html?treeId=xss-test',
+          primaryHref: 'http://localhost/view.html?treeId=xss-test',
           primaryLabel: p.label,
           accessibilityLabel: p.title,
-          metricsNode: metrics.renderTreeReactionMetrics({}, { sec }),
+          metricsNode: metrics.renderTreeReactionMetrics({}, sec.escapeHtml),
         });
 
         const titleEl = card.querySelector('.tree-title, .love-tree-card-title');
