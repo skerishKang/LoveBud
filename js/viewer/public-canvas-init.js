@@ -584,6 +584,20 @@
 
             console.log('[public-canvas] Loaded tree:', normalized.treeData.id, 'memories:', normalized.treeMemories.length);
 
+            // #3599: record a single public tree-level view event on the active
+            // canonical appreciation route once the public tree has loaded
+            // successfully. One shot per page lifecycle; failures are non-blocking.
+            if (normalized && normalized.treeData && normalized.treeData.id) {
+                var viewRecorder = window.LoveBudPublicTreeViewRecorder;
+                if (viewRecorder && typeof viewRecorder.recordPublicTreeView === 'function') {
+                    try {
+                        viewRecorder.recordPublicTreeView(normalized.treeData.id);
+                    } catch (viewRecordError) {
+                        console.warn('[public-canvas] view recording failed:', viewRecordError);
+                    }
+                }
+            }
+
 
             function startCanvas() {
                 var targets = resolvePublicCanvasTargets();
