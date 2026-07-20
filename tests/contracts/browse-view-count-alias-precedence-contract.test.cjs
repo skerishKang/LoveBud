@@ -63,7 +63,15 @@ function loadCardRenderer() {
         appendChild: function (child) { this._children.push(child); if (child) child.parentNode = this; return child; },
         get textContent() { return this._textContent; },
         set textContent(v) { this._textContent = String(v == null ? '' : v); this._children = []; },
-        get outerHTML() { return '<' + this.tagName.toLowerCase() + '>' + (this._textContent || '') + '</' + this.tagName.toLowerCase() + '>'; }
+        get outerHTML() {
+          var tag = this.tagName.toLowerCase();
+          var attrStr = this.className ? ' class=\"' + this.className.replace(/\"/g, '&quot;') + '\"' : '';
+          for (var k in this._attrs) {
+            if (k !== 'class') attrStr += ' ' + k + '=\"' + String(this._attrs[k]).replace(/\"/g, '&quot;') + '\"';
+          }
+          var childrenHtml = this._children.map(function(c) { return c.outerHTML || ''; }).join('');
+          return '<' + tag + attrStr + '>' + childrenHtml + (this._textContent || '') + '</' + tag + '>';
+        }
       };
     },
     createDocumentFragment: function () { return { nodeType: 11, _children: [], appendChild: function(c) { this._children.push(c); if (c) c.parentNode = this; return c; } }; },

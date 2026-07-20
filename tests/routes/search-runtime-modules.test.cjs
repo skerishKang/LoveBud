@@ -185,7 +185,7 @@ test('search card events helper implements card accessibility and event delegati
 
   assert.match(cardEventsModule, /card\.setAttribute\(['"]tabindex['"],\s*['"]0['"]\)/);
   assert.match(cardEventsModule, /card\.setAttribute\(['"]role['"],\s*['"]button['"]\)/);
-  assert.match(cardRenderer, /aria-label="\$\{escapeHtml\(cardSelectLabel\)\}"/);
+  assert.match(cardRenderer, /accessibilityLabel: cardSelectLabel/);
 
   assert.match(cardEventsModule, /container\.addEventListener\(['"]click['"]/);
   assert.match(cardEventsModule, /container\.addEventListener\(['"]keydown['"]/);
@@ -199,8 +199,9 @@ test('browse cards expose a truthful public tree viewer bridge', () => {
   assert.match(cardRenderer, /function getTreeViewerHref\(tree\)/);
   assert.match(cardRenderer, /view\.html\?treeId=/);
   assert.match(cardRenderer, /encodeURIComponent\(tree\.id\)/);
-  assert.match(cardRenderer, /tree-card-open-link/);
+  const compSrc = read('js/shared/tree-card-composition.js');
   assert.match(cardRenderer, /트리 열기/);
+  assert.match(compSrc, /tree-card-open-link/);
 });
 
 test('search preview summary omits range phrase for missing time range labels', () => {

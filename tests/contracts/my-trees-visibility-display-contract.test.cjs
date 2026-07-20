@@ -40,7 +40,7 @@ test('normalizeTree visibility missing fallback is private', () => {
 
 test('buildTreeCard dataset.visibility canonicalized to public or private', () => {
   const uiJs = read('js/my-trees/my-trees-ui.js');
-  assert.match(uiJs, /card\.dataset\.visibility\s*=\s*normalizedTree\.visibility/,
+  assert.match(uiJs, /ds\.visibility\s*=\s*normalizedTree\.visibility/,
     'dataset.visibility must be set from normalizedTree');
   assert.match(uiJs, /normalizedTree\.visibility\s*=\s*normalizedTree\.visibility\s*===\s*['"]public['"]\s*\?\s*['"]public['"]\s*:\s*['"]private['"]/,
     'visibility must be canonicalized before dataset assignment');
@@ -71,8 +71,8 @@ test('badge inserted via visibilityBadgeHtml slot in shared composition', () => 
   const uiJs = read('js/my-trees/my-trees-ui.js');
   const compJs = read('js/shared/tree-card-composition.js');
   assert.ok(uiJs.includes('cardMeta.visibilityBadgeHtml'), 'visibilityBadgeHtml must be provided');
-  assert.ok(uiJs.includes('visibilityBadgeHtml: cardMeta.visibilityBadgeHtml'), 'visibilityBadgeHtml slot must be wired');
-  assert.ok(compJs.includes('visibilityBadgeHtml'), 'visibilityBadgeHtml slot must exist in shared composition');
+  assert.ok(uiJs.includes('visibilityNode: visibilityNode'), 'visibilityBadgeHtml passed as visibilityNode slot must be wired');
+  assert.ok(compJs.includes('visibilityNode'), 'shared composition must use visibilityNode slot for badge');
   // Verify visibility badge is inside title row in shared composition output
   assert.ok(compJs.indexOf('love-tree-card-visibility') > compJs.indexOf('love-tree-card-title-row'),
     'visibility badge must be inside title-row');

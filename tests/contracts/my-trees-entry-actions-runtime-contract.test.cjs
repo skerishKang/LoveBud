@@ -54,45 +54,43 @@ class FakeElement {
   appendChild(c) { this._children.push(c); if (c.parentNode) c.parentNode.removeChild(c); c.parentNode = this; }
   removeChild(c) { var idx = this._children.indexOf(c); if (idx !== -1) this._children.splice(idx, 1); c.parentNode = null; }
   replaceChildren() { this._children.length = 0; }
-  querySelector(sel) {
-    // 1. Check self first
+  _matches(sel) {
     function matchClass(el, cls) {
-      return (el.attrs && el.attrs.class && el.attrs.class.split(/\s+/).indexOf(cls) !== -1) ||
-             (el.className && el.className.split(/\s+/).indexOf(cls) !== -1);
+      var c = (el.attrs && el.attrs.class) || (el.className) || '';
+      return c.split(/\s+/).indexOf(cls) !== -1;
     }
     function matchTag(el, tag) {
       return el.tagName === tag.toUpperCase();
     }
-    // Check self
     if (sel.charAt(0) === '.') {
-      if (matchClass(this, sel.slice(1))) return this;
-    } else if (this.tagName === sel.toUpperCase()) {
-      return this;
+      return matchClass(this, sel.slice(1));
+    } else if (sel.charAt(0) === '#') {
+      return this.attrs && this.attrs.id === sel.slice(1);
+    } else {
+      return matchTag(this, sel);
     }
+  }
+  _findDescendant(sel) {
     for (var i = 0; i < this._children.length; i++) {
       var child = this._children[i];
-      if (sel.charAt(0) === '.') {
-        if (matchClass(child, sel.slice(1))) return child;
-      } else if (sel.charAt(0) === '#') {
-        if (child.attrs && child.attrs.id === sel.slice(1)) return child;
-      } else {
-        if (matchTag(child, sel)) return child;
-      }
-      var deep = child.querySelector(sel);
+      if (child._matches(sel)) return child;
+      var deep = child._findDescendant(sel);
       if (deep) return deep;
     }
-    // 2. Fallback: parse innerHTML for class-selector patterns
-    if (sel.charAt(0) === '.' && this._innerHTML) {
-      var clsEscaped = sel.slice(1).replace(/-/g, '\\-');
-      var re = new RegExp('<a[^>]*class="[^"]*' + clsEscaped + '[^"]*"[^>]*href="([^"]*)"');
-      var m = this._innerHTML.match(re);
-      if (m) {
-        var el = new FakeElement('a');
-        el.setAttribute('href', m[1]);
-        return el;
-      }
-    }
     return null;
+  }
+  querySelector(sel) {
+    // Support simple descendant selectors: ".parent .child"
+    var parts = sel.split(/\s+/).filter(function(p) { return p.length > 0; });
+    if (parts.length > 1) {
+      var firstMatch = this._findDescendant(parts[0]);
+      if (!firstMatch) return null;
+      var rest = parts.slice(1).join(' ');
+      return firstMatch.querySelector(rest);
+    }
+    // Simple selector — check self then recurse children
+    if (this._matches(parts[0])) return this;
+    return this._findDescendant(parts[0]);
   }
   querySelectorAll(sel) { return []; }
   cloneNode(deep) {
@@ -130,9 +128,18 @@ class FakeElement {
     }
     return this._classList;
   }
+  get className() {
+    return this._classList ? this._classList.toString() : '';
+  }
   set className(v) {
-    this.classList.remove.apply(this.classList, (this._classList ? this._classList.toString().split(/\s+/) : []));
-    if (v) v.split(/\s+/).forEach(function(c) { this.classList.add(c); }.bind(this));
+    // Reset classList then add each class
+    const oldClasses = this._classList ? this._classList.toString().split(/\s+/) : [];
+    if (this._classList) {
+      oldClasses.forEach(function(c) { if (c) this.classList.remove(c); }.bind(this));
+    }
+    if (v) v.split(/\s+/).forEach(function(c) { if (c) this.classList.add(c); }.bind(this));
+    // Sync to attrs.class so getAttribute('class') and querySelector see it
+    this.attrs['class'] = this._classList ? this._classList.toString() : '';
   }
   after() {}
   closest(sel) { return this._closestResult || null; }
