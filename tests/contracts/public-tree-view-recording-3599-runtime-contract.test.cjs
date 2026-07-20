@@ -478,3 +478,33 @@ test('22. duplicate public-canvas-init evaluation → same tree still one POST',
 function loadModulesInitOnly(ctx) {
   vm.runInContext(read('js/viewer/public-canvas-init.js'), ctx);
 }
+
+test('23. production recorder API exposes no test/reset mutation hook', () => {
+  const { ctx } = createCtx({ search: '?treeId=tree-A' });
+  // execute the REAL production recorder source (no bypass helper added)
+  vm.runInContext(read('js/viewer/public-tree-view-recorder.js'), ctx);
+  const api = ctx.window.LoveBudPublicTreeViewRecorder;
+  assert.ok(api, 'production API object present');
+
+  assert.deepEqual(
+    Object.keys(api).sort(),
+    [
+      'VIEW_ACTOR_KEY_STORAGE',
+      'VIEW_ACTOR_KIND',
+      'VIEW_SOURCE',
+      'buildTreeViewEndpoint',
+      'getOrCreateViewActorKey',
+      'recordPublicTreeView'
+    ].sort()
+  );
+
+  assert.equal('_resetForTest' in api, false, 'no _resetForTest hook');
+  assert.equal('reset' in api, false, 'no reset hook');
+  const suspicious = Object.keys(api).filter((k) => /test|reset/i.test(k));
+  assert.equal(suspicious.length, 0, 'no test/reset-named key: ' + suspicious.join(','));
+  assert.equal(Object.isFrozen(api), true, 'production API is frozen');
+
+  // production source string must not retain the removed hook
+  const src = read('js/viewer/public-tree-view-recorder.js');
+  assert.equal(src.includes('_resetForTest'), false, 'source has no _resetForTest');
+});

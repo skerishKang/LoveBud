@@ -134,23 +134,13 @@
     }
   }
 
-  // Test-only reset hook. Not used by production runtime.
-  function _resetForTest() {
-    var state = window.__lovebudPublicTreeViewRecorderState;
-    if (state) {
-      state.sentTreeIds = Object.create(null);
-      state.ephemeralActorKey = null;
-    }
-  }
-
   window.LoveBudPublicTreeViewRecorder = Object.freeze({
     recordPublicTreeView: recordPublicTreeView,
     getOrCreateViewActorKey: getOrCreateViewActorKey,
     buildTreeViewEndpoint: buildTreeViewEndpoint,
     VIEW_ACTOR_KEY_STORAGE: VIEW_ACTOR_KEY_STORAGE,
     VIEW_SOURCE: VIEW_SOURCE,
-    VIEW_ACTOR_KIND: VIEW_ACTOR_KIND,
-    _resetForTest: _resetForTest
+    VIEW_ACTOR_KIND: VIEW_ACTOR_KIND
   });
 
   // Install the global marker LAST so a partially-initialized object is never
