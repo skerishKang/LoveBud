@@ -166,6 +166,7 @@ test('My LoveTrees routing contract for public and private trees', () => {
     document: {
       createElement(tag) { return createMockElement(tag); },
       createTextNode(txt) { return { text: txt }; },
+      createDocumentFragment() { return { nodeType: 11, children: [], appendChild(c) { this.children.push(c); return c; } }; },
       getElementById() { return createMockElement('div'); }
     },
     LoveBudPath: {
@@ -174,7 +175,34 @@ test('My LoveTrees routing contract for public and private trees', () => {
     LoveTreeBaseApiFetch: {
       getCachedTokenRecord() { return null; }
     },
-    // #3578 Phase 1: buildTreeCard requires the shared metrics helper.
+    // #3578 Phase 2: shared composition mock
+    LoveBudTreeCardComposition: {
+      buildTreeCard: function (tree, opts) {
+        var el = createMockElement('div');
+        el.className = 'love-tree-card love-tree-card-my-trees';
+        if (tree.id) el.dataset.treeId = tree.id;
+        if (opts.accessibilityLabel) el.setAttribute('aria-label', opts.accessibilityLabel);
+        if (tree.visibility) el.dataset.visibility = tree.visibility;
+        // Build inner HTML for test assertions (href extraction via regex)
+        var inner = '';
+        if (opts.mediaHtml) inner += opts.mediaHtml;
+        inner += '<div class="love-tree-card-body">';
+        inner += '<div class="love-tree-card-title-row">';
+        inner += '<div class="love-tree-card-title">' + (opts.title || '') + '</div>';
+        if (opts.visibilityBadgeHtml) inner += opts.visibilityBadgeHtml;
+        inner += '</div>';
+        if (opts.subtitleHtml) inner += '<div class="love-tree-card-subtitle">' + opts.subtitleHtml + '</div>';
+        inner += '<div class="love-tree-card-meta-row">';
+        inner += '<div class="love-tree-card-meta-left">' + (opts.metricsHtml || '') + '</div>';
+        if (opts.primaryHref) {
+          inner += '<div class="love-tree-card-meta-right"><a class="tree-card-open-link love-tree-card-open-link" href="' + opts.primaryHref + '">' + (opts.primaryLabel || '') + '</a></div>';
+        }
+        inner += '</div></div></div>';
+        el.innerHTML = inner;
+        el._innerHTML = inner;
+        return el;
+      }
+    },
     LoveBudTreeCardMetrics: {
       getTreeMetrics: function () { return {}; },
       getFirstFiniteCount: function (tree, keys) {

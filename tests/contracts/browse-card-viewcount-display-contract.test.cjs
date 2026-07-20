@@ -36,32 +36,33 @@ test('shared utils: getViewCount returns null when viewCount is absent', () => {
 // Browse card renderer
 // ---------------------------------------------------------------------------
 
-test('card renderer: delegates view-count resolution to shared utils', () => {
-  assert.match(cardRenderer, /shared\.getViewCount\(tree\)/);
-  // Must NOT have its own getViewCount function
-  assert.ok(!cardRenderer.includes('function getViewCount(tree)'),
-    'card renderer must not define its own getViewCount');
+test('card renderer: delegates metrics rendering to shared composition', () => {
+  assert.match(cardRenderer, /comp\.buildTreeCard\(/,
+    'card renderer must delegate to shared composition');
+  assert.match(cardRenderer, /requireComposition\(\)/,
+    'card renderer must require composition (fail-closed)');
 });
 
-test('card renderer: positive viewCount → 조회수 rendered', () => {
-  // The metrics array includes visibility icon with '조회수' label
-  assert.match(cardRenderer, /visibility.*조회수/);
-  // formatCompactCount is called for each metric value
-  assert.match(cardRenderer, /formatCompactCount/);
+test('card renderer: positive viewCount → metrics module handles display', () => {
+  // The card renderer now passes metrics through shared composition
+  // which calls LoveBudTreeCardMetrics.renderTreeReactionMetrics
+  assert.match(cardRenderer, /buildTreeCard\(/,
+    'card renderer must route through shared composition which handles metrics');
 });
 
-test('card renderer: null viewCount → views metric omitted', () => {
-  assert.match(cardRenderer, /counts\.views !== null/);
-  assert.match(cardRenderer, /\].filter\(Boolean\)/);
+test('card renderer: null viewCount → composition handles omission', () => {
+  // detection: renderer calls comp.buildTreeCard which auto-resolves metrics
+  assert.match(cardRenderer, /comp\.buildTreeCard\(tree/,
+    'card renderer passes tree to shared composition for metrics resolution');
 });
 
-test('card renderer: likes/comments/shares always rendered regardless of views', () => {
-  var likesIndex = cardRenderer.indexOf('favorite');
-  var commentsIndex = cardRenderer.indexOf('chat_bubble');
-  var sharesIndex = cardRenderer.indexOf('share');
-  assert.ok(likesIndex >= 0, 'favorite (likes) icon must be present');
-  assert.ok(commentsIndex >= 0, 'chat_bubble (comments) icon must be present');
-  assert.ok(sharesIndex >= 0, 'share icon must be present');
+test('card renderer: likes/comments/shares rendered via shared metrics module', () => {
+  // The card renderer does not own metric icons directly anymore;
+  // they are rendered by LoveBudTreeCardMetrics.renderTreeReactionMetrics
+  assert.ok(cardRenderer.includes('buildTreeCard'),
+    'card renderer delegates to shared composition which handles all metrics');
+  assert.ok(!cardRenderer.includes('renderTreeReactionMetrics'),
+    'card renderer must NOT define its own renderTreeReactionMetrics');
 });
 
 // ---------------------------------------------------------------------------

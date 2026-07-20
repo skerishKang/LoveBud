@@ -49,12 +49,16 @@ test('index popstate forces tree re-apply with historyMode none', () => {
   assert.match(indexSrc, /blockAutoSelect/);
 });
 
-test('card renderer does not coerce unknown metrics to zero', () => {
-  assert.match(cardSrc, /return null/);
-  assert.equal(/return 0;\s*\n\s*\}/.test(cardSrc.match(/function getFirstFiniteCount[\s\S]*?\n    \}/)[0]), false);
-  assert.match(cardSrc, /counts\.likes !== null/);
-  assert.match(cardSrc, /counts\.views !== null/);
-  assert.equal(cardSrc.includes("value || 0"), false);
+test('card renderer delegates metrics to shared composition (no coercion)', () => {
+  // Card renderer no longer owns metric rendering — delegates to composition
+  assert.match(cardSrc, /comp\.buildTreeCard\(/,
+    'card renderer must delegate to shared composition');
+  assert.ok(!cardSrc.includes('getFirstFiniteCount'),
+    'card renderer must NOT define getFirstFiniteCount');
+  assert.ok(!cardSrc.includes('formatCompactCount'),
+    'card renderer must NOT define formatCompactCount');
+  assert.ok(!cardSrc.includes('getTreeReactionCounts'),
+    'card renderer must NOT define getTreeReactionCounts');
 });
 
 test('share shell hides unavailable likes/comments (no em-dash placeholder)', () => {

@@ -11,6 +11,14 @@
 
   var _manageSummary = window.LoveBudMyTreesManageSummary || null;
 
+  // #3578 Phase 2: require shared composition (fail-closed when missing)
+  function requireComposition() {
+    var c = window.LoveBudTreeCardComposition;
+    if (c && typeof c.buildTreeCard === 'function') return c;
+    throw new Error('[my-trees-ui] LoveBudTreeCardComposition not loaded. ' +
+      'tree-card-composition.js must be loaded before my-trees-ui.js.');
+  }
+
   // #3578 Phase 1: LoveBudTreeCardMetrics is a required dependency of buildTreeCard.
   // Check lazily at card-build time (not IIFE init) so VM-based tests
   // that only exercise hub/entry-target code without building cards can run.
@@ -422,6 +430,23 @@
     return trees || [];
   }
 
+  /**
+   * Adapter-owned HTML-to-fragment conversion.
+   * Used only for content produced by My Trees' own sanitised renderers
+   * (buildTreeThumbVisual, buildVisibilityBadgeHtml, getTreeCardMeta).
+   * NOT a generic public API.
+   */
+  function htmlToFragment(html) {
+    if (!html) return null;
+    var t = document.createElement('div');
+    t.innerHTML = String(html);
+    var frag = document.createDocumentFragment();
+    while (t.firstChild) {
+      frag.appendChild(t.firstChild);
+    }
+    return frag;
+  }
+
   function buildTreeCard(tree, options) {
     var i18n = (options && options.i18n) || window.t || function (k) { return k; };
     var normalizeTree = options && options.normalizeTree;
@@ -459,16 +484,50 @@
     var resolved = validateAndResolveEntryTargets(normalizedTree);
     var openHref = resolved.primary;
 
-    var card = document.createElement('div');
-    card.className = 'tree-card' + selectedClass;
+    // #3578 Phase 2 CTO: use shared composition to get the card root element
+    var Composer = requireComposition();
+    var primaryLabel = getI18nText(i18n, 'myTrees.entry_appreciation', '감상하기');
+    var accessibilityLabel = getI18nText(i18n, 'myTrees.card_accessibility', '') || (title + ' 러브트리');
+
+    // Convert adapter-owned HTML to trusted DocumentFragments
+    var thumbNode = htmlToFragment(buildTreeThumbVisual(normalizedTree, i18n));
+    var subtitleNode = htmlToFragment(cardMeta.mood || '');
+    var visibilityNode = htmlToFragment(cardMeta.visibilityBadgeHtml || '');
+
+    // Build the dataset for allowlisted keys
+    var ds = {};
+    /* treeId is set by composition via treeId param */
+    if (normalizedTree.visibility) {
+      ds.visibility = normalizedTree.visibility;
+    }
+    if (selectedClass) {
+      ds.selectedTreeCard = 'true';
+    }
+
+    // Build card via shared composition — returns the card DOM element directly
+    var card = Composer.buildTreeCard(normalizedTree, {
+      surface: 'my-trees',
+      mediaNode: thumbNode,
+      title: title,
+      subtitleNode: subtitleNode,
+      visibilityNode: visibilityNode,
+      primaryHref: openHref,
+      primaryLabel: primaryLabel,
+      accessibilityLabel: accessibilityLabel,
+      isSelected: !!selectedClass,
+      dataset: ds,
+      i18n: i18n
+    });
+
+    if (!card) {
+      throw new Error('[my-trees-ui] buildTreeCard: shared composition returned null');
+    }
+
+    // Attach surface-specific interaction to the same root element
+    // (no wrapper — the composition element IS the card root)
     card.style.cursor = 'pointer';
     card.setAttribute('role', 'button');
     card.setAttribute('tabindex', '0');
-    card.dataset.treeId = String(normalizedTree.id || '');
-    card.dataset.visibility = normalizedTree.visibility;
-    if (selectedClass) {
-      card.setAttribute('data-selected-tree-card', 'true');
-    }
 
     var handleCardSelect = function () {
       if (typeof onSelect === 'function') {
@@ -501,77 +560,6 @@
         handleCardSelect();
       }
     });
-
-    // i18n-safe labels via getI18nText helper (#3578: appreciation only, edit removed)
-    var openLabel = getI18nText(i18n, 'myTrees.entry_appreciation', '감상하기');
-    var viewCountLabel = getI18nText(i18n, 'myTrees.view_count', '조회수');
-    var likeCountLabel = getI18nText(i18n, 'myTrees.like_count', '좋아요');
-    var commentCountLabel = getI18nText(i18n, 'myTrees.comment_count', '댓글');
-    var shareCountLabel = getI18nText(i18n, 'myTrees.share_count', '공유');
-
-    // Issue #3578: three-state metrics — null/undefined/absent = omit (never coerce to 0)
-    var Metrics = requireMetrics();
-    var getFirstFiniteCount = Metrics.getFirstFiniteCount ? Metrics.getFirstFiniteCount : function(tree, keys) {
-      if (!tree) return null;
-      for (var i = 0; i < keys.length; i++) {
-        var raw = tree[keys[i]];
-        if (raw === undefined || raw === null || raw === '') continue;
-        var val = Number(raw);
-        if (Number.isFinite(val) && val >= 0) return val;
-      }
-      return null;
-    };
-    var viewCount = getFirstFiniteCount(tree, ['viewCount', 'viewsCount', 'views', 'view_count', 'views_count', 'visitorCount', 'visitorsCount', 'visitCount', 'visitsCount', 'visits', 'openCount', 'opensCount', 'open_count']);
-    var likeCount = getFirstFiniteCount(tree, ['likeCount', 'likesCount', 'likes', 'reactionCount', 'reaction_count']);
-    var commentCount = getFirstFiniteCount(tree, ['commentCount', 'commentsCount', 'comments', 'comment_count']);
-    var shareCount = getFirstFiniteCount(tree, ['shareCount', 'sharesCount', 'shares', 'share_count']);
-
-    // Issue #3578 Phase 1: three-state metrics — only render when authoritative value exists
-    var metricsHtml = '<div class="tree-card-reaction-metrics">';
-    if (viewCount !== null) {
-      metricsHtml += '<span class="tree-card-reaction-metric" title="' + escapeHtml(viewCountLabel + ' ' + formatCompactCount(viewCount)) + '">' +
-        '<span class="material-symbols-outlined" aria-hidden="true">visibility</span>' +
-        '<span>' + formatCompactCount(viewCount) + '</span>' +
-        '</span>';
-    }
-    if (likeCount !== null) {
-      metricsHtml += '<span class="tree-card-reaction-metric" title="' + escapeHtml(likeCountLabel + ' ' + formatCompactCount(likeCount)) + '">' +
-        '<span class="material-symbols-outlined" aria-hidden="true">favorite</span>' +
-        '<span>' + formatCompactCount(likeCount) + '</span>' +
-        '</span>';
-    }
-    if (commentCount !== null) {
-      metricsHtml += '<span class="tree-card-reaction-metric" title="' + escapeHtml(commentCountLabel + ' ' + formatCompactCount(commentCount)) + '">' +
-        '<span class="material-symbols-outlined" aria-hidden="true">chat_bubble</span>' +
-        '<span>' + formatCompactCount(commentCount) + '</span>' +
-        '</span>';
-    }
-    if (shareCount !== null) {
-      metricsHtml += '<span class="tree-card-reaction-metric" title="' + escapeHtml(shareCountLabel + ' ' + formatCompactCount(shareCount)) + '">' +
-        '<span class="material-symbols-outlined" aria-hidden="true">share</span>' +
-        '<span>' + formatCompactCount(shareCount) + '</span>' +
-        '</span>';
-    }
-    metricsHtml += '</div>';
-
-    card.innerHTML = [
-      buildTreeThumbVisual(normalizedTree, i18n),
-      '<div class="tree-card-body">',
-        '<div class="tree-card-title-row">',
-          '<div class="tree-card-title">' + escapeHtml(title) + '</div>',
-          cardMeta.visibilityBadgeHtml,
-        '</div>',
-        '<div class="tree-card-subcopy">' + cardMeta.mood + '</div>',
-        '<div class="tree-meta-row">',
-          '<div class="tree-meta-left">',
-            metricsHtml,
-          '</div>',
-          '<div class="tree-meta-right">',
-            (openHref ? '<a class="tree-card-open-link" href="' + escapeHtml(openHref) + '" target="_self"><span class="material-symbols-outlined" aria-hidden="true">account_tree</span><span data-i18n="myTrees.entry_appreciation">' + escapeHtml(openLabel) + '</span></a>' : ''),
-          '</div>',
-        '</div>',
-      '</div>'
-    ].join('');
 
     var openLink = card.querySelector('.tree-card-open-link');
     if (openLink) {

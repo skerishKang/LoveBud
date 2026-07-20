@@ -54,38 +54,43 @@ class FakeElement {
   appendChild(c) { this._children.push(c); if (c.parentNode) c.parentNode.removeChild(c); c.parentNode = this; }
   removeChild(c) { var idx = this._children.indexOf(c); if (idx !== -1) this._children.splice(idx, 1); c.parentNode = null; }
   replaceChildren() { this._children.length = 0; }
-  querySelector(sel) {
-    // 1. Check children recursively for class/tag/attribute matches
+  _matches(sel) {
     function matchClass(el, cls) {
-      return el.attrs && el.attrs.class && el.attrs.class.split(/\s+/).indexOf(cls) !== -1;
+      var c = (el.attrs && el.attrs.class) || (el.className) || '';
+      return c.split(/\s+/).indexOf(cls) !== -1;
     }
     function matchTag(el, tag) {
       return el.tagName === tag.toUpperCase();
     }
+    if (sel.charAt(0) === '.') {
+      return matchClass(this, sel.slice(1));
+    } else if (sel.charAt(0) === '#') {
+      return this.attrs && this.attrs.id === sel.slice(1);
+    } else {
+      return matchTag(this, sel);
+    }
+  }
+  _findDescendant(sel) {
     for (var i = 0; i < this._children.length; i++) {
       var child = this._children[i];
-      if (sel.charAt(0) === '.') {
-        if (matchClass(child, sel.slice(1))) return child;
-      } else if (sel.charAt(0) === '#') {
-        if (child.attrs && child.attrs.id === sel.slice(1)) return child;
-      } else {
-        if (matchTag(child, sel)) return child;
-      }
-      var deep = child.querySelector(sel);
+      if (child._matches(sel)) return child;
+      var deep = child._findDescendant(sel);
       if (deep) return deep;
     }
-    // 2. Fallback: parse innerHTML for class-selector patterns
-    if (sel.charAt(0) === '.' && this._innerHTML) {
-      var clsEscaped = sel.slice(1).replace(/-/g, '\\-');
-      var re = new RegExp('<a[^>]*class="[^"]*' + clsEscaped + '[^"]*"[^>]*href="([^"]*)"');
-      var m = this._innerHTML.match(re);
-      if (m) {
-        var el = new FakeElement('a');
-        el.setAttribute('href', m[1]);
-        return el;
-      }
-    }
     return null;
+  }
+  querySelector(sel) {
+    // Support simple descendant selectors: ".parent .child"
+    var parts = sel.split(/\s+/).filter(function(p) { return p.length > 0; });
+    if (parts.length > 1) {
+      var firstMatch = this._findDescendant(parts[0]);
+      if (!firstMatch) return null;
+      var rest = parts.slice(1).join(' ');
+      return firstMatch.querySelector(rest);
+    }
+    // Simple selector — check self then recurse children
+    if (this._matches(parts[0])) return this;
+    return this._findDescendant(parts[0]);
   }
   querySelectorAll(sel) { return []; }
   cloneNode(deep) {
@@ -123,9 +128,18 @@ class FakeElement {
     }
     return this._classList;
   }
+  get className() {
+    return this._classList ? this._classList.toString() : '';
+  }
   set className(v) {
-    this.classList.remove.apply(this.classList, (this._classList ? this._classList.toString().split(/\s+/) : []));
-    if (v) v.split(/\s+/).forEach(function(c) { this.classList.add(c); }.bind(this));
+    // Reset classList then add each class
+    const oldClasses = this._classList ? this._classList.toString().split(/\s+/) : [];
+    if (this._classList) {
+      oldClasses.forEach(function(c) { if (c) this.classList.remove(c); }.bind(this));
+    }
+    if (v) v.split(/\s+/).forEach(function(c) { if (c) this.classList.add(c); }.bind(this));
+    // Sync to attrs.class so getAttribute('class') and querySelector see it
+    this.attrs['class'] = this._classList ? this._classList.toString() : '';
   }
   after() {}
   closest(sel) { return this._closestResult || null; }
@@ -137,6 +151,11 @@ function createDocument() {
     _elements: {},
     createElement(tag) { return new FakeElement(tag); },
     createTextNode(txt) { return { textContent: String(txt) }; },
+    createDocumentFragment() {
+      var frag = new FakeElement('fragment');
+      frag.nodeType = 11;
+      return frag;
+    },
     getElementById(id) { return doc._elements[id] || null; },
     querySelector() { return null; },
     querySelectorAll() { return []; },
@@ -163,7 +182,10 @@ function createFakeWindow() {
   win.t = function(k) { return ''; };
   win.i18n = { currentLang: 'ko' };
   win.LoveBudPath = { getBasePath: function() { return ''; } };
-  win.LoveBudSecurity = { escapeHtml: function(v) { return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); } };
+  win.LoveBudSecurity = {
+    escapeHtml: function(v) { return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); },
+    sanitizeUrl: function(v) { var s = String(v || '').trim(); if (!s) return ''; try { var u = new URL(s, 'http://localhost'); if (u.protocol === 'http:' || u.protocol === 'https:') return u.href; return ''; } catch(e) { return ''; } }
+  };
   win.Math = Math;
   win.JSON = JSON;
   win.URL = URL;
@@ -267,12 +289,13 @@ test('2. public primary card href → editor (appreciation)', function() {
   var uiCode = read('js/my-trees/my-trees-ui.js');
   api.runInContext(resolverCode, ctx);
   api.runInContext(read('js/shared/tree-card-metrics.js'), ctx);
+  api.runInContext(read('js/shared/tree-card-composition.js'), ctx);
   api.runInContext(uiCode, ctx);
 
   var UI = ctx.window.LoveBudMyTreesUI;
   var card = UI.buildTreeCard({ id: 't1', visibility: 'public', title: 'T' }, { i18n: function(k) { return k; } });
 
-  var link = card.querySelector('.tree-card-open-link');
+  var link = card.querySelector('.love-tree-card-open-link');
   assert.ok(link);
   var href = link.getAttribute('href');
   assert.ok(href.includes('editor?treeId=t1'), 'public primary href should target editor');
@@ -287,12 +310,13 @@ test('3. private primary card href → editor (appreciation)', function() {
 
   api.runInContext(read('js/my-trees/my-trees-entry-target-resolver.js'), ctx);
   api.runInContext(read('js/shared/tree-card-metrics.js'), ctx);
+  api.runInContext(read('js/shared/tree-card-composition.js'), ctx);
   api.runInContext(read('js/my-trees/my-trees-ui.js'), ctx);
 
   var UI = ctx.window.LoveBudMyTreesUI;
   var card = UI.buildTreeCard({ id: 't2', visibility: 'private', title: 'T' }, { i18n: function(k) { return k; } });
 
-  var link = card.querySelector('.tree-card-open-link');
+  var link = card.querySelector('.love-tree-card-open-link');
   assert.ok(link);
   var href = link.getAttribute('href');
   assert.ok(href.includes('editor?treeId=t2'), 'private primary href should target editor');
@@ -306,12 +330,13 @@ test('4. valid unknown visibility primary → editor (appreciation)', function()
 
   api.runInContext(read('js/my-trees/my-trees-entry-target-resolver.js'), ctx);
   api.runInContext(read('js/shared/tree-card-metrics.js'), ctx);
+  api.runInContext(read('js/shared/tree-card-composition.js'), ctx);
   api.runInContext(read('js/my-trees/my-trees-ui.js'), ctx);
 
   var UI = ctx.window.LoveBudMyTreesUI;
   var card = UI.buildTreeCard({ id: 't3', visibility: null, title: 'T' }, { i18n: function(k) { return k; } });
 
-  var link = card.querySelector('.tree-card-open-link');
+  var link = card.querySelector('.love-tree-card-open-link');
   assert.ok(link);
   var href = link.getAttribute('href');
   assert.ok(href.includes('editor?treeId=t3'), 'unknown visibility primary should target editor');
@@ -325,6 +350,7 @@ test('5. #3578 Phase 1 cards expose only appreciation; public shareTarget stays 
 
   api.runInContext(read('js/my-trees/my-trees-entry-target-resolver.js'), ctx);
   api.runInContext(read('js/shared/tree-card-metrics.js'), ctx);
+  api.runInContext(read('js/shared/tree-card-composition.js'), ctx);
   api.runInContext(read('js/my-trees/my-trees-ui.js'), ctx);
 
   var UI = ctx.window.LoveBudMyTreesUI;
@@ -332,7 +358,7 @@ test('5. #3578 Phase 1 cards expose only appreciation; public shareTarget stays 
   var publicCard = UI.buildTreeCard({ id: 't-pub', visibility: 'public', title: 'T' }, { i18n: function(k) { return k; } });
   assert.equal(publicCard.querySelector('.tree-card-public-view-link'), null, 'public tree must not render public-view action');
   assert.equal(publicCard.querySelector('.tree-card-edit-link'), null, 'Phase 1: public tree must not render edit link');
-  assert.ok(publicCard.querySelector('.tree-card-open-link'), 'public tree should have appreciation link');
+  assert.ok(publicCard.querySelector('.love-tree-card-open-link'), 'public tree should have appreciation link');
   var resolvedPublic = UI.validateAndResolveEntryTargets({ id: 't-pub', visibility: 'public' });
   assert.ok(resolvedPublic.shareTarget || resolvedPublic.publicView, 'public tree keeps internal shareTarget');
   assert.ok((resolvedPublic.shareTarget || resolvedPublic.publicView).includes('view.html?treeId=t-pub'));
@@ -354,6 +380,7 @@ test('6. #3578 Phase 1: no edit link; primary href has no mode param', function(
 
   api.runInContext(read('js/my-trees/my-trees-entry-target-resolver.js'), ctx);
   api.runInContext(read('js/shared/tree-card-metrics.js'), ctx);
+  api.runInContext(read('js/shared/tree-card-composition.js'), ctx);
   api.runInContext(read('js/my-trees/my-trees-ui.js'), ctx);
 
   var UI = ctx.window.LoveBudMyTreesUI;
@@ -361,7 +388,7 @@ test('6. #3578 Phase 1: no edit link; primary href has no mode param', function(
 
   var editLink = card.querySelector('.tree-card-edit-link');
   assert.equal(editLink, null, 'Phase 1: no edit link should exist');
-  var openLink = card.querySelector('.tree-card-open-link');
+  var openLink = card.querySelector('.love-tree-card-open-link');
   assert.ok(openLink, 'appreciation link should exist');
   var href = openLink.getAttribute('href');
   assert.ok(href.includes('editor?treeId=t1'), 'appreciation href must target editor');
@@ -385,6 +412,7 @@ test('7. mobile public click → appreciation navigation', function() {
 
   api.runInContext(read('js/my-trees/my-trees-entry-target-resolver.js'), ctx);
   api.runInContext(read('js/shared/tree-card-metrics.js'), ctx);
+  api.runInContext(read('js/shared/tree-card-composition.js'), ctx);
   api.runInContext(read('js/my-trees/my-trees-ui.js'), ctx);
   api.runInContext(read('js/my-trees/my-trees-card-events.js'), ctx);
 
@@ -417,6 +445,7 @@ test('8. mobile private click → appreciation navigation', function() {
 
   api.runInContext(read('js/my-trees/my-trees-entry-target-resolver.js'), ctx);
   api.runInContext(read('js/shared/tree-card-metrics.js'), ctx);
+  api.runInContext(read('js/shared/tree-card-composition.js'), ctx);
   api.runInContext(read('js/my-trees/my-trees-ui.js'), ctx);
   api.runInContext(read('js/my-trees/my-trees-card-events.js'), ctx);
 
@@ -448,6 +477,7 @@ test('9. mobile Enter/Space → appreciation navigation', function() {
 
   api.runInContext(read('js/my-trees/my-trees-entry-target-resolver.js'), ctx);
   api.runInContext(read('js/shared/tree-card-metrics.js'), ctx);
+  api.runInContext(read('js/shared/tree-card-composition.js'), ctx);
   api.runInContext(read('js/my-trees/my-trees-ui.js'), ctx);
   api.runInContext(read('js/my-trees/my-trees-card-events.js'), ctx);
 
@@ -480,6 +510,7 @@ test('10. desktop click does not navigate (selection-only)', function() {
 
   api.runInContext(read('js/my-trees/my-trees-entry-target-resolver.js'), ctx);
   api.runInContext(read('js/shared/tree-card-metrics.js'), ctx);
+  api.runInContext(read('js/shared/tree-card-composition.js'), ctx);
   api.runInContext(read('js/my-trees/my-trees-ui.js'), ctx);
   api.runInContext(read('js/my-trees/my-trees-card-events.js'), ctx);
 
@@ -509,6 +540,7 @@ test('11. interactive child click does not activate card', function() {
   var selectedTree = null;
   api.runInContext(read('js/my-trees/my-trees-entry-target-resolver.js'), ctx);
   api.runInContext(read('js/shared/tree-card-metrics.js'), ctx);
+  api.runInContext(read('js/shared/tree-card-composition.js'), ctx);
   api.runInContext(read('js/my-trees/my-trees-ui.js'), ctx);
   api.runInContext(read('js/my-trees/my-trees-card-events.js'), ctx);
 
@@ -545,6 +577,7 @@ test('12. invalid ID → zero navigation assignments', function() {
 
   api.runInContext(read('js/my-trees/my-trees-entry-target-resolver.js'), ctx);
   api.runInContext(read('js/shared/tree-card-metrics.js'), ctx);
+  api.runInContext(read('js/shared/tree-card-composition.js'), ctx);
   api.runInContext(read('js/my-trees/my-trees-ui.js'), ctx);
   api.runInContext(read('js/my-trees/my-trees-card-events.js'), ctx);
 
@@ -573,6 +606,7 @@ test('13. malformed target → zero navigation assignments', function() {
   });
 
   api.runInContext(read('js/shared/tree-card-metrics.js'), ctx);
+  api.runInContext(read('js/shared/tree-card-composition.js'), ctx);
   api.runInContext(read('js/my-trees/my-trees-ui.js'), ctx);
 
   var card = ctx.window.LoveBudMyTreesUI.buildTreeCard(
@@ -709,9 +743,11 @@ test('19. Korean/English appreciation labels are present in i18n file', function
   assert.match(i18nSource, /'Open appreciation view'/);
 });
 
-test('20. card action links have data-i18n spans for appreciation only', function() {
+test('20. card action links use appreciation text (primaryLabel slot)', function() {
   var uiSource = read('js/my-trees/my-trees-ui.js');
-  assert.match(uiSource, /data-i18n="myTrees\.entry_appreciation"/);
+  var compSource = read('js/shared/tree-card-composition.js');
+  assert.ok(uiSource.includes("primaryLabel: primaryLabel"), 'primaryLabel slot must be wired');
+  assert.ok(compSource.includes('감상하기'), 'shared composition must default to 감상하기');
   assert.doesNotMatch(uiSource, /tree-card-edit-link/, '#3578 Phase 1: edit link removed from card source');
   assert.doesNotMatch(uiSource, /tree-card-public-view-link/, '#3563: public-view card action removed');
 });
@@ -927,6 +963,7 @@ test('36. card with malformed resolver output → zero navigation assignments', 
   api.createContext(ctx);
   api.runInContext(read('js/my-trees/my-trees-entry-target-resolver.js'), ctx);
   api.runInContext(read('js/shared/tree-card-metrics.js'), ctx);
+  api.runInContext(read('js/shared/tree-card-composition.js'), ctx);
   api.runInContext(read('js/my-trees/my-trees-ui.js'), ctx);
   api.runInContext(read('js/my-trees/my-trees-card-events.js'), ctx);
   ctx.window.LoveBudMyTreesEntryTargetResolver = { resolveMyTreesEntryTargets: function() { return bundle; } };

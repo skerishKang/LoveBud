@@ -70,9 +70,9 @@ test('7 & 8 & 12. search-card-renderer, search-preview-renderer and empty fallba
   const cardRendererSource = read('js/search/search-card-renderer.js');
   const previewRendererSource = read('js/search/search-preview-renderer.js');
 
-  // 7. search-card-renderer.js contains metadata block rendering markers
-  assert.ok(cardRendererSource.includes('tree-public-metadata') || cardRendererSource.includes('data-public-tree-metadata'));
-  assert.ok(cardRendererSource.includes('tree-public-tags'));
+  // 7. search-card-renderer.js delegates metadata rendering to shared composition
+  assert.ok(cardRendererSource.includes('bodyExtensionNode') || cardRendererSource.includes('metadataNode'),
+    'card renderer must pass metadata as bodyExtensionNode to shared composition');
 
   // 8. search-preview-renderer.js contains hub metadata block rendering markers
   assert.ok(previewRendererSource.includes('hubMetadataHtml'));

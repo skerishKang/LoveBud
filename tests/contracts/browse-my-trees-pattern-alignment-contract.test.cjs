@@ -210,76 +210,74 @@ test('8. My LoveTree .tree-card.is-selected class is preserved', () => {
   assert.ok(hasSelectedClass, 'My Trees files must preserve is-selected class name');
   assert.ok(css.includes('.tree-card.is-selected'), 'my-trees-cards.css must preserve is-selected styling');
 });
+test('9. Browse card order: shared composition provides structure', () => {
+  const compSource = read('js/shared/tree-card-composition.js');
+  // Shared composition owns all card structure
+  assert.match(compSource, /love-tree-card-media/, 'Shared composition must define media slot');
+  assert.match(compSource, /love-tree-card-body/, 'Shared composition must define body class');
+  assert.match(compSource, /love-tree-card-title/, 'Shared composition must define title class');
+  assert.match(compSource, /love-tree-card-subtitle/, 'Shared composition must define subtitle class');
+  assert.match(compSource, /love-tree-card-body-extension/, 'Shared composition must define body-extension');
+  assert.match(compSource, /love-tree-card-meta-row/, 'Shared composition must define meta-row class');
+  assert.match(compSource, /love-tree-card-meta-left/, 'Shared composition must define meta-left class');
+  assert.match(compSource, /love-tree-card-meta-right/, 'Shared composition must define meta-right class');
+  assert.match(compSource, /love-tree-card-open-link/, 'Shared composition must define open-link class');
 
-test('9. Browse card order: media -> title -> subtitle -> public metadata -> meta row/open', () => {
-  const source = read('js/search/search-card-renderer.js');
-  const cardFnStart = source.indexOf('function renderTreeCard');
-  assert.ok(cardFnStart !== -1, 'renderTreeCard function must exist');
-  const cardFnSection = source.slice(cardFnStart);
-  const templateStart = cardFnSection.indexOf('return `');
-  assert.ok(templateStart !== -1, 'Template return block must exist');
-  const templateSection = cardFnSection.slice(templateStart);
-  const idxMedia = templateSection.indexOf('renderRepresentativeMedia');
-  const idxTitle = templateSection.indexOf('tree-title');
-  const idxSubtitle = templateSection.indexOf('subtitleClass');
-  const idxMeta = templateSection.indexOf('metadataHtml');
-  const idxMetaRow = templateSection.indexOf('tree-meta-row');
-  const idxOpen = templateSection.indexOf('tree-card-open-link');
-  assert.ok(idxMedia !== -1, 'Media template helper must exist');
-  assert.ok(idxTitle !== -1, 'Title tag must exist');
-  assert.ok(idxSubtitle !== -1, 'Subtitle class variable must exist');
-  assert.ok(idxMeta !== -1, 'MetadataHtml variable must exist');
-  assert.ok(idxMetaRow !== -1, 'Meta row class must exist');
-  assert.ok(idxOpen !== -1, 'Open link class must exist');
-  assert.ok(idxMedia < idxTitle, 'media must be before title');
-  assert.ok(idxTitle < idxSubtitle, 'title must be before subtitle');
-  assert.ok(idxSubtitle < idxMeta, 'subtitle must be before metadata');
-  assert.ok(idxMeta < idxMetaRow, 'metadata must be before meta row');
+  // Verify DOM build order: media → body → title → subtitle → body-extension → meta-row → open-link
+  const idxMedia = compSource.indexOf('love-tree-card-media');
+  const idxBody = compSource.indexOf('love-tree-card-body');
+  const idxMetaRow = compSource.indexOf('love-tree-card-meta-row');
+  const idxOpen = compSource.indexOf('love-tree-card-open-link');
+  assert.ok(idxMedia < idxMetaRow, 'media must be before meta-row');
+  assert.ok(idxBody < idxMetaRow, 'body must be before meta-row');
+  assert.ok(idxMetaRow < idxOpen, 'meta-row must be before open-link');
+
+  // Verify Browse adapter delegates to composition
+  const browseSource = read('js/search/search-card-renderer.js');
+  assert.match(browseSource, /comp\.buildTreeCard\(/, 'Browse must call shared composition');
+  assert.match(browseSource, /requireComposition\(\)/, 'Browse must require composition');
+  // No legacy inline template
+  assert.equal(browseSource.indexOf('tree-card-featured'), -1,
+    'Browse should not have legacy inline template');
 });
 
-test('10. My LoveTree card order: thumb -> body/title/subcopy/meta-row/action (Browse parity)', () => {
+test('10. My LoveTree card order: shared composition provides structure (Browse parity)', () => {
   const source = read('js/my-trees/my-trees-ui.js');
   const cardFnStart = source.indexOf('function buildTreeCard');
   assert.ok(cardFnStart !== -1, 'buildTreeCard function must exist');
   const cardFnSection = source.slice(cardFnStart);
-  const templateStart = cardFnSection.indexOf('card.innerHTML = [');
-  assert.ok(templateStart !== -1, 'innerHTML block must exist');
-  const templateSection = cardFnSection.slice(templateStart);
-  const idxThumb = templateSection.indexOf('buildTreeThumbVisual');
-  const idxBody = templateSection.indexOf('tree-card-body');
-  const idxTitle = templateSection.indexOf('tree-card-title');
-  const idxSubcopy = templateSection.indexOf('tree-card-subcopy');
-  const idxMeta = templateSection.indexOf('cardMeta.visibilityBadgeHtml');
-  const idxMetaRow = templateSection.indexOf('tree-meta-row');
-  const idxOpen = templateSection.indexOf('tree-card-open-link');
-  // #3578 Phase 1: metrics are computed before the innerHTML block and injected
-  // into tree-meta-row, so the class reference lives earlier in buildTreeCard.
-  const idxReaction = cardFnSection.indexOf('tree-card-reaction-metrics');
-  assert.ok(idxThumb !== -1, 'Thumb template helper must exist');
-  assert.ok(idxBody !== -1, 'Single tree-card-body container must exist (Browse parity)');
-  assert.ok(idxTitle !== -1, 'Title class must exist');
-  assert.ok(idxSubcopy !== -1, 'Subcopy class must exist');
-  assert.ok(idxMeta !== -1, 'Visibility badge template must exist');
-  assert.ok(idxMetaRow !== -1, 'tree-meta-row wrapper must exist');
-  assert.ok(idxReaction !== -1, 'tree-card-reaction-metrics must exist (Browse parity)');
-  assert.ok(idxOpen !== -1, 'Open link class must exist');
-  assert.ok(idxThumb < idxBody, 'thumb must be before body');
-  assert.ok(idxBody < idxMetaRow, 'body must contain the meta-row');
-  assert.ok(idxTitle < idxMeta, 'title must be before visibilityBadgeHtml');
-  assert.ok(idxMeta < idxSubcopy, 'visibilityBadgeHtml must be before subcopy (in title-row)');
-  assert.ok(idxSubcopy < idxMetaRow, 'subcopy must be before meta-row');
-  assert.ok(idxMetaRow < idxOpen, 'meta-row must be before open link');
-  // Step 3 follow-up: the legacy two-block split (info + footer) must not return.
-  assert.equal(
-    templateSection.indexOf('tree-card-info'),
-    -1,
-    'Legacy .tree-card-info block must not return after Step 3 unification'
-  );
-  assert.equal(
-    templateSection.indexOf('tree-card-footer'),
-    -1,
-    'Legacy .tree-card-footer block must not return after Step 3 unification'
-  );
+  // #3578 Phase 2: structure delegated to shared composition
+  const compStart = cardFnSection.indexOf('Composer.buildTreeCard(');
+  assert.ok(compStart !== -1, 'Must call shared composition: Composer.buildTreeCard');
+
+  // Surface-specific content still provided by adapter
+  assert.ok(cardFnSection.indexOf('buildTreeThumbVisual') !== -1, 'Thumb helper must exist');
+  assert.ok(cardFnSection.indexOf('cardMeta.visibilityBadgeHtml') !== -1, 'Visibility badge must exist');
+
+  // Shared composition owns common structure - verify from composition source
+  const compSource = read('js/shared/tree-card-composition.js');
+  assert.match(compSource, /love-tree-card-body/, 'Shared composition must define body class');
+  assert.match(compSource, /love-tree-card-title/, 'Shared composition must define title class');
+  assert.match(compSource, /love-tree-card-subtitle/, 'Shared composition must define subtitle class');
+  assert.match(compSource, /love-tree-card-meta-row/, 'Shared composition must define meta-row class');
+  assert.match(compSource, /love-tree-card-meta-left/, 'Shared composition must define meta-left class');
+  assert.match(compSource, /love-tree-card-meta-right/, 'Shared composition must define meta-right class');
+  assert.match(compSource, /love-tree-card-open-link/, 'Shared composition must define open-link class');
+  // tree-card-reaction-metrics is produced by the metrics module at runtime
+  assert.match(read('js/shared/tree-card-metrics.js'), /tree-card-reaction-metrics/,
+    'Metrics module must use metrics wrapper');
+  assert.match(compSource, /love-tree-card-media/, 'Shared composition must define media slot');
+
+  // Verify order in shared composition
+  const compBody = compSource.indexOf('love-tree-card-body');
+  const compMetaRow = compSource.indexOf('love-tree-card-meta-row');
+  const compOpenLink = compSource.indexOf('love-tree-card-open-link');
+  assert.ok(compBody < compMetaRow, 'body must be before meta-row in shared composition');
+  assert.ok(compMetaRow < compOpenLink, 'meta-row must be before open-link in shared composition');
+
+  // Legacy two-block split must not return
+  assert.equal(cardFnSection.indexOf('tree-card-info'), -1, 'Legacy .tree-card-info block must not return');
+  assert.equal(cardFnSection.indexOf('tree-card-footer'), -1, 'Legacy .tree-card-footer block must not return');
 });
 
 test('11. No backend/editor/Scout changes', () => {

@@ -4409,6 +4409,18 @@
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
       "capabilities": []
+    },
+    {
+      "path": "tests/contracts/tree-card-composition-3578-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes the shared tree-card-composition.js in a local vm with fake DOM, validates Browse and My Trees surface adapters call the shared helper, common slot structure, three-state metric semantics, surface-specific differences (visibility badge, public metadata, no edit), XSS safety, and fail-closed on missing load order. No real browser/network/DB/production resource used.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/tree-card-composition-3578-browser-contract.test.cjs",
+      "layer": "EXECUTED_REAL_LOCAL",
+      "rationale": "Loads REAL production surface modules (js/utils/security.js, js/shared/tree-card-metrics.js, js/shared/tree-card-composition.js, js/search/search-card-renderer.js, js/my-trees/my-trees-ui.js + entry-target-resolver + card-visuals + card-events) in actual Playwright Chromium served from a local HTTP server. Validates Browse and My Trees actual runtime card root structure (.tree-card.love-tree-card, no nesting), mode=edit absence, visibility indicators (public globe / private lock), mobile/keyboard interaction (single navigation, nested action de-dup, desktop selection-only), DOM XSS escaping per sink (title, label, aria-label, URL matrix), dependency fail-closed matrix (8 cases: missing security, missing metrics, throwing renderer, missing composition in surface adapters), metrics contract (authoritative zero, unknown omission, view/like/comment/share order), and media slot contract. No production write / auth / API / DB mutation. page.goto real local HTTP URL (not setContent-only).",
+      "capabilities": []
     }
   ],
   "supplemental": [
@@ -4547,6 +4559,12 @@
         "child_process",
         "filesystem"
       ]
+    },
+    {
+      "path": "tests/contracts/tree-card-composition-3578-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes the shared tree-card-composition.js in a local vm with fake DOM, validates Browse and My Trees surface adapters call the shared helper, common slot structure, three-state metric semantics, surface-specific differences (visibility badge, public metadata, no edit), XSS safety, and fail-closed on missing load order. No real browser/network/DB/production resource used.",
+      "capabilities": []
     },
     {
       "path": "tests/db-engine/trees-schema-foothold-postgres.test.cjs",

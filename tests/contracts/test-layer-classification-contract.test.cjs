@@ -347,7 +347,7 @@ test('every EXECUTED_REAL_LOCAL entry has a file-specific rationale (no generic 
     assert.ok(e.rationale && e.rationale.trim().length > 0, `empty rationale for ${e.path}`);
     assert.ok(!GENERIC.test(e.rationale), `REAL_LOCAL entry ${e.path} still uses the generic rationale`);
     assert.ok(e.rationale.length > 90, `REAL_LOCAL entry ${e.path} rationale is not file-specific`);
-    assert.ok(/scripts\//.test(e.rationale), `REAL_LOCAL entry ${e.path} rationale must name the executed production module`);
+    assert.ok(/scripts\/|js\//.test(e.rationale), `REAL_LOCAL entry ${e.path} rationale must name the executed production module`);
   }
 });
 
