@@ -4419,10 +4419,8 @@
     {
       "path": "tests/contracts/tree-card-composition-3578-browser-contract.test.cjs",
       "layer": "EXECUTED_REAL_LOCAL",
-      "rationale": "Executes js/utils/security.js, js/shared/tree-card-metrics.js, and js/shared/tree-card-composition.js production functions (escapeHtml/sanitizeUrl, renderTreeReactionMetrics, buildTreeCard) in actual Playwright Chromium. Validates card root structure (tree-card/love-tree-card class on DIV), DOM escaping (textContent prevents <em>/<script> injection), and security fail-closed (missing LoveBudSecurity throws). No scripts/ needed — exercises JS modules directly.",
-      "capabilities": [
-        "chromium_launch"
-      ]
+      "rationale": "Loads REAL production surface modules (js/utils/security.js, js/shared/tree-card-metrics.js, js/shared/tree-card-composition.js, js/search/search-card-renderer.js, js/my-trees/my-trees-ui.js + entry-target-resolver + card-visuals + card-events) in actual Playwright Chromium served from a local HTTP server. Validates Browse and My Trees actual runtime card root structure (.tree-card.love-tree-card, no nesting), mode=edit absence, visibility indicators (public globe / private lock), mobile/keyboard interaction (single navigation, nested action de-dup, desktop selection-only), DOM XSS escaping per sink (title, label, aria-label, URL matrix), dependency fail-closed matrix (8 cases: missing security, missing metrics, throwing renderer, missing composition in surface adapters), metrics contract (authoritative zero, unknown omission, view/like/comment/share order), and media slot contract. No production write / auth / API / DB mutation. page.goto real local HTTP URL (not setContent-only).",
+      "capabilities": []
     }
   ],
   "supplemental": [
