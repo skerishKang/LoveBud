@@ -91,7 +91,7 @@ test('My Trees loads mobile preview sheet script and integrates correctly', () =
     );
 });
 
-test('#3604 mobile open sheet keeps deliberate height contract and sticky CTA presentation', () => {
+test('#3604 mobile open sheet keeps primary-only sticky CTA presentation', () => {
   const responsiveCss = read('css/my-trees/my-trees-preview-hub/responsive.css');
   const html = read('pages/my-trees.html');
   const actionsCss = read('css/my-trees/my-trees-preview-hub/actions.css');
@@ -104,16 +104,10 @@ test('#3604 mobile open sheet keeps deliberate height contract and sticky CTA pr
   const mobileBlock = mobileBlockMatch[1];
 
   // Sheet still uses deliberate near-full max-height + internal scroll.
-  // (Explicit height alone does not surface the end-of-content CTA; sticky does.)
   assert.match(
     mobileBlock,
     /#myTreesHubPanel\.preview-sidebar[\s\S]*?max-height:\s*92dvh/,
     'Mobile open sheet must keep max-height: 92dvh'
-  );
-  assert.doesNotMatch(
-    mobileBlock,
-    /#myTreesHubPanel\.preview-sidebar\.is-open\s*\{[^}]*height:\s*92dvh/,
-    'Do not combine explicit open-sheet height with sticky CTA (choose one presentation approach)'
   );
   assert.match(
     mobileBlock,
@@ -127,22 +121,37 @@ test('#3604 mobile open sheet keeps deliberate height contract and sticky CTA pr
     /padding:\s*22px\s+18px\s+calc\(18px\s*\+\s*env\(safe-area-inset-bottom/,
     'Mobile sheet must retain safe-area bottom padding'
   );
+  assert.match(
+    mobileBlock,
+    /#myTreesHubPanel\.preview-sidebar\.is-open[\s\S]*?padding-bottom:\s*calc\(72px\s*\+\s*env\(safe-area-inset-bottom/,
+    'Open sheet must reserve bottom clearance for the sticky primary CTA'
+  );
 
-  // #3604 sticky presentation for the existing actions block (no DOM clone).
-  assert.match(
+  // Primary CTA only is sticky; whole actions stack must not be sticky.
+  assert.doesNotMatch(
     mobileBlock,
-    /#myTreesHubPanel\.preview-sidebar\.is-open\s+\.my-trees-hub-actions[\s\S]*?position:\s*sticky/,
-    'Open mobile sheet must sticky-pin .my-trees-hub-actions'
+    /#myTreesHubPanel\.preview-sidebar\.is-open\s+\.my-trees-hub-actions[\s\S]{0,200}?position:\s*sticky/,
+    'Must NOT sticky-pin the whole .my-trees-hub-actions stack'
   );
   assert.match(
     mobileBlock,
-    /#myTreesHubPanel\.preview-sidebar\.is-open\s+\.my-trees-hub-actions[\s\S]*?bottom:\s*0/,
-    'Sticky actions must pin to bottom: 0 of the sheet scrollport'
+    /#myTreesHubPanel\.preview-sidebar\.is-open\s+\.my-trees-hub-actions[\s\S]*?display:\s*contents/,
+    'Actions wrapper must use display:contents so open-btn sticks to the sheet scrollport'
   );
   assert.match(
     mobileBlock,
-    /#myTreesHubPanel\.preview-sidebar\.is-open\s+\.my-trees-hub-actions[\s\S]*?safe-area-inset-bottom/,
-    'Sticky actions must include safe-area bottom padding'
+    /#myTreesHubPanel\.preview-sidebar\.is-open\s+\.my-trees-hub-open-btn[\s\S]*?position:\s*sticky/,
+    'Primary open CTA must be position:sticky'
+  );
+  assert.match(
+    mobileBlock,
+    /#myTreesHubPanel\.preview-sidebar\.is-open\s+\.my-trees-hub-open-btn[\s\S]*?safe-area-inset-bottom/,
+    'Sticky primary CTA must include safe-area bottom offset'
+  );
+  assert.match(
+    mobileBlock,
+    /#myTreesHubPanel\.preview-sidebar\.is-open\s+\.my-trees-hub-share-btn[\s\S]*?position:\s*static/,
+    'Share button must remain position:static (normal scroll flow)'
   );
 
   // Exactly one primary open CTA in markup; no obsolete direct Edit control.
@@ -157,8 +166,8 @@ test('#3604 mobile open sheet keeps deliberate height contract and sticky CTA pr
     .replace(/@media\s*\(max-width:\s*1024px\)\s*\{[\s\S]*?\}/, '');
   assert.doesNotMatch(
     outsideMobile,
-    /\.my-trees-hub-actions[\s\S]*position:\s*sticky/,
-    'Sticky actions presentation must not apply outside the mobile media query'
+    /\.my-trees-hub-open-btn[\s\S]*position:\s*sticky/,
+    'Sticky open CTA presentation must not apply outside the mobile media query'
   );
 });
 
@@ -281,36 +290,47 @@ test('#3604 browser geometry: 375×812 open sheet shows CTA without scrolling', 
     });
     const page = await context.newPage();
     await page.goto(`http://127.0.0.1:${port}/fixture.html`, { waitUntil: 'domcontentloaded' });
-    // Wait for sticky layout to settle (CTA must be in the initial viewport).
+    // Wait for primary-only sticky layout to settle.
     await page.waitForFunction(() => {
       const sheet = document.getElementById('myTreesHubPanel');
       const cta = document.getElementById('myTreesHubOpenBtn');
-      if (!sheet || !cta) return false;
+      const share = document.getElementById('myTreesHubShareBtn');
+      if (!sheet || !cta || !share) return false;
       const cr = cta.getBoundingClientRect();
-      const actions = document.getElementById('myTreesHubActions');
-      const pos = actions ? getComputedStyle(actions).position : '';
-      return pos === 'sticky' && cr.bottom <= window.innerHeight + 1 && cr.top >= 0;
+      const ctaPos = getComputedStyle(cta).position;
+      const sharePos = getComputedStyle(share).position;
+      return (
+        (ctaPos === 'sticky' || ctaPos === 'fixed') &&
+        sharePos !== 'sticky' &&
+        sharePos !== 'fixed' &&
+        cr.bottom <= window.innerHeight + 1 &&
+        cr.top >= 0
+      );
     }, { timeout: 5000 });
 
     const geo = await page.evaluate(() => {
       const sheet = document.getElementById('myTreesHubPanel');
       const ctas = document.querySelectorAll('#myTreesHubOpenBtn, a.my-trees-hub-open-btn');
       const cta = document.getElementById('myTreesHubOpenBtn');
+      const share = document.getElementById('myTreesHubShareBtn');
       const edit = document.querySelector('#myTreesHubEditBtn, a[href*="mode=edit"]');
       const sr = sheet.getBoundingClientRect();
       const cr = cta.getBoundingClientRect();
+      const sh = share.getBoundingClientRect();
       const cs = getComputedStyle(sheet);
-      const actionsCs = getComputedStyle(document.getElementById('myTreesHubActions'));
+      const ctaCs = getComputedStyle(cta);
+      const shareCs = getComputedStyle(share);
+      const summary = document.getElementById('myTreesHubSummary');
+      const sum = summary ? summary.getBoundingClientRect() : null;
       return {
         ctaCount: ctas.length,
         scrollTop: sheet.scrollTop,
         sheet: { top: sr.top, bottom: sr.bottom, height: sr.height, left: sr.left, right: sr.right },
-        cta: { top: cr.top, bottom: cr.bottom, left: cr.left, right: cr.right },
+        cta: { top: cr.top, bottom: cr.bottom, left: cr.left, right: cr.right, position: ctaCs.position },
+        share: { top: sh.top, bottom: sh.bottom, position: shareCs.position, visible: sh.top < innerHeight && sh.bottom > 0 },
         viewportH: window.innerHeight,
         maxHeight: cs.maxHeight,
         overflowY: cs.overflowY,
-        actionsPosition: actionsCs.position,
-        actionsBottom: actionsCs.bottom,
         hasEdit: !!edit,
         href: cta.getAttribute('href') || '',
         modeEdit: (cta.getAttribute('href') || '').includes('mode=edit'),
@@ -329,7 +349,8 @@ test('#3604 browser geometry: 375×812 open sheet shows CTA without scrolling', 
           if (!flow) return false;
           const r = flow.getBoundingClientRect();
           return r.top < window.innerHeight && r.bottom > 0;
-        })()
+        })(),
+        summaryTop: sum ? sum.top : null
       };
     });
 
@@ -338,19 +359,47 @@ test('#3604 browser geometry: 375×812 open sheet shows CTA without scrolling', 
     assert.equal(geo.hasEdit, false, 'No direct Edit control');
     assert.equal(geo.modeEdit, false, 'CTA href must not include mode=edit');
     assert.match(geo.href, /\/pages\/editor\?treeId=/, 'CTA destination must be /pages/editor?treeId=...');
-    assert.equal(geo.actionsPosition, 'sticky', 'Actions block must be position:sticky');
+    assert.ok(geo.cta.position === 'sticky' || geo.cta.position === 'fixed',
+      `Primary CTA must be sticky/fixed (got ${geo.cta.position})`);
+    assert.ok(geo.share.position !== 'sticky' && geo.share.position !== 'fixed',
+      `Share must not be sticky/fixed (got ${geo.share.position})`);
     assert.ok(parseFloat(geo.maxHeight) > 0 || /dvh|px/.test(geo.maxHeight), 'Sheet must keep max-height contract');
     assert.equal(geo.overflowY, 'auto', 'Sheet must keep overflow-y:auto');
     assert.ok(geo.cta.top >= geo.sheet.top - 1, `CTA top (${geo.cta.top}) must be >= sheet top (${geo.sheet.top})`);
     assert.ok(geo.cta.bottom <= geo.viewportH + 1, `CTA bottom (${geo.cta.bottom}) must be <= viewport height (${geo.viewportH})`);
     assert.ok(geo.cta.left >= geo.sheet.left - 1, 'CTA left within sheet');
     assert.ok(geo.cta.right <= geo.sheet.right + 1, 'CTA right within sheet');
-    assert.ok(geo.cta.bottom <= geo.sheet.bottom + 1, 'CTA bottom within sheet');
     assert.equal(geo.overflow.documentScrollWidth, geo.overflow.documentClientWidth, 'No document-level horizontal overflow');
     assert.equal(geo.closeVisible, true, 'Close button must be visible');
     assert.equal(geo.flowVisible, true, 'Flow list must remain visible in initial open state');
 
+    // Bottom scroll: summary + share must be liftable fully above the sticky CTA.
+    const bottomGeo = await page.evaluate(() => {
+      const sheet = document.getElementById('myTreesHubPanel');
+      sheet.scrollTop = sheet.scrollHeight;
+      const cta = document.getElementById('myTreesHubOpenBtn').getBoundingClientRect();
+      const share = document.getElementById('myTreesHubShareBtn').getBoundingClientRect();
+      const summary = document.getElementById('myTreesHubSummary').getBoundingClientRect();
+      return {
+        scrollTop: sheet.scrollTop,
+        ctaTop: cta.top,
+        ctaBottom: cta.bottom,
+        shareTop: share.top,
+        shareBottom: share.bottom,
+        shareVisible: share.top < window.innerHeight && share.bottom > 0 && share.bottom <= cta.top + 1,
+        summaryBottom: summary.bottom,
+        summaryAboveCta: summary.bottom <= cta.top + 1,
+        ctaStillSticky: getComputedStyle(document.getElementById('myTreesHubOpenBtn')).position
+      };
+    });
+    assert.ok(bottomGeo.scrollTop > 0, 'Sheet must allow internal scroll to bottom');
+    assert.ok(bottomGeo.shareVisible, 'Share must be fully visible above sticky CTA after bottom scroll');
+    assert.ok(bottomGeo.summaryAboveCta, 'Summary must scroll fully above sticky CTA');
+    assert.ok(bottomGeo.ctaStillSticky === 'sticky' || bottomGeo.ctaStillSticky === 'fixed',
+      'CTA remains sticky/fixed after bottom scroll');
+
     // CTA click navigates once (same-tab navigation to editor href).
+    await page.evaluate(() => { document.getElementById('myTreesHubPanel').scrollTop = 0; });
     let navCount = 0;
     page.on('framenavigated', (frame) => {
       if (frame === page.mainFrame() && frame.url().includes('editor')) navCount += 1;
@@ -376,7 +425,7 @@ test('#3604 browser geometry: 375×812 open sheet shows CTA without scrolling', 
   }
 });
 
-test('#3604 desktop viewport does not sticky-pin hub actions', { timeout: 60000 }, async () => {
+test('#3604 desktop viewport does not sticky-pin primary CTA or share', { timeout: 60000 }, async () => {
   let browser;
   try {
     browser = await playwright.chromium.launch({ headless: true, args: ['--disable-dev-shm-usage'] });
@@ -413,18 +462,22 @@ test('#3604 desktop viewport does not sticky-pin hub actions', { timeout: 60000 
     await page.goto(`http://127.0.0.1:${port}/fixture.html`, { waitUntil: 'domcontentloaded' });
     await page.waitForTimeout(150);
     const desktop = await page.evaluate(() => {
-      const actions = document.getElementById('myTreesHubActions');
+      const cta = document.getElementById('myTreesHubOpenBtn');
+      const share = document.getElementById('myTreesHubShareBtn');
       const sheet = document.getElementById('myTreesHubPanel');
-      const acs = getComputedStyle(actions);
       const scs = getComputedStyle(sheet);
       return {
-        actionsPosition: acs.position,
+        ctaPosition: getComputedStyle(cta).position,
+        sharePosition: getComputedStyle(share).position,
         sheetPosition: scs.position,
         sheetMaxHeight: scs.maxHeight
       };
     });
     // At 1440px the mobile media query is inactive: sticky presentation must not apply.
-    assert.notEqual(desktop.actionsPosition, 'sticky', 'Desktop must not sticky-pin hub actions');
+    assert.ok(desktop.ctaPosition !== 'sticky' && desktop.ctaPosition !== 'fixed',
+      `Desktop CTA must not be sticky/fixed (got ${desktop.ctaPosition})`);
+    assert.ok(desktop.sharePosition !== 'sticky' && desktop.sharePosition !== 'fixed',
+      `Desktop share must not be sticky/fixed (got ${desktop.sharePosition})`);
     assert.notEqual(desktop.sheetPosition, 'fixed', 'Desktop sheet must not use mobile fixed bottom-sheet position');
     await context.close();
   } finally {
