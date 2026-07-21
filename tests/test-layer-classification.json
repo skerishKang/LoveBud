@@ -35,6 +35,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/db-migration-provenance-adoption-operator-checklist-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Validates the adoption operator checklist document structure, headings, fail-closed state, operator inputs, abstract role-mapping template, prohibited content, Phase B/C/D/E separation, stop/failure categories, and repository references without database, network, SQL, or Production access (#3622).",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/api-body-size-limit-contract.test.cjs",
       "layer": "EXECUTED_FAKE",
       "rationale": "Reads production module source and executes it in a local process with injected fake/mock/stub dependencies (e.g., vm context with fake DOM or mocked fetch/localStorage); no real external system or production resource used.",
