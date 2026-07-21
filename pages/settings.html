@@ -32,7 +32,7 @@
           <div class="settings-profile-card" id="settingsProfileCard">
             <div class="settings-profile-avatar" id="settingsProfileAvatar" role="img" aria-label="프로필 이미지">
             </div>
-                      <div class="settings-profile-info">
+            <div class="settings-profile-info">
               <div class="settings-profile-name" id="settingsProfileName"></div>
               <div class="settings-profile-email" id="settingsProfileEmail"></div>
             </div>
@@ -42,10 +42,11 @@
           <div class="settings-profile-edit-form" id="settingsProfileEditForm" hidden>
             <label class="settings-profile-edit-label" for="settingsProfileNameInput" id="settingsProfileEditLabel"></label>
             <div class="settings-profile-edit-row">
-              <input type="text" class="settings-profile-name-input" id="settingsProfileNameInput" maxlength="50" autocomplete="name" />
+              <input type="text" class="settings-profile-name-input" id="settingsProfileNameInput" autocomplete="name" />
               <button type="button" class="settings-profile-edit-save" id="settingsProfileSaveBtn"></button>
               <button type="button" class="settings-profile-edit-cancel" id="settingsProfileCancelBtn"></button>
             </div>
+            <!-- Edit-local status: validation / write error / saving (visible only while editing) -->
             <p class="settings-profile-edit-status" id="settingsProfileEditStatus" role="status" aria-live="polite"></p>
           </div>
 
@@ -53,6 +54,9 @@
             <span class="material-symbols-outlined">edit</span>
             <span id="settingsProfileEditBtnLabel"></span>
           </button>
+
+          <!-- Persistent result status: success / unchanged (visible after edit form closes) -->
+          <p class="settings-profile-result-status" id="settingsProfileResultStatus" role="status" aria-live="polite"></p>
 
           <p class="settings-deferred-note" id="settingsProfileDeferredNote"></p>
         </section>

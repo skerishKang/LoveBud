@@ -4481,6 +4481,18 @@
       "layer": "EXECUTED_REAL_LOCAL",
       "rationale": "Launches actual Chromium via Playwright to load actual pages/settings.html served by a local HTTP server with controlled auth fixture (no real Firebase). Executes actual js/settings.js, actual js/i18n/i18n-shared.js, actual css/settings.css. Validates Profile/Account sections, displayName fallback, email, uid, provider label, password info, avatar/initials, logout button, shared header, close/escape, no horizontal overflow, no console errors, mobile 375x812 layout. No real Firebase network, no Production login, no Production data.",
       "capabilities": []
+    },
+    {
+      "path": "tests/contracts/settings-display-name-edit-3617-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes js/settings.js validateDisplayName in a Node VM and asserts Unicode code-point length boundaries (50/51 ASCII, Korean, astral emoji), blank rejection, HTML result-status placement outside the edit form, removal of native maxlength=50, typeof updateProfile function guard, Escape-while-saving early return, and fail-closed write-error path. No real browser/network/DB/Production mutation.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/settings-display-name-edit-3617-browser-contract.test.cjs",
+      "layer": "EXECUTED_REAL_LOCAL",
+      "rationale": "Actual Playwright Chromium loads actual pages/settings.html under strict CSP (script-src self + gstatic/apis). Controlled Firebase fixture only. Executes actual js/settings.js display-name edit write flow: success updateProfile once with trim, visible success status after form hide, unchanged zero Firebase calls with visible no-change status, 50/51 emoji code-point validation, delayed double-submit single call, Escape-while-saving does not cancel, rejection/sync-throw/missing/non-function fail-closed, cancel/idle Escape, Korean/English labels, mobile overflow. Asserts cache/header/profile sync without renderSharedHeader re-init. No Production account mutation.",
+      "capabilities": []
     }
   ],
   "supplemental": [

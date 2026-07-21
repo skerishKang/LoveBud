@@ -305,6 +305,25 @@
   cursor: not-allowed;
 }
 
+.settings-profile-result-status {
+  margin: 0.5rem 0 0;
+  font-size: 0.875rem;
+  line-height: 1.4;
+  min-height: 1.25rem;
+}
+
+.settings-profile-result-status:empty {
+  display: none;
+}
+
+.settings-profile-result-status--success {
+  color: #1b6b3a;
+}
+
+.settings-profile-result-status--info {
+  color: #5a5a5a;
+}
+
 .settings-profile-edit-status {
   margin-top: 8px;
   font-size: 13px;
