@@ -4451,6 +4451,24 @@
       "layer": "SOURCE_STATIC",
       "rationale": "Pure policy matrix and VM localStorage isolation for #3581 resolveLayoutPolicy / storage readOnly boundary / source wiring; does not execute browser canvas runtime.",
       "capabilities": []
+    },
+    {
+      "path": "tests/contracts/tree-layout-persistence-3582-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes production js/editor/editor-canvas-layout-storage.js and editor-canvas-layout.js inside a Node VM with an in-memory localStorage fake. Locks tree-specific key naming, mode/payload validation, structured-does-not-overwrite-free, malformed/getItem/setItem failure fallbacks, read-only/appreciation isolation, and auth source guard that logout does not reference layout keys. No real browser/network/DB/production mutation.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/tree-layout-persistence-3582-browser-contract.test.cjs",
+      "layer": "EXECUTED_REAL_LOCAL",
+      "rationale": "real Chromium; production canvas modules js/editor/editor-canvas.js + layout/storage/policy/transition/interaction; actual pointer drag; actual localStorage; component-level route simulation via custom fixture; not canonical pages/editor.html boot. Supplemental only for createEditorCanvas restoration, drag persist, layout toggle, tree-key isolation, storage failure, mobile canvas restore. Canonical route/reload owned by editor-route contract.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/tree-layout-persistence-3582-editor-route-contract.test.cjs",
+      "layer": "EXECUTED_REAL_LOCAL",
+      "rationale": "actual pages/editor.html; actual js/editor.js startup (startEditor creates canvas); controlled owner auth/API fixture; URL mode=edit; same-origin route exit/re-entry to canonical editor; page.reload without second goto; no manual createEditorCanvas; actual localStorage; actual pointer drag; tree A/B isolation; free→structured→free; mobile restore. No production/API/DB mutation; no real Firebase login claim.",
+      "capabilities": []
     }
   ],
   "supplemental": [
