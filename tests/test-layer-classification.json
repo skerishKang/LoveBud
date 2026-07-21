@@ -4461,7 +4461,13 @@
     {
       "path": "tests/contracts/tree-layout-persistence-3582-browser-contract.test.cjs",
       "layer": "EXECUTED_REAL_LOCAL",
-      "rationale": "actual Playwright Chromium loads production modules js/editor/editor-canvas.js, js/editor/editor-canvas-layout-storage.js, js/editor/editor-canvas-layout-policy.js, js/editor/editor-canvas-layout-transition.js, js/editor/editor-canvas-layout.js, js/editor/editor-canvas-interaction.js, js/editor/editor-interaction-mode.js, js/auth/auth-firebase.js via local HTTP fixture. Asserts same-browser free draft persistence: actual page.mouse drag (FAIL if coords unchanged; no persist substitute), actual localStorage keys, actual route navigation, actual reload, actual logout boundary with safe stub, tree A/B isolation via full page navigation, free→structured→free payload retention, desktop 1440 and mobile 375. No production/API/DB mutation.",
+      "rationale": "real Chromium; production canvas modules js/editor/editor-canvas.js + layout/storage/policy/transition/interaction; actual pointer drag; actual localStorage; component-level route simulation via custom fixture; not canonical pages/editor.html boot. Supplemental only for createEditorCanvas restoration, drag persist, layout toggle, tree-key isolation, storage failure, mobile canvas restore. Canonical route/reload owned by editor-route contract.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/tree-layout-persistence-3582-editor-route-contract.test.cjs",
+      "layer": "EXECUTED_REAL_LOCAL",
+      "rationale": "actual pages/editor.html; actual js/editor.js startup (startEditor creates canvas); controlled owner auth/API fixture; URL mode=edit; same-origin route exit/re-entry to canonical editor; page.reload without second goto; no manual createEditorCanvas; actual localStorage; actual pointer drag; tree A/B isolation; free→structured→free; mobile restore. No production/API/DB mutation; no real Firebase login claim.",
       "capabilities": []
     }
   ],

@@ -127,21 +127,29 @@ Canvas must not be recreated with duplicate listeners or duplicate nodes on each
 
 ### #3582 same-browser persistence (locked by contract; Production not claimed here)
 
-Local Chromium contracts on current main lock the following **same-browser, same-owner** paths.
+Local Chromium contracts lock the following **same-browser, same-owner** paths.
 Evidence class is **LOCAL_EVIDENCE** until post-merge Production acceptance is recorded separately.
+
+#### Evidence layers (do not collapse)
+
+| Layer | What it proves | What it does not prove |
+|---|---|---|
+| **Component-level canvas evidence** (`tree-layout-persistence-3582-browser-contract`) | production `createEditorCanvas` storage restore, actual pointer drag, layout toggle, tree-key isolation, storage failure fallback | canonical `pages/editor.html` / `js/editor.js` boot, ordinary Editor reload, URL `mode=edit` startup |
+| **Canonical Editor route evidence** (`tree-layout-persistence-3582-editor-route-contract`) | real `pages/editor.html` + `js/editor.js` startEditor path, URL `mode=edit`, same-origin exit/re-entry, `page.reload` without second goto, controlled auth/API | Production host, real Firebase login provider, cross-device/server sync |
+| **Production evidence** | post-merge logged-in owner on `https://lovebud.pages.dev/` | not claimed by this PR |
 
 #### Verified same-browser paths (LOCAL_EVIDENCE)
 
-| Path | Expected result |
-|---|---|
-| Actual mouse drag in owner edit free | positions + mode keys written to owner-local storage |
-| Route exit (same-origin) → appreciation → edit | appreciation structured / draft hidden; edit restores free mode + positions |
-| Ordinary reload → owner edit | free mode + positions restored; no duplicate canvas/nodes |
-| Logout boundary → same-owner login simulation | auth cache may clear; **layout keys preserved**; edit restores free draft |
-| Tree A free save → Tree B free save → re-enter each | treeId keys independent; no cross-tree position leak |
-| free → structured → free | mode key may become structured then free; **position payload retained** across structured; free restores positions |
-| Storage failure (malformed / getItem throw / setItem throw) | safe structured/empty fallback; write failure does not delete existing keys |
-| Mobile 375×812 | appreciation structured-first; owner edit restores stored mode/positions when present; no horizontal document overflow |
+| Path | Component canvas | Canonical Editor route | Expected result |
+|---|---|---|---|
+| Actual mouse drag in owner edit free | yes | yes | positions + mode keys written to owner-local storage |
+| Route exit (same-origin) → appreciation → edit | fixture sim only | **required** | appreciation structured / draft hidden; edit restores free mode + positions |
+| Ordinary reload → owner edit | not accepted here | **required** (`page.reload`, no second goto) | free mode + positions restored; no duplicate canvas/nodes |
+| Logout boundary → controlled same-owner bootstrap | auth boundary stub | **required** | auth cache may clear; **layout keys preserved**; edit restores free draft |
+| Tree A free save → Tree B free save → re-enter each | yes | yes | treeId keys independent; no cross-tree position leak |
+| free → structured → free | yes | yes | mode key may become structured then free; **position payload retained**; free restores positions |
+| Storage failure (malformed / getItem throw / setItem throw) | yes | n/a (storage module) | safe structured/empty fallback; write failure does not delete existing keys |
+| Mobile 375×812 | yes | yes | appreciation structured-first; owner edit restores stored mode/positions when present; no horizontal document overflow |
 
 #### Key lifetime
 

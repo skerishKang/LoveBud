@@ -1,14 +1,24 @@
 /**
- * #3582 Chromium persistence contract — real production canvas chain.
+ * #3582 Chromium component integration (supplemental) — production canvas modules.
  *
- * - window.createEditorCanvas
- * - syncInteractionLayoutMode
- * - actual #layoutModeToggleBtn click
- * - actual page.mouse drag (FAIL if coords do not change)
- * - actual localStorage
- * - actual route navigation + reload
- * - auth logout boundary with safe stub (no Firebase network)
- * - tree A/B isolation via full page navigation (production-like)
+ * Role: lower-level supplemental coverage only.
+ * Canonical Editor route / reload / URL mode=edit / js/editor.js first paint are
+ * owned by tree-layout-persistence-3582-editor-route-contract.test.cjs.
+ *
+ * This file may claim:
+ * - createEditorCanvas storage restoration (fixture-level)
+ * - actual pointer drag persistence
+ * - layout toggle free↔structured
+ * - tree-key isolation via fixture full page navigation
+ * - storage failure fallback
+ * - mobile canvas restoration (fixture)
+ *
+ * This file must NOT alone claim:
+ * - canonical pages/editor.html boot
+ * - actual js/editor.js startEditor first paint
+ * - URL mode=edit production startup
+ * - ordinary Editor reload without second navigation
+ * - owner auth/permission startup via real editor shell
  *
  * No drag-failure substitutes (no direct positions write / persist to fake success).
  */
@@ -465,7 +475,7 @@ async function syncMode(page, mode) {
   }, mode);
 }
 
-test('#3582 desktop: drag, route, reload, logout, tree switch, free↔structured', {
+test('#3582 component canvas: drag, fixture route sim, logout stub, tree switch, free↔structured', {
   timeout: 180000
 }, async () => {
   ensureEvidence();
@@ -553,18 +563,24 @@ test('#3582 desktop: drag, route, reload, logout, tree switch, free↔structured
       JSON.stringify({ keysOnExit, apprec, editRe }, null, 2)
     );
 
-    // 10-11 ordinary reload
-    await page.reload({ waitUntil: 'networkidle' });
+    // Component-level re-open (NOT ordinary Editor reload acceptance — see editor-route contract).
+    // openTree performs a fresh fixture navigation + createEditorCanvas; do not treat as page.reload proof.
     await openTree(page, base, 'A', 'edit');
-    const afterReload = await snapshot(page, 'A');
-    assert.equal(afterReload.layoutMode, 'free');
-    assert.ok(Math.abs(afterReload.positions['A-one'].x - posStable['A-one'].x) < 1);
-    assert.equal(afterReload.canvasCount, 1);
-    assert.equal(afterReload.overflow, false);
-    await page.screenshot({ path: path.join(EVIDENCE, '03-reload-restored.png') });
+    const afterReopen = await snapshot(page, 'A');
+    assert.equal(afterReopen.layoutMode, 'free');
+    assert.ok(Math.abs(afterReopen.positions['A-one'].x - posStable['A-one'].x) < 1);
+    assert.equal(afterReopen.canvasCount, 1);
+    assert.equal(afterReopen.overflow, false);
     fs.writeFileSync(
-      path.join(EVIDENCE, 'reload-restoration.json'),
-      JSON.stringify({ afterReload }, null, 2)
+      path.join(EVIDENCE, 'component-reopen-restoration.json'),
+      JSON.stringify(
+        {
+          note: 'component fixture reopen only; canonical reload is in editor-route contract',
+          afterReopen
+        },
+        null,
+        2
+      )
     );
 
     // 15-19 logout / same-owner login simulation
