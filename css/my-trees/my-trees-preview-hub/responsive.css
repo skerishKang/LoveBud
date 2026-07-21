@@ -52,6 +52,13 @@ body.preview-sheet-open {
     /* Open state: slide up */
     #myTreesHubPanel.preview-sidebar.is-open {
         display: block;
+        /* Reaffirm the scrollport on the open sheet so sticky CTA can pin
+           against a real overflow container (overrides layout overflow:hidden). */
+        overflow-x: hidden;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        /* Clearance for the sticky primary CTA + safe-area (#3604). */
+        padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
         animation: mobile-sheet-slide-up 280ms cubic-bezier(0.16, 1, 0.3, 1) both;
     }
 
@@ -140,6 +147,56 @@ body.preview-sheet-open {
     .my-trees-hub-goto-btn {
         min-height: 48px;
         font-size: 15px;
+    }
+
+    /*
+     * #3604 — Keep only the primary appreciation CTA persistent on the
+     * open mobile sheet. Do NOT sticky the whole .my-trees-hub-actions
+     * stack (share must stay in normal internal scroll flow).
+     *
+     * Geometry evidence:
+     * - sticky on .my-trees-hub-actions pins share as well (rejected).
+     * - sticky on .my-trees-hub-open-btn alone fails while the actions
+     *   parent remains a tight containing block below the fold.
+     * - display: contents on .my-trees-hub-actions lets the open button
+     *   stick against the sheet scrollport; share stays position:static.
+     * - sheet bottom padding reserves clearance so summary/share/social
+     *   can scroll fully into view without being permanently covered.
+     *
+     * Focus/a11y: do not use CSS `order` to rearrange interactive
+     * controls. DOM order remains open CTA → share (and focus follows).
+     */
+    #myTreesHubPanel.preview-sidebar.is-open .my-trees-hub-actions {
+        /* Flatten the actions wrapper so the open button's sticky
+           containing block is the sheet scrollport, not a short parent. */
+        display: contents;
+    }
+
+    #myTreesHubPanel.preview-sidebar.is-open .my-trees-hub-open-btn {
+        position: -webkit-sticky;
+        position: sticky;
+        bottom: calc(6px + env(safe-area-inset-bottom, 0px));
+        z-index: 6;
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
+        margin-top: 12px;
+        /* Opaque primary surface so scrolled content does not show through. */
+        background: var(--primary);
+        box-shadow: 0 12px 24px rgba(75, 64, 57, 0.14);
+    }
+
+    #myTreesHubPanel.preview-sidebar.is-open .my-trees-hub-share-btn {
+        position: static;
+        margin-top: 12px;
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
+    }
+
+    #myTreesHubPanel.preview-sidebar.is-open #myTreesHubSocialSlot {
+        /* Normal document flow after actions; not sticky/fixed. */
+        position: static;
     }
 }
 
