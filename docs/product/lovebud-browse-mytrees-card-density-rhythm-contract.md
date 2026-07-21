@@ -4,9 +4,21 @@ Refs #2703, Step 2 follow-up (view-mode parity)
 
 ## 1. Motivation
 
-To maintain layout harmony and visual containment across **Browse** and **My Trees** pages without forcing identical cards redesign (retaining card visual distinctiveness based on their context roles).
+To maintain layout harmony and visual containment across **Browse** and **My Trees** pages as one appreciation-first LoveTree card family.
 
-Browse cards are designed as "Appreciation/Discovery Cards", while My Trees cards represent "Owner Dashboard Management Cards". This contract locks down spacing bounds, layout grids, token constants, and empty-state rhythm parameters to prevent design discrepancies.
+> **#3608 Phase 1 (2026-07-21) — contract revision**
+>
+> **Retired (obsolete):** Browse = Appreciation/Discovery Card vs My Trees =
+> Owner Dashboard Management Card as a reason for *default density* or
+> *compact geometry* divergence. That framing produced intentional compact
+> asymmetry (My Trees smaller thumbs / auto height) which is **discarded**.
+>
+> **Current:** Browse and My Trees are appreciation-first canonical cards.
+> Empty/invalid storage → both default to **compact**. Valid saved
+> `large`/`list` preferences remain per-page and independent. Compact core
+> geometry is **identical** across surfaces. Surface extensions
+> (Browse public tags, My Trees visibility icon / selection) stay inside
+> shared slots. **large/list geometry convergence is Phase 2.**
 
 ---
 
@@ -61,36 +73,47 @@ locked by `tests/contracts/tree-view-mode-parity-contract.test.cjs`:
 
 | Mode | Browse `#resultsList` | My Trees `.trees-grid` | Token |
 |---|---|---|---|
-| `large` (default desktop) | 24px | 24px | `var(--lovetree-card-grid-gap)` |
-| `compact` (default desktop) | 18px | 18px | `var(--lovetree-card-grid-gap-compact)` |
-| `list` (desktop) | 14px | 14px | (compact-stacked rhythm, kept narrow) |
+| `large` (user preference) | 24px | 24px | `var(--lovetree-card-grid-gap)` |
+| `compact` (**default** when storage empty/invalid) | 18px | 18px | `var(--lovetree-card-grid-gap-compact)` |
+| `list` (user preference) | 14px | 14px | (compact-stacked rhythm, kept narrow) |
 
 ### 5.2 Mobile compact breakpoint is identical
 
-Both pages collapse `compact` from 3-col to 2-col at `max-width: 640px`, with
-`min-height: 260px` enforced on `.tree-card` for stable card heights.
+Both pages collapse `compact` from 3-col to 2-col at `max-width: 640px`
+(card height 280px / media 90px) and keep 2-col at `max-width: 480px`
+(card height 260px / media 80px / gap 10px). Core compact geometry is
+shared via combined selectors in `css/tree-view-mode.css`.
 
 ### 5.3 List mode parity on class-name divergence
 
-Browse uses `.tree-card-media` / `.tree-card-body`; My Trees uses
-`.tree-card-thumb` / `.tree-card-info`. The list-mode rules in
-`css/tree-view-mode.css` must apply to **both** inner class names so the
-visual outcome is identical:
+Browse uses `.tree-card-media` / `.tree-card-body`; My Trees may still use
+`.tree-card-thumb` / `.tree-card-info` under the shared media wrapper. The
+list-mode rules in `css/tree-view-mode.css` must apply to **both** inner
+class names so the visual outcome is identical:
 * List-mode `border-radius: var(--lovetree-card-radius-lg) 0 0 var(--lovetree-card-radius-lg)` is applied to **both** `.tree-card-media` and `.tree-card-thumb` selectors.
 * List-mode `padding: 14px 16px` is applied to **both** `.tree-card-body` and `.tree-card-info` selectors.
 * Stacked list (≤480px) `border-radius: var(--lovetree-card-radius-lg) var(--lovetree-card-radius-lg) 0 0` applies to both selectors.
 
-### 5.4 Intentional divergences (NOT parity violations)
+### 5.4 Defaults and compact geometry (#3608 Phase 1)
 
-* **Default mode per page**: Browse defaults to `compact` (storageKey
-  `lovebud:browse:viewMode`), My Trees defaults to `large` (storageKey
-  `lovebud:myTrees:viewMode`). Locked by
-  `tests/contracts/tree-view-mode-switcher-contract.test.cjs`.
-* **Compact-mode card size on My Trees**: My Trees compact mode applies
-  page-local overrides to make cards visually smaller (`.tree-card-thumb
-  { height: 140px; padding: 12px }`, `.tree-card-info { padding: 12px }`,
-  `.tree-card-title { font-size: 0.95rem }`). Browse compact inherits base
-  card sizing. This is documented as an intentional asymmetry in §1.
+* **Default mode (empty / invalid storage):** Browse and My Trees both use
+  `defaultMode: 'compact'` (storage keys remain independent:
+  `lovebud:browse:viewMode`, `lovebud:myTrees:viewMode`). Valid saved
+  `large` / `list` / `compact` values are **not** rewritten.
+* **Compact core geometry is identical** on both surfaces (card height,
+  media height, body padding/rows/gap, title/subtitle typography). Owned
+  by combined `#resultsList` + `.trees-grid` compact selectors in
+  `css/tree-view-mode.css`.
+* **Obsolete compact asymmetry (discarded):** My Trees-only compact rules
+  that forced `thumb height: 140px`, `padding: 12px`, `title font-size:
+  0.95rem`, and mobile `height: auto` / `min-height: 240px` are removed.
+  Those rules encoded the retired “owner dashboard smaller card” premise.
+* **large / list geometry convergence:** deferred to #3608 Phase 2. Phase 1
+  only guarantees preferences still switch modes without forcing compact.
+* **Surface extensions (allowed differences):** Browse public metadata/tags;
+  My Trees public/private visibility icon + selected-card + hub selection.
+  Extensions must stay inside shared slots and must not break compact
+  media/title/footer/CTA alignment.
 
 ## 6. Card Surface Parity (Step 4 follow-up)
 

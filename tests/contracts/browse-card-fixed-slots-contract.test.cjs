@@ -183,9 +183,23 @@ test('8. Generic truncation conservation and Browse large override', () => {
 test('9. Verification of static boundaries and other files integrity', () => {
   const css = read('css/tree-view-mode.css');
 
-  // Verify list mode and trees-grid existing selectors properties are intact
-  assert.match(css, /\.trees-grid\[data-tree-view-mode="compact"\]\s+\.tree-card-thumb\s*\{[^}]*height:\s*140px;/);
-  assert.match(css, /\.trees-grid\[data-tree-view-mode="compact"\]\s+\.tree-card-title\s*\{[^}]*font-size:\s*0\.95rem;/);
+  // #3608 Phase 1: obsolete My Trees-only compact 140px/0.95rem asymmetry is gone.
+  // Compact media is canonical 100px (desktop) on both surfaces.
+  assert.doesNotMatch(
+    css,
+    /\.trees-grid\[data-tree-view-mode="compact"\][^{]*\.tree-card-thumb\s*\{[^}]*height:\s*140px;/,
+    'obsolete My Trees compact thumb height 140px must be removed'
+  );
+  assert.doesNotMatch(
+    css,
+    /\.trees-grid\[data-tree-view-mode="compact"\][^{]*\.tree-card-title\s*\{[^}]*font-size:\s*0\.95rem;/,
+    'obsolete My Trees compact title 0.95rem must be removed'
+  );
+  assert.match(
+    css,
+    /\[data-tree-view-mode="compact"\][^{]*\.tree-card-media[^{]*\{[^}]*height:\s*100px;/,
+    'canonical compact media height is 100px'
+  );
 
   // Ensure no closes/fixes/resolves statements match
   const testFile = fs.readFileSync(__filename, 'utf8');

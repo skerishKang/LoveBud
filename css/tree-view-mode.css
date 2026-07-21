@@ -5,14 +5,12 @@
  * Base styles live in css/search/* and css/my-trees/* — this file only
  * overrides per-mode without removing the existing default columns.
  *
- * v20260621-step2-1 — view-mode parity with Browse (Step 2 follow-up):
- *   - gap values token-driven on both pages (--lovetree-card-grid-gap,
- *     --lovetree-card-grid-gap-compact)
- *   - mobile compact breakpoint unified at max-width: 640px on both pages
- *   - list-mode border-radius and body padding now apply to both
- *     .tree-card-media/.tree-card-thumb and .tree-card-body/.tree-card-info
- *   - hardcoded 1.85rem border-radius → var(--lovetree-card-radius-lg)
- *   - removed redundant ≤900px and ≤600px rules
+ * v20260721-3608-1 — #3608 Phase 1 compact convergence:
+ *   - Compact core geometry is canonical and shared by Browse + My Trees
+ *   - Obsolete My Trees-only compact asymmetry (140px thumb, auto height,
+ *     0.95rem title) is removed
+ *   - large/list remain surface-owned; geometry parity is Phase 2
+ *   - empty/invalid storage defaults: both pages compact (bootstrap)
  */
 
 /* ── Control UI ───────────────────────────────────────────────────── */
@@ -77,7 +75,7 @@
 }
 
 
-/* ── Browse (#resultsList) — default 3-col, data-attr overrides ──── */
+/* ── Browse (#resultsList) — large / list (unchanged Phase 1) ──── */
 #resultsList[data-tree-view-mode="large"] {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: var(--lovetree-card-grid-gap);
@@ -173,40 +171,154 @@
     flex-shrink: 0;
 }
 
-#resultsList[data-tree-view-mode="compact"] {
+/* ── Compact (canonical) — #3608 Phase 1 ───────────────────────────
+ * Browse compact geometry is the source of truth.
+ * My Trees compact mirrors the same core values via parallel rules
+ * (standalone Browse blocks keep fixed-slot contract selectors).
+ */
+#resultsList[data-tree-view-mode="compact"],
+.trees-grid[data-tree-view-mode="compact"] {
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: var(--lovetree-card-grid-gap-compact);
 }
 
+/* Browse compact root card */
 #resultsList[data-tree-view-mode="compact"] .tree-card {
     height: 290px;
     min-height: 260px;
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
 }
 
-#resultsList[data-tree-view-mode="compact"] .tree-card-media {
+/* My Trees compact root card — same geometry as Browse */
+.trees-grid[data-tree-view-mode="compact"] .tree-card {
+    height: 290px;
+    min-height: 260px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+}
+
+/* Browse compact media wrapper */
+#resultsList[data-tree-view-mode="compact"] .tree-card-media,
+#resultsList[data-tree-view-mode="compact"] .love-tree-card-media {
     height: 100px;
     min-height: 100px;
+    max-height: 100px;
     margin: 0;
+    padding: 0;
+    overflow: hidden;
+    box-sizing: border-box;
+    flex-shrink: 0;
 }
 
+/* My Trees compact media wrapper — same geometry as Browse */
+.trees-grid[data-tree-view-mode="compact"] .tree-card-media,
+.trees-grid[data-tree-view-mode="compact"] .love-tree-card-media {
+    height: 100px;
+    min-height: 100px;
+    max-height: 100px;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    box-sizing: border-box;
+    flex-shrink: 0;
+}
+
+/* Inner My Trees thumb must not exceed the compact media slot */
+.trees-grid[data-tree-view-mode="compact"] .tree-card-media .tree-card-thumb,
+.trees-grid[data-tree-view-mode="compact"] .love-tree-card-media .tree-card-thumb,
+.trees-grid[data-tree-view-mode="compact"] .tree-card-thumb {
+    height: 100%;
+    min-height: 0;
+    max-height: 100%;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+/* Browse compact body (standalone .tree-card-body for fixed-slot contracts) */
 #resultsList[data-tree-view-mode="compact"] .tree-card-body {
     display: grid;
     grid-template-rows: 1.5rem 1.2rem minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr);
     row-gap: 6px;
     padding: 8px 10px 10px;
     flex: 1 1 auto;
     height: auto;
     min-height: 0;
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
     box-sizing: border-box;
 }
 
+#resultsList[data-tree-view-mode="compact"] .love-tree-card-body,
+.trees-grid[data-tree-view-mode="compact"] .tree-card-body,
+.trees-grid[data-tree-view-mode="compact"] .love-tree-card-body {
+    display: grid;
+    grid-template-rows: 1.5rem 1.2rem minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: 6px;
+    padding: 8px 10px 10px;
+    flex: 1 1 auto;
+    height: auto;
+    min-height: 0;
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+    box-sizing: border-box;
+}
+
+/* Compact title-row / meta / CTA: stay inside card width on 2-col mobile */
+#resultsList[data-tree-view-mode="compact"] .tree-card-title-row,
+#resultsList[data-tree-view-mode="compact"] .love-tree-card-title-row,
+.trees-grid[data-tree-view-mode="compact"] .tree-card-title-row,
+.trees-grid[data-tree-view-mode="compact"] .love-tree-card-title-row {
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+}
+
+#resultsList[data-tree-view-mode="compact"] .tree-meta-left,
+#resultsList[data-tree-view-mode="compact"] .love-tree-card-meta-left,
+#resultsList[data-tree-view-mode="compact"] .tree-meta-right,
+#resultsList[data-tree-view-mode="compact"] .love-tree-card-meta-right,
+.trees-grid[data-tree-view-mode="compact"] .tree-meta-left,
+.trees-grid[data-tree-view-mode="compact"] .love-tree-card-meta-left,
+.trees-grid[data-tree-view-mode="compact"] .tree-meta-right,
+.trees-grid[data-tree-view-mode="compact"] .love-tree-card-meta-right {
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+}
+
+#resultsList[data-tree-view-mode="compact"] .tree-card-open-link,
+#resultsList[data-tree-view-mode="compact"] .love-tree-card-open-link,
+.trees-grid[data-tree-view-mode="compact"] .tree-card-open-link,
+.trees-grid[data-tree-view-mode="compact"] .love-tree-card-open-link {
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+    box-sizing: border-box;
+}
+
+/* Browse compact title */
 #resultsList[data-tree-view-mode="compact"] .tree-title {
     font-size: 1.1rem;
+    font-weight: 300;
     line-height: 1.3;
     height: 1.5rem;
+    min-height: 0;
+    max-height: 1.5rem;
     margin: 0;
     display: block;
     overflow: hidden;
@@ -215,18 +327,62 @@
     flex-shrink: 0;
 }
 
+#resultsList[data-tree-view-mode="compact"] .love-tree-card-title,
+.trees-grid[data-tree-view-mode="compact"] .tree-title,
+.trees-grid[data-tree-view-mode="compact"] .love-tree-card-title,
+.trees-grid[data-tree-view-mode="compact"] .tree-card-title {
+    font-size: 1.1rem;
+    font-weight: 300;
+    line-height: 1.3;
+    height: 1.5rem;
+    min-height: 0;
+    max-height: 1.5rem;
+    margin: 0;
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+/* Browse compact subtitle */
 #resultsList[data-tree-view-mode="compact"] .tree-subtitle {
     font-size: 0.8rem;
     line-height: 1.4;
     height: 1.2rem;
+    min-height: 0;
+    max-height: 1.2rem;
     margin: 0;
+    margin-top: 0;
     display: block;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
     flex-shrink: 0;
+    -webkit-line-clamp: unset;
 }
 
+#resultsList[data-tree-view-mode="compact"] .love-tree-card-subtitle,
+#resultsList[data-tree-view-mode="compact"] .tree-card-subcopy,
+.trees-grid[data-tree-view-mode="compact"] .tree-subtitle,
+.trees-grid[data-tree-view-mode="compact"] .love-tree-card-subtitle,
+.trees-grid[data-tree-view-mode="compact"] .tree-card-subcopy {
+    font-size: 0.8rem;
+    line-height: 1.4;
+    height: 1.2rem;
+    min-height: 0;
+    max-height: 1.2rem;
+    margin: 0;
+    margin-top: 0;
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex-shrink: 0;
+    -webkit-line-clamp: unset;
+}
+
+/* Browse public metadata slots stay inside the flexible middle row */
 #resultsList[data-tree-view-mode="compact"] .tree-card-metadata-slot {
   display: grid;
   grid-template-rows: minmax(0, 1fr) 22px;
@@ -261,10 +417,28 @@
   flex-shrink: 0;
 }
 
+/* Compact footer / meta row — both surfaces */
 #resultsList[data-tree-view-mode="compact"] .tree-meta-row {
     flex-shrink: 0;
+    margin-top: 0;
+    align-self: stretch;
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
 }
 
+#resultsList[data-tree-view-mode="compact"] .love-tree-card-meta-row,
+.trees-grid[data-tree-view-mode="compact"] .tree-meta-row,
+.trees-grid[data-tree-view-mode="compact"] .love-tree-card-meta-row {
+    flex-shrink: 0;
+    margin-top: 0;
+    align-self: stretch;
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+}
+
+/* ── Browse list (unchanged Phase 1) ─────────────────────────────── */
 #resultsList[data-tree-view-mode="list"] {
     grid-template-columns: 1fr;
     gap: 14px;
@@ -298,23 +472,47 @@
     overflow: hidden;
 }
 
-/* ── Compact → 2-col on mobile ────────────────────────────── */
+/* ── Compact → 2-col on tablet/mobile ────────────────────────────── */
 @media (max-width: 640px) {
-    #resultsList[data-tree-view-mode="compact"] {
+    #resultsList[data-tree-view-mode="compact"],
+    .trees-grid[data-tree-view-mode="compact"] {
         grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 12px;
     }
 
     #resultsList[data-tree-view-mode="compact"] .tree-card {
         height: 280px;
+        min-height: 280px;
     }
 
-    #resultsList[data-tree-view-mode="compact"] .tree-card-media {
+    .trees-grid[data-tree-view-mode="compact"] .tree-card {
+        height: 280px;
+        min-height: 280px;
+    }
+
+    #resultsList[data-tree-view-mode="compact"] .tree-card-media,
+    #resultsList[data-tree-view-mode="compact"] .love-tree-card-media {
         height: 90px;
         min-height: 90px;
+        max-height: 90px;
+    }
+
+    .trees-grid[data-tree-view-mode="compact"] .tree-card-media,
+    .trees-grid[data-tree-view-mode="compact"] .love-tree-card-media {
+        height: 90px;
+        min-height: 90px;
+        max-height: 90px;
     }
 
     #resultsList[data-tree-view-mode="compact"] .tree-card-body {
+        height: auto;
+        flex: 1 1 auto;
+        min-height: 0;
+    }
+
+    #resultsList[data-tree-view-mode="compact"] .love-tree-card-body,
+    .trees-grid[data-tree-view-mode="compact"] .tree-card-body,
+    .trees-grid[data-tree-view-mode="compact"] .love-tree-card-body {
         height: auto;
         flex: 1 1 auto;
         min-height: 0;
@@ -356,19 +554,35 @@
         padding: 12px 14px 14px;
     }
 
-    /* Compact also stays 2-col on very small screens */
-    #resultsList[data-tree-view-mode="compact"] {
+    /* Compact stays 2-col with tighter geometry on very small screens */
+    #resultsList[data-tree-view-mode="compact"],
+    .trees-grid[data-tree-view-mode="compact"] {
         grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 10px;
     }
 
     #resultsList[data-tree-view-mode="compact"] .tree-card {
         height: 260px;
+        min-height: 260px;
     }
 
-    #resultsList[data-tree-view-mode="compact"] .tree-card-media {
+    .trees-grid[data-tree-view-mode="compact"] .tree-card {
+        height: 260px;
+        min-height: 260px;
+    }
+
+    #resultsList[data-tree-view-mode="compact"] .tree-card-media,
+    #resultsList[data-tree-view-mode="compact"] .love-tree-card-media {
         height: 80px;
         min-height: 80px;
+        max-height: 80px;
+    }
+
+    .trees-grid[data-tree-view-mode="compact"] .tree-card-media,
+    .trees-grid[data-tree-view-mode="compact"] .love-tree-card-media {
+        height: 80px;
+        min-height: 80px;
+        max-height: 80px;
     }
 
     #resultsList[data-tree-view-mode="compact"] .tree-card-body {
@@ -376,17 +590,20 @@
         flex: 1 1 auto;
         min-height: 0;
     }
+
+    #resultsList[data-tree-view-mode="compact"] .love-tree-card-body,
+    .trees-grid[data-tree-view-mode="compact"] .tree-card-body,
+    .trees-grid[data-tree-view-mode="compact"] .love-tree-card-body {
+        height: auto;
+        flex: 1 1 auto;
+        min-height: 0;
+    }
 }
 
-/* ── My LoveTree (.trees-grid) — default 2-col, data-attr overrides ─ */
+/* ── My LoveTree (.trees-grid) — large / list only (Phase 1) ─ */
 .trees-grid[data-tree-view-mode="large"] {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: var(--lovetree-card-grid-gap);
-}
-
-.trees-grid[data-tree-view-mode="compact"] {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: var(--lovetree-card-grid-gap-compact);
 }
 
 .trees-grid[data-tree-view-mode="list"] {
@@ -403,36 +620,12 @@
     padding: 0;
 }
 
-.trees-grid[data-tree-view-mode="list"] .tree-card-thumb {
+.trees-grid[data-tree-view-mode="list"] .tree-card-thumb,
+.trees-grid[data-tree-view-mode="list"] .tree-card-media {
     height: 100%;
     min-height: 110px;
     width: 100%;
     border-radius: var(--lovetree-card-radius-lg) 0 0 var(--lovetree-card-radius-lg);
-}
-
-.trees-grid[data-tree-view-mode="compact"] .tree-card-info,
-.trees-grid[data-tree-view-mode="compact"] .tree-card-thumb {
-    padding: 12px;
-}
-
-.trees-grid[data-tree-view-mode="compact"] .tree-card-thumb {
-    height: 140px;
-}
-
-.trees-grid[data-tree-view-mode="compact"] .tree-card-title {
-    font-size: 0.95rem;
-}
-
-@media (max-width: 640px) {
-    .trees-grid[data-tree-view-mode="compact"] {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 12px;
-    }
-
-    .trees-grid[data-tree-view-mode="compact"] .tree-card {
-        height: auto;
-        min-height: 260px;
-    }
 }
 
 @media (max-width: 768px) {
@@ -442,14 +635,14 @@
         min-height: 110px;
     }
 
-    .trees-grid[data-tree-view-mode="list"] .tree-card-thumb {
+    .trees-grid[data-tree-view-mode="list"] .tree-card-thumb,
+    .trees-grid[data-tree-view-mode="list"] .tree-card-media {
         min-height: 110px;
         border-radius: var(--lovetree-card-radius-lg) 0 0 var(--lovetree-card-radius-lg);
     }
 }
 
 @media (max-width: 480px) {
-    /* Stack list card vertically on very small screens */
     .trees-grid[data-tree-view-mode="list"] .tree-card {
         grid-template-columns: 1fr;
         grid-template-rows: 140px auto;
@@ -457,28 +650,20 @@
         min-height: 0;
     }
 
-    .trees-grid[data-tree-view-mode="list"] .tree-card-thumb {
+    .trees-grid[data-tree-view-mode="list"] .tree-card-thumb,
+    .trees-grid[data-tree-view-mode="list"] .tree-card-media {
         height: 140px;
         min-height: 140px;
         border-radius: var(--lovetree-card-radius-lg) var(--lovetree-card-radius-lg) 0 0;
     }
 
-    .trees-grid[data-tree-view-mode="list"] .tree-card-info {
+    .trees-grid[data-tree-view-mode="list"] .tree-card-info,
+    .trees-grid[data-tree-view-mode="list"] .tree-card-body {
         padding: 12px 14px 14px;
-    }
-
-    /* Compact also stays 2-col on very small screens */
-    .trees-grid[data-tree-view-mode="compact"] {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 10px;
-    }
-
-    .trees-grid[data-tree-view-mode="compact"] .tree-card {
-        min-height: 240px;
     }
 }
 
-/* ── Text truncation for card consistency ───────────────────── */
+/* ── Text truncation helpers ───────────────────────────────────── */
 .tree-card .tree-title {
     overflow: hidden;
     text-overflow: ellipsis;
@@ -503,31 +688,4 @@
     text-overflow: ellipsis;
     white-space: nowrap;
     max-width: 100%;
-}
-
-#resultsList[data-tree-view-mode="compact"] .tree-card .tree-title,
-.trees-grid[data-tree-view-mode="compact"] .tree-card-title {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    max-width: 100%;
-    display: block;
-}
-
-#resultsList[data-tree-view-mode="compact"] .tree-card .tree-subtitle {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    max-width: 100%;
-}
-
-#resultsList[data-tree-view-mode="compact"] .tree-card-body {
-    min-height: 100px;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-}
-
-#resultsList[data-tree-view-mode="compact"] .tree-card .tree-meta-row {
-    margin-top: auto;
 }

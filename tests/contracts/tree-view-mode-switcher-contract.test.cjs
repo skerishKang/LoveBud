@@ -71,7 +71,7 @@ test('large / compact / list modes are all defined', () => {
 test('Browse page loads tree view mode CSS and helper script', () => {
     assert.match(
         searchHtml,
-        /href="\.\.\/css\/tree-view-mode\.css\?v=20260621-step2-1"/
+        /href="\.\.\/css\/tree-view-mode\.css\?v=20260721-3608-1"/
     );
     assert.match(
         searchHtml,
@@ -94,7 +94,7 @@ test('Browse page initializes the switcher with browse storage key and default c
 test('My LoveTree page loads tree view mode CSS and helper script', () => {
     assert.match(
         myTreesHtml,
-        /href="\.\.\/css\/tree-view-mode\.css\?v=20260621-step2-1"/
+        /href="\.\.\/css\/tree-view-mode\.css\?v=20260721-3608-1"/
     );
     assert.match(
         myTreesHtml,
@@ -109,13 +109,16 @@ test('My LoveTree page has view mode control mount point', () => {
 test('My LoveTree page loads my trees page bootstrap', () => {
     assert.match(
         myTreesHtml,
-        /src="\.\.\/js\/my-trees\/my-trees-page-bootstrap\.js\?v=20260617-1"/
+        /src="\.\.\/js\/my-trees\/my-trees-page-bootstrap\.js\?v=20260721-3608-1"/
     );
 });
 
-test('My LoveTree page initializes the switcher with myTrees storage key and default large', () => {
+test('My LoveTree page initializes the switcher with myTrees storage key and default compact', () => {
+    // #3608 Phase 1: empty storage falls back to compact (same as Browse).
+    // Valid saved large/list preferences remain independent per storageKey.
     assert.match(myTreesPageBootstrap, /lovebud:myTrees:viewMode/);
-    assert.match(myTreesPageBootstrap, /defaultMode:\s*['"]large['"]/);
+    assert.match(myTreesPageBootstrap, /defaultMode:\s*['"]compact['"]/);
+    assert.doesNotMatch(myTreesPageBootstrap, /defaultMode:\s*['"]large['"]/);
     assert.match(myTreesPageBootstrap, /mount:\s*['"]#myTreesViewModeMount['"]/);
     assert.match(myTreesPageBootstrap, /target:\s*['"]#trees-grid['"]/);
 });
