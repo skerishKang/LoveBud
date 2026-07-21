@@ -428,9 +428,11 @@ test('#3484 active Intro i18n aligns Korean and English Option B copy', () => {
 test('#3484 Settings active copy keeps Plus as not-yet-shipped (준비 중)', () => {
   const html = read(SETTINGS_HTML);
   const i18n = read(SETTINGS_I18N);
+  // Plus note was removed from settings.html in #3583 follow-up.
+  // The i18n keys are retained for reference but no longer rendered.
   assert.ok(
-    /Plus에서 준비 중/.test(html) || /준비 중이에요/.test(html),
-    `${SETTINGS_HTML} must describe private storage as not-yet-shipped`
+    !/Plus에서 준비 중/.test(html) && !/준비 중이에요/.test(html),
+    `${SETTINGS_HTML} must no longer display Plus not-yet-shipped note (removed in #3583)`
   );
   assert.ok(
     /Plus에서 준비 중/.test(i18n),

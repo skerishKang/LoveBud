@@ -225,8 +225,8 @@
       en: 'Settings'
     },
     'settings.subtitle': {
-      ko: '러브트리를 어떻게 소개할지 살펴봅니다',
-      en: 'Review how your LoveTree can be introduced'
+      ko: '프로필과 로그인 정보를 확인합니다',
+      en: 'Review your profile and sign-in information'
     },
     'settings.browseIntroTitle': {
       ko: '둘러보기 소개',
@@ -311,6 +311,14 @@
     'settings.account.password.unavailable': {
       ko: '현재 로그인 방식에서는 비밀번호 관리 기능을 확인할 수 없습니다.',
       en: 'Password management is not available for the current sign-in method.'
+    },
+    'settings.profile.avatarPhoto': {
+      ko: '{displayName}님의 프로필 사진',
+      en: 'Profile photo for {displayName}'
+    },
+    'settings.profile.avatarFallback': {
+      ko: '{displayName}님의 프로필',
+      en: 'Profile for {displayName}'
     },
     'settings.private': {
       ko: '비공개',

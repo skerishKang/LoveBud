@@ -225,7 +225,8 @@
    */
   function resolveDisplayName(user) {
     if (user && user.displayName && typeof user.displayName === 'string') {
-      return user.displayName.trim();
+      var trimmed = user.displayName.trim();
+      if (trimmed) return trimmed;
     }
     if (user && user.email && typeof user.email === 'string') {
       var at = user.email.indexOf('@');
@@ -255,18 +256,25 @@
    */
   function resolveSignInMethods(user) {
     if (!user || !user.providerData || !Array.isArray(user.providerData) || user.providerData.length === 0) {
-      return [];
+      return ['unknown'];
     }
     var methods = [];
     for (var i = 0; i < user.providerData.length; i++) {
       var providerId = user.providerData[i].providerId;
+      var canonical = null;
       if (providerId === 'google.com') {
-        methods.push('google');
+        canonical = 'google';
       } else if (providerId === 'password') {
-        methods.push('password');
-      } else if (providerId && methods.indexOf(providerId) === -1) {
-        methods.push(providerId);
+        canonical = 'password';
+      } else {
+        canonical = 'unknown';
       }
+      if (canonical && methods.indexOf(canonical) === -1) {
+        methods.push(canonical);
+      }
+    }
+    if (methods.length === 0) {
+      return ['unknown'];
     }
     return methods;
   }
@@ -278,35 +286,15 @@
    */
   function resolveSettingsAccountViewModel(user) {
     var methods = resolveSignInMethods(user);
-    var primaryMethod = methods.length > 0 ? methods[0] : 'unknown';
-
-    var providerLabel;
-    if (primaryMethod === 'google') {
-      providerLabel = 'Google';
-    } else if (primaryMethod === 'password') {
-      providerLabel = '이메일 및 비밀번호';
-    } else if (methods.length > 1) {
-      providerLabel = methods.join(', ');
-    } else {
-      providerLabel = '확인 불가';
-    }
-
-    var passwordInfo;
-    if (primaryMethod === 'google') {
-      passwordInfo = 'google';
-    } else if (primaryMethod === 'password') {
-      passwordInfo = 'deferred';
-    } else {
-      passwordInfo = 'unavailable';
-    }
-
+    var hasPassword = methods.indexOf('password') !== -1;
+    var hasGoogle = methods.indexOf('google') !== -1;
+    var passwordInfo = hasPassword ? 'deferred' : (hasGoogle ? 'google' : 'unavailable');
     return {
       email: (user && user.email) || '',
       uid: (user && user.uid) || '',
       displayName: resolveDisplayName(user),
       photoURL: (user && user.photoURL) || '',
-      methods: methods,
-      providerLabel: providerLabel,
+      signInMethods: methods,
       passwordInfo: passwordInfo
     };
   }
@@ -358,7 +346,7 @@
     if (titleEl) titleEl.textContent = safeText('settings.title', '설정');
 
     var subtitleEl = document.getElementById('settingsSubtitle');
-    if (subtitleEl) subtitleEl.textContent = safeText('settings.subtitle', '러브트리를 어떻게 소개할지 살펴봅니다');
+    if (subtitleEl) subtitleEl.textContent = safeText('settings.subtitle', '프로필과 로그인 정보를 확인합니다');
 
     // Profile section
     var profileTitleEl = document.getElementById('settingsProfileTitle');
@@ -368,10 +356,6 @@
       if (icon) profileTitleEl.appendChild(icon);
       profileTitleEl.appendChild(document.createTextNode(' ' + safeText('settings.profile.title', '프로필')));
     }
-
-    var profileNameLabel = document.getElementById('settingsProfileName');
-    var profileEmailLabel = document.getElementById('settingsProfileEmail');
-    if (profileEmailLabel) profileEmailLabel.textContent = safeText('settings.profile.email', '이메일');
 
     var deferredNote = document.getElementById('settingsProfileDeferredNote');
     if (deferredNote) deferredNote.textContent = safeText('settings.profile.changeDeferred', '프로필 변경 기능은 다음 단계에서 제공됩니다.');
@@ -407,6 +391,16 @@
   }
 
   function renderProfileSection(vm) {
+    var t = window.t || function(key) { return key; };
+    function safeText(key, fallback) {
+      var translated = t(key);
+      return translated && translated !== key ? translated : fallback;
+    }
+    function interpolate(template, vars) {
+      return template.replace(/\{(\w+)\}/g, function(_, name) {
+        return vars[name] !== undefined ? vars[name] : '{' + name + '}';
+      });
+    }
     var avatarEl = document.getElementById('settingsProfileAvatar');
     var nameEl = document.getElementById('settingsProfileName');
     var emailEl = document.getElementById('settingsProfileEmail');
@@ -414,26 +408,32 @@
     if (avatarEl) {
       avatarEl.textContent = '';
       var hasPhoto = vm.photoURL && /^https?:\/\//.test(vm.photoURL);
+      var photoLabel = interpolate(safeText('settings.profile.avatarPhoto', 'Profile photo for ' + vm.displayName), { displayName: vm.displayName });
+      var fallbackLabel = interpolate(safeText('settings.profile.avatarFallback', 'Profile for ' + vm.displayName), { displayName: vm.displayName });
       if (hasPhoto) {
         var img = document.createElement('img');
         img.src = vm.photoURL;
-        img.alt = vm.displayName + ' 프로필 사진';
+        img.alt = '';
         img.className = 'settings-profile-avatar-img';
         img.onerror = function() {
           avatarEl.textContent = '';
           avatarEl.textContent = resolveProfileInitials(vm);
           avatarEl.classList.add('settings-profile-avatar-initials');
           avatarEl.classList.remove('settings-profile-avatar-img-wrap');
+          avatarEl.setAttribute('role', 'img');
+          avatarEl.setAttribute('aria-label', fallbackLabel);
         };
         avatarEl.appendChild(img);
         avatarEl.classList.add('settings-profile-avatar-img-wrap');
         avatarEl.classList.remove('settings-profile-avatar-initials');
-        avatarEl.setAttribute('aria-label', vm.displayName + ' 프로필 사진');
+        avatarEl.setAttribute('role', 'img');
+        avatarEl.setAttribute('aria-label', photoLabel);
       } else {
         avatarEl.textContent = resolveProfileInitials(vm);
         avatarEl.classList.add('settings-profile-avatar-initials');
         avatarEl.classList.remove('settings-profile-avatar-img-wrap');
-        avatarEl.setAttribute('aria-label', vm.displayName + ' 프로필');
+        avatarEl.setAttribute('role', 'img');
+        avatarEl.setAttribute('aria-label', fallbackLabel);
       }
     }
 
@@ -449,6 +449,16 @@
       return translated && translated !== key ? translated : fallback;
     }
 
+    var providerMap = {
+      google: 'settings.account.provider.google',
+      password: 'settings.account.provider.password',
+      unknown: 'settings.account.provider.unknown'
+    };
+    var providerLabels = vm.signInMethods.map(function(m) {
+      return safeText(providerMap[m] || providerMap.unknown, m);
+    });
+    var providerLabel = providerLabels.join(', ');
+
     var emailValueEl = document.getElementById('settingsAccountEmailValue');
     if (emailValueEl) emailValueEl.textContent = vm.email || '';
 
@@ -457,7 +467,7 @@
 
     var signInValueEl = document.getElementById('settingsAccountSignInValue');
     if (signInValueEl) {
-      signInValueEl.textContent = vm.providerLabel;
+      signInValueEl.textContent = providerLabel;
     }
 
     var passwordValueEl = document.getElementById('settingsAccountPasswordValue');

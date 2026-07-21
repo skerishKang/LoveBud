@@ -134,16 +134,16 @@ test('resolveSignInMethods returns multiple methods for multiple providers', () 
   assert.equal(JSON.stringify(result), JSON.stringify(['google', 'password']));
 });
 
-test('resolveSignInMethods returns empty array for no providerData', () => {
+test('resolveSignInMethods returns ["unknown"] for empty providerData', () => {
   const sandbox = createSettingsSandbox();
   var result = sandbox.resolveSignInMethods({ providerData: [] });
-  assert.equal(JSON.stringify(result), JSON.stringify([]));
+  assert.equal(JSON.stringify(result), JSON.stringify(['unknown']));
 });
 
-test('resolveSignInMethods returns empty array for null user', () => {
+test('resolveSignInMethods returns ["unknown"] for null user', () => {
   const sandbox = createSettingsSandbox();
   var result = sandbox.resolveSignInMethods(null);
-  assert.equal(JSON.stringify(result), JSON.stringify([]));
+  assert.equal(JSON.stringify(result), JSON.stringify(['unknown']));
 });
 
 // --- full view model ---
@@ -161,8 +161,7 @@ test('resolveSettingsAccountViewModel produces correct Google account model', ()
   assert.equal(vm.uid, 'qa-owner-3583');
   assert.equal(vm.displayName, 'QA User');
   assert.equal(vm.photoURL, 'https://example.com/photo.jpg');
-  assert.equal(JSON.stringify(vm.methods), JSON.stringify(['google']));
-  assert.equal(vm.providerLabel, 'Google');
+  assert.equal(JSON.stringify(vm.signInMethods), JSON.stringify(['google']));
   assert.equal(vm.passwordInfo, 'google');
 });
 
@@ -179,8 +178,7 @@ test('resolveSettingsAccountViewModel produces correct password account model', 
   assert.equal(vm.uid, 'password-owner-3583');
   assert.equal(vm.displayName, 'password-user');
   assert.equal(vm.photoURL, '');
-  assert.equal(JSON.stringify(vm.methods), JSON.stringify(['password']));
-  assert.equal(vm.providerLabel, '이메일 및 비밀번호');
+  assert.equal(JSON.stringify(vm.signInMethods), JSON.stringify(['password']));
   assert.equal(vm.passwordInfo, 'deferred');
 });
 
@@ -301,4 +299,99 @@ test('settings.html avatar has role=img and aria-label', () => {
 test('settings.html has deferred profile change note', () => {
   const html = read('pages/settings.html');
   assert.ok(html.includes('settingsProfileDeferredNote'), 'deferred note element must exist');
+});
+
+// --- new tests from spec ---
+
+test('resolveDisplayName falls back to email prefix for whitespace-only displayName', () => {
+  const sandbox = createSettingsSandbox();
+  var result = sandbox.resolveDisplayName({ displayName: '   ', email: 'space-user@example.com' });
+  assert.equal(result, 'space-user');
+});
+
+test('resolveSignInMethods returns ["google", "password"] for linked account', () => {
+  const sandbox = createSettingsSandbox();
+  var result = sandbox.resolveSignInMethods({
+    providerData: [{ providerId: 'google.com' }, { providerId: 'password' }]
+  });
+  assert.equal(JSON.stringify(result), JSON.stringify(['google', 'password']));
+});
+
+test('resolveSettingsAccountViewModel: google+password → passwordInfo deferred', () => {
+  const sandbox = createSettingsSandbox();
+  var vm = sandbox.resolveSettingsAccountViewModel({
+    email: 'linked@example.com',
+    uid: 'linked-1',
+    providerData: [{ providerId: 'google.com' }, { providerId: 'password' }]
+  });
+  assert.equal(vm.passwordInfo, 'deferred');
+  assert.equal(JSON.stringify(vm.signInMethods), JSON.stringify(['google', 'password']));
+});
+
+test('resolveSettingsAccountViewModel: google only → passwordInfo google', () => {
+  const sandbox = createSettingsSandbox();
+  var vm = sandbox.resolveSettingsAccountViewModel({
+    email: 'g@example.com',
+    uid: 'g-1',
+    providerData: [{ providerId: 'google.com' }]
+  });
+  assert.equal(vm.passwordInfo, 'google');
+});
+
+test('resolveSettingsAccountViewModel: password only → passwordInfo deferred', () => {
+  const sandbox = createSettingsSandbox();
+  var vm = sandbox.resolveSettingsAccountViewModel({
+    email: 'p@example.com',
+    uid: 'p-1',
+    providerData: [{ providerId: 'password' }]
+  });
+  assert.equal(vm.passwordInfo, 'deferred');
+});
+
+test('resolveSettingsAccountViewModel: unknown only → passwordInfo unavailable', () => {
+  const sandbox = createSettingsSandbox();
+  var vm = sandbox.resolveSettingsAccountViewModel({
+    email: 'u@example.com',
+    uid: 'u-1',
+    providerData: [{ providerId: 'unknown.provider' }]
+  });
+  assert.equal(vm.passwordInfo, 'unavailable');
+  assert.equal(JSON.stringify(vm.signInMethods), JSON.stringify(['unknown']));
+});
+
+test('resolveSignInMethods deduplicates google.com entries', () => {
+  const sandbox = createSettingsSandbox();
+  var result = sandbox.resolveSignInMethods({
+    providerData: [{ providerId: 'google.com' }, { providerId: 'google.com' }]
+  });
+  assert.equal(JSON.stringify(result), JSON.stringify(['google']));
+});
+
+test('resolveSettingsAccountViewModel has no providerLabel property', () => {
+  const sandbox = createSettingsSandbox();
+  var vm = sandbox.resolveSettingsAccountViewModel({
+    email: 'test@example.com',
+    uid: 'uid-1',
+    providerData: [{ providerId: 'google.com' }]
+  });
+  assert.equal(vm.providerLabel, undefined, 'providerLabel must not exist on view model');
+});
+
+test('settings.js does not use innerHTML for user data', () => {
+  const src = read('js/settings.js');
+  const lines = src.split('\n');
+  const unsafeLines = [];
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (line.includes('.innerHTML') && !line.includes('//') && !line.includes('/*')) {
+      unsafeLines.push({ line: i + 1, content: line.trim() });
+    }
+  }
+  assert.equal(unsafeLines.length, 0, 'settings.js must not use innerHTML');
+});
+
+test('settings.html has no Plus note', () => {
+  const html = read('pages/settings.html');
+  assert.ok(!html.includes('settingsPlusNote'), 'Plus note element must not exist');
+  assert.ok(!html.includes('프라이빗 보관 기능은 Plus'), 'Plus note text must not exist');
 });
