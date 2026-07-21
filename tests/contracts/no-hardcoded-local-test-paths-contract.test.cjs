@@ -57,7 +57,20 @@ test('test files do not depend on developer-specific local or worktree paths', (
 
   for (const file of files) {
     const relativePath = path.relative(ROOT, file).split(path.sep).join('/');
-    const source = fs.readFileSync(file, 'utf8');
+    // Skip ephemeral fixtures that parallel tests may create and delete mid-scan
+    // (e.g. tests/contracts/fixtures/**/_tmp-*.json).
+    if (/(^|\/)_tmp[^/]*$/i.test(path.basename(file))) {
+      continue;
+    }
+    let source;
+    try {
+      source = fs.readFileSync(file, 'utf8');
+    } catch (err) {
+      if (err && err.code === 'ENOENT') {
+        continue;
+      }
+      throw err;
+    }
 
     for (const { label, pattern } of FORBIDDEN_LOCAL_PATH_PATTERNS) {
       if (pattern.test(source)) {

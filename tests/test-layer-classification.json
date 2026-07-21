@@ -4451,6 +4451,18 @@
       "layer": "SOURCE_STATIC",
       "rationale": "Pure policy matrix and VM localStorage isolation for #3581 resolveLayoutPolicy / storage readOnly boundary / source wiring; does not execute browser canvas runtime.",
       "capabilities": []
+    },
+    {
+      "path": "tests/contracts/tree-layout-persistence-3582-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes production js/editor/editor-canvas-layout-storage.js and editor-canvas-layout.js inside a Node VM with an in-memory localStorage fake. Locks tree-specific key naming, mode/payload validation, structured-does-not-overwrite-free, malformed/getItem/setItem failure fallbacks, read-only/appreciation isolation, and auth source guard that logout does not reference layout keys. No real browser/network/DB/production mutation.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/tree-layout-persistence-3582-browser-contract.test.cjs",
+      "layer": "EXECUTED_REAL_LOCAL",
+      "rationale": "actual Playwright Chromium loads production modules js/editor/editor-canvas.js, js/editor/editor-canvas-layout-storage.js, js/editor/editor-canvas-layout-policy.js, js/editor/editor-canvas-layout-transition.js, js/editor/editor-canvas-layout.js, js/editor/editor-canvas-interaction.js, js/editor/editor-interaction-mode.js, js/auth/auth-firebase.js via local HTTP fixture. Asserts same-browser free draft persistence: actual page.mouse drag (FAIL if coords unchanged; no persist substitute), actual localStorage keys, actual route navigation, actual reload, actual logout boundary with safe stub, tree A/B isolation via full page navigation, free→structured→free payload retention, desktop 1440 and mobile 375. No production/API/DB mutation.",
+      "capabilities": []
     }
   ],
   "supplemental": [
