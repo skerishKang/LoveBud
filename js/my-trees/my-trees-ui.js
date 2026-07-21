@@ -521,8 +521,29 @@
       ds.selectedTreeCard = 'true';
     }
 
+    // #3578 metric footer: the default normalize path builds a reduced
+    // presentation object and drops authoritative metric aliases. Resolve
+    // metrics from the original raw tree via the shared helper, then project
+    // only known finite values onto a detached cardTree. Do not mutate
+    // `tree` or treat unknown as 0 — shared getTreeMetrics owns semantics.
+    var Metrics = requireMetrics();
+    var resolvedMetrics = Metrics.getTreeMetrics(tree || {});
+    var cardTree = Object.assign({}, normalizedTree);
+    if (resolvedMetrics.views !== null) {
+      cardTree.viewCount = resolvedMetrics.views;
+    }
+    if (resolvedMetrics.likes !== null) {
+      cardTree.likeCount = resolvedMetrics.likes;
+    }
+    if (resolvedMetrics.comments !== null) {
+      cardTree.commentCount = resolvedMetrics.comments;
+    }
+    if (resolvedMetrics.shares !== null) {
+      cardTree.shareCount = resolvedMetrics.shares;
+    }
+
     // Build card via shared composition — returns the card DOM element directly
-    var card = Composer.buildTreeCard(normalizedTree, {
+    var card = Composer.buildTreeCard(cardTree, {
       surface: 'my-trees',
       mediaNode: thumbNode,
       title: title,

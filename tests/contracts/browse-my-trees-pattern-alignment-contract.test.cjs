@@ -304,7 +304,7 @@ test('14. Runtime cache-busts updated for changed JS/CSS', () => {
   const myTreesHtml = read('pages/my-trees.html');
   const myTreesCss = read('css/my-trees.css');
   assert.match(searchHtml, /search-preview-state\.js\?v=20260616-2532-1/);
-  assert.match(myTreesHtml, /my-trees-ui\.js\?v=20260719-3578-1/);
+  assert.match(myTreesHtml, /my-trees-ui\.js\?v=20260721-3578-metrics-1/);
   // Softened: any non-empty cache-bust on my-trees-preview-hub.js plus
   // a guard that the pre-#2829 baseline value is gone. Future
   // cache-bust bumps should not require updating this assertion
