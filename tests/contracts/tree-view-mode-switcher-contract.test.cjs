@@ -71,7 +71,7 @@ test('large / compact / list modes are all defined', () => {
 test('Browse page loads tree view mode CSS and helper script', () => {
     assert.match(
         searchHtml,
-        /href="\.\.\/css\/tree-view-mode\.css\?v=20260721-3608-1"/
+        /href="\.\.\/css\/tree-view-mode\.css\?v=20260721-3608(?:-large)?-\d+"/
     );
     assert.match(
         searchHtml,
@@ -94,7 +94,7 @@ test('Browse page initializes the switcher with browse storage key and default c
 test('My LoveTree page loads tree view mode CSS and helper script', () => {
     assert.match(
         myTreesHtml,
-        /href="\.\.\/css\/tree-view-mode\.css\?v=20260721-3608-1"/
+        /href="\.\.\/css\/tree-view-mode\.css\?v=20260721-3608(?:-large)?-\d+"/
     );
     assert.match(
         myTreesHtml,

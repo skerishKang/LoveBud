@@ -20,8 +20,8 @@ test('1. Browse large and compact cards have fixed height constraints and do not
   // Verify list mode is height: auto / min-height
   assert.match(css, /#resultsList\[data-tree-view-mode="list"\]\s+\.tree-card\s*\{[^}]*height:\s*auto;/);
 
-  // Verify My Trees selector .trees-grid large/compact is not modified to have fixed card height
-  assert.doesNotMatch(css, /\.trees-grid\[data-tree-view-mode="large"\]\s+\.tree-card\s*\{[^}]*height:/);
+  // #3608 Phase 2 PR-A: My Trees large intentionally matches Browse large fixed height (380px).
+  assert.match(css, /\.trees-grid\[data-tree-view-mode="large"\]\s+\.tree-card\s*\{[^}]*height:\s*380px/);
 });
 
 test('2. Browse large/compact body layout constraints (no calc height, flex layout, min-height 0)', () => {
@@ -176,8 +176,11 @@ test('8. Generic truncation conservation and Browse large override', () => {
   assert.match(css, /\.tree-card\s+\.tree-title\s*\{[^}]*white-space:\s*nowrap;/);
   assert.match(css, /\.tree-card\s+\.tree-subtitle\s*\{[^}]*white-space:\s*nowrap;/);
 
-  // Large override white-space: normal
-  assert.match(css, /#resultsList\[data-tree-view-mode="large"\]\s+\.tree-title,\s*#resultsList\[data-tree-view-mode="large"\]\s+\.tree-subtitle\s*\{[^}]*white-space:\s*normal/);
+  // Large override white-space: normal (Browse; My Trees large may share the block after Phase 2 PR-A)
+  assert.match(
+    css,
+    /#resultsList\[data-tree-view-mode="large"\]\s+\.tree-title[\s\S]*?white-space:\s*normal/
+  );
 });
 
 test('9. Verification of static boundaries and other files integrity', () => {

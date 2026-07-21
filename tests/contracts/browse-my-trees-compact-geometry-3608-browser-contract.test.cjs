@@ -648,8 +648,9 @@ test('#3608 source: My Trees default is compact; obsolete asymmetry gone', () =>
     css,
     /\.trees-grid\[data-tree-view-mode="compact"\][^{]*\.tree-card\s*\{[^}]*height:\s*auto/
   );
-  assert.match(searchHtml, /tree-view-mode\.css\?v=20260721-3608-1/);
-  assert.match(myHtml, /tree-view-mode\.css\?v=20260721-3608-1/);
+  // Cache token may advance with later Phase 2 large geometry PR (same stylesheet chain).
+  assert.match(searchHtml, /tree-view-mode\.css\?v=20260721-3608(?:-large)?-\d+/);
+  assert.match(myHtml, /tree-view-mode\.css\?v=20260721-3608(?:-large)?-\d+/);
   assert.match(myHtml, /my-trees-page-bootstrap\.js\?v=20260721-3608-1/);
   assert.match(css, /#resultsList\[data-tree-view-mode="compact"\],\s*\.trees-grid\[data-tree-view-mode="compact"\]/);
 });
