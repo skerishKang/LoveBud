@@ -35,4 +35,19 @@
   .settings-account-row {
     padding: 10px 0;
   }
+
+  .settings-profile-edit-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .settings-profile-name-input {
+    flex: none;
+    width: 100%;
+  }
+
+  .settings-profile-edit-save,
+  .settings-profile-edit-cancel {
+    flex: 1;
+  }
 }

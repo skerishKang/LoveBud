@@ -37,7 +37,28 @@
               <div class="settings-profile-email" id="settingsProfileEmail"></div>
             </div>
           </div>
-          <p class="settings-deferred-note" id="settingsProfileDeferredNote">프로필 변경 기능은 다음 단계에서 제공됩니다.</p>
+
+          <!-- Display name edit form (hidden by default) -->
+          <div class="settings-profile-edit-form" id="settingsProfileEditForm" hidden>
+            <label class="settings-profile-edit-label" for="settingsProfileNameInput" id="settingsProfileEditLabel"></label>
+            <div class="settings-profile-edit-row">
+              <input type="text" class="settings-profile-name-input" id="settingsProfileNameInput" autocomplete="name" />
+              <button type="button" class="settings-profile-edit-save" id="settingsProfileSaveBtn"></button>
+              <button type="button" class="settings-profile-edit-cancel" id="settingsProfileCancelBtn"></button>
+            </div>
+            <!-- Edit-local status: validation / write error / saving (visible only while editing) -->
+            <p class="settings-profile-edit-status" id="settingsProfileEditStatus" role="status" aria-live="polite"></p>
+          </div>
+
+          <button type="button" class="settings-profile-edit-btn" id="settingsProfileEditBtn">
+            <span class="material-symbols-outlined">edit</span>
+            <span id="settingsProfileEditBtnLabel"></span>
+          </button>
+
+          <!-- Persistent result status: success / unchanged (visible after edit form closes) -->
+          <p class="settings-profile-result-status" id="settingsProfileResultStatus" role="status" aria-live="polite"></p>
+
+          <p class="settings-deferred-note" id="settingsProfileDeferredNote"></p>
         </section>
 
         <div class="settings-divider"></div>

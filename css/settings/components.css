@@ -201,3 +201,147 @@
 .logout-btn .material-symbols-outlined {
   font-size: 20px;
 }
+
+
+/* --- Display name edit form --- */
+
+.settings-profile-edit-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 8px;
+  padding: 6px 12px;
+  border: 1px solid var(--border-color, #ddd);
+  border-radius: 6px;
+  background: var(--surface-color, #fff);
+  color: var(--text-color, #333);
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.settings-profile-edit-btn:hover {
+  background: var(--hover-bg, #f5f5f5);
+  border-color: var(--text-secondary, #888);
+}
+
+.settings-profile-edit-btn .material-symbols-outlined {
+  font-size: 16px;
+}
+
+.settings-profile-edit-form {
+  margin-top: 12px;
+}
+
+.settings-profile-edit-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary, #666);
+  margin-bottom: 6px;
+}
+
+.settings-profile-edit-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.settings-profile-name-input {
+  flex: 1 1 200px;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--border-color, #ddd);
+  border-radius: 6px;
+  font-size: 14px;
+  background: var(--surface-color, #fff);
+  color: var(--text-color, #333);
+}
+
+.settings-profile-name-input:focus {
+  outline: 2px solid var(--focus-color, #4a90d9);
+  outline-offset: -1px;
+  border-color: var(--focus-color, #4a90d9);
+}
+
+.settings-profile-edit-save,
+.settings-profile-edit-cancel {
+  padding: 8px 14px;
+  border: 1px solid var(--border-color, #ddd);
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, opacity 0.15s;
+}
+
+.settings-profile-edit-save {
+  background: var(--primary-color, #4a90d9);
+  color: #fff;
+  border-color: var(--primary-color, #4a90d9);
+}
+
+.settings-profile-edit-save:hover {
+  opacity: 0.85;
+}
+
+.settings-profile-edit-save:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.settings-profile-edit-cancel {
+  background: var(--surface-color, #fff);
+  color: var(--text-color, #333);
+}
+
+.settings-profile-edit-cancel:hover {
+  background: var(--hover-bg, #f5f5f5);
+}
+
+.settings-profile-edit-cancel:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.settings-profile-result-status {
+  margin: 0.5rem 0 0;
+  font-size: 0.875rem;
+  line-height: 1.4;
+  min-height: 1.25rem;
+}
+
+.settings-profile-result-status:empty {
+  display: none;
+}
+
+.settings-profile-result-status--success {
+  color: #1b6b3a;
+}
+
+.settings-profile-result-status--info {
+  color: #5a5a5a;
+}
+
+.settings-profile-edit-status {
+  margin-top: 8px;
+  font-size: 13px;
+  min-height: 1.2em;
+}
+
+.settings-profile-edit-status--error {
+  color: #c0392b;
+}
+
+.settings-profile-edit-status--success {
+  color: #27ae60;
+}
+
+.settings-profile-edit-status--info {
+  color: var(--text-secondary, #666);
+}
+
+.settings-profile-edit-status--saving {
+  color: var(--text-secondary, #888);
+}

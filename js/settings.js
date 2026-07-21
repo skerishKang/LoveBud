@@ -284,7 +284,386 @@
    * @param {object} user
    * @returns {object}
    */
-  function resolveSettingsAccountViewModel(user) {
+  // --- Display name editing state ---
+  // statusKind tracks the semantic status so language changes can retranslate
+  // without inferring meaning from rendered DOM text.
+  // Values: 'none' | 'saving' | 'nameEmpty' | 'nameTooLong' | 'nameUpdateFailed'
+  //         | 'nameUpdated' | 'nameUnchanged'
+  var editState = { mode: 'view', originalName: '', saving: false, statusKind: 'none' };
+  var settingsLangChangeBound = false;
+
+  function getLiveUser() {
+    try {
+      if (typeof firebase !== 'undefined' && firebase.auth && firebase.auth().currentUser) {
+        return firebase.auth().currentUser;
+      }
+    } catch (e) {}
+    return null;
+  }
+
+  function t(key, fallback) {
+    var translated = window.t ? window.t(key) : key;
+    return translated && translated !== key ? translated : fallback;
+  }
+
+  function validateDisplayName(raw) {
+    if (!raw || typeof raw !== 'string') return { valid: false, error: 'empty' };
+    var trimmed = raw.trim();
+    if (!trimmed) return { valid: false, error: 'empty' };
+    if (Array.from(trimmed).length > 50) return { valid: false, error: 'tooLong' };
+    return { valid: true, value: trimmed };
+  }
+
+  function clearEditStatus() {
+    editState.statusKind = 'none';
+    var status = document.getElementById('settingsProfileEditStatus');
+    if (!status) return;
+    status.textContent = '';
+    status.className = 'settings-profile-edit-status';
+    status.setAttribute('role', 'status');
+    status.removeAttribute('aria-live');
+    status.setAttribute('aria-live', 'polite');
+  }
+
+  function clearResultStatus() {
+    // Only clear result status when opening edit or cancelling — not when
+    // clearing the edit-local status after a successful result was just set.
+    var status = document.getElementById('settingsProfileResultStatus');
+    if (!status) return;
+    status.textContent = '';
+    status.className = 'settings-profile-result-status';
+    status.setAttribute('role', 'status');
+    status.setAttribute('aria-live', 'polite');
+  }
+
+  function clearResultStatusAndKind() {
+    editState.statusKind = 'none';
+    clearResultStatus();
+  }
+
+  /**
+   * Edit-local status (inside the edit form): validation, write error, saving.
+   * @param {string} kind - 'saving' | 'nameEmpty' | 'nameTooLong' | 'nameUpdateFailed'
+   * @param {string} type - CSS type: 'saving' | 'error'
+   */
+  function showEditStatus(kind, type) {
+    editState.statusKind = kind || 'none';
+    var message = '';
+    if (kind === 'saving') {
+      message = t('settings.profile.saving', 'Saving\u2026');
+    } else if (kind === 'nameEmpty') {
+      message = t('settings.profile.nameEmpty', 'Enter a display name.');
+    } else if (kind === 'nameTooLong') {
+      message = t('settings.profile.nameTooLong', 'Display name must be 50 characters or fewer.');
+    } else if (kind === 'nameUpdateFailed') {
+      message = t('settings.profile.nameUpdateFailed', 'Could not update the display name. Try again.');
+    }
+    var status = document.getElementById('settingsProfileEditStatus');
+    if (!status) return;
+    status.textContent = message;
+    status.className = 'settings-profile-edit-status' + (type ? ' settings-profile-edit-status--' + type : '');
+    if (type === 'error') {
+      status.setAttribute('role', 'alert');
+      status.setAttribute('aria-live', 'assertive');
+    } else {
+      status.setAttribute('role', 'status');
+      status.setAttribute('aria-live', 'polite');
+    }
+  }
+
+  /**
+   * Persistent result status (outside the edit form): success / unchanged.
+   * Remains visible after hideEditForm().
+   * @param {string} kind - 'nameUpdated' | 'nameUnchanged'
+   * @param {string} type - CSS type: 'success' | 'info'
+   */
+  function showResultStatus(kind, type) {
+    editState.statusKind = kind || 'none';
+    var message = '';
+    if (kind === 'nameUpdated') {
+      message = t('settings.profile.nameUpdated', 'Your display name was updated.');
+    } else if (kind === 'nameUnchanged') {
+      message = t('settings.profile.nameUnchanged', 'The display name was not changed.');
+    }
+    var status = document.getElementById('settingsProfileResultStatus');
+    if (!status) return;
+    status.textContent = message;
+    status.className = 'settings-profile-result-status' + (type ? ' settings-profile-result-status--' + type : '');
+    // Final results are status, never alert/error role.
+    status.setAttribute('role', 'status');
+    status.setAttribute('aria-live', 'polite');
+  }
+
+  /** Re-apply the current statusKind text after a language change. */
+  function reapplyStatusI18n() {
+    var kind = editState.statusKind || 'none';
+    if (kind === 'none') return;
+    if (kind === 'saving') {
+      showEditStatus('saving', 'saving');
+    } else if (kind === 'nameEmpty') {
+      showEditStatus('nameEmpty', 'error');
+    } else if (kind === 'nameTooLong') {
+      showEditStatus('nameTooLong', 'error');
+    } else if (kind === 'nameUpdateFailed') {
+      showEditStatus('nameUpdateFailed', 'error');
+    } else if (kind === 'nameUpdated') {
+      showResultStatus('nameUpdated', 'success');
+    } else if (kind === 'nameUnchanged') {
+      showResultStatus('nameUnchanged', 'info');
+    }
+  }
+
+  function showEditForm(currentDisplayName) {
+    editState.mode = 'editing';
+    editState.originalName = currentDisplayName || '';
+    editState.saving = false;
+
+    var form = document.getElementById('settingsProfileEditForm');
+    var btn = document.getElementById('settingsProfileEditBtn');
+    var nameView = document.getElementById('settingsProfileName');
+    var input = document.getElementById('settingsProfileNameInput');
+
+    if (form) form.hidden = false;
+    if (btn) btn.hidden = true;
+    if (nameView) nameView.hidden = true;
+    if (input) {
+      input.disabled = false;
+      // Use raw Firebase displayName only — never email-derived fallback text.
+      input.value = editState.originalName;
+      input.focus();
+    }
+    clearEditStatus();
+    clearResultStatusAndKind();
+    updateEditI18n();
+  }
+
+  function hideEditForm() {
+    editState.mode = 'view';
+    editState.saving = false;
+
+    var form = document.getElementById('settingsProfileEditForm');
+    var btn = document.getElementById('settingsProfileEditBtn');
+    var nameView = document.getElementById('settingsProfileName');
+    var input = document.getElementById('settingsProfileNameInput');
+    var saveBtn = document.getElementById('settingsProfileSaveBtn');
+    var cancelBtn = document.getElementById('settingsProfileCancelBtn');
+
+    if (form) form.hidden = true;
+    if (input) input.disabled = false;
+    if (saveBtn) saveBtn.disabled = false;
+    if (cancelBtn) cancelBtn.disabled = false;
+    if (btn) {
+      btn.hidden = false;
+      btn.focus();
+    }
+    if (nameView) nameView.hidden = false;
+    // Clear edit-local status text only; keep statusKind if a result was just set
+    // by the caller after hideEditForm (success/unchanged paths set result after hide).
+    var status = document.getElementById('settingsProfileEditStatus');
+    if (status) {
+      status.textContent = '';
+      status.className = 'settings-profile-edit-status';
+      status.setAttribute('role', 'status');
+      status.setAttribute('aria-live', 'polite');
+    }
+  }
+
+  function setSaving(saving) {
+    editState.saving = saving;
+    var saveBtn = document.getElementById('settingsProfileSaveBtn');
+    var cancelBtn = document.getElementById('settingsProfileCancelBtn');
+    var input = document.getElementById('settingsProfileNameInput');
+
+    if (saveBtn) saveBtn.disabled = saving;
+    if (cancelBtn) cancelBtn.disabled = saving;
+    if (input) input.disabled = saving;
+    if (saving) {
+      showEditStatus('saving', 'saving');
+    }
+  }
+
+  function updateEditI18n() {
+    var label = document.getElementById('settingsProfileEditLabel');
+    var saveBtn = document.getElementById('settingsProfileSaveBtn');
+    var cancelBtn = document.getElementById('settingsProfileCancelBtn');
+    var editBtnLabel = document.getElementById('settingsProfileEditBtnLabel');
+    if (label) label.textContent = t('settings.profile.nameLabel', 'Display name');
+    if (saveBtn) saveBtn.textContent = t('settings.profile.save', 'Save');
+    if (cancelBtn) cancelBtn.textContent = t('settings.profile.cancel', 'Cancel');
+    if (editBtnLabel) editBtnLabel.textContent = t('settings.profile.editName', 'Edit name');
+  }
+
+  /**
+   * Subscribe once to the canonical product language-change event
+   * (lovebud-lang-change via window.onLangChange). Does not reset edit form,
+   * input value, or saving state.
+   */
+  function bindSettingsLangChange() {
+    if (settingsLangChangeBound) return;
+    if (typeof window.onLangChange !== 'function') return;
+    settingsLangChangeBound = true;
+    window.onLangChange(function() {
+      applyI18nText();
+      updateEditI18n();
+      reapplyStatusI18n();
+      if (typeof window.applyI18n === 'function') {
+        window.applyI18n();
+      }
+      applyHeaderNavFallbacks();
+    });
+  }
+
+  function updateProfileUI(vm) {
+    var avatarEl = document.getElementById('settingsProfileAvatar');
+    var nameEl = document.getElementById('settingsProfileName');
+
+    if (avatarEl) {
+      avatarEl.textContent = '';
+      var hasPhoto = vm.photoURL && /^https?:\/\//.test(vm.photoURL);
+      var fallbackLabel = (t('settings.profile.avatarFallback', 'Profile for ' + vm.displayName)).replace(/\{displayName\}/g, vm.displayName);
+      if (hasPhoto) {
+        var img = document.createElement('img');
+        img.src = vm.photoURL;
+        img.alt = '';
+        img.className = 'settings-profile-avatar-img';
+        img.onerror = function() {
+          avatarEl.textContent = '';
+          avatarEl.textContent = resolveProfileInitials(vm);
+          avatarEl.classList.add('settings-profile-avatar-initials');
+          avatarEl.classList.remove('settings-profile-avatar-img-wrap');
+          avatarEl.setAttribute('role', 'img');
+          avatarEl.setAttribute('aria-label', fallbackLabel);
+        };
+        avatarEl.appendChild(img);
+        avatarEl.classList.add('settings-profile-avatar-img-wrap');
+        avatarEl.classList.remove('settings-profile-avatar-initials');
+        avatarEl.setAttribute('role', 'img');
+        var photoLabel = (t('settings.profile.avatarPhoto', 'Profile photo for ' + vm.displayName)).replace(/\{displayName\}/g, vm.displayName);
+        avatarEl.setAttribute('aria-label', photoLabel);
+      } else {
+        avatarEl.textContent = resolveProfileInitials(vm);
+        avatarEl.classList.add('settings-profile-avatar-initials');
+        avatarEl.classList.remove('settings-profile-avatar-img-wrap');
+        avatarEl.setAttribute('role', 'img');
+        avatarEl.setAttribute('aria-label', fallbackLabel);
+      }
+    }
+    if (nameEl) nameEl.textContent = vm.displayName;
+  }
+
+  function syncAfterSave(newDisplayName) {
+    var liveUser = getLiveUser();
+    if (!liveUser) return;
+
+    // Keep the live user object in sync for subsequent reads (tests + same-session UI).
+    try {
+      liveUser.displayName = newDisplayName;
+    } catch (e) {}
+
+    // Update confirmed auth cache
+    if (typeof window.persistConfirmedAuthSession === 'function') {
+      var updatedUser = Object.assign({}, liveUser, { displayName: newDisplayName });
+      window.persistConfirmedAuthSession(updatedUser);
+    }
+
+    // Update header nav with the updated name (no full header re-render)
+    if (typeof window.updateNavUI === 'function') {
+      window.updateNavUI(liveUser);
+    }
+
+    // Re-render profile section
+    var vm = resolveSettingsAccountViewModel(liveUser);
+    vm.displayName = newDisplayName;
+    updateProfileUI(vm);
+  }
+
+  function handleSaveDisplayName() {
+    if (editState.saving) return;
+
+    var input = document.getElementById('settingsProfileNameInput');
+    var rawInput = input ? input.value : '';
+    var result = validateDisplayName(rawInput);
+
+    if (!result.valid) {
+      if (result.error === 'empty') {
+        showEditStatus('nameEmpty', 'error');
+      } else if (result.error === 'tooLong') {
+        showEditStatus('nameTooLong', 'error');
+      }
+      if (input) input.focus();
+      return;
+    }
+
+    var liveUser = getLiveUser();
+    if (!liveUser || typeof liveUser.updateProfile !== 'function') {
+      showEditStatus('nameUpdateFailed', 'error');
+      return;
+    }
+
+    var currentPersisted = (liveUser.displayName && typeof liveUser.displayName === 'string')
+      ? liveUser.displayName.trim()
+      : '';
+    if (result.value === currentPersisted) {
+      hideEditForm();
+      showResultStatus('nameUnchanged', 'info');
+      return;
+    }
+
+    setSaving(true);
+    clearResultStatus();
+
+    // Promise.resolve().then(...) captures both sync throws and rejected promises
+    // on the same write-error path.
+    Promise.resolve()
+      .then(function() {
+        return liveUser.updateProfile({ displayName: result.value });
+      })
+      .then(function() {
+        syncAfterSave(result.value);
+        setSaving(false);
+        hideEditForm();
+        showResultStatus('nameUpdated', 'success');
+      })
+      .catch(function() {
+        // Fail closed: stay in edit mode, keep input, no profile/cache/header mutation.
+        setSaving(false);
+        showEditStatus('nameUpdateFailed', 'error');
+      });
+  }
+
+  function handleCancelEdit() {
+    if (editState.saving) return;
+    hideEditForm();
+    clearResultStatusAndKind();
+  }
+
+  function bindNameEditInteractions() {
+    var editBtn = document.getElementById('settingsProfileEditBtn');
+    var saveBtn = document.getElementById('settingsProfileSaveBtn');
+    var cancelBtn = document.getElementById('settingsProfileCancelBtn');
+    var input = document.getElementById('settingsProfileNameInput');
+
+    if (editBtn) {
+      editBtn.addEventListener('click', function() {
+        var liveUser = getLiveUser();
+        var currentName = liveUser ? (liveUser.displayName || '') : '';
+        showEditForm(currentName);
+      });
+    }
+    if (saveBtn) saveBtn.addEventListener('click', handleSaveDisplayName);
+    if (cancelBtn) cancelBtn.addEventListener('click', handleCancelEdit);
+    if (input) {
+      input.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          if (editState.saving) return;
+          handleSaveDisplayName();
+        }
+      });
+    }
+  }
+
+    function resolveSettingsAccountViewModel(user) {
     var methods = resolveSignInMethods(user);
     var hasPassword = methods.indexOf('password') !== -1;
     var hasGoogle = methods.indexOf('google') !== -1;
@@ -391,54 +770,10 @@
   }
 
   function renderProfileSection(vm) {
-    var t = window.t || function(key) { return key; };
-    function safeText(key, fallback) {
-      var translated = t(key);
-      return translated && translated !== key ? translated : fallback;
-    }
-    function interpolate(template, vars) {
-      return template.replace(/\{(\w+)\}/g, function(_, name) {
-        return vars[name] !== undefined ? vars[name] : '{' + name + '}';
-      });
-    }
-    var avatarEl = document.getElementById('settingsProfileAvatar');
-    var nameEl = document.getElementById('settingsProfileName');
+    updateProfileUI(vm);
     var emailEl = document.getElementById('settingsProfileEmail');
-
-    if (avatarEl) {
-      avatarEl.textContent = '';
-      var hasPhoto = vm.photoURL && /^https?:\/\//.test(vm.photoURL);
-      var photoLabel = interpolate(safeText('settings.profile.avatarPhoto', 'Profile photo for ' + vm.displayName), { displayName: vm.displayName });
-      var fallbackLabel = interpolate(safeText('settings.profile.avatarFallback', 'Profile for ' + vm.displayName), { displayName: vm.displayName });
-      if (hasPhoto) {
-        var img = document.createElement('img');
-        img.src = vm.photoURL;
-        img.alt = '';
-        img.className = 'settings-profile-avatar-img';
-        img.onerror = function() {
-          avatarEl.textContent = '';
-          avatarEl.textContent = resolveProfileInitials(vm);
-          avatarEl.classList.add('settings-profile-avatar-initials');
-          avatarEl.classList.remove('settings-profile-avatar-img-wrap');
-          avatarEl.setAttribute('role', 'img');
-          avatarEl.setAttribute('aria-label', fallbackLabel);
-        };
-        avatarEl.appendChild(img);
-        avatarEl.classList.add('settings-profile-avatar-img-wrap');
-        avatarEl.classList.remove('settings-profile-avatar-initials');
-        avatarEl.setAttribute('role', 'img');
-        avatarEl.setAttribute('aria-label', photoLabel);
-      } else {
-        avatarEl.textContent = resolveProfileInitials(vm);
-        avatarEl.classList.add('settings-profile-avatar-initials');
-        avatarEl.classList.remove('settings-profile-avatar-img-wrap');
-        avatarEl.setAttribute('role', 'img');
-        avatarEl.setAttribute('aria-label', fallbackLabel);
-      }
-    }
-
-    if (nameEl) nameEl.textContent = vm.displayName;
     if (emailEl) emailEl.textContent = vm.email || '';
+    updateEditI18n();
   }
 
   function renderAccountSection(vm) {
@@ -505,6 +840,14 @@
 
     document.addEventListener('keydown', function(e) {
       if (e.key === 'Escape') {
+        if (editState.mode === 'editing') {
+          e.preventDefault();
+          e.stopPropagation();
+          // While saving, Escape must not cancel or close — keep the saving UI visible.
+          if (editState.saving) return;
+          handleCancelEdit();
+          return;
+        }
         e.preventDefault();
         closeSettings();
       }
@@ -530,6 +873,11 @@
     if (logoutBtn) {
       logoutBtn.addEventListener('click', handleLogout);
     }
+
+    // Bind display name edit interactions
+    bindNameEditInteractions();
+    // Canonical language-change subscription (lovebud-lang-change via onLangChange)
+    bindSettingsLangChange();
 
     // Render Profile / Account sections
     var vm = resolveSettingsAccountViewModel(effectiveUser);
@@ -623,4 +971,10 @@
   window.resolveDisplayName = resolveDisplayName;
   window.resolveProfileInitials = resolveProfileInitials;
   window.resolveSignInMethods = resolveSignInMethods;
+  window._settingsEditState = editState;
+  window._settingsValidateDisplayName = validateDisplayName;
+  window._settingsShowEditForm = showEditForm;
+  window._settingsHideEditForm = hideEditForm;
+  window._settingsHandleSaveDisplayName = handleSaveDisplayName;
+  window._settingsHandleCancelEdit = handleCancelEdit;
 })();
