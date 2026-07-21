@@ -706,6 +706,11 @@
     max-width: 100%;
 }
 
+/* ── My LoveTree list — Phase 2 PR-B ─────────────────────────────
+ * Browse list is canonical. Root card/media already paralleled;
+ * desktop body was missing and inherited page-local grid/pad 4px 6px 6px.
+ * Thumb margin-bottom from my-trees-cards.css is reset list-only.
+ */
 .trees-grid[data-tree-view-mode="list"] {
     grid-template-columns: 1fr;
     gap: 14px;
@@ -720,12 +725,35 @@
     padding: 0;
 }
 
-.trees-grid[data-tree-view-mode="list"] .tree-card-thumb,
-.trees-grid[data-tree-view-mode="list"] .tree-card-media {
+.trees-grid[data-tree-view-mode="list"] .tree-card-media,
+.trees-grid[data-tree-view-mode="list"] .love-tree-card-media,
+.trees-grid[data-tree-view-mode="list"] .tree-card-media .tree-card-thumb,
+.trees-grid[data-tree-view-mode="list"] .love-tree-card-media .tree-card-thumb,
+.trees-grid[data-tree-view-mode="list"] .tree-card-thumb {
     height: 100%;
     min-height: 110px;
+    max-height: none;
     width: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    box-sizing: border-box;
     border-radius: var(--lovetree-card-radius-lg) 0 0 var(--lovetree-card-radius-lg);
+}
+
+/* Desktop list body — match Browse flex/center/pad 14px 16px */
+.trees-grid[data-tree-view-mode="list"] .tree-card-body,
+.trees-grid[data-tree-view-mode="list"] .love-tree-card-body,
+.trees-grid[data-tree-view-mode="list"] .tree-card-info {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 14px 16px;
+    height: auto;
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+    box-sizing: border-box;
 }
 
 @media (max-width: 768px) {
@@ -735,8 +763,11 @@
         min-height: 110px;
     }
 
-    .trees-grid[data-tree-view-mode="list"] .tree-card-thumb,
-    .trees-grid[data-tree-view-mode="list"] .tree-card-media {
+    .trees-grid[data-tree-view-mode="list"] .tree-card-media,
+    .trees-grid[data-tree-view-mode="list"] .love-tree-card-media,
+    .trees-grid[data-tree-view-mode="list"] .tree-card-media .tree-card-thumb,
+    .trees-grid[data-tree-view-mode="list"] .love-tree-card-media .tree-card-thumb,
+    .trees-grid[data-tree-view-mode="list"] .tree-card-thumb {
         min-height: 110px;
         border-radius: var(--lovetree-card-radius-lg) 0 0 var(--lovetree-card-radius-lg);
     }
@@ -750,15 +781,19 @@
         min-height: 0;
     }
 
-    .trees-grid[data-tree-view-mode="list"] .tree-card-thumb,
-    .trees-grid[data-tree-view-mode="list"] .tree-card-media {
+    .trees-grid[data-tree-view-mode="list"] .tree-card-media,
+    .trees-grid[data-tree-view-mode="list"] .love-tree-card-media,
+    .trees-grid[data-tree-view-mode="list"] .tree-card-media .tree-card-thumb,
+    .trees-grid[data-tree-view-mode="list"] .love-tree-card-media .tree-card-thumb,
+    .trees-grid[data-tree-view-mode="list"] .tree-card-thumb {
         height: 140px;
         min-height: 140px;
         border-radius: var(--lovetree-card-radius-lg) var(--lovetree-card-radius-lg) 0 0;
     }
 
     .trees-grid[data-tree-view-mode="list"] .tree-card-info,
-    .trees-grid[data-tree-view-mode="list"] .tree-card-body {
+    .trees-grid[data-tree-view-mode="list"] .tree-card-body,
+    .trees-grid[data-tree-view-mode="list"] .love-tree-card-body {
         padding: 12px 14px 14px;
     }
 }
