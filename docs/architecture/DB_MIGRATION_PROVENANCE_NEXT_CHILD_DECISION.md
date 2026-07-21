@@ -6,18 +6,14 @@
 | --- | --- |
 | Outcome | `NO_SAFE_IMPLEMENTATION_CHILD_WITHOUT_OPERATOR_INPUT` |
 | Decision basis | Current-state audit at `de1c4e416e33e2669157b2202a7bbd021779ad59` |
-| Prerequisite | Operator input: dedicated read-only credentials, abstract role mapping, and owner review of adoption collection plan |
+| Prerequisite | Operator input: dedicated read-only credentials and abstract role mapping file |
 | Proposed operator-readiness child | Create an adoption collection operator checklist and role mapping template |
 
-All source-contract and disposable-CI implementation children under #3458 have been completed and merged. The remaining work is blocked on three operator-input items that the repository correctly defers to separate approval:
+The source-contract and disposable-CI predecessors needed to prepare the current Phase-B Production-readonly collection boundary are merged.
 
-1. Dedicated read-only credentials (`LOVEBUD_PRODUCTION_READONLY_DATABASE_URL`)
-2. Abstract role mapping file (PostgreSQL roles -> PUBLIC, APPLICATION, AUTHENTICATED, SERVICE, OWNER_CLASS)
-3. Owner review and approval of the PREPARED_ONLY adoption baseline collection plan
+This does not mean all #3458 implementation is complete. Migration runner, canonical stream, reconstruction, deployment enforcement, observability, and retirement work remain incomplete.
 
-No code or migration implementation child can safely proceed without resolving at least one of these operator-input items.
-
-**Scope note**: Not all repository work under #3458 is complete. Clean-database reconstruction, deployment gate integration, sanitized observability, and canonical stream/runner remain unimplemented. However, on the current adoption critical path, Phase B (Production catalog collection) is the next step and it cannot proceed without operator inputs. Long-term tooling candidates exist but are not on the critical path for adoption and are deferred.
+**Scope note**
 
 ## Candidate Children Considered
 
@@ -97,7 +93,11 @@ No code or migration implementation child can safely proceed without resolving a
 ## Dependency Analysis
 
 ```
-Operator Input (credentials, role mapping, plan review)  <-- BLOCKED
+Missing Operator Inputs
+- dedicated Production-readonly credential
+- abstract role mapping              <-- BLOCKED
+    |
+Separate Phase B execution approval
     |
     v
 Phase B: Production catalog collection                    <-- DEPENDS on operator input
@@ -165,7 +165,7 @@ No migration implementation child can safely proceed. An **operator-readiness ch
 
 **Exact files**: `docs/architecture/DB_MIGRATION_PROVENANCE_ADOPTION_OPERATOR_CHECKLIST.md` (new file only)
 
-**Prohibited areas**: No database connection, no SQL execution, no secret creation, no Production/staging/provider access, no manifest activation, no existing file modification, no migration/ledger/runner implementation.
+**Prohibited areas**: No database connection, no SQL execution, no secret creation, no Production/staging/provider access, no manifest activation, no migration/ledger/runner implementation. No existing file modification (checklist is a new file).
 
 **Dependencies complete**: Current-state audit (#3620), all source-contract and disposable-CI work is merged.
 
@@ -184,6 +184,7 @@ No migration implementation child can safely proceed. An **operator-readiness ch
 1. `docs/architecture/DB_MIGRATION_PROVENANCE_CURRENT_STATE_AUDIT.md` - current-state audit
 2. `docs/architecture/DB_MIGRATION_PROVENANCE_NEXT_CHILD_DECISION.md` - next-child decision
 3. `tests/contracts/db-migration-provenance-current-state-audit-contract.test.cjs` - document contract test
+4. `tests/test-layer-classification.json` - minimal SOURCE_STATIC entry for new contract test
 
 ## Exact Non-Goals
 
@@ -193,7 +194,7 @@ No migration implementation child can safely proceed. An **operator-readiness ch
 - No ledger relation creation or runner implementation
 - No Production, staging, or provider access
 - No credential creation, rotation, or handling
-- No existing file modification
+- No existing file modification (except `tests/test-layer-classification.json` minimal SOURCE_STATIC entry)
 - No deployment or CI workflow changes
 
 ## Allowed Files
@@ -201,10 +202,11 @@ No migration implementation child can safely proceed. An **operator-readiness ch
 1. `docs/architecture/DB_MIGRATION_PROVENANCE_CURRENT_STATE_AUDIT.md`
 2. `docs/architecture/DB_MIGRATION_PROVENANCE_NEXT_CHILD_DECISION.md`
 3. `tests/contracts/db-migration-provenance-current-state-audit-contract.test.cjs`
+4. `tests/test-layer-classification.json` (minimal SOURCE_STATIC entry only)
 
 ## Prohibited Files
 
-All existing files. Particularly: `docs/architecture/DB_MIGRATION_PROVENANCE_GATE.md`, `docs/architecture/migration-path-inventory.json`, `db/migration-provenance/**`, `db/migrations/**`, `scripts/**`, `tests/contracts/**` (except new contract test), `tests/db-engine/**`, `package.json`, `package-lock.json`, `.github/**`, `functions/**`, `pages/**`, `js/**`, `css/**`, `migrations/**`, `_headers`
+All existing files, particularly: `docs/architecture/DB_MIGRATION_PROVENANCE_GATE.md`, `docs/architecture/migration-path-inventory.json`, `db/migration-provenance/**`, `db/migrations/**`, `scripts/**`, `tests/contracts/**` (except new contract test), `tests/test-layer-classification.json` (except minimal entry), `tests/db-engine/**`, `package.json`, `package-lock.json`, `.github/**`, `functions/**`, `pages/**`, `js/**`, `css/**`, `migrations/**`, `_headers`
 
 ## Required Test Layers
 
@@ -215,7 +217,7 @@ All existing files. Particularly: `docs/architecture/DB_MIGRATION_PROVENANCE_GAT
 | Category | Meaning |
 | --- | --- |
 | CONTRACT_TEST_FAILURE | Document structure, vocabulary, or reference validation fails |
-| COMMIT_SCOPE_VIOLATION | A file outside the 3 allowed files is changed |
+| COMMIT_SCOPE_VIOLATION | A file outside the 4 authorized files is changed |
 | PUSH_REJECTED | Remote push is rejected |
 | CI_FAILURE | CI pipeline fails |
 

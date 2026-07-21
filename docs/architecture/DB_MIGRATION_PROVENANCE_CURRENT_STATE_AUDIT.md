@@ -171,12 +171,14 @@ Each criterion from [#3458](https://github.com/skerishKang/LoveBud/issues/3458) 
 - Missing, duplicate, reordered, and checksum-mismatched records are detected
 
 **What it does not prove**:
-- No target ledger evidence has been collected (no adapter for Production/staging)
-- Source-only mode is the only currently functional mode
+- No authoritative target-ledger evidence producer is implemented
+- No target ledger session or authoritative ledger evidence exists
+- Target-gate comparison logic has only synthetic/file evidence coverage
 - No CI job runs target gate mode against a real database
+- Catalog collection capability and ledger evidence acquisition are separate concerns
 
-**Dependency**: Read-only target adapter
-**Next action**: Requires target adapter implementation
+**Dependency**: Authoritative ledger relation/bootstrap and a separately reviewed read-only ledger-evidence acquisition path
+**Next action**: Deferred until adoption and ledger bootstrap prerequisites are satisfied
 
 ---
 
@@ -278,9 +280,10 @@ No Production collection has occurred.
 - No manifest activation has occurred
 - Dedicated read-only credentials do not exist in the repository
 - Abstract role mapping file does not exist in the repository
-- Collection plan has not been reviewed by owner
 
-**Dependency**: Dedicated read-only credentials + owner-reviewed role mapping + owner approval
+PR #3556 committed the reviewed frozen PREPARED_ONLY collection plan and allowlist. Missing operator inputs are: (1) dedicated Production read-only credential input, (2) abstract role mapping input. Separate future decisions: Phase B live read-only execution approval, Phase C evidence/drift review, Phase D manifest activation, Phase E ledger/bootstrap/migration-runner approval.
+
+**Dependency**: Dedicated read-only credential input + abstract role mapping input + separate Phase B execution approval
 **Next action**: Blocked on operator input
 
 ---

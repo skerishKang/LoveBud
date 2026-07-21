@@ -395,6 +395,79 @@ describe('DB Migration Provenance Current-State Audit Contract (#3620)', () => {
     });
   });
 
+  describe('18e. Audit contains authoritative target-ledger evidence absence', () => {
+    const audit = readDoc(AUDIT_PATH);
+    it('Authoritative ledger evidence absence documented', () => {
+      assert.match(audit, /authoritative target-ledger evidence|authoritative ledger evidence/i);
+    });
+    it('No false adapter generalization', () => {
+      assert.doesNotMatch(audit, /no adapter for Production\/staging/i);
+    });
+    it('Source-only mode not described as only functional mode', () => {
+      assert.doesNotMatch(audit, /Source-only mode is the only currently functional mode/i);
+    });
+  });
+
+  describe('18f. No stale operator blocker claims', () => {
+    const audit = readDoc(AUDIT_PATH);
+    it('No "Collection plan has not been reviewed by owner"', () => {
+      assert.doesNotMatch(audit, /Collection plan has not been reviewed by owner/i);
+    });
+    it('No "owner-reviewed role mapping" claim', () => {
+      assert.doesNotMatch(audit, /owner-reviewed role mapping/i);
+    });
+  });
+
+  describe('18g. BLOCKED_OPERATOR_INPUT has exactly two items', () => {
+    const combined = readDoc(AUDIT_PATH) + '\n' + readDoc(DECISION_PATH);
+    it('Contains dedicated credential input', () => {
+      assert.match(combined, /dedicated.*read.only.*credential/i);
+    });
+    it('Contains abstract role mapping input', () => {
+      assert.match(combined, /abstract role mapping/i);
+    });
+    it('Phase B/C/D/E are SEPARATE_APPROVAL_REQUIRED', () => {
+      assert.match(combined, /SEPARATE_APPROVAL_REQUIRED/);
+    });
+    it('Phase B approval mentioned', () => {
+      assert.match(combined, /Phase B.*(execution|collection)/i);
+    });
+    it('Phase D and Phase E approvals mentioned', () => {
+      assert.match(combined, /Phase D.*manifest/i);
+      assert.match(combined, /Phase E.*ledger/i);
+    });
+  });
+
+  describe('18h. Decision doc stale phrase removal', () => {
+    const decision = readDoc(DECISION_PATH);
+    it('No "three operator-input items" phrase', () => {
+      assert.doesNotMatch(decision, /three operator-input items/i);
+    });
+    it('No "plan review" as missing input in diagram', () => {
+      assert.doesNotMatch(decision, /plan review.*BLOCKED/);
+    });
+    it('No broad "all #3458 implementation complete" claim', () => {
+      assert.doesNotMatch(decision, /All source-contract and disposable-CI implementation children under #3458 have been completed and merged/i);
+    });
+  });
+
+  describe('18i. Four authorized files scope', () => {
+    const decision = readDoc(DECISION_PATH);
+    it('All 4 authorized files listed', () => {
+      assert.match(decision, /DB_MIGRATION_PROVENANCE_CURRENT_STATE_AUDIT\.md/);
+      assert.match(decision, /DB_MIGRATION_PROVENANCE_NEXT_CHILD_DECISION\.md/);
+      assert.match(decision, /db-migration-provenance-current-state-audit-contract\.test\.cjs/);
+      assert.match(decision, /test-layer-classification\.json/);
+    });
+    it('No "3 allowed files" or "outside the 3" phrase', () => {
+      assert.doesNotMatch(decision, /3 allowed files/);
+      assert.doesNotMatch(decision, /outside the 3 allowed/);
+    });
+    it('Classification registry included in authorized scope', () => {
+      assert.match(decision, /minimal SOURCE_STATIC entry|test-layer-classification\.json.*minimal/);
+    });
+  });
+
   describe('19. Audit and decision are well-formed', () => {
     it('Audit file is not empty', () => {
       const audit = readDoc(AUDIT_PATH);
