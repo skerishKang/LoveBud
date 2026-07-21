@@ -17,7 +17,10 @@
     var ready = function() {
       window.LoveBudTreeViewModeSwitcher.init({
         storageKey: 'lovebud:myTrees:viewMode',
-        defaultMode: 'large',
+        // #3608 Phase 1: empty/invalid storage falls back to compact so both
+        // Browse and My Trees share the same default appreciation density.
+        // Valid saved large/list preferences are preserved by the switcher.
+        defaultMode: 'compact',
         mount: '#myTreesViewModeMount',
         target: '#trees-grid'
       });

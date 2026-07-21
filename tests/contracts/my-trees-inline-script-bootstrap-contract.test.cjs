@@ -68,7 +68,7 @@ test('4. LoveBudTreeViewModeSwitcher.init specifies correct mount, target, stora
   );
   assert.match(
     bootstrap,
-    /defaultMode:\s*['"]large['"]/,
+    /defaultMode:\s*['"]compact['"]/,
     'LoveBudTreeViewModeSwitcher.init must use correct defaultMode'
   );
 });

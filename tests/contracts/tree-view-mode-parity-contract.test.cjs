@@ -91,11 +91,28 @@ test('No 900px compact breakpoint remains on My Trees', () => {
     );
 });
 
-test('Compact mobile min-height 260px applies on both pages', () => {
-    const browseRule = /#resultsList\[data-tree-view-mode="compact"\][^{]*\{[^}]*min-height:\s*260px/;
-    const myTreesRule = /\.trees-grid\[data-tree-view-mode="compact"\][^{]*\{[^}]*min-height:\s*260px/;
-    assert.match(viewModeCss, browseRule);
-    assert.match(viewModeCss, myTreesRule);
+test('Compact desktop min-height 260px applies on both pages (combined selectors)', () => {
+    // #3608 Phase 1: compact root rules use combined selectors.
+    const combined = /#resultsList\[data-tree-view-mode="compact"\]\s+\.tree-card,\s*\.trees-grid\[data-tree-view-mode="compact"\]\s+\.tree-card\s*\{[^}]*min-height:\s*260px/;
+    const browseOnly = /#resultsList\[data-tree-view-mode="compact"\][^{]*\{[^}]*min-height:\s*260px/;
+    const myTreesOnly = /\.trees-grid\[data-tree-view-mode="compact"\][^{]*\{[^}]*min-height:\s*260px/;
+    assert.ok(
+        combined.test(viewModeCss) || (browseOnly.test(viewModeCss) && myTreesOnly.test(viewModeCss)),
+        'compact min-height 260px must apply to Browse and My Trees'
+    );
+});
+
+test('#3608 Phase 1: obsolete My Trees compact asymmetry rules are removed', () => {
+    assert.doesNotMatch(
+        viewModeCss,
+        /\.trees-grid\[data-tree-view-mode="compact"\]\s+\.tree-card-thumb\s*\{[^}]*height:\s*140px/,
+        'My Trees compact thumb 140px asymmetry removed'
+    );
+    assert.doesNotMatch(
+        viewModeCss,
+        /\.trees-grid\[data-tree-view-mode="compact"\]\s+\.tree-card-title\s*\{[^}]*font-size:\s*0\.95rem/,
+        'My Trees compact title 0.95rem asymmetry removed'
+    );
 });
 
 // ── 3) List mode parity on class-name divergence ─────────────────────

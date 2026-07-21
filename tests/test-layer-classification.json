@@ -209,6 +209,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/browse-my-trees-compact-geometry-3608-browser-contract.test.cjs",
+      "layer": "EXECUTED_REAL_LOCAL",
+      "rationale": "Executes real production modules js/tree-view-mode-switcher.js and js/my-trees/my-trees-page-bootstrap.js in Playwright Chromium, loading production CSS chains css/global.css, css/shared/love-tree-card-composition.css, css/search.css, css/my-trees.css, and css/tree-view-mode.css via a local HTTP server. Asserts #3608 Phase 1 compact defaults (empty/invalid storage → compact), independent storage keys, desktop/mobile computed compact geometry parity (card height, media, body grid, title/subtitle, CTA count), and obsolete My Trees compact asymmetry removal. No production write/auth/API/DB mutation.",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/browse-my-trees-desktop-geometry-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
