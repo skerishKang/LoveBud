@@ -52,6 +52,11 @@ body.preview-sheet-open {
     /* Open state: slide up */
     #myTreesHubPanel.preview-sidebar.is-open {
         display: block;
+        /* Reaffirm the scrollport on the open sheet so sticky CTA can pin
+           against a real overflow container (overrides layout overflow:hidden). */
+        overflow-x: hidden;
+        overflow-y: auto;
+        overscroll-behavior: contain;
         animation: mobile-sheet-slide-up 280ms cubic-bezier(0.16, 1, 0.3, 1) both;
     }
 
@@ -140,6 +145,53 @@ body.preview-sheet-open {
     .my-trees-hub-goto-btn {
         min-height: 48px;
         font-size: 15px;
+    }
+
+    /*
+     * #3604 — Keep the primary appreciation CTA in the initial mobile
+     * sheet viewport without cloning DOM or changing routes.
+     *
+     * Evidence: with max-height: 92dvh the open sheet already reaches
+     * near-full height for tall hub content, but the end-of-content
+     * CTA still sits below the fold at scrollTop === 0. Explicit
+     * height: 92dvh alone does not move the CTA into view.
+     *
+     * Sticky actions pins the existing single CTA (plus compact share)
+     * to the sheet scrollport bottom so it is visible on first open
+     * while the flow/summary above remains scrollable.
+     */
+    #myTreesHubPanel.preview-sidebar.is-open .my-trees-hub-actions {
+        position: -webkit-sticky;
+        position: sticky;
+        bottom: 0;
+        z-index: 6;
+        width: 100%;
+        box-sizing: border-box;
+        margin-top: 12px;
+        padding-top: 10px;
+        /* Keep safe-area clearance on the sticky footer itself. */
+        padding-bottom: calc(6px + env(safe-area-inset-bottom, 0px));
+        background:
+            linear-gradient(
+                180deg,
+                rgba(255, 249, 245, 0),
+                rgba(255, 249, 245, 0.94) 22%,
+                rgba(244, 248, 238, 0.98) 100%
+            );
+    }
+
+    #myTreesHubPanel.preview-sidebar.is-open .my-trees-hub-open-btn {
+        margin-top: 0;
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
+    }
+
+    #myTreesHubPanel.preview-sidebar.is-open .my-trees-hub-share-btn {
+        margin-top: 8px;
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
     }
 }
 
