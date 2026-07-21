@@ -284,7 +284,244 @@
    * @param {object} user
    * @returns {object}
    */
-  function resolveSettingsAccountViewModel(user) {
+  // --- Display name editing state ---
+  var editState = { mode: 'view', originalName: '', saving: false };
+
+  function getLiveUser() {
+    try {
+      if (typeof firebase !== 'undefined' && firebase.auth && firebase.auth().currentUser) {
+        return firebase.auth().currentUser;
+      }
+    } catch (e) {}
+    return null;
+  }
+
+  function t(key, fallback) {
+    var translated = window.t ? window.t(key) : key;
+    return translated && translated !== key ? translated : fallback;
+  }
+
+  function validateDisplayName(raw) {
+    if (!raw || typeof raw !== 'string') return { valid: false, error: 'empty' };
+    var trimmed = raw.trim();
+    if (!trimmed) return { valid: false, error: 'empty' };
+    if (Array.from(trimmed).length > 50) return { valid: false, error: 'tooLong' };
+    return { valid: true, value: trimmed };
+  }
+
+  function showEditForm(currentDisplayName) {
+    editState.mode = 'editing';
+    editState.originalName = currentDisplayName || '';
+    editState.saving = false;
+
+    var form = document.getElementById('settingsProfileEditForm');
+    var btn = document.getElementById('settingsProfileEditBtn');
+    var nameView = document.getElementById('settingsProfileName');
+    var input = document.getElementById('settingsProfileNameInput');
+    var status = document.getElementById('settingsProfileEditStatus');
+
+    if (form) form.hidden = false;
+    if (btn) btn.hidden = true;
+    if (nameView) nameView.hidden = true;
+    if (input) {
+      input.value = editState.originalName;
+      input.focus();
+    }
+    if (status) {
+      status.textContent = '';
+      status.className = 'settings-profile-edit-status';
+    }
+    updateEditI18n();
+  }
+
+  function hideEditForm() {
+    editState.mode = 'view';
+    editState.saving = false;
+
+    var form = document.getElementById('settingsProfileEditForm');
+    var btn = document.getElementById('settingsProfileEditBtn');
+    var nameView = document.getElementById('settingsProfileName');
+
+    if (form) form.hidden = true;
+    if (btn) {
+      btn.hidden = false;
+      btn.focus();
+    }
+    if (nameView) nameView.hidden = false;
+  }
+
+  function setSaving(saving) {
+    editState.saving = saving;
+    var saveBtn = document.getElementById('settingsProfileSaveBtn');
+    var cancelBtn = document.getElementById('settingsProfileCancelBtn');
+    var input = document.getElementById('settingsProfileNameInput');
+    var status = document.getElementById('settingsProfileEditStatus');
+
+    if (saveBtn) saveBtn.disabled = saving;
+    if (cancelBtn) cancelBtn.disabled = saving;
+    if (input) input.disabled = saving;
+    if (status && saving) {
+      status.textContent = t('settings.profile.saving', 'Saving\u2026');
+      status.className = 'settings-profile-edit-status settings-profile-edit-status--saving';
+    }
+  }
+
+  function showStatus(message, type) {
+    var status = document.getElementById('settingsProfileEditStatus');
+    if (!status) return;
+    status.textContent = message;
+    status.className = 'settings-profile-edit-status' + (type ? ' settings-profile-edit-status--' + type : '');
+    if (type === 'error') {
+      status.setAttribute('role', 'alert');
+    } else {
+      status.setAttribute('role', 'status');
+    }
+  }
+
+  function updateEditI18n() {
+    var label = document.getElementById('settingsProfileEditLabel');
+    var saveBtn = document.getElementById('settingsProfileSaveBtn');
+    var cancelBtn = document.getElementById('settingsProfileCancelBtn');
+    var editBtnLabel = document.getElementById('settingsProfileEditBtnLabel');
+    if (label) label.textContent = t('settings.profile.nameLabel', 'Display name');
+    if (saveBtn) saveBtn.textContent = t('settings.profile.save', 'Save');
+    if (cancelBtn) cancelBtn.textContent = t('settings.profile.cancel', 'Cancel');
+    if (editBtnLabel) editBtnLabel.textContent = t('settings.profile.editName', 'Edit name');
+  }
+
+  function updateProfileUI(vm) {
+    var avatarEl = document.getElementById('settingsProfileAvatar');
+    var nameEl = document.getElementById('settingsProfileName');
+
+    if (avatarEl) {
+      avatarEl.textContent = '';
+      var hasPhoto = vm.photoURL && /^https?:\/\//.test(vm.photoURL);
+      var fallbackLabel = (t('settings.profile.avatarFallback', 'Profile for ' + vm.displayName)).replace(/\{displayName\}/g, vm.displayName);
+      if (hasPhoto) {
+        var img = document.createElement('img');
+        img.src = vm.photoURL;
+        img.alt = '';
+        img.className = 'settings-profile-avatar-img';
+        img.onerror = function() {
+          avatarEl.textContent = '';
+          avatarEl.textContent = resolveProfileInitials(vm);
+          avatarEl.classList.add('settings-profile-avatar-initials');
+          avatarEl.classList.remove('settings-profile-avatar-img-wrap');
+          avatarEl.setAttribute('role', 'img');
+          avatarEl.setAttribute('aria-label', fallbackLabel);
+        };
+        avatarEl.appendChild(img);
+        avatarEl.classList.add('settings-profile-avatar-img-wrap');
+        avatarEl.classList.remove('settings-profile-avatar-initials');
+        avatarEl.setAttribute('role', 'img');
+        var photoLabel = (t('settings.profile.avatarPhoto', 'Profile photo for ' + vm.displayName)).replace(/\{displayName\}/g, vm.displayName);
+        avatarEl.setAttribute('aria-label', photoLabel);
+      } else {
+        avatarEl.textContent = resolveProfileInitials(vm);
+        avatarEl.classList.add('settings-profile-avatar-initials');
+        avatarEl.classList.remove('settings-profile-avatar-img-wrap');
+        avatarEl.setAttribute('role', 'img');
+        avatarEl.setAttribute('aria-label', fallbackLabel);
+      }
+    }
+    if (nameEl) nameEl.textContent = vm.displayName;
+  }
+
+  function syncAfterSave(newDisplayName) {
+    var liveUser = getLiveUser();
+    if (!liveUser) return;
+
+    // Update confirmed auth cache
+    if (typeof window.persistConfirmedAuthSession === 'function') {
+      var updatedUser = Object.assign({}, liveUser, { displayName: newDisplayName });
+      window.persistConfirmedAuthSession(updatedUser);
+    }
+
+    // Update header nav
+    if (typeof window.updateNavUI === 'function') {
+      window.updateNavUI(liveUser);
+    }
+
+    // Re-render profile section
+    var vm = resolveSettingsAccountViewModel(liveUser);
+    vm.displayName = newDisplayName;
+    updateProfileUI(vm);
+  }
+
+  function handleSaveDisplayName() {
+    if (editState.saving) return;
+
+    var input = document.getElementById('settingsProfileNameInput');
+    var rawInput = input ? input.value : '';
+    var result = validateDisplayName(rawInput);
+
+    if (!result.valid) {
+      if (result.error === 'empty') {
+        showStatus(t('settings.profile.nameEmpty', 'Enter a display name.'), 'error');
+      } else if (result.error === 'tooLong') {
+        showStatus(t('settings.profile.nameTooLong', 'Display name must be 50 characters or fewer.'), 'error');
+      }
+      if (input) input.focus();
+      return;
+    }
+
+    var liveUser = getLiveUser();
+    if (!liveUser || !liveUser.updateProfile) {
+      showStatus(t('settings.profile.nameUpdateFailed', 'Could not update the display name. Try again.'), 'error');
+      return;
+    }
+
+    var currentPersisted = liveUser.displayName || '';
+    if (result.value === currentPersisted) {
+      showStatus(t('settings.profile.nameUnchanged', 'The display name was not changed.'), 'info');
+      hideEditForm();
+      return;
+    }
+
+    setSaving(true);
+
+    liveUser.updateProfile({ displayName: result.value })
+      .then(function() {
+        syncAfterSave(result.value);
+        hideEditForm();
+        showStatus(t('settings.profile.nameUpdated', 'Your display name was updated.'), 'success');
+      })
+      .catch(function() {
+        setSaving(false);
+        showStatus(t('settings.profile.nameUpdateFailed', 'Could not update the display name. Try again.'), 'error');
+      });
+  }
+
+  function handleCancelEdit() {
+    hideEditForm();
+  }
+
+  function bindNameEditInteractions() {
+    var editBtn = document.getElementById('settingsProfileEditBtn');
+    var saveBtn = document.getElementById('settingsProfileSaveBtn');
+    var cancelBtn = document.getElementById('settingsProfileCancelBtn');
+    var input = document.getElementById('settingsProfileNameInput');
+
+    if (editBtn) {
+      editBtn.addEventListener('click', function() {
+        var liveUser = getLiveUser();
+        var currentName = liveUser ? (liveUser.displayName || '') : '';
+        showEditForm(currentName);
+      });
+    }
+    if (saveBtn) saveBtn.addEventListener('click', handleSaveDisplayName);
+    if (cancelBtn) cancelBtn.addEventListener('click', handleCancelEdit);
+    if (input) {
+      input.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          handleSaveDisplayName();
+        }
+      });
+    }
+  }
+
+    function resolveSettingsAccountViewModel(user) {
     var methods = resolveSignInMethods(user);
     var hasPassword = methods.indexOf('password') !== -1;
     var hasGoogle = methods.indexOf('google') !== -1;
@@ -391,54 +628,10 @@
   }
 
   function renderProfileSection(vm) {
-    var t = window.t || function(key) { return key; };
-    function safeText(key, fallback) {
-      var translated = t(key);
-      return translated && translated !== key ? translated : fallback;
-    }
-    function interpolate(template, vars) {
-      return template.replace(/\{(\w+)\}/g, function(_, name) {
-        return vars[name] !== undefined ? vars[name] : '{' + name + '}';
-      });
-    }
-    var avatarEl = document.getElementById('settingsProfileAvatar');
-    var nameEl = document.getElementById('settingsProfileName');
+    updateProfileUI(vm);
     var emailEl = document.getElementById('settingsProfileEmail');
-
-    if (avatarEl) {
-      avatarEl.textContent = '';
-      var hasPhoto = vm.photoURL && /^https?:\/\//.test(vm.photoURL);
-      var photoLabel = interpolate(safeText('settings.profile.avatarPhoto', 'Profile photo for ' + vm.displayName), { displayName: vm.displayName });
-      var fallbackLabel = interpolate(safeText('settings.profile.avatarFallback', 'Profile for ' + vm.displayName), { displayName: vm.displayName });
-      if (hasPhoto) {
-        var img = document.createElement('img');
-        img.src = vm.photoURL;
-        img.alt = '';
-        img.className = 'settings-profile-avatar-img';
-        img.onerror = function() {
-          avatarEl.textContent = '';
-          avatarEl.textContent = resolveProfileInitials(vm);
-          avatarEl.classList.add('settings-profile-avatar-initials');
-          avatarEl.classList.remove('settings-profile-avatar-img-wrap');
-          avatarEl.setAttribute('role', 'img');
-          avatarEl.setAttribute('aria-label', fallbackLabel);
-        };
-        avatarEl.appendChild(img);
-        avatarEl.classList.add('settings-profile-avatar-img-wrap');
-        avatarEl.classList.remove('settings-profile-avatar-initials');
-        avatarEl.setAttribute('role', 'img');
-        avatarEl.setAttribute('aria-label', photoLabel);
-      } else {
-        avatarEl.textContent = resolveProfileInitials(vm);
-        avatarEl.classList.add('settings-profile-avatar-initials');
-        avatarEl.classList.remove('settings-profile-avatar-img-wrap');
-        avatarEl.setAttribute('role', 'img');
-        avatarEl.setAttribute('aria-label', fallbackLabel);
-      }
-    }
-
-    if (nameEl) nameEl.textContent = vm.displayName;
     if (emailEl) emailEl.textContent = vm.email || '';
+    updateEditI18n();
   }
 
   function renderAccountSection(vm) {
@@ -505,6 +698,12 @@
 
     document.addEventListener('keydown', function(e) {
       if (e.key === 'Escape') {
+        if (editState.mode === 'editing') {
+          e.preventDefault();
+          e.stopPropagation();
+          handleCancelEdit();
+          return;
+        }
         e.preventDefault();
         closeSettings();
       }
@@ -530,6 +729,9 @@
     if (logoutBtn) {
       logoutBtn.addEventListener('click', handleLogout);
     }
+
+    // Bind display name edit interactions
+    bindNameEditInteractions();
 
     // Render Profile / Account sections
     var vm = resolveSettingsAccountViewModel(effectiveUser);
@@ -623,4 +825,6 @@
   window.resolveDisplayName = resolveDisplayName;
   window.resolveProfileInitials = resolveProfileInitials;
   window.resolveSignInMethods = resolveSignInMethods;
+  window._settingsEditState = editState;
+  window._settingsValidateDisplayName = validateDisplayName;
 })();

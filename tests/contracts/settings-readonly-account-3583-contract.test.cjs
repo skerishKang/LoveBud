@@ -205,9 +205,19 @@ test('settings.js does not use innerHTML for user data rendering', () => {
 
 // --- write API prohibition ---
 
-test('settings.js does not call user.updateProfile', () => {
+test('settings.js uses updateProfile only in displayName save handler', () => {
   const js = read('js/settings.js');
-  assert.ok(!js.includes('updateProfile'), 'settings.js must not call updateProfile');
+  // updateProfile is used for display name editing
+  assert.ok(js.includes('updateProfile'), 'settings.js must include updateProfile');
+  // renderProfileSection must not call liveUser.updateProfile (Firebase write)
+  const renderProfileSrc = js.substring(
+    js.indexOf('function renderProfileSection'),
+    js.indexOf('function renderAccountSection')
+  );
+  assert.ok(!renderProfileSrc.includes('liveUser.updateProfile'), 'renderProfileSection must not call liveUser.updateProfile');
+  assert.ok(!renderProfileSrc.includes('.updateProfile({'), 'renderProfileSection must not call .updateProfile({');
+  // updateProfile must be in a dedicated save handler
+  assert.ok(js.includes('handleSaveDisplayName'), 'settings.js must have handleSaveDisplayName');
 });
 
 test('settings.js does not call sendPasswordResetEmail', () => {

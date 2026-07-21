@@ -32,12 +32,29 @@
           <div class="settings-profile-card" id="settingsProfileCard">
             <div class="settings-profile-avatar" id="settingsProfileAvatar" role="img" aria-label="프로필 이미지">
             </div>
-            <div class="settings-profile-info">
+                      <div class="settings-profile-info">
               <div class="settings-profile-name" id="settingsProfileName"></div>
               <div class="settings-profile-email" id="settingsProfileEmail"></div>
             </div>
           </div>
-          <p class="settings-deferred-note" id="settingsProfileDeferredNote">프로필 변경 기능은 다음 단계에서 제공됩니다.</p>
+
+          <!-- Display name edit form (hidden by default) -->
+          <div class="settings-profile-edit-form" id="settingsProfileEditForm" hidden>
+            <label class="settings-profile-edit-label" for="settingsProfileNameInput" id="settingsProfileEditLabel"></label>
+            <div class="settings-profile-edit-row">
+              <input type="text" class="settings-profile-name-input" id="settingsProfileNameInput" maxlength="50" autocomplete="name" />
+              <button type="button" class="settings-profile-edit-save" id="settingsProfileSaveBtn"></button>
+              <button type="button" class="settings-profile-edit-cancel" id="settingsProfileCancelBtn"></button>
+            </div>
+            <p class="settings-profile-edit-status" id="settingsProfileEditStatus" role="status" aria-live="polite"></p>
+          </div>
+
+          <button type="button" class="settings-profile-edit-btn" id="settingsProfileEditBtn">
+            <span class="material-symbols-outlined">edit</span>
+            <span id="settingsProfileEditBtnLabel"></span>
+          </button>
+
+          <p class="settings-deferred-note" id="settingsProfileDeferredNote"></p>
         </section>
 
         <div class="settings-divider"></div>

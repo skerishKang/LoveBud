@@ -265,8 +265,48 @@
       en: 'Email'
     },
     'settings.profile.changeDeferred': {
-      ko: '프로필 변경 기능은 다음 단계에서 제공됩니다.',
-      en: 'Profile change features will be available in a future update.'
+      ko: '프로필 사진 변경은 아직 지원되지 않습니다.',
+      en: 'Profile photo changes are not supported yet.'
+    },
+    'settings.profile.editName': {
+      ko: '이름 편집',
+      en: 'Edit name'
+    },
+    'settings.profile.nameLabel': {
+      ko: '표시 이름',
+      en: 'Display name'
+    },
+    'settings.profile.save': {
+      ko: '저장',
+      en: 'Save'
+    },
+    'settings.profile.cancel': {
+      ko: '취소',
+      en: 'Cancel'
+    },
+    'settings.profile.saving': {
+      ko: '저장 중\u2026',
+      en: 'Saving\u2026'
+    },
+    'settings.profile.nameUpdated': {
+      ko: '이름이 변경되었습니다.',
+      en: 'Your display name was updated.'
+    },
+    'settings.profile.nameEmpty': {
+      ko: '표시 이름을 입력해 주세요.',
+      en: 'Enter a display name.'
+    },
+    'settings.profile.nameTooLong': {
+      ko: '표시 이름은 50자 이하여야 합니다.',
+      en: 'Display name must be 50 characters or fewer.'
+    },
+    'settings.profile.nameUnchanged': {
+      ko: '이름을 변경하지 않았습니다.',
+      en: 'The display name was not changed.'
+    },
+    'settings.profile.nameUpdateFailed': {
+      ko: '이름을 변경하지 못했습니다. 다시 시도해 주세요.',
+      en: 'Could not update the display name. Try again.'
     },
     'settings.account.title': {
       ko: '계정',
