@@ -4493,6 +4493,12 @@
       "layer": "EXECUTED_REAL_LOCAL",
       "rationale": "Actual Playwright Chromium loads actual pages/settings.html under strict CSP (script-src self + gstatic/apis). Controlled Firebase fixture only. Executes actual js/settings.js display-name edit write flow: success updateProfile once with trim, visible success status after form hide, unchanged zero Firebase calls with visible no-change status, 50/51 emoji code-point validation, delayed double-submit single call, Escape-while-saving does not cancel, rejection/sync-throw/missing/non-function fail-closed, cancel/idle Escape, Korean/English labels, mobile overflow. Asserts cache/header/profile sync without renderSharedHeader re-init. No Production account mutation.",
       "capabilities": []
+    },
+    {
+      "path": "tests/contracts/db-migration-provenance-current-state-audit-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Reads current-state audit and next-child decision documents and asserts on document structure, status vocabulary, artifact classification vocabulary, test-layer vocabulary, protected issue references, path existence, and prohibition boundaries; does not execute any database, network, or runtime behavior.",
+      "capabilities": []
     }
   ],
   "supplemental": [
