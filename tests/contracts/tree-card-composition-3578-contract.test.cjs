@@ -182,11 +182,20 @@ function createFakeElement(tag) {
         var rest = s;
         while (rest.length > 0) {
           var openIdx = rest.indexOf('<');
-          if (openIdx === -1) { rest = ''; break; }
+          if (openIdx === -1) {
+            // trailing text with no further tags
+            if (rest && parent) {
+              parent._textContent = (parent._textContent || '') + rest;
+            }
+            rest = '';
+            break;
+          }
           if (openIdx > 0) {
             // text before tag
             var txt = rest.slice(0, openIdx);
-            // store as text if non-empty
+            if (txt && parent) {
+              parent._textContent = (parent._textContent || '') + txt;
+            }
             rest = rest.slice(openIdx);
           }
           // Check for closing tag </
@@ -219,25 +228,46 @@ function createFakeElement(tag) {
             continue;
           }
 
-          // Regular tag: parse tag name and attrs
-          var tagParts = tagInfo.trim().split(/\s+/);
-          var tagName = tagParts[0];
+          // Regular tag: parse tag name and quoted attributes
+          // (metric titles / aria-labels may contain spaces inside quotes)
+          var tagTrim = tagInfo.trim();
+          var tagNameMatch = tagTrim.match(/^([a-zA-Z0-9\-]+)/);
+          var tagName = tagNameMatch ? tagNameMatch[1] : 'div';
           var elChild = doc ? doc.createElement(tagName) : createFakeElement(tagName);
           elChild.parentNode = parent;
-          // Parse attributes
-          for (var j = 1; j < tagParts.length; j++) {
-            var attrPair = tagParts[j].split('=');
-            if (attrPair.length === 2) {
-              var attrKey = attrPair[0];
-              var attrVal = attrPair[1].replace(/^"|"$/g, '');
-              if (attrKey === 'class') elChild.className = attrVal;
-              else if (attrKey === 'id') elChild._attrs.id = attrVal;
-              else elChild._attrs[attrKey] = attrVal;
-            }
+          var attrSrc = tagTrim.slice(tagName.length);
+          var attrRe = /([a-zA-Z_:][-a-zA-Z0-9_:.]*)\s*=\s*(?:"([^"]*)"|'([^']*)'|(\S+))/g;
+          var am;
+          while ((am = attrRe.exec(attrSrc)) !== null) {
+            var attrKey = am[1];
+            var attrVal = am[2] != null ? am[2] : (am[3] != null ? am[3] : am[4]);
+            if (attrKey === 'class') elChild.className = attrVal;
+            else if (attrKey === 'id') elChild._attrs.id = attrVal;
+            else elChild._attrs[attrKey] = attrVal;
           }
-          // Find matching closing tag
+          // Find matching closing tag with nesting depth (metrics use nested spans)
           var endTag = '</' + tagName + '>';
-          var endIdx = rest.indexOf(endTag);
+          var openTagRe = new RegExp('<' + tagName + '(?:\\s|>|/)');
+          var depth = 1;
+          var searchFrom = 0;
+          var endIdx = -1;
+          while (searchFrom < rest.length) {
+            var nextOpen = rest.slice(searchFrom).search(openTagRe);
+            var nextClose = rest.indexOf(endTag, searchFrom);
+            if (nextClose === -1) break;
+            var absOpen = nextOpen === -1 ? -1 : searchFrom + nextOpen;
+            if (absOpen !== -1 && absOpen < nextClose) {
+              depth += 1;
+              searchFrom = absOpen + 1;
+              continue;
+            }
+            depth -= 1;
+            if (depth === 0) {
+              endIdx = nextClose;
+              break;
+            }
+            searchFrom = nextClose + endTag.length;
+          }
           if (endIdx !== -1) {
             var inner = rest.slice(0, endIdx);
             if (inner) {
@@ -545,10 +575,16 @@ function createCtx(overrides) {
     LoveBudSearchCardRenderer: null,
     LoveBudMyTreesUI: null,
     document: doc,
+    // Same-origin absolute URL construction for composition boundary
+    URL: typeof URL !== 'undefined' ? URL : undefined,
     IntersectionObserver: function () {
       return { observe: function () {}, disconnect: function () {} };
     }
   };
+  // Also expose URL on the context global for bare `new URL(...)` in scripts
+  if (typeof URL !== 'undefined') {
+    // filled after ctx object is built
+  }
 
   if (overrides) {
     Object.keys(overrides).forEach(function (k) {
@@ -556,9 +592,17 @@ function createCtx(overrides) {
     });
   }
 
-  var ctx = { window: win, globalThis: win, console: { warn: function () {}, log: function () {} } };
+  var ctx = {
+    window: win,
+    globalThis: win,
+    console: { warn: function () {}, log: function () {} },
+    URL: typeof URL !== 'undefined' ? URL : undefined
+  };
   ctx.window.console = ctx.console;
   ctx.document = doc;
+  if (typeof URL !== 'undefined') {
+    win.URL = URL;
+  }
   vm.createContext(ctx);
   return ctx;
 }
@@ -614,7 +658,42 @@ function loadMyTreesRenderer(ctx) {
     getVisibilityActionLabel: function () { return ''; }
   };
   ctx.window.LoveBudMyTreesEntryTargetResolver = {
-    resolveMyTreesEntryTargets: function () { return null; }
+    resolveMyTreesEntryTargets: function (tree) {
+      var id = tree && (tree.id || tree.treeId || tree.tree_id);
+      if (!id) return null;
+      var vis = tree && tree.visibility === 'public' ? 'public' : 'private';
+      var primaryHref = 'editor?treeId=' + encodeURIComponent(String(id));
+      var publicHref = 'view.html?treeId=' + encodeURIComponent(String(id));
+      return {
+        treeId: String(id),
+        accessState: vis,
+        primary: {
+          available: true,
+          href: primaryHref,
+          action: 'appreciation',
+          interactionMode: 'appreciation',
+          routeSurface: 'editor'
+        },
+        publicView: vis === 'public'
+          ? {
+              available: true,
+              href: publicHref,
+              action: 'public-view',
+              interactionMode: 'none',
+              routeSurface: 'public-viewer'
+            }
+          : { available: false, href: null, action: 'public-view', interactionMode: 'none', routeSurface: 'public-viewer' },
+        shareTarget: vis === 'public'
+          ? {
+              available: true,
+              href: publicHref,
+              action: 'public-view',
+              interactionMode: 'none',
+              routeSurface: 'public-viewer'
+            }
+          : { available: false, href: null, action: 'public-view', interactionMode: 'none', routeSurface: 'public-viewer' }
+      };
+    }
   };
   ctx.window.LoveBudMyTreesManageSummary = {
     updateManageSummary: function (t) { return t; }
@@ -1226,4 +1305,164 @@ test('24. #3598 stale hub metrics and #3600 view-recorder code unchanged', funct
   assert.match(myTreesSrc, /requireComposition/);
 
   // #3600: view recorder file unchanged check (handled in test 17)
+});
+
+/* ── 25. My Trees adapter preserves shared metrics through normalize path ── */
+
+function inspectMyTreesMetricFooter(card) {
+  var metricsRoot = card.querySelector('.tree-card-reaction-metrics');
+  if (!metricsRoot) {
+    return { present: false, items: [] };
+  }
+  var items = [];
+  var nodes = metricsRoot.querySelectorAll
+    ? metricsRoot.querySelectorAll('.tree-card-reaction-metric')
+    : [];
+  // Fake DOM querySelectorAll may return array-like
+  var list = nodes && nodes.length != null ? Array.prototype.slice.call(nodes) : [];
+  for (var i = 0; i < list.length; i++) {
+    var m = list[i];
+    var iconEl = m.querySelector ? m.querySelector('.material-symbols-outlined') : null;
+    items.push({
+      icon: iconEl ? String(iconEl.textContent || '').trim() : '',
+      value: String(m.textContent || '')
+        .replace(iconEl ? String(iconEl.textContent || '') : '', '')
+        .replace(/\s+/g, ' ')
+        .trim()
+    });
+  }
+  return { present: true, items: items };
+}
+
+test('25A. My Trees buildTreeCard preserves zero/positive metrics (raw adapter path)', function () {
+  var ctx = createCtx();
+  // composition sanitizeUrl: allow same-origin absolute and relative editor routes
+  ctx.window.LoveBudSecurity.sanitizeUrl = function (url) {
+    if (!url) return '';
+    var raw = String(url).trim();
+    if (!raw || /^javascript:/i.test(raw) || /^\/\//.test(raw)) return '';
+    return raw;
+  };
+  ctx.window.location = {
+    href: 'https://lovebud.pages.dev/pages/my-trees',
+    origin: 'https://lovebud.pages.dev',
+    pathname: '/pages/my-trees',
+    protocol: 'https:'
+  };
+  var mytrees = loadMyTreesRenderer(ctx);
+  var rawTree = {
+    id: 'owner-tree-metrics',
+    title: 'Owner Tree',
+    visibility: 'public',
+    viewCount: 0,
+    likeCount: 2,
+    commentCount: 0
+    // shareCount absent
+  };
+  var rawSnapshot = JSON.stringify(rawTree);
+
+  var card = mytrees.buildTreeCard(rawTree, {});
+  assert.ok(card, 'card must be built');
+  assert.equal(JSON.stringify(rawTree), rawSnapshot, 'input tree must not be mutated');
+
+  // Single root + CTA + no edit
+  assert.match(card.className, /\btree-card\b/);
+  assert.match(card.className, /\blove-tree-card\b/);
+  // Fake DOM selector matcher does not support comma lists — query one class
+  var openLinks = card.querySelectorAll('.tree-card-open-link');
+  assert.equal(openLinks.length, 1, 'exactly one appreciation CTA');
+  var href = openLinks[0].getAttribute('href') || '';
+  assert.equal(href.indexOf('mode=edit') === -1, true, 'no mode=edit');
+  assert.equal(card.querySelectorAll('.tree-card-edit-link').length, 0);
+  assert.equal(href.indexOf('mode=edit') === -1, true);
+
+  var footer = inspectMyTreesMetricFooter(card);
+  assert.equal(footer.present, true, 'tree-card-reaction-metrics must exist');
+  assert.equal(footer.items.length, 3, 'views + likes + comments; share omitted');
+  assert.equal(footer.items[0].icon, 'visibility');
+  assert.equal(footer.items[0].value, '0');
+  assert.equal(footer.items[1].icon, 'favorite');
+  assert.equal(footer.items[1].value, '2');
+  assert.equal(footer.items[2].icon, 'chat_bubble');
+  assert.equal(footer.items[2].value, '0');
+  // no share icon
+  for (var i = 0; i < footer.items.length; i++) {
+    assert.notEqual(footer.items[i].icon, 'share');
+  }
+});
+
+test('25B. My Trees buildTreeCard omits unknown metrics (does not coerce to 0)', function () {
+  var ctx = createCtx();
+  ctx.window.LoveBudSecurity.sanitizeUrl = function (url) {
+    if (!url) return '';
+    var raw = String(url).trim();
+    if (!raw || /^javascript:/i.test(raw) || /^\/\//.test(raw)) return '';
+    return raw;
+  };
+  ctx.window.location = {
+    href: 'https://lovebud.pages.dev/pages/my-trees',
+    origin: 'https://lovebud.pages.dev',
+    pathname: '/pages/my-trees',
+    protocol: 'https:'
+  };
+  var mytrees = loadMyTreesRenderer(ctx);
+  var rawTree = {
+    id: 'owner-unknown-metrics',
+    title: 'Unknown Metrics',
+    visibility: 'public',
+    viewCount: null,
+    likeCount: undefined,
+    commentCount: NaN,
+    shareCount: -1
+  };
+  var card = mytrees.buildTreeCard(rawTree, {});
+  var footer = inspectMyTreesMetricFooter(card);
+  assert.equal(footer.present, false, 'no metrics root when all unknown/invalid');
+  // Ensure unknown was not rendered as a zero metric item in outerHTML either
+  var html = card.outerHTML || '';
+  assert.equal(html.indexOf('tree-card-reaction-metric') === -1, true,
+    'no metric items when unknown');
+});
+
+test('25C. My Trees buildTreeCard preserves legacy aliases via shared helper', function () {
+  var ctx = createCtx();
+  ctx.window.LoveBudSecurity.sanitizeUrl = function (url) {
+    if (!url) return '';
+    var raw = String(url).trim();
+    if (!raw || /^javascript:/i.test(raw) || /^\/\//.test(raw)) return '';
+    return raw;
+  };
+  ctx.window.location = {
+    href: 'https://lovebud.pages.dev/pages/my-trees',
+    origin: 'https://lovebud.pages.dev',
+    pathname: '/pages/my-trees',
+    protocol: 'https:'
+  };
+  var mytrees = loadMyTreesRenderer(ctx);
+  var rawTree = {
+    id: 'owner-legacy-metrics',
+    title: 'Legacy Aliases',
+    visibility: 'private',
+    view_count: 7,
+    likes: 3
+  };
+  var card = mytrees.buildTreeCard(rawTree, {});
+  var footer = inspectMyTreesMetricFooter(card);
+  assert.equal(footer.present, true);
+  assert.equal(footer.items.length, 2);
+  assert.equal(footer.items[0].icon, 'visibility');
+  assert.equal(footer.items[0].value, '7');
+  assert.equal(footer.items[1].icon, 'favorite');
+  assert.equal(footer.items[1].value, '3');
+});
+
+test('25D. My Trees metric projection source uses shared getTreeMetrics + cardTree', function () {
+  var src = read(MYTREES_SRC);
+  assert.match(src, /getTreeMetrics\s*\(/);
+  assert.match(src, /cardTree\s*=\s*Object\.assign\s*\(\s*\{\s*\}\s*,\s*normalizedTree\s*\)/);
+  assert.match(src, /Composer\.buildTreeCard\s*\(\s*cardTree/);
+  assert.match(src, /resolvedMetrics\.views\s*!==\s*null/);
+  assert.match(src, /resolvedMetrics\.likes\s*!==\s*null/);
+  assert.match(src, /resolvedMetrics\.comments\s*!==\s*null/);
+  assert.match(src, /resolvedMetrics\.shares\s*!==\s*null/);
 });

@@ -1250,3 +1250,130 @@ test('#3578 browser: media slot — provided mediaNode is appended with legacy+s
     assert.equal(result.noMedia.hasMediaWrap, false, 'Card without mediaNode must NOT have media wrapper');
   });
 });
+
+/* ────────────────────────────────────────────────────────────────────────── */
+/* 11. My Trees adapter metric projection (raw tree → normalize → shared)     */
+/* ────────────────────────────────────────────────────────────────────────── */
+
+test('#3578 browser: My Trees adapter preserves zero/positive/unknown/legacy metrics', { timeout: 60000 }, async (t) => {
+  await withServerPage(t, async (page, base) => {
+    await page.evaluate(() => {
+      window.history.replaceState({}, '', '/pages/my-trees');
+    });
+
+    const result = await page.evaluate(() => {
+      const UI = window.LoveBudMyTreesUI;
+
+      function inspectMetrics(card) {
+        const root = card.querySelector('.tree-card-reaction-metrics');
+        if (!root) return { present: false, items: [] };
+        const items = Array.from(root.querySelectorAll('.tree-card-reaction-metric')).map((m) => {
+          const icon = m.querySelector('.material-symbols-outlined');
+          return {
+            icon: icon ? icon.textContent.trim() : '',
+            value: (m.textContent || '').replace(icon ? icon.textContent : '', '').replace(/\s+/g, ' ').trim(),
+          };
+        });
+        return { present: true, items };
+      }
+
+      function inspectCard(card) {
+        const openLink = card.querySelector('.tree-card-open-link, .love-tree-card-open-link');
+        const href = openLink ? openLink.getAttribute('href') : '';
+        return {
+          rootClasses: card.className,
+          openHref: href,
+          openCount: card.querySelectorAll('.tree-card-open-link, .love-tree-card-open-link').length,
+          hasModeEdit: !!href && href.indexOf('mode=edit') !== -1,
+          hasDirectEdit: card.querySelector('a[href*="mode=edit"], .tree-card-edit-link') !== null,
+          hasVisibility: !!card.querySelector('.love-tree-card-visibility, .tree-card-visibility'),
+          metrics: inspectMetrics(card),
+        };
+      }
+
+      const caseAInput = {
+        id: 'owner-tree-metrics',
+        title: 'Owner Tree',
+        visibility: 'public',
+        viewCount: 0,
+        likeCount: 2,
+        commentCount: 0,
+      };
+      const caseASnapshot = JSON.stringify(caseAInput);
+      const caseACard = UI.buildTreeCard(caseAInput, {
+        i18n: function (k) { return k; },
+        onSelect: function () {},
+        isSelected: function () { return false; },
+      });
+      const caseAMutated = JSON.stringify(caseAInput) !== caseASnapshot;
+
+      const caseBCard = UI.buildTreeCard({
+        id: 'owner-unknown-metrics',
+        title: 'Unknown Metrics',
+        visibility: 'public',
+        viewCount: null,
+        likeCount: undefined,
+        commentCount: NaN,
+        shareCount: -1,
+      }, {
+        i18n: function (k) { return k; },
+        onSelect: function () {},
+        isSelected: function () { return false; },
+      });
+
+      const caseCCard = UI.buildTreeCard({
+        id: 'owner-legacy-metrics',
+        title: 'Legacy Aliases',
+        visibility: 'private',
+        view_count: 7,
+        likes: 3,
+      }, {
+        i18n: function (k) { return k; },
+        onSelect: function () {},
+        isSelected: function () { return false; },
+      });
+
+      return {
+        caseA: inspectCard(caseACard),
+        caseAMutated: caseAMutated,
+        caseB: inspectCard(caseBCard),
+        caseC: inspectCard(caseCCard),
+      };
+    });
+
+    // Case A — zero + positive, share absent
+    assert.equal(result.caseAMutated, false, 'input tree must not be mutated');
+    assert.equal(result.caseA.openCount, 1, 'exactly one appreciation CTA');
+    assert.equal(result.caseA.hasModeEdit, false, 'no mode=edit');
+    assert.equal(result.caseA.hasDirectEdit, false, 'no direct Edit');
+    assert.ok(result.caseA.hasVisibility, 'visibility node retained');
+    assert.ok(result.caseA.openHref && result.caseA.openHref.indexOf('/pages/editor') !== -1,
+      'public primary route retained (editor)');
+    assert.equal(result.caseA.metrics.present, true, 'metrics root present for case A');
+    assert.deepEqual(
+      result.caseA.metrics.items.map((i) => i.icon),
+      ['visibility', 'favorite', 'chat_bubble'],
+      'metric icon order views → likes → comments'
+    );
+    assert.deepEqual(
+      result.caseA.metrics.items.map((i) => i.value),
+      ['0', '2', '0'],
+      'zero preserved; positive preserved; share omitted'
+    );
+
+    // Case B — unknown omitted, not coerced to 0
+    assert.equal(result.caseB.metrics.present, false, 'unknown metrics must omit footer root');
+    assert.equal(result.caseB.metrics.items.length, 0);
+
+    // Case C — legacy aliases
+    assert.equal(result.caseC.metrics.present, true);
+    assert.deepEqual(
+      result.caseC.metrics.items.map((i) => ({ icon: i.icon, value: i.value })),
+      [
+        { icon: 'visibility', value: '7' },
+        { icon: 'favorite', value: '3' },
+      ]
+    );
+    assert.ok(result.caseC.hasVisibility, 'private visibility retained');
+  });
+});
