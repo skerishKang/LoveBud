@@ -39,6 +39,8 @@ const ACCOUNTS = {
   }
 };
 
+const CSP = "default-src 'self'; script-src 'self' https://www.gstatic.com https://apis.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https:; media-src 'self' https:; frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https://relovetree.firebaseapp.com; connect-src 'self' https:; base-uri 'self'; object-src 'none'; frame-ancestors 'self'; form-action 'self'";
+
 let server;
 let browser;
 let baseUrl;
@@ -72,7 +74,11 @@ function startServer() {
       }
       try {
         const data = fs.readFileSync(filePath);
-        res.writeHead(200, { 'Content-Type': contentType(filePath) });
+        const headers = { 'Content-Type': contentType(filePath) };
+        if (filePath.endsWith('.html')) {
+          headers['Content-Security-Policy'] = CSP;
+        }
+        res.writeHead(200, headers);
         res.end(data);
       } catch (error) {
         res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });

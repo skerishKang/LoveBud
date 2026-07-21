@@ -395,3 +395,76 @@ test('settings.html has no Plus note', () => {
   assert.ok(!html.includes('settingsPlusNote'), 'Plus note element must not exist');
   assert.ok(!html.includes('프라이빗 보관 기능은 Plus'), 'Plus note text must not exist');
 });
+
+// --- CSP Bootstrap Contract ---
+
+test('settings.html has no inline executable script', () => {
+  const html = read('pages/settings.html');
+  // Match <script>...</script> WITHOUT src attribute (inline executable)
+  const inlineScriptRegex = /<script>(?!<\/script>)[^<]*(?:<[^/][^<]*)*<\/script>/g;
+  const matches = html.match(inlineScriptRegex) || [];
+  assert.equal(matches.length, 0, 'settings.html must not contain inline executable scripts, got: ' + JSON.stringify(matches));
+});
+
+test('settings.html loads external settings-bootstrap.js', () => {
+  const html = read('pages/settings.html');
+  assert.ok(html.includes('settings-bootstrap.js'), 'settings.html must reference settings-bootstrap.js');
+  // Must be after settings.js
+  const settingsIdx = html.indexOf('settings.js?');
+  const bootstrapIdx = html.indexOf('settings-bootstrap.js?');
+  assert.ok(bootstrapIdx > settingsIdx, 'settings-bootstrap.js must appear after settings.js');
+});
+
+test('settings-bootstrap.js exists and is CSP-safe', () => {
+  const src = read('js/settings-bootstrap.js');
+  assert.ok(src.includes('renderSharedHeader'), 'bootstrap must call renderSharedHeader');
+  assert.ok(src.includes('initSettings'), 'bootstrap must call initSettings');
+  assert.ok(src.includes('__lovebudSettingsBootstrapStarted'), 'bootstrap must have idempotency guard');
+  // Must not contain inline script tags or eval
+  assert.ok(!src.includes('eval('), 'bootstrap must not use eval');
+});
+
+test('bootstrap renders once on double evaluation', () => {
+  const src = read('js/settings-bootstrap.js');
+  const sandbox = {
+    window: {},
+    Error: Error,
+    console: console
+  };
+  sandbox.window = sandbox;
+  let renderCalls = 0;
+  let initCalls = 0;
+  sandbox.window.renderSharedHeader = function() { renderCalls++; };
+  sandbox.window.initSettings = function() { initCalls++; };
+  vm.createContext(sandbox);
+  vm.runInContext(src, sandbox);
+  vm.runInContext(src, sandbox);
+  assert.equal(renderCalls, 1, 'renderSharedHeader must be called exactly once');
+  assert.equal(initCalls, 1, 'initSettings must be called exactly once');
+});
+
+test('bootstrap throws when renderSharedHeader is missing', () => {
+  const src = read('js/settings-bootstrap.js');
+  const sandbox = { window: {}, Error: Error, console: console };
+  sandbox.window = sandbox;
+  sandbox.window.initSettings = function() {};
+  vm.createContext(sandbox);
+  assert.throws(() => vm.runInContext(src, sandbox), /renderSharedHeader/);
+});
+
+test('bootstrap throws when initSettings is missing', () => {
+  const src = read('js/settings-bootstrap.js');
+  const sandbox = { window: {}, Error: Error, console: console };
+  sandbox.window = sandbox;
+  sandbox.window.renderSharedHeader = function() {};
+  vm.createContext(sandbox);
+  assert.throws(() => vm.runInContext(src, sandbox), /initSettings/);
+});
+
+test('_headers CSP script-src has no unsafe-inline or unsafe-eval', () => {
+  const headers = read('_headers');
+  const m = headers.match(/script-src\s+([^;]+)/);
+  assert.ok(m, '_headers must contain script-src directive');
+  assert.ok(!m[1].includes("'unsafe-inline'"), 'script-src must not contain unsafe-inline');
+  assert.ok(!m[1].includes("'unsafe-eval'"), 'script-src must not contain unsafe-eval');
+});
