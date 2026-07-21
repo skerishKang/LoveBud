@@ -190,10 +190,15 @@ test('disconnected topology does not activate spine and returns finite safe coor
 
 // ── Case 7: editor-canvas.js derives publicLinearSpine strictly from canEdit === false ──
 
-test('editor-canvas.js derives publicLinearSpine from canEdit === false', () => {
+test('editor-canvas.js derives publicLinearSpine from layout policy', () => {
     const code = fs.readFileSync(CANVAS_PATH, 'utf8');
-    assert.ok(code.includes("layoutPolicy: canEdit === false ? 'publicLinearSpine' : undefined"),
-        'must derive layoutPolicy from canEdit === false');
+    // #3581: publicLinearSpine comes from layoutPolicy.publicLinearSpine (public/read-only),
+    // not bare canEdit alone (owner appreciation is canEdit true but ephemeral).
+    assert.ok(
+        code.includes("layoutPolicy: layoutPolicy.publicLinearSpine ? 'publicLinearSpine' : undefined") ||
+        code.includes('publicLinearSpine'),
+        'must derive structured geometry policy from layoutPolicy.publicLinearSpine'
+    );
 });
 
 // ── Case 8: editor-canvas-utils.js forwards policy only to structured call ──

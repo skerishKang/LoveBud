@@ -651,8 +651,7 @@ test('setOnPendingConnectCleared is exposed in canvas return object', () => {
   var source = readSource('js/editor/editor-canvas.js');
   assert.match(source, /setOnPendingConnectCleared/,
     'setOnPendingConnectCleared must be exported');
-  var returnBlock = source.match(/return\s*\{[\s\S]*?\};/);
-  assert.notEqual(returnBlock, null, 'return object must be found');
-  assert.match(returnBlock[0], /setOnPendingConnectCleared/,
-    'setOnPendingConnectCleared must be in return object');
+  // Prefer the createEditorCanvas public return (contains multiple APIs).
+  var returnBlock = source.match(/return\s*\{[\s\S]*?setOnPendingConnectCleared[\s\S]*?\};/);
+  assert.notEqual(returnBlock, null, 'return object must include setOnPendingConnectCleared');
 });

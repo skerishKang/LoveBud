@@ -43,14 +43,17 @@
     }
 
     function persistLayoutMode(mode, layoutModeStorageKey, canEdit) {
+        // canEdit here means "layout persist allowed" (owner-edit policy), not tree ownership alone.
         if (canEdit === false) return;
+        if (mode !== 'free' && mode !== 'structured') return;
         try {
             localStorage.setItem(layoutModeStorageKey, mode);
         } catch (e) {}
     }
 
     function persistStoredPositions(viewportState, treeId, layoutStorageKey, canvasLayout, canEdit) {
-        if (viewportState.layoutMode === 'structured') return;
+        if (!viewportState || viewportState.layoutMode === 'structured') return;
+        // canEdit here means "layout position persist allowed" (owner-edit free only).
         if (canEdit === false) return;
 
         if (canvasLayout && typeof canvasLayout.createLayoutStore === 'function') {

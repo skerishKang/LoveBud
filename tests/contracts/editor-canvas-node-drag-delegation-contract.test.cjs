@@ -19,9 +19,11 @@ function getBindNodeDragBlock() {
 const bindNodeDragBlock = getBindNodeDragBlock();
 
 test('editor canvas node drag delegation — bindNodeDrag prefers primary interaction runtime', () => {
+  const policyGuard = indexOfRequired(bindNodeDragBlock, 'if (!canDragCurrentLayout()) return;');
   const guardOpen = indexOfRequired(bindNodeDragBlock, "if (typeof canvasInteraction.beginNodeDrag === 'function') {");
-  const modeGuard = indexOfRequired(bindNodeDragBlock, "if (mode && !mode.isEditMode()) return;");
-  const callIndex = indexOfRequired(bindNodeDragBlock, 'canvasInteraction.beginNodeDrag(e, nodeEl, mem, viewportState, getWorldPosition, canEdit);');
+  const modeGuard = indexOfRequired(bindNodeDragBlock, 'isEditMode');
+  const callIndex = indexOfRequired(bindNodeDragBlock, 'canvasInteraction.beginNodeDrag(');
+  assert.ok(policyGuard < guardOpen, 'layout policy drag guard must precede interaction begin');
   assert.ok(guardOpen < modeGuard, 'guardOpen must precede modeGuard');
   assert.ok(modeGuard < callIndex, 'modeGuard must precede call');
 });

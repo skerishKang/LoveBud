@@ -20,7 +20,8 @@ function createEditorCanvas(deps) {
         openAddMoment,
         canEdit,
         onDisconnectEdge,
-        onConnectTargetSelect
+        onConnectTargetSelect,
+        interactionMode: initialInteractionMode
     } = deps;
 
     const i18n = window.t || function(key) { return key; };
@@ -29,6 +30,36 @@ function createEditorCanvas(deps) {
         || 'default';
     const layoutStorageKey = 'lovebud_tree_layout_v2_' + treeId;
     const layoutModeStorageKey = 'lovebud_tree_layout_mode_' + treeId;
+    const layoutPolicyApi = window.LoveBudEditorCanvasLayoutPolicy || null;
+
+    function resolveCurrentLayoutPolicy(interactionMode) {
+        const mode =
+            interactionMode === 'edit' || interactionMode === 'view'
+                ? interactionMode
+                : 'view';
+        if (layoutPolicyApi && typeof layoutPolicyApi.resolveLayoutPolicy === 'function') {
+            return layoutPolicyApi.resolveLayoutPolicy({
+                canEditTree: canEdit === true,
+                interactionMode: mode,
+                authority: canEdit === true ? 'owner' : 'public'
+            });
+        }
+        // Fail-closed fallback: without policy module, never load owner drafts unless edit.
+        const isOwnerEdit = canEdit === true && mode === 'edit';
+        const fallback = Object.create(null);
+        fallback.layoutReadOnly = !isOwnerEdit;
+        fallback.allowNodeDrag = isOwnerEdit;
+        fallback.allowPersistMode = isOwnerEdit;
+        fallback.allowPersistPositions = isOwnerEdit;
+        fallback.publicLinearSpine = canEdit === false;
+        fallback.storageScope = isOwnerEdit ? 'owner_edit_local' : 'ephemeral_appreciation';
+        fallback.initialLayoutMode = isOwnerEdit ? 'restore_owner_preference' : 'structured';
+        return fallback;
+    }
+
+    let layoutPolicy = resolveCurrentLayoutPolicy(
+        initialInteractionMode === 'edit' ? 'edit' : 'view'
+    );
     // External Module Delegates (Legacy Global Dependencies)
     const canvasLayout = window.LoveBudEditorCanvasLayout || {};
     const canvasNode = window.LoveBudEditorCanvasNode || {};
@@ -131,32 +162,51 @@ function createEditorCanvas(deps) {
 
     function loadStoredLayout() {
         if (typeof storageUtils.loadStoredLayout === 'function') {
-            return storageUtils.loadStoredLayout(treeId, layoutStorageKey, canvasLayout, canEdit === false);
+            return storageUtils.loadStoredLayout(
+                treeId,
+                layoutStorageKey,
+                canvasLayout,
+                layoutPolicy.layoutReadOnly === true
+            );
         }
+        return { positions: {}, offsetX: 0, offsetY: 0, scale: 1 };
     }
 
     function loadLayoutMode() {
         if (typeof storageUtils.loadLayoutMode === 'function') {
-            return storageUtils.loadLayoutMode(layoutModeStorageKey, canEdit === false);
+            const mode = storageUtils.loadLayoutMode(
+                layoutModeStorageKey,
+                layoutPolicy.layoutReadOnly === true
+            );
+            if (layoutPolicyApi && typeof layoutPolicyApi.normalizeStoredMode === 'function') {
+                return layoutPolicyApi.normalizeStoredMode(mode);
+            }
+            return mode === 'free' || mode === 'structured' ? mode : 'structured';
         }
+        return 'structured';
     }
 
     function persistLayoutMode(mode) {
-        if (canEdit === false) return;
+        if (layoutPolicy.allowPersistMode !== true) return;
         if (typeof storageUtils.persistLayoutMode === 'function') {
-            return storageUtils.persistLayoutMode(mode, layoutModeStorageKey, canEdit);
+            return storageUtils.persistLayoutMode(mode, layoutModeStorageKey, true);
         }
     }
 
     const storedLayout = loadStoredLayout();
     storedFreePositions = { ...(storedLayout.positions || {}) };
 
+    const initialLayoutMode = loadLayoutMode();
+    const useStoredViewport =
+        layoutPolicy.layoutReadOnly !== true && initialLayoutMode === 'free';
     const hasNonDefaultOffset = storedLayout.offsetX !== 0 || storedLayout.offsetY !== 0;
-    const hasStoredViewportOffset = hasNonDefaultOffset || (storedLayout.scale !== undefined && storedLayout.scale !== 1);
+    const hasStoredViewportOffset =
+        useStoredViewport &&
+        (hasNonDefaultOffset || (storedLayout.scale !== undefined && storedLayout.scale !== 1));
     const viewportState = {
-        offsetX: storedLayout.offsetX,
-        offsetY: storedLayout.offsetY,
-        scale: storedLayout.scale || 1,
+        offsetX: useStoredViewport ? storedLayout.offsetX : 0,
+        offsetY: useStoredViewport ? storedLayout.offsetY : 0,
+        scale: useStoredViewport ? storedLayout.scale || 1 : 1,
         hasStoredViewportOffset: !!hasStoredViewportOffset,
         initialized: false,
         isPanning: false,
@@ -173,10 +223,13 @@ function createEditorCanvas(deps) {
         globalsBound: false,
         resizeBound: false,
         resizeTimer: null,
-        positions: storedLayout.positions,
+        positions:
+            useStoredViewport && storedLayout.positions
+                ? { ...storedLayout.positions }
+                : {},
         rafScheduled: false,
         rafFrame: null,
-        layoutMode: loadLayoutMode()
+        layoutMode: initialLayoutMode
     };
     const { NODE_HALF, AFFORDANCE_OFFSET_X, AFFORDANCE_OFFSET_Y, AFFORDANCE_CARD_HALF } = window.EditorCanvasGeometry;
 
@@ -192,7 +245,7 @@ function createEditorCanvas(deps) {
             getTreeMemories,
             isRootMemory,
             getMetrics,
-            layoutPolicy: canEdit === false ? 'publicLinearSpine' : undefined
+            layoutPolicy: layoutPolicy.publicLinearSpine ? 'publicLinearSpine' : undefined
         });
     }
 
@@ -205,10 +258,92 @@ function createEditorCanvas(deps) {
     }
 
     function persistStoredPositions() {
-        if (canEdit === false) return;
+        if (layoutPolicy.allowPersistPositions !== true) return;
+        if (viewportState.layoutMode === 'structured') return;
         if (typeof storageUtils.persistStoredPositions === 'function') {
-            return storageUtils.persistStoredPositions(viewportState, treeId, layoutStorageKey, canvasLayout, canEdit);
+            return storageUtils.persistStoredPositions(
+                viewportState,
+                treeId,
+                layoutStorageKey,
+                canvasLayout,
+                true
+            );
         }
+    }
+
+    function canDragCurrentLayout() {
+        if (layoutPolicyApi && typeof layoutPolicyApi.canDragNodes === 'function') {
+            return layoutPolicyApi.canDragNodes(layoutPolicy, viewportState.layoutMode);
+        }
+        return (
+            layoutPolicy.allowNodeDrag === true &&
+            layoutPolicy.layoutReadOnly !== true &&
+            viewportState.layoutMode === 'free'
+        );
+    }
+
+    function cursorForCurrentLayout() {
+        if (layoutPolicyApi && typeof layoutPolicyApi.cursorForLayout === 'function') {
+            return layoutPolicyApi.cursorForLayout(layoutPolicy, viewportState.layoutMode);
+        }
+        return canDragCurrentLayout() ? 'grab' : 'default';
+    }
+
+    /**
+     * #3581: Apply layout policy when interaction mode switches view ↔ edit
+     * without recreating the canvas or clearing owner-local storage keys.
+     */
+    function syncInteractionLayoutMode(nextInteractionMode) {
+        const nextMode = nextInteractionMode === 'edit' ? 'edit' : 'view';
+        layoutPolicy = resolveCurrentLayoutPolicy(nextMode);
+
+        if (layoutPolicy.layoutReadOnly === true) {
+            // Appreciation / public: ephemeral structured presentation.
+            // Do not read or write owner-local layout keys; keep keys intact.
+            if (viewportState.layoutMode === 'free' && Object.keys(viewportState.positions || {}).length > 0) {
+                savedFreePositions = { ...viewportState.positions };
+            }
+            viewportState.layoutMode = 'structured';
+            viewportState.positions = {};
+            viewportState.initialViewportApplied = false;
+            viewportState.hasStoredViewportOffset = false;
+        } else {
+            // Owner edit: restore owner-local preference + positions.
+            const loaded = loadStoredLayout();
+            storedFreePositions = { ...(loaded.positions || {}) };
+            const restoredMode = loadLayoutMode();
+            viewportState.layoutMode = restoredMode;
+            viewportState.initialViewportApplied = false;
+            if (restoredMode === 'free') {
+                viewportState.positions = { ...(loaded.positions || {}) };
+                viewportState.offsetX = loaded.offsetX || 0;
+                viewportState.offsetY = loaded.offsetY || 0;
+                viewportState.scale = loaded.scale || 1;
+                const nonDefault =
+                    viewportState.offsetX !== 0 ||
+                    viewportState.offsetY !== 0 ||
+                    (viewportState.scale !== undefined && viewportState.scale !== 1);
+                viewportState.hasStoredViewportOffset = !!nonDefault;
+            } else {
+                viewportState.positions = {};
+            }
+        }
+
+        if (typeof layoutTransition.applyLayoutModeClasses === 'function') {
+            layoutTransition.applyLayoutModeClasses(viewportState.layoutMode);
+        }
+        updateLayoutToggleUI();
+        if (typeof fitViewportToTree === 'function') {
+            try {
+                fitViewportToTree();
+            } catch (e) {
+                /* ignore fit errors during mode switch */
+            }
+        }
+        if (typeof initCanvas === 'function') {
+            initCanvas();
+        }
+        return layoutPolicy;
     }
 
     function fitViewportToTree() {
@@ -391,7 +526,7 @@ function createEditorCanvas(deps) {
     }
 
     function bindNodeDrag(nodeEl, mem) {
-        nodeEl.style.cursor = canEdit !== false && viewportState.layoutMode === 'structured' ? 'default' : 'grab';
+        nodeEl.style.cursor = cursorForCurrentLayout();
 
         const selectMemoryNode = () => {
             if (pendingConnectState) {
@@ -443,15 +578,22 @@ function createEditorCanvas(deps) {
 
         uiHelpers.bindNodeHoverAffordance(nodeEl, mem, renderAffordanceForHoveredMemory);
 
-        if (canEdit !== false) {
-            uiHelpers.bindNodeDragStart(nodeEl, () => viewportState.layoutMode, (e) => {
-                if (typeof canvasInteraction.beginNodeDrag === 'function') {
-                    var mode = window.LoveBudEditorInteractionMode;
-                    if (mode && !mode.isEditMode()) return;
-                    canvasInteraction.beginNodeDrag(e, nodeEl, mem, viewportState, getWorldPosition, canEdit);
-                }
-            });
-        }
+        // Drag only when layout policy allows free-mode node drag (owner edit free).
+        uiHelpers.bindNodeDragStart(nodeEl, () => viewportState.layoutMode, (e) => {
+            if (!canDragCurrentLayout()) return;
+            if (typeof canvasInteraction.beginNodeDrag === 'function') {
+                var mode = window.LoveBudEditorInteractionMode;
+                if (mode && typeof mode.isEditMode === 'function' && !mode.isEditMode()) return;
+                canvasInteraction.beginNodeDrag(
+                    e,
+                    nodeEl,
+                    mem,
+                    viewportState,
+                    getWorldPosition,
+                    true
+                );
+            }
+        });
 
         uiHelpers.bindNodePointerSelection(nodeEl, {
             onSelect: selectMemoryNode,
@@ -826,6 +968,10 @@ function createEditorCanvas(deps) {
         focusNodeById,
         recenterViewport,
         setLayoutMode,
+        syncInteractionLayoutMode,
+        getLayoutPolicy: function () {
+            return layoutPolicy;
+        },
         updateAffordance,
         clearEdgeSelection,
         clearGrowthAffordance,

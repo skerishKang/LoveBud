@@ -21,10 +21,24 @@ test('Canvas Topbar toggle buttons have correct baseline state', () => {
     const helperCode = fs.readFileSync('js/editor/templates/editor-canvas-topbar-template.js', 'utf8');
 
     // Layout toggle baseline
-    assert.ok(helperCode.includes('id="layoutModeToggleBtn" aria-pressed="false"'), 'layout toggle must start as not pressed');
-    assert.ok(helperCode.includes('aria-label="현재 자유 배치, 정리된 트리로 전환"'), 'layout toggle must describe current state and next action');
-    assert.ok(helperCode.includes('title="현재 자유 배치, 정리된 트리로 전환"'), 'layout toggle title must match aria-label');
-    assert.ok(helperCode.includes('id="layoutModeToggleLabel">자유 배치</span>'), 'layout toggle must start with "자유 배치"');
+    // #3581: static first paint is structured-first (정리된 트리).
+    assert.ok(
+      helperCode.includes('id="layoutModeToggleBtn"') && helperCode.includes('aria-pressed="true"'),
+      'layout toggle must start pressed for structured'
+    );
+    assert.ok(
+      helperCode.includes('aria-label="현재 정리된 트리, 자유 배치로 전환"'),
+      'layout toggle must describe current structured state and next free action'
+    );
+    assert.ok(
+      helperCode.includes('title="현재 정리된 트리, 자유 배치로 전환"'),
+      'layout toggle title must match aria-label'
+    );
+    assert.ok(
+      helperCode.includes('id="layoutModeToggleLabel">정리된 트리</span>'),
+      'layout toggle must start with "정리된 트리"'
+    );
+    assert.ok(helperCode.includes('account_tree'), 'structured icon must be account_tree');
 
     // Compact toggle baseline
     assert.ok(helperCode.includes('id="compactModeToggleBtn" aria-pressed="false"'), 'compact toggle must start as not pressed');
