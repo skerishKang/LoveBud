@@ -215,6 +215,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/browse-my-trees-large-geometry-3608-browser-contract.test.cjs",
+      "layer": "EXECUTED_REAL_LOCAL",
+      "rationale": "Executes real production CSS/JS chains (css/global.css, css/shared/love-tree-card-composition.css, css/search.css, css/my-trees.css, css/tree-view-mode.css, js/tree-view-mode-switcher.js, js/my-trees/my-trees-page-bootstrap.js) in Playwright Chromium via a local HTTP server. Asserts #3608 Phase 2 PR-A large geometry parity: Browse and My Trees large mode share card 380px, media 136px, body 4-row grid with 10px 12px 12px padding, title 1.25rem/900/2-line clamp, subtitle 0.85rem/2-line clamp; My Trees inner thumb fills media without margin; desktop 1440 and mobile 375 keep 2-column large; CTA/edit/visibility containment guards. No production write/auth/API/DB mutation.",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/browse-my-trees-desktop-geometry-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
