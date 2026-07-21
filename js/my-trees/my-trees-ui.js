@@ -489,6 +489,23 @@
     var primaryLabel = getI18nText(i18n, 'myTrees.entry_appreciation', '감상하기');
     var accessibilityLabel = getI18nText(i18n, 'myTrees.card_accessibility', '') || (title + ' 러브트리');
 
+    // Resolve the relative appreciation target to a same-origin absolute URL
+    // for the shared composition boundary. Composition's sanitizeUrl is
+    // absolute-only; the relative openHref is preserved for the card
+    // click/keyboard handlers which still use window.location.href.
+    function toSameOriginAbsoluteUrl(relativeHref) {
+        if (!relativeHref) return '';
+        try {
+            var absolute = new URL(relativeHref, window.location.href);
+            if (absolute.origin !== window.location.origin) return '';
+            if (absolute.protocol !== 'http:' && absolute.protocol !== 'https:') return '';
+            return absolute.href;
+        } catch (e) {
+            return '';
+        }
+    }
+    var compositionHref = toSameOriginAbsoluteUrl(openHref);
+
     // Convert adapter-owned HTML to trusted DocumentFragments
     var thumbNode = htmlToFragment(buildTreeThumbVisual(normalizedTree, i18n));
     var subtitleNode = htmlToFragment(cardMeta.mood || '');
@@ -511,7 +528,7 @@
       title: title,
       subtitleNode: subtitleNode,
       visibilityNode: visibilityNode,
-      primaryHref: openHref,
+      primaryHref: compositionHref,
       primaryLabel: primaryLabel,
       accessibilityLabel: accessibilityLabel,
       isSelected: !!selectedClass,

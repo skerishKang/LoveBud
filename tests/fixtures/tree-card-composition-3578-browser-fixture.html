@@ -2,19 +2,22 @@
 <html lang="ko">
 <head>
 <meta charset="utf-8">
-<title>LoveBud #3578 Browser Contract Fixture</title>
+<title>LoveBud #3602 Browser Contract Fixture</title>
 </head>
 <body>
 <!-- Production module load order (per composition header):
-     1. security.js
-     2. tree-card-metrics.js
-     3. tree-card-composition.js
-     4. surface renderer (search-card-renderer.js / my-trees-ui.js + deps)
+     1. js/utils/security.js
+     2. js/utils/path.js
+     3. js/shared/tree-card-metrics.js
+     4. js/shared/tree-card-composition.js
+     5. surface renderer (search-card-renderer.js / my-trees-ui.js + deps)
 -->
 <script src="/js/utils/security.js"></script>
+<script src="/js/utils/path.js"></script>
 <script src="/js/shared/tree-card-metrics.js"></script>
 <script src="/js/shared/tree-card-composition.js"></script>
 <!-- Browse surface adapter deps -->
+<script src="/js/search/search-shared-utils.js"></script>
 <script src="/js/search/search-title-helper.js"></script>
 <script src="/js/search/search-public-metadata-helper.js"></script>
 <script src="/js/search/search-card-fallback.js"></script>
@@ -24,18 +27,15 @@
 <script src="/js/my-trees/my-trees-card-visuals.js"></script>
 <script src="/js/my-trees/my-trees-ui.js"></script>
 <script src="/js/my-trees/my-trees-card-events.js"></script>
-<!-- Test globals (minimal stubs for module-level deps, NOT composition mocks).
-     LoveBudPath.getBasePath returns absolute-origin-based path so surface adapters
-     produce absolute http(s) URLs that composition's sanitizeUrl accepts.
-     This mirrors production where pages live under /pages/ and origin is absolute. -->
+<!-- Minimal i18n stub (NOT a composition mock or path override).
+     LoveBudPath.getBasePath() is left at its production default:
+       - ''  when pathname contains '/pages/'
+       - 'pages/' otherwise
+     This mirrors production path behavior so surface adapters produce
+     the same relative URLs they emit in production, exposing the
+     composition sanitizeUrl mismatch that this branch fixes. -->
 <script>
   (function () {
-    var origin = window.location.origin;
-    var inPages = window.location.pathname.indexOf('/pages/') !== -1;
-    var basePath = inPages ? origin + '/' : origin + '/pages/';
-    window.LoveBudPath = window.LoveBudPath || {
-      getBasePath: function () { return basePath; }
-    };
     window.i18n = window.i18n || { currentLang: 'ko' };
     window.t = window.t || function (k) { return k; };
     window.LoveBudMyTreesUtils = window.LoveBudMyTreesUtils || {
@@ -45,11 +45,6 @@
         for (var i = 0; i < s.length; i++) { h = ((h << 5) - h) + s.charCodeAt(i); h |= 0; }
         return Math.abs(h);
       }
-    };
-    window.LoveBudSearchSharedUtils = window.LoveBudSearchSharedUtils || {
-      escapeHtml: function (v) { return window.LoveBudSecurity.escapeHtml(v); },
-      sanitizeUrl: function (v) { return window.LoveBudSecurity.sanitizeUrl(v); },
-      getBasePath: function () { return basePath; }
     };
   })();
 </script>

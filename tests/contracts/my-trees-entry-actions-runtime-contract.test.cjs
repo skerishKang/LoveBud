@@ -168,7 +168,7 @@ function createDocument() {
 function createFakeWindow() {
   var win = {};
   win.innerWidth = 1024;
-  win.location = { href: '', origin: 'http://localhost', pathname: '/pages/my-trees.html', assign: function() {}, replace: function() {} };
+  win.location = { href: 'http://localhost/pages/my-trees.html', origin: 'http://localhost', pathname: '/pages/my-trees.html', assign: function() {}, replace: function() {} };
   win.addEventListener = function() {};
   win.setTimeout = function(fn) { if (typeof fn === 'function') fn(); return 0; };
   win.clearTimeout = function() {};
