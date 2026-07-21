@@ -21,37 +21,66 @@
           <span class="settings-close-glyph" aria-hidden="true">×</span>
         </button>
         <h1 id="settingsTitle">설정</h1>
-        <p class="settings-subtitle">러브트리를 어떻게 소개할지 살펴봅니다</p>
+        <p class="settings-subtitle" id="settingsSubtitle"></p>
 
-        <div class="settings-section">
-          <div class="settings-section-title" id="settingsBrowseIntroTitle">
-            <span class="material-symbols-outlined">travel_explore</span>
-            둘러보기 소개
+        <!-- Profile section -->
+        <section class="settings-section" id="settingsProfileSection" aria-labelledby="settingsProfileTitle">
+          <div class="settings-section-title" id="settingsProfileTitle">
+            <span class="material-symbols-outlined">person</span>
+            프로필
           </div>
-          <div class="settings-intro-card" id="settingsBrowseIntroCard">
-            <span class="settings-intro-icon material-symbols-outlined" aria-hidden="true">psychiatry</span>
-            <span>
-              <span class="settings-intro-title" id="settingsBrowseIntroCardTitle">둘러보기에 소개될 트리로 키우기</span>
-              <span class="settings-intro-desc" id="settingsBrowseIntroDesc">좋아하는 순간을 3개 이상 남기면 이 트리를 둘러보기에 소개할 수 있어요. 소개 여부는 각 러브트리에서 조건을 채운 뒤 선택할 수 있어요.</span>
-            </span>
+          <div class="settings-profile-card" id="settingsProfileCard">
+            <div class="settings-profile-avatar" id="settingsProfileAvatar" role="img" aria-label="프로필 이미지">
+            </div>
+            <div class="settings-profile-info">
+              <div class="settings-profile-name" id="settingsProfileName"></div>
+              <div class="settings-profile-email" id="settingsProfileEmail"></div>
+            </div>
           </div>
-          <div class="settings-plus-card" id="settingsPlusCard">
-            <span class="settings-plus-icon material-symbols-outlined" aria-hidden="true">lock</span>
-            <span>
-              <span class="settings-plus-title" id="settingsPlusTitle">프라이빗 보관</span>
-              <span class="settings-plus-desc" id="settingsPlusDesc">나만 보는 러브트리를 조용히 보관하는 기능은 Plus에서 준비 중이에요.</span>
-            </span>
-          </div>
-        </div>
+          <p class="settings-deferred-note" id="settingsProfileDeferredNote">프로필 변경 기능은 다음 단계에서 제공됩니다.</p>
+        </section>
 
         <div class="settings-divider"></div>
 
-        <div class="settings-section">
-          <button class="logout-btn" id="logout-btn">
+        <!-- Account section -->
+        <section class="settings-section" id="settingsAccountSection" aria-labelledby="settingsAccountTitle">
+          <div class="settings-section-title" id="settingsAccountTitle">
+            <span class="material-symbols-outlined">manage_accounts</span>
+            계정
+          </div>
+          <dl class="settings-account-list">
+            <div class="settings-account-row">
+              <dt class="settings-account-label" id="settingsAccountEmailLabel"></dt>
+              <dd class="settings-account-value" id="settingsAccountEmailValue"></dd>
+            </div>
+            <div class="settings-account-row">
+              <dt class="settings-account-label" id="settingsAccountIdLabel"></dt>
+              <dd class="settings-account-value settings-account-id" id="settingsAccountIdValue"></dd>
+            </div>
+            <div class="settings-account-row">
+              <dt class="settings-account-label" id="settingsAccountSignInLabel"></dt>
+              <dd class="settings-account-value" id="settingsAccountSignInValue"></dd>
+            </div>
+            <div class="settings-account-row">
+              <dt class="settings-account-label" id="settingsAccountPasswordLabel"></dt>
+              <dd class="settings-account-value settings-account-password" id="settingsAccountPasswordValue"></dd>
+            </div>
+          </dl>
+        </section>
+
+        <div class="settings-divider"></div>
+
+        <!-- Logout section -->
+        <section class="settings-section" aria-label="로그아웃">
+          <button type="button" class="logout-btn" id="logout-btn">
             <span class="material-symbols-outlined">logout</span>
             로그아웃
           </button>
-        </div>
+        </section>
+
+        <div class="settings-divider"></div>
+
+        <p class="settings-deferred-note" id="settingsPlusNote">프라이빗 보관 기능은 Plus에서 준비 중이에요.</p>
       </div>
     </main>
   </div>

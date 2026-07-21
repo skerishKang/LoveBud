@@ -3,6 +3,7 @@
  * v20260504-639-stay
  *
  * Settings should stay on settings.html after entry.
+ * v20260721-3583: add read-only Profile / Account foundation.
  */
 
 (function() {
@@ -33,12 +34,11 @@
   function isSafeReturnTarget(value) {
     if (!value || typeof value !== 'string') return false;
     if (/^\s*(?:[a-z][a-z0-9+.-]*:|\/\/)/i.test(value)) return false;
-
     try {
       var url = new URL(value, window.location.origin);
       var sameOrigin = url.origin === window.location.origin;
       if (!sameOrigin || isSettingsPath(url.pathname)) return false;
-      return url.pathname === '/' || /\/[a-zA-Z0-9_-]+\.html$/.test(url.pathname);
+      return url.pathname === '/' || /[a-zA-Z0-9_-]+\.html$/.test(url.pathname);
     } catch (e) {
       return false;
     }
@@ -72,7 +72,6 @@
 
   function closeSettings() {
     var fallbackHref = getReturnToHref();
-
     if (fallbackHref) {
       window.location.href = fallbackHref;
       return;
@@ -134,7 +133,6 @@
 
   function getLoginRedirectHref() {
     var target = window.location.pathname + window.location.search + window.location.hash;
-
     try {
       var params = new URLSearchParams(window.location.search || '');
       var returnTo = params.get('returnTo');
@@ -216,6 +214,107 @@
     });
   }
 
+  /* ──────────────────────────────────────────────────────────
+     Settings View Model helpers (pure functions, no DOM)
+     ────────────────────────────────────────────────────────── */
+
+  /**
+   * Resolve display name with fallback chain.
+   * @param {object} user
+   * @returns {string}
+   */
+  function resolveDisplayName(user) {
+    if (user && user.displayName && typeof user.displayName === 'string') {
+      return user.displayName.trim();
+    }
+    if (user && user.email && typeof user.email === 'string') {
+      var at = user.email.indexOf('@');
+      if (at > 0) return user.email.substring(0, at);
+    }
+    return 'LoveBud 사용자';
+  }
+
+  /**
+   * Resolve initials for avatar fallback.
+   * @param {object} user
+   * @returns {string}
+   */
+  function resolveProfileInitials(user) {
+    var name = resolveDisplayName(user);
+    var parts = name.split(/\s+/).filter(Boolean);
+    if (parts.length >= 2) {
+      return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
+    }
+    return name.charAt(0).toUpperCase() || 'L';
+  }
+
+  /**
+   * Resolve sign-in methods from providerData.
+   * @param {object} user
+   * @returns {string[]}
+   */
+  function resolveSignInMethods(user) {
+    if (!user || !user.providerData || !Array.isArray(user.providerData) || user.providerData.length === 0) {
+      return [];
+    }
+    var methods = [];
+    for (var i = 0; i < user.providerData.length; i++) {
+      var providerId = user.providerData[i].providerId;
+      if (providerId === 'google.com') {
+        methods.push('google');
+      } else if (providerId === 'password') {
+        methods.push('password');
+      } else if (providerId && methods.indexOf(providerId) === -1) {
+        methods.push(providerId);
+      }
+    }
+    return methods;
+  }
+
+  /**
+   * Build the settings account view model from a Firebase user.
+   * @param {object} user
+   * @returns {object}
+   */
+  function resolveSettingsAccountViewModel(user) {
+    var methods = resolveSignInMethods(user);
+    var primaryMethod = methods.length > 0 ? methods[0] : 'unknown';
+
+    var providerLabel;
+    if (primaryMethod === 'google') {
+      providerLabel = 'Google';
+    } else if (primaryMethod === 'password') {
+      providerLabel = '이메일 및 비밀번호';
+    } else if (methods.length > 1) {
+      providerLabel = methods.join(', ');
+    } else {
+      providerLabel = '확인 불가';
+    }
+
+    var passwordInfo;
+    if (primaryMethod === 'google') {
+      passwordInfo = 'google';
+    } else if (primaryMethod === 'password') {
+      passwordInfo = 'deferred';
+    } else {
+      passwordInfo = 'unavailable';
+    }
+
+    return {
+      email: (user && user.email) || '',
+      uid: (user && user.uid) || '',
+      displayName: resolveDisplayName(user),
+      photoURL: (user && user.photoURL) || '',
+      methods: methods,
+      providerLabel: providerLabel,
+      passwordInfo: passwordInfo
+    };
+  }
+
+  /* ──────────────────────────────────────────────────────────
+     DOM rendering
+     ────────────────────────────────────────────────────────── */
+
   function applyHeaderNavFallbacks() {
     var t = window.t || function(key) { return key; };
     var navMap = [
@@ -255,33 +354,122 @@
       closeBtn.setAttribute('title', safeText('close', '닫기'));
     }
 
-    var titleEl = document.querySelector('.settings-card h1');
+    var titleEl = document.getElementById('settingsTitle');
     if (titleEl) titleEl.textContent = safeText('settings.title', '설정');
 
-    var subtitleEl = document.querySelector('.settings-subtitle');
+    var subtitleEl = document.getElementById('settingsSubtitle');
     if (subtitleEl) subtitleEl.textContent = safeText('settings.subtitle', '러브트리를 어떻게 소개할지 살펴봅니다');
 
-    var browseIntroTitleEl = document.getElementById('settingsBrowseIntroTitle');
-    if (browseIntroTitleEl) {
-      browseIntroTitleEl.innerHTML = '<span class="material-symbols-outlined">travel_explore</span>' + safeText('settings.browseIntroTitle', '둘러보기 소개');
+    // Profile section
+    var profileTitleEl = document.getElementById('settingsProfileTitle');
+    if (profileTitleEl) {
+      var icon = profileTitleEl.querySelector('.material-symbols-outlined');
+      profileTitleEl.textContent = '';
+      if (icon) profileTitleEl.appendChild(icon);
+      profileTitleEl.appendChild(document.createTextNode(' ' + safeText('settings.profile.title', '프로필')));
     }
 
-    var browseIntroCardTitleEl = document.getElementById('settingsBrowseIntroCardTitle');
-    if (browseIntroCardTitleEl) browseIntroCardTitleEl.textContent = safeText('settings.browseIntroCardTitle', '둘러보기에 소개될 트리로 키우기');
+    var profileNameLabel = document.getElementById('settingsProfileName');
+    var profileEmailLabel = document.getElementById('settingsProfileEmail');
+    if (profileEmailLabel) profileEmailLabel.textContent = safeText('settings.profile.email', '이메일');
 
-    var browseIntroDescEl = document.getElementById('settingsBrowseIntroDesc');
-    if (browseIntroDescEl) {
-      browseIntroDescEl.textContent = safeText('settings.browseIntroDesc', '좋아하는 순간을 3개 이상 남기면 이 트리를 둘러보기에 소개할 수 있어요. 소개 여부는 각 러브트리에서 조건을 채운 뒤 선택할 수 있어요.');
+    var deferredNote = document.getElementById('settingsProfileDeferredNote');
+    if (deferredNote) deferredNote.textContent = safeText('settings.profile.changeDeferred', '프로필 변경 기능은 다음 단계에서 제공됩니다.');
+
+    // Account section
+    var accountTitleEl = document.getElementById('settingsAccountTitle');
+    if (accountTitleEl) {
+      var icon2 = accountTitleEl.querySelector('.material-symbols-outlined');
+      accountTitleEl.textContent = '';
+      if (icon2) accountTitleEl.appendChild(icon2);
+      accountTitleEl.appendChild(document.createTextNode(' ' + safeText('settings.account.title', '계정')));
     }
 
-    var plusTitleEl = document.getElementById('settingsPlusTitle');
-    if (plusTitleEl) plusTitleEl.textContent = safeText('settings.privateStorageTitle', '프라이빗 보관');
+    var emailLabelEl = document.getElementById('settingsAccountEmailLabel');
+    if (emailLabelEl) emailLabelEl.textContent = safeText('settings.account.email', '이메일');
 
-    var plusDescEl = document.getElementById('settingsPlusDesc');
-    if (plusDescEl) plusDescEl.textContent = safeText('settings.privateStorageDesc', '나만 보는 러브트리를 조용히 보관하는 기능은 Plus에서 준비 중이에요.');
+    var idLabelEl = document.getElementById('settingsAccountIdLabel');
+    if (idLabelEl) idLabelEl.textContent = safeText('settings.account.id', '계정 ID');
+
+    var signInLabelEl = document.getElementById('settingsAccountSignInLabel');
+    if (signInLabelEl) signInLabelEl.textContent = safeText('settings.account.signInMethod', '로그인 방식');
+
+    var passwordLabelEl = document.getElementById('settingsAccountPasswordLabel');
+    if (passwordLabelEl) passwordLabelEl.textContent = safeText('settings.account.password', '비밀번호 관리');
 
     var logoutBtn = document.querySelector('.logout-btn');
-    if (logoutBtn) logoutBtn.innerHTML = '<span class="material-symbols-outlined">logout</span>' + safeText('logout_btn', '로그아웃');
+    if (logoutBtn) {
+      var logoutIcon = logoutBtn.querySelector('.material-symbols-outlined');
+      logoutBtn.textContent = '';
+      if (logoutIcon) logoutBtn.appendChild(logoutIcon);
+      logoutBtn.appendChild(document.createTextNode(' ' + safeText('logout_btn', '로그아웃')));
+    }
+  }
+
+  function renderProfileSection(vm) {
+    var avatarEl = document.getElementById('settingsProfileAvatar');
+    var nameEl = document.getElementById('settingsProfileName');
+    var emailEl = document.getElementById('settingsProfileEmail');
+
+    if (avatarEl) {
+      avatarEl.textContent = '';
+      var hasPhoto = vm.photoURL && /^https?:\/\//.test(vm.photoURL);
+      if (hasPhoto) {
+        var img = document.createElement('img');
+        img.src = vm.photoURL;
+        img.alt = vm.displayName + ' 프로필 사진';
+        img.className = 'settings-profile-avatar-img';
+        img.onerror = function() {
+          avatarEl.textContent = '';
+          avatarEl.textContent = resolveProfileInitials(vm);
+          avatarEl.classList.add('settings-profile-avatar-initials');
+          avatarEl.classList.remove('settings-profile-avatar-img-wrap');
+        };
+        avatarEl.appendChild(img);
+        avatarEl.classList.add('settings-profile-avatar-img-wrap');
+        avatarEl.classList.remove('settings-profile-avatar-initials');
+        avatarEl.setAttribute('aria-label', vm.displayName + ' 프로필 사진');
+      } else {
+        avatarEl.textContent = resolveProfileInitials(vm);
+        avatarEl.classList.add('settings-profile-avatar-initials');
+        avatarEl.classList.remove('settings-profile-avatar-img-wrap');
+        avatarEl.setAttribute('aria-label', vm.displayName + ' 프로필');
+      }
+    }
+
+    if (nameEl) nameEl.textContent = vm.displayName;
+    if (emailEl) emailEl.textContent = vm.email || '';
+  }
+
+  function renderAccountSection(vm) {
+    var t = window.t || function(key) { return key; };
+
+    function safeText(key, fallback) {
+      var translated = t(key);
+      return translated && translated !== key ? translated : fallback;
+    }
+
+    var emailValueEl = document.getElementById('settingsAccountEmailValue');
+    if (emailValueEl) emailValueEl.textContent = vm.email || '';
+
+    var idValueEl = document.getElementById('settingsAccountIdValue');
+    if (idValueEl) idValueEl.textContent = vm.uid || '';
+
+    var signInValueEl = document.getElementById('settingsAccountSignInValue');
+    if (signInValueEl) {
+      signInValueEl.textContent = vm.providerLabel;
+    }
+
+    var passwordValueEl = document.getElementById('settingsAccountPasswordValue');
+    if (passwordValueEl) {
+      if (vm.passwordInfo === 'google') {
+        passwordValueEl.textContent = safeText('settings.account.password.googleManaged', '비밀번호는 Google 계정에서 관리됩니다.');
+      } else if (vm.passwordInfo === 'deferred') {
+        passwordValueEl.textContent = safeText('settings.account.password.deferred', '비밀번호 관리는 다음 단계에서 지원됩니다.');
+      } else {
+        passwordValueEl.textContent = safeText('settings.account.password.unavailable', '현재 로그인 방식에서는 비밀번호 관리 기능을 확인할 수 없습니다.');
+      }
+    }
   }
 
   function bindCloseInteractions() {
@@ -332,6 +520,11 @@
     if (logoutBtn) {
       logoutBtn.addEventListener('click', handleLogout);
     }
+
+    // Render Profile / Account sections
+    var vm = resolveSettingsAccountViewModel(effectiveUser);
+    renderProfileSection(vm);
+    renderAccountSection(vm);
 
     setTimeout(function() {
       applyI18nText();
@@ -414,4 +607,10 @@
   window.initSettings = initSettings;
   window.handleLogout = handleLogout;
   window.getLoveBudSettings = loadSettings;
+
+  // Export helpers for testing
+  window.resolveSettingsAccountViewModel = resolveSettingsAccountViewModel;
+  window.resolveDisplayName = resolveDisplayName;
+  window.resolveProfileInitials = resolveProfileInitials;
+  window.resolveSignInMethods = resolveSignInMethods;
 })();

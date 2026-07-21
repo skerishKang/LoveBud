@@ -1,3 +1,4 @@
+/* Settings sections - scope note (reserved for future use) */
 .settings-scope-note {
   margin: -6px 0 16px;
   padding: 12px 14px;
@@ -8,6 +9,7 @@
   line-height: 1.55;
 }
 
+/* Reserved card classes for future settings content */
 .settings-intro-card,
 .settings-plus-card {
   display: flex;

@@ -16,4 +16,23 @@
     top: 14px;
     right: 14px;
   }
+
+  .settings-profile-card {
+    padding: 14px;
+    gap: 12px;
+  }
+
+  .settings-profile-avatar {
+    width: 48px;
+    height: 48px;
+    font-size: 1rem;
+  }
+
+  .settings-profile-name {
+    font-size: 0.95rem;
+  }
+
+  .settings-account-row {
+    padding: 10px 0;
+  }
 }
