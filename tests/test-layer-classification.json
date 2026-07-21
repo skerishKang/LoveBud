@@ -4469,6 +4469,18 @@
       "layer": "EXECUTED_REAL_LOCAL",
       "rationale": "actual pages/editor.html; actual js/editor.js startup (startEditor creates canvas); controlled owner auth/API fixture; URL mode=edit; same-origin route exit/re-entry to canonical editor; page.reload without second goto; no manual createEditorCanvas; actual localStorage; actual pointer drag; tree A/B isolation; free→structured→free; mobile restore. No production/API/DB mutation; no real Firebase login claim.",
       "capabilities": []
+    },
+    {
+      "path": "tests/contracts/settings-readonly-account-3583-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes settings.js helper functions in a local vm context; validates i18n, HTML structure, innerHTML safety, no write API calls, logout path, accessibility. No real browser/network/DB.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/settings-readonly-account-3583-browser-contract.test.cjs",
+      "layer": "EXECUTED_REAL_LOCAL",
+      "rationale": "Launches actual Chromium via Playwright to load actual pages/settings.html served by a local HTTP server with controlled auth fixture (no real Firebase). Executes actual js/settings.js, actual js/i18n/i18n-shared.js, actual css/settings.css. Validates Profile/Account sections, displayName fallback, email, uid, provider label, password info, avatar/initials, logout button, shared header, close/escape, no horizontal overflow, no console errors, mobile 375x812 layout. No real Firebase network, no Production login, no Production data.",
+      "capabilities": []
     }
   ],
   "supplemental": [

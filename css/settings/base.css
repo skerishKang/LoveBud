@@ -20,7 +20,7 @@
 
 .settings-card {
   width: 100%;
-  max-width: 480px;
+  max-width: 560px;
   background: var(--surface);
   border-radius: var(--radius-lg);
   border: 1px solid var(--outline-variant);
@@ -40,13 +40,13 @@
 .settings-subtitle {
   color: var(--on-surface-variant);
   font-size: 0.95rem;
-  margin-bottom: 40px;
+  margin-bottom: 32px;
   line-height: 1.5;
-  max-width: 320px;
+  max-width: 400px;
 }
 
 .settings-section {
-  margin-bottom: 32px;
+  margin-bottom: 28px;
 }
 
 .settings-section:last-of-type {
@@ -56,5 +56,5 @@
 .settings-divider {
   height: 1px;
   background: var(--outline-variant);
-  margin: 32px 0;
+  margin: 28px 0;
 }

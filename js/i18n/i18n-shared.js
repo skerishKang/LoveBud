@@ -225,8 +225,8 @@
       en: 'Settings'
     },
     'settings.subtitle': {
-      ko: '러브트리를 어떻게 소개할지 살펴봅니다',
-      en: 'Review how your LoveTree can be introduced'
+      ko: '프로필과 로그인 정보를 확인합니다',
+      en: 'Review your profile and sign-in information'
     },
     'settings.browseIntroTitle': {
       ko: '둘러보기 소개',
@@ -251,6 +251,74 @@
     'settings.visibilityTitle': {
       ko: '기본 공개 범위',
       en: 'Default Visibility'
+    },
+    'settings.profile.title': {
+      ko: '프로필',
+      en: 'Profile'
+    },
+    'settings.profile.displayName': {
+      ko: '표시 이름',
+      en: 'Display name'
+    },
+    'settings.profile.email': {
+      ko: '이메일',
+      en: 'Email'
+    },
+    'settings.profile.changeDeferred': {
+      ko: '프로필 변경 기능은 다음 단계에서 제공됩니다.',
+      en: 'Profile change features will be available in a future update.'
+    },
+    'settings.account.title': {
+      ko: '계정',
+      en: 'Account'
+    },
+    'settings.account.email': {
+      ko: '이메일',
+      en: 'Email'
+    },
+    'settings.account.id': {
+      ko: '계정 ID',
+      en: 'Account ID'
+    },
+    'settings.account.signInMethod': {
+      ko: '로그인 방식',
+      en: 'Sign-in method'
+    },
+    'settings.account.password': {
+      ko: '비밀번호 관리',
+      en: 'Password management'
+    },
+    'settings.account.provider.google': {
+      ko: 'Google',
+      en: 'Google'
+    },
+    'settings.account.provider.password': {
+      ko: '이메일 및 비밀번호',
+      en: 'Email and password'
+    },
+    'settings.account.provider.unknown': {
+      ko: '로그인 방식 확인 불가',
+      en: 'Sign-in method unknown'
+    },
+    'settings.account.password.googleManaged': {
+      ko: '비밀번호는 Google 계정에서 관리됩니다.',
+      en: 'Password is managed by your Google account.'
+    },
+    'settings.account.password.deferred': {
+      ko: '비밀번호 관리는 다음 단계에서 지원됩니다.',
+      en: 'Password management will be supported in a future update.'
+    },
+    'settings.account.password.unavailable': {
+      ko: '현재 로그인 방식에서는 비밀번호 관리 기능을 확인할 수 없습니다.',
+      en: 'Password management is not available for the current sign-in method.'
+    },
+    'settings.profile.avatarPhoto': {
+      ko: '{displayName}님의 프로필 사진',
+      en: 'Profile photo for {displayName}'
+    },
+    'settings.profile.avatarFallback': {
+      ko: '{displayName}님의 프로필',
+      en: 'Profile for {displayName}'
     },
     'settings.private': {
       ko: '비공개',
