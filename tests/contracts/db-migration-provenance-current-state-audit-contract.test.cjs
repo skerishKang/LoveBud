@@ -496,4 +496,46 @@ describe('DB Migration Provenance Current-State Audit Contract (#3620)', () => {
       assert.ok(total >= 11, `Expected at least 11 acceptance criteria classifications, got ${total}`);
     });
   });
+
+  describe('21. Decision document metadata corrections', () => {
+    const decision = readDoc(DECISION_PATH);
+    it('No empty Scope note marker', () => {
+      assert.doesNotMatch(decision, /Scope note/);
+    });
+    it('No "three files" wording', () => {
+      assert.doesNotMatch(decision, /three files|3 files|all three files/i);
+    });
+    it('No "3 allowed files" wording', () => {
+      assert.doesNotMatch(decision, /3 allowed files/);
+    });
+    it('No "outside the 3 allowed files" wording', () => {
+      assert.doesNotMatch(decision, /outside the 3 allowed files/);
+    });
+    it('No broad "all source-contract and disposable-CI work is merged" claim', () => {
+      assert.doesNotMatch(decision, /all source-contract and disposable-CI work is merged/i);
+    });
+    it('Phase-B predecessor scope wording present', () => {
+      assert.match(decision, /Phase-B Production-readonly collection boundary are merged/);
+    });
+    it('All 4 cumulative authorized files present in scope', () => {
+      assert.match(decision, /DB_MIGRATION_PROVENANCE_CURRENT_STATE_AUDIT\.md/);
+      assert.match(decision, /DB_MIGRATION_PROVENANCE_NEXT_CHILD_DECISION\.md/);
+      assert.match(decision, /db-migration-provenance-current-state-audit-contract\.test\.cjs/);
+      assert.match(decision, /test-layer-classification\.json/);
+    });
+    it('Completion boundary uses authorized files', () => {
+      // Document says "Completion Boundary" and "authorized files" (section title and text)
+      assert.match(decision, /Completion Boundary/i);
+      assert.match(decision, /authorized files/i);
+    });
+    it('test-layer-classification.json in cumulative scope', () => {
+      assert.match(decision, /test-layer-classification\.json.*minimal SOURCE_STATIC|minimal SOURCE_STATIC.*test-layer-classification\.json/);
+    });
+    it('Operator-readiness child does not claim full #3458 completion', () => {
+      // Match the specific broad positive claim that was in the original document
+      // "All source-contract and disposable-CI implementation children under #3458 have been completed and merged"
+      const broadClaim = /All source-contract and disposable-CI implementation children under #3458 have been completed and merged/;
+      assert.doesNotMatch(decision, broadClaim);
+    });
+  });
 });

@@ -13,8 +13,6 @@ The source-contract and disposable-CI predecessors needed to prepare the current
 
 This does not mean all #3458 implementation is complete. Migration runner, canonical stream, reconstruction, deployment enforcement, observability, and retirement work remain incomplete.
 
-**Scope note**
-
 ## Candidate Children Considered
 
 ### 1. Retry Production catalog collection
@@ -167,7 +165,11 @@ No migration implementation child can safely proceed. An **operator-readiness ch
 
 **Prohibited areas**: No database connection, no SQL execution, no secret creation, no Production/staging/provider access, no manifest activation, no migration/ledger/runner implementation. No existing file modification (checklist is a new file).
 
-**Dependencies complete**: Current-state audit (#3620), all source-contract and disposable-CI work is merged.
+**Dependencies complete**: Current-state audit (#3620), the source-contract and disposable-CI predecessors required for the current Phase-B Production-readonly collection boundary are merged.
+
+This does not claim that all #3458 implementation is complete.
+
+The following remain incomplete:
 
 **Test layers**: SOURCE_STATIC (validate checklist references correct contract paths, covers operator inputs, no secret patterns)
 
@@ -253,7 +255,7 @@ This child (#3620) is complete when:
 1. The current-state audit accurately classifies all #3458 acceptance criteria against `main` evidence
 2. The next-child decision selects exactly one outcome (`NO_SAFE_IMPLEMENTATION_CHILD_WITHOUT_OPERATOR_INPUT`)
 3. The contract test validates document structure, vocabulary, references, and prohibitions
-4. All three files pass syntax check, contract test, and CI
+4. All authorized files and required verification gates pass on the exact PR head.
 5. Draft PR is created with verification results
 
 ## Deferred Work
