@@ -242,7 +242,13 @@ function measureScript(targetSel) {
           }
         : null,
       title: titleCs
-        ? { fontSize: titleCs.fontSize, lineHeight: titleCs.lineHeight, height: titleCs.height, whiteSpace: titleCs.whiteSpace }
+        ? {
+            fontSize: titleCs.fontSize,
+            fontWeight: titleCs.fontWeight,
+            lineHeight: titleCs.lineHeight,
+            height: titleCs.height,
+            whiteSpace: titleCs.whiteSpace,
+          }
         : null,
       subtitle: subCs
         ? { fontSize: subCs.fontSize, lineHeight: subCs.lineHeight, height: subCs.height }
@@ -464,6 +470,7 @@ test('#3608 browser: desktop 1440 compact Browse/My Trees core geometry matches'
           bodyGap: bcs.rowGap,
           bodyPad: bcs.padding,
           titleSize: tics.fontSize,
+          titleWeight: tics.fontWeight,
           titleLH: tics.lineHeight,
           titleH: tics.height,
           subSize: sics.fontSize,
@@ -502,6 +509,10 @@ test('#3608 browser: desktop 1440 compact Browse/My Trees core geometry matches'
     assert.equal(mytrees.bodyDisplay, 'grid');
     assert.ok(pxClose(browse.bodyGap, mytrees.bodyGap, 0.5) || browse.bodyGap === mytrees.bodyGap);
     assert.ok(pxClose(browse.titleSize, mytrees.titleSize, 0.5) || browse.titleSize === mytrees.titleSize);
+    // Canonical title weight is owned by surface/shared CSS (900), not view-mode overrides.
+    assert.equal(String(browse.titleWeight), '900', `browse title fontWeight ${browse.titleWeight}`);
+    assert.equal(String(mytrees.titleWeight), '900', `mytrees title fontWeight ${mytrees.titleWeight}`);
+    assert.equal(String(browse.titleWeight), String(mytrees.titleWeight));
     assert.ok(pxClose(browse.subSize, mytrees.subSize, 0.5) || browse.subSize === mytrees.subSize);
     assert.equal(browse.ctaCount, 1);
     assert.equal(mytrees.ctaCount, 1);
@@ -551,8 +562,10 @@ test('#3608 browser: mobile 375 compact geometry + no horizontal overflow', { ti
         const target = document.querySelector(sel);
         const card = target.querySelector('.tree-card');
         const media = card.querySelector('.tree-card-media, .love-tree-card-media');
+        const title = card.querySelector('.tree-title, .love-tree-card-title, .tree-card-title');
         const cs = getComputedStyle(card);
         const mcs = getComputedStyle(media);
+        const tics = title ? getComputedStyle(title) : null;
         const gridCs = getComputedStyle(target);
         const cardRect = card.getBoundingClientRect();
         // Visible overflow: children whose painted box extends past the card.
@@ -570,6 +583,7 @@ test('#3608 browser: mobile 375 compact geometry + no horizontal overflow', { ti
           gap: gridCs.columnGap || gridCs.gap,
           height: cs.height,
           mediaH: mcs.height,
+          titleWeight: tics ? tics.fontWeight : null,
           overflow: document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1,
           cardOverflow: !visibleChildOverflow,
           cardOverflowX: cs.overflowX === 'hidden' || cs.overflow === 'hidden',
@@ -588,6 +602,9 @@ test('#3608 browser: mobile 375 compact geometry + no horizontal overflow', { ti
     assert.ok(pxClose(mytrees.height, browse.height, 1), `height ${browse.height} vs ${mytrees.height}`);
     assert.ok(pxClose(browse.mediaH, '80px') || pxClose(browse.mediaH, 80), `browse media ${browse.mediaH}`);
     assert.ok(pxClose(mytrees.mediaH, browse.mediaH, 1), `media ${browse.mediaH} vs ${mytrees.mediaH}`);
+    assert.equal(String(browse.titleWeight), '900', `browse mobile title fontWeight ${browse.titleWeight}`);
+    assert.equal(String(mytrees.titleWeight), '900', `mytrees mobile title fontWeight ${mytrees.titleWeight}`);
+    assert.equal(String(browse.titleWeight), String(mytrees.titleWeight));
     assert.equal(browse.overflow, true);
     assert.equal(mytrees.overflow, true);
     // Prefer zero visible child overflow; allow overflow:hidden clipping as last resort.
@@ -613,6 +630,11 @@ test('#3608 source: My Trees default is compact; obsolete asymmetry gone', () =>
   const myHtml = fs.readFileSync(path.join(ROOT, 'pages/my-trees.html'), 'utf8');
   assert.match(bootstrap, /defaultMode:\s*['"]compact['"]/);
   assert.doesNotMatch(bootstrap, /defaultMode:\s*['"]large['"]/);
+  // Compact title geometry only — must not override canonical font-weight 900.
+  assert.doesNotMatch(
+    css,
+    /\[data-tree-view-mode="compact"\][^{]*\{[^}]*font-weight:\s*300/
+  );
   // List mode may still use 140px stacked media — forbid only My Trees compact asymmetry.
   assert.doesNotMatch(
     css,

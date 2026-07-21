@@ -311,10 +311,9 @@
     box-sizing: border-box;
 }
 
-/* Browse compact title */
+/* Browse compact title — geometry only; font-weight stays on surface/shared (900) */
 #resultsList[data-tree-view-mode="compact"] .tree-title {
     font-size: 1.1rem;
-    font-weight: 300;
     line-height: 1.3;
     height: 1.5rem;
     min-height: 0;
@@ -332,7 +331,6 @@
 .trees-grid[data-tree-view-mode="compact"] .love-tree-card-title,
 .trees-grid[data-tree-view-mode="compact"] .tree-card-title {
     font-size: 1.1rem;
-    font-weight: 300;
     line-height: 1.3;
     height: 1.5rem;
     min-height: 0;
