@@ -185,22 +185,35 @@ test('persistLayoutMode signature: 3 params', function () {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 7. Source-level: editor-canvas.js passes readOnly=(canEdit===false)
+// 7. Source-level: editor-canvas.js uses explicit layout policy for readOnly
+//    (#3581 — canEdit alone is no longer the storage boundary)
 // ─────────────────────────────────────────────────────────────────────────────
 
-test('editor-canvas.js: loadStoredLayout receives canEdit===false as readOnly', function () {
+test('editor-canvas.js: loadStoredLayout uses layoutPolicy.layoutReadOnly', function () {
   const src = fs.readFileSync(CANVAS_PATH, 'utf8');
   assert.ok(
-    /storageUtils\.loadStoredLayout\s*\(\s*treeId\s*,\s*layoutStorageKey\s*,\s*canvasLayout\s*,\s*canEdit\s*===\s*false\s*\)/.test(src),
-    'loadStoredLayout must be called with canEdit===false as 4th arg'
+    /storageUtils\.loadStoredLayout\s*\([\s\S]*?layoutPolicy\.layoutReadOnly\s*===\s*true/.test(src),
+    'loadStoredLayout must use layoutPolicy.layoutReadOnly as readOnly boundary'
+  );
+  assert.ok(
+    !/storageUtils\.loadStoredLayout\s*\(\s*treeId\s*,\s*layoutStorageKey\s*,\s*canvasLayout\s*,\s*canEdit\s*===\s*false\s*\)/.test(src),
+    'must not pass bare canEdit===false as layout storage boundary'
   );
 });
 
-test('editor-canvas.js: loadLayoutMode receives canEdit===false as readOnly', function () {
+test('editor-canvas.js: loadLayoutMode uses layoutPolicy.layoutReadOnly', function () {
   const src = fs.readFileSync(CANVAS_PATH, 'utf8');
   assert.ok(
-    /storageUtils\.loadLayoutMode\s*\(\s*layoutModeStorageKey\s*,\s*canEdit\s*===\s*false\s*\)/.test(src),
-    'loadLayoutMode must be called with canEdit===false as 2nd arg'
+    /storageUtils\.loadLayoutMode\s*\([\s\S]*?layoutPolicy\.layoutReadOnly\s*===\s*true/.test(src),
+    'loadLayoutMode must use layoutPolicy.layoutReadOnly as readOnly boundary'
+  );
+});
+
+test('editor-canvas.js: exposes syncInteractionLayoutMode for view/edit rebinding', function () {
+  const src = fs.readFileSync(CANVAS_PATH, 'utf8');
+  assert.ok(
+    /function\s+syncInteractionLayoutMode\s*\(/.test(src) || /syncInteractionLayoutMode\s*[,(]/.test(src),
+    'syncInteractionLayoutMode must exist'
   );
 });
 

@@ -4439,6 +4439,18 @@
       "layer": "EXECUTED_REAL_LOCAL",
       "rationale": "Loads REAL production surface modules (js/utils/security.js, js/shared/tree-card-metrics.js, js/shared/tree-card-composition.js, js/search/search-card-renderer.js, js/my-trees/my-trees-ui.js + entry-target-resolver + card-visuals + card-events) in actual Playwright Chromium served from a local HTTP server. Validates Browse and My Trees actual runtime card root structure (.tree-card.love-tree-card, no nesting), mode=edit absence, visibility indicators (public globe / private lock), mobile/keyboard interaction (single navigation, nested action de-dup, desktop selection-only), DOM XSS escaping per sink (title, label, aria-label, URL matrix), dependency fail-closed matrix (8 cases: missing security, missing metrics, throwing renderer, missing composition in surface adapters), metrics contract (authoritative zero, unknown omission, view/like/comment/share order), and media slot contract. No production write / auth / API / DB mutation. page.goto real local HTTP URL (not setContent-only).",
       "capabilities": []
+    },
+    {
+      "path": "tests/contracts/tree-layout-mode-policy-3581-browser-contract.test.cjs",
+      "layer": "EXECUTED_REAL_LOCAL",
+      "rationale": "Executes real production modules js/editor/editor-canvas-layout-policy.js, editor-canvas-layout-storage.js, editor-canvas-layout-transition.js, editor-canvas-geometry.js in Playwright Chromium via local HTTP fixture. Asserts #3581 appreciation vs owner-edit layout storage isolation using real localStorage (owner appreciation/public ignore free draft; owner edit restores free positions/viewport; view↔edit rebinding keeps keys; drag only free+owner-edit; structured-first labels; desktop 1440 and mobile 375 overflow). No production write/auth/API/DB mutation.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/tree-layout-mode-policy-3581-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Pure policy matrix and VM localStorage isolation for #3581 resolveLayoutPolicy / storage readOnly boundary / source wiring; does not execute browser canvas runtime.",
+      "capabilities": []
     }
   ],
   "supplemental": [

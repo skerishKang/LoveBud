@@ -25,9 +25,9 @@ export function buildCanvasTopbarTemplate() {
                     </div>
                     <div class="editor-canvas-toolbar-separator" aria-hidden="true"></div>
                     <div class="editor-canvas-toolbar-group" aria-label="레이아웃 모드">
-                        <button type="button" class="editor-canvas-tool-btn editor-canvas-tool-btn-wide" id="layoutModeToggleBtn" aria-pressed="false" aria-label="현재 자유 배치, 정리된 트리로 전환" title="현재 자유 배치, 정리된 트리로 전환">
-                            <span class="material-symbols-outlined" aria-hidden="true" id="layoutModeToggleIcon">auto_awesome</span>
-                            <span class="editor-canvas-tool-label" id="layoutModeToggleLabel">자유 배치</span>
+                        <button type="button" class="editor-canvas-tool-btn editor-canvas-tool-btn-wide is-active" id="layoutModeToggleBtn" aria-pressed="true" aria-label="현재 정리된 트리, 자유 배치로 전환" title="현재 정리된 트리, 자유 배치로 전환">
+                            <span class="material-symbols-outlined" aria-hidden="true" id="layoutModeToggleIcon">account_tree</span>
+                            <span class="editor-canvas-tool-label" id="layoutModeToggleLabel">정리된 트리</span>
                         </button>
                     </div>
                     <div class="editor-canvas-toolbar-separator" aria-hidden="true"></div>

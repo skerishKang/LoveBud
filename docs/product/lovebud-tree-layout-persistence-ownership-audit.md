@@ -1,3 +1,5 @@
+> **Superseded note (2026-07-21):** Current product layout policy is defined in `docs/product/LAYOUT_MODES_CONTRACT.md` (#3581). This audit remains a historical investigation record and must not be treated as current runtime truth.
+
 # LoveBud Tree Layout Persistence and Viewer Ownership Audit
 
 **Issue:** #3055  

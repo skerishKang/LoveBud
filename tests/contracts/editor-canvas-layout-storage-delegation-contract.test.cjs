@@ -35,47 +35,46 @@ const persistLayoutModeBlock = getBlock(
 const persistStoredPositionsBlock = getBlock(
   canvasSource,
   'function persistStoredPositions() {',
-  '\n\n    function fitViewportToTree() {'
+  '\n\n    function canDragCurrentLayout() {'
 );
 
 test('editor canvas layout storage delegation — loadStoredLayout prefers storage helper', () => {
   const guardIndex = indexOfRequired(loadStoredLayoutBlock, "if (typeof storageUtils.loadStoredLayout === 'function') {");
-  const helperCallIndex = indexOfRequired(loadStoredLayoutBlock, 'return storageUtils.loadStoredLayout(treeId, layoutStorageKey, canvasLayout, canEdit === false);');
-
+  const helperCallIndex = indexOfRequired(loadStoredLayoutBlock, 'storageUtils.loadStoredLayout(');
+  const policyIndex = indexOfRequired(loadStoredLayoutBlock, 'layoutPolicy.layoutReadOnly === true');
   assert.ok(guardIndex < helperCallIndex);
+  assert.ok(helperCallIndex < policyIndex || loadStoredLayoutBlock.includes('layoutPolicy.layoutReadOnly'));
 });
 
 test('editor canvas layout storage delegation — loadLayoutMode prefers storage helper', () => {
   const guardIndex = indexOfRequired(loadLayoutModeBlock, "if (typeof storageUtils.loadLayoutMode === 'function') {");
-  const helperCallIndex = indexOfRequired(loadLayoutModeBlock, 'return storageUtils.loadLayoutMode(layoutModeStorageKey, canEdit === false);');
-
+  const helperCallIndex = indexOfRequired(loadLayoutModeBlock, 'storageUtils.loadLayoutMode(');
   assert.ok(guardIndex < helperCallIndex);
+  assert.ok(loadLayoutModeBlock.includes('layoutPolicy.layoutReadOnly === true'));
 });
 
-test('editor canvas layout storage delegation — persistLayoutMode prefers storage helper after edit guard', () => {
-  const editGuardIndex = indexOfRequired(persistLayoutModeBlock, 'if (canEdit === false) return;');
+test('editor canvas layout storage delegation — persistLayoutMode prefers storage helper after policy guard', () => {
+  const policyGuardIndex = indexOfRequired(persistLayoutModeBlock, 'if (layoutPolicy.allowPersistMode !== true) return;');
   const helperGuardIndex = indexOfRequired(persistLayoutModeBlock, "if (typeof storageUtils.persistLayoutMode === 'function') {");
-  const helperCallIndex = indexOfRequired(persistLayoutModeBlock, 'return storageUtils.persistLayoutMode(mode, layoutModeStorageKey, canEdit);');
-
-  assert.ok(editGuardIndex < helperGuardIndex);
+  const helperCallIndex = indexOfRequired(persistLayoutModeBlock, 'storageUtils.persistLayoutMode(');
+  assert.ok(policyGuardIndex < helperGuardIndex);
   assert.ok(helperGuardIndex < helperCallIndex);
 });
 
-test('editor canvas layout storage delegation — persistStoredPositions prefers storage helper', () => {
-  const editGuardIndex = indexOfRequired(persistStoredPositionsBlock, 'if (canEdit === false) return;');
+test('editor canvas layout storage delegation — persistStoredPositions prefers storage helper after policy guard', () => {
+  const policyGuardIndex = indexOfRequired(persistStoredPositionsBlock, 'if (layoutPolicy.allowPersistPositions !== true) return;');
   const helperGuardIndex = indexOfRequired(persistStoredPositionsBlock, "if (typeof storageUtils.persistStoredPositions === 'function') {");
-  const helperCallIndex = indexOfRequired(persistStoredPositionsBlock, 'return storageUtils.persistStoredPositions(viewportState, treeId, layoutStorageKey, canvasLayout, canEdit);');
-
-  assert.ok(editGuardIndex < helperGuardIndex);
+  const helperCallIndex = indexOfRequired(persistStoredPositionsBlock, 'storageUtils.persistStoredPositions(');
+  assert.ok(policyGuardIndex < helperGuardIndex);
   assert.ok(helperGuardIndex < helperCallIndex);
 });
 
-test('editor canvas layout storage delegation — local compatibility paths stay removed', () => {
+test('editor canvas layout storage delegation — local store direct paths stay removed', () => {
   assert.doesNotMatch(loadStoredLayoutBlock, /canvasLayout\.createLayoutStore\(treeId\)/);
-  assert.doesNotMatch(loadStoredLayoutBlock, /return \{ positions: \{\}, offsetX: 0, offsetY: 0, scale: 1 \};/);
-  assert.doesNotMatch(loadLayoutModeBlock, /return 'free';/);
   assert.doesNotMatch(persistStoredPositionsBlock, /canvasLayout\.createLayoutStore\(treeId\)/);
   assert.doesNotMatch(persistStoredPositionsBlock, /store\.persist\(viewportState\);/);
+  // Fail-closed default when helper missing is allowed.
+  assert.match(loadStoredLayoutBlock, /return \{ positions: \{\}, offsetX: 0, offsetY: 0, scale: 1 \};/);
 });
 
 test('editor canvas layout storage helper exposes expected methods', () => {

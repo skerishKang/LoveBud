@@ -130,16 +130,24 @@
         );
 
         var layoutGroup = createGroup('레이아웃 모드');
-        var layoutButton = createButton('layoutModeToggleBtn', '레이아웃 전환', 'auto_awesome', {
-            wide: true,
-            iconId: 'layoutModeToggleIcon'
-        });
+        // #3581: static first paint is structured-first (정리된 트리).
+        var layoutButton = createButton(
+            'layoutModeToggleBtn',
+            '현재 정리된 트리, 자유 배치로 전환',
+            'account_tree',
+            {
+                wide: true,
+                iconId: 'layoutModeToggleIcon'
+            }
+        );
+        layoutButton.setAttribute('aria-pressed', 'true');
+        layoutButton.classList.add('is-active');
         layoutButton.appendChild(createElement('span', {
             attrs: {
                 className: 'editor-canvas-tool-label',
                 id: 'layoutModeToggleLabel'
             },
-            text: '자유 배치'
+            text: '정리된 트리'
         }));
         layoutGroup.appendChild(layoutButton);
 

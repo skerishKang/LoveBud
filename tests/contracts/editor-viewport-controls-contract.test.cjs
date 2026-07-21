@@ -71,7 +71,11 @@ test('editor canvas persists scale and keeps node dragging scale-aware', () => {
   const canvasNode = read('js/editor/editor-canvas-node.js');
   const canvasUtils = read('js/editor/editor-canvas-utils.js');
 
-  assert.match(canvas, /scale:\s*storedLayout\.scale \|\| 1/, 'canvas state must initialize viewport scale');
+  assert.match(
+    canvas,
+    /scale:\s*useStoredViewport\s*\?\s*storedLayout\.scale \|\| 1\s*:\s*1|scale:\s*storedLayout\.scale \|\| 1/,
+    'canvas state must initialize viewport scale from stored layout when policy allows'
+  );
   assert.match(canvas, /utils\.calcPosition\(mem/, 'canvas must delegate position calculation to utils');
   assert.match(canvasUtils, /projectWorldPosition\(world,\s*viewportState\)/, 'calc position must render through viewport projection');
   assert.match(canvasNode, /nodeEl\.style\.transform = 'scale\(/ , 'node cards must visually scale with viewport (delegated to canvas-node)');

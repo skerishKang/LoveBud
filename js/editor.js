@@ -493,6 +493,27 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             }
 
+            // #3581: resolve interaction mode before first canvas paint so owner
+            // appreciation does not consume owner-edit layout drafts, and mode=edit
+            // does not flicker through ephemeral structured then free.
+            var initialInteractionMode = 'view';
+            if (mode === 'edit' && effectiveCanEdit) {
+                initialInteractionMode = 'edit';
+            }
+            if (window.LoveBudEditorInteractionMode) {
+                if (initialInteractionMode === 'edit') {
+                    window.LoveBudEditorInteractionMode.setMode(
+                        window.LoveBudEditorInteractionMode.MODE_EDIT,
+                        { replace: true, forceUrlSync: true }
+                    );
+                } else if (effectiveCanEdit) {
+                    window.LoveBudEditorInteractionMode.setMode(
+                        window.LoveBudEditorInteractionMode.MODE_VIEW,
+                        { replace: true, forceUrlSync: true, syncUrl: true }
+                    );
+                }
+            }
+
             editorCanvas = window.createEditorCanvas({
                 canvas,
                 svg,
@@ -507,6 +528,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 onNodeClick: selectNode,
                 openAddMoment: () => showAddMemoryForm(),
                 canEdit: effectiveCanEdit,
+                interactionMode: initialInteractionMode,
                 onDisconnectEdge: async function(childId) {
                     if (typeof disconnectMemoryFn !== 'function') return false;
                     return disconnectMemoryFn(childId);
@@ -765,17 +787,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
             finalizeEditorReady();
 
-            // #3586: explicit appreciation/edit modes with URL mode=edit contract.
-            if (mode === 'edit' && effectiveCanEdit && window.LoveBudEditorInteractionMode) {
-                window.LoveBudEditorInteractionMode.setMode(
-                    window.LoveBudEditorInteractionMode.MODE_EDIT,
-                    { replace: true, forceUrlSync: true }
-                );
-            } else if (effectiveCanEdit && window.LoveBudEditorInteractionMode) {
-                window.LoveBudEditorInteractionMode.setMode(
-                    window.LoveBudEditorInteractionMode.MODE_VIEW,
-                    { replace: true, forceUrlSync: true, syncUrl: true }
-                );
+            // #3586/#3581: interaction mode already applied before canvas creation.
+            // Keep a no-op sync only if the mode API was unavailable earlier.
+            if (effectiveCanEdit && window.LoveBudEditorInteractionMode) {
+                var expectedMode =
+                    initialInteractionMode === 'edit'
+                        ? window.LoveBudEditorInteractionMode.MODE_EDIT
+                        : window.LoveBudEditorInteractionMode.MODE_VIEW;
+                if (window.LoveBudEditorInteractionMode.getMode() !== expectedMode) {
+                    window.LoveBudEditorInteractionMode.setMode(expectedMode, {
+                        replace: true,
+                        forceUrlSync: true,
+                        syncUrl: true
+                    });
+                }
             }
 
             if (effectiveCanEdit && window.LoveBudEditorInteractionMode && typeof window.LoveBudEditorInteractionMode.subscribe === 'function') {
@@ -866,6 +891,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     function handleModeChange(modeValue) {
                         var isEdit = modeValue === window.LoveBudEditorInteractionMode.MODE_EDIT;
+                        // #3581: rebind layout policy for appreciation ↔ edit without wiping local drafts.
+                        if (typeof editorCanvas !== 'undefined' && editorCanvas && typeof editorCanvas.syncInteractionLayoutMode === 'function') {
+                            try {
+                                editorCanvas.syncInteractionLayoutMode(isEdit ? 'edit' : 'view');
+                            } catch (err) {
+                                console.warn('[editor] layout policy sync failed', err);
+                            }
+                        }
                         if (isEdit) {
                             if (typeof editorCanvas !== 'undefined' && editorCanvas && typeof editorCanvas.updateAffordance === 'function') {
                                 editorCanvas.updateAffordance();

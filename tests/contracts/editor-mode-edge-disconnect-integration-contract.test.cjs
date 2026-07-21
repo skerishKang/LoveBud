@@ -150,15 +150,9 @@ test('editor-memory-actions.js disconnectMemory fail-closed with mode guard', ()
 test('editor-canvas.js exports clearEdgeSelection and clearGrowthAffordance', () => {
   const source = readSource('js/editor/editor-canvas.js');
 
-  const returnMatch = source.match(/return\s*\{[\s\S]*?\};/);
+  const returnMatch = source.match(/return\s*\{[\s\S]*?clearEdgeSelection[\s\S]*?clearGrowthAffordance[\s\S]*?\};/);
   assert.notEqual(returnMatch, null,
-    'createEditorCanvas must return an object');
-
-  const returnBlock = returnMatch[0];
-  assert.match(returnBlock, /\bclearEdgeSelection\b/,
-    'must export clearEdgeSelection');
-  assert.match(returnBlock, /\bclearGrowthAffordance\b/,
-    'must export clearGrowthAffordance');
+    'createEditorCanvas return object must export clearEdgeSelection and clearGrowthAffordance');
 });
 
 test('editor-canvas.js clearEdgeSelection function exists', () => {
@@ -205,11 +199,13 @@ test('disconnectMemory has mode guard after canEdit', () => {
 
 // ── 6. canEdit === false prevents drag binding ─────────────────────────────
 
-test('editor-canvas.js preserves canEdit !== false drag guard', () => {
+test('editor-canvas.js preserves layout-policy drag guard (#3581)', () => {
   const source = readSource('js/editor/editor-canvas.js');
 
-  assert.match(source, /canEdit\s*!==\s*false/,
-    'must preserve the canEdit !== false guard');
+  assert.match(source, /canDragCurrentLayout\s*\(/,
+    'must gate drag with canDragCurrentLayout policy helper');
+  assert.match(source, /isEditMode\s*\(/,
+    'must still consult interaction mode for edit-only drag');
 });
 
 // ── 7. Branch port primary CTA contract preserved ──────────────────────────
