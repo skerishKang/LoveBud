@@ -341,10 +341,17 @@ describe('DB Migration Provenance Adoption Operator Checklist Contract (#3622)',
       assert.match(doc, /non-committing termination|does not permit commit|commit is not permitted/i);
     });
     it('Documents source-owned proof names', () => {
-      assert.match(doc, /EXPLICIT_READ_ONLY_TRANSACTION/);
-      assert.match(doc, /READ_ONLY_TRANSITION_CONFIRMED/);
-      assert.match(doc, /NO_CALLER_SQL/);
-      assert.match(doc, /NO_APPLICATION_ROW_READS/);
+      const contract = readJson(COLLECTION_PLAN_CONTRACT);
+      const proofs = contract.enums.read_only_proof;
+      assert.ok(proofs.includes('READ_ONLY_TRANSACTION_CONFIRMED'), 'source contract must define READ_ONLY_TRANSACTION_CONFIRMED');
+      assert.ok(!proofs.includes('READ_ONLY_TRANSITION_CONFIRMED'), 'source contract must not define typo READ_ONLY_TRANSITION_CONFIRMED');
+      for (const proof of proofs) {
+        if (doc.includes(proof)) {
+          assert.ok(proofs.includes(proof), `document proof ${proof} must be from committed contract`);
+        }
+      }
+      assert.match(doc, /READ_ONLY_TRANSACTION_CONFIRMED/);
+      assert.doesNotMatch(doc, /READ_ONLY_TRANSITION_CONFIRMED/);
     });
     it('No literal BEGIN READ ONLY', () => {
       assert.doesNotMatch(doc, /BEGIN\s+READ\s+ONLY/i);
@@ -362,7 +369,11 @@ describe('DB Migration Provenance Adoption Operator Checklist Contract (#3622)',
     it('Documents private mapping preparation boundary', () => {
       assert.match(doc, /operator-private runtime mapping/i);
       assert.match(doc, /neither creates nor validates that private mapping/i);
-      assert.match(doc, /private mapping is prepared/i);
+      assert.match(doc, /\.secrets\/\*\*/i);
+      assert.match(doc, /untracked/i);
+      assert.match(doc, /outside committed Git history/i);
+      assert.doesNotMatch(doc, /outside the repository/i);
+      assert.doesNotMatch(doc, /repository-external mapping/i);
     });
     it('Documents committed template is structure only, not runner input', () => {
       assert.match(doc, /structure only/i);

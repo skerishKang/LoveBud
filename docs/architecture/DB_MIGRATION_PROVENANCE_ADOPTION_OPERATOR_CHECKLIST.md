@@ -132,7 +132,8 @@ Operators must prepare an abstract role mapping before Phase B execution approva
 
 ### B. Operator-private runtime mapping
 
-- Prepared in an approved private boundary outside the repository
+- The operator-private runtime mapping is stored under the repository-local, untracked `.secrets/**` private boundary
+- It remains outside committed Git history, PRs, issues, logs, chat, screenshots, and shared evidence
 - Keys are actual PostgreSQL role identifiers verified by the operator
 - Values are committed abstract role classes from the contract enum
 - Actual key/value pairs must never be recorded in this checklist, issues, PRs, logs, chat, or screenshots
@@ -219,10 +220,10 @@ The operator must prepare the following items before requesting Phase B executio
    - Credential satisfies TLS, version, loopback, object scope, and write-prohibition properties listed in OI-1
    - Credential custodian is identified and separate from collection executor
 
-2. OI-2 abstract role mapping confirmation:
-   - Template uses only committed abstract role classes
-   - Template contains exactly five entries with distinct placeholder keys
-    - The committed placeholder template has been reviewed as structure only; a separately prepared operator-private runtime mapping is required for Phase B, but this checklist neither creates nor validates that private mapping
+  2. OI-2 abstract role mapping confirmation:
+     - Template uses only committed abstract role classes
+     - Template contains exactly five entries with distinct placeholder keys
+     - The committed placeholder template has been reviewed as structure only; a separately prepared operator-private runtime mapping is required for Phase B, but this checklist neither creates nor validates that private mapping
 
 3. Reviewed plan confirmation:
    - `db/migration-provenance/adoption-baseline-collection-plan-contract.json` is the active reviewed plan
@@ -234,7 +235,7 @@ The operator must prepare the following items before requesting Phase B executio
 - Boundary contract source has been read: `scripts/production-readonly-catalog-boundary-core.cjs`
 - Collection runner source has been read: `scripts/run-production-readonly-catalog-collection.cjs`
 - Receipt builder source has been read: `scripts/phase-b-collection-receipt-core.cjs`
-    - Operator understands that collection runs in an EXPLICIT_READ_ONLY_TRANSACTION, confirmed by READ_ONLY_TRANSACTION_CONFIRMED, with NO_CALLER_SQL and NO_APPLICATION_ROW_READS
+- Operator understands that collection runs in an EXPLICIT_READ_ONLY_TRANSACTION, confirmed by READ_ONLY_TRANSACTION_CONFIRMED, with NO_CALLER_SQL and NO_APPLICATION_ROW_READS
 - Operator understands that no mutation SQL, no caller SQL, and no application row reads are permitted
 
 ### Approval event
@@ -281,7 +282,7 @@ After Phase B execution approval is granted, the collection session must pass th
 ### Transaction preflight
 
 - Collection opens an EXPLICIT_READ_ONLY_TRANSACTION
-- Transaction read-only status is confirmed before catalog queries (READ_ONLY_TRANSITION_CONFIRMED)
+- Transaction read-only status is confirmed before catalog queries (READ_ONLY_TRANSACTION_CONFIRMED)
 - The boundary enforces a non-committing termination; collection mode does not permit commit; exact transaction statements remain implementation-owned and are not reproduced by this checklist
 
 ### Failure behavior
@@ -471,7 +472,7 @@ Phase E implements the physical ledger relation, migration runner, and canonical
 ### Collection incident
 
 - If the boundary fails during collection, the operator must stop immediately
-    - The boundary enforces a non-committing termination; commit is not permitted for this collection mode
+- The boundary enforces a non-committing termination; commit is not permitted for this collection mode
 - Partial success must not be claimed
 - Incident must be reported with the exact boundary failure category
 - Evidence must not be shared outside the operator boundary until the incident is reviewed
@@ -479,9 +480,9 @@ Phase E implements the physical ledger relation, migration runner, and canonical
 ### Credential incident
 
 - If the dedicated credential is exposed, the operator must treat the session as compromised
-    - Credential remediation must follow a separately approved operator incident process
-    - This checklist does not specify provider-console operations
-    - Collection remains stopped until the owner confirms that the credential boundary is safe again
+- Credential remediation must follow a separately approved operator incident process
+- This checklist does not specify provider-console operations
+- Collection remains stopped until the owner confirms that the credential boundary is safe again
 - Collection must not continue with the exposed credential
 - Incident must be reported independently of collection outcome
 
@@ -526,7 +527,7 @@ Use this section to track preparation status. This checklist is a documentation 
 - [ ] Boundary contract source has been read
 - [ ] Collection runner source has been read
 - [ ] Receipt builder source has been read
-- [ ] Transaction behavior (EXPLICIT_READ_ONLY_TRANSACTION, READ_ONLY_TRANSITION_CONFIRMED, NO_CALLER_SQL, NO_APPLICATION_ROW_READS) is understood
+- [ ] Transaction behavior (EXPLICIT_READ_ONLY_TRANSACTION, READ_ONLY_TRANSACTION_CONFIRMED, NO_CALLER_SQL, NO_APPLICATION_ROW_READS) is understood
 - [ ] No-caller-SQL and no-mutation policy is understood
 
 ### Phase C readiness
