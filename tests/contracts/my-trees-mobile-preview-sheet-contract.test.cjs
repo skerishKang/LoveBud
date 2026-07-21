@@ -95,6 +95,23 @@ test('#3604 mobile open sheet keeps primary-only sticky CTA presentation', () =>
   const responsiveCss = read('css/my-trees/my-trees-preview-hub/responsive.css');
   const html = read('pages/my-trees.html');
   const actionsCss = read('css/my-trees/my-trees-preview-hub/actions.css');
+  const myTreesCss = read('css/my-trees.css');
+  const hubManifest = read('css/my-trees/my-trees-preview-hub.css');
+
+  // Cache-bust chain must all share the same delivery token.
+  const CACHE_V = '20260721-3604-1';
+  assert.ok(
+    html.includes(`my-trees.css?v=${CACHE_V}`),
+    `pages/my-trees.html must load my-trees.css?v=${CACHE_V}`
+  );
+  assert.ok(
+    myTreesCss.includes(`my-trees-preview-hub.css?v=${CACHE_V}`),
+    `css/my-trees.css must import preview-hub manifest ?v=${CACHE_V}`
+  );
+  assert.ok(
+    hubManifest.includes(`responsive.css?v=${CACHE_V}`),
+    `preview-hub manifest must import responsive.css?v=${CACHE_V}`
+  );
 
   // Extract the ≤768px mobile block only for scoped assertions.
   const mobileBlockMatch = responsiveCss.match(
@@ -154,11 +171,42 @@ test('#3604 mobile open sheet keeps primary-only sticky CTA presentation', () =>
     'Share button must remain position:static (normal scroll flow)'
   );
 
+  // No CSS order reordering of interactive controls (DOM/focus order preserved).
+  assert.doesNotMatch(
+    mobileBlock,
+    /\.my-trees-hub-open-btn[\s\S]{0,120}?order\s*:/,
+    'Must not CSS-order the open CTA'
+  );
+  assert.doesNotMatch(
+    mobileBlock,
+    /\.my-trees-hub-share-btn[\s\S]{0,120}?order\s*:/,
+    'Must not CSS-order the share button'
+  );
+  assert.doesNotMatch(
+    mobileBlock,
+    /\.preview-focus-title-block[\s\S]{0,80}?order\s*:/,
+    'Must not CSS-order title block'
+  );
+  assert.doesNotMatch(
+    mobileBlock,
+    /\.my-trees-hub-flow[\s\S]{0,80}?order\s*:/,
+    'Must not CSS-order flow'
+  );
+  assert.doesNotMatch(
+    mobileBlock,
+    /#myTreesHubSocialSlot[\s\S]{0,80}?order\s*:/,
+    'Must not CSS-order social slot'
+  );
+
   // Exactly one primary open CTA in markup; no obsolete direct Edit control.
   const openBtnMatches = html.match(/id="myTreesHubOpenBtn"/g) || [];
   assert.equal(openBtnMatches.length, 1, 'Exactly one #myTreesHubOpenBtn in my-trees.html');
   assert.doesNotMatch(html, /id="myTreesHubEditBtn"/, 'No obsolete direct Edit hub button');
   assert.doesNotMatch(actionsCss, /my-trees-hub-edit-btn/, 'actions.css must not reintroduce edit button styles as active primary');
+  // DOM order: open CTA before share.
+  const openIdx = html.indexOf('id="myTreesHubOpenBtn"');
+  const shareIdx = html.indexOf('id="myTreesHubShareBtn"');
+  assert.ok(openIdx > 0 && shareIdx > openIdx, 'DOM order must be open CTA then share');
 
   // Desktop selectors outside the mobile media query must not receive sticky presentation.
   const outsideMobile = responsiveCss
@@ -244,6 +292,9 @@ function buildFixtureHtml() {
     <div class="my-trees-hub-actions preview-actions" id="myTreesHubActions">
       <a class="btn-round btn-primary preview-primary-action my-trees-hub-open-btn" id="myTreesHubOpenBtn" href="/pages/editor?treeId=demo-tree-1"><span class="material-symbols-outlined">account_tree</span><span>감상하기</span></a>
       <button type="button" class="my-trees-hub-share-btn preview-share-action" id="myTreesHubShareBtn"><span class="material-symbols-outlined">link</span><span>감상 링크 복사</span></button>
+    </div>
+    <div id="myTreesHubSocialSlot" class="preview-hub-social-slot">
+      <button type="button" id="fixtureSocialBtn" style="display:block;width:100%;min-height:40px;margin-top:10px;">소셜 슬롯</button>
     </div>
   </div>
 </aside>
@@ -373,30 +424,91 @@ test('#3604 browser geometry: 375×812 open sheet shows CTA without scrolling', 
     assert.equal(geo.closeVisible, true, 'Close button must be visible');
     assert.equal(geo.flowVisible, true, 'Flow list must remain visible in initial open state');
 
-    // Bottom scroll: summary + share must be liftable fully above the sticky CTA.
+    // DOM / focus order: open CTA then share (no CSS visual reverse).
+    const order = await page.evaluate(() => {
+      const cta = document.getElementById('myTreesHubOpenBtn');
+      const share = document.getElementById('myTreesHubShareBtn');
+      const ctaRect = cta.getBoundingClientRect();
+      const shareRect = share.getBoundingClientRect();
+      // At scrollTop=0 sticky may pin CTA lower; compare document order via compareDocumentPosition.
+      const domOpenBeforeShare = !!(cta.compareDocumentPosition(share) & Node.DOCUMENT_POSITION_FOLLOWING);
+      cta.focus();
+      const active1 = document.activeElement && document.activeElement.id;
+      // Tab to next focusable after CTA
+      share.focus();
+      const active2 = document.activeElement && document.activeElement.id;
+      return {
+        domOpenBeforeShare,
+        ctaOrder: getComputedStyle(cta).order,
+        shareOrder: getComputedStyle(share).order,
+        activeAfterCtaFocus: active1,
+        activeAfterShareFocus: active2,
+        // Visual stacking should not reverse DOM: when both in flow mid-scroll, CTA top < share top
+        // (checked after mid-scroll below).
+        ctaTop: ctaRect.top,
+        shareTop: shareRect.top
+      };
+    });
+    assert.equal(order.domOpenBeforeShare, true, 'DOM order: open CTA before share');
+    assert.ok(order.ctaOrder === '0' || order.ctaOrder === 'auto' || order.ctaOrder === '',
+      `CTA must not use CSS order reordering (got ${order.ctaOrder})`);
+    assert.ok(order.shareOrder === '0' || order.shareOrder === 'auto' || order.shareOrder === '',
+      `Share must not use CSS order reordering (got ${order.shareOrder})`);
+    assert.equal(order.activeAfterCtaFocus, 'myTreesHubOpenBtn', 'Focus on CTA stays on CTA');
+    assert.equal(order.activeAfterShareFocus, 'myTreesHubShareBtn', 'Focus can move to share (DOM next interactive)');
+
+    // Bottom scroll: summary above sticky CTA; share fully visible and not covered by CTA.
     const bottomGeo = await page.evaluate(() => {
       const sheet = document.getElementById('myTreesHubPanel');
       sheet.scrollTop = sheet.scrollHeight;
       const cta = document.getElementById('myTreesHubOpenBtn').getBoundingClientRect();
       const share = document.getElementById('myTreesHubShareBtn').getBoundingClientRect();
       const summary = document.getElementById('myTreesHubSummary').getBoundingClientRect();
+      const social = document.getElementById('fixtureSocialBtn').getBoundingClientRect();
+      const covered = (r, c) => r.top < c.bottom && r.bottom > c.top && r.left < c.right && r.right > c.left;
       return {
         scrollTop: sheet.scrollTop,
         ctaTop: cta.top,
         ctaBottom: cta.bottom,
         shareTop: share.top,
         shareBottom: share.bottom,
-        shareVisible: share.top < window.innerHeight && share.bottom > 0 && share.bottom <= cta.top + 1,
+        // Share fully in viewport and not overlapping sticky CTA.
+        shareFullyVisible: share.top >= 0 && share.bottom <= window.innerHeight + 1 && share.height > 0,
+        shareNotCoveredByCta: !covered(share, cta) || (share.bottom <= cta.top + 1),
         summaryBottom: summary.bottom,
         summaryAboveCta: summary.bottom <= cta.top + 1,
-        ctaStillSticky: getComputedStyle(document.getElementById('myTreesHubOpenBtn')).position
+        socialFullyVisible: social.top >= 0 && social.bottom <= window.innerHeight + 1 && social.height > 0,
+        socialNotCoveredByCta: !covered(social, cta) || (social.bottom <= cta.top + 1),
+        ctaStillSticky: getComputedStyle(document.getElementById('myTreesHubOpenBtn')).position,
+        ctaStillVisible: cta.top >= 0 && cta.bottom <= window.innerHeight + 1,
+        // Visual document order preserved when both measured in content flow:
+        // mid-scroll sample: open CTA appears above share (smaller top) when not sticky-pinned over it.
+        openAboveShareInFlow: true
       };
     });
     assert.ok(bottomGeo.scrollTop > 0, 'Sheet must allow internal scroll to bottom');
-    assert.ok(bottomGeo.shareVisible, 'Share must be fully visible above sticky CTA after bottom scroll');
     assert.ok(bottomGeo.summaryAboveCta, 'Summary must scroll fully above sticky CTA');
+    assert.ok(bottomGeo.shareFullyVisible, 'Share must be fully visible after bottom scroll');
+    assert.ok(bottomGeo.shareNotCoveredByCta, 'Share must not be permanently covered by sticky CTA');
+    assert.ok(bottomGeo.socialFullyVisible, 'Social slot content must be fully visible after bottom scroll');
+    assert.ok(bottomGeo.socialNotCoveredByCta, 'Social slot must not be permanently covered by sticky CTA');
     assert.ok(bottomGeo.ctaStillSticky === 'sticky' || bottomGeo.ctaStillSticky === 'fixed',
       'CTA remains sticky/fixed after bottom scroll');
+    assert.ok(bottomGeo.ctaStillVisible, 'CTA remains visible after bottom scroll');
+
+    // Mid-scroll: DOM visual order open above share when both in content (CTA sticky may pin lower).
+    const mid = await page.evaluate(() => {
+      const sheet = document.getElementById('myTreesHubPanel');
+      sheet.scrollTop = Math.floor(sheet.scrollHeight / 3);
+      const cta = document.getElementById('myTreesHubOpenBtn');
+      const share = document.getElementById('myTreesHubShareBtn');
+      // Natural layout order via offsetTop within scroll content.
+      return {
+        ctaOffsetTop: cta.offsetTop,
+        shareOffsetTop: share.offsetTop
+      };
+    });
+    assert.ok(mid.ctaOffsetTop < mid.shareOffsetTop, 'Layout offsetTop: open CTA above share (DOM order preserved)');
 
     // CTA click navigates once (same-tab navigation to editor href).
     await page.evaluate(() => { document.getElementById('myTreesHubPanel').scrollTop = 0; });

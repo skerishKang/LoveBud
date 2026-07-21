@@ -160,46 +160,19 @@ body.preview-sheet-open {
      *   parent remains a tight containing block below the fold.
      * - display: contents on .my-trees-hub-actions lets the open button
      *   stick against the sheet scrollport; share stays position:static.
-     * - sheet bottom padding reserves clearance so summary/share can
-     *   scroll fully above the persistent CTA.
+     * - sheet bottom padding reserves clearance so summary/share/social
+     *   can scroll fully into view without being permanently covered.
+     *
+     * Focus/a11y: do not use CSS `order` to rearrange interactive
+     * controls. DOM order remains open CTA → share (and focus follows).
      */
-    #myTreesHubPanel.preview-sidebar.is-open #myTreesHubContent {
-        /* Flex + contents lets us order share before the sticky open CTA so
-           bottom-scroll can lift summary/share fully above the persistent CTA. */
-        display: flex;
-        flex-direction: column;
-    }
-
     #myTreesHubPanel.preview-sidebar.is-open .my-trees-hub-actions {
         /* Flatten the actions wrapper so the open button's sticky
            containing block is the sheet scrollport, not a short parent. */
         display: contents;
     }
 
-    #myTreesHubPanel.preview-sidebar.is-open .preview-focus-title-block {
-        order: 1;
-    }
-
-    #myTreesHubPanel.preview-sidebar.is-open .my-trees-hub-flow,
-    #myTreesHubPanel.preview-sidebar.is-open .my-trees-hub-no-moments {
-        order: 2;
-    }
-
-    #myTreesHubPanel.preview-sidebar.is-open .my-trees-hub-summary {
-        order: 3;
-    }
-
-    #myTreesHubPanel.preview-sidebar.is-open .my-trees-hub-share-btn {
-        order: 4;
-        position: static;
-        margin-top: 12px;
-        width: 100%;
-        max-width: 100%;
-        box-sizing: border-box;
-    }
-
     #myTreesHubPanel.preview-sidebar.is-open .my-trees-hub-open-btn {
-        order: 5;
         position: -webkit-sticky;
         position: sticky;
         bottom: calc(6px + env(safe-area-inset-bottom, 0px));
@@ -213,8 +186,17 @@ body.preview-sheet-open {
         box-shadow: 0 12px 24px rgba(75, 64, 57, 0.14);
     }
 
+    #myTreesHubPanel.preview-sidebar.is-open .my-trees-hub-share-btn {
+        position: static;
+        margin-top: 12px;
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
+    }
+
     #myTreesHubPanel.preview-sidebar.is-open #myTreesHubSocialSlot {
-        order: 6;
+        /* Normal document flow after actions; not sticky/fixed. */
+        position: static;
     }
 }
 
