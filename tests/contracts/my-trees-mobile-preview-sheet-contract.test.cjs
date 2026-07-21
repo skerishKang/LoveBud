@@ -1,6 +1,7 @@
 /**
  * LoveBud My Trees Mobile Preview Sheet Contract Test
- * Includes #3604 initial CTA visibility presentation contract.
+ * Includes #3604 initial CTA visibility presentation contract and the
+ * Production follow-up for transformed page-transition containing blocks.
  */
 
 const test = require('node:test');
@@ -11,6 +12,7 @@ const http = require('http');
 const net = require('net');
 
 const ROOT = path.join(__dirname, '..', '..');
+const CACHE_V = '20260721-3604-2';
 
 function read(rel) {
   return fs.readFileSync(path.join(ROOT, rel), 'utf8');
@@ -99,7 +101,6 @@ test('#3604 mobile open sheet keeps primary-only sticky CTA presentation', () =>
   const hubManifest = read('css/my-trees/my-trees-preview-hub.css');
 
   // Cache-bust chain must all share the same delivery token.
-  const CACHE_V = '20260721-3604-1';
   assert.ok(
     html.includes(`my-trees.css?v=${CACHE_V}`),
     `pages/my-trees.html must load my-trees.css?v=${CACHE_V}`
@@ -171,6 +172,18 @@ test('#3604 mobile open sheet keeps primary-only sticky CTA presentation', () =>
     'Share button must remain position:static (normal scroll flow)'
   );
 
+  // Scoped transform neutralization while the mobile sheet is open only.
+  assert.match(
+    mobileBlock,
+    /body\.preview-sheet-open\s+\.my-trees-container\.page-transition-enter[\s\S]*?transform:\s*none/,
+    'Mobile sheet-open must neutralize .my-trees-container.page-transition-enter transform'
+  );
+  assert.match(
+    mobileBlock,
+    /body\.preview-sheet-open\s+\.my-trees-container\.page-transition-enter\.is-visible[\s\S]*?transform:\s*none/,
+    'Mobile sheet-open must neutralize completed .is-visible page-transition transform'
+  );
+
   // No CSS order reordering of interactive controls (DOM/focus order preserved).
   assert.doesNotMatch(
     mobileBlock,
@@ -217,6 +230,11 @@ test('#3604 mobile open sheet keeps primary-only sticky CTA presentation', () =>
     /\.my-trees-hub-open-btn[\s\S]*position:\s*sticky/,
     'Sticky open CTA presentation must not apply outside the mobile media query'
   );
+  assert.doesNotMatch(
+    outsideMobile,
+    /body\.preview-sheet-open[\s\S]*transform:\s*none/,
+    'page-transition transform neutralization must stay inside the mobile media query'
+  );
 });
 
 /* ── Optional Chromium geometry (fail-closed when Playwright unavailable) ── */
@@ -246,11 +264,26 @@ function getFreePort() {
   });
 }
 
-function buildFixtureHtml() {
+/**
+ * Production-equivalent fixture ancestry:
+ * sheet is a descendant of
+ * <main class="my-trees-container ... page-transition-enter is-visible">
+ * and page-transitions.css is loaded so completed enter keeps
+ * transform: translateY(0) until the mobile sheet-open correction applies.
+ * body.preview-sheet-open + body top offset mirrors controller scroll-lock.
+ */
+function buildFixtureHtml(options = {}) {
+  const sheetOpen = options.sheetOpen !== false;
+  const scrollLockY = Number.isFinite(options.scrollLockY) ? options.scrollLockY : 232;
+  const bodyClass = sheetOpen ? 'preview-sheet-open' : '';
+  const bodyTop = sheetOpen ? `top: -${scrollLockY}px;` : '';
+  const sheetOpenClass = sheetOpen ? ' is-open' : '';
+
   return `<!DOCTYPE html>
 <html lang="ko"><head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+<link rel="stylesheet" href="/css/page-transitions.css"/>
 <link rel="stylesheet" href="/css/my-trees/my-trees-preview-hub/layout.css"/>
 <link rel="stylesheet" href="/css/my-trees/my-trees-preview-hub/actions.css"/>
 <link rel="stylesheet" href="/css/my-trees/my-trees-preview-hub/content.css"/>
@@ -259,9 +292,17 @@ function buildFixtureHtml() {
   :root { --primary: #904951; --font-heading: system-ui, sans-serif; --on-surface-variant: #5c514c; --outline-variant: rgba(144,73,81,.14); --surface-container: rgba(255,255,255,.5); }
   body { margin: 0; font-family: system-ui, sans-serif; background: #f6f1ec; min-height: 200vh; }
   .material-symbols-outlined { font-family: system-ui; font-size: 16px; }
+  .my-trees-container { min-height: 100vh; padding: 12px; box-sizing: border-box; }
+  /* Prefer reduced motion so open-sheet slide animation does not mask geometry. */
+  @media (prefers-reduced-motion: no-preference) {
+    #myTreesHubPanel.preview-sidebar.is-open { animation-duration: 1ms; }
+  }
 </style>
-</head><body>
-<aside class="my-trees-hub-panel preview-sidebar preview-hub is-open" id="myTreesHubPanel">
+</head>
+<body class="${bodyClass}" style="${bodyTop}">
+<main class="my-trees-container lovetree-calm-two-column-shell page-transition-enter is-visible" id="myTreesPageRoot">
+  <div class="my-trees-list-pad" style="height:180px;background:#eee;margin-bottom:12px;border-radius:12px;">owner tree list</div>
+  <aside class="my-trees-hub-panel preview-sidebar preview-hub${sheetOpenClass}" id="myTreesHubPanel">
   <div class="my-trees-hub-header preview-panel-header">
     <div class="my-trees-hub-title-group preview-panel-title-group">
       <h3>내 러브트리</h3>
@@ -298,7 +339,47 @@ function buildFixtureHtml() {
     </div>
   </div>
 </aside>
+</main>
 </body></html>`;
+}
+
+function startFixtureServer(fixtureHtml) {
+  return getFreePort().then((port) => new Promise((resolve, reject) => {
+    const server = http.createServer((req, res) => {
+      try {
+        let urlPath = decodeURIComponent((req.url || '/').split('?')[0]);
+        if (urlPath === '/' || urlPath === '/fixture.html') {
+          res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+          res.end(fixtureHtml);
+          return;
+        }
+        const abs = path.normalize(path.join(ROOT, urlPath.replace(/^\//, '')));
+        if (!abs.startsWith(ROOT) || !fs.existsSync(abs) || fs.statSync(abs).isDirectory()) {
+          res.writeHead(404);
+          res.end('not found');
+          return;
+        }
+        res.writeHead(200, { 'Content-Type': contentType(abs) });
+        res.end(fs.readFileSync(abs));
+      } catch (e) {
+        res.writeHead(500);
+        res.end(String(e));
+      }
+    });
+    server.listen(port, '127.0.0.1', () => resolve({ server, port }));
+    server.on('error', reject);
+  }));
+}
+
+function isFullyVisible(rect, viewportH, viewportW) {
+  return (
+    rect.top >= -1 &&
+    rect.bottom <= viewportH + 1 &&
+    rect.left >= -1 &&
+    rect.right <= viewportW + 1 &&
+    rect.width > 0 &&
+    rect.height > 0
+  );
 }
 
 test('#3604 browser geometry: 375×812 open sheet shows CTA without scrolling', { timeout: 60000 }, async () => {
@@ -309,30 +390,8 @@ test('#3604 browser geometry: 375×812 open sheet shows CTA without scrolling', 
     throw new Error(`PLAYWRIGHT_BROWSER_BINARY_UNAVAILABLE: ${err && err.message ? err.message : err}`);
   }
 
-  const port = await getFreePort();
-  const fixtureHtml = buildFixtureHtml();
-  const server = http.createServer((req, res) => {
-    try {
-      let urlPath = decodeURIComponent((req.url || '/').split('?')[0]);
-      if (urlPath === '/' || urlPath === '/fixture.html') {
-        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-        res.end(fixtureHtml);
-        return;
-      }
-      const abs = path.normalize(path.join(ROOT, urlPath.replace(/^\//, '')));
-      if (!abs.startsWith(ROOT) || !fs.existsSync(abs) || fs.statSync(abs).isDirectory()) {
-        res.writeHead(404);
-        res.end('not found');
-        return;
-      }
-      res.writeHead(200, { 'Content-Type': contentType(abs) });
-      res.end(fs.readFileSync(abs));
-    } catch (e) {
-      res.writeHead(500);
-      res.end(String(e));
-    }
-  });
-  await new Promise((resolve) => server.listen(port, '127.0.0.1', resolve));
+  const fixtureHtml = buildFixtureHtml({ sheetOpen: true, scrollLockY: 232 });
+  const { server, port } = await startFixtureServer(fixtureHtml);
 
   try {
     const context = await browser.newContext({
@@ -340,26 +399,32 @@ test('#3604 browser geometry: 375×812 open sheet shows CTA without scrolling', 
       deviceScaleFactor: 1
     });
     const page = await context.newPage();
-    await page.goto(`http://127.0.0.1:${port}/fixture.html`, { waitUntil: 'domcontentloaded' });
-    // Wait for primary-only sticky layout to settle.
+    await page.goto(`http://127.0.0.1:${port}/fixture.html`, { waitUntil: 'networkidle' });
+    // Wait for primary-only sticky layout + viewport-anchored sheet to settle.
     await page.waitForFunction(() => {
+      const main = document.getElementById('myTreesPageRoot');
       const sheet = document.getElementById('myTreesHubPanel');
       const cta = document.getElementById('myTreesHubOpenBtn');
       const share = document.getElementById('myTreesHubShareBtn');
-      if (!sheet || !cta || !share) return false;
+      if (!main || !sheet || !cta || !share) return false;
       const cr = cta.getBoundingClientRect();
+      const sr = sheet.getBoundingClientRect();
       const ctaPos = getComputedStyle(cta).position;
       const sharePos = getComputedStyle(share).position;
+      const mainTransform = getComputedStyle(main).transform;
       return (
         (ctaPos === 'sticky' || ctaPos === 'fixed') &&
         sharePos !== 'sticky' &&
         sharePos !== 'fixed' &&
+        mainTransform === 'none' &&
+        sr.bottom <= window.innerHeight + 1 &&
         cr.bottom <= window.innerHeight + 1 &&
         cr.top >= 0
       );
-    }, { timeout: 5000 });
+    }, { timeout: 8000 });
 
     const geo = await page.evaluate(() => {
+      const main = document.getElementById('myTreesPageRoot');
       const sheet = document.getElementById('myTreesHubPanel');
       const ctas = document.querySelectorAll('#myTreesHubOpenBtn, a.my-trees-hub-open-btn');
       const cta = document.getElementById('myTreesHubOpenBtn');
@@ -371,14 +436,42 @@ test('#3604 browser geometry: 375×812 open sheet shows CTA without scrolling', 
       const cs = getComputedStyle(sheet);
       const ctaCs = getComputedStyle(cta);
       const shareCs = getComputedStyle(share);
+      const mainCs = getComputedStyle(main);
       const summary = document.getElementById('myTreesHubSummary');
       const sum = summary ? summary.getBoundingClientRect() : null;
+      const fullyVisible = (r) =>
+        r.top >= -1 &&
+        r.bottom <= window.innerHeight + 1 &&
+        r.left >= -1 &&
+        r.right <= window.innerWidth + 1 &&
+        r.width > 0 &&
+        r.height > 0;
       return {
         ctaCount: ctas.length,
         scrollTop: sheet.scrollTop,
-        sheet: { top: sr.top, bottom: sr.bottom, height: sr.height, left: sr.left, right: sr.right },
-        cta: { top: cr.top, bottom: cr.bottom, left: cr.left, right: cr.right, position: ctaCs.position },
-        share: { top: sh.top, bottom: sh.bottom, position: shareCs.position, visible: sh.top < innerHeight && sh.bottom > 0 },
+        mainTransform: mainCs.transform,
+        sheet: {
+          top: sr.top,
+          bottom: sr.bottom,
+          height: sr.height,
+          left: sr.left,
+          right: sr.right,
+          position: cs.position
+        },
+        cta: {
+          top: cr.top,
+          bottom: cr.bottom,
+          left: cr.left,
+          right: cr.right,
+          position: ctaCs.position,
+          fullyVisible: fullyVisible(cr)
+        },
+        share: {
+          top: sh.top,
+          bottom: sh.bottom,
+          position: shareCs.position,
+          visible: sh.top < innerHeight && sh.bottom > 0
+        },
         viewportH: window.innerHeight,
         maxHeight: cs.maxHeight,
         overflowY: cs.overflowY,
@@ -410,14 +503,24 @@ test('#3604 browser geometry: 375×812 open sheet shows CTA without scrolling', 
     assert.equal(geo.hasEdit, false, 'No direct Edit control');
     assert.equal(geo.modeEdit, false, 'CTA href must not include mode=edit');
     assert.match(geo.href, /\/pages\/editor\?treeId=/, 'CTA destination must be /pages/editor?treeId=...');
+    assert.equal(geo.sheet.position, 'fixed', `Sheet must be position:fixed (got ${geo.sheet.position})`);
+    assert.equal(geo.mainTransform, 'none',
+      `Open sheet must neutralize page-transition transform on main (got ${geo.mainTransform})`);
     assert.ok(geo.cta.position === 'sticky' || geo.cta.position === 'fixed',
       `Primary CTA must be sticky/fixed (got ${geo.cta.position})`);
     assert.ok(geo.share.position !== 'sticky' && geo.share.position !== 'fixed',
       `Share must not be sticky/fixed (got ${geo.share.position})`);
+    assert.equal(geo.share.position, 'static', `Share must remain position:static (got ${geo.share.position})`);
     assert.ok(parseFloat(geo.maxHeight) > 0 || /dvh|px/.test(geo.maxHeight), 'Sheet must keep max-height contract');
     assert.equal(geo.overflowY, 'auto', 'Sheet must keep overflow-y:auto');
+    assert.ok(geo.sheet.bottom <= geo.viewportH + 1,
+      `Sheet bottom (${geo.sheet.bottom}) must be <= viewport height (${geo.viewportH})`);
+    assert.ok(geo.sheet.top >= -1,
+      `Sheet top (${geo.sheet.top}) must be >= 0 (viewport-anchored, not shifted with main)`);
     assert.ok(geo.cta.top >= geo.sheet.top - 1, `CTA top (${geo.cta.top}) must be >= sheet top (${geo.sheet.top})`);
     assert.ok(geo.cta.bottom <= geo.viewportH + 1, `CTA bottom (${geo.cta.bottom}) must be <= viewport height (${geo.viewportH})`);
+    assert.equal(geo.cta.fullyVisible, true,
+      `CTA must be fully visible at scrollTop=0 (top=${geo.cta.top}, bottom=${geo.cta.bottom}, vh=${geo.viewportH})`);
     assert.ok(geo.cta.left >= geo.sheet.left - 1, 'CTA left within sheet');
     assert.ok(geo.cta.right <= geo.sheet.right + 1, 'CTA right within sheet');
     assert.equal(geo.overflow.documentScrollWidth, geo.overflow.documentClientWidth, 'No document-level horizontal overflow');
@@ -430,11 +533,9 @@ test('#3604 browser geometry: 375×812 open sheet shows CTA without scrolling', 
       const share = document.getElementById('myTreesHubShareBtn');
       const ctaRect = cta.getBoundingClientRect();
       const shareRect = share.getBoundingClientRect();
-      // At scrollTop=0 sticky may pin CTA lower; compare document order via compareDocumentPosition.
       const domOpenBeforeShare = !!(cta.compareDocumentPosition(share) & Node.DOCUMENT_POSITION_FOLLOWING);
       cta.focus();
       const active1 = document.activeElement && document.activeElement.id;
-      // Tab to next focusable after CTA
       share.focus();
       const active2 = document.activeElement && document.activeElement.id;
       return {
@@ -443,8 +544,6 @@ test('#3604 browser geometry: 375×812 open sheet shows CTA without scrolling', 
         shareOrder: getComputedStyle(share).order,
         activeAfterCtaFocus: active1,
         activeAfterShareFocus: active2,
-        // Visual stacking should not reverse DOM: when both in flow mid-scroll, CTA top < share top
-        // (checked after mid-scroll below).
         ctaTop: ctaRect.top,
         shareTop: shareRect.top
       };
@@ -472,7 +571,6 @@ test('#3604 browser geometry: 375×812 open sheet shows CTA without scrolling', 
         ctaBottom: cta.bottom,
         shareTop: share.top,
         shareBottom: share.bottom,
-        // Share fully in viewport and not overlapping sticky CTA.
         shareFullyVisible: share.top >= 0 && share.bottom <= window.innerHeight + 1 && share.height > 0,
         shareNotCoveredByCta: !covered(share, cta) || (share.bottom <= cta.top + 1),
         summaryBottom: summary.bottom,
@@ -481,8 +579,6 @@ test('#3604 browser geometry: 375×812 open sheet shows CTA without scrolling', 
         socialNotCoveredByCta: !covered(social, cta) || (social.bottom <= cta.top + 1),
         ctaStillSticky: getComputedStyle(document.getElementById('myTreesHubOpenBtn')).position,
         ctaStillVisible: cta.top >= 0 && cta.bottom <= window.innerHeight + 1,
-        // Visual document order preserved when both measured in content flow:
-        // mid-scroll sample: open CTA appears above share (smaller top) when not sticky-pinned over it.
         openAboveShareInFlow: true
       };
     });
@@ -502,7 +598,6 @@ test('#3604 browser geometry: 375×812 open sheet shows CTA without scrolling', 
       sheet.scrollTop = Math.floor(sheet.scrollHeight / 3);
       const cta = document.getElementById('myTreesHubOpenBtn');
       const share = document.getElementById('myTreesHubShareBtn');
-      // Natural layout order via offsetTop within scroll content.
       return {
         ctaOffsetTop: cta.offsetTop,
         shareOffsetTop: share.offsetTop
@@ -537,6 +632,76 @@ test('#3604 browser geometry: 375×812 open sheet shows CTA without scrolling', 
   }
 });
 
+test('#3604 sheet close restores page-transition transform (not permanently removed)', { timeout: 60000 }, async () => {
+  let browser;
+  try {
+    browser = await playwright.chromium.launch({ headless: true, args: ['--disable-dev-shm-usage'] });
+  } catch (err) {
+    throw new Error(`PLAYWRIGHT_BROWSER_BINARY_UNAVAILABLE: ${err && err.message ? err.message : err}`);
+  }
+
+  // Start open, then close via body class removal (mirrors controller close path).
+  const fixtureHtml = buildFixtureHtml({ sheetOpen: true, scrollLockY: 232 });
+  const { server, port } = await startFixtureServer(fixtureHtml);
+
+  try {
+    const context = await browser.newContext({
+      viewport: { width: 375, height: 812 },
+      deviceScaleFactor: 1
+    });
+    const page = await context.newPage();
+    await page.goto(`http://127.0.0.1:${port}/fixture.html`, { waitUntil: 'networkidle' });
+
+    const openState = await page.evaluate(() => {
+      const main = document.getElementById('myTreesPageRoot');
+      return {
+        transform: getComputedStyle(main).transform,
+        transition: getComputedStyle(main).transition
+      };
+    });
+    assert.equal(openState.transform, 'none', 'While sheet open, main transform must be none');
+
+    const closedState = await page.evaluate(() => {
+      // Mirror controller close: remove preview-sheet-open and clear body top.
+      document.body.classList.remove('preview-sheet-open');
+      document.body.style.top = '';
+      const sheet = document.getElementById('myTreesHubPanel');
+      sheet.classList.remove('is-open');
+      const main = document.getElementById('myTreesPageRoot');
+      const cs = getComputedStyle(main);
+      return {
+        transform: cs.transform,
+        transition: cs.transition,
+        transitionProperty: cs.transitionProperty,
+        opacity: cs.opacity
+      };
+    });
+
+    // page-transitions.css .page-transition-enter.is-visible keeps translateY(0)
+    // which computes to matrix(1,0,0,1,0,0) — NOT permanently stripped to none.
+    assert.notEqual(
+      closedState.transform,
+      'none',
+      `After close, page-transition transform must not stay permanently removed (got ${closedState.transform})`
+    );
+    assert.match(
+      closedState.transform,
+      /^matrix\(/,
+      `After close, completed enter transform should remain as matrix (got ${closedState.transform})`
+    );
+    assert.ok(
+      /transform/i.test(closedState.transition) || /transform/i.test(closedState.transitionProperty),
+      `After close, transition involving transform must remain available (got transition=${closedState.transition})`
+    );
+    assert.equal(closedState.opacity, '1', 'Completed enter opacity must remain 1 after close');
+
+    await context.close();
+  } finally {
+    await browser.close();
+    server.close();
+  }
+});
+
 test('#3604 desktop viewport does not sticky-pin primary CTA or share', { timeout: 60000 }, async () => {
   let browser;
   try {
@@ -545,25 +710,8 @@ test('#3604 desktop viewport does not sticky-pin primary CTA or share', { timeou
     throw new Error(`PLAYWRIGHT_BROWSER_BINARY_UNAVAILABLE: ${err && err.message ? err.message : err}`);
   }
 
-  const port = await getFreePort();
-  const fixtureHtml = buildFixtureHtml();
-  const server = http.createServer((req, res) => {
-    let urlPath = decodeURIComponent((req.url || '/').split('?')[0]);
-    if (urlPath === '/' || urlPath === '/fixture.html') {
-      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-      res.end(fixtureHtml);
-      return;
-    }
-    const abs = path.normalize(path.join(ROOT, urlPath.replace(/^\//, '')));
-    if (!abs.startsWith(ROOT) || !fs.existsSync(abs)) {
-      res.writeHead(404);
-      res.end('nf');
-      return;
-    }
-    res.writeHead(200, { 'Content-Type': contentType(abs) });
-    res.end(fs.readFileSync(abs));
-  });
-  await new Promise((resolve) => server.listen(port, '127.0.0.1', resolve));
+  const fixtureHtml = buildFixtureHtml({ sheetOpen: true, scrollLockY: 0 });
+  const { server, port } = await startFixtureServer(fixtureHtml);
 
   try {
     const context = await browser.newContext({
@@ -577,12 +725,15 @@ test('#3604 desktop viewport does not sticky-pin primary CTA or share', { timeou
       const cta = document.getElementById('myTreesHubOpenBtn');
       const share = document.getElementById('myTreesHubShareBtn');
       const sheet = document.getElementById('myTreesHubPanel');
+      const main = document.getElementById('myTreesPageRoot');
       const scs = getComputedStyle(sheet);
+      const mcs = getComputedStyle(main);
       return {
         ctaPosition: getComputedStyle(cta).position,
         sharePosition: getComputedStyle(share).position,
         sheetPosition: scs.position,
-        sheetMaxHeight: scs.maxHeight
+        sheetMaxHeight: scs.maxHeight,
+        mainTransform: mcs.transform
       };
     });
     // At 1440px the mobile media query is inactive: sticky presentation must not apply.
@@ -591,6 +742,10 @@ test('#3604 desktop viewport does not sticky-pin primary CTA or share', { timeou
     assert.ok(desktop.sharePosition !== 'sticky' && desktop.sharePosition !== 'fixed',
       `Desktop share must not be sticky/fixed (got ${desktop.sharePosition})`);
     assert.notEqual(desktop.sheetPosition, 'fixed', 'Desktop sheet must not use mobile fixed bottom-sheet position');
+    // Desktop must not apply the mobile-only transform neutralization.
+    assert.notEqual(desktop.mainTransform, 'none',
+      `Desktop must keep page-transition transform (got ${desktop.mainTransform})`);
+
     await context.close();
   } finally {
     await browser.close();

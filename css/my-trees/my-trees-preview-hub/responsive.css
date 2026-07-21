@@ -39,6 +39,9 @@ body.preview-sheet-open {
         z-index: 300;
         /* Hidden by default */
         display: none;
+        /* border-box so max-height:92dvh includes padding and the sheet
+           stays within the viewport once fixed is viewport-anchored. */
+        box-sizing: border-box;
         max-height: 92dvh;
         overflow-y: auto;
         overscroll-behavior: contain;
@@ -197,6 +200,27 @@ body.preview-sheet-open {
     #myTreesHubPanel.preview-sidebar.is-open #myTreesHubSocialSlot {
         /* Normal document flow after actions; not sticky/fixed. */
         position: static;
+    }
+
+    /*
+     * #3604 Production follow-up — transformed containing block.
+     *
+     * Production places #myTreesHubPanel inside
+     * <main class="my-trees-container ... page-transition-enter is-visible">.
+     * page-transitions.css keeps transform: translateY(0) on the completed
+     * enter state, which creates a containing block for descendants with
+     * position:fixed. The mobile sheet then anchors to that <main> (shifted
+     * further by body.preview-sheet-open scroll-lock top offset) instead of
+     * the viewport, so sheet/CTA bottoms can fall past the screen at
+     * scrollTop=0.
+     *
+     * Neutralize only the My Trees page-transition root transform while the
+     * mobile sheet is open. Do not change page-transitions.css globally and
+     * do not reparent the panel in JS.
+     */
+    body.preview-sheet-open .my-trees-container.page-transition-enter,
+    body.preview-sheet-open .my-trees-container.page-transition-enter.is-visible {
+        transform: none;
     }
 }
 
