@@ -738,7 +738,30 @@ test('#3617 Cancel and idle Escape cancel without Firebase calls; Edit focus res
   }
 });
 
-test('#3617 Korean and English i18n for edit UI; language change preserves input', async function() {
+/**
+ * Real product language path:
+ *   setCurrentLang(lang) → applyI18n() → triggerLangChange(lang)
+ * which dispatches lovebud-lang-change; settings listens via window.onLangChange.
+ */
+async function switchProductLang(page, lang) {
+  await page.evaluate(function(nextLang) {
+    if (typeof window.setCurrentLang !== 'function') {
+      throw new Error('setCurrentLang missing');
+    }
+    if (typeof window.triggerLangChange !== 'function') {
+      throw new Error('triggerLangChange missing');
+    }
+    window.setCurrentLang(nextLang);
+    if (typeof window.applyI18n === 'function') {
+      window.applyI18n();
+    }
+    window.triggerLangChange(nextLang);
+  }, lang);
+  // Allow settings onLangChange handler to run
+  await page.waitForTimeout(50);
+}
+
+test('#3617 real language event KO→EN and EN→KO preserves edit input and labels', async function() {
   const fixture = await newSettingsPage({
     user: { displayName: 'I18n User', email: 'qa@example.com', uid: 'u-i18n' },
     lang: 'ko'
@@ -751,53 +774,164 @@ test('#3617 Korean and English i18n for edit UI; language change preserves input
         editBtn: (document.getElementById('settingsProfileEditBtnLabel') || {}).textContent,
         nameLabel: (document.getElementById('settingsProfileEditLabel') || {}).textContent,
         save: (document.getElementById('settingsProfileSaveBtn') || {}).textContent,
-        cancel: (document.getElementById('settingsProfileCancelBtn') || {}).textContent
+        cancel: (document.getElementById('settingsProfileCancelBtn') || {}).textContent,
+        formHidden: document.getElementById('settingsProfileEditForm').hidden,
+        mode: window._settingsEditState.mode
       };
     });
     assert.equal(labels.editBtn, '이름 편집');
     assert.equal(labels.nameLabel, '표시 이름');
     assert.equal(labels.save, '저장');
     assert.equal(labels.cancel, '취소');
+    assert.equal(labels.formHidden, false);
+    assert.equal(labels.mode, 'editing');
 
     await page.fill('#settingsProfileNameInput', '입력중');
-    // Switch language without leaving edit mode
-    await page.evaluate(function() {
-      localStorage.setItem('lovebud_lang', 'en');
-      if (typeof window.applyI18n === 'function') window.applyI18n();
-      // settings applyI18nText path
-      if (typeof window.t === 'function') {
-        // trigger settings internal i18n refresh if available via re-call of update path
-        document.dispatchEvent(new Event('lovebud:langchange'));
-      }
-      // Directly invoke update labels through button re-show pattern used by settings
-      var label = document.getElementById('settingsProfileEditLabel');
-      var saveBtn = document.getElementById('settingsProfileSaveBtn');
-      var cancelBtn = document.getElementById('settingsProfileCancelBtn');
-      var editBtnLabel = document.getElementById('settingsProfileEditBtnLabel');
-      function tt(key, fb) {
-        var v = window.t ? window.t(key) : key;
-        return v && v !== key ? v : fb;
-      }
-      if (label) label.textContent = tt('settings.profile.nameLabel', 'Display name');
-      if (saveBtn) saveBtn.textContent = tt('settings.profile.save', 'Save');
-      if (cancelBtn) cancelBtn.textContent = tt('settings.profile.cancel', 'Cancel');
-      if (editBtnLabel) editBtnLabel.textContent = tt('settings.profile.editName', 'Edit name');
-    });
-    const inputValue = await page.inputValue('#settingsProfileNameInput');
-    assert.equal(inputValue, '입력중', 'language change must not erase input');
-    labels = await page.evaluate(function() {
+
+    // KO → EN via real product path
+    await switchProductLang(page, 'en');
+    let state = await page.evaluate(function() {
       return {
+        input: document.getElementById('settingsProfileNameInput').value,
+        formHidden: document.getElementById('settingsProfileEditForm').hidden,
+        mode: window._settingsEditState.mode,
+        saving: window._settingsEditState.saving,
+        editBtn: (document.getElementById('settingsProfileEditBtnLabel') || {}).textContent,
+        nameLabel: (document.getElementById('settingsProfileEditLabel') || {}).textContent,
+        save: (document.getElementById('settingsProfileSaveBtn') || {}).textContent,
+        cancel: (document.getElementById('settingsProfileCancelBtn') || {}).textContent,
+        calls: window.__lbUpdateProfileCalls.length
+      };
+    });
+    assert.equal(state.input, '입력중', 'KO→EN must preserve input');
+    assert.equal(state.formHidden, false, 'edit form must stay visible');
+    assert.equal(state.mode, 'editing');
+    assert.equal(state.saving, false);
+    assert.equal(state.calls, 0, 'language change must not write');
+    assert.equal(state.nameLabel, 'Display name');
+    assert.equal(state.save, 'Save');
+    assert.equal(state.cancel, 'Cancel');
+    assert.equal(state.editBtn, 'Edit name');
+
+    // EN → KO in same edit session
+    await switchProductLang(page, 'ko');
+    state = await page.evaluate(function() {
+      return {
+        input: document.getElementById('settingsProfileNameInput').value,
+        formHidden: document.getElementById('settingsProfileEditForm').hidden,
+        mode: window._settingsEditState.mode,
+        editBtn: (document.getElementById('settingsProfileEditBtnLabel') || {}).textContent,
         nameLabel: (document.getElementById('settingsProfileEditLabel') || {}).textContent,
         save: (document.getElementById('settingsProfileSaveBtn') || {}).textContent,
         cancel: (document.getElementById('settingsProfileCancelBtn') || {}).textContent
       };
     });
-    assert.equal(labels.nameLabel, 'Display name');
-    assert.equal(labels.save, 'Save');
-    assert.equal(labels.cancel, 'Cancel');
-    assertCleanRuntime(fixture, 'i18n');
+    assert.equal(state.input, '입력중', 'EN→KO must preserve input');
+    assert.equal(state.formHidden, false);
+    assert.equal(state.mode, 'editing');
+    assert.equal(state.nameLabel, '표시 이름');
+    assert.equal(state.save, '저장');
+    assert.equal(state.cancel, '취소');
+    assert.equal(state.editBtn, '이름 편집');
+    assertCleanRuntime(fixture, 'i18n-labels');
   } finally {
     await closeFixture(fixture);
+  }
+});
+
+test('#3617 real language event retranslates saving, write error, and success status', async function() {
+  // --- saving status: delayed write ---
+  const savingFixture = await newSettingsPage({
+    user: { displayName: 'Slow Lang', email: 'qa@example.com', uid: 'u-lang-save' },
+    lang: 'en',
+    updateProfileMode: 'delay',
+    delayMs: 900
+  });
+  try {
+    const page = savingFixture.page;
+    await page.click('#settingsProfileEditBtn');
+    await page.fill('#settingsProfileNameInput', 'Lang Saving');
+    await page.click('#settingsProfileSaveBtn');
+    await page.waitForFunction(function() {
+      return window._settingsEditState.saving === true;
+    });
+    let statusText = await page.locator('#settingsProfileEditStatus').textContent();
+    assert.match(statusText, /Saving/i);
+    await switchProductLang(page, 'ko');
+    statusText = await page.locator('#settingsProfileEditStatus').textContent();
+    assert.match(statusText, /저장 중/);
+    assert.equal(await page.inputValue('#settingsProfileNameInput'), 'Lang Saving');
+    assert.equal(
+      await page.evaluate(function() {
+        return window._settingsEditState.saving;
+      }),
+      true
+    );
+    // Wait for delayed success to settle so the page is not mid-write
+    await page.waitForFunction(function() {
+      const result = document.getElementById('settingsProfileResultStatus');
+      return result && (result.textContent || '').trim().length > 0;
+    }, null, { timeout: 5000 });
+  } finally {
+    await closeFixture(savingFixture);
+  }
+
+  // --- write error retranslation ---
+  const errorFixture = await newSettingsPage({
+    user: { displayName: 'Err Keep', email: 'qa@example.com', uid: 'u-lang-err' },
+    lang: 'en',
+    updateProfileMode: 'reject'
+  });
+  try {
+    const page = errorFixture.page;
+    await page.click('#settingsProfileEditBtn');
+    await page.fill('#settingsProfileNameInput', 'Will Fail');
+    await page.click('#settingsProfileSaveBtn');
+    await page.waitForFunction(function() {
+      const s = document.getElementById('settingsProfileEditStatus');
+      return s && /Could not update/i.test(s.textContent || '');
+    });
+    await switchProductLang(page, 'ko');
+    const errKo = await page.locator('#settingsProfileEditStatus').textContent();
+    assert.match(errKo, /이름을 변경하지 못했습니다/);
+    assert.equal(await page.inputValue('#settingsProfileNameInput'), 'Will Fail');
+    assert.equal(
+      await page.evaluate(function() {
+        return document.getElementById('settingsProfileEditForm').hidden;
+      }),
+      false
+    );
+  } finally {
+    await closeFixture(errorFixture);
+  }
+
+  // --- success result retranslation ---
+  const successFixture = await newSettingsPage({
+    user: { displayName: 'Ok Keep', email: 'qa@example.com', uid: 'u-lang-ok' },
+    lang: 'ko',
+    updateProfileMode: 'resolve'
+  });
+  try {
+    const page = successFixture.page;
+    await page.click('#settingsProfileEditBtn');
+    await page.fill('#settingsProfileNameInput', '완료이름');
+    await page.click('#settingsProfileSaveBtn');
+    await page.waitForFunction(function() {
+      const result = document.getElementById('settingsProfileResultStatus');
+      return result && /변경되었습니다/i.test(result.textContent || '');
+    });
+    await switchProductLang(page, 'en');
+    const okEn = await page.locator('#settingsProfileResultStatus').textContent();
+    assert.match(okEn, /display name was updated/i);
+    assert.equal(
+      await page.evaluate(function() {
+        return document.getElementById('settingsProfileEditForm').hidden;
+      }),
+      true
+    );
+    assertCleanRuntime(successFixture, 'i18n-status');
+  } finally {
+    await closeFixture(successFixture);
   }
 });
 

@@ -192,3 +192,57 @@ test('#3617 edit form initializes from raw displayName only (source)', () => {
   const bindSrc = js.slice(bindIdx, bindIdx + 600);
   assert.ok(!bindSrc.includes('resolveDisplayName(liveUser)'), 'must not seed input from resolveDisplayName fallback');
 });
+
+// --- language-change binding (source + browser hygiene) ---
+
+test('#3617 settings.js binds real product language change via window.onLangChange', () => {
+  const js = read('js/settings.js');
+  assert.ok(js.includes('function bindSettingsLangChange'), 'must define bindSettingsLangChange');
+  assert.ok(js.includes('window.onLangChange'), 'must use window.onLangChange helper');
+  assert.ok(js.includes('settingsLangChangeBound'), 'must have idempotent binding guard');
+  assert.ok(js.includes('if (settingsLangChangeBound) return'), 'guard must short-circuit re-bind');
+  assert.ok(js.includes('reapplyStatusI18n'), 'must retranslate status on lang change');
+  assert.ok(js.includes("statusKind"), 'must track semantic statusKind');
+  // Must subscribe to product event through onLangChange, not invent a fake event name.
+  assert.ok(!js.includes('lovebud:langchange'), 'must not invent lovebud:langchange');
+  assert.ok(js.includes('bindSettingsLangChange()'), 'startSettings must call bindSettingsLangChange');
+});
+
+test('#3617 browser contract uses product language path only (no fake event / direct DOM i18n)', () => {
+  const browserSrc = read('tests/contracts/settings-display-name-edit-3617-browser-contract.test.cjs');
+  assert.ok(
+    !browserSrc.includes('lovebud:langchange'),
+    'browser test must not dispatch fake lovebud:langchange'
+  );
+  // Product path helper: setCurrentLang → applyI18n → triggerLangChange
+  assert.ok(
+    browserSrc.includes('setCurrentLang'),
+    'browser test must call setCurrentLang'
+  );
+  assert.ok(
+    browserSrc.includes('triggerLangChange'),
+    'browser test must call triggerLangChange'
+  );
+  assert.ok(
+    browserSrc.includes('function switchProductLang') || browserSrc.includes('switchProductLang'),
+    'browser test should drive language via product helper (switchProductLang)'
+  );
+  // Direct DOM translation helpers / assignments must not remain.
+  assert.ok(!browserSrc.includes('function tt('), 'must not use test-local tt() translator');
+  assert.ok(
+    !/settingsProfileEditLabel\)[\s\S]{0,40}textContent\s*=/.test(browserSrc),
+    'must not assign settingsProfileEditLabel textContent directly'
+  );
+  assert.ok(
+    !/settingsProfileSaveBtn\)[\s\S]{0,40}textContent\s*=/.test(browserSrc),
+    'must not assign settingsProfileSaveBtn textContent directly'
+  );
+  assert.ok(
+    !/settingsProfileCancelBtn\)[\s\S]{0,40}textContent\s*=/.test(browserSrc),
+    'must not assign settingsProfileCancelBtn textContent directly'
+  );
+  assert.ok(
+    !/settingsProfileEditBtnLabel\)[\s\S]{0,40}textContent\s*=/.test(browserSrc),
+    'must not assign settingsProfileEditBtnLabel textContent directly'
+  );
+});

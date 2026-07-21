@@ -285,7 +285,12 @@
    * @returns {object}
    */
   // --- Display name editing state ---
-  var editState = { mode: 'view', originalName: '', saving: false };
+  // statusKind tracks the semantic status so language changes can retranslate
+  // without inferring meaning from rendered DOM text.
+  // Values: 'none' | 'saving' | 'nameEmpty' | 'nameTooLong' | 'nameUpdateFailed'
+  //         | 'nameUpdated' | 'nameUnchanged'
+  var editState = { mode: 'view', originalName: '', saving: false, statusKind: 'none' };
+  var settingsLangChangeBound = false;
 
   function getLiveUser() {
     try {
@@ -310,6 +315,7 @@
   }
 
   function clearEditStatus() {
+    editState.statusKind = 'none';
     var status = document.getElementById('settingsProfileEditStatus');
     if (!status) return;
     status.textContent = '';
@@ -320,6 +326,8 @@
   }
 
   function clearResultStatus() {
+    // Only clear result status when opening edit or cancelling — not when
+    // clearing the edit-local status after a successful result was just set.
     var status = document.getElementById('settingsProfileResultStatus');
     if (!status) return;
     status.textContent = '';
@@ -328,13 +336,31 @@
     status.setAttribute('aria-live', 'polite');
   }
 
+  function clearResultStatusAndKind() {
+    editState.statusKind = 'none';
+    clearResultStatus();
+  }
+
   /**
    * Edit-local status (inside the edit form): validation, write error, saving.
+   * @param {string} kind - 'saving' | 'nameEmpty' | 'nameTooLong' | 'nameUpdateFailed'
+   * @param {string} type - CSS type: 'saving' | 'error'
    */
-  function showEditStatus(message, type) {
+  function showEditStatus(kind, type) {
+    editState.statusKind = kind || 'none';
+    var message = '';
+    if (kind === 'saving') {
+      message = t('settings.profile.saving', 'Saving\u2026');
+    } else if (kind === 'nameEmpty') {
+      message = t('settings.profile.nameEmpty', 'Enter a display name.');
+    } else if (kind === 'nameTooLong') {
+      message = t('settings.profile.nameTooLong', 'Display name must be 50 characters or fewer.');
+    } else if (kind === 'nameUpdateFailed') {
+      message = t('settings.profile.nameUpdateFailed', 'Could not update the display name. Try again.');
+    }
     var status = document.getElementById('settingsProfileEditStatus');
     if (!status) return;
-    status.textContent = message || '';
+    status.textContent = message;
     status.className = 'settings-profile-edit-status' + (type ? ' settings-profile-edit-status--' + type : '');
     if (type === 'error') {
       status.setAttribute('role', 'alert');
@@ -348,15 +374,43 @@
   /**
    * Persistent result status (outside the edit form): success / unchanged.
    * Remains visible after hideEditForm().
+   * @param {string} kind - 'nameUpdated' | 'nameUnchanged'
+   * @param {string} type - CSS type: 'success' | 'info'
    */
-  function showResultStatus(message, type) {
+  function showResultStatus(kind, type) {
+    editState.statusKind = kind || 'none';
+    var message = '';
+    if (kind === 'nameUpdated') {
+      message = t('settings.profile.nameUpdated', 'Your display name was updated.');
+    } else if (kind === 'nameUnchanged') {
+      message = t('settings.profile.nameUnchanged', 'The display name was not changed.');
+    }
     var status = document.getElementById('settingsProfileResultStatus');
     if (!status) return;
-    status.textContent = message || '';
+    status.textContent = message;
     status.className = 'settings-profile-result-status' + (type ? ' settings-profile-result-status--' + type : '');
     // Final results are status, never alert/error role.
     status.setAttribute('role', 'status');
     status.setAttribute('aria-live', 'polite');
+  }
+
+  /** Re-apply the current statusKind text after a language change. */
+  function reapplyStatusI18n() {
+    var kind = editState.statusKind || 'none';
+    if (kind === 'none') return;
+    if (kind === 'saving') {
+      showEditStatus('saving', 'saving');
+    } else if (kind === 'nameEmpty') {
+      showEditStatus('nameEmpty', 'error');
+    } else if (kind === 'nameTooLong') {
+      showEditStatus('nameTooLong', 'error');
+    } else if (kind === 'nameUpdateFailed') {
+      showEditStatus('nameUpdateFailed', 'error');
+    } else if (kind === 'nameUpdated') {
+      showResultStatus('nameUpdated', 'success');
+    } else if (kind === 'nameUnchanged') {
+      showResultStatus('nameUnchanged', 'info');
+    }
   }
 
   function showEditForm(currentDisplayName) {
@@ -379,7 +433,7 @@
       input.focus();
     }
     clearEditStatus();
-    clearResultStatus();
+    clearResultStatusAndKind();
     updateEditI18n();
   }
 
@@ -403,7 +457,15 @@
       btn.focus();
     }
     if (nameView) nameView.hidden = false;
-    clearEditStatus();
+    // Clear edit-local status text only; keep statusKind if a result was just set
+    // by the caller after hideEditForm (success/unchanged paths set result after hide).
+    var status = document.getElementById('settingsProfileEditStatus');
+    if (status) {
+      status.textContent = '';
+      status.className = 'settings-profile-edit-status';
+      status.setAttribute('role', 'status');
+      status.setAttribute('aria-live', 'polite');
+    }
   }
 
   function setSaving(saving) {
@@ -416,7 +478,7 @@
     if (cancelBtn) cancelBtn.disabled = saving;
     if (input) input.disabled = saving;
     if (saving) {
-      showEditStatus(t('settings.profile.saving', 'Saving\u2026'), 'saving');
+      showEditStatus('saving', 'saving');
     }
   }
 
@@ -429,6 +491,26 @@
     if (saveBtn) saveBtn.textContent = t('settings.profile.save', 'Save');
     if (cancelBtn) cancelBtn.textContent = t('settings.profile.cancel', 'Cancel');
     if (editBtnLabel) editBtnLabel.textContent = t('settings.profile.editName', 'Edit name');
+  }
+
+  /**
+   * Subscribe once to the canonical product language-change event
+   * (lovebud-lang-change via window.onLangChange). Does not reset edit form,
+   * input value, or saving state.
+   */
+  function bindSettingsLangChange() {
+    if (settingsLangChangeBound) return;
+    if (typeof window.onLangChange !== 'function') return;
+    settingsLangChangeBound = true;
+    window.onLangChange(function() {
+      applyI18nText();
+      updateEditI18n();
+      reapplyStatusI18n();
+      if (typeof window.applyI18n === 'function') {
+        window.applyI18n();
+      }
+      applyHeaderNavFallbacks();
+    });
   }
 
   function updateProfileUI(vm) {
@@ -504,9 +586,9 @@
 
     if (!result.valid) {
       if (result.error === 'empty') {
-        showEditStatus(t('settings.profile.nameEmpty', 'Enter a display name.'), 'error');
+        showEditStatus('nameEmpty', 'error');
       } else if (result.error === 'tooLong') {
-        showEditStatus(t('settings.profile.nameTooLong', 'Display name must be 50 characters or fewer.'), 'error');
+        showEditStatus('nameTooLong', 'error');
       }
       if (input) input.focus();
       return;
@@ -514,10 +596,7 @@
 
     var liveUser = getLiveUser();
     if (!liveUser || typeof liveUser.updateProfile !== 'function') {
-      showEditStatus(
-        t('settings.profile.nameUpdateFailed', 'Could not update the display name. Try again.'),
-        'error'
-      );
+      showEditStatus('nameUpdateFailed', 'error');
       return;
     }
 
@@ -526,7 +605,7 @@
       : '';
     if (result.value === currentPersisted) {
       hideEditForm();
-      showResultStatus(t('settings.profile.nameUnchanged', 'The display name was not changed.'), 'info');
+      showResultStatus('nameUnchanged', 'info');
       return;
     }
 
@@ -543,22 +622,19 @@
         syncAfterSave(result.value);
         setSaving(false);
         hideEditForm();
-        showResultStatus(t('settings.profile.nameUpdated', 'Your display name was updated.'), 'success');
+        showResultStatus('nameUpdated', 'success');
       })
       .catch(function() {
         // Fail closed: stay in edit mode, keep input, no profile/cache/header mutation.
         setSaving(false);
-        showEditStatus(
-          t('settings.profile.nameUpdateFailed', 'Could not update the display name. Try again.'),
-          'error'
-        );
+        showEditStatus('nameUpdateFailed', 'error');
       });
   }
 
   function handleCancelEdit() {
     if (editState.saving) return;
     hideEditForm();
-    clearResultStatus();
+    clearResultStatusAndKind();
   }
 
   function bindNameEditInteractions() {
@@ -800,6 +876,8 @@
 
     // Bind display name edit interactions
     bindNameEditInteractions();
+    // Canonical language-change subscription (lovebud-lang-change via onLangChange)
+    bindSettingsLangChange();
 
     // Render Profile / Account sections
     var vm = resolveSettingsAccountViewModel(effectiveUser);
