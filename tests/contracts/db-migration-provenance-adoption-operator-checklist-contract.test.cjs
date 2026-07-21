@@ -259,6 +259,7 @@ describe('DB Migration Provenance Adoption Operator Checklist Contract (#3622)',
     });
     it('No provider console execution instructions', () => {
       assert.doesNotMatch(doc, /console\.firebase|console\.cloudflare|dashboard\.gitguardian|neon\.tech|provider console.*click|click path.*provider/i);
+      assert.doesNotMatch(doc, /through the provider console/i);
     });
   });
 
@@ -336,8 +337,66 @@ describe('DB Migration Provenance Adoption Operator Checklist Contract (#3622)',
     it('Documents no partial success claim', () => {
       assert.match(doc, /no partial success|partial success.*not.*claimed/i);
     });
-    it('Documents transaction ends with ROLLBACK', () => {
-      assert.match(doc, /ROLLBACK/);
+    it('Documents non-committing termination', () => {
+      assert.match(doc, /non-committing termination|does not permit commit|commit is not permitted/i);
+    });
+    it('Documents source-owned proof names', () => {
+      assert.match(doc, /EXPLICIT_READ_ONLY_TRANSACTION/);
+      assert.match(doc, /READ_ONLY_TRANSITION_CONFIRMED/);
+      assert.match(doc, /NO_CALLER_SQL/);
+      assert.match(doc, /NO_APPLICATION_ROW_READS/);
+    });
+    it('No literal BEGIN READ ONLY', () => {
+      assert.doesNotMatch(doc, /BEGIN\s+READ\s+ONLY/i);
+    });
+    it('No literal SHOW transaction_read_only', () => {
+      assert.doesNotMatch(doc, /SHOW\s+transaction_read_only/i);
+    });
+    it('No command-form literal ROLLBACK', () => {
+      assert.doesNotMatch(doc, /ROLLBACK/);
+    });
+    it('Documents provider-console instruction absent', () => {
+      assert.doesNotMatch(doc, /through the provider console/i);
+      assert.match(doc, /does not specify provider-console operations|provider-console operations.*not specified/i);
+    });
+    it('Documents private mapping preparation boundary', () => {
+      assert.match(doc, /operator-private runtime mapping/i);
+      assert.match(doc, /neither creates nor validates that private mapping/i);
+      assert.match(doc, /private mapping is prepared/i);
+    });
+    it('Documents committed template is structure only, not runner input', () => {
+      assert.match(doc, /structure only/i);
+      assert.match(doc, /not.*runner input|must not be used as a runner input/i);
+    });
+    it('Documents private mapping key/value shape', () => {
+      assert.match(doc, /private mapping keys are actual PostgreSQL role identifiers/i);
+      assert.match(doc, /private mapping values are committed abstract role classes/i);
+      assert.match(doc, /actual identifiers are never recorded/i);
+    });
+    it('Documents actual roles not discovered by this checklist', () => {
+      assert.match(doc, /neither creates nor validates that private mapping/i);
+      assert.match(doc, /private mapping has not been created or validated by this checklist/i);
+    });
+    it('Documents OI-2 completion requires more than placeholder template', () => {
+      assert.match(doc, /template is structure only/i);
+      assert.match(doc, /operator-private runtime mapping is prepared/i);
+      assert.match(doc, /not used as a runner input/i);
+    });
+    it('Documents role-separation as documentation-only policy', () => {
+      assert.match(doc, /DOCUMENT_CHECKLIST_CATEGORY/);
+      assert.match(doc, /PROPOSED_SEPARATION_OF_DUTIES/);
+      assert.match(doc, /documentation-only governance/i);
+      assert.match(doc, /owner must adopt.*modify.*reject/i);
+    });
+    it('Does not claim source-enforced identity separation', () => {
+      assert.doesNotMatch(doc, /requires at least two distinct roles/i);
+      assert.doesNotMatch(doc, /single operator identity must not hold/i);
+      assert.doesNotMatch(doc, /the source boundary enforces.*identity/i);
+      assert.doesNotMatch(doc, /source-enforced.*separation of duties/i);
+    });
+    it('Documents source boundary file and role mapping function', () => {
+      assert.match(doc, /scripts\/production-readonly-catalog-boundary-core\.cjs/);
+      assert.match(doc, /loadProductionRoleMapping/i);
     });
     it('Documents commit is prohibited for collection mode', () => {
       assert.match(doc, /commit is not permitted|commit.*prohibited/i);

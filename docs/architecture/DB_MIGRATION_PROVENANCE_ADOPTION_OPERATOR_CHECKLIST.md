@@ -46,7 +46,14 @@ The following state is read from current main source files. Do not interpret an 
 
 ## Operator Roles and Separation of Duties
 
-The operator-readiness boundary requires at least two distinct roles. A single operator identity must not hold both roles for the same collection session.
+The operator-readiness boundary proposes a logical separation of duties across credential custody, collection execution, and approval/evidence review. This is a documentation-only governance policy; the source boundary does not enforce identity separation at runtime.
+
+### DOCUMENT_CHECKLIST_CATEGORY — PROPOSED_SEPARATION_OF_DUTIES
+
+- Credential custody, execution, approval, and evidence review should be performed by logically separated roles or time-separated approval events
+- The source boundary does not enforce that a single identity cannot hold multiple roles
+- The owner must adopt, modify, or reject this policy during Phase B approval
+- Checklist completion does not constitute adoption of this policy
 
 ### Credential custodian
 
@@ -89,9 +96,10 @@ The dedicated credential must satisfy all of the following before Phase B execut
 
 ### Custodian and executor separation
 
-- The credential custodian and collection executor must be separate identities or separate approval events
-- A single operator must not prepare the secret, inject it into a runner, execute collection, and review evidence in the same session
-- Evidence review must be performed by a different identity or after a time-separated approval event
+- Credential custody, collection execution, and evidence review are logically separated roles or time-separated approval events
+- This is a documentation-only governance proposal (DOCUMENT_CHECKLIST_CATEGORY — PROPOSED_SEPARATION_OF_DUTIES), not a source-enforced runtime requirement
+- The owner must adopt, modify, or reject this policy during Phase B approval
+- Checklist completion does not constitute adoption of this policy
 
 ### Prohibited actions
 
@@ -111,11 +119,36 @@ The dedicated credential must satisfy all of the following before Phase B execut
 
 ## OI-2 Abstract Role-Mapping Template
 
-Operators must prepare an abstract role mapping before Phase B execution approval. The mapping file is a structure-only template. Actual PostgreSQL role names must never appear in this template, the repository, or collection evidence.
+Operators must prepare an abstract role mapping before Phase B execution approval. The mapping has three distinct layers. Actual PostgreSQL role names must never appear in this checklist, the repository, or collection evidence.
+
+### A. Committed structure template
+
+- Repository-owned template that documents the required structure
+- Uses only `ROLE_PLACEHOLDER_1` through `ROLE_PLACEHOLDER_5` as keys
+- Values are the committed abstract role classes only
+- This template is a structure example only; it is not the actual mapping file
+- The template must not be used as a runner input directly
+- No actual role name may be inferred or recorded in the committed template
+
+### B. Operator-private runtime mapping
+
+- Prepared in an approved private boundary outside the repository
+- Keys are actual PostgreSQL role identifiers verified by the operator
+- Values are committed abstract role classes from the contract enum
+- Actual key/value pairs must never be recorded in this checklist, issues, PRs, logs, chat, or screenshots
+- This checklist neither creates nor validates the private runtime mapping
+- Boundary validation of the private mapping occurs only after separate Phase B approval
+- Submitting placeholder keys as the private runtime mapping is invalid
+
+### C. Sanitized evidence
+
+- Only abstract role classes appear in shared evidence
+- Raw role identifiers, grantee names, and raw mapping outputs are never shared
+- The boundary strips raw identifiers before producing sanitized evidence
 
 ### Template sentinel
 
-Use the following sentinel structure exactly. Keys must be `ROLE_PLACEHOLDER_1` through `ROLE_PLACEHOLDER_5`. Values must be the exact committed abstract role classes listed below. Do not substitute placeholder strings for actual role classes in a committed template.
+Use the following committed structure template. Keys must be `ROLE_PLACEHOLDER_1` through `ROLE_PLACEHOLDER_5`. Values must be the exact committed abstract role classes listed below. This template documents structure only; it is not the actual mapping file and must not be used as a runner input.
 
 ```json
 <!-- ROLE_MAPPING_TEMPLATE_START -->
@@ -146,7 +179,7 @@ Each permitted class must appear exactly once in the template. Duplicate values 
 - Keys must match `ROLE_PLACEHOLDER_[0-9]+` exactly
 - Values must be one of the five committed abstract role classes
 - No inferred mapping, example username, application account name, or actual PostgreSQL role name may be substituted for a placeholder value
-- The template is a structure example only; it is not the actual mapping file; it does not represent an approved mapping
+- The template is a structure example only; it is not the actual mapping file; it does not represent an approved mapping; it must not be used as a runner input
 
 ### Prohibited content
 
@@ -156,6 +189,13 @@ Each permitted class must appear exactly once in the template. Duplicate values 
 - Email-like, host-like, or credential-like values
 - Connection URLs or hostnames
 - Any value that resembles a secret, token, password, or certificate
+
+### Private mapping key/value shape
+
+- Private mapping keys are actual PostgreSQL role identifiers, validated by the boundary's identifier rules
+- Private mapping values are committed abstract role classes from the contract enum
+- Actual identifiers are never recorded in the repository, issues, PRs, logs, chat, or evidence
+- The private mapping is prepared and validated only after separate Phase B approval
 
 ## Placeholder and Redaction Rules
 
@@ -182,7 +222,7 @@ The operator must prepare the following items before requesting Phase B executio
 2. OI-2 abstract role mapping confirmation:
    - Template uses only committed abstract role classes
    - Template contains exactly five entries with distinct placeholder keys
-   - Template has been reviewed but not yet injected into any runner or script
+    - The committed placeholder template has been reviewed as structure only; a separately prepared operator-private runtime mapping is required for Phase B, but this checklist neither creates nor validates that private mapping
 
 3. Reviewed plan confirmation:
    - `db/migration-provenance/adoption-baseline-collection-plan-contract.json` is the active reviewed plan
@@ -194,7 +234,7 @@ The operator must prepare the following items before requesting Phase B executio
 - Boundary contract source has been read: `scripts/production-readonly-catalog-boundary-core.cjs`
 - Collection runner source has been read: `scripts/run-production-readonly-catalog-collection.cjs`
 - Receipt builder source has been read: `scripts/phase-b-collection-receipt-core.cjs`
-- Operator understands that collection runs in a single `BEGIN READ ONLY` transaction confirmed by `SHOW transaction_read_only`, ending with `ROLLBACK`
+    - Operator understands that collection runs in an EXPLICIT_READ_ONLY_TRANSACTION, confirmed by READ_ONLY_TRANSACTION_CONFIRMED, with NO_CALLER_SQL and NO_APPLICATION_ROW_READS
 - Operator understands that no mutation SQL, no caller SQL, and no application row reads are permitted
 
 ### Approval event
@@ -240,9 +280,9 @@ After Phase B execution approval is granted, the collection session must pass th
 
 ### Transaction preflight
 
-- Collection opens `BEGIN READ ONLY`
-- Transaction read-only status is confirmed before catalog queries
-- Transaction ends with `ROLLBACK`; commit is not permitted for this collection mode
+- Collection opens an EXPLICIT_READ_ONLY_TRANSACTION
+- Transaction read-only status is confirmed before catalog queries (READ_ONLY_TRANSITION_CONFIRMED)
+- The boundary enforces a non-committing termination; collection mode does not permit commit; exact transaction statements remain implementation-owned and are not reproduced by this checklist
 
 ### Failure behavior
 
@@ -431,7 +471,7 @@ Phase E implements the physical ledger relation, migration runner, and canonical
 ### Collection incident
 
 - If the boundary fails during collection, the operator must stop immediately
-- The transaction ends with ROLLBACK; commit is not permitted
+    - The boundary enforces a non-committing termination; commit is not permitted for this collection mode
 - Partial success must not be claimed
 - Incident must be reported with the exact boundary failure category
 - Evidence must not be shared outside the operator boundary until the incident is reviewed
@@ -439,7 +479,9 @@ Phase E implements the physical ledger relation, migration runner, and canonical
 ### Credential incident
 
 - If the dedicated credential is exposed, the operator must treat the session as compromised
-- Credential must be revoked or rotated through the provider console
+    - Credential remediation must follow a separately approved operator incident process
+    - This checklist does not specify provider-console operations
+    - Collection remains stopped until the owner confirms that the credential boundary is safe again
 - Collection must not continue with the exposed credential
 - Incident must be reported independently of collection outcome
 
@@ -472,7 +514,11 @@ Use this section to track preparation status. This checklist is a documentation 
 - [ ] Abstract role mapping template uses only committed abstract role classes
 - [ ] Template contains exactly five entries with distinct placeholder keys
 - [ ] Template values are not actual PostgreSQL role names
-- [ ] Template has been reviewed but not injected into any runner
+- [ ] Template is structure only and not used as a runner input
+- [ ] Operator-private runtime mapping is prepared in an approved private boundary (not recorded here)
+- [ ] Private mapping keys are actual PostgreSQL identifiers; values are committed abstract classes
+- [ ] Actual role names are not recorded in any repository, issue, PR, log, or evidence
+- [ ] Private mapping has not been created or validated by this checklist
 
 ### Phase B approval packet
 
@@ -480,7 +526,7 @@ Use this section to track preparation status. This checklist is a documentation 
 - [ ] Boundary contract source has been read
 - [ ] Collection runner source has been read
 - [ ] Receipt builder source has been read
-- [ ] Transaction behavior (`BEGIN READ ONLY`, confirm, `ROLLBACK`) is understood
+- [ ] Transaction behavior (EXPLICIT_READ_ONLY_TRANSACTION, READ_ONLY_TRANSITION_CONFIRMED, NO_CALLER_SQL, NO_APPLICATION_ROW_READS) is understood
 - [ ] No-caller-SQL and no-mutation policy is understood
 
 ### Phase C readiness
@@ -508,7 +554,7 @@ Current main source files that define the contracts and boundaries documented in
 - `db/migration-provenance/adoption-attestation-contract.json`
 - `db/migration-provenance/expected-schema-manifest.json`
 - `db/migration-provenance/canonical-migrations.json`
-- `scripts/production-readonly-catalog-boundary-core.cjs`
+- `scripts/production-readonly-catalog-boundary-core.cjs` (includes `loadProductionRoleMapping`, which validates private mapping keys as PostgreSQL identifiers and values as committed abstract role classes)
 - `scripts/run-production-readonly-catalog-collection.cjs`
 - `scripts/phase-b-collection-receipt-core.cjs`
 - `scripts/adoption-baseline-collection-plan-core.cjs`
