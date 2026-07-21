@@ -95,8 +95,8 @@ Each criterion from [#3458](https://github.com/skerishKang/LoveBud/issues/3458) 
 - Source checker validates inventory consistency
 
 **What it does not prove**:
-- Classifications are not enforced at deployment time
-- No mechanism prevents new unclassified paths from being added
+- Classifications are not enforced at deployment/runtime time
+- Inventory coverage and operator execution prevention are separate controls: source checker blocks newly discovered unclassified repository paths (`INVENTORY_PATH_UNCLASSIFIED` in `scripts/migration-provenance-core.cjs:192`), but does not technically prevent an operator from executing an unclassified path directly against a database
 
 **Dependency**: None (self-contained)
 **Next action**: Maintain as new paths are added
@@ -117,11 +117,13 @@ Each criterion from [#3458](https://github.com/skerishKang/LoveBud/issues/3458) 
 **What it proves**:
 - ID format and checksum algorithm are contractually defined
 - Source validator rejects invalid IDs and checksums
+- Source checker blocks byte-level checksum mismatches (`MIGRATION_SOURCE_CHECKSUM_MISMATCH` in `scripts/migration-provenance-core.cjs:334`)
+- Synthetic comparison logic blocks ID/checksum mismatch in ledger evidence
 
 **What it does not prove**:
 - No actual migrations exist to assign IDs or checksums to
-- No mechanism prevents content changes to files that share an ID
 - File rename + ID preservation behavior is not exercised
+- The mechanism is implemented but has not been exercised against an active migration history (0 canonical migrations, 0 authoritative ledger records)
 
 **Dependency**: First canonical migration entry
 **Next action**: Exercised when first canonical migration is added
@@ -259,7 +261,7 @@ Each criterion from [#3458](https://github.com/skerishKang/LoveBud/issues/3458) 
 - PR #3556 (MERGED): adoption baseline collection plan
 - PR #3571 (MERGED): Production-readonly catalog boundary
 - #3569 (CLOSED): Production catalog collection → `COLLECTION_NOT_RUN_CONNECTION_BOUNDARY`
-- #3572 (CLOSED): retry readiness audit → `NO_RETRY`
+- #3572 (CLOSED): retry readiness audit → `COLLECTION_NOT_RUN_CONNECTION_BOUNDARY`; subreason: `DEDICATED_INPUTS_UNAVAILABLE`; retry session not started
 
 **Test layer**: SOURCE_STATIC (contract tests for attestation, collection plan, boundary)
 No Production collection has occurred.
@@ -418,15 +420,21 @@ No Production collection has occurred.
 
 | Child Issue | PR | State | Title | Delivered | Manifest Status After |
 | --- | --- | --- | --- | --- | --- |
-| #3459 | PR #3474 | CLOSED / MERGED | Read-only provenance gate bootstrap | Gate infrastructure, inventory, source checker | `ADOPTION_REQUIRED`, empty |
-| #3542 | PR #3543 | CLOSED / MERGED | Catalog fingerprint normalizer | Deterministic sanitized fingerprints | `ADOPTION_REQUIRED`, empty |
-| #3544 | PR #3546 | CLOSED / MERGED | Disposable pg_catalog adapter | CI-only catalog metadata collection | `ADOPTION_REQUIRED`, empty |
-| #3549 | PR #3550 | CLOSED / MERGED | Inactive expected-schema candidates | Candidate builder from evidence | `ADOPTION_REQUIRED`, empty |
-| #3553 | PR #3554 | CLOSED / MERGED | Adoption attestation evidence | Strict attestation contract + validator | `ADOPTION_REQUIRED`, empty |
-| #3555 | PR #3556 | CLOSED / MERGED | Adoption baseline collection plan | PREPARED_ONLY plan with allowlist | `ADOPTION_REQUIRED`, empty |
+| #3458 (bootstrap) | PR #3474 | MERGED | Read-only provenance gate bootstrap | Gate infrastructure, inventory, source checker | `ADOPTION_REQUIRED`, empty |
+| #3459 (rehearsal track) | PR #3531 | MERGED | Tree comments reconcile PostgreSQL rehearsal | Disposable PG engine tests for tree_comments | `ADOPTION_REQUIRED`, empty |
+| #3459 | PR #3533 | MERGED | Trees schema foothold PostgreSQL rehearsal | Disposable PG engine tests for trees schema | `ADOPTION_REQUIRED`, empty |
+| #3459 | PR #3535 | MERGED | Generic social Migration A rehearsal | Disposable PG engine tests for social A | `ADOPTION_REQUIRED`, empty |
+| #3459 | PR #3537 | MERGED | Generic social Migration A execution guard | Preflight/postcondition guards for social A | `ADOPTION_REQUIRED`, empty |
+| #3459 | PR #3539 | MERGED | Generic social Migration B execution guard | Preflight/postcondition guards for social B | `ADOPTION_REQUIRED`, empty |
+| #3459 | PR #3541 | MERGED | Generic social Migration B rehearsal | Disposable PG engine tests for social B | `ADOPTION_REQUIRED`, empty |
+| #3542 | PR #3543 | MERGED | Catalog fingerprint normalizer | Deterministic sanitized fingerprints | `ADOPTION_REQUIRED`, empty |
+| #3544 | PR #3546 | MERGED | Disposable pg_catalog adapter | CI-only catalog metadata collection | `ADOPTION_REQUIRED`, empty |
+| #3549 | PR #3550 | MERGED | Inactive expected-schema candidates | Candidate builder from evidence | `ADOPTION_REQUIRED`, empty |
+| #3553 | PR #3554 | MERGED | Adoption attestation evidence | Strict attestation contract + validator | `ADOPTION_REQUIRED`, empty |
+| #3555 | PR #3556 | MERGED | Adoption baseline collection plan | PREPARED_ONLY plan with allowlist | `ADOPTION_REQUIRED`, empty |
 | #3569 | — | CLOSED | Production catalog collection | NOT COLLECTED (`COLLECTION_NOT_RUN_CONNECTION_BOUNDARY`) | No change |
-| #3570 | PR #3571 | CLOSED / MERGED | Production-readonly boundary | Source-only boundary contract + core | No change |
-| #3572 | — | CLOSED | Retry readiness audit | `NO_RETRY` | No change |
+| #3570 | PR #3571 | MERGED | Production-readonly boundary | Source-only boundary contract + core | No change |
+| #3572 | — | CLOSED | Retry readiness audit | `COLLECTION_NOT_RUN_CONNECTION_BOUNDARY`; subreason: `DEDICATED_INPUTS_UNAVAILABLE`; retry session not started | No change |
 
 **Key observation**: All merged PRs are source-contract or disposable-CI work. No Production database has been accessed. No manifest has been activated. No migration has been applied.
 
@@ -459,6 +467,26 @@ No Production collection has occurred.
 
 **Remaining gap**: All source-static tests pass but none prove target-environment provenance
 
+### PURE_UNIT
+
+**Current files/jobs**:
+- Pure core validators exercised with synthetic in-memory/file fixtures
+- `scripts/migration-catalog-fingerprint-core.cjs`, `scripts/adoption-attestation-core.cjs`, `scripts/adoption-baseline-collection-plan-core.cjs`, `scripts/migration-provenance-core.cjs`, `scripts/production-readonly-catalog-boundary-core.cjs`, `scripts/expected-schema-candidate-core.cjs`
+- Source-contract tests (e.g., `tests/contracts/migration-catalog-fingerprint-contract.test.cjs`, `tests/contracts/adoption-attestation-contract.test.cjs`)
+
+**Proves**:
+- Deterministic normalization logic (fingerprints, canonical serialization)
+- Bounded validation and fail-closed categories
+- Comparison semantics (checksums, digests, drift detection)
+- Contract field validation (rejecting bare evidence, invalid enums, prohibited fields)
+
+**Does not prove**:
+- PostgreSQL behavior (no database driver, no SQL execution)
+- Target catalog compatibility (synthetic data only)
+- Production environment state (no live connection)
+
+**Remaining gap**: Synthetic coverage is strong but does not replace PostgreSQL engine integration
+
 ### POSTGRES_ENGINE_DISPOSABLE (DB_ENGINE_EXECUTION)
 
 **Current files/jobs**:
@@ -484,11 +512,22 @@ No Production collection has occurred.
 
 ### TARGET_READONLY_INTEGRATION
 
-**Current files/jobs**: None
+**Current files/jobs**:
+- Source boundary and runner capability: `scripts/production-readonly-catalog-boundary-core.cjs` (793 lines)
+- Runner CLI: `scripts/run-production-readonly-catalog-collection.cjs`
+- Contract: `db/migration-provenance/production-readonly-catalog-boundary-contract.json`
 
-**Proves**: Nothing — not implemented
+**Proves**:
+- Source boundary contract exists with URL/TLS, version, and secret policies
+- Synthetic/source contract tests validate boundary logic without connecting
+- Runner capability exists in source form (requires dedicated secret to execute)
 
-**Remaining gap**: No target read-only adapter exists; no staging or Production catalog has been collected
+**Does not prove**:
+- No approved live invocation has occurred (zero Production DB sessions)
+- No target evidence exists (no sanitized Production catalog data)
+- Execution evidence layer is absent — source exists, but integration has not been exercised
+
+**Remaining gap**: Production integration requires dedicated `LOVEBUD_PRODUCTION_READONLY_DATABASE_URL` and abstract role mapping, neither of which exists in the repository
 
 ### PRODUCTION_RUNTIME_EVIDENCE
 
@@ -510,17 +549,23 @@ No Production collection has occurred.
 
 ## Production and Operator-Input Boundary
 
-The following items are blocked on operator input, not on repository implementation gaps:
+### BLOCKED_OPERATOR_INPUT (repository-external inputs not present)
 
 | Blocker | What is needed | Repository state |
 | --- | --- | --- |
 | Dedicated read-only credentials | `LOVEBUD_PRODUCTION_READONLY_DATABASE_URL` under `.secrets/` | Contract defines the key; value does not exist in repository |
 | Abstract role mapping | Mapping file for PostgreSQL roles → abstract classes (PUBLIC, APPLICATION, AUTHENTICATED, SERVICE, OWNER_CLASS) | Contract defines the classes; mapping file does not exist in repository |
-| Owner review of collection plan | Approval of the reviewed object allowlist (9 tables) in `adoption-baseline-collection-plan-contract.json` | Plan is PREPARED_ONLY; not owner-reviewed |
-| Adoption attestation approval | Owner decision to authorize Phase B collection and Phase D manifest activation | No attestation has been issued |
-| Manifest activation | Owner decision to change `canonical-migrations.json` and `expected-schema-manifest.json` status from `ADOPTION_REQUIRED` to `ACTIVE` | Both manifests are `ADOPTION_REQUIRED` |
 
-These are not repository bugs. They are gated decisions that the architecture correctly defers to separate approval.
+### SEPARATE_APPROVAL_REQUIRED (future owner/operator decisions)
+
+| Phase | Decision | Dependencies |
+| --- | --- | --- |
+| Phase B | Production read-only catalog collection execution approval | Dedicated credentials (OI-1), role mapping (OI-2) |
+| Phase C | Owner review of collected sanitized evidence and drift classification | Phase B complete |
+| Phase D | Manifest activation (ADOPTION_REQUIRED → ACTIVE) | Phase C approved |
+| Phase E | Ledger bootstrap migration, runner, and canonical migration stream approval | Phase D complete |
+
+These are not repository bugs. They are gated decisions that the architecture correctly defers to separate approval. The reviewed frozen collection plan and allowlist (PR #3556) are in the repository; what remains is executing collection against Production and obtaining Phase C/D/E approvals.
 
 ---
 
@@ -538,8 +583,11 @@ These are not repository bugs. They are gated decisions that the architecture co
 | G-08 | No sanitized observability | NOT_STARTED | G-07 |
 | G-09 | Legacy path retirement not executed | NOT_STARTED | Adoption baseline |
 | G-10 | No destructive DDL rehearsal in CI | NOT_STARTED | G-01, G-02 |
-| G-11 | Abstract role mapping file missing | BLOCKED_OPERATOR_INPUT | Owner review |
-| G-12 | Owner review of adoption collection plan not performed | BLOCKED_OPERATOR_INPUT | Owner action |
+| G-11 | Abstract role mapping file missing | BLOCKED_OPERATOR_INPUT | Operator input |
+| G-12 | Dedicated Production read-only credentials not available | BLOCKED_OPERATOR_INPUT | Operator input |
+| G-13 | Phase B live read-only execution not yet approved | SEPARATE_APPROVAL_REQUIRED | Operator input (G-11, G-12) |
+| G-14 | Phase D manifest activation not yet approved | SEPARATE_APPROVAL_REQUIRED | Phase B, Phase C |
+| G-15 | Phase E mutation/bootstrap not yet approved | SEPARATE_APPROVAL_REQUIRED | Phase D |
 
 ---
 
@@ -580,7 +628,7 @@ The following claims would be unsupported by current evidence:
 
 ### Production catalog collection
 - **Run status**: `COLLECTION_NOT_RUN` (#3569 outcome)
-- **Retry**: `NO_RETRY` (#3572 outcome)
+- **Retry**: `COLLECTION_NOT_RUN_CONNECTION_BOUNDARY` (#3572 outcome); subreason: `DEDICATED_INPUTS_UNAVAILABLE`; retry session not started
 - **Current boundary**: `FAIL_CLOSED` with `GATE_ADOPTION_BASELINE_REQUIRED`
 
 ### Production ledger

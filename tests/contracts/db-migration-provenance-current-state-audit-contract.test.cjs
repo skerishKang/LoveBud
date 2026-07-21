@@ -127,6 +127,87 @@ describe('DB Migration Provenance Current-State Audit Contract (#3620)', () => {
     }
   });
 
+  describe('6b. PURE_UNIT test layer', () => {
+    const audit = readDoc(AUDIT_PATH);
+    it('Contains PURE_UNIT in test-layer map', () => {
+      assert.match(audit, /PURE_UNIT/);
+    });
+  });
+
+  describe('6c. Inventory path guard evidence', () => {
+    const audit = readDoc(AUDIT_PATH);
+    it('Audit documents INVENTORY_PATH_UNCLASSIFIED blocking', () => {
+      assert.match(audit, /INVENTORY_PATH_UNCLASSIFIED/);
+    });
+  });
+
+  describe('6d. Migration checksum guard evidence', () => {
+    const audit = readDoc(AUDIT_PATH);
+    it('Audit documents MIGRATION_SOURCE_CHECKSUM_MISMATCH blocking', () => {
+      assert.match(audit, /MIGRATION_SOURCE_CHECKSUM_MISMATCH/);
+    });
+  });
+
+  describe('6e. No false "adapter does not exist" claim', () => {
+    const audit = readDoc(AUDIT_PATH);
+    it('Does not claim no target read-only adapter exists', () => {
+      assert.doesNotMatch(audit, /No target read-only adapter exists/i);
+    });
+  });
+
+  describe('6f. #3572 official outcome', () => {
+    const audit = readDoc(AUDIT_PATH);
+    const decision = readDoc(DECISION_PATH);
+    it('Audit uses COLLECTION_NOT_RUN_CONNECTION_BOUNDARY for #3572', () => {
+      assert.match(audit, /COLLECTION_NOT_RUN_CONNECTION_BOUNDARY/);
+    });
+    it('Audit includes DEDICATED_INPUTS_UNAVAILABLE', () => {
+      assert.match(audit, /DEDICATED_INPUTS_UNAVAILABLE/);
+    });
+    it('Does not use NO_RETRY as official #3572 outcome', () => {
+      const noRetryAsOutcome = /NO_RETRY.*3572|3572.*NO_RETRY/;
+      assert.doesNotMatch(audit, noRetryAsOutcome);
+    });
+    it('Decision does not use NO_RETRY for #3572', () => {
+      const noRetryAsOutcome = /NO_RETRY.*3572|3572.*NO_RETRY/;
+      assert.doesNotMatch(decision, noRetryAsOutcome);
+    });
+  });
+
+  describe('6g. Operator blocker and approval separation', () => {
+    const audit = readDoc(AUDIT_PATH);
+    it('Audit separates BLOCKED_OPERATOR_INPUT from SEPARATE_APPROVAL_REQUIRED', () => {
+      assert.match(audit, /BLOCKED_OPERATOR_INPUT/);
+      assert.match(audit, /SEPARATE_APPROVAL_REQUIRED/);
+    });
+  });
+
+  describe('6h. #3459 and PR#3474 not in same direct mapping row', () => {
+    const audit = readDoc(AUDIT_PATH);
+    it('#3459 has its own table row distinct from PR#3474 bootstrap', () => {
+      const lines = audit.split('\n');
+      let sameRow = false;
+      for (const line of lines) {
+        if (line.includes('#3459') && line.includes('PR #3474') && line.includes('|')) {
+          sameRow = true;
+        }
+      }
+      assert.strictEqual(sameRow, false, '#3459 and PR #3474 must not appear together in the same table row');
+    });
+    it('#3459 mapped to rehearsal PRs', () => {
+      assert.match(audit, /PR #3531/);
+      assert.match(audit, /PR #3533/);
+    });
+  });
+
+  describe('6i. New contract test registered in classification', () => {
+    it('test-layer-classification.json contains the contract test', () => {
+      const classPath = path.join(REPO_ROOT, 'tests', 'test-layer-classification.json');
+      const raw = fs.readFileSync(classPath, 'utf8');
+      assert.match(raw, /db-migration-provenance-current-state-audit-contract\.test\.cjs/);
+    });
+  });
+
   describe('7. Protected issue references', () => {
     const audit = readDoc(AUDIT_PATH);
     const decision = readDoc(DECISION_PATH);

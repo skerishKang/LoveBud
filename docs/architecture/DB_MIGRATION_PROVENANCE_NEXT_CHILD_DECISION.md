@@ -17,6 +17,8 @@ All source-contract and disposable-CI implementation children under #3458 have b
 
 No code or migration implementation child can safely proceed without resolving at least one of these operator-input items.
 
+**Scope note**: Not all repository work under #3458 is complete. Clean-database reconstruction, deployment gate integration, sanitized observability, and canonical stream/runner remain unimplemented. However, on the current adoption critical path, Phase B (Production catalog collection) is the next step and it cannot proceed without operator inputs. Long-term tooling candidates exist but are not on the critical path for adoption and are deferred.
+
 ## Candidate Children Considered
 
 ### 1. Retry Production catalog collection
@@ -26,7 +28,7 @@ No code or migration implementation child can safely proceed without resolving a
 | Operator input needed | Yes - credentials and role mapping must be provided by operator |
 | Production access needed | Yes - read-only catalog collection from Production |
 | Safe to start now | **NO** |
-| Reason | #3569 closed as `COLLECTION_NOT_RUN_CONNECTION_BOUNDARY`. #3572 closed as `NO_RETRY`. The dedicated secret and role mapping do not exist in the repository. |
+| Reason | #3569 closed as `COLLECTION_NOT_RUN_CONNECTION_BOUNDARY`. #3572 closed as `COLLECTION_NOT_RUN_CONNECTION_BOUNDARY`; subreason: `DEDICATED_INPUTS_UNAVAILABLE`; retry session not started. The dedicated secret and role mapping do not exist in the repository. |
 
 ### 2. Ledger bootstrap design
 
@@ -129,15 +131,23 @@ All paths to implementation lead through the operator-input boundary at the top 
 
 ## Operator-Input Separation
 
-Three repository-external inputs are required before any further implementation can proceed:
+### BLOCKED_OPERATOR_INPUT (repository-external inputs not present)
 
 | # | Input | Owner | Repository Reference |
 | --- | --- | --- | --- |
 | OI-1 | `LOVEBUD_PRODUCTION_READONLY_DATABASE_URL` under `.secrets/` | Repository owner or operator | `db/migration-provenance/production-readonly-catalog-boundary-contract.json` |
 | OI-2 | Abstract role mapping file (PostgreSQL roles -> abstract classes) | Repository owner or operator | `db/migration-provenance/adoption-baseline-collection-plan-contract.json` |
-| OI-3 | Owner review and approval of adoption baseline collection plan | Repository owner | `db/migration-provenance/adoption-baseline-collection-plan-contract.json` |
 
-None of these inputs can be created by an agent. They require operator knowledge of the Production environment and owner decisions.
+### SEPARATE_APPROVAL_REQUIRED (future owner decisions, not missing inputs)
+
+| Phase | Decision | Depends On |
+| --- | --- | --- |
+| Phase B | Production read-only catalog collection execution approval | OI-1, OI-2 |
+| Phase C | Owner review of collected sanitized evidence and drift classification | Phase B complete |
+| Phase D | Manifest activation (ADOPTION_REQUIRED -> ACTIVE) | Phase C approved |
+| Phase E | Ledger bootstrap, migration runner, and canonical migration stream approval | Phase D complete |
+
+The reviewed frozen collection plan and allowlist (PR #3556) are in the repository. Input absence and future approval decisions are separate categories. None of these inputs or approvals can be created by an agent.
 
 ## Selected Next Child
 
@@ -148,6 +158,8 @@ No migration implementation child can safely proceed. An **operator-readiness ch
 ### Proposed Operator-Readiness Child
 
 **Proposed issue title**: `[Architecture][DB][Adoption] Create adoption collection operator checklist and role mapping template`
+
+**Clarification**: This is an operator-readiness documentation child, NOT a Production collection implementation. It does not contain actual secret values, raw role mappings, or executable collection code. It documents the actions, inputs, and approval boundaries that an operator must follow to unblock Phase B.
 
 **Objective**: Produce a structured operator-facing document that lists exact steps to unblock Phase B Production catalog collection, provides a role mapping template (structure only), documents approval gates and expected outputs at each adoption phase, and references repository contracts.
 
