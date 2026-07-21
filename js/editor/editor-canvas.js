@@ -299,16 +299,22 @@ function createEditorCanvas(deps) {
 
         if (layoutPolicy.layoutReadOnly === true) {
             // Appreciation / public: ephemeral structured presentation.
-            // Do not read or write owner-local layout keys; keep keys intact.
-            if (viewportState.layoutMode === 'free' && Object.keys(viewportState.positions || {}).length > 0) {
-                savedFreePositions = { ...viewportState.positions };
-            }
+            // Keep owner-local localStorage keys intact, but isolate ALL in-memory
+            // owner-edit draft sources so temporary free toggle cannot re-display them.
+            // Do not rely on fitViewportToTree to neutralize owner viewport offsets.
+            savedFreePositions = null;
+            storedFreePositions = {};
             viewportState.layoutMode = 'structured';
             viewportState.positions = {};
-            viewportState.initialViewportApplied = false;
+            viewportState.offsetX = 0;
+            viewportState.offsetY = 0;
+            viewportState.scale = 1;
             viewportState.hasStoredViewportOffset = false;
+            viewportState.initialViewportApplied = false;
         } else {
-            // Owner edit: restore owner-local preference + positions.
+            // Owner edit: reload owner-local preference + positions from storage.
+            // Clear session buffers first so edit always re-reads localStorage truth.
+            savedFreePositions = null;
             const loaded = loadStoredLayout();
             storedFreePositions = { ...(loaded.positions || {}) };
             const restoredMode = loadLayoutMode();
@@ -326,6 +332,10 @@ function createEditorCanvas(deps) {
                 viewportState.hasStoredViewportOffset = !!nonDefault;
             } else {
                 viewportState.positions = {};
+                viewportState.offsetX = 0;
+                viewportState.offsetY = 0;
+                viewportState.scale = 1;
+                viewportState.hasStoredViewportOffset = false;
             }
         }
 
@@ -333,11 +343,19 @@ function createEditorCanvas(deps) {
             layoutTransition.applyLayoutModeClasses(viewportState.layoutMode);
         }
         updateLayoutToggleUI();
-        if (typeof fitViewportToTree === 'function') {
-            try {
-                fitViewportToTree();
-            } catch (e) {
-                /* ignore fit errors during mode switch */
+        // Fit only for structured / ephemeral presentation. Free owner-edit restore
+        // must keep stored offsetX/offsetY/scale (hasStoredViewportOffset).
+        if (
+            viewportState.layoutMode === 'structured' ||
+            layoutPolicy.layoutReadOnly === true ||
+            !viewportState.hasStoredViewportOffset
+        ) {
+            if (typeof fitViewportToTree === 'function') {
+                try {
+                    fitViewportToTree();
+                } catch (e) {
+                    /* ignore fit errors during mode switch */
+                }
             }
         }
         if (typeof initCanvas === 'function') {
