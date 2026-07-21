@@ -196,65 +196,123 @@ test('#3578 browser: shared root structure and selectors (composition direct)', 
 });
 
 /* ────────────────────────────────────────────────────────────────────────── */
-/* 2. Browse actual runtime — search-card-renderer.js                         */
+/* 2. Browse actual runtime — search-card-renderer.js
+ *    Verifies CTA is rendered (same-origin absolute) in both root context
+ *    and /pages/search context. FAILS before the production fix because the
+ *    renderer emits a relative URL that composition's sanitizeUrl rejects.    */
 /* ────────────────────────────────────────────────────────────────────────── */
 
-test('#3578 browser: Browse surface adapter (search-card-renderer) actual runtime', { timeout: 60000 }, async (t) => {
-  await withServerPage(t, async (page, base) => {
-    const tree = {
-      id: 'browse-1',
-      title: 'Browse Actual Tree',
-      visibility: 'public',
-      likeCount: 5,
-      commentCount: 2,
-      shareCount: 1,
-      viewCount: 10,
-    };
+function assertBrowseCta(t, label, r, pageOrigin, expectedTreeId) {
+  assert.ok(r.htmlLength > 0, `${label}: renderer must produce HTML`);
+  assert.equal(r.rootTag, 'DIV', `${label}: root must be DIV`);
+  assert.ok(r.hasTreeCard, `${label}: must have tree-card class`);
+  assert.ok(r.hasLoveTreeCard, `${label}: must have love-tree-card class`);
+  assert.ok(r.hasBrowseClass, `${label}: must have love-tree-card-browse class`);
+  assert.equal(r.nestedTreeInLove, 0, `${label}: no .tree-card > .love-tree-card nesting`);
+  assert.equal(r.nestedLoveInTree, 0, `${label}: no .love-tree-card > .tree-card reverse nesting`);
+  assert.ok(r.hasBody, `${label}: must have body`);
+  assert.ok(r.hasTitle, `${label}: must have title`);
+  assert.ok(r.hasMediaSlot, `${label}: must have media slot`);
+  assert.ok(r.hasMetaRow, `${label}: must have meta row`);
+  // CTA contract — exactly one open link
+  assert.ok(r.hasOpenLink, `${label}: must render an appreciation CTA (open link)`);
+  assert.equal(r.hasMetaRight, true, `${label}: must render meta-right wrapper for CTA`);
+  // href must be absolute and same-origin
+  assert.ok(r.href && /^https?:\/\//.test(r.href), `${label}: href must be absolute (${r.href})`);
+  assert.equal(r.hrefOrigin, pageOrigin, `${label}: href origin must equal page origin`);
+  assert.equal(r.hrefPathname, '/pages/view.html', `${label}: pathname must be /pages/view.html`);
+  assert.equal(r.hrefTreeId, expectedTreeId, `${label}: treeId must match (${r.hrefTreeId})`);
+  assert.equal(r.hasModeEdit, false, `${label}: must NOT have mode=edit`);
+  assert.ok(r.metricsText.length > 0, `${label}: must render metrics`);
+}
 
+// Browser-side card inspector (stringified into page.evaluate)
+const INSPECT_BROWSE_CARD_FN = function (card) {
+  if (!card) return null;
+  var openLink = card.querySelector('.tree-card-open-link, .love-tree-card-open-link');
+  var metaRight = card.querySelector('.tree-meta-right, .love-tree-card-meta-right');
+  var href = openLink ? openLink.getAttribute('href') : null;
+  var hrefOrigin = null, hrefPathname = null, hrefTreeId = null;
+  if (href) {
+    try {
+      var u = new URL(href, window.location.origin);
+      hrefOrigin = u.origin;
+      hrefPathname = u.pathname;
+      hrefTreeId = u.searchParams.get('treeId');
+    } catch (e) {}
+  }
+  return {
+    htmlLength: card.outerHTML.length,
+    rootTag: card.tagName,
+    hasTreeCard: card.classList.contains('tree-card'),
+    hasLoveTreeCard: card.classList.contains('love-tree-card'),
+    hasBrowseClass: card.classList.contains('love-tree-card-browse'),
+    nestedTreeInLove: card.querySelectorAll('.tree-card > .love-tree-card').length,
+    nestedLoveInTree: card.querySelectorAll('.love-tree-card > .tree-card').length,
+    hasBody: card.querySelector('.tree-card-body, .love-tree-card-body') !== null,
+    hasTitle: card.querySelector('.tree-title, .love-tree-card-title') !== null,
+    hasMediaSlot: card.querySelector('.tree-card-media, .love-tree-card-media') !== null,
+    hasMetaRow: card.querySelector('.tree-meta-row, .love-tree-card-meta-row') !== null,
+    hasOpenLink: !!openLink,
+    hasMetaRight: !!metaRight,
+    href: href,
+    hrefOrigin: hrefOrigin,
+    hrefPathname: hrefPathname,
+    hrefTreeId: hrefTreeId,
+    hasModeEdit: !!href && href.indexOf('mode=edit') !== -1,
+    metricsText: card.querySelector('.tree-card-reaction-metrics') ? card.querySelector('.tree-card-reaction-metrics').textContent : '',
+  };
+};
+
+test('#3602 browser: Browse surface adapter — root context CTA (FAILS before fix)', { timeout: 60000 }, async (t) => {
+  await withServerPage(t, async (page, base) => {
+    // Simulate production root context (page at site root, not /tests/fixtures/)
+    await page.evaluate(() => {
+      window.history.replaceState({}, '', '/');
+    });
+    const tree = {
+      id: 'browse-root', title: 'Browse Root Context', visibility: 'public',
+      likeCount: 5, commentCount: 2, shareCount: 1, viewCount: 10,
+    };
+    // Fixture is served at root path — LoveBudPath.getBasePath() returns 'pages/'
     const result = await page.evaluate((args) => {
       const renderer = window.LoveBudSearchCardRenderer;
-      const tree = args.tree;
-      // search-card-renderer.renderTreeCard returns outerHTML string
-      const html = renderer.renderTreeCard(tree, { index: 0 });
+      const html = renderer.renderTreeCard(args.tree, { index: 0 });
       const container = document.createElement('div');
       container.innerHTML = html;
       const card = container.firstElementChild;
-      return {
-        htmlLength: html.length,
-        rootTag: card ? card.tagName : null,
-        hasTreeCard: card ? card.classList.contains('tree-card') : false,
-        hasLoveTreeCard: card ? card.classList.contains('love-tree-card') : false,
-        hasBrowseClass: card ? card.classList.contains('love-tree-card-browse') : false,
-        nestedTreeInLove: card ? card.querySelectorAll('.tree-card > .love-tree-card').length : 0,
-        nestedLoveInTree: card ? card.querySelectorAll('.love-tree-card > .tree-card').length : 0,
-        hasBody: card ? card.querySelector('.tree-card-body, .love-tree-card-body') !== null : false,
-        hasTitle: card ? card.querySelector('.tree-title, .love-tree-card-title') !== null : false,
-        hasMediaSlot: card ? card.querySelector('.tree-card-media, .love-tree-card-media') !== null : false,
-        hasMetaRow: card ? card.querySelector('.tree-meta-row, .love-tree-card-meta-row') !== null : false,
-        hasOpenLink: card ? card.querySelector('.tree-card-open-link, .love-tree-card-open-link') !== null : false,
-        openLinkHref: card ? (card.querySelector('.love-tree-card-open-link')?.getAttribute('href') || null) : null,
-        hasModeEdit: card ? card.querySelector('[href*="mode=edit"]') !== null : false,
-        metricsText: card ? (card.querySelector('.tree-card-reaction-metrics')?.textContent || '') : '',
-      };
-    }, { tree, base });
+      const inspectFn = args.inspectFn;
+      // eslint-disable-next-line no-eval
+      const inspect = eval('(' + inspectFn + ')');
+      return inspect(card);
+    }, { tree, inspectFn: INSPECT_BROWSE_CARD_FN.toString() });
+    assertBrowseCta(t, 'Browse root', result, new URL(base).origin, tree.id);
+  });
+});
 
-    assert.ok(result.htmlLength > 0, 'Browse renderer must produce HTML');
-    assert.equal(result.rootTag, 'DIV', 'Browse card root must be DIV');
-    assert.ok(result.hasTreeCard, 'Browse card must have tree-card class');
-    assert.ok(result.hasLoveTreeCard, 'Browse card must have love-tree-card class');
-    assert.ok(result.hasBrowseClass, 'Browse card must have love-tree-card-browse class');
-    assert.equal(result.nestedTreeInLove, 0, 'No .tree-card > .love-tree-card nesting');
-    assert.equal(result.nestedLoveInTree, 0, 'No .love-tree-card > .tree-card reverse nesting');
-    assert.ok(result.hasBody, 'Browse card must have body');
-    assert.ok(result.hasTitle, 'Browse card must have title');
-    assert.ok(result.hasMediaSlot, 'Browse card must have media slot (rendered from tree data)');
-    assert.ok(result.hasMetaRow, 'Browse card must have meta row');
-    assert.ok(result.hasOpenLink, 'Browse card must have open link');
-    assert.ok(result.openLinkHref && result.openLinkHref.includes('view.html?treeId=browse-1'),
-      'Browse open link must target viewer with tree id');
-    assert.equal(result.hasModeEdit, false, 'Browse card must NOT have mode=edit');
-    // Metrics: viewCount=10 → '10' must appear; authoritative zero would show '0'
-    assert.ok(result.metricsText.length > 0, 'Browse card must render metrics');
+test('#3602 browser: Browse surface adapter — /pages/search context CTA (FAILS before fix)', { timeout: 60000 }, async (t) => {
+  await withServerPage(t, async (page, base) => {
+    // Use replaceState to simulate the production /pages/search context so
+    // LoveBudPath.getBasePath() returns '' (same as real /pages/search.html).
+    await page.evaluate(() => {
+      window.history.replaceState({}, '', '/pages/search');
+    });
+    const tree = {
+      id: 'browse-search', title: 'Browse Search Context', visibility: 'public',
+      likeCount: 3, commentCount: 1, shareCount: 0, viewCount: 7,
+    };
+    const result = await page.evaluate((args) => {
+      const renderer = window.LoveBudSearchCardRenderer;
+      const html = renderer.renderTreeCard(args.tree, { index: 0 });
+      const container = document.createElement('div');
+      container.innerHTML = html;
+      const card = container.firstElementChild;
+      const inspectFn = args.inspectFn;
+      // eslint-disable-next-line no-eval
+      const inspect = eval('(' + inspectFn + ')');
+      return inspect(card);
+    }, { tree, inspectFn: INSPECT_BROWSE_CARD_FN.toString() });
+    assertBrowseCta(t, 'Browse /pages/search', result, new URL(base).origin, tree.id);
   });
 });
 
@@ -262,45 +320,48 @@ test('#3578 browser: Browse surface adapter (search-card-renderer) actual runtim
 /* 3. My Trees actual runtime — my-trees-ui.js                                */
 /* ────────────────────────────────────────────────────────────────────────── */
 
-test('#3578 browser: My Trees surface adapter (my-trees-ui) actual runtime', { timeout: 60000 }, async (t) => {
+test('#3602 browser: My Trees surface adapter — CTA + visibility (FAILS before fix)', { timeout: 60000 }, async (t) => {
   await withServerPage(t, async (page, base) => {
+    // Simulate production /pages/my-trees context so resolveSafeBasePath() returns ''
+    await page.evaluate(() => {
+      window.history.replaceState({}, '', '/pages/my-trees');
+    });
+    const pageOrigin = new URL(base).origin;
     const publicTree = {
-      id: 'mt-public',
-      title: 'Public My Tree',
-      visibility: 'public',
-      likeCount: 7,
-      commentCount: 3,
-      shareCount: 2,
-      viewCount: 20,
+      id: 'mt-public', title: 'Public My Tree', visibility: 'public',
+      likeCount: 7, commentCount: 3, shareCount: 2, viewCount: 20,
     };
     const privateTree = {
-      id: 'mt-private',
-      title: 'Private My Tree',
-      visibility: 'private',
-      likeCount: 1,
-      commentCount: 0,
-      shareCount: 0,
-      viewCount: 0,
+      id: 'mt-private', title: 'Private My Tree', visibility: 'private',
+      likeCount: 1, commentCount: 0, shareCount: 0, viewCount: 0,
     };
 
     const result = await page.evaluate((args) => {
       const UI = window.LoveBudMyTreesUI;
 
       function buildOne(tree) {
-        // my-trees-ui.buildTreeCard returns a DOM element (not HTML string)
-        const card = UI.buildTreeCard(tree, {
+        return UI.buildTreeCard(tree, {
           i18n: function(k) { return k; },
           onSelect: function() {},
           isSelected: function() { return false; },
         });
-        return card;
       }
-
-      const pub = buildOne(args.publicTree);
-      const priv = buildOne(args.privateTree);
 
       function inspect(card) {
         if (!card) return null;
+        const openLink = card.querySelector('.tree-card-open-link, .love-tree-card-open-link');
+        const metaRight = card.querySelector('.tree-meta-right, .love-tree-card-meta-right');
+        const href = openLink ? openLink.getAttribute('href') : null;
+        let hrefOrigin = null, hrefPathname = null, hrefTreeId = null;
+        if (href) {
+          try {
+            const u = new URL(href, window.location.origin);
+            hrefOrigin = u.origin;
+            hrefPathname = u.pathname;
+            hrefTreeId = u.searchParams.get('treeId');
+          } catch (e) {}
+        }
+        const visNode = card.querySelector('.love-tree-card-visibility');
         return {
           rootTag: card.tagName,
           hasTreeCard: card.classList.contains('tree-card'),
@@ -311,63 +372,69 @@ test('#3578 browser: My Trees surface adapter (my-trees-ui) actual runtime', { t
           hasBody: card.querySelector('.tree-card-body, .love-tree-card-body') !== null,
           hasTitle: card.querySelector('.tree-title, .love-tree-card-title') !== null,
           hasMetaRow: card.querySelector('.tree-meta-row, .love-tree-card-meta-row') !== null,
-          // My Trees uses relative URLs (editor?treeId=...) which composition sanitizeUrl
-          // rejects (http/https only). So no open-link anchor is rendered in-card;
-          // navigation is handled by the card click/keyboard handler via window.location.href.
-          hasOpenLink: card.querySelector('.tree-card-open-link, .love-tree-card-open-link') !== null,
-          hasMetaRight: card.querySelector('.tree-meta-right, .love-tree-card-meta-right') !== null,
-          hasModeEdit: card.querySelector('[href*="mode=edit"]') !== null,
+          hasOpenLink: !!openLink,
+          hasMetaRight: !!metaRight,
+          href: href,
+          hrefOrigin: hrefOrigin,
+          hrefPathname: hrefPathname,
+          hrefTreeId: hrefTreeId,
+          hasModeEdit: !!href && href.indexOf('mode=edit') !== -1,
           hasDirectEditLink: card.querySelector('a[href*="mode=edit"], .tree-card-edit-link') !== null,
           hasOwnerMenu: card.querySelector('.tree-card-owner-menu, .owner-menu') !== null,
-          hasVisibilityNode: card.querySelector('.love-tree-card-visibility') !== null,
-          visibilityHtml: card.querySelector('.love-tree-card-visibility')?.innerHTML || '',
-          visibilityText: card.querySelector('.love-tree-card-visibility')?.textContent || '',
-          visibilityAriaLabel: card.querySelector('.love-tree-card-visibility [aria-label]')?.getAttribute('aria-label') ||
-            card.querySelector('.love-tree-card-visibility [title]')?.getAttribute('title') || '',
+          hasVisibilityNode: !!visNode,
+          visibilityAriaLabel: visNode ? (visNode.getAttribute('aria-label') || visNode.querySelector('[aria-label]')?.getAttribute('aria-label') || '') : '',
+          visibilityTitle: visNode ? (visNode.getAttribute('title') || visNode.querySelector('[title]')?.getAttribute('title') || '') : '',
           visibilityIcons: Array.from(card.querySelectorAll('.love-tree-card-visibility .material-symbols-outlined')).map(function(el) { return el.textContent.trim(); }),
+          visibilityHtml: visNode ? visNode.innerHTML : '',
           metricsText: card.querySelector('.tree-card-reaction-metrics')?.textContent || '',
           cardRole: card.getAttribute('role'),
           cardTabindex: card.getAttribute('tabindex'),
         };
       }
 
-      return {
-        pub: inspect(pub),
-        priv: inspect(priv),
-      };
-    }, { publicTree, privateTree, base });
+      return { pub: inspect(buildOne(args.publicTree)), priv: inspect(buildOne(args.privateTree)) };
+    }, { publicTree, privateTree });
 
     assert.ok(result.pub, 'Public My Trees card must be built');
     assert.ok(result.priv, 'Private My Trees card must be built');
 
-    for (const [label, card] of [['public', result.pub], ['private', result.priv]]) {
-      assert.equal(card.rootTag, 'DIV', `${label} My Trees card root must be DIV`);
-      assert.ok(card.hasTreeCard, `${label} card must have tree-card class`);
-      assert.ok(card.hasLoveTreeCard, `${label} card must have love-tree-card class`);
-      assert.ok(card.hasMyTreesClass, `${label} card must have love-tree-card-my-trees class`);
-      assert.equal(card.nestedTreeInLove, 0, `${label} no nesting`);
-      assert.equal(card.nestedLoveInTree, 0, `${label} no reverse nesting`);
-      assert.ok(card.hasBody, `${label} card must have body`);
-      assert.ok(card.hasTitle, `${label} card must have title`);
-      assert.ok(card.hasMetaRow, `${label} card must have meta row`);
-      assert.equal(card.hasModeEdit, false, `${label} card must NOT have mode=edit`);
-      assert.equal(card.hasDirectEditLink, false, `${label} card must NOT have direct Edit link`);
-      assert.equal(card.hasOwnerMenu, false, `${label} card must NOT have owner menu`);
-      assert.ok(card.hasVisibilityNode, `${label} card must have visibility node`);
-      assert.equal(card.cardRole, 'button', `${label} card must have role=button for interaction`);
-      assert.equal(card.cardTabindex, '0', `${label} card must have tabindex=0 for keyboard access`);
+    for (const [label, card, tree] of [['public', result.pub, publicTree], ['private', result.priv, privateTree]]) {
+      assert.equal(card.rootTag, 'DIV', `${label}: root must be DIV`);
+      assert.ok(card.hasTreeCard, `${label}: must have tree-card class`);
+      assert.ok(card.hasLoveTreeCard, `${label}: must have love-tree-card class`);
+      assert.ok(card.hasMyTreesClass, `${label}: must have love-tree-card-my-trees class`);
+      assert.equal(card.nestedTreeInLove, 0, `${label}: no nesting`);
+      assert.equal(card.nestedLoveInTree, 0, `${label}: no reverse nesting`);
+      assert.ok(card.hasBody, `${label}: must have body`);
+      assert.ok(card.hasTitle, `${label}: must have title`);
+      assert.ok(card.hasMetaRow, `${label}: must have meta row`);
+      // CTA contract — exactly one open link, same-origin absolute /pages/editor
+      assert.ok(card.hasOpenLink, `${label}: must render an appreciation CTA (open link)`);
+      assert.equal(card.hasMetaRight, true, `${label}: must render meta-right wrapper`);
+      assert.ok(card.href && /^https?:\/\//.test(card.href), `${label}: href must be absolute (${card.href})`);
+      assert.equal(card.hrefOrigin, pageOrigin, `${label}: href origin must equal page origin`);
+      assert.equal(card.hrefPathname, '/pages/editor', `${label}: pathname must be /pages/editor (${card.hrefPathname})`);
+      assert.equal(card.hrefTreeId, tree.id, `${label}: treeId must match (${card.hrefTreeId})`);
+      assert.equal(card.hasModeEdit, false, `${label}: must NOT have mode=edit`);
+      assert.equal(card.hasDirectEditLink, false, `${label}: must NOT have direct Edit link`);
+      assert.equal(card.hasOwnerMenu, false, `${label}: must NOT have owner menu`);
+      assert.ok(card.hasVisibilityNode, `${label}: must have visibility node`);
+      assert.equal(card.cardRole, 'button', `${label}: card must have role=button`);
+      assert.equal(card.cardTabindex, '0', `${label}: card must have tabindex=0`);
+      // Visibility icon and accessible name
+      assert.ok(card.visibilityIcons.length > 0, `${label}: visibility must render a material icon`);
+      assert.ok(card.visibilityAriaLabel || card.visibilityTitle,
+        `${label}: visibility must have localized aria-label or title`);
     }
-    // Public/private visibility indicators must render material icons
-    assert.ok(result.pub.visibilityIcons.length > 0 || result.pub.visibilityHtml.indexOf('material-symbols') !== -1,
-      'Public visibility must render a material icon (globe)');
-    assert.ok(result.priv.visibilityIcons.length > 0 || result.priv.visibilityHtml.indexOf('material-symbols') !== -1,
-      'Private visibility must render a material icon (lock)');
-    // No text pill / filled badge background
-    assert.equal(result.pub.visibilityHtml.indexOf('background:'), -1, 'Public visibility must not have filled badge background');
-    // Localized accessible name or tooltip
-    assert.ok(result.pub.visibilityAriaLabel || result.priv.visibilityAriaLabel,
-      'Visibility must have localized accessible name or tooltip');
-    // Metrics: private has viewCount=0 → authoritative zero '0' must appear
+    // Public → globe; Private → lock
+    assert.ok(result.pub.visibilityIcons.indexOf('public') !== -1,
+      'Public visibility icon must be "public" (globe)');
+    assert.ok(result.priv.visibilityIcons.indexOf('lock') !== -1,
+      'Private visibility icon must be "lock"');
+    // No filled badge background
+    assert.equal(result.pub.visibilityHtml.indexOf('background:'), -1,
+      'Public visibility must not have filled badge background');
+    // Private metrics: viewCount=0 → authoritative zero '0'
     assert.ok(result.priv.metricsText.indexOf('0') !== -1 || result.priv.metricsText.length === 0,
       'Private metrics: authoritative zero rendered as 0 or omitted if unknown');
   });
@@ -678,6 +745,69 @@ test('#3578 browser: desktop card click is selection-only (no immediate navigati
   }
 });
 
+test('#3602 browser: desktop card CTA direct click → appreciation navigation', { timeout: 60000 }, async (t) => {
+  const port = await getFreePort();
+  const server = startStaticServer();
+  await new Promise(r => server.listen(port, '127.0.0.1', r));
+  const base = `http://127.0.0.1:${port}`;
+  const browser = await launchChromiumOrThrow();
+  try {
+    const context = await browser.newContext({ viewport: { width: 1024, height: 768 } });
+    const page = await context.newPage();
+    await page.goto(`${base}${FIXTURE_PATH}`, { waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() =>
+      typeof window.LoveBudMyTreesUI !== 'undefined' &&
+      typeof window.LoveBudMyTreesUI.buildTreeCard === 'function'
+    );
+
+    let navCount = 0;
+    let navUrl = null;
+    await page.route('**/*', (route) => {
+      const url = route.request().url();
+      if (url.indexOf('editor') !== -1 || url.indexOf('view.html') !== -1) {
+        navCount++;
+        navUrl = url;
+        route.abort();
+      } else {
+        route.continue();
+      }
+    });
+
+    const tree = {
+      id: 'mt-desktop-cta', title: 'Desktop CTA Tree', visibility: 'private',
+      likeCount: 1, commentCount: 0, shareCount: 0, viewCount: 2,
+    };
+
+    const result = await page.evaluate((args) => {
+      const UI = window.LoveBudMyTreesUI;
+      const card = UI.buildTreeCard(args.tree, {
+        i18n: function(k) { return k; },
+        onSelect: function() {},
+        isSelected: function() { return false; },
+      });
+      document.body.appendChild(card);
+      const openLink = card.querySelector('.tree-card-open-link, .love-tree-card-open-link');
+      let hasOpenLink = !!openLink;
+      if (openLink) {
+        const event = new MouseEvent('click', { bubbles: true, cancelable: true });
+        openLink.dispatchEvent(event);
+      }
+      return { hasOpenLink, href: openLink ? openLink.getAttribute('href') : null };
+    }, { tree });
+
+    await page.waitForTimeout(300);
+
+    // Desktop CTA direct click must navigate exactly once to appreciation
+    assert.ok(result.hasOpenLink, 'Desktop card must have a CTA open link');
+    assert.equal(navCount, 1, `Desktop CTA click must navigate exactly once (got ${navCount})`);
+    assert.ok(navUrl && navUrl.indexOf('mode=edit') === -1,
+      'Desktop CTA navigation must not contain mode=edit');
+  } finally {
+    await browser.close();
+    server.close();
+  }
+});
+
 /* ────────────────────────────────────────────────────────────────────────── */
 /* 5. XSS contract — each sink verified separately                            */
 /* ────────────────────────────────────────────────────────────────────────── */
@@ -797,10 +927,17 @@ test('#3578 browser: URL sanitization matrix — invalid URLs produce no action'
       { url: 'javascript:alert(1)', desc: 'javascript scheme', shouldCreate: false },
       { url: 'JaVaScRiPt:alert(1)', desc: 'mixed case javascript', shouldCreate: false },
       { url: '//evil.example/path', desc: 'protocol-relative', shouldCreate: false },
+      { url: 'data:text/html,<script>window.__xss=1</script>', desc: 'data uri', shouldCreate: false },
       { url: '', desc: 'empty string', shouldCreate: false },
+      { url: '   ', desc: 'whitespace string', shouldCreate: false },
       { url: base + '/pages/view.html?treeId=valid-1', desc: 'valid absolute URL', shouldCreate: true },
       // Composition must NOT inject mode=edit into URLs that don't have it
       { url: base + '/pages/view.html?treeId=valid-no-mode', desc: 'valid URL without mode=edit', shouldCreate: true },
+      // Cross-origin http URL: composition sanitizeUrl only checks protocol,
+      // not origin. Surface adapters must refuse cross-origin at their own
+      // boundary (verified in the surface adapter tests). Composition itself
+      // still renders an anchor for a syntactically valid http(s) URL.
+      { url: 'http://evil.example/pages/view.html?treeId=cross', desc: 'cross-origin http (composition allows)', shouldCreate: true },
     ];
 
     const results = await page.evaluate((args) => {

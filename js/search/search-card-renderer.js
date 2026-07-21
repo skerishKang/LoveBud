@@ -134,7 +134,19 @@
 
     function getTreeViewerHref(tree) {
         if (!tree?.id) return '';
-        return `${getBasePath()}view.html?treeId=${encodeURIComponent(tree.id)}`;
+        // Resolve the relative appreciation URL to a same-origin absolute URL
+        // before handing it to the shared composition boundary. Composition's
+        // sanitizeUrl is absolute-only; surface adapters own the resolution.
+        var relativeHref =
+            getBasePath() + 'view.html?treeId=' + encodeURIComponent(tree.id);
+        try {
+            var absolute = new URL(relativeHref, window.location.href);
+            if (absolute.origin !== window.location.origin) return '';
+            if (absolute.protocol !== 'http:' && absolute.protocol !== 'https:') return '';
+            return absolute.href;
+        } catch (e) {
+            return '';
+        }
     }
 
     function getTreePreviewTone(tree) {

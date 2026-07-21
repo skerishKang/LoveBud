@@ -161,8 +161,13 @@ test('My LoveTrees routing contract for public and private trees', () => {
     };
   }
 
+  // Production browser always provides the URL constructor and a complete
+  // location object. The VM sandbox must supply Production-equivalent globals
+  // so toSameOriginAbsoluteUrl() can resolve relative appreciation targets.
   const context = {
     window: {},
+    // Bare `new URL(...)` in production code resolves the global URL.
+    URL: URL,
     document: {
       createElement(tag) { return createMockElement(tag); },
       createTextNode(txt) { return { text: txt }; },
@@ -170,7 +175,8 @@ test('My LoveTrees routing contract for public and private trees', () => {
       getElementById() { return createMockElement('div'); }
     },
     LoveBudPath: {
-      getBasePath() { return 'pages/'; }
+      // Under /pages/* LoveBudPath.getBasePath() returns '' (not 'pages/').
+      getBasePath() { return ''; }
     },
     LoveTreeBaseApiFetch: {
       getCachedTokenRecord() { return null; }
@@ -217,8 +223,9 @@ test('My LoveTrees routing contract for public and private trees', () => {
       }
     },
     location: {
+      href: 'https://lovebud.test/pages/my-trees.html',
       pathname: '/pages/my-trees.html',
-      origin: 'http://localhost'
+      origin: 'https://lovebud.test'
     }
   };
   context.window = context;
