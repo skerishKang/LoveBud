@@ -221,6 +221,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/browse-my-trees-list-geometry-3608-browser-contract.test.cjs",
+      "layer": "EXECUTED_REAL_LOCAL",
+      "rationale": "Executes real production CSS/JS chains (css/global.css, css/shared/love-tree-card-composition.css, css/search.css, css/my-trees.css, css/tree-view-mode.css, js/tree-view-mode-switcher.js, js/my-trees/my-trees-page-bootstrap.js) in Playwright Chromium via a local HTTP server. Asserts #3608 Phase 2 PR-B list geometry parity: Browse and My Trees list share 1-column gap 14px, card grid 160px+flex (110px tablet, 140px stacked mobile), body display flex/column/center with desktop padding 14px 16px and mobile 12px 14px 14px; My Trees list thumb margin reset and media stretch; CTA/edit/visibility/metadata containment; desktop 1440, tablet 768, mobile 375 measurements. No production write/auth/API/DB mutation.",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/browse-my-trees-desktop-geometry-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
