@@ -39,11 +39,11 @@ test('all split CSS files exist in the file system', () => {
 
 test('index.html references the original index-visual.css file and version query parameter', () => {
   const html = fs.readFileSync(HTML_PATH, 'utf8');
-  // Check exact link reference tag
+  // Check exact link reference tag for this issue's version
   assert.match(
     html,
-    /href="css\/index-visual\.css\?v=20260701-2821-1"/,
-    'index.html must load css/index-visual.css?v=20260701-2821-1'
+    /href="css\/index-visual\.css\?v=20260722-3624-1"/,
+    'index.html must load css/index-visual.css?v=20260722-3624-1'
   );
 });
 
@@ -56,6 +56,9 @@ test('representative classes exist in their respective split files', () => {
     { class: '.home-v3-growth-stage', file: 'growth-stage.css' },
     { class: '.growth-tree-svg', file: 'growth-stage.css' },
     { class: '.growth-stage-card', file: 'growth-stage.css' },
+    { class: '.growth-stage-card.featured', file: 'growth-stage.css' },
+    { class: '.growth-stage-card.supporting', file: 'growth-stage.css' },
+    { class: '.growth-stage-card-media', file: 'growth-stage.css' },
   ];
 
   classMappings.forEach(mapping => {

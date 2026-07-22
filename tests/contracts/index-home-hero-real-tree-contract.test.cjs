@@ -14,52 +14,76 @@ test('Contract: index.html elements integrity', () => {
 
   // 1. index.html has growth-tree-svg and exactly 4 growth-stage-cards
   assert.ok(html.includes('growth-tree-svg'), 'index.html must have growth-tree-svg');
-  const matches = html.match(/class="[^"]*growth-stage-card\b[^"]*"/g) || [];
+  const matches = html.match(/<article[^>]*class="growth-stage-card /g) || [];
   assert.equal(matches.length, 4, `index.html must have exactly 4 growth-stage-cards, found ${matches.length}`);
 
-  // 2. index.html does not have home-v3-card and home-v3-note-paper
+  // 2. There is one featured card and three supporting cards.
+  assert.ok(html.includes('class="growth-stage-card featured"'),
+    'index.html must have a featured card');
+  const supporting = (html.match(/class="growth-stage-card supporting /g) || []).length;
+  assert.equal(supporting, 3, `index.html must have 3 supporting cards, found ${supporting}`);
+
+  // 3. index.html must not have legacy decorative markup
   assert.ok(!html.includes('home-v3-card'), 'index.html must not contain home-v3-card markup');
   assert.ok(!html.includes('home-v3-note-paper'), 'index.html must not contain home-v3-note-paper markup');
+  assert.ok(!html.includes('growth-stage-card one"'),
+    'legacy .growth-stage-card.one/two/three/four classes must be removed');
 });
 
 test('Contract: css manifest and growth-stage.css rules', () => {
-  // 3. css/index-visual.css does not import cards.css
+  // 4. css/index-visual.css does not import cards.css
   const manifest = fs.readFileSync(CSS_MANIFEST_PATH, 'utf8');
   assert.ok(!manifest.includes('cards.css'), 'index-visual.css must not import cards.css');
 
-  // 4. growth-stage.css has default hidden policy
+  // 5. growth-stage.css has default hidden policy
   const growthCss = fs.readFileSync(GROWTH_STAGE_CSS_PATH, 'utf8');
   const defaultPolicyPattern = /\.growth-stage-card\s*\{[^}]*opacity:\s*0;[^}]*visibility:\s*visible;[^}]*pointer-events:\s*none;/;
-  assert.ok(defaultPolicyPattern.test(growthCss), 'growth-stage.css must have default hidden policy for .growth-stage-card');
+  assert.ok(defaultPolicyPattern.test(growthCss),
+    'growth-stage.css must have default hidden policy for .growth-stage-card');
 
-  // 5. growth-stage.css uses animation-based reveal (not toggled visibility)
-  const animatePattern = /\.growth-stage-card\s*\{[^}]*animation:\s*growMomentCard[^}]*\bboth\b/;
-  assert.ok(animatePattern.test(growthCss), 'growth-stage.css must use animation growMomentCard with "both" fill mode');
+  // 6. growth-stage.css uses state-based reveal (not keyframe + fill-mode)
+  const stateAttrPattern = /\[data-stage-state="cards-revealing"\][^{]*\.growth-stage-card/;
+  assert.ok(stateAttrPattern.test(growthCss),
+    'growth-stage.css must use [data-stage-state="cards-revealing"] for card reveal');
 });
 
-test('Contract: index-inline-init.js class adjustments and fallback absence', () => {
+test('Contract: index-inline-init.js — no community tree API', () => {
   const js = fs.readFileSync(JS_PATH, 'utf8');
 
-  // 6. index-inline-init.js adds has-hero-thumbnail and has-real-thumbnails on onload
-  assert.ok(js.includes('has-hero-thumbnail'), 'index-inline-init.js must add has-hero-thumbnail class');
-  assert.ok(js.includes('has-real-thumbnails'), 'index-inline-init.js must add has-real-thumbnails class');
+  // 7. JS must NOT depend on the community trees API for hero thumbnails.
+  assert.ok(!js.includes('/api/community/trees'),
+    'index-inline-init.js must not fetch community tree API for hero thumbnails');
+  assert.ok(!js.includes('representativeThumbnail') && !js.includes('representative_thumbnail'),
+    'index-inline-init.js must not read community tree thumbnail fields');
+  assert.ok(!js.includes('has-hero-thumbnail') && !js.includes('has-real-thumbnails'),
+    'legacy community-tree thumbnail class flags must be removed');
 
-  // 7. fetch failure path does not create fabricated static card fallback
-  assert.ok(!js.includes('card-root') && !js.includes('home-v3-card'), 'index-inline-init.js must not create fallback static cards');
+  // 8. JS must use curated artist dataset and YouTube remote thumbnails.
+  assert.ok(js.includes('ARTIST_DATASETS') || js.includes('artist'),
+    'index-inline-init.js must define a curated artist dataset');
+  assert.ok(js.includes('youtubeThumbUrl') || js.includes('ytimg.com'),
+    'index-inline-init.js must use YouTube remote thumbnail endpoint');
+  assert.ok(js.includes('youtubeWatchUrl') || js.includes('youtube.com/watch'),
+    'index-inline-init.js must use YouTube watch URLs');
 });
 
 test('Contract: index.html query param cache-bust values', () => {
   const html = fs.readFileSync(HTML_PATH, 'utf8');
 
-  // 8. index.html CSS/JS cache-bust are all 20260701-2821-1
+  // 9. index.html CSS/JS cache-bust are 20260722-3624-1 (this issue)
   assert.match(
     html,
-    /href="css\/index-visual\.css\?v=20260701-2821-1"/,
-    'index.html css/index-visual.css version must be 20260701-2821-1'
+    /href="css\/index-visual\.css\?v=20260722-3624-1"/,
+    'index.html css/index-visual.css version must be 20260722-3624-1'
   );
   assert.match(
     html,
-    /src="js\/index-inline-init\.js\?v=20260701-2821-1"/,
-    'index.html js/index-inline-init.js version must be 20260701-2821-1'
+    /src="js\/index-inline-init\.js\?v=20260722-3624-1"/,
+    'index.html js/index-inline-init.js version must be 20260722-3624-1'
+  );
+  assert.match(
+    html,
+    /src="js\/i18n\/i18n-home-v3\.js\?v=20260722-3624-1"/,
+    'index.html js/i18n/i18n-home-v3.js version must be 20260722-3624-1'
   );
 });

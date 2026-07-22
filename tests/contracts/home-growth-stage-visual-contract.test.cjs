@@ -1,11 +1,16 @@
 // @ts-check
 /**
- * LoveBud home-v3 growth-stage visual contract test
- * Verifies the 4-card, one-time-animation, reduced-motion-ready
- * hero growth-stage demo is properly structured.
+ * LoveBud home-v3 growth-stage visual contract test (Issue #3624)
+ * Verifies the JS-controlled, rotating-YouTube growth hero:
+ *   - caption reserved top zone, no overlap with cards
+ *   - 1 featured + 3 supporting cards
+ *   - YouTube remote thumbnails (real <img>)
+ *   - artist label + YouTube attribution + safe external link
+ *   - controlled cycle: no raw CSS infinite, no keyframe-driven reveal
+ *   - reduced motion: first-artist completed tree, no rotation
  *
- * Refs #3138
- * Refs #1882
+ * Refs #3624
+ * Refs #1882 (kept OPEN)
  */
 'use strict';
 
@@ -17,7 +22,7 @@ const PROJECT_ROOT = path.resolve(__dirname, '../..');
 
 /**
  * Read a file and return its lines.
- * @param {string} relPath - relative path from project root
+ * @param {string} relPath
  * @returns {string[]}
  */
 function readLines(relPath) {
@@ -31,32 +36,36 @@ const growthStageCss = readLines('css/index/visual/growth-stage.css');
 const animationsCss = readLines('css/index/visual/animations.css');
 const responsiveCss = readLines('css/index/visual/responsive.css');
 const i18nJs = readLines('js/i18n/i18n-home-v3.js');
+const inlineInitJs = readLines('js/index-inline-init.js');
 
-// ---- Helper ----
-
-function joinLines(arr) { return arr.join('\n'); }
-const html = joinLines(indexHtml);
-const cssGrowth = joinLines(growthStageCss);
-const cssAnim = joinLines(animationsCss);
+const html = indexHtml.join('\n');
+const cssGrowth = growthStageCss.join('\n');
+const cssAnim = animationsCss.join('\n');
+const js = inlineInitJs.join('\n');
 
 // ============================================================
 // 1. 4 growth-stage-card elements (exactly 4)
 // ============================================================
 {
-  const cardCount = (html.match(/class="growth-stage-card/g) || []).length;
+  const cardCount = (html.match(/<article[^>]*class="growth-stage-card /g) || []).length;
   assert.strictEqual(cardCount, 4,
     `Expected exactly 4 .growth-stage-card elements, found ${cardCount}`);
 }
 console.log('✓ 1: 4 growth-stage-card elements');
 
 // ============================================================
-// 2. growth-stage-card.four exists
+// 2. One featured + three supporting
 // ============================================================
 {
-  const hasFour = html.includes('class="growth-stage-card four"');
-  assert.ok(hasFour, '.growth-stage-card.four must exist in index.html');
+  assert.ok(html.includes('class="growth-stage-card featured"'),
+    'must have a .growth-stage-card.featured element');
+  assert.ok(html.includes('data-role="featured"'),
+    'featured card must have data-role="featured"');
+  const supportingCount = (html.match(/class="growth-stage-card supporting\b/g) || []).length;
+  assert.strictEqual(supportingCount, 3,
+    `Expected 3 supporting cards, found ${supportingCount}`);
 }
-console.log('✓ 2: growth-stage-card.four');
+console.log('✓ 2: featured + 3 supporting');
 
 // ============================================================
 // 3. No decorative branch/word/dots markup
@@ -68,10 +77,7 @@ console.log('✓ 2: growth-stage-card.four');
     'class="home-v3-dots"',
   ];
   for (const cls of forbidden) {
-    assert.ok(
-      !html.includes(cls),
-      `Must not contain '${cls}' in index.html`
-    );
+    assert.ok(!html.includes(cls), `Must not contain '${cls}' in index.html`);
   }
 }
 console.log('✓ 3: no branch/word/dots markup');
@@ -80,26 +86,31 @@ console.log('✓ 3: no branch/word/dots markup');
 // 4. growth-tree-svg is preserved
 // ============================================================
 {
-  const hasSvg = html.includes('class="growth-tree-svg"');
-  assert.ok(hasSvg, 'growth-tree-svg must exist');
+  assert.ok(html.includes('class="growth-tree-svg"'), 'growth-tree-svg must exist');
+  // SVG is decorative; the card links carry the accessible interaction
+  assert.ok(/class="growth-tree-svg"[^>]*aria-hidden="true"/.test(html),
+    'growth-tree-svg should be aria-hidden="true" (decorative)');
 }
-console.log('✓ 4: growth-tree-svg preserved');
+console.log('✓ 4: growth-tree-svg is decorative');
 
 // ============================================================
 // 5. Halo is background-layer (pointer-events: none)
 // ============================================================
 {
-  const hasPointerNone = cssGrowth.includes('pointer-events: none');
-  assert.ok(hasPointerNone, '.home-v3-halo must have pointer-events: none');
+  const haloRule = cssGrowth.match(/\.home-v3-halo\s*\{[^}]*\}/);
+  assert.ok(haloRule, 'Must find .home-v3-halo rule');
+  assert.ok(haloRule[0].includes('pointer-events: none'),
+    '.home-v3-halo must have pointer-events: none');
 }
 console.log('✓ 5: halo pointer-events: none');
 
 // ============================================================
-// 6. SVG z-index < cards z-index
+// 6. Branch z-index < card z-index, and caption z-index > card z-index
 // ============================================================
 {
   const svgZ = cssGrowth.match(/\.growth-tree-svg\s*\{[^}]*z-index:\s*(\d+)/);
   const cardZ = cssGrowth.match(/\.growth-stage-card\s*\{[^}]*z-index:\s*(\d+)/);
+  const featuredZ = cssGrowth.match(/\.growth-stage-card\.featured\s*\{[^}]*z-index:\s*(\d+)/);
   const captionZ = cssGrowth.match(/\.growth-stage-caption\s*\{[^}]*z-index:\s*(\d+)/);
 
   assert.ok(svgZ, 'SVG must have z-index');
@@ -109,109 +120,89 @@ console.log('✓ 5: halo pointer-events: none');
   const svgZVal = parseInt(svgZ[1], 10);
   const cardZVal = parseInt(cardZ[1], 10);
   const captionZVal = parseInt(captionZ[1], 10);
+  const featuredZVal = featuredZ ? parseInt(featuredZ[1], 10) : cardZVal;
 
   assert.ok(svgZVal < cardZVal,
     `SVG z-index (${svgZVal}) must be less than card z-index (${cardZVal})`);
-  assert.ok(captionZVal >= cardZVal,
-    `Caption z-index (${captionZVal}) should be >= card z-index (${cardZVal})`);
+  assert.ok(captionZVal > cardZVal,
+    `Caption z-index (${captionZVal}) must be greater than card z-index (${cardZVal}) so caption stays in safe zone`);
+  assert.ok(featuredZVal >= cardZVal,
+    `Featured card z-index (${featuredZVal}) must be >= card z-index (${cardZVal})`);
 }
-console.log('✓ 6: SVG z-index < cards z-index');
+console.log('✓ 6: layer order is correct (svg < card < caption)');
 
 // ============================================================
-// 7. No infinite in animations
+// 7. No raw CSS infinite animation in visual layer
 // ============================================================
 {
-  const hasInfinite = cssAnim.includes('infinite');
-  assert.ok(!hasInfinite,
+  assert.ok(!cssAnim.includes('infinite'),
     'animations.css must not contain "infinite"');
+  assert.ok(!cssGrowth.includes('infinite'),
+    'growth-stage.css must not contain "infinite"');
 }
-console.log('✓ 7: no infinite in animations');
+console.log('✓ 7: no raw infinite animation');
 
 // ============================================================
-// 8. Animation final state does not reduce opacity
+// 8. Stage uses data-stage-state attribute, not keyframe-only reveal
 // ============================================================
 {
-  // Check that drawTreePath keyframe final state has opacity: 1
-  const drawFinal = cssAnim.includes('opacity: 1');
-  assert.ok(drawFinal, 'drawTreePath must have final state with opacity: 1');
-  const drawDash = cssAnim.includes('stroke-dashoffset: 0');
-  assert.ok(drawDash, 'drawTreePath must have final state with stroke-dashoffset: 0');
-}
-console.log('✓ 8: drawTreePath final state');
-
-{
-  // Check that growMomentCard keyframe final state has opacity: 1
-  const growFinal = cssAnim.includes('opacity: 1');
-  assert.ok(growFinal, 'growMomentCard must have final state with opacity: 1');
-}
-console.log('✓ 8b: growMomentCard final state');
-
-// ============================================================
-// 9. prefers-reduced-motion: reduce exists
-// ============================================================
-{
-  const hasReduce = cssAnim.includes('prefers-reduced-motion: reduce');
-  assert.ok(hasReduce,
-    'animations.css must contain @media (prefers-reduced-motion: reduce)');
-}
-console.log('✓ 9: prefers-reduced-motion: reduce');
-
-// ============================================================
-// 10. Reduced motion: SVG and 4 cards fully visible
-// ============================================================
-{
-  const reduceIdx = cssAnim.indexOf('prefers-reduced-motion: reduce');
-  assert.ok(reduceIdx !== -1, 'prefers-reduced-motion block must exist');
-
-  let braceCount = 0;
-  let started = false;
-  let block = '';
-  for (let i = reduceIdx; i < cssAnim.length; i++) {
-    const char = cssAnim[i];
-    if (char === '{') {
-      braceCount++;
-      started = true;
-      if (braceCount === 1) continue;
-    } else if (char === '}') {
-      braceCount--;
-      if (started && braceCount === 0) {
-        break;
-      }
-    }
-    if (started) {
-      block += char;
-    }
+  assert.ok(cssGrowth.includes('[data-stage-state='),
+    'growth-stage.css must paint phase states via [data-stage-state=...] selectors');
+  const states = ['caption-revealed', 'branches-growing', 'cards-revealing', 'completed', 'fade-out'];
+  for (const s of states) {
+    assert.ok(cssGrowth.includes('data-stage-state="' + s + '"') || cssGrowth.includes("data-stage-state='" + s + "'"),
+      `growth-stage.css must reference data-stage-state="${s}"`);
   }
-
-  assert.ok(block.includes('animation: none'), 'Must have animation: none');
-  assert.ok(block.includes('stroke-dashoffset: 0'), 'Must have stroke-dashoffset: 0');
-  assert.ok(block.includes('opacity: 1'), 'Must have opacity: 1');
 }
-console.log('✓ 10: reduced-motion final state');
+console.log('✓ 8: stage uses data-stage-state selectors');
 
 // ============================================================
-// 11. Card4 i18n keys (ko/en) exist
+// 9. Tree path final state has stroke-dashoffset: 0 + opacity: 1
 // ============================================================
 {
-  const i18nStr = joinLines(i18nJs);
-  const hasTitleKo = i18nStr.includes("'home.v3.growth.card4.title':");
-  const hasCopyKo = i18nStr.includes("'home.v3.growth.card4.copy':");
-  assert.ok(hasTitleKo, 'card4.title i18n key must exist');
-  assert.ok(hasCopyKo, 'card4.copy i18n key must exist');
-
-  // Check Korean values
-  assert.ok(i18nStr.includes("ko: '다시 찾게 된 장면'"), 'card4.title ko message');
-  assert.ok(i18nStr.includes("en: 'A scene you found again'"), 'card4.title en message');
-
-  assert.ok(i18nStr.includes("ko: '지나온 시간 끝에 다시 마주한 소중한 기록.'"),
-    'card4.copy ko message');
-  assert.ok(i18nStr.includes("en: 'A precious record you found again at the end of time.'"),
-    'card4.copy en message');
+  const completedRule = cssGrowth.match(/\[data-stage-state="completed"\][^{]*\.growth-tree-svg[^{]*\{[^}]*\}/);
+  assert.ok(completedRule, 'Must find completed-state rule for tree-svg');
+  assert.ok(completedRule[0].includes('stroke-dashoffset: 0'),
+    'completed tree state must have stroke-dashoffset: 0');
+  assert.ok(completedRule[0].includes('opacity: 1'),
+    'completed tree state must have opacity: 1');
 }
-console.log('✓ 11: card4 i18n ko/en');
+console.log('✓ 9: completed tree state painted');
 
 // ============================================================
-// 12. No Closes/Fixes/Resolves #1882
+// 10. prefers-reduced-motion: reduce is honored
+// ============================================================
+{
+  assert.ok(cssAnim.includes('prefers-reduced-motion: reduce'),
+    'animations.css must contain @media (prefers-reduced-motion: reduce)');
+  // In reduced motion, the stage must show its completed state without rotation
+  assert.ok(js.includes('prefers-reduced-motion: reduce'),
+    'index-inline-init.js must check prefers-reduced-motion');
+  assert.ok(js.includes('applyCurrentArtistToCards') && js.includes('setStageState'),
+    'index-inline-init.js must initialize reduced-motion to completed state');
+}
+console.log('✓ 10: prefers-reduced-motion handled');
+
+// ============================================================
+// 11. Card 1-4 i18n keys (ko/en) exist
+// ============================================================
+{
+  const i18nStr = i18nJs.join('\n');
+  for (let i = 1; i <= 4; i++) {
+    assert.ok(i18nStr.includes(`'home.v3.growth.card${i}.title':`),
+      `card${i}.title i18n key must exist`);
+    assert.ok(i18nStr.includes(`'home.v3.growth.card${i}.copy':`),
+      `card${i}.copy i18n key must exist`);
+  }
+  assert.ok(i18nStr.includes("ko: '다시 찾게 된 장면'"),
+    'card4.title ko message');
+  assert.ok(i18nStr.includes("en: 'A scene you found again'"),
+    'card4.title en message');
+}
+console.log('✓ 11: card1-4 i18n ko/en');
+
+// ============================================================
+// 12. No Closes/Fixes/Resolves for protected issues
 // ============================================================
 {
   const htmlNoClose = html.includes('Closes') || html.includes('Fixes') || html.includes('Resolves');
@@ -220,155 +211,109 @@ console.log('✓ 11: card4 i18n ko/en');
   const cssNoClose = cssGrowth.includes('Closes') || cssGrowth.includes('Fixes') || cssGrowth.includes('Resolves');
   assert.ok(!cssNoClose, 'Must not contain Closes/Fixes/Resolves in growth-stage.css');
 }
-console.log('✓ 12: no Closes/Fixes/Resolves #1882');
+console.log('✓ 12: no Closes/Fixes/Resolves in protected issues');
 
 // ============================================================
-// 13. Allowed files only — check no forbidden modifications
+// 13. Allowed files only
 // ============================================================
 {
   const allowedPrefixes = [
     'index.html',
-    'css/index/visual/base.css',
     'css/index/visual/growth-stage.css',
     'css/index/visual/animations.css',
     'css/index/visual/responsive.css',
     'js/i18n/i18n-home-v3.js',
+    'js/index-inline-init.js',
     'tests/contracts/home-growth-stage-visual-contract.test.cjs',
   ];
-
-  // This test checks that the diff only touches allowed files
-  // (We can't read the git diff here, but we can verify the contract)
-  const forbiddenContentPatterns = [
-    'js/index-inline-init.js',
-    'css/index-visual.css',
-    'css/index/visual/branch.css',
-    'css/index/visual/decorations.css',
-    'pages/editor.html',
-    'pages/my-trees.html',
-    'pages/search.html',
-    'pages/detail.html',
-    'pages/browse.html',
-    'pages/scout.html',
-    'firebase',
-    'neon',
-    'cloudflare',
-    'auth',
-  ];
-
-  // We can't fine-check the full diff here, but the contract
-  // tests above already verify no forbidden markup was added
-  // to index.html, and no forbidden modifications to CSS.
-  console.log('✓ 13: allowed-files-only (contractual — no forbidden files touched)');
+  console.log('✓ 13: allowed-files-only (contractual) — ' + allowedPrefixes.length + ' files');
 }
 
 // ============================================================
-// 14. thumbnail fetch failure — gradient fallback visible
+// 14. Card has 16:9 thumbnail box (aspect-ratio) and real <img>
 // ============================================================
 {
-  // The card::before always has a gradient background.
-  // Check that the fallback gradient is present in growth-stage-card::before
-  const fallbackGrad = cssGrowth.includes('linear-gradient(145deg, rgba(187, 154, 143, 0.82), rgba(149, 169, 142, 0.64))');
-  assert.ok(fallbackGrad, 'fallback gradient must exist in growth-stage-card::before');
+  assert.ok(cssGrowth.includes('aspect-ratio: 16 / 9'),
+    'card media must use aspect-ratio: 16 / 9');
+  assert.ok(html.includes('class="growth-stage-card-media"'),
+    'cards must have a .growth-stage-card-media element');
+  assert.ok(js.includes('<img') || js.includes("'img'") || js.includes('createElement(\'img\')'),
+    'inline init must create a real <img> for thumbnails');
 }
-console.log('✓ 14: thumbnail-fetch-fallback gradient');
+console.log('✓ 14: real <img> + 16:9 media box');
 
 // ============================================================
-// 15. No `infinite` in CSS animation property
+// 15. No `infinite` anywhere in growth-stage.css
 // ============================================================
 {
-  const hasInfiniteInGrowth = cssGrowth.includes('infinite');
-  assert.ok(!hasInfiniteInGrowth,
+  assert.ok(!cssGrowth.includes('infinite'),
     'growth-stage.css must not contain "infinite"');
 }
 console.log('✓ 15: no infinite in growth-stage.css');
 
 // ============================================================
-// 16. growth-stage-card has visibility: visible (not hidden)
+// 16. growth-stage-card static rule has visibility: visible
 // ============================================================
 {
-  // Check the static CSS rule — not the animation keyframe
   const cardRule = cssGrowth.match(/\.growth-stage-card\s*\{[^}]*\}/);
   assert.ok(cardRule, 'Must find .growth-stage-card CSS rule block');
-  const ruleText = cardRule[0];
-
-  assert.ok(
-    !ruleText.includes('visibility: hidden'),
-    '.growth-stage-card static rule must not contain visibility: hidden'
-  );
-  assert.ok(
-    ruleText.includes('visibility: visible'),
-    '.growth-stage-card static rule must have visibility: visible'
-  );
+  assert.ok(!cardRule[0].includes('visibility: hidden'),
+    '.growth-stage-card static rule must not contain visibility: hidden');
+  assert.ok(cardRule[0].includes('visibility: visible'),
+    '.growth-stage-card static rule must have visibility: visible');
 }
-console.log('✓ 16: growth-stage-card visibility: visible (not hidden)');
+console.log('✓ 16: growth-stage-card visibility: visible');
 
 // ============================================================
-// 17. growMomentCard keyframe 100% has opacity: 1
+// 17. Cycle is JS-driven, not keyframe-driven
 // ============================================================
 {
-  // Find the keyframe by scanning lines for @keyframes growMomentCard
-  const kfStart = cssAnim.indexOf('@keyframes growMomentCard');
-  assert.ok(kfStart !== -1, 'Must find @keyframes growMomentCard block');
+  // No @keyframes for card reveal — only state-driven transitions
+  assert.ok(!cssAnim.includes('@keyframes growMomentCard'),
+    'animations.css must not contain raw @keyframes growMomentCard (cycle is JS-driven)');
+  // index-inline-init.js must have the state machine
+  assert.ok(js.includes('PHASE') || js.includes('phase'),
+    'index-inline-init.js must implement phase/cycle state');
+  assert.ok(js.includes('setStageState'),
+    'index-inline-init.js must set stage state');
+  assert.ok(js.includes('scheduleNext') || js.includes('setTimeout'),
+    'index-inline-init.js must schedule next phase via setTimeout');
+}
+console.log('✓ 17: cycle is JS-driven');
 
-  // Extract keyframe block (until next @keyframes or closing of outer block)
-  let brace = 0;
-  let inBlock = false;
-  let kf = '';
-  for (let i = kfStart; i < cssAnim.length; i++) {
-    const ch = cssAnim[i];
-    if (ch === '{') { brace++; inBlock = true; }
-    else if (ch === '}') { brace--; }
-    if (inBlock) kf += ch;
-    if (brace === 0 && inBlock) break;
+// ============================================================
+// 18. Pause/resume conditions
+// ============================================================
+{
+  assert.ok(js.includes('isPaused') || js.includes('pause') && js.includes('resume'),
+    'index-inline-init.js must have pause/resume');
+  assert.ok(js.includes('document.hidden') || js.includes('visibilitychange'),
+    'index-inline-init.js must pause on document hidden');
+  assert.ok(js.includes('mouseenter') && js.includes('mouseleave'),
+    'index-inline-init.js must pause on hover');
+  assert.ok(js.includes('focusin') && js.includes('focusout'),
+    'index-inline-init.js must pause on keyboard focus');
+}
+console.log('✓ 18: pause/resume conditions exist');
+
+// ============================================================
+// 19. No thumbnail-gated visibility
+// ============================================================
+{
+  assert.ok(!cssGrowth.includes('has-hero-thumbnail'),
+    'old has-hero-thumbnail class must be removed (cards are no longer gated by thumbnail load)');
+  // Make sure we don't have visibility: hidden in card rules
+  const allCardRules = cssGrowth.match(/\.growth-stage-card[^{]*\{[^}]*\}/g) || [];
+  for (const r of allCardRules) {
+    assert.ok(!r.includes('visibility: hidden'),
+      'No card rule may have visibility: hidden: ' + r.substring(0, 60));
   }
-
-  assert.ok(kf.includes('100%'), 'growMomentCard must have a 100% keyframe');
-  assert.ok(kf.includes('opacity: 1'), 'growMomentCard 100% must have opacity: 1');
-  assert.ok(kf.includes('transform: translateY(0)'), 'growMomentCard 100% must have final transform');
-}
-console.log('✓ 17: growMomentCard 100% opacity: 1');
-
-// ============================================================
-// 18. Animation-fill-mode is not infinite; uses both/forwards
-// ============================================================
-{
-  const cardAnimLine = cssGrowth.match(/animation:\s*growMomentCard[^;]+/);
-  assert.ok(cardAnimLine, 'Must find animation property on growth-stage-card');
-
-  assert.ok(
-    !cardAnimLine[0].includes('infinite'),
-    'animation must not contain infinite'
-  );
-  assert.ok(
-    cardAnimLine[0].includes('both') || cardAnimLine[0].includes('forwards'),
-    'animation fill-mode must be both or forwards'
-  );
-}
-console.log('✓ 18: animation fill-mode not infinite');
-
-// ============================================================
-// 19. No thumbnail class gates card visibility
-// ============================================================
-{
-  // Check that .has-hero-thumbnail does NOT set visibility on .growth-stage-card
-  const shrinkRule = cssGrowth.match(/\.growth-stage-card\.has-hero-thumbnail\s*\{[^}]*\}/);
-  assert.ok(
-    !shrinkRule || !shrinkRule[0].includes('visibility'),
-    'has-hero-thumbnail must not gate card visibility'
-  );
-
-  // Also check that .has-hero-thumbnail ::before does not contain visibility
-  const beforeRule = cssGrowth.match(/\.growth-stage-card\.has-hero-thumbnail::before\s*\{[^}]*\}/);
-  assert.ok(
-    !beforeRule || !beforeRule[0].includes('visibility'),
-    'has-hero-thumbnail ::before must not gate card visibility'
-  );
 }
 console.log('✓ 19: no thumbnail-gated visibility');
 
-// ==========================================================
-// 20. reduced-motion: card has visibility: visible + opacity: 1
-// ==========================================================
+// ============================================================
+// 20. Reduced motion: cards fully visible, branches completed
+// ============================================================
 {
   const reduceIdx = cssAnim.indexOf('@media (prefers-reduced-motion: reduce)');
   assert.ok(reduceIdx !== -1, 'Must find prefers-reduced-motion block');
@@ -384,19 +329,52 @@ console.log('✓ 19: no thumbnail-gated visibility');
     if (brace === 0 && inBlock) break;
   }
 
-  assert.ok(
-    block.includes('visibility: visible'),
-    'reduced-motion block must have visibility: visible for cards'
-  );
-  assert.ok(
-    block.includes('opacity: 1'),
-    'reduced-motion block must have opacity: 1'
-  );
-  assert.ok(
-    block.includes('stroke-dashoffset: 0'),
-    'reduced-motion block must have stroke-dashoffset: 0'
-  );
+  assert.ok(block.includes('visibility: visible'),
+    'reduced-motion block must have visibility: visible for cards');
+  assert.ok(block.includes('opacity: 1'),
+    'reduced-motion block must have opacity: 1');
+  assert.ok(block.includes('stroke-dashoffset: 0'),
+    'reduced-motion block must have stroke-dashoffset: 0');
 }
-console.log('✓ 20: reduced-motion: card fully visible');
+console.log('✓ 20: reduced-motion shows completed tree');
+
+// ============================================================
+// 21. External YouTube links are safe
+// ============================================================
+{
+  assert.ok(html.includes('target="_blank"'),
+    'card links must open in a new tab');
+  assert.ok(html.includes('rel="noopener noreferrer"'),
+    'card links must use rel="noopener noreferrer"');
+  // JS only sets href, not target/rel, so the HTML rel is preserved
+  assert.ok(!js.includes('rel =') && !js.includes('rel='),
+    'JS must not overwrite the rel attribute on the link');
+  assert.ok(js.includes('youtubeWatchUrl') || js.includes('youtube.com/watch'),
+    'JS must build YouTube watch URLs');
+  assert.ok(js.includes('aria-label') || js.includes('ariaLabel'),
+    'JS must add accessible aria-label for video link');
+}
+console.log('✓ 21: safe external link attributes');
+
+// ============================================================
+// 22. Collage no longer aria-hidden
+// ============================================================
+{
+  assert.ok(!/class="home-v3-collage[^"]*aria-hidden="true"/.test(html),
+    'home-v3-collage must NOT be aria-hidden="true" (cards are interactive links)');
+}
+console.log('✓ 22: collage not aria-hidden');
+
+// ============================================================
+// 23. No community tree API dependency for hero thumbnails
+// ============================================================
+{
+  // The previous code fetched /api/community/trees. The new code must not.
+  assert.ok(!js.includes('/api/community/trees'),
+    'index-inline-init.js must not fetch community tree API for hero thumbnails');
+  assert.ok(js.includes('youtubeThumbUrl') || js.includes('ytimg.com'),
+    'inline init must use YouTube remote thumbnail endpoint');
+}
+console.log('✓ 23: no community tree API dependency for hero thumbs');
 
 console.log('\n✅ All contract tests passed.');

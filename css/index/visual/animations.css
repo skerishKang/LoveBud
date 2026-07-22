@@ -1,24 +1,50 @@
-@keyframes drawTreePath {
-    0% { stroke-dashoffset: 1; opacity: 0; }
-    100% { stroke-dashoffset: 0; opacity: 1; }
+/* LoveBud home v3 - growth stage animations
+   - Cycle is JS-controlled (state attribute on .home-v3-growth-stage).
+   - CSS only paints phase states; no raw looping animation.
+   - The artist transition dims content to 0.15 (never 0) so card shells
+     never appear as blank white boxes. Data swaps atomically while dimmed,
+     then content fades back to 1.
+   - prefers-reduced-motion: reduce renders a static completed tree with the
+     first artist's content; no rotation, no fades. */
+
+@keyframes homeHeroCycleResetPulse {
+    0% { opacity: 0.7; transform: scale(0.998); }
+    100% { opacity: 1; transform: scale(1); }
 }
 
-@keyframes growMomentCard {
-    0% { opacity: 0; transform: translateY(18px) scale(0.96); }
-    100% { opacity: 1; transform: translateY(0) scale(1); }
+.home-v3-growth-stage[data-stage-state="fade-out"] .growth-stage-card-content {
+    opacity: 0.15 !important;
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .growth-tree-svg path {
-        animation: none !important;
-        stroke-dashoffset: 0 !important;
-        opacity: 1 !important;
+    .home-v3-growth-stage {
+        min-height: 640px;
     }
-    .growth-stage-card {
-        animation: none !important;
+
+    .home-v3-growth-stage[data-stage-state="pending"] .growth-stage-card,
+    .home-v3-growth-stage[data-stage-state="pending"] .growth-tree-svg path,
+    .home-v3-growth-stage[data-stage-state="pending"] .growth-stage-caption {
         opacity: 1 !important;
-        visibility: visible !important;
         transform: none !important;
         pointer-events: auto !important;
+        visibility: visible !important;
+        stroke-dashoffset: 0 !important;
+    }
+
+    .home-v3-growth-stage[data-stage-state="pending"] .growth-stage-card.supporting {
+        pointer-events: auto !important;
+    }
+
+    /* In reduced motion the inner content must also stay visible (no fade). */
+    .home-v3-growth-stage[data-stage-state="pending"] .growth-stage-card-content,
+    .home-v3-growth-stage .growth-stage-card-content {
+        opacity: 1 !important;
+    }
+
+    .home-v3-growth-stage .growth-stage-card,
+    .home-v3-growth-stage .growth-tree-svg path,
+    .home-v3-growth-stage .growth-stage-caption,
+    .home-v3-growth-stage .growth-stage-card-content {
+        transition: none !important;
     }
 }
