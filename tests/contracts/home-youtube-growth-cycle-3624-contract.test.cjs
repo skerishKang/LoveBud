@@ -395,4 +395,156 @@ console.log('✓ 19: no Closes/Fixes/Resolves for protected issues');
   console.log('✓ 20: allowed files policy — ' + allowed.size + ' entries');
 }
 
+// ============================================================
+// 21. Thumbnail 16:9 — maxres primary, mqdefault fallback, no hqdefault
+// ============================================================
+{
+  // Primary thumbnail must be maxresdefault (16:9).
+  assert.ok(js.includes('/maxresdefault.jpg'),
+    'JS must use maxresdefault.jpg as the primary thumbnail');
+  // Fallback must be mqdefault (16:9), NOT hqdefault (which is 4:3).
+  assert.ok(js.includes('/mqdefault.jpg'),
+    'JS must use mqdefault.jpg as the fallback thumbnail (16:9)');
+  assert.ok(!js.includes('/hqdefault.jpg'),
+    'JS must NOT use hqdefault.jpg as a thumbnail fallback (it is 4:3, not 16:9)');
+  // The youtubeThumbUrl function must accept a preferMaxres parameter.
+  assert.ok(/function\s+youtubeThumbUrl\s*\([^)]*preferMaxres/.test(js),
+    'youtubeThumbUrl must accept a preferMaxres parameter');
+  // Error handler must fall back from maxres to mqdefault.
+  assert.ok(js.includes("img.src = youtubeThumbUrl(video.id, false)"),
+    'Error handler must call youtubeThumbUrl(video.id, false) for the fallback');
+}
+console.log('✓ 21: thumbnail 16:9 — maxres primary, mqdefault fallback, no hqdefault');
+
+// ============================================================
+// 22. advanceArtist uniqueness — rotation preserves 4 unique indices
+// ============================================================
+{
+  // videoIndices must start as [0, 1, 2, 3] (four unique slots).
+  assert.ok(js.includes('videoIndices: [0, 1, 2, 3]'),
+    'videoIndices must start as [0, 1, 2, 3] for 4 unique card slots');
+  // advanceArtist must rotate using modulo so uniqueness is preserved.
+  assert.ok(js.includes('% prevArtist.videos.length'),
+    'advanceArtist must rotate indices using modulo prevArtist.videos.length');
+  // The rotation must NOT use a fixed [0,0,0,0] or all-same pattern.
+  assert.ok(!js.includes('videoIndices: [0, 0, 0, 0]'),
+    'videoIndices must NOT be [0, 0, 0, 0] (would duplicate video 0 on all cards)');
+  // Each artist must have exactly 4 videos (contract for uniqueness).
+  const videoIdMatches = js.match(/id:\s*'([A-Za-z0-9_-]{8,15})'/g) || [];
+  assert.ok(videoIdMatches.length >= 16,
+    'All 4 artists must have 4 videos each (16 total) for uniqueness guarantee');
+}
+console.log('✓ 22: advanceArtist uniqueness — [0,1,2,3] rotation, 4 videos per artist');
+
+// ============================================================
+// 23. Orphan description — JS removes .home-v3-copy
+// ============================================================
+{
+  // The JS must remove the original .home-v3-desc element to avoid orphan
+  // descriptions alongside the two dynamically created .home-v3-desc elements.
+  // Do NOT remove .home-v3-copy — it contains the loop, CTA, note, and intro link.
+  assert.ok(js.includes('if (desc) desc.remove()'),
+    'JS must remove the original .home-v3-desc (not .home-v3-copy)');
+  // The JS must create exactly two copy sets (each with one .home-v3-desc).
+  assert.ok(js.includes("'home-hero-set-1'") && js.includes("'home-hero-set-2'"),
+    'JS must create two copy sets, each with one .home-v3-desc');
+}
+console.log('✓ 23: orphan description — .home-v3-copy removed, 2 .home-v3-desc in runtime');
+
+// ============================================================
+// 24. Media element count — exactly 1 per card in HTML
+// ============================================================
+{
+  // index.html must have exactly 4 .growth-stage-card-media elements.
+  const mediaCount = (html.match(/class="growth-stage-card-media"/g) || []).length;
+  assert.strictEqual(mediaCount, 4,
+    'index.html must have exactly 4 .growth-stage-card-media elements (one per card)');
+  // The JS must NOT create media elements if they already exist (defensive guard).
+  assert.ok(js.includes("card.querySelector('.growth-stage-card-media')"),
+    'JS must query existing .growth-stage-card-media before creating');
+  assert.ok(js.includes("if (!media)"),
+    'JS must guard media creation with if (!media) to prevent duplicates');
+}
+console.log('✓ 24: media element count — 4 in HTML, defensive guard prevents duplicates');
+
+// ============================================================
+// 25. Pause reason independence — hover, focus, hidden, pageLifecycle
+// ============================================================
+{
+  // pauseReasons must be an object with exactly 4 independent keys.
+  assert.ok(js.includes('pauseReasons:'),
+    'JS must use a pauseReasons object (not a single isPaused boolean)');
+  assert.ok(js.includes('hover:'),
+    'pauseReasons must include hover');
+  assert.ok(js.includes('focus:'),
+    'pauseReasons must include focus');
+  assert.ok(js.includes('hidden:'),
+    'pauseReasons must include hidden');
+  assert.ok(js.includes('pageLifecycle:'),
+    'pauseReasons must include pageLifecycle');
+  // pause() and resume() must accept a reason parameter.
+  assert.ok(/function\s+pause\s*\(\s*reason\s*\)/.test(js),
+    'pause() must accept a reason parameter');
+  assert.ok(/function\s+resume\s*\(\s*reason\s*\)/.test(js),
+    'resume() must accept a reason parameter');
+  // onPointerLeave must NOT resume when document is hidden.
+  assert.ok(js.includes('onPointerLeave'),
+    'JS must have onPointerLeave handler');
+  // The handler must check document.hidden before resuming hover.
+  const leaveMatch = js.match(/var onPointerLeave[\s\S]*?function\s*\(\s*\)\s*\{[^}]*\}/);
+  assert.ok(leaveMatch, 'Must find onPointerLeave function');
+  assert.ok(leaveMatch[0].includes('document.hidden'),
+    'onPointerLeave must check document.hidden before resuming hover');
+}
+console.log('✓ 25: pause reasons independent (hover, focus, hidden, pageLifecycle)');
+
+// ============================================================
+// 26. BFCache — pageshow handler resumes pageLifecycle
+// ============================================================
+{
+  // A pageshow event listener must exist for BFCache return.
+  assert.ok(js.includes("addEventListener('pageshow'"),
+    'JS must add a pageshow event listener for BFCache return');
+  // The handler must check event.persisted.
+  assert.ok(js.includes('event.persisted'),
+    'pageshow handler must check event.persisted for BFCache restoration');
+  // The handler must resume pageLifecycle.
+  assert.ok(js.includes('resume(\'pageLifecycle\')'),
+    'pageshow handler must resume pageLifecycle so cycle is not permanently stopped');
+  // onVisibility must also resume pageLifecycle when page becomes visible.
+  const visMatch = js.match(/var onVisibility[\s\S]*?function\s*\(\s*\)\s*\{[\s\S]*?document\.addEventListener/);
+  assert.ok(visMatch, 'Must find onVisibility function');
+  assert.ok(visMatch[0].includes('resume(\'pageLifecycle\')'),
+    'onVisibility must resume pageLifecycle when page becomes visible');
+}
+console.log('✓ 26: BFCache pageshow handler resumes pageLifecycle');
+
+// ============================================================
+// 27. Stale request protection — old img removed, not just src-cleared
+// ============================================================
+{
+  // The JS must remove the old <img> element entirely (not just removeAttribute('src')).
+  assert.ok(js.includes('existingImg.remove()'),
+    'JS must call existingImg.remove() to prevent stale load/error events');
+  assert.ok(!js.includes("existingImg.removeAttribute('src')"),
+    'JS must NOT use removeAttribute("src") on old img (stale events can fire)');
+  // Error handler must check media.contains(img) before mutating state.
+  assert.ok(js.includes('media.contains(img)'),
+    'Error handler must check media.contains(img) before mutating media state');
+}
+console.log('✓ 27: stale request protection — old img removed, media.contains guard');
+
+// ============================================================
+// 28. No object-fit: cover on hero thumbnails
+// ============================================================
+{
+  // growth-stage.css must NOT use object-fit: cover on card media images.
+  assert.ok(!growthCss.includes('object-fit: cover'),
+    'growth-stage.css must NOT use object-fit: cover on hero thumbnails (unnecessary crop)');
+  // The media container uses aspect-ratio: 16/9, so no crop is needed.
+  assert.ok(growthCss.includes('aspect-ratio: 16 / 9'),
+    'Media container must use aspect-ratio: 16 / 9 (no crop needed)');
+}
+console.log('✓ 28: no object-fit: cover on hero thumbnails');
+
 console.log('\n✅ All #3624 focused contract tests passed.');

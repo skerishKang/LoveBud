@@ -15,7 +15,8 @@
   // Public YouTube video dataset.
   // 4 artists x 4 official public MVs = 16 video IDs.
   // Channels verified by web search against artist/label channels.
-  // Remote thumbnails: img.youtube.com/vi/<id>/hqdefault.jpg
+  // Remote thumbnails: img.youtube.com/vi/<id>/maxresdefault.jpg (primary, 16:9)
+  // Fallback: mqdefault.jpg (16:9). hqdefault.jpg is 4:3 and must NOT be used.
   // ============================================================
 
   var ARTIST_DATASETS = [
@@ -73,9 +74,12 @@
     return 'https://www.youtube.com/watch?v=' + encodeURIComponent(videoId);
   }
 
-  function youtubeThumbUrl(videoId) {
-    // YouTube's static thumbnail endpoint (hqdefault) - 480x360 16:9 crop.
-    return 'https://i.ytimg.com/vi/' + encodeURIComponent(videoId) + '/hqdefault.jpg';
+  function youtubeThumbUrl(videoId, preferMaxres) {
+    var useMaxres = preferMaxres !== false;
+    if (useMaxres) {
+      return 'https://i.ytimg.com/vi/' + encodeURIComponent(videoId) + '/maxresdefault.jpg';
+    }
+    return 'https://i.ytimg.com/vi/' + encodeURIComponent(videoId) + '/mqdefault.jpg';
   }
 
   // ============================================================
@@ -143,6 +147,10 @@
     loop.appendChild(set1);
     loop.appendChild(set2);
     actions.parentNode.insertBefore(loop, actions);
+
+    // Remove the original .home-v3-desc to avoid orphan description.
+    // Do NOT remove .home-v3-copy — it contains the loop, CTA, note, and intro link.
+    if (desc) desc.remove();
 
     // Hold the loop height so the CTA/note/intro link do not move.
     var stabilizeHeight = function() {
@@ -235,12 +243,36 @@
 
     var state = {
       artistIndex: 0,
-      videoIndices: [0, 0, 0, 0],
+      videoIndices: [0, 1, 2, 3],
       phase: PHASE.PENDING,
       phaseStart: 0,
-      isPaused: false,
+      pauseReasons: {
+        hover: false,
+        focus: false,
+        hidden: false,
+        pageLifecycle: false
+      },
       timeoutId: null
     };
+
+    function isPaused() {
+      for (var key in state.pauseReasons) {
+        if (state.pauseReasons[key]) return true;
+      }
+      return false;
+    }
+
+    function pause(reason) {
+      if (reason && state.pauseReasons.hasOwnProperty(reason)) {
+        state.pauseReasons[reason] = true;
+      }
+    }
+
+    function resume(reason) {
+      if (reason && state.pauseReasons.hasOwnProperty(reason)) {
+        state.pauseReasons[reason] = false;
+      }
+    }
 
     function setStageState(nextState) {
       if (state.phase === nextState) return;
@@ -285,6 +317,11 @@
 
     function applyArtistToCard(card, videoIndex) {
       var media = card.querySelector('.growth-stage-card-media');
+      if (!media) {
+        media = document.createElement('div');
+        media.className = 'growth-stage-card-media';
+        card.appendChild(media);
+      }
       var artistLabel = card.querySelector('.growth-stage-card-artist');
       var channelEl = card.querySelector('.growth-stage-card-channel');
       var link = card.querySelector('.growth-stage-card-link');
@@ -310,32 +347,42 @@
       if (copyEl) copyEl.textContent = resolveI18n('home.v3.growth.card' + ((videoIndex || 0) + 1) + '.copy') || '';
       if (fallback) fallback.textContent = video.title;
 
-      // Set up the <img> for thumbnail loading
+      if (card) {
+        card.setAttribute('data-artist-key', artist.key);
+        card.setAttribute('data-video-id', video.id);
+        card.setAttribute('data-youtube-watch-url', youtubeWatchUrl(video.id));
+      }
+
       if (media) {
         media.classList.remove('has-thumbnail-error');
         var existingImg = media.querySelector('img');
         if (existingImg) {
-          existingImg.classList.remove('is-loaded');
-          existingImg.removeAttribute('src');
+          // Remove the old <img> entirely so stale load/error events from a
+          // previous artist cycle cannot mutate the current media state.
+          existingImg.remove();
         }
         var img = document.createElement('img');
         img.alt = '';
         img.loading = 'lazy';
         img.decoding = 'async';
-        img.width = 480;
+        img.width = 640;
         img.height = 360;
+        img.setAttribute('data-video-id', video.id);
         img.addEventListener('load', function() {
           img.classList.add('is-loaded');
         });
         img.addEventListener('error', function() {
-          // Keep gradient fallback visible; do not log.
+          if (img.src.indexOf('maxresdefault') !== -1) {
+            img.src = youtubeThumbUrl(video.id, false);
+            return;
+          }
           if (media.contains(img)) {
             media.classList.add('has-thumbnail-error');
             img.remove();
           }
         });
-        media.insertBefore(img, media.firstChild);
-        img.src = youtubeThumbUrl(video.id);
+        media.appendChild(img);
+        img.src = youtubeThumbUrl(video.id, true);
       }
     }
 
@@ -357,17 +404,18 @@
     }
 
     function advanceArtist() {
+      var prevArtistIndex = state.artistIndex;
       state.artistIndex = (state.artistIndex + 1) % ARTIST_DATASETS.length;
-      // For variety, rotate the four video indices by 1 each cycle.
+      var prevArtist = ARTIST_DATASETS[prevArtistIndex];
       for (var i = 0; i < state.videoIndices.length; i++) {
-        state.videoIndices[i] = (state.videoIndices[i] + 1) % ARTIST_DATASETS[state.artistIndex].videos.length;
+        state.videoIndices[i] = (state.videoIndices[i] + 1) % prevArtist.videos.length;
       }
       var artist = ARTIST_DATASETS[state.artistIndex];
       if (collage) collage.setAttribute('data-hero-artist', artist.key);
     }
 
     function step() {
-      if (state.isPaused) {
+      if (isPaused()) {
         scheduleNext(500);
         return;
       }
@@ -409,30 +457,22 @@
       }
     }
 
-    function pause() {
-      state.isPaused = true;
-    }
-
-    function resume() {
-      state.isPaused = false;
-    }
-
     // Hover / focus pause - only the hero region, not the whole page.
-    var onPointerEnter = function() { pause(); };
+    var onPointerEnter = function() { pause('hover'); };
     var onPointerLeave = function() {
       if (document.hidden) return;
-      resume();
+      resume('hover');
     };
     var onFocusIn = function(e) {
       if (!collage) return;
-      if (collage.contains(e.target)) pause();
+      if (collage.contains(e.target)) pause('focus');
     };
     var onFocusOut = function(e) {
       if (!collage) return;
       var next = e.relatedTarget;
       if (next && collage.contains(next)) return;
       if (document.hidden) return;
-      resume();
+      resume('focus');
     };
 
     if (!reducedMotion) {
@@ -444,23 +484,40 @@
 
     var onVisibility = function() {
       if (document.hidden) {
-        pause();
+        pause('hidden');
       } else {
+        // Resume pageLifecycle so a BFCached page can restart its cycle.
+        resume('pageLifecycle');
+        resume('hidden');
         // Restart from pending so a new cycle begins cleanly.
-        if (!state.isPaused) {
+        if (!isPaused()) {
           setStageState(PHASE.PENDING);
           scheduleNext(50);
         }
-        resume();
       }
     };
     document.addEventListener('visibilitychange', onVisibility);
 
     var onPageHide = function() {
-      pause();
+      pause('pageLifecycle');
       clearTimer();
     };
     window.addEventListener('pagehide', onPageHide);
+
+    // BFCache return: pageshow fires with persisted=true when the page is
+    // restored from the back/forward cache. Resume pageLifecycle so the
+    // cycle is not permanently stopped after pagehide.
+    var onPageShow = function(event) {
+      if (event.persisted) {
+        resume('pageLifecycle');
+        resume('hidden');
+        if (!isPaused()) {
+          setStageState(PHASE.PENDING);
+          scheduleNext(50);
+        }
+      }
+    };
+    window.addEventListener('pageshow', onPageShow);
 
     if (reducedMotion) {
       // Static first-artist completed tree. No timer.
