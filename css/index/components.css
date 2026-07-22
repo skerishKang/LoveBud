@@ -69,6 +69,25 @@
     pointer-events: auto;
 }
 
+/* Each intended line is a block span.
+   Constrain width so a single span never wraps unintentionally on desktop. */
+.home-v3-title .soft,
+.home-v3-title .warm,
+.home-v3-title .accent {
+    display: block;
+    max-width: 12ch;
+    word-break: keep-all;
+    overflow-wrap: normal;
+    white-space: nowrap;
+}
+
+.home-v3-desc-line {
+    display: block;
+    max-width: 30ch;
+    word-break: keep-all;
+    overflow-wrap: normal;
+}
+
 @media (prefers-reduced-motion: reduce) {
     .home-hero-copy-set {
         transition: none !important;

@@ -11,16 +11,40 @@
       en: 'How LoveTree weaves the heart'
     },
     'home.v3.title.soft': {
-      ko: '좋아하게 된',
+      ko: '좋아하게 된 마음을',
       en: 'Read the flow'
     },
     'home.v3.title.warm': {
-      ko: '마음의 흐름을',
+      ko: '하나의 러브트리로',
       en: 'of affection'
     },
     'home.v3.title.accent': {
-      ko: '러브트리로 읽어보세요',
-      en: 'as a LoveTree'
+      ko: '이어 보세요',
+      en: 'as one LoveTree'
+    },
+    'home.v3.title.line1.ko': {
+      ko: '좋아하게 된 마음을',
+      en: 'Read the flow'
+    },
+    'home.v3.title.line2.ko': {
+      ko: '하나의 러브트리로',
+      en: 'of affection'
+    },
+    'home.v3.title.line3.ko': {
+      ko: '이어 보세요',
+      en: 'as one LoveTree'
+    },
+    'home.v3.title2.line1.ko': {
+      ko: '첫 순간이 하나의',
+      en: 'One first moment'
+    },
+    'home.v3.title2.line2.ko': {
+      ko: '러브트리로',
+      en: 'becomes'
+    },
+    'home.v3.title2.line3.ko': {
+      ko: '이어져요',
+      en: 'a LoveTree'
     },
     'home.v3.title2.soft': {
       ko: '첫 순간이 하나의',
@@ -35,12 +59,28 @@
       en: 'a LoveTree'
     },
     'home.v3.desc': {
-      ko: '첫 장면과 다시 보고 싶은 순간, 그때의 마음까지 감정의 경로로 엮어 보여줍니다.',
-      en: 'It weaves the first scene, moments to revisit, and the heart at that time into an emotional path.'
+      ko: '첫 장면과 다시 보고 싶은 순간, 그때의 마음과 함께 하나의 흐름으로 엮어 보여줍니다.',
+      en: 'It weaves the first scene with moments to revisit, into one gentle flow of feeling.'
+    },
+    'home.v3.desc.line1.ko': {
+      ko: '첫 장면과 다시 보고 싶은 순간을,',
+      en: 'The first scene, and the moment you want to revisit —'
+    },
+    'home.v3.desc.line2.ko': {
+      ko: '그때의 마음과 함께 하나의 흐름으로 남겨보세요.',
+      en: 'keep it as one steady flow with the heart of that day.'
     },
     'home.v3.desc2': {
-      ko: '반했던 장면과 오래 남은 마음을, 감정이 이어진 경로로 천천히 남겨 보세요.',
-      en: 'Save the scene that stayed with you and the feelings that followed as one gentle path.'
+      ko: '반했던 장면과 오래 남은 마음, 감정이 이어진 경로를 천천히 남겨 보세요.',
+      en: 'Save the scenes you loved and the hearts that followed, as one reaching path.'
+    },
+    'home.v3.desc2.line1.ko': {
+      ko: '반했던 장면과 오래 남은 마음을,',
+      en: 'The scenes you loved, and the hearts that stayed —'
+    },
+    'home.v3.desc2.line2.ko': {
+      ko: '감정이 이어진 경로로 천천히 남겨보세요.',
+      en: 'leave them as a quiet path of connected feeling.'
     },
     'home.v3.cta.start': {
       ko: '내 러브트리 시작하기',
@@ -61,6 +101,46 @@
     'home.v3.growth.caption': {
       ko: '순간 하나가 이어지고, 감정의 가지가 자라나요',
       en: 'One moment connects, and branches of feeling begin to grow.'
+    },
+    'home.v3.artist.bts': {
+      ko: 'BTS',
+      en: 'BTS'
+    },
+    'home.v3.artist.blackpink': {
+      ko: 'BLACKPINK',
+      en: 'BLACKPINK'
+    },
+    'home.v3.artist.cortis': {
+      ko: 'CORTIS',
+      en: 'CORTIS'
+    },
+    'home.v3.artist.rescene': {
+      ko: 'RESCENE',
+      en: 'RESCENE'
+    },
+    'home.v3.artist.channel.bts': {
+      ko: '공식 채널 · HYBE LABELS',
+      en: 'Official channel · HYBE LABELS'
+    },
+    'home.v3.artist.channel.blackpink': {
+      ko: '공식 채널 · BLACKPINK',
+      en: 'Official channel · BLACKPINK'
+    },
+    'home.v3.artist.channel.cortis': {
+      ko: '공식 채널 · BIGHIT MUSIC',
+      en: 'Official channel · BIGHIT MUSIC'
+    },
+    'home.v3.artist.channel.rescene': {
+      ko: '공식 채널 · RESCENE',
+      en: 'Official channel · RESCENE'
+    },
+    'home.v3.youtube.attribution': {
+      ko: 'YouTube에서 보기',
+      en: 'Watch on YouTube'
+    },
+    'home.v3.youtube.featuredBadge': {
+      ko: '대표 순간',
+      en: 'Featured moment'
     },
     'home.v3.growth.card1.title': {
       ko: '처음 마음이 움직인 무대',

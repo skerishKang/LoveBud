@@ -8,7 +8,7 @@
     <link rel="icon" href="/favicon.ico" sizes="32x32">
     <link rel="stylesheet" href="css/global.css?v=20260618-2700-1">
     <link rel="stylesheet" href="css/index.css?v=20260618-2700-1">
-    <link rel="stylesheet" href="css/index-visual.css?v=20260701-2821-1">
+    <link rel="stylesheet" href="css/index-visual.css?v=20260722-3624-1">
     <link rel="stylesheet" href="css/page-transitions.css?v=20260430-1">
     <link rel="stylesheet" href="css/tree-view-mode.css?v=20260621-step2-1">
     <link rel="stylesheet" href="css/components/lovebud-ai-panel.css?v=20260616-ai-panel-1">
@@ -27,12 +27,12 @@
                     <div class="home-v3-identity-copy">
                         <div class="home-v3-eyebrow shared-mobile-hero-eyebrow" data-i18n="home.v3.eyebrow">러브트리가 마음을 엮는 방식</div>
                         <h1 class="home-v3-title shared-mobile-hero-title">
-                            <span class="soft" data-i18n="home.v3.title.soft">좋아하게 된</span>
-                            <span class="warm" data-i18n="home.v3.title.warm">마음의 흐름을</span>
-                            <span class="accent" data-i18n="home.v3.title.accent">러브트리로 읽어보세요</span>
+                            <span class="soft" data-i18n="home.v3.title.soft">좋아하게 된 마음을</span>
+                            <span class="warm" data-i18n="home.v3.title.warm">하나의 러브트리로</span>
+                            <span class="accent" data-i18n="home.v3.title.accent">이어 보세요</span>
                         </h1>
                         <p class="home-v3-desc" data-i18n="home.v3.desc">
-                            첫 장면과 다시 보고 싶은 순간, 그때의 마음까지 감정의 경로로 엮어 보여줍니다.
+                            첫 장면과 다시 보고 싶은 순간, 그때의 마음과 함께 하나의 흐름으로 엮어 보여줍니다.
                         </p>
                         <div class="home-v3-actions">
                             <a href="pages/login?redirect=my-trees" class="btn-round btn-primary" data-i18n="home.v3.cta.start">내 러브트리 시작하기</a>
@@ -45,33 +45,71 @@
                     </div>
                 </div>
 
-                <div class="home-v3-collage reveal reveal-scale" aria-hidden="true" data-hero-video="disabled">
-                    <div class="home-v3-growth-stage">
+                <div class="home-v3-collage reveal reveal-scale" data-hero-cycle="active" data-hero-artist="bts">
+                    <div class="home-v3-growth-stage" data-stage-state="pending">
                         <div class="home-v3-halo"></div>
-                        <div class="growth-stage-video-placeholder" aria-hidden="true"></div>
-                        <div class="growth-stage-caption" data-i18n="home.v3.growth.caption">순간 하나가 이어지고, 감정의 가지가 자라나요</div>
-                        <svg class="growth-tree-svg" viewBox="0 0 640 700" role="img" aria-label="러브트리가 자라는 애니메이션">
+
+                        <p class="growth-stage-caption" data-i18n="home.v3.growth.caption" aria-live="polite">순간 하나가 이어지고, 감정의 가지가 자라나요</p>
+
+                        <svg class="growth-tree-svg" viewBox="0 0 640 700" role="img" aria-hidden="true" focusable="false">
                             <path class="trunk" pathLength="1" d="M320 600 C318 520 322 450 320 360 C318 285 330 232 360 178" />
                             <path class="branch one" pathLength="1" d="M320 480 C240 470 180 480 140 500" />
                             <path class="branch four" pathLength="1" d="M320 380 C250 360 180 320 120 250" />
                             <path class="branch two" pathLength="1" d="M340 302 C414 278 462 230 506 154" />
                             <path class="branch three" pathLength="1" d="M326 452 C402 456 468 488 540 548" />
                         </svg>
-                        <article class="growth-stage-card one">
+
+                        <article class="growth-stage-card featured" data-role="featured" data-card-index="0">
+                            <div class="growth-stage-card-media" aria-hidden="true">
+                                <span class="growth-stage-card-artist" data-i18n="home.v3.artist.bts">BTS</span>
+                                <span class="growth-stage-card-badge" data-i18n="home.v3.youtube.featuredBadge">대표 순간</span>
+                                <span class="growth-stage-card-fallback" aria-hidden="true"></span>
+                            </div>
                             <strong data-i18n="home.v3.growth.card1.title">처음 마음이 움직인 무대</strong>
                             <span data-i18n="home.v3.growth.card1.copy">그날의 장면과 이유를 첫 순간으로 남겨요.</span>
+                            <a class="growth-stage-card-link" target="_blank" rel="noopener noreferrer" data-youtube-watch="true">
+                                <span data-i18n="home.v3.youtube.attribution">YouTube에서 보기</span>
+                            </a>
+                            <span class="growth-stage-card-channel" data-i18n="home.v3.artist.channel.bts">공식 채널 · HYBE LABELS</span>
                         </article>
-                        <article class="growth-stage-card four">
-                            <strong data-i18n="home.v3.growth.card4.title">다시 찾게 된 장면</strong>
-                            <span data-i18n="home.v3.growth.card4.copy">지나온 시간 끝에 다시 마주한 소중한 기록.</span>
-                        </article>
-                        <article class="growth-stage-card two">
+
+                        <article class="growth-stage-card supporting one" data-role="supporting" data-card-index="1">
+                            <div class="growth-stage-card-media" aria-hidden="true">
+                                <span class="growth-stage-card-artist" data-i18n="home.v3.artist.bts">BTS</span>
+                                <span class="growth-stage-card-fallback" aria-hidden="true"></span>
+                            </div>
                             <strong data-i18n="home.v3.growth.card2.title">다시 듣게 된 노래</strong>
                             <span data-i18n="home.v3.growth.card2.copy">계속 좋아하게 된 감정을 이어 붙여요.</span>
+                            <a class="growth-stage-card-link" target="_blank" rel="noopener noreferrer" data-youtube-watch="true">
+                                <span data-i18n="home.v3.youtube.attribution">YouTube에서 보기</span>
+                            </a>
+                            <span class="growth-stage-card-channel" data-i18n="home.v3.artist.channel.bts">공식 채널 · HYBE LABELS</span>
                         </article>
-                        <article class="growth-stage-card three">
+
+                        <article class="growth-stage-card supporting two" data-role="supporting" data-card-index="2">
+                            <div class="growth-stage-card-media" aria-hidden="true">
+                                <span class="growth-stage-card-artist" data-i18n="home.v3.artist.bts">BTS</span>
+                                <span class="growth-stage-card-fallback" aria-hidden="true"></span>
+                            </div>
                             <strong data-i18n="home.v3.growth.card3.title">오래 남은 한 문장</strong>
                             <span data-i18n="home.v3.growth.card3.copy">흩어진 기억이 하나의 러브트리가 돼요.</span>
+                            <a class="growth-stage-card-link" target="_blank" rel="noopener noreferrer" data-youtube-watch="true">
+                                <span data-i18n="home.v3.youtube.attribution">YouTube에서 보기</span>
+                            </a>
+                            <span class="growth-stage-card-channel" data-i18n="home.v3.artist.channel.bts">공식 채널 · HYBE LABELS</span>
+                        </article>
+
+                        <article class="growth-stage-card supporting three" data-role="supporting" data-card-index="3">
+                            <div class="growth-stage-card-media" aria-hidden="true">
+                                <span class="growth-stage-card-artist" data-i18n="home.v3.artist.bts">BTS</span>
+                                <span class="growth-stage-card-fallback" aria-hidden="true"></span>
+                            </div>
+                            <strong data-i18n="home.v3.growth.card4.title">다시 찾게 된 장면</strong>
+                            <span data-i18n="home.v3.growth.card4.copy">지나온 시간 끝에 다시 마주한 소중한 기록.</span>
+                            <a class="growth-stage-card-link" target="_blank" rel="noopener noreferrer" data-youtube-watch="true">
+                                <span data-i18n="home.v3.youtube.attribution">YouTube에서 보기</span>
+                            </a>
+                            <span class="growth-stage-card-channel" data-i18n="home.v3.artist.channel.bts">공식 채널 · HYBE LABELS</span>
                         </article>
                     </div>
                 </div>
@@ -91,7 +129,7 @@
     <script src="js/firebase-config.js?v=20260417-31"></script>
     <script src="js/i18n/i18n-core.js?v=20260421-1"></script>
     <script src="js/i18n/i18n-shared.js?v=20260512-1107-1"></script>
-    <script src="js/i18n/i18n-home-v3.js?v=20260512-1107-1"></script>
+    <script src="js/i18n/i18n-home-v3.js?v=20260722-3624-1"></script>
     <script src="js/i18n/i18n-login.js?v=20260419-2"></script>
     <script src="js/i18n/i18n-intro.js?v=20260421-2"></script>
     <script src="js/i18n/i18n-search.js?v=20260421-1"></script>
@@ -113,6 +151,6 @@
     <script src="js/auth.js?v=20260422-3"></script>
     <script src="js/page-shell.js?v=20260419-1"></script>
     <script src="js/page-transitions.js?v=20260430-1"></script>
-    <script src="js/index-inline-init.js?v=20260701-2821-1"></script>
+    <script src="js/index-inline-init.js?v=20260722-3624-1"></script>
 </body>
 </html>

@@ -1,3 +1,8 @@
+/* LoveBud home v3 - visual responsive
+   - Caption is a reserved top zone (visible on all sizes).
+   - Featured card scales down before it disappears on mobile.
+   - Supporting cards reposition for tablet and mobile. */
+
 @media (max-width: 1220px) {
     .home-v3-collage {
         min-height: 620px;
@@ -6,104 +11,113 @@
 
 @media (max-width: 920px) {
     .home-v3-growth-stage {
-        min-height: 560px;
-    }
-
-    .growth-stage-card {
-        width: 190px;
-    }
-
-    .growth-stage-card.one {
-        left: 6%;
-        bottom: 10%;
-        top: auto;
-    }
-
-    .growth-stage-card.four {
-        display: none;
-    }
-
-    .growth-stage-card.two {
-        right: 6%;
-        top: 14%;
-    }
-
-    .growth-stage-card.three {
-        right: 8%;
-        bottom: 10%;
-    }
-
-    .home-v3-collage {
         min-height: 600px;
+        padding-top: 80px;
     }
 
     .home-v3-halo {
-        inset: 40px 0 80px;
+        inset: 80px 30px 80px 30px;
     }
 
-    .card-root { left: 6px; top: 386px; }
-    .card-top { left: 50%; top: 44px; transform: translateX(-50%) rotate(3deg); }
-    .card-center { left: 50%; top: 286px; transform: translateX(-50%) rotate(2deg); }
-    .card-bottom { left: 50%; top: 616px; transform: translateX(-50%) rotate(-3deg); }
-    .card-side-top { right: 14px; top: 170px; }
-    .card-side-bottom { right: 14px; top: 532px; }
-    .branch-a, .branch-b, .branch-c, .branch-d, .branch-e, .branch-f, .home-v3-dots, .home-v3-word { display: none; }
+    .growth-stage-caption {
+        margin: 20px 22px 0;
+        max-width: calc(100% - 44px);
+        font-size: 0.78rem;
+        padding: 9px 16px;
+        min-height: 36px;
+    }
+
+    .growth-tree-svg {
+        inset: 80px 0 0 0;
+        height: calc(100% - 80px);
+    }
+
+    .growth-stage-card.featured {
+        width: 232px;
+        left: 6%;
+        top: 30%;
+    }
+
+    .growth-stage-card.supporting {
+        width: 174px;
+    }
+
+    .growth-stage-card.supporting.one {
+        right: 5%;
+        top: 20%;
+    }
+
+    .growth-stage-card.supporting.two {
+        left: 10%;
+        bottom: 12%;
+    }
+
+    .growth-stage-card.supporting.three {
+        right: 6%;
+        bottom: 10%;
+    }
 }
 
 @media (max-width: 640px) {
     .home-v3-collage {
-        min-height: 520px;
+        min-height: 560px;
     }
 
     .home-v3-growth-stage {
-        min-height: 500px;
+        min-height: 540px;
+        border-radius: 34px;
+        padding-top: 72px;
+    }
+
+    .home-v3-halo {
+        inset: 72px 18px 60px 18px;
         border-radius: 34px;
     }
 
     .growth-stage-caption {
-        left: 18px;
-        top: 20px;
-        max-width: calc(100% - 36px);
-        font-size: 0.76rem;
-    }
-
-    .growth-stage-card {
-        width: 154px;
-        padding: 12px;
-        border-radius: 23px;
-    }
-
-    .growth-stage-card::before {
-        height: 72px;
-        border-radius: 17px;
-        margin-bottom: 12px;
-    }
-
-    .growth-stage-card strong {
-        font-size: 0.9rem;
-    }
-
-    .growth-stage-card span {
+        margin: 18px 16px 0;
+        max-width: calc(100% - 32px);
         font-size: 0.74rem;
-        line-height: 1.5;
+        padding: 8px 14px;
+        min-height: 32px;
     }
 
-    .growth-stage-card.one {
-        left: 4%;
-        bottom: 8%;
-        top: auto;
+    .growth-tree-svg {
+        inset: 72px 0 0 0;
+        height: calc(100% - 72px);
     }
 
-    .growth-stage-card.four {
-        display: none;
+    .growth-stage-card.featured {
+        width: 188px;
+        left: 50%;
+        top: 30%;
+        transform: translateX(-50%) translateY(0) scale(1);
     }
 
-    .growth-stage-card.two {
+    .growth-stage-card.supporting {
+        width: 138px;
+        padding: 11px 11px 10px;
+    }
+
+    .growth-stage-card.supporting strong {
+        font-size: 0.78rem;
+    }
+
+    .growth-stage-card.supporting span[data-i18n]:not(.growth-stage-card-artist):not(.growth-stage-card-badge) {
+        font-size: 0.66rem;
+    }
+
+    .growth-stage-card.supporting.one {
         right: 4%;
-        top: 22%;
+        top: 20%;
     }
 
-    .growth-stage-card.three {
+    .growth-stage-card.supporting.two {
+        left: 4%;
+        bottom: 10%;
+    }
+
+    .growth-stage-card.supporting.three {
         right: 4%;
         bottom: 8%;
     }
