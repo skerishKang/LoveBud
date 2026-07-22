@@ -59,13 +59,16 @@
     grid-area: 1 / 1;
     opacity: 0;
     transform: translateY(8px);
-    transition: opacity 0.5s ease, transform 0.5s ease;
+    visibility: hidden;
+    transition: opacity 0.5s ease, transform 0.5s ease, visibility 0s linear 0.5s;
     pointer-events: none;
 }
 
 .home-hero-copy-set.active {
     opacity: 1;
     transform: translateY(0);
+    visibility: visible;
+    transition: opacity 0.5s ease, transform 0.5s ease, visibility 0s linear 0s;
     pointer-events: auto;
 }
 

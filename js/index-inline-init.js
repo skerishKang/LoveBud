@@ -176,7 +176,7 @@
     var toggleInterval = null;
     var activeSet = 1;
     var transitioning = false;
-    var FADE_OUT_MS = 500; // matches .home-hero-copy-set transition duration
+    var FADE_OUT_MS = 520;
 
     var showSet = function(num) {
       set1.classList.toggle('active', num === 1);
@@ -238,10 +238,6 @@
       BRANCHES: 'branches-growing',
       CARDS: 'cards-revealing',
       COMPLETED: 'completed',
-      // fade-out is the out-in transition: only the inner
-      // .growth-stage-card-content fades to 0 while the node SHELL and the
-      // tree stay fully visible. The data swaps while the content is
-      // invisible, then the stage returns to COMPLETED (fade-in).
       FADE: 'fade-out'
     };
 
@@ -256,8 +252,6 @@
       branches: 2800,
       cards: 1100,
       hold: 4000,
-      // fade-out duration; CSS fades inner content over ~0.3s, then data
-      // swaps synchronously and the stage returns to COMPLETED (fade-in).
       fade: 340
     };
 
@@ -383,11 +377,6 @@
       if (media) {
         media.classList.remove('has-thumbnail-error');
         var existingImg = media.querySelector('img');
-        if (existingImg) {
-          // Remove the old <img> entirely so stale load/error events from a
-          // previous artist cycle cannot mutate the current media state.
-          existingImg.remove();
-        }
         var img = document.createElement('img');
         img.alt = '';
         img.loading = 'lazy';
@@ -396,6 +385,9 @@
         img.height = 360;
         img.setAttribute('data-video-id', video.id);
         img.addEventListener('load', function() {
+          if (existingImg && media.contains(existingImg)) {
+            existingImg.remove();
+          }
           img.classList.add('is-loaded');
         });
         img.addEventListener('error', function() {
@@ -404,8 +396,10 @@
             return;
           }
           if (media.contains(img)) {
-            media.classList.add('has-thumbnail-error');
             img.remove();
+            if (!media.querySelector('img')) {
+              media.classList.add('has-thumbnail-error');
+            }
           }
         });
         media.appendChild(img);
@@ -441,6 +435,17 @@
       if (collage) collage.setAttribute('data-hero-artist', artist.key);
     }
 
+    function preloadNextThumbnails() {
+      var nextArtistIndex = (state.artistIndex + 1) % ARTIST_DATASETS.length;
+      var nextArtist = ARTIST_DATASETS[nextArtistIndex];
+      if (!nextArtist) return;
+      for (var i = 0; i < state.videoIndices.length; i++) {
+        var nextVideoIndex = (state.videoIndices[i] + 1) % nextArtist.videos.length;
+        var pre = new Image();
+        pre.src = thumbnailForArtistAt(nextArtistIndex, nextVideoIndex);
+      }
+    }
+
     function step() {
       if (isPaused()) {
         scheduleNext(500);
@@ -466,23 +471,14 @@
           scheduleNext(TIMINGS.hold);
           break;
         case PHASE.COMPLETED:
-          // Begin the out-in transition: fade only the inner card content.
-          // The node shells and the tree stay fully visible (no empty panel).
+          preloadNextThumbnails();
           setStageState(PHASE.FADE);
           scheduleNext(TIMINGS.fade);
           break;
         case PHASE.FADE:
-          // Inner content is now invisible. Swap the artist dataset while the
-          // content is hidden, then return to COMPLETED so the new artist's
-          // content fades back in (out-in). Shells never moved, so there is
-          // no ghost overlap and no duplicate-label phase.
           advanceArtist();
           applyCurrentArtistToCards();
           setStageState(PHASE.COMPLETED);
-          // Preload the next artist's first thumbnail quietly.
-          var nextPreload = (state.videoIndices[0] + 1) % (ARTIST_DATASETS[state.artistIndex] ? ARTIST_DATASETS[state.artistIndex].videos.length : 4);
-          var pre = new Image();
-          pre.src = thumbnailForArtistAt(state.artistIndex, nextPreload);
           scheduleNext(TIMINGS.hold);
           break;
         default:

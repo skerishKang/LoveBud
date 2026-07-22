@@ -1,16 +1,19 @@
 /* LoveBud home v3 - growth stage animations
    - Cycle is JS-controlled (state attribute on .home-v3-growth-stage).
    - CSS only paints phase states; no raw looping animation.
-   - The artist transition uses an out-in content swap (content-fading):
-     the node SHELL and tree stay fully visible; only the inner
-     .growth-stage-card-content fades. This removes the crossfade ghost and
-     the empty/branches-only intermediate phase.
+   - The artist transition dims content to 0.15 (never 0) so card shells
+     never appear as blank white boxes. Data swaps atomically while dimmed,
+     then content fades back to 1.
    - prefers-reduced-motion: reduce renders a static completed tree with the
      first artist's content; no rotation, no fades. */
 
 @keyframes homeHeroCycleResetPulse {
     0% { opacity: 0.7; transform: scale(0.998); }
     100% { opacity: 1; transform: scale(1); }
+}
+
+.home-v3-growth-stage[data-stage-state="fade-out"] .growth-stage-card-content {
+    opacity: 0.15 !important;
 }
 
 @media (prefers-reduced-motion: reduce) {
