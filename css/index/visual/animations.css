@@ -1,7 +1,12 @@
 /* LoveBud home v3 - growth stage animations
    - Cycle is JS-controlled (state attribute on .home-v3-growth-stage).
    - CSS only paints phase states; no raw looping animation.
-   - prefers-reduced-motion: reduce is rendered as a static completed tree. */
+   - The artist transition uses an out-in content swap (content-fading):
+     the node SHELL and tree stay fully visible; only the inner
+     .growth-stage-card-content fades. This removes the crossfade ghost and
+     the empty/branches-only intermediate phase.
+   - prefers-reduced-motion: reduce renders a static completed tree with the
+     first artist's content; no rotation, no fades. */
 
 @keyframes homeHeroCycleResetPulse {
     0% { opacity: 0.7; transform: scale(0.998); }
@@ -27,9 +32,16 @@
         pointer-events: auto !important;
     }
 
+    /* In reduced motion the inner content must also stay visible (no fade). */
+    .home-v3-growth-stage[data-stage-state="pending"] .growth-stage-card-content,
+    .home-v3-growth-stage .growth-stage-card-content {
+        opacity: 1 !important;
+    }
+
     .home-v3-growth-stage .growth-stage-card,
     .home-v3-growth-stage .growth-tree-svg path,
-    .home-v3-growth-stage .growth-stage-caption {
+    .home-v3-growth-stage .growth-stage-caption,
+    .home-v3-growth-stage .growth-stage-card-content {
         transition: none !important;
     }
 }

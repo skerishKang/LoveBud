@@ -1,12 +1,20 @@
-/* LoveBud home v3 growth-stage - rotating YouTube moments
-   - caption is a reserved top zone (not absolutely over cards)
-   - one featured moment card + three supporting moment cards
-   - branches are a back layer, cards sit on a forward layer
-   - cycle is JS-controlled; CSS only paints phase states */
+/* LoveBud home v3 growth-stage - rotating YouTube moments (redesigned #3624)
+   Design contract:
+   - Fixed shell: the tree and the four node card positions never move or
+     disappear across artist cycles. Only the inner content swaps.
+   - One featured memory node (center-left anchor) + three compact supporting
+     memory nodes (around the tree's branch tips).
+   - Cards never overlap (content boxes have >= 12px visible gap); shadow is
+     allowed for depth but the content box itself never intersects another.
+   - Branches are a back layer (z-index below cards); each branch tip reaches
+     a node's media box so the tree reads as connected memory nodes.
+   - Artist transition is out-in: inner content fades out -> data swaps while
+     invisible -> inner content fades in. The shell + tree stay put, so the
+     hero never shows an empty panel or a branches-only ghost state. */
 
 .home-v3-growth-stage {
     position: relative;
-    min-height: 640px;
+    min-height: 720px;
     border-radius: 46px;
     padding-top: 96px;
     background:
@@ -46,12 +54,15 @@
 .home-v3-growth-stage[data-stage-state="caption-revealed"] .growth-stage-caption,
 .home-v3-growth-stage[data-stage-state="branches-growing"] .growth-stage-caption,
 .home-v3-growth-stage[data-stage-state="cards-revealing"] .growth-stage-caption,
-.home-v3-growth-stage[data-stage-state="completed"] .growth-stage-caption {
+.home-v3-growth-stage[data-stage-state="completed"] .growth-stage-caption,
+.home-v3-growth-stage[data-stage-state="fade-out"] .growth-stage-caption {
     opacity: 1;
     transform: translateY(0);
 }
 
-/* Tree (trunk + branches) is a back layer */
+/* Tree (trunk + branches) is a fixed back layer. It draws once on the
+   branches-growing phase and then stays visible for the whole cycle; it does
+   NOT fade out during the artist transition (only node content does). */
 .growth-tree-svg {
     position: absolute;
     inset: 96px 0 0 0;
@@ -83,43 +94,53 @@
 
 .home-v3-growth-stage[data-stage-state="branches-growing"] .growth-tree-svg .trunk,
 .home-v3-growth-stage[data-stage-state="cards-revealing"] .growth-tree-svg .trunk,
-.home-v3-growth-stage[data-stage-state="completed"] .growth-tree-svg .trunk {
+.home-v3-growth-stage[data-stage-state="completed"] .growth-tree-svg .trunk,
+.home-v3-growth-stage[data-stage-state="fade-out"] .growth-tree-svg .trunk {
     stroke-dashoffset: 0;
     opacity: 1;
 }
 
 .home-v3-growth-stage[data-stage-state="branches-growing"] .growth-tree-svg .branch,
 .home-v3-growth-stage[data-stage-state="cards-revealing"] .growth-tree-svg .branch,
-.home-v3-growth-stage[data-stage-state="completed"] .growth-tree-svg .branch {
+.home-v3-growth-stage[data-stage-state="completed"] .growth-tree-svg .branch,
+.home-v3-growth-stage[data-stage-state="fade-out"] .growth-tree-svg .branch {
     stroke-dashoffset: 0;
     opacity: 1;
 }
 
 .home-v3-growth-stage[data-stage-state="branches-growing"] .growth-tree-svg .branch.one,
 .home-v3-growth-stage[data-stage-state="cards-revealing"] .growth-tree-svg .branch.one,
-.home-v3-growth-stage[data-stage-state="completed"] .growth-tree-svg .branch.one {
+.home-v3-growth-stage[data-stage-state="completed"] .growth-tree-svg .branch.one,
+.home-v3-growth-stage[data-stage-state="fade-out"] .growth-tree-svg .branch.one {
     transition-delay: 0.05s;
 }
 
 .home-v3-growth-stage[data-stage-state="branches-growing"] .growth-tree-svg .branch.two,
 .home-v3-growth-stage[data-stage-state="cards-revealing"] .growth-tree-svg .branch.two,
-.home-v3-growth-stage[data-stage-state="completed"] .growth-tree-svg .branch.two {
+.home-v3-growth-stage[data-stage-state="completed"] .growth-tree-svg .branch.two,
+.home-v3-growth-stage[data-stage-state="fade-out"] .growth-tree-svg .branch.two {
     transition-delay: 0.2s;
 }
 
 .home-v3-growth-stage[data-stage-state="branches-growing"] .growth-tree-svg .branch.three,
 .home-v3-growth-stage[data-stage-state="cards-revealing"] .growth-tree-svg .branch.three,
-.home-v3-growth-stage[data-stage-state="completed"] .growth-tree-svg .branch.three {
+.home-v3-growth-stage[data-stage-state="completed"] .growth-tree-svg .branch.three,
+.home-v3-growth-stage[data-stage-state="fade-out"] .growth-tree-svg .branch.three {
     transition-delay: 0.35s;
 }
 
 .home-v3-growth-stage[data-stage-state="branches-growing"] .growth-tree-svg .branch.four,
 .home-v3-growth-stage[data-stage-state="cards-revealing"] .growth-tree-svg .branch.four,
-.home-v3-growth-stage[data-stage-state="completed"] .growth-tree-svg .branch.four {
+.home-v3-growth-stage[data-stage-state="completed"] .growth-tree-svg .branch.four,
+.home-v3-growth-stage[data-stage-state="fade-out"] .growth-tree-svg .branch.four {
     transition-delay: 0.5s;
 }
 
-/* Card layer (front). One featured + three supporting. */
+/* ============================================================
+   Card layer (front). One featured + three supporting.
+   Node SHELL layout is fixed (does not move between artists); only the
+   inner .growth-stage-card-content fades during the artist swap.
+   ============================================================ */
 .growth-stage-card {
     position: absolute;
     background: rgba(255,255,255,0.92);
@@ -132,19 +153,29 @@
     pointer-events: none;
     transform: translateY(18px) scale(0.96);
     transition: opacity 0.5s ease, transform 0.5s ease;
+    /* Whole supporting node is a link: reset link text decoration. */
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+/* Inner content wrapper carries the swap opacity so the shell (position,
+   border, shadow) stays solid and only the inner content fades. */
+.growth-stage-card-content {
+    transition: opacity 0.3s ease;
 }
 
 .growth-stage-card.featured {
-    width: 268px;
+    width: min(282px, calc(50% - 40px));
     border-radius: 30px;
     padding: 18px 18px 16px;
     z-index: 24;
 }
 
 .growth-stage-card.supporting {
-    width: 196px;
+    width: min(200px, calc(50% - 40px));
     border-radius: 24px;
-    padding: 14px 14px 12px;
+    padding: 12px;
 }
 
 /* Card media: 16:9 thumbnail box with artist label + badge */
@@ -271,20 +302,16 @@
 }
 
 .growth-stage-card.supporting strong {
-    font-size: 0.86rem;
+    font-size: 0.9rem;
 }
 
-.growth-stage-card span[data-i18n]:not(.growth-stage-card-artist):not(.growth-stage-card-badge) {
+/* Featured-only copy line (supporting nodes have no description). */
+.growth-stage-card.featured span[data-i18n]:not(.growth-stage-card-artist):not(.growth-stage-card-badge) {
     display: block;
     margin-top: 6px;
     color: #7a6862;
     font-size: 0.78rem;
     line-height: 1.5;
-}
-
-.growth-stage-card.supporting span[data-i18n]:not(.growth-stage-card-artist):not(.growth-stage-card-badge) {
-    font-size: 0.72rem;
-    line-height: 1.45;
 }
 
 .growth-stage-card-channel {
@@ -295,11 +322,6 @@
     font-weight: 700;
     line-height: 1.4;
     letter-spacing: 0.01em;
-}
-
-.growth-stage-card.supporting .growth-stage-card-channel {
-    font-size: 0.62rem;
-    margin-top: 6px;
 }
 
 .growth-stage-card-link {
@@ -317,12 +339,6 @@
     transition: background 0.2s ease, transform 0.2s ease;
 }
 
-.growth-stage-card.supporting .growth-stage-card-link {
-    margin-top: 8px;
-    padding: 5px 9px;
-    font-size: 0.7rem;
-}
-
 .growth-stage-card-link::after {
     content: "↗";
     font-size: 0.78em;
@@ -337,33 +353,89 @@
     outline-offset: 2px;
 }
 
-/* Featured: left-middle */
+/* Supporting nodes use a "stretched link": the anchor is absolutely
+   positioned over the whole card so the entire node is clickable, while
+   its visible text is hidden from sighted users (still readable by AT).
+   The card itself stays an <article> so the markup contract (4 articles)
+   is preserved. */
+.growth-stage-card-link--stretched {
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    margin: 0;
+    padding: 0;
+    border-radius: inherit;
+    background: transparent;
+    color: transparent;
+    overflow: hidden;
+}
+
+.growth-stage-card-link--stretched::after {
+    content: "";
+}
+
+.growth-stage-card-link--stretched:hover {
+    background: rgba(144, 73, 81, 0.04);
+}
+
+.visually-hidden {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    padding: 0 !important;
+    margin: -1px !important;
+    overflow: hidden !important;
+    clip: rect(0, 0, 0, 0) !important;
+    clip-path: inset(50%) !important;
+    white-space: nowrap !important;
+    border: 0 !important;
+}
+
+/* Supporting nodes: the whole card is the link, so show a quiet hover lift
+   instead of an in-card button. */
+.growth-stage-card.supporting:hover,
+.growth-stage-card.supporting:focus-visible {
+    transform: translateY(-3px);
+    box-shadow: 0 28px 56px rgba(80, 61, 58, 0.2);
+    outline: 2px solid rgba(144, 73, 81, 0.4);
+    outline-offset: 2px;
+}
+
+/* ============================================================
+   Fixed node SHELL positions.
+   The stage viewBox (640x700) is scaled by preserveAspectRatio, so the
+   pixel positions below are tuned against a ~1536-wide hero at the
+   completed state. They are non-overlapping by construction: featured sits
+   center-left, the three supporting nodes sit in distinct quadrants, each
+   separated by a clear visible gap.
+   ============================================================ */
+
+/* Featured: left column, upper. Right edge anchored 24px left of center. */
 .growth-stage-card.featured {
-    left: 8%;
-    top: 36%;
+    right: calc(50% + 24px);
+    top: 212px;
 }
 
-/* Supporting layout
-   .one -> right-upper
-   .two -> left-lower
-   .three -> right-lower
-*/
+/* Supporting .one -> right column, upper (reachable by branch .two tip). */
 .growth-stage-card.supporting.one {
-    right: 8%;
-    top: 30%;
+    left: calc(50% + 24px);
+    top: 212px;
 }
 
+/* Supporting .two -> left column, lower (reachable by branch .three tip). */
 .growth-stage-card.supporting.two {
-    left: 18%;
-    bottom: 14%;
+    right: calc(50% + 24px);
+    bottom: 28px;
 }
 
+/* Supporting .three -> right column, lower (reachable by branch .four tip). */
 .growth-stage-card.supporting.three {
-    right: 12%;
-    bottom: 12%;
+    left: calc(50% + 24px);
+    bottom: 28px;
 }
 
-/* Card reveal - controlled by stage state */
+/* Card reveal - controlled by stage state. The shells reveal once and then
+   stay; the artist transition only fades the inner .growth-stage-card-content. */
 .home-v3-growth-stage[data-stage-state="cards-revealing"] .growth-stage-card.featured,
 .home-v3-growth-stage[data-stage-state="completed"] .growth-stage-card.featured,
 .home-v3-growth-stage[data-stage-state="fade-out"] .growth-stage-card.featured {
@@ -399,16 +471,11 @@
     transition-delay: 0.5s;
 }
 
-.home-v3-growth-stage[data-stage-state="fade-out"] .growth-stage-card,
-.home-v3-growth-stage[data-stage-state="fade-out"] .growth-tree-svg path,
-.home-v3-growth-stage[data-stage-state="fade-out"] .growth-stage-caption {
-    opacity: 0 !important;
-    transform: translateY(0) scale(0.98);
-    transition: opacity 0.7s ease, transform 0.7s ease;
-}
-
-.home-v3-growth-stage[data-stage-state="fade-out"] .growth-stage-card {
-    pointer-events: none !important;
+/* Artist swap: inner content fades to invisible, data swaps while invisible,
+   then fades back. The shells themselves never lose opacity, so there is no
+   empty-panel / branches-only ghost state and no two-artist overlap. */
+.home-v3-growth-stage[data-stage-state="fade-out"] .growth-stage-card-content {
+    opacity: 0;
 }
 
 .home-v3-halo {

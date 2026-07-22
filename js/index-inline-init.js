@@ -1,12 +1,16 @@
 /* LoveBud home v3 - inline init
    Two responsibilities:
    1) Hero copy rhythm: two copy sets (3-line title + 2-line description),
-      toggled by a single managed timer. CTA, note, intro link never move.
+      toggled by a single managed timer with an out-in transition (current
+      set fades out fully before the next fades in, so two titles never
+      overlap in the same cell). CTA, note, intro link never move.
    2) Hero growth cycle: JS state machine that rotates BTS -> BLACKPINK ->
-      CORTIS -> RESCENE -> repeat. Each cycle paints caption -> branches ->
-      cards -> hold -> fade -> swap. Reduced motion shows the first
-      artist's completed tree and stops. Hover, focus, and document.hidden
-      pause the cycle. A second init is a no-op.
+       CORTIS -> RESCENE -> repeat. The node SHELLS and tree are fixed;
+       only the inner .growth-stage-card-content swaps via an out-in fade
+       (content fades out -> data swaps while invisible -> fades in).
+       Reduced motion shows the first artist's completed tree and stops.
+       Hover, focus, and document.hidden pause the cycle. A second init
+       is a no-op.
 */
 (function() {
   'use strict';
@@ -166,21 +170,31 @@
     var reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (reducedMotion) return;
 
-    // Single managed timer (no duplicates).
+    // Single managed timer (no duplicates). The copy transition is out-in:
+    // the active set fades out fully before the other set fades in, so there
+    // is never a moment where two titles/headlines overlap in the same cell.
     var toggleInterval = null;
     var activeSet = 1;
+    var transitioning = false;
+    var FADE_OUT_MS = 500; // matches .home-hero-copy-set transition duration
+
+    var showSet = function(num) {
+      set1.classList.toggle('active', num === 1);
+      set2.classList.toggle('active', num === 2);
+      activeSet = num;
+    };
+
     var startToggling = function() {
       if (toggleInterval) return;
       toggleInterval = window.setInterval(function() {
-        if (activeSet === 1) {
-          set1.classList.remove('active');
-          set2.classList.add('active');
-          activeSet = 2;
-        } else {
-          set2.classList.remove('active');
-          set1.classList.add('active');
-          activeSet = 1;
-        }
+        if (transitioning) return;
+        transitioning = true;
+        var nextSet = activeSet === 1 ? 2 : 1;
+        showSet(0);
+        window.setTimeout(function() {
+          showSet(nextSet);
+          transitioning = false;
+        }, FADE_OUT_MS);
       }, 4000);
     };
     var stopToggling = function() {
@@ -224,6 +238,10 @@
       BRANCHES: 'branches-growing',
       CARDS: 'cards-revealing',
       COMPLETED: 'completed',
+      // fade-out is the out-in transition: only the inner
+      // .growth-stage-card-content fades to 0 while the node SHELL and the
+      // tree stay fully visible. The data swaps while the content is
+      // invisible, then the stage returns to COMPLETED (fade-in).
       FADE: 'fade-out'
     };
 
@@ -238,7 +256,9 @@
       branches: 2800,
       cards: 1100,
       hold: 4000,
-      fade: 900
+      // fade-out duration; CSS fades inner content over ~0.3s, then data
+      // swaps synchronously and the stage returns to COMPLETED (fade-in).
+      fade: 340
     };
 
     var state = {
@@ -318,16 +338,23 @@
     function applyArtistToCard(card, videoIndex) {
       var media = card.querySelector('.growth-stage-card-media');
       if (!media) {
+        // All cards ship with a media box in HTML. If it is somehow missing,
+        // append into the inner content wrapper so the swap-fade still covers
+        // the media (do not drop it outside the .growth-stage-card-content).
         media = document.createElement('div');
         media.className = 'growth-stage-card-media';
-        card.appendChild(media);
+        var contentWrap = card.querySelector('.growth-stage-card-content') || card;
+        contentWrap.appendChild(media);
       }
       var artistLabel = card.querySelector('.growth-stage-card-artist');
       var channelEl = card.querySelector('.growth-stage-card-channel');
       var link = card.querySelector('.growth-stage-card-link');
       var fallback = card.querySelector('.growth-stage-card-fallback');
       var titleEl = card.querySelector('strong');
-      var copyEl = card.querySelector('span[data-i18n]:not(.growth-stage-card-artist):not(.growth-stage-card-badge)');
+      // Featured nodes carry a description copy span keyed home.v3.growth.cardN.copy.
+      // Supporting nodes only have a visually-hidden attribution span keyed
+      // home.v3.youtube.attribution; match by key prefix so we never overwrite it.
+      var copyEl = card.querySelector('span[data-i18n^="home.v3.growth.card"]');
 
       var artist = ARTIST_DATASETS[state.artistIndex];
       if (!artist) return;
@@ -439,17 +466,24 @@
           scheduleNext(TIMINGS.hold);
           break;
         case PHASE.COMPLETED:
+          // Begin the out-in transition: fade only the inner card content.
+          // The node shells and the tree stay fully visible (no empty panel).
           setStageState(PHASE.FADE);
           scheduleNext(TIMINGS.fade);
           break;
         case PHASE.FADE:
+          // Inner content is now invisible. Swap the artist dataset while the
+          // content is hidden, then return to COMPLETED so the new artist's
+          // content fades back in (out-in). Shells never moved, so there is
+          // no ghost overlap and no duplicate-label phase.
           advanceArtist();
-          setStageState(PHASE.PENDING);
+          applyCurrentArtistToCards();
+          setStageState(PHASE.COMPLETED);
           // Preload the next artist's first thumbnail quietly.
-          var next = state.videoIndices[0];
+          var nextPreload = (state.videoIndices[0] + 1) % (ARTIST_DATASETS[state.artistIndex] ? ARTIST_DATASETS[state.artistIndex].videos.length : 4);
           var pre = new Image();
-          pre.src = thumbnailForArtistAt(state.artistIndex, next);
-          scheduleNext(0);
+          pre.src = thumbnailForArtistAt(state.artistIndex, nextPreload);
+          scheduleNext(TIMINGS.hold);
           break;
         default:
           setStageState(PHASE.PENDING);
