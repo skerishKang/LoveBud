@@ -80,10 +80,11 @@ Detection rules:
 - `RULE_SQL`: every tracked `*.sql` file (outside excluded directories) must be registered.
 - `RULE_DDL_SCRIPT`: every `*.cjs/*.js/*.mjs/*.py` file under `scripts/`, `modal_compute/`, or `functions/` whose content contains a DDL statement pattern (`CREATE TABLE/INDEX/POLICY/TRIGGER/SCHEMA`, `CREATE OR REPLACE FUNCTION`, `ALTER TABLE/POLICY`, `DROP TABLE/INDEX/TRIGGER`, `TRUNCATE`, `ENABLE ROW LEVEL SECURITY`) must be registered.
 - `RULE_RUNNER_NAME`: every non-test `*.cjs/*.js/*.mjs/*.py/*.sh/*.ps1` file (outside `tests/`) whose basename signals a migration runner or schema-repair path (`migration|rollback|seed|repair|reconcile|adopt|inspect-schema|verify-db`) must be registered.
+- `RULE_DOC_SQL`: every `*.md` file under `docs/ops/`, `docs/architecture/`, or `docs/product/` whose basename signals an operator/runbook/manual procedure (`runbook|migrat|repair|recover|reconcil|rollback|foothold|bulk|seed`) **and** that embeds a fenced ` ```sql ` block containing a DDL statement pattern must be registered. Precision = runbook-style name **AND** fenced DDL. This catches manual SQL procedure documents while excluding explanatory naming/status/audit docs and prose-only architecture docs (their DDL mentions are not executable procedures). Runbooks that delegate DDL to a separate inventoried `*.sql` artifact and embed only read-only verification queries are intentionally not flagged by this rule (their schema-changing capability is captured via the artifact entry).
 
 Explicit exclusions (false-positive and generated/vendor handling): `node_modules/`, `.git/`, `dist/`, `build/`, `coverage/`, `vendor/`, `.local/`, `.hermes/`, `docs/conversation/`, `package-lock.json`, the two inventory JSON files, and the guard test file itself.
 
-The guard also verifies: required entry fields, enum validity, no duplicate paths, no stale entries (every registered path exists on disk), and that the Python compute layer still contains no literal DDL (verified-negative invariant).
+The guard also verifies: required entry fields, enum validity, no duplicate paths, no stale entries (every registered path exists on disk), and two hard verified-negative DDL invariants — the Python compute layer (`modal_compute/**/*.py`) and the Cloudflare Functions runtime (`functions/**/*.{js,cjs,mjs}`) must contain no literal schema-changing DDL. These invariants fail the guard regardless of inventory registration; registering a path does not satisfy them.
 
 Run the focused guard:
 
@@ -97,8 +98,8 @@ Limitation: this guard is a static inventory-omission guard. It does **not** con
 
 | Surface | Finding |
 | --- | --- |
-| `modal_compute/` (Python runtime data layer) | Verified to contain no literal DDL. Issues DML only. Not a schema-change path. If future Python adds DDL, `RULE_DDL_SCRIPT` will require registration. |
-| `functions/` (Cloudflare Pages Functions / same-origin `/api`) | Verified to contain no inline DDL and no direct DB schema operations; requests proxy to Modal. Not a schema-change path. If future Function code adds DDL, `RULE_DDL_SCRIPT` will require registration. |
+| `modal_compute/` (Python runtime data layer) | Verified to contain no literal DDL. Issues DML only. Not a schema-change path. Hard invariant: any literal DDL under `modal_compute/**/*.py` fails the guard regardless of inventory registration. |
+| `functions/` (Cloudflare Pages Functions / same-origin `/api`) | Verified to contain no inline DDL and no direct DB schema operations; requests proxy to Modal. Not a schema-change path. Hard invariant: any literal DDL under `functions/**/*.{js,cjs,mjs}` fails the guard regardless of inventory registration (registering a path does not satisfy it). |
 
 ## Category Breakdown
 

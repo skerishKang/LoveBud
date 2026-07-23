@@ -54,6 +54,25 @@ const RUNNER_RE = /(migration|rollback|seed|repair|reconcile|adopt|inspect-schem
 const SCRIPT_EXTS = new Set(['.cjs', '.js', '.mjs', '.py']);
 const RUNNER_EXTS = new Set(['.cjs', '.js', '.mjs', '.py', '.sh', '.ps1']);
 
+// RULE_DOC_SQL scope: documentation dirs whose markdown may carry manual SQL procedures.
+const DOC_SQL_SCOPE_PREFIXES = ['docs/ops/', 'docs/architecture/', 'docs/product/'];
+// Operator/runbook/manual-procedure document-name signal (precision filter).
+const RUNBOOK_NAME_RE = /(runbook|migrat|repair|recover|reconcil|rollback|foothold|bulk|seed)/i;
+// Fenced ```sql code block capture.
+const FENCED_SQL_RE = /```sql[^\n]*\n([\s\S]*?)```/gi;
+
+// True when the markdown content embeds a fenced ```sql block whose body contains DDL.
+// Prose-only DDL mentions (architecture/design docs) and non-DDL fenced SQL (pure DML/SELECT
+// or naming-convention examples without a runbook-style name) do not qualify on their own.
+function hasFencedSqlDdl(content) {
+  FENCED_SQL_RE.lastIndex = 0;
+  let m;
+  while ((m = FENCED_SQL_RE.exec(content)) !== null) {
+    if (DDL_RE.test(m[1])) return true;
+  }
+  return false;
+}
+
 function toPosix(p) {
   return p.split(path.sep).join('/');
 }
@@ -130,6 +149,16 @@ function detectCandidates(files) {
     // RULE_RUNNER_NAME: migration-runner / schema-repair named non-test script.
     if (RUNNER_EXTS.has(ext) && !isTestFile(rel)) {
       if (RUNNER_RE.test(basenameNoExt(rel))) detected.add(rel);
+    }
+    // RULE_DOC_SQL: operator/runbook markdown under docs/ops|architecture|product that
+    // embeds a fenced ```sql block containing DDL. Precision = runbook-style document name
+    // AND fenced DDL, which excludes explanatory naming/status/audit and prose-only
+    // architecture docs (false positives).
+    if (ext === '.md') {
+      const inDocScope = DOC_SQL_SCOPE_PREFIXES.some((prefix) => rel.startsWith(prefix));
+      if (inDocScope && RUNBOOK_NAME_RE.test(basenameNoExt(rel)) && hasFencedSqlDdl(readSafe(rel))) {
+        detected.add(rel);
+      }
     }
   }
   return Array.from(detected).sort();
@@ -271,6 +300,8 @@ describe('DB schema-change inventory guard (#3458)', () => {
       assert.ok(candidates.includes('scripts/migration-add-tree-comments.sql'), 'guard must detect scripts/*.sql');
       assert.ok(candidates.includes('scripts/migration-provenance-core.cjs'), 'guard must detect DDL-bearing tooling');
       assert.ok(candidates.includes('tests/db-engine/fixtures/tree-comments-legacy.sql'), 'guard must detect fixture *.sql');
+      // RULE_DOC_SQL must detect a runbook that embeds fenced DDL directly.
+      assert.ok(candidates.includes('docs/ops/moment-social-write-hardening-migration-runbook.md'), 'guard must detect runbook markdown embedding fenced DDL');
       assert.ok(candidates.length >= 25, `guard should detect at least the 25 SQL artifacts, got ${candidates.length}`);
     });
   });
@@ -287,6 +318,20 @@ describe('DB schema-change inventory guard (#3458)', () => {
       assert.ok(files.length >= 1, 'expected Python modules under modal_compute/');
       const offenders = files.filter((f) => DDL_RE.test(readSafe(f)));
       assert.deepStrictEqual(offenders, [], `Python modules with literal DDL (must be inventoried if real): ${offenders.join(', ')}`);
+    });
+    it('functions runtime layer contains no literal schema-changing DDL (verified-negative invariant)', () => {
+      // Hard invariant, independent of inventory registration: the Cloudflare Functions
+      // runtime (same-origin /api edge) must not contain literal schema-changing DDL.
+      // Registering a path in the inventory does NOT satisfy this check; any literal DDL
+      // here is a verified-negative violation and fails the test.
+      const files = walkRepo().filter((f) => f.startsWith('functions/') && /\.(js|cjs|mjs)$/.test(f));
+      assert.ok(files.length >= 1, 'expected JS modules under functions/');
+      const offenders = files.filter((f) => DDL_RE.test(readSafe(f)));
+      assert.deepStrictEqual(
+        offenders,
+        [],
+        `functions/ runtime modules contain literal schema-changing DDL (verified-negative violation; not satisfied by inventory registration): ${offenders.join(', ')}`
+      );
     });
   });
 

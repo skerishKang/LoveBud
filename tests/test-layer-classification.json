@@ -4515,7 +4515,7 @@
     {
       "path": "tests/contracts/db-schema-change-inventory-contract.test.cjs",
       "layer": "SOURCE_STATIC",
-      "rationale": "Reads docs/architecture/db-schema-change-inventory.json and db-schema-change-inventory.md plus the repository file tree (fs walk only; no git, network, or database) and asserts inventory structure, enum validity, no duplicate or stale paths, protected issue references, secret-absence patterns, and that every detected schema-changing artifact (any *.sql file, any DDL-bearing scripts/modal_compute/functions module, or any migration-runner/schema-repair named script) is registered in the inventory; does not connect to any database, execute SQL, or run any migration.",
+      "rationale": "Reads docs/architecture/db-schema-change-inventory.json and db-schema-change-inventory.md plus the repository file tree (fs walk only; no git, network, or database) and asserts inventory structure, enum validity, no duplicate or stale paths, protected issue references, secret-absence patterns, that every detected schema-changing artifact (any *.sql file, any DDL-bearing scripts/modal_compute/functions module, any migration-runner/schema-repair named script, or any operator/runbook markdown under docs/ops|architecture|product embedding a fenced SQL block with DDL) is registered in the inventory, and the hard verified-negative invariants that modal_compute/**/*.py and functions/**/*.{js,cjs,mjs} contain no literal schema-changing DDL (independent of registration); does not connect to any database, execute SQL, or run any migration.",
       "capabilities": []
     }
   ],
