@@ -54,7 +54,7 @@ test('representative classes exist in their respective split files', () => {
     { class: '.home-v3-branch', file: 'branch.css' },
     { class: '.home-v3-word', file: 'decorations.css' },
     { class: '.home-v3-growth-stage', file: 'growth-stage.css' },
-    { class: '.growth-tree-svg', file: 'growth-stage.css' },
+    { class: '.growth-stage-network-core', file: 'growth-stage.css' },
     { class: '.growth-stage-card', file: 'growth-stage.css' },
     { class: '.growth-stage-card.featured', file: 'growth-stage.css' },
     { class: '.growth-stage-card.supporting', file: 'growth-stage.css' },

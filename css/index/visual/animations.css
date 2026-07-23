@@ -4,8 +4,8 @@
    - The artist transition is a sequential 3D card flip: each card's content
      rotates to 90deg (edge-on), swaps data there, then rotates back. No
      opacity dim, no blank white card, no old/new text overlap.
-   - prefers-reduced-motion: reduce renders a static completed tree with the
-     first artist's content; no rotation, no flips. */
+   - prefers-reduced-motion: reduce renders a static completed memory network
+     with the first artist's content; no rotation, no flips. */
 
 @keyframes homeHeroCycleResetPulse {
     0% { opacity: 0.7; transform: scale(0.998); }
@@ -20,7 +20,7 @@
    .growth-stage-card-content in turn (featured first, then each supporting
    card 120ms later). The content rotates to 90deg (edge-on, invisible), the
    data swaps at that exact point, then it rotates back to reveal the new
-   content. The shell, tree, and caption never move or fade. */
+   content. The shell, memory network, and caption never move or fade. */
 .growth-stage-card-content.is-flip-out {
     transform: rotateY(90deg);
 }
@@ -31,17 +31,29 @@
     }
 
     .home-v3-growth-stage[data-stage-state="pending"] .growth-stage-card,
-    .home-v3-growth-stage[data-stage-state="pending"] .growth-tree-svg path,
     .home-v3-growth-stage[data-stage-state="pending"] .growth-stage-caption {
         opacity: 1 !important;
         transform: none !important;
         pointer-events: auto !important;
         visibility: visible !important;
-        stroke-dashoffset: 0 !important;
     }
 
     .home-v3-growth-stage[data-stage-state="pending"] .growth-stage-card.supporting {
         pointer-events: auto !important;
+    }
+
+    /* The memory network shows fully and stays centered. Its translate()
+       centering must be preserved, so it is kept out of the transform:none
+       override above. */
+    .home-v3-growth-stage .growth-stage-network-rail,
+    .home-v3-growth-stage .growth-stage-network-rail::after,
+    .home-v3-growth-stage .growth-stage-network-hub {
+        opacity: 1 !important;
+    }
+
+    .home-v3-growth-stage .growth-stage-network-rail,
+    .home-v3-growth-stage .growth-stage-network-hub {
+        transform: translate(-50%, -50%) scale(1) !important;
     }
 
     /* In reduced motion the inner content must also stay visible (no fade). */
@@ -51,7 +63,9 @@
     }
 
     .home-v3-growth-stage .growth-stage-card,
-    .home-v3-growth-stage .growth-tree-svg path,
+    .home-v3-growth-stage .growth-stage-network-rail,
+    .home-v3-growth-stage .growth-stage-network-rail::after,
+    .home-v3-growth-stage .growth-stage-network-hub,
     .home-v3-growth-stage .growth-stage-caption,
     .home-v3-growth-stage .growth-stage-card-content {
         transition: none !important;

@@ -12,8 +12,13 @@ const GROWTH_STAGE_CSS_PATH = path.join(ROOT, 'css', 'index', 'visual', 'growth-
 test('Contract: index.html elements integrity', () => {
   const html = fs.readFileSync(HTML_PATH, 'utf8');
 
-  // 1. index.html has growth-tree-svg and exactly 4 growth-stage-cards
-  assert.ok(html.includes('growth-tree-svg'), 'index.html must have growth-tree-svg');
+  // 1. index.html has the memory network (the literal tree is removed) and exactly 4 growth-stage-cards
+  assert.ok(html.includes('growth-stage-network'),
+    'index.html must have the growth-stage-network wrapper');
+  assert.ok(html.includes('growth-stage-network-core'),
+    'index.html must have the growth-stage-network-core');
+  assert.ok(!html.includes('growth-tree-svg'),
+    'the literal growth-tree-svg must be removed from index.html');
   const matches = html.match(/<article[^>]*class="growth-stage-card /g) || [];
   assert.equal(matches.length, 4, `index.html must have exactly 4 growth-stage-cards, found ${matches.length}`);
 

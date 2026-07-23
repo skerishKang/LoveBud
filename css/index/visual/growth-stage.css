@@ -1,16 +1,17 @@
 /* LoveBud home v3 growth-stage - rotating YouTube moments (redesigned #3624)
    Design contract:
-   - Fixed shell: the tree and the four node card positions never move or
-     disappear across artist cycles. Only the inner content swaps.
+   - Fixed shell: the memory network and the four node card positions never
+     move or disappear across artist cycles. Only the inner content swaps.
    - One featured memory node (center-left anchor) + three compact supporting
-     memory nodes (around the tree's branch tips).
+      memory nodes, arranged as a constellation around a glowing hub.
    - Cards never overlap (content boxes have >= 12px visible gap); shadow is
-     allowed for depth but the content box itself never intersects another.
-   - Branches are a back layer (z-index below cards); each branch tip reaches
-     a node's media box so the tree reads as connected memory nodes.
+      allowed for depth but the content box itself never intersects another.
+   - The network (rail + hub + sparkles) is a soft, abstract back layer that
+      is fully decoupled from card positions — no per-card paths — so it stays
+      intact across breakpoints and artist cycles (no literal tree/branches).
    - Artist transition is out-in: inner content fades out -> data swaps while
-     invisible -> inner content fades in. The shell + tree stay put, so the
-     hero never shows an empty panel or a branches-only ghost state. */
+      invisible -> inner content fades in. The shell + network stay put, so the
+      hero never shows an empty panel or a network-only ghost state. */
 
 .home-v3-growth-stage {
     position: relative;
@@ -52,7 +53,7 @@
 }
 
 .home-v3-growth-stage[data-stage-state="caption-revealed"] .growth-stage-caption,
-.home-v3-growth-stage[data-stage-state="branches-growing"] .growth-stage-caption,
+.home-v3-growth-stage[data-stage-state="network-linking"] .growth-stage-caption,
 .home-v3-growth-stage[data-stage-state="cards-revealing"] .growth-stage-caption,
 .home-v3-growth-stage[data-stage-state="completed"] .growth-stage-caption,
 .home-v3-growth-stage[data-stage-state="fade-out"] .growth-stage-caption {
@@ -60,80 +61,116 @@
     transform: translateY(0);
 }
 
-/* Tree (trunk + branches) is a fixed back layer. It draws once on the
-   branches-growing phase and then stays visible for the whole cycle; it does
-   NOT fade out during the artist transition (only node content does). */
-.growth-tree-svg {
+/* Memory network (rail + hub + sparkles) is a fixed, abstract back layer.
+   It reveals once on the network-linking phase and then stays visible for
+   the whole cycle; it does NOT fade out during the artist transition (only
+   node content does). It is fully decoupled from card positions — no
+   per-card paths — so it stays intact across breakpoints: a soft
+   constellation of connected light, never a literal tree. */
+.growth-stage-network-core {
     position: absolute;
     inset: 96px 0 0 0;
-    width: 100%;
-    height: calc(100% - 96px);
-    z-index: 5;
+    z-index: 6;
     pointer-events: none;
 }
 
-.growth-tree-svg path {
-    fill: none;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-    stroke-dasharray: 1;
-    stroke-dashoffset: 1;
+/* Rail: a soft orbital ring of light that ties the four memory nodes
+   together. A second, tilted ring (::before) and a scatter of memory
+   sparkles (::after) complete the constellation. */
+.growth-stage-network-rail {
+    position: absolute;
+    left: 50%;
+    top: 52%;
+    width: min(620px, 82%);
+    aspect-ratio: 1.55;
+    transform: translate(-50%, -50%) scale(0.9);
+    border-radius: 50%;
+    border: 1.5px solid rgba(144, 73, 81, 0.16);
+    box-shadow:
+        0 0 46px rgba(241, 209, 218, 0.30) inset,
+        0 0 34px rgba(241, 209, 218, 0.18);
     opacity: 0;
-    transition: stroke-dashoffset 1.6s ease, opacity 0.6s ease;
+    transition: opacity 0.9s ease, transform 1.1s cubic-bezier(0.22, 0.8, 0.3, 1);
 }
 
-.growth-tree-svg .trunk {
-    stroke: rgba(144, 73, 81, 0.74);
-    stroke-width: 9;
+.growth-stage-network-rail::before {
+    content: "";
+    position: absolute;
+    inset: 9% 6%;
+    border-radius: 50%;
+    border: 1px solid rgba(122, 139, 110, 0.16);
+    transform: rotate(-7deg);
 }
 
-.growth-tree-svg .branch {
-    stroke: rgba(122, 139, 110, 0.62);
-    stroke-width: 6;
+/* Memory sparkles: tiny nodes of light scattered along the constellation. */
+.growth-stage-network-rail::after {
+    content: "";
+    position: absolute;
+    inset: -6%;
+    background:
+        radial-gradient(circle 3px at 12% 30%, rgba(196, 120, 130, 0.65), transparent 100%),
+        radial-gradient(circle 2.5px at 86% 24%, rgba(196, 120, 130, 0.55), transparent 100%),
+        radial-gradient(circle 2px at 22% 78%, rgba(150, 163, 138, 0.6), transparent 100%),
+        radial-gradient(circle 3px at 74% 82%, rgba(196, 120, 130, 0.5), transparent 100%),
+        radial-gradient(circle 2px at 50% 8%, rgba(196, 120, 130, 0.55), transparent 100%),
+        radial-gradient(circle 2px at 6% 58%, rgba(150, 163, 138, 0.5), transparent 100%),
+        radial-gradient(circle 2.5px at 94% 56%, rgba(196, 120, 130, 0.5), transparent 100%);
+    opacity: 0;
+    transition: opacity 1.2s ease 0.5s;
 }
 
-.home-v3-growth-stage[data-stage-state="branches-growing"] .growth-tree-svg .trunk,
-.home-v3-growth-stage[data-stage-state="cards-revealing"] .growth-tree-svg .trunk,
-.home-v3-growth-stage[data-stage-state="completed"] .growth-tree-svg .trunk,
-.home-v3-growth-stage[data-stage-state="fade-out"] .growth-tree-svg .trunk {
-    stroke-dashoffset: 0;
+/* Hub: the glowing heart where the memory threads meet. */
+.growth-stage-network-hub {
+    position: absolute;
+    left: 50%;
+    top: 52%;
+    width: 16px;
+    height: 16px;
+    transform: translate(-50%, -50%) scale(0.4);
+    border-radius: 50%;
+    background: radial-gradient(circle at 38% 34%, #fff8f6, rgba(196, 110, 122, 0.95) 46%, rgba(144, 73, 81, 0.85) 100%);
+    box-shadow:
+        0 0 0 6px rgba(241, 209, 218, 0.28),
+        0 0 26px rgba(220, 140, 152, 0.55),
+        0 0 60px rgba(241, 209, 218, 0.4);
+    opacity: 0;
+    transition:
+        opacity 0.7s ease 0.35s,
+        transform 0.9s cubic-bezier(0.2, 0.9, 0.3, 1.2) 0.35s,
+        box-shadow 0.3s ease;
+}
+
+/* The network reveals once and stays (mirrors the old draw-once behavior):
+   rail blooms first, sparkles fade in, then the hub settles into place. */
+.home-v3-growth-stage[data-stage-state="network-linking"] .growth-stage-network-rail,
+.home-v3-growth-stage[data-stage-state="cards-revealing"] .growth-stage-network-rail,
+.home-v3-growth-stage[data-stage-state="completed"] .growth-stage-network-rail,
+.home-v3-growth-stage[data-stage-state="fade-out"] .growth-stage-network-rail {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+}
+
+.home-v3-growth-stage[data-stage-state="network-linking"] .growth-stage-network-rail::after,
+.home-v3-growth-stage[data-stage-state="cards-revealing"] .growth-stage-network-rail::after,
+.home-v3-growth-stage[data-stage-state="completed"] .growth-stage-network-rail::after,
+.home-v3-growth-stage[data-stage-state="fade-out"] .growth-stage-network-rail::after {
     opacity: 1;
 }
 
-.home-v3-growth-stage[data-stage-state="branches-growing"] .growth-tree-svg .branch,
-.home-v3-growth-stage[data-stage-state="cards-revealing"] .growth-tree-svg .branch,
-.home-v3-growth-stage[data-stage-state="completed"] .growth-tree-svg .branch,
-.home-v3-growth-stage[data-stage-state="fade-out"] .growth-tree-svg .branch {
-    stroke-dashoffset: 0;
+.home-v3-growth-stage[data-stage-state="network-linking"] .growth-stage-network-hub,
+.home-v3-growth-stage[data-stage-state="cards-revealing"] .growth-stage-network-hub,
+.home-v3-growth-stage[data-stage-state="completed"] .growth-stage-network-hub,
+.home-v3-growth-stage[data-stage-state="fade-out"] .growth-stage-network-hub {
     opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
 }
 
-.home-v3-growth-stage[data-stage-state="branches-growing"] .growth-tree-svg .branch.one,
-.home-v3-growth-stage[data-stage-state="cards-revealing"] .growth-tree-svg .branch.one,
-.home-v3-growth-stage[data-stage-state="completed"] .growth-tree-svg .branch.one,
-.home-v3-growth-stage[data-stage-state="fade-out"] .growth-tree-svg .branch.one {
-    transition-delay: 0.05s;
-}
-
-.home-v3-growth-stage[data-stage-state="branches-growing"] .growth-tree-svg .branch.two,
-.home-v3-growth-stage[data-stage-state="cards-revealing"] .growth-tree-svg .branch.two,
-.home-v3-growth-stage[data-stage-state="completed"] .growth-tree-svg .branch.two,
-.home-v3-growth-stage[data-stage-state="fade-out"] .growth-tree-svg .branch.two {
-    transition-delay: 0.2s;
-}
-
-.home-v3-growth-stage[data-stage-state="branches-growing"] .growth-tree-svg .branch.three,
-.home-v3-growth-stage[data-stage-state="cards-revealing"] .growth-tree-svg .branch.three,
-.home-v3-growth-stage[data-stage-state="completed"] .growth-tree-svg .branch.three,
-.home-v3-growth-stage[data-stage-state="fade-out"] .growth-tree-svg .branch.three {
-    transition-delay: 0.35s;
-}
-
-.home-v3-growth-stage[data-stage-state="branches-growing"] .growth-tree-svg .branch.four,
-.home-v3-growth-stage[data-stage-state="cards-revealing"] .growth-tree-svg .branch.four,
-.home-v3-growth-stage[data-stage-state="completed"] .growth-tree-svg .branch.four,
-.home-v3-growth-stage[data-stage-state="fade-out"] .growth-tree-svg .branch.four {
-    transition-delay: 0.5s;
+/* Hovering the hero warms the hub — the network responds to presence. */
+.home-v3-growth-stage:hover .growth-stage-network-hub {
+    box-shadow:
+        0 0 0 8px rgba(241, 209, 218, 0.34),
+        0 0 34px rgba(220, 140, 152, 0.7),
+        0 0 74px rgba(241, 209, 218, 0.5);
 }
 
 /* ============================================================
@@ -417,11 +454,11 @@
 
 /* ============================================================
    Fixed node SHELL positions.
-   The stage viewBox (640x700) is scaled by preserveAspectRatio, so the
-   pixel positions below are tuned against a ~1536-wide hero at the
-   completed state. They are non-overlapping by construction: featured sits
-   center-left, the three supporting nodes sit in distinct quadrants, each
-   separated by a clear visible gap.
+   The four memory nodes sit in distinct quadrants around the central
+   network hub, tuned against a ~1536-wide hero at the completed state.
+   They are non-overlapping by construction: featured sits center-left,
+   the three supporting nodes fill the remaining quadrants, each separated
+   by a clear visible gap. The network rail/hub float in the space between.
    ============================================================ */
 
 /* Featured: left column, upper. Right edge anchored 24px left of center. */
@@ -430,19 +467,19 @@
     top: 212px;
 }
 
-/* Supporting .one -> right column, upper (reachable by branch .two tip). */
+/* Supporting .one -> right column, upper. */
 .growth-stage-card.supporting.one {
     left: calc(50% + 24px);
     top: 212px;
 }
 
-/* Supporting .two -> left column, lower (reachable by branch .three tip). */
+/* Supporting .two -> left column, lower. */
 .growth-stage-card.supporting.two {
     right: calc(50% + 24px);
     bottom: 28px;
 }
 
-/* Supporting .three -> right column, lower (reachable by branch .four tip). */
+/* Supporting .three -> right column, lower. */
 .growth-stage-card.supporting.three {
     left: calc(50% + 24px);
     bottom: 28px;
@@ -487,7 +524,7 @@
 
 /* Artist swap: inner content fades to invisible, data swaps while invisible,
    then fades back. The shells themselves never lose opacity, so there is no
-   empty-panel / branches-only ghost state and no two-artist overlap. */
+   empty-panel / network-only ghost state and no two-artist overlap. */
 .home-v3-growth-stage[data-stage-state="fade-out"] .growth-stage-card-content {
     opacity: 0;
 }

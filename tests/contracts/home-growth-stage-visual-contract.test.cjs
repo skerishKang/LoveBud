@@ -7,7 +7,7 @@
  *   - YouTube remote thumbnails (real <img>)
  *   - artist label + YouTube attribution + safe external link
  *   - controlled cycle: no raw CSS infinite, no keyframe-driven reveal
- *   - reduced motion: first-artist completed tree, no rotation
+ *   - reduced motion: first-artist completed memory network, no rotation
  *
  * Refs #3624
  * Refs #1882 (kept OPEN)
@@ -83,15 +83,18 @@ console.log('✓ 2: featured + 3 supporting');
 console.log('✓ 3: no branch/word/dots markup');
 
 // ============================================================
-// 4. growth-tree-svg is preserved
+// 4. memory network core is present and decorative
 // ============================================================
 {
-  assert.ok(html.includes('class="growth-tree-svg"'), 'growth-tree-svg must exist');
-  // SVG is decorative; the card links carry the accessible interaction
-  assert.ok(/class="growth-tree-svg"[^>]*aria-hidden="true"/.test(html),
-    'growth-tree-svg should be aria-hidden="true" (decorative)');
+  assert.ok(html.includes('class="growth-stage-network-core"'),
+    'growth-stage-network-core must exist');
+  // The network is decorative; the card links carry the accessible interaction
+  assert.ok(/class="growth-stage-network-core"[^>]*aria-hidden="true"/.test(html),
+    'growth-stage-network-core should be aria-hidden="true" (decorative)');
+  assert.ok(!html.includes('growth-tree-svg'),
+    'the literal growth-tree-svg must be removed');
 }
-console.log('✓ 4: growth-tree-svg is decorative');
+console.log('✓ 4: memory network core is decorative (tree removed)');
 
 // ============================================================
 // 5. Halo is background-layer (pointer-events: none)
@@ -105,31 +108,31 @@ console.log('✓ 4: growth-tree-svg is decorative');
 console.log('✓ 5: halo pointer-events: none');
 
 // ============================================================
-// 6. Branch z-index < card z-index, and caption z-index > card z-index
+// 6. Network z-index < card z-index, and caption z-index > card z-index
 // ============================================================
 {
-  const svgZ = cssGrowth.match(/\.growth-tree-svg\s*\{[^}]*z-index:\s*(\d+)/);
+  const networkZ = cssGrowth.match(/\.growth-stage-network-core\s*\{[^}]*z-index:\s*(\d+)/);
   const cardZ = cssGrowth.match(/\.growth-stage-card\s*\{[^}]*z-index:\s*(\d+)/);
   const featuredZ = cssGrowth.match(/\.growth-stage-card\.featured\s*\{[^}]*z-index:\s*(\d+)/);
   const captionZ = cssGrowth.match(/\.growth-stage-caption\s*\{[^}]*z-index:\s*(\d+)/);
 
-  assert.ok(svgZ, 'SVG must have z-index');
+  assert.ok(networkZ, 'Memory network core must have z-index');
   assert.ok(cardZ, 'Card must have z-index');
   assert.ok(captionZ, 'Caption must have z-index');
 
-  const svgZVal = parseInt(svgZ[1], 10);
+  const networkZVal = parseInt(networkZ[1], 10);
   const cardZVal = parseInt(cardZ[1], 10);
   const captionZVal = parseInt(captionZ[1], 10);
   const featuredZVal = featuredZ ? parseInt(featuredZ[1], 10) : cardZVal;
 
-  assert.ok(svgZVal < cardZVal,
-    `SVG z-index (${svgZVal}) must be less than card z-index (${cardZVal})`);
+  assert.ok(networkZVal < cardZVal,
+    `Network z-index (${networkZVal}) must be less than card z-index (${cardZVal})`);
   assert.ok(captionZVal > cardZVal,
     `Caption z-index (${captionZVal}) must be greater than card z-index (${cardZVal}) so caption stays in safe zone`);
   assert.ok(featuredZVal >= cardZVal,
     `Featured card z-index (${featuredZVal}) must be >= card z-index (${cardZVal})`);
 }
-console.log('✓ 6: layer order is correct (svg < card < caption)');
+console.log('✓ 6: layer order is correct (network < card < caption)');
 
 // ============================================================
 // 7. No raw CSS infinite animation in visual layer
@@ -148,7 +151,7 @@ console.log('✓ 7: no raw infinite animation');
 {
   assert.ok(cssGrowth.includes('[data-stage-state='),
     'growth-stage.css must paint phase states via [data-stage-state=...] selectors');
-  const states = ['caption-revealed', 'branches-growing', 'cards-revealing', 'completed', 'fade-out'];
+  const states = ['caption-revealed', 'network-linking', 'cards-revealing', 'completed', 'fade-out'];
   for (const s of states) {
     assert.ok(cssGrowth.includes('data-stage-state="' + s + '"') || cssGrowth.includes("data-stage-state='" + s + "'"),
       `growth-stage.css must reference data-stage-state="${s}"`);
@@ -157,17 +160,17 @@ console.log('✓ 7: no raw infinite animation');
 console.log('✓ 8: stage uses data-stage-state selectors');
 
 // ============================================================
-// 9. Tree path final state has stroke-dashoffset: 0 + opacity: 1
+// 9. Network rail final state has opacity: 1 + full scale
 // ============================================================
 {
-  const completedRule = cssGrowth.match(/\[data-stage-state="completed"\][^{]*\.growth-tree-svg[^{]*\{[^}]*\}/);
-  assert.ok(completedRule, 'Must find completed-state rule for tree-svg');
-  assert.ok(completedRule[0].includes('stroke-dashoffset: 0'),
-    'completed tree state must have stroke-dashoffset: 0');
+  const completedRule = cssGrowth.match(/\[data-stage-state="completed"\][^{]*\.growth-stage-network-rail[^{]*\{[^}]*\}/);
+  assert.ok(completedRule, 'Must find completed-state rule for the memory network rail');
   assert.ok(completedRule[0].includes('opacity: 1'),
-    'completed tree state must have opacity: 1');
+    'completed network state must have opacity: 1');
+  assert.ok(completedRule[0].includes('scale(1)'),
+    'completed network state must be fully scaled (scale(1))');
 }
-console.log('✓ 9: completed tree state painted');
+console.log('✓ 9: completed network state painted');
 
 // ============================================================
 // 10. prefers-reduced-motion: reduce is honored
@@ -312,7 +315,7 @@ console.log('✓ 18: pause/resume conditions exist');
 console.log('✓ 19: no thumbnail-gated visibility');
 
 // ============================================================
-// 20. Reduced motion: cards fully visible, branches completed
+// 20. Reduced motion: cards fully visible, network completed
 // ============================================================
 {
   const reduceIdx = cssAnim.indexOf('@media (prefers-reduced-motion: reduce)');
@@ -333,10 +336,12 @@ console.log('✓ 19: no thumbnail-gated visibility');
     'reduced-motion block must have visibility: visible for cards');
   assert.ok(block.includes('opacity: 1'),
     'reduced-motion block must have opacity: 1');
-  assert.ok(block.includes('stroke-dashoffset: 0'),
-    'reduced-motion block must have stroke-dashoffset: 0');
+  assert.ok(block.includes('growth-stage-network-rail'),
+    'reduced-motion block must reveal the memory network rail');
+  assert.ok(block.includes('growth-stage-network-hub'),
+    'reduced-motion block must reveal the memory network hub');
 }
-console.log('✓ 20: reduced-motion shows completed tree');
+console.log('✓ 20: reduced-motion shows completed network');
 
 // ============================================================
 // 21. External YouTube links are safe

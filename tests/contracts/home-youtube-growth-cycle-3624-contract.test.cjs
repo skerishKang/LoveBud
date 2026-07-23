@@ -251,7 +251,7 @@ console.log('✓ 11: controlled cycle state, no raw infinite');
   assert.ok(!/setInterval\s*\(\s*function[^}]*advanceArtist/.test(js),
     'cycle must not use setInterval to advance artists');
 }
-console.log('✓ 12: reduced motion shows static completed tree, no rotation');
+console.log('✓ 12: reduced motion shows static completed network, no rotation');
 
 // ============================================================
 // 13. Hover/focus/document-hidden pause
@@ -351,10 +351,12 @@ console.log('✓ 17: artist label + channel label per card');
     'reduced-motion must keep cards visibility: visible');
   assert.ok(animCss.includes('opacity: 1') || animCss.includes('opacity:1'),
     'reduced-motion must keep cards opacity: 1');
-  assert.ok(animCss.includes('stroke-dashoffset: 0') || animCss.includes('stroke-dashoffset:0'),
-    'reduced-motion must complete branch drawing');
+  assert.ok(animCss.includes('growth-stage-network-rail'),
+    'reduced-motion must reveal the memory network rail');
+  assert.ok(animCss.includes('growth-stage-network-hub'),
+    'reduced-motion must reveal the memory network hub');
 }
-console.log('✓ 18: reduced-motion card visibility');
+console.log('✓ 18: reduced-motion card + network visibility');
 
 // ============================================================
 // 19. No Closes/Fixes/Resolves for protected issues
