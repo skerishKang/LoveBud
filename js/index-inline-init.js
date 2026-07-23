@@ -404,9 +404,12 @@
           }
           if (media.contains(img)) {
             img.remove();
-            if (!media.querySelector('img')) {
-              media.classList.add('has-thumbnail-error');
-            }
+          }
+          if (existingImg && media.contains(existingImg)) {
+            existingImg.remove();
+          }
+          if (!media.querySelector('img')) {
+            media.classList.add('has-thumbnail-error');
           }
         });
         if (fallback && media.contains(fallback)) {
