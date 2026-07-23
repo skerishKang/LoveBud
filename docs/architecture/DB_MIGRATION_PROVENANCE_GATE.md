@@ -197,6 +197,8 @@ The following operations are destructive or compatibility-sensitive and need an 
 
 The source checker scans canonical migration files for destructive DDL. A detected destructive statement without a declared destructive operation fails source validation. This does not attempt to parse or approve legacy scripts; legacy paths stay classified in the inventory until they are retired or adopted by an owner decision.
 
+The static destructive operation vocabulary, the full actual-vs-declared declaration rule, the recognized dynamic/procedural ambiguity signals that fail closed as `REVIEW_REQUIRED`, the structured approval-reference grammar (with placeholder vs invalid distinction), and the fail-closed error codes are defined and source-tested in `docs/architecture/db-destructive-ddl-approval-contract.md`. That contract is a static regular-expression guard, not a full PostgreSQL parser: recognized ambiguity signals fail closed, but the regex does not prove the absence of unrecognized PostgreSQL semantics, and a future parser/engine rehearsal remains a required complement.
+
 ## G. Existing Production Adoption
 
 Adoption is a separate, read-only, explicitly approved change. Its required sequence is:

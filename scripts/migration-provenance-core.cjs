@@ -55,7 +55,71 @@ const CANONICAL_DIRECTORY = 'db/migrations';
 const DIRECT_CHILD_SQL_PATTERN = new RegExp(`^${CANONICAL_DIRECTORY}/[^/]+\\.sql$`);
 const SHA256_PATTERN = /^sha256:[a-f0-9]{64}$/;
 const SCHEMA_DDL_PATTERN = /\b(?:CREATE|ALTER|DROP|TRUNCATE)\s+(?:TABLE|INDEX|TYPE|SCHEMA|VIEW|MATERIALIZED\s+VIEW|FUNCTION|TRIGGER|POLICY|ROLE)\b/i;
-const DESTRUCTIVE_SQL_PATTERN = /\b(?:DROP\s+(?:TABLE|INDEX|COLUMN|CONSTRAINT|FUNCTION|TRIGGER|TYPE)|TRUNCATE\b|ALTER\s+TABLE[\s\S]{0,120}?\bDROP\s+COLUMN|ALTER\s+TABLE[\s\S]{0,120}?\bSET\s+NOT\s+NULL)\b/i;
+// Static destructive operation vocabulary. This is a conservative static contract
+// over obvious destructive DDL forms; it is NOT a full PostgreSQL parser. Forms
+// that cannot be classified reliably here must be treated as REVIEW_REQUIRED by a
+// future parser/engine rehearsal, never silently passed.
+const DESTRUCTIVE_OPERATION_VOCABULARY = Object.freeze([
+  'DROP_TABLE',
+  'TRUNCATE_TABLE',
+  'DROP_COLUMN',
+  'ALTER_COLUMN_TYPE',
+  'SET_NOT_NULL',
+  'DROP_CONSTRAINT',
+  'DROP_INDEX',
+  'DROP_FUNCTION',
+  'DROP_TRIGGER',
+  'DROP_TYPE',
+  'DROP_POLICY',
+  'FK_CASCADE_EXPANSION'
+]);
+const DESTRUCTIVE_OPERATION_DETECTORS = Object.freeze([
+  { operation: 'DROP_TABLE', pattern: /\bDROP\s+TABLE\b/i },
+  { operation: 'TRUNCATE_TABLE', pattern: /\bTRUNCATE\b/i },
+  { operation: 'DROP_COLUMN', pattern: /\bDROP\s+COLUMN\b/i },
+  { operation: 'ALTER_COLUMN_TYPE', pattern: /\bALTER\s+COLUMN[\s\S]{0,160}?\bTYPE\b/i },
+  { operation: 'SET_NOT_NULL', pattern: /\bSET\s+NOT\s+NULL\b/i },
+  { operation: 'DROP_CONSTRAINT', pattern: /\bDROP\s+CONSTRAINT\b/i },
+  { operation: 'DROP_INDEX', pattern: /\bDROP\s+INDEX\b/i },
+  { operation: 'DROP_FUNCTION', pattern: /\bDROP\s+FUNCTION\b/i },
+  { operation: 'DROP_TRIGGER', pattern: /\bDROP\s+TRIGGER\b/i },
+  { operation: 'DROP_TYPE', pattern: /\bDROP\s+TYPE\b/i },
+  { operation: 'DROP_POLICY', pattern: /\bDROP\s+POLICY\b/i },
+  { operation: 'FK_CASCADE_EXPANSION', pattern: /\bON\s+(?:DELETE|UPDATE)\s+CASCADE\b/i }
+]);
+// Approval references that are placeholders and never count as a real approval.
+const APPROVAL_PLACEHOLDER_PATTERN = /^(?:n\/a|na|none|no|todo|tbd|pending|later|unknown|placeholder|null|-|\.|x+)$/i;
+// Structured approval reference grammar. Only these schemes are accepted:
+//   issue:<positive-integer>  pr:<positive-integer>
+//   adr:<identifier>  change:<identifier>  approval:<identifier>
+// An identifier starts with an alphanumeric character, then alphanumerics or
+// '.', '_', '/', '-'. No spaces, no empty identifier, no negative or zero number.
+const APPROVAL_REFERENCE_PATTERN = /^(?:issue:[1-9][0-9]*|pr:[1-9][0-9]*|adr:[A-Za-z0-9][A-Za-z0-9._/-]*|change:[A-Za-z0-9][A-Za-z0-9._/-]*|approval:[A-Za-z0-9][A-Za-z0-9._/-]*)$/;
+// Recognized ambiguity signals: dynamic/procedural SQL forms whose actual
+// operations a static regex cannot determine. These fail closed as
+// REVIEW_REQUIRED. This is NOT a proof that all hidden destructive semantics are
+// caught; unrecognized PostgreSQL semantics remain a residual limitation that a
+// future parser/engine rehearsal must cover.
+const DESTRUCTIVE_REVIEW_REQUIRED_REASONS = Object.freeze([
+  'DYNAMIC_EXECUTE',
+  'PROCEDURAL_DO_BLOCK',
+  'PLPGSQL_BODY',
+  'GENERATED_DDL'
+]);
+const REVIEW_REQUIRED_DETECTORS = Object.freeze([
+  // EXECUTE of a string literal / dollar-quoted string / format() => dynamic SQL.
+  { reason: 'DYNAMIC_EXECUTE', pattern: /\bEXECUTE\s+(?:N?['"]|\$[^$]*\$|format\s*\()/i },
+  // PostgreSQL anonymous procedural block: DO $$ ... $$ (or DO $tag$ ... $tag$).
+  { reason: 'PROCEDURAL_DO_BLOCK', pattern: /\bDO\s+\$(?:\$|[A-Za-z_])/i },
+  // PL/pgSQL function body: procedural code that may build/run DDL dynamically.
+  { reason: 'PLPGSQL_BODY', pattern: /\bLANGUAGE\s+plpgsql\b/i },
+  // DDL generated at runtime: format() carrying a DDL keyword, or string
+  // concatenation assembling a DDL keyword from fragments.
+  {
+    reason: 'GENERATED_DDL',
+    pattern: /(?:\bformat\s*\([^)]*\b(?:DROP|TRUNCATE|ALTER)\b)|(?:'[^']*\b(?:DROP|TRUNCATE|ALTER)\b[^']*'\s*\|\|)|(?:\|\|\s*'[^']*\b(?:DROP|TRUNCATE|ALTER|TABLE|INDEX|COLUMN|CONSTRAINT|FUNCTION|TRIGGER|TYPE|POLICY)\b[^']*')/i
+  }
+]);
 const SENSITIVE_MARKER_PATTERN = /(?:postgres(?:ql)?:\/\/|(?:api[_-]?key|token|secret|password)\s*[:=]|-----BEGIN(?: [A-Z]+)? PRIVATE KEY-----)/i;
 const DOC_OPERATOR_PATTERN = /\b(?:ON_ERROR_STOP|migration-[\w.-]+\.sql|-f\s+scripts\/|pg_dump[\s\S]{0,160}--(?:schema-only|table=)|BEGIN\s+TRANSACTION|psql\s+["'$]|pg_dump\s+["'$])/i;
 
@@ -69,6 +133,43 @@ function sha256(value) {
 
 function sha256File(filePath) {
   return sha256(fs.readFileSync(filePath));
+}
+
+// Deterministically classify the obvious destructive operations present in a SQL
+// text. Returns a sorted array of unique operation classes from
+// DESTRUCTIVE_OPERATION_VOCABULARY. This is a static regex contract, not a full
+// SQL parser.
+function detectDestructiveOperations(sqlText) {
+  const detected = new Set();
+  const text = String(sqlText || '');
+  for (const detector of DESTRUCTIVE_OPERATION_DETECTORS) {
+    if (detector.pattern.test(text)) detected.add(detector.operation);
+  }
+  return Array.from(detected).sort();
+}
+
+// Deterministically classify recognized dynamic/procedural ambiguity signals in a
+// SQL text. Returns a sorted array of unique reason codes from
+// DESTRUCTIVE_REVIEW_REQUIRED_REASONS. A non-empty result means the static
+// detector cannot determine the actual operations, so the migration must fail
+// closed as REVIEW_REQUIRED. This recognizes obvious signals only; it does not
+// prove the absence of unrecognized PostgreSQL semantics.
+function detectDestructiveReviewRequiredReasons(sqlText) {
+  const reasons = new Set();
+  const text = String(sqlText || '');
+  for (const detector of REVIEW_REQUIRED_DETECTORS) {
+    if (detector.pattern.test(text)) reasons.add(detector.reason);
+  }
+  return Array.from(reasons).sort();
+}
+
+// True when the value is a structured approval reference matching
+// APPROVAL_REFERENCE_PATTERN (issue/pr positive integer, or adr/change/approval
+// identifier). The anchored pattern is applied to the RAW value, so any leading
+// or trailing whitespace makes the reference non-canonical and invalid.
+// Placeholders and arbitrary strings are not valid.
+function isValidApprovalReference(value) {
+  return APPROVAL_REFERENCE_PATTERN.test(String(value || ''));
 }
 
 function loadJson(filePath) {
@@ -335,11 +436,21 @@ function validateMigrationManifest(manifest, repoRoot) {
     if (!['REQUIRED', 'PROHIBITED', 'EXPLICIT'].includes(migration && migration.transaction_mode)) {
       errors.push(`MIGRATION_TRANSACTION_MODE_INVALID:${migrationId}`);
     }
-    if (destructiveOperations.length > 0) {
-      if (!isNonEmptyString(migration && migration.approval_reference) || migration.risk_class !== 'DESTRUCTIVE') {
-        errors.push(`MIGRATION_DESTRUCTIVE_APPROVAL_MISSING:${migrationId}`);
+    // Destructive operation declaration contract (static, source-only).
+    // Declared operations must come from the known vocabulary and be unique.
+    const declaredDestructiveSet = new Set();
+    for (const declaredOperation of destructiveOperations) {
+      if (!DESTRUCTIVE_OPERATION_VOCABULARY.includes(declaredOperation)) {
+        errors.push(`MIGRATION_DESTRUCTIVE_OPERATION_UNKNOWN:${migrationId}:${declaredOperation}`);
       }
+      if (declaredDestructiveSet.has(declaredOperation)) {
+        errors.push(`MIGRATION_DESTRUCTIVE_OPERATION_DUPLICATE:${migrationId}:${declaredOperation}`);
+      }
+      declaredDestructiveSet.add(declaredOperation);
     }
+    let detectedDestructive = [];
+    let destructiveSourceRead = false;
+    let sourceText = '';
 
     // Dependency graph validation (for ACTIVE/manifest with entries).
     const seenDeps = new Set();
@@ -371,13 +482,59 @@ function validateMigrationManifest(manifest, repoRoot) {
           if (SHA256_PATTERN.test(migration.checksum || '') && sha256(sourceBytes) !== migration.checksum) {
             errors.push(`MIGRATION_SOURCE_CHECKSUM_MISMATCH:${migrationId}`);
           }
-          if (DESTRUCTIVE_SQL_PATTERN.test(sourceBytes.toString('utf8')) && destructiveOperations.length === 0) {
-            errors.push(`MIGRATION_DESTRUCTIVE_OPERATION_UNDECLARED:${migrationId}`);
-          }
+          detectedDestructive = detectDestructiveOperations(sourceBytes.toString('utf8'));
+          sourceText = sourceBytes.toString('utf8');
+          destructiveSourceRead = true;
         }
       }
     } catch (error) {
       errors.push(`MIGRATION_SOURCE_UNSAFE:${(migration && migration.path) || '<unknown>'}`);
+    }
+
+    // Actual-vs-declared destructive comparison (only when the source was read).
+    if (destructiveSourceRead) {
+      const detectedDestructiveSet = new Set(detectedDestructive);
+      // Detected but not declared: partial or fully missing declaration.
+      for (const detectedOperation of detectedDestructive) {
+        if (!declaredDestructiveSet.has(detectedOperation)) {
+          errors.push(`MIGRATION_DESTRUCTIVE_OPERATION_MISSING:${migrationId}:${detectedOperation}`);
+        }
+      }
+      if (detectedDestructive.length > 0 && destructiveOperations.length === 0) {
+        errors.push(`MIGRATION_DESTRUCTIVE_OPERATION_UNDECLARED:${migrationId}`);
+      }
+      // Declared (valid vocabulary) but not actually present: spurious declaration.
+      for (const declaredOperation of destructiveOperations) {
+        if (DESTRUCTIVE_OPERATION_VOCABULARY.includes(declaredOperation) && !detectedDestructiveSet.has(declaredOperation)) {
+          errors.push(`MIGRATION_DESTRUCTIVE_DECLARATION_SPURIOUS:${migrationId}:${declaredOperation}`);
+        }
+      }
+      // Recognized dynamic/procedural ambiguity signals fail closed as REVIEW_REQUIRED.
+      // The static detector cannot determine the actual operations of these forms, so
+      // they are rejected regardless of any destructive_operations declaration or
+      // approval_reference.
+      const reviewRequiredReasons = detectDestructiveReviewRequiredReasons(sourceText);
+      for (const reason of reviewRequiredReasons) {
+        errors.push(`MIGRATION_DESTRUCTIVE_REVIEW_REQUIRED:${migrationId}:${reason}`);
+      }
+    }
+
+    // risk_class / approval consistency for destructive migrations.
+    const hasDestructiveContent = destructiveOperations.length > 0 || detectedDestructive.length > 0;
+    if (hasDestructiveContent && migration.risk_class !== 'DESTRUCTIVE') {
+      errors.push(`MIGRATION_DESTRUCTIVE_RISK_REQUIRED:${migrationId}`);
+    }
+    if (migration.risk_class === 'DESTRUCTIVE' && !hasDestructiveContent) {
+      errors.push(`MIGRATION_DESTRUCTIVE_DECLARATION_SPURIOUS:${migrationId}`);
+    }
+    if (hasDestructiveContent) {
+      if (!isNonEmptyString(migration && migration.approval_reference)) {
+        errors.push(`MIGRATION_DESTRUCTIVE_APPROVAL_MISSING:${migrationId}`);
+      } else if (APPROVAL_PLACEHOLDER_PATTERN.test(String(migration.approval_reference).trim())) {
+        errors.push(`MIGRATION_DESTRUCTIVE_APPROVAL_PLACEHOLDER:${migrationId}`);
+      } else if (!isValidApprovalReference(migration.approval_reference)) {
+        errors.push(`MIGRATION_DESTRUCTIVE_APPROVAL_INVALID:${migrationId}`);
+      }
     }
   });
 
@@ -678,9 +835,15 @@ module.exports = {
   CLASSIFICATIONS,
   REQUIRED_INVENTORY_FIELDS,
   REQUIRED_MIGRATION_FIELDS,
+  DESTRUCTIVE_OPERATION_VOCABULARY,
+  DESTRUCTIVE_REVIEW_REQUIRED_REASONS,
+  APPROVAL_REFERENCE_PATTERN,
   SHA256_PATTERN,
   sha256,
   sha256File,
+  detectDestructiveOperations,
+  detectDestructiveReviewRequiredReasons,
+  isValidApprovalReference,
   loadJson,
   normalizePath,
   discoverRepositoryPaths,

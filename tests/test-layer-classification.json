@@ -4523,6 +4523,12 @@
       "layer": "SOURCE_STATIC",
       "rationale": "Exercises scripts/migration-provenance-core.cjs (validateMigrationManifest, evaluateProvenance) against synthetic manifests and .sql fixtures created in the OS temporary directory (removed on completion; none committed to the repository) to assert canonical migration ID format, strictly ascending ordering, canonical path ownership (db/migrations/<id>.sql), basename/ID agreement, raw-byte SHA-256 checksum semantics (LF/CRLF, trailing newline/space, comment, BOM, single-byte changes all mismatch), checksum-format rejection, and synthetic ledger-evidence mismatch (edited/unknown/missing/reordered/duplicate); also asserts the committed canonical manifest stays ADOPTION_REQUIRED with empty migrations and that the core has no database/network/secret surface. Does not connect to any database, execute SQL, add a canonical migration, or activate the canonical stream.",
       "capabilities": []
+    },
+    {
+      "path": "tests/contracts/db-destructive-ddl-approval-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Exercises scripts/migration-provenance-core.cjs (detectDestructiveOperations and validateMigrationManifest) against synthetic .sql fixtures created in the OS temporary directory (removed on completion; none committed to the repository) to assert the static destructive operation vocabulary (DROP_TABLE, TRUNCATE_TABLE, DROP_COLUMN, ALTER_COLUMN_TYPE, SET_NOT_NULL, DROP_CONSTRAINT, DROP_INDEX, DROP_FUNCTION, DROP_TRIGGER, DROP_TYPE, DROP_POLICY, FK_CASCADE_EXPANSION), the actual-vs-declared declaration rule (missing/partial/unknown/duplicate/spurious all fail closed), risk_class=DESTRUCTIVE enforcement, and approval-reference policy (empty and placeholder approvals rejected; real references accepted). Does not connect to any database, execute SQL, add a canonical migration, or activate the canonical stream.",
+      "capabilities": []
     }
   ],
   "supplemental": [
