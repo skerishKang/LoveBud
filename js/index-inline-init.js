@@ -8,9 +8,11 @@
        CORTIS -> RESCENE -> repeat. The node SHELLS and tree are fixed;
        on each artist change the four cards flip in sequence (rotateY to
        90deg -> data swaps at the edge-on point -> rotate back), so there
-       is no opacity flicker and no old/new text overlap. The featured
-       card is click-to-play: pressing play (or a supporting card) swaps
-       the thumbnail for a youtube-nocookie iframe and pauses the cycle.
+       is no opacity flicker and no old/new text overlap. Every card is
+       click-to-play: clicking its thumbnail (or play button) opens that
+       video in a large centered modal player (youtube-nocookie iframe)
+       and pauses the cycle; each card also keeps a visible external
+       "YouTube에서 보기" link that opens in a new tab (never the modal).
        Reduced motion shows the first artist's completed tree and stops.
        Hover, focus, document.hidden, and playback pause the cycle. A
        second init is a no-op.
@@ -90,7 +92,7 @@
   }
 
   // Privacy-enhanced embed. autoplay=1 is only ever applied after an explicit
-  // user click (play button or supporting-card promotion), never on load.
+  // user click (a card's thumbnail / play button opens the modal), never on load.
   function youtubeEmbedUrl(videoId) {
     return 'https://www.youtube-nocookie.com/embed/' + encodeURIComponent(videoId) + '?autoplay=1&rel=0';
   }
@@ -230,11 +232,6 @@
     var caption = stage.querySelector('.growth-stage-caption');
     var cards = Array.prototype.slice.call(stage.querySelectorAll('.growth-stage-card'));
     if (!cards.length) return;
-
-    var featuredCard = stage.querySelector('.growth-stage-card.featured') || null;
-    var featuredMedia = featuredCard ? featuredCard.querySelector('.growth-stage-card-media') : null;
-    var playBtn = featuredCard ? featuredCard.querySelector('.growth-stage-card-play') : null;
-    var closeBtn = featuredCard ? featuredCard.querySelector('.growth-stage-card-close') : null;
 
     var reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
     var reducedMotion = reducedMotionQuery.matches;
@@ -494,92 +491,122 @@
     }
 
     // ------------------------------------------------------------
-    // Featured click-to-play (youtube-nocookie iframe). Playback pauses
-    // the auto cycle; the iframe is torn back down to a thumbnail on
-    // close, on supporting-card promotion, on page hidden, and on
-    // pagehide (BFCache).
+    // Large modal player (youtube-nocookie iframe). Every card (featured
+    // and supporting) opens its own video in a centered overlay instead of
+    // playing inside the small card. Opening the modal pauses the cycle,
+    // the card flip, and the headline rotation; closing it removes the
+    // iframe entirely and resumes the cycle on the current artist.
     // ------------------------------------------------------------
-    function featuredVideo() {
-      return youtubeFor(0);
+    var modalEl = null;
+    var modalReturnFocus = null;
+
+    function onDocumentFocusIn(e) {
+      if (!modalEl) return;
+      if (modalEl.contains(e.target)) return;
+      // Focus escaped the dialog (e.g. tabbing out of the cross-origin
+      // iframe). Pull it back inside so focus stays trapped in the modal.
+      var close = modalEl.querySelector('.hero-video-modal-close');
+      if (close) close.focus();
     }
 
-    function clearFeaturedMedia() {
-      if (!featuredMedia) return;
-      var imgs = featuredMedia.querySelectorAll('img');
-      for (var i = 0; i < imgs.length; i++) imgs[i].remove();
-      var frame = featuredMedia.querySelector('iframe');
-      if (frame) frame.remove();
+    function onModalKeydown(e) {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        closeVideoModal();
+        return;
+      }
+      if (e.key !== 'Tab' || !modalEl) return;
+      // Keep focus cycling between the close button and the player iframe.
+      var focusables = Array.prototype.slice.call(modalEl.querySelectorAll('button, iframe'));
+      if (!focusables.length) return;
+      var first = focusables[0];
+      var last = focusables[focusables.length - 1];
+      var active = document.activeElement;
+      if (e.shiftKey) {
+        if (active === first || !modalEl.contains(active)) {
+          e.preventDefault();
+          last.focus();
+        }
+      } else if (active === last || !modalEl.contains(active)) {
+        e.preventDefault();
+        first.focus();
+      }
     }
 
-    function setPlayerControls(playing) {
-      if (playBtn) playBtn.hidden = playing;
-      if (closeBtn) closeBtn.hidden = !playing;
+    function closeVideoModal() {
+      if (!modalEl) return;
+      var el = modalEl;
+      modalEl = null;
+      document.removeEventListener('focusin', onDocumentFocusIn);
+      el.removeEventListener('keydown', onModalKeydown);
+      // Removing the overlay also removes the iframe, which stops playback.
+      el.remove();
+      resume('playing');
+      if (modalReturnFocus && typeof modalReturnFocus.focus === 'function') {
+        modalReturnFocus.focus();
+      }
+      modalReturnFocus = null;
     }
 
-    function enterPlayerMode(video) {
-      if (!featuredMedia || !video) return;
-      clearFeaturedMedia();
+    function openVideoModal(video, card) {
+      if (!video) return;
+      closeVideoModal(); // only one player at a time
+      modalEl = document.createElement('div');
+      modalEl.className = 'hero-video-modal';
+      modalEl.setAttribute('role', 'dialog');
+      modalEl.setAttribute('aria-modal', 'true');
+      modalEl.setAttribute('aria-label', video.title + ' - YouTube');
+
+      var panel = document.createElement('div');
+      panel.className = 'hero-video-modal-panel';
+
+      var player = document.createElement('div');
+      player.className = 'hero-video-modal-player';
+
       var iframe = document.createElement('iframe');
-      iframe.className = 'growth-stage-card-player';
       iframe.src = youtubeEmbedUrl(video.id);
       iframe.title = video.title + ' - YouTube';
       iframe.setAttribute('allow', 'autoplay; encrypted-media; picture-in-picture');
       iframe.setAttribute('allowfullscreen', '');
       iframe.setAttribute('frameborder', '0');
       iframe.setAttribute('referrerpolicy', 'strict-origin-when-cross-origin');
-      featuredMedia.appendChild(iframe);
-      setPlayerControls(true);
+      player.appendChild(iframe);
+
+      var closeBtn = document.createElement('button');
+      closeBtn.className = 'hero-video-modal-close';
+      closeBtn.type = 'button';
+      closeBtn.setAttribute('aria-label', '영상 재생 닫기');
+      closeBtn.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" fill="currentColor"/></svg>';
+
+      panel.appendChild(player);
+      panel.appendChild(closeBtn);
+      modalEl.appendChild(panel);
+
+      modalReturnFocus = card ? (card.querySelector('.growth-stage-card-play') || card) : null;
+
+      closeBtn.addEventListener('click', closeVideoModal);
+      modalEl.addEventListener('click', function(e) {
+        if (e.target === modalEl) closeVideoModal(); // backdrop click
+      });
+      modalEl.addEventListener('keydown', onModalKeydown);
+      document.addEventListener('focusin', onDocumentFocusIn);
+
+      document.body.appendChild(modalEl);
       pause('playing');
-    }
-
-    function exitPlayerMode() {
-      if (!featuredMedia) return;
-      var hadFrame = !!featuredMedia.querySelector('iframe');
-      clearFeaturedMedia();
-      setPlayerControls(false);
-      resume('playing');
-      if (hadFrame && featuredCard) {
-        // Restore the current featured video's thumbnail + text.
-        applyArtistToCard(featuredCard, state.videoIndices[0] || 0);
-      }
-    }
-
-    function promoteToFeatured(slotIndex) {
-      if (!featuredCard || slotIndex <= 0 || slotIndex >= cards.length) return;
-      // Swap the featured slot (0) with the clicked supporting slot so the
-      // selected video becomes featured and the old featured video moves to
-      // the supporting position.
-      var tmp = state.videoIndices[0];
-      state.videoIndices[0] = state.videoIndices[slotIndex];
-      state.videoIndices[slotIndex] = tmp;
-      applyArtistToCard(featuredCard, state.videoIndices[0] || 0);
-      applyArtistToCard(cards[slotIndex], state.videoIndices[slotIndex] || 0);
-      enterPlayerMode(featuredVideo());
+      closeBtn.focus();
     }
 
     // ------------------------------------------------------------
-    // Playback + supporting-card wiring. The featured play/close buttons
-    // live in the featured media. Each supporting card's stretched link is
-    // intercepted so a click promotes that video to featured and plays it
-    // (instead of opening a new tab); without JS the link still works.
+    // Card wiring: clicking a card's thumbnail (or its play button, whose
+    // click bubbles up) opens that card's current video in the modal. The
+    // "YouTube에서 보기" external link sits outside the media box, so it
+    // opens in a new tab and never triggers the modal.
     // ------------------------------------------------------------
-    if (playBtn) {
-      playBtn.addEventListener('click', function() {
-        enterPlayerMode(featuredVideo());
-      });
-    }
-    if (closeBtn) {
-      closeBtn.addEventListener('click', function() {
-        exitPlayerMode();
-      });
-    }
     cards.forEach(function(card, idx) {
-      if (idx === 0) return; // featured is handled by the play button
-      var link = card.querySelector('.growth-stage-card-link');
-      if (!link) return;
-      link.addEventListener('click', function(e) {
-        e.preventDefault();
-        promoteToFeatured(idx);
+      var media = card.querySelector('.growth-stage-card-media');
+      if (!media) return;
+      media.addEventListener('click', function() {
+        openVideoModal(youtubeFor(idx), card);
       });
     });
 
@@ -611,9 +638,9 @@
           if (!state.flipping) {
             // Hold finished. Flip to the next artist in sequence. The stage
             // stays "completed" so the shells, tree, and caption remain
-            // visible while only the card contents rotate.
+            // visible while only the card contents rotate. (The modal player
+            // pauses the cycle, so a flip never starts while it is open.)
             preloadNextThumbnails();
-            exitPlayerMode(); // defensive: never flip while an iframe is live
             state.flipping = true;
             flipToNextArtist();
             scheduleNext(TIMINGS.flip);
@@ -663,7 +690,7 @@
     var onVisibility = function() {
       if (document.hidden) {
         pause('hidden');
-        exitPlayerMode();
+        closeVideoModal();
       } else {
         // Resume pageLifecycle so a BFCached page can restart its cycle.
         resume('pageLifecycle');
@@ -680,7 +707,7 @@
     var onPageHide = function() {
       pause('pageLifecycle');
       clearTimer();
-      exitPlayerMode();
+      closeVideoModal();
     };
     window.addEventListener('pagehide', onPageHide);
 
