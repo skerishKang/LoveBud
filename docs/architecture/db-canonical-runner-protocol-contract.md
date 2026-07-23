@@ -1,6 +1,6 @@
 # DB Canonical Runner Protocol Contract
 
-Status: fourth small slice of Issue #3458. This is a **pure, deterministic, source-only protocol contract**. It is **not** a migration runner. It performs **no** database connection, **no** SQL execution, **no** ledger write, and **no** advisory lock acquisition. It fixes the runner protocol that a future, separately approved runner must obey.
+Status: fourth small slice of Issue #3458 (hardened binding + ledger-prefix follow-up). This is a **pure, deterministic, source-only protocol contract**. It is **not** a migration runner. It performs **no** database connection, **no** SQL execution, **no** ledger write, and **no** advisory lock acquisition. It fixes the runner protocol that a future, separately approved runner must obey.
 
 ## Baseline
 
@@ -12,56 +12,117 @@ Status: fourth small slice of Issue #3458. This is a **pure, deterministic, sour
 | Core | `scripts/migration-runner-protocol-core.cjs` (`evaluateMigrationPreflight`, `evaluateMigrationCompletion`) |
 | Contract test | `tests/contracts/db-canonical-runner-protocol-contract.test.cjs` |
 
-## Pure entry points
+## Result shape
 
-### `evaluateMigrationPreflight(input)`
+Every result carries explicit authorization flags and binding fields:
 
-Fail-closed gate evaluated **before** executing a canonical migration. Returns `{ decision, blockers, recovery }` where `decision` is `FAIL_CLOSED`, `NOOP_ALREADY_APPLIED`, or `READY_TO_EXECUTE`.
+```js
+{
+  decision,              // FAIL_CLOSED | NOOP_ALREADY_APPLIED | READY_TO_EXECUTE | READY_TO_APPEND_LEDGER
+  blockers,              // sorted, unique blocker codes
+  recoveryDecision,      // a RECOVERY_DECISIONS value
+  migrationId,
+  migrationChecksum,
+  transactionMode,
+  destructive,
+  executionAuthorized,   // true only for READY_TO_EXECUTE
+  ledgerAppendAuthorized // true only for READY_TO_APPEND_LEDGER
+}
+```
 
-Bounded pure input (no DB access): `sourceValidation`, `advisoryLock`, `precondition`, `migration { id, checksum, transactionMode, dependsOn[], explicitBoundaryApproved }`, `manifestOrder [{ id, checksum }]`, `ledger [{ migration_id, content_checksum, transaction_outcome }]`.
+Authorization rules: `FAIL_CLOSED` and `NOOP_ALREADY_APPLIED` set both flags false; `READY_TO_EXECUTE` sets `executionAuthorized=true`, `ledgerAppendAuthorized=false`; `READY_TO_APPEND_LEDGER` sets `executionAuthorized=false`, `ledgerAppendAuthorized=true`.
 
-Preflight order:
+## `evaluateMigrationPreflight(input)`
 
-1. **Source validation** must be `PASS`; otherwise `FAIL_CLOSED` with `RUNNER_SOURCE_VALIDATION_FAILED` and no execution plan.
-2. **Advisory lock** must be `ACQUIRED`; otherwise `FAIL_CLOSED` with `RUNNER_ADVISORY_LOCK_REQUIRED`. The core never acquires a lock.
-3. **Ledger integrity**: a ledger record outside the manifest → `RUNNER_UNKNOWN_LEDGER_MIGRATION:<id>`; a duplicate ledger ID → `RUNNER_DUPLICATE_LEDGER_MIGRATION:<id>`.
-4. **Idempotent retry** when the migration ID is already in the ledger:
-   - exact committed match (ID + checksum + `COMMITTED`) → `NOOP_ALREADY_APPLIED` (no re-execute, no re-append);
-   - same ID, different checksum → `RUNNER_APPLIED_CHECKSUM_MISMATCH:<id>` (recovery `FORWARD_FIX_REQUIRED`);
-   - same ID, non-committed outcome → `RUNNER_EXISTING_NON_COMMITTED_OUTCOME:<id>:<outcome>` (recovery `MANUAL_RECONCILIATION_REQUIRED`; no automatic retry).
-5. **Canonical sequence**: the migration must exist in the manifest (`RUNNER_SEQUENCE_BLOCKED` otherwise); every prior manifest migration must be applied and committed (`RUNNER_DEPENDENCY_NOT_APPLIED:<id>`, `RUNNER_PRIOR_OUTCOME_NOT_COMMITTED:<id>`); declared dependencies must be applied and committed.
-6. **Transaction mode**: unsupported mode → `RUNNER_TRANSACTION_MODE_INVALID`; `EXPLICIT` without `explicitBoundaryApproved` → `RUNNER_EXPLICIT_BOUNDARY_REQUIRED`.
-7. **Precondition** must be exactly `PASS`: `FAIL` → `RUNNER_PRECONDITION_FAILED`, `UNAVAILABLE` → `RUNNER_PRECONDITION_UNAVAILABLE`, otherwise → `RUNNER_PRECONDITION_NOT_EVALUATED`.
+Fail-closed gate evaluated **before** executing a canonical migration. Pure input (camelCase):
 
-### `evaluateMigrationCompletion(input)`
+```js
+{
+  sourceValidationStatus,   // PASS | FAIL | UNAVAILABLE
+  manifestStatus,           // must be exactly ACTIVE
+  manifestMigrations,       // [{ id, checksum, depends_on, transaction_mode, risk_class, destructive_operations }]
+  targetMigrationId,        // resolved against manifestMigrations (caller supplies no separate object)
+  ledgerRecords,            // [{ migration_id, content_checksum, applied_at, runner_version, environment_class, deployed_commit, transaction_outcome }]
+  advisoryLockStatus,       // ACQUIRED | NOT_ATTEMPTED | UNAVAILABLE | FAILED | LOST
+  preconditionStatus,       // PASS | FAIL | UNAVAILABLE | NOT_EVALUATED
+  explicitBoundaryApproved, // boolean (for EXPLICIT transaction mode)
+  requestedAction           // must be APPLY_FORWARD
+}
+```
 
-Gate evaluated **after** execution. A successful execution **alone never** authorizes a ledger append. Returns `READY_TO_APPEND_LEDGER` only when **all** hold; otherwise `FAIL_CLOSED`. No ledger write is performed.
+The target entry (id, checksum, depends_on, transaction_mode, risk_class, destructive_operations) is derived from `manifestMigrations` by `targetMigrationId`; the caller cannot override checksum, transaction mode, dependencies, or destructive status. A missing target → `RUNNER_TARGET_MIGRATION_UNKNOWN:<id>`; a malformed manifest record → `RUNNER_MANIFEST_MIGRATION_INVALID:<id>`.
 
-`READY_TO_APPEND_LEDGER` requires: `executionOutcome = SUCCEEDED`, `transactionOutcome = COMMITTED`, `postcondition = PASS`, migration checksum equals the manifest checksum, `sourceValidation = PASS`, `advisoryLock = ACQUIRED`, and `priorSequenceValid = true`.
+Preflight checks:
 
-Blockers: `RUNNER_POSTCONDITION_FAILED`, `RUNNER_POSTCONDITION_UNAVAILABLE`, `RUNNER_POSTCONDITION_NOT_EVALUATED`, `RUNNER_EXECUTION_OUTCOME_UNKNOWN`, `RUNNER_EXECUTION_OUTCOME_NOT_SUCCEEDED`, `RUNNER_TRANSACTION_OUTCOME_NOT_COMMITTED`, `RUNNER_APPLIED_CHECKSUM_MISMATCH:<id>`, `RUNNER_ADVISORY_LOCK_REQUIRED`, `RUNNER_SOURCE_VALIDATION_FAILED`, `RUNNER_SEQUENCE_BLOCKED`.
+1. `requestedAction` must be `APPLY_FORWARD`; anything else (including every forbidden action) → `RUNNER_REQUESTED_ACTION_INVALID:<action>`.
+2. Source validation: `UNAVAILABLE` → `RUNNER_SOURCE_VALIDATION_UNAVAILABLE`; not `PASS` → `RUNNER_SOURCE_VALIDATION_FAILED`.
+3. `manifestStatus` must be exactly `ACTIVE` (`ADOPTION_REQUIRED`/missing/unknown all blocked) → `RUNNER_MANIFEST_NOT_ACTIVE`.
+4. Advisory lock must be `ACQUIRED` → else `RUNNER_ADVISORY_LOCK_REQUIRED`.
+5. `ledgerRecords` must be an array; missing/non-array → `RUNNER_LEDGER_EVIDENCE_UNAVAILABLE` (never coerced to an empty array).
+6. The ledger must be an **exact committed prefix** of the manifest, comparing ledger array index against manifest index directly:
+   - malformed record → `RUNNER_LEDGER_RECORD_INVALID:<index>`;
+   - duplicate ID → `RUNNER_DUPLICATE_LEDGER_MIGRATION:<id>`;
+   - ID outside the manifest → `RUNNER_UNKNOWN_LEDGER_MIGRATION:<id>`;
+   - ledger order ≠ manifest order → `RUNNER_LEDGER_ORDER_MISMATCH:<id>`;
+   - ledger checksum ≠ manifest checksum → `RUNNER_APPLIED_CHECKSUM_MISMATCH:<id>`;
+   - prior outcome not `COMMITTED` → `RUNNER_PRIOR_OUTCOME_NOT_COMMITTED:<id>:<outcome>`;
+   - missing middle / not a contiguous prefix → `RUNNER_SEQUENCE_BLOCKED:<id>`.
+7. **NOOP** is allowed only after the whole ledger prefix validates: target present at its manifest index, exact checksum match, `COMMITTED` outcome → `NOOP_ALREADY_APPLIED`. An unknown/duplicate/reordered/checksum-invalid ledger alongside an exact target is **not** NOOP.
+8. **READY_TO_EXECUTE** requires the target to be exactly `manifestMigrations[ledgerRecords.length]` (the next unapplied). A target after that → missing prefix (`RUNNER_SEQUENCE_BLOCKED`); a target before that → already applied/no-op or corruption.
+9. Every `depends_on` must exist in the committed prefix with the same id/checksum → else `RUNNER_DEPENDENCY_NOT_APPLIED:<target>:<dependency>`.
+10. Transaction mode: unsupported → `RUNNER_TRANSACTION_MODE_INVALID`; `EXPLICIT` without `explicitBoundaryApproved` → `RUNNER_EXPLICIT_BOUNDARY_REQUIRED`.
+11. Precondition must be exactly `PASS`: `FAIL` → `RUNNER_PRECONDITION_FAILED`, `UNAVAILABLE` → `RUNNER_PRECONDITION_UNAVAILABLE`, otherwise → `RUNNER_PRECONDITION_NOT_EVALUATED`.
+
+## `evaluateMigrationCompletion(input)`
+
+Gate evaluated **after** execution, **bound to a canonical preflight**. A successful execution alone never authorizes a ledger append. Pure input (camelCase):
+
+```js
+{
+  preflightInput,       // the exact input passed to evaluateMigrationPreflight
+  preflightResult,      // the preflight result the caller claims to have obtained
+  executionOutcome,     // NOT_RUN | SUCCEEDED | FAILED | UNKNOWN
+  transactionOutcome,   // NOT_EVALUATED | COMMITTED | ROLLED_BACK | PARTIAL | UNKNOWN
+  postconditionStatus,  // PASS | FAIL | UNAVAILABLE | NOT_EVALUATED
+  advisoryLockStatus,   // ACQUIRED | ... | LOST
+  migrationId,
+  migrationChecksum,
+  ledgerAppendAuthorized // IGNORED — always recomputed
+}
+```
+
+Completion does **not** accept raw `sourceValidation` / `priorSequenceValid` / `manifestChecksum` booleans from the caller. Internally it:
+
+1. re-runs `evaluateMigrationPreflight(preflightInput)`;
+2. requires the supplied `preflightResult` to match the canonical result exactly (deep equality);
+3. requires the canonical decision to be `READY_TO_EXECUTE` with empty blockers and `executionAuthorized=true`;
+4. requires `migrationId`/`migrationChecksum` to match the canonical preflight binding.
+
+Any failure → `RUNNER_PREFLIGHT_NOT_AUTHORIZED`. A forged `preflightResult` never authorizes a ledger append.
+
+`READY_TO_APPEND_LEDGER` additionally requires: `executionOutcome=SUCCEEDED`, `transactionOutcome=COMMITTED`, `postconditionStatus=PASS`, `advisoryLockStatus=ACQUIRED`. Blockers: `RUNNER_EXECUTION_FAILED`, `RUNNER_EXECUTION_OUTCOME_UNKNOWN`, `RUNNER_TRANSACTION_OUTCOME_NOT_COMMITTED:<outcome>`, `RUNNER_POSTCONDITION_FAILED`, `RUNNER_POSTCONDITION_UNAVAILABLE`, `RUNNER_POSTCONDITION_NOT_EVALUATED`, `RUNNER_ADVISORY_LOCK_LOST`, `RUNNER_LEDGER_APPEND_NOT_AUTHORIZED`.
 
 ## Vocabularies
 
 - `RUNNER_DECISIONS`: `FAIL_CLOSED`, `NOOP_ALREADY_APPLIED`, `READY_TO_EXECUTE`, `READY_TO_APPEND_LEDGER`.
 - `RECOVERY_DECISIONS`: `NO_RECOVERY_ACTION`, `RETRY_REQUIRES_FRESH_PREFLIGHT`, `FORWARD_FIX_REQUIRED`, `MANUAL_RECONCILIATION_REQUIRED`, `SNAPSHOT_RESTORE_DECISION_REQUIRED`.
-- `SOURCE_VALIDATION_STATUSES`: `PASS`, `FAIL`.
-- `ADVISORY_LOCK_STATUSES`: `ACQUIRED`, `UNAVAILABLE`, `FAILED`, `NOT_ATTEMPTED`.
+- `REQUESTED_ACTIONS`: `APPLY_FORWARD` (the only permitted requested action).
+- `SOURCE_VALIDATION_STATUSES`: `PASS`, `FAIL`, `UNAVAILABLE`.
+- `ADVISORY_LOCK_STATUSES`: `ACQUIRED`, `NOT_ATTEMPTED`, `UNAVAILABLE`, `FAILED`, `LOST`.
 - `CONDITION_STATUSES`: `PASS`, `FAIL`, `UNAVAILABLE`, `NOT_EVALUATED`.
-- `EXECUTION_OUTCOMES`: `SUCCEEDED`, `FAILED`, `PARTIAL`, `UNKNOWN`.
-- `TRANSACTION_OUTCOMES`: `COMMITTED`, `ROLLED_BACK`, `PARTIAL`, `UNKNOWN`.
+- `EXECUTION_OUTCOMES`: `NOT_RUN`, `SUCCEEDED`, `FAILED`, `UNKNOWN` (partial application is a transaction-level concern).
+- `TRANSACTION_OUTCOMES`: `NOT_EVALUATED`, `COMMITTED`, `ROLLED_BACK`, `PARTIAL`, `UNKNOWN`.
 - `TRANSACTION_MODES`: `REQUIRED`, `PROHIBITED`, `EXPLICIT`.
 
-## Rollback / forward-fix policy
+## Recovery escalation
 
-- **Failure before execution**: a preflight blocker executes no migration and writes no ledger record.
-- **REQUIRED transaction failure during execution**: even a proven `ROLLED_BACK` outcome never produces a ledger `COMMITTED` record; the migration is not auto-re-run; the next invocation runs a full fresh preflight (`RETRY_REQUIRES_FRESH_PREFLIGHT`).
-- **PROHIBITED / EXPLICIT failure**: partial application cannot be determined statically → `MANUAL_RECONCILIATION_REQUIRED`.
-- **Correcting an already-COMMITTED migration**: existing migration files are never edited, ledger records are never deleted or modified, and a same-ID down migration is forbidden. A correction is a **new forward-fix migration** with a new ID and checksum (`FORWARD_FIX_REQUIRED`).
+- `REQUIRED` + `FAILED` + `ROLLED_BACK` → `RETRY_REQUIRES_FRESH_PREFLIGHT` (no auto-retry; the next invocation runs a fresh full preflight).
+- `REQUIRED` + `PARTIAL`/`UNKNOWN` transaction → ordinary migration: `MANUAL_RECONCILIATION_REQUIRED`; **destructive** migration: `SNAPSHOT_RESTORE_DECISION_REQUIRED`.
+- `PROHIBITED`/`EXPLICIT` + `FAILED`/`UNKNOWN`/non-`COMMITTED` → `MANUAL_RECONCILIATION_REQUIRED`.
 
-### Forbidden planner actions
+## Rollback / forward-fix policy and forbidden actions
 
-The planner never returns: `RUN_DOWN_MIGRATION`, `AUTO_ROLLBACK_APPLIED_MIGRATION`, `DELETE_LEDGER_RECORD`, `REWRITE_LEDGER_HISTORY` (`FORBIDDEN_RUNNER_ACTIONS`). Arbitrary down migrations are not assumed safe.
+`FORBIDDEN_RUNNER_ACTIONS` are never returned and, when supplied as `requestedAction`, fail closed: `RUN_DOWN_MIGRATION`, `AUTO_ROLLBACK_APPLIED_MIGRATION`, `DELETE_LEDGER_RECORD`, `REWRITE_LEDGER_HISTORY`, `REAPPLY_COMMITTED_MIGRATION`. Arbitrary down migrations are not assumed safe. Correcting an already-`COMMITTED` migration is a new forward-fix migration with a new ID/checksum; existing migration files and ledger records are never edited or deleted.
 
 ## Limitations
 
