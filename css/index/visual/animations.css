@@ -42,16 +42,19 @@
         pointer-events: auto !important;
     }
 
-    /* The memory network shows fully and stays centered. Its translate()
-       centering must be preserved, so it is kept out of the transform:none
-       override above. */
+    /* The memory network shows fully. The rail is centered with margin:auto
+       (no translate), so it only needs scale(1). The hub keeps its translate()
+       centering, so it is kept out of the transform:none override above. */
     .home-v3-growth-stage .growth-stage-network-rail,
     .home-v3-growth-stage .growth-stage-network-rail::after,
     .home-v3-growth-stage .growth-stage-network-hub {
         opacity: 1 !important;
     }
 
-    .home-v3-growth-stage .growth-stage-network-rail,
+    .home-v3-growth-stage .growth-stage-network-rail {
+        transform: scale(1) !important;
+    }
+
     .home-v3-growth-stage .growth-stage-network-hub {
         transform: translate(-50%, -50%) scale(1) !important;
     }

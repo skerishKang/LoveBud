@@ -261,9 +261,9 @@
       hold: 60000, // effectively "do not advance"
       flip: 0
     } : {
-      caption: 500,
-      network: 2800,
-      cards: 1100,
+      caption: 180,
+      network: 220,
+      cards: 800,
       hold: 4000,
       flip: FLIP_TOTAL_MS
     };
@@ -349,7 +349,6 @@
         var contentWrap = card.querySelector('.growth-stage-card-content') || card;
         contentWrap.appendChild(media);
       }
-      var artistLabel = card.querySelector('.growth-stage-card-artist');
       var channelEl = card.querySelector('.growth-stage-card-channel');
       var link = card.querySelector('.growth-stage-card-link');
       var fallback = card.querySelector('.growth-stage-card-fallback');
@@ -364,7 +363,6 @@
       var video = artist.videos[videoIndex] || artist.videos[0];
       if (!video) return;
 
-      if (artistLabel) artistLabel.textContent = resolveI18n(artist.labelKey) || artist.key.toUpperCase();
       if (channelEl) channelEl.textContent = resolveI18n(artist.channelKey) || ('Official channel - ' + artist.channelName);
       if (link) {
         link.href = youtubeWatchUrl(video.id);
@@ -664,10 +662,13 @@
           scheduleNext(TIMINGS.caption);
           break;
         case PHASE.CAPTION:
+          // Caption is up: reveal the memory network first (rail starts blooming),
+          // then cards appear 220ms later (concurrent reveal with rail transition).
           setStageState(PHASE.NETWORK);
           scheduleNext(TIMINGS.network);
           break;
         case PHASE.NETWORK:
+          // Network transition in progress (~750ms), cards appear ~220ms into this.
           setStageState(PHASE.CARDS);
           scheduleNext(TIMINGS.cards);
           break;

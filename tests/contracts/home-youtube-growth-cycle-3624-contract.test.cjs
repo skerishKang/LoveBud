@@ -337,11 +337,16 @@ console.log('✓ 16: no community API dependency');
     assert.ok(i18nStr.includes("'" + key + "':"),
       'i18n bundle must define ' + key);
   }
-  // The HTML must reference the per-artist label for the initial render.
-  assert.ok(html.includes('home.v3.artist.bts'),
-    'HTML must reference home.v3.artist.bts for initial render');
+  // The artist-name pill was removed from the card media (CTO correction), so
+  // the per-artist label that remains in the static HTML for the initial render
+  // is the channel line. The artist-name keys stay defined in the i18n bundle
+  // above for the JS-driven rotation.
+  assert.ok(html.includes('home.v3.artist.channel.bts'),
+    'HTML must reference the per-artist channel label for initial render');
+  assert.ok(!html.includes('growth-stage-card-artist'),
+    'the artist-name pill markup must be removed from the cards');
 }
-console.log('✓ 17: artist label + channel label per card');
+console.log('✓ 17: channel label per card (artist pill removed)');
 
 // ============================================================
 // 18. Reduced-motion card visibility

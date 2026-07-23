@@ -99,8 +99,8 @@
       en: 'New to LoveTree?'
     },
     'home.v3.growth.caption': {
-      ko: '순간 하나가 이어지고, 기억의 길이 반짝여요',
-      en: 'One moment connects, and a path of memories begins to glow.'
+      ko: '순간 하나가 이어지고, 감정의 가지가 자라나요',
+      en: 'One moment connects, and branches of feeling begin to grow.'
     },
     'home.v3.artist.bts': {
       ko: 'BTS',

@@ -41,7 +41,20 @@ const inlineInitJs = readLines('js/index-inline-init.js');
 const html = indexHtml.join('\n');
 const cssGrowth = growthStageCss.join('\n');
 const cssAnim = animationsCss.join('\n');
+const cssResponsive = responsiveCss.join('\n');
 const js = inlineInitJs.join('\n');
+
+/**
+ * Strip CSS block comments so contract assertions inspect real rule bodies,
+ * not prose (e.g. a comment that mentions "!important" as a design principle).
+ * @param {string} css
+ * @returns {string}
+ */
+function stripCssComments(css) {
+  return css.replace(/\/\*[\s\S]*?\*\//g, '');
+}
+const cssGrowthRules = stripCssComments(cssGrowth);
+const cssResponsiveRules = stripCssComments(cssResponsive);
 
 // ============================================================
 // 1. 4 growth-stage-card elements (exactly 4)
@@ -146,18 +159,27 @@ console.log('✓ 6: layer order is correct (network < card < caption)');
 console.log('✓ 7: no raw infinite animation');
 
 // ============================================================
-// 8. Stage uses data-stage-state attribute, not keyframe-only reveal
+// 8. Stage uses data-stage-state attribute, keeps the network-linking phase
 // ============================================================
 {
   assert.ok(cssGrowth.includes('[data-stage-state='),
     'growth-stage.css must paint phase states via [data-stage-state=...] selectors');
+  // The 5-phase machine is kept: pending -> caption-revealed -> network-linking
+  // -> cards-revealing -> completed (+ fade-out). The network transition starts
+  // at network-linking and the cards appear ~220ms later (concurrent reveal).
   const states = ['caption-revealed', 'network-linking', 'cards-revealing', 'completed', 'fade-out'];
   for (const s of states) {
     assert.ok(cssGrowth.includes('data-stage-state="' + s + '"') || cssGrowth.includes("data-stage-state='" + s + "'"),
       `growth-stage.css must reference data-stage-state="${s}"`);
   }
+  assert.ok(cssGrowth.includes('network-linking'),
+    'growth-stage.css must keep the network-linking phase (CTO Correction #1)');
+  assert.ok(!cssGrowth.includes('branches-growing'),
+    'growth-stage.css must not reference the removed branches-growing phase');
+  assert.ok(!js.includes('branches-growing'),
+    'index-inline-init.js must not reference the removed branches-growing phase');
 }
-console.log('✓ 8: stage uses data-stage-state selectors');
+console.log('✓ 8: stage keeps the 5-phase machine (network-linking present)');
 
 // ============================================================
 // 9. Network rail final state has opacity: 1 + full scale
@@ -384,5 +406,194 @@ console.log('✓ 22: collage not aria-hidden');
     'inline init must use YouTube remote thumbnail endpoint');
 }
 console.log('✓ 23: no community tree API dependency for hero thumbs');
+
+// ============================================================
+// 24. Memory network is a responsive CSS grid container (CTO Req #1)
+// ============================================================
+{
+  const networkRule = cssGrowth.match(/\.growth-stage-network\s*\{[^}]*\}/);
+  assert.ok(networkRule, 'Must find a .growth-stage-network rule');
+  assert.ok(networkRule[0].includes('display: grid'),
+    '.growth-stage-network must be a CSS grid container (display: grid)');
+  assert.ok(/grid-template-columns:\s*minmax\(0,\s*1\.12fr\)\s*48px\s*minmax\(0,\s*0\.92fr\)/.test(networkRule[0]),
+    '.growth-stage-network must use the responsive template (1.12fr / 48px channel / 0.92fr)');
+  assert.ok(networkRule[0].includes('grid-template-rows: auto auto'),
+    '.growth-stage-network must define two auto rows');
+  assert.ok(networkRule[0].includes('gap: 20px 16px'),
+    '.growth-stage-network must use gap: 20px 16px');
+}
+console.log('✓ 24: memory network is a CSS grid container');
+
+// ============================================================
+// 25. Cards are grid items, never absolutely positioned
+// ============================================================
+{
+  const cardRule = cssGrowth.match(/\.growth-stage-card\s*\{[^}]*\}/);
+  assert.ok(cardRule, 'Must find the base .growth-stage-card rule');
+  assert.ok(cardRule[0].includes('position: relative'),
+    'base .growth-stage-card must be position: relative (a grid item)');
+  assert.ok(!cardRule[0].includes('position: absolute'),
+    'base .growth-stage-card must not be position: absolute');
+
+  const expected = [
+    ['.growth-stage-card.featured', 'grid-column: 1', 'grid-row: 1'],
+    ['.growth-stage-card.supporting.one', 'grid-column: 3', 'grid-row: 1'],
+    ['.growth-stage-card.supporting.two', 'grid-column: 1', 'grid-row: 2'],
+    ['.growth-stage-card.supporting.three', 'grid-column: 3', 'grid-row: 2'],
+  ];
+  for (const [sel, col, row] of expected) {
+    const esc = sel.replace(/\./g, '\\.');
+    const re = new RegExp(esc + '\\s*\\{[^}]*' + col + ';[^}]*' + row + ';');
+    assert.ok(re.test(cssGrowth),
+      sel + ' must be placed via ' + col + ' + ' + row + ' (grid placement, not coordinates)');
+  }
+}
+console.log('✓ 25: cards are grid items (no absolute coordinates)');
+
+// ============================================================
+// 26. No !important anywhere in the visual layer
+// ============================================================
+{
+  assert.ok(!cssGrowthRules.includes('!important'),
+    'growth-stage.css must not use !important');
+  assert.ok(!cssResponsiveRules.includes('!important'),
+    'responsive.css must not use !important (mobile reflow is grid-native)');
+}
+console.log('✓ 26: no !important in the visual layer');
+
+// ============================================================
+// 27. Network + cards reveal concurrently (network-linking kept, overlap > 0)
+// ============================================================
+{
+  assert.ok(cssGrowth.includes('network-linking'),
+    'growth-stage.css must keep the network-linking phase (CTO Correction #1)');
+  assert.ok(js.includes('network-linking'),
+    'index-inline-init.js must keep the network-linking phase (CTO Correction #1)');
+
+  // The rail starts its transition at network-linking ...
+  const railAtNetwork = cssGrowth.match(/\[data-stage-state="network-linking"\][^{]*\.growth-stage-network-rail[^{]*\{/);
+  assert.ok(railAtNetwork,
+    'network rail must start revealing in the network-linking state');
+  // ... and the cards appear in the following cards-revealing state, while the
+  // rail transition is still running (concurrent / overlapping reveal).
+  const cardAtCards = cssGrowth.match(/\[data-stage-state="cards-revealing"\][^{]*\.growth-stage-card\.featured[^{]*\{/);
+  assert.ok(cardAtCards,
+    'cards must reveal in the cards-revealing state');
+
+  // Parse the real TIMINGS values from JS (max of reduced/normal variants).
+  function maxTiming(key) {
+    const vals = Array.from(js.matchAll(new RegExp(key + ':\\s*(\\d+)', 'g')),
+      (m) => parseInt(m[1], 10));
+    assert.ok(vals.length > 0, 'must find TIMINGS.' + key + ' in index-inline-init.js');
+    return Math.max.apply(null, vals);
+  }
+  const tCaption = maxTiming('caption');
+  const tNetwork = maxTiming('network');
+  const tCards = maxTiming('cards');
+
+  // CTO Correction #2: exact timing budget.
+  assert.ok(tCaption <= 250, `TIMINGS.caption (${tCaption}) must be <= 250ms`);
+  assert.ok(tNetwork <= 300, `TIMINGS.network (${tNetwork}) must be <= 300ms`);
+  assert.ok(tCards <= 900, `TIMINGS.cards (${tCards}) must be <= 900ms`);
+  assert.ok(tCaption + tNetwork + tCards <= 1450,
+    `caption+network+cards (${tCaption + tNetwork + tCards}) must be <= 1450ms`);
+
+  // The rail transition duration must outlast the network phase so the rail is
+  // still drawing when the cards start to appear (overlap > 0). Parse the real
+  // transform duration from the base rail rule (not a comment).
+  const railRule = cssGrowthRules.match(/\.growth-stage-network-rail\s*\{[^}]*\}/);
+  assert.ok(railRule, 'must find the base .growth-stage-network-rail rule');
+  const durMatch = railRule[0].match(/transform\s+([\d.]+)(s|ms)/);
+  assert.ok(durMatch, 'rail rule must declare a transform transition duration');
+  const railDurMs = durMatch[2] === 'ms' ? parseFloat(durMatch[1]) : parseFloat(durMatch[1]) * 1000;
+  assert.ok(railDurMs >= 650 && railDurMs <= 850,
+    `rail transition duration (${railDurMs}ms) must be within 650-850ms`);
+  assert.ok(railDurMs > tNetwork,
+    `rail transition (${railDurMs}ms) must outlast TIMINGS.network (${tNetwork}ms) for a concurrent reveal`);
+}
+console.log('✓ 27: network + cards reveal concurrently (timing bounds hold)');
+
+// ============================================================
+// 28. Mobile reflows to a 2-column vertical journey (24px rail + card column)
+// ============================================================
+{
+  // CTO Correction #3: mobile is NOT single-column. It is a 2-column grid:
+  // column 1 = 24px rail, column 2 = stacked cards (featured -> one -> two -> three).
+  assert.ok(cssResponsive.includes('grid-template-columns: 24px minmax(0, 1fr)'),
+    'responsive.css must use a 24px rail column + card column on mobile');
+  assert.ok(cssResponsive.includes('grid-template-rows: repeat(4, auto)'),
+    'responsive.css must define 4 auto rows for the vertical journey');
+  assert.ok(!cssResponsive.includes('grid-template-columns: minmax(0, 1fr);'),
+    'responsive.css must not collapse the network to a single column on mobile');
+
+  // Network core (rail) sits in column 1 spanning all rows.
+  const coreRule = cssResponsiveRules.match(/\.growth-stage-network-core\s*\{[^}]*\}/);
+  assert.ok(coreRule, 'must find a mobile .growth-stage-network-core rule');
+  assert.ok(coreRule[0].includes('grid-column: 1'), 'mobile core must be in grid-column: 1');
+  assert.ok(/grid-row:\s*1\s*\/\s*5/.test(coreRule[0]), 'mobile core must span grid-row: 1 / 5');
+
+  // All four cards sit in column 2 (combined rule), rows 1-4 (individual rules).
+  const ruleBlocks = cssResponsiveRules.match(/([^{}]+)\{([^}]*)\}/g) || [];
+  const combinedCardRule = ruleBlocks.find((b) => {
+    const sel = b.slice(0, b.indexOf('{'));
+    return sel.includes('.growth-stage-card.featured') && sel.includes('.growth-stage-card.supporting.three');
+  });
+  assert.ok(combinedCardRule, 'must find a combined mobile card rule');
+  assert.ok(combinedCardRule.includes('grid-column: 2'),
+    'all mobile cards must be placed in grid-column: 2');
+
+  const cardRows = [
+    ['.growth-stage-card.featured', '1'],
+    ['.growth-stage-card.supporting.one', '2'],
+    ['.growth-stage-card.supporting.two', '3'],
+    ['.growth-stage-card.supporting.three', '4'],
+  ];
+  for (const [sel, row] of cardRows) {
+    const esc = sel.replace(/\./g, '\\.');
+    const re = new RegExp(esc + '\\s*\\{[^}]*grid-row:\\s*' + row + ';');
+    assert.ok(re.test(cssResponsiveRules),
+      sel + ' must be placed at grid-row: ' + row + ' on mobile');
+  }
+
+  // Hub is hidden on mobile (the rail alone carries the journey).
+  const hubRule = cssResponsiveRules.match(/\.growth-stage-network-hub\s*\{[^}]*\}/);
+  assert.ok(hubRule, 'must find a mobile .growth-stage-network-hub rule');
+  assert.ok(hubRule[0].includes('display: none'), 'mobile hub must be display: none');
+
+  // No positional !important anywhere in the mobile reflow.
+  assert.ok(!cssResponsiveRules.includes('!important'),
+    'responsive.css must not use !important (mobile reflow is grid-native)');
+
+  // The cards themselves must not be positioned with top/left/right/bottom.
+  // Pseudo-element connectors (::before/::after) may use left/right offsets.
+  for (const block of ruleBlocks) {
+    const selector = block.slice(0, block.indexOf('{'));
+    const body = block.slice(block.indexOf('{'));
+    if (selector.includes('.growth-stage-card') && !selector.includes('::')) {
+      assert.ok(!/(?<![-a-z])(top|left|right|bottom)\s*:/.test(body),
+        'mobile card rule must not use top/left/right/bottom: ' + selector.trim());
+    }
+  }
+}
+console.log('✓ 28: mobile is a 2-column vertical journey (24px rail + cards)');
+
+// ============================================================
+// 29. Artist pill + card badge DOM fully removed
+// ============================================================
+{
+  const pillCount = (html.match(/artist-pill/g) || []).length;
+  assert.strictEqual(pillCount, 0,
+    `artist-pill markup must be fully removed (found ${pillCount})`);
+  const badgeCount = (html.match(/growth-stage-card-badge/g) || []).length;
+  assert.strictEqual(badgeCount, 0,
+    `growth-stage-card-badge markup must be fully removed (found ${badgeCount})`);
+  // Rotation machinery is kept (only the visible pill is gone): the artist
+  // dataset drives the cycle and each card is tagged with data-artist-key via JS.
+  assert.ok(js.includes('ARTIST_DATASETS'),
+    'ARTIST_DATASETS must be kept for rotation');
+  assert.ok(js.includes('data-artist-key'),
+    'cards must still be tagged with data-artist-key for rotation');
+}
+console.log('✓ 29: artist pill + badge DOM removed (data-artist-key kept)');
 
 console.log('\n✅ All contract tests passed.');
