@@ -165,9 +165,11 @@ function detectDestructiveReviewRequiredReasons(sqlText) {
 
 // True when the value is a structured approval reference matching
 // APPROVAL_REFERENCE_PATTERN (issue/pr positive integer, or adr/change/approval
-// identifier). Placeholders and arbitrary strings are not valid.
+// identifier). The anchored pattern is applied to the RAW value, so any leading
+// or trailing whitespace makes the reference non-canonical and invalid.
+// Placeholders and arbitrary strings are not valid.
 function isValidApprovalReference(value) {
-  return APPROVAL_REFERENCE_PATTERN.test(String(value || '').trim());
+  return APPROVAL_REFERENCE_PATTERN.test(String(value || ''));
 }
 
 function loadJson(filePath) {

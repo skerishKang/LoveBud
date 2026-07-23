@@ -416,4 +416,30 @@ describe('DB destructive DDL approval contract (#3458)', () => {
       assert.ok(!errors.some((e) => e.startsWith('MIGRATION_DESTRUCTIVE_APPROVAL_INVALID')), errors.join('\n'));
     });
   });
+
+  describe('12. Canonical whitespace-free approval reference', () => {
+    it('rejects a leading space', () => {
+      assert.ok(!core.isValidApprovalReference(' issue:3458'));
+    });
+    it('rejects a trailing space', () => {
+      assert.ok(!core.isValidApprovalReference('issue:3458 '));
+    });
+    it('rejects a leading tab', () => {
+      assert.ok(!core.isValidApprovalReference('\tpr:3633'));
+    });
+    it('rejects a trailing newline', () => {
+      assert.ok(!core.isValidApprovalReference('approval:arch/db-001\n'));
+    });
+    it('still accepts the canonical unpadded reference', () => {
+      assert.ok(core.isValidApprovalReference('issue:3458'));
+    });
+    it('a whitespace-padded reference fails closed as INVALID in a destructive migration', () => {
+      const errors = validateDestructive('DROP TABLE probe;\n', {
+        risk_class: 'DESTRUCTIVE',
+        destructive_operations: ['DROP_TABLE'],
+        approval_reference: ' issue:3458'
+      });
+      assert.ok(errors.some((e) => e.startsWith('MIGRATION_DESTRUCTIVE_APPROVAL_INVALID')), errors.join('\n'));
+    });
+  });
 });
