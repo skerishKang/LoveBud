@@ -23,7 +23,8 @@ const {
   evaluateMigrationPreflight,
   evaluateMigrationCompletion,
   RUNNER_DECISIONS,
-  RECOVERY_DECISIONS
+  RECOVERY_DECISIONS,
+  RUNNER_BLOCKERS
 } = protocol;
 
 const ORCHESTRATION_OUTCOMES = Object.freeze({
@@ -117,6 +118,14 @@ function uniqueSorted(values) {
   return Array.from(new Set(values)).sort();
 }
 
+// A plain record object: non-null object, not an array, prototype Object.prototype
+// or null. Arrays/functions carrying a `status` property are NOT plain records.
+function isPlainRecord(value) {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) return false;
+  const proto = Object.getPrototypeOf(value);
+  return proto === Object.prototype || proto === null;
+}
+
 // A canonical timestamp is a non-empty string, Date-parseable, ending in 'Z', and
 // round-trips to the same canonical ISO-8601 UTC value.
 function isValidCanonicalTimestamp(value) {
@@ -128,16 +137,27 @@ function isValidCanonicalTimestamp(value) {
 }
 
 function isValidExecutionResult(value) {
-  return !!value
-    && typeof value === 'object'
+  return isPlainRecord(value)
     && EXECUTION_OUTCOMES.has(value.executionOutcome)
     && TRANSACTION_OUTCOMES.has(value.transactionOutcome);
 }
 
-// Call an injected dependency (sync or async), discarding any error detail.
+// Call an injected dependency (sync or async) with one argument, discarding any
+// error detail.
 async function callDependency(fn, arg) {
   try {
     const value = await fn(arg);
+    return { ok: true, value };
+  } catch (error) {
+    return { ok: false, value: undefined };
+  }
+}
+
+// Call a zero-argument injected dependency (sync or async), discarding error
+// detail. Used for now(), whose contract takes no arguments.
+async function callDependencyNoArg(fn) {
+  try {
+    const value = await fn();
     return { ok: true, value };
   } catch (error) {
     return { ok: false, value: undefined };
@@ -207,6 +227,8 @@ async function runCanonicalMigration(input) {
 
   const addEvent = (code) => { state.events.push(code); };
   const addBlocker = (code) => { state.blockers.push(code); };
+  const resultInvalid = (name) => `${ORCHESTRATION_BLOCKERS.ORCHESTRATOR_DEPENDENCY_RESULT_INVALID}:${name}`;
+  const dependencyFailed = (name) => `${ORCHESTRATION_BLOCKERS.ORCHESTRATOR_DEPENDENCY_FAILED}:${name}`;
 
   // Fail closed before any lock is held (no release needed).
   function blockedBeforeLock(recovery) {
@@ -235,16 +257,26 @@ async function runCanonicalMigration(input) {
   state.stage = ORCHESTRATION_STAGES.SOURCE_VALIDATION;
   const sourceResult = await callDependency(deps.validateSource, { targetMigrationId: inp.targetMigrationId });
   if (!sourceResult.ok) {
-    addBlocker(`${ORCHESTRATION_BLOCKERS.ORCHESTRATOR_DEPENDENCY_FAILED}:validateSource`);
+    addBlocker(dependencyFailed('validateSource'));
     return blockedBeforeLock(RECOVERY_DECISIONS.NO_RECOVERY_ACTION);
   }
-  const sourceStatus = sourceResult.value && sourceResult.value.status;
+  if (!isPlainRecord(sourceResult.value)) {
+    addBlocker(resultInvalid('validateSource'));
+    return blockedBeforeLock(RECOVERY_DECISIONS.NO_RECOVERY_ACTION);
+  }
+  const sourceStatus = sourceResult.value.status;
   if (!SOURCE_STATUSES.has(sourceStatus)) {
-    addBlocker(`${ORCHESTRATION_BLOCKERS.ORCHESTRATOR_DEPENDENCY_RESULT_INVALID}:validateSource`);
+    addBlocker(resultInvalid('validateSource'));
     return blockedBeforeLock(RECOVERY_DECISIONS.NO_RECOVERY_ACTION);
   }
   addEvent(ORCHESTRATION_EVENTS.SOURCE_VALIDATION_COMPLETED);
-  if (sourceStatus !== 'PASS') {
+  if (sourceStatus === 'FAIL') {
+    // Valid negative result: preserve the exact protocol blocker.
+    addBlocker(RUNNER_BLOCKERS.RUNNER_SOURCE_VALIDATION_FAILED);
+    return blockedBeforeLock(RECOVERY_DECISIONS.NO_RECOVERY_ACTION);
+  }
+  if (sourceStatus === 'UNAVAILABLE') {
+    addBlocker(RUNNER_BLOCKERS.RUNNER_SOURCE_VALIDATION_UNAVAILABLE);
     return blockedBeforeLock(RECOVERY_DECISIONS.NO_RECOVERY_ACTION);
   }
 
@@ -252,12 +284,12 @@ async function runCanonicalMigration(input) {
   state.stage = ORCHESTRATION_STAGES.MANIFEST_LOAD;
   const manifestResult = await callDependency(deps.loadManifest, { targetMigrationId: inp.targetMigrationId });
   if (!manifestResult.ok) {
-    addBlocker(`${ORCHESTRATION_BLOCKERS.ORCHESTRATOR_DEPENDENCY_FAILED}:loadManifest`);
+    addBlocker(dependencyFailed('loadManifest'));
     return blockedBeforeLock(RECOVERY_DECISIONS.NO_RECOVERY_ACTION);
   }
   const manifestValue = manifestResult.value;
-  if (!manifestValue || typeof manifestValue !== 'object' || !Array.isArray(manifestValue.migrations) || !isNonEmptyString(manifestValue.status)) {
-    addBlocker(`${ORCHESTRATION_BLOCKERS.ORCHESTRATOR_DEPENDENCY_RESULT_INVALID}:loadManifest`);
+  if (!isPlainRecord(manifestValue) || !Array.isArray(manifestValue.migrations) || !isNonEmptyString(manifestValue.status)) {
+    addBlocker(resultInvalid('loadManifest'));
     return blockedBeforeLock(RECOVERY_DECISIONS.NO_RECOVERY_ACTION);
   }
   addEvent(ORCHESTRATION_EVENTS.MANIFEST_LOADED);
@@ -266,22 +298,34 @@ async function runCanonicalMigration(input) {
   state.stage = ORCHESTRATION_STAGES.LOCK_ACQUIRE;
   const acquireResult = await callDependency(deps.acquireAdvisoryLock, { targetMigrationId: inp.targetMigrationId });
   if (!acquireResult.ok) {
-    addBlocker(`${ORCHESTRATION_BLOCKERS.ORCHESTRATOR_DEPENDENCY_FAILED}:acquireAdvisoryLock`);
+    addBlocker(dependencyFailed('acquireAdvisoryLock'));
     return blockedBeforeLock(RECOVERY_DECISIONS.NO_RECOVERY_ACTION);
   }
   const acquireValue = acquireResult.value;
-  const acquireStatus = acquireValue && acquireValue.status;
+  if (!isPlainRecord(acquireValue)) {
+    addBlocker(resultInvalid('acquireAdvisoryLock'));
+    return blockedBeforeLock(RECOVERY_DECISIONS.NO_RECOVERY_ACTION);
+  }
+  const acquireStatus = acquireValue.status;
   if (!LOCK_ACQUIRE_STATUSES.has(acquireStatus)) {
-    addBlocker(`${ORCHESTRATION_BLOCKERS.ORCHESTRATOR_DEPENDENCY_RESULT_INVALID}:acquireAdvisoryLock`);
+    addBlocker(resultInvalid('acquireAdvisoryLock'));
     return blockedBeforeLock(RECOVERY_DECISIONS.NO_RECOVERY_ACTION);
   }
   if (acquireStatus !== 'ACQUIRED') {
-    // Lock not acquired: no ledger read, precondition, execute, append, or release.
+    // Valid negative result (NOT_ATTEMPTED/FAILED/UNAVAILABLE): preserve the exact
+    // protocol blocker; no release, no pipeline.
+    addBlocker(RUNNER_BLOCKERS.RUNNER_ADVISORY_LOCK_REQUIRED);
     return blockedBeforeLock(RECOVERY_DECISIONS.NO_RECOVERY_ACTION);
   }
+
+  // ACQUIRED: the adapter claims the lock. The handle is the lock identity used
+  // from ledger read through release. It must be present and non-null/non-undefined
+  // (opaque: any type is allowed). The handle value is never exposed.
   lockHandle = acquireValue.handle;
   state.lockAcquired = true;
-  addEvent(ORCHESTRATION_EVENTS.LOCK_ACQUIRED);
+  const handleUsable = Object.prototype.hasOwnProperty.call(acquireValue, 'handle')
+    && acquireValue.handle !== null
+    && acquireValue.handle !== undefined;
 
   // Recovery for a post-execution failure depends on whether the migration is destructive.
   function executionRecovery() {
@@ -296,13 +340,13 @@ async function runCanonicalMigration(input) {
     state.stage = ORCHESTRATION_STAGES.LEDGER_READ;
     const ledgerResult = await callDependency(deps.readLedger, { lockHandle });
     if (!ledgerResult.ok) {
-      addBlocker(`${ORCHESTRATION_BLOCKERS.ORCHESTRATOR_DEPENDENCY_FAILED}:readLedger`);
+      addBlocker(dependencyFailed('readLedger'));
       state.outcome = ORCHESTRATION_OUTCOMES.BLOCKED_BEFORE_EXECUTION;
       state.recoveryDecision = RECOVERY_DECISIONS.NO_RECOVERY_ACTION;
       return;
     }
     if (!Array.isArray(ledgerResult.value)) {
-      addBlocker(`${ORCHESTRATION_BLOCKERS.ORCHESTRATOR_DEPENDENCY_RESULT_INVALID}:readLedger`);
+      addBlocker(resultInvalid('readLedger'));
       state.outcome = ORCHESTRATION_OUTCOMES.BLOCKED_BEFORE_EXECUTION;
       state.recoveryDecision = RECOVERY_DECISIONS.NO_RECOVERY_ACTION;
       return;
@@ -314,14 +358,20 @@ async function runCanonicalMigration(input) {
     state.stage = ORCHESTRATION_STAGES.PRECONDITION;
     const preconditionResult = await callDependency(deps.evaluatePrecondition, { targetMigrationId: inp.targetMigrationId, lockHandle });
     if (!preconditionResult.ok) {
-      addBlocker(`${ORCHESTRATION_BLOCKERS.ORCHESTRATOR_DEPENDENCY_FAILED}:evaluatePrecondition`);
+      addBlocker(dependencyFailed('evaluatePrecondition'));
       state.outcome = ORCHESTRATION_OUTCOMES.BLOCKED_BEFORE_EXECUTION;
       state.recoveryDecision = RECOVERY_DECISIONS.NO_RECOVERY_ACTION;
       return;
     }
-    const preconditionStatus = preconditionResult.value && preconditionResult.value.status;
+    if (!isPlainRecord(preconditionResult.value)) {
+      addBlocker(resultInvalid('evaluatePrecondition'));
+      state.outcome = ORCHESTRATION_OUTCOMES.BLOCKED_BEFORE_EXECUTION;
+      state.recoveryDecision = RECOVERY_DECISIONS.NO_RECOVERY_ACTION;
+      return;
+    }
+    const preconditionStatus = preconditionResult.value.status;
     if (!CONDITION_STATUSES.has(preconditionStatus)) {
-      addBlocker(`${ORCHESTRATION_BLOCKERS.ORCHESTRATOR_DEPENDENCY_RESULT_INVALID}:evaluatePrecondition`);
+      addBlocker(resultInvalid('evaluatePrecondition'));
       state.outcome = ORCHESTRATION_OUTCOMES.BLOCKED_BEFORE_EXECUTION;
       state.recoveryDecision = RECOVERY_DECISIONS.NO_RECOVERY_ACTION;
       return;
@@ -375,13 +425,13 @@ async function runCanonicalMigration(input) {
     };
     const executionResult = await callDependency(deps.executeMigration, executionBinding);
     if (!executionResult.ok) {
-      addBlocker(`${ORCHESTRATION_BLOCKERS.ORCHESTRATOR_DEPENDENCY_FAILED}:executeMigration`);
+      addBlocker(dependencyFailed('executeMigration'));
       state.outcome = ORCHESTRATION_OUTCOMES.COMPLETION_BLOCKED;
       state.recoveryDecision = executionRecovery();
       return;
     }
     if (!isValidExecutionResult(executionResult.value)) {
-      addBlocker(`${ORCHESTRATION_BLOCKERS.ORCHESTRATOR_DEPENDENCY_RESULT_INVALID}:executeMigration`);
+      addBlocker(resultInvalid('executeMigration'));
       state.outcome = ORCHESTRATION_OUTCOMES.COMPLETION_BLOCKED;
       state.recoveryDecision = executionRecovery();
       return;
@@ -400,14 +450,20 @@ async function runCanonicalMigration(input) {
       lockHandle
     });
     if (!postconditionResult.ok) {
-      addBlocker(`${ORCHESTRATION_BLOCKERS.ORCHESTRATOR_DEPENDENCY_FAILED}:evaluatePostcondition`);
+      addBlocker(dependencyFailed('evaluatePostcondition'));
       state.outcome = ORCHESTRATION_OUTCOMES.COMPLETION_BLOCKED;
       state.recoveryDecision = executionRecovery();
       return;
     }
-    const postconditionStatus = postconditionResult.value && postconditionResult.value.status;
+    if (!isPlainRecord(postconditionResult.value)) {
+      addBlocker(resultInvalid('evaluatePostcondition'));
+      state.outcome = ORCHESTRATION_OUTCOMES.COMPLETION_BLOCKED;
+      state.recoveryDecision = executionRecovery();
+      return;
+    }
+    const postconditionStatus = postconditionResult.value.status;
     if (!CONDITION_STATUSES.has(postconditionStatus)) {
-      addBlocker(`${ORCHESTRATION_BLOCKERS.ORCHESTRATOR_DEPENDENCY_RESULT_INVALID}:evaluatePostcondition`);
+      addBlocker(resultInvalid('evaluatePostcondition'));
       state.outcome = ORCHESTRATION_OUTCOMES.COMPLETION_BLOCKED;
       state.recoveryDecision = executionRecovery();
       return;
@@ -418,14 +474,20 @@ async function runCanonicalMigration(input) {
     state.stage = ORCHESTRATION_STAGES.LOCK_RECHECK;
     const recheckResult = await callDependency(deps.checkAdvisoryLock, { lockHandle });
     if (!recheckResult.ok) {
-      addBlocker(`${ORCHESTRATION_BLOCKERS.ORCHESTRATOR_DEPENDENCY_FAILED}:checkAdvisoryLock`);
+      addBlocker(dependencyFailed('checkAdvisoryLock'));
       state.outcome = ORCHESTRATION_OUTCOMES.COMPLETION_BLOCKED;
       state.recoveryDecision = executionRecovery();
       return;
     }
-    const recheckStatus = recheckResult.value && recheckResult.value.status;
+    if (!isPlainRecord(recheckResult.value)) {
+      addBlocker(resultInvalid('checkAdvisoryLock'));
+      state.outcome = ORCHESTRATION_OUTCOMES.COMPLETION_BLOCKED;
+      state.recoveryDecision = executionRecovery();
+      return;
+    }
+    const recheckStatus = recheckResult.value.status;
     if (!LOCK_CHECK_STATUSES.has(recheckStatus)) {
-      addBlocker(`${ORCHESTRATION_BLOCKERS.ORCHESTRATOR_DEPENDENCY_RESULT_INVALID}:checkAdvisoryLock`);
+      addBlocker(resultInvalid('checkAdvisoryLock'));
       state.outcome = ORCHESTRATION_OUTCOMES.COMPLETION_BLOCKED;
       state.recoveryDecision = executionRecovery();
       return;
@@ -459,7 +521,7 @@ async function runCanonicalMigration(input) {
 
     // ---- LEDGER_APPEND ----
     state.stage = ORCHESTRATION_STAGES.LEDGER_APPEND;
-    const nowResult = await callDependency(deps.now, undefined);
+    const nowResult = await callDependencyNoArg(deps.now);
     if (!nowResult.ok || !isValidCanonicalTimestamp(nowResult.value)) {
       addBlocker(ORCHESTRATION_BLOCKERS.ORCHESTRATOR_CLOCK_RESULT_INVALID);
       addEvent(ORCHESTRATION_EVENTS.LEDGER_APPEND_FAILED);
@@ -478,8 +540,19 @@ async function runCanonicalMigration(input) {
     };
     state.ledgerAppendAttempted = true;
     const appendResult = await callDependency(deps.appendLedgerRecord, { record: ledgerRecord, lockHandle });
-    const appendStatus = appendResult.value && appendResult.value.status;
-    if (!appendResult.ok || appendStatus !== 'APPENDED') {
+    let appendSucceeded = false;
+    if (!appendResult.ok) {
+      // Dependency threw: append failed (no RESULT_INVALID for a throw).
+      appendSucceeded = false;
+    } else if (!isPlainRecord(appendResult.value)) {
+      // Malformed result: dual blocker.
+      addBlocker(resultInvalid('appendLedgerRecord'));
+      appendSucceeded = false;
+    } else if (appendResult.value.status === 'APPENDED') {
+      appendSucceeded = true;
+    }
+    // status FAILED/UNKNOWN/other: schema-valid negative result, no RESULT_INVALID.
+    if (!appendSucceeded) {
       addEvent(ORCHESTRATION_EVENTS.LEDGER_APPEND_FAILED);
       addBlocker(ORCHESTRATION_BLOCKERS.ORCHESTRATOR_LEDGER_APPEND_FAILED);
       state.outcome = ORCHESTRATION_OUTCOMES.LEDGER_APPEND_FAILED;
@@ -495,13 +568,33 @@ async function runCanonicalMigration(input) {
   }
 
   try {
-    await pipeline();
+    if (!handleUsable) {
+      // ACQUIRED was claimed but the handle is unusable: never start the pipeline.
+      // A best-effort cleanup release still happens in `finally`.
+      addBlocker(resultInvalid('acquireAdvisoryLock'));
+      state.outcome = ORCHESTRATION_OUTCOMES.BLOCKED_BEFORE_EXECUTION;
+      state.recoveryDecision = RECOVERY_DECISIONS.NO_RECOVERY_ACTION;
+    } else {
+      addEvent(ORCHESTRATION_EVENTS.LOCK_ACQUIRED);
+      await pipeline();
+    }
   } finally {
     // ---- LOCK_RELEASE: attempt exactly once after ACQUIRED, on any path ----
     if (state.lockAcquired && !state.lockReleased) {
       const releaseResult = await callDependency(deps.releaseAdvisoryLock, { lockHandle });
-      const releaseStatus = releaseResult.value && releaseResult.value.status;
-      if (releaseResult.ok && releaseStatus === 'RELEASED') {
+      let releaseSucceeded = false;
+      if (!releaseResult.ok) {
+        // Dependency threw: release failed (no RESULT_INVALID for a throw).
+        releaseSucceeded = false;
+      } else if (!isPlainRecord(releaseResult.value)) {
+        // Malformed result: dual blocker.
+        addBlocker(resultInvalid('releaseAdvisoryLock'));
+        releaseSucceeded = false;
+      } else if (releaseResult.value.status === 'RELEASED') {
+        releaseSucceeded = true;
+      }
+      // status FAILED/UNKNOWN/other: schema-valid negative result, no RESULT_INVALID.
+      if (releaseSucceeded) {
         addEvent(ORCHESTRATION_EVENTS.LOCK_RELEASED);
         state.lockReleased = true;
         if (state.terminalNormal) {

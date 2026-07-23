@@ -659,4 +659,191 @@ describe('DB canonical runner orchestrator contract (#3458)', () => {
       assert.doesNotMatch(source, /fs\.(writeFileSync|mkdirSync|rmSync|appendFileSync)/);
     });
   });
+
+  // Malformed dependency results: arrays/functions carrying a status property, and
+  // primitives, are NOT plain records.
+  function arrayWithStatus() {
+    const a = [];
+    a.status = 'PASS';
+    a.executionOutcome = 'SUCCEEDED';
+    a.transactionOutcome = 'COMMITTED';
+    return a;
+  }
+  function functionWithStatus() {
+    const f = () => {};
+    f.status = 'PASS';
+    f.executionOutcome = 'SUCCEEDED';
+    f.transactionOutcome = 'COMMITTED';
+    return f;
+  }
+  const MALFORMED_RESULTS = { 'array+status': arrayWithStatus, 'function+status': functionWithStatus, primitive: () => 'PASS' };
+
+  describe('8. ACQUIRED requires a usable opaque handle', () => {
+    const invalidHandles = {
+      'handle property missing': () => ({ status: 'ACQUIRED' }),
+      'handle undefined': () => ({ status: 'ACQUIRED', handle: undefined }),
+      'handle null': () => ({ status: 'ACQUIRED', handle: null })
+    };
+    for (const [label, acquire] of Object.entries(invalidHandles)) {
+      it(`ACQUIRED + ${label} blocks before execution`, async () => {
+        const { deps, calls } = createMocks({ acquireAdvisoryLock: acquire });
+        const r = await runCanonicalMigration(makeInput(deps));
+        assert.strictEqual(r.outcome, ORCHESTRATION_OUTCOMES.BLOCKED_BEFORE_EXECUTION, label);
+        assert.ok(r.blockers.includes(`${ORCHESTRATION_BLOCKERS.ORCHESTRATOR_DEPENDENCY_RESULT_INVALID}:acquireAdvisoryLock`), label);
+        assert.strictEqual(r.lockAcquired, true, label);
+      });
+      it(`ACQUIRED + ${label} calls ledger/execute/append 0 times`, async () => {
+        const { deps, calls } = createMocks({ acquireAdvisoryLock: acquire });
+        await runCanonicalMigration(makeInput(deps));
+        assert.strictEqual(countCalls(calls, 'readLedger'), 0, label);
+        assert.strictEqual(countCalls(calls, 'executeMigration'), 0, label);
+        assert.strictEqual(countCalls(calls, 'appendLedgerRecord'), 0, label);
+        assert.strictEqual(countCalls(calls, 'evaluatePostcondition'), 0, label);
+        assert.strictEqual(countCalls(calls, 'checkAdvisoryLock'), 0, label);
+        assert.strictEqual(countCalls(calls, 'now'), 0, label);
+      });
+      it(`ACQUIRED + ${label} releases exactly once`, async () => {
+        const { deps, calls } = createMocks({ acquireAdvisoryLock: acquire });
+        const r = await runCanonicalMigration(makeInput(deps));
+        assert.strictEqual(countCalls(calls, 'releaseAdvisoryLock'), 1, label);
+        assert.strictEqual(r.lockReleased, true, label);
+      });
+    }
+    it('ACQUIRED + invalid handle + release success stays BLOCKED_BEFORE_EXECUTION', async () => {
+      const { deps } = createMocks({ acquireAdvisoryLock: () => ({ status: 'ACQUIRED' }) });
+      const r = await runCanonicalMigration(makeInput(deps));
+      assert.strictEqual(r.outcome, ORCHESTRATION_OUTCOMES.BLOCKED_BEFORE_EXECUTION);
+      assert.strictEqual(r.lockReleased, true);
+    });
+    it('ACQUIRED + invalid handle + release failure yields LOCK_RELEASE_FAILED', async () => {
+      const { deps } = createMocks({ acquireAdvisoryLock: () => ({ status: 'ACQUIRED' }), releaseAdvisoryLock: () => ({ status: 'FAILED' }) });
+      const r = await runCanonicalMigration(makeInput(deps));
+      assert.strictEqual(r.outcome, ORCHESTRATION_OUTCOMES.LOCK_RELEASE_FAILED);
+      assert.ok(r.blockers.includes(ORCHESTRATION_BLOCKERS.ORCHESTRATOR_LOCK_RELEASE_FAILED));
+      assert.strictEqual(r.recoveryDecision, 'MANUAL_RECONCILIATION_REQUIRED');
+    });
+    it('a valid string handle succeeds', async () => {
+      const { deps } = createMocks({ acquireAdvisoryLock: () => ({ status: 'ACQUIRED', handle: 'string-handle' }) });
+      const r = await runCanonicalMigration(makeInput(deps));
+      assert.strictEqual(r.outcome, ORCHESTRATION_OUTCOMES.EXECUTED_AND_RECORDED);
+    });
+    it('a valid object handle succeeds', async () => {
+      const { deps } = createMocks({ acquireAdvisoryLock: () => ({ status: 'ACQUIRED', handle: { opaque: true } }) });
+      const r = await runCanonicalMigration(makeInput(deps));
+      assert.strictEqual(r.outcome, ORCHESTRATION_OUTCOMES.EXECUTED_AND_RECORDED);
+    });
+    it('the handle value never appears in result/events/blockers', async () => {
+      const { deps } = createMocks({ acquireAdvisoryLock: () => ({ status: 'ACQUIRED', handle: 'TOP_SECRET_HANDLE_VALUE' }) });
+      const r = await runCanonicalMigration(makeInput(deps));
+      assert.ok(!JSON.stringify(r).includes('TOP_SECRET_HANDLE_VALUE'));
+    });
+  });
+
+  describe('9. Source/lock valid-negative preserves exact protocol blockers', () => {
+    it('source FAIL preserves RUNNER_SOURCE_VALIDATION_FAILED (no RESULT_INVALID)', async () => {
+      const { deps, calls } = createMocks({ validateSource: () => ({ status: 'FAIL' }) });
+      const r = await runCanonicalMigration(makeInput(deps));
+      assert.strictEqual(r.outcome, ORCHESTRATION_OUTCOMES.BLOCKED_BEFORE_EXECUTION);
+      assert.strictEqual(r.stage, ORCHESTRATION_STAGES.SOURCE_VALIDATION);
+      assert.ok(r.blockers.includes('RUNNER_SOURCE_VALIDATION_FAILED'), r.blockers.join(','));
+      assert.ok(!r.blockers.some((b) => b.startsWith('ORCHESTRATOR_DEPENDENCY_RESULT_INVALID')), r.blockers.join(','));
+      assert.ok(r.blockers.length > 0);
+    });
+    it('source UNAVAILABLE preserves RUNNER_SOURCE_VALIDATION_UNAVAILABLE', async () => {
+      const { deps } = createMocks({ validateSource: () => ({ status: 'UNAVAILABLE' }) });
+      const r = await runCanonicalMigration(makeInput(deps));
+      assert.ok(r.blockers.includes('RUNNER_SOURCE_VALIDATION_UNAVAILABLE'), r.blockers.join(','));
+      assert.ok(!r.blockers.some((b) => b.startsWith('ORCHESTRATOR_DEPENDENCY_RESULT_INVALID')));
+    });
+    it('each non-ACQUIRED lock status preserves RUNNER_ADVISORY_LOCK_REQUIRED with no release', async () => {
+      for (const status of ['NOT_ATTEMPTED', 'FAILED', 'UNAVAILABLE']) {
+        const { deps, calls } = createMocks({ acquireAdvisoryLock: () => ({ status, handle: 'h' }) });
+        const r = await runCanonicalMigration(makeInput(deps));
+        assert.strictEqual(r.outcome, ORCHESTRATION_OUTCOMES.BLOCKED_BEFORE_EXECUTION, status);
+        assert.strictEqual(r.stage, ORCHESTRATION_STAGES.LOCK_ACQUIRE, status);
+        assert.ok(r.blockers.includes('RUNNER_ADVISORY_LOCK_REQUIRED'), `${status}: ${r.blockers.join(',')}`);
+        assert.ok(!r.blockers.some((b) => b.startsWith('ORCHESTRATOR_DEPENDENCY_RESULT_INVALID')), status);
+        assert.strictEqual(countCalls(calls, 'releaseAdvisoryLock'), 0, status);
+        assert.strictEqual(countCalls(calls, 'readLedger'), 0, status);
+        assert.ok(r.blockers.length > 0, status);
+      }
+    });
+  });
+
+  describe('10. Record-shaped dependency results', () => {
+    const earlyDeps = ['validateSource', 'loadManifest', 'acquireAdvisoryLock', 'evaluatePrecondition'];
+    const postExecDeps = ['executeMigration', 'evaluatePostcondition', 'checkAdvisoryLock'];
+    for (const name of earlyDeps) {
+      for (const [kind, make] of Object.entries(MALFORMED_RESULTS)) {
+        it(`${name} returning ${kind} is RESULT_INVALID`, async () => {
+          const { deps } = createMocks({ [name]: make });
+          const r = await runCanonicalMigration(makeInput(deps));
+          assert.ok(r.blockers.includes(`${ORCHESTRATION_BLOCKERS.ORCHESTRATOR_DEPENDENCY_RESULT_INVALID}:${name}`), `${name}/${kind}: ${r.blockers.join(',')}`);
+        });
+      }
+    }
+    for (const name of postExecDeps) {
+      for (const [kind, make] of Object.entries(MALFORMED_RESULTS)) {
+        it(`${name} returning ${kind} is RESULT_INVALID + COMPLETION_BLOCKED`, async () => {
+          const { deps } = createMocks({ [name]: make });
+          const r = await runCanonicalMigration(makeInput(deps));
+          assert.strictEqual(r.outcome, ORCHESTRATION_OUTCOMES.COMPLETION_BLOCKED, `${name}/${kind}`);
+          assert.ok(r.blockers.includes(`${ORCHESTRATION_BLOCKERS.ORCHESTRATOR_DEPENDENCY_RESULT_INVALID}:${name}`), `${name}/${kind}: ${r.blockers.join(',')}`);
+        });
+      }
+    }
+    it('malformed append result carries both RESULT_INVALID and LEDGER_APPEND_FAILED', async () => {
+      for (const make of Object.values(MALFORMED_RESULTS)) {
+        const { deps } = createMocks({ appendLedgerRecord: make });
+        const r = await runCanonicalMigration(makeInput(deps));
+        assert.strictEqual(r.outcome, ORCHESTRATION_OUTCOMES.LEDGER_APPEND_FAILED);
+        assert.ok(r.blockers.includes(`${ORCHESTRATION_BLOCKERS.ORCHESTRATOR_DEPENDENCY_RESULT_INVALID}:appendLedgerRecord`), r.blockers.join(','));
+        assert.ok(r.blockers.includes(ORCHESTRATION_BLOCKERS.ORCHESTRATOR_LEDGER_APPEND_FAILED), r.blockers.join(','));
+      }
+    });
+    it('malformed release result carries both RESULT_INVALID and LOCK_RELEASE_FAILED', async () => {
+      for (const make of Object.values(MALFORMED_RESULTS)) {
+        const { deps } = createMocks({ releaseAdvisoryLock: make });
+        const r = await runCanonicalMigration(makeInput(deps));
+        assert.strictEqual(r.outcome, ORCHESTRATION_OUTCOMES.LOCK_RELEASE_FAILED);
+        assert.ok(r.blockers.includes(`${ORCHESTRATION_BLOCKERS.ORCHESTRATOR_DEPENDENCY_RESULT_INVALID}:releaseAdvisoryLock`), r.blockers.join(','));
+        assert.ok(r.blockers.includes(ORCHESTRATION_BLOCKERS.ORCHESTRATOR_LOCK_RELEASE_FAILED), r.blockers.join(','));
+      }
+    });
+    it('append FAILED/UNKNOWN (valid negative) has no RESULT_INVALID', async () => {
+      for (const status of ['FAILED', 'UNKNOWN']) {
+        const { deps } = createMocks({ appendLedgerRecord: () => ({ status }) });
+        const r = await runCanonicalMigration(makeInput(deps));
+        assert.strictEqual(r.outcome, ORCHESTRATION_OUTCOMES.LEDGER_APPEND_FAILED, status);
+        assert.ok(!r.blockers.some((b) => b.startsWith('ORCHESTRATOR_DEPENDENCY_RESULT_INVALID')), status);
+        assert.ok(r.blockers.includes(ORCHESTRATION_BLOCKERS.ORCHESTRATOR_LEDGER_APPEND_FAILED), status);
+      }
+    });
+    it('release FAILED/UNKNOWN (valid negative) has no RESULT_INVALID', async () => {
+      for (const status of ['FAILED', 'UNKNOWN']) {
+        const { deps } = createMocks({ releaseAdvisoryLock: () => ({ status }) });
+        const r = await runCanonicalMigration(makeInput(deps));
+        assert.strictEqual(r.outcome, ORCHESTRATION_OUTCOMES.LOCK_RELEASE_FAILED, status);
+        assert.ok(!r.blockers.some((b) => b.startsWith('ORCHESTRATOR_DEPENDENCY_RESULT_INVALID')), status);
+      }
+    });
+    it('blockers remain sorted and unique with multiple blockers', async () => {
+      const { deps } = createMocks({ appendLedgerRecord: arrayWithStatus });
+      const r = await runCanonicalMigration(makeInput(deps));
+      assert.deepStrictEqual(r.blockers, [...new Set(r.blockers)].sort());
+      assert.ok(r.blockers.length >= 2);
+    });
+  });
+
+  describe('11. now() is a zero-argument dependency', () => {
+    it('calls now() with exactly zero arguments', async () => {
+      let observedArgCount = null;
+      const { deps } = createMocks({
+        now: function () { observedArgCount = arguments.length; return CANONICAL_TS; }
+      });
+      const r = await runCanonicalMigration(makeInput(deps));
+      assert.strictEqual(r.outcome, ORCHESTRATION_OUTCOMES.EXECUTED_AND_RECORDED);
+      assert.strictEqual(observedArgCount, 0);
+    });
+  });
 });

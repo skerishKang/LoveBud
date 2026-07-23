@@ -42,7 +42,7 @@ Dependency contracts (synthetic):
 
 - `validateSource({ targetMigrationId })` → `{ status: PASS|FAIL|UNAVAILABLE }`
 - `loadManifest({ targetMigrationId })` → `{ status, migrations }`
-- `acquireAdvisoryLock({ targetMigrationId })` → `{ status: ACQUIRED|NOT_ATTEMPTED|UNAVAILABLE|FAILED, handle }` — `handle` is an opaque internal value, never exposed.
+- `acquireAdvisoryLock({ targetMigrationId })` → `{ status: ACQUIRED|NOT_ATTEMPTED|UNAVAILABLE|FAILED, handle }` — when `status` is `ACQUIRED`, the result must carry an own `handle` property that is non-null and non-undefined. `handle` is opaque (any type allowed) and is never stringified, cloned, logged, or included in the result/events/blockers.
 - `readLedger({ lockHandle })` → ledger record array (never called before the lock is `ACQUIRED`).
 - `evaluatePrecondition({ targetMigrationId, lockHandle })` → `{ status: PASS|FAIL|UNAVAILABLE|NOT_EVALUATED }`
 - `executeMigration({ migrationId, migrationChecksum, transactionMode, destructive, lockHandle })` → `{ executionOutcome, transactionOutcome }` — receives only protocol binding values; never raw SQL, manifest, credential, URL, or operator identity.
@@ -50,7 +50,11 @@ Dependency contracts (synthetic):
 - `checkAdvisoryLock({ lockHandle })` → `{ status: ACQUIRED|LOST|FAILED|UNAVAILABLE }`
 - `appendLedgerRecord({ record, lockHandle })` → `{ status: APPENDED|FAILED|UNKNOWN }`
 - `releaseAdvisoryLock({ lockHandle })` → `{ status: RELEASED|FAILED|UNKNOWN }`
-- `now()` → canonical ISO-8601 UTC timestamp (Date-parseable, `Z`-terminated, round-trips via `toISOString()`).
+- `now()` → canonical ISO-8601 UTC timestamp (Date-parseable, `Z`-terminated, round-trips via `toISOString()`). `now` is a **zero-argument** dependency; it is invoked with no arguments.
+
+Result shape: every status-returning dependency (`validateSource`, `loadManifest`, `acquireAdvisoryLock`, `evaluatePrecondition`, `executeMigration`, `evaluatePostcondition`, `checkAdvisoryLock`, `appendLedgerRecord`, `releaseAdvisoryLock`) must return a **plain record object** (non-null, `typeof === 'object'`, not an array, prototype `Object.prototype` or `null`). An array or function carrying a `status` property is not a valid result. Exceptions: `readLedger` returns an array, `now` returns a string. A malformed (non-plain-record) result → `ORCHESTRATOR_DEPENDENCY_RESULT_INVALID:<name>`.
+
+Source/lock valid-negative results preserve the exact protocol blockers (imported from the protocol core, which is not modified): source `FAIL` → `RUNNER_SOURCE_VALIDATION_FAILED`, source `UNAVAILABLE` → `RUNNER_SOURCE_VALIDATION_UNAVAILABLE`, lock `NOT_ATTEMPTED`/`FAILED`/`UNAVAILABLE` → `RUNNER_ADVISORY_LOCK_REQUIRED`. These do not add `ORCHESTRATOR_DEPENDENCY_RESULT_INVALID`, call no release, and call no ledger/precondition/execute/append.
 
 ## Exact stage order
 
@@ -75,7 +79,7 @@ If preflight returns `NOOP_ALREADY_APPLIED`, the orchestrator executes nothing (
 
 ## Lock lifecycle
 
-If the lock is not `ACQUIRED`, the orchestrator fails closed with no ledger read, precondition, execute, append, or release. Once `ACQUIRED`, the lock is released **exactly once** on every path (success, failure, or throw). A release that is `FAILED`/`UNKNOWN`/malformed/throw sets the final outcome to `LOCK_RELEASE_FAILED` with blocker `ORCHESTRATOR_LOCK_RELEASE_FAILED`, preserving already-successful execution/append flags. Release-failure recovery upgrades `NO_RECOVERY_ACTION` to `MANUAL_RECONCILIATION_REQUIRED` and preserves any stronger existing recovery.
+If the lock is not `ACQUIRED`, the orchestrator fails closed with no ledger read, precondition, execute, append, or release. `ACQUIRED` additionally requires a usable opaque handle (own `handle` property, non-null, non-undefined). If the adapter claims `ACQUIRED` but the handle is unusable, the orchestrator sets `lockAcquired=true`, adds `ORCHESTRATOR_DEPENDENCY_RESULT_INVALID:acquireAdvisoryLock`, returns outcome `BLOCKED_BEFORE_EXECUTION`, never starts the migration pipeline (ledger/precondition/execute/postcondition/recheck/now/append all 0), and still attempts a best-effort cleanup release exactly once (passing only the raw opaque handle). Once `ACQUIRED` with a usable handle, the lock is released **exactly once** on every path (success, failure, or throw). A release that is `FAILED`/`UNKNOWN`/malformed/throw sets the final outcome to `LOCK_RELEASE_FAILED` with blocker `ORCHESTRATOR_LOCK_RELEASE_FAILED`, preserving already-successful execution/append flags. Release-failure recovery upgrades `NO_RECOVERY_ACTION` to `MANUAL_RECONCILIATION_REQUIRED` and preserves any stronger existing recovery. A malformed (non-plain-record) append result carries both `ORCHESTRATOR_DEPENDENCY_RESULT_INVALID:appendLedgerRecord` and `ORCHESTRATOR_LEDGER_APPEND_FAILED`; a malformed release result carries both `ORCHESTRATOR_DEPENDENCY_RESULT_INVALID:releaseAdvisoryLock` and `ORCHESTRATOR_LOCK_RELEASE_FAILED`; schema-valid negative statuses (`FAILED`/`UNKNOWN`) carry only the domain blocker.
 
 ## Ledger append authorization and record
 
