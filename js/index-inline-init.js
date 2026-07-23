@@ -320,12 +320,6 @@
       state.timeoutId = window.setTimeout(step, Math.max(0, delay || 0));
     }
 
-    function youtubeFor(index) {
-      var artist = ARTIST_DATASETS[state.artistIndex];
-      if (!artist) return null;
-      return artist.videos[state.videoIndices[index] || 0] || null;
-    }
-
     function youtubeForArtist(artistIndex, videoIndex) {
       var artist = ARTIST_DATASETS[artistIndex];
       if (!artist) return null;
@@ -576,7 +570,18 @@
       closeBtn.className = 'hero-video-modal-close';
       closeBtn.type = 'button';
       closeBtn.setAttribute('aria-label', '영상 재생 닫기');
-      closeBtn.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" fill="currentColor"/></svg>';
+      // Build the close icon with DOM APIs (never innerHTML) so this file
+      // stays free of DOM XSS sinks.
+      var SVG_NS = 'http://www.w3.org/2000/svg';
+      var closeIcon = document.createElementNS(SVG_NS, 'svg');
+      closeIcon.setAttribute('viewBox', '0 0 24 24');
+      closeIcon.setAttribute('aria-hidden', 'true');
+      closeIcon.setAttribute('focusable', 'false');
+      var closeIconPath = document.createElementNS(SVG_NS, 'path');
+      closeIconPath.setAttribute('d', 'M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z');
+      closeIconPath.setAttribute('fill', 'currentColor');
+      closeIcon.appendChild(closeIconPath);
+      closeBtn.appendChild(closeIcon);
 
       panel.appendChild(player);
       panel.appendChild(closeBtn);
@@ -602,13 +607,39 @@
     // "YouTube에서 보기" external link sits outside the media box, so it
     // opens in a new tab and never triggers the modal.
     // ------------------------------------------------------------
-    cards.forEach(function(card, idx) {
+    cards.forEach(function(card) {
       var media = card.querySelector('.growth-stage-card-media');
       if (!media) return;
       media.addEventListener('click', function() {
-        openVideoModal(youtubeFor(idx), card);
+        // Never open the player mid-flip: the card content is rotating and a
+        // stagger timeout is already in flight, so a click here would race it.
+        if (state.flipping) return;
+        // The clicked card's own dataset is the source of truth for what is
+        // currently on screen (written by applyArtistToCard) — not the global
+        // artist state — so the modal always plays the video whose thumbnail
+        // and title are actually displayed.
+        var videoId = card.getAttribute('data-video-id');
+        if (!videoId) return;
+        var titleEl = card.querySelector('strong');
+        openVideoModal({
+          id: videoId,
+          title: (titleEl && titleEl.textContent) || 'YouTube video'
+        }, card);
       });
     });
+
+    // Reflect the flip state onto the play buttons as an aria-disabled hint
+    // while a stagger flip is in flight. The click handler above also
+    // hard-guards on state.flipping; this only signals the state to assistive
+    // tech and does not redesign any timer or state machine.
+    function setPlayButtonsFlipState(flipping) {
+      cards.forEach(function(card) {
+        var play = card.querySelector('.growth-stage-card-play');
+        if (!play) return;
+        if (flipping) play.setAttribute('aria-disabled', 'true');
+        else play.removeAttribute('aria-disabled');
+      });
+    }
 
     function step() {
       if (isPaused()) {
@@ -642,6 +673,7 @@
             // pauses the cycle, so a flip never starts while it is open.)
             preloadNextThumbnails();
             state.flipping = true;
+            setPlayButtonsFlipState(true);
             flipToNextArtist();
             scheduleNext(TIMINGS.flip);
           } else {
@@ -650,6 +682,7 @@
             // toggle is a no-op while a video plays because playback pauses
             // the cycle so this branch is not reached.
             state.flipping = false;
+            setPlayButtonsFlipState(false);
             if (typeof window.__lovebudHeroCopyToggle === 'function') {
               window.__lovebudHeroCopyToggle();
             }
