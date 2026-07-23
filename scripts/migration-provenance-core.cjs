@@ -242,6 +242,7 @@ function validateMigrationManifest(manifest, repoRoot) {
   }
 
   const migrationIds = new Set();
+  const migrationPaths = new Set();
   const migrations = Array.isArray(manifest.migrations) ? manifest.migrations : [];
   migrations.forEach((migration, migrationIndex) => {
     const migrationId = migration && migration.id ? migration.id : `<index:${migrationIndex}>`;
@@ -266,6 +267,32 @@ function validateMigrationManifest(manifest, repoRoot) {
     }
     if (!isNonEmptyString(migration && migration.path)) {
       errors.push(`MIGRATION_PATH_INVALID:${migrationId}`);
+    }
+    if (isNonEmptyString(migration && migration.path)) {
+      // Canonical path ownership: a canonical migration lives only at
+      // <canonical_directory>/<migration_id>.sql. Reject paths outside the canonical
+      // directory, non-.sql extensions, path traversal that escapes the canonical
+      // directory, and basename/ID mismatch.
+      const canonicalDirectory = normalizePath(manifest.canonical_directory || '');
+      const normalizedMigrationPath = normalizePath(migration.path);
+      const pathSegments = normalizedMigrationPath.split('/');
+      const hasTraversal = pathSegments.includes('..') || normalizedMigrationPath.startsWith('/');
+      const isUnderCanonicalDirectory = !hasTraversal
+        && canonicalDirectory.length > 0
+        && normalizedMigrationPath.startsWith(`${canonicalDirectory}/`);
+      const hasSqlExtension = /\.sql$/.test(normalizedMigrationPath);
+      if (!isUnderCanonicalDirectory || !hasSqlExtension) {
+        errors.push(`MIGRATION_PATH_NON_CANONICAL:${migrationId}`);
+      } else {
+        const pathBasename = normalizedMigrationPath.split('/').pop().replace(/\.sql$/, '');
+        if (pathBasename !== migration.id) {
+          errors.push(`MIGRATION_PATH_ID_MISMATCH:${migrationId}`);
+        }
+      }
+      if (migrationPaths.has(normalizedMigrationPath)) {
+        errors.push(`MIGRATION_PATH_DUPLICATE:${migration.path}`);
+      }
+      migrationPaths.add(normalizedMigrationPath);
     }
     if (!SHA256_PATTERN.test((migration && migration.checksum) || '')) {
       errors.push(`MIGRATION_CHECKSUM_INVALID:${migrationId}`);
@@ -329,11 +356,15 @@ function validateMigrationManifest(manifest, repoRoot) {
         if (!fs.existsSync(sourcePath)) {
           errors.push(`MIGRATION_SOURCE_MISSING:${migration.path}`);
         } else {
-          const source = fs.readFileSync(sourcePath, 'utf8');
-          if (SHA256_PATTERN.test(migration.checksum || '') && sha256(source) !== migration.checksum) {
+          // Checksum is computed over the RAW BYTES of the SQL file. No newline,
+          // whitespace, comment, or BOM normalization is applied. Any byte change —
+          // LF<->CRLF, trailing newline add/remove, trailing space, comment edit, UTF-8
+          // BOM add/remove, or a single byte — changes the checksum and fails closed.
+          const sourceBytes = fs.readFileSync(sourcePath);
+          if (SHA256_PATTERN.test(migration.checksum || '') && sha256(sourceBytes) !== migration.checksum) {
             errors.push(`MIGRATION_SOURCE_CHECKSUM_MISMATCH:${migrationId}`);
           }
-          if (DESTRUCTIVE_SQL_PATTERN.test(source) && destructiveOperations.length === 0) {
+          if (DESTRUCTIVE_SQL_PATTERN.test(sourceBytes.toString('utf8')) && destructiveOperations.length === 0) {
             errors.push(`MIGRATION_DESTRUCTIVE_OPERATION_UNDECLARED:${migrationId}`);
           }
         }
@@ -342,6 +373,20 @@ function validateMigrationManifest(manifest, repoRoot) {
       errors.push(`MIGRATION_SOURCE_UNSAFE:${(migration && migration.path) || '<unknown>'}`);
     }
   });
+
+  // Manifest order: migration IDs must be strictly ascending in array order.
+  // Because IDs begin with a fixed-width 14-digit UTC timestamp, lexicographic
+  // ascending order enforces chronological (timestamp) ordering and forbids
+  // timestamp reversal or inserting an older ID after a newer one.
+  for (let i = 1; i < migrations.length; i += 1) {
+    const previousId = migrations[i - 1] && migrations[i - 1].id;
+    const currentId = migrations[i] && migrations[i].id;
+    if (typeof previousId === 'string' && previousId.length > 0
+      && typeof currentId === 'string' && currentId.length > 0
+      && currentId <= previousId) {
+      errors.push(`MIGRATION_ORDER_INVALID:${currentId}`);
+    }
+  }
 
   // Cross-entry dependency existence and ordering.
   const idToIndex = new Map(migrations.map((migration, index) => [migration && migration.id, index]));
