@@ -192,10 +192,7 @@
     overflow: hidden;
     margin-bottom: 12px;
     cursor: pointer;
-    background:
-        radial-gradient(circle at 30% 22%, rgba(255, 230, 220, 0.92), transparent 24%),
-        radial-gradient(circle at 74% 28%, rgba(226, 190, 204, 0.86), transparent 26%),
-        linear-gradient(145deg, rgba(187, 154, 143, 0.82), rgba(149, 169, 142, 0.64));
+    background: #e9e3df;
 }
 
 .growth-stage-card.supporting .growth-stage-card-media {
@@ -218,20 +215,12 @@
     opacity: 1;
 }
 
-.growth-stage-card-media::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(62, 52, 47, 0.18));
-    pointer-events: none;
-}
-
 .growth-stage-card-artist {
     position: absolute;
     left: 10px;
     top: 10px;
     z-index: 2;
-    display: inline-flex;
+    display: none;
     align-items: center;
     min-height: 22px;
     padding: 0 10px;
