@@ -81,6 +81,8 @@ The current canonical list is intentionally empty. Existing files are not copied
 
 File renames are content changes for provenance purposes: the manifest path, immutable id, and checksum must be reviewed together. Migration content cannot be edited in place after application. A necessary correction is a new forward-fix migration with a new id.
 
+Immutable identity, strictly ascending ordering, canonical path ownership (`db/migrations/<migration_id>.sql`), and byte-exact SHA-256 checksum semantics are defined and source-tested in `docs/architecture/db-migration-identity-order-checksum-contract.md`.
+
 `transaction_mode` is explicit because some PostgreSQL operations cannot run inside a transaction. `REQUIRED` means one transaction must cover the change, `PROHIBITED` means the runner must reject a transaction wrapper, and `EXPLICIT` means the approved runner contract must define the boundary.
 
 ## D. Expected-Schema Manifest

@@ -50,6 +50,9 @@ const REQUIRED_MIGRATION_FIELDS = Object.freeze([
 ]);
 
 const MIGRATION_ID_PATTERN = /^\d{14}_[a-z0-9]+(?:-[a-z0-9]+)*$/;
+const CANONICAL_DIRECTORY = 'db/migrations';
+// A single direct .sql child of the fixed canonical directory (no nested segment).
+const DIRECT_CHILD_SQL_PATTERN = new RegExp(`^${CANONICAL_DIRECTORY}/[^/]+\\.sql$`);
 const SHA256_PATTERN = /^sha256:[a-f0-9]{64}$/;
 const SCHEMA_DDL_PATTERN = /\b(?:CREATE|ALTER|DROP|TRUNCATE)\s+(?:TABLE|INDEX|TYPE|SCHEMA|VIEW|MATERIALIZED\s+VIEW|FUNCTION|TRIGGER|POLICY|ROLE)\b/i;
 const DESTRUCTIVE_SQL_PATTERN = /\b(?:DROP\s+(?:TABLE|INDEX|COLUMN|CONSTRAINT|FUNCTION|TRIGGER|TYPE)|TRUNCATE\b|ALTER\s+TABLE[\s\S]{0,120}?\bDROP\s+COLUMN|ALTER\s+TABLE[\s\S]{0,120}?\bSET\s+NOT\s+NULL)\b/i;
@@ -216,6 +219,11 @@ function validateMigrationManifest(manifest, repoRoot) {
   if (!manifest.canonical_directory) {
     errors.push('MIGRATION_CANONICAL_DIRECTORY_MISSING');
   } else {
+    // The canonical directory is fixed: a canonical migration stream lives only in
+    // db/migrations. Any other declared value fails closed.
+    if (normalizePath(manifest.canonical_directory) !== CANONICAL_DIRECTORY) {
+      errors.push('MIGRATION_CANONICAL_DIRECTORY_INVALID');
+    }
     try {
       const canonicalDirectory = resolveRepositoryPath(repoRoot, manifest.canonical_directory);
       if (!fs.existsSync(canonicalDirectory) || !fs.statSync(canonicalDirectory).isDirectory()) {
@@ -242,6 +250,7 @@ function validateMigrationManifest(manifest, repoRoot) {
   }
 
   const migrationIds = new Set();
+  const migrationPaths = new Set();
   const migrations = Array.isArray(manifest.migrations) ? manifest.migrations : [];
   migrations.forEach((migration, migrationIndex) => {
     const migrationId = migration && migration.id ? migration.id : `<index:${migrationIndex}>`;
@@ -266,6 +275,31 @@ function validateMigrationManifest(manifest, repoRoot) {
     }
     if (!isNonEmptyString(migration && migration.path)) {
       errors.push(`MIGRATION_PATH_INVALID:${migrationId}`);
+    }
+    if (isNonEmptyString(migration && migration.path)) {
+      // Exact canonical path ownership: a canonical migration lives at exactly
+      // db/migrations/<migration_id>.sql — a single direct child of the fixed
+      // canonical directory. The expected path is derived from the fixed
+      // CANONICAL_DIRECTORY constant, never from the manifest-declared value.
+      // Nested directories, "." segments, duplicate slashes, traversal, absolute
+      // paths, other extensions, and basename/ID mismatch are all rejected.
+      const normalizedMigrationPath = normalizePath(migration.path);
+      const expectedCanonicalPath = `${CANONICAL_DIRECTORY}/${migration.id}.sql`;
+      if (normalizedMigrationPath !== expectedCanonicalPath) {
+        if (DIRECT_CHILD_SQL_PATTERN.test(normalizedMigrationPath)) {
+          // Exact direct-child .sql form under db/migrations, but the basename
+          // does not equal the migration ID.
+          errors.push(`MIGRATION_PATH_ID_MISMATCH:${migrationId}`);
+        } else {
+          // Outside the canonical tree, nested directory, "." segment, duplicate
+          // slash, traversal, absolute path, or a non-.sql extension.
+          errors.push(`MIGRATION_PATH_NON_CANONICAL:${migrationId}`);
+        }
+      }
+      if (migrationPaths.has(normalizedMigrationPath)) {
+        errors.push(`MIGRATION_PATH_DUPLICATE:${migration.path}`);
+      }
+      migrationPaths.add(normalizedMigrationPath);
     }
     if (!SHA256_PATTERN.test((migration && migration.checksum) || '')) {
       errors.push(`MIGRATION_CHECKSUM_INVALID:${migrationId}`);
@@ -329,11 +363,15 @@ function validateMigrationManifest(manifest, repoRoot) {
         if (!fs.existsSync(sourcePath)) {
           errors.push(`MIGRATION_SOURCE_MISSING:${migration.path}`);
         } else {
-          const source = fs.readFileSync(sourcePath, 'utf8');
-          if (SHA256_PATTERN.test(migration.checksum || '') && sha256(source) !== migration.checksum) {
+          // Checksum is computed over the RAW BYTES of the SQL file. No newline,
+          // whitespace, comment, or BOM normalization is applied. Any byte change —
+          // LF<->CRLF, trailing newline add/remove, trailing space, comment edit, UTF-8
+          // BOM add/remove, or a single byte — changes the checksum and fails closed.
+          const sourceBytes = fs.readFileSync(sourcePath);
+          if (SHA256_PATTERN.test(migration.checksum || '') && sha256(sourceBytes) !== migration.checksum) {
             errors.push(`MIGRATION_SOURCE_CHECKSUM_MISMATCH:${migrationId}`);
           }
-          if (DESTRUCTIVE_SQL_PATTERN.test(source) && destructiveOperations.length === 0) {
+          if (DESTRUCTIVE_SQL_PATTERN.test(sourceBytes.toString('utf8')) && destructiveOperations.length === 0) {
             errors.push(`MIGRATION_DESTRUCTIVE_OPERATION_UNDECLARED:${migrationId}`);
           }
         }
@@ -342,6 +380,20 @@ function validateMigrationManifest(manifest, repoRoot) {
       errors.push(`MIGRATION_SOURCE_UNSAFE:${(migration && migration.path) || '<unknown>'}`);
     }
   });
+
+  // Manifest order: migration IDs must be strictly ascending in array order.
+  // Because IDs begin with a fixed-width 14-digit UTC timestamp, lexicographic
+  // ascending order enforces chronological (timestamp) ordering and forbids
+  // timestamp reversal or inserting an older ID after a newer one.
+  for (let i = 1; i < migrations.length; i += 1) {
+    const previousId = migrations[i - 1] && migrations[i - 1].id;
+    const currentId = migrations[i] && migrations[i].id;
+    if (typeof previousId === 'string' && previousId.length > 0
+      && typeof currentId === 'string' && currentId.length > 0
+      && currentId <= previousId) {
+      errors.push(`MIGRATION_ORDER_INVALID:${currentId}`);
+    }
+  }
 
   // Cross-entry dependency existence and ordering.
   const idToIndex = new Map(migrations.map((migration, index) => [migration && migration.id, index]));

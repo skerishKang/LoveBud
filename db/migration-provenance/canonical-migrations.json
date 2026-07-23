@@ -16,6 +16,11 @@
   },
   "migration_id_format": "YYYYMMDDHHMMSS_slug",
   "checksum_algorithm": "sha256",
+  "migration_id_rule": "14-digit UTC timestamp, underscore, then a lowercase kebab-case slug; an ID is never reused and is never renamed in place.",
+  "canonical_path_rule": "The canonical_directory is fixed to db/migrations (any other declared value is rejected). A canonical migration exists exactly at db/migrations/<migration_id>.sql as a single direct child; nested directories, dot segments, duplicate slashes, other directories, other extensions, traversal, absolute paths, duplicate paths, or a basename that does not equal the ID are rejected.",
+  "ordering_rule": "The migrations array is strictly ascending by migration ID; duplicate IDs, duplicate paths, and timestamp reversal are rejected.",
+  "checksum_byte_rule": "Checksum is SHA-256 over the raw bytes of the SQL file with no newline, whitespace, comment, or BOM normalization; any byte change (LF/CRLF, trailing newline, trailing space, comment, BOM, single byte) fails closed. An applied migration is never edited; a correction is a new forward-fix migration.",
+  "identity_order_checksum_contract": "docs/architecture/db-migration-identity-order-checksum-contract.md",
   "migrations": [],
   "activation_rule": "No existing scripts are retroactively declared applied. A separately approved adoption baseline must be attested before this manifest changes to ACTIVE.",
   "destructive_ddl_rule": "A canonical migration containing destructive DDL must declare DESTRUCTIVE risk, list every destructive operation, and carry a non-empty approval reference."
