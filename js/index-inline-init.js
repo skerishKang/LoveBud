@@ -34,9 +34,9 @@
       channelName: 'HYBE LABELS',
       videos: [
         { id: 'gdZLi9oWNZg', title: 'Dynamite' },
-        { id: 'WMwePlGQuT8', title: 'Butter' },
+        { id: 'WMweEpGlu_U', title: 'Butter' },
         { id: 'XsX3ATc3FbA', title: 'Boy With Luv' },
-        { id: '7wC20jghM2c', title: 'Blood Sweat & Tears' }
+        { id: 'hmE9f-TEutc', title: 'Blood Sweat & Tears' }
       ]
     },
     {
