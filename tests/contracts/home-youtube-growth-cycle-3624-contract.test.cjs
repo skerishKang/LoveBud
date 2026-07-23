@@ -547,4 +547,71 @@ console.log('✓ 27: stale request protection — old img removed, media.contain
 }
 console.log('✓ 28: no object-fit: cover on hero thumbnails');
 
+// ============================================================
+// 29. Modal player — every card opens a large youtube-nocookie modal
+// ============================================================
+{
+  // (a) All 4 cards ship a play button in HTML.
+  const playCount = (html.match(/class="growth-stage-card-play"/g) || []).length;
+  assert.strictEqual(playCount, 4,
+    'index.html must have exactly 4 .growth-stage-card-play buttons (one per card)');
+
+  // (b) All 4 cards keep a visible external "YouTube에서 보기" link that opens
+  //     in a new tab with safe rel. The link sits outside the media box so it
+  //     never triggers the modal.
+  const linkCount = (html.match(/class="growth-stage-card-link"/g) || []).length;
+  assert.strictEqual(linkCount, 4,
+    'index.html must have exactly 4 .growth-stage-card-link external links');
+  assert.ok((html.match(/target="_blank"/g) || []).length >= 4,
+    'all 4 card links must use target="_blank"');
+  assert.ok((html.match(/rel="noopener noreferrer"/g) || []).length >= 4,
+    'all 4 card links must use rel="noopener noreferrer"');
+
+  // (c) The modal builds a privacy-enhanced youtube-nocookie iframe.
+  assert.ok(js.includes('youtube-nocookie.com/embed'),
+    'modal must embed via youtube-nocookie.com/embed');
+  assert.ok(js.includes('hero-video-modal'),
+    'JS must build a .hero-video-modal overlay');
+  assert.ok(js.includes("createElement('iframe')"),
+    'JS must create the modal iframe element');
+
+  // (d) The clicked card's dataset is the source of truth for the modal video
+  //     (not the global artist state), so the modal always matches the
+  //     thumbnail/title currently displayed on that card.
+  assert.ok(js.includes("card.getAttribute('data-video-id')"),
+    'modal must read the video id from the clicked card dataset');
+  assert.ok(js.includes("card.querySelector('strong')"),
+    'modal must read the visible title from the clicked card');
+
+  // (e) Never open the modal mid-flip (race guard against stagger timeouts).
+  assert.ok(js.includes('if (state.flipping) return;'),
+    'media click must bail out while state.flipping is true');
+
+  // (f) In-card playback is fully removed.
+  assert.ok(!js.includes('promoteToFeatured'),
+    'JS must not keep the supporting->featured promote path');
+  assert.ok(!js.includes('growth-stage-card-player'),
+    'JS must not create an in-card iframe player');
+
+  // (g) The modal is a real accessible dialog.
+  assert.ok(js.includes("setAttribute('role', 'dialog')"),
+    'modal must have role="dialog"');
+  assert.ok(js.includes("setAttribute('aria-modal', 'true')"),
+    'modal must have aria-modal="true"');
+
+  // (h) Close via button, ESC, and backdrop.
+  assert.ok(js.includes('closeVideoModal'),
+    'JS must have a closeVideoModal handler');
+  assert.ok(js.includes("e.key === 'Escape'"),
+    'modal must close on Escape');
+  assert.ok(js.includes('e.target === modalEl'),
+    'modal must close on backdrop click');
+
+  // (i) No DOM XSS sink in the modal builder (icon built via DOM APIs), keeping
+  //     js/index-inline-init.js out of the DOM XSS guardrail allowlist.
+  assert.ok(!/\.innerHTML\s*=|\.insertAdjacentHTML\s*\(|\.outerHTML\s*=/.test(js),
+    'index-inline-init.js must not use innerHTML/insertAdjacentHTML/outerHTML sinks');
+}
+console.log('✓ 29: modal player — 4 play buttons, youtube-nocookie modal, dataset source of truth, flip guard, dialog a11y, close handling, no DOM XSS sink');
+
 console.log('\n✅ All #3624 focused contract tests passed.');
