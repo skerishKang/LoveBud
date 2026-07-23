@@ -1,10 +1,15 @@
 /* LoveBud home v3 - visual responsive
    - Caption is a reserved top zone (visible on all sizes).
-   - Node SHELL positions stay fixed across artist cycles; they only reflow
-     between breakpoints (never during a transition).
-   - Featured and supporting cards never overlap on any breakpoint; each
-     breakpoint re-tunes positions so card-card visible gap >= 12px and the
-     panel has zero overflow. */
+   - The memory network is a CSS grid and the cards are grid items, so they
+     reflow between breakpoints with no absolute coordinates and no
+     !important. Node SHELL layout only changes between breakpoints (never
+     during an artist transition).
+   - Desktop / tablet: a wide featured column, a 48px center channel holding
+     the network rail + hub, and a compact supporting column, across two rows.
+   - Mobile: a 2-column vertical journey — a 24px rail column on the left,
+     and a card column on the right. Featured on top, then one, two, three,
+     each with a short connector thread to the rail. The hub is hidden on
+     mobile (the rail itself is the thread). */
 
 @media (max-width: 1220px) {
     .home-v3-collage {
@@ -30,34 +35,11 @@
         min-height: 36px;
     }
 
-    .growth-tree-svg {
-        inset: 80px 0 0 0;
-        height: calc(100% - 80px);
-    }
-
-    .growth-stage-card.featured {
-        width: min(232px, calc(50% - 40px));
-        right: calc(50% + 24px);
-        top: 180px;
-    }
-
-    .growth-stage-card.supporting {
-        width: min(176px, calc(50% - 40px));
-    }
-
-    .growth-stage-card.supporting.one {
-        left: calc(50% + 24px);
-        top: 180px;
-    }
-
-    .growth-stage-card.supporting.two {
-        right: calc(50% + 24px);
-        bottom: 28px;
-    }
-
-    .growth-stage-card.supporting.three {
-        left: calc(50% + 24px);
-        bottom: 28px;
+    /* Tighten the network's horizontal inset to match the caption, keeping
+       the grid (and the channel-centered rail/hub) aligned with the copy. */
+    .growth-stage-network {
+        --net-pad-x: 22px;
+        padding: 0 var(--net-pad-x) 22px;
     }
 }
 
@@ -85,41 +67,115 @@
         min-height: 32px;
     }
 
-    .growth-tree-svg {
-        inset: 72px 0 0 0;
-        height: calc(100% - 72px);
+    /* Mobile: 2-column vertical journey. Column 1: 24px rail + node dots.
+       Column 2: 4 cards stacked vertically (featured → one → two → three). */
+    .growth-stage-network {
+        grid-template-columns: 24px minmax(0, 1fr);
+        grid-template-rows: repeat(4, auto);
+        align-content: start;
+        justify-items: stretch;
+        gap: 14px 12px;
+        padding: 8px 14px 24px;
     }
 
-    /* Mobile: stack the four memory nodes vertically inside the stage so no
-       card overlaps another. Featured on top, then the three supporting
-       nodes, each with a clear vertical gap. The tree stays behind them. */
-    .growth-stage-card {
-        position: relative !important;
-        left: auto !important;
-        right: auto !important;
-        top: auto !important;
-        bottom: auto !important;
-        transform: none !important;
-        margin: 12px auto;
+    /* Network core spans column 1 (rail column), all 4 rows. */
+    .growth-stage-network-core {
+        grid-column: 1;
+        grid-row: 1 / 5;
+    }
+
+    /* Mobile rail: simple vertical thread centered in the 24px column.
+       The column width is 24px, so the rail (2px) is centered with margin: 0 auto. */
+    .growth-stage-network-rail {
+        left: 0;
+        right: 0;
+        top: 0;
+        bottom: 0;
+        width: 2px;
+        margin: 0 auto;
+        height: 100%;
+        border: 0;
+        border-radius: 2px;
+        background: linear-gradient(180deg,
+            rgba(144, 73, 81, 0) 0%,
+            rgba(144, 73, 81, 0.28) 10%,
+            rgba(144, 73, 81, 0.28) 90%,
+            rgba(144, 73, 81, 0) 100%);
+        box-shadow: none;
+        opacity: 0;
+        transition: opacity 0.75s ease, transform 0.75s cubic-bezier(0.22, 0.8, 0.3, 1);
+    }
+
+    .growth-stage-network-rail::after {
+        left: 50%;
+        transform: translateX(-50%);
+        background:
+            radial-gradient(circle 2.5px at 50% 16%, rgba(196, 120, 130, 0.6), transparent 100%),
+            radial-gradient(circle 2px at 50% 38%, rgba(150, 163, 138, 0.55), transparent 100%),
+            radial-gradient(circle 2.5px at 50% 62%, rgba(196, 120, 130, 0.55), transparent 100%),
+            radial-gradient(circle 2px at 50% 84%, rgba(150, 163, 138, 0.5), transparent 100%);
+    }
+
+    .growth-stage-network-hub {
+        display: none;
+    }
+
+    /* Hub hidden on mobile; rail reveal uses scaleY for vertical draw.
+       Starts at network-linking (concurrent with cards), like desktop. */
+    .home-v3-growth-stage[data-stage-state="network-linking"] .growth-stage-network-rail,
+    .home-v3-growth-stage[data-stage-state="cards-revealing"] .growth-stage-network-rail,
+    .home-v3-growth-stage[data-stage-state="completed"] .growth-stage-network-rail,
+    .home-v3-growth-stage[data-stage-state="fade-out"] .growth-stage-network-rail {
+        transform: scaleY(1);
+    }
+
+    /* Mobile: all 4 cards in column 2, rows 1-4.
+       Override desktop connectors to extend left (toward the rail). */
+    .growth-stage-card.featured,
+    .growth-stage-card.supporting.one,
+    .growth-stage-card.supporting.two,
+    .growth-stage-card.supporting.three {
+        grid-column: 2;
+        grid-row: auto;
+        width: min(320px, 100%);
     }
 
     .growth-stage-card.featured {
-        width: min(300px, calc(100% - 28px));
-        margin-top: 24px;
+        grid-row: 1;
+        margin-top: 8px;
     }
 
-    .growth-stage-card.supporting {
-        width: min(300px, calc(100% - 28px));
-        padding: 12px;
+    .growth-stage-card.supporting.one {
+        grid-row: 2;
+    }
+
+    .growth-stage-card.supporting.two {
+        grid-row: 3;
+    }
+
+    .growth-stage-card.supporting.three {
+        grid-row: 4;
     }
 
     .growth-stage-card.supporting strong {
         font-size: 0.86rem;
     }
 
-    .growth-stage-card.supporting.one,
-    .growth-stage-card.supporting.two,
-    .growth-stage-card.supporting.three {
-        margin-top: 12px;
+    /* Mobile connectors extend left from all cards toward the rail. */
+    .growth-stage-card.featured::before,
+    .growth-stage-card.supporting.one::before,
+    .growth-stage-card.supporting.two::before,
+    .growth-stage-card.supporting.three::before {
+        right: auto;
+        left: -24px;
+        width: 24px;
+    }
+
+    .growth-stage-card.featured::after,
+    .growth-stage-card.supporting.one::after,
+    .growth-stage-card.supporting.two::after,
+    .growth-stage-card.supporting.three::after {
+        right: auto;
+        left: -28px;
     }
 }

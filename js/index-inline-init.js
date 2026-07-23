@@ -5,7 +5,8 @@
       set fades out fully before the next fades in, so two titles never
       overlap in the same cell). CTA, note, intro link never move.
     2) Hero growth cycle: JS state machine that rotates BTS -> BLACKPINK ->
-       CORTIS -> RESCENE -> repeat. The node SHELLS and tree are fixed;
+       CORTIS -> RESCENE -> repeat. The node SHELLS and the memory network
+       are fixed;
        on each artist change the four cards flip in sequence (rotateY to
        90deg -> data swaps at the edge-on point -> rotate back), so there
        is no opacity flicker and no old/new text overlap. Every card is
@@ -13,7 +14,8 @@
        video in a large centered modal player (youtube-nocookie iframe)
        and pauses the cycle; each card also keeps a visible external
        "YouTube에서 보기" link that opens in a new tab (never the modal).
-       Reduced motion shows the first artist's completed tree and stops.
+       Reduced motion shows the first artist's completed memory network and
+       stops.
        Hover, focus, document.hidden, and playback pause the cycle. A
        second init is a no-op.
 */
@@ -239,7 +241,7 @@
     var PHASE = {
       PENDING: 'pending',
       CAPTION: 'caption-revealed',
-      BRANCHES: 'branches-growing',
+      NETWORK: 'network-linking',
       CARDS: 'cards-revealing',
       COMPLETED: 'completed'
     };
@@ -254,14 +256,14 @@
 
     var TIMINGS = reducedMotion ? {
       caption: 0,
-      branches: 0,
+      network: 0,
       cards: 0,
       hold: 60000, // effectively "do not advance"
       flip: 0
     } : {
-      caption: 500,
-      branches: 2800,
-      cards: 1100,
+      caption: 180,
+      network: 220,
+      cards: 800,
       hold: 4000,
       flip: FLIP_TOTAL_MS
     };
@@ -347,7 +349,6 @@
         var contentWrap = card.querySelector('.growth-stage-card-content') || card;
         contentWrap.appendChild(media);
       }
-      var artistLabel = card.querySelector('.growth-stage-card-artist');
       var channelEl = card.querySelector('.growth-stage-card-channel');
       var link = card.querySelector('.growth-stage-card-link');
       var fallback = card.querySelector('.growth-stage-card-fallback');
@@ -362,7 +363,6 @@
       var video = artist.videos[videoIndex] || artist.videos[0];
       if (!video) return;
 
-      if (artistLabel) artistLabel.textContent = resolveI18n(artist.labelKey) || artist.key.toUpperCase();
       if (channelEl) channelEl.textContent = resolveI18n(artist.channelKey) || ('Official channel - ' + artist.channelName);
       if (link) {
         link.href = youtubeWatchUrl(video.id);
@@ -404,12 +404,19 @@
           }
           if (media.contains(img)) {
             img.remove();
-            if (!media.querySelector('img')) {
-              media.classList.add('has-thumbnail-error');
-            }
+          }
+          if (existingImg && media.contains(existingImg)) {
+            existingImg.remove();
+          }
+          if (!media.querySelector('img')) {
+            media.classList.add('has-thumbnail-error');
           }
         });
-        media.appendChild(img);
+        if (fallback && media.contains(fallback)) {
+          media.insertBefore(img, fallback);
+        } else {
+          media.appendChild(img);
+        }
         img.src = youtubeThumbUrl(video.id, true);
       }
     }
@@ -455,7 +462,8 @@
 
     // ------------------------------------------------------------
     // Sequential card flip (artist change). The shell position and the
-    // tree stay fixed; only the inner .growth-stage-card-content rotates
+    // memory network stay fixed; only the inner .growth-stage-card-content
+    // rotates
     // on the Y axis. Data swaps exactly at the 90deg edge-on point, so
     // old and new content are never visible at the same time and no blank
     // white card is ever shown.
@@ -654,10 +662,13 @@
           scheduleNext(TIMINGS.caption);
           break;
         case PHASE.CAPTION:
-          setStageState(PHASE.BRANCHES);
-          scheduleNext(TIMINGS.branches);
+          // Caption is up: reveal the memory network first (rail starts blooming),
+          // then cards appear 220ms later (concurrent reveal with rail transition).
+          setStageState(PHASE.NETWORK);
+          scheduleNext(TIMINGS.network);
           break;
-        case PHASE.BRANCHES:
+        case PHASE.NETWORK:
+          // Network transition in progress (~750ms), cards appear ~220ms into this.
           setStageState(PHASE.CARDS);
           scheduleNext(TIMINGS.cards);
           break;
@@ -668,7 +679,8 @@
         case PHASE.COMPLETED:
           if (!state.flipping) {
             // Hold finished. Flip to the next artist in sequence. The stage
-            // stays "completed" so the shells, tree, and caption remain
+            // stays "completed" so the shells, memory network, and caption
+            // remain
             // visible while only the card contents rotate. (The modal player
             // pauses the cycle, so a flip never starts while it is open.)
             preloadNextThumbnails();
@@ -760,7 +772,7 @@
     window.addEventListener('pageshow', onPageShow);
 
     if (reducedMotion) {
-      // Static first-artist completed tree. No timer.
+      // Static first-artist completed memory network. No timer.
       applyCurrentArtistToCards();
       setStageState(PHASE.COMPLETED);
       return;

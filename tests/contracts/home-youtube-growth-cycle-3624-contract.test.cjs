@@ -251,7 +251,7 @@ console.log('✓ 11: controlled cycle state, no raw infinite');
   assert.ok(!/setInterval\s*\(\s*function[^}]*advanceArtist/.test(js),
     'cycle must not use setInterval to advance artists');
 }
-console.log('✓ 12: reduced motion shows static completed tree, no rotation');
+console.log('✓ 12: reduced motion shows static completed network, no rotation');
 
 // ============================================================
 // 13. Hover/focus/document-hidden pause
@@ -337,11 +337,16 @@ console.log('✓ 16: no community API dependency');
     assert.ok(i18nStr.includes("'" + key + "':"),
       'i18n bundle must define ' + key);
   }
-  // The HTML must reference the per-artist label for the initial render.
-  assert.ok(html.includes('home.v3.artist.bts'),
-    'HTML must reference home.v3.artist.bts for initial render');
+  // The artist-name pill was removed from the card media (CTO correction), so
+  // the per-artist label that remains in the static HTML for the initial render
+  // is the channel line. The artist-name keys stay defined in the i18n bundle
+  // above for the JS-driven rotation.
+  assert.ok(html.includes('home.v3.artist.channel.bts'),
+    'HTML must reference the per-artist channel label for initial render');
+  assert.ok(!html.includes('growth-stage-card-artist'),
+    'the artist-name pill markup must be removed from the cards');
 }
-console.log('✓ 17: artist label + channel label per card');
+console.log('✓ 17: channel label per card (artist pill removed)');
 
 // ============================================================
 // 18. Reduced-motion card visibility
@@ -351,10 +356,12 @@ console.log('✓ 17: artist label + channel label per card');
     'reduced-motion must keep cards visibility: visible');
   assert.ok(animCss.includes('opacity: 1') || animCss.includes('opacity:1'),
     'reduced-motion must keep cards opacity: 1');
-  assert.ok(animCss.includes('stroke-dashoffset: 0') || animCss.includes('stroke-dashoffset:0'),
-    'reduced-motion must complete branch drawing');
+  assert.ok(animCss.includes('growth-stage-network-rail'),
+    'reduced-motion must reveal the memory network rail');
+  assert.ok(animCss.includes('growth-stage-network-hub'),
+    'reduced-motion must reveal the memory network hub');
 }
-console.log('✓ 18: reduced-motion card visibility');
+console.log('✓ 18: reduced-motion card + network visibility');
 
 // ============================================================
 // 19. No Closes/Fixes/Resolves for protected issues
@@ -613,5 +620,69 @@ console.log('✓ 28: no object-fit: cover on hero thumbnails');
     'index-inline-init.js must not use innerHTML/insertAdjacentHTML/outerHTML sinks');
 }
 console.log('✓ 29: modal player — 4 play buttons, youtube-nocookie modal, dataset source of truth, flip guard, dialog a11y, close handling, no DOM XSS sink');
+
+// ============================================================
+// 30. Thumbnail insertion order + final-error stale-image cleanup
+// ============================================================
+{
+  // (1) The loaded thumbnail is inserted BEFORE the fallback so the existing
+  //     sibling selector `img.is-loaded ~ .growth-stage-card-fallback` can hide
+  //     the fallback once the image loads.
+  assert.ok(js.includes('media.insertBefore(img, fallback)'),
+    'applyArtistToCard must insert the thumbnail before the fallback');
+  assert.ok(js.includes('media.contains(fallback)'),
+    'insertBefore must be guarded by media.contains(fallback)');
+  assert.ok(growthCss.includes('img.is-loaded ~ .growth-stage-card-fallback'),
+    'CSS must hide the fallback that follows a loaded thumbnail');
+
+  // (7) Regression guard: not an appendChild-only implementation. The primary
+  //     insertion path must be insertBefore so the fallback sibling selector
+  //     can match (appendChild would leave the fallback covering the image).
+  assert.ok(js.indexOf('media.insertBefore(img, fallback)') > -1,
+    'insertBefore(img, fallback) must be present (not appendChild-only)');
+
+  // Capture the load and error handlers for path-specific assertions.
+  const loadHandler = js.match(/img\.addEventListener\('load',\s*function\s*\(\)\s*\{[\s\S]*?\}\);/);
+  assert.ok(loadHandler, 'Must find the thumbnail load handler');
+  const errorHandler = js.match(/img\.addEventListener\('error',\s*function\s*\(\)\s*\{[\s\S]*?\}\);/);
+  assert.ok(errorHandler, 'Must find the thumbnail error handler');
+
+  // (2) Normal load still removes the previous image and marks the new one.
+  assert.ok(loadHandler[0].includes('existingImg.remove()'),
+    'load handler must remove the previous existingImg on success');
+  assert.ok(loadHandler[0].includes("img.classList.add('is-loaded')"),
+    'load handler must mark the new thumbnail is-loaded');
+
+  // (3) maxres -> mqdefault fallback is preserved (first error path).
+  assert.ok(errorHandler[0].includes("img.src.indexOf('maxresdefault')"),
+    'error handler must detect a failed maxresdefault request');
+  assert.ok(errorHandler[0].includes('youtubeThumbUrl(video.id, false)'),
+    'error handler must fall back from maxresdefault to mqdefault');
+
+  // (4) Final error removes the newly created img.
+  assert.ok(errorHandler[0].includes('img.remove()'),
+    'final error branch must remove the failed new img');
+
+  // (5) Final error also removes the stale previous img so the old video
+  //     thumbnail cannot linger under the new title/data-video-id.
+  assert.ok(errorHandler[0].includes('existingImg.remove()'),
+    'final error branch must also remove the stale existingImg');
+
+  // (6) has-thumbnail-error is set only when no img remains, so the fallback
+  //     (title) shows instead of a stale thumbnail.
+  assert.ok(errorHandler[0].includes("!media.querySelector('img')"),
+    'final error branch must guard on no remaining img');
+  assert.ok(errorHandler[0].includes("media.classList.add('has-thumbnail-error')"),
+    'final error branch must add has-thumbnail-error when no img remains');
+
+  // (8) Modal / dataset source-of-truth / flip guard contracts are maintained.
+  assert.ok(js.includes("card.getAttribute('data-video-id')"),
+    'modal must still read the video id from the clicked card dataset');
+  assert.ok(js.includes('if (state.flipping) return;'),
+    'media click must still bail out while state.flipping is true');
+  assert.ok(js.includes('youtube-nocookie.com/embed'),
+    'modal must still embed via youtube-nocookie.com/embed');
+}
+console.log('✓ 30: thumbnail inserted before fallback; final-error clears stale img and sets has-thumbnail-error; maxres→mqdefault and modal contracts preserved');
 
 console.log('\n✅ All #3624 focused contract tests passed.');
