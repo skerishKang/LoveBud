@@ -1,6 +1,6 @@
 /**
  * LoveBud - i18n Shared Dictionary
- * v20260425-1
+ * v20260724-3635-1
  *
  * 공통 번역 키 (네비게이션, 버튼, 상태 메시지 등)
  */
@@ -351,6 +351,26 @@
     'settings.account.password.unavailable': {
       ko: '현재 로그인 방식에서는 비밀번호 관리 기능을 확인할 수 없습니다.',
       en: 'Password management is not available for the current sign-in method.'
+    },
+    'settings.account.password.resetAction': {
+      ko: '비밀번호 재설정 이메일 보내기',
+      en: 'Send password reset email'
+    },
+    'settings.account.password.resetSending': {
+      ko: '재설정 이메일을 보내는 중입니다…',
+      en: 'Sending reset email…'
+    },
+    'settings.account.password.resetSent': {
+      ko: '비밀번호 재설정 이메일을 보냈습니다. 받은편지함을 확인하세요.',
+      en: 'Password reset email sent. Check your inbox.'
+    },
+    'settings.account.password.resetSendFailed': {
+      ko: '재설정 이메일을 보내지 못했습니다. 잠시 후 다시 시도하세요.',
+      en: 'Could not send the reset email. Try again in a moment.'
+    },
+    'settings.account.password.resetMissingEmail': {
+      ko: '계정 이메일을 확인할 수 없어 재설정 이메일을 보낼 수 없습니다.',
+      en: 'Cannot send a reset email because the account email is unavailable.'
     },
     'settings.profile.avatarPhoto': {
       ko: '{displayName}님의 프로필 사진',

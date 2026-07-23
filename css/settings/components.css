@@ -169,6 +169,65 @@
   font-size: 0.88rem;
 }
 
+/* Password reset action (v20260724-3635) */
+.settings-password-reset {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.settings-password-reset-btn {
+  align-self: flex-start;
+  padding: 6px 14px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--outline-variant);
+  background: var(--surface);
+  color: var(--on-surface);
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.settings-password-reset-btn:hover:not(:disabled) {
+  background: var(--surface-container);
+  border-color: var(--primary-soft);
+}
+
+.settings-password-reset-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.settings-password-reset-status {
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
+.settings-password-reset-status:empty {
+  display: none;
+}
+
+.settings-password-reset-status--sending {
+  color: var(--on-surface-variant);
+}
+
+.settings-password-reset-status--success {
+  color: var(--primary);
+}
+
+.settings-password-reset-status--error {
+  color: var(--error);
+}
+
+.settings-password-reset-note {
+  margin: 0;
+  color: var(--on-surface-variant);
+  font-size: 0.88rem;
+}
+
 /* Logout button */
 .logout-btn {
   width: 100%;

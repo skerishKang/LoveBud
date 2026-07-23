@@ -202,7 +202,7 @@ test('Korean Google account renders exact read-only values', async function() {
   } finally { await closeFixture(fixture); }
 });
 
-test('English password account uses repository i18n exactly', async function() {
+test('English password account shows reset button with repository i18n label', async function() {
   const fixture = await newSettingsPage({ user: ACCOUNTS.enPassword, lang: 'en' });
   try {
     const values = await fixture.page.evaluate(function() {
@@ -211,24 +211,31 @@ test('English password account uses repository i18n exactly', async function() {
         subtitle: document.getElementById('settingsSubtitle').textContent,
         name: document.getElementById('settingsProfileName').textContent,
         methods: document.getElementById('settingsAccountSignInValue').textContent,
-        password: document.getElementById('settingsAccountPasswordValue').textContent
+        resetBtnExists: !!document.getElementById('settingsPasswordResetBtn'),
+        resetBtnType: (document.getElementById('settingsPasswordResetBtn') || {}).type || '',
+        resetLabel: (document.getElementById('settingsPasswordResetBtnLabel') || {}).textContent || ''
       };
     });
-    assert.deepEqual(values, {
-      title: 'Settings', subtitle: 'Review your profile and sign-in information',
-      name: 'password-user', methods: 'Email and password',
-      password: 'Password management will be supported in a future update.'
-    });
+    assert.equal(values.title, 'Settings');
+    assert.equal(values.subtitle, 'Review your profile and sign-in information');
+    assert.equal(values.name, 'password-user');
+    assert.equal(values.methods, 'Email and password');
+    assert.equal(values.resetBtnExists, true, 'password account must show reset button');
+    assert.equal(values.resetBtnType, 'button');
+    assert.equal(values.resetLabel, 'Send password reset email');
     assertNoErrors(fixture, 'en password');
   } finally { await closeFixture(fixture); }
 });
 
-test('English linked account renders canonical methods in stable order', async function() {
+test('English linked account renders canonical methods and reset button', async function() {
   const fixture = await newSettingsPage({ user: ACCOUNTS.enLinked, lang: 'en' });
   try {
     assert.equal(await fixture.page.locator('#settingsAccountSignInValue').textContent(), 'Google, Email and password');
-    assert.equal(await fixture.page.locator('#settingsAccountPasswordValue').textContent(),
-      'Password management will be supported in a future update.');
+    const resetBtnExists = await fixture.page.evaluate(function() {
+      return !!document.getElementById('settingsPasswordResetBtn');
+    });
+    assert.equal(resetBtnExists, true, 'linked account must show reset button');
+    assert.equal(await fixture.page.locator('#settingsPasswordResetBtnLabel').textContent(), 'Send password reset email');
     assertNoErrors(fixture, 'en linked');
   } finally { await closeFixture(fixture); }
 });

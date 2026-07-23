@@ -220,9 +220,11 @@ test('settings.js uses updateProfile only in displayName save handler', () => {
   assert.ok(js.includes('handleSaveDisplayName'), 'settings.js must have handleSaveDisplayName');
 });
 
-test('settings.js does not call sendPasswordResetEmail', () => {
+test('settings.js calls sendPasswordResetEmail via firebase.auth() compat guard', () => {
   const js = read('js/settings.js');
-  assert.ok(!js.includes('sendPasswordResetEmail'), 'settings.js must not call sendPasswordResetEmail');
+  assert.ok(js.includes('sendPasswordResetEmail'), 'settings.js must call sendPasswordResetEmail (v20260724-3635)');
+  assert.ok(js.includes("typeof firebase === 'undefined'") || js.includes('typeof firebase === "undefined"'),
+    'settings.js must guard firebase existence before sendPasswordResetEmail');
 });
 
 // --- logout production path ---

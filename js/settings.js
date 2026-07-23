@@ -4,6 +4,7 @@
  *
  * Settings should stay on settings.html after entry.
  * v20260721-3583: add read-only Profile / Account foundation.
+ * v20260724-3635: add password reset email action (Firebase compat sendPasswordResetEmail).
  */
 
 (function() {
@@ -292,6 +293,13 @@
   var editState = { mode: 'view', originalName: '', saving: false, statusKind: 'none' };
   var settingsLangChangeBound = false;
 
+  // --- Password reset state (v20260724-3635) ---
+  // statusKind tracks semantic status so language changes can retranslate
+  // without inferring meaning from rendered DOM text.
+  // Values: 'none' | 'sending' | 'sent' | 'missingEmail' | 'unavailable' | 'sendFailed'
+  // mode: 'none' | 'reset' | 'googleManaged' | 'unavailable' | 'missingEmail'
+  var passwordResetState = { sending: false, statusKind: 'none', mode: 'none' };
+
   function getLiveUser() {
     try {
       if (typeof firebase !== 'undefined' && firebase.auth && firebase.auth().currentUser) {
@@ -506,6 +514,7 @@
       applyI18nText();
       updateEditI18n();
       reapplyStatusI18n();
+      reapplyPasswordResetI18n();
       if (typeof window.applyI18n === 'function') {
         window.applyI18n();
       }
@@ -679,6 +688,196 @@
   }
 
   /* ──────────────────────────────────────────────────────────
+     Password reset email (v20260724-3635)
+     ────────────────────────────────────────────────────────── */
+
+  function resolvePasswordResetMode(vm) {
+    if (!vm) return 'unavailable';
+    if (vm.passwordInfo === 'google') return 'googleManaged';
+    if (vm.passwordInfo === 'deferred') {
+      return vm.email ? 'reset' : 'missingEmail';
+    }
+    return 'unavailable';
+  }
+
+  function renderPasswordResetAction(vm, containerEl) {
+    var mode = resolvePasswordResetMode(vm);
+    passwordResetState.mode = mode;
+    containerEl.textContent = '';
+
+    if (mode === 'googleManaged' || mode === 'unavailable') {
+      var noteKey = mode === 'googleManaged'
+        ? 'settings.account.password.googleManaged'
+        : 'settings.account.password.unavailable';
+      var noteFallback = mode === 'googleManaged'
+        ? '비밀번호는 Google 계정에서 관리됩니다.'
+        : '현재 로그인 방식에서는 비밀번호 관리 기능을 확인할 수 없습니다.';
+      var noteEl = document.createElement('p');
+      noteEl.id = 'settingsPasswordResetNote';
+      noteEl.className = 'settings-password-reset-note';
+      noteEl.textContent = t(noteKey, noteFallback);
+      containerEl.appendChild(noteEl);
+      if (mode === 'unavailable') passwordResetState.statusKind = 'unavailable';
+      return;
+    }
+
+    if (mode === 'missingEmail') {
+      passwordResetState.statusKind = 'missingEmail';
+      var missingNoteEl = document.createElement('p');
+      missingNoteEl.id = 'settingsPasswordResetNote';
+      missingNoteEl.className = 'settings-password-reset-note';
+      missingNoteEl.textContent = t('settings.account.password.resetMissingEmail', '계정 이메일을 확인할 수 없어 재설정 이메일을 보낼 수 없습니다.');
+      containerEl.appendChild(missingNoteEl);
+      return;
+    }
+
+    var wrapEl = document.createElement('div');
+    wrapEl.id = 'settingsPasswordResetMessage';
+    wrapEl.className = 'settings-password-reset';
+
+    var btnEl = document.createElement('button');
+    btnEl.id = 'settingsPasswordResetBtn';
+    btnEl.type = 'button';
+    btnEl.className = 'settings-password-reset-btn';
+
+    var labelEl = document.createElement('span');
+    labelEl.id = 'settingsPasswordResetBtnLabel';
+    labelEl.textContent = t('settings.account.password.resetAction', '비밀번호 재설정 이메일 보내기');
+    btnEl.appendChild(labelEl);
+
+    var statusEl = document.createElement('p');
+    statusEl.id = 'settingsPasswordResetStatus';
+    statusEl.className = 'settings-password-reset-status';
+    statusEl.setAttribute('role', 'status');
+    statusEl.setAttribute('aria-live', 'polite');
+
+    wrapEl.appendChild(btnEl);
+    wrapEl.appendChild(statusEl);
+    containerEl.appendChild(wrapEl);
+
+    applyPasswordResetStatusI18n();
+  }
+
+  function applyPasswordResetStatusI18n() {
+    var statusEl = document.getElementById('settingsPasswordResetStatus');
+    var labelEl = document.getElementById('settingsPasswordResetBtnLabel');
+    var btnEl = document.getElementById('settingsPasswordResetBtn');
+    var noteEl = document.getElementById('settingsPasswordResetNote');
+
+    if (noteEl) {
+      var noteKey, noteFallback;
+      if (passwordResetState.mode === 'googleManaged') {
+        noteKey = 'settings.account.password.googleManaged';
+        noteFallback = '비밀번호는 Google 계정에서 관리됩니다.';
+      } else if (passwordResetState.mode === 'missingEmail') {
+        noteKey = 'settings.account.password.resetMissingEmail';
+        noteFallback = '계정 이메일을 확인할 수 없어 재설정 이메일을 보낼 수 없습니다.';
+      } else {
+        noteKey = 'settings.account.password.unavailable';
+        noteFallback = '현재 로그인 방식에서는 비밀번호 관리 기능을 확인할 수 없습니다.';
+      }
+      noteEl.textContent = t(noteKey, noteFallback);
+      return;
+    }
+
+    if (labelEl) {
+      labelEl.textContent = t('settings.account.password.resetAction', '비밀번호 재설정 이메일 보내기');
+    }
+
+    if (!statusEl) return;
+    var kind = passwordResetState.statusKind;
+    var statusMap = {
+      sending: { key: 'settings.account.password.resetSending', fallback: '재설정 이메일을 보내는 중입니다…' },
+      sent: { key: 'settings.account.password.resetSent', fallback: '비밀번호 재설정 이메일을 보냈습니다. 받은편지함을 확인하세요.' },
+      sendFailed: { key: 'settings.account.password.resetSendFailed', fallback: '재설정 이메일을 보내지 못했습니다. 잠시 후 다시 시도하세요.' },
+      missingEmail: { key: 'settings.account.password.resetMissingEmail', fallback: '계정 이메일을 확인할 수 없어 재설정 이메일을 보낼 수 없습니다.' }
+    };
+    var entry = statusMap[kind];
+    if (entry) {
+      statusEl.textContent = t(entry.key, entry.fallback);
+    } else {
+      statusEl.textContent = '';
+    }
+
+    statusEl.classList.remove('settings-password-reset-status--sending', 'settings-password-reset-status--success', 'settings-password-reset-status--error');
+    if (kind === 'sending') statusEl.classList.add('settings-password-reset-status--sending');
+    if (kind === 'sent') statusEl.classList.add('settings-password-reset-status--success');
+    if (kind === 'sendFailed' || kind === 'missingEmail') statusEl.classList.add('settings-password-reset-status--error');
+
+    if (btnEl) {
+      var disabled = passwordResetState.sending || kind === 'sent';
+      btnEl.disabled = disabled;
+      if (disabled) {
+        btnEl.setAttribute('aria-disabled', 'true');
+      } else {
+        btnEl.removeAttribute('aria-disabled');
+      }
+    }
+  }
+
+  function reapplyPasswordResetI18n() {
+    applyPasswordResetStatusI18n();
+  }
+
+  function handlePasswordResetClick() {
+    if (passwordResetState.sending || passwordResetState.statusKind === 'sent') return;
+
+    var authInstance = null;
+    try {
+      if (typeof firebase === 'undefined' || typeof firebase.auth !== 'function') {
+        passwordResetState.statusKind = 'sendFailed';
+        applyPasswordResetStatusI18n();
+        return;
+      }
+      authInstance = firebase.auth();
+    } catch (e) {
+      passwordResetState.statusKind = 'sendFailed';
+      applyPasswordResetStatusI18n();
+      return;
+    }
+
+    if (!authInstance || typeof authInstance.sendPasswordResetEmail !== 'function') {
+      passwordResetState.statusKind = 'sendFailed';
+      applyPasswordResetStatusI18n();
+      return;
+    }
+
+    var user = getLiveUser();
+    var email = (user && user.email) || '';
+    if (!email) {
+      passwordResetState.statusKind = 'missingEmail';
+      applyPasswordResetStatusI18n();
+      return;
+    }
+
+    passwordResetState.sending = true;
+    passwordResetState.statusKind = 'sending';
+    applyPasswordResetStatusI18n();
+
+    Promise.resolve()
+      .then(function() {
+        return authInstance.sendPasswordResetEmail(email);
+      })
+      .then(function() {
+        passwordResetState.sending = false;
+        passwordResetState.statusKind = 'sent';
+        applyPasswordResetStatusI18n();
+      })
+      .catch(function() {
+        passwordResetState.sending = false;
+        passwordResetState.statusKind = 'sendFailed';
+        applyPasswordResetStatusI18n();
+      });
+  }
+
+  function bindPasswordResetInteractions() {
+    var btnEl = document.getElementById('settingsPasswordResetBtn');
+    if (btnEl) {
+      btnEl.addEventListener('click', handlePasswordResetClick);
+    }
+  }
+
+  /* ──────────────────────────────────────────────────────────
      DOM rendering
      ────────────────────────────────────────────────────────── */
 
@@ -807,13 +1006,7 @@
 
     var passwordValueEl = document.getElementById('settingsAccountPasswordValue');
     if (passwordValueEl) {
-      if (vm.passwordInfo === 'google') {
-        passwordValueEl.textContent = safeText('settings.account.password.googleManaged', '비밀번호는 Google 계정에서 관리됩니다.');
-      } else if (vm.passwordInfo === 'deferred') {
-        passwordValueEl.textContent = safeText('settings.account.password.deferred', '비밀번호 관리는 다음 단계에서 지원됩니다.');
-      } else {
-        passwordValueEl.textContent = safeText('settings.account.password.unavailable', '현재 로그인 방식에서는 비밀번호 관리 기능을 확인할 수 없습니다.');
-      }
+      renderPasswordResetAction(vm, passwordValueEl);
     }
   }
 
@@ -883,6 +1076,7 @@
     var vm = resolveSettingsAccountViewModel(effectiveUser);
     renderProfileSection(vm);
     renderAccountSection(vm);
+    bindPasswordResetInteractions();
 
     setTimeout(function() {
       applyI18nText();
@@ -977,4 +1171,7 @@
   window._settingsHideEditForm = hideEditForm;
   window._settingsHandleSaveDisplayName = handleSaveDisplayName;
   window._settingsHandleCancelEdit = handleCancelEdit;
+  window._settingsPasswordResetState = passwordResetState;
+  window._settingsResolvePasswordResetMode = resolvePasswordResetMode;
+  window._settingsHandlePasswordResetClick = handlePasswordResetClick;
 })();

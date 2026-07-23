@@ -24,7 +24,7 @@ test('css/settings.css is an import manifest (<= 20 lines)', () => {
 
   // Verify all @import lines are present
   SPLIT_FILES.forEach(file => {
-    const importRegex = new RegExp(`@import\\s+url\\(['"]\\.\\/settings\\/${file}['"]\\);`);
+    const importRegex = new RegExp(`@import\\s+url\\(['"]\\.\\/settings\\/${file}(\\?v=[\\w-]+)?['"]\\);`);
     assert.match(content, importRegex, `Manifest must import ./settings/${file}`);
   });
 });
@@ -41,8 +41,8 @@ test('settings.html references the original settings.css file and version query 
   // Check exact link reference tag
   assert.match(
     html,
-    /href="\.\.\/css\/settings\.css\?v=20260427-1"/,
-    'settings.html must continue to load css/settings.css?v=20260427-1'
+    /href="\.\.\/css\/settings\.css\?v=20260724-3635-1"/,
+    'settings.html must continue to load css/settings.css?v=20260724-3635-1'
   );
 });
 

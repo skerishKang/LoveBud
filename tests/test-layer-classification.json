@@ -4507,6 +4507,18 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/settings-password-reset-3635-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes js/settings.js resolvePasswordResetMode and passwordResetState in a Node VM sandbox and asserts provider matrix (password→reset, google+password→reset, password-no-email→missingEmail, google-only→googleManaged, unknown→unavailable, null→unavailable), state shape, DOM ID references, button type=button, ARIA attributes, firebase/auth/sendPasswordResetEmail guard patterns, Promise.resolve() async chain, double-click guard, i18n keys with ko/en, no inline bootstrap, no sendPasswordResetEmail in firebase-config/shared-header/settings-bootstrap, no initializeApp/apiKey in settings.js, exactly one onAuthStateChanged, and cache token chain 20260724-3635-1. No real browser/network/DB/Production mutation.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/settings-password-reset-3635-browser-contract.test.cjs",
+      "layer": "EXECUTED_REAL_LOCAL",
+      "rationale": "Actual Playwright Chromium loads actual pages/settings.html under strict CSP (script-src self + gstatic/apis). Controlled Firebase fixture only. Executes actual js/settings.js password reset email flow: password/google+password success with single sendPasswordResetEmail call and sent status, google-only managed notice with zero calls, unknown unavailable notice with zero calls, missing-email note with zero calls, rejected/sync-throw/missing-dep/non-function-dep fail-closed with retry, double-click single call, sent-state repeat prevention, KO/EN label and status retranslation on language change, language change during pending preserves sending state, missing firebase/auth global graceful sendFailed with no pageerror, shared header rendered at most once, mobile 375x812 no overflow, ARIA role/aria-live, empty status display:none. No real Firebase network, no Production reset emails sent.",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/db-migration-provenance-current-state-audit-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads current-state audit and next-child decision documents and asserts on document structure, status vocabulary, artifact classification vocabulary, test-layer vocabulary, protected issue references, path existence, and prohibition boundaries; does not execute any database, network, or runtime behavior.",
