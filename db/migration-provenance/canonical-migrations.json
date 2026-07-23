@@ -23,6 +23,6 @@
   "identity_order_checksum_contract": "docs/architecture/db-migration-identity-order-checksum-contract.md",
   "migrations": [],
   "activation_rule": "No existing scripts are retroactively declared applied. A separately approved adoption baseline must be attested before this manifest changes to ACTIVE.",
-  "destructive_ddl_rule": "A canonical migration containing destructive DDL must set risk_class=DESTRUCTIVE, declare the full set of statically detected destructive operations from the fixed operation vocabulary (no partial, unknown, duplicate, or spurious declaration), and carry a non-empty, non-placeholder approval reference. Missing, partial, unknown, spurious, or placeholder-approved declarations fail closed.",
+  "destructive_ddl_rule": "A canonical migration containing destructive DDL must set risk_class=DESTRUCTIVE, declare the full set of statically detected destructive operations from the fixed operation vocabulary (no partial, unknown, duplicate, or spurious declaration), and carry a structured approval reference (issue:/pr:/adr:/change:/approval:; not empty, placeholder, or malformed). Recognized dynamic/procedural ambiguity signals (EXECUTE of a string/format, DO blocks, LANGUAGE plpgsql, format()/concatenation building DDL) fail closed as REVIEW_REQUIRED regardless of declaration or approval. Missing, partial, unknown, spurious, placeholder-approved, or malformed declarations fail closed.",
   "destructive_ddl_contract": "docs/architecture/db-destructive-ddl-approval-contract.md"
 }

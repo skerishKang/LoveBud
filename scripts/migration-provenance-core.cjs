@@ -89,6 +89,37 @@ const DESTRUCTIVE_OPERATION_DETECTORS = Object.freeze([
 ]);
 // Approval references that are placeholders and never count as a real approval.
 const APPROVAL_PLACEHOLDER_PATTERN = /^(?:n\/a|na|none|no|todo|tbd|pending|later|unknown|placeholder|null|-|\.|x+)$/i;
+// Structured approval reference grammar. Only these schemes are accepted:
+//   issue:<positive-integer>  pr:<positive-integer>
+//   adr:<identifier>  change:<identifier>  approval:<identifier>
+// An identifier starts with an alphanumeric character, then alphanumerics or
+// '.', '_', '/', '-'. No spaces, no empty identifier, no negative or zero number.
+const APPROVAL_REFERENCE_PATTERN = /^(?:issue:[1-9][0-9]*|pr:[1-9][0-9]*|adr:[A-Za-z0-9][A-Za-z0-9._/-]*|change:[A-Za-z0-9][A-Za-z0-9._/-]*|approval:[A-Za-z0-9][A-Za-z0-9._/-]*)$/;
+// Recognized ambiguity signals: dynamic/procedural SQL forms whose actual
+// operations a static regex cannot determine. These fail closed as
+// REVIEW_REQUIRED. This is NOT a proof that all hidden destructive semantics are
+// caught; unrecognized PostgreSQL semantics remain a residual limitation that a
+// future parser/engine rehearsal must cover.
+const DESTRUCTIVE_REVIEW_REQUIRED_REASONS = Object.freeze([
+  'DYNAMIC_EXECUTE',
+  'PROCEDURAL_DO_BLOCK',
+  'PLPGSQL_BODY',
+  'GENERATED_DDL'
+]);
+const REVIEW_REQUIRED_DETECTORS = Object.freeze([
+  // EXECUTE of a string literal / dollar-quoted string / format() => dynamic SQL.
+  { reason: 'DYNAMIC_EXECUTE', pattern: /\bEXECUTE\s+(?:N?['"]|\$[^$]*\$|format\s*\()/i },
+  // PostgreSQL anonymous procedural block: DO $$ ... $$ (or DO $tag$ ... $tag$).
+  { reason: 'PROCEDURAL_DO_BLOCK', pattern: /\bDO\s+\$(?:\$|[A-Za-z_])/i },
+  // PL/pgSQL function body: procedural code that may build/run DDL dynamically.
+  { reason: 'PLPGSQL_BODY', pattern: /\bLANGUAGE\s+plpgsql\b/i },
+  // DDL generated at runtime: format() carrying a DDL keyword, or string
+  // concatenation assembling a DDL keyword from fragments.
+  {
+    reason: 'GENERATED_DDL',
+    pattern: /(?:\bformat\s*\([^)]*\b(?:DROP|TRUNCATE|ALTER)\b)|(?:'[^']*\b(?:DROP|TRUNCATE|ALTER)\b[^']*'\s*\|\|)|(?:\|\|\s*'[^']*\b(?:DROP|TRUNCATE|ALTER|TABLE|INDEX|COLUMN|CONSTRAINT|FUNCTION|TRIGGER|TYPE|POLICY)\b[^']*')/i
+  }
+]);
 const SENSITIVE_MARKER_PATTERN = /(?:postgres(?:ql)?:\/\/|(?:api[_-]?key|token|secret|password)\s*[:=]|-----BEGIN(?: [A-Z]+)? PRIVATE KEY-----)/i;
 const DOC_OPERATOR_PATTERN = /\b(?:ON_ERROR_STOP|migration-[\w.-]+\.sql|-f\s+scripts\/|pg_dump[\s\S]{0,160}--(?:schema-only|table=)|BEGIN\s+TRANSACTION|psql\s+["'$]|pg_dump\s+["'$])/i;
 
@@ -115,6 +146,28 @@ function detectDestructiveOperations(sqlText) {
     if (detector.pattern.test(text)) detected.add(detector.operation);
   }
   return Array.from(detected).sort();
+}
+
+// Deterministically classify recognized dynamic/procedural ambiguity signals in a
+// SQL text. Returns a sorted array of unique reason codes from
+// DESTRUCTIVE_REVIEW_REQUIRED_REASONS. A non-empty result means the static
+// detector cannot determine the actual operations, so the migration must fail
+// closed as REVIEW_REQUIRED. This recognizes obvious signals only; it does not
+// prove the absence of unrecognized PostgreSQL semantics.
+function detectDestructiveReviewRequiredReasons(sqlText) {
+  const reasons = new Set();
+  const text = String(sqlText || '');
+  for (const detector of REVIEW_REQUIRED_DETECTORS) {
+    if (detector.pattern.test(text)) reasons.add(detector.reason);
+  }
+  return Array.from(reasons).sort();
+}
+
+// True when the value is a structured approval reference matching
+// APPROVAL_REFERENCE_PATTERN (issue/pr positive integer, or adr/change/approval
+// identifier). Placeholders and arbitrary strings are not valid.
+function isValidApprovalReference(value) {
+  return APPROVAL_REFERENCE_PATTERN.test(String(value || '').trim());
 }
 
 function loadJson(filePath) {
@@ -395,6 +448,7 @@ function validateMigrationManifest(manifest, repoRoot) {
     }
     let detectedDestructive = [];
     let destructiveSourceRead = false;
+    let sourceText = '';
 
     // Dependency graph validation (for ACTIVE/manifest with entries).
     const seenDeps = new Set();
@@ -427,6 +481,7 @@ function validateMigrationManifest(manifest, repoRoot) {
             errors.push(`MIGRATION_SOURCE_CHECKSUM_MISMATCH:${migrationId}`);
           }
           detectedDestructive = detectDestructiveOperations(sourceBytes.toString('utf8'));
+          sourceText = sourceBytes.toString('utf8');
           destructiveSourceRead = true;
         }
       }
@@ -452,6 +507,14 @@ function validateMigrationManifest(manifest, repoRoot) {
           errors.push(`MIGRATION_DESTRUCTIVE_DECLARATION_SPURIOUS:${migrationId}:${declaredOperation}`);
         }
       }
+      // Recognized dynamic/procedural ambiguity signals fail closed as REVIEW_REQUIRED.
+      // The static detector cannot determine the actual operations of these forms, so
+      // they are rejected regardless of any destructive_operations declaration or
+      // approval_reference.
+      const reviewRequiredReasons = detectDestructiveReviewRequiredReasons(sourceText);
+      for (const reason of reviewRequiredReasons) {
+        errors.push(`MIGRATION_DESTRUCTIVE_REVIEW_REQUIRED:${migrationId}:${reason}`);
+      }
     }
 
     // risk_class / approval consistency for destructive migrations.
@@ -467,6 +530,8 @@ function validateMigrationManifest(manifest, repoRoot) {
         errors.push(`MIGRATION_DESTRUCTIVE_APPROVAL_MISSING:${migrationId}`);
       } else if (APPROVAL_PLACEHOLDER_PATTERN.test(String(migration.approval_reference).trim())) {
         errors.push(`MIGRATION_DESTRUCTIVE_APPROVAL_PLACEHOLDER:${migrationId}`);
+      } else if (!isValidApprovalReference(migration.approval_reference)) {
+        errors.push(`MIGRATION_DESTRUCTIVE_APPROVAL_INVALID:${migrationId}`);
       }
     }
   });
@@ -769,10 +834,14 @@ module.exports = {
   REQUIRED_INVENTORY_FIELDS,
   REQUIRED_MIGRATION_FIELDS,
   DESTRUCTIVE_OPERATION_VOCABULARY,
+  DESTRUCTIVE_REVIEW_REQUIRED_REASONS,
+  APPROVAL_REFERENCE_PATTERN,
   SHA256_PATTERN,
   sha256,
   sha256File,
   detectDestructiveOperations,
+  detectDestructiveReviewRequiredReasons,
+  isValidApprovalReference,
   loadJson,
   normalizePath,
   discoverRepositoryPaths,

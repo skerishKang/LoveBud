@@ -291,4 +291,129 @@ describe('DB destructive DDL approval contract (#3458)', () => {
       assert.doesNotMatch(source, /spawnSync|execSync|spawn\(|exec\(/);
     });
   });
+
+  describe('8. REVIEW_REQUIRED ambiguity signals (fail closed)', () => {
+    it('concatenated EXECUTE destructive SQL is REVIEW_REQUIRED', () => {
+      const errors = validateDestructive("EXECUTE 'DROP ' || 'TABLE probe';\n");
+      assert.ok(errors.some((e) => e.startsWith('MIGRATION_DESTRUCTIVE_REVIEW_REQUIRED')), errors.join('\n'));
+    });
+    it('DO $$ ... EXECUTE ... $$ block is REVIEW_REQUIRED', () => {
+      const errors = validateDestructive("DO $$\nBEGIN\n  EXECUTE 'DROP TABLE probe';\nEND\n$$;\n");
+      assert.ok(errors.some((e) => e.startsWith('MIGRATION_DESTRUCTIVE_REVIEW_REQUIRED:20260101000000_probe:PROCEDURAL_DO_BLOCK')), errors.join('\n'));
+    });
+    it('LANGUAGE plpgsql body with a dynamic operation is REVIEW_REQUIRED', () => {
+      const errors = validateDestructive("CREATE FUNCTION drop_it() RETURNS void AS $$\nBEGIN\n  EXECUTE 'DROP TABLE probe';\nEND\n$$ LANGUAGE plpgsql;\n");
+      assert.ok(errors.some((e) => e.startsWith('MIGRATION_DESTRUCTIVE_REVIEW_REQUIRED:20260101000000_probe:PLPGSQL_BODY')), errors.join('\n'));
+    });
+    it('format() building destructive SQL is REVIEW_REQUIRED', () => {
+      const errors = validateDestructive("EXECUTE format('DROP TABLE %I', target_name);\n");
+      assert.ok(errors.some((e) => e.startsWith('MIGRATION_DESTRUCTIVE_REVIEW_REQUIRED:20260101000000_probe:GENERATED_DDL')), errors.join('\n'));
+    });
+    it('string concatenation building DROP TABLE is REVIEW_REQUIRED', () => {
+      const errors = validateDestructive("EXECUTE 'DROP TABLE ' || quote_ident(target_name);\n");
+      assert.ok(errors.some((e) => e.startsWith('MIGRATION_DESTRUCTIVE_REVIEW_REQUIRED:20260101000000_probe:GENERATED_DDL')), errors.join('\n'));
+    });
+    it('returns sorted, unique reason codes', () => {
+      const reasons = core.detectDestructiveReviewRequiredReasons("DO $$\nBEGIN\n  EXECUTE 'DROP ' || 'TABLE t';\nEND\n$$;\n");
+      assert.deepStrictEqual(reasons, [...reasons].sort());
+      assert.deepStrictEqual(reasons, [...new Set(reasons)]);
+      assert.ok(reasons.includes('PROCEDURAL_DO_BLOCK'));
+      assert.ok(reasons.includes('DYNAMIC_EXECUTE'));
+    });
+    it('REVIEW_REQUIRED persists even with destructive_operations and a valid approval', () => {
+      const errors = validateDestructive("DO $$\nBEGIN\n  EXECUTE 'DROP TABLE probe';\nEND\n$$;\n", {
+        risk_class: 'DESTRUCTIVE',
+        destructive_operations: ['DROP_TABLE'],
+        approval_reference: 'issue:3458'
+      });
+      assert.ok(errors.some((e) => e.startsWith('MIGRATION_DESTRUCTIVE_REVIEW_REQUIRED')), errors.join('\n'));
+    });
+  });
+
+  describe('9. Non-review-required forms (no over-blocking)', () => {
+    it('plain additive CREATE TABLE is not REVIEW_REQUIRED', () => {
+      assert.deepStrictEqual(core.detectDestructiveReviewRequiredReasons('CREATE TABLE probe (id text);\n'), []);
+    });
+    it('direct DROP TABLE keeps the fixed DROP_TABLE path, not REVIEW_REQUIRED', () => {
+      assert.deepStrictEqual(core.detectDestructiveReviewRequiredReasons('DROP TABLE probe;\n'), []);
+      assert.ok(core.detectDestructiveOperations('DROP TABLE probe;\n').includes('DROP_TABLE'));
+    });
+    it('the word execute inside a normal string value is not a false positive', () => {
+      assert.deepStrictEqual(core.detectDestructiveReviewRequiredReasons("INSERT INTO logs (msg) VALUES ('please execute the plan');\n"), []);
+    });
+    it('a SQL function without dynamic execution is not over-blocked', () => {
+      assert.deepStrictEqual(core.detectDestructiveReviewRequiredReasons("CREATE FUNCTION one() RETURNS int AS $$ SELECT 1 $$ LANGUAGE sql;\n"), []);
+    });
+  });
+
+  describe('10. Approval reference grammar (valid)', () => {
+    it('accepts issue:<digits>', () => {
+      assert.ok(core.isValidApprovalReference('issue:3458'));
+    });
+    it('accepts pr:<digits>', () => {
+      assert.ok(core.isValidApprovalReference('pr:3633'));
+    });
+    it('accepts adr:<identifier>', () => {
+      assert.ok(core.isValidApprovalReference('adr:0001'));
+    });
+    it('accepts change:<identifier>', () => {
+      assert.ok(core.isValidApprovalReference('change:DB-2026-001'));
+    });
+    it('accepts approval:<identifier> with slash', () => {
+      assert.ok(core.isValidApprovalReference('approval:arch/db-001'));
+    });
+  });
+
+  describe('11. Approval reference grammar (invalid)', () => {
+    it('rejects "todo later"', () => {
+      assert.ok(!core.isValidApprovalReference('todo later'));
+    });
+    it('rejects "pending-review"', () => {
+      assert.ok(!core.isValidApprovalReference('pending-review'));
+    });
+    it('rejects "ask-owner"', () => {
+      assert.ok(!core.isValidApprovalReference('ask-owner'));
+    });
+    it('rejects "approval-needed"', () => {
+      assert.ok(!core.isValidApprovalReference('approval-needed'));
+    });
+    it('rejects arbitrary "abc"', () => {
+      assert.ok(!core.isValidApprovalReference('abc'));
+    });
+    it('rejects "issue:" (empty number)', () => {
+      assert.ok(!core.isValidApprovalReference('issue:'));
+    });
+    it('rejects "issue:abc" (non-numeric)', () => {
+      assert.ok(!core.isValidApprovalReference('issue:abc'));
+    });
+    it('rejects "issue:0" (not positive)', () => {
+      assert.ok(!core.isValidApprovalReference('issue:0'));
+    });
+    it('rejects "pr:-1" (negative)', () => {
+      assert.ok(!core.isValidApprovalReference('pr:-1'));
+    });
+    it('rejects "change:" (empty identifier)', () => {
+      assert.ok(!core.isValidApprovalReference('change:'));
+    });
+    it('rejects a reference containing a space', () => {
+      assert.ok(!core.isValidApprovalReference('approval:needs review'));
+    });
+    it('a non-placeholder invalid approval fails closed as INVALID in a destructive migration', () => {
+      const errors = validateDestructive('DROP TABLE probe;\n', {
+        risk_class: 'DESTRUCTIVE',
+        destructive_operations: ['DROP_TABLE'],
+        approval_reference: 'abc'
+      });
+      assert.ok(errors.some((e) => e.startsWith('MIGRATION_DESTRUCTIVE_APPROVAL_INVALID')), errors.join('\n'));
+    });
+    it('a placeholder approval stays PLACEHOLDER (not INVALID)', () => {
+      const errors = validateDestructive('DROP TABLE probe;\n', {
+        risk_class: 'DESTRUCTIVE',
+        destructive_operations: ['DROP_TABLE'],
+        approval_reference: 'n/a'
+      });
+      assert.ok(errors.some((e) => e.startsWith('MIGRATION_DESTRUCTIVE_APPROVAL_PLACEHOLDER')), errors.join('\n'));
+      assert.ok(!errors.some((e) => e.startsWith('MIGRATION_DESTRUCTIVE_APPROVAL_INVALID')), errors.join('\n'));
+    });
+  });
 });
