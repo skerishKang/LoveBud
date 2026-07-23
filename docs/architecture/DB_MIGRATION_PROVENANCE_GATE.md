@@ -390,6 +390,8 @@ If a migration starts but does not commit, the ledger must expose a blocking non
 
 The fail-closed runner protocol that enforces this boundary — an ACTIVE-manifest requirement, an exact committed ledger prefix, manifest-derived target binding, idempotent no-op/retry rules, preconditions, ledger-append authorization that is bound to a re-evaluated canonical preflight (a forged preflight result never authorizes an append), bounded recovery decisions, and the prohibition on automatic down migrations, re-application of committed migrations, ledger deletion, and ledger history rewrite — is defined and source-tested as a pure contract in `docs/architecture/db-canonical-runner-protocol-contract.md`. That contract is a protocol definition, not a runner; it performs no database connection, SQL execution, ledger write, or advisory lock acquisition.
 
+The dependency-injected async orchestrator that sequences synthetic dependencies around the protocol calls (source validation, manifest load, advisory-lock lifecycle, ledger read, precondition, preflight, execution, postcondition, lock recheck, completion, ledger append, lock release, sanitized result) is defined and source-tested in `docs/architecture/db-canonical-runner-orchestrator-contract.md`. It is not a runner and performs no database connection, SQL execution, real advisory lock, or real ledger write.
+
 ## I. Clean Database Reconstruction
 
 The desired reconstruction contract is deterministic:
