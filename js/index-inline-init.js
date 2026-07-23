@@ -409,7 +409,11 @@
             }
           }
         });
-        media.appendChild(img);
+        if (fallback && media.contains(fallback)) {
+          media.insertBefore(img, fallback);
+        } else {
+          media.appendChild(img);
+        }
         img.src = youtubeThumbUrl(video.id, true);
       }
     }
