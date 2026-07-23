@@ -4529,6 +4529,12 @@
       "layer": "SOURCE_STATIC",
       "rationale": "Exercises scripts/migration-provenance-core.cjs (detectDestructiveOperations and validateMigrationManifest) against synthetic .sql fixtures created in the OS temporary directory (removed on completion; none committed to the repository) to assert the static destructive operation vocabulary (DROP_TABLE, TRUNCATE_TABLE, DROP_COLUMN, ALTER_COLUMN_TYPE, SET_NOT_NULL, DROP_CONSTRAINT, DROP_INDEX, DROP_FUNCTION, DROP_TRIGGER, DROP_TYPE, DROP_POLICY, FK_CASCADE_EXPANSION), the actual-vs-declared declaration rule (missing/partial/unknown/duplicate/spurious all fail closed), risk_class=DESTRUCTIVE enforcement, and approval-reference policy (empty and placeholder approvals rejected; real references accepted). Does not connect to any database, execute SQL, add a canonical migration, or activate the canonical stream.",
       "capabilities": []
+    },
+    {
+      "path": "tests/contracts/db-canonical-runner-protocol-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Exercises scripts/migration-runner-protocol-core.cjs (evaluateMigrationPreflight and evaluateMigrationCompletion) as pure functions over bounded input objects (no database connection, no SQL execution, no ledger write, no advisory lock acquisition, no SQL fixtures) to assert the fail-closed preflight (source validation, advisory lock ACQUIRED, canonical sequence, dependency ordering, ledger integrity, idempotent retry no-op/checksum-mismatch/non-committed, transaction mode, precondition exactly PASS), the ledger-append authorization (READY_TO_APPEND_LEDGER only when execution succeeded, transaction committed, postcondition PASS, checksum matches, source valid, lock acquired, prior sequence valid), the bounded recovery decisions, and that forbidden down-migration/rollback/rewrite actions are never returned. Does not implement a runner or connect to any database.",
+      "capabilities": []
     }
   ],
   "supplemental": [

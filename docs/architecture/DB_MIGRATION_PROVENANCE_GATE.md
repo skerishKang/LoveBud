@@ -388,6 +388,8 @@ Every canonical manifest entry must declare `rollback_support`, but that field c
 
 If a migration starts but does not commit, the ledger must expose a blocking non-committed outcome. The runner must stop instead of silently retrying or continuing with later ids.
 
+The fail-closed runner protocol that enforces this boundary — preflight source/lock/sequence/retry/precondition checks, ledger-append authorization, bounded recovery decisions, and the prohibition on automatic down migrations, ledger deletion, and ledger history rewrite — is defined and source-tested as a pure contract in `docs/architecture/db-canonical-runner-protocol-contract.md`. That contract is a protocol definition, not a runner; it performs no database connection, SQL execution, ledger write, or advisory lock acquisition.
+
 ## I. Clean Database Reconstruction
 
 The desired reconstruction contract is deterministic:
