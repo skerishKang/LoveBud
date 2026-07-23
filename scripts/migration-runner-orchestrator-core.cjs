@@ -105,6 +105,11 @@ const CONDITION_STATUSES = new Set(['PASS', 'FAIL', 'UNAVAILABLE', 'NOT_EVALUATE
 const LOCK_CHECK_STATUSES = new Set(['ACQUIRED', 'LOST', 'FAILED', 'UNAVAILABLE']);
 const EXECUTION_OUTCOMES = new Set(['NOT_RUN', 'SUCCEEDED', 'FAILED', 'UNKNOWN']);
 const TRANSACTION_OUTCOMES = new Set(['NOT_EVALUATED', 'COMMITTED', 'ROLLED_BACK', 'PARTIAL', 'UNKNOWN']);
+// Exact allowed status enums for append/release evidence. A plain-record shape
+// alone does not make a status valid: any status outside these sets (missing,
+// empty, null, or an unknown string) is malformed evidence.
+const APPEND_STATUSES = new Set(['APPENDED', 'FAILED', 'UNKNOWN']);
+const RELEASE_STATUSES = new Set(['RELEASED', 'FAILED', 'UNKNOWN']);
 
 function isNonEmptyString(value) {
   return typeof value === 'string' && value.trim().length > 0;
@@ -542,16 +547,20 @@ async function runCanonicalMigration(input) {
     const appendResult = await callDependency(deps.appendLedgerRecord, { record: ledgerRecord, lockHandle });
     let appendSucceeded = false;
     if (!appendResult.ok) {
-      // Dependency threw: append failed (no RESULT_INVALID for a throw).
-      appendSucceeded = false;
+      // Dependency threw: generic failure blocker + domain blocker.
+      addBlocker(dependencyFailed('appendLedgerRecord'));
     } else if (!isPlainRecord(appendResult.value)) {
-      // Malformed result: dual blocker.
+      // Non-plain-record result: malformed evidence (dual blocker).
       addBlocker(resultInvalid('appendLedgerRecord'));
-      appendSucceeded = false;
-    } else if (appendResult.value.status === 'APPENDED') {
-      appendSucceeded = true;
+    } else {
+      const appendStatus = appendResult.value.status;
+      if (!APPEND_STATUSES.has(appendStatus)) {
+        // Missing/empty/null/unknown status: malformed evidence (dual blocker).
+        addBlocker(resultInvalid('appendLedgerRecord'));
+      }
+      // APPENDED => success; FAILED/UNKNOWN => schema-valid negative (domain only).
+      appendSucceeded = appendStatus === 'APPENDED';
     }
-    // status FAILED/UNKNOWN/other: schema-valid negative result, no RESULT_INVALID.
     if (!appendSucceeded) {
       addEvent(ORCHESTRATION_EVENTS.LEDGER_APPEND_FAILED);
       addBlocker(ORCHESTRATION_BLOCKERS.ORCHESTRATOR_LEDGER_APPEND_FAILED);
@@ -584,16 +593,20 @@ async function runCanonicalMigration(input) {
       const releaseResult = await callDependency(deps.releaseAdvisoryLock, { lockHandle });
       let releaseSucceeded = false;
       if (!releaseResult.ok) {
-        // Dependency threw: release failed (no RESULT_INVALID for a throw).
-        releaseSucceeded = false;
+        // Dependency threw: generic failure blocker + domain blocker.
+        addBlocker(dependencyFailed('releaseAdvisoryLock'));
       } else if (!isPlainRecord(releaseResult.value)) {
-        // Malformed result: dual blocker.
+        // Non-plain-record result: malformed evidence (dual blocker).
         addBlocker(resultInvalid('releaseAdvisoryLock'));
-        releaseSucceeded = false;
-      } else if (releaseResult.value.status === 'RELEASED') {
-        releaseSucceeded = true;
+      } else {
+        const releaseStatus = releaseResult.value.status;
+        if (!RELEASE_STATUSES.has(releaseStatus)) {
+          // Missing/empty/null/unknown status: malformed evidence (dual blocker).
+          addBlocker(resultInvalid('releaseAdvisoryLock'));
+        }
+        // RELEASED => success; FAILED/UNKNOWN => schema-valid negative (domain only).
+        releaseSucceeded = releaseStatus === 'RELEASED';
       }
-      // status FAILED/UNKNOWN/other: schema-valid negative result, no RESULT_INVALID.
       if (releaseSucceeded) {
         addEvent(ORCHESTRATION_EVENTS.LOCK_RELEASED);
         state.lockReleased = true;

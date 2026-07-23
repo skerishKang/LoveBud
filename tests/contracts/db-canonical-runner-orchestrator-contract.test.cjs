@@ -502,15 +502,19 @@ describe('DB canonical runner orchestrator contract (#3458)', () => {
       const r = await runCanonicalMigration(makeInput(deps));
       assert.strictEqual(r.outcome, ORCHESTRATION_OUTCOMES.LEDGER_APPEND_FAILED);
     });
-    it('append malformed yields LEDGER_APPEND_FAILED', async () => {
+    it('append malformed (unknown status) yields dual blocker', async () => {
       const { deps } = createMocks({ appendLedgerRecord: () => ({ status: 'WEIRD' }) });
       const r = await runCanonicalMigration(makeInput(deps));
       assert.strictEqual(r.outcome, ORCHESTRATION_OUTCOMES.LEDGER_APPEND_FAILED);
+      assert.ok(r.blockers.includes(`${ORCHESTRATION_BLOCKERS.ORCHESTRATOR_DEPENDENCY_RESULT_INVALID}:appendLedgerRecord`), r.blockers.join(','));
+      assert.ok(r.blockers.includes(ORCHESTRATION_BLOCKERS.ORCHESTRATOR_LEDGER_APPEND_FAILED), r.blockers.join(','));
     });
-    it('append throw yields LEDGER_APPEND_FAILED', async () => {
+    it('append throw yields DEPENDENCY_FAILED + LEDGER_APPEND_FAILED', async () => {
       const { deps } = createMocks({ appendLedgerRecord: () => { throw new Error('x'); } });
       const r = await runCanonicalMigration(makeInput(deps));
       assert.strictEqual(r.outcome, ORCHESTRATION_OUTCOMES.LEDGER_APPEND_FAILED);
+      assert.ok(r.blockers.includes(`${ORCHESTRATION_BLOCKERS.ORCHESTRATOR_DEPENDENCY_FAILED}:appendLedgerRecord`), r.blockers.join(','));
+      assert.ok(r.blockers.includes(ORCHESTRATION_BLOCKERS.ORCHESTRATOR_LEDGER_APPEND_FAILED), r.blockers.join(','));
     });
     it('after append failure, execute is not re-called', async () => {
       const { deps, calls } = createMocks({ appendLedgerRecord: () => ({ status: 'FAILED' }) });
@@ -582,15 +586,19 @@ describe('DB canonical runner orchestrator contract (#3458)', () => {
       const r = await runCanonicalMigration(makeInput(deps));
       assert.strictEqual(r.outcome, ORCHESTRATION_OUTCOMES.LOCK_RELEASE_FAILED);
     });
-    it('release malformed yields LOCK_RELEASE_FAILED', async () => {
+    it('release malformed (unknown status) yields dual blocker', async () => {
       const { deps } = createMocks({ releaseAdvisoryLock: () => ({ status: 'WEIRD' }) });
       const r = await runCanonicalMigration(makeInput(deps));
       assert.strictEqual(r.outcome, ORCHESTRATION_OUTCOMES.LOCK_RELEASE_FAILED);
+      assert.ok(r.blockers.includes(`${ORCHESTRATION_BLOCKERS.ORCHESTRATOR_DEPENDENCY_RESULT_INVALID}:releaseAdvisoryLock`), r.blockers.join(','));
+      assert.ok(r.blockers.includes(ORCHESTRATION_BLOCKERS.ORCHESTRATOR_LOCK_RELEASE_FAILED), r.blockers.join(','));
     });
-    it('release throw yields LOCK_RELEASE_FAILED', async () => {
+    it('release throw yields DEPENDENCY_FAILED + LOCK_RELEASE_FAILED', async () => {
       const { deps } = createMocks({ releaseAdvisoryLock: () => { throw new Error('x'); } });
       const r = await runCanonicalMigration(makeInput(deps));
       assert.strictEqual(r.outcome, ORCHESTRATION_OUTCOMES.LOCK_RELEASE_FAILED);
+      assert.ok(r.blockers.includes(`${ORCHESTRATION_BLOCKERS.ORCHESTRATOR_DEPENDENCY_FAILED}:releaseAdvisoryLock`), r.blockers.join(','));
+      assert.ok(r.blockers.includes(ORCHESTRATION_BLOCKERS.ORCHESTRATOR_LOCK_RELEASE_FAILED), r.blockers.join(','));
     });
     it('release failure after successful append preserves ledgerAppended=true', async () => {
       const { deps } = createMocks({ releaseAdvisoryLock: () => ({ status: 'FAILED' }) });
@@ -844,6 +852,74 @@ describe('DB canonical runner orchestrator contract (#3458)', () => {
       const r = await runCanonicalMigration(makeInput(deps));
       assert.strictEqual(r.outcome, ORCHESTRATION_OUTCOMES.EXECUTED_AND_RECORDED);
       assert.strictEqual(observedArgCount, 0);
+    });
+  });
+
+  describe('12. Append/release evidence classification matrix', () => {
+    const APPEND_INVALID = [
+      ['empty object {}', () => ({})],
+      ['empty status', () => ({ status: '' })],
+      ['null status', () => ({ status: null })],
+      ['wrong enum RELEASED', () => ({ status: 'RELEASED' })]
+    ];
+    for (const [label, make] of APPEND_INVALID) {
+      it(`append ${label} is malformed (dual blocker)`, async () => {
+        const { deps } = createMocks({ appendLedgerRecord: make });
+        const r = await runCanonicalMigration(makeInput(deps));
+        assert.strictEqual(r.outcome, ORCHESTRATION_OUTCOMES.LEDGER_APPEND_FAILED, label);
+        assert.ok(r.blockers.includes(`${ORCHESTRATION_BLOCKERS.ORCHESTRATOR_DEPENDENCY_RESULT_INVALID}:appendLedgerRecord`), `${label}: ${r.blockers.join(',')}`);
+        assert.ok(r.blockers.includes(ORCHESTRATION_BLOCKERS.ORCHESTRATOR_LEDGER_APPEND_FAILED), label);
+        assert.deepStrictEqual(r.blockers, [...new Set(r.blockers)].sort());
+      });
+    }
+    it('append FAILED is a schema-valid negative (domain blocker only)', async () => {
+      const { deps } = createMocks({ appendLedgerRecord: () => ({ status: 'FAILED' }) });
+      const r = await runCanonicalMigration(makeInput(deps));
+      assert.strictEqual(r.outcome, ORCHESTRATION_OUTCOMES.LEDGER_APPEND_FAILED);
+      assert.ok(r.blockers.includes(ORCHESTRATION_BLOCKERS.ORCHESTRATOR_LEDGER_APPEND_FAILED));
+      assert.ok(!r.blockers.some((b) => b.startsWith('ORCHESTRATOR_DEPENDENCY_RESULT_INVALID')), r.blockers.join(','));
+    });
+    it('append UNKNOWN is a schema-valid negative (domain blocker only)', async () => {
+      const { deps } = createMocks({ appendLedgerRecord: () => ({ status: 'UNKNOWN' }) });
+      const r = await runCanonicalMigration(makeInput(deps));
+      assert.ok(r.blockers.includes(ORCHESTRATION_BLOCKERS.ORCHESTRATOR_LEDGER_APPEND_FAILED));
+      assert.ok(!r.blockers.some((b) => b.startsWith('ORCHESTRATOR_DEPENDENCY_RESULT_INVALID')), r.blockers.join(','));
+    });
+    const RELEASE_INVALID = [
+      ['empty object {}', () => ({})],
+      ['empty status', () => ({ status: '' })],
+      ['null status', () => ({ status: null })],
+      ['wrong enum APPENDED', () => ({ status: 'APPENDED' })]
+    ];
+    for (const [label, make] of RELEASE_INVALID) {
+      it(`release ${label} is malformed (dual blocker)`, async () => {
+        const { deps } = createMocks({ releaseAdvisoryLock: make });
+        const r = await runCanonicalMigration(makeInput(deps));
+        assert.strictEqual(r.outcome, ORCHESTRATION_OUTCOMES.LOCK_RELEASE_FAILED, label);
+        assert.ok(r.blockers.includes(`${ORCHESTRATION_BLOCKERS.ORCHESTRATOR_DEPENDENCY_RESULT_INVALID}:releaseAdvisoryLock`), `${label}: ${r.blockers.join(',')}`);
+        assert.ok(r.blockers.includes(ORCHESTRATION_BLOCKERS.ORCHESTRATOR_LOCK_RELEASE_FAILED), label);
+        assert.deepStrictEqual(r.blockers, [...new Set(r.blockers)].sort());
+      });
+    }
+    it('release FAILED is a schema-valid negative (domain blocker only)', async () => {
+      const { deps } = createMocks({ releaseAdvisoryLock: () => ({ status: 'FAILED' }) });
+      const r = await runCanonicalMigration(makeInput(deps));
+      assert.strictEqual(r.outcome, ORCHESTRATION_OUTCOMES.LOCK_RELEASE_FAILED);
+      assert.ok(r.blockers.includes(ORCHESTRATION_BLOCKERS.ORCHESTRATOR_LOCK_RELEASE_FAILED));
+      assert.ok(!r.blockers.some((b) => b.startsWith('ORCHESTRATOR_DEPENDENCY_RESULT_INVALID')), r.blockers.join(','));
+    });
+    it('release UNKNOWN is a schema-valid negative (domain blocker only)', async () => {
+      const { deps } = createMocks({ releaseAdvisoryLock: () => ({ status: 'UNKNOWN' }) });
+      const r = await runCanonicalMigration(makeInput(deps));
+      assert.ok(r.blockers.includes(ORCHESTRATION_BLOCKERS.ORCHESTRATOR_LOCK_RELEASE_FAILED));
+      assert.ok(!r.blockers.some((b) => b.startsWith('ORCHESTRATOR_DEPENDENCY_RESULT_INVALID')), r.blockers.join(','));
+    });
+    it('release failure preserves successful append flags', async () => {
+      const { deps } = createMocks({ releaseAdvisoryLock: () => ({ status: 'FAILED' }) });
+      const r = await runCanonicalMigration(makeInput(deps));
+      assert.strictEqual(r.outcome, ORCHESTRATION_OUTCOMES.LOCK_RELEASE_FAILED);
+      assert.strictEqual(r.ledgerAppended, true);
+      assert.strictEqual(r.executionAttempted, true);
     });
   });
 });

@@ -93,7 +93,17 @@ No extra fields. The prohibited fields (`operator_email`, `operator_user_id`, `c
 
 ## Append failure / manual reconciliation
 
-If `now()` is invalid, the outcome is `LEDGER_APPEND_FAILED` with `ORCHESTRATOR_CLOCK_RESULT_INVALID` and append is not called. If append throws, is malformed, `FAILED`, or `UNKNOWN`, the outcome is `LEDGER_APPEND_FAILED` with `ORCHESTRATOR_LEDGER_APPEND_FAILED`, recovery `MANUAL_RECONCILIATION_REQUIRED`, `ledgerAppended=false`. The migration is never re-executed, the append is never retried, and no down migration or ledger rewrite occurs. The lock release is still attempted.
+If `now()` is invalid, the outcome is `LEDGER_APPEND_FAILED` with `ORCHESTRATOR_CLOCK_RESULT_INVALID` and append is not called. Otherwise the append result is classified by **both** plain-record shape **and** status enum (the two checks are independent — a plain-record shape alone does not make a status valid):
+
+- `APPENDED` → success; no blocker.
+- `FAILED` / `UNKNOWN` → schema-valid negative; `ORCHESTRATOR_LEDGER_APPEND_FAILED` only (no `RESULT_INVALID`).
+- missing / empty / null / unknown status (e.g. `{}`, `{ status: '' }`, `{ status: null }`, `{ status: 'WEIRD' }`, or a wrong enum such as `{ status: 'RELEASED' }`) → malformed evidence; `ORCHESTRATOR_DEPENDENCY_RESULT_INVALID:appendLedgerRecord` **and** `ORCHESTRATOR_LEDGER_APPEND_FAILED`.
+- non-plain-record result (array/function/primitive) → `ORCHESTRATOR_DEPENDENCY_RESULT_INVALID:appendLedgerRecord` **and** `ORCHESTRATOR_LEDGER_APPEND_FAILED`.
+- throw → `ORCHESTRATOR_DEPENDENCY_FAILED:appendLedgerRecord` **and** `ORCHESTRATOR_LEDGER_APPEND_FAILED`.
+
+The allowed append status enum is exactly `APPENDED | FAILED | UNKNOWN`. On every append failure the outcome is `LEDGER_APPEND_FAILED`, recovery `MANUAL_RECONCILIATION_REQUIRED`, `ledgerAppended=false`; the migration is never re-executed, the append is never retried, and no down migration or ledger rewrite occurs. The lock release is still attempted.
+
+The release result follows the same shape-plus-enum rule with the enum `RELEASED | FAILED | UNKNOWN`: `RELEASED` → success; `FAILED`/`UNKNOWN` → `ORCHESTRATOR_LOCK_RELEASE_FAILED` only; missing/empty/null/unknown status (e.g. `{}`, `{ status: '' }`, `{ status: null }`, `{ status: 'WEIRD' }`, or a wrong enum such as `{ status: 'APPENDED' }`) and non-plain-record results → `ORCHESTRATOR_DEPENDENCY_RESULT_INVALID:releaseAdvisoryLock` **and** `ORCHESTRATOR_LOCK_RELEASE_FAILED`; throw → `ORCHESTRATOR_DEPENDENCY_FAILED:releaseAdvisoryLock` **and** `ORCHESTRATOR_LOCK_RELEASE_FAILED`. Release-failure outcome/recovery/flag-preservation rules are unchanged.
 
 ## Destructive unknown recovery
 
