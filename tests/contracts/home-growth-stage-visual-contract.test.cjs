@@ -578,15 +578,27 @@ console.log('✓ 27: network + cards reveal concurrently (timing bounds hold)');
 console.log('✓ 28: mobile is a 2-column vertical journey (24px rail + cards)');
 
 // ============================================================
-// 29. Artist pill + card badge DOM fully removed
+// 29. Artist pill + card badge fully removed (HTML DOM and CSS rules)
 // ============================================================
 {
-  const pillCount = (html.match(/artist-pill/g) || []).length;
-  assert.strictEqual(pillCount, 0,
-    `artist-pill markup must be fully removed (found ${pillCount})`);
+  const artistCount = (html.match(/growth-stage-card-artist/g) || []).length;
+  assert.strictEqual(artistCount, 0,
+    `growth-stage-card-artist markup must be fully removed (found ${artistCount})`);
   const badgeCount = (html.match(/growth-stage-card-badge/g) || []).length;
   assert.strictEqual(badgeCount, 0,
     `growth-stage-card-badge markup must be fully removed (found ${badgeCount})`);
+  assert.ok(!html.includes('growth-stage-card-artist'),
+    'growth-stage-card-artist must not appear anywhere in HTML');
+  assert.ok(!html.includes('growth-stage-card-badge'),
+    'growth-stage-card-badge must not appear anywhere in HTML');
+  assert.ok(!cssGrowthRules.includes('.growth-stage-card-artist'),
+    'removed artist pill selector must not return to CSS rules');
+  assert.ok(!cssGrowthRules.includes('.growth-stage-card-badge'),
+    'removed card badge selector must not return to CSS rules');
+  assert.ok(
+    !cssGrowthRules.includes('.growth-stage-card.featured span[data-i18n]'),
+    'removed featured descriptive-copy selector must not return'
+  );
   // Rotation machinery is kept (only the visible pill is gone): the artist
   // dataset drives the cycle and each card is tagged with data-artist-key via JS.
   assert.ok(js.includes('ARTIST_DATASETS'),
@@ -594,6 +606,6 @@ console.log('✓ 28: mobile is a 2-column vertical journey (24px rail + cards)')
   assert.ok(js.includes('data-artist-key'),
     'cards must still be tagged with data-artist-key for rotation');
 }
-console.log('✓ 29: artist pill + badge DOM removed (data-artist-key kept)');
+console.log('✓ 29: artist + badge removed from HTML and CSS rules (data-artist-key kept)');
 
 console.log('\n✅ All contract tests passed.');
