@@ -153,16 +153,20 @@
     pointer-events: none;
     transform: translateY(18px) scale(0.96);
     transition: opacity 0.5s ease, transform 0.5s ease;
+    /* 3D context for the artist-change card flip (content rotates on Y). */
+    perspective: 900px;
     /* Whole supporting node is a link: reset link text decoration. */
     text-decoration: none;
     color: inherit;
     display: block;
 }
 
-/* Inner content wrapper carries the swap opacity so the shell (position,
-   border, shadow) stays solid and only the inner content fades. */
+/* Inner content wrapper. The shell (position, border, shadow) stays solid;
+   on an artist change the content rotates on the Y axis (data swaps at the
+   90deg edge-on point), so no opacity flicker and no old/new text overlap. */
 .growth-stage-card-content {
-    transition: opacity 0.3s ease;
+    transform-style: preserve-3d;
+    transition: opacity 0.3s ease, transform 0.23s ease-in-out;
 }
 
 .growth-stage-card.featured {
@@ -290,6 +294,95 @@
 
 .growth-stage-card-media.has-thumbnail-error .growth-stage-card-fallback {
     display: flex;
+}
+
+/* ------------------------------------------------------------
+   Featured click-to-play controls (#3624).
+   The play button sits centered over the thumbnail; pressing it swaps
+   the thumbnail for a youtube-nocookie iframe. The close button returns
+   to the thumbnail. Both live inside the featured media box.
+   ------------------------------------------------------------ */
+.growth-stage-card-player {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border: 0;
+    background: #000;
+    z-index: 3;
+}
+
+.growth-stage-card-play {
+    position: absolute;
+    inset: 0;
+    margin: auto;
+    width: 58px;
+    height: 58px;
+    border: 0;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(28, 22, 20, 0.74);
+    color: #fff;
+    cursor: pointer;
+    z-index: 4;
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
+    transition: transform 0.2s ease, background 0.2s ease;
+}
+
+.growth-stage-card-play svg {
+    width: 28px;
+    height: 28px;
+    display: block;
+    margin-left: 3px;
+}
+
+.growth-stage-card-play:hover,
+.growth-stage-card-play:focus-visible {
+    transform: scale(1.1);
+    background: rgba(196, 30, 58, 0.94);
+    outline: 2px solid rgba(255, 255, 255, 0.85);
+    outline-offset: 2px;
+}
+
+.growth-stage-card-play[hidden] {
+    display: none;
+}
+
+.growth-stage-card-close {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 30px;
+    height: 30px;
+    border: 0;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(28, 22, 20, 0.82);
+    color: #fff;
+    cursor: pointer;
+    z-index: 6;
+    transition: background 0.2s ease;
+}
+
+.growth-stage-card-close svg {
+    width: 16px;
+    height: 16px;
+    display: block;
+}
+
+.growth-stage-card-close:hover,
+.growth-stage-card-close:focus-visible {
+    background: rgba(196, 30, 58, 0.94);
+    outline: 2px solid rgba(255, 255, 255, 0.85);
+    outline-offset: 2px;
+}
+
+.growth-stage-card-close[hidden] {
+    display: none;
 }
 
 /* Card text */

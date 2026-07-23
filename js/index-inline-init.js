@@ -4,13 +4,16 @@
       toggled by a single managed timer with an out-in transition (current
       set fades out fully before the next fades in, so two titles never
       overlap in the same cell). CTA, note, intro link never move.
-   2) Hero growth cycle: JS state machine that rotates BTS -> BLACKPINK ->
+    2) Hero growth cycle: JS state machine that rotates BTS -> BLACKPINK ->
        CORTIS -> RESCENE -> repeat. The node SHELLS and tree are fixed;
-       only the inner .growth-stage-card-content swaps via an out-in fade
-       (content fades out -> data swaps while invisible -> fades in).
+       on each artist change the four cards flip in sequence (rotateY to
+       90deg -> data swaps at the edge-on point -> rotate back), so there
+       is no opacity flicker and no old/new text overlap. The featured
+       card is click-to-play: pressing play (or a supporting card) swaps
+       the thumbnail for a youtube-nocookie iframe and pauses the cycle.
        Reduced motion shows the first artist's completed tree and stops.
-       Hover, focus, and document.hidden pause the cycle. A second init
-       is a no-op.
+       Hover, focus, document.hidden, and playback pause the cycle. A
+       second init is a no-op.
 */
 (function() {
   'use strict';
@@ -31,9 +34,9 @@
       channelName: 'HYBE LABELS',
       videos: [
         { id: 'gdZLi9oWNZg', title: 'Dynamite' },
-        { id: 'WMwePlGQuT8', title: 'Butter' },
+        { id: 'WMweEpGlu_U', title: 'Butter' },
         { id: 'XsX3ATc3FbA', title: 'Boy With Luv' },
-        { id: '7wC20jghM2c', title: 'Blood Sweat & Tears' }
+        { id: 'hmE9f-TEutc', title: 'Blood Sweat & Tears' }
       ]
     },
     {
@@ -84,6 +87,12 @@
       return 'https://i.ytimg.com/vi/' + encodeURIComponent(videoId) + '/maxresdefault.jpg';
     }
     return 'https://i.ytimg.com/vi/' + encodeURIComponent(videoId) + '/mqdefault.jpg';
+  }
+
+  // Privacy-enhanced embed. autoplay=1 is only ever applied after an explicit
+  // user click (play button or supporting-card promotion), never on load.
+  function youtubeEmbedUrl(videoId) {
+    return 'https://www.youtube-nocookie.com/embed/' + encodeURIComponent(videoId) + '?autoplay=1&rel=0';
   }
 
   // ============================================================
@@ -170,10 +179,14 @@
     var reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (reducedMotion) return;
 
-    // Single managed timer (no duplicates). The copy transition is out-in:
-    // the active set fades out fully before the other set fades in, so there
-    // is never a moment where two titles/headlines overlap in the same cell.
-    var toggleInterval = null;
+    // The headline no longer runs on its own clock. The growth cycle calls
+    // window.__lovebudHeroCopyToggle() right after each artist card flip
+    // completes, so the headline swaps out-in only while the cards are at
+    // rest (never flickering mid-flip) and never while a video is playing
+    // (playback pauses the cycle, so no flip — and no toggle — happens).
+    // The transition is out-in: the active set fades out fully before the
+    // other fades in, so two headlines never overlap in the same cell, and
+    // the CTA/note/intro link never move (loop height is stabilized above).
     var activeSet = 1;
     var transitioning = false;
     var FADE_OUT_MS = 520;
@@ -184,27 +197,16 @@
       activeSet = num;
     };
 
-    var startToggling = function() {
-      if (toggleInterval) return;
-      toggleInterval = window.setInterval(function() {
-        if (transitioning) return;
-        transitioning = true;
-        var nextSet = activeSet === 1 ? 2 : 1;
-        showSet(0);
-        window.setTimeout(function() {
-          showSet(nextSet);
-          transitioning = false;
-        }, FADE_OUT_MS);
-      }, 4000);
+    window.__lovebudHeroCopyToggle = function() {
+      if (transitioning) return;
+      transitioning = true;
+      var nextSet = activeSet === 1 ? 2 : 1;
+      showSet(0);
+      window.setTimeout(function() {
+        showSet(nextSet);
+        transitioning = false;
+      }, FADE_OUT_MS);
     };
-    var stopToggling = function() {
-      if (toggleInterval) {
-        window.clearInterval(toggleInterval);
-        toggleInterval = null;
-      }
-    };
-    startToggling();
-    window.addEventListener('pagehide', stopToggling);
   }
 
   // ============================================================
@@ -229,6 +231,11 @@
     var cards = Array.prototype.slice.call(stage.querySelectorAll('.growth-stage-card'));
     if (!cards.length) return;
 
+    var featuredCard = stage.querySelector('.growth-stage-card.featured') || null;
+    var featuredMedia = featuredCard ? featuredCard.querySelector('.growth-stage-card-media') : null;
+    var playBtn = featuredCard ? featuredCard.querySelector('.growth-stage-card-play') : null;
+    var closeBtn = featuredCard ? featuredCard.querySelector('.growth-stage-card-close') : null;
+
     var reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
     var reducedMotion = reducedMotionQuery.matches;
 
@@ -237,22 +244,29 @@
       CAPTION: 'caption-revealed',
       BRANCHES: 'branches-growing',
       CARDS: 'cards-revealing',
-      COMPLETED: 'completed',
-      FADE: 'fade-out'
+      COMPLETED: 'completed'
     };
+
+    // Sequential card flip: featured starts, each supporting card follows
+    // FLIP_STAGGER_MS later. Each card takes FLIP_HALF_MS to reach 90deg
+    // (edge-on, invisible), swaps its data there, then FLIP_HALF_MS to
+    // rotate back and reveal the new content. No opacity swap, no flicker.
+    var FLIP_STAGGER_MS = 120;
+    var FLIP_HALF_MS = 230;
+    var FLIP_TOTAL_MS = (FLIP_STAGGER_MS * 3) + (FLIP_HALF_MS * 2) + 60;
 
     var TIMINGS = reducedMotion ? {
       caption: 0,
       branches: 0,
       cards: 0,
       hold: 60000, // effectively "do not advance"
-      fade: 0
+      flip: 0
     } : {
       caption: 500,
       branches: 2800,
       cards: 1100,
       hold: 4000,
-      fade: 340
+      flip: FLIP_TOTAL_MS
     };
 
     var state = {
@@ -260,11 +274,13 @@
       videoIndices: [0, 1, 2, 3],
       phase: PHASE.PENDING,
       phaseStart: 0,
+      flipping: false,
       pauseReasons: {
         hover: false,
         focus: false,
         hidden: false,
-        pageLifecycle: false
+        pageLifecycle: false,
+        playing: false
       },
       timeoutId: null
     };
@@ -446,6 +462,127 @@
       }
     }
 
+    // ------------------------------------------------------------
+    // Sequential card flip (artist change). The shell position and the
+    // tree stay fixed; only the inner .growth-stage-card-content rotates
+    // on the Y axis. Data swaps exactly at the 90deg edge-on point, so
+    // old and new content are never visible at the same time and no blank
+    // white card is ever shown.
+    // ------------------------------------------------------------
+    function flipCard(card, applyFn) {
+      var content = card.querySelector('.growth-stage-card-content');
+      if (!content) {
+        applyFn();
+        return;
+      }
+      content.classList.add('is-flip-out');
+      window.setTimeout(function() {
+        applyFn();
+        content.classList.remove('is-flip-out');
+      }, FLIP_HALF_MS);
+    }
+
+    function flipToNextArtist() {
+      advanceArtist();
+      cards.forEach(function(card, idx) {
+        window.setTimeout(function() {
+          flipCard(card, function() {
+            applyArtistToCard(card, state.videoIndices[idx] || 0);
+          });
+        }, idx * FLIP_STAGGER_MS);
+      });
+    }
+
+    // ------------------------------------------------------------
+    // Featured click-to-play (youtube-nocookie iframe). Playback pauses
+    // the auto cycle; the iframe is torn back down to a thumbnail on
+    // close, on supporting-card promotion, on page hidden, and on
+    // pagehide (BFCache).
+    // ------------------------------------------------------------
+    function featuredVideo() {
+      return youtubeFor(0);
+    }
+
+    function clearFeaturedMedia() {
+      if (!featuredMedia) return;
+      var imgs = featuredMedia.querySelectorAll('img');
+      for (var i = 0; i < imgs.length; i++) imgs[i].remove();
+      var frame = featuredMedia.querySelector('iframe');
+      if (frame) frame.remove();
+    }
+
+    function setPlayerControls(playing) {
+      if (playBtn) playBtn.hidden = playing;
+      if (closeBtn) closeBtn.hidden = !playing;
+    }
+
+    function enterPlayerMode(video) {
+      if (!featuredMedia || !video) return;
+      clearFeaturedMedia();
+      var iframe = document.createElement('iframe');
+      iframe.className = 'growth-stage-card-player';
+      iframe.src = youtubeEmbedUrl(video.id);
+      iframe.title = video.title + ' - YouTube';
+      iframe.setAttribute('allow', 'autoplay; encrypted-media; picture-in-picture');
+      iframe.setAttribute('allowfullscreen', '');
+      iframe.setAttribute('frameborder', '0');
+      iframe.setAttribute('referrerpolicy', 'strict-origin-when-cross-origin');
+      featuredMedia.appendChild(iframe);
+      setPlayerControls(true);
+      pause('playing');
+    }
+
+    function exitPlayerMode() {
+      if (!featuredMedia) return;
+      var hadFrame = !!featuredMedia.querySelector('iframe');
+      clearFeaturedMedia();
+      setPlayerControls(false);
+      resume('playing');
+      if (hadFrame && featuredCard) {
+        // Restore the current featured video's thumbnail + text.
+        applyArtistToCard(featuredCard, state.videoIndices[0] || 0);
+      }
+    }
+
+    function promoteToFeatured(slotIndex) {
+      if (!featuredCard || slotIndex <= 0 || slotIndex >= cards.length) return;
+      // Swap the featured slot (0) with the clicked supporting slot so the
+      // selected video becomes featured and the old featured video moves to
+      // the supporting position.
+      var tmp = state.videoIndices[0];
+      state.videoIndices[0] = state.videoIndices[slotIndex];
+      state.videoIndices[slotIndex] = tmp;
+      applyArtistToCard(featuredCard, state.videoIndices[0] || 0);
+      applyArtistToCard(cards[slotIndex], state.videoIndices[slotIndex] || 0);
+      enterPlayerMode(featuredVideo());
+    }
+
+    // ------------------------------------------------------------
+    // Playback + supporting-card wiring. The featured play/close buttons
+    // live in the featured media. Each supporting card's stretched link is
+    // intercepted so a click promotes that video to featured and plays it
+    // (instead of opening a new tab); without JS the link still works.
+    // ------------------------------------------------------------
+    if (playBtn) {
+      playBtn.addEventListener('click', function() {
+        enterPlayerMode(featuredVideo());
+      });
+    }
+    if (closeBtn) {
+      closeBtn.addEventListener('click', function() {
+        exitPlayerMode();
+      });
+    }
+    cards.forEach(function(card, idx) {
+      if (idx === 0) return; // featured is handled by the play button
+      var link = card.querySelector('.growth-stage-card-link');
+      if (!link) return;
+      link.addEventListener('click', function(e) {
+        e.preventDefault();
+        promoteToFeatured(idx);
+      });
+    });
+
     function step() {
       if (isPaused()) {
         scheduleNext(500);
@@ -471,15 +608,26 @@
           scheduleNext(TIMINGS.hold);
           break;
         case PHASE.COMPLETED:
-          preloadNextThumbnails();
-          setStageState(PHASE.FADE);
-          scheduleNext(TIMINGS.fade);
-          break;
-        case PHASE.FADE:
-          advanceArtist();
-          applyCurrentArtistToCards();
-          setStageState(PHASE.COMPLETED);
-          scheduleNext(TIMINGS.hold);
+          if (!state.flipping) {
+            // Hold finished. Flip to the next artist in sequence. The stage
+            // stays "completed" so the shells, tree, and caption remain
+            // visible while only the card contents rotate.
+            preloadNextThumbnails();
+            exitPlayerMode(); // defensive: never flip while an iframe is live
+            state.flipping = true;
+            flipToNextArtist();
+            scheduleNext(TIMINGS.flip);
+          } else {
+            // Flip finished. Hold on the new artist, then swap the headline
+            // out-in now that the cards are at rest (never mid-flip). The
+            // toggle is a no-op while a video plays because playback pauses
+            // the cycle so this branch is not reached.
+            state.flipping = false;
+            if (typeof window.__lovebudHeroCopyToggle === 'function') {
+              window.__lovebudHeroCopyToggle();
+            }
+            scheduleNext(TIMINGS.hold);
+          }
           break;
         default:
           setStageState(PHASE.PENDING);
@@ -515,6 +663,7 @@
     var onVisibility = function() {
       if (document.hidden) {
         pause('hidden');
+        exitPlayerMode();
       } else {
         // Resume pageLifecycle so a BFCached page can restart its cycle.
         resume('pageLifecycle');
@@ -531,6 +680,7 @@
     var onPageHide = function() {
       pause('pageLifecycle');
       clearTimer();
+      exitPlayerMode();
     };
     window.addEventListener('pagehide', onPageHide);
 
