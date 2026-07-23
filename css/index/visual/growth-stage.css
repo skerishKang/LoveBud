@@ -366,15 +366,6 @@
     font-size: 0.9rem;
 }
 
-/* Featured-only copy line (supporting nodes have no description). */
-.growth-stage-card.featured span[data-i18n]:not(.growth-stage-card-badge) {
-    display: block;
-    margin-top: 6px;
-    color: #7a6862;
-    font-size: 0.78rem;
-    line-height: 1.5;
-}
-
 .growth-stage-card-channel {
     display: block;
     margin-top: 8px;
