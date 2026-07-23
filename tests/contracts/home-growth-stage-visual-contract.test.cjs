@@ -346,8 +346,11 @@ console.log('✓ 20: reduced-motion shows completed tree');
     'card links must open in a new tab');
   assert.ok(html.includes('rel="noopener noreferrer"'),
     'card links must use rel="noopener noreferrer"');
-  // JS only sets href, not target/rel, so the HTML rel is preserved
-  assert.ok(!js.includes('rel =') && !js.includes('rel='),
+  // JS only sets href, not target/rel, so the HTML rel is preserved.
+  // Match a `.rel =` / `.rel=` property assignment; a bare `rel=` substring
+  // is allowed because the youtube-nocookie embed URL carries a `rel=0`
+  // query param (click-to-play, #3624), which is not a link attribute write.
+  assert.ok(!/\.rel\s*=/.test(js),
     'JS must not overwrite the rel attribute on the link');
   assert.ok(js.includes('youtubeWatchUrl') || js.includes('youtube.com/watch'),
     'JS must build YouTube watch URLs');
