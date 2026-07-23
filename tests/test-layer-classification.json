@@ -4535,6 +4535,12 @@
       "layer": "SOURCE_STATIC",
       "rationale": "Exercises scripts/migration-runner-protocol-core.cjs (evaluateMigrationPreflight and evaluateMigrationCompletion) as pure functions over bounded input objects (no database connection, no SQL execution, no ledger write, no advisory lock acquisition, no SQL fixtures) to assert the hardened fail-closed protocol: ACTIVE-manifest requirement, source validation (PASS/FAIL/UNAVAILABLE), ledger evidence availability (never coerced from missing/non-array), the ledger as an exact committed prefix of the manifest (index-by-index order, checksum, COMMITTED outcome; duplicate/unknown/reordered/malformed/missing-middle all fail closed), manifest-derived target binding (caller cannot override checksum/mode/dependencies/destructive), exact-next-migration and dependency rules, NOOP only after a fully valid prefix, requestedAction APPLY_FORWARD with forbidden actions (down migration, auto-rollback, re-apply committed, ledger delete, ledger rewrite) failing closed, explicit authorization flags, and completion bound to a re-evaluated canonical preflight (a forged preflight result never authorizes a ledger append) with recovery escalation including SNAPSHOT_RESTORE_DECISION_REQUIRED for destructive partial/unknown. Does not implement a runner or connect to any database.",
       "capabilities": []
+    },
+    {
+      "path": "tests/contracts/db-canonical-runner-orchestrator-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Exercises scripts/migration-runner-orchestrator-core.cjs (runCanonicalMigration) using only synthetic JavaScript dependency mocks (no database, no PostgreSQL, no Docker, no SQL fixture, no network, no filesystem write, no environment secret) to assert the dependency-injected async orchestration: exact dependency call order, runtime-metadata and 11-dependency validation, source/manifest/lock/ledger/precondition fail-closed gates, protocol preflight/completion binding, NOOP behavior, execution/completion handling, ledger append authorization with the exact 7-field record, append/release failure handling and recovery escalation, lock released exactly once after ACQUIRED, and sanitized results (no lock handle, raw manifest, ledger record, SQL, error message/stack, hostname/URL, credential, or operator identity). Does not implement a real runner or connect to any database.",
+      "capabilities": []
     }
   ],
   "supplemental": [

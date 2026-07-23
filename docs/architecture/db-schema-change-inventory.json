@@ -415,6 +415,21 @@
       "notes": "Pure, deterministic runner PROTOCOL contract (not a runner). evaluateMigrationPreflight / evaluateMigrationCompletion decide fail-closed preflight (ACTIVE manifest, ledger evidence as an exact committed prefix, manifest-derived target, exact-next-migration, requestedAction APPLY_FORWARD), no-op retry, and ledger-append authorization bound to a re-evaluated canonical preflight, over bounded pure input. Opens no database, runs no SQL, writes no ledger, acquires no advisory lock, uses no network/shell/filesystem. Detected by RULE_RUNNER_NAME because the basename contains 'migration'; registered here to satisfy the guard."
     },
     {
+      "path": "scripts/migration-runner-orchestrator-core.cjs",
+      "category": "provenance_tooling",
+      "engine": "none",
+      "operations": ["ORCHESTRATE"],
+      "canonical_status": "CANONICAL_CANDIDATE",
+      "destructive": false,
+      "production_capable": false,
+      "owner_or_issue": "database architecture / #3458",
+      "idempotency": "idempotent",
+      "execution_actor": "none",
+      "automation": "none",
+      "ledger_candidate": "no",
+      "notes": "Dependency-injected async ORCHESTRATOR contract (not a real DB runner). runCanonicalMigration sequences synthetic injected dependencies around the protocol's evaluateMigrationPreflight / evaluateMigrationCompletion (source validation, manifest load, advisory-lock lifecycle, ledger read, precondition, preflight, execution, postcondition, lock recheck, completion, ledger append, lock release, sanitized result). Opens no database, runs no SQL, acquires no real advisory lock, writes no real ledger, uses no network/shell/filesystem; all external effects are injected mocks. Detected by RULE_RUNNER_NAME because the basename contains 'migration'; registered here to satisfy the guard."
+    },
+    {
       "path": "scripts/migration-catalog-postgres-adapter-core.cjs",
       "category": "catalog_adapter",
       "engine": "postgres_ephemeral_ci",
