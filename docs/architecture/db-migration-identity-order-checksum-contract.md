@@ -51,10 +51,11 @@ db/migrations/<migration_id>.sql
 
 Enforced by `validateMigrationManifest`:
 
-- The path must be under the manifest `canonical_directory` (`db/migrations`).
+- The manifest `canonical_directory` is fixed to `db/migrations`; any other declared value fails closed (`MIGRATION_CANONICAL_DIRECTORY_INVALID`). The exact path is derived from this fixed value, never from the manifest-declared directory.
+- The path must be exactly `db/migrations/<migration_id>.sql` — a single direct child of the canonical directory.
 - The path must use the `.sql` extension.
 - The path basename without `.sql` must equal the migration ID.
-- Path traversal (`..` segments) and absolute paths are rejected.
+- Nested directories, `.` segments, duplicate slashes, path traversal (`..` segments), and absolute paths are rejected.
 - Duplicate paths across entries are rejected.
 
 Prohibited:
@@ -65,7 +66,7 @@ Prohibited:
 - Any extension other than `.sql`.
 - A path whose basename does not match the migration ID.
 
-Validator errors: `MIGRATION_PATH_NON_CANONICAL` (outside canonical directory, wrong extension, or traversal), `MIGRATION_PATH_ID_MISMATCH` (basename differs from ID), `MIGRATION_PATH_DUPLICATE` (same path used twice), `MIGRATION_PATH_INVALID` (empty path), `MIGRATION_SOURCE_MISSING` (declared file absent), `MIGRATION_SOURCE_UNSAFE` (path escapes the repository root).
+Validator errors: `MIGRATION_CANONICAL_DIRECTORY_INVALID` (canonical_directory is not `db/migrations`), `MIGRATION_PATH_NON_CANONICAL` (outside the canonical tree, nested directory, `.` segment, duplicate slash, traversal, absolute path, or wrong extension), `MIGRATION_PATH_ID_MISMATCH` (basename differs from ID), `MIGRATION_PATH_DUPLICATE` (same path used twice), `MIGRATION_PATH_INVALID` (empty path), `MIGRATION_SOURCE_MISSING` (declared file absent), `MIGRATION_SOURCE_UNSAFE` (path escapes the repository root).
 
 ## Ordering
 

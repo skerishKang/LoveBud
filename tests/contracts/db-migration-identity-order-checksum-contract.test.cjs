@@ -117,6 +117,16 @@ function validateByteCase(originalBytes, diskBytes) {
   }
 }
 
+// Write a fixture at an arbitrary repository-relative path (creating parent
+// directories) and return the checksum over the written bytes. Used to prove a
+// path-form rejection is due to the path rule, not a missing file.
+function writeAt(tempRoot, relPath, bytes) {
+  const absPath = path.join(tempRoot, relPath);
+  fs.mkdirSync(path.dirname(absPath), { recursive: true });
+  fs.writeFileSync(absPath, bytes);
+  return core.sha256(bytes);
+}
+
 // Run evaluateProvenance with synthetic ACTIVE manifests and return ledger blockers.
 function ledgerBlockers(expectedMigrations, appliedMigrations) {
   const result = core.evaluateProvenance({
@@ -411,6 +421,91 @@ describe('DB migration identity/order/checksum contract (#3458)', () => {
       assert.match(doc, /SQL executed.*No|No SQL is executed/i);
       assert.match(doc, /Database accessed.*No|No database connection/i);
       assert.match(doc, /Production mutation.*No|No Production mutation/i);
+    });
+  });
+
+  describe('10. Exact canonical path enforcement', () => {
+    const id = '20260101000000_first';
+
+    it('rejects a tampered canonical_directory of scripts', () => {
+      const tempRoot = makeTempRepo();
+      try {
+        const checksum = writeAt(tempRoot, `scripts/${id}.sql`, SQL_LF);
+        const manifest = makeManifest([entry(id, `scripts/${id}.sql`, checksum)], { canonical_directory: 'scripts' });
+        const result = core.validateMigrationManifest(manifest, tempRoot);
+        assert.strictEqual(result.ok, false);
+        assert.ok(result.errors.includes('MIGRATION_CANONICAL_DIRECTORY_INVALID'), result.errors.join('\n'));
+      } finally {
+        removeTempRepo(tempRoot);
+      }
+    });
+
+    it('rejects a tampered canonical_directory of docs/ops', () => {
+      const tempRoot = makeTempRepo();
+      try {
+        const checksum = writeAt(tempRoot, `docs/ops/${id}.sql`, SQL_LF);
+        const manifest = makeManifest([entry(id, `docs/ops/${id}.sql`, checksum)], { canonical_directory: 'docs/ops' });
+        const result = core.validateMigrationManifest(manifest, tempRoot);
+        assert.strictEqual(result.ok, false);
+        assert.ok(result.errors.includes('MIGRATION_CANONICAL_DIRECTORY_INVALID'), result.errors.join('\n'));
+      } finally {
+        removeTempRepo(tempRoot);
+      }
+    });
+
+    it('rejects a nested directory path db/migrations/archive/<id>.sql', () => {
+      const tempRoot = makeTempRepo();
+      try {
+        const checksum = writeAt(tempRoot, `db/migrations/archive/${id}.sql`, SQL_LF);
+        const manifest = makeManifest([entry(id, `db/migrations/archive/${id}.sql`, checksum)]);
+        const result = core.validateMigrationManifest(manifest, tempRoot);
+        assert.strictEqual(result.ok, false);
+        assert.ok(result.errors.some((e) => e.startsWith('MIGRATION_PATH_NON_CANONICAL')), result.errors.join('\n'));
+      } finally {
+        removeTempRepo(tempRoot);
+      }
+    });
+
+    it('rejects a dot-segment path db/migrations/./<id>.sql', () => {
+      const tempRoot = makeTempRepo();
+      try {
+        // The file resolves to db/migrations/<id>.sql on disk, so the rejection is
+        // due to the path form, not a missing file.
+        const checksum = writeAt(tempRoot, `db/migrations/./${id}.sql`, SQL_LF);
+        const manifest = makeManifest([entry(id, `db/migrations/./${id}.sql`, checksum)]);
+        const result = core.validateMigrationManifest(manifest, tempRoot);
+        assert.strictEqual(result.ok, false);
+        assert.ok(result.errors.some((e) => e.startsWith('MIGRATION_PATH_NON_CANONICAL')), result.errors.join('\n'));
+      } finally {
+        removeTempRepo(tempRoot);
+      }
+    });
+
+    it('rejects a duplicate-slash path db/migrations//<id>.sql', () => {
+      const tempRoot = makeTempRepo();
+      try {
+        // The file resolves to db/migrations/<id>.sql on disk, so the rejection is
+        // due to the path form, not a missing file.
+        const checksum = writeAt(tempRoot, `db/migrations//${id}.sql`, SQL_LF);
+        const manifest = makeManifest([entry(id, `db/migrations//${id}.sql`, checksum)]);
+        const result = core.validateMigrationManifest(manifest, tempRoot);
+        assert.strictEqual(result.ok, false);
+        assert.ok(result.errors.some((e) => e.startsWith('MIGRATION_PATH_NON_CANONICAL')), result.errors.join('\n'));
+      } finally {
+        removeTempRepo(tempRoot);
+      }
+    });
+
+    it('still accepts the exact db/migrations/<id>.sql path', () => {
+      const tempRoot = makeTempRepo();
+      try {
+        const checksum = writeAt(tempRoot, `db/migrations/${id}.sql`, SQL_LF);
+        const manifest = makeManifest([entry(id, `db/migrations/${id}.sql`, checksum)]);
+        const result = core.validateMigrationManifest(manifest, tempRoot);
+        assert.strictEqual(result.ok, true, result.errors.join('\n'));
+      } finally {
+        removeTempRepo(tempRoot);
+      }
     });
   });
 });

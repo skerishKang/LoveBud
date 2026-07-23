@@ -50,6 +50,9 @@ const REQUIRED_MIGRATION_FIELDS = Object.freeze([
 ]);
 
 const MIGRATION_ID_PATTERN = /^\d{14}_[a-z0-9]+(?:-[a-z0-9]+)*$/;
+const CANONICAL_DIRECTORY = 'db/migrations';
+// A single direct .sql child of the fixed canonical directory (no nested segment).
+const DIRECT_CHILD_SQL_PATTERN = new RegExp(`^${CANONICAL_DIRECTORY}/[^/]+\\.sql$`);
 const SHA256_PATTERN = /^sha256:[a-f0-9]{64}$/;
 const SCHEMA_DDL_PATTERN = /\b(?:CREATE|ALTER|DROP|TRUNCATE)\s+(?:TABLE|INDEX|TYPE|SCHEMA|VIEW|MATERIALIZED\s+VIEW|FUNCTION|TRIGGER|POLICY|ROLE)\b/i;
 const DESTRUCTIVE_SQL_PATTERN = /\b(?:DROP\s+(?:TABLE|INDEX|COLUMN|CONSTRAINT|FUNCTION|TRIGGER|TYPE)|TRUNCATE\b|ALTER\s+TABLE[\s\S]{0,120}?\bDROP\s+COLUMN|ALTER\s+TABLE[\s\S]{0,120}?\bSET\s+NOT\s+NULL)\b/i;
@@ -216,6 +219,11 @@ function validateMigrationManifest(manifest, repoRoot) {
   if (!manifest.canonical_directory) {
     errors.push('MIGRATION_CANONICAL_DIRECTORY_MISSING');
   } else {
+    // The canonical directory is fixed: a canonical migration stream lives only in
+    // db/migrations. Any other declared value fails closed.
+    if (normalizePath(manifest.canonical_directory) !== CANONICAL_DIRECTORY) {
+      errors.push('MIGRATION_CANONICAL_DIRECTORY_INVALID');
+    }
     try {
       const canonicalDirectory = resolveRepositoryPath(repoRoot, manifest.canonical_directory);
       if (!fs.existsSync(canonicalDirectory) || !fs.statSync(canonicalDirectory).isDirectory()) {
@@ -269,24 +277,23 @@ function validateMigrationManifest(manifest, repoRoot) {
       errors.push(`MIGRATION_PATH_INVALID:${migrationId}`);
     }
     if (isNonEmptyString(migration && migration.path)) {
-      // Canonical path ownership: a canonical migration lives only at
-      // <canonical_directory>/<migration_id>.sql. Reject paths outside the canonical
-      // directory, non-.sql extensions, path traversal that escapes the canonical
-      // directory, and basename/ID mismatch.
-      const canonicalDirectory = normalizePath(manifest.canonical_directory || '');
+      // Exact canonical path ownership: a canonical migration lives at exactly
+      // db/migrations/<migration_id>.sql — a single direct child of the fixed
+      // canonical directory. The expected path is derived from the fixed
+      // CANONICAL_DIRECTORY constant, never from the manifest-declared value.
+      // Nested directories, "." segments, duplicate slashes, traversal, absolute
+      // paths, other extensions, and basename/ID mismatch are all rejected.
       const normalizedMigrationPath = normalizePath(migration.path);
-      const pathSegments = normalizedMigrationPath.split('/');
-      const hasTraversal = pathSegments.includes('..') || normalizedMigrationPath.startsWith('/');
-      const isUnderCanonicalDirectory = !hasTraversal
-        && canonicalDirectory.length > 0
-        && normalizedMigrationPath.startsWith(`${canonicalDirectory}/`);
-      const hasSqlExtension = /\.sql$/.test(normalizedMigrationPath);
-      if (!isUnderCanonicalDirectory || !hasSqlExtension) {
-        errors.push(`MIGRATION_PATH_NON_CANONICAL:${migrationId}`);
-      } else {
-        const pathBasename = normalizedMigrationPath.split('/').pop().replace(/\.sql$/, '');
-        if (pathBasename !== migration.id) {
+      const expectedCanonicalPath = `${CANONICAL_DIRECTORY}/${migration.id}.sql`;
+      if (normalizedMigrationPath !== expectedCanonicalPath) {
+        if (DIRECT_CHILD_SQL_PATTERN.test(normalizedMigrationPath)) {
+          // Exact direct-child .sql form under db/migrations, but the basename
+          // does not equal the migration ID.
           errors.push(`MIGRATION_PATH_ID_MISMATCH:${migrationId}`);
+        } else {
+          // Outside the canonical tree, nested directory, "." segment, duplicate
+          // slash, traversal, absolute path, or a non-.sql extension.
+          errors.push(`MIGRATION_PATH_NON_CANONICAL:${migrationId}`);
         }
       }
       if (migrationPaths.has(normalizedMigrationPath)) {
