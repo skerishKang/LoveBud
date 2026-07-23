@@ -113,6 +113,27 @@ const TRANSACTION_MODES = Object.freeze({
 const COMMITTED = 'COMMITTED';
 const ACTIVE = 'ACTIVE';
 
+// Authoritative ledger record schema (mirrors db/migration-provenance/ledger-contract.json).
+// Every required field must be a non-empty string.
+const LEDGER_REQUIRED_FIELDS = Object.freeze([
+  'migration_id',
+  'content_checksum',
+  'applied_at',
+  'runner_version',
+  'environment_class',
+  'deployed_commit',
+  'transaction_outcome'
+]);
+// Prohibited fields: a ledger record carrying any of these as an own property is
+// invalid regardless of value. Their values are never read, returned, or logged.
+const LEDGER_PROHIBITED_FIELDS = Object.freeze([
+  'operator_email',
+  'operator_user_id',
+  'credential',
+  'connection_string',
+  'raw_catalog_payload'
+]);
+
 // Runner blocker codes.
 const RUNNER_BLOCKERS = Object.freeze({
   RUNNER_SOURCE_VALIDATION_FAILED: 'RUNNER_SOURCE_VALIDATION_FAILED',
@@ -192,13 +213,18 @@ function isValidManifestMigration(m) {
     && Array.isArray(m.destructive_operations);
 }
 
-// Minimal structural validation of a ledger record (existing field contract).
+// Authoritative ledger record validation: a plain object with every required
+// field present as a non-empty string, and no prohibited field present as an own
+// property (regardless of value). Prohibited field values are never inspected.
 function isValidLedgerRecord(r) {
-  return !!r
-    && typeof r === 'object'
-    && isNonEmptyString(r.migration_id)
-    && isNonEmptyString(r.content_checksum)
-    && isNonEmptyString(r.transaction_outcome);
+  if (!r || typeof r !== 'object' || Array.isArray(r)) return false;
+  for (const field of LEDGER_REQUIRED_FIELDS) {
+    if (!isNonEmptyString(r[field])) return false;
+  }
+  for (const field of LEDGER_PROHIBITED_FIELDS) {
+    if (Object.prototype.hasOwnProperty.call(r, field)) return false;
+  }
+  return true;
 }
 
 function isDestructiveMigration(m) {
@@ -361,8 +387,10 @@ function evaluateMigrationPreflight(input) {
   // 8. Position of the target relative to the applied prefix.
   if (targetIndex < ledgerLength) {
     // Target is within the applied prefix: NOOP only if the whole prefix is valid
-    // (which guarantees the target is committed with an exact checksum match).
-    if (prefixValid) {
+    // AND no earlier gate blocker was collected (requestedAction/source/manifest/
+    // lock/ledger/target). NOOP never bypasses those fail-closed gates. (NOOP needs
+    // no transaction-mode approval or precondition, since nothing is executed.)
+    if (prefixValid && blockers.length === 0) {
       return buildResult(RUNNER_DECISIONS.NOOP_ALREADY_APPLIED, [], RECOVERY_DECISIONS.NO_RECOVERY_ACTION, binding);
     }
     return buildResult(RUNNER_DECISIONS.FAIL_CLOSED, blockers, preflightRecovery(blockers), binding);
@@ -521,7 +549,13 @@ function evaluateMigrationCompletion(input) {
   }
 
   if (blockers.length > 0) {
-    return buildResult(RUNNER_DECISIONS.FAIL_CLOSED, blockers, completionRecovery(canonical, i), binding);
+    // Compute recovery before adding the generic append blocker so the blocker
+    // does not influence the recovery decision. A failed completion always carries
+    // RUNNER_LEDGER_APPEND_NOT_AUTHORIZED (sorted/unique via buildResult); a
+    // successful completion never does.
+    const recovery = completionRecovery(canonical, i);
+    blockers.push(RUNNER_BLOCKERS.RUNNER_LEDGER_APPEND_NOT_AUTHORIZED);
+    return buildResult(RUNNER_DECISIONS.FAIL_CLOSED, blockers, recovery, binding);
   }
   return buildResult(RUNNER_DECISIONS.READY_TO_APPEND_LEDGER, [], RECOVERY_DECISIONS.NO_RECOVERY_ACTION, binding);
 }

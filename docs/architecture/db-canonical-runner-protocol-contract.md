@@ -59,15 +59,15 @@ Preflight checks:
 3. `manifestStatus` must be exactly `ACTIVE` (`ADOPTION_REQUIRED`/missing/unknown all blocked) → `RUNNER_MANIFEST_NOT_ACTIVE`.
 4. Advisory lock must be `ACQUIRED` → else `RUNNER_ADVISORY_LOCK_REQUIRED`.
 5. `ledgerRecords` must be an array; missing/non-array → `RUNNER_LEDGER_EVIDENCE_UNAVAILABLE` (never coerced to an empty array).
-6. The ledger must be an **exact committed prefix** of the manifest, comparing ledger array index against manifest index directly:
-   - malformed record → `RUNNER_LEDGER_RECORD_INVALID:<index>`;
+6. The ledger must be an **exact committed prefix** of the manifest, comparing ledger array index against manifest index directly. Each ledger record must satisfy the authoritative schema from `db/migration-provenance/ledger-contract.json`: a plain object whose required fields (`migration_id`, `content_checksum`, `applied_at`, `runner_version`, `environment_class`, `deployed_commit`, `transaction_outcome`) are each a non-empty string, and which carries **no** prohibited field (`operator_email`, `operator_user_id`, `credential`, `connection_string`, `raw_catalog_payload`) as an own property regardless of value. Prohibited field values are never read, returned, or logged.
+   - malformed record (null/array/non-object, any missing or empty/whitespace required field, or any prohibited field present) → `RUNNER_LEDGER_RECORD_INVALID:<index>`;
    - duplicate ID → `RUNNER_DUPLICATE_LEDGER_MIGRATION:<id>`;
    - ID outside the manifest → `RUNNER_UNKNOWN_LEDGER_MIGRATION:<id>`;
    - ledger order ≠ manifest order → `RUNNER_LEDGER_ORDER_MISMATCH:<id>`;
    - ledger checksum ≠ manifest checksum → `RUNNER_APPLIED_CHECKSUM_MISMATCH:<id>`;
    - prior outcome not `COMMITTED` → `RUNNER_PRIOR_OUTCOME_NOT_COMMITTED:<id>:<outcome>`;
    - missing middle / not a contiguous prefix → `RUNNER_SEQUENCE_BLOCKED:<id>`.
-7. **NOOP** is allowed only after the whole ledger prefix validates: target present at its manifest index, exact checksum match, `COMMITTED` outcome → `NOOP_ALREADY_APPLIED`. An unknown/duplicate/reordered/checksum-invalid ledger alongside an exact target is **not** NOOP.
+7. **NOOP** is allowed only after the whole ledger prefix validates **and** no earlier gate blocker was collected: `requestedAction=APPLY_FORWARD`, source `PASS`, manifest `ACTIVE`, lock `ACQUIRED`, ledger evidence an array, a valid target manifest entry, a valid exact committed prefix, and the target record's ID/checksum/outcome an exact match → `NOOP_ALREADY_APPLIED`. NOOP never bypasses the requestedAction/source/manifest/lock/ledger/target fail-closed gates (it needs no transaction-mode approval or precondition, since nothing is executed). An unknown/duplicate/reordered/checksum-invalid ledger alongside an exact target is **not** NOOP.
 8. **READY_TO_EXECUTE** requires the target to be exactly `manifestMigrations[ledgerRecords.length]` (the next unapplied). A target after that → missing prefix (`RUNNER_SEQUENCE_BLOCKED`); a target before that → already applied/no-op or corruption.
 9. Every `depends_on` must exist in the committed prefix with the same id/checksum → else `RUNNER_DEPENDENCY_NOT_APPLIED:<target>:<dependency>`.
 10. Transaction mode: unsupported → `RUNNER_TRANSACTION_MODE_INVALID`; `EXPLICIT` without `explicitBoundaryApproved` → `RUNNER_EXPLICIT_BOUNDARY_REQUIRED`.
@@ -100,7 +100,7 @@ Completion does **not** accept raw `sourceValidation` / `priorSequenceValid` / `
 
 Any failure → `RUNNER_PREFLIGHT_NOT_AUTHORIZED`. A forged `preflightResult` never authorizes a ledger append.
 
-`READY_TO_APPEND_LEDGER` additionally requires: `executionOutcome=SUCCEEDED`, `transactionOutcome=COMMITTED`, `postconditionStatus=PASS`, `advisoryLockStatus=ACQUIRED`. Blockers: `RUNNER_EXECUTION_FAILED`, `RUNNER_EXECUTION_OUTCOME_UNKNOWN`, `RUNNER_TRANSACTION_OUTCOME_NOT_COMMITTED:<outcome>`, `RUNNER_POSTCONDITION_FAILED`, `RUNNER_POSTCONDITION_UNAVAILABLE`, `RUNNER_POSTCONDITION_NOT_EVALUATED`, `RUNNER_ADVISORY_LOCK_LOST`, `RUNNER_LEDGER_APPEND_NOT_AUTHORIZED`.
+`READY_TO_APPEND_LEDGER` additionally requires: `executionOutcome=SUCCEEDED`, `transactionOutcome=COMMITTED`, `postconditionStatus=PASS`, `advisoryLockStatus=ACQUIRED`. Blockers: `RUNNER_PREFLIGHT_NOT_AUTHORIZED`, `RUNNER_EXECUTION_FAILED`, `RUNNER_EXECUTION_OUTCOME_UNKNOWN`, `RUNNER_TRANSACTION_OUTCOME_NOT_COMMITTED:<outcome>`, `RUNNER_POSTCONDITION_FAILED`, `RUNNER_POSTCONDITION_UNAVAILABLE`, `RUNNER_POSTCONDITION_NOT_EVALUATED`, `RUNNER_ADVISORY_LOCK_LOST`. **Every failed completion** also carries `RUNNER_LEDGER_APPEND_NOT_AUTHORIZED` (sorted, unique, never present in a successful result, and it does not influence the recovery decision).
 
 ## Vocabularies
 

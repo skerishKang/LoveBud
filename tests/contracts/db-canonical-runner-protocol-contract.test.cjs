@@ -419,4 +419,165 @@ describe('DB canonical runner protocol contract (#3458)', () => {
       assert.doesNotMatch(source, /fs\.(readFileSync|writeFileSync|existsSync|mkdirSync|rmSync)/);
     });
   });
+
+  // A preflight whose target is already inside a valid applied prefix (NOOP candidate).
+  function appliedPreflight(over) {
+    return validPreflight({ targetMigrationId: '20260101000000_a', ledgerRecords: [rec('20260101000000_a', 'sha256:aa')], ...(over || {}) });
+  }
+
+  describe('12. NOOP never bypasses fail-closed gates', () => {
+    it('a fully valid applied target is NOOP_ALREADY_APPLIED', () => {
+      const r = core.evaluateMigrationPreflight(appliedPreflight());
+      assert.strictEqual(r.decision, RUNNER_DECISIONS.NOOP_ALREADY_APPLIED);
+      assert.strictEqual(r.executionAuthorized, false);
+      assert.strictEqual(r.ledgerAppendAuthorized, false);
+    });
+    it('each forbidden requestedAction on an applied target fails closed', () => {
+      for (const action of FORBIDDEN_RUNNER_ACTIONS) {
+        const r = core.evaluateMigrationPreflight(appliedPreflight({ requestedAction: action }));
+        assert.strictEqual(r.decision, RUNNER_DECISIONS.FAIL_CLOSED, action);
+        assert.ok(r.blockers.includes(`RUNNER_REQUESTED_ACTION_INVALID:${action}`), action);
+        assert.strictEqual(r.executionAuthorized, false, action);
+        assert.strictEqual(r.ledgerAppendAuthorized, false, action);
+      }
+    });
+    it('an unknown requestedAction on an applied target fails closed', () => {
+      const r = core.evaluateMigrationPreflight(appliedPreflight({ requestedAction: 'DO_SOMETHING' }));
+      assert.strictEqual(r.decision, RUNNER_DECISIONS.FAIL_CLOSED);
+      assert.ok(r.blockers.includes('RUNNER_REQUESTED_ACTION_INVALID:DO_SOMETHING'));
+    });
+    it('source FAIL on an applied target fails closed (blocker preserved)', () => {
+      const r = core.evaluateMigrationPreflight(appliedPreflight({ sourceValidationStatus: 'FAIL' }));
+      assert.strictEqual(r.decision, RUNNER_DECISIONS.FAIL_CLOSED);
+      assert.ok(r.blockers.includes(RUNNER_BLOCKERS.RUNNER_SOURCE_VALIDATION_FAILED));
+      assert.strictEqual(r.executionAuthorized, false);
+      assert.strictEqual(r.ledgerAppendAuthorized, false);
+    });
+    it('source UNAVAILABLE on an applied target fails closed', () => {
+      const r = core.evaluateMigrationPreflight(appliedPreflight({ sourceValidationStatus: 'UNAVAILABLE' }));
+      assert.strictEqual(r.decision, RUNNER_DECISIONS.FAIL_CLOSED);
+      assert.ok(r.blockers.includes(RUNNER_BLOCKERS.RUNNER_SOURCE_VALIDATION_UNAVAILABLE));
+    });
+    it('manifest ADOPTION_REQUIRED on an applied target fails closed', () => {
+      const r = core.evaluateMigrationPreflight(appliedPreflight({ manifestStatus: 'ADOPTION_REQUIRED' }));
+      assert.strictEqual(r.decision, RUNNER_DECISIONS.FAIL_CLOSED);
+      assert.ok(r.blockers.includes(RUNNER_BLOCKERS.RUNNER_MANIFEST_NOT_ACTIVE));
+    });
+    it('missing manifest status on an applied target fails closed', () => {
+      const r = core.evaluateMigrationPreflight(appliedPreflight({ manifestStatus: undefined }));
+      assert.strictEqual(r.decision, RUNNER_DECISIONS.FAIL_CLOSED);
+      assert.ok(r.blockers.includes(RUNNER_BLOCKERS.RUNNER_MANIFEST_NOT_ACTIVE));
+    });
+    it('each non-ACQUIRED lock on an applied target fails closed', () => {
+      for (const status of ['NOT_ATTEMPTED', 'UNAVAILABLE', 'FAILED', 'LOST']) {
+        const r = core.evaluateMigrationPreflight(appliedPreflight({ advisoryLockStatus: status }));
+        assert.strictEqual(r.decision, RUNNER_DECISIONS.FAIL_CLOSED, status);
+        assert.ok(r.blockers.includes(RUNNER_BLOCKERS.RUNNER_ADVISORY_LOCK_REQUIRED), status);
+        assert.strictEqual(r.executionAuthorized, false, status);
+        assert.strictEqual(r.ledgerAppendAuthorized, false, status);
+      }
+    });
+  });
+
+  describe('13. Authoritative ledger record schema', () => {
+    const REQUIRED = ['migration_id', 'content_checksum', 'applied_at', 'runner_version', 'environment_class', 'deployed_commit', 'transaction_outcome'];
+    const PROHIBITED = ['operator_email', 'operator_user_id', 'credential', 'connection_string', 'raw_catalog_payload'];
+    function fullRecord() {
+      return rec('20260101000000_a', 'sha256:aa', 'COMMITTED');
+    }
+    function preflightWithRecord(record) {
+      return core.evaluateMigrationPreflight(validPreflight({ targetMigrationId: '20260102000000_b', ledgerRecords: [record] }));
+    }
+    it('a valid 7-field record is accepted', () => {
+      const r = preflightWithRecord(fullRecord());
+      assert.ok(!r.blockers.some((b) => b.startsWith('RUNNER_LEDGER_RECORD_INVALID:')), r.blockers.join('\n'));
+    });
+    it('each required field missing is rejected', () => {
+      for (const field of REQUIRED) {
+        const record = fullRecord();
+        delete record[field];
+        assert.ok(preflightWithRecord(record).blockers.some((b) => b.startsWith('RUNNER_LEDGER_RECORD_INVALID:')), field);
+      }
+    });
+    it('each required field as empty string is rejected', () => {
+      for (const field of REQUIRED) {
+        const record = fullRecord();
+        record[field] = '';
+        assert.ok(preflightWithRecord(record).blockers.some((b) => b.startsWith('RUNNER_LEDGER_RECORD_INVALID:')), field);
+      }
+    });
+    it('each required field as whitespace-only string is rejected', () => {
+      for (const field of REQUIRED) {
+        const record = fullRecord();
+        record[field] = '   ';
+        assert.ok(preflightWithRecord(record).blockers.some((b) => b.startsWith('RUNNER_LEDGER_RECORD_INVALID:')), field);
+      }
+    });
+    it('each prohibited field present is rejected regardless of value', () => {
+      for (const field of PROHIBITED) {
+        const record = fullRecord();
+        record[field] = 'some-value';
+        assert.ok(preflightWithRecord(record).blockers.some((b) => b.startsWith('RUNNER_LEDGER_RECORD_INVALID:')), field);
+      }
+    });
+    it('a prohibited field with null or empty value is still rejected', () => {
+      for (const value of [null, '']) {
+        const record = fullRecord();
+        record.credential = value;
+        assert.ok(preflightWithRecord(record).blockers.some((b) => b.startsWith('RUNNER_LEDGER_RECORD_INVALID:')), String(value));
+      }
+    });
+    it('prohibited field values are never exposed in the result', () => {
+      const record = fullRecord();
+      record.connection_string = 'postgres://user:pw@host/db';
+      record.operator_email = 'someone@example.com';
+      const result = preflightWithRecord(record);
+      const serialized = JSON.stringify(result);
+      assert.ok(!serialized.includes('postgres://user:pw@host/db'));
+      assert.ok(!serialized.includes('someone@example.com'));
+    });
+    it('a ledger record that is an array, null, or string is rejected', () => {
+      for (const bad of [[], null, 'ledger']) {
+        assert.ok(core.evaluateMigrationPreflight(validPreflight({ targetMigrationId: '20260102000000_b', ledgerRecords: [bad] })).blockers.some((b) => b.startsWith('RUNNER_LEDGER_RECORD_INVALID:')), JSON.stringify(bad));
+      }
+    });
+  });
+
+  describe('14. Failed completion carries RUNNER_LEDGER_APPEND_NOT_AUTHORIZED', () => {
+    function completion(over) {
+      const input = validPreflight();
+      return core.evaluateMigrationCompletion(completionFor(input, over));
+    }
+    it('a successful completion does not carry the append blocker', () => {
+      const r = completion();
+      assert.strictEqual(r.decision, RUNNER_DECISIONS.READY_TO_APPEND_LEDGER);
+      assert.ok(!r.blockers.includes(RUNNER_BLOCKERS.RUNNER_LEDGER_APPEND_NOT_AUTHORIZED));
+    });
+    it('preflight not authorized carries the append blocker', () => {
+      const r = completion({ preflightResult: undefined });
+      assert.ok(r.blockers.includes(RUNNER_BLOCKERS.RUNNER_PREFLIGHT_NOT_AUTHORIZED));
+      assert.ok(r.blockers.includes(RUNNER_BLOCKERS.RUNNER_LEDGER_APPEND_NOT_AUTHORIZED));
+    });
+    it('execution failure carries the append blocker', () => {
+      const r = completion({ executionOutcome: 'FAILED' });
+      assert.ok(r.blockers.includes(RUNNER_BLOCKERS.RUNNER_LEDGER_APPEND_NOT_AUTHORIZED));
+    });
+    it('transaction non-COMMITTED carries the append blocker', () => {
+      const r = completion({ transactionOutcome: 'ROLLED_BACK' });
+      assert.ok(r.blockers.includes(RUNNER_BLOCKERS.RUNNER_LEDGER_APPEND_NOT_AUTHORIZED));
+    });
+    it('postcondition failure carries the append blocker', () => {
+      const r = completion({ postconditionStatus: 'FAIL' });
+      assert.ok(r.blockers.includes(RUNNER_BLOCKERS.RUNNER_LEDGER_APPEND_NOT_AUTHORIZED));
+    });
+    it('lock lost carries the append blocker', () => {
+      const r = completion({ advisoryLockStatus: 'LOST' });
+      assert.ok(r.blockers.includes(RUNNER_BLOCKERS.RUNNER_LEDGER_APPEND_NOT_AUTHORIZED));
+    });
+    it('the append blocker does not change the recovery decision', () => {
+      const r = completion({ executionOutcome: 'FAILED', transactionOutcome: 'ROLLED_BACK' });
+      assert.strictEqual(r.recoveryDecision, RECOVERY_DECISIONS.RETRY_REQUIRES_FRESH_PREFLIGHT);
+      assert.deepStrictEqual(r.blockers, [...new Set(r.blockers)].sort());
+    });
+  });
 });
