@@ -245,8 +245,18 @@ All evidence is inspected via **descriptor inspection exactly once** and then co
 ### Snapshot helpers
 
 - `readExactDenseArraySnapshot(arr)` — captures `length` and all index values from descriptors in a single pass. Returns a frozen `{ length, values }` or `undefined`.
-- `readExactRecordSnapshot(row)` — captures all seven field values from descriptors in a single pass. Returns a frozen record or `undefined`.
+- `readExactLedgerRecordDescriptorSnapshot(record)` — captures all seven field values from descriptors in a **single pass** that also validates exact key set, string-only keys, no extra/symbol/accessor keys, and enumerable own data properties. Returns a frozen record or `undefined`.
 - `readExactAppendEvidenceRowSnapshot(row)` — captures `migration_id` and `content_checksum` from descriptors in a single pass. Returns a frozen `{ migration_id, content_checksum }` or `undefined`.
+
+### Single-pass record snapshot
+
+The read record, append input record, and append evidence row all use descriptor single-pass:
+
+- exact-key validation and value capture happen in the **same** descriptor pass
+- each own property descriptor is retrieved at most once
+- separate shape-check/value-read pass is forbidden
+- first descriptor snapshot wins
+- original hostile record is never re-queried after the snapshot
 
 ### Exact dense index set
 

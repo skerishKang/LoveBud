@@ -192,62 +192,58 @@ function safeOwnKeyDescriptors(obj) {
   return descriptors;
 }
 
-// Verify a record carries EXACTLY the fixed field set as enumerable own string
-// data properties (no extra string key, no enumerable/non-enumerable symbol key,
-// no extra non-enumerable string key, no accessor). Returns false on any
-// trap throw, revoked Proxy, or shape mismatch. Never executes a getter.
-function hasExactFieldKeysAndDataProperties(record) {
-  const descriptors = safeOwnKeyDescriptors(record);
-  if (descriptors === undefined) return false;
-  if (descriptors.length !== POSTGRES_MIGRATION_LEDGER_FIELDS.length) return false;
-  const seen = new Set();
-  for (const { key, desc } of descriptors) {
-    // 1. All own keys must be strings
-    if (typeof key !== 'string') return false;
-    // 2. Accessor forbidden (must be data property)
-    if (!('value' in desc)) return false;
-    // 3. Must be enumerable=true
-    if (desc.enumerable !== true) return false;
-    seen.add(key);
-  }
-  // 4. Must be exactly the expectedFields
-  for (const field of POSTGRES_MIGRATION_LEDGER_FIELDS) {
-    if (!seen.has(field)) return false;
-  }
-  return true;
-}
+// Single-pass descriptor snapshot for a fixed seven-field ledger record.
+// In ONE execution:
+// 1. safe plain-record check
+// 2. Reflect.ownKeys exactly once
+// 3. each own key descriptor exactly once
+// 4. own keys are exactly the fixed seven fields (no extra string/symbol key)
+// 5. all keys are strings
+// 6. no extra non-enumerable string key, no symbol key, no accessor
+// 7. each descriptor is an enumerable own data property
+// 8. desc.value captured immediately into internal snapshot
+// 9. captured values used for string/timestamp/outcome validation
+// 10. frozen internal snapshot returned
+// The original record is never re-accessed after this call. Proxy get traps
+// are never executed. Each own property descriptor is retrieved at most once.
+function readExactLedgerRecordDescriptorSnapshot(record) {
+  try {
+    if (!safeIsPlainRecord(record)) return undefined;
+    const descriptors = safeOwnKeyDescriptors(record);
+    if (descriptors === undefined) return undefined;
+    if (descriptors.length !== POSTGRES_MIGRATION_LEDGER_FIELDS.length) return undefined;
 
-// Validate that an object is a dense Array: non-enumerable 'length' data
-// property (integer >= 0), own enumerable data properties 0 to length-1, and
-// NO other own properties. Each index key must be the canonical String(i)
-// (rejecting '00', '01', '000', '1e0', '+0', '-0', etc.).
-function isExactDenseArray(arr) {
-  if (!safeIsArray(arr)) return false;
-  const descriptors = safeOwnKeyDescriptors(arr);
-  if (descriptors === undefined) return false;
-
-  let length = -1;
-  let seenIndices = 0;
-  for (const { key, desc } of descriptors) {
-    if (key === 'length') {
-      if (desc.enumerable === true) return false; // length must be non-enumerable
-      if (!('value' in desc) || typeof desc.value !== 'number' || !Number.isInteger(desc.value) || desc.value < 0) return false;
-      length = desc.value;
-    } else if (typeof key === 'string') {
-      // Must be canonical numeric index: String(Number(key)) === key and Number(key) >= 0
-      const idx = Number(key);
-      if (!Number.isInteger(idx) || idx < 0 || String(idx) !== key) return false;
-      if (idx >= length && length !== -1) return false; // out of range (only check if length known)
-      if (desc.enumerable !== true) return false; // indices must be enumerable
-      if (!('value' in desc)) return false; // must be data property
-      seenIndices++;
-    } else {
-      return false; // extra property, symbol key, accessor
+    const snapshot = {};
+    const seen = new Set();
+    for (const { key, desc } of descriptors) {
+      // 1. All own keys must be strings (no symbol keys)
+      if (typeof key !== 'string') return undefined;
+      // 2. Accessor forbidden (must be data property)
+      if (!('value' in desc)) return undefined;
+      // 3. Must be enumerable=true
+      if (desc.enumerable !== true) return undefined;
+      // 4. Must be one of the expected fields (no extra keys)
+      if (!POSTGRES_MIGRATION_LEDGER_FIELDS.includes(key)) return undefined;
+      // 5. Capture value immediately from this single descriptor
+      snapshot[key] = desc.value;
+      seen.add(key);
     }
+    // 6. Must have all seven fields
+    for (const field of POSTGRES_MIGRATION_LEDGER_FIELDS) {
+      if (!seen.has(field)) return undefined;
+    }
+
+    // 7. Validate captured values (no re-reading from original record)
+    for (const field of POSTGRES_MIGRATION_LEDGER_FIELDS) {
+      const value = snapshot[field];
+      if (value === MISS || typeof value !== 'string' || value.trim().length === 0) return undefined;
+    }
+    if (!isCanonicalUtcTimestamp(snapshot.applied_at)) return undefined;
+    if (!READ_TRANSACTION_OUTCOMES.has(snapshot.transaction_outcome)) return undefined;
+    return Object.freeze(snapshot);
+  } catch (error) {
+    return undefined;
   }
-  if (length === -1) return false; // length missing
-  if (seenIndices !== length) return false; // must have exactly indices 0 to length-1
-  return true;
 }
 
 // Snapshot a dense array into frozen { length, values } by inspecting
@@ -316,46 +312,6 @@ function isCanonicalUtcTimestamp(value) {
 // read-allowed outcomes. Top-level QueryResult metadata is handled by the
 // caller; only the row is inspected here. Accessor getters are never executed;
 // trap throws yield undefined.
-function readExactRecord(row) {
-  try {
-    if (!safeIsPlainRecord(row)) return undefined;
-    if (!hasExactFieldKeysAndDataProperties(row)) return undefined;
-    const clone = {};
-    for (const field of POSTGRES_MIGRATION_LEDGER_FIELDS) {
-      const value = safeGetOwnDataProperty(row, field);
-      if (value === MISS || typeof value !== 'string' || value.trim().length === 0) return undefined;
-      clone[field] = value;
-    }
-    if (!isCanonicalUtcTimestamp(clone.applied_at)) return undefined;
-    if (!READ_TRANSACTION_OUTCOMES.has(clone.transaction_outcome)) return undefined;
-    return Object.freeze(clone);
-  } catch (error) {
-    return undefined;
-  }
-}
-
-// Snapshot a single row's seven-field values from descriptors in one pass.
-// Returns a frozen { migration_id, content_checksum, ...allFields } object or
-// undefined if the row is malformed. After this call, the original row is never
-// accessed again. Proxy get traps are never executed.
-function readExactRecordSnapshot(row) {
-  try {
-    if (!safeIsPlainRecord(row)) return undefined;
-    if (!hasExactFieldKeysAndDataProperties(row)) return undefined;
-    const snapshot = {};
-    for (const field of POSTGRES_MIGRATION_LEDGER_FIELDS) {
-      const value = safeGetOwnDataProperty(row, field);
-      if (value === MISS || typeof value !== 'string' || value.trim().length === 0) return undefined;
-      snapshot[field] = value;
-    }
-    if (!isCanonicalUtcTimestamp(snapshot.applied_at)) return undefined;
-    if (!READ_TRANSACTION_OUTCOMES.has(snapshot.transaction_outcome)) return undefined;
-    return Object.freeze(snapshot);
-  } catch (error) {
-    return undefined;
-  }
-}
-
 // Validate a QueryResult and project it to a frozen array of frozen seven-field
 // clones preserving the query row order (no JS sort/dedupe/rewrite). Top-level
 // metadata (command, rowCount, oid, fields, ...) is allowed and ignored; only the
@@ -373,7 +329,7 @@ function readLedgerRecords(result) {
 
     const records = [];
     for (let i = 0; i < snapshot.length; i += 1) {
-      const record = readExactRecordSnapshot(snapshot.values[i]);
+      const record = readExactLedgerRecordDescriptorSnapshot(snapshot.values[i]);
       if (record === undefined) return undefined;
       records.push(record);
     }
@@ -381,24 +337,6 @@ function readLedgerRecords(result) {
   } catch (error) {
     return undefined;
   }
-}
-
-// Append evidence row validation: must be a safe plain record with EXACTLY
-// two enumerable own string data properties (migration_id, content_checksum).
-// No extra string/symbol keys, no accessor, no non-enumerable fields.
-function isExactAppendEvidenceRow(row) {
-  if (!safeIsPlainRecord(row)) return false;
-  const descriptors = safeOwnKeyDescriptors(row);
-  if (!descriptors || descriptors.length !== 2) return false;
-  let seen = 0;
-  for (const { key, desc } of descriptors) {
-    if (typeof key !== 'string') return false;
-    if (!('value' in desc)) return false; // Accessor forbidden
-    if (desc.enumerable !== true) return false; // Must be enumerable
-    if (key === 'migration_id' || key === 'content_checksum') seen++;
-    else return false; // Extra property
-  }
-  return seen === 2;
 }
 
 // Snapshot an append evidence row's two fields from descriptors in one pass.
@@ -425,7 +363,7 @@ function readExactAppendEvidenceRowSnapshot(row) {
 }
 
 // Classify append evidence into a fixed status. Never throws.
-//   APPENDED: exactly one row matching the snapshot (isExactAppendEvidenceRow).
+//   APPENDED: exactly one row matching the snapshot (readExactAppendEvidenceRowSnapshot).
 //   FAILED:   { rows: [] } (confirmed empty rows).
 //   UNKNOWN:  query throw/reject, malformed QueryResult/rows-array,
 //             non-dense-array rows, multiple rows, extra properties,
@@ -463,28 +401,23 @@ function readExactAppendEvidence(result, snapshot) {
 // synchronously before any await so later caller mutation of the original record
 // cannot affect the query values or the result decision. Accessor getters are
 // never executed; trap throws yield undefined.
+//
+// Uses readExactLedgerRecordDescriptorSnapshot for a single descriptor pass:
+// shape validation and value capture happen in the same loop, so each own
+// property descriptor is retrieved at most once.
 function snapshotAppendRecord(record) {
-  try {
-    if (!safeIsPlainRecord(record)) return undefined;
-    if (!hasExactFieldKeysAndDataProperties(record)) return undefined;
-    const values = [];
-    const captured = {};
-    for (const field of POSTGRES_MIGRATION_LEDGER_FIELDS) {
-      const value = safeGetOwnDataProperty(record, field);
-      if (value === MISS || typeof value !== 'string' || value.trim().length === 0) return undefined;
-      values.push(value);
-      captured[field] = value;
-    }
-    if (!isCanonicalUtcTimestamp(captured.applied_at)) return undefined;
-    if (captured.transaction_outcome !== 'COMMITTED') return undefined;
-    return Object.freeze({
-      values: Object.freeze(values),
-      migration_id: captured.migration_id,
-      content_checksum: captured.content_checksum
-    });
-  } catch (error) {
-    return undefined;
+  const snapshot = readExactLedgerRecordDescriptorSnapshot(record);
+  if (snapshot === undefined) return undefined;
+  if (snapshot.transaction_outcome !== 'COMMITTED') return undefined;
+  const values = [];
+  for (const field of POSTGRES_MIGRATION_LEDGER_FIELDS) {
+    values.push(snapshot[field]);
   }
+  return Object.freeze({
+    values: Object.freeze(values),
+    migration_id: snapshot.migration_id,
+    content_checksum: snapshot.content_checksum
+  });
 }
 
 /**
