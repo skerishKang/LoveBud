@@ -4553,6 +4553,12 @@
       "layer": "SOURCE_STATIC",
       "rationale": "Exercises scripts/migration-runner-orchestrator-core.cjs (runCanonicalMigration) using only synthetic JavaScript dependency mocks (no database, no PostgreSQL, no Docker, no SQL fixture, no network, no filesystem write, no environment secret) to assert the dependency-injected async orchestration: exact dependency call order, runtime-metadata and 11-dependency validation, source/manifest/lock/ledger/precondition fail-closed gates, protocol preflight/completion binding, NOOP behavior, execution/completion handling, ledger append authorization with the exact 7-field record, append/release failure handling and recovery escalation, lock released exactly once after ACQUIRED, and sanitized results (no lock handle, raw manifest, ledger record, SQL, error message/stack, hostname/URL, credential, or operator identity). Does not implement a real runner or connect to any database.",
       "capabilities": []
+    },
+    {
+      "path": "tests/contracts/db-postgres-session-lock-adapter-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Exercises scripts/migration-postgres-session-lock-adapter-core.cjs (createPostgresMigrationSessionLockAdapter and the returned acquireAdvisoryLock/checkAdvisoryLock/releaseAdvisoryLock) using only synthetic JavaScript session/query mocks (no pg, no PostgreSQL engine, no DB connection, no lock acquired, no actual SQL execution, no network, no filesystem write, no environment secret; SQL present only as contract strings) to assert the fixed two-int lock key pair, exact named/parameterized acquire/check/release queries, pinned-session lifecycle, non-blocking acquisition, current-session pg_locks verification, opaque frozen handle opacity, exactly-once pool release, malformed-evidence classification, orchestrator-compatible status mapping, and sanitized status-only results. Does not connect to any database or acquire any real lock; no Production mutation.",
+      "capabilities": []
     }
   ],
   "supplemental": [

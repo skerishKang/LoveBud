@@ -430,6 +430,21 @@
       "notes": "Dependency-injected async ORCHESTRATOR contract (not a real DB runner). runCanonicalMigration sequences synthetic injected dependencies around the protocol's evaluateMigrationPreflight / evaluateMigrationCompletion (source validation, manifest load, advisory-lock lifecycle, ledger read, precondition, preflight, execution, postcondition, lock recheck, completion, ledger append, lock release, sanitized result). Opens no database, runs no SQL, acquires no real advisory lock, writes no real ledger, uses no network/shell/filesystem; all external effects are injected mocks. Detected by RULE_RUNNER_NAME because the basename contains 'migration'; registered here to satisfy the guard."
     },
     {
+      "path": "scripts/migration-postgres-session-lock-adapter-core.cjs",
+      "category": "provenance_tooling",
+      "engine": "postgres",
+      "operations": ["ADVISORY_LOCK_SESSION_CONTRACT"],
+      "canonical_status": "CANONICAL_CANDIDATE",
+      "destructive": false,
+      "production_capable": false,
+      "owner_or_issue": "database architecture / #3458",
+      "idempotency": "idempotent",
+      "execution_actor": "none",
+      "automation": "none",
+      "ledger_candidate": "no",
+      "notes": "Source-tested injected PostgreSQL pinned-session advisory-lock adapter contract (not a real DB client). Implements the orchestrator's acquireAdvisoryLock/checkAdvisoryLock/releaseAdvisoryLock dependency contract: one global per-database lock keyed by a fixed two-int pair, a single pinned session from acquire through release, non-blocking pg_try_advisory_lock, current-session pg_locks verification, explicit pg_advisory_unlock, exactly-once pool release, an opaque frozen handle, and sanitized status-only results. All three public methods are total and fail-closed: safe own-data property inspection never executes accessor getters and never throws, so throwing getters, Proxy traps, revoked Proxies, getPrototypeOf/descriptor-inspection throws, and malformed evidence map to the fixed fail-closed statuses (NOT_ATTEMPTED/UNAVAILABLE for acquire, FAILED/UNAVAILABLE for check, UNKNOWN for release) with no raw error exposure; the factory maps any config.openSession access failure to POSTGRES_LOCK_ADAPTER_OPEN_SESSION_REQUIRED. No pg import, no connection, no actual query execution, no real lock, no Production mutation; all sessions/queries are synthetic injected mocks. Detected by RULE_RUNNER_NAME because the basename contains 'migration'; registered here to satisfy the guard."
+    },
+    {
       "path": "scripts/migration-catalog-postgres-adapter-core.cjs",
       "category": "catalog_adapter",
       "engine": "postgres_ephemeral_ci",
