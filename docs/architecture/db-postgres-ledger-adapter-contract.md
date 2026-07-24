@@ -270,7 +270,11 @@ length
 length-1
 ```
 
-Each index key must be the canonical `String(i)` (rejecting `00`, `01`, `000`, `1e0`, `+0`, `-0`, etc.). Non-canonical numeric-looking keys cause a read error / UNKNOWN. Out-of-range indices, missing indices, symbol keys, extra properties, and accessor properties are all rejected.
+Validation uses a two-pass approach within a single descriptor list:
+- Pass 1: find `length` descriptor (non-enumerable data property, integer >= 0)
+- Pass 2: validate exact index set `0..length-1` (canonical `String(i)`, enumerable data properties) and no extra keys
+
+Each index key must be the canonical `String(i)` (rejecting `00`, `01`, `000`, `1e0`, `+0`, `-0`, etc.). Non-canonical numeric-looking keys cause a read error / UNKNOWN. Out-of-range indices, missing indices, symbol keys, extra properties, and accessor properties are all rejected. The two-pass approach ensures `length` is found before index range validation, regardless of `ownKeys` ordering.
 
 ### Proxy `get` trap execution is zero
 

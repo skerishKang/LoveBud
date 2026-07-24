@@ -1756,5 +1756,77 @@ describe('DB postgres ledger adapter contract (#3458)', () => {
       const err = await rejectsRead(adapter);
       assert.strictEqual(err.message, POSTGRES_LEDGER_READ_ERROR);
     });
+
+    // 23. Exact dense-index: length=1, ownKeys returns index '5' before 'length' -> read error
+    it('23. exact dense-index rejects out-of-range index when length processed last -> read error', async () => {
+      const proxied = new Proxy([], {
+        getOwnPropertyDescriptor(target, prop) {
+          if (prop === 'length') return { enumerable: false, configurable: false, writable: false, value: 1 };
+          if (prop === '5') return { enumerable: true, configurable: true, value: readRow({ migration_id: 'm1' }) };
+          return undefined;
+        },
+        ownKeys() { return ['5', 'length']; }
+      });
+      const { adapter } = adapterWith({ read: { rows: proxied } });
+      const err = await rejectsRead(adapter);
+      assert.strictEqual(err.message, POSTGRES_LEDGER_READ_ERROR);
+    });
+
+    // 24. Exact dense-index: length=1, ownKeys returns extra non-index string key -> read error
+    it('24. exact dense-index rejects extra non-index string key -> read error', async () => {
+      const proxied = new Proxy([], {
+        getOwnPropertyDescriptor(target, prop) {
+          if (prop === 'length') return { enumerable: false, configurable: false, writable: false, value: 1 };
+          if (prop === '0') return { enumerable: true, configurable: true, value: readRow({ migration_id: 'm1' }) };
+          if (prop === 'extra') return { enumerable: true, configurable: true, value: 'bad' };
+          return undefined;
+        },
+        ownKeys() { return ['0', 'extra', 'length']; }
+      });
+      const { adapter } = adapterWith({ read: { rows: proxied } });
+      const err = await rejectsRead(adapter);
+      assert.strictEqual(err.message, POSTGRES_LEDGER_READ_ERROR);
+    });
+
+    // 25. Exact dense-index: length=1, ownKeys returns symbol key -> read error
+    it('25. exact dense-index rejects symbol key -> read error', async () => {
+      const sym = Symbol('extra');
+      const proxied = new Proxy([], {
+        getOwnPropertyDescriptor(target, prop) {
+          if (prop === 'length') return { enumerable: false, configurable: false, writable: false, value: 1 };
+          if (prop === '0') return { enumerable: true, configurable: true, value: readRow({ migration_id: 'm1' }) };
+          if (prop === sym) return { enumerable: true, configurable: true, value: 'bad' };
+          return undefined;
+        },
+        ownKeys() { return ['0', sym, 'length']; }
+      });
+      const { adapter } = adapterWith({ read: { rows: proxied } });
+      const err = await rejectsRead(adapter);
+      assert.strictEqual(err.message, POSTGRES_LEDGER_READ_ERROR);
+    });
+
+    // 26. Exact dense-index: length=2, indices 0 and 1, length processed first -> valid
+    it('26. exact dense-index valid when length processed first -> valid read', async () => {
+      const proxied = new Proxy([readRow({ migration_id: 'm1' }), readRow({ migration_id: 'm2' })], {
+        ownKeys(t) { return ['length', '0', '1']; }
+      });
+      const { adapter } = adapterWith({ read: { rows: proxied } });
+      const rows = await adapter.readLedger({ lockHandle: HANDLE });
+      assert.strictEqual(rows.length, 2);
+      assert.strictEqual(rows[0].migration_id, 'm1');
+      assert.strictEqual(rows[1].migration_id, 'm2');
+    });
+
+    // 27. Exact dense-index: length=2, indices 0 and 1, length processed last -> valid
+    it('27. exact dense-index valid when length processed last -> valid read', async () => {
+      const proxied = new Proxy([readRow({ migration_id: 'm1' }), readRow({ migration_id: 'm2' })], {
+        ownKeys(t) { return ['0', '1', 'length']; }
+      });
+      const { adapter } = adapterWith({ read: { rows: proxied } });
+      const rows = await adapter.readLedger({ lockHandle: HANDLE });
+      assert.strictEqual(rows.length, 2);
+      assert.strictEqual(rows[0].migration_id, 'm1');
+      assert.strictEqual(rows[1].migration_id, 'm2');
+    });
   });
 });

@@ -250,32 +250,46 @@ function readExactLedgerRecordDescriptorSnapshot(record) {
 // descriptors exactly once. After this call, the original array is never
 // accessed again (no rows[i], no re-reading length). Proxy get traps are
 // never executed: all values come from captured descriptors.
+//
+// Exact key-set validation: own keys must be EXACTLY { length, 0, 1, ..., length-1 }.
+// Two-pass within a single descriptor list:
+//   Pass 1: find length descriptor (must be non-enumerable data property, integer >= 0)
+//   Pass 2: validate exact index set 0..length-1 (canonical String(i), enumerable data properties)
+//           and no extra keys
 function readExactDenseArraySnapshot(arr) {
   if (!safeIsArray(arr)) return undefined;
   const descriptors = safeOwnKeyDescriptors(arr);
   if (descriptors === undefined) return undefined;
 
+  // Pass 1: find length descriptor
   let length = -1;
-  const indexValues = [];
   for (const { key, desc } of descriptors) {
     if (key === 'length') {
       if (desc.enumerable === true) return undefined;
       if (!('value' in desc) || typeof desc.value !== 'number' || !Number.isInteger(desc.value) || desc.value < 0) return undefined;
       length = desc.value;
-    } else if (typeof key === 'string') {
-      const idx = Number(key);
-      if (!Number.isInteger(idx) || idx < 0 || String(idx) !== key) return undefined;
-      if (desc.enumerable !== true) return undefined;
-      if (!('value' in desc)) return undefined;
-      if (idx >= length && length !== -1) return undefined; // out of range
-      indexValues[idx] = desc.value;
-    } else {
-      return undefined; // extra property, symbol key, accessor
     }
   }
   if (length === -1) return undefined; // length missing
-  if (indexValues.length !== length) return undefined; // must have exactly indices 0 to length-1
-  // Verify all indices are present (no holes)
+
+  // Pass 2: validate exact key set and capture values
+  const indexValues = [];
+  for (const { key, desc } of descriptors) {
+    if (key === 'length') continue; // already validated in pass 1
+    if (typeof key !== 'string') return undefined; // symbol key forbidden
+    const idx = Number(key);
+    // Must be canonical numeric index: String(Number(key)) === key
+    if (!Number.isInteger(idx) || idx < 0 || String(idx) !== key) return undefined;
+    // Must be in range 0..length-1
+    if (idx >= length) return undefined;
+    // Must be enumerable data property
+    if (desc.enumerable !== true) return undefined;
+    if (!('value' in desc)) return undefined;
+    indexValues[idx] = desc.value;
+  }
+
+  // Verify exactly length indices (no holes, no extras)
+  if (indexValues.length !== length) return undefined;
   for (let i = 0; i < length; i += 1) {
     if (!(i in indexValues)) return undefined;
   }
