@@ -78,6 +78,16 @@ On acquire success the adapter returns `{ status: 'ACQUIRED', handle }`. The han
 
 A query result is valid only as exactly `{ rows: [ { <field>: boolean } ] }` (one row, plain record, boolean field). Any other shape is malformed evidence and yields the fail-closed status for that method (`UNAVAILABLE` for acquire/check, `UNKNOWN` for release) with a best-effort pool release where applicable.
 
+## Total fail-closed public boundary (safe inspection)
+
+Every public method is **total**: it never throws and never exposes a raw `Error`, message, or stack. All argument, config, session, and evidence inspection goes through safe internal helpers (`safeGetOwnDataProperty`, `safeGetCallable`, `safeIsPlainRecord`, `readSingleBooleanField`, `releaseSessionOnce`) that bound every `Object.getPrototypeOf`, `Object.getOwnPropertyDescriptor`, `Array.isArray`, and property read inside a try/catch.
+
+- A normal property is required to be an **own data property**. Accessor getters are **not executed** during inspection; an accessor, a throwing getter, a `Proxy` get/`getOwnPropertyDescriptor`/`getPrototypeOf` trap throw, a revoked `Proxy`, a descriptor-inspection throw, a `rows` getter throw, or a target boolean-field getter throw is treated as malformed and maps to the fail-closed status.
+- `acquireAdvisoryLock`: malformed/throwing input (`targetMigrationId`) → `NOT_ATTEMPTED` (openSession not called); malformed/throwing session or evidence → `UNAVAILABLE` (best-effort pool release once where applicable).
+- `checkAdvisoryLock`: malformed/throwing input or handle → `FAILED` (no query); malformed/throwing query evidence → `UNAVAILABLE`.
+- `releaseAdvisoryLock`: malformed/throwing input, handle, or query evidence → `UNKNOWN`; the acquired session is still cleaned up best-effort exactly once where applicable.
+- Factory: any failure reading `config.openSession` (missing, non-function, accessor, throwing getter, revoked `Proxy`, descriptor-inspection throw, null/undefined config) maps to exactly the fixed message `POSTGRES_LOCK_ADAPTER_OPEN_SESSION_REQUIRED`; the original getter error message/stack is never surfaced.
+
 ## Sanitization
 
 Method results and handle serialization never contain a raw `Error`, error message, stack, session/client object, query function, release function, hostname, database name, connection URL, credential, `targetMigrationId`, full query result, backend PID, catalog row, or lock-key text. Only the fixed status (and the opaque handle on acquire success) is returned. No console logging.

@@ -590,4 +590,210 @@ describe('DB postgres session lock adapter contract (#3458)', () => {
       assert.strictEqual(await run(), await run());
     });
   });
+
+  describe('7. Fail-closed malformed boundaries (HOLD A)', () => {
+    function throwingGetterObject(key, secretMessage) {
+      const obj = {};
+      Object.defineProperty(obj, key, {
+        enumerable: true,
+        configurable: true,
+        get() { throw new Error(secretMessage || 'getter-blew-up'); }
+      });
+      return obj;
+    }
+
+    function accessorObject(key, value, counter) {
+      const obj = {};
+      Object.defineProperty(obj, key, {
+        enumerable: true,
+        configurable: true,
+        get() { if (counter) counter.count += 1; return value; }
+      });
+      return obj;
+    }
+
+    function revokedProxy(target) {
+      const revocable = Proxy.revocable(target, {});
+      revocable.revoke();
+      return revocable.proxy;
+    }
+
+    it('acquire throwing-getter targetMigrationId yields NOT_ATTEMPTED, openSession 0', async () => {
+      let opens = 0;
+      const adapter = createPostgresMigrationSessionLockAdapter({ openSession: async () => { opens += 1; return mockSession().session; } });
+      const r = await adapter.acquireAdvisoryLock(throwingGetterObject('targetMigrationId'));
+      assert.strictEqual(r.status, POSTGRES_LOCK_ACQUIRE_STATUSES.NOT_ATTEMPTED);
+      assert.strictEqual(opens, 0);
+    });
+    it('acquire accessor targetMigrationId is not executed and yields NOT_ATTEMPTED', async () => {
+      const counter = { count: 0 };
+      const adapter = adapterFor(mockSession().session);
+      const r = await adapter.acquireAdvisoryLock(accessorObject('targetMigrationId', TARGET, counter));
+      assert.strictEqual(r.status, POSTGRES_LOCK_ACQUIRE_STATUSES.NOT_ATTEMPTED);
+      assert.strictEqual(counter.count, 0);
+    });
+    it('acquire revoked Proxy arg yields NOT_ATTEMPTED', async () => {
+      const adapter = adapterFor(mockSession().session);
+      const r = await adapter.acquireAdvisoryLock(revokedProxy({ targetMigrationId: TARGET }));
+      assert.strictEqual(r.status, POSTGRES_LOCK_ACQUIRE_STATUSES.NOT_ATTEMPTED);
+    });
+    it('acquire descriptor-inspection-throwing arg yields NOT_ATTEMPTED', async () => {
+      const adapter = adapterFor(mockSession().session);
+      const arg = new Proxy({ targetMigrationId: TARGET }, { getOwnPropertyDescriptor() { throw new Error('desc'); } });
+      const r = await adapter.acquireAdvisoryLock(arg);
+      assert.strictEqual(r.status, POSTGRES_LOCK_ACQUIRE_STATUSES.NOT_ATTEMPTED);
+    });
+    it('acquire null/undefined arg yields NOT_ATTEMPTED', async () => {
+      const adapter = adapterFor(mockSession().session);
+      assert.strictEqual((await adapter.acquireAdvisoryLock(null)).status, POSTGRES_LOCK_ACQUIRE_STATUSES.NOT_ATTEMPTED);
+      assert.strictEqual((await adapter.acquireAdvisoryLock(undefined)).status, POSTGRES_LOCK_ACQUIRE_STATUSES.NOT_ATTEMPTED);
+    });
+    it('acquire session with throwing query getter yields UNAVAILABLE without running the getter', async () => {
+      let queryGetterCalls = 0;
+      let poolReleases = 0;
+      const session = {};
+      Object.defineProperty(session, 'query', { enumerable: true, configurable: true, get() { queryGetterCalls += 1; throw new Error('query-getter'); } });
+      Object.defineProperty(session, 'release', { enumerable: true, configurable: true, writable: true, value: async () => { poolReleases += 1; } });
+      const adapter = createPostgresMigrationSessionLockAdapter({ openSession: async () => session });
+      const r = await adapter.acquireAdvisoryLock({ targetMigrationId: TARGET });
+      assert.strictEqual(r.status, POSTGRES_LOCK_ACQUIRE_STATUSES.UNAVAILABLE);
+      assert.strictEqual(queryGetterCalls, 0);
+      assert.strictEqual(poolReleases, 1);
+    });
+    it('acquire revoked Proxy session yields UNAVAILABLE', async () => {
+      const session = revokedProxy({ query: async () => ({ rows: [{ acquired: true }] }), release: async () => {} });
+      const adapter = createPostgresMigrationSessionLockAdapter({ openSession: async () => session });
+      const r = await adapter.acquireAdvisoryLock({ targetMigrationId: TARGET });
+      assert.strictEqual(r.status, POSTGRES_LOCK_ACQUIRE_STATUSES.UNAVAILABLE);
+    });
+    it('acquire session with getPrototypeOf throw yields UNAVAILABLE + pool release 1', async () => {
+      let poolReleases = 0;
+      const target = { query: async () => ({ rows: [{ acquired: true }] }), release: async () => { poolReleases += 1; } };
+      const session = new Proxy(target, { getPrototypeOf() { throw new Error('proto-getter'); } });
+      const adapter = createPostgresMigrationSessionLockAdapter({ openSession: async () => session });
+      const r = await adapter.acquireAdvisoryLock({ targetMigrationId: TARGET });
+      assert.strictEqual(r.status, POSTGRES_LOCK_ACQUIRE_STATUSES.UNAVAILABLE);
+      assert.strictEqual(poolReleases, 1);
+    });
+    it('acquire rows-getter-throw evidence yields UNAVAILABLE + pool release 1 without running the getter', async () => {
+      let rowsGetterCalls = 0;
+      const result = {};
+      Object.defineProperty(result, 'rows', { enumerable: true, configurable: true, get() { rowsGetterCalls += 1; throw new Error('rows-getter'); } });
+      const { session, state } = mockSession({ acquireResult: result });
+      const r = await adapterFor(session).acquireAdvisoryLock({ targetMigrationId: TARGET });
+      assert.strictEqual(r.status, POSTGRES_LOCK_ACQUIRE_STATUSES.UNAVAILABLE);
+      assert.strictEqual(rowsGetterCalls, 0);
+      assert.strictEqual(state.poolReleases, 1);
+    });
+    it('acquire acquired-field-getter-throw evidence yields UNAVAILABLE + pool release 1 without running the getter', async () => {
+      let fieldGetterCalls = 0;
+      const row = {};
+      Object.defineProperty(row, 'acquired', { enumerable: true, configurable: true, get() { fieldGetterCalls += 1; throw new Error('field-getter'); } });
+      const { session, state } = mockSession({ acquireResult: { rows: [row] } });
+      const r = await adapterFor(session).acquireAdvisoryLock({ targetMigrationId: TARGET });
+      assert.strictEqual(r.status, POSTGRES_LOCK_ACQUIRE_STATUSES.UNAVAILABLE);
+      assert.strictEqual(fieldGetterCalls, 0);
+      assert.strictEqual(state.poolReleases, 1);
+    });
+    it('acquire revoked Proxy evidence yields UNAVAILABLE + pool release 1', async () => {
+      const { session, state } = mockSession({ acquireResult: revokedProxy({ rows: [{ acquired: true }] }) });
+      const r = await adapterFor(session).acquireAdvisoryLock({ targetMigrationId: TARGET });
+      assert.strictEqual(r.status, POSTGRES_LOCK_ACQUIRE_STATUSES.UNAVAILABLE);
+      assert.strictEqual(state.poolReleases, 1);
+    });
+    it('factory config.openSession throwing getter maps to the fixed code only, getter not run', () => {
+      let calls = 0;
+      const config = {};
+      Object.defineProperty(config, 'openSession', { enumerable: true, configurable: true, get() { calls += 1; throw new Error('secret-config-detail'); } });
+      assert.throws(() => createPostgresMigrationSessionLockAdapter(config), (e) => e.message === 'POSTGRES_LOCK_ADAPTER_OPEN_SESSION_REQUIRED');
+      assert.strictEqual(calls, 0);
+    });
+    it('factory revoked Proxy config maps to the fixed code', () => {
+      const config = revokedProxy({ openSession: async () => mockSession().session });
+      assert.throws(() => createPostgresMigrationSessionLockAdapter(config), (e) => e.message === 'POSTGRES_LOCK_ADAPTER_OPEN_SESSION_REQUIRED');
+    });
+    it('factory descriptor-inspection-throwing config maps to the fixed code', () => {
+      const config = new Proxy({ openSession: async () => mockSession().session }, { getOwnPropertyDescriptor() { throw new Error('desc'); } });
+      assert.throws(() => createPostgresMigrationSessionLockAdapter(config), (e) => e.message === 'POSTGRES_LOCK_ADAPTER_OPEN_SESSION_REQUIRED');
+    });
+    it('factory null/undefined config maps to the fixed code', () => {
+      assert.throws(() => createPostgresMigrationSessionLockAdapter(null), (e) => e.message === 'POSTGRES_LOCK_ADAPTER_OPEN_SESSION_REQUIRED');
+      assert.throws(() => createPostgresMigrationSessionLockAdapter(undefined), (e) => e.message === 'POSTGRES_LOCK_ADAPTER_OPEN_SESSION_REQUIRED');
+    });
+    it('check arg.lockHandle throwing getter yields FAILED', async () => {
+      const { session } = mockSession();
+      const adapter = adapterFor(session);
+      await adapter.acquireAdvisoryLock({ targetMigrationId: TARGET });
+      const r = await adapter.checkAdvisoryLock(throwingGetterObject('lockHandle'));
+      assert.strictEqual(r.status, POSTGRES_LOCK_CHECK_STATUSES.FAILED);
+    });
+    it('check revoked Proxy arg yields FAILED', async () => {
+      const adapter = adapterFor(mockSession().session);
+      const r = await adapter.checkAdvisoryLock(revokedProxy({ lockHandle: {} }));
+      assert.strictEqual(r.status, POSTGRES_LOCK_CHECK_STATUSES.FAILED);
+    });
+    it('check rows-getter-throw evidence yields UNAVAILABLE', async () => {
+      const { session } = mockSession({ checkResult: throwingGetterObject('rows') });
+      const adapter = adapterFor(session);
+      const acq = await adapter.acquireAdvisoryLock({ targetMigrationId: TARGET });
+      const r = await adapter.checkAdvisoryLock({ lockHandle: acq.handle });
+      assert.strictEqual(r.status, POSTGRES_LOCK_CHECK_STATUSES.UNAVAILABLE);
+    });
+    it('check held-field-getter-throw evidence yields UNAVAILABLE', async () => {
+      const { session } = mockSession({ checkResult: { rows: [throwingGetterObject('held')] } });
+      const adapter = adapterFor(session);
+      const acq = await adapter.acquireAdvisoryLock({ targetMigrationId: TARGET });
+      const r = await adapter.checkAdvisoryLock({ lockHandle: acq.handle });
+      assert.strictEqual(r.status, POSTGRES_LOCK_CHECK_STATUSES.UNAVAILABLE);
+    });
+    it('release arg.lockHandle throwing getter yields UNKNOWN with query/release 0', async () => {
+      const { session, state } = mockSession();
+      const adapter = adapterFor(session);
+      await adapter.acquireAdvisoryLock({ targetMigrationId: TARGET });
+      const qBefore = state.queries.length;
+      const r = await adapter.releaseAdvisoryLock(throwingGetterObject('lockHandle'));
+      assert.strictEqual(r.status, POSTGRES_LOCK_RELEASE_STATUSES.UNKNOWN);
+      assert.strictEqual(state.queries.length, qBefore);
+      assert.strictEqual(state.poolReleases, 0);
+    });
+    it('release revoked Proxy arg yields UNKNOWN', async () => {
+      const adapter = adapterFor(mockSession().session);
+      const r = await adapter.releaseAdvisoryLock(revokedProxy({ lockHandle: {} }));
+      assert.strictEqual(r.status, POSTGRES_LOCK_RELEASE_STATUSES.UNKNOWN);
+    });
+    it('release rows-getter-throw evidence yields UNKNOWN + pool release 1', async () => {
+      const { session, state } = mockSession({ releaseResult: throwingGetterObject('rows') });
+      const adapter = adapterFor(session);
+      const acq = await adapter.acquireAdvisoryLock({ targetMigrationId: TARGET });
+      const r = await adapter.releaseAdvisoryLock({ lockHandle: acq.handle });
+      assert.strictEqual(r.status, POSTGRES_LOCK_RELEASE_STATUSES.UNKNOWN);
+      assert.strictEqual(state.poolReleases, 1);
+    });
+    it('release released-field-getter-throw evidence yields UNKNOWN + pool release 1', async () => {
+      const { session, state } = mockSession({ releaseResult: { rows: [throwingGetterObject('released')] } });
+      const adapter = adapterFor(session);
+      const acq = await adapter.acquireAdvisoryLock({ targetMigrationId: TARGET });
+      const r = await adapter.releaseAdvisoryLock({ lockHandle: acq.handle });
+      assert.strictEqual(r.status, POSTGRES_LOCK_RELEASE_STATUSES.UNKNOWN);
+      assert.strictEqual(state.poolReleases, 1);
+    });
+    it('malformed throwing evidence never leaks the raw error detail', async () => {
+      const secret = 'super-secret-db-detail';
+      const result = {};
+      Object.defineProperty(result, 'rows', { enumerable: true, configurable: true, get() { throw new Error(secret); } });
+      const { session } = mockSession({ acquireResult: result });
+      const r = await adapterFor(session).acquireAdvisoryLock({ targetMigrationId: TARGET });
+      assert.ok(!JSON.stringify(r).includes(secret));
+      assert.ok(!('error' in r) && !('stack' in r) && !('message' in r));
+    });
+    it('public methods never throw across malformed/throwing boundaries', async () => {
+      const adapter = adapterFor(mockSession().session);
+      await assert.doesNotReject(adapter.acquireAdvisoryLock(throwingGetterObject('targetMigrationId')));
+      await assert.doesNotReject(adapter.acquireAdvisoryLock(revokedProxy({ targetMigrationId: TARGET })));
+      await assert.doesNotReject(adapter.checkAdvisoryLock(throwingGetterObject('lockHandle')));
+      await assert.doesNotReject(adapter.checkAdvisoryLock(revokedProxy({})));
+      await assert.doesNotReject(adapter.releaseAdvisoryLock(throwingGetterObject('lockHandle')));
+      await assert.doesNotReject(adapter.releaseAdvisoryLock(revokedProxy({})));
+    });
+  });
 });

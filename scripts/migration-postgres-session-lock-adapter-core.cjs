@@ -95,31 +95,94 @@ const POSTGRES_LOCK_RELEASE_STATUSES = Object.freeze({
 
 const FACTORY_ERROR_OPEN_SESSION_REQUIRED = 'POSTGRES_LOCK_ADAPTER_OPEN_SESSION_REQUIRED';
 
-function isPlainRecord(value) {
-  if (value === null || typeof value !== 'object' || Array.isArray(value)) return false;
-  const proto = Object.getPrototypeOf(value);
-  return proto === Object.prototype || proto === null;
+// Sentinel returned by safe inspection when an own data property is absent,
+// inaccessible, or not a plain data value. It is never returned to callers.
+const MISS = Symbol('postgres-lock-adapter-miss');
+
+// Read an OWN DATA property without ever executing an accessor getter and
+// without ever throwing. Any Proxy trap throw, revoked-Proxy throw, descriptor
+// inspection throw, accessor property, inherited property, or missing property
+// yields MISS. The returned descriptor object is engine-created, so reading
+// desc.value cannot run caller code.
+function safeGetOwnDataProperty(obj, key) {
+  if (obj === null || obj === undefined) return MISS;
+  let desc;
+  try {
+    desc = Object.getOwnPropertyDescriptor(obj, key);
+  } catch (error) {
+    return MISS;
+  }
+  if (desc === undefined) return MISS;
+  if (!('value' in desc)) return MISS;
+  return desc.value;
+}
+
+// Read an own data property that must be callable. Never throws, never runs an
+// accessor getter. Returns the function or undefined.
+function safeGetCallable(obj, key) {
+  const value = safeGetOwnDataProperty(obj, key);
+  if (value !== MISS && typeof value === 'function') return value;
+  return undefined;
+}
+
+function safeIsArray(value) {
+  try {
+    return Array.isArray(value);
+  } catch (error) {
+    return false;
+  }
+}
+
+// Plain-record check that survives Object.getPrototypeOf throws, revoked
+// Proxies, and Proxy getPrototypeOf traps. Never throws.
+function safeIsPlainRecord(value) {
+  if (value === null || value === undefined) return false;
+  try {
+    if (typeof value !== 'object') return false;
+    if (Array.isArray(value)) return false;
+    const proto = Object.getPrototypeOf(value);
+    return proto === Object.prototype || proto === null;
+  } catch (error) {
+    return false;
+  }
 }
 
 function isNonEmptyString(value) {
   return typeof value === 'string' && value.trim().length > 0;
 }
 
-// Best-effort await that discards any error detail.
-async function bestEffort(fn) {
+// Classify a query result as exactly { rows: [ { <field>: boolean } ] } using
+// only safe own-data reads. Accessor getters for `rows` and the boolean field
+// are NOT executed. Any throw, Proxy trap, revoked Proxy, malformed shape,
+// non-plain record, wrong row count, or non-boolean field yields { ok: false }.
+function readSingleBooleanField(result, field) {
   try {
-    await fn();
+    if (!safeIsPlainRecord(result)) return { ok: false };
+    const rows = safeGetOwnDataProperty(result, 'rows');
+    if (rows === MISS || !safeIsArray(rows)) return { ok: false };
+    const length = safeGetOwnDataProperty(rows, 'length');
+    if (length !== 1) return { ok: false };
+    const row = safeGetOwnDataProperty(rows, '0');
+    if (row === MISS || !safeIsPlainRecord(row)) return { ok: false };
+    const value = safeGetOwnDataProperty(row, field);
+    if (value === true || value === false) return { ok: true, value };
+    return { ok: false };
   } catch (error) {
-    // discarded
+    return { ok: false };
   }
 }
 
-function isValidSingleBooleanRow(result, field) {
-  return isPlainRecord(result)
-    && Array.isArray(result.rows)
-    && result.rows.length === 1
-    && isPlainRecord(result.rows[0])
-    && typeof result.rows[0][field] === 'boolean';
+// Best-effort pool release of a session, exactly once, discarding all error
+// detail. No-ops when the session has no callable own-data `release`.
+async function releaseSessionOnce(session) {
+  const release = safeGetCallable(session, 'release');
+  if (release === undefined) return false;
+  try {
+    await release.call(session);
+    return true;
+  } catch (error) {
+    return false;
+  }
 }
 
 /**
@@ -131,26 +194,29 @@ function isValidSingleBooleanRow(result, field) {
  * returned to the pool exactly once.
  */
 function createPostgresMigrationSessionLockAdapter(config) {
-  const cfg = config || {};
-  if (typeof cfg.openSession !== 'function') {
+  // Reading config.openSession must never surface a raw getter/Proxy error: any
+  // throw, accessor, revoked Proxy, missing, or non-function value maps to the
+  // single fixed factory error message.
+  const openSession = safeGetOwnDataProperty(config, 'openSession');
+  if (openSession === MISS || typeof openSession !== 'function') {
     throw new Error(FACTORY_ERROR_OPEN_SESSION_REQUIRED);
   }
-  const openSession = cfg.openSession;
 
   // Closure-private, per-adapter handle state. Handles from another adapter
   // instance are not present here and are therefore rejected.
   const handleState = new WeakMap();
 
-  function createHandle(session) {
+  function createHandle(session, query, release) {
     const handle = Object.freeze({});
-    handleState.set(handle, { session, lifecycle: 'OPEN' });
+    handleState.set(handle, { session, query, release, lifecycle: 'OPEN' });
     return handle;
   }
 
   async function acquireAdvisoryLock(arg) {
-    const a = arg || {};
-    // targetMigrationId must be a non-empty string but is NOT used for the lock key.
-    if (!isNonEmptyString(a.targetMigrationId)) {
+    // targetMigrationId must be a non-empty string own data property but is NOT
+    // used for the lock key. Malformed/throwing input never opens a session.
+    const targetMigrationId = safeGetOwnDataProperty(arg, 'targetMigrationId');
+    if (targetMigrationId === MISS || !isNonEmptyString(targetMigrationId)) {
       return { status: POSTGRES_LOCK_ACQUIRE_STATUSES.NOT_ATTEMPTED };
     }
 
@@ -161,45 +227,43 @@ function createPostgresMigrationSessionLockAdapter(config) {
       return { status: POSTGRES_LOCK_ACQUIRE_STATUSES.UNAVAILABLE };
     }
 
-    const hasCallableRelease = session !== null
-      && typeof session === 'object'
-      && typeof session.release === 'function';
-    const validSession = isPlainRecord(session)
-      && typeof session.query === 'function'
-      && typeof session.release === 'function';
+    const query = safeGetCallable(session, 'query');
+    const release = safeGetCallable(session, 'release');
+    const validSession = safeIsPlainRecord(session)
+      && query !== undefined
+      && release !== undefined;
     if (!validSession) {
-      if (hasCallableRelease) {
-        await bestEffort(() => session.release());
-      }
+      await releaseSessionOnce(session);
       return { status: POSTGRES_LOCK_ACQUIRE_STATUSES.UNAVAILABLE };
     }
 
     let result;
     try {
-      result = await session.query(POSTGRES_MIGRATION_LOCK_QUERIES.acquire);
+      result = await query.call(session, POSTGRES_MIGRATION_LOCK_QUERIES.acquire);
     } catch (error) {
-      await bestEffort(() => session.release());
+      await releaseSessionOnce(session);
       return { status: POSTGRES_LOCK_ACQUIRE_STATUSES.UNAVAILABLE };
     }
 
-    if (!isValidSingleBooleanRow(result, 'acquired')) {
-      await bestEffort(() => session.release());
+    const evidence = readSingleBooleanField(result, 'acquired');
+    if (!evidence.ok) {
+      await releaseSessionOnce(session);
       return { status: POSTGRES_LOCK_ACQUIRE_STATUSES.UNAVAILABLE };
     }
 
-    if (result.rows[0].acquired === true) {
-      const handle = createHandle(session);
+    if (evidence.value === true) {
+      const handle = createHandle(session, query, release);
       return { status: POSTGRES_LOCK_ACQUIRE_STATUSES.ACQUIRED, handle };
     }
 
-    await bestEffort(() => session.release());
+    await releaseSessionOnce(session);
     return { status: POSTGRES_LOCK_ACQUIRE_STATUSES.FAILED };
   }
 
   async function checkAdvisoryLock(arg) {
-    const a = arg || {};
-    const state = handleState.get(a.lockHandle);
-    // Invalid / cross-adapter handle: no query.
+    const lockHandle = safeGetOwnDataProperty(arg, 'lockHandle');
+    const state = handleState.get(lockHandle);
+    // Invalid / cross-adapter / malformed handle: no query.
     if (!state) {
       return { status: POSTGRES_LOCK_CHECK_STATUSES.FAILED };
     }
@@ -210,26 +274,27 @@ function createPostgresMigrationSessionLockAdapter(config) {
 
     let result;
     try {
-      result = await state.session.query(POSTGRES_MIGRATION_LOCK_QUERIES.check);
+      result = await state.query.call(state.session, POSTGRES_MIGRATION_LOCK_QUERIES.check);
     } catch (error) {
       return { status: POSTGRES_LOCK_CHECK_STATUSES.UNAVAILABLE };
     }
 
-    if (!isValidSingleBooleanRow(result, 'held')) {
+    const evidence = readSingleBooleanField(result, 'held');
+    if (!evidence.ok) {
       return { status: POSTGRES_LOCK_CHECK_STATUSES.UNAVAILABLE };
     }
 
     return {
-      status: result.rows[0].held === true
+      status: evidence.value === true
         ? POSTGRES_LOCK_CHECK_STATUSES.ACQUIRED
         : POSTGRES_LOCK_CHECK_STATUSES.LOST
     };
   }
 
   async function releaseAdvisoryLock(arg) {
-    const a = arg || {};
-    const state = handleState.get(a.lockHandle);
-    // Invalid / cross-adapter handle: no query, no pool release.
+    const lockHandle = safeGetOwnDataProperty(arg, 'lockHandle');
+    const state = handleState.get(lockHandle);
+    // Invalid / cross-adapter / malformed handle: no query, no pool release.
     if (!state) {
       return { status: POSTGRES_LOCK_RELEASE_STATUSES.UNKNOWN };
     }
@@ -244,11 +309,12 @@ function createPostgresMigrationSessionLockAdapter(config) {
     let queryOk = true;
     let released = false;
     try {
-      const result = await state.session.query(POSTGRES_MIGRATION_LOCK_QUERIES.release);
-      if (!isValidSingleBooleanRow(result, 'released')) {
+      const result = await state.query.call(state.session, POSTGRES_MIGRATION_LOCK_QUERIES.release);
+      const evidence = readSingleBooleanField(result, 'released');
+      if (!evidence.ok) {
         queryOk = false;
       } else {
-        released = result.rows[0].released === true;
+        released = evidence.value === true;
       }
     } catch (error) {
       queryOk = false;
@@ -257,7 +323,7 @@ function createPostgresMigrationSessionLockAdapter(config) {
     // Pool release best-effort exactly once, regardless of unlock result.
     let poolReleaseOk = true;
     try {
-      await state.session.release();
+      await state.release.call(state.session);
     } catch (error) {
       poolReleaseOk = false;
     }
