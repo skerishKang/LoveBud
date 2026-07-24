@@ -47,7 +47,6 @@
   ],
   "engine_enum": [
     "postgres",
-    "postgresql",
     "postgres_ephemeral_ci",
     "none"
   ],
@@ -433,7 +432,7 @@
     {
       "path": "scripts/migration-postgres-session-lock-adapter-core.cjs",
       "category": "provenance_tooling",
-      "engine": "postgresql",
+      "engine": "postgres",
       "operations": ["ADVISORY_LOCK_SESSION_CONTRACT"],
       "canonical_status": "CANONICAL_CANDIDATE",
       "destructive": false,

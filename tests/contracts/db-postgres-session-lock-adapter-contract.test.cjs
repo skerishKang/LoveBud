@@ -796,4 +796,189 @@ describe('DB postgres session lock adapter contract (#3458)', () => {
       await assert.doesNotReject(adapter.releaseAdvisoryLock(revokedProxy({})));
     });
   });
+
+  describe('8. Cleanup failure mapping (HOLD B)', () => {
+    it('acquired=false + cleanup success yields FAILED + pool release 1', async () => {
+      const { session, state } = mockSession({ acquireResult: { rows: [{ acquired: false }] } });
+      const r = await adapterFor(session).acquireAdvisoryLock({ targetMigrationId: TARGET });
+      assert.strictEqual(r.status, POSTGRES_LOCK_ACQUIRE_STATUSES.FAILED);
+      assert.strictEqual(state.poolReleases, 1);
+      assert.strictEqual(r.handle, undefined);
+    });
+    it('acquired=false + cleanup sync throw yields UNAVAILABLE', async () => {
+      let cleanupAttempts = 0;
+      const { session } = mockSession({ acquireResult: { rows: [{ acquired: false }] }, poolReleaseImpl: () => { cleanupAttempts += 1; throw new Error('cleanup-sync'); } });
+      const r = await adapterFor(session).acquireAdvisoryLock({ targetMigrationId: TARGET });
+      assert.strictEqual(r.status, POSTGRES_LOCK_ACQUIRE_STATUSES.UNAVAILABLE);
+      assert.strictEqual(cleanupAttempts, 1);
+      assert.strictEqual(r.handle, undefined);
+    });
+    it('acquired=false + cleanup rejection yields UNAVAILABLE', async () => {
+      let cleanupAttempts = 0;
+      const { session } = mockSession({ acquireResult: { rows: [{ acquired: false }] }, poolReleaseImpl: async () => { cleanupAttempts += 1; throw new Error('cleanup-reject'); } });
+      const r = await adapterFor(session).acquireAdvisoryLock({ targetMigrationId: TARGET });
+      assert.strictEqual(r.status, POSTGRES_LOCK_ACQUIRE_STATUSES.UNAVAILABLE);
+      assert.strictEqual(cleanupAttempts, 1);
+    });
+    it('acquire query throw + cleanup throw yields UNAVAILABLE (cleanup once)', async () => {
+      let cleanupAttempts = 0;
+      const { session } = mockSession({ queryImpl: async () => { throw new Error('db down'); }, poolReleaseImpl: () => { cleanupAttempts += 1; throw new Error('cleanup'); } });
+      const r = await adapterFor(session).acquireAdvisoryLock({ targetMigrationId: TARGET });
+      assert.strictEqual(r.status, POSTGRES_LOCK_ACQUIRE_STATUSES.UNAVAILABLE);
+      assert.strictEqual(cleanupAttempts, 1);
+    });
+    it('malformed acquire evidence + cleanup throw yields UNAVAILABLE (cleanup once)', async () => {
+      let cleanupAttempts = 0;
+      const { session } = mockSession({ acquireResult: { rows: [{ acquired: true, secret: 'x' }] }, poolReleaseImpl: () => { cleanupAttempts += 1; throw new Error('cleanup'); } });
+      const r = await adapterFor(session).acquireAdvisoryLock({ targetMigrationId: TARGET });
+      assert.strictEqual(r.status, POSTGRES_LOCK_ACQUIRE_STATUSES.UNAVAILABLE);
+      assert.strictEqual(cleanupAttempts, 1);
+    });
+    it('each acquire failure path attempts cleanup exactly once', async () => {
+      let n = 0;
+      let s = mockSession({ acquireResult: { rows: [{ acquired: false }] }, poolReleaseImpl: async () => { n += 1; } });
+      await adapterFor(s.session).acquireAdvisoryLock({ targetMigrationId: TARGET });
+      assert.strictEqual(n, 1, 'acquired=false');
+      n = 0;
+      s = mockSession({ queryImpl: async () => { throw new Error('x'); }, poolReleaseImpl: async () => { n += 1; } });
+      await adapterFor(s.session).acquireAdvisoryLock({ targetMigrationId: TARGET });
+      assert.strictEqual(n, 1, 'query throw');
+      n = 0;
+      s = mockSession({ acquireResult: { rows: [] }, poolReleaseImpl: async () => { n += 1; } });
+      await adapterFor(s.session).acquireAdvisoryLock({ targetMigrationId: TARGET });
+      assert.strictEqual(n, 1, 'malformed evidence');
+      n = 0;
+      const adapter = createPostgresMigrationSessionLockAdapter({ openSession: async () => ({ release: async () => { n += 1; } }) });
+      await adapter.acquireAdvisoryLock({ targetMigrationId: TARGET });
+      assert.strictEqual(n, 1, 'invalid session');
+    });
+    it('all acquire failure paths return no handle', async () => {
+      const sessions = [
+        mockSession({ acquireResult: { rows: [{ acquired: false }] } }).session,
+        mockSession({ queryImpl: async () => { throw new Error('x'); } }).session,
+        mockSession({ acquireResult: { rows: [{ acquired: true, secret: 'x' }] } }).session,
+        mockSession({ acquireResult: { rows: [] } }).session
+      ];
+      for (const session of sessions) {
+        const r = await adapterFor(session).acquireAdvisoryLock({ targetMigrationId: TARGET });
+        assert.strictEqual(r.handle, undefined);
+        assert.notStrictEqual(r.status, POSTGRES_LOCK_ACQUIRE_STATUSES.ACQUIRED);
+      }
+    });
+  });
+
+  describe('9. Exact row evidence (HOLD C)', () => {
+    it('acquire row with extra string key yields UNAVAILABLE', async () => {
+      const { session } = mockSession({ acquireResult: { rows: [{ acquired: true, secret: 'x' }] } });
+      const r = await adapterFor(session).acquireAdvisoryLock({ targetMigrationId: TARGET });
+      assert.strictEqual(r.status, POSTGRES_LOCK_ACQUIRE_STATUSES.UNAVAILABLE);
+    });
+    it('check row with extra string key yields UNAVAILABLE', async () => {
+      const { session } = mockSession({ checkResult: { rows: [{ held: true, pid: 123 }] } });
+      const adapter = adapterFor(session);
+      const acq = await adapter.acquireAdvisoryLock({ targetMigrationId: TARGET });
+      const r = await adapter.checkAdvisoryLock({ lockHandle: acq.handle });
+      assert.strictEqual(r.status, POSTGRES_LOCK_CHECK_STATUSES.UNAVAILABLE);
+    });
+    it('release row with extra string key yields UNKNOWN', async () => {
+      const { session } = mockSession({ releaseResult: { rows: [{ released: true, raw: {} }] } });
+      const adapter = adapterFor(session);
+      const acq = await adapter.acquireAdvisoryLock({ targetMigrationId: TARGET });
+      const r = await adapter.releaseAdvisoryLock({ lockHandle: acq.handle });
+      assert.strictEqual(r.status, POSTGRES_LOCK_RELEASE_STATUSES.UNKNOWN);
+    });
+    it('acquire row with extra enumerable symbol yields UNAVAILABLE', async () => {
+      const row = { acquired: true };
+      row[Symbol('extra')] = 'x';
+      const { session } = mockSession({ acquireResult: { rows: [row] } });
+      const r = await adapterFor(session).acquireAdvisoryLock({ targetMigrationId: TARGET });
+      assert.strictEqual(r.status, POSTGRES_LOCK_ACQUIRE_STATUSES.UNAVAILABLE);
+    });
+    it('check row with extra enumerable symbol yields UNAVAILABLE', async () => {
+      const row = { held: true };
+      row[Symbol('extra')] = 'x';
+      const { session } = mockSession({ checkResult: { rows: [row] } });
+      const adapter = adapterFor(session);
+      const acq = await adapter.acquireAdvisoryLock({ targetMigrationId: TARGET });
+      const r = await adapter.checkAdvisoryLock({ lockHandle: acq.handle });
+      assert.strictEqual(r.status, POSTGRES_LOCK_CHECK_STATUSES.UNAVAILABLE);
+    });
+    it('release row with extra enumerable symbol yields UNKNOWN', async () => {
+      const row = { released: true };
+      row[Symbol('extra')] = 'x';
+      const { session } = mockSession({ releaseResult: { rows: [row] } });
+      const adapter = adapterFor(session);
+      const acq = await adapter.acquireAdvisoryLock({ targetMigrationId: TARGET });
+      const r = await adapter.releaseAdvisoryLock({ lockHandle: acq.handle });
+      assert.strictEqual(r.status, POSTGRES_LOCK_RELEASE_STATUSES.UNKNOWN);
+    });
+    it('non-enumerable target field is malformed (UNAVAILABLE)', async () => {
+      const row = {};
+      Object.defineProperty(row, 'acquired', { enumerable: false, configurable: true, writable: true, value: true });
+      const { session } = mockSession({ acquireResult: { rows: [row] } });
+      const r = await adapterFor(session).acquireAdvisoryLock({ targetMigrationId: TARGET });
+      assert.strictEqual(r.status, POSTGRES_LOCK_ACQUIRE_STATUSES.UNAVAILABLE);
+    });
+    it('inherited target field is malformed (UNAVAILABLE)', async () => {
+      const row = Object.create({ acquired: true });
+      const { session } = mockSession({ acquireResult: { rows: [row] } });
+      const r = await adapterFor(session).acquireAdvisoryLock({ targetMigrationId: TARGET });
+      assert.strictEqual(r.status, POSTGRES_LOCK_ACQUIRE_STATUSES.UNAVAILABLE);
+    });
+    it('accessor target field is malformed and the getter is not executed', async () => {
+      let calls = 0;
+      const row = {};
+      Object.defineProperty(row, 'acquired', { enumerable: true, configurable: true, get() { calls += 1; return true; } });
+      const { session } = mockSession({ acquireResult: { rows: [row] } });
+      const r = await adapterFor(session).acquireAdvisoryLock({ targetMigrationId: TARGET });
+      assert.strictEqual(r.status, POSTGRES_LOCK_ACQUIRE_STATUSES.UNAVAILABLE);
+      assert.strictEqual(calls, 0);
+    });
+    it('ownKeys trap throw is fail-closed (UNAVAILABLE)', async () => {
+      const row = new Proxy({ acquired: true }, { ownKeys() { throw new Error('ownKeys'); } });
+      const { session } = mockSession({ acquireResult: { rows: [row] } });
+      const r = await adapterFor(session).acquireAdvisoryLock({ targetMigrationId: TARGET });
+      assert.strictEqual(r.status, POSTGRES_LOCK_ACQUIRE_STATUSES.UNAVAILABLE);
+    });
+    it('descriptor trap throw is fail-closed (UNAVAILABLE)', async () => {
+      const row = new Proxy({ acquired: true }, { getOwnPropertyDescriptor() { throw new Error('desc'); } });
+      const { session } = mockSession({ acquireResult: { rows: [row] } });
+      const r = await adapterFor(session).acquireAdvisoryLock({ targetMigrationId: TARGET });
+      assert.strictEqual(r.status, POSTGRES_LOCK_ACQUIRE_STATUSES.UNAVAILABLE);
+    });
+    it('sparse rows (length 1 without index 0) is malformed (UNAVAILABLE)', async () => {
+      const rows = new Array(1);
+      const { session } = mockSession({ acquireResult: { rows } });
+      const r = await adapterFor(session).acquireAdvisoryLock({ targetMigrationId: TARGET });
+      assert.strictEqual(r.status, POSTGRES_LOCK_ACQUIRE_STATUSES.UNAVAILABLE);
+    });
+    it('top-level normal pg metadata is accepted (ACQUIRED)', async () => {
+      const { session } = mockSession({ acquireResult: { command: 'SELECT', rowCount: 1, oid: null, fields: [], rows: [{ acquired: true }] } });
+      const r = await adapterFor(session).acquireAdvisoryLock({ targetMigrationId: TARGET });
+      assert.strictEqual(r.status, POSTGRES_LOCK_ACQUIRE_STATUSES.ACQUIRED);
+    });
+    it('malformed row secret is not exposed in the result or handle', async () => {
+      const secret = 'super-secret-row-value';
+      const { session } = mockSession({ acquireResult: { rows: [{ acquired: true, secret }] } });
+      const r = await adapterFor(session).acquireAdvisoryLock({ targetMigrationId: TARGET });
+      assert.strictEqual(r.status, POSTGRES_LOCK_ACQUIRE_STATUSES.UNAVAILABLE);
+      assert.ok(!JSON.stringify(r).includes(secret));
+      assert.ok(!('error' in r) && !('stack' in r) && !('message' in r));
+    });
+  });
+
+  describe('10. Inventory engine vocabulary (HOLD D)', () => {
+    const inv = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'docs', 'architecture', 'db-schema-change-inventory.json'), 'utf8'));
+    const adapterEntry = inv.entries.find((e) => e.path === 'scripts/migration-postgres-session-lock-adapter-core.cjs');
+    it('engine_enum contains postgres', () => {
+      assert.ok(inv.engine_enum.includes('postgres'));
+    });
+    it('engine_enum does not contain postgresql', () => {
+      assert.ok(!inv.engine_enum.includes('postgresql'));
+    });
+    it('adapter entry engine equals postgres', () => {
+      assert.ok(adapterEntry);
+      assert.strictEqual(adapterEntry.engine, 'postgres');
+    });
+  });
 });

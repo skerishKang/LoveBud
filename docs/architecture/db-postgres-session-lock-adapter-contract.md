@@ -50,10 +50,13 @@ On acquire success the adapter returns `{ status: 'ACQUIRED', handle }`. The han
 ## Acquire mapping
 
 - invalid `targetMigrationId` → `NOT_ATTEMPTED` (openSession not called).
-- openSession throw / invalid session → `UNAVAILABLE` (best-effort pool release once if the invalid session has a callable `release`).
-- query throw or malformed evidence (`null`, `{}`, `{rows:[]}`, `{rows:[{}]}`, non-boolean `acquired`, multiple rows) → `UNAVAILABLE` (best-effort pool release once).
+- openSession throw → `UNAVAILABLE`.
+- invalid session → `UNAVAILABLE` (best-effort pool release once if the invalid session has a callable own-data `release`; status independent of cleanup outcome).
+- query throw → `UNAVAILABLE` (best-effort pool release once; status independent of cleanup outcome).
+- malformed evidence (`null`, `{}`, `{rows:[]}`, `{rows:[{}]}`, non-boolean `acquired`, multiple rows, extra row field) → `UNAVAILABLE` (best-effort pool release once; status independent of cleanup outcome).
 - `acquired=true` → `ACQUIRED` + handle; session kept; pool release 0.
-- `acquired=false` → `FAILED`; no handle; pool release exactly once.
+- `acquired=false` + cleanup success → `FAILED`; no handle; pool release exactly once. `FAILED` is reserved for confirmed lock contention followed by a successful session cleanup.
+- `acquired=false` + cleanup throw/reject or unsafe cleanup → `UNAVAILABLE`; no handle.
 - `acquireAdvisoryLock` never throws.
 
 ## Check mapping
@@ -74,13 +77,23 @@ On acquire success the adapter returns `{ status: 'ACQUIRED', handle }`. The han
 - `released=false` → `FAILED` (pool release still once).
 - pool release runs best-effort exactly once regardless of unlock result.
 
-## Malformed evidence classification
+## Malformed evidence classification (exact row evidence)
 
-A query result is valid only as exactly `{ rows: [ { <field>: boolean } ] }` (one row, plain record, boolean field). Any other shape is malformed evidence and yields the fail-closed status for that method (`UNAVAILABLE` for acquire/check, `UNKNOWN` for release) with a best-effort pool release where applicable.
+A query result is valid only as exactly `{ rows: [ { <field>: boolean } ] }` where the single row has **exactly one enumerable own key** equal to the target field, and that field is an **own data property** (not an accessor) holding a boolean. Top-level `QueryResult` metadata (`command`, `rowCount`, `oid`, `fields`, ...) is allowed and ignored. Any other shape is malformed evidence and yields the fail-closed status for that method (`UNAVAILABLE` for acquire/check, `UNKNOWN` for release) with a best-effort pool release where applicable.
+
+The row is rejected (malformed) when any of the following holds:
+
+- it is not a safe plain record, or it has a custom prototype;
+- the target field is missing, inherited, non-enumerable, an accessor, or non-boolean;
+- the row carries any extra enumerable own key (string **or** symbol), e.g. `{ acquired: true, secret: 'x' }`, `{ held: true, pid: 123 }`, `{ released: true, raw: {} }`;
+- there are zero or multiple rows, or the rows array is sparse (length 1 without index 0);
+- any `Reflect.ownKeys` / `Object.getOwnPropertyDescriptor` / `getPrototypeOf` Proxy trap throws, or the result/row is a revoked Proxy.
+
+Safe inspection (`safeOwnEnumerableKeys`, `readExactBooleanRow`) never executes an accessor getter and never throws; a malformed row never leaks its offending value, message, or stack into the result or handle.
 
 ## Total fail-closed public boundary (safe inspection)
 
-Every public method is **total**: it never throws and never exposes a raw `Error`, message, or stack. All argument, config, session, and evidence inspection goes through safe internal helpers (`safeGetOwnDataProperty`, `safeGetCallable`, `safeIsPlainRecord`, `readSingleBooleanField`, `releaseSessionOnce`) that bound every `Object.getPrototypeOf`, `Object.getOwnPropertyDescriptor`, `Array.isArray`, and property read inside a try/catch.
+Every public method is **total**: it never throws and never exposes a raw `Error`, message, or stack. All argument, config, session, and evidence inspection goes through safe internal helpers (`safeGetOwnDataProperty`, `safeGetCallable`, `safeIsArray`, `safeIsPlainRecord`, `safeOwnEnumerableKeys`, `readExactBooleanRow`, `releaseSessionOnce`) that bound every `Reflect.ownKeys`, `Object.getPrototypeOf`, `Object.getOwnPropertyDescriptor`, `Array.isArray`, and property read inside a try/catch.
 
 - A normal property is required to be an **own data property**. Accessor getters are **not executed** during inspection; an accessor, a throwing getter, a `Proxy` get/`getOwnPropertyDescriptor`/`getPrototypeOf` trap throw, a revoked `Proxy`, a descriptor-inspection throw, a `rows` getter throw, or a target boolean-field getter throw is treated as malformed and maps to the fail-closed status.
 - `acquireAdvisoryLock`: malformed/throwing input (`targetMigrationId`) → `NOT_ATTEMPTED` (openSession not called); malformed/throwing session or evidence → `UNAVAILABLE` (best-effort pool release once where applicable).
@@ -95,6 +108,10 @@ Method results and handle serialization never contain a raw `Error`, error messa
 ## No actual DB boundary
 
 This contract performs no database connection, no `pg` import, no actual query execution, and no real lock acquisition. All session/query behavior is supplied by synthetic injected mocks.
+
+## Canonical inventory engine vocabulary
+
+The adapter is registered in `docs/architecture/db-schema-change-inventory.json` under the canonical engine vocabulary. The `engine_enum` is `["postgres", "postgres_ephemeral_ci", "none"]`; the synonym `postgresql` is **not** part of the vocabulary. The adapter entry uses `"engine": "postgres"`, matching every other PostgreSQL schema-change path in the inventory. No synonym enum expansion is introduced.
 
 ## Remaining adapters / work
 

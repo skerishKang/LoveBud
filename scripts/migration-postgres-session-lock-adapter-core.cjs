@@ -151,11 +151,40 @@ function isNonEmptyString(value) {
   return typeof value === 'string' && value.trim().length > 0;
 }
 
-// Classify a query result as exactly { rows: [ { <field>: boolean } ] } using
-// only safe own-data reads. Accessor getters for `rows` and the boolean field
-// are NOT executed. Any throw, Proxy trap, revoked Proxy, malformed shape,
-// non-plain record, wrong row count, or non-boolean field yields { ok: false }.
-function readSingleBooleanField(result, field) {
+// Collect the enumerable OWN keys (string and symbol) of a record without ever
+// throwing or executing an accessor getter. Reflect.ownKeys and
+// Object.getOwnPropertyDescriptor can invoke Proxy traps that throw; any throw,
+// revoked Proxy, or inconsistent ownKeys/descriptor result yields undefined.
+function safeOwnEnumerableKeys(obj) {
+  let keys;
+  try {
+    keys = Reflect.ownKeys(obj);
+  } catch (error) {
+    return undefined;
+  }
+  const enumerable = [];
+  for (const key of keys) {
+    let desc;
+    try {
+      desc = Object.getOwnPropertyDescriptor(obj, key);
+    } catch (error) {
+      return undefined;
+    }
+    if (desc === undefined) return undefined;
+    if (desc.enumerable === true) enumerable.push(key);
+  }
+  return enumerable;
+}
+
+// Classify a query result as exactly { rows: [ { <field>: boolean } ] } where the
+// single row has EXACTLY ONE enumerable own key equal to `field`, and that field is
+// an own DATA property (not accessor) holding a boolean. Top-level QueryResult
+// metadata (command, rowCount, oid, fields, ...) is allowed and ignored. Any throw,
+// Proxy trap, revoked Proxy, malformed shape, non-plain record, wrong row count,
+// sparse row, extra string/symbol field, accessor field, inherited field, custom
+// prototype, or non-boolean field yields { ok: false }. Accessor getters are never
+// executed.
+function readExactBooleanRow(result, field) {
   try {
     if (!safeIsPlainRecord(result)) return { ok: false };
     const rows = safeGetOwnDataProperty(result, 'rows');
@@ -164,6 +193,10 @@ function readSingleBooleanField(result, field) {
     if (length !== 1) return { ok: false };
     const row = safeGetOwnDataProperty(rows, '0');
     if (row === MISS || !safeIsPlainRecord(row)) return { ok: false };
+    const keys = safeOwnEnumerableKeys(row);
+    if (keys === undefined) return { ok: false };
+    if (keys.length !== 1) return { ok: false };
+    if (keys[0] !== field) return { ok: false };
     const value = safeGetOwnDataProperty(row, field);
     if (value === true || value === false) return { ok: true, value };
     return { ok: false };
@@ -245,7 +278,7 @@ function createPostgresMigrationSessionLockAdapter(config) {
       return { status: POSTGRES_LOCK_ACQUIRE_STATUSES.UNAVAILABLE };
     }
 
-    const evidence = readSingleBooleanField(result, 'acquired');
+    const evidence = readExactBooleanRow(result, 'acquired');
     if (!evidence.ok) {
       await releaseSessionOnce(session);
       return { status: POSTGRES_LOCK_ACQUIRE_STATUSES.UNAVAILABLE };
@@ -256,8 +289,15 @@ function createPostgresMigrationSessionLockAdapter(config) {
       return { status: POSTGRES_LOCK_ACQUIRE_STATUSES.ACQUIRED, handle };
     }
 
-    await releaseSessionOnce(session);
-    return { status: POSTGRES_LOCK_ACQUIRE_STATUSES.FAILED };
+    // acquired=false is normal lock contention. FAILED is only valid when the
+    // confirmed contention is followed by a successful session cleanup; a cleanup
+    // throw/reject or unsafe cleanup downgrades to UNAVAILABLE.
+    const cleanupOk = await releaseSessionOnce(session);
+    return {
+      status: cleanupOk
+        ? POSTGRES_LOCK_ACQUIRE_STATUSES.FAILED
+        : POSTGRES_LOCK_ACQUIRE_STATUSES.UNAVAILABLE
+    };
   }
 
   async function checkAdvisoryLock(arg) {
@@ -279,7 +319,7 @@ function createPostgresMigrationSessionLockAdapter(config) {
       return { status: POSTGRES_LOCK_CHECK_STATUSES.UNAVAILABLE };
     }
 
-    const evidence = readSingleBooleanField(result, 'held');
+    const evidence = readExactBooleanRow(result, 'held');
     if (!evidence.ok) {
       return { status: POSTGRES_LOCK_CHECK_STATUSES.UNAVAILABLE };
     }
@@ -310,7 +350,7 @@ function createPostgresMigrationSessionLockAdapter(config) {
     let released = false;
     try {
       const result = await state.query.call(state.session, POSTGRES_MIGRATION_LOCK_QUERIES.release);
-      const evidence = readSingleBooleanField(result, 'released');
+      const evidence = readExactBooleanRow(result, 'released');
       if (!evidence.ok) {
         queryOk = false;
       } else {
