@@ -214,66 +214,82 @@
   }
 
   // ============================================================
-  // Hero growth cycle (rotating YouTube moments)
+  // Hero music-video showcase with center spotlight (#3625)
+  // Fixed four-artist tree: RESCENE (featured), BTS (one),
+  // BLACKPINK (two), CORTIS (three). After the initial reveal,
+  // each card sequentially moves to the center focus zone as a
+  // spotlight before returning to its grid position. Cycle
+  // repeats after all four spotlights. No artist rotation, no
+  // card content flip — only the spotlight transforms.
   // ============================================================
 
   function initHeroGrowthCycle() {
-    if (document.getElementById('home-hero-cycle-marker')) return;
+    // Dedicated duplicate-init guard: even if bootstrap() fires twice,
+    // only one cycle timer is ever created.
     if (window.__lovebudHeroCycleBootstrapped) return;
     window.__lovebudHeroCycleBootstrapped = true;
 
-    var marker = document.createElement('meta');
-    marker.id = 'home-hero-cycle-marker';
-    marker.setAttribute('data-hero-cycle', '1');
-    document.head.appendChild(marker);
-
-    var collage = document.querySelector('.home-v3-collage');
+    var collage = document.querySelector('.home-v3-collage[data-hero-spotlight]');
     var stage = document.querySelector('.home-v3-growth-stage');
     if (!collage || !stage) return;
 
-    var caption = stage.querySelector('.growth-stage-caption');
     var cards = Array.prototype.slice.call(stage.querySelectorAll('.growth-stage-card'));
     if (!cards.length) return;
 
     var reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
     var reducedMotion = reducedMotionQuery.matches;
 
+    // Fixed card-to-artist mapping: each card permanently represents
+    // one artist in the mixed-artist showcase. Card 0 is always RESCENE,
+    // card 1 is always BTS, card 2 is always BLACKPINK, card 3 always CORTIS.
+    var FIXED_CARD_MAP = [
+      { artistIndex: 3, videoIndex: 0 }, // card 0 featured → RESCENE (index 3)
+      { artistIndex: 0, videoIndex: 0 }, // card 1 supporting.one → BTS (index 0)
+      { artistIndex: 1, videoIndex: 0 }, // card 2 supporting.two → BLACKPINK (index 1)
+      { artistIndex: 2, videoIndex: 0 }  // card 3 supporting.three → CORTIS (index 2)
+    ];
+
+    // Spotlight card order: RESCENE(featured,0) → BTS(one,1) → BLACKPINK(two,2) → CORTIS(three,3)
+    var SPOTLIGHT_ORDER = [0, 1, 2, 3];
+
     var PHASE = {
       PENDING: 'pending',
       CAPTION: 'caption-revealed',
       NETWORK: 'network-linking',
       CARDS: 'cards-revealing',
-      COMPLETED: 'completed'
+      COMPLETED: 'completed',
+      FADE: 'fade-out'
     };
 
-    // Sequential card flip: featured starts, each supporting card follows
-    // FLIP_STAGGER_MS later. Each card takes FLIP_HALF_MS to reach 90deg
-    // (edge-on, invisible), swaps its data there, then FLIP_HALF_MS to
-    // rotate back and reveal the new content. No opacity swap, no flicker.
-    var FLIP_STAGGER_MS = 120;
-    var FLIP_HALF_MS = 230;
-    var FLIP_TOTAL_MS = (FLIP_STAGGER_MS * 3) + (FLIP_HALF_MS * 2) + 60;
+    // Spotlight timings. Non-reduced-motion durations; reduced-motion
+    // overrides all to zero and stops after the initial render.
+    var SPOTLIGHT_MOVE_MS = 580;      // card moving to center (IN or OUT)
+    var SPOTLIGHT_HOLD_MS = 2800;     // card held at center
+    var SPOTLIGHT_GAP_MS = 400;       // pause between cards
+    var SPOTLIGHT_INITIAL_HOLD = 3000; // hold completed tree before first spotlight
+    var SPOTLIGHT_FINAL_HOLD = 4000;   // hold after all 4 spotlights
+    var FADE_MS = 800;                // fade-out then restart
 
     var TIMINGS = reducedMotion ? {
       caption: 0,
       network: 0,
       cards: 0,
-      hold: 60000, // effectively "do not advance"
-      flip: 0
+      hold: 60000    // stay on completed tree, never advance
     } : {
       caption: 180,
       network: 220,
       cards: 800,
-      hold: 4000,
-      flip: FLIP_TOTAL_MS
+      hold: SPOTLIGHT_INITIAL_HOLD
     };
 
     var state = {
-      artistIndex: 0,
-      videoIndices: [0, 1, 2, 3],
       phase: PHASE.PENDING,
       phaseStart: 0,
-      flipping: false,
+      // Spotlight state: spotlightCardIndex is the card currently being
+      // spotlighted (-1 = none/initial). spotlightSubPhase tracks the
+      // current spotlight step for that card.
+      spotlightCardIndex: -1,
+      spotlightSubPhase: '',
       pauseReasons: {
         hover: false,
         focus: false,
@@ -341,9 +357,6 @@
     function applyArtistToCard(card, videoIndex) {
       var media = card.querySelector('.growth-stage-card-media');
       if (!media) {
-        // All cards ship with a media box in HTML. If it is somehow missing,
-        // append into the inner content wrapper so the swap-fade still covers
-        // the media (do not drop it outside the .growth-stage-card-content).
         media = document.createElement('div');
         media.className = 'growth-stage-card-media';
         var contentWrap = card.querySelector('.growth-stage-card-content') || card;
@@ -353,12 +366,11 @@
       var link = card.querySelector('.growth-stage-card-link');
       var fallback = card.querySelector('.growth-stage-card-fallback');
       var titleEl = card.querySelector('strong');
-      // Featured nodes carry a description copy span keyed home.v3.growth.cardN.copy.
-      // Supporting nodes only have a visually-hidden attribution span keyed
-      // home.v3.youtube.attribution; match by key prefix so we never overwrite it.
       var copyEl = card.querySelector('span[data-i18n^="home.v3.growth.card"]');
 
-      var artist = ARTIST_DATASETS[state.artistIndex];
+      var cardIdx = parseInt(card.getAttribute('data-card-index'), 10);
+      var mapping = FIXED_CARD_MAP[cardIdx] || FIXED_CARD_MAP[0];
+      var artist = ARTIST_DATASETS[mapping.artistIndex];
       if (!artist) return;
       var video = artist.videos[videoIndex] || artist.videos[0];
       if (!video) return;
@@ -433,71 +445,65 @@
 
     function applyCurrentArtistToCards() {
       cards.forEach(function(card, idx) {
-        var slot = idx; // 0 = featured, 1..3 = supporting
-        applyArtistToCard(card, state.videoIndices[slot] || 0);
-      });
-    }
-
-    function advanceArtist() {
-      var prevArtistIndex = state.artistIndex;
-      state.artistIndex = (state.artistIndex + 1) % ARTIST_DATASETS.length;
-      var prevArtist = ARTIST_DATASETS[prevArtistIndex];
-      for (var i = 0; i < state.videoIndices.length; i++) {
-        state.videoIndices[i] = (state.videoIndices[i] + 1) % prevArtist.videos.length;
-      }
-      var artist = ARTIST_DATASETS[state.artistIndex];
-      if (collage) collage.setAttribute('data-hero-artist', artist.key);
-    }
-
-    function preloadNextThumbnails() {
-      var nextArtistIndex = (state.artistIndex + 1) % ARTIST_DATASETS.length;
-      var nextArtist = ARTIST_DATASETS[nextArtistIndex];
-      if (!nextArtist) return;
-      for (var i = 0; i < state.videoIndices.length; i++) {
-        var nextVideoIndex = (state.videoIndices[i] + 1) % nextArtist.videos.length;
-        var pre = new Image();
-        pre.src = thumbnailForArtistAt(nextArtistIndex, nextVideoIndex);
-      }
-    }
-
-    // ------------------------------------------------------------
-    // Sequential card flip (artist change). The shell position and the
-    // memory network stay fixed; only the inner .growth-stage-card-content
-    // rotates
-    // on the Y axis. Data swaps exactly at the 90deg edge-on point, so
-    // old and new content are never visible at the same time and no blank
-    // white card is ever shown.
-    // ------------------------------------------------------------
-    function flipCard(card, applyFn) {
-      var content = card.querySelector('.growth-stage-card-content');
-      if (!content) {
-        applyFn();
-        return;
-      }
-      content.classList.add('is-flip-out');
-      window.setTimeout(function() {
-        applyFn();
-        content.classList.remove('is-flip-out');
-      }, FLIP_HALF_MS);
-    }
-
-    function flipToNextArtist() {
-      advanceArtist();
-      cards.forEach(function(card, idx) {
-        window.setTimeout(function() {
-          flipCard(card, function() {
-            applyArtistToCard(card, state.videoIndices[idx] || 0);
-          });
-        }, idx * FLIP_STAGGER_MS);
+        var mapping = FIXED_CARD_MAP[idx];
+        if (!mapping) return;
+        applyArtistToCard(card, mapping.videoIndex);
       });
     }
 
     // ------------------------------------------------------------
-    // Large modal player (youtube-nocookie iframe). Every card (featured
-    // and supporting) opens its own video in a centered overlay instead of
-    // playing inside the small card. Opening the modal pauses the cycle,
-    // the card flip, and the headline rotation; closing it removes the
-    // iframe entirely and resumes the cycle on the current artist.
+    // Spotlight functions (#3625). Each card takes a turn moving to
+    // the center focus zone (enlarged, brightened), holding, then
+    // returning precisely to its original grid position.
+    // ------------------------------------------------------------
+
+    function clearSpotlightClasses(card) {
+      if (!card) return;
+      card.classList.remove('is-spotlight', 'is-spotlight-return');
+      card.style.removeProperty('--spotlight-dx');
+      card.style.removeProperty('--spotlight-dy');
+    }
+
+    function spotlightCard(cardIndex) {
+      var card = cards[cardIndex];
+      if (!card) return;
+      clearSpotlightClasses(card);
+
+      // Calculate transform to center of growth stage.
+      // The target is the midpoint of the growth-stage container,
+      // shifted slightly down to account for caption reserved zone.
+      var stageRect = stage.getBoundingClientRect();
+      var cardRect = card.getBoundingClientRect();
+      var scale = 1.28;
+
+      var targetCX = stageRect.width / 2;
+      var targetCY = stageRect.height / 2 + 40;
+
+      var cardCX = cardRect.left - stageRect.left + (cardRect.width / 2);
+      var cardCY = cardRect.top - stageRect.top + (cardRect.height / 2);
+
+      var dx = targetCX - cardCX;
+      var dy = targetCY - cardCY;
+
+      card.style.setProperty('--spotlight-dx', dx + 'px');
+      card.style.setProperty('--spotlight-dy', dy + 'px');
+      card.classList.add('is-spotlight');
+    }
+
+    function returnSpotlightedCard(cardIndex) {
+      var card = cards[cardIndex];
+      if (!card) return;
+      card.classList.remove('is-spotlight');
+      card.classList.add('is-spotlight-return');
+      // Class is removed by the spotlight timer after the return
+      // animation completes (see step() SPOTLIGHT_OUT sub-phase).
+    }
+
+    // ------------------------------------------------------------
+    // Large modal player (youtube-nocookie iframe). Every card opens
+    // its own video in a centered overlay instead of playing inside
+    // the small card. Opening the modal pauses the cycle; closing it
+    // removes the iframe and resumes the cycle.
     // ------------------------------------------------------------
     var modalEl = null;
     var modalReturnFocus = null;
@@ -613,15 +619,13 @@
     // Card wiring: clicking a card's thumbnail (or its play button, whose
     // click bubbles up) opens that card's current video in the modal. The
     // "YouTube에서 보기" external link sits outside the media box, so it
-    // opens in a new tab and never triggers the modal.
+    // opens in a new tab and never triggers the modal. Spotlight-moved
+    // cards are still clickable.
     // ------------------------------------------------------------
     cards.forEach(function(card) {
       var media = card.querySelector('.growth-stage-card-media');
       if (!media) return;
       media.addEventListener('click', function() {
-        // Never open the player mid-flip: the card content is rotating and a
-        // stagger timeout is already in flight, so a click here would race it.
-        if (state.flipping) return;
         // The clicked card's own dataset is the source of truth for what is
         // currently on screen (written by applyArtistToCard) — not the global
         // artist state — so the modal always plays the video whose thumbnail
@@ -636,17 +640,45 @@
       });
     });
 
-    // Reflect the flip state onto the play buttons as an aria-disabled hint
-    // while a stagger flip is in flight. The click handler above also
-    // hard-guards on state.flipping; this only signals the state to assistive
-    // tech and does not redesign any timer or state machine.
-    function setPlayButtonsFlipState(flipping) {
-      cards.forEach(function(card) {
-        var play = card.querySelector('.growth-stage-card-play');
-        if (!play) return;
-        if (flipping) play.setAttribute('aria-disabled', 'true');
-        else play.removeAttribute('aria-disabled');
-      });
+    function spotlightMidPhase() {
+      // Handle the spotlight sub-phase within COMPLETED. Called via
+      // scheduleNext after each spotlight timer expires. This lets the
+      // pause system naturally intercept between sub-steps.
+      if (state.phase !== PHASE.COMPLETED) return;
+      if (state.spotlightCardIndex < 0 || state.spotlightCardIndex >= 4) return;
+
+      var cardIdx = SPOTLIGHT_ORDER[state.spotlightCardIndex];
+      var card = cards[cardIdx];
+
+      switch (state.spotlightSubPhase) {
+        case 'hold':
+          // Card finished moving to center. Start the hold period.
+          state.spotlightSubPhase = 'out';
+          scheduleNext(SPOTLIGHT_HOLD_MS);
+          break;
+        case 'out':
+          // Hold finished. Return card to grid.
+          returnSpotlightedCard(cardIdx);
+          state.spotlightSubPhase = 'return';
+          scheduleNext(SPOTLIGHT_MOVE_MS);
+          break;
+        case 'return':
+          // Return animation complete. Clean up classes.
+          clearSpotlightClasses(card);
+          state.spotlightSubPhase = 'gap';
+          scheduleNext(SPOTLIGHT_GAP_MS);
+          break;
+        case 'gap':
+          // Gap finished. Advance to next card.
+          state.spotlightSubPhase = 'in';
+          state.spotlightCardIndex++;
+          // The next COMPLETED entry will start the next spotlight
+          // or go to final hold.
+          scheduleNext(0);
+          break;
+        default:
+          scheduleNext(500);
+      }
     }
 
     function step() {
@@ -662,44 +694,54 @@
           scheduleNext(TIMINGS.caption);
           break;
         case PHASE.CAPTION:
-          // Caption is up: reveal the memory network first (rail starts blooming),
-          // then cards appear 220ms later (concurrent reveal with rail transition).
           setStageState(PHASE.NETWORK);
           scheduleNext(TIMINGS.network);
           break;
         case PHASE.NETWORK:
-          // Network transition in progress (~750ms), cards appear ~220ms into this.
           setStageState(PHASE.CARDS);
           scheduleNext(TIMINGS.cards);
           break;
         case PHASE.CARDS:
           setStageState(PHASE.COMPLETED);
+          state.spotlightCardIndex = 0;
+          state.spotlightSubPhase = '';
           scheduleNext(TIMINGS.hold);
           break;
         case PHASE.COMPLETED:
-          if (!state.flipping) {
-            // Hold finished. Flip to the next artist in sequence. The stage
-            // stays "completed" so the shells, memory network, and caption
-            // remain
-            // visible while only the card contents rotate. (The modal player
-            // pauses the cycle, so a flip never starts while it is open.)
-            preloadNextThumbnails();
-            state.flipping = true;
-            setPlayButtonsFlipState(true);
-            flipToNextArtist();
-            scheduleNext(TIMINGS.flip);
-          } else {
-            // Flip finished. Hold on the new artist, then swap the headline
-            // out-in now that the cards are at rest (never mid-flip). The
-            // toggle is a no-op while a video plays because playback pauses
-            // the cycle so this branch is not reached.
-            state.flipping = false;
-            setPlayButtonsFlipState(false);
-            if (typeof window.__lovebudHeroCopyToggle === 'function') {
-              window.__lovebudHeroCopyToggle();
-            }
-            scheduleNext(TIMINGS.hold);
+          // If we are in a spotlight sub-phase, dispatch it.
+          if (state.spotlightCardIndex >= 0 && state.spotlightCardIndex < 4 &&
+              state.spotlightSubPhase !== '' && state.spotlightSubPhase !== 'fade') {
+            spotlightMidPhase();
+            break;
           }
+          // No active spotlight sub-phase. Two possibilities:
+          // 1) Initial completed after reveal (spotlightSubPhase === '')
+          // 2) All 4 spotlights done (spotlightCardIndex >= 4)
+          if (state.spotlightCardIndex < 0 || state.spotlightCardIndex >= 4) {
+            // All done or initial — hold, then fade.
+            if (state.spotlightSubPhase === 'fade') {
+              // Final hold done — fade out and restart.
+              setStageState(PHASE.FADE);
+              scheduleNext(FADE_MS);
+            } else {
+              // Start final hold (initial tree or after spotlights).
+              state.spotlightSubPhase = 'fade';
+              scheduleNext(SPOTLIGHT_FINAL_HOLD);
+            }
+          } else {
+            // Start spotlight sequence for this card.
+            var startIdx = SPOTLIGHT_ORDER[state.spotlightCardIndex];
+            spotlightCard(startIdx);
+            state.spotlightSubPhase = 'hold';
+            scheduleNext(SPOTLIGHT_MOVE_MS);
+          }
+          break;
+        case PHASE.FADE:
+          // Fade complete. Reset for the next cycle.
+          setStageState(PHASE.PENDING);
+          state.spotlightCardIndex = 0;
+          state.spotlightSubPhase = '';
+          scheduleNext(0);
           break;
         default:
           setStageState(PHASE.PENDING);

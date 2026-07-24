@@ -4708,6 +4708,12 @@
         "child_process",
         "filesystem"
       ]
+    },
+    {
+      "path": "tests/contracts/home-mixed-artist-spotlight-3625-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Reads source (.html, .css, .js) and asserts on strings, regex, file existence, structure, order, or syntax markers for the #3625 center-spotlight showcase: fixed artist keys, spotlight CSS classes, spotlight JS state machine, FIXED_CARD_MAP, SPOTLIGHT_ORDER, no original flip functions, reduced-motion overrides, FADE phase, and protected Closes/Fixes restrictions. Does not execute the target runtime behavior.",
+      "capabilities": []
     }
   ]
 }

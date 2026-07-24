@@ -99,8 +99,8 @@
       en: 'New to LoveTree?'
     },
     'home.v3.growth.caption': {
-      ko: '순간 하나가 이어지고, 감정의 가지가 자라나요',
-      en: 'One moment connects, and branches of feeling begin to grow.'
+      ko: '세대를 건너 이어진 네 개의 무대',
+      en: 'Four stages connected across generations'
     },
     'home.v3.artist.bts': {
       ko: 'BTS',

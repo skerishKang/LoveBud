@@ -451,15 +451,28 @@ console.log('✓ 24: memory network is a CSS grid container');
 console.log('✓ 25: cards are grid items (no absolute coordinates)');
 
 // ============================================================
-// 26. No !important anywhere in the visual layer
+// 26. No !important in the base visual layer (except spotlight)
 // ============================================================
 {
-  assert.ok(!cssGrowthRules.includes('!important'),
-    'growth-stage.css must not use !important');
+  // Base rules should not use !important. Spotlight classes intentionally
+  // use !important to override data-stage-state transforms during the
+  // center-focus animation (#3625). This is acceptable because spotlight
+  // is a temporary animation state, not the base layout.
+  const withoutSpotlight = cssGrowthRules
+    .replace(/\.growth-stage-card\.is-spotlight[^{]*\{[^}]*\}/g, '')
+    .replace(/\.growth-stage-card\.is-spotlight-return[^{]*\{[^}]*\}/g, '');
+
+  // Check remaining (non-spotlight) rules for !important.
+  // The only !important in the spotlight block must be in is-spotlight/
+  // is-spotlight-return rules; nothing in the base card/grid/network rules
+  // should use it.
+  const nonSpotlightImportant = (withoutSpotlight.match(/!important/g) || []).length;
+  assert.ok(nonSpotlightImportant === 0,
+    `Non-spotlight growth-stage.css must not use !important (found ${nonSpotlightImportant} matches)`);
   assert.ok(!cssResponsiveRules.includes('!important'),
     'responsive.css must not use !important (mobile reflow is grid-native)');
 }
-console.log('✓ 26: no !important in the visual layer');
+console.log('✓ 26: no !important in base visual layer');
 
 // ============================================================
 // 27. Network + cards reveal concurrently (network-linking kept, overlap > 0)

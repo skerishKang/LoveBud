@@ -73,4 +73,23 @@
     .home-v3-growth-stage .growth-stage-card-content {
         transition: none !important;
     }
+
+    /* Reduced motion (#3625): no spotlight movement. Cards stay in
+       their grid positions with all connectors at full opacity. */
+    .growth-stage-card.is-spotlight,
+    .growth-stage-card.is-spotlight-return {
+        transform: none !important;
+        box-shadow: 0 22px 46px rgba(80, 61, 58, 0.14) !important;
+        z-index: 20 !important;
+        transition: none !important;
+    }
+
+    .growth-stage-card.is-spotlight .growth-stage-card-media {
+        filter: none !important;
+    }
+
+    .growth-stage-card.is-spotlight::before,
+    .growth-stage-card.is-spotlight::after {
+        opacity: 1 !important;
+    }
 }
