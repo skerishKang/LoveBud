@@ -4537,6 +4537,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/db-migration-source-validation-adapter-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Exercises scripts/migration-source-validation-adapter-core.cjs with injected synthetic fixtures, real default adapter against committed inactive sources, and temp-filesystem isolated repositories (B4/B5/B6 malformed fixed files, I1 per-file read counts); asserts frozen public surface, PASS/FAIL/UNAVAILABLE vocabulary, raw malformed JSON parse tests, loader/validator status mapping, verified realTarget read, safe factory config descriptor snapshot including null config rejection and non-enumerable dependency rejection, Promise identity via node:util types.isPromise (Proxy-wrapped Promise get trap 0, accessor/data-property thenable not assimilated), safe loader result snapshot (reversed key order accepted, non-enumerable rejection), safe validator result snapshot (genuine Promise, Proxy-wrapped result, thenable, non-enumerable ok), call-envelope validation, result sanitization, and orchestrator compatibility; no SQL, database, Docker, network, secret, or manifest mutation.",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/db-destructive-ddl-approval-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Exercises scripts/migration-provenance-core.cjs (detectDestructiveOperations and validateMigrationManifest) against synthetic .sql fixtures created in the OS temporary directory (removed on completion; none committed to the repository) to assert the static destructive operation vocabulary (DROP_TABLE, TRUNCATE_TABLE, DROP_COLUMN, ALTER_COLUMN_TYPE, SET_NOT_NULL, DROP_CONSTRAINT, DROP_INDEX, DROP_FUNCTION, DROP_TRIGGER, DROP_TYPE, DROP_POLICY, FK_CASCADE_EXPANSION), the actual-vs-declared declaration rule (missing/partial/unknown/duplicate/spurious all fail closed), risk_class=DESTRUCTIVE enforcement, and approval-reference policy (empty and placeholder approvals rejected; real references accepted). Does not connect to any database, execute SQL, add a canonical migration, or activate the canonical stream.",
