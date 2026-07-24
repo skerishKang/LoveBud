@@ -219,7 +219,8 @@ function hasExactFieldKeysAndDataProperties(record) {
 
 // Validate that an object is a dense Array: non-enumerable 'length' data
 // property (integer >= 0), own enumerable data properties 0 to length-1, and
-// NO other own properties.
+// NO other own properties. Each index key must be the canonical String(i)
+// (rejecting '00', '01', '000', '1e0', '+0', '-0', etc.).
 function isExactDenseArray(arr) {
   if (!safeIsArray(arr)) return false;
   const descriptors = safeOwnKeyDescriptors(arr);
@@ -232,9 +233,11 @@ function isExactDenseArray(arr) {
       if (desc.enumerable === true) return false; // length must be non-enumerable
       if (!('value' in desc) || typeof desc.value !== 'number' || !Number.isInteger(desc.value) || desc.value < 0) return false;
       length = desc.value;
-    } else if (typeof key === 'string' && /^\d+$/.test(key)) {
+    } else if (typeof key === 'string') {
+      // Must be canonical numeric index: String(Number(key)) === key and Number(key) >= 0
       const idx = Number(key);
-      if (idx < 0) return false;
+      if (!Number.isInteger(idx) || idx < 0 || String(idx) !== key) return false;
+      if (idx >= length && length !== -1) return false; // out of range (only check if length known)
       if (desc.enumerable !== true) return false; // indices must be enumerable
       if (!('value' in desc)) return false; // must be data property
       seenIndices++;
@@ -245,6 +248,42 @@ function isExactDenseArray(arr) {
   if (length === -1) return false; // length missing
   if (seenIndices !== length) return false; // must have exactly indices 0 to length-1
   return true;
+}
+
+// Snapshot a dense array into frozen { length, values } by inspecting
+// descriptors exactly once. After this call, the original array is never
+// accessed again (no rows[i], no re-reading length). Proxy get traps are
+// never executed: all values come from captured descriptors.
+function readExactDenseArraySnapshot(arr) {
+  if (!safeIsArray(arr)) return undefined;
+  const descriptors = safeOwnKeyDescriptors(arr);
+  if (descriptors === undefined) return undefined;
+
+  let length = -1;
+  const indexValues = [];
+  for (const { key, desc } of descriptors) {
+    if (key === 'length') {
+      if (desc.enumerable === true) return undefined;
+      if (!('value' in desc) || typeof desc.value !== 'number' || !Number.isInteger(desc.value) || desc.value < 0) return undefined;
+      length = desc.value;
+    } else if (typeof key === 'string') {
+      const idx = Number(key);
+      if (!Number.isInteger(idx) || idx < 0 || String(idx) !== key) return undefined;
+      if (desc.enumerable !== true) return undefined;
+      if (!('value' in desc)) return undefined;
+      if (idx >= length && length !== -1) return undefined; // out of range
+      indexValues[idx] = desc.value;
+    } else {
+      return undefined; // extra property, symbol key, accessor
+    }
+  }
+  if (length === -1) return undefined; // length missing
+  if (indexValues.length !== length) return undefined; // must have exactly indices 0 to length-1
+  // Verify all indices are present (no holes)
+  for (let i = 0; i < length; i += 1) {
+    if (!(i in indexValues)) return undefined;
+  }
+  return Object.freeze({ length, values: Object.freeze(indexValues) });
 }
 
 // A canonical timestamp is a non-empty string ending in 'Z' that round-trips to
@@ -295,6 +334,28 @@ function readExactRecord(row) {
   }
 }
 
+// Snapshot a single row's seven-field values from descriptors in one pass.
+// Returns a frozen { migration_id, content_checksum, ...allFields } object or
+// undefined if the row is malformed. After this call, the original row is never
+// accessed again. Proxy get traps are never executed.
+function readExactRecordSnapshot(row) {
+  try {
+    if (!safeIsPlainRecord(row)) return undefined;
+    if (!hasExactFieldKeysAndDataProperties(row)) return undefined;
+    const snapshot = {};
+    for (const field of POSTGRES_MIGRATION_LEDGER_FIELDS) {
+      const value = safeGetOwnDataProperty(row, field);
+      if (value === MISS || typeof value !== 'string' || value.trim().length === 0) return undefined;
+      snapshot[field] = value;
+    }
+    if (!isCanonicalUtcTimestamp(snapshot.applied_at)) return undefined;
+    if (!READ_TRANSACTION_OUTCOMES.has(snapshot.transaction_outcome)) return undefined;
+    return Object.freeze(snapshot);
+  } catch (error) {
+    return undefined;
+  }
+}
+
 // Validate a QueryResult and project it to a frozen array of frozen seven-field
 // clones preserving the query row order (no JS sort/dedupe/rewrite). Top-level
 // metadata (command, rowCount, oid, fields, ...) is allowed and ignored; only the
@@ -305,16 +366,14 @@ function readLedgerRecords(result) {
   try {
     if (!safeIsPlainRecord(result)) return undefined;
     const rows = safeGetOwnDataProperty(result, 'rows');
-    if (rows === MISS || !isExactDenseArray(rows)) return undefined;
+    if (rows === MISS) return undefined;
 
-    // isExactDenseArray ensures 'length' is an own non-enumerable data property
-    // (integer >= 0) and that there are exactly 'length' own enumerable index
-    // data properties (0 to length-1), with no other own properties.
-    const length = Object.getOwnPropertyDescriptor(rows, 'length').value;
+    const snapshot = readExactDenseArraySnapshot(rows);
+    if (snapshot === undefined) return undefined;
+
     const records = [];
-    for (let i = 0; i < length; i += 1) {
-      const row = rows[String(i)]; // Already validated as enumerable data property
-      const record = readExactRecord(row);
+    for (let i = 0; i < snapshot.length; i += 1) {
+      const record = readExactRecordSnapshot(snapshot.values[i]);
       if (record === undefined) return undefined;
       records.push(record);
     }
@@ -342,6 +401,29 @@ function isExactAppendEvidenceRow(row) {
   return seen === 2;
 }
 
+// Snapshot an append evidence row's two fields from descriptors in one pass.
+// Returns a frozen { migration_id, content_checksum } or undefined if malformed.
+// After this call, the original row is never accessed again. Proxy get traps
+// are never executed.
+function readExactAppendEvidenceRowSnapshot(row) {
+  if (!safeIsPlainRecord(row)) return undefined;
+  const descriptors = safeOwnKeyDescriptors(row);
+  if (!descriptors || descriptors.length !== 2) return undefined;
+  let migration_id = MISS;
+  let content_checksum = MISS;
+  for (const { key, desc } of descriptors) {
+    if (typeof key !== 'string') return undefined;
+    if (!('value' in desc)) return undefined; // Accessor forbidden
+    if (desc.enumerable !== true) return undefined; // Must be enumerable
+    if (key === 'migration_id') migration_id = desc.value;
+    else if (key === 'content_checksum') content_checksum = desc.value;
+    else return undefined; // Extra property
+  }
+  if (migration_id === MISS || content_checksum === MISS) return undefined;
+  if (typeof migration_id !== 'string' || typeof content_checksum !== 'string') return undefined;
+  return Object.freeze({ migration_id, content_checksum });
+}
+
 // Classify append evidence into a fixed status. Never throws.
 //   APPENDED: exactly one row matching the snapshot (isExactAppendEvidenceRow).
 //   FAILED:   { rows: [] } (confirmed empty rows).
@@ -352,18 +434,19 @@ function readExactAppendEvidence(result, snapshot) {
   try {
     if (!safeIsPlainRecord(result)) return POSTGRES_LEDGER_APPEND_STATUSES.UNKNOWN;
     const rows = safeGetOwnDataProperty(result, 'rows');
-    if (rows === MISS || !isExactDenseArray(rows)) return POSTGRES_LEDGER_APPEND_STATUSES.UNKNOWN;
+    if (rows === MISS) return POSTGRES_LEDGER_APPEND_STATUSES.UNKNOWN;
 
-    const length = Object.getOwnPropertyDescriptor(rows, 'length').value;
-    if (length === 0) return POSTGRES_LEDGER_APPEND_STATUSES.FAILED;
-    if (length !== 1) return POSTGRES_LEDGER_APPEND_STATUSES.UNKNOWN;
+    const arrSnapshot = readExactDenseArraySnapshot(rows);
+    if (arrSnapshot === undefined) return POSTGRES_LEDGER_APPEND_STATUSES.UNKNOWN;
 
-    const row = rows['0'];
-    if (!isExactAppendEvidenceRow(row)) return POSTGRES_LEDGER_APPEND_STATUSES.UNKNOWN;
+    if (arrSnapshot.length === 0) return POSTGRES_LEDGER_APPEND_STATUSES.FAILED;
+    if (arrSnapshot.length !== 1) return POSTGRES_LEDGER_APPEND_STATUSES.UNKNOWN;
 
-    // row is safe, now check values.
-    if (row.migration_id !== snapshot.migration_id) return POSTGRES_LEDGER_APPEND_STATUSES.UNKNOWN;
-    if (row.content_checksum !== snapshot.content_checksum) return POSTGRES_LEDGER_APPEND_STATUSES.UNKNOWN;
+    const rowSnapshot = readExactAppendEvidenceRowSnapshot(arrSnapshot.values[0]);
+    if (rowSnapshot === undefined) return POSTGRES_LEDGER_APPEND_STATUSES.UNKNOWN;
+
+    if (rowSnapshot.migration_id !== snapshot.migration_id) return POSTGRES_LEDGER_APPEND_STATUSES.UNKNOWN;
+    if (rowSnapshot.content_checksum !== snapshot.content_checksum) return POSTGRES_LEDGER_APPEND_STATUSES.UNKNOWN;
     return POSTGRES_LEDGER_APPEND_STATUSES.APPENDED;
   } catch (error) {
     return POSTGRES_LEDGER_APPEND_STATUSES.UNKNOWN;

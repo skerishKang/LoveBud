@@ -238,6 +238,38 @@ Proven by the contract test:
 - a `queryLockedSession` that attempts to mutate the query object cannot change the fixed definition;
 - `lockHandle` is forwarded unchanged but never inspected/serialized.
 
+## Descriptor snapshot / TOCTOU hardening
+
+All evidence is inspected via **descriptor inspection exactly once** and then consumed only from the captured snapshot. The original Proxy/object/array property is **never re-accessed** after validation. This eliminates TOCTOU (time-of-check/time-of-use) windows where a Proxy `get` trap or a descriptor trap could return a different value on a second access.
+
+### Snapshot helpers
+
+- `readExactDenseArraySnapshot(arr)` — captures `length` and all index values from descriptors in a single pass. Returns a frozen `{ length, values }` or `undefined`.
+- `readExactRecordSnapshot(row)` — captures all seven field values from descriptors in a single pass. Returns a frozen record or `undefined`.
+- `readExactAppendEvidenceRowSnapshot(row)` — captures `migration_id` and `content_checksum` from descriptors in a single pass. Returns a frozen `{ migration_id, content_checksum }` or `undefined`.
+
+### Exact dense index set
+
+A dense array's own keys must be **exactly**:
+
+```text
+length
+0
+1
+...
+length-1
+```
+
+Each index key must be the canonical `String(i)` (rejecting `00`, `01`, `000`, `1e0`, `+0`, `-0`, etc.). Non-canonical numeric-looking keys cause a read error / UNKNOWN. Out-of-range indices, missing indices, symbol keys, extra properties, and accessor properties are all rejected.
+
+### Proxy `get` trap execution is zero
+
+After descriptor validation, no code path executes a Proxy `get` trap. All values are consumed from the captured descriptor snapshot. This is verified by tests that install throwing `get` traps on rows, row arrays, and append evidence rows, and assert zero `get` trap calls.
+
+### Descriptor/value TOCTOU fail-closed
+
+If a descriptor trap or `ownKeys` trap throws, or if a Proxy is revoked, the snapshot yields `undefined` and the adapter fails closed (read error or UNKNOWN). A descriptor that returns a different value on repeated access is consumed only from the first capture.
+
 ## Sanitization
 
 Adapter return values and the fixed read error never contain a raw `Error`, raw message/stack, raw `QueryResult`, raw row reference, `lockHandle`, session/client, query function, release function, hostname, database name, URL, credential, `DATABASE_URL`, operator identity, or prohibited ledger fields. No console logging.

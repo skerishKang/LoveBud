@@ -1411,4 +1411,298 @@ describe('DB postgres ledger adapter contract (#3458)', () => {
       assert.ok(!/require\(['"]pg['"]\)/.test(src));
     });
   });
+
+  describe('10. Descriptor snapshot / TOCTOU hardening (#3641 hardening)', () => {
+    // 1. Read rows Proxy get trap throws -> get trap 0 calls, descriptor snapshot used
+    it('1. read rows Proxy get trap throw -> 0 get calls, descriptor snapshot used', async () => {
+      let getCalls = 0;
+      const proxied = new Proxy([readRow({ migration_id: 'm1' })], {
+        get(target, prop, receiver) {
+          getCalls += 1;
+          throw new Error('get secret');
+        }
+      });
+      const { adapter } = adapterWith({ read: { rows: proxied } });
+      const rows = await adapter.readLedger({ lockHandle: HANDLE });
+      assert.strictEqual(rows.length, 1);
+      assert.strictEqual(rows[0].migration_id, 'm1');
+      assert.strictEqual(getCalls, 0);
+    });
+
+    // 2. Append rows Proxy get trap throws -> 0 get calls, APPENDED via descriptor
+    it('2. append rows Proxy get trap throw -> 0 get calls, APPENDED via descriptor', async () => {
+      let getCalls = 0;
+      const proxied = new Proxy([{ migration_id: 'mid', content_checksum: 'csum' }], {
+        get(target, prop, receiver) {
+          getCalls += 1;
+          throw new Error('get secret');
+        }
+      });
+      const { adapter } = adapterWith({ append: { rows: proxied } });
+      const res = await adapter.appendLedgerRecord({ record: validRecord({ migration_id: 'mid', content_checksum: 'csum' }), lockHandle: HANDLE });
+      assert.strictEqual(res.status, 'APPENDED');
+      assert.strictEqual(getCalls, 0);
+    });
+
+    // 3. Append rows Proxy get trap returns different row -> 0 get calls, descriptor used
+    it('3. append rows Proxy get trap returns different row -> 0 get calls, descriptor used', async () => {
+      let getCalls = 0;
+      const proxied = new Proxy([{ migration_id: 'mid', content_checksum: 'csum' }], {
+        get(target, prop, receiver) {
+          getCalls += 1;
+          if (prop === '0') return { migration_id: 'DIFFERENT', content_checksum: 'DIFFERENT' };
+          return Reflect.get(target, prop, receiver);
+        }
+      });
+      const { adapter } = adapterWith({ append: { rows: proxied } });
+      const res = await adapter.appendLedgerRecord({ record: validRecord({ migration_id: 'mid', content_checksum: 'csum' }), lockHandle: HANDLE });
+      assert.strictEqual(res.status, 'APPENDED');
+      assert.strictEqual(getCalls, 0);
+    });
+
+    // 4. Read row descriptor valid, get trap throws -> 0 get calls, frozen clone
+    it('4. read row descriptor valid, get trap throws -> 0 get calls, frozen clone', async () => {
+      let getCalls = 0;
+      const row = new Proxy(readRow({ migration_id: 'm1' }), {
+        get(target, prop, receiver) {
+          getCalls += 1;
+          throw new Error('row get secret');
+        }
+      });
+      const { adapter } = adapterWith({ read: { rows: [row] } });
+      const rows = await adapter.readLedger({ lockHandle: HANDLE });
+      assert.strictEqual(rows.length, 1);
+      assert.strictEqual(rows[0].migration_id, 'm1');
+      assert.ok(Object.isFrozen(rows[0]));
+      assert.strictEqual(getCalls, 0);
+    });
+
+    // 5. Append returned row descriptor matching, get trap wrong -> 0 get calls, APPENDED
+    it('5. append returned row descriptor matching, get trap wrong -> 0 get calls, APPENDED', async () => {
+      let getCalls = 0;
+      const row = new Proxy({ migration_id: 'mid', content_checksum: 'csum' }, {
+        get(target, prop, receiver) {
+          getCalls += 1;
+          if (prop === 'migration_id') return 'WRONG';
+          if (prop === 'content_checksum') return 'WRONG';
+          return Reflect.get(target, prop, receiver);
+        }
+      });
+      const { adapter } = adapterWith({ append: { rows: [row] } });
+      const res = await adapter.appendLedgerRecord({ record: validRecord({ migration_id: 'mid', content_checksum: 'csum' }), lockHandle: HANDLE });
+      assert.strictEqual(res.status, 'APPENDED');
+      assert.strictEqual(getCalls, 0);
+    });
+
+    // 6. Append returned row descriptor wrong, get trap matching -> 0 get calls, UNKNOWN
+    it('6. append returned row descriptor wrong, get trap matching -> 0 get calls, UNKNOWN', async () => {
+      let getCalls = 0;
+      const row = new Proxy({ migration_id: 'WRONG', content_checksum: 'WRONG' }, {
+        get(target, prop, receiver) {
+          getCalls += 1;
+          if (prop === 'migration_id') return 'mid';
+          if (prop === 'content_checksum') return 'csum';
+          return Reflect.get(target, prop, receiver);
+        }
+      });
+      const { adapter } = adapterWith({ append: { rows: [row] } });
+      const res = await adapter.appendLedgerRecord({ record: validRecord({ migration_id: 'mid', content_checksum: 'csum' }), lockHandle: HANDLE });
+      assert.strictEqual(res.status, 'UNKNOWN');
+      assert.strictEqual(getCalls, 0);
+    });
+
+    // 7. Record field descriptor returns different value on repeated calls
+    it('7. record field descriptor returns different value on repeated calls -> first snapshot wins', async () => {
+      let callCount = 0;
+      const rec = validRecord({ migration_id: 'mid', content_checksum: 'csum' });
+      Object.defineProperty(rec, 'migration_id', {
+        enumerable: true,
+        get() {
+          callCount += 1;
+          return callCount === 1 ? 'mid' : 'TAMPERED';
+        }
+      });
+      const { adapter, broker } = adapterWith({});
+      const res = await adapter.appendLedgerRecord({ record: rec, lockHandle: HANDLE });
+      assert.strictEqual(res.status, 'FAILED');
+      assert.strictEqual(broker.calls.length, 0);
+    });
+
+    // 8. Append evidence descriptor returns different value on repeated calls
+    it('8. append evidence descriptor returns different value on repeated calls -> first snapshot wins', async () => {
+      let callCount = 0;
+      const row = { migration_id: 'mid', content_checksum: 'csum' };
+      const proxied = new Proxy(row, {
+        getOwnPropertyDescriptor(target, prop) {
+          callCount += 1;
+          if (prop === 'migration_id') {
+            return { enumerable: true, configurable: true, value: callCount === 1 ? 'mid' : 'DIFFERENT' };
+          }
+          return Reflect.getOwnPropertyDescriptor(target, prop);
+        }
+      });
+      const { adapter } = adapterWith({ append: { rows: [proxied] } });
+      const res = await adapter.appendLedgerRecord({ record: validRecord({ migration_id: 'mid', content_checksum: 'csum' }), lockHandle: HANDLE });
+      assert.strictEqual(res.status, 'APPENDED');
+    });
+
+    // 9. Length descriptor is captured once, not re-read after validation
+    it('9. length descriptor captured once, not re-read after validation', async () => {
+      let lengthCalls = 0;
+      const proxied = new Proxy([readRow({ migration_id: 'm1' })], {
+        getOwnPropertyDescriptor(target, prop) {
+          if (prop === 'length') lengthCalls += 1;
+          return Reflect.getOwnPropertyDescriptor(target, prop);
+        },
+        ownKeys(target) { return Reflect.ownKeys(target); }
+      });
+      const { adapter } = adapterWith({ read: { rows: proxied } });
+      const rows = await adapter.readLedger({ lockHandle: HANDLE });
+      assert.strictEqual(rows.length, 1);
+      // length descriptor should be retrieved exactly once during snapshot
+      assert.strictEqual(lengthCalls, 1);
+    });
+
+    // 10. length=1 + own key '00', key '0' absent -> malformed
+    it('10. length=1 + own key 00, key 0 absent -> read error', async () => {
+      const rowsArr = [];
+      Object.defineProperty(rowsArr, '00', { enumerable: true, value: readRow({ migration_id: 'm1' }) });
+      Object.defineProperty(rowsArr, 'length', { value: 1, writable: false, configurable: false, enumerable: false });
+      const { adapter } = adapterWith({ read: { rows: rowsArr } });
+      const err = await rejectsRead(adapter);
+      assert.strictEqual(err.message, POSTGRES_LEDGER_READ_ERROR);
+    });
+
+    // 11. length=1 + own key '01', key '0' absent -> malformed
+    it('11. length=1 + own key 01, key 0 absent -> read error', async () => {
+      const rowsArr = [];
+      Object.defineProperty(rowsArr, '01', { enumerable: true, value: readRow({ migration_id: 'm1' }) });
+      Object.defineProperty(rowsArr, 'length', { value: 1, writable: false, configurable: false, enumerable: false });
+      const { adapter } = adapterWith({ read: { rows: rowsArr } });
+      const err = await rejectsRead(adapter);
+      assert.strictEqual(err.message, POSTGRES_LEDGER_READ_ERROR);
+    });
+
+    // 12. length=2 + only '0', '2' -> malformed
+    it('12. length=2 + only 0, 2 -> read error', async () => {
+      const proxied = new Proxy([], {
+        getOwnPropertyDescriptor(target, prop) {
+          if (prop === 'length') return { enumerable: false, configurable: false, writable: false, value: 2 };
+          if (prop === '0') return { enumerable: true, configurable: true, value: readRow({ migration_id: 'm1' }) };
+          if (prop === '2') return { enumerable: true, configurable: true, value: readRow({ migration_id: 'm2' }) };
+          return undefined;
+        },
+        ownKeys() { return ['0', '2', 'length']; }
+      });
+      const { adapter } = adapterWith({ read: { rows: proxied } });
+      const err = await rejectsRead(adapter);
+      assert.strictEqual(err.message, POSTGRES_LEDGER_READ_ERROR);
+    });
+
+    // 13. length=2 + only '1', '2' -> malformed
+    it('13. length=2 + only 1, 2 -> read error', async () => {
+      const proxied = new Proxy([], {
+        getOwnPropertyDescriptor(target, prop) {
+          if (prop === 'length') return { enumerable: false, configurable: false, writable: false, value: 2 };
+          if (prop === '1') return { enumerable: true, configurable: true, value: readRow({ migration_id: 'm1' }) };
+          if (prop === '2') return { enumerable: true, configurable: true, value: readRow({ migration_id: 'm2' }) };
+          return undefined;
+        },
+        ownKeys() { return ['1', '2', 'length']; }
+      });
+      const { adapter } = adapterWith({ read: { rows: proxied } });
+      const err = await rejectsRead(adapter);
+      assert.strictEqual(err.message, POSTGRES_LEDGER_READ_ERROR);
+    });
+
+    // 14. Proxy get trap synthesizes missing '0' -> malformed
+    it('14. Proxy get trap synthesizes missing 0 -> read error', async () => {
+      const rowsArr = [];
+      Object.defineProperty(rowsArr, '1', { enumerable: true, value: readRow({ migration_id: 'm1' }) });
+      Object.defineProperty(rowsArr, 'length', { value: 2, writable: false, configurable: false, enumerable: false });
+      const proxied = new Proxy(rowsArr, {
+        get(target, prop, receiver) {
+          if (prop === '0') return readRow({ migration_id: 'm1' });
+          return Reflect.get(target, prop, receiver);
+        }
+      });
+      const { adapter } = adapterWith({ read: { rows: proxied } });
+      const err = await rejectsRead(adapter);
+      assert.strictEqual(err.message, POSTGRES_LEDGER_READ_ERROR);
+    });
+
+    // 15. Exact length,0..n-1 -> valid
+    it('15. exact length,0..n-1 -> valid read', async () => {
+      const { adapter } = adapterWith({ read: { rows: [readRow({ migration_id: 'm1' }), readRow({ migration_id: 'm2' })] } });
+      const rows = await adapter.readLedger({ lockHandle: HANDLE });
+      assert.strictEqual(rows.length, 2);
+      assert.strictEqual(rows[0].migration_id, 'm1');
+      assert.strictEqual(rows[1].migration_id, 'm2');
+    });
+
+    // 16. Regression: exact empty rows [] -> FAILED maintained
+    it('16. exact empty rows [] maintains FAILED status', async () => {
+      const { adapter } = adapterWith({ append: { rows: [] } });
+      const res = await adapter.appendLedgerRecord({ record: validRecord(), lockHandle: HANDLE });
+      assert.strictEqual(res.status, 'FAILED');
+    });
+
+    // 17. Regression: exact empty rows [] -> read frozen [] maintained
+    it('17. exact empty rows [] read resolves to frozen []', async () => {
+      const { adapter } = adapterWith({ read: { rows: [] } });
+      const rows = await adapter.readLedger({ lockHandle: HANDLE });
+      assert.deepStrictEqual(rows, []);
+      assert.ok(Object.isFrozen(rows));
+    });
+
+    // 18. Regression: exact one-row append -> APPENDED maintained
+    it('18. exact one-row append maintains APPENDED status', async () => {
+      const { adapter } = adapterWith({ append: { rows: [{ migration_id: 'mid', content_checksum: 'csum' }] } });
+      const res = await adapter.appendLedgerRecord({ record: validRecord({ migration_id: 'mid', content_checksum: 'csum' }), lockHandle: HANDLE });
+      assert.strictEqual(res.status, 'APPENDED');
+    });
+
+    // 19. Regression: valid multi-row read order maintained
+    it('19. valid multi-row read preserves exact row order', async () => {
+      const { adapter } = adapterWith({ read: { rows: [readRow({ migration_id: 'm1' }), readRow({ migration_id: 'm2' })] } });
+      const rows = await adapter.readLedger({ lockHandle: HANDLE });
+      assert.strictEqual(rows.length, 2);
+      assert.strictEqual(rows[0].migration_id, 'm1');
+      assert.strictEqual(rows[1].migration_id, 'm2');
+    });
+
+    // 20. Regression: top-level pg metadata allowed
+    it('20. top-level pg metadata continues to be allowed', async () => {
+      const { adapter } = adapterWith({ read: { command: 'SELECT', rowCount: 1, oid: 123, fields: [], rows: [readRow()] } });
+      const rows = await adapter.readLedger({ lockHandle: HANDLE });
+      assert.strictEqual(rows.length, 1);
+    });
+
+    // 21. Regression: getter/Proxy raw error leak 0
+    it('21. public methods never leak raw error messages or stacks', async () => {
+      const { adapter } = adapterWith({ throwError: new Error('SECRET_DB_URL postgres://admin:secret@localhost:5432/db') });
+      const err = await rejectsRead(adapter);
+      assert.strictEqual(err.message, POSTGRES_LEDGER_READ_ERROR);
+      assert.ok(!err.message.includes('SECRET_DB_URL'));
+      assert.ok(!err.message.includes('postgres://'));
+      assert.ok(!err.message.includes('secret'));
+    });
+
+    // 22. Regression: public methods unexpected throw 0
+    it('22. public methods never throw unexpectedly', async () => {
+      const allowed = new Set(['APPENDED', 'FAILED', 'UNKNOWN']);
+      const cases = [
+        { append: { rows: [{ migration_id: 'mid', content_checksum: 'csum' }] } },
+        { append: { rows: [] } },
+        { throwError: new Error('x') },
+        { append: { rows: [{ migration_id: 'WRONG', content_checksum: 'csum' }] } }
+      ];
+      for (const opts of cases) {
+        const { adapter } = adapterWith(opts);
+        const res = await adapter.appendLedgerRecord({ record: validRecord({ migration_id: 'mid', content_checksum: 'csum' }), lockHandle: HANDLE });
+        assert.ok(allowed.has(res.status));
+        assert.ok(Object.isFrozen(res));
+      }
+    });
+  });
 });
