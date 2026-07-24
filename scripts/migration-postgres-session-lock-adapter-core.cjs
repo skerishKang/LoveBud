@@ -206,10 +206,28 @@ function readExactBooleanRow(result, field) {
 }
 
 // Best-effort pool release of a session, exactly once, discarding all error
-// detail. No-ops when the session has no callable own-data `release`.
+// detail. No-ops when the session has no callable own-data `release`. Used ONLY
+// for the invalid-session cleanup path, where session validation failed BEFORE
+// any callable was trusted, so a safe own-data re-inspection is still required.
 async function releaseSessionOnce(session) {
   const release = safeGetCallable(session, 'release');
   if (release === undefined) return false;
+  try {
+    await release.call(session);
+    return true;
+  } catch (error) {
+    return false;
+  }
+}
+
+// Best-effort pool release using a release callable that was ALREADY captured and
+// validated at session-validation time. It NEVER re-reads `session.release` and
+// NEVER re-inspects the property descriptor, so an injected `query` that mutates,
+// deletes, replaces, or turns `session.release` into a throwing accessor during
+// execution cannot divert, skip, or fake the cleanup. Exactly once; discards all
+// error detail. Total: a non-function captured value yields false without throwing.
+async function callCapturedRelease(session, release) {
+  if (typeof release !== 'function') return false;
   try {
     await release.call(session);
     return true;
@@ -274,13 +292,13 @@ function createPostgresMigrationSessionLockAdapter(config) {
     try {
       result = await query.call(session, POSTGRES_MIGRATION_LOCK_QUERIES.acquire);
     } catch (error) {
-      await releaseSessionOnce(session);
+      await callCapturedRelease(session, release);
       return { status: POSTGRES_LOCK_ACQUIRE_STATUSES.UNAVAILABLE };
     }
 
     const evidence = readExactBooleanRow(result, 'acquired');
     if (!evidence.ok) {
-      await releaseSessionOnce(session);
+      await callCapturedRelease(session, release);
       return { status: POSTGRES_LOCK_ACQUIRE_STATUSES.UNAVAILABLE };
     }
 
@@ -291,8 +309,10 @@ function createPostgresMigrationSessionLockAdapter(config) {
 
     // acquired=false is normal lock contention. FAILED is only valid when the
     // confirmed contention is followed by a successful session cleanup; a cleanup
-    // throw/reject or unsafe cleanup downgrades to UNAVAILABLE.
-    const cleanupOk = await releaseSessionOnce(session);
+    // throw/reject or unsafe cleanup downgrades to UNAVAILABLE. Cleanup uses the
+    // release callable captured at validation time (never re-inspected), so an
+    // injected query cannot divert or skip the cleanup by mutating session.release.
+    const cleanupOk = await callCapturedRelease(session, release);
     return {
       status: cleanupOk
         ? POSTGRES_LOCK_ACQUIRE_STATUSES.FAILED

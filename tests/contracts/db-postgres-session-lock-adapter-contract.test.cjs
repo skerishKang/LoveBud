@@ -981,4 +981,142 @@ describe('DB postgres session lock adapter contract (#3458)', () => {
       assert.strictEqual(adapterEntry.engine, 'postgres');
     });
   });
+
+  describe('11. Validated cleanup callable pinning', () => {
+    // Build a session whose query may mutate session.release during execution,
+    // tracking calls to the original captured release vs any replacement/accessor.
+    function pinningSession(queryBehavior) {
+      const counts = { original: 0, replacement: 0, getter: 0 };
+      const originalRelease = async () => { counts.original += 1; };
+      const replacementRelease = async () => { counts.replacement += 1; };
+      const session = {
+        release: originalRelease,
+        query: async (q) => queryBehavior(q, session, { originalRelease, replacementRelease, counts })
+      };
+      return { session, counts };
+    }
+
+    it('query replaces session.release + acquired=false: original captured release used, FAILED', async () => {
+      const { session, counts } = pinningSession((q, s, ctx) => {
+        if (q.name === ACQUIRE_NAME) {
+          s.release = ctx.replacementRelease;
+          return { rows: [{ acquired: false }] };
+        }
+        return {};
+      });
+      const r = await adapterFor(session).acquireAdvisoryLock({ targetMigrationId: TARGET });
+      assert.strictEqual(r.status, POSTGRES_LOCK_ACQUIRE_STATUSES.FAILED);
+      assert.strictEqual(counts.original, 1);
+      assert.strictEqual(counts.replacement, 0);
+      assert.strictEqual(r.handle, undefined);
+    });
+
+    it('query deletes session.release + acquired=false: original captured release used, FAILED', async () => {
+      const { session, counts } = pinningSession((q, s) => {
+        if (q.name === ACQUIRE_NAME) {
+          delete s.release;
+          return { rows: [{ acquired: false }] };
+        }
+        return {};
+      });
+      const r = await adapterFor(session).acquireAdvisoryLock({ targetMigrationId: TARGET });
+      assert.strictEqual(r.status, POSTGRES_LOCK_ACQUIRE_STATUSES.FAILED);
+      assert.strictEqual(counts.original, 1);
+      assert.strictEqual(r.handle, undefined);
+    });
+
+    it('query turns session.release into a throwing accessor + acquired=false: getter not run, original used, FAILED', async () => {
+      const { session, counts } = pinningSession((q, s, ctx) => {
+        if (q.name === ACQUIRE_NAME) {
+          Object.defineProperty(s, 'release', {
+            configurable: true,
+            enumerable: true,
+            get() { ctx.counts.getter += 1; throw new Error('accessor'); }
+          });
+          return { rows: [{ acquired: false }] };
+        }
+        return {};
+      });
+      const r = await adapterFor(session).acquireAdvisoryLock({ targetMigrationId: TARGET });
+      assert.strictEqual(r.status, POSTGRES_LOCK_ACQUIRE_STATUSES.FAILED);
+      assert.strictEqual(counts.original, 1);
+      assert.strictEqual(counts.getter, 0);
+    });
+
+    it('query replaces session.release then throws: original captured release used, UNAVAILABLE', async () => {
+      const { session, counts } = pinningSession((q, s, ctx) => {
+        if (q.name === ACQUIRE_NAME) {
+          s.release = ctx.replacementRelease;
+          throw new Error('db down');
+        }
+        return {};
+      });
+      const r = await adapterFor(session).acquireAdvisoryLock({ targetMigrationId: TARGET });
+      assert.strictEqual(r.status, POSTGRES_LOCK_ACQUIRE_STATUSES.UNAVAILABLE);
+      assert.strictEqual(counts.original, 1);
+      assert.strictEqual(counts.replacement, 0);
+    });
+
+    it('query deletes session.release then returns malformed result: original captured release used, UNAVAILABLE', async () => {
+      const { session, counts } = pinningSession((q, s) => {
+        if (q.name === ACQUIRE_NAME) {
+          delete s.release;
+          return { rows: [{ acquired: true, secret: 'x' }] };
+        }
+        return {};
+      });
+      const r = await adapterFor(session).acquireAdvisoryLock({ targetMigrationId: TARGET });
+      assert.strictEqual(r.status, POSTGRES_LOCK_ACQUIRE_STATUSES.UNAVAILABLE);
+      assert.strictEqual(counts.original, 1);
+    });
+
+    it('captured original release rejects + acquired=false: original called once, UNAVAILABLE', async () => {
+      let original = 0;
+      const session = {
+        release: async () => { original += 1; throw new Error('cleanup-reject'); },
+        query: async (q) => (q.name === ACQUIRE_NAME ? { rows: [{ acquired: false }] } : {})
+      };
+      const r = await adapterFor(session).acquireAdvisoryLock({ targetMigrationId: TARGET });
+      assert.strictEqual(r.status, POSTGRES_LOCK_ACQUIRE_STATUSES.UNAVAILABLE);
+      assert.strictEqual(original, 1);
+      assert.strictEqual(r.handle, undefined);
+    });
+
+    it('acquired=true then external session.release replacement: final release uses original captured, RELEASED', async () => {
+      const counts = { original: 0, replacement: 0 };
+      const originalRelease = async () => { counts.original += 1; };
+      const replacementRelease = async () => { counts.replacement += 1; };
+      const session = {
+        release: originalRelease,
+        query: async (q) => {
+          if (q.name === ACQUIRE_NAME) return { rows: [{ acquired: true }] };
+          if (q.name === RELEASE_NAME) return { rows: [{ released: true }] };
+          return {};
+        }
+      };
+      const adapter = adapterFor(session);
+      const acq = await adapter.acquireAdvisoryLock({ targetMigrationId: TARGET });
+      assert.strictEqual(acq.status, POSTGRES_LOCK_ACQUIRE_STATUSES.ACQUIRED);
+      session.release = replacementRelease;
+      const rel = await adapter.releaseAdvisoryLock({ lockHandle: acq.handle });
+      assert.strictEqual(rel.status, POSTGRES_LOCK_RELEASE_STATUSES.RELEASED);
+      assert.strictEqual(counts.original, 1);
+      assert.strictEqual(counts.replacement, 0);
+    });
+
+    it('captured cleanup runs exactly once across all mutation paths', async () => {
+      const scenarios = [
+        (q, s, ctx) => { if (q.name === ACQUIRE_NAME) { s.release = ctx.replacementRelease; return { rows: [{ acquired: false }] }; } return {}; },
+        (q, s) => { if (q.name === ACQUIRE_NAME) { delete s.release; return { rows: [{ acquired: false }] }; } return {}; },
+        (q, s, ctx) => { if (q.name === ACQUIRE_NAME) { Object.defineProperty(s, 'release', { configurable: true, enumerable: true, get() { ctx.counts.getter += 1; throw new Error('accessor'); } }); return { rows: [{ acquired: false }] }; } return {}; },
+        (q, s, ctx) => { if (q.name === ACQUIRE_NAME) { s.release = ctx.replacementRelease; throw new Error('db down'); } return {}; },
+        (q, s) => { if (q.name === ACQUIRE_NAME) { delete s.release; return { rows: [{ acquired: true, secret: 'x' }] }; } return {}; }
+      ];
+      for (const behavior of scenarios) {
+        const { session, counts } = pinningSession(behavior);
+        await adapterFor(session).acquireAdvisoryLock({ targetMigrationId: TARGET });
+        assert.strictEqual(counts.original, 1, 'captured original release called exactly once');
+      }
+    });
+  });
 });

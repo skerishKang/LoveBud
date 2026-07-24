@@ -51,9 +51,9 @@ On acquire success the adapter returns `{ status: 'ACQUIRED', handle }`. The han
 
 - invalid `targetMigrationId` → `NOT_ATTEMPTED` (openSession not called).
 - openSession throw → `UNAVAILABLE`.
-- invalid session → `UNAVAILABLE` (best-effort pool release once if the invalid session has a callable own-data `release`; status independent of cleanup outcome).
-- query throw → `UNAVAILABLE` (best-effort pool release once; status independent of cleanup outcome).
-- malformed evidence (`null`, `{}`, `{rows:[]}`, `{rows:[{}]}`, non-boolean `acquired`, multiple rows, extra row field) → `UNAVAILABLE` (best-effort pool release once; status independent of cleanup outcome).
+- invalid session → `UNAVAILABLE` (best-effort pool release once via safe re-inspection if the invalid session has a callable own-data `release`; status independent of cleanup outcome).
+- query throw → `UNAVAILABLE` (best-effort pool release once using the **captured** `release`; status independent of cleanup outcome).
+- malformed evidence (`null`, `{}`, `{rows:[]}`, `{rows:[{}]}`, non-boolean `acquired`, multiple rows, extra row field) → `UNAVAILABLE` (best-effort pool release once using the **captured** `release`; status independent of cleanup outcome).
 - `acquired=true` → `ACQUIRED` + handle; session kept; pool release 0.
 - `acquired=false` + cleanup success → `FAILED`; no handle; pool release exactly once. `FAILED` is reserved for confirmed lock contention followed by a successful session cleanup.
 - `acquired=false` + cleanup throw/reject or unsafe cleanup → `UNAVAILABLE`; no handle.
@@ -93,13 +93,28 @@ Safe inspection (`safeOwnEnumerableKeys`, `readExactBooleanRow`) never executes 
 
 ## Total fail-closed public boundary (safe inspection)
 
-Every public method is **total**: it never throws and never exposes a raw `Error`, message, or stack. All argument, config, session, and evidence inspection goes through safe internal helpers (`safeGetOwnDataProperty`, `safeGetCallable`, `safeIsArray`, `safeIsPlainRecord`, `safeOwnEnumerableKeys`, `readExactBooleanRow`, `releaseSessionOnce`) that bound every `Reflect.ownKeys`, `Object.getPrototypeOf`, `Object.getOwnPropertyDescriptor`, `Array.isArray`, and property read inside a try/catch.
+Every public method is **total**: it never throws and never exposes a raw `Error`, message, or stack. All argument, config, session, and evidence inspection goes through safe internal helpers (`safeGetOwnDataProperty`, `safeGetCallable`, `safeIsArray`, `safeIsPlainRecord`, `safeOwnEnumerableKeys`, `readExactBooleanRow`, `releaseSessionOnce`, `callCapturedRelease`) that bound every `Reflect.ownKeys`, `Object.getPrototypeOf`, `Object.getOwnPropertyDescriptor`, `Array.isArray`, and property read inside a try/catch.
 
 - A normal property is required to be an **own data property**. Accessor getters are **not executed** during inspection; an accessor, a throwing getter, a `Proxy` get/`getOwnPropertyDescriptor`/`getPrototypeOf` trap throw, a revoked `Proxy`, a descriptor-inspection throw, a `rows` getter throw, or a target boolean-field getter throw is treated as malformed and maps to the fail-closed status.
 - `acquireAdvisoryLock`: malformed/throwing input (`targetMigrationId`) → `NOT_ATTEMPTED` (openSession not called); malformed/throwing session or evidence → `UNAVAILABLE` (best-effort pool release once where applicable).
 - `checkAdvisoryLock`: malformed/throwing input or handle → `FAILED` (no query); malformed/throwing query evidence → `UNAVAILABLE`.
 - `releaseAdvisoryLock`: malformed/throwing input, handle, or query evidence → `UNKNOWN`; the acquired session is still cleaned up best-effort exactly once where applicable.
 - Factory: any failure reading `config.openSession` (missing, non-function, accessor, throwing getter, revoked `Proxy`, descriptor-inspection throw, null/undefined config) maps to exactly the fixed message `POSTGRES_LOCK_ADAPTER_OPEN_SESSION_REQUIRED`; the original getter error message/stack is never surfaced.
+
+## Validated cleanup callable pinning
+
+At session validation, `acquireAdvisoryLock` reads the session's `query` and `release` callables **exactly once** via safe own-data inspection and captures them in closure locals. Once the session is validated, the entire valid-session lifecycle (acquire query, evidence classification, `acquired=false` cleanup, check, and final release) uses **only those captured callables** and **never re-reads or re-inspects** `session.query` / `session.release` or their property descriptors.
+
+This matters because `query` is an injected dependency that runs between validation and cleanup. A hostile or buggy `query` could, during execution, replace `session.release` with another function, delete it, turn it into a throwing accessor, or put the session into a `Proxy` state whose descriptor inspection throws. Re-inspecting `session.release` at cleanup time would trust that mutated property instead of the callable that was validated. Pinning the captured callable (`callCapturedRelease`) guarantees:
+
+- the **original validated** `release` is the one invoked for cleanup, exactly once;
+- a replacement function installed by `query` is **never** called;
+- a deleted or accessor-converted `session.release` cannot skip cleanup or fake it (the accessor getter is never executed);
+- cleanup remains **exactly once** per acquire attempt regardless of mid-flight mutation.
+
+Cleanup mapping is unchanged by pinning: `acquired=false` + captured cleanup success → `FAILED`; captured cleanup throw/reject → `UNAVAILABLE`; query throw / malformed evidence + captured cleanup (success or failure) → `UNAVAILABLE`.
+
+The **only** path that still performs a safe own-data re-inspection (`releaseSessionOnce`) is the **invalid-session** path, where session validation failed *before* any callable was trusted, so there is no validated callable to pin and a safe re-inspection is required to attempt a best-effort pool release.
 
 ## Sanitization
 
