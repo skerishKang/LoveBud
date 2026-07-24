@@ -33,6 +33,7 @@ const {
   POSTGRES_LOCK_ACQUIRE_STATUSES,
   POSTGRES_LOCK_CHECK_STATUSES,
   POSTGRES_LOCK_RELEASE_STATUSES,
+  BROKER_ERROR_QUERY_UNAVAILABLE,
   createPostgresMigrationSessionLockAdapter
 } = core;
 
@@ -71,8 +72,10 @@ describe('DB postgres session lock adapter contract (#3458)', () => {
       const { session } = mockSession();
       const adapter = adapterFor(session);
       assert.ok(Object.isFrozen(adapter));
+      assert.deepStrictEqual(Object.keys(adapter).sort(), ['acquireAdvisoryLock', 'checkAdvisoryLock', 'queryLockedSession', 'releaseAdvisoryLock']);
       assert.strictEqual(typeof adapter.acquireAdvisoryLock, 'function');
       assert.strictEqual(typeof adapter.checkAdvisoryLock, 'function');
+      assert.strictEqual(typeof adapter.queryLockedSession, 'function');
       assert.strictEqual(typeof adapter.releaseAdvisoryLock, 'function');
     });
     it('missing openSession is rejected with the fixed code', () => {
@@ -1117,6 +1120,594 @@ describe('DB postgres session lock adapter contract (#3458)', () => {
         await adapterFor(session).acquireAdvisoryLock({ targetMigrationId: TARGET });
         assert.strictEqual(counts.original, 1, 'captured original release called exactly once');
       }
+    });
+  });
+
+  describe('5. queryLockedSession broker', () => {
+    const READ_QUERY = Object.freeze({ name: 'test-read', text: 'SELECT 1', values: [] });
+    const APPEND_QUERY = Object.freeze({ name: 'test-append', text: 'INSERT INTO t VALUES ($1)', values: ['mid'] });
+
+    function acquiredAdapter(mockOver) {
+      const { session, state } = mockSession(mockOver);
+      const adapter = adapterFor(session);
+      return { adapter, session, state };
+    }
+
+    async function acquireHandle(adapter) {
+      const r = await adapter.acquireAdvisoryLock({ targetMigrationId: TARGET });
+      if (r.status !== 'ACQUIRED') throw new Error('acquire failed');
+      return r.handle;
+    }
+
+    it('1. OPEN handle executes captured query callable exactly once', async () => {
+      const { adapter, state } = acquiredAdapter();
+      const handle = await acquireHandle(adapter);
+      const result = await adapter.queryLockedSession({ lockHandle: handle, query: READ_QUERY });
+      assert.strictEqual(state.queries.length, 2); // acquire + broker
+      assert.strictEqual(state.queries[1].name, 'test-read');
+      assert.ok(result !== undefined);
+    });
+
+    it('2. captured session is this context for the query callable', async () => {
+      let thisContext = null;
+      const { session } = mockSession({
+        queryImpl: async function (q) { thisContext = this; return { rows: [{ acquired: true }] }; }
+      });
+      const adapter = adapterFor(session);
+      const handle = await acquireHandle(adapter);
+      await adapter.queryLockedSession({ lockHandle: handle, query: READ_QUERY });
+      assert.strictEqual(thisContext, session);
+    });
+
+    it('3. read query frozen empty values forwarded', async () => {
+      const captured = [];
+      const { session } = mockSession({
+        queryImpl: async (q) => {
+          captured.push(q);
+          if (q.name === ACQUIRE_NAME) return { rows: [{ acquired: true }] };
+          return {};
+        }
+      });
+      const adapter = adapterFor(session);
+      const handle = await acquireHandle(adapter);
+      await adapter.queryLockedSession({ lockHandle: handle, query: READ_QUERY });
+      const q = captured[1];
+      assert.deepStrictEqual([...q.values], []);
+      assert.ok(Object.isFrozen(q));
+    });
+
+    it('4. append query 7 values order forwarded', async () => {
+      const captured = [];
+      const { session } = mockSession({
+        queryImpl: async (q) => {
+          captured.push(q);
+          if (q.name === ACQUIRE_NAME) return { rows: [{ acquired: true }] };
+          return {};
+        }
+      });
+      const adapter = adapterFor(session);
+      const handle = await acquireHandle(adapter);
+      const sevenValues = ['mid', 'csum', '2026-01-02T03:04:05.678Z', '1.0.0', 'disp', 'dc', 'COMMITTED'];
+      await adapter.queryLockedSession({ lockHandle: handle, query: { name: 'test-append', text: 'INSERT ...', values: sevenValues } });
+      const q = captured[1];
+      assert.deepStrictEqual([...q.values], sevenValues);
+    });
+
+    it('5. raw result identity returned to caller', async () => {
+      const rawResult = { rows: [{ migration_id: 'mid', content_checksum: 'csum' }] };
+      const { session } = mockSession({
+        queryImpl: async (q) => {
+          if (q.name === ACQUIRE_NAME) return { rows: [{ acquired: true }] };
+          return rawResult;
+        }
+      });
+      const adapter = adapterFor(session);
+      const handle = await acquireHandle(adapter);
+      const result = await adapter.queryLockedSession({ lockHandle: handle, query: READ_QUERY });
+      assert.strictEqual(result, rawResult);
+    });
+
+    it('6. repeated broker calls work from OPEN handle', async () => {
+      const { adapter, state } = acquiredAdapter();
+      const handle = await acquireHandle(adapter);
+      await adapter.queryLockedSession({ lockHandle: handle, query: READ_QUERY });
+      await adapter.queryLockedSession({ lockHandle: handle, query: READ_QUERY });
+      await adapter.queryLockedSession({ lockHandle: handle, query: READ_QUERY });
+      assert.strictEqual(state.queries.length, 4); // acquire + 3 broker
+    });
+
+    it('7. replacing session.query after acquire does not affect broker', async () => {
+      let originalCalls = 0;
+      const { session } = mockSession({
+        queryImpl: async (q) => {
+          if (q.name && q.name.startsWith('lovebud-migration-lock-')) return { rows: [{ acquired: true }] };
+          originalCalls += 1;
+          return {};
+        }
+      });
+      const adapter = adapterFor(session);
+      const handle = await acquireHandle(adapter);
+      session.query = async () => { throw new Error('replaced'); };
+      await adapter.queryLockedSession({ lockHandle: handle, query: READ_QUERY });
+      assert.strictEqual(originalCalls, 1);
+    });
+
+    it('8. session.query accessor getter execution 0', async () => {
+      let getterRan = false;
+      const { session } = mockSession({
+        queryImpl: async (q) => {
+          if (q.name === ACQUIRE_NAME) return { rows: [{ acquired: true }] };
+          return {};
+        }
+      });
+      const adapter = adapterFor(session);
+      const handle = await acquireHandle(adapter);
+      // Replace session.query with accessor AFTER acquire (captured callable already stored)
+      Object.defineProperty(session, 'query', {
+        enumerable: true,
+        get() { getterRan = true; return async () => { throw new Error('accessor'); }; }
+      });
+      await adapter.queryLockedSession({ lockHandle: handle, query: READ_QUERY });
+      assert.strictEqual(getterRan, false);
+    });
+
+    it('9. caller mutation of query/values after snapshot does not affect execution', async () => {
+      const captured = [];
+      const { session } = mockSession({
+        queryImpl: async (q) => {
+          captured.push(q);
+          if (q.name === ACQUIRE_NAME) return { rows: [{ acquired: true }] };
+          return {};
+        }
+      });
+      const adapter = adapterFor(session);
+      const handle = await acquireHandle(adapter);
+      const query = { name: 'test', text: 'SELECT 1', values: ['original'] };
+      const p = adapter.queryLockedSession({ lockHandle: handle, query });
+      query.name = 'TAMPERED';
+      query.text = 'TAMPERED SQL';
+      query.values[0] = 'TAMPERED';
+      await p;
+      assert.strictEqual(captured[1].name, 'test');
+      assert.strictEqual(captured[1].text, 'SELECT 1');
+      assert.strictEqual(captured[1].values[0], 'original');
+    });
+
+    it('10. missing lockHandle -> fixed error', async () => {
+      const { adapter } = acquiredAdapter();
+      let err = null;
+      try { await adapter.queryLockedSession({ query: READ_QUERY }); } catch (e) { err = e; }
+      assert.ok(err);
+      assert.strictEqual(err.message, BROKER_ERROR_QUERY_UNAVAILABLE);
+    });
+
+    it('11. null/undefined lockHandle -> fixed error', async () => {
+      const { adapter } = acquiredAdapter();
+      for (const lockHandle of [null, undefined]) {
+        let err = null;
+        try { await adapter.queryLockedSession({ lockHandle, query: READ_QUERY }); } catch (e) { err = e; }
+        assert.ok(err);
+        assert.strictEqual(err.message, BROKER_ERROR_QUERY_UNAVAILABLE);
+      }
+    });
+
+    it('12. arbitrary object as lockHandle -> fixed error', async () => {
+      const { adapter } = acquiredAdapter();
+      let err = null;
+      try { await adapter.queryLockedSession({ lockHandle: {}, query: READ_QUERY }); } catch (e) { err = e; }
+      assert.ok(err);
+      assert.strictEqual(err.message, BROKER_ERROR_QUERY_UNAVAILABLE);
+    });
+
+    it('13. cross-adapter handle -> fixed error, query 0', async () => {
+      const { adapter: adapterA } = acquiredAdapter();
+      const { adapter: adapterB } = acquiredAdapter();
+      const handle = await acquireHandle(adapterA);
+      let err = null;
+      try { await adapterB.queryLockedSession({ lockHandle: handle, query: READ_QUERY }); } catch (e) { err = e; }
+      assert.ok(err);
+      assert.strictEqual(err.message, BROKER_ERROR_QUERY_UNAVAILABLE);
+    });
+
+    it('14. release started then broker -> fixed error, query 0', async () => {
+      const { adapter, state } = acquiredAdapter();
+      const handle = await acquireHandle(adapter);
+      // Start release but keep the Promise pending so lifecycle stays RELEASING
+      let releaseResolve;
+      const { session } = mockSession({
+        queryImpl: async (q) => {
+          if (q.name === RELEASE_NAME) {
+            await new Promise(r => { releaseResolve = r; });
+            return { rows: [{ released: true }] };
+          }
+          if (q.name === ACQUIRE_NAME) return { rows: [{ acquired: true }] };
+          return {};
+        }
+      });
+      const adapter2 = adapterFor(session);
+      const handle2 = await acquireHandle(adapter2);
+      const releasePromise = adapter2.releaseAdvisoryLock({ lockHandle: handle2 });
+      // Now try broker while release is pending (lifecycle = RELEASING)
+      let err = null;
+      try { await adapter2.queryLockedSession({ lockHandle: handle2, query: READ_QUERY }); } catch (e) { err = e; }
+      assert.ok(err);
+      assert.strictEqual(err.message, BROKER_ERROR_QUERY_UNAVAILABLE);
+      // Complete release
+      releaseResolve(true);
+      await releasePromise;
+    });
+
+    it('15. release completed then broker -> fixed error, query 0', async () => {
+      const { adapter, state } = acquiredAdapter();
+      const handle = await acquireHandle(adapter);
+      await adapter.releaseAdvisoryLock({ lockHandle: handle });
+      let err = null;
+      try { await adapter.queryLockedSession({ lockHandle: handle, query: READ_QUERY }); } catch (e) { err = e; }
+      assert.ok(err);
+      assert.strictEqual(err.message, BROKER_ERROR_QUERY_UNAVAILABLE);
+    });
+
+    it('16. query sync throw -> fixed error, implicit unlock 0, implicit release 0', async () => {
+      const { session } = mockSession({
+        queryImpl: (q) => {
+          if (q.name === ACQUIRE_NAME) return { rows: [{ acquired: true }] };
+          if (q.name === RELEASE_NAME) return { rows: [{ released: true }] };
+          throw new Error('raw sync');
+        }
+      });
+      const adapter = adapterFor(session);
+      const handle = await acquireHandle(adapter);
+      let err = null;
+      try { await adapter.queryLockedSession({ lockHandle: handle, query: READ_QUERY }); } catch (e) { err = e; }
+      assert.ok(err);
+      assert.strictEqual(err.message, BROKER_ERROR_QUERY_UNAVAILABLE);
+      // Verify explicit release still works
+      const rel = await adapter.releaseAdvisoryLock({ lockHandle: handle });
+      assert.strictEqual(rel.status, POSTGRES_LOCK_RELEASE_STATUSES.RELEASED);
+    });
+
+    it('17. query Promise reject -> fixed error, implicit unlock 0, implicit release 0', async () => {
+      const { session } = mockSession({
+        queryImpl: async (q) => {
+          if (q.name === ACQUIRE_NAME) return { rows: [{ acquired: true }] };
+          if (q.name === RELEASE_NAME) return { rows: [{ released: true }] };
+          throw new Error('reject raw');
+        }
+      });
+      const adapter = adapterFor(session);
+      const handle = await acquireHandle(adapter);
+      let err = null;
+      try { await adapter.queryLockedSession({ lockHandle: handle, query: READ_QUERY }); } catch (e) { err = e; }
+      assert.ok(err);
+      assert.strictEqual(err.message, BROKER_ERROR_QUERY_UNAVAILABLE);
+      // Verify explicit release still works
+      const rel = await adapter.releaseAdvisoryLock({ lockHandle: handle });
+      assert.strictEqual(rel.status, POSTGRES_LOCK_RELEASE_STATUSES.RELEASED);
+    });
+
+    it('18. fixed error only, no raw error/stack leak', async () => {
+      const { adapter } = acquiredAdapter();
+      const handle = await acquireHandle(adapter);
+      let err = null;
+      try { await adapter.queryLockedSession({ lockHandle: {}, query: READ_QUERY }); } catch (e) { err = e; }
+      assert.ok(err);
+      assert.strictEqual(err.message, BROKER_ERROR_QUERY_UNAVAILABLE);
+      const blob = err.message + (err.stack || '');
+      assert.ok(!blob.includes('raw'));
+    });
+
+    it('19. accessor lockHandle -> fixed error, query 0', async () => {
+      let ran = false;
+      const { adapter, state } = acquiredAdapter();
+      const handle = await acquireHandle(adapter);
+      // Build arg without spread to avoid triggering the accessor getter
+      const arg = {};
+      Object.defineProperty(arg, 'lockHandle', { enumerable: true, get() { ran = true; return handle; } });
+      // query must be set via defineProperty too (not spread) to keep lockHandle accessor
+      Object.defineProperty(arg, 'query', { enumerable: true, value: READ_QUERY });
+      let err = null;
+      try { await adapter.queryLockedSession(arg); } catch (e) { err = e; }
+      assert.ok(err);
+      assert.strictEqual(err.message, BROKER_ERROR_QUERY_UNAVAILABLE);
+      assert.strictEqual(ran, false);
+    });
+
+    it('20. accessor query field -> fixed error', async () => {
+      const { adapter } = acquiredAdapter();
+      const handle = await acquireHandle(adapter);
+      const query = { name: 'test', text: 'SELECT 1' };
+      Object.defineProperty(query, 'values', { enumerable: true, get() { return []; } });
+      let err = null;
+      try { await adapter.queryLockedSession({ lockHandle: handle, query }); } catch (e) { err = e; }
+      assert.ok(err);
+      assert.strictEqual(err.message, BROKER_ERROR_QUERY_UNAVAILABLE);
+    });
+
+    it('21. missing query field (name) -> fixed error', async () => {
+      const { adapter } = acquiredAdapter();
+      const handle = await acquireHandle(adapter);
+      let err = null;
+      try { await adapter.queryLockedSession({ lockHandle: handle, query: { name: '', text: 'SELECT 1', values: [] } }); } catch (e) { err = e; }
+      assert.ok(err);
+      assert.strictEqual(err.message, BROKER_ERROR_QUERY_UNAVAILABLE);
+    });
+
+    it('22. extra query field -> fixed error', async () => {
+      const { adapter } = acquiredAdapter();
+      const handle = await acquireHandle(adapter);
+      let err = null;
+      try { await adapter.queryLockedSession({ lockHandle: handle, query: { name: 'test', text: 'SELECT 1', values: [], extra: 'bad' } }); } catch (e) { err = e; }
+      assert.ok(err);
+      assert.strictEqual(err.message, BROKER_ERROR_QUERY_UNAVAILABLE);
+    });
+
+    it('23. symbol query key -> fixed error', async () => {
+      const { adapter } = acquiredAdapter();
+      const handle = await acquireHandle(adapter);
+      const query = { name: 'test', text: 'SELECT 1', values: [] };
+      query[Symbol('s')] = 'bad';
+      let err = null;
+      try { await adapter.queryLockedSession({ lockHandle: handle, query }); } catch (e) { err = e; }
+      assert.ok(err);
+      assert.strictEqual(err.message, BROKER_ERROR_QUERY_UNAVAILABLE);
+    });
+
+    it('24. non-enumerable query field -> fixed error', async () => {
+      const { adapter } = acquiredAdapter();
+      const handle = await acquireHandle(adapter);
+      const query = { name: 'test', text: 'SELECT 1' };
+      Object.defineProperty(query, 'values', { enumerable: false, value: [] });
+      let err = null;
+      try { await adapter.queryLockedSession({ lockHandle: handle, query }); } catch (e) { err = e; }
+      assert.ok(err);
+      assert.strictEqual(err.message, BROKER_ERROR_QUERY_UNAVAILABLE);
+    });
+
+    it('25. sparse values array -> fixed error', async () => {
+      const { adapter } = acquiredAdapter();
+      const handle = await acquireHandle(adapter);
+      const sparse = new Array(2);
+      sparse[0] = 'first';
+      let err = null;
+      try { await adapter.queryLockedSession({ lockHandle: handle, query: { name: 'test', text: 'SELECT 1', values: sparse } }); } catch (e) { err = e; }
+      assert.ok(err);
+      assert.strictEqual(err.message, BROKER_ERROR_QUERY_UNAVAILABLE);
+    });
+
+    it('26. extra values property -> fixed error', async () => {
+      const { adapter } = acquiredAdapter();
+      const handle = await acquireHandle(adapter);
+      const arr = ['val'];
+      arr.extra = 'bad';
+      let err = null;
+      try { await adapter.queryLockedSession({ lockHandle: handle, query: { name: 'test', text: 'SELECT 1', values: arr } }); } catch (e) { err = e; }
+      assert.ok(err);
+      assert.strictEqual(err.message, BROKER_ERROR_QUERY_UNAVAILABLE);
+    });
+
+    it('27. values with non-canonical key -> fixed error', async () => {
+      const { adapter } = acquiredAdapter();
+      const handle = await acquireHandle(adapter);
+      const arr = [];
+      Object.defineProperty(arr, '00', { enumerable: true, value: 'bad' });
+      Object.defineProperty(arr, 'length', { value: 1 });
+      let err = null;
+      try { await adapter.queryLockedSession({ lockHandle: handle, query: { name: 'test', text: 'SELECT 1', values: arr } }); } catch (e) { err = e; }
+      assert.ok(err);
+      assert.strictEqual(err.message, BROKER_ERROR_QUERY_UNAVAILABLE);
+    });
+
+    it('28. values Proxy ownKeys throw -> fixed error', async () => {
+      const { adapter } = acquiredAdapter();
+      const handle = await acquireHandle(adapter);
+      const badValues = new Proxy([], { ownKeys() { throw new Error('secret'); } });
+      let err = null;
+      try { await adapter.queryLockedSession({ lockHandle: handle, query: { name: 'test', text: 'SELECT 1', values: badValues } }); } catch (e) { err = e; }
+      assert.ok(err);
+      assert.strictEqual(err.message, BROKER_ERROR_QUERY_UNAVAILABLE);
+    });
+
+    it('29. query Proxy getOwnPropertyDescriptor throw -> fixed error', async () => {
+      const { adapter } = acquiredAdapter();
+      const handle = await acquireHandle(adapter);
+      const badQuery = new Proxy({ name: 'test', text: 'SELECT 1', values: [] }, {
+        getOwnPropertyDescriptor() { throw new Error('desc secret'); }
+      });
+      let err = null;
+      try { await adapter.queryLockedSession({ lockHandle: handle, query: badQuery }); } catch (e) { err = e; }
+      assert.ok(err);
+      assert.strictEqual(err.message, BROKER_ERROR_QUERY_UNAVAILABLE);
+    });
+
+    it('30. revoked Proxy query -> fixed error', async () => {
+      const { adapter } = acquiredAdapter();
+      const handle = await acquireHandle(adapter);
+      const { proxy, revoke } = Proxy.revocable({ name: 'test', text: 'SELECT 1', values: [] }, {});
+      revoke();
+      let err = null;
+      try { await adapter.queryLockedSession({ lockHandle: handle, query: proxy }); } catch (e) { err = e; }
+      assert.ok(err);
+      assert.strictEqual(err.message, BROKER_ERROR_QUERY_UNAVAILABLE);
+    });
+
+    it('31. query Proxy get trap execution 0', async () => {
+      let getCalls = 0;
+      const { adapter } = acquiredAdapter();
+      const handle = await acquireHandle(adapter);
+      const proxied = new Proxy({ name: 'test', text: 'SELECT 1', values: [] }, {
+        get(target, prop) {
+          getCalls += 1;
+          return Reflect.get(target, prop);
+        }
+      });
+      await adapter.queryLockedSession({ lockHandle: handle, query: proxied });
+      assert.strictEqual(getCalls, 0);
+    });
+
+    it('32. query values index accessor -> fixed error (getter 0)', async () => {
+      let ran = false;
+      const { adapter } = acquiredAdapter();
+      const handle = await acquireHandle(adapter);
+      const arr = [];
+      Object.defineProperty(arr, '0', { enumerable: true, get() { ran = true; return 'val'; } });
+      Object.defineProperty(arr, 'length', { value: 1 });
+      let err = null;
+      try { await adapter.queryLockedSession({ lockHandle: handle, query: { name: 'test', text: 'SELECT 1', values: arr } }); } catch (e) { err = e; }
+      assert.ok(err);
+      assert.strictEqual(err.message, BROKER_ERROR_QUERY_UNAVAILABLE);
+      assert.strictEqual(ran, false);
+    });
+
+    it('33. query field accessor -> fixed error', async () => {
+      let ran = false;
+      const { adapter } = acquiredAdapter();
+      const handle = await acquireHandle(adapter);
+      const query = { text: 'SELECT 1', values: [] };
+      Object.defineProperty(query, 'name', { enumerable: true, get() { ran = true; return 'test'; } });
+      let err = null;
+      try { await adapter.queryLockedSession({ lockHandle: handle, query }); } catch (e) { err = e; }
+      assert.ok(err);
+      assert.strictEqual(err.message, BROKER_ERROR_QUERY_UNAVAILABLE);
+      assert.strictEqual(ran, false);
+    });
+
+    it('34. non-plain-record query -> fixed error', async () => {
+      const { adapter } = acquiredAdapter();
+      const handle = await acquireHandle(adapter);
+      for (const query of [null, 'x', 5, true, []]) {
+        let err = null;
+        try { await adapter.queryLockedSession({ lockHandle: handle, query }); } catch (e) { err = e; }
+        assert.ok(err);
+        assert.strictEqual(err.message, BROKER_ERROR_QUERY_UNAVAILABLE);
+      }
+    });
+
+    it('35. custom prototype query -> fixed error', async () => {
+      const { adapter } = acquiredAdapter();
+      const handle = await acquireHandle(adapter);
+      class Custom {}
+      const q = new Custom();
+      Object.assign(q, { name: 'test', text: 'SELECT 1', values: [] });
+      let err = null;
+      try { await adapter.queryLockedSession({ lockHandle: handle, query: q }); } catch (e) { err = e; }
+      assert.ok(err);
+      assert.strictEqual(err.message, BROKER_ERROR_QUERY_UNAVAILABLE);
+    });
+
+    it('36. query getPrototypeOf trap throw -> fixed error', async () => {
+      const { adapter } = acquiredAdapter();
+      const handle = await acquireHandle(adapter);
+      const trapQuery = new Proxy({ name: 'test', text: 'SELECT 1', values: [] }, {
+        getPrototypeOf() { throw new Error('proto'); }
+      });
+      let err = null;
+      try { await adapter.queryLockedSession({ lockHandle: handle, query: trapQuery }); } catch (e) { err = e; }
+      assert.ok(err);
+      assert.strictEqual(err.message, BROKER_ERROR_QUERY_UNAVAILABLE);
+    });
+
+    it('37. fixed error message and stack never contain raw error detail', async () => {
+      const { adapter } = acquiredAdapter();
+      const handle = await acquireHandle(adapter);
+      const badQuery = new Proxy({ name: 'test', text: 'SELECT 1', values: [] }, {
+        getOwnPropertyDescriptor() { throw new Error('POSTGRES_SECRET_INTERNAL_HOST db.internal:5432'); }
+      });
+      let err = null;
+      try { await adapter.queryLockedSession({ lockHandle: handle, query: badQuery }); } catch (e) { err = e; }
+      assert.ok(err);
+      assert.strictEqual(err.message, BROKER_ERROR_QUERY_UNAVAILABLE);
+      assert.ok(!err.message.includes('POSTGRES_SECRET_INTERNAL_HOST'));
+      assert.ok(!err.message.includes('db.internal'));
+    });
+
+    it('38. Proxy ownKeys trap during snapshot triggers release -> fixed error, query not executed', async () => {
+      let releasePromise;
+      let brokerQueryCalls = 0;
+
+      const targetValues = [];
+
+      const { adapter } = acquiredAdapter({
+        queryImpl: async (q) => {
+          if (q.name === ACQUIRE_NAME) {
+            return { rows: [{ acquired: true }] };
+          }
+          if (q.name === RELEASE_NAME) {
+            return { rows: [{ released: true }] };
+          }
+          if (q.name === 'test') {
+            brokerQueryCalls += 1;
+          }
+          return {};
+        }
+      });
+      const handle = await acquireHandle(adapter);
+
+      const values = new Proxy(targetValues, {
+        ownKeys() {
+          releasePromise = adapter.releaseAdvisoryLock({
+            lockHandle: handle
+          });
+          return Reflect.ownKeys(targetValues);
+        }
+      });
+
+      const q = { name: 'test', text: 'SELECT 1', values };
+      let err = null;
+      try {
+        await adapter.queryLockedSession({ lockHandle: handle, query: q });
+      } catch (e) {
+        err = e;
+      }
+      assert.ok(err);
+      assert.strictEqual(err.message, BROKER_ERROR_QUERY_UNAVAILABLE);
+      assert.strictEqual(brokerQueryCalls, 0);
+      await releasePromise;
+    });
+
+    it('39. values getOwnPropertyDescriptor trap during snapshot triggers release on same adapter -> fixed error', async () => {
+      let releasePromise;
+      let brokerQueryCalls = 0;
+
+      const targetValues = [];
+
+      const { adapter } = acquiredAdapter({
+        queryImpl: async (q) => {
+          if (q.name === ACQUIRE_NAME) {
+            return { rows: [{ acquired: true }] };
+          }
+          if (q.name === RELEASE_NAME) {
+            return { rows: [{ released: true }] };
+          }
+          if (q.name === 'test') {
+            brokerQueryCalls += 1;
+          }
+          return {};
+        }
+      });
+      const handle = await acquireHandle(adapter);
+
+      const values = new Proxy(targetValues, {
+        getOwnPropertyDescriptor(target, key) {
+          if (!releasePromise) {
+            releasePromise = adapter.releaseAdvisoryLock({
+              lockHandle: handle
+            });
+          }
+          return Reflect.getOwnPropertyDescriptor(target, key);
+        }
+      });
+
+      const q = { name: 'test', text: 'SELECT 1', values };
+      let err = null;
+      try {
+        await adapter.queryLockedSession({ lockHandle: handle, query: q });
+      } catch (e) {
+        err = e;
+      }
+      assert.ok(err);
+      assert.strictEqual(err.message, BROKER_ERROR_QUERY_UNAVAILABLE);
+      assert.strictEqual(brokerQueryCalls, 0);
+      await releasePromise;
     });
   });
 });
