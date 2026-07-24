@@ -3,10 +3,9 @@
 /**
  * Migration source-validation adapter — source-tested contract (#3650).
  *
- * This is a source-tested adapter that reads three fixed repository JSON files
- * and delegates to the existing `validateSourceConfiguration` validator. It does
- * NOT execute SQL, open a database connection, import `pg`, access network,
- * modify manifests, or perform any side effect beyond reading three fixed files.
+ * Source-only adapter: reads three fixed repository JSON files via a loader,
+ * parses each exactly once, delegates to the existing `validateSourceConfiguration`
+ * validator, and returns PASS|FAIL|UNAVAILABLE.
  *
  * Fixed source paths (relative to repository root):
  *   1. docs/architecture/migration-path-inventory.json
@@ -33,34 +32,40 @@ const SOURCE_VALIDATION_RESULTS = Object.freeze({
   UNAVAILABLE: Object.freeze({ status: 'UNAVAILABLE' })
 });
 
-const FACTORY_ERROR_MISSING_DEPENDENCY = 'SOURCE_VALIDATION_ADAPTER_MISSING_DEPENDENCY';
+const SOURCE_LOAD_STATUSES = Object.freeze({
+  LOADED: 'LOADED',
+  INVALID: 'INVALID',
+  UNAVAILABLE: 'UNAVAILABLE'
+});
+
 const FACTORY_ERROR_INVALID_DEPENDENCY = 'SOURCE_VALIDATION_ADAPTER_INVALID_DEPENDENCY';
-const ERROR_INVALID_INPUT = 'SOURCE_VALIDATION_ADAPTER_INVALID_INPUT';
 
 const INVENTORY_RELATIVE = path.join('docs', 'architecture', 'migration-path-inventory.json');
 const CANONICAL_MIGRATIONS_RELATIVE = path.join('db', 'migration-provenance', 'canonical-migrations.json');
 const EXPECTED_SCHEMA_RELATIVE = path.join('db', 'migration-provenance', 'expected-schema-manifest.json');
 
-const INV_PATH = path.resolve(REPO_ROOT, INVENTORY_RELATIVE);
-const MIGRATIONS_PATH = path.resolve(REPO_ROOT, CANONICAL_MIGRATIONS_RELATIVE);
-const SCHEMA_PATH = path.resolve(REPO_ROOT, EXPECTED_SCHEMA_RELATIVE);
+const ALLOWED_CONFIG_KEYS = Object.freeze(['loadFixedSources', 'validateSourceConfiguration']);
 
-function safeGetOwnDataProperty(obj, key) {
-  try {
-    const desc = Object.getOwnPropertyDescriptor(obj, key);
-    if (desc === undefined) return undefined;
-    if ('get' in desc || 'set' in desc) return undefined;
-    return desc.value;
-  } catch (e) {
-    return undefined;
+const LOADED_RESULT_KEYS = Object.freeze(['status', 'inventoryText', 'migrationManifestText', 'expectedSchemaManifestText']);
+
+const VALIDATOR_RESULT_KEYS = Object.freeze(['ok']);
+
+const LOADED_EXACT_KEYS = Object.freeze(['status', 'inventoryText', 'migrationManifestText', 'expectedSchemaManifestText']);
+
+const INVALID_EXACT_KEYS = Object.freeze(['status']);
+
+function keysMatchExact(descriptors, allowed) {
+  const ownKeys = [];
+  for (const { key, desc } of descriptors) {
+    if (typeof key !== 'string') return false;
+    if ('get' in desc || 'set' in desc) return false;
+    ownKeys.push(key);
   }
-}
-
-function safeIsPlainRecord(obj) {
-  if (obj === null || typeof obj !== 'object') return false;
-  if (Array.isArray(obj)) return false;
-  const proto = Object.getPrototypeOf(obj);
-  return proto === Object.prototype || proto === null;
+  if (ownKeys.length !== allowed.length) return false;
+  for (let i = 0; i < allowed.length; i++) {
+    if (ownKeys[i] !== allowed[i]) return false;
+  }
+  return true;
 }
 
 function safeOwnKeyDescriptors(obj) {
@@ -82,6 +87,23 @@ function safeOwnKeyDescriptors(obj) {
     descriptors.push({ key, desc });
   }
   return descriptors;
+}
+
+function safeDescriptorSnapshot(obj) {
+  if (obj === null || typeof obj !== 'object') return undefined;
+  try {
+    if (Array.isArray(obj)) return undefined;
+  } catch (e) {
+    return undefined;
+  }
+  let proto;
+  try {
+    proto = Object.getPrototypeOf(obj);
+  } catch (e) {
+    return undefined;
+  }
+  if (proto !== Object.prototype && proto !== null) return undefined;
+  return safeOwnKeyDescriptors(obj);
 }
 
 function validateCallEnvelope(arg) {
@@ -129,113 +151,205 @@ function validateCallEnvelope(arg) {
   return true;
 }
 
-function assertPathContainment(filePath, repoRoot, repoReal) {
-  const normalized = path.resolve(repoRoot, filePath);
-  const lexicalRoot = path.resolve(repoRoot);
+function resolveConfinedRegularFile(relativePath) {
+  const lexicalTarget = path.resolve(REPO_ROOT, relativePath);
+  const lexicalRoot = path.resolve(REPO_ROOT);
 
-  if (!normalized.startsWith(lexicalRoot + path.sep) && normalized !== lexicalRoot) {
-    return false;
+  if (!lexicalTarget.startsWith(lexicalRoot + path.sep) && lexicalTarget !== lexicalRoot) {
+    return undefined;
   }
 
   let realRoot;
   try {
-    realRoot = fs.realpathSync(repoRoot);
+    realRoot = fs.realpathSync(REPO_ROOT);
   } catch (e) {
-    return false;
+    return undefined;
   }
 
   let realTarget;
   try {
-    realTarget = fs.realpathSync(normalized);
+    realTarget = fs.realpathSync(lexicalTarget);
   } catch (e) {
-    return false;
+    return undefined;
   }
 
   if (!realTarget.startsWith(realRoot + path.sep) && realTarget !== realRoot) {
-    return false;
+    return undefined;
   }
 
   let stat;
   try {
     stat = fs.statSync(realTarget);
   } catch (e) {
-    return false;
+    return undefined;
   }
 
   if (!stat.isFile()) {
-    return false;
+    return undefined;
   }
 
-  return true;
-}
-
-function readAndParseSource(filePath, repoRoot) {
-  if (!assertPathContainment(filePath, repoRoot)) {
-    return { ok: false, unavailable: true };
-  }
-
-  const fullPath = path.resolve(repoRoot, filePath);
-  let content;
-  try {
-    content = fs.readFileSync(fullPath, 'utf8');
-  } catch (e) {
-    return { ok: false, unavailable: true };
-  }
-
-  let parsed;
-  try {
-    parsed = JSON.parse(content);
-  } catch (e) {
-    return { ok: false, unavailable: false, parseError: true };
-  }
-
-  return { ok: true, parsed };
+  return realTarget;
 }
 
 function defaultLoadFixedSources() {
-  const inventory = readAndParseSource(INVENTORY_RELATIVE, REPO_ROOT);
-  if (!inventory.ok) {
-    return { available: false, inventory: null, migrations: null, schema: null };
+  const invReal = resolveConfinedRegularFile(INVENTORY_RELATIVE);
+  if (invReal === undefined) {
+    return { status: SOURCE_LOAD_STATUSES.UNAVAILABLE };
+  }
+  let invText;
+  try {
+    invText = fs.readFileSync(invReal, 'utf8');
+  } catch (e) {
+    return { status: SOURCE_LOAD_STATUSES.UNAVAILABLE };
   }
 
-  const migrations = readAndParseSource(CANONICAL_MIGRATIONS_RELATIVE, REPO_ROOT);
-  if (!migrations.ok) {
-    return { available: false, inventory: null, migrations: null, schema: null };
+  const migReal = resolveConfinedRegularFile(CANONICAL_MIGRATIONS_RELATIVE);
+  if (migReal === undefined) {
+    return { status: SOURCE_LOAD_STATUSES.UNAVAILABLE };
+  }
+  let migText;
+  try {
+    migText = fs.readFileSync(migReal, 'utf8');
+  } catch (e) {
+    return { status: SOURCE_LOAD_STATUSES.UNAVAILABLE };
   }
 
-  const schema = readAndParseSource(EXPECTED_SCHEMA_RELATIVE, REPO_ROOT);
-  if (!schema.ok) {
-    return { available: false, inventory: null, migrations: null, schema: null };
+  const schReal = resolveConfinedRegularFile(EXPECTED_SCHEMA_RELATIVE);
+  if (schReal === undefined) {
+    return { status: SOURCE_LOAD_STATUSES.UNAVAILABLE };
+  }
+  let schText;
+  try {
+    schText = fs.readFileSync(schReal, 'utf8');
+  } catch (e) {
+    return { status: SOURCE_LOAD_STATUSES.UNAVAILABLE };
   }
 
   return {
-    available: true,
-    inventory: inventory.parsed,
-    migrations: migrations.parsed,
-    schema: schema.parsed
+    status: SOURCE_LOAD_STATUSES.LOADED,
+    inventoryText: invText,
+    migrationManifestText: migText,
+    expectedSchemaManifestText: schText
   };
 }
 
-function createMigrationSourceValidationAdapter(config) {
-  const cfg = config || {};
+function parseSnapshotLoaderResult(raw) {
+  const descriptors = safeDescriptorSnapshot(raw);
+  if (descriptors === undefined) return { valid: false };
 
-  let loadFixedSources = defaultLoadFixedSources;
-  let validatorFn = validateSourceConfiguration;
+  const statusDesc = descriptors.find((d) => d.key === 'status');
+  if (!statusDesc || !('value' in statusDesc.desc)) return { valid: false };
+  const status = statusDesc.desc.value;
+  if (typeof status !== 'string') return { valid: false };
 
-  if ('loadFixedSources' in cfg) {
-    const loader = safeGetOwnDataProperty(cfg, 'loadFixedSources');
-    if (typeof loader !== 'function') {
-      throw new Error(FACTORY_ERROR_INVALID_DEPENDENCY);
-    }
-    loadFixedSources = loader;
+  if (status === SOURCE_LOAD_STATUSES.UNAVAILABLE) {
+    if (!keysMatchExact(descriptors, INVALID_EXACT_KEYS)) return { valid: false };
+    return { valid: true, loadStatus: SOURCE_LOAD_STATUSES.UNAVAILABLE };
   }
 
-  if ('validateSourceConfiguration' in cfg) {
-    const validator = safeGetOwnDataProperty(cfg, 'validateSourceConfiguration');
-    if (typeof validator !== 'function') {
+  if (status === SOURCE_LOAD_STATUSES.INVALID) {
+    if (!keysMatchExact(descriptors, INVALID_EXACT_KEYS)) return { valid: false };
+    return { valid: true, loadStatus: SOURCE_LOAD_STATUSES.INVALID };
+  }
+
+  if (status !== SOURCE_LOAD_STATUSES.LOADED) {
+    return { valid: false };
+  }
+
+  if (!keysMatchExact(descriptors, LOADED_EXACT_KEYS)) return { valid: false };
+
+  const invDesc = descriptors.find((d) => d.key === 'inventoryText');
+  if (!invDesc || !('value' in invDesc.desc)) return { valid: false };
+  if (typeof invDesc.desc.value !== 'string') return { valid: false };
+
+  const migDesc = descriptors.find((d) => d.key === 'migrationManifestText');
+  if (!migDesc || !('value' in migDesc.desc)) return { valid: false };
+  if (typeof migDesc.desc.value !== 'string') return { valid: false };
+
+  const schDesc = descriptors.find((d) => d.key === 'expectedSchemaManifestText');
+  if (!schDesc || !('value' in schDesc.desc)) return { valid: false };
+  if (typeof schDesc.desc.value !== 'string') return { valid: false };
+
+  return {
+    valid: true,
+    loadStatus: SOURCE_LOAD_STATUSES.LOADED,
+    inventoryText: invDesc.desc.value,
+    migrationManifestText: migDesc.desc.value,
+    expectedSchemaManifestText: schDesc.desc.value
+  };
+}
+
+function parseValidatorResult(raw) {
+  const descriptors = safeDescriptorSnapshot(raw);
+  if (descriptors === undefined) return { valid: false };
+
+  const okDesc = descriptors.find((d) => d.key === 'ok');
+  if (!okDesc) return { valid: false };
+  if ('get' in okDesc.desc || 'set' in okDesc.desc) return { valid: false };
+
+  const ok = okDesc.desc.value;
+  return { valid: true, ok };
+}
+
+function createMigrationSourceValidationAdapter(config) {
+  let loadFixedSourcesFn = defaultLoadFixedSources;
+  let validatorFn = validateSourceConfiguration;
+
+  if (config !== undefined && config !== null) {
+    if (typeof config !== 'object') {
       throw new Error(FACTORY_ERROR_INVALID_DEPENDENCY);
     }
-    validatorFn = validator;
+    try {
+      if (Array.isArray(config)) {
+        throw new Error(FACTORY_ERROR_INVALID_DEPENDENCY);
+      }
+    } catch (e) {
+      if (e.message === FACTORY_ERROR_INVALID_DEPENDENCY) throw e;
+      throw new Error(FACTORY_ERROR_INVALID_DEPENDENCY);
+    }
+
+    let configProto;
+    try {
+      configProto = Object.getPrototypeOf(config);
+    } catch (e) {
+      throw new Error(FACTORY_ERROR_INVALID_DEPENDENCY);
+    }
+    if (configProto !== Object.prototype && configProto !== null) {
+      throw new Error(FACTORY_ERROR_INVALID_DEPENDENCY);
+    }
+
+    const configDescriptors = safeOwnKeyDescriptors(config);
+    if (configDescriptors === undefined) {
+      throw new Error(FACTORY_ERROR_INVALID_DEPENDENCY);
+    }
+
+    for (const { key, desc } of configDescriptors) {
+      if (typeof key === 'symbol') throw new Error(FACTORY_ERROR_INVALID_DEPENDENCY);
+      if ('get' in desc || 'set' in desc) throw new Error(FACTORY_ERROR_INVALID_DEPENDENCY);
+    }
+
+    const configOwnKeys = [];
+    for (const { key } of configDescriptors) {
+      if (typeof key === 'string') configOwnKeys.push(key);
+    }
+    for (const k of configOwnKeys) {
+      if (!ALLOWED_CONFIG_KEYS.includes(k)) {
+        throw new Error(FACTORY_ERROR_INVALID_DEPENDENCY);
+      }
+    }
+
+    for (const { key, desc } of configDescriptors) {
+      if (key === 'loadFixedSources') {
+        if (!('value' in desc)) throw new Error(FACTORY_ERROR_INVALID_DEPENDENCY);
+        if (typeof desc.value !== 'function') throw new Error(FACTORY_ERROR_INVALID_DEPENDENCY);
+        loadFixedSourcesFn = desc.value;
+      }
+      if (key === 'validateSourceConfiguration') {
+        if (!('value' in desc)) throw new Error(FACTORY_ERROR_INVALID_DEPENDENCY);
+        if (typeof desc.value !== 'function') throw new Error(FACTORY_ERROR_INVALID_DEPENDENCY);
+        validatorFn = desc.value;
+      }
+    }
   }
 
   async function validateSource(arg) {
@@ -243,31 +357,87 @@ function createMigrationSourceValidationAdapter(config) {
       return SOURCE_VALIDATION_RESULTS.FAIL;
     }
 
-    let sources;
+    let loadResult;
     try {
-      sources = loadFixedSources();
+      loadResult = loadFixedSourcesFn();
     } catch (e) {
       return SOURCE_VALIDATION_RESULTS.UNAVAILABLE;
     }
 
-    if (!sources || !sources.available) {
+    let raw;
+    try {
+      if (loadResult !== null && typeof loadResult === 'object' && loadResult instanceof Promise) {
+        raw = await loadResult;
+      } else {
+        raw = loadResult;
+      }
+    } catch (e) {
       return SOURCE_VALIDATION_RESULTS.UNAVAILABLE;
     }
 
-    let result;
+    const snapshot = parseSnapshotLoaderResult(raw);
+    if (!snapshot.valid) {
+      return SOURCE_VALIDATION_RESULTS.UNAVAILABLE;
+    }
+
+    if (snapshot.loadStatus === SOURCE_LOAD_STATUSES.UNAVAILABLE) {
+      return SOURCE_VALIDATION_RESULTS.UNAVAILABLE;
+    }
+
+    if (snapshot.loadStatus === SOURCE_LOAD_STATUSES.INVALID) {
+      return SOURCE_VALIDATION_RESULTS.FAIL;
+    }
+
+    let inventory;
     try {
-      const raw = validatorFn({
+      inventory = JSON.parse(snapshot.inventoryText);
+    } catch (e) {
+      return SOURCE_VALIDATION_RESULTS.FAIL;
+    }
+
+    let migrationManifest;
+    try {
+      migrationManifest = JSON.parse(snapshot.migrationManifestText);
+    } catch (e) {
+      return SOURCE_VALIDATION_RESULTS.FAIL;
+    }
+
+    let expectedSchemaManifest;
+    try {
+      expectedSchemaManifest = JSON.parse(snapshot.expectedSchemaManifestText);
+    } catch (e) {
+      return SOURCE_VALIDATION_RESULTS.FAIL;
+    }
+
+    let rawValidatorResult;
+    try {
+      rawValidatorResult = validatorFn({
         repoRoot: REPO_ROOT,
-        inventory: sources.inventory,
-        migrationManifest: sources.migrations,
-        expectedSchemaManifest: sources.schema
+        inventory,
+        migrationManifest,
+        expectedSchemaManifest
       });
-      result = await raw;
     } catch (e) {
       return SOURCE_VALIDATION_RESULTS.UNAVAILABLE;
     }
 
-    if (result && result.ok === true) {
+    let validatorResult;
+    try {
+      if (rawValidatorResult !== null && typeof rawValidatorResult === 'object' && rawValidatorResult instanceof Promise) {
+        validatorResult = await rawValidatorResult;
+      } else {
+        validatorResult = rawValidatorResult;
+      }
+    } catch (e) {
+      return SOURCE_VALIDATION_RESULTS.UNAVAILABLE;
+    }
+
+    const vSnapshot = parseValidatorResult(validatorResult);
+    if (!vSnapshot.valid) {
+      return SOURCE_VALIDATION_RESULTS.UNAVAILABLE;
+    }
+
+    if (vSnapshot.ok === true) {
       return SOURCE_VALIDATION_RESULTS.PASS;
     }
 
@@ -281,9 +451,8 @@ function createMigrationSourceValidationAdapter(config) {
 
 module.exports = {
   SOURCE_VALIDATION_RESULTS,
-  FACTORY_ERROR_MISSING_DEPENDENCY,
+  SOURCE_LOAD_STATUSES,
   FACTORY_ERROR_INVALID_DEPENDENCY,
-  ERROR_INVALID_INPUT,
   createMigrationSourceValidationAdapter,
   validateSourceConfiguration
 };

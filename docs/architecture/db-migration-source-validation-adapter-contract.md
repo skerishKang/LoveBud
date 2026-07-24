@@ -26,6 +26,18 @@ const adapter = createMigrationSourceValidationAdapter({
 });
 ```
 
+### Factory Config Descriptor Snapshot
+
+Factory config is validated via a single safe descriptor snapshot. The adapter never uses `in` operator, Proxy `has` trap, or direct property access on config. Instead:
+
+1. `Object.getPrototypeOf(config)` — validates prototype is `Object.prototype` or `null`
+2. `Reflect.ownKeys(config)` + `Object.getOwnPropertyDescriptor(config, key)` — captures all descriptors
+3. Rejects symbol keys, accessor properties, non-enumerable properties, extra keys
+4. Only `loadFixedSources` and `validateSourceConfiguration` are permitted keys
+5. Captures callable values from descriptors; original config is never re-accessed
+6. All trap failures (`ownKeys`, `getPrototypeOf`, `getOwnPropertyDescriptor`) produce fixed factory error
+7. Raw internal errors are not exposed; fixed error: `SOURCE_VALIDATION_ADAPTER_INVALID_DEPENDENCY`
+
 ## Public Surface
 
 The adapter is a frozen object with exactly one own enumerable key:
@@ -52,6 +64,74 @@ The adapter is a frozen object with exactly one own enumerable key:
 - Repository root is calculated from `__dirname`, not from caller, environment, or argument.
 - No caller override for file paths, root, glob, URL, or stdin.
 - `targetMigrationId` is never used for path selection or source authorization.
+
+## Loader Internal State
+
+The default loader returns raw UTF-8 text with a frozen status vocabulary:
+
+```js
+const SOURCE_LOAD_STATUSES = Object.freeze({
+  LOADED: 'LOADED',
+  INVALID: 'INVALID',
+  UNAVAILABLE: 'UNAVAILABLE'
+});
+```
+
+### Status Mapping
+
+| Loader status | Meaning | Adapter action |
+|---|---|---|
+| `LOADED` | File read succeeded, raw text returned | `validateSource` parses JSON |
+| `INVALID` | File read succeeded but content is malformed JSON | `FAIL` (validator not called) |
+| `UNAVAILABLE` | File/path/read failed | `UNAVAILABLE` |
+
+### `validateSource()` Mapping
+
+```text
+LOADED       → JSON.parse each text → delegate to validator
+INVALID      → FAIL
+UNAVAILABLE  → UNAVAILABLE
+```
+
+Raw `JSON.parse` failure on any source produces `FAIL` without calling the validator. This is tested via actual malformed JSON strings in the test suite.
+
+### Async Loader Support
+
+Both sync and async loaders are supported. The adapter avoids `await` on raw results to prevent Proxy `get` trap execution. Instead, it uses `instanceof Promise` (which only invokes `getPrototypeOf` trap) to detect Promise instances before awaiting.
+
+```js
+let raw;
+try {
+  if (result !== null && typeof result === 'object' && result instanceof Promise) {
+    raw = await result;
+  } else {
+    raw = result;
+  }
+} catch (e) {
+  return UNAVAILABLE;
+}
+```
+
+Synchronous throws, rejected Promises, and thenable rejections all produce `UNAVAILABLE`.
+
+## Verified `realTarget` Direct Read
+
+`resolveConfinedRegularFile(relativePath)` returns the verified realpath:
+
+1. Lexical containment: resolved path must start with `REPO_ROOT + path.sep`
+2. Repo realpath: `fs.realpathSync(REPO_ROOT)`
+3. Target realpath: `fs.realpathSync(lexicalTarget)`
+4. Realpath containment: target realpath must start with real repo root
+5. Regular file: `fs.statSync(realTarget).isFile()`
+
+The actual read uses only the verified `realTarget`:
+
+```js
+const realTarget = resolveConfinedRegularFile(relativePath);
+const text = fs.readFileSync(realTarget, 'utf8');
+```
+
+After realpath validation, the adapter never reads from the original lexical path.
 
 ## Existing Validator
 
@@ -96,7 +176,8 @@ Current committed source (inactive manifests, empty migrations, empty critical o
 ### `FAIL`
 
 - Malformed call envelope (source read: 0)
-- Successfully read but invalid JSON
+- Successfully read but invalid JSON (raw parse failure)
+- Loader returns `INVALID` status
 - Validator returns `{ ok: false }`
 - Invalid inventory, canonical manifest, or expected-schema manifest
 
@@ -104,6 +185,7 @@ Current committed source (inactive manifests, empty migrations, empty critical o
 
 - Source file cannot be read (missing, permission, directory)
 - Path/realpath/symlink escape outside repository
+- Loader returns `UNAVAILABLE` status
 - Unexpected validator throw or Promise rejection
 - Loader throw/reject
 - Internal evaluation exception
@@ -120,11 +202,38 @@ The input `{ targetMigrationId }` must be a strict safe plain record:
 
 Malformed envelopes produce `FAIL` with source read count 0.
 
+## Loader Result Descriptor Snapshot
+
+Injected loader results are validated via safe descriptor snapshots:
+
+- Plain record only (no array, no function, no null)
+- Exact permitted own keys per status variant:
+  - `LOADED`: `['status', 'inventoryText', 'migrationManifestText', 'expectedSchemaManifestText']`
+  - `INVALID`: `['status']`
+  - `UNAVAILABLE`: `['status']`
+- Symbol, extra, accessor, or inherited keys → `UNAVAILABLE`
+- Proxy `get` trap: 0 executions (adapter uses `instanceof Promise` only for async detection)
+- Descriptor value capture; original result never re-accessed
+
+## Validator Result Descriptor Snapshot
+
+Validator results are validated via safe descriptor snapshots:
+
+- `ok` must be an own data property (no accessor, no getter)
+- `ok === true` → `PASS`
+- `ok !== true` on inspectable result → `FAIL`
+- Proxy `get` trap: 0 executions
+- `ownKeys`/`getPrototypeOf`/`getOwnPropertyDescriptor` trap throw → `UNAVAILABLE`
+- Revoked Proxy → `UNAVAILABLE`
+- Validator Promise rejection → `UNAVAILABLE`
+- `errors`, `summary`, raw result never exposed externally
+
 ## Read/Parse Count
 
 - Each fixed source is read at most once per `validateSource()` call.
 - Each source is JSON-parsed at most once per call.
 - No `existsSync` + `readFileSync` double-read pattern.
+- `JSON.parse` failure on first source → `FAIL`, validator not called.
 
 ## Path/Realpath Confinement
 
@@ -158,6 +267,7 @@ The adapter's `validateSource` method is compatible with the `runCanonicalMigrat
 - No file write, manifest mutation, cache file, temp output
 - No `process.exit`, global mutable state
 - No `require()` at module load reads files; reads occur only at `validateSource()` call time
+- Test injection does not allow caller-selected file paths or roots
 
 ## Rollback
 

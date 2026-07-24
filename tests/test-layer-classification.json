@@ -4539,7 +4539,7 @@
     {
       "path": "tests/contracts/db-migration-source-validation-adapter-contract.test.cjs",
       "layer": "SOURCE_STATIC",
-      "rationale": "Exercises scripts/migration-source-validation-adapter-core.cjs (createMigrationSourceValidationAdapter, validateSource) with injected synthetic fixtures and the real default adapter against committed inactive repository sources; asserts frozen public surface, PASS/FAIL/UNAVAILABLE status vocabulary, call-envelope validation (malformed inputs yield FAIL with zero source reads), fixed-source read/parse counts, result sanitization, and orchestrator compatibility (PASS proceeds, FAIL/UNAVAILABLE blocks at SOURCE_VALIDATION stage); does not execute SQL, connect to a database, import pg, access network, or modify any file.",
+      "rationale": "Exercises scripts/migration-source-validation-adapter-core.cjs (createMigrationSourceValidationAdapter, validateSource) with injected synthetic fixtures, real default adapter against committed inactive sources, and temp-filesystem isolated repositories; asserts frozen public surface, PASS/FAIL/UNAVAILABLE vocabulary, raw malformed JSON actual-parse tests (FAIL with validator call 0), loader LOADED/INVALID/UNAVAILABLE status mapping, verified realTarget direct-read regression, safe factory config descriptor snapshot (hostile Proxy/accessor/extra/symbol/custom-prototype configs), async loader support (Promise resolve/reject), safe loader result snapshot (hostile accessor/Proxy/extra/symbol/wrong-type), safe validator result snapshot (hostile accessor/Proxy/throw/reject), call-envelope validation, result sanitization, and orchestrator compatibility; no SQL, database, Docker, network, secret, or manifest mutation.",
       "capabilities": []
     },
     {
