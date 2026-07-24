@@ -445,6 +445,21 @@
       "notes": "Source-tested injected PostgreSQL pinned-session advisory-lock adapter contract (not a real DB client). Implements the orchestrator's acquireAdvisoryLock/checkAdvisoryLock/releaseAdvisoryLock dependency contract: one global per-database lock keyed by a fixed two-int pair, a single pinned session from acquire through release, non-blocking pg_try_advisory_lock, current-session pg_locks verification, explicit pg_advisory_unlock, exactly-once pool release, an opaque frozen handle, and sanitized status-only results. All three public methods are total and fail-closed: safe own-data property inspection never executes accessor getters and never throws, so throwing getters, Proxy traps, revoked Proxies, getPrototypeOf/descriptor-inspection throws, and malformed evidence map to the fixed fail-closed statuses (NOT_ATTEMPTED/UNAVAILABLE for acquire, FAILED/UNAVAILABLE for check, UNKNOWN for release) with no raw error exposure; the factory maps any config.openSession access failure to POSTGRES_LOCK_ADAPTER_OPEN_SESSION_REQUIRED. No pg import, no connection, no actual query execution, no real lock, no Production mutation; all sessions/queries are synthetic injected mocks. Detected by RULE_RUNNER_NAME because the basename contains 'migration'; registered here to satisfy the guard."
     },
     {
+      "path": "scripts/migration-postgres-ledger-adapter-core.cjs",
+      "category": "provenance_tooling",
+      "engine": "postgres",
+      "operations": ["MIGRATION_LEDGER_READ_APPEND_CONTRACT"],
+      "canonical_status": "CANONICAL_CANDIDATE",
+      "destructive": false,
+      "production_capable": false,
+      "owner_or_issue": "database architecture / #3458",
+      "idempotency": "append-conflict-fails-closed",
+      "execution_actor": "none",
+      "automation": "none",
+      "ledger_candidate": "yes",
+      "notes": "Source-tested injected PostgreSQL migration-ledger read/append adapter contract (not a real DB client). Implements the orchestrator's readLedger/appendLedgerRecord dependency contract over a fixed schema_migration_ledger relation and a fixed seven-field order (migration_id, content_checksum, applied_at, runner_version, environment_class, deployed_commit, transaction_outcome). readLedger issues the exact named read query lovebud-migration-ledger-read-v1 (ordered SELECT, no SELECT *, no interpolation, no offset/limit) once, validates QueryResult evidence, and returns a frozen array of frozen seven-field clones preserving row order; an empty ledger is a frozen []. Any failure rejects with the fixed sanitized error POSTGRES_LEDGER_READ_UNAVAILABLE and never returns [] on failure. appendLedgerRecord is total: it snapshots a validated exact-seven-key COMMITTED record before the query, issues the append-only named query lovebud-migration-ledger-append-v1 (INSERT ... ON CONFLICT (migration_id) DO NOTHING RETURNING migration_id, content_checksum; no UPDATE/UPSERT-DO-UPDATE/DELETE/TRUNCATE/retry/multi-row), and maps exact one matching returned row to APPENDED, rows:[] to FAILED, and any throw/reject/malformed/multi-row/wrong-id-or-checksum/extra-field/Proxy-trap evidence to UNKNOWN; invalid input is FAILED with zero queries. Both methods are fail-closed: safe own-data inspection never executes accessor getters and never throws, so throwing getters, Proxy traps, revoked Proxies, getPrototypeOf/ownKeys/descriptor throws, sparse arrays, custom prototypes, and enumerable symbol extra fields map to the fixed fail-closed outcomes with no raw error/row/handle/session/credential exposure; the factory maps any config.queryLockedSession access failure to POSTGRES_LEDGER_ADAPTER_QUERY_LOCKED_SESSION_REQUIRED. The opaque lockHandle is forwarded unchanged and never inspected/serialized/exposed. No pg import, no connection, no actual query execution, no real ledger read/write, no Production mutation; all queries are synthetic injected mocks. Detected by RULE_RUNNER_NAME because the basename contains 'migration'; registered here to satisfy the guard."
+    },
+    {
       "path": "scripts/migration-catalog-postgres-adapter-core.cjs",
       "category": "catalog_adapter",
       "engine": "postgres_ephemeral_ci",
