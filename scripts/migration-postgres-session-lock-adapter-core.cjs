@@ -94,6 +94,7 @@ const POSTGRES_LOCK_RELEASE_STATUSES = Object.freeze({
 });
 
 const FACTORY_ERROR_OPEN_SESSION_REQUIRED = 'POSTGRES_LOCK_ADAPTER_OPEN_SESSION_REQUIRED';
+const BROKER_ERROR_QUERY_UNAVAILABLE = 'POSTGRES_LOCKED_SESSION_QUERY_UNAVAILABLE';
 
 // Sentinel returned by safe inspection when an own data property is absent,
 // inaccessible, or not a plain data value. It is never returned to callers.
@@ -176,6 +177,133 @@ function safeOwnEnumerableKeys(obj) {
   return enumerable;
 }
 
+// Collect ALL own keys (string and symbol) and their descriptors without ever
+// throwing or executing an accessor getter. Returns undefined on any trap throw,
+// revoked Proxy, or inconsistent ownKeys/descriptor result.
+function safeOwnKeyDescriptors(obj) {
+  let keys;
+  try {
+    keys = Reflect.ownKeys(obj);
+  } catch (error) {
+    return undefined;
+  }
+  const descriptors = [];
+  for (const key of keys) {
+    let desc;
+    try {
+      desc = Object.getOwnPropertyDescriptor(obj, key);
+    } catch (error) {
+      return undefined;
+    }
+    if (desc === undefined) return undefined;
+    descriptors.push({ key, desc });
+  }
+  return descriptors;
+}
+
+// Snapshot a query object { name, text, values } from descriptors in ONE pass.
+// Validates:
+// - safe plain record
+// - own keys are EXACTLY { name, text, values } (no extra string/symbol key)
+// - all keys are strings (no symbol keys)
+// - each field is an enumerable own data property (no accessor, no inherited)
+// - name and text are non-empty strings
+// - values is a dense array (non-enumerable length, exact indices 0..length-1,
+//   no holes, no extra properties, no symbol keys, no accessor indices,
+//   no non-canonical numeric keys)
+// Returns a frozen { name, text, values } snapshot or undefined if malformed.
+// After this call, the original query object is never re-accessed. Proxy get
+// traps are never executed. Each own property descriptor is retrieved at most once.
+function snapshotQueryObject(query) {
+  try {
+    if (!safeIsPlainRecord(query)) return undefined;
+    const descriptors = safeOwnKeyDescriptors(query);
+    if (descriptors === undefined) return undefined;
+    if (descriptors.length !== 3) return undefined;
+
+    const snapshot = {};
+    const seen = new Set();
+    for (const { key, desc } of descriptors) {
+      // 1. All own keys must be strings (no symbol keys)
+      if (typeof key !== 'string') return undefined;
+      // 2. Accessor forbidden (must be data property)
+      if (!('value' in desc)) return undefined;
+      // 3. Must be enumerable=true
+      if (desc.enumerable !== true) return undefined;
+      // 4. Must be one of the expected fields (no extra keys)
+      if (key !== 'name' && key !== 'text' && key !== 'values') return undefined;
+      // 5. Capture value immediately from this single descriptor
+      snapshot[key] = desc.value;
+      seen.add(key);
+    }
+    // 6. Must have all three fields
+    if (!seen.has('name') || !seen.has('text') || !seen.has('values')) return undefined;
+
+    // 7. Validate name and text (non-empty strings)
+    if (!isNonEmptyString(snapshot.name)) return undefined;
+    if (!isNonEmptyString(snapshot.text)) return undefined;
+
+    // 8. Validate values is a dense array (single descriptor pass)
+    const valuesSnapshot = snapshotDenseArray(snapshot.values);
+    if (valuesSnapshot === undefined) return undefined;
+
+    return Object.freeze({
+      name: snapshot.name,
+      text: snapshot.text,
+      values: valuesSnapshot
+    });
+  } catch (error) {
+    return undefined;
+  }
+}
+
+// Snapshot a dense array into a frozen array by inspecting descriptors exactly
+// once. Uses two-pass validation within a single descriptor list:
+//   Pass 1: find length descriptor (non-enumerable data property, integer >= 0)
+//   Pass 2: validate exact index set 0..length-1 (canonical String(i), enumerable
+//           data properties) and no extra keys
+// After this call, the original array is never accessed again. Proxy get traps
+// are never executed.
+function snapshotDenseArray(arr) {
+  if (!safeIsArray(arr)) return undefined;
+  const descriptors = safeOwnKeyDescriptors(arr);
+  if (descriptors === undefined) return undefined;
+
+  // Pass 1: find length descriptor
+  let length = -1;
+  for (const { key, desc } of descriptors) {
+    if (key === 'length') {
+      if (desc.enumerable === true) return undefined;
+      if (!('value' in desc) || typeof desc.value !== 'number' || !Number.isInteger(desc.value) || desc.value < 0) return undefined;
+      length = desc.value;
+    }
+  }
+  if (length === -1) return undefined; // length missing
+
+  // Pass 2: validate exact key set and capture values
+  const indexValues = [];
+  for (const { key, desc } of descriptors) {
+    if (key === 'length') continue; // already validated in pass 1
+    if (typeof key !== 'string') return undefined; // symbol key forbidden
+    const idx = Number(key);
+    // Must be canonical numeric index: String(Number(key)) === key
+    if (!Number.isInteger(idx) || idx < 0 || String(idx) !== key) return undefined;
+    // Must be in range 0..length-1
+    if (idx >= length) return undefined;
+    // Must be enumerable data property
+    if (desc.enumerable !== true) return undefined;
+    if (!('value' in desc)) return undefined;
+    indexValues[idx] = desc.value;
+  }
+
+  // Verify exactly length indices (no holes, no extras)
+  if (indexValues.length !== length) return undefined;
+  for (let i = 0; i < length; i += 1) {
+    if (!(i in indexValues)) return undefined;
+  }
+  return Object.freeze(indexValues);
+}
+
 // Classify a query result as exactly { rows: [ { <field>: boolean } ] } where the
 // single row has EXACTLY ONE enumerable own key equal to `field`, and that field is
 // an own DATA property (not accessor) holding a boolean. Top-level QueryResult
@@ -238,11 +366,19 @@ async function callCapturedRelease(session, release) {
 
 /**
  * Create a frozen adapter { acquireAdvisoryLock, checkAdvisoryLock,
- * releaseAdvisoryLock } backed by an injected openSession dependency.
+ * queryLockedSession, releaseAdvisoryLock } backed by an injected openSession
+ * dependency.
  *
  * openSession() (sync or async) must resolve to a plain record { query, release }
  * with both callable. The session is pinned from acquire through release and
  * returned to the pool exactly once.
+ *
+ * queryLockedSession({ lockHandle, query }) runs a validated query object on the
+ * same pinned session captured at acquire time. The query object is validated
+ * via descriptor snapshot (exact { name, text, values } own keys, dense values
+ * array) before execution. The captured session.query callable is used exactly
+ * once with the captured session as `this`. Failures reject with the fixed
+ * message POSTGRES_LOCKED_SESSION_QUERY_UNAVAILABLE.
  */
 function createPostgresMigrationSessionLockAdapter(config) {
   // Reading config.openSession must never surface a raw getter/Proxy error: any
@@ -402,9 +538,35 @@ function createPostgresMigrationSessionLockAdapter(config) {
     return { status: POSTGRES_LOCK_RELEASE_STATUSES.FAILED };
   }
 
+  async function queryLockedSession(arg) {
+    const lockHandle = safeGetOwnDataProperty(arg, 'lockHandle');
+    const state = handleState.get(lockHandle);
+    // Invalid / cross-adapter / malformed handle: no query.
+    if (!state) {
+      return Promise.reject(new Error(BROKER_ERROR_QUERY_UNAVAILABLE));
+    }
+    // Releasing / released handle: no query.
+    if (state.lifecycle !== 'OPEN') {
+      return Promise.reject(new Error(BROKER_ERROR_QUERY_UNAVAILABLE));
+    }
+
+    const query = safeGetOwnDataProperty(arg, 'query');
+    const querySnapshot = snapshotQueryObject(query);
+    if (querySnapshot === undefined) {
+      return Promise.reject(new Error(BROKER_ERROR_QUERY_UNAVAILABLE));
+    }
+
+    try {
+      return await state.query.call(state.session, querySnapshot);
+    } catch (error) {
+      return Promise.reject(new Error(BROKER_ERROR_QUERY_UNAVAILABLE));
+    }
+  }
+
   return Object.freeze({
     acquireAdvisoryLock,
     checkAdvisoryLock,
+    queryLockedSession,
     releaseAdvisoryLock
   });
 }
@@ -415,5 +577,6 @@ module.exports = {
   POSTGRES_LOCK_ACQUIRE_STATUSES,
   POSTGRES_LOCK_CHECK_STATUSES,
   POSTGRES_LOCK_RELEASE_STATUSES,
+  BROKER_ERROR_QUERY_UNAVAILABLE,
   createPostgresMigrationSessionLockAdapter
 };
