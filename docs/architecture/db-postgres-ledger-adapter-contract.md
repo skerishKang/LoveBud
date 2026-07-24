@@ -177,9 +177,9 @@ An empty ledger is a valid success result: a frozen `[]`.
 
 ### QueryResult shape
 
-Top-level: a safe plain record with an own data property `rows` that is a dense `Array`. Top-level `pg` metadata (`command`, `rowCount`, `oid`, `fields`, ...) is allowed and ignored; no raw metadata other than `rows` is returned.
+Top-level: a safe plain record with an own data property `rows` that is a **dense array** (non-enumerable `length` data property, exactly `length` own enumerable index data properties, no other own properties). Top-level `pg` metadata (`command`, `rowCount`, `oid`, `fields`, ...) is allowed and ignored; no raw metadata other than `rows` is returned. Extra own properties on `rows` (enumerable or not) cause a read error.
 
-Each row: a safe plain record whose enumerable own string keys are **exactly** the fixed seven (no extra string key, no enumerable symbol key, no accessor/inherited/non-enumerable required field), each field a non-empty string.
+Each row: a safe plain record whose **ALL own keys** (enumerable or not, string or symbol) are **exactly** the fixed seven fields as enumerable own string data properties. Extra non-enumerable string keys, symbol keys (enumerable or not), accessor properties, inherited properties, and custom prototypes are all rejected. Each field must be a non-empty string.
 
 - `applied_at`: canonical ISO-8601 UTC, ending in `Z`, with `new Date(value).toISOString() === value`.
 - `transaction_outcome`: one of `COMMITTED|ROLLED_BACK|PARTIAL|UNKNOWN`. `NOT_EVALUATED` or any other string is malformed.
@@ -200,7 +200,7 @@ Targets: invalid/missing `lockHandle`; `queryLockedSession` throw/reject; malfor
 
 ## appendLedgerRecord input contract
 
-`record` must be a safe plain record with enumerable own keys exactly the fixed seven (no extra string/symbol key, no accessor/inherited/non-enumerable field), each value a non-empty string, `applied_at` a canonical UTC timestamp, and `transaction_outcome === 'COMMITTED'`.
+`record` must be a safe plain record whose **ALL own keys** (enumerable or not, string or symbol) are **exactly** the fixed seven fields as enumerable own string data properties. Extra non-enumerable string keys, symbol keys, accessor properties, inherited properties, and custom prototypes are all rejected. Each value must be a non-empty string, `applied_at` a canonical UTC timestamp, and `transaction_outcome === 'COMMITTED'`.
 
 Invalid input maps to `{ status: 'FAILED' }` with **zero** query calls and no raw-input or handle exposure. The record values are safely snapshotted **once, before** the query. A caller mutation of the original record during query execution cannot affect the query values or the result decision.
 
@@ -208,21 +208,21 @@ Invalid input maps to `{ status: 'FAILED' }` with **zero** query calls and no ra
 
 ### APPENDED
 
-Only when the query result means exactly:
+Only when the query result evidence is **exactly**:
 
 ```js
 { rows: [ { migration_id: SNAPSHOT_ID, content_checksum: SNAPSHOT_CHECKSUM } ] }
 ```
 
-Requirements: one exact row; exactly two enumerable own keys; values exactly matching the snapshot; top-level normal `pg` metadata allowed. Result: `{ status: 'APPENDED' }`.
+Requirements: `rows` is a dense array (non-enumerable `length`, exactly `length` enumerable index data properties, no other own properties); exactly one row; the row's **ALL own keys** are exactly `migration_id` and `content_checksum` as enumerable own string data properties (no extra string/symbol key, no non-enumerable field, no accessor, no inherited property); values exactly matching the snapshot; top-level normal `pg` metadata allowed. Result: `{ status: 'APPENDED' }`.
 
 ### FAILED
 
-`ON CONFLICT DO NOTHING` returning `{ rows: [] }` is confirmed negative evidence that no insert occurred. Result: `{ status: 'FAILED' }`. No automatic retry/update/rewrite. Invalid input is also `FAILED` with zero queries.
+`ON CONFLICT DO NOTHING` returning an **exact** `{ rows: [] }` (dense empty array with non-enumerable `length` and no other own properties) is confirmed negative evidence that no insert occurred. Result: `{ status: 'FAILED' }`. No automatic retry/update/rewrite. Invalid input is also `FAILED` with zero queries.
 
 ### UNKNOWN
 
-The append result cannot be confirmed, so: `{ status: 'UNKNOWN' }`. Targets: query throw/reject; malformed top-level result; multiple rows; wrong returned id/checksum; extra returned row fields; accessor/inherited field; Proxy/descriptor/ownKeys trap; missing/non-array `rows`; any unexpected evidence. When the query throws, the actual commit outcome is **not** guessed. Every append result is a fixed status only and never throws.
+The append result cannot be confirmed, so: `{ status: 'UNKNOWN' }`. Targets: query throw/reject; malformed top-level result; non-dense `rows` (extra own properties, sparse indices, accessor indices); multiple rows; wrong returned id/checksum; extra returned row fields; any non-enumerable or symbol own key on the row; accessor/inherited field; Proxy/descriptor/ownKeys trap; missing/non-array `rows`; any unexpected evidence. When the query throws, the actual commit outcome is **not** guessed. Every append result is a fixed status only and never throws.
 
 ## Mutation resistance
 

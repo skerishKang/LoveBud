@@ -396,13 +396,12 @@ describe('DB postgres ledger adapter contract (#3458)', () => {
       assert.strictEqual(rows[0].applied_at, '2030-12-31T23:59:59.999Z');
     });
 
-    it('ignores extra non-index own properties on the rows array', async () => {
+    it('rejects extra non-index own properties on the rows array', async () => {
       const rowsArr = [readRow({ migration_id: 'm1' })];
-      rowsArr.extraMeta = 'IGNORED';
+      rowsArr.extraMeta = 'MALFORMED';
       const { adapter } = adapterWith({ read: { rows: rowsArr } });
-      const rows = await adapter.readLedger({ lockHandle: HANDLE });
-      assert.strictEqual(rows.length, 1);
-      assert.strictEqual(rows[0].migration_id, 'm1');
+      const err = await rejectsRead(adapter);
+      assert.strictEqual(err.message, POSTGRES_LEDGER_READ_ERROR);
     });
 
     it('accepts a rows array wrapped in a transparent Proxy', async () => {
@@ -1060,6 +1059,318 @@ describe('DB postgres ledger adapter contract (#3458)', () => {
       const rows = await adapter.readLedger({ lockHandle: handle });
       assert.strictEqual(rows.length, 1);
       assert.strictEqual(broker.calls[0].lockHandle, handle);
+    });
+  });
+
+  describe('7. Exact all-own-key evidence boundary (#3641 fix)', () => {
+    // 1. Read record: non-enumerable extra string -> fixed read error
+    it('1. read rejects row with non-enumerable extra string property', async () => {
+      const row = readRow();
+      Object.defineProperty(row, 'hidden_extra', { enumerable: false, value: 'bad' });
+      const { adapter } = adapterWith({ read: { rows: [row] } });
+      const err = await rejectsRead(adapter);
+      assert.strictEqual(err.message, POSTGRES_LEDGER_READ_ERROR);
+    });
+
+    // 2. Read record: non-enumerable extra symbol -> fixed read error
+    it('2. read rejects row with non-enumerable extra symbol property', async () => {
+      const row = readRow();
+      const sym = Symbol('hidden');
+      Object.defineProperty(row, sym, { enumerable: false, value: 'bad' });
+      const { adapter } = adapterWith({ read: { rows: [row] } });
+      const err = await rejectsRead(adapter);
+      assert.strictEqual(err.message, POSTGRES_LEDGER_READ_ERROR);
+    });
+
+    // 3. Read record: hidden credential -> fixed read error
+    it('3. read rejects row with hidden credential property', async () => {
+      const row = readRow();
+      Object.defineProperty(row, 'credential', { enumerable: false, value: 'secret' });
+      const { adapter } = adapterWith({ read: { rows: [row] } });
+      const err = await rejectsRead(adapter);
+      assert.strictEqual(err.message, POSTGRES_LEDGER_READ_ERROR);
+    });
+
+    // 4. Read record: hidden raw_catalog_payload -> fixed read error
+    it('4. read rejects row with hidden raw_catalog_payload property', async () => {
+      const row = readRow();
+      Object.defineProperty(row, 'raw_catalog_payload', { enumerable: false, value: { secret: true } });
+      const { adapter } = adapterWith({ read: { rows: [row] } });
+      const err = await rejectsRead(adapter);
+      assert.strictEqual(err.message, POSTGRES_LEDGER_READ_ERROR);
+    });
+
+    // 5. Read record: extra accessor property getter execution 0 + fixed error
+    it('5. read rejects row with extra accessor property (getter not executed)', async () => {
+      let ran = false;
+      const row = readRow();
+      Object.defineProperty(row, 'hidden_getter', {
+        enumerable: false,
+        get() { ran = true; return 'val'; }
+      });
+      const { adapter } = adapterWith({ read: { rows: [row] } });
+      const err = await rejectsRead(adapter);
+      assert.strictEqual(err.message, POSTGRES_LEDGER_READ_ERROR);
+      assert.strictEqual(ran, false);
+    });
+
+    // 6. Append input: non-enumerable extra string -> FAILED, query 0
+    it('6. append input rejects record with non-enumerable extra string (FAILED, query 0)', async () => {
+      const rec = validRecord();
+      Object.defineProperty(rec, 'hidden_extra', { enumerable: false, value: 'bad' });
+      const { adapter, broker } = adapterWith({});
+      const res = await adapter.appendLedgerRecord({ record: rec, lockHandle: HANDLE });
+      assert.strictEqual(res.status, 'FAILED');
+      assert.strictEqual(broker.calls.length, 0);
+    });
+
+    // 7. Append input: non-enumerable extra symbol -> FAILED, query 0
+    it('7. append input rejects record with non-enumerable extra symbol (FAILED, query 0)', async () => {
+      const rec = validRecord();
+      Object.defineProperty(rec, Symbol('hidden'), { enumerable: false, value: 'bad' });
+      const { adapter, broker } = adapterWith({});
+      const res = await adapter.appendLedgerRecord({ record: rec, lockHandle: HANDLE });
+      assert.strictEqual(res.status, 'FAILED');
+      assert.strictEqual(broker.calls.length, 0);
+    });
+
+    // 8. Append input: hidden credential -> FAILED, query 0
+    it('8. append input rejects record with hidden credential (FAILED, query 0)', async () => {
+      const rec = validRecord();
+      Object.defineProperty(rec, 'credential', { enumerable: false, value: 'secret' });
+      const { adapter, broker } = adapterWith({});
+      const res = await adapter.appendLedgerRecord({ record: rec, lockHandle: HANDLE });
+      assert.strictEqual(res.status, 'FAILED');
+      assert.strictEqual(broker.calls.length, 0);
+    });
+
+    // 9. Append input: hidden operator_email -> FAILED, query 0
+    it('9. append input rejects record with hidden operator_email (FAILED, query 0)', async () => {
+      const rec = validRecord();
+      Object.defineProperty(rec, 'operator_email', { enumerable: false, value: 'admin@lovebud.dev' });
+      const { adapter, broker } = adapterWith({});
+      const res = await adapter.appendLedgerRecord({ record: rec, lockHandle: HANDLE });
+      assert.strictEqual(res.status, 'FAILED');
+      assert.strictEqual(broker.calls.length, 0);
+    });
+
+    // 10. Append input: extra accessor getter execution 0 + FAILED, query 0
+    it('10. append input rejects record with extra accessor property (getter not executed, FAILED, query 0)', async () => {
+      let ran = false;
+      const rec = validRecord();
+      Object.defineProperty(rec, 'hidden_getter', {
+        enumerable: false,
+        get() { ran = true; return 'val'; }
+      });
+      const { adapter, broker } = adapterWith({});
+      const res = await adapter.appendLedgerRecord({ record: rec, lockHandle: HANDLE });
+      assert.strictEqual(res.status, 'FAILED');
+      assert.strictEqual(ran, false);
+      assert.strictEqual(broker.calls.length, 0);
+    });
+
+    // 11. Append returned row: non-enumerable extra string -> UNKNOWN
+    it('11. append evidence rejects returned row with non-enumerable extra string -> UNKNOWN', async () => {
+      const row = { migration_id: 'mid', content_checksum: 'csum' };
+      Object.defineProperty(row, 'hidden_extra', { enumerable: false, value: 'bad' });
+      const { adapter } = adapterWith({ append: { rows: [row] } });
+      const res = await adapter.appendLedgerRecord({ record: validRecord({ migration_id: 'mid', content_checksum: 'csum' }), lockHandle: HANDLE });
+      assert.strictEqual(res.status, 'UNKNOWN');
+    });
+
+    // 12. Append returned row: non-enumerable extra symbol -> UNKNOWN
+    it('12. append evidence rejects returned row with non-enumerable extra symbol -> UNKNOWN', async () => {
+      const row = { migration_id: 'mid', content_checksum: 'csum' };
+      Object.defineProperty(row, Symbol('hidden'), { enumerable: false, value: 'bad' });
+      const { adapter } = adapterWith({ append: { rows: [row] } });
+      const res = await adapter.appendLedgerRecord({ record: validRecord({ migration_id: 'mid', content_checksum: 'csum' }), lockHandle: HANDLE });
+      assert.strictEqual(res.status, 'UNKNOWN');
+    });
+
+    // 13. Append returned row: hidden raw field -> UNKNOWN
+    it('13. append evidence rejects returned row with hidden raw field -> UNKNOWN', async () => {
+      const row = { migration_id: 'mid', content_checksum: 'csum' };
+      Object.defineProperty(row, 'raw', { enumerable: false, value: 'secret' });
+      const { adapter } = adapterWith({ append: { rows: [row] } });
+      const res = await adapter.appendLedgerRecord({ record: validRecord({ migration_id: 'mid', content_checksum: 'csum' }), lockHandle: HANDLE });
+      assert.strictEqual(res.status, 'UNKNOWN');
+    });
+
+    // 14. Append returned row: extra accessor getter execution 0 + UNKNOWN
+    it('14. append evidence rejects returned row with extra accessor property (getter not executed) -> UNKNOWN', async () => {
+      let ran = false;
+      const row = { migration_id: 'mid', content_checksum: 'csum' };
+      Object.defineProperty(row, 'hidden_getter', {
+        enumerable: false,
+        get() { ran = true; return 'val'; }
+      });
+      const { adapter } = adapterWith({ append: { rows: [row] } });
+      const res = await adapter.appendLedgerRecord({ record: validRecord({ migration_id: 'mid', content_checksum: 'csum' }), lockHandle: HANDLE });
+      assert.strictEqual(res.status, 'UNKNOWN');
+      assert.strictEqual(ran, false);
+    });
+
+    // 15. Dense rows evidence: read empty rows + enumerable extra property -> fixed read error
+    it('15. read rejects empty rows array with enumerable extra property -> fixed read error', async () => {
+      const rowsArr = [];
+      rowsArr.extraProp = 'bad';
+      const { adapter } = adapterWith({ read: { rows: rowsArr } });
+      const err = await rejectsRead(adapter);
+      assert.strictEqual(err.message, POSTGRES_LEDGER_READ_ERROR);
+    });
+
+    // 16. Dense rows evidence: read empty rows + non-enumerable extra property -> fixed read error
+    it('16. read rejects empty rows array with non-enumerable extra property -> fixed read error', async () => {
+      const rowsArr = [];
+      Object.defineProperty(rowsArr, 'hiddenProp', { enumerable: false, value: 'bad' });
+      const { adapter } = adapterWith({ read: { rows: rowsArr } });
+      const err = await rejectsRead(adapter);
+      assert.strictEqual(err.message, POSTGRES_LEDGER_READ_ERROR);
+    });
+
+    // 17. Dense rows evidence: read rows + symbol property -> fixed read error
+    it('17. read rejects rows array with symbol property -> fixed read error', async () => {
+      const rowsArr = [readRow()];
+      rowsArr[Symbol('sym')] = 'bad';
+      const { adapter } = adapterWith({ read: { rows: rowsArr } });
+      const err = await rejectsRead(adapter);
+      assert.strictEqual(err.message, POSTGRES_LEDGER_READ_ERROR);
+    });
+
+    // 18. Dense rows evidence: append empty rows + enumerable extra -> UNKNOWN
+    it('18. append evidence rejects empty rows array with enumerable extra property -> UNKNOWN', async () => {
+      const rowsArr = [];
+      rowsArr.extraProp = 'bad';
+      const { adapter } = adapterWith({ append: { rows: rowsArr } });
+      const res = await adapter.appendLedgerRecord({ record: validRecord(), lockHandle: HANDLE });
+      assert.strictEqual(res.status, 'UNKNOWN');
+    });
+
+    // 19. Dense rows evidence: append empty rows + non-enumerable extra -> UNKNOWN
+    it('19. append evidence rejects empty rows array with non-enumerable extra property -> UNKNOWN', async () => {
+      const rowsArr = [];
+      Object.defineProperty(rowsArr, 'hiddenProp', { enumerable: false, value: 'bad' });
+      const { adapter } = adapterWith({ append: { rows: rowsArr } });
+      const res = await adapter.appendLedgerRecord({ record: validRecord(), lockHandle: HANDLE });
+      assert.strictEqual(res.status, 'UNKNOWN');
+    });
+
+    // 20. Dense rows evidence: append empty rows + symbol -> UNKNOWN
+    it('20. append evidence rejects empty rows array with symbol property -> UNKNOWN', async () => {
+      const rowsArr = [];
+      rowsArr[Symbol('sym')] = 'bad';
+      const { adapter } = adapterWith({ append: { rows: rowsArr } });
+      const res = await adapter.appendLedgerRecord({ record: validRecord(), lockHandle: HANDLE });
+      assert.strictEqual(res.status, 'UNKNOWN');
+    });
+
+    // 21. Dense rows evidence: append one-row array + extra property -> UNKNOWN
+    it('21. append evidence rejects one-row array with extra property -> UNKNOWN', async () => {
+      const rowsArr = [{ migration_id: 'mid', content_checksum: 'csum' }];
+      rowsArr.extraProp = 'bad';
+      const { adapter } = adapterWith({ append: { rows: rowsArr } });
+      const res = await adapter.appendLedgerRecord({ record: validRecord({ migration_id: 'mid', content_checksum: 'csum' }), lockHandle: HANDLE });
+      assert.strictEqual(res.status, 'UNKNOWN');
+    });
+
+    // 22. Dense rows evidence: index accessor getter execution 0
+    it('22. rows validation does not execute index accessor getters -> fixed error / UNKNOWN', async () => {
+      let ran = false;
+      const rowsArr = [];
+      Object.defineProperty(rowsArr, '0', {
+        enumerable: true,
+        get() { ran = true; return readRow(); }
+      });
+      Object.defineProperty(rowsArr, 'length', { value: 1 });
+      const { adapter: readAdapter } = adapterWith({ read: { rows: rowsArr } });
+      const err = await rejectsRead(readAdapter);
+      assert.strictEqual(err.message, POSTGRES_LEDGER_READ_ERROR);
+      assert.strictEqual(ran, false);
+
+      const { adapter: appendAdapter } = adapterWith({ append: { rows: rowsArr } });
+      const res = await appendAdapter.appendLedgerRecord({ record: validRecord({ migration_id: 'mid', content_checksum: 'csum' }), lockHandle: HANDLE });
+      assert.strictEqual(res.status, 'UNKNOWN');
+    });
+
+    // 23. Dense rows evidence: rows ownKeys trap throw -> fail-closed
+    it('23. rows ownKeys trap throw fails closed (read error / UNKNOWN)', async () => {
+      const badRows = new Proxy([], {
+        ownKeys() { throw new Error('ownKeys secret'); }
+      });
+      const { adapter: readAdapter } = adapterWith({ read: { rows: badRows } });
+      const err = await rejectsRead(readAdapter);
+      assert.strictEqual(err.message, POSTGRES_LEDGER_READ_ERROR);
+
+      const { adapter: appendAdapter } = adapterWith({ append: { rows: badRows } });
+      const res = await appendAdapter.appendLedgerRecord({ record: validRecord({ migration_id: 'mid', content_checksum: 'csum' }), lockHandle: HANDLE });
+      assert.strictEqual(res.status, 'UNKNOWN');
+    });
+
+    // 24. Dense rows evidence: rows descriptor trap throw -> fail-closed
+    it('24. rows descriptor trap throw fails closed (read error / UNKNOWN)', async () => {
+      const badRows = new Proxy([readRow()], {
+        getOwnPropertyDescriptor() { throw new Error('desc secret'); }
+      });
+      const { adapter: readAdapter } = adapterWith({ read: { rows: badRows } });
+      const err = await rejectsRead(readAdapter);
+      assert.strictEqual(err.message, POSTGRES_LEDGER_READ_ERROR);
+
+      const { adapter: appendAdapter } = adapterWith({ append: { rows: [{ migration_id: 'mid', content_checksum: 'csum' }] } });
+      // To test append rows descriptor trap, proxy the rows array:
+      const badAppendRows = new Proxy([{ migration_id: 'mid', content_checksum: 'csum' }], {
+        getOwnPropertyDescriptor() { throw new Error('desc secret'); }
+      });
+      const { adapter: appendAdapter2 } = adapterWith({ append: { rows: badAppendRows } });
+      const res = await appendAdapter2.appendLedgerRecord({ record: validRecord({ migration_id: 'mid', content_checksum: 'csum' }), lockHandle: HANDLE });
+      assert.strictEqual(res.status, 'UNKNOWN');
+    });
+
+    // 25. Regression: exact empty rows: [] -> FAILED maintained
+    it('25. exact empty rows: [] maintains FAILED status', async () => {
+      const { adapter } = adapterWith({ append: { rows: [] } });
+      const res = await adapter.appendLedgerRecord({ record: validRecord(), lockHandle: HANDLE });
+      assert.strictEqual(res.status, 'FAILED');
+    });
+
+    // 26. Regression: exact matching row -> APPENDED maintained
+    it('26. exact matching row maintains APPENDED status', async () => {
+      const { adapter } = adapterWith({ append: { rows: [{ migration_id: 'mid', content_checksum: 'csum' }] } });
+      const res = await adapter.appendLedgerRecord({ record: validRecord({ migration_id: 'mid', content_checksum: 'csum' }), lockHandle: HANDLE });
+      assert.strictEqual(res.status, 'APPENDED');
+    });
+
+    // 27. Regression: valid read empty array -> frozen []
+    it('27. valid read empty array resolves to frozen []', async () => {
+      const { adapter } = adapterWith({ read: { rows: [] } });
+      const rows = await adapter.readLedger({ lockHandle: HANDLE });
+      assert.deepStrictEqual(rows, []);
+      assert.ok(Object.isFrozen(rows));
+    });
+
+    // 28. Regression: valid multi-row read order maintained
+    it('28. valid multi-row read preserves exact row order', async () => {
+      const { adapter } = adapterWith({ read: { rows: [readRow({ migration_id: 'm1' }), readRow({ migration_id: 'm2' })] } });
+      const rows = await adapter.readLedger({ lockHandle: HANDLE });
+      assert.strictEqual(rows.length, 2);
+      assert.strictEqual(rows[0].migration_id, 'm1');
+      assert.strictEqual(rows[1].migration_id, 'm2');
+    });
+
+    // 29. Regression: top-level pg metadata allowed
+    it('29. top-level pg metadata (command, rowCount, oid, fields) continues to be allowed', async () => {
+      const { adapter } = adapterWith({ read: { command: 'SELECT', rowCount: 1, oid: 123, fields: [], rows: [readRow()] } });
+      const rows = await adapter.readLedger({ lockHandle: HANDLE });
+      assert.strictEqual(rows.length, 1);
+    });
+
+    // 30. Regression: public methods raw throw/error leak none
+    it('30. public methods never leak raw error messages or stacks', async () => {
+      const { adapter } = adapterWith({ throwError: new Error('SECRET_DB_URL postgres://admin:secret@localhost:5432/db') });
+      const err = await rejectsRead(adapter);
+      assert.strictEqual(err.message, POSTGRES_LEDGER_READ_ERROR);
+      assert.ok(!err.message.includes('SECRET_DB_URL'));
+      assert.ok(!err.message.includes('postgres://'));
+      assert.ok(!err.message.includes('secret'));
     });
   });
 

@@ -167,18 +167,18 @@ function safeIsPlainRecord(value) {
   }
 }
 
-// Collect the enumerable OWN keys (string and symbol) of a record without ever
+// Collect all OWN keys (string and symbol) and their descriptors without ever
 // throwing or executing an accessor getter. Reflect.ownKeys and
 // Object.getOwnPropertyDescriptor can invoke Proxy traps that throw; any throw,
 // revoked Proxy, or inconsistent ownKeys/descriptor result yields undefined.
-function safeOwnEnumerableKeys(obj) {
+function safeOwnKeyDescriptors(obj) {
   let keys;
   try {
     keys = Reflect.ownKeys(obj);
   } catch (error) {
     return undefined;
   }
-  const enumerable = [];
+  const descriptors = [];
   for (const key of keys) {
     let desc;
     try {
@@ -187,9 +187,64 @@ function safeOwnEnumerableKeys(obj) {
       return undefined;
     }
     if (desc === undefined) return undefined;
-    if (desc.enumerable === true) enumerable.push(key);
+    descriptors.push({ key, desc });
   }
-  return enumerable;
+  return descriptors;
+}
+
+// Verify a record carries EXACTLY the fixed field set as enumerable own string
+// data properties (no extra string key, no enumerable/non-enumerable symbol key,
+// no extra non-enumerable string key, no accessor). Returns false on any
+// trap throw, revoked Proxy, or shape mismatch. Never executes a getter.
+function hasExactFieldKeysAndDataProperties(record) {
+  const descriptors = safeOwnKeyDescriptors(record);
+  if (descriptors === undefined) return false;
+  if (descriptors.length !== POSTGRES_MIGRATION_LEDGER_FIELDS.length) return false;
+  const seen = new Set();
+  for (const { key, desc } of descriptors) {
+    // 1. All own keys must be strings
+    if (typeof key !== 'string') return false;
+    // 2. Accessor forbidden (must be data property)
+    if (!('value' in desc)) return false;
+    // 3. Must be enumerable=true
+    if (desc.enumerable !== true) return false;
+    seen.add(key);
+  }
+  // 4. Must be exactly the expectedFields
+  for (const field of POSTGRES_MIGRATION_LEDGER_FIELDS) {
+    if (!seen.has(field)) return false;
+  }
+  return true;
+}
+
+// Validate that an object is a dense Array: non-enumerable 'length' data
+// property (integer >= 0), own enumerable data properties 0 to length-1, and
+// NO other own properties.
+function isExactDenseArray(arr) {
+  if (!safeIsArray(arr)) return false;
+  const descriptors = safeOwnKeyDescriptors(arr);
+  if (descriptors === undefined) return false;
+
+  let length = -1;
+  let seenIndices = 0;
+  for (const { key, desc } of descriptors) {
+    if (key === 'length') {
+      if (desc.enumerable === true) return false; // length must be non-enumerable
+      if (!('value' in desc) || typeof desc.value !== 'number' || !Number.isInteger(desc.value) || desc.value < 0) return false;
+      length = desc.value;
+    } else if (typeof key === 'string' && /^\d+$/.test(key)) {
+      const idx = Number(key);
+      if (idx < 0) return false;
+      if (desc.enumerable !== true) return false; // indices must be enumerable
+      if (!('value' in desc)) return false; // must be data property
+      seenIndices++;
+    } else {
+      return false; // extra property, symbol key, accessor
+    }
+  }
+  if (length === -1) return false; // length missing
+  if (seenIndices !== length) return false; // must have exactly indices 0 to length-1
+  return true;
 }
 
 // A canonical timestamp is a non-empty string ending in 'Z' that round-trips to
@@ -213,37 +268,19 @@ function isCanonicalUtcTimestamp(value) {
   return iso === value;
 }
 
-// Verify a record carries EXACTLY the fixed field set as enumerable own string
-// keys (no extra string key, no enumerable symbol key). Returns false on any
-// trap throw, revoked Proxy, or shape mismatch. Never executes a getter.
-function hasExactFieldKeys(record) {
-  const keys = safeOwnEnumerableKeys(record);
-  if (keys === undefined) return false;
-  if (keys.length !== POSTGRES_MIGRATION_LEDGER_FIELDS.length) return false;
-  const seen = new Set();
-  for (const key of keys) {
-    if (typeof key === 'symbol') return false;
-    seen.add(key);
-  }
-  for (const field of POSTGRES_MIGRATION_LEDGER_FIELDS) {
-    if (!seen.has(field)) return false;
-  }
-  return true;
-}
-
 // Read one raw ledger row into a frozen exact-seven-field clone, or undefined if
 // the row is malformed. A row is valid only when it is a safe plain record whose
-// enumerable own string keys are exactly the fixed seven fields (no extra string
-// key, no enumerable symbol key, no accessor/inherited/non-enumerable required
-// field, no custom prototype), every field is an own DATA property holding a
-// non-empty string, applied_at is a canonical UTC timestamp, and
-// transaction_outcome is one of the read-allowed outcomes. Top-level QueryResult
-// metadata is handled by the caller; only the row is inspected here. Accessor
-// getters are never executed; trap throws yield undefined.
+// ENUMERABLE OWN DATA keys are exactly the fixed seven fields (no extra
+// string/symbol key, no accessor, no non-enumerable required field, no custom
+// prototype), every field is an own DATA property holding a non-empty string,
+// applied_at is a canonical UTC timestamp, and transaction_outcome is one of the
+// read-allowed outcomes. Top-level QueryResult metadata is handled by the
+// caller; only the row is inspected here. Accessor getters are never executed;
+// trap throws yield undefined.
 function readExactRecord(row) {
   try {
     if (!safeIsPlainRecord(row)) return undefined;
-    if (!hasExactFieldKeys(row)) return undefined;
+    if (!hasExactFieldKeysAndDataProperties(row)) return undefined;
     const clone = {};
     for (const field of POSTGRES_MIGRATION_LEDGER_FIELDS) {
       const value = safeGetOwnDataProperty(row, field);
@@ -261,20 +298,22 @@ function readExactRecord(row) {
 // Validate a QueryResult and project it to a frozen array of frozen seven-field
 // clones preserving the query row order (no JS sort/dedupe/rewrite). Top-level
 // metadata (command, rowCount, oid, fields, ...) is allowed and ignored; only the
-// own-data `rows` dense array is read. Returns undefined (=> fixed read error) on
-// any malformed top-level shape, missing/non-array/sparse rows, malformed row, or
-// trap throw. An empty dense rows array yields a frozen [] (valid empty ledger).
+// own-data `rows` dense array is validated. Returns undefined (=> fixed read error)
+// on any malformed top-level shape, sparse rows, malformed row, or trap throw. An
+// empty dense rows array yields a frozen [] (valid empty ledger).
 function readLedgerRecords(result) {
   try {
     if (!safeIsPlainRecord(result)) return undefined;
     const rows = safeGetOwnDataProperty(result, 'rows');
-    if (rows === MISS || !safeIsArray(rows)) return undefined;
-    const length = safeGetOwnDataProperty(rows, 'length');
-    if (typeof length !== 'number' || !Number.isInteger(length) || length < 0) return undefined;
+    if (rows === MISS || !isExactDenseArray(rows)) return undefined;
+
+    // isExactDenseArray ensures 'length' is an own non-enumerable data property
+    // (integer >= 0) and that there are exactly 'length' own enumerable index
+    // data properties (0 to length-1), with no other own properties.
+    const length = Object.getOwnPropertyDescriptor(rows, 'length').value;
     const records = [];
     for (let i = 0; i < length; i += 1) {
-      const row = safeGetOwnDataProperty(rows, String(i));
-      if (row === MISS) return undefined; // sparse / hole
+      const row = rows[String(i)]; // Already validated as enumerable data property
       const record = readExactRecord(row);
       if (record === undefined) return undefined;
       records.push(record);
@@ -282,6 +321,52 @@ function readLedgerRecords(result) {
     return Object.freeze(records);
   } catch (error) {
     return undefined;
+  }
+}
+
+// Append evidence row validation: must be a safe plain record with EXACTLY
+// two enumerable own string data properties (migration_id, content_checksum).
+// No extra string/symbol keys, no accessor, no non-enumerable fields.
+function isExactAppendEvidenceRow(row) {
+  if (!safeIsPlainRecord(row)) return false;
+  const descriptors = safeOwnKeyDescriptors(row);
+  if (!descriptors || descriptors.length !== 2) return false;
+  let seen = 0;
+  for (const { key, desc } of descriptors) {
+    if (typeof key !== 'string') return false;
+    if (!('value' in desc)) return false; // Accessor forbidden
+    if (desc.enumerable !== true) return false; // Must be enumerable
+    if (key === 'migration_id' || key === 'content_checksum') seen++;
+    else return false; // Extra property
+  }
+  return seen === 2;
+}
+
+// Classify append evidence into a fixed status. Never throws.
+//   APPENDED: exactly one row matching the snapshot (isExactAppendEvidenceRow).
+//   FAILED:   { rows: [] } (confirmed empty rows).
+//   UNKNOWN:  query throw/reject, malformed QueryResult/rows-array,
+//             non-dense-array rows, multiple rows, extra properties,
+//             malformed record structure.
+function readExactAppendEvidence(result, snapshot) {
+  try {
+    if (!safeIsPlainRecord(result)) return POSTGRES_LEDGER_APPEND_STATUSES.UNKNOWN;
+    const rows = safeGetOwnDataProperty(result, 'rows');
+    if (rows === MISS || !isExactDenseArray(rows)) return POSTGRES_LEDGER_APPEND_STATUSES.UNKNOWN;
+
+    const length = Object.getOwnPropertyDescriptor(rows, 'length').value;
+    if (length === 0) return POSTGRES_LEDGER_APPEND_STATUSES.FAILED;
+    if (length !== 1) return POSTGRES_LEDGER_APPEND_STATUSES.UNKNOWN;
+
+    const row = rows['0'];
+    if (!isExactAppendEvidenceRow(row)) return POSTGRES_LEDGER_APPEND_STATUSES.UNKNOWN;
+
+    // row is safe, now check values.
+    if (row.migration_id !== snapshot.migration_id) return POSTGRES_LEDGER_APPEND_STATUSES.UNKNOWN;
+    if (row.content_checksum !== snapshot.content_checksum) return POSTGRES_LEDGER_APPEND_STATUSES.UNKNOWN;
+    return POSTGRES_LEDGER_APPEND_STATUSES.APPENDED;
+  } catch (error) {
+    return POSTGRES_LEDGER_APPEND_STATUSES.UNKNOWN;
   }
 }
 
@@ -298,7 +383,7 @@ function readLedgerRecords(result) {
 function snapshotAppendRecord(record) {
   try {
     if (!safeIsPlainRecord(record)) return undefined;
-    if (!hasExactFieldKeys(record)) return undefined;
+    if (!hasExactFieldKeysAndDataProperties(record)) return undefined;
     const values = [];
     const captured = {};
     for (const field of POSTGRES_MIGRATION_LEDGER_FIELDS) {
@@ -316,47 +401,6 @@ function snapshotAppendRecord(record) {
     });
   } catch (error) {
     return undefined;
-  }
-}
-
-// Classify append evidence into a fixed status. Never throws.
-//   APPENDED: exactly one row with exactly two enumerable own string keys
-//             (migration_id, content_checksum) whose values equal the snapshot.
-//   FAILED:   { rows: [] } — ON CONFLICT DO NOTHING confirmed no insert.
-//   UNKNOWN:  query throw/reject (handled by caller), malformed top-level result,
-//             missing/non-array/sparse rows, multiple rows, wrong returned
-//             id/checksum, extra returned field, accessor/inherited field, or any
-//             Proxy/descriptor/ownKeys trap throw. Commit is never inferred.
-function readExactAppendEvidence(result, snapshot) {
-  try {
-    if (!safeIsPlainRecord(result)) return POSTGRES_LEDGER_APPEND_STATUSES.UNKNOWN;
-    const rows = safeGetOwnDataProperty(result, 'rows');
-    if (rows === MISS || !safeIsArray(rows)) return POSTGRES_LEDGER_APPEND_STATUSES.UNKNOWN;
-    const length = safeGetOwnDataProperty(rows, 'length');
-    if (typeof length !== 'number' || !Number.isInteger(length) || length < 0) {
-      return POSTGRES_LEDGER_APPEND_STATUSES.UNKNOWN;
-    }
-    if (length === 0) return POSTGRES_LEDGER_APPEND_STATUSES.FAILED;
-    if (length !== 1) return POSTGRES_LEDGER_APPEND_STATUSES.UNKNOWN;
-    const row = safeGetOwnDataProperty(rows, '0');
-    if (row === MISS || !safeIsPlainRecord(row)) return POSTGRES_LEDGER_APPEND_STATUSES.UNKNOWN;
-    const keys = safeOwnEnumerableKeys(row);
-    if (keys === undefined || keys.length !== 2) return POSTGRES_LEDGER_APPEND_STATUSES.UNKNOWN;
-    const seen = new Set();
-    for (const key of keys) {
-      if (typeof key === 'symbol') return POSTGRES_LEDGER_APPEND_STATUSES.UNKNOWN;
-      seen.add(key);
-    }
-    if (!seen.has('migration_id') || !seen.has('content_checksum')) {
-      return POSTGRES_LEDGER_APPEND_STATUSES.UNKNOWN;
-    }
-    const returnedId = safeGetOwnDataProperty(row, 'migration_id');
-    const returnedChecksum = safeGetOwnDataProperty(row, 'content_checksum');
-    if (returnedId !== snapshot.migration_id) return POSTGRES_LEDGER_APPEND_STATUSES.UNKNOWN;
-    if (returnedChecksum !== snapshot.content_checksum) return POSTGRES_LEDGER_APPEND_STATUSES.UNKNOWN;
-    return POSTGRES_LEDGER_APPEND_STATUSES.APPENDED;
-  } catch (error) {
-    return POSTGRES_LEDGER_APPEND_STATUSES.UNKNOWN;
   }
 }
 
