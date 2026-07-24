@@ -1,275 +1,284 @@
 # LoveBud DB Migration Provenance Next-Child Decision
 
-## Decision Summary
+## Decision summary
 
 | Field | Value |
 | --- | --- |
-| Outcome | `NO_SAFE_IMPLEMENTATION_CHILD_WITHOUT_OPERATOR_INPUT` |
-| Decision basis | Current-state audit at `de1c4e416e33e2669157b2202a7bbd021779ad59` |
-| Prerequisite | Operator input: dedicated read-only credentials and abstract role mapping file |
-| Proposed operator-readiness child | Create an adoption collection operator checklist and role mapping template |
+| Decision issue | #3644 |
+| Parent issue | #3458 |
+| Baseline `main` | `eb030c1d4751dfee45d65f5a420caebebac6ebcc` |
+| Outcome | `SAFE_IMPLEMENTATION_CHILD_SELECTED` |
+| Selected child | Source-tested pinned-session query broker |
+| Production access | None |
+| Database access | None |
+| SQL execution | None |
+| Test layer | `SOURCE_STATIC` |
 
-The source-contract and disposable-CI predecessors needed to prepare the current Phase-B Production-readonly collection boundary are merged.
+The previous decision `NO_SAFE_IMPLEMENTATION_CHILD_WITHOUT_OPERATOR_INPUT` is superseded for next-child selection. Operator input still blocks Production-readonly catalog collection, but it does not block the repository-side composition work selected here.
 
-This does not mean all #3458 implementation is complete. Migration runner, canonical stream, reconstruction, deployment enforcement, observability, and retirement work remain incomplete.
+## Why the previous decision changed
 
-## Candidate Children Considered
+The previous dependency map predates these merged capabilities:
 
-### 1. Retry Production catalog collection
+- canonical runner protocol;
+- canonical runner orchestrator;
+- PostgreSQL pinned-session advisory-lock adapter;
+- PostgreSQL ledger read/append adapter;
+- adoption operator checklist;
+- CI infrastructure-unavailable governance.
 
-| Criterion | Assessment |
-| --- | --- |
-| Operator input needed | Yes - credentials and role mapping must be provided by operator |
-| Production access needed | Yes - read-only catalog collection from Production |
-| Safe to start now | **NO** |
-| Reason | #3569 closed as `COLLECTION_NOT_RUN_CONNECTION_BOUNDARY`. #3572 closed as `COLLECTION_NOT_RUN_CONNECTION_BOUNDARY`; subreason: `DEDICATED_INPUTS_UNAVAILABLE`; retry session not started. The dedicated secret and role mapping do not exist in the repository. |
+The repository therefore has a new concrete composition gap that can be addressed without credentials or Production access.
 
-### 2. Ledger bootstrap design
+## Verified current incompatibility
 
-| Criterion | Assessment |
-| --- | --- |
-| Prerequisites | Adoption baseline attested, owner approval for first canonical migration |
-| Safe to start now | **NO** |
-| Reason | Architecture doc: "The first canonical entry may be added only after the adoption baseline and runner design are separately approved." Adoption has not occurred. |
+### Lock adapter
 
-### 3. Migration runner implementation
+`createPostgresMigrationSessionLockAdapter` owns the pinned session in closure-private state and returns only:
 
-| Criterion | Assessment |
-| --- | --- |
-| Prerequisites | Ledger relation must exist, canonical migrations must exist |
-| Safe to start now | **NO** |
-| Reason | No canonical migrations exist. No ledger relation exists. A runner with no migrations and no ledger has nothing to run. |
-
-### 4. Canonical manifest tooling
-
-| Criterion | Assessment |
-| --- | --- |
-| Current implementation overlap | ID validation, checksum validation, inventory checks already exist in `scripts/migration-provenance-core.cjs`; fingerprint normalizer in `scripts/migration-catalog-fingerprint-core.cjs`; candidate builder in `scripts/expected-schema-candidate-core.cjs` |
-| Safe to start now | **NO** |
-| Reason | Core manifest tooling is already implemented. Additional tooling (dependency graph, migration scaffolding) would operate on an empty manifest. Creating tooling for an empty manifest is inventing work. |
-
-### 5. Clean-database reconstruction
-
-| Criterion | Assessment |
-| --- | --- |
-| Prerequisites | Migration runner, canonical migrations, expected-schema manifest |
-| Safe to start now | **NO** |
-| Reason | Depends on runner + migrations + expected-schema manifest. All three are not yet active. |
-
-### 6. Deployment gate integration
-
-| Criterion | Assessment |
-| --- | --- |
-| Prerequisites | Target adapter, Production catalog collection, adoption attestation, ledger bootstrap, runner, reconstruction |
-| Safe to start now | **NO** |
-| Reason | Depends on most of the provenance pipeline being active. Not a near-term candidate. |
-
-### 7. Sanitized observability
-
-| Criterion | Assessment |
-| --- | --- |
-| Prerequisites | Gate integration, target adapter |
-| Safe to start now | **NO** |
-| Reason | Depends on gate integration which depends on most of the provenance chain. |
-
-### 8. Legacy path retirement
-
-| Criterion | Assessment |
-| --- | --- |
-| Prerequisites | Adoption baseline, canonical migration stream maturity |
-| Safe to start now | **NO** |
-| Reason | Legacy retirement without an active canonical stream would leave no migration path at all. |
-
-### 9. Documentation reconciliation
-
-| Criterion | Assessment |
-| --- | --- |
-| Current implementation overlap | This audit (`DB_MIGRATION_PROVENANCE_CURRENT_STATE_AUDIT.md`) already serves as the definitive current-state reference. |
-| Safe to start now | Partial |
-| Reason | `DB_MIGRATION_PROVENANCE_GATE.md` Section J is outdated but cannot be modified in this PR scope. A future child can update it when operator input unblocks the next phase. |
-
-## Dependency Analysis
-
-```
-Missing Operator Inputs
-- dedicated Production-readonly credential
-- abstract role mapping              <-- BLOCKED
-    |
-Separate Phase B execution approval
-    |
-    v
-Phase B: Production catalog collection                    <-- DEPENDS on operator input
-    |
-    v
-Phase C: Owner review of evidence + drift classification  <-- DEPENDS on Phase B
-    |
-    v
-Phase D: Manifest activation (ADOPTION_REQUIRED -> ACTIVE) <-- DEPENDS on Phase C
-    |
-    v
-Phase E: Ledger bootstrap migration                       <-- DEPENDS on Phase D
-    |
-    v
-Migration runner implementation                           <-- DEPENDS on Phase E
-    |
-    v
-Canonical migration stream                                <-- DEPENDS on runner
-    |
-    v
-Clean-database reconstruction                             <-- DEPENDS on stream
-    |
-    v
-Deployment gate integration                               <-- DEPENDS on reconstruction
-    |
-    v
-Sanitized observability + Legacy retirement               <-- DEPENDS on gate integration
+```js
+{
+  acquireAdvisoryLock,
+  checkAdvisoryLock,
+  releaseAdvisoryLock
+}
 ```
 
-All paths to implementation lead through the operator-input boundary at the top of the chain.
+On successful acquisition, the opaque handle maps internally to:
 
-## Operator-Input Separation
+```js
+{ session, query, release, lifecycle: 'OPEN' }
+```
 
-### BLOCKED_OPERATOR_INPUT (repository-external inputs not present)
+The captured query callable is available only inside the lock-adapter closure.
 
-| # | Input | Owner | Repository Reference |
-| --- | --- | --- | --- |
-| OI-1 | `LOVEBUD_PRODUCTION_READONLY_DATABASE_URL` under `.secrets/` | Repository owner or operator | `db/migration-provenance/production-readonly-catalog-boundary-contract.json` |
-| OI-2 | Abstract role mapping file (PostgreSQL roles -> abstract classes) | Repository owner or operator | `db/migration-provenance/adoption-baseline-collection-plan-contract.json` |
+### Ledger adapter
 
-### SEPARATE_APPROVAL_REQUIRED (future owner decisions, not missing inputs)
+`createPostgresMigrationLedgerAdapter` requires this injected boundary:
 
-| Phase | Decision | Depends On |
-| --- | --- | --- |
-| Phase B | Production read-only catalog collection execution approval | OI-1, OI-2 |
-| Phase C | Owner review of collected sanitized evidence and drift classification | Phase B complete |
-| Phase D | Manifest activation (ADOPTION_REQUIRED -> ACTIVE) | Phase C approved |
-| Phase E | Ledger bootstrap, migration runner, and canonical migration stream approval | Phase D complete |
+```js
+queryLockedSession({ lockHandle, query })
+```
 
-The reviewed frozen collection plan and allowlist (PR #3556) are in the repository. Input absence and future approval decisions are separate categories. None of these inputs or approvals can be created by an agent.
+The ledger adapter intentionally does not inspect the handle or own a session. It forwards the handle and fixed query to the injected broker.
 
-## Selected Next Child
+### Result
 
-### Outcome: `NO_SAFE_IMPLEMENTATION_CHILD_WITHOUT_OPERATOR_INPUT`
+The two adapters cannot currently be composed while preserving the same-session requirement. Supplying an unrelated query function would not prove that the ledger read or append ran on the session holding the advisory lock.
 
-No migration implementation child can safely proceed. An **operator-readiness child** is proposed to unblock the operator-input boundary.
+This is the first missing bridge after the merged lock and ledger adapter slices.
 
-### Proposed Operator-Readiness Child
+---
 
-**Proposed issue title**: `[Architecture][DB][Adoption] Create adoption collection operator checklist and role mapping template`
+## Selected next child
 
-**Clarification**: This is an operator-readiness documentation child, NOT a Production collection implementation. It does not contain actual secret values, raw role mappings, or executable collection code. It documents the actions, inputs, and approval boundaries that an operator must follow to unblock Phase B.
+### Proposed issue title
 
-**Objective**: Produce a structured operator-facing document that lists exact steps to unblock Phase B Production catalog collection, provides a role mapping template (structure only), documents approval gates and expected outputs at each adoption phase, and references repository contracts.
+`[Architecture][DB] Add a pinned-session query broker for migration adapters`
 
-**Exact files**: `docs/architecture/DB_MIGRATION_PROVENANCE_ADOPTION_OPERATOR_CHECKLIST.md` (new file only)
+### Objective
 
-**Prohibited areas**: No database connection, no SQL execution, no secret creation, no Production/staging/provider access, no manifest activation, no migration/ledger/runner implementation. No existing file modification (checklist is a new file).
+Extend the PostgreSQL migration session-lock adapter with a source-tested method:
 
-**Dependencies complete**: Current-state audit (#3620), the source-contract and disposable-CI predecessors required for the current Phase-B Production-readonly collection boundary are merged.
+```js
+queryLockedSession({ lockHandle, query })
+```
 
-This does not claim that all #3458 implementation is complete.
+The method must execute the supplied repository query through the exact query callable and session captured when the same adapter instance acquired the advisory lock.
 
-The following remain incomplete:
+This is a source contract only. The injected `openSession` remains synthetic. The child must not add `pg`, create a pool, connect to PostgreSQL, execute real SQL, or wire Production.
 
-**Test layers**: SOURCE_STATIC (validate checklist references correct contract paths, covers operator inputs, no secret patterns)
+## Required public surface
 
-**Production access**: NONE
+The adapter factory should return a frozen object with exactly:
 
-**Approval needed**: Owner review of the checklist
+```js
+{
+  acquireAdvisoryLock,
+  checkAdvisoryLock,
+  queryLockedSession,
+  releaseAdvisoryLock
+}
+```
 
-**Rollback posture**: Code rollback only (delete file). No database state affected.
+Existing acquire/check/release behavior must remain unchanged.
 
-**Completion boundary**: Checklist accurately documents all operator inputs identified in the current-state audit and references correct repository contracts.
+## Required broker behavior
 
-## Exact Scope (This PR #3620)
+### Handle and lifecycle
 
-1. `docs/architecture/DB_MIGRATION_PROVENANCE_CURRENT_STATE_AUDIT.md` - current-state audit
-2. `docs/architecture/DB_MIGRATION_PROVENANCE_NEXT_CHILD_DECISION.md` - next-child decision
-3. `tests/contracts/db-migration-provenance-current-state-audit-contract.test.cjs` - document contract test
-4. `tests/test-layer-classification.json` - minimal SOURCE_STATIC entry for new contract test
+`queryLockedSession` must:
 
-## Exact Non-Goals
+1. read `lockHandle` as an own data property without executing accessors;
+2. require that the handle belongs to the same adapter instance;
+3. require lifecycle exactly `OPEN`;
+4. reject invalid, cross-adapter, releasing, or released handles without invoking a query;
+5. never expose or serialize the handle state.
 
-- No operator checklist is created in this PR (deferred)
-- No database connection, SQL execution, or migration application
-- No manifest activation or population
-- No ledger relation creation or runner implementation
-- No Production, staging, or provider access
-- No credential creation, rotation, or handling
-- No existing file modification (except `tests/test-layer-classification.json` minimal SOURCE_STATIC entry)
-- No deployment or CI workflow changes
+### Query boundary
 
-## Allowed Files
+The broker must:
 
-1. `docs/architecture/DB_MIGRATION_PROVENANCE_CURRENT_STATE_AUDIT.md`
-2. `docs/architecture/DB_MIGRATION_PROVENANCE_NEXT_CHILD_DECISION.md`
-3. `tests/contracts/db-migration-provenance-current-state-audit-contract.test.cjs`
-4. `tests/test-layer-classification.json` (minimal SOURCE_STATIC entry only)
+1. read `query` as an own data property without executing an accessor;
+2. require a safe repository query object rather than a function or primitive;
+3. use only the session query callable captured at session validation time;
+4. invoke that callable exactly once with the exact validated query snapshot or exact trusted query object defined by the contract;
+5. call it with the captured session as `this`;
+6. return the raw query result only to the consuming adapter;
+7. never log, clone, summarize, or expose raw result content elsewhere.
 
-## Prohibited Files
+The implementation must define a precise fail-closed query-object contract. It must not dynamically interpolate identifiers, credentials, URLs, operator values, or raw caller data.
 
-All existing files, particularly: `docs/architecture/DB_MIGRATION_PROVENANCE_GATE.md`, `docs/architecture/migration-path-inventory.json`, `db/migration-provenance/**`, `db/migrations/**`, `scripts/**`, `tests/contracts/**` (except new contract test), `tests/test-layer-classification.json` (except minimal entry), `tests/db-engine/**`, `package.json`, `package-lock.json`, `.github/**`, `functions/**`, `pages/**`, `js/**`, `css/**`, `migrations/**`, `_headers`
+### Failure mapping
 
-## Required Test Layers
+Any invalid input, invalid/cross-adapter/released handle, query inspection failure, Proxy trap failure, or underlying query throw/rejection must reject with exactly one fixed sanitized error message:
 
-- SOURCE_STATIC (contract test validates document structure, vocabulary, references, and prohibitions)
+```text
+POSTGRES_LOCKED_SESSION_QUERY_UNAVAILABLE
+```
 
-## Failure Categories
+The raw error, message, stack, session, query callable, release callable, URL, hostname, database name, backend PID, credential, or row data must not be exposed.
 
-| Category | Meaning |
-| --- | --- |
-| CONTRACT_TEST_FAILURE | Document structure, vocabulary, or reference validation fails |
-| COMMIT_SCOPE_VIOLATION | A file outside the 4 authorized files is changed |
-| PUSH_REJECTED | Remote push is rejected |
-| CI_FAILURE | CI pipeline fails |
+A broker failure must not release the session. Release ownership remains exclusively with `releaseAdvisoryLock`, preserving exactly-once pool release.
 
-## Rollback and Forward-Fix Posture
+### Concurrency and lifecycle interaction
 
-Documentation and contract-only PR. Rollback: close PR without merge. Forward-fix: subsequent correction PR. No database or Production state affected.
+The contract must define and test:
 
-## Model Assignment
+- query while lifecycle is `OPEN`;
+- query after release begins;
+- query after release completes;
+- repeated broker calls while open;
+- underlying query throw without implicit release;
+- release after a broker failure;
+- no session/query/release callable re-inspection after acquisition;
+- cross-adapter handle rejection;
+- hostile Proxy/accessor input handling.
 
-### DESIGN_REVIEW_MODEL: DeepSeek V4 Pro
-- **Reason**: Cross-layer reasoning across historical migrations, source contracts, disposable CI tests, Production-readonly boundaries, and GitHub issue/PR history. Required for accurate classification of 12 acceptance criteria, 30 artifacts, and 6 test layers.
-- **Decision authority**: Reviews audit classification, dependency map, and next-child decision. Can request re-classification if evidence is misinterpreted.
+The child must remain fail-closed and must not invent transaction, retry, timeout, cancellation, or multi-session behavior.
 
-### INDEPENDENT_ARCHITECTURE_VERIFIER: Nemotron 3 Ultra
-- **Reason**: Independent verification of the audit's conclusions requires a model with strong systems-thinking capability that is not the same as the auditor. Nemotron 3 Ultra provides a different reasoning architecture to catch classification errors, missed dependencies, or unsupported claims.
-- **Decision authority**: Validates that each COMPLETE/PARTIAL/BLOCKED classification is supported by evidence. Flags unsupported claims. Can override classifications if evidence is insufficient.
+---
 
-### IMPLEMENTATION_MODEL: DeepSeek V4 Pro
-- **Reason**: The operator-readiness child is a high-precision documentation task that must accurately cross-reference contracts, audit findings, and operator procedures. DeepSeek V4 Pro's precision with complex cross-referencing is required. The child does not involve large code generation.
-- **Decision authority**: Implements the operator checklist document according to the scope defined above. No authority to modify contracts, manifests, or existing files.
+## Exact allowed files
 
-### LOW_RISK_SUPPORT_MODEL: Laguna XS 2.1
-- **Reason**: The contract test is a structural validation with fixed assertions against known file paths and vocabulary. Laguna XS 2.1 is sufficient for this low-risk, bounded task.
-- **Decision authority**: Implements the contract test file only. No authority to modify any other file.
+1. `scripts/migration-postgres-session-lock-adapter-core.cjs`
+2. `tests/contracts/db-postgres-session-lock-adapter-contract.test.cjs`
+3. `docs/architecture/db-postgres-session-lock-adapter-contract.md`
+4. `docs/architecture/db-postgres-ledger-adapter-contract.md` — minimal wiring clarification only
 
-## Production Mutation Authority
+No new test file is required. The existing session-lock contract test remains classified as `SOURCE_STATIC`, so `tests/test-layer-classification.json` must not change unless current source evidence proves an existing registration defect.
 
-Production mutation (applying migrations, activating manifests, creating ledger relation) requires repository owner explicit approval and CTO review. Models assigned in this decision do not have Production mutation authority. This authority is not delegated to any model in this document.
+## Prohibited files and areas
 
-## Completion Boundary
+- `package.json` and `package-lock.json`;
+- `.github/**`;
+- `db/migration-provenance/**`;
+- `db/migrations/**`;
+- SQL and rollback artifacts;
+- Production-readonly collection runners;
+- orchestrator and protocol implementation files;
+- product, API, UI, Auth, CSS, and Cloudflare files;
+- secrets, environment configuration, provider settings, and repository visibility;
+- any unrelated test or documentation file.
 
-This child (#3620) is complete when:
-1. The current-state audit accurately classifies all #3458 acceptance criteria against `main` evidence
-2. The next-child decision selects exactly one outcome (`NO_SAFE_IMPLEMENTATION_CHILD_WITHOUT_OPERATOR_INPUT`)
-3. The contract test validates document structure, vocabulary, references, and prohibitions
-4. All authorized files and required verification gates pass on the exact PR head.
-5. Draft PR is created with verification results
+## Explicit non-goals
 
-## Deferred Work
+The child does not:
 
-| Work Item | When | Depends On |
-| --- | --- | --- |
-| Operator checklist creation | Future child after #3620 merges | #3620 audit acceptance |
-| Production catalog collection retry | After operator provides OI-1, OI-2 | Operator input |
-| Adoption attestation | After Phase B catalog collection + owner review | Phase B + Phase C |
-| Manifest activation | After adoption attestation | Phase D |
-| Ledger bootstrap + migration runner + canonical stream | After manifest activation | Phase E |
-| Clean-database reconstruction + deployment gate + observability + legacy retirement | After canonical stream is established | Canonical stream maturity |
+- import or install `pg`;
+- create a pool or real `openSession` implementation;
+- connect to a database;
+- execute SQL against PostgreSQL;
+- create or bootstrap `schema_migration_ledger`;
+- activate `canonical-migrations.json`;
+- add canonical migrations;
+- implement source validation, manifest loading, preconditions, execution, or postconditions;
+- compose the full orchestrator dependency set;
+- add disposable PostgreSQL rehearsal;
+- perform Production adoption or deployment integration.
 
-Refs #3620.
+## Acceptance criteria
+
+1. The adapter exposes `queryLockedSession` together with the existing three methods.
+2. A valid same-instance open handle executes through the exact captured session query callable.
+3. The ledger adapter's fixed read and append query objects can be forwarded without inspecting the opaque handle.
+4. Invalid/cross-adapter/releasing/released handles execute zero broker queries.
+5. Broker failure never implicitly unlocks or pool-releases the session.
+6. Final `releaseAdvisoryLock` still performs the existing exactly-once unlock and pool-release behavior.
+7. No callable is re-read from the mutable session after acquisition.
+8. Accessor and Proxy traps do not leak raw errors or execute untrusted getters.
+9. Every broker failure uses the fixed sanitized error `POSTGRES_LOCKED_SESSION_QUERY_UNAVAILABLE`.
+10. Existing acquire/check/release tests remain passing.
+11. Focused source-static contract tests cover valid forwarding, lifecycle boundaries, failures, sanitization, and exact call counts.
+12. Only the four allowed files change.
+13. No database, Docker, PostgreSQL, Production, provider, secret, manifest, or SQL operation occurs.
+
+## Verification requirements
+
+Required evidence is proportional to this source-only child:
+
+```text
+node --check scripts/migration-postgres-session-lock-adapter-core.cjs
+node --check tests/contracts/db-postgres-session-lock-adapter-contract.test.cjs
+node --test tests/contracts/db-postgres-session-lock-adapter-contract.test.cjs
+```
+
+Also run the directly related ledger adapter contract because the child documents and enables its injected boundary:
+
+```text
+node --test tests/contracts/db-postgres-ledger-adapter-contract.test.cjs
+```
+
+Run repository static lint/build commands when the current local dependency environment supports them. Do not start Docker or PostgreSQL solely to imitate unrelated CI jobs.
+
+If GitHub Actions creates job shells with zero executed steps because private-repository credits remain exhausted, classify it as `CI_UNAVAILABLE_INFRA` under the canonical policy. A real executed test failure remains `CI_EXECUTED_FAILURE` and blocks merge.
+
+## Rollback and forward-fix posture
+
+This is a source-only adapter extension.
+
+- Rollback: revert the child PR.
+- Database rollback: not applicable.
+- Production rollback: not applicable.
+- Forward fix: a later narrow contract correction.
+
+No database or runtime state is created by this child.
+
+## Completion boundary
+
+The child is complete when:
+
+1. the source-tested broker exists on the same adapter instance as the pinned-session handle state;
+2. the broker safely executes ledger query objects through the exact captured session query callable;
+3. lifecycle and sanitization contracts pass focused tests;
+4. existing lock and ledger adapter contracts remain intact;
+5. the remote diff contains only allowed files;
+6. the PR records exact head evidence and CI classification;
+7. #3458 and all protected issues remain open.
+
+---
+
+## Work that remains after the selected child
+
+After the broker is merged, the next-state audit should consider, in dependency order:
+
+1. source-validation and manifest-loading adapters;
+2. precondition, execution, and postcondition adapters;
+3. a source-tested dependency composition root;
+4. disposable PostgreSQL rehearsal of the composed runner;
+5. clean-database reconstruction;
+6. Phase B target-readonly collection when operator inputs and approval exist;
+7. Phase C/D adoption decisions;
+8. separately approved ledger bootstrap and canonical stream;
+9. deployment enforcement and sanitized observability;
+10. legacy migration-path retirement.
+
+This decision does not claim those later children are approved or ready.
+
+## Decision completion statement
+
+This decision was produced from repository and GitHub evidence only. No database connection was opened, no SQL was executed, no Docker/PostgreSQL process was started, no Production or provider environment was accessed, no secret was inspected, and no manifest or runtime state was changed.
+
+Refs #3644.
 Refs #3458 — Keep #3458 OPEN.
 Refs #3425 — Keep #3425 OPEN.
 Refs #3435 — Keep #3435 OPEN.
