@@ -1621,51 +1621,93 @@ describe('DB postgres session lock adapter contract (#3458)', () => {
     });
 
     it('38. Proxy ownKeys trap during snapshot triggers release -> fixed error, query not executed', async () => {
-      const queryExecuted = { value: false };
+      let releasePromise;
+      let brokerQueryCalls = 0;
+
+      const targetValues = [];
+
       const { adapter } = acquiredAdapter({
         queryImpl: async (q) => {
-          if (q.name !== ACQUIRE_NAME) queryExecuted.value = true;
-          return q.name === ACQUIRE_NAME ? { rows: [{ acquired: true }] } : {};
+          if (q.name === ACQUIRE_NAME) {
+            return { rows: [{ acquired: true }] };
+          }
+          if (q.name === RELEASE_NAME) {
+            return { rows: [{ released: true }] };
+          }
+          if (q.name === 'test') {
+            brokerQueryCalls += 1;
+          }
+          return {};
         }
       });
       const handle = await acquireHandle(adapter);
-      const values = new Proxy([], {
+
+      const values = new Proxy(targetValues, {
         ownKeys() {
-          adapter.releaseAdvisoryLock(handle);
-          return [];
+          releasePromise = adapter.releaseAdvisoryLock({
+            lockHandle: handle
+          });
+          return Reflect.ownKeys(targetValues);
         }
       });
+
       const q = { name: 'test', text: 'SELECT 1', values };
       let err = null;
-      try { await adapter.queryLockedSession({ lockHandle: handle, query: q }); } catch (e) { err = e; }
+      try {
+        await adapter.queryLockedSession({ lockHandle: handle, query: q });
+      } catch (e) {
+        err = e;
+      }
       assert.ok(err);
       assert.strictEqual(err.message, BROKER_ERROR_QUERY_UNAVAILABLE);
-      assert.strictEqual(queryExecuted.value, false);
+      assert.strictEqual(brokerQueryCalls, 0);
+      await releasePromise;
     });
 
-    it('39. cross-adapter values Proxy during snapshot yields fixed error', async () => {
-      const queryExecuted = { value: false };
+    it('39. values getOwnPropertyDescriptor trap during snapshot triggers release on same adapter -> fixed error', async () => {
+      let releasePromise;
+      let brokerQueryCalls = 0;
+
+      const targetValues = [];
+
       const { adapter } = acquiredAdapter({
         queryImpl: async (q) => {
-          if (q.name !== ACQUIRE_NAME) queryExecuted.value = true;
-          return q.name === ACQUIRE_NAME ? { rows: [{ acquired: true }] } : {};
+          if (q.name === ACQUIRE_NAME) {
+            return { rows: [{ acquired: true }] };
+          }
+          if (q.name === RELEASE_NAME) {
+            return { rows: [{ released: true }] };
+          }
+          if (q.name === 'test') {
+            brokerQueryCalls += 1;
+          }
+          return {};
         }
       });
       const handle = await acquireHandle(adapter);
-      const { session: otherSession } = mockSession();
-      const otherAdapter = adapterFor(otherSession);
-      const values = new Proxy([], {
-        ownKeys() {
-          otherAdapter.releaseAdvisoryLock(handle);
-          return [];
+
+      const values = new Proxy(targetValues, {
+        getOwnPropertyDescriptor(target, key) {
+          if (!releasePromise) {
+            releasePromise = adapter.releaseAdvisoryLock({
+              lockHandle: handle
+            });
+          }
+          return Reflect.getOwnPropertyDescriptor(target, key);
         }
       });
+
       const q = { name: 'test', text: 'SELECT 1', values };
       let err = null;
-      try { await adapter.queryLockedSession({ lockHandle: handle, query: q }); } catch (e) { err = e; }
+      try {
+        await adapter.queryLockedSession({ lockHandle: handle, query: q });
+      } catch (e) {
+        err = e;
+      }
       assert.ok(err);
       assert.strictEqual(err.message, BROKER_ERROR_QUERY_UNAVAILABLE);
-      assert.strictEqual(queryExecuted.value, false);
+      assert.strictEqual(brokerQueryCalls, 0);
+      await releasePromise;
     });
   });
 });

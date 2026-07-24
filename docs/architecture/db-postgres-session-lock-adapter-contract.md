@@ -201,7 +201,7 @@ The adapter is registered in `docs/architecture/db-schema-change-inventory.json`
 
 ## Remaining adapters / work
 
-- ledger read/append adapter (in progress)
+- ledger read/append adapter (source-tested; merged via #3641)
 - migration execution adapter
 - precondition/postcondition adapter
 - source/manifest validation adapter
