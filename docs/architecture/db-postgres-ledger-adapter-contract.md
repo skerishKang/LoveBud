@@ -46,9 +46,9 @@ The factory takes exactly one injected dependency:
 createPostgresMigrationLedgerAdapter({ queryLockedSession })
 ```
 
-`queryLockedSession` is a sync-or-async injected dependency that receives `{ lockHandle, query }` and returns (or resolves to) a `pg`-style `QueryResult`. In a later slice this dependency will connect the opaque lock handle to a real pinned session; in this slice it is always a synthetic mock.
+`queryLockedSession` is a sync-or-async injected dependency that receives `{ lockHandle, query }` and returns (or resolves to) a `pg`-style `QueryResult`. This dependency is now available from the #3646 session-lock adapter's `queryLockedSession({ lockHandle, query })` method, which runs the query on the same pinned session captured at advisory-lock acquire time. The ledger adapter does **not** inspect the lock handle, does **not** manage sessions, and does **not** implement a lock-handle registry. This document change does not introduce any actual DB wiring or PostgreSQL execution.
 
-This slice deliberately does **not** implement a lock-handle registry, does **not** modify the #3638 session-lock adapter, does **not** implement a generic DB client, and does **not** expose any session object.
+This slice deliberately does **not** implement a lock-handle registry, does **not** modify the #3638 session-lock adapter (the #3646 session-lock adapter extension provides the broker), does **not** implement a generic DB client, and does **not** expose any session object.
 
 ### Factory boundary
 

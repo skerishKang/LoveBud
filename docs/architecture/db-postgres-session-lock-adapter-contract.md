@@ -1,6 +1,6 @@
 # DB PostgreSQL Pinned-Session Advisory-Lock Adapter Contract
 
-Status: sixth small slice of Issue #3458. This is a **source-tested contract** for a PostgreSQL session-level advisory-lock adapter. It is **not** a real database client: it performs **no** database connection, **no** `pg` import, **no** actual query execution, and **no** real lock acquisition. Every session and query is a synthetic injected mock.
+Status: subsequent wiring slice #3646 (extends sixth slice #3458). This is a **source-tested contract** for a PostgreSQL session-level advisory-lock adapter. It is **not** a real database client: it performs **no** database connection, **no** `pg` import, **no** actual query execution, and **no** real lock acquisition. Every session and query is a synthetic injected mock.
 
 ## Baseline
 
@@ -14,7 +14,7 @@ Status: sixth small slice of Issue #3458. This is a **source-tested contract** f
 
 ## Connection to the #3636 orchestrator
 
-The #3636 orchestrator depends on `acquireAdvisoryLock`, `checkAdvisoryLock`, and `releaseAdvisoryLock` with the status vocabularies `ACQUIRED|NOT_ATTEMPTED|UNAVAILABLE|FAILED` (acquire), `ACQUIRED|LOST|FAILED|UNAVAILABLE` (check), and `RELEASED|FAILED|UNKNOWN` (release). This adapter implements exactly those three methods and returns exactly those statuses, so it can be wired into the orchestrator's dependency set. The orchestrator passes the lock handle as an opaque value.
+The #3636 orchestrator depends on `acquireAdvisoryLock`, `checkAdvisoryLock`, and `releaseAdvisoryLock` with the status vocabularies `ACQUIRED|NOT_ATTEMPTED|UNAVAILABLE|FAILED` (acquire), `ACQUIRED|LOST|FAILED|UNAVAILABLE` (check), and `RELEASED|FAILED|UNKNOWN` (release). This adapter implements those three methods plus `queryLockedSession` for the #3646 query broker extension. The injected `queryLockedSession` provides a same-instance pinned-session query broker for downstream adapters (e.g., the ledger read/append adapter).
 
 ## Global per-database lock rationale
 
@@ -77,6 +77,77 @@ On acquire success the adapter returns `{ status: 'ACQUIRED', handle }`. The han
 - `released=false` → `FAILED` (pool release still once).
 - pool release runs best-effort exactly once regardless of unlock result.
 
+## queryLockedSession broker (#3646)
+
+The adapter exposes a fourth method `queryLockedSession({ lockHandle, query })` that runs a validated query object on the same pinned session captured at acquire time.
+
+### Handle and lifecycle contract
+
+- `lockHandle` is read as an own data property only; accessor getters are not executed.
+- Only handles registered in the same adapter instance's `WeakMap` are accepted. Cross-adapter handles are rejected.
+- Lifecycle must be `OPEN`; `RELEASING` and `RELEASED` handles are rejected.
+- Invalid handle, cross-adapter handle, or non-`OPEN` lifecycle rejects with the fixed error `POSTGRES_LOCKED_SESSION_QUERY_UNAVAILABLE` — no query is executed.
+- Handle internal state is never returned, serialized, cloned, or logged.
+
+### Query-object descriptor snapshot
+
+The `query` argument is validated via a single-pass descriptor snapshot. It must be:
+
+- A safe plain record.
+- Own keys exactly `{ name, text, values }` (no extra string/symbol keys).
+- Each field is an enumerable own data property (no accessors, no inherited properties).
+- `name` and `text` are non-empty strings.
+- `values` is a dense array (non-enumerable `length`, exact indices `0..length-1`, no holes, no extra properties, no symbol keys, no non-canonical numeric keys).
+
+Validation uses `snapshotQueryObject` which performs shape validation and value capture in a single descriptor pass via `safeOwnKeyDescriptors`. After validation, the original query object is never re-accessed. Proxy `get` traps are never executed — all values come from captured descriptors.
+
+### Query execution
+
+On success:
+
+1. The captured `session.query` callable (pinned at acquire-time) is called with `session` as `this` and the validated query snapshot.
+2. The callable is invoked exactly once.
+3. The raw `QueryResult` is returned to the caller unchanged — no inspection, logging, or wrapping.
+4. `session.query` and `session.release` are never re-read after the initial acquire validation.
+
+### Fixed failure contract
+
+All broker failures reject with exactly:
+
+```
+POSTGRES_LOCKED_SESSION_QUERY_UNAVAILABLE
+```
+
+Applicable to:
+- Missing or malformed `lockHandle`.
+- Accessor `lockHandle` (getter not executed).
+- Revoked Proxy or descriptor trap throw on `lockHandle`.
+- Invalid, cross-adapter, `RELEASING`, or `RELEASED` handle.
+- Missing or malformed `query` object.
+- Accessor `query` or query field (getter not executed).
+- Sparse values, extra values property, non-canonical numeric key, symbol key.
+- Revoked Proxy or descriptor trap throw on `query` or `values`.
+- Underlying `session.query` synchronous throw or Promise rejection.
+
+Never exposed:
+- Original Error, message, or stack.
+- Session, query callable, release callable.
+- Raw query object or query result.
+- Hostname, database name, URL, credential, backend PID, lock key, operator identity.
+
+### Implicit release behavior
+
+The broker does **not** perform advisory unlock, pool release, handle deletion, or lifecycle mutation on failure. Release ownership remains exclusively with `releaseAdvisoryLock`. After a broker failure, the handle remains `OPEN` and explicit `releaseAdvisoryLock` continues to work.
+
+### Query-object validation details
+
+The `snapshotDenseArray` helper validates dense arrays with the same two-pass approach as the ledger adapter:
+
+- Pass 1: find `length` descriptor (non-enumerable data property, integer >= 0).
+- Pass 2: validate exact index set `0..length-1` (canonical `String(i)`, enumerable data properties, no extra keys).
+
+The `snapshotQueryObject` helper validates the complete query object in a single descriptor pass. After the snapshot, the original query object is never re-accessed. Caller mutation of the original query or values array during execution does not affect the executed query.
+
 ## Malformed evidence classification (exact row evidence)
 
 A query result is valid only as exactly `{ rows: [ { <field>: boolean } ] }` where the single row has **exactly one enumerable own key** equal to the target field, and that field is an **own data property** (not an accessor) holding a boolean. Top-level `QueryResult` metadata (`command`, `rowCount`, `oid`, `fields`, ...) is allowed and ignored. Any other shape is malformed evidence and yields the fail-closed status for that method (`UNAVAILABLE` for acquire/check, `UNKNOWN` for release) with a best-effort pool release where applicable.
@@ -93,7 +164,7 @@ Safe inspection (`safeOwnEnumerableKeys`, `readExactBooleanRow`) never executes 
 
 ## Total fail-closed public boundary (safe inspection)
 
-Every public method is **total**: it never throws and never exposes a raw `Error`, message, or stack. All argument, config, session, and evidence inspection goes through safe internal helpers (`safeGetOwnDataProperty`, `safeGetCallable`, `safeIsArray`, `safeIsPlainRecord`, `safeOwnEnumerableKeys`, `readExactBooleanRow`, `releaseSessionOnce`, `callCapturedRelease`) that bound every `Reflect.ownKeys`, `Object.getPrototypeOf`, `Object.getOwnPropertyDescriptor`, `Array.isArray`, and property read inside a try/catch.
+Every public method is **total**: it never throws (acquire/check/release) or always rejects with a fixed error on failure (queryLockedSession). No method exposes a raw `Error`, message, or stack. All argument, config, session, and evidence inspection goes through safe internal helpers that bound every `Reflect.ownKeys`, `Object.getPrototypeOf`, `Object.getOwnPropertyDescriptor`, `Array.isArray`, and property read inside a try/catch.
 
 - A normal property is required to be an **own data property**. Accessor getters are **not executed** during inspection; an accessor, a throwing getter, a `Proxy` get/`getOwnPropertyDescriptor`/`getPrototypeOf` trap throw, a revoked `Proxy`, a descriptor-inspection throw, a `rows` getter throw, or a target boolean-field getter throw is treated as malformed and maps to the fail-closed status.
 - `acquireAdvisoryLock`: malformed/throwing input (`targetMigrationId`) → `NOT_ATTEMPTED` (openSession not called); malformed/throwing session or evidence → `UNAVAILABLE` (best-effort pool release once where applicable).
@@ -130,7 +201,7 @@ The adapter is registered in `docs/architecture/db-schema-change-inventory.json`
 
 ## Remaining adapters / work
 
-- ledger read/append adapter
+- ledger read/append adapter (in progress)
 - migration execution adapter
 - precondition/postcondition adapter
 - source/manifest validation adapter
@@ -139,6 +210,8 @@ The adapter is registered in `docs/architecture/db-schema-change-inventory.json`
 - Production adoption / activation
 
 ## Protected Issues
+
+Refs #3646 - Keep #3646 OPEN.
 
 Refs #3458 - Keep #3458 OPEN.
 
