@@ -34,9 +34,10 @@ Factory config is validated via a single safe descriptor snapshot. The adapter n
 2. `Reflect.ownKeys(config)` + `Object.getOwnPropertyDescriptor(config, key)` — captures all descriptors
 3. Rejects symbol keys, accessor properties, non-enumerable properties, extra keys
 4. Only `loadFixedSources` and `validateSourceConfiguration` are permitted keys
-5. Captures callable values from descriptors; original config is never re-accessed
-6. All trap failures (`ownKeys`, `getPrototypeOf`, `getOwnPropertyDescriptor`) produce fixed factory error
-7. Raw internal errors are not exposed; fixed error: `SOURCE_VALIDATION_ADAPTER_INVALID_DEPENDENCY`
+5. `undefined` config → default dependencies; `null` config → `SOURCE_VALIDATION_ADAPTER_INVALID_DEPENDENCY`
+6. Captures callable values from descriptors; original config is never re-accessed
+7. All trap failures (`ownKeys`, `getPrototypeOf`, `getOwnPropertyDescriptor`) produce fixed factory error
+8. Raw internal errors are not exposed; fixed error: `SOURCE_VALIDATION_ADAPTER_INVALID_DEPENDENCY`
 
 ## Public Surface
 
@@ -93,26 +94,36 @@ INVALID      → FAIL
 UNAVAILABLE  → UNAVAILABLE
 ```
 
-Raw `JSON.parse` failure on any source produces `FAIL` without calling the validator. This is tested via actual malformed JSON strings in the test suite.
+Raw `JSON.parse` failure on any source produces `FAIL` without calling the validator. This is tested via actual malformed JSON strings and malformed temp-repository filesystem fixtures in the test suite.
 
 ### Async Loader Support
 
-Both sync and async loaders are supported. The adapter avoids `await` on raw results to prevent Proxy `get` trap execution. Instead, it uses `instanceof Promise` (which only invokes `getPrototypeOf` trap) to detect Promise instances before awaiting.
+Both sync and async loaders are supported. The adapter detects genuine native Promises using `node:util`'s `types.isPromise`, which checks internal-slot identity. It does NOT use `instanceof Promise`, `Promise.resolve()`, or plain `await` on untrusted values.
 
 ```js
-let raw;
-try {
-  if (result !== null && typeof result === 'object' && result instanceof Promise) {
-    raw = await result;
-  } else {
-    raw = result;
+const { types: utilTypes } = require('node:util');
+
+function isGenuinePromise(value) {
+  try {
+    return utilTypes.isPromise(value);
+  } catch {
+    return false;
   }
-} catch (e) {
-  return UNAVAILABLE;
 }
 ```
 
-Synchronous throws, rejected Promises, and thenable rejections all produce `UNAVAILABLE`.
+Supported return types:
+
+- Synchronous plain object → descriptor snapshot
+- Genuine native Promise (internal `[[PromiseState]]` slot) → `await` after identity check
+
+Not supported (result is `UNAVAILABLE`):
+
+- Proxy-wrapped Promise — `isPromise` returns false, Proxy `get` trap is never executed
+- Custom thenable with accessor `then` — getter is never executed
+- Custom thenable with data-property `then` function — function is never called
+
+Synchronous throws and rejected genuine Promises produce `UNAVAILABLE`.
 
 ## Verified `realTarget` Direct Read
 
@@ -186,9 +197,10 @@ Current committed source (inactive manifests, empty migrations, empty critical o
 - Source file cannot be read (missing, permission, directory)
 - Path/realpath/symlink escape outside repository
 - Loader returns `UNAVAILABLE` status
-- Unexpected validator throw or Promise rejection
+- Unexpected validator throw or genuine Promise rejection
 - Loader throw/reject
 - Internal evaluation exception
+- Proxy-wrapped Promise or arbitrary thenable from loader/validator
 
 ## Call Envelope Validation
 
@@ -207,25 +219,27 @@ Malformed envelopes produce `FAIL` with source read count 0.
 Injected loader results are validated via safe descriptor snapshots:
 
 - Plain record only (no array, no function, no null)
-- Exact permitted own keys per status variant:
-  - `LOADED`: `['status', 'inventoryText', 'migrationManifestText', 'expectedSchemaManifestText']`
-  - `INVALID`: `['status']`
-  - `UNAVAILABLE`: `['status']`
-- Symbol, extra, accessor, or inherited keys → `UNAVAILABLE`
-- Proxy `get` trap: 0 executions (adapter uses `instanceof Promise` only for async detection)
+- Exact permitted own keys per status variant (order-independent set comparison):
+  - `LOADED`: `{status, inventoryText, migrationManifestText, expectedSchemaManifestText}`
+  - `INVALID`: `{status}`
+  - `UNAVAILABLE`: `{status}`
+- All keys must be own enumerable data properties
+- Symbol, extra, accessor, non-enumerable, or inherited keys → `UNAVAILABLE`
+- Proxy `get` trap: 0 executions
 - Descriptor value capture; original result never re-accessed
 
 ## Validator Result Descriptor Snapshot
 
 Validator results are validated via safe descriptor snapshots:
 
-- `ok` must be an own data property (no accessor, no getter)
+- `ok` must be an own enumerable data property (no accessor, no getter, no non-enumerable)
 - `ok === true` → `PASS`
 - `ok !== true` on inspectable result → `FAIL`
 - Proxy `get` trap: 0 executions
 - `ownKeys`/`getPrototypeOf`/`getOwnPropertyDescriptor` trap throw → `UNAVAILABLE`
 - Revoked Proxy → `UNAVAILABLE`
-- Validator Promise rejection → `UNAVAILABLE`
+- Validator genuine Promise rejection → `UNAVAILABLE`
+- Proxy-wrapped Promise / arbitrary thenable → `UNAVAILABLE` (not assimilated)
 - `errors`, `summary`, raw result never exposed externally
 
 ## Read/Parse Count
@@ -234,6 +248,7 @@ Validator results are validated via safe descriptor snapshots:
 - Each source is JSON-parsed at most once per call.
 - No `existsSync` + `readFileSync` double-read pattern.
 - `JSON.parse` failure on first source → `FAIL`, validator not called.
+- Per-file read count is verified in tests: inventory, canonical manifest, and expected-schema manifest each read exactly once.
 
 ## Path/Realpath Confinement
 
@@ -258,6 +273,21 @@ The adapter's `validateSource` method is compatible with the `runCanonicalMigrat
 - `FAIL`/`UNAVAILABLE` → `loadManifest` and subsequent dependencies are not called
 
 `loadManifest` is a separate child dependency; this adapter does NOT call it.
+
+## Test Coverage Summary
+
+The test suite includes:
+
+- **1–8:** Core public surface, PASS/FAIL/UNAVAILABLE fixtures, call envelope, sanitization, orchestrator compatibility
+- **A:** Actual raw malformed JSON injection (inventory, canonical, schema)
+- **B:** Default loader filesystem tests (missing, directory, symlink escape, **B4/B5/B6 malformed fixed files**)
+- **C:** External symlink → UNAVAILABLE (explicit skip on unavailable symlink)
+- **D:** Hostile factory config (D1–D16: numeric, string, array, function, custom prototype, extra key, symbol, **null config**, accessor dependency, **non-enumerable dependency**, Proxy traps, revoked Proxy, **swapped dependency order**)
+- **E:** Async loader (resolve/reject, **E5/E6 genuine Promise**, **E7 Proxy-wrapped Promise get trap 0**, **E8 accessor thenable getter 0**, **E9 data-property thenable call 0**)
+- **F:** Hostile loader result (accessor, Proxy, traps, revoked, unknown status, extra key, symbol, wrong type, **F11 reversed key order**, **F12 non-enumerable status**, **F13 non-enumerable text**)
+- **G:** Hostile validator result (ok true/false, accessor, Proxy, traps, revoked, reject, **G10/G11 genuine Promise**, **G12 Proxy-wrapped validator get trap 0**, **G13 accessor thenable getter 0**, **G14 data-property thenable call 0**, **G15 non-enumerable ok**)
+- **H:** Source counts (loader 1x, envelope 0x, malformed 0x)
+- **I:** Fixed source actual read counts (inventory, canonical, schema each exactly 1)
 
 ## Side-Effect Boundary
 

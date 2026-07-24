@@ -7,10 +7,10 @@
  * parses each exactly once, delegates to the existing `validateSourceConfiguration`
  * validator, and returns PASS|FAIL|UNAVAILABLE.
  *
- * Fixed source paths (relative to repository root):
- *   1. docs/architecture/migration-path-inventory.json
- *   2. db/migration-provenance/canonical-migrations.json
- *   3. db/migration-provenance/expected-schema-manifest.json
+ * Supported loader/validator return types:
+ *   - synchronous plain object
+ *   - genuine native Promise (resolved to plain object)
+ * Proxy-wrapped Promises and arbitrary thenables are not assimilated.
  *
  * Refs #3650
  * Refs #3458 - Keep #3458 OPEN.
@@ -22,6 +22,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
+const { types: utilTypes } = require('node:util');
 const { validateSourceConfiguration } = require('./migration-provenance-core.cjs');
 
 const REPO_ROOT = path.resolve(__dirname, '..');
@@ -46,25 +47,30 @@ const EXPECTED_SCHEMA_RELATIVE = path.join('db', 'migration-provenance', 'expect
 
 const ALLOWED_CONFIG_KEYS = Object.freeze(['loadFixedSources', 'validateSourceConfiguration']);
 
-const LOADED_RESULT_KEYS = Object.freeze(['status', 'inventoryText', 'migrationManifestText', 'expectedSchemaManifestText']);
-
-const VALIDATOR_RESULT_KEYS = Object.freeze(['ok']);
-
 const LOADED_EXACT_KEYS = Object.freeze(['status', 'inventoryText', 'migrationManifestText', 'expectedSchemaManifestText']);
 
 const INVALID_EXACT_KEYS = Object.freeze(['status']);
 
-function keysMatchExact(descriptors, allowed) {
-  const ownKeys = [];
+function isGenuinePromise(value) {
+  try {
+    return utilTypes.isPromise(value);
+  } catch {
+    return false;
+  }
+}
+
+function keysMatchExactSet(descriptors, allowedKeys) {
+  if (descriptors.length !== allowedKeys.length) return false;
+
+  const allowed = new Set(allowedKeys);
+
   for (const { key, desc } of descriptors) {
     if (typeof key !== 'string') return false;
+    if (!allowed.has(key)) return false;
     if ('get' in desc || 'set' in desc) return false;
-    ownKeys.push(key);
+    if (desc.enumerable !== true) return false;
   }
-  if (ownKeys.length !== allowed.length) return false;
-  for (let i = 0; i < allowed.length; i++) {
-    if (ownKeys[i] !== allowed[i]) return false;
-  }
+
   return true;
 }
 
@@ -239,16 +245,17 @@ function parseSnapshotLoaderResult(raw) {
 
   const statusDesc = descriptors.find((d) => d.key === 'status');
   if (!statusDesc || !('value' in statusDesc.desc)) return { valid: false };
+  if (statusDesc.desc.enumerable !== true) return { valid: false };
   const status = statusDesc.desc.value;
   if (typeof status !== 'string') return { valid: false };
 
   if (status === SOURCE_LOAD_STATUSES.UNAVAILABLE) {
-    if (!keysMatchExact(descriptors, INVALID_EXACT_KEYS)) return { valid: false };
+    if (!keysMatchExactSet(descriptors, INVALID_EXACT_KEYS)) return { valid: false };
     return { valid: true, loadStatus: SOURCE_LOAD_STATUSES.UNAVAILABLE };
   }
 
   if (status === SOURCE_LOAD_STATUSES.INVALID) {
-    if (!keysMatchExact(descriptors, INVALID_EXACT_KEYS)) return { valid: false };
+    if (!keysMatchExactSet(descriptors, INVALID_EXACT_KEYS)) return { valid: false };
     return { valid: true, loadStatus: SOURCE_LOAD_STATUSES.INVALID };
   }
 
@@ -256,18 +263,21 @@ function parseSnapshotLoaderResult(raw) {
     return { valid: false };
   }
 
-  if (!keysMatchExact(descriptors, LOADED_EXACT_KEYS)) return { valid: false };
+  if (!keysMatchExactSet(descriptors, LOADED_EXACT_KEYS)) return { valid: false };
 
   const invDesc = descriptors.find((d) => d.key === 'inventoryText');
   if (!invDesc || !('value' in invDesc.desc)) return { valid: false };
+  if (invDesc.desc.enumerable !== true) return { valid: false };
   if (typeof invDesc.desc.value !== 'string') return { valid: false };
 
   const migDesc = descriptors.find((d) => d.key === 'migrationManifestText');
   if (!migDesc || !('value' in migDesc.desc)) return { valid: false };
+  if (migDesc.desc.enumerable !== true) return { valid: false };
   if (typeof migDesc.desc.value !== 'string') return { valid: false };
 
   const schDesc = descriptors.find((d) => d.key === 'expectedSchemaManifestText');
   if (!schDesc || !('value' in schDesc.desc)) return { valid: false };
+  if (schDesc.desc.enumerable !== true) return { valid: false };
   if (typeof schDesc.desc.value !== 'string') return { valid: false };
 
   return {
@@ -286,6 +296,7 @@ function parseValidatorResult(raw) {
   const okDesc = descriptors.find((d) => d.key === 'ok');
   if (!okDesc) return { valid: false };
   if ('get' in okDesc.desc || 'set' in okDesc.desc) return { valid: false };
+  if (okDesc.desc.enumerable !== true) return { valid: false };
 
   const ok = okDesc.desc.value;
   return { valid: true, ok };
@@ -295,7 +306,10 @@ function createMigrationSourceValidationAdapter(config) {
   let loadFixedSourcesFn = defaultLoadFixedSources;
   let validatorFn = validateSourceConfiguration;
 
-  if (config !== undefined && config !== null) {
+  if (config !== undefined) {
+    if (config === null) {
+      throw new Error(FACTORY_ERROR_INVALID_DEPENDENCY);
+    }
     if (typeof config !== 'object') {
       throw new Error(FACTORY_ERROR_INVALID_DEPENDENCY);
     }
@@ -326,6 +340,7 @@ function createMigrationSourceValidationAdapter(config) {
     for (const { key, desc } of configDescriptors) {
       if (typeof key === 'symbol') throw new Error(FACTORY_ERROR_INVALID_DEPENDENCY);
       if ('get' in desc || 'set' in desc) throw new Error(FACTORY_ERROR_INVALID_DEPENDENCY);
+      if (desc.enumerable !== true) throw new Error(FACTORY_ERROR_INVALID_DEPENDENCY);
     }
 
     const configOwnKeys = [];
@@ -366,7 +381,7 @@ function createMigrationSourceValidationAdapter(config) {
 
     let raw;
     try {
-      if (loadResult !== null && typeof loadResult === 'object' && loadResult instanceof Promise) {
+      if (isGenuinePromise(loadResult)) {
         raw = await loadResult;
       } else {
         raw = loadResult;
@@ -423,7 +438,7 @@ function createMigrationSourceValidationAdapter(config) {
 
     let validatorResult;
     try {
-      if (rawValidatorResult !== null && typeof rawValidatorResult === 'object' && rawValidatorResult instanceof Promise) {
+      if (isGenuinePromise(rawValidatorResult)) {
         validatorResult = await rawValidatorResult;
       } else {
         validatorResult = rawValidatorResult;

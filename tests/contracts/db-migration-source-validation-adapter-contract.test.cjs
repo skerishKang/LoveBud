@@ -299,7 +299,7 @@ describe('DB migration source-validation adapter contract (#3650)', () => {
       assert.deepStrictEqual(result, SOURCE_VALIDATION_RESULTS.FAIL);
     });
 
-    it('17. malformed inventory raw text → FAIL (actual JSON.parse in adapter)', async () => {
+    it('17. malformed inventory raw text -> FAIL (actual JSON.parse in adapter)', async () => {
       const adapter = createMigrationSourceValidationAdapter({
         loadFixedSources: () => loadedSource('{ broken', VALID_MIGRATIONS_TEXT, VALID_SCHEMA_TEXT)
       });
@@ -307,7 +307,7 @@ describe('DB migration source-validation adapter contract (#3650)', () => {
       assert.deepStrictEqual(result, SOURCE_VALIDATION_RESULTS.FAIL);
     });
 
-    it('18. malformed canonical manifest raw text → FAIL (actual JSON.parse in adapter)', async () => {
+    it('18. malformed canonical manifest raw text -> FAIL (actual JSON.parse in adapter)', async () => {
       const adapter = createMigrationSourceValidationAdapter({
         loadFixedSources: () => loadedSource(VALID_INVENTORY_TEXT, '{ broken', VALID_SCHEMA_TEXT)
       });
@@ -315,7 +315,7 @@ describe('DB migration source-validation adapter contract (#3650)', () => {
       assert.deepStrictEqual(result, SOURCE_VALIDATION_RESULTS.FAIL);
     });
 
-    it('19. malformed expected-schema raw text → FAIL (actual JSON.parse in adapter)', async () => {
+    it('19. malformed expected-schema raw text -> FAIL (actual JSON.parse in adapter)', async () => {
       const adapter = createMigrationSourceValidationAdapter({
         loadFixedSources: () => loadedSource(VALID_INVENTORY_TEXT, VALID_MIGRATIONS_TEXT, '{ broken')
       });
@@ -350,7 +350,7 @@ describe('DB migration source-validation adapter contract (#3650)', () => {
   });
 
   describe('5. UNAVAILABLE fixtures', () => {
-    it('22. loader returns UNAVAILABLE → UNAVAILABLE', async () => {
+    it('22. loader returns UNAVAILABLE -> UNAVAILABLE', async () => {
       const adapter = createMigrationSourceValidationAdapter({
         loadFixedSources: () => ({ status: SOURCE_LOAD_STATUSES.UNAVAILABLE })
       });
@@ -358,7 +358,7 @@ describe('DB migration source-validation adapter contract (#3650)', () => {
       assert.deepStrictEqual(result, SOURCE_VALIDATION_RESULTS.UNAVAILABLE);
     });
 
-    it('23. loader throws → UNAVAILABLE', async () => {
+    it('23. loader throws -> UNAVAILABLE', async () => {
       const adapter = createMigrationSourceValidationAdapter({
         loadFixedSources: () => { throw new Error('EACCES: permission denied'); }
       });
@@ -366,7 +366,7 @@ describe('DB migration source-validation adapter contract (#3650)', () => {
       assert.deepStrictEqual(result, SOURCE_VALIDATION_RESULTS.UNAVAILABLE);
     });
 
-    it('24. loader returns INVALID → FAIL', async () => {
+    it('24. loader returns INVALID -> FAIL', async () => {
       const adapter = createMigrationSourceValidationAdapter({
         loadFixedSources: () => ({ status: SOURCE_LOAD_STATUSES.INVALID })
       });
@@ -374,7 +374,7 @@ describe('DB migration source-validation adapter contract (#3650)', () => {
       assert.deepStrictEqual(result, SOURCE_VALIDATION_RESULTS.FAIL);
     });
 
-    it('25. loader throws with EISDIR → UNAVAILABLE', async () => {
+    it('25. loader throws with EISDIR -> UNAVAILABLE', async () => {
       const adapter = createMigrationSourceValidationAdapter({
         loadFixedSources: () => { throw new Error('EISDIR: not a file'); }
       });
@@ -382,7 +382,7 @@ describe('DB migration source-validation adapter contract (#3650)', () => {
       assert.deepStrictEqual(result, SOURCE_VALIDATION_RESULTS.UNAVAILABLE);
     });
 
-    it('26. loader throws path escape → UNAVAILABLE', async () => {
+    it('26. loader throws path escape -> UNAVAILABLE', async () => {
       const adapter = createMigrationSourceValidationAdapter({
         loadFixedSources: () => { throw new Error('path escape detected'); }
       });
@@ -390,7 +390,7 @@ describe('DB migration source-validation adapter contract (#3650)', () => {
       assert.deepStrictEqual(result, SOURCE_VALIDATION_RESULTS.UNAVAILABLE);
     });
 
-    it('27. validator synchronous throw → UNAVAILABLE', async () => {
+    it('27. validator synchronous throw -> UNAVAILABLE', async () => {
       const adapter = createMigrationSourceValidationAdapter({
         loadFixedSources: () => loadedSource(),
         validateSourceConfiguration: () => { throw new Error('unexpected crash'); }
@@ -399,7 +399,7 @@ describe('DB migration source-validation adapter contract (#3650)', () => {
       assert.deepStrictEqual(result, SOURCE_VALIDATION_RESULTS.UNAVAILABLE);
     });
 
-    it('28. validator Promise rejection → UNAVAILABLE', async () => {
+    it('28. validator Promise rejection -> UNAVAILABLE', async () => {
       const adapter = createMigrationSourceValidationAdapter({
         loadFixedSources: () => loadedSource(),
         validateSourceConfiguration: () => Promise.reject(new Error('async failure'))
@@ -408,7 +408,7 @@ describe('DB migration source-validation adapter contract (#3650)', () => {
       assert.deepStrictEqual(result, SOURCE_VALIDATION_RESULTS.UNAVAILABLE);
     });
 
-    it('29. loader rejected Promise → UNAVAILABLE', async () => {
+    it('29. loader rejected Promise -> UNAVAILABLE', async () => {
       const adapter = createMigrationSourceValidationAdapter({
         loadFixedSources: () => Promise.reject(new Error('loader rejected'))
       });
@@ -652,7 +652,7 @@ describe('DB migration source-validation adapter contract (#3650)', () => {
   });
 
   describe('A. Actual raw malformed JSON tests', () => {
-    it('A1. malformed inventory raw text → FAIL, validator not called', async () => {
+    it('A1. malformed inventory raw text -> FAIL, validator not called', async () => {
       const { validator, getCallCount } = createTrackingValidator(noopValidator);
       const adapter = createMigrationSourceValidationAdapter({
         loadFixedSources: () => loadedSource('{ broken json!!!', VALID_MIGRATIONS_TEXT, VALID_SCHEMA_TEXT),
@@ -663,7 +663,7 @@ describe('DB migration source-validation adapter contract (#3650)', () => {
       assert.strictEqual(getCallCount(), 0);
     });
 
-    it('A2. malformed canonical manifest raw text → FAIL, validator not called', async () => {
+    it('A2. malformed canonical manifest raw text -> FAIL, validator not called', async () => {
       const { validator, getCallCount } = createTrackingValidator(noopValidator);
       const adapter = createMigrationSourceValidationAdapter({
         loadFixedSources: () => loadedSource(VALID_INVENTORY_TEXT, 'not json [', VALID_SCHEMA_TEXT),
@@ -674,7 +674,7 @@ describe('DB migration source-validation adapter contract (#3650)', () => {
       assert.strictEqual(getCallCount(), 0);
     });
 
-    it('A3. malformed expected-schema raw text → FAIL, validator not called', async () => {
+    it('A3. malformed expected-schema raw text -> FAIL, validator not called', async () => {
       const { validator, getCallCount } = createTrackingValidator(noopValidator);
       const adapter = createMigrationSourceValidationAdapter({
         loadFixedSources: () => loadedSource(VALID_INVENTORY_TEXT, VALID_MIGRATIONS_TEXT, '{"incomplete'),
@@ -687,7 +687,7 @@ describe('DB migration source-validation adapter contract (#3650)', () => {
   });
 
   describe('B. Default loader filesystem tests', () => {
-    it('B1. default adapter with missing inventory → UNAVAILABLE', async () => {
+    it('B1. default adapter with missing inventory -> UNAVAILABLE', async () => {
       const { tmpDir, scriptsDir, dbDir } = createTempRepo();
       try {
         fs.writeFileSync(path.join(dbDir, 'canonical-migrations.json'), VALID_MIGRATIONS_TEXT, 'utf8');
@@ -702,7 +702,7 @@ describe('DB migration source-validation adapter contract (#3650)', () => {
       }
     });
 
-    it('B2. default adapter with directory instead of file → UNAVAILABLE', async () => {
+    it('B2. default adapter with directory instead of file -> UNAVAILABLE', async () => {
       const { tmpDir, scriptsDir, docsDir, dbDir } = createTempRepo();
       try {
         const invDir = path.join(docsDir, 'migration-path-inventory.json');
@@ -720,7 +720,7 @@ describe('DB migration source-validation adapter contract (#3650)', () => {
       }
     });
 
-    it('B3. default adapter with symlink escaping repo → UNAVAILABLE', async () => {
+    it('B3. default adapter with symlink escaping repo -> UNAVAILABLE', async (t) => {
       const { tmpDir, scriptsDir, docsDir, dbDir } = createTempRepo();
       const outsideDir = fs.mkdtempSync(path.join(os.tmpdir(), 'lovebud-outside-'));
       try {
@@ -730,7 +730,8 @@ describe('DB migration source-validation adapter contract (#3650)', () => {
         fs.rmSync(invPath, { force: true });
         try {
           fs.symlinkSync(outsideFile, invPath);
-        } catch (e) {
+        } catch (error) {
+          t.skip(`symlink unavailable: ${error.code || error.message}`);
           return;
         }
         fs.writeFileSync(path.join(dbDir, 'canonical-migrations.json'), VALID_MIGRATIONS_TEXT, 'utf8');
@@ -745,10 +746,58 @@ describe('DB migration source-validation adapter contract (#3650)', () => {
         fs.rmSync(outsideDir, { recursive: true, force: true });
       }
     });
+
+    it('B4. default adapter with malformed inventory fixed file -> FAIL', async () => {
+      const { tmpDir, scriptsDir, docsDir, dbDir } = createTempRepo();
+      try {
+        fs.writeFileSync(path.join(docsDir, 'migration-path-inventory.json'), '{ broken inventory json', 'utf8');
+        fs.writeFileSync(path.join(dbDir, 'canonical-migrations.json'), VALID_MIGRATIONS_TEXT, 'utf8');
+        fs.writeFileSync(path.join(dbDir, 'expected-schema-manifest.json'), VALID_SCHEMA_TEXT, 'utf8');
+        writeTempAdapterCore(scriptsDir);
+        const { createMigrationSourceValidationAdapter: create } = loadTempAdapter(scriptsDir);
+        const adapter = create();
+        const result = await adapter.validateSource({ targetMigrationId: 'test' });
+        assert.deepStrictEqual(result, SOURCE_VALIDATION_RESULTS.FAIL);
+      } finally {
+        fs.rmSync(tmpDir, { recursive: true, force: true });
+      }
+    });
+
+    it('B5. default adapter with malformed canonical fixed file -> FAIL', async () => {
+      const { tmpDir, scriptsDir, docsDir, dbDir } = createTempRepo();
+      try {
+        fs.writeFileSync(path.join(docsDir, 'migration-path-inventory.json'), VALID_INVENTORY_TEXT, 'utf8');
+        fs.writeFileSync(path.join(dbDir, 'canonical-migrations.json'), '{ broken canonical json', 'utf8');
+        fs.writeFileSync(path.join(dbDir, 'expected-schema-manifest.json'), VALID_SCHEMA_TEXT, 'utf8');
+        writeTempAdapterCore(scriptsDir);
+        const { createMigrationSourceValidationAdapter: create } = loadTempAdapter(scriptsDir);
+        const adapter = create();
+        const result = await adapter.validateSource({ targetMigrationId: 'test' });
+        assert.deepStrictEqual(result, SOURCE_VALIDATION_RESULTS.FAIL);
+      } finally {
+        fs.rmSync(tmpDir, { recursive: true, force: true });
+      }
+    });
+
+    it('B6. default adapter with malformed expected-schema fixed file -> FAIL', async () => {
+      const { tmpDir, scriptsDir, docsDir, dbDir } = createTempRepo();
+      try {
+        fs.writeFileSync(path.join(docsDir, 'migration-path-inventory.json'), VALID_INVENTORY_TEXT, 'utf8');
+        fs.writeFileSync(path.join(dbDir, 'canonical-migrations.json'), VALID_MIGRATIONS_TEXT, 'utf8');
+        fs.writeFileSync(path.join(dbDir, 'expected-schema-manifest.json'), '{ broken schema json', 'utf8');
+        writeTempAdapterCore(scriptsDir);
+        const { createMigrationSourceValidationAdapter: create } = loadTempAdapter(scriptsDir);
+        const adapter = create();
+        const result = await adapter.validateSource({ targetMigrationId: 'test' });
+        assert.deepStrictEqual(result, SOURCE_VALIDATION_RESULTS.FAIL);
+      } finally {
+        fs.rmSync(tmpDir, { recursive: true, force: true });
+      }
+    });
   });
 
-  describe('C. verified realTarget read regression', () => {
-    it('C1. default loader reads verified realTarget not lexical symlink path', async () => {
+  describe('C. Verified realTarget read regression', () => {
+    it('C1. external symlink to inventory -> UNAVAILABLE (outside repo)', async (t) => {
       const { tmpDir, scriptsDir, docsDir, dbDir } = createTempRepo();
       const outsideDir = fs.mkdtempSync(path.join(os.tmpdir(), 'lovebud-real-'));
       try {
@@ -758,7 +807,8 @@ describe('DB migration source-validation adapter contract (#3650)', () => {
         fs.rmSync(invPath, { force: true });
         try {
           fs.symlinkSync(realInvFile, invPath);
-        } catch (e) {
+        } catch (error) {
+          t.skip(`symlink unavailable: ${error.code || error.message}`);
           return;
         }
         fs.writeFileSync(path.join(dbDir, 'canonical-migrations.json'), VALID_MIGRATIONS_TEXT, 'utf8');
@@ -792,8 +842,9 @@ describe('DB migration source-validation adapter contract (#3650)', () => {
     it('D5. custom prototype config', assertFactoryReject((() => { function P() {} return new P(); })()));
     it('D6. extra key config', assertFactoryReject({ loadFixedSources: () => loadedSource(), extra: true }));
     it('D7. symbol key config', assertFactoryReject((() => { const c = {}; c[Symbol('bad')] = true; return c; })()));
+    it('D8. null config', assertFactoryReject(null));
 
-    it('D8. accessor dependency getter 0 calls', () => {
+    it('D9. accessor dependency getter 0 calls', () => {
       let getterCalls = 0;
       const cfg = Object.create({}, {
         loadFixedSources: {
@@ -808,7 +859,20 @@ describe('DB migration source-validation adapter contract (#3650)', () => {
       assert.strictEqual(getterCalls, 0);
     });
 
-    it('D9. Proxy has trap 0 calls', () => {
+    it('D10. non-enumerable dependency -> fixed error', () => {
+      const cfg = Object.create(null, {
+        loadFixedSources: {
+          value: () => loadedSource(),
+          enumerable: false
+        }
+      });
+      assert.throws(
+        () => createMigrationSourceValidationAdapter(cfg),
+        (err) => err.message === FACTORY_ERROR_INVALID_DEPENDENCY
+      );
+    });
+
+    it('D11. Proxy has trap 0 calls', () => {
       let hasCalls = 0;
       const inner = { loadFixedSources: () => loadedSource() };
       const proxy = new Proxy(inner, { has() { hasCalls += 1; return Reflect.has(...arguments); } });
@@ -817,7 +881,7 @@ describe('DB migration source-validation adapter contract (#3650)', () => {
       assert.strictEqual(hasCalls, 0);
     });
 
-    it('D10. Proxy get trap 0 calls on config', () => {
+    it('D12. Proxy get trap 0 calls on config', () => {
       let getCalls = 0;
       const inner = { loadFixedSources: () => loadedSource() };
       const proxy = new Proxy(inner, { get() { getCalls += 1; return Reflect.get(...arguments); } });
@@ -826,25 +890,32 @@ describe('DB migration source-validation adapter contract (#3650)', () => {
       assert.strictEqual(getCalls, 0);
     });
 
-    it('D11. Proxy ownKeys throw → fixed error', assertFactoryReject(
+    it('D13. Proxy ownKeys throw -> fixed error', assertFactoryReject(
       new Proxy({}, { ownKeys() { throw new Error('trap'); } })
     ));
-    it('D12. Proxy getPrototypeOf throw → fixed error', assertFactoryReject(
+    it('D14. Proxy getPrototypeOf throw -> fixed error', assertFactoryReject(
       new Proxy({}, { getPrototypeOf() { throw new Error('trap'); } })
     ));
-    it('D13. Proxy getOwnPropertyDescriptor throw → fixed error', assertFactoryReject(
+    it('D15. Proxy getOwnPropertyDescriptor throw -> fixed error', assertFactoryReject(
       new Proxy({ loadFixedSources: 'x' }, { getOwnPropertyDescriptor() { throw new Error('trap'); } })
     ));
-
-    it('D14. revoked Proxy → fixed error', assertFactoryReject((() => {
+    it('D16. revoked Proxy -> fixed error', assertFactoryReject((() => {
       const { proxy, revoke } = Proxy.revocable({}, {});
       revoke();
       return proxy;
     })()));
+
+    it('D17. factory config with swapped dependency insertion order -> OK', () => {
+      const adapter = createMigrationSourceValidationAdapter({
+        validateSourceConfiguration: noopValidator,
+        loadFixedSources: () => loadedSource()
+      });
+      assert.ok(adapter);
+    });
   });
 
   describe('E. Async loader', () => {
-    it('E1. async loader resolve LOADED → PASS', async () => {
+    it('E1. async loader resolve LOADED -> PASS', async () => {
       const adapter = createMigrationSourceValidationAdapter({
         loadFixedSources: async () => loadedSource(),
         validateSourceConfiguration: noopValidator
@@ -853,7 +924,7 @@ describe('DB migration source-validation adapter contract (#3650)', () => {
       assert.deepStrictEqual(result, SOURCE_VALIDATION_RESULTS.PASS);
     });
 
-    it('E2. async loader resolve INVALID → FAIL', async () => {
+    it('E2. async loader resolve INVALID -> FAIL', async () => {
       const adapter = createMigrationSourceValidationAdapter({
         loadFixedSources: async () => ({ status: SOURCE_LOAD_STATUSES.INVALID }),
         validateSourceConfiguration: noopValidator
@@ -862,7 +933,7 @@ describe('DB migration source-validation adapter contract (#3650)', () => {
       assert.deepStrictEqual(result, SOURCE_VALIDATION_RESULTS.FAIL);
     });
 
-    it('E3. async loader resolve UNAVAILABLE → UNAVAILABLE', async () => {
+    it('E3. async loader resolve UNAVAILABLE -> UNAVAILABLE', async () => {
       const adapter = createMigrationSourceValidationAdapter({
         loadFixedSources: async () => ({ status: SOURCE_LOAD_STATUSES.UNAVAILABLE })
       });
@@ -870,12 +941,75 @@ describe('DB migration source-validation adapter contract (#3650)', () => {
       assert.deepStrictEqual(result, SOURCE_VALIDATION_RESULTS.UNAVAILABLE);
     });
 
-    it('E4. async loader rejection → UNAVAILABLE', async () => {
+    it('E4. async loader rejection -> UNAVAILABLE', async () => {
       const adapter = createMigrationSourceValidationAdapter({
         loadFixedSources: async () => { throw new Error('async loader fail'); }
       });
       const result = await adapter.validateSource({ targetMigrationId: 'test' });
       assert.deepStrictEqual(result, SOURCE_VALIDATION_RESULTS.UNAVAILABLE);
+    });
+
+    it('E5. genuine Promise resolve LOADED -> PASS', async () => {
+      const adapter = createMigrationSourceValidationAdapter({
+        loadFixedSources: () => Promise.resolve(loadedSource()),
+        validateSourceConfiguration: noopValidator
+      });
+      const result = await adapter.validateSource({ targetMigrationId: 'test' });
+      assert.deepStrictEqual(result, SOURCE_VALIDATION_RESULTS.PASS);
+    });
+
+    it('E6. genuine Promise reject -> UNAVAILABLE', async () => {
+      const adapter = createMigrationSourceValidationAdapter({
+        loadFixedSources: () => Promise.reject(new Error('genuine reject'))
+      });
+      const result = await adapter.validateSource({ targetMigrationId: 'test' });
+      assert.deepStrictEqual(result, SOURCE_VALIDATION_RESULTS.UNAVAILABLE);
+    });
+
+    it('E7. Proxy-wrapped Promise -> UNAVAILABLE, get trap 0', async () => {
+      const genuine = Promise.resolve(loadedSource());
+      let getCalls = 0;
+      const proxiedPromise = new Proxy(genuine, {
+        get(target, property, receiver) {
+          getCalls += 1;
+          return Reflect.get(target, property, receiver);
+        }
+      });
+      const adapter = createMigrationSourceValidationAdapter({
+        loadFixedSources: () => proxiedPromise
+      });
+      const result = await adapter.validateSource({ targetMigrationId: 'test' });
+      assert.deepStrictEqual(result, SOURCE_VALIDATION_RESULTS.UNAVAILABLE);
+      assert.strictEqual(getCalls, 0);
+    });
+
+    it('E8. accessor thenable -> UNAVAILABLE, getter 0', async () => {
+      let getterCalls = 0;
+      const thenable = Object.create(null, {
+        then: {
+          get() { getterCalls += 1; return () => loadedSource(); },
+          enumerable: true
+        }
+      });
+      const adapter = createMigrationSourceValidationAdapter({
+        loadFixedSources: () => thenable
+      });
+      const result = await adapter.validateSource({ targetMigrationId: 'test' });
+      assert.deepStrictEqual(result, SOURCE_VALIDATION_RESULTS.UNAVAILABLE);
+      assert.strictEqual(getterCalls, 0);
+    });
+
+    it('E9. data-property thenable -> UNAVAILABLE, then call 0', async () => {
+      let thenCalls = 0;
+      const thenable = {
+        then() { thenCalls += 1; return loadedSource(); }
+      };
+      const adapter = createMigrationSourceValidationAdapter({
+        loadFixedSources: () => thenable
+      });
+      const result = await adapter.validateSource({ targetMigrationId: 'test' });
+      assert.deepStrictEqual(result, SOURCE_VALIDATION_RESULTS.UNAVAILABLE);
+      assert.strictEqual(thenCalls, 0);
     });
   });
 
@@ -914,25 +1048,25 @@ describe('DB migration source-validation adapter contract (#3650)', () => {
       assert.strictEqual(getTrapCalls, 0);
     });
 
-    it('F3. ownKeys throw → UNAVAILABLE', assertLoaderResultUnavailable(
+    it('F3. ownKeys throw -> UNAVAILABLE', assertLoaderResultUnavailable(
       new Proxy({}, { ownKeys() { throw new Error('trap'); } })
     ));
-    it('F4. getPrototypeOf throw → UNAVAILABLE', assertLoaderResultUnavailable(
+    it('F4. getPrototypeOf throw -> UNAVAILABLE', assertLoaderResultUnavailable(
       new Proxy({}, { getPrototypeOf() { throw new Error('trap'); } })
     ));
-    it('F5. getOwnPropertyDescriptor throw → UNAVAILABLE', assertLoaderResultUnavailable(
+    it('F5. getOwnPropertyDescriptor throw -> UNAVAILABLE', assertLoaderResultUnavailable(
       new Proxy({}, { getOwnPropertyDescriptor() { throw new Error('trap'); } })
     ));
 
-    it('F6. revoked Proxy → UNAVAILABLE', assertLoaderResultUnavailable((() => {
+    it('F6. revoked Proxy -> UNAVAILABLE', assertLoaderResultUnavailable((() => {
       const { proxy, revoke } = Proxy.revocable({}, {});
       revoke();
       return proxy;
     })()));
 
-    it('F7. unknown status value → UNAVAILABLE', assertLoaderResultUnavailable({ status: 'WEIRD' }));
+    it('F7. unknown status value -> UNAVAILABLE', assertLoaderResultUnavailable({ status: 'WEIRD' }));
 
-    it('F8. extra key → UNAVAILABLE', assertLoaderResultUnavailable({
+    it('F8. extra key -> UNAVAILABLE', assertLoaderResultUnavailable({
       status: SOURCE_LOAD_STATUSES.LOADED,
       inventoryText: '{}',
       migrationManifestText: '{}',
@@ -940,22 +1074,52 @@ describe('DB migration source-validation adapter contract (#3650)', () => {
       extra: true
     }));
 
-    it('F9. symbol key → UNAVAILABLE', assertLoaderResultUnavailable((() => {
+    it('F9. symbol key -> UNAVAILABLE', assertLoaderResultUnavailable((() => {
       const o = { status: SOURCE_LOAD_STATUSES.LOADED, inventoryText: '{}', migrationManifestText: '{}', expectedSchemaManifestText: '{}' };
       o[Symbol('bad')] = true;
       return o;
     })()));
 
-    it('F10. wrong text type (number) → UNAVAILABLE', assertLoaderResultUnavailable({
+    it('F10. wrong text type (number) -> UNAVAILABLE', assertLoaderResultUnavailable({
       status: SOURCE_LOAD_STATUSES.LOADED,
       inventoryText: 123,
       migrationManifestText: '{}',
       expectedSchemaManifestText: '{}'
     }));
+
+    it('F11. LOADED result with reversed key insertion order -> PASS', async () => {
+      const reordered = {};
+      reordered.expectedSchemaManifestText = VALID_SCHEMA_TEXT;
+      reordered.migrationManifestText = VALID_MIGRATIONS_TEXT;
+      reordered.inventoryText = VALID_INVENTORY_TEXT;
+      reordered.status = SOURCE_LOAD_STATUSES.LOADED;
+      const adapter = createMigrationSourceValidationAdapter({
+        loadFixedSources: () => reordered,
+        validateSourceConfiguration: noopValidator
+      });
+      const result = await adapter.validateSource({ targetMigrationId: 'test' });
+      assert.deepStrictEqual(result, SOURCE_VALIDATION_RESULTS.PASS);
+    });
+
+    it('F12. non-enumerable status -> UNAVAILABLE', assertLoaderResultUnavailable(
+      Object.create(null, {
+        status: { value: SOURCE_LOAD_STATUSES.LOADED, enumerable: false }
+      })
+    ));
+
+    it('F13. non-enumerable inventoryText -> UNAVAILABLE', assertLoaderResultUnavailable(
+      Object.assign(Object.create(null, {
+        inventoryText: { value: '{}', enumerable: false }
+      }), {
+        status: SOURCE_LOAD_STATUSES.LOADED,
+        migrationManifestText: '{}',
+        expectedSchemaManifestText: '{}'
+      })
+    ));
   });
 
   describe('G. Hostile validator result', () => {
-    it('G1. { ok: true } own data → PASS', async () => {
+    it('G1. { ok: true } own data -> PASS', async () => {
       const adapter = createMigrationSourceValidationAdapter({
         loadFixedSources: () => loadedSource(),
         validateSourceConfiguration: () => ({ ok: true })
@@ -964,7 +1128,7 @@ describe('DB migration source-validation adapter contract (#3650)', () => {
       assert.deepStrictEqual(result, SOURCE_VALIDATION_RESULTS.PASS);
     });
 
-    it('G2. { ok: false } own data → FAIL', async () => {
+    it('G2. { ok: false } own data -> FAIL', async () => {
       const adapter = createMigrationSourceValidationAdapter({
         loadFixedSources: () => loadedSource(),
         validateSourceConfiguration: () => ({ ok: false })
@@ -973,7 +1137,7 @@ describe('DB migration source-validation adapter contract (#3650)', () => {
       assert.deepStrictEqual(result, SOURCE_VALIDATION_RESULTS.FAIL);
     });
 
-    it('G3. accessor ok, getter 0 → UNAVAILABLE', async () => {
+    it('G3. accessor ok, getter 0 -> UNAVAILABLE', async () => {
       let getterCalls = 0;
       const adapter = createMigrationSourceValidationAdapter({
         loadFixedSources: () => loadedSource(),
@@ -1005,7 +1169,7 @@ describe('DB migration source-validation adapter contract (#3650)', () => {
       assert.strictEqual(getTrapCalls, 0);
     });
 
-    it('G5. ownKeys throw → UNAVAILABLE', async () => {
+    it('G5. ownKeys throw -> UNAVAILABLE', async () => {
       const adapter = createMigrationSourceValidationAdapter({
         loadFixedSources: () => loadedSource(),
         validateSourceConfiguration: () => new Proxy({}, { ownKeys() { throw new Error('trap'); } })
@@ -1014,7 +1178,7 @@ describe('DB migration source-validation adapter contract (#3650)', () => {
       assert.deepStrictEqual(result, SOURCE_VALIDATION_RESULTS.UNAVAILABLE);
     });
 
-    it('G6. getPrototypeOf throw → UNAVAILABLE', async () => {
+    it('G6. getPrototypeOf throw -> UNAVAILABLE', async () => {
       const adapter = createMigrationSourceValidationAdapter({
         loadFixedSources: () => loadedSource(),
         validateSourceConfiguration: () => new Proxy({}, { getPrototypeOf() { throw new Error('trap'); } })
@@ -1023,7 +1187,7 @@ describe('DB migration source-validation adapter contract (#3650)', () => {
       assert.deepStrictEqual(result, SOURCE_VALIDATION_RESULTS.UNAVAILABLE);
     });
 
-    it('G7. getOwnPropertyDescriptor throw → UNAVAILABLE', async () => {
+    it('G7. getOwnPropertyDescriptor throw -> UNAVAILABLE', async () => {
       const adapter = createMigrationSourceValidationAdapter({
         loadFixedSources: () => loadedSource(),
         validateSourceConfiguration: () => new Proxy({}, { getOwnPropertyDescriptor() { throw new Error('trap'); } })
@@ -1032,7 +1196,7 @@ describe('DB migration source-validation adapter contract (#3650)', () => {
       assert.deepStrictEqual(result, SOURCE_VALIDATION_RESULTS.UNAVAILABLE);
     });
 
-    it('G8. revoked Proxy → UNAVAILABLE', async () => {
+    it('G8. revoked Proxy -> UNAVAILABLE', async () => {
       const { proxy, revoke } = Proxy.revocable({}, {});
       revoke();
       const adapter = createMigrationSourceValidationAdapter({
@@ -1043,10 +1207,88 @@ describe('DB migration source-validation adapter contract (#3650)', () => {
       assert.deepStrictEqual(result, SOURCE_VALIDATION_RESULTS.UNAVAILABLE);
     });
 
-    it('G9. validator Promise reject → UNAVAILABLE', async () => {
+    it('G9. validator Promise reject -> UNAVAILABLE', async () => {
       const adapter = createMigrationSourceValidationAdapter({
         loadFixedSources: () => loadedSource(),
         validateSourceConfiguration: () => Promise.reject(new Error('reject'))
+      });
+      const result = await adapter.validateSource({ targetMigrationId: 'test' });
+      assert.deepStrictEqual(result, SOURCE_VALIDATION_RESULTS.UNAVAILABLE);
+    });
+
+    it('G10. genuine Promise resolve { ok: true } -> PASS', async () => {
+      const adapter = createMigrationSourceValidationAdapter({
+        loadFixedSources: () => loadedSource(),
+        validateSourceConfiguration: () => Promise.resolve({ ok: true })
+      });
+      const result = await adapter.validateSource({ targetMigrationId: 'test' });
+      assert.deepStrictEqual(result, SOURCE_VALIDATION_RESULTS.PASS);
+    });
+
+    it('G11. genuine Promise reject -> UNAVAILABLE', async () => {
+      const adapter = createMigrationSourceValidationAdapter({
+        loadFixedSources: () => loadedSource(),
+        validateSourceConfiguration: () => Promise.reject(new Error('genuine reject'))
+      });
+      const result = await adapter.validateSource({ targetMigrationId: 'test' });
+      assert.deepStrictEqual(result, SOURCE_VALIDATION_RESULTS.UNAVAILABLE);
+    });
+
+    it('G12. Proxy-wrapped validator result -> PASS, get trap 0', async () => {
+      const genuine = { ok: true };
+      let getCalls = 0;
+      const proxied = new Proxy(genuine, {
+        get(target, property, receiver) {
+          getCalls += 1;
+          return Reflect.get(target, property, receiver);
+        }
+      });
+      const adapter = createMigrationSourceValidationAdapter({
+        loadFixedSources: () => loadedSource(),
+        validateSourceConfiguration: () => proxied
+      });
+      const result = await adapter.validateSource({ targetMigrationId: 'test' });
+      assert.deepStrictEqual(result, SOURCE_VALIDATION_RESULTS.PASS);
+      assert.strictEqual(getCalls, 0);
+    });
+
+    it('G13. accessor thenable validator -> UNAVAILABLE, getter 0', async () => {
+      let getterCalls = 0;
+      const thenable = Object.create(null, {
+        then: {
+          get() { getterCalls += 1; return () => ({ ok: true }); },
+          enumerable: true
+        }
+      });
+      const adapter = createMigrationSourceValidationAdapter({
+        loadFixedSources: () => loadedSource(),
+        validateSourceConfiguration: () => thenable
+      });
+      const result = await adapter.validateSource({ targetMigrationId: 'test' });
+      assert.deepStrictEqual(result, SOURCE_VALIDATION_RESULTS.UNAVAILABLE);
+      assert.strictEqual(getterCalls, 0);
+    });
+
+    it('G14. data-property thenable validator -> UNAVAILABLE, then call 0', async () => {
+      let thenCalls = 0;
+      const thenable = {
+        then() { thenCalls += 1; return { ok: true }; }
+      };
+      const adapter = createMigrationSourceValidationAdapter({
+        loadFixedSources: () => loadedSource(),
+        validateSourceConfiguration: () => thenable
+      });
+      const result = await adapter.validateSource({ targetMigrationId: 'test' });
+      assert.deepStrictEqual(result, SOURCE_VALIDATION_RESULTS.UNAVAILABLE);
+      assert.strictEqual(thenCalls, 0);
+    });
+
+    it('G15. non-enumerable ok -> UNAVAILABLE', async () => {
+      const adapter = createMigrationSourceValidationAdapter({
+        loadFixedSources: () => loadedSource(),
+        validateSourceConfiguration: () => Object.create(null, {
+          ok: { value: true, enumerable: false }
+        })
       });
       const result = await adapter.validateSource({ targetMigrationId: 'test' });
       assert.deepStrictEqual(result, SOURCE_VALIDATION_RESULTS.UNAVAILABLE);
@@ -1082,6 +1324,54 @@ describe('DB migration source-validation adapter contract (#3650)', () => {
       const result = await adapter.validateSource({ targetMigrationId: 'test' });
       assert.deepStrictEqual(result, SOURCE_VALIDATION_RESULTS.FAIL);
       assert.strictEqual(validatorCalls, 0);
+    });
+  });
+
+  describe('I. Fixed source actual read counts', () => {
+    it('I1. each fixed file read exactly once per validateSource call', { concurrency: false }, async () => {
+      const { tmpDir, scriptsDir, docsDir, dbDir } = createTempRepo();
+      try {
+        const invPath = path.join(docsDir, 'migration-path-inventory.json');
+        const migPath = path.join(dbDir, 'canonical-migrations.json');
+        const schPath = path.join(dbDir, 'expected-schema-manifest.json');
+        fs.writeFileSync(invPath, VALID_INVENTORY_TEXT, 'utf8');
+        fs.writeFileSync(migPath, VALID_MIGRATIONS_TEXT, 'utf8');
+        fs.writeFileSync(schPath, VALID_SCHEMA_TEXT, 'utf8');
+        writeTempAdapterCore(scriptsDir);
+        const { createMigrationSourceValidationAdapter: create } = loadTempAdapter(scriptsDir);
+
+        const invReal = fs.realpathSync(invPath);
+        const migReal = fs.realpathSync(migPath);
+        const schReal = fs.realpathSync(schPath);
+
+        const counts = new Map([
+          [invReal, 0],
+          [migReal, 0],
+          [schReal, 0]
+        ]);
+
+        const adapter = create();
+        const originalReadFileSync = fs.readFileSync;
+
+        fs.readFileSync = function patchedRead(file, ...args) {
+          const resolved = path.resolve(String(file));
+          if (counts.has(resolved)) {
+            counts.set(resolved, counts.get(resolved) + 1);
+          }
+          return originalReadFileSync.call(this, file, ...args);
+        };
+
+        try {
+          await adapter.validateSource({ targetMigrationId: 'test' });
+          assert.strictEqual(counts.get(invReal), 1);
+          assert.strictEqual(counts.get(migReal), 1);
+          assert.strictEqual(counts.get(schReal), 1);
+        } finally {
+          fs.readFileSync = originalReadFileSync;
+        }
+      } finally {
+        fs.rmSync(tmpDir, { recursive: true, force: true });
+      }
     });
   });
 });
