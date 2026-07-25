@@ -54,17 +54,6 @@ function createSanitizedError(message) {
     // Do not expose the original construction error.
   }
 
-  try {
-    Object.defineProperty(error, 'cause', {
-      value: undefined,
-      enumerable: false,
-      writable: false,
-      configurable: false
-    });
-  } catch {
-    // Do not expose cause.
-  }
-
   return error;
 }
 

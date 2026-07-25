@@ -160,7 +160,7 @@ Rules:
 
 ### Dense Array Snapshot Helper
 
-`snpashotDenseArray(array, snapshotElement)` validates:
+`snapshotDenseArray(array, snapshotElement)` validates:
 - `Array.isArray(value) === true`
 - prototype is `Array.prototype`
 - own keys: exactly `length` plus `0 ... length - 1`

@@ -894,7 +894,14 @@ describe('DB migration canonical manifest adapter contract (#3652)', () => {
       return () => {
         assert.throws(
           () => createMigrationCanonicalManifestAdapter(arg),
-          (err) => err.message === FACTORY_ERROR_INVALID_DEPENDENCY
+          (err) => {
+            assert.strictEqual(err.message, FACTORY_ERROR_INVALID_DEPENDENCY);
+            assert.strictEqual(
+              Object.prototype.hasOwnProperty.call(err, 'cause'),
+              false
+            );
+            return true;
+          }
         );
       };
     }
@@ -918,7 +925,14 @@ describe('DB migration canonical manifest adapter contract (#3652)', () => {
       });
       assert.throws(
         () => createMigrationCanonicalManifestAdapter(cfg),
-        (err) => err.message === FACTORY_ERROR_INVALID_DEPENDENCY
+        (err) => {
+          assert.strictEqual(err.message, FACTORY_ERROR_INVALID_DEPENDENCY);
+          assert.strictEqual(
+            Object.prototype.hasOwnProperty.call(err, 'cause'),
+            false
+          );
+          return true;
+        }
       );
       assert.strictEqual(getterCalls, 0);
     });
@@ -929,7 +943,14 @@ describe('DB migration canonical manifest adapter contract (#3652)', () => {
       });
       assert.throws(
         () => createMigrationCanonicalManifestAdapter(cfg),
-        (err) => err.message === FACTORY_ERROR_INVALID_DEPENDENCY
+        (err) => {
+          assert.strictEqual(err.message, FACTORY_ERROR_INVALID_DEPENDENCY);
+          assert.strictEqual(
+            Object.prototype.hasOwnProperty.call(err, 'cause'),
+            false
+          );
+          return true;
+        }
       );
     });
 
@@ -1304,6 +1325,10 @@ describe('DB migration canonical manifest adapter contract (#3652)', () => {
         (err) => {
           assert.strictEqual(err.stack, undefined);
           assert.strictEqual(err.cause, undefined);
+          assert.strictEqual(
+            Object.prototype.hasOwnProperty.call(err, 'cause'),
+            false
+          );
           return true;
         }
       );
