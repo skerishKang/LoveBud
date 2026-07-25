@@ -1,7 +1,7 @@
 # LoveBud Agent Global Rules
 
-> Canonical governance: `docs/ops/MVP_AGENT_GOVERNANCE.md`.  
-> Role model: `docs/project/WEB_CTO_WEB_DEVELOPER_LOCAL_VALIDATION.md`.  
+> Canonical governance: `docs/ops/MVP_AGENT_GOVERNANCE.md`.
+> Role model: `docs/project/WEB_CTO_WEB_DEVELOPER_LOCAL_VALIDATION.md`.
 > UI fast lane: `docs/project/UI_RAPID_ITERATION_LANE.md`.
 
 These rules apply especially to local/code-executor agents. Conflicts defer to canonical governance.
@@ -87,6 +87,6 @@ Never expose credentials, tokens, cookies, sessions, private IDs/payloads, datab
 - Web CTO verifies exact expected head and squash merges.
 - Never close #1882; use `Refs #1882` only.
 
-Refs #3664.  
-Refs #3662.  
+Refs #3664.
+Refs #3662.
 Refs #1882 — Keep OPEN.

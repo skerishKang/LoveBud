@@ -1,8 +1,8 @@
 # Verification and Evidence
 
-> **Hard-governance authority:** `../ops/MVP_AGENT_GOVERNANCE.md`  
-> **Role model:** `WEB_CTO_WEB_DEVELOPER_LOCAL_VALIDATION.md`  
-> **UI fast lane:** `UI_RAPID_ITERATION_LANE.md`  
+> **Hard-governance authority:** `../ops/MVP_AGENT_GOVERNANCE.md`
+> **Role model:** `WEB_CTO_WEB_DEVELOPER_LOCAL_VALIDATION.md`
+> **UI fast lane:** `UI_RAPID_ITERATION_LANE.md`
 > **Merge-first workflow:** `../ops/MERGE_FIRST_PRODUCTION_VERIFICATION_WORKFLOW.md`
 
 ## 1. Purpose
@@ -268,6 +268,6 @@ unverified items
 - [../ops/MERGE_FIRST_PRODUCTION_VERIFICATION_WORKFLOW.md](../ops/MERGE_FIRST_PRODUCTION_VERIFICATION_WORKFLOW.md)
 - [../ops/UI_SCREENSHOT_CTO_REVIEW_POLICY.md](../ops/UI_SCREENSHOT_CTO_REVIEW_POLICY.md)
 
-Refs #3664.  
-Refs #3662.  
+Refs #3664.
+Refs #3662.
 Refs #1882 — Keep OPEN.

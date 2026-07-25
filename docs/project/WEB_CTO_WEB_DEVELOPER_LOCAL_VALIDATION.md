@@ -1,7 +1,7 @@
 # Web CTO, Web Developer, and Local Validation Operating Model
 
-> **Status:** owner-approved operating model — Issue #3662  
-> **UI acceleration amendment:** Issue #3664  
+> **Status:** owner-approved operating model — Issue #3662
+> **UI acceleration amendment:** Issue #3664
 > **Hard-governance authority:** `../ops/MVP_AGENT_GOVERNANCE.md`
 
 ## 1. Purpose
@@ -370,6 +370,6 @@ The following remain authoritative:
 - verify expected head, then squash merge;
 - never close #1882 and use `Refs #1882` only.
 
-Refs #3664.  
-Refs #3662.  
+Refs #3664.
+Refs #3662.
 Refs #1882 — Keep OPEN.

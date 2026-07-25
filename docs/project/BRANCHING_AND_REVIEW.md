@@ -1,7 +1,7 @@
 # Branching and Review
 
-> **Role model:** `WEB_CTO_WEB_DEVELOPER_LOCAL_VALIDATION.md`  
-> **UI fast lane:** `UI_RAPID_ITERATION_LANE.md`  
+> **Role model:** `WEB_CTO_WEB_DEVELOPER_LOCAL_VALIDATION.md`
+> **UI fast lane:** `UI_RAPID_ITERATION_LANE.md`
 > **Governance:** `../ops/MVP_AGENT_GOVERNANCE.md`
 
 ## Core rules
@@ -118,6 +118,6 @@ For U0/U1 visual misses, create a new micro branch/PR from current `main`, apply
 
 Do not force-push/reset `main`. Use a dedicated revert PR only when a small corrective PR is not safe.
 
-Refs #3664.  
-Refs #3662.  
+Refs #3664.
+Refs #3662.
 Refs #1882 — Keep OPEN.

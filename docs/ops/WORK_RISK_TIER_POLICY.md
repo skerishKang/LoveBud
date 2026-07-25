@@ -1,7 +1,7 @@
 # Work Risk Tier Policy
 
-> **Hard governance:** `MVP_AGENT_GOVERNANCE.md`  
-> **Execution roles:** `../project/WEB_CTO_WEB_DEVELOPER_LOCAL_VALIDATION.md`  
+> **Hard governance:** `MVP_AGENT_GOVERNANCE.md`
+> **Execution roles:** `../project/WEB_CTO_WEB_DEVELOPER_LOCAL_VALIDATION.md`
 > **UI-specific classification:** `../project/UI_RAPID_ITERATION_LANE.md`
 
 ## Purpose
@@ -189,6 +189,6 @@ Local Validation: REQUIRED / NOT_REQUIRED / COMPLETED / PENDING
 browser/Production evidence remaining
 ```
 
-Refs #3664.  
-Refs #3662.  
+Refs #3664.
+Refs #3662.
 Refs #1882 — Keep OPEN.

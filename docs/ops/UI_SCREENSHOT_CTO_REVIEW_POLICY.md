@@ -1,11 +1,11 @@
 # UI Screenshot and CTO Visual Review Policy
 
-> **Hard governance:** `MVP_AGENT_GOVERNANCE.md`  
-> **UI fast lane:** `../project/UI_RAPID_ITERATION_LANE.md`  
+> **Hard governance:** `MVP_AGENT_GOVERNANCE.md`
+> **UI fast lane:** `../project/UI_RAPID_ITERATION_LANE.md`
 > **Role model:** `../project/WEB_CTO_WEB_DEVELOPER_LOCAL_VALIDATION.md`
 
-Refs #901.  
-Refs #588.  
+Refs #901.
+Refs #588.
 Refs #681.
 
 ## Purpose
@@ -172,6 +172,6 @@ This policy is satisfied when:
 3. final visual judgment remains with Web CTO/user;
 4. low-risk UI is not delayed by mandatory preview/fixed-slot or unnecessary screenshot matrices.
 
-Refs #3664.  
-Refs #3662.  
+Refs #3664.
+Refs #3662.
 Refs #1882 — Keep OPEN.

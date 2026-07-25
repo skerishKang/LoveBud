@@ -1,7 +1,7 @@
 # UI Rapid Iteration Lane
 
-> **Status:** owner-approved operating policy — Issue #3664  
-> **Parent operating model:** `WEB_CTO_WEB_DEVELOPER_LOCAL_VALIDATION.md`  
+> **Status:** owner-approved operating policy — Issue #3664
+> **Parent operating model:** `WEB_CTO_WEB_DEVELOPER_LOCAL_VALIDATION.md`
 > **Hard-governance authority:** `../ops/MVP_AGENT_GOVERNANCE.md`
 
 ## 1. Purpose
@@ -353,6 +353,6 @@ The following remain authoritative:
 - expected-head verification and squash merge;
 - never close #1882 and use `Refs #1882` only.
 
-Refs #3664.  
-Refs #3662.  
+Refs #3664.
+Refs #3662.
 Refs #1882 — Keep OPEN.

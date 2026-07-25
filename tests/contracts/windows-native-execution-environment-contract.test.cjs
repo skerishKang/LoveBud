@@ -31,7 +31,10 @@ const runbook = read(
 // ─── AGENTS.md ─────────────────────────────────────────────────────────────
 
 test('AGENTS.md declares Windows-native as the local execution default', () => {
-  assert.match(agents, /## Current local execution environment/);
+  assert.match(
+    agents,
+    /^## 10\. Current local execution environment$/m
+  );
   assert.match(agents, /Primary OS:\*\* Windows|기본 OS는 Windows/i);
   assert.match(agents, /PowerShell 7/);
   assert.match(agents, /pwsh\.exe/);

@@ -1,9 +1,9 @@
 # Merge-First Production Verification Workflow
 
-> **Status:** active canonical workflow  
-> **Hard governance:** `MVP_AGENT_GOVERNANCE.md`  
-> **Role model:** `../project/WEB_CTO_WEB_DEVELOPER_LOCAL_VALIDATION.md`  
-> **UI fast lane:** `../project/UI_RAPID_ITERATION_LANE.md`  
+> **Status:** active canonical workflow
+> **Hard governance:** `MVP_AGENT_GOVERNANCE.md`
+> **Role model:** `../project/WEB_CTO_WEB_DEVELOPER_LOCAL_VALIDATION.md`
+> **UI fast lane:** `../project/UI_RAPID_ITERATION_LANE.md`
 > **Refs:** #3513, #3662, #3664
 
 ## 1. Purpose
@@ -251,7 +251,7 @@ Secret/private exposure: NONE
 
 This workflow does not weaken hard governance. Secret safety, preservation of worker state, production-destructive approval, CI executed-failure/pending blockers, alternative evidence for infrastructure unavailability, expected-head squash merge, and #1882 protection remain authoritative.
 
-Refs #3664.  
-Refs #3662.  
-Refs #3513.  
+Refs #3664.
+Refs #3662.
+Refs #3513.
 Refs #1882 — Keep OPEN.

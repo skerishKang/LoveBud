@@ -1,8 +1,8 @@
 # Role Session Templates
 
-> **Operating model:** `WEB_CTO_WEB_DEVELOPER_LOCAL_VALIDATION.md`  
-> **UI fast lane:** `UI_RAPID_ITERATION_LANE.md`  
-> **Governance:** `../ops/MVP_AGENT_GOVERNANCE.md`  
+> **Operating model:** `WEB_CTO_WEB_DEVELOPER_LOCAL_VALIDATION.md`
+> **UI fast lane:** `UI_RAPID_ITERATION_LANE.md`
+> **Governance:** `../ops/MVP_AGENT_GOVERNANCE.md`
 > **Approval provenance:** Issues #3662 and #3664
 
 Use these templates to start or restore the three LoveBud execution roles. Replace placeholders before use. Never paste secrets, cookies, tokens, private payloads, or credential values.
@@ -308,6 +308,6 @@ Web CTO → Web Developer → Local Validation → Web CTO
 
 Do not start Local Validation automatically. Do not start a second writer on the same remote branch unless the split is explicit and non-overlapping.
 
-Refs #3664.  
-Refs #3662.  
+Refs #3664.
+Refs #3662.
 Refs #1882 — Keep OPEN.

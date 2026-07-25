@@ -1,8 +1,8 @@
 # LoveBud Agent Instruction Policy
 
-> **Repository entrypoint:** `AGENTS.md`  
-> **Hard governance:** `MVP_AGENT_GOVERNANCE.md`  
-> **Execution roles:** `../project/WEB_CTO_WEB_DEVELOPER_LOCAL_VALIDATION.md`  
+> **Repository entrypoint:** `AGENTS.md`
+> **Hard governance:** `MVP_AGENT_GOVERNANCE.md`
+> **Execution roles:** `../project/WEB_CTO_WEB_DEVELOPER_LOCAL_VALIDATION.md`
 > **UI fast lane:** `../project/UI_RAPID_ITERATION_LANE.md`
 
 ## 1. Purpose
@@ -94,7 +94,7 @@ This policy does not:
 - Never use `Closes #1882`, `Fixes #1882`, or `Resolves #1882`.
 - Use `Refs #1882` only.
 
-Refs #3664.  
-Refs #3662.  
-Refs #2714.  
+Refs #3664.
+Refs #3662.
+Refs #2714.
 Refs #1882 — Keep OPEN.

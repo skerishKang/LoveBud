@@ -1,6 +1,6 @@
 # MVP Agent Governance
 
-> **Status:** canonical source of truth — owner-approved  
+> **Status:** canonical source of truth — owner-approved
 > **Approval provenance:** Issue #3442 comment `4947327550`; CI amendment #3642; separated execution roles #3662; UI Rapid Iteration Lane #3664
 
 This document is the canonical source of truth for LoveBud hard blockers, CI classification, browser permission, role-allocation authority, and merge governance. Conflicting historical documents are non-normative outside their named original context.
@@ -174,11 +174,11 @@ The following supersede conflicting historical process language:
 - `docs/ops/MERGE_FIRST_PRODUCTION_VERIFICATION_WORKFLOW.md` for current browser/Production flow;
 - this document for hard blockers and CI classification.
 
-Refs #3664.  
-Refs #3662.  
-Refs #3642.  
-Refs #3442.  
-Refs #3441.  
-Refs #3437.  
-Refs #3435.  
+Refs #3664.
+Refs #3662.
+Refs #3642.
+Refs #3442.
+Refs #3441.
+Refs #3437.
+Refs #3435.
 Refs #1882 — Keep OPEN.

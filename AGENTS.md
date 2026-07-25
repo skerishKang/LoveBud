@@ -244,6 +244,6 @@ verify current remote state
 → confirm affected Production behavior
 ```
 
-Refs #3664.  
-Refs #3662.  
+Refs #3664.
+Refs #3662.
 Refs #1882 — Keep OPEN.

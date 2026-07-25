@@ -1,8 +1,8 @@
 # Local Model Workflow
 
-> **Default role:** Local Validation  
-> **Role model:** `WEB_CTO_WEB_DEVELOPER_LOCAL_VALIDATION.md`  
-> **UI fast lane:** `UI_RAPID_ITERATION_LANE.md`  
+> **Default role:** Local Validation
+> **Role model:** `WEB_CTO_WEB_DEVELOPER_LOCAL_VALIDATION.md`
+> **UI fast lane:** `UI_RAPID_ITERATION_LANE.md`
 > **Hard-governance precedence:** `../ops/MVP_AGENT_GOVERNANCE.md`
 
 ## Purpose
@@ -205,6 +205,6 @@ LOCAL_VALIDATION_PASS / LOCAL_VALIDATION_FAIL / LOCAL_VALIDATION_PARTIAL
 - [VERIFICATION_AND_EVIDENCE.md](./VERIFICATION_AND_EVIDENCE.md)
 - [../ops/MVP_AGENT_GOVERNANCE.md](../ops/MVP_AGENT_GOVERNANCE.md)
 
-Refs #3664.  
-Refs #3662.  
+Refs #3664.
+Refs #3662.
 Refs #1882 — Keep OPEN.

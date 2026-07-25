@@ -1,7 +1,7 @@
 # LoveBud PR Checklist
 
-> **Hard governance:** `MVP_AGENT_GOVERNANCE.md`  
-> **Role model:** `../project/WEB_CTO_WEB_DEVELOPER_LOCAL_VALIDATION.md`  
+> **Hard governance:** `MVP_AGENT_GOVERNANCE.md`
+> **Role model:** `../project/WEB_CTO_WEB_DEVELOPER_LOCAL_VALIDATION.md`
 > **UI fast lane:** `../project/UI_RAPID_ITERATION_LANE.md`
 
 ## 1. Every PR
@@ -205,6 +205,6 @@ NOT_READY
 
 A developer or verifier report never replaces Web CTO final review.
 
-Refs #3664.  
-Refs #3662.  
+Refs #3664.
+Refs #3662.
 Refs #1882 — Keep OPEN.

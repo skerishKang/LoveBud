@@ -109,6 +109,6 @@ They do not override:
 - Never expose secret/private values in documentation.
 - Never close #1882; use `Refs #1882` only.
 
-Refs #3664.  
-Refs #3662.  
+Refs #3664.
+Refs #3662.
 Refs #1882 — Keep OPEN.

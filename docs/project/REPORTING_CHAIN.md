@@ -1,7 +1,7 @@
 # Reporting Chain
 
-> **Role model:** Issue #3662  
-> **UI fast lane:** Issue #3664  
+> **Role model:** Issue #3662
+> **UI fast lane:** Issue #3664
 > **Detailed contracts:** `WEB_CTO_WEB_DEVELOPER_LOCAL_VALIDATION.md`, `UI_RAPID_ITERATION_LANE.md`
 
 ## Roles
@@ -179,6 +179,6 @@ One remote branch has one active writer. Shared/global files are serialized.
 - [LOCAL_MODEL_WORKFLOW.md](./LOCAL_MODEL_WORKFLOW.md)
 - [../ops/MVP_AGENT_GOVERNANCE.md](../ops/MVP_AGENT_GOVERNANCE.md)
 
-Refs #3664.  
-Refs #3662.  
+Refs #3664.
+Refs #3662.
 Refs #1882 — Keep OPEN.

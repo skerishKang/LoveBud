@@ -51,6 +51,6 @@ Historical TF Lead, `UI Local`, `Feature Local`, fixed-slot-required, universal 
 - use exact evidence and preserve protected Issues;
 - #1882 uses `Refs #1882` only.
 
-Refs #3664.  
-Refs #3662.  
+Refs #3664.
+Refs #3662.
 Refs #1882 — Keep OPEN.

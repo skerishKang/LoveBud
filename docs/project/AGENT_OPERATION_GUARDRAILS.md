@@ -1,7 +1,7 @@
 # Agent Operation Guardrails
 
-> **Hard-governance precedence:** `docs/ops/MVP_AGENT_GOVERNANCE.md`  
-> **Role model:** `WEB_CTO_WEB_DEVELOPER_LOCAL_VALIDATION.md`  
+> **Hard-governance precedence:** `docs/ops/MVP_AGENT_GOVERNANCE.md`
+> **Role model:** `WEB_CTO_WEB_DEVELOPER_LOCAL_VALIDATION.md`
 > **UI fast lane:** `UI_RAPID_ITERATION_LANE.md`
 
 ## Purpose
@@ -187,6 +187,6 @@ The Web CTO reviews remote evidence and the pre-fixed contract, not summaries al
 - `docs/project/ROLE_SESSION_TEMPLATES.md`
 - `docs/project/LOCAL_MODEL_WORKFLOW.md`
 
-Refs #3664.  
-Refs #3662.  
+Refs #3664.
+Refs #3662.
 Refs #1882 — Keep OPEN.

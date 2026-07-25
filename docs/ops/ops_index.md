@@ -80,7 +80,7 @@ One active writer per remote branch. Preserve other workers' state. Do not use d
 - [MODAL_BROWSE_RUNTIME.md](MODAL_BROWSE_RUNTIME.md)
 - [MODAL_RUNTIME_DIAGNOSTICS_WORKFLOW.md](MODAL_RUNTIME_DIAGNOSTICS_WORKFLOW.md)
 - [TREE_LIKE_RUNTIME_VERIFICATION_RUNBOOK.md](TREE_LIKE_RUNTIME_VERIFICATION_RUNBOOK.md)
-- [DEPLOYMENT_TARGET_PAGE_OWNERSHIP_AUDIT.md](DEPLOYMENT_TARGET_PAGE_OWNERSHIP_AUDIT.md) — Issue #2715 deployment target and page ownership audit.
+- [DEPLOYMENT_TARGET_PAGE_OWNERSHIP_AUDIT.md](DEPLOYMENT_TARGET_PAGE_OWNERSHIP_AUDIT.md) — Issue #2715 deployment target and page ownership audit covering the Cloudflare Pages/Modal active boundary, Vercel/Netlify legacy/transitional posture, detail.html vs view.html ownership, and no-removal guardrails.
 - [../migration/VERCEL_MODAL_MIGRATION_RUNBOOK.md](../migration/VERCEL_MODAL_MIGRATION_RUNBOOK.md)
 
 ## Secret and security references
@@ -100,6 +100,6 @@ Many operations documents were written for earlier fixed-slot, Local-coder, TF L
 - `UI_RAPID_ITERATION_LANE.md`;
 - `MERGE_FIRST_PRODUCTION_VERIFICATION_WORKFLOW.md`.
 
-Refs #3664.  
-Refs #3662.  
+Refs #3664.
+Refs #3662.
 Refs #1882 — Keep OPEN.
