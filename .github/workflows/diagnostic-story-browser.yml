@@ -1,0 +1,49 @@
+name: Diagnostic Story Browser Contract
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/diagnostic-story-browser.yml'
+      - 'tests/contracts/browse-story-view-foundation-3655-browser-contract.test.cjs'
+      - 'package.json'
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run exact browser contract and capture output
+        id: browser_contract
+        shell: bash
+        run: |
+          set +e
+          node --test tests/contracts/browse-story-view-foundation-3655-browser-contract.test.cjs > story-browser-contract.log 2>&1
+          status=$?
+          echo "status=${status}" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Upload diagnostic log
+        uses: actions/upload-artifact@v4
+        with:
+          name: story-browser-contract-log
+          path: story-browser-contract.log
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Preserve diagnostic result
+        run: |
+          echo "Exact browser contract exit status: ${{ steps.browser_contract.outputs.status }}"
