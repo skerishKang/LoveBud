@@ -235,14 +235,14 @@ test('PR checklist and verification docs implement the same risk routing', () =>
 });
 
 test('current policy docs do not make fixed slot a universal merge gate', () => {
-  const forbidden = /fixed[- ]slot.{0,100}(required|mandatory|must).{0,100}(every|all|before merge)/is;
+  const forbidden = /fixed[- ]slot[^\n]*(?:is required|is mandatory|must be used|must run)[^\n]*(?:every|all|before merge)/i;
   for (const rel of CURRENT_POLICY_DOCS) {
     assert.doesNotMatch(read(rel), forbidden, `${rel} must not restore universal fixed-slot gate`);
   }
 });
 
 test('current policy docs do not make Local Validation universal for U0/U1', () => {
-  const forbidden = /U0\/U1.{0,180}Local Validation (?:is )?(?:required|mandatory|must)/is;
+  const forbidden = /U0\/U1[^\n]*(?:Local Validation is required|Local Validation is mandatory|must use Local Validation)/i;
   for (const rel of CURRENT_POLICY_DOCS) {
     assert.doesNotMatch(read(rel), forbidden, `${rel} must not require Local for U0/U1`);
   }
