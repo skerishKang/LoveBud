@@ -307,6 +307,48 @@ async function storyState(page) {
   });
 }
 
+function capturePageErrors(page) {
+  const errors = [];
+  page.on('pageerror', error => { errors.push(String(error)); });
+  return errors;
+}
+
+async function directCardIds(page) {
+  return page.evaluate(() => {
+    return [...document.querySelectorAll('#resultsList > .tree-card[data-tree-id]')]
+      .map(card => card.getAttribute('data-tree-id'));
+  });
+}
+
+async function transitionHeightProperty(page) {
+  return page.evaluate(() => {
+    return document.getElementById('resultsList').style.getPropertyValue('--story-transition-height');
+  });
+}
+
+const CANONICAL_IDS = ['browse-1', 'browse-2', 'browse-3', 'browse-4', 'browse-5', 'browse-6', 'browse-7'];
+
+async function assertCleanLifecycle(page) {
+  const state = await page.evaluate(() => {
+    const results = document.getElementById('resultsList');
+    const wrappers = results.querySelectorAll('.browse-story-transition-stage');
+    const allCards = [...results.querySelectorAll('.tree-card[data-tree-id]')];
+    return {
+      wrapperCount: wrappers.length,
+      ariaBusy: results.getAttribute('aria-busy'),
+      direction: results.getAttribute('data-story-direction'),
+      inertCount: allCards.filter(c => c.hasAttribute('inert')).length,
+      heightProp: results.style.getPropertyValue('--story-transition-height'),
+    };
+  });
+  const assert = require('node:assert/strict');
+  assert.equal(state.wrapperCount, 0, 'no wrappers');
+  assert.ok(state.ariaBusy === null || state.ariaBusy === 'false', 'aria-busy cleared');
+  assert.equal(state.direction, null, 'direction cleared');
+  assert.equal(state.inertCount, 0, 'no inert cards');
+  assert.equal(state.heightProp, '', 'height custom property removed');
+}
+
 /* ── Mode capability ──────────────────────────────────────────────── */
 
 test('#3655 browser: Browse exposes four modes; story applies the data attribute', { timeout: 90000 }, async () => {
@@ -1381,6 +1423,7 @@ test('#3655 browser: external results.innerHTML during transition cancels cleanl
   try {
     const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
     const page = await context.newPage();
+    const pageErrors = capturePageErrors(page);
     await page.addInitScript(() => localStorage.setItem('lovebud:browse:viewMode', 'story'));
     await page.goto(`http://127.0.0.1:${port}/fixture-browse-story.html`, { waitUntil: 'networkidle' });
     await page.waitForTimeout(150);
@@ -1404,6 +1447,8 @@ test('#3655 browser: external results.innerHTML during transition cancels cleanl
     const state = await page.evaluate(() => {
       const results = document.getElementById('resultsList');
       const wrappers = results.querySelectorAll('.browse-story-transition-stage');
+      const allIds = [...results.querySelectorAll('.tree-card[data-tree-id]')]
+        .map(card => card.getAttribute('data-tree-id'));
       const visible = [...results.querySelectorAll('.tree-card[data-tree-id]')]
         .filter(c => !c.hidden).map(c => c.getAttribute('data-tree-id'));
       const indicator = document.querySelector('.browse-story-indicator-current');
@@ -1411,16 +1456,22 @@ test('#3655 browser: external results.innerHTML during transition cancels cleanl
         exception: window.__exception,
         wrapperCount: wrappers.length,
         ariaBusy: results.getAttribute('aria-busy'),
+        allIds,
+        oldIds: allIds.filter(id => id.startsWith('browse-')),
         visible,
         indicator: indicator ? indicator.textContent : null,
+        heightProp: results.style.getPropertyValue('--story-transition-height'),
       };
     });
 
     assert.equal(state.exception, false, 'no exception during external replacement');
     assert.equal(state.wrapperCount, 0, 'no stale wrappers after external replacement');
     assert.equal(state.ariaBusy, null, 'aria-busy cleared after external replacement');
+    assert.deepEqual(state.oldIds, [], 'no old browse- IDs remain in DOM');
     assert.deepEqual(state.visible, ['new-1', 'new-2', 'new-3'], 'new cards displayed after external replacement');
     assert.equal(state.indicator, '01 / 01', 'indicator reset after external replacement');
+    assert.equal(state.heightProp, '', '--story-transition-height removed after replacement');
+    assert.deepEqual(pageErrors, [], 'no page errors during external replacement');
 
     await context.close();
   } finally {
@@ -1480,17 +1531,18 @@ test('#3655 browser: arrow/Home/End keys in search input are not prevented durin
 
 /* ── Idempotent cancellation (Blocker D) ─────────────────────────── */
 
-test('#3655 browser: compact mode during transition cancels cleanly', { timeout: 120000 }, async () => {
+test('#3655 browser: compact mode during transition cancels cleanly with canonical order', { timeout: 120000 }, async () => {
   const browser = await launchBrowser();
   const { server, port } = await startServer();
   try {
     const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
     const page = await context.newPage();
+    const pageErrors = capturePageErrors(page);
     await page.addInitScript(() => localStorage.setItem('lovebud:browse:viewMode', 'story'));
     await page.goto(`http://127.0.0.1:${port}/fixture-browse-story.html`, { waitUntil: 'networkidle' });
     await page.waitForTimeout(150);
 
-    // Start transition
+    // Start transition (Next)
     await page.click('[data-story-next]');
     await page.waitForTimeout(50);
 
@@ -1498,31 +1550,68 @@ test('#3655 browser: compact mode during transition cancels cleanly', { timeout:
     await clickModeButton(page, 'compact');
     await page.waitForTimeout(100);
 
+    // Verify canonical direct-child order
+    const ids = await directCardIds(page);
+    assert.deepEqual(ids, CANONICAL_IDS, 'canonical direct-child order after Next cancellation');
+
     const state = await page.evaluate(() => {
       const results = document.getElementById('resultsList');
       const wrappers = results.querySelectorAll('.browse-story-transition-stage');
       const allCards = [...results.querySelectorAll('.tree-card[data-tree-id]')];
-      const hiddenCount = allCards.filter(c => c.hidden).length;
-      const inertCards = allCards.filter(c => c.hasAttribute('inert')).length;
-      const storyVisible = results.querySelectorAll('.is-story-visible').length;
       return {
         wrapperCount: wrappers.length,
         mode: results.getAttribute('data-tree-view-mode'),
-        allCardsCount: allCards.length,
-        hiddenCount,
-        inertCount: inertCards.length,
-        storyVisibleCount: storyVisible.length,
         ariaBusy: results.getAttribute('aria-busy'),
+        direction: results.getAttribute('data-story-direction'),
+        inertCount: allCards.filter(c => c.hasAttribute('inert')).length,
+        heightProp: results.style.getPropertyValue('--story-transition-height'),
       };
     });
 
     assert.equal(state.mode, 'compact', 'mode switched to compact');
     assert.equal(state.wrapperCount, 0, 'no wrappers after cancel');
-    assert.equal(state.allCardsCount, 7, 'all 7 cards in DOM');
-    assert.equal(state.hiddenCount, 0, 'all cards visible in compact');
-    assert.equal(state.inertCount, 0, 'no inert cards after cancel');
-    assert.equal(state.storyVisibleCount, 0, 'no story-visible class after cancel');
     assert.ok(state.ariaBusy === null || state.ariaBusy === 'false', 'aria-busy cleared');
+    assert.equal(state.direction, null, 'direction cleared');
+    assert.equal(state.inertCount, 0, 'no inert cards after cancel');
+    assert.equal(state.heightProp, '', 'height custom property removed');
+    assert.deepEqual(pageErrors, [], 'no page errors during compact cancellation');
+
+    await context.close();
+  } finally {
+    await browser.close();
+    server.close();
+  }
+});
+
+test('#3655 browser: Previous cancellation restores canonical order', { timeout: 120000 }, async () => {
+  const browser = await launchBrowser();
+  const { server, port } = await startServer();
+  try {
+    const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+    const page = await context.newPage();
+    const pageErrors = capturePageErrors(page);
+    await page.addInitScript(() => localStorage.setItem('lovebud:browse:viewMode', 'story'));
+    await page.goto(`http://127.0.0.1:${port}/fixture-browse-story.html`, { waitUntil: 'networkidle' });
+    await page.waitForTimeout(150);
+
+    // Navigate to last group (3 cards → 1 card)
+    await page.click('[data-story-next]');
+    await page.waitForTimeout(420);
+    await page.click('[data-story-next]');
+    await page.waitForTimeout(420);
+
+    // Start Previous transition (1→3)
+    await page.click('[data-story-prev]');
+    await page.waitForTimeout(50);
+
+    // Cancel via compact
+    await clickModeButton(page, 'compact');
+    await page.waitForTimeout(100);
+
+    // Verify canonical direct-child order
+    const ids = await directCardIds(page);
+    assert.deepEqual(ids, CANONICAL_IDS, 'canonical direct-child order after Previous cancellation');
+    assert.deepEqual(pageErrors, [], 'no page errors during Previous cancellation');
 
     await context.close();
   } finally {
@@ -1537,6 +1626,7 @@ test('#3655 browser: story re-entry after cancellation works correctly', { timeo
   try {
     const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
     const page = await context.newPage();
+    const pageErrors = capturePageErrors(page);
     await page.addInitScript(() => localStorage.setItem('lovebud:browse:viewMode', 'story'));
     await page.goto(`http://127.0.0.1:${port}/fixture-browse-story.html`, { waitUntil: 'networkidle' });
     await page.waitForTimeout(150);
@@ -1546,6 +1636,10 @@ test('#3655 browser: story re-entry after cancellation works correctly', { timeo
     await page.waitForTimeout(50);
     await clickModeButton(page, 'compact');
     await page.waitForTimeout(100);
+
+    // Verify canonical order before re-entry
+    const preIds = await directCardIds(page);
+    assert.deepEqual(preIds, CANONICAL_IDS, 'canonical order before story re-entry');
 
     // Re-enter story mode
     await clickModeButton(page, 'story');
@@ -1563,6 +1657,7 @@ test('#3655 browser: story re-entry after cancellation works correctly', { timeo
     await page.waitForTimeout(420);
     const st2 = await storyState(page);
     assert.equal(st2.indicator, '02 / 03', 'navigation works after re-entry');
+    assert.deepEqual(pageErrors, [], 'no page errors during story re-entry');
 
     await context.close();
   } finally {
@@ -1577,6 +1672,7 @@ test('#3655 browser: breakpoint change during transition cancels cleanly', { tim
   try {
     const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
     const page = await context.newPage();
+    const pageErrors = capturePageErrors(page);
     await page.addInitScript(() => localStorage.setItem('lovebud:browse:viewMode', 'story'));
     await page.goto(`http://127.0.0.1:${port}/fixture-browse-story.html`, { waitUntil: 'networkidle' });
     await page.waitForTimeout(150);
@@ -1594,6 +1690,12 @@ test('#3655 browser: breakpoint change during transition cancels cleanly', { tim
     assert.equal(st.groupSizeAttr, '2', 'group size changed to 2 for tablet');
     assert.equal(st.visible.length, 2, 'shows 2 cards after breakpoint change');
 
+    // Verify canonical order and cleanup
+    const ids = await directCardIds(page);
+    assert.deepEqual(ids, CANONICAL_IDS, 'canonical direct-child order after breakpoint');
+    assert.equal(await transitionHeightProperty(page), '', 'height property removed after breakpoint');
+    assert.deepEqual(pageErrors, [], 'no page errors during breakpoint change');
+
     await context.close();
   } finally {
     await browser.close();
@@ -1607,6 +1709,7 @@ test('#3655 browser: destroy during transition cleans up completely', { timeout:
   try {
     const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
     const page = await context.newPage();
+    const pageErrors = capturePageErrors(page);
     await page.addInitScript(() => localStorage.setItem('lovebud:browse:viewMode', 'story'));
     await page.goto(`http://127.0.0.1:${port}/fixture-browse-story.html`, { waitUntil: 'networkidle' });
     await page.waitForTimeout(150);
@@ -1618,6 +1721,10 @@ test('#3655 browser: destroy during transition cleans up completely', { timeout:
     // Destroy the controller during transition
     await page.evaluate(() => window.__storyController.destroy());
     await page.waitForTimeout(100);
+
+    // Verify canonical direct-child order
+    const ids = await directCardIds(page);
+    assert.deepEqual(ids, CANONICAL_IDS, 'canonical direct-child order after destroy');
 
     const state = await page.evaluate(() => {
       const results = document.getElementById('resultsList');
@@ -1636,6 +1743,7 @@ test('#3655 browser: destroy during transition cleans up completely', { timeout:
         direction: results.getAttribute('data-story-direction'),
         groupSize: results.getAttribute('data-story-group-size'),
         mode: results.getAttribute('data-tree-view-mode'),
+        heightProp: results.style.getPropertyValue('--story-transition-height'),
       };
     });
 
@@ -1647,6 +1755,8 @@ test('#3655 browser: destroy during transition cleans up completely', { timeout:
     assert.ok(state.ariaBusy === null || state.ariaBusy === 'false', 'aria-busy cleared');
     assert.equal(state.direction, null, 'direction attribute cleared');
     assert.equal(state.groupSize, null, 'group size attribute cleared');
+    assert.equal(state.heightProp, '', 'height custom property removed after destroy');
+    assert.deepEqual(pageErrors, [], 'no page errors during destroy');
 
     await context.close();
   } finally {
@@ -1717,6 +1827,53 @@ test('#3655 browser: transition height stabilization with different-height cards
     assert.ok(afterHeight > 50, 'results height must still be positive after transition');
 
     assert.deepEqual(pageErrors, [], 'no page errors during height-stabilized transition');
+    await context.close();
+  } finally {
+    await browser.close();
+    server.close();
+  }
+});
+
+test('#3655 browser: refresh during transition cleans up completely', { timeout: 120000 }, async () => {
+  const browser = await launchBrowser();
+  const { server, port } = await startServer();
+  try {
+    const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+    const page = await context.newPage();
+    const pageErrors = capturePageErrors(page);
+    await page.addInitScript(() => localStorage.setItem('lovebud:browse:viewMode', 'story'));
+    await page.goto(`http://127.0.0.1:${port}/fixture-browse-story.html`, { waitUntil: 'networkidle' });
+    await page.waitForTimeout(150);
+
+    // Start transition
+    await page.click('[data-story-next]');
+    await page.waitForTimeout(50);
+
+    // Refresh during transition
+    await page.evaluate(() => window.__storyController.refresh());
+    await page.waitForTimeout(100);
+
+    // Verify canonical order
+    const ids = await directCardIds(page);
+    assert.deepEqual(ids, CANONICAL_IDS, 'canonical direct-child order after refresh');
+
+    // Verify clean lifecycle state
+    await assertCleanLifecycle(page);
+
+    // Verify indicator shows first group
+    const st = await storyState(page);
+    assert.equal(st.mode, 'story', 'story mode preserved after refresh');
+    assert.equal(st.indicator, '01 / 03', 'indicator reset to first group after refresh');
+    assert.equal(st.prevDisabled, true, 'prev disabled at first group');
+    assert.equal(st.nextDisabled, false, 'next enabled');
+
+    // Subsequent navigation should work
+    await page.click('[data-story-next]');
+    await page.waitForTimeout(420);
+    const st2 = await storyState(page);
+    assert.equal(st2.indicator, '02 / 03', 'navigation works after refresh');
+
+    assert.deepEqual(pageErrors, [], 'no page errors during refresh');
     await context.close();
   } finally {
     await browser.close();

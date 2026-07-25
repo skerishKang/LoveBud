@@ -273,15 +273,15 @@
                 }
             });
 
-            /* Clear transition classes */
-            for (var i = 0; i < cards.length; i++) {
-                cards[i].classList.remove(ENTERING_CLASS);
-                cards[i].classList.remove(EXITING_CLASS);
-            }
-
-            /* Remove inert from any lingering wrapped cards */
-            for (var j = 0; j < cards.length; j++) {
-                cards[j].removeAttribute('inert');
+            /* Clear transition classes and inert from restored cards only.
+             * When restoreExistingCards is false, cards are no longer in
+             * the DOM — skip to avoid iterating discarded references. */
+            if (restoreExistingCards) {
+                for (var i = 0; i < cards.length; i++) {
+                    cards[i].classList.remove(ENTERING_CLASS);
+                    cards[i].classList.remove(EXITING_CLASS);
+                    cards[i].removeAttribute('inert');
+                }
             }
 
             results.removeAttribute('aria-busy');
