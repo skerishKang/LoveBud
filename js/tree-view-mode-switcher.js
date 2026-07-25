@@ -6,14 +6,26 @@
  * localStorage, no API calls, no DB or schema changes.
  *
  * Public API (`window.LoveBudTreeViewModeSwitcher`):
- *   - MODES: ordered list of supported modes
+ *   - MODES: ordered list of base modes shared by every surface
+ *   - KNOWN_MODES: every mode the switcher can render, including
+ *     surface-specific opt-in modes (e.g. Browse-only `story`, #3655)
  *   - LABELS: user-facing labels per mode
  *   - ICONS: Material Symbols icon per mode
- *   - getMode(storageKey, defaultMode): read mode from localStorage
- *   - setMode(storageKey, mode): write mode to localStorage
- *   - applyMode(target, mode): set `data-tree-view-mode` on target
+ *   - getMode(storageKey, defaultMode, allowedModes?): read mode from localStorage
+ *   - setMode(storageKey, mode, allowedModes?): write mode to localStorage
+ *   - applyMode(target, mode, allowedModes?): set `data-tree-view-mode` on target
  *   - createControl(options): build a keyboard-accessible mode button group
+ *     (options.modes: surface-specific capability list, defaults to MODES)
  *   - init(options): wire control + target together with default + observer
+ *     (options.modes: surface-specific capability list, defaults to MODES)
+ *
+ * Surface-specific capability (#3655): `allowedModes` / `options.modes`
+ * default to the three base MODES, so existing callers (My Trees) keep
+ * exactly large/compact/list without any change. Browse opts in to the
+ * fourth `story` mode by passing `modes: ['large', 'compact', 'list', 'story']`.
+ * A stored value outside a surface's capability (e.g. `story` on My Trees)
+ * is treated as invalid and falls back to the default — the stored value
+ * is never deleted or rewritten.
  *
  * The helper is intentionally data-attribute driven so existing layouts stay
  * intact and view mode is the only thing that changes per user choice.
@@ -22,21 +34,49 @@
     'use strict';
 
     var MODES = ['large', 'compact', 'list'];
+    var KNOWN_MODES = ['large', 'compact', 'list', 'story'];
     var LABELS = {
         large: '큰 카드',
         compact: '작은 카드',
-        list: '목록'
+        list: '목록',
+        story: '스토리'
     };
     var ICONS = {
         large: 'dashboard',
         compact: 'grid_view',
-        list: 'view_list'
+        list: 'view_list',
+        story: 'auto_stories'
     };
     var STORAGE_PREFIX = 'lovebud:';
     var DATA_ATTR = 'data-tree-view-mode';
 
-    function isValidMode(mode) {
-        return typeof mode === 'string' && MODES.indexOf(mode) !== -1;
+    /**
+     * Normalize a surface-specific capability list. Unknown tokens are
+     * dropped, duplicates removed, and the result is a fresh array so
+     * callers can never mutate internal mode state. Empty/invalid input
+     * falls back to the three base MODES (backward-compatible default).
+     */
+    function normalizeAllowedModes(allowedModes) {
+        if (!Array.isArray(allowedModes) || allowedModes.length === 0) {
+            return MODES.slice();
+        }
+        var seen = {};
+        var out = [];
+        allowedModes.forEach(function (mode) {
+            if (typeof mode !== 'string') return;
+            if (KNOWN_MODES.indexOf(mode) === -1) return;
+            if (seen[mode]) return;
+            seen[mode] = true;
+            out.push(mode);
+        });
+        if (out.length === 0) return MODES.slice();
+        return out;
+    }
+
+    function isValidMode(mode, allowedModes) {
+        if (typeof mode !== 'string') return false;
+        if (KNOWN_MODES.indexOf(mode) === -1) return false;
+        return normalizeAllowedModes(allowedModes).indexOf(mode) !== -1;
     }
 
     function safeLocalStorage() {
@@ -51,21 +91,22 @@
         }
     }
 
-    function getMode(storageKey, defaultMode) {
-        var fallback = isValidMode(defaultMode) ? defaultMode : MODES[0];
+    function getMode(storageKey, defaultMode, allowedModes) {
+        var allowed = normalizeAllowedModes(allowedModes);
+        var fallback = isValidMode(defaultMode, allowed) ? defaultMode : allowed[0];
         var store = safeLocalStorage();
         if (!store || !storageKey) return fallback;
         try {
             var value = store.getItem(storageKey);
-            if (isValidMode(value)) return value;
+            if (isValidMode(value, allowed)) return value;
         } catch (e) {
             // ignore
         }
         return fallback;
     }
 
-    function setMode(storageKey, mode) {
-        if (!isValidMode(mode)) return false;
+    function setMode(storageKey, mode, allowedModes) {
+        if (!isValidMode(mode, allowedModes)) return false;
         var store = safeLocalStorage();
         if (!store || !storageKey) return false;
         try {
@@ -76,9 +117,9 @@
         }
     }
 
-    function applyMode(target, mode) {
+    function applyMode(target, mode, allowedModes) {
         if (!target) return false;
-        if (!isValidMode(mode)) return false;
+        if (!isValidMode(mode, allowedModes)) return false;
         target.setAttribute(DATA_ATTR, mode);
         return true;
     }
@@ -118,12 +159,13 @@
     function createControl(options) {
         var opts = options || {};
         var storageKey = opts.storageKey;
-        var defaultMode = isValidMode(opts.defaultMode) ? opts.defaultMode : MODES[0];
+        var allowed = normalizeAllowedModes(opts.modes);
+        var defaultMode = isValidMode(opts.defaultMode, allowed) ? opts.defaultMode : allowed[0];
         if (!storageKey) {
             throw new Error('LoveBudTreeViewModeSwitcher.createControl: storageKey is required');
         }
 
-        var initial = getMode(storageKey, defaultMode);
+        var initial = getMode(storageKey, defaultMode, allowed);
         var wrapper = document.createElement('div');
         wrapper.className = 'tree-view-mode-control';
         wrapper.setAttribute('role', 'radiogroup');
@@ -131,14 +173,14 @@
         wrapper.setAttribute('data-initial-mode', initial);
 
         var buttons = {};
-        MODES.forEach(function (mode) {
+        allowed.forEach(function (mode) {
             var btn = createButton(mode, initial);
             buttons[mode] = btn;
             wrapper.appendChild(btn);
         });
 
         function setActive(mode) {
-            if (!isValidMode(mode)) return;
+            if (!isValidMode(mode, allowed)) return;
             Object.keys(buttons).forEach(function (key) {
                 buttons[key].setAttribute('aria-checked', String(key === mode));
                 if (key === mode) {
@@ -149,14 +191,14 @@
             });
         }
 
-        MODES.forEach(function (mode) {
+        allowed.forEach(function (mode) {
             buttons[mode].addEventListener('click', function (event) {
                 event.preventDefault();
-                if (!isValidMode(mode)) return;
-                setMode(storageKey, mode);
+                if (!isValidMode(mode, allowed)) return;
+                setMode(storageKey, mode, allowed);
                 setActive(mode);
                 var resolved = resolveTarget(opts.target);
-                applyMode(resolved, mode);
+                applyMode(resolved, mode, allowed);
                 if (typeof opts.onChange === 'function') {
                     try {
                         opts.onChange(mode, resolved);
@@ -178,7 +220,8 @@
     function init(options) {
         var opts = options || {};
         var storageKey = opts.storageKey;
-        var defaultMode = isValidMode(opts.defaultMode) ? opts.defaultMode : MODES[0];
+        var allowed = normalizeAllowedModes(opts.modes);
+        var defaultMode = isValidMode(opts.defaultMode, allowed) ? opts.defaultMode : allowed[0];
         if (!storageKey) {
             throw new Error('LoveBudTreeViewModeSwitcher.init: storageKey is required');
         }
@@ -188,7 +231,7 @@
         // button is clicked. The observer reads THIS — not a one-shot
         // capture of the initial value — so a re-rendered target always
         // receives the latest selected mode.
-        var currentMode = getMode(storageKey, defaultMode);
+        var currentMode = getMode(storageKey, defaultMode, allowed);
 
         var mount = resolveTarget(opts.mount);
         if (!mount) return null;
@@ -197,6 +240,7 @@
             storageKey: storageKey,
             defaultMode: defaultMode,
             target: opts.target,
+            modes: allowed,
             onChange: function (mode) {
                 currentMode = mode;
                 if (typeof opts.onChange === 'function') {
@@ -212,7 +256,7 @@
 
         var resolved = resolveTarget(opts.target);
         if (resolved) {
-            applyMode(resolved, currentMode);
+            applyMode(resolved, currentMode, allowed);
         }
 
         var observer = null;
@@ -227,10 +271,10 @@
                 //     also be a future improvement)
                 // Never use a captured `initial` value — that path caused
                 // the .trees-grid re-render to revert to the page default.
-                var latest = getMode(storageKey, defaultMode);
-                if (!isValidMode(latest)) latest = currentMode;
+                var latest = getMode(storageKey, defaultMode, allowed);
+                if (!isValidMode(latest, allowed)) latest = currentMode;
                 if (node.getAttribute(DATA_ATTR) === latest) return;
-                applyMode(node, latest);
+                applyMode(node, latest, allowed);
             });
             observer.observe(document.documentElement, {
                 childList: true,
@@ -257,7 +301,8 @@
     }
 
     var api = {
-        MODES: MODES,
+        MODES: Object.freeze(MODES.slice()),
+        KNOWN_MODES: Object.freeze(KNOWN_MODES.slice()),
         LABELS: LABELS,
         ICONS: ICONS,
         STORAGE_PREFIX: STORAGE_PREFIX,

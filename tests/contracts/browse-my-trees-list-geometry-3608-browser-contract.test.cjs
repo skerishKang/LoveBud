@@ -513,8 +513,8 @@ test('#3608 list source: My Trees list body flex + cache tokens', () => {
   assert.match(css, /\.trees-grid\[data-tree-view-mode="large"\]\s+\.tree-card\s*\{[^}]*height:\s*380px/);
   assert.doesNotMatch(css, /\[data-tree-view-mode="compact"\][^{]*\{[^}]*font-weight:\s*300/);
 
-  assert.match(searchHtml, TOKEN_FAMILY);
+  assert.match(searchHtml, /tree-view-mode\.css\?v=(?:20260721-3608(?:-large|-list)?|20260725-3655)-\d+/);
   assert.match(myHtml, TOKEN_FAMILY);
-  assert.match(searchHtml, /tree-view-mode\.css\?v=20260721-3608-list-1/);
+  assert.match(searchHtml, /tree-view-mode\.css\?v=20260725-3655-1/);
   assert.match(myHtml, /tree-view-mode\.css\?v=20260721-3608-list-1/);
 });
