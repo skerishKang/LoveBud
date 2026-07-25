@@ -1,6 +1,6 @@
 # MVP Agent Governance
 
-> **Status:** canonical source of truth — owner-approved (Issue #3442 comment `4947327550`; CI infrastructure-unavailable amendment: Issue #3642)
+> **Status:** canonical source of truth — owner-approved (Issue #3442 comment `4947327550`; CI infrastructure-unavailable amendment: Issue #3642; separated execution-role model: Issue #3662)
 
 This document is the **current canonical source of truth** for agent,
 development, and browser governance in the LoveBud repository. Where any
@@ -8,18 +8,23 @@ other document conflicts with it, this document wins.
 
 The authority for this document is the project owner's explicit approval in
 Issue #3442, comment `4947327550`, together with the CI infrastructure
-classification decision recorded in Issue #3642. Historical documents,
-runbooks, task summaries, and closed-PR-specific instructions are **not**
-current authority outside their explicitly named original scope. A restriction
-appearing in a repository document is **not** by itself proof of owner approval.
+classification decision recorded in Issue #3642 and the execution-role decision
+recorded in Issue #3662. Historical documents, runbooks, task summaries, and
+closed-PR-specific instructions are **not** current authority outside their
+explicitly named original scope. A restriction appearing in a repository
+document is **not** by itself proof of owner approval.
 
 ## Authority
 
 - Owner approval provenance: **#3442 comment `4947327550`** (the authoritative
-  approval for this implementation phase).
+  approval for the MVP implementation phase).
 - CI infrastructure-unavailable amendment provenance: **Issue #3642**.
+- Separated Web CTO / Web Developer / Local Validation operating-model
+  provenance: **Issue #3662**.
 - This document is the canonical source of truth for agent / development /
   browser governance.
+- `docs/project/WEB_CTO_WEB_DEVELOPER_LOCAL_VALIDATION.md` is the focused source
+  of truth for role allocation and handoff flow under Issue #3662.
 - Historical documents and task-specific documents are not current authority
   outside their named, original context.
 - The mere existence of a rule in a document does not prove owner approval.
@@ -102,6 +107,54 @@ special approval, a fixed slot, a PR comment, or a clean worktree.
 - squash merge after remote diff review, expected-head confirmation, and either
   `CI_GREEN` or the documented `CI_UNAVAILABLE_INFRA` alternative-evidence path
 
+## Owner-approved execution-role model
+
+Issue #3662 establishes the default LoveBud execution roles:
+
+```text
+Web CTO
+Web Developer
+Local Validation
+```
+
+The lifecycle has four stages because the Web CTO participates before and
+after implementation:
+
+```text
+user request
+→ Web CTO contract
+→ separate Web Developer implementation
+→ Local Validation evidence
+→ Web CTO independent final review
+→ user decision / expected-head squash merge
+```
+
+Role allocation:
+
+- **Web CTO:** remote verification, product/design/architecture contract,
+  allowed/forbidden scope, tests/evidence definition, final independent review,
+  READY / CONDITIONALLY_READY / NOT_READY, expected-head merge judgment.
+- **Web Developer:** implementation in a separate web conversation/context,
+  tests, feature-branch commits, Draft PR, CI correction, exact evidence report.
+- **Local Validation:** exact-head checkout, local/environment/browser/auth/
+  database/OS/provider execution, raw evidence, minimal explicitly authorized
+  integration changes only.
+
+The same production change should not be implemented and finally approved in
+the same conversation/context. A Web CTO may author prototypes, design
+references, copy, state contracts, or patch drafts, but production
+implementation and final approval should remain independently separated.
+
+This is the default operating model. A task may explicitly use another safe
+arrangement, but it must preserve the hard standing rules and report the
+resulting evidence limitation. Role-model deviation is not by itself a new
+automatic merge blocker.
+
+Older repository references that treat TF Leads, `UI Local`, `Feature Local`,
+or a generic local executor as the default production coder are superseded for
+current role allocation by Issue #3662 and
+`docs/project/WEB_CTO_WEB_DEVELOPER_LOCAL_VALIDATION.md`.
+
 ## Advisory, not blockers
 
 The following may be recommendations, but they are **not** automatic `BLOCKED`
@@ -118,13 +171,14 @@ reasons:
 - local static server verification limits
 - module size guidance
 - large-refactor separate-audit guidance
+- an explicitly reported, safe deviation from the default execution-role model
 
 ## Evidence model
 
 The environment indicates *permission of a claim's strength*, not whether work
 may proceed. It is evidence, not a license gate.
 
-```
+```text
 LOCAL_EVIDENCE
 PRE_MERGE_EVIDENCE
 PRODUCTION_EVIDENCE
@@ -132,7 +186,7 @@ PRODUCTION_EVIDENCE
 
 Examples:
 
-```
+```text
 localhost UI behavior confirmed
 → LOCAL_EVIDENCE
 
@@ -147,7 +201,7 @@ If evidence is limited, report the limitation — do not stop the work.
 
 ## Dirty worktree
 
-```
+```text
 dirty worktree discovered
 → preserve existing changes
 → use another worktree/branch or read-only inspection
@@ -161,7 +215,7 @@ drop` / overwrite — requires owner confirmation.
 
 A new mandatory blocker must include all of the following:
 
-```
+```text
 restriction proposal
 reason
 scope
@@ -172,7 +226,7 @@ traceable owner approval reference
 
 If the owner approval reference is missing, the restriction is:
 
-```
+```text
 RECOMMENDATION_ONLY
 ```
 
@@ -180,8 +234,11 @@ RECOMMENDATION_ONLY
 
 *Supersedes conflicting historical guidance. Documents that previously treated
 the items in *Advisory, not blockers* as automatic blockers are marked
-`NON_NORMATIVE_OUTSIDE_NAMED_CONTEXT` or `SUPERSEDED_BY_MVP_AGENT_GOVERNANCE`.*
+`NON_NORMATIVE_OUTSIDE_NAMED_CONTEXT` or
+`SUPERSEDED_BY_MVP_AGENT_GOVERNANCE`. Older role-allocation language is
+superseded by Issue #3662 for current work.*
 
+Refs #3662
 Refs #3642
 Refs #3442
 Refs #3441
