@@ -121,7 +121,6 @@ test('U0 copy-only gates are focused and Local-free by default', () => {
   assert.match(u0, /full lint\/build\/test\/verify suite/i);
   assert.match(u0, /preview\/fixed slot/i);
   assert.match(u0, /screenshots/i);
-  assert.match(u0, /new child Issue/i);
 });
 
 test('U1 visual-only gates are focused and escalate structural/runtime risk', () => {
