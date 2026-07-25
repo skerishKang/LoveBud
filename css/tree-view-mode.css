@@ -952,23 +952,83 @@
     border: 0;
 }
 
-/* ── Story animation (minimal: opacity + small signed travel) ───── */
-#resultsList[data-tree-view-mode="story"] .tree-card.is-story-entering {
-    animation: browse-story-enter-next 220ms ease both;
+/* ── Story bidirectional transition (outgoing + incoming simultaneous) ── */
+
+/* Transition stage layout: both layers occupy the same grid cell */
+/* During bidirectional transition, contain overflow */
+#resultsList[data-tree-view-mode="story"][aria-busy="true"] {
+    position: relative;
+    overflow: hidden;
 }
 
-#resultsList[data-tree-view-mode="story"][data-story-direction="prev"] .tree-card.is-story-entering {
+.browse-story-transition-stage {
+    display: grid;
+    grid-template-columns: inherit;
+    gap: inherit;
+    grid-column: 1 / -1;
+    animation-fill-mode: both;
+}
+
+.browse-story-layer-outgoing {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+}
+
+.browse-story-layer-outgoing {
+    animation: browse-story-exit-next 340ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    pointer-events: none;
+}
+
+.browse-story-layer-incoming {
+    animation: browse-story-enter-next 340ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+#resultsList[data-tree-view-mode="story"][data-story-direction="prev"] .browse-story-layer-outgoing {
+    animation-name: browse-story-exit-prev;
+}
+
+#resultsList[data-tree-view-mode="story"][data-story-direction="prev"] .browse-story-layer-incoming {
     animation-name: browse-story-enter-prev;
 }
 
+/* Outgoing cards inside the wrapper keep their layout */
+.browse-story-layer-outgoing .tree-card {
+    opacity: 1;
+}
+
+.browse-story-layer-incoming .tree-card {
+    opacity: 1;
+}
+
+@keyframes browse-story-exit-next {
+    from { opacity: 1; transform: translateX(0); }
+    to { opacity: 0; transform: translateX(-8%); }
+}
+
+@keyframes browse-story-exit-prev {
+    from { opacity: 1; transform: translateX(0); }
+    to { opacity: 0; transform: translateX(8%); }
+}
+
 @keyframes browse-story-enter-next {
-    from { opacity: 0; transform: translateX(14px); }
+    from { opacity: 0; transform: translateX(8%); }
     to { opacity: 1; transform: translateX(0); }
 }
 
 @keyframes browse-story-enter-prev {
-    from { opacity: 0; transform: translateX(-14px); }
+    from { opacity: 0; transform: translateX(-8%); }
     to { opacity: 1; transform: translateX(0); }
+}
+
+/* Legacy single-card entering class (kept for non-transition initial display) */
+#resultsList[data-tree-view-mode="story"] .tree-card.is-story-entering {
+    animation: browse-story-enter-next 340ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+#resultsList[data-tree-view-mode="story"][data-story-direction="prev"] .tree-card.is-story-entering {
+    animation-name: browse-story-enter-prev;
 }
 
 /* ── Story responsive breakpoints ─────────────────────────────────
@@ -996,9 +1056,12 @@
 
 /* ── Story reduced motion ───────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
-    #resultsList[data-tree-view-mode="story"] .tree-card.is-story-entering {
+    #resultsList[data-tree-view-mode="story"] .tree-card.is-story-entering,
+    .browse-story-layer-outgoing,
+    .browse-story-layer-incoming {
         animation: none;
         transform: none;
+        opacity: 1;
     }
 
     .browse-story-nav-btn {

@@ -198,6 +198,18 @@ test('13. Story controller contains no autoplay or looping timer', () => {
     assert.equal(/infinite/i.test(src), false, 'no wraparound/infinite behaviour');
 });
 
+test('Story controller implements bidirectional transition with two-layer stage', () => {
+    assert.match(storyModule, /browse-story-transition-stage/);
+    assert.match(storyModule, /browse-story-layer-outgoing/);
+    assert.match(storyModule, /browse-story-layer-incoming/);
+    assert.match(storyModule, /aria-busy/);
+    assert.match(storyModule, /inert/);
+    assert.match(storyModule, /transitioning/);
+    assert.match(storyModule, /cleanupTransition/);
+    assert.match(storyModule, /EXITING_CLASS/);
+    assert.match(storyModule, /prefersReducedMotion/);
+});
+
 test('14. no framework dependency', () => {
     const src = stripJsComments(storyModule);
     assert.equal(/\b(react|vue|svelte|angular|preact|solid-js)\b/i.test(src), false);
@@ -277,10 +289,12 @@ test('16. Story selectors are Browse-scoped (#resultsList / .browse-story-*)', (
     assert.match(viewModeCss, /#resultsList\[data-tree-view-mode="story"\]\s+\.tree-card\[hidden\]\s*\{[^}]*display:\s*none/);
 });
 
-test('19. reduced-motion CSS exists for the Story sections', () => {
+test('19. reduced-motion CSS exists for the Story sections (wrappers + entering)', () => {
     const rm = viewModeCss.match(/@media\s*\(prefers-reduced-motion:\s*reduce\)\s*\{[\s\S]*?browse-story[\s\S]*?\n\}/);
     assert.ok(rm, 'a prefers-reduced-motion block must cover story styles');
     assert.match(viewModeCss, /prefers-reduced-motion:\s*reduce\)\s*\{[\s\S]*?is-story-entering[\s\S]*?animation:\s*none/);
+    assert.match(viewModeCss, /prefers-reduced-motion:\s*reduce\)\s*\{[\s\S]*?browse-story-layer-outgoing[\s\S]*?animation:\s*none/);
+    assert.match(viewModeCss, /prefers-reduced-motion:\s*reduce\)\s*\{[\s\S]*?browse-story-layer-incoming[\s\S]*?animation:\s*none/);
 });
 
 test('20. no .trees-grid story selector (My Trees untouched)', () => {
@@ -296,10 +310,13 @@ test('Story mode keeps token-driven styling (no hardcoded travel palette)', () =
     assert.match(storySection, /var\(--on-surface\)/);
 });
 
-test('Story animation is restrained (opacity + small translate only)', () => {
-    assert.match(viewModeCss, /@keyframes browse-story-enter-next\s*\{[\s\S]*?translateX\(14px\)/);
-    assert.match(viewModeCss, /@keyframes browse-story-enter-prev\s*\{[\s\S]*?translateX\(-14px\)/);
-    assert.equal(/browse-story[\s\S]*?translateX\(1[5-9]0px|browse-story[\s\S]*?translateX\([2-9]00px/.test(viewModeCss), false);
+test('Story animation uses bidirectional 8% translate with exit + enter keyframes', () => {
+    assert.match(viewModeCss, /@keyframes browse-story-enter-next\s*\{[\s\S]*?translateX\(8%\)/);
+    assert.match(viewModeCss, /@keyframes browse-story-enter-prev\s*\{[\s\S]*?translateX\(-8%\)/);
+    assert.match(viewModeCss, /@keyframes browse-story-exit-next\s*\{[\s\S]*?translateX\(-8%\)/);
+    assert.match(viewModeCss, /@keyframes browse-story-exit-prev\s*\{[\s\S]*?translateX\(8%\)/);
+    assert.match(viewModeCss, /340ms\s+cubic-bezier\(0\.22,\s*1,\s*0\.36,\s*1\)/);
+    assert.equal(/browse-story[\s\S]*?translateX\([2-9]00px/.test(viewModeCss), false);
 });
 
 /* ── 6) Cross-cutting prohibitions ──────────────────────────────────── */

@@ -92,9 +92,17 @@ so they leave layout, the accessibility tree, and the tab order.
   keydown moves at most one group; focus is never forcibly moved into card
   internals. The indicator is a `role="status"` region with a localized
   assistive string (`스토리 1 / 4` / `Story 1 of 4`).
-- Motion is restrained: opacity plus a small signed `translateX(14px)`
-  enter animation in the navigation direction. `prefers-reduced-motion:
-  reduce` removes the transform and animation.
+- Motion is bidirectional: outgoing and incoming groups animate
+  simultaneously. Next direction slides outgoing left (`translateX(-8%)`,
+  opacity 1→0) while incoming slides in from the right (`translateX(8%)`
+  →0, opacity 0→1). Previous direction mirrors. Duration is 340ms with
+  `cubic-bezier(0.22, 1, 0.36, 1)` easing. A temporary two-layer stage
+  hosts both groups during the transition; the outgoing layer is `inert`
+  and `aria-hidden`, and `aria-busy` is set on `#resultsList`. After the
+  transition completes, wrappers are removed and canonical card order is
+  restored. Rapid double-clicks and keydowns during a transition are
+  blocked (only one group movement per transition). `prefers-reduced-motion:
+  reduce` skips the animated path entirely (immediate swap, no wrappers).
 
 ## Visual family
 

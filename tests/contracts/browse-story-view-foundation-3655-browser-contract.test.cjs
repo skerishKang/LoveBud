@@ -286,7 +286,7 @@ async function storyState(page) {
     const results = document.getElementById('resultsList');
     const nav = document.querySelector('.browse-story-navigation');
     const visible = [...results.querySelectorAll('.tree-card[data-tree-id]')]
-      .filter((c) => !c.hidden)
+      .filter((c) => !c.hidden && !c.closest('.browse-story-transition-stage'))
       .map((c) => c.getAttribute('data-tree-id'));
     const indicator = document.querySelector('.browse-story-indicator-current');
     const a11y = document.querySelector('.browse-story-indicator-a11y');
@@ -431,7 +431,7 @@ test('#3655 browser: responsive group sizes 3/2/1 and local sequence of all 7 ca
     // (10) all 7 cards in order across local groups; (11) next; (14) last boundary
     const sequence = [...st.visible];
     await pageW.click('[data-story-next]');
-    await pageW.waitForTimeout(80);
+    await pageW.waitForTimeout(420);
     st = await storyState(pageW);
     assert.deepEqual(st.visible, ['browse-4', 'browse-5', 'browse-6'], '(11) next moves one group');
     assert.equal(st.indicator, '02 / 03');
@@ -439,7 +439,7 @@ test('#3655 browser: responsive group sizes 3/2/1 and local sequence of all 7 ca
     sequence.push(...st.visible);
 
     await pageW.click('[data-story-next]');
-    await pageW.waitForTimeout(80);
+    await pageW.waitForTimeout(420);
     st = await storyState(pageW);
     assert.deepEqual(st.visible, ['browse-7']);
     assert.equal(st.groupSizeAttr, '1', 'partial last group renders a single centered slot');
@@ -450,7 +450,7 @@ test('#3655 browser: responsive group sizes 3/2/1 and local sequence of all 7 ca
 
     // (12) previous moves back
     await pageW.click('[data-story-prev]');
-    await pageW.waitForTimeout(80);
+    await pageW.waitForTimeout(420);
     st = await storyState(pageW);
     assert.deepEqual(st.visible, ['browse-4', 'browse-5', 'browse-6'], '(12) previous moves back one group');
     await wide.close();
@@ -496,8 +496,9 @@ test('#3655 browser: result replacement, skeleton, empty and one-card coherence'
 
     // move to the last group, then replace the result set
     await page.click('[data-story-next]');
+    await page.waitForTimeout(420);
     await page.click('[data-story-next]');
-    await page.waitForTimeout(80);
+    await page.waitForTimeout(420);
     let st = await storyState(page);
     assert.equal(st.indicator, '03 / 03');
 
@@ -583,7 +584,7 @@ test('#3655 browser: keyboard navigation semantics', { timeout: 120000 }, async 
 
     // (21) ArrowRight
     await page.keyboard.press('ArrowRight');
-    await page.waitForTimeout(80);
+    await page.waitForTimeout(420);
     let st = await storyState(page);
     assert.equal(st.indicator, '02 / 03', '(21) ArrowRight moves to the next group');
 
@@ -592,25 +593,25 @@ test('#3655 browser: keyboard navigation semantics', { timeout: 120000 }, async 
 
     // (22) ArrowLeft
     await page.keyboard.press('ArrowLeft');
-    await page.waitForTimeout(80);
+    await page.waitForTimeout(420);
     st = await storyState(page);
     assert.equal(st.indicator, '01 / 03', '(22) ArrowLeft moves back');
 
     // boundary clamp: ArrowLeft at the first group stays put
     await page.keyboard.press('ArrowLeft');
-    await page.waitForTimeout(80);
+    await page.waitForTimeout(420);
     st = await storyState(page);
     assert.equal(st.indicator, '01 / 03', 'index clamps at the first group');
 
     // (24) End
     await page.keyboard.press('End');
-    await page.waitForTimeout(80);
+    await page.waitForTimeout(420);
     st = await storyState(page);
     assert.equal(st.indicator, '03 / 03', '(24) End jumps to the last group');
 
     // (23) Home
     await page.keyboard.press('Home');
-    await page.waitForTimeout(80);
+    await page.waitForTimeout(420);
     st = await storyState(page);
     assert.equal(st.indicator, '01 / 03', '(23) Home jumps to the first group');
 
@@ -619,20 +620,20 @@ test('#3655 browser: keyboard navigation semantics', { timeout: 120000 }, async 
     await page.keyboard.press('ArrowRight');
     await page.keyboard.press('ArrowLeft');
     await page.keyboard.press('End');
-    await page.waitForTimeout(80);
+    await page.waitForTimeout(420);
     st = await storyState(page);
     assert.equal(st.indicator, '01 / 03', '(25) arrow/Home keys inside an input must not move groups');
 
     // modifier combinations are ignored
     await page.keyboard.press('Control+ArrowRight');
-    await page.waitForTimeout(60);
+    await page.waitForTimeout(420);
     st = await storyState(page);
     assert.equal(st.indicator, '01 / 03', 'modifier+arrow is ignored');
 
     // (27) focus stays predictable (on the focused nav button)
     await page.focus('[data-story-next]');
     await page.keyboard.press('ArrowRight');
-    await page.waitForTimeout(80);
+    await page.waitForTimeout(420);
     const focusState = await page.evaluate(() => ({
       onNext: document.activeElement === document.querySelector('[data-story-next]'),
       indicator: document.querySelector('.browse-story-indicator-current').textContent,
@@ -842,22 +843,288 @@ test('#3655 browser: geometry at 1440x900 / 768x1024 / 375x812 + reduced motion'
     await rmPage.goto(`http://127.0.0.1:${port}/fixture-browse-story.html`, { waitUntil: 'networkidle' });
     await rmPage.waitForTimeout(150);
     await rmPage.click('[data-story-next]');
-    await rmPage.waitForTimeout(60);
+    await rmPage.waitForTimeout(100);
     const rm = await rmPage.evaluate(() => {
-      const visible = [...document.querySelectorAll('#resultsList .tree-card[data-tree-id]')].filter((c) => !c.hidden);
+      const results = document.getElementById('resultsList');
+      const wrappers = results.querySelectorAll('.browse-story-transition-stage');
+      const visible = [...results.querySelectorAll('.tree-card[data-tree-id]')]
+        .filter((c) => !c.hidden && !c.closest('.browse-story-transition-stage'));
       const entering = visible.filter((c) => c.classList.contains('is-story-entering'));
-      const styles = entering.map((c) => {
-        const cs = getComputedStyle(c);
-        return { name: cs.animationName, duration: cs.animationDuration, transform: cs.transform };
-      });
-      return { enteringCount: entering.length, styles };
+      return {
+        wrapperCount: wrappers.length,
+        visibleIds: visible.map(c => c.getAttribute('data-tree-id')),
+        enteringCount: entering.length,
+      };
     });
-    assert.ok(rm.enteringCount > 0, 'entering class still applied (class state is motion-independent)');
-    for (const s of rm.styles) {
-      assert.ok(s.name === 'none' || s.duration === '0s', `(42) animation removed under reduced motion (${JSON.stringify(s)})`);
-      assert.ok(s.transform === 'none' || s.transform === 'matrix(1, 0, 0, 1, 0, 0)', '(42) no transform under reduced motion');
-    }
+    // (42) reduced-motion uses immediate path: no wrappers, no animation class
+    assert.equal(rm.wrapperCount, 0, '(42) no transition wrappers under reduced motion');
+    assert.deepEqual(rm.visibleIds, ['browse-4', 'browse-5', 'browse-6'], '(42) immediate swap to next group');
     await rmContext.close();
+  } finally {
+    await browser.close();
+    server.close();
+  }
+});
+
+/* ── Bidirectional transition behaviour ──────────────────────────── */
+
+test('#3655 browser: bidirectional transition shows both outgoing and incoming layers', { timeout: 120000 }, async () => {
+  const browser = await launchBrowser();
+  const { server, port } = await startServer();
+  try {
+    const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+    const page = await context.newPage();
+    await page.addInitScript(() => localStorage.setItem('lovebud:browse:viewMode', 'story'));
+    await page.goto(`http://127.0.0.1:${port}/fixture-browse-story.html`, { waitUntil: 'networkidle' });
+    await page.waitForTimeout(150);
+
+    let st = await storyState(page);
+    assert.equal(st.mode, 'story');
+    assert.equal(st.visible.length, 3);
+
+    await page.click('[data-story-next]');
+    await page.waitForTimeout(50);
+
+    const transitionState = await page.evaluate(() => {
+      const results = document.getElementById('resultsList');
+      const outgoing = results.querySelector('.browse-story-layer-outgoing');
+      const incoming = results.querySelector('.browse-story-layer-incoming');
+      const ariaBusy = results.getAttribute('aria-busy');
+      const direction = results.getAttribute('data-story-direction');
+
+      let outCards = [];
+      let inCards = [];
+      let outVisible = false;
+      let inVisible = false;
+      let outInert = false;
+      let inInert = false;
+
+      if (outgoing) {
+        outCards = [...outgoing.querySelectorAll('.tree-card[data-tree-id]')].map(c => c.getAttribute('data-tree-id'));
+        outVisible = getComputedStyle(outgoing).display !== 'none';
+        outInert = outgoing.hasAttribute('inert');
+      }
+      if (incoming) {
+        inCards = [...incoming.querySelectorAll('.tree-card[data-tree-id]')].map(c => c.getAttribute('data-tree-id'));
+        inVisible = getComputedStyle(incoming).display !== 'none';
+        inInert = incoming.hasAttribute('inert');
+      }
+
+      return { hasOutgoing: !!outgoing, hasIncoming: !!incoming, outCards, inCards, outVisible, inVisible, outInert, inInert, ariaBusy, direction };
+    });
+
+    assert.equal(transitionState.hasOutgoing, true, 'outgoing layer must exist during transition');
+    assert.equal(transitionState.hasIncoming, true, 'incoming layer must exist during transition');
+    assert.deepEqual(transitionState.outCards, ['browse-1', 'browse-2', 'browse-3']);
+    assert.deepEqual(transitionState.inCards, ['browse-4', 'browse-5', 'browse-6']);
+    assert.equal(transitionState.outVisible, true, 'outgoing layer visible during transition');
+    assert.equal(transitionState.inVisible, true, 'incoming layer visible during transition');
+    assert.equal(transitionState.outInert, true, 'outgoing layer must be inert');
+    assert.equal(transitionState.ariaBusy, 'true', 'results must have aria-busy during transition');
+    assert.equal(transitionState.direction, 'next');
+
+    await page.waitForTimeout(400);
+
+    const afterState = await page.evaluate(() => {
+      const results = document.getElementById('resultsList');
+      const wrappers = results.querySelectorAll('.browse-story-transition-stage');
+      const ariaBusy = results.getAttribute('aria-busy');
+      const visible = [...results.querySelectorAll('.tree-card[data-tree-id]')]
+        .filter(c => !c.hidden).map(c => c.getAttribute('data-tree-id'));
+      const allCards = [...results.querySelectorAll('.tree-card[data-tree-id]')]
+        .map(c => c.getAttribute('data-tree-id'));
+      return { wrapperCount: wrappers.length, ariaBusy, visible, allCards };
+    });
+
+    assert.equal(afterState.wrapperCount, 0, 'all transition wrappers removed');
+    assert.ok(afterState.ariaBusy === null || afterState.ariaBusy === 'false', 'aria-busy cleared');
+    assert.deepEqual(afterState.visible, ['browse-4', 'browse-5', 'browse-6']);
+    assert.deepEqual(afterState.allCards, ['browse-1', 'browse-2', 'browse-3', 'browse-4', 'browse-5', 'browse-6', 'browse-7'], 'canonical card order restored');
+
+    await context.close();
+  } finally {
+    await browser.close();
+    server.close();
+  }
+});
+
+test('#3655 browser: prev direction uses opposite transforms', { timeout: 120000 }, async () => {
+  const browser = await launchBrowser();
+  const { server, port } = await startServer();
+  try {
+    const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+    const page = await context.newPage();
+    await page.addInitScript(() => localStorage.setItem('lovebud:browse:viewMode', 'story'));
+    await page.goto(`http://127.0.0.1:${port}/fixture-browse-story.html`, { waitUntil: 'networkidle' });
+    await page.waitForTimeout(150);
+
+    await page.click('[data-story-next]');
+    await page.waitForTimeout(400);
+
+    await page.click('[data-story-prev]');
+    await page.waitForTimeout(50);
+
+    const transitionState = await page.evaluate(() => {
+      const results = document.getElementById('resultsList');
+      const outgoing = results.querySelector('.browse-story-layer-outgoing');
+      const incoming = results.querySelector('.browse-story-layer-incoming');
+      const direction = results.getAttribute('data-story-direction');
+      let outCards = [];
+      let inCards = [];
+      if (outgoing) outCards = [...outgoing.querySelectorAll('.tree-card[data-tree-id]')].map(c => c.getAttribute('data-tree-id'));
+      if (incoming) inCards = [...incoming.querySelectorAll('.tree-card[data-tree-id]')].map(c => c.getAttribute('data-tree-id'));
+      return { direction, outCards, inCards };
+    });
+
+    assert.equal(transitionState.direction, 'prev');
+    assert.deepEqual(transitionState.outCards, ['browse-4', 'browse-5', 'browse-6']);
+    assert.deepEqual(transitionState.inCards, ['browse-1', 'browse-2', 'browse-3']);
+
+    await page.waitForTimeout(400);
+    const st = await storyState(page);
+    assert.equal(st.indicator, '01 / 03');
+    await context.close();
+  } finally {
+    await browser.close();
+    server.close();
+  }
+});
+
+test('#3655 browser: rapid double-click is blocked during transition', { timeout: 120000 }, async () => {
+  const browser = await launchBrowser();
+  const { server, port } = await startServer();
+  try {
+    const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+    const page = await context.newPage();
+    await page.addInitScript(() => localStorage.setItem('lovebud:browse:viewMode', 'story'));
+    await page.goto(`http://127.0.0.1:${port}/fixture-browse-story.html`, { waitUntil: 'networkidle' });
+    await page.waitForTimeout(150);
+
+    await page.click('[data-story-next]');
+    await page.click('[data-story-next]');
+    await page.waitForTimeout(50);
+
+    const midState = await page.evaluate(() => {
+      return document.querySelector('.browse-story-indicator-current').textContent;
+    });
+    assert.equal(midState, '02 / 03', 'rapid double-click must only move one group');
+
+    await page.waitForTimeout(400);
+    const st = await storyState(page);
+    assert.equal(st.indicator, '02 / 03');
+    assert.deepEqual(st.visible, ['browse-4', 'browse-5', 'browse-6']);
+
+    await context.close();
+  } finally {
+    await browser.close();
+    server.close();
+  }
+});
+
+test('#3655 browser: keyboard blocked during transition', { timeout: 120000 }, async () => {
+  const browser = await launchBrowser();
+  const { server, port } = await startServer();
+  try {
+    const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+    const page = await context.newPage();
+    await page.addInitScript(() => localStorage.setItem('lovebud:browse:viewMode', 'story'));
+    await page.goto(`http://127.0.0.1:${port}/fixture-browse-story.html`, { waitUntil: 'networkidle' });
+    await page.waitForTimeout(150);
+
+    await page.keyboard.press('ArrowRight');
+    await page.waitForTimeout(20);
+    await page.keyboard.press('ArrowRight');
+    await page.waitForTimeout(400);
+
+    const st = await storyState(page);
+    assert.equal(st.indicator, '02 / 03', 'second ArrowRight during transition must be blocked');
+
+    await context.close();
+  } finally {
+    await browser.close();
+    server.close();
+  }
+});
+
+test('#3655 browser: reduced-motion uses immediate path (no wrappers)', { timeout: 120000 }, async () => {
+  const browser = await launchBrowser();
+  const { server, port } = await startServer();
+  try {
+    const context = await browser.newContext({
+      viewport: { width: 1440, height: 900 },
+      reducedMotion: 'reduce',
+    });
+    const page = await context.newPage();
+    await page.addInitScript(() => localStorage.setItem('lovebud:browse:viewMode', 'story'));
+    await page.goto(`http://127.0.0.1:${port}/fixture-browse-story.html`, { waitUntil: 'networkidle' });
+    await page.waitForTimeout(150);
+
+    await page.click('[data-story-next]');
+    await page.waitForTimeout(50);
+
+    const state = await page.evaluate(() => {
+      const results = document.getElementById('resultsList');
+      const wrappers = results.querySelectorAll('.browse-story-transition-stage');
+      const visible = [...results.querySelectorAll('.tree-card[data-tree-id]')]
+        .filter(c => !c.hidden).map(c => c.getAttribute('data-tree-id'));
+      return { wrapperCount: wrappers.length, visible };
+    });
+
+    assert.equal(state.wrapperCount, 0, 'reduced-motion must not create transition wrappers');
+    assert.deepEqual(state.visible, ['browse-4', 'browse-5', 'browse-6']);
+
+    await context.close();
+  } finally {
+    await browser.close();
+    server.close();
+  }
+});
+
+test('#3655 browser: no overflow at 1440/768/375 during and after transition', { timeout: 150000 }, async () => {
+  const browser = await launchBrowser();
+  const { server, port } = await startServer();
+  try {
+    async function checkOverflow(viewport, mobile) {
+      const context = await browser.newContext(
+        mobile
+          ? { viewport: { width: viewport.width, height: viewport.height }, isMobile: true, hasTouch: true }
+          : { viewport: { width: viewport.width, height: viewport.height } }
+      );
+      const page = await context.newPage();
+      await page.addInitScript(() => localStorage.setItem('lovebud:browse:viewMode', 'story'));
+      await page.goto(`http://127.0.0.1:${port}/fixture-browse-story.html`, { waitUntil: 'networkidle' });
+      await page.waitForTimeout(150);
+
+      await page.click('[data-story-next]');
+      await page.waitForTimeout(50);
+
+      const mid = await page.evaluate(() => ({
+        scrollWidth: document.documentElement.scrollWidth,
+        clientWidth: document.documentElement.clientWidth,
+      }));
+
+      await page.waitForTimeout(400);
+
+      const after = await page.evaluate(() => ({
+        scrollWidth: document.documentElement.scrollWidth,
+        clientWidth: document.documentElement.clientWidth,
+      }));
+
+      await context.close();
+      return { mid, after };
+    }
+
+    const wide = await checkOverflow({ width: 1440, height: 900 }, false);
+    assert.ok(wide.mid.scrollWidth <= wide.mid.clientWidth + 1, 'no overflow at 1440 mid-transition');
+    assert.ok(wide.after.scrollWidth <= wide.after.clientWidth + 1, 'no overflow at 1440 after');
+
+    const tablet = await checkOverflow({ width: 768, height: 1024 }, false);
+    assert.ok(tablet.mid.scrollWidth <= tablet.mid.clientWidth + 1, 'no overflow at 768 mid-transition');
+    assert.ok(tablet.after.scrollWidth <= tablet.after.clientWidth + 1, 'no overflow at 768 after');
+
+    const mobile = await checkOverflow({ width: 375, height: 812 }, true);
+    assert.ok(mobile.mid.scrollWidth <= mobile.mid.clientWidth + 1, 'no overflow at 375 mid-transition');
+    assert.ok(mobile.after.scrollWidth <= mobile.after.clientWidth + 1, 'no overflow at 375 after');
   } finally {
     await browser.close();
     server.close();

@@ -40,8 +40,11 @@
     var DIRECTION_ATTR = 'data-story-direction';
     var VISIBLE_CLASS = 'is-story-visible';
     var ENTERING_CLASS = 'is-story-entering';
+    var EXITING_CLASS = 'is-story-exiting';
+    var TRANSITION_WRAPPER_CLASS = 'browse-story-transition-stage';
     var NAV_CLASS = 'browse-story-navigation';
     var EDITABLE_SELECTOR = 'input, textarea, select, [contenteditable="true"], [contenteditable=""]';
+    var TRANSITION_DURATION = 340;
 
     /* Minimal fallbacks mirror js/i18n/i18n-search.js (same repository
      * pattern as js/search/search-card-renderer.js empty-state copy). */
@@ -97,6 +100,11 @@
         return icon;
     }
 
+    function prefersReducedMotion() {
+        return typeof window.matchMedia === 'function' &&
+            window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    }
+
     function init(options) {
         var opts = options || {};
         var results = resolveElement(opts.results || '#resultsList');
@@ -114,6 +122,9 @@
         var indicatorCurrent = null;
         var indicatorA11y = null;
         var observer = null;
+        var transitioning = false;
+        var transitionTimer = null;
+        var ignoreObserverMoves = false;
 
         var mediaWide = typeof window.matchMedia === 'function' ? window.matchMedia('(min-width: 1200px)') : null;
         var mediaMid = typeof window.matchMedia === 'function' ? window.matchMedia('(min-width: 768px)') : null;
@@ -217,23 +228,44 @@
             nextBtn.disabled = groupIndex >= count - 1;
         }
 
-        function applyGroup(direction) {
+        function cleanupTransition() {
+            if (transitionTimer) {
+                clearTimeout(transitionTimer);
+                transitionTimer = null;
+            }
+            /* Remove any lingering transition wrappers and restore cards */
+            var wrappers = results.querySelectorAll('.' + TRANSITION_WRAPPER_CLASS);
+            for (var w = 0; w < wrappers.length; w++) {
+                var wrapper = wrappers[w];
+                while (wrapper.firstChild) {
+                    results.insertBefore(wrapper.firstChild, wrapper);
+                }
+                results.removeChild(wrapper);
+            }
+            /* Clear transition classes */
+            for (var i = 0; i < cards.length; i++) {
+                cards[i].classList.remove(ENTERING_CLASS);
+                cards[i].classList.remove(EXITING_CLASS);
+            }
+            results.removeAttribute('aria-busy');
+            transitioning = false;
+        }
+
+        function applyGroupImmediate() {
             if (!active) return;
             groupIndex = clampIndex(groupIndex);
-
             var start = groupIndex * groupSize;
             var end = Math.min(start + groupSize, cards.length);
             var i;
 
             for (i = 0; i < cards.length; i++) {
                 cards[i].classList.remove(ENTERING_CLASS);
+                cards[i].classList.remove(EXITING_CLASS);
             }
 
             for (i = 0; i < cards.length; i++) {
                 var card = cards[i];
                 if (i >= start && i < end) {
-                    /* hidden=false + helper class; the [hidden] attribute is
-                     * the single source of truth for a11y/tree exclusion. */
                     card.hidden = false;
                     card.classList.add(VISIBLE_CLASS);
                 } else {
@@ -249,20 +281,162 @@
                 results.removeAttribute(GROUP_SIZE_ATTR);
             }
 
-            if (direction === 'next' || direction === 'prev') {
-                results.setAttribute(DIRECTION_ATTR, direction);
-                /* Restart the enter animation on the freshly visible group. */
-                void results.offsetWidth;
-                for (i = start; i < end; i++) {
-                    cards[i].classList.add(ENTERING_CLASS);
+            updateNav();
+        }
+
+        function applyGroup(direction) {
+            if (!active) return;
+
+            /* No direction or reduced motion: immediate swap */
+            if (!direction || prefersReducedMotion()) {
+                cleanupTransition();
+                applyGroupImmediate();
+                return;
+            }
+
+            /* If already transitioning, finish immediately then proceed */
+            if (transitioning) {
+                cleanupTransition();
+                applyGroupImmediate();
+            }
+
+            groupIndex = clampIndex(groupIndex);
+            var start = groupIndex * groupSize;
+            var end = Math.min(start + groupSize, cards.length);
+
+            /* Determine the outgoing cards (currently visible before this move) */
+            var outgoing = [];
+            var incoming = [];
+            var i;
+            for (i = 0; i < cards.length; i++) {
+                if (!cards[i].hidden && cards[i].classList.contains(VISIBLE_CLASS)) {
+                    outgoing.push(cards[i]);
+                }
+            }
+            for (i = start; i < end; i++) {
+                incoming.push(cards[i]);
+            }
+
+            /* Set direction attribute on the results container */
+            results.setAttribute(DIRECTION_ATTR, direction);
+
+            /* Mark the transition as in-progress */
+            transitioning = true;
+            results.setAttribute('aria-busy', 'true');
+
+            /* Show incoming cards (unhide them) */
+            ignoreObserverMoves = true;
+            for (i = 0; i < cards.length; i++) {
+                if (i >= start && i < end) {
+                    cards[i].hidden = false;
+                    cards[i].classList.add(VISIBLE_CLASS);
+                } else if (outgoing.indexOf(cards[i]) === -1) {
+                    cards[i].hidden = true;
+                    cards[i].classList.remove(VISIBLE_CLASS);
                 }
             }
 
+            /* Create outgoing wrapper */
+            var outWrapper = document.createElement('div');
+            outWrapper.className = TRANSITION_WRAPPER_CLASS + ' browse-story-layer-outgoing';
+            outWrapper.setAttribute('inert', '');
+            outWrapper.setAttribute('aria-hidden', 'true');
+
+            /* Create incoming wrapper */
+            var inWrapper = document.createElement('div');
+            inWrapper.className = TRANSITION_WRAPPER_CLASS + ' browse-story-layer-incoming';
+            inWrapper.setAttribute('inert', '');
+
+            /* Move outgoing cards into outgoing wrapper */
+            for (i = 0; i < outgoing.length; i++) {
+                outgoing[i].classList.add(EXITING_CLASS);
+                outgoing[i].classList.remove(ENTERING_CLASS);
+                outWrapper.appendChild(outgoing[i]);
+            }
+
+            /* Move incoming cards into incoming wrapper */
+            for (i = 0; i < incoming.length; i++) {
+                incoming[i].classList.add(ENTERING_CLASS);
+                incoming[i].classList.remove(EXITING_CLASS);
+                incoming[i].hidden = false;
+                incoming[i].classList.add(VISIBLE_CLASS);
+                inWrapper.appendChild(incoming[i]);
+            }
+
+            /* Insert both wrappers into results */
+            results.appendChild(outWrapper);
+            results.appendChild(inWrapper);
+
+            var visibleCount = Math.max(0, end - start);
+            if (visibleCount > 0) {
+                results.setAttribute(GROUP_SIZE_ATTR, String(visibleCount));
+            } else {
+                results.removeAttribute(GROUP_SIZE_ATTR);
+            }
+
+            /* Force reflow to start animations */
+            void results.offsetWidth;
+
             updateNav();
+
+            /* Schedule cleanup after the transition completes */
+            transitionTimer = setTimeout(function () {
+                transitionTimer = null;
+                transitioning = false;
+
+                /* Move incoming cards back to the results list in correct order */
+                while (inWrapper.firstChild) {
+                    results.insertBefore(inWrapper.firstChild, outWrapper);
+                }
+
+                /* Move outgoing cards back and hide them */
+                while (outWrapper.firstChild) {
+                    var card = outWrapper.firstChild;
+                    card.classList.remove(EXITING_CLASS);
+                    card.classList.remove(VISIBLE_CLASS);
+                    card.hidden = true;
+                    results.insertBefore(card, inWrapper);
+                }
+
+                /* Remove wrappers */
+                if (outWrapper.parentNode) outWrapper.parentNode.removeChild(outWrapper);
+                if (inWrapper.parentNode) inWrapper.parentNode.removeChild(inWrapper);
+
+                /* Remove entering class from incoming cards */
+                for (var j = 0; j < incoming.length; j++) {
+                    incoming[j].classList.remove(ENTERING_CLASS);
+                }
+
+                /* Restore correct card order and final hidden state */
+                restoreCardOrder();
+
+                results.removeAttribute('aria-busy');
+                ignoreObserverMoves = false;
+            }, TRANSITION_DURATION + 20);
+        }
+
+        /* Restore all cards to their canonical direct-child order in #resultsList */
+        function restoreCardOrder() {
+            for (var i = 0; i < cards.length; i++) {
+                results.appendChild(cards[i]);
+            }
+            /* Re-apply visibility state */
+            var start = groupIndex * groupSize;
+            var end = Math.min(start + groupSize, cards.length);
+            for (var j = 0; j < cards.length; j++) {
+                if (j >= start && j < end) {
+                    cards[j].hidden = false;
+                    cards[j].classList.add(VISIBLE_CLASS);
+                } else {
+                    cards[j].hidden = true;
+                    cards[j].classList.remove(VISIBLE_CLASS);
+                }
+            }
         }
 
         function step(delta) {
             if (!active) return;
+            if (transitioning) return;
             var next = clampIndex(groupIndex + delta);
             if (next === groupIndex) return;
             groupIndex = next;
@@ -271,6 +445,7 @@
 
         function goTo(index) {
             if (!active) return;
+            if (transitioning) return;
             var next = clampIndex(index);
             if (next === groupIndex) return;
             var direction = next > groupIndex ? 'next' : 'prev';
@@ -279,14 +454,17 @@
         }
 
         function restoreAllCards() {
+            cleanupTransition();
             for (var i = 0; i < cards.length; i++) {
                 var card = cards[i];
                 card.hidden = false;
                 card.classList.remove(VISIBLE_CLASS);
                 card.classList.remove(ENTERING_CLASS);
+                card.classList.remove(EXITING_CLASS);
             }
             results.removeAttribute(GROUP_SIZE_ATTR);
             results.removeAttribute(DIRECTION_ATTR);
+            results.removeAttribute('aria-busy');
         }
 
         function deactivate() {
@@ -307,7 +485,7 @@
                 groupIndex = 0;
                 groupSize = computeGroupSize();
                 ensureNav();
-                applyGroup(null);
+                applyGroupImmediate();
                 return;
             }
             deactivate();
@@ -315,8 +493,9 @@
 
         function refresh() {
             if (disposed || !active) return;
+            cleanupTransition();
             cards = collectCards();
-            applyGroup(null);
+            applyGroupImmediate();
         }
 
         /* Search/filter/sort/load-more replace #resultsList children via
@@ -325,6 +504,7 @@
          * no extra request is triggered from this side. */
         function onResultsMutated() {
             if (disposed || !active) return;
+            if (ignoreObserverMoves) return;
             var next = collectCards();
             var changed = next.length !== cards.length;
             if (!changed) {
@@ -337,11 +517,19 @@
             }
             cards = next;
             if (changed) groupIndex = 0;
-            applyGroup(null);
+            cleanupTransition();
+            applyGroupImmediate();
         }
 
         function onKeyDown(event) {
             if (disposed || !active) return;
+            if (transitioning) {
+                var navKey = event.key;
+                if (navKey === 'ArrowLeft' || navKey === 'ArrowRight' || navKey === 'Home' || navKey === 'End') {
+                    event.preventDefault();
+                }
+                return;
+            }
             var key = event.key;
             if (key !== 'ArrowLeft' && key !== 'ArrowRight' && key !== 'Home' && key !== 'End') return;
             if (event.ctrlKey || event.altKey || event.metaKey || event.shiftKey) return;
@@ -363,7 +551,8 @@
             var next = computeGroupSize();
             if (next === groupSize) return;
             groupSize = next;
-            applyGroup(null);
+            cleanupTransition();
+            applyGroupImmediate();
         }
 
         if (typeof MutationObserver === 'function') {
