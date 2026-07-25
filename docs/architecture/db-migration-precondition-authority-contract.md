@@ -49,7 +49,7 @@ When `status` is `ADOPTION_REQUIRED`, every `evaluatePrecondition` call returns 
 
 - **Registry authority:** `db/migration-provenance/precondition-registry.json` is the single source of truth for migration precondition declarations.
 - **Contract authority:** this document is the single source of truth for precondition semantics, evidence contract, and status mapping.
-- **Future query authority:** a separately approved `db/migration-provenance/readonly-query-catalog.json` (or equivalent) will be the single source of truth for read-only query definitions.
+- **Future query authority:** a separately approved `db/migration-provenance/readonly-query-catalog.json` will be the single source of truth for read-only query definitions.
 - **No other location** may declare, override, or supplement precondition definitions.
 
 ## Fixed registry path
@@ -155,13 +155,7 @@ New check-level fields (e.g., `depends_on`, `timeout_ms`, `retry_policy`) requir
 
 ## Future fixed query catalog
 
-A separately approved child will define:
-
-```
-db/migration-provenance/readonly-query-catalog.json
-```
-
-(or equivalent fixed path). The catalog will be a frozen key-value mapping from `query_reference` to a read-only query object:
+A separately approved child will define the exact fixed path below. The catalog will be a frozen key-value mapping from `query_reference` to a read-only query object:
 
 ```json
 {
@@ -400,14 +394,50 @@ Each step depends on the previous. This child resolves step 1 only.
 
 The following tests are required in future children:
 
-- Precondition registry validator: structural validation, duplicate migration_id rejection, duplicate check_id rejection, empty checks rejection when ACTIVE, unknown migration_id rejection when canonical manifest is available.
-- Registry status transition rules: ADOPTION_REQUIRED to ACTIVE requires non-empty entries.
-- evaluatePrecondition contract: NOT_EVALUATED for inactive registry, missing entry, empty checks, unknown migration, missing query catalog. PASS for defined matching conditions. FAIL for defined mismatching conditions. UNAVAILABLE for registry read failure, query execution failure, malformed evidence, Proxy/accessor traps.
-- Multi-check precedence: UNAVAILABLE over FAIL, FAIL over PASS, all PASS produces PASS.
-- No-precondition enforcement: no entry returns NOT_EVALUATED, never PASS.
-- Query-reference resolution: valid reference maps to catalog query, unknown reference returns UNAVAILABLE.
-- Cross-validation with canonical manifest: registry migration_id matches manifest, no orphan entries.
-- Caller override rejection: caller-supplied query/text/path/url returns UNAVAILABLE or is rejected before evaluation.
+### NOT_EVALUATED future cases
+
+- Registry safely loaded with `ADOPTION_REQUIRED`.
+- Catalog authority deliberately not adopted while registry remains `ADOPTION_REQUIRED`.
+- `ACTIVE` registry target-entry/empty-check invariant reaching runtime only as defensive fallback.
+
+### Source validation FAIL cases
+
+- `ACTIVE` registry missing target entry.
+- `ACTIVE` registry empty checks.
+- Orphan/unknown migration ID.
+- Malformed registry content.
+- Duplicate `migration_id`.
+- Duplicate `check_id`.
+- Invalid `query_reference`.
+
+### UNAVAILABLE cases
+
+- Required fixed registry file missing or unreadable.
+- Required fixed catalog file missing or unreadable after catalog authority adoption.
+- Realpath/read dependency unavailable.
+- JSON parse dependency failure.
+- Unsafe evidence reaching runtime.
+- Broker throw/rejection.
+- Malformed query result.
+
+### PASS cases
+
+- All defined non-empty checks match with authoritative evidence.
+
+### FAIL cases
+
+- Valid evidence disagrees with expected value.
+
+### Additional required tests
+
+- Precondition registry validator: structural validation, duplicate `migration_id` rejection, duplicate `check_id` rejection, empty checks rejection when `ACTIVE`, unknown `migration_id` rejection when canonical manifest is available.
+- Registry status transition rules: `ADOPTION_REQUIRED` to `ACTIVE` requires non-empty entries.
+- evaluatePrecondition contract: `PASS` for defined matching conditions. `FAIL` for defined mismatching conditions.
+- Multi-check precedence: `UNAVAILABLE` over `FAIL`, `FAIL` over `PASS`, all `PASS` produces `PASS`.
+- No-precondition enforcement: no entry returns `NOT_EVALUATED`, never `PASS`.
+- Query-reference resolution: valid reference maps to catalog query, unknown reference returns `UNAVAILABLE`.
+- Cross-validation with canonical manifest: registry `migration_id` matches manifest, no orphan entries.
+- Caller override rejection: caller-supplied query/text/path/url returns `UNAVAILABLE` or is rejected before evaluation.
 - Security-sensitive boundary: no SQL/URL/credential/env/operator/hostname in registry, no evidence leakage.
 
 ## Rollback

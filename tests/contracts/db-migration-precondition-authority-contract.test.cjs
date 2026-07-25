@@ -43,6 +43,12 @@ const FORBIDDEN_PHRASES = [
   /does not require a database session or lock handle/,
   /lockHandle is reserved for future use/,
   /readable by require\(\)/,
+  /or equivalent fixed path/,
+  /or equivalent\)/,
+  /missing query catalog\b(?!.*catalog authority adoption).*NOT_EVALUATED/,
+  /unknown migration\b(?!.*source validation).*NOT_EVALUATED/,
+  /empty checks\b(?!.*runtime).*NOT_EVALUATED/,
+  /missing entry\b(?!.*runtime).*NOT_EVALUATED/,
 ];
 
 describe('DB Migration Precondition Authority Contract (#3657)', () => {
@@ -384,6 +390,88 @@ describe('DB Migration Precondition Authority Contract (#3657)', () => {
     it('Document references ADOPTION_REQUIRED', () => {
       const doc = readDoc(CONTRACT_PATH);
       assert.match(doc, /ADOPTION_REQUIRED/);
+    });
+  });
+
+  describe('18. Exact fixed catalog path', () => {
+    const doc = readDoc(CONTRACT_PATH);
+    it('Exact catalog path present: db/migration-provenance/readonly-query-catalog.json', () => {
+      assert.match(doc, /db\/migration-provenance\/readonly-query-catalog\.json/);
+    });
+    it('No alternative catalog path wording', () => {
+      assert.ok(!/alternative.*catalog.*path/i.test(doc), 'No alternative catalog path');
+      assert.ok(!/fallback.*catalog.*path/i.test(doc), 'No fallback catalog path');
+      assert.ok(!/caller.*supplied.*catalog.*path/i.test(doc), 'No caller-supplied catalog path');
+      assert.ok(!/environment.*derived.*catalog.*path/i.test(doc), 'No environment-derived catalog path');
+    });
+    it('No "or equivalent" near catalog path', () => {
+      const catalogSection = doc.split('## Future fixed query catalog')[1]?.split('## ')[0] || '';
+      assert.ok(!catalogSection.includes('or equivalent'), 'No "or equivalent" in catalog section');
+      assert.ok(!catalogSection.includes('alternative'), 'No "alternative" in catalog section');
+      assert.ok(!catalogSection.includes('fallback'), 'No "fallback" in catalog section');
+    });
+    it('Catalog path is fixed, not caller-supplied', () => {
+      const catalogSection = doc.split('## Future fixed query catalog')[1]?.split('## ')[0] || '';
+      assert.ok(!catalogSection.includes('caller'), 'No caller-supplied path');
+      assert.ok(!catalogSection.includes('environment'), 'No environment-derived path');
+    });
+  });
+
+  describe('19. Future test phase separation', () => {
+    const doc = readDoc(CONTRACT_PATH);
+    const afterHeading = doc.split('## Required future tests')[1] || '';
+    const futureSection = afterHeading.split('\n## ')[0] || '';
+    it('Has NOT_EVALUATED future cases subsection', () => {
+      assert.match(futureSection, /### NOT_EVALUATED future cases/);
+    });
+    it('Has Source validation FAIL cases subsection', () => {
+      assert.match(futureSection, /### Source validation FAIL cases/);
+    });
+    it('Has UNAVAILABLE cases subsection', () => {
+      assert.match(futureSection, /### UNAVAILABLE cases/);
+    });
+    it('NOT_EVALUATED cases include ADOPTION_REQUIRED', () => {
+      assert.match(futureSection, /ADOPTION_REQUIRED/);
+    });
+    it('NOT_EVALUATED cases include catalog authority deliberately not adopted', () => {
+      assert.match(futureSection, /catalog authority.*not adopted/i);
+    });
+    it('NOT_EVALUATED cases include runtime defensive fallback', () => {
+      assert.match(futureSection, /defensive fallback/);
+    });
+    it('Source FAIL cases include ACTIVE registry missing target entry', () => {
+      assert.match(futureSection, /ACTIVE.*missing target entry/);
+    });
+    it('Source FAIL cases include ACTIVE registry empty checks', () => {
+      assert.match(futureSection, /ACTIVE.*empty checks/);
+    });
+    it('Source FAIL cases include orphan/unknown migration ID', () => {
+      assert.match(futureSection, /orphan.*unknown migration/i);
+    });
+    it('UNAVAILABLE cases include required fixed file missing/unreadable', () => {
+      assert.match(futureSection, /fixed.*file missing or unreadable/);
+    });
+    it('UNAVAILABLE cases include catalog file missing after adoption', () => {
+      assert.match(futureSection, /catalog.*missing.*after.*adoption/);
+    });
+    it('UNAVAILABLE cases include broker throw/rejection', () => {
+      assert.match(futureSection, /broker throw.*rejection/i);
+    });
+    it('No broad unconditional "missing query catalog -> NOT_EVALUATED"', () => {
+      const broadPattern = /missing query catalog.*NOT_EVALUATED/;
+      assert.ok(!broadPattern.test(futureSection), 'No broad missing query catalog -> NOT_EVALUATED');
+    });
+    it('No broad unconditional "unknown migration -> NOT_EVALUATED"', () => {
+      const broadPattern = /unknown migration.*NOT_EVALUATED/;
+      assert.ok(!broadPattern.test(futureSection), 'No broad unknown migration -> NOT_EVALUATED');
+    });
+    it('No broad unconditional "empty checks -> NOT_EVALUATED"', () => {
+      const broadPattern = /empty checks.*NOT_EVALUATED/;
+      assert.ok(!broadPattern.test(futureSection), 'No broad empty checks -> NOT_EVALUATED');
+    });
+    it('No broad unconditional "missing entry -> NOT_EVALUATED"', () => {
+      const broadPattern = /missing entry.*NOT_EVALUATED/;
+      assert.ok(!broadPattern.test(futureSection), 'No broad missing entry -> NOT_EVALUATED');
     });
   });
 });
