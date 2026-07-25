@@ -1,11 +1,9 @@
-name: Diagnostic Story Browser Contract
+name: Diagnostic Full Smoke
 
 on:
   pull_request:
     paths:
       - '.github/workflows/diagnostic-story-browser.yml'
-      - 'tests/contracts/browse-story-view-foundation-3655-browser-contract.test.cjs'
-      - 'package.json'
 
 jobs:
   diagnose:
@@ -26,12 +24,12 @@ jobs:
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
 
-      - name: Run exact browser contract and capture output
-        id: browser_contract
+      - name: Run full smoke and capture output
+        id: full_smoke
         shell: bash
         run: |
           set +e
-          node --test tests/contracts/browse-story-view-foundation-3655-browser-contract.test.cjs > story-browser-contract.log 2>&1
+          npm test > full-smoke.log 2>&1
           status=$?
           echo "status=${status}" >> "$GITHUB_OUTPUT"
           exit 0
@@ -39,11 +37,11 @@ jobs:
       - name: Upload diagnostic log
         uses: actions/upload-artifact@v4
         with:
-          name: story-browser-contract-log
-          path: story-browser-contract.log
+          name: full-smoke-log
+          path: full-smoke.log
           if-no-files-found: error
           retention-days: 1
 
       - name: Preserve diagnostic result
         run: |
-          echo "Exact browser contract exit status: ${{ steps.browser_contract.outputs.status }}"
+          echo "Full smoke exit status: ${{ steps.full_smoke.outputs.status }}"
