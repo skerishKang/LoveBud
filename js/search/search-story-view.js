@@ -105,20 +105,6 @@
             window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     }
 
-        function performInternalMutation(callback) {
-            if (observer) {
-                observer.disconnect();
-            }
-            try {
-                callback();
-            } finally {
-                if (observer) {
-                    observer.takeRecords();
-                    observer.observe(results, { childList: true });
-                }
-            }
-        }
-
     function init(options) {
         var opts = options || {};
         var results = resolveElement(opts.results || '#resultsList');
@@ -253,18 +239,36 @@
                 transitionTimer = null;
             }
 
-            /* Remove wrappers — only restore cards to direct children if requested */
+            /* Remove wrappers — only restore cards to direct children if requested.
+             * When restoring, ensure canonical cards[] array order is preserved. */
             performInternalMutation(function () {
                 var wrappers = results.querySelectorAll('.' + TRANSITION_WRAPPER_CLASS);
-                for (var w = 0; w < wrappers.length; w++) {
-                    var wrapper = wrappers[w];
-                    if (restoreExistingCards) {
+                if (restoreExistingCards) {
+                    /* Collect all cards from wrappers first */
+                    var salvaged = [];
+                    for (var w = 0; w < wrappers.length; w++) {
+                        var wrapper = wrappers[w];
                         while (wrapper.firstChild) {
-                            results.insertBefore(wrapper.firstChild, wrapper);
+                            salvaged.push(wrapper.firstChild);
                         }
                     }
-                    if (wrapper.parentNode) {
-                        wrapper.parentNode.removeChild(wrapper);
+                    /* Restore in canonical cards[] array order */
+                    for (var c = 0; c < cards.length; c++) {
+                        var idx = salvaged.indexOf(cards[c]);
+                        if (idx !== -1) {
+                            results.appendChild(cards[c]);
+                            salvaged.splice(idx, 1);
+                        }
+                    }
+                    /* Any remaining salvaged cards not in cards[] go at the end */
+                    for (var r = 0; r < salvaged.length; r++) {
+                        results.appendChild(salvaged[r]);
+                    }
+                }
+                /* Remove empty wrappers */
+                for (var w2 = 0; w2 < wrappers.length; w2++) {
+                    if (wrappers[w2].parentNode) {
+                        wrappers[w2].parentNode.removeChild(wrappers[w2]);
                     }
                 }
             });
@@ -648,6 +652,25 @@
             observer.observe(results, { childList: true });
         }
         document.addEventListener('keydown', onKeyDown);
+
+               /* ── performInternalMutation ────────────────────────────────
+         * Wraps DOM mutations that should not trigger the MutationObserver
+         * callback (card movement to/from wrappers, wrapper removal, mode
+         * exit cleanup). Disconnects the observer, runs the work, discards
+         * any queued records, and reconnects. */
+        function performInternalMutation(callback) {
+            if (observer) {
+                observer.disconnect();
+            }
+            try {
+                callback();
+            } finally {
+                if (observer) {
+                    observer.takeRecords();
+                    observer.observe(results, { childList: true });
+                }
+            }
+        }
 
         /* Build the (hidden) navigation shell up front so the control is
          * present-but-hidden in every non-Story mode and show/hide is a

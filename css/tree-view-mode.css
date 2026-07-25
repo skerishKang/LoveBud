@@ -983,27 +983,11 @@
     justify-content: center;
 }
 
-.browse-story-transition-stage[data-story-layer-size="3"] {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.browse-story-transition-stage[data-story-layer-size="2"] {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-.browse-story-transition-stage[data-story-layer-size="1"] {
-    grid-template-columns: minmax(0, 560px);
-    justify-content: center;
-}
-
 .browse-story-layer-outgoing {
     position: absolute;
     top: 0;
     left: 0;
     right: 0;
-}
-
-.browse-story-layer-outgoing {
     animation: browse-story-exit-next 340ms cubic-bezier(0.22, 1, 0.36, 1) both;
     pointer-events: none;
 }
