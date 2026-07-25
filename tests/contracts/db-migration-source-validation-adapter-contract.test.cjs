@@ -25,6 +25,7 @@ const REPO_ROOT = path.resolve(__dirname, '..', '..');
 const ADAPTER_PATH = path.join(REPO_ROOT, 'scripts', 'migration-source-validation-adapter-core.cjs');
 const ORCH_PATH = path.join(REPO_ROOT, 'scripts', 'migration-runner-orchestrator-core.cjs');
 const PROVENANCE_CORE_PATH = path.join(REPO_ROOT, 'scripts', 'migration-provenance-core.cjs');
+const REGISTRY_VALIDATOR_PATH = path.join(REPO_ROOT, 'scripts', 'migration-precondition-registry-validator-core.cjs');
 
 const {
   createMigrationSourceValidationAdapter,
@@ -101,16 +102,24 @@ const VALID_SCHEMA = {
   ]
 };
 
+const VALID_REGISTRY = {
+  format_version: '1.0',
+  status: 'ADOPTION_REQUIRED',
+  entries: []
+};
+
 const VALID_INVENTORY_TEXT = JSON.stringify(VALID_INVENTORY);
 const VALID_MIGRATIONS_TEXT = JSON.stringify(VALID_MIGRATIONS);
 const VALID_SCHEMA_TEXT = JSON.stringify(VALID_SCHEMA);
+const VALID_REGISTRY_TEXT = JSON.stringify(VALID_REGISTRY);
 
-function loadedSource(inventoryText, migrationText, schemaText) {
+function loadedSource(inventoryText, migrationText, schemaText, registryText) {
   return {
     status: SOURCE_LOAD_STATUSES.LOADED,
     inventoryText: inventoryText !== undefined ? inventoryText : VALID_INVENTORY_TEXT,
     migrationManifestText: migrationText !== undefined ? migrationText : VALID_MIGRATIONS_TEXT,
-    expectedSchemaManifestText: schemaText !== undefined ? schemaText : VALID_SCHEMA_TEXT
+    expectedSchemaManifestText: schemaText !== undefined ? schemaText : VALID_SCHEMA_TEXT,
+    preconditionRegistryText: registryText !== undefined ? registryText : VALID_REGISTRY_TEXT
   };
 }
 
@@ -156,7 +165,9 @@ function createTempRepo() {
 function writeTempAdapterCore(scriptsDir) {
   const coreSource = fs.readFileSync(path.join(REPO_ROOT, 'scripts', 'migration-source-validation-adapter-core.cjs'), 'utf8');
   const provenanceSource = fs.readFileSync(PROVENANCE_CORE_PATH, 'utf8');
+  const registryValidatorSource = fs.readFileSync(REGISTRY_VALIDATOR_PATH, 'utf8');
   fs.writeFileSync(path.join(scriptsDir, 'migration-provenance-core.cjs'), provenanceSource, 'utf8');
+  fs.writeFileSync(path.join(scriptsDir, 'migration-precondition-registry-validator-core.cjs'), registryValidatorSource, 'utf8');
 
   let adapted = coreSource.replace(
     "const { validateSourceConfiguration } = require('./migration-provenance-core.cjs');",
@@ -753,6 +764,7 @@ describe('DB migration source-validation adapter contract (#3650)', () => {
         fs.writeFileSync(path.join(docsDir, 'migration-path-inventory.json'), '{ broken inventory json', 'utf8');
         fs.writeFileSync(path.join(dbDir, 'canonical-migrations.json'), VALID_MIGRATIONS_TEXT, 'utf8');
         fs.writeFileSync(path.join(dbDir, 'expected-schema-manifest.json'), VALID_SCHEMA_TEXT, 'utf8');
+        fs.writeFileSync(path.join(dbDir, 'precondition-registry.json'), VALID_REGISTRY_TEXT, 'utf8');
         writeTempAdapterCore(scriptsDir);
         const { createMigrationSourceValidationAdapter: create } = loadTempAdapter(scriptsDir);
         const adapter = create();
@@ -769,6 +781,7 @@ describe('DB migration source-validation adapter contract (#3650)', () => {
         fs.writeFileSync(path.join(docsDir, 'migration-path-inventory.json'), VALID_INVENTORY_TEXT, 'utf8');
         fs.writeFileSync(path.join(dbDir, 'canonical-migrations.json'), '{ broken canonical json', 'utf8');
         fs.writeFileSync(path.join(dbDir, 'expected-schema-manifest.json'), VALID_SCHEMA_TEXT, 'utf8');
+        fs.writeFileSync(path.join(dbDir, 'precondition-registry.json'), VALID_REGISTRY_TEXT, 'utf8');
         writeTempAdapterCore(scriptsDir);
         const { createMigrationSourceValidationAdapter: create } = loadTempAdapter(scriptsDir);
         const adapter = create();
@@ -785,6 +798,7 @@ describe('DB migration source-validation adapter contract (#3650)', () => {
         fs.writeFileSync(path.join(docsDir, 'migration-path-inventory.json'), VALID_INVENTORY_TEXT, 'utf8');
         fs.writeFileSync(path.join(dbDir, 'canonical-migrations.json'), VALID_MIGRATIONS_TEXT, 'utf8');
         fs.writeFileSync(path.join(dbDir, 'expected-schema-manifest.json'), '{ broken schema json', 'utf8');
+        fs.writeFileSync(path.join(dbDir, 'precondition-registry.json'), VALID_REGISTRY_TEXT, 'utf8');
         writeTempAdapterCore(scriptsDir);
         const { createMigrationSourceValidationAdapter: create } = loadTempAdapter(scriptsDir);
         const adapter = create();
@@ -1092,6 +1106,7 @@ describe('DB migration source-validation adapter contract (#3650)', () => {
       reordered.expectedSchemaManifestText = VALID_SCHEMA_TEXT;
       reordered.migrationManifestText = VALID_MIGRATIONS_TEXT;
       reordered.inventoryText = VALID_INVENTORY_TEXT;
+      reordered.preconditionRegistryText = VALID_REGISTRY_TEXT;
       reordered.status = SOURCE_LOAD_STATUSES.LOADED;
       const adapter = createMigrationSourceValidationAdapter({
         loadFixedSources: () => reordered,
@@ -1334,20 +1349,24 @@ describe('DB migration source-validation adapter contract (#3650)', () => {
         const invPath = path.join(docsDir, 'migration-path-inventory.json');
         const migPath = path.join(dbDir, 'canonical-migrations.json');
         const schPath = path.join(dbDir, 'expected-schema-manifest.json');
+        const regPath = path.join(dbDir, 'precondition-registry.json');
         fs.writeFileSync(invPath, VALID_INVENTORY_TEXT, 'utf8');
         fs.writeFileSync(migPath, VALID_MIGRATIONS_TEXT, 'utf8');
         fs.writeFileSync(schPath, VALID_SCHEMA_TEXT, 'utf8');
+        fs.writeFileSync(regPath, VALID_REGISTRY_TEXT, 'utf8');
         writeTempAdapterCore(scriptsDir);
         const { createMigrationSourceValidationAdapter: create } = loadTempAdapter(scriptsDir);
 
         const invReal = fs.realpathSync(invPath);
         const migReal = fs.realpathSync(migPath);
         const schReal = fs.realpathSync(schPath);
+        const regReal = fs.realpathSync(regPath);
 
         const counts = new Map([
           [invReal, 0],
           [migReal, 0],
-          [schReal, 0]
+          [schReal, 0],
+          [regReal, 0]
         ]);
 
         const adapter = create();
@@ -1366,12 +1385,101 @@ describe('DB migration source-validation adapter contract (#3650)', () => {
           assert.strictEqual(counts.get(invReal), 1);
           assert.strictEqual(counts.get(migReal), 1);
           assert.strictEqual(counts.get(schReal), 1);
+          assert.strictEqual(counts.get(regReal), 1);
         } finally {
           fs.readFileSync = originalReadFileSync;
         }
       } finally {
         fs.rmSync(tmpDir, { recursive: true, force: true });
       }
+    });
+  });
+
+  describe('J. Precondition registry 4th source integration (#3659)', () => {
+    it('J1. default adapter returns PASS with registry (current committed)', async () => {
+      const adapter = createMigrationSourceValidationAdapter();
+      const result = await adapter.validateSource({ targetMigrationId: 'test' });
+      assert.deepStrictEqual(result, SOURCE_VALIDATION_RESULTS.PASS);
+    });
+
+    it('J2. malformed registry raw text -> FAIL', async () => {
+      const adapter = createMigrationSourceValidationAdapter({
+        loadFixedSources: () => loadedSource(VALID_INVENTORY_TEXT, VALID_MIGRATIONS_TEXT, VALID_SCHEMA_TEXT, '{ broken registry json'),
+        validateSourceConfiguration: noopValidator
+      });
+      const result = await adapter.validateSource({ targetMigrationId: 'test' });
+      assert.deepStrictEqual(result, SOURCE_VALIDATION_RESULTS.FAIL);
+    });
+
+    it('J3. invalid registry structure -> FAIL (ADOPTION_REQUIRED + non-empty entries)', async () => {
+      const badRegistry = JSON.stringify({
+        format_version: '1.0',
+        status: 'ADOPTION_REQUIRED',
+        entries: [{ migration_id: 'test', checks: [] }]
+      });
+      const adapter = createMigrationSourceValidationAdapter({
+        loadFixedSources: () => loadedSource(VALID_INVENTORY_TEXT, VALID_MIGRATIONS_TEXT, VALID_SCHEMA_TEXT, badRegistry),
+        validateSourceConfiguration: noopValidator
+      });
+      const result = await adapter.validateSource({ targetMigrationId: 'test' });
+      assert.deepStrictEqual(result, SOURCE_VALIDATION_RESULTS.FAIL);
+    });
+
+    it('J4. missing registry file in temp repo -> UNAVAILABLE', async () => {
+      const { tmpDir, scriptsDir, docsDir, dbDir } = createTempRepo();
+      try {
+        fs.writeFileSync(path.join(docsDir, 'migration-path-inventory.json'), VALID_INVENTORY_TEXT, 'utf8');
+        fs.writeFileSync(path.join(dbDir, 'canonical-migrations.json'), VALID_MIGRATIONS_TEXT, 'utf8');
+        fs.writeFileSync(path.join(dbDir, 'expected-schema-manifest.json'), VALID_SCHEMA_TEXT, 'utf8');
+        // Intentionally NOT writing precondition-registry.json
+        writeTempAdapterCore(scriptsDir);
+        const { createMigrationSourceValidationAdapter: create } = loadTempAdapter(scriptsDir);
+        const adapter = create();
+        const result = await adapter.validateSource({ targetMigrationId: 'test' });
+        assert.deepStrictEqual(result, SOURCE_VALIDATION_RESULTS.UNAVAILABLE);
+      } finally {
+        fs.rmSync(tmpDir, { recursive: true, force: true });
+      }
+    });
+
+    it('J5. registry with forbidden authority key fails at adapter level', async () => {
+      const badRegistry = JSON.stringify({
+        format_version: '1.0',
+        status: 'ACTIVE',
+        entries: [{
+          migration_id: 'test',
+          checks: [{ check_id: 'c1', query_reference: 'q:1', expected: true, sql: 'SELECT 1' }]
+        }]
+      });
+      const adapter = createMigrationSourceValidationAdapter({
+        loadFixedSources: () => loadedSource(VALID_INVENTORY_TEXT, VALID_MIGRATIONS_TEXT, VALID_SCHEMA_TEXT, badRegistry),
+        validateSourceConfiguration: noopValidator
+      });
+      const result = await adapter.validateSource({ targetMigrationId: 'test' });
+      assert.deepStrictEqual(result, SOURCE_VALIDATION_RESULTS.FAIL);
+    });
+
+    it('J6. registry parse exactly once, validator called once', async () => {
+      const { loader, getLoadCount } = createCountingLoader(
+        loadedSource(VALID_INVENTORY_TEXT, VALID_MIGRATIONS_TEXT, VALID_SCHEMA_TEXT, VALID_REGISTRY_TEXT)
+      );
+      const { validator, getCallCount } = createTrackingValidator(noopValidator);
+      const adapter = createMigrationSourceValidationAdapter({
+        loadFixedSources: loader,
+        validateSourceConfiguration: validator
+      });
+      const result = await adapter.validateSource({ targetMigrationId: 'test' });
+      assert.deepStrictEqual(result, SOURCE_VALIDATION_RESULTS.PASS);
+      assert.strictEqual(getLoadCount(), 1);
+      assert.strictEqual(getCallCount(), 1);
+    });
+
+    it('J7. result does not contain registry path or content', async () => {
+      const adapter = createMigrationSourceValidationAdapter();
+      const result = await adapter.validateSource({ targetMigrationId: 'test' });
+      const resultStr = JSON.stringify(result);
+      assert.ok(!resultStr.includes('precondition-registry'));
+      assert.ok(!resultStr.includes('ADOPTION_REQUIRED'));
     });
   });
 });

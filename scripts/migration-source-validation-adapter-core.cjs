@@ -3,16 +3,28 @@
 /**
  * Migration source-validation adapter — source-tested contract (#3650).
  *
- * Source-only adapter: reads three fixed repository JSON files via a loader,
+ * Source-only adapter: reads four fixed repository JSON files via a loader,
  * parses each exactly once, delegates to the existing `validateSourceConfiguration`
- * validator, and returns PASS|FAIL|UNAVAILABLE.
+ * validator plus the precondition registry validator, and returns
+ * PASS|FAIL|UNAVAILABLE.
  *
  * Supported loader/validator return types:
  *   - synchronous plain object
  *   - genuine native Promise (resolved to plain object)
  * Proxy-wrapped Promises and arbitrary thenables are not assimilated.
  *
+ * Sources:
+ *   1. docs/architecture/migration-path-inventory.json
+ *   2. db/migration-provenance/canonical-migrations.json
+ *   3. db/migration-provenance/expected-schema-manifest.json
+ *   4. db/migration-provenance/precondition-registry.json
+ *
  * Refs #3650
+ * Refs #3659
+ * Refs #3657
+ * Refs #3658
+ * Refs #3652
+ * Refs #3646
  * Refs #3458 - Keep #3458 OPEN.
  * Refs #3425 - Keep #3425 OPEN.
  * Refs #3435 - Keep #3435 OPEN.
@@ -24,6 +36,10 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { types: utilTypes } = require('node:util');
 const { validateSourceConfiguration } = require('./migration-provenance-core.cjs');
+const {
+  validatePreconditionRegistry,
+  validateRegistryManifestBinding
+} = require('./migration-precondition-registry-validator-core.cjs');
 
 const REPO_ROOT = path.resolve(__dirname, '..');
 
@@ -44,10 +60,14 @@ const FACTORY_ERROR_INVALID_DEPENDENCY = 'SOURCE_VALIDATION_ADAPTER_INVALID_DEPE
 const INVENTORY_RELATIVE = path.join('docs', 'architecture', 'migration-path-inventory.json');
 const CANONICAL_MIGRATIONS_RELATIVE = path.join('db', 'migration-provenance', 'canonical-migrations.json');
 const EXPECTED_SCHEMA_RELATIVE = path.join('db', 'migration-provenance', 'expected-schema-manifest.json');
+const PRECONDITION_REGISTRY_RELATIVE = path.join('db', 'migration-provenance', 'precondition-registry.json');
 
 const ALLOWED_CONFIG_KEYS = Object.freeze(['loadFixedSources', 'validateSourceConfiguration']);
 
-const LOADED_EXACT_KEYS = Object.freeze(['status', 'inventoryText', 'migrationManifestText', 'expectedSchemaManifestText']);
+const LOADED_EXACT_KEYS = Object.freeze([
+  'status', 'inventoryText', 'migrationManifestText',
+  'expectedSchemaManifestText', 'preconditionRegistryText'
+]);
 
 const INVALID_EXACT_KEYS = Object.freeze(['status']);
 
@@ -231,11 +251,23 @@ function defaultLoadFixedSources() {
     return { status: SOURCE_LOAD_STATUSES.UNAVAILABLE };
   }
 
+  const regReal = resolveConfinedRegularFile(PRECONDITION_REGISTRY_RELATIVE);
+  if (regReal === undefined) {
+    return { status: SOURCE_LOAD_STATUSES.UNAVAILABLE };
+  }
+  let regText;
+  try {
+    regText = fs.readFileSync(regReal, 'utf8');
+  } catch (e) {
+    return { status: SOURCE_LOAD_STATUSES.UNAVAILABLE };
+  }
+
   return {
     status: SOURCE_LOAD_STATUSES.LOADED,
     inventoryText: invText,
     migrationManifestText: migText,
-    expectedSchemaManifestText: schText
+    expectedSchemaManifestText: schText,
+    preconditionRegistryText: regText
   };
 }
 
@@ -280,12 +312,18 @@ function parseSnapshotLoaderResult(raw) {
   if (schDesc.desc.enumerable !== true) return { valid: false };
   if (typeof schDesc.desc.value !== 'string') return { valid: false };
 
+  const regDesc = descriptors.find((d) => d.key === 'preconditionRegistryText');
+  if (!regDesc || !('value' in regDesc.desc)) return { valid: false };
+  if (regDesc.desc.enumerable !== true) return { valid: false };
+  if (typeof regDesc.desc.value !== 'string') return { valid: false };
+
   return {
     valid: true,
     loadStatus: SOURCE_LOAD_STATUSES.LOADED,
     inventoryText: invDesc.desc.value,
     migrationManifestText: migDesc.desc.value,
-    expectedSchemaManifestText: schDesc.desc.value
+    expectedSchemaManifestText: schDesc.desc.value,
+    preconditionRegistryText: regDesc.desc.value
   };
 }
 
@@ -424,6 +462,25 @@ function createMigrationSourceValidationAdapter(config) {
       return SOURCE_VALIDATION_RESULTS.FAIL;
     }
 
+    let preconditionRegistry;
+    try {
+      preconditionRegistry = JSON.parse(snapshot.preconditionRegistryText);
+    } catch (e) {
+      return SOURCE_VALIDATION_RESULTS.FAIL;
+    }
+
+    // Validate registry structure
+    const registryResult = validatePreconditionRegistry(preconditionRegistry);
+    if (!registryResult.ok) {
+      return SOURCE_VALIDATION_RESULTS.FAIL;
+    }
+
+    // Validate registry-manifest cross-binding
+    const bindingResult = validateRegistryManifestBinding(preconditionRegistry, migrationManifest);
+    if (!bindingResult.ok) {
+      return SOURCE_VALIDATION_RESULTS.FAIL;
+    }
+
     let rawValidatorResult;
     try {
       rawValidatorResult = validatorFn({
@@ -469,5 +526,7 @@ module.exports = {
   SOURCE_LOAD_STATUSES,
   FACTORY_ERROR_INVALID_DEPENDENCY,
   createMigrationSourceValidationAdapter,
-  validateSourceConfiguration
+  validateSourceConfiguration,
+  validatePreconditionRegistry,
+  validateRegistryManifestBinding
 };

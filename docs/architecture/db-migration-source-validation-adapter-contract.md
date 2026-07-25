@@ -9,7 +9,7 @@
 
 ## Purpose
 
-The migration source-validation adapter reads three fixed repository JSON files and delegates to the existing `validateSourceConfiguration` validator from `migration-provenance-core.cjs`. It does NOT execute SQL, open database connections, import `pg`, access network, modify manifests, or perform any side effect beyond reading three fixed files.
+The migration source-validation adapter reads four fixed repository JSON files and delegates to the existing `validateSourceConfiguration` validator from `migration-provenance-core.cjs` plus the precondition registry validator. It does NOT execute SQL, open database connections, import `pg`, access network, modify manifests, or perform any side effect beyond reading four fixed files.
 
 ## Factory
 
@@ -61,10 +61,24 @@ The adapter is a frozen object with exactly one own enumerable key:
 | 1 | `docs/architecture/migration-path-inventory.json` | `<repo>/docs/architecture/migration-path-inventory.json` |
 | 2 | `db/migration-provenance/canonical-migrations.json` | `<repo>/db/migration-provenance/canonical-migrations.json` |
 | 3 | `db/migration-provenance/expected-schema-manifest.json` | `<repo>/db/migration-provenance/expected-schema-manifest.json` |
+| 4 | `db/migration-provenance/precondition-registry.json` | `<repo>/db/migration-provenance/precondition-registry.json` |
 
 - Repository root is calculated from `__dirname`, not from caller, environment, or argument.
 - No caller override for file paths, root, glob, URL, or stdin.
 - `targetMigrationId` is never used for path selection or source authorization.
+
+## Fourth Source: Precondition Registry (#3659)
+
+A fourth fixed source `db/migration-provenance/precondition-registry.json` is loaded and validated alongside the three existing sources:
+
+1. Loaded via `defaultLoadFixedSources()` as `preconditionRegistryText`
+2. Parsed with `JSON.parse()` exactly once
+3. Validated structurally by `validatePreconditionRegistry()` from `migration-precondition-registry-validator-core.cjs`
+4. Cross-validated against the canonical migration manifest by `validateRegistryManifestBinding()`
+
+Registry validation failures (structural, binding) produce `FAIL`. Registry load failures produce `UNAVAILABLE`.
+
+The registry schema is documented in `docs/architecture/db-migration-precondition-registry-source-validation-contract.md` (#3659).
 
 ## Loader Internal State
 
@@ -220,7 +234,7 @@ Injected loader results are validated via safe descriptor snapshots:
 
 - Plain record only (no array, no function, no null)
 - Exact permitted own keys per status variant (order-independent set comparison):
-  - `LOADED`: `{status, inventoryText, migrationManifestText, expectedSchemaManifestText}`
+  - `LOADED`: `{status, inventoryText, migrationManifestText, expectedSchemaManifestText, preconditionRegistryText}`
   - `INVALID`: `{status}`
   - `UNAVAILABLE`: `{status}`
 - All keys must be own enumerable data properties
@@ -248,7 +262,7 @@ Validator results are validated via safe descriptor snapshots:
 - Each source is JSON-parsed at most once per call.
 - No `existsSync` + `readFileSync` double-read pattern.
 - `JSON.parse` failure on first source → `FAIL`, validator not called.
-- Per-file read count is verified in tests: inventory, canonical manifest, and expected-schema manifest each read exactly once.
+- Per-file read count is verified in tests: inventory, canonical manifest, expected-schema manifest, and precondition registry each read exactly once.
 
 ## Path/Realpath Confinement
 
@@ -287,7 +301,8 @@ The test suite includes:
 - **F:** Hostile loader result (accessor, Proxy, traps, revoked, unknown status, extra key, symbol, wrong type, **F11 reversed key order**, **F12 non-enumerable status**, **F13 non-enumerable text**)
 - **G:** Hostile validator result (ok true/false, accessor, Proxy, traps, revoked, reject, **G10/G11 genuine Promise**, **G12 Proxy-wrapped validator get trap 0**, **G13 accessor thenable getter 0**, **G14 data-property thenable call 0**, **G15 non-enumerable ok**)
 - **H:** Source counts (loader 1x, envelope 0x, malformed 0x)
-- **I:** Fixed source actual read counts (inventory, canonical, schema each exactly 1)
+- **I:** Fixed source actual read counts (inventory, canonical, schema, registry each exactly 1)
+- **J:** Precondition registry 4th source integration (J1–J7: PASS, malformed → FAIL, invalid structure → FAIL, missing file → UNAVAILABLE, forbidden authority key → FAIL, parse/validator counts, result sanitization)
 
 ## Side-Effect Boundary
 
@@ -306,6 +321,9 @@ Source-only PR revert. No database rollback.
 ## Protected Issues
 
 - Refs #3650
+- Refs #3659
+- Refs #3657
+- Refs #3658
 - Refs #3458 — Keep OPEN.
 - Refs #3425 — Keep OPEN.
 - Refs #3435 — Keep OPEN.
