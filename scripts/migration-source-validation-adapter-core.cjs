@@ -469,15 +469,47 @@ function createMigrationSourceValidationAdapter(config) {
       return SOURCE_VALIDATION_RESULTS.FAIL;
     }
 
-    // Validate registry structure
-    const registryResult = validatePreconditionRegistry(preconditionRegistry);
-    if (!registryResult.ok) {
+    // Validate registry structure (with failure mapping)
+    let registryResult;
+    try {
+      registryResult = validatePreconditionRegistry(preconditionRegistry);
+    } catch (e) {
+      return SOURCE_VALIDATION_RESULTS.UNAVAILABLE;
+    }
+    if (isGenuinePromise(registryResult)) {
+      try {
+        registryResult = await registryResult;
+      } catch (e) {
+        return SOURCE_VALIDATION_RESULTS.UNAVAILABLE;
+      }
+    }
+    const regSnapshot = parseValidatorResult(registryResult);
+    if (!regSnapshot.valid) {
+      return SOURCE_VALIDATION_RESULTS.UNAVAILABLE;
+    }
+    if (!regSnapshot.ok) {
       return SOURCE_VALIDATION_RESULTS.FAIL;
     }
 
-    // Validate registry-manifest cross-binding
-    const bindingResult = validateRegistryManifestBinding(preconditionRegistry, migrationManifest);
-    if (!bindingResult.ok) {
+    // Validate registry-manifest cross-binding (with failure mapping)
+    let bindingResult;
+    try {
+      bindingResult = validateRegistryManifestBinding(preconditionRegistry, migrationManifest);
+    } catch (e) {
+      return SOURCE_VALIDATION_RESULTS.UNAVAILABLE;
+    }
+    if (isGenuinePromise(bindingResult)) {
+      try {
+        bindingResult = await bindingResult;
+      } catch (e) {
+        return SOURCE_VALIDATION_RESULTS.UNAVAILABLE;
+      }
+    }
+    const bindSnapshot = parseValidatorResult(bindingResult);
+    if (!bindSnapshot.valid) {
+      return SOURCE_VALIDATION_RESULTS.UNAVAILABLE;
+    }
+    if (!bindSnapshot.ok) {
       return SOURCE_VALIDATION_RESULTS.FAIL;
     }
 

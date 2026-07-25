@@ -21,6 +21,8 @@
  * Refs #1882 — Keep OPEN.
  */
 
+const { types: utilTypes } = require('node:util');
+
 const ALLOWED_TOP_LEVEL_KEYS = Object.freeze(['format_version', 'status', 'entries']);
 const ALLOWED_ENTRY_KEYS = Object.freeze(['migration_id', 'checks']);
 const ALLOWED_CHECK_KEYS = Object.freeze(['check_id', 'query_reference', 'expected']);
@@ -31,6 +33,23 @@ const FORBIDDEN_AUTHORITY_KEYS = Object.freeze([
 ]);
 const VALID_FORMAT_VERSION = '1.0';
 const VALID_STATUSES = Object.freeze(['ADOPTION_REQUIRED', 'ACTIVE']);
+
+// Canonical migration ID grammar: 14-digit timestamp + underscore + kebab-case slug
+const MIGRATION_ID_PATTERN = /^\d{14}_[a-z0-9]+(?:-[a-z0-9]+)*$/;
+// Stable kebab-case for check_id and query_reference
+const KEBAB_CASE_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
+function isNonProxyObject(value) {
+  if (value === null || value === undefined) return false;
+  if (typeof value !== 'object') return false;
+  try {
+    if (utilTypes.isProxy(value)) return false;
+  } catch (e) {
+    return false;
+  }
+  if (Array.isArray(value)) return false;
+  return true;
+}
 
 function safeOwnKeyDescriptors(obj) {
   let keys;
@@ -66,12 +85,7 @@ function keysMatchExactSet(descriptors, allowedKeys) {
 }
 
 function validatePlainObjectShape(obj, allowedKeys) {
-  if (obj === null || typeof obj !== 'object') return false;
-  try {
-    if (Array.isArray(obj)) return false;
-  } catch (e) {
-    return false;
-  }
+  if (!isNonProxyObject(obj)) return false;
   let proto;
   try {
     proto = Object.getPrototypeOf(obj);
@@ -85,7 +99,7 @@ function validatePlainObjectShape(obj, allowedKeys) {
 }
 
 function hasForbiddenKeys(obj) {
-  if (obj === null || typeof obj !== 'object') return true;
+  if (!isNonProxyObject(obj)) return true;
   const descriptors = safeOwnKeyDescriptors(obj);
   if (descriptors === undefined) return true;
   for (const { key, desc } of descriptors) {
@@ -97,8 +111,21 @@ function hasForbiddenKeys(obj) {
   return false;
 }
 
+function isDenseArray(value) {
+  if (!Array.isArray(value)) return false;
+  for (let i = 0; i < value.length; i++) {
+    if (!(i in value)) return false;
+  }
+  return true;
+}
+
 function validatePreconditionRegistry(registry) {
   const errors = [];
+
+  if (!isNonProxyObject(registry)) {
+    errors.push('REGISTRY_NOT_VALID_OBJECT');
+    return { ok: false, errors };
+  }
 
   if (!validatePlainObjectShape(registry, ALLOWED_TOP_LEVEL_KEYS)) {
     errors.push('REGISTRY_TOP_LEVEL_KEYS_INVALID');
@@ -120,6 +147,10 @@ function validatePreconditionRegistry(registry) {
     return { ok: false, errors };
   }
 
+  if (!isDenseArray(entries)) {
+    errors.push('REGISTRY_ENTRIES_SPARSE');
+  }
+
   if (status === 'ADOPTION_REQUIRED') {
     if (entries.length !== 0) {
       errors.push('REGISTRY_ADOPTION_REQUIRED_NONEMPTY_ENTRIES');
@@ -134,6 +165,8 @@ function validatePreconditionRegistry(registry) {
   for (let i = 0; i < entries.length; i++) {
     const entry = entries[i];
 
+    if (!(i in entries)) continue; // sparse slot guard
+
     if (hasForbiddenKeys(entry)) {
       errors.push('REGISTRY_ENTRY_FORBIDDEN_AUTHORITY_KEY');
     }
@@ -145,7 +178,7 @@ function validatePreconditionRegistry(registry) {
 
     const { migration_id, checks } = entry;
 
-    if (typeof migration_id !== 'string' || migration_id.trim().length === 0) {
+    if (typeof migration_id !== 'string' || !MIGRATION_ID_PATTERN.test(migration_id)) {
       errors.push('REGISTRY_ENTRY_MIGRATION_ID_INVALID');
     }
 
@@ -161,9 +194,19 @@ function validatePreconditionRegistry(registry) {
       continue;
     }
 
+    if (!isDenseArray(checks)) {
+      errors.push('REGISTRY_ENTRY_CHECKS_SPARSE');
+    }
+
+    if (status === 'ACTIVE' && checks.length === 0) {
+      errors.push('REGISTRY_ENTRY_CHECKS_EMPTY');
+    }
+
     const seenCheckIds = new Set();
     for (let j = 0; j < checks.length; j++) {
       const check = checks[j];
+
+      if (!(j in checks)) continue; // sparse slot guard
 
       if (hasForbiddenKeys(check)) {
         errors.push('REGISTRY_CHECK_FORBIDDEN_AUTHORITY_KEY');
@@ -176,11 +219,11 @@ function validatePreconditionRegistry(registry) {
 
       const { check_id, query_reference, expected } = check;
 
-      if (typeof check_id !== 'string' || check_id.trim().length === 0) {
+      if (typeof check_id !== 'string' || !KEBAB_CASE_PATTERN.test(check_id)) {
         errors.push('REGISTRY_CHECK_ID_INVALID');
       }
 
-      if (typeof query_reference !== 'string' || query_reference.trim().length === 0) {
+      if (typeof query_reference !== 'string' || !KEBAB_CASE_PATTERN.test(query_reference)) {
         errors.push('REGISTRY_CHECK_QUERY_REFERENCE_INVALID');
       }
 
@@ -202,17 +245,16 @@ function validatePreconditionRegistry(registry) {
 
 /**
  * Cross-validate precondition registry against canonical migration manifest.
- *
- * ADOPTION_REQUIRED manifest + ADOPTION_REQUIRED registry (= empty = matching) → OK
- * ADOPTION_REQUIRED manifest + ACTIVE registry → FAIL (registry cannot be ACTIVE when manifest is not adopted)
- * ACTIVE manifest + ADOPTION_REQUIRED registry with empty migrations → FAIL (manifest is ACTIVE but registry not adopted)
- * ACTIVE both: each migration has exactly 1 entry, each entry has exactly 1 migration (one-to-one)
- * No orphan entries, no duplicate entries
  */
 function validateRegistryManifestBinding(registry, migrationManifest) {
   const errors = [];
 
-  if (!migrationManifest || typeof migrationManifest !== 'object') {
+  if (!isNonProxyObject(registry)) {
+    errors.push('REGISTRY_BINDING_REGISTRY_UNAVAILABLE');
+    return { ok: false, errors };
+  }
+
+  if (!isNonProxyObject(migrationManifest)) {
     errors.push('REGISTRY_BINDING_MANIFEST_UNAVAILABLE');
     return { ok: false, errors };
   }
@@ -235,12 +277,11 @@ function validateRegistryManifestBinding(registry, migrationManifest) {
   const registryStatus = registry.status;
   const registryEntries = Array.isArray(registry.entries) ? registry.entries : [];
 
-  // ADOPTION_REQUIRED manifest → registry must be ADOPTION_REQUIRED
+  // ADOPTION_REQUIRED manifest -> registry must be ADOPTION_REQUIRED
   if (manifestStatus === 'ADOPTION_REQUIRED') {
     if (registryStatus === 'ACTIVE') {
       errors.push('REGISTRY_BINDING_MANIFEST_INACTIVE_REGISTRY_ACTIVE');
     }
-    // ADOPTION_REQUIRED + both empty or both have content → OK (not yet adopted)
     return { ok: errors.length === 0, errors };
   }
 
@@ -251,7 +292,6 @@ function validateRegistryManifestBinding(registry, migrationManifest) {
       return { ok: false, errors };
     }
 
-    // One-to-one binding: each migration has exactly 1 entry, each entry references exactly 1 migration
     const registryEntryIds = new Set(registryEntries.map(e => e.migration_id));
     const manifestMigrationIds = new Set(manifestMigrations.map(m => m.id));
 
@@ -267,7 +307,6 @@ function validateRegistryManifestBinding(registry, migrationManifest) {
       }
     }
 
-    // Check duplicate migrations in manifest
     if (manifestMigrations.length !== manifestMigrationIds.size) {
       errors.push('REGISTRY_BINDING_DUPLICATE_MANIFEST_MIGRATIONS');
     }
@@ -275,7 +314,6 @@ function validateRegistryManifestBinding(registry, migrationManifest) {
     return { ok: errors.length === 0, errors };
   }
 
-  // Unknown manifest status
   errors.push('REGISTRY_BINDING_MANIFEST_STATUS_UNKNOWN');
   return { ok: false, errors };
 }
@@ -287,10 +325,14 @@ module.exports = {
   FORBIDDEN_AUTHORITY_KEYS,
   VALID_FORMAT_VERSION,
   VALID_STATUSES,
+  MIGRATION_ID_PATTERN,
+  KEBAB_CASE_PATTERN,
   validatePreconditionRegistry,
   validateRegistryManifestBinding,
   validatePlainObjectShape,
+  isNonProxyObject,
   safeOwnKeyDescriptors,
   keysMatchExactSet,
-  hasForbiddenKeys
+  hasForbiddenKeys,
+  isDenseArray
 };

@@ -78,6 +78,22 @@ A fourth fixed source `db/migration-provenance/precondition-registry.json` is lo
 
 Registry validation failures (structural, binding) produce `FAIL`. Registry load failures produce `UNAVAILABLE`.
 
+### Registry Validator Failure Mapping
+
+Both `validatePreconditionRegistry()` and `validateRegistryManifestBinding()` calls are wrapped in safe try/catch within `validateSource()`:
+
+- Validator synchronous throw → `UNAVAILABLE`
+- Validator returns genuine Promise rejection → `UNAVAILABLE`
+- Validator returns Proxy-wrapped Promise → `UNAVAILABLE` (not assimilated)
+- Validator returns arbitrary thenable → `UNAVAILABLE`
+- Validator returns unsafe result (non-plain-object, accessor `ok`, extra/symbol/non-enumerable keys) → `UNAVAILABLE`
+- Validator returns `{ ok: false }` → `FAIL`
+- Validator returns `{ ok: true }` → proceed
+
+Raw `errors` arrays from registry validators are never exposed in the public result.
+
+Each registry validator is called exactly once per `validateSource()` call.
+
 The registry schema is documented in `docs/architecture/db-migration-precondition-registry-source-validation-contract.md` (#3659).
 
 ## Loader Internal State

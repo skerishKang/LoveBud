@@ -54,7 +54,76 @@ Exact keys: `migration_id`, `checks`. No extra keys.
 
 Exact keys: `check_id`, `query_reference`, `expected`. No extra keys.
 
+## Identifier Grammar
+
+### migration_id
+
+Canonical migration ID pattern (same as `migration-provenance-core.cjs`):
+
+```
+/^\d{14}_[a-z0-9]+(?:-[a-z0-9]+)*$/
+```
+
+- 14-digit UTC timestamp, underscore, then a lowercase kebab-case slug
+- Uppercase, spaces, underscores in slug, leading/trailing whitespace → FAIL
+
+Valid examples:
+
+```
+20260725000000_example-migration
+```
+
+Invalid examples:
+
+```
+test
+20260725_test
+20260725000000_Test
+20260725000000_test_name
+20260725000000_-test
+```
+
+### check_id
+
+Stable kebab-case:
+
+```
+/^[a-z0-9]+(?:-[a-z0-9]+)*$/
+```
+
+No underscores, uppercase, spaces, leading/trailing hyphens, or leading/trailing whitespace.
+
+### query_reference
+
+Safe kebab-case catalog key (same grammar as check_id):
+
+```
+/^[a-z0-9]+(?:-[a-z0-9]+)*$/
+```
+
+No colons, SQL text, slashes, uppercase, underscores, or whitespace.
+
+## Dense Arrays
+
+- `entries` and each `checks` array must be dense (no sparse holes).
+- `isDenseArray()` helper checks every index from 0 to length-1 is present.
+- Sparse entries → `REGISTRY_ENTRIES_SPARSE`
+- Sparse checks → `REGISTRY_ENTRY_CHECKS_SPARSE`
+
+## Proxy Rejection
+
+All registry, entry, check, and manifest inputs are rejected if they are Proxy-wrapped objects. Detection uses `node:util`'s `types.isProxy()` before any reflective inspection (`Object.getPrototypeOf`, `Reflect.ownKeys`, `Object.getOwnPropertyDescriptor`, property access). All Proxy trap counters (get, getPrototypeOf, ownKeys, getOwnPropertyDescriptor, has) are guaranteed 0.
+
 ## Status Rules
+
+| status | entries constraint | Binding (ADOPTION_REQUIRED manifest) | Binding (ACTIVE manifest) |
+|---|---|---|---|
+| `ADOPTION_REQUIRED` | `entries` must be empty array | PASS | FAIL (manifest adopted before registry) |
+| `ACTIVE` | `entries` must be non-empty array, each with non-empty `checks` | FAIL (manifest not adopted) | PASS + one-to-one binding, all checks non-empty |
+
+### ACTIVE checks constraint
+
+When `status` is `ACTIVE`, each entry's `checks` array must be non-empty. Empty checks → `REGISTRY_ENTRY_CHECKS_EMPTY` → FAIL.
 
 | status | entries constraint | Binding (ADOPTION_REQUIRED manifest) | Binding (ACTIVE manifest) |
 |---|---|---|---|

@@ -108,6 +108,10 @@ const VALID_REGISTRY = {
   entries: []
 };
 
+const VALID_MIGRATION_ID = '20260725000000_example-migration';
+const VALID_CHECK_ID = 'check-1';
+const VALID_QUERY_REF = 'example-readonly-query-v1';
+
 const VALID_INVENTORY_TEXT = JSON.stringify(VALID_INVENTORY);
 const VALID_MIGRATIONS_TEXT = JSON.stringify(VALID_MIGRATIONS);
 const VALID_SCHEMA_TEXT = JSON.stringify(VALID_SCHEMA);
@@ -1415,7 +1419,7 @@ describe('DB migration source-validation adapter contract (#3650)', () => {
       const badRegistry = JSON.stringify({
         format_version: '1.0',
         status: 'ADOPTION_REQUIRED',
-        entries: [{ migration_id: 'test', checks: [] }]
+        entries: [{ migration_id: VALID_MIGRATION_ID, checks: [{ check_id: VALID_CHECK_ID, query_reference: VALID_QUERY_REF, expected: true }] }]
       });
       const adapter = createMigrationSourceValidationAdapter({
         loadFixedSources: () => loadedSource(VALID_INVENTORY_TEXT, VALID_MIGRATIONS_TEXT, VALID_SCHEMA_TEXT, badRegistry),
@@ -1431,7 +1435,6 @@ describe('DB migration source-validation adapter contract (#3650)', () => {
         fs.writeFileSync(path.join(docsDir, 'migration-path-inventory.json'), VALID_INVENTORY_TEXT, 'utf8');
         fs.writeFileSync(path.join(dbDir, 'canonical-migrations.json'), VALID_MIGRATIONS_TEXT, 'utf8');
         fs.writeFileSync(path.join(dbDir, 'expected-schema-manifest.json'), VALID_SCHEMA_TEXT, 'utf8');
-        // Intentionally NOT writing precondition-registry.json
         writeTempAdapterCore(scriptsDir);
         const { createMigrationSourceValidationAdapter: create } = loadTempAdapter(scriptsDir);
         const adapter = create();
@@ -1447,8 +1450,8 @@ describe('DB migration source-validation adapter contract (#3650)', () => {
         format_version: '1.0',
         status: 'ACTIVE',
         entries: [{
-          migration_id: 'test',
-          checks: [{ check_id: 'c1', query_reference: 'q:1', expected: true, sql: 'SELECT 1' }]
+          migration_id: VALID_MIGRATION_ID,
+          checks: [{ check_id: VALID_CHECK_ID, query_reference: VALID_QUERY_REF, expected: true, sql: 'SELECT 1' }]
         }]
       });
       const adapter = createMigrationSourceValidationAdapter({
@@ -1459,7 +1462,7 @@ describe('DB migration source-validation adapter contract (#3650)', () => {
       assert.deepStrictEqual(result, SOURCE_VALIDATION_RESULTS.FAIL);
     });
 
-    it('J6. registry parse exactly once, validator called once', async () => {
+    it('J6. registry parse exactly once, structural validator called once, binding validator called once', async () => {
       const { loader, getLoadCount } = createCountingLoader(
         loadedSource(VALID_INVENTORY_TEXT, VALID_MIGRATIONS_TEXT, VALID_SCHEMA_TEXT, VALID_REGISTRY_TEXT)
       );
@@ -1480,6 +1483,78 @@ describe('DB migration source-validation adapter contract (#3650)', () => {
       const resultStr = JSON.stringify(result);
       assert.ok(!resultStr.includes('precondition-registry'));
       assert.ok(!resultStr.includes('ADOPTION_REQUIRED'));
+    });
+
+    it('J8. ACTIVE registry with empty checks -> FAIL via adapter', async () => {
+      const badRegistry = JSON.stringify({
+        format_version: '1.0',
+        status: 'ACTIVE',
+        entries: [{ migration_id: VALID_MIGRATION_ID, checks: [] }]
+      });
+      const adapter = createMigrationSourceValidationAdapter({
+        loadFixedSources: () => loadedSource(VALID_INVENTORY_TEXT, VALID_MIGRATIONS_TEXT, VALID_SCHEMA_TEXT, badRegistry),
+        validateSourceConfiguration: noopValidator
+      });
+      const result = await adapter.validateSource({ targetMigrationId: 'test' });
+      assert.deepStrictEqual(result, SOURCE_VALIDATION_RESULTS.FAIL);
+    });
+  });
+
+  describe('K. Registry validator failure mapping (#3659)', () => {
+    it('K1. valid registry passes through adapter', async () => {
+      const throwRegistry = '{"format_version":"1.0","status":"ADOPTION_REQUIRED","entries":[]}';
+      const adapter = createMigrationSourceValidationAdapter({
+        loadFixedSources: () => loadedSource(VALID_INVENTORY_TEXT, VALID_MIGRATIONS_TEXT, VALID_SCHEMA_TEXT, throwRegistry),
+        validateSourceConfiguration: noopValidator
+      });
+      const result = await adapter.validateSource({ targetMigrationId: 'test' });
+      assert.deepStrictEqual(result, SOURCE_VALIDATION_RESULTS.PASS);
+    });
+
+    it('K2. structural validator ok=false -> FAIL', async () => {
+      const badRegistry = JSON.stringify({
+        format_version: '1.0',
+        status: 'ACTIVE',
+        entries: []
+      });
+      const adapter = createMigrationSourceValidationAdapter({
+        loadFixedSources: () => loadedSource(VALID_INVENTORY_TEXT, VALID_MIGRATIONS_TEXT, VALID_SCHEMA_TEXT, badRegistry),
+        validateSourceConfiguration: noopValidator
+      });
+      const result = await adapter.validateSource({ targetMigrationId: 'test' });
+      assert.deepStrictEqual(result, SOURCE_VALIDATION_RESULTS.FAIL);
+    });
+
+    it('K3. binding validator ok=false -> FAIL', async () => {
+      const badRegistry = JSON.stringify({
+        format_version: '1.0',
+        status: 'ACTIVE',
+        entries: [{ migration_id: VALID_MIGRATION_ID, checks: [{ check_id: VALID_CHECK_ID, query_reference: VALID_QUERY_REF, expected: true }] }]
+      });
+      const adapter = createMigrationSourceValidationAdapter({
+        loadFixedSources: () => loadedSource(VALID_INVENTORY_TEXT, VALID_MIGRATIONS_TEXT, VALID_SCHEMA_TEXT, badRegistry),
+        validateSourceConfiguration: noopValidator
+      });
+      // ADOPTION_REQUIRED manifest + ACTIVE registry -> binding FAIL
+      const result = await adapter.validateSource({ targetMigrationId: 'test' });
+      assert.deepStrictEqual(result, SOURCE_VALIDATION_RESULTS.FAIL);
+    });
+
+    it('K6. raw errors not exposed in result', async () => {
+      const badRegistry = JSON.stringify({
+        format_version: '1.0',
+        status: 'ACTIVE',
+        entries: []
+      });
+      const adapter = createMigrationSourceValidationAdapter({
+        loadFixedSources: () => loadedSource(VALID_INVENTORY_TEXT, VALID_MIGRATIONS_TEXT, VALID_SCHEMA_TEXT, badRegistry),
+        validateSourceConfiguration: noopValidator
+      });
+      const result = await adapter.validateSource({ targetMigrationId: 'test' });
+      const resultStr = JSON.stringify(result);
+      assert.ok(!resultStr.includes('REGISTRY_ACTIVE_EMPTY_ENTRIES'));
+      assert.ok(!resultStr.includes('REGISTRY_'));
+      assert.deepStrictEqual(Object.keys(result), ['status']);
     });
   });
 });
