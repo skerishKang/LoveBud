@@ -16,7 +16,7 @@
  * Refs #1882 - Keep #1882 OPEN.
  */
 
-const { describe, it } = require('node:test');
+const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -257,15 +257,14 @@ describe('DB migration canonical manifest adapter contract (#3652)', () => {
   });
 
   describe('B. Current repository', () => {
-    it('7. default adapter returns result or UNAVAILABLE for current repo', async () => {
+    it('7. current committed manifest loads exactly', async () => {
       const adapter = createMigrationCanonicalManifestAdapter();
-      try {
-        const result = await adapter.loadManifest({ targetMigrationId: 'test' });
-        assert.ok(result.status === 'ADOPTION_REQUIRED' || result.status === 'ACTIVE');
-        assert.ok(Array.isArray(result.migrations));
-      } catch (err) {
-        assert.strictEqual(err.message, PUBLIC_ERROR_UNAVAILABLE);
-      }
+      const result = await adapter.loadManifest({ targetMigrationId: 'test' });
+      assert.strictEqual(result.status, 'ADOPTION_REQUIRED');
+      assert.deepStrictEqual([...result.migrations], []);
+      assert.ok(Object.isFrozen(result));
+      assert.ok(Object.isFrozen(result.migrations));
+      assert.deepStrictEqual(Reflect.ownKeys(result), ['status', 'migrations']);
     });
 
     it('8. reader not called before method invocation', () => {
@@ -482,15 +481,26 @@ describe('DB migration canonical manifest adapter contract (#3652)', () => {
       assert.ok(!resultStr.includes('99999'));
     });
 
-    it('29. multiple different IDs produce same result', async () => {
+    it('29. non-empty ACTIVE manifest: all target IDs return same full ordered result', async () => {
       const adapter = createMigrationCanonicalManifestAdapter({
-        readFixedManifestText: () => ADOPTION_MANIFEST_TEXT,
+        readFixedManifestText: () => VALID_MANIFEST_TEXT,
         validateMigrationManifest: noopValidator
       });
-      const r1 = await adapter.loadManifest({ targetMigrationId: 'id-aaa' });
-      const r2 = await adapter.loadManifest({ targetMigrationId: 'id-bbb' });
-      assert.deepStrictEqual(r1.status, r2.status);
-      assert.deepStrictEqual([...r1.migrations], [...r2.migrations]);
+      const r1 = await adapter.loadManifest({ targetMigrationId: MIGRATION_1_ID });
+      const r2 = await adapter.loadManifest({ targetMigrationId: MIGRATION_2_ID });
+      const r3 = await adapter.loadManifest({ targetMigrationId: 'unknown-id-99999' });
+      const r4 = await adapter.loadManifest({ targetMigrationId: 'unrelated-valid-id' });
+      for (const r of [r1, r2, r3, r4]) {
+        assert.strictEqual(r.migrations.length, 2);
+        assert.deepStrictEqual([...r.migrations[0].id], [...r1.migrations[0].id]);
+        assert.deepStrictEqual([...r.migrations[1].id], [...r1.migrations[1].id]);
+        assert.deepStrictEqual([...r.migrations[0].checksum], [...r1.migrations[0].checksum]);
+        assert.deepStrictEqual([...r.migrations[1].checksum], [...r1.migrations[1].checksum]);
+        assert.deepStrictEqual([...r.migrations[0].depends_on], [...r1.migrations[0].depends_on]);
+        assert.deepStrictEqual([...r.migrations[1].depends_on], [...r1.migrations[1].depends_on]);
+      }
+      assert.ok(!JSON.stringify(r1).includes('unknown-id-99999'));
+      assert.ok(!JSON.stringify(r1).includes('unrelated-valid-id'));
     });
 
     it('30. result does not contain source file paths', async () => {
@@ -1256,32 +1266,47 @@ describe('DB migration canonical manifest adapter contract (#3652)', () => {
     });
 
     it('109. error message does not contain targetMigrationId', async () => {
-      const adapter = createMigrationCanonicalManifestAdapter();
-      try {
-        await adapter.loadManifest({ targetMigrationId: 'super-secret-99999' });
-      } catch (err) {
-        assert.ok(!err.message.includes('super-secret'));
-        assert.ok(!err.message.includes('99999'));
-      }
+      const adapter = createMigrationCanonicalManifestAdapter({
+        readFixedManifestText: () => { throw new Error('raw reader failure'); }
+      });
+      await assert.rejects(
+        adapter.loadManifest({ targetMigrationId: 'super-secret-99999' }),
+        (err) => {
+          assert.strictEqual(err.message, PUBLIC_ERROR_UNAVAILABLE);
+          assert.ok(!err.message.includes('super-secret'));
+          assert.ok(!err.message.includes('99999'));
+          return true;
+        }
+      );
     });
 
     it('110. error message does not contain file paths', async () => {
-      const adapter = createMigrationCanonicalManifestAdapter();
-      try {
-        await adapter.loadManifest({ targetMigrationId: 'test' });
-      } catch (err) {
-        assert.ok(!err.message.includes('migration-provenance'));
-        assert.ok(!err.message.includes('canonical-migrations'));
-      }
+      const adapter = createMigrationCanonicalManifestAdapter({
+        readFixedManifestText: () => { throw new Error('raw reader failure'); }
+      });
+      await assert.rejects(
+        adapter.loadManifest({ targetMigrationId: 'test' }),
+        (err) => {
+          assert.strictEqual(err.message, PUBLIC_ERROR_UNAVAILABLE);
+          assert.ok(!err.message.includes('migration-provenance'));
+          assert.ok(!err.message.includes('canonical-migrations'));
+          return true;
+        }
+      );
     });
 
     it('111. error does not expose stack trace', async () => {
-      const adapter = createMigrationCanonicalManifestAdapter();
-      try {
-        await adapter.loadManifest({ targetMigrationId: 'test' });
-      } catch (err) {
-        assert.strictEqual(err.stack, undefined);
-      }
+      const adapter = createMigrationCanonicalManifestAdapter({
+        readFixedManifestText: () => { throw new Error('raw reader failure'); }
+      });
+      await assert.rejects(
+        adapter.loadManifest({ targetMigrationId: 'test' }),
+        (err) => {
+          assert.strictEqual(err.stack, undefined);
+          assert.strictEqual(err.cause, undefined);
+          return true;
+        }
+      );
     });
 
     it('112. read failure error does not contain internal details', async () => {
@@ -1331,12 +1356,720 @@ describe('DB migration canonical manifest adapter contract (#3652)', () => {
     });
 
     it('115. error is an instance of Error', async () => {
-      const adapter = createMigrationCanonicalManifestAdapter();
-      try {
-        await adapter.loadManifest({ targetMigrationId: 'test' });
-      } catch (err) {
-        assert.ok(err instanceof Error);
-      }
+      const adapter = createMigrationCanonicalManifestAdapter({
+        readFixedManifestText: () => { throw new Error('raw reader failure'); }
+      });
+      await assert.rejects(
+        adapter.loadManifest({ targetMigrationId: 'test' }),
+        (err) => {
+          assert.ok(err instanceof Error);
+          assert.strictEqual(err.message, PUBLIC_ERROR_UNAVAILABLE);
+          return true;
+        }
+      );
+    });
+  });
+
+  describe('O. Validator mutation defense', () => {
+    it('116. validator data-property mutation of id does not affect result', async () => {
+      const adapter = createMigrationCanonicalManifestAdapter({
+        readFixedManifestText: () => VALID_MANIFEST_TEXT,
+        validateMigrationManifest: (parsed) => {
+          parsed.migrations[0].id = '20990101000000_mutated-id';
+          return { ok: true };
+        }
+      });
+      const result = await adapter.loadManifest({ targetMigrationId: MIGRATION_1_ID });
+      assert.strictEqual(result.migrations[0].id, MIGRATION_1_ID);
+    });
+
+    it('117. validator data-property mutation of checksum does not affect result', async () => {
+      const adapter = createMigrationCanonicalManifestAdapter({
+        readFixedManifestText: () => VALID_MANIFEST_TEXT,
+        validateMigrationManifest: (parsed) => {
+          parsed.migrations[0].checksum = 'sha256:0000000000000000000000000000000000000000000000000000000000000000';
+          return { ok: true };
+        }
+      });
+      const result = await adapter.loadManifest({ targetMigrationId: MIGRATION_1_ID });
+      assert.strictEqual(result.migrations[0].checksum, MIGRATION_1_CHECKSUM);
+    });
+
+    it('118. validator data-property mutation of depends_on does not affect result', async () => {
+      const adapter = createMigrationCanonicalManifestAdapter({
+        readFixedManifestText: () => VALID_MANIFEST_TEXT,
+        validateMigrationManifest: (parsed) => {
+          parsed.migrations[1].depends_on = ['mutated-dep'];
+          return { ok: true };
+        }
+      });
+      const result = await adapter.loadManifest({ targetMigrationId: MIGRATION_2_ID });
+      assert.deepStrictEqual([...result.migrations[1].depends_on], [MIGRATION_1_ID]);
+    });
+
+    it('119. validator data-property mutation of risk_class does not affect result', async () => {
+      const adapter = createMigrationCanonicalManifestAdapter({
+        readFixedManifestText: () => VALID_MANIFEST_TEXT,
+        validateMigrationManifest: (parsed) => {
+          parsed.migrations[0].risk_class = 'DESTRUCTIVE';
+          return { ok: true };
+        }
+      });
+      const result = await adapter.loadManifest({ targetMigrationId: MIGRATION_1_ID });
+      assert.strictEqual(result.migrations[0].risk_class, 'ADDITIVE');
+    });
+
+    it('120. validator data-property mutation of destructive_operations does not affect result', async () => {
+      const adapter = createMigrationCanonicalManifestAdapter({
+        readFixedManifestText: () => VALID_MANIFEST_TEXT,
+        validateMigrationManifest: (parsed) => {
+          parsed.migrations[0].destructive_operations = ['DROP_TABLE'];
+          return { ok: true };
+        }
+      });
+      const result = await adapter.loadManifest({ targetMigrationId: MIGRATION_1_ID });
+      assert.deepStrictEqual([...result.migrations[0].destructive_operations], []);
+    });
+
+    it('121. validator data-property mutation of top-level status does not affect result', async () => {
+      const adapter = createMigrationCanonicalManifestAdapter({
+        readFixedManifestText: () => VALID_MANIFEST_TEXT,
+        validateMigrationManifest: (parsed) => {
+          parsed.status = 'ADOPTION_REQUIRED';
+          return { ok: true };
+        }
+      });
+      const result = await adapter.loadManifest({ targetMigrationId: MIGRATION_1_ID });
+      assert.strictEqual(result.status, 'ACTIVE');
+    });
+
+    it('122. validator data-property mutation of entire migrations array does not affect result', async () => {
+      const adapter = createMigrationCanonicalManifestAdapter({
+        readFixedManifestText: () => VALID_MANIFEST_TEXT,
+        validateMigrationManifest: (parsed) => {
+          parsed.migrations = [];
+          return { ok: true };
+        }
+      });
+      const result = await adapter.loadManifest({ targetMigrationId: MIGRATION_1_ID });
+      assert.strictEqual(result.migrations.length, 2);
+    });
+
+    it('123. validator accessor replacement of migration id: getter 0, result unchanged', async () => {
+      let getterCalls = 0;
+      const adapter = createMigrationCanonicalManifestAdapter({
+        readFixedManifestText: () => VALID_MANIFEST_TEXT,
+        validateMigrationManifest: (parsed) => {
+          Object.defineProperty(parsed.migrations[0], 'id', {
+            enumerable: true,
+            get() { getterCalls += 1; throw new Error('raw getter error'); }
+          });
+          return { ok: true };
+        }
+      });
+      const result = await adapter.loadManifest({ targetMigrationId: MIGRATION_1_ID });
+      assert.strictEqual(result.migrations[0].id, MIGRATION_1_ID);
+      assert.strictEqual(getterCalls, 0);
+    });
+
+    it('124. validator Proxy replacement of migration record: all traps 0, result unchanged', async () => {
+      let getCalls = 0;
+      let hasCalls = 0;
+      let ownKeysCalls = 0;
+      let descCalls = 0;
+      const adapter = createMigrationCanonicalManifestAdapter({
+        readFixedManifestText: () => VALID_MANIFEST_TEXT,
+        validateMigrationManifest: (parsed) => {
+          const original = parsed.migrations[0];
+          parsed.migrations[0] = new Proxy(original, {
+            get() { getCalls += 1; return Reflect.get(...arguments); },
+            has() { hasCalls += 1; return Reflect.has(...arguments); },
+            ownKeys() { ownKeysCalls += 1; return Reflect.ownKeys(...arguments); },
+            getOwnPropertyDescriptor() { descCalls += 1; return Reflect.getOwnPropertyDescriptor(...arguments); }
+          });
+          return { ok: true };
+        }
+      });
+      const result = await adapter.loadManifest({ targetMigrationId: MIGRATION_1_ID });
+      assert.strictEqual(result.migrations[0].id, MIGRATION_1_ID);
+      assert.strictEqual(getCalls, 0);
+      assert.strictEqual(hasCalls, 0);
+      assert.strictEqual(ownKeysCalls, 0);
+      assert.strictEqual(descCalls, 0);
+    });
+
+    it('125. validator Proxy replacement of migrations array: all traps 0, result unchanged', async () => {
+      let getCalls = 0;
+      let hasCalls = 0;
+      let ownKeysCalls = 0;
+      let descCalls = 0;
+      const adapter = createMigrationCanonicalManifestAdapter({
+        readFixedManifestText: () => VALID_MANIFEST_TEXT,
+        validateMigrationManifest: (parsed) => {
+          const original = parsed.migrations;
+          parsed.migrations = new Proxy(original, {
+            get() { getCalls += 1; return Reflect.get(...arguments); },
+            has() { hasCalls += 1; return Reflect.has(...arguments); },
+            ownKeys() { ownKeysCalls += 1; return Reflect.ownKeys(...arguments); },
+            getOwnPropertyDescriptor() { descCalls += 1; return Reflect.getOwnPropertyDescriptor(...arguments); }
+          });
+          return { ok: true };
+        }
+      });
+      const result = await adapter.loadManifest({ targetMigrationId: MIGRATION_1_ID });
+      assert.strictEqual(result.migrations.length, 2);
+      assert.strictEqual(getCalls, 0);
+      assert.strictEqual(hasCalls, 0);
+      assert.strictEqual(ownKeysCalls, 0);
+      assert.strictEqual(descCalls, 0);
+    });
+
+    it('126. validator Proxy replacement of depends_on array: all traps 0, result unchanged', async () => {
+      let getCalls = 0;
+      let hasCalls = 0;
+      let ownKeysCalls = 0;
+      let descCalls = 0;
+      const adapter = createMigrationCanonicalManifestAdapter({
+        readFixedManifestText: () => VALID_MANIFEST_TEXT,
+        validateMigrationManifest: (parsed) => {
+          const original = parsed.migrations[1].depends_on;
+          parsed.migrations[1].depends_on = new Proxy(original, {
+            get() { getCalls += 1; return Reflect.get(...arguments); },
+            has() { hasCalls += 1; return Reflect.has(...arguments); },
+            ownKeys() { ownKeysCalls += 1; return Reflect.ownKeys(...arguments); },
+            getOwnPropertyDescriptor() { descCalls += 1; return Reflect.getOwnPropertyDescriptor(...arguments); }
+          });
+          return { ok: true };
+        }
+      });
+      const result = await adapter.loadManifest({ targetMigrationId: MIGRATION_2_ID });
+      assert.deepStrictEqual([...result.migrations[1].depends_on], [MIGRATION_1_ID]);
+      assert.strictEqual(getCalls, 0);
+      assert.strictEqual(hasCalls, 0);
+      assert.strictEqual(ownKeysCalls, 0);
+      assert.strictEqual(descCalls, 0);
+    });
+
+    it('127. validator Proxy replacement of destructive_operations: all traps 0, result unchanged', async () => {
+      let getCalls = 0;
+      let hasCalls = 0;
+      let ownKeysCalls = 0;
+      let descCalls = 0;
+      const adapter = createMigrationCanonicalManifestAdapter({
+        readFixedManifestText: () => VALID_MANIFEST_TEXT,
+        validateMigrationManifest: (parsed) => {
+          const original = parsed.migrations[0].destructive_operations;
+          parsed.migrations[0].destructive_operations = new Proxy(original, {
+            get() { getCalls += 1; return Reflect.get(...arguments); },
+            has() { hasCalls += 1; return Reflect.has(...arguments); },
+            ownKeys() { ownKeysCalls += 1; return Reflect.ownKeys(...arguments); },
+            getOwnPropertyDescriptor() { descCalls += 1; return Reflect.getOwnPropertyDescriptor(...arguments); }
+          });
+          return { ok: true };
+        }
+      });
+      const result = await adapter.loadManifest({ targetMigrationId: MIGRATION_1_ID });
+      assert.deepStrictEqual([...result.migrations[0].destructive_operations], []);
+      assert.strictEqual(getCalls, 0);
+      assert.strictEqual(hasCalls, 0);
+      assert.strictEqual(ownKeysCalls, 0);
+      assert.strictEqual(descCalls, 0);
+    });
+
+    it('128. validator throw after mutation: fixed error, snapshot not exposed', async () => {
+      const adapter = createMigrationCanonicalManifestAdapter({
+        readFixedManifestText: () => VALID_MANIFEST_TEXT,
+        validateMigrationManifest: (parsed) => {
+          parsed.migrations[0].id = '20990101000000_mutated-id';
+          throw new Error('raw validator throw after mutation');
+        }
+      });
+      await assert.rejects(
+        adapter.loadManifest({ targetMigrationId: MIGRATION_1_ID }),
+        (err) => {
+          assert.strictEqual(err.message, PUBLIC_ERROR_UNAVAILABLE);
+          assert.ok(!err.message.includes('mutated'));
+          assert.ok(!err.message.includes('raw validator'));
+          return true;
+        }
+      );
+    });
+
+    it('129. validator Promise reject after mutation: fixed error, snapshot not exposed', async () => {
+      const adapter = createMigrationCanonicalManifestAdapter({
+        readFixedManifestText: () => VALID_MANIFEST_TEXT,
+        validateMigrationManifest: (parsed) => {
+          parsed.migrations[0].id = '20990101000000_mutated-id';
+          return Promise.reject(new Error('raw async reject after mutation'));
+        }
+      });
+      await assert.rejects(
+        adapter.loadManifest({ targetMigrationId: MIGRATION_1_ID }),
+        (err) => {
+          assert.strictEqual(err.message, PUBLIC_ERROR_UNAVAILABLE);
+          assert.ok(!err.message.includes('mutated'));
+          return true;
+        }
+      );
+    });
+  });
+
+  describe('P. Projection hostile evidence', { concurrency: false }, () => {
+    let originalParse;
+
+    beforeEach(() => {
+      originalParse = JSON.parse;
+    });
+
+    afterEach(() => {
+      JSON.parse = originalParse;
+    });
+
+    it('130. top-level status accessor: getter 0, fixed error', async () => {
+      let getterCalls = 0;
+      JSON.parse = function patchedParse(text, ...args) {
+        const obj = originalParse.call(this, text, ...args);
+        Object.defineProperty(obj, 'status', {
+          enumerable: true,
+          get() { getterCalls += 1; throw new Error('raw status getter'); }
+        });
+        return obj;
+      };
+      const adapter = createMigrationCanonicalManifestAdapter({
+        readFixedManifestText: () => ADOPTION_MANIFEST_TEXT,
+        validateMigrationManifest: noopValidator
+      });
+      await assert.rejects(
+        adapter.loadManifest({ targetMigrationId: 'test' }),
+        (err) => {
+          assert.strictEqual(err.message, PUBLIC_ERROR_UNAVAILABLE);
+          assert.strictEqual(getterCalls, 0);
+          return true;
+        }
+      );
+    });
+
+    it('131. top-level migrations accessor: getter 0, fixed error', async () => {
+      let getterCalls = 0;
+      JSON.parse = function patchedParse(text, ...args) {
+        const obj = originalParse.call(this, text, ...args);
+        Object.defineProperty(obj, 'migrations', {
+          enumerable: true,
+          get() { getterCalls += 1; throw new Error('raw migrations getter'); }
+        });
+        return obj;
+      };
+      const adapter = createMigrationCanonicalManifestAdapter({
+        readFixedManifestText: () => ADOPTION_MANIFEST_TEXT,
+        validateMigrationManifest: noopValidator
+      });
+      await assert.rejects(
+        adapter.loadManifest({ targetMigrationId: 'test' }),
+        (err) => {
+          assert.strictEqual(err.message, PUBLIC_ERROR_UNAVAILABLE);
+          assert.strictEqual(getterCalls, 0);
+          return true;
+        }
+      );
+    });
+
+    it('132. migration field accessor: getter 0, fixed error', async () => {
+      let getterCalls = 0;
+      JSON.parse = function patchedParse(text, ...args) {
+        const obj = originalParse.call(this, text, ...args);
+        Object.defineProperty(obj.migrations[0], 'id', {
+          enumerable: true,
+          get() { getterCalls += 1; throw new Error('raw id getter'); }
+        });
+        return obj;
+      };
+      const adapter = createMigrationCanonicalManifestAdapter({
+        readFixedManifestText: () => VALID_MANIFEST_TEXT,
+        validateMigrationManifest: noopValidator
+      });
+      await assert.rejects(
+        adapter.loadManifest({ targetMigrationId: MIGRATION_1_ID }),
+        (err) => {
+          assert.strictEqual(err.message, PUBLIC_ERROR_UNAVAILABLE);
+          assert.strictEqual(getterCalls, 0);
+          return true;
+        }
+      );
+    });
+
+    it('133. migration record Proxy ownKeys throw: fixed error', async () => {
+      JSON.parse = function patchedParse(text, ...args) {
+        const obj = originalParse.call(this, text, ...args);
+        obj.migrations[0] = new Proxy(obj.migrations[0], {
+          ownKeys() { throw new Error('raw ownKeys trap'); }
+        });
+        return obj;
+      };
+      const adapter = createMigrationCanonicalManifestAdapter({
+        readFixedManifestText: () => VALID_MANIFEST_TEXT,
+        validateMigrationManifest: noopValidator
+      });
+      await assert.rejects(
+        adapter.loadManifest({ targetMigrationId: MIGRATION_1_ID }),
+        (err) => {
+          assert.strictEqual(err.message, PUBLIC_ERROR_UNAVAILABLE);
+          assert.ok(!err.message.includes('ownKeys'));
+          return true;
+        }
+      );
+    });
+
+    it('134. migrations array Proxy ownKeys throw: fixed error', async () => {
+      JSON.parse = function patchedParse(text, ...args) {
+        const obj = originalParse.call(this, text, ...args);
+        obj.migrations = new Proxy(obj.migrations, {
+          ownKeys() { throw new Error('raw array ownKeys'); }
+        });
+        return obj;
+      };
+      const adapter = createMigrationCanonicalManifestAdapter({
+        readFixedManifestText: () => VALID_MANIFEST_TEXT,
+        validateMigrationManifest: noopValidator
+      });
+      await assert.rejects(
+        adapter.loadManifest({ targetMigrationId: MIGRATION_1_ID }),
+        (err) => {
+          assert.strictEqual(err.message, PUBLIC_ERROR_UNAVAILABLE);
+          return true;
+        }
+      );
+    });
+
+    it('135. nested array Proxy descriptor throw: fixed error', async () => {
+      JSON.parse = function patchedParse(text, ...args) {
+        const obj = originalParse.call(this, text, ...args);
+        obj.migrations[1].depends_on = new Proxy(obj.migrations[1].depends_on, {
+          getOwnPropertyDescriptor() { throw new Error('raw desc trap'); }
+        });
+        return obj;
+      };
+      const adapter = createMigrationCanonicalManifestAdapter({
+        readFixedManifestText: () => VALID_MANIFEST_TEXT,
+        validateMigrationManifest: noopValidator
+      });
+      await assert.rejects(
+        adapter.loadManifest({ targetMigrationId: MIGRATION_2_ID }),
+        (err) => {
+          assert.strictEqual(err.message, PUBLIC_ERROR_UNAVAILABLE);
+          return true;
+        }
+      );
+    });
+
+    it('136. sparse migrations array: fixed error', async () => {
+      JSON.parse = function patchedParse(text, ...args) {
+        const obj = originalParse.call(this, text, ...args);
+        obj.migrations[5] = { id: 'sparse', checksum: 'sha256:00', depends_on: [], transaction_mode: 'REQUIRED', risk_class: 'ADDITIVE', destructive_operations: [] };
+        return obj;
+      };
+      const adapter = createMigrationCanonicalManifestAdapter({
+        readFixedManifestText: () => VALID_MANIFEST_TEXT,
+        validateMigrationManifest: noopValidator
+      });
+      await assert.rejects(
+        adapter.loadManifest({ targetMigrationId: MIGRATION_1_ID }),
+        (err) => {
+          assert.strictEqual(err.message, PUBLIC_ERROR_UNAVAILABLE);
+          return true;
+        }
+      );
+    });
+
+    it('137. sparse depends_on: fixed error', async () => {
+      JSON.parse = function patchedParse(text, ...args) {
+        const obj = originalParse.call(this, text, ...args);
+        obj.migrations[1].depends_on[5] = 'sparse-dep';
+        return obj;
+      };
+      const adapter = createMigrationCanonicalManifestAdapter({
+        readFixedManifestText: () => VALID_MANIFEST_TEXT,
+        validateMigrationManifest: noopValidator
+      });
+      await assert.rejects(
+        adapter.loadManifest({ targetMigrationId: MIGRATION_2_ID }),
+        (err) => {
+          assert.strictEqual(err.message, PUBLIC_ERROR_UNAVAILABLE);
+          return true;
+        }
+      );
+    });
+
+    it('138. extra array property: fixed error', async () => {
+      JSON.parse = function patchedParse(text, ...args) {
+        const obj = originalParse.call(this, text, ...args);
+        obj.migrations.extra = 'bad';
+        return obj;
+      };
+      const adapter = createMigrationCanonicalManifestAdapter({
+        readFixedManifestText: () => VALID_MANIFEST_TEXT,
+        validateMigrationManifest: noopValidator
+      });
+      await assert.rejects(
+        adapter.loadManifest({ targetMigrationId: MIGRATION_1_ID }),
+        (err) => {
+          assert.strictEqual(err.message, PUBLIC_ERROR_UNAVAILABLE);
+          return true;
+        }
+      );
+    });
+
+    it('139. symbol array property: fixed error', async () => {
+      JSON.parse = function patchedParse(text, ...args) {
+        const obj = originalParse.call(this, text, ...args);
+        obj.migrations[Symbol('bad')] = 'v';
+        return obj;
+      };
+      const adapter = createMigrationCanonicalManifestAdapter({
+        readFixedManifestText: () => VALID_MANIFEST_TEXT,
+        validateMigrationManifest: noopValidator
+      });
+      await assert.rejects(
+        adapter.loadManifest({ targetMigrationId: MIGRATION_1_ID }),
+        (err) => {
+          assert.strictEqual(err.message, PUBLIC_ERROR_UNAVAILABLE);
+          return true;
+        }
+      );
+    });
+
+    it('140. accessor array index: getter 0, fixed error', async () => {
+      let getterCalls = 0;
+      JSON.parse = function patchedParse(text, ...args) {
+        const obj = originalParse.call(this, text, ...args);
+        Object.defineProperty(obj.migrations, 0, {
+          enumerable: true,
+          get() { getterCalls += 1; throw new Error('raw index getter'); }
+        });
+        return obj;
+      };
+      const adapter = createMigrationCanonicalManifestAdapter({
+        readFixedManifestText: () => VALID_MANIFEST_TEXT,
+        validateMigrationManifest: noopValidator
+      });
+      await assert.rejects(
+        adapter.loadManifest({ targetMigrationId: MIGRATION_1_ID }),
+        (err) => {
+          assert.strictEqual(err.message, PUBLIC_ERROR_UNAVAILABLE);
+          assert.strictEqual(getterCalls, 0);
+          return true;
+        }
+      );
+    });
+  });
+
+  describe('Q. Validator result strict evidence', () => {
+    it('141. validator result with symbol key: fixed error', async () => {
+      const adapter = createMigrationCanonicalManifestAdapter({
+        readFixedManifestText: () => ADOPTION_MANIFEST_TEXT,
+        validateMigrationManifest: () => {
+          const result = { ok: true };
+          result[Symbol('bad')] = 1;
+          return result;
+        }
+      });
+      await assert.rejects(
+        adapter.loadManifest({ targetMigrationId: 'test' }),
+        (err) => { assert.strictEqual(err.message, PUBLIC_ERROR_UNAVAILABLE); return true; }
+      );
+    });
+
+    it('142. validator result with extra accessor: getter 0, fixed error', async () => {
+      let getterCalls = 0;
+      const adapter = createMigrationCanonicalManifestAdapter({
+        readFixedManifestText: () => ADOPTION_MANIFEST_TEXT,
+        validateMigrationManifest: () => {
+          const result = { ok: true };
+          Object.defineProperty(result, 'errors', {
+            enumerable: true,
+            get() { getterCalls += 1; return ['raw detail']; }
+          });
+          return result;
+        }
+      });
+      await assert.rejects(
+        adapter.loadManifest({ targetMigrationId: 'test' }),
+        (err) => {
+          assert.strictEqual(err.message, PUBLIC_ERROR_UNAVAILABLE);
+          assert.strictEqual(getterCalls, 0);
+          return true;
+        }
+      );
+    });
+
+    it('143. validator result with non-enumerable extra field: fixed error', async () => {
+      const adapter = createMigrationCanonicalManifestAdapter({
+        readFixedManifestText: () => ADOPTION_MANIFEST_TEXT,
+        validateMigrationManifest: () => {
+          const result = { ok: true };
+          Object.defineProperty(result, 'hidden', {
+            value: 'secret',
+            enumerable: false
+          });
+          return result;
+        }
+      });
+      await assert.rejects(
+        adapter.loadManifest({ targetMigrationId: 'test' }),
+        (err) => { assert.strictEqual(err.message, PUBLIC_ERROR_UNAVAILABLE); return true; }
+      );
+    });
+
+    it('144. validator Proxy-wrapped Promise: get trap 0, fixed error', async () => {
+      let getCalls = 0;
+      const genuine = Promise.resolve({ ok: true });
+      const proxiedPromise = new Proxy(genuine, {
+        get() { getCalls += 1; return Reflect.get(...arguments); }
+      });
+      const adapter = createMigrationCanonicalManifestAdapter({
+        readFixedManifestText: () => ADOPTION_MANIFEST_TEXT,
+        validateMigrationManifest: () => proxiedPromise
+      });
+      await assert.rejects(
+        adapter.loadManifest({ targetMigrationId: 'test' }),
+        (err) => {
+          assert.strictEqual(err.message, PUBLIC_ERROR_UNAVAILABLE);
+          assert.strictEqual(getCalls, 0);
+          return true;
+        }
+      );
+    });
+
+    it('145. validator accessor thenable: getter 0, fixed error', async () => {
+      let getterCalls = 0;
+      const thenable = Object.create(null, {
+        then: {
+          get() { getterCalls += 1; return () => ({ ok: true }); },
+          enumerable: true
+        }
+      });
+      const adapter = createMigrationCanonicalManifestAdapter({
+        readFixedManifestText: () => ADOPTION_MANIFEST_TEXT,
+        validateMigrationManifest: () => thenable
+      });
+      await assert.rejects(
+        adapter.loadManifest({ targetMigrationId: 'test' }),
+        (err) => {
+          assert.strictEqual(err.message, PUBLIC_ERROR_UNAVAILABLE);
+          assert.strictEqual(getterCalls, 0);
+          return true;
+        }
+      );
+    });
+
+    it('146. validator data-property thenable: then call 0, fixed error', async () => {
+      let thenCalls = 0;
+      const thenable = {
+        then() { thenCalls += 1; return { ok: true }; }
+      };
+      const adapter = createMigrationCanonicalManifestAdapter({
+        readFixedManifestText: () => ADOPTION_MANIFEST_TEXT,
+        validateMigrationManifest: () => thenable
+      });
+      await assert.rejects(
+        adapter.loadManifest({ targetMigrationId: 'test' }),
+        (err) => {
+          assert.strictEqual(err.message, PUBLIC_ERROR_UNAVAILABLE);
+          assert.strictEqual(thenCalls, 0);
+          return true;
+        }
+      );
+    });
+  });
+
+  describe('R. JSON.parse exact count', { concurrency: false }, () => {
+    let originalParse;
+
+    beforeEach(() => {
+      originalParse = JSON.parse;
+    });
+
+    afterEach(() => {
+      JSON.parse = originalParse;
+    });
+
+    it('147. valid manifest: JSON.parse exactly once, validator exactly once', async () => {
+      let parseCalls = 0;
+      JSON.parse = function patchedParse(text, ...args) {
+        parseCalls += 1;
+        return originalParse.call(this, text, ...args);
+      };
+      const { validator, getCallCount } = createTrackingValidator(noopValidator);
+      const adapter = createMigrationCanonicalManifestAdapter({
+        readFixedManifestText: () => ADOPTION_MANIFEST_TEXT,
+        validateMigrationManifest: validator
+      });
+      await adapter.loadManifest({ targetMigrationId: 'test' });
+      assert.strictEqual(parseCalls, 1);
+      assert.strictEqual(getCallCount(), 1);
+    });
+
+    it('148. malformed envelope: JSON.parse 0, validator 0', async () => {
+      let parseCalls = 0;
+      JSON.parse = function patchedParse(text, ...args) {
+        parseCalls += 1;
+        return originalParse.call(this, text, ...args);
+      };
+      const { validator, getCallCount } = createTrackingValidator(noopValidator);
+      const adapter = createMigrationCanonicalManifestAdapter({
+        readFixedManifestText: () => ADOPTION_MANIFEST_TEXT,
+        validateMigrationManifest: validator
+      });
+      await assert.rejects(adapter.loadManifest(undefined));
+      assert.strictEqual(parseCalls, 0);
+      assert.strictEqual(getCallCount(), 0);
+    });
+
+    it('149. reader failure: JSON.parse 0, validator 0', async () => {
+      let parseCalls = 0;
+      JSON.parse = function patchedParse(text, ...args) {
+        parseCalls += 1;
+        return originalParse.call(this, text, ...args);
+      };
+      const { validator, getCallCount } = createTrackingValidator(noopValidator);
+      const adapter = createMigrationCanonicalManifestAdapter({
+        readFixedManifestText: () => { throw new Error('raw reader fail'); },
+        validateMigrationManifest: validator
+      });
+      await assert.rejects(adapter.loadManifest({ targetMigrationId: 'test' }));
+      assert.strictEqual(parseCalls, 0);
+      assert.strictEqual(getCallCount(), 0);
+    });
+
+    it('150. malformed JSON: parse 1, validator 0', async () => {
+      let parseCalls = 0;
+      JSON.parse = function patchedParse(text, ...args) {
+        parseCalls += 1;
+        return originalParse.call(this, text, ...args);
+      };
+      const { validator, getCallCount } = createTrackingValidator(noopValidator);
+      const adapter = createMigrationCanonicalManifestAdapter({
+        readFixedManifestText: () => '{ broken json',
+        validateMigrationManifest: validator
+      });
+      await assert.rejects(adapter.loadManifest({ targetMigrationId: 'test' }));
+      assert.strictEqual(parseCalls, 1);
+      assert.strictEqual(getCallCount(), 0);
+    });
+
+    it('151. snapshot invalid (bad status): parse 1, validator 0', async () => {
+      let parseCalls = 0;
+      JSON.parse = function patchedParse(text, ...args) {
+        parseCalls += 1;
+        return originalParse.call(this, text, ...args);
+      };
+      const { validator, getCallCount } = createTrackingValidator(noopValidator);
+      const adapter = createMigrationCanonicalManifestAdapter({
+        readFixedManifestText: () => '{"status":"WRONG","migrations":[]}',
+        validateMigrationManifest: validator
+      });
+      await assert.rejects(adapter.loadManifest({ targetMigrationId: 'test' }));
+      assert.strictEqual(parseCalls, 1);
+      assert.strictEqual(getCallCount(), 0);
     });
   });
 
@@ -1358,16 +2091,85 @@ describe('DB migration canonical manifest adapter contract (#3652)', () => {
       assert.strictEqual(result.outcome, ORCHESTRATION_OUTCOMES.BLOCKED_BEFORE_EXECUTION);
     });
 
-    it('117. adapter failure blocks at MANIFEST_LOAD', async () => {
+    it('117. adapter reader failure blocks at MANIFEST_LOAD with exact blocker', async () => {
+      let acquireCalls = 0;
+      let readLedgerCalls = 0;
+      const adapter = createMigrationCanonicalManifestAdapter({
+        readFixedManifestText() {
+          throw new Error('raw reader failure');
+        }
+      });
       const result = await runCanonicalMigration({
         targetMigrationId: 'test',
         runtimeMetadata: MOCK_RUNTIME,
         dependencies: createOrchDeps({
-          loadManifest: () => { throw new Error('adapter fail'); }
+          loadManifest: (arg) => adapter.loadManifest(arg),
+          acquireAdvisoryLock: () => { acquireCalls += 1; return { status: 'ACQUIRED', handle: {} }; },
+          readLedger: () => { readLedgerCalls += 1; return []; }
         })
       });
       assert.strictEqual(result.outcome, ORCHESTRATION_OUTCOMES.BLOCKED_BEFORE_EXECUTION);
       assert.strictEqual(result.stage, ORCHESTRATION_STAGES.MANIFEST_LOAD);
+      assert.strictEqual(acquireCalls, 0);
+      assert.strictEqual(readLedgerCalls, 0);
+    });
+
+    it('118. adapter validator failure blocks at MANIFEST_LOAD with exact blocker', async () => {
+      let acquireCalls = 0;
+      let readLedgerCalls = 0;
+      const adapter = createMigrationCanonicalManifestAdapter({
+        readFixedManifestText: () => ADOPTION_MANIFEST_TEXT,
+        validateMigrationManifest: () => { throw new Error('raw validator failure'); }
+      });
+      const result = await runCanonicalMigration({
+        targetMigrationId: 'test',
+        runtimeMetadata: MOCK_RUNTIME,
+        dependencies: createOrchDeps({
+          loadManifest: (arg) => adapter.loadManifest(arg),
+          acquireAdvisoryLock: () => { acquireCalls += 1; return { status: 'ACQUIRED', handle: {} }; },
+          readLedger: () => { readLedgerCalls += 1; return []; }
+        })
+      });
+      assert.strictEqual(result.outcome, ORCHESTRATION_OUTCOMES.BLOCKED_BEFORE_EXECUTION);
+      assert.strictEqual(result.stage, ORCHESTRATION_STAGES.MANIFEST_LOAD);
+      assert.strictEqual(acquireCalls, 0);
+      assert.strictEqual(readLedgerCalls, 0);
+    });
+
+    it('119. source validation FAIL: loadManifest called 0 times', async () => {
+      let loadManifestCalls = 0;
+      let acquireCalls = 0;
+      await runCanonicalMigration({
+        targetMigrationId: 'test',
+        requestedAction: 'APPLY_FORWARD',
+        runtimeMetadata: MOCK_RUNTIME,
+        dependencies: createOrchDeps({
+          validateSource: () => ({ status: 'FAIL' }),
+          loadManifest: (arg) => { loadManifestCalls += 1; return { status: 'ADOPTION_REQUIRED', migrations: [] }; },
+          acquireAdvisoryLock: () => { acquireCalls += 1; return { status: 'ACQUIRED', handle: {} }; }
+        })
+      });
+      assert.strictEqual(loadManifestCalls, 0);
+      assert.strictEqual(acquireCalls, 0);
+    });
+
+    it('120. inactive manifest reaches acquireAdvisoryLock exactly once', async () => {
+      let acquireCalls = 0;
+      const adapter = createMigrationCanonicalManifestAdapter({
+        readFixedManifestText: () => ADOPTION_MANIFEST_TEXT,
+        validateMigrationManifest: noopValidator
+      });
+      const result = await runCanonicalMigration({
+        targetMigrationId: 'test',
+        requestedAction: 'APPLY_FORWARD',
+        runtimeMetadata: MOCK_RUNTIME,
+        dependencies: createOrchDeps({
+          loadManifest: (arg) => adapter.loadManifest(arg),
+          acquireAdvisoryLock: () => { acquireCalls += 1; return { status: 'NOT_ATTEMPTED' }; }
+        })
+      });
+      assert.ok(result.events.includes('MANIFEST_LOADED'));
+      assert.strictEqual(acquireCalls, 1);
     });
 
     it('118. adapter rejection blocks at MANIFEST_LOAD', async () => {
@@ -1401,19 +2203,22 @@ describe('DB migration canonical manifest adapter contract (#3652)', () => {
     });
 
     it('120. ADOPTION_REQUIRED status proceeds past MANIFEST_LOAD', async () => {
+      let acquireCalls = 0;
       const adapter = createMigrationCanonicalManifestAdapter({
         readFixedManifestText: () => ADOPTION_MANIFEST_TEXT,
         validateMigrationManifest: noopValidator
       });
       const result = await runCanonicalMigration({
         targetMigrationId: 'test',
+        requestedAction: 'APPLY_FORWARD',
         runtimeMetadata: MOCK_RUNTIME,
         dependencies: createOrchDeps({
           loadManifest: (arg) => adapter.loadManifest(arg),
-          acquireAdvisoryLock: () => ({ status: 'NOT_ATTEMPTED' })
+          acquireAdvisoryLock: () => { acquireCalls += 1; return { status: 'NOT_ATTEMPTED' }; }
         })
       });
       assert.ok(result.events.includes('MANIFEST_LOADED'));
+      assert.strictEqual(acquireCalls, 1);
     });
 
     it('121. adapter frozen result accepted by orchestrator', async () => {

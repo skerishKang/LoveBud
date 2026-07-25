@@ -106,13 +106,17 @@ The current committed manifest is:
 { "status": "ADOPTION_REQUIRED", "migrations": [] }
 ```
 
-This is a structurally valid manifest. The default adapter returns:
+This is a structurally valid manifest. The default adapter MUST load it successfully — no `UNAVAILABLE` fallback is permitted. The exact expected result is:
 
 ```js
-Object.freeze({
-  status: 'ADOPTION_REQUIRED',
-  migrations: Object.freeze([])
-})
+const result = await createMigrationCanonicalManifestAdapter()
+  .loadManifest({ targetMigrationId: 'test' });
+
+assert.strictEqual(result.status, 'ADOPTION_REQUIRED');
+assert.deepStrictEqual([...result.migrations], []);
+assert.ok(Object.isFrozen(result));
+assert.ok(Object.isFrozen(result.migrations));
+assert.deepStrictEqual(Reflect.ownKeys(result), ['status', 'migrations']);
 ```
 
 `ADOPTION_REQUIRED` is NOT treated as an adapter error, source unavailable, empty fabrication, or automatic `ACTIVE` conversion. Manifest activation is the protocol's responsibility (`RUNNER_MANIFEST_NOT_ACTIVE`).
@@ -133,6 +137,58 @@ destructive_operations
 Fields NOT exposed: `name`, `path`, `owner_domain`, `approval_reference`, `expected_preconditions`, `expected_postconditions`, `rollback_support`, source SQL, source bytes, canonical directory, ledger contract, repository path, validator errors, manifest internal metadata.
 
 Migration array order from the source manifest is preserved exactly. No sort, deduplication, filter, target-only selection, dependency reordering, or ID normalization.
+
+## Pre-Validator Projection Snapshot
+
+The adapter snapshots ALL runner projection values from the parsed JSON source via `Object.getOwnPropertyDescriptor` BEFORE invoking the validator. This eliminates TOCTOU: even if the injected validator mutates the parsed manifest object, the returned frozen result is built entirely from captured descriptor values.
+
+Sequence:
+1. `readFixedManifestText()` → raw UTF-8 text
+2. `JSON.parse(raw)` → parsed object (untrusted)
+3. **Descriptor snapshot of top-level `status` and `migrations`** from parsed object
+4. **Descriptor snapshot of each migration record** (6 fields) from captured migration references
+5. **Descriptor snapshot of each nested dense array** (`depends_on`, `destructive_operations`) from captured array references
+6. `validateMigrationManifest(parsed, REPO_ROOT)` → validator may mutate `parsed`; snapshot is already captured
+7. If validator `ok === true`, return the pre-built frozen snapshot
+
+Rules:
+- The adapter NEVER re-reads `parsed` after the validator call.
+- `in` operator, direct property access (`obj.prop`, `obj[index]`), spread (`...`), and iterators are NEVER used on untrusted source objects.
+- Only captured primitive values and captured record/array references are used to build the frozen result.
+- If the snapshot phase fails (accessor, symbol key, non-enumerable, sparse array, etc.), the validator is NOT called and `MIGRATION_CANONICAL_MANIFEST_UNAVAILABLE` is returned.
+- If the validator fails or rejects, the snapshot is never exposed externally.
+
+### Dense Array Snapshot Helper
+
+`snpashotDenseArray(array, snapshotElement)` validates:
+- `Array.isArray(value) === true`
+- prototype is `Array.prototype`
+- own keys: exactly `length` plus `0 ... length - 1`
+- no holes, no symbol keys, no extra string properties, no accessor indices
+- `length` is own non-enumerable data descriptor
+- each index is own enumerable data descriptor
+- values captured from descriptors; original array never re-accessed
+
+### Migration Record Snapshot
+
+Each migration source record is validated via descriptor snapshot:
+- ordinary object or null prototype
+- all own keys are strings
+- no symbol, accessor, or non-enumerable own properties
+- required 6 fields are own enumerable data properties with non-empty string values
+- nested arrays validated via `snapshotDenseArray`
+- source record never re-read after capture
+
+### Validator Result Strict Evidence
+
+The validator result is also validated via descriptor snapshot:
+- all own keys must be strings (symbol keys rejected)
+- no accessor properties (get/set rejected, getter calls = 0)
+- no non-enumerable properties
+- `ok` must be own enumerable data property
+- `ok === true` required for success
+- extra ordinary enumerable data fields are allowed but ignored
+- Proxy-wrapped Promise, accessor thenable, data-property thenable all rejected with fixed error
 
 ## Target-Neutral Full Manifest Loading
 

@@ -4,8 +4,10 @@
  * Canonical manifest loader adapter — source-tested contract (#3652).
  *
  * Source-only adapter: reads one fixed repository JSON file, parses it exactly
- * once, delegates to the existing `validateMigrationManifest` validator, and
- * returns a frozen detached projection of the validated manifest.
+ * once, snapshots all runner projection values from the parsed source via
+ * descriptors BEFORE invoking the existing validator, then delegates to
+ * validateMigrationManifest. The frozen projection is built from captured
+ * values only — the validator never re-reads the parsed source.
  *
  * Supported reader/validator return types:
  *   - synchronous result
@@ -34,8 +36,6 @@ const ALLOWED_CONFIG_KEYS = Object.freeze(['readFixedManifestText', 'validateMig
 
 const VALID_STATUS_VALUES = Object.freeze(new Set(['ADOPTION_REQUIRED', 'ACTIVE']));
 
-const PROTOCOL_SIX_KEYS = Object.freeze(['id', 'checksum', 'depends_on', 'transaction_mode', 'risk_class', 'destructive_operations']);
-
 const FACTORY_ERROR_INVALID_DEPENDENCY = 'MIGRATION_CANONICAL_MANIFEST_ADAPTER_INVALID_DEPENDENCY';
 
 const PUBLIC_ERROR_UNAVAILABLE = 'MIGRATION_CANONICAL_MANIFEST_UNAVAILABLE';
@@ -52,6 +52,17 @@ function createSanitizedError(message) {
     });
   } catch {
     // Do not expose the original construction error.
+  }
+
+  try {
+    Object.defineProperty(error, 'cause', {
+      value: undefined,
+      enumerable: false,
+      writable: false,
+      configurable: false
+    });
+  } catch {
+    // Do not expose cause.
   }
 
   return error;
@@ -103,21 +114,8 @@ function safeDescriptorSnapshot(obj) {
   return safeOwnKeyDescriptors(obj);
 }
 
-function keysMatchExactSet(descriptors, allowedKeys) {
-  const stringKeys = descriptors.filter((d) => typeof d.key === 'string');
-  if (stringKeys.length !== allowedKeys.length) return false;
-  if (descriptors.length !== allowedKeys.length) return false;
-
-  const allowed = new Set(allowedKeys);
-
-  for (const { key, desc } of descriptors) {
-    if (typeof key !== 'string') return false;
-    if (!allowed.has(key)) return false;
-    if ('get' in desc || 'set' in desc) return false;
-    if (desc.enumerable !== true) return false;
-  }
-
-  return true;
+function isNonEmptyString(value) {
+  return typeof value === 'string' && value.trim().length > 0;
 }
 
 function validateCallEnvelope(arg) {
@@ -147,7 +145,7 @@ function validateCallEnvelope(arg) {
   }
 
   const ownKeys = [];
-  for (const { key, desc } of descriptors) {
+  for (const { key } of descriptors) {
     if (typeof key === 'string') ownKeys.push(key);
   }
 
@@ -222,96 +220,147 @@ function parseValidatorResult(raw) {
   if ('get' in okDesc.desc || 'set' in okDesc.desc) return { valid: false };
   if (okDesc.desc.enumerable !== true) return { valid: false };
 
+  for (const { key, desc } of descriptors) {
+    if (typeof key !== 'string') return { valid: false };
+    if ('get' in desc || 'set' in desc) return { valid: false };
+    if (desc.enumerable !== true) return { valid: false };
+  }
+
   const ok = okDesc.desc.value;
   return { valid: true, ok };
 }
 
-function isNonEmptyString(value) {
-  return typeof value === 'string' && value.trim().length > 0;
-}
-
-function isDenseArrayOfNonEmptyStrings(value) {
-  if (!Array.isArray(value)) return false;
-  for (let i = 0; i < value.length; i += 1) {
-    if (i in value === false) return false;
-    if (!isNonEmptyString(value[i])) return false;
-  }
-  return true;
-}
-
-function validateProjection(manifest) {
-  if (manifest === null || typeof manifest !== 'object') return { valid: false };
-  try {
-    if (Array.isArray(manifest)) return { valid: false };
-  } catch (e) {
-    return { valid: false };
-  }
+function snapshotDenseArray(value, snapshotElement) {
+  if (!Array.isArray(value)) return undefined;
 
   let proto;
   try {
-    proto = Object.getPrototypeOf(manifest);
+    proto = Object.getPrototypeOf(value);
   } catch (e) {
-    return { valid: false };
+    return undefined;
   }
-  if (proto !== Object.prototype && proto !== null) return { valid: false };
+  if (proto !== Array.prototype) return undefined;
 
-  const desc = safeOwnKeyDescriptors(manifest);
-  if (desc === undefined) return { valid: false };
+  const descriptors = safeOwnKeyDescriptors(value);
+  if (descriptors === undefined) return undefined;
 
-  const statusDesc = desc.find((d) => d.key === 'status');
-  if (!statusDesc) return { valid: false };
-  if ('get' in statusDesc.desc || 'set' in statusDesc.desc) return { valid: false };
-  if (statusDesc.desc.enumerable !== true) return { valid: false };
-  if (typeof statusDesc.desc.value !== 'string') return { valid: false };
-  if (!VALID_STATUS_VALUES.has(statusDesc.desc.value)) return { valid: false };
-
-  const migrationsDesc = desc.find((d) => d.key === 'migrations');
-  if (!migrationsDesc) return { valid: false };
-  if ('get' in migrationsDesc.desc || 'set' in migrationsDesc.desc) return { valid: false };
-  if (migrationsDesc.desc.enumerable !== true) return { valid: false };
-  if (!Array.isArray(migrationsDesc.desc.value)) return { valid: false };
-
-  const migrations = migrationsDesc.desc.value;
-
-  for (let i = 0; i < migrations.length; i += 1) {
-    if (i in migrations === false) return { valid: false };
-    const m = migrations[i];
-    if (m === null || typeof m !== 'object') return { valid: false };
-    try {
-      if (Array.isArray(m)) return { valid: false };
-    } catch (e) {
-      return { valid: false };
+  let lengthDesc;
+  for (const { key, desc } of descriptors) {
+    if (key === 'length') {
+      if ('get' in desc || 'set' in desc) return undefined;
+      if (desc.enumerable !== false) return undefined;
+      if (!('value' in desc)) return undefined;
+      lengthDesc = desc;
     }
-
-    let mProto;
-    try {
-      mProto = Object.getPrototypeOf(m);
-    } catch (e) {
-      return { valid: false };
-    }
-    if (mProto !== Object.prototype && mProto !== null) return { valid: false };
-
-    if (!isNonEmptyString(m.id)) return { valid: false };
-    if (!isNonEmptyString(m.checksum)) return { valid: false };
-    if (!Array.isArray(m.depends_on)) return { valid: false };
-    if (!isDenseArrayOfNonEmptyStrings(m.depends_on)) return { valid: false };
-    if (!isNonEmptyString(m.transaction_mode)) return { valid: false };
-    if (!isNonEmptyString(m.risk_class)) return { valid: false };
-    if (!Array.isArray(m.destructive_operations)) return { valid: false };
-    if (!isDenseArrayOfNonEmptyStrings(m.destructive_operations)) return { valid: false };
   }
 
-  return { valid: true, status: statusDesc.desc.value, migrations };
+  if (!lengthDesc) return undefined;
+  const length = lengthDesc.value;
+  if (!Number.isInteger(length) || length < 0) return undefined;
+
+  const stringKeys = descriptors.filter((d) => typeof d.key === 'string');
+  const expectedKeys = new Set(['length']);
+  for (let i = 0; i < length; i += 1) {
+    expectedKeys.add(String(i));
+  }
+
+  if (stringKeys.length !== expectedKeys.size) return undefined;
+
+  for (const { key, desc } of descriptors) {
+    if (typeof key !== 'string') return undefined;
+    if (!expectedKeys.has(key)) return undefined;
+    if (key !== 'length') {
+      if ('get' in desc || 'set' in desc) return undefined;
+      if (desc.enumerable !== true) return undefined;
+      if (!('value' in desc)) return undefined;
+    }
+  }
+
+  const captured = [];
+  for (let i = 0; i < length; i += 1) {
+    const indexDesc = descriptors.find((d) => d.key === String(i));
+    if (!indexDesc) return undefined;
+    const elementResult = snapshotElement(indexDesc.desc.value);
+    if (elementResult === undefined) return undefined;
+    captured.push(elementResult);
+  }
+
+  return captured;
 }
 
-function projectMigration(source) {
+function snapshotNonEmptyString(value) {
+  if (typeof value !== 'string') return undefined;
+  if (value.trim().length === 0) return undefined;
+  return value;
+}
+
+function snapshotMigrationRecord(value) {
+  const descriptors = safeDescriptorSnapshot(value);
+  if (descriptors === undefined) return undefined;
+
+  const fieldMap = {};
+  for (const { key, desc } of descriptors) {
+    if (typeof key !== 'string') return undefined;
+    if ('get' in desc || 'set' in desc) return undefined;
+    if (desc.enumerable !== true) return undefined;
+    if (!('value' in desc)) return undefined;
+    fieldMap[key] = desc.value;
+  }
+
+  const id = snapshotNonEmptyString(fieldMap.id);
+  if (id === undefined) return undefined;
+
+  const checksum = snapshotNonEmptyString(fieldMap.checksum);
+  if (checksum === undefined) return undefined;
+
+  const dependsOnRaw = fieldMap.depends_on;
+  const dependsOn = snapshotDenseArray(dependsOnRaw, snapshotNonEmptyString);
+  if (dependsOn === undefined) return undefined;
+
+  const transactionMode = snapshotNonEmptyString(fieldMap.transaction_mode);
+  if (transactionMode === undefined) return undefined;
+
+  const riskClass = snapshotNonEmptyString(fieldMap.risk_class);
+  if (riskClass === undefined) return undefined;
+
+  const destructiveRaw = fieldMap.destructive_operations;
+  const destructiveOperations = snapshotDenseArray(destructiveRaw, snapshotNonEmptyString);
+  if (destructiveOperations === undefined) return undefined;
+
   return Object.freeze({
-    id: source.id,
-    checksum: source.checksum,
-    depends_on: Object.freeze([...source.depends_on]),
-    transaction_mode: source.transaction_mode,
-    risk_class: source.risk_class,
-    destructive_operations: Object.freeze([...source.destructive_operations])
+    id,
+    checksum,
+    depends_on: Object.freeze(dependsOn),
+    transaction_mode: transactionMode,
+    risk_class: riskClass,
+    destructive_operations: Object.freeze(destructiveOperations)
+  });
+}
+
+function snapshotManifest(parsed) {
+  const descriptors = safeDescriptorSnapshot(parsed);
+  if (descriptors === undefined) return undefined;
+
+  const fieldMap = {};
+  for (const { key, desc } of descriptors) {
+    if (typeof key !== 'string') return undefined;
+    if ('get' in desc || 'set' in desc) return undefined;
+    if (desc.enumerable !== true) return undefined;
+    if (!('value' in desc)) return undefined;
+    fieldMap[key] = desc.value;
+  }
+
+  const status = fieldMap.status;
+  if (typeof status !== 'string') return undefined;
+  if (!VALID_STATUS_VALUES.has(status)) return undefined;
+
+  const migrationsRaw = fieldMap.migrations;
+  const migrations = snapshotDenseArray(migrationsRaw, snapshotMigrationRecord);
+  if (migrations === undefined) return undefined;
+
+  return Object.freeze({
+    status,
+    migrations: Object.freeze(migrations)
   });
 }
 
@@ -321,39 +370,39 @@ function createMigrationCanonicalManifestAdapter(config) {
 
   if (config !== undefined) {
     if (config === null) {
-      throw new Error(FACTORY_ERROR_INVALID_DEPENDENCY);
+      throw createSanitizedError(FACTORY_ERROR_INVALID_DEPENDENCY);
     }
     if (typeof config !== 'object') {
-      throw new Error(FACTORY_ERROR_INVALID_DEPENDENCY);
+      throw createSanitizedError(FACTORY_ERROR_INVALID_DEPENDENCY);
     }
     try {
       if (Array.isArray(config)) {
-        throw new Error(FACTORY_ERROR_INVALID_DEPENDENCY);
+        throw createSanitizedError(FACTORY_ERROR_INVALID_DEPENDENCY);
       }
     } catch (e) {
       if (e.message === FACTORY_ERROR_INVALID_DEPENDENCY) throw e;
-      throw new Error(FACTORY_ERROR_INVALID_DEPENDENCY);
+      throw createSanitizedError(FACTORY_ERROR_INVALID_DEPENDENCY);
     }
 
     let configProto;
     try {
       configProto = Object.getPrototypeOf(config);
     } catch (e) {
-      throw new Error(FACTORY_ERROR_INVALID_DEPENDENCY);
+      throw createSanitizedError(FACTORY_ERROR_INVALID_DEPENDENCY);
     }
     if (configProto !== Object.prototype && configProto !== null) {
-      throw new Error(FACTORY_ERROR_INVALID_DEPENDENCY);
+      throw createSanitizedError(FACTORY_ERROR_INVALID_DEPENDENCY);
     }
 
     const configDescriptors = safeOwnKeyDescriptors(config);
     if (configDescriptors === undefined) {
-      throw new Error(FACTORY_ERROR_INVALID_DEPENDENCY);
+      throw createSanitizedError(FACTORY_ERROR_INVALID_DEPENDENCY);
     }
 
     for (const { key, desc } of configDescriptors) {
-      if (typeof key === 'symbol') throw new Error(FACTORY_ERROR_INVALID_DEPENDENCY);
-      if ('get' in desc || 'set' in desc) throw new Error(FACTORY_ERROR_INVALID_DEPENDENCY);
-      if (desc.enumerable !== true) throw new Error(FACTORY_ERROR_INVALID_DEPENDENCY);
+      if (typeof key === 'symbol') throw createSanitizedError(FACTORY_ERROR_INVALID_DEPENDENCY);
+      if ('get' in desc || 'set' in desc) throw createSanitizedError(FACTORY_ERROR_INVALID_DEPENDENCY);
+      if (desc.enumerable !== true) throw createSanitizedError(FACTORY_ERROR_INVALID_DEPENDENCY);
     }
 
     const configOwnKeys = [];
@@ -362,19 +411,19 @@ function createMigrationCanonicalManifestAdapter(config) {
     }
     for (const k of configOwnKeys) {
       if (!ALLOWED_CONFIG_KEYS.includes(k)) {
-        throw new Error(FACTORY_ERROR_INVALID_DEPENDENCY);
+        throw createSanitizedError(FACTORY_ERROR_INVALID_DEPENDENCY);
       }
     }
 
     for (const { key, desc } of configDescriptors) {
       if (key === 'readFixedManifestText') {
-        if (!('value' in desc)) throw new Error(FACTORY_ERROR_INVALID_DEPENDENCY);
-        if (typeof desc.value !== 'function') throw new Error(FACTORY_ERROR_INVALID_DEPENDENCY);
+        if (!('value' in desc)) throw createSanitizedError(FACTORY_ERROR_INVALID_DEPENDENCY);
+        if (typeof desc.value !== 'function') throw createSanitizedError(FACTORY_ERROR_INVALID_DEPENDENCY);
         readFn = desc.value;
       }
       if (key === 'validateMigrationManifest') {
-        if (!('value' in desc)) throw new Error(FACTORY_ERROR_INVALID_DEPENDENCY);
-        if (typeof desc.value !== 'function') throw new Error(FACTORY_ERROR_INVALID_DEPENDENCY);
+        if (!('value' in desc)) throw createSanitizedError(FACTORY_ERROR_INVALID_DEPENDENCY);
+        if (typeof desc.value !== 'function') throw createSanitizedError(FACTORY_ERROR_INVALID_DEPENDENCY);
         validatorFn = desc.value;
       }
     }
@@ -414,6 +463,11 @@ function createMigrationCanonicalManifestAdapter(config) {
       return Promise.reject(createSanitizedError(PUBLIC_ERROR_UNAVAILABLE));
     }
 
+    const snapshot = snapshotManifest(parsed);
+    if (snapshot === undefined) {
+      return Promise.reject(createSanitizedError(PUBLIC_ERROR_UNAVAILABLE));
+    }
+
     let validatorResult;
     try {
       validatorResult = validatorFn(parsed, REPO_ROOT);
@@ -441,17 +495,7 @@ function createMigrationCanonicalManifestAdapter(config) {
       return Promise.reject(createSanitizedError(PUBLIC_ERROR_UNAVAILABLE));
     }
 
-    const projection = validateProjection(parsed);
-    if (!projection.valid) {
-      return Promise.reject(createSanitizedError(PUBLIC_ERROR_UNAVAILABLE));
-    }
-
-    const projectedMigrations = projection.migrations.map(projectMigration);
-
-    return Object.freeze({
-      status: projection.status,
-      migrations: Object.freeze(projectedMigrations)
-    });
+    return snapshot;
   }
 
   return Object.freeze({
