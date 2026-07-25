@@ -249,7 +249,14 @@
                     for (var w = 0; w < wrappers.length; w++) {
                         var wrapper = wrappers[w];
                         while (wrapper.firstChild) {
-                            salvaged.push(wrapper.firstChild);
+                            salvaged.push(wrapper.removeChild(wrapper.firstChild));
+                        }
+                    }
+                    /* Also collect any cards still direct children of results
+                     * (e.g. hidden cards not moved to any wrapper). */
+                    for (var c = 0; c < cards.length; c++) {
+                        if (salvaged.indexOf(cards[c]) === -1 && cards[c].parentNode === results) {
+                            salvaged.push(results.removeChild(cards[c]));
                         }
                     }
                     /* Restore in canonical cards[] array order */
@@ -571,6 +578,7 @@
             if (disposed || !active) return;
             cancelTransition({ restoreExistingCards: true });
             cards = collectCards();
+            groupIndex = 0;
             applyGroupImmediate();
         }
 
