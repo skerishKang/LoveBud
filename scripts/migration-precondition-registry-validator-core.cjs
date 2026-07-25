@@ -119,6 +119,50 @@ function isDenseArray(value) {
   return true;
 }
 
+function safeEnumerableDataPropertyValue(obj, key) {
+  const descriptors = safeOwnKeyDescriptors(obj);
+  if (descriptors === undefined) return { valid: false };
+  const match = descriptors.find((item) => item.key === key);
+  if (!match || !('value' in match.desc) || match.desc.enumerable !== true) {
+    return { valid: false };
+  }
+  return { valid: true, value: match.desc.value };
+}
+
+function safeDenseArrayValues(value) {
+  try {
+    if (utilTypes.isProxy(value)) return { valid: false };
+  } catch (e) {
+    return { valid: false };
+  }
+  if (!Array.isArray(value)) return { valid: false };
+
+  let lengthDesc;
+  try {
+    lengthDesc = Object.getOwnPropertyDescriptor(value, 'length');
+  } catch (e) {
+    return { valid: false };
+  }
+  if (!lengthDesc || !('value' in lengthDesc) || !Number.isSafeInteger(lengthDesc.value) || lengthDesc.value < 0) {
+    return { valid: false };
+  }
+
+  const values = [];
+  for (let i = 0; i < lengthDesc.value; i++) {
+    let itemDesc;
+    try {
+      itemDesc = Object.getOwnPropertyDescriptor(value, String(i));
+    } catch (e) {
+      return { valid: false };
+    }
+    if (!itemDesc || !('value' in itemDesc) || itemDesc.enumerable !== true) {
+      return { valid: false };
+    }
+    values.push(itemDesc.value);
+  }
+  return { valid: true, values };
+}
+
 function validatePreconditionRegistry(registry) {
   const errors = [];
 
@@ -259,12 +303,17 @@ function validateRegistryManifestBinding(registry, migrationManifest) {
     return { ok: false, errors };
   }
 
-  // Validate manifest is a safe plain object
+  let registryProto;
   let manifestProto;
   try {
+    registryProto = Object.getPrototypeOf(registry);
     manifestProto = Object.getPrototypeOf(migrationManifest);
   } catch (e) {
-    errors.push('REGISTRY_BINDING_MANIFEST_UNSAFE');
+    errors.push('REGISTRY_BINDING_INPUT_UNSAFE');
+    return { ok: false, errors };
+  }
+  if (registryProto !== Object.prototype && registryProto !== null) {
+    errors.push('REGISTRY_BINDING_REGISTRY_NOT_PLAIN');
     return { ok: false, errors };
   }
   if (manifestProto !== Object.prototype && manifestProto !== null) {
@@ -272,10 +321,27 @@ function validateRegistryManifestBinding(registry, migrationManifest) {
     return { ok: false, errors };
   }
 
-  const manifestStatus = migrationManifest.status;
-  const manifestMigrations = Array.isArray(migrationManifest.migrations) ? migrationManifest.migrations : [];
-  const registryStatus = registry.status;
-  const registryEntries = Array.isArray(registry.entries) ? registry.entries : [];
+  const manifestStatusSnapshot = safeEnumerableDataPropertyValue(migrationManifest, 'status');
+  const manifestMigrationsSnapshot = safeEnumerableDataPropertyValue(migrationManifest, 'migrations');
+  const registryStatusSnapshot = safeEnumerableDataPropertyValue(registry, 'status');
+  const registryEntriesSnapshot = safeEnumerableDataPropertyValue(registry, 'entries');
+  if (!manifestStatusSnapshot.valid || !manifestMigrationsSnapshot.valid ||
+      !registryStatusSnapshot.valid || !registryEntriesSnapshot.valid) {
+    errors.push('REGISTRY_BINDING_INPUT_ACCESSOR_OR_MISSING');
+    return { ok: false, errors };
+  }
+
+  const manifestMigrationsSnapshotValues = safeDenseArrayValues(manifestMigrationsSnapshot.value);
+  const registryEntriesSnapshotValues = safeDenseArrayValues(registryEntriesSnapshot.value);
+  if (!manifestMigrationsSnapshotValues.valid || !registryEntriesSnapshotValues.valid) {
+    errors.push('REGISTRY_BINDING_COLLECTION_UNSAFE');
+    return { ok: false, errors };
+  }
+
+  const manifestStatus = manifestStatusSnapshot.value;
+  const registryStatus = registryStatusSnapshot.value;
+  const manifestMigrations = manifestMigrationsSnapshotValues.values;
+  const registryEntries = registryEntriesSnapshotValues.values;
 
   // ADOPTION_REQUIRED manifest -> registry must be ADOPTION_REQUIRED
   if (manifestStatus === 'ADOPTION_REQUIRED') {
@@ -292,18 +358,45 @@ function validateRegistryManifestBinding(registry, migrationManifest) {
       return { ok: false, errors };
     }
 
-    const registryEntryIds = new Set(registryEntries.map(e => e.migration_id));
-    const manifestMigrationIds = new Set(manifestMigrations.map(m => m.id));
+    const registryEntryIds = new Set();
+    for (const entry of registryEntries) {
+      if (!isNonProxyObject(entry)) {
+        errors.push('REGISTRY_BINDING_REGISTRY_ENTRY_UNSAFE');
+        return { ok: false, errors };
+      }
+      const migrationIdSnapshot = safeEnumerableDataPropertyValue(entry, 'migration_id');
+      if (!migrationIdSnapshot.valid) {
+        errors.push('REGISTRY_BINDING_REGISTRY_ENTRY_UNSAFE');
+        return { ok: false, errors };
+      }
+      registryEntryIds.add(migrationIdSnapshot.value);
+    }
 
+    const manifestMigrationIds = new Set();
+    const manifestIds = [];
     for (const migration of manifestMigrations) {
-      if (!registryEntryIds.has(migration.id)) {
-        errors.push(`REGISTRY_BINDING_MIGRATION_MISSING_ENTRY:${migration.id}`);
+      if (!isNonProxyObject(migration)) {
+        errors.push('REGISTRY_BINDING_MANIFEST_MIGRATION_UNSAFE');
+        return { ok: false, errors };
+      }
+      const idSnapshot = safeEnumerableDataPropertyValue(migration, 'id');
+      if (!idSnapshot.valid) {
+        errors.push('REGISTRY_BINDING_MANIFEST_MIGRATION_UNSAFE');
+        return { ok: false, errors };
+      }
+      manifestIds.push(idSnapshot.value);
+      manifestMigrationIds.add(idSnapshot.value);
+    }
+
+    for (const migrationId of manifestIds) {
+      if (!registryEntryIds.has(migrationId)) {
+        errors.push(`REGISTRY_BINDING_MIGRATION_MISSING_ENTRY:${migrationId}`);
       }
     }
 
-    for (const entry of registryEntries) {
-      if (!manifestMigrationIds.has(entry.migration_id)) {
-        errors.push(`REGISTRY_BINDING_ORPHAN_ENTRY:${entry.migration_id}`);
+    for (const migrationId of registryEntryIds) {
+      if (!manifestMigrationIds.has(migrationId)) {
+        errors.push(`REGISTRY_BINDING_ORPHAN_ENTRY:${migrationId}`);
       }
     }
 

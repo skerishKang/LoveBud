@@ -392,14 +392,40 @@ function parseRegistryValidatorResult(raw) {
   if (!okDesc || !('value' in okDesc.desc)) return { valid: false };
   if (typeof okDesc.desc.value !== 'boolean') return { valid: false };
 
-  // errors must be dense array of strings
+  // errors must be a non-Proxy dense array of own enumerable string values.
   const errorsDesc = descriptors.find((d) => d.key === 'errors');
   if (!errorsDesc || !('value' in errorsDesc.desc)) return { valid: false };
   const errorsValue = errorsDesc.desc.value;
+
+  try {
+    if (utilTypes.isProxy(errorsValue)) return { valid: false };
+  } catch {
+    return { valid: false };
+  }
+
   if (!Array.isArray(errorsValue)) return { valid: false };
-  for (let i = 0; i < errorsValue.length; i++) {
-    if (!(i in errorsValue)) return { valid: false };
-    if (typeof errorsValue[i] !== 'string') return { valid: false };
+
+  let lengthDesc;
+  try {
+    lengthDesc = Object.getOwnPropertyDescriptor(errorsValue, 'length');
+  } catch {
+    return { valid: false };
+  }
+  if (!lengthDesc || !('value' in lengthDesc) || !Number.isSafeInteger(lengthDesc.value) || lengthDesc.value < 0) {
+    return { valid: false };
+  }
+
+  for (let i = 0; i < lengthDesc.value; i++) {
+    let itemDesc;
+    try {
+      itemDesc = Object.getOwnPropertyDescriptor(errorsValue, String(i));
+    } catch {
+      return { valid: false };
+    }
+    if (!itemDesc || !('value' in itemDesc) || itemDesc.enumerable !== true) {
+      return { valid: false };
+    }
+    if (typeof itemDesc.value !== 'string') return { valid: false };
   }
 
   return { valid: true, ok: okDesc.desc.value };
