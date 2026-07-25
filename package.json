@@ -7,7 +7,7 @@
   "scripts": {
     "lint": "node scripts/lint-static.js",
     "build": "node scripts/build-static.js",
-    "test": "node --test --test-name-pattern=\"^(merge-first workflow|workflow contains|current flow|preview and|U0 copy|U1 visual|U2 and U3|backend,|workflow rejects|workflow preserves)\" tests/contracts/merge-first-production-verification-governance-contract.test.cjs",
+    "test": "node --test --test-name-pattern=\"^(Production verification|minor U0|merge remains|role allocation|U0/U1 issue|AGENTS and|PR checklist)\" tests/contracts/merge-first-production-verification-governance-contract.test.cjs",
     "test:db-engine:tree-comments": "node --test --test-concurrency=1 tests/db-engine/tree-comments-reconcile-postgres.test.cjs",
     "test:db-engine:trees-schema": "node --test --test-concurrency=1 tests/db-engine/trees-schema-foothold-postgres.test.cjs",
     "test:db-engine:generic-social-a-guard": "node --test --test-concurrency=1 tests/db-engine/generic-social-a-guard-postgres.test.cjs",
