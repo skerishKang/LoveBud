@@ -278,7 +278,64 @@ This decision does not claim those later children are approved or ready.
 
 This decision was produced from repository and GitHub evidence only. No database connection was opened, no SQL was executed, no Docker/PostgreSQL process was started, no Production or provider environment was accessed, no secret was inspected, and no manifest or runtime state was changed.
 
-Refs #3644.
+---
+
+## Precondition authority child (#3657)
+
+### Authority gap
+
+Issue #3657 identified a `BLOCKED_PRECONDITION_AUTHORITY_MISSING` gap: no canonical precondition registry, no query reference authority, no SQL query catalog, no target migration precondition binding, and no raw evidence to status mapping contract existed.
+
+| Field | Value |
+| --- | --- |
+| Baseline `main` | `b4cbefddbf1ae13540eaaf07dc74fac8b5823c43` |
+| Authority gap | `BLOCKED_PRECONDITION_AUTHORITY_MISSING` |
+| Resolution scope | design-contract authority only |
+| Adapter implementation ready | **NO** — adapter remains not implemented |
+| Registry status | `ADOPTION_REQUIRED` |
+| Registry entries | `[]` (empty) |
+| Query catalog | **not yet defined** |
+| SQL content | **none** — registry stores query_reference only |
+
+### What this child resolves
+
+This child establishes the repository authority boundary for migration preconditions:
+
+- fixed precondition registry path and initial inactive shape
+- migration ID to precondition set binding rules
+- registry query-reference boundary (SQL separated from registry)
+- strict evidence contract (BOOLEAN_SINGLE_ROW only for now)
+- PASS/FAIL/UNAVAILABLE/NOT_EVALUATED status mapping
+- multi-check precedence (UNAVAILABLE > FAIL > PASS)
+- no-precondition semantics (no precondition = NOT_EVALUATED, never PASS)
+- prohibited behaviors list
+- future implementation sequence
+
+### What this child does NOT resolve
+
+- The `evaluatePrecondition` adapter is **not** implemented.
+- The read-only SQL query catalog is **not** created.
+- No SQL query, adapter, DB connection, or registry entry is added.
+- No canonical manifest, manifest adapter, orchestrator, protocol, lock adapter, or ledger adapter is changed.
+- No Production mutation occurs.
+
+### Selected next child
+
+```text
+registry validator + source-validation integration
+```
+
+- **Not** the `evaluatePrecondition` adapter.
+- **Not** the fixed query catalog.
+- Will add a precondition registry validator and integrate precondition checking into the existing source-validation adapter.
+- SQL and query catalog remain absent in the next child as well.
+
+### Protected issues
+
+Refs #3657.
+Refs #3652 — registry validator + source-validation integration (next child).
+Refs #3650 — fixed read-only query catalog contract (future).
+Refs #3646 — pinned-session query broker.
 Refs #3458 — Keep #3458 OPEN.
 Refs #3425 — Keep #3425 OPEN.
 Refs #3435 — Keep #3435 OPEN.
