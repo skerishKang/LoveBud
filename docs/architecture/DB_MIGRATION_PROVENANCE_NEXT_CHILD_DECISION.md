@@ -327,15 +327,24 @@ registry validator + source-validation integration
 
 - **Not** the `evaluatePrecondition` adapter.
 - **Not** the fixed query catalog.
-- Will add a precondition registry validator and integrate precondition checking into the existing source-validation adapter.
+- Will add a precondition registry validator as a fixed source input to the existing source-validation adapter.
+- The registry validator validates schema, migration ID cross-binding, duplicate detection, and query_reference format.
+- Source validation does **not** call `evaluatePrecondition` or execute runtime queries.
 - SQL and query catalog remain absent in the next child as well.
+- **A new issue number is required** (not #3650 or #3652 — those are prior completed dependencies).
+
+### Prior completed dependencies
+
+- #3650 — Source-validation adapter.
+- #3652 / PR #3653 — Canonical manifest loader adapter.
+- #3646 — Pinned-session query broker.
 
 ### Protected issues
 
-Refs #3657.
-Refs #3652 — registry validator + source-validation integration (next child).
-Refs #3650 — fixed read-only query catalog contract (future).
-Refs #3646 — pinned-session query broker.
+Refs #3657 — Migration precondition authority (Keep OPEN).
+Refs #3650 — Source-validation adapter (prior completed).
+Refs #3652 — Canonical manifest loader adapter (prior completed).
+Refs #3646 — Pinned-session query broker (prior completed).
 Refs #3458 — Keep #3458 OPEN.
 Refs #3425 — Keep #3425 OPEN.
 Refs #3435 — Keep #3435 OPEN.

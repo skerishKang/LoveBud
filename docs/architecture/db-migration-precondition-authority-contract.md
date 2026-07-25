@@ -58,7 +58,25 @@ When `status` is `ADOPTION_REQUIRED`, every `evaluatePrecondition` call returns 
 db/migration-provenance/precondition-registry.json
 ```
 
-This path is fixed. No alternative, fallback, environment-variable-derived, or caller-supplied path is allowed. The file must be valid JSON and readable by `require()` or `JSON.parse` of the filesystem content.
+This path is fixed. No alternative, fallback, environment-variable-derived, or caller-supplied path is allowed.
+
+**Loader boundary.** The registry is read through a fixed-file loader contract:
+
+```text
+derive repository root from module location
+fixed repository-relative path only
+lexical containment (no .. traversal)
+repository/target realpath resolution
+realpath containment (resolved path stays under repository root)
+regular-file check
+read verified realTarget exactly once as UTF-8
+JSON.parse exactly once
+validate exactly once
+no require cache (module.cache must not be used)
+no caller path or cwd authority
+```
+
+`require()` is **not** allowed as a registry or catalog authority loader because the module cache and shared-object semantics violate the exact-read/parse boundary.
 
 ## Registry top-level schema
 
@@ -87,11 +105,7 @@ Each entry in `entries` when `ACTIVE`:
     {
       "check_id": "example-condition",
       "query_reference": "example-readonly-query-v1",
-      "evidence_contract": {
-        "kind": "BOOLEAN_SINGLE_ROW",
-        "field": "satisfied",
-        "expected": true
-      }
+      "expected": true
     }
   ]
 }
@@ -102,9 +116,9 @@ Each entry in `entries` when `ACTIVE`:
 - `migration_id` — exact match to a migration ID in the canonical manifest (`db/migration-provenance/canonical-migrations.json`). The registry **must not** invent, override, or alias migration IDs. Duplicate `migration_id` across entries is forbidden.
 - `checks` — non-empty dense array when registry is `ACTIVE`. Duplicate `check_id` is forbidden. Each `check_id` is a stable kebab-case string.
 - `query_reference` — a fixed string key that maps to a read-only query definition in the future fixed query catalog. SQL text must **not** be stored in the registry.
-- `evidence_contract` — defines how to interpret the query result. See the Evidence contract section.
+- `expected` — the boolean value that the query result field must match for the check to pass. The catalog owns the raw result shape (`kind`, `field`); the registry owns only the expected boolean.
 
-**Forbidden entry-level keys:** `query`, `text`, `sql`, `url`, `env`, `credential`, `operator`, `hostname`, `caller_path`, `dynamic_source`, `allowlist`.
+**Forbidden entry-level keys:** `query`, `text`, `sql`, `url`, `env`, `credential`, `operator`, `hostname`, `caller_path`, `dynamic_source`, `allowlist`, `evidence_contract`, `kind`, `field`.
 
 ## Check schema
 
@@ -114,7 +128,11 @@ A `check` object under `checks`:
 | --- | --- | --- | --- |
 | `check_id` | string | yes | Stable kebab-case identifier. Unique within the entry. |
 | `query_reference` | string | yes | Key into the future fixed read-only query catalog. |
-| `evidence_contract` | object | yes | Defines result interpretation. |
+| `expected` | boolean | yes | Expected boolean value for the query result field. |
+
+### Forbidden check-level keys
+
+`evidence_contract`, `kind`, `field`, `query`, `text`, `sql`, `url`, `env`, `credential`, `operator`, `hostname`, `caller_path`, `dynamic_source`, `allowlist`.
 
 ### Future extension
 
@@ -131,7 +149,7 @@ New check-level fields (e.g., `depends_on`, `timeout_ms`, `retry_policy`) requir
 
 - The registry stores only `query_reference` strings.
 - A `query_reference` is a stable, allowlisted key in the future fixed query catalog.
-- The query catalog defines the exact read-only SQL text, parameter shape, and result contract.
+- The query catalog defines the exact read-only SQL text, parameter shape, and raw result contract.
 - The registry **must not** contain SQL text, raw query strings, file paths, URLs, environment variables, database identifiers, credentials, or dynamic parameter sources.
 - The future `evaluatePrecondition` **must not** accept caller-supplied query text, file paths, or overrides.
 
@@ -143,33 +161,62 @@ A separately approved child will define:
 db/migration-provenance/readonly-query-catalog.json
 ```
 
-(or equivalent fixed path). The catalog will be a frozen key-value mapping from `query_reference` to a read-only query object with:
-
-- `name` — stable kebab-case, matches the reference key
-- `text` — exact read-only SQL text (SELECT-only, no DDL/DML mutation)
-- `params` — optional array of parameter descriptors
-- `result_contract` — the expected result shape (e.g., `{ kind: 'BOOLEAN_SINGLE_ROW', field: 'satisfied' }`)
-
-No SQL text, catalog, or catalog contract is created in this child.
-
-## Evidence contract
-
-The `evidence_contract` object in each check defines how the query result is interpreted to produce a boolean condition.
-
-### Supported kind: `BOOLEAN_SINGLE_ROW`
+(or equivalent fixed path). The catalog will be a frozen key-value mapping from `query_reference` to a read-only query object:
 
 ```json
 {
-  "kind": "BOOLEAN_SINGLE_ROW",
-  "field": "<field-name>",
+  "name": "example-readonly-query-v1",
+  "text": "fixed read-only SQL (SELECT only, no DDL/DML mutation)",
+  "values": [],
+  "result_contract": {
+    "kind": "BOOLEAN_SINGLE_ROW",
+    "field": "satisfied"
+  }
+}
+```
+
+The catalog owns the raw result contract (`kind`, `field`). The registry owns the expected boolean. Neither duplicates the other's authority.
+
+No SQL text, catalog, or catalog contract is created in this child.
+
+## Result contract
+
+The **future fixed query catalog** owns the raw result contract. The **registry** owns only the expected boolean. The two are never duplicated.
+
+### Catalog-owned: `result_contract`
+
+The catalog entry defines how the raw query result is interpreted:
+
+```json
+{
+  "name": "example-readonly-query-v1",
+  "text": "SELECT satisfied FROM precondition_checks WHERE id = $1",
+  "values": [],
+  "result_contract": {
+    "kind": "BOOLEAN_SINGLE_ROW",
+    "field": "satisfied"
+  }
+}
+```
+
+### Registry-owned: `expected`
+
+The registry check stores only the expected boolean:
+
+```json
+{
+  "check_id": "example-condition",
+  "query_reference": "example-readonly-query-v1",
   "expected": true
 }
 ```
 
+### BOOLEAN_SINGLE_ROW semantics
+
 Rules:
 - The query must return exactly one row.
 - The row must contain the named `field` as a boolean value.
-- The check passes (`PASS`) when the field value equals `expected`.
+- The check passes (`PASS`) when the field value equals the registry `expected` value.
 - The check fails (`FAIL`) when the field value does not equal `expected`.
 - Any deviation from the expected shape (zero rows, multiple rows, missing field, non-boolean type, null, accessor, Proxy trap) produces `UNAVAILABLE`.
 
@@ -179,49 +226,38 @@ Any new `kind` value (e.g., `ROW_COUNT`, `STRING_MATCH`, `ARRAY_CONTAINS`) requi
 
 ## Status mapping
 
-### NOT_EVALUATED
+### Normative status matrix
 
-Returned when no evaluation was attempted. Conditions:
-- registry `status === "ADOPTION_REQUIRED"`
-- target migration has no entry in registry entries
-- target migration ID is not in canonical manifest
-- entry exists but `checks` is undefined, null, or empty
-- query catalog authority is not yet established
-- `evaluatePrecondition` not called
+| Condition | Phase | Required status |
+|---|---|---|
+| Registry safely loaded and status is `ADOPTION_REQUIRED` | runtime | `NOT_EVALUATED` |
+| Query-catalog authority has not yet been adopted and registry remains `ADOPTION_REQUIRED` | runtime | `NOT_EVALUATED` |
+| ACTIVE registry lacks the target entry or has empty checks | source validation | `FAIL` |
+| ACTIVE registry lacks the target entry or has empty checks despite source validation | runtime defensive fallback | `NOT_EVALUATED` |
+| Fixed registry/catalog file missing or unreadable | source/runtime | `UNAVAILABLE` |
+| JSON successfully read but malformed or contract-invalid | source validation | `FAIL` |
+| Unsafe/malformed registry/catalog evidence reaches runtime | runtime | `UNAVAILABLE` |
+| Broker throw/rejection or malformed query evidence | runtime | `UNAVAILABLE` |
+| Valid evidence disagrees with expected value | runtime | `FAIL` |
+| All defined non-empty checks match | runtime | `PASS` |
 
-### PASS
+### Key distinction: authority-not-adopted vs actual failure
 
-Returned when:
-- registry `status === "ACTIVE"`
-- canonical manifest binding is valid
-- target entry exists in registry
-- `checks` is non-empty
-- every check executes safely
-- every check's evidence matches the expected contract
-- every evidence contract is satisfied (all pass)
+```text
+Registry intentionally ADOPTION_REQUIRED
+  → NOT_EVALUATED
+
+Catalog authority not yet adopted AND registry ADOPTION_REQUIRED
+  → NOT_EVALUATED
+
+Required fixed registry/catalog file missing, unreadable, parse failed, or validation failed
+  → UNAVAILABLE (for file-level failure)
+  → FAIL (for confirmed invalid content)
+```
 
 **`PASS` is never returned when no precondition is defined.**
 
-### FAIL
-
-Returned when:
-- query execution succeeded
-- evidence shape is valid
-- one or more expected conditions are not satisfied
-- no check produced `UNAVAILABLE`
-
-### UNAVAILABLE
-
-Returned when:
-- registry or catalog cannot be read or validated
-- broker throw or rejection
-- malformed query result
-- missing row or field
-- accessor, Proxy, or trap failure
-- unexpected evaluation failure
-- evidence contract violation (wrong kind, missing field, wrong type)
-
-## Multi-check precedence
+### Multi-check precedence
 
 ```text
 One or more UNAVAILABLE  →  UNAVAILABLE
@@ -229,29 +265,53 @@ Otherwise, one or more FAIL  →  FAIL
 All checks authoritative match  →  PASS
 ```
 
-`NOT_EVALUATED` is returned **only** before query execution (registry inactive, missing entry, empty checks, etc.). Once any query is attempted, the result is `PASS`, `FAIL`, or `UNAVAILABLE`.
+`NOT_EVALUATED` is returned **only** when no query execution is attempted (registry inactive, missing entry, empty checks as runtime defensive fallback, etc.). Once any query is attempted, the result is `PASS`, `FAIL`, or `UNAVAILABLE`.
 
-## No-precondition semantics
+### No-precondition semantics
 
 ```text
 No precondition defined  →  NOT_EVALUATED (not PASS)
-Empty checks            →  NOT_EVALUATED (not PASS)
-Unknown migration       →  NOT_EVALUATED (not PASS)
-Registry unavailable    →  NOT_EVALUATED (not PASS)
-Query catalog missing   →  NOT_EVALUATED (not PASS)
+Empty checks (source)    →  FAIL
+Empty checks (runtime)   →  NOT_EVALUATED (defensive fallback)
+Authority not adopted    →  NOT_EVALUATED
 ```
 
 **`PASS` is never an automatic default.** Every `PASS` requires defined non-empty checks that execute with authoritative evidence.
 
 ## Source-validation integration
 
-The existing source-validation adapter (`scripts/migration-source-validation-adapter-core.cjs`) currently returns a fixed `{ status: 'NOT_EVALUATED', reason: 'PRECONDITION_NOT_IMPLEMENTED' }` for preconditions. This contract defines the authority boundary that source validation will integrate with:
+The existing migration source-validation adapter (`scripts/migration-source-validation-adapter-core.cjs`) returns only its existing frozen source-integrity status record:
 
-- source validation calls `evaluatePrecondition` when the precondition registry is `ACTIVE`;
-- source validation returns `NOT_EVALUATED` when the registry is `ADOPTION_REQUIRED`;
-- source validation does **not** define, override, or bypass precondition logic.
+```text
+{ status: PASS | FAIL | UNAVAILABLE }
+```
 
-The source-validation adapter itself is **not** changed in this child.
+This child does **not** modify that adapter.
+
+### Source validation role
+
+Source validation validates the precondition registry as a **fixed source input**, independently from the runtime precondition evaluator. Source validation does **not** call `evaluatePrecondition`.
+
+### Source validation responsibilities
+
+```text
+1. Load fixed registry file
+2. Validate registry schema (top-level keys, status enum, entries structure)
+3. If ADOPTION_REQUIRED + entries=[] → PASS (valid inactive state)
+4. Validate ACTIVE schema when status is ACTIVE
+5. Cross-validate migration IDs against canonical manifest
+6. Detect duplicate migration_id or check_id
+7. Validate query_reference format
+8. Detect orphan entries (migration_id not in manifest)
+```
+
+### Source validation result mapping
+
+- Confirmed invalid source content → `FAIL`
+- Missing/unreadable registry file → `UNAVAILABLE`
+- Current valid inactive registry → `PASS`
+
+A future child may add the registry as an additional fixed source input while preserving the exact public result shape (`{ status: PASS | FAIL | UNAVAILABLE }`). No `reason` field or precondition-specific result is added.
 
 ## Manifest relationship
 
@@ -281,7 +341,16 @@ The orchestrator itself is **not** changed in this child.
 
 ## Pinned-session broker relationship
 
-The future precondition adapter will read the registry and query catalog as a filesystem-only operation. It does **not** require a database session or lock handle to evaluate preconditions. The `lockHandle` parameter in the envelope is reserved for future use where a precondition check executes a read-only query through the pinned-session query broker.
+Registry and catalog loading are filesystem/source operations that do not require a database session or lock handle.
+
+Actual precondition check execution is a **runtime operation** and requires:
+
+1. the orchestrator-supplied opaque `lockHandle`;
+2. the same lock-adapter instance that owns the handle;
+3. `queryLockedSession({ lockHandle, query })` to execute through the exact captured pinned session;
+4. zero implicit unlock or pool release.
+
+The runtime adapter does **not** expose or re-inspect the session or query callable. Release ownership remains exclusively with `releaseAdvisoryLock`.
 
 ## Sensitive-data boundary
 
@@ -309,13 +378,15 @@ The following are **strictly forbidden** in this and all related files:
 13. Starting Docker, PostgreSQL, or any database-connected service
 14. Exposing registry or query evidence outside the `evaluatePrecondition` return status
 15. Overriding or bypassing the multi-check precedence rules
+16. Storing `evidence_contract`, `kind`, or `field` in the registry (these belong to the query catalog only)
+17. Using `require()` as a registry or catalog authority loader
 
 ## Required implementation sequence
 
 ```text
 1. precondition authority contract — THIS CHILD (design-contract authority only)
-2. registry validator + source-validation integration
-3. fixed read-only query catalog contract
+2. registry validator + source-validation integration (NEW ISSUE REQUIRED)
+3. fixed read-only query catalog contract (NEW ISSUE REQUIRED)
 4. precondition registry loader/resolver
 5. evaluatePrecondition adapter
 6. composition root
@@ -363,12 +434,12 @@ This child is complete when:
 
 ## References
 
-- Refs #3657 — Migration precondition authority.
-- Refs #3652 — Registry validator + source-validation integration (next child).
-- Refs #3650 — Fixed read-only query catalog contract (future).
-- Refs #3646 — Pinned-session query broker.
-- Refs #3458 — Canonical migration runner.
-- Refs #3425 — Canonical migration identity/order/checksum.
-- Refs #3435 — Legacy tree schema repair.
-- Refs #3437 — Generic social targets.
-- Refs #1882 — Repository provenance.
+- Refs #3657 — Migration precondition authority (Keep OPEN).
+- Refs #3652 / PR #3653 — Canonical manifest loader adapter (prior completed dependency).
+- Refs #3650 — Source-validation adapter (prior completed dependency).
+- Refs #3646 — Pinned-session query broker (prior completed dependency).
+- Refs #3458 — Canonical migration runner (Keep OPEN).
+- Refs #3425 — Canonical migration identity/order/checksum (Keep OPEN).
+- Refs #3435 — Legacy tree schema repair (Keep OPEN).
+- Refs #3437 — Generic social targets (Keep OPEN).
+- Refs #1882 — Repository provenance (Keep OPEN).

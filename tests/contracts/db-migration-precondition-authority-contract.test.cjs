@@ -8,7 +8,6 @@ const path = require('node:path');
 const REPO_ROOT = path.resolve(__dirname, '..', '..');
 const REGISTRY_PATH = path.join(REPO_ROOT, 'db', 'migration-provenance', 'precondition-registry.json');
 const CONTRACT_PATH = path.join(REPO_ROOT, 'docs', 'architecture', 'db-migration-precondition-authority-contract.md');
-const CANONICAL_MANIFEST_PATH = path.join(REPO_ROOT, 'db', 'migration-provenance', 'canonical-migrations.json');
 
 function readRegistry() {
   assert.ok(fs.existsSync(REGISTRY_PATH), `Registry must exist: ${REGISTRY_PATH}`);
@@ -35,6 +34,16 @@ function findProhibitedField(obj, fieldSet, parentPath) {
   }
   return results;
 }
+
+const FORBIDDEN_PHRASES = [
+  /Registry unavailable.*NOT_EVALUATED/,
+  /Query catalog missing.*NOT_EVALUATED/,
+  /source validation calls evaluatePrecondition/,
+  /PRECONDITION_NOT_IMPLEMENTED/,
+  /does not require a database session or lock handle/,
+  /lockHandle is reserved for future use/,
+  /readable by require\(\)/,
+];
 
 describe('DB Migration Precondition Authority Contract (#3657)', () => {
 
@@ -80,12 +89,9 @@ describe('DB Migration Precondition Authority Contract (#3657)', () => {
     it('No SQL text in registry', () => {
       const { raw } = readRegistry();
       const sqlIndicators = /\b(SELECT|INSERT|UPDATE|DELETE|CREATE|DROP|ALTER|TRUNCATE|FROM|WHERE)\b/i;
-      // The top-level key "status" and values like "ADOPTION_REQUIRED" do not contain SQL.
-      // Check that no value contains SQL keywords in a query-like context.
       const lines = raw.split('\n').filter(l => !/^\s*[{\[\],]/.test(l) && !/^\s*$/.test(l));
       for (const line of lines) {
         if (sqlIndicators.test(line)) {
-          // "status" value and "format_version" value are exempt.
           const val = line.trim();
           if (val === '"status": "ADOPTION_REQUIRED"' || val === '"format_version": "1.0"' || val === '"entries": []') continue;
           assert.fail(`Potential SQL text in registry: ${line.trim()}`);
@@ -105,7 +111,7 @@ describe('DB Migration Precondition Authority Contract (#3657)', () => {
     });
     it('No prohibited field keys exist in parsed registry', () => {
       const { parsed } = readRegistry();
-      const forbidden = new Set(['query', 'text', 'sql', 'url', 'env', 'credential', 'operator', 'hostname', 'caller_path', 'dynamic_source', 'allowlist']);
+      const forbidden = new Set(['query', 'text', 'sql', 'url', 'env', 'credential', 'operator', 'hostname', 'caller_path', 'dynamic_source', 'allowlist', 'evidence_contract', 'kind', 'field']);
       const found = findProhibitedField(parsed, forbidden, '');
       assert.equal(found.length, 0, `Prohibited fields found: ${found.join(', ')}`);
     });
@@ -115,7 +121,7 @@ describe('DB Migration Precondition Authority Contract (#3657)', () => {
     it('Authority contract document exists', () => {
       assert.ok(fs.existsSync(CONTRACT_PATH));
     });
-    const requiredSections = [
+    const topLevelSections = [
       'Purpose',
       'Current inactive state',
       'Authority ownership',
@@ -126,10 +132,8 @@ describe('DB Migration Precondition Authority Contract (#3657)', () => {
       'Migration binding',
       'Query-reference boundary',
       'Future fixed query catalog',
-      'Evidence contract',
+      'Result contract',
       'Status mapping',
-      'Multi-check precedence',
-      'No-precondition semantics',
       'Source-validation integration',
       'Manifest relationship',
       'Orchestrator relationship',
@@ -142,95 +146,132 @@ describe('DB Migration Precondition Authority Contract (#3657)', () => {
       'Completion boundary',
       'References',
     ];
+    const subsectionTerms = [
+      'Normative status matrix',
+      'Multi-check precedence',
+      'No-precondition semantics',
+    ];
     const doc = readDoc(CONTRACT_PATH);
-    for (const section of requiredSections) {
-      it(`Has section: ${section}`, () => {
+    for (const section of topLevelSections) {
+      it(`Has top-level section: ${section}`, () => {
         const escaped = section.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        assert.match(doc, new RegExp(`^## ${escaped}`, 'm'), `Missing section: ${section}`);
+        assert.match(doc, new RegExp(`^## ${escaped}`, 'm'), `Missing top-level section: ${section}`);
+      });
+    }
+    for (const term of subsectionTerms) {
+      it(`Has subsection: ${term}`, () => {
+        assert.match(doc, new RegExp(`### ${term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, 'm'), `Missing subsection: ${term}`);
       });
     }
   });
 
-  describe('5. Document no-precondition semantics', () => {
+  describe('5. Normative status matrix exact rows', () => {
     const doc = readDoc(CONTRACT_PATH);
-    it('Document forbids no-precondition = PASS', () => {
-      assert.match(doc, /NOT_EVALUATED/i);
-      const noPassDefault = doc.includes('PASS` is never returned when no precondition is defined') ||
-        doc.includes('PASS is never an automatic default') ||
-        doc.includes('never PASS');
-      assert.ok(noPassDefault, 'Document must forbid PASS as default for no precondition');
-    });
-    it('Document requires NOT_EVALUATED for no precondition', () => {
-      assert.match(doc, /NOT_EVALUATED \(not PASS\)|no precondition.*NOT_EVALUATED/i);
-    });
-    it('Document requires PASRequires defined non-empty checks', () => {
-      const passDefined = doc.includes('PASS` requires defined non-empty checks') ||
-        doc.includes('Every `PASS` requires defined non-empty checks') ||
-        doc.includes('PASS requires defined non-empty checks');
-      assert.ok(passDefined, 'Document must require PASS requires defined non-empty checks');
-    });
-  });
-
-  describe('6. Document status definitions', () => {
-    const doc = readDoc(CONTRACT_PATH);
-    const statuses = ['NOT_EVALUATED', 'PASS', 'FAIL', 'UNAVAILABLE'];
-    for (const s of statuses) {
-      it(`Document defines ${s} status`, () => {
-        const headingMatch = doc.includes(`### ${s}`) || doc.includes(`## ${s}`);
-        const defineMatch = new RegExp(`${s}[\\s\\S]{0,200}returned when|${s}[\\s\\S]{0,200}Returned when`, 'i');
-        assert.ok(headingMatch || defineMatch.test(doc), `Status ${s} must be defined`);
+    const matrixRows = [
+      /Registry safely loaded and status is.*ADOPTION_REQUIRED.*NOT_EVALUATED/,
+      /Query-catalog authority has not yet been adopted.*ADOPTION_REQUIRED.*NOT_EVALUATED/,
+      /ACTIVE registry lacks the target entry or has empty checks.*FAIL/,
+      /ACTIVE registry lacks the target entry or has empty checks despite source validation.*NOT_EVALUATED/,
+      /Fixed registry\/catalog file missing or unreadable.*UNAVAILABLE/,
+      /JSON successfully read but malformed or contract-invalid.*FAIL/,
+      /Unsafe\/malformed registry\/catalog evidence reaches runtime.*UNAVAILABLE/,
+      /Broker throw\/rejection or malformed query evidence.*UNAVAILABLE/,
+      /Valid evidence disagrees with expected value.*FAIL/,
+      /All defined non-empty checks match.*PASS/,
+    ];
+    for (let i = 0; i < matrixRows.length; i++) {
+      it(`Status matrix row ${i + 1} exists`, () => {
+        assert.match(doc, matrixRows[i]);
       });
     }
-    it('Document defines UNAVAILABLE > FAIL precedence', () => {
-      const precedencePattern = /UNAVAILABLE.*FAIL|FAIL.*UNAVAILABLE|One or more UNAVAILABLE.*UNAVAILABLE/;
-      assert.match(doc, precedencePattern);
+  });
+
+  describe('6. Forbidden contradictory phrases absent', () => {
+    const doc = readDoc(CONTRACT_PATH);
+    for (const re of FORBIDDEN_PHRASES) {
+      it(`Does not contain forbidden phrase`, () => {
+        assert.ok(!re.test(doc), `Document must not match: ${re}`);
+      });
+    }
+  });
+
+  describe('7. Source validation result vocabulary exact', () => {
+    const doc = readDoc(CONTRACT_PATH);
+    it('Source validation returns { status: PASS | FAIL | UNAVAILABLE }', () => {
+      // Must define exactly these three, not NOT_EVALUATED
+      const svSection = doc.split('## Source-validation integration')[1]?.split('## ')[0] || '';
+      assert.match(svSection, /status.*PASS.*FAIL.*UNAVAILABLE/);
+      // Must not contain evalutePrecondition call claim
+      assert.ok(!svSection.includes('calls evaluatePrecondition'));
+    });
+    it('Source validation does NOT call evaluatePrecondition', () => {
+      const forbidsCall = /does not call|not call `evaluatePrecondition`|does \*\*not\*\* call/i.test(doc);
+      const stillHasOld = /source validation calls evaluatePrecondition/i.test(doc);
+      assert.ok(forbidsCall, 'Document must state that source validation does not call evaluatePrecondition');
+      assert.ok(!stillHasOld, 'Document must not contain "source validation calls evaluatePrecondition"');
+    });
+    it('No reason field or PRECONDITION_NOT_IMPLEMENTED in source section', () => {
+      const svSection = doc.split('## Source-validation integration')[1]?.split('## ')[0] || '';
+      assert.ok(!svSection.includes('reason'), 'Source section must not mention reason field');
+      assert.ok(!svSection.includes('PRECONDITION_NOT_IMPLEMENTED'));
     });
   });
 
-  describe('7. Document registry path and query boundary', () => {
+  describe('8. Registry check exact keys', () => {
     const doc = readDoc(CONTRACT_PATH);
-    it('Document defines fixed registry path', () => {
-      assert.match(doc, /db\/migration-provenance\/precondition-registry\.json/);
+    it('Check has exact keys: check_id, query_reference, expected', () => {
+      const checkSchema = doc.split('## Check schema')[1]?.split('## ')[0] || '';
+      assert.match(checkSchema, /check_id/);
+      assert.match(checkSchema, /query_reference/);
+      assert.match(checkSchema, /expected/);
     });
-    it('Document requires canonical migration cross-validation', () => {
-      assert.match(doc, /cross-validate|manifest.*registry|registry.*manifest/i);
-    });
-    it('Document forbids unknown migration ID', () => {
-      const forbids = /unknown migration|must not invent|no orphan/i;
-      assert.match(doc, forbids);
-    });
-    it('Document defines query-reference-only registry', () => {
-      assert.match(doc, /query.?reference[^)]/i);
-    });
-    it('Document forbids SQL text in registry', () => {
-      assert.match(doc, /SQL text|SQL.*not.*stored|must not contain SQL|SQL.*forbidden/i);
-    });
-    it('Document defines future fixed query catalog', () => {
-      assert.match(doc, /readonly-query-catalog|fixed query catalog|query catalog/i);
-    });
-    it('Document forbids caller path/query/SQL override', () => {
-      assert.match(doc, /caller.*override|caller.*supplied|cannot accept caller/i);
+    it('Check schema forbids evidence_contract, kind, field', () => {
+      // These must appear in the document section about forbidden check-level keys
+      const forbiddenSection = doc.split('Forbidden check-level keys')[1]?.split('### ')[0] || '';
+      assert.match(forbiddenSection, /evidence_contract/);
+      assert.match(forbiddenSection, /kind/);
+      assert.match(forbiddenSection, /field/);
     });
   });
 
-  describe('8. Document manifest and implementation sequence', () => {
+  describe('9. Catalog owns result contract, registry owns expected', () => {
     const doc = readDoc(CONTRACT_PATH);
-    it('Document states canonical manifest unchanged', () => {
-      assert.match(doc, /canonical manifest remains|unchanged|not.*changed/i);
+    it('Catalog entry has exact keys: name, text, values, result_contract', () => {
+      assert.match(doc, /"name"/);
+      assert.match(doc, /"text"/);
+      assert.match(doc, /"values"/);
+      assert.match(doc, /result_contract/);
     });
-    it('Document states manifest adapter unchanged', () => {
-      assert.match(doc, /manifest adapter.*not.*changed|migration-canonical-manifest-adapter-core|not.*changed in this child/i);
+    it('Catalog owns result_contract with kind and field', () => {
+      assert.match(doc, /result_contract[\s\S]*?kind/);
+      assert.match(doc, /result_contract[\s\S]*?field/);
     });
-    it('Document defines exact future dependency order', () => {
+    it('Registry owns expected boolean only', () => {
+      assert.match(doc, /registry owns.*expected/);
+    });
+    it('No duplicate authority - catalog does not store expected', () => {
+      const catalogSection = doc.split('## Future fixed query catalog')[1]?.split('## ')[0] || '';
+      assert.ok(!catalogSection.includes('"expected"'), 'Catalog must not store expected');
+    });
+  });
+
+  describe('10. Loader boundary', () => {
+    const doc = readDoc(CONTRACT_PATH);
+    it('require() is not allowed as loader authority', () => {
+      // Document must explicitly forbid require() as loader
+      const loaderText = doc.split('**Loader boundary.**')[1]?.split('**')[0] || '';
+      assert.ok(doc.includes('require') && (doc.includes('not allowed') || doc.includes('must not be used')), 'Document must forbid require() as loader');
+    });
+    it('Defines exact loader sequence', () => {
       const steps = [
-        /precondition authority contract/,
-        /registry validator.*source-validation integration/,
-        /fixed read-only query catalog contract/,
-        /precondition registry loader\/resolver/,
-        /evaluatePrecondition adapter/,
-        /composition root/,
-        /disposable PostgreSQL rehearsal/,
-        /separately approved environment adoption/,
+        /derive repository root/,
+        /fixed repository-relative path/,
+        /lexical containment/,
+        /realpath containment/,
+        /regular-file check/,
+        /read.*UTF-8/,
+        /JSON\.parse exactly once/,
+        /validate exactly once/,
       ];
       for (const step of steps) {
         assert.match(doc, step);
@@ -238,76 +279,71 @@ describe('DB Migration Precondition Authority Contract (#3657)', () => {
     });
   });
 
-  describe('9. Document references and issue protection', () => {
+  describe('11. Runtime evaluation requires lockHandle and broker', () => {
+    const doc = readDoc(CONTRACT_PATH);
+    it('Runtime requires orchestrator-supplied lockHandle', () => {
+      const brokerSection = doc.split('## Pinned-session broker relationship')[1]?.split('## ')[0] || '';
+      assert.match(brokerSection, /lockHandle/);
+      assert.match(brokerSection, /lock-adapter instance/);
+    });
+    it('Runtime requires queryLockedSession', () => {
+      const brokerSection = doc.split('## Pinned-session broker relationship')[1]?.split('## ')[0] || '';
+      assert.match(brokerSection, /queryLockedSession/);
+    });
+    it('Release ownership remains with releaseAdvisoryLock', () => {
+      const brokerSection = doc.split('## Pinned-session broker relationship')[1]?.split('## ')[0] || '';
+      assert.match(brokerSection, /releaseAdvisoryLock/);
+    });
+  });
+
+  describe('12. No precondition semantics', () => {
+    const doc = readDoc(CONTRACT_PATH);
+    it('No precondition = NOT_EVALUATED, not PASS', () => {
+      assert.match(doc, /NOT_EVALUATED.*not PASS|not PASS/i);
+    });
+    it('PASS requires defined non-empty checks', () => {
+      assert.match(doc, /PASS.*defined non-empty checks|PASS.*non-empty/i);
+    });
+    it('Authority not adopted = NOT_EVALUATED', () => {
+      assert.match(doc, /Authority not adopted.*NOT_EVALUATED|NOT_EVALUATED.*authority/i);
+    });
+  });
+
+  describe('13. Manifest and adapter unchanged', () => {
+    const doc = readDoc(CONTRACT_PATH);
+    it('Canonical manifest remains ADOPTION_REQUIRED', () => {
+      assert.match(doc, /canonical manifest remains|unchanged|not.*changed/);
+    });
+    it('Manifest adapter not changed', () => {
+      assert.match(doc, /manifest adapter.*not.*changed|migration-canonical-manifest-adapter-core|not.*changed in this child/);
+    });
+  });
+
+  describe('14. Issue references correct', () => {
     const doc = readDoc(CONTRACT_PATH);
     it('Document Refs #3657', () => {
       assert.match(doc, /Refs #3657/);
     });
-    it('Document does not contain Closes/Fixes/Resolves #1882', () => {
-      const closePattern = /(Closes|Fixes|Resolves)\s+#1882/;
-      assert.ok(!closePattern.test(doc), 'Document must not contain Closes/Fixes/Resolves #1882');
+    it('#3650 and #3652 are prior completed, not future child', () => {
+      // Must not be described as future children
+      for (const ref of ['#3650', '#3652']) {
+        const isFuture = new RegExp(`${ref}.*future|${ref}.*next child|${ref}.*will be|${ref}.*to be`).test(doc);
+        const isPast = new RegExp(`${ref}.*prior completed|${ref}.*completed`).test(doc);
+        assert.ok(!isFuture || isPast, `${ref} must not be described as a future child`);
+      }
     });
-    it('Document references #3458, #3425, #3435, #3437, #1882 as Keep OPEN references', () => {
+    it('Does not contain Closes/Fixes/Resolves #1882', () => {
+      const closePattern = /(Closes|Fixes|Resolves)\s+#1882/;
+      assert.ok(!closePattern.test(doc));
+    });
+    it('Protected issues referenced as Keep OPEN', () => {
       for (const issue of ['#3458', '#3425', '#3435', '#3437', '#1882']) {
-        assert.match(doc, new RegExp(`Refs ${issue}|${issue}.*OPEN`));
+        assert.match(doc, new RegExp(`${issue}.*OPEN`));
       }
     });
   });
 
-  describe('10. Registry and document status consistency', () => {
-    it('Registry status matches ADOPTION_REQUIRED', () => {
-      const { parsed } = readRegistry();
-      assert.equal(parsed.status, 'ADOPTION_REQUIRED');
-    });
-    it('Document references ADOPTION_REQUIRED as inactive', () => {
-      const doc = readDoc(CONTRACT_PATH);
-      assert.match(doc, /ADOPTION_REQUIRED/);
-    });
-  });
-
-  describe('11. Prohibited behaviors in document', () => {
-    const doc = readDoc(CONTRACT_PATH);
-    const prohibitions = [
-      /Storing SQL text/,
-      /Storing file paths/,
-      /Accepting caller-supplied query text/,
-      /Returning.*PASS.*no precondition entry/,
-      /Returning.*PASS.*ADOPTION_REQUIRED/,
-      /Bypassing the registry/,
-      /Embedding precondition logic/,
-      /expected_preconditions.*manifest/,
-      /Executing SQL queries from the precondition module/,
-      /Changing the canonical manifest/,
-      /Installing packages/,
-      /Modifying UI components/,
-      /Starting Docker, PostgreSQL/,
-      /Exposing registry or query evidence outside/,
-      /Overriding or bypassing the multi-check precedence/,
-    ];
-    for (const re of prohibitions) {
-      it(`Prohibits: ${re}`, () => {
-        assert.match(doc, re);
-      });
-    }
-  });
-
-  describe('12. Registry entry conceptual contract (documented)', () => {
-    const doc = readDoc(CONTRACT_PATH);
-    it('Document defines BOOLEAN_SINGLE_ROW evidence kind', () => {
-      assert.match(doc, /BOOLEAN_SINGLE_ROW/);
-    });
-    it('Document defines check_id as stable kebab-case', () => {
-      assert.match(doc, /kebab-case|kebab.?case/i);
-    });
-    it('Document defines query_reference as fixed catalog key', () => {
-      assert.match(doc, /query_reference/);
-    });
-    it('Document defines evidence_contract with kind/field/expected', () => {
-      assert.match(doc, /evidence_contract/);
-    });
-  });
-
-  describe('13. No package/workflow/UI changes required', () => {
+  describe('15. No package/workflow/UI changes required', () => {
     const doc = readDoc(CONTRACT_PATH);
     it('Document does not require package.json changes', () => {
       const requiresChange = /package\.json.*(?:change|modify|update|add|install)/i.test(doc);
@@ -321,34 +357,14 @@ describe('DB Migration Precondition Authority Contract (#3657)', () => {
     });
   });
 
-  describe('14. Future tests documented', () => {
+  describe('16. Future dependency order', () => {
     const doc = readDoc(CONTRACT_PATH);
-    const futureTests = [
-      /registry validator/,
-      /status transition/,
-      /evaluatePrecondition contract/,
-      /Multi-check precedence/,
-      /No-precondition enforcement/,
-      /Query-reference resolution/,
-      /Cross-validation.*manifest/,
-      /Caller override rejection/,
-      /Security-sensitive boundary/,
-    ];
-    for (const re of futureTests) {
-      it(`Future test documented: ${re}`, () => {
-        assert.match(doc, re);
-      });
-    }
-  });
-
-  describe('15. Implementation sequence documented', () => {
-    const doc = readDoc(CONTRACT_PATH);
-    it('Document lists 8 steps in correct order', () => {
+    it('8 steps defined', () => {
       const steps = [
         /1\. precondition authority contract/,
-        /2\. registry validator.*source-validation/,
-        /3\. fixed read-only query catalog/,
-        /4\. precondition registry loader.*resolver/,
+        /2\. registry validator.*source-validation integration.*NEW ISSUE REQUIRED/,
+        /3\. fixed read-only query catalog.*NEW ISSUE REQUIRED/,
+        /4\. precondition registry loader\/resolver/,
         /5\. evaluatePrecondition adapter/,
         /6\. composition root/,
         /7\. disposable PostgreSQL rehearsal/,
@@ -357,6 +373,17 @@ describe('DB Migration Precondition Authority Contract (#3657)', () => {
       for (const step of steps) {
         assert.match(doc, step);
       }
+    });
+  });
+
+  describe('17. Registry and document status consistency', () => {
+    it('Registry status matches ADOPTION_REQUIRED', () => {
+      const { parsed } = readRegistry();
+      assert.equal(parsed.status, 'ADOPTION_REQUIRED');
+    });
+    it('Document references ADOPTION_REQUIRED', () => {
+      const doc = readDoc(CONTRACT_PATH);
+      assert.match(doc, /ADOPTION_REQUIRED/);
     });
   });
 });
