@@ -71,6 +71,8 @@ const LOADED_EXACT_KEYS = Object.freeze([
 
 const INVALID_EXACT_KEYS = Object.freeze(['status']);
 
+const REGISTRY_VALIDATOR_RESULT_KEYS = Object.freeze(['ok', 'errors']);
+
 function isGenuinePromise(value) {
   try {
     return utilTypes.isPromise(value);
@@ -340,6 +342,69 @@ function parseValidatorResult(raw) {
   return { valid: true, ok };
 }
 
+/**
+ * Registry-validator-result parser (#3659).
+ *
+ * Enforces exact { ok: boolean, errors: string[] } shape.
+ * Proxy detection via utilTypes.isProxy() before any reflective
+ * inspection. No getter, Proxy trap, or code-path execution.
+ */
+function parseRegistryValidatorResult(raw) {
+  if (raw === null || typeof raw !== 'object') {
+    return { valid: false };
+  }
+
+  // Proxy rejection before any reflective operation
+  try {
+    if (utilTypes.isProxy(raw)) {
+      return { valid: false };
+    }
+  } catch {
+    return { valid: false };
+  }
+
+  // Array rejection
+  try {
+    if (Array.isArray(raw)) return { valid: false };
+  } catch {
+    return { valid: false };
+  }
+
+  // Prototype check
+  let proto;
+  try {
+    proto = Object.getPrototypeOf(raw);
+  } catch {
+    return { valid: false };
+  }
+  if (proto !== Object.prototype && proto !== null) return { valid: false };
+
+  // Descriptor snapshot: exact keys, own enumerable data only
+  const descriptors = safeOwnKeyDescriptors(raw);
+  if (descriptors === undefined) return { valid: false };
+
+  if (!keysMatchExactSet(descriptors, REGISTRY_VALIDATOR_RESULT_KEYS)) {
+    return { valid: false };
+  }
+
+  // ok must be boolean
+  const okDesc = descriptors.find((d) => d.key === 'ok');
+  if (!okDesc || !('value' in okDesc.desc)) return { valid: false };
+  if (typeof okDesc.desc.value !== 'boolean') return { valid: false };
+
+  // errors must be dense array of strings
+  const errorsDesc = descriptors.find((d) => d.key === 'errors');
+  if (!errorsDesc || !('value' in errorsDesc.desc)) return { valid: false };
+  const errorsValue = errorsDesc.desc.value;
+  if (!Array.isArray(errorsValue)) return { valid: false };
+  for (let i = 0; i < errorsValue.length; i++) {
+    if (!(i in errorsValue)) return { valid: false };
+    if (typeof errorsValue[i] !== 'string') return { valid: false };
+  }
+
+  return { valid: true, ok: okDesc.desc.value };
+}
+
 function createMigrationSourceValidationAdapter(config) {
   let loadFixedSourcesFn = defaultLoadFixedSources;
   let validatorFn = validateSourceConfiguration;
@@ -483,7 +548,7 @@ function createMigrationSourceValidationAdapter(config) {
         return SOURCE_VALIDATION_RESULTS.UNAVAILABLE;
       }
     }
-    const regSnapshot = parseValidatorResult(registryResult);
+    const regSnapshot = parseRegistryValidatorResult(registryResult);
     if (!regSnapshot.valid) {
       return SOURCE_VALIDATION_RESULTS.UNAVAILABLE;
     }
@@ -505,7 +570,7 @@ function createMigrationSourceValidationAdapter(config) {
         return SOURCE_VALIDATION_RESULTS.UNAVAILABLE;
       }
     }
-    const bindSnapshot = parseValidatorResult(bindingResult);
+    const bindSnapshot = parseRegistryValidatorResult(bindingResult);
     if (!bindSnapshot.valid) {
       return SOURCE_VALIDATION_RESULTS.UNAVAILABLE;
     }
@@ -560,5 +625,6 @@ module.exports = {
   createMigrationSourceValidationAdapter,
   validateSourceConfiguration,
   validatePreconditionRegistry,
-  validateRegistryManifestBinding
+  validateRegistryManifestBinding,
+  parseRegistryValidatorResult
 };

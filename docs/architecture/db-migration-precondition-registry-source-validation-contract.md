@@ -125,11 +125,6 @@ All registry, entry, check, and manifest inputs are rejected if they are Proxy-w
 
 When `status` is `ACTIVE`, each entry's `checks` array must be non-empty. Empty checks → `REGISTRY_ENTRY_CHECKS_EMPTY` → FAIL.
 
-| status | entries constraint | Binding (ADOPTION_REQUIRED manifest) | Binding (ACTIVE manifest) |
-|---|---|---|---|
-| `ADOPTION_REQUIRED` | `entries` must be empty array | PASS | FAIL (manifest adopted before registry) |
-| `ACTIVE` | `entries` must be non-empty array | FAIL (manifest not adopted) | PASS + one-to-one binding |
-
 ## One-to-One Binding (ACTIVE)
 
 When both manifest and registry are ACTIVE:

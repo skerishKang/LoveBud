@@ -78,17 +78,33 @@ A fourth fixed source `db/migration-provenance/precondition-registry.json` is lo
 
 Registry validation failures (structural, binding) produce `FAIL`. Registry load failures produce `UNAVAILABLE`.
 
+### Registry Validator Result Shape
+
+Both `validatePreconditionRegistry()` and `validateRegistryManifestBinding()` must return an exact plain record:
+
+```js
+{
+  ok: boolean,
+  errors: string[]
+}
+```
+
+- `ok` must be an own enumerable data property with a `boolean` value
+- `errors` must be an own enumerable data property with a dense `string[]` array (no sparse holes, no non-string items)
+- No extra keys, symbol keys, accessor properties, or non-enumerable properties
+- Proxy-wrapped results are rejected before any reflective inspection (trap counters: 0)
+
 ### Registry Validator Failure Mapping
 
-Both `validatePreconditionRegistry()` and `validateRegistryManifestBinding()` calls are wrapped in safe try/catch within `validateSource()`:
+Both `validatePreconditionRegistry()` and `validateRegistryManifestBinding()` calls are parsed via `parseRegistryValidatorResult()` within `validateSource()`:
 
 - Validator synchronous throw → `UNAVAILABLE`
 - Validator returns genuine Promise rejection → `UNAVAILABLE`
 - Validator returns Proxy-wrapped Promise → `UNAVAILABLE` (not assimilated)
 - Validator returns arbitrary thenable → `UNAVAILABLE`
 - Validator returns unsafe result (non-plain-object, accessor `ok`, extra/symbol/non-enumerable keys) → `UNAVAILABLE`
-- Validator returns `{ ok: false }` → `FAIL`
-- Validator returns `{ ok: true }` → proceed
+- Validator returns `{ ok: false, errors: [...] }` → `FAIL`
+- Validator returns `{ ok: true, errors: [] }` → proceed
 
 Raw `errors` arrays from registry validators are never exposed in the public result.
 

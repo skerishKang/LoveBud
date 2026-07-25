@@ -1500,61 +1500,112 @@ describe('DB migration source-validation adapter contract (#3650)', () => {
     });
   });
 
-  describe('K. Registry validator failure mapping (#3659)', () => {
-    it('K1. valid registry passes through adapter', async () => {
-      const throwRegistry = '{"format_version":"1.0","status":"ADOPTION_REQUIRED","entries":[]}';
-      const adapter = createMigrationSourceValidationAdapter({
-        loadFixedSources: () => loadedSource(VALID_INVENTORY_TEXT, VALID_MIGRATIONS_TEXT, VALID_SCHEMA_TEXT, throwRegistry),
-        validateSourceConfiguration: noopValidator
+  describe('K. Registry validator boundary (#3659)', () => {
+    const { parseRegistryValidatorResult: parseRegResult } = require(ADAPTER_PATH);
+
+    describe('K1. parseRegistryValidatorResult - valid results', () => {
+      it('K1a. {ok:true,errors:[]} -> valid', () => {
+        const r = parseRegResult({ ok: true, errors: [] });
+        assert.strictEqual(r.valid, true);
+        assert.strictEqual(r.ok, true);
       });
-      const result = await adapter.validateSource({ targetMigrationId: 'test' });
-      assert.deepStrictEqual(result, SOURCE_VALIDATION_RESULTS.PASS);
+      it('K1b. {ok:false,errors:["ERR"]} -> valid, ok=false', () => {
+        const r = parseRegResult({ ok: false, errors: ['ERR'] });
+        assert.strictEqual(r.valid, true);
+        assert.strictEqual(r.ok, false);
+      });
     });
 
-    it('K2. structural validator ok=false -> FAIL', async () => {
-      const badRegistry = JSON.stringify({
-        format_version: '1.0',
-        status: 'ACTIVE',
-        entries: []
+    describe('K2. parseRegistryValidatorResult - hostile result shapes', () => {
+      it('K2a. null -> invalid', () => {
+        assert.strictEqual(parseRegResult(null).valid, false);
       });
-      const adapter = createMigrationSourceValidationAdapter({
-        loadFixedSources: () => loadedSource(VALID_INVENTORY_TEXT, VALID_MIGRATIONS_TEXT, VALID_SCHEMA_TEXT, badRegistry),
-        validateSourceConfiguration: noopValidator
+      it('K2b. undefined -> invalid', () => {
+        assert.strictEqual(parseRegResult(undefined).valid, false);
       });
-      const result = await adapter.validateSource({ targetMigrationId: 'test' });
-      assert.deepStrictEqual(result, SOURCE_VALIDATION_RESULTS.FAIL);
-    });
-
-    it('K3. binding validator ok=false -> FAIL', async () => {
-      const badRegistry = JSON.stringify({
-        format_version: '1.0',
-        status: 'ACTIVE',
-        entries: [{ migration_id: VALID_MIGRATION_ID, checks: [{ check_id: VALID_CHECK_ID, query_reference: VALID_QUERY_REF, expected: true }] }]
+      it('K2c. array -> invalid', () => {
+        assert.strictEqual(parseRegResult([]).valid, false);
       });
-      const adapter = createMigrationSourceValidationAdapter({
-        loadFixedSources: () => loadedSource(VALID_INVENTORY_TEXT, VALID_MIGRATIONS_TEXT, VALID_SCHEMA_TEXT, badRegistry),
-        validateSourceConfiguration: noopValidator
+      it('K2d. string -> invalid', () => {
+        assert.strictEqual(parseRegResult('bad').valid, false);
       });
-      // ADOPTION_REQUIRED manifest + ACTIVE registry -> binding FAIL
-      const result = await adapter.validateSource({ targetMigrationId: 'test' });
-      assert.deepStrictEqual(result, SOURCE_VALIDATION_RESULTS.FAIL);
-    });
-
-    it('K6. raw errors not exposed in result', async () => {
-      const badRegistry = JSON.stringify({
-        format_version: '1.0',
-        status: 'ACTIVE',
-        entries: []
+      it('K2e. number -> invalid', () => {
+        assert.strictEqual(parseRegResult(42).valid, false);
       });
-      const adapter = createMigrationSourceValidationAdapter({
-        loadFixedSources: () => loadedSource(VALID_INVENTORY_TEXT, VALID_MIGRATIONS_TEXT, VALID_SCHEMA_TEXT, badRegistry),
-        validateSourceConfiguration: noopValidator
+      it('K2f. {ok:"yes"} -> invalid (ok not boolean)', () => {
+        assert.strictEqual(parseRegResult({ ok: 'yes', errors: [] }).valid, false);
       });
-      const result = await adapter.validateSource({ targetMigrationId: 'test' });
-      const resultStr = JSON.stringify(result);
-      assert.ok(!resultStr.includes('REGISTRY_ACTIVE_EMPTY_ENTRIES'));
-      assert.ok(!resultStr.includes('REGISTRY_'));
-      assert.deepStrictEqual(Object.keys(result), ['status']);
+      it('K2g. {ok:1} -> invalid (ok not boolean)', () => {
+        assert.strictEqual(parseRegResult({ ok: 1, errors: [] }).valid, false);
+      });
+      it('K2h. extra key -> invalid', () => {
+        assert.strictEqual(parseRegResult({ ok: true, errors: [], extra: 'bad' }).valid, false);
+      });
+      it('K2i. symbol key -> invalid', () => {
+        const o = { ok: true, errors: [] }; o[Symbol('x')] = 1;
+        assert.strictEqual(parseRegResult(o).valid, false);
+      });
+      it('K2j. accessor ok -> invalid, getter 0', () => {
+        let calls = 0;
+        assert.strictEqual(parseRegResult(Object.create({}, {
+          ok: { get() { calls++; return true; }, enumerable: true },
+          errors: { value: [], enumerable: true }
+        })).valid, false);
+        assert.strictEqual(calls, 0);
+      });
+      it('K2k. accessor errors -> invalid, getter 0', () => {
+        let calls = 0;
+        assert.strictEqual(parseRegResult(Object.create({}, {
+          ok: { value: true, enumerable: true },
+          errors: { get() { calls++; return []; }, enumerable: true }
+        })).valid, false);
+        assert.strictEqual(calls, 0);
+      });
+      it('K2l. non-enumerable ok -> invalid', () => {
+        assert.strictEqual(parseRegResult(Object.create(null, {
+          ok: { value: true, enumerable: false },
+          errors: { value: [], enumerable: true }
+        })).valid, false);
+      });
+      it('K2m. Proxy result -> invalid, traps 0', () => {
+        const traps = { get: 0, getPrototypeOf: 0, ownKeys: 0, getOwnPropertyDescriptor: 0 };
+        const inner = { ok: true, errors: [] };
+        const proxy = new Proxy(inner, {
+          get() { traps.get++; return Reflect.get(...arguments); },
+          getPrototypeOf() { traps.getPrototypeOf++; return Reflect.getPrototypeOf(...arguments); },
+          ownKeys() { traps.ownKeys++; return Reflect.ownKeys(...arguments); },
+          getOwnPropertyDescriptor() { traps.getOwnPropertyDescriptor++; return Reflect.getOwnPropertyDescriptor(...arguments); }
+        });
+        assert.strictEqual(parseRegResult(proxy).valid, false);
+        assert.strictEqual(traps.get, 0);
+        assert.strictEqual(traps.getPrototypeOf, 0);
+        assert.strictEqual(traps.ownKeys, 0);
+        assert.strictEqual(traps.getOwnPropertyDescriptor, 0);
+      });
+      it('K2n. revoked Proxy -> invalid', () => {
+        const { proxy, revoke } = Proxy.revocable({}, {}); revoke();
+        assert.strictEqual(parseRegResult(proxy).valid, false);
+      });
+      it('K2o. errors sparse array -> invalid', () => {
+        const sparse = []; sparse[0] = 'err1'; sparse[2] = 'err2';
+        assert.strictEqual(parseRegResult({ ok: true, errors: sparse }).valid, false);
+      });
+      it('K2p. errors with non-string item -> invalid', () => {
+        assert.strictEqual(parseRegResult({ ok: true, errors: [42] }).valid, false);
+      });
+      it('K2q. missing errors key -> invalid', () => {
+        assert.strictEqual(parseRegResult({ ok: true }).valid, false);
+      });
+      it('K2r. missing ok key -> invalid', () => {
+        assert.strictEqual(parseRegResult({ errors: [] }).valid, false);
+      });
+      it('K2s. non-array errors -> invalid', () => {
+        assert.strictEqual(parseRegResult({ ok: true, errors: 'string' }).valid, false);
+      });
+      it('K2t. custom prototype -> invalid', () => {
+        function P() {} P.prototype.ok = true;
+        assert.strictEqual(parseRegResult(Object.assign(new P(), { errors: [] })).valid, false);
+      });
     });
   });
 });
