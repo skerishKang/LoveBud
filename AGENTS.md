@@ -167,14 +167,14 @@ Red workflow appearance alone is not enough to classify an executed failure. Ins
 
 For U0/U1, small reversible micro branches/PRs are preferred.
 
-## 10. Local environment
+## Current local execution environment
 
-Default local environment:
-
-- Windows;
-- PowerShell 7;
-- Windows-native tools and paths;
-- WSL only when explicitly authorized.
+- **Primary OS:** Windows.
+- **Preferred shell:** PowerShell 7 through `pwsh.exe`.
+- Use Windows-native tools and paths by default.
+- WSL은 현재 task 또는 operator가 명시적으로 승인한 경우에만 사용한다. WSL은 implicit fallback이 아니다.
+- 필수 Windows-native 도구가 없으면 중단하고 보고한다. WSL로 자동 우회하지 않는다.
+- Codex, Kilo, Hermes 등 도구 정체성만으로 WSL/bash를 추론하지 않는다.
 
 Detailed source: `docs/ops/PATHS_AND_SHELLS.md`.
 
