@@ -955,10 +955,11 @@
 /* ── Story bidirectional transition (outgoing + incoming simultaneous) ── */
 
 /* Transition stage layout: both layers occupy the same grid cell */
-/* During bidirectional transition, contain overflow */
+/* During bidirectional transition, contain overflow and fix height */
 #resultsList[data-tree-view-mode="story"][aria-busy="true"] {
     position: relative;
     overflow: hidden;
+    min-height: var(--story-transition-height);
 }
 
 .browse-story-transition-stage {
@@ -967,6 +968,32 @@
     gap: inherit;
     grid-column: 1 / -1;
     animation-fill-mode: both;
+}
+
+.browse-story-transition-stage[data-story-layer-size="3"] {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.browse-story-transition-stage[data-story-layer-size="2"] {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.browse-story-transition-stage[data-story-layer-size="1"] {
+    grid-template-columns: minmax(0, 560px);
+    justify-content: center;
+}
+
+.browse-story-transition-stage[data-story-layer-size="3"] {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.browse-story-transition-stage[data-story-layer-size="2"] {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.browse-story-transition-stage[data-story-layer-size="1"] {
+    grid-template-columns: minmax(0, 560px);
+    justify-content: center;
 }
 
 .browse-story-layer-outgoing {

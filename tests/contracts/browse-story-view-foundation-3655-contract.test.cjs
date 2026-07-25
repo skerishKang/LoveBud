@@ -205,7 +205,7 @@ test('Story controller implements bidirectional transition with two-layer stage'
     assert.match(storyModule, /aria-busy/);
     assert.match(storyModule, /inert/);
     assert.match(storyModule, /transitioning/);
-    assert.match(storyModule, /cleanupTransition/);
+    assert.match(storyModule, /cancelTransition/);
     assert.match(storyModule, /EXITING_CLASS/);
     assert.match(storyModule, /prefersReducedMotion/);
 });

@@ -1130,3 +1130,476 @@ test('#3655 browser: no overflow at 1440/768/375 during and after transition', {
     server.close();
   }
 });
+
+/* ── Geometry: layer-specific independent sizing (Blocker A) ────── */
+
+test('#3655 browser: wide 3→1 transition assigns correct data-story-layer-size', { timeout: 120000 }, async () => {
+  const browser = await launchBrowser();
+  const { server, port } = await startServer();
+  try {
+    const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+    const page = await context.newPage();
+    await page.addInitScript(() => localStorage.setItem('lovebud:browse:viewMode', 'story'));
+    await page.goto(`http://127.0.0.1:${port}/fixture-browse-story.html`, { waitUntil: 'networkidle' });
+    await page.waitForTimeout(150);
+
+    await page.click('[data-story-next]');
+    await page.waitForTimeout(420);
+    await page.click('[data-story-next]');
+    await page.waitForTimeout(50);
+
+    const layerState = await page.evaluate(() => {
+      const outLayer = document.querySelector('.browse-story-layer-outgoing');
+      const inLayer = document.querySelector('.browse-story-layer-incoming');
+      return {
+        outgoingSize: outLayer ? outLayer.getAttribute('data-story-layer-size') : null,
+        incomingSize: inLayer ? inLayer.getAttribute('data-story-layer-size') : null,
+      };
+    });
+
+    assert.equal(layerState.outgoingSize, '3', 'outgoing layer size must be 3');
+    assert.equal(layerState.incomingSize, '1', 'incoming layer size must be 1');
+
+    await context.close();
+  } finally {
+    await browser.close();
+    server.close();
+  }
+});
+
+test('#3655 browser: wide 1→3 transition assigns correct data-story-layer-size', { timeout: 120000 }, async () => {
+  const browser = await launchBrowser();
+  const { server, port } = await startServer();
+  try {
+    const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+    const page = await context.newPage();
+    await page.addInitScript(() => localStorage.setItem('lovebud:browse:viewMode', 'story'));
+    await page.goto(`http://127.0.0.1:${port}/fixture-browse-story.html`, { waitUntil: 'networkidle' });
+    await page.waitForTimeout(150);
+
+    // Navigate forward twice to last group, then back (1→3 transition)
+    await page.click('[data-story-next]');
+    await page.waitForTimeout(420);
+    await page.click('[data-story-next]');
+    await page.waitForTimeout(420);
+    await page.click('[data-story-prev]');
+    await page.waitForTimeout(50);
+
+    const layerState = await page.evaluate(() => {
+      const outLayer = document.querySelector('.browse-story-layer-outgoing');
+      const inLayer = document.querySelector('.browse-story-layer-incoming');
+      return {
+        outgoingSize: outLayer ? outLayer.getAttribute('data-story-layer-size') : null,
+        incomingSize: inLayer ? inLayer.getAttribute('data-story-layer-size') : null,
+      };
+    });
+
+    assert.equal(layerState.outgoingSize, '1', 'outgoing layer size must be 1');
+    assert.equal(layerState.incomingSize, '3', 'incoming layer size must be 3');
+
+    await context.close();
+  } finally {
+    await browser.close();
+    server.close();
+  }
+});
+
+test('#3655 browser: tablet 2→1 transition assigns correct data-story-layer-size', { timeout: 120000 }, async () => {
+  const browser = await launchBrowser();
+  const { server, port } = await startServer();
+  try {
+    const context = await browser.newContext({ viewport: { width: 768, height: 1024 } });
+    const page = await context.newPage();
+    await page.addInitScript(() => localStorage.setItem('lovebud:browse:viewMode', 'story'));
+    await page.goto(`http://127.0.0.1:${port}/fixture-browse-story.html`, { waitUntil: 'networkidle' });
+    await page.waitForTimeout(150);
+
+    // tablet 2 per group → click through to last group (2→1 transition)
+    await page.click('[data-story-next]');
+    await page.waitForTimeout(420);
+    await page.click('[data-story-next]');
+    await page.waitForTimeout(420);
+    await page.click('[data-story-next]');
+    await page.waitForTimeout(50);
+
+    const layerState = await page.evaluate(() => {
+      const outLayer = document.querySelector('.browse-story-layer-outgoing');
+      const inLayer = document.querySelector('.browse-story-layer-incoming');
+      return {
+        outgoingSize: outLayer ? outLayer.getAttribute('data-story-layer-size') : null,
+        incomingSize: inLayer ? inLayer.getAttribute('data-story-layer-size') : null,
+      };
+    });
+
+    assert.equal(layerState.outgoingSize, '2', 'outgoing layer size must be 2');
+    assert.equal(layerState.incomingSize, '1', 'incoming layer size must be 1');
+
+    await context.close();
+  } finally {
+    await browser.close();
+    server.close();
+  }
+});
+
+test('#3655 browser: tablet 1→2 transition assigns correct data-story-layer-size', { timeout: 120000 }, async () => {
+  const browser = await launchBrowser();
+  const { server, port } = await startServer();
+  try {
+    const context = await browser.newContext({ viewport: { width: 768, height: 1024 } });
+    const page = await context.newPage();
+    await page.addInitScript(() => localStorage.setItem('lovebud:browse:viewMode', 'story'));
+    await page.goto(`http://127.0.0.1:${port}/fixture-browse-story.html`, { waitUntil: 'networkidle' });
+    await page.waitForTimeout(150);
+
+    // Go to group 3 (last, 1 card), then back (1→2 transition)
+    await page.click('[data-story-next]');
+    await page.waitForTimeout(420);
+    await page.click('[data-story-next]');
+    await page.waitForTimeout(420);
+    await page.click('[data-story-next]');
+    await page.waitForTimeout(420);
+    await page.click('[data-story-prev]');
+    await page.waitForTimeout(50);
+
+    const layerState = await page.evaluate(() => {
+      const outLayer = document.querySelector('.browse-story-layer-outgoing');
+      const inLayer = document.querySelector('.browse-story-layer-incoming');
+      return {
+        outgoingSize: outLayer ? outLayer.getAttribute('data-story-layer-size') : null,
+        incomingSize: inLayer ? inLayer.getAttribute('data-story-layer-size') : null,
+      };
+    });
+
+    assert.equal(layerState.outgoingSize, '1', 'outgoing layer size must be 1');
+    assert.equal(layerState.incomingSize, '2', 'incoming layer size must be 2');
+
+    await context.close();
+  } finally {
+    await browser.close();
+    server.close();
+  }
+});
+
+/* ── External result replacement during transition (Blocker B) ──── */
+
+test('#3655 browser: external results.innerHTML during transition cancels cleanly without stale cards', { timeout: 120000 }, async () => {
+  const browser = await launchBrowser();
+  const { server, port } = await startServer();
+  try {
+    const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+    const page = await context.newPage();
+    await page.addInitScript(() => localStorage.setItem('lovebud:browse:viewMode', 'story'));
+    await page.goto(`http://127.0.0.1:${port}/fixture-browse-story.html`, { waitUntil: 'networkidle' });
+    await page.waitForTimeout(150);
+
+    // Start transition
+    await page.click('[data-story-next]');
+    await page.waitForTimeout(50);
+
+    // During transition, replace results via innerHTML
+    await page.evaluate(() => {
+      window.__exception = false;
+      try {
+        window.__renderCards(['new-1', 'new-2', 'new-3']);
+      } catch (e) {
+        window.__exception = true;
+      }
+    });
+
+    await page.waitForTimeout(200);
+
+    const state = await page.evaluate(() => {
+      const results = document.getElementById('resultsList');
+      const wrappers = results.querySelectorAll('.browse-story-transition-stage');
+      const visible = [...results.querySelectorAll('.tree-card[data-tree-id]')]
+        .filter(c => !c.hidden).map(c => c.getAttribute('data-tree-id'));
+      const indicator = document.querySelector('.browse-story-indicator-current');
+      return {
+        exception: window.__exception,
+        wrapperCount: wrappers.length,
+        ariaBusy: results.getAttribute('aria-busy'),
+        visible,
+        indicator: indicator ? indicator.textContent : null,
+      };
+    });
+
+    assert.equal(state.exception, false, 'no exception during external replacement');
+    assert.equal(state.wrapperCount, 0, 'no stale wrappers after external replacement');
+    assert.equal(state.ariaBusy, null, 'aria-busy cleared after external replacement');
+    assert.deepEqual(state.visible, ['new-1', 'new-2', 'new-3'], 'new cards displayed after external replacement');
+    assert.equal(state.indicator, '01 / 01', 'indicator reset after external replacement');
+
+    await context.close();
+  } finally {
+    await browser.close();
+    server.close();
+  }
+});
+
+/* ── Keyboard guard order (Blocker C) ───────────────────────────── */
+
+test('#3655 browser: arrow/Home/End keys in search input are not prevented during transition', { timeout: 120000 }, async () => {
+  const browser = await launchBrowser();
+  const { server, port } = await startServer();
+  try {
+    const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+    const page = await context.newPage();
+    await page.addInitScript(() => localStorage.setItem('lovebud:browse:viewMode', 'story'));
+    await page.goto(`http://127.0.0.1:${port}/fixture-browse-story.html`, { waitUntil: 'networkidle' });
+    await page.waitForTimeout(150);
+
+    // Start a transition
+    await page.click('[data-story-next]');
+    await page.waitForTimeout(50);
+
+    // Focus on search input and test each navigation key
+    await page.focus('#searchInput');
+
+    async function isDefaultPrevented(key) {
+      return page.evaluate((k) => {
+        const input = document.getElementById('searchInput');
+        let prevented = null;
+        const handler = (e) => { prevented = e.defaultPrevented; };
+        document.addEventListener('keydown', handler, { once: true });
+        input.dispatchEvent(new KeyboardEvent('keydown', {
+          key: k,
+          code: k,
+          keyCode: k === 'ArrowLeft' ? 37 : k === 'ArrowRight' ? 39 : k === 'Home' ? 36 : 35,
+          bubbles: true,
+          cancelable: true,
+        }));
+        document.removeEventListener('keydown', handler);
+        return prevented;
+      }, key);
+    }
+
+    assert.equal(await isDefaultPrevented('ArrowLeft'), false, 'ArrowLeft in input must not be prevented during transition');
+    assert.equal(await isDefaultPrevented('ArrowRight'), false, 'ArrowRight in input must not be prevented during transition');
+    assert.equal(await isDefaultPrevented('Home'), false, 'Home in input must not be prevented during transition');
+    assert.equal(await isDefaultPrevented('End'), false, 'End in input must not be prevented during transition');
+
+    await context.close();
+  } finally {
+    await browser.close();
+    server.close();
+  }
+});
+
+/* ── Idempotent cancellation (Blocker D) ─────────────────────────── */
+
+test('#3655 browser: compact mode during transition cancels cleanly', { timeout: 120000 }, async () => {
+  const browser = await launchBrowser();
+  const { server, port } = await startServer();
+  try {
+    const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+    const page = await context.newPage();
+    await page.addInitScript(() => localStorage.setItem('lovebud:browse:viewMode', 'story'));
+    await page.goto(`http://127.0.0.1:${port}/fixture-browse-story.html`, { waitUntil: 'networkidle' });
+    await page.waitForTimeout(150);
+
+    // Start transition
+    await page.click('[data-story-next]');
+    await page.waitForTimeout(50);
+
+    // Switch to compact during transition
+    await clickModeButton(page, 'compact');
+    await page.waitForTimeout(100);
+
+    const state = await page.evaluate(() => {
+      const results = document.getElementById('resultsList');
+      const wrappers = results.querySelectorAll('.browse-story-transition-stage');
+      const allCards = [...results.querySelectorAll('.tree-card[data-tree-id]')];
+      const hiddenCount = allCards.filter(c => c.hidden).length;
+      const inertCards = allCards.filter(c => c.hasAttribute('inert')).length;
+      const storyVisible = results.querySelectorAll('.is-story-visible').length;
+      return {
+        wrapperCount: wrappers.length,
+        mode: results.getAttribute('data-tree-view-mode'),
+        allCardsCount: allCards.length,
+        hiddenCount,
+        inertCount: inertCards.length,
+        storyVisibleCount: storyVisible.length,
+        ariaBusy: results.getAttribute('aria-busy'),
+      };
+    });
+
+    assert.equal(state.mode, 'compact', 'mode switched to compact');
+    assert.equal(state.wrapperCount, 0, 'no wrappers after cancel');
+    assert.equal(state.allCardsCount, 7, 'all 7 cards in DOM');
+    assert.equal(state.hiddenCount, 0, 'all cards visible in compact');
+    assert.equal(state.inertCount, 0, 'no inert cards after cancel');
+    assert.equal(state.storyVisibleCount, 0, 'no story-visible class after cancel');
+    assert.ok(state.ariaBusy === null || state.ariaBusy === 'false', 'aria-busy cleared');
+
+    await context.close();
+  } finally {
+    await browser.close();
+    server.close();
+  }
+});
+
+test('#3655 browser: story re-entry after cancellation works correctly', { timeout: 120000 }, async () => {
+  const browser = await launchBrowser();
+  const { server, port } = await startServer();
+  try {
+    const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+    const page = await context.newPage();
+    await page.addInitScript(() => localStorage.setItem('lovebud:browse:viewMode', 'story'));
+    await page.goto(`http://127.0.0.1:${port}/fixture-browse-story.html`, { waitUntil: 'networkidle' });
+    await page.waitForTimeout(150);
+
+    // Start transition then cancel via compact
+    await page.click('[data-story-next]');
+    await page.waitForTimeout(50);
+    await clickModeButton(page, 'compact');
+    await page.waitForTimeout(100);
+
+    // Re-enter story mode
+    await clickModeButton(page, 'story');
+    await page.waitForTimeout(150);
+
+    const st = await storyState(page);
+    assert.equal(st.mode, 'story', 'story mode re-entered');
+    assert.equal(st.visible.length, 3, 'shows 3 cards after re-entry');
+    assert.equal(st.indicator, '01 / 03', 'indicator reset to first group');
+    assert.equal(st.navHidden, false, 'nav visible after re-entry');
+    assert.equal(st.prevDisabled, true, 'prev disabled at first group');
+
+    // Navigate should work after re-entry
+    await page.click('[data-story-next]');
+    await page.waitForTimeout(420);
+    const st2 = await storyState(page);
+    assert.equal(st2.indicator, '02 / 03', 'navigation works after re-entry');
+
+    await context.close();
+  } finally {
+    await browser.close();
+    server.close();
+  }
+});
+
+test('#3655 browser: breakpoint change during transition cancels cleanly', { timeout: 120000 }, async () => {
+  const browser = await launchBrowser();
+  const { server, port } = await startServer();
+  try {
+    const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+    const page = await context.newPage();
+    await page.addInitScript(() => localStorage.setItem('lovebud:browse:viewMode', 'story'));
+    await page.goto(`http://127.0.0.1:${port}/fixture-browse-story.html`, { waitUntil: 'networkidle' });
+    await page.waitForTimeout(150);
+
+    // Start transition
+    await page.click('[data-story-next]');
+    await page.waitForTimeout(50);
+
+    // Change viewport to tablet size during transition
+    await page.setViewportSize({ width: 768, height: 1024 });
+    await page.waitForTimeout(300);
+
+    const st = await storyState(page);
+    assert.equal(st.mode, 'story', 'story mode preserved after breakpoint change');
+    assert.equal(st.groupSizeAttr, '2', 'group size changed to 2 for tablet');
+    assert.equal(st.visible.length, 2, 'shows 2 cards after breakpoint change');
+
+    await context.close();
+  } finally {
+    await browser.close();
+    server.close();
+  }
+});
+
+test('#3655 browser: destroy during transition cleans up completely', { timeout: 120000 }, async () => {
+  const browser = await launchBrowser();
+  const { server, port } = await startServer();
+  try {
+    const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+    const page = await context.newPage();
+    await page.addInitScript(() => localStorage.setItem('lovebud:browse:viewMode', 'story'));
+    await page.goto(`http://127.0.0.1:${port}/fixture-browse-story.html`, { waitUntil: 'networkidle' });
+    await page.waitForTimeout(150);
+
+    // Start transition
+    await page.click('[data-story-next]');
+    await page.waitForTimeout(50);
+
+    // Destroy the controller during transition
+    await page.evaluate(() => window.__storyController.destroy());
+    await page.waitForTimeout(100);
+
+    const state = await page.evaluate(() => {
+      const results = document.getElementById('resultsList');
+      const wrappers = results.querySelectorAll('.browse-story-transition-stage');
+      const nav = document.querySelector('.browse-story-navigation');
+      const allCards = [...results.querySelectorAll('.tree-card[data-tree-id]')];
+      const hiddenCount = allCards.filter(c => c.hidden).length;
+      const storyVisible = results.querySelectorAll('.is-story-visible, .is-story-entering, .is-story-exiting').length;
+      return {
+        wrapperCount: wrappers.length,
+        navExists: !!nav,
+        allCardsCount: allCards.length,
+        hiddenCount,
+        storyClassCount: storyVisible.length,
+        ariaBusy: results.getAttribute('aria-busy'),
+        direction: results.getAttribute('data-story-direction'),
+        groupSize: results.getAttribute('data-story-group-size'),
+        mode: results.getAttribute('data-tree-view-mode'),
+      };
+    });
+
+    assert.equal(state.wrapperCount, 0, 'no wrappers after destroy');
+    assert.equal(state.navExists, false, 'nav element removed');
+    assert.equal(state.allCardsCount, 7, 'all 7 cards in DOM');
+    assert.equal(state.hiddenCount, 0, 'all cards visible');
+    assert.equal(state.storyClassCount, 0, 'no story transition classes');
+    assert.ok(state.ariaBusy === null || state.ariaBusy === 'false', 'aria-busy cleared');
+    assert.equal(state.direction, null, 'direction attribute cleared');
+    assert.equal(state.groupSize, null, 'group size attribute cleared');
+
+    await context.close();
+  } finally {
+    await browser.close();
+    server.close();
+  }
+});
+
+/* ── Stage height stabilization (Blocker E) ──────────────────────── */
+
+test('#3655 browser: transition stabilises parent height when cards have different heights', { timeout: 120000 }, async () => {
+  const browser = await launchBrowser();
+  const { server, port } = await startServer();
+  try {
+    const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+    const page = await context.newPage();
+    await page.addInitScript(() => localStorage.setItem('lovebud:browse:viewMode', 'story'));
+    await page.goto(`http://127.0.0.1:${port}/fixture-browse-story.html`, { waitUntil: 'networkidle' });
+    await page.waitForTimeout(150);
+
+    // Start transition
+    await page.click('[data-story-next]');
+    await page.waitForTimeout(50);
+
+    // Measure height during transition (should be stable via --story-transition-height)
+    const duringState = await page.evaluate(() => {
+      const results = document.getElementById('resultsList');
+      return {
+        customProp: results.style.getPropertyValue('--story-transition-height'),
+      };
+    });
+
+    assert.ok(parseFloat(duringState.customProp) > 0, '--story-transition-height custom property is set');
+
+    await page.waitForTimeout(420);
+
+    // After transition, custom property should be removed
+    const afterProp = await page.evaluate(() => {
+      return document.getElementById('resultsList').style.getPropertyValue('--story-transition-height');
+    });
+
+    assert.equal(afterProp, '', '--story-transition-height removed after transition');
+
+    await context.close();
+  } finally {
+    await browser.close();
+    server.close();
+  }
+});
