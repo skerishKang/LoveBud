@@ -10,8 +10,8 @@
  * - current UI Rapid Iteration Lane: #3664
  *
  * The historical inventory remains a preserved audit snapshot. Current canonical
- * indexes may be rewritten by later owner-approved policy and are not required
- * to preserve historical line numbers or duplicated policy bodies.
+ * indexes and active policy files may be rewritten by later owner-approved policy
+ * and are not required to preserve historical line numbers or duplicated bodies.
  *
  * SOURCE_STATIC only.
  */
@@ -30,13 +30,11 @@ const PATHS = Object.freeze({
   uiLane: 'docs/project/UI_RAPID_ITERATION_LANE.md',
   opsIndex: 'docs/ops/ops_index.md',
   docIndex: 'docs/doc_index.md',
+  screenshotPolicy: 'docs/ops/UI_SCREENSHOT_CTO_REVIEW_POLICY.md',
+  workRiskPolicy: 'docs/ops/WORK_RISK_TIER_POLICY.md',
+  agentGuardrails: 'docs/project/AGENT_OPERATION_GUARDRAILS.md',
   self: 'tests/contracts/historical-agent-guidance-disposition-contract.test.cjs',
 });
-
-const DISPOSITION_MARKERS = Object.freeze([
-  'NON_NORMATIVE_OUTSIDE_NAMED_CONTEXT',
-  'SUPERSEDED_BY_MVP_AGENT_GOVERNANCE',
-]);
 
 const REQUIRED_FIELDS = Object.freeze([
   'path',
@@ -97,6 +95,13 @@ const HISTORICAL_NOW_DOCS = Object.freeze([
 const REWRITTEN_CURRENT_INDEXES = Object.freeze([
   PATHS.opsIndex,
   PATHS.docIndex,
+]);
+
+const OWNER_APPROVED_CURRENT_REWRITES = Object.freeze([
+  ...REWRITTEN_CURRENT_INDEXES,
+  PATHS.screenshotPolicy,
+  PATHS.workRiskPolicy,
+  PATHS.agentGuardrails,
 ]);
 
 const EXPECTED_NOW_PATHS = Object.freeze([
@@ -193,15 +198,23 @@ test('current indexes may be rewritten but must route to current authority', () 
   }
 });
 
-test('historical line ranges remain valid except owner-approved rewritten indexes', () => {
-  const rewritten = new Set(REWRITTEN_CURRENT_INDEXES);
+test('owner-approved current policy rewrites route to current governance and UI policy', () => {
+  for (const rel of OWNER_APPROVED_CURRENT_REWRITES) {
+    const src = read(rel);
+    assert.ok(src.includes('MVP_AGENT_GOVERNANCE.md'), `${rel} must link governance`);
+    assert.ok(src.includes('UI_RAPID_ITERATION_LANE.md'), `${rel} must link UI lane`);
+  }
+});
+
+test('historical line ranges remain valid except owner-approved current rewrites', () => {
+  const rewritten = new Set(OWNER_APPROVED_CURRENT_REWRITES);
   for (const item of inventory().inventory) {
     const abs = path.join(ROOT, item.path);
     assert.ok(fs.existsSync(abs), `inventory path must exist: ${item.path}`);
     if (rewritten.has(item.path)) {
-      // The inventory records the historical line range. #3662/#3664 authorize
-      // concise current index rewrites, so current line count is intentionally
-      // not required to preserve that old range.
+      // Inventory line ranges describe the historical snapshot. Issues #3662
+      // and #3664 authorize concise current-policy rewrites, so current line
+      // counts are intentionally not required to retain those old ranges.
       continue;
     }
     const total = fs.readFileSync(abs, 'utf8').split('\n').length;
@@ -279,7 +292,7 @@ test('Issue #3448 inventory entries retain applied follow-up metadata', () => {
 
 test('current policy documents do not use forbidden #1882 closing keywords', () => {
   const forbidden = /\b(?:Closes|Fixes|Resolves)\s+#1882\b/i;
-  for (const rel of [PATHS.governance, PATHS.roles, PATHS.uiLane, ...REWRITTEN_CURRENT_INDEXES]) {
+  for (const rel of [PATHS.governance, PATHS.roles, PATHS.uiLane, ...OWNER_APPROVED_CURRENT_REWRITES]) {
     assert.doesNotMatch(read(rel), forbidden, `${rel} must not close #1882`);
   }
 });
