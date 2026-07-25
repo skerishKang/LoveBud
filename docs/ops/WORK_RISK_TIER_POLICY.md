@@ -1,191 +1,194 @@
 # Work Risk Tier Policy
 
-This document defines how LoveBud agents should choose the operating strictness for implementation, audit, and verification work.
-
-The default operating model is no longer one-size-fits-all. Small, low-risk tasks should move quickly. High-risk tasks still require strict verification.
+> **Hard governance:** `MVP_AGENT_GOVERNANCE.md`  
+> **Execution roles:** `../project/WEB_CTO_WEB_DEVELOPER_LOCAL_VALIDATION.md`  
+> **UI-specific classification:** `../project/UI_RAPID_ITERATION_LANE.md`
 
 ## Purpose
 
-Use this policy to avoid over-processing simple changes while preserving safety for auth, backend, database, privacy, and destructive flows.
+LoveBud uses risk-proportional implementation and verification. Small, reversible work moves quickly. Auth, backend, database, privacy, security, persistence, and destructive work remain strict.
 
-> **Canonical precedence:** `docs/ops/MVP_AGENT_GOVERNANCE.md` (owner-approved #3442 comment `4947327550`). Risk tier is a verification-depth tool, not a permission system. Routine work is allowed by default; only the 6 hard rules are mandatory blockers. Conflicting sections are `NON_NORMATIVE_OUTSIDE_NAMED_CONTEXT`.
+This generic risk policy complements, but does not replace, the more precise UI classes U0/U1/U2/U3.
 
-Agents should classify each task before execution as one of:
+## Generic tiers
 
-- Low risk: fast lane
-- Medium risk: standard lane
-- High risk: strict lane
+```text
+Tier 1 — low risk / fast
+Tier 2 — medium risk / focused
+Tier 3 — high risk / strict
+```
 
-Risk tier adjusts verification *depth*, not permission. Routine browser/code/test work needs no separate approval. Only actual destructive production mutation or secret/private-data risk is an approval target. When genuinely uncertain, pick the depth that matches real impact; do not default to the top tier as a blanket rule (canonical: `docs/ops/MVP_AGENT_GOVERNANCE.md`).
+Risk controls evidence depth. It is not a permission system and does not create new hard blockers.
 
-## Tier 1 — Low risk / fast lane
+## Tier 1 — Low risk / fast
 
-Use the fast lane for changes that are easy to inspect, easy to revert, and unlikely to affect runtime state or user data.
+Characteristics:
+
+- easy to inspect and revert;
+- no user-data, auth, API, persistence, schema, privacy, or security impact;
+- small isolated scope.
 
 Examples:
 
-- Copy text changes
-- aria-label or title attribute polish
-- Default value or fallback label additions
-- Small CSS spacing/color/visibility adjustments
-- Single helper extraction with unchanged behavior
-- Contract test additions for an isolated helper
-- Docs-only updates
-- Clearly scoped dead-code or orphan-selector cleanup
+- docs-only correction;
+- copy text or translation;
+- page-scoped spacing/color/typography;
+- non-behavioral aria/title polish;
+- isolated contract-test correction;
+- clearly scoped dead-code/orphan-selector cleanup.
 
-Expected workflow:
-
-1. Confirm the task scope and changed files.
-2. Implement the smallest safe diff.
-3. Run the most relevant local/static test only.
-4. Create a PR.
-5. If CI passes and the diff is within scope, merge/close without extra audit unless the owner requests one.
-
-Fast lane does not require:
-
-- Full fixed-slot deployment
-- Full browser smoke
-- Long audit report
-- Repeated SHA/status narration
-- Separate follow-up issue unless a real gap is discovered
-
-Minimum report:
+Default flow:
 
 ```text
-Result: PASS
-Changed files: ...
-Verification: ...
-PR: ...
+Web CTO exact contract
+→ separate Web Developer implementation
+→ focused checks and CI classification
+→ Web CTO exact-head review
+→ expected-head squash merge
 ```
 
-## Tier 2 — Medium risk / standard lane
+Local Validation is skipped unless a real local/environment gap exists.
 
-Use the standard lane for user-facing runtime behavior that can affect navigation, editor actions, mobile interactions, or visual state, but does not touch auth, backend writes, schema, or privacy boundaries.
+Tier 1 does not automatically require:
+
+- fixed slot or preview;
+- full browser smoke;
+- full repository suite;
+- screenshots;
+- long audit report;
+- new child Issue;
+- Local Validation.
+
+For UI, use U0/U1 boundaries and escalation rules from `UI_RAPID_ITERATION_LANE.md`.
+
+## Tier 2 — Medium risk / focused
+
+Characteristics:
+
+- user-facing behavior or structure can change;
+- blast radius remains bounded;
+- no auth/backend write/schema/privacy/security boundary.
 
 Examples:
 
-- Editor button behavior
-- Mobile tap behavior
-- Card click routing
-- Public viewer UI display changes
-- Floating toolbar action behavior
-- Moment creation frontend flow
-- Small frontend state changes
-- CSS or JS changes that need browser confirmation
+- DOM/card/loading/responsive structure;
+- editor/mobile interaction without persistence changes;
+- card routing or focus flow;
+- shared frontend state with bounded impact;
+- layout changes requiring browser evidence.
 
-Expected workflow:
+Default flow:
 
-1. Confirm latest main and open PR count.
-2. Keep the PR small and scoped.
-3. Run relevant tests and `verify-static` when applicable.
-4. Use a lightweight browser smoke only for the affected surface.
-5. Report PASS / PARTIAL / FAIL.
-6. Merge only after CI and the focused smoke are acceptable.
+```text
+Web CTO contract/design
+→ Web Developer implementation
+→ focused structural/runtime tests
+→ conditional Local/browser evidence
+→ Web CTO final review
+```
 
-Standard lane report should be concise. Avoid broad audit tables unless the issue is explicitly an audit issue.
+For UI, this normally maps to U2 or a narrow U3-like runtime check.
 
-## Tier 3 — High risk / strict lane
+## Tier 3 — High risk / strict
 
-Use the strict lane for changes that can break access control, stored data, production runtime, destructive actions, or cross-surface contracts.
+Characteristics:
+
+- access control, stored data, runtime infrastructure, public/private exposure, security, privacy, schema, migration, or destructive behavior can change.
 
 Examples:
 
-- Auth/session/login/logout changes
-- Backend owner write routes
-- Database schema or migration
-- Firestore/storage/security rules
-- Public/private visibility or entitlement policy
-- Delete/destructive actions
-- Reaction/comment backend or public exposure policy
-- Large refactors of active runtime entrypoints
-- API contract changes
-- Deployment/runtime infrastructure changes
+- auth/session/login/logout;
+- backend owner-write routes;
+- database schema/migration;
+- storage/security rules;
+- visibility/entitlement policy;
+- delete/destructive actions;
+- API contracts and deployment/runtime infrastructure;
+- large active-runtime refactors.
 
-Expected workflow:
-
-1. Confirm latest main SHA, open PR count, and changed-file boundary.
-2. Inspect relevant source-of-truth docs.
-3. Use a narrowly scoped branch and PR.
-4. Run contract/static tests and affected integration tests.
-5. Use fixed-slot or authenticated browser verification when required.
-6. Record evidence without exposing raw tokens, UIDs, cookies, or private payloads.
-7. Require explicit merge readiness review.
-
-Strict lane may still use small slices, but each slice must preserve policy and runtime contracts.
-
-## Always forbidden
-
-Regardless of risk tier:
-
-- Do not expose raw token, UID, cookie, private payload, or secret values.
-- Do not modify PR #7, prototype, reference, demo, or variant paths unless explicitly requested by the task.
-- Do not combine unrelated refactors with feature work.
-- Do not use issue close keywords unless the issue is fully satisfied.
-- Do not reopen or close issues automatically unless instructed or the audit result has been accepted.
-- Do not invent a new route, schema, or backend path when an existing flow can be reused.
-
-## CTO decision rule
-
-Prefer speed for low-risk work and safety for high-risk work.
-
-The default sequence is:
+Default flow:
 
 ```text
-Low risk  -> quick implementation + minimal verification
-Medium    -> focused implementation + focused smoke
-High risk -> strict verification + evidence
+Web CTO strict contract
+→ Web Developer implementation and relevant tests
+→ CI
+→ exact-head Local Validation/environment evidence
+→ Web CTO independent final review
+→ expected-head squash merge
+→ Production verification
 ```
 
-If a low-risk task unexpectedly reveals runtime ambiguity, upgrade it to medium risk.
-If a medium-risk task touches auth, backend writes, schema, privacy, or destructive flows, upgrade it to high risk.
+Strict work may use small slices, but each slice must preserve policy and runtime contracts.
 
-## Examples
+## UI mapping
 
-| Task | Tier | Notes |
-|---|---:|---|
-| Add URL-only default title fallback | Low/Medium | Frontend payload helper + contract test. No backend/schema. |
-| Add directional aria labels to branch ports | Low | a11y polish. Focused test or static inspection is enough. |
-| Mobile bottom action bar first slice | Medium | User-facing mobile editor behavior; needs focused smoke. |
-| My Trees mobile tap opens Editor | Medium | Navigation behavior; desktop must not regress. |
-| Reaction/comment backend route | High | Auth, write policy, public exposure. Strict lane. |
-| Owner write handler refactor | High | Backend write safety. Strict lane. |
-| Docs-only operating policy update | Low | No runtime change. PR can be merged after review/CI. |
+| UI class | Generic tier | Default Local routing |
+|---|---|---|
+| U0 copy-only | Tier 1 | NOT_REQUIRED |
+| U1 visual-only | Tier 1 | NOT_REQUIRED |
+| U2 structural UI | Tier 2 | CONDITIONAL |
+| U3 runtime-sensitive UI | Tier 2 or 3 depending on boundary | normally required when environment/runtime evidence is needed |
 
-## Reporting templates
+Any U3 touching auth, API writes, cache/storage persistence, privacy/security, or broad runtime contracts is Tier 3.
 
-Fast lane:
+## Escalation
+
+Upgrade when actual implementation reveals:
+
+- JavaScript/event behavior not in the contract;
+- DOM/focus/visibility/accessibility semantics;
+- broad global/shared impact;
+- auth/API/data/cache/storage;
+- schema/migration/provider/deployment;
+- privacy/security/destructive behavior.
+
+Escalation changes the contract and required evidence; it does not require abandoning the current work or defaulting every task to Tier 3.
+
+## Test selection
+
+Select tests by affected behavior and blast radius.
 
 ```text
-Result: PASS
-Changed files:
-- ...
-Verification:
-- ...
-PR: #...
-Next: ...
+Tier 1: exact diff + focused syntax/static/contract
+Tier 2: focused behavior/structural tests + conditional browser evidence
+Tier 3: focused + relevant regression/integration/environment evidence
 ```
 
-Standard lane:
+Do not run unrelated full suites solely because HTML/CSS changed.
+
+## Roles
+
+- **Web CTO:** classifies risk, fixes evidence, reviews final exact head, and merges.
+- **Web Developer:** implements and corrects branch/CI; does not make final merge decision.
+- **Local Validation:** executes exact-head local/environment checks only when required.
+
+## Hard standing rules
+
+Regardless of tier:
+
+- no secret/private-payload exposure;
+- no destructive interference with another worker's state;
+- Production-destructive data/schema/security-policy changes require owner approval;
+- no merge on `CI_EXECUTED_FAILURE` or `CI_PENDING_EXECUTION`;
+- use canonical alternative evidence for `CI_UNAVAILABLE_INFRA`;
+- verify expected head and squash merge;
+- never close #1882; use `Refs #1882` only.
+
+## Report fields
 
 ```text
-Result: PASS / PARTIAL / FAIL
-Scope: ...
-Changed files: ...
-Verification: ...
-Smoke: ...
-Risk notes: ...
-Next: ...
+risk tier
+UI class if applicable
+classification reason
+exact head
+changed files
+behavior unchanged
+focused checks and counts
+CI classification
+Local Validation: REQUIRED / NOT_REQUIRED / COMPLETED / PENDING
+browser/Production evidence remaining
 ```
 
-Strict lane:
-
-```text
-Result: PASS / PARTIAL / FAIL
-Base SHA: ...
-Head SHA: ...
-Changed-file boundary: ...
-Contract/security checks: ...
-Runtime evidence: ...
-Known limitations: ...
-Merge recommendation: ...
-```
+Refs #3664.  
+Refs #3662.  
+Refs #1882 — Keep OPEN.
