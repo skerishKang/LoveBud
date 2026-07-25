@@ -41,6 +41,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/db-migration-precondition-authority-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Validates the precondition registry existence, exact top-level key set, format_version, status=ADOPTION_REQUIRED, empty entries, forbidden content (SQL text, URL, env, credential, operator, hostname, query, text, sql), authority contract document section structure, no-precondition semantics (NOT_EVALUATED not PASS), PASS requirement (defined non-empty checks and authoritative success), all four status definitions, UNAVAILABLE>FAIL precedence, fixed registry path, canonical migration cross-validation, unknown migration ID prohibition, query-reference-only registry, SQL-text-in-registry prohibition, future fixed query catalog, caller override prohibition, manifest unchanged assertion, manifest adapter unchanged assertion, exact future dependency order, absence of Closes/Fixes/Resolves #1882, protected issue references, and registry-document status consistency without database, network, SQL, Docker, or Production access (#3657).",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/api-body-size-limit-contract.test.cjs",
       "layer": "EXECUTED_FAKE",
       "rationale": "Reads production module source and executes it in a local process with injected fake/mock/stub dependencies (e.g., vm context with fake DOM or mocked fetch/localStorage); no real external system or production resource used.",
