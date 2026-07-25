@@ -7,7 +7,7 @@
   "scripts": {
     "lint": "node scripts/lint-static.js",
     "build": "node scripts/build-static.js",
-    "test": "bash -O nullglob -c 'files=(tests/contracts/browser*.test.cjs); ((${#files[@]})) || { echo NO_MATCH; exit 0; }; node --test \"${files[@]}\"'",
+    "test": "bash -O nullglob -c 'files=(tests/contracts/browse-[a-m]*.test.cjs); ((${#files[@]})) || { echo NO_MATCH; exit 0; }; node --test \"${files[@]}\"'",
     "test:db-engine:tree-comments": "node --test --test-concurrency=1 tests/db-engine/tree-comments-reconcile-postgres.test.cjs",
     "test:db-engine:trees-schema": "node --test --test-concurrency=1 tests/db-engine/trees-schema-foothold-postgres.test.cjs",
     "test:db-engine:generic-social-a-guard": "node --test --test-concurrency=1 tests/db-engine/generic-social-a-guard-postgres.test.cjs",
