@@ -1,19 +1,20 @@
 # Web CTO, Web Developer, and Local Validation Operating Model
 
 > **Status:** owner-approved operating model — Issue #3662  
-> **Governance precedence:** `docs/ops/MVP_AGENT_GOVERNANCE.md` remains the canonical source of truth for hard blockers, CI classification, browser permission, and merge governance.
+> **UI acceleration amendment:** Issue #3664  
+> **Hard-governance authority:** `../ops/MVP_AGENT_GOVERNANCE.md`
 
 ## 1. Purpose
 
-This document defines LoveBud's default execution model for repository work.
+LoveBud uses stronger web models for product planning and implementation while reducing local-model work to tasks that actually require a full checkout, operating-system tools, local secrets, authenticated browser sessions, databases, providers, devices, or broad runtime evidence.
 
-The objective is to use the stronger web model for planning and implementation while reducing local-model work to the tasks that require a full checkout, operating-system tools, local secrets, actual authenticated sessions, databases, browsers, or device/runtime access.
+Independent review must remain real. The same conversation/context should not both implement a production change and give the final Web CTO approval for that change.
 
-The model must preserve independent review. The same conversation/context should not both implement a production change and give the final CTO approval for that change.
+Low-risk UI changes use the risk-proportional process in `UI_RAPID_ITERATION_LANE.md` rather than the full backend-grade flow.
 
-## 2. Default role set
+## 2. Roles and lifecycle
 
-LoveBud uses three execution roles.
+The three execution roles are:
 
 ```text
 Web CTO
@@ -21,68 +22,64 @@ Web Developer
 Local Validation
 ```
 
-The lifecycle contains four stages because the Web CTO participates at both the beginning and the end.
+The normal lifecycle has four stages because the Web CTO participates before and after implementation.
 
 ```text
 User request
 → Web CTO contract
-→ Web Developer implementation
-→ Local Validation evidence
+→ separate Web Developer implementation
+→ Local Validation when required
 → Web CTO independent final review
-→ user product decision / expected-head squash merge
+→ user decision / expected-head squash merge
 ```
 
-The existing documentation, UI, and feature workstream labels may still be used to classify work. They do not create additional executor roles.
+Local Validation is conditional, not ceremonial. It is omitted when the change class and available evidence do not require a local environment.
 
 ## 3. Web CTO
 
-The Web CTO owns product scope, architecture, design direction, acceptance criteria, evidence requirements, final remote review, and merge judgment.
+The Web CTO owns:
+
+- current remote-state verification;
+- product objective and user-visible outcome;
+- architecture and visual direction;
+- explicit non-goals;
+- allowed and forbidden paths;
+- protected Issue wording;
+- change-risk classification;
+- acceptance criteria and required tests/evidence;
+- final remote diff, CI, evidence, and merge judgment.
 
 ### Before implementation
 
 The Web CTO must:
 
-- verify the current remote `main` SHA;
-- inspect relevant open Issues, PRs, branches, comments, and previous evidence;
-- define the objective and user-visible outcome;
-- define explicit non-goals;
-- fix the allowed and forbidden file scopes;
-- identify protected Issues and required reference wording;
-- specify expected implementation shape when useful;
-- define tests before implementation;
-- define local/browser evidence required after implementation;
-- identify whether work may run in parallel with another task.
+1. verify current `main`, related Issues/PRs, branches, comments, and CI;
+2. classify the work, including `U0/U1/U2/U3` for UI changes;
+3. define the exact outcome and behavior that must remain unchanged;
+4. select focused tests based on affected behavior rather than file count;
+5. state whether Local Validation is `REQUIRED`, `CONDITIONAL`, or `NOT_REQUIRED`;
+6. define safe parallel boundaries.
 
 ### During implementation
 
-The Web CTO may:
-
-- answer product or contract questions;
-- amend the work contract explicitly;
-- inspect remote progress without rewriting the implementation;
-- stop overlapping or out-of-scope work;
-- split work into smaller children when evidence shows the scope is too large.
-
-The Web CTO should not silently lower acceptance criteria to match the implementation that was produced.
+The Web CTO may clarify or explicitly revise the contract, inspect remote progress, stop overlap, or split scope. It must not silently lower acceptance criteria to match the implementation.
 
 ### Final review
 
-After implementation and local evidence, the Web CTO must independently re-check:
+The Web CTO independently checks:
 
-- exact PR head SHA;
-- base and merge-base relationship;
-- changed files and additions/deletions;
-- actual remote diff rather than the developer summary;
-- allowed/forbidden scope;
-- tests and whether they prove externally meaningful behavior;
-- CI state using the canonical classification;
-- local evidence and whether it was produced from the exact PR head;
-- browser, auth, console, network, API, or database evidence where applicable;
-- security, privacy, cache, and regression risks;
+- exact PR head, base, merge base, ahead/behind;
+- changed files and cumulative remote diff;
+- scope and non-goals;
+- whether tests prove the affected behavior;
+- CI classification;
+- Local Validation evidence when required and exact-head match;
+- browser/auth/API/database evidence when required;
+- security, privacy, cache, accessibility, and regression risk;
 - PR body and Issue linkage;
-- expected-head SHA immediately before squash merge.
+- expected head immediately before squash merge.
 
-The final judgment is one of:
+Final judgment:
 
 ```text
 READY
@@ -92,127 +89,95 @@ NOT_READY
 
 ## 4. Web Developer
 
-The Web Developer operates in a separate web conversation/context from the Web CTO.
+The Web Developer operates in a separate web conversation/context from the Web CTO and owns implementation, implementation tests, branch commits, PR maintenance, and CI-driven correction.
 
-The Web Developer owns implementation, implementation tests, Draft PR maintenance, and CI-driven correction.
+Responsibilities:
 
-### Responsibilities
-
-- re-verify the repository and exact baseline supplied by the CTO;
+- re-verify the supplied baseline and current remote state;
 - create or use the assigned feature branch;
-- read the latest relevant source files;
-- implement code, tests, contracts, and required documentation;
-- preserve existing architecture and public surfaces unless the contract authorizes a change;
+- implement the smallest change satisfying the contract;
+- write focused tests/contracts required by the change class;
 - create additive commits;
-- create or update a Draft PR;
+- create or update the PR;
 - inspect CI and correct executed code failures;
-- report exact SHA, diff, tests, CI, and known limitations;
-- stop and report when the allowed scope is insufficient.
-
-### Restrictions
+- report exact SHA, diff, tests, CI, and remaining evidence needs.
 
 The Web Developer does not:
 
-- make the final product decision;
-- merge the PR unless the Web CTO explicitly returns with approval;
+- make final product acceptance or merge decisions;
 - close protected parent Issues;
-- redesign the product outside the CTO contract;
-- broaden architecture, dependencies, data models, or API contracts without explicit approval;
-- treat a local or CI pass as final CTO approval;
-- use force push, destructive reset, cleanup, or worktree deletion without explicit authorization.
+- expand product, architecture, dependencies, data models, or APIs without approval;
+- treat test or CI success as final CTO approval;
+- force-push, destructively reset, clean, or delete another worktree without approval.
 
-### Direct GitHub implementation
-
-Direct GitHub implementation is the default when:
-
-- the repository and exact files are accessible;
-- the change is reviewable through branch commits and a PR;
-- CI can provide useful evidence;
-- no full local environment is required to author the change.
-
-The Web Developer should use:
+Direct GitHub implementation is the default when repository files are accessible and no full local authoring environment is required.
 
 ```text
-exact baseline SHA
+exact baseline
 → feature branch
-→ code and tests
-→ additive commit(s)
-→ Draft PR
-→ CI inspection and correction
+→ code and focused tests
+→ additive commit
+→ PR
+→ CI inspection/correction
 ```
 
-`main` must not be edited directly.
+`main` is never edited directly.
 
 ## 5. Local Validation
 
-Local Validation is an execution and evidence role, not the default design or coding role.
+Local Validation is an execution and evidence role, not the default coding or design role.
 
-### Responsibilities
+Use it when the work requires one or more of:
 
-- check out the exact remote PR head in a dedicated branch/worktree;
-- preserve existing dirty, staged, untracked, stash, branch, and worktree state;
-- install dependencies when required;
-- run the exact focused and regression commands defined by the contract;
-- run build, typecheck, lint, database, Docker, provider, or OS-dependent commands;
-- verify actual browser behavior, authenticated sessions, responsive layouts, console, network, and API results;
-- collect raw logs, test counts, screenshots, videos, or artifacts outside the repository when appropriate;
-- compare branch failures with pristine-main failures;
-- return exact evidence without rewriting the success criteria.
+- full-checkout test/build commands unavailable to Web;
+- local secret usage without value exposure;
+- actual database, Docker, provider CLI, GPU, device, or OS behavior;
+- authenticated browser profile;
+- runtime-sensitive desktop/mobile, console, network, or API evidence;
+- broad regression comparison against pristine `main`.
 
-### Source-code changes
+Responsibilities:
 
-Local Validation should not independently redesign or broadly rewrite production source.
+- check out the exact remote PR head in a dedicated worktree;
+- preserve all existing worker state;
+- execute only the assigned commands and flows;
+- collect raw counts, logs, screenshots, and environment evidence;
+- distinguish pristine-main failures from branch-only failures;
+- return exact evidence without rewriting acceptance criteria.
 
-The following minimal changes may be authorized explicitly:
+Local Validation normally does not redesign or broadly rewrite production source. A product-source defect returns to the Web Developer unless the contract authorizes a precise minimal change.
 
-- local path corrections;
-- environment or port wiring;
-- OS-specific command adjustment;
-- a narrowly specified repository integration change;
-- application of an exact patch package supplied by the Web Developer.
-
-When a product-source fix is needed, Local Validation normally returns the failure evidence to the Web Developer.
-
-### Required baseline evidence
-
-A local report should include:
+A local report includes:
 
 ```text
-repository path
-worktree path
-local branch
-remote branch
-starting HEAD
-final tested HEAD
-git status --short before and after
-commands executed
-test/build summaries
-raw relevant failure logs
-browser viewport and auth state
-console/network result
+repository/worktree
+local and remote branch
+starting and tested head
+status before/after
+commands and counts
+relevant raw failures
+browser/auth/console/network state
 remaining untracked files
 reset/stash/clean used: YES/NO
 ```
-
-A statement such as “all tests passed” is not sufficient without the command and count evidence.
 
 ## 6. Execution modes
 
 ### Mode A — Direct GitHub implementation
 
-This is the default.
+Default for most repository work.
 
 ```text
 Web CTO contract
 → Web Developer direct branch implementation
-→ Draft PR and GitHub CI
-→ Local Validation when environment evidence is required
+→ CI
+→ Local Validation only if required by the contract
 → Web CTO final review
 ```
 
 ### Mode B — Patch package
 
-Use this when direct repository editing is unsuitable or a full local checkout is needed for safe application.
+Use when direct Web repository editing is unsuitable.
 
 The Web Developer prepares:
 
@@ -226,30 +191,11 @@ change-package/
 └─ REVIEW_NOTES.md
 ```
 
-`MANIFEST.json` should contain:
-
-- repository;
-- exact base commit;
-- target branch;
-- allowed paths;
-- changed-file list;
-- file hashes when useful.
-
-Local Validation applies the package, runs the defined commands, and returns the evidence. It does not redesign the patch.
+Local Validation applies the exact package and executes the test plan. It does not redesign the patch.
 
 ### Mode C — Local-environment validation loop
 
-Use this for work depending on:
-
-- local secrets;
-- actual databases;
-- Docker or native services;
-- Windows/PowerShell-specific behavior;
-- local AI models, GPU, drivers, or devices;
-- authenticated browser profiles;
-- provider CLIs or dashboards.
-
-The loop is:
+Use for database/provider/OS/device/authenticated-browser dependencies.
 
 ```text
 Web Developer implementation
@@ -259,86 +205,80 @@ Web Developer implementation
 → Local Validation re-execution
 ```
 
+### Mode D — UI Rapid Iteration Lane
+
+Use `UI_RAPID_ITERATION_LANE.md`.
+
+```text
+U0/U1:
+Web CTO contract
+→ Web Developer direct edit
+→ focused checks
+→ Web CTO final review and merge
+→ Production visual confirmation
+
+U2:
+Web CTO design/prototype
+→ Web Developer implementation
+→ focused tests
+→ conditional Local Validation
+→ Web CTO final review
+
+U3:
+full Mode A/C runtime path
+```
+
 ## 7. Independent-review safeguard
 
-The Web CTO and Web Developer should use separate conversations/contexts for the same production change.
+The Web CTO and Web Developer use separate conversations/contexts for the same production change.
 
-Only result evidence needs to return to the Web CTO:
+The Web CTO reviews evidence, not the developer's private reasoning:
 
-- branch and exact head;
-- commit list;
-- changed files and diff summary;
-- tests executed and counts;
-- CI state and job evidence;
+- exact head and commit list;
+- changed files and diff;
+- tests and counts;
+- CI state;
 - known limitations;
-- local validation evidence.
+- Local Validation evidence when required.
 
-The Web CTO does not need the developer's private reasoning. The final review is based on repository evidence and the pre-fixed contract.
-
-If the Web CTO directly authors a prototype, patch draft, design asset, or reference implementation, that artifact must still be implemented or independently reviewed in the Web Developer context before final CTO approval.
+A Web CTO may author prototypes, design references, exact copy, state contracts, or patch drafts. A separate Web Developer must implement or independently review production changes before final CTO approval.
 
 ## 8. UI and design work
 
-For UI work, the Web CTO owns the product and visual contract before implementation.
+The Web CTO owns product/visual direction. The Web Developer should not be asked to invent unspecified design.
 
-Recommended sequence:
+The Web CTO may provide:
 
-```text
-Web CTO design / prototype
-→ user visual direction approval
-→ Web Developer production implementation
-→ Local Validation desktop/mobile/auth/browser evidence
-→ Web CTO remote and production review
-```
-
-The Web CTO may prepare:
-
-- standalone HTML/CSS/JS prototypes;
-- target screenshots or visual references;
-- DOM and CSS-token specifications;
-- state diagrams;
-- loading, empty, error, and success-state definitions;
-- motion values and responsive behavior;
+- standalone HTML/CSS/JS UI Lab prototypes;
+- screenshots or visual references;
+- exact DOM and CSS-token specifications;
+- loading/loaded/empty/error state definitions;
+- motion and responsive rules;
 - exact copy.
 
-The Web Developer should not be asked to invent an unspecified visual direction.
+Risk classification controls the process:
+
+- U0/U1: Local skipped by default; Production is the fast final visual loop.
+- U2: structural evidence and conditional browser/local validation.
+- U3: full runtime evidence.
 
 ## 9. Parallel work
 
-Parallel execution is allowed when the split is explicit and safe.
-
-Required conditions:
+Parallel execution requires:
 
 - separate branches;
-- separate worktrees for local work;
-- no overlapping file ownership, or an explicit responsibility boundary;
+- separate local worktrees when local work exists;
+- non-overlapping file ownership or explicit responsibility boundaries;
 - one active writer per remote branch;
-- no simultaneous push from two computers to the same remote branch;
-- remote-head re-check immediately before push;
-- latest-main relationship re-check before merge.
+- no simultaneous push from two computers to one branch;
+- remote-head check before push;
+- latest-main relationship check before merge.
 
-Example:
-
-```text
-Computer 1 / DB PR
-scripts/**
-docs/architecture/**
-DB contract tests
-
-Computer 2 / Loading UI PR
-pages/**
-css/**
-js/search/**
-js/my-trees/**
-js/editor/**
-UI contract tests
-```
-
-If the same file must be changed by two tasks, serialize the work or define an explicit dependency order.
+Shared tokens, global CSS, common components, and shared JavaScript require one active writer or serialized order.
 
 ## 10. Evidence and CI
 
-Use the canonical CI labels:
+Canonical CI states:
 
 ```text
 CI_GREEN
@@ -347,7 +287,7 @@ CI_PENDING_EXECUTION
 CI_UNAVAILABLE_INFRA
 ```
 
-Browser evidence levels are:
+Browser evidence levels:
 
 ```text
 LOCAL_EVIDENCE
@@ -355,80 +295,70 @@ PRE_MERGE_EVIDENCE
 PRODUCTION_EVIDENCE
 ```
 
-A preview or fixed slot is evidence, not a permission gate. Its absence is not an automatic blocker. Merge-first Production verification remains the current default for UI/Auth/runtime final visual acceptance unless a task explicitly assigns pre-merge browser evidence.
+Preview/fixed-slot environments are evidence options, not permission gates. Merge-first Production verification is the current default unless the task explicitly requests pre-merge browser evidence.
 
-Local and web reports must separate:
+Verification effort is risk-proportional. U0/U1 do not require unrelated full-suite tests or Local Validation merely because an HTML/CSS file changed. U2/U3 use the focused and regression evidence appropriate to their actual behavior.
+
+Reports separate:
 
 - implemented versus already present;
-- branch-only failures versus pristine-main failures;
-- executed test failure versus CI infrastructure unavailability;
-- local/static evidence versus preview evidence versus Production evidence;
+- branch-only versus pristine-main failures;
+- executed failure versus CI infrastructure unavailability;
+- local, preview, and Production evidence;
 - implementation complete versus merge candidate versus merged;
-- merged versus Issue closure disposition.
+- merge versus Issue closure.
 
-## 11. Handoff artifacts
+## 11. Handoff minimums
 
 ### Web CTO → Web Developer
 
-Required fields:
-
 ```text
 Repository
-Issue / PR
-Base branch
-Exact base SHA
-Target branch
-Objective
-User-visible outcome
-Non-goals
-Allowed paths
-Forbidden paths
-Required implementation
-Required tests
-Required local evidence
-Acceptance criteria
-Protected Issues
-Stop conditions
-Final report format
+Issue/PR
+exact base and target branch
+objective and user-visible outcome
+risk/UI class
+non-goals
+allowed/forbidden paths
+required implementation
+focused tests
+Local Validation requirement
+acceptance criteria
+protected Issues
+stop conditions
+report format
 ```
 
 ### Web Developer → Local Validation
 
-Required fields:
+Only when Local Validation is required:
 
 ```text
-PR number
-Remote branch
-Exact head SHA
-Worktree instructions
-Commands to execute
-Expected pass/fail behavior
-Browser URLs or route targets
-Auth requirements
-Viewport requirements
-Evidence to collect
-Files local validation may change, if any
-Forbidden cleanup/destructive commands
+PR and exact head
+remote branch
+worktree instructions
+commands and expected results
+browser/auth/viewports/flows
+required evidence
+allowed local changes
+forbidden destructive commands
 ```
 
-### Local Validation → Web CTO
-
-Required fields:
+### Web Developer → Web CTO when Local is not required
 
 ```text
-Exact tested SHA
-Clean/dirty state
-Commands and counts
-Pristine comparison
-Browser/auth/console/network evidence
-Screenshots/artifact references
-Unverified areas
-Environment-only limitations
+exact head
+changed files/diff
+risk classification
+focused checks
+CI classification
+Local Validation: NOT_REQUIRED with reason
+remaining Production check
 ```
 
 ## 12. Governance boundary
 
-This operating model allocates roles and evidence flow. It does not add new hard blockers beyond `docs/ops/MVP_AGENT_GOVERNANCE.md`.
+This document allocates roles and evidence. It does not add or remove hard blockers beyond `MVP_AGENT_GOVERNANCE.md`.
 
 The following remain authoritative:
 
@@ -440,5 +370,6 @@ The following remain authoritative:
 - verify expected head, then squash merge;
 - never close #1882 and use `Refs #1882` only.
 
+Refs #3664.  
 Refs #3662.  
 Refs #1882 — Keep OPEN.
