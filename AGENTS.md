@@ -167,7 +167,7 @@ Red workflow appearance alone is not enough to classify an executed failure. Ins
 
 For U0/U1, small reversible micro branches/PRs are preferred.
 
-## Current local execution environment
+## 10. Current local execution environment
 
 - **Primary OS:** Windows.
 - **Preferred shell:** PowerShell 7 through `pwsh.exe`.
@@ -180,7 +180,14 @@ Detailed source: `docs/ops/PATHS_AND_SHELLS.md`.
 
 Do not print secret files or environment values. Report presence/status only.
 
-## 11. Test selection
+## 11. Operational input and image handling
+
+- Pasted completion reports, logs, and command results from another executor or model are decision inputs, not automatically trusted completion evidence.
+- The Web CTO or current reviewer independently verifies remote SHA, cumulative diff, changed files, CI, comments, and the underlying evidence.
+- Attached images are analysis, comparison, and review material by default.
+- Generate or transform images only when the user explicitly requests image generation or transformation; mentioning an image alone is not such a request.
+
+## 12. Test selection
 
 Tests are selected by affected behavior and blast radius.
 
@@ -201,7 +208,7 @@ Always distinguish:
 - merge candidate versus merged;
 - merge versus Issue closure.
 
-## 12. Session startup
+## 13. Session startup
 
 Recommended order:
 
@@ -213,7 +220,7 @@ Recommended order:
 6. relevant product/design/engineering/ops documents
 7. current remote Issue/PR/diff/CI evidence
 
-## 13. Key detailed documents
+## 14. Key detailed documents
 
 - `docs/project/ROLE_SESSION_TEMPLATES.md`
 - `docs/project/BRANCHING_AND_REVIEW.md`
@@ -226,7 +233,7 @@ Recommended order:
 - `docs/engineering/CODE_ARCHITECTURE.md`
 - `docs/engineering/REVIEW_GUARDRAILS.md`
 
-## 14. One-line operating rule
+## 15. One-line operating rule
 
 ```text
 verify current remote state

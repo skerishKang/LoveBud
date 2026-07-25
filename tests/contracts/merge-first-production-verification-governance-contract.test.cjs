@@ -23,6 +23,7 @@ const PATHS = Object.freeze({
   governance: 'docs/ops/MVP_AGENT_GOVERNANCE.md',
   uiLane: 'docs/project/UI_RAPID_ITERATION_LANE.md',
   roles: 'docs/project/WEB_CTO_WEB_DEVELOPER_LOCAL_VALIDATION.md',
+  templates: 'docs/project/ROLE_SESSION_TEMPLATES.md',
   checklist: 'docs/ops/PR_CHECKLIST.md',
   verification: 'docs/project/VERIFICATION_AND_EVIDENCE.md',
   screenshots: 'docs/ops/UI_SCREENSHOT_CTO_REVIEW_POLICY.md',
@@ -211,6 +212,47 @@ test('U0/U1 issue overhead is explicitly reduced', () => {
   const issues = section(src, '## 11. Issue handling', '## 12. Report template');
   assert.match(issues, /do not require a new child Issue for every micro correction/i);
   assert.match(issues, /active parent\/product\/UI objective/i);
+});
+
+test('Web Developer report makes pristine-main comparison conditional for successful U0/U1 checks', () => {
+  const templates = read(PATHS.templates);
+  const developer = section(
+    templates,
+    '## 2. Web Developer session template',
+    '## 3. Local Validation session template'
+  );
+
+  assertContainsAll(developer, [
+    'pristine-main comparison: NOT_REQUIRED',
+    'branch-only failures: NOT_APPLICABLE',
+  ], 'Web Developer report');
+  assert.match(developer, /성공한 focused check에서는 pristine-main 비교가 기본 요구사항이 아닙니다/i);
+  assert.match(
+    developer,
+    /실제 실패, 회귀 불명확성, 광범위 shared 영향 또는 CTO 계약이 있을 때만 pristine-main 비교/i
+  );
+  assert.match(
+    developer,
+    /실패가 발생한 경우 근거 없이 `NOT_REQUIRED` 또는 `NOT_APPLICABLE`을 사용하지 않습니다/i
+  );
+  assert.doesNotMatch(
+    developer,
+    /U0\/U1[^\n]{0,320}(?:always|must|required)[^\n]{0,120}pristine-main comparison/i
+  );
+});
+
+test('Local Validation retains explicit pristine-main comparison fields', () => {
+  const templates = read(PATHS.templates);
+  const local = section(
+    templates,
+    '## 3. Local Validation session template',
+    '## 4. Routing rules'
+  );
+  assertContainsAll(local, [
+    '- pristine-main failures:',
+    '- branch failures:',
+    '- branch-only failures:',
+  ], 'Local Validation comparison');
 });
 
 test('AGENTS and local rules identify merge-first and the UI lane', () => {

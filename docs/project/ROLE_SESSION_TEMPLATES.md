@@ -138,6 +138,9 @@ U0/U1 rules:
 - Local Validation이 NOT_REQUIRED이면 로컬 프롬프트를 만들지 않습니다.
 - full suite를 관성적으로 실행하지 않습니다.
 - exact diff, syntax/static/focused contract, CI classification을 제출합니다.
+- 성공한 focused check에서는 pristine-main 비교가 기본 요구사항이 아닙니다.
+- 실제 실패, 회귀 불명확성, 광범위 shared 영향 또는 CTO 계약이 있을 때만 pristine-main 비교를 수행합니다.
+- 실패가 발생한 경우 근거 없이 `NOT_REQUIRED` 또는 `NOT_APPLICABLE`을 사용하지 않습니다.
 
 U2/U3 rules:
 - 구조 또는 runtime acceptance criteria를 executable tests로 증명합니다.
@@ -160,8 +163,8 @@ Final report:
 
 ### Verification
 - focused commands and counts:
-- pristine-main failures:
-- branch-only failures:
+- pristine-main comparison: NOT_REQUIRED / <SHA and failures>
+- branch-only failures: NOT_APPLICABLE / <count>
 - git diff --check:
 - CI classification:
 

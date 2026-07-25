@@ -173,6 +173,31 @@ test('current entrypoints link canonical governance and current role/UI policy',
   }
 });
 
+test('root guidance restores numbered environment and operational input/image guardrails', () => {
+  const src = read(PATHS.agents);
+  const operational = section(
+    src,
+    '## 11. Operational input and image handling',
+    '## 12. Test selection'
+  );
+
+  assert.match(src, /^## 10\. Current local execution environment$/m);
+  assert.match(
+    operational,
+    /pasted[^\n]*(completion reports?|logs?|command results?)[^\n]*(decision inputs?|not automatically trusted)/i
+  );
+  assert.match(
+    operational,
+    /independently verifies?[^\n]*(remote SHA|cumulative diff)[^\n]*(changed files|CI|comments|evidence)/i
+  );
+  assert.match(operational, /attached images[^\n]*(analysis|comparison|review)[^\n]*by default/i);
+  assert.match(
+    operational,
+    /generate or transform images[^\n]*only when the user explicitly requests/i
+  );
+  assert.match(operational, /mentioning an image alone is not such a request/i);
+});
+
 test('entrypoints do not restore Local as the default coder for U0/U1', () => {
   for (const rel of [PATHS.agents, PATHS.kilo, PATHS.roles, PATHS.templates, PATHS.prChecklist, PATHS.verification]) {
     const src = read(rel);
