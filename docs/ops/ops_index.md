@@ -10,7 +10,8 @@ This folder contains LoveBud runtime, governance, CI, browser, deployment, and r
 - Database: Neon where applicable
 - Vercel: secondary/transitional
 - Netlify: legacy artifact, not active fallback
-- Local default: Windows + PowerShell 7
+- Local execution default: Windows-native
+- Preferred shell: PowerShell 7
 - WSL: explicit authorization only
 
 ## Authority and first read
@@ -21,8 +22,9 @@ This folder contains LoveBud runtime, governance, CI, browser, deployment, and r
 4. [MERGE_FIRST_PRODUCTION_VERIFICATION_WORKFLOW.md](MERGE_FIRST_PRODUCTION_VERIFICATION_WORKFLOW.md) — current Production verification flow.
 5. [PR_CHECKLIST.md](PR_CHECKLIST.md) — risk-proportional PR checklist.
 6. [UI_SCREENSHOT_CTO_REVIEW_POLICY.md](UI_SCREENSHOT_CTO_REVIEW_POLICY.md) — class-dependent screenshot and visual judgment.
-7. [PATHS_AND_SHELLS.md](PATHS_AND_SHELLS.md) — local Windows/PowerShell source of truth.
-8. [GITHUB_AUTH_TOKEN_USAGE.md](GITHUB_AUTH_TOKEN_USAGE.md) — safe GitHub authentication/token handling.
+7. [PATHS_AND_SHELLS.md](PATHS_AND_SHELLS.md) — current local Windows/PowerShell source of truth.
+8. [REMOTE_ACCESS_AND_WSL.md](REMOTE_ACCESS_AND_WSL.md) — historical WSL/remote-access reference; not current startup guidance.
+9. [GITHUB_AUTH_TOKEN_USAGE.md](GITHUB_AUTH_TOKEN_USAGE.md) — safe GitHub authentication/token handling.
 
 ## Current execution summary
 
@@ -78,6 +80,7 @@ One active writer per remote branch. Preserve other workers' state. Do not use d
 - [MODAL_BROWSE_RUNTIME.md](MODAL_BROWSE_RUNTIME.md)
 - [MODAL_RUNTIME_DIAGNOSTICS_WORKFLOW.md](MODAL_RUNTIME_DIAGNOSTICS_WORKFLOW.md)
 - [TREE_LIKE_RUNTIME_VERIFICATION_RUNBOOK.md](TREE_LIKE_RUNTIME_VERIFICATION_RUNBOOK.md)
+- [DEPLOYMENT_TARGET_PAGE_OWNERSHIP_AUDIT.md](DEPLOYMENT_TARGET_PAGE_OWNERSHIP_AUDIT.md) — Issue #2715 deployment target and page ownership audit.
 - [../migration/VERCEL_MODAL_MIGRATION_RUNBOOK.md](../migration/VERCEL_MODAL_MIGRATION_RUNBOOK.md)
 
 ## Secret and security references
