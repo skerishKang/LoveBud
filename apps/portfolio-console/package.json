@@ -1,0 +1,17 @@
+{
+  "name": "portfolio-console",
+  "version": "1.0.0",
+  "type": "module",
+  "private": true,
+  "description": "Portfolio Console — milestone progress tracking across projects",
+  "scripts": {
+    "test": "npx playwright test",
+    "validate": "node tests/validate_projects.js",
+    "python-test": "python -m unittest discover -s tests -v",
+    "start": "node app.js"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.62.0",
+    "playwright": "^1.61.1"
+  }
+}

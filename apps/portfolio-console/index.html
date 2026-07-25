@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Portfolio Console</title>
+<style>
+* { box-sizing: border-box; }
+body { font-family: -apple-system, sans-serif; max-width: 1200px; margin: 0 auto; padding: 20px; background: #f5f5f5; }
+h1 { color: #333; }
+h2 { color: #555; margin-top: 24px; }
+table { border-collapse: collapse; width: 100%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.1); }
+th, td { padding: 8px 12px; text-align: left; border-bottom: 1px solid #ddd; white-space: nowrap; }
+th { background: #4a90d9; color: #fff; }
+tr:nth-child(even) { background: #f9f9f9; }
+.progress-bar { display: inline-block; width: 100px; height: 12px; background: #e0e0e0; border-radius: 6px; overflow: hidden; vertical-align: middle; }
+.progress-fill { height: 100%; background: #4caf50; border-radius: 6px; }
+.section { margin: 24px 0; }
+.project-card { background: #fff; padding: 16px; margin: 12px 0; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,.1); }
+.project-card h3 { margin: 0 0 8px; }
+.task-list { list-style: none; padding: 0; }
+.task-list li { padding: 4px 0; }
+.done { color: #4caf50; }
+.pending { color: #f44336; }
+.meta { color: #666; font-size: .85em; }
+.footer { margin-top: 24px; padding: 12px; background: #fff; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,.1); color: #666; font-size: .9em; }
+@media (max-width: 768px) {
+  table { font-size: .85em; }
+  th, td { padding: 6px 8px; }
+  .progress-bar { width: 60px; }
+}
+@media (max-width: 375px) {
+  body { padding: 10px; }
+  table { font-size: .7em; display: block; overflow-x: auto; }
+  th, td { padding: 4px 4px; white-space: normal; word-break: break-word; }
+}
+</style>
+</head>
+<body>
+<h1>Portfolio Console</h1>
+<p>Total projects: 13 | Defined: 9 | Undefined: 4</p>
+<p class="meta">Task-based progress calculation with verifiable evidence</p>
+<table>
+<tr><th>#</th><th>Project</th><th>Progress</th><th>Tasks</th><th>Done</th><th>Mode</th><th>Milestone</th></tr>
+<tr><td>1</td><td>LoveBud</td><td><div class="progress-bar"><div class="progress-fill" style="width:50%"></div></div> 50%</td><td>6</td><td>3</td><td>active-development</td><td>#3425, #3458</td></tr>
+<tr><td>2</td><td>Living Fiction</td><td><div class="progress-bar"><div class="progress-fill" style="width:100%"></div></div> 100%</td><td>1</td><td>1</td><td>maintenance</td><td>—</td></tr>
+<tr><td>3</td><td>Living Travel</td><td><div class="progress-bar"><div class="progress-fill" style="width:33%"></div></div> 33%</td><td>3</td><td>1</td><td>active-development</td><td>#107</td></tr>
+<tr><td>4</td><td>AI Finder / Bukgu</td><td><div class="progress-bar"><div class="progress-fill" style="width:0%"></div></div> 0%</td><td>2</td><td>0</td><td>active-development</td><td>#1150, #1080</td></tr>
+<tr><td>5</td><td>Personal Edition</td><td><div class="progress-bar"><div class="progress-fill" style="width:25%"></div></div> 25%</td><td>4</td><td>1</td><td>draft-pr</td><td>PR #111</td></tr>
+<tr><td>6</td><td>Korean AI Platform</td><td><div class="progress-bar"><div class="progress-fill" style="width:0%"></div></div> 0%</td><td>2</td><td>0</td><td>active-development</td><td>#138</td></tr>
+<tr><td>7</td><td>Personal Video Archive</td><td><div class="progress-bar"><div class="progress-fill" style="width:50%"></div></div> 50%</td><td>2</td><td>1</td><td>active-development</td><td>—</td></tr>
+<tr><td>8</td><td>AI Revenue Lab</td><td><div class="progress-bar"><div class="progress-fill" style="width:0%"></div></div> 0%</td><td>2</td><td>0</td><td>active-development</td><td>#96</td></tr>
+<tr><td>9</td><td>LoveTree 3.0</td><td><div class="progress-bar"><div class="progress-fill" style="width:0%"></div></div> 0%</td><td>2</td><td>0</td><td>planning</td><td>—</td></tr>
+<tr><td>10</td><td>LoveBud Gallery</td><td><div class="progress-bar"><div class="progress-fill" style="width:0%"></div></div> 0%</td><td>0</td><td>0</td><td>unknown</td><td>—</td></tr>
+<tr><td>11</td><td>401 Love Match Making</td><td><div class="progress-bar"><div class="progress-fill" style="width:0%"></div></div> 0%</td><td>0</td><td>0</td><td>unknown</td><td>—</td></tr>
+<tr><td>12</td><td>238 Music Composer</td><td><div class="progress-bar"><div class="progress-fill" style="width:0%"></div></div> 0%</td><td>0</td><td>0</td><td>unknown</td><td>—</td></tr>
+<tr><td>13</td><td>CWTree</td><td><div class="progress-bar"><div class="progress-fill" style="width:0%"></div></div> 0%</td><td>0</td><td>0</td><td>unknown</td><td>—</td></tr>
+</table>
+<div class="section" id="defined-section">
+<h2>Defined Projects</h2>
+<div class="project-card" data-project-id="lovebud">
+<h3>LoveBud (50%) <span class="meta">active-development</span></h3>
+<p>Personal tree-based social platform with browse, editor, viewer, and my-trees</p>
+<ul class="task-list">
+<li class="pending">❌ lb-auth-audit — #3425 OPEN — architecture audit in progress</li>
+<li class="pending">❌ lb-migration-ledger — #3458 OPEN — migration ledger and provenance gate incomplete</li>
+<li class="pending">❌ lb-provenance-gate — #3458 OPEN — provenance gate incomplete</li>
+<li class="done">✅ lb-auth-css-cache — #3451 CLOSED/COMPLETED — auth CSS cache busting</li>
+<li class="done">✅ lb-tree-owner-binding — #3481 CLOSED/COMPLETED — tree owner binding</li>
+<li class="done">✅ lb-scout-target-tree — PR #3531 merge commit e0ff1b2a4089c31fe4adb3e9c082ef9a4499a1cf</li>
+</ul>
+<p class="meta">Milestone: #3425, #3458 | Future: — | Blockers: —</p>
+</div>
+<div class="project-card" data-project-id="living-fiction">
+<h3>Living Fiction (100%) <span class="meta">maintenance</span></h3>
+<p>Interactive fiction deployment and re-verification platform</p>
+<ul class="task-list">
+<li class="done">✅ lf-deployment-reverification — Issue #140 Living Fiction deployment re-verification contract</li>
+</ul>
+<p class="meta">Milestone: — | Future: — | Blockers: —</p>
+</div>
+<div class="project-card" data-project-id="living-travel">
+<h3>Living Travel (33%) <span class="meta">active-development</span></h3>
+<p>AI-powered travel companion with itinerary generation</p>
+<ul class="task-list">
+<li class="done">✅ lt-local-provider-spike — Issue #107 comment 5071926646 — local provider spike succeeded</li>
+<li class="pending">❌ lt-remote-commit — Remote commit/PR pending; full workflow not complete</li>
+<li class="pending">❌ lt-production — (no evidence)</li>
+</ul>
+<p class="meta">Milestone: #107 | Future: — | Blockers: Remote commit/PR pending</p>
+</div>
+<div class="project-card" data-project-id="ai-finder">
+<h3>AI Finder / Bukgu (0%) <span class="meta">active-development</span></h3>
+<p>Municipal AI assistant for Bukgu district with citizen services</p>
+<ul class="task-list">
+<li class="pending">❌ af-official-source-freshness — #1150 OPEN — official source freshness</li>
+<li class="pending">❌ af-page-agent-parity — #1080 OPEN — page agent parity integration</li>
+</ul>
+<p class="meta">Milestone: #1150, #1080 | Future: #1181 planning-only/deferred — crawl filter hardening | Blockers: #1181 deferred</p>
+</div>
+<div class="project-card" data-project-id="personal-edition">
+<h3>Personal Edition (25%) <span class="meta">draft-pr</span></h3>
+<p>Personal portfolio and productivity suite</p>
+<ul class="task-list">
+<li class="done">✅ pe-implementation — PR #111 head 3f44ac725c1b946776ae41d3b25bc8c2d56df626</li>
+<li class="pending">❌ pe-ctoreview — (no evidence)</li>
+<li class="pending">❌ pe-merge — (no evidence)</li>
+<li class="pending">❌ pe-production — (no evidence)</li>
+</ul>
+<p class="meta">Milestone: PR #111 | Future: CTO review, Merge, Production deployment | Blockers: PR #111 is OPEN Draft, mergeable: false</p>
+</div>
+<div class="project-card" data-project-id="korean-ai-platform">
+<h3>Korean AI Platform (0%) <span class="meta">active-development</span></h3>
+<p>Korean-language AI platform with revenue lab integration</p>
+<ul class="task-list">
+<li class="pending">❌ kap-learning-phase1 — #138 OPEN — learning phase 1 in progress</li>
+<li class="pending">❌ kap-production-deployment — (no evidence)</li>
+</ul>
+<p class="meta">Milestone: #138 | Future: — | Blockers: —</p>
+</div>
+<div class="project-card" data-project-id="personal-video-archive">
+<h3>Personal Video Archive (50%) <span class="meta">active-development</span></h3>
+<p>Personal video archiving and streaming platform</p>
+<ul class="task-list">
+<li class="done">✅ pva-storage-setup — Storage configured and operational</li>
+<li class="pending">❌ pva-ui-implementation — (no evidence)</li>
+</ul>
+<p class="meta">Milestone: — | Future: UI implementation | Blockers: —</p>
+</div>
+<div class="project-card" data-project-id="ai-revenue-lab">
+<h3>AI Revenue Lab (0%) <span class="meta">active-development</span></h3>
+<p>AI-powered revenue optimization and analytics platform</p>
+<ul class="task-list">
+<li class="pending">❌ arl-travel-phase2 — #96 OPEN — travel phase 2 in progress</li>
+<li class="pending">❌ arl-ui-main — (no evidence)</li>
+</ul>
+<p class="meta">Milestone: #96 | Future: — | Blockers: —</p>
+</div>
+<div class="project-card" data-project-id="lovetree3">
+<h3>LoveTree 3.0 (0%) <span class="meta">planning</span></h3>
+<p>Next-generation LoveTree platform with enhanced features</p>
+<ul class="task-list">
+<li class="pending">❌ lt3-media-search — Media search worktree active</li>
+<li class="pending">❌ lt3-production — (no evidence)</li>
+</ul>
+<p class="meta">Milestone: — | Future: Media search, Production deployment | Blockers: —</p>
+</div>
+</div>
+<div class="section" id="undefined-section">
+<h2>Undefined Projects</h2>
+<div class="project-card" data-project-id="lovebud-gallery"><h3>LoveBud Gallery</h3><p>Gallery extension for LoveBud platform</p><p class="meta">Mode: unknown — No defined tasks or evidence</p></div>
+<div class="project-card" data-project-id="love-match-making"><h3>401 Love Match Making</h3><p>AI-powered love match making service</p><p class="meta">Mode: unknown — No defined tasks or evidence</p></div>
+<div class="project-card" data-project-id="music-composer"><h3>238 Music Composer</h3><p>AI-powered music composition tool</p><p class="meta">Mode: unknown — No defined tasks or evidence</p></div>
+<div class="project-card" data-project-id="cwtree"><h3>CWTree</h3><p>Collaborative work tree platform</p><p class="meta">Mode: unknown — No defined tasks or evidence</p></div>
+</div>
+<div class="footer">
+<p>Progress calculated from completed tasks (7 of 24). No arbitrary stored progress percentage.</p>
+<p>Each task requires verifiable evidence (Issue, PR, commit, comment). OPEN issues are not valid evidence for completed tasks.</p>
+<p>Task-based progress — verifiable evidence required for every done task.</p>
+</div>
+</body>
+</html>
