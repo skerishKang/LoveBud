@@ -88,6 +88,28 @@
       en: 'Retry'
     },
 
+    // #3655 Story view foundation (Browse-only fourth view mode)
+    'search.viewMode.story': {
+      ko: '스토리',
+      en: 'Story'
+    },
+    'search.story.regionLabel': {
+      ko: '스토리 보기',
+      en: 'Story view'
+    },
+    'search.story.previous': {
+      ko: '이전 스토리 그룹',
+      en: 'Previous story group'
+    },
+    'search.story.next': {
+      ko: '다음 스토리 그룹',
+      en: 'Next story group'
+    },
+    'search.story.position': {
+      ko: '스토리 {current} / {total}',
+      en: 'Story {current} of {total}'
+    },
+
     // 미리보기
     'search.previewTitle': {
       ko: '감상 허브',

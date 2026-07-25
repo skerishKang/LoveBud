@@ -69,13 +69,15 @@ test('large / compact / list modes are all defined', () => {
 
 // ── 2) Browse page wiring ─────────────────────────────────────────────
 test('Browse page loads tree view mode CSS and helper script', () => {
+    // #3655: Browse cache tokens advanced with the Story foundation
+    // (tree-view-mode.css + switcher gained the surface-capability change).
     assert.match(
         searchHtml,
-        /href="\.\.\/css\/tree-view-mode\.css\?v=20260721-3608(?:-large|-list)?-\d+"/
+        /href="\.\.\/css\/tree-view-mode\.css\?v=(?:20260721-3608(?:-large|-list)?|20260725-3655)-\d+"/
     );
     assert.match(
         searchHtml,
-        /src="\.\.\/js\/tree-view-mode-switcher\.js\?v=20260621-step2-1"/
+        /src="\.\.\/js\/tree-view-mode-switcher\.js\?v=(?:20260621-step2-1|20260725-3655-1)"/
     );
 });
 
