@@ -166,10 +166,12 @@ function createTempRepo() {
   return { tmpDir, scriptsDir, docsDir, dbDir, migrationsDir };
 }
 
-function writeTempAdapterCore(scriptsDir) {
+function writeTempAdapterCore(scriptsDir, options) {
   const coreSource = fs.readFileSync(path.join(REPO_ROOT, 'scripts', 'migration-source-validation-adapter-core.cjs'), 'utf8');
   const provenanceSource = fs.readFileSync(PROVENANCE_CORE_PATH, 'utf8');
-  const registryValidatorSource = fs.readFileSync(REGISTRY_VALIDATOR_PATH, 'utf8');
+  const registryValidatorSource = (options && options.registryValidatorSource !== undefined)
+    ? options.registryValidatorSource
+    : fs.readFileSync(REGISTRY_VALIDATOR_PATH, 'utf8');
   fs.writeFileSync(path.join(scriptsDir, 'migration-provenance-core.cjs'), provenanceSource, 'utf8');
   fs.writeFileSync(path.join(scriptsDir, 'migration-precondition-registry-validator-core.cjs'), registryValidatorSource, 'utf8');
 
@@ -184,6 +186,67 @@ function loadTempAdapter(scriptsDir) {
   const adapterPath = path.join(scriptsDir, 'migration-source-validation-adapter-core.cjs');
   delete require.cache[require.resolve(adapterPath)];
   return require(adapterPath);
+}
+
+function loadTempValidator(scriptsDir) {
+  const validatorPath = path.join(scriptsDir, 'migration-precondition-registry-validator-core.cjs');
+  return require(validatorPath);
+}
+
+function buildValidatorModule(opts) {
+  const decls = opts.decls || '';
+  const structuralBody = opts.structuralBody;
+  const bindingBody = opts.bindingBody;
+  const extraExports = opts.extraExports || '';
+  return `'use strict';
+let structuralCalls = 0;
+let bindingCalls = 0;
+${decls}
+function validatePreconditionRegistry(registry) {
+  structuralCalls += 1;
+  ${structuralBody}
+}
+function validateRegistryManifestBinding(registry, manifest) {
+  bindingCalls += 1;
+  ${bindingBody}
+}
+module.exports = {
+  validatePreconditionRegistry,
+  validateRegistryManifestBinding,
+  getStructuralCalls: () => structuralCalls,
+  getBindingCalls: () => bindingCalls${extraExports}
+};
+`;
+}
+
+function setupValidatorIntegration(validatorSource) {
+  const { tmpDir, scriptsDir, docsDir, dbDir } = createTempRepo();
+  fs.writeFileSync(path.join(docsDir, 'migration-path-inventory.json'), VALID_INVENTORY_TEXT, 'utf8');
+  fs.writeFileSync(path.join(dbDir, 'canonical-migrations.json'), VALID_MIGRATIONS_TEXT, 'utf8');
+  fs.writeFileSync(path.join(dbDir, 'expected-schema-manifest.json'), VALID_SCHEMA_TEXT, 'utf8');
+  fs.writeFileSync(path.join(dbDir, 'precondition-registry.json'), VALID_REGISTRY_TEXT, 'utf8');
+  writeTempAdapterCore(scriptsDir, { registryValidatorSource: validatorSource });
+  const { createMigrationSourceValidationAdapter: create } = loadTempAdapter(scriptsDir);
+  const validatorMod = loadTempValidator(scriptsDir);
+  const provenance = createTrackingValidator(noopValidator);
+  const adapter = create({ validateSourceConfiguration: provenance.validator });
+  return { tmpDir, scriptsDir, adapter, validatorMod, provenance };
+}
+
+async function assertIntegration(opts) {
+  const { tmpDir, validatorMod, provenance, adapter } = setupValidatorIntegration(opts.validatorSource);
+  try {
+    const result = await adapter.validateSource({ targetMigrationId: 'test' });
+    assert.deepStrictEqual(result, opts.expected.result);
+    assert.strictEqual(validatorMod.getStructuralCalls(), opts.expected.structural);
+    assert.strictEqual(validatorMod.getBindingCalls(), opts.expected.binding);
+    assert.strictEqual(provenance.getCallCount(), opts.expected.provenance);
+    if (opts.expected.extraChecks) {
+      opts.expected.extraChecks(validatorMod);
+    }
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
 }
 
 describe('DB migration source-validation adapter contract (#3650)', () => {
@@ -1500,111 +1563,398 @@ describe('DB migration source-validation adapter contract (#3650)', () => {
     });
   });
 
-  describe('K. Registry validator boundary (#3659)', () => {
-    const { parseRegistryValidatorResult: parseRegResult } = require(ADAPTER_PATH);
-
-    describe('K1. parseRegistryValidatorResult - valid results', () => {
-      it('K1a. {ok:true,errors:[]} -> valid', () => {
-        const r = parseRegResult({ ok: true, errors: [] });
-        assert.strictEqual(r.valid, true);
-        assert.strictEqual(r.ok, true);
-      });
-      it('K1b. {ok:false,errors:["ERR"]} -> valid, ok=false', () => {
-        const r = parseRegResult({ ok: false, errors: ['ERR'] });
-        assert.strictEqual(r.valid, true);
-        assert.strictEqual(r.ok, false);
+  describe('L. Structural validator adapter integration (#3659)', () => {
+    it('L1. valid sync -> PASS, structural=1 binding=1 provenance=1', async () => {
+      await assertIntegration({
+        validatorSource: buildValidatorModule({
+          structuralBody: 'return { ok: true, errors: [] };',
+          bindingBody: 'return { ok: true, errors: [] };'
+        }),
+        expected: { result: SOURCE_VALIDATION_RESULTS.PASS, structural: 1, binding: 1, provenance: 1 }
       });
     });
 
-    describe('K2. parseRegistryValidatorResult - hostile result shapes', () => {
-      it('K2a. null -> invalid', () => {
-        assert.strictEqual(parseRegResult(null).valid, false);
+    it('L2. invalid (ok=false) -> FAIL, structural=1 binding=0 provenance=0', async () => {
+      await assertIntegration({
+        validatorSource: buildValidatorModule({
+          structuralBody: "return { ok: false, errors: ['STRUCTURAL_INVALID'] };",
+          bindingBody: 'return { ok: true, errors: [] };'
+        }),
+        expected: { result: SOURCE_VALIDATION_RESULTS.FAIL, structural: 1, binding: 0, provenance: 0 }
       });
-      it('K2b. undefined -> invalid', () => {
-        assert.strictEqual(parseRegResult(undefined).valid, false);
+    });
+
+    it('L3. throw -> UNAVAILABLE, structural=1 binding=0 provenance=0', async () => {
+      await assertIntegration({
+        validatorSource: buildValidatorModule({
+          structuralBody: "throw new Error('structural throw');",
+          bindingBody: 'return { ok: true, errors: [] };'
+        }),
+        expected: { result: SOURCE_VALIDATION_RESULTS.UNAVAILABLE, structural: 1, binding: 0, provenance: 0 }
       });
-      it('K2c. array -> invalid', () => {
-        assert.strictEqual(parseRegResult([]).valid, false);
+    });
+
+    it('L4. Promise.resolve(valid) -> PASS, structural=1 binding=1 provenance=1', async () => {
+      await assertIntegration({
+        validatorSource: buildValidatorModule({
+          structuralBody: 'return Promise.resolve({ ok: true, errors: [] });',
+          bindingBody: 'return { ok: true, errors: [] };'
+        }),
+        expected: { result: SOURCE_VALIDATION_RESULTS.PASS, structural: 1, binding: 1, provenance: 1 }
       });
-      it('K2d. string -> invalid', () => {
-        assert.strictEqual(parseRegResult('bad').valid, false);
+    });
+
+    it('L5. Promise.reject -> UNAVAILABLE, structural=1 binding=0 provenance=0', async () => {
+      await assertIntegration({
+        validatorSource: buildValidatorModule({
+          structuralBody: 'return Promise.reject(new Error("structural reject"));',
+          bindingBody: 'return { ok: true, errors: [] };'
+        }),
+        expected: { result: SOURCE_VALIDATION_RESULTS.UNAVAILABLE, structural: 1, binding: 0, provenance: 0 }
       });
-      it('K2e. number -> invalid', () => {
-        assert.strictEqual(parseRegResult(42).valid, false);
+    });
+
+    it('L6. Proxy-wrapped Promise -> UNAVAILABLE, traps=0 binding=0 provenance=0', async () => {
+      await assertIntegration({
+        validatorSource: buildValidatorModule({
+          decls: 'let proxyTraps = 0;',
+          structuralBody: `const genuine = Promise.resolve({ ok: true, errors: [] });
+const proxied = new Proxy(genuine, {
+  get() { proxyTraps += 1; return Reflect.get(...arguments); }
+});
+return proxied;`,
+          bindingBody: 'return { ok: true, errors: [] };',
+          extraExports: ',\n  getProxyTraps: () => proxyTraps'
+        }),
+        expected: {
+          result: SOURCE_VALIDATION_RESULTS.UNAVAILABLE, structural: 1, binding: 0, provenance: 0,
+          extraChecks: (mod) => assert.strictEqual(mod.getProxyTraps(), 0)
+        }
       });
-      it('K2f. {ok:"yes"} -> invalid (ok not boolean)', () => {
-        assert.strictEqual(parseRegResult({ ok: 'yes', errors: [] }).valid, false);
+    });
+
+    it('L7. arbitrary thenable -> UNAVAILABLE, then getter/call=0 binding=0 provenance=0', async () => {
+      await assertIntegration({
+        validatorSource: buildValidatorModule({
+          decls: 'let thenGetter = 0; let thenCall = 0;',
+          structuralBody: `const t = Object.create(null, {
+  then: { get() { thenGetter += 1; return function() { thenCall += 1; return { ok: true, errors: [] }; }; }, enumerable: true }
+});
+return t;`,
+          bindingBody: 'return { ok: true, errors: [] };',
+          extraExports: ',\n  getThenGetter: () => thenGetter,\n  getThenCall: () => thenCall'
+        }),
+        expected: {
+          result: SOURCE_VALIDATION_RESULTS.UNAVAILABLE, structural: 1, binding: 0, provenance: 0,
+          extraChecks: (mod) => {
+            assert.strictEqual(mod.getThenGetter(), 0);
+            assert.strictEqual(mod.getThenCall(), 0);
+          }
+        }
       });
-      it('K2g. {ok:1} -> invalid (ok not boolean)', () => {
-        assert.strictEqual(parseRegResult({ ok: 1, errors: [] }).valid, false);
-      });
-      it('K2h. extra key -> invalid', () => {
-        assert.strictEqual(parseRegResult({ ok: true, errors: [], extra: 'bad' }).valid, false);
-      });
-      it('K2i. symbol key -> invalid', () => {
-        const o = { ok: true, errors: [] }; o[Symbol('x')] = 1;
-        assert.strictEqual(parseRegResult(o).valid, false);
-      });
-      it('K2j. accessor ok -> invalid, getter 0', () => {
-        let calls = 0;
-        assert.strictEqual(parseRegResult(Object.create({}, {
-          ok: { get() { calls++; return true; }, enumerable: true },
-          errors: { value: [], enumerable: true }
-        })).valid, false);
-        assert.strictEqual(calls, 0);
-      });
-      it('K2k. accessor errors -> invalid, getter 0', () => {
-        let calls = 0;
-        assert.strictEqual(parseRegResult(Object.create({}, {
-          ok: { value: true, enumerable: true },
-          errors: { get() { calls++; return []; }, enumerable: true }
-        })).valid, false);
-        assert.strictEqual(calls, 0);
-      });
-      it('K2l. non-enumerable ok -> invalid', () => {
-        assert.strictEqual(parseRegResult(Object.create(null, {
-          ok: { value: true, enumerable: false },
-          errors: { value: [], enumerable: true }
-        })).valid, false);
-      });
-      it('K2m. Proxy result -> invalid, traps 0', () => {
-        const traps = { get: 0, getPrototypeOf: 0, ownKeys: 0, getOwnPropertyDescriptor: 0 };
-        const inner = { ok: true, errors: [] };
-        const proxy = new Proxy(inner, {
-          get() { traps.get++; return Reflect.get(...arguments); },
-          getPrototypeOf() { traps.getPrototypeOf++; return Reflect.getPrototypeOf(...arguments); },
-          ownKeys() { traps.ownKeys++; return Reflect.ownKeys(...arguments); },
-          getOwnPropertyDescriptor() { traps.getOwnPropertyDescriptor++; return Reflect.getOwnPropertyDescriptor(...arguments); }
+    });
+
+    describe('L8. Unsafe structural validator results', () => {
+      const UNSAFE_SIMPLE = [
+        ["wrong ok type", "return { ok: 'yes', errors: [] };"],
+        ["missing errors key", "return { ok: true };"],
+        ["extra key", "return { ok: true, errors: [], extra: 1 };"],
+        ["symbol key", "const o = { ok: true, errors: [] }; o[Symbol('x')] = 1; return o;"],
+        ["sparse errors array", "const s = []; s[1] = 'err'; return { ok: true, errors: s };"],
+        ["non-string errors entry", "return { ok: true, errors: [42] };"]
+      ];
+      for (const [label, body] of UNSAFE_SIMPLE) {
+        it(`L8-unsafe. ${label} -> UNAVAILABLE, structural=1 binding=0 provenance=0`, async () => {
+          await assertIntegration({
+            validatorSource: buildValidatorModule({ structuralBody: body, bindingBody: 'return { ok: true, errors: [] };' }),
+            expected: { result: SOURCE_VALIDATION_RESULTS.UNAVAILABLE, structural: 1, binding: 0, provenance: 0 }
+          });
         });
-        assert.strictEqual(parseRegResult(proxy).valid, false);
-        assert.strictEqual(traps.get, 0);
-        assert.strictEqual(traps.getPrototypeOf, 0);
-        assert.strictEqual(traps.ownKeys, 0);
-        assert.strictEqual(traps.getOwnPropertyDescriptor, 0);
+      }
+
+      it('L8-getter. accessor ok -> UNAVAILABLE, getter=0 structural=1 binding=0 provenance=0', async () => {
+        await assertIntegration({
+          validatorSource: buildValidatorModule({
+            decls: 'let okGetter = 0;',
+            structuralBody: `const o = {};
+Object.defineProperty(o, 'ok', { get() { okGetter += 1; return true; }, enumerable: true });
+Object.defineProperty(o, 'errors', { value: [], enumerable: true });
+return o;`,
+            bindingBody: 'return { ok: true, errors: [] };',
+            extraExports: ',\n  getOkGetter: () => okGetter'
+          }),
+          expected: {
+            result: SOURCE_VALIDATION_RESULTS.UNAVAILABLE, structural: 1, binding: 0, provenance: 0,
+            extraChecks: (mod) => assert.strictEqual(mod.getOkGetter(), 0)
+          }
+        });
       });
-      it('K2n. revoked Proxy -> invalid', () => {
-        const { proxy, revoke } = Proxy.revocable({}, {}); revoke();
-        assert.strictEqual(parseRegResult(proxy).valid, false);
+
+      it('L8-getter. accessor errors -> UNAVAILABLE, getter=0 structural=1 binding=0 provenance=0', async () => {
+        await assertIntegration({
+          validatorSource: buildValidatorModule({
+            decls: 'let errorsGetter = 0;',
+            structuralBody: `const o = {};
+Object.defineProperty(o, 'ok', { value: true, enumerable: true });
+Object.defineProperty(o, 'errors', { get() { errorsGetter += 1; return []; }, enumerable: true });
+return o;`,
+            bindingBody: 'return { ok: true, errors: [] };',
+            extraExports: ',\n  getErrorsGetter: () => errorsGetter'
+          }),
+          expected: {
+            result: SOURCE_VALIDATION_RESULTS.UNAVAILABLE, structural: 1, binding: 0, provenance: 0,
+            extraChecks: (mod) => assert.strictEqual(mod.getErrorsGetter(), 0)
+          }
+        });
       });
-      it('K2o. errors sparse array -> invalid', () => {
-        const sparse = []; sparse[0] = 'err1'; sparse[2] = 'err2';
-        assert.strictEqual(parseRegResult({ ok: true, errors: sparse }).valid, false);
+
+      it('L8-proxy. Proxy result -> UNAVAILABLE, traps=0 structural=1 binding=0 provenance=0', async () => {
+        await assertIntegration({
+          validatorSource: buildValidatorModule({
+            decls: 'let proxyTraps = 0;',
+            structuralBody: `const inner = { ok: true, errors: [] };
+const p = new Proxy(inner, {
+  get() { proxyTraps += 1; return Reflect.get(...arguments); },
+  getPrototypeOf() { proxyTraps += 1; return Reflect.getPrototypeOf(...arguments); },
+  ownKeys() { proxyTraps += 1; return Reflect.ownKeys(...arguments); },
+  getOwnPropertyDescriptor() { proxyTraps += 1; return Reflect.getOwnPropertyDescriptor(...arguments); }
+});
+return p;`,
+            bindingBody: 'return { ok: true, errors: [] };',
+            extraExports: ',\n  getProxyTraps: () => proxyTraps'
+          }),
+          expected: {
+            result: SOURCE_VALIDATION_RESULTS.UNAVAILABLE, structural: 1, binding: 0, provenance: 0,
+            extraChecks: (mod) => assert.strictEqual(mod.getProxyTraps(), 0)
+          }
+        });
       });
-      it('K2p. errors with non-string item -> invalid', () => {
-        assert.strictEqual(parseRegResult({ ok: true, errors: [42] }).valid, false);
+
+      it('L8-proxy. revoked Proxy -> UNAVAILABLE, structural=1 binding=0 provenance=0', async () => {
+        await assertIntegration({
+          validatorSource: buildValidatorModule({
+            structuralBody: 'const { proxy, revoke } = Proxy.revocable({ ok: true, errors: [] }, {}); revoke(); return proxy;',
+            bindingBody: 'return { ok: true, errors: [] };'
+          }),
+          expected: { result: SOURCE_VALIDATION_RESULTS.UNAVAILABLE, structural: 1, binding: 0, provenance: 0 }
+        });
       });
-      it('K2q. missing errors key -> invalid', () => {
-        assert.strictEqual(parseRegResult({ ok: true }).valid, false);
+
+      it('L8-proxy. Proxy errors array -> UNAVAILABLE, traps=0 structural=1 binding=0 provenance=0', async () => {
+        await assertIntegration({
+          validatorSource: buildValidatorModule({
+            decls: 'let proxyTraps = 0;',
+            structuralBody: `const proxyArr = new Proxy({}, {
+  get() { proxyTraps += 1; return Reflect.get(...arguments); }
+});
+return { ok: true, errors: proxyArr };`,
+            bindingBody: 'return { ok: true, errors: [] };',
+            extraExports: ',\n  getProxyTraps: () => proxyTraps'
+          }),
+          expected: {
+            result: SOURCE_VALIDATION_RESULTS.UNAVAILABLE, structural: 1, binding: 0, provenance: 0,
+            extraChecks: (mod) => assert.strictEqual(mod.getProxyTraps(), 0)
+          }
+        });
       });
-      it('K2r. missing ok key -> invalid', () => {
-        assert.strictEqual(parseRegResult({ errors: [] }).valid, false);
+    });
+  });
+
+  describe('M. Binding validator adapter integration (#3659)', () => {
+    const STRUCTURAL_VALID = 'return { ok: true, errors: [] };';
+
+    it('M1. valid sync -> PASS, structural=1 binding=1 provenance=1', async () => {
+      await assertIntegration({
+        validatorSource: buildValidatorModule({
+          structuralBody: STRUCTURAL_VALID,
+          bindingBody: 'return { ok: true, errors: [] };'
+        }),
+        expected: { result: SOURCE_VALIDATION_RESULTS.PASS, structural: 1, binding: 1, provenance: 1 }
       });
-      it('K2s. non-array errors -> invalid', () => {
-        assert.strictEqual(parseRegResult({ ok: true, errors: 'string' }).valid, false);
+    });
+
+    it('M2. ok=false -> FAIL, structural=1 binding=1 provenance=0', async () => {
+      await assertIntegration({
+        validatorSource: buildValidatorModule({
+          structuralBody: STRUCTURAL_VALID,
+          bindingBody: "return { ok: false, errors: ['BINDING_FAIL'] };"
+        }),
+        expected: { result: SOURCE_VALIDATION_RESULTS.FAIL, structural: 1, binding: 1, provenance: 0 }
       });
-      it('K2t. custom prototype -> invalid', () => {
-        function P() {} P.prototype.ok = true;
-        assert.strictEqual(parseRegResult(Object.assign(new P(), { errors: [] })).valid, false);
+    });
+
+    it('M3. throw -> UNAVAILABLE, structural=1 binding=1 provenance=0', async () => {
+      await assertIntegration({
+        validatorSource: buildValidatorModule({
+          structuralBody: STRUCTURAL_VALID,
+          bindingBody: "throw new Error('binding throw');"
+        }),
+        expected: { result: SOURCE_VALIDATION_RESULTS.UNAVAILABLE, structural: 1, binding: 1, provenance: 0 }
+      });
+    });
+
+    it('M4. Promise.resolve(valid) -> PASS, structural=1 binding=1 provenance=1', async () => {
+      await assertIntegration({
+        validatorSource: buildValidatorModule({
+          structuralBody: STRUCTURAL_VALID,
+          bindingBody: 'return Promise.resolve({ ok: true, errors: [] });'
+        }),
+        expected: { result: SOURCE_VALIDATION_RESULTS.PASS, structural: 1, binding: 1, provenance: 1 }
+      });
+    });
+
+    it('M5. Promise.reject -> UNAVAILABLE, structural=1 binding=1 provenance=0', async () => {
+      await assertIntegration({
+        validatorSource: buildValidatorModule({
+          structuralBody: STRUCTURAL_VALID,
+          bindingBody: 'return Promise.reject(new Error("binding reject"));'
+        }),
+        expected: { result: SOURCE_VALIDATION_RESULTS.UNAVAILABLE, structural: 1, binding: 1, provenance: 0 }
+      });
+    });
+
+    it('M6. Proxy-wrapped Promise -> UNAVAILABLE, traps=0 structural=1 binding=1 provenance=0', async () => {
+      await assertIntegration({
+        validatorSource: buildValidatorModule({
+          decls: 'let proxyTraps = 0;',
+          structuralBody: STRUCTURAL_VALID,
+          bindingBody: `const genuine = Promise.resolve({ ok: true, errors: [] });
+const proxied = new Proxy(genuine, {
+  get() { proxyTraps += 1; return Reflect.get(...arguments); }
+});
+return proxied;`,
+          extraExports: ',\n  getProxyTraps: () => proxyTraps'
+        }),
+        expected: {
+          result: SOURCE_VALIDATION_RESULTS.UNAVAILABLE, structural: 1, binding: 1, provenance: 0,
+          extraChecks: (mod) => assert.strictEqual(mod.getProxyTraps(), 0)
+        }
+      });
+    });
+
+    it('M7. arbitrary thenable -> UNAVAILABLE, then getter/call=0 structural=1 binding=1 provenance=0', async () => {
+      await assertIntegration({
+        validatorSource: buildValidatorModule({
+          decls: 'let thenGetter = 0; let thenCall = 0;',
+          structuralBody: STRUCTURAL_VALID,
+          bindingBody: `const t = Object.create(null, {
+  then: { get() { thenGetter += 1; return function() { thenCall += 1; return { ok: true, errors: [] }; }; }, enumerable: true }
+});
+return t;`,
+          extraExports: ',\n  getThenGetter: () => thenGetter,\n  getThenCall: () => thenCall'
+        }),
+        expected: {
+          result: SOURCE_VALIDATION_RESULTS.UNAVAILABLE, structural: 1, binding: 1, provenance: 0,
+          extraChecks: (mod) => {
+            assert.strictEqual(mod.getThenGetter(), 0);
+            assert.strictEqual(mod.getThenCall(), 0);
+          }
+        }
+      });
+    });
+
+    describe('M8. Unsafe binding validator results', () => {
+      const UNSAFE_SIMPLE = [
+        ["wrong ok type", "return { ok: 'yes', errors: [] };"],
+        ["missing errors key", "return { ok: true };"],
+        ["extra key", "return { ok: true, errors: [], extra: 1 };"],
+        ["symbol key", "const o = { ok: true, errors: [] }; o[Symbol('x')] = 1; return o;"],
+        ["sparse errors array", "const s = []; s[1] = 'err'; return { ok: true, errors: s };"],
+        ["non-string errors entry", "return { ok: true, errors: [42] };"]
+      ];
+      for (const [label, body] of UNSAFE_SIMPLE) {
+        it(`M8-unsafe. ${label} -> UNAVAILABLE, structural=1 binding=1 provenance=0`, async () => {
+          await assertIntegration({
+            validatorSource: buildValidatorModule({ structuralBody: STRUCTURAL_VALID, bindingBody: body }),
+            expected: { result: SOURCE_VALIDATION_RESULTS.UNAVAILABLE, structural: 1, binding: 1, provenance: 0 }
+          });
+        });
+      }
+
+      it('M8-getter. accessor ok -> UNAVAILABLE, getter=0 structural=1 binding=1 provenance=0', async () => {
+        await assertIntegration({
+          validatorSource: buildValidatorModule({
+            decls: 'let okGetter = 0;',
+            structuralBody: STRUCTURAL_VALID,
+            bindingBody: `const o = {};
+Object.defineProperty(o, 'ok', { get() { okGetter += 1; return true; }, enumerable: true });
+Object.defineProperty(o, 'errors', { value: [], enumerable: true });
+return o;`,
+            extraExports: ',\n  getOkGetter: () => okGetter'
+          }),
+          expected: {
+            result: SOURCE_VALIDATION_RESULTS.UNAVAILABLE, structural: 1, binding: 1, provenance: 0,
+            extraChecks: (mod) => assert.strictEqual(mod.getOkGetter(), 0)
+          }
+        });
+      });
+
+      it('M8-getter. accessor errors -> UNAVAILABLE, getter=0 structural=1 binding=1 provenance=0', async () => {
+        await assertIntegration({
+          validatorSource: buildValidatorModule({
+            decls: 'let errorsGetter = 0;',
+            structuralBody: STRUCTURAL_VALID,
+            bindingBody: `const o = {};
+Object.defineProperty(o, 'ok', { value: true, enumerable: true });
+Object.defineProperty(o, 'errors', { get() { errorsGetter += 1; return []; }, enumerable: true });
+return o;`,
+            extraExports: ',\n  getErrorsGetter: () => errorsGetter'
+          }),
+          expected: {
+            result: SOURCE_VALIDATION_RESULTS.UNAVAILABLE, structural: 1, binding: 1, provenance: 0,
+            extraChecks: (mod) => assert.strictEqual(mod.getErrorsGetter(), 0)
+          }
+        });
+      });
+
+      it('M8-proxy. Proxy result -> UNAVAILABLE, traps=0 structural=1 binding=1 provenance=0', async () => {
+        await assertIntegration({
+          validatorSource: buildValidatorModule({
+            decls: 'let proxyTraps = 0;',
+            structuralBody: STRUCTURAL_VALID,
+            bindingBody: `const inner = { ok: true, errors: [] };
+const p = new Proxy(inner, {
+  get() { proxyTraps += 1; return Reflect.get(...arguments); },
+  getPrototypeOf() { proxyTraps += 1; return Reflect.getPrototypeOf(...arguments); },
+  ownKeys() { proxyTraps += 1; return Reflect.ownKeys(...arguments); },
+  getOwnPropertyDescriptor() { proxyTraps += 1; return Reflect.getOwnPropertyDescriptor(...arguments); }
+});
+return p;`,
+            extraExports: ',\n  getProxyTraps: () => proxyTraps'
+          }),
+          expected: {
+            result: SOURCE_VALIDATION_RESULTS.UNAVAILABLE, structural: 1, binding: 1, provenance: 0,
+            extraChecks: (mod) => assert.strictEqual(mod.getProxyTraps(), 0)
+          }
+        });
+      });
+
+      it('M8-proxy. revoked Proxy -> UNAVAILABLE, structural=1 binding=1 provenance=0', async () => {
+        await assertIntegration({
+          validatorSource: buildValidatorModule({
+            structuralBody: STRUCTURAL_VALID,
+            bindingBody: 'const { proxy, revoke } = Proxy.revocable({ ok: true, errors: [] }, {}); revoke(); return proxy;'
+          }),
+          expected: { result: SOURCE_VALIDATION_RESULTS.UNAVAILABLE, structural: 1, binding: 1, provenance: 0 }
+        });
+      });
+
+      it('M8-proxy. Proxy errors array -> UNAVAILABLE, traps=0 structural=1 binding=1 provenance=0', async () => {
+        await assertIntegration({
+          validatorSource: buildValidatorModule({
+            decls: 'let proxyTraps = 0;',
+            structuralBody: STRUCTURAL_VALID,
+            bindingBody: `const proxyArr = new Proxy({}, {
+  get() { proxyTraps += 1; return Reflect.get(...arguments); }
+});
+return { ok: true, errors: proxyArr };`,
+            extraExports: ',\n  getProxyTraps: () => proxyTraps'
+          }),
+          expected: {
+            result: SOURCE_VALIDATION_RESULTS.UNAVAILABLE, structural: 1, binding: 1, provenance: 0,
+            extraChecks: (mod) => assert.strictEqual(mod.getProxyTraps(), 0)
+          }
+        });
       });
     });
   });

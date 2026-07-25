@@ -625,6 +625,5 @@ module.exports = {
   createMigrationSourceValidationAdapter,
   validateSourceConfiguration,
   validatePreconditionRegistry,
-  validateRegistryManifestBinding,
-  parseRegistryValidatorResult
+  validateRegistryManifestBinding
 };
