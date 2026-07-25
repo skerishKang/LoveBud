@@ -1,35 +1,73 @@
 # Agent Operation Guardrails
 
-This document defines operational guidance for LoveBud agents when a broad `AGENTS.md` rule can be misread as a reason to avoid required work.
+This document defines operational guidance for LoveBud agents when broad repository rules can be misread as a reason to avoid required work or when implementation, validation, and final approval roles can be confused.
 
-`AGENTS.md` should remain the entrypoint and index. Detailed behavior rules should live in focused project/ops/engineering documents like this one.
+`AGENTS.md` remains the repository-wide entrypoint. Detailed execution-role behavior lives in focused project documents.
+
+> **Canonical precedence:** `docs/ops/MVP_AGENT_GOVERNANCE.md` is the source of truth for hard blockers, CI classification, browser permission, dirty-worktree handling, and merge governance. This document defines safe operating behavior and role boundaries; it does not add new hard blockers.
+
+> **Role model:** `WEB_CTO_WEB_DEVELOPER_LOCAL_VALIDATION.md` is the focused source of truth for Web CTO, Web Developer, and Local Validation responsibilities approved in Issue #3662.
 
 ## Purpose
 
-Agents must be safe, but safety must not block legitimate repository inspection, implementation, and browser verification.
->
-> **Canonical precedence:** `docs/ops/MVP_AGENT_GOVERNANCE.md` (owner-approved #3442 comment `4947327550`) is the source of truth for blocker / allowed-by-default decisions. Browser tooling and routine work are allowed by default; only the 6 hard rules are mandatory. Conflicting sections are `NON_NORMATIVE_OUTSIDE_NAMED_CONTEXT`.
+Agents must be safe, but safety must not block legitimate repository inspection, implementation, testing, browser use, or evidence collection.
 
 The intended model is:
 
 - inspect the files needed for the authorized task;
-- do not print, paste, commit, screenshot, or summarize restricted values;
-- report only redacted status labels;
-- stop only when actual exposure or out-of-scope risk occurs.
+- use the stronger web context for planning and implementation;
+- use local execution for environment-dependent validation;
+- do not expose secrets or private payloads;
+- report exact evidence rather than unsupported completion claims;
+- stop only when actual exposure, destructive action, conflicting writers, or out-of-scope risk occurs.
+
+## Execution-role boundaries
+
+### Web CTO
+
+The Web CTO:
+
+- verifies current remote state;
+- defines objective, non-goals, allowed/forbidden paths, implementation shape, tests, and evidence;
+- may create prototypes, design references, copy, state diagrams, or patch drafts;
+- does not implement and finally approve the same production change in the same conversation/context;
+- returns after implementation and Local Validation for independent final review;
+- owns READY / CONDITIONALLY_READY / NOT_READY and expected-head squash-merge judgment.
+
+### Web Developer
+
+The Web Developer:
+
+- works in a separate web conversation/context;
+- implements code/tests/docs on a feature branch;
+- creates or updates the Draft PR;
+- inspects CI and fixes executed code failures;
+- submits exact SHA/diff/test evidence;
+- does not make final product or merge decisions.
+
+### Local Validation
+
+Local Validation:
+
+- checks out the exact PR head;
+- runs tests, build, browser, auth, database, provider, and OS-dependent verification;
+- returns raw evidence;
+- does not independently redesign or broadly rewrite production source;
+- makes only explicitly authorized minimal integration changes.
 
 ## File inspection versus secret exposure
 
-Security rules must not be interpreted as "do not open files".
+Security rules must not be interpreted as “do not open files.”
 
 Allowed:
 
-- Reading repository files needed for the task.
-- Reading local configuration files when required to understand file structure, key names, expected environment variables, or tool configuration.
-- Checking whether required files exist.
-- Checking whether required key names are present.
-- Loading approved local secret files into a process environment for authorized commands.
-- Using secrets through approved tools such as `gh`, `wrangler`, Firebase tooling, npm scripts, Playwright, or local test runners.
-- Reporting redacted statuses only, for example:
+- reading repository files needed for the task;
+- reading local configuration structure when required;
+- checking whether required files exist;
+- checking whether required key names are present;
+- loading approved local secret files into a process environment for authorized commands;
+- using secrets through approved tools such as `gh`, `wrangler`, Firebase tooling, npm scripts, Playwright, databases, or local test runners;
+- reporting redacted statuses only, for example:
   - `FILE_READ: YES`
   - `SECRET_FILE_EXISTS: YES`
   - `REQUIRED_KEYS_PRESENT: YES`
@@ -37,132 +75,268 @@ Allowed:
 
 Forbidden:
 
-- Printing raw secret values.
-- Printing partial secret values, prefixes, suffixes, or last characters.
-- Printing session, cookie, authorization header, private key, credential, database URL, or private identifier values.
-- Copying secret values into chat, logs, PR comments, issue comments, screenshots, docs, or commits.
-- Running commands whose purpose is to dump all environment variables or secret file contents to visible output.
-- Committing secret files or generated files that contain secret values.
+- printing raw or partial secret values;
+- printing credential prefixes, suffixes, or last characters;
+- printing session, cookie, authorization header, private key, credential, database URL, or private identifier values;
+- copying restricted values into chat, logs, PR comments, Issue comments, screenshots, docs, or commits;
+- running commands whose purpose is to dump all environment variables or secret-file contents to visible output;
+- committing secret files or generated files containing secret values.
 
 Clarification:
 
-- An agent may inspect files and commands to do the work.
-- The forbidden action is exposing restricted values, not reading ordinary source files or configuration structure.
-- If a file contains secrets, the agent should avoid displaying the value and report only presence/status.
-- If a secret is accidentally displayed, stop and report `SECURITY_INCIDENT_SECRET_EXPOSURE` without repeating the value.
+- the prohibited action is exposure, not ordinary inspection;
+- if a file contains secrets, avoid displaying values and report only presence/status;
+- if a secret is accidentally displayed, stop and report `SECURITY_INCIDENT_SECRET_EXPOSURE` without repeating the value.
 
-## Browser verification and fixed test slots
+## Browser verification and evidence levels
 
-Runtime-sensitive UI work must use the current fixed-slot verification policy.
+Browser tooling, login, navigation, DevTools, Playwright, screenshots, preview, fixed slot, localhost, and Production are allowed by default under canonical governance.
 
-This applies especially to:
+The environment determines evidence strength, not permission to work.
 
-- Browse / Search
-- Editor
-- My Trees
-- Auth / Login
-- `/api/*` dependent pages
-- Cloudflare Pages Functions dependent pages
-- Modal-dependent flows
-- Firebase session dependent flows
+```text
+LOCAL_EVIDENCE
+PRE_MERGE_EVIDENCE
+PRODUCTION_EVIDENCE
+```
 
-Required before final browser PASS:
+### LOCAL_EVIDENCE
 
-1. Deploy the exact PR head SHA or current-main target SHA to a fixed test slot.
-2. Confirm the slot URL.
-3. Confirm deployed SHA prefix match.
-4. Use a login-capable browser path when the page requires auth/session state.
-5. Report PASS / FAIL / NOT_VERIFIED / BLOCKED separately.
-6. Do not treat production or localhost-only verification as final pre-merge proof for these flows.
+Examples:
 
-## Test account handling
+- localhost;
+- local static server;
+- local API/backend/database;
+- authenticated local browser profile.
 
-For browser verification that requires login, agents should use the latest approved test account source.
+Dynamic pages may have evidence limitations on localhost. Report the limitation rather than declaring an automatic blocker.
 
-Rules:
+### PRE_MERGE_EVIDENCE
 
-- Use the current approved QA/test credential source before assuming auth is blocked.
-- Do not print credential values.
-- Report only `APPROVED_QA_CREDENTIAL_SOURCE_USED: YES/NO`.
-- If the approved test account no longer works, attempt the approved signup or test-account refresh path if that is in scope.
-- If a new test account is created, record it only in the approved local test-account file or approved secret store.
-- Never commit test credential values.
-- Never write test credential values into PR comments, issue comments, docs, screenshots, logs, or chat.
-- Report only redacted state:
-  - `TEST_ACCOUNT_LOGIN: PASS`
-  - `TEST_ACCOUNT_LOGIN: FAIL`
-  - `TEST_ACCOUNT_REFRESHED: YES`
-  - `TEST_ACCOUNT_FILE_UPDATED: YES`
+Examples:
 
-If the test account file path is provided, agents may use that file locally. They must not print its contents.
+- PR Preview;
+- branch preview;
+- fixed slot;
+- disposable test environment.
+
+When pre-merge browser evidence is explicitly assigned, verify:
+
+- exact deployed PR head or target SHA;
+- URL provenance;
+- login/session requirements;
+- requested desktop/mobile viewports;
+- console/network/API status;
+- PASS / FAIL / PARTIAL / NOT_VERIFIED separately.
+
+Preview or fixed-slot absence is not an automatic blocker.
+
+### PRODUCTION_EVIDENCE
+
+Production evidence is collected after merge/deploy from the exact main SHA reflected at `https://lovebud.pages.dev/`.
+
+The current default for UI/Auth/runtime final visual acceptance is merge-first Production verification. Agents should not search for preview URLs or deploy fixed slots unless the Web CTO contract assigns that evidence.
+
+## Test-account handling
+
+For browser verification requiring login:
+
+- use the latest approved QA/test credential source;
+- do not print credential values;
+- report only `APPROVED_QA_CREDENTIAL_SOURCE_USED: YES/NO`;
+- if the approved account fails, use the authorized refresh/signup path when in scope;
+- store new account information only in the approved local secret source;
+- never write credentials into PRs, Issues, docs, screenshots, logs, or chat.
+
+Approved redacted labels include:
+
+```text
+TEST_ACCOUNT_LOGIN: PASS
+TEST_ACCOUNT_LOGIN: FAIL
+TEST_ACCOUNT_REFRESHED: YES
+TEST_ACCOUNT_FILE_UPDATED: YES
+```
 
 ## Parallel model and prompt hygiene
 
-LoveBud often uses multiple models or executors in parallel. Agents must avoid duplicate or conflicting prompts.
+LoveBud may use multiple computers and sessions in parallel.
 
 Rules:
 
-- Before issuing a new executor prompt, check whether the same PR/issue already has an active prompt or recent report.
-- Do not send two different agents the same implementation task unless the user explicitly asks for parallel execution.
-- Do not give a verification executor a coding prompt.
-- Do not give a coding executor a merge/finalization prompt.
-- If another executor is already working on the same PR/issue, report that status instead of generating another overlapping prompt.
-- If parallel work is intentional, split by non-overlapping files, surfaces, or responsibilities.
+- check whether the same PR/Issue already has an active Web Developer or Local Validation session;
+- do not assign two active writers to the same remote branch;
+- do not send a coding prompt to Local Validation;
+- do not send a merge/finalization prompt to the Web Developer;
+- split parallel work by non-overlapping branches, worktrees, files, surfaces, or responsibilities;
+- report the active writer, branch, worktree, file ownership, and expected merge order;
+- re-check remote head immediately before push;
+- do not push the same remote branch simultaneously from two computers.
 
-Recommended report labels:
+Recommended labels:
 
-- `NO_ACTIVE_DUPLICATE_PROMPT_FOUND`
-- `ACTIVE_EXECUTOR_ALREADY_ASSIGNED`
-- `PROMPT_WITHHELD_DUPLICATE_RISK`
-- `PARALLEL_SAFE_SPLIT_DEFINED`
+```text
+NO_ACTIVE_DUPLICATE_PROMPT_FOUND
+ACTIVE_EXECUTOR_ALREADY_ASSIGNED
+PROMPT_WITHHELD_DUPLICATE_RISK
+PARALLEL_SAFE_SPLIT_DEFINED
+REMOTE_BRANCH_SINGLE_WRITER_CONFIRMED
+```
 
 ## Out-of-scope user input handling
 
-When the user provides content that does not match the active PR/issue/task, do not silently switch scope.
+When user input does not match the active PR/Issue/task:
 
-Rules:
+- do not silently switch scope;
+- if the user clearly requests a switch, record the new target and proceed;
+- if a pasted report belongs to another PR/Issue, call out the mismatch;
+- do not merge, close, ready, deploy, or modify another scope without explicit direction;
+- preserve the current branch/worktree state when switching contexts.
 
-- If the active task is PR-specific and the user provides unrelated work, ask once for confirmation before changing task.
-- If the user clearly says "next", "switch", "do this instead", or gives an explicit new target, proceed with the new target after recording the switch.
-- If the pasted report appears to belong to a different PR/issue than the active one, call out the mismatch and ask whether to treat it as a task switch.
-- Do not merge, close, ready, deploy, or create PRs for a different scope without explicit confirmation.
-
-Standard confirmation:
+Standard confirmation when needed:
 
 > This appears to be about PR/Issue X, while the active task is PR/Issue Y. Should I switch scope to X?
 
-## Implementation handoff guidance
+## Web CTO implementation contract
 
-For coding tasks, the lead/CTO agent should provide enough implementation shape that a lower-capability local executor can implement safely.
+Before Web Developer coding, the Web CTO should provide:
 
-Include when useful:
+```text
+Repository
+Issue / PR
+Base branch
+Exact base SHA
+Target branch
+Objective
+User-visible outcome
+Non-goals
+Allowed paths
+Forbidden paths
+Required implementation shape
+Required tests
+Required local/browser evidence
+Acceptance criteria
+Protected Issues
+Stop conditions
+Final report format
+```
 
-- target files;
-- files not to touch;
-- existing DOM IDs/classes/functions/event handlers to preserve;
-- expected DOM structure or expected implementation shape;
-- pseudo diff or patch draft;
-- required cache-key or script-order changes;
-- verification commands;
-- fixed-slot/browser verification requirement;
-- explicit non-goals and stop conditions.
+For UI work, include when useful:
 
-Do not use a pseudo diff as permission for broad rewrites. The implementation executor must still inspect the latest current file state and apply the smallest safe change.
+- target desktop/mobile structure;
+- existing IDs/classes/functions/handlers to preserve;
+- expected DOM ownership;
+- state transitions;
+- exact copy;
+- CSS tokens, motion, breakpoints;
+- target screenshot or standalone prototype.
 
-Standard handoff language:
+Do not ask the Web Developer or Local Validation to invent an unspecified product or visual direction.
 
-> Provide an expected implementation shape before coding. Reuse existing IDs, handlers, and DOM contracts whenever possible. Do not create parallel controls or duplicate event paths unless explicitly required. Treat pseudo diff as guidance, not as permission for broad rewrites.
+## Web Developer handoff to Local Validation
+
+The Web Developer should provide:
+
+```text
+PR number
+Remote branch
+Exact head SHA
+Expected base/main SHA
+Worktree instructions
+Commands to execute
+Expected pass/fail behavior
+Browser routes/URLs
+Auth requirements
+Viewport requirements
+Console/network expectations
+Evidence to collect
+Authorized local changes
+Forbidden destructive commands
+```
+
+The handoff must distinguish:
+
+- implementation tests already executed;
+- CI state;
+- environment evidence still required;
+- known limitations;
+- pristine-main failures already identified.
+
+## Local Validation failure return
+
+When a source correction is required, Local Validation should return:
+
+```text
+exact tested SHA
+command
+relevant raw error
+reproduction steps
+expected behavior
+actual behavior
+browser viewport/auth state
+console/network/API result
+local source files modified: NONE or exact list
+```
+
+Local Validation should not turn a failing test into a broad local rewrite.
+
+## Direct GitHub implementation and patch-package fallback
+
+Direct feature-branch implementation by the separate Web Developer is the default.
+
+When direct GitHub implementation is unsuitable, use a patch package:
+
+```text
+change-package/
+├─ files/
+├─ changes.patch
+├─ MANIFEST.json
+├─ APPLY.md
+├─ TEST_PLAN.md
+└─ REVIEW_NOTES.md
+```
+
+The package must preserve repository-relative paths and exact base SHA. Local Validation applies and tests it; it does not redesign the patch.
+
+## Dirty worktree and artifact hygiene
+
+A dirty worktree is not an automatic blocker.
+
+```text
+dirty worktree discovered
+→ preserve existing changes
+→ use another worktree/branch or read-only inspection
+→ do not clean/reset/stash-drop/overwrite
+```
+
+Local screenshots, reports, backups, and artifacts should remain outside the repository unless the task explicitly requires committed fixtures.
+
+Task-specific untracked debris may be removed individually after confirming ownership. Do not use `git clean`.
 
 ## Completion standard
 
-A task is not complete merely because a local command passed.
+A task is not complete merely because a command passed or a developer reported success.
 
-Completion reports must separate:
+Reports must separate:
 
-- code changed versus already present on main;
-- local checks versus browser/fixed-slot checks;
-- verified versus not verified;
-- implementation done versus merge candidate;
-- merge done versus issue closure disposition.
+- code changed versus already present;
+- exact baseline and final remote SHA;
+- local checks versus CI checks versus browser evidence;
+- pristine-main failures versus branch-only failures;
+- verified versus unverified;
+- implementation done versus local validation done;
+- merge candidate versus merged;
+- merged versus Issue closure disposition.
 
-For runtime-sensitive work, fixed-slot/SHA-match evidence strengthens the claim (PRODUCTION_EVIDENCE / PRE_MERGE_EVIDENCE) but its absence is not an automatic BLOCKED; report the evidence limitation. Browser tooling itself is allowed by default (canonical policy).
+The Web CTO final review must use remote evidence and the pre-fixed contract, not only the summaries from the Web Developer or Local Validation.
+
+## Related documents
+
+- `docs/ops/MVP_AGENT_GOVERNANCE.md`
+- `docs/project/WEB_CTO_WEB_DEVELOPER_LOCAL_VALIDATION.md`
+- `docs/project/ROLE_SESSION_TEMPLATES.md`
+- `docs/project/PROJECT_OPERATING_MODEL.md`
+- `docs/project/REPORTING_CHAIN.md`
+- `docs/project/LOCAL_MODEL_WORKFLOW.md`
+
+Refs #3662.  
+Refs #1882 — Keep OPEN.
