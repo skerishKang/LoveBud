@@ -147,8 +147,8 @@ test('U0 and U1 are explicitly de-escalated from ceremonial process', () => {
   assert.match(combined, /U0\/U1 skip Local Validation by default/i);
   assert.match(combined, /do not require a new child Issue|new Issue is not required/i);
   assert.match(combined, /do not require unrelated full-suite tests|Unrelated full-suite commands must not/i);
-  assert.match(combined, /pre-merge screenshots.*optional|screenshots.*not.*universal/i);
-  assert.match(combined, /fixed slot.*not.*permission gate|fixed slot.*optional/i);
+  assert.match(combined, /do not require[^\n]*pre-merge screenshots|pre-merge screenshots are optional/i);
+  assert.match(combined, /do not require[^\n]*fixed slot|fixed slot.*not.*permission gate|fixed slot.*optional/i);
 });
 
 test('U2 and U3 retain structural and runtime evidence', () => {
