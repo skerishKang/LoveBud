@@ -741,4 +741,105 @@ describe('DB precondition registry source validation contract (#3659)', () => {
       assert.strictEqual(validatePlainObjectShape(proxy, ALLOWED_TOP_LEVEL_KEYS), false);
     });
   });
+
+  describe('G. Corrected hostile boundaries', () => {
+    it('G1. binding rejects manifest accessor with getter execution 0', () => {
+      let getterCalls = 0;
+      const manifest = Object.create(null, {
+        status: {
+          get() {
+            getterCalls += 1;
+            return 'ADOPTION_REQUIRED';
+          },
+          enumerable: true
+        },
+        migrations: { value: [], enumerable: true }
+      });
+      const result = validateRegistryManifestBinding(validRegistry(), manifest);
+      assert.ok(!result.ok);
+      assert.strictEqual(getterCalls, 0);
+    });
+
+    async function assertProxyErrorsArrayBoundary(stage) {
+      const fs = require('node:fs');
+      const os = require('node:os');
+      const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'lovebud-registry-result-boundary-'));
+      const scriptsDir = path.join(tmpDir, 'scripts');
+      fs.mkdirSync(scriptsDir, { recursive: true });
+
+      const adapterSource = fs.readFileSync(path.join(REPO_ROOT, 'scripts', 'migration-source-validation-adapter-core.cjs'), 'utf8');
+      const provenanceSource = fs.readFileSync(path.join(REPO_ROOT, 'scripts', 'migration-provenance-core.cjs'), 'utf8');
+      const structuralBody = stage === 'structural'
+        ? 'return { ok: true, errors: proxyErrors };'
+        : 'return { ok: true, errors: [] };';
+      const bindingBody = stage === 'binding'
+        ? 'return { ok: true, errors: proxyErrors };'
+        : 'return { ok: true, errors: [] };';
+      const validatorSource = `'use strict';
+let structuralCalls = 0;
+let bindingCalls = 0;
+let trapCount = 0;
+const proxyErrors = new Proxy([], {
+  get(target, key, receiver) { trapCount += 1; return Reflect.get(target, key, receiver); },
+  has(target, key) { trapCount += 1; return Reflect.has(target, key); },
+  getOwnPropertyDescriptor(target, key) { trapCount += 1; return Reflect.getOwnPropertyDescriptor(target, key); }
+});
+function validatePreconditionRegistry() { structuralCalls += 1; ${structuralBody} }
+function validateRegistryManifestBinding() { bindingCalls += 1; ${bindingBody} }
+module.exports = {
+  validatePreconditionRegistry,
+  validateRegistryManifestBinding,
+  getStructuralCalls: () => structuralCalls,
+  getBindingCalls: () => bindingCalls,
+  getTrapCount: () => trapCount
+};
+`;
+
+      fs.writeFileSync(path.join(scriptsDir, 'migration-source-validation-adapter-core.cjs'), adapterSource, 'utf8');
+      fs.writeFileSync(path.join(scriptsDir, 'migration-provenance-core.cjs'), provenanceSource, 'utf8');
+      fs.writeFileSync(path.join(scriptsDir, 'migration-precondition-registry-validator-core.cjs'), validatorSource, 'utf8');
+
+      const adapterPath = path.join(scriptsDir, 'migration-source-validation-adapter-core.cjs');
+      const validatorPath = path.join(scriptsDir, 'migration-precondition-registry-validator-core.cjs');
+      delete require.cache[require.resolve(adapterPath)];
+      delete require.cache[require.resolve(validatorPath)];
+      const tempAdapterModule = require(adapterPath);
+      const validatorModule = require(validatorPath);
+      let provenanceCalls = 0;
+      const adapter = tempAdapterModule.createMigrationSourceValidationAdapter({
+        loadFixedSources: () => ({
+          status: tempAdapterModule.SOURCE_LOAD_STATUSES.LOADED,
+          inventoryText: '{}',
+          migrationManifestText: JSON.stringify(adopterRequiredManifest()),
+          expectedSchemaManifestText: '{}',
+          preconditionRegistryText: JSON.stringify(validRegistry())
+        }),
+        validateSourceConfiguration: () => {
+          provenanceCalls += 1;
+          return { ok: true };
+        }
+      });
+
+      try {
+        const result = await adapter.validateSource({ targetMigrationId: 'test' });
+        assert.deepStrictEqual(result, tempAdapterModule.SOURCE_VALIDATION_RESULTS.UNAVAILABLE);
+        assert.strictEqual(validatorModule.getStructuralCalls(), 1);
+        assert.strictEqual(validatorModule.getBindingCalls(), stage === 'structural' ? 0 : 1);
+        assert.strictEqual(provenanceCalls, 0);
+        assert.strictEqual(validatorModule.getTrapCount(), 0);
+      } finally {
+        delete require.cache[require.resolve(adapterPath)];
+        delete require.cache[require.resolve(validatorPath)];
+        fs.rmSync(tmpDir, { recursive: true, force: true });
+      }
+    }
+
+    it('G2. structural actual Proxy errors array -> UNAVAILABLE, traps 0', async () => {
+      await assertProxyErrorsArrayBoundary('structural');
+    });
+
+    it('G3. binding actual Proxy errors array -> UNAVAILABLE, traps 0', async () => {
+      await assertProxyErrorsArrayBoundary('binding');
+    });
+  });
 });
