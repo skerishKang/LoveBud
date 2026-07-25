@@ -179,11 +179,10 @@ test('entrypoints do not restore Local as the default coder for U0/U1', () => {
   }
 });
 
-test('entrypoints do not restore universal full-suite or fixed-slot gates for U0/U1', () => {
+test('entrypoints do not restore universal full-suite, fixed-slot, or screenshot gates for U0/U1', () => {
+  const forbidden = /U0\/U1[^\n]{0,240}(must use full suite|full suite is required|required fixed slot|fixed slot is required|screenshots are required)/i;
   for (const rel of [PATHS.agents, PATHS.kilo, PATHS.uiLane, PATHS.prChecklist, PATHS.mergeFirst, PATHS.verification]) {
-    const src = read(rel);
-    assert.doesNotMatch(src, /U0\/U1[^\n]{0,240}(full suite|required fixed slot|fixed slot required|screenshots required)/i,
-      `${rel} must keep U0/U1 risk-proportional`);
+    assert.doesNotMatch(read(rel), forbidden, `${rel} must keep U0/U1 risk-proportional`);
   }
 });
 
