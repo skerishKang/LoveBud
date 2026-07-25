@@ -153,9 +153,11 @@ test('U0 and U1 are explicitly de-escalated from ceremonial process', () => {
 
 test('U2 and U3 retain structural and runtime evidence', () => {
   const lane = read(PATHS.uiLane);
-  assert.match(section(lane, '## 5. U2 — Structural UI', '## 6. U3 — Runtime-sensitive UI'), /focused.*test/i);
-  assert.match(lane, /conditional Local Validation/i);
-  assert.match(section(lane, '## 6. U3 — Runtime-sensitive UI', '## 7. Escalation triggers'), /full separated execution model|full relevant runtime/i);
+  const u2 = section(lane, '## 5. U2 — Structural UI', '## 6. U3 — Runtime-sensitive UI');
+  const u3 = section(lane, '## 6. U3 — Runtime-sensitive UI', '## 7. Escalation triggers');
+  assert.match(u2, /focused.*test/i);
+  assert.match(u2, /Local Validation only when.*needs local\/browser evidence|conditional.*Local Validation/is);
+  assert.match(u3, /full separated execution model|full relevant runtime/i);
 });
 
 test('current entrypoints link canonical governance and current role/UI policy', () => {
