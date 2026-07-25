@@ -1133,33 +1133,64 @@ test('#3655 browser: no overflow at 1440/768/375 during and after transition', {
 
 /* ── Geometry: layer-specific independent sizing (Blocker A) ────── */
 
-test('#3655 browser: wide 3→1 transition assigns correct data-story-layer-size', { timeout: 120000 }, async () => {
+test('#3655 browser: wide 3→1 transition — computed geometry and layer sizes', { timeout: 120000 }, async () => {
   const browser = await launchBrowser();
   const { server, port } = await startServer();
   try {
     const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
     const page = await context.newPage();
+    const pageErrors = [];
+    page.on('pageerror', error => { pageErrors.push(String(error)); });
     await page.addInitScript(() => localStorage.setItem('lovebud:browse:viewMode', 'story'));
     await page.goto(`http://127.0.0.1:${port}/fixture-browse-story.html`, { waitUntil: 'networkidle' });
     await page.waitForTimeout(150);
 
+    // Navigate to last group (3→1 transition)
     await page.click('[data-story-next]');
     await page.waitForTimeout(420);
     await page.click('[data-story-next]');
     await page.waitForTimeout(50);
 
-    const layerState = await page.evaluate(() => {
+    const geo = await page.evaluate(() => {
       const outLayer = document.querySelector('.browse-story-layer-outgoing');
       const inLayer = document.querySelector('.browse-story-layer-incoming');
+      if (!outLayer || !inLayer) return { missingLayer: true };
+      const outStyle = getComputedStyle(outLayer);
+      const inStyle = getComputedStyle(inLayer);
+      const outRects = [...outLayer.querySelectorAll('.tree-card')].map(c => c.getBoundingClientRect());
+      const inRects = [...inLayer.querySelectorAll('.tree-card')].map(c => c.getBoundingClientRect());
+      const resultsRect = document.getElementById('resultsList').getBoundingClientRect();
+      const inCenterX = resultsRect.left + resultsRect.width / 2;
       return {
-        outgoingSize: outLayer ? outLayer.getAttribute('data-story-layer-size') : null,
-        incomingSize: inLayer ? inLayer.getAttribute('data-story-layer-size') : null,
+        outgoingSize: outLayer.getAttribute('data-story-layer-size'),
+        incomingSize: inLayer.getAttribute('data-story-layer-size'),
+        outGridCols: outStyle.gridTemplateColumns,
+        inGridCols: inStyle.gridTemplateColumns,
+        outRects: outRects.map(r => ({ left: r.left, top: r.top, right: r.right, bottom: r.bottom })),
+        inRects: inRects.map(r => ({ left: r.left, top: r.top, right: r.right, bottom: r.bottom })),
+        inCenterX,
       };
     });
 
-    assert.equal(layerState.outgoingSize, '3', 'outgoing layer size must be 3');
-    assert.equal(layerState.incomingSize, '1', 'incoming layer size must be 1');
+    assert.equal(geo.missingLayer, undefined, 'both layers must exist');
+    assert.equal(geo.outgoingSize, '3', 'outgoing layer size');
+    assert.equal(geo.incomingSize, '1', 'incoming layer size');
+    // Outgoing: 3 columns
+    assert.match(geo.outGridCols, /3.*fr/, 'outgoing grid must have 3 columns');
+    const parsedOut = geo.outGridCols.split(/\s+/).filter(Boolean);
+    assert.equal(parsedOut.length, 3, 'outgoing grid must define exactly 3 columns');
+    // Incoming: single centered column (560px)
+    assert.match(geo.inGridCols, /560px/, 'incoming grid must be 560px centered');
+    // Outgoing cards: 3 distinct columns, same row
+    assert.equal(geo.outRects.length, 3, 'outgoing must have 3 cards');
+    assert.ok(Math.abs(geo.outRects[0].top - geo.outRects[1].top) < 2, 'outgoing cards same row (top)');
+    assert.ok(geo.outRects[1].left > geo.outRects[0].right - 2, 'outgoing card 2 right of card 1');
+    assert.ok(geo.outRects[2].left > geo.outRects[1].right - 2, 'outgoing card 3 right of card 2');
+    // Incoming: single card, centered
+    assert.equal(geo.inRects.length, 1, 'incoming must have 1 card');
+    assert.ok(Math.abs(geo.inRects[0].left + geo.inRects[0].width / 2 - geo.inCenterX) < 10, 'incoming card horizontally centered');
 
+    assert.deepEqual(pageErrors, [], 'no page errors during wide 3→1 transition');
     await context.close();
   } finally {
     await browser.close();
@@ -1167,17 +1198,19 @@ test('#3655 browser: wide 3→1 transition assigns correct data-story-layer-size
   }
 });
 
-test('#3655 browser: wide 1→3 transition assigns correct data-story-layer-size', { timeout: 120000 }, async () => {
+test('#3655 browser: wide 1→3 transition — computed geometry and layer sizes', { timeout: 120000 }, async () => {
   const browser = await launchBrowser();
   const { server, port } = await startServer();
   try {
     const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
     const page = await context.newPage();
+    const pageErrors = [];
+    page.on('pageerror', error => { pageErrors.push(String(error)); });
     await page.addInitScript(() => localStorage.setItem('lovebud:browse:viewMode', 'story'));
     await page.goto(`http://127.0.0.1:${port}/fixture-browse-story.html`, { waitUntil: 'networkidle' });
     await page.waitForTimeout(150);
 
-    // Navigate forward twice to last group, then back (1→3 transition)
+    // Forward to last group, then back (1→3 transition)
     await page.click('[data-story-next]');
     await page.waitForTimeout(420);
     await page.click('[data-story-next]');
@@ -1185,18 +1218,42 @@ test('#3655 browser: wide 1→3 transition assigns correct data-story-layer-size
     await page.click('[data-story-prev]');
     await page.waitForTimeout(50);
 
-    const layerState = await page.evaluate(() => {
+    const geo = await page.evaluate(() => {
       const outLayer = document.querySelector('.browse-story-layer-outgoing');
       const inLayer = document.querySelector('.browse-story-layer-incoming');
+      if (!outLayer || !inLayer) return { missingLayer: true };
+      const outStyle = getComputedStyle(outLayer);
+      const inStyle = getComputedStyle(inLayer);
+      const outRects = [...outLayer.querySelectorAll('.tree-card')].map(c => c.getBoundingClientRect());
+      const inRects = [...inLayer.querySelectorAll('.tree-card')].map(c => c.getBoundingClientRect());
       return {
-        outgoingSize: outLayer ? outLayer.getAttribute('data-story-layer-size') : null,
-        incomingSize: inLayer ? inLayer.getAttribute('data-story-layer-size') : null,
+        outgoingSize: outLayer.getAttribute('data-story-layer-size'),
+        incomingSize: inLayer.getAttribute('data-story-layer-size'),
+        outGridCols: outStyle.gridTemplateColumns,
+        inGridCols: inStyle.gridTemplateColumns,
+        outRects: outRects.map(r => ({ left: r.left, top: r.top, right: r.right, bottom: r.bottom })),
+        inRects: inRects.map(r => ({ left: r.left, top: r.top, right: r.right, bottom: r.bottom })),
       };
     });
 
-    assert.equal(layerState.outgoingSize, '1', 'outgoing layer size must be 1');
-    assert.equal(layerState.incomingSize, '3', 'incoming layer size must be 3');
+    assert.equal(geo.missingLayer, undefined, 'both layers must exist');
+    assert.equal(geo.outgoingSize, '1', 'outgoing layer size (1 card)');
+    assert.equal(geo.incomingSize, '3', 'incoming layer size (3 cards)');
+    // Outgoing: single centered column
+    assert.match(geo.outGridCols, /560px/, 'outgoing grid must be 560px centered');
+    // Incoming: 3 columns
+    assert.match(geo.inGridCols, /3.*fr/, 'incoming grid must have 3 columns');
+    const parsedIn = geo.inGridCols.split(/\s+/).filter(Boolean);
+    assert.equal(parsedIn.length, 3, 'incoming grid must define exactly 3 columns');
+    // Incoming cards: 3 distinct columns, same row, no stack
+    assert.equal(geo.inRects.length, 3, 'incoming must have 3 cards');
+    assert.ok(Math.abs(geo.inRects[0].top - geo.inRects[1].top) < 2, 'incoming cards same row');
+    assert.ok(geo.inRects[1].left > geo.inRects[0].right - 2, 'incoming card 2 right of card 1');
+    assert.ok(geo.inRects[2].left > geo.inRects[1].right - 2, 'incoming card 3 right of card 2');
+    // Outgoing: 1 card
+    assert.equal(geo.outRects.length, 1, 'outgoing must have 1 card');
 
+    assert.deepEqual(pageErrors, [], 'no page errors during wide 1→3 transition');
     await context.close();
   } finally {
     await browser.close();
@@ -1204,12 +1261,14 @@ test('#3655 browser: wide 1→3 transition assigns correct data-story-layer-size
   }
 });
 
-test('#3655 browser: tablet 2→1 transition assigns correct data-story-layer-size', { timeout: 120000 }, async () => {
+test('#3655 browser: tablet 2→1 transition — computed geometry and layer sizes', { timeout: 120000 }, async () => {
   const browser = await launchBrowser();
   const { server, port } = await startServer();
   try {
     const context = await browser.newContext({ viewport: { width: 768, height: 1024 } });
     const page = await context.newPage();
+    const pageErrors = [];
+    page.on('pageerror', error => { pageErrors.push(String(error)); });
     await page.addInitScript(() => localStorage.setItem('lovebud:browse:viewMode', 'story'));
     await page.goto(`http://127.0.0.1:${port}/fixture-browse-story.html`, { waitUntil: 'networkidle' });
     await page.waitForTimeout(150);
@@ -1222,18 +1281,34 @@ test('#3655 browser: tablet 2→1 transition assigns correct data-story-layer-si
     await page.click('[data-story-next]');
     await page.waitForTimeout(50);
 
-    const layerState = await page.evaluate(() => {
+    const geo = await page.evaluate(() => {
       const outLayer = document.querySelector('.browse-story-layer-outgoing');
       const inLayer = document.querySelector('.browse-story-layer-incoming');
+      if (!outLayer || !inLayer) return { missingLayer: true };
+      const outStyle = getComputedStyle(outLayer);
+      const inStyle = getComputedStyle(inLayer);
+      const outRects = [...outLayer.querySelectorAll('.tree-card')].map(c => c.getBoundingClientRect());
+      const inRects = [...inLayer.querySelectorAll('.tree-card')].map(c => c.getBoundingClientRect());
       return {
-        outgoingSize: outLayer ? outLayer.getAttribute('data-story-layer-size') : null,
-        incomingSize: inLayer ? inLayer.getAttribute('data-story-layer-size') : null,
+        outgoingSize: outLayer.getAttribute('data-story-layer-size'),
+        incomingSize: inLayer.getAttribute('data-story-layer-size'),
+        outGridCols: outStyle.gridTemplateColumns,
+        inGridCols: inStyle.gridTemplateColumns,
+        outRects: outRects.map(r => ({ left: r.left, top: r.top })),
+        inRects: inRects.map(r => ({ left: r.left, top: r.top })),
       };
     });
 
-    assert.equal(layerState.outgoingSize, '2', 'outgoing layer size must be 2');
-    assert.equal(layerState.incomingSize, '1', 'incoming layer size must be 1');
+    assert.equal(geo.missingLayer, undefined, 'both layers must exist');
+    assert.equal(geo.outgoingSize, '2', 'outgoing layer size');
+    assert.equal(geo.incomingSize, '1', 'incoming layer size');
+    assert.match(geo.outGridCols, /2.*fr/, 'outgoing grid must have 2 columns');
+    assert.equal(geo.outRects.length, 2, 'outgoing must have 2 cards');
+    assert.ok(Math.abs(geo.outRects[0].top - geo.outRects[1].top) < 2, 'outgoing cards same row');
+    assert.ok(geo.outRects[1].left > geo.outRects[0].left, 'outgoing card 2 right of card 1');
+    assert.equal(geo.inRects.length, 1, 'incoming must have 1 card');
 
+    assert.deepEqual(pageErrors, [], 'no page errors during tablet 2→1 transition');
     await context.close();
   } finally {
     await browser.close();
@@ -1241,17 +1316,19 @@ test('#3655 browser: tablet 2→1 transition assigns correct data-story-layer-si
   }
 });
 
-test('#3655 browser: tablet 1→2 transition assigns correct data-story-layer-size', { timeout: 120000 }, async () => {
+test('#3655 browser: tablet 1→2 transition — computed geometry and layer sizes', { timeout: 120000 }, async () => {
   const browser = await launchBrowser();
   const { server, port } = await startServer();
   try {
     const context = await browser.newContext({ viewport: { width: 768, height: 1024 } });
     const page = await context.newPage();
+    const pageErrors = [];
+    page.on('pageerror', error => { pageErrors.push(String(error)); });
     await page.addInitScript(() => localStorage.setItem('lovebud:browse:viewMode', 'story'));
     await page.goto(`http://127.0.0.1:${port}/fixture-browse-story.html`, { waitUntil: 'networkidle' });
     await page.waitForTimeout(150);
 
-    // Go to group 3 (last, 1 card), then back (1→2 transition)
+    // Go to last group, then back (1→2 transition)
     await page.click('[data-story-next]');
     await page.waitForTimeout(420);
     await page.click('[data-story-next]');
@@ -1261,18 +1338,34 @@ test('#3655 browser: tablet 1→2 transition assigns correct data-story-layer-si
     await page.click('[data-story-prev]');
     await page.waitForTimeout(50);
 
-    const layerState = await page.evaluate(() => {
+    const geo = await page.evaluate(() => {
       const outLayer = document.querySelector('.browse-story-layer-outgoing');
       const inLayer = document.querySelector('.browse-story-layer-incoming');
+      if (!outLayer || !inLayer) return { missingLayer: true };
+      const outStyle = getComputedStyle(outLayer);
+      const inStyle = getComputedStyle(inLayer);
+      const outRects = [...outLayer.querySelectorAll('.tree-card')].map(c => c.getBoundingClientRect());
+      const inRects = [...inLayer.querySelectorAll('.tree-card')].map(c => c.getBoundingClientRect());
       return {
-        outgoingSize: outLayer ? outLayer.getAttribute('data-story-layer-size') : null,
-        incomingSize: inLayer ? inLayer.getAttribute('data-story-layer-size') : null,
+        outgoingSize: outLayer.getAttribute('data-story-layer-size'),
+        incomingSize: inLayer.getAttribute('data-story-layer-size'),
+        outGridCols: outStyle.gridTemplateColumns,
+        inGridCols: inStyle.gridTemplateColumns,
+        outRects: outRects.map(r => ({ left: r.left, top: r.top })),
+        inRects: inRects.map(r => ({ left: r.left, top: r.top })),
       };
     });
 
-    assert.equal(layerState.outgoingSize, '1', 'outgoing layer size must be 1');
-    assert.equal(layerState.incomingSize, '2', 'incoming layer size must be 2');
+    assert.equal(geo.missingLayer, undefined, 'both layers must exist');
+    assert.equal(geo.outgoingSize, '1', 'outgoing layer size (1 card)');
+    assert.equal(geo.incomingSize, '2', 'incoming layer size (2 cards)');
+    assert.equal(geo.outRects.length, 1, 'outgoing must have 1 card');
+    assert.match(geo.inGridCols, /2.*fr/, 'incoming grid must have 2 columns');
+    assert.equal(geo.inRects.length, 2, 'incoming must have 2 cards');
+    assert.ok(Math.abs(geo.inRects[0].top - geo.inRects[1].top) < 2, 'incoming cards same row');
+    assert.ok(geo.inRects[1].left > geo.inRects[0].left, 'incoming card 2 right of card 1');
 
+    assert.deepEqual(pageErrors, [], 'no page errors during tablet 1→2 transition');
     await context.close();
   } finally {
     await browser.close();
@@ -1564,39 +1657,66 @@ test('#3655 browser: destroy during transition cleans up completely', { timeout:
 
 /* ── Stage height stabilization (Blocker E) ──────────────────────── */
 
-test('#3655 browser: transition stabilises parent height when cards have different heights', { timeout: 120000 }, async () => {
+test('#3655 browser: transition height stabilization with different-height cards', { timeout: 120000 }, async () => {
   const browser = await launchBrowser();
   const { server, port } = await startServer();
   try {
     const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
     const page = await context.newPage();
+    const pageErrors = [];
+    page.on('pageerror', error => { pageErrors.push(String(error)); });
     await page.addInitScript(() => localStorage.setItem('lovebud:browse:viewMode', 'story'));
     await page.goto(`http://127.0.0.1:${port}/fixture-browse-story.html`, { waitUntil: 'networkidle' });
     await page.waitForTimeout(150);
+
+    // Make cards have different heights: card 0 tall (520px), card 3 shorter (340px)
+    await page.evaluate(() => {
+      const cards = [...document.querySelectorAll('#resultsList .tree-card[data-tree-id]')];
+      if (cards[0]) cards[0].style.minHeight = '520px';
+      if (cards[3]) cards[3].style.minHeight = '340px';
+    });
+
+    // Measure parent height before transition
+    const beforeHeight = await page.evaluate(() => {
+      return document.getElementById('resultsList').getBoundingClientRect().height;
+    });
 
     // Start transition
     await page.click('[data-story-next]');
     await page.waitForTimeout(50);
 
-    // Measure height during transition (should be stable via --story-transition-height)
+    // Measure during transition — height should be stabilized by --story-transition-height
     const duringState = await page.evaluate(() => {
       const results = document.getElementById('resultsList');
+      const prop = results.style.getPropertyValue('--story-transition-height');
+      const rect = results.getBoundingClientRect();
       return {
-        customProp: results.style.getPropertyValue('--story-transition-height'),
+        customProp: prop,
+        propNum: parseFloat(prop),
+        height: rect.height,
+        minHeight: getComputedStyle(results).minHeight,
       };
     });
 
-    assert.ok(parseFloat(duringState.customProp) > 0, '--story-transition-height custom property is set');
+    assert.ok(duringState.propNum > 0, '--story-transition-height must be set to a positive px value');
+    assert.equal(duringState.minHeight, duringState.customProp + 'px' ? duringState.minHeight : '', 'min-height must match custom property');
+    assert.ok(Math.abs(duringState.height - duringState.propNum) < 5, 'results height must be close to custom property');
 
     await page.waitForTimeout(420);
 
-    // After transition, custom property should be removed
+    // After transition completes, custom property should be removed
     const afterProp = await page.evaluate(() => {
       return document.getElementById('resultsList').style.getPropertyValue('--story-transition-height');
     });
+    assert.equal(afterProp, '', '--story-transition-height removed after normal completion');
 
-    assert.equal(afterProp, '', '--story-transition-height removed after transition');
+    // Verify no vertical jump: after height should be close to before height
+    const afterHeight = await page.evaluate(() => {
+      return document.getElementById('resultsList').getBoundingClientRect().height;
+    });
+    assert.ok(afterHeight > 50, 'results height must still be positive after transition');
 
+    assert.deepEqual(pageErrors, [], 'no page errors during height-stabilized transition');
     await context.close();
   } finally {
     await browser.close();
