@@ -400,6 +400,36 @@
       "notes": "Pure-JS provenance gate core. Contains DDL keyword strings only as detection/normalization data; opens no database, runs no SQL, uses no network/shell. Part of the canonical fail-closed gate direction. Detected by RULE_DDL_SCRIPT because of embedded DDL keywords; registered here to satisfy the guard."
     },
     {
+      "path": "scripts/migration-canonical-manifest-adapter-core.cjs",
+      "category": "provenance_tooling",
+      "engine": "none",
+      "operations": ["READ_ONLY", "VALIDATE"],
+      "canonical_status": "CANONICAL_CANDIDATE",
+      "destructive": false,
+      "production_capable": false,
+      "owner_or_issue": "database architecture / #3652 #3650 #3458",
+      "idempotency": "idempotent",
+      "execution_actor": "runner",
+      "automation": "automatic",
+      "ledger_candidate": "no",
+      "notes": "Source-only canonical-manifest loader adapter. Reads only the fixed repository canonical-migrations.json path, parses it once, snapshots descriptor values before delegating to validateMigrationManifest, and returns a frozen runner projection from captured values. Imports no database driver, opens no database connection, executes no SQL, uses no network or shell, and has no Production mutation capability. Detected by RULE_RUNNER_NAME because the basename contains 'migration'; registered here to satisfy the guard."
+    },
+    {
+      "path": "scripts/migration-source-validation-adapter-core.cjs",
+      "category": "provenance_tooling",
+      "engine": "none",
+      "operations": ["READ_ONLY", "VALIDATE"],
+      "canonical_status": "CANONICAL_CANDIDATE",
+      "destructive": false,
+      "production_capable": false,
+      "owner_or_issue": "database architecture / #3650 #3458",
+      "idempotency": "idempotent",
+      "execution_actor": "runner",
+      "automation": "automatic",
+      "ledger_candidate": "no",
+      "notes": "Source-only source-validation adapter. Reads only the three fixed repository JSON inputs, parses each once, delegates to validateSourceConfiguration, and returns the bounded PASS, FAIL, or UNAVAILABLE result. Imports no database driver, opens no database connection, executes no SQL, uses no network or shell, and has no Production mutation capability. Detected by RULE_RUNNER_NAME because the basename contains 'migration'; registered here to satisfy the guard."
+    },
+    {
       "path": "scripts/migration-runner-protocol-core.cjs",
       "category": "provenance_tooling",
       "engine": "none",
