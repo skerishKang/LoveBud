@@ -75,6 +75,8 @@ docs/architecture/db-postgres-ledger-adapter-contract.md
 
 Those paths are not changed by Issue #3678.
 
+For exact #3644 source-only compatibility, this decision does not claim those later children are approved or ready. The `evaluatePrecondition` adapter is **not** implemented. No SQL query, adapter, DB connection, or registry entry is added. No Production mutation occurs.
+
 The superseded Issue #3669 decision also stated:
 
 ```text
@@ -93,9 +95,10 @@ tests/contracts/db-migration-precondition-authority-loader-resolver-contract.tes
 docs/architecture/db-migration-precondition-authority-loader-resolver-contract.md
 tests/test-layer-classification.json
 docs/architecture/DB_MIGRATION_PROVENANCE_NEXT_CHILD_DECISION.md
+docs/architecture/db-schema-change-inventory.json
 ```
 
-No other path is authorized.
+No other path is authorized. The sixth file is limited to one source-only inventory entry for the loader-resolver core under the bounded Web CTO amendment recorded on Issue #3678 and PR #3681.
 
 ## Prohibited files and areas
 
@@ -152,7 +155,7 @@ Steps 1–4 complete. Step 5 evaluatePrecondition adapter selected. Steps 6–8 
 
 Issue #3678 is complete only when:
 
-1. the exact five-file boundary is preserved;
+1. the exact six-file boundary is preserved;
 2. the fixed registry loads by module-relative fixed path with lexical and realpath confinement;
 3. current inactive authority returns `ADOPTION_REQUIRED` without loading or inspecting the catalog;
 4. ACTIVE synthetic authority joins registry checks to catalog queries deterministically;
