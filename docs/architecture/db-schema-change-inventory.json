@@ -427,7 +427,22 @@
       "execution_actor": "runner",
       "automation": "automatic",
       "ledger_candidate": "no",
-      "notes": "Source-only source-validation adapter. Reads only the three fixed repository JSON inputs, parses each once, delegates to validateSourceConfiguration, and returns the bounded PASS, FAIL, or UNAVAILABLE result. Imports no database driver, opens no database connection, executes no SQL, uses no network or shell, and has no Production mutation capability. Detected by RULE_RUNNER_NAME because the basename contains 'migration'; registered here to satisfy the guard."
+      "notes": "Source-only source-validation adapter. Reads only the four fixed repository JSON inputs, parses each once, validates the inventory, canonical manifest, expected-schema manifest, and precondition registry through bounded source validators, and returns the bounded PASS, FAIL, or UNAVAILABLE result. Imports no database driver, opens no database connection, executes no SQL, uses no network or shell, and has no Production mutation capability. Detected by RULE_RUNNER_NAME because the basename contains 'migration'; registered here to satisfy the guard."
+    },
+    {
+      "path": "scripts/migration-precondition-registry-validator-core.cjs",
+      "category": "provenance_tooling",
+      "engine": "none",
+      "operations": ["READ_ONLY", "VALIDATE"],
+      "canonical_status": "CANONICAL_CANDIDATE",
+      "destructive": false,
+      "production_capable": false,
+      "owner_or_issue": "database architecture / #3659 #3657 #3650 #3458",
+      "idempotency": "idempotent",
+      "execution_actor": "runner",
+      "automation": "automatic",
+      "ledger_candidate": "no",
+      "notes": "Source-only precondition-registry structural and canonical-manifest binding validator. Validates only supplied in-memory repository evidence, rejects unsafe Proxy/accessor collections fail-closed, and performs no file loading, SQL execution, database connection, network, shell, or Production mutation. Detected by RULE_RUNNER_NAME because the basename contains 'migration'; registered here to satisfy the guard."
     },
     {
       "path": "scripts/migration-runner-protocol-core.cjs",
