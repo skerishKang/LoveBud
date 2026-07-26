@@ -319,6 +319,20 @@ test('Story animation uses bidirectional 8% translate with exit + enter keyframe
     assert.equal(/browse-story[\s\S]*?translateX\([2-9]00px/.test(viewModeCss), false);
 });
 
+test('Story transition wrapper owns motion without nested entering-card animation', () => {
+    const scopedOverride = viewModeCss.match(
+        /#resultsList\[data-tree-view-mode="story"\]\s+\.browse-story-transition-stage\s+\.tree-card\.is-story-entering\s*\{([^}]*)\}/
+    );
+    assert.ok(scopedOverride, 'transition-stage entering-card override must be Browse Story scoped');
+    assert.match(scopedOverride[1], /(?:^|;)\s*animation:\s*none\s*;/);
+    assert.match(scopedOverride[1], /(?:^|;)\s*transform:\s*none\s*;/);
+    assert.match(viewModeCss, /\.browse-story-layer-incoming\s*\{[^}]*animation:\s*browse-story-enter-next\b/);
+    assert.match(viewModeCss, /@keyframes browse-story-enter-next\s*\{[\s\S]*?translateX\(8%\)/);
+    assert.match(viewModeCss, /@keyframes browse-story-enter-prev\s*\{[\s\S]*?translateX\(-8%\)/);
+    assert.match(viewModeCss, /@keyframes browse-story-exit-next\s*\{[\s\S]*?translateX\(-8%\)/);
+    assert.match(viewModeCss, /@keyframes browse-story-exit-prev\s*\{[\s\S]*?translateX\(8%\)/);
+});
+
 /* ── 6) Cross-cutting prohibitions ──────────────────────────────────── */
 test('21. no mode=edit anywhere in the Story surface', () => {
     assert.equal(storyModule.includes('mode=edit'), false);

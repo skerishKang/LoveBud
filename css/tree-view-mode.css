@@ -1042,6 +1042,13 @@
     animation-name: browse-story-enter-prev;
 }
 
+#resultsList[data-tree-view-mode="story"]
+    .browse-story-transition-stage
+    .tree-card.is-story-entering {
+    animation: none;
+    transform: none;
+}
+
 /* ── Story responsive breakpoints ─────────────────────────────────
  * Safety nets matching the controller breakpoints
  * (>=1200 → 3, 768–1199 → 2, <768 → 1). The controller sets
