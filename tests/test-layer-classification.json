@@ -4595,6 +4595,12 @@
       "layer": "SOURCE_STATIC",
       "rationale": "Exercises scripts/migration-canonical-manifest-adapter-core.cjs (createMigrationCanonicalManifestAdapter and the returned loadManifest) using ONLY synthetic JavaScript mocks and isolated temp-filesystem fixtures (no pg, no PostgreSQL engine, no DB connection, no SQL execution, no network, no environment secret; SQL present only as contract strings with computed checksums) to assert the fixed single-file canonical manifest path (db/migration-provenance/canonical-migrations.json), the existing validateMigrationManifest policy delegation, exact six-field runner-only projection (id, checksum, depends_on, transaction_mode, risk_class, destructive_operations), full manifest order preservation, target-neutral behavior, deep detached frozen output, fixed public error constants (MIGRATION_CANONICAL_MANIFEST_UNAVAILABLE, MIGRATION_CANONICAL_MANIFEST_ADAPTER_INVALID_DEPENDENCY), stack/cause/path sanitization, verified realTarget direct read via realpath confinement, exactly-once read/parse/validator counts, genuine Promise only boundary (Proxy-wrapped Promise and arbitrary thenable rejection), descriptor snapshot boundaries for factory config and call envelope, Promise/Proxy/thenable hostile evidence, ADOPTION_REQUIRED inactive manifest acceptance, and orchestrator compatibility via the real runCanonicalMigration. No DB, SQL, PostgreSQL, Docker, Production, provider, or secret capability. Temp filesystem fixtures with copied adapter and provenance-core modules; default adapter validated against the current repository committed manifest.",
       "capabilities": []
+    },
+    {
+      "path": "tests/contracts/db-migration-precondition-registry-source-validation-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Validates the precondition registry schema (format_version, status=ADOPTION_REQUIRED/ACTIVE, entries), entry/check structure, forbidden authority keys, duplicate migration_id/check_id, boolean expected only, getter/Proxy trap safety, null/undefined safety, and cross-binding with canonical migration manifest (ADOPTION_REQUIRED to ADOPTION_REQUIRED, ACTIVE one-to-one, orphan/missing entry rejection) without database, network, SQL, Docker, or Production access (#3659).",
+      "capabilities": []
     }
   ],
   "supplemental": [
@@ -4750,6 +4756,12 @@
         "child_process",
         "filesystem"
       ]
+    },
+    {
+      "path": "tests/contracts/db-migration-precondition-registry-source-validation-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Validates the precondition registry schema (format_version, status=ADOPTION_REQUIRED/ACTIVE, entries), entry/check structure, forbidden authority keys, duplicate migration_id/check_id, boolean expected only, getter/Proxy trap safety, null/undefined safety, and cross-binding with canonical migration manifest (ADOPTION_REQUIRED↔ADOPTION_REQUIRED, ACTIVE one-to-one, orphan/missing entry rejection) without database, network, SQL, Docker, or Production access (#3659).",
+      "capabilities": []
     }
   ]
 }

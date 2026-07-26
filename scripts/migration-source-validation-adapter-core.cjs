@@ -3,16 +3,28 @@
 /**
  * Migration source-validation adapter — source-tested contract (#3650).
  *
- * Source-only adapter: reads three fixed repository JSON files via a loader,
+ * Source-only adapter: reads four fixed repository JSON files via a loader,
  * parses each exactly once, delegates to the existing `validateSourceConfiguration`
- * validator, and returns PASS|FAIL|UNAVAILABLE.
+ * validator plus the precondition registry validator, and returns
+ * PASS|FAIL|UNAVAILABLE.
  *
  * Supported loader/validator return types:
  *   - synchronous plain object
  *   - genuine native Promise (resolved to plain object)
  * Proxy-wrapped Promises and arbitrary thenables are not assimilated.
  *
+ * Sources:
+ *   1. docs/architecture/migration-path-inventory.json
+ *   2. db/migration-provenance/canonical-migrations.json
+ *   3. db/migration-provenance/expected-schema-manifest.json
+ *   4. db/migration-provenance/precondition-registry.json
+ *
  * Refs #3650
+ * Refs #3659
+ * Refs #3657
+ * Refs #3658
+ * Refs #3652
+ * Refs #3646
  * Refs #3458 - Keep #3458 OPEN.
  * Refs #3425 - Keep #3425 OPEN.
  * Refs #3435 - Keep #3435 OPEN.
@@ -24,6 +36,10 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { types: utilTypes } = require('node:util');
 const { validateSourceConfiguration } = require('./migration-provenance-core.cjs');
+const {
+  validatePreconditionRegistry,
+  validateRegistryManifestBinding
+} = require('./migration-precondition-registry-validator-core.cjs');
 
 const REPO_ROOT = path.resolve(__dirname, '..');
 
@@ -44,12 +60,18 @@ const FACTORY_ERROR_INVALID_DEPENDENCY = 'SOURCE_VALIDATION_ADAPTER_INVALID_DEPE
 const INVENTORY_RELATIVE = path.join('docs', 'architecture', 'migration-path-inventory.json');
 const CANONICAL_MIGRATIONS_RELATIVE = path.join('db', 'migration-provenance', 'canonical-migrations.json');
 const EXPECTED_SCHEMA_RELATIVE = path.join('db', 'migration-provenance', 'expected-schema-manifest.json');
+const PRECONDITION_REGISTRY_RELATIVE = path.join('db', 'migration-provenance', 'precondition-registry.json');
 
 const ALLOWED_CONFIG_KEYS = Object.freeze(['loadFixedSources', 'validateSourceConfiguration']);
 
-const LOADED_EXACT_KEYS = Object.freeze(['status', 'inventoryText', 'migrationManifestText', 'expectedSchemaManifestText']);
+const LOADED_EXACT_KEYS = Object.freeze([
+  'status', 'inventoryText', 'migrationManifestText',
+  'expectedSchemaManifestText', 'preconditionRegistryText'
+]);
 
 const INVALID_EXACT_KEYS = Object.freeze(['status']);
+
+const REGISTRY_VALIDATOR_RESULT_KEYS = Object.freeze(['ok', 'errors']);
 
 function isGenuinePromise(value) {
   try {
@@ -231,11 +253,23 @@ function defaultLoadFixedSources() {
     return { status: SOURCE_LOAD_STATUSES.UNAVAILABLE };
   }
 
+  const regReal = resolveConfinedRegularFile(PRECONDITION_REGISTRY_RELATIVE);
+  if (regReal === undefined) {
+    return { status: SOURCE_LOAD_STATUSES.UNAVAILABLE };
+  }
+  let regText;
+  try {
+    regText = fs.readFileSync(regReal, 'utf8');
+  } catch (e) {
+    return { status: SOURCE_LOAD_STATUSES.UNAVAILABLE };
+  }
+
   return {
     status: SOURCE_LOAD_STATUSES.LOADED,
     inventoryText: invText,
     migrationManifestText: migText,
-    expectedSchemaManifestText: schText
+    expectedSchemaManifestText: schText,
+    preconditionRegistryText: regText
   };
 }
 
@@ -280,12 +314,18 @@ function parseSnapshotLoaderResult(raw) {
   if (schDesc.desc.enumerable !== true) return { valid: false };
   if (typeof schDesc.desc.value !== 'string') return { valid: false };
 
+  const regDesc = descriptors.find((d) => d.key === 'preconditionRegistryText');
+  if (!regDesc || !('value' in regDesc.desc)) return { valid: false };
+  if (regDesc.desc.enumerable !== true) return { valid: false };
+  if (typeof regDesc.desc.value !== 'string') return { valid: false };
+
   return {
     valid: true,
     loadStatus: SOURCE_LOAD_STATUSES.LOADED,
     inventoryText: invDesc.desc.value,
     migrationManifestText: migDesc.desc.value,
-    expectedSchemaManifestText: schDesc.desc.value
+    expectedSchemaManifestText: schDesc.desc.value,
+    preconditionRegistryText: regDesc.desc.value
   };
 }
 
@@ -300,6 +340,95 @@ function parseValidatorResult(raw) {
 
   const ok = okDesc.desc.value;
   return { valid: true, ok };
+}
+
+/**
+ * Registry-validator-result parser (#3659).
+ *
+ * Enforces exact { ok: boolean, errors: string[] } shape.
+ * Proxy detection via utilTypes.isProxy() before any reflective
+ * inspection. No getter, Proxy trap, or code-path execution.
+ */
+function parseRegistryValidatorResult(raw) {
+  if (raw === null || typeof raw !== 'object') {
+    return { valid: false };
+  }
+
+  // Proxy rejection before any reflective operation
+  try {
+    if (utilTypes.isProxy(raw)) {
+      return { valid: false };
+    }
+  } catch {
+    return { valid: false };
+  }
+
+  // Array rejection
+  try {
+    if (Array.isArray(raw)) return { valid: false };
+  } catch {
+    return { valid: false };
+  }
+
+  // Prototype check
+  let proto;
+  try {
+    proto = Object.getPrototypeOf(raw);
+  } catch {
+    return { valid: false };
+  }
+  if (proto !== Object.prototype && proto !== null) return { valid: false };
+
+  // Descriptor snapshot: exact keys, own enumerable data only
+  const descriptors = safeOwnKeyDescriptors(raw);
+  if (descriptors === undefined) return { valid: false };
+
+  if (!keysMatchExactSet(descriptors, REGISTRY_VALIDATOR_RESULT_KEYS)) {
+    return { valid: false };
+  }
+
+  // ok must be boolean
+  const okDesc = descriptors.find((d) => d.key === 'ok');
+  if (!okDesc || !('value' in okDesc.desc)) return { valid: false };
+  if (typeof okDesc.desc.value !== 'boolean') return { valid: false };
+
+  // errors must be a non-Proxy dense array of own enumerable string values.
+  const errorsDesc = descriptors.find((d) => d.key === 'errors');
+  if (!errorsDesc || !('value' in errorsDesc.desc)) return { valid: false };
+  const errorsValue = errorsDesc.desc.value;
+
+  try {
+    if (utilTypes.isProxy(errorsValue)) return { valid: false };
+  } catch {
+    return { valid: false };
+  }
+
+  if (!Array.isArray(errorsValue)) return { valid: false };
+
+  let lengthDesc;
+  try {
+    lengthDesc = Object.getOwnPropertyDescriptor(errorsValue, 'length');
+  } catch {
+    return { valid: false };
+  }
+  if (!lengthDesc || !('value' in lengthDesc) || !Number.isSafeInteger(lengthDesc.value) || lengthDesc.value < 0) {
+    return { valid: false };
+  }
+
+  for (let i = 0; i < lengthDesc.value; i++) {
+    let itemDesc;
+    try {
+      itemDesc = Object.getOwnPropertyDescriptor(errorsValue, String(i));
+    } catch {
+      return { valid: false };
+    }
+    if (!itemDesc || !('value' in itemDesc) || itemDesc.enumerable !== true) {
+      return { valid: false };
+    }
+    if (typeof itemDesc.value !== 'string') return { valid: false };
+  }
+
+  return { valid: true, ok: okDesc.desc.value };
 }
 
 function createMigrationSourceValidationAdapter(config) {
@@ -424,6 +553,57 @@ function createMigrationSourceValidationAdapter(config) {
       return SOURCE_VALIDATION_RESULTS.FAIL;
     }
 
+    let preconditionRegistry;
+    try {
+      preconditionRegistry = JSON.parse(snapshot.preconditionRegistryText);
+    } catch (e) {
+      return SOURCE_VALIDATION_RESULTS.FAIL;
+    }
+
+    // Validate registry structure (with failure mapping)
+    let registryResult;
+    try {
+      registryResult = validatePreconditionRegistry(preconditionRegistry);
+    } catch (e) {
+      return SOURCE_VALIDATION_RESULTS.UNAVAILABLE;
+    }
+    if (isGenuinePromise(registryResult)) {
+      try {
+        registryResult = await registryResult;
+      } catch (e) {
+        return SOURCE_VALIDATION_RESULTS.UNAVAILABLE;
+      }
+    }
+    const regSnapshot = parseRegistryValidatorResult(registryResult);
+    if (!regSnapshot.valid) {
+      return SOURCE_VALIDATION_RESULTS.UNAVAILABLE;
+    }
+    if (!regSnapshot.ok) {
+      return SOURCE_VALIDATION_RESULTS.FAIL;
+    }
+
+    // Validate registry-manifest cross-binding (with failure mapping)
+    let bindingResult;
+    try {
+      bindingResult = validateRegistryManifestBinding(preconditionRegistry, migrationManifest);
+    } catch (e) {
+      return SOURCE_VALIDATION_RESULTS.UNAVAILABLE;
+    }
+    if (isGenuinePromise(bindingResult)) {
+      try {
+        bindingResult = await bindingResult;
+      } catch (e) {
+        return SOURCE_VALIDATION_RESULTS.UNAVAILABLE;
+      }
+    }
+    const bindSnapshot = parseRegistryValidatorResult(bindingResult);
+    if (!bindSnapshot.valid) {
+      return SOURCE_VALIDATION_RESULTS.UNAVAILABLE;
+    }
+    if (!bindSnapshot.ok) {
+      return SOURCE_VALIDATION_RESULTS.FAIL;
+    }
+
     let rawValidatorResult;
     try {
       rawValidatorResult = validatorFn({
@@ -469,5 +649,7 @@ module.exports = {
   SOURCE_LOAD_STATUSES,
   FACTORY_ERROR_INVALID_DEPENDENCY,
   createMigrationSourceValidationAdapter,
-  validateSourceConfiguration
+  validateSourceConfiguration,
+  validatePreconditionRegistry,
+  validateRegistryManifestBinding
 };
