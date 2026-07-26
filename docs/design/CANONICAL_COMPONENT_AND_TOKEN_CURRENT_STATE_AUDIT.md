@@ -193,3 +193,27 @@ The baseline already has credible shared foundations: runtime tokens, a Browse/M
 The smallest dependency-proving next child is a **canonical component/variant inventory contract**. It must define visual versus authority variants before token migration, Browse/My Trees convergence, visual-baseline harness work, or acceptance recording. See `CANONICAL_COMPONENT_AND_VISUAL_BASELINE_NEXT_CHILD_DECISION.md`.
 
 This audit is source-only and authorizes no implementation.
+
+## Post-audit baseline drift assessment
+
+| Field | Verified value |
+|---|---|
+| original audit baseline | `4beada4c8134afbdb791e98466db9ec1162f0a27` |
+| new main | `125c074f4ff6af84ed75f71f0a5b65d2432a57fb` |
+| drift source | PR #3675 |
+| UI/CSS/JS/page/template/asset changes | none confirmed |
+| audit conclusion impact | none, subject to exact source verification |
+
+The exact PR #3675 drift inventory is:
+
+```text
+db/migration-provenance/readonly-query-catalog.json
+docs/architecture/DB_MIGRATION_PROVENANCE_NEXT_CHILD_DECISION.md
+docs/architecture/db-migration-readonly-query-catalog-contract.md
+tests/contracts/db-migration-readonly-query-catalog-contract.test.cjs
+tests/test-layer-classification.json
+```
+
+The exact `4beada4c8134afbdb791e98466db9ec1162f0a27...125c074f4ff6af84ed75f71f0a5b65d2432a57fb` source comparison confirms no overlap with the audited UI, CSS, JavaScript, page, template, asset, component, or visual-baseline source boundaries. The historical audit baseline remains `4beada4c8134afbdb791e98466db9ec1162f0a27`; it is not replaced by the new main SHA.
+
+The audit conclusion is unchanged. No browser, screenshot, Preview, Production, runtime, Auth, API, database, cache, storage, or provider action was used to reach this bounded assessment.
