@@ -1,53 +1,123 @@
 # Branching and Review
 
-## 목적
+> **Role model:** `WEB_CTO_WEB_DEVELOPER_LOCAL_VALIDATION.md`
+> **UI fast lane:** `UI_RAPID_ITERATION_LANE.md`
+> **Governance:** `../ops/MVP_AGENT_GOVERNANCE.md`
 
-이 문서는 브랜치 작업, 리뷰, 완료 보고의 최소 기준을 정의합니다.
+## Core rules
 
-## 핵심 원칙
+- never edit or push directly to `main`;
+- use a feature branch and PR;
+- verify current remote state before writing;
+- preserve other workers' branches, worktrees, stashes, and uncommitted state;
+- one active writer per remote branch;
+- verify exact head before squash merge.
 
-- main 직접 수정 금지
-- 작업은 브랜치 단위로 수행
-- 병렬 작업 충돌 시 재확인 후 적용
+## Branch assignment
 
-## 브랜치명 확정 원칙
+The Web CTO may provide an exact existing branch or a proposed new branch. The Web Developer re-checks remote branches and open PRs before creating or reusing it.
 
-병렬 실행 모델이 여러 개일 때 CTO가 고정 브랜치명을 내려주면, 다른 모델의 브랜치 생성·push·PR 생성과 충돌을 뒤늦게 발견할 수 있습니다.
+For a new branch:
 
-따라서 새로운 작업의 브랜치명은 실행 모델이 작업 시작 시점의 실제 원격 상태를 확인한 뒤 확정합니다.
+1. verify current `main` and related open work;
+2. choose a descriptive unique branch;
+3. record exact base SHA;
+4. create the branch from that base;
+5. do not reuse a merged PR source branch.
 
-### CTO 지시 기준
+For an existing PR branch:
 
-- CTO는 새 작업 지시에서 브랜치명을 고정하지 않습니다.
-- 필요하면 작업 성격을 나타내는 접두어 예시만 제공합니다.
-  - 예: `cleanup/editor-*`, `refactor/search-*`, `docs/runtime-*`
-- 실행 모델은 예시를 최종 브랜치명으로 간주하지 않습니다.
-- 기존 브랜치 재사용은 CTO가 명시적으로 지시한 경우에만 허용합니다.
+- verify exact remote head;
+- do not create a parallel remote branch unless the contract requires it;
+- do not push if another active writer owns the branch;
+- use additive commits and fast-forward push only.
 
-### 실행 모델 브랜치 생성 기준
+## UI micro branches
 
-새 브랜치를 만들기 전 실행 모델은 반드시 아래를 확인합니다.
+U0/U1 work should use small, disposable branches and PRs.
 
-1. `git fetch origin --prune`
-2. 현재 브랜치가 `main` 또는 최신 `origin/main` 기준 작업 브랜치인지 확인
-3. open PR 목록 확인
-4. 원격 브랜치 목록 확인
-5. 후보 브랜치명이 이미 존재하는지 확인
-6. 충돌 가능성이 있으면 suffix를 붙여 새 이름 확정
-   - 예: `-v2`, `-retry-v1`, 날짜 suffix, 짧은 작업 식별자
+Examples:
 
-확정한 브랜치명은 보고서에 포함합니다.
+```text
+ui/copy-<surface>-<purpose>
+ui/visual-<surface>-<purpose>
+```
 
-### 금지 사항
+A new child Issue is not required for each micro branch. Reference the active product/UI objective when appropriate.
 
-- CTO가 예시로 든 브랜치명을 충돌 확인 없이 그대로 사용 금지
-- stale 로컬 브랜치에서 새 작업 시작 금지
-- merged PR의 source branch 이름 재사용 금지
-- 다른 모델이 작업 중인 브랜치에 임의 push 금지
-- push 이후 CTO 보고 전 임의 PR 생성 금지, 단 CTO가 사전에 PR 생성까지 승인한 경우는 예외
+Do not combine unrelated visual requests merely to avoid creating PRs. Small related copy/visual adjustments on the same surface may be batched when they share one visual acceptance pass.
 
-## 검증
+## PR state
 
-- 변경 범위 확인
-- 기능 영향 확인
-- 검증/미검증 분리 보고
+Draft-by-default is advisory. A PR may be Draft or Ready according to the contract. Ready state is not final product approval and never replaces Web CTO exact-head review.
+
+The Web Developer may create/update the PR but does not merge it. The Web CTO owns final merge judgment.
+
+## Review depth by risk
+
+### U0
+
+Review:
+
+- exact before/after copy;
+- changed files;
+- syntax/static safety;
+- no behavior change;
+- CI classification.
+
+### U1
+
+Review:
+
+- affected selectors/tokens and values;
+- page/shared scope;
+- no DOM/runtime/visibility change;
+- focused CSS/static evidence;
+- CI classification.
+
+### U2
+
+Review structural DOM/layout/responsive/accessibility contracts and required browser evidence.
+
+### U3 and backend/data/auth/security
+
+Use the full architecture, runtime, regression, Local Validation, and evidence review required by the contract.
+
+## Review outcomes
+
+```text
+READY
+CONDITIONALLY_READY
+NOT_READY
+```
+
+A report or test pass is evidence, not approval.
+
+## Push and conflict handling
+
+Before push:
+
+- fetch remote;
+- confirm remote branch head has not unexpectedly advanced;
+- verify changed files and diff scope;
+- do not force-push or rewrite shared history.
+
+If the remote branch advanced, stop and reconcile explicitly. Do not overwrite another writer.
+
+## Merge
+
+- classify CI under canonical governance;
+- confirm required evidence for the change class;
+- re-read PR head immediately before merge;
+- use expected-head squash merge;
+- never use closing language for #1882; use `Refs #1882` only.
+
+## Rapid correction after Production
+
+For U0/U1 visual misses, create a new micro branch/PR from current `main`, apply the exact correction, run focused checks, merge safely, and re-check Production.
+
+Do not force-push/reset `main`. Use a dedicated revert PR only when a small corrective PR is not safe.
+
+Refs #3664.
+Refs #3662.
+Refs #1882 — Keep OPEN.

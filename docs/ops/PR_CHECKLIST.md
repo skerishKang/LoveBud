@@ -1,281 +1,210 @@
-# Lovetree PR 체크리스트
+# LoveBud PR Checklist
 
-## 1. 공통 필수 체크리스트 (모든 PR)
+> **Hard governance:** `MVP_AGENT_GOVERNANCE.md`
+> **Role model:** `../project/WEB_CTO_WEB_DEVELOPER_LOCAL_VALIDATION.md`
+> **UI fast lane:** `../project/UI_RAPID_ITERATION_LANE.md`
 
-### Before PR
-- [ ] 변경된 파일이 의도한 범위인지 확인
-- [ ] console.log / debug 코드 제거 여부 확인
-- [ ] 커밋 메시지가 작업 내용을 명확히 설명하는가
+## 1. Every PR
 
-### Description 필수 항목
-```
-## 변경 요약
-- 무엇을 변경했는가
+### Baseline
 
-## 변경된 파일
-- src/xxx.js
-- pages/xxx.html
+- [ ] current `main`, PR base, merge base, and exact head verified;
+- [ ] related open PRs/Issues and active writer checked;
+- [ ] changed files are within scope;
+- [ ] no secrets/private payloads or unrelated artifacts;
+- [ ] protected Issue wording is correct;
+- [ ] #1882 uses `Refs #1882` only.
 
-## 영향 범위
-- 표준 페이지 (index, community, my-trees, lovetree)
-- 에디터 (editor.html)
-- shared 계층
+### PR description
 
-## Member Journey QA 영향
-- 적용 대상: AUTH / FIRST_TREE / MY_TREES / EDITOR / PUBLIC_VIEWER / MOBILE / ERROR_RECOVERY / N/A
-- Synthetic actor track: DEVELOPMENT_TESTING / USER_BEHAVIOR_TESTING / AI_MODEL_ACTIVITY / N/A
-- 적용 persona: docs/ops/MEMBER_JOURNEY_PERSONAS.md 기준으로 기재
-- 필요한 journey: docs/ops/MEMBER_JOURNEY_QA_SUITE.md 기준으로 기재
-- 테스트 데이터 상태: NEW_ACCOUNT / EXISTING_OWNER / PUBLIC_VIEWER_FIXTURE / CLEAN_SESSION / N/A
-- credential location label: LOCAL_SECRET_STORE / ENCRYPTED_QA_HANDOFF / APPROVED_PASSWORD_MANAGER / CTO_MANAGED_SECRET / UNKNOWN_CREDENTIALS / N/A
-- cleanup 필요 여부: YES / NO / NOT_AVAILABLE / N/A
-- fixed slot 필요 여부: YES / NO
-- 브라우저 검증 필요 여부: YES / NO
-
-## 실행한 테스트
-- [ ] tests/smoke.spec.js 통과
-- [ ] tests/editor-smoke.spec.js 통과
-- [ ] tests/editor-fieldvalue.spec.js 통과
-
-## 남은 리스크
-- 예상되는 문제점 (있다면)
-```
-
----
-
-## 2. Member Persona + Journey QA 매핑
-
-PR이 Auth, My Trees, Editor, Public Viewer, Browse/Search, 모바일 레이아웃, loading/error 상태에 영향을 주면 먼저 [MEMBER_JOURNEY_PERSONAS.md](MEMBER_JOURNEY_PERSONAS.md)에서 persona를 선택하고, 그 다음 [MEMBER_JOURNEY_QA_SUITE.md](MEMBER_JOURNEY_QA_SUITE.md)를 기준으로 필요한 journey를 PR 본문에 명시해야 합니다.
-
-계정을 생성하거나 AI/synthetic account를 사용하는 경우 [SYNTHETIC_ACTOR_ACCOUNT_STRATEGY.md](SYNTHETIC_ACTOR_ACCOUNT_STRATEGY.md)를 기준으로 track과 credential location label을 함께 기록해야 합니다.
-
-순서는 아래를 따릅니다.
+Include:
 
 ```text
-synthetic actor track -> persona -> journey -> issue/PR verification -> report
+Objective / user-visible outcome
+Risk or UI class
+Classification reason
+Changed files
+Behavior explicitly unchanged
+Focused tests and counts
+CI classification
+Local Validation: REQUIRED / NOT_REQUIRED / COMPLETED / PENDING
+Browser evidence: USED / NOT_USED / NOT_REQUIRED
+Production verification remaining
+Known limitations
+Exact head SHA
 ```
 
-### 필수 판단 항목
+### Before merge
 
-- [ ] 이 PR이 회원가입/로그인/로그아웃/세션 유지/보호 라우트에 영향을 주는가?
-- [ ] 이 PR이 첫 트리 또는 첫 순간 생성에 영향을 주는가?
-- [ ] 이 PR이 My Trees 로드/카드/열기/빈 상태에 영향을 주는가?
-- [ ] 이 PR이 Editor canvas/detail/add/edit/save/cancel에 영향을 주는가?
-- [ ] 이 PR이 Public Viewer 또는 public/private boundary에 영향을 주는가?
-- [ ] 이 PR이 모바일 375px 또는 wider mobile layout에 영향을 주는가?
-- [ ] 이 PR이 loading/empty/error/degraded/back recovery 상태에 영향을 주는가?
-- [ ] 이 PR이 테스트 데이터 생성/수정/정리 정책에 영향을 주는가?
-- [ ] 이 PR이 synthetic actor track 또는 AI model activity에 영향을 주는가?
-- [ ] 이 PR이 credential reuse / lost credential handling에 영향을 주는가?
+- [ ] remote cumulative diff reviewed;
+- [ ] changed files reviewed;
+- [ ] relevant CI state classified correctly;
+- [ ] required evidence for the change class is present;
+- [ ] exact expected head re-checked;
+- [ ] squash merge selected.
 
-### PR 유형별 기본 track + persona + journey
+## 2. UI classification
 
-| PR 영향 범위 | 기본 track | 기본 persona | 기본 요구 journey | 테스트 데이터 상태 |
-|--------------|------------|--------------|-------------------|--------------------|
-| Auth / protected route | `DEVELOPMENT_TESTING` 또는 `USER_BEHAVIOR_TESTING` | `PERSONA_A_FIRST_TIME_CREATOR` 또는 `PERSONA_B_RETURNING_OWNER` | `AUTH_SIGNUP_LOGIN_JOURNEY`, `LOGOUT_AND_PROTECTED_ROUTE_JOURNEY` | `NEW_ACCOUNT` 또는 `EXISTING_OWNER` |
-| First-create / persistence | `USER_BEHAVIOR_TESTING` | `PERSONA_A_FIRST_TIME_CREATOR` | `FIRST_TREE_CREATION_JOURNEY` | `NEW_ACCOUNT` |
-| My Trees | `USER_BEHAVIOR_TESTING` | `PERSONA_B_RETURNING_OWNER` | `MY_TREES_RETURNING_USER_JOURNEY` | `EXISTING_OWNER` |
-| Editor | `USER_BEHAVIOR_TESTING` | `PERSONA_B_RETURNING_OWNER` | `EDITOR_MOMENT_EDITING_JOURNEY` | `EXISTING_OWNER` |
-| Public Viewer / read-only route | `USER_BEHAVIOR_TESTING` | `PERSONA_C_PUBLIC_VIEWER` | `PUBLIC_VIEWER_READONLY_JOURNEY` | `PUBLIC_VIEWER_FIXTURE` 또는 `CLEAN_SESSION` |
-| Mobile-visible UI | `USER_BEHAVIOR_TESTING` | `PERSONA_D_MOBILE_CASUAL` | `MOBILE_375_FULL_JOURNEY` | paired persona 기준 |
-| Loading/empty/error/degraded states | `USER_BEHAVIOR_TESTING` | `PERSONA_E_INTERRUPTED_USER` | `ERROR_RECOVERY_JOURNEY` | target scope 기준 |
-| AI Guide / Instructor | `AI_MODEL_ACTIVITY` | `N/A` 또는 product AI persona | AI-specific checklist required later | product-managed |
-| Docs-only with no runtime claim | `N/A` | `N/A` | `N/A` | `N/A` |
+Every UI PR must declare one class.
 
-### fixed slot gate
+### U0 — Copy-only
 
-아래 범위는 최종 PASS에 fixed test slot + deployed SHA match + real browser가 필요합니다.
+Examples: typo, label, helper text, translation, non-behavioral aria copy.
+
+Checklist:
+
+- [ ] exact before/after copy recorded;
+- [ ] no DOM/event/validation/routing/auth/API/data/cache/storage change;
+- [ ] syntax/static/focused copy check completed when relevant;
+- [ ] Local Validation marked `NOT_REQUIRED` unless a dynamic-copy gap exists;
+- [ ] Production copy confirmation planned.
+
+Not automatically required:
+
+- new child Issue;
+- full suite;
+- Local Validation;
+- preview/fixed slot;
+- screenshots;
+- desktop/mobile journey QA.
+
+### U1 — Visual-only
+
+Examples: page-scoped color, spacing, typography, radius, shadow, border, simple visual token.
+
+Checklist:
+
+- [ ] exact selector/token/value delta recorded;
+- [ ] page-scoped versus shared impact checked;
+- [ ] no DOM/read-order/focus/visibility/runtime behavior changed;
+- [ ] focused CSS/static check completed when available;
+- [ ] Local Validation marked `NOT_REQUIRED` unless explicitly justified;
+- [ ] Production visual confirmation planned.
+
+Escalate to U2/U3 for responsive structure, show/hide semantics, broad global/shared CSS, JavaScript, auth/API/data/cache/storage, or accessibility behavior.
+
+### U2 — Structural UI
+
+Examples: DOM/card composition, skeleton/loading shell, responsive structure, visibility/focus/accessibility semantics, multi-page shared UI.
+
+Checklist:
+
+- [ ] target states and affected viewports defined;
+- [ ] focused DOM/layout/accessibility contracts added or run;
+- [ ] UI Lab/prototype used when live data/auth would slow visual iteration;
+- [ ] Local/browser evidence requirement explicitly decided;
+- [ ] affected layout/overflow screenshots captured when required;
+- [ ] Production visual acceptance planned.
+
+### U3 — Runtime-sensitive UI
+
+Examples: JavaScript interaction, auth, API/data loading, cache/storage, routing, forms, persistence, privacy/security.
+
+Checklist:
+
+- [ ] focused unit/contract/integration tests;
+- [ ] relevant regression/build checks;
+- [ ] Local Validation exact-head evidence when required;
+- [ ] auth/API/cache/storage/router/console/network checks as applicable;
+- [ ] Production runtime verification planned.
+
+## 3. Non-UI risk classes
+
+Backend, database, migration, auth, security, privacy, persistence, and provider changes use the full strict contract defined by the Web CTO. The UI fast lane does not reduce their evidence.
+
+## 4. Test selection
+
+Select tests by affected behavior and blast radius.
+
+### Focused checks may include
 
 ```text
-Auth
-My Trees
-Editor
-Browse/Search runtime
-Public/private boundary
-회원 데이터 생성/수정/삭제/저장
-모바일 runtime-sensitive UI
+node --check or parser check
+focused contract test
+page-specific static/CSS test
+relevant build/typecheck/lint step
+git diff --check
+remote changed-file/diff review
 ```
 
-Production은 별도 승인 없이는 non-destructive smoke만 허용합니다.
+### Broader regression is warranted when
 
-### credential reuse gate
+- shared/global source changes;
+- runtime orchestration changes;
+- multiple surfaces depend on the changed contract;
+- persistence/auth/security/data boundaries change;
+- the focused tests do not cover the plausible regression area.
 
-계정 생성을 수행한 검증은 report에 credential location label을 남겨야 합니다. 실제 credential 값은 절대 남기지 않습니다.
+Do not run or require unrelated full-suite commands solely because an HTML/CSS file changed.
 
-Allowed labels:
+## 5. CI
+
+Use:
 
 ```text
-LOCAL_SECRET_STORE
-ENCRYPTED_QA_HANDOFF
-APPROVED_PASSWORD_MANAGER
-CTO_MANAGED_SECRET
-UNKNOWN_CREDENTIALS
-N/A
+CI_GREEN
+CI_EXECUTED_FAILURE
+CI_PENDING_EXECUTION
+CI_UNAVAILABLE_INFRA
 ```
 
-기존 계정의 credential이 없으면 `UNKNOWN_CREDENTIALS` 또는 `ORPHANED_TEST_ACCOUNT` 상태로만 보고하고, 비밀번호/세션/cookie/token 복구 시도나 출력은 금지합니다.
+A relevant executed failure blocks merge. Infrastructure-unavailable shells use the canonical alternative-evidence path. Red workflow appearance alone is not a code-failure classification.
 
-### cleanup gate
+## 6. Browser and screenshot routing
 
-테스트 데이터가 생성/수정되는 runtime-sensitive PR은 보고서에 cleanup 상태를 포함해야 합니다.
+- Preview/fixed slot is optional evidence unless assigned.
+- Merge-first Production verification is the default.
+- U0: no pre-merge screenshot by default.
+- U1: pre-merge screenshot optional.
+- U2: screenshots/browser evidence normally useful for affected layouts.
+- U3: browser evidence required when runtime behavior is part of acceptance.
+- Final subjective visual judgment belongs to Web CTO/user.
+
+## 7. Local Validation routing
 
 ```text
-Cleanup status: DONE / NOT_REQUIRED / NOT_AVAILABLE
+U0: NOT_REQUIRED by default
+U1: NOT_REQUIRED by default
+U2: CONDITIONAL
+U3: normally REQUIRED when environment/runtime evidence is needed
 ```
 
-`NOT_AVAILABLE`은 제품에 안전한 삭제/정리 경로가 없을 때만 사용합니다. 이 경우 테스트 데이터가 fixed slot에 남을 수 있음을 명시합니다.
+When Local is not required, Web Developer evidence goes directly to Web CTO.
 
----
+If source/test changes after Local tested an older head, revalidate only the behavior affected by the new commit; do not blindly rerun unrelated work.
 
-## 3. Editor 변경 시 체크리스트
+## 8. Issue overhead
 
-### 사전 준비
-- [ ] [docs/ops/EDITOR_ARCHITECTURE.md](docs/ops/EDITOR_ARCHITECTURE.md) 숙독
-- [ ] 변경할 파일이 위험 파일 목록에 있는지 확인
-  - `src/editor-bootstrap.js` (DB 할당) - 가장 위험
-  - `src/editor-data.js` (FieldValue 사용)
-  - `src/editor-comments.js` (FieldValue 사용)
-  - `src/editor-actions.js` (FieldValue 사용)
-  - `src/editor-runtime.js` (DB 인터페이스)
+A new child Issue is not required for every U0/U1 correction. The PR may reference an active parent/product/UI objective.
 
-### 필수 테스트 실행
-```bash
-# Editor smoke 테스트
-npx playwright test tests/editor-smoke.spec.js
+Create a separate Issue for a distinct product goal, cross-page contract, policy decision, structural/runtime change, privacy/security concern, or substantial follow-up.
 
-# FieldValue 패턴 검증
-npx playwright test tests/editor-fieldvalue.spec.js
+## 9. Production correction
 
-# 두 테스트 모두 통과 시에만 merge 권장
+For an unsuccessful U0/U1 visual result:
+
+```text
+Production observation
+→ new micro branch/PR
+→ focused checks
+→ expected-head squash merge
+→ Production re-check
 ```
 
-### Editor 변경 시 주의사항
-- ⚠️ editor-bootstrap.js 변경 시: 절대-runtime.db 할당 변경 금지
-- ⚠️ FieldValue 관련 변경 시: editor-fieldvalue.spec.js 테스트 확인
-- ⚠️ shared-layout.js 의존 시: shared 변경 체크리스트도 확인
+Do not reset or force-push `main`. Use a dedicated revert PR when a micro correction is not safe.
 
-### 검수 포인트
-- [ ] editor-shell 초기화 정상 동작 확인 (app-loaded class)
-- [ ] 로그인/비로그인 시 권한 동작 확인 (읽기 전용 배지)
-- [ ] 에디터 내비게이션 (home/back) 정상 동작 확인
-- [ ] console error 없는지 확인
+## 10. Final status vocabulary
 
----
-
-## 4. Shared/Standard Page 변경 시 체크리스트
-
-### 필수 테스트 실행
-```bash
-# 표준 페이지 smoke 테스트
-npx playwright test tests/smoke.spec.js
-
-# 에디터 shell 무결성 확인 (공용 의존성 확인)
-npx playwright test tests/editor-smoke.spec.js
-
-# 아키텍처 검증
-npx playwright test tests/architecture-v2.spec.js
-
-# FieldValue 패턴 검증 (shared 변경이 editor에 영향을 미칠 경우)
-npx playwright test tests/editor-fieldvalue.spec.js
+```text
+READY_FOR_CTO_FINAL_REVIEW
+READY_FOR_LOCAL_VALIDATION
+LOCAL_VALIDATION_PASS
+CONDITIONALLY_READY
+NOT_READY
 ```
 
-### 영향받는 페이지
-- index.html
-- pages/lovetree.html
-- pages/community.html
-- pages/my-trees.html
-- pages/editor.html (공용 의존성)
+A developer or verifier report never replaces Web CTO final review.
 
-### 검수 포인트
-- [ ] 모든 표준 페이지에서 auth UI 정상 동작
-- [ ] "로그인" → "내 트리" 전환 정상
-- [ ] 로그아웃 버튼 show/hide 정상
-- [ ] initStandardAuthUI 옵션 변경 시 페이지별 동작 확인
-
----
-
-## 5. Merge Gate 제안
-
-### Merge 가능 조건 (모두 충족)
-1. ✅ CI/CD 파이프라인 통과 (Smoke 테스트)
-2. ✅ PR description 필수 항목 포함
-3. ✅ 최소 1명 Approve 획득
-4. ✅ 테스트 실패 관련 코멘트 해결 완료
-5. ✅ runtime-sensitive PR은 필요한 synthetic actor track, persona, Member Journey QA, fixed slot/SHA evidence 포함
-6. ✅ 데이터 생성/수정 PR은 테스트 데이터 상태와 cleanup 상태 포함
-7. ✅ 계정 생성/재사용 PR은 credential location label 포함, credential 값 미노출
-
-### 테스트 실패 시 처리 원칙
-
-#### Merge 차단 (항상)
-- ❌ `editor-smoke.spec.js` - shell initialization 실패
-- ❌ `editor-smoke.spec.js` - permission/read-only badge 실패
-- ❌ `editor-smoke.spec.js` - navigation 실패
-- ❌ `smoke.spec.js` - UI element presence 실패 (선택자가 실제 HTML과 불일치)
-- ❌ `architecture-v2.spec.js` - app-loaded 플래그 미설정
-- ❌ `architecture-v2.spec.js` - auth UI 텍스트不正确 (로그인→내 트리 전환 안 됨)
-- ❌ console.error 또는 pageerror 발생
-
-#### 수동 확인 후 진행 가능 (조건부)
-- ⚠️ `smoke.spec.js` - 시각적 표시 실패 (captured screenshot 확인 후 Approve)
-- ⚠️ `editor-fieldvalue.spec.js` - 소스 패턴만 변경되고 shim runtime 정상 동작 시 (network payload 검증으로 확인)
-- ⚠️ Flaky 판단: 같은 테스트가 2회 연속 실패 시 재진행 후 재평가
-
-### Merge Gate 명령어
-```bash
-# 전체 테스트
-npm run test
-
-# Editor 전용 smoke
-npx playwright test tests/editor-smoke.spec.js
-
-# Editor FieldValue 검증
-npx playwright test tests/editor-fieldvalue.spec.js
-
-# 표준 페이지 smoke
-npx playwright test tests/smoke.spec.js
-
-# 아키텍처 검증
-npx playwright test tests/architecture-v2.spec.js
-```
-
----
-
-## 6. 테스트 종류별 역할 구분
-
-> ⚠️ smoke.spec.js와 architecture-v2.spec.js는 서로 다른 것을 검증합니다. 혼동하지 마세요.
-
-| 파일 | 검증 대상 | 통과 기준 | 역할 구분 |
-|------|-----------|-----------|-----------|
-| `smoke.spec.js` | **표준 페이지 UI 존재 확인** | 모든 CSS 선택자가 실제 HTML과 일치 | E2E/UI Presence |
-| `architecture-v2.spec.js` | **아키텍처/보안 검증** | app-loaded 플래그 + auth 중복 방지 + 에러 마스킹 | System Guard |
-| `editor-smoke.spec.js` | **에디터 쉘 무결성** | 초기화 + 읽기전용 배지 + 상단 내비게이션 | Editor Shell Integrity |
-| `editor-fieldvalue.spec.js` | **FieldValue Shim 변환** | 소스 패턴(Layer A) + 네트워크 Payload(Layer B) | Data Consistency Shim |
-
-### 테스트 실행 시나리오별 분류
-
-| 시나리오 | 실행할 테스트 | 확인 내용 |
-|----------|---------------|-----------|
-| Shared/표준 페이지 수정 | `smoke.spec.js` + `architecture-v2.spec.js` | UI presence + 아키텍처 준수 |
-| Editor 공통 의존성 수정 | `smoke.spec.js` + `architecture-v2.spec.js` + `editor-smoke.spec.js` | 표준 페이지 + 에디터 쉘 모두 |
-| FieldValue 코드 수정 | `editor-fieldvalue.spec.js` | shim 변환 정상 동작 |
-| Shared + FieldValue 동시 수정 | 위 4개 모두 | 전체 무결성 |
-
----
-
-## 7. 빠른 참조 명령어
-
-```bash
-# 전체 테스트
-npm run test
-
-# Editor 전용
-npx playwright test tests/editor-smoke.spec.js
-npx playwright test tests/editor-fieldvalue.spec.js
-
-# Standard Page 전용
-npx playwright test tests/smoke.spec.js
-
-# 아키텍처 검증
-npx playwright test tests/architecture-v2.spec.js
-```
+Refs #3664.
+Refs #3662.
+Refs #1882 — Keep OPEN.

@@ -1,43 +1,92 @@
 # LoveBud Agent Global Rules
 
-> Canonical governance: `docs/ops/MVP_AGENT_GOVERNANCE.md` (owner-approved #3442 comment `4947327550`). Conflicts defer to it. main direct push, secret exposure, and destructive interference with other workers' work remain hard rules.
+> Canonical governance: `docs/ops/MVP_AGENT_GOVERNANCE.md`.
+> Role model: `docs/project/WEB_CTO_WEB_DEVELOPER_LOCAL_VALIDATION.md`.
+> UI fast lane: `docs/project/UI_RAPID_ITERATION_LANE.md`.
 
-These rules apply to all agents working on the LoveBud project, especially code-executor agents.
+These rules apply especially to local/code-executor agents. Conflicts defer to canonical governance.
 
-## Git Workflow
-- Never modify `main` branch directly.
-- Never push directly to `main`.
-- Never merge `main` into your branch or vice versa; use PRs.
-- One task per branch (advisory; not an automatic blocker — see docs/ops/MVP_AGENT_GOVERNANCE.md).
-- Create PRs as draft or ready as appropriate (draft-by-default is advisory, not mandatory).
+## Git workflow
 
-## PR Management
-- Preserve PRs numbered #7 or labeled prototype/reference/demo/variant. Do not close or delete these.
-- Do not guess or use arbitrary PR preview URLs.
+- Never edit or push directly to `main`.
+- Use feature branches and PRs.
+- Preserve other workers' branch/worktree/stash/uncommitted state.
+- One active writer per remote branch.
+- Do not force-push, hard-reset, clean, stash-drop, or delete worktrees without explicit approval.
 
-## Runtime & Infrastructure
-- Active runtime: Cloudflare Pages (frontend) + Modal (compute/backend).
-- Netlify is legacy artifact and removal candidate; not used for active production.
-- Production site `https://lovebud.pages.dev/` is not the source of truth for unmerged PR behavior; production verification is allowed by default after merge/deploy (evidence=PRODUCTION_EVIDENCE). Merge-first Production verification is the current default. Pre-merge Preview/fixed-slot deployment is not normally performed and is used only when explicitly assigned by CTO.
+## Role routing
 
-## API Architecture
-- Client requests follow: browser → same-origin `/api/*` → Cloudflare Functions `functions/api/**` → Modal → Neon.
+```text
+Web CTO: contract and final review
+Web Developer: implementation and PR/CI correction
+Local Validation: exact-head environment evidence only when required
+```
+
+Local is not the default production coder or UI designer.
+
+## UI risk classes
+
+```text
+U0 copy-only
+U1 visual-only
+U2 structural UI
+U3 runtime-sensitive UI
+```
+
+Defaults:
+
+- U0/U1: no Local Validation, fixed slot, screenshot matrix, full suite, or new child Issue by default;
+- U2: focused structural tests and conditional browser/local evidence;
+- U3: full relevant runtime path;
+- escalate for JavaScript, DOM/focus/visibility semantics, auth/API/data/cache/storage, global/shared blast radius, dependencies, privacy, or security.
+
+Do not expand a U0/U1 task into broad implementation or verification without a revised Web CTO contract.
+
+## Runtime and Production
+
+- Active runtime: Cloudflare Pages frontend + same-origin `/api/*` + Modal + Neon.
+- Netlify is legacy, not active Production fallback.
+- Merge-first Production verification is the current default.
+- Preview/fixed slot is optional evidence and is used only when assigned.
+- Production URL: `https://lovebud.pages.dev/`.
 
 ## Verification
-- Browser evidence is reported as LOCAL_EVIDENCE / PRE_MERGE_EVIDENCE / PRODUCTION_EVIDENCE. A fixed slot is an evidence option, not a permission gate (see docs/ops/MVP_AGENT_GOVERNANCE.md).
-- Pre-merge browser verification (Cloudflare Preview / fixed test slot): OPTIONAL when available and CTO-assigned. Absence is NOT a merge blocker.
-- Post-merge Production verification: Required for UI/Auth/runtime confirmation on https://lovebud.pages.dev/.
-- Local tests and GitHub CI remain mandatory pre-merge gates (see docs/ops/MERGE_FIRST_PRODUCTION_VERIFICATION_WORKFLOW.md).
-- Pages that depend on API, auth, or dynamic data (Search/Browse/Editor/My Trees/Auth-gated) cannot be validated solely with a local static server.
+
+- Evidence levels: `LOCAL_EVIDENCE`, `PRE_MERGE_EVIDENCE`, `PRODUCTION_EVIDENCE`.
+- Tests are selected by affected behavior and blast radius.
+- Do not run unrelated full suites solely because HTML/CSS changed.
+- Dynamic/auth/API pages cannot be fully proven by a local static server; report limitations.
+- U0/U1 normally route Web Developer evidence directly to Web CTO.
+
+## CI
+
+Use only:
+
+```text
+CI_GREEN
+CI_EXECUTED_FAILURE
+CI_PENDING_EXECUTION
+CI_UNAVAILABLE_INFRA
+```
+
+Relevant executed failure or pending execution blocks merge. Infrastructure-unavailable shells use canonical alternative evidence.
 
 ## Security
-- Never log, record, or expose credentials, tokens, cookies, sessions, or secrets (Firebase, Cloudflare, Modal, Neon, etc.).
-- Only reference secret names/locations; never include values.
 
-## Local Artifact Hygiene
-- Do not create `local-backup/`, `work/`, screenshots, or report JSON files inside the repo.
-- Move local verification artifacts (screenshots, reports, backup files) outside the repo to `local-backup/`.
-- Before creating a PR, always check `git status --short` and `git diff --name-only origin/main...HEAD`.
-- If unexpected files are included, stop immediately and clean up the scope.
-- Do not run git clean, git reset --hard, or git stash without explicit approval.
-- In a dirty worktree, preserve existing changes and use another worktree/branch or read-only inspection. A dirty worktree is not an automatic blocker (see docs/ops/MVP_AGENT_GOVERNANCE.md).
+Never expose credentials, tokens, cookies, sessions, private IDs/payloads, database URLs, or secrets. Report only safe presence/status labels.
+
+## Local artifact hygiene
+
+- Keep screenshots, reports, backup files, and local artifacts outside the repository unless explicitly required.
+- Before push, check `git status --short` and changed files.
+- Unexpected files require scope review, not destructive cleanup.
+
+## Merge and protected Issues
+
+- Web Developer and Local Validation do not make final merge decisions.
+- Web CTO verifies exact expected head and squash merges.
+- Never close #1882; use `Refs #1882` only.
+
+Refs #3664.
+Refs #3662.
+Refs #1882 — Keep OPEN.
