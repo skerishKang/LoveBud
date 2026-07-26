@@ -145,3 +145,27 @@ This decision does not authorize:
 - merge or closure of #3672, #3674, #3425, #3458 or #1882.
 
 A later child requires a new exact execution contract from the Web CTO.
+
+## Post-audit baseline drift assessment
+
+| Field | Verified value |
+|---|---|
+| original audit baseline | `4beada4c8134afbdb791e98466db9ec1162f0a27` |
+| new main | `125c074f4ff6af84ed75f71f0a5b65d2432a57fb` |
+| drift source | PR #3675 |
+| UI/CSS/JS/page/template/asset changes | none confirmed |
+| audit conclusion impact | none, subject to exact source verification |
+
+PR #3675 changed exactly:
+
+```text
+db/migration-provenance/readonly-query-catalog.json
+docs/architecture/DB_MIGRATION_PROVENANCE_NEXT_CHILD_DECISION.md
+docs/architecture/db-migration-readonly-query-catalog-contract.md
+tests/contracts/db-migration-readonly-query-catalog-contract.test.cjs
+tests/test-layer-classification.json
+```
+
+Those paths do not overlap the audited UI, CSS, JavaScript, page, template, asset, component, or visual-baseline source boundaries. The historical audit baseline remains `4beada4c8134afbdb791e98466db9ec1162f0a27`; it is not replaced by the new main SHA.
+
+The selected next child remains **`canonical component/variant inventory contract`**. No token migration, component convergence, visual-baseline harness, browser work, or implementation authority is added by this drift note.
