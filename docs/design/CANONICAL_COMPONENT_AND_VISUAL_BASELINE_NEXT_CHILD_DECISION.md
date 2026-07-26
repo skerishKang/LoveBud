@@ -1,6 +1,7 @@
 # Canonical Component and Visual-Baseline Next-Child Decision
 
-Parent #3672  
+Parent #3672
+
 Current child #3674
 
 ## Decision
