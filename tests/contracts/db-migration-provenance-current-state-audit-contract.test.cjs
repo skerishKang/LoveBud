@@ -8,7 +8,7 @@ const path = require('node:path');
 const REPO_ROOT = path.resolve(__dirname, '..', '..');
 const AUDIT_PATH = path.join(REPO_ROOT, 'docs', 'architecture', 'DB_MIGRATION_PROVENANCE_CURRENT_STATE_AUDIT.md');
 const DECISION_PATH = path.join(REPO_ROOT, 'docs', 'architecture', 'DB_MIGRATION_PROVENANCE_NEXT_CHILD_DECISION.md');
-const MAIN_SHA = 'de1c4e416e33e2669157b2202a7bbd021779ad59';
+const AUDIT_BASELINE_SHA = 'eb030c1d4751dfee45d65f5a420caebebac6ebcc';
 
 function readDoc(filePath) {
   assert.ok(fs.existsSync(filePath), `Document must exist: ${filePath}`);
@@ -16,13 +16,20 @@ function readDoc(filePath) {
 }
 
 function existsRepoPath(relPath) {
-  const absPath = path.join(REPO_ROOT, relPath);
-  return fs.existsSync(absPath);
+  return fs.existsSync(path.join(REPO_ROOT, relPath));
 }
 
-describe('DB Migration Provenance Current-State Audit Contract (#3620)', () => {
+function assertContainsHeading(documentText, heading) {
+  const escaped = heading.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  assert.match(documentText, new RegExp(`^#{1,6}\\s+${escaped}\\s*$`, 'm'));
+}
 
-  describe('1. Document existence', () => {
+describe('DB Migration Provenance Current-State Audit Contract (#3644)', () => {
+  const audit = readDoc(AUDIT_PATH);
+  const decision = readDoc(DECISION_PATH);
+  const combined = `${audit}\n${decision}`;
+
+  describe('1. Document existence and baseline identity', () => {
     it('Audit document exists', () => {
       assert.ok(fs.existsSync(AUDIT_PATH));
     });
@@ -32,316 +39,226 @@ describe('DB Migration Provenance Current-State Audit Contract (#3620)', () => {
     it('Contract test file exists', () => {
       assert.ok(fs.existsSync(__filename));
     });
+    it('Audit contains the fixed audit baseline SHA', () => {
+      assert.match(audit, new RegExp(AUDIT_BASELINE_SHA));
+    });
+    it('Decision contains the fixed audit baseline SHA', () => {
+      assert.match(decision, new RegExp(AUDIT_BASELINE_SHA));
+    });
+    it('Both documents identify audit issue #3644', () => {
+      assert.match(audit, /#3644/);
+      assert.match(decision, /#3644/);
+    });
   });
 
-  describe('2. Required headings in audit document', () => {
-    const audit = readDoc(AUDIT_PATH);
+  describe('2. Current audit structure', () => {
     const requiredHeadings = [
       'LoveBud DB Migration Provenance Current-State Audit',
-      'Audit Baseline',
-      'Scope and Non-Authority',
-      'Evidence Method',
-      'Parent Acceptance-Criteria Matrix',
-      'Artifact Ownership and Trust Classification',
-      'Completed Child and PR Dependency Map',
-      'Test-Layer Map',
-      'Production and Operator-Input Boundary',
-      'Remaining Gap Register',
-      'Stale or Contradictory Documentation',
-      'Claims That Current Evidence Does Not Support',
-      'Current Fail-Closed State',
-      'Reproduction Commands',
-      'Final Audit Conclusion',
+      'Audit baseline',
+      'Scope and evidence limits',
+      'Executive conclusion',
+      '#3458 acceptance-criteria matrix',
+      'Newly completed repository capabilities',
+      'Exact pinned-session composition gap',
+      'Other repository-side gaps',
+      'Operator-input and repository-implementation separation',
+      'Reconciled dependency graph',
+      'Selected next outcome',
+      'Unsupported claims',
+      'Audit completion statement',
     ];
     for (const heading of requiredHeadings) {
-      it(`Has heading: ${heading}`, () => {
-        const escaped = heading.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        assert.match(audit, new RegExp(escaped));
+      it(`Has audit heading: ${heading}`, () => {
+        assertContainsHeading(audit, heading);
       });
     }
   });
 
-  describe('3. Required headings in decision document', () => {
-    const decision = readDoc(DECISION_PATH);
+  describe('3. Current decision structure', () => {
     const requiredHeadings = [
       'LoveBud DB Migration Provenance Next-Child Decision',
-      'Decision Summary',
-      'Candidate Children Considered',
-      'Dependency Analysis',
-      'Operator-Input Separation',
-      'Selected Next Child',
-      'Model Assignment',
-      'Completion Boundary',
-      'Deferred Work',
+      'Decision summary',
+      'Why the previous decision changed',
+      'Verified current incompatibility',
+      'Selected next child',
+      'Exact allowed files',
+      'Prohibited files and areas',
+      'Explicit non-goals',
+      'Acceptance criteria',
+      'Verification requirements',
+      'Rollback and forward-fix posture',
+      'Completion boundary',
+      'Work that remains after the selected child',
+      'Decision completion statement',
+      'Precondition authority child (#3657)',
     ];
     for (const heading of requiredHeadings) {
-      it(`Has heading: ${heading}`, () => {
-        const escaped = heading.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      it(`Has decision heading: ${heading}`, () => {
+        assertContainsHeading(decision, heading);
+      });
+    }
+  });
+
+  describe('4. Parent acceptance-criteria matrix remains explicit', () => {
+    const currentStatuses = ['COMPLETE', 'PARTIAL', 'NOT_STARTED'];
+    for (const status of currentStatuses) {
+      it(`Contains current matrix status: ${status}`, () => {
+        assert.match(audit, new RegExp(`\\b${status}\\b`));
+      });
+    }
+    it('Documents all 12 numbered acceptance areas', () => {
+      for (let criterion = 1; criterion <= 12; criterion += 1) {
+        assert.match(audit, new RegExp(`^\\| ${criterion} \\|`, 'm'));
+      }
+    });
+    it('Does not promote source contracts or synthetic mocks to completion proof', () => {
+      assert.match(audit, /No acceptance criterion is upgraded based solely on a contract file or synthetic mock/);
+    });
+    it('Keeps criterion 2 as the only currently complete parent criterion', () => {
+      assert.match(audit, /Criterion 2 remains the only currently complete parent criterion/);
+    });
+  });
+
+  describe('5. Repository capability and dependency evidence', () => {
+    const capabilityHeadings = [
+      '1. Canonical runner protocol',
+      '2. Canonical runner orchestrator',
+      '3. PostgreSQL pinned-session advisory-lock adapter',
+      '4. PostgreSQL ledger read/append adapter',
+      '5. Adoption operator checklist',
+      '6. CI infrastructure-unavailable governance',
+    ];
+    for (const heading of capabilityHeadings) {
+      it(`Documents repository capability: ${heading}`, () => {
+        assertContainsHeading(audit, heading);
+      });
+    }
+    it('Documents the exact pinned-session query broker gap', () => {
+      assert.match(audit, /queryLockedSession\(\{ lockHandle, query \}\)/);
+      assert.match(audit, /No current source module can safely perform all of the following/);
+    });
+    it('Documents repository implementation and external input as separate lanes', () => {
+      assert.match(audit, /Repository implementation dependencies/);
+      assert.match(audit, /External operator inputs/);
+      assert.match(audit, /parallel dependency lanes/);
+    });
+  });
+
+  describe('6. Current selected outcome and fail-closed boundaries', () => {
+    it('Selects exactly the safe implementation child outcome', () => {
+      assert.match(audit, /SAFE_IMPLEMENTATION_CHILD_SELECTED/);
+      assert.match(decision, /SAFE_IMPLEMENTATION_CHILD_SELECTED/);
+      assert.doesNotMatch(decision, /Outcome[^\n]*NO_SAFE_IMPLEMENTATION_CHILD_WITHOUT_OPERATOR_INPUT/);
+    });
+    it('Selects the source-tested pinned-session query broker', () => {
+      assert.match(decision, /Selected child \| Source-tested pinned-session query broker/);
+      assert.match(decision, /POSTGRES_LOCKED_SESSION_QUERY_UNAVAILABLE/);
+    });
+    it('Keeps source-tested evidence distinct from target and Production proof', () => {
+      assert.match(audit, /repository capability, not as proof that PostgreSQL or Production behavior occurred/);
+      assert.match(audit, /Disposable PostgreSQL engine tests remain distinct from target-readonly evidence and Production evidence/);
+    });
+    it('Keeps manifest and ledger authority inactive', () => {
+      assert.match(audit, /Manifest is inactive and contains zero canonical migrations/);
+      assert.match(audit, /a ledger relation exists/);
+      assert.match(audit, /an authoritative applied-migration history exists/);
+    });
+    it('Keeps deployment and Production claims unsupported', () => {
+      assert.match(audit, /the migration system is Production-ready/);
+      assert.match(audit, /deployment provenance is enforced/);
+      assert.match(audit, /Production catalog evidence has been collected/);
+    });
+  });
+
+  describe('7. Operator inputs and later approvals remain separate', () => {
+    it('Documents the two external operator inputs', () => {
+      assert.match(audit, /OI-1 \| Dedicated Production-readonly credential \| `UNAVAILABLE`/);
+      assert.match(audit, /OI-2 \| Abstract PostgreSQL role mapping \| `UNAVAILABLE`/);
+    });
+    it('Documents Phase B approval separately from the two inputs', () => {
+      assert.match(audit, /OA-B \| Phase B bounded read-only collection approval \| `NOT_GRANTED`/);
+    });
+    it('Documents later Phase C, D, and E decisions as not reached', () => {
+      assert.match(audit, /OA-C \| Phase C evidence and drift review \| `NOT_REACHED`/);
+      assert.match(audit, /OA-D \| Manifest activation decision \| `NOT_REACHED`/);
+      assert.match(audit, /OA-E \| Ledger bootstrap and canonical migration-stream approval \| `NOT_REACHED`/);
+    });
+  });
+
+  describe('8. Current exact allowed-file boundary', () => {
+    const allowedFiles = [
+      'scripts/migration-postgres-session-lock-adapter-core.cjs',
+      'tests/contracts/db-postgres-session-lock-adapter-contract.test.cjs',
+      'docs/architecture/db-postgres-session-lock-adapter-contract.md',
+      'docs/architecture/db-postgres-ledger-adapter-contract.md',
+    ];
+    for (const file of allowedFiles) {
+      it(`Decision lists allowed file: ${file}`, () => {
+        const escaped = file.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         assert.match(decision, new RegExp(escaped));
       });
     }
+    it('Completion boundary remains documented without phrase coupling', () => {
+      assertContainsHeading(decision, 'Completion boundary');
+    });
+    it('Classification registry is documented without requiring a fixed word order', () => {
+      assert.match(decision, /tests\/test-layer-classification\.json/);
+    });
+    it('Prohibits package, workflow, migration-state, product, and secret changes', () => {
+      assert.match(decision, /package\.json/);
+      assert.match(decision, /\.github\/\*\*/);
+      assert.match(decision, /db\/migration-provenance\/\*\*/);
+      assert.match(decision, /product, API, UI, Auth, CSS, and Cloudflare files/);
+      assert.match(decision, /secrets, environment configuration/);
+    });
   });
 
-  describe('4. Status vocabulary presence', () => {
-    const audit = readDoc(AUDIT_PATH);
-    const requiredVocab = ['COMPLETE', 'PARTIAL', 'BLOCKED_OPERATOR_INPUT', 'NOT_STARTED', 'STALE_SUPERSEDED'];
-    for (const v of requiredVocab) {
-      it(`Contains status: ${v}`, () => {
-        assert.match(audit, new RegExp(`\\b${v}\\b`));
+  describe('9. Protected issue references and Keep OPEN statements', () => {
+    const protectedIssues = ['#3458', '#3425', '#3435', '#3437', '#1882'];
+    for (const issue of protectedIssues) {
+      it(`Audit keeps ${issue} open`, () => {
+        assert.match(audit, new RegExp(`Keep ${issue} OPEN`));
+      });
+      it(`Decision keeps ${issue} open`, () => {
+        assert.match(decision, new RegExp(`Keep ${issue} OPEN`));
       });
     }
-  });
-
-  describe('5. Artifact classification vocabulary', () => {
-    const audit = readDoc(AUDIT_PATH);
-    const required = [
-      'CANONICAL_SOURCE_CONTRACT',
-      'INACTIVE_ADOPTION_ARTIFACT',
-      'DISPOSABLE_ONLY_EXECUTION',
-      'PRODUCTION_READONLY_CAPABLE_SOURCE',
-      'BLOCKED_OPERATOR_INPUT',
-      'HISTORICAL_LEGACY',
-      'INCIDENT_ONLY',
-      'PROHIBITED_FOR_NEW_USE',
-    ];
-    for (const v of required) {
-      it(`Contains artifact class: ${v}`, () => {
-        assert.match(audit, new RegExp(`\\b${v}\\b`));
-      });
-    }
-  });
-
-  describe('6. Test-layer vocabulary', () => {
-    const audit = readDoc(AUDIT_PATH);
-    const required = [
-      'SOURCE_STATIC',
-      'POSTGRES_ENGINE_DISPOSABLE',
-      'TARGET_READONLY_INTEGRATION',
-      'PRODUCTION_RUNTIME_EVIDENCE',
-      'DEPLOYMENT_ENFORCEMENT',
-    ];
-    for (const v of required) {
-      it(`Contains test layer: ${v}`, () => {
-        assert.match(audit, new RegExp(`\\b${v}\\b`));
-      });
-    }
-  });
-
-  describe('6b. PURE_UNIT test layer', () => {
-    const audit = readDoc(AUDIT_PATH);
-    it('Contains PURE_UNIT in test-layer map', () => {
-      assert.match(audit, /PURE_UNIT/);
-    });
-  });
-
-  describe('6c. Inventory path guard evidence', () => {
-    const audit = readDoc(AUDIT_PATH);
-    it('Audit documents INVENTORY_PATH_UNCLASSIFIED blocking', () => {
-      assert.match(audit, /INVENTORY_PATH_UNCLASSIFIED/);
-    });
-  });
-
-  describe('6d. Migration checksum guard evidence', () => {
-    const audit = readDoc(AUDIT_PATH);
-    it('Audit documents MIGRATION_SOURCE_CHECKSUM_MISMATCH blocking', () => {
-      assert.match(audit, /MIGRATION_SOURCE_CHECKSUM_MISMATCH/);
-    });
-  });
-
-  describe('6e. No false "adapter does not exist" claim', () => {
-    const audit = readDoc(AUDIT_PATH);
-    it('Does not claim no target read-only adapter exists', () => {
-      assert.doesNotMatch(audit, /No target read-only adapter exists/i);
-    });
-  });
-
-  describe('6f. #3572 official outcome', () => {
-    const audit = readDoc(AUDIT_PATH);
-    const decision = readDoc(DECISION_PATH);
-    it('Audit uses COLLECTION_NOT_RUN_CONNECTION_BOUNDARY for #3572', () => {
-      assert.match(audit, /COLLECTION_NOT_RUN_CONNECTION_BOUNDARY/);
-    });
-    it('Audit includes DEDICATED_INPUTS_UNAVAILABLE', () => {
-      assert.match(audit, /DEDICATED_INPUTS_UNAVAILABLE/);
-    });
-    it('Does not use NO_RETRY as official #3572 outcome', () => {
-      const noRetryAsOutcome = /NO_RETRY.*3572|3572.*NO_RETRY/;
-      assert.doesNotMatch(audit, noRetryAsOutcome);
-    });
-    it('Decision does not use NO_RETRY for #3572', () => {
-      const noRetryAsOutcome = /NO_RETRY.*3572|3572.*NO_RETRY/;
-      assert.doesNotMatch(decision, noRetryAsOutcome);
-    });
-  });
-
-  describe('6g. Operator blocker and approval separation', () => {
-    const audit = readDoc(AUDIT_PATH);
-    it('Audit separates BLOCKED_OPERATOR_INPUT from SEPARATE_APPROVAL_REQUIRED', () => {
-      assert.match(audit, /BLOCKED_OPERATOR_INPUT/);
-      assert.match(audit, /SEPARATE_APPROVAL_REQUIRED/);
-    });
-  });
-
-  describe('6h. #3459 and PR#3474 not in same direct mapping row', () => {
-    const audit = readDoc(AUDIT_PATH);
-    it('#3459 has its own table row distinct from PR#3474 bootstrap', () => {
-      const lines = audit.split('\n');
-      let sameRow = false;
-      for (const line of lines) {
-        if (line.includes('#3459') && line.includes('PR #3474') && line.includes('|')) {
-          sameRow = true;
-        }
+    it('No Closes/Fixes/Resolves for protected issues', () => {
+      for (const issue of protectedIssues) {
+        const number = issue.slice(1);
+        assert.doesNotMatch(combined, new RegExp(`(Closes|Fixes|Resolves)\\s+#${number}`));
       }
-      assert.strictEqual(sameRow, false, '#3459 and PR #3474 must not appear together in the same table row');
-    });
-    it('#3459 mapped to rehearsal PRs', () => {
-      assert.match(audit, /PR #3531/);
-      assert.match(audit, /PR #3533/);
     });
   });
 
-  describe('6i. New contract test registered in classification', () => {
-    it('test-layer-classification.json contains the contract test', () => {
-      const classPath = path.join(REPO_ROOT, 'tests', 'test-layer-classification.json');
-      const raw = fs.readFileSync(classPath, 'utf8');
-      assert.match(raw, /db-migration-provenance-current-state-audit-contract\.test\.cjs/);
+  describe('10. Production, database, SQL, and secret non-authority', () => {
+    it('Audit states no database access', () => {
+      assert.match(audit, /Database accessed \| No/);
+    });
+    it('Audit states no Production or staging access', () => {
+      assert.match(audit, /Production or staging accessed \| No/);
+    });
+    it('Audit states no SQL execution', () => {
+      assert.match(audit, /SQL executed \| No/);
+    });
+    it('Audit states no secret inspection', () => {
+      assert.match(audit, /Secrets or credentials inspected \| No/);
+    });
+    it('Decision states no Production, database, or SQL authority', () => {
+      assert.match(decision, /Production access \| None/);
+      assert.match(decision, /Database access \| None/);
+      assert.match(decision, /SQL execution \| None/);
+    });
+    it('Completion statements preserve all non-authority boundaries', () => {
+      assert.match(audit, /made no database connection, executed no SQL/);
+      assert.match(audit, /accessed no provider or Production environment/);
+      assert.match(decision, /No database connection was opened, no SQL was executed/);
+      assert.match(decision, /no Production or provider environment was accessed/);
     });
   });
 
-  describe('7. Protected issue references', () => {
-    const audit = readDoc(AUDIT_PATH);
-    const decision = readDoc(DECISION_PATH);
-    const issues = ['#3620', '#3458', '#3425', '#3435', '#3437', '#1882'];
-    for (const iss of issues) {
-      it(`Audit references ${iss}`, () => {
-        assert.match(audit, new RegExp(iss.replace('#', '#')));
-      });
-      it(`Decision references ${iss}`, () => {
-        assert.match(decision, new RegExp(iss.replace('#', '#')));
-      });
-    }
-  });
-
-  describe('8. Keep OPEN statements for protected issues', () => {
-    const audit = readDoc(AUDIT_PATH);
-    const decision = readDoc(DECISION_PATH);
-    const issues = ['#3458', '#3425', '#3435', '#3437', '#1882'];
-    for (const iss of issues) {
-      it(`Audit has "Keep ${iss} OPEN"`, () => {
-        assert.match(audit, new RegExp(`Keep ${iss.replace('#', '#')} OPEN`));
-      });
-      it(`Decision has "Keep ${iss} OPEN"`, () => {
-        assert.match(decision, new RegExp(`Keep ${iss.replace('#', '#')} OPEN`));
-      });
-    }
-  });
-
-  describe('9. Current main SHA present', () => {
-    it('Audit contains baseline SHA', () => {
-      const audit = readDoc(AUDIT_PATH);
-      assert.match(audit, new RegExp(MAIN_SHA));
-    });
-    it('Decision contains baseline SHA', () => {
-      const decision = readDoc(DECISION_PATH);
-      assert.match(decision, new RegExp(MAIN_SHA));
-    });
-  });
-
-  describe('10. Canonical manifest status documented', () => {
-    it('Audit documents canonical-migrations.json status', () => {
-      const audit = readDoc(AUDIT_PATH);
-      assert.match(audit, /ADOPTION_REQUIRED/);
-      assert.match(audit, /[Mm]igrations[^0]*0/);
-    });
-    it('Audit documents expected-schema-manifest.json status', () => {
-      const audit = readDoc(AUDIT_PATH);
-      assert.match(audit, /[Cc]ritical.?(objects|[^0]*).*0/);
-      assert.match(audit, /expected-schema-manifest\.json/);
-    });
-  });
-
-  describe('11. Exactly one next-child outcome', () => {
-    it('Decision contains single outcome type', () => {
-      const decision = readDoc(DECISION_PATH);
-      const safeExec = (decision.match(/SAFE_EXECUTABLE_CHILD_SELECTED/g) || []).length;
-      const noSafe = (decision.match(/NO_SAFE_IMPLEMENTATION_CHILD_WITHOUT_OPERATOR_INPUT/g) || []).length;
-      if (safeExec > 0 && noSafe > 0) {
-        assert.fail('Both SAFE_EXECUTABLE_CHILD_SELECTED and NO_SAFE_IMPLEMENTATION_CHILD_WITHOUT_OPERATOR_INPUT present');
-      }
-      if (safeExec === 0 && noSafe === 0) {
-        assert.fail('No outcome string found');
-      }
-      assert.ok(true);
-    });
-  });
-
-  describe('12. Model Assignment section', () => {
-    it('Decision has Model Assignment section', () => {
-      const decision = readDoc(DECISION_PATH);
-      assert.match(decision, /Model Assignment/);
-    });
-    it('References DeepSeek V4 Pro', () => {
-      const decision = readDoc(DECISION_PATH);
-      assert.match(decision, /DeepSeek V4 Pro/);
-    });
-    it('References Nemotron 3 Ultra', () => {
-      const decision = readDoc(DECISION_PATH);
-      assert.match(decision, /Nemotron 3 Ultra/);
-    });
-    it('Has IMPLEMENTATION_MODEL assignment', () => {
-      const decision = readDoc(DECISION_PATH);
-      const impCount = (decision.match(/IMPLEMENTATION_MODEL/g) || []).length;
-      assert.ok(impCount >= 1, 'IMPLEMENTATION_MODEL must be referenced');
-    });
-  });
-
-  describe('13. Production/DB/SQL mutation prohibited in this PR', () => {
-    const combined = readDoc(AUDIT_PATH) + '\n' + readDoc(DECISION_PATH);
-    it('No SQL execution claim', () => {
-      assert.match(combined, /SQL executed.*No/);
-    });
-    it('No Production access claim', () => {
-      assert.match(combined, /Production accessed.*No/);
-    });
-    it('No database connection claim', () => {
-      assert.match(combined, /Database accessed.*No/);
-    });
-  });
-
-  describe('14. Documents do not claim source/static as target proof', () => {
-    const audit = readDoc(AUDIT_PATH);
-    it('Acknowledges source-only limitations', () => {
-      assert.match(audit, /source.only|SOURCE_STATIC|does not prove/i);
-    });
-    it('States no Production collection occurred', () => {
-      assert.match(audit, /COLLECTION_NOT_RUN|not.*collected/i);
-    });
-    it('States no adoption attestation issued', () => {
-      assert.match(audit, /no.*attestation.*issued|not.*attested/i);
-    });
-  });
-
-  describe('15. No raw credentials, URLs, hosts, roles, or database values', () => {
-    const combined = readDoc(AUDIT_PATH) + '\n' + readDoc(DECISION_PATH);
-    const prohibitedPatterns = [
-      /postgres:\/\/[^\s"]+/,
-      /postgresql:\/\/[^\s"]+/,
-      /password\s*[:=]\s*\S+[^\s.]/,
-      /DATABASE_URL\s*[:=]\s*\S+[^\s.]/,
-      /BEGIN.*PRIVATE KEY/,
-      /neon\.tech/,
-      /cloud\.neon/,
-    ];
-    for (let i = 0; i < prohibitedPatterns.length; i += 1) {
-      it(`No prohibited pattern #${i + 1}`, () => {
-        assert.doesNotMatch(combined, prohibitedPatterns[i]);
-      });
-    }
-  });
-
-  describe('16. Referenced repository paths exist', () => {
-    const audit = readDoc(AUDIT_PATH);
-    const paths = [
+  describe('11. Referenced repository paths exist', () => {
+    const referencedPaths = [
       'docs/architecture/DB_MIGRATION_PROVENANCE_GATE.md',
       'docs/architecture/migration-path-inventory.json',
       'db/migration-provenance/canonical-migrations.json',
@@ -360,182 +277,44 @@ describe('DB Migration Provenance Current-State Audit Contract (#3620)', () => {
       'package.json',
       '.github/workflows/ci.yml',
     ];
-    for (const p of paths) {
-      it(`Path exists: ${p}`, () => {
-        assert.ok(existsRepoPath(p), `Path must exist: ${p}`);
+    for (const relPath of referencedPaths) {
+      it(`Path exists: ${relPath}`, () => {
+        assert.ok(existsRepoPath(relPath), `Path must exist: ${relPath}`);
       });
     }
   });
 
-  describe('17. No Closes/Fixes/Resolves for protected issues', () => {
-    const combined = readDoc(AUDIT_PATH) + '\n' + readDoc(DECISION_PATH);
-    const issues = ['3458', '3425', '3435', '3437', '1882'];
-    for (const iss of issues) {
-      it(`No "Closes #${iss}"`, () => {
-        assert.doesNotMatch(combined, new RegExp(`Closes\\s+#${iss}`));
-      });
-      it(`No "Fixes #${iss}"`, () => {
-        assert.doesNotMatch(combined, new RegExp(`Fixes\\s+#${iss}`));
-      });
-      it(`No "Resolves #${iss}"`, () => {
-        assert.doesNotMatch(combined, new RegExp(`Resolves\\s+#${iss}`));
+  describe('12. No raw credentials, endpoints, or private values', () => {
+    const prohibitedPatterns = [
+      /postgres:\/\/[^\s"]+/,
+      /postgresql:\/\/[^\s"]+/,
+      /password\s*[:=]\s*\S+[^\s.]/i,
+      /DATABASE_URL\s*[:=]\s*\S+[^\s.]/,
+      /BEGIN.*PRIVATE KEY/,
+      /neon\.tech/i,
+      /cloud\.neon/i,
+    ];
+    for (let index = 0; index < prohibitedPatterns.length; index += 1) {
+      it(`No prohibited pattern #${index + 1}`, () => {
+        assert.doesNotMatch(combined, prohibitedPatterns[index]);
       });
     }
   });
 
-  describe('18. No existing file modification required', () => {
-    const combined = readDoc(AUDIT_PATH) + '\n' + readDoc(DECISION_PATH);
-    it('States no existing file modification', () => {
-      assert.match(combined, /no existing file|existing file.*not|prohibited/i);
+  describe('13. Documents remain substantial and internally bounded', () => {
+    it('Audit is substantial', () => {
+      assert.ok(audit.length > 500);
     });
-    it('Lists only 3 allowed new files', () => {
-      assert.match(combined, /DB_MIGRATION_PROVENANCE_CURRENT_STATE_AUDIT\.md/);
-      assert.match(combined, /DB_MIGRATION_PROVENANCE_NEXT_CHILD_DECISION\.md/);
-      assert.match(combined, /db-migration-provenance-current-state-audit-contract\.test\.cjs/);
+    it('Decision is substantial', () => {
+      assert.ok(decision.length > 500);
     });
-  });
-
-  describe('18e. Audit contains authoritative target-ledger evidence absence', () => {
-    const audit = readDoc(AUDIT_PATH);
-    it('Authoritative ledger evidence absence documented', () => {
-      assert.match(audit, /authoritative target-ledger evidence|authoritative ledger evidence/i);
+    it('Decision does not claim later children are approved or ready', () => {
+      assert.match(decision, /does not claim those later children are approved or ready/);
     });
-    it('No false adapter generalization', () => {
-      assert.doesNotMatch(audit, /no adapter for Production\/staging/i);
-    });
-    it('Source-only mode not described as only functional mode', () => {
-      assert.doesNotMatch(audit, /Source-only mode is the only currently functional mode/i);
-    });
-  });
-
-  describe('18f. No stale operator blocker claims', () => {
-    const audit = readDoc(AUDIT_PATH);
-    it('No "Collection plan has not been reviewed by owner"', () => {
-      assert.doesNotMatch(audit, /Collection plan has not been reviewed by owner/i);
-    });
-    it('No "owner-reviewed role mapping" claim', () => {
-      assert.doesNotMatch(audit, /owner-reviewed role mapping/i);
-    });
-  });
-
-  describe('18g. BLOCKED_OPERATOR_INPUT has exactly two items', () => {
-    const combined = readDoc(AUDIT_PATH) + '\n' + readDoc(DECISION_PATH);
-    it('Contains dedicated credential input', () => {
-      assert.match(combined, /dedicated.*read.only.*credential/i);
-    });
-    it('Contains abstract role mapping input', () => {
-      assert.match(combined, /abstract role mapping/i);
-    });
-    it('Phase B/C/D/E are SEPARATE_APPROVAL_REQUIRED', () => {
-      assert.match(combined, /SEPARATE_APPROVAL_REQUIRED/);
-    });
-    it('Phase B approval mentioned', () => {
-      assert.match(combined, /Phase B.*(execution|collection)/i);
-    });
-    it('Phase D and Phase E approvals mentioned', () => {
-      assert.match(combined, /Phase D.*manifest/i);
-      assert.match(combined, /Phase E.*ledger/i);
-    });
-  });
-
-  describe('18h. Decision doc stale phrase removal', () => {
-    const decision = readDoc(DECISION_PATH);
-    it('No "three operator-input items" phrase', () => {
-      assert.doesNotMatch(decision, /three operator-input items/i);
-    });
-    it('No "plan review" as missing input in diagram', () => {
-      assert.doesNotMatch(decision, /plan review.*BLOCKED/);
-    });
-    it('No broad "all #3458 implementation complete" claim', () => {
-      assert.doesNotMatch(decision, /All source-contract and disposable-CI implementation children under #3458 have been completed and merged/i);
-    });
-  });
-
-  describe('18i. Four authorized files scope', () => {
-    const decision = readDoc(DECISION_PATH);
-    it('All 4 authorized files listed', () => {
-      assert.match(decision, /DB_MIGRATION_PROVENANCE_CURRENT_STATE_AUDIT\.md/);
-      assert.match(decision, /DB_MIGRATION_PROVENANCE_NEXT_CHILD_DECISION\.md/);
-      assert.match(decision, /db-migration-provenance-current-state-audit-contract\.test\.cjs/);
-      assert.match(decision, /test-layer-classification\.json/);
-    });
-    it('No "3 allowed files" or "outside the 3" phrase', () => {
-      assert.doesNotMatch(decision, /3 allowed files/);
-      assert.doesNotMatch(decision, /outside the 3 allowed/);
-    });
-    it('Classification registry included in authorized scope', () => {
-      assert.match(decision, /minimal SOURCE_STATIC entry|test-layer-classification\.json.*minimal/);
-    });
-  });
-
-  describe('19. Audit and decision are well-formed', () => {
-    it('Audit file is not empty', () => {
-      const audit = readDoc(AUDIT_PATH);
-      assert.ok(audit.length > 500, 'Audit must be substantial');
-    });
-    it('Decision file is not empty', () => {
-      const decision = readDoc(DECISION_PATH);
-      assert.ok(decision.length > 500, 'Decision must be substantial');
-    });
-  });
-
-  describe('20. Additional structural checks', () => {
-    const audit = readDoc(AUDIT_PATH);
-    it('Audit has Final Audit Conclusion', () => {
-      assert.match(audit, /Final Audit Conclusion/);
-    });
-    it('Audit has Reproduction Commands', () => {
-      assert.match(audit, /Reproduction Commands/);
-    });
-    it('Audit has classifications for all 12 parent criteria', () => {
-      const completeCount = (audit.match(/Classification.*COMPLETE/g) || []).length;
-      const partialCount = (audit.match(/Classification.*PARTIAL/g) || []).length;
-      const blockedCount = (audit.match(/Classification.*BLOCKED_OPERATOR_INPUT/g) || []).length;
-      const notStartedCount = (audit.match(/Classification.*NOT_STARTED/g) || []).length;
-      const total = completeCount + partialCount + blockedCount + notStartedCount;
-      assert.ok(total >= 11, `Expected at least 11 acceptance criteria classifications, got ${total}`);
-    });
-  });
-
-  describe('21. Decision document metadata corrections', () => {
-    const decision = readDoc(DECISION_PATH);
-    it('No empty Scope note marker', () => {
-      assert.doesNotMatch(decision, /Scope note/);
-    });
-    it('No "three files" wording', () => {
-      assert.doesNotMatch(decision, /three files|3 files|all three files/i);
-    });
-    it('No "3 allowed files" wording', () => {
-      assert.doesNotMatch(decision, /3 allowed files/);
-    });
-    it('No "outside the 3 allowed files" wording', () => {
-      assert.doesNotMatch(decision, /outside the 3 allowed files/);
-    });
-    it('No broad "all source-contract and disposable-CI work is merged" claim', () => {
-      assert.doesNotMatch(decision, /all source-contract and disposable-CI work is merged/i);
-    });
-    it('Phase-B predecessor scope wording present', () => {
-      assert.match(decision, /Phase-B Production-readonly collection boundary are merged/);
-    });
-    it('All 4 cumulative authorized files present in scope', () => {
-      assert.match(decision, /DB_MIGRATION_PROVENANCE_CURRENT_STATE_AUDIT\.md/);
-      assert.match(decision, /DB_MIGRATION_PROVENANCE_NEXT_CHILD_DECISION\.md/);
-      assert.match(decision, /db-migration-provenance-current-state-audit-contract\.test\.cjs/);
-      assert.match(decision, /test-layer-classification\.json/);
-    });
-    it('Completion boundary uses authorized files', () => {
-      // Document says "Completion Boundary" and "authorized files" (section title and text)
-      assert.match(decision, /Completion Boundary/i);
-      assert.match(decision, /authorized files/i);
-    });
-    it('test-layer-classification.json in cumulative scope', () => {
-      assert.match(decision, /test-layer-classification\.json.*minimal SOURCE_STATIC|minimal SOURCE_STATIC.*test-layer-classification\.json/);
-    });
-    it('Operator-readiness child does not claim full #3458 completion', () => {
-      // Match the specific broad positive claim that was in the original document
-      // "All source-contract and disposable-CI implementation children under #3458 have been completed and merged"
-      const broadClaim = /All source-contract and disposable-CI implementation children under #3458 have been completed and merged/;
-      assert.doesNotMatch(decision, broadClaim);
+    it('Precondition authority child remains source-only', () => {
+      assert.match(decision, /The `evaluatePrecondition` adapter is \*\*not\*\* implemented/);
+      assert.match(decision, /No SQL query, adapter, DB connection, or registry entry is added/);
+      assert.match(decision, /No Production mutation occurs/);
     });
   });
 });
