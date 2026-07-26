@@ -107,7 +107,7 @@ product, API, UI, Auth, CSS, and Cloudflare files
 
 The broader historical pattern `db/migration-provenance/**` remains protected except for the one exact new file explicitly allowed above.
 
-Secrets, environment configuration, provider configuration, credentials, endpoints, and operator identity are prohibited.
+secrets, environment configuration, provider configuration, credentials, endpoints, and operator identity are prohibited.
 
 ## Explicit non-goals
 
@@ -186,7 +186,15 @@ Steps 5–8 are not selected by this decision.
 
 Step 4 must not skip directly to Steps 5–8.
 
+This decision does not claim those later children are approved or ready.
+
 ## Precondition authority child (#3657)
+
+### Current non-runtime boundary
+
+- The `evaluatePrecondition` adapter is **not** implemented.
+- No SQL query, adapter, DB connection, or registry entry is added by Issue #3669.
+- No Production mutation occurs.
 
 Authority constraints carried forward:
 
