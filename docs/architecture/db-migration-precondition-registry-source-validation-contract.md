@@ -103,16 +103,25 @@ Safe kebab-case catalog key (same grammar as check_id):
 
 No colons, SQL text, slashes, uppercase, underscores, or whitespace.
 
-## Dense Arrays
+## Dense and Safe Collection Arrays
 
 - `entries` and each `checks` array must be dense (no sparse holes).
-- `isDenseArray()` helper checks every index from 0 to length-1 is present.
+- Collection validation first rejects Proxy values with `node:util`'s `types.isProxy()`.
+- The array length is snapshotted through `Object.getOwnPropertyDescriptor(value, 'length')` and must be a non-negative safe integer.
+- Every index from `0` to `length - 1` must be an own enumerable data property obtained through `Object.getOwnPropertyDescriptor(value, String(index))`.
+- Accessor indices, non-enumerable indices, unsafe length descriptors, and descriptor failures are rejected without executing user code.
+- `validatePreconditionRegistry()` iterates only the internal `entryValues` and `checkValues` snapshots; it never re-reads hostile source arrays through `length`, `in`, index access, iteration, `Array.from`, `map`, `forEach`, or `Reflect.get`.
+- `isDenseArray()` delegates to the same descriptor-based snapshot helper.
+- Non-array entries → `REGISTRY_ENTRIES_NOT_ARRAY`
 - Sparse entries → `REGISTRY_ENTRIES_SPARSE`
+- Proxy/accessor/unsafe entries → `REGISTRY_ENTRIES_UNSAFE`
+- Non-array checks → `REGISTRY_ENTRY_CHECKS_NOT_ARRAY`
 - Sparse checks → `REGISTRY_ENTRY_CHECKS_SPARSE`
+- Proxy/accessor/unsafe checks → `REGISTRY_ENTRY_CHECKS_UNSAFE`
 
 ## Proxy Rejection
 
-All registry, entry, check, and manifest inputs are rejected if they are Proxy-wrapped objects. Detection uses `node:util`'s `types.isProxy()` before any reflective inspection (`Object.getPrototypeOf`, `Reflect.ownKeys`, `Object.getOwnPropertyDescriptor`, property access). All Proxy trap counters (get, getPrototypeOf, ownKeys, getOwnPropertyDescriptor, has) are guaranteed 0.
+All registry, entry, check, manifest, `entries`, `checks`, and manifest `migrations` inputs are rejected if they are Proxy-wrapped. Proxy detection occurs before `Array.isArray`, prototype inspection, descriptor inspection, length reads, membership checks, indexed access, or iteration. Structural and binding regression tests require all Proxy trap counters (`get`, `has`, `getPrototypeOf`, `ownKeys`, `getOwnPropertyDescriptor`) to remain exactly 0. Accessor-index regression tests likewise require getter execution count 0.
 
 ## Status Rules
 
@@ -131,7 +140,7 @@ When both manifest and registry are ACTIVE:
 - Each canonical migration has exactly one registry entry
 - Each registry entry references exactly one canonical migration
 - No orphan entries (registry entry without matching migration)
-- No missing entries (migration without matching registry entry)
+- No missing entries (migration without registry entry)
 - No duplicate migration_id in registry
 
 ## Fixed Path

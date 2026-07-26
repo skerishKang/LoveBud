@@ -112,11 +112,7 @@ function hasForbiddenKeys(obj) {
 }
 
 function isDenseArray(value) {
-  if (!Array.isArray(value)) return false;
-  for (let i = 0; i < value.length; i++) {
-    if (!(i in value)) return false;
-  }
-  return true;
+  return safeDenseArrayValues(value).valid;
 }
 
 function safeEnumerableDataPropertyValue(obj, key) {
@@ -131,20 +127,26 @@ function safeEnumerableDataPropertyValue(obj, key) {
 
 function safeDenseArrayValues(value) {
   try {
-    if (utilTypes.isProxy(value)) return { valid: false };
+    if (utilTypes.isProxy(value)) return { valid: false, reason: 'UNSAFE' };
   } catch (e) {
-    return { valid: false };
+    return { valid: false, reason: 'UNSAFE' };
   }
-  if (!Array.isArray(value)) return { valid: false };
+
+  try {
+    if (!Array.isArray(value)) return { valid: false, reason: 'NOT_ARRAY' };
+  } catch (e) {
+    return { valid: false, reason: 'UNSAFE' };
+  }
 
   let lengthDesc;
   try {
     lengthDesc = Object.getOwnPropertyDescriptor(value, 'length');
   } catch (e) {
-    return { valid: false };
+    return { valid: false, reason: 'UNSAFE' };
   }
-  if (!lengthDesc || !('value' in lengthDesc) || !Number.isSafeInteger(lengthDesc.value) || lengthDesc.value < 0) {
-    return { valid: false };
+  if (!lengthDesc || !('value' in lengthDesc) ||
+      !Number.isSafeInteger(lengthDesc.value) || lengthDesc.value < 0) {
+    return { valid: false, reason: 'UNSAFE' };
   }
 
   const values = [];
@@ -153,10 +155,13 @@ function safeDenseArrayValues(value) {
     try {
       itemDesc = Object.getOwnPropertyDescriptor(value, String(i));
     } catch (e) {
-      return { valid: false };
+      return { valid: false, reason: 'UNSAFE' };
     }
-    if (!itemDesc || !('value' in itemDesc) || itemDesc.enumerable !== true) {
-      return { valid: false };
+    if (!itemDesc) {
+      return { valid: false, reason: 'SPARSE' };
+    }
+    if (!('value' in itemDesc) || itemDesc.enumerable !== true) {
+      return { valid: false, reason: 'UNSAFE' };
     }
     values.push(itemDesc.value);
   }
@@ -186,31 +191,31 @@ function validatePreconditionRegistry(registry) {
     errors.push('REGISTRY_STATUS_INVALID');
   }
 
-  if (!Array.isArray(entries)) {
-    errors.push('REGISTRY_ENTRIES_NOT_ARRAY');
+  const entriesSnapshot = safeDenseArrayValues(entries);
+  if (!entriesSnapshot.valid) {
+    if (entriesSnapshot.reason === 'NOT_ARRAY') {
+      errors.push('REGISTRY_ENTRIES_NOT_ARRAY');
+    } else if (entriesSnapshot.reason === 'SPARSE') {
+      errors.push('REGISTRY_ENTRIES_SPARSE');
+    } else {
+      errors.push('REGISTRY_ENTRIES_UNSAFE');
+    }
     return { ok: false, errors };
   }
-
-  if (!isDenseArray(entries)) {
-    errors.push('REGISTRY_ENTRIES_SPARSE');
-  }
+  const entryValues = entriesSnapshot.values;
 
   if (status === 'ADOPTION_REQUIRED') {
-    if (entries.length !== 0) {
+    if (entryValues.length !== 0) {
       errors.push('REGISTRY_ADOPTION_REQUIRED_NONEMPTY_ENTRIES');
     }
   } else if (status === 'ACTIVE') {
-    if (entries.length === 0) {
+    if (entryValues.length === 0) {
       errors.push('REGISTRY_ACTIVE_EMPTY_ENTRIES');
     }
   }
 
   const seenMigrationIds = new Set();
-  for (let i = 0; i < entries.length; i++) {
-    const entry = entries[i];
-
-    if (!(i in entries)) continue; // sparse slot guard
-
+  for (const entry of entryValues) {
     if (hasForbiddenKeys(entry)) {
       errors.push('REGISTRY_ENTRY_FORBIDDEN_AUTHORITY_KEY');
     }
@@ -233,25 +238,25 @@ function validatePreconditionRegistry(registry) {
       seenMigrationIds.add(migration_id);
     }
 
-    if (!Array.isArray(checks)) {
-      errors.push('REGISTRY_ENTRY_CHECKS_NOT_ARRAY');
+    const checksSnapshot = safeDenseArrayValues(checks);
+    if (!checksSnapshot.valid) {
+      if (checksSnapshot.reason === 'NOT_ARRAY') {
+        errors.push('REGISTRY_ENTRY_CHECKS_NOT_ARRAY');
+      } else if (checksSnapshot.reason === 'SPARSE') {
+        errors.push('REGISTRY_ENTRY_CHECKS_SPARSE');
+      } else {
+        errors.push('REGISTRY_ENTRY_CHECKS_UNSAFE');
+      }
       continue;
     }
+    const checkValues = checksSnapshot.values;
 
-    if (!isDenseArray(checks)) {
-      errors.push('REGISTRY_ENTRY_CHECKS_SPARSE');
-    }
-
-    if (status === 'ACTIVE' && checks.length === 0) {
+    if (status === 'ACTIVE' && checkValues.length === 0) {
       errors.push('REGISTRY_ENTRY_CHECKS_EMPTY');
     }
 
     const seenCheckIds = new Set();
-    for (let j = 0; j < checks.length; j++) {
-      const check = checks[j];
-
-      if (!(j in checks)) continue; // sparse slot guard
-
+    for (const check of checkValues) {
       if (hasForbiddenKeys(check)) {
         errors.push('REGISTRY_CHECK_FORBIDDEN_AUTHORITY_KEY');
       }

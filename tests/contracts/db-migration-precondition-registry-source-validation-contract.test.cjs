@@ -743,6 +743,62 @@ describe('DB precondition registry source validation contract (#3659)', () => {
   });
 
   describe('G. Corrected hostile boundaries', () => {
+    function proxyArrayWithTrapCounters(values) {
+      const traps = {
+        get: 0,
+        has: 0,
+        getPrototypeOf: 0,
+        ownKeys: 0,
+        getOwnPropertyDescriptor: 0
+      };
+      const proxy = new Proxy(values, {
+        get(target, key, receiver) {
+          traps.get += 1;
+          return Reflect.get(target, key, receiver);
+        },
+        has(target, key) {
+          traps.has += 1;
+          return Reflect.has(target, key);
+        },
+        getPrototypeOf(target) {
+          traps.getPrototypeOf += 1;
+          return Reflect.getPrototypeOf(target);
+        },
+        ownKeys(target) {
+          traps.ownKeys += 1;
+          return Reflect.ownKeys(target);
+        },
+        getOwnPropertyDescriptor(target, key) {
+          traps.getOwnPropertyDescriptor += 1;
+          return Reflect.getOwnPropertyDescriptor(target, key);
+        }
+      });
+      return { proxy, traps };
+    }
+
+    function assertTrapCountersZero(traps) {
+      assert.deepStrictEqual(traps, {
+        get: 0,
+        has: 0,
+        getPrototypeOf: 0,
+        ownKeys: 0,
+        getOwnPropertyDescriptor: 0
+      });
+    }
+
+    function accessorIndexArray(value) {
+      let getterCalls = 0;
+      const array = [];
+      Object.defineProperty(array, '0', {
+        get() {
+          getterCalls += 1;
+          return value;
+        },
+        enumerable: true,
+        configurable: true
+      });
+      return { array, getGetterCalls: () => getterCalls };
+    }
     it('G1. binding rejects manifest accessor with getter execution 0', () => {
       let getterCalls = 0;
       const manifest = Object.create(null, {
@@ -840,6 +896,100 @@ module.exports = {
 
     it('G3. binding actual Proxy errors array -> UNAVAILABLE, traps 0', async () => {
       await assertProxyErrorsArrayBoundary('binding');
+    });
+
+
+    it('G4. structural Proxy-wrapped entries Array -> FAIL, all traps 0', () => {
+      const { proxy, traps } = proxyArrayWithTrapCounters([]);
+      const result = validatePreconditionRegistry(validRegistry({ entries: proxy }));
+      assert.ok(!result.ok);
+      assert.ok(result.errors.includes('REGISTRY_ENTRIES_UNSAFE'));
+      assertTrapCountersZero(traps);
+    });
+
+    it('G5. structural Proxy-wrapped checks Array -> FAIL, all traps 0', () => {
+      const { proxy, traps } = proxyArrayWithTrapCounters([]);
+      const result = validatePreconditionRegistry(activeRegistry([
+        { migration_id: VALID_MIGRATION_ID, checks: proxy }
+      ]));
+      assert.ok(!result.ok);
+      assert.ok(result.errors.includes('REGISTRY_ENTRY_CHECKS_UNSAFE'));
+      assertTrapCountersZero(traps);
+    });
+
+    it('G6. structural accessor index entries -> FAIL, getter 0', () => {
+      const { array, getGetterCalls } = accessorIndexArray({
+        migration_id: VALID_MIGRATION_ID,
+        checks: []
+      });
+      const result = validatePreconditionRegistry(validRegistry({
+        status: 'ACTIVE',
+        entries: array
+      }));
+      assert.ok(!result.ok);
+      assert.ok(result.errors.includes('REGISTRY_ENTRIES_UNSAFE'));
+      assert.strictEqual(getGetterCalls(), 0);
+    });
+
+    it('G7. structural accessor index checks -> FAIL, getter 0', () => {
+      const { array, getGetterCalls } = accessorIndexArray({
+        check_id: VALID_CHECK_ID,
+        query_reference: VALID_QUERY_REF,
+        expected: true
+      });
+      const result = validatePreconditionRegistry(activeRegistry([
+        { migration_id: VALID_MIGRATION_ID, checks: array }
+      ]));
+      assert.ok(!result.ok);
+      assert.ok(result.errors.includes('REGISTRY_ENTRY_CHECKS_UNSAFE'));
+      assert.strictEqual(getGetterCalls(), 0);
+    });
+
+    it('G8. isDenseArray rejects Proxy Array, all traps 0', () => {
+      const { proxy, traps } = proxyArrayWithTrapCounters([]);
+      assert.strictEqual(isDenseArray(proxy), false);
+      assertTrapCountersZero(traps);
+    });
+
+    it('G9. binding Proxy-wrapped manifest migrations -> FAIL, all traps 0', () => {
+      const { proxy, traps } = proxyArrayWithTrapCounters([]);
+      const manifest = adopterRequiredManifest();
+      manifest.migrations = proxy;
+      const result = validateRegistryManifestBinding(validRegistry(), manifest);
+      assert.ok(!result.ok);
+      assert.ok(result.errors.includes('REGISTRY_BINDING_COLLECTION_UNSAFE'));
+      assertTrapCountersZero(traps);
+    });
+
+    it('G10. binding Proxy-wrapped registry entries -> FAIL, all traps 0', () => {
+      const { proxy, traps } = proxyArrayWithTrapCounters([]);
+      const registry = validRegistry({ entries: proxy });
+      const result = validateRegistryManifestBinding(registry, adopterRequiredManifest());
+      assert.ok(!result.ok);
+      assert.ok(result.errors.includes('REGISTRY_BINDING_COLLECTION_UNSAFE'));
+      assertTrapCountersZero(traps);
+    });
+
+    it('G11. binding accessor index manifest migrations -> FAIL, getter 0', () => {
+      const { array, getGetterCalls } = accessorIndexArray({ id: VALID_MIGRATION_ID });
+      const manifest = adopterRequiredManifest();
+      manifest.migrations = array;
+      const result = validateRegistryManifestBinding(validRegistry(), manifest);
+      assert.ok(!result.ok);
+      assert.ok(result.errors.includes('REGISTRY_BINDING_COLLECTION_UNSAFE'));
+      assert.strictEqual(getGetterCalls(), 0);
+    });
+
+    it('G12. binding accessor index registry entries -> FAIL, getter 0', () => {
+      const { array, getGetterCalls } = accessorIndexArray({
+        migration_id: VALID_MIGRATION_ID,
+        checks: []
+      });
+      const registry = validRegistry({ entries: array });
+      const result = validateRegistryManifestBinding(registry, adopterRequiredManifest());
+      assert.ok(!result.ok);
+      assert.ok(result.errors.includes('REGISTRY_BINDING_COLLECTION_UNSAFE'));
+      assert.strictEqual(getGetterCalls(), 0);
     });
   });
 });
