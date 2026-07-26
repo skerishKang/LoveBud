@@ -47,6 +47,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/db-migration-readonly-query-catalog-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Validates the fixed inactive read-only precondition query catalog, normative authority separation, future ACTIVE entry shape, BOOLEAN_SINGLE_ROW result contract, implementation sequence, prohibited runtime and dynamic authority, exact changed-file boundary, and protected issue references without database, network, SQL execution, Docker, PostgreSQL, or Production access (#3669).",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/api-body-size-limit-contract.test.cjs",
       "layer": "EXECUTED_FAKE",
       "rationale": "Reads production module source and executes it in a local process with injected fake/mock/stub dependencies (e.g., vm context with fake DOM or mocked fetch/localStorage); no real external system or production resource used.",
