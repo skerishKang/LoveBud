@@ -267,7 +267,7 @@ The test is classified `SOURCE_STATIC`: it executes only deterministic source co
 
 ## Exact changed-file boundary
 
-Exactly these five files may change:
+Exactly these six files may change:
 
 ```text
 scripts/migration-precondition-authority-loader-resolver-core.cjs
@@ -275,7 +275,10 @@ tests/contracts/db-migration-precondition-authority-loader-resolver-contract.tes
 docs/architecture/db-migration-precondition-authority-loader-resolver-contract.md
 tests/test-layer-classification.json
 docs/architecture/DB_MIGRATION_PROVENANCE_NEXT_CHILD_DECISION.md
+docs/architecture/db-schema-change-inventory.json
 ```
+
+The sixth file is limited to exactly one source-only inventory entry for `scripts/migration-precondition-authority-loader-resolver-core.cjs`. Existing inventory entries and guard logic remain unchanged.
 
 The registry JSON, catalog JSON, existing validator, source-validation adapter, packages, lockfiles, workflows, UI, Auth, API, CSS, Cloudflare, providers, and secrets remain unchanged.
 
