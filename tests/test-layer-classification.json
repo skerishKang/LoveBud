@@ -4619,6 +4619,12 @@
       "layer": "SOURCE_STATIC",
       "rationale": "Validates the precondition registry schema (format_version, status=ADOPTION_REQUIRED/ACTIVE, entries), entry/check structure, forbidden authority keys, duplicate migration_id/check_id, boolean expected only, getter/Proxy trap safety, null/undefined safety, and cross-binding with canonical migration manifest (ADOPTION_REQUIRED to ADOPTION_REQUIRED, ACTIVE one-to-one, orphan/missing entry rejection) without database, network, SQL, Docker, or Production access (#3659).",
       "capabilities": []
+    },
+    {
+      "path": "tests/contracts/shared-loading-state-primitives-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Validates css/global/lovetree-loading-states.css class families, reduced-motion behavior, skeleton aria-hidden convention, error/degraded distinction, import ordering, and 10 shared KO/EN i18n keys; enforces absence of page-specific selectors, runtime behavior, and prohibited functions (#3691).",
+      "capabilities": []
     }
   ],
   "supplemental": [
