@@ -10,8 +10,8 @@
  */
 
 (function() {
-  /** ── Timed loading state manager for My Trees with operation-token ownership ── */
-  function createMyTreesLoadingManager() {
+  /** ── Timed loading state manager for My Trees with operation-token ownership and DOM callbacks ── */
+  function createMyTreesLoadingManager(onStateChange) {
     var timers = {
       indicator: null,
       copy: null,
@@ -39,28 +39,35 @@
     /**
      * Start a new loading operation with generation token.
      * Only current generation can modify DOM/timers.
+     * Calls onStateChange callback for each stage transition.
      */
     function start() {
       clearAllTimers();
       var gen = ++currentGeneration;
 
       // 0-500ms: hidden (caller handles initial visibility)
+      if (onStateChange) onStateChange('init', gen, '');
+
       timers.indicator = setTimeout(function () {
         if (!isCurrent(gen)) return;
         // 500-2000ms: visual indicator visible, no explanatory copy
+        if (onStateChange) onStateChange('indicator', gen, '');
 
         timers.copy = setTimeout(function () {
           if (!isCurrent(gen)) return;
           // 2000-8000ms: show owned-tree copy text
+          if (onStateChange) onStateChange('copy', gen, i18n('myTrees.loading'));
 
           timers.longWait = setTimeout(function () {
             if (!isCurrent(gen)) return;
             // 8000-15000ms: long-wait visible
+            if (onStateChange) onStateChange('longWait', gen, '');
 
             timers.error = setTimeout(function () {
               if (!isCurrent(gen)) return;
               // 15000ms+: visible error/retry state
               // UI escalation only — not an abort
+              if (onStateChange) onStateChange('error', gen, '');
             }, ERROR_ESCALATION - LONG_WAIT);
           }, LONG_WAIT - COPY_THRESHOLD);
         }, COPY_THRESHOLD - INDICATOR_DELAY);
@@ -72,16 +79,19 @@
     function ready(gen) {
       if (gen !== undefined && !isCurrent(gen)) return;
       clearAllTimers();
+      if (onStateChange) onStateChange('ready', gen, '');
     }
 
     function error(gen) {
       if (gen !== undefined && !isCurrent(gen)) return;
       clearAllTimers();
+      if (onStateChange) onStateChange('error', gen, '');
     }
 
     function dispose(gen) {
       if (gen !== undefined && !isCurrent(gen)) return;
       clearAllTimers();
+      if (onStateChange) onStateChange('disposed', gen, '');
     }
 
     return {
@@ -191,6 +201,61 @@
    * @param {string} [meta.errorType] - 'auth'|'server'|'network'|'generic'
    */
   var _loadingManager = null;
+  /** Persistent operation token at module-closure level */
+  var currentLoadingGeneration = null;
+
+  /**
+   * Handle loading stage transitions: update DOM visibility and text.
+   * Called by the manager via onStateChange callback for each timed stage.
+   */
+  function handleLoadingStage(stage, gen, text) {
+    var loadingEl = document.getElementById('state-loading');
+    if (!loadingEl) return;
+    if (gen !== undefined && gen !== currentLoadingGeneration) return;
+
+    var textEl = loadingEl.querySelector('.loading-text');
+    var spinnerEl = loadingEl.querySelector('.lt-spinner, .lt-loading-compact');
+
+    switch (stage) {
+      case 'init':
+        // 0-500ms: hidden
+        loadingEl.classList.add('state-hidden');
+        loadingEl.classList.remove('state-visible', 'state-visible-block');
+        break;
+      case 'indicator':
+        // 500-2000ms: visible with indicator but no explanatory copy
+        loadingEl.classList.remove('state-hidden');
+        loadingEl.classList.add('state-visible');
+        loadingEl.classList.remove('lt-long-wait', 'lt-error-shell');
+        if (textEl) textEl.textContent = '';
+        break;
+      case 'copy':
+        // 2000-8000ms: show owned-tree copy text
+        if (textEl && text) textEl.textContent = text;
+        break;
+      case 'longWait':
+        // 8000-15000ms: long-wait visible
+        loadingEl.classList.add('lt-long-wait');
+        if (textEl) textEl.textContent = '';
+        break;
+      case 'error':
+        // 15000ms+: visible error/retry state
+        loadingEl.classList.remove('lt-long-wait');
+        loadingEl.classList.add('state-hidden');
+        // Show the actual error section instead
+        var errorSection = document.getElementById('state-error');
+        if (errorSection) {
+          showStateSection(errorSection, 'error');
+          _applyErrorStateMessage('network');
+        }
+        break;
+      case 'ready':
+      case 'disposed':
+        // Reset state
+        loadingEl.classList.remove('lt-long-wait', 'lt-error-shell');
+        break;
+    }
+  }
 
   /**
    * Initialize the timed loading manager for My Trees.
@@ -198,7 +263,7 @@
    */
   function initLoadingManager() {
     if (_loadingManager) return _loadingManager;
-    _loadingManager = createMyTreesLoadingManager();
+    _loadingManager = createMyTreesLoadingManager(handleLoadingStage);
     return _loadingManager;
   }
 
@@ -219,23 +284,16 @@
 
     Object.values(sections).forEach(hideStateSection);
 
-    var loadingGen = null;
-
     switch (newState) {
       case STATE.LOADING:
         showStateSection(sections.loading, 'loading');
-        // Start timed loading manager on LOADING, capture generation token
+        // Start timed loading manager on LOADING, capture persistent generation token
         if (_loadingManager) {
-          loadingGen = _loadingManager.start();
+          currentLoadingGeneration = _loadingManager.start();
         }
         // Reset long-wait visual class
         if (sections.loading) {
-          sections.loading.classList.remove('lt-long-wait');
-          var textEl = sections.loading.querySelector('.loading-text');
-          if (textEl) {
-            var t = window.t || function(k) { return k; };
-            textEl.textContent = t('myTrees.loading');
-          }
+          sections.loading.classList.remove('lt-long-wait', 'lt-error-shell');
         }
         break;
       case STATE.ERROR:
@@ -243,21 +301,27 @@
           showStateSection(sections.error, 'error');
           _applyErrorStateMessage(meta && meta.errorType);
         }
-        // Stop loading manager with generation token
-        if (_loadingManager) _loadingManager.error(loadingGen);
-        loadingGen = null;
+        // Stop loading manager with persistent token (not stale)
+        if (_loadingManager && currentLoadingGeneration !== null) {
+          _loadingManager.error(currentLoadingGeneration);
+        }
+        currentLoadingGeneration = null;
         break;
       case STATE.EMPTY:
         showStateSection(sections.empty, 'empty');
-        // Stop loading manager with generation token
-        if (_loadingManager) _loadingManager.ready(loadingGen);
-        loadingGen = null;
+        // Stop loading manager with persistent token
+        if (_loadingManager && currentLoadingGeneration !== null) {
+          _loadingManager.ready(currentLoadingGeneration);
+        }
+        currentLoadingGeneration = null;
         break;
       case STATE.LOADED:
         showStateSection(sections.loaded, 'loaded');
-        // Stop loading manager with generation token
-        if (_loadingManager) _loadingManager.ready(loadingGen);
-        loadingGen = null;
+        // Stop loading manager with persistent token
+        if (_loadingManager && currentLoadingGeneration !== null) {
+          _loadingManager.ready(currentLoadingGeneration);
+        }
+        currentLoadingGeneration = null;
         break;
       default:
         console.warn('[my-trees] Unknown state requested:', newState);

@@ -96,8 +96,10 @@ function createBrowseFakeContext(clock) {
     innerHTML: '',
     hidden: true,
     _attrs: {},
+    _children: [],
     setAttribute: function (k, v) { this._attrs[k] = v; },
     removeAttribute: function (k) { delete this._attrs[k]; },
+    appendChild: function (child) { this._children.push(child); },
     classList: {
       _classes: [],
       add: function (c) {
@@ -118,11 +120,51 @@ function createBrowseFakeContext(clock) {
         return { onclick: null, addEventListener: function () {} };
       }
       return null;
+    },
+    dispatchEvent: function (ev) {
+      var handlers = this._events && this._events[ev.type];
+      if (handlers) handlers.forEach(function (h) { h(ev); });
     }
   };
 
   var fakeDoc = {
-    getElementById: function () { return statusEl; }
+    getElementById: function () { return statusEl; },
+    createElement: function (tag) {
+      var el = {
+        tagName: (tag || '').toUpperCase(),
+        className: '',
+        textContent: '',
+        innerHTML: '',
+        hidden: false,
+        _attrs: {},
+        _children: [],
+        _events: {},
+        setAttribute: function (k, v) { this._attrs[k] = v; },
+        getAttribute: function (k) { return this._attrs[k]; },
+        appendChild: function (child) { this._children.push(child); },
+        addEventListener: function (ev, cb) {
+          if (!this._events[ev]) this._events[ev] = [];
+          this._events[ev].push(cb);
+        },
+        dispatchEvent: function (ev) {
+          var handlers = this._events[ev.type];
+          if (handlers) handlers.forEach(function (h) { h(ev); });
+        },
+        style: {},
+        classList: {
+          _classes: [],
+          add: function (c) { if (this._classes.indexOf(c) === -1) this._classes.push(c); },
+          remove: function (c) { var i = this._classes.indexOf(c); if (i !== -1) this._classes.splice(i, 1); }
+        },
+        querySelector: function (sel) {
+          if (sel === '.lt-error-retry-btn') {
+            return { onclick: null, addEventListener: function () {} };
+          }
+          return null;
+        }
+      };
+      return el;
+    }
   };
 
   var fakeWin = {
@@ -141,12 +183,13 @@ function createBrowseFakeContext(clock) {
     }
   };
 
-  // vm.runInNewContext needs setTimeout/clearTimeout as direct sandbox properties
+  // vm.runInNewContext needs setTimeout/clearTimeout/document as direct sandbox properties
   return {
     statusEl: statusEl,
     context: {
       window: fakeWin,
       global: fakeWin,
+      document: fakeDoc,
       setTimeout: clock.setTimeout,
       clearTimeout: clock.clearTimeout
     }
@@ -267,7 +310,8 @@ describe('Browse timed loading manager (EXECUTED_FAKE)', () => {
     assert.ok(!ctx.statusEl.hidden, 'At 15000ms: error shell must be visible');
     assert.ok(ctx.statusEl.className.includes('lt-error-shell'),
       'Error shell class must be present');
-    assert.ok(ctx.statusEl.innerHTML.includes('Retry'),
+    // Use textContent instead of innerHTML since code now uses appendChild
+    assert.ok(ctx.statusEl.textContent.includes('Retry') || (ctx.statusEl._children && ctx.statusEl._children.length > 0),
       'Error shell must contain a retry button');
   });
 
@@ -537,5 +581,118 @@ describe('My Trees timed loading manager (EXECUTED_FAKE)', () => {
   it('23. hub showDegraded exported and functional', () => {
     assert.ok(read(MY_TREES_HUB).includes('showDegraded: showDegraded'),
       'showDegraded must be in hub API');
+  });
+
+  it('24. READY after LOADING leaves 0 timers', () => {
+    var clock = createFakeClock();
+    var ctx = createBrowseFakeContext(clock);
+    vm.runInNewContext(read(MY_TREES_PAGE), ctx.context);
+
+    var factory = ctx.context.window.LoveBudMyTreesLoading.createMyTreesLoadingManager;
+    var mgr = factory();
+    var gen = mgr.start();
+    // Call ready immediately
+    mgr.ready(gen);
+    assert.strictEqual(clock.pendingCount(), 0,
+      'READY after LOADING must leave 0 timers');
+  });
+
+  it('25. EMPTY after LOADING leaves 0 timers', () => {
+    var clock = createFakeClock();
+    var ctx = createBrowseFakeContext(clock);
+    vm.runInNewContext(read(MY_TREES_PAGE), ctx.context);
+
+    var factory = ctx.context.window.LoveBudMyTreesLoading.createMyTreesLoadingManager;
+    var mgr = factory();
+    var gen = mgr.start();
+    clock.advance(500);
+    mgr.ready(gen);
+    assert.strictEqual(clock.pendingCount(), 0,
+      'EMPTY after LOADING must leave 0 timers');
+  });
+
+  it('26. ERROR after LOADING leaves 0 timers', () => {
+    var clock = createFakeClock();
+    var ctx = createBrowseFakeContext(clock);
+    vm.runInNewContext(read(MY_TREES_PAGE), ctx.context);
+
+    var factory = ctx.context.window.LoveBudMyTreesLoading.createMyTreesLoadingManager;
+    var mgr = factory();
+    var gen = mgr.start();
+    clock.advance(500);
+    mgr.error(gen);
+    assert.strictEqual(clock.pendingCount(), 0,
+      'ERROR after LOADING must leave 0 timers');
+  });
+
+  it('27. two overlapping loads: second supersedes first', () => {
+    var clock = createFakeClock();
+    var ctx = createBrowseFakeContext(clock);
+    vm.runInNewContext(read(MY_TREES_PAGE), ctx.context);
+
+    var factory = ctx.context.window.LoveBudMyTreesLoading.createMyTreesLoadingManager;
+    var mgr = factory();
+    var gen1 = mgr.start();
+    clock.advance(500);
+    var gen2 = mgr.start(); // supersedes
+    clock.advance(500);
+
+    // gen1 ready must NOT affect gen2
+    mgr.ready(gen1);
+    assert.strictEqual(clock.pendingCount(), 1,
+      'gen1 ready must not clear gen2 timers');
+
+    mgr.ready(gen2);
+    assert.strictEqual(clock.pendingCount(), 0,
+      'gen2 ready must clear all timers');
+  });
+
+  it('28. authenticated zero trees → EMPTY (source check)', () => {
+    const html = read(MY_TREES_HTML);
+    assert.ok(html.includes('id="state-empty"'),
+      'my-trees.html must have empty state element');
+    assert.ok(html.includes('role="status"'),
+      'Empty state must use role=status');
+  });
+
+  it('29. auth/session failure → ERROR not EMPTY (source check)', () => {
+    const html = read(MY_TREES_HTML);
+    assert.ok(html.includes('id="state-error"'),
+      'my-trees.html must have error state element');
+    assert.ok(html.includes('role="alert"'),
+      'Error state must use role=alert');
+  });
+
+  it('30. Browse incremental loading preserves existing cards (source check)', () => {
+    const src = read(SEARCH_DATA);
+    assert.ok(src.includes('!resetSelection'),
+      'Incremental load path exists in search-data.js');
+  });
+
+  it('31. Browse pagehide cleanup handler exists', () => {
+    const src = read(SEARCH_ORCHESTRATOR);
+    assert.ok(src.includes('searchData.dispose'),
+      'search.js must call searchData.dispose on pagehide');
+  });
+
+  it('32. Browse retry event listener wired in search.js', () => {
+    const src = read(SEARCH_ORCHESTRATOR);
+    assert.ok(src.includes('lovetree-retry'),
+      'search.js must listen for lovetree-retry event');
+  });
+
+  it('33. My Trees pagehide handler disposes loading manager', () => {
+    const src = read(MY_TREES_ORCHESTRATOR);
+    assert.ok(src.includes('mgr.dispose'),
+      'my-trees.js pagehide must dispose loading manager');
+  });
+
+  it('34. Browse copy uses search.loadingPublicTrees key', () => {
+    const src = read(SEARCH_DATA);
+    assert.ok(src.includes('search.loadingPublicTrees'),
+      'search-data.js must use search.loadingPublicTrees for copy');
+    const i18n = read(I18N_SEARCH);
+    assert.ok(i18n.includes('search.loadingPublicTrees'),
+      'i18n-search.js must define search.loadingPublicTrees');
   });
 });

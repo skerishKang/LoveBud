@@ -75,7 +75,7 @@
                 timers.copy = setTimeout(function () {
                     if (!isCurrent(gen)) return;
                     // 1800-8000ms: show page-specific copy
-                    el.textContent = i18n('loading.list.load');
+                    el.textContent = i18n('search.loadingPublicTrees');
 
                     timers.longWait = setTimeout(function () {
                         if (!isCurrent(gen)) return;
@@ -103,20 +103,25 @@
             // Visible error shell with heading, body, and retry button
             el.className = 'lt-loading-inline lt-error-shell';
             el.hidden = false;
-            el.innerHTML = '<p class="lt-error-heading">' + i18n('loading.error.primary') + '</p>' +
-                '<p class="lt-error-body">' + i18n('loading.error.body') + '</p>' +
-                '<button type="button" class="lt-retry-btn lt-error-retry-btn">' +
-                i18n('loading.retry.action') + '</button>';
-            // Wire retry button to trigger a retry
-            var retryBtn = el.querySelector('.lt-error-retry-btn');
-            if (retryBtn) {
-                retryBtn.onclick = function () {
-                    // Trigger new load via the search page orchestrator
-                    // The parent page will wire this to loadPublicTrees
-                    var event = new CustomEvent('lovetree-retry', { bubbles: true });
-                    el.dispatchEvent(event);
-                };
-            }
+            // Use safe child nodes - build with DOM methods, not innerHTML
+            el.textContent = '';
+            var heading = document.createElement('p');
+            heading.className = 'lt-error-heading';
+            heading.textContent = i18n('loading.error.primary');
+            var body = document.createElement('p');
+            body.className = 'lt-error-body';
+            body.textContent = i18n('loading.error.body');
+            var retryBtn = document.createElement('button');
+            retryBtn.className = 'lt-retry-btn lt-error-retry-btn';
+            retryBtn.textContent = i18n('loading.retry.action');
+            el.appendChild(heading);
+            el.appendChild(body);
+            el.appendChild(retryBtn);
+            // Wire retry button to trigger via CustomEvent
+            retryBtn.onclick = function () {
+                var event = new CustomEvent('lovetree-retry', { bubbles: true });
+                el.dispatchEvent(event);
+            };
         }
 
         function ready(gen) {
@@ -278,6 +283,12 @@
             if (resetSelection) {
                 ui.clearSelectedPreview();
                 // Start timed loading for initial load, capture generation
+                if (browseLoadingManager) {
+                    state.currentLoadGen = browseLoadingManager.start();
+                }
+            } else {
+                // Incremental loading: start a new operation token
+                // Preserves existing READY cards, selection, preview
                 if (browseLoadingManager) {
                     state.currentLoadGen = browseLoadingManager.start();
                 }

@@ -253,6 +253,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     });
 
+    // ── Retry wiring: listen for lovetree-retry events from loading manager error shell ──
+    if (refs.browseLoadingStatus) {
+        refs.browseLoadingStatus.addEventListener('lovetree-retry', function () {
+            // Preserve current query, filter, sort, view mode, pagination intent
+            searchData.loadPublicTrees({ resetSelection: true });
+        });
+    }
+
     window.addEventListener('popstate', async () => {
         const previousSort = state.currentSort;
         const previousLimit = state.currentLimit;
@@ -263,5 +271,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             renderResults(false);
         }
         ui.syncBrowseHead();
+    });
+
+    // ── Lifecycle cleanup: pagehide disposes loading manager ──
+    window.addEventListener('pagehide', function () {
+        if (searchData && typeof searchData.dispose === 'function') {
+            searchData.dispose();
+        }
     });
 });
