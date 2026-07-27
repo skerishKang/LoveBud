@@ -437,6 +437,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/ci-test-group-registry-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/changeability-production-parity-audit-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
@@ -4753,12 +4759,6 @@
       ]
     },
     {
-      "path": "tests/contracts/tree-card-composition-3578-contract.test.cjs",
-      "layer": "EXECUTED_FAKE",
-      "rationale": "Executes the shared tree-card-composition.js in a local vm with fake DOM, validates Browse and My Trees surface adapters call the shared helper, common slot structure, three-state metric semantics, surface-specific differences (visibility badge, public metadata, no edit), XSS safety, and fail-closed on missing load order. No real browser/network/DB/production resource used.",
-      "capabilities": []
-    },
-    {
       "path": "tests/db-engine/trees-schema-foothold-postgres.test.cjs",
       "defaultCi": false,
       "layer": "DB_ENGINE_EXECUTION",
@@ -4768,12 +4768,6 @@
         "child_process",
         "filesystem"
       ]
-    },
-    {
-      "path": "tests/contracts/db-migration-precondition-registry-source-validation-contract.test.cjs",
-      "layer": "SOURCE_STATIC",
-      "rationale": "Validates the precondition registry schema (format_version, status=ADOPTION_REQUIRED/ACTIVE, entries), entry/check structure, forbidden authority keys, duplicate migration_id/check_id, boolean expected only, getter/Proxy trap safety, null/undefined safety, and cross-binding with canonical migration manifest (ADOPTION_REQUIRED↔ADOPTION_REQUIRED, ACTIVE one-to-one, orphan/missing entry rejection) without database, network, SQL, Docker, or Production access (#3659).",
-      "capabilities": []
     }
   ]
 }
