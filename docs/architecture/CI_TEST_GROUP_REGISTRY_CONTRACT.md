@@ -36,6 +36,18 @@ DB_ENGINE_EXECUTION: 7
 invalid default/supplemental duplicates: 0
 ```
 
+## Cumulative file boundary
+
+This child's cumulative PR diff may contain exactly these five paths:
+
+- `tests/ci-test-group-registry.json`
+- `scripts/report-ci-test-groups.cjs`
+- `tests/contracts/ci-test-group-registry-contract.test.cjs`
+- `docs/architecture/CI_TEST_GROUP_REGISTRY_CONTRACT.md`
+- `tests/test-layer-classification.json`
+
+No other path is authorized in this child.
+
 ## Authority separation
 
 - `tests/test-layer-classification.json` is the evidence-layer authority. It assigns each default-CI file to an evidence layer (SOURCE_STATIC, EXECUTED_FAKE, EXECUTED_REAL_LOCAL, etc.) based on content evidence.
@@ -55,11 +67,15 @@ invalid default/supplemental duplicates: 0
 | `baseline_sha_note` | string | no | Note about SHA usage |
 | `group_enum` | string[] | yes | Canonical ordered group ID vocabulary |
 | `group_enum_note` | string | no | Note about group enum rules |
+| `membership_source_enum` | string[] | yes | Allowed membership source values |
 | `execution_state_enum` | string[] | yes | Allowed execution state values |
 | `runtime_enum` | string[] | yes | Allowed runtime values |
 | `platform_enum` | string[] | yes | Allowed platform values |
 | `capability_enum` | string[] | yes | Allowed capability values |
+| `artifact_expectation_enum` | string[] | yes | Allowed artifact expectation values |
+| `risk_gate_eligibility_enum` | string[] | yes | Allowed risk-gate eligibility values |
 | `source_status_enum` | string[] | yes | Allowed source status values |
+| `required_group_fields` | string[] | yes | List of required fields every group must have |
 | `field_definitions` | object | yes | Description of each group field |
 | `groups` | object[] | yes | Ordered array of group definitions |
 
@@ -69,17 +85,17 @@ invalid default/supplemental duplicates: 0
 |-------|------|----------|------|
 | `group` | string | yes | Must match group_enum |
 | `purpose` | string | yes | Free text |
-| `membership_source` | string | yes | `classification_layer`, `package_glob`, `path_pattern`, `explicit_list` |
-| `explicit_paths` | string[] | null | Non-null only when membership_source is `explicit_list` |
-| `command_reference` | string | yes | Shell command or `NOT_EXECUTED` |
-| `default_pr_execution_state` | string | yes | `ALWAYS`, `ON_COMMIT`, `ON_PR`, `MANUAL`, `NOT_EXECUTED` |
-| `runtime` | string | yes | `node`, `node_browser`, `python`, `postgresql_ephemeral`, `manual`, `aggregate` |
-| `platform` | string | yes | `ubuntu`, `cross_platform`, `manual` |
+| `membership_source` | string | yes | Must match membership_source_enum |
+| `explicit_paths` | string[] | null | Non-null only when membership_source is `explicit_list`. Each entry is a normalized repository-relative path with no arguments, absolute paths, or traversal. |
+| `command_reference` | string | yes | Shell command, npm script, or `NOT_EXECUTED` |
+| `default_pr_execution_state` | string | yes | Must match execution_state_enum |
+| `runtime` | string | yes | Must match runtime_enum |
+| `platform` | string | yes | Must match platform_enum |
 | `capabilities` | string[] | yes | Subset of capability_enum |
-| `comparability` | string | yes | Free text |
-| `artifact_expectation` | string | yes | Free text |
-| `risk_gate_eligibility` | string | yes | Free text |
-| `source_status` | string | yes | `CONFIRMED`, `UNVERIFIED`, `NOT_PRESENT` |
+| `comparability` | string | yes | Branch/main comparability prerequisite |
+| `artifact_expectation` | string | yes | Must match artifact_expectation_enum |
+| `risk_gate_eligibility` | string | yes | Must match risk_gate_eligibility_enum |
+| `source_status` | string | yes | Must match source_status_enum |
 
 ### Group vocabulary (canonical order)
 
