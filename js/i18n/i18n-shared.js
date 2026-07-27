@@ -415,6 +415,51 @@
     'card.representative.kicker': {
       ko: '첫 순간 기록',
       en: 'First moment'
+    },
+
+    // ---- Shared loading-state copy roles (Issue #3691) ----
+    // These keys define canonical semantic roles. Page-specific
+    // language may vary, but the semantic role must remain consistent.
+
+    'loading.page.prepare': {
+      ko: '페이지를 준비하는 중',
+      en: 'Preparing the page'
+    },
+    'loading.media.load': {
+      ko: '영상을 불러오는 중',
+      en: 'Loading media'
+    },
+    'loading.list.load': {
+      ko: '목록을 불러오는 중',
+      en: 'Loading the list'
+    },
+    'loading.region.load': {
+      ko: '내용을 불러오는 중',
+      en: 'Loading content'
+    },
+    'loading.long.wait': {
+      ko: '평소보다 오래 걸리고 있어요. 잠시만 기다려 주세요.',
+      en: 'This is taking longer than usual. Please wait.'
+    },
+    'loading.degraded': {
+      ko: '일부 내용을 불러오지 못했지만 나머지는 계속 볼 수 있어요.',
+      en: 'Some content could not load, but the rest is still available.'
+    },
+    'loading.error.primary': {
+      ko: '불러오지 못했어요',
+      en: 'Could not load'
+    },
+    'loading.error.body': {
+      ko: '네트워크 상태를 확인하고 다시 시도해 주세요.',
+      en: 'Check your connection and try again.'
+    },
+    'loading.retrying': {
+      ko: '다시 시도하는 중',
+      en: 'Retrying'
+    },
+    'loading.retry.action': {
+      ko: '다시 시도',
+      en: 'Retry'
     }
   };
 })();
