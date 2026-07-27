@@ -13,7 +13,7 @@
  * CSS, HTML, preview renderer, card renderer, url-state are untouched.
  */
 (function () {
-    /** ── Timed loading state manager for Browse ── */
+    /** ── Timed loading state manager for Browse with operation-token ownership ── */
     function createBrowseLoadingManager(loadingStatusEl, getLocale) {
         var timers = {
             indicator: null,
@@ -21,7 +21,7 @@
             longWait: null,
             error: null
         };
-        var state = 'PENDING';
+        var currentGeneration = 0;
         var i18n = window.t || function (k) { return k; };
 
         var INDICATOR_DELAY = 500;
@@ -47,53 +47,91 @@
             }
         }
 
+        function isCurrent(gen) {
+            return gen === currentGeneration;
+        }
+
+        /**
+         * Start a new loading operation. Returns an operation token.
+         * Only transitions with a matching token can modify DOM/timers.
+         */
         function start() {
             clearAllTimers();
-            state = 'LOADING';
+            var gen = ++currentGeneration;
+
             var el = loadingStatusEl;
-            if (el) {
-                el.setAttribute('aria-busy', 'true');
-                el.removeAttribute('hidden');
-            }
+            if (!el) return gen;
+
+            // 0-500ms: hidden
+            el.hidden = true;
+            el.setAttribute('aria-busy', 'true');
 
             timers.indicator = setTimeout(function () {
-                setStatus('', i18n('loading.list.load'), true);
+                if (!isCurrent(gen)) return;
+                // 500-1800ms: visual indicator visible, no explanatory copy
+                el.className = 'lt-loading-inline';
+                el.hidden = false;
+
                 timers.copy = setTimeout(function () {
-                    setStatus('', i18n('loading.list.load'), true);
+                    if (!isCurrent(gen)) return;
+                    // 1800-8000ms: show page-specific copy
+                    el.textContent = i18n('loading.list.load');
+
                     timers.longWait = setTimeout(function () {
+                        if (!isCurrent(gen)) return;
+                        // 8000-15000ms: shared long-wait copy
                         setStatus('lt-long-wait', i18n('loading.long.wait'), true);
+
                         timers.error = setTimeout(function () {
+                            if (!isCurrent(gen)) return;
+                            // 15000ms+: visible error shell with retry
                             // UI escalation only — not an abort
-                            state = 'ERROR_ESCALATED';
-                            setStatus('lt-error-shell', '', true);
+                            showErrorShell(gen);
                         }, ERROR_ESCALATION - LONG_WAIT);
                     }, LONG_WAIT - COPY_THRESHOLD);
                 }, COPY_THRESHOLD - INDICATOR_DELAY);
             }, INDICATOR_DELAY);
+
+            return gen;
         }
 
-        function ready() {
+        function showErrorShell(gen) {
+            if (!isCurrent(gen)) return;
             clearAllTimers();
-            state = 'READY';
+            var el = loadingStatusEl;
+            if (!el) return;
+            el.className = 'lt-loading-inline lt-error-shell';
+            el.hidden = false;
+            // Error heading, body, retry button built by page orchestrator
+            // This visual shell signals the user to retry
+        }
+
+        function ready(gen) {
+            if (gen !== undefined && !isCurrent(gen)) return;
+            clearAllTimers();
             setStatus('', '', false);
         }
 
-        function error() {
+        function error(gen) {
+            if (gen !== undefined && !isCurrent(gen)) return;
             clearAllTimers();
-            state = 'ERROR';
             setStatus('', '', false);
         }
 
-        function escalateError() {
-            if (state === 'ERROR_ESCALATED' || state === 'ERROR') return;
+        /**
+         * Late success after escalation: accepted if same generation.
+         * If user retried (new generation), late result is ignored.
+         */
+        function lateSuccess(gen) {
+            if (!isCurrent(gen)) return false;
             clearAllTimers();
-            state = 'ERROR_ESCALATED';
-            setStatus('lt-error-shell', '', true);
+            setStatus('', '', false);
+            return true;
         }
 
-        function dispose() {
+        function dispose(gen) {
+            if (gen !== undefined && !isCurrent(gen)) return;
             clearAllTimers();
-            state = 'DISPOSED';
             var el = loadingStatusEl;
             if (el) {
                 el.hidden = true;
@@ -106,9 +144,9 @@
             start: start,
             ready: ready,
             error: error,
-            escalateError: escalateError,
+            lateSuccess: lateSuccess,
             dispose: dispose,
-            getState: function () { return state; },
+            getGeneration: function () { return currentGeneration; },
             INDICATOR_DELAY: INDICATOR_DELAY,
             COPY_THRESHOLD: COPY_THRESHOLD,
             LONG_WAIT: LONG_WAIT,
@@ -226,9 +264,9 @@
 
             if (resetSelection) {
                 ui.clearSelectedPreview();
-                // Start timed loading for initial load
+                // Start timed loading for initial load, capture generation
                 if (browseLoadingManager) {
-                    browseLoadingManager.start();
+                    state.currentLoadGen = browseLoadingManager.start();
                 }
             }
 
@@ -240,12 +278,12 @@
 
             // Serve from cache first (stale-while-revalidate)
             let cachedTrees = null;
-            if (cache && !resetSelection && cachedTrees) {
-                // On incremental load with cache hit, suppress loading status
-                if (browseLoadingManager) browseLoadingManager.ready();
-            }
             if (cache) {
                 cachedTrees = cache.get(cacheKey);
+                // On incremental load with cache hit, suppress loading status
+                if (!resetSelection && cachedTrees && browseLoadingManager) {
+                    browseLoadingManager.ready(state.currentLoadGen);
+                }
                 if (cachedTrees && Array.isArray(cachedTrees) && cachedTrees.length > 0) {
                     state.allTrees = dedupeTreesById(cachedTrees);
                     state.isFromCache = true;
@@ -306,16 +344,14 @@
                     // On success, mark ready; on error, mark error
                     if (browseLoadingManager) {
                         if (state.loadError) {
-                            browseLoadingManager.error();
+                            browseLoadingManager.error(state.currentLoadGen);
                         } else if (state.apiTreesLoaded) {
-                            browseLoadingManager.ready();
+                            browseLoadingManager.ready(state.currentLoadGen);
                         }
                     }
                 } else {
-                    // Stale request — suppress its loading state
-                    if (browseLoadingManager && resetSelection) {
-                        browseLoadingManager.dispose();
-                    }
+                    // Stale request — not current; do NOT dispose manager
+                    // (dispose would affect the current generation)
                 }
             }
         }

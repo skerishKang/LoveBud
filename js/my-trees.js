@@ -112,6 +112,12 @@
     }
 
     document.body.classList.remove('my-trees-auth-pending');
+
+    // Auth confirmed: init loading manager first, then controls, then load
+    if (myTreesPage && typeof myTreesPage.initLoadingManager === 'function') {
+      myTreesPage.initLoadingManager();
+    }
+
     setupHeaderCreateButton();
     setupRetryButton();
     loadTrees();
