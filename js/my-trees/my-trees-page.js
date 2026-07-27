@@ -10,6 +10,76 @@
  */
 
 (function() {
+  /** ── Timed loading state manager for My Trees ── */
+  function createMyTreesLoadingManager(onShowLongWait, onShowErrorEscalation) {
+    var timers = {
+      indicator: null,
+      copy: null,
+      longWait: null,
+      error: null
+    };
+    var state = 'PENDING';
+    var i18n = window.t || function (k) { return k; };
+
+    var INDICATOR_DELAY = 500;
+    var COPY_THRESHOLD = 2000;
+    var LONG_WAIT = 8000;
+    var ERROR_ESCALATION = 15000;
+
+    function clearAllTimers() {
+      Object.keys(timers).forEach(function (key) {
+        if (timers[key]) { clearTimeout(timers[key]); timers[key] = null; }
+      });
+    }
+
+    function start() {
+      clearAllTimers();
+      state = 'LOADING';
+
+      timers.indicator = setTimeout(function () {
+        // Show loading copy after indicator delay
+        state = 'LOADING_COPY';
+        timers.copy = setTimeout(function () {
+          timers.longWait = setTimeout(function () {
+            state = 'LONG_WAIT';
+            if (typeof onShowLongWait === 'function') onShowLongWait();
+            timers.error = setTimeout(function () {
+              state = 'ERROR_ESCALATED';
+              if (typeof onShowErrorEscalation === 'function') onShowErrorEscalation();
+            }, ERROR_ESCALATION - LONG_WAIT);
+          }, LONG_WAIT - COPY_THRESHOLD);
+        }, COPY_THRESHOLD - INDICATOR_DELAY);
+      }, INDICATOR_DELAY);
+    }
+
+    function ready() {
+      clearAllTimers();
+      state = 'READY';
+    }
+
+    function error() {
+      clearAllTimers();
+      state = 'ERROR';
+    }
+
+    function dispose() {
+      clearAllTimers();
+      state = 'DISPOSED';
+    }
+
+    return {
+      start: start,
+      ready: ready,
+      error: error,
+      dispose: dispose,
+      getState: function () { return state; },
+      INDICATOR_DELAY: INDICATOR_DELAY,
+      COPY_THRESHOLD: COPY_THRESHOLD,
+      LONG_WAIT: LONG_WAIT,
+      ERROR_ESCALATION: ERROR_ESCALATION
+    };
+  }
+
   function isMyTreesDebugEnabled() {
     return window.LOVEBUD_DEBUG === true || window.LOVEBUD_MY_TREES_DEBUG === true;
   }
@@ -103,7 +173,43 @@
    * @param {object} [meta] - optional metadata
    * @param {string} [meta.errorType] - 'auth'|'server'|'network'|'generic'
    */
-  function setState(newState, meta) { // Added meta argument
+  var _loadingManager = null;
+
+  /**
+   * Initialize the timed loading manager for My Trees.
+   * Called from the orchestrator after DOM is ready.
+   */
+  function initLoadingManager() {
+    if (_loadingManager) return _loadingManager;
+    _loadingManager = createMyTreesLoadingManager(
+      function onShowLongWait() {
+        // Add lt-long-wait class to loading state for visual treatment
+        var loadingEl = document.getElementById('state-loading');
+        if (loadingEl) {
+          loadingEl.classList.add('lt-long-wait');
+          var textEl = loadingEl.querySelector('.loading-text');
+          if (textEl) {
+            var t = window.t || function(k) { return k; };
+            textEl.textContent = t('loading.long.wait');
+          }
+        }
+      },
+      function onShowErrorEscalation() {
+        // UI escalation only — not an abort
+        var loadingEl = document.getElementById('state-loading');
+        if (loadingEl) {
+          loadingEl.classList.remove('lt-long-wait');
+        }
+      }
+    );
+    return _loadingManager;
+  }
+
+  function getLoadingManager() {
+    return _loadingManager;
+  }
+
+  function setState(newState, meta) {
     var container = document.getElementById('treesContainer');
     if (!container) return;
 
@@ -119,18 +225,37 @@
     switch (newState) {
       case STATE.LOADING:
         showStateSection(sections.loading, 'loading');
+        // Start timed loading manager on LOADING
+        if (_loadingManager) {
+          _loadingManager.start();
+        }
+        // Reset long-wait visual class
+        if (sections.loading) {
+          sections.loading.classList.remove('lt-long-wait');
+          var textEl = sections.loading.querySelector('.loading-text');
+          if (textEl) {
+            var t = window.t || function(k) { return k; };
+            textEl.textContent = t('myTrees.loading');
+          }
+        }
         break;
       case STATE.ERROR:
         if (sections.error) {
           showStateSection(sections.error, 'error');
           _applyErrorStateMessage(meta && meta.errorType);
         }
+        // Stop loading manager
+        if (_loadingManager) _loadingManager.error();
         break;
       case STATE.EMPTY:
         showStateSection(sections.empty, 'empty');
+        // Stop loading manager
+        if (_loadingManager) _loadingManager.ready();
         break;
       case STATE.LOADED:
         showStateSection(sections.loaded, 'loaded');
+        // Stop loading manager
+        if (_loadingManager) _loadingManager.ready();
         break;
       default:
         console.warn('[my-trees] Unknown state requested:', newState);
@@ -174,7 +299,9 @@
     showToast: showToast,
     setState: setState,
     setupHeaderCreateButton: setupHeaderCreateButton,
-    setupRetryButton: setupRetryButton
+    setupRetryButton: setupRetryButton,
+    initLoadingManager: initLoadingManager,
+    getLoadingManager: getLoadingManager
   };
 
   // Backward compatibility: export both LoveBudMyTreesPage and LoveTreeMyTreesPage

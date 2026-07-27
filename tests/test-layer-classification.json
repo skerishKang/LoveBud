@@ -4625,6 +4625,12 @@
       "layer": "SOURCE_STATIC",
       "rationale": "Validates css/global/lovetree-loading-states.css class families, reduced-motion behavior, skeleton aria-hidden convention, error/degraded distinction, import ordering, and 10 shared KO/EN i18n keys; enforces absence of page-specific selectors, runtime behavior, and prohibited functions (#3691).",
       "capabilities": []
+    },
+    {
+      "path": "tests/contracts/browse-my-trees-staged-loading-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Reads js/search/search-data.js (createBrowseLoadingManager with 500/1800/8000/15000ms thresholds, timer cleanup, stale-response protection), js/search.js, js/my-trees/my-trees-page.js (createMyTreesLoadingManager with 500/2000/8000/15000ms), js/my-trees.js, js/my-trees/my-trees-preview-hub.js (showDegraded), both HTML files (ARIA role=status, aria-live=polite, aria-busy, lt-retry-btn, shared lt-primitive adoption), and both CSS files (prefers-reduced-motion); asserts loading/empty/error separation, request generation, timer cleanup, card duplication prevention, and no DB mutations. No runtime fetch, setTimeout execution, or browser launch (#3693).",
+      "capabilities": []
     }
   ],
   "supplemental": [

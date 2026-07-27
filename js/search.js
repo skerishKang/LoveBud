@@ -30,7 +30,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         resultsHead: document.querySelector('.browse-results-head'),
         growingSection: document.getElementById('growingTreesSection'),
         growingList: document.getElementById('growingTreesList'),
-        mobilePreviewMediaQuery: window.matchMedia('(max-width: 768px)')
+        mobilePreviewMediaQuery: window.matchMedia('(max-width: 768px)'),
+        browseLoadingStatus: document.getElementById('browseLoadingStatus')
     };
     refs.resultsTitle = refs.resultsHead?.querySelector('h3');
     refs.resultsBadge = refs.resultsHead?.querySelector('.browse-results-badge');
@@ -201,7 +202,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     callbacks.renderGrowingResults = renderGrowingResults;
     callbacks.updateUrlState = urlState.updateUrlState;
 
-    // ── Init ───────────────────────────────────────────────────────────────────
+    // ── Init loading manager ──
+    if (searchData.initLoadingManager && refs.browseLoadingStatus) {
+        searchData.initLoadingManager(refs.browseLoadingStatus);
+    }
+
+    // ── Init ──
     ui.bindMobilePreviewHandlers();
     ui.bindShareCopyHandler();
 

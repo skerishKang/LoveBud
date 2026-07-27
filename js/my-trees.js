@@ -563,6 +563,11 @@
 
     setupGlobalListeners();
 
+    // Initialize the timed loading manager
+    if (myTreesPage && typeof myTreesPage.initLoadingManager === 'function') {
+      myTreesPage.initLoadingManager();
+    }
+
     // Initialize My Trees appreciation hub
     if (window.LoveBudMyTreesPreviewHub && typeof window.LoveBudMyTreesPreviewHub.init === 'function') {
       window.LoveBudMyTreesPreviewHub.init({

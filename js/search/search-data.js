@@ -13,6 +13,109 @@
  * CSS, HTML, preview renderer, card renderer, url-state are untouched.
  */
 (function () {
+    /** ── Timed loading state manager for Browse ── */
+    function createBrowseLoadingManager(loadingStatusEl, getLocale) {
+        var timers = {
+            indicator: null,
+            copy: null,
+            longWait: null,
+            error: null
+        };
+        var state = 'PENDING';
+        var i18n = window.t || function (k) { return k; };
+
+        var INDICATOR_DELAY = 500;
+        var COPY_THRESHOLD = 1800;
+        var LONG_WAIT = 8000;
+        var ERROR_ESCALATION = 15000;
+
+        function clearAllTimers() {
+            Object.keys(timers).forEach(function (key) {
+                if (timers[key]) { clearTimeout(timers[key]); timers[key] = null; }
+            });
+        }
+
+        function setStatus(className, text, busy) {
+            var el = loadingStatusEl;
+            if (!el) return;
+            el.className = 'lt-loading-inline';
+            if (className) el.classList.add(className);
+            el.textContent = text || '';
+            el.hidden = !text;
+            if (typeof busy === 'boolean') {
+                el.setAttribute('aria-busy', String(busy));
+            }
+        }
+
+        function start() {
+            clearAllTimers();
+            state = 'LOADING';
+            var el = loadingStatusEl;
+            if (el) {
+                el.setAttribute('aria-busy', 'true');
+                el.removeAttribute('hidden');
+            }
+
+            timers.indicator = setTimeout(function () {
+                setStatus('', i18n('loading.list.load'), true);
+                timers.copy = setTimeout(function () {
+                    setStatus('', i18n('loading.list.load'), true);
+                    timers.longWait = setTimeout(function () {
+                        setStatus('lt-long-wait', i18n('loading.long.wait'), true);
+                        timers.error = setTimeout(function () {
+                            // UI escalation only — not an abort
+                            state = 'ERROR_ESCALATED';
+                            setStatus('lt-error-shell', '', true);
+                        }, ERROR_ESCALATION - LONG_WAIT);
+                    }, LONG_WAIT - COPY_THRESHOLD);
+                }, COPY_THRESHOLD - INDICATOR_DELAY);
+            }, INDICATOR_DELAY);
+        }
+
+        function ready() {
+            clearAllTimers();
+            state = 'READY';
+            setStatus('', '', false);
+        }
+
+        function error() {
+            clearAllTimers();
+            state = 'ERROR';
+            setStatus('', '', false);
+        }
+
+        function escalateError() {
+            if (state === 'ERROR_ESCALATED' || state === 'ERROR') return;
+            clearAllTimers();
+            state = 'ERROR_ESCALATED';
+            setStatus('lt-error-shell', '', true);
+        }
+
+        function dispose() {
+            clearAllTimers();
+            state = 'DISPOSED';
+            var el = loadingStatusEl;
+            if (el) {
+                el.hidden = true;
+                el.removeAttribute('aria-busy');
+                el.textContent = '';
+            }
+        }
+
+        return {
+            start: start,
+            ready: ready,
+            error: error,
+            escalateError: escalateError,
+            dispose: dispose,
+            getState: function () { return state; },
+            INDICATOR_DELAY: INDICATOR_DELAY,
+            COPY_THRESHOLD: COPY_THRESHOLD,
+            LONG_WAIT: LONG_WAIT,
+            ERROR_ESCALATION: ERROR_ESCALATION
+        };
+    }
+
     function dedupeTreesById(trees) {
         if (!Array.isArray(trees)) return [];
 
@@ -35,6 +138,14 @@
 
     function createSearchData({ refs, state, previewCacheApi, ui, CardRenderer, PreviewRenderer, callbacks, cache, PUBLIC_TREES_CACHE_KEY, PREVIEW_CACHE_TTL_MS, getPreviewCacheKey }) {
         const pendingPreviewHydrations = new Map();
+        var browseLoadingManager = null;
+
+        // ── Initialize the timed loading manager ──
+        // Called after DOM is ready from the orchestrator
+        function initLoadingManager(loadingStatusEl) {
+            if (!loadingStatusEl) return;
+            browseLoadingManager = createBrowseLoadingManager(loadingStatusEl, ui.getCurrentLocale);
+        }
 
         function getPreviewTreeId(tree) {
             const rawId = tree?.id ?? tree?.treeId ?? tree?.tree_id;
@@ -115,6 +226,10 @@
 
             if (resetSelection) {
                 ui.clearSelectedPreview();
+                // Start timed loading for initial load
+                if (browseLoadingManager) {
+                    browseLoadingManager.start();
+                }
             }
 
             // Set loading state for incremental loading
@@ -125,6 +240,10 @@
 
             // Serve from cache first (stale-while-revalidate)
             let cachedTrees = null;
+            if (cache && !resetSelection && cachedTrees) {
+                // On incremental load with cache hit, suppress loading status
+                if (browseLoadingManager) browseLoadingManager.ready();
+            }
             if (cache) {
                 cachedTrees = cache.get(cacheKey);
                 if (cachedTrees && Array.isArray(cachedTrees) && cachedTrees.length > 0) {
@@ -184,6 +303,19 @@
                 if (isCurrentRequest()) {
                     state.isLoadingMore = false;
                     ui.syncControlsFromState();
+                    // On success, mark ready; on error, mark error
+                    if (browseLoadingManager) {
+                        if (state.loadError) {
+                            browseLoadingManager.error();
+                        } else if (state.apiTreesLoaded) {
+                            browseLoadingManager.ready();
+                        }
+                    }
+                } else {
+                    // Stale request — suppress its loading state
+                    if (browseLoadingManager && resetSelection) {
+                        browseLoadingManager.dispose();
+                    }
                 }
             }
         }
@@ -191,7 +323,8 @@
         return {
             dedupeTreesById,
             hydrateSelectedTreePreview,
-            loadPublicTrees
+            loadPublicTrees,
+            initLoadingManager: initLoadingManager
         };
     }
 
