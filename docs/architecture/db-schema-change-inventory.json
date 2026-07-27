@@ -445,6 +445,21 @@
       "notes": "Source-only precondition-registry structural and canonical-manifest binding validator. Validates only supplied in-memory repository evidence, rejects unsafe Proxy/accessor collections fail-closed, and performs no file loading, SQL execution, database connection, network, shell, or Production mutation. Detected by RULE_RUNNER_NAME because the basename contains 'migration'; registered here to satisfy the guard."
     },
     {
+      "path": "scripts/migration-precondition-authority-loader-resolver-core.cjs",
+      "category": "provenance_tooling",
+      "engine": "none",
+      "operations": ["READ_ONLY", "VALIDATE"],
+      "canonical_status": "CANONICAL_CANDIDATE",
+      "destructive": false,
+      "production_capable": false,
+      "owner_or_issue": "database architecture / #3678 #3657 #3458",
+      "idempotency": "idempotent",
+      "execution_actor": "runner",
+      "automation": "automatic",
+      "ledger_candidate": "no",
+      "notes": "Source-only fixed precondition registry/catalog loader-resolver. Loads and validates only the fixed repository-owned authority paths, returns detached frozen projections, executes no SQL, opens no database connection, uses no network or shell, and has no Production mutation capability. Detected by RULE_RUNNER_NAME because the basename contains 'migration'; registered here to satisfy the fail-closed inventory guard."
+    },
+    {
       "path": "scripts/migration-runner-protocol-core.cjs",
       "category": "provenance_tooling",
       "engine": "none",
