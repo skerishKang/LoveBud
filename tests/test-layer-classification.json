@@ -47,6 +47,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/db-migration-precondition-authority-loader-resolver-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Validates the precondition authority loader-resolver contract: fixed factory/public key set, frozen detached projections, read-once-parse-once loading, fixed path confinement, ACTIVE/ADOPTION_REQUIRED status resolution, registry-catalog consistency, PROHIBITED/empty/missing query handling, stable check order, and hostile Proxy/accessor/trap/parse failure handling. Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; executes no SQL, opens no database, uses no network, no SQL execution, no Docker/PostgreSQL container, no Production or staging system, no provider credential, and no secret (#3678).",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/db-migration-readonly-query-catalog-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Validates the fixed inactive read-only precondition query catalog, normative authority separation, future ACTIVE entry shape, BOOLEAN_SINGLE_ROW result contract, implementation sequence, prohibited runtime and dynamic authority, exact changed-file boundary, and protected issue references without database, network, SQL execution, Docker, PostgreSQL, or Production access (#3669).",
