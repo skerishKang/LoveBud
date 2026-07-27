@@ -121,7 +121,7 @@ test('3. exact bounded schema and enum rejection', () => {
   assert.ok(Array.isArray(reg.source_status_enum));
   assert.ok(Array.isArray(reg.required_group_fields));
   assert.equal(typeof reg.field_definitions, 'object');
-  // Each group has all required fields
+  // Each group has all required fields — check against canonical
   for (const g of reg.groups) {
     for (const field of reg.required_group_fields) {
       assert.ok(field in g, 'Group ' + g.group + ' missing field ' + field);
@@ -151,53 +151,190 @@ test('3. exact bounded schema and enum rejection', () => {
       assert.equal(g.explicit_paths, null);
     }
   }
-  // Schema validation fail-closed
-  function assertCode(expectedCode, fn) { try { fn(); throw new Error('No error'); } catch (e) { assert.equal(e.code, expectedCode); } }
-  assertCode('REGISTRY_SCHEMA_ERROR', () => {
-    const badReg = JSON.parse(JSON.stringify(reg));
-    badReg.group_enum = ['SOURCE_STATIC', 'EXECUTED_FAKE'];
-    validateRegistrySchema(badReg);
-  });
-  assertCode('DUPLICATE_GROUP', () => {
-    const dupReg = JSON.parse(JSON.stringify(reg));
-    dupReg.group_enum = ['SOURCE_STATIC', 'SOURCE_STATIC', 'EXECUTED_FAKE', 'BROWSER_REAL_LOCAL', 'PROCESS_REAL_LOCAL', 'DB_ENGINE', 'PYTHON_SUPPLEMENTAL', 'REMOTE_OR_PROVIDER_MANUAL', 'FULL_DEFAULT_REGRESSION'];
-    dupReg.groups = [...reg.groups, JSON.parse(JSON.stringify(reg.groups[0]))];
-    validateRegistrySchema(dupReg);
-  });
+  // Schema validation fail-closed with canonical authority
+  function assertCode(expectedCode, fn) { try { fn(); throw new Error('No error'); } catch (e) { assert.equal(e.code, expectedCode, 'Got code ' + e.code + ': ' + e.message); } }
+  // group_enum value/order mismatch (same length, wrong value)
   assertCode('UNKNOWN_ENUM', () => {
-    const unknownReg = JSON.parse(JSON.stringify(reg));
-    unknownReg.groups[0].source_status = 'INVALID_STATUS';
-    validateRegistrySchema(unknownReg);
+    const r = JSON.parse(JSON.stringify(reg));
+    r.group_enum = ['SOURCE_STATIC', 'EXECUTED_FAKE', 'BROWSER_REAL_LOCAL', 'PROCESS_REAL_LOCAL', 'DB_ENGINE', 'PYTHON_SUPPLEMENTAL', 'REMOTE_OR_PROVIDER_MANUAL', 'BOGUS'];
+    validateRegistrySchema(r);
   });
-  assertCode('REGISTRY_SCHEMA_ERROR', () => {
-    const emptyPurpose = JSON.parse(JSON.stringify(reg));
-    emptyPurpose.groups[0].purpose = '';
-    validateRegistrySchema(emptyPurpose);
+  // group_enum length mismatch
+  assertCode('UNKNOWN_ENUM', () => {
+    const r = JSON.parse(JSON.stringify(reg));
+    r.group_enum = ['SOURCE_STATIC', 'EXECUTED_FAKE'];
+    validateRegistrySchema(r);
   });
-  assertCode('REGISTRY_SCHEMA_ERROR', () => {
-    const extraField = JSON.parse(JSON.stringify(reg));
-    extraField.groups[0].bogus = 'yes';
-    validateRegistrySchema(extraField);
+  // group_enum extra value
+  assertCode('UNKNOWN_ENUM', () => {
+    const r = JSON.parse(JSON.stringify(reg));
+    r.group_enum = ['SOURCE_STATIC', 'EXECUTED_FAKE', 'BROWSER_REAL_LOCAL', 'PROCESS_REAL_LOCAL', 'DB_ENGINE', 'PYTHON_SUPPLEMENTAL', 'REMOTE_OR_PROVIDER_MANUAL', 'FULL_DEFAULT_REGRESSION', 'EXTRA'];
+    r.groups = [...reg.groups, JSON.parse(JSON.stringify(reg.groups[0]))];
+    validateRegistrySchema(r);
   });
-  assertCode('REGISTRY_SCHEMA_ERROR', () => {
-    const missingField = JSON.parse(JSON.stringify(reg));
-    delete missingField.groups[0].purpose;
-    validateRegistrySchema(missingField);
+  // group_enum order mismatch
+  assertCode('UNKNOWN_ENUM', () => {
+    const r = JSON.parse(JSON.stringify(reg));
+    r.group_enum = ['EXECUTED_FAKE', 'SOURCE_STATIC', 'BROWSER_REAL_LOCAL', 'PROCESS_REAL_LOCAL', 'DB_ENGINE', 'PYTHON_SUPPLEMENTAL', 'REMOTE_OR_PROVIDER_MANUAL', 'FULL_DEFAULT_REGRESSION'];
+    validateRegistrySchema(r);
   });
-  assertCode('REGISTRY_SCHEMA_ERROR', () => {
-    const absPath = JSON.parse(JSON.stringify(reg));
-    absPath.groups[2].explicit_paths = ['/etc/passwd'];
-    validateRegistrySchema(absPath);
+  // Unknown enum in group field
+  assertCode('UNKNOWN_ENUM', () => {
+    const r = JSON.parse(JSON.stringify(reg));
+    r.groups[0].source_status = 'INVALID_STATUS';
+    validateRegistrySchema(r);
   });
+  // Extra field in group
   assertCode('REGISTRY_SCHEMA_ERROR', () => {
-    const argPath = JSON.parse(JSON.stringify(reg));
-    argPath.groups[2].explicit_paths = ['scripts/pre-deploy.cjs --full'];
-    validateRegistrySchema(argPath);
+    const r = JSON.parse(JSON.stringify(reg));
+    r.groups[0].bogus = 'yes';
+    validateRegistrySchema(r);
   });
+  // Missing required field in group
   assertCode('REGISTRY_SCHEMA_ERROR', () => {
-    const traversal = JSON.parse(JSON.stringify(reg));
-    traversal.groups[2].explicit_paths = ['../../etc/passwd'];
-    validateRegistrySchema(traversal);
+    const r = JSON.parse(JSON.stringify(reg));
+    delete r.groups[0].purpose;
+    validateRegistrySchema(r);
+  });
+  // Empty purpose
+  assertCode('REGISTRY_SCHEMA_ERROR', () => {
+    const r = JSON.parse(JSON.stringify(reg));
+    r.groups[0].purpose = '';
+    validateRegistrySchema(r);
+  });
+  // Absolute path in explicit_paths
+  assertCode('REGISTRY_SCHEMA_ERROR', () => {
+    const r = JSON.parse(JSON.stringify(reg));
+    r.groups[2].explicit_paths = ['/etc/passwd'];
+    validateRegistrySchema(r);
+  });
+  // Argument in explicit_path
+  assertCode('REGISTRY_SCHEMA_ERROR', () => {
+    const r = JSON.parse(JSON.stringify(reg));
+    r.groups[2].explicit_paths = ['scripts/pre-deploy.cjs --full'];
+    validateRegistrySchema(r);
+  });
+  // Path traversal
+  assertCode('REGISTRY_SCHEMA_ERROR', () => {
+    const r = JSON.parse(JSON.stringify(reg));
+    r.groups[2].explicit_paths = ['../../etc/passwd'];
+    validateRegistrySchema(r);
+  });
+  // membership_source_enum wrong order
+  assertCode('UNKNOWN_ENUM', () => {
+    const r = JSON.parse(JSON.stringify(reg));
+    r.membership_source_enum = ['classification_layer', 'explicit_list', 'package_glob', 'path_pattern'];
+    validateRegistrySchema(r);
+  });
+  // membership_source_enum extra value
+  assertCode('UNKNOWN_ENUM', () => {
+    const r = JSON.parse(JSON.stringify(reg));
+    r.membership_source_enum = ['classification_layer', 'package_glob', 'path_pattern', 'explicit_list', 'EVIL'];
+    validateRegistrySchema(r);
+  });
+  // runtime_enum extra value
+  assertCode('UNKNOWN_ENUM', () => {
+    const r = JSON.parse(JSON.stringify(reg));
+    r.runtime_enum = ['node', 'node_browser', 'python', 'postgresql_ephemeral', 'manual', 'aggregate', 'EVIL_RUNTIME'];
+    validateRegistrySchema(r);
+  });
+  // platform_enum replaced
+  assertCode('UNKNOWN_ENUM', () => {
+    const r = JSON.parse(JSON.stringify(reg));
+    r.platform_enum = ['ubuntu', 'windows'];
+    validateRegistrySchema(r);
+  });
+  // capability_enum extra
+  assertCode('UNKNOWN_ENUM', () => {
+    const r = JSON.parse(JSON.stringify(reg));
+    r.capability_enum = ['playwright', 'chromium', 'child_process', 'filesystem', 'postgresql', 'network', 'none', 'EVIL_CAP'];
+    validateRegistrySchema(r);
+  });
+  // artifact_expectation_enum extra
+  assertCode('UNKNOWN_ENUM', () => {
+    const r = JSON.parse(JSON.stringify(reg));
+    r.artifact_expectation_enum = ['TAP test output', 'screenshot evidence', 'stdout or tool report', 'command-defined; none registered by this child', 'combined TAP output from all default-CI groups', 'EVIL_ARTIFACT'];
+    validateRegistrySchema(r);
+  });
+  // risk_gate_eligibility_enum extra
+  assertCode('UNKNOWN_ENUM', () => {
+    const r = JSON.parse(JSON.stringify(reg));
+    r.risk_gate_eligibility_enum = ['full_regression', 'manual_only', 'EVIL_RISK'];
+    validateRegistrySchema(r);
+  });
+  // source_status_enum extra
+  assertCode('UNKNOWN_ENUM', () => {
+    const r = JSON.parse(JSON.stringify(reg));
+    r.source_status_enum = ['CONFIRMED', 'UNVERIFIED', 'NOT_PRESENT', 'EVIL_STATUS'];
+    validateRegistrySchema(r);
+  });
+  // required_group_fields with command_reference removed
+  assertCode('UNKNOWN_ENUM', () => {
+    const r = JSON.parse(JSON.stringify(reg));
+    r.required_group_fields = ['group', 'purpose', 'membership_source', 'explicit_paths', 'default_pr_execution_state', 'runtime', 'platform', 'capabilities', 'comparability', 'artifact_expectation', 'risk_gate_eligibility', 'source_status'];
+    validateRegistrySchema(r);
+  });
+  // required_group_fields with bogus added
+  assertCode('UNKNOWN_ENUM', () => {
+    const r = JSON.parse(JSON.stringify(reg));
+    r.required_group_fields = ['group', 'purpose', 'membership_source', 'explicit_paths', 'command_reference', 'default_pr_execution_state', 'runtime', 'platform', 'capabilities', 'comparability', 'artifact_expectation', 'risk_gate_eligibility', 'source_status', 'bogus'];
+    validateRegistrySchema(r);
+  });
+  // required_group_fields order changed
+  assertCode('UNKNOWN_ENUM', () => {
+    const r = JSON.parse(JSON.stringify(reg));
+    r.required_group_fields = ['group', 'membership_source', 'purpose', 'explicit_paths', 'command_reference', 'default_pr_execution_state', 'runtime', 'platform', 'capabilities', 'comparability', 'artifact_expectation', 'risk_gate_eligibility', 'source_status'];
+    validateRegistrySchema(r);
+  });
+  // required_group_fields with duplicate
+  assertCode('UNKNOWN_ENUM', () => {
+    const r = JSON.parse(JSON.stringify(reg));
+    r.required_group_fields = ['group', 'group', 'purpose', 'membership_source', 'explicit_paths', 'command_reference', 'default_pr_execution_state', 'runtime', 'platform', 'capabilities', 'comparability', 'artifact_expectation', 'risk_gate_eligibility', 'source_status'];
+    validateRegistrySchema(r);
+  });
+  // Canonical group-specific rules: SOURCE_STATIC with wrong membership_source
+  assertCode('REGISTRY_SCHEMA_ERROR', () => {
+    const r = JSON.parse(JSON.stringify(reg));
+    r.groups[0].membership_source = 'explicit_list';
+    r.groups[0].explicit_paths = ['tests/contracts/dummy.test.cjs'];
+    validateRegistrySchema(r);
+  });
+  // BROWSER_REAL_LOCAL without playwright capability
+  assertCode('REGISTRY_SCHEMA_ERROR', () => {
+    const r = JSON.parse(JSON.stringify(reg));
+    r.groups[2].capabilities = ['chromium'];
+    validateRegistrySchema(r);
+  });
+  // DB_ENGINE without postgresql capability
+  assertCode('REGISTRY_SCHEMA_ERROR', () => {
+    const r = JSON.parse(JSON.stringify(reg));
+    r.groups[4].capabilities = ['none'];
+    validateRegistrySchema(r);
+  });
+  // REMOTE_OR_PROVIDER_MANUAL with executable command reference
+  assertCode('REGISTRY_SCHEMA_ERROR', () => {
+    const r = JSON.parse(JSON.stringify(reg));
+    r.groups[6].command_reference = 'npm run something';
+    validateRegistrySchema(r);
+  });
+  // FULL_DEFAULT_REGRESSION with wrong source
+  assertCode('REGISTRY_SCHEMA_ERROR', () => {
+    const r = JSON.parse(JSON.stringify(reg));
+    r.groups[7].membership_source = 'explicit_list';
+    r.groups[7].explicit_paths = ['tests/contracts/dummy.test.cjs'];
+    validateRegistrySchema(r);
+  });
+  // Unknown top-level field
+  assertCode('REGISTRY_SCHEMA_ERROR', () => {
+    const r = JSON.parse(JSON.stringify(reg));
+    r.bogus = 'evil';
+    validateRegistrySchema(r);
+  });
+  // schema_version mismatch
+  assertCode('REGISTRY_SCHEMA_ERROR', () => {
+    const r = JSON.parse(JSON.stringify(reg));
+    r.schema_version = '2.0.0';
+    validateRegistrySchema(r);
   });
 });
 
@@ -446,7 +583,7 @@ test('24. sanitized errors contain no absolute paths or raw parser messages', ()
 
 test('25. no external side effect', () => {
   const reporterContent = fs.readFileSync(REPORTER_PATH, 'utf8');
-  assert.doesNotMatch(reporterContent, /child_process|require\(['"]child_process['"]\)/);
+  assert.doesNotMatch(reporterContent, /require\(['"]child_process['"]\)/);
   assert.doesNotMatch(reporterContent, /exec\(|execSync\(|spawn\(|spawnSync\(/);
   assert.doesNotMatch(reporterContent, /http\.|https\.|fetch\(|axios/);
   assert.doesNotMatch(reporterContent, /\bpg\s|mysql|sqlite|pg\.Client|new Client|Pool\b/);

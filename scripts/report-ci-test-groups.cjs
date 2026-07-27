@@ -26,6 +26,48 @@ const KNOWN_ERROR_CODES = [
   'UNSUPPORTED_ARGUMENT',
 ];
 
+// Reporter-owned canonical enum authority — each array must compare exactly
+// (value, order, length) against the registry's corresponding array.
+const CANONICAL_GROUP_ENUM = [
+  'SOURCE_STATIC',
+  'EXECUTED_FAKE',
+  'BROWSER_REAL_LOCAL',
+  'PROCESS_REAL_LOCAL',
+  'DB_ENGINE',
+  'PYTHON_SUPPLEMENTAL',
+  'REMOTE_OR_PROVIDER_MANUAL',
+  'FULL_DEFAULT_REGRESSION',
+];
+
+const CANONICAL_MEMBERSHIP_SOURCE_ENUM = ['classification_layer', 'package_glob', 'path_pattern', 'explicit_list'];
+const CANONICAL_EXECUTION_STATE_ENUM = ['ALWAYS', 'ON_COMMIT', 'ON_PR', 'MANUAL', 'NOT_EXECUTED'];
+const CANONICAL_RUNTIME_ENUM = ['node', 'node_browser', 'python', 'postgresql_ephemeral', 'manual', 'aggregate'];
+const CANONICAL_PLATFORM_ENUM = ['ubuntu', 'cross_platform', 'manual'];
+const CANONICAL_CAPABILITY_ENUM = ['playwright', 'chromium', 'child_process', 'filesystem', 'postgresql', 'network', 'none'];
+const CANONICAL_ARTIFACT_EXPECTATION_ENUM = ['TAP test output', 'screenshot evidence', 'stdout or tool report', 'command-defined; none registered by this child', 'combined TAP output from all default-CI groups'];
+const CANONICAL_RISK_GATE_ELIGIBILITY_ENUM = ['full_regression', 'manual_only'];
+const CANONICAL_SOURCE_STATUS_ENUM = ['CONFIRMED', 'UNVERIFIED', 'NOT_PRESENT'];
+
+const CANONICAL_REQUIRED_GROUP_FIELDS = [
+  'group', 'purpose', 'membership_source', 'explicit_paths', 'command_reference',
+  'default_pr_execution_state', 'runtime', 'platform', 'capabilities',
+  'comparability', 'artifact_expectation', 'risk_gate_eligibility', 'source_status',
+];
+
+const CANONICAL_TOP_LEVEL_FIELDS = [
+  'schema_version', 'title', 'description', 'baseline_sha', 'baseline_sha_note',
+  'group_enum', 'group_enum_note',
+  'membership_source_enum', 'execution_state_enum', 'runtime_enum', 'platform_enum',
+  'capability_enum', 'artifact_expectation_enum', 'risk_gate_eligibility_enum', 'source_status_enum',
+  'required_group_fields', 'field_definitions', 'groups',
+];
+
+const CANONICAL_GROUP_FIELDS = [
+  'group', 'purpose', 'membership_source', 'explicit_paths', 'command_reference',
+  'default_pr_execution_state', 'runtime', 'platform', 'capabilities',
+  'comparability', 'artifact_expectation', 'risk_gate_eligibility', 'source_status',
+];
+
 const EXPECTED_DB_ENGINE_SCRIPTS = [
   { script: 'test:db-engine:tree-comments',          target: 'tests/db-engine/tree-comments-reconcile-postgres.test.cjs' },
   { script: 'test:db-engine:trees-schema',            target: 'tests/db-engine/trees-schema-foothold-postgres.test.cjs' },
@@ -64,82 +106,174 @@ function readJson(p) {
   }
 }
 
-function validateRegistrySchema(reg) {
-  const enums = {
-    membership_source: ['classification_layer', 'package_glob', 'path_pattern', 'explicit_list'],
-    default_pr_execution_state: ['ALWAYS', 'ON_COMMIT', 'ON_PR', 'MANUAL', 'NOT_EXECUTED'],
-    runtime: ['node', 'node_browser', 'python', 'postgresql_ephemeral', 'manual', 'aggregate'],
-    platform: ['ubuntu', 'cross_platform', 'manual'],
-    source_status: ['CONFIRMED', 'UNVERIFIED', 'NOT_PRESENT'],
+function assertEnumMatch(label, actual, expected) {
+  if (!Array.isArray(actual)) throw fail('REGISTRY_SCHEMA_ERROR', label + ' is not an array');
+  if (actual.length !== expected.length) throw fail('UNKNOWN_ENUM', label + ' length mismatch');
+  for (let i = 0; i < expected.length; i++) {
+    if (actual[i] !== expected[i]) throw fail('UNKNOWN_ENUM', label + ' value/order mismatch at index ' + i);
+  }
+}
+
+function assertRequiredArray(label, arr) {
+  if (!Array.isArray(arr)) throw fail('REGISTRY_SCHEMA_ERROR', label + ' missing or not an array');
+}
+
+function assertString(label, val) {
+  if (typeof val !== 'string' || !val.trim()) throw fail('REGISTRY_SCHEMA_ERROR', label + ' missing or empty');
+}
+
+function isGroupSpecificValid(groupId, field, value) {
+  const checks = {
+    SOURCE_STATIC: { membership_source: 'classification_layer', runtime: 'node', default_pr_execution_state: 'ALWAYS', risk_gate_eligibility: 'full_regression' },
+    EXECUTED_FAKE: { membership_source: 'classification_layer', runtime: 'node', default_pr_execution_state: 'ALWAYS', risk_gate_eligibility: 'full_regression' },
+    BROWSER_REAL_LOCAL: { membership_source: 'explicit_list', runtime: 'node_browser', platform: 'ubuntu', default_pr_execution_state: 'ALWAYS' },
+    PROCESS_REAL_LOCAL: { membership_source: 'explicit_list', runtime: 'node', platform: 'ubuntu', default_pr_execution_state: 'ALWAYS' },
+    DB_ENGINE: { membership_source: 'path_pattern', runtime: 'postgresql_ephemeral', default_pr_execution_state: 'ALWAYS' },
+    PYTHON_SUPPLEMENTAL: { membership_source: 'path_pattern', runtime: 'python', default_pr_execution_state: 'MANUAL', risk_gate_eligibility: 'manual_only' },
+    REMOTE_OR_PROVIDER_MANUAL: { membership_source: 'explicit_list', runtime: 'manual', platform: 'manual', default_pr_execution_state: 'NOT_EXECUTED', risk_gate_eligibility: 'manual_only' },
+    FULL_DEFAULT_REGRESSION: { membership_source: 'package_glob', runtime: 'aggregate', default_pr_execution_state: 'ALWAYS', risk_gate_eligibility: 'full_regression' },
   };
+  const rules = checks[groupId];
+  if (rules && field in rules) return rules[field] === value;
+  return null;
+}
+
+function isGroupSpecificCapabilitiesValid(groupId, capabilities) {
+  if (groupId === 'BROWSER_REAL_LOCAL') return capabilities.includes('playwright') && capabilities.includes('chromium');
+  if (groupId === 'DB_ENGINE') return capabilities.includes('postgresql');
+  return true;
+}
+
+function isGroupSpecificExplicitPathsValid(groupId, explicitPaths) {
+  if (groupId === 'SOURCE_STATIC' || groupId === 'EXECUTED_FAKE' || groupId === 'DB_ENGINE' || groupId === 'PYTHON_SUPPLEMENTAL' || groupId === 'FULL_DEFAULT_REGRESSION') {
+    return explicitPaths === null;
+  }
+  if (groupId === 'BROWSER_REAL_LOCAL' || groupId === 'PROCESS_REAL_LOCAL' || groupId === 'REMOTE_OR_PROVIDER_MANUAL') {
+    return Array.isArray(explicitPaths) && explicitPaths.length > 0;
+  }
+  return true;
+}
+
+function isGroupSpecificCommandReferenceValid(groupId, cmd) {
+  if (groupId === 'REMOTE_OR_PROVIDER_MANUAL') return cmd.startsWith('NOT_EXECUTED');
+  return true;
+}
+
+function validateRegistrySchema(reg) {
   if (typeof reg !== 'object' || !reg) throw fail('REGISTRY_SCHEMA_ERROR', 'Registry is not an object');
-  if (typeof reg.schema_version !== 'string') throw fail('REGISTRY_SCHEMA_ERROR', 'schema_version missing or not string');
-  if (!Array.isArray(reg.group_enum)) throw fail('REGISTRY_SCHEMA_ERROR', 'group_enum is not an array');
+
+  // Exact top-level schema values
+  if (reg.schema_version !== '1.0.0') throw fail('REGISTRY_SCHEMA_ERROR', 'schema_version must be 1.0.0');
+  if (reg.baseline_sha !== '0fc27a02e1f9aa510c9fa25cd7e4f375e055a7e1') throw fail('REGISTRY_SCHEMA_ERROR', 'baseline_sha mismatch');
+  assertString('title', reg.title);
+  assertString('description', reg.description);
+
+  // No unknown top-level fields
+  const topKeys = Object.keys(reg);
+  for (const k of topKeys) {
+    if (!CANONICAL_TOP_LEVEL_FIELDS.includes(k)) throw fail('REGISTRY_SCHEMA_ERROR', 'Unknown top-level field: ' + k);
+  }
+
+  // field_definitions must have exact required keys
+  if (typeof reg.field_definitions !== 'object' || !reg.field_definitions) throw fail('REGISTRY_SCHEMA_ERROR', 'field_definitions missing');
+  for (const f of CANONICAL_REQUIRED_GROUP_FIELDS) {
+    if (!(f in reg.field_definitions)) throw fail('REGISTRY_SCHEMA_ERROR', 'field_definitions missing key: ' + f);
+  }
+
+  // Exact enum array comparison against canonical constants
+  assertEnumMatch('group_enum', reg.group_enum, CANONICAL_GROUP_ENUM);
+  assertEnumMatch('membership_source_enum', reg.membership_source_enum, CANONICAL_MEMBERSHIP_SOURCE_ENUM);
+  assertEnumMatch('execution_state_enum', reg.execution_state_enum, CANONICAL_EXECUTION_STATE_ENUM);
+  assertEnumMatch('runtime_enum', reg.runtime_enum, CANONICAL_RUNTIME_ENUM);
+  assertEnumMatch('platform_enum', reg.platform_enum, CANONICAL_PLATFORM_ENUM);
+  assertEnumMatch('capability_enum', reg.capability_enum, CANONICAL_CAPABILITY_ENUM);
+  assertEnumMatch('artifact_expectation_enum', reg.artifact_expectation_enum, CANONICAL_ARTIFACT_EXPECTATION_ENUM);
+  assertEnumMatch('risk_gate_eligibility_enum', reg.risk_gate_eligibility_enum, CANONICAL_RISK_GATE_ELIGIBILITY_ENUM);
+  assertEnumMatch('source_status_enum', reg.source_status_enum, CANONICAL_SOURCE_STATUS_ENUM);
+  assertEnumMatch('required_group_fields', reg.required_group_fields, CANONICAL_REQUIRED_GROUP_FIELDS);
+
+  // groups must be exactly 8
   if (!Array.isArray(reg.groups)) throw fail('REGISTRY_SCHEMA_ERROR', 'groups is not an array');
-  if (reg.groups.length !== reg.group_enum.length) {
-    throw fail('REGISTRY_SCHEMA_ERROR', 'groups length does not match group_enum length');
-  }
-  if (!Array.isArray(reg.membership_source_enum)) throw fail('REGISTRY_SCHEMA_ERROR', 'membership_source_enum missing');
-  if (!Array.isArray(reg.execution_state_enum)) throw fail('REGISTRY_SCHEMA_ERROR', 'execution_state_enum missing');
-  if (!Array.isArray(reg.runtime_enum)) throw fail('REGISTRY_SCHEMA_ERROR', 'runtime_enum missing');
-  if (!Array.isArray(reg.platform_enum)) throw fail('REGISTRY_SCHEMA_ERROR', 'platform_enum missing');
-  if (!Array.isArray(reg.capability_enum)) throw fail('REGISTRY_SCHEMA_ERROR', 'capability_enum missing');
-  if (!Array.isArray(reg.artifact_expectation_enum)) throw fail('REGISTRY_SCHEMA_ERROR', 'artifact_expectation_enum missing');
-  if (!Array.isArray(reg.risk_gate_eligibility_enum)) throw fail('REGISTRY_SCHEMA_ERROR', 'risk_gate_eligibility_enum missing');
-  if (!Array.isArray(reg.source_status_enum)) throw fail('REGISTRY_SCHEMA_ERROR', 'source_status_enum missing');
-  if (!Array.isArray(reg.required_group_fields)) throw fail('REGISTRY_SCHEMA_ERROR', 'required_group_fields missing');
+  if (reg.groups.length !== 8) throw fail('REGISTRY_SCHEMA_ERROR', 'groups must have exactly 8 entries');
 
-  const seen = new Set();
-  for (let i = 0; i < reg.group_enum.length; i++) {
-    const id = reg.group_enum[i];
-    if (seen.has(id)) throw fail('DUPLICATE_GROUP', 'Duplicate group ID: ' + id);
-    seen.add(id);
-    if (i >= reg.groups.length || reg.groups[i].group !== id) {
-      throw fail('REGISTRY_SCHEMA_ERROR', 'group_enum/groups position mismatch at index ' + i);
+  // Validate each group
+  const seenGroupIds = new Set();
+  for (let i = 0; i < reg.groups.length; i++) {
+    const g = reg.groups[i];
+    const expectedId = CANONICAL_GROUP_ENUM[i];
+
+    if (g.group !== expectedId) throw fail('REGISTRY_SCHEMA_ERROR', 'groups[' + i + '] must be ' + expectedId + ', got ' + g.group);
+    if (seenGroupIds.has(g.group)) throw fail('DUPLICATE_GROUP', 'Duplicate group ID: ' + g.group);
+    seenGroupIds.add(g.group);
+
+    // Each group must have exactly the canonical fields (no extra, no missing)
+    const gKeys = Object.keys(g);
+    for (const k of gKeys) {
+      if (!CANONICAL_GROUP_FIELDS.includes(k)) throw fail('REGISTRY_SCHEMA_ERROR', 'Extra field "' + k + '" in group ' + g.group);
     }
-  }
-
-  const validCap = new Set(reg.capability_enum);
-  const validArtifact = new Set(reg.artifact_expectation_enum);
-  const validRisk = new Set(reg.risk_gate_eligibility_enum);
-  const ownershipSources = new Set(reg.membership_source_enum);
-
-  for (const g of reg.groups) {
-    for (const field of reg.required_group_fields) {
-      if (!(field in g)) throw fail('REGISTRY_SCHEMA_ERROR', 'Missing required field "' + field + '" in group ' + g.group);
+    for (const f of CANONICAL_GROUP_FIELDS) {
+      if (!(f in g)) throw fail('REGISTRY_SCHEMA_ERROR', 'Missing required field "' + f + '" in group ' + g.group);
     }
-    const extraFields = Object.keys(g).filter(k => !['group','purpose','membership_source','explicit_paths','command_reference','default_pr_execution_state','runtime','platform','capabilities','comparability','artifact_expectation','risk_gate_eligibility','source_status'].includes(k) && !reg.required_group_fields.includes(k) && !['command_reference_notes'].includes(k));
-    if (extraFields.length > 0) throw fail('REGISTRY_SCHEMA_ERROR', 'Extra unsupported field(s) in group ' + g.group + ': ' + extraFields.join(','));
-    if (!reg.group_enum.includes(g.group)) throw fail('UNKNOWN_ENUM', 'Unknown group ID: ' + g.group);
-    if (!ownershipSources.has(g.membership_source)) throw fail('UNKNOWN_ENUM', 'Unknown membership_source "' + g.membership_source + '" in group ' + g.group);
-    if (!reg.execution_state_enum.includes(g.default_pr_execution_state)) throw fail('UNKNOWN_ENUM', 'Unknown default_pr_execution_state "' + g.default_pr_execution_state + '" in group ' + g.group);
-    if (!reg.runtime_enum.includes(g.runtime)) throw fail('UNKNOWN_ENUM', 'Unknown runtime "' + g.runtime + '" in group ' + g.group);
-    if (!reg.platform_enum.includes(g.platform)) throw fail('UNKNOWN_ENUM', 'Unknown platform "' + g.platform + '" in group ' + g.group);
-    if (!reg.source_status_enum.includes(g.source_status)) throw fail('UNKNOWN_ENUM', 'Unknown source_status "' + g.source_status + '" in group ' + g.group);
-    if (!validArtifact.has(g.artifact_expectation)) throw fail('UNKNOWN_ENUM', 'Unknown artifact_expectation "' + g.artifact_expectation + '" in group ' + g.group);
-    if (!validRisk.has(g.risk_gate_eligibility)) throw fail('UNKNOWN_ENUM', 'Unknown risk_gate_eligibility "' + g.risk_gate_eligibility + '" in group ' + g.group);
-    if (!Array.isArray(g.capabilities)) throw fail('REGISTRY_SCHEMA_ERROR', 'capabilities is not an array in group ' + g.group);
+
+    // Enum value validation within canonical vocab
+    const canonMembershipSources = new Set(CANONICAL_MEMBERSHIP_SOURCE_ENUM);
+    const canonExecStates = new Set(CANONICAL_EXECUTION_STATE_ENUM);
+    const canonRuntimes = new Set(CANONICAL_RUNTIME_ENUM);
+    const canonPlatforms = new Set(CANONICAL_PLATFORM_ENUM);
+    const canonCaps = new Set(CANONICAL_CAPABILITY_ENUM);
+    const canonArtifacts = new Set(CANONICAL_ARTIFACT_EXPECTATION_ENUM);
+    const canonRisks = new Set(CANONICAL_RISK_GATE_ELIGIBILITY_ENUM);
+    const canonStatuses = new Set(CANONICAL_SOURCE_STATUS_ENUM);
+
+    if (!canonMembershipSources.has(g.membership_source)) throw fail('UNKNOWN_ENUM', 'Unknown membership_source for ' + g.group);
+    if (!canonExecStates.has(g.default_pr_execution_state)) throw fail('UNKNOWN_ENUM', 'Unknown execution state for ' + g.group);
+    if (!canonRuntimes.has(g.runtime)) throw fail('UNKNOWN_ENUM', 'Unknown runtime for ' + g.group);
+    if (!canonPlatforms.has(g.platform)) throw fail('UNKNOWN_ENUM', 'Unknown platform for ' + g.group);
+    if (!canonStatuses.has(g.source_status)) throw fail('UNKNOWN_ENUM', 'Unknown source_status for ' + g.group);
+    if (!canonArtifacts.has(g.artifact_expectation)) throw fail('UNKNOWN_ENUM', 'Unknown artifact_expectation for ' + g.group);
+    if (!canonRisks.has(g.risk_gate_eligibility)) throw fail('UNKNOWN_ENUM', 'Unknown risk_gate_eligibility for ' + g.group);
+    if (!Array.isArray(g.capabilities)) throw fail('REGISTRY_SCHEMA_ERROR', 'capabilities not array for ' + g.group);
     for (const c of g.capabilities) {
-      if (!validCap.has(c)) throw fail('UNKNOWN_ENUM', 'Unknown capability "' + c + '" in group ' + g.group);
+      if (!canonCaps.has(c)) throw fail('UNKNOWN_ENUM', 'Unknown capability "' + c + '" for ' + g.group);
     }
-    if (typeof g.purpose !== 'string' || !g.purpose.trim()) throw fail('REGISTRY_SCHEMA_ERROR', 'Empty purpose in group ' + g.group);
+    if (typeof g.purpose !== 'string' || !g.purpose.trim()) throw fail('REGISTRY_SCHEMA_ERROR', 'Empty purpose for ' + g.group);
+
+    // Canonical group-specific rules
+    for (const field of ['membership_source', 'runtime', 'platform', 'default_pr_execution_state', 'risk_gate_eligibility']) {
+      const check = isGroupSpecificValid(g.group, field, g[field]);
+      if (check === false) throw fail('REGISTRY_SCHEMA_ERROR', 'Invalid ' + field + ' for ' + g.group);
+    }
+
+    if (!isGroupSpecificCapabilitiesValid(g.group, g.capabilities)) {
+      throw fail('REGISTRY_SCHEMA_ERROR', 'Invalid capabilities for ' + g.group);
+    }
+
+    if (!isGroupSpecificExplicitPathsValid(g.group, g.explicit_paths)) {
+      throw fail('REGISTRY_SCHEMA_ERROR', 'Invalid explicit_paths for ' + g.group);
+    }
+
+    if (!isGroupSpecificCommandReferenceValid(g.group, g.command_reference)) {
+      throw fail('REGISTRY_SCHEMA_ERROR', 'Invalid command_reference for ' + g.group);
+    }
+
+    // explicit_paths validation
     if (g.membership_source === 'explicit_list') {
-      if (!Array.isArray(g.explicit_paths)) throw fail('REGISTRY_SCHEMA_ERROR', 'explicit_list group ' + g.group + ' must have explicit_paths array');
-      if (g.explicit_paths.length === 0) throw fail('REGISTRY_SCHEMA_ERROR', 'explicit_list group ' + g.group + ' has empty explicit_paths');
+      if (!Array.isArray(g.explicit_paths) || g.explicit_paths.length === 0) {
+        throw fail('REGISTRY_SCHEMA_ERROR', 'explicit_list group ' + g.group + ' must have non-empty explicit_paths');
+      }
       const epSeen = new Set();
       for (const ep of g.explicit_paths) {
-        if (typeof ep !== 'string' || !ep.trim()) throw fail('REGISTRY_SCHEMA_ERROR', 'Invalid explicit_path entry in group ' + g.group);
-        if (/\s/.test(ep)) throw fail('REGISTRY_SCHEMA_ERROR', 'explicit_path contains spaces/arguments in group ' + g.group + ': ' + ep);
-        if (path.isAbsolute(ep)) throw fail('REGISTRY_SCHEMA_ERROR', 'Absolute explicit_path in group ' + g.group + ': ' + ep);
+        if (typeof ep !== 'string' || !ep.trim()) throw fail('REGISTRY_SCHEMA_ERROR', 'Invalid explicit_path in ' + g.group);
+        if (/\s/.test(ep)) throw fail('REGISTRY_SCHEMA_ERROR', 'Path with space/arg in ' + g.group + ': ' + ep);
+        if (path.isAbsolute(ep)) throw fail('REGISTRY_SCHEMA_ERROR', 'Absolute path in ' + g.group + ': ' + ep);
         const norm = ep.split(path.sep).join('/');
-        if (norm.includes('..')) throw fail('REGISTRY_SCHEMA_ERROR', 'Path traversal in explicit_path of group ' + g.group + ': ' + ep);
-        if (epSeen.has(ep)) throw fail('DUPLICATE_PATH', 'Duplicate explicit_path in group ' + g.group + ': ' + ep);
+        if (norm.includes('..')) throw fail('REGISTRY_SCHEMA_ERROR', 'Path traversal in ' + g.group + ': ' + ep);
+        if (epSeen.has(ep)) throw fail('DUPLICATE_PATH', 'Duplicate path in ' + g.group + ': ' + ep);
         epSeen.add(ep);
-        const fp = path.join(ROOT, ep);
-        if (!fs.existsSync(fp)) throw fail('STALE_PATH', 'explicit_path does not exist in group ' + g.group + ': ' + ep);
+        if (!fs.existsSync(path.join(ROOT, ep))) throw fail('STALE_PATH', 'Path not found for ' + g.group + ': ' + ep);
       }
     } else {
-      if (g.explicit_paths !== null) throw fail('REGISTRY_SCHEMA_ERROR', 'Non-null explicit_paths in non-explicit_list group ' + g.group);
+      if (g.explicit_paths !== null) throw fail('REGISTRY_SCHEMA_ERROR', 'Non-null explicit_paths for non-explicit_list group ' + g.group);
     }
   }
 }
@@ -607,4 +741,21 @@ module.exports = {
   CLASSIFICATION_PATH,
   PACKAGE_PATH,
   CI_YML_PATH,
+  CANONICAL_GROUP_ENUM,
+  CANONICAL_MEMBERSHIP_SOURCE_ENUM,
+  CANONICAL_EXECUTION_STATE_ENUM,
+  CANONICAL_RUNTIME_ENUM,
+  CANONICAL_PLATFORM_ENUM,
+  CANONICAL_CAPABILITY_ENUM,
+  CANONICAL_ARTIFACT_EXPECTATION_ENUM,
+  CANONICAL_RISK_GATE_ELIGIBILITY_ENUM,
+  CANONICAL_SOURCE_STATUS_ENUM,
+  CANONICAL_REQUIRED_GROUP_FIELDS,
+  CANONICAL_TOP_LEVEL_FIELDS,
+  CANONICAL_GROUP_FIELDS,
+  assertEnumMatch,
+  isGroupSpecificValid,
+  isGroupSpecificCapabilitiesValid,
+  isGroupSpecificExplicitPathsValid,
+  isGroupSpecificCommandReferenceValid,
 };
