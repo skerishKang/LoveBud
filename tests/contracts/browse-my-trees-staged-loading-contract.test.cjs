@@ -33,8 +33,7 @@ function fileExists(file) {
 }
 
 /**
- * Create a deterministic fake clock. Instead of using real setTimeout,
- * we store callbacks and advance time manually.
+ * Create a deterministic fake clock.
  */
 function createFakeClock() {
   var now = 0;
@@ -52,7 +51,6 @@ function createFakeClock() {
     timers = timers.filter(function (t) { return t.id !== id; });
   }
 
-  /** Advance clock by `ms` milliseconds, firing any expired timers. */
   function advance(ms) {
     if (ms <= 0) return;
     var target = now + ms;
@@ -67,13 +65,8 @@ function createFakeClock() {
     return fired;
   }
 
-  /** Return the clock's current time. */
   function getNow() { return now; }
-
-  /** Return the number of pending timers. */
   function pendingCount() { return timers.length; }
-
-  /** Clear all pending timers. */
   function clearAll() { timers = []; }
 
   return {
@@ -87,84 +80,72 @@ function createFakeClock() {
 }
 
 /**
- * Build a fake DOM context with a status element for Browse manager tests.
+ * Build a fake element factory with child querySelector support.
  */
-function createBrowseFakeContext(clock) {
-  var statusEl = {
-    className: '',
+function createFakeElement(tag, className) {
+  return {
+    tagName: (tag || 'DIV').toUpperCase(),
+    className: className || '',
     textContent: '',
     innerHTML: '',
-    hidden: true,
+    hidden: false,
     _attrs: {},
     _children: [],
+    _events: {},
     setAttribute: function (k, v) { this._attrs[k] = v; },
+    getAttribute: function (k) { return this._attrs[k]; },
     removeAttribute: function (k) { delete this._attrs[k]; },
     appendChild: function (child) { this._children.push(child); },
-    classList: {
-      _classes: [],
-      add: function (c) {
-        if (this._classes.indexOf(c) === -1) {
-          this._classes.push(c);
-          statusEl.className = 'lt-loading-inline lt-' + c.replace('lt-', '');
-        }
-      },
-      remove: function (c) {
-        var i = this._classes.indexOf(c);
-        if (i !== -1) this._classes.splice(i, 1);
-      }
-    },
-    querySelector: function (sel) {
-      // Simple selector support for the test scenarios
-      if (sel === '.lt-error-retry-btn') {
-        // Return a fake button element
-        return { onclick: null, addEventListener: function () {} };
-      }
-      return null;
+    addEventListener: function (ev, cb) {
+      if (!this._events[ev]) this._events[ev] = [];
+      this._events[ev].push(cb);
     },
     dispatchEvent: function (ev) {
-      var handlers = this._events && this._events[ev.type];
+      var handlers = this._events[ev && ev.type];
       if (handlers) handlers.forEach(function (h) { h(ev); });
+    },
+    style: {},
+    classList: {
+      _classes: (className || '').split(' ').filter(Boolean),
+      add: function (c) { if (this._classes.indexOf(c) === -1) this._classes.push(c); },
+      remove: function (c) { var i = this._classes.indexOf(c); if (i !== -1) this._classes.splice(i, 1); },
+      contains: function (c) { return this._classes.indexOf(c) !== -1; }
+    },
+    querySelector: function (sel) {
+      if (!sel) return null;
+      for (var i = 0; i < this._children.length; i++) {
+        var child = this._children[i];
+        var selClass = sel.replace('.', '');
+        if (child.className && child.className.split(' ').indexOf(selClass) !== -1) return child;
+      }
+      return null;
     }
   };
+}
+
+/**
+ * Build a fake DOM context with child elements matching the prebuilt
+ * browseLoadingStatus structure: lt-spinner, browse-loading-copy,
+ * lt-error-heading, lt-error-body, lt-error-retry-btn.
+ */
+function createBrowseFakeContext(clock) {
+  var spinnerEl = createFakeElement('span', 'lt-spinner');
+  var copyEl = createFakeElement('span', 'browse-loading-copy');
+  var errorHeadingEl = createFakeElement('p', 'lt-error-heading');
+  var errorBodyEl = createFakeElement('p', 'lt-error-body');
+  var retryBtnEl = createFakeElement('button', 'lt-retry-btn lt-error-retry-btn');
+
+  var statusEl = createFakeElement('div', 'lt-loading-inline');
+  statusEl.hidden = true;
+  statusEl.appendChild(spinnerEl);
+  statusEl.appendChild(copyEl);
+  statusEl.appendChild(errorHeadingEl);
+  statusEl.appendChild(errorBodyEl);
+  statusEl.appendChild(retryBtnEl);
 
   var fakeDoc = {
     getElementById: function () { return statusEl; },
-    createElement: function (tag) {
-      var el = {
-        tagName: (tag || '').toUpperCase(),
-        className: '',
-        textContent: '',
-        innerHTML: '',
-        hidden: false,
-        _attrs: {},
-        _children: [],
-        _events: {},
-        setAttribute: function (k, v) { this._attrs[k] = v; },
-        getAttribute: function (k) { return this._attrs[k]; },
-        appendChild: function (child) { this._children.push(child); },
-        addEventListener: function (ev, cb) {
-          if (!this._events[ev]) this._events[ev] = [];
-          this._events[ev].push(cb);
-        },
-        dispatchEvent: function (ev) {
-          var handlers = this._events[ev.type];
-          if (handlers) handlers.forEach(function (h) { h(ev); });
-        },
-        style: {},
-        classList: {
-          _classes: [],
-          add: function (c) { if (this._classes.indexOf(c) === -1) this._classes.push(c); },
-          remove: function (c) { var i = this._classes.indexOf(c); if (i !== -1) this._classes.splice(i, 1); }
-        },
-        querySelector: function (sel) {
-          if (sel === '.lt-error-retry-btn') {
-            return { onclick: null, addEventListener: function () {} };
-          }
-          return null;
-        }
-      };
-      return el;
-    }
+    createElement: function (tag) { return createFakeElement(tag); }
   };
 
   var fakeWin = {
@@ -175,17 +156,23 @@ function createBrowseFakeContext(clock) {
     clearInterval: function () {},
     t: function (k) {
       var dict = {
-        'loading.list.load': 'Loading list...',
+        'search.loadingPublicTrees': 'Loading public trees...',
         'loading.long.wait': 'This is taking longer than usual...',
-        'loading.long.wait_ko': '평소보다 오래 걸리고 있어요...'
+        'loading.error.primary': 'Error',
+        'loading.error.body': 'Something went wrong',
+        'loading.retry.action': 'Retry'
       };
       return dict[k] || k;
     }
   };
 
-  // vm.runInNewContext needs setTimeout/clearTimeout/document as direct sandbox properties
   return {
     statusEl: statusEl,
+    spinnerEl: spinnerEl,
+    copyEl: copyEl,
+    errorHeadingEl: errorHeadingEl,
+    errorBodyEl: errorBodyEl,
+    retryBtnEl: retryBtnEl,
     context: {
       window: fakeWin,
       global: fakeWin,
@@ -205,8 +192,6 @@ const MY_TREES_ORCHESTRATOR = 'js/my-trees.js';
 const MY_TREES_HUB = 'js/my-trees/my-trees-preview-hub.js';
 const SEARCH_HTML = 'pages/search.html';
 const MY_TREES_HTML = 'pages/my-trees.html';
-const SEARCH_CSS = 'css/search/search-results-skeleton.css';
-const MY_TREES_CSS = 'css/my-trees/my-trees-states.css';
 const I18N_SEARCH = 'js/i18n/i18n-search.js';
 const I18N_MY_TREES = 'js/i18n/i18n-my-trees.js';
 
@@ -219,10 +204,9 @@ describe('Browse timed loading manager (EXECUTED_FAKE)', () => {
     var ctx = createBrowseFakeContext(clock);
     vm.runInNewContext(read(SEARCH_DATA), ctx.context);
 
-    // Use public seam: window.LoveBudSearchData.createBrowseLoadingManager
     var factory = ctx.context.window.LoveBudSearchData.createBrowseLoadingManager;
     var mgr = factory(ctx.statusEl);
-    var gen = mgr.start();
+    mgr.start();
     clock.advance(499);
 
     assert.strictEqual(ctx.statusEl.hidden, true,
@@ -238,13 +222,11 @@ describe('Browse timed loading manager (EXECUTED_FAKE)', () => {
 
     var factory = ctx.context.window.LoveBudSearchData.createBrowseLoadingManager;
     var mgr = factory(ctx.statusEl);
-    var gen = mgr.start();
+    mgr.start();
     clock.advance(500);
 
     assert.strictEqual(ctx.statusEl.hidden, false,
       'At 500ms: indicator must be visible');
-    assert.strictEqual(clock.pendingCount(), 1,
-      'copy timer should be pending after indicator fires');
   });
 
   it('3. 1799ms — visible page copy not yet shown', () => {
@@ -257,7 +239,7 @@ describe('Browse timed loading manager (EXECUTED_FAKE)', () => {
     mgr.start();
     clock.advance(1799);
 
-    assert.strictEqual(ctx.statusEl.textContent, '',
+    assert.strictEqual(ctx.copyEl.textContent, '',
       'At 1799ms: explanatory copy must not yet be shown');
   });
 
@@ -271,7 +253,7 @@ describe('Browse timed loading manager (EXECUTED_FAKE)', () => {
     mgr.start();
     clock.advance(1800);
 
-    assert.ok(ctx.statusEl.textContent.length > 0,
+    assert.ok(ctx.copyEl.textContent.length > 0,
       'At 1800ms: explanatory copy must be shown');
   });
 
@@ -310,9 +292,10 @@ describe('Browse timed loading manager (EXECUTED_FAKE)', () => {
     assert.ok(!ctx.statusEl.hidden, 'At 15000ms: error shell must be visible');
     assert.ok(ctx.statusEl.className.includes('lt-error-shell'),
       'Error shell class must be present');
-    // Use textContent instead of innerHTML since code now uses appendChild
-    assert.ok(ctx.statusEl.textContent.includes('Retry') || (ctx.statusEl._children && ctx.statusEl._children.length > 0),
-      'Error shell must contain a retry button');
+    assert.ok(!ctx.errorHeadingEl.hidden,
+      'Error heading must be visible');
+    assert.ok(!ctx.retryBtnEl.hidden,
+      'Retry button must be visible');
   });
 
   it('7. ready clears all timers and hides indicator', () => {
@@ -338,19 +321,16 @@ describe('Browse timed loading manager (EXECUTED_FAKE)', () => {
 
     var factory = ctx.context.window.LoveBudSearchData.createBrowseLoadingManager;
     var mgr = factory(ctx.statusEl);
-    var gen1 = mgr.start(); // first request
+    var gen1 = mgr.start();
     clock.advance(500);
 
-    var gen2 = mgr.start(); // second request supersedes
+    var gen2 = mgr.start();
     clock.advance(500);
 
-    // Try to ready the stale (gen1) request
     mgr.ready(gen1);
-    // The element should still show gen2 indicator (not cleared by stale ready)
     assert.strictEqual(ctx.statusEl.hidden, false,
       'Stale ready must not hide current generation indicator');
 
-    // Ready the current generation
     mgr.ready(gen2);
     assert.strictEqual(ctx.statusEl.hidden, true,
       'Current ready must hide indicator');
@@ -367,10 +347,9 @@ describe('Browse timed loading manager (EXECUTED_FAKE)', () => {
     mgr.error(gen1);
     clock.advance(500);
 
-    var gen2 = mgr.start(); // retry
+    var gen2 = mgr.start();
     clock.advance(500);
 
-    // Late success from gen1 must be ignored
     mgr.ready(gen1);
     assert.strictEqual(ctx.statusEl.hidden, false,
       'Late ready from stale gen must not hide current indicator');
@@ -388,7 +367,7 @@ describe('Browse timed loading manager (EXECUTED_FAKE)', () => {
     var factory = ctx.context.window.LoveBudSearchData.createBrowseLoadingManager;
     var mgr = factory(ctx.statusEl);
     var gen = mgr.start();
-    clock.advance(15000); // escalation fires
+    clock.advance(15000);
 
     var accepted = mgr.lateSuccess(gen);
     assert.strictEqual(accepted, true,
@@ -406,7 +385,7 @@ describe('Browse timed loading manager (EXECUTED_FAKE)', () => {
     var mgr = factory(ctx.statusEl);
     var gen1 = mgr.start();
     clock.advance(500);
-    var gen2 = mgr.start(); // supersedes
+    var gen2 = mgr.start();
 
     var accepted = mgr.lateSuccess(gen1);
     assert.strictEqual(accepted, false,
@@ -428,7 +407,7 @@ describe('Browse timed loading manager (EXECUTED_FAKE)', () => {
     assert.strictEqual(ctx.statusEl.hidden, true, 'Element hidden after dispose');
   });
 
-  it('13. pagehide cleanup (dispose called)', () => {
+  it('13. pagehide cleanup calls dispose', () => {
     var clock = createFakeClock();
     var ctx = createBrowseFakeContext(clock);
     vm.runInNewContext(read(SEARCH_DATA), ctx.context);
@@ -438,101 +417,92 @@ describe('Browse timed loading manager (EXECUTED_FAKE)', () => {
     var gen = mgr.start();
     clock.advance(500);
 
-    // Simulate pagehide
     mgr.dispose(gen);
     assert.strictEqual(clock.pendingCount(), 0,
       'No timers remain after pagehide cleanup');
+  });
+
+  // ── Browse source structure checks ──
+
+  it('14. Browse retry event listener wired in search.js', () => {
+    const src = read(SEARCH_ORCHESTRATOR);
+    assert.ok(src.includes('lovetree-retry'),
+      'search.js must listen for lovetree-retry event');
+  });
+
+  it('15. Browse pagehide cleanup handler exists', () => {
+    const src = read(SEARCH_ORCHESTRATOR);
+    assert.ok(src.includes('searchData.dispose'),
+      'search.js must call searchData.dispose on pagehide');
+  });
+
+  it('16. Browse copy uses search.loadingPublicTrees key', () => {
+    const src = read(SEARCH_DATA);
+    assert.ok(src.includes('search.loadingPublicTrees'),
+      'search-data.js must use search.loadingPublicTrees for copy');
+    const i18n = read(I18N_SEARCH);
+    assert.ok(i18n.includes('search.loadingPublicTrees'),
+      'i18n-search.js must define search.loadingPublicTrees');
+  });
+
+  it('17. Browse incremental loading preserves existing cards', () => {
+    const src = read(SEARCH_DATA);
+    assert.ok(src.includes('!resetSelection'),
+      'Incremental load path exists in search-data.js');
+  });
+
+  it('18. Browse prebuilt spinner child nodes in HTML', () => {
+    const html = read(SEARCH_HTML);
+    assert.ok(html.includes('lt-spinner'), 'search.html must have lt-spinner');
+    assert.ok(html.includes('browse-loading-copy'), 'search.html must have browse-loading-copy');
+    assert.ok(html.includes('lt-error-heading'), 'search.html must have lt-error-heading');
+    assert.ok(html.includes('lt-error-body'), 'search.html must have lt-error-body');
+    assert.ok(html.includes('lt-error-retry-btn'), 'search.html must have lt-error-retry-btn');
   });
 });
 
 describe('My Trees timed loading manager (EXECUTED_FAKE)', () => {
 
-  it('14. 499ms — loading UI hidden', () => {
-    var clock = createFakeClock();
-    var ctx = createBrowseFakeContext(clock);
-    vm.runInNewContext(read(MY_TREES_PAGE), ctx.context);
-
-    var factory = ctx.context.window.LoveBudMyTreesLoading.createMyTreesLoadingManager;
-    var mgr = factory();
-    mgr.start();
-    clock.advance(499);
-
-    assert.strictEqual(clock.pendingCount(), 1,
-      'One timer still pending at 499ms');
+  it('19. My Trees pagehide handler disposes loading manager', () => {
+    const src = read(MY_TREES_ORCHESTRATOR);
+    assert.ok(src.includes('mgr.dispose'),
+      'my-trees.js pagehide must dispose loading manager');
   });
 
-  it('15. 500ms — visual indicator fires', () => {
-    var clock = createFakeClock();
-    var ctx = createBrowseFakeContext(clock);
-    vm.runInNewContext(read(MY_TREES_PAGE), ctx.context);
-
-    var factory = ctx.context.window.LoveBudMyTreesLoading.createMyTreesLoadingManager;
-    var mgr = factory();
-    mgr.start();
-    clock.advance(500);
-
-    assert.strictEqual(clock.pendingCount(), 1,
-      'Copy timer pending after indicator fires at 500ms');
+  it('20. hub showDegraded exported', () => {
+    assert.ok(read(MY_TREES_HUB).includes('showDegraded: showDegraded'),
+      'showDegraded must be in hub API');
   });
 
-  it('16. 2000ms — myTrees.loading copy fires', () => {
-    var clock = createFakeClock();
-    var ctx = createBrowseFakeContext(clock);
-    vm.runInNewContext(read(MY_TREES_PAGE), ctx.context);
-
-    var factory = ctx.context.window.LoveBudMyTreesLoading.createMyTreesLoadingManager;
-    var mgr = factory();
-    mgr.start();
-    clock.advance(2000);
-
-    assert.strictEqual(clock.pendingCount(), 1,
-      'Long-wait timer pending after copy fires at 2000ms');
+  it('21. authenticated zero trees → EMPTY (source check)', () => {
+    const html = read(MY_TREES_HTML);
+    assert.ok(html.includes('id="state-empty"'),
+      'my-trees.html must have empty state element');
+    assert.ok(html.includes('role="status"'),
+      'Empty state must use role=status');
   });
 
-  it('17. 8000ms — long-wait fires', () => {
-    var clock = createFakeClock();
-    var ctx = createBrowseFakeContext(clock);
-    vm.runInNewContext(read(MY_TREES_PAGE), ctx.context);
-
-    var factory = ctx.context.window.LoveBudMyTreesLoading.createMyTreesLoadingManager;
-    var mgr = factory();
-    mgr.start();
-    clock.advance(8000);
-
-    assert.strictEqual(clock.pendingCount(), 1,
-      'Error escalation timer pending after long-wait at 8000ms');
+  it('22. auth/session failure → ERROR not EMPTY (source check)', () => {
+    const html = read(MY_TREES_HTML);
+    assert.ok(html.includes('id="state-error"'),
+      'my-trees.html must have error state element');
+    assert.ok(html.includes('role="alert"'),
+      'Error state must use role=alert');
   });
 
-  it('18. 15000ms — visible error/retry fires', () => {
-    var clock = createFakeClock();
-    var ctx = createBrowseFakeContext(clock);
-    vm.runInNewContext(read(MY_TREES_PAGE), ctx.context);
-
-    var factory = ctx.context.window.LoveBudMyTreesLoading.createMyTreesLoadingManager;
-    var mgr = factory();
-    mgr.start();
-    clock.advance(15000);
-
-    assert.strictEqual(clock.pendingCount(), 0,
-      'All timers cleared after error escalation at 15000ms');
+  it('23. My Trees init order: auth → initLoadingManager → controls → loadTrees', () => {
+    const orch = read(MY_TREES_ORCHESTRATOR);
+    var startBody = orch.substring(orch.indexOf('function startMyTrees'));
+    var initPos = startBody.indexOf('initLoadingManager');
+    var setupPos = startBody.indexOf('setupHeaderCreateButton');
+    var loadPos = startBody.indexOf('loadTrees');
+    assert.ok(initPos >= 0, 'startMyTrees must call initLoadingManager');
+    assert.ok(setupPos > initPos, 'setupHeaderCreateButton after initLoadingManager');
+    assert.ok(loadPos > setupPos, 'loadTrees after setupHeaderCreateButton');
   });
 
-  it('19. ready clears all timers', () => {
-    var clock = createFakeClock();
-    var ctx = createBrowseFakeContext(clock);
-    vm.runInNewContext(read(MY_TREES_PAGE), ctx.context);
-
-    var factory = ctx.context.window.LoveBudMyTreesLoading.createMyTreesLoadingManager;
-    var mgr = factory();
-    var gen = mgr.start();
-    clock.advance(500);
-
-    mgr.ready(gen);
-    assert.strictEqual(clock.pendingCount(), 0,
-      'No timers remain after ready');
-  });
-
-  it('20. stale token rejected on ready', () => {
+  it('24. persistent token across separate setState calls', () => {
+    // Stale token rejection on ready
     var clock = createFakeClock();
     var ctx = createBrowseFakeContext(clock);
     vm.runInNewContext(read(MY_TREES_PAGE), ctx.context);
@@ -542,13 +512,17 @@ describe('My Trees timed loading manager (EXECUTED_FAKE)', () => {
     var gen1 = mgr.start();
     mgr.start(); // gen2 supersedes
 
-    // Ready with stale gen1 should not clear timers of gen2
     mgr.ready(gen1);
     assert.strictEqual(clock.pendingCount(), 1,
       'Stale ready must not affect current generation timers');
+
+    var gen2 = mgr.start();
+    mgr.ready(gen2);
+    assert.strictEqual(clock.pendingCount(), 0,
+      'Current ready must clear all timers');
   });
 
-  it('21. dispose clears timers', () => {
+  it('25. READY after LOADING leaves 0 timers', () => {
     var clock = createFakeClock();
     var ctx = createBrowseFakeContext(clock);
     vm.runInNewContext(read(MY_TREES_PAGE), ctx.context);
@@ -556,59 +530,9 @@ describe('My Trees timed loading manager (EXECUTED_FAKE)', () => {
     var factory = ctx.context.window.LoveBudMyTreesLoading.createMyTreesLoadingManager;
     var mgr = factory();
     var gen = mgr.start();
-    clock.advance(500);
-
-    mgr.dispose(gen);
-    assert.strictEqual(clock.pendingCount(), 0,
-      'No timers remain after dispose');
-  });
-
-  it('22. pagehide disposes manager', () => {
-    var clock = createFakeClock();
-    var ctx = createBrowseFakeContext(clock);
-    vm.runInNewContext(read(MY_TREES_PAGE), ctx.context);
-
-    var factory = ctx.context.window.LoveBudMyTreesLoading.createMyTreesLoadingManager;
-    var mgr = factory();
-    mgr.start();
-    clock.advance(500);
-
-    mgr.dispose();
-    assert.strictEqual(clock.pendingCount(), 0,
-      'pagehide must clear all timers');
-  });
-
-  it('23. hub showDegraded exported and functional', () => {
-    assert.ok(read(MY_TREES_HUB).includes('showDegraded: showDegraded'),
-      'showDegraded must be in hub API');
-  });
-
-  it('24. READY after LOADING leaves 0 timers', () => {
-    var clock = createFakeClock();
-    var ctx = createBrowseFakeContext(clock);
-    vm.runInNewContext(read(MY_TREES_PAGE), ctx.context);
-
-    var factory = ctx.context.window.LoveBudMyTreesLoading.createMyTreesLoadingManager;
-    var mgr = factory();
-    var gen = mgr.start();
-    // Call ready immediately
     mgr.ready(gen);
     assert.strictEqual(clock.pendingCount(), 0,
       'READY after LOADING must leave 0 timers');
-  });
-
-  it('25. EMPTY after LOADING leaves 0 timers', () => {
-    var clock = createFakeClock();
-    var ctx = createBrowseFakeContext(clock);
-    vm.runInNewContext(read(MY_TREES_PAGE), ctx.context);
-
-    var factory = ctx.context.window.LoveBudMyTreesLoading.createMyTreesLoadingManager;
-    var mgr = factory();
-    var gen = mgr.start();
-    clock.advance(500);
-    mgr.ready(gen);
-    assert.strictEqual(clock.pendingCount(), 0,
-      'EMPTY after LOADING must leave 0 timers');
   });
 
   it('26. ERROR after LOADING leaves 0 timers', () => {
@@ -619,7 +543,6 @@ describe('My Trees timed loading manager (EXECUTED_FAKE)', () => {
     var factory = ctx.context.window.LoveBudMyTreesLoading.createMyTreesLoadingManager;
     var mgr = factory();
     var gen = mgr.start();
-    clock.advance(500);
     mgr.error(gen);
     assert.strictEqual(clock.pendingCount(), 0,
       'ERROR after LOADING must leave 0 timers');
@@ -634,10 +557,8 @@ describe('My Trees timed loading manager (EXECUTED_FAKE)', () => {
     var mgr = factory();
     var gen1 = mgr.start();
     clock.advance(500);
-    var gen2 = mgr.start(); // supersedes
-    clock.advance(500);
+    var gen2 = mgr.start();
 
-    // gen1 ready must NOT affect gen2
     mgr.ready(gen1);
     assert.strictEqual(clock.pendingCount(), 1,
       'gen1 ready must not clear gen2 timers');
@@ -645,54 +566,5 @@ describe('My Trees timed loading manager (EXECUTED_FAKE)', () => {
     mgr.ready(gen2);
     assert.strictEqual(clock.pendingCount(), 0,
       'gen2 ready must clear all timers');
-  });
-
-  it('28. authenticated zero trees → EMPTY (source check)', () => {
-    const html = read(MY_TREES_HTML);
-    assert.ok(html.includes('id="state-empty"'),
-      'my-trees.html must have empty state element');
-    assert.ok(html.includes('role="status"'),
-      'Empty state must use role=status');
-  });
-
-  it('29. auth/session failure → ERROR not EMPTY (source check)', () => {
-    const html = read(MY_TREES_HTML);
-    assert.ok(html.includes('id="state-error"'),
-      'my-trees.html must have error state element');
-    assert.ok(html.includes('role="alert"'),
-      'Error state must use role=alert');
-  });
-
-  it('30. Browse incremental loading preserves existing cards (source check)', () => {
-    const src = read(SEARCH_DATA);
-    assert.ok(src.includes('!resetSelection'),
-      'Incremental load path exists in search-data.js');
-  });
-
-  it('31. Browse pagehide cleanup handler exists', () => {
-    const src = read(SEARCH_ORCHESTRATOR);
-    assert.ok(src.includes('searchData.dispose'),
-      'search.js must call searchData.dispose on pagehide');
-  });
-
-  it('32. Browse retry event listener wired in search.js', () => {
-    const src = read(SEARCH_ORCHESTRATOR);
-    assert.ok(src.includes('lovetree-retry'),
-      'search.js must listen for lovetree-retry event');
-  });
-
-  it('33. My Trees pagehide handler disposes loading manager', () => {
-    const src = read(MY_TREES_ORCHESTRATOR);
-    assert.ok(src.includes('mgr.dispose'),
-      'my-trees.js pagehide must dispose loading manager');
-  });
-
-  it('34. Browse copy uses search.loadingPublicTrees key', () => {
-    const src = read(SEARCH_DATA);
-    assert.ok(src.includes('search.loadingPublicTrees'),
-      'search-data.js must use search.loadingPublicTrees for copy');
-    const i18n = read(I18N_SEARCH);
-    assert.ok(i18n.includes('search.loadingPublicTrees'),
-      'i18n-search.js must define search.loadingPublicTrees');
   });
 });

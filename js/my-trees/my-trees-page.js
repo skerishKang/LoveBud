@@ -286,10 +286,13 @@
 
     switch (newState) {
       case STATE.LOADING:
-        showStateSection(sections.loading, 'loading');
-        // Start timed loading manager on LOADING, capture persistent generation token
+        // 0-500ms: start manager FIRST, then capture token, then explicitly hide
+        // This avoids the race where onStateChange('init', gen) fires before
+        // currentLoadingGeneration is assigned.
         if (_loadingManager) {
           currentLoadingGeneration = _loadingManager.start();
+          // After token is safely stored, call init callback with the saved token
+          handleLoadingStage('init', currentLoadingGeneration, '');
         }
         // Reset long-wait visual class
         if (sections.loading) {

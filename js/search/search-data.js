@@ -29,22 +29,17 @@
         var LONG_WAIT = 8000;
         var ERROR_ESCALATION = 15000;
 
+        // Cache child references from prebuilt HTML
+        var spinnerEl = loadingStatusEl ? loadingStatusEl.querySelector('.lt-spinner') : null;
+        var copyEl = loadingStatusEl ? loadingStatusEl.querySelector('.browse-loading-copy') : null;
+        var errorHeadingEl = loadingStatusEl ? loadingStatusEl.querySelector('.lt-error-heading') : null;
+        var errorBodyEl = loadingStatusEl ? loadingStatusEl.querySelector('.lt-error-body') : null;
+        var retryBtnEl = loadingStatusEl ? loadingStatusEl.querySelector('.lt-error-retry-btn') : null;
+
         function clearAllTimers() {
             Object.keys(timers).forEach(function (key) {
                 if (timers[key]) { clearTimeout(timers[key]); timers[key] = null; }
             });
-        }
-
-        function setStatus(className, text, busy) {
-            var el = loadingStatusEl;
-            if (!el) return;
-            el.className = 'lt-loading-inline';
-            if (className) el.classList.add(className);
-            el.textContent = text || '';
-            el.hidden = !text;
-            if (typeof busy === 'boolean') {
-                el.setAttribute('aria-busy', String(busy));
-            }
         }
 
         function isCurrent(gen) {
@@ -54,6 +49,7 @@
         /**
          * Start a new loading operation. Returns an operation token.
          * Only transitions with a matching token can modify DOM/timers.
+         * Uses prebuilt child nodes to avoid innerHTML/document.createElement.
          */
         function start() {
             clearAllTimers();
@@ -62,25 +58,34 @@
             var el = loadingStatusEl;
             if (!el) return gen;
 
-            // 0-500ms: hidden
+            // 0-500ms: hidden, hide error nodes
             el.hidden = true;
+            el.className = 'lt-loading-inline';
             el.setAttribute('aria-busy', 'true');
+            if (spinnerEl) spinnerEl.hidden = false;
+            if (copyEl) { copyEl.textContent = ''; copyEl.hidden = false; }
+            if (errorHeadingEl) errorHeadingEl.hidden = true;
+            if (errorBodyEl) errorBodyEl.hidden = true;
+            if (retryBtnEl) retryBtnEl.hidden = true;
 
             timers.indicator = setTimeout(function () {
                 if (!isCurrent(gen)) return;
                 // 500-1800ms: visual indicator visible, no explanatory copy
-                el.className = 'lt-loading-inline';
                 el.hidden = false;
+                if (spinnerEl) spinnerEl.hidden = false;
+                if (copyEl) copyEl.textContent = '';
 
                 timers.copy = setTimeout(function () {
                     if (!isCurrent(gen)) return;
                     // 1800-8000ms: show page-specific copy
-                    el.textContent = i18n('search.loadingPublicTrees');
+                    if (copyEl) copyEl.textContent = i18n('search.loadingPublicTrees');
 
                     timers.longWait = setTimeout(function () {
                         if (!isCurrent(gen)) return;
                         // 8000-15000ms: shared long-wait copy
-                        setStatus('lt-long-wait', i18n('loading.long.wait'), true);
+                        el.className = 'lt-loading-inline lt-long-wait';
+                        if (copyEl) copyEl.textContent = i18n('loading.long.wait');
+                        el.setAttribute('aria-busy', 'true');
 
                         timers.error = setTimeout(function () {
                             if (!isCurrent(gen)) return;
@@ -100,40 +105,47 @@
             clearAllTimers();
             var el = loadingStatusEl;
             if (!el) return;
-            // Visible error shell with heading, body, and retry button
+            // Use prebuilt child nodes: spinner/copy hidden, error heading/body/retry visible
             el.className = 'lt-loading-inline lt-error-shell';
             el.hidden = false;
-            // Use safe child nodes - build with DOM methods, not innerHTML
-            el.textContent = '';
-            var heading = document.createElement('p');
-            heading.className = 'lt-error-heading';
-            heading.textContent = i18n('loading.error.primary');
-            var body = document.createElement('p');
-            body.className = 'lt-error-body';
-            body.textContent = i18n('loading.error.body');
-            var retryBtn = document.createElement('button');
-            retryBtn.className = 'lt-retry-btn lt-error-retry-btn';
-            retryBtn.textContent = i18n('loading.retry.action');
-            el.appendChild(heading);
-            el.appendChild(body);
-            el.appendChild(retryBtn);
+            el.setAttribute('aria-busy', 'false');
+            if (spinnerEl) spinnerEl.hidden = true;
+            if (copyEl) { copyEl.textContent = ''; copyEl.hidden = true; }
+            if (errorHeadingEl) { errorHeadingEl.textContent = i18n('loading.error.primary'); errorHeadingEl.hidden = false; }
+            if (errorBodyEl) { errorBodyEl.textContent = i18n('loading.error.body'); errorBodyEl.hidden = false; }
+            if (retryBtnEl) { retryBtnEl.textContent = i18n('loading.retry.action'); retryBtnEl.hidden = false; }
             // Wire retry button to trigger via CustomEvent
-            retryBtn.onclick = function () {
-                var event = new CustomEvent('lovetree-retry', { bubbles: true });
-                el.dispatchEvent(event);
-            };
+            if (retryBtnEl) {
+                retryBtnEl.onclick = function () {
+                    var event = new CustomEvent('lovetree-retry', { bubbles: true });
+                    el.dispatchEvent(event);
+                };
+            }
+        }
+
+        function resetToHidden() {
+            var el = loadingStatusEl;
+            if (!el) return;
+            el.hidden = true;
+            el.className = 'lt-loading-inline';
+            el.setAttribute('aria-busy', 'false');
+            if (spinnerEl) spinnerEl.hidden = true;
+            if (copyEl) { copyEl.textContent = ''; copyEl.hidden = true; }
+            if (errorHeadingEl) errorHeadingEl.hidden = true;
+            if (errorBodyEl) errorBodyEl.hidden = true;
+            if (retryBtnEl) retryBtnEl.hidden = true;
         }
 
         function ready(gen) {
             if (gen !== undefined && !isCurrent(gen)) return;
             clearAllTimers();
-            setStatus('', '', false);
+            resetToHidden();
         }
 
         function error(gen) {
             if (gen !== undefined && !isCurrent(gen)) return;
             clearAllTimers();
-            setStatus('', '', false);
+            resetToHidden();
         }
 
         /**
@@ -143,18 +155,17 @@
         function lateSuccess(gen) {
             if (!isCurrent(gen)) return false;
             clearAllTimers();
-            setStatus('', '', false);
+            resetToHidden();
             return true;
         }
 
         function dispose(gen) {
             if (gen !== undefined && !isCurrent(gen)) return;
             clearAllTimers();
+            resetToHidden();
             var el = loadingStatusEl;
             if (el) {
-                el.hidden = true;
                 el.removeAttribute('aria-busy');
-                el.textContent = '';
             }
         }
 
