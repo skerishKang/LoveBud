@@ -6,7 +6,8 @@
 | --- | --- |
 | Parent | `#3670` |
 | Audit child | `#3671` |
-| Exact baseline | `4beada4c8134afbdb791e98466db9ec1162f0a27` |
+| Historical audit baseline | `4beada4c8134afbdb791e98466db9ec1162f0a27` |
+| Current exact baseline | `e0cb7b95085e6d6bafdfccb07a55060c340741b7` |
 | Selected next child | **Machine-readable test-group registry and deterministic classification reporter** |
 | Selection count | Exactly one |
 | Generic risk tier | Tier 2 |
@@ -15,6 +16,21 @@
 | Workflow effect | None authorized |
 | Package-script effect | None authorized |
 | Test-behavior effect | None authorized |
+
+## Baseline refresh
+
+The original decision was written at `4beada4c8134afbdb791e98466db9ec1162f0a27`. Current `main` adds two default-CI `SOURCE_STATIC` contracts through merged work while the intervening design-system audit is count-neutral.
+
+```text
+historical default total: 764
+current default total: 766
+historical SOURCE_STATIC: 563
+current SOURCE_STATIC: 565
+EXECUTED_FAKE: 187 unchanged
+EXECUTED_REAL_LOCAL: 14 unchanged
+```
+
+The current implementation child must derive membership from source and must not hard-code the historical count as current truth.
 
 ## Exact goal
 
@@ -27,22 +43,22 @@ The child must:
 3. add a deterministic source-only reporter that validates the registry against exact package scripts, test discovery, existing layer entries, supplemental paths, and known workflow commands;
 4. emit stable human-readable and JSON summaries suitable for later branch/main comparison and risk-tier gate wiring;
 5. fail closed on unclassified, duplicate, stale, overlapping, unsupported, or contradictory group membership;
-6. correct only the currently confirmed supplemental classification defects needed to make the existing layer reporter internally consistent;
+6. correct only the confirmed supplemental classification defects needed to make the existing layer reporter internally consistent;
 7. execute no tests, browsers, network calls, providers, Docker, PostgreSQL, database connections, or Production actions.
 
 The child does **not** implement risk-tiered workflow partitioning. It creates the source authority required before that workflow-affecting decision.
 
 ## Why this child is first
 
-The current repository has evidence-layer vocabulary but no machine-readable execution-group authority. The workflow cannot safely select Tier 1/2/3 gates until it can answer, deterministically:
+The repository has evidence-layer vocabulary but no machine-readable execution-group authority. A future workflow cannot safely select Tier 1/2/3 gates until it can answer deterministically:
 
-- which paths belong to source-static, fake/unit-like, browser-local, DB-engine, manual remote/provider, and full-regression products;
-- which command executes each group;
-- which platform/runtime/capabilities each group requires;
+- which paths belong to source-static, fake/unit-like, browser-real-local, process-real-local, DB-engine, Python supplemental, remote/provider manual, and full-regression products;
+- which command owns each execution group;
+- which platform, runtime, and capabilities each group requires;
 - whether a path is default PR, supplemental, manual, or unavailable;
 - whether branch and main results are comparable under identical conditions.
 
-Selecting workflow partitioning first would encode human assumptions directly into CI before the underlying membership and comparison contracts are machine-verifiable.
+Selecting workflow partitioning first would encode human assumptions before membership and comparison contracts are machine-verifiable.
 
 ## Risk tier
 
@@ -53,46 +69,44 @@ Reason: repository-wide classification/reporting authority can affect later merg
 Local Validation: NOT_REQUIRED unless source access is insufficient.
 ```
 
-## Allowed files
+## Exact allowed files
 
-The next child may change exactly these files:
+The next child may change exactly:
 
 1. `tests/ci-test-group-registry.json` — new machine-readable execution-group authority.
 2. `scripts/report-ci-test-groups.cjs` — new deterministic source-only reporter.
-3. `tests/contracts/ci-test-group-registry-contract.test.cjs` — focused contract for schema, reconciliation, and fail-closed behavior.
+3. `tests/contracts/ci-test-group-registry-contract.test.cjs` — focused schema, reconciliation, and fail-closed contract.
 4. `docs/architecture/CI_TEST_GROUP_REGISTRY_CONTRACT.md` — normative source contract.
 5. `tests/test-layer-classification.json` — bounded changes only:
    - classify the new contract test;
    - remove the two confirmed default-CI paths from the supplemental list where they conflict with reporter rules;
-   - no reclassification of existing test evidence layers without separate proof.
+   - make no unrelated reclassification of existing test evidence layers.
 
-No other path is allowed.
+No other path is authorized.
 
 ## Prohibited files and actions
 
 ### Files
 
-- `package.json`
-- `package-lock.json`
-- `.github/workflows/**`
-- any existing test file other than `tests/test-layer-classification.json`
-- any runtime source under `js/**`, `functions/**`, `modal_compute/**`, or product routes
-- any DB, migration, SQL, provider, Cloudflare, Modal, Neon, environment, or secret file
-- the `#3669` branch or its five-file scope
+- `package.json` and lockfiles;
+- `.github/workflows/**`;
+- existing tests other than the bounded classification JSON change;
+- runtime source under `js/**`, `functions/**`, `modal_compute/**`, or product routes;
+- DB, migration, SQL, provider, Cloudflare, Modal, Neon, environment, credential, or secret files.
 
 ### Behavior
 
-- no test execution orchestration changes;
+- no test execution-orchestration change;
 - no test deletion, skip, quarantine, timeout change, retry, sleep, or assertion weakening;
 - no path-filter or risk-tier workflow wiring;
-- no branch-protection changes;
+- no branch-protection change;
 - no browser launch;
-- no network/provider access;
+- no network or provider access;
 - no DB connection, SQL, Docker, or PostgreSQL execution;
 - no Production or staging access;
 - no flaky label or non-determinism classification without repeated evidence.
 
-## Source-only or workflow-affecting
+## Source-only boundary
 
 ```text
 SOURCE_ONLY
@@ -100,11 +114,11 @@ SOURCE_ONLY
 
 The reporter may read repository files and print deterministic summaries. It must not invoke `node --test`, npm scripts, shells, child processes, browsers, network clients, database clients, or workflows.
 
-A later child must separately approve package/workflow integration.
+A later child must separately authorize package or workflow integration.
 
 ## Registry minimum contract
 
-The new registry must define an exact versioned schema with stable ordered groups. At minimum it must distinguish:
+The registry must define a versioned schema with stable ordered groups. At minimum it must distinguish:
 
 ```text
 SOURCE_STATIC
@@ -117,54 +131,53 @@ REMOTE_OR_PROVIDER_MANUAL
 FULL_DEFAULT_REGRESSION
 ```
 
-Each group record must include exact bounded fields for:
+Each group record must include bounded fields for:
 
-- group ID;
-- purpose;
+- group ID and purpose;
 - membership source or explicit paths;
 - command reference;
 - default PR execution state;
-- required runtime;
-- supported/observed platform;
+- required runtime and supported/observed platform;
 - required capabilities;
 - branch/main comparability prerequisites;
 - artifact expectation;
 - risk-gate eligibility;
-- source status: `CONFIRMED`, `UNVERIFIED`, or `NOT_PRESENT` where applicable.
+- source status such as `CONFIRMED`, `UNVERIFIED`, or `NOT_PRESENT`.
 
 The registry must reference, not duplicate or replace, evidence-layer rationale authority.
 
 ## Reporter minimum contract
 
-`report-ci-test-groups.cjs` must:
+`scripts/report-ci-test-groups.cjs` must:
 
 1. read `package.json`, `tests/test-layer-classification.json`, and `tests/ci-test-group-registry.json` from fixed repository-relative paths;
 2. parse the exact default `node --test` glob command with fail-closed grammar equivalent to the current layer reporter;
 3. enumerate default-CI files deterministically;
 4. validate every default and supplemental path against exactly one appropriate execution group;
 5. reject duplicate, stale, overlapping, default/supplemental-conflicting, or unsupported memberships;
-6. validate the current seven DB-engine package commands and the `verify-static` command set without editing workflows;
-7. emit deterministic vocabulary order and stable path order;
-8. support a machine-readable JSON output mode and a human-readable summary mode;
-9. include exact command/runtime/platform/capability metadata, but no credentials, URLs containing private data, cookies, payloads, row data, or raw logs;
+6. validate the current seven DB-engine package commands and `verify-static` command set without editing workflows;
+7. emit deterministic vocabulary and stable path order;
+8. support machine-readable JSON and human-readable summary modes;
+9. include exact command/runtime/platform/capability metadata without credentials, private URLs, cookies, payloads, row data, or raw logs;
 10. return non-zero on registry or reconciliation failure;
 11. execute no registered command.
 
 ## Acceptance criteria
 
-1. The exact baseline package test globs reconcile with 764 default-CI paths.
-2. Current evidence-layer counts remain 563 `SOURCE_STATIC`, 187 `EXECUTED_FAKE`, and 14 `EXECUTED_REAL_LOCAL` unless an independently proven baseline correction is included.
-3. Seven DB-engine tests remain supplemental and map to seven existing package commands.
-4. Ten Python supplemental paths remain visible as not executed by the active package/workflow topology.
-5. The two confirmed invalid/in-default supplemental duplicates are removed through the bounded classification JSON correction.
-6. Every default-CI and supplemental path has exactly one execution-group disposition.
-7. Browser-real-local paths are distinguishable from other real-local process/filesystem paths without changing their existing evidence layer.
-8. Manual remote/provider scripts are recorded as non-default and are not executed.
-9. Full default regression is represented as an aggregate group over the exact package globs, not as a duplicate path authority.
-10. Reporter output is byte-stable for identical repository content.
-11. Unknown group, path, command, capability, runtime, platform, or artifact enum values fail closed.
-12. No package, lockfile, workflow, runtime, test assertion, DB, provider, or Production behavior changes.
-13. The focused contract and existing layer-classification contract pass.
+1. Current package test globs reconcile with exactly 766 default-CI paths.
+2. Current evidence-layer counts reconcile with exactly 565 `SOURCE_STATIC`, 187 `EXECUTED_FAKE`, and 14 `EXECUTED_REAL_LOCAL` paths.
+3. The reporter records the historical `764/563/187/14` baseline as history, not current authority.
+4. Seven DB-engine tests remain supplemental and map to seven existing package commands.
+5. Ten Python supplemental paths remain visible as not executed by active package/workflow topology.
+6. The two confirmed invalid default/supplemental duplicates are removed through the bounded classification JSON correction.
+7. Every default-CI and supplemental path has exactly one execution-group disposition.
+8. Browser-real-local paths are distinguishable from other real-local process/filesystem paths without changing their existing evidence layer.
+9. Manual remote/provider scripts are recorded as non-default and are not executed.
+10. Full default regression is represented as an aggregate over the exact package globs, not as duplicate path authority.
+11. Reporter output is byte-stable for identical repository content.
+12. Unknown group, path, command, capability, runtime, platform, or artifact enum values fail closed.
+13. No package, lockfile, workflow, runtime, test assertion, DB, provider, or Production behavior changes.
+14. The focused contract and existing layer-classification contract pass.
 
 ## Verification
 
@@ -186,7 +199,7 @@ git diff --stat origin/main...HEAD
 
 The implementation report must record raw pass/fail totals and exact output digests for both reporter modes.
 
-`npm run lint`, `npm run build`, `npm run verify`, and full `npm test` are not automatically required merely because this child is source-only. The Web CTO may require a broader command only if the actual implementation expands beyond the allowed scope.
+`npm run lint`, `npm run build`, `npm run verify`, and full `npm test` are not automatically required solely because the child is source-only. The Web CTO may require broader commands if actual implementation expands beyond the allowed boundary.
 
 ## Rollback
 
@@ -196,14 +209,14 @@ Repository-only rollback:
 revert the next-child PR
 ```
 
-No runtime state, workflow configuration, branch protection, database state, provider state, or Production state is created by this child.
+No runtime state, workflow configuration, branch protection, database state, provider state, or Production state is created.
 
 ## Later children not authorized
 
-The following remain later independent children and are not approved by this decision:
+The following remain separate future decisions:
 
 1. risk-tiered PR gate partitioning;
-2. workflow/path-filter changes;
+2. workflow or path-filter changes;
 3. branch/main dual execution;
 4. Windows/Linux or Node runtime matrices;
 5. shared port/temp/browser/process isolation changes;
@@ -215,11 +228,14 @@ The following remain later independent children and are not approved by this dec
 
 ## Completion boundary
 
-The selected child completes only when the registry and source-only reporter provide a deterministic, internally consistent execution topology over the existing tests and commands. It does not complete or partially implement any workflow-affecting gate.
+The selected child completes only when the registry and source-only reporter provide a deterministic, internally consistent execution topology over current tests and commands. It does not complete or partially implement any workflow-affecting gate.
 
 Refs #3671.
 Refs #3670.
-Refs #3669 — parallel; do not touch.
+Refs #3675 — merged.
+Refs #3677 — merged; count-neutral docs-only drift.
+Refs #3678 — merged; current count delta included.
+Refs #3669 — completed.
 Refs #3664.
 Refs #3662.
 Refs #3657 — Keep OPEN.
