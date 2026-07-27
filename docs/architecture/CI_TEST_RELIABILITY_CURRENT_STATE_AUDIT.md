@@ -29,7 +29,7 @@ Current `main` contains three later commits:
 
 1. `125c074f4ff6af84ed75f71f0a5b65d2432a57fb` — PR #3675 added one new default-CI `SOURCE_STATIC` contract;
 2. `534f9ecf3cddf8d3b84acfc6029ca1e5a07fbec6` — PR #3677 added design-system audit documents only;
-3. `e0cb7b95085e6d6bafdfccb07a55060c340741b7` — Issue #3678 completed through merged PR #3681, which added one new default-CI `SOURCE_STATIC` contract.
+3. `e0cb7b95085e6d6bafdfccb07a55060c340741b7` — merged PR #3681 completed Issue #3678 and added one new default-CI `SOURCE_STATIC` contract.
 
 The verified cumulative count delta is therefore:
 
