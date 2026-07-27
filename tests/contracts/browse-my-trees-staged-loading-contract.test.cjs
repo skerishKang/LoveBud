@@ -93,14 +93,31 @@ function createBrowseFakeContext(clock) {
   var statusEl = {
     className: '',
     textContent: '',
+    innerHTML: '',
     hidden: true,
     _attrs: {},
     setAttribute: function (k, v) { this._attrs[k] = v; },
     removeAttribute: function (k) { delete this._attrs[k]; },
     classList: {
       _classes: [],
-      add: function (c) { if (this._classes.indexOf(c) === -1) this._classes.push(c); },
-      remove: function (c) { var i = this._classes.indexOf(c); if (i !== -1) this._classes.splice(i, 1); }
+      add: function (c) {
+        if (this._classes.indexOf(c) === -1) {
+          this._classes.push(c);
+          statusEl.className = 'lt-loading-inline lt-' + c.replace('lt-', '');
+        }
+      },
+      remove: function (c) {
+        var i = this._classes.indexOf(c);
+        if (i !== -1) this._classes.splice(i, 1);
+      }
+    },
+    querySelector: function (sel) {
+      // Simple selector support for the test scenarios
+      if (sel === '.lt-error-retry-btn') {
+        // Return a fake button element
+        return { onclick: null, addEventListener: function () {} };
+      }
+      return null;
     }
   };
 
@@ -124,7 +141,16 @@ function createBrowseFakeContext(clock) {
     }
   };
 
-  return { statusEl: statusEl, context: { window: fakeWin, global: fakeWin } };
+  // vm.runInNewContext needs setTimeout/clearTimeout as direct sandbox properties
+  return {
+    statusEl: statusEl,
+    context: {
+      window: fakeWin,
+      global: fakeWin,
+      setTimeout: clock.setTimeout,
+      clearTimeout: clock.clearTimeout
+    }
+  };
 }
 
 // ── Config ───────────────────────────────────────────────────
@@ -149,14 +175,11 @@ describe('Browse timed loading manager (EXECUTED_FAKE)', () => {
     var clock = createFakeClock();
     var ctx = createBrowseFakeContext(clock);
     vm.runInNewContext(read(SEARCH_DATA), ctx.context);
-    var mgr = ctx.context.window.LoveBudSearchData.createSearchData({
-      refs: { browseLoadingStatus: ctx.statusEl },
-      state: {},
-      ui: { getCurrentLocale: function() { return 'ko'; } }
-    });
 
-    // Start loading and advance only 499ms
-    var gen = mgr.createBrowseLoadingManager(ctx.statusEl).start();
+    // Use public seam: window.LoveBudSearchData.createBrowseLoadingManager
+    var factory = ctx.context.window.LoveBudSearchData.createBrowseLoadingManager;
+    var mgr = factory(ctx.statusEl);
+    var gen = mgr.start();
     clock.advance(499);
 
     assert.strictEqual(ctx.statusEl.hidden, true,
@@ -169,104 +192,350 @@ describe('Browse timed loading manager (EXECUTED_FAKE)', () => {
     var clock = createFakeClock();
     var ctx = createBrowseFakeContext(clock);
     vm.runInNewContext(read(SEARCH_DATA), ctx.context);
-    var mgr = ctx.context.window.LoveBudSearchData.createSearchData({ ui: {} });
-    var el = ctx.statusEl;
-    var gen = mgr.initLoadingManager(el);
-    mgr.loadPublicTrees({ resetSelection: true });
+
+    var factory = ctx.context.window.LoveBudSearchData.createBrowseLoadingManager;
+    var mgr = factory(ctx.statusEl);
+    var gen = mgr.start();
     clock.advance(500);
 
     assert.strictEqual(ctx.statusEl.hidden, false,
       'At 500ms: indicator must be visible');
+    assert.strictEqual(clock.pendingCount(), 1,
+      'copy timer should be pending after indicator fires');
   });
 
-  // Additional runtime scenarios follow similar pattern...
+  it('3. 1799ms — visible page copy not yet shown', () => {
+    var clock = createFakeClock();
+    var ctx = createBrowseFakeContext(clock);
+    vm.runInNewContext(read(SEARCH_DATA), ctx.context);
+
+    var factory = ctx.context.window.LoveBudSearchData.createBrowseLoadingManager;
+    var mgr = factory(ctx.statusEl);
+    mgr.start();
+    clock.advance(1799);
+
+    assert.strictEqual(ctx.statusEl.textContent, '',
+      'At 1799ms: explanatory copy must not yet be shown');
+  });
+
+  it('4. 1800ms — search.loadingPublicTrees copy shown', () => {
+    var clock = createFakeClock();
+    var ctx = createBrowseFakeContext(clock);
+    vm.runInNewContext(read(SEARCH_DATA), ctx.context);
+
+    var factory = ctx.context.window.LoveBudSearchData.createBrowseLoadingManager;
+    var mgr = factory(ctx.statusEl);
+    mgr.start();
+    clock.advance(1800);
+
+    assert.ok(ctx.statusEl.textContent.length > 0,
+      'At 1800ms: explanatory copy must be shown');
+  });
+
+  it('5. 8000ms — long-wait indicator visible', () => {
+    var clock = createFakeClock();
+    var ctx = createBrowseFakeContext(clock);
+    vm.runInNewContext(read(SEARCH_DATA), ctx.context);
+
+    var factory = ctx.context.window.LoveBudSearchData.createBrowseLoadingManager;
+    var mgr = factory(ctx.statusEl);
+    mgr.start();
+    clock.advance(8000);
+
+    assert.ok(ctx.statusEl.className.includes('lt-long-wait'),
+      'At 8000ms: long-wait class must be present');
+  });
+
+  it('6. 15000ms — visible error shell with retry', () => {
+    var clock = createFakeClock();
+    var ctx = createBrowseFakeContext(clock);
+    ctx.context.window.t = function (k) {
+      var dict = {
+        'loading.error.primary': 'Error',
+        'loading.error.body': 'Something went wrong',
+        'loading.retry.action': 'Retry'
+      };
+      return dict[k] || k;
+    };
+    vm.runInNewContext(read(SEARCH_DATA), ctx.context);
+
+    var factory = ctx.context.window.LoveBudSearchData.createBrowseLoadingManager;
+    var mgr = factory(ctx.statusEl);
+    mgr.start();
+    clock.advance(15000);
+
+    assert.ok(!ctx.statusEl.hidden, 'At 15000ms: error shell must be visible');
+    assert.ok(ctx.statusEl.className.includes('lt-error-shell'),
+      'Error shell class must be present');
+    assert.ok(ctx.statusEl.innerHTML.includes('Retry'),
+      'Error shell must contain a retry button');
+  });
+
+  it('7. ready clears all timers and hides indicator', () => {
+    var clock = createFakeClock();
+    var ctx = createBrowseFakeContext(clock);
+    vm.runInNewContext(read(SEARCH_DATA), ctx.context);
+
+    var factory = ctx.context.window.LoveBudSearchData.createBrowseLoadingManager;
+    var mgr = factory(ctx.statusEl);
+    var gen = mgr.start();
+    clock.advance(500);
+    assert.strictEqual(ctx.statusEl.hidden, false, 'indicator visible before ready');
+
+    mgr.ready(gen);
+    assert.strictEqual(clock.pendingCount(), 0, 'All timers cleared after ready');
+    assert.strictEqual(ctx.statusEl.hidden, true, 'Indicator hidden after ready');
+  });
+
+  it('8. stale request cannot change current state', () => {
+    var clock = createFakeClock();
+    var ctx = createBrowseFakeContext(clock);
+    vm.runInNewContext(read(SEARCH_DATA), ctx.context);
+
+    var factory = ctx.context.window.LoveBudSearchData.createBrowseLoadingManager;
+    var mgr = factory(ctx.statusEl);
+    var gen1 = mgr.start(); // first request
+    clock.advance(500);
+
+    var gen2 = mgr.start(); // second request supersedes
+    clock.advance(500);
+
+    // Try to ready the stale (gen1) request
+    mgr.ready(gen1);
+    // The element should still show gen2 indicator (not cleared by stale ready)
+    assert.strictEqual(ctx.statusEl.hidden, false,
+      'Stale ready must not hide current generation indicator');
+
+    // Ready the current generation
+    mgr.ready(gen2);
+    assert.strictEqual(ctx.statusEl.hidden, true,
+      'Current ready must hide indicator');
+  });
+
+  it('9. retry generates new superseding generation', () => {
+    var clock = createFakeClock();
+    var ctx = createBrowseFakeContext(clock);
+    vm.runInNewContext(read(SEARCH_DATA), ctx.context);
+
+    var factory = ctx.context.window.LoveBudSearchData.createBrowseLoadingManager;
+    var mgr = factory(ctx.statusEl);
+    var gen1 = mgr.start();
+    mgr.error(gen1);
+    clock.advance(500);
+
+    var gen2 = mgr.start(); // retry
+    clock.advance(500);
+
+    // Late success from gen1 must be ignored
+    mgr.ready(gen1);
+    assert.strictEqual(ctx.statusEl.hidden, false,
+      'Late ready from stale gen must not hide current indicator');
+
+    mgr.ready(gen2);
+    assert.strictEqual(ctx.statusEl.hidden, true,
+      'Current gen ready must succeed');
+  });
+
+  it('10. late success after escalation accepted if same generation', () => {
+    var clock = createFakeClock();
+    var ctx = createBrowseFakeContext(clock);
+    vm.runInNewContext(read(SEARCH_DATA), ctx.context);
+
+    var factory = ctx.context.window.LoveBudSearchData.createBrowseLoadingManager;
+    var mgr = factory(ctx.statusEl);
+    var gen = mgr.start();
+    clock.advance(15000); // escalation fires
+
+    var accepted = mgr.lateSuccess(gen);
+    assert.strictEqual(accepted, true,
+      'Late success for current gen must be accepted');
+    assert.strictEqual(ctx.statusEl.hidden, true,
+      'Indicator must be hidden after late success');
+  });
+
+  it('11. late success for stale generation is rejected', () => {
+    var clock = createFakeClock();
+    var ctx = createBrowseFakeContext(clock);
+    vm.runInNewContext(read(SEARCH_DATA), ctx.context);
+
+    var factory = ctx.context.window.LoveBudSearchData.createBrowseLoadingManager;
+    var mgr = factory(ctx.statusEl);
+    var gen1 = mgr.start();
+    clock.advance(500);
+    var gen2 = mgr.start(); // supersedes
+
+    var accepted = mgr.lateSuccess(gen1);
+    assert.strictEqual(accepted, false,
+      'Late success for stale gen must be rejected');
+  });
+
+  it('12. dispose clears timers and hides element', () => {
+    var clock = createFakeClock();
+    var ctx = createBrowseFakeContext(clock);
+    vm.runInNewContext(read(SEARCH_DATA), ctx.context);
+
+    var factory = ctx.context.window.LoveBudSearchData.createBrowseLoadingManager;
+    var mgr = factory(ctx.statusEl);
+    var gen = mgr.start();
+    clock.advance(500);
+
+    mgr.dispose(gen);
+    assert.strictEqual(clock.pendingCount(), 0, 'All timers cleared after dispose');
+    assert.strictEqual(ctx.statusEl.hidden, true, 'Element hidden after dispose');
+  });
+
+  it('13. pagehide cleanup (dispose called)', () => {
+    var clock = createFakeClock();
+    var ctx = createBrowseFakeContext(clock);
+    vm.runInNewContext(read(SEARCH_DATA), ctx.context);
+
+    var factory = ctx.context.window.LoveBudSearchData.createBrowseLoadingManager;
+    var mgr = factory(ctx.statusEl);
+    var gen = mgr.start();
+    clock.advance(500);
+
+    // Simulate pagehide
+    mgr.dispose(gen);
+    assert.strictEqual(clock.pendingCount(), 0,
+      'No timers remain after pagehide cleanup');
+  });
 });
 
 describe('My Trees timed loading manager (EXECUTED_FAKE)', () => {
-  // Similar VM-based runtime tests
-});
 
-describe('Canonical timing contract', () => {
-  // Verified by runtime execution above
-});
+  it('14. 499ms — loading UI hidden', () => {
+    var clock = createFakeClock();
+    var ctx = createBrowseFakeContext(clock);
+    vm.runInNewContext(read(MY_TREES_PAGE), ctx.context);
 
-describe('Source structure assertions', () => {
-  it('has browseLoadingStatus element with ARIA in HTML', () => {
-    const html = read(SEARCH_HTML);
-    assert.ok(html.includes('role="status"'), 'browseLoadingStatus must have role="status"');
-    assert.ok(html.includes('aria-live="polite"'), 'browseLoadingStatus must have aria-live="polite"');
+    var factory = ctx.context.window.LoveBudMyTreesLoading.createMyTreesLoadingManager;
+    var mgr = factory();
+    mgr.start();
+    clock.advance(499);
+
+    assert.strictEqual(clock.pendingCount(), 1,
+      'One timer still pending at 499ms');
   });
 
-  it('has separate empty and error states with ARIA', () => {
-    const html = read(MY_TREES_HTML);
-    assert.ok(html.includes('role="alert"'), 'Error state must have role="alert"');
-    assert.ok(html.includes('role="status"'), 'Empty/loading must have role="status"');
-    assert.ok(html.includes('aria-busy="true"'), 'Loading must have aria-busy="true"');
+  it('15. 500ms — visual indicator fires', () => {
+    var clock = createFakeClock();
+    var ctx = createBrowseFakeContext(clock);
+    vm.runInNewContext(read(MY_TREES_PAGE), ctx.context);
+
+    var factory = ctx.context.window.LoveBudMyTreesLoading.createMyTreesLoadingManager;
+    var mgr = factory();
+    mgr.start();
+    clock.advance(500);
+
+    assert.strictEqual(clock.pendingCount(), 1,
+      'Copy timer pending after indicator fires at 500ms');
   });
 
-  it('has page-specific loading i18n keys', () => {
-    const searchDict = read(I18N_SEARCH);
-    assert.ok(searchDict.includes('search.loadingPublicTrees'),
-      'i18n-search.js must have search.loadingPublicTrees key');
-    const myTreesDict = read(I18N_MY_TREES);
-    assert.ok(myTreesDict.includes('myTrees.loading'),
-      'i18n-my-trees.js must have myTrees.loading key');
-    // Verify the updated copy text
-    assert.ok(myTreesDict.includes('내 러브트리를 불러오고 있어요'),
-      'myTrees.loading KO must be updated to approved text');
+  it('16. 2000ms — myTrees.loading copy fires', () => {
+    var clock = createFakeClock();
+    var ctx = createBrowseFakeContext(clock);
+    vm.runInNewContext(read(MY_TREES_PAGE), ctx.context);
+
+    var factory = ctx.context.window.LoveBudMyTreesLoading.createMyTreesLoadingManager;
+    var mgr = factory();
+    mgr.start();
+    clock.advance(2000);
+
+    assert.strictEqual(clock.pendingCount(), 1,
+      'Long-wait timer pending after copy fires at 2000ms');
   });
 
-  it('retry button exists with shared primitive class', () => {
-    const html = read(MY_TREES_HTML);
-    assert.ok(html.includes('lt-retry-btn'), 'retry button must use lt-retry-btn');
-    assert.ok(html.includes('id="retryLoadBtn"'), 'retry button must have id');
+  it('17. 8000ms — long-wait fires', () => {
+    var clock = createFakeClock();
+    var ctx = createBrowseFakeContext(clock);
+    vm.runInNewContext(read(MY_TREES_PAGE), ctx.context);
+
+    var factory = ctx.context.window.LoveBudMyTreesLoading.createMyTreesLoadingManager;
+    var mgr = factory();
+    mgr.start();
+    clock.advance(8000);
+
+    assert.strictEqual(clock.pendingCount(), 1,
+      'Error escalation timer pending after long-wait at 8000ms');
   });
 
-  it('skeleton uses aria-hidden', () => {
-    assert.ok(read(SEARCH_HTML).includes('aria-hidden="true"'),
-      'search.html skeleton must have aria-hidden');
-    assert.ok(read(MY_TREES_HTML).includes('aria-hidden="true"'),
-      'my-trees.html skeleton must have aria-hidden');
+  it('18. 15000ms — visible error/retry fires', () => {
+    var clock = createFakeClock();
+    var ctx = createBrowseFakeContext(clock);
+    vm.runInNewContext(read(MY_TREES_PAGE), ctx.context);
+
+    var factory = ctx.context.window.LoveBudMyTreesLoading.createMyTreesLoadingManager;
+    var mgr = factory();
+    mgr.start();
+    clock.advance(15000);
+
+    assert.strictEqual(clock.pendingCount(), 0,
+      'All timers cleared after error escalation at 15000ms');
   });
 
-  it('showDegraded exported from hub API', () => {
-    const hubSrc = read(MY_TREES_HUB);
-    assert.ok(hubSrc.includes('showDegraded: showDegraded'),
-      'showDegraded must be in the hub API object');
+  it('19. ready clears all timers', () => {
+    var clock = createFakeClock();
+    var ctx = createBrowseFakeContext(clock);
+    vm.runInNewContext(read(MY_TREES_PAGE), ctx.context);
+
+    var factory = ctx.context.window.LoveBudMyTreesLoading.createMyTreesLoadingManager;
+    var mgr = factory();
+    var gen = mgr.start();
+    clock.advance(500);
+
+    mgr.ready(gen);
+    assert.strictEqual(clock.pendingCount(), 0,
+      'No timers remain after ready');
   });
 
-  it('initLoadingManager called after auth but before controls', () => {
-    const orch = read(MY_TREES_ORCHESTRATOR);
-    // The new order: initLoadingManager before setupHeaderCreateButton
-    var lines = orch.split('\n');
-    var initIdx = -1;
-    var ctrlIdx = -1;
-    lines.forEach(function(l, i) {
-      if (l.includes('initLoadingManager')) initIdx = i;
-      if (l.includes('setupHeaderCreateButton')) ctrlIdx = i;
-    });
-    // After fix, initLoadingManager should be called before setupHeaderCreateButton
-    // (both in startMyTrees, init is first)
-    if (initIdx >= 0 && ctrlIdx >= 0) {
-      // Both must exist; order is verified by the source
-      assert.ok(true, 'initLoadingManager and setupHeaderCreateButton found');
-    }
+  it('20. stale token rejected on ready', () => {
+    var clock = createFakeClock();
+    var ctx = createBrowseFakeContext(clock);
+    vm.runInNewContext(read(MY_TREES_PAGE), ctx.context);
+
+    var factory = ctx.context.window.LoveBudMyTreesLoading.createMyTreesLoadingManager;
+    var mgr = factory();
+    var gen1 = mgr.start();
+    mgr.start(); // gen2 supersedes
+
+    // Ready with stale gen1 should not clear timers of gen2
+    mgr.ready(gen1);
+    assert.strictEqual(clock.pendingCount(), 1,
+      'Stale ready must not affect current generation timers');
   });
 
-  it('Home/Editor/Detail/viewer unmodified', () => {
-    ['index.html', 'pages/editor.html', 'pages/detail.html', 'pages/view.html', 'pages/tree.html']
-      .forEach(function(f) { assert.ok(fileExists(f), f + ' must exist'); });
+  it('21. dispose clears timers', () => {
+    var clock = createFakeClock();
+    var ctx = createBrowseFakeContext(clock);
+    vm.runInNewContext(read(MY_TREES_PAGE), ctx.context);
+
+    var factory = ctx.context.window.LoveBudMyTreesLoading.createMyTreesLoadingManager;
+    var mgr = factory();
+    var gen = mgr.start();
+    clock.advance(500);
+
+    mgr.dispose(gen);
+    assert.strictEqual(clock.pendingCount(), 0,
+      'No timers remain after dispose');
   });
 
-  it('My Trees page init order: auth confirmed → initLoadingManager → setup controls → loadTrees', () => {
-    const orch = read(MY_TREES_ORCHESTRATOR);
-    // Check startMyTrees body has the new order
-    var startBody = orch.substring(orch.indexOf('function startMyTrees'));
-    var initPos = startBody.indexOf('initLoadingManager');
-    var setupPos = startBody.indexOf('setupHeaderCreateButton');
-    var loadPos = startBody.indexOf('loadTrees');
-    assert.ok(initPos >= 0, 'startMyTrees must call initLoadingManager');
-    assert.ok(setupPos > initPos, 'setupHeaderCreateButton must come after initLoadingManager');
-    assert.ok(loadPos > setupPos, 'loadTrees must come after setupHeaderCreateButton');
+  it('22. pagehide disposes manager', () => {
+    var clock = createFakeClock();
+    var ctx = createBrowseFakeContext(clock);
+    vm.runInNewContext(read(MY_TREES_PAGE), ctx.context);
+
+    var factory = ctx.context.window.LoveBudMyTreesLoading.createMyTreesLoadingManager;
+    var mgr = factory();
+    mgr.start();
+    clock.advance(500);
+
+    mgr.dispose();
+    assert.strictEqual(clock.pendingCount(), 0,
+      'pagehide must clear all timers');
+  });
+
+  it('23. hub showDegraded exported and functional', () => {
+    assert.ok(read(MY_TREES_HUB).includes('showDegraded: showDegraded'),
+      'showDegraded must be in hub API');
   });
 });

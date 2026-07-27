@@ -100,10 +100,23 @@
             clearAllTimers();
             var el = loadingStatusEl;
             if (!el) return;
+            // Visible error shell with heading, body, and retry button
             el.className = 'lt-loading-inline lt-error-shell';
             el.hidden = false;
-            // Error heading, body, retry button built by page orchestrator
-            // This visual shell signals the user to retry
+            el.innerHTML = '<p class="lt-error-heading">' + i18n('loading.error.primary') + '</p>' +
+                '<p class="lt-error-body">' + i18n('loading.error.body') + '</p>' +
+                '<button type="button" class="lt-retry-btn lt-error-retry-btn">' +
+                i18n('loading.retry.action') + '</button>';
+            // Wire retry button to trigger a retry
+            var retryBtn = el.querySelector('.lt-error-retry-btn');
+            if (retryBtn) {
+                retryBtn.onclick = function () {
+                    // Trigger new load via the search page orchestrator
+                    // The parent page will wire this to loadPublicTrees
+                    var event = new CustomEvent('lovetree-retry', { bubbles: true });
+                    el.dispatchEvent(event);
+                };
+            }
         }
 
         function ready(gen) {
@@ -356,13 +369,27 @@
             }
         }
 
+        /**
+         * Dispose the loading manager on pagehide/navigation.
+         * Clears all pending timers and resets generation.
+         */
+        function dispose() {
+            if (browseLoadingManager && typeof browseLoadingManager.dispose === 'function') {
+                browseLoadingManager.dispose();
+            }
+        }
+
         return {
             dedupeTreesById,
             hydrateSelectedTreePreview,
             loadPublicTrees,
-            initLoadingManager: initLoadingManager
+            initLoadingManager: initLoadingManager,
+            dispose: dispose
         };
     }
 
-    window.LoveBudSearchData = { createSearchData };
+    window.LoveBudSearchData = {
+        createSearchData: createSearchData,
+        createBrowseLoadingManager: createBrowseLoadingManager
+    };
 })();

@@ -219,12 +219,14 @@
 
     Object.values(sections).forEach(hideStateSection);
 
+    var loadingGen = null;
+
     switch (newState) {
       case STATE.LOADING:
         showStateSection(sections.loading, 'loading');
-        // Start timed loading manager on LOADING
+        // Start timed loading manager on LOADING, capture generation token
         if (_loadingManager) {
-          _loadingManager.start();
+          loadingGen = _loadingManager.start();
         }
         // Reset long-wait visual class
         if (sections.loading) {
@@ -241,18 +243,21 @@
           showStateSection(sections.error, 'error');
           _applyErrorStateMessage(meta && meta.errorType);
         }
-        // Stop loading manager
-        if (_loadingManager) _loadingManager.error();
+        // Stop loading manager with generation token
+        if (_loadingManager) _loadingManager.error(loadingGen);
+        loadingGen = null;
         break;
       case STATE.EMPTY:
         showStateSection(sections.empty, 'empty');
-        // Stop loading manager
-        if (_loadingManager) _loadingManager.ready();
+        // Stop loading manager with generation token
+        if (_loadingManager) _loadingManager.ready(loadingGen);
+        loadingGen = null;
         break;
       case STATE.LOADED:
         showStateSection(sections.loaded, 'loaded');
-        // Stop loading manager
-        if (_loadingManager) _loadingManager.ready();
+        // Stop loading manager with generation token
+        if (_loadingManager) _loadingManager.ready(loadingGen);
+        loadingGen = null;
         break;
       default:
         console.warn('[my-trees] Unknown state requested:', newState);
@@ -304,4 +309,9 @@
   // Backward compatibility: export both LoveBudMyTreesPage and LoveTreeMyTreesPage
   window.LoveBudMyTreesPage = api;
   window.LoveTreeMyTreesPage = api;
+
+  // Test seam: expose factory for EXECUTED_FAKE runtime contract
+  window.LoveBudMyTreesLoading = {
+    createMyTreesLoadingManager: createMyTreesLoadingManager
+  };
 })();

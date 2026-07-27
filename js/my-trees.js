@@ -535,6 +535,13 @@
       if (myTreesData && typeof myTreesData.markOwnerListEpochStale === 'function') {
         myTreesData.markOwnerListEpochStale();
       }
+      // Dispose loading manager to clear all pending timers
+      if (myTreesPage && typeof myTreesPage.getLoadingManager === 'function') {
+        var mgr = myTreesPage.getLoadingManager();
+        if (mgr && typeof mgr.dispose === 'function') {
+          mgr.dispose();
+        }
+      }
     });
   }
 
