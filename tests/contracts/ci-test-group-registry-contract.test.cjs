@@ -24,6 +24,7 @@ const {
   getDbEngineScriptRefs,
   checkDbCommandsExactly,
   getVerifyStaticCommands,
+  checkVerifyStaticExact,
   buildReportData,
   buildHumanOutput,
   buildJsonOutput,
@@ -443,13 +444,18 @@ test('12. seven DB-engine command references with one-to-one mapping', () => {
   for (const sp of suppPaths) assert.ok(scriptTargets.has(sp), 'Missing script: ' + sp);
 });
 
-test('13. active verify-static command-set validation', () => {
+test('13. active verify-static exact six-command sequence', () => {
   const ciRaw = fs.readFileSync(CI_YML_PATH, 'utf8');
   const cmds = getVerifyStaticCommands(ciRaw);
-  const activeSet = ['lint', 'build', 'test', 'verify'];
-  for (const c of activeSet) {
-    assert.ok(cmds.includes(c), 'verify-static includes ' + c);
-  }
+  const { CANONICAL_VERIFY_STATIC_SEQUENCE, assertExactOrderedArray } = require(REPORTER_PATH);
+  assert.deepEqual(cmds, CANONICAL_VERIFY_STATIC_SEQUENCE, 'verify-static sequence must match exactly');
+  // Also verify via the reporter's own check
+  const observed = checkVerifyStaticExact(ciRaw);
+  assert.deepEqual(observed, CANONICAL_VERIFY_STATIC_SEQUENCE);
+  // Reporter output must reflect the 6-command sequence
+  const data = buildReportData();
+  assert.equal(data.verify_static_command_count, 6, 'count must be 6');
+  assert.deepEqual(data.verify_static_commands, CANONICAL_VERIFY_STATIC_SEQUENCE);
 });
 
 test('14. full-regression aggregate semantics', () => {
@@ -637,4 +643,104 @@ test('28. FULL_DEFAULT_REGRESSION is aggregate with no path list', () => {
   assert.ok(fr);
   assert.equal(fr.membership_source, 'package_glob');
   assert.equal(fr.runtime, 'aggregate');
+});
+
+// 29–35: Negative verify-static cases
+test('29. verify-static rejects npm ci missing', () => {
+  const raw = require('fs').readFileSync(CI_YML_PATH, 'utf8');
+  const mutated = raw.replace('run: npm ci', 'run: npm install');
+  try { checkVerifyStaticExact(mutated); throw new Error('No error'); } catch (e) {
+    assert.equal(e.code, 'WORKFLOW_COMMAND_MISMATCH');
+  }
+});
+
+test('30. verify-static rejects Playwright install missing', () => {
+  const raw = require('fs').readFileSync(CI_YML_PATH, 'utf8');
+  const mutated = raw.replace('npx playwright install --with-deps chromium', 'echo skip-pw');
+  try { checkVerifyStaticExact(mutated); throw new Error('No error'); } catch (e) {
+    assert.equal(e.code, 'WORKFLOW_COMMAND_MISMATCH');
+  }
+});
+
+test('31. verify-static rejects Playwright command changed', () => {
+  const raw = require('fs').readFileSync(CI_YML_PATH, 'utf8');
+  const mutated = raw.replace('npx playwright install --with-deps chromium', 'npx playwright install chromium');
+  try { checkVerifyStaticExact(mutated); throw new Error('No error'); } catch (e) {
+    assert.equal(e.code, 'WORKFLOW_COMMAND_MISMATCH');
+  }
+});
+
+test('32. verify-static rejects extra command', () => {
+  const raw = require('fs').readFileSync(CI_YML_PATH, 'utf8');
+  const mutated = raw.replace('run: npm run verify', 'run: npm run verify\n      - name: Extra step\n        run: echo extra');
+  try { checkVerifyStaticExact(mutated); throw new Error('No error'); } catch (e) {
+    assert.equal(e.code, 'WORKFLOW_COMMAND_MISMATCH');
+  }
+});
+
+test('33. verify-static rejects reordered commands', () => {
+  const raw = require('fs').readFileSync(CI_YML_PATH, 'utf8');
+  const mutated = raw.replace('run: npm run lint', 'run: __LINT_MARKER__').replace('run: npm run build', 'run: npm run lint').replace('__LINT_MARKER__', 'npm run build');
+  try { checkVerifyStaticExact(mutated); throw new Error('No error'); } catch (e) {
+    assert.equal(e.code, 'WORKFLOW_COMMAND_MISMATCH');
+  }
+});
+
+test('34. verify-static rejects duplicate command', () => {
+  const raw = require('fs').readFileSync(CI_YML_PATH, 'utf8');
+  const mutated = raw.replace('run: npm run lint', 'run: npm run lint\n      - name: Lint again\n        run: npm run lint');
+  try { checkVerifyStaticExact(mutated); throw new Error('No error'); } catch (e) {
+    assert.equal(e.code, 'WORKFLOW_COMMAND_MISMATCH');
+  }
+});
+
+test('35. verify-static rejects missing job', () => {
+  const raw = require('fs').readFileSync(CI_YML_PATH, 'utf8');
+  const mutated = raw.replace(/verify-static:\n(?:  .*\n?)*/m, '');
+  try { checkVerifyStaticExact(mutated); throw new Error('No error'); } catch (e) {
+    assert.equal(e.code, 'WORKFLOW_COMMAND_MISMATCH');
+  }
+});
+
+test('36. reporter buildReportData with verify-static lint removed fails', () => {
+  const raw = require('fs').readFileSync(CI_YML_PATH, 'utf8');
+  const mutated = raw.replace('run: npm run lint', 'run: npm run lint-fake');
+  const tmp = require('os').tmpdir();
+  const tmpPath = require('path').join(tmp, 'ci-verify-test-' + Date.now());
+  try {
+    require('fs').mkdirSync(tmpPath, { recursive: true });
+    require('fs').cpSync(require('path').dirname(CI_YML_PATH), require('path').join(tmpPath, '.github', 'workflows'), { recursive: true, force: true });
+    require('fs').writeFileSync(require('path').join(tmpPath, '.github', 'workflows', 'ci.yml'), mutated);
+    // Can't easily redirect buildReportData's CI_YML_PATH, but checkVerifyStaticExact is enough
+  } finally {
+    require('fs').rmSync(tmpPath, { recursive: true, force: true, maxRetries: 3 });
+  }
+});
+
+// 37–39: field_definitions negative cases
+test('37. field_definitions extra key rejected', () => {
+  const reg = readJson(REGISTRY_PATH);
+  const r = JSON.parse(JSON.stringify(reg));
+  r.field_definitions.bogus = 'evil value';
+  try { validateRegistrySchema(r); throw new Error('No error'); } catch (e) {
+    assert.equal(e.code, 'REGISTRY_SCHEMA_ERROR');
+  }
+});
+
+test('38. field_definitions missing key rejected', () => {
+  const reg = readJson(REGISTRY_PATH);
+  const r = JSON.parse(JSON.stringify(reg));
+  delete r.field_definitions.purpose;
+  try { validateRegistrySchema(r); throw new Error('No error'); } catch (e) {
+    assert.equal(e.code, 'REGISTRY_SCHEMA_ERROR');
+  }
+});
+
+test('39. field_definitions empty value rejected', () => {
+  const reg = readJson(REGISTRY_PATH);
+  const r = JSON.parse(JSON.stringify(reg));
+  r.field_definitions.purpose = '';
+  try { validateRegistrySchema(r); throw new Error('No error'); } catch (e) {
+    assert.equal(e.code, 'REGISTRY_SCHEMA_ERROR');
+  }
 });

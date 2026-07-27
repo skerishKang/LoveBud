@@ -62,6 +62,15 @@ const CANONICAL_TOP_LEVEL_FIELDS = [
   'required_group_fields', 'field_definitions', 'groups',
 ];
 
+const CANONICAL_VERIFY_STATIC_SEQUENCE = [
+  'ci',
+  'npx playwright install --with-deps chromium',
+  'lint',
+  'build',
+  'test',
+  'verify',
+];
+
 const CANONICAL_GROUP_FIELDS = [
   'group', 'purpose', 'membership_source', 'explicit_paths', 'command_reference',
   'default_pr_execution_state', 'runtime', 'platform', 'capabilities',
@@ -78,7 +87,11 @@ const EXPECTED_DB_ENGINE_SCRIPTS = [
   { script: 'test:db-engine:migration-catalog-adapter', target: 'tests/db-engine/migration-catalog-postgres-adapter-engine.test.cjs' },
 ];
 
-const EXPECTED_VERIFY_STATIC_COMMANDS = ['lint', 'build', 'test', 'verify'];
+const CANONICAL_FIELD_DEFINITION_KEYS = [
+  'group', 'purpose', 'membership_source', 'explicit_paths', 'command_reference',
+  'default_pr_execution_state', 'runtime', 'platform', 'capabilities',
+  'comparability', 'artifact_expectation', 'risk_gate_eligibility', 'source_status',
+];
 
 function fail(code, message) {
   const err = new Error(message);
@@ -174,8 +187,15 @@ function validateRegistrySchema(reg) {
     if (!CANONICAL_TOP_LEVEL_FIELDS.includes(k)) throw fail('REGISTRY_SCHEMA_ERROR', 'Unknown top-level field: ' + k);
   }
 
-  // field_definitions must have exact required keys
+  // field_definitions must have exact canonical key set
   if (typeof reg.field_definitions !== 'object' || !reg.field_definitions) throw fail('REGISTRY_SCHEMA_ERROR', 'field_definitions missing');
+  const fdKeys = Object.keys(reg.field_definitions);
+  if (fdKeys.length !== CANONICAL_FIELD_DEFINITION_KEYS.length) throw fail('REGISTRY_SCHEMA_ERROR', 'field_definitions key count mismatch');
+  const fdCanonicalSet = new Set(CANONICAL_FIELD_DEFINITION_KEYS);
+  for (const k of fdKeys) {
+    if (!fdCanonicalSet.has(k)) throw fail('REGISTRY_SCHEMA_ERROR', 'field_definitions extra or wrong key: ' + k);
+    if (typeof reg.field_definitions[k] !== 'string' || !reg.field_definitions[k].trim()) throw fail('REGISTRY_SCHEMA_ERROR', 'field_definitions empty value for key: ' + k);
+  }
   for (const f of CANONICAL_REQUIRED_GROUP_FIELDS) {
     if (!(f in reg.field_definitions)) throw fail('REGISTRY_SCHEMA_ERROR', 'field_definitions missing key: ' + f);
   }
@@ -448,17 +468,15 @@ function getVerifyStaticCommands(ciYaml) {
   }
   const result = [];
   for (const cmd of runCommands) {
+    let normalized = cmd;
     if (cmd === 'npm ci') {
-      result.push('ci');
+      normalized = 'ci';
     } else if (cmd === 'npm test') {
-      result.push('test');
+      normalized = 'test';
     } else if (cmd.startsWith('npm run ')) {
-      result.push(cmd.slice(8).trim());
-    } else if (cmd.startsWith('npx ')) {
-      result.push(cmd);
-    } else if (cmd.startsWith('npm ')) {
-      result.push(cmd);
+      normalized = cmd.slice(8).trim();
     }
+    result.push(normalized);
   }
   return result;
 }
@@ -501,14 +519,19 @@ function checkDbCommandsExactly(pkg, suppEntries) {
   return { errors, scriptCount: refs.length, suppCount: suppPaths.size };
 }
 
+function assertExactOrderedArray(label, observed, expected, errorCode) {
+  if (!Array.isArray(observed)) throw fail(errorCode, label + ' is not an array');
+  if (observed.length !== expected.length) throw fail(errorCode, label + ' length mismatch: ' + observed.length + ' vs ' + expected.length);
+  for (let i = 0; i < expected.length; i++) {
+    if (observed[i] !== expected[i]) throw fail(errorCode, label + ' value/order mismatch at index ' + i);
+  }
+}
+
 function checkVerifyStaticExact(ciRaw) {
   const cmds = getVerifyStaticCommands(ciRaw);
-  const activeSet = cmds.filter(c => EXPECTED_VERIFY_STATIC_COMMANDS.includes(c));
-  const missing = EXPECTED_VERIFY_STATIC_COMMANDS.filter(c => !activeSet.includes(c));
-  const extra = activeSet.filter(c => !EXPECTED_VERIFY_STATIC_COMMANDS.includes(c));
-  if (missing.length > 0 || extra.length > 0 || cmds.length === 0) {
-    throw fail('WORKFLOW_COMMAND_MISMATCH', 'verify-static active command set mismatch');
-  }
+  if (cmds.length === 0) throw fail('WORKFLOW_COMMAND_MISMATCH', 'verify-static job not found or empty');
+  assertExactOrderedArray('verify-static sequence', cmds, CANONICAL_VERIFY_STATIC_SEQUENCE, 'WORKFLOW_COMMAND_MISMATCH');
+  return cmds;
 }
 
 function buildGroupResult(g, classResult, defaultTotal, suppPython, suppDbEngine, browserCount, processCount) {
@@ -573,8 +596,9 @@ function buildReportData() {
 
   const ciRaw = fs.readFileSync(CI_YML_PATH, 'utf8');
 
+  let verifyStaticCommands = [];
   try {
-    checkVerifyStaticExact(ciRaw);
+    verifyStaticCommands = checkVerifyStaticExact(ciRaw);
   } catch (e) {
     errors.push({ code: e.code || 'WORKFLOW_COMMAND_MISMATCH', detail: e.message });
   }
@@ -625,7 +649,8 @@ function buildReportData() {
     stale_default: classResult.stale.length,
     stale_supplemental: suppResult.stale.length,
     db_engine_script_count: dbResult.scriptCount,
-    verify_static_command_count: 4,
+    verify_static_command_count: verifyStaticCommands.length,
+    verify_static_commands: verifyStaticCommands,
     groups: groupResults,
     valid: true,
   };
@@ -672,6 +697,12 @@ function buildHumanOutput(data) {
   lines.push('');
   lines.push('DB-engine script references: ' + data.db_engine_script_count + '/7');
   lines.push('Verify-static command references: ' + data.verify_static_command_count);
+  if (Array.isArray(data.verify_static_commands)) {
+    lines.push('Verify-static commands (canonical order):');
+    for (const c of data.verify_static_commands) {
+      lines.push('  - ' + c);
+    }
+  }
   lines.push('');
   lines.push('Validation: PASS');
   return lines.join('\n');
@@ -754,8 +785,11 @@ module.exports = {
   CANONICAL_TOP_LEVEL_FIELDS,
   CANONICAL_GROUP_FIELDS,
   assertEnumMatch,
+  assertExactOrderedArray,
   isGroupSpecificValid,
   isGroupSpecificCapabilitiesValid,
   isGroupSpecificExplicitPathsValid,
   isGroupSpecificCommandReferenceValid,
+  CANONICAL_VERIFY_STATIC_SEQUENCE,
+  CANONICAL_FIELD_DEFINITION_KEYS,
 };
