@@ -137,7 +137,7 @@ Between 0ms and EXPLICIT_LOADING_COPY_THRESHOLD, the data is in PENDING state. T
 
 1. **Multiple equally prominent indicators for one operation**: If the page is loading one thing, show exactly one primary indicator. Avoid showing a page-level spinner AND a region-level skeleton simultaneously for the same data dependency.
 2. **Full-page blocking after usable content is ready**: Once primary content is READY, do not show a full-page spinner or overlay. Secondary content regions manage their own states independently.
-3. **Indefinite content-looking skeleton**: A skeleton that looks like real content but never resolves must not remain indefinitely. Enforce TIMEOUT_ERROR_THRESHOLD to transition to ERROR or DEGRADED.
+3. **Indefinite content-looking skeleton**: A skeleton that looks like real content but never resolves must not remain indefinitely. Enforce ERROR_ESCALATION_THRESHOLD to transition to ERROR or DEGRADED.
 4. **Silent loading with no explanation during long waits**: After EXPLICIT_LOADING_COPY_THRESHOLD, loading copy must be visible.
 5. **Error rendered as empty**: An API failure must produce ERROR or DEGRADED state, not EMPTY. An empty result set (valid API response with zero items) must produce EMPTY, not ERROR.
 
@@ -151,12 +151,12 @@ Between 0ms and EXPLICIT_LOADING_COPY_THRESHOLD, the data is in PENDING state. T
 |---|---|
 | **Home static shell/copy** | READY immediately. Static title, eyebrow, description, CTAs, note, intro link remain immediately usable. No data dependency. |
 | **Home remote thumbnails** | Per-card media dependency. Each YouTube thumbnail image has its own loading lifecycle via `img.load`/`img.error` listeners. Current fallback chain (maxresdefault → mqdefault) is correct. Missing: explicit loading copy, long-wait state, retry, timeout, `aria-busy`. Thumbnail images are lazy-loaded (`loading="lazy"`), not decorative placeholders; they represent real remote content. |
-| **Home video modal (clicked iframe)** | User-triggered remote media dependency. The modal (`hero-video-modal`) is created by `openVideoModal()` in `js/index-inline-init.js`. The `youtube-nocookie` iframe is appended immediately after click with no load listener, no error listener, no loading status, no long-wait status, no retry state, and no external-link fallback within the modal for loading/error states. Requires its own modal-region loading/degraded/error contract: stable poster/branded background, one loading status that resolves on iframe load, long-wait/error fallback that provides a safe close action and the original YouTube link as a navigation fallback. No page-wide loading overlay. |
-| **Browse cards** | Keep skeleton-first pattern. Extract skeleton CSS into shared `primitives/` if reused. Add long-wait message after 8s. Add error/retry panel for primary card grid (currently missing). Ensure Korean copy for incremental loading sentinel. |
-| **My Trees cards** | Keep state machine pattern (LOADING/LOADED/EMPTY/ERROR/RETRY). This is the reference implementation for card-grid loading. Add long-wait message after 8s. Add timeout transition to ERROR. |
-| **Editor regions** | Needs the most work. Add explicit loading state for tree identity, memories, and detail panel. Currently relies on template mounts (inferred READY) without visible loading indicators. |
-| **Detail regions** | Keep staged loading pattern. This is the reference implementation for detail-page loading. Add timeout for connected-moments loading. Add retry button for primary memory load. |
-| **Public viewer** | Keep existing loading/empty/error/retry pattern. This is the reference for viewer loading. Add long-wait message. Ensure spinner respects reduced motion. |
+| **Home video modal (clicked iframe)** | User-triggered remote media dependency. The modal (`hero-video-modal`) is created by `openVideoModal()` in `js/index-inline-init.js`. The `youtube-nocookie` iframe is appended immediately after click with no load listener, no error listener, no loading status, no long-wait status, no retry state, and no external-link fallback within the modal for loading/error states. Requires its own modal-region loading/degraded/error contract: stable poster/branded background, one loading status that resolves on iframe load, long-wait/error fallback that provides a safe close action and the original YouTube link as a navigation fallback. Add UI long-wait and error escalation using the canonical thresholds. Request abort, cancellation, stale-response suppression, and retry supersession remain page-owned U3 decisions. No page-wide loading overlay. |
+| **Browse cards** | Keep skeleton-first pattern. Add UI long-wait and error escalation using the canonical thresholds. Add error/retry panel for primary card grid (currently missing). Ensure Korean copy for incremental loading sentinel. Request abort, cancellation, stale-response suppression, and retry supersession remain page-owned U3 decisions. |
+| **My Trees cards** | Keep state machine pattern (LOADING/LOADED/EMPTY/ERROR/RETRY). This is the reference implementation for card-grid loading. Add UI long-wait and error escalation using the canonical thresholds. Request abort, cancellation, stale-response suppression, and retry supersession remain page-owned U3 decisions. |
+| **Editor regions** | Needs the most work. Add explicit loading state for tree identity, memories, and detail panel. Add UI long-wait and error escalation using the canonical thresholds. Currently relies on template mounts (inferred READY) without visible loading indicators. Request abort, cancellation, stale-response suppression, and retry supersession remain page-owned U3 decisions. |
+| **Detail regions** | Keep staged loading pattern. This is the reference implementation for detail-page loading. Add UI long-wait and error escalation using the canonical thresholds for connected-moments loading. Add retry button for primary memory load. Request abort, cancellation, stale-response suppression, and retry supersession remain page-owned U3 decisions. |
+| **Public viewer** | Keep existing loading/empty/error/retry pattern. This is the reference for viewer loading. Add UI long-wait and error escalation using the canonical thresholds. Ensure spinner respects reduced motion. Request abort, cancellation, stale-response suppression, and retry supersession remain page-owned U3 decisions. |
 
 ---
 
@@ -195,9 +195,9 @@ Each of these maps to one of the semantic roles above. Future implementations sh
 | Attribute | Ownership | Behavior |
 |---|---|---|
 | `role="status"` | Region-level loading indicator | Announce when loading state begins and ends. Use `aria-live="polite"`. |
-| `aria-live` politeness | All loading regions | `polite` for loading updates. `assertive` only for errors (transition to ERROR). |
+| `aria-live` politeness | All loading regions | `polite` for loading updates. `assertive` only for primary blocking errors or user-triggered failures that require immediate awareness. |
 | `aria-busy="true"` | Region container | Applied when the region is in LOADING or RETRYING state. Removed when READY, EMPTY, ERROR, or DEGRADED. |
-| Announcement deduplication | Page-level | If a region transitions through PENDING → LOADING → READY quickly (< 500ms), suppress intermediate announcements. Only announce LOADING if it persists past `SKELETON_DISPLAY_THRESHOLD` (500ms). |
+| Announcement deduplication | Page-level | Loading announcement is suppressed until the page child's selected INDICATOR_DISPLAY_DELAY has elapsed. The default is 500ms, within the canonical 300–500ms range. Explicit loading copy and `aria-busy` are announced only when LOADING persists past this threshold. |
 
 ### 7.2 Focus behavior
 
@@ -215,7 +215,14 @@ Focus must NOT be taken away for:
 
 Secondary region errors use bounded polite announcements (`aria-live="polite"`) or inline status indicators. The current user focus is preserved.
 
-`role="alert"` is reserved for primary blocking errors or user-triggered failures that require immediate awareness. It must not be applied universally to all error states. |
+`role="alert"` is reserved for primary blocking errors or user-triggered failures that require immediate awareness. It must not be applied universally to all error states.
+
+The following secondary/background failures must remain on `role="status"` with `aria-live="polite"` and must NOT trigger `role="alert"` or steal focus:
+- Preview hub failure (Browse/My Trees)
+- Connected moments failure (Detail)
+- Background refresh failure (any page)
+- Thumbnail/image failure (per-element)
+- Degraded sibling region (secondary content)
 
 ### 7.3 Reduced-motion behavior
 
@@ -285,7 +292,16 @@ This is Parent #3688's ordered child 2.
 | **Reason** | Before any page integration, the canonical visual and copy primitives must exist as sharable assets. No page currently has a shared loading primitive — each implements independently. This child establishes the shared contract that subsequent page integrations reference. It does not require runtime behavior (no fetch, no timer, no state machine, no retry execution, no page orchestration). |
 | **Scope** | Presentation-only: no fetch, no timer, no request timeout, no state machine, no retry execution, no page orchestration. |
 | **Commonization candidates** | Inline loading status structure, long-wait message structure, degraded message structure, error/retry presentation structure, skeleton accessibility convention, spinner/reduced-motion convention, canonical copy-role/i18n naming contract. |
-| **Exact expected source boundary** | New shared CSS primitives would go in `css/primitives/` (directory does not yet exist on `origin/main`). Shared i18n keys would go in `js/i18n/i18n-shared.js` or a new `js/i18n/i18n-loading.js`. Shared copy roles reference the taxonomy defined in §6. These paths do not exist on current `origin/main` — they are **proposed** source boundaries that must be created by the implementation child. |
+| **Exact expected source boundary** | Per current repository convention, the exact expected boundary is:
+- `css/global/lovetree-loading-states.css` — new shared presentation stylesheet (visual classes only, no runtime state ownership)
+- `css/global.css` — import the new stylesheet in the existing global import hub
+- `js/i18n/i18n-shared.js` — add canonical shared loading/copy-role keys (no page orchestration)
+- `tests/contracts/shared-loading-state-primitives-contract.test.cjs` — static contract for class, ARIA convention, reduced-motion, i18n keys, import order, and prohibited runtime behavior
+- `tests/test-layer-classification.json` — register the new contract as SOURCE_STATIC only
+
+**Prohibited in this child:** fetch, setTimeout, setInterval, AbortController, retry handler, page state machine, HTML page adoption, Auth/API/DB, Production.
+
+Page adoption of shared primitives happens in the subsequent Browse/My Trees U3 child. |
 | **Risk classification** | Generic Tier 2 / U2 (structural UI). Visual and copy changes only; no runtime sensitivity. |
 | **Required focused tests** | 1. Contract test: shared loading status renders with correct ARIA 2. Contract test: skeleton elements are `aria-hidden="true"` 3. Contract test: spinner pauses under reduced motion 4. Visual comparison: shared skeleton vs page-specific skeleton layout stability |
 | **Required browser evidence** | Not required for shared primitives (presentation-only). Optional visual comparison for skeleton layout stability. |
@@ -336,7 +352,7 @@ API read alone does not lower to U2. Any child that changes timer, data transiti
 | #3672 | OPEN — Keep OPEN | Design System parent. Loading-state visual tokens depend on this. |
 | #3688 | OPEN — Keep OPEN | Loading parent. This document is a child of #3688. |
 | #3640 | OPEN Draft — Do not modify | Home hero work. Blocks Home loading-state work. |
-| #3664 | Referenced | UI rapid iteration policy. Loading-state UI changes follow U2 classification. |
+| #3664 | Referenced | UI rapid iteration policy. This source-only decision and the shared presentation-only primitive child are U2. Any runtime integration that changes timers, data transitions, retries, auth readiness, iframe lifecycle, or fixed-slot behavior is U3. |
 | #3670 | OPEN — Keep OPEN | Referenced in PR |
 | #3657 | OPEN — Keep OPEN | Referenced in PR |
 | #3458 | OPEN — Keep OPEN | Referenced in PR |

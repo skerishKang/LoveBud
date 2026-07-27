@@ -859,18 +859,30 @@ HISTORICAL_ONLY (#624 completed — Editor title-loading):
 
 ### 3.18 Which Home source overlaps with PR #3640?
 
-CONFIRMED_CURRENT_SOURCE: The Home hero section is currently under active development in PR #3640.
+CONFIRMED_CURRENT_SOURCE (from remote PR metadata): PR #3640 (`ux(home): add mixed-artist center-spotlight showcase`) is currently **OPEN Draft** with head SHA `fc84124a9a047cb2e80667e06cd46f7a8626df15`.
 
-Files overlapping with PR #3640 (based on recent Home hero commits on `origin/main` that PR #3640 likely modifies):
+Exact changed files in PR #3640 (from remote PR API):
+- `css/index/visual/animations.css`
+- `css/index/visual/growth-stage.css`
+- `css/index/visual/responsive.css`
+- `index.html`
+- `js/i18n/i18n-home-v3.js`
+- `js/index-inline-init.js`
+- `tests/contracts/home-growth-stage-visual-contract.test.cjs`
+- `tests/contracts/home-mixed-artist-spotlight-3625-contract.test.cjs`
+- `tests/contracts/index-home-hero-real-tree-contract.test.cjs`
+- `tests/contracts/index-visual-css-contracts.test.cjs`
+- `tests/test-layer-classification.json`
+
+Overlap with Home loading source:
 - `index.html` — hero section, card structure
-- `js/index-inline-init.js` — growth cycle, copy loop, modal player
-- `js/i18n/i18n-home-v3.js` — home v3 i18n keys
-- `css/index/` — all visual/growth-stage CSS
-- `css/index-visual.css` — imported in `index.html`
+- `js/index-inline-init.js` — growth cycle, copy loop, modal player, thumbnail loading
+- `js/i18n/i18n-home-v3.js` — hero i18n keys
+- `css/index/visual/animations.css` — growth-stage animations
+- `css/index/visual/growth-stage.css` — card layout and transitions
+- `css/index/visual/responsive.css` — mobile hero behavior
 
-PR #3640 overlap danger: Modifying Home loading states while PR #3640 is open could cause merge conflicts or behavioral regressions.
-
-INFERRED: Because PR #3640 affects the hero structure, any loading-state work on Home would overlap with open work. Home should not be selected as the first implementation child.
+PR #3640 overlap danger: Modifying Home loading states while PR #3640 is open would cause merge conflicts or behavioral regressions. Home should remain deferred until PR #3640 is resolved.
 
 ### 3.19 Which primitives can be visual-only?
 
@@ -902,7 +914,7 @@ These cannot be extracted to a shared loading primitive without breaking page-sp
 | Finding | Count |
 |---|---|
 | Pages audited | 7 (Home, Browse, My Trees, Editor, Detail, Viewer/tree.html, Public Viewer/view.html) |
-| Regions audited | 21 |
+| Regions audited | 22 |
 | Confirmed current-source owners | 21 (all regions confirmed in current source) |
 | Historical-only references | 6 (#646, #691, #624 detail; #901, #907, #2825 historical) |
 | Pages with retry | 2 (My Trees, Viewer/tree.html) |
