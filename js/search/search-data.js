@@ -30,7 +30,7 @@
         var ERROR_ESCALATION = 15000;
 
         // Cache child references from prebuilt HTML
-        var spinnerEl = loadingStatusEl ? loadingStatusEl.querySelector('.lt-spinner') : null;
+        var spinnerEl = loadingStatusEl ? loadingStatusEl.querySelector('.browse-spinner') : null;
         var copyEl = loadingStatusEl ? loadingStatusEl.querySelector('.browse-loading-copy') : null;
         var errorHeadingEl = loadingStatusEl ? loadingStatusEl.querySelector('.lt-error-heading') : null;
         var errorBodyEl = loadingStatusEl ? loadingStatusEl.querySelector('.lt-error-body') : null;

@@ -4629,7 +4629,7 @@
     {
       "path": "tests/contracts/browse-my-trees-staged-loading-contract.test.cjs",
       "layer": "EXECUTED_FAKE",
-      "rationale": "Executes production createBrowseLoadingManager and createMyTreesLoadingManager code in node:vm with a fake DOM and deterministic fake clock, asserting timed state transitions (0-499ms hidden, 500ms indicator, 1800-8000ms copy, 8s long-wait, 15s error/retry), operation-token generation-based stale-response protection, timer cleanup on READY/EMPTY/ERROR, supersedeStaleLoad, retry card duplication prevention, My Trees auth order (initBeforeControls), pagehide lifecycle cleanup, and showDegraded hub wiring. No real setTimeout, network, database, browser, or production resource is used (#3693).",
+      "rationale": "Executes production createBrowseLoadingManager and createMyTreesLoadingManager in node:vm with fake DOM and deterministic fake clock: timed state transitions (0-499ms hidden, 500ms indicator, 1800ms/2000ms copy, 8s long-wait, 15s error/retry), operation-token stale-response protection, timer cleanup on READY/EMPTY/ERROR, My Trees visible DOM-stage transitions via handleLoadingStage, hub degradation wiring (hydration reject → showDegraded, duplicate prevention, stale rejection protection, recovery on success, showContent clears degraded node), and retry button event dispatch. Source-structure checks (pagehide, retry listener, incremental path, init order) are labeled SOURCE_STATIC within the file. No real setTimeout, network, database, browser, or production resource is used (#3693).",
       "capabilities": []
     }
   ],

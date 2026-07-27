@@ -690,8 +690,12 @@
         }
 
         if (els.metaBadge) {
-            els.metaBadge.innerHTML = '<span class="material-symbols-outlined">info</span> ' +
-                escapeHtml(i18nHub('', '일부 내용을 불러올 수 없음', 'Some content unavailable'));
+            while (els.metaBadge.firstChild) els.metaBadge.removeChild(els.metaBadge.firstChild);
+            var degradedIcon = document.createElement('span');
+            degradedIcon.className = 'material-symbols-outlined';
+            degradedIcon.textContent = 'info';
+            els.metaBadge.appendChild(degradedIcon);
+            els.metaBadge.appendChild(document.createTextNode(' ' + i18nHub('', '일부 내용을 불러올 수 없음', 'Some content unavailable')));
         }
 
         if (els.flowSection) els.flowSection.hidden = true;

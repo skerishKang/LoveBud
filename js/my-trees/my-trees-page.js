@@ -210,11 +210,11 @@
    */
   function handleLoadingStage(stage, gen, text) {
     var loadingEl = document.getElementById('state-loading');
-    if (!loadingEl) return;
+    if (!loadingEl || typeof loadingEl.querySelector !== 'function') return;
     if (gen !== undefined && gen !== currentLoadingGeneration) return;
 
     var textEl = loadingEl.querySelector('.loading-text');
-    var spinnerEl = loadingEl.querySelector('.lt-spinner, .lt-loading-compact');
+    var spinnerEl = loadingEl.querySelector('.trees-spinner, .lt-loading-compact');
 
     switch (stage) {
       case 'init':

@@ -18,7 +18,7 @@
 }
 
 /* Shared primitive spinner adoption */
-.trees-loading-head .lt-spinner {
+.trees-loading-head .trees-spinner {
     width: 18px;
     height: 18px;
     border: 2px solid rgba(144, 73, 81, 0.16);
@@ -35,7 +35,6 @@
     width: 100%;
 }
 
-/* Empty state */
 .empty-state {
     text-align: center;
     padding: 64px 32px;
@@ -92,7 +91,6 @@
     box-shadow: var(--lovetree-empty-state-action-shadow-hover);
 }
 
-/* Error state */
 .error-state {
     text-align: center;
     padding: 80px 40px;
