@@ -214,7 +214,7 @@
     if (gen !== undefined && gen !== currentLoadingGeneration) return;
 
     var textEl = loadingEl.querySelector('.loading-text');
-    var spinnerEl = loadingEl.querySelector('.trees-spinner, .lt-loading-compact');
+    var spinnerEl = loadingEl.querySelector('.lt-spinner, .lt-loading-compact');
 
     switch (stage) {
       case 'init':

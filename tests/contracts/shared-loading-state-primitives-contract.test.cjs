@@ -324,13 +324,12 @@ describe('8. error / degraded distinction', () => {
   });
 });
 
-// ---- 9. Zero HTML page adoption ----
+// ---- 9. Bounded HTML page adoption (Issue #3693) ----
 
-describe('9. zero HTML page adoption', () => {
-  const htmlFiles = [
+describe('9. bounded HTML page adoption', () => {
+  const adoptedPages = ['pages/search.html', 'pages/my-trees.html'];
+  const prohibitedPages = [
     'index.html',
-    'pages/search.html',
-    'pages/my-trees.html',
     'pages/editor.html',
     'pages/detail.html',
     'pages/view.html',
@@ -364,19 +363,39 @@ describe('9. zero HTML page adoption', () => {
     'loading.retry.action',
   ];
 
-  for (const htmlFile of htmlFiles) {
-    const filePath = htmlFile; // relative path
+  it('pages/search.html adopts required shared primitives', () => {
+    const content = readFile('pages/search.html');
+    assert.ok(content.includes('lt-loading-inline'), 'search.html must adopt lt-loading-inline');
+    assert.ok(content.includes('lt-spinner'), 'search.html must adopt lt-spinner');
+    assert.ok(content.includes('lt-retry-btn'), 'search.html must adopt lt-retry-btn');
+  });
+
+  it('pages/my-trees.html adopts required shared primitives', () => {
+    const content = readFile('pages/my-trees.html');
+    assert.ok(
+      content.includes('lt-loading-compact') || content.includes('lt-loading-inline'),
+      'my-trees.html must adopt lt-loading-compact or lt-loading-inline'
+    );
+    assert.ok(content.includes('lt-spinner'), 'my-trees.html must adopt lt-spinner');
+    assert.ok(content.includes('lt-error-shell'), 'my-trees.html must adopt lt-error-shell');
+    assert.ok(content.includes('lt-retry-btn'), 'my-trees.html must adopt lt-retry-btn');
+  });
+
+  for (const htmlFile of prohibitedPages) {
     it(`canonical page "${htmlFile}" must not adopt any shared primitive class`, () => {
-      const content = readFile(filePath);
+      const content = readFile(htmlFile);
       for (const cls of primitiveClasses) {
         if (content.includes(cls)) {
           assert.fail(`HTML file "${htmlFile}" contains primitive class "${cls}"`);
         }
       }
     });
+  }
 
+  const allPages = [...adoptedPages, ...prohibitedPages];
+  for (const htmlFile of allPages) {
     it(`canonical page "${htmlFile}" must not use any shared loading i18n key directly in HTML`, () => {
-      const content = readFile(filePath);
+      const content = readFile(htmlFile);
       for (const key of i18nKeys) {
         if (content.includes(key)) {
           assert.fail(`HTML file "${htmlFile}" contains shared i18n key "${key}"`);

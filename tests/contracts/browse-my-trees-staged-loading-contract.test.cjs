@@ -141,11 +141,11 @@ function createFakeElement(tag, className) {
 }
 
 function createBrowseFakeContext(clock) {
-  var spinnerEl = createFakeElement('span', 'browse-spinner');
+  var spinnerEl = createFakeElement('span', 'lt-spinner');
   var copyEl = createFakeElement('span', 'browse-loading-copy');
   var errorHeadingEl = createFakeElement('p', 'lt-error-heading');
   var errorBodyEl = createFakeElement('p', 'lt-error-body');
-  var retryBtnEl = createFakeElement('button', 'lt-error-retry-btn');
+  var retryBtnEl = createFakeElement('button', 'lt-retry-btn lt-error-retry-btn');
 
   var statusEl = createFakeElement('div', '');
   statusEl.hidden = true;
@@ -198,7 +198,7 @@ function createBrowseFakeContext(clock) {
 
 function createMyTreesFakeContext(clock) {
   var loadingTextEl = createFakeElement('span', 'loading-text');
-  var spinnerEl = createFakeElement('div', 'trees-spinner');
+  var spinnerEl = createFakeElement('div', 'lt-spinner');
 
   var loadingEl = createFakeElement('div', 'trees-loading');
   loadingEl.appendChild(loadingTextEl);
@@ -823,12 +823,13 @@ describe('Browse orchestration source structure (SOURCE_STATIC)', () => {
     assert.ok(i18n.includes('search.loadingPublicTrees'));
   });
 
-  it('40. prebuilt spinner/error nodes in search.html', () => {
+  it('40. prebuilt shared spinner/error nodes in search.html', () => {
     const html = read(SEARCH_HTML);
-    assert.ok(html.includes('browse-spinner'));
+    assert.ok(html.includes('lt-spinner'));
     assert.ok(html.includes('browse-loading-copy'));
     assert.ok(html.includes('lt-error-heading'));
-    assert.ok(html.includes('lt-error-retry-btn'));
+    assert.ok(html.includes('lt-retry-btn'));
+    assert.ok(html.includes('lt-loading-inline'));
   });
 
   it('41. My Trees pagehide disposes manager', () => {
@@ -854,5 +855,101 @@ describe('Browse orchestration source structure (SOURCE_STATIC)', () => {
 
   it('44. hub showDegraded exported in API', () => {
     assert.ok(read(MY_TREES_HUB).includes('showDegraded: showDegraded'));
+  });
+});
+
+// ── Hub reject-to-recovery sequence ─────────────────────────
+
+describe('Hub reject-to-recovery sequence (EXECUTED_FAKE)', () => {
+
+  it('45. reject → degraded → resolve → normal recovery (single sequence)', async () => {
+    var clock = createFakeClock();
+    var ctx = createHubDegradationContext(clock);
+    ctx.setApiReject(true);
+    vm.runInNewContext(read(MY_TREES_PREVIEW_STATE), ctx.context);
+    var api = ctx.context.window.LoveBudMyTreesPreviewState;
+    var hub = ctx.context.window.LoveBudMyTreesPreviewHub;
+    api.setSelectedTree({ id: 'tree-1', title: 'Test' });
+
+    await api.hydrateTreesWithCreatedMoments([{ id: 'tree-1', title: 'Test' }]);
+    api.applyHubDegradationIfNeeded(0);
+    assert.strictEqual(ctx.degradedCalls.length, 1, 'showDegraded called once on reject');
+    assert.strictEqual(api.getHydrationFailures()['tree-1'], true, 'failure marker recorded');
+
+    var fakeNode = createFakeElement('div', 'my-trees-hub-degraded');
+    var parent = createFakeElement('div', 'summary-parent');
+    parent.appendChild(fakeNode);
+    ctx.setDegradedNode(fakeNode);
+
+    ctx.setApiReject(false);
+    await api.hydrateTreesWithCreatedMoments([{ id: 'tree-1', title: 'Test' }]);
+    assert.strictEqual(api.getHydrationFailures()['tree-1'], undefined, 'failure marker cleared on success');
+
+    hub.showContent({ id: 'tree-1', title: 'Test' });
+    assert.strictEqual(fakeNode.parentNode, null, 'degraded node removed on recovery');
+    assert.strictEqual(ctx.showContentCalls.length, 1, 'normal showContent restored');
+  });
+
+  it('46. stale previous selection success does not change current hub', async () => {
+    var clock = createFakeClock();
+    var ctx = createHubDegradationContext(clock);
+    ctx.setApiReject(true);
+    vm.runInNewContext(read(MY_TREES_PREVIEW_STATE), ctx.context);
+    var api = ctx.context.window.LoveBudMyTreesPreviewState;
+    api.setSelectedTree({ id: 'tree-1', title: 'Old' });
+    await api.hydrateTreesWithCreatedMoments([{ id: 'tree-1', title: 'Old' }]);
+    api.applyHubDegradationIfNeeded(0);
+    assert.strictEqual(ctx.degradedCalls.length, 1);
+
+    api.setSelectedTree({ id: 'tree-2', title: 'New' });
+    ctx.setApiReject(false);
+    await api.hydrateTreesWithCreatedMoments([{ id: 'tree-1', title: 'Old' }]);
+    api.applyHubDegradationIfNeeded(0);
+    assert.strictEqual(ctx.degradedCalls.length, 1, 'no new degradation for different selection');
+  });
+});
+
+// ── Shared primitive adoption and reduced-motion ─────────────
+
+describe('Shared primitive adoption (SOURCE_STATIC)', () => {
+
+  it('47. Browse 500ms shared lt-spinner visible', () => {
+    var clock = createFakeClock();
+    var ctx = createBrowseFakeContext(clock);
+    vm.runInNewContext(read(SEARCH_DATA), ctx.context);
+    var mgr = ctx.context.window.LoveBudSearchData.createBrowseLoadingManager(ctx.statusEl);
+    mgr.start();
+    clock.advance(500);
+    assert.strictEqual(ctx.statusEl.hidden, false);
+    assert.strictEqual(ctx.spinnerEl.hidden, false, 'shared lt-spinner visible at 500ms');
+  });
+
+  it('48. Browse 15s lt-error-shell and lt-retry-btn focusable', () => {
+    var clock = createFakeClock();
+    var ctx = createBrowseFakeContext(clock);
+    vm.runInNewContext(read(SEARCH_DATA), ctx.context);
+    var mgr = ctx.context.window.LoveBudSearchData.createBrowseLoadingManager(ctx.statusEl);
+    mgr.start();
+    clock.advance(15000);
+    assert.ok(ctx.statusEl.className.includes('lt-error-shell'));
+    assert.ok(!ctx.retryBtnEl.hidden, 'lt-retry-btn visible');
+    assert.strictEqual(ctx.retryBtnEl.tagName, 'BUTTON', 'retry is focusable button');
+  });
+
+  it('49. My Trees shared lt-spinner in HTML', () => {
+    const html = read(MY_TREES_HTML);
+    assert.ok(html.includes('lt-spinner'), 'my-trees.html adopts lt-spinner');
+    assert.ok(html.includes('lt-loading-compact'), 'my-trees.html adopts lt-loading-compact');
+    assert.ok(html.includes('lt-error-shell'), 'my-trees.html adopts lt-error-shell');
+    assert.ok(html.includes('lt-retry-btn'), 'my-trees.html adopts lt-retry-btn');
+  });
+
+  it('50. reduced-motion: shared CSS targets lt-spinner', () => {
+    const cssPath = path.join(REPO_ROOT, 'css', 'global', 'lovetree-loading-states.css');
+    const css = fs.readFileSync(cssPath, 'utf-8');
+    assert.ok(css.includes('prefers-reduced-motion'), 'shared CSS has reduced-motion media query');
+    var motionBlock = css.substring(css.indexOf('prefers-reduced-motion'));
+    assert.ok(motionBlock.includes('.lt-spinner'), 'reduced-motion targets .lt-spinner');
+    assert.ok(motionBlock.includes('animation') && motionBlock.includes('none'), 'animation set to none');
   });
 });
