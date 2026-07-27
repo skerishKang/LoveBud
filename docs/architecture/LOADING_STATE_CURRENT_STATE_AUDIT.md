@@ -915,7 +915,7 @@ These cannot be extracted to a shared loading primitive without breaking page-sp
 |---|---|
 | Pages audited | 7 (Home, Browse, My Trees, Editor, Detail, Viewer/tree.html, Public Viewer/view.html) |
 | Regions audited | 22 |
-| Confirmed current-source owners | 21 (all regions confirmed in current source) |
+| Confirmed current-source owners | 22 (all regions confirmed in current source) |
 | Historical-only references | 6 (#646, #691, #624 detail; #901, #907, #2825 historical) |
 | Pages with retry | 2 (My Trees, Viewer/tree.html) |
 | Pages with long-wait state | 0 |
