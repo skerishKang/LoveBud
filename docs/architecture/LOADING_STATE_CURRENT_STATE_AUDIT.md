@@ -34,38 +34,69 @@ No inference is presented as confirmed runtime behavior.
 
 ## 2. Source-grounded matrix
 
-### 2.1 Home hero media
+### 2.1 Home hero thumbnail/card media
 
 | Field | Finding |
 |---|---|
 | page | Home (`index.html`) |
 | route | `/` |
-| region | Hero visible collage (`home-v3-collage`) |
-| stable shell before data | CONFIRMED_CURRENT_SOURCE — all card shells are in static HTML. No data fetch required. |
+| region | `.home-v3-collage` — card thumbnails within `growth-stage-card-media` |
+| stable shell before data | CONFIRMED_CURRENT_SOURCE — all card shells are in static HTML. No initial data fetch required. |
 | initial markup | CONFIRMED_CURRENT_SOURCE — four cards with inline SVG, fallback spans, and i18n attributes |
-| loading visual | CONFIRMED_CURRENT_SOURCE — no loading state present. Content is in the initial HTML. |
-| loading copy | INFERRED — no loading copy needed because there is no data dependency. |
-| runtime/data dependency | CONFIRMED_CURRENT_SOURCE — YouTube thumbnail images are fetched lazily (`loading="lazy"`). Thumbnail images have `img.loading = 'lazy'` in JS. |
-| state owner file | CONFIRMED_CURRENT_SOURCE — `js/index-inline-init.js`: `initHeroGrowthCycle()`, `initHeroCopyLoop()` |
-| state owner function | CONFIRMED_CURRENT_SOURCE — `initHeroGrowthCycle()` (cards), `initHeroCopyLoop()` (headline swap) |
-| entry trigger | CONFIRMED_CURRENT_SOURCE — `DOMContentLoaded` → `bootstrap()` |
-| ready transition | CONFIRMED_CURRENT_SOURCE — `data-stage-state` transitions: PENDING → CAPTION → NETWORK → CARDS → COMPLETED. Page transitions: `page-transition-enter`, `reveal`, `reveal-up`, `reveal-scale`. |
-| partial-ready behavior | CONFIRMED_CURRENT_SOURCE — cards transition through CSS phases; JS schedules phase transitions. |
-| empty behavior | UNKNOWN — hero always shows initial static content; no empty state defined for missing thumbnails. |
-| degraded behavior | CONFIRMED_CURRENT_SOURCE — thumbnail error: after maxresdefault fails, falls back to mqdefault. If both fail, removes img and shows `has-thumbnail-error` class on media. |
-| error behavior | INFERRED — YouTube thumbnail failure is the only error path; handled per-card gracefully |
-| retry behavior | UNKNOWN — no retry mechanism for thumbnail load failures. |
-| long-wait behavior | UNKNOWN — no long-wait message defined. Thumbnails are lazy and have no timeout. |
-| ARIA/live-region behavior | CONFIRMED_CURRENT_SOURCE — `growth-stage-caption` has `aria-live="polite"`. Play buttons have `aria-label`. Modal dialog has `role="dialog"`, `aria-modal="true"`, focus trapping. |
-| reduced-motion behavior | CONFIRMED_CURRENT_SOURCE — `prefers-reduced-motion: reduce` → static first-artist completed network. No timer, no flip. |
-| layout-stability strategy | INFERRED — card positions are grid-based, so skeleton content in HTML preserves layout. Image loads do not change card positions. |
-| privacy boundary | CONFIRMED_CURRENT_SOURCE — no private data exposed. YouTube video IDs are hardcoded in JS. |
-| historical reference | INFERRED — issues #3624, #3626, #3628, #3630, #3640 all touched hero. |
-| current disposition | CONFIRMED_CURRENT_SOURCE — decoratively animated hero with no data-loading lifecycle. |
-| candidate shared primitive | INFERRED — thumbnail fallback pattern could be shared, but no loading state needed here. |
-| implementation risk | Low — no data loading, zero runtime state transitions for non-data content. |
+| loading visual | CONFIRMED_CURRENT_SOURCE — no loading indicator for thumbnails. Image placeholder is the `growth-stage-card-fallback` span. |
+| loading copy | CONFIRMED_CURRENT_SOURCE — none. Thumbnail images have no loading copy. |
+| runtime/data dependency | CONFIRMED_CURRENT_SOURCE — YouTube thumbnail images from `https://i.ytimg.com/vi/<id>/maxresdefault.jpg` (primary) or `/mqdefault.jpg` (fallback). Fetched lazily (`img.loading = 'lazy'`). |
+| state owner file | CONFIRMED_CURRENT_SOURCE — `js/index-inline-init.js`: `applyArtistToCard()`, `initHeroGrowthCycle()` |
+| state owner function | CONFIRMED_CURRENT_SOURCE — `applyArtistToCard()` (per-card thumbnail load), `thumbnailForArtistAt()` (URL resolution) |
+| entry trigger | CONFIRMED_CURRENT_SOURCE — growth cycle phase → card content flip → `applyArtistToCard()` → img src set |
+| ready transition | CONFIRMED_CURRENT_SOURCE — `img.addEventListener('load')` → existing img removed, new img gets `is-loaded` class → opacity transition 0.5s |
+| partial-ready behavior | CONFIRMED_CURRENT_SOURCE — each card's thumbnail loads independently. Cards reveal via stagger (featured → supporting 120ms intervals). |
+| empty behavior | UNKNOWN — no empty state defined for missing thumbnails if both maxresdefault and mqdefault fail. |
+| degraded behavior | CONFIRMED_CURRENT_SOURCE — thumbnail error handling: maxresdefault fails → fall back to mqdefault. If mqdefault also fails → remove img, add `has-thumbnail-error` class to media. |
+| error behavior | INFERRED — thumbnail failure results in `has-thumbnail-error` class (fallback text/title visible). No interactive error state. |
+| retry behavior | UNKNOWN — no retry mechanism for thumbnail load failures after fallback chain exhausted. |
+| long-wait behavior | UNKNOWN — no long-wait message or timeout for thumbnail loading. |
+| ARIA/live-region behavior | CONFIRMED_CURRENT_SOURCE — thumbnail images have `alt=''` (decorative). The `growth-stage-caption` has `aria-live="polite"` but this announces the decorative stage progression, not thumbnail loading. Thumbnail loading has no `aria-live` announcement. No `aria-busy` on card media containers. |
+| reduced-motion behavior | CONFIRMED_CURRENT_SOURCE — growth stage animation stops. Thumbnail image loading/opacity transition continues? INFERRED: image opacity transition may still play. |
+| layout-stability strategy | INFERRED — card positions are grid-based. Thumbnail container has fixed aspect-ratio (16/9), so image loads do not shift layout. |
+| privacy boundary | CONFIRMED_CURRENT_SOURCE — no private data. YouTube video IDs are public. |
+| historical reference | INFERRED — issues #3624, #3626, #3628, #3630, #3640. |
+| current disposition | CONFIRMED_CURRENT_SOURCE — per-card thumbnail loading with fallback chain. Missing: explicit loading copy, long-wait, retry, timeout, `aria-busy`. |
+| candidate shared primitive | INFERRED — thumbnail fallback chain pattern (maxresdefault → mqdefault → hidden + CSS class). |
+| implementation risk | Low — thumbnails are per-card and do not block page content. |
 
-### 2.2 Home hero copy and CTA
+### 2.2 Home video modal/player
+
+| Field | Finding |
+|---|---|
+| page | Home (`index.html`) |
+| route | `/` |
+| region | `.hero-video-modal` (dynamically created) |
+| stable shell before data | CONFIRMED_CURRENT_SOURCE — modal does not exist until user clicks. No pre-rendered shell. |
+| initial markup | CONFIRMED_CURRENT_SOURCE — none in HTML. Entire modal is created by JS. |
+| loading visual | CONFIRMED_CURRENT_SOURCE — none. Modal opens with iframe appended immediately. No loading indicator between click and iframe ready. |
+| loading copy | CONFIRMED_CURRENT_SOURCE — none. No loading text or status shown while iframe loads. |
+| runtime/data dependency | CONFIRMED_CURRENT_SOURCE — YouTube iframe via `https://www.youtube-nocookie.com/embed/<id>?autoplay=1&rel=0`. Created after user click on card media. |
+| state owner file | CONFIRMED_CURRENT_SOURCE — `js/index-inline-init.js`: `openVideoModal()`, `closeVideoModal()`, `youtubeEmbedUrl()` |
+| state owner function | CONFIRMED_CURRENT_SOURCE — `openVideoModal()` (creates modal + iframe), `closeVideoModal()` (removes modal + resumes cycle) |
+| entry trigger | CONFIRMED_CURRENT_SOURCE — user click on card media (`growth-stage-card-media` click handler) → `openVideoModal()` |
+| ready transition | CONFIRMED_CURRENT_SOURCE — iframe appended. No load listener — transition is immediate (iframe may still be loading). |
+| partial-ready behavior | UNKNOWN — modal blocks interaction until closed. No intermediate state between click and iframe ready. |
+| empty behavior | UNKNOWN — not applicable; modal is only created when a video is selected. |
+| degraded behavior | UNKNOWN — no iframe error listener. If iframe fails to load, user sees a blank dark overlay with no error message. |
+| error behavior | UNKNOWN — no iframe load or error listener. If YouTube embed fails (e.g., blocked, invalid ID, network error), the modal shows a black box with no fallback. |
+| retry behavior | UNKNOWN — no retry for iframe load failure. The only available action is closing the modal. |
+| long-wait behavior | UNKNOWN — no long-wait message. If iframe takes long to load, user sees black box with no status. |
+| ARIA/live-region behavior | CONFIRMED_CURRENT_SOURCE — modal has `role="dialog"`, `aria-modal="true"`, `aria-label` set to video title. Focus trapped inside modal. Close button focusable. No `aria-live` or `aria-busy` for iframe loading. |
+| reduced-motion behavior | CONFIRMED_CURRENT_SOURCE — modal fade animation stops. Iframe content unaffected. |
+| layout-stability strategy | CONFIRMED_CURRENT_SOURCE — modal is `position:fixed` overlay; no layout shift. |
+| privacy boundary | CONFIRMED_CURRENT_SOURCE — YouTube video IDs are public. Modal uses `youtube-nocookie.com` for privacy-enhanced embed. |
+| historical reference | INFERRED — #3624 (modal player), #3630 (large player). |
+| current disposition | CONFIRMED_CURRENT_SOURCE — user-triggered modal with no iframe load/error handling. Missing: loading state, error state, long-wait state, retry, fallback navigation link. |
+| candidate shared primitive | INFERRED — modal iframe loading pattern (poster/branded background + loading status → iframe load resolves → error shows safe close + YouTube link). |
+| implementation risk | Low — modal is isolated from page lifecycle. Current behavior: black box on failure is a UX gap. |
+
+### 2.3 Home hero copy and CTA
 
 | Field | Finding |
 |---|---|
@@ -95,7 +126,7 @@ No inference is presented as confirmed runtime behavior.
 | candidate shared primitive | INFERRED — none needed. |
 | implementation risk | Low. |
 
-### 2.3 Browse result shell
+### 2.4 Browse result shell
 
 | Field | Finding |
 |---|---|
@@ -126,7 +157,7 @@ No inference is presented as confirmed runtime behavior.
 | candidate shared primitive | CONFIRMED_CURRENT_SOURCE — skeleton card HTML/CSS is already loosely shared with My Trees (same `search-skeleton-card` classes). |
 | implementation risk | Medium — Browse is the primary public surface. Changing skeleton structure affects both Browse and My Trees. |
 
-### 2.4 Browse card grid
+### 2.5 Browse card grid
 
 | Field | Finding |
 |---|---|
@@ -156,7 +187,7 @@ No inference is presented as confirmed runtime behavior.
 | candidate shared primitive | INFERRED — skeleton grid pattern is shared with My Trees. |
 | implementation risk | Medium. |
 
-### 2.5 Browse preview hub
+### 2.6 Browse preview hub
 
 | Field | Finding |
 |---|---|
@@ -186,7 +217,7 @@ No inference is presented as confirmed runtime behavior.
 | candidate shared primitive | INFERRED — My Trees preview hub mirrors Browse preview structure. |
 | implementation risk | Medium — shared with My Trees preview hub. |
 
-### 2.6 Browse incremental loading
+### 2.7 Browse incremental loading
 
 | Field | Finding |
 |---|---|
@@ -216,7 +247,7 @@ No inference is presented as confirmed runtime behavior.
 | candidate shared primitive | INFERRED — pattern could be shared with My Trees. |
 | implementation risk | Low-Medium — scroll behavior may need cross-page consistency. |
 
-### 2.7 My Trees result shell
+### 2.8 My Trees result shell
 
 | Field | Finding |
 |---|---|
@@ -247,7 +278,7 @@ No inference is presented as confirmed runtime behavior.
 | candidate shared primitive | INFERRED — state class pattern (`state-visible`, `state-hidden`, `state-visible-block`) and error type dispatch. |
 | implementation risk | Low — isolated to My Trees page. |
 
-### 2.8 My Trees card grid
+### 2.9 My Trees card grid
 
 | Field | Finding |
 |---|---|
@@ -277,7 +308,7 @@ No inference is presented as confirmed runtime behavior.
 | candidate shared primitive | INFERRED — skeleton grid pattern shared with Browse. |
 | implementation risk | Low. |
 
-### 2.9 My Trees preview hub
+### 2.10 My Trees preview hub
 
 | Field | Finding |
 |---|---|
@@ -307,7 +338,7 @@ No inference is presented as confirmed runtime behavior.
 | candidate shared primitive | INFERRED — strongly mirrors Browse preview hub. |
 | implementation risk | Medium — shared architecture with Browse preview. |
 
-### 2.10 Editor page shell and auth readiness
+### 2.11 Editor page shell and auth readiness
 
 | Field | Finding |
 |---|---|
@@ -337,7 +368,7 @@ No inference is presented as confirmed runtime behavior.
 | candidate shared primitive | INFERRED — editor page shell init pattern. |
 | implementation risk | High — editor is the most complex page. |
 
-### 2.11 Editor tree identity/title
+### 2.12 Editor tree identity/title
 
 | Field | Finding |
 |---|---|
@@ -367,7 +398,7 @@ No inference is presented as confirmed runtime behavior.
 | candidate shared primitive | INFERRED — tree-load pattern. |
 | implementation risk | Medium — tree identity is core to editor. |
 
-### 2.12 Editor memory list
+### 2.13 Editor memory list
 
 | Field | Finding |
 |---|---|
@@ -397,7 +428,7 @@ No inference is presented as confirmed runtime behavior.
 | candidate shared primitive | INFERRED — per-node image skeleton pattern. |
 | implementation risk | Medium. |
 
-### 2.13 Editor selected detail
+### 2.14 Editor selected detail
 
 | Field | Finding |
 |---|---|
@@ -427,7 +458,7 @@ No inference is presented as confirmed runtime behavior.
 | candidate shared primitive | INFERRED — detail panel pattern. |
 | implementation risk | Low. |
 
-### 2.14 Editor media
+### 2.15 Editor media
 
 | Field | Finding |
 |---|---|
@@ -457,7 +488,7 @@ No inference is presented as confirmed runtime behavior.
 | candidate shared primitive | CONFIRMED_CURRENT_SOURCE — image-skeleton + fallback chain pattern (mirrors Browse thumbnail handling). |
 | implementation risk | Low. |
 
-### 2.15 Editor connected/context information
+### 2.16 Editor connected/context information
 
 | Field | Finding |
 |---|---|
@@ -487,7 +518,7 @@ No inference is presented as confirmed runtime behavior.
 | candidate shared primitive | INFERRED — sidebar context pattern. |
 | implementation risk | Low. |
 
-### 2.16 Detail current moment
+### 2.17 Detail current moment
 
 | Field | Finding |
 |---|---|
@@ -518,7 +549,7 @@ No inference is presented as confirmed runtime behavior.
 | candidate shared primitive | CONFIRMED_CURRENT_SOURCE — staged loading pattern (memory first, tree/memories in background), degraded reason taxonomy, warm degraded copy. |
 | implementation risk | Low — isolated to detail page. |
 
-### 2.17 Detail media
+### 2.18 Detail media
 
 | Field | Finding |
 |---|---|
@@ -548,7 +579,7 @@ No inference is presented as confirmed runtime behavior.
 | candidate shared primitive | INFERRED — video loading pattern. |
 | implementation risk | Low. |
 
-### 2.18 Detail tree context
+### 2.19 Detail tree context
 
 | Field | Finding |
 |---|---|
@@ -578,7 +609,7 @@ No inference is presented as confirmed runtime behavior.
 | candidate shared primitive | CONFIRMED_CURRENT_SOURCE — degraded reason taxonomy, warm degraded copy pattern. |
 | implementation risk | Low. |
 
-### 2.19 Detail connected moments
+### 2.20 Detail connected moments
 
 | Field | Finding |
 |---|---|
@@ -608,7 +639,7 @@ No inference is presented as confirmed runtime behavior.
 | candidate shared primitive | INFERRED — connected loading pattern. |
 | implementation risk | Low. |
 
-### 2.20 Public viewer shell
+### 2.21 Public viewer shell
 
 | Field | Finding |
 |---|---|
@@ -639,7 +670,7 @@ No inference is presented as confirmed runtime behavior.
 | candidate shared primitive | CONFIRMED_CURRENT_SOURCE — viewer state container pattern (loading/empty/error with retry). |
 | implementation risk | Low. |
 
-### 2.21 Public viewer tree and memory count
+### 2.22 Public viewer tree and memory count
 
 | Field | Finding |
 |---|---|
@@ -782,7 +813,7 @@ CONFIRMED_CURRENT_SOURCE: **All pages** lack a long-wait state. None define a ti
 ### 3.13 Which regions use `aria-live`, `aria-busy`, `role=status`, or no accessible status?
 
 CONFIRMED_CURRENT_SOURCE:
-- **`aria-live="polite"`**: Detail page `#detailHeroKicker`, `detail-media-loading`, Home `growth-stage-caption`.
+- **`aria-live="polite"`**: Detail page `#detailHeroKicker`, `detail-media-loading`. (Home `growth-stage-caption` also has `aria-live="polite"` but this announces decorative stage progression, not API/media loading — excluded from actual loading count.)
 - **`role="status"`**: Detail page `detail-media-loading`.
 - **`aria-busy`**: Not observed on any region.
 - **No accessible status**: All skeleton containers (Browse/My Trees), state containers (My Trees `#state-loading`, Viewer `#viewerLoadingState`), preview loading states (Browse/My Trees preview hub).
@@ -877,7 +908,7 @@ These cannot be extracted to a shared loading primitive without breaking page-sp
 | Pages with retry | 2 (My Trees, Viewer/tree.html) |
 | Pages with long-wait state | 0 |
 | Pages with timeout mechanism | 0 |
-| Pages using `aria-live` for loading | 1 (Detail: `detail-media-loading` + Home: `growth-stage-caption`) |
+| Pages using `aria-live` for actual API/media loading | **1** (Detail: `detail-media-loading` only — Home `growth-stage-caption` is decorative stage progression, not loading) |
 | Pages with `role="status"` | 1 (Detail: `detail-media-loading`) |
 | Pages with `aria-busy` | 0 |
 | Pages with reduced-motion for all motion | 0 (spinners and some animations lack guards) |
