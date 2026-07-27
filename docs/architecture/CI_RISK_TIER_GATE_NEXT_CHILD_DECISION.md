@@ -19,7 +19,7 @@
 
 ## Baseline refresh
 
-The original decision was written at `4beada4c8134afbdb791e98466db9ec1162f0a27`. Current `main` adds two default-CI `SOURCE_STATIC` contracts through merged work while the intervening design-system audit is count-neutral.
+The original decision was written at `4beada4c8134afbdb791e98466db9ec1162f0a27`. Current `main` adds two default-CI `SOURCE_STATIC` contracts through merged PR #3675 and merged PR #3681, while merged PR #3677 is a count-neutral design-system audit. Issue #3678 completed through merged PR #3681.
 
 ```text
 historical default total: 764
@@ -234,7 +234,8 @@ Refs #3671.
 Refs #3670.
 Refs #3675 — merged.
 Refs #3677 — merged; count-neutral docs-only drift.
-Refs #3678 — merged; current count delta included.
+Refs #3678 — completed.
+Refs #3681 — merged; one default-CI `SOURCE_STATIC` count delta.
 Refs #3669 — completed.
 Refs #3664.
 Refs #3662.
