@@ -1,3 +1,5 @@
+/* ── Browse card grid (shared skeleton structure) ── */
+
 #resultsList,
 #growingTreesList {
     display: grid;
@@ -11,6 +13,7 @@
     pointer-events: none;
     cursor: default;
     box-shadow: 0 16px 32px rgba(75, 64, 57, 0.035);
+    /* aria-hidden="true" must be set in HTML for skeleton elements */
 }
 
 .search-skeleton-card::before {
@@ -62,4 +65,37 @@
     .search-skeleton-block,
     .search-skeleton-line,
     .search-skeleton-chip { animation: none; }
+}
+
+/* ── Browse staged loading status bar (shared primitives adoption) ── */
+
+#browseLoadingStatus {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    font-size: 0.8125rem;
+    color: var(--on-surface-variant, #6b5e5a);
+    text-align: center;
+}
+
+#browseLoadingStatus[hidden] {
+    display: none;
+}
+
+/* ── Long-wait state ── */
+#browseLoadingStatus.lt-long-wait {
+    padding: 1.25rem 1rem;
+    color: var(--on-surface-variant, #6b5e5a);
+    background: var(--surface-container-low, #f5eeea);
+    border-radius: var(--radius-lg, 12px);
+}
+
+/* ── Error state ── */
+#browseLoadingStatus.lt-error-shell {
+    padding: 2rem 1.5rem;
+    border: 1px solid var(--outline-variant, #d4c9c4);
+    background: var(--surface, #faf5f2);
+    border-radius: var(--radius-lg, 12px);
 }

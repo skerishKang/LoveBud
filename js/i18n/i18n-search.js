@@ -307,6 +307,10 @@
       ko: '감상 허브를 여는 중',
       en: 'Opening the preview hub'
     },
+    'search.loadingPublicTrees': {
+      ko: '공개 러브트리를 불러오고 있어요',
+      en: 'Loading public LoveTrees'
+    },
     'search.previewLoadingBody': {
       ko: '대표 순간이 열려요.',
       en: 'The featured moment opens here.'

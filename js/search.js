@@ -30,7 +30,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         resultsHead: document.querySelector('.browse-results-head'),
         growingSection: document.getElementById('growingTreesSection'),
         growingList: document.getElementById('growingTreesList'),
-        mobilePreviewMediaQuery: window.matchMedia('(max-width: 768px)')
+        mobilePreviewMediaQuery: window.matchMedia('(max-width: 768px)'),
+        browseLoadingStatus: document.getElementById('browseLoadingStatus')
     };
     refs.resultsTitle = refs.resultsHead?.querySelector('h3');
     refs.resultsBadge = refs.resultsHead?.querySelector('.browse-results-badge');
@@ -201,7 +202,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     callbacks.renderGrowingResults = renderGrowingResults;
     callbacks.updateUrlState = urlState.updateUrlState;
 
-    // ── Init ───────────────────────────────────────────────────────────────────
+    // ── Init loading manager ──
+    if (searchData.initLoadingManager && refs.browseLoadingStatus) {
+        searchData.initLoadingManager(refs.browseLoadingStatus);
+    }
+
+    // ── Init ──
     ui.bindMobilePreviewHandlers();
     ui.bindShareCopyHandler();
 
@@ -247,6 +253,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     });
 
+    // ── Retry wiring: listen for lovetree-retry events from loading manager error shell ──
+    if (refs.browseLoadingStatus) {
+        refs.browseLoadingStatus.addEventListener('lovetree-retry', function () {
+            // Preserve current query, filter, sort, view mode, pagination intent
+            searchData.loadPublicTrees({ resetSelection: true });
+        });
+    }
+
     window.addEventListener('popstate', async () => {
         const previousSort = state.currentSort;
         const previousLimit = state.currentLimit;
@@ -257,5 +271,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             renderResults(false);
         }
         ui.syncBrowseHead();
+    });
+
+    // ── Lifecycle cleanup: pagehide disposes loading manager ──
+    window.addEventListener('pagehide', function () {
+        if (searchData && typeof searchData.dispose === 'function') {
+            searchData.dispose();
+        }
     });
 });

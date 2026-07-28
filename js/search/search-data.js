@@ -13,6 +13,176 @@
  * CSS, HTML, preview renderer, card renderer, url-state are untouched.
  */
 (function () {
+    /** ── Timed loading state manager for Browse with operation-token ownership ── */
+    function createBrowseLoadingManager(loadingStatusEl, getLocale) {
+        var timers = {
+            indicator: null,
+            copy: null,
+            longWait: null,
+            error: null
+        };
+        var currentGeneration = 0;
+        var i18n = window.t || function (k) { return k; };
+
+        var INDICATOR_DELAY = 500;
+        var COPY_THRESHOLD = 1800;
+        var LONG_WAIT = 8000;
+        var ERROR_ESCALATION = 15000;
+
+        // Cache child references from prebuilt HTML
+        var spinnerEl = loadingStatusEl ? loadingStatusEl.querySelector('.lt-spinner') : null;
+        var copyEl = loadingStatusEl ? loadingStatusEl.querySelector('.browse-loading-copy') : null;
+        var errorHeadingEl = loadingStatusEl ? loadingStatusEl.querySelector('.lt-error-heading') : null;
+        var errorBodyEl = loadingStatusEl ? loadingStatusEl.querySelector('.lt-error-body') : null;
+        var retryBtnEl = loadingStatusEl ? loadingStatusEl.querySelector('.lt-error-retry-btn') : null;
+
+        function clearAllTimers() {
+            Object.keys(timers).forEach(function (key) {
+                if (timers[key]) { clearTimeout(timers[key]); timers[key] = null; }
+            });
+        }
+
+        function isCurrent(gen) {
+            return gen === currentGeneration;
+        }
+
+        /**
+         * Start a new loading operation. Returns an operation token.
+         * Only transitions with a matching token can modify DOM/timers.
+         * Uses prebuilt child nodes to avoid innerHTML/document.createElement.
+         */
+        function start() {
+            clearAllTimers();
+            var gen = ++currentGeneration;
+
+            var el = loadingStatusEl;
+            if (!el) return gen;
+
+            // 0-500ms: hidden, hide error nodes
+            el.hidden = true;
+            el.className = 'lt-loading-inline';
+            el.setAttribute('aria-busy', 'true');
+            if (spinnerEl) spinnerEl.hidden = false;
+            if (copyEl) { copyEl.textContent = ''; copyEl.hidden = false; }
+            if (errorHeadingEl) errorHeadingEl.hidden = true;
+            if (errorBodyEl) errorBodyEl.hidden = true;
+            if (retryBtnEl) retryBtnEl.hidden = true;
+
+            timers.indicator = setTimeout(function () {
+                if (!isCurrent(gen)) return;
+                // 500-1800ms: visual indicator visible, no explanatory copy
+                el.hidden = false;
+                if (spinnerEl) spinnerEl.hidden = false;
+                if (copyEl) copyEl.textContent = '';
+
+                timers.copy = setTimeout(function () {
+                    if (!isCurrent(gen)) return;
+                    // 1800-8000ms: show page-specific copy
+                    if (copyEl) copyEl.textContent = i18n('search.loadingPublicTrees');
+
+                    timers.longWait = setTimeout(function () {
+                        if (!isCurrent(gen)) return;
+                        // 8000-15000ms: shared long-wait copy
+                        el.className = 'lt-loading-inline lt-long-wait';
+                        if (copyEl) copyEl.textContent = i18n('loading.long.wait');
+                        el.setAttribute('aria-busy', 'true');
+
+                        timers.error = setTimeout(function () {
+                            if (!isCurrent(gen)) return;
+                            // 15000ms+: visible error shell with retry
+                            // UI escalation only — not an abort
+                            showErrorShell(gen);
+                        }, ERROR_ESCALATION - LONG_WAIT);
+                    }, LONG_WAIT - COPY_THRESHOLD);
+                }, COPY_THRESHOLD - INDICATOR_DELAY);
+            }, INDICATOR_DELAY);
+
+            return gen;
+        }
+
+        function showErrorShell(gen) {
+            if (!isCurrent(gen)) return;
+            clearAllTimers();
+            var el = loadingStatusEl;
+            if (!el) return;
+            // Use prebuilt child nodes: spinner/copy hidden, error heading/body/retry visible
+            el.className = 'lt-loading-inline lt-error-shell';
+            el.hidden = false;
+            el.setAttribute('aria-busy', 'false');
+            if (spinnerEl) spinnerEl.hidden = true;
+            if (copyEl) { copyEl.textContent = ''; copyEl.hidden = true; }
+            if (errorHeadingEl) { errorHeadingEl.textContent = i18n('loading.error.primary'); errorHeadingEl.hidden = false; }
+            if (errorBodyEl) { errorBodyEl.textContent = i18n('loading.error.body'); errorBodyEl.hidden = false; }
+            if (retryBtnEl) { retryBtnEl.textContent = i18n('loading.retry.action'); retryBtnEl.hidden = false; }
+            // Wire retry button to trigger via CustomEvent
+            if (retryBtnEl) {
+                retryBtnEl.onclick = function () {
+                    var event = new CustomEvent('lovetree-retry', { bubbles: true });
+                    el.dispatchEvent(event);
+                };
+            }
+        }
+
+        function resetToHidden() {
+            var el = loadingStatusEl;
+            if (!el) return;
+            el.hidden = true;
+            el.className = 'lt-loading-inline';
+            el.setAttribute('aria-busy', 'false');
+            if (spinnerEl) spinnerEl.hidden = true;
+            if (copyEl) { copyEl.textContent = ''; copyEl.hidden = true; }
+            if (errorHeadingEl) errorHeadingEl.hidden = true;
+            if (errorBodyEl) errorBodyEl.hidden = true;
+            if (retryBtnEl) retryBtnEl.hidden = true;
+        }
+
+        function ready(gen) {
+            if (gen !== undefined && !isCurrent(gen)) return;
+            clearAllTimers();
+            resetToHidden();
+        }
+
+        function error(gen) {
+            if (gen !== undefined && !isCurrent(gen)) return;
+            clearAllTimers();
+            resetToHidden();
+        }
+
+        /**
+         * Late success after escalation: accepted if same generation.
+         * If user retried (new generation), late result is ignored.
+         */
+        function lateSuccess(gen) {
+            if (!isCurrent(gen)) return false;
+            clearAllTimers();
+            resetToHidden();
+            return true;
+        }
+
+        function dispose(gen) {
+            if (gen !== undefined && !isCurrent(gen)) return;
+            clearAllTimers();
+            resetToHidden();
+            var el = loadingStatusEl;
+            if (el) {
+                el.removeAttribute('aria-busy');
+            }
+        }
+
+        return {
+            start: start,
+            ready: ready,
+            error: error,
+            lateSuccess: lateSuccess,
+            dispose: dispose,
+            getGeneration: function () { return currentGeneration; },
+            INDICATOR_DELAY: INDICATOR_DELAY,
+            COPY_THRESHOLD: COPY_THRESHOLD,
+            LONG_WAIT: LONG_WAIT,
+            ERROR_ESCALATION: ERROR_ESCALATION
+        };
+    }
+
     function dedupeTreesById(trees) {
         if (!Array.isArray(trees)) return [];
 
@@ -35,6 +205,14 @@
 
     function createSearchData({ refs, state, previewCacheApi, ui, CardRenderer, PreviewRenderer, callbacks, cache, PUBLIC_TREES_CACHE_KEY, PREVIEW_CACHE_TTL_MS, getPreviewCacheKey }) {
         const pendingPreviewHydrations = new Map();
+        var browseLoadingManager = null;
+
+        // ── Initialize the timed loading manager ──
+        // Called after DOM is ready from the orchestrator
+        function initLoadingManager(loadingStatusEl) {
+            if (!loadingStatusEl) return;
+            browseLoadingManager = createBrowseLoadingManager(loadingStatusEl, ui.getCurrentLocale);
+        }
 
         function getPreviewTreeId(tree) {
             const rawId = tree?.id ?? tree?.treeId ?? tree?.tree_id;
@@ -115,6 +293,16 @@
 
             if (resetSelection) {
                 ui.clearSelectedPreview();
+                // Start timed loading for initial load, capture generation
+                if (browseLoadingManager) {
+                    state.currentLoadGen = browseLoadingManager.start();
+                }
+            } else {
+                // Incremental loading: start a new operation token
+                // Preserves existing READY cards, selection, preview
+                if (browseLoadingManager) {
+                    state.currentLoadGen = browseLoadingManager.start();
+                }
             }
 
             // Set loading state for incremental loading
@@ -127,6 +315,10 @@
             let cachedTrees = null;
             if (cache) {
                 cachedTrees = cache.get(cacheKey);
+                // On incremental load with cache hit, suppress loading status
+                if (!resetSelection && cachedTrees && browseLoadingManager) {
+                    browseLoadingManager.ready(state.currentLoadGen);
+                }
                 if (cachedTrees && Array.isArray(cachedTrees) && cachedTrees.length > 0) {
                     state.allTrees = dedupeTreesById(cachedTrees);
                     state.isFromCache = true;
@@ -184,16 +376,42 @@
                 if (isCurrentRequest()) {
                     state.isLoadingMore = false;
                     ui.syncControlsFromState();
+                    // On success, mark ready; on error, mark error
+                    if (browseLoadingManager) {
+                        if (state.loadError) {
+                            browseLoadingManager.error(state.currentLoadGen);
+                        } else if (state.apiTreesLoaded) {
+                            browseLoadingManager.ready(state.currentLoadGen);
+                        }
+                    }
+                } else {
+                    // Stale request — not current; do NOT dispose manager
+                    // (dispose would affect the current generation)
                 }
+            }
+        }
+
+        /**
+         * Dispose the loading manager on pagehide/navigation.
+         * Clears all pending timers and resets generation.
+         */
+        function dispose() {
+            if (browseLoadingManager && typeof browseLoadingManager.dispose === 'function') {
+                browseLoadingManager.dispose();
             }
         }
 
         return {
             dedupeTreesById,
             hydrateSelectedTreePreview,
-            loadPublicTrees
+            loadPublicTrees,
+            initLoadingManager: initLoadingManager,
+            dispose: dispose
         };
     }
 
-    window.LoveBudSearchData = { createSearchData };
+    window.LoveBudSearchData = {
+        createSearchData: createSearchData,
+        createBrowseLoadingManager: createBrowseLoadingManager
+    };
 })();
