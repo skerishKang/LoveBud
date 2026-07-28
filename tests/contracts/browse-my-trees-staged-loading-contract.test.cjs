@@ -235,7 +235,10 @@ function createMyTreesFakeContext(clock) {
     setTimeout: clock.setTimeout,
     clearTimeout: clock.clearTimeout,
     t: function (k) {
-      var dict = { 'myTrees.loading': '내 러브트리를 불러오고 있어요' };
+      var dict = {
+        'myTrees.loading': '내 러브트리를 불러오고 있어요',
+        'loading.long.wait': '평소보다 오래 걸리고 있어요. 잠시만 기다려 주세요.'
+      };
       return dict[k] || k;
     },
     LoveBudUI: null,
@@ -563,7 +566,7 @@ describe('My Trees timed loading manager DOM stages (EXECUTED_FAKE)', () => {
     assert.ok(ctx.loadingTextEl.textContent.length > 0);
   });
 
-  it('19. 8000ms: lt-long-wait class added', () => {
+  it('19. 8000ms: lt-long-wait class added and text non-empty', () => {
     var clock = createFakeClock();
     var ctx = createMyTreesFakeContext(clock);
     vm.runInNewContext(read(MY_TREES_PAGE), ctx.context);
@@ -572,6 +575,7 @@ describe('My Trees timed loading manager DOM stages (EXECUTED_FAKE)', () => {
     page.setState('loading');
     clock.advance(8000);
     assert.ok(ctx.loadingEl.classList.contains('lt-long-wait'));
+    assert.ok(ctx.loadingTextEl.textContent.length > 0);
   });
 
   it('20. 15000ms: loading hidden, error visible', () => {

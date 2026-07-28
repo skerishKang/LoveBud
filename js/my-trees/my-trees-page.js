@@ -236,7 +236,7 @@
       case 'longWait':
         // 8000-15000ms: long-wait visible
         loadingEl.classList.add('lt-long-wait');
-        if (textEl) textEl.textContent = '';
+        if (textEl) textEl.textContent = (typeof window.t === 'function' && window.t('loading.long.wait')) || '';
         break;
       case 'error':
         // 15000ms+: visible error/retry state
