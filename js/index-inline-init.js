@@ -670,11 +670,18 @@
           break;
         case 'gap':
           // Gap finished. Advance to next card.
-          state.spotlightSubPhase = 'in';
           state.spotlightCardIndex++;
-          // The next COMPLETED entry will start the next spotlight
-          // or go to final hold.
-          scheduleNext(0);
+          if (state.spotlightCardIndex >= 4) {
+            // All 4 spotlights done. Hold, then fade.
+            state.spotlightSubPhase = 'fade';
+            scheduleNext(SPOTLIGHT_FINAL_HOLD);
+          } else {
+            // Start next card's spotlight.
+            var nextIdx = SPOTLIGHT_ORDER[state.spotlightCardIndex];
+            spotlightCard(nextIdx);
+            state.spotlightSubPhase = 'hold';
+            scheduleNext(SPOTLIGHT_MOVE_MS);
+          }
           break;
         default:
           scheduleNext(500);
