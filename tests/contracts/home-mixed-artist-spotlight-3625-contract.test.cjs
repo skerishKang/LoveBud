@@ -58,8 +58,8 @@ const cssResponsiveRules = stripCssComments(cssResponsive);
   const keys = artistKeys.map(m => m.match(/data-artist-key="([^"]+)"/)[1]);
   assert.strictEqual(keys.length, 4,
     `Expected 4 data-artist-key attributes, found ${keys.length}`);
-  // Order must be RESCENE, BTS, BLACKPINK, CORTIS
-  const expectedOrder = ['rescene', 'bts', 'blackpink', 'cortis'];
+  // Order must be BTS, BLACKPINK, CORTIS, RESCENE
+  const expectedOrder = ['bts', 'blackpink', 'cortis', 'rescene'];
   assert.deepStrictEqual(keys, expectedOrder,
     `Artist key order must be [${expectedOrder}], got [${keys}]`);
 }
@@ -188,23 +188,23 @@ console.log('✓ 9: artist rotation functions removed');
   assert.ok(js.includes('FIXED_CARD_MAP'),
     'JS must define FIXED_CARD_MAP');
   // Each card maps to a specific artist+video
-  assert.ok(js.includes('artistIndex: 3, videoIndex: 0'),
-    'card 0 must map to RESCENE (artistIndex 3)');
   assert.ok(js.includes('artistIndex: 0, videoIndex: 0'),
-    'card 1 must map to BTS (artistIndex 0)');
+    'card 0 must map to BTS (artistIndex 0)');
   assert.ok(js.includes('artistIndex: 1, videoIndex: 0'),
-    'card 2 must map to BLACKPINK (artistIndex 1)');
+    'card 1 must map to BLACKPINK (artistIndex 1)');
   assert.ok(js.includes('artistIndex: 2, videoIndex: 0'),
-    'card 3 must map to CORTIS (artistIndex 2)');
+    'card 2 must map to CORTIS (artistIndex 2)');
+  assert.ok(js.includes('artistIndex: 3, videoIndex: 0'),
+    'card 3 must map to RESCENE (artistIndex 3)');
 }
 console.log('✓ 10: FIXED_CARD_MAP with correct artist mapping');
 
 // ============================================================
-// 11. Spotlight order is RESCENE → BTS → BLACKPINK → CORTIS
+// 11. Spotlight order is BTS → BLACKPINK → CORTIS → RESCENE
 // ============================================================
 {
   assert.ok(js.includes('SPOTLIGHT_ORDER = [0, 1, 2, 3]'),
-    'SPOTLIGHT_ORDER must be [0, 1, 2, 3] (RESCENE→BTS→BLACKPINK→CORTIS)');
+    'SPOTLIGHT_ORDER must be [0, 1, 2, 3] (BTS→BLACKPINK→CORTIS→RESCENE)');
 }
 console.log('✓ 11: spotlight order matches artist order');
 
