@@ -4631,6 +4631,12 @@
       "layer": "EXECUTED_FAKE",
       "rationale": "Executes production createBrowseLoadingManager and createMyTreesLoadingManager in node:vm with fake DOM and deterministic fake clock: timed state transitions (0-499ms hidden, 500ms indicator, 1800ms/2000ms copy, 8s long-wait, 15s error/retry), operation-token stale-response protection, timer cleanup on READY/EMPTY/ERROR, My Trees visible DOM-stage transitions via handleLoadingStage, hub degradation wiring (hydration reject → showDegraded, duplicate prevention, stale rejection protection, recovery on success, showContent clears degraded node), and retry button event dispatch. Source-structure checks (pagehide, retry listener, incremental path, init order) are labeled SOURCE_STATIC within the file. No real setTimeout, network, database, browser, or production resource is used (#3693).",
       "capabilities": []
+    },
+    {
+      "path": "tests/contracts/home-mixed-artist-spotlight-3625-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Reads source (.html, .css, .js) and asserts on strings, regex, file existence, structure, order, or syntax markers for the #3625 center-spotlight showcase: fixed artist keys, spotlight CSS classes, spotlight JS state machine, FIXED_CARD_MAP, SPOTLIGHT_ORDER, no original flip functions, reduced-motion overrides, FADE phase, and protected Closes/Fixes restrictions. Does not execute the target runtime behavior.",
+      "capabilities": []
     }
   ],
   "supplemental": [
@@ -4780,12 +4786,6 @@
         "child_process",
         "filesystem"
       ]
-    },
-    {
-      "path": "tests/contracts/home-mixed-artist-spotlight-3625-contract.test.cjs",
-      "layer": "SOURCE_STATIC",
-      "rationale": "Reads source (.html, .css, .js) and asserts on strings, regex, file existence, structure, order, or syntax markers for the #3625 center-spotlight showcase: fixed artist keys, spotlight CSS classes, spotlight JS state machine, FIXED_CARD_MAP, SPOTLIGHT_ORDER, no original flip functions, reduced-motion overrides, FADE phase, and protected Closes/Fixes restrictions. Does not execute the target runtime behavior.",
-      "capabilities": []
     }
   ]
 }

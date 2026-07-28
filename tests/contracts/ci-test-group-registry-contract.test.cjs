@@ -379,8 +379,8 @@ test('6. exact default-glob parsing and deterministic enumeration', () => {
 
 test('7. expected post-child counts 769 / 567 / 188 / 14', () => {
   const data = buildReportData();
-  assert.equal(data.default_total, 769);
-  assert.equal(data.layer_counts.SOURCE_STATIC, 567);
+  assert.equal(data.default_total, 770);
+  assert.equal(data.layer_counts.SOURCE_STATIC, 568);
   assert.equal(data.layer_counts.EXECUTED_FAKE, 188);
   assert.equal(data.layer_counts.EXECUTED_REAL_LOCAL, 14);
 });
