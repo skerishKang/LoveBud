@@ -80,10 +80,7 @@
     .growth-stage-card.is-spotlight-return {
         transform: none !important;
         box-shadow: 0 22px 46px rgba(80, 61, 58, 0.14) !important;
-        /* #3700: keep z-index at 35 even in reduced motion for consistency.
-           spotlight classes are never applied in reduced motion (JS returns
-           early), but if they were, the return card must stay on top. */
-        z-index: 35 !important;
+        z-index: 20 !important;
         transition: none !important;
     }
 
