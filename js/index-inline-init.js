@@ -23,8 +23,8 @@
   'use strict';
 
   // ============================================================
-  // Public YouTube video dataset.
-  // 4 artists x 4 official public MVs = 16 video IDs.
+  // Public YouTube video dataset (#3697).
+  // 4 artists x 1 locked official music video each = 4 video IDs.
   // Channels verified by web search against artist/label channels.
   // Remote thumbnails: img.youtube.com/vi/<id>/maxresdefault.jpg (primary, 16:9)
   // Fallback: mqdefault.jpg (16:9). hqdefault.jpg is 4:3 and must NOT be used.
@@ -37,10 +37,7 @@
       channelKey: 'home.v3.artist.channel.bts',
       channelName: 'HYBE LABELS',
       videos: [
-        { id: 'gdZLi9oWNZg', title: 'Dynamite' },
-        { id: 'WMweEpGlu_U', title: 'Butter' },
-        { id: 'XsX3ATc3FbA', title: 'Boy With Luv' },
-        { id: 'hmE9f-TEutc', title: 'Blood Sweat & Tears' }
+        { id: 'GEk4jHwfFTA', title: 'NORMAL' }
       ]
     },
     {
@@ -49,10 +46,7 @@
       channelKey: 'home.v3.artist.channel.blackpink',
       channelName: 'BLACKPINK',
       videos: [
-        { id: 'IHNzOHi8sJs', title: 'DDU-DU DDU-DU' },
-        { id: 'ioNng23DkIM', title: 'How You Like That' },
-        { id: '2S24-y0Ij3Y', title: 'Kill This Love' },
-        { id: 'gQlMMD8auMs', title: 'Pink Venom' }
+        { id: '2GJfWMYCWY0', title: 'GO' }
       ]
     },
     {
@@ -61,9 +55,6 @@
       channelKey: 'home.v3.artist.channel.cortis',
       channelName: 'BIGHIT MUSIC',
       videos: [
-        { id: 'WXS-o57VJ5w', title: 'GO!' },
-        { id: 'kRpaqR5sbf0', title: 'TNT' },
-        { id: 'hOIY3OhvD94', title: 'Blue Lips' },
         { id: 'U6BDbXIah-Y', title: 'REDRED' }
       ]
     },
@@ -73,10 +64,7 @@
       channelKey: 'home.v3.artist.channel.rescene',
       channelName: 'RESCENE',
       videos: [
-        { id: 'rsZwrTNklos', title: 'Runaway' },
-        { id: 'QNXeGm-Wkms', title: 'New World' },
-        { id: 'bhgNiT3qQgU', title: 'YoYo' },
-        { id: 'qZlu2j2SiBA', title: 'Pretty Girl' }
+        { id: '9XttLI0oH0I', title: 'LOVE ATTACK' }
       ]
     }
   ];
@@ -214,9 +202,9 @@
   }
 
   // ============================================================
-  // Hero music-video showcase with center spotlight (#3625)
-  // Fixed four-artist tree: RESCENE (featured), BTS (one),
-  // BLACKPINK (two), CORTIS (three). After the initial reveal,
+  // Hero music-video showcase with center spotlight (#3625, #3697)
+  // Fixed four-artist tree: BTS (featured), BLACKPINK (one),
+  // CORTIS (two), RESCENE (three). After the initial reveal,
   // each card sequentially moves to the center focus zone as a
   // spotlight before returning to its grid position. Cycle
   // repeats after all four spotlights. No artist rotation, no
@@ -239,17 +227,17 @@
     var reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
     var reducedMotion = reducedMotionQuery.matches;
 
-    // Fixed card-to-artist mapping: each card permanently represents
-    // one artist in the mixed-artist showcase. Card 0 is always RESCENE,
-    // card 1 is always BTS, card 2 is always BLACKPINK, card 3 always CORTIS.
+    // Fixed card-to-artist mapping (#3697): each card permanently represents
+    // one artist in the locked-order showcase. Card 0 is always BTS,
+    // card 1 is always BLACKPINK, card 2 is always CORTIS, card 3 always RESCENE.
     var FIXED_CARD_MAP = [
-      { artistIndex: 3, videoIndex: 0 }, // card 0 featured → RESCENE (index 3)
-      { artistIndex: 0, videoIndex: 0 }, // card 1 supporting.one → BTS (index 0)
-      { artistIndex: 1, videoIndex: 0 }, // card 2 supporting.two → BLACKPINK (index 1)
-      { artistIndex: 2, videoIndex: 0 }  // card 3 supporting.three → CORTIS (index 2)
+      { artistIndex: 0, videoIndex: 0 }, // card 0 featured → BTS (index 0)
+      { artistIndex: 1, videoIndex: 0 }, // card 1 supporting.one → BLACKPINK (index 1)
+      { artistIndex: 2, videoIndex: 0 }, // card 2 supporting.two → CORTIS (index 2)
+      { artistIndex: 3, videoIndex: 0 }  // card 3 supporting.three → RESCENE (index 3)
     ];
 
-    // Spotlight card order: RESCENE(featured,0) → BTS(one,1) → BLACKPINK(two,2) → CORTIS(three,3)
+    // Spotlight card order: BTS(featured,0) → BLACKPINK(one,1) → CORTIS(two,2) → RESCENE(three,3)
     var SPOTLIGHT_ORDER = [0, 1, 2, 3];
 
     var PHASE = {

@@ -3,7 +3,7 @@
  * LoveBud Issue #3624 - Home YouTube growth hero cycle contract
  * Verifies the JS-controlled rotating artist cycle:
  *   - exactly 4 artists, in the canonical order
- *   - exactly 4 official public video IDs per artist (16 total, no duplicates)
+ *   - exactly 1 locked official public video ID per artist (4 total, no duplicates)
  *   - curated channel verification markers
  *   - YouTube watch URL format and remote thumbnail URL format
  *   - safe external link attributes
@@ -16,6 +16,7 @@
  *   - no community API dependency for hero thumbnails
  *
  * Refs #3624
+ * Refs #3697
  * Refs #1882 / #3425 / #3458 (kept OPEN)
  */
 'use strict';
@@ -62,7 +63,7 @@ const componentsCss = readText('css/index/components.css');
 console.log('✓ 1: artist dataset cardinality and order');
 
 // ============================================================
-// 2. Video count per artist (4 each, 16 total)
+// 2. Video count per artist (1 each, 4 total) (#3697)
 // ============================================================
 {
   // Extract all video ids from the JS file
@@ -74,16 +75,14 @@ console.log('✓ 1: artist dataset cardinality and order');
     })
     .filter(s => s !== '');
   // Filter out non-video id fields by length and content (all 8+ chars,
-  // alphanumeric, underscore, or hyphen). Some real YouTube IDs (e.g.
-  // QNXeGm-Wkms, rsZwrTNklos) contain no digits, so we do not require
-  // digits in the filter.
+  // alphanumeric, underscore, or hyphen).
   const videoIds = ids.filter(id => /^[A-Za-z0-9_-]{8,15}$/.test(id));
 
-  assert.strictEqual(videoIds.length, 16,
-    'Expected 16 video IDs across the dataset, found ' + videoIds.length);
+  assert.strictEqual(videoIds.length, 4,
+    'Expected 4 video IDs across the dataset (1 per artist), found ' + videoIds.length);
 
-  // 4 ids per artist block
-  const perArtist = [4, 4, 4, 4];
+  // 1 id per artist block (#3697 locked order)
+  const perArtist = [1, 1, 1, 1];
   let cursor = 0;
   for (let i = 0; i < perArtist.length; i++) {
     const slice = videoIds.slice(cursor, cursor + perArtist[i]);
@@ -92,7 +91,7 @@ console.log('✓ 1: artist dataset cardinality and order');
     cursor += perArtist[i];
   }
 }
-console.log('✓ 2: 16 video IDs (4 per artist)');
+console.log('✓ 2: 4 video IDs (1 per artist) — locked order (#3697)');
 
 // ============================================================
 // 3. No duplicate video IDs
@@ -431,15 +430,15 @@ console.log('✓ 21: thumbnail 16:9 — maxres primary, mqdefault fallback, no h
   assert.ok(js.includes('FIXED_CARD_MAP'),
     'JS must define FIXED_CARD_MAP for the mixed-artist showcase');
   // Each card must map to a distinct artist (no duplicate artist on all cards).
-  assert.ok(js.includes('artistIndex: 3') && js.includes('artistIndex: 0')
-    && js.includes('artistIndex: 1') && js.includes('artistIndex: 2'),
+  assert.ok(js.includes('artistIndex: 0') && js.includes('artistIndex: 1')
+    && js.includes('artistIndex: 2') && js.includes('artistIndex: 3'),
     'FIXED_CARD_MAP must cover all 4 artists (BTS=0, BLACKPINK=1, CORTIS=2, RESCENE=3)');
-  // Each artist must have exactly 4 videos (contract for uniqueness).
+  // Each artist has exactly 1 locked video (#3697).
   const videoIdMatches = js.match(/id:\s*'([A-Za-z0-9_-]{8,15})'/g) || [];
-  assert.ok(videoIdMatches.length >= 16,
-    'All 4 artists must have 4 videos each (16 total) for uniqueness guarantee');
+  assert.ok(videoIdMatches.length >= 4,
+    'All 4 artists must have 1 video each (4 total) for locked order (#3697)');
 }
-console.log('✓ 22: fixed artist mapping — FIXED_CARD_MAP covers all 4 artists, 4 videos per artist');
+console.log('✓ 22: fixed artist mapping — FIXED_CARD_MAP covers all 4 artists, 1 video per artist (#3697)');
 
 // ============================================================
 // 23. Orphan description — JS removes .home-v3-copy
