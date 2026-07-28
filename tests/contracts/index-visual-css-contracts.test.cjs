@@ -24,8 +24,11 @@ test('css/index-visual.css is an import manifest (<= 20 lines)', () => {
   assert.ok(lines.length <= 20, `Manifest must be <= 20 lines, currently: ${lines.length}`);
 
   // Verify all @import lines are present
+  // Allow optional ?v= version query on the import URL (#3700)
   SPLIT_FILES.forEach(file => {
-    const importRegex = new RegExp(`@import\\s+url\\(['"]\\.\\/index\\/visual\\/${file}['"]\\);`);
+    const importRegex = new RegExp(
+      '@import\\s+url\\([\'"]\\./index/visual/' + file + '(?:\\?v=[^\'"]*)?[\'"]\\)'
+    );
     assert.match(content, importRegex, `Manifest must import ./index/visual/${file}`);
   });
 });
@@ -42,8 +45,8 @@ test('index.html references the original index-visual.css file and version query
   // Check exact link reference tag for this issue's version
   assert.match(
     html,
-    /href="css\/index-visual\.css\?v=20260724-3625-1"/,
-    'index.html must load css/index-visual.css?v=20260724-3625-1'
+    /href="css\/index-visual\.css\?v=20260729-3700-1"/,
+    'index.html must load css/index-visual.css?v=20260729-3700-1'
   );
 });
 

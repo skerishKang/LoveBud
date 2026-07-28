@@ -3,6 +3,6 @@
 @import url("./index/visual/base.css");
 @import url("./index/visual/branch.css");
 @import url("./index/visual/decorations.css");
-@import url("./index/visual/growth-stage.css");
+@import url("./index/visual/growth-stage.css?v=20260729-3700-1");
 @import url("./index/visual/animations.css");
 @import url("./index/visual/responsive.css");

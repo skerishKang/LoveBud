@@ -237,7 +237,12 @@
 
 .growth-stage-card.is-spotlight-return {
     transform: translate(0, 0) scale(1) !important;
-    z-index: 20 !important;
+    /* #3700: keep z-index at 35 (same as is-spotlight) through the entire
+       return animation so no other card jumps in front. The class is removed
+       by clearSpotlightClasses() after the transform completes (580ms), at
+       which point the card's base z-index (featured=24, supporting=20)
+       applies naturally. z-index is a discrete property — no interpolation. */
+    z-index: 35 !important;
     box-shadow: 0 22px 46px rgba(80, 61, 58, 0.14) !important;
     transition: transform 0.55s cubic-bezier(0.22, 0.8, 0.3, 1),
                 box-shadow 0.55s ease;

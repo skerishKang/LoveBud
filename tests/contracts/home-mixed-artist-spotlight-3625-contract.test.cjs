@@ -255,7 +255,46 @@ console.log('✓ 12: spotlight timing constants defined');
 console.log('✓ 13: reduced motion overrides spotlight');
 
 // ============================================================
-// 14. FADE phase exists (cycle can fade and restart)
+// 14. is-spotlight-return z-index matches is-spotlight (#3700)
+//     The returning card must stay at z-index 35 (same as spotlight)
+//     throughout the 580ms return animation so no other card jumps
+//     in front while the transform is still running.
+// ============================================================
+{
+  // Find the is-spotlight-return rule body
+  const returnRule = cssGrowth.match(/\.growth-stage-card\.is-spotlight-return\s*\{[^}]*\}/);
+  assert.ok(returnRule, 'must find .is-spotlight-return CSS rule');
+  assert.ok(returnRule[0].includes('z-index: 35'),
+    '.is-spotlight-return must have z-index: 35 (same as is-spotlight) to prevent layer drop during return animation');
+  assert.ok(!returnRule[0].includes('z-index: 20'),
+    '.is-spotlight-return must NOT use z-index: 20 (would cause other cards to jump in front during return)');
+
+  // Verify the is-spotlight rule still has z-index 35
+  const spotlightRule = cssGrowth.match(/\.growth-stage-card\.is-spotlight\s*\{[^}]*\}/);
+  assert.ok(spotlightRule, 'must find .is-spotlight CSS rule');
+  assert.ok(spotlightRule[0].includes('z-index: 35'),
+    '.is-spotlight must have z-index: 35');
+
+  // Verify clearSpotlightClasses removes both spotlight classes (base z-index applies)
+  assert.ok(js.includes("card.classList.remove('is-spotlight', 'is-spotlight-return')"),
+    'clearSpotlightClasses must remove both is-spotlight and is-spotlight-return');
+
+  // Verify base featured card z-index is 24 (restored after return class removed)
+  const featuredRule = cssGrowth.match(/\.growth-stage-card\.featured\s*\{[^}]*\}/g);
+  const featuredHas24 = featuredRule && featuredRule.some(r => r.includes('z-index: 24'));
+  assert.ok(featuredHas24,
+    'base .growth-stage-card.featured must have z-index: 24 (restored after return)');
+
+  // Verify base .growth-stage-card has z-index: 20 (supporting cards inherit this)
+  const baseCardRule = cssGrowth.match(/\.growth-stage-card\s*\{[^}]*\}/);
+  assert.ok(baseCardRule, 'must find base .growth-stage-card rule');
+  assert.ok(baseCardRule[0].includes('z-index: 20'),
+    'base .growth-stage-card must have z-index: 20');
+}
+console.log('✓ 14: is-spotlight-return z-index=35, base z-indexes correct');
+
+// ============================================================
+// 15. FADE phase exists (cycle can fade and restart)
 // ============================================================
 {
   assert.ok(js.includes("PHASE.FADE") || js.includes("'fade-out'"),
@@ -265,10 +304,10 @@ console.log('✓ 13: reduced motion overrides spotlight');
   assert.ok(cssGrowth.includes('fade-out'),
     'growth-stage.css must reference fade-out stage state');
 }
-console.log('✓ 14: FADE phase exists for cycle restart');
+console.log('✓ 15: FADE phase exists for cycle restart');
 
 // ============================================================
-// 15. RESPECT: Keep #3624 references but no Closes/Fixes
+// 16. RESPECT: Keep #3624 references but no Closes/Fixes
 // ============================================================
 {
   const forbiddenCloses = ['Closes', 'Fixes', 'Resolves'];
@@ -279,6 +318,6 @@ console.log('✓ 14: FADE phase exists for cycle restart');
       `index.html must not contain '${f} #3625'`);
   }
 }
-console.log('✓ 15: no Closes/Fixes/Resolves for protected issues');
+console.log('✓ 16: no Closes/Fixes/Resolves for protected issues');
 
 console.log('\n✅ All #3625 contract tests passed.');
