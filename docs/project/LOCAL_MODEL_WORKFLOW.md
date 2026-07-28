@@ -1,89 +1,210 @@
 # Local Model Workflow
 
-## 목적
+> **Default role:** Local Validation
+> **Role model:** `WEB_CTO_WEB_DEVELOPER_LOCAL_VALIDATION.md`
+> **UI fast lane:** `UI_RAPID_ITERATION_LANE.md`
+> **Hard-governance precedence:** `../ops/MVP_AGENT_GOVERNANCE.md`
 
-이 문서는 프로젝트 공통 로컬 실행 규칙을 정리합니다.
+## Purpose
 
-## 공통 로컬 실행 원칙
+Local work is reserved for evidence that requires a full checkout or local environment. The local model is not the default production coder or UI designer.
 
-- worktree 사용
-- main 직접 수정 금지
-- 브랜치 기반 작업
-- 검증 수행 및 구분 보고
+## When Local Validation is used
 
-## 작업 시작 전 브랜치 확정 절차
+Use Local Validation only when the Web CTO/Web Developer handoff marks it `REQUIRED` or when exact-head evidence needs:
 
-로컬 실행 모델은 CTO 지시문에 브랜치명 예시가 있더라도 이를 확정값으로 간주하지 않습니다. 병렬 모델이 동시에 작업할 수 있으므로, 실제 브랜치명은 로컬 모델이 최신 원격 상태를 확인한 뒤 확정합니다.
+- repository-wide commands unavailable to Web;
+- actual database, Docker, provider, device, GPU, or OS behavior;
+- local secret use without value exposure;
+- authenticated browser profile;
+- runtime-sensitive desktop/mobile, console, network, API, or persistence evidence;
+- pristine-main comparison for broad regressions.
 
-작업 시작 전 반드시 아래 절차를 수행합니다.
+## When Local Validation is skipped
 
-1. `git fetch origin --prune`
-2. `git checkout main`
-3. `git pull origin main`
-4. `gh pr list --state open --limit 100` 또는 동등한 PR 조회
-5. `git branch -r`로 원격 브랜치 충돌 확인
-6. 작업 성격에 맞는 고유 브랜치명 확정
-7. 확정한 브랜치명을 첫 보고에 포함
+Local Validation is skipped by default for:
 
-브랜치명 충돌이 있으면 작업을 중단하지 말고 고유 suffix를 붙여 새 브랜치를 선택합니다.
+- U0 copy-only changes;
+- U1 page-scoped visual-only changes;
+- docs-only changes with no local contract need;
+- changes fully evidenced by remote diff, focused checks, CI classification, and post-merge Production confirmation.
 
-예:
+Do not create a local worktree or local prompt merely because an HTML/CSS file changed.
 
-- `cleanup/editor-presentation-inline-styles-v2`
-- `refactor/editor-css-split-entrypoint-20260427`
-- `docs/runtime-guardrails-followup-v1`
+## Startup
 
-단, 기존 브랜치 재사용, force push, PR source branch 갱신은 CTO가 명시적으로 승인한 경우에만 수행합니다.
+1. Confirm the target PR, remote branch, and expected exact head.
+2. `git fetch origin --prune`.
+3. Inspect `git worktree list --porcelain` and `git status --short`.
+4. Preserve dirty/staged/untracked/stash/worktree state.
+5. Use a dedicated worktree at the exact PR head.
+6. Report repository, worktree, branch, expected/actual head, base, and clean/dirty state.
 
-## 로컬 검증의 위치
+Forbidden without explicit approval:
 
-로컬 모델은 코드 수정, 구문 확인, 정적 레이아웃 참고, diff 확인, 테스트 실행에 유용합니다.
+```text
+git reset --hard
+git clean
+git stash drop
+force push
+existing worktree/branch deletion
+secret value output
+```
 
-다만 LoveBud는 Cloudflare Pages Functions, same-origin `/api/*`, Modal upstream, Firebase authentication/session state에 의존합니다.
+## Allowed work
 
-따라서 로컬 정적 서버는 모든 UI의 최종 검증 환경이 아닙니다.
+- dependency installation;
+- assigned lint/typecheck/build/test commands;
+- database/Docker/local-service execution;
+- Windows/PowerShell/provider/device checks;
+- authenticated browser and responsive verification;
+- console/network/API inspection;
+- screenshots/videos/artifacts outside the repository;
+- key/file presence checks without values;
+- exact patch-package application;
+- pristine-main comparison;
+- raw failure reproduction.
 
-### PR 병합 전 UI 검증 우선순위
+Minimal source changes require explicit file-level authorization. Product-source defects normally return to the Web Developer.
 
-1. Cloudflare Pages PR Preview URL
-2. 이미 확보한 테스트/프리뷰 페이지 URL
-3. 로컬 서버 — 정적 레이아웃 참고용 fallback
+## Risk-proportional UI handling
 
-### 로컬 서버 단독 최종 판정 금지
+### U0/U1
 
-아래 화면/흐름은 로컬 정적 서버만으로 최종 PASS/BLOCKER를 판단하지 않습니다.
+Local receives no task by default.
 
-- Browse / Search 페이지
-- Editor 페이지
-- My Trees 페이지
-- Auth-gated 페이지
-- `/api/*`를 호출하는 모든 페이지
-- Cloudflare Pages Functions에 의존하는 페이지
-- Modal upstream에 의존하는 페이지
-- Firebase authentication 또는 session state에 의존하는 페이지
+If Local is explicitly requested, execute only the named check. Do not expand a copy/visual micro-change into full-suite testing or broad browser QA without a revised contract.
 
-이런 화면에서 로컬 서버로 “불러오기 실패”가 나오면 즉시 제품 회귀로 단정하지 않습니다. Cloudflare Preview 또는 준비된 테스트/프리뷰 URL에서 Network, Console, `/api` status를 확인해야 합니다.
+### U2
 
-### Production 검증의 위치
+Run the structural/layout/browser checks explicitly assigned. Desktop/mobile evidence is required only for affected breakpoints/states, not automatically for every page.
 
-`https://lovebud.pages.dev/`는 PR 병합 전 source of truth가 아닙니다. production 도메인은 현재 `main`을 반영합니다.
+### U3
 
-Production 검증은 PR이 `main`에 병합되고 배포된 뒤 최종 확인으로 수행합니다.
+Run the full relevant runtime/auth/API/cache/storage/browser evidence defined by the contract.
 
-## 보고 기준
+## Test reporting
 
-로컬 모델은 검증 결과를 보고할 때 아래를 구분합니다.
+For each command report:
 
-- Cloudflare Preview 검증
-- 테스트/프리뷰 URL 검증
-- production 검증
-- 로컬 정적 레이아웃 참고
-- 코드 분석 또는 추정
+```text
+command
+exit status
+pass/fail count
+relevant raw error
+exact tested SHA
+```
 
-로컬 검증만 수행한 경우에는 “최종 검증 완료”라고 쓰지 않고, “로컬 기준”, “정적 레이아웃 참고”, “추정”으로 표시합니다.
+When branch failures occur, compare with a pristine-main worktree when practical and report:
 
-## 관련 문서
+```text
+pristine-main failures
+branch failures
+branch-only failures
+```
 
-- [REPORTING_CHAIN.md](./REPORTING_CHAIN.md)
-- [PROJECT_OPERATING_MODEL.md](./PROJECT_OPERATING_MODEL.md)
+Do not claim `branch-only failures = 0` without the compared SHA and command.
+
+## Browser evidence
+
+```text
+LOCAL_EVIDENCE
+PRE_MERGE_EVIDENCE
+PRODUCTION_EVIDENCE
+```
+
+- Preview/fixed slot is optional evidence, not a permission gate.
+- Do not search for preview URLs or deploy a fixed slot unless assigned.
+- Merge-first Production verification remains the default final UI/Auth/runtime confirmation.
+- Localhost limitations must be reported, not converted into an automatic blocker.
+
+## Secret handling
+
+Never print or persist credentials, tokens, cookies, sessions, private payloads, database URLs, or identifiers in chat, logs, screenshots, Issues, PRs, or commits.
+
+Report only safe states such as:
+
+```text
+PRESENT
+MISSING
+EXISTS
+GITIGNORED
+LOGIN_PASS
+LOGIN_FAIL
+```
+
+## Artifact hygiene
+
+Store local screenshots, logs, reports, backups, and ZIPs outside the repository unless committed fixtures are explicitly required.
+
+Task-owned untracked debris may be removed one file at a time after ownership confirmation. Never use `git clean`.
+
+## Failure return
+
+Return to the Web Developer:
+
+```text
+exact tested SHA
+command
+relevant raw error
+reproduction steps
+expected behavior
+actual behavior
+browser/auth/viewport state
+console/network/API result
+local source files modified: NONE or exact list
+```
+
+Do not turn a failed check into an unapproved broad rewrite.
+
+## Final report
+
+```text
+## Local Validation report
+
+### Baseline
+- repository/worktree:
+- local/remote branch:
+- expected/tested head:
+- base/main:
+- clean/dirty before:
+- reset/stash/clean used:
+
+### Commands
+- command/result/count/error:
+
+### Comparison
+- pristine-main SHA/failures:
+- branch failures:
+- branch-only failures:
+
+### Browser/environment
+- evidence level:
+- URL/auth/viewports/flows:
+- console/network/API/database/provider/OS:
+- screenshots/artifacts:
+
+### Repository state
+- git diff --check:
+- git status --short:
+- remaining untracked:
+- source files modified locally:
+
+### Unverified
+- item/reason:
+
+### Final status
+LOCAL_VALIDATION_PASS / LOCAL_VALIDATION_FAIL / LOCAL_VALIDATION_PARTIAL
+```
+
+## Related documents
+
+- [WEB_CTO_WEB_DEVELOPER_LOCAL_VALIDATION.md](./WEB_CTO_WEB_DEVELOPER_LOCAL_VALIDATION.md)
+- [UI_RAPID_ITERATION_LANE.md](./UI_RAPID_ITERATION_LANE.md)
+- [ROLE_SESSION_TEMPLATES.md](./ROLE_SESSION_TEMPLATES.md)
 - [VERIFICATION_AND_EVIDENCE.md](./VERIFICATION_AND_EVIDENCE.md)
+- [../ops/MVP_AGENT_GOVERNANCE.md](../ops/MVP_AGENT_GOVERNANCE.md)
+
+Refs #3664.
+Refs #3662.
+Refs #1882 — Keep OPEN.

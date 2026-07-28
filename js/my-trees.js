@@ -112,6 +112,12 @@
     }
 
     document.body.classList.remove('my-trees-auth-pending');
+
+    // Auth confirmed: init loading manager first, then controls, then load
+    if (myTreesPage && typeof myTreesPage.initLoadingManager === 'function') {
+      myTreesPage.initLoadingManager();
+    }
+
     setupHeaderCreateButton();
     setupRetryButton();
     loadTrees();
@@ -529,6 +535,13 @@
       if (myTreesData && typeof myTreesData.markOwnerListEpochStale === 'function') {
         myTreesData.markOwnerListEpochStale();
       }
+      // Dispose loading manager to clear all pending timers
+      if (myTreesPage && typeof myTreesPage.getLoadingManager === 'function') {
+        var mgr = myTreesPage.getLoadingManager();
+        if (mgr && typeof mgr.dispose === 'function') {
+          mgr.dispose();
+        }
+      }
     });
   }
 
@@ -562,6 +575,11 @@
     if (!user || !user.uid) return;
 
     setupGlobalListeners();
+
+    // Initialize the timed loading manager
+    if (myTreesPage && typeof myTreesPage.initLoadingManager === 'function') {
+      myTreesPage.initLoadingManager();
+    }
 
     // Initialize My Trees appreciation hub
     if (window.LoveBudMyTreesPreviewHub && typeof window.LoveBudMyTreesPreviewHub.init === 'function') {

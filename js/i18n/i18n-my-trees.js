@@ -25,7 +25,7 @@
     'visibility_changed_public': { ko: '이 트리가 공개로 전환되었습니다.', en: 'This tree is now public.' },
     'visibility_changed_private': { ko: '이 트리가 비공개로 전환되었습니다.', en: 'This tree is now private.' },
     'visibility_change_fail': { ko: '공개 설정 변경에 실패했습니다.', en: 'Failed to change visibility.' },
-    'myTrees.loading': { ko: '러브트리 목록을 불러오는 중...', en: 'Loading your LoveTrees...' },
+    'myTrees.loading': { ko: '내 러브트리를 불러오고 있어요', en: 'Loading your LoveTrees' },
     'myTrees.error_title': { ko: '불러오기에 실패했습니다', en: 'Failed to load' },
     'myTrees.error_desc': { ko: '네트워크 연결을 확인하고 다시 시도해주세요.', en: 'Please check your network connection and try again.' },
     'myTrees.error_action_unavailable': { ko: '일시적으로 기능을 사용할 수 없습니다.', en: 'This feature is temporarily unavailable.' },

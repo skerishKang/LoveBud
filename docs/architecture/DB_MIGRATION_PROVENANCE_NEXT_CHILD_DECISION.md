@@ -1,277 +1,237 @@
 # LoveBud DB Migration Provenance Next-Child Decision
 
-## Decision Summary
+## Decision summary
 
-| Field | Value |
-| --- | --- |
-| Outcome | `NO_SAFE_IMPLEMENTATION_CHILD_WITHOUT_OPERATOR_INPUT` |
-| Decision basis | Current-state audit at `de1c4e416e33e2669157b2202a7bbd021779ad59` |
-| Prerequisite | Operator input: dedicated read-only credentials and abstract role mapping file |
-| Proposed operator-readiness child | Create an adoption collection operator checklist and role mapping template |
+Current status: `SAFE_IMPLEMENTATION_CHILD_SELECTED`
 
-The source-contract and disposable-CI predecessors needed to prepare the current Phase-B Production-readonly collection boundary are merged.
+Issue #3678 completes Step 4 in the migration-precondition authority sequence. The current and only selected next child is:
 
-This does not mean all #3458 implementation is complete. Migration runner, canonical stream, reconstruction, deployment enforcement, observability, and retirement work remain incomplete.
-
-## Candidate Children Considered
-
-### 1. Retry Production catalog collection
-
-| Criterion | Assessment |
-| --- | --- |
-| Operator input needed | Yes - credentials and role mapping must be provided by operator |
-| Production access needed | Yes - read-only catalog collection from Production |
-| Safe to start now | **NO** |
-| Reason | #3569 closed as `COLLECTION_NOT_RUN_CONNECTION_BOUNDARY`. #3572 closed as `COLLECTION_NOT_RUN_CONNECTION_BOUNDARY`; subreason: `DEDICATED_INPUTS_UNAVAILABLE`; retry session not started. The dedicated secret and role mapping do not exist in the repository. |
-
-### 2. Ledger bootstrap design
-
-| Criterion | Assessment |
-| --- | --- |
-| Prerequisites | Adoption baseline attested, owner approval for first canonical migration |
-| Safe to start now | **NO** |
-| Reason | Architecture doc: "The first canonical entry may be added only after the adoption baseline and runner design are separately approved." Adoption has not occurred. |
-
-### 3. Migration runner implementation
-
-| Criterion | Assessment |
-| --- | --- |
-| Prerequisites | Ledger relation must exist, canonical migrations must exist |
-| Safe to start now | **NO** |
-| Reason | No canonical migrations exist. No ledger relation exists. A runner with no migrations and no ledger has nothing to run. |
-
-### 4. Canonical manifest tooling
-
-| Criterion | Assessment |
-| --- | --- |
-| Current implementation overlap | ID validation, checksum validation, inventory checks already exist in `scripts/migration-provenance-core.cjs`; fingerprint normalizer in `scripts/migration-catalog-fingerprint-core.cjs`; candidate builder in `scripts/expected-schema-candidate-core.cjs` |
-| Safe to start now | **NO** |
-| Reason | Core manifest tooling is already implemented. Additional tooling (dependency graph, migration scaffolding) would operate on an empty manifest. Creating tooling for an empty manifest is inventing work. |
-
-### 5. Clean-database reconstruction
-
-| Criterion | Assessment |
-| --- | --- |
-| Prerequisites | Migration runner, canonical migrations, expected-schema manifest |
-| Safe to start now | **NO** |
-| Reason | Depends on runner + migrations + expected-schema manifest. All three are not yet active. |
-
-### 6. Deployment gate integration
-
-| Criterion | Assessment |
-| --- | --- |
-| Prerequisites | Target adapter, Production catalog collection, adoption attestation, ledger bootstrap, runner, reconstruction |
-| Safe to start now | **NO** |
-| Reason | Depends on most of the provenance pipeline being active. Not a near-term candidate. |
-
-### 7. Sanitized observability
-
-| Criterion | Assessment |
-| --- | --- |
-| Prerequisites | Gate integration, target adapter |
-| Safe to start now | **NO** |
-| Reason | Depends on gate integration which depends on most of the provenance chain. |
-
-### 8. Legacy path retirement
-
-| Criterion | Assessment |
-| --- | --- |
-| Prerequisites | Adoption baseline, canonical migration stream maturity |
-| Safe to start now | **NO** |
-| Reason | Legacy retirement without an active canonical stream would leave no migration path at all. |
-
-### 9. Documentation reconciliation
-
-| Criterion | Assessment |
-| --- | --- |
-| Current implementation overlap | This audit (`DB_MIGRATION_PROVENANCE_CURRENT_STATE_AUDIT.md`) already serves as the definitive current-state reference. |
-| Safe to start now | Partial |
-| Reason | `DB_MIGRATION_PROVENANCE_GATE.md` Section J is outdated but cannot be modified in this PR scope. A future child can update it when operator input unblocks the next phase. |
-
-## Dependency Analysis
-
-```
-Missing Operator Inputs
-- dedicated Production-readonly credential
-- abstract role mapping              <-- BLOCKED
-    |
-Separate Phase B execution approval
-    |
-    v
-Phase B: Production catalog collection                    <-- DEPENDS on operator input
-    |
-    v
-Phase C: Owner review of evidence + drift classification  <-- DEPENDS on Phase B
-    |
-    v
-Phase D: Manifest activation (ADOPTION_REQUIRED -> ACTIVE) <-- DEPENDS on Phase C
-    |
-    v
-Phase E: Ledger bootstrap migration                       <-- DEPENDS on Phase D
-    |
-    v
-Migration runner implementation                           <-- DEPENDS on Phase E
-    |
-    v
-Canonical migration stream                                <-- DEPENDS on runner
-    |
-    v
-Clean-database reconstruction                             <-- DEPENDS on stream
-    |
-    v
-Deployment gate integration                               <-- DEPENDS on reconstruction
-    |
-    v
-Sanitized observability + Legacy retirement               <-- DEPENDS on gate integration
+```text
+Step 5 — evaluatePrecondition adapter
 ```
 
-All paths to implementation lead through the operator-input boundary at the top of the chain.
+Current sequence posture:
 
-## Operator-Input Separation
+```text
+Steps 1–4 complete
+Step 5 evaluatePrecondition adapter selected
+Step 5 not implemented by Issue #3678
+Steps 6–8 not authorized
+```
 
-### BLOCKED_OPERATOR_INPUT (repository-external inputs not present)
+Issue #3657 remains the open parent authority. This source-only decision grants no runtime, database, SQL, environment, provider, or Production authority.
 
-| # | Input | Owner | Repository Reference |
-| --- | --- | --- | --- |
-| OI-1 | `LOVEBUD_PRODUCTION_READONLY_DATABASE_URL` under `.secrets/` | Repository owner or operator | `db/migration-provenance/production-readonly-catalog-boundary-contract.json` |
-| OI-2 | Abstract role mapping file (PostgreSQL roles -> abstract classes) | Repository owner or operator | `db/migration-provenance/adoption-baseline-collection-plan-contract.json` |
+The historical audit baseline for Issue #3644 remains recorded as `eb030c1d4751dfee45d65f5a420caebebac6ebcc`. That SHA is historical evidence only and is not the implementation base for Issue #3678.
 
-### SEPARATE_APPROVAL_REQUIRED (future owner decisions, not missing inputs)
+## Why the previous decision changed
 
-| Phase | Decision | Depends On |
-| --- | --- | --- |
-| Phase B | Production read-only catalog collection execution approval | OI-1, OI-2 |
-| Phase C | Owner review of collected sanitized evidence and drift classification | Phase B complete |
-| Phase D | Manifest activation (ADOPTION_REQUIRED -> ACTIVE) | Phase C approved |
-| Phase E | Ledger bootstrap, migration runner, and canonical migration stream approval | Phase D complete |
+The previous decision was written before completion of the fixed read-only query-catalog contract and before implementation of the fixed registry/catalog loader-resolver. PR #3675 completed Step 3. Issue #3678 now completes Step 4 by adding a deterministic, fail-closed source loader/resolver for the two repository-owned authorities.
 
-The reviewed frozen collection plan and allowlist (PR #3556) are in the repository. Input absence and future approval decisions are separate categories. None of these inputs or approvals can be created by an agent.
+Because Step 4 is now complete, the prior statement that Step 4 was the selected child is superseded. The ordered sequence advances by exactly one step: Step 5 is selected for a separate future child, but it is not implemented here.
 
-## Selected Next Child
+## Verified current incompatibility
 
-### Outcome: `NO_SAFE_IMPLEMENTATION_CHILD_WITHOUT_OPERATOR_INPUT`
+The repository now has a fixed authority contract, registry validation/source-validation integration, fixed read-only query-catalog contract, and fixed loader/resolver. It still has no authorized `evaluatePrecondition` adapter that consumes the resolver result and maps it into runtime migration-gate semantics.
 
-No migration implementation child can safely proceed. An **operator-readiness child** is proposed to unblock the operator-input boundary.
+That missing adapter is the next incompatibility. It does not authorize skipping to composition, PostgreSQL rehearsal, or environment adoption.
 
-### Proposed Operator-Readiness Child
+## Selected next child
 
-**Proposed issue title**: `[Architecture][DB][Adoption] Create adoption collection operator checklist and role mapping template`
+### Current selection
 
-**Clarification**: This is an operator-readiness documentation child, NOT a Production collection implementation. It does not contain actual secret values, raw role mappings, or executable collection code. It documents the actions, inputs, and approval boundaries that an operator must follow to unblock Phase B.
+| Field | Current decision |
+|---|---|
+| Selected child | `evaluatePrecondition` adapter |
+| Sequence step | 5 |
+| Steps 1–4 | Complete |
+| Step 5 implementation in Issue #3678 | No |
+| Steps 6–8 | Not authorized |
+| Composition root selected | No |
+| Disposable PostgreSQL rehearsal selected | No |
+| Environment adoption selected | No |
+| Production access | None |
+| Database access | None |
+| SQL execution | None |
 
-**Objective**: Produce a structured operator-facing document that lists exact steps to unblock Phase B Production catalog collection, provides a role mapping template (structure only), documents approval gates and expected outputs at each adoption phase, and references repository contracts.
+The Step 5 child requires a separate exact Web CTO execution contract. This document selects Step 5 only; it does not implement it.
 
-**Exact files**: `docs/architecture/DB_MIGRATION_PROVENANCE_ADOPTION_OPERATOR_CHECKLIST.md` (new file only)
+### Superseded historical selection retained for audit compatibility
 
-**Prohibited areas**: No database connection, no SQL execution, no secret creation, no Production/staging/provider access, no manifest activation, no migration/ledger/runner implementation. No existing file modification (checklist is a new file).
+The following historical Issue #3644 markers are retained literally as evidence only. They confer no current implementation authority:
 
-**Dependencies complete**: Current-state audit (#3620), the source-contract and disposable-CI predecessors required for the current Phase-B Production-readonly collection boundary are merged.
+```text
+Selected child | Source-tested pinned-session query broker
+POSTGRES_LOCKED_SESSION_QUERY_UNAVAILABLE
+```
 
-This does not claim that all #3458 implementation is complete.
+The prior historical file set was:
 
-The following remain incomplete:
+```text
+scripts/migration-postgres-session-lock-adapter-core.cjs
+tests/contracts/db-postgres-session-lock-adapter-contract.test.cjs
+docs/architecture/db-postgres-session-lock-adapter-contract.md
+docs/architecture/db-postgres-ledger-adapter-contract.md
+```
 
-**Test layers**: SOURCE_STATIC (validate checklist references correct contract paths, covers operator inputs, no secret patterns)
+Those paths are not changed by Issue #3678.
 
-**Production access**: NONE
+For exact #3644 source-only compatibility, this decision does not claim those later children are approved or ready. The `evaluatePrecondition` adapter is **not** implemented. No SQL query, adapter, DB connection, or registry entry is added. No Production mutation occurs.
 
-**Approval needed**: Owner review of the checklist
+The superseded Issue #3669 decision also stated:
 
-**Rollback posture**: Code rollback only (delete file). No database state affected.
+```text
+4. Precondition registry/catalog loader-resolver — selected as the only next child
+```
 
-**Completion boundary**: Checklist accurately documents all operator inputs identified in the current-state audit and references correct repository contracts.
+That prior decision does not select a runtime adapter. It stated that Step 4 must not skip directly to Steps 5–8 and that Steps 5–8 are not selected by this decision. Those sentences remain historical evidence of the Step 3 posture. Issue #3678 now completes Step 4, selects Step 5 only, and keeps Steps 6–8 unauthorized.
 
-## Exact Scope (This PR #3620)
+## Exact allowed files
 
-1. `docs/architecture/DB_MIGRATION_PROVENANCE_CURRENT_STATE_AUDIT.md` - current-state audit
-2. `docs/architecture/DB_MIGRATION_PROVENANCE_NEXT_CHILD_DECISION.md` - next-child decision
-3. `tests/contracts/db-migration-provenance-current-state-audit-contract.test.cjs` - document contract test
-4. `tests/test-layer-classification.json` - minimal SOURCE_STATIC entry for new contract test
+Issue #3678 changes exactly:
 
-## Exact Non-Goals
+```text
+scripts/migration-precondition-authority-loader-resolver-core.cjs
+tests/contracts/db-migration-precondition-authority-loader-resolver-contract.test.cjs
+docs/architecture/db-migration-precondition-authority-loader-resolver-contract.md
+tests/test-layer-classification.json
+docs/architecture/DB_MIGRATION_PROVENANCE_NEXT_CHILD_DECISION.md
+docs/architecture/db-schema-change-inventory.json
+```
 
-- No operator checklist is created in this PR (deferred)
-- No database connection, SQL execution, or migration application
-- No manifest activation or population
-- No ledger relation creation or runner implementation
-- No Production, staging, or provider access
-- No credential creation, rotation, or handling
-- No existing file modification (except `tests/test-layer-classification.json` minimal SOURCE_STATIC entry)
-- No deployment or CI workflow changes
+No other path is authorized. The sixth file is limited to one source-only inventory entry for the loader-resolver core under the bounded Web CTO amendment recorded on Issue #3678 and PR #3681.
 
-## Allowed Files
+## Prohibited files and areas
 
-1. `docs/architecture/DB_MIGRATION_PROVENANCE_CURRENT_STATE_AUDIT.md`
-2. `docs/architecture/DB_MIGRATION_PROVENANCE_NEXT_CHILD_DECISION.md`
-3. `tests/contracts/db-migration-provenance-current-state-audit-contract.test.cjs`
-4. `tests/test-layer-classification.json` (minimal SOURCE_STATIC entry only)
+Issue #3678 does not modify:
 
-## Prohibited Files
+- `package.json`, package lockfiles, or dependency declarations;
+- `.github/**` workflows or CI policy;
+- either committed registry/catalog authority under `db/migration-provenance/**`;
+- existing registry validator, source-validation adapter, protocol, orchestrator, composition root, manifest adapter, lock adapter, ledger adapter, or broker;
+- product, API, UI, Auth, CSS, and Cloudflare files;
+- provider configuration, secrets, environment configuration, credentials, or endpoints;
+- PR #3676 or PR #3677 branches/files.
 
-All existing files, particularly: `docs/architecture/DB_MIGRATION_PROVENANCE_GATE.md`, `docs/architecture/migration-path-inventory.json`, `db/migration-provenance/**`, `db/migrations/**`, `scripts/**`, `tests/contracts/**` (except new contract test), `tests/test-layer-classification.json` (except minimal entry), `tests/db-engine/**`, `package.json`, `package-lock.json`, `.github/**`, `functions/**`, `pages/**`, `js/**`, `css/**`, `migrations/**`, `_headers`
+## Explicit non-goals
 
-## Required Test Layers
+Issue #3678 does not select or implement:
 
-- SOURCE_STATIC (contract test validates document structure, vocabulary, references, and prohibitions)
+- Step 5 code or runtime `evaluatePrecondition` behavior;
+- `queryLockedSession` invocation;
+- lock-handle inspection;
+- SQL execution, preparation, interpolation, tokenization, or safety approval;
+- a database connection;
+- Docker or PostgreSQL execution;
+- composition-root integration;
+- manifest, lock, ledger, or broker changes;
+- registry or catalog activation;
+- Production or staging access;
+- provider, environment, credential, or secret access.
 
-## Failure Categories
+The committed catalog remains `ADOPTION_REQUIRED` with an empty `queries` plain object.
 
-| Category | Meaning |
-| --- | --- |
-| CONTRACT_TEST_FAILURE | Document structure, vocabulary, or reference validation fails |
-| COMMIT_SCOPE_VIOLATION | A file outside the 4 authorized files is changed |
-| PUSH_REJECTED | Remote push is rejected |
-| CI_FAILURE | CI pipeline fails |
+## Precondition authority child (#3657)
 
-## Rollback and Forward-Fix Posture
+### Completed authority sequence
 
-Documentation and contract-only PR. Rollback: close PR without merge. Forward-fix: subsequent correction PR. No database or Production state affected.
+1. Precondition authority contract — completed by PR #3658.
+2. Registry validator and source-validation integration — completed by PR #3660 / Issue #3659.
+3. Fixed read-only query catalog contract — completed by PR #3675 / Issue #3669.
+4. Fixed precondition registry/catalog loader-resolver — completed by Issue #3678.
 
-## Model Assignment
+### Selected but not implemented
 
-### DESIGN_REVIEW_MODEL: DeepSeek V4 Pro
-- **Reason**: Cross-layer reasoning across historical migrations, source contracts, disposable CI tests, Production-readonly boundaries, and GitHub issue/PR history. Required for accurate classification of 12 acceptance criteria, 30 artifacts, and 6 test layers.
-- **Decision authority**: Reviews audit classification, dependency map, and next-child decision. Can request re-classification if evidence is misinterpreted.
+5. `evaluatePrecondition` adapter — selected as the only next child; not implemented by Issue #3678.
 
-### INDEPENDENT_ARCHITECTURE_VERIFIER: Nemotron 3 Ultra
-- **Reason**: Independent verification of the audit's conclusions requires a model with strong systems-thinking capability that is not the same as the auditor. Nemotron 3 Ultra provides a different reasoning architecture to catch classification errors, missed dependencies, or unsupported claims.
-- **Decision authority**: Validates that each COMPLETE/PARTIAL/BLOCKED classification is supported by evidence. Flags unsupported claims. Can override classifications if evidence is insufficient.
+### Not authorized
 
-### IMPLEMENTATION_MODEL: DeepSeek V4 Pro
-- **Reason**: The operator-readiness child is a high-precision documentation task that must accurately cross-reference contracts, audit findings, and operator procedures. DeepSeek V4 Pro's precision with complex cross-referencing is required. The child does not involve large code generation.
-- **Decision authority**: Implements the operator checklist document according to the scope defined above. No authority to modify contracts, manifests, or existing files.
+6. Composition root — not authorized.
+7. Disposable PostgreSQL rehearsal — not authorized.
+8. Separately approved environment adoption — not authorized.
 
-### LOW_RISK_SUPPORT_MODEL: Laguna XS 2.1
-- **Reason**: The contract test is a structural validation with fixed assertions against known file paths and vocabulary. Laguna XS 2.1 is sufficient for this low-risk, bounded task.
-- **Decision authority**: Implements the contract test file only. No authority to modify any other file.
+Steps 1–4 complete. Step 5 evaluatePrecondition adapter selected. Steps 6–8 not authorized.
 
-## Production Mutation Authority
+## Acceptance criteria
 
-Production mutation (applying migrations, activating manifests, creating ledger relation) requires repository owner explicit approval and CTO review. Models assigned in this decision do not have Production mutation authority. This authority is not delegated to any model in this document.
+Issue #3678 is complete only when:
 
-## Completion Boundary
+1. the exact six-file boundary is preserved;
+2. the fixed registry loads by module-relative fixed path with lexical and realpath confinement;
+3. current inactive authority returns `ADOPTION_REQUIRED` without loading or inspecting the catalog;
+4. ACTIVE synthetic authority joins registry checks to catalog queries deterministically;
+5. malformed, hostile, mismatched, or unavailable authority maps to `UNAVAILABLE`;
+6. absent target or empty checks in otherwise safe ACTIVE authority maps to `NOT_FOUND`;
+7. resolved checks preserve registry order and are detached and recursively frozen;
+8. no SQL, broker, lock handle, DB, network, Docker/PostgreSQL, Production, provider, or secret action occurs;
+9. focused checks and GitHub Actions Node 20 CI are green;
+10. an independent Local Validator checks the exact PR head before merge.
 
-This child (#3620) is complete when:
-1. The current-state audit accurately classifies all #3458 acceptance criteria against `main` evidence
-2. The next-child decision selects exactly one outcome (`NO_SAFE_IMPLEMENTATION_CHILD_WITHOUT_OPERATOR_INPUT`)
-3. The contract test validates document structure, vocabulary, references, and prohibitions
-4. All authorized files and required verification gates pass on the exact PR head.
-5. Draft PR is created with verification results
+## Verification requirements
 
-## Deferred Work
+Required source verification remains:
 
-| Work Item | When | Depends On |
-| --- | --- | --- |
-| Operator checklist creation | Future child after #3620 merges | #3620 audit acceptance |
-| Production catalog collection retry | After operator provides OI-1, OI-2 | Operator input |
-| Adoption attestation | After Phase B catalog collection + owner review | Phase B + Phase C |
-| Manifest activation | After adoption attestation | Phase D |
-| Ledger bootstrap + migration runner + canonical stream | After manifest activation | Phase E |
-| Clean-database reconstruction + deployment gate + observability + legacy retirement | After canonical stream is established | Canonical stream maturity |
+```text
+node --check scripts/migration-precondition-authority-loader-resolver-core.cjs
+node --check tests/contracts/db-migration-precondition-authority-loader-resolver-contract.test.cjs
+node --test \
+  tests/contracts/db-migration-precondition-authority-loader-resolver-contract.test.cjs \
+  tests/contracts/db-migration-precondition-authority-contract.test.cjs \
+  tests/contracts/db-migration-precondition-registry-source-validation-contract.test.cjs \
+  tests/contracts/db-migration-readonly-query-catalog-contract.test.cjs \
+  tests/contracts/test-layer-classification-contract.test.cjs
+npm run check:migration-provenance
+npm run lint
+npm run build
+git diff --check
+```
 
-Refs #3620.
-Refs #3458 — Keep #3458 OPEN.
-Refs #3425 — Keep #3425 OPEN.
-Refs #3435 — Keep #3435 OPEN.
-Refs #3437 — Keep #3437 OPEN.
-Refs #1882 — Keep #1882 OPEN.
+Node 20 GitHub Actions CI remains the merge gate. Local Node 22 evidence cannot replace Node 20 CI.
+
+## Rollback and forward-fix posture
+
+Rollback is repository-only: revert the Issue #3678 implementation PR. No runtime state, database state, provider state, or Production state is created.
+
+Any deterministic defect found before merge must be corrected by an additive commit. Rebase, reset, amend, force push, history rewrite, assertion weakening, retry increase, sleep, timeout increase, or test skip is not authorized.
+
+## Completion boundary
+
+Issue #3678 ends at the fixed source loader/resolver and selection of Step 5. It does not cross into evaluation, broker execution, lock handling, database access, SQL execution, PostgreSQL rehearsal, environment adoption, or Production evidence.
+
+No database connection was opened, no SQL was executed, no Docker/PostgreSQL action occurred, and no Production or provider environment was accessed.
+
+The PR must remain Draft. Issue #3678 and parent #3657 remain open until an authorized reviewer completes the required gates.
+
+## Work that remains after the selected child
+
+After a separately approved Step 5 child is complete, Steps 6–8 still require independent authority and evidence. Selection of Step 5 does not pre-authorize composition, disposable PostgreSQL rehearsal, or environment adoption.
+
+## Decision completion statement
+
+The migration-precondition authority sequence is now recorded as Steps 1–4 complete, Step 5 selected but not implemented, and Steps 6–8 not authorized. Historical Issue #3644 and Issue #3669 markers are retained only to preserve existing audit evidence.
+
+## Protected issue posture
+
+```text
+Keep #3657 OPEN
+Keep #3458 OPEN
+Keep #3425 OPEN
+Keep #3435 OPEN
+Keep #3437 OPEN
+Keep #1882 OPEN
+```
+
+## References
+
+- Refs #3678.
+- Refs #3657 — Keep OPEN.
+- Refs #3669 — completed.
+- Refs #3675 — merged.
+- Refs #3659 — completed.
+- Refs #3660 — merged.
+- Refs #3658 — completed.
+- Refs #3644.
+- Refs #3458 — Keep OPEN.
+- Refs #3425 — Keep OPEN.
+- Refs #3435 — Keep OPEN.
+- Refs #3437 — Keep OPEN.
+- Refs #1882 — Keep OPEN.

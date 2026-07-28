@@ -1,54 +1,167 @@
 # Project Operating Model
 
-## 목적
+> **Role model:** `WEB_CTO_WEB_DEVELOPER_LOCAL_VALIDATION.md`
+> **UI fast lane:** `UI_RAPID_ITERATION_LANE.md`
+> **Owner approvals:** Issues #3662 and #3664
+> **Hard-governance precedence:** `../ops/MVP_AGENT_GOVERNANCE.md`
 
-이 문서는 LoveBud 프로젝트의 운영 구조, 승인권, 세션 시작 프로토콜, 그리고 문서 TF 상세 구조를 정리하는 canonical 문서입니다.
+## Purpose
 
-이 문서는 상단에 LoveBud 전체 3TF 구조를, 하단에 문서 TF 상세 운영 구조를 정리합니다.
+This document summarizes LoveBud work classification, role allocation, approval rights, and the risk-proportional execution lifecycle.
 
-## LoveBud 전체 3TF 구조
+## Workstream classification
 
-LoveBud TF 구조는 아래 3개로 고정합니다.
+Work may be classified as:
 
-- 문서 TF
-- UI TF
-- 기능 TF
+- documentation;
+- UI;
+- feature/data/backend.
 
-각 TF는 Lead 1명만 둡니다.
+These are workstream labels, not additional executor roles. All work uses:
 
-- Document Lead
-- UI Lead
-- Feature Lead
+```text
+Web CTO
+Web Developer
+Local Validation when required
+```
 
-각 TF의 실행 모델은 아래와 같습니다.
+## Default lifecycle
 
-- 문서 TF: Document Web
-- UI TF: UI Web, UI Local
-- 기능 TF: Feature Web, Feature Local
+### 1. Web CTO contract
 
-전체 보고선은 아래를 따릅니다.
+The Web CTO verifies current remote state and fixes before implementation:
 
-- CTO ← 각 TF Lead ← 각 실행 모델
+- exact base and target;
+- objective and user-visible outcome;
+- risk/UI class;
+- non-goals;
+- allowed/forbidden paths;
+- implementation shape;
+- focused tests;
+- Local Validation requirement;
+- Production verification requirement;
+- protected Issues and stop conditions.
 
-## 공통 운영 원칙
+### 2. Web Developer implementation
 
-### CTO
-- 최종 승인권자입니다.
+A separate Web Developer context:
 
-### 각 TF Lead
-- 소속 TF 구조를 정리합니다.
+- implements on a feature branch;
+- adds focused tests/contracts;
+- creates additive commits and a PR;
+- inspects CI;
+- returns exact SHA/diff/test evidence.
 
-### 각 실행 모델
-- 현재 `main` 기준 문서를 먼저 확인합니다.
+### 3. Local Validation — conditional
 
-## 문서 TF 상세 구조
+Local Validation is used only when the contract requires full-checkout, environment, browser, auth, database, provider, OS, device, or broad regression evidence.
 
-문서 TF 내부 역할선은 아래만 허용합니다.
+It is not automatically inserted between every Web Developer change and Web CTO review.
 
-- CTO
-- Document Lead
-- Document Web
+### 4. Web CTO final review
 
-## 관련 문서
+The original Web CTO independently checks remote diff, exact head, CI classification, required evidence, risks, linkage, and expected-head squash merge readiness.
 
+Judgment:
+
+```text
+READY
+CONDITIONALLY_READY
+NOT_READY
+```
+
+## Execution modes
+
+### Mode A — Direct GitHub implementation
+
+```text
+Web CTO contract
+→ Web Developer branch implementation
+→ CI
+→ Local Validation only if required
+→ Web CTO final review
+```
+
+### Mode B — Patch package
+
+Web Developer supplies changed files, patch, manifest, apply instructions, test plan, and review notes. Local Validation applies and executes it.
+
+### Mode C — Local-environment loop
+
+```text
+Web Developer implementation
+→ Local Validation execution
+→ raw failure evidence
+→ Web Developer correction
+→ re-test
+```
+
+### Mode D — UI Rapid Iteration Lane
+
+#### U0/U1
+
+```text
+Web CTO exact change
+→ Web Developer direct edit
+→ focused checks
+→ Web CTO review/merge
+→ Production visual confirmation
+```
+
+Local Validation is skipped by default.
+
+#### U2
+
+```text
+Web CTO design/UI Lab
+→ Web Developer structural implementation
+→ focused tests
+→ conditional Local Validation
+→ Web CTO review
+```
+
+#### U3
+
+Use the full runtime-sensitive path.
+
+## UI classification
+
+- **U0:** copy-only;
+- **U1:** page-scoped visual-only;
+- **U2:** DOM/layout/loading/responsive/accessibility structure;
+- **U3:** JavaScript/auth/API/data/cache/storage/routing/runtime behavior.
+
+A new Issue, full regression suite, Local Validation, preview, and screenshots are not automatically required for U0/U1. They are selected by actual risk.
+
+## Independent review
+
+The same production change is not implemented and finally approved in the same context. The Web CTO may author design prototypes, exact copy, state contracts, or patch drafts, but a separate Web Developer implements or independently reviews production code.
+
+## Parallel work
+
+Parallel work requires separate branches, non-overlapping file ownership, one active writer per remote branch, and remote-head checks before push. Shared/global files are serialized.
+
+## Approval rights
+
+- **User/owner:** product direction and final product judgment;
+- **Web CTO:** contract, final READY/NOT_READY, expected-head merge;
+- **Web Developer:** implementation and CI correction;
+- **Local Validation:** exact-head execution and raw evidence when required.
+
+## Governance boundary
+
+This model changes role and evidence allocation, not hard blockers. Canonical CI, secret, destructive-state, expected-head squash merge, and #1882 rules remain unchanged.
+
+## Related documents
+
+- [WEB_CTO_WEB_DEVELOPER_LOCAL_VALIDATION.md](./WEB_CTO_WEB_DEVELOPER_LOCAL_VALIDATION.md)
+- [UI_RAPID_ITERATION_LANE.md](./UI_RAPID_ITERATION_LANE.md)
+- [ROLE_SESSION_TEMPLATES.md](./ROLE_SESSION_TEMPLATES.md)
 - [REPORTING_CHAIN.md](./REPORTING_CHAIN.md)
+- [LOCAL_MODEL_WORKFLOW.md](./LOCAL_MODEL_WORKFLOW.md)
+- [VERIFICATION_AND_EVIDENCE.md](./VERIFICATION_AND_EVIDENCE.md)
+- [../ops/MVP_AGENT_GOVERNANCE.md](../ops/MVP_AGENT_GOVERNANCE.md)
+
+Refs #3664.
+Refs #3662.
+Refs #1882 — Keep OPEN.

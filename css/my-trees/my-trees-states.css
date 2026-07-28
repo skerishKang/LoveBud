@@ -1,15 +1,6 @@
-.empty-state { text-align: center; padding: 64px 32px; background: var(--lovetree-empty-state-surface); border-radius: var(--lovetree-empty-state-radius); border: 1px solid var(--lovetree-empty-state-border); box-shadow: var(--lovetree-empty-state-shadow); max-width: 480px; margin: 0 auto; display: flex; flex-direction: column; align-items: center; }
-.empty-state-icon { font-size: 64px; margin-bottom: 24px; display: block; }
-.empty-state h2 { font-size: 1.5rem; font-weight: var(--lovetree-empty-state-heading-weight); color: var(--lovetree-empty-state-heading-text); margin-bottom: 12px; }
-.empty-state p { color: var(--lovetree-empty-state-text); font-size: 1rem; line-height: var(--lovetree-empty-state-body-line-height); margin-bottom: 32px; max-width: 400px; margin-left: auto; margin-right: auto; }
-.btn-create-tree { display: inline-flex; align-items: center; gap: 8px; padding: 14px 32px; background: var(--primary); color: white; border-radius: 99px; font-weight: 700; font-size: 15px; font-family: var(--font-heading); text-decoration: none; border: none; cursor: pointer; box-shadow: var(--lovetree-empty-state-action-shadow); transition: all 0.3s cubic-bezier(0.165, 0.84, 0.44, 1); }
-.btn-create-tree:hover { background: var(--primary-vibrant); transform: translateY(-2px); box-shadow: var(--lovetree-empty-state-action-shadow-hover); }
-.error-state { text-align: center; padding: 80px 40px; background: var(--lovetree-empty-state-surface); border-radius: var(--lovetree-empty-state-radius); border: 1px solid var(--lovetree-empty-state-error-border); box-shadow: var(--lovetree-empty-state-shadow); display: flex; flex-direction: column; align-items: center; gap: 16px; }
-.error-state-icon { font-size: 64px; margin-bottom: 8px; display: block; color: var(--lovetree-empty-state-error-icon); }
-.error-state h2 { font-size: 1.5rem; font-weight: var(--lovetree-empty-state-heading-weight); color: var(--lovetree-empty-state-heading-text); margin-bottom: 8px; }
-.error-state p { color: var(--lovetree-empty-state-text); font-size: 1rem; line-height: var(--lovetree-empty-state-body-line-height); margin-bottom: 24px; max-width: 400px; margin-left: auto; margin-right: auto; }
-.my-trees-create-icon { font-size: 20px; }
+/* ── My Trees state sections ── */
 
+/* Loading state */
 .trees-loading {
     width: 100%;
     flex-direction: column;
@@ -26,16 +17,6 @@
     font-weight: 700;
 }
 
-.spinner {
-    width: 18px;
-    height: 18px;
-    border: 2px solid rgba(144, 73, 81, 0.16);
-    border-top-color: var(--primary);
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-    flex: 0 0 auto;
-}
-
 .trees-skeleton-grid {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -43,18 +24,121 @@
     width: 100%;
 }
 
-/* Display state classes for my-trees page */
+.empty-state {
+    text-align: center;
+    padding: 64px 32px;
+    background: var(--lovetree-empty-state-surface);
+    border-radius: var(--lovetree-empty-state-radius);
+    border: 1px solid var(--lovetree-empty-state-border);
+    box-shadow: var(--lovetree-empty-state-shadow);
+    max-width: 480px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+.empty-state-icon {
+    font-size: 64px;
+    margin-bottom: 24px;
+    display: block;
+}
+.empty-state h2 {
+    font-size: 1.5rem;
+    font-weight: var(--lovetree-empty-state-heading-weight);
+    color: var(--lovetree-empty-state-heading-text);
+    margin-bottom: 12px;
+}
+.empty-state p {
+    color: var(--lovetree-empty-state-text);
+    font-size: 1rem;
+    line-height: var(--lovetree-empty-state-body-line-height);
+    margin-bottom: 32px;
+    max-width: 400px;
+    margin-left: auto;
+    margin-right: auto;
+}
+.btn-create-tree {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 32px;
+    background: var(--primary);
+    color: white;
+    border-radius: 99px;
+    font-weight: 700;
+    font-size: 15px;
+    font-family: var(--font-heading);
+    text-decoration: none;
+    border: none;
+    cursor: pointer;
+    box-shadow: var(--lovetree-empty-state-action-shadow);
+    transition: all 0.3s cubic-bezier(0.165, 0.84, 0.44, 1);
+}
+.btn-create-tree:hover {
+    background: var(--primary-vibrant);
+    transform: translateY(-2px);
+    box-shadow: var(--lovetree-empty-state-action-shadow-hover);
+}
+
+.error-state {
+    text-align: center;
+    padding: 80px 40px;
+    background: var(--lovetree-empty-state-surface);
+    border-radius: var(--lovetree-empty-state-radius);
+    border: 1px solid var(--lovetree-empty-state-error-border);
+    box-shadow: var(--lovetree-empty-state-shadow);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+}
+.error-state-icon {
+    font-size: 64px;
+    margin-bottom: 8px;
+    display: block;
+    color: var(--lovetree-empty-state-error-icon);
+}
+.error-state h2 {
+    font-size: 1.5rem;
+    font-weight: var(--lovetree-empty-state-heading-weight);
+    color: var(--lovetree-empty-state-heading-text);
+    margin-bottom: 8px;
+}
+.error-state p {
+    color: var(--lovetree-empty-state-text);
+    font-size: 1rem;
+    line-height: var(--lovetree-empty-state-body-line-height);
+    margin-bottom: 24px;
+    max-width: 400px;
+    margin-left: auto;
+    margin-right: auto;
+}
+.my-trees-create-icon {
+    font-size: 20px;
+}
+
+/* Long-wait overlay for loading state */
+#state-loading.lt-long-wait .trees-loading-head {
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 1.25rem 1rem;
+    text-align: center;
+    background: var(--surface-container-low, #f5eeea);
+    border-radius: var(--radius-lg, 12px);
+}
+
+/* Display state classes */
 .state-visible { display: flex; }
 .state-visible-block { display: block; }
 .state-hidden { display: none; }
 
-/* Initial display states for my-trees page */
+/* Initial display states */
 #state-loading { display: flex; }
 #state-error { display: none; }
 #state-empty { display: none; }
 #state-loaded { display: none; }
 
-/* Runtime display state classes. Keep selectors ID-scoped so they override initial state IDs. */
+/* Runtime display state classes - ID-scoped for override */
 #treesContainer .state-hidden { display: none; }
 #treesContainer .state-visible { display: flex; }
 #treesContainer .state-visible-block { display: block; }
@@ -62,3 +146,27 @@
 /* Manage summary bar display state */
 .manage-summary-visible { display: flex; }
 .manage-summary-hidden { display: none; }
+
+/* ── Secondary hub degraded state ── */
+.my-trees-hub-degraded {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+    padding: 1rem 1.25rem;
+    background: var(--surface-container, #efe6e1);
+    border-radius: var(--radius-default, 8px);
+    color: var(--on-surface-variant, #6b5e5a);
+    font-size: 0.8125rem;
+    line-height: 1.5;
+}
+
+.my-trees-hub-degraded .lt-degraded-heading {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--on-surface, #3d2e2a);
+    margin: 0;
+}
+
+.my-trees-hub-degraded .lt-degraded-body {
+    margin: 0;
+}

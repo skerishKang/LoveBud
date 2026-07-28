@@ -10,7 +10,7 @@
     <link rel="stylesheet" href="../css/shared/love-tree-card-composition.css?v=20260720-3578-1">
     <link rel="stylesheet" href="../css/search.css?v=20260626-2929-hydrated-hub-parity-1">
     <link rel="stylesheet" href="../css/search/search-preview-media-no-overlays.css?v=20260624-1">
-    <link rel="stylesheet" href="../css/tree-view-mode.css?v=20260721-3608-list-1">
+    <link rel="stylesheet" href="../css/tree-view-mode.css?v=20260725-3655-1">
     <link rel="stylesheet" href="../css/page-transitions.css?v=20260430-1">
     <link rel="stylesheet" href="../css/components/lovebud-ai-panel.css?v=20260616-ai-panel-1">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" />
@@ -57,6 +57,14 @@
                 </div>
             </div>
 
+            <div id="browseLoadingStatus" class="lt-loading-inline" role="status" aria-live="polite" aria-busy="false" hidden>
+                <span class="lt-spinner" aria-hidden="true"></span>
+                <span class="browse-loading-copy"></span>
+                <p class="lt-error-heading" hidden></p>
+                <p class="lt-error-body" hidden></p>
+                <button type="button" class="lt-retry-btn lt-error-retry-btn" hidden></button>
+            </div>
+
             <div id="resultsList" class="reveal-up">
                 <div class="tree-card tree-card-featured search-skeleton-card" aria-hidden="true">
                     <div class="tree-card-media search-skeleton-block"></div>
@@ -92,6 +100,9 @@
                     </div>
                 </div>
             </div>
+            <!-- #3655 Story view navigation mount (Browse only; populated by
+                 js/search/search-story-view.js when Story mode is active) -->
+            <div id="browseStoryNavMount"></div>
         </section>
 
         <aside class="preview-sidebar preview-hub lovetree-calm-right-rail reveal-fade" id="previewSidebar">
@@ -155,7 +166,8 @@
     <script src="../js/search/search-title-helper.js?v=20260421-2"></script>
     <script src="../js/search/search-public-metadata-helper.js?v=20260616-2536-1"></script>
     <script src="../js/search/search-data-adapter.js?v=20260616-2534-1"></script>
-    <script src="../js/tree-view-mode-switcher.js?v=20260621-step2-1"></script>
+    <script src="../js/tree-view-mode-switcher.js?v=20260725-3655-1"></script>
+    <script src="../js/search/search-story-view.js?v=20260725-3655-1"></script>
     <script src="../js/search/search-shared-utils.js?v=20260629-3035-1"></script>
     <script src="../js/search/search-card-fallback.js?v=20260618-2689-1"></script>
     <script src="../js/search/search-card-renderer.js?v=20260713-3482-1"></script>
@@ -188,7 +200,7 @@
     <script src="../js/i18n/i18n-shared.js?v=20260629-5"></script>
     <script src="../js/i18n/i18n-login.js?v=20260419-2"></script>
     <script src="../js/i18n/i18n-intro.js?v=20260421-2"></script>
-    <script src="../js/i18n/i18n-search.js?v=20260508-618-rev1"></script>
+    <script src="../js/i18n/i18n-search.js?v=20260725-3655-1"></script>
     <script src="../js/i18n/i18n-detail.js?v=20260421-5"></script>
     <script src="../js/i18n/i18n-editor.js?v=20260421-9"></script>
     <script src="../js/i18n/i18n-my-trees.js?v=20260421-5"></script>
@@ -206,6 +218,6 @@
      <script src="../js/auth/auth-ui-templates.js?v=20260522-1283"></script>
      <script src="../js/auth.js?v=20260422-3"></script>
      <script src="../js/page-transitions.js?v=20260430-1"></script>
-     <script src="../js/search/search-page-shell-init.js?v=20260618-2689-1"></script>
+     <script src="../js/search/search-page-shell-init.js?v=20260725-3655-1"></script>
 </body>
 </html>

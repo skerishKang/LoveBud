@@ -674,6 +674,59 @@
         applyHubActions(tree, els);
     }
 
+    /* ── Hub degraded state (secondary failure, no focus steal) ── */
+
+    function showDegraded(tree, errorMessage) {
+        var els = getEls();
+        if (!els) return;
+
+        els.panel.classList.remove('is-empty');
+        els.panel.classList.add('is-loaded');
+        if (els.placeholder) els.placeholder.hidden = true;
+        if (els.content) els.content.hidden = false;
+
+        if (els.treeTitle) {
+            els.treeTitle.textContent = String(tree && tree.title || '').trim() || t('default_tree_title', '나의 러브트리');
+        }
+
+        if (els.metaBadge) {
+            while (els.metaBadge.firstChild) els.metaBadge.removeChild(els.metaBadge.firstChild);
+            var degradedIcon = document.createElement('span');
+            degradedIcon.className = 'material-symbols-outlined';
+            degradedIcon.textContent = 'info';
+            els.metaBadge.appendChild(degradedIcon);
+            els.metaBadge.appendChild(document.createTextNode(' ' + i18nHub('', '일부 내용을 불러올 수 없음', 'Some content unavailable')));
+        }
+
+        if (els.flowSection) els.flowSection.hidden = true;
+        if (els.noMoments) els.noMoments.hidden = true;
+
+        // Use degraded pattern: polite, no focus steal
+        if (els.actions && els.summary) {
+            var degradedDiv = document.createElement('div');
+            degradedDiv.className = 'my-trees-hub-degraded';
+            degradedDiv.setAttribute('role', 'status');
+            degradedDiv.setAttribute('aria-live', 'polite');
+
+            var heading = document.createElement('p');
+            heading.className = 'lt-degraded-heading';
+            heading.textContent = i18nHub('', '일부 내용을 불러오지 못했어요', 'Some content could not load');
+
+            var body = document.createElement('p');
+            body.className = 'lt-degraded-body';
+            body.textContent = errorMessage || i18nHub('loading.degraded',
+                '일부 내용을 불러오지 못했지만 나머지는 계속 볼 수 있어요.',
+                'Some content could not load, but the rest is still available.');
+
+            degradedDiv.appendChild(heading);
+            degradedDiv.appendChild(body);
+
+            writeSummary(els.summary, degradedDiv.outerHTML, false);
+        }
+
+        applyHubActions(tree, els);
+    }
+
     /* ── Card selection handler ── */
 
     function onCardClick(tree, options) {
@@ -759,6 +812,7 @@
         showPlaceholder: showPlaceholder,
         showContent: showContent,
         showLoading: showLoading,
+        showDegraded: showDegraded,
         onCardClick: onCardClick,
         getSelectedTree: function () { return _selectedTree; },
         setTreeGridContainer: setTreeGridContainer,

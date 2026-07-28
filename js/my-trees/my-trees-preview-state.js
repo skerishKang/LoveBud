@@ -7,6 +7,7 @@
   var treeGridContainer = null;
   var hydratedTreesById = Object.create(null);
   var hydrationRenderSeq = 0;
+  var hydrationFailuresByTreeId = Object.create(null);
 
   function getTreeKey(tree) {
     if (!tree) return '';
@@ -221,9 +222,12 @@
       var fetchedMemories = await window.apiClient.getMemoriesByTree(treeId);
       if (Array.isArray(fetchedMemories)) {
         writeTreeMemoriesCache(treeId, fetchedMemories);
+        delete hydrationFailuresByTreeId[treeId];
         return deriveCreatedMomentMeta(tree, fetchedMemories);
       }
-    } catch (e) {}
+    } catch (e) {
+      hydrationFailuresByTreeId[treeId] = true;
+    }
 
     return deriveCreatedMomentMeta(tree, []);
   }
@@ -233,6 +237,37 @@
     return Promise.all(trees.map(function (tree) {
       return hydrateTreeWithCreatedMoments(tree);
     }));
+  }
+
+  function getHub() {
+    return window.LoveBudMyTreesPreviewHub || window.LoveTreeMyTreesPreviewHub || null;
+  }
+
+  function removeDegradedNode() {
+    var existing = document.querySelector('.my-trees-hub-degraded');
+    if (existing && existing.parentNode) existing.parentNode.removeChild(existing);
+  }
+
+  function applyHubDegradationIfNeeded(renderSeq) {
+    if (renderSeq !== hydrationRenderSeq) return;
+    var tree = selectedTree;
+    if (!tree) return;
+    var treeId = getTreeId(tree);
+    if (!treeId || !hydrationFailuresByTreeId[treeId]) return;
+    var hub = getHub();
+    if (!hub || typeof hub.showDegraded !== 'function') return;
+    var existing = document.querySelector('.my-trees-hub-degraded');
+    if (existing) return;
+    hub.showDegraded(tree);
+  }
+
+  function clearHubDegradation() {
+    var tree = selectedTree;
+    if (tree) {
+      var treeId = getTreeId(tree);
+      if (treeId) delete hydrationFailuresByTreeId[treeId];
+    }
+    removeDegradedNode();
   }
 
   function getMomentLabel(memory, fallback) {
@@ -351,6 +386,7 @@
           return hydrateTreesWithCreatedMoments(trees).then(function (hydratedTrees) {
             if (renderSeq !== hydrationRenderSeq) return;
             originalRenderTrees(hydratedTrees);
+            applyHubDegradationIfNeeded(renderSeq);
           }).catch(function () {
             if (renderSeq !== hydrationRenderSeq) return;
             originalRenderTrees(trees);
@@ -474,6 +510,7 @@
     if (typeof originalShowContent === 'function') {
       hub.showContent = function (tree) {
         setSelectedTree(tree);
+        removeDegradedNode();
         var result = originalShowContent.call(hub, tree);
         patchHubForCreatedMoments(tree);
         return result;
@@ -514,6 +551,7 @@
 
   var api = {
     getTreeKey: getTreeKey,
+    getTreeId: getTreeId,
     setTreeGridContainer: setTreeGridContainer,
     getTreeGridContainer: getTreeGridContainer,
     setStateModule: setStateModule,
@@ -529,7 +567,11 @@
     markSelectedCard: markSelectedCard,
     hydrateTreesWithCreatedMoments: hydrateTreesWithCreatedMoments,
     patchDataLoader: patchDataLoader,
-    patchPreviewHub: patchPreviewHub
+    patchPreviewHub: patchPreviewHub,
+    applyHubDegradationIfNeeded: applyHubDegradationIfNeeded,
+    clearHubDegradation: clearHubDegradation,
+    removeDegradedNode: removeDegradedNode,
+    getHydrationFailures: function () { return hydrationFailuresByTreeId; }
   };
 
   window.LoveBudMyTreesPreviewState = api;

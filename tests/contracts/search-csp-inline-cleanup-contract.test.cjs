@@ -27,7 +27,7 @@ test('pages/search.html has no inline switcher init script block', () => {
 test('pages/search.html modified scripts have bumped cache query parameters', () => {
     assert.match(searchHtml, /search-card-fallback\.js\?v=20260618-2689-1/, 'search-card-fallback.js version must be bumped');
     assert.match(searchHtml, /search-card-renderer\.js\?v=20260713-3482-1/, 'search-card-renderer.js version must be bumped');
-    assert.match(searchHtml, /search-page-shell-init\.js\?v=20260618-2689-1/, 'search-page-shell-init.js version must be bumped');
+    assert.match(searchHtml, /search-page-shell-init\.js\?v=(?:20260618-2689-1|20260725-3655-1)/, 'search-page-shell-init.js version must be bumped');
 });
 
 // 3) search-card-fallback.js에 onerror= 없음

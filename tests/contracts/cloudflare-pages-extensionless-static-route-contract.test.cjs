@@ -32,6 +32,7 @@ const TARGET_HTML_FILES = [
   'pages/editor.html',
   'pages/my-trees.html',
   'pages/tree.html',
+  'pages/settings.html',
 ];
 
 test('All target .html files exist', () => {
@@ -51,6 +52,7 @@ const EXPECTED_ROOT_301 = [
   '/editor.html /pages/editor 301',
   '/my-trees.html /pages/my-trees 301',
   '/tree.html /pages/tree 301',
+  '/settings.html /pages/settings 301',
 ];
 
 const EXPECTED_ROOT_TRAILING_SLASH_301 = [
@@ -61,6 +63,7 @@ const EXPECTED_ROOT_TRAILING_SLASH_301 = [
   '/editor.html/ /pages/editor 301',
   '/my-trees.html/ /pages/my-trees 301',
   '/tree.html/ /pages/tree 301',
+  '/settings.html/ /pages/settings 301',
 ];
 
 test('root legacy .html → /pages/<name> 301 redirects are preserved', () => {
@@ -103,6 +106,7 @@ const FORBIDDEN_NESTED_301 = [
   '/pages/editor.html /pages/editor 301',
   '/pages/my-trees.html /pages/my-trees 301',
   '/pages/tree.html /pages/tree 301',
+  '/pages/settings.html /pages/settings 301',
 
   '/pages/intro.html/ /pages/intro 301',
   '/pages/login.html/ /pages/login 301',
@@ -111,6 +115,7 @@ const FORBIDDEN_NESTED_301 = [
   '/pages/editor.html/ /pages/editor 301',
   '/pages/my-trees.html/ /pages/my-trees 301',
   '/pages/tree.html/ /pages/tree 301',
+  '/pages/settings.html/ /pages/settings 301',
 ];
 
 test('nested /pages/*.html → /pages/<name> 301 must not exist (would shadow Cloudflare native clean URLs)', () => {

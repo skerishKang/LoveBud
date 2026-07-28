@@ -1,0 +1,237 @@
+/* ============================================================
+   lovetree-loading-states.css
+   Shared presentation-only classes for loading-state primitives.
+
+   This stylesheet provides bounded visual conventions only.
+   It does not:
+     - hide or reveal page regions
+     - own any loading state
+     - target page-specific IDs
+     - implement timers or retries
+     - force identical page layouts
+
+   Skeleton elements using these classes MUST also have
+   `aria-hidden="true"` in their HTML — CSS cannot set ARIA.
+   ============================================================ */
+
+/* ---- Inline loading status ---- */
+
+.lt-loading-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  color: var(--on-surface-variant, #6b5e5a);
+  line-height: 1.4;
+}
+
+.lt-loading-inline .lt-spinner {
+  width: 1rem;
+  height: 1rem;
+  border: 2px solid var(--outline-variant, #d4c9c4);
+  border-top-color: var(--primary, #8b5a4f);
+  border-radius: 50%;
+  animation: lt-spin 0.8s linear infinite;
+  flex-shrink: 0;
+}
+
+/* ---- Compact loading indicator ---- */
+
+.lt-loading-compact {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  font-size: 0.8125rem;
+  color: var(--on-surface-variant, #6b5e5a);
+}
+
+.lt-loading-compact .lt-spinner {
+  width: 1.125rem;
+  height: 1.125rem;
+  border: 2px solid var(--outline-variant, #d4c9c4);
+  border-top-color: var(--primary, #8b5a4f);
+  border-radius: 50%;
+  animation: lt-spin 0.8s linear infinite;
+  flex-shrink: 0;
+}
+
+/* ---- Long-wait message ---- */
+
+.lt-long-wait {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1.25rem 1rem;
+  text-align: center;
+  color: var(--on-surface-variant, #6b5e5a);
+  background: var(--surface-container-low, #f5eeea);
+  border-radius: var(--radius-lg, 12px);
+}
+
+.lt-long-wait .lt-long-wait-icon {
+  font-size: 1.5rem;
+  opacity: 0.7;
+}
+
+.lt-long-wait .lt-long-wait-heading {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--on-surface, #3d2e2a);
+  margin: 0;
+}
+
+.lt-long-wait .lt-long-wait-body {
+  font-size: 0.8125rem;
+  color: var(--on-surface-variant, #6b5e5a);
+  margin: 0;
+  max-width: 24em;
+}
+
+/* ---- Secondary degraded message ---- */
+
+.lt-degraded {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  padding: 1rem 1.25rem;
+  background: var(--surface-container, #efe6e1);
+  border-radius: var(--radius-default, 8px);
+  color: var(--on-surface-variant, #6b5e5a);
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+
+.lt-degraded .lt-degraded-heading {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--on-surface, #3d2e2a);
+  margin: 0;
+}
+
+.lt-degraded .lt-degraded-body {
+  margin: 0;
+}
+
+/* ---- Primary error / retry presentation shell ---- */
+
+.lt-error-shell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 2rem 1.5rem;
+  text-align: center;
+  background: var(--surface, #faf5f2);
+  border: 1px solid var(--outline-variant, #d4c9c4);
+  border-radius: var(--radius-lg, 12px);
+}
+
+.lt-error-shell .lt-error-icon {
+  font-size: 2rem;
+  opacity: 0.8;
+}
+
+.lt-error-shell .lt-error-heading {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--on-surface, #3d2e2a);
+  margin: 0;
+}
+
+.lt-error-shell .lt-error-body {
+  font-size: 0.875rem;
+  color: var(--on-surface-variant, #6b5e5a);
+  margin: 0;
+  max-width: 28em;
+}
+
+.lt-error-shell .lt-retry-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.5rem 1.25rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--on-primary, #ffffff);
+  background: var(--primary, #8b5a4f);
+  border: none;
+  border-radius: var(--radius-default, 8px);
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.lt-error-shell .lt-retry-btn:hover {
+  opacity: 0.9;
+}
+
+.lt-error-shell .lt-retry-btn:focus-visible {
+  outline: 2px solid var(--primary, #8b5a4f);
+  outline-offset: 2px;
+}
+
+/* ---- Skeleton visual convention ---- */
+
+.lt-skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--surface-container, #efe6e1) 25%,
+    var(--surface-container-high, #e5d9d3) 50%,
+    var(--surface-container, #efe6e1) 75%
+  );
+  background-size: 200% 100%;
+  animation: lt-shimmer 1.5s ease-in-out infinite;
+  border-radius: var(--radius-default, 8px);
+  /* Skeleton elements MUST also have aria-hidden="true" in HTML.
+     This class provides the visual treatment only. */
+}
+
+.lt-skeleton-text {
+  height: 0.875rem;
+  border-radius: 4px;
+}
+
+.lt-skeleton-title {
+  height: 1.25rem;
+  width: 60%;
+  border-radius: 4px;
+}
+
+.lt-skeleton-media {
+  aspect-ratio: 16 / 9;
+  width: 100%;
+}
+
+/* ---- Reduced-motion: disable shimmer and spinner ---- */
+
+@keyframes lt-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@keyframes lt-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lt-skeleton {
+    animation: none;
+    background: var(--surface-container, #efe6e1);
+  }
+
+  .lt-loading-inline .lt-spinner,
+  .lt-loading-compact .lt-spinner {
+    animation: none;
+    border-color: var(--outline-variant, #d4c9c4);
+    opacity: 0.6;
+  }
+
+  .lt-long-wait,
+  .lt-degraded,
+  .lt-error-shell {
+    transition: none;
+  }
+}

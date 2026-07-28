@@ -830,3 +830,259 @@
     white-space: nowrap;
     max-width: 100%;
 }
+
+/* ── Browse Story root layout (#3655 foundation) ──────────────────
+ * Opt-in fourth mode for Browse ONLY — My Trees keeps large/compact/list
+ * and has no story selectors here. The column count is driven by
+ * data-story-group-size (set by js/search/search-story-view.js from the
+ * viewport breakpoint and the current group's card count), so the CSS
+ * column count always matches the number of visible cards: no empty
+ * trailing slot for a 2-card group, centered single card for 1.
+ */
+#resultsList[data-tree-view-mode="story"] {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--lovetree-card-grid-gap);
+    align-items: stretch;
+}
+
+#resultsList[data-tree-view-mode="story"][data-story-group-size="2"] {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+#resultsList[data-tree-view-mode="story"][data-story-group-size="1"] {
+    grid-template-columns: minmax(0, 1fr);
+    max-width: 560px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* ── Story visible card geometry ──────────────────────────────────
+ * Cards keep their canonical composition styling (radius, typography,
+ * CTA). The legacy base .tree-card height budget is released so the
+ * meta row / canonical CTA are never clipped inside a Story card;
+ * grid stretch keeps same-group heights visually even.
+ * [hidden] must win over the card's own display value so hidden
+ * cards leave both layout and the accessibility/tab order.
+ */
+#resultsList[data-tree-view-mode="story"] .tree-card {
+    min-width: 0;
+    max-width: 100%;
+    height: auto;
+    min-height: 0;
+}
+
+#resultsList[data-tree-view-mode="story"] .tree-card[hidden] {
+    display: none !important;
+}
+
+/* ── Story navigation ─────────────────────────────────────────────
+ * Previous / local position / next. The position is a LOCAL group index
+ * over the currently loaded results — not a backend page number.
+ */
+.browse-story-navigation {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    width: 100%;
+    margin: 20px auto 4px;
+}
+
+.browse-story-navigation[hidden] {
+    display: none !important;
+}
+
+.browse-story-nav-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 42px;
+    height: 42px;
+    flex: 0 0 auto;
+    border-radius: 999px;
+    border: 1px solid var(--outline-variant);
+    background: rgba(255, 248, 245, 0.86);
+    color: var(--on-surface-variant);
+    cursor: pointer;
+    box-shadow: 0 6px 18px rgba(75, 64, 57, 0.05);
+    transition: background 0.12s ease, color 0.12s ease, box-shadow 0.12s ease;
+}
+
+.browse-story-nav-btn .material-symbols-outlined {
+    font-size: 20px;
+    line-height: 1;
+}
+
+.browse-story-nav-btn:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.92);
+    color: var(--on-surface);
+    box-shadow: 0 8px 20px rgba(75, 64, 57, 0.09);
+}
+
+.browse-story-nav-btn:focus-visible {
+    outline: 2px solid rgba(122, 139, 110, 0.48);
+    outline-offset: 3px;
+}
+
+.browse-story-nav-btn:disabled {
+    opacity: 0.35;
+    cursor: default;
+}
+
+.browse-story-indicator {
+    position: relative;
+    min-width: 78px;
+    text-align: center;
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: 0.14em;
+    color: var(--on-surface);
+    font-variant-numeric: tabular-nums;
+}
+
+.browse-story-indicator-a11y {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* ── Story bidirectional transition (outgoing + incoming simultaneous) ── */
+
+/* Transition stage layout: both layers occupy the same grid cell */
+/* During bidirectional transition, contain overflow and fix height */
+#resultsList[data-tree-view-mode="story"][aria-busy="true"] {
+    position: relative;
+    overflow: hidden;
+    min-height: var(--story-transition-height);
+}
+
+.browse-story-transition-stage {
+    display: grid;
+    grid-template-columns: inherit;
+    gap: inherit;
+    grid-column: 1 / -1;
+    animation-fill-mode: both;
+}
+
+.browse-story-transition-stage[data-story-layer-size="3"] {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.browse-story-transition-stage[data-story-layer-size="2"] {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.browse-story-transition-stage[data-story-layer-size="1"] {
+    grid-template-columns: minmax(0, 560px);
+    justify-content: center;
+}
+
+.browse-story-layer-outgoing {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    animation: browse-story-exit-next 340ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    pointer-events: none;
+}
+
+.browse-story-layer-incoming {
+    animation: browse-story-enter-next 340ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+#resultsList[data-tree-view-mode="story"][data-story-direction="prev"] .browse-story-layer-outgoing {
+    animation-name: browse-story-exit-prev;
+}
+
+#resultsList[data-tree-view-mode="story"][data-story-direction="prev"] .browse-story-layer-incoming {
+    animation-name: browse-story-enter-prev;
+}
+
+/* Outgoing cards inside the wrapper keep their layout */
+.browse-story-layer-outgoing .tree-card {
+    opacity: 1;
+}
+
+.browse-story-layer-incoming .tree-card {
+    opacity: 1;
+}
+
+@keyframes browse-story-exit-next {
+    from { opacity: 1; transform: translateX(0); }
+    to { opacity: 0; transform: translateX(-8%); }
+}
+
+@keyframes browse-story-exit-prev {
+    from { opacity: 1; transform: translateX(0); }
+    to { opacity: 0; transform: translateX(8%); }
+}
+
+@keyframes browse-story-enter-next {
+    from { opacity: 0; transform: translateX(8%); }
+    to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes browse-story-enter-prev {
+    from { opacity: 0; transform: translateX(-8%); }
+    to { opacity: 1; transform: translateX(0); }
+}
+
+/* Legacy single-card entering class (kept for non-transition initial display) */
+#resultsList[data-tree-view-mode="story"] .tree-card.is-story-entering {
+    animation: browse-story-enter-next 340ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+#resultsList[data-tree-view-mode="story"][data-story-direction="prev"] .tree-card.is-story-entering {
+    animation-name: browse-story-enter-prev;
+}
+
+#resultsList[data-tree-view-mode="story"]
+    .browse-story-transition-stage
+    .tree-card.is-story-entering {
+    animation: none;
+    transform: none;
+}
+
+/* ── Story responsive breakpoints ─────────────────────────────────
+ * Safety nets matching the controller breakpoints
+ * (>=1200 → 3, 768–1199 → 2, <768 → 1). The controller sets
+ * data-story-group-size synchronously on breakpoint changes; these rules
+ * only cap the column count if the attribute and viewport ever disagree.
+ */
+@media (max-width: 1199px) {
+    #resultsList[data-tree-view-mode="story"][data-story-group-size="3"] {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 767px) {
+    #resultsList[data-tree-view-mode="story"],
+    #resultsList[data-tree-view-mode="story"][data-story-group-size="2"],
+    #resultsList[data-tree-view-mode="story"][data-story-group-size="3"] {
+        grid-template-columns: minmax(0, 1fr);
+        max-width: 480px;
+        margin-left: auto;
+        margin-right: auto;
+    }
+}
+
+/* ── Story reduced motion ───────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+    #resultsList[data-tree-view-mode="story"] .tree-card.is-story-entering,
+    .browse-story-layer-outgoing,
+    .browse-story-layer-incoming {
+        animation: none;
+        transform: none;
+        opacity: 1;
+    }
+
+    .browse-story-nav-btn {
+        transition: none;
+    }
+}

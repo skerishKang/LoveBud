@@ -461,7 +461,7 @@ test('#3608 large source: My Trees large geometry rules present; cache tokens', 
     css,
     /\.trees-grid\[data-tree-view-mode="large"\][^{]*\.tree-subtitle[^{]*\{[^}]*max-height:\s*2\.4rem/
   );
-  assert.match(searchHtml, /tree-view-mode\.css\?v=20260721-3608(?:-large|-list)?-\d+/);
+  assert.match(searchHtml, /tree-view-mode\.css\?v=(?:20260721-3608(?:-large|-list)?|20260725-3655)-\d+/);
   assert.match(myHtml, /tree-view-mode\.css\?v=20260721-3608(?:-large|-list)?-\d+/);
   assert.doesNotMatch(css, /\[data-tree-view-mode="compact"\][^{]*\{[^}]*font-weight:\s*300/);
 });

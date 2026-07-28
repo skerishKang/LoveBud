@@ -41,6 +41,24 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/db-migration-precondition-authority-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Validates the precondition registry existence, exact top-level key set, format_version, status=ADOPTION_REQUIRED, empty entries, forbidden content (SQL text, URL, env, credential, operator, hostname, query, text, sql), authority contract document section structure, no-precondition semantics (NOT_EVALUATED not PASS), PASS requirement (defined non-empty checks and authoritative success), all four status definitions, UNAVAILABLE>FAIL precedence, fixed registry path, canonical migration cross-validation, unknown migration ID prohibition, query-reference-only registry, SQL-text-in-registry prohibition, future fixed query catalog, caller override prohibition, manifest unchanged assertion, manifest adapter unchanged assertion, exact future dependency order, absence of Closes/Fixes/Resolves #1882, protected issue references, and registry-document status consistency without database, network, SQL, Docker, or Production access (#3657).",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/db-migration-precondition-authority-loader-resolver-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Validates the precondition authority loader-resolver contract: fixed factory/public key set, frozen detached projections, read-once-parse-once loading, fixed path confinement, ACTIVE/ADOPTION_REQUIRED status resolution, registry-catalog consistency, PROHIBITED/empty/missing query handling, stable check order, and hostile Proxy/accessor/trap/parse failure handling. Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; executes no SQL, opens no database, uses no network, no SQL execution, no Docker/PostgreSQL container, no Production or staging system, no provider credential, and no secret (#3678).",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/db-migration-readonly-query-catalog-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Validates the fixed inactive read-only precondition query catalog, normative authority separation, future ACTIVE entry shape, BOOLEAN_SINGLE_ROW result contract, implementation sequence, prohibited runtime and dynamic authority, exact changed-file boundary, and protected issue references without database, network, SQL execution, Docker, PostgreSQL, or Production access (#3669).",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/api-body-size-limit-contract.test.cjs",
       "layer": "EXECUTED_FAKE",
       "rationale": "Reads production module source and executes it in a local process with injected fake/mock/stub dependencies (e.g., vm context with fake DOM or mocked fetch/localStorage); no real external system or production resource used.",
@@ -414,6 +432,12 @@
     },
     {
       "path": "tests/contracts/card-surface-parity-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/ci-test-group-registry-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
       "capabilities": []
@@ -4537,6 +4561,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/db-migration-source-validation-adapter-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Exercises scripts/migration-source-validation-adapter-core.cjs with injected synthetic fixtures, real default adapter against committed inactive sources, and temp-filesystem isolated repositories (B4/B5/B6 malformed fixed files, I1 per-file read counts); asserts frozen public surface, PASS/FAIL/UNAVAILABLE vocabulary, raw malformed JSON parse tests, loader/validator status mapping, verified realTarget read, safe factory config descriptor snapshot including null config rejection and non-enumerable dependency rejection, Promise identity via node:util types.isPromise (Proxy-wrapped Promise get trap 0, accessor/data-property thenable not assimilated), safe loader result snapshot (reversed key order accepted, non-enumerable rejection), safe validator result snapshot (genuine Promise, Proxy-wrapped result, thenable, non-enumerable ok), call-envelope validation, result sanitization, and orchestrator compatibility; no SQL, database, Docker, network, secret, or manifest mutation.",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/db-destructive-ddl-approval-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Exercises scripts/migration-provenance-core.cjs (detectDestructiveOperations and validateMigrationManifest) against synthetic .sql fixtures created in the OS temporary directory (removed on completion; none committed to the repository) to assert the static destructive operation vocabulary (DROP_TABLE, TRUNCATE_TABLE, DROP_COLUMN, ALTER_COLUMN_TYPE, SET_NOT_NULL, DROP_CONSTRAINT, DROP_INDEX, DROP_FUNCTION, DROP_TRIGGER, DROP_TYPE, DROP_POLICY, FK_CASCADE_EXPANSION), the actual-vs-declared declaration rule (missing/partial/unknown/duplicate/spurious all fail closed), risk_class=DESTRUCTIVE enforcement, and approval-reference policy (empty and placeholder approvals rejected; real references accepted). Does not connect to any database, execute SQL, add a canonical migration, or activate the canonical stream.",
@@ -4552,6 +4582,54 @@
       "path": "tests/contracts/db-canonical-runner-orchestrator-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Exercises scripts/migration-runner-orchestrator-core.cjs (runCanonicalMigration) using only synthetic JavaScript dependency mocks (no database, no PostgreSQL, no Docker, no SQL fixture, no network, no filesystem write, no environment secret) to assert the dependency-injected async orchestration: exact dependency call order, runtime-metadata and 11-dependency validation, source/manifest/lock/ledger/precondition fail-closed gates, protocol preflight/completion binding, NOOP behavior, execution/completion handling, ledger append authorization with the exact 7-field record, append/release failure handling and recovery escalation, lock released exactly once after ACQUIRED, and sanitized results (no lock handle, raw manifest, ledger record, SQL, error message/stack, hostname/URL, credential, or operator identity). Does not implement a real runner or connect to any database.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/db-postgres-session-lock-adapter-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Exercises scripts/migration-postgres-session-lock-adapter-core.cjs (createPostgresMigrationSessionLockAdapter and the returned acquireAdvisoryLock/checkAdvisoryLock/releaseAdvisoryLock) using only synthetic JavaScript session/query mocks (no pg, no PostgreSQL engine, no DB connection, no lock acquired, no actual SQL execution, no network, no filesystem write, no environment secret; SQL present only as contract strings) to assert the fixed two-int lock key pair, exact named/parameterized acquire/check/release queries, pinned-session lifecycle, non-blocking acquisition, current-session pg_locks verification, opaque frozen handle opacity, exactly-once pool release, malformed-evidence classification, orchestrator-compatible status mapping, and sanitized status-only results. Does not connect to any database or acquire any real lock; no Production mutation.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/db-postgres-ledger-adapter-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Exercises scripts/migration-postgres-ledger-adapter-core.cjs (createPostgresMigrationLedgerAdapter and the returned readLedger/appendLedgerRecord) using only synthetic JavaScript query mocks (no pg, no PostgreSQL engine, no DB connection, no actual SQL execution, no real ledger read/write, no network, no filesystem write, no environment secret; SQL present only as contract strings) to assert the fixed schema_migration_ledger relation and fixed seven-field order, the exact named read query lovebud-migration-ledger-read-v1 (ordered SELECT, no SELECT *, no interpolation, no offset/limit) and the append-only named query lovebud-migration-ledger-append-v1 (INSERT ... ON CONFLICT (migration_id) DO NOTHING RETURNING migration_id, content_checksum; no UPDATE/UPSERT-DO-UPDATE/DELETE/TRUNCATE/retry/multi-row), frozen query definitions, read success (frozen [] for empty ledger, frozen seven-field clones, order preservation, raw-reference isolation, all allowed transaction outcomes), read fixed sanitized rejection POSTGRES_LEDGER_READ_UNAVAILABLE (never [] on failure) across invalid handle/broker throw-reject/malformed QueryResult/malformed row/Proxy traps, append input validation with pre-query snapshot and caller-mutation resistance (zero queries on invalid input -> FAILED), append evidence mapping (exact one matching row -> APPENDED, rows:[] -> FAILED, throw/reject/malformed/multi-row/wrong-id-or-checksum/extra-field/Proxy-trap -> UNKNOWN), orchestrator compatibility via the real runCanonicalMigration, opaque lockHandle opacity, mutation resistance, and sanitized status-only results. Does not connect to any database or perform any real ledger read/write; no Production mutation.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/browse-story-view-foundation-3655-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Reads production sources (js/tree-view-mode-switcher.js, js/search/search-story-view.js, js/search/search-page-shell-init.js, js/my-trees/my-trees-page-bootstrap.js, pages/search.html, css/tree-view-mode.css, js/i18n/i18n-search.js, docs/product/lovebud-browse-story-view-foundation-3655-contract.md) and executes the switcher in a local process with an injected fake localStorage/DOM sandbox to lock #3655 surface-specific mode capability (Browse four modes incl. stored story restore; My Trees three modes with story rejected and storage never rewritten), base-mode backward compatibility, frozen exported mode arrays, Story controller boundaries (no fetch/API/DB/auth capability, no framework, no autoplay or looping timer, no server-pagination semantics, no card HTML generation, no per-card listeners), minimal nav contract (previous/next/local position only, no numbered pages), Browse-scoped CSS selectors, reduced-motion CSS, i18n ko/en keys, and parent/child issue references. No real browser, network, or production resource.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/browse-story-view-foundation-3655-browser-contract.test.cjs",
+      "layer": "EXECUTED_REAL_LOCAL",
+      "rationale": "Executes real production modules js/tree-view-mode-switcher.js, js/search/search-story-view.js, js/search/search-card-renderer.js, js/search/search-card-events.js and js/my-trees/my-trees-page-bootstrap.js in Playwright Chromium against the production CSS chains css/global.css, css/shared/love-tree-card-composition.css, css/search.css, css/my-trees.css and css/tree-view-mode.css served by a local HTTP server. Asserts #3655 Story foundation behaviour with measured geometry and interaction: Browse four-mode capability with stored story restore and compact defaults, My Trees three-mode capability rejecting stored story without rewrite, responsive local group sizes 3/2/1 at 1440x900 / 768x1024 / 375x812 over 7 loaded cards with ordered local sequence, previous/next boundary states, local position indicator, result replacement reset/clamp, skeleton and empty nav hiding, one-card coherence, full restore on mode exit, ArrowLeft/ArrowRight/Home/End keyboard semantics with editable-target and modifier guards, single-movement keydowns, canonical single-CTA card activation (click/Enter/Space) to view.html?treeId= exactly once, hidden-card tab-order exclusion, no duplicate delegated card events, mobile horizontal containment, nav containment inside the main column, and reduced-motion animation removal. Local loaded-results grouping only; no server pagination, no production write/auth/API/DB mutation.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/db-migration-canonical-manifest-adapter-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Exercises scripts/migration-canonical-manifest-adapter-core.cjs (createMigrationCanonicalManifestAdapter and the returned loadManifest) using ONLY synthetic JavaScript mocks and isolated temp-filesystem fixtures (no pg, no PostgreSQL engine, no DB connection, no SQL execution, no network, no environment secret; SQL present only as contract strings with computed checksums) to assert the fixed single-file canonical manifest path (db/migration-provenance/canonical-migrations.json), the existing validateMigrationManifest policy delegation, exact six-field runner-only projection (id, checksum, depends_on, transaction_mode, risk_class, destructive_operations), full manifest order preservation, target-neutral behavior, deep detached frozen output, fixed public error constants (MIGRATION_CANONICAL_MANIFEST_UNAVAILABLE, MIGRATION_CANONICAL_MANIFEST_ADAPTER_INVALID_DEPENDENCY), stack/cause/path sanitization, verified realTarget direct read via realpath confinement, exactly-once read/parse/validator counts, genuine Promise only boundary (Proxy-wrapped Promise and arbitrary thenable rejection), descriptor snapshot boundaries for factory config and call envelope, Promise/Proxy/thenable hostile evidence, ADOPTION_REQUIRED inactive manifest acceptance, and orchestrator compatibility via the real runCanonicalMigration. No DB, SQL, PostgreSQL, Docker, Production, provider, or secret capability. Temp filesystem fixtures with copied adapter and provenance-core modules; default adapter validated against the current repository committed manifest.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/db-migration-precondition-registry-source-validation-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Validates the precondition registry schema (format_version, status=ADOPTION_REQUIRED/ACTIVE, entries), entry/check structure, forbidden authority keys, duplicate migration_id/check_id, boolean expected only, getter/Proxy trap safety, null/undefined safety, and cross-binding with canonical migration manifest (ADOPTION_REQUIRED to ADOPTION_REQUIRED, ACTIVE one-to-one, orphan/missing entry rejection) without database, network, SQL, Docker, or Production access (#3659).",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/shared-loading-state-primitives-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Validates css/global/lovetree-loading-states.css class families, reduced-motion behavior, skeleton aria-hidden convention, error/degraded distinction, import ordering, and 10 shared KO/EN i18n keys; enforces absence of page-specific selectors, runtime behavior, and prohibited functions (#3691).",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/browse-my-trees-staged-loading-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes production createBrowseLoadingManager and createMyTreesLoadingManager in node:vm with fake DOM and deterministic fake clock: timed state transitions (0-499ms hidden, 500ms indicator, 1800ms/2000ms copy, 8s long-wait, 15s error/retry), operation-token stale-response protection, timer cleanup on READY/EMPTY/ERROR, My Trees visible DOM-stage transitions via handleLoadingStage, hub degradation wiring (hydration reject → showDegraded, duplicate prevention, stale rejection protection, recovery on success, showContent clears degraded node), and retry button event dispatch. Source-structure checks (pagehide, retry listener, incremental path, init order) are labeled SOURCE_STATIC within the file. No real setTimeout, network, database, browser, or production resource is used (#3693).",
       "capabilities": []
     }
   ],
@@ -4691,12 +4769,6 @@
         "child_process",
         "filesystem"
       ]
-    },
-    {
-      "path": "tests/contracts/tree-card-composition-3578-contract.test.cjs",
-      "layer": "EXECUTED_FAKE",
-      "rationale": "Executes the shared tree-card-composition.js in a local vm with fake DOM, validates Browse and My Trees surface adapters call the shared helper, common slot structure, three-state metric semantics, surface-specific differences (visibility badge, public metadata, no edit), XSS safety, and fail-closed on missing load order. No real browser/network/DB/production resource used.",
-      "capabilities": []
     },
     {
       "path": "tests/db-engine/trees-schema-foothold-postgres.test.cjs",

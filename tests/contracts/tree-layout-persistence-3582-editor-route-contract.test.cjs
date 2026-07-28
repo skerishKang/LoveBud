@@ -361,26 +361,45 @@ async function installOwnerAuthAndApi(page, { seedLayoutA = null, seedLayoutB = 
 
 async function fireAuth(page) {
   await page.waitForFunction(
-    () =>
-      !!(window.LoveBudAuthCallbacks && typeof window.LoveBudAuthCallbacks.fireAuthReadyCallbacks === 'function') ||
-      (Array.isArray(window.__onAuthReadyCallbacks) && window.__onAuthReadyCallbacks.length > 0) ||
-      !!(window.LoveBudAuthBootstrap && window.LoveBudAuthBootstrap.ready),
+    () => {
+      const callbacks = Array.isArray(window.__onAuthReadyCallbacks)
+        ? window.__onAuthReadyCallbacks
+        : [];
+      return callbacks.length > 0 || typeof window.onAuthReady === 'function';
+    },
     { timeout: 20000 }
   );
-  await page.evaluate((user) => {
-    if (window.LoveBudAuthCallbacks && typeof window.LoveBudAuthCallbacks.fireAuthReadyCallbacks === 'function') {
+  return page.evaluate((user) => {
+    const callbacks = Array.isArray(window.__onAuthReadyCallbacks)
+      ? window.__onAuthReadyCallbacks
+      : [];
+    let authFirePath;
+
+    if (
+      callbacks.length > 0 &&
+      window.LoveBudAuthCallbacks &&
+      typeof window.LoveBudAuthCallbacks.fireAuthReadyCallbacks === 'function'
+    ) {
       window.LoveBudAuthCallbacks.fireAuthReadyCallbacks(user);
-    }
-    if (Array.isArray(window.__onAuthReadyCallbacks)) {
-      window.__onAuthReadyCallbacks.forEach((cb) => {
+      authFirePath = 'registry';
+    } else if (callbacks.length > 0) {
+      callbacks.slice().forEach((callback) => {
         try {
-          cb(user);
+          callback(user);
         } catch (_) {}
       });
+      authFirePath = 'callback-array';
+    } else if (typeof window.onAuthReady === 'function') {
+      window.onAuthReady(user);
+      authFirePath = 'legacy-onAuthReady';
+    } else {
+      throw new Error('EDITOR_AUTH_CALLBACK_NOT_REGISTERED');
     }
+
     try {
       window.dispatchEvent(new CustomEvent('lovebud-auth-ready', { detail: { user } }));
     } catch (_) {}
+    return authFirePath;
   }, OWNER_USER);
 }
 
@@ -392,7 +411,11 @@ async function waitCanonicalEditorReady(page, { expectEdit = false, expectFree =
     () => !!(window.LoveBudEditorInteractionMode && document.getElementById('canvasArea')),
     { timeout: 30000 }
   );
-  await fireAuth(page);
+  const authFirePath = await fireAuth(page);
+  assert.ok(
+    ['registry', 'callback-array', 'legacy-onAuthReady'].includes(authFirePath),
+    `unexpected Editor auth callback path: ${authFirePath}`
+  );
 
   await page.waitForFunction(
     () => {
