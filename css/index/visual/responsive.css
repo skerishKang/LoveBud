@@ -178,4 +178,15 @@
         right: auto;
         left: -28px;
     }
+
+    /* Mobile spotlight (#3625): reduce movement distance and scale
+       since cards are stacked vertically. The card moves horizontally
+       toward center with a smaller scale increase. */
+    .growth-stage-card.is-spotlight {
+        --spotlight-scale: 1.15;
+    }
+
+    .growth-stage-card.is-spotlight .growth-stage-card-media {
+        filter: brightness(1.04) contrast(1.02);
+    }
 }

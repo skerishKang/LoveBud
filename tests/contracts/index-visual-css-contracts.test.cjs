@@ -42,8 +42,8 @@ test('index.html references the original index-visual.css file and version query
   // Check exact link reference tag for this issue's version
   assert.match(
     html,
-    /href="css\/index-visual\.css\?v=20260722-3624-1"/,
-    'index.html must load css/index-visual.css?v=20260722-3624-1'
+    /href="css\/index-visual\.css\?v=20260724-3625-1"/,
+    'index.html must load css/index-visual.css?v=20260724-3625-1'
   );
 });
 

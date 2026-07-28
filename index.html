@@ -8,7 +8,7 @@
     <link rel="icon" href="/favicon.ico" sizes="32x32">
     <link rel="stylesheet" href="css/global.css?v=20260618-2700-1">
     <link rel="stylesheet" href="css/index.css?v=20260618-2700-1">
-    <link rel="stylesheet" href="css/index-visual.css?v=20260722-3624-1">
+    <link rel="stylesheet" href="css/index-visual.css?v=20260724-3625-1">
     <link rel="stylesheet" href="css/page-transitions.css?v=20260430-1">
     <link rel="stylesheet" href="css/tree-view-mode.css?v=20260621-step2-1">
     <link rel="stylesheet" href="css/components/lovebud-ai-panel.css?v=20260616-ai-panel-1">
@@ -45,19 +45,20 @@
                     </div>
                 </div>
 
-                <div class="home-v3-collage reveal reveal-scale" data-hero-cycle="active" data-hero-artist="bts">
+                <div class="home-v3-collage reveal reveal-scale" data-hero-spotlight="active">
                     <div class="home-v3-growth-stage" data-stage-state="pending">
                         <div class="home-v3-halo"></div>
 
-                        <p class="growth-stage-caption" data-i18n="home.v3.growth.caption" aria-live="polite">순간 하나가 이어지고, 감정의 가지가 자라나요</p>
+                        <p class="growth-stage-caption" data-i18n="home.v3.growth.caption" aria-live="polite">세대를 건너 이어진 네 개의 무대</p>
 
                         <div class="growth-stage-network">
                             <div class="growth-stage-network-core" aria-hidden="true">
                                 <span class="growth-stage-network-rail"></span>
                                 <span class="growth-stage-network-hub"></span>
                             </div>
+                            <div class="growth-stage-spotlight-zone" aria-hidden="true"></div>
 
-                        <article class="growth-stage-card featured" data-role="featured" data-card-index="0">
+                        <article class="growth-stage-card featured" data-role="featured" data-card-index="0" data-artist-key="rescene">
                             <div class="growth-stage-card-content">
                                 <div class="growth-stage-card-media">
                                     <span class="growth-stage-card-fallback" aria-hidden="true"></span>
@@ -69,11 +70,11 @@
                                 <a class="growth-stage-card-link" target="_blank" rel="noopener noreferrer" data-youtube-watch="true">
                                     <span data-i18n="home.v3.youtube.attribution">YouTube에서 보기</span>
                                 </a>
-                                <span class="growth-stage-card-channel" data-i18n="home.v3.artist.channel.bts">공식 채널 · HYBE LABELS</span>
+                                <span class="growth-stage-card-channel" data-i18n="home.v3.artist.channel.rescene">공식 채널 · RESCENE</span>
                             </div>
                         </article>
 
-                            <article class="growth-stage-card supporting one" data-role="supporting" data-card-index="1">
+                            <article class="growth-stage-card supporting one" data-role="supporting" data-card-index="1" data-artist-key="bts">
                                 <div class="growth-stage-card-content">
                                     <div class="growth-stage-card-media">
                                         <span class="growth-stage-card-fallback" aria-hidden="true"></span>
@@ -89,7 +90,7 @@
                                 </div>
                             </article>
 
-                            <article class="growth-stage-card supporting two" data-role="supporting" data-card-index="2">
+                            <article class="growth-stage-card supporting two" data-role="supporting" data-card-index="2" data-artist-key="blackpink">
                                 <div class="growth-stage-card-content">
                                     <div class="growth-stage-card-media">
                                         <span class="growth-stage-card-fallback" aria-hidden="true"></span>
@@ -101,11 +102,11 @@
                                     <a class="growth-stage-card-link" target="_blank" rel="noopener noreferrer" data-youtube-watch="true">
                                         <span data-i18n="home.v3.youtube.attribution">YouTube에서 보기</span>
                                     </a>
-                                    <span class="growth-stage-card-channel" data-i18n="home.v3.artist.channel.bts">공식 채널 · HYBE LABELS</span>
+                                    <span class="growth-stage-card-channel" data-i18n="home.v3.artist.channel.blackpink">공식 채널 · BLACKPINK</span>
                                 </div>
                             </article>
 
-                            <article class="growth-stage-card supporting three" data-role="supporting" data-card-index="3">
+                            <article class="growth-stage-card supporting three" data-role="supporting" data-card-index="3" data-artist-key="cortis">
                                 <div class="growth-stage-card-content">
                                     <div class="growth-stage-card-media">
                                         <span class="growth-stage-card-fallback" aria-hidden="true"></span>
@@ -117,7 +118,7 @@
                                     <a class="growth-stage-card-link" target="_blank" rel="noopener noreferrer" data-youtube-watch="true">
                                         <span data-i18n="home.v3.youtube.attribution">YouTube에서 보기</span>
                                     </a>
-                                    <span class="growth-stage-card-channel" data-i18n="home.v3.artist.channel.bts">공식 채널 · HYBE LABELS</span>
+                                    <span class="growth-stage-card-channel" data-i18n="home.v3.artist.channel.cortis">공식 채널 · BIGHIT MUSIC</span>
                                 </div>
                             </article>
                         </div>
@@ -139,7 +140,7 @@
     <script src="js/firebase-config.js?v=20260417-31"></script>
     <script src="js/i18n/i18n-core.js?v=20260421-1"></script>
     <script src="js/i18n/i18n-shared.js?v=20260512-1107-1"></script>
-    <script src="js/i18n/i18n-home-v3.js?v=20260722-3624-1"></script>
+    <script src="js/i18n/i18n-home-v3.js?v=20260724-3625-1"></script>
     <script src="js/i18n/i18n-login.js?v=20260419-2"></script>
     <script src="js/i18n/i18n-intro.js?v=20260421-2"></script>
     <script src="js/i18n/i18n-search.js?v=20260421-1"></script>
@@ -161,6 +162,6 @@
     <script src="js/auth.js?v=20260422-3"></script>
     <script src="js/page-shell.js?v=20260419-1"></script>
     <script src="js/page-transitions.js?v=20260430-1"></script>
-    <script src="js/index-inline-init.js?v=20260722-3624-1"></script>
+    <script src="js/index-inline-init.js?v=20260724-3625-1"></script>
 </body>
 </html>

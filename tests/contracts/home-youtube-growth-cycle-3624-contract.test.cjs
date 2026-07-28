@@ -424,24 +424,22 @@ console.log('✓ 19: no Closes/Fixes/Resolves for protected issues');
 console.log('✓ 21: thumbnail 16:9 — maxres primary, mqdefault fallback, no hqdefault');
 
 // ============================================================
-// 22. advanceArtist uniqueness — rotation preserves 4 unique indices
+// 22. Fixed artist mapping — each card permanently represents one artist
 // ============================================================
 {
-  // videoIndices must start as [0, 1, 2, 3] (four unique slots).
-  assert.ok(js.includes('videoIndices: [0, 1, 2, 3]'),
-    'videoIndices must start as [0, 1, 2, 3] for 4 unique card slots');
-  // advanceArtist must rotate using modulo so uniqueness is preserved.
-  assert.ok(js.includes('% prevArtist.videos.length'),
-    'advanceArtist must rotate indices using modulo prevArtist.videos.length');
-  // The rotation must NOT use a fixed [0,0,0,0] or all-same pattern.
-  assert.ok(!js.includes('videoIndices: [0, 0, 0, 0]'),
-    'videoIndices must NOT be [0, 0, 0, 0] (would duplicate video 0 on all cards)');
+  // FIXED_CARD_MAP must exist with 4 entries (one per card slot).
+  assert.ok(js.includes('FIXED_CARD_MAP'),
+    'JS must define FIXED_CARD_MAP for the mixed-artist showcase');
+  // Each card must map to a distinct artist (no duplicate artist on all cards).
+  assert.ok(js.includes('artistIndex: 3') && js.includes('artistIndex: 0')
+    && js.includes('artistIndex: 1') && js.includes('artistIndex: 2'),
+    'FIXED_CARD_MAP must cover all 4 artists (BTS=0, BLACKPINK=1, CORTIS=2, RESCENE=3)');
   // Each artist must have exactly 4 videos (contract for uniqueness).
   const videoIdMatches = js.match(/id:\s*'([A-Za-z0-9_-]{8,15})'/g) || [];
   assert.ok(videoIdMatches.length >= 16,
     'All 4 artists must have 4 videos each (16 total) for uniqueness guarantee');
 }
-console.log('✓ 22: advanceArtist uniqueness — [0,1,2,3] rotation, 4 videos per artist');
+console.log('✓ 22: fixed artist mapping — FIXED_CARD_MAP covers all 4 artists, 4 videos per artist');
 
 // ============================================================
 // 23. Orphan description — JS removes .home-v3-copy
@@ -590,9 +588,11 @@ console.log('✓ 28: no object-fit: cover on hero thumbnails');
   assert.ok(js.includes("card.querySelector('strong')"),
     'modal must read the visible title from the clicked card');
 
-  // (e) Never open the modal mid-flip (race guard against stagger timeouts).
-  assert.ok(js.includes('if (state.flipping) return;'),
-    'media click must bail out while state.flipping is true');
+  // (e) Never open the modal mid-animation (race guard). The spotlight showcase
+  //     does not use card flips, so the guard checks the spotlight sub-phase
+  //     instead — if a card is mid-spotlight, the click is deferred.
+  assert.ok(js.includes('spotlightCardIndex'),
+    'media click must be aware of spotlight state (spotlightCardIndex)');
 
   // (f) In-card playback is fully removed.
   assert.ok(!js.includes('promoteToFeatured'),
@@ -675,11 +675,11 @@ console.log('✓ 29: modal player — 4 play buttons, youtube-nocookie modal, da
   assert.ok(errorHandler[0].includes("media.classList.add('has-thumbnail-error')"),
     'final error branch must add has-thumbnail-error when no img remains');
 
-  // (8) Modal / dataset source-of-truth / flip guard contracts are maintained.
+  // (8) Modal / dataset source-of-truth / animation guard contracts are maintained.
   assert.ok(js.includes("card.getAttribute('data-video-id')"),
     'modal must still read the video id from the clicked card dataset');
-  assert.ok(js.includes('if (state.flipping) return;'),
-    'media click must still bail out while state.flipping is true');
+  assert.ok(js.includes('spotlightCardIndex'),
+    'media click must still be aware of spotlight state');
   assert.ok(js.includes('youtube-nocookie.com/embed'),
     'modal must still embed via youtube-nocookie.com/embed');
 }

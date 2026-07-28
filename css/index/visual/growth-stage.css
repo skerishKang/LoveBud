@@ -194,6 +194,69 @@
 }
 
 /* ============================================================
+   Spotlight zone: center focus area for mixed-artist showcase (#3625).
+   Cards move here during spotlight sequence — not a visible element
+   but a coordinate reference for JS-driven transforms. The zone sits
+   at the visual center of the growth stage, above the caption safe
+   zone and below the hub.
+   ============================================================ */
+.growth-stage-spotlight-zone {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    pointer-events: none;
+    z-index: 1;
+}
+
+/* ============================================================
+   Spotlight card states.
+   is-spotlight: card is moving to / held at the center focus zone.
+     Transform is set by JS via CSS custom properties so each card
+     can have a different delta based on its grid position.
+     !important overrides the data-stage-state transforms so the card
+     moves from its completed position (translateY(0) scale(1)).
+   is-spotlight-return: card is moving back to its original grid slot.
+     Both classes are removed after return animation completes.
+   ============================================================ */
+.growth-stage-card.is-spotlight {
+    --spotlight-scale: 1.28;
+    transform: translate(var(--spotlight-dx, 0), var(--spotlight-dy, 0)) scale(var(--spotlight-scale)) !important;
+    z-index: 35 !important;
+    box-shadow: 0 40px 90px rgba(80, 61, 58, 0.32) !important;
+    pointer-events: auto !important;
+    transition: transform 0.55s cubic-bezier(0.22, 0.8, 0.3, 1),
+                box-shadow 0.55s ease,
+                opacity 0.55s ease;
+}
+
+.growth-stage-card.is-spotlight .growth-stage-card-content {
+    opacity: 1;
+}
+
+.growth-stage-card.is-spotlight-return {
+    transform: translate(0, 0) scale(1) !important;
+    z-index: 20 !important;
+    box-shadow: 0 22px 46px rgba(80, 61, 58, 0.14) !important;
+    transition: transform 0.55s cubic-bezier(0.22, 0.8, 0.3, 1),
+                box-shadow 0.55s ease;
+}
+
+/* Card brightening during spotlight */
+.growth-stage-card.is-spotlight .growth-stage-card-media {
+    filter: brightness(1.06) contrast(1.04);
+    transition: filter 0.55s ease;
+}
+
+/* Connector dimming while the card is spotlighted (to keep focus on
+   the center card). Other cards' connectors stay at full opacity. */
+.growth-stage-card.is-spotlight::before,
+.growth-stage-card.is-spotlight::after {
+    opacity: 0.3 !important;
+}
+
+/* ============================================================
    Card layer (front). One featured + three supporting.
    Node SHELL layout is fixed (does not move between artists); only the
    inner .growth-stage-card-content fades during the artist swap.

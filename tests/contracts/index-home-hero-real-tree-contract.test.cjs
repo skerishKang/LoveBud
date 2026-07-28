@@ -75,20 +75,20 @@ test('Contract: index-inline-init.js — no community tree API', () => {
 test('Contract: index.html query param cache-bust values', () => {
   const html = fs.readFileSync(HTML_PATH, 'utf8');
 
-  // 9. index.html CSS/JS cache-bust are 20260722-3624-1 (this issue)
+  // 9. index.html CSS/JS cache-bust are 20260724-3625-1 (this issue)
   assert.match(
     html,
-    /href="css\/index-visual\.css\?v=20260722-3624-1"/,
-    'index.html css/index-visual.css version must be 20260722-3624-1'
+    /href="css\/index-visual\.css\?v=20260724-3625-1"/,
+    'index.html css/index-visual.css version must be 20260724-3625-1'
   );
   assert.match(
     html,
-    /src="js\/index-inline-init\.js\?v=20260722-3624-1"/,
-    'index.html js/index-inline-init.js version must be 20260722-3624-1'
+    /src="js\/index-inline-init\.js\?v=20260724-3625-1"/,
+    'index.html js/index-inline-init.js version must be 20260724-3625-1'
   );
   assert.match(
     html,
-    /src="js\/i18n\/i18n-home-v3\.js\?v=20260722-3624-1"/,
-    'index.html js/i18n/i18n-home-v3.js version must be 20260722-3624-1'
+    /src="js\/i18n\/i18n-home-v3\.js\?v=20260724-3625-1"/,
+    'index.html js/i18n/i18n-home-v3.js version must be 20260724-3625-1'
   );
 });
