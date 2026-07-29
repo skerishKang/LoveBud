@@ -449,11 +449,13 @@ test('29. Story card hierarchy refinements present (gap, media, title)', () => {
     assert.match(viewModeCss, /#resultsList\[data-tree-view-mode="story"\]\s+\.tree-title\s*\{[^}]*font-size:\s*1\.15/);
 });
 
-test('30. Nav nav-btn size reduced from 42px to 32px for compact rail', () => {
+test('30. Nav nav-btn provides accessible touch target (42px)', () => {
     const btnBlock = viewModeCss.match(
         /\.browse-story-nav-btn\s*\{([^}]*)\}/
     );
     assert.ok(btnBlock, 'nav-btn rule found');
-    assert.match(btnBlock[1], /width:\s*32/);
-    assert.match(btnBlock[1], /height:\s*32/);
+    assert.match(btnBlock[1], /width:\s*42/);
+    assert.match(btnBlock[1], /height:\s*42/);
+    // 18px icon inside 42px button keeps compact rail look
+    assert.match(viewModeCss, /\.browse-story-nav-btn\s+\.material-symbols-outlined\s*\{[^}]*font-size:\s*18/);
 });
