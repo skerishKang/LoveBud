@@ -178,3 +178,33 @@ test('#3704 editor loading i18n keys exist in i18n-editor.js', () => {
   assert.match(i18nSource, /editor_loading_tree[\s\S]*?트리 정보를 불러오는 중/, 'Korean copy for tree loading');
   assert.match(i18nSource, /editor_loading_memories[\s\S]*?순간 목록을 불러오는 중/, 'Korean copy for memories loading');
 });
+
+test('#3704 LONG_WAIT_MS constant is defined as 8000', () => {
+  assert.match(loadFlowSource, /LONG_WAIT_MS\s*=\s*8000/, 'long-wait threshold must be 8000ms');
+});
+
+test('#3704 showRegionLoading sets long-wait timer via dataset.lwTimerId', () => {
+  assert.match(loadFlowSource, /el\.dataset\.lwTimerId\s*=\s*setTimeout\(/, 'sets lwTimerId on element');
+  assert.match(loadFlowSource, /LONG_WAIT_MS\s*-\s*500/, 'timer uses LONG_WAIT_MS - 500ms');
+});
+
+test('#3704 hideRegionLoading clears long-wait timer via dataset reference before removal', () => {
+  assert.match(loadFlowSource, /dataset\.lwTimerId/, 'reads lwTimerId from dataset');
+  assert.match(loadFlowSource, /clearTimeout\(Number\(/, 'clears long-wait timer before removal');
+  assert.match(loadFlowSource, /els\[i\]\.dataset\.lwTimerId/, 'reads lwTimerId from each element');
+});
+
+test('#3704 long-wait transition uses window.t for shared loading.long.wait key', () => {
+  assert.match(loadFlowSource, /window\.t\(['"]loading\.long\.wait['"]\)/, 'uses shared loading.long.wait key');
+});
+
+test('#3704 long-wait transition adds lt-long-wait class to indicator', () => {
+  assert.match(loadFlowSource, /lt-long-wait/, 'references lt-long-wait class in long-wait block');
+});
+
+test('#3704 long-wait transition uses createElement + textContent, no innerHTML', () => {
+  const longWaitBlock = loadFlowSource.match(/el\.dataset\.lwTimerId[\s\S]{1,1500}LONG_WAIT_MS/);
+  if (longWaitBlock) {
+    assert.doesNotMatch(longWaitBlock[0], /innerHTML/, 'long-wait timer must not use innerHTML');
+  }
+});
