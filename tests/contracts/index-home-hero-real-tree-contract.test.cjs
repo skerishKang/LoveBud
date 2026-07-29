@@ -83,8 +83,8 @@ test('Contract: index.html query param cache-bust values', () => {
   );
   assert.match(
     html,
-    /src="js\/index-inline-init\.js\?v=20260729-3627-1"/,
-    'index.html js/index-inline-init.js version must be 20260729-3627-1'
+    /src="js\/index-inline-init\.js\?v=20260730-3627-2"/,
+    'index.html js/index-inline-init.js version must be 20260730-3627-2'
   );
   assert.match(
     html,
