@@ -173,6 +173,10 @@
             nav.setAttribute('aria-label', t('search.story.regionLabel'));
             nav.hidden = true;
 
+            var navLabel = document.createElement('span');
+            navLabel.className = 'browse-story-nav-label';
+            navLabel.textContent = t('search.viewMode.story');
+
             prevBtn = document.createElement('button');
             prevBtn.type = 'button';
             prevBtn.className = 'browse-story-nav-btn browse-story-nav-prev';
@@ -206,6 +210,7 @@
                 step(1);
             });
 
+            nav.appendChild(navLabel);
             nav.appendChild(prevBtn);
             nav.appendChild(indicator);
             nav.appendChild(nextBtn);

@@ -875,6 +875,18 @@
     display: none !important;
 }
 
+/* ── Story card hierarchy refinements (#3703) ────────────────────
+ * Tighter card gap and elevated media emphasis inside Story mode only
+ */
+#resultsList[data-tree-view-mode="story"] {
+    gap: 16px;
+}
+
+#resultsList[data-tree-view-mode="story"] .tree-card-media {
+    border-radius: 10px;
+    overflow: hidden;
+}
+
 /* ── Story navigation ─────────────────────────────────────────────
  * Previous / local position / next. The position is a LOCAL group index
  * over the currently loaded results — not a backend page number.
@@ -927,6 +939,15 @@
 .browse-story-nav-btn:disabled {
     opacity: 0.35;
     cursor: default;
+}
+
+.browse-story-nav-label {
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    color: var(--on-surface-variant, #5b4b40);
+    text-transform: uppercase;
+    margin-right: 4px;
 }
 
 .browse-story-indicator {
