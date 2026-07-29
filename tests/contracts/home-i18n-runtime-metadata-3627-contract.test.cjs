@@ -57,7 +57,34 @@ test('Contract: 3627 Home Runtime Metadata i18n Stable', () => {
 
   // 10. canonical language source does not depend solely on document `<html lang>`
   assert.ok(js.includes('window.getCurrentLang'), 'Language resolution must check window.getCurrentLang');
-  
-  // 11. script cache version is exactly `20260729-3627-1`
-  assert.ok(html.includes('js/index-inline-init.js?v=20260729-3627-1'), 'Script version must be 20260729-3627-1');
+
+  // 11. script cache version is exactly `20260730-3627-2`
+  assert.ok(html.includes('js/index-inline-init.js?v=20260730-3627-2'), 'Script version must be 20260730-3627-2');
+
+  // 12. applyArtistToCard() must locally bind the fallback node
+  const applyArtistBody = js.match(
+    /function applyArtistToCard\(card, videoIndex\) \{([\s\S]*?)\n    \}\n\n    function resolveI18n/
+  );
+  assert.ok(applyArtistBody, 'Must find applyArtistToCard()');
+
+  const fallbackBinding =
+    "var fallback = card.querySelector('.growth-stage-card-fallback');";
+  const fallbackUse =
+    'if (fallback && media.contains(fallback))';
+
+  assert.ok(
+    applyArtistBody[1].includes(fallbackBinding),
+    'applyArtistToCard() must locally bind the fallback node'
+  );
+
+  assert.ok(
+    applyArtistBody[1].includes(fallbackUse),
+    'applyArtistToCard() must preserve fallback-aware thumbnail insertion'
+  );
+
+  assert.ok(
+    applyArtistBody[1].indexOf(fallbackBinding) <
+      applyArtistBody[1].indexOf(fallbackUse),
+    'fallback must be bound before it is used'
+  );
 });

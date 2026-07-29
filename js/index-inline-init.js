@@ -350,6 +350,7 @@
         var contentWrap = card.querySelector('.growth-stage-card-content') || card;
         contentWrap.appendChild(media);
       }
+      var fallback = card.querySelector('.growth-stage-card-fallback');
       var cardIdx = parseInt(card.getAttribute('data-card-index'), 10);
       var mapping = FIXED_CARD_MAP[cardIdx] || FIXED_CARD_MAP[0];
       var artist = ARTIST_DATASETS[mapping.artistIndex];
