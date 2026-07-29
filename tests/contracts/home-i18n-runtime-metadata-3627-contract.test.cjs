@@ -36,9 +36,11 @@ test('Contract: 3627 Home Runtime Metadata i18n Stable', () => {
   // 5. language listener uses one duplicate-binding guard
   assert.ok(js.includes('__lovebudHomeRuntimeMetadataLangBound'));
 
-  // 6. language listener does not call `applyCurrentArtistToCards()`
-  const listenerBody = js.match(/document\.addEventListener\('lovebud-lang-change'[^]*?\}\);/);
-  assert.ok(listenerBody, 'Must bind to lovebud-lang-change');
+  // 6. language listener does not call `applyCurrentArtistToCards()` and targets window, not document
+  assert.ok(!js.includes(`document.addEventListener('lovebud-lang-change'`), 'Must NOT bind lovebud-lang-change to document (canonical is window)');
+  const listenerBody = js.match(/window\.addEventListener\('lovebud-lang-change'[^]*?\}\);/);
+  assert.ok(listenerBody, 'Must bind to lovebud-lang-change on window');
+  assert.ok(listenerBody[0].includes('refreshRuntimeCardMetadata'), 'Listener must call refreshRuntimeCardMetadata()');
   assert.ok(!listenerBody[0].includes('applyCurrentArtistToCards'), 'Listener must not call applyCurrentArtistToCards()');
 
   // 7. metadata-only locale refresh does not create an `img`

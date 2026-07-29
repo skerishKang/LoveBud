@@ -454,7 +454,7 @@
 
     if (!window.__lovebudHomeRuntimeMetadataLangBound) {
       window.__lovebudHomeRuntimeMetadataLangBound = true;
-      document.addEventListener('lovebud-lang-change', function(e) {
+      window.addEventListener('lovebud-lang-change', function(e) {
         var lang = (e && e.detail && e.detail.lang) || null;
         refreshRuntimeCardMetadata(lang);
       });
