@@ -49,6 +49,7 @@
     /* Minimal fallbacks mirror js/i18n/i18n-search.js (same repository
      * pattern as js/search/search-card-renderer.js empty-state copy). */
     var FALLBACK_STRINGS = {
+        'search.viewMode.story': { ko: '스토리', en: 'Story' },
         'search.story.regionLabel': { ko: '스토리 보기', en: 'Story view' },
         'search.story.previous': { ko: '이전 스토리 그룹', en: 'Previous story group' },
         'search.story.next': { ko: '다음 스토리 그룹', en: 'Next story group' },
@@ -206,6 +207,12 @@
                 step(1);
             });
 
+            var navLabel = document.createElement('span');
+            navLabel.className = 'browse-story-nav-label';
+            navLabel.setAttribute('aria-hidden', 'true');
+            navLabel.textContent = t('search.viewMode.story');
+
+            nav.appendChild(navLabel);
             nav.appendChild(prevBtn);
             nav.appendChild(indicator);
             nav.appendChild(nextBtn);
