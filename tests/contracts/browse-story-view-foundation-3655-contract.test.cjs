@@ -406,3 +406,54 @@ test('25. contract doc references parent/child issues and baseline', () => {
     assert.match(storyDoc, /compact/);
     assert.match(storyDoc, /My Trees/);
 });
+
+/* ── 8) #3703 Refinement: pagination rail label + card hierarchy ───── */
+test('26. Story nav includes a mode label in the rail (ensureNav builds navLabel)', () => {
+    const ensureNav = storyModule.match(
+        /function ensureNav\(\)\s*\{([\s\S]*?)function updateNav/
+    );
+    assert.ok(ensureNav, 'ensureNav function body found');
+    assert.match(ensureNav[1], /browse-story-nav-label/);
+    assert.match(ensureNav[1], /search\.viewMode\.story/);
+});
+
+test('27. CSS defines browse-story-nav-label with uppercase/text-transform', () => {
+    assert.match(viewModeCss, /\.browse-story-nav-label\s*\{/);
+    assert.match(viewModeCss, /text-transform:\s*upper/);
+    assert.match(viewModeCss, /font-weight:\s*800/);
+    const labelBlock = viewModeCss.match(
+        /\.browse-story-nav-label\s*\{([^}]*)\}/
+    );
+    assert.ok(labelBlock, 'nav-label rule found');
+    assert.match(labelBlock[1], /font-size:\s*11/);
+});
+
+test('28. Nav rail is a compact rounded pill container', () => {
+    const navBlock = viewModeCss.match(
+        /\.browse-story-navigation\s*\{([^}]*)\}/
+    );
+    assert.ok(navBlock, 'navigation rule found');
+    assert.match(navBlock[1], /border-radius:\s*999/);
+    assert.match(navBlock[1], /padding/);
+    assert.match(navBlock[1], /backdrop-filter/);
+});
+
+test('29. Story card hierarchy refinements present (gap, media, title)', () => {
+    const hierarchySection = viewModeCss.slice(
+        viewModeCss.indexOf('Story card hierarchy refinements'),
+        viewModeCss.indexOf('Story navigation')
+    );
+    assert.ok(hierarchySection.length > 0, 'card hierarchy section found');
+    assert.match(viewModeCss, /gap:\s*14/);
+    assert.match(viewModeCss, /#resultsList\[data-tree-view-mode="story"\]\s+\.tree-card-media\s*\{[^}]*border-radius:\s*10/);
+    assert.match(viewModeCss, /#resultsList\[data-tree-view-mode="story"\]\s+\.tree-title\s*\{[^}]*font-size:\s*1\.15/);
+});
+
+test('30. Nav nav-btn size reduced from 42px to 32px for compact rail', () => {
+    const btnBlock = viewModeCss.match(
+        /\.browse-story-nav-btn\s*\{([^}]*)\}/
+    );
+    assert.ok(btnBlock, 'nav-btn rule found');
+    assert.match(btnBlock[1], /width:\s*32/);
+    assert.match(btnBlock[1], /height:\s*32/);
+});

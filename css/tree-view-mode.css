@@ -875,6 +875,25 @@
     display: none !important;
 }
 
+/* ── Story card hierarchy refinements (#3703) ────────────────────
+ * Tighter gap, elevated media emphasis, and better typography rhythm
+ * for the Story-only view — no effect on large/compact/list modes.
+ */
+#resultsList[data-tree-view-mode="story"] {
+    gap: 14px;
+}
+
+#resultsList[data-tree-view-mode="story"] .tree-card-media {
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(75, 64, 57, 0.06);
+}
+
+#resultsList[data-tree-view-mode="story"] .tree-title {
+    font-size: 1.15rem;
+    line-height: 1.35;
+}
+
 /* ── Story navigation ─────────────────────────────────────────────
  * Previous / local position / next. The position is a LOCAL group index
  * over the currently loaded results — not a backend page number.
@@ -883,61 +902,76 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 20px;
-    width: 100%;
+    gap: 8px;
+    width: auto;
     margin: 20px auto 4px;
+    padding: 6px 18px 6px 14px;
+    border-radius: 999px;
+    background: rgba(255, 248, 245, 0.86);
+    border: 1px solid var(--outline-variant);
+    box-shadow: 0 6px 18px rgba(75, 64, 57, 0.05);
+    backdrop-filter: blur(6px);
 }
 
 .browse-story-navigation[hidden] {
     display: none !important;
 }
 
+.browse-story-nav-label {
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    color: var(--on-surface-variant, #5b4b40);
+    text-transform: uppercase;
+    margin-right: 2px;
+    user-select: none;
+}
+
 .browse-story-nav-btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 42px;
-    height: 42px;
+    width: 32px;
+    height: 32px;
     flex: 0 0 auto;
     border-radius: 999px;
-    border: 1px solid var(--outline-variant);
-    background: rgba(255, 248, 245, 0.86);
+    border: 0;
+    background: transparent;
     color: var(--on-surface-variant);
     cursor: pointer;
-    box-shadow: 0 6px 18px rgba(75, 64, 57, 0.05);
-    transition: background 0.12s ease, color 0.12s ease, box-shadow 0.12s ease;
+    transition: background 0.12s ease, color 0.12s ease;
 }
 
 .browse-story-nav-btn .material-symbols-outlined {
-    font-size: 20px;
+    font-size: 18px;
     line-height: 1;
 }
 
 .browse-story-nav-btn:hover:not(:disabled) {
-    background: rgba(255, 255, 255, 0.92);
+    background: rgba(255, 255, 255, 0.7);
     color: var(--on-surface);
-    box-shadow: 0 8px 20px rgba(75, 64, 57, 0.09);
 }
 
 .browse-story-nav-btn:focus-visible {
     outline: 2px solid rgba(122, 139, 110, 0.48);
-    outline-offset: 3px;
+    outline-offset: 2px;
 }
 
 .browse-story-nav-btn:disabled {
-    opacity: 0.35;
+    opacity: 0.3;
     cursor: default;
 }
 
 .browse-story-indicator {
     position: relative;
-    min-width: 78px;
+    min-width: 64px;
     text-align: center;
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 800;
-    letter-spacing: 0.14em;
+    letter-spacing: 0.12em;
     color: var(--on-surface);
     font-variant-numeric: tabular-nums;
+    line-height: 1;
 }
 
 .browse-story-indicator-a11y {
