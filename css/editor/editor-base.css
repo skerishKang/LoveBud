@@ -18,3 +18,11 @@ body {
     overflow: hidden;
     height: 100vh;
 }
+
+/* ── Editor region loading states (#3704) ── */
+[data-region-loading] {
+    margin: 1rem;
+}
+[data-region-loading].lt-loading-compact {
+    margin: 2rem auto;
+}
