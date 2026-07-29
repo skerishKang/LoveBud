@@ -255,7 +255,46 @@ console.log('✓ 12: spotlight timing constants defined');
 console.log('✓ 13: reduced motion overrides spotlight');
 
 // ============================================================
-// 14. FADE phase exists (cycle can fade and restart)
+// 14. is-spotlight-return z-index matches is-spotlight (#3700)
+//     The returning card must stay at z-index 35 (same as spotlight)
+//     throughout the 580ms return animation so no other card jumps
+//     in front while the transform is still running.
+// ============================================================
+{
+  // Find the is-spotlight-return rule body
+  const returnRule = cssGrowth.match(/\.growth-stage-card\.is-spotlight-return\s*\{[^}]*\}/);
+  assert.ok(returnRule, 'must find .is-spotlight-return CSS rule');
+  assert.ok(returnRule[0].includes('z-index: 35'),
+    '.is-spotlight-return must have z-index: 35 (same as is-spotlight) to prevent layer drop during return animation');
+  assert.ok(!returnRule[0].includes('z-index: 20'),
+    '.is-spotlight-return must NOT use z-index: 20 (would cause other cards to jump in front during return)');
+
+  // Verify the is-spotlight rule still has z-index 35
+  const spotlightRule = cssGrowth.match(/\.growth-stage-card\.is-spotlight\s*\{[^}]*\}/);
+  assert.ok(spotlightRule, 'must find .is-spotlight CSS rule');
+  assert.ok(spotlightRule[0].includes('z-index: 35'),
+    '.is-spotlight must have z-index: 35');
+
+  // Verify clearSpotlightClasses removes both spotlight classes (base z-index applies)
+  assert.ok(js.includes("card.classList.remove('is-spotlight', 'is-spotlight-return')"),
+    'clearSpotlightClasses must remove both is-spotlight and is-spotlight-return');
+
+  // Verify base featured card z-index is 24 (restored after return class removed)
+  const featuredRule = cssGrowth.match(/\.growth-stage-card\.featured\s*\{[^}]*\}/g);
+  const featuredHas24 = featuredRule && featuredRule.some(r => r.includes('z-index: 24'));
+  assert.ok(featuredHas24,
+    'base .growth-stage-card.featured must have z-index: 24 (restored after return)');
+
+  // Verify base .growth-stage-card has z-index: 20 (supporting cards inherit this)
+  const baseCardRule = cssGrowth.match(/\.growth-stage-card\s*\{[^}]*\}/);
+  assert.ok(baseCardRule, 'must find base .growth-stage-card rule');
+  assert.ok(baseCardRule[0].includes('z-index: 20'),
+    'base .growth-stage-card must have z-index: 20');
+}
+console.log('✓ 14: is-spotlight-return z-index=35, base z-indexes correct');
+
+// ============================================================
+// 15. FADE phase exists (cycle can fade and restart)
 // ============================================================
 {
   assert.ok(js.includes("PHASE.FADE") || js.includes("'fade-out'"),
@@ -265,10 +304,10 @@ console.log('✓ 13: reduced motion overrides spotlight');
   assert.ok(cssGrowth.includes('fade-out'),
     'growth-stage.css must reference fade-out stage state');
 }
-console.log('✓ 14: FADE phase exists for cycle restart');
+console.log('✓ 15: FADE phase exists for cycle restart');
 
 // ============================================================
-// 15. RESPECT: Keep #3624 references but no Closes/Fixes
+// 16. RESPECT: Keep #3624 references but no Closes/Fixes
 // ============================================================
 {
   const forbiddenCloses = ['Closes', 'Fixes', 'Resolves'];
@@ -279,6 +318,125 @@ console.log('✓ 14: FADE phase exists for cycle restart');
       `index.html must not contain '${f} #3625'`);
   }
 }
-console.log('✓ 15: no Closes/Fixes/Resolves for protected issues');
+console.log('✓ 16: no Closes/Fixes/Resolves for protected issues');
+
+// ============================================================
+// 17. Reveal stagger delay scoped to cards-revealing only (#3700)
+//     The supporting-card transition-delay (0.18s/0.34s/0.5s) must apply
+//     ONLY during the initial cards-revealing stage. If it leaks into
+//     completed/fade-out, the spotlight return transform (0.55s) is still
+//     running when JS removes is-spotlight-return at ~580ms, causing a
+//     position snap. Block-level parse: each delay value may appear only
+//     inside a rule whose selector list includes cards-revealing.
+// ============================================================
+{
+  // Parse CSS into {selectorList, body} blocks (comments already stripped).
+  function parseBlocks(css) {
+    const blocks = [];
+    let depth = 0;
+    let start = 0;
+    let selectorStart = 0;
+    for (let i = 0; i < css.length; i++) {
+      const ch = css[i];
+      if (ch === '{') {
+        if (depth === 0) selectorStart = start;
+        depth++;
+        if (depth === 1) {
+          blocks.push({ selector: css.slice(selectorStart, i).trim(), bodyStart: i + 1 });
+        }
+      } else if (ch === '}') {
+        depth--;
+        if (depth === 0 && blocks.length) {
+          blocks[blocks.length - 1].body = css.slice(blocks[blocks.length - 1].bodyStart, i);
+          start = i + 1;
+        }
+      } else if (depth === 0 && ch !== ' ' && ch !== '\n' && ch !== '\t') {
+        if (start === selectorStart || css.slice(start, i).trim() === '') start = i;
+      }
+    }
+    return blocks.filter(b => b.body !== undefined);
+  }
+
+  const blocks = parseBlocks(cssGrowthRules);
+  assert.ok(blocks.length > 0, 'must parse growth-stage.css into rule blocks');
+
+  const delaySpecs = [
+    { card: 'one', delay: '0.18s' },
+    { card: 'two', delay: '0.34s' },
+    { card: 'three', delay: '0.5s' }
+  ];
+
+  for (const spec of delaySpecs) {
+    const cardSel = `.growth-stage-card.supporting.${spec.card}`;
+    const delayRe = new RegExp(`transition-delay\\s*:\\s*${spec.delay.replace('.', '\\.')}`);
+    const matching = blocks.filter(b => b.selector.includes(cardSel) && delayRe.test(b.body));
+
+    assert.ok(matching.length >= 1,
+      `supporting.${spec.card} must declare transition-delay: ${spec.delay} somewhere`);
+
+    for (const b of matching) {
+      assert.ok(b.selector.includes('cards-revealing'),
+        `supporting.${spec.card} transition-delay ${spec.delay} must be scoped to a cards-revealing selector; found in: ${b.selector.slice(0, 120)}`);
+      assert.ok(!b.selector.includes('"completed"'),
+        `supporting.${spec.card} delay rule must not target the completed state`);
+      assert.ok(!b.selector.includes('"fade-out"'),
+        `supporting.${spec.card} delay rule must not target the fade-out state`);
+    }
+  }
+
+  // No supporting-card transition-delay may appear in any completed/fade-out block.
+  const leakBlocks = blocks.filter(b =>
+    (b.selector.includes('"completed"') || b.selector.includes('"fade-out"')) &&
+    b.selector.includes('.growth-stage-card.supporting') &&
+    /transition-delay/.test(b.body)
+  );
+  assert.strictEqual(leakBlocks.length, 0,
+    `completed/fade-out blocks must not set a supporting-card transition-delay; leaked in: ${leakBlocks.map(b => b.selector.slice(0, 100)).join(' | ')}`);
+
+  // Common three-state reveal rules keep opacity/transform/pointer-events but no delay.
+  for (const spec of delaySpecs) {
+    const cardSel = `.growth-stage-card.supporting.${spec.card}`;
+    const common = blocks.find(b =>
+      b.selector.includes(cardSel) &&
+      b.selector.includes('cards-revealing') &&
+      b.selector.includes('"completed"') &&
+      b.selector.includes('"fade-out"')
+    );
+    assert.ok(common,
+      `must keep a combined cards-revealing/completed/fade-out rule for supporting.${spec.card}`);
+    assert.ok(common.body.includes('opacity: 1'),
+      `combined rule for supporting.${spec.card} must keep opacity: 1`);
+    assert.ok(common.body.includes('transform: translateY(0) scale(1)'),
+      `combined rule for supporting.${spec.card} must keep transform: translateY(0) scale(1)`);
+    assert.ok(common.body.includes('pointer-events: auto'),
+      `combined rule for supporting.${spec.card} must keep pointer-events: auto`);
+    assert.ok(!/transition-delay/.test(common.body),
+      `combined rule for supporting.${spec.card} must NOT set transition-delay`);
+  }
+}
+console.log('✓ 17: reveal stagger delay scoped to cards-revealing only');
+
+// ============================================================
+// 18. Spotlight transform timing unchanged by delay fix (#3700)
+//     The delay-scoping fix must not alter the 0.55s spotlight transform
+//     duration, the 580ms JS move constant, or the return z-index.
+// ============================================================
+{
+  const spotlightRule = cssGrowth.match(/\.growth-stage-card\.is-spotlight\s*\{[^}]*\}/);
+  assert.ok(spotlightRule, 'must find .is-spotlight rule');
+  assert.ok(spotlightRule[0].includes('transform 0.55s'),
+    '.is-spotlight must keep transform duration 0.55s');
+
+  const returnRule = cssGrowth.match(/\.growth-stage-card\.is-spotlight-return\s*\{[^}]*\}/);
+  assert.ok(returnRule, 'must find .is-spotlight-return rule');
+  assert.ok(returnRule[0].includes('transform 0.55s'),
+    '.is-spotlight-return must keep transform duration 0.55s');
+  assert.ok(returnRule[0].includes('z-index: 35'),
+    '.is-spotlight-return must keep z-index: 35');
+
+  assert.ok(js.includes('SPOTLIGHT_MOVE_MS = 580'),
+    'SPOTLIGHT_MOVE_MS must remain 580 (JS timing unchanged by CSS delay fix)');
+}
+console.log('✓ 18: spotlight transform timing and return z-index unchanged');
 
 console.log('\n✅ All #3625 contract tests passed.');

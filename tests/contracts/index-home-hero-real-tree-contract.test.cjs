@@ -75,11 +75,11 @@ test('Contract: index-inline-init.js — no community tree API', () => {
 test('Contract: index.html query param cache-bust values', () => {
   const html = fs.readFileSync(HTML_PATH, 'utf8');
 
-  // 9. index.html CSS/JS cache-bust are 20260728-3697-1 (this issue)
+  // 9. index.html CSS cache-bust are 20260729-3700-1 (#3700)
   assert.match(
     html,
-    /href="css\/index-visual\.css\?v=20260724-3625-1"/,
-    'index.html css/index-visual.css version must be 20260724-3625-1'
+    /href="css\/index-visual\.css\?v=20260729-3700-1"/,
+    'index.html css/index-visual.css version must be 20260729-3700-1'
   );
   assert.match(
     html,
