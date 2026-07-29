@@ -8,7 +8,7 @@
  * them with multiple page-level stylesheet links without editor browser
  * verification across desktop, tablet, and mobile viewports.
  */
-@import url("./editor/editor-base.css?v=20260718-3585-1");
+@import url("./editor/editor-base.css?v=20260730-3704-1");
 @import url("./editor/editor-layout.css?v=20260504-775");
 @import url("./editor/editor-sidebar.css?v=20260718-3585-1");
 @import url("./editor/editor-rail-collapse.css?v=20260718-3585-1");
