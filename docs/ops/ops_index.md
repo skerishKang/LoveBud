@@ -2,6 +2,36 @@
 
 This folder contains LoveBud runtime, governance, CI, browser, deployment, and repository-operation guidance.
 
+## Operating principle — default simple, escalate on evidence
+
+LoveBud work uses the smallest process that can safely prove the affected change.
+
+```text
+normal path
+→ inspect scope and exact diff
+→ run focused checks
+→ classify CI
+→ verify exact head
+→ squash merge
+→ check only the affected Production behavior after automatic deployment
+```
+
+Do not add Local Validation, full-suite testing, Preview, multi-viewport browser QA, Cloudflare authentication, Wrangler, deployment retries, or extended runtime evidence unless the change class or an observed failure requires them.
+
+When a real error is found, escalation is immediate and strict:
+
+```text
+observed failure
+→ stop merge or acceptance
+→ identify the exact root cause
+→ make the smallest corrective change
+→ add regression coverage for that failure
+→ rerun the affected checks and relevant CI
+→ re-review the exact head
+```
+
+Missing optional evidence is not an error. A tool failure is not a product failure unless it prevents a required check. Do not turn diagnosis of an unrelated operational issue into a gate for an otherwise complete PR.
+
 ## Current runtime
 
 - Production: `https://lovebud.pages.dev/`
