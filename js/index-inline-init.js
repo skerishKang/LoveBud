@@ -350,12 +350,7 @@
         var contentWrap = card.querySelector('.growth-stage-card-content') || card;
         contentWrap.appendChild(media);
       }
-      var channelEl = card.querySelector('.growth-stage-card-channel');
-      var link = card.querySelector('.growth-stage-card-link');
       var fallback = card.querySelector('.growth-stage-card-fallback');
-      var titleEl = card.querySelector('strong');
-      var copyEl = card.querySelector('span[data-i18n^="home.v3.growth.card"]');
-
       var cardIdx = parseInt(card.getAttribute('data-card-index'), 10);
       var mapping = FIXED_CARD_MAP[cardIdx] || FIXED_CARD_MAP[0];
       var artist = ARTIST_DATASETS[mapping.artistIndex];
@@ -363,22 +358,16 @@
       var video = artist.videos[videoIndex] || artist.videos[0];
       if (!video) return;
 
-      if (channelEl) channelEl.textContent = resolveI18n(artist.channelKey) || ('Official channel - ' + artist.channelName);
-      if (link) {
-        link.href = youtubeWatchUrl(video.id);
-        var attribution = resolveI18n('home.v3.youtube.attribution') || 'Watch on YouTube';
-        var linkText = link.querySelector('[data-i18n]');
-        if (linkText) linkText.textContent = attribution;
-        link.setAttribute('aria-label', attribution + ' - ' + video.title);
-      }
-      if (titleEl) titleEl.textContent = video.title;
-      if (copyEl) copyEl.textContent = resolveI18n('home.v3.growth.card' + ((videoIndex || 0) + 1) + '.copy') || '';
-      if (fallback) fallback.textContent = video.title;
+      updateCardMetadata(card, artist, video, videoIndex, null);
 
       if (card) {
         card.setAttribute('data-artist-key', artist.key);
         card.setAttribute('data-video-id', video.id);
         card.setAttribute('data-youtube-watch-url', youtubeWatchUrl(video.id));
+        var linkEl = card.querySelector('.growth-stage-card-link');
+        if (linkEl) {
+          linkEl.href = youtubeWatchUrl(video.id);
+        }
       }
 
       if (media) {
@@ -421,14 +410,55 @@
       }
     }
 
-    function resolveI18n(key) {
+    function resolveI18n(key, overrideLang) {
       if (!key) return '';
       var shared = window.i18nShared || {};
       var entry = shared[key];
       if (!entry) return '';
-      var lang = (document.documentElement.getAttribute('lang') || 'ko').toLowerCase();
+      var lang = overrideLang || (typeof window.getCurrentLang === 'function' ? window.getCurrentLang() : null) || document.documentElement.getAttribute('lang') || 'ko';
+      lang = lang.toLowerCase();
       var resolved = entry[lang] || entry.ko || entry.en || '';
       return String(resolved);
+    }
+
+    function updateCardMetadata(card, artist, video, videoIndex, lang) {
+      var channelEl = card.querySelector('.growth-stage-card-channel');
+      var link = card.querySelector('.growth-stage-card-link');
+      var fallback = card.querySelector('.growth-stage-card-fallback');
+      var titleEl = card.querySelector('strong');
+      var copyEl = card.querySelector('span[data-i18n^="home.v3.growth.card"]');
+
+      if (channelEl) channelEl.textContent = resolveI18n(artist.channelKey, lang) || ('Official channel - ' + artist.channelName);
+      if (link) {
+        var attribution = resolveI18n('home.v3.youtube.attribution', lang) || 'Watch on YouTube';
+        var linkText = link.querySelector('[data-i18n]');
+        if (linkText) linkText.textContent = attribution;
+        link.setAttribute('aria-label', attribution + ' - ' + video.title);
+      }
+      if (titleEl) titleEl.textContent = video.title;
+      if (copyEl) copyEl.textContent = resolveI18n('home.v3.growth.card' + ((videoIndex || 0) + 1) + '.copy', lang) || '';
+      if (fallback) fallback.textContent = video.title;
+    }
+
+    function refreshRuntimeCardMetadata(lang) {
+      var currentLang = lang || (typeof window.getCurrentLang === 'function' ? window.getCurrentLang() : null) || document.documentElement.getAttribute('lang') || 'ko';
+      cards.forEach(function(card, idx) {
+        var mapping = FIXED_CARD_MAP[idx];
+        if (!mapping) return;
+        var artist = ARTIST_DATASETS[mapping.artistIndex];
+        if (!artist) return;
+        var video = artist.videos[mapping.videoIndex] || artist.videos[0];
+        if (!video) return;
+        updateCardMetadata(card, artist, video, mapping.videoIndex, currentLang);
+      });
+    }
+
+    if (!window.__lovebudHomeRuntimeMetadataLangBound) {
+      window.__lovebudHomeRuntimeMetadataLangBound = true;
+      window.addEventListener('lovebud-lang-change', function(e) {
+        var lang = (e && e.detail && e.detail.lang) || null;
+        refreshRuntimeCardMetadata(lang);
+      });
     }
 
     function applyCurrentArtistToCards() {
