@@ -621,4 +621,120 @@ console.log('✓ 28: mobile is a 2-column vertical journey (24px rail + cards)')
 }
 console.log('✓ 29: artist + badge removed from HTML and CSS rules (data-artist-key kept)');
 
+// ============================================================
+// 30. Video modal loading overlay CSS exists (#3707)
+// ============================================================
+{
+  assert.ok(cssGrowthRules.includes('.hero-video-modal-loading'),
+    'growth-stage.css must define .hero-video-modal-loading');
+  assert.ok(cssGrowthRules.includes('.hero-video-modal-loading-spinner'),
+    'growth-stage.css must define a loading spinner');
+  assert.ok(cssGrowthRules.includes('.hero-video-modal-loading-text'),
+    'growth-stage.css must define loading text style');
+  assert.ok(cssGrowthRules.includes('.hero-video-modal-error'),
+    'growth-stage.css must define error overlay');
+  assert.ok(cssGrowthRules.includes('.hero-video-modal-retry-btn'),
+    'growth-stage.css must define retry button');
+  assert.ok(cssGrowthRules.includes('.hero-video-modal-ready'),
+    'growth-stage.css must define ready state selector');
+  assert.ok(cssGrowthRules.includes('is-long-wait'),
+    'growth-stage.css must define long-wait state variant');
+  assert.ok(cssGrowthRules.includes('hero-video-modal-loading-spinner'),
+    'growth-stage.css must define the spinner container size');
+  assert.ok(cssGrowthRules.includes('prefers-reduced-motion: reduce'),
+    'growth-stage.css must guard modal under reduced motion');
+}
+console.log('✓ 30: modal loading CSS classes present');
+
+// ============================================================
+// 31. Modal loading JS functions exist (#3707)
+// ============================================================
+{
+  const requiredFns = [
+    'handleModalIframeLoad',
+    'retryVideoModal',
+    'showModalError',
+    'cleanupModalTimers',
+    'createModalLoadingEl',
+    'handleModalLongWait',
+    'handleModalTimeout',
+  ];
+  for (const fn of requiredFns) {
+    assert.ok(js.includes('function ' + fn),
+      'index-inline-init.js must define function ' + fn);
+  }
+}
+console.log('✓ 31: modal loading JS functions defined');
+
+// ============================================================
+// 32. Modal uses shared i18n loading keys (#3707)
+// ============================================================
+{
+  const expectedKeys = [
+    'loading.media.load',
+    'loading.long.wait',
+    'loading.error.primary',
+    'loading.error.body',
+    'loading.retry.action',
+    'loading.retrying',
+    'home.v3.youtube.attribution',
+  ];
+  for (const key of expectedKeys) {
+    var pattern = "resolveI18n('" + key + "')";
+    assert.ok(js.includes(pattern) || js.includes('resolveI18n("' + key + '")'),
+      'index-inline-init.js must use resolveI18n for "' + key + '"');
+  }
+}
+console.log('✓ 32: modal uses shared i18n loading keys');
+
+// ============================================================
+// 33. No innerHTML in newly added modal code (#3707)
+// ============================================================
+{
+  const modalSection = js.slice(js.indexOf('var modalEl = null'), js.indexOf('// Card wiring'));
+  assert.ok(!modalSection.includes('innerHTML'),
+    'modal section must not use innerHTML (DOM XSS prevention)');
+  assert.ok(!modalSection.includes('insertAdjacentHTML'),
+    'modal section must not use insertAdjacentHTML');
+}
+console.log('✓ 33: no innerHTML in modal code');
+
+// ============================================================
+// 34. Focus trap includes error fallback links (#3707)
+// ============================================================
+{
+  assert.ok(js.includes('a[href]'),
+    'focus trap selector must include a[href] for error state YouTube link');
+  assert.ok(js.includes('iframe:not([tabindex="-1"])'),
+    'focus trap must exclude iframes with tabindex=-1 during loading');
+  assert.ok(js.includes('iframe.tabIndex = -1'),
+    'JS must set tabIndex=-1 on iframe during loading state');
+  assert.ok(js.includes('iframe.removeAttribute(\'tabindex\')') || js.includes('iframe.removeAttribute("tabindex")'),
+    'JS must remove tabindex on iframe when ready');
+}
+console.log('✓ 34: focus trap handles loading/error state');
+
+// ============================================================
+// 35. youtube-nocookie.com embed preserved (#3707)
+// ============================================================
+{
+  assert.ok(js.includes('youtube-nocookie.com'),
+    'embed URL must still use youtube-nocookie.com (privacy-enhanced)');
+}
+console.log('✓ 35: youtube-nocookie.com preserved');
+
+// ============================================================
+// 36. Timer cleanup on close (#3707)
+// ============================================================
+{
+  assert.ok(js.indexOf('cleanupModalTimers') < js.indexOf('closeVideoModal'),
+    'cleanupModalTimers must be defined before closeVideoModal');
+  var closeBody = js.slice(js.indexOf('function closeVideoModal'), js.indexOf('function openVideoModal'));
+  assert.ok(closeBody.includes('cleanupModalTimers'),
+    'closeVideoModal must call cleanupModalTimers');
+  assert.ok(closeBody.includes('modalCurrentVideo'),
+    'closeVideoModal must reset modalCurrentVideo');
+}
+console.log('✓ 36: timer cleanup on close');
+
 console.log('\n✅ All contract tests passed.');
