@@ -641,7 +641,6 @@
     opacity: 1;
     transform: translateY(0) scale(1);
     pointer-events: auto;
-    transition-delay: 0.18s;
 }
 
 .home-v3-growth-stage[data-stage-state="cards-revealing"] .growth-stage-card.supporting.two,
@@ -650,7 +649,6 @@
     opacity: 1;
     transform: translateY(0) scale(1);
     pointer-events: auto;
-    transition-delay: 0.34s;
 }
 
 .home-v3-growth-stage[data-stage-state="cards-revealing"] .growth-stage-card.supporting.three,
@@ -659,6 +657,17 @@
     opacity: 1;
     transform: translateY(0) scale(1);
     pointer-events: auto;
+}
+
+.home-v3-growth-stage[data-stage-state="cards-revealing"] .growth-stage-card.supporting.one {
+    transition-delay: 0.18s;
+}
+
+.home-v3-growth-stage[data-stage-state="cards-revealing"] .growth-stage-card.supporting.two {
+    transition-delay: 0.34s;
+}
+
+.home-v3-growth-stage[data-stage-state="cards-revealing"] .growth-stage-card.supporting.three {
     transition-delay: 0.5s;
 }
 
