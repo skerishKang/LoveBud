@@ -150,5 +150,7 @@ Object.assign(window.i18nEditor, {
     sidebar_public_viewer_label: { ko: '공개 화면 보기', en: 'Public view' },
     sidebar_insights_label: { ko: '트리 인사이트', en: 'Tree insights' },
     sidebar_insights_disabled_badge: { ko: '준비 중', en: 'Coming soon' },
-    sidebar_flow_summary_one_moment: { ko: '첫 순간이 심어졌어요.', en: 'The first moment has been planted.' }
+    sidebar_flow_summary_one_moment: { ko: '첫 순간이 심어졌어요.', en: 'The first moment has been planted.' },
+    editor_loading_tree: { ko: '트리 정보를 불러오는 중', en: 'Loading tree info...' },
+    editor_loading_memories: { ko: '순간 목록을 불러오는 중', en: 'Loading moments...' },
 });
