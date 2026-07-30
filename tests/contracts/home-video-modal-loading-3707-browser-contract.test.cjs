@@ -259,17 +259,12 @@ async function teardown(env) {
 }
 
 async function openModal(page) {
-  await page.evaluate(() => {
-    document.querySelector('.growth-stage-card-media').click();
-  });
+  await page.locator('.growth-stage-card-media').first().dispatchEvent('click');
   await page.waitForSelector('.hero-video-modal', { timeout: 2000 });
 }
 
 async function closeModalViaButton(page) {
-  await page.evaluate(() => {
-    const btn = document.querySelector('.hero-video-modal-close');
-    if (btn) btn.click();
-  });
+  await page.locator('.hero-video-modal-close').dispatchEvent('click');
   await page.waitForSelector('.hero-video-modal', { state: 'detached', timeout: 2000 });
 }
 
@@ -360,9 +355,7 @@ test('home video modal loading states (#3707)', async (t) => {
 
         await t.test('A7. retry creates exactly one new iframe (retrying)', async () => {
           ctl.setMode('pending');
-          await page.evaluate(() => {
-            document.querySelector('.hero-video-modal-retry-btn').click();
-          });
+          await page.locator('.hero-video-modal-retry-btn').dispatchEvent('click');
           await page.waitForTimeout(120);
           assert.strictEqual(await page.locator('.hero-video-modal iframe').count(), 1, 'exactly one iframe after retry');
           const txt = await page.locator('.hero-video-modal-loading-text').textContent();
@@ -406,7 +399,7 @@ test('home video modal loading states (#3707)', async (t) => {
             await openModal(env.page);
             await env.page.clock.fastForward(30000);
             await env.page.waitForSelector('.hero-video-modal-retry-btn', { timeout: 2000 });
-            await env.page.evaluate(() => { document.querySelector('.hero-video-modal-retry-btn').click(); });
+            await env.page.locator('.hero-video-modal-retry-btn').dispatchEvent('click');
             await env.page.waitForTimeout(120);
           },
         },
@@ -493,16 +486,19 @@ test('home video modal loading states (#3707)', async (t) => {
           await openModal(page);
           // First attempt reaches long-wait; its 30s timeout is still armed.
           await page.clock.fastForward(8000);
+          await page.clock.runFor(0);
           assert.ok((await page.locator('.hero-video-modal-loading').getAttribute('class')).includes('is-long-wait'), 'first attempt in long-wait');
           // First attempt then times out into ERROR (retry button now exists).
           await page.clock.fastForward(22000);
+          await page.clock.runFor(0);
           await page.waitForSelector('.hero-video-modal-retry-btn', { timeout: 2000 });
           // Retry into a NEW attempt that succeeds.
           ctl.setMode('success');
-          await page.evaluate(() => { document.querySelector('.hero-video-modal-retry-btn').click(); });
+          await page.locator('.hero-video-modal-retry-btn').dispatchEvent('click');
           await page.waitForSelector('.hero-video-modal-ready', { timeout: 2000 });
           // Advance far beyond any timer from the previous (errored) attempt.
           await page.clock.fastForward(90000);
+          await page.clock.runFor(0);
           const cls = await page.locator('.hero-video-modal').getAttribute('class');
           assert.ok(cls.includes('hero-video-modal-ready'), 'new attempt stays ready');
           assert.strictEqual(await page.locator('.hero-video-modal-error').count(), 0, 'stale timer never flips new attempt to error');
@@ -629,7 +625,7 @@ test('home video modal loading states (#3707)', async (t) => {
           env.ctl.setMode('pending');
           await openModal(page);
           // Second open attempt while a modal already exists.
-          await page.evaluate(() => { document.querySelector('.growth-stage-card-media').click(); });
+          await page.locator('.growth-stage-card-media').first().dispatchEvent('click');
           await page.waitForTimeout(120);
           assert.strictEqual(await page.locator('.hero-video-modal').count(), 1, 'exactly one modal');
           assert.strictEqual(await page.locator('.hero-video-modal iframe').count(), 1, 'exactly one iframe');
