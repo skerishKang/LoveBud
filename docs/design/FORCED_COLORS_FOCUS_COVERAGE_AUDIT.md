@@ -2,7 +2,9 @@
 
 Parent #3753 · Refs #3672, #3425, #1882
 
-## Exact baseline
+## Baseline
+
+### Historical audit baseline
 
 | Field | Value |
 |---|---|
@@ -11,10 +13,20 @@ Parent #3753 · Refs #3672, #3425, #1882
 | Exact commit | `9af1f6116566e9b616a89f108bc17e002bcf8485` |
 | Expected commit | `9af1f6116566e9b616a89f108bc17e002bcf8485` |
 | Drift | `NONE` |
-| Class | Generic Tier 2 / U0 source-only audit |
-| Browser, screenshot, Production | not used |
+
+### Current re-audit baseline
+
+| Field | Value |
+|---|---|
+| Repository | `skerishKang/LoveBud` |
+| Audited ref | `origin/main` |
+| Exact commit | `7d406f017f654f6a190473c698e4b0e2bd4983c5` |
+| Expected commit | `7d406f017f654f6a190473c698e4b0e2bd4983c5` |
+| Drift | `NONE` |
 
 This SHA is the evidence boundary. No CSS, token, or selector changes are authorized.
+
+Source-only audit — no browser, screenshot, or Production evidence collected.
 
 ## Evidence limits
 
@@ -38,8 +50,8 @@ Dispositions: `SOURCE_CONFIRMED`, `PARTIAL_COVERAGE`, `MISSING_COVERAGE`, `PAGE_
 
 | Source file | Selector | Role | focus-visible | outline/box-shadow/border | forced-colors | selected/disabled/error | keyboard risk | Disposition |
 |---|---|---|---|---|---|---|---|---|
-| `css/search/search-controls.css:15-35` | `.search-input` | Text entry | `outline: none` + `:focus { box-shadow }` | `box-shadow` only; no `outline` re-added for WHCM | Zero | Error: not defined on this selector | **High**: native `outline` removed, `box-shadow` invisible in WHCM | `MISSING_COVERAGE` |
-| `css/search/search-controls.css:224-227` | `.browse-sort-select:focus-visible` | Sort combobox | `box-shadow: 0 0 0 2px rgba(...)` + `border-color` change | `box-shadow` as pseudo-outline; no `outline` property | Zero | Disabled: not defined | **High**: `outline: none` (line 215), replacement `box-shadow` invisible in WHCM | `MISSING_COVERAGE` |
+| `css/search/search-controls.css` | `.search-input` | Text entry | `outline: none` + `:focus { box-shadow }` + `:focus-visible { box-shadow }` | `box-shadow` only; no `outline` re-added for WHCM | Zero | Error: not defined on this selector | **High**: native `outline` removed, `box-shadow` invisible in WHCM. PR #3721 added `:focus-visible` with `box-shadow: 0 0 0 3px` — improves normal-mode keyboard feedback but still invisible in WHCM | `MISSING_COVERAGE` |
+| `css/search/search-controls.css` | `.browse-sort-select:focus-visible` | Sort combobox | `box-shadow: 0 0 0 2px rgba(...)` + `border-color` change + `outline: none` (base) | `box-shadow` as pseudo-outline; no `outline` property | Zero | Disabled: not defined | **High**: `outline: none` on base, replacement `box-shadow` invisible in WHCM | `MISSING_COVERAGE` |
 | `css/global.css:564-567` + `search-controls.css:47-65` | `.tag-chip:focus-visible` | Filter chip (toggle button) | `outline: 2px solid var(--control-focus-ring)` | `outline` authority (2px, variable) | Zero | Active: `.tag-chip.active` background/border change only; disabled: not defined | Variable `--control-focus-ring` undefined in `tokens.css` | `PARTIAL_COVERAGE` |
 | `css/search/search-hero-controls.css` | Hero filter row | Filter presentation | Native `<span>` — not button semantics | `outline` inherited from `.tag-chip` when `<button>` is used | Zero | Active: background/border change only | Browse uses `<span>` (no keyboard reachable), My Trees uses `<button>` | `UNRESOLVED` |
 
@@ -126,7 +138,7 @@ Dispositions: `SOURCE_CONFIRMED`, `PARTIAL_COVERAGE`, `MISSING_COVERAGE`, `PAGE_
 
 Zero matches for `forced-colors` or `forced-color-adjust` across all CSS files. Every `outline` / `box-shadow` focus indicator uses color-only rules that are suppressed or overridden in Windows High Contrast Mode.
 
-### 2. `outline: none` without replacement — 26+ locations
+### 2. `outline: none` without replacement — 27 locations (current baseline)
 
 Every `outline: none` on an interactive element creates a forced-colors vulnerability. When the native focus ring is removed without a `forced-color-adjust: none` or `@media (forced-colors)` alternate, the element becomes unfocusable in WHCM.
 
@@ -146,9 +158,11 @@ Worst offenders: editor retry button, comment toggle, like button (pressed and u
 
 Every custom focus outline uses exactly `2px` (except one `3px` outlier for the play button). `2px` is not a universal WCAG success criterion — the required visible thickness depends on contrast ratio, WHCM `CanvasText` rendering, and `outline-offset`.
 
-### 5. Variable `--control-focus-ring` is referenced but never defined
+### 5. Variable `--control-focus-ring` is defined in `global.css` but not in `tokens.css`
 
-`var(--control-focus-ring)` appears in `css/editor/editor-canvas-toolbar/buttons.css`, `css/editor/editor-floating-toolbar/toolbar.css`, `css/editor/editor-floating-toolbar/quick-add.css`, `css/editor/editor-floating-toolbar/dropdown.css`, and `css/global.css` — but it is **not declared** in `css/global/tokens.css` or any other `:root` block. At runtime it falls through to the user-agent default (typically a browser-blue `outline`), which is ironically the most accessible behavior currently, but this is accidental, not intentional.
+`var(--control-focus-ring)` is **declared** in `css/global.css:470` as `--control-focus-ring: rgba(var(--primary-rgb), 0.42);` — inside a PR3 `:root` block. It appears in `css/editor/editor-canvas-toolbar/buttons.css`, `css/editor/editor-floating-toolbar/toolbar.css`, `css/editor/editor-floating-toolbar/quick-add.css`, `css/editor/editor-floating-toolbar/dropdown.css`, `css/global.css:565` (shared buttons), and `css/global.css:596` (tag-chip).
+
+It is **not** declared in `css/global/tokens.css`. Because it lives in `global.css` (which imports `tokens.css` before the `:root` block), the token is available at runtime. However, it is not centralized in the design-token source of truth, which carries a maintenance risk: a consumer that imports `tokens.css` alone will not receive this variable.
 
 ### 6. `outline-offset` values vary without pattern
 
@@ -168,6 +182,30 @@ No single convention establishes when `2px` vs `4px` offset is appropriate. `-1p
 | `rgba(144, 73, 81, ...)` | 18+ locations | 0.12, 0.30, 0.32, 0.35, 0.36, 0.38, 0.40, 0.42, 0.45, 0.48, 0.85, 0.92 |
 | `rgba(122, 139, 110, ...)` | 4 locations | 0.48 |
 | `rgba(255, 255, 255, ...)` | 3 locations | 0.3, 0.85 |
+
+## Completed work incorporated
+
+### #3716 / PR #3721 — shared search-input focus treatment (completed)
+
+Browse/My Trees search input and sort select now have `:focus-visible` styles:
+- `.search-input:focus-visible` — `box-shadow: 0 0 0 3px rgba(...)` + `border-color` change
+- `.browse-sort-select:focus-visible` — `box-shadow: 0 0 0 2px rgba(...)` + `border-color` change
+- `transition: all` replaced with bounded `border-color, box-shadow` transitions
+- `prefers-reduced-motion` handling present
+
+**Impact on this audit:** The stale claim "search input has no `:focus-visible`" is now resolved. The normal-mode keyboard focus feedback is improved. However, the forced-colors vulnerability persists — both use `box-shadow` as the sole focus indicator, which is invisible in WHCM. The `outline: none` on `.search-input` and `.browse-sort-select` base remains unremediated for WHCM. The audit conclusion (`MISSING_COVERAGE`) is unchanged — the root WHCM risk is not addressed.
+
+### #3729 / PR #3733 — public viewer loading-state semantics (completed)
+
+Viewer loading state (`aria-busy`, `role=status`, `role=alert`, spinner hidden attribute) added forced-colors-relevant patterns but no direct `forced-colors` media query or system-color tokens. Impacts none of the existing audit findings.
+
+**Impact on this audit:** Reviewed — no change to audit conclusion.
+
+### #3728 / PR #3732 — secondary action/focus decision (completed)
+
+Secondary action and focus treatment decisions were aligned per design review. No new `forced-colors` media queries or system-color tokens were introduced.
+
+**Impact on this audit:** Reviewed — no change to audit conclusion.
 
 ## Correction principles (applied)
 
@@ -223,7 +261,7 @@ No single convention establishes when `2px` vs `4px` offset is appropriate. `-1p
 | Component family | Source size | focus-visible covered | forced-colors covered | Primary risk |
 |---|---|---|---|---|
 | Shared buttons | 4 primary selectors | Yes (shared rule) | Zero | Variable undefined in tokens |
-| Search/filter | 4 selectors | Partial (sort, input missing) | Zero | 2 `box-shadow`-only, 1 `outline:none` |
+| Search/filter | 4 selectors | Yes (both input and sort have `:focus-visible`, but WHCM risk remains) | Zero | 2 `box-shadow`-only, 2 `outline:none` on base |
 | Card links & actions | 6 selectors | Yes (card+link) | Zero | Literal rgba unmatched across surfaces |
 | Editor controls | 15+ selectors | Partial (7 missing outline:none) | Zero | 7 controls with `outline:none` + no replacement |
 | Settings controls | 4 selectors | Partial (form buttons missing) | Zero | Form action buttons have zero focus style |
@@ -233,8 +271,9 @@ No single convention establishes when `2px` vs `4px` offset is appropriate. `-1p
 | State distinction | Whole codebase | N/A | Zero | Color-only states fail WHCM |
 
 Refs #3753
+Refs #3716 — completed (PR #3721)
+Refs #3728 — completed (PR #3732)
+Refs #3729 — completed (PR #3733)
 Refs #3672 — Keep OPEN
-Refs #3728 — parallel
-Refs #3706 — completed
 Refs #3425 — Keep OPEN
 Refs #1882 — Keep OPEN
