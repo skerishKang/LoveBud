@@ -7,8 +7,6 @@
 - **Authority files read:** `.github/workflows/ci.yml`, `package.json`, `_redirects`, `_headers`, `scripts/pre-deploy.cjs`, `scripts/cloudflare-supplied-url-smoke.cjs`, `tests/ci-test-group-registry.json`, `tests/test-layer-classification.json`, `tests/smoke/routes.test.cjs`, `docs/ops/` governance documents, `docs/ops/OBSERVABILITY_RUNTIME_LOGGING_AUDIT.md`.
 - **Related Issues:** #3714, #3673 (parent), #3699 (deployment incident), #3670 (CI reliability), #3425 (production parity).
 
-- OBSERVED_SOURCE_FACT: No `docs/operations/` directory existed before this document. The operations documentation resides under `docs/ops/` (102 files).
-
 ---
 
 ## 2. Current Deployment Path Map
@@ -18,7 +16,7 @@
 ```text
 PR merge to main
 → GitHub push to main branch triggers CI (ci.yml)
-→ CI runs: lint, build, test (smoke/route/contract), verify (pre-deploy)
+→ CI runs: lint, build, test (smoke/route/contract/browser), verify (pre-deploy)
 → CI completes (success or failure recorded)
 → Cloudflare Pages auto-deploys from main branch
    (no CI workflow step triggers this; it is Cloudflare's automatic Git integration)
@@ -27,53 +25,66 @@ PR merge to main
 ```
 
 - OBSERVED_SOURCE_FACT: The only CI workflow (`.github/workflows/ci.yml`) has **no deploy job** — no `wrangler`, no Cloudflare API token, no upload/deploy action.
-- OBSERVED_SOURCE_FACT: No `wrangler.toml` or `wrangler.json` exists in the repository. Cloudflare Pages configuration is managed through the Cloudflare Dashboard, not a local config file.
-- OBSERVED_SOURCE_FACT: Cloudflare Pages auto-deploys from the `main` branch via its Git integration. This is an external, repository-side invisible step.
+- OBSERVED_SOURCE_FACT: No `wrangler.toml` or `wrangler.json` exists in the repository.
 - OBSERVED_SOURCE_FACT: The `_redirects` file defines 301 canonicalizations from `.html`/`.html/` to extensionless `/pages/<name>` paths for 8 page routes.
 - OBSERVED_SOURCE_FACT: The `_headers` file applies a global CSP and aggressive no-store/no-cache on `/pages/*`.
 
 ### 2.2 Deployment Attempt Evidence
 
-- OBSERVED_PUBLIC_RUNTIME_FACT: Cloudflare Pages deployment status (success/failure) is visible in the Cloudflare Dashboard and via the Cloudflare API. This repository contains no script that reads or records deployment attempt status in CI or post-merge.
-- OBSERVED_SOURCE_FACT: No file in `.github/workflows/`, `scripts/`, or `tests/` calls the Cloudflare API or reads Cloudflare deployment status.
-- UNRESOLVED: There is no automated evidence that a `main` push produced a successful Cloudflare Pages deployment. The `_redirects`/`_headers` changes and any non-CI build failure are invisible to repository CI.
+- UNRESOLVED: No repository evidence confirms whether a `main` push produced a successful Cloudflare Pages deployment. No file in `.github/workflows/`, `scripts/`, or `tests/` calls the Cloudflare API or reads Cloudflare deployment status.
+- UNRESOLVED: Deployment attempt status (success/failure) is observable only through the Cloudflare Dashboard or API, which is outside this audit's evidence boundary.
+- UNRESOLVED: The `_redirects`/`_headers` changes and any non-CI build failure are invisible to repository CI.
 
 ### 2.3 Production Alias Evidence
 
-- OBSERVED_PUBLIC_RUNTIME_FACT: The production URL `https://lovebud.pages.dev/` is the deployment target. The current production alias is managed entirely through the Cloudflare Dashboard.
 - UNRESOLVED: The exact SHA currently serving as Production alias cannot be confirmed from repository evidence alone. No deployment manifest, deployment SHA annotation file, or deployment badge is maintained in-repo.
 
 ---
 
 ## 3. Current Source/CI/Deployment/Production Evidence Inventory
 
-### 3.1 Source-Static Evidence (runs in CI)
+### 3.1 CI Evidence by Layer Classification
 
-| Evidence type | Command | Scope |
-|---|---|---|
-| Syntax check | `npm run lint` (`scripts/lint-static.js`) | JS/CSS/HTML syntax |
-| Build check | `npm run build` (`scripts/build-static.js`) | Static file completeness |
-| Smoke tests | `npm test` (smoke/*.test.cjs, routes/*.test.cjs, contracts/*.test.cjs) | File existence, directory structure, contract assertions |
-| Pre-deploy verify | `npm run verify` (`scripts/pre-deploy.cjs`) | JS syntax, i18n keys, API routes, HTML structure, deps |
-| DB engine tests | 7 `npm run test:db-engine:*` jobs | PostgreSQL execution in CI containers |
+The `tests/test-layer-classification.json` registry classifies every test into one of five layers executed in CI:
 
-- OBSERVED_SOURCE_FACT: CI runs 8 parallel jobs: 1 `verify-static` (lint/build/test/verify) and 7 `db-engine-*` jobs.
+| Layer | Count | Command | Scope |
+|---|---|---|---|
+| `SOURCE_STATIC` | (all static tests) | `npm test` (via `node --test` glob) | Source-only static contract tests. File existence, directory structure, string/regex assertions. |
+| `EXECUTED_FAKE` | (fake/stub tests) | `npm test` (via `node --test` glob) | Fake/stub runtime contract tests. Production module source in `node:vm` with injected mock dependencies. No external system used. |
+| `BROWSER_REAL_LOCAL` | 12 | `npm test` (via `node --test` glob) | Real local Playwright Chromium browser page rendering. CSS/JS/DOM/geometry assertions via local HTTP server. |
+| `PROCESS_REAL_LOCAL` | 3 | `npm test` (via `node --test` glob) | Real local process contract tests. Production module in Node or Playwright without browser page rendering. |
+| `DB_ENGINE` | 7 | `npm run test:db-engine:*` (7 separate CI jobs) | Disposable PostgreSQL 17.4 engine tests. Ephemeral CI service containers. Never Production. |
+
+- OBSERVED_SOURCE_FACT: All five layers above execute in CI. The `BROWSER_REAL_LOCAL` and `PROCESS_REAL_LOCAL` layers use Playwright Chromium (`npx playwright install --with-deps chromium`) and **are executed by `npm test`** via the `node --test tests/{smoke,routes,contracts}/*.test.cjs` glob.
+- OBSERVED_SOURCE_FACT: CI runs 8 parallel jobs: 1 `verify-static` (lint/build/test/verify — covers all four `npm test` layers) and 7 `db-engine-*` jobs.
 - OBSERVED_SOURCE_FACT: All CI evidence is generated on `ubuntu-latest` with Node 20. No Windows or Node 22 matrix.
-- OBSERVED_SOURCE_FACT: Playwright Chromium is installed (`npx playwright install --with-deps chromium`) but **no Playwright test runs in CI**. The `ci.yml` workflow never executes `npm run test:e2e:*` or `npm run smoke:cloudflare` or `npm run test:screenshots`.
 
-### 3.2 Non-CI Evidence (manual/optional)
+- OBSERVED_SOURCE_FACT: The `EXECUTED_FAKE` layer consumes `node:vm` fake/mock/stub dependencies — no real external system, DB, API, or network call. These are NOT the same as the Manual/Remote group.
 
-| Evidence type | Command | Status |
+### 3.2 Manual / Remote / Provider-Gated Scripts (NOT executed in CI)
+
+The `tests/ci-test-group-registry.json` classifies these under `REMOTE_OR_PROVIDER_MANUAL` with `default_pr_execution_state: MANUAL`:
+
+| Script | Command | Group |
 |---|---|---|
-| Cloudflare supplied-URL smoke | `npm run smoke:cloudflare` | NOT_EXECUTED in CI (per registry) |
-| E2E browser smokes (8 scripts) | `npm run test:e2e:*` | NOT_EXECUTED in CI (per registry) |
-| Screenshots | `npm run test:screenshots` | NOT_EXECUTED in CI |
-| Remote environment verify | `npm run verify:remote` | NOT_EXECUTED in CI |
-| Full pre-deploy | `npm run verify:full` | NOT_EXECUTED in CI |
-| Layer report | `npm run test:layers` | NOT_EXECUTED in CI |
+| `scripts/cloudflare-supplied-url-smoke.cjs` | `npm run smoke:cloudflare` | REMOTE_OR_PROVIDER_MANUAL |
+| `scripts/e2e-auth-guard-smoke.cjs` | `npm run test:e2e:*` | REMOTE_OR_PROVIDER_MANUAL |
+| `scripts/e2e-editor-delete-smoke.cjs` | `npm run test:e2e:*` | REMOTE_OR_PROVIDER_MANUAL |
+| `scripts/e2e-editor-save-smoke.cjs` | `npm run test:e2e:*` | REMOTE_OR_PROVIDER_MANUAL |
+| `scripts/e2e-login-success-smoke.cjs` | `npm run test:e2e:*` | REMOTE_OR_PROVIDER_MANUAL |
+| `scripts/e2e-login-timeout-smoke.cjs` | `npm run test:e2e:*` | REMOTE_OR_PROVIDER_MANUAL |
+| `scripts/e2e-public-viewer-mobile-smoke.cjs` | `npm run test:e2e:*` | REMOTE_OR_PROVIDER_MANUAL |
+| `scripts/e2e-search-detail-smoke.cjs` | `npm run test:e2e:*` | REMOTE_OR_PROVIDER_MANUAL |
+| `scripts/e2e-ui-regression-smoke.cjs` | `npm run test:e2e:*` | REMOTE_OR_PROVIDER_MANUAL |
+| `scripts/capture-screenshots.cjs` | `npm run test:screenshots` | REMOTE_OR_PROVIDER_MANUAL |
+| `scripts/batch-test-runner.cjs` | `npm run test:e2e:*` | REMOTE_OR_PROVIDER_MANUAL |
+| `scripts/verify-env.cjs` | `npm run verify:remote` | REMOTE_OR_PROVIDER_MANUAL |
+| `scripts/ops-auth-credential-preflight.cjs` | — | REMOTE_OR_PROVIDER_MANUAL |
+| `scripts/smoke-gate-a-moment-social-write.mjs` | — | REMOTE_OR_PROVIDER_MANUAL |
+| `scripts/check-pr-guardrails.cjs` | — | REMOTE_OR_PROVIDER_MANUAL |
 
-- OBSERVED_SOURCE_FACT: The `tests/ci-test-group-registry.json` explicitly lists all Cloudflare/E2E/smoke scripts under `REMOTE_OR_PROVIDER_MANUAL` group with execution state `NOT_EXECUTED`.
-- OBSERVED_SOURCE_FACT: The `scripts/cloudflare-supplied-url-smoke.cjs` Playwright script (171 lines) validates: HTTP status <400, `<body>` selector, horizontal overflow = 0, zero fatal console errors, zero network failures, zero network blockers across desktop and mobile viewports for `/`, `/pages/intro.html`, `/pages/search.html`.
+- OBSERVED_SOURCE_FACT: None of the above scripts execute in CI. The `ci.yml` workflow never calls `npm run test:e2e:*`, `npm run smoke:cloudflare`, `npm run test:screenshots`, or `npm run verify:remote`.
+- OBSERVED_SOURCE_FACT: This is distinct from the 12 `BROWSER_REAL_LOCAL` Playwright contracts that **do** execute in CI via `npm test`.
 
 ### 3.3 Production Verification Evidence
 
@@ -108,11 +119,11 @@ PR merge to main
 
 ### 4.3 Cloudflare Supplied-URL Smoke Targets
 
-- OBSERVED_SOURCE_FACT: `scripts/cloudflare-supplied-url-smoke.cjs` validates 3 targets:
+- OBSERVED_SOURCE_FACT: `scripts/cloudflare-supplied-url-smoke.cjs` validates 3 targets against a deployed URL:
   - `/` (Home, no API dependency)
   - `/pages/intro.html` (Intro, no API dependency)
   - `/pages/search.html` (Search, API-dependent)
-- OBSERVED_SOURCE_FACT: This script is **the only Playwright-based smoke test** that could run against a deployed URL. It is not executed in CI.
+- OBSERVED_SOURCE_FACT: This script targets a deployed Cloudflare URL — distinct from the 12 `BROWSER_REAL_LOCAL` Playwright contracts that run against a local HTTP server in CI. The supplied-URL smoke has no automatic CI or post-merge execution.
 
 ### 4.4 Missing Route Smoke Coverage
 
@@ -121,15 +132,13 @@ PR merge to main
 
 ---
 
-## 5. Approved Same-Origin API Health Candidates
+## 5. Public API Endpoints (Documented)
 
 - OBSERVED_SOURCE_FACT: `docs/ops/DEPLOY_CHECKLIST.md` documents two public read API endpoints:
-  - `GET /api/community/trees?view=summary&sort=latest&limit=3` (browse summary)
-  - `GET /api/community/memories?treeId=<treeId>` (preview hydrate)
-- OBSERVED_SOURCE_FACT: These endpoints are public read paths. They accept no user-specific parameters or credentials.
+  - `GET /api/community/trees?view=summary&sort=latest&limit=3` — fixed-parameter browse summary. Candidate for bounded generic health smoke.
+  - `GET /api/community/memories?treeId=<treeId>` — identifier-bearing preview hydrate. Requires a known `treeId` parameter; not a generic health endpoint.
 - OBSERVED_SOURCE_FACT: `docs/ops/DEPLOYED_ENTRY_MAP.md` confirms the `/api/*` routing: Cloudflare Pages Functions → Modal, with `x-lovebud-upstream: modal` header and `server: cloudflare`.
 - OBSERVED_SOURCE_FACT: `docs/ops/ENV_DEPENDENCY.md` documents that `MODAL_BASE_URL` controls the Modal routing and `LOVEBUD_UPSTREAM_ORIGIN` controls the Vercel fallback.
-- PROPOSED_NEXT_CHILD: A future child should define a curated, bounded set of public GET-only API endpoints for post-deploy smoke, with exact expected response shape and status code. This child must not invoke any private or auth-dependent endpoint.
 
 ---
 
@@ -188,13 +197,13 @@ PR merge to main
 | 1 | No CI deploy job | Cloudflare Pages deployment is invisible to CI | `ci.yml` |
 | 2 | No post-deploy smoke in CI | No automated route/API/DOM verification after merge | `ci.yml` |
 | 3 | No deployment SHA annotation | Cannot correlate source commit to deployed revision | no deploy manifest |
-| 4 | Playwright installed but unused in CI | Browser-level smoke tests (11 scripts) are never executed | `ci.yml`, registry |
-| 5 | No Production alias stale detection | Stale deployment can persist unnoticed for hours/days | #3699 |
+| 4 | Playwright-based supplied-URL smoke (3 routes) not executed in CI | Deployed route/DOM/console errors unchecked after merge | `ci.yml`, registry |
+| 5 | No Production alias stale detection | Stale deployment can persist undetected | #3699 |
 | 6 | No cross-boundary trace ID | Production errors cannot be correlated across Cloudflare → Modal | Observability audit |
 | 7 | No client-side error capture | Browser console errors are invisible without manual inspection | No `window.onerror` |
 | 8 | No Production runtime error taxonomy | CI error classes do not extend to Production | error vocabulary scope |
-| 9 | Supplied-URL smoke covers only 3 of 9 routes | Detail, Editor, My Trees, Settings, Tree, Login have no route smoke | `cloudflare-supplied-url-smoke.cjs` |
-| 10 | No `wrangler.toml` | Pages build configuration is not version-controlled | no wrangler file |
+| 9 | Supplied-URL smoke covers only 3 of 9 routes | Detail, Editor, My Trees, Settings, Tree, Login have no deployed-URL route smoke | `cloudflare-supplied-url-smoke.cjs` |
+| 10 | No `wrangler.toml` | Pages-specific build configuration absent from version control | no wrangler file |
 
 ---
 
@@ -264,12 +273,10 @@ This is the smallest self-contained implementation that begins closing the obser
    - Lists exact route/static-asset smoke targets and expected signals.
    - Prescribes the minimum smoke evidence record format.
 2. Define a contract test that validates the document against repository content.
-3. Optionally, define a script that extracts the current HEAD SHA and writes it to a deploy-manifest file (e.g., `deploy-sha.txt`) during CI.
 
 **Exact stop conditions:**
 - Document is reviewed and merged.
 - Contract test passes on `main`.
-- The deploy-manifest file (if created) is present in the `main` branch after the next CI run.
 - No Cloudflare, Wrangler, Preview, Production, API, DB, or secret action occurs.
 - No existing file is modified (only new files created).
 - #3699 is referenced but not closed.
@@ -285,10 +292,10 @@ This is the smallest self-contained implementation that begins closing the obser
 | Claim | Reason |
 |---|---|
 | "Production is serving the latest main" | No repository evidence can confirm this. Cloudflare Pages deployment is external to CI. No SHA comparison mechanism exists. |
-| "All routes serve HTTP 200" | Only Home (`/`), Intro (`/pages/intro.html`), and Search (`/pages/search.html`) have Playwright-based smoke that checks HTTP status. The supplied-URL smoke is not executed in CI. |
+| "All routes serve HTTP 200" | Only Home (`/`), Intro (`/pages/intro.html`), and Search (`/pages/search.html`) have supplied-URL Playwright smoke that checks HTTP status. The supplied-URL smoke is not executed in CI. The 12 local Playwright browser contracts (executed in CI) test different DOM/geometry assertions against a local server. |
 | "API endpoints are healthy" | No CI job or post-deploy hook calls any `/api/*` endpoint. The `DEPLOY_CHECKLIST.md` curl commands are manual and optional. |
-| "Browser console has no errors" | No `window.onerror` or `unhandledrejection` handler exists. The supplied-URL Playwright smoke checks console errors only for the 3 routes it visits, and is not run in CI. |
-| "Deployment parity between source and production" | No `wrangler.toml`, no deploy manifest, no SHA annotation. Parity is assumed from Cloudflare Dashboard state, which is invisible to this audit. |
+| "Browser console has no errors" | No `window.onerror` or `unhandledrejection` handler exists. The supplied-URL Playwright smoke checks console errors only for the 3 routes it visits, and is not run in CI. The 12 local Playwright browser contracts check console errors in a local server context only. |
+| "Deployment parity between source and production" | No deploy manifest or SHA annotation exists in the repository. Cloudflare Dashboard state is invisible to this audit. |
 
 ### Unresolved Provider Boundaries
 
@@ -297,14 +304,6 @@ This is the smallest self-contained implementation that begins closing the obser
 3. UNRESOLVED: Firebase Auth event logging is available only through the Firebase Console. There is no integration between auth events and application-level error/health signals.
 4. UNRESOLVED: Neon database connection health is not observable from the repository. No repository script or CI job verifies database connectivity or schema consistency against Production.
 5. UNRESOLVED: The `LOVEBUD_UPSTREAM_ORIGIN` default (`https://lovebud.vercel.app`) points to a deprecated environment whose runtime behavior is not actively monitored.
-
----
-
-## 13. Corrections (Round 3)
-
-- OBSERVED_SOURCE_FACT: Section 10 path corrected from `docs/ops/` to `docs/operations/` to match Issue #3714 requirement. This document is the first file in `docs/operations/`.
-
----
 
 *Refs #3714*
 *Refs #3673 — Keep OPEN*
