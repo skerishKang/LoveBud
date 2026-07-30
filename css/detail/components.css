@@ -104,6 +104,16 @@
     letter-spacing: 0.08em;
 }
 
+.detail-missing-state {
+    box-sizing: border-box;
+    width: min(100%, 600px);
+}
+
+.detail-missing-state .material-symbols-outlined {
+    max-width: 100%;
+    overflow: hidden;
+}
+
 @media (prefers-reduced-motion: reduce) {
     .detail-media-loading .material-symbols-outlined {
         animation: none;
