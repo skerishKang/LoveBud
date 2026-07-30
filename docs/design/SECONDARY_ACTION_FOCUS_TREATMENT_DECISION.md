@@ -5,9 +5,6 @@
 - **Status:** Source-only decision document
 - **Parent:** #3672 — Keep OPEN
 - **Base SHA:** `ff5dc6a76b9909301a27245b91ef8a194f88b277` (origin/main, merge base)
-- **Exact head:** `d05eae59c33cbe7e1e06a35b4b7ef7c2f67c7905`
-- **Ahead / behind:** 3 / 0
-- **CI:** CI_GREEN — all checks pass (verify-static, db-engine-*, Cloudflare Pages, GitGuardian)
 - **Evidence boundary:** Source reading only. No browser, screenshot, Preview, Production, or Cloudflare verification authorized.
 - **Preceding contracts:** #3706 / PR #3712 (inventory), #3674 / PR #3677 (audit)
 - **Parallel child:** #3716 / PR #3721 (search-input focus treatment) — independent, no overlap
@@ -55,17 +52,24 @@ All evidence was read from `origin/main` at merge-base SHA `ff5dc6a76b9909301a27
 
 Actions are classified by **semantic intent**, not visual similarity. Deleting, cancelling, going back, closing, and general secondary actions are **not** merged into one class merely because they look outlined.
 
+Presentation modifiers (such as ICON_ONLY) may coexist with a semantic intent class: a button has exactly one semantic class and optionally one presentation modifier.
+
 ### Semantic action classes
 
 | Class | Definition | Examples in source |
 |---|---|---|
 | **PRIMARY_COMMIT** | Confirms and commits the primary task outcome | `.btn-primary` (global), `.editor-action-btn-primary`, `.sidebar-btn-primary`, `.btn-round.btn-primary.preview-primary-action` (Browse open-tree CTA) |
-| **SECONDARY_SAFE_ACTION** | Non-destructive secondary action that does not cancel or dismiss | Browse `.preview-secondary-action` (open viewing), `.preview-share-action` (copy link) |
+| **SECONDARY_SAFE_ACTION** | Non-destructive secondary action that does not cancel or dismiss | Browse `.preview-secondary-action` (open viewing), `.preview-share-action` (copy link), `.editor-like-button`, `.editor-moment-reaction` |
 | **CANCEL_OR_DISMISS** | Aborts or closes a transient surface without committing | `.btn-cancel` (memory edit), `.settings-close-btn` (Settings close), Editor modal `.editor-rename-modal-btn-secondary` |
 | **BACK_OR_NAVIGATION** | Returns to a previous page or parent context | `.detail-back-link` (Detail back to browse) |
 | **DESTRUCTIVE** | Permanently removes data or state | Editor `.editor-action-btn` with delete action (owner-only), My Trees delete tree |
-| **ICON_ONLY** | Action conveyed primarily by icon with minimal/no text | `.editor-action-btn-ghost` (icon + minimal label), `.editor-like-button` (icon + count), `.editor-moment-reaction` (icon + count) |
 | **PAGE_AUTHORITY_SPECIFIC** | Action whose visibility/behavior depends on page authority context | My Trees create-tree (`.btn-header-create`), Editor save/cancel (owner edit vs view), Browse public vs owner hub actions |
+
+### Presentation modifiers
+
+| Modifier | Description | Examples in source |
+|---|---|---|
+| **ICON_ONLY** | Icon-primary presentation with minimal or no text label; coexists with the semantic class above | `.editor-action-btn-ghost` (ghost button, icon + minimal label) |
 
 ### Selector-to-disposition matrix
 
@@ -84,7 +88,7 @@ Actions are classified by **semantic intent**, not visual similarity. Deleting, 
 | `.detail-back-link` | `css/detail/base.css` | BACK_OR_NAVIGATION | **PAGE_SPECIFIC** |
 | `.editor-action-btn-primary` | `css/editor/editor-detail-actions.css` | PRIMARY_COMMIT | **PAGE_SPECIFIC** |
 | `.editor-action-btn-secondary` | `css/editor/editor-detail-actions.css` | SECONDARY_SAFE_ACTION | **PAGE_SPECIFIC** |
-| `.editor-action-btn-ghost` | `css/editor/editor-detail-actions.css` | ICON_ONLY | **PAGE_SPECIFIC** |
+| `.editor-action-btn-ghost` | `css/editor/editor-detail-actions.css` | SECONDARY_SAFE_ACTION (ICON_ONLY presentation) | **PAGE_SPECIFIC** |
 | `.editor-rename-modal-btn-primary` | `css/editor/editor-overrides.css` | PRIMARY_COMMIT | **PAGE_SPECIFIC** |
 | `.editor-rename-modal-btn-secondary` | `css/editor/editor-overrides.css` | CANCEL_OR_DISMISS | **PAGE_SPECIFIC** |
 | `.editor-like-button` | `css/editor/editor-overrides.css` | SECONDARY_SAFE_ACTION (appreciation toggle) | **PAGE_SPECIFIC** |
@@ -103,7 +107,7 @@ Actions are classified by **semantic intent**, not visual similarity. Deleting, 
 | `.settings-close-btn` | Icon-only close (× glyph), page-specific position, no text label | **NOT_TO_CONVERGE** |
 | `.detail-back-link` | Link element (not button), icon + text, back-navigation semantics | **NOT_TO_CONVERGE** |
 | `.btn-cancel` | Memory-edit context, inline form cancel, different visual weight | **NOT_TO_CONVERGE** |
-| `.editor-action-btn-ghost` | Icon-only, transparent background, editor-specific layout | **NOT_TO_CONVERGE** |
+| `.editor-action-btn-ghost` | ICON_ONLY presentation, transparent background, editor-specific layout | **NOT_TO_CONVERGE** |
 | `.lovetree-pill` | Selection/filter control with `.is-active` state; not a commit/dismiss action | **NOT_TO_CONVERGE** |
 
 ---
