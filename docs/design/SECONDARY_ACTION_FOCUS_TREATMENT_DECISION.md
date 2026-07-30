@@ -5,7 +5,7 @@
 - **Status:** Source-only decision document
 - **Parent:** #3672 — Keep OPEN
 - **Base SHA:** `ff5dc6a76b9909301a27245b91ef8a194f88b277` (origin/main, merge base)
-- **Exact head:** `62e18963c51b1b6152accefd79d5856ee588c3`
+- **Exact head:** `7f764f9eebb5271c89199f9702812a06d2f698ec`
 - **Ahead / behind:** 3 / 0
 - **CI:** CI_GREEN — all checks pass (verify-static, db-engine-*, Cloudflare Pages, GitGuardian)
 - **Evidence boundary:** Source reading only. No browser, screenshot, Preview, Production, or Cloudflare verification authorized.
