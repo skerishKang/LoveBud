@@ -377,6 +377,10 @@
         var assignId = (typeof media.__thumbAssignId === 'number' ? media.__thumbAssignId : 0) + 1;
         media.__thumbAssignId = assignId;
 
+        var existingImg = media.querySelector('img');
+        if (existingImg && media.contains(existingImg)) {
+          existingImg.remove();
+        }
         var obsoleteImgs = media.querySelectorAll('img');
         for (var oi = 0; oi < obsoleteImgs.length; oi++) {
           obsoleteImgs[oi].remove();
@@ -400,12 +404,15 @@
 
         img.addEventListener('load', function() {
           if (assignId !== media.__thumbAssignId) return;
+          if (existingImg && media.contains(existingImg)) {
+            existingImg.remove();
+          }
           img.classList.add('is-loaded');
           setThumbState(candidate === 'primary' ? 'PRIMARY_READY' : 'SECONDARY_READY');
         });
         img.addEventListener('error', function() {
           if (assignId !== media.__thumbAssignId) return;
-          if (candidate === 'primary') {
+          if (img.src.indexOf('maxresdefault') !== -1) {
             candidate = 'secondary';
             setThumbState('SECONDARY_PENDING');
             img.src = youtubeThumbUrl(video.id, false);
@@ -414,7 +421,13 @@
           if (media.contains(img)) {
             img.remove();
           }
-          media.classList.add('has-thumbnail-error', 'is-thumb-degraded');
+          if (existingImg && media.contains(existingImg)) {
+            existingImg.remove();
+          }
+          if (!media.querySelector('img')) {
+            media.classList.add('has-thumbnail-error');
+          }
+          media.classList.add('is-thumb-degraded');
           setThumbState('DEGRADED_FALLBACK');
         });
         if (fallback && media.contains(fallback)) {
