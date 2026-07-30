@@ -371,23 +371,50 @@
       }
 
       if (media) {
-        media.classList.remove('has-thumbnail-error');
+        if (!media.hasAttribute('data-thumb-state')) {
+          media.setAttribute('data-thumb-state', 'FALLBACK_VISIBLE');
+        }
+        var assignId = (typeof media.__thumbAssignId === 'number' ? media.__thumbAssignId : 0) + 1;
+        media.__thumbAssignId = assignId;
+
         var existingImg = media.querySelector('img');
+        if (existingImg && media.contains(existingImg)) {
+          existingImg.remove();
+        }
+        var obsoleteImgs = media.querySelectorAll('img');
+        for (var oi = 0; oi < obsoleteImgs.length; oi++) {
+          obsoleteImgs[oi].remove();
+        }
+        media.classList.remove('has-thumbnail-error', 'is-thumb-degraded');
+
+        var setThumbState = function(nextState) {
+          media.setAttribute('data-thumb-state', nextState);
+        };
+
         var img = document.createElement('img');
         img.alt = '';
         img.loading = 'lazy';
         img.decoding = 'async';
         img.width = 640;
         img.height = 360;
+        img.className = 'growth-stage-card-thumb';
         img.setAttribute('data-video-id', video.id);
+
+        var candidate = 'primary';
+
         img.addEventListener('load', function() {
+          if (assignId !== media.__thumbAssignId) return;
           if (existingImg && media.contains(existingImg)) {
             existingImg.remove();
           }
           img.classList.add('is-loaded');
+          setThumbState(candidate === 'primary' ? 'PRIMARY_READY' : 'SECONDARY_READY');
         });
         img.addEventListener('error', function() {
+          if (assignId !== media.__thumbAssignId) return;
           if (img.src.indexOf('maxresdefault') !== -1) {
+            candidate = 'secondary';
+            setThumbState('SECONDARY_PENDING');
             img.src = youtubeThumbUrl(video.id, false);
             return;
           }
@@ -400,12 +427,15 @@
           if (!media.querySelector('img')) {
             media.classList.add('has-thumbnail-error');
           }
+          media.classList.add('is-thumb-degraded');
+          setThumbState('DEGRADED_FALLBACK');
         });
         if (fallback && media.contains(fallback)) {
           media.insertBefore(img, fallback);
         } else {
           media.appendChild(img);
         }
+        setThumbState('PRIMARY_PENDING');
         img.src = youtubeThumbUrl(video.id, true);
       }
     }

@@ -363,6 +363,16 @@
     display: flex;
 }
 
+.growth-stage-card-media.is-thumb-degraded .growth-stage-card-fallback {
+    display: flex;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .growth-stage-card-media img {
+        transition: none;
+    }
+}
+
 /* ------------------------------------------------------------
    Click-to-play (#3624). Every card shows a play button centered
    over its thumbnail; clicking the thumbnail (or the button) opens
