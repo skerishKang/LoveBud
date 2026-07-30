@@ -21,7 +21,6 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const http = require('node:http');
-const net = require('node:net');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 
@@ -39,52 +38,49 @@ function contentType(filePath) {
   return 'application/octet-stream';
 }
 
-function getFreePort() {
+function startServer() {
   return new Promise((resolve, reject) => {
-    const srv = net.createServer();
-    srv.unref();
-    srv.on('error', reject);
-    srv.listen(0, '127.0.0.1', () => {
-      const port = srv.address().port;
-      srv.close(() => resolve(port));
+    const server = http.createServer((req, res) => {
+      try {
+        const urlPath = decodeURIComponent((req.url || '/').split('?')[0]);
+        if (urlPath === '/' || urlPath === '/fixture-browse-story.html') {
+          res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+          res.end(buildBrowseFixture());
+          return;
+        }
+        if (urlPath === '/fixture-mytrees.html') {
+          res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+          res.end(buildMyTreesFixture());
+          return;
+        }
+        const abs = path.normalize(path.join(ROOT, urlPath.replace(/^\//, '')));
+        if (!abs.startsWith(ROOT) || !fs.existsSync(abs) || fs.statSync(abs).isDirectory()) {
+          res.writeHead(404);
+          res.end('not found');
+          return;
+        }
+        res.writeHead(200, { 'Content-Type': contentType(abs) });
+        res.end(fs.readFileSync(abs));
+      } catch (e) {
+        res.writeHead(500);
+        res.end(String(e));
+      }
+    });
+    server.on('error', reject);
+    server.listen(0, '127.0.0.1', () => {
+      const port = server.address().port;
+      resolve({ server, port });
     });
   });
 }
 
-function startServer() {
-  return getFreePort().then(
-    (port) =>
-      new Promise((resolve, reject) => {
-        const server = http.createServer((req, res) => {
-          try {
-            const urlPath = decodeURIComponent((req.url || '/').split('?')[0]);
-            if (urlPath === '/' || urlPath === '/fixture-browse-story.html') {
-              res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-              res.end(buildBrowseFixture());
-              return;
-            }
-            if (urlPath === '/fixture-mytrees.html') {
-              res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-              res.end(buildMyTreesFixture());
-              return;
-            }
-            const abs = path.normalize(path.join(ROOT, urlPath.replace(/^\//, '')));
-            if (!abs.startsWith(ROOT) || !fs.existsSync(abs) || fs.statSync(abs).isDirectory()) {
-              res.writeHead(404);
-              res.end('not found');
-              return;
-            }
-            res.writeHead(200, { 'Content-Type': contentType(abs) });
-            res.end(fs.readFileSync(abs));
-          } catch (e) {
-            res.writeHead(500);
-            res.end(String(e));
-          }
-        });
-        server.listen(port, '127.0.0.1', () => resolve({ server, port }));
-        server.on('error', reject);
-      })
-  );
+async function closeServer(server) {
+  await new Promise((resolve, reject) => {
+    server.close((error) => {
+      if (error) reject(error);
+      else resolve();
+    });
+  });
 }
 
 async function launchBrowser() {
@@ -381,7 +377,7 @@ test('#3655 browser: Browse exposes four modes; story applies the data attribute
     await context.close();
   } finally {
     await browser.close();
-    server.close();
+    await closeServer(server);
   }
 });
 
@@ -419,7 +415,7 @@ test('#3655 browser: stored story restores on Browse; defaults stay compact othe
     await context.close();
   } finally {
     await browser.close();
-    server.close();
+    await closeServer(server);
   }
 });
 
@@ -445,7 +441,7 @@ test('#3655 browser: My Trees capability shows three buttons and rejects stored 
     await context.close();
   } finally {
     await browser.close();
-    server.close();
+    await closeServer(server);
   }
 });
 
@@ -522,7 +518,7 @@ test('#3655 browser: responsive group sizes 3/2/1 and local sequence of all 7 ca
     await mobile.close();
   } finally {
     await browser.close();
-    server.close();
+    await closeServer(server);
   }
 });
 
@@ -608,7 +604,7 @@ test('#3655 browser: result replacement, skeleton, empty and one-card coherence'
     await context.close();
   } finally {
     await browser.close();
-    server.close();
+    await closeServer(server);
   }
 });
 
@@ -685,7 +681,7 @@ test('#3655 browser: keyboard navigation semantics', { timeout: 120000 }, async 
     await context.close();
   } finally {
     await browser.close();
-    server.close();
+    await closeServer(server);
   }
 });
 
@@ -749,7 +745,7 @@ test('#3655 browser: visible cards keep exactly one canonical CTA; hidden cards 
     await context2.close();
   } finally {
     await browser.close();
-    server.close();
+    await closeServer(server);
   }
 });
 
@@ -786,7 +782,7 @@ test('#3655 browser: mobile card activation (Enter / Space / click) opens the ca
     await mobileActivation('space');
   } finally {
     await browser.close();
-    server.close();
+    await closeServer(server);
   }
 });
 
@@ -904,7 +900,7 @@ test('#3655 browser: geometry at 1440x900 / 768x1024 / 375x812 + reduced motion'
     await rmContext.close();
   } finally {
     await browser.close();
-    server.close();
+    await closeServer(server);
   }
 });
 
@@ -986,7 +982,7 @@ test('#3655 browser: bidirectional transition shows both outgoing and incoming l
     await context.close();
   } finally {
     await browser.close();
-    server.close();
+    await closeServer(server);
   }
 });
 
@@ -1028,7 +1024,7 @@ test('#3655 browser: prev direction uses opposite transforms', { timeout: 120000
     await context.close();
   } finally {
     await browser.close();
-    server.close();
+    await closeServer(server);
   }
 });
 
@@ -1060,7 +1056,7 @@ test('#3655 browser: rapid double-click is blocked during transition', { timeout
     await context.close();
   } finally {
     await browser.close();
-    server.close();
+    await closeServer(server);
   }
 });
 
@@ -1085,7 +1081,7 @@ test('#3655 browser: keyboard blocked during transition', { timeout: 120000 }, a
     await context.close();
   } finally {
     await browser.close();
-    server.close();
+    await closeServer(server);
   }
 });
 
@@ -1119,7 +1115,7 @@ test('#3655 browser: reduced-motion uses immediate path (no wrappers)', { timeou
     await context.close();
   } finally {
     await browser.close();
-    server.close();
+    await closeServer(server);
   }
 });
 
@@ -1170,7 +1166,7 @@ test('#3655 browser: no overflow at 1440/768/375 during and after transition', {
     assert.ok(mobile.after.scrollWidth <= mobile.after.clientWidth + 1, 'no overflow at 375 after');
   } finally {
     await browser.close();
-    server.close();
+    await closeServer(server);
   }
 });
 
@@ -1244,7 +1240,7 @@ test('#3655 browser: wide 3→1 transition — computed geometry and layer sizes
     await context.close();
   } finally {
     await browser.close();
-    server.close();
+    await closeServer(server);
   }
 });
 
@@ -1306,7 +1302,7 @@ test('#3655 browser: wide 1→3 transition — computed geometry and layer sizes
     await context.close();
   } finally {
     await browser.close();
-    server.close();
+    await closeServer(server);
   }
 });
 
@@ -1362,7 +1358,7 @@ test('#3655 browser: tablet 2→1 transition — computed geometry and layer siz
     await context.close();
   } finally {
     await browser.close();
-    server.close();
+    await closeServer(server);
   }
 });
 
@@ -1420,7 +1416,7 @@ test('#3655 browser: tablet 1→2 transition — computed geometry and layer siz
     await context.close();
   } finally {
     await browser.close();
-    server.close();
+    await closeServer(server);
   }
 });
 
@@ -1485,7 +1481,7 @@ test('#3655 browser: external results.innerHTML during transition cancels cleanl
     await context.close();
   } finally {
     await browser.close();
-    server.close();
+    await closeServer(server);
   }
 });
 
@@ -1534,7 +1530,7 @@ test('#3655 browser: arrow/Home/End keys in search input are not prevented durin
     await context.close();
   } finally {
     await browser.close();
-    server.close();
+    await closeServer(server);
   }
 });
 
@@ -1588,7 +1584,7 @@ test('#3655 browser: compact mode during transition cancels cleanly with canonic
     await context.close();
   } finally {
     await browser.close();
-    server.close();
+    await closeServer(server);
   }
 });
 
@@ -1625,7 +1621,7 @@ test('#3655 browser: Previous cancellation restores canonical order', { timeout:
     await context.close();
   } finally {
     await browser.close();
-    server.close();
+    await closeServer(server);
   }
 });
 
@@ -1671,7 +1667,7 @@ test('#3655 browser: story re-entry after cancellation works correctly', { timeo
     await context.close();
   } finally {
     await browser.close();
-    server.close();
+    await closeServer(server);
   }
 });
 
@@ -1708,7 +1704,7 @@ test('#3655 browser: breakpoint change during transition cancels cleanly', { tim
     await context.close();
   } finally {
     await browser.close();
-    server.close();
+    await closeServer(server);
   }
 });
 
@@ -1770,7 +1766,7 @@ test('#3655 browser: destroy during transition cleans up completely', { timeout:
     await context.close();
   } finally {
     await browser.close();
-    server.close();
+    await closeServer(server);
   }
 });
 
@@ -1839,7 +1835,7 @@ test('#3655 browser: transition height stabilization with different-height cards
     await context.close();
   } finally {
     await browser.close();
-    server.close();
+    await closeServer(server);
   }
 });
 
@@ -1886,6 +1882,6 @@ test('#3655 browser: refresh during transition cleans up completely', { timeout:
     await context.close();
   } finally {
     await browser.close();
-    server.close();
+    await closeServer(server);
   }
 });

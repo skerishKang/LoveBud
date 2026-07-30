@@ -13,7 +13,6 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const http = require('node:http');
-const net = require('node:net');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const CSS_TOKEN = '20260721-3608-large-1';
@@ -32,52 +31,49 @@ function contentType(filePath) {
   return 'application/octet-stream';
 }
 
-function getFreePort() {
+function startServer() {
   return new Promise((resolve, reject) => {
-    const srv = net.createServer();
-    srv.unref();
-    srv.on('error', reject);
-    srv.listen(0, '127.0.0.1', () => {
-      const port = srv.address().port;
-      srv.close(() => resolve(port));
+    const server = http.createServer((req, res) => {
+      try {
+        let urlPath = decodeURIComponent((req.url || '/').split('?')[0]);
+        if (urlPath === '/' || urlPath === '/fixture-browse.html') {
+          res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+          res.end(buildBrowseFixture());
+          return;
+        }
+        if (urlPath === '/fixture-mytrees.html') {
+          res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+          res.end(buildMyTreesFixture());
+          return;
+        }
+        const abs = path.normalize(path.join(ROOT, urlPath.replace(/^\//, '')));
+        if (!abs.startsWith(ROOT) || !fs.existsSync(abs) || fs.statSync(abs).isDirectory()) {
+          res.writeHead(404);
+          res.end('not found');
+          return;
+        }
+        res.writeHead(200, { 'Content-Type': contentType(abs) });
+        res.end(fs.readFileSync(abs));
+      } catch (e) {
+        res.writeHead(500);
+        res.end(String(e));
+      }
+    });
+    server.on('error', reject);
+    server.listen(0, '127.0.0.1', () => {
+      const port = server.address().port;
+      resolve({ server, port });
     });
   });
 }
 
-function startServer() {
-  return getFreePort().then(
-    (port) =>
-      new Promise((resolve, reject) => {
-        const server = http.createServer((req, res) => {
-          try {
-            let urlPath = decodeURIComponent((req.url || '/').split('?')[0]);
-            if (urlPath === '/' || urlPath === '/fixture-browse.html') {
-              res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-              res.end(buildBrowseFixture());
-              return;
-            }
-            if (urlPath === '/fixture-mytrees.html') {
-              res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-              res.end(buildMyTreesFixture());
-              return;
-            }
-            const abs = path.normalize(path.join(ROOT, urlPath.replace(/^\//, '')));
-            if (!abs.startsWith(ROOT) || !fs.existsSync(abs) || fs.statSync(abs).isDirectory()) {
-              res.writeHead(404);
-              res.end('not found');
-              return;
-            }
-            res.writeHead(200, { 'Content-Type': contentType(abs) });
-            res.end(fs.readFileSync(abs));
-          } catch (e) {
-            res.writeHead(500);
-            res.end(String(e));
-          }
-        });
-        server.listen(port, '127.0.0.1', () => resolve({ server, port }));
-        server.on('error', reject);
-      })
-  );
+async function closeServer(server) {
+  await new Promise((resolve, reject) => {
+    server.close((error) => {
+      if (error) reject(error);
+      else resolve();
+    });
+  });
 }
 
 function cardMarkup(surface, id, title) {
@@ -379,7 +375,7 @@ test('#3608 large browser: desktop 1440 Browse/My Trees core geometry matches', 
     await context.close();
   } finally {
     await browser.close();
-    server.close();
+    await closeServer(server);
   }
 });
 
@@ -419,7 +415,7 @@ test('#3608 large browser: mobile 375 keeps 2-col large + parity + no overflow',
     await context.close();
   } finally {
     await browser.close();
-    server.close();
+    await closeServer(server);
   }
 });
 

@@ -831,4 +831,139 @@ console.log('✓ 39: iframe error event handled');
 }
 console.log('✓ 40: timer callbacks carry attempt identity');
 
+// ============================================================
+// 41. Bounded thumbnail lifecycle states (#3713)
+// ============================================================
+{
+  assert.ok(js.includes('data-thumb-state'),
+    'index-inline-init.js must drive thumbnails via a data-thumb-state attribute');
+  const thumbStates = [
+    'FALLBACK_VISIBLE',
+    'PRIMARY_PENDING',
+    'PRIMARY_READY',
+    'SECONDARY_PENDING',
+    'SECONDARY_READY',
+    'DEGRADED_FALLBACK',
+  ];
+  for (const s of thumbStates) {
+    assert.ok(js.includes("'" + s + "'"),
+      'thumbnail lifecycle must define state ' + s);
+  }
+  assert.ok(js.includes('function applyArtistToCard'),
+    'applyArtistToCard must own the thumbnail lifecycle');
+}
+console.log('✓ 41: bounded thumbnail lifecycle states present');
+
+// ============================================================
+// 42. Per-card assignment identity guards stale image events (#3713)
+// ============================================================
+{
+  assert.ok(js.includes('media.__thumbAssignId'),
+    'each card media must carry an assignment identity counter');
+  assert.ok(js.includes('assignId !== media.__thumbAssignId'),
+    'image load/error callbacks must verify their assignment is still current');
+  const applyBody = js.slice(js.indexOf('function applyArtistToCard'), js.indexOf('function resolveI18n'));
+  const guardCount = applyBody.split('assignId !== media.__thumbAssignId').length - 1;
+  assert.ok(guardCount >= 2,
+    'both load and error callbacks must be guarded against SUPERSEDED events (found ' + guardCount + ')');
+}
+console.log('✓ 42: assignment identity guards stale image events');
+
+// ============================================================
+// 43. Primary -> exactly one secondary -> degraded fallback (#3713)
+// ============================================================
+{
+  const applyBody = js.slice(js.indexOf('function applyArtistToCard'), js.indexOf('function resolveI18n'));
+  assert.ok(applyBody.includes("var candidate = 'primary'"),
+    'thumbnail lifecycle must start with the primary candidate');
+  assert.ok(applyBody.includes("candidate = 'secondary'"),
+    'primary failure must switch to exactly one secondary candidate');
+  assert.ok(applyBody.includes('youtubeThumbUrl(video.id, false)'),
+    'secondary candidate must be mqdefault.jpg (preferMaxres=false)');
+  assert.ok(applyBody.includes('youtubeThumbUrl(video.id, true)'),
+    'primary candidate must be maxresdefault.jpg (preferMaxres=true)');
+  assert.ok(applyBody.includes("'DEGRADED_FALLBACK'"),
+    'secondary failure must land in DEGRADED_FALLBACK');
+}
+console.log('✓ 43: primary -> one secondary -> degraded fallback path');
+
+// ============================================================
+// 44. Degraded fallback is intentional, not a broken image (#3713)
+// ============================================================
+{
+  const applyBody = js.slice(js.indexOf('function applyArtistToCard'), js.indexOf('function resolveI18n'));
+  assert.ok(applyBody.includes('is-thumb-degraded'),
+    'degraded terminal state must add an explicit is-thumb-degraded class');
+  assert.ok(applyBody.includes('img.remove()'),
+    'failed image node must be removed so no broken-image icon remains');
+  const degradedRule = cssGrowthRules.match(/\.growth-stage-card-media\.is-thumb-degraded \.growth-stage-card-fallback\s*\{[^}]*\}/);
+  assert.ok(degradedRule,
+    'growth-stage.css must style the degraded fallback explicitly');
+  assert.ok(degradedRule[0].includes('display: flex'),
+    'degraded fallback must remain visible (display: flex)');
+}
+console.log('✓ 44: degraded fallback is intentional (no broken image)');
+
+// ============================================================
+// 45. Obsolete image cleanup on reassignment (#3713)
+// ============================================================
+{
+  const applyBody = js.slice(js.indexOf('function applyArtistToCard'), js.indexOf('function resolveI18n'));
+  assert.ok(applyBody.includes("media.querySelectorAll('img')"),
+    'reassignment must collect obsolete image nodes');
+  assert.ok(applyBody.includes('obsoleteImgs'),
+    'reassignment must remove obsolete image nodes (one current candidate per card)');
+}
+console.log('✓ 45: obsolete image cleanup on reassignment');
+
+// ============================================================
+// 46. Reduced motion removes nonessential thumbnail fade (#3713)
+// ============================================================
+{
+  let cursor = cssGrowth.indexOf('@media (prefers-reduced-motion: reduce)');
+  let foundThumbFadeRemoval = false;
+  while (cursor !== -1) {
+    let brace = 0;
+    let inBlock = false;
+    let block = '';
+    for (let bi = cursor; bi < cssGrowth.length; bi++) {
+      const ch = cssGrowth[bi];
+      if (ch === '{') { brace++; inBlock = true; }
+      else if (ch === '}') { brace--; }
+      if (inBlock) block += ch;
+      if (brace === 0 && inBlock) break;
+    }
+    if (/\.growth-stage-card-media img\s*\{[^}]*transition:\s*none/.test(block)) {
+      foundThumbFadeRemoval = true;
+      break;
+    }
+    cursor = cssGrowth.indexOf('@media (prefers-reduced-motion: reduce)', cursor + 1);
+  }
+  assert.ok(foundThumbFadeRemoval,
+    'a prefers-reduced-motion block must set transition: none on .growth-stage-card-media img');
+}
+console.log('✓ 46: reduced motion removes thumbnail fade');
+
+// ============================================================
+// 47. Decorative thumbnails keep alt="" (#3713)
+// ============================================================
+{
+  const applyBody = js.slice(js.indexOf('function applyArtistToCard'), js.indexOf('function resolveI18n'));
+  assert.ok(applyBody.includes("img.alt = ''"),
+    'thumbnail img must remain decorative with alt=""');
+}
+console.log('✓ 47: decorative thumbnails keep alt=""');
+
+// ============================================================
+// 48. No new live-region / card-wide busy for thumbnails (#3713)
+// ============================================================
+{
+  const applyBody = js.slice(js.indexOf('function applyArtistToCard'), js.indexOf('function resolveI18n'));
+  assert.ok(!applyBody.includes('aria-live'),
+    'thumbnail lifecycle must not add aria-live announcements');
+  assert.ok(!applyBody.includes('aria-busy'),
+    'thumbnail lifecycle must not mark the card busy');
+}
+console.log('✓ 48: no new live-region / card-wide busy for thumbnails');
+
 console.log('\n✅ All contract tests passed.');
