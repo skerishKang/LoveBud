@@ -1416,3 +1416,59 @@ test('#3654 browser: htmlToNode skips leading whitespace text nodes', { timeout:
     assert.ok(result.mediaWrapElementChildren >= 1, 'Media wrapper must have at least 1 element child');
   });
 });
+
+/* ────────────────────────────────────────────────────────────────────────── */
+/* 13. No-thumbnail fallback regression (#3654)                                */
+/* ────────────────────────────────────────────────────────────────────────── */
+
+test('#3654 browser: no-thumbnail tree falls back to rendered media element, not empty wrapper', { timeout: 60000 }, async (t) => {
+  await withServerPage(t, async (page, base) => {
+    const result = await page.evaluate((args) => {
+      const Renderer = window.LoveBudSearchCardRenderer;
+      const Fallback = window.LoveBudSearchCardFallback;
+      const base = args.base;
+
+      const noThumbnailTree = {
+        id: 'no-thumb-fallback-1',
+        title: 'Fallback Test',
+        memoryCount: 0,
+      };
+
+      const cardHtml = Renderer.renderTreeCard(noThumbnailTree, 0);
+      const container = document.createElement('div');
+      container.innerHTML = cardHtml;
+
+      const mediaWrap = container.querySelector('.love-tree-card-media');
+      const mediaEl = container.querySelector('.tree-card-media');
+      const fallback = container.querySelector('.tree-card-media-fallback');
+      const pill = container.querySelector('.fallback-pill');
+      const cta = container.querySelector('.tree-card-open-link');
+      const body = container.querySelector('.tree-card-body');
+
+      const rawHtml = Fallback.renderRepresentativeMedia(noThumbnailTree, undefined, 'Fallback Test');
+
+      return {
+        hasMediaWrap: !!mediaWrap,
+        hasMediaEl: !!mediaEl,
+        hasFallback: !!fallback,
+        hasPill: !!pill,
+        rawHtmlFirstChars: rawHtml ? rawHtml.slice(0, 30).replace(/\n/g, '\\n') : '(empty)',
+        startsWithWhitespace: /^\s/.test(rawHtml),
+        mediaWrapElementChildren: mediaWrap ? mediaWrap.children.length : -1,
+        hasCTA: !!cta,
+        hasBody: !!body,
+        cardHtmlLength: cardHtml.length,
+      };
+    }, { base });
+
+    assert.ok(result.hasMediaWrap, 'No-thumbnail card must have outer media wrapper');
+    assert.ok(result.hasMediaEl, 'Inner .tree-card-media element must exist (not whitespace text node)');
+    assert.ok(result.hasFallback, 'tree-card-media-fallback must be present for no-thumbnail tree');
+    assert.ok(result.hasPill, 'Fallback pill must be rendered as part of SVG fallback');
+    assert.ok(result.mediaWrapElementChildren >= 1, 'Media wrapper must have at least 1 element child (not empty)');
+    assert.ok(result.hasCTA, 'CTA must be preserved on no-thumbnail card');
+    assert.ok(result.hasBody, 'Body must be preserved on no-thumbnail card');
+    assert.ok(result.cardHtmlLength > 0, 'Card HTML must not be empty');
+    assert.ok(result.startsWithWhitespace, 'renderRepresentativeMedia HTML must start with whitespace (precondition — regression guard)');
+  });
+});
