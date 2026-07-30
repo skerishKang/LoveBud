@@ -59,8 +59,14 @@ execution_group_enum: 8 groups (matches ci-test-group-registry.json group_enum)
 
 - `U0` with `TIER_2` or `TIER_3` (copy-only should never need medium/high tier)
 - `U2` with `TIER_1` (structural work must be at least Tier 2)
-- `U3` with `TIER_1` or `TIER_2` (runtime-sensitive work requires Tier 3)
+- `U3` with `TIER_1` (runtime-sensitive work requires at least Tier 2)
 - `U0`/`U1` with any capability beyond `copy_or_docs` or `visual_only`
+
+### TIER_2 + U3 policy
+
+`TIER_2 + U3` is a valid combination when **no sensitive capability** is present. This accommodates narrow runtime-sensitive work (e.g., `browser_runtime`, `responsive_layout`, `accessibility_or_focus`) without requiring the full Tier 3 escalation.
+
+When a sensitive capability (`auth_or_session`, `api_write`, `cache_or_storage_persistence`, `database`, `migration`, `privacy_or_security`, `provider_or_network`, `deployment_or_runtime_infra`, `destructive`) is present with `TIER_2 + U3`, the planner rejects with `UNDERCLASSIFIED_CAPABILITY` and requires `TIER_3`.
 
 ### Sensitive capabilities → Tier 3 escalation
 
@@ -113,8 +119,8 @@ If the input tier is below `TIER_3` and any of these capabilities is present, th
 | Tier | Local Validation | Browser evidence | Production verification |
 |------|-----------------|------------------|------------------------|
 | TIER_1 | NOT_REQUIRED | NOT_REQUIRED | NOT_REQUIRED |
-| TIER_2 | NOT_REQUIRED by default | Required for browser_runtime/responsive_layout | NOT_REQUIRED |
-| TIER_3 | REQUIRED | Required for browser_runtime/responsive_layout | REQUIRED |
+| TIER_2 | NOT_REQUIRED by default | Required for browser_runtime/responsive_layout/accessibility_or_focus | NOT_REQUIRED |
+| TIER_3 | REQUIRED | Required for browser_runtime/responsive_layout/accessibility_or_focus | REQUIRED |
 
 ### Merge blockers
 
@@ -123,6 +129,22 @@ Hard blockers that prevent merge regardless of CI status:
 - `CI_EXECUTED_FAILURE`
 - `CI_PENDING_EXECUTION`
 - `UNRESOLVED_DESTRUCTIVE_APPROVAL`
+
+### CI_UNAVAILABLE_INFRA posture
+
+`CI_UNAVAILABLE_INFRA` is a distinct status: infrastructure is unavailable but no test execution failure occurred.
+
+| Property | Value |
+|----------|-------|
+| Status | `CI_UNAVAILABLE_INFRA` |
+| Alternative evidence required | `true` |
+| Merge-ready without alternative | `false` |
+
+- `CI_UNAVAILABLE_INFRA != CI_GREEN`
+- `CI_UNAVAILABLE_INFRA != CI_EXECUTED_FAILURE`
+- Canonical alternative evidence is required
+- Until alternative evidence is resolved, merge is not ready
+- This is stored separately from `hard_blockers` in the policy JSON
 
 ### CLI input/output
 
@@ -184,7 +206,7 @@ Errors never contain:
 
 ### CI failure-class preservation
 
-The planner does not modify, rerun, or suppress any existing CI failure classification. Hard merge blockers (`CI_EXECUTED_FAILURE`, `CI_PENDING_EXECUTION`) are preserved as policy documentation.
+The planner does not modify, rerun, or suppress any existing CI failure classification. Hard merge blockers (`CI_EXECUTED_FAILURE`, `CI_PENDING_EXECUTION`, `UNRESOLVED_DESTRUCTIVE_APPROVAL`) are preserved as policy documentation. `CI_UNAVAILABLE_INFRA` is tracked separately as an infrastructure availability posture.
 
 ### Security/privacy output boundary
 

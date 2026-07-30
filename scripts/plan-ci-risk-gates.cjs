@@ -12,10 +12,6 @@
  *   - reads ONLY fixed repository-relative authority files (never caller paths);
  *   - does NOT execute any test, browser, network, provider, DB, or workflow;
  *   - does NOT expose host paths, credentials, or private URLs in errors.
- *
- * CLI:
- *   node scripts/plan-ci-risk-gates.cjs --tier TIER_2 --ui-class U2 --capability structural_dom
- *   node scripts/plan-ci-risk-gates.cjs --tier TIER_2 --ui-class U2 --capability structural_dom --json
  */
 
 'use strict';
@@ -23,14 +19,12 @@
 const fs = require('fs');
 const path = require('path');
 
-const ROOT = __dirname;  // scripts/
+const ROOT = __dirname;
 const POLICY_REL = path.join('..', 'tests', 'ci-risk-gate-policy.json');
 const POLICY_PATH = path.resolve(ROOT, POLICY_REL);
-
 const REGISTRY_REL = path.join('..', 'tests', 'ci-test-group-registry.json');
 const REGISTRY_PATH = path.resolve(ROOT, REGISTRY_REL);
 
-/* ── Error vocabulary ────────────────────────────────────────── */
 const ERROR_CODES = {
   POLICY_PARSE_ERROR: 'POLICY_PARSE_ERROR',
   POLICY_SCHEMA_ERROR: 'POLICY_SCHEMA_ERROR',
@@ -46,196 +40,348 @@ const ERROR_CODES = {
   UNSAFE_AUTOMATIC_EXECUTION: 'UNSAFE_AUTOMATIC_EXECUTION',
 };
 
-/* ── PlanError ───────────────────────────────────────────────── */
 class PlanError extends Error {
   constructor(code, message) {
-    super(sanitizedErrorCode(code, message));
+    super(code + ': ' + String(message || '').replace(/\/[\w./-]+\/[\w./-]+/g, '<path>'));
     this.code = code;
     this.name = 'PlanError';
   }
 }
 
-function sanitizedErrorCode(code, detail) {
-  // Strip absolute paths, credentials, private patterns
-  const sanitized = String(detail || '').replace(/\/[\w./-]+\/[\w./-]+/g, '<path>');
-  return code + ': ' + sanitized;
-}
+const EXPECTED_TOP_KEYS = [
+  'schema_version', 'title', 'description', 'tier_enum', 'ui_class_enum',
+  'capability_enum', 'tier_1_not_applicable_allowed_capabilities',
+  'sensitive_capabilities', 'execution_group_enum', 'tier_ui_matrix',
+  'escalation_rules', 'execution_group_policy', 'merge_blockers',
+  'accessibility_focus_evidence_policy', 'policy_version', 'policy_date', 'refs'
+];
 
-/* ── Fixed source reads ──────────────────────────────────────── */
+const EXPECTED_TIERS = ['TIER_1', 'TIER_2', 'TIER_3'];
+const EXPECTED_UI_CLASSES = ['NOT_APPLICABLE', 'U0', 'U1', 'U2', 'U3'];
+const EXPECTED_CAPABILITIES = [
+  'copy_or_docs', 'visual_only', 'structural_dom', 'responsive_layout',
+  'accessibility_or_focus', 'browser_runtime', 'process_runtime',
+  'auth_or_session', 'api_read', 'api_write', 'cache_or_storage_persistence',
+  'database', 'migration', 'privacy_or_security', 'provider_or_network',
+  'deployment_or_runtime_infra', 'destructive'
+];
+const EXPECTED_SENSITIVE = [
+  'auth_or_session', 'api_write', 'cache_or_storage_persistence',
+  'database', 'migration', 'privacy_or_security', 'provider_or_network',
+  'deployment_or_runtime_infra', 'destructive'
+];
+
+/* ── Source reads ────────────────────────────────────────────── */
 function readPolicy() {
-  try {
-    const raw = fs.readFileSync(POLICY_PATH, 'utf8');
-    return JSON.parse(raw);
-  } catch (e) {
-    throw new PlanError(ERROR_CODES.POLICY_PARSE_ERROR, 'Cannot read policy file');
-  }
+  try { return JSON.parse(fs.readFileSync(POLICY_PATH, 'utf8')); }
+  catch (e) { throw new PlanError(ERROR_CODES.POLICY_PARSE_ERROR, 'Cannot read policy file'); }
 }
 
 function readRegistry() {
-  try {
-    const raw = fs.readFileSync(REGISTRY_PATH, 'utf8');
-    return JSON.parse(raw);
-  } catch (e) {
-    throw new PlanError(ERROR_CODES.POLICY_PARSE_ERROR, 'Cannot read registry file');
-  }
+  try { return JSON.parse(fs.readFileSync(REGISTRY_PATH, 'utf8')); }
+  catch (e) { throw new PlanError(ERROR_CODES.POLICY_PARSE_ERROR, 'Cannot read registry file'); }
 }
 
-/* ── Schema validation ───────────────────────────────────────── */
+/* ── Full schema validation ──────────────────────────────────── */
 function validatePolicySchema(policy) {
-  const requiredTopKeys = ['schema_version', 'title', 'tier_enum', 'ui_class_enum',
-    'capability_enum', 'sensitive_capabilities', 'execution_group_enum',
-    'tier_ui_matrix', 'escalation_rules', 'execution_group_policy',
-    'merge_blockers', 'policy_version'];
-
-  for (const key of requiredTopKeys) {
-    if (!(key in policy)) {
-      throw new PlanError(ERROR_CODES.POLICY_SCHEMA_ERROR, 'Missing top-level key: ' + key);
+  // Check exact top-level keys (no unknown, no missing)
+  var topKeys = Object.keys(policy).sort();
+  var expectedSorted = EXPECTED_TOP_KEYS.slice().sort();
+  if (topKeys.length !== expectedSorted.length) {
+    throw new PlanError(ERROR_CODES.POLICY_SCHEMA_ERROR, 'Top-level key count mismatch');
+  }
+  for (var tk = 0; tk < topKeys.length; tk++) {
+    if (topKeys[tk] !== expectedSorted[tk]) {
+      var extra = topKeys.filter(function(k) { return expectedSorted.indexOf(k) === -1; });
+      var missing = expectedSorted.filter(function(k) { return topKeys.indexOf(k) === -1; });
+      var msg = 'Top-level key mismatch';
+      if (extra.length > 0) msg += '; unknown: ' + extra.join(', ');
+      if (missing.length > 0) msg += '; missing: ' + missing.join(', ');
+      throw new PlanError(ERROR_CODES.POLICY_SCHEMA_ERROR, msg);
     }
   }
 
-  // Validate tier_enum
-  if (!Array.isArray(policy.tier_enum) || policy.tier_enum.length !== 3 ||
-      policy.tier_enum[0] !== 'TIER_1' || policy.tier_enum[1] !== 'TIER_2' || policy.tier_enum[2] !== 'TIER_3') {
-    throw new PlanError(ERROR_CODES.UNKNOWN_ENUM, 'tier_enum must be [TIER_1, TIER_2, TIER_3]');
+  if (policy.schema_version !== '1.0.0') {
+    throw new PlanError(ERROR_CODES.POLICY_SCHEMA_ERROR, 'Unsupported schema_version');
+  }
+  if (policy.policy_version !== '1.0.0') {
+    throw new PlanError(ERROR_CODES.POLICY_SCHEMA_ERROR, 'Unsupported policy_version');
   }
 
-  // Validate ui_class_enum
-  if (!Array.isArray(policy.ui_class_enum) || policy.ui_class_enum.length !== 5 ||
-      policy.ui_class_enum[0] !== 'NOT_APPLICABLE') {
+  // Validate tier_enum exactly
+  if (!policy.tier_enum || policy.tier_enum.length !== 3 ||
+      policy.tier_enum[0] !== 'TIER_1' || policy.tier_enum[1] !== 'TIER_2' || policy.tier_enum[2] !== 'TIER_3') {
+    throw new PlanError(ERROR_CODES.UNKNOWN_ENUM, 'tier_enum malformed');
+  }
+
+  // Validate ui_class_enum exactly
+  if (!policy.ui_class_enum || policy.ui_class_enum.length !== 5 || policy.ui_class_enum[0] !== 'NOT_APPLICABLE' ||
+      policy.ui_class_enum[1] !== 'U0' || policy.ui_class_enum[2] !== 'U1' || policy.ui_class_enum[3] !== 'U2' || policy.ui_class_enum[4] !== 'U3') {
     throw new PlanError(ERROR_CODES.UNKNOWN_ENUM, 'ui_class_enum malformed');
   }
 
-  // Validate execution_group_enum matches registry
-  const registry = readRegistry();
-  if (!Array.isArray(registry.group_enum)) {
-    throw new PlanError(ERROR_CODES.REGISTRY_POLICY_MISMATCH, 'Registry missing group_enum');
-  }
-  if (JSON.stringify(policy.execution_group_enum) !== JSON.stringify(registry.group_enum)) {
-    throw new PlanError(ERROR_CODES.REGISTRY_POLICY_MISMATCH, 'execution_group_enum does not match registry group_enum');
+  // Validate capability_enum
+  if (!policy.capability_enum || policy.capability_enum.length !== 17 ||
+      JSON.stringify(policy.capability_enum) !== JSON.stringify(EXPECTED_CAPABILITIES)) {
+    throw new PlanError(ERROR_CODES.UNKNOWN_ENUM, 'capability_enum malformed');
   }
 
-  // Validate schema_version
-  if (policy.schema_version !== '1.0.0') {
-    throw new PlanError(ERROR_CODES.POLICY_SCHEMA_ERROR, 'Unsupported schema_version: ' + policy.schema_version);
+  // Validate sensitive_capabilities is an exact subset
+  if (!policy.sensitive_capabilities || JSON.stringify(policy.sensitive_capabilities) !== JSON.stringify(EXPECTED_SENSITIVE)) {
+    throw new PlanError(ERROR_CODES.UNKNOWN_ENUM, 'sensitive_capabilities malformed');
+  }
+
+  // Validate tier_1_not_applicable_allowed_capabilities
+  if (!policy.tier_1_not_applicable_allowed_capabilities || !Array.isArray(policy.tier_1_not_applicable_allowed_capabilities)) {
+    throw new PlanError(ERROR_CODES.POLICY_SCHEMA_ERROR, 'tier_1_not_applicable_allowed_capabilities must be an array');
+  }
+  for (var t1c = 0; t1c < policy.tier_1_not_applicable_allowed_capabilities.length; t1c++) {
+    if (EXPECTED_CAPABILITIES.indexOf(policy.tier_1_not_applicable_allowed_capabilities[t1c]) === -1 &&
+        policy.tier_1_not_applicable_allowed_capabilities[t1c] !== 'none') {
+      throw new PlanError(ERROR_CODES.UNKNOWN_ENUM, 'Unknown allowed capability: ' + policy.tier_1_not_applicable_allowed_capabilities[t1c]);
+    }
+  }
+
+  // Validate execution_group_enum matches registry
+  var registry = readRegistry();
+  if (!registry.group_enum || JSON.stringify(policy.execution_group_enum) !== JSON.stringify(registry.group_enum)) {
+    throw new PlanError(ERROR_CODES.REGISTRY_POLICY_MISMATCH, 'execution_group_enum does not match registry');
+  }
+
+  // Validate tier_ui_matrix
+  if (!policy.tier_ui_matrix || !Array.isArray(policy.tier_ui_matrix.allowed_combinations)) {
+    throw new PlanError(ERROR_CODES.POLICY_SCHEMA_ERROR, 'tier_ui_matrix.allowed_combinations missing');
+  }
+  for (var ac = 0; ac < policy.tier_ui_matrix.allowed_combinations.length; ac++) {
+    var comb = policy.tier_ui_matrix.allowed_combinations[ac];
+    if (!Array.isArray(comb) || comb.length !== 2) {
+      throw new PlanError(ERROR_CODES.POLICY_SCHEMA_ERROR, 'Malformed combination at index ' + ac);
+    }
+    if (EXPECTED_TIERS.indexOf(comb[0]) === -1) {
+      throw new PlanError(ERROR_CODES.UNKNOWN_ENUM, 'Unknown tier in combination: ' + comb[0]);
+    }
+    if (EXPECTED_UI_CLASSES.indexOf(comb[1]) === -1) {
+      throw new PlanError(ERROR_CODES.UNKNOWN_ENUM, 'Unknown ui class in combination: ' + comb[1]);
+    }
+    // Check duplicates
+    for (var ac2 = ac + 1; ac2 < policy.tier_ui_matrix.allowed_combinations.length; ac2++) {
+      if (policy.tier_ui_matrix.allowed_combinations[ac2][0] === comb[0] &&
+          policy.tier_ui_matrix.allowed_combinations[ac2][1] === comb[1]) {
+        throw new PlanError(ERROR_CODES.POLICY_SCHEMA_ERROR, 'Duplicate Tier/UI combination: ' + comb[0] + ' + ' + comb[1]);
+      }
+    }
+  }
+
+  // Validate escalation_rules shape
+  if (!policy.escalation_rules || typeof policy.escalation_rules !== 'object') {
+    throw new PlanError(ERROR_CODES.POLICY_SCHEMA_ERROR, 'escalation_rules missing');
+  }
+  var escalationKeys = ['tier_1_not_applicable_blocked', 'u0_u1_blocking_capabilities', 'tier_2_u2_sensitive_escalation', 'u3_sensitive_requires_tier_3'];
+  for (var ek = 0; ek < escalationKeys.length; ek++) {
+    if (!policy.escalation_rules[escalationKeys[ek]]) {
+      throw new PlanError(ERROR_CODES.POLICY_SCHEMA_ERROR, 'Missing escalation rule: ' + escalationKeys[ek]);
+    }
+    var blocked = policy.escalation_rules[escalationKeys[ek]].blocked || policy.escalation_rules[escalationKeys[ek]].sensitive_capabilities;
+    if (!Array.isArray(blocked)) {
+      throw new PlanError(ERROR_CODES.POLICY_SCHEMA_ERROR, 'Malformed escalation rule: ' + escalationKeys[ek]);
+    }
+    for (var bk = 0; bk < blocked.length; bk++) {
+      if (EXPECTED_CAPABILITIES.indexOf(blocked[bk]) === -1) {
+        throw new PlanError(ERROR_CODES.UNKNOWN_ENUM, 'Unknown capability ' + blocked[bk] + ' in ' + escalationKeys[ek]);
+      }
+    }
+  }
+
+  // Validate execution_group_policy
+  if (!policy.execution_group_policy || !policy.execution_group_policy.required_groups ||
+      !policy.execution_group_policy.conditional_groups || !Array.isArray(policy.execution_group_policy.conditional_groups.rules)) {
+    throw new PlanError(ERROR_CODES.POLICY_SCHEMA_ERROR, 'execution_group_policy malformed');
+  }
+  for (var rgTier in policy.execution_group_policy.required_groups) {
+    if (EXPECTED_TIERS.indexOf(rgTier) === -1) {
+      throw new PlanError(ERROR_CODES.UNKNOWN_ENUM, 'Unknown tier in required_groups: ' + rgTier);
+    }
+    var rg = policy.execution_group_policy.required_groups[rgTier];
+    if (!Array.isArray(rg)) {
+      throw new PlanError(ERROR_CODES.POLICY_SCHEMA_ERROR, 'required_groups for ' + rgTier + ' must be array');
+    }
+    for (var rgc = 0; rgc < rg.length; rgc++) {
+      if (policy.execution_group_enum.indexOf(rg[rgc]) === -1) {
+        throw new PlanError(ERROR_CODES.UNKNOWN_EXECUTION_GROUP, 'Unknown group ' + rg[rgc] + ' in required_groups');
+      }
+    }
+  }
+  for (var rl = 0; rl < policy.execution_group_policy.conditional_groups.rules.length; rl++) {
+    var rule = policy.execution_group_policy.conditional_groups.rules[rl];
+    if (!rule.capability || !rule.conditional_groups || !rule.affected_tiers) {
+      throw new PlanError(ERROR_CODES.POLICY_SCHEMA_ERROR, 'Malformed conditional rule at index ' + rl);
+    }
+    if (EXPECTED_CAPABILITIES.indexOf(rule.capability) === -1) {
+      throw new PlanError(ERROR_CODES.UNKNOWN_ENUM, 'Unknown capability ' + rule.capability + ' in conditional rule');
+    }
+    for (var cg = 0; cg < rule.conditional_groups.length; cg++) {
+      if (policy.execution_group_enum.indexOf(rule.conditional_groups[cg]) === -1) {
+        throw new PlanError(ERROR_CODES.UNKNOWN_EXECUTION_GROUP, 'Unknown group ' + rule.conditional_groups[cg] + ' in conditional rule');
+      }
+    }
+    // Check for duplicate capabilities in rules
+    for (var rl2 = rl + 1; rl2 < policy.execution_group_policy.conditional_groups.rules.length; rl2++) {
+      if (policy.execution_group_policy.conditional_groups.rules[rl2].capability === rule.capability) {
+        throw new PlanError(ERROR_CODES.POLICY_SCHEMA_ERROR, 'Duplicate capability in conditional rules: ' + rule.capability);
+      }
+    }
+  }
+
+  // Validate merge_blockers
+  if (!policy.merge_blockers || !Array.isArray(policy.merge_blockers.hard_blockers)) {
+    throw new PlanError(ERROR_CODES.POLICY_SCHEMA_ERROR, 'merge_blockers malformed');
+  }
+
+  // Validate manual_evidence_groups
+  if (!policy.execution_group_policy.manual_evidence_groups ||
+      !Array.isArray(policy.execution_group_policy.manual_evidence_groups.groups) ||
+      !policy.execution_group_policy.manual_evidence_groups.triggers ||
+      !Array.isArray(policy.execution_group_policy.manual_evidence_groups.triggers.capabilities)) {
+    throw new PlanError(ERROR_CODES.POLICY_SCHEMA_ERROR, 'manual_evidence_groups malformed');
+  }
+
+  // Validate accessibility_focus_evidence_policy
+  if (!policy.accessibility_focus_evidence_policy || typeof policy.accessibility_focus_evidence_policy !== 'object') {
+    throw new PlanError(ERROR_CODES.POLICY_SCHEMA_ERROR, 'accessibility_focus_evidence_policy missing');
   }
 }
 
 /* ── CLI argument parsing ────────────────────────────────────── */
 function parseArgs(argv) {
-  const args = argv.slice(2);
-  const result = { tier: null, uiClass: null, capabilities: [], json: false };
+  var args = argv.slice(2);
+  var result = { tier: null, uiClass: null, capabilities: [], json: 0 };
+  var seenCapValues = {};
 
-  const seen = {};
-
-  for (let i = 0; i < args.length; i++) {
-    const arg = args[i];
+  for (var i = 0; i < args.length; i++) {
+    var arg = args[i];
 
     if (arg === '--json') {
-      result.json = true;
+      result.json++;
       continue;
     }
 
     if (arg === '--tier' || arg === '--ui-class') {
-      if (seen[arg]) {
-        throw new PlanError(ERROR_CODES.DUPLICATE_ARGUMENT, 'Duplicate argument: ' + arg);
+      if (arg === '--tier' && result.tier !== null) {
+        throw new PlanError(ERROR_CODES.DUPLICATE_ARGUMENT, 'Duplicate --tier argument');
       }
-      seen[arg] = true;
-
+      if (arg === '--ui-class' && result.uiClass !== null) {
+        throw new PlanError(ERROR_CODES.DUPLICATE_ARGUMENT, 'Duplicate --ui-class argument');
+      }
       if (i + 1 >= args.length || args[i + 1].startsWith('--')) {
         throw new PlanError(ERROR_CODES.MISSING_REQUIRED_ARGUMENT, 'Missing value for ' + arg);
       }
-      const value = args[++i];
-
-      if (arg === '--tier') {
-        result.tier = value;
-      } else if (arg === '--ui-class') {
-        result.uiClass = value;
-      }
+      var value = args[++i];
+      if (arg === '--tier') result.tier = value;
+      else result.uiClass = value;
     } else if (arg === '--capability') {
       if (i + 1 >= args.length || args[i + 1].startsWith('--')) {
         throw new PlanError(ERROR_CODES.MISSING_REQUIRED_ARGUMENT, 'Missing value for --capability');
       }
-      result.capabilities.push(args[++i]);
+      var capVal = args[++i];
+      if (seenCapValues[capVal]) {
+        throw new PlanError(ERROR_CODES.DUPLICATE_ARGUMENT, 'Duplicate capability value: ' + capVal);
+      }
+      seenCapValues[capVal] = true;
+      result.capabilities.push(capVal);
     } else if (arg.startsWith('--')) {
       throw new PlanError(ERROR_CODES.UNSUPPORTED_ARGUMENT, 'Unknown argument: ' + arg);
+    } else {
+      // Positional token (does not start with --)
+      throw new PlanError(ERROR_CODES.UNSUPPORTED_ARGUMENT, 'Unexpected positional token: ' + arg);
     }
   }
 
-  if (!result.tier) {
+  if (result.json > 1) {
+    throw new PlanError(ERROR_CODES.DUPLICATE_ARGUMENT, 'Duplicate --json argument');
+  }
+  if (result.tier === null) {
     throw new PlanError(ERROR_CODES.MISSING_REQUIRED_ARGUMENT, 'Missing required --tier argument');
   }
-  if (!result.uiClass) {
+  if (result.uiClass === null) {
     throw new PlanError(ERROR_CODES.MISSING_REQUIRED_ARGUMENT, 'Missing required --ui-class argument');
   }
 
   return result;
 }
 
-/* ── Input validation against policy enums ───────────────────── */
+/* ── Input validation ────────────────────────────────────────── */
 function validateInputs(policy, tier, uiClass, capabilities) {
-  // Validate tier
-  if (!policy.tier_enum.includes(tier)) {
-    throw new PlanError(ERROR_CODES.UNKNOWN_ENUM, 'Unknown tier: ' + tier + ' (valid: ' + policy.tier_enum.join(', ') + ')');
+  if (policy.tier_enum.indexOf(tier) === -1) {
+    throw new PlanError(ERROR_CODES.UNKNOWN_ENUM, 'Unknown tier: ' + tier);
   }
-
-  // Validate uiClass
-  if (!policy.ui_class_enum.includes(uiClass)) {
-    throw new PlanError(ERROR_CODES.UNKNOWN_ENUM, 'Unknown ui-class: ' + uiClass + ' (valid: ' + policy.ui_class_enum.join(', ') + ')');
+  if (policy.ui_class_enum.indexOf(uiClass) === -1) {
+    throw new PlanError(ERROR_CODES.UNKNOWN_ENUM, 'Unknown ui-class: ' + uiClass);
   }
-
-  // Validate capabilities
-  for (const cap of capabilities) {
-    if (!policy.capability_enum.includes(cap)) {
-      throw new PlanError(ERROR_CODES.UNKNOWN_ENUM, 'Unknown capability: ' + cap + ' (valid: ' + policy.capability_enum.join(', ') + ')');
+  for (var ci = 0; ci < capabilities.length; ci++) {
+    if (policy.capability_enum.indexOf(capabilities[ci]) === -1) {
+      throw new PlanError(ERROR_CODES.UNKNOWN_ENUM, 'Unknown capability: ' + capabilities[ci]);
     }
   }
 }
 
-/* ── Tier/UI combination check ───────────────────────────────── */
 function validateTierUiCombination(policy, tier, uiClass) {
-  const allowed = policy.tier_ui_matrix.allowed_combinations;
-  const isAllowed = allowed.some(function(comb) {
-    return comb[0] === tier && comb[1] === uiClass;
-  });
-  if (!isAllowed) {
+  var allowed = policy.tier_ui_matrix.allowed_combinations;
+  var ok = false;
+  for (var ai = 0; ai < allowed.length; ai++) {
+    if (allowed[ai][0] === tier && allowed[ai][1] === uiClass) { ok = true; break; }
+  }
+  if (!ok) {
     throw new PlanError(ERROR_CODES.INVALID_TIER_UI_COMBINATION,
       'Invalid Tier/UI combination: ' + tier + ' + ' + uiClass);
   }
 }
 
-/* ── Capability escalation rules ─────────────────────────────── */
+/* ── Escalation rules ────────────────────────────────────────── */
 function applyEscalationRules(policy, tier, uiClass, capabilities) {
   var effectiveTier = tier;
 
-  // U0/U1 blocking rules: these UI classes cannot have behavioral capabilities
+  // TIER_1 + NOT_APPLICABLE blocked mid-risk capabilities
+  if (tier === 'TIER_1' && uiClass === 'NOT_APPLICABLE') {
+    var t1Blocked = policy.escalation_rules.tier_1_not_applicable_blocked.blocked;
+    var allowedCaps = policy.tier_1_not_applicable_allowed_capabilities;
+    for (var tb = 0; tb < capabilities.length; tb++) {
+      if (t1Blocked.indexOf(capabilities[tb]) !== -1) {
+        throw new PlanError(ERROR_CODES.UNDERCLASSIFIED_CAPABILITY,
+          'TIER_1 + NOT_APPLICABLE cannot include: ' + capabilities[tb]);
+      }
+      if (allowedCaps.indexOf(capabilities[tb]) === -1 && capabilities[tb] !== 'none') {
+        throw new PlanError(ERROR_CODES.UNDERCLASSIFIED_CAPABILITY,
+          'TIER_1 + NOT_APPLICABLE cannot include: ' + capabilities[tb]);
+      }
+    }
+  }
+
   if (uiClass === 'U0' || uiClass === 'U1') {
     var blocked = policy.escalation_rules.u0_u1_blocking_capabilities.blocked;
-    for (var i = 0; i < capabilities.length; i++) {
-      if (blocked.indexOf(capabilities[i]) !== -1) {
+    for (var uu = 0; uu < capabilities.length; uu++) {
+      if (blocked.indexOf(capabilities[uu]) !== -1) {
         throw new PlanError(ERROR_CODES.UNDERCLASSIFIED_CAPABILITY,
-          'UI class ' + uiClass + ' cannot include capability: ' + capabilities[i]);
+          'UI class ' + uiClass + ' cannot include: ' + capabilities[uu]);
       }
     }
   }
 
-  // U2 sensitive escalation: must escalate to Tier 3
   if (uiClass === 'U2') {
-    var sensitive = policy.escalation_rules.tier_2_u2_sensitive_escalation.sensitive_capabilities;
-    for (var j = 0; j < capabilities.length; j++) {
-      if (sensitive.indexOf(capabilities[j]) !== -1 && effectiveTier !== 'TIER_3') {
+    var s2 = policy.escalation_rules.tier_2_u2_sensitive_escalation.sensitive_capabilities;
+    for (var su2 = 0; su2 < capabilities.length; su2++) {
+      if (s2.indexOf(capabilities[su2]) !== -1 && effectiveTier !== 'TIER_3') {
         throw new PlanError(ERROR_CODES.UNDERCLASSIFIED_CAPABILITY,
-          'UI class U2 with sensitive capability ' + capabilities[j] + ' requires TIER_3 (got ' + effectiveTier + ')');
+          'U2 sensitive cap ' + capabilities[su2] + ' requires TIER_3');
       }
     }
   }
 
-  // U3 sensitive requires Tier 3
   if (uiClass === 'U3') {
-    var u3Sensitive = policy.escalation_rules.u3_sensitive_requires_tier_3.sensitive_capabilities;
-    for (var k = 0; k < capabilities.length; k++) {
-      if (u3Sensitive.indexOf(capabilities[k]) !== -1 && effectiveTier !== 'TIER_3') {
+    var s3 = policy.escalation_rules.u3_sensitive_requires_tier_3.sensitive_capabilities;
+    for (var su3 = 0; su3 < capabilities.length; su3++) {
+      if (s3.indexOf(capabilities[su3]) !== -1 && effectiveTier !== 'TIER_3') {
         throw new PlanError(ERROR_CODES.UNDERCLASSIFIED_CAPABILITY,
-          'U3 with sensitive capability ' + capabilities[k] + ' requires TIER_3 (got ' + effectiveTier + ')');
+          'U3 sensitive cap ' + capabilities[su3] + ' requires TIER_3');
       }
     }
   }
@@ -243,37 +389,42 @@ function applyEscalationRules(policy, tier, uiClass, capabilities) {
   return effectiveTier;
 }
 
-/* ── Contradictory capability detection ──────────────────────── */
+/* ── Contradiction detection ─────────────────────────────────── */
 function detectContradictions(capabilities) {
-  // Contradictory pairs
-  var contradictions = [
+  var pairs = [
     ['copy_or_docs', 'structural_dom'],
     ['copy_or_docs', 'browser_runtime'],
     ['copy_or_docs', 'responsive_layout'],
+    ['copy_or_docs', 'accessibility_or_focus'],
     ['visual_only', 'accessibility_or_focus'],
     ['visual_only', 'process_runtime'],
     ['visual_only', 'browser_runtime'],
     ['visual_only', 'responsive_layout'],
+    ['visual_only', 'structural_dom'],
   ];
-
-  for (var i = 0; i < contradictions.length; i++) {
-    var a = contradictions[i][0];
-    var b = contradictions[i][1];
-    if (capabilities.indexOf(a) !== -1 && capabilities.indexOf(b) !== -1) {
+  for (var pi = 0; pi < pairs.length; pi++) {
+    if (capabilities.indexOf(pairs[pi][0]) !== -1 && capabilities.indexOf(pairs[pi][1]) !== -1) {
       throw new PlanError(ERROR_CODES.CONTRADICTORY_CAPABILITY,
-        'Contradictory capabilities: ' + a + ' and ' + b);
+        pairs[pi][0] + ' and ' + pairs[pi][1] + ' are contradictory');
     }
   }
 }
 
-/* ── Build execution group plan ──────────────────────────────── */
+/* ── Canonical ordering helper ───────────────────────────────── */
+function sortByGroupEnum(groups, groupEnum) {
+  var sorted = groups.slice();
+  sorted.sort(function(a, b) {
+    return groupEnum.indexOf(a) - groupEnum.indexOf(b);
+  });
+  return sorted;
+}
+
+/* ── Build plan ──────────────────────────────────────────────── */
 function buildPlan(policy, effectiveTier, uiClass, capabilities) {
+  var groupEnum = policy.execution_group_enum;
+
   var plan = {
-    classification: {
-      tier: effectiveTier,
-      ui_class: uiClass,
-      capabilities: capabilities.slice().sort(),
-    },
+    classification: { tier: effectiveTier, ui_class: uiClass, capabilities: capabilities.slice().sort() },
     effective_tier: effectiveTier,
     required_groups: [],
     conditional_groups: [],
@@ -283,60 +434,73 @@ function buildPlan(policy, effectiveTier, uiClass, capabilities) {
     browser_evidence_required: false,
     production_verification_required: false,
     merge_blockers: [],
+    infrastructure_unavailable_posture: null,
     validation_outcome: 'PASS',
     notes: [],
   };
 
-  // Required groups from tier
-  var requiredByTier = policy.execution_group_policy.required_groups[effectiveTier] || [];
-  for (var i = 0; i < requiredByTier.length; i++) {
-    plan.required_groups.push(requiredByTier[i]);
+  // Required groups
+  var reqByTier = policy.execution_group_policy.required_groups[effectiveTier] || [];
+  for (var ri = 0; ri < reqByTier.length; ri++) {
+    if (plan.required_groups.indexOf(reqByTier[ri]) === -1) {
+      plan.required_groups.push(reqByTier[ri]);
+    }
   }
 
   // Conditional groups
   var rules = policy.execution_group_policy.conditional_groups.rules;
-  for (var r = 0; r < rules.length; r++) {
-    var rule = rules[r];
-    if (capabilities.indexOf(rule.capability) !== -1) {
-      if (rule.affected_tiers.indexOf(effectiveTier) !== -1) {
-        for (var g = 0; g < rule.conditional_groups.length; g++) {
-          var cg = rule.conditional_groups[g];
-          if (plan.required_groups.indexOf(cg) === -1 && plan.conditional_groups.indexOf(cg) === -1) {
-            plan.conditional_groups.push(cg);
-          }
+  for (var rxi = 0; rxi < rules.length; rxi++) {
+    var rule = rules[rxi];
+    if (capabilities.indexOf(rule.capability) !== -1 && rule.affected_tiers.indexOf(effectiveTier) !== -1) {
+      for (var cgi = 0; cgi < rule.conditional_groups.length; cgi++) {
+        var cg = rule.conditional_groups[cgi];
+        if (plan.required_groups.indexOf(cg) === -1 && plan.conditional_groups.indexOf(cg) === -1) {
+          plan.conditional_groups.push(cg);
         }
       }
     }
   }
 
-  // Manual evidence obligations
+  // Sort groups by canonical order
+  plan.required_groups = sortByGroupEnum(plan.required_groups, groupEnum);
+  plan.conditional_groups = sortByGroupEnum(plan.conditional_groups, groupEnum);
+
+  // Manual evidence
   var manualTriggerCaps = policy.execution_group_policy.manual_evidence_groups.triggers.capabilities;
-  for (var c = 0; c < capabilities.length; c++) {
-    if (manualTriggerCaps.indexOf(capabilities[c]) !== -1) {
+  for (var mt = 0; mt < capabilities.length; mt++) {
+    if (manualTriggerCaps.indexOf(capabilities[mt]) !== -1) {
       plan.manual_evidence_required = true;
-      plan.manual_evidence_groups = policy.execution_group_policy.manual_evidence_groups.groups.slice();
+      plan.manual_evidence_groups = sortByGroupEnum(
+        policy.execution_group_policy.manual_evidence_groups.groups.slice(), groupEnum);
       break;
     }
   }
 
-  // Browser evidence
-  if (capabilities.indexOf('browser_runtime') !== -1 || capabilities.indexOf('responsive_layout') !== -1) {
-    if (effectiveTier === 'TIER_2' || effectiveTier === 'TIER_3') {
-      plan.browser_evidence_required = true;
-    }
+  // Browser evidence for runtime access, responsive, accessibility
+  if ((capabilities.indexOf('browser_runtime') !== -1 ||
+       capabilities.indexOf('responsive_layout') !== -1 ||
+       capabilities.indexOf('accessibility_or_focus') !== -1) &&
+      (effectiveTier === 'TIER_2' || effectiveTier === 'TIER_3')) {
+    plan.browser_evidence_required = true;
   }
 
-  // Local Validation
-  if (effectiveTier === 'TIER_3') {
-    plan.local_validation_required = true;
-  }
-  if (capabilities.indexOf('auth_or_session') !== -1 || capabilities.indexOf('database') !== -1) {
+  if (effectiveTier === 'TIER_3' ||
+      capabilities.indexOf('auth_or_session') !== -1 ||
+      capabilities.indexOf('database') !== -1) {
     plan.local_validation_required = true;
   }
 
-  // Production verification
   if (effectiveTier === 'TIER_3') {
     plan.production_verification_required = true;
+  }
+
+  // CI_UNAVAILABLE_INFRA posture
+  if (policy.merge_blockers.infrastructure_unavailable_posture) {
+    plan.infrastructure_unavailable_posture = {
+      status: policy.merge_blockers.infrastructure_unavailable_posture.status,
+      alternative_evidence_required: policy.merge_blockers.infrastructure_unavailable_posture.alternative_evidence_required,
+      merge_ready_without_alternative: policy.merge_blockers.infrastructure_unavailable_posture.merge_ready_without_alternative,
+    };
   }
 
   // Merge blockers
@@ -344,32 +508,10 @@ function buildPlan(policy, effectiveTier, uiClass, capabilities) {
     plan.merge_blockers = policy.merge_blockers.hard_blockers.slice();
   }
 
-  // Notes
-  if (uiClass === 'NOT_APPLICABLE' || uiClass === 'U0' || uiClass === 'U1') {
-    plan.notes.push('Local Validation: NOT_REQUIRED by default');
-  }
-  if (effectiveTier === 'TIER_3' && (capabilities.indexOf('database') !== -1 || capabilities.indexOf('migration') !== -1)) {
-    plan.notes.push('DB/migration capability detected: DB_ENGINE execution group required');
-  }
-  if (capabilities.indexOf('provider_or_network') !== -1) {
-    plan.notes.push('Provider/network capability: automatic execution prohibited; manual evidence only');
-  }
-
-  // Validate all groups against registry
-  var registry = readRegistry();
-  var validGroups = registry.group_enum;
-  var allGroups = plan.required_groups.concat(plan.conditional_groups, plan.manual_evidence_groups);
-  for (var v = 0; v < allGroups.length; v++) {
-    if (validGroups.indexOf(allGroups[v]) === -1) {
-      throw new PlanError(ERROR_CODES.UNKNOWN_EXECUTION_GROUP,
-        'Unknown execution group: ' + allGroups[v]);
-    }
-  }
-
   return plan;
 }
 
-/* ── Output formatters ───────────────────────────────────────── */
+/* ── Output ──────────────────────────────────────────────────── */
 function buildHumanOutput(plan) {
   var lines = [];
   lines.push('CI RISK-TIER GATE PLAN');
@@ -383,51 +525,32 @@ function buildHumanOutput(plan) {
   lines.push('EFFECTIVE TIER: ' + plan.effective_tier);
   lines.push('');
   lines.push('REQUIRED GROUPS');
-  if (plan.required_groups.length === 0) {
-    lines.push('  (none)');
-  } else {
-    for (var i = 0; i < plan.required_groups.length; i++) {
-      lines.push('  - ' + plan.required_groups[i]);
-    }
-  }
+  if (plan.required_groups.length === 0) lines.push('  (none)');
+  else for (var i = 0; i < plan.required_groups.length; i++) lines.push('  - ' + plan.required_groups[i]);
   lines.push('');
   lines.push('CONDITIONAL GROUPS');
-  if (plan.conditional_groups.length === 0) {
-    lines.push('  (none)');
-  } else {
-    for (var j = 0; j < plan.conditional_groups.length; j++) {
-      lines.push('  - ' + plan.conditional_groups[j]);
-    }
-  }
+  if (plan.conditional_groups.length === 0) lines.push('  (none)');
+  else for (var j = 0; j < plan.conditional_groups.length; j++) lines.push('  - ' + plan.conditional_groups[j]);
   lines.push('');
   lines.push('MANUAL EVIDENCE: ' + (plan.manual_evidence_required ? 'REQUIRED' : 'NOT REQUIRED'));
-  if (plan.manual_evidence_groups.length > 0) {
-    for (var k = 0; k < plan.manual_evidence_groups.length; k++) {
-      lines.push('  - ' + plan.manual_evidence_groups[k]);
-    }
-  }
+  if (plan.manual_evidence_groups.length > 0) for (var k = 0; k < plan.manual_evidence_groups.length; k++) lines.push('  - ' + plan.manual_evidence_groups[k]);
   lines.push('');
   lines.push('LOCAL VALIDATION: ' + (plan.local_validation_required ? 'REQUIRED' : 'NOT REQUIRED'));
   lines.push('BROWSER/RUNTIME EVIDENCE: ' + (plan.browser_evidence_required ? 'REQUIRED' : 'NOT REQUIRED'));
   lines.push('PRODUCTION VERIFICATION: ' + (plan.production_verification_required ? 'REQUIRED' : 'NOT REQUIRED'));
   lines.push('');
   lines.push('MERGE BLOCKERS');
-  if (plan.merge_blockers.length === 0) {
-    lines.push('  (none)');
-  } else {
-    for (var m = 0; m < plan.merge_blockers.length; m++) {
-      lines.push('  - ' + plan.merge_blockers[m]);
-    }
-  }
+  if (plan.merge_blockers.length === 0) lines.push('  (none)');
+  else for (var m = 0; m < plan.merge_blockers.length; m++) lines.push('  - ' + plan.merge_blockers[m]);
   lines.push('');
-  lines.push('VALIDATION OUTCOME: ' + plan.validation_outcome);
-  if (plan.notes.length > 0) {
+  if (plan.infrastructure_unavailable_posture) {
+    lines.push('INFRASTRUCTURE UNAVAILABLE POSTURE');
+    lines.push('  Status: ' + plan.infrastructure_unavailable_posture.status);
+    lines.push('  Alternative evidence required: ' + (plan.infrastructure_unavailable_posture.alternative_evidence_required ? 'YES' : 'NO'));
+    lines.push('  Merge-ready without alternative: ' + (plan.infrastructure_unavailable_posture.merge_ready_without_alternative ? 'YES' : 'NO'));
     lines.push('');
-    lines.push('NOTES');
-    for (var n = 0; n < plan.notes.length; n++) {
-      lines.push('  - ' + plan.notes[n]);
-    }
   }
+  lines.push('VALIDATION OUTCOME: ' + plan.validation_outcome);
   return lines.join('\n');
 }
 
@@ -435,7 +558,6 @@ function buildJsonOutput(plan) {
   return JSON.stringify(plan, null, 2);
 }
 
-/* ── Main run ────────────────────────────────────────────────── */
 function run(argv) {
   var args = parseArgs(argv);
   var policy = readPolicy();
@@ -445,51 +567,31 @@ function run(argv) {
   detectContradictions(args.capabilities);
   var effectiveTier = applyEscalationRules(policy, args.tier, args.uiClass, args.capabilities);
   var plan = buildPlan(policy, effectiveTier, args.uiClass, args.capabilities);
-
-  if (args.json) {
-    return buildJsonOutput(plan);
-  }
-  return buildHumanOutput(plan);
+  return args.json ? buildJsonOutput(plan) : buildHumanOutput(plan);
 }
 
-/* ── CLI entry point ─────────────────────────────────────────── */
-function main() {
+function main(argv) {
   try {
-    var output = run(process.argv);
-    console.log(output);
+    console.log(run(argv || process.argv));
     process.exitCode = 0;
   } catch (e) {
-    if (e instanceof PlanError) {
-      console.error(e.message);
-      process.exitCode = 1;
-    } else {
-      console.error('UNEXPECTED_ERROR: ' + (e.message || String(e)));
-      process.exitCode = 2;
-    }
+    if (e instanceof PlanError) { console.error(e.message); process.exitCode = 1; }
+    else { console.error('UNEXPECTED_ERROR: ' + (e.message || String(e))); process.exitCode = 2; }
   }
 }
 
-if (require.main === module) {
-  main();
-}
+if (require.main === module) main();
 
-/* ── Exports for contract test ───────────────────────────────── */
 module.exports = {
-  ERROR_CODES: ERROR_CODES,
-  PlanError: PlanError,
-  readPolicy: readPolicy,
-  readRegistry: readRegistry,
-  validatePolicySchema: validatePolicySchema,
-  parseArgs: parseArgs,
-  validateInputs: validateInputs,
-  validateTierUiCombination: validateTierUiCombination,
-  applyEscalationRules: applyEscalationRules,
-  detectContradictions: detectContradictions,
-  buildPlan: buildPlan,
-  buildHumanOutput: buildHumanOutput,
-  buildJsonOutput: buildJsonOutput,
-  run: run,
-  POLICY_PATH: POLICY_PATH,
-  REGISTRY_PATH: REGISTRY_PATH,
-  ROOT: ROOT,
+  ERROR_CODES: ERROR_CODES, PlanError: PlanError,
+  readPolicy: readPolicy, readRegistry: readRegistry,
+  validatePolicySchema: validatePolicySchema, parseArgs: parseArgs,
+  validateInputs: validateInputs, validateTierUiCombination: validateTierUiCombination,
+  applyEscalationRules: applyEscalationRules, detectContradictions: detectContradictions,
+  buildPlan: buildPlan, buildHumanOutput: buildHumanOutput, buildJsonOutput: buildJsonOutput,
+  run: run, POLICY_PATH: POLICY_PATH, REGISTRY_PATH: REGISTRY_PATH, ROOT: ROOT,
+  EXPECTED_TOP_KEYS: EXPECTED_TOP_KEYS, EXPECTED_TIERS: EXPECTED_TIERS,
+  EXPECTED_UI_CLASSES: EXPECTED_UI_CLASSES, EXPECTED_CAPABILITIES: EXPECTED_CAPABILITIES,
+  EXPECTED_SENSITIVE: EXPECTED_SENSITIVE,
+  main: main,
 };

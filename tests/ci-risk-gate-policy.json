@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0.0",
   "title": "LoveBud CI Risk-Tier Gate Policy",
-  "description": "Machine-readable risk-tier gate policy for LoveBud CI. Maps Tier/UI/capability combinations to required and conditional execution groups, manual evidence obligations, and merge blockers. Authority file read by scripts/plan-ci-risk-gates.cjs — never read from caller-controlled paths.",
+  "description": "Machine-readable risk-tier gate policy for LoveBud CI. Maps Tier/UI/capability combinations to required and conditional execution groups, manual evidence obligations, and merge blockers.",
   "tier_enum": ["TIER_1", "TIER_2", "TIER_3"],
   "ui_class_enum": ["NOT_APPLICABLE", "U0", "U1", "U2", "U3"],
   "capability_enum": [
@@ -22,6 +22,10 @@
     "provider_or_network",
     "deployment_or_runtime_infra",
     "destructive"
+  ],
+  "tier_1_not_applicable_allowed_capabilities": [
+    "none",
+    "copy_or_docs"
   ],
   "sensitive_capabilities": [
     "auth_or_session",
@@ -57,11 +61,30 @@
       ["TIER_3", "NOT_APPLICABLE"],
       ["TIER_3", "U2"],
       ["TIER_3", "U3"]
-    ],
-    "prohibited_combinations_note": "U0 may only appear with TIER_1. U2/TIER_1 is invalid (structural work below Tier 2). U3/TIER_2 is invalid unless no sensitive capability present."
+    ]
   },
   "escalation_rules": {
     "description": "Capabilities that force escalation to a higher tier or rejection.",
+    "tier_1_not_applicable_blocked": {
+      "note": "TIER_1 + NOT_APPLICABLE may only include capabilities from tier_1_not_applicable_allowed_capabilities. Mid-risk capabilities like structural_dom, responsive_layout, accessibility_or_focus, browser_runtime, process_runtime, api_read are blocked at TIER_1.",
+      "blocked": [
+        "structural_dom",
+        "responsive_layout",
+        "accessibility_or_focus",
+        "browser_runtime",
+        "process_runtime",
+        "api_read",
+        "auth_or_session",
+        "api_write",
+        "cache_or_storage_persistence",
+        "database",
+        "migration",
+        "privacy_or_security",
+        "provider_or_network",
+        "deployment_or_runtime_infra",
+        "destructive"
+      ]
+    },
     "u0_u1_blocking_capabilities": {
       "note": "U0 and U1 must NOT include any capability beyond copy_or_docs or visual_only.",
       "blocked": [
@@ -131,6 +154,11 @@
           "affected_tiers": ["TIER_2", "TIER_3"]
         },
         {
+          "capability": "accessibility_or_focus",
+          "conditional_groups": ["BROWSER_REAL_LOCAL"],
+          "affected_tiers": ["TIER_2", "TIER_3"]
+        },
+        {
           "capability": "database",
           "conditional_groups": ["DB_ENGINE"],
           "affected_tiers": ["TIER_3"]
@@ -161,23 +189,35 @@
       "description": "Groups that represent manual evidence obligations and must never be executed automatically.",
       "groups": ["REMOTE_OR_PROVIDER_MANUAL"],
       "triggers": {
-        "note": "When any of these capabilities is present, REMOTE_OR_PROVIDER_MANUAL manual evidence is required.",
         "capabilities": ["provider_or_network", "deployment_or_runtime_infra"]
       }
     }
   },
   "merge_blockers": {
-    "description": "Conditions that block merge regardless of CI status.",
+    "description": "Conditions that block merge regardless of CI status. CI_UNAVAILABLE_INFRA is distinct from CI_EXECUTED_FAILURE and CI_PENDING_EXECUTION. It requires canonical alternative evidence; merge is not ready until alternative evidence is resolved.",
     "hard_blockers": [
       "CI_EXECUTED_FAILURE",
       "CI_PENDING_EXECUTION",
       "UNRESOLVED_DESTRUCTIVE_APPROVAL"
     ],
+    "infrastructure_unavailable_posture": {
+      "description": "CI_UNAVAILABLE_INFRA: infrastructure is unavailable but no test failure occurred. Not equal to CI_GREEN or CI_EXECUTED_FAILURE. Requires canonical alternative evidence before merge-ready.",
+      "status": "CI_UNAVAILABLE_INFRA",
+      "alternative_evidence_required": true,
+      "merge_ready_without_alternative": false
+    },
     "tier_3_requirements": {
       "note": "TIER_3 requires additional verification beyond standard CI.",
       "exact_head_local_validation": true,
       "production_verification_for": ["runtime", "auth", "data", "deployment"]
     }
+  },
+  "accessibility_focus_evidence_policy": {
+    "description": "accessibility_or_focus capability evidence requirements. Distinguishes between static aria copy changes and runtime focus/behavior changes.",
+    "static_only_indicator": "aria-label, aria-hidden, non-behavioral accessible name",
+    "requires_browser_evidence": ["focus_order", "keyboard_interaction", "runtime_focus_restoration"],
+    "under_tier_2_or_3": "BROWSER_REAL_LOCAL evidence required for runtime accessibility changes",
+    "non_behavioral_aria_copy_exception": "Simple aria-label/text changes without focus/behavior impact may use SOURCE_STATIC only under TIER_1 U0"
   },
   "policy_version": "1.0.0",
   "policy_date": "2026-07-30",
