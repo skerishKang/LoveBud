@@ -4,7 +4,8 @@
 > **Parent:** #3673 — Keep OPEN
 > **Completed audit:** #3714 / PR #3719 — `docs/operations/RELEASE_SMOKE_RUNTIME_OBSERVABILITY_AUDIT.md`
 > **Related:** #3699 (Keep OPEN), #3670 (Keep OPEN), #3672 (Keep OPEN), #3425 (Keep OPEN), #1882 (Keep OPEN)
-> **Base SHA:** `8bf90816cfed8ce22be5cb8c3917356a99ae5fb8`
+> **Base SHA:** `292b7ac5029da41ce29f1e659f7817959f497281`
+> **Previous head:** `6f78342d1a333749f075572edd7b81f6760e34d7`
 
 This document defines a stable, privacy-preserving vocabulary for describing LoveBud Production runtime health. It does not authorize telemetry collection, client error reporting, provider access, Production mutation, API calls, or database access.
 
@@ -51,7 +52,7 @@ Each domain describes a bounded surface for health observation. No domain is cur
 ### 2.1 RELEASE_CORRELATION
 
 - **Purpose:** Correlate a deployed Production build to its source commit SHA.
-- **Allowed evidence:** Git SHA from `main` merge commit; deployment manifest if one is created by a future child.
+- **Allowed evidence:** Expected source SHA (`main`); observed serving SHA (bounded enum, provider-ID-free); release match state (bounded enum).
 - **Prohibited payload:** Cloudflare deployment ID, build log content, provider dashboard state, environment values.
 - **Current instrumentation state:** `UNRESOLVED` — no deployment SHA annotation file, deploy manifest, or SHA comparison mechanism exists in the repository (`docs/operations/RELEASE_SMOKE_RUNTIME_OBSERVABILITY_AUDIT.md` §2.3, §8.2 gap 3).
 - **Future owner:** Release-SHA child (#3673 Step 2).
@@ -123,7 +124,7 @@ Each domain describes a bounded surface for health observation. No domain is cur
 ### 2.10 DEPLOYMENT_ALIAS
 
 - **Purpose:** Detect whether the Production alias serves the expected source commit.
-- **Allowed evidence:** Expected SHA (from `main`), observed serving state (bounded enum), detection method.
+- **Allowed evidence:** Expected SHA (`main`), observed serving SHA (bounded enum), release match state (bounded enum), detection method.
 - **Prohibited payload:** Cloudflare deployment ID, build log, provider API response, dashboard screenshot content.
 - **Current instrumentation state:** `UNRESOLVED` — no mechanism exists to compare source SHA against Production serving SHA. No cron job, webhook, or periodic check exists (`docs/operations/RELEASE_SMOKE_RUNTIME_OBSERVABILITY_AUDIT.md` §8.1, §8.2 gap 5). #3699 documents a stale Production incident. Detection is manual and unresolved.
 - **Future owner:** Release-SHA child (#3673 Step 2) for annotation; stale-detection automation is `NOT_AUTHORIZED`.
@@ -158,26 +159,44 @@ Error codes are bounded enum values. They must never embed:
 
 ### 3.2 Failure classes
 
+Default severity and recommended status class below are **defaults** only. Actual classification must be raised or lowered based on bounded journey impact evidence and blast radius (see §3.3, §5).
+
 | Failure class | Exact semantics | Allowed evidence source | Default severity | Recommended status class | Forbidden embedded information |
 |---|---|---|---|---|---|
 | `TIMEOUT` | Upstream or route did not respond within the bounded timeout window. `OBSERVED_CURRENT_FACT`: Modal fetch timeout is 25 000 ms (`functions/api/[[path]].js`). | HTTP status 504, `x-lovebud-route-status: modal-timeout` header, latency bucket `GE_10_S` or `TIMEOUT_OR_UNKNOWN`. | `ERROR` | `FAILED` | Raw URL, request body, Modal function name. |
-| `HTTP_4XX` | Client-side HTTP error returned by the route or proxy. | HTTP status 400–499, `x-lovebud-route-status` header value. | `WARNING` | `DEGRADED` | Query values, request body, user text. |
+| `HTTP_4XX` | Client-side HTTP error returned by the route or proxy. Generic HTTP_4XX alone must not determine health; derive from expectation_class. | HTTP status 400–499, `x-lovebud-route-status` header value, expectation_class. | `WARNING` | `DEGRADED` | Query values, request body, user text. |
 | `HTTP_5XX` | Server-side HTTP error returned by the route, proxy, or upstream. | HTTP status 500–599, `x-lovebud-upstream` header value. | `ERROR` | `FAILED` | Response body, stack trace, provider message. |
 | `NETWORK` | Connection failure, DNS failure, or TLS handshake failure before any HTTP response. | Absence of HTTP status, latency bucket `TIMEOUT_OR_UNKNOWN`. | `ERROR` | `FAILED` | Raw URL, IP address, DNS record. |
 | `MALFORMED_RESPONSE` | HTTP response received but body is not valid JSON or does not match the expected contract shape. | HTTP status 200 with parse failure, `content-type` mismatch. | `WARNING` | `DEGRADED` | Response body, partial JSON, field values. |
 | `CONTRACT_MISMATCH` | Response shape is valid JSON but violates the documented API contract (e.g. missing required field, wrong type). | Contract test assertion, bounded field name (not value). | `WARNING` | `DEGRADED` | Field values, user content, identifiers. |
 | `MISSING_ASSET` | Critical static asset returned HTTP 404 or was not found. | HTTP status 404 for asset path template. | `ERROR` | `FAILED` | Full asset URL with cache-busting hash, CDN internals. |
-| `FATAL_CLIENT_ERROR` | Unrecoverable browser JavaScript exception that prevents page interaction. | `window.onerror` signal (future), route template, bounded error category. | `CRITICAL` | `FAILED` | Stack trace, variable values, DOM content, user text. |
-| `UNHANDLED_REJECTION` | Unhandled Promise rejection in browser runtime. | `unhandledrejection` signal (future), route template. | `ERROR` | `DEGRADED` | Stack trace, rejection reason text, variable values. |
-| `AUTH_REQUIRED` | Route or operation requires authentication but no valid credential was presented. | HTTP status 401, `x-lovebud-route-status: missing-authorization`. | `WARNING` | `DEGRADED` | Token, cookie, Firebase UID, email. |
+| `FATAL_CLIENT_ERROR` | Unrecoverable browser JavaScript exception that prevents page interaction. Default `ERROR`; escalate to `CRITICAL` only when systemic/core-product or data-integrity evidence exists. | `window.onerror` signal (future), route template, bounded error category. | `ERROR` | `FAILED` | Stack trace, variable values, DOM content, user text. |
+| `UNHANDLED_REJECTION` | Unhandled Promise rejection in browser runtime. Default `ERROR`; escalate when journey impact proves complete failure. | `unhandledrejection` signal (future), route template. | `ERROR` | `DEGRADED` | Stack trace, rejection reason text, variable values. |
+| `AUTH_REQUIRED` | Route or operation requires authentication but no valid credential was presented. Status/severity depends on expectation_class: EXPECTED_POLICY_REJECTION → HEALTHY/INFO. | HTTP status 401, `x-lovebud-route-status: missing-authorization`. | `WARNING` | `DEGRADED` | Token, cookie, Firebase UID, email. |
 | `AUTH_FAILED` | Authentication was attempted but credential validation failed. | HTTP status 401 from Modal auth layer, bounded failure stage. | `ERROR` | `FAILED` | Token, Firebase UID, email, OAuth parameters. |
-| `PERMISSION_DENIED` | Authenticated user lacks entitlement for the requested operation. | HTTP status 403, `PlusRequiredError` (`modal_compute/auth.py`), bounded entitlement category. | `WARNING` | `DEGRADED` | Firebase UID, entitlement field values, user profile. |
-| `STALE_RELEASE` | Production alias serves a build whose SHA does not match the expected `main` head. | Manual SHA comparison (current), future release-SHA annotation. | `CRITICAL` | `FAILED` | Cloudflare deployment ID, build log content. |
+| `PERMISSION_DENIED` | Authenticated user lacks entitlement for the requested operation. `OBSERVED_CURRENT_FACT`: `PlusRequiredError` is mapped to HTTP 403 by the exception handler at `modal_compute/app.py:99-108`. Status/severity depends on expectation_class. | HTTP 403, bounded entitlement category. | `WARNING` | `DEGRADED` | Firebase UID, entitlement field values, user profile. |
+| `STALE_RELEASE` | Production alias serves a build whose SHA does not match the expected `main` head. Default `ERROR`; escalate to `CRITICAL` only when stale build causes verified data-integrity or systemic outage. | Manual SHA comparison (current), future `release_match_state` enum. | `ERROR` | `FAILED` | Cloudflare deployment ID, build log content. |
 | `UPSTREAM_UNAVAILABLE` | Upstream service (Modal, Neon, Firebase) is unreachable or returning service-unavailable. | HTTP status 503, `x-lovebud-degraded: modal-unavailable`, `SOCIAL_WRITE_UNAVAILABLE` (`modal_compute/social_errors.py`). | `ERROR` | `FAILED` | Database URL, connection string, Modal logs, environment values. |
 | `RATE_LIMITED` | Request rejected due to rate-limit policy. | HTTP status 429, `RATE_LIMITED` / `RATE_LIMITED_MEMORY` / `RATE_LIMIT_UNAVAILABLE` (`modal_compute/social_errors.py`), `Retry-After` header presence. | `WARNING` | `DEGRADED` | User identifier, request body, rate-limit counter values. |
 | `UNKNOWN_SANITIZED` | Failure occurred but cannot be classified into any bounded category. Fail-closed default. | Absence of recognizable signal. | `WARNING` | `UNKNOWN` | All private payload categories. |
 
-### 3.3 Code families by domain
+### 3.3 Status derivation from expectation
+
+`PROPOSED_FUTURE_CONTRACT`
+
+A generic `HTTP_4XX` error code alone does not determine health. The observed result must be compared against `expectation_class`:
+
+| Observed signal | Expectation class | Resulting status class | Resulting severity |
+|---|---|---|---|
+| 401/403 guard response | `EXPECTED_POLICY_REJECTION` | `HEALTHY` | `INFO` |
+| 401/403 guard response | `EXPECTED_SUCCESS` or `UNEXPECTED_FAILURE` | `FAILED` / `DEGRADED` | `ERROR` / `WARNING` |
+| HTTP 200 with valid body | `EXPECTED_SUCCESS` | `HEALTHY` | `INFO` |
+| HTTP 200 with malformed body | `EXPECTED_SUCCESS` | `DEGRADED` | `WARNING` |
+| Route 404 | `EXPECTED_SUCCESS` | `FAILED` | `ERROR` |
+| Route 404 | `EXPECTED_POLICY_REJECTION` | `HEALTHY` | `INFO` |
+| Any | `UNKNOWN_EXPECTATION` | `UNKNOWN` | `INFO` |
+
+### 3.4 Code families by domain
 
 | Domain | Example codes |
 |---|---|
@@ -202,7 +221,7 @@ Error codes are bounded enum values. They must never embed:
 
 | Status class | Meaning |
 |---|---|
-| `HEALTHY` | Route, asset, or operation responded within expected bounds. No error code required. |
+| `HEALTHY` | Route, asset, or operation responded within expected bounds. No error code required. Expected policy rejections (e.g. 401/403 from a security guard) are `HEALTHY`. |
 | `DEGRADED` | Partial failure or reduced quality. User can still complete some actions. |
 | `FAILED` | Complete failure. User cannot complete the intended action. |
 | `UNKNOWN` | Status cannot be determined from available evidence. |
@@ -225,11 +244,43 @@ PRODUCT_ACCEPTED
 
 A technical smoke result of `HEALTHY` does not imply `UI_APPROVED`, `VISUAL_PASS`, `BRAND_ALIGNED`, or `PRODUCT_ACCEPTED`. These require separate Web CTO / owner judgment.
 
+### 4.3 Expectation-aware health derivation
+
+`PROPOSED_FUTURE_CONTRACT`
+
+Every observation carries an `expectation_class` that determines whether the observed result is healthy or indicates a failure.
+
+```text
+expectation_class:
+EXPECTED_SUCCESS
+EXPECTED_POLICY_REJECTION
+UNEXPECTED_FAILURE
+UNKNOWN_EXPECTATION
+```
+
+| Expectation class | Meaning | Example |
+|---|---|---|
+| `EXPECTED_SUCCESS` | The smoke or operation is expected to succeed. Error or rejection is a failure. | Route smoke of a page that exists. API call in an authenticated journey. |
+| `EXPECTED_POLICY_REJECTION` | The check intentionally tests that a security guard rejects the request. A 401/403 is the correct behavior. | Unauthenticated probe of an auth-guarded route. Unauthorized write attempt on a private resource. |
+| `UNEXPECTED_FAILURE` | The operation should have succeeded but failed for an unknown reason. | Authenticated owner read returns 500. Previously-working route returns 404. |
+| `UNKNOWN_EXPECTATION` | The expected behavior is not known or not defined. | Exploratory check, new route, no documented contract. |
+
+Status derivation rules:
+
+- `EXPECTED_SUCCESS` + HTTP 2xx/valid response → `HEALTHY`
+- `EXPECTED_SUCCESS` + HTTP 4xx/5xx/timeout → `DEGRADED` or `FAILED`
+- `EXPECTED_POLICY_REJECTION` + expected 401/403 → `HEALTHY` (error code `NONE`, severity `INFO`)
+- `EXPECTED_POLICY_REJECTION` + HTTP 2xx/5xx → `UNEXPECTED_FAILURE` (policy guard did not fire)
+- `UNEXPECTED_FAILURE` → always `FAILED` or `DEGRADED`
+- `UNKNOWN_EXPECTATION` → `UNKNOWN` regardless of HTTP status
+
 ---
 
 ## 5. Severity Model
 
 `PROPOSED_FUTURE_CONTRACT`
+
+All default severities in this document are **defaults only**. Actual severity must be raised or lowered based on bounded journey impact evidence and observed blast radius.
 
 | Severity | Blast radius | Evidence threshold | User action impact | Escalation expectation | Forward-fix consideration | Rollback consideration boundary |
 |---|---|---|---|---|---|---|
@@ -237,6 +288,18 @@ A technical smoke result of `HEALTHY` does not imply `UI_APPROVED`, `VISUAL_PASS
 | `WARNING` | Subset of users or degraded experience. | Bounded error code with `DEGRADED` status class. | Some actions slower or partially unavailable. | Record and monitor. Escalate if recurrence exceeds threshold defined by a future child. | Forward-fix preferred. | Rollback considered only if forward-fix is not feasible within the operator-defined window. |
 | `ERROR` | Majority of users or critical path blocked. | Bounded error code with `FAILED` status class. | Primary user action cannot complete. | Escalate to operator within the response window defined by a future child. | Forward-fix preferred. | Rollback considered if forward-fix cannot restore service within the operator-defined window. |
 | `CRITICAL` | All users or data-integrity risk. | Bounded error code with `FAILED` status class plus evidence of systemic impact. | Product is effectively unavailable or serving incorrect data. | Immediate operator escalation. | Forward-fix and rollback both evaluated. | Rollback requires explicit owner approval. |
+
+**Escalation to `CRITICAL`** requires documented evidence of:
+
+- all-user or systemic blast radius;
+- core product-wide outage;
+- security impact (credential exposure, data breach);
+- data-integrity risk (incorrect or lost content);
+- confirmed broad blast radius from operator observation.
+
+A single browser exception or a docs-only stale release without systemic impact evidence is `ERROR`, not automatically `CRITICAL`.
+
+**De-escalation:** An event classified as `CRITICAL` by default failure-class table may be lowered to `ERROR` if bounded evidence shows blast radius is limited or the impact is successfully contained.
 
 `DOCUMENTED_OPERATING_RULE`: Automatic rollback is `NOT_AUTHORIZED`. `docs/ops/MERGE_FIRST_PRODUCTION_VERIFICATION_WORKFLOW.md` §8 requires a dedicated correction or revert PR for material regressions. No automatic mechanism exists or is approved.
 
@@ -259,9 +322,14 @@ These buckets are a proposed vocabulary. They are not currently collected. Domai
 | `1_TO_2_999_S` | 1 000 ms – 2 999 ms |
 | `3_TO_9_999_S` | 3 000 ms – 9 999 ms |
 | `GE_10_S` | ≥ 10 000 ms |
-| `TIMEOUT_OR_UNKNOWN` | Timeout reached or duration not measurable |
+| `TIMEOUT_OR_UNKNOWN` | Timeout reached or timeout duration cannot be confirmed |
+| `NOT_MEASURED` | No latency measurement was performed |
 
 `OBSERVED_CURRENT_FACT`: The Modal fetch timeout in `functions/api/[[path]].js` is 25 000 ms. A Modal timeout therefore maps to `GE_10_S` or `TIMEOUT_OR_UNKNOWN` depending on whether the abort fires before or at the 25 s boundary.
+
+`NOT_MEASURED` is distinct from `TIMEOUT_OR_UNKNOWN`:
+- `NOT_MEASURED`: measurement was not taken (no timer, no observed duration).
+- `TIMEOUT_OR_UNKNOWN`: timeout occurred or the duration cannot be determined from the signal actually observed.
 
 Raw high-cardinality duration values (exact millisecond timestamps) must not be stored in durable summaries. Only the bounded bucket label is permitted.
 
@@ -275,14 +343,18 @@ This section defines the minimum field contract for a future structured health e
 
 | Field | Type | Bounded vocabulary | Required / Optional | Privacy rule | Example |
 |---|---|---|---|---|---|
-| `release_sha` | string (40-char hex) | Git SHA from `main` | Required | No provider deployment ID. No build log. | `8bf90816cfed8ce22be5cb8c3917356a99ae5fb8` |
-| `observed_at_bucket` | string (enum) | `HOURLY`, `DAILY`, `WEEKLY`, `UNKNOWN` | Required | No exact timestamp in durable summaries. Exact timestamps permitted only in transient operator sessions. | `HOURLY` |
+| `expected_release_sha` | string (40-char hex) | Git SHA from `main` | Required | No provider deployment ID. No build log. | `292b7ac5029da41ce29f1e659f7817959f497281` |
+| `observed_release_sha` | string (40-char hex or enum) | 40-char SHA, `UNKNOWN`, `NOT_EXPOSED` | Required | No provider deployment ID. `NOT_EXPOSED` when observation endpoint is not reachable. | `UNKNOWN` |
+| `release_match_state` | string (enum) | `MATCH`, `MISMATCH`, `UNKNOWN`, `NOT_EXPOSED` | Required | Bounded enum only. | `UNKNOWN` |
+| `observed_at_bucket` | string (ISO bucket key) | `2026-07-30T04:00Z` (hourly), `2026-07-30` (daily), `2026-W31` (weekly), `UNKNOWN` | Required | No exact user-event timestamp. Bucket epoch boundaries only. | `2026-07-30T04:00Z` |
+| `observation_granularity` | string (enum) | `HOURLY`, `DAILY`, `WEEKLY`, `UNKNOWN` | Required | Bounded enum only. | `HOURLY` |
+| `expectation_class` | string (enum) | `EXPECTED_SUCCESS`, `EXPECTED_POLICY_REJECTION`, `UNEXPECTED_FAILURE`, `UNKNOWN_EXPECTATION` | Required | Bounded enum only. | `EXPECTED_SUCCESS` |
 | `surface_or_domain` | string (enum) | One of the 10 domain identifiers from Section 2 | Required | Bounded enum only. | `SAME_ORIGIN_API` |
 | `route_template_or_operation_code` | string (enum) | See bounded list below | Required | No raw URL. No query string. No arbitrary path. | `API_COMMUNITY_TREES_SUMMARY` |
 | `status_class` | string (enum) | `HEALTHY`, `DEGRADED`, `FAILED`, `UNKNOWN`, `NOT_EXECUTED`, `NOT_APPLICABLE`, `BLOCKED_BY_AUTHORITY` | Required | Bounded enum only. | `HEALTHY` |
 | `sanitized_error_code` | string (enum or `NONE`) | `LB_<DOMAIN>_<FAILURE_CLASS>` or `NONE` | Required | No embedded identifiers, URLs, or payload. `NONE` for healthy events. | `NONE` |
 | `severity` | string (enum) | `INFO`, `WARNING`, `ERROR`, `CRITICAL` | Required | Bounded enum only. | `INFO` |
-| `latency_bucket` | string (enum) | `LT_250_MS`, `250_TO_999_MS`, `1_TO_2_999_S`, `3_TO_9_999_S`, `GE_10_S`, `TIMEOUT_OR_UNKNOWN` | Optional | No raw duration value. | `LT_250_MS` |
+| `latency_bucket` | string (enum) | `LT_250_MS`, `250_TO_999_MS`, `1_TO_2_999_S`, `3_TO_9_999_S`, `GE_10_S`, `TIMEOUT_OR_UNKNOWN`, `NOT_MEASURED` | Optional | No raw duration value. `NOT_MEASURED` when no measurement was taken. | `NOT_MEASURED` |
 | `evidence_source` | string (enum) | `CI_STATIC`, `CI_BROWSER_LOCAL`, `CI_PROCESS_LOCAL`, `CI_DB_ENGINE`, `MANUAL_SMOKE`, `MANUAL_CURL`, `PRODUCTION_OBSERVATION`, `FUTURE_INSTRUMENTATION` | Required | Bounded enum only. No provider log content. | `CI_BROWSER_LOCAL` |
 
 ### 7.1 Bounded route templates and operation codes
@@ -364,21 +436,32 @@ session replay data
 keystrokes
 ```
 
-### 8.3 Allowed diagnostic fields
+### 8.3 Correlation metadata and request ID rules
 
 `DOCUMENTED_OPERATING_RULE` (from `docs/ops/OBSERVABILITY_RUNTIME_LOGGING_AUDIT.md` §5.1):
 
-| Field | Sensitivity |
-|---|---|
-| Generated request ID (`x-lovebud-request-id`) | Non-sensitive (`OBSERVED_CURRENT_FACT`: implemented in `functions/api/[[path]].js`) |
-| Route template (bounded enum) | Non-sensitive |
-| HTTP method | Non-sensitive |
-| HTTP status code | Non-sensitive |
-| Coarse error category (bounded enum) | Non-sensitive |
-| Latency bucket (bounded enum) | Non-sensitive |
-| Deployment label (`production` / `preview`) | Non-sensitive |
-| Timestamp bucket (bounded enum) | Non-sensitive |
-| Environment label (`cloudflare-pages` / `modal`) | Non-sensitive |
+`x-lovebud-request-id` is **correlation metadata**:
+
+- transient troubleshooting only;
+- no user/session linkage;
+- no durable operator summary inclusion by default;
+- no cross-system persistence without separate approval;
+- bounded retention required if later approved for durable storage.
+- `OBSERVED_CURRENT_FACT`: implemented in `functions/api/[[path]].js` (`generateRequestId()` → `req-` + `crypto.randomUUID()`).
+
+The minimum durable evidence record (Section 7) must remain identifier-free.
+
+| Field | Classification | Privacy rule |
+|---|---|---|
+| Generated request ID (`x-lovebud-request-id`) | Correlation metadata; transient only | No durable summary by default. No user/session linkage. No cross-system persistence without separate approval. |
+| Route template (bounded enum) | Non-sensitive | Bounded enum only. |
+| HTTP method | Non-sensitive | Bounded enum only. |
+| HTTP status code | Non-sensitive | Bounded enum only. |
+| Coarse error category (bounded enum) | Non-sensitive | Bounded enum only. |
+| Latency bucket (bounded enum) | Non-sensitive | Bounded enum only. |
+| Deployment label (`production` / `preview`) | Non-sensitive | Bounded enum only. |
+| Timestamp bucket (bounded enum) | Non-sensitive | Bucket key only. No exact event time. |
+| Environment label (`cloudflare-pages` / `modal`) | Non-sensitive | Bounded enum only. |
 
 ---
 
@@ -388,24 +471,27 @@ keystrokes
 
 For healthy events, `sanitized_error_code` is `NONE`. No separate bounded value is required for the healthy case.
 
-| Event | Domain | Status class | Sanitized error code | Severity | Latency bucket | Allowed evidence | Forbidden evidence |
-|---|---|---|---|---|---|---|---|
-| Home route HTTP 200 | `ROUTE_RESPONSE` | `HEALTHY` | `NONE` | `INFO` | `LT_250_MS` | HTTP status, route template `ROUTE_HOME`, `<body>` presence | Response body, HTML content, query parameters |
-| Route HTTP 404 | `ROUTE_RESPONSE` | `FAILED` | `LB_ROUTE_RESPONSE_HTTP_4XX` | `ERROR` | `LT_250_MS` | HTTP status, route template | Raw URL, response body |
-| Critical static asset HTTP 404 | `STATIC_ASSET` | `FAILED` | `LB_STATIC_ASSET_MISSING_ASSET` | `ERROR` | `LT_250_MS` | HTTP status, asset path template | Full asset URL with cache hash, CDN internals |
-| Same-origin API HTTP 500 | `SAME_ORIGIN_API` | `FAILED` | `LB_SAME_ORIGIN_API_HTTP_5XX` | `ERROR` | varies | HTTP status, `x-lovebud-upstream`, operation code | Response body, stack trace, Modal logs |
-| Malformed API response | `SAME_ORIGIN_API` | `DEGRADED` | `LB_SAME_ORIGIN_API_MALFORMED_RESPONSE` | `WARNING` | varies | HTTP status, `content-type` mismatch, operation code | Response body, partial JSON, field values |
-| Fatal browser exception | `BROWSER_RUNTIME` | `FAILED` | `LB_BROWSER_RUNTIME_FATAL_CLIENT_ERROR` | `CRITICAL` | `TIMEOUT_OR_UNKNOWN` | Route template, bounded error category | Stack trace, variable values, DOM content, user text |
-| Unhandled promise rejection | `BROWSER_RUNTIME` | `DEGRADED` | `LB_BROWSER_RUNTIME_UNHANDLED_REJECTION` | `ERROR` | `TIMEOUT_OR_UNKNOWN` | Route template | Stack trace, rejection reason, variable values |
-| Owner route requires authentication | `AUTH_JOURNEY` | `DEGRADED` | `LB_AUTH_JOURNEY_AUTH_REQUIRED` | `WARNING` | `LT_250_MS` | HTTP 401, `x-lovebud-route-status: missing-authorization` | Token, cookie, Firebase UID, email |
-| Authentication failure | `AUTH_JOURNEY` | `FAILED` | `LB_AUTH_JOURNEY_AUTH_FAILED` | `ERROR` | varies | HTTP 401, bounded auth stage | Token, Firebase UID, email, OAuth parameters |
-| Permission denied | `OWNER_WRITE_JOURNEY` | `DEGRADED` | `LB_OWNER_WRITE_JOURNEY_PERMISSION_DENIED` | `WARNING` | `LT_250_MS` | HTTP 403, bounded entitlement category | Firebase UID, entitlement field values, user profile |
-| Production serves stale release SHA | `DEPLOYMENT_ALIAS` | `FAILED` | `LB_DEPLOYMENT_ALIAS_STALE_RELEASE` | `CRITICAL` | `TIMEOUT_OR_UNKNOWN` | Expected SHA, observed serving state (bounded enum) | Cloudflare deployment ID, build log, dashboard content |
-| Upstream unavailable | `UPSTREAM_DEPENDENCY` | `FAILED` | `LB_UPSTREAM_DEPENDENCY_UPSTREAM_UNAVAILABLE` | `ERROR` | `TIMEOUT_OR_UNKNOWN` | HTTP 503, `x-lovebud-degraded: modal-unavailable`, upstream enum | Database URL, connection string, Modal logs, env values |
-| Rate limited | `OWNER_WRITE_JOURNEY` | `DEGRADED` | `LB_OWNER_WRITE_JOURNEY_RATE_LIMITED` | `WARNING` | `LT_250_MS` | HTTP 429, `RATE_LIMITED` code, `Retry-After` presence | User identifier, request body, counter values |
-| Smoke not executed | `ROUTE_RESPONSE` | `NOT_EXECUTED` | `NONE` | `INFO` | `TIMEOUT_OR_UNKNOWN` | Smoke definition reference, execution state | N/A |
-| Smoke blocked by authority | `ROUTE_RESPONSE` | `BLOCKED_BY_AUTHORITY` | `NONE` | `INFO` | `TIMEOUT_OR_UNKNOWN` | Governance rule reference, blocked reason category | N/A |
-| Technical smoke healthy but visual concern exists | `ROUTE_RESPONSE` | `HEALTHY` | `NONE` | `INFO` | varies | Technical status `HEALTHY`, `SCREENSHOT_READY_FOR_CTO_UI_REVIEW` | `VISUAL_PASS`, `UI_APPROVED`, `BRAND_ALIGNED` (these are not technical signals) |
+Default severity values are defaults only. Actual severity must be raised or lowered based on bounded journey impact evidence and blast radius (see §5).
+
+| Event | Domain | Expectation class | Status class | Sanitized error code | Severity | Latency bucket | Allowed evidence | Forbidden evidence |
+|---|---|---|---|---|---|---|---|---|
+| Home route HTTP 200 | `ROUTE_RESPONSE` | `EXPECTED_SUCCESS` | `HEALTHY` | `NONE` | `INFO` | `NOT_MEASURED` | HTTP status, route template `ROUTE_HOME`, `<body>` presence | Response body, HTML content, query parameters |
+| Route HTTP 404 | `ROUTE_RESPONSE` | `EXPECTED_SUCCESS` | `FAILED` | `LB_ROUTE_RESPONSE_HTTP_4XX` | `ERROR` | `NOT_MEASURED` | HTTP status, route template | Raw URL, response body |
+| Critical static asset HTTP 404 | `STATIC_ASSET` | `EXPECTED_SUCCESS` | `FAILED` | `LB_STATIC_ASSET_MISSING_ASSET` | `ERROR` | `NOT_MEASURED` | HTTP status, asset path template | Full asset URL with cache hash, CDN internals |
+| Same-origin API HTTP 500 | `SAME_ORIGIN_API` | `EXPECTED_SUCCESS` | `FAILED` | `LB_SAME_ORIGIN_API_HTTP_5XX` | `ERROR` | `NOT_MEASURED` | HTTP status, `x-lovebud-upstream`, operation code | Response body, stack trace, Modal logs |
+| Malformed API response | `SAME_ORIGIN_API` | `EXPECTED_SUCCESS` | `DEGRADED` | `LB_SAME_ORIGIN_API_MALFORMED_RESPONSE` | `WARNING` | `NOT_MEASURED` | HTTP status, `content-type` mismatch, operation code | Response body, partial JSON, field values |
+| Fatal browser exception | `BROWSER_RUNTIME` | `EXPECTED_SUCCESS` | `FAILED` | `LB_BROWSER_RUNTIME_FATAL_CLIENT_ERROR` | `ERROR` | `TIMEOUT_OR_UNKNOWN` | Route template, bounded error category | Stack trace, variable values, DOM content, user text |
+| Unhandled promise rejection | `BROWSER_RUNTIME` | `EXPECTED_SUCCESS` | `DEGRADED` | `LB_BROWSER_RUNTIME_UNHANDLED_REJECTION` | `ERROR` | `TIMEOUT_OR_UNKNOWN` | Route template | Stack trace, rejection reason, variable values |
+| Owner route requires authentication | `AUTH_JOURNEY` | `EXPECTED_POLICY_REJECTION` | `HEALTHY` | `NONE` | `INFO` | `NOT_MEASURED` | HTTP 401, `x-lovebud-route-status: missing-authorization` | Token, cookie, Firebase UID, email |
+| Authentication failure | `AUTH_JOURNEY` | `EXPECTED_SUCCESS` | `FAILED` | `LB_AUTH_JOURNEY_AUTH_FAILED` | `ERROR` | `NOT_MEASURED` | HTTP 401, bounded auth stage | Token, Firebase UID, email, OAuth parameters |
+| Permission denied (expected guard) | `OWNER_WRITE_JOURNEY` | `EXPECTED_POLICY_REJECTION` | `HEALTHY` | `NONE` | `INFO` | `NOT_MEASURED` | HTTP 403, `PlusRequiredError` (`modal_compute/app.py:99-108`) | Firebase UID, entitlement field values, user profile |
+| Permission denied (unexpected) | `OWNER_WRITE_JOURNEY` | `EXPECTED_SUCCESS` | `FAILED` | `LB_OWNER_WRITE_JOURNEY_PERMISSION_DENIED` | `ERROR` | `NOT_MEASURED` | HTTP 403, bounded entitlement category | Firebase UID, entitlement field values, user profile |
+| Production serves stale release SHA | `DEPLOYMENT_ALIAS` | `EXPECTED_SUCCESS` | `FAILED` | `LB_DEPLOYMENT_ALIAS_STALE_RELEASE` | `ERROR` | `NOT_MEASURED` | Expected SHA, observed SHA, `release_match_state: MISMATCH` | Cloudflare deployment ID, build log, dashboard content |
+| Upstream unavailable | `UPSTREAM_DEPENDENCY` | `EXPECTED_SUCCESS` | `FAILED` | `LB_UPSTREAM_DEPENDENCY_UPSTREAM_UNAVAILABLE` | `ERROR` | `TIMEOUT_OR_UNKNOWN` | HTTP 503, `x-lovebud-degraded: modal-unavailable`, upstream enum | Database URL, connection string, Modal logs, env values |
+| Rate limited | `OWNER_WRITE_JOURNEY` | `EXPECTED_SUCCESS` | `DEGRADED` | `LB_OWNER_WRITE_JOURNEY_RATE_LIMITED` | `WARNING` | `NOT_MEASURED` | HTTP 429, `RATE_LIMITED` code, `Retry-After` presence | User identifier, request body, counter values |
+| Smoke not executed | `ROUTE_RESPONSE` | `UNKNOWN_EXPECTATION` | `NOT_EXECUTED` | `NONE` | `INFO` | `NOT_MEASURED` | Smoke definition reference, execution state | N/A |
+| Smoke blocked by authority | `ROUTE_RESPONSE` | `UNKNOWN_EXPECTATION` | `BLOCKED_BY_AUTHORITY` | `NONE` | `INFO` | `NOT_MEASURED` | Governance rule reference, blocked reason category | N/A |
+| Technical smoke healthy but visual concern exists | `ROUTE_RESPONSE` | `EXPECTED_SUCCESS` | `HEALTHY` | `NONE` | `INFO` | `NOT_MEASURED` | Technical status `HEALTHY`, `SCREENSHOT_READY_FOR_CTO_UI_REVIEW` | `VISUAL_PASS`, `UI_APPROVED`, `BRAND_ALIGNED` (these are not technical signals) |
 
 ---
 
@@ -419,7 +505,7 @@ For healthy events, `sanitized_error_code` is `NONE`. No separate bounded value 
 - Modal fetch timeout is 25 000 ms.
 - Write body size is bounded to 128 KB.
 - `modal_compute/social_errors.py` defines bounded social write error codes.
-- `modal_compute/auth.py` defines `PlusRequiredError` for entitlement denial.
+- `modal_compute/auth.py` defines `PlusRequiredError` for entitlement denial; `modal_compute/app.py:99-108` maps it to HTTP 403.
 - `modal_compute/api_response_helpers.py` returns HTTP 400 for invalid JSON and HTTP 413 for oversized body.
 - 12 `BROWSER_REAL_LOCAL` Playwright contracts execute in CI via `npm test` (`tests/ci-test-group-registry.json`).
 - 15 `REMOTE_OR_PROVIDER_MANUAL` scripts do not execute in CI.
@@ -442,12 +528,12 @@ For healthy events, `sanitized_error_code` is `NONE`. No separate bounded value 
 - Evidence labels (Section 1).
 - Runtime domains (Section 2).
 - Sanitized error-code grammar (Section 3).
-- Technical status classes (Section 4).
-- Severity model (Section 5).
-- Latency buckets (Section 6).
+- Technical status classes and expectation-aware derivation (Section 4).
+- Severity model with subordinate defaults (Section 5).
+- Latency buckets including `NOT_MEASURED` (Section 6).
 - Minimum future evidence record (Section 7).
 - Privacy and redaction rules (Section 8).
-- Domain mapping matrix (Section 9).
+- Domain mapping matrix with expectation_class (Section 9).
 
 ### 10.4 Future instrumentation (not implemented)
 
@@ -489,6 +575,11 @@ DEPLOYMENT_ALIAS
 
 proposed code:
 LB_DEPLOYMENT_ALIAS_STALE_RELEASE
+
+proposed release correlation fields:
+expected_release_sha (source main)
+observed_release_sha (observed serving SHA or UNKNOWN)
+release_match_state: MISMATCH
 
 current detection:
 manual / unresolved
