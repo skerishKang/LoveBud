@@ -3,12 +3,12 @@
 - **Issue:** #3717 `[Product][Story] Audit My Trees Story parity readiness and stop conditions`
 - **Role:** Web Implementation Developer (컴5)
 - **Scope:** Source-only readiness audit. No code, CSS, HTML, JS, test, localStorage, default-mode, or preview-hub changes. No browser, screenshot, Preview, Production, Cloudflare, backend/API/DB/Auth work. No PR Ready, merge, or #3654 closure.
-- **Current `origin/main`:** `5db3f42e5e8c1e29c7cc294e29fd30155b89c6a7`
+- **Audit baseline:** `235ec59b2a5a40e0cf0115ebe45b2c6e50abbcdc`
+- **Merge-forward baseline at audit completion:** `5db3f42e5e8c1e29c7cc294e29fd30155b89c6a7`
 - **Parent product issue:** #3654 — **Keep OPEN**
 - **Related completed:** #3655 / PR #3656 (Browse Story foundation), #3666 (transition correction), #3703 / PR #3708 (Browse refinement)
 - **Production acceptance blocker:** #3699 — **Keep OPEN**
-- **Branch:** `docs/my-trees-story-parity-readiness-3717`
-- **Worktree:** `/mnt/g/Ddrive/BatangD/task/workdiary/LoveBud-3717-mytrees-story-readiness`
+- **Branch / Worktree (historical execution metadata):** `docs/my-trees-story-parity-readiness-3717` / `/mnt/g/Ddrive/BatangD/task/workdiary/LoveBud-3717-mytrees-story-readiness`
 
 ---
 
@@ -400,14 +400,12 @@ git status --short
 |---|---|
 | **role** | 컴5 (Web Implementation Developer) |
 | **issue** | #3717 |
-| **worktree** | `/mnt/g/Ddrive/BatangD/task/workdiary/LoveBud-3717-mytrees-story-readiness` |
-| **branch** | `docs/my-trees-story-parity-readiness-3717` |
-| **current main** | `5db3f42e5e8c1e29c7cc294e29fd30155b89c6a7` |
-| **actual base** | `5db3f42e5e8c1e29c7cc294e29fd30155b89c6a7` |
-| **merge base** | `5db3f42e5e8c1e29c7cc294e29fd30155b89c6a7` |
-| **exact head** | `3246f7cf11d0360701a027d7b1fa56f65133b5eb` |
-| **ahead / behind** | 2 ahead (audit commit + merge-forward), 0 behind |
+| **audit baseline** | `235ec59b2a5a40e0cf0115ebe45b2c6e50abbcdc` |
+| **merge-forward baseline at audit completion** | `5db3f42e5e8c1e29c7cc294e29fd30155b89c6a7` |
+| **branch / worktree (historical execution metadata)** | `docs/my-trees-story-parity-readiness-3717` / `/mnt/g/Ddrive/BatangD/task/workdiary/LoveBud-3717-mytrees-story-readiness` |
 | **exact changed files** | `docs/product/MY_TREES_STORY_PARITY_READINESS_DECISION.md` (new) |
+
+> **Note:** `exact head` and `ahead / behind` are intentionally omitted from this permanent document. A commit SHA recorded in a file changes the file, which changes the SHA — making self-referential SHA metadata permanently stale. Dynamic PR metadata (head, ahead/behind, CI) is tracked in the PR body only.
 
 | Disposition | Verdict |
 |---|---|
