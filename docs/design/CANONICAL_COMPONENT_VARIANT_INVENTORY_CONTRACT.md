@@ -95,7 +95,7 @@ Each rule is preceded by its claim type.
 |---|---|
 | **Canonical family** | Primary Button |
 | **Exact source owner** | `css/global.css` lines 112-161 (`.btn-round`, `.btn-primary`, `.btn-outline`), `css/index/components.css` (Home variants), `css/editor/editor-overrides.css` |
-| **Consumer pages** | **Global definition authority:** loaded by all pages via `css/global.css`. **Direct DOM consumers:** `index.html` (`.btn-round.btn-primary`, `.btn-round.btn-outline`), `pages/my-trees.html` (`.btn-round.btn-primary`). **CSS consumers only:** `pages/editor.html` (editor CSS references `.btn-round` in descendant selectors, defines `.sidebar-btn-primary`, `.editor-action-btn-primary`). No direct HTML `.btn-round` usage: Browse, Settings, Detail, Intro. |
+| **Consumer pages** | **Global definition authority:** loaded by all pages via `css/global.css`.<br>**Static HTML consumers:** `index.html` (`.btn-round.btn-primary`, `.btn-round.btn-outline`), `pages/my-trees.html` (`.btn-round.btn-primary`).<br>**Runtime/template-generated consumers:** `pages/search.html` — Browse (`js/search/search-preview-action-helper.js` lines 102, 122, 144: `.btn-round.preview-secondary-action`, `.btn-round.preview-share-action`, `.btn-round.btn-primary.preview-primary-action`); `pages/detail.html` — Detail (`js/detail/detail-loading-error-boundary.js` lines 21-22: `.btn-round.btn-outline`); all pages — Auth header (`js/auth/auth-ui-templates.js` line 20: `.btn-round.btn-outline` login button, conditionally rendered when unauthenticated; `js/auth.js` line 419: inline fallback).<br>**CSS-only references:** `pages/editor.html` (editor CSS references `.btn-round` in descendant selectors, defines `.sidebar-btn-primary`, `.editor-action-btn-primary`). |
 | **Approved variants** | `btn-round.btn-primary`, `btn-round.btn-outline`, `btn-header-create`, `sidebar-btn-primary`, `editor-action-btn-primary` |
 
 **Structure:**
@@ -104,6 +104,9 @@ Each rule is preceded by its claim type.
 - OBSERVED_SOURCE_FACT: Home `.btn-round` in `.home-v3-actions` at `css/index/components.css` lines 8-47 — Home-specific icon layout.
 - OBSERVED_SOURCE_FACT: My Trees `.btn-header-create` in `css/my-trees/my-trees-header.css` — distinct create-tree button with icon.
 - OBSERVED_SOURCE_FACT: Editor `.sidebar-btn-primary` in `css/editor/editor-overrides.css` line 32, `.btn-icon` line 47, `.btn-label` line 53.
+- OBSERVED_SOURCE_FACT: Browse runtime — `js/search/search-preview-action-helper.js` functions `renderPreviewActionButton()` (line 93), `renderShareButton()` (line 114), `renderOpenTreeButton()` (line 135) generate `.btn-round.preview-secondary-action`, `.btn-round.preview-share-action`, `.btn-round.btn-primary.preview-primary-action` respectively.
+- OBSERVED_SOURCE_FACT: Detail runtime — `js/detail/detail-loading-error-boundary.js` function `renderMissingMemoryState()` (line 3) generates `.btn-round.btn-outline` anchor tags for fallback UI (lines 21-22).
+- OBSERVED_SOURCE_FACT: Auth header runtime — `js/auth/auth-ui-templates.js` function `buildLoginButton()` (line 17) generates `.btn-round.btn-outline` login anchor (line 20). Included by all 7 pages. `js/auth.js` line 419 provides inline fallback. Output lands conditionally in `#auth-nav` container when unauthenticated; replaced by user dropdown when authenticated.
 
 **Approved variant names:** `primary-action` (`.btn-round.btn-primary`), `outline-action` (`.btn-round.btn-outline`), `header-create` (My Trees), `sidebar-primary` (Editor), `editor-action-primary`, `editor-action-secondary`, `floating-toolbar-primary`.
 
@@ -257,7 +260,8 @@ My Trees:
 |---|---|
 | **Canonical family** | Empty State |
 | **Exact source owner** | `css/global/tokens.css` (empty-state token authority), page-specific CSS |
-| **Consumer pages** | **Token authority:** globally defined. **Direct consumers:** `pages/search.html` (Browse: `css/search/`), `pages/my-trees.html` (My Trees: `css/my-trees/`). Unused in page-owned CSS: Home, Editor, Settings, Detail. |
+| **Shared token consumers** | `pages/search.html` (Browse: `css/search/search-empty-state.css`, `css/search/search-preview-sidebar/states.css`), `pages/my-trees.html` (My Trees: `css/my-trees/my-trees-states.css`) |
+| **Page-owned empty-state implementations** | `pages/editor.html` (`.editor-empty-state-cta` in `css/editor/editor-detail-content/detail-info.css` line 258) |
 | **Approved variants** | Shared tokens, page-specific empty presentations |
 
 - OBSERVED_SOURCE_FACT: Shared `--lovetree-empty-state-*` tokens in `css/global/tokens.css` lines 83-97.
@@ -265,7 +269,10 @@ My Trees:
 - OBSERVED_SOURCE_FACT: Editor `.editor-empty-state-cta` in `css/editor/editor-detail-content/detail-info.css` line 258.
 - OBSERVED_SOURCE_FACT: Browse has inline empty result states.
 
-**No single empty-state component exists.** Pages use shared tokens but own their layout independently.
+**No single empty-state component exists.** Shared token consumption and page-owned implementations are distinct patterns.
+- **Shared token consumers:** Browse (`css/search/`), My Trees (`css/my-trees/`).
+- **Page-owned implementation:** Editor (`.editor-empty-state-cta`).
+- **No shared token or page-owned empty state:** Home, Settings, Detail.
 
 ---
 
@@ -379,7 +386,7 @@ My Trees:
 | Filter chip | `<span>` element | `<button>` element | N/A | Accessibility |
 | Results header | Has sort control | Has owner create-tree CTA | N/A | Authority |
 | Search input | Public discovery | Owner tree filtering | N/A | Authority |
-| Loading | `lt-loading-*` + page loading | `lt-loading-*` + page + hub | `lt-loading-*` + editor + modal | Page-owned + shared |
+| Loading | verified shared primitive use + page-owned search runtime | verified shared primitive use + page-owned hub runtime | page-owned staged runtime only (no verified direct shared primitive DOM use) | Page-owned + shared |
 | Modal | No distinct modal | N/A | Memory form modal | Page-specific |
 | Card media | Thumbnail + fallback + preview strip | Thumbnail + fallback + preview strip | Canvas edit | Visual/authority |
 
@@ -390,7 +397,8 @@ My Trees:
 | Component family | `index.html` | `pages/search.html` | `pages/my-trees.html` | `pages/editor.html` | `pages/settings.html` | `pages/detail.html` | `pages/intro.html` |
 |---|---|---|---|---|---|---|---|
 | Hero | ✅ Home | ✅ Browse | ✅ My Trees | ❌ | ❌ | ✅ Detail | ✅ Intro |
-| Primary Button | ✅ Home | ❌ | ✅ My Trees | ❌ (CSS override only) | ❌ | ❌ | ❌ |
+| Primary Button (static HTML) | ✅ Home | ❌ | ✅ My Trees | ❌ | ❌ | ❌ | ❌ |
+| Primary Button (runtime/template) | ✅ auth-header | ✅ auth-header, Browse preview actions | ✅ auth-header | ✅ auth-header | ✅ auth-header | ✅ auth-header, Detail error boundary | ✅ auth-header |
 | Secondary Button | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ | ❌ |
 | Search Input | ❌ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 | Filter Chip | ❌ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
@@ -399,7 +407,8 @@ My Trees:
 | Preview Hub | ❌ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 | Loading (shared primitives) | ❌ | ✅ Browse | ✅ My Trees | ❌ | ❌ | ❌ | ❌ |
 | Loading (page-owned) | ✅ (modal) | ✅ (search) | ✅ (hub) | ✅ (staged) | ❌ | ❌ | ❌ |
-| Empty State | ❌ | ✅ Browse | ✅ My Trees | ❌ | ❌ | ❌ | ❌ |
+| Empty State — shared token consumption | ❌ | ✅ Browse | ✅ My Trees | ❌ | ❌ | ❌ | ❌ |
+| Empty State — page-owned implementation | ❌ | ❌ | ❌ | ✅ (`.editor-empty-state-cta`) | ❌ | ❌ | ❌ |
 | Error State (shared) | ❌ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
 | Error State (page-owned) | ✅ (modal) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | Media Control | ✅ | ✅ | ❌ | ✅ | ❌ | ✅ | ❌ |
@@ -462,9 +471,9 @@ The following identifiers have established contract assertions and consumer bind
 
 | Identifier | Type | Location | Consumers |
 |---|---|---|---|
-| `.btn-round` | CSS class | `css/global.css` | global definition; direct DOM: Index, My Trees |
-| `.btn-primary` | CSS class | `css/global.css` | global definition; direct DOM: Index, My Trees |
-| `.btn-outline` | CSS class | `css/global.css` | global definition; direct DOM: Index |
+| `.btn-round` | CSS class | `css/global.css` | global definition; static HTML: Index, My Trees; runtime: Browse (preview actions), Detail (error boundary), all pages (auth header login button) |
+| `.btn-primary` | CSS class | `css/global.css` | global definition; static HTML: Index, My Trees; runtime: Browse (`.preview-primary-action`) |
+| `.btn-outline` | CSS class | `css/global.css` | global definition; static HTML: Index; runtime: Detail (`.btn-round.btn-outline` fallback), all pages (auth header login button) |
 | `.tag-chip` | CSS class | `css/global.css` | Search, My Trees |
 | `.filter-row` | CSS class | `css/search/search-controls.css` | Search, My Trees |
 | `.search-input-wrapper` | CSS class | `css/search/search-controls.css` | Search, My Trees |
