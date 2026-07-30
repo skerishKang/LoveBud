@@ -180,7 +180,7 @@ test('7. validatePolicySchema rejects mismatched execution_group_enum', () => {
 test('7b. validatePolicySchema rejects malformed tier_ui_matrix combination', () => {
   const p = JSON.parse(JSON.stringify(policy()));
   p.tier_ui_matrix.allowed_combinations.push(['TIER_4', 'U0']);
-  assertPlanError(function() { planner.validatePolicySchema(p); }, 'UNKNOWN_ENUM');
+  assertPlanError(function() { planner.validatePolicySchema(p); }, 'POLICY_SCHEMA_ERROR');
 });
 
 test('7c. validatePolicySchema rejects duplicate Tier/UI combination', () => {
@@ -594,7 +594,7 @@ test('38b. manual-only group in required_groups triggers UNSAFE', () => {
     const p = JSON.parse(JSON.stringify(policy()));
     p.execution_group_policy.required_groups.TIER_1.push('REMOTE_OR_PROVIDER_MANUAL');
     planner.validatePolicySchema(p);
-  }, 'UNSAFE_AUTOMATIC_EXECUTION');
+  }, 'POLICY_SCHEMA_ERROR');
 });
 
 test('38c. manual-only group in conditional_groups triggers UNSAFE', () => {
@@ -602,7 +602,7 @@ test('38c. manual-only group in conditional_groups triggers UNSAFE', () => {
     const p = JSON.parse(JSON.stringify(policy()));
     p.execution_group_policy.conditional_groups.rules[0].conditional_groups.push('REMOTE_OR_PROVIDER_MANUAL');
     planner.validatePolicySchema(p);
-  }, 'UNSAFE_AUTOMATIC_EXECUTION');
+  }, 'POLICY_SCHEMA_ERROR');
 });
 
 /* ── 25) TIER_2 + U3 policy ─────────────────────────────────── */
@@ -677,7 +677,7 @@ test('42. TIER_3 + database + process_runtime + browser_runtime full obligations
 test('43. invalid affected_tiers value fails', () => {
   const p = JSON.parse(JSON.stringify(policy()));
   p.execution_group_policy.conditional_groups.rules[0].affected_tiers.push('TIER_4');
-  assertPlanError(function() { planner.validatePolicySchema(p); }, 'UNKNOWN_ENUM');
+  assertPlanError(function() { planner.validatePolicySchema(p); }, 'POLICY_SCHEMA_ERROR');
 });
 
 /* ── 30) Duplicate conditional capability fails ──────────────── */
@@ -709,5 +709,91 @@ test('46. sensitive_capabilities altered fails', () => {
 test('47. CI_EXECUTED_FAILURE missing from hard_blockers fails', () => {
   const p = JSON.parse(JSON.stringify(policy()));
   p.merge_blockers.hard_blockers = ['CI_PENDING_EXECUTION', 'UNRESOLVED_DESTRUCTIVE_APPROVAL'];
+  assertPlanError(function() { planner.validatePolicySchema(p); }, 'POLICY_SCHEMA_ERROR');
+});
+
+/* ── 34) Canonical value mutation rejection tests ───────────── */
+test('48. allowed_combinations reordered fails', () => {
+  const p = JSON.parse(JSON.stringify(policy()));
+  const rev = p.tier_ui_matrix.allowed_combinations.slice().reverse();
+  p.tier_ui_matrix.allowed_combinations = rev;
+  assertPlanError(function() { planner.validatePolicySchema(p); }, 'POLICY_SCHEMA_ERROR');
+});
+
+test('49. allowed_combinations entry removed fails', () => {
+  const p = JSON.parse(JSON.stringify(policy()));
+  p.tier_ui_matrix.allowed_combinations = planner.CANONICAL_ALLOWED_COMBINATIONS.slice(0, 8);
+  assertPlanError(function() { planner.validatePolicySchema(p); }, 'POLICY_SCHEMA_ERROR');
+});
+
+test('50. required_groups TIER_1 value changed fails', () => {
+  const p = JSON.parse(JSON.stringify(policy()));
+  p.execution_group_policy.required_groups.TIER_1 = ['SOURCE_STATIC', 'EXECUTED_FAKE'];
+  assertPlanError(function() { planner.validatePolicySchema(p); }, 'POLICY_SCHEMA_ERROR');
+});
+
+test('51. conditional rules reordered fails', () => {
+  const p = JSON.parse(JSON.stringify(policy()));
+  const rev = p.execution_group_policy.conditional_groups.rules.slice().reverse();
+  p.execution_group_policy.conditional_groups.rules = rev;
+  assertPlanError(function() { planner.validatePolicySchema(p); }, 'POLICY_SCHEMA_ERROR');
+});
+
+test('52. conditional rule group changed fails', () => {
+  const p = JSON.parse(JSON.stringify(policy()));
+  p.execution_group_policy.conditional_groups.rules[0].conditional_groups = ['PROCESS_REAL_LOCAL'];
+  assertPlanError(function() { planner.validatePolicySchema(p); }, 'POLICY_SCHEMA_ERROR');
+});
+
+test('53. conditional rule affected_tiers changed fails', () => {
+  const p = JSON.parse(JSON.stringify(policy()));
+  p.execution_group_policy.conditional_groups.rules[0].affected_tiers = ['TIER_3'];
+  assertPlanError(function() { planner.validatePolicySchema(p); }, 'POLICY_SCHEMA_ERROR');
+});
+
+test('54. manual_evidence_groups group changed fails', () => {
+  const p = JSON.parse(JSON.stringify(policy()));
+  p.execution_group_policy.manual_evidence_groups.groups = ['REMOTE_OR_PROVIDER_MANUAL', 'BROWSER_REAL_LOCAL'];
+  assertPlanError(function() { planner.validatePolicySchema(p); }, 'POLICY_SCHEMA_ERROR');
+});
+
+test('55. manual_evidence trigger changed fails', () => {
+  const p = JSON.parse(JSON.stringify(policy()));
+  p.execution_group_policy.manual_evidence_groups.triggers.capabilities = ['provider_or_network'];
+  assertPlanError(function() { planner.validatePolicySchema(p); }, 'POLICY_SCHEMA_ERROR');
+});
+
+test('56. hard_blockers reordered fails', () => {
+  const p = JSON.parse(JSON.stringify(policy()));
+  p.merge_blockers.hard_blockers = ['CI_PENDING_EXECUTION', 'CI_EXECUTED_FAILURE', 'UNRESOLVED_DESTRUCTIVE_APPROVAL'];
+  assertPlanError(function() { planner.validatePolicySchema(p); }, 'POLICY_SCHEMA_ERROR');
+});
+
+test('57. merge_ready_without_alternative changed to true fails', () => {
+  const p = JSON.parse(JSON.stringify(policy()));
+  p.merge_blockers.infrastructure_unavailable_posture = {
+    description: p.merge_blockers.infrastructure_unavailable_posture.description,
+    status: 'CI_UNAVAILABLE_INFRA',
+    alternative_evidence_required: true,
+    merge_ready_without_alternative: true
+  };
+  assertPlanError(function() { planner.validatePolicySchema(p); }, 'POLICY_SCHEMA_ERROR');
+});
+
+test('58. production_verification_for changed fails', () => {
+  const p = JSON.parse(JSON.stringify(policy()));
+  p.merge_blockers.tier_3_requirements.production_verification_for = ['runtime', 'auth'];
+  assertPlanError(function() { planner.validatePolicySchema(p); }, 'POLICY_SCHEMA_ERROR');
+});
+
+test('59. accessibility requires_browser_evidence changed fails', () => {
+  const p = JSON.parse(JSON.stringify(policy()));
+  p.accessibility_focus_evidence_policy.requires_browser_evidence = ['focus_order', 'keyboard_interaction'];
+  assertPlanError(function() { planner.validatePolicySchema(p); }, 'POLICY_SCHEMA_ERROR');
+});
+
+test('60. tier_1_not_applicable_allowed_capabilities modified fails', () => {
+  const p = JSON.parse(JSON.stringify(policy()));
+  p.tier_1_not_applicable_allowed_capabilities = ['copy_or_docs', 'visual_only'];
   assertPlanError(function() { planner.validatePolicySchema(p); }, 'POLICY_SCHEMA_ERROR');
 });

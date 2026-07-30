@@ -45,7 +45,7 @@ execution_group_enum: 8 groups (matches ci-test-group-registry.json group_enum)
 
 | Tier | UI | Valid capabilities |
 |------|-----|-------------------|
-| TIER_1 | NOT_APPLICABLE | Any (non-UI work, e.g. CI/docs) |
+| TIER_1 | NOT_APPLICABLE | Empty (no capability) or `copy_or_docs` only |
 | TIER_1 | U0 | `copy_or_docs` only |
 | TIER_1 | U1 | `visual_only`, `copy_or_docs` only |
 | TIER_2 | NOT_APPLICABLE | Any non-sensitive |
@@ -120,7 +120,7 @@ If the input tier is below `TIER_3` and any of these capabilities is present, th
 |------|-----------------|------------------|------------------------|
 | TIER_1 | NOT_REQUIRED | NOT_REQUIRED | NOT_REQUIRED |
 | TIER_2 | NOT_REQUIRED by default | Required for browser_runtime/responsive_layout/accessibility_or_focus | NOT_REQUIRED |
-| TIER_3 | REQUIRED | Required for browser_runtime/responsive_layout/accessibility_or_focus | REQUIRED |
+| TIER_3 | REQUIRED | Required for browser_runtime/responsive_layout/accessibility_or_focus | Required only when observable runtime/auth/data/provider/deployment capability present |
 
 ### Merge blockers
 
