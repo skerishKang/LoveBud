@@ -42,7 +42,7 @@ const ERROR_CODES = {
 
 class PlanError extends Error {
   constructor(code, message) {
-    super(code + ': ' + String(message || '').replace(/\/[\w./-]+\/[\w./-]+/g, '<path>'));
+    super(code + ': ' + String(message || '').replace(/\/[\w.\/-]+\/[\w.\/-]+/g, '<path>'));
     this.code = code;
     this.name = 'PlanError';
   }
@@ -71,6 +71,30 @@ const EXPECTED_SENSITIVE = [
   'deployment_or_runtime_infra', 'destructive'
 ];
 
+const EXPECTED_ESCALATION_KEYS = [
+  'tier_1_not_applicable_blocked', 'u0_u1_blocking_capabilities',
+  'tier_2_u2_sensitive_escalation', 'u3_sensitive_requires_tier_3'
+];
+
+const EXPECTED_MERGE_BLOCKER_KEYS = [
+  'description', 'hard_blockers', 'infrastructure_unavailable_posture',
+  'tier_3_requirements'
+];
+
+const EXPECTED_ACCESSIBILITY_POLICY_KEYS = [
+  'description', 'static_only_indicator', 'requires_browser_evidence',
+  'under_tier_2_or_3', 'non_behavioral_aria_copy_exception'
+];
+
+const PRODUCTION_CAPABILITIES = [
+  'browser_runtime', 'process_runtime', 'auth_or_session',
+  'api_read', 'api_write', 'cache_or_storage_persistence',
+  'database', 'migration', 'privacy_or_security',
+  'provider_or_network', 'deployment_or_runtime_infra', 'destructive'
+];
+
+const MANUAL_ONLY_GROUP = 'REMOTE_OR_PROVIDER_MANUAL';
+
 /* ── Source reads ────────────────────────────────────────────── */
 function readPolicy() {
   try { return JSON.parse(fs.readFileSync(POLICY_PATH, 'utf8')); }
@@ -82,9 +106,29 @@ function readRegistry() {
   catch (e) { throw new PlanError(ERROR_CODES.POLICY_PARSE_ERROR, 'Cannot read registry file'); }
 }
 
+/* ── Deep object key validation helper ────────────────────────── */
+function assertExactSortedKeys(obj, expectedKeys, context) {
+  var keys = Object.keys(obj).sort();
+  var expectedSorted = expectedKeys.slice().sort();
+  if (keys.length !== expectedSorted.length) {
+    throw new PlanError(ERROR_CODES.POLICY_SCHEMA_ERROR,
+      context + ' key count mismatch: ' + JSON.stringify(keys) + ' vs expected ' + JSON.stringify(expectedSorted));
+  }
+  for (var ki = 0; ki < keys.length; ki++) {
+    if (keys[ki] !== expectedSorted[ki]) {
+      var extra = keys.filter(function(k) { return expectedSorted.indexOf(k) === -1; });
+      var missing = expectedSorted.filter(function(k) { return keys.indexOf(k) === -1; });
+      var msg = context + ' key mismatch';
+      if (extra.length > 0) msg += '; unknown: ' + extra.join(', ');
+      if (missing.length > 0) msg += '; missing: ' + missing.join(', ');
+      throw new PlanError(ERROR_CODES.POLICY_SCHEMA_ERROR, msg);
+    }
+  }
+}
+
 /* ── Full schema validation ──────────────────────────────────── */
 function validatePolicySchema(policy) {
-  // Check exact top-level keys (no unknown, no missing)
+  // Check exact top-level keys
   var topKeys = Object.keys(policy).sort();
   var expectedSorted = EXPECTED_TOP_KEYS.slice().sort();
   if (topKeys.length !== expectedSorted.length) {
@@ -120,13 +164,13 @@ function validatePolicySchema(policy) {
     throw new PlanError(ERROR_CODES.UNKNOWN_ENUM, 'ui_class_enum malformed');
   }
 
-  // Validate capability_enum
+  // Validate capability_enum exactly
   if (!policy.capability_enum || policy.capability_enum.length !== 17 ||
       JSON.stringify(policy.capability_enum) !== JSON.stringify(EXPECTED_CAPABILITIES)) {
     throw new PlanError(ERROR_CODES.UNKNOWN_ENUM, 'capability_enum malformed');
   }
 
-  // Validate sensitive_capabilities is an exact subset
+  // Validate sensitive_capabilities exact subset
   if (!policy.sensitive_capabilities || JSON.stringify(policy.sensitive_capabilities) !== JSON.stringify(EXPECTED_SENSITIVE)) {
     throw new PlanError(ERROR_CODES.UNKNOWN_ENUM, 'sensitive_capabilities malformed');
   }
@@ -136,8 +180,7 @@ function validatePolicySchema(policy) {
     throw new PlanError(ERROR_CODES.POLICY_SCHEMA_ERROR, 'tier_1_not_applicable_allowed_capabilities must be an array');
   }
   for (var t1c = 0; t1c < policy.tier_1_not_applicable_allowed_capabilities.length; t1c++) {
-    if (EXPECTED_CAPABILITIES.indexOf(policy.tier_1_not_applicable_allowed_capabilities[t1c]) === -1 &&
-        policy.tier_1_not_applicable_allowed_capabilities[t1c] !== 'none') {
+    if (EXPECTED_CAPABILITIES.indexOf(policy.tier_1_not_applicable_allowed_capabilities[t1c]) === -1) {
       throw new PlanError(ERROR_CODES.UNKNOWN_ENUM, 'Unknown allowed capability: ' + policy.tier_1_not_applicable_allowed_capabilities[t1c]);
     }
   }
@@ -147,10 +190,20 @@ function validatePolicySchema(policy) {
   if (!registry.group_enum || JSON.stringify(policy.execution_group_enum) !== JSON.stringify(registry.group_enum)) {
     throw new PlanError(ERROR_CODES.REGISTRY_POLICY_MISMATCH, 'execution_group_enum does not match registry');
   }
+  // Validate REMOTE_OR_PROVIDER_MANUAL has risk_gate_eligibility: manual_only in registry
+  var remoteRegGroup = null;
+  for (var rrg = 0; rrg < registry.groups.length; rrg++) {
+    if (registry.groups[rrg].group === MANUAL_ONLY_GROUP) { remoteRegGroup = registry.groups[rrg]; break; }
+  }
+  if (!remoteRegGroup || remoteRegGroup.risk_gate_eligibility !== 'manual_only') {
+    throw new PlanError(ERROR_CODES.REGISTRY_POLICY_MISMATCH,
+      MANUAL_ONLY_GROUP + ' must have risk_gate_eligibility: manual_only in registry');
+  }
 
-  // Validate tier_ui_matrix
-  if (!policy.tier_ui_matrix || !Array.isArray(policy.tier_ui_matrix.allowed_combinations)) {
-    throw new PlanError(ERROR_CODES.POLICY_SCHEMA_ERROR, 'tier_ui_matrix.allowed_combinations missing');
+  // Validate tier_ui_matrix — exact keys and allowed_combinations
+  assertExactSortedKeys(policy.tier_ui_matrix, ['allowed_combinations', 'description'], 'tier_ui_matrix');
+  if (!Array.isArray(policy.tier_ui_matrix.allowed_combinations)) {
+    throw new PlanError(ERROR_CODES.POLICY_SCHEMA_ERROR, 'tier_ui_matrix.allowed_combinations must be array');
   }
   for (var ac = 0; ac < policy.tier_ui_matrix.allowed_combinations.length; ac++) {
     var comb = policy.tier_ui_matrix.allowed_combinations[ac];
@@ -172,30 +225,45 @@ function validatePolicySchema(policy) {
     }
   }
 
-  // Validate escalation_rules shape
-  if (!policy.escalation_rules || typeof policy.escalation_rules !== 'object') {
-    throw new PlanError(ERROR_CODES.POLICY_SCHEMA_ERROR, 'escalation_rules missing');
-  }
-  var escalationKeys = ['tier_1_not_applicable_blocked', 'u0_u1_blocking_capabilities', 'tier_2_u2_sensitive_escalation', 'u3_sensitive_requires_tier_3'];
-  for (var ek = 0; ek < escalationKeys.length; ek++) {
-    if (!policy.escalation_rules[escalationKeys[ek]]) {
-      throw new PlanError(ERROR_CODES.POLICY_SCHEMA_ERROR, 'Missing escalation rule: ' + escalationKeys[ek]);
+  // Validate escalation_rules — exact keys
+  assertExactSortedKeys(policy.escalation_rules,
+    ['description', 'tier_1_not_applicable_blocked', 'u0_u1_blocking_capabilities',
+     'tier_2_u2_sensitive_escalation', 'u3_sensitive_requires_tier_3'], 'escalation_rules');
+  for (var ek = 0; ek < EXPECTED_ESCALATION_KEYS.length; ek++) {
+    var rule = policy.escalation_rules[EXPECTED_ESCALATION_KEYS[ek]];
+    if (!rule || typeof rule !== 'object') {
+      throw new PlanError(ERROR_CODES.POLICY_SCHEMA_ERROR, 'Missing escalation rule: ' + EXPECTED_ESCALATION_KEYS[ek]);
     }
-    var blocked = policy.escalation_rules[escalationKeys[ek]].blocked || policy.escalation_rules[escalationKeys[ek]].sensitive_capabilities;
-    if (!Array.isArray(blocked)) {
-      throw new PlanError(ERROR_CODES.POLICY_SCHEMA_ERROR, 'Malformed escalation rule: ' + escalationKeys[ek]);
+    // Must have note + either blocked or sensitive_capabilities
+    assertExactSortedKeys(rule, ['note', (EXPECTED_ESCALATION_KEYS[ek] === 'tier_2_u2_sensitive_escalation' || EXPECTED_ESCALATION_KEYS[ek] === 'u3_sensitive_requires_tier_3' ? 'sensitive_capabilities' : 'blocked')],
+      'escalation_rules.' + EXPECTED_ESCALATION_KEYS[ek]);
+    var caps = rule.blocked || rule.sensitive_capabilities;
+    if (!Array.isArray(caps)) {
+      throw new PlanError(ERROR_CODES.POLICY_SCHEMA_ERROR, 'Malformed escalation rule: ' + EXPECTED_ESCALATION_KEYS[ek]);
     }
-    for (var bk = 0; bk < blocked.length; bk++) {
-      if (EXPECTED_CAPABILITIES.indexOf(blocked[bk]) === -1) {
-        throw new PlanError(ERROR_CODES.UNKNOWN_ENUM, 'Unknown capability ' + blocked[bk] + ' in ' + escalationKeys[ek]);
+    // Verify exact capability list for TIER_1 blocked / U0U1 blocked
+    if (EXPECTED_ESCALATION_KEYS[ek] === 'tier_1_not_applicable_blocked' || EXPECTED_ESCALATION_KEYS[ek] === 'u0_u1_blocking_capabilities') {
+      var expectedBlocked = EXPECTED_CAPABILITIES.filter(function(c) {
+        return c !== 'copy_or_docs' && c !== 'visual_only';
+      });
+      if (JSON.stringify(caps) !== JSON.stringify(expectedBlocked)) {
+        throw new PlanError(ERROR_CODES.UNKNOWN_ENUM, 'Incorrect blocked list in ' + EXPECTED_ESCALATION_KEYS[ek]);
+      }
+    } else {
+      // sensitive capabilities must match EXPECTED_SENSITIVE
+      if (JSON.stringify(caps) !== JSON.stringify(EXPECTED_SENSITIVE)) {
+        throw new PlanError(ERROR_CODES.UNKNOWN_ENUM, 'Incorrect sensitive_capabilities in ' + EXPECTED_ESCALATION_KEYS[ek]);
       }
     }
   }
 
   // Validate execution_group_policy
-  if (!policy.execution_group_policy || !policy.execution_group_policy.required_groups ||
-      !policy.execution_group_policy.conditional_groups || !Array.isArray(policy.execution_group_policy.conditional_groups.rules)) {
-    throw new PlanError(ERROR_CODES.POLICY_SCHEMA_ERROR, 'execution_group_policy malformed');
+  assertExactSortedKeys(policy.execution_group_policy, ['conditional_groups', 'manual_evidence_groups', 'required_groups'], 'execution_group_policy');
+
+  // Validate required_groups — exact tier keys
+  var reqKeys = Object.keys(policy.execution_group_policy.required_groups).sort();
+  if (JSON.stringify(reqKeys) !== JSON.stringify(['TIER_1', 'TIER_2', 'TIER_3'])) {
+    throw new PlanError(ERROR_CODES.POLICY_SCHEMA_ERROR, 'required_groups must have exact TIER_1, TIER_2, TIER_3 keys');
   }
   for (var rgTier in policy.execution_group_policy.required_groups) {
     if (EXPECTED_TIERS.indexOf(rgTier) === -1) {
@@ -209,19 +277,44 @@ function validatePolicySchema(policy) {
       if (policy.execution_group_enum.indexOf(rg[rgc]) === -1) {
         throw new PlanError(ERROR_CODES.UNKNOWN_EXECUTION_GROUP, 'Unknown group ' + rg[rgc] + ' in required_groups');
       }
+      if (rg[rgc] === MANUAL_ONLY_GROUP) {
+        throw new PlanError(ERROR_CODES.UNSAFE_AUTOMATIC_EXECUTION,
+          MANUAL_ONLY_GROUP + ' must not appear in required_groups');
+      }
     }
+  }
+
+  // Validate conditional_groups
+  assertExactSortedKeys(policy.execution_group_policy.conditional_groups, ['description', 'rules'], 'conditional_groups');
+  if (!Array.isArray(policy.execution_group_policy.conditional_groups.rules)) {
+    throw new PlanError(ERROR_CODES.POLICY_SCHEMA_ERROR, 'conditional_groups.rules must be array');
   }
   for (var rl = 0; rl < policy.execution_group_policy.conditional_groups.rules.length; rl++) {
     var rule = policy.execution_group_policy.conditional_groups.rules[rl];
     if (!rule.capability || !rule.conditional_groups || !rule.affected_tiers) {
       throw new PlanError(ERROR_CODES.POLICY_SCHEMA_ERROR, 'Malformed conditional rule at index ' + rl);
     }
+    // Check exact keys
+    assertExactSortedKeys(rule, ['affected_tiers', 'capability', 'conditional_groups'],
+      'conditional_groups.rules[' + rl + ']');
     if (EXPECTED_CAPABILITIES.indexOf(rule.capability) === -1) {
       throw new PlanError(ERROR_CODES.UNKNOWN_ENUM, 'Unknown capability ' + rule.capability + ' in conditional rule');
+    }
+    if (!Array.isArray(rule.affected_tiers)) {
+      throw new PlanError(ERROR_CODES.POLICY_SCHEMA_ERROR, 'affected_tiers must be array in rule ' + rl);
+    }
+    for (var ati = 0; ati < rule.affected_tiers.length; ati++) {
+      if (EXPECTED_TIERS.indexOf(rule.affected_tiers[ati]) === -1) {
+        throw new PlanError(ERROR_CODES.UNKNOWN_ENUM, 'Invalid affected_tiers value: ' + rule.affected_tiers[ati] + ' in rule ' + rl);
+      }
     }
     for (var cg = 0; cg < rule.conditional_groups.length; cg++) {
       if (policy.execution_group_enum.indexOf(rule.conditional_groups[cg]) === -1) {
         throw new PlanError(ERROR_CODES.UNKNOWN_EXECUTION_GROUP, 'Unknown group ' + rule.conditional_groups[cg] + ' in conditional rule');
+      }
+      if (rule.conditional_groups[cg] === MANUAL_ONLY_GROUP) {
+        throw new PlanError(ERROR_CODES.UNSAFE_AUTOMATIC_EXECUTION,
+          MANUAL_ONLY_GROUP + ' must not appear in conditional_groups');
       }
     }
     // Check for duplicate capabilities in rules
@@ -232,22 +325,56 @@ function validatePolicySchema(policy) {
     }
   }
 
-  // Validate merge_blockers
-  if (!policy.merge_blockers || !Array.isArray(policy.merge_blockers.hard_blockers)) {
-    throw new PlanError(ERROR_CODES.POLICY_SCHEMA_ERROR, 'merge_blockers malformed');
+  // Validate manual_evidence_groups
+  assertExactSortedKeys(policy.execution_group_policy.manual_evidence_groups, ['description', 'groups', 'triggers'],
+    'manual_evidence_groups');
+  if (!Array.isArray(policy.execution_group_policy.manual_evidence_groups.groups) ||
+      policy.execution_group_policy.manual_evidence_groups.groups.indexOf(MANUAL_ONLY_GROUP) === -1) {
+    throw new PlanError(ERROR_CODES.POLICY_SCHEMA_ERROR, 'manual_evidence_groups must include ' + MANUAL_ONLY_GROUP);
+  }
+  assertExactSortedKeys(policy.execution_group_policy.manual_evidence_groups.triggers, ['capabilities'],
+    'manual_evidence_groups.triggers');
+  if (!Array.isArray(policy.execution_group_policy.manual_evidence_groups.triggers.capabilities) ||
+      policy.execution_group_policy.manual_evidence_groups.triggers.capabilities.indexOf('provider_or_network') === -1) {
+    throw new PlanError(ERROR_CODES.POLICY_SCHEMA_ERROR, 'manual_evidence_groups.triggers.capabilities must include provider_or_network');
   }
 
-  // Validate manual_evidence_groups
-  if (!policy.execution_group_policy.manual_evidence_groups ||
-      !Array.isArray(policy.execution_group_policy.manual_evidence_groups.groups) ||
-      !policy.execution_group_policy.manual_evidence_groups.triggers ||
-      !Array.isArray(policy.execution_group_policy.manual_evidence_groups.triggers.capabilities)) {
-    throw new PlanError(ERROR_CODES.POLICY_SCHEMA_ERROR, 'manual_evidence_groups malformed');
+  // Validate merge_blockers — exact keys
+  assertExactSortedKeys(policy.merge_blockers, EXPECTED_MERGE_BLOCKER_KEYS, 'merge_blockers');
+  if (!Array.isArray(policy.merge_blockers.hard_blockers) || policy.merge_blockers.hard_blockers.length !== 3) {
+    throw new PlanError(ERROR_CODES.POLICY_SCHEMA_ERROR, 'hard_blockers must be array of 3');
+  }
+  if (policy.merge_blockers.hard_blockers[0] !== 'CI_EXECUTED_FAILURE' ||
+      policy.merge_blockers.hard_blockers[1] !== 'CI_PENDING_EXECUTION' ||
+      policy.merge_blockers.hard_blockers[2] !== 'UNRESOLVED_DESTRUCTIVE_APPROVAL') {
+    throw new PlanError(ERROR_CODES.POLICY_SCHEMA_ERROR, 'hard_blockers content or order mismatch');
+  }
+
+  // Validate infrastructure_unavailable_posture
+  assertExactSortedKeys(policy.merge_blockers.infrastructure_unavailable_posture,
+    ['alternative_evidence_required', 'description', 'merge_ready_without_alternative', 'status'],
+    'infrastructure_unavailable_posture');
+  if (policy.merge_blockers.infrastructure_unavailable_posture.status !== 'CI_UNAVAILABLE_INFRA') {
+    throw new PlanError(ERROR_CODES.POLICY_SCHEMA_ERROR, 'infrastructure_unavailable_posture.status must be CI_UNAVAILABLE_INFRA');
+  }
+  if (policy.merge_blockers.infrastructure_unavailable_posture.alternative_evidence_required !== true) {
+    throw new PlanError(ERROR_CODES.POLICY_SCHEMA_ERROR, 'infrastructure_unavailable_posture.alternative_evidence_required must be true');
+  }
+
+  // Validate tier_3_requirements
+  assertExactSortedKeys(policy.merge_blockers.tier_3_requirements,
+    ['exact_head_local_validation', 'note', 'production_verification_for'],
+    'tier_3_requirements');
+  if (policy.merge_blockers.tier_3_requirements.exact_head_local_validation !== true) {
+    throw new PlanError(ERROR_CODES.POLICY_SCHEMA_ERROR, 'tier_3_requirements.exact_head_local_validation must be true');
   }
 
   // Validate accessibility_focus_evidence_policy
-  if (!policy.accessibility_focus_evidence_policy || typeof policy.accessibility_focus_evidence_policy !== 'object') {
-    throw new PlanError(ERROR_CODES.POLICY_SCHEMA_ERROR, 'accessibility_focus_evidence_policy missing');
+  assertExactSortedKeys(policy.accessibility_focus_evidence_policy, EXPECTED_ACCESSIBILITY_POLICY_KEYS,
+    'accessibility_focus_evidence_policy');
+  if (!policy.accessibility_focus_evidence_policy.requires_browser_evidence ||
+      !Array.isArray(policy.accessibility_focus_evidence_policy.requires_browser_evidence)) {
+    throw new PlanError(ERROR_CODES.POLICY_SCHEMA_ERROR, 'accessibility_focus_evidence_policy.requires_browser_evidence must be array');
   }
 }
 
@@ -291,7 +418,6 @@ function parseArgs(argv) {
     } else if (arg.startsWith('--')) {
       throw new PlanError(ERROR_CODES.UNSUPPORTED_ARGUMENT, 'Unknown argument: ' + arg);
     } else {
-      // Positional token (does not start with --)
       throw new PlanError(ERROR_CODES.UNSUPPORTED_ARGUMENT, 'Unexpected positional token: ' + arg);
     }
   }
@@ -349,7 +475,7 @@ function applyEscalationRules(policy, tier, uiClass, capabilities) {
         throw new PlanError(ERROR_CODES.UNDERCLASSIFIED_CAPABILITY,
           'TIER_1 + NOT_APPLICABLE cannot include: ' + capabilities[tb]);
       }
-      if (allowedCaps.indexOf(capabilities[tb]) === -1 && capabilities[tb] !== 'none') {
+      if (allowedCaps.indexOf(capabilities[tb]) === -1) {
         throw new PlanError(ERROR_CODES.UNDERCLASSIFIED_CAPABILITY,
           'TIER_1 + NOT_APPLICABLE cannot include: ' + capabilities[tb]);
       }
@@ -442,6 +568,10 @@ function buildPlan(policy, effectiveTier, uiClass, capabilities) {
   // Required groups
   var reqByTier = policy.execution_group_policy.required_groups[effectiveTier] || [];
   for (var ri = 0; ri < reqByTier.length; ri++) {
+    if (reqByTier[ri] === MANUAL_ONLY_GROUP) {
+      throw new PlanError(ERROR_CODES.UNSAFE_AUTOMATIC_EXECUTION,
+        MANUAL_ONLY_GROUP + ' found in required_groups for ' + effectiveTier);
+    }
     if (plan.required_groups.indexOf(reqByTier[ri]) === -1) {
       plan.required_groups.push(reqByTier[ri]);
     }
@@ -454,6 +584,10 @@ function buildPlan(policy, effectiveTier, uiClass, capabilities) {
     if (capabilities.indexOf(rule.capability) !== -1 && rule.affected_tiers.indexOf(effectiveTier) !== -1) {
       for (var cgi = 0; cgi < rule.conditional_groups.length; cgi++) {
         var cg = rule.conditional_groups[cgi];
+        if (cg === MANUAL_ONLY_GROUP) {
+          throw new PlanError(ERROR_CODES.UNSAFE_AUTOMATIC_EXECUTION,
+            MANUAL_ONLY_GROUP + ' found in conditional_groups');
+        }
         if (plan.required_groups.indexOf(cg) === -1 && plan.conditional_groups.indexOf(cg) === -1) {
           plan.conditional_groups.push(cg);
         }
@@ -465,7 +599,7 @@ function buildPlan(policy, effectiveTier, uiClass, capabilities) {
   plan.required_groups = sortByGroupEnum(plan.required_groups, groupEnum);
   plan.conditional_groups = sortByGroupEnum(plan.conditional_groups, groupEnum);
 
-  // Manual evidence
+  // Manual evidence (never required or conditional)
   var manualTriggerCaps = policy.execution_group_policy.manual_evidence_groups.triggers.capabilities;
   for (var mt = 0; mt < capabilities.length; mt++) {
     if (manualTriggerCaps.indexOf(capabilities[mt]) !== -1) {
@@ -484,14 +618,19 @@ function buildPlan(policy, effectiveTier, uiClass, capabilities) {
     plan.browser_evidence_required = true;
   }
 
+  // Local validation: TIER_3 always, plus specific capabilities
   if (effectiveTier === 'TIER_3' ||
       capabilities.indexOf('auth_or_session') !== -1 ||
       capabilities.indexOf('database') !== -1) {
     plan.local_validation_required = true;
   }
 
-  if (effectiveTier === 'TIER_3') {
-    plan.production_verification_required = true;
+  // Production verification: ONLY when capabilities include observable boundaries
+  for (var pv = 0; pv < capabilities.length; pv++) {
+    if (PRODUCTION_CAPABILITIES.indexOf(capabilities[pv]) !== -1) {
+      plan.production_verification_required = true;
+      break;
+    }
   }
 
   // CI_UNAVAILABLE_INFRA posture
@@ -560,13 +699,13 @@ function buildJsonOutput(plan) {
 
 function run(argv) {
   var args = parseArgs(argv);
-  var policy = readPolicy();
-  validatePolicySchema(policy);
-  validateInputs(policy, args.tier, args.uiClass, args.capabilities);
-  validateTierUiCombination(policy, args.tier, args.uiClass);
+  var pol = readPolicy();
+  validatePolicySchema(pol);
+  validateInputs(pol, args.tier, args.uiClass, args.capabilities);
+  validateTierUiCombination(pol, args.tier, args.uiClass);
   detectContradictions(args.capabilities);
-  var effectiveTier = applyEscalationRules(policy, args.tier, args.uiClass, args.capabilities);
-  var plan = buildPlan(policy, effectiveTier, args.uiClass, args.capabilities);
+  var effectiveTier = applyEscalationRules(pol, args.tier, args.uiClass, args.capabilities);
+  var plan = buildPlan(pol, effectiveTier, args.uiClass, args.capabilities);
   return args.json ? buildJsonOutput(plan) : buildHumanOutput(plan);
 }
 
@@ -593,5 +732,7 @@ module.exports = {
   EXPECTED_TOP_KEYS: EXPECTED_TOP_KEYS, EXPECTED_TIERS: EXPECTED_TIERS,
   EXPECTED_UI_CLASSES: EXPECTED_UI_CLASSES, EXPECTED_CAPABILITIES: EXPECTED_CAPABILITIES,
   EXPECTED_SENSITIVE: EXPECTED_SENSITIVE,
+  PRODUCTION_CAPABILITIES: PRODUCTION_CAPABILITIES,
+  MANUAL_ONLY_GROUP: MANUAL_ONLY_GROUP,
   main: main,
 };
