@@ -5,6 +5,7 @@
 - **Scope:** Source-only readiness audit. No code, CSS, HTML, JS, test, localStorage, default-mode, or preview-hub changes. No browser, screenshot, Preview, Production, Cloudflare, backend/API/DB/Auth work. No PR Ready, merge, or #3654 closure.
 - **Audit baseline:** `235ec59b2a5a40e0cf0115ebe45b2c6e50abbcdc`
 - **Merge-forward baseline at audit completion:** `5db3f42e5e8c1e29c7cc294e29fd30155b89c6a7`
+- **Latest-main revalidation baseline:** `7d406f017f654f6a190473c698e4b0e2bd4983c5`
 - **Parent product issue:** #3654 — **Keep OPEN**
 - **Related completed:** #3655 / PR #3656 (Browse Story foundation), #3666 (transition correction), #3703 / PR #3708 (Browse refinement)
 - **Production acceptance blocker:** #3699 — **Keep OPEN**
@@ -25,6 +26,8 @@ The audit concludes that **Story mode is NOT currently ready for My Trees implem
 3. **Owner-specific boundaries are significant** — My Trees has auth, owner actions (rename/delete/visibility), create-tree CTA, and auto-select-first-tree behavior that Browse Story does not account for.
 
 The recommended path is: **resolve #3699 first, then make a product decision on My Trees Story mode, then implement as a separate adapter child.**
+
+> **Latest-main revalidation:** core Story controller and shared mode-switcher authority unchanged; My Trees loading/state implementation changed but does not resolve Production acceptance, preview-hub coexistence, owner-action, selection, or preference-boundary blockers.
 
 ---
 
@@ -402,6 +405,7 @@ git status --short
 | **issue** | #3717 |
 | **audit baseline** | `235ec59b2a5a40e0cf0115ebe45b2c6e50abbcdc` |
 | **merge-forward baseline at audit completion** | `5db3f42e5e8c1e29c7cc294e29fd30155b89c6a7` |
+| **latest-main revalidation baseline** | `7d406f017f654f6a190473c698e4b0e2bd4983c5` |
 | **branch / worktree (historical execution metadata)** | `docs/my-trees-story-parity-readiness-3717` / `/mnt/g/Ddrive/BatangD/task/workdiary/LoveBud-3717-mytrees-story-readiness` |
 | **exact changed files** | `docs/product/MY_TREES_STORY_PARITY_READINESS_DECISION.md` (new) |
 
