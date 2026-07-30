@@ -29,7 +29,6 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const http = require('node:http');
-const net = require('node:net');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const EVIDENCE = path.resolve(ROOT, '..', 'local-backup', 'lovebud-3582-persistence');
@@ -218,52 +217,49 @@ function routeExitHtml() {
 </body></html>`;
 }
 
-function getFreePort() {
+function startServer() {
   return new Promise((resolve, reject) => {
-    const srv = net.createServer();
-    srv.unref();
-    srv.on('error', reject);
-    srv.listen(0, '127.0.0.1', () => {
-      const port = srv.address().port;
-      srv.close(() => resolve(port));
+    const server = http.createServer((req, res) => {
+      try {
+        let urlPath = decodeURIComponent((req.url || '/').split('?')[0]);
+        if (urlPath === '/' || urlPath === '/fixture.html') {
+          res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+          res.end(fixtureHtml());
+          return;
+        }
+        if (urlPath === '/route-exit.html') {
+          res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+          res.end(routeExitHtml());
+          return;
+        }
+        const abs = path.normalize(path.join(ROOT, urlPath.replace(/^\//, '')));
+        if (!abs.startsWith(ROOT) || !fs.existsSync(abs) || fs.statSync(abs).isDirectory()) {
+          res.writeHead(404);
+          res.end('not found: ' + urlPath);
+          return;
+        }
+        res.writeHead(200, { 'Content-Type': contentType(abs) });
+        res.end(fs.readFileSync(abs));
+      } catch (e) {
+        res.writeHead(500);
+        res.end(String(e));
+      }
+    });
+    server.on('error', reject);
+    server.listen(0, '127.0.0.1', () => {
+      const port = server.address().port;
+      resolve({ server, port });
     });
   });
 }
 
-function startServer() {
-  return getFreePort().then(
-    (port) =>
-      new Promise((resolve, reject) => {
-        const server = http.createServer((req, res) => {
-          try {
-            let urlPath = decodeURIComponent((req.url || '/').split('?')[0]);
-            if (urlPath === '/' || urlPath === '/fixture.html') {
-              res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-              res.end(fixtureHtml());
-              return;
-            }
-            if (urlPath === '/route-exit.html') {
-              res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-              res.end(routeExitHtml());
-              return;
-            }
-            const abs = path.normalize(path.join(ROOT, urlPath.replace(/^\//, '')));
-            if (!abs.startsWith(ROOT) || !fs.existsSync(abs) || fs.statSync(abs).isDirectory()) {
-              res.writeHead(404);
-              res.end('not found: ' + urlPath);
-              return;
-            }
-            res.writeHead(200, { 'Content-Type': contentType(abs) });
-            res.end(fs.readFileSync(abs));
-          } catch (e) {
-            res.writeHead(500);
-            res.end(String(e));
-          }
-        });
-        server.on('error', reject);
-        server.listen(port, '127.0.0.1', () => resolve({ server, port }));
-      })
-  );
+async function closeServer(server) {
+  await new Promise((resolve, reject) => {
+    server.close((error) => {
+      if (error) reject(error);
+      else resolve();
+    });
+  });
 }
 
 async function launchBrowser() {
@@ -679,7 +675,7 @@ test('#3582 component canvas: drag, fixture route sim, logout stub, tree switch,
 
     await context.close();
   } finally {
-    server.close();
+    await closeServer(server);
     await browser.close();
   }
 });
@@ -783,7 +779,7 @@ test('#3582 storage failure matrix via production storage in Chromium', { timeou
     assert.equal(matrix.badNumbers.scale, 1);
     fs.writeFileSync(path.join(EVIDENCE, 'storage-failure-matrix.json'), JSON.stringify(matrix, null, 2));
   } finally {
-    server.close();
+    await closeServer(server);
     await browser.close();
   }
 });
@@ -848,7 +844,7 @@ test('#3582 mobile appreciation structured-first and edit restore', { timeout: 9
 
     await context.close();
   } finally {
-    server.close();
+    await closeServer(server);
     await browser.close();
   }
 });

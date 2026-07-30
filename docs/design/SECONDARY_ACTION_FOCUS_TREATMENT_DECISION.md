@@ -71,7 +71,7 @@ Actions are classified by **semantic intent**, not visual similarity. Deleting, 
 | `.btn-round` | `css/global.css` | base component | **CANONICAL_CANDIDATE** |
 | `.btn-primary` | `css/global.css` | PRIMARY_COMMIT | **APPROVED_VARIANT** |
 | `.btn-outline` | `css/global.css` | SECONDARY_SAFE_ACTION / CANCEL_OR_DISMISS | **APPROVED_VARIANT** |
-| `.btn-round.btn-outline` (auth login) | `css/global.css` + `js/auth/auth-ui-templates.js` | CANCEL_OR_DISMISS (login is a non-commit auth entry) | **APPROVED_VARIANT** |
+| `.btn-round.btn-outline` (auth login) | `css/global.css` + `js/auth/auth-ui-templates.js` | PAGE_AUTHORITY_SPECIFIC (auth entry; page/auth-authority context) | **APPROVED_VARIANT** |
 | `.btn-round.preview-secondary-action` | `js/search/search-preview-action-helper.js` | SECONDARY_SAFE_ACTION | **APPROVED_VARIANT** |
 | `.btn-round.preview-share-action` | `js/search/search-preview-action-helper.js` | SECONDARY_SAFE_ACTION | **APPROVED_VARIANT** |
 | `.btn-round.btn-primary.preview-primary-action` | `js/search/search-preview-action-helper.js` | PRIMARY_COMMIT | **APPROVED_VARIANT** |
@@ -90,8 +90,8 @@ Actions are classified by **semantic intent**, not visual similarity. Deleting, 
 | `.sidebar-btn-primary` | `css/editor/editor-overrides.css` | PRIMARY_COMMIT | **PAGE_SPECIFIC** |
 | `.home-v3-actions .btn-outline` | `css/index/components.css` | SECONDARY_SAFE_ACTION | **PAGE_SPECIFIC** |
 | `.btn-save` | `css/editor/editor-memory-edit.css` | PRIMARY_COMMIT | **PAGE_SPECIFIC** |
-| `.cta-appreciation` | `css/global.css` | PRIMARY_COMMIT | **APPROVED_VARIANT** |
-| `.lovetree-pill` | `css/global.css` | SECONDARY_SAFE_ACTION (filter/selection) | **CANONICAL_CANDIDATE** |
+| `.cta-appreciation` | `css/global.css` | PRIMARY_COMMIT (verified: uses `--control-primary`, grouped with `.btn-primary` in primary CTA unification) | **APPROVED_VARIANT** |
+| `.lovetree-pill` | `css/global.css` | SECONDARY_SAFE_ACTION (filter/selection) | **NOT_TO_CONVERGE** |
 
 ### Items explicitly NOT converged
 
@@ -101,6 +101,7 @@ Actions are classified by **semantic intent**, not visual similarity. Deleting, 
 | `.detail-back-link` | Link element (not button), icon + text, back-navigation semantics | **NOT_TO_CONVERGE** |
 | `.btn-cancel` | Memory-edit context, inline form cancel, different visual weight | **NOT_TO_CONVERGE** |
 | `.editor-action-btn-ghost` | Icon-only, transparent background, editor-specific layout | **NOT_TO_CONVERGE** |
+| `.lovetree-pill` | Selection/filter control with `.is-active` state; not a commit/dismiss action | **NOT_TO_CONVERGE** |
 
 ---
 
@@ -111,7 +112,7 @@ Actions are classified by **semantic intent**, not visual similarity. Deleting, 
 | Selector | Source | Focus treatment |
 |---|---|---|
 | `.btn-round:focus-visible`, `.btn-primary:focus-visible`, `.btn-outline:focus-visible`, `.cta-appreciation:focus-visible`, `.tag-chip:focus-visible` | `css/global.css` lines 564, 591-598 | `outline: 2px solid var(--control-focus-ring); outline-offset: 2px;` |
-| `.love-tree-card:focus-visible` | `css/shared/love-tree-card-composition.css` line 45 | `outline: 2px solid rgba(122, 139, 110, 0.48); outlineOffset: 4px; border-color: rgba(122, 139, 110, 0.24);` |
+| `.love-tree-card:focus-visible` | `css/shared/love-tree-card-composition.css` line 45 | `outline: 2px solid rgba(122, 139, 110, 0.48); outline-offset: 4px; border-color: rgba(122, 139, 110, 0.24);` |
 | `.settings-close-btn:focus-visible` | `css/settings/components.css` line 31 | `outline: 2px solid var(--primary); outline-offset: 2px;` |
 | `.editor-moment-reaction:focus-visible` | `css/editor/editor-overrides.css` line 444 | `background: rgba(144, 73, 81, 0.10); color: var(--primary);` (no outline) |
 | `.editor-moment-reaction-readonly:focus-visible` | `css/editor/editor-overrides.css` line 475 | `background: transparent; color: inherit;` (no outline) |
@@ -126,12 +127,12 @@ Actions are classified by **semantic intent**, not visual similarity. Deleting, 
 
 | Property | Decision | Rationale |
 |---|---|---|
-| **Minimum visible focus-ring thickness** | 2px | WCAG 2.2 minimum; matches existing `.btn-round:focus-visible`, `.settings-close-btn:focus-visible`, and PR #3721 `.search-input:focus-visible` |
+| **Minimum visible focus-ring thickness** | 2px | Proposed LoveBud focus-ring baseline (not a universal WCAG 2.2 thickness rule). A 2px outline provides sufficient indicator area when paired with the 3:1 contrast requirement below; matches existing `.btn-round:focus-visible`, `.settings-close-btn:focus-visible`, and PR #3721 `.search-input:focus-visible` |
 | **Contrast requirement** | 3:1 against adjacent background | WCAG 2.2 AA for non-text focus indicators; existing `--control-focus-ring` = `rgba(144, 73, 81, 0.42)` provides sufficient contrast on white/surface backgrounds |
 | **`:focus-visible` scope** | Keyboard-visible treatment only | Mouse users should not see persistent rings; `:focus-visible` is the correct heuristic. Existing `.btn-round:focus-visible` and PR #3721 `.search-input:focus-visible` already follow this pattern |
 | **outline vs border vs box-shadow role** | `outline` for ring (non-layout-affecting); `border-color` for integrated focus state; `box-shadow` for layered ring when border is occupied | `outline` does not shift layout; `box-shadow` allows layered rings (e.g., PR #3721 search input uses both border-color and box-shadow) |
-| **forced-colors fallback** | `outline: 2px solid CanvasText` with `outline-offset: 2px` inside `@media (forced-colors: active)` | Required for Windows High Contrast Mode; ensures focus ring remains visible when custom colors are stripped |
-| **reduced-motion** | Remove focus transition duration; keep focus state change instantaneous | `transition: none` under `@media (prefers-reduced-motion: reduce)` for focus-related transitions; non-essential focus animations removed |
+| **forced-colors fallback** | **NOT YET IMPLEMENTED** — no `@media (forced-colors: active)` exists in source | Gap: Windows High Contrast Mode focus-ring fallback (`outline: 2px solid CanvasText; outline-offset: 2px`) must be added in a future child |
+| **reduced-motion** | **NOT YET IMPLEMENTED** — no `@media (prefers-reduced-motion: reduce)` for focus transitions | Gap: focus transition removal (`transition: none`) under reduced-motion must be added in a future child |
 | **Token vs utility vs component-owned** | Token authority for ring color (`--control-focus-ring` or `--primary`); component-owned for ring thickness/offset | `--control-focus-ring` already exists in `css/global.css` line 470; ring thickness and offset remain component-owned to avoid global layout impact |
 | **Focus trap vs visual focus ring** | Distinct concerns: focus trap = keyboard navigation containment (page-owned); visual focus ring = CSS `:focus-visible` (component-owned) | Home modal focus trap (`js/index-inline-init.js`) and Editor modal focus management are page-owned authority; visual rings are component-level CSS |
 | **`--lovetree-focus-*` token family** | **Justified — future child should define** | Current focus colors are dispersed: `--control-focus-ring` (global), `rgba(122, 139, 110, 0.48)` (card), `var(--primary)` (settings). A `--lovetree-focus-ring` token family would centralize the ring color; `--lovetree-focus-ring-width` and `--lovetree-focus-ring-offset` would centralize thickness/offset. This is a candidate for a future token-migration child |
@@ -140,9 +141,9 @@ Actions are classified by **semantic intent**, not visual similarity. Deleting, 
 
 | Selector | Current | Disposition |
 |---|---|---|
-| `.btn-round:focus-visible` etc. (global) | `outline: 2px solid var(--control-focus-ring); outlineOffset: 2px;` | **APPROVED_VARIANT** — canonical pattern |
-| `.love-tree-card:focus-visible` | `outline: 2px solid rgba(122, 139, 110, 0.48); outlineOffset: 4px;` | **APPROVED_VARIANT** — card-specific offset |
-| `.settings-close-btn:focus-visible` | `outline: 2px solid var(--primary); outlineOffset: 2px;` | **PAGE_SPECIFIC** — uses `--primary` instead of `--control-focus-ring` |
+| `.btn-round:focus-visible` etc. (global) | `outline: 2px solid var(--control-focus-ring); outline-offset: 2px;` | **APPROVED_VARIANT** — canonical pattern |
+| `.love-tree-card:focus-visible` | `outline: 2px solid rgba(122, 139, 110, 0.48); outline-offset: 4px;` | **APPROVED_VARIANT** — card-specific offset |
+| `.settings-close-btn:focus-visible` | `outline: 2px solid var(--primary); outline-offset: 2px;` | **PAGE_SPECIFIC** — uses `--primary` instead of `--control-focus-ring` |
 | `.search-input:focus-visible` (PR #3721) | `border-color` + `box-shadow` ring | **APPROVED_VARIANT** — input-specific pattern |
 | `.browse-sort-select:focus-visible` | `border-color` + `box-shadow` ring | **APPROVED_VARIANT** — select-specific pattern |
 | `.editor-moment-reaction:focus-visible` | `background` + `color` (no outline) | **UNRESOLVED** — no visible ring; relies on background change only |
@@ -256,7 +257,7 @@ The following are explicitly out of scope for this decision and any immediate ch
 6. **Framework or library introduction** — No new frameworks, build tools, or dependencies.
 7. **Browser, screenshot, Preview, Production, or Cloudflare** — No browser verification, no screenshots, no Preview deployment, no Production action.
 8. **Token migration** — No existing token is renamed, replaced, or deleted. New tokens are additive only.
-9. **Convergence of NOT_TO_CONVERGE items** — Settings close button, Detail back link, memory edit cancel button, and editor ghost buttons remain page-specific.
+9. **Convergence of NOT_TO_CONVERGE items** — Settings close button, Detail back link, memory edit cancel button, editor ghost buttons, and `.lovetree-pill` remain page-specific.
 10. **Parent closure** — #3672, #3674, #3425, #3458, and #1882 remain open.
 
 ---
