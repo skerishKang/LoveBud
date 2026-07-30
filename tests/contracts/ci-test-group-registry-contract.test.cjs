@@ -377,10 +377,10 @@ test('6. exact default-glob parsing and deterministic enumeration', () => {
   assert.deepEqual(files, files2);
 });
 
-test('7. expected post-child counts 775 / 570 / 188 / 17', () => {
+test('7. expected post-child counts 776 / 571 / 188 / 17', () => {
   const data = buildReportData();
-  assert.equal(data.default_total, 775);
-  assert.equal(data.layer_counts.SOURCE_STATIC, 570);
+  assert.equal(data.default_total, 776);
+  assert.equal(data.layer_counts.SOURCE_STATIC, 571);
   assert.equal(data.layer_counts.EXECUTED_FAKE, 188);
   assert.equal(data.layer_counts.EXECUTED_REAL_LOCAL, 17);
 });
