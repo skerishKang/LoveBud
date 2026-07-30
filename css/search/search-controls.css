@@ -59,7 +59,7 @@
     font-size: 12px;
     font-weight: 700;
     cursor: pointer;
-    transition: background 0.2s, color 0.2s, border-color 0.2s;
+    transition: all 0.2s;
     border: 1px solid rgba(144, 73, 81, 0.08);
 }
 
@@ -216,7 +216,7 @@
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' height='20' viewBox='0 -960 960 960' width='20'%3E%3Cpath d='M480-345 240-585l56-56 184 184 184-184 56 56-240 240Z'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
     background-position: right 12px center;
-    transition: border-color 0.2s ease, background-color 0.2s ease, color 0.2s ease;
+    transition: all 0.2s ease;
     outline: none;
 }
 
@@ -333,9 +333,7 @@
 
 @media (prefers-reduced-motion: reduce) {
     .search-input,
-    .search-icon,
-    .tag-chip,
-    .browse-sort-select {
+    .search-icon {
         transition: none;
     }
 }

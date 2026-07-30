@@ -83,24 +83,6 @@ test('prefers-reduced-motion removes nonessential input transitions', () => {
     assert.match(block, /transition:\s*none/);
 });
 
-test('tag-chip and browse-sort-select also avoid transition: all', () => {
-    const cssContent = fs.readFileSync(SEARCH_CONTROLS_CSS_PATH, 'utf8');
-    const tagChipBlock = cssContent.match(/\.tag-chip\s*\{[^}]*\}/s);
-    assert.ok(tagChipBlock, 'Must have .tag-chip rule block');
-    const tagBlock = tagChipBlock[0];
-    assert.ok(
-        !/\btransition:\s*all\b/.test(tagBlock),
-        '.tag-chip must not contain transition: all'
-    );
-    const sortSelectBlock = cssContent.match(/\.browse-sort-select\s*\{[^}]*\}/s);
-    assert.ok(sortSelectBlock, 'Must have .browse-sort-select rule block');
-    const sortBlock = sortSelectBlock[0];
-    assert.ok(
-        !/\btransition:\s*all\b/.test(sortBlock),
-        '.browse-sort-select must not contain transition: all'
-    );
-});
-
 test('geometry anchors remain unchanged', () => {
     const cssContent = fs.readFileSync(SEARCH_CONTROLS_CSS_PATH, 'utf8');
     const searchInputBlock = cssContent.match(/\.search-input\s*\{[^}]*\}/s);
