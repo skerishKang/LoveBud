@@ -293,3 +293,15 @@ test('viewer error state includes retry button', () => {
     const html = fs.readFileSync('pages/tree.html', 'utf8');
     assert.ok(html.includes('id="viewerRetryBtn"'), 'tree.html must include #viewerRetryBtn');
 });
+
+test('viewer state CSS guards against Material Symbols ligature overflow', () => {
+    const css = fs.readFileSync('css/viewer/public-tree-viewer/state.css', 'utf8');
+
+    assert.ok(css.includes('.viewer-state'), 'state.css must scope overflow guard to viewer-state');
+    assert.ok(css.includes('overflow-wrap'), 'state.css must include overflow-wrap to prevent ligature text overflow when external fonts are blocked');
+});
+
+test('viewer state CSS ends with trailing newline', () => {
+    const css = fs.readFileSync('css/viewer/public-tree-viewer/state.css', 'utf8');
+    assert.ok(css.endsWith('\n'), 'state.css must end with a trailing newline');
+});

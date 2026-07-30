@@ -4,6 +4,7 @@
     align-items: center;
     justify-content: center;
     min-height: 300px;
+    overflow: hidden;
 }
 
 .viewer-tree-shell [hidden] {
@@ -13,6 +14,9 @@
 .viewer-state-content {
     text-align: center;
     color: var(--on-surface-variant);
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    min-width: 0;
 }
 
 .viewer-state-content .material-symbols-outlined {
@@ -20,6 +24,12 @@
     margin-bottom: 16px;
     opacity: 0.6;
     display: block;
+}
+
+.viewer-state .material-symbols-outlined {
+    overflow-wrap: anywhere;
+    max-width: 100%;
+    word-break: break-all;
 }
 
 .viewer-state-content p {
