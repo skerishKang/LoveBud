@@ -1363,3 +1363,56 @@ test('#3578 browser: My Trees adapter preserves zero/positive/unknown/legacy met
     assert.ok(result.caseC.hasVisibility, 'private visibility retained');
   });
 });
+
+/* ────────────────────────────────────────────────────────────────────────── */
+/* 12. htmlToNode whitespace regression (#3654)                                */
+/* ────────────────────────────────────────────────────────────────────────── */
+
+test('#3654 browser: htmlToNode skips leading whitespace text nodes', { timeout: 60000 }, async (t) => {
+  await withServerPage(t, async (page, base) => {
+    const result = await page.evaluate((args) => {
+      const Renderer = window.LoveBudSearchCardRenderer;
+      const Fallback = window.LoveBudSearchCardFallback;
+      const base = args.base;
+
+      const tree = {
+        id: 'ws-regression-1',
+        title: 'Whitespace Regression',
+        representativeThumbnail: 'https://img.youtube.com/vi/dQw4w9WgXcQ/mqdefault.jpg',
+        memories: [{ thumbnail: 'https://img.youtube.com/vi/dQw4w9WgXcQ/mqdefault.jpg', type: 'video', title: 'first moment' }],
+        memoryCount: 1,
+      };
+
+      const rawHtml = Fallback.renderRepresentativeMedia(tree, tree.memories[0], 'Whitespace Regression');
+
+      const startsWithWhitespace = /^\s/.test(rawHtml);
+
+      const cardHtml = Renderer.renderTreeCard(tree, 0);
+      const container = document.createElement('div');
+      container.innerHTML = cardHtml;
+
+      const mediaWrap = container.querySelector('.love-tree-card-media');
+      const innerMedia = mediaWrap ? mediaWrap.querySelector('.tree-card-media') : null;
+      const img = mediaWrap ? mediaWrap.querySelector('img') : null;
+      const fallback = mediaWrap ? mediaWrap.querySelector('[data-fallback-container]') : null;
+
+      return {
+        startsWithWhitespace,
+        hasMediaWrap: !!mediaWrap,
+        hasInnerMedia: !!innerMedia,
+        hasImg: !!img,
+        imgSrc: img ? img.getAttribute('src') : null,
+        hasFallback: !!fallback,
+        mediaWrapElementChildren: mediaWrap ? mediaWrap.children.length : -1,
+      };
+    }, { base });
+
+    assert.ok(result.startsWithWhitespace, 'renderRepresentativeMedia HTML must start with whitespace (precondition)');
+    assert.ok(result.hasMediaWrap, 'Card must have outer media wrapper');
+    assert.ok(result.hasInnerMedia, 'Inner .tree-card-media div must be present (not a whitespace text node)');
+    assert.ok(result.hasImg, 'img element must be present inside media wrapper');
+    assert.ok(result.imgSrc && result.imgSrc.includes('img.youtube.com'), 'img src must be the representative thumbnail URL');
+    assert.ok(result.hasFallback, 'data-fallback-container must be present');
+    assert.ok(result.mediaWrapElementChildren >= 1, 'Media wrapper must have at least 1 element child');
+  });
+});
