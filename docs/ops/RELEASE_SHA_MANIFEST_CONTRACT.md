@@ -4,7 +4,7 @@
 > **Authority:** #3740 / PR #3744 — canonical public serving-SHA exposure boundary
 > **Parent:** #3673 — Keep OPEN
 > **Related:** #3761 — implementation child; #3734 — completed bounded smoke contract; #3725 — completed runtime health taxonomy
-> **Base SHA:** `c959d031d3162942806b6c686ea3195a1729b1b3`
+
 
 ## Canonical endpoint
 
@@ -68,7 +68,7 @@ https://lovebud.pages.dev/.well-known/release.json
 
 - If `git rev-parse HEAD` exits non-zero or produces output that does not match `^[0-9a-f]{40}$`, the build exits non-zero.
 - No placeholder, default, or success-with-warning path exists. If the SHA cannot be determined, the build does not produce a manifest and the deploy is blocked.
-- The contract test verifies fail-closed behavior by running the build script in a repository with no valid Git history.
+- The contract test verifies fail-closed behavior by running the build script in a directory with required static paths present but a Git repository with no commits (no resolvable HEAD). The test asserts non-zero exit, SHA-specific stderr content, and absence of the generated manifest.
 
 ## Cache policy
 

@@ -2,7 +2,7 @@ const { test, after } = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
-const { execSync } = require("node:child_process");
+const { execSync, spawnSync } = require("node:child_process");
 
 const ROOT = path.resolve(__dirname, "..", "..");
 const MANIFEST_DIR = path.join(ROOT, ".well-known");
@@ -78,25 +78,35 @@ test("7. manifest has no forbidden metadata fields", () => {
   }
 });
 
-test("8. _headers has path-specific freshness rule for manifest", () => {
+test("8. _headers block-scoped freshness rule for manifest", () => {
   assert.ok(fs.existsSync(HEADERS_PATH), "_headers must exist");
   const content = fs.readFileSync(HEADERS_PATH, "utf-8");
-  assert.match(content, /\.well-known\/release\.json/, "_headers must reference .well-known/release.json path");
-  assert.match(content, /Cache-Control:\s*no-store/, "_headers must specify Cache-Control: no-store for manifest");
+  assert.match(
+    content,
+    /\/\.well-known\/release\.json\n\s+Cache-Control:\s*no-store/m,
+    "_headers must have Cache-Control: no-store directly inside the /.well-known/release.json block"
+  );
 });
 
-test("9. build fails when SHA is missing or invalid", () => {
+test("9. build fails closed when SHA is invalid with no-commit git repo", () => {
   const tmpDir = fs.mkdtempSync("sha-fail-test-");
   try {
-    execSync("git init && git config user.email test@test && git config user.name test && git commit --allow-empty -m 'no sha'", {
+    fs.writeFileSync(path.join(tmpDir, "index.html"), "<html></html>");
+    execSync("git init", { cwd: tmpDir, encoding: "utf-8", timeout: 15000 });
+    const result = spawnSync("node", [BUILD_SCRIPT], {
       cwd: tmpDir, encoding: "utf-8", timeout: 15000,
     });
-    const result = execSync(`node ${BUILD_SCRIPT}`, {
-      cwd: tmpDir, encoding: "utf-8", timeout: 15000, stdio: ["pipe", "pipe", "pipe"],
-    });
-    assert.fail("build must fail when SHA is invalid, but it succeeded");
-  } catch (e) {
-    assert.ok(true, "build correctly failed when SHA context is invalid");
+    assert.notEqual(result.status, 0, "build must exit non-zero when SHA cannot be resolved");
+    assert.match(
+      result.stderr,
+      /SHA|sha|rev-parse|Invalid/i,
+      "stderr must contain SHA-resolution error, not generic missing-file error"
+    );
+    const emitted = path.join(tmpDir, ".well-known", "release.json");
+    assert.equal(
+      fs.existsSync(emitted), false,
+      "manifest must not be generated when SHA resolution fails"
+    );
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }
