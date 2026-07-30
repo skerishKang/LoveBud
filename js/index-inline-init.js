@@ -525,12 +525,221 @@
     // ------------------------------------------------------------
     var modalEl = null;
     var modalReturnFocus = null;
+    var modalLoadTimerId = null;
+    var modalTimeoutId = null;
+    var modalCurrentVideo = null;
+    var modalCurrentCard = null;
+    var modalAttemptId = 0;
+
+    function cleanupModalTimers() {
+      if (modalLoadTimerId) {
+        window.clearTimeout(modalLoadTimerId);
+        modalLoadTimerId = null;
+      }
+      if (modalTimeoutId) {
+        window.clearTimeout(modalTimeoutId);
+        modalTimeoutId = null;
+      }
+    }
+
+    function handleModalIframeLoad() {
+      if (!modalEl) return;
+      modalAttemptId++;
+      cleanupModalTimers();
+      var loadingEl = modalEl.querySelector('.hero-video-modal-loading');
+      if (loadingEl) loadingEl.remove();
+      var errorEl = modalEl.querySelector('.hero-video-modal-error');
+      if (errorEl) errorEl.remove();
+      modalEl.classList.add('hero-video-modal-ready');
+      var playerEl = modalEl.querySelector('.hero-video-modal-player');
+      if (playerEl) playerEl.removeAttribute('aria-busy');
+      var iframe = modalEl.querySelector('iframe');
+      if (iframe) iframe.removeAttribute('tabindex');
+    }
+
+    function handleModalLongWait() {
+      if (!modalEl) return;
+      var loadingEl = modalEl.querySelector('.hero-video-modal-loading');
+      if (loadingEl) {
+        loadingEl.classList.add('is-long-wait');
+        var textEl = loadingEl.querySelector('.hero-video-modal-loading-text');
+        if (textEl) textEl.textContent = resolveI18n('loading.long.wait');
+      }
+      modalLoadTimerId = null;
+    }
+
+    function handleModalTimeout() {
+      if (!modalEl || modalEl.classList.contains('hero-video-modal-ready')) return;
+      modalAttemptId++;
+      cleanupModalTimers();
+      showModalError();
+      modalTimeoutId = null;
+    }
+
+    function handleModalIframeError() {
+      if (!modalEl) return;
+      modalAttemptId++;
+      cleanupModalTimers();
+      showModalError();
+    }
+
+    function createModalLoadingEl(retrying) {
+      var div = document.createElement('div');
+      div.className = 'hero-video-modal-loading';
+      div.setAttribute('role', 'status');
+      div.setAttribute('aria-live', 'polite');
+      var SVG_NS = 'http://www.w3.org/2000/svg';
+      var spinner = document.createElementNS(SVG_NS, 'svg');
+      spinner.setAttribute('viewBox', '0 0 36 36');
+      spinner.setAttribute('width', '36');
+      spinner.setAttribute('height', '36');
+      spinner.setAttribute('class', 'hero-video-modal-loading-spinner');
+      spinner.setAttribute('aria-hidden', 'true');
+      var bgCircle = document.createElementNS(SVG_NS, 'circle');
+      bgCircle.setAttribute('cx', '18');
+      bgCircle.setAttribute('cy', '18');
+      bgCircle.setAttribute('r', '15');
+      bgCircle.setAttribute('fill', 'none');
+      bgCircle.setAttribute('stroke', 'rgba(255,248,246,0.15)');
+      bgCircle.setAttribute('stroke-width', '3');
+      spinner.appendChild(bgCircle);
+      var arc = document.createElementNS(SVG_NS, 'circle');
+      arc.setAttribute('cx', '18');
+      arc.setAttribute('cy', '18');
+      arc.setAttribute('r', '15');
+      arc.setAttribute('fill', 'none');
+      arc.setAttribute('stroke', 'currentColor');
+      arc.setAttribute('stroke-width', '3');
+      arc.setAttribute('stroke-dasharray', '70 24');
+      arc.setAttribute('stroke-linecap', 'round');
+      var reducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (!reducedMotion) {
+        var anim = document.createElementNS(SVG_NS, 'animateTransform');
+        anim.setAttribute('attributeName', 'transform');
+        anim.setAttribute('type', 'rotate');
+        anim.setAttribute('from', '0 18 18');
+        anim.setAttribute('to', '360 18 18');
+        anim.setAttribute('dur', '0.9s');
+        anim.setAttribute('repeatCount', 'indefinite');
+        arc.appendChild(anim);
+      }
+      spinner.appendChild(arc);
+      var text = document.createElement('span');
+      text.className = 'hero-video-modal-loading-text';
+      text.textContent = retrying ? resolveI18n('loading.retrying') : resolveI18n('loading.media.load');
+      div.appendChild(spinner);
+      div.appendChild(text);
+      return div;
+    }
+
+    function showModalError() {
+      if (!modalEl) return;
+      var loadingEl = modalEl.querySelector('.hero-video-modal-loading');
+      if (loadingEl) loadingEl.remove();
+      var existingError = modalEl.querySelector('.hero-video-modal-error');
+      if (existingError) existingError.remove();
+      var SVG_NS = 'http://www.w3.org/2000/svg';
+      var playerEl = modalEl.querySelector('.hero-video-modal-player');
+      if (!playerEl) return;
+      var errorDiv = document.createElement('div');
+      errorDiv.className = 'hero-video-modal-error';
+      errorDiv.setAttribute('role', 'alert');
+      var icon = document.createElementNS(SVG_NS, 'svg');
+      icon.setAttribute('viewBox', '0 0 24 24');
+      icon.setAttribute('aria-hidden', 'true');
+      icon.setAttribute('focusable', 'false');
+      icon.setAttribute('class', 'hero-video-modal-error-icon');
+      var iconPath = document.createElementNS(SVG_NS, 'path');
+      iconPath.setAttribute('d', 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z');
+      iconPath.setAttribute('fill', 'currentColor');
+      icon.appendChild(iconPath);
+      var errText = document.createElement('p');
+      errText.className = 'hero-video-modal-error-text';
+      errText.textContent = resolveI18n('loading.error.primary');
+      var errDesc = document.createElement('p');
+      errDesc.className = 'hero-video-modal-error-desc';
+      errDesc.textContent = resolveI18n('loading.error.body');
+      var retryBtn = document.createElement('button');
+      retryBtn.className = 'hero-video-modal-retry-btn';
+      retryBtn.type = 'button';
+      var retryIcon = document.createElementNS(SVG_NS, 'svg');
+      retryIcon.setAttribute('viewBox', '0 0 24 24');
+      retryIcon.setAttribute('aria-hidden', 'true');
+      retryIcon.setAttribute('focusable', 'false');
+      var retryPath = document.createElementNS(SVG_NS, 'path');
+      retryPath.setAttribute('d', 'M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z');
+      retryPath.setAttribute('fill', 'currentColor');
+      retryIcon.appendChild(retryPath);
+      retryBtn.appendChild(retryIcon);
+      var retryLabel = document.createElement('span');
+      retryLabel.textContent = resolveI18n('loading.retry.action');
+      retryBtn.appendChild(retryLabel);
+      retryBtn.addEventListener('click', retryVideoModal);
+      var watchLink = document.createElement('a');
+      watchLink.className = 'growth-stage-card-link';
+      watchLink.target = '_blank';
+      watchLink.setAttribute('rel', 'noopener noreferrer');
+      watchLink.href = modalCurrentVideo ? youtubeWatchUrl(modalCurrentVideo.id) : '#';
+      watchLink.textContent = resolveI18n('home.v3.youtube.attribution');
+      errorDiv.appendChild(icon);
+      errorDiv.appendChild(errText);
+      errorDiv.appendChild(errDesc);
+      errorDiv.appendChild(retryBtn);
+      errorDiv.appendChild(watchLink);
+      playerEl.appendChild(errorDiv);
+    }
+
+    function retryVideoModal() {
+      if (!modalEl || !modalCurrentVideo) return;
+      if (modalCurrentCard) {
+        modalReturnFocus = modalCurrentCard.querySelector('.growth-stage-card-play') || modalCurrentCard;
+      }
+      cleanupModalTimers();
+      var oldIframe = modalEl.querySelector('iframe');
+      if (oldIframe) {
+        oldIframe.remove();
+      }
+      modalEl.classList.remove('hero-video-modal-ready');
+      var loadingEl = modalEl.querySelector('.hero-video-modal-loading');
+      if (loadingEl) loadingEl.remove();
+      var errorEl = modalEl.querySelector('.hero-video-modal-error');
+      if (errorEl) errorEl.remove();
+      var playerEl = modalEl.querySelector('.hero-video-modal-player');
+      if (!playerEl) return;
+      playerEl.setAttribute('aria-busy', 'true');
+      modalAttemptId++;
+      var thisAttempt = modalAttemptId;
+      var iframe = document.createElement('iframe');
+      iframe.src = youtubeEmbedUrl(modalCurrentVideo.id) + '&_=' + Date.now();
+      iframe.title = modalCurrentVideo.title + ' - YouTube';
+      iframe.setAttribute('allow', 'autoplay; encrypted-media; picture-in-picture');
+      iframe.setAttribute('allowfullscreen', '');
+      iframe.setAttribute('referrerpolicy', 'strict-origin-when-cross-origin');
+      iframe.tabIndex = -1;
+      iframe.addEventListener('load', function() {
+        if (thisAttempt !== modalAttemptId) return;
+        handleModalIframeLoad();
+      });
+      iframe.addEventListener('error', function() {
+        if (thisAttempt !== modalAttemptId) return;
+        handleModalIframeError();
+      });
+      var newLoading = createModalLoadingEl(true);
+      playerEl.appendChild(newLoading);
+      playerEl.appendChild(iframe);
+      modalLoadTimerId = window.setTimeout(function() {
+        if (thisAttempt !== modalAttemptId) return;
+        handleModalLongWait();
+      }, 8000);
+      modalTimeoutId = window.setTimeout(function() {
+        if (thisAttempt !== modalAttemptId) return;
+        handleModalTimeout();
+      }, 30000);
+    }
 
     function onDocumentFocusIn(e) {
       if (!modalEl) return;
       if (modalEl.contains(e.target)) return;
-      // Focus escaped the dialog (e.g. tabbing out of the cross-origin
-      // iframe). Pull it back inside so focus stays trapped in the modal.
       var close = modalEl.querySelector('.hero-video-modal-close');
       if (close) close.focus();
     }
@@ -542,8 +751,7 @@
         return;
       }
       if (e.key !== 'Tab' || !modalEl) return;
-      // Keep focus cycling between the close button and the player iframe.
-      var focusables = Array.prototype.slice.call(modalEl.querySelectorAll('button, iframe'));
+      var focusables = Array.prototype.slice.call(modalEl.querySelectorAll('button, iframe:not([tabindex="-1"]), a[href]'));
       if (!focusables.length) return;
       var first = focusables[0];
       var last = focusables[focusables.length - 1];
@@ -561,11 +769,14 @@
 
     function closeVideoModal() {
       if (!modalEl) return;
+      modalAttemptId++;
+      cleanupModalTimers();
       var el = modalEl;
       modalEl = null;
+      modalCurrentVideo = null;
+      modalCurrentCard = null;
       document.removeEventListener('focusin', onDocumentFocusIn);
       el.removeEventListener('keydown', onModalKeydown);
-      // Removing the overlay also removes the iframe, which stops playback.
       el.remove();
       resume('playing');
       if (modalReturnFocus && typeof modalReturnFocus.focus === 'function') {
@@ -576,7 +787,9 @@
 
     function openVideoModal(video, card) {
       if (!video) return;
-      closeVideoModal(); // only one player at a time
+      closeVideoModal();
+      modalCurrentVideo = video;
+      modalCurrentCard = card;
       modalEl = document.createElement('div');
       modalEl.className = 'hero-video-modal';
       modalEl.setAttribute('role', 'dialog');
@@ -588,22 +801,34 @@
 
       var player = document.createElement('div');
       player.className = 'hero-video-modal-player';
+      player.setAttribute('aria-busy', 'true');
 
+      var loadingEl = createModalLoadingEl(false);
+      player.appendChild(loadingEl);
+
+      modalAttemptId++;
+      var thisAttempt = modalAttemptId;
       var iframe = document.createElement('iframe');
       iframe.src = youtubeEmbedUrl(video.id);
       iframe.title = video.title + ' - YouTube';
       iframe.setAttribute('allow', 'autoplay; encrypted-media; picture-in-picture');
       iframe.setAttribute('allowfullscreen', '');
-      iframe.setAttribute('frameborder', '0');
       iframe.setAttribute('referrerpolicy', 'strict-origin-when-cross-origin');
+      iframe.tabIndex = -1;
+      iframe.addEventListener('load', function() {
+        if (thisAttempt !== modalAttemptId) return;
+        handleModalIframeLoad();
+      });
+      iframe.addEventListener('error', function() {
+        if (thisAttempt !== modalAttemptId) return;
+        handleModalIframeError();
+      });
       player.appendChild(iframe);
 
       var closeBtn = document.createElement('button');
       closeBtn.className = 'hero-video-modal-close';
       closeBtn.type = 'button';
       closeBtn.setAttribute('aria-label', '영상 재생 닫기');
-      // Build the close icon with DOM APIs (never innerHTML) so this file
-      // stays free of DOM XSS sinks.
       var SVG_NS = 'http://www.w3.org/2000/svg';
       var closeIcon = document.createElementNS(SVG_NS, 'svg');
       closeIcon.setAttribute('viewBox', '0 0 24 24');
@@ -623,7 +848,7 @@
 
       closeBtn.addEventListener('click', closeVideoModal);
       modalEl.addEventListener('click', function(e) {
-        if (e.target === modalEl) closeVideoModal(); // backdrop click
+        if (e.target === modalEl) closeVideoModal();
       });
       modalEl.addEventListener('keydown', onModalKeydown);
       document.addEventListener('focusin', onDocumentFocusIn);
@@ -631,6 +856,15 @@
       document.body.appendChild(modalEl);
       pause('playing');
       closeBtn.focus();
+
+      modalLoadTimerId = window.setTimeout(function() {
+        if (thisAttempt !== modalAttemptId) return;
+        handleModalLongWait();
+      }, 8000);
+      modalTimeoutId = window.setTimeout(function() {
+        if (thisAttempt !== modalAttemptId) return;
+        handleModalTimeout();
+      }, 30000);
     }
 
     // ------------------------------------------------------------
