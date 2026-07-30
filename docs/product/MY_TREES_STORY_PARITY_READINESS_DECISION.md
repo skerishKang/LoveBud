@@ -5,7 +5,7 @@
 - **Scope:** Source-only readiness audit. No code, CSS, HTML, JS, test, localStorage, default-mode, or preview-hub changes. No browser, screenshot, Preview, Production, Cloudflare, backend/API/DB/Auth work. No PR Ready, merge, or #3654 closure.
 - **Audit baseline:** `235ec59b2a5a40e0cf0115ebe45b2c6e50abbcdc`
 - **Merge-forward baseline at audit completion:** `5db3f42e5e8c1e29c7cc294e29fd30155b89c6a7`
-- **Latest-main revalidation baseline:** `f2a62e40b880d41230e66f9420db0375c9b8944f`
+- **Latest-main revalidation baseline:** `4842a4d1f60c011132fb936323dd7b80423bf5ac`
 - **Parent product issue:** #3654 — **Keep OPEN**
 - **Related completed:** #3655 / PR #3656 (Browse Story foundation), #3666 (transition correction), #3703 / PR #3708 (Browse refinement)
 - **Production acceptance blocker:** #3699 — **Keep OPEN**
@@ -405,7 +405,7 @@ git status --short
 | **issue** | #3717 |
 | **audit baseline** | `235ec59b2a5a40e0cf0115ebe45b2c6e50abbcdc` |
 | **merge-forward baseline at audit completion** | `5db3f42e5e8c1e29c7cc294e29fd30155b89c6a7` |
-| **latest-main revalidation baseline** | `f2a62e40b880d41230e66f9420db0375c9b8944f` |
+| **latest-main revalidation baseline** | `4842a4d1f60c011132fb936323dd7b80423bf5ac` |
 | **branch / worktree (historical execution metadata)** | `docs/my-trees-story-parity-readiness-3717` / `/mnt/g/Ddrive/BatangD/task/workdiary/LoveBud-3717-mytrees-story-readiness` |
 | **exact changed files** | `docs/product/MY_TREES_STORY_PARITY_READINESS_DECISION.md` (new) |
 
