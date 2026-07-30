@@ -7,13 +7,16 @@
 | Parent | #3670 (Keep OPEN) |
 | Completed predecessors | #3671 / PR #3676, #3685 / PR #3686, #3710 / PR #3711 |
 | This child | #3715 |
-| Expected starting main | `235ec59b2a5a40e0cf0115ebe45b2c6e50abbcdc` |
-| Actual found main | `235ec59b2a5a40e0cf0115ebe45b2c6e50abbcdc` |
-| Drift | None — exact match |
+| Original inspected audit base | `235ec59b2a5a40e0cf0115ebe45b2c6e50abbcdc` |
+| Latest merge-forward main | `5db3f42e5e8c1e29c7cc294e29fd30155b89c6a7` |
+| Current merge base after merge-forward | `5db3f42e5e8c1e29c7cc294e29fd30155b89c6a7` |
+| Drift at audit start | None — starting main matched expected `235ec59b2a5a40e0cf0115ebe45b2c6e50abbcdc` |
 | Work class | Generic Tier 2 repository-source audit |
 | UI class | NOT_APPLICABLE |
 | Source inspected | All default-CI test files, DB engine tests and harness, CI workflow, test registry/classification, 10+ representative contract tests |
 | NOT inspected | Remote/provider scripts (not default CI), Python supplemental tests (no discovered runner), manual E2E scripts |
+
+**Note:** All counts (773 default-CI, 12 BROWSER_REAL_LOCAL, 15 source-discovered browser-like files) are snapshots of the audited baseline at `235ec59b2a5a40e0cf0115ebe45b2c6e50abbcdc`. They are not asserted as permanent current values.
 
 **CONFIRMED:** This document audits repository source only. It does not execute or alter tests, browsers, providers, databases, containers, deployments, or Production.
 
@@ -193,7 +196,7 @@ This is a **CONFIRMED_HAZARD** because unawaited `server.close()` may not releas
 `tests/contracts/lovebud-loop-policy-loader-contract.test.cjs:329-333`:
 ```js
 cp.spawnSync('node', ['scripts/loop/run-loop.mjs', '--mode=dry-run'], {
-  env: { ...process.process.env, LOCALAPPDATA: '' }
+  env: { ...process.env, LOCALAPPDATA: '' }
 });
 ```
 
