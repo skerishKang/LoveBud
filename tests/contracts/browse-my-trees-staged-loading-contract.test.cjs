@@ -1140,3 +1140,91 @@ describe('My Trees reduced-motion (SOURCE_STATIC)', () => {
     assert.ok(css.includes('display: none'), 'CSS enforces display:none for hidden');
   });
 });
+
+// ── Canonical skeleton primitive convergence (#3688) ─────────
+
+describe('Canonical skeleton primitive convergence (SOURCE_STATIC)', () => {
+
+  const SEARCH_SKELETON_CSS = 'css/search/search-results-skeleton.css';
+  const MY_TREES_STATES_CSS = 'css/my-trees/my-trees-states.css';
+  const CANONICAL_CSS = 'css/global/lovetree-loading-states.css';
+
+  it('61. Browse skeleton nodes adopt canonical lt-skeleton (shimmer classes removed)', () => {
+    const html = read(SEARCH_HTML);
+    assert.ok(html.includes('lt-skeleton'), 'search.html adopts lt-skeleton');
+    assert.ok(!html.includes('search-skeleton-block'), 'search-skeleton-block removed from Browse skeleton');
+    assert.ok(!html.includes('search-skeleton-line'), 'search-skeleton-line removed from Browse skeleton');
+  });
+
+  it('62. My Trees skeleton nodes adopt canonical lt-skeleton (no Browse skeleton dependency)', () => {
+    const html = read(MY_TREES_HTML);
+    assert.ok(html.includes('lt-skeleton'), 'my-trees.html adopts lt-skeleton');
+    assert.ok(!html.includes('search-skeleton-block'), 'search-skeleton-block removed from My Trees');
+    assert.ok(!html.includes('search-skeleton-line'), 'search-skeleton-line removed from My Trees');
+    assert.ok(!html.includes('search-skeleton-chip'), 'search-skeleton-chip removed from My Trees');
+  });
+
+  it('63. media/title/text use canonical modifiers on both surfaces', () => {
+    const search = read(SEARCH_HTML);
+    const myTrees = read(MY_TREES_HTML);
+    for (const html of [search, myTrees]) {
+      assert.ok(html.includes('lt-skeleton-media'), 'lt-skeleton-media used');
+      assert.ok(html.includes('lt-skeleton-title'), 'lt-skeleton-title used');
+      assert.ok(html.includes('lt-skeleton-text'), 'lt-skeleton-text used');
+    }
+  });
+
+  it('64. aria-hidden preserved on skeleton cards and grid', () => {
+    const search = read(SEARCH_HTML);
+    const myTrees = read(MY_TREES_HTML);
+    assert.strictEqual((search.match(/search-skeleton-card" aria-hidden="true"/g) || []).length, 3,
+      '3 Browse skeleton cards keep aria-hidden');
+    assert.ok(myTrees.includes('trees-skeleton-grid" aria-hidden="true"'), 'My Trees skeleton grid keeps aria-hidden');
+    assert.strictEqual((myTrees.match(/search-skeleton-card" aria-hidden="true"/g) || []).length, 3,
+      '3 My Trees skeleton cards keep aria-hidden');
+  });
+
+  it('65. searchSkeletonPulse keyframe removed from page CSS', () => {
+    const css = read(SEARCH_SKELETON_CSS);
+    assert.ok(!css.includes('searchSkeletonPulse'), 'no searchSkeletonPulse in page skeleton CSS');
+    assert.ok(!css.includes('@keyframes'), 'page skeleton CSS owns no keyframes');
+  });
+
+  it('66. page CSS owns no duplicate shimmer background/animation', () => {
+    const css = read(SEARCH_SKELETON_CSS);
+    assert.ok(!css.includes('linear-gradient'), 'no page-owned shimmer gradient');
+    assert.ok(!/animation:\s*\S+Pulse/.test(css), 'no page-owned skeleton animation');
+    const canonical = read(CANONICAL_CSS);
+    assert.ok(canonical.includes('lt-shimmer'), 'canonical primitive owns the shimmer');
+  });
+
+  it('67. My Trees reduced-motion does not depend on Browse skeleton classes', () => {
+    const css = read(MY_TREES_STATES_CSS);
+    assert.ok(!css.includes('search-skeleton-block'), 'no search-skeleton-block dependency');
+    assert.ok(!css.includes('search-skeleton-line'), 'no search-skeleton-line dependency');
+    assert.ok(!css.includes('search-skeleton-chip'), 'no search-skeleton-chip dependency');
+    const canonical = read(CANONICAL_CSS);
+    const motionBlock = canonical.substring(canonical.indexOf('prefers-reduced-motion'));
+    assert.ok(motionBlock.includes('.lt-skeleton'), 'canonical reduced-motion owns skeleton shimmer disable');
+  });
+
+  it('68. skeleton card count and structure preserved (3 per page)', () => {
+    const search = read(SEARCH_HTML);
+    const myTrees = read(MY_TREES_HTML);
+    assert.strictEqual((search.match(/search-skeleton-card/g) || []).length, 3, 'Browse keeps 3 skeleton cards');
+    assert.strictEqual((myTrees.match(/search-skeleton-card/g) || []).length, 3, 'My Trees keeps 3 skeleton cards');
+    for (const mod of ['lt-skeleton-media', 'lt-skeleton-title', 'lt-skeleton-text']) {
+      assert.strictEqual((search.match(new RegExp(mod, 'g')) || []).length, 3, 'Browse has 3 ' + mod);
+      assert.strictEqual((myTrees.match(new RegExp(mod, 'g')) || []).length, 3, 'My Trees has 3 ' + mod);
+    }
+  });
+
+  it('69. JS/runtime skeleton and loading paths unchanged', () => {
+    const renderer = read('js/search/search-card-renderer.js');
+    assert.ok(renderer.includes('renderSkeletonCard'), 'runtime skeleton generator intact');
+    const storyView = read('js/search/search-story-view.js');
+    assert.ok(storyView.includes("contains('search-skeleton-card')"), 'Story skeleton-card exclusion intact');
+    const myTreesPage = read('js/my-trees/my-trees-page.js');
+    assert.ok(myTreesPage.includes('state-loading'), 'My Trees loading state path intact');
+  });
+});
