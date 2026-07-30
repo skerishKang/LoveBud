@@ -552,7 +552,8 @@ test('home video modal loading states (#3707)', async (t) => {
           assert.ok(await page.locator('.hero-video-modal-loading').isVisible(), 'loading visible in reduced motion');
           const animCount = await page.locator('.hero-video-modal-loading-spinner animateTransform').count();
           assert.strictEqual(animCount, 0, 'no animateTransform in reduced motion');
-          await page.clock.fastForward(8001);
+          await page.clock.fastForward(8000);
+          await page.clock.runFor(0);
           assert.ok(await page.locator('.hero-video-modal-loading.is-long-wait').isVisible(), 'long-wait visible in reduced motion');
           assert.strictEqual(env.pageErrors.length, 0, `no page errors, got: ${env.pageErrors.join(', ')}`);
         } finally {
