@@ -96,11 +96,11 @@ Only the following bounded categories may be exported, and only after explicit p
 | Category | Description | Example |
 |---|---|---|
 | **Signal category enum** | Which signal categories are consented (content, moment, emotional-interpretation, narrative-trajectory, attention, temporal, multilingual). | `["content", "moment"]` |
-| **Coarse derived feature bucket** | Aggregated, non-raw signal features. | `content_overlap_count: 4` |
+| **Coarse derived feature bucket** | Aggregated, non-raw signal features. | `content_overlap_bucket: "low"` |
 | **Coarse temporal pattern bucket** | Binned temporal patterns, not precise timestamps. | `temporal_pattern: "early_peak"` |
 | **Language/locale bucket** | Coarse language/locale grouping, not raw text. | `language: "ko"` |
 | **Explainability label enum** | Bounded labels for match explanations, not raw text. | `explanation_label: "shared_era"` |
-| **Source-scope consent reference** | Reference to the consent grant scope, not raw content. | `consent_ref: "grant_abc123"` |
+| **Source-scope consent reference** | Bounded opaque reference to the consent grant scope, not raw content. No linkable identifiers. | `consent_ref: "<opaque_scope_ref>"` |
 | **Validity/expiry state** | Whether the export is still valid. | `valid: true` |
 
 ### 4.2 Prohibited data
@@ -130,7 +130,7 @@ Minimum bounded fields for a future consent grant:
 | `consent_grant_id` or non-linkable alternative | UNRESOLVED — if persistent identifiers are used, they must be non-linkable across contexts unless a separate identity-link contract is approved. If unresolved, fail closed (no export). |
 | `subject_link_reference_class` | UNRESOLVED — how the subject is linked between LoveBud and Matchmaking. |
 | `purpose_code` | Bounded enum (e.g., `matching_similarity`). |
-| `source_scope` | Which trees/moments are consented (tree_id list or "all_consented_public"). |
+| `source_scope` | UNRESOLVED — bounded opaque consent-scope reference class (not raw tree_id lists or "all_consented_public"). Public visibility ≠ matching consent. If a safe reference design is unresolved, fail closed (no export). |
 | `signal_category_allowlist` | Which signal categories are consented. |
 | `granted_at_bucket` | Coarse time bucket (not precise timestamp). |
 | `expires_at_bucket` | Coarse expiry bucket. |
@@ -187,7 +187,7 @@ The consumer must:
 | Same Firebase UID | Matchmaking uses the same Firebase UID as LoveBud. | UNRESOLVED — not selected by assumption. |
 | Separate auth + external subject link | Matchmaking has its own auth; links to LoveBud via an external subject mapping. | PROPOSED_FUTURE_CONTRACT (preferred). |
 | One-time account linking | User links accounts once via a verified flow. | PROPOSED_FUTURE_CONTRACT (prerequisite). |
-| No identity link for synthetic prototype | Synthetic prototype uses no real identifiers. | OBSERVED_CURRENT_FACT (synthetic boundary). |
+| No identity link for synthetic prototype | Synthetic prototype uses no real identifiers. | PROPOSED_FUTURE_CONTRACT (required prototype boundary). |
 
 ### 6.2 Prerequisites and stop conditions
 
@@ -223,18 +223,28 @@ The consumer must:
 
 | Threat | Prevention | Detection evidence | Residual risk | Stop condition |
 |---|---|---|---|---|
-| **Endpoint enumeration** | Non-enumerable API; no user/tree/moment listing. | API design review; non-enumerability test. | Low — if design is correct. | Non-enumerability test passes. |
-| **Consent replay** | Bounded validity window; consent state checked per request. | Consent-state check in producer. | Low — if validity window is short. | Validity-window test passes. |
-| **Cross-user export** | Subject-specific consent verification per request. | Per-request consent audit log. | Low — if consent is verified. | Consent-verification test passes. |
-| **Stale consent** | Consent state re-checked on every request. | Consent-state freshness check. | Low — if re-checked per request. | Freshness-check test passes. |
-| **Consumer overcollection** | Least-privilege response; only consented categories. | Response schema validation. | Low — if schema is enforced. | Schema-validation test passes. |
-| **Raw-content leakage** | Data-minimization filter; no raw text in response. | Response content scan. | Low — if filter is enforced. | Content-scan test passes. |
-| **Sensitive-trait reconstruction** | Prohibited inference list enforced; no embeddings/vectors. | Inference-list enforcement check. | Low — if list is enforced. | Inference-list test passes. |
-| **Linkability/re-identification** | Non-linkable identifiers; no persistent IDs unless approved. | Identifier-linkability audit. | Medium — if IDs are used without approval. | Identifier audit passes or fail closed. |
-| **Retention drift** | Consumer retention policy enforced; tombstoning on revocation. | Retention-policy audit. | Medium — if policy is not enforced. | Retention-audit passes. |
-| **Revocation race** | Revocation checked before response; pending exports invalidated. | Revocation-race test. | Low — if checked per request. | Race test passes. |
-| **Forged consumer audience** | Audience-bound credential verification. | Credential-verification test. | Low — if credential is verified. | Credential test passes. |
-| **Operator misuse** | Operator access logs; no raw content access. | Operator-access audit log. | Medium — if logs are not monitored. | Audit-log test passes. |
+| **Endpoint enumeration** | Non-enumerable API; no user/tree/moment listing. | API design review; non-enumerability test. | UNRESOLVED — pending non-enumerability test. | Non-enumerability test passes. |
+| **Consent replay** | Bounded validity window; consent state checked per request. | Consent-state check in producer. | UNRESOLVED — pending validity-window test. | Validity-window test passes. |
+| **Cross-user export** | Subject-specific consent verification per request. | Per-request consent audit log. | UNRESOLVED — pending consent-verification test. | Consent-verification test passes. |
+| **Stale consent** | Consent state re-checked on every request. | Consent-state freshness check. | UNRESOLVED — pending freshness-check test. | Freshness-check test passes. |
+| **Consumer overcollection** | Least-privilege response; only consented categories. | Response schema validation. | UNRESOLVED — pending schema-validation test. | Schema-validation test passes. |
+| **Raw-content leakage** | Data-minimization filter; no raw text in response. | Response content scan. | UNRESOLVED — pending content-scan test. | Content-scan test passes. |
+| **Sensitive-trait reconstruction** | Prohibited inference list enforced; no embeddings/vectors. | Inference-list enforcement check. | UNRESOLVED — pending inference-list test. | Inference-list test passes. |
+| **Linkability/re-identification** | Non-linkable identifiers; no persistent IDs unless approved. | Identifier-linkability audit. | UNRESOLVED — pending identifier-linkability audit. | Identifier audit passes or fail closed. |
+| **Retention drift** | Consumer retention policy enforced; tombstoning on revocation. | Retention-policy audit. | UNRESOLVED — pending retention-policy audit. | Retention-audit passes. |
+| **Revocation race** | Revocation checked before response; pending exports invalidated. | Revocation-race test. | UNRESOLVED — pending revocation-race test. | Race test passes. |
+| **Forged consumer audience** | Audience-bound credential verification. | Credential-verification test. | UNRESOLVED — pending credential-verification test. | Credential test passes. |
+| **Operator misuse** | Operator access logs; no raw content access. | Operator-access audit log. | UNRESOLVED — pending operator-access audit. | Audit-log test passes. |
+
+### 8.1 Audit evidence requirements
+
+All audit-log and detection evidence referenced in this contract must be explicitly bounded and sanitized:
+
+- **No raw identifiers** — no raw user IDs, tree IDs, moment IDs, or Firebase UIDs in audit logs.
+- **No raw content** — no raw titles, memos, comments, transcripts, or media URLs in audit logs.
+- **Bounded fields only** — only coarse event type, consent-scope opaque reference, purpose code, audience, and coarse time bucket.
+- **Separate retention policy** — audit records are retained per a separate, explicitly-defined retention/pseudonymization policy child (Unresolved item #9). No logging implementation is authorized in this Phase 0.
+- **No logging implementation authorized** — this contract defines the evidence boundary only; no audit/logging code, queue, or storage is authorized here.
 
 ---
 
@@ -271,14 +281,15 @@ The synthetic prototype uses only synthetic fixtures defined by the export schem
 
 1. Exact export endpoint path and transport (PROPOSED_FUTURE_CONTRACT).
 2. Whether persistent identifiers are allowed in the consent object (UNRESOLVED → fail closed).
-3. Whether Matchmaking reuses LoveBud's Firebase project or creates a separate auth provider (UNRESOLVED).
-4. Exact identity-link mechanism (same UID, separate auth, one-time link) (UNRESOLVED).
-5. Exact deletion-propagation mechanism (webhook, polling, or other) (UNRESOLVED).
-6. Signed one-time export package viability (UNRESOLVED).
-7. Push event/webhook viability (UNRESOLVED).
-8. Shared storage bucket viability (UNRESOLVED).
-9. Retention/pseudonymization policy for safety/moderation/audit records (UNRESOLVED).
-10. Backward-compatibility policy details (PROPOSED_FUTURE_CONTRACT).
+3. Bounded opaque consent-scope reference class for `source_scope` — no raw tree_id lists or "all_consented_public"; public visibility ≠ matching consent (UNRESOLVED → fail closed).
+4. Whether Matchmaking reuses LoveBud's Firebase project or creates a separate auth provider (UNRESOLVED).
+5. Exact identity-link mechanism (same UID, separate auth, one-time link) (UNRESOLVED).
+6. Exact deletion-propagation mechanism (webhook, polling, or other) (UNRESOLVED).
+7. Signed one-time export package viability (UNRESOLVED).
+8. Push event/webhook viability (UNRESOLVED).
+9. Shared storage bucket viability (UNRESOLVED).
+10. Retention/pseudonymization policy for safety/moderation/audit records (UNRESOLVED).
+11. Backward-compatibility policy details (PROPOSED_FUTURE_CONTRACT).
 
 These are recorded for Phase 1 resolution. All are NOT_AUTHORIZED for implementation in this Phase 0 follow-up.
 
