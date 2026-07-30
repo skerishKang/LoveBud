@@ -737,4 +737,64 @@ console.log('✓ 35: youtube-nocookie.com preserved');
 }
 console.log('✓ 36: timer cleanup on close');
 
+// ============================================================
+// 37. Error icon is error-circle, not check-circle (#3707 CTO rework)
+// ============================================================
+{
+  var errorIconPath = js.match(/iconPath\.setAttribute\('d',\s*'([^']+)'\)/);
+  assert.ok(errorIconPath, 'must find error icon path in showModalError');
+  var iconD = errorIconPath[1];
+  assert.ok(!iconD.includes('l-5-5'),
+    'error icon must not be a check-circle path (contains l-5-5)');
+  assert.ok(iconD.includes('h-2v-2h2v2'),
+    'error icon must be an error-circle path (contains exclamation mark: h-2v-2h2v2)');
+  assert.ok(iconD.includes('h-2V7h2v6z'),
+    'error icon must have the exclamation body (h-2V7h2v6z)');
+}
+console.log('✓ 37: error icon is error-circle (not check-circle)');
+
+// ============================================================
+// 38. Attempt-token mechanism blocks stale iframe events (#3707 CTO rework)
+// ============================================================
+{
+  assert.ok(js.includes('var modalAttemptId = 0'),
+    'must declare modalAttemptId counter');
+  assert.ok(js.includes('function handleModalIframeError'),
+    'must define handleModalIframeError function');
+  assert.ok(js.includes('thisAttempt !== modalAttemptId'),
+    'load/error handlers must check thisAttempt !== modalAttemptId');
+  assert.ok(js.includes('modalAttemptId++'),
+    'must increment modalAttemptId to consume/invalidate attempts');
+  var closeBody2 = js.slice(js.indexOf('function closeVideoModal'), js.indexOf('function openVideoModal'));
+  assert.ok(closeBody2.includes('modalAttemptId++'),
+    'closeVideoModal must increment modalAttemptId to invalidate stale events');
+  var openBody = js.slice(js.indexOf('function openVideoModal'));
+  assert.ok(openBody.includes('modalAttemptId++'),
+    'openVideoModal must increment modalAttemptId for new attempt');
+  var retryBody = js.slice(js.indexOf('function retryVideoModal'), js.indexOf('function onDocumentFocusIn'));
+  assert.ok(retryBody.includes('modalAttemptId++'),
+    'retryVideoModal must increment modalAttemptId for new attempt');
+  assert.ok(retryBody.includes('thisAttempt !== modalAttemptId'),
+    'retryVideoModal must use closure-based attempt check');
+  assert.ok(!retryBody.includes("removeEventListener('load', handleModalIframeLoad)"),
+    'retryVideoModal must not use stale removeEventListener with named function');
+}
+console.log('✓ 38: attempt-token mechanism blocks stale iframe events');
+
+// ============================================================
+// 39. iframe error event handled (#3707 CTO rework)
+// ============================================================
+{
+  assert.ok(js.includes("addEventListener('error'"),
+    'iframe must have an error event listener');
+  var errorFnBody = js.slice(js.indexOf('function handleModalIframeError'), js.indexOf('function createModalLoadingEl'));
+  assert.ok(errorFnBody.includes('modalAttemptId++'),
+    'handleModalIframeError must increment modalAttemptId');
+  assert.ok(errorFnBody.includes('showModalError'),
+    'handleModalIframeError must call showModalError');
+  assert.ok(errorFnBody.includes('cleanupModalTimers'),
+    'handleModalIframeError must call cleanupModalTimers');
+}
+console.log('✓ 39: iframe error event handled');
+
 console.log('\n✅ All contract tests passed.');

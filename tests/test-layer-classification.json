@@ -1723,6 +1723,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/home-video-modal-loading-3707-browser-contract.test.cjs",
+      "layer": "EXECUTED_REAL_LOCAL",
+      "rationale": "Executes real production CSS/JS chains (css/global.css, css/index.css, css/index-visual.css, js/i18n/i18n-core.js, js/i18n/i18n-shared.js, js/i18n/i18n-home-v3.js, js/index-inline-init.js) in Playwright Chromium via a local HTTP server. Asserts #3707 modal staged loading: immediate shell/Close, aria-busy, READY once, 8s long-wait, 30s timeout/error, stale-event blocking via attempt-token, retry creates exactly 1 iframe, old listener/timer cleanup, fallback URL, Close/Escape from all states, focus trap + restore, reduced-motion, zero duplicate modal/iframe, zero pageerror, spotlight pause/resume, no overflow. No production write/auth/API/DB mutation.",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/home-youtube-growth-cycle-3624-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",

@@ -529,6 +529,7 @@
     var modalTimeoutId = null;
     var modalCurrentVideo = null;
     var modalCurrentCard = null;
+    var modalAttemptId = 0;
 
     function cleanupModalTimers() {
       if (modalLoadTimerId) {
@@ -543,6 +544,7 @@
 
     function handleModalIframeLoad() {
       if (!modalEl) return;
+      modalAttemptId++;
       cleanupModalTimers();
       var loadingEl = modalEl.querySelector('.hero-video-modal-loading');
       if (loadingEl) loadingEl.remove();
@@ -568,9 +570,17 @@
 
     function handleModalTimeout() {
       if (!modalEl || modalEl.classList.contains('hero-video-modal-ready')) return;
+      modalAttemptId++;
       cleanupModalTimers();
       showModalError();
       modalTimeoutId = null;
+    }
+
+    function handleModalIframeError() {
+      if (!modalEl) return;
+      modalAttemptId++;
+      cleanupModalTimers();
+      showModalError();
     }
 
     function createModalLoadingEl(retrying) {
@@ -640,7 +650,7 @@
       icon.setAttribute('focusable', 'false');
       icon.setAttribute('class', 'hero-video-modal-error-icon');
       var iconPath = document.createElementNS(SVG_NS, 'path');
-      iconPath.setAttribute('d', 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z');
+      iconPath.setAttribute('d', 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z');
       iconPath.setAttribute('fill', 'currentColor');
       icon.appendChild(iconPath);
       var errText = document.createElement('p');
@@ -687,7 +697,6 @@
       cleanupModalTimers();
       var oldIframe = modalEl.querySelector('iframe');
       if (oldIframe) {
-        oldIframe.removeEventListener('load', handleModalIframeLoad);
         oldIframe.remove();
       }
       modalEl.classList.remove('hero-video-modal-ready');
@@ -698,6 +707,8 @@
       var playerEl = modalEl.querySelector('.hero-video-modal-player');
       if (!playerEl) return;
       playerEl.setAttribute('aria-busy', 'true');
+      modalAttemptId++;
+      var thisAttempt = modalAttemptId;
       var iframe = document.createElement('iframe');
       iframe.src = youtubeEmbedUrl(modalCurrentVideo.id) + '&_=' + Date.now();
       iframe.title = modalCurrentVideo.title + ' - YouTube';
@@ -705,7 +716,14 @@
       iframe.setAttribute('allowfullscreen', '');
       iframe.setAttribute('referrerpolicy', 'strict-origin-when-cross-origin');
       iframe.tabIndex = -1;
-      iframe.addEventListener('load', handleModalIframeLoad);
+      iframe.addEventListener('load', function() {
+        if (thisAttempt !== modalAttemptId) return;
+        handleModalIframeLoad();
+      });
+      iframe.addEventListener('error', function() {
+        if (thisAttempt !== modalAttemptId) return;
+        handleModalIframeError();
+      });
       var newLoading = createModalLoadingEl(true);
       playerEl.appendChild(newLoading);
       playerEl.appendChild(iframe);
@@ -745,6 +763,7 @@
 
     function closeVideoModal() {
       if (!modalEl) return;
+      modalAttemptId++;
       cleanupModalTimers();
       var el = modalEl;
       modalEl = null;
@@ -781,6 +800,8 @@
       var loadingEl = createModalLoadingEl(false);
       player.appendChild(loadingEl);
 
+      modalAttemptId++;
+      var thisAttempt = modalAttemptId;
       var iframe = document.createElement('iframe');
       iframe.src = youtubeEmbedUrl(video.id);
       iframe.title = video.title + ' - YouTube';
@@ -788,7 +809,14 @@
       iframe.setAttribute('allowfullscreen', '');
       iframe.setAttribute('referrerpolicy', 'strict-origin-when-cross-origin');
       iframe.tabIndex = -1;
-      iframe.addEventListener('load', handleModalIframeLoad);
+      iframe.addEventListener('load', function() {
+        if (thisAttempt !== modalAttemptId) return;
+        handleModalIframeLoad();
+      });
+      iframe.addEventListener('error', function() {
+        if (thisAttempt !== modalAttemptId) return;
+        handleModalIframeError();
+      });
       player.appendChild(iframe);
 
       var closeBtn = document.createElement('button');
