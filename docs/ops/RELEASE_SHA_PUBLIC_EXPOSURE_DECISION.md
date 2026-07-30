@@ -1,7 +1,6 @@
 # Release-SHA Public Exposure Decision
 
 > **Status:** decision document — no implementation, no code/test/workflow/package changes
-> **CI status of this PR:** `CI_EXECUTED_FAILURE` — pre-existing `MAIN_BASELINE_FAILURE` in `tests/contracts/scout-staging-provider-activation-guard-contract.test.cjs` (Node test-runner IPC deserialization error). Not caused by docs-only diff. Merge remains blocked while CI is not green per `docs/ops/MVP_AGENT_GOVERNANCE.md`.
 > **Authority labels:** `OBSERVED_CURRENT_FACT`, `PROPOSED_FUTURE_CONTRACT`, `UNRESOLVED`, `NOT_AUTHORIZED`
 > **Parent:** #3673 — Keep OPEN
 > **Completed groundwork:** #3734 / PR #3738 — `docs/ops/RELEASE_SHA_BOUNDED_SMOKE_CONTRACT.md`; #3725 / PR #3726 — `docs/ops/RUNTIME_HEALTH_ERROR_LATENCY_TAXONOMY.md`
@@ -365,24 +364,7 @@ Cloudflare deployment ID must never be used as a canonical source SHA.
 
 ---
 
-## 8. CI Status of This PR
-
-`CI_EXECUTED_FAILURE` — pre-existing `MAIN_BASELINE_FAILURE`.
-
-| Item | Detail |
-|---|---|
-| CI run | #7166 |
-| `verify-static` job conclusion | `FAILURE` |
-| Failing test | `tests/contracts/scout-staging-provider-activation-guard-contract.test.cjs` |
-| Failure mode | Node test-runner IPC deserialization error: `Unable to deserialize cloned data due to invalid or unsupported version.` |
-| Same failure on pristine `main` | Confirmed — `ff5dc6a76b9909301a27245b91ef8a194f88b277` CI run #7160 fails identically |
-| Classification | `MAIN_BASELINE_FAILURE` — not caused by docs-only diff |
-| Merge blocker | Yes — CI is not green. Merge requires the CI-reliability child to resolve this baseline failure, or owner approval for conditional merge per `docs/ops/MVP_AGENT_GOVERNANCE.md`. |
-| Dependency | The CI-reliability child (#3673 Step 2 or a separately approved CI fix) must resolve the IPC deserialization failure before this PR can merge. |
-
-All 7 `db-engine-*` jobs: `SUCCESS`. Cloudflare Pages deploy: `SUCCESS`. GitGuardian Security Checks: `SUCCESS` (no secrets detected).
-
-## 9. Current Evidence Summary
+## 8. Current Evidence Summary
 
 `OBSERVED_CURRENT_FACT` at base SHA `ff5dc6a76b9909301a27245b91ef8a194f88b277`:
 
