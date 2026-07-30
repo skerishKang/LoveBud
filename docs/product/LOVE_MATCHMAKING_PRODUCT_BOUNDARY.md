@@ -146,14 +146,17 @@ to LoveBud's UI or database.
 - **Consented public signals:** source content, public moments, public emotion tags,
   public narrative trajectory — only when the owner has explicitly opted into matching
   (issue #3560 §Consent and privacy principles; issue #3718 §Required child plan #1).
-- **Derived resonance profile:** a derived, consent-scoped summary of similarity signals,
-  stored in the Matchmaking system, not as a raw dump of LoveBud data
-  (issue #3560 §Consent and privacy principles; issue #3718 §Document 2).
-- **Identity binding:** the Firebase UID may be used to bind a LoveBud account to a
-  Matchmaking account, but Matchmaking maintains its own relationship-intent profile,
-  discovery preferences, and connection state (issue #3560 §Architecture questions;
-  `docs/engineering/API_CONTRACT.md:237` canonical entitlement field
-  `users/{uid}.privateStorageEnabled`).
+- **Derived resonance profile:** a **PROPOSED_FUTURE_CONTRACT** derived, consent-scoped
+  summary of similarity signals, stored in the Matchmaking system, not as a raw dump of
+  LoveBud data. Raw private text never leaves LoveBud; only consent-scoped minimized
+  derived features are exported (issue #3560 §Consent and privacy principles;
+  issue #3718 §Document 2).
+- **Identity binding:** **UNRESOLVED** — the exact mechanism for binding a LoveBud
+  account to a Matchmaking account is not decided. A stable account-link/external-subject
+  contract is required, but whether this uses the same Firebase UID, a separate auth
+  provider, or an external-subject mapping is unresolved
+  (issue #3560 §Architecture questions; `docs/engineering/API_CONTRACT.md:237`
+  canonical entitlement field `users/{uid}.privateStorageEnabled`).
 
 ### 6.2 What may NOT be shared
 
@@ -164,8 +167,8 @@ to LoveBud's UI or database.
 - Public visibility does not automatically equal consent to person matching
   (issue #3560 §Consent and privacy principles; `docs/engineering/API_CONTRACT.md:192-210`
   public visibility ≠ browse eligibility).
-- Direct shared-database coupling is not assumed as the default (issue #3560 §Architecture
-  questions; issue #3718 §Document 2).
+- Direct shared-database coupling is **NOT_AUTHORIZED** as the default
+  (issue #3560 §Architecture questions; issue #3718 §Document 2).
 
 ---
 
@@ -173,14 +176,14 @@ to LoveBud's UI or database.
 
 ```
 LoveBud records
-  → matching-consent controls (opt-in to person matching, per field/tree/moment/signal)
-  → consented resonance profile (derived, explainable, fail-closed)
-  → explainable similarity discovery (match card: shared themes, similar flow, cross-language meaning)
-  → limited profile preview (no private text; bounded disclosure)
-  → send a resonance or connection request
-  → mutual acceptance (bilateral connection state)
-  → friendship/connection state
-  → messaging (only after safety, consent, moderation, and connection-state gates)
+  → matching-consent controls (PROPOSED_FUTURE_CONTRACT; opt-in to person matching, per field/tree/moment/signal)
+  → consented resonance profile (PROPOSED_FUTURE_CONTRACT; derived, explainable, fail-closed)
+  → explainable similarity discovery (PROPOSED_FUTURE_CONTRACT; match card: shared themes, similar flow, cross-language meaning)
+  → limited profile preview (PROPOSED_FUTURE_CONTRACT; no private text; bounded disclosure)
+  → send a resonance or connection request (PROPOSED_FUTURE_CONTRACT)
+  → mutual acceptance (PROPOSED_FUTURE_CONTRACT; bilateral connection state)
+  → friendship/connection state (PROPOSED_FUTURE_CONTRACT)
+  → messaging (PROPOSED_FUTURE_CONTRACT; only after safety, consent, moderation, and connection-state gates)
 ```
 
 Each arrow is a separate, gated phase. Messaging is the last step and requires all
@@ -197,8 +200,9 @@ A user with insufficient LoveBud history cannot meaningfully participate in matc
 Minimum data rules apply:
 
 - A user must have a minimum amount of **consented public** record history before
-  matching becomes meaningful (issue #3560 §Open product questions; issue #3718
-  §minimum data and cold start).
+  matching becomes meaningful (**PROPOSED_FUTURE_CONTRACT**; the exact threshold is
+  **UNRESOLVED**; issue #3560 §Open product questions; issue #3718 §minimum data
+  and cold start).
 - New users without enough records are not shown as match candidates to others and
   do not receive match suggestions until they meet the minimum threshold.
 
@@ -216,7 +220,7 @@ issue #3718 §Required child plan #3). No production data is used for validation
 |---|---|---|---|
 | 0 | Product and boundary decision | Decide what remains LoveBud; decide repository/application boundary; define signal, consent, safety contract | This document set |
 | 1 | LoveBud foundations | Public moment save/remix with attribution; moment/tree similarity discovery; user-facing self-analysis and explainability; matching-consent controls | `docs/product/TREE_MOMENT_SOCIAL_MODEL.md` (social scope); issue #3560 §Phase 1 |
-| 2 | Offline matching prototype | Synthetic or explicitly consented test data only; evaluate whether similarity signals produce understandable and useful matches | issue #3560 §Phase 2; issue #3718 §Required child plan #3 |
+| 2 | Offline matching prototype | **Synthetic data only** until all pre-prototype gates are passed; evaluate whether similarity signals produce understandable and useful matches | issue #3560 §Phase 2; issue #3718 §Required child plan #3 |
 | 3 | Separate product prototype | Bounded Love Matchmaking experience using approved architecture boundary and distinct design direction | issue #3560 §Phase 3; issue #3718 §Required child plan #5 |
 | 4 | Connection controls | Bilateral requests, block/report, safety policy, limited profile disclosure | issue #3560 §Phase 4; issue #3718 §Required child plan #6, #7 |
 | 5 | Messaging | Only after safety, consent, moderation, and connection-state contracts are operational | issue #3560 §Phase 5; issue #3718 §Required child plan #8 |
@@ -238,6 +242,7 @@ This Phase 0 decision does **not** authorize:
 - Production data processing or migration (issue #3560 §Non-goals)
 - A broad LoveBud UI redesign (issue #3560 §Non-goals)
 - Mixing Scout implementation with matchmaking implementation (issue #3560 §Non-goals)
+- Minor matching or messaging (18+ adults only; separate legal/safety review required)
 - Runtime implementation of any kind (issue #3718 §Hard boundaries)
 
 ---
@@ -281,8 +286,12 @@ Before any Love Matchmaking implementation or repository creation:
 4. Phase 1 LoveBud foundations are complete: matching-consent controls, moment/tree
    similarity discovery, and user-facing self-analysis/explainability.
 5. Phase 2 offline resonance prototype validates that similarity signals produce
-   understandable and useful matches using synthetic/consented data only.
-6. A separate child issue is created for repository creation, if approved.
+   understandable and useful matches using **synthetic data only** until all
+   pre-prototype gates are passed.
+6. All pre-prototype gates are passed: authenticated audience contract, data
+   minimization, revocation/deletion semantics, threat model, sensitive-trait
+   exclusion, adult-only gate.
+7. A separate child issue is created for repository creation, if approved.
 
 No implementation begins until product, architecture, data, and safety boundaries are
 reviewed (issue #3560 §Acceptance criteria).

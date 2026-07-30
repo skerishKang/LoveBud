@@ -158,14 +158,19 @@ toward. The prerequisites for **repository creation** are not ready, but the
 
 ### 5.5 Status: PROPOSED
 
-This decision is **PROPOSED**. It recommends Option A as the target architecture but
-does not create a repository. Repository creation is deferred until:
+**Recommended target:** Option A (separate repository and application).
+**ADR status:** PROPOSED.
 
-- Phase 1 LoveBud foundations are complete (consent controls, similarity discovery,
-  offline prototype validation).
-- The offline resonance prototype validates that similarity signals produce
-  understandable and useful matches.
-- A separate child issue is created and approved for repository creation.
+This decision recommends Option A as the target architecture but does **not** create
+a repository. The following are **UNAPPROVED** and deferred until Phase 1+
+prerequisites are validated:
+
+- Repository creation
+- Auth provider
+- Firebase project reuse
+- Deployment target
+- API transport
+- Event/webhook/poll mechanism
 
 The decision may transition to `ACCEPTED_FOR_NEXT_CHILD` once Phase 1 prerequisites
 are validated and a repository-creation child issue is approved.
@@ -189,31 +194,41 @@ never writes back to LoveBud's recording data model.
 
 ## 7. Identity/account relationship
 
-- LoveBud identity is Firebase Auth (Firebase UID)
+- **OBSERVED_CURRENT_FACT:** LoveBud identity is Firebase Auth (Firebase UID)
   (`js/auth/auth-firebase.js`; `docs/engineering/API_CONTRACT.md:237` canonical
   entitlement field `users/{uid}.privateStorageEnabled`).
-- A Love Matchmaking account is bound to the same Firebase UID for account linking,
-  but maintains its own **relationship-intent profile**, discovery preferences,
-  connection state, and messaging state.
-- The Firebase UID is the only shared identifier. Matchmaking does not inherit
-  LoveBud's Plus/private-storage entitlement; it has its own consent and safety
-  entitlements.
+- **UNRESOLVED:** The exact mechanism for binding a LoveBud account to a Matchmaking
+  account is not decided. A stable account-link/external-subject contract is required,
+  but the exact identity mechanism (same Firebase UID, separate auth, external-subject
+  mapping) is unresolved.
+- **UNRESOLVED:** Whether Matchmaking reuses LoveBud's Firebase project or creates a
+  separate auth provider/project is unresolved.
+- Matchmaking maintains its own **relationship-intent profile**, discovery preferences,
+  connection state, and messaging state — independent of LoveBud's Plus/private-storage
+  entitlement.
 - Identity is never shared by assumption; it is shared only through an explicit,
-  consent-aware account-linking contract.
+  consent-aware account-linking contract (**PROPOSED_FUTURE_CONTRACT**).
 
 ---
 
 ## 8. API and version boundaries
 
-- LoveBud exposes a **read-only, consent-aware signal API** (e.g.,
-  `GET /api/community/resonance-signals?consent=true`) that returns only signals the
-  owner has explicitly opted into for matching.
-- The API is versioned (e.g., `/api/v1/community/resonance-signals`). Matchmaking
-  pins to a specific version.
-- The API enforces:
-  - Public visibility ≠ matching consent (only explicitly opted-in signals are returned).
-  - Private trees/moments are excluded by default.
-  - Field/tree/moment/signal-level inclusion controls are respected.
+- **PROPOSED_FUTURE_CONTRACT:** A consent-aware signal API is proposed for exporting
+  only explicitly opted-in LoveBud signals to Matchmaking. The exact endpoint and
+  version are **UNRESOLVED**.
+- The proposed API must be:
+  - **Authenticated** — no anonymous access.
+  - **Audience-bound** — scoped to the requesting Matchmaking audience, not a public
+    community endpoint.
+  - **Least-privilege** — returns only the minimum derived features needed, never raw
+    private text (see §11).
+  - **Non-enumerable** — does not allow enumeration of users or signals.
+  - **Versioned** — Matchmaking pins to a specific version.
+  - **Consent-scoped** — returns only signals the owner has explicitly opted into for
+    matching.
+- **Important:** `public visibility` ≠ `matching consent`. Having matching consent
+  does **not** make signals public community API data. The signal API is audience-bound
+  and authenticated, never a public community endpoint.
 - LoveBud's active API contract is Cloudflare Pages Functions → Modal
   (`docs/engineering/API_CONTRACT.md:9-17`; `docs/backend/backend.md:16-24`).
   `netlify/functions/*` is a legacy artifact only
@@ -224,18 +239,27 @@ never writes back to LoveBud's recording data model.
 
 ## 9. Data ownership and deletion
 
-- **LoveBud data** (trees, memories, comments, reactions) remains owned and controlled
-  by the LoveBud user. LoveBud's deletion semantics are owner-boundary-guarded
-  (`modal_compute/owner_writes.py:145-166` `delete_owner_tree` with
-  `DELETE FROM trees WHERE id = %s AND owner_id = %s`;
+- **OBSERVED_CURRENT_FACT:** LoveBud data (trees, memories, comments, reactions) is
+  owned and controlled by the LoveBud user. LoveBud's deletion semantics are
+  owner-boundary-guarded (`modal_compute/owner_writes.py:145-166` `delete_owner_tree`
+  with `DELETE FROM trees WHERE id = %s AND owner_id = %s`;
   `modal_compute/comments.py` `soft_delete_own_comment`).
-- **Derived resonance profiles** and **connection state** are owned by the Matchmaking
-  system. They are derived from consented LoveBud signals, not raw data dumps.
-- **Deletion propagation:** when a LoveBud user deletes a tree, memory, or moment,
+- **PROPOSED_FUTURE_CONTRACT:** Derived resonance profiles and connection state are
+  owned by the Matchmaking system. They are derived from consented LoveBud signals,
+  not raw data dumps.
+- **UNRESOLVED:** The exact deletion-propagation mechanism (webhook, polling, or other)
+  is not decided. **NOT_AUTHORIZED** to implement any deletion-propagation mechanism
+  in this Phase 0.
+- **PROPOSED_FUTURE_CONTRACT:** When a LoveBud user deletes a tree, memory, or moment,
   the corresponding consent is revoked and the derived signal is invalidated in
-  Matchmaking. Matchmaking must poll or receive a webhook for deletion events.
-- **Account deletion:** deleting a LoveBud account revokes all matching consent and
-  triggers deletion of derived resonance profiles and connection state in Matchmaking.
+  Matchmaking (removal from discovery, invalidation of derived profile, termination
+  of active matching use, cleanup of pending requests). The exact propagation
+  mechanism is a future child issue.
+- **PROPOSED_FUTURE_CONTRACT:** Account deletion revokes all matching consent and
+  triggers invalidation of derived resonance profiles and connection state in
+  Matchmaking. Abuse reports, blocks, moderation records, and legal/safety audit
+  records are governed by a separate retention/pseudonymization policy child — they
+  are **not** unconditionally deleted.
 - Direct shared-database coupling is not assumed. Matchmaking does not read LoveBud's
   `trees`/`memories` tables directly (issue #3560 §Architecture questions;
   `docs/backend/backend.md:16-24` active runtime is Cloudflare/Modal/Neon, not a
@@ -245,31 +269,36 @@ never writes back to LoveBud's recording data model.
 
 ## 10. Consent propagation and revocation
 
-- **Propagation:** consent flows from LoveBud (user opts into matching for specific
-  fields/trees/moments/signals) to Matchmaking (via the consent-aware signal API).
-  The API returns only opted-in signals.
-- **Revocation:** a user may revoke matching consent at any time from either LoveBud
-  or Matchmaking. Revocation is immediate and fail-closed:
+- **PROPOSED_FUTURE_CONTRACT:** Consent flows from LoveBud (user opts into matching
+  for specific fields/trees/moments/signals) to Matchmaking (via the proposed
+  consent-aware signal API). The API returns only opted-in signals.
+- **PROPOSED_FUTURE_CONTRACT:** A user may revoke matching consent at any time from
+  either LoveBud or Matchmaking. Revocation is immediate and fail-closed:
   - The signal is removed from the API response.
   - The derived resonance profile is invalidated.
-  - Existing matches that depended on the revoked signal are re-evaluated.
+  - Active matching use of the signal terminates.
   - Pending connection requests involving the revoked signal are canceled.
-- Consent revocation in LoveBud must propagate to Matchmaking within a bounded time
-  (e.g., via webhook or poll). The exact mechanism is a Phase 1 child issue.
+  - The other party is **not** notified of the specific revocation, the revoked
+    signal, the raw content, or any sensitive information. Only a generic state
+    change (e.g., "connection no longer available") is visible, if at all.
+- **UNRESOLVED:** The exact propagation mechanism (webhook, polling, or other) is not
+  decided. **NOT_AUTHORIZED** to implement any propagation mechanism in this Phase 0.
 
 ---
 
 ## 11. Derived resonance-profile storage
 
-- The resonance profile is a **derived, consent-scoped summary** stored in the
-  Matchmaking system, not in LoveBud's database.
+- **PROPOSED_FUTURE_CONTRACT:** The resonance profile is a derived, consent-scoped
+  summary stored in the Matchmaking system, not in LoveBud's database.
 - It contains: content-overlap signals, moment-overlap signals, emotional-interpretation
   similarity, narrative-trajectory similarity, attention-pattern similarity, temporal
   pattern, and multilingual semantic similarity (issue #3560 §Core matching principle;
   issue #3718 §Document 3).
-- It does **not** contain raw private text. Raw private text is never exposed to
-  Matchmaking for profile construction without explicit, per-field consent
-  (issue #3560 §Consent and privacy principles).
+- **Private-data minimization:** Raw private text must **not** leave LoveBud. The
+  recommended approach is **LoveBud-side/local derivation** — LoveBud derives
+  consent-scoped minimized features and exports only those derived features, never
+  raw `Memory.memo` text. Per-field consent alone does **not** authorize transmitting
+  raw private text to Matchmaking.
 - The profile is recomputed when consent changes or source data is updated.
 - Users can correct or remove an inaccurate derived profile (issue #3560 §Open
   product questions #4).
@@ -375,11 +404,13 @@ Before a new Matchmaking repository is created, the following must be proven:
    is reviewed and accepted (issue #3718 §Document 3).
 5. **Repository-creation child issue approved:** a separate child issue for repository
    creation is created and approved by Web CTO (issue #3718 §Required child plan #5).
-6. **Identity/account-linking contract defined:** how the Firebase UID binds a LoveBud
-   account to a Matchmaking account, with independent relationship-intent profile
-   (issue #3560 §Architecture questions).
-7. **Data-deletion propagation mechanism defined:** how LoveBud deletions propagate
-   to Matchmaking (webhook or poll) (issue #3560 §Consent and privacy principles).
+6. **Identity/account-linking contract defined:** a stable account-link/external-subject
+   contract is defined. Whether Matchmaking reuses LoveBud's Firebase project or creates
+   a separate auth provider is resolved (issue #3560 §Architecture questions).
+7. **Data-deletion propagation mechanism defined:** the mechanism by which LoveBud
+   deletions propagate to Matchmaking is defined (**UNRESOLVED** — webhook, polling,
+   or other; **NOT_AUTHORIZED** for implementation in this Phase 0)
+   (issue #3560 §Consent and privacy principles).
 8. **Minor/adult separation policy defined:** age verification and minor-safety
    boundaries for open connection/messaging (issue #3560 §Consent and privacy
    principles; issue #3718 §minor/adult prerequisite).
@@ -403,13 +434,53 @@ be evaluated separately against this contract.
 
 ## 19. Unresolved decisions
 
-1. Exact identity/account-linking mechanism (Firebase UID binding vs. separate auth).
+The following remain **UNRESOLVED** and are **NOT_AUTHORIZED** for implementation in
+this Phase 0:
+
+1. Exact identity/account-linking mechanism (same Firebase UID, separate auth, or
+   external-subject mapping).
 2. Exact consent-aware signal API endpoint and version.
-3. Exact data-deletion propagation mechanism (webhook vs. poll).
+3. Exact data-deletion propagation mechanism (webhook, polling, or other).
 4. Exact minor/adult separation and age-verification mechanism.
 5. Exact Matchmaking deployment target and infrastructure.
 6. Whether the Matchmaking repository should be under `skerishKang/` or a separate
    organization.
 7. Whether Matchmaking should reuse LoveBud's Firebase project or create a new one.
+8. Exact API transport (Cloudflare/Modal path, not `netlify/functions/*`).
+9. Exact event/webhook/poll mechanism for consent/deletion propagation.
+
+The following are **UNAPPROVED** — repository creation and all runtime/auth/deployment
+decisions are deferred until Phase 1+ prerequisites are validated:
+
+- Repository creation
+- Auth provider
+- Firebase project reuse
+- Deployment target
+- API transport
+- Event/webhook/poll mechanism
 
 These are recorded for Phase 1–3 resolution.
+
+---
+
+## 20. Ordered child gates (before real LoveBud data)
+
+Before any real LoveBud data is used for matching, the following gates must be
+passed in order. The synthetic/offline prototype uses **synthetic data only** until
+all gates are passed.
+
+1. **Authenticated audience contract** — define the audience-bound, authenticated,
+   least-privilege signal API (PROPOSED_FUTURE_CONTRACT).
+2. **Data minimization** — define LoveBud-side/local derivation and consent-scoped
+   minimized feature export; raw private text never leaves LoveBud.
+3. **Revocation/deletion semantics** — define removal from discovery, derived-profile
+   invalidation, active-matching termination, and pending-request cleanup.
+4. **Threat model** — define threat model for consent, signal, and connection state.
+5. **Sensitive-trait exclusion** — define the prohibited sensitive-trait inference
+   list and enforcement.
+6. **Adult-only gate** — define the 18+ adults-only boundary and minor prohibition.
+
+Only after all six gates are passed may the synthetic/offline prototype transition to
+using real LoveBud data (issue #3718 §Required child plan #3).
+
+These gates are **NOT_AUTHORIZED** for implementation in this Phase 0.

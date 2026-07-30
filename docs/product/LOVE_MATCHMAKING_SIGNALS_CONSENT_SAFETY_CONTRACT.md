@@ -157,8 +157,8 @@ Users control which data may be used for matching:
 
 | Action | Behavior |
 |---|---|
-| **Revocation** | User revokes matching consent for a field/tree/moment/signal. The signal is immediately removed from the API and the derived resonance profile is invalidated. Existing matches depending on the revoked signal are re-evaluated. Pending connection requests involving the revoked signal are canceled. |
-| **Deletion** | User deletes a tree, memory, or moment. The corresponding consent is revoked and the derived signal is invalidated in Matchmaking. Deletion propagates via webhook or poll (§9). |
+| **Revocation** | User revokes matching consent for a field/tree/moment/signal. The signal is immediately removed from the API and the derived resonance profile is invalidated. Active matching use of the signal terminates. Pending connection requests involving the revoked signal are canceled. The other party is **not** notified of the specific revocation, the revoked signal, the raw content, or any sensitive information. |
+| **Deletion** | User deletes a tree, memory, or moment. The corresponding consent is revoked and the derived signal is invalidated in Matchmaking (removal from discovery, invalidation of derived profile, termination of active matching use, cleanup of pending requests). The exact propagation mechanism is **UNRESOLVED** and **NOT_AUTHORIZED** for implementation in this Phase 0. |
 | **Pause** | User pauses discovery. They stop receiving match suggestions and stop appearing as a match candidate. Existing connections and messages are preserved. |
 | **Hide** | User hides a specific match suggestion. The suggestion is suppressed for the hiding user. The hidden user is not notified. |
 | **Block** | User blocks another user. The blocked user cannot see the blocker's profile, send messages, or appear in match suggestions. Blocking is unilateral and reversible. |
@@ -167,6 +167,11 @@ Users control which data may be used for matching:
 All actions are logged with safe status labels only (no raw payloads, user IDs in
 logs, or private data) (`docs/product/TREE_MOMENT_SOCIAL_MODEL.md:172`;
 `docs/ops/AGENT_SECURITY.md`).
+
+**Deletion does not unconditionally delete abuse reports, blocks, moderation records,
+or legal/safety audit records.** A separate retention/pseudonymization policy child
+governs these records. Revocation and deletion invalidate matching use but do not
+erase safety/moderation audit trails.
 
 ---
 
@@ -191,14 +196,25 @@ logs, or private data) (`docs/product/TREE_MOMENT_SOCIAL_MODEL.md:172`;
 
 ## 9. Prohibited sensitive-trait inference
 
-- The system must **not** generate or use inferred sensitive traits (e.g., political
-  opinion, religious belief, sexual orientation, mental health, disability, etc.) as
-  matching labels without an explicitly reviewed policy (issue #3560 §Consent and
-  privacy principles; issue #3718 §Hard boundaries).
+The system **must not** generate or use any inferred sensitive traits as resonance
+label or ranking signals. The following sensitive traits are **absolutely prohibited**
+from inference or use in matching:
+
+- Political opinion
+- Religion
+- Sexual orientation
+- Health
+- Mental health
+- Disability
+- Ethnicity
+- Other sensitive traits (issue #3560 §Consent and privacy principles; issue #3718
+  §Hard boundaries)
+
 - Emotion tags and interpretations are user-provided, not inferred. The system may
   not infer sensitive traits from emotion tags, source content, or temporal patterns.
-- Any future sensitive-trait policy must undergo explicit review and approval before
-  implementation.
+- User-selected relationship-purpose and safety constraints are **not** the same as
+  AI-inferred sensitive traits. Only user-selected constraints may be used for
+  matching; AI-inferred sensitive traits are prohibited.
 - Age, gender, nationality, and location are optional user-controlled constraints,
   not the primary matching basis (issue #3560 §Consent and privacy principles).
 - Demographic-first ranking is prohibited (issue #3560 §Non-goals; issue #3718
@@ -208,16 +224,17 @@ logs, or private data) (`docs/product/TREE_MOMENT_SOCIAL_MODEL.md:172`;
 
 ## 10. Minor/adult separation prerequisites
 
-- **Minor/adult separation and safety rules must be defined before any open connection
-  or messaging flow** (issue #3560 §Consent and privacy principles; issue #3718
-  §minor/adult prerequisite).
-- Minors and adults must not be matched with each other by default.
-- Age verification must be defined before any matching is enabled for users who may
-  be minors.
-- Parental/guardian consent mechanisms for minors must be defined before minors
-  participate in matching.
+- **Initial product recommendation: 18+ adults only.** Love Matchmaking is
+  recommended for adults 18 and older only.
+- Minor matching and messaging are **prohibited** until a separate legal/safety
+  review is complete and explicit approval is granted.
+- Minors and adults must not be matched with each other.
+- Age verification must be defined before any matching is enabled.
+- **Guardian consent design does not automatically authorize minor participation.**
+  A separate legal/safety review and explicit approval are required before any minor
+  matching or messaging.
 - These are prerequisites, not implementation tasks. No matching involving minors is
-  authorized until the policy is defined and approved.
+  authorized until the policy is defined, reviewed, and approved.
 
 ---
 
@@ -278,10 +295,11 @@ logs, or private data) (`docs/product/TREE_MOMENT_SOCIAL_MODEL.md:172`;
 
 ## 14. Synthetic/offline validation requirements
 
-- **Phase 2 offline resonance prototype** uses synthetic or explicitly consented test
-  data only (issue #3560 §Phase 2; issue #3718 §Required child plan #3).
-- **No production data** is used for validation (issue #3560 §Non-goals; issue #3718
-  §Hard boundaries).
+- **Phase 2 offline resonance prototype** uses **synthetic data only** until all
+  ordered child gates (§17) are passed (issue #3560 §Phase 2; issue #3718 §Required
+  child plan #3).
+- **No production data** is used for validation until all gates are passed
+  (issue #3560 §Non-goals; issue #3718 §Hard boundaries).
 - The prototype evaluates whether similarity signals produce understandable and useful
   matches.
 - The prototype must not connect real users or send real messages.
@@ -365,18 +383,38 @@ owner, evidence type, and stop condition.
 - **Refs:** issue #3560 §Consent and privacy principles; issue #3718 §Required child
   plan #2.
 
+### Pre-prototype gates (before real LoveBud data)
+
+Before the synthetic/offline prototype may use **real** LoveBud data, the following
+six gates must be passed in order. Until all gates are passed, the prototype uses
+**synthetic data only**. These gates are **NOT_AUTHORIZED** for implementation in
+this Phase 0.
+
+1. **Authenticated audience contract** — define the audience-bound, authenticated,
+   least-privilege signal API (**PROPOSED_FUTURE_CONTRACT**).
+2. **Data minimization** — define LoveBud-side/local derivation and consent-scoped
+   minimized feature export; raw private text never leaves LoveBud.
+3. **Revocation/deletion semantics** — define removal from discovery, derived-profile
+   invalidation, active-matching termination, and pending-request cleanup.
+4. **Threat model** — define threat model for consent, signal, and connection state.
+5. **Sensitive-trait exclusion** — enforce the prohibited sensitive-trait inference
+   list (§9).
+6. **Adult-only gate** — enforce the 18+ adults-only boundary (§10).
+
 ### Child 3 — Synthetic/offline resonance prototype
 
-- **Scope:** Build an offline prototype that constructs derived resonance profiles from
-  synthetic or explicitly consented test data and evaluates whether similarity signals
-  produce understandable and useful matches. No production data. No real-user
-  connections or messages.
-- **Dependency:** Child 2 (consent controls).
+- **Scope:** Build an offline prototype that constructs derived resonance profiles
+  from **synthetic data only** (until all pre-prototype gates are passed) and
+  evaluates whether similarity signals produce understandable and useful matches.
+  No production data until gates are passed. No real-user connections or messages.
+- **Dependency:** Child 2 (consent controls) + all pre-prototype gates passed.
 - **Evidence:** Prototype output; match explanation samples; validation report
   comparing signal categories to human-judged similarity.
 - **Owner:** Web Developer (Matchmaking prototype).
 - **Stop condition:** The prototype demonstrates that at least 3 of 7 signal categories
   produce understandable match explanations, validated against synthetic ground truth.
+  Only after all pre-prototype gates are passed may the prototype transition to real
+  LoveBud data.
 - **Refs:** issue #3560 §Phase 2; issue #3718 §Required child plan #3.
 
 ### Child 4 — Explainability evaluation
@@ -451,24 +489,29 @@ owner, evidence type, and stop condition.
 
 ## 18. Unresolved decisions
 
+The following remain **UNRESOLVED** and are **NOT_AUTHORIZED** for implementation in
+this Phase 0:
+
 1. Exact minimum data threshold for matching (Child 1).
 2. Exact consent-aware signal API endpoint and version (Child 1).
-3. Exact identity/account-linking mechanism (Firebase UID binding vs. separate auth)
-   (`LOVE_MATCHMAKING_ARCHITECTURE_DECISION.md:17`).
-4. Exact data-deletion propagation mechanism (webhook vs. poll)
-   (`LOVE_MATCHMAKING_ARCHITECTURE_DECISION.md:17`).
+3. Exact identity/account-linking mechanism (same Firebase UID, separate auth, or
+   external-subject mapping) (`LOVE_MATCHMAKING_ARCHITECTURE_DECISION.md:19`).
+4. Exact data-deletion propagation mechanism (webhook, polling, or other)
+   (`LOVE_MATCHMAKING_ARCHITECTURE_DECISION.md:19`).
 5. Exact minor/adult separation and age-verification mechanism (§10).
 6. Exact Matchmaking deployment target and infrastructure
-   (`LOVE_MATCHMAKING_ARCHITECTURE_DECISION.md:17`).
+   (`LOVE_MATCHMAKING_ARCHITECTURE_DECISION.md:19`).
 7. Whether Matchmaking should reuse LoveBud's Firebase project or create a new one
-   (`LOVE_MATCHMAKING_ARCHITECTURE_DECISION.md:17`).
+   (`LOVE_MATCHMAKING_ARCHITECTURE_DECISION.md:19`).
 8. Whether the Matchmaking repository should be under `skerishKang/` or a separate
-   organization (`LOVE_MATCHMAKING_ARCHITECTURE_DECISION.md:17`).
+   organization (`LOVE_MATCHMAKING_ARCHITECTURE_DECISION.md:19`).
 9. Exact relationship-intent options (friendship, fandom peer, creative partner, open
    connection) (issue #3560 §Open product questions #2).
 10. Whether the system should show exact scores, bands, or only shared themes
     (issue #3560 §Open product questions #7).
 11. How multilingual records preserve nuance while enabling comparison
     (issue #3560 §Open product questions #8).
+12. Exact API transport, event/webhook/poll mechanism, and retention/pseudonymization
+    policy for safety/moderation records.
 
 These are recorded for Phase 1–3 resolution.
