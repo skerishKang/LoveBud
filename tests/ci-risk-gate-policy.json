@@ -1,0 +1,185 @@
+{
+  "schema_version": "1.0.0",
+  "title": "LoveBud CI Risk-Tier Gate Policy",
+  "description": "Machine-readable risk-tier gate policy for LoveBud CI. Maps Tier/UI/capability combinations to required and conditional execution groups, manual evidence obligations, and merge blockers. Authority file read by scripts/plan-ci-risk-gates.cjs — never read from caller-controlled paths.",
+  "tier_enum": ["TIER_1", "TIER_2", "TIER_3"],
+  "ui_class_enum": ["NOT_APPLICABLE", "U0", "U1", "U2", "U3"],
+  "capability_enum": [
+    "copy_or_docs",
+    "visual_only",
+    "structural_dom",
+    "responsive_layout",
+    "accessibility_or_focus",
+    "browser_runtime",
+    "process_runtime",
+    "auth_or_session",
+    "api_read",
+    "api_write",
+    "cache_or_storage_persistence",
+    "database",
+    "migration",
+    "privacy_or_security",
+    "provider_or_network",
+    "deployment_or_runtime_infra",
+    "destructive"
+  ],
+  "sensitive_capabilities": [
+    "auth_or_session",
+    "api_write",
+    "cache_or_storage_persistence",
+    "database",
+    "migration",
+    "privacy_or_security",
+    "provider_or_network",
+    "deployment_or_runtime_infra",
+    "destructive"
+  ],
+  "execution_group_enum": [
+    "SOURCE_STATIC",
+    "EXECUTED_FAKE",
+    "BROWSER_REAL_LOCAL",
+    "PROCESS_REAL_LOCAL",
+    "DB_ENGINE",
+    "PYTHON_SUPPLEMENTAL",
+    "REMOTE_OR_PROVIDER_MANUAL",
+    "FULL_DEFAULT_REGRESSION"
+  ],
+  "tier_ui_matrix": {
+    "description": "Allowed Tier/UI combinations. Any combination not listed is INVALID.",
+    "allowed_combinations": [
+      ["TIER_1", "NOT_APPLICABLE"],
+      ["TIER_1", "U0"],
+      ["TIER_1", "U1"],
+      ["TIER_2", "NOT_APPLICABLE"],
+      ["TIER_2", "U1"],
+      ["TIER_2", "U2"],
+      ["TIER_2", "U3"],
+      ["TIER_3", "NOT_APPLICABLE"],
+      ["TIER_3", "U2"],
+      ["TIER_3", "U3"]
+    ],
+    "prohibited_combinations_note": "U0 may only appear with TIER_1. U2/TIER_1 is invalid (structural work below Tier 2). U3/TIER_2 is invalid unless no sensitive capability present."
+  },
+  "escalation_rules": {
+    "description": "Capabilities that force escalation to a higher tier or rejection.",
+    "u0_u1_blocking_capabilities": {
+      "note": "U0 and U1 must NOT include any capability beyond copy_or_docs or visual_only.",
+      "blocked": [
+        "structural_dom",
+        "responsive_layout",
+        "accessibility_or_focus",
+        "browser_runtime",
+        "process_runtime",
+        "auth_or_session",
+        "api_read",
+        "api_write",
+        "cache_or_storage_persistence",
+        "database",
+        "migration",
+        "privacy_or_security",
+        "provider_or_network",
+        "deployment_or_runtime_infra",
+        "destructive"
+      ]
+    },
+    "tier_2_u2_sensitive_escalation": {
+      "note": "U2 with any sensitive capability must escalate to TIER_3.",
+      "sensitive_capabilities": [
+        "auth_or_session",
+        "api_write",
+        "cache_or_storage_persistence",
+        "database",
+        "migration",
+        "privacy_or_security",
+        "provider_or_network",
+        "deployment_or_runtime_infra",
+        "destructive"
+      ]
+    },
+    "u3_sensitive_requires_tier_3": {
+      "note": "U3 with any sensitive capability is only valid under TIER_3.",
+      "sensitive_capabilities": [
+        "auth_or_session",
+        "api_write",
+        "cache_or_storage_persistence",
+        "database",
+        "migration",
+        "privacy_or_security",
+        "provider_or_network",
+        "deployment_or_runtime_infra",
+        "destructive"
+      ]
+    }
+  },
+  "execution_group_policy": {
+    "required_groups": {
+      "TIER_1": ["SOURCE_STATIC"],
+      "TIER_2": ["SOURCE_STATIC", "EXECUTED_FAKE"],
+      "TIER_3": ["FULL_DEFAULT_REGRESSION"]
+    },
+    "conditional_groups": {
+      "description": "Groups conditionally required based on specific capabilities.",
+      "rules": [
+        {
+          "capability": "browser_runtime",
+          "conditional_groups": ["BROWSER_REAL_LOCAL"],
+          "affected_tiers": ["TIER_2", "TIER_3"]
+        },
+        {
+          "capability": "responsive_layout",
+          "conditional_groups": ["BROWSER_REAL_LOCAL"],
+          "affected_tiers": ["TIER_2", "TIER_3"]
+        },
+        {
+          "capability": "database",
+          "conditional_groups": ["DB_ENGINE"],
+          "affected_tiers": ["TIER_3"]
+        },
+        {
+          "capability": "migration",
+          "conditional_groups": ["DB_ENGINE"],
+          "affected_tiers": ["TIER_3"]
+        },
+        {
+          "capability": "process_runtime",
+          "conditional_groups": ["PROCESS_REAL_LOCAL"],
+          "affected_tiers": ["TIER_2", "TIER_3"]
+        },
+        {
+          "capability": "auth_or_session",
+          "conditional_groups": ["PROCESS_REAL_LOCAL"],
+          "affected_tiers": ["TIER_3"]
+        },
+        {
+          "capability": "api_read",
+          "conditional_groups": ["EXECUTED_FAKE"],
+          "affected_tiers": ["TIER_2", "TIER_3"]
+        }
+      ]
+    },
+    "manual_evidence_groups": {
+      "description": "Groups that represent manual evidence obligations and must never be executed automatically.",
+      "groups": ["REMOTE_OR_PROVIDER_MANUAL"],
+      "triggers": {
+        "note": "When any of these capabilities is present, REMOTE_OR_PROVIDER_MANUAL manual evidence is required.",
+        "capabilities": ["provider_or_network", "deployment_or_runtime_infra"]
+      }
+    }
+  },
+  "merge_blockers": {
+    "description": "Conditions that block merge regardless of CI status.",
+    "hard_blockers": [
+      "CI_EXECUTED_FAILURE",
+      "CI_PENDING_EXECUTION",
+      "UNRESOLVED_DESTRUCTIVE_APPROVAL"
+    ],
+    "tier_3_requirements": {
+      "note": "TIER_3 requires additional verification beyond standard CI.",
+      "exact_head_local_validation": true,
+      "production_verification_for": ["runtime", "auth", "data", "deployment"]
+    }
+  },
+  "policy_version": "1.0.0",
+  "policy_date": "2026-07-30",
+  "refs": "#3710 #3670"
+}
