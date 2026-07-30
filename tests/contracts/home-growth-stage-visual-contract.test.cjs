@@ -797,4 +797,38 @@ console.log('✓ 38: attempt-token mechanism blocks stale iframe events');
 }
 console.log('✓ 39: iframe error event handled');
 
+// ============================================================
+// 40. Timer callbacks carry attempt identity (#3707 CTO rework)
+// ============================================================
+{
+  function countOccurrences(haystack, needle) {
+    var count = 0;
+    var idx = haystack.indexOf(needle);
+    while (idx !== -1) {
+      count++;
+      idx = haystack.indexOf(needle, idx + needle.length);
+    }
+    return count;
+  }
+  // The long-wait and timeout timers must NOT be registered as bare handler
+  // references; they must be wrapped in a closure that checks the attempt.
+  assert.ok(!js.includes('setTimeout(handleModalLongWait'),
+    'long-wait timer must not be a bare handler reference');
+  assert.ok(!js.includes('setTimeout(handleModalTimeout'),
+    'timeout timer must not be a bare handler reference');
+  var openBody40 = js.slice(js.indexOf('function openVideoModal'), js.indexOf('// Card wiring'));
+  var retryBody40 = js.slice(js.indexOf('function retryVideoModal'), js.indexOf('function onDocumentFocusIn'));
+  // Each of open/retry has four attempt-guarded callbacks: load, error,
+  // long-wait timer, timeout timer.
+  assert.ok(countOccurrences(openBody40, 'thisAttempt !== modalAttemptId') >= 4,
+    'openVideoModal must guard load, error, and both timers with thisAttempt');
+  assert.ok(countOccurrences(retryBody40, 'thisAttempt !== modalAttemptId') >= 4,
+    'retryVideoModal must guard load, error, and both timers with thisAttempt');
+  assert.ok(openBody40.includes('handleModalLongWait();') && openBody40.includes('handleModalTimeout();'),
+    'openVideoModal timers must invoke handlers inside the guarded closure');
+  assert.ok(retryBody40.includes('handleModalLongWait();') && retryBody40.includes('handleModalTimeout();'),
+    'retryVideoModal timers must invoke handlers inside the guarded closure');
+}
+console.log('✓ 40: timer callbacks carry attempt identity');
+
 console.log('\n✅ All contract tests passed.');

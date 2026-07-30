@@ -727,8 +727,14 @@
       var newLoading = createModalLoadingEl(true);
       playerEl.appendChild(newLoading);
       playerEl.appendChild(iframe);
-      modalLoadTimerId = window.setTimeout(handleModalLongWait, 8000);
-      modalTimeoutId = window.setTimeout(handleModalTimeout, 30000);
+      modalLoadTimerId = window.setTimeout(function() {
+        if (thisAttempt !== modalAttemptId) return;
+        handleModalLongWait();
+      }, 8000);
+      modalTimeoutId = window.setTimeout(function() {
+        if (thisAttempt !== modalAttemptId) return;
+        handleModalTimeout();
+      }, 30000);
     }
 
     function onDocumentFocusIn(e) {
@@ -851,8 +857,14 @@
       pause('playing');
       closeBtn.focus();
 
-      modalLoadTimerId = window.setTimeout(handleModalLongWait, 8000);
-      modalTimeoutId = window.setTimeout(handleModalTimeout, 30000);
+      modalLoadTimerId = window.setTimeout(function() {
+        if (thisAttempt !== modalAttemptId) return;
+        handleModalLongWait();
+      }, 8000);
+      modalTimeoutId = window.setTimeout(function() {
+        if (thisAttempt !== modalAttemptId) return;
+        handleModalTimeout();
+      }, 30000);
     }
 
     // ------------------------------------------------------------

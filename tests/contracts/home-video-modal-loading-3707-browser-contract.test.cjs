@@ -5,7 +5,14 @@
  * Loads production CSS/JS asset chains and verifies modal loading states.
  *
  * Viewports: 1440×900 (desktop), 390×844 (mobile)
- * Uses Playwright fake timers to avoid waiting 8s/30s in real time.
+ *
+ * Iframe control: every youtube-nocookie.com embed request is intercepted
+ * with Playwright route handling. The test harness — never production code —
+ * decides whether each embed is pending, load-success, error, timeout,
+ * stale-load, or retry-success. No real external network dependency.
+ *
+ * Fake timers (page.clock) drive the 8s long-wait and 30s timeout transitions
+ * and the hero growth-cycle spotlight progression deterministically.
  *
  * Refs #3707
  * Refs #1882 (kept OPEN)
@@ -28,6 +35,8 @@ try {
 } catch (err) {
   throw new Error(`PLAYWRIGHT_PACKAGE_UNAVAILABLE: ${err && err.message ? err.message : err}`);
 }
+
+const STUB_HTML = '<!DOCTYPE html><html><head><title>stub player</title></head><body>stub player</body></html>';
 
 function contentType(filePath) {
   if (filePath.endsWith('.html')) return 'text/html; charset=utf-8';
@@ -192,6 +201,82 @@ const VIEWPORTS = [
   { name: 'mobile', width: 390, height: 844 },
 ];
 
+// ---------------------------------------------------------------------------
+// Controlled iframe stub.
+//
+// mode 'pending' → hold the request (iframe never loads; timers drive state)
+// mode 'success' → fulfill with stub HTML (iframe fires load → READY)
+// mode 'error'   → abort the request (iframe fires error → ERROR)
+//
+// held routes can be flushed later to simulate a late/stale load arriving
+// after the owning attempt has already been superseded.
+// ---------------------------------------------------------------------------
+async function setupIframeControl(page) {
+  const ctl = { mode: 'pending', held: [] };
+  await page.route('**/youtube-nocookie.com/**', async (route) => {
+    if (ctl.mode === 'success') {
+      await route.fulfill({ status: 200, contentType: 'text/html', body: STUB_HTML });
+    } else if (ctl.mode === 'error') {
+      await route.abort('failed');
+    } else {
+      ctl.held.push(route);
+    }
+  });
+  ctl.setMode = (m) => { ctl.mode = m; };
+  ctl.flushLoad = async () => {
+    const routes = ctl.held.splice(0);
+    for (const r of routes) {
+      try { await r.fulfill({ status: 200, contentType: 'text/html', body: STUB_HTML }); } catch (e) { /* route already settled */ }
+    }
+  };
+  ctl.abortHeld = async () => {
+    const routes = ctl.held.splice(0);
+    for (const r of routes) {
+      try { await r.abort('aborted'); } catch (e) { /* route already settled */ }
+    }
+  };
+  return ctl;
+}
+
+async function newModalPage(browser, vp, baseUrl, opts) {
+  const options = opts || {};
+  const context = await browser.newContext({
+    viewport: { width: vp.width, height: vp.height },
+    reducedMotion: options.reducedMotion || 'no-preference',
+  });
+  const page = await context.newPage();
+  const pageErrors = [];
+  page.on('pageerror', (err) => pageErrors.push(err.message));
+  const ctl = await setupIframeControl(page);
+  await page.goto(baseUrl + '/fixture-home.html');
+  await page.waitForLoadState('domcontentloaded');
+  await page.clock.install();
+  if (options.ff !== 0) {
+    await page.clock.fastForward(options.ff == null ? 2000 : options.ff);
+  }
+  return { context, page, pageErrors, ctl };
+}
+
+async function teardown(env) {
+  try { await env.ctl.abortHeld(); } catch (e) { /* ignore */ }
+  try { await env.context.close(); } catch (e) { /* ignore */ }
+}
+
+async function openModal(page) {
+  await page.evaluate(() => {
+    document.querySelector('.growth-stage-card-media').click();
+  });
+  await page.waitForSelector('.hero-video-modal', { timeout: 2000 });
+}
+
+async function closeModalViaButton(page) {
+  await page.evaluate(() => {
+    const btn = document.querySelector('.hero-video-modal-close');
+    if (btn) btn.click();
+  });
+  await page.waitForSelector('.hero-video-modal', { state: 'detached', timeout: 2000 });
+}
+
 test('home video modal loading states (#3707)', async (t) => {
   const { server, port } = await startServer();
   const baseUrl = `http://127.0.0.1:${port}`;
@@ -203,269 +288,377 @@ test('home video modal loading states (#3707)', async (t) => {
   for (const vp of VIEWPORTS) {
     await t.test(`viewport ${vp.name} (${vp.width}x${vp.height})`, async (t) => {
       const browser = await playwright.chromium.launch({ headless: true });
-      const context = await browser.newContext({
-        viewport: { width: vp.width, height: vp.height },
-        reducedMotion: 'no-preference',
-      });
-      const page = await context.newPage();
 
-      const pageErrors = [];
-      page.on('pageerror', (err) => pageErrors.push(err.message));
-
-      await t.test('1. modal shell and Close appear immediately', async () => {
-        await page.goto(baseUrl + '/fixture-home.html');
-        await page.waitForLoadState('domcontentloaded');
-        await page.clock.install();
-        await page.clock.fastForward(2000);
-
-        await page.click('.growth-stage-card-media');
-        await page.waitForSelector('.hero-video-modal', { timeout: 1000 });
-
-        const modalVisible = await page.locator('.hero-video-modal').isVisible();
-        assert.ok(modalVisible, 'modal shell must be visible');
-
-        const closeVisible = await page.locator('.hero-video-modal-close').isVisible();
-        assert.ok(closeVisible, 'close button must be visible');
+      t.after(async () => {
+        await browser.close();
       });
 
-      await t.test('2. initial loading state with aria-busy', async () => {
-        const loadingVisible = await page.locator('.hero-video-modal-loading').isVisible();
-        assert.ok(loadingVisible, 'loading overlay must be visible');
+      // -----------------------------------------------------------------
+      // Group A — loading lifecycle on a single chained page.
+      // -----------------------------------------------------------------
+      await t.test('A. loading lifecycle (pending → success → long-wait → timeout → stale → retry)', async (t) => {
+        const env = await newModalPage(browser, vp, baseUrl, {});
+        const { page, ctl } = env;
+        t.after(async () => { await teardown(env); });
 
-        const ariaBusy = await page.locator('.hero-video-modal-player').getAttribute('aria-busy');
-        assert.strictEqual(ariaBusy, 'true', 'player must have aria-busy="true"');
-
-        const loadingText = await page.locator('.hero-video-modal-loading-text').textContent();
-        assert.ok(loadingText.includes('영상을 불러오는 중'), 'loading text must show initial message');
-      });
-
-      await t.test('3. iframe load transitions to READY exactly once', async () => {
-        await page.clock.fastForward(8000);
-
-        await page.evaluate(() => {
-          const iframe = document.querySelector('.hero-video-modal iframe');
-          if (iframe) iframe.dispatchEvent(new Event('load'));
+        await t.test('A1. modal shell and Close appear immediately (pending)', async () => {
+          ctl.setMode('pending');
+          await openModal(page);
+          assert.ok(await page.locator('.hero-video-modal').isVisible(), 'modal shell must be visible');
+          assert.ok(await page.locator('.hero-video-modal-close').isVisible(), 'close button must be visible');
         });
 
-        await page.waitForSelector('.hero-video-modal-ready', { timeout: 1000 });
-        const readyClass = await page.locator('.hero-video-modal').getAttribute('class');
-        assert.ok(readyClass.includes('hero-video-modal-ready'), 'modal must have ready class');
-
-        const loadingGone = await page.locator('.hero-video-modal-loading').count();
-        assert.strictEqual(loadingGone, 0, 'loading overlay must be removed after ready');
-
-        const ariaBusy = await page.locator('.hero-video-modal-player').getAttribute('aria-busy');
-        assert.strictEqual(ariaBusy, null, 'aria-busy must be removed after ready');
-
-        const iframeTabindex = await page.locator('.hero-video-modal iframe').getAttribute('tabindex');
-        assert.strictEqual(iframeTabindex, null, 'iframe tabindex must be removed after ready');
-      });
-
-      await t.test('4. long-wait transition at 8 seconds', async () => {
-        await page.locator('.hero-video-modal-close').click();
-        await page.waitForSelector('.hero-video-modal', { state: 'detached', timeout: 1000 });
-
-        await page.click('.growth-stage-card-media');
-        await page.waitForSelector('.hero-video-modal', { timeout: 1000 });
-
-        await page.clock.fastForward(8000);
-
-        const longWaitClass = await page.locator('.hero-video-modal-loading').getAttribute('class');
-        assert.ok(longWaitClass.includes('is-long-wait'), 'loading must have is-long-wait class after 8s');
-
-        const loadingText = await page.locator('.hero-video-modal-loading-text').textContent();
-        assert.ok(loadingText.includes('오래 걸리고'), 'long-wait text must be shown');
-      });
-
-      await t.test('5. 30s timeout transitions to ERROR', async () => {
-        await page.clock.fastForward(22000);
-
-        await page.waitForSelector('.hero-video-modal-error', { timeout: 1000 });
-        const errorVisible = await page.locator('.hero-video-modal-error').isVisible();
-        assert.ok(errorVisible, 'error overlay must be visible after 30s');
-
-        const errorText = await page.locator('.hero-video-modal-error-text').textContent();
-        assert.ok(errorText.includes('불러오지 못했어요'), 'error text must be shown');
-
-        const retryVisible = await page.locator('.hero-video-modal-retry-btn').isVisible();
-        assert.ok(retryVisible, 'retry button must be visible');
-
-        const watchLink = await page.locator('.hero-video-modal-error a[href*="youtube.com"]').getAttribute('href');
-        assert.ok(watchLink.includes('youtube.com/watch'), 'fallback YouTube link must be present');
-      });
-
-      await t.test('6. stale iframe load does not change ERROR state', async () => {
-        await page.evaluate(() => {
-          const iframe = document.querySelector('.hero-video-modal iframe');
-          if (iframe) iframe.dispatchEvent(new Event('load'));
+        await t.test('A2. initial loading state with aria-busy', async () => {
+          assert.ok(await page.locator('.hero-video-modal-loading').isVisible(), 'loading overlay must be visible');
+          assert.strictEqual(await page.locator('.hero-video-modal-player').getAttribute('aria-busy'), 'true', 'player aria-busy=true');
+          const loadingText = await page.locator('.hero-video-modal-loading-text').textContent();
+          assert.ok(loadingText.includes('영상을 불러오는 중'), 'initial loading text shown');
+          // Non-reduced motion: spinner must carry an animateTransform.
+          const animCount = await page.locator('.hero-video-modal-loading-spinner animateTransform').count();
+          assert.strictEqual(animCount, 1, 'spinner has exactly one animateTransform in normal motion');
         });
 
-        await page.waitForTimeout(100);
-
-        const errorStillVisible = await page.locator('.hero-video-modal-error').isVisible();
-        assert.ok(errorStillVisible, 'error must remain visible after stale load event');
-
-        const readyClass = await page.locator('.hero-video-modal').getAttribute('class');
-        assert.ok(!readyClass.includes('hero-video-modal-ready'), 'modal must not become ready after stale load');
-      });
-
-      await t.test('7. Retry creates exactly one new iframe', async () => {
-        await page.locator('.hero-video-modal-retry-btn').click();
-        await page.waitForTimeout(100);
-
-        const iframeCount = await page.locator('.hero-video-modal iframe').count();
-        assert.strictEqual(iframeCount, 1, 'exactly one iframe must exist after retry');
-
-        const retryingText = await page.locator('.hero-video-modal-loading-text').textContent();
-        assert.ok(retryingText.includes('다시 시도'), 'retrying text must be shown');
-      });
-
-      await t.test('8. old iframe/listener/timer cleaned up on retry', async () => {
-        await page.evaluate(() => {
-          const iframe = document.querySelector('.hero-video-modal iframe');
-          if (iframe) iframe.dispatchEvent(new Event('load'));
+        await t.test('A3. controlled load success transitions to READY exactly once', async () => {
+          ctl.setMode('success');
+          // Fulfill the currently-held embed request to fire a real load event.
+          await ctl.flushLoad();
+          await page.waitForSelector('.hero-video-modal-ready', { timeout: 2000 });
+          const cls = await page.locator('.hero-video-modal').getAttribute('class');
+          assert.ok(cls.includes('hero-video-modal-ready'), 'modal has ready class');
+          assert.strictEqual(await page.locator('.hero-video-modal-loading').count(), 0, 'loading removed after ready');
+          assert.strictEqual(await page.locator('.hero-video-modal-player').getAttribute('aria-busy'), null, 'aria-busy removed after ready');
+          assert.strictEqual(await page.locator('.hero-video-modal iframe').getAttribute('tabindex'), null, 'iframe tabindex removed after ready');
         });
 
-        await page.waitForSelector('.hero-video-modal-ready', { timeout: 1000 });
-        const readyVisible = await page.locator('.hero-video-modal-ready').isVisible();
-        assert.ok(readyVisible, 'modal must become ready after retry iframe loads');
-      });
-
-      await t.test('9. YouTube fallback URL is correct', async () => {
-        await page.locator('.hero-video-modal-close').click();
-        await page.waitForSelector('.hero-video-modal', { state: 'detached', timeout: 1000 });
-
-        await page.click('.growth-stage-card-media');
-        await page.waitForSelector('.hero-video-modal', { timeout: 1000 });
-        await page.clock.fastForward(30000);
-
-        await page.waitForSelector('.hero-video-modal-error', { timeout: 1000 });
-        const watchLink = await page.locator('.hero-video-modal-error a').getAttribute('href');
-        assert.ok(watchLink.includes('youtube.com/watch?v='), 'fallback link must be a YouTube watch URL');
-      });
-
-      await t.test('10. Close/Escape works from all states', async () => {
-        await page.locator('.hero-video-modal-close').click();
-        await page.waitForSelector('.hero-video-modal', { state: 'detached', timeout: 1000 });
-
-        await page.click('.growth-stage-card-media');
-        await page.waitForSelector('.hero-video-modal', { timeout: 1000 });
-        await page.keyboard.press('Escape');
-        await page.waitForSelector('.hero-video-modal', { state: 'detached', timeout: 1000 });
-
-        const modalGone = await page.locator('.hero-video-modal').count();
-        assert.strictEqual(modalGone, 0, 'modal must be removed after Escape');
-      });
-
-      await t.test('11. focus trap and focus restoration', async () => {
-        await page.click('.growth-stage-card-media');
-        await page.waitForSelector('.hero-video-modal', { timeout: 1000 });
-
-        const closeFocused = await page.evaluate(() => {
-          return document.activeElement.classList.contains('hero-video-modal-close');
+        await t.test('A4. long-wait transition at 8 seconds (pending)', async () => {
+          await closeModalViaButton(page);
+          ctl.setMode('pending');
+          await openModal(page);
+          await page.clock.fastForward(8000);
+          const cls = await page.locator('.hero-video-modal-loading').getAttribute('class');
+          assert.ok(cls.includes('is-long-wait'), 'loading has is-long-wait after 8s');
+          const txt = await page.locator('.hero-video-modal-loading-text').textContent();
+          assert.ok(txt.includes('오래 걸리고'), 'long-wait text shown');
         });
-        assert.ok(closeFocused, 'close button must receive initial focus');
 
-        await page.keyboard.press('Tab');
-        await page.keyboard.press('Tab');
-        await page.keyboard.press('Tab');
-
-        const stillInModal = await page.evaluate(() => {
-          const modal = document.querySelector('.hero-video-modal');
-          return modal && modal.contains(document.activeElement);
+        await t.test('A5. 30s timeout transitions to ERROR (pending)', async () => {
+          await page.clock.fastForward(22000);
+          await page.waitForSelector('.hero-video-modal-error', { timeout: 2000 });
+          assert.ok(await page.locator('.hero-video-modal-error').isVisible(), 'error overlay visible after 30s');
+          const errText = await page.locator('.hero-video-modal-error-text').textContent();
+          assert.ok(errText.includes('불러오지 못했어요'), 'error text shown');
+          assert.ok(await page.locator('.hero-video-modal-retry-btn').isVisible(), 'retry button visible');
+          const watchLink = await page.locator('.hero-video-modal-error a[href*="youtube.com"]').getAttribute('href');
+          assert.ok(watchLink.includes('youtube.com/watch?v='), 'fallback YouTube watch link present');
         });
-        assert.ok(stillInModal, 'focus must stay trapped in modal');
 
-        await page.locator('.hero-video-modal-close').click();
-        await page.waitForSelector('.hero-video-modal', { state: 'detached', timeout: 1000 });
-
-        const focusRestored = await page.evaluate(() => {
-          const playBtn = document.querySelector('.growth-stage-card-play');
-          return document.activeElement === playBtn || document.activeElement.closest('.growth-stage-card');
+        await t.test('A6. stale controlled load does not change ERROR state', async () => {
+          // Fulfill the still-held original embed request: a late load arriving
+          // after the timeout attempt was superseded.
+          await ctl.flushLoad();
+          await page.waitForTimeout(120);
+          assert.ok(await page.locator('.hero-video-modal-error').isVisible(), 'error remains after stale load');
+          const cls = await page.locator('.hero-video-modal').getAttribute('class');
+          assert.ok(!cls.includes('hero-video-modal-ready'), 'modal does not become ready after stale load');
         });
-        assert.ok(focusRestored, 'focus must return to card after close');
+
+        await t.test('A7. retry creates exactly one new iframe (retrying)', async () => {
+          ctl.setMode('pending');
+          await page.evaluate(() => {
+            document.querySelector('.hero-video-modal-retry-btn').click();
+          });
+          await page.waitForTimeout(120);
+          assert.strictEqual(await page.locator('.hero-video-modal iframe').count(), 1, 'exactly one iframe after retry');
+          const txt = await page.locator('.hero-video-modal-loading-text').textContent();
+          assert.ok(txt.includes('다시 시도'), 'retrying text shown');
+          assert.strictEqual(await page.locator('.hero-video-modal-error').count(), 0, 'error removed on retry');
+        });
+
+        await t.test('A8. retry controlled success reaches READY (old listener/timer cleaned)', async () => {
+          ctl.setMode('success');
+          await ctl.flushLoad();
+          await page.waitForSelector('.hero-video-modal-ready', { timeout: 2000 });
+          assert.ok(await page.locator('.hero-video-modal-ready').isVisible(), 'modal ready after retry success');
+          assert.strictEqual(await page.locator('.hero-video-modal iframe').count(), 1, 'still exactly one iframe');
+        });
+
+        await t.test('A9. pageerror is zero across lifecycle', async () => {
+          assert.strictEqual(env.pageErrors.length, 0, `no page errors expected, got: ${env.pageErrors.join(', ')}`);
+        });
       });
 
-      await t.test('12. reduced-motion preserves state communication', async () => {
-        const rmContext = await browser.newContext({
-          viewport: { width: vp.width, height: vp.height },
-          reducedMotion: 'reduce',
+      // -----------------------------------------------------------------
+      // Group B — close from every distinct state (fresh page per state).
+      // -----------------------------------------------------------------
+      const closeScenarios = [
+        {
+          name: 'B1. close from initial loading (pending)',
+          setup: async (env) => { env.ctl.setMode('pending'); await openModal(env.page); },
+        },
+        {
+          name: 'B2. close from long-wait state',
+          setup: async (env) => { env.ctl.setMode('pending'); await openModal(env.page); await env.page.clock.fastForward(8000); },
+        },
+        {
+          name: 'B3. close from error state',
+          setup: async (env) => { env.ctl.setMode('pending'); await openModal(env.page); await env.page.clock.fastForward(30000); await env.page.waitForSelector('.hero-video-modal-error', { timeout: 2000 }); },
+        },
+        {
+          name: 'B4. close from retrying state',
+          setup: async (env) => {
+            env.ctl.setMode('pending');
+            await openModal(env.page);
+            await env.page.clock.fastForward(30000);
+            await env.page.waitForSelector('.hero-video-modal-retry-btn', { timeout: 2000 });
+            await env.page.evaluate(() => { document.querySelector('.hero-video-modal-retry-btn').click(); });
+            await env.page.waitForTimeout(120);
+          },
+        },
+        {
+          name: 'B5. close from ready state',
+          setup: async (env) => { env.ctl.setMode('success'); await openModal(env.page); await env.page.waitForSelector('.hero-video-modal-ready', { timeout: 2000 }); },
+        },
+      ];
+
+      for (const sc of closeScenarios) {
+        await t.test(sc.name, async () => {
+          const env = await newModalPage(browser, vp, baseUrl, {});
+          try {
+            await sc.setup(env);
+            assert.strictEqual(await env.page.locator('.hero-video-modal').count(), 1, 'modal present before close');
+            await closeModalViaButton(env.page);
+            assert.strictEqual(await env.page.locator('.hero-video-modal').count(), 0, 'modal removed after close');
+            // Advancing time after close must not resurrect error or modal.
+            await env.page.clock.fastForward(60000);
+            assert.strictEqual(await env.page.locator('.hero-video-modal').count(), 0, 'no modal resurrection after close');
+            assert.strictEqual(await env.page.locator('.hero-video-modal-error').count(), 0, 'no error resurrection after close');
+            assert.strictEqual(env.pageErrors.length, 0, `no page errors, got: ${env.pageErrors.join(', ')}`);
+          } finally {
+            await teardown(env);
+          }
         });
-        const rmPage = await rmContext.newPage();
-        await rmPage.goto(baseUrl + '/fixture-home.html');
-        await rmPage.waitForLoadState('domcontentloaded');
-        await rmPage.clock.install();
-        await rmPage.clock.fastForward(2000);
+      }
 
-        await rmPage.click('.growth-stage-card-media');
-        await rmPage.waitForSelector('.hero-video-modal', { timeout: 1000 });
-
-        const loadingVisible = await rmPage.locator('.hero-video-modal-loading').isVisible();
-        assert.ok(loadingVisible, 'loading state must be visible in reduced motion');
-
-        await rmPage.clock.fastForward(8000);
-        const longWaitVisible = await rmPage.locator('.hero-video-modal-loading.is-long-wait').isVisible();
-        assert.ok(longWaitVisible, 'long-wait state must be visible in reduced motion');
-
-        await rmContext.close();
+      // -----------------------------------------------------------------
+      // Group C — Escape, backdrop close, pagehide cleanup.
+      // -----------------------------------------------------------------
+      await t.test('C1. Escape closes the modal', async () => {
+        const env = await newModalPage(browser, vp, baseUrl, {});
+        try {
+          env.ctl.setMode('pending');
+          await openModal(env.page);
+          await env.page.keyboard.press('Escape');
+          await env.page.waitForSelector('.hero-video-modal', { state: 'detached', timeout: 2000 });
+          assert.strictEqual(await env.page.locator('.hero-video-modal').count(), 0, 'modal removed after Escape');
+        } finally {
+          await teardown(env);
+        }
       });
 
-      await t.test('13. duplicate modal/iframe is zero', async () => {
-        await page.evaluate(() => {
-          const modal = document.querySelector('.hero-video-modal');
-          if (modal) modal.remove();
-        });
-        await page.waitForTimeout(100);
-
-        await page.evaluate(() => {
-          document.querySelector('.growth-stage-card-media').click();
-        });
-        await page.waitForSelector('.hero-video-modal', { timeout: 1000 });
-
-        await page.evaluate(() => {
-          document.querySelector('.growth-stage-card-media').click();
-        });
-        await page.waitForTimeout(100);
-
-        const modalCount = await page.locator('.hero-video-modal').count();
-        assert.strictEqual(modalCount, 1, 'exactly one modal must exist');
-
-        const iframeCount = await page.locator('.hero-video-modal iframe').count();
-        assert.strictEqual(iframeCount, 1, 'exactly one iframe must exist');
+      await t.test('C2. backdrop click closes and cleans up', async () => {
+        const env = await newModalPage(browser, vp, baseUrl, {});
+        try {
+          env.ctl.setMode('pending');
+          await openModal(env.page);
+          // Click the overlay backdrop (top-left corner, outside the panel).
+          await env.page.locator('.hero-video-modal').click({ position: { x: 3, y: 3 } });
+          await env.page.waitForSelector('.hero-video-modal', { state: 'detached', timeout: 2000 });
+          assert.strictEqual(await env.page.locator('.hero-video-modal').count(), 0, 'modal removed after backdrop click');
+          await env.page.clock.fastForward(60000);
+          assert.strictEqual(await env.page.locator('.hero-video-modal').count(), 0, 'no resurrection after backdrop close');
+          assert.strictEqual(env.pageErrors.length, 0, `no page errors, got: ${env.pageErrors.join(', ')}`);
+        } finally {
+          await teardown(env);
+        }
       });
 
-      await t.test('14. pageerror is zero', async () => {
-        assert.strictEqual(pageErrors.length, 0, `no page errors expected, got: ${pageErrors.join(', ')}`);
+      await t.test('C3. pagehide closes the modal', async () => {
+        const env = await newModalPage(browser, vp, baseUrl, {});
+        try {
+          env.ctl.setMode('pending');
+          await openModal(env.page);
+          await env.page.evaluate(() => { window.dispatchEvent(new Event('pagehide')); });
+          await env.page.waitForSelector('.hero-video-modal', { state: 'detached', timeout: 2000 });
+          assert.strictEqual(await env.page.locator('.hero-video-modal').count(), 0, 'modal removed after pagehide');
+          assert.strictEqual(env.pageErrors.length, 0, `no page errors, got: ${env.pageErrors.join(', ')}`);
+        } finally {
+          await teardown(env);
+        }
       });
 
-      await t.test('15. spotlight pause/resume preserved', async () => {
-        await page.locator('.hero-video-modal-close').click();
-        await page.waitForSelector('.hero-video-modal', { state: 'detached', timeout: 1000 });
-
-        await page.clock.fastForward(10000);
-
-        const stageState = await page.locator('.home-v3-growth-stage').getAttribute('data-stage-state');
-        assert.ok(stageState, 'growth stage must have a data-stage-state attribute');
+      // -----------------------------------------------------------------
+      // Group D — stale attempt timer cannot mutate a new attempt.
+      // -----------------------------------------------------------------
+      await t.test('D1. stale attempt timer does not mutate the new attempt', async () => {
+        const env = await newModalPage(browser, vp, baseUrl, {});
+        try {
+          const { page, ctl } = env;
+          ctl.setMode('pending');
+          await openModal(page);
+          // First attempt reaches long-wait; its 30s timeout is still armed.
+          await page.clock.fastForward(8000);
+          assert.ok((await page.locator('.hero-video-modal-loading').getAttribute('class')).includes('is-long-wait'), 'first attempt in long-wait');
+          // First attempt then times out into ERROR (retry button now exists).
+          await page.clock.fastForward(22000);
+          await page.waitForSelector('.hero-video-modal-retry-btn', { timeout: 2000 });
+          // Retry into a NEW attempt that succeeds.
+          ctl.setMode('success');
+          await page.evaluate(() => { document.querySelector('.hero-video-modal-retry-btn').click(); });
+          await page.waitForSelector('.hero-video-modal-ready', { timeout: 2000 });
+          // Advance far beyond any timer from the previous (errored) attempt.
+          await page.clock.fastForward(90000);
+          const cls = await page.locator('.hero-video-modal').getAttribute('class');
+          assert.ok(cls.includes('hero-video-modal-ready'), 'new attempt stays ready');
+          assert.strictEqual(await page.locator('.hero-video-modal-error').count(), 0, 'stale timer never flips new attempt to error');
+          assert.strictEqual(await page.locator('.hero-video-modal iframe').count(), 1, 'still exactly one iframe');
+          assert.strictEqual(env.pageErrors.length, 0, `no page errors, got: ${env.pageErrors.join(', ')}`);
+        } finally {
+          await teardown(env);
+        }
       });
 
-      await t.test('16. no overflow or clipping', async () => {
-        const overflow = await page.evaluate(() => {
-          const body = document.body;
-          const html = document.documentElement;
-          return {
-            bodyScrollWidth: body.scrollWidth,
-            bodyClientWidth: body.clientWidth,
-            htmlScrollWidth: html.scrollWidth,
-            htmlClientWidth: html.clientWidth,
-          };
-        });
-        assert.ok(overflow.bodyScrollWidth <= overflow.bodyClientWidth + 1,
-          'body must not have horizontal overflow');
-        assert.ok(overflow.htmlScrollWidth <= overflow.htmlClientWidth + 1,
-          'html must not have horizontal overflow');
+      // -----------------------------------------------------------------
+      // Group E — focus trap / restoration.
+      // -----------------------------------------------------------------
+      await t.test('E1. focus trap and focus restoration', async () => {
+        const env = await newModalPage(browser, vp, baseUrl, {});
+        try {
+          const { page } = env;
+          env.ctl.setMode('pending');
+          await openModal(page);
+          assert.ok(await page.evaluate(() => document.activeElement.classList.contains('hero-video-modal-close')), 'close button receives initial focus');
+          await page.keyboard.press('Tab');
+          await page.keyboard.press('Tab');
+          await page.keyboard.press('Tab');
+          assert.ok(await page.evaluate(() => {
+            const modal = document.querySelector('.hero-video-modal');
+            return modal && modal.contains(document.activeElement);
+          }), 'focus stays trapped in modal');
+          await closeModalViaButton(page);
+          assert.ok(await page.evaluate(() => {
+            const playBtn = document.querySelector('.growth-stage-card-play');
+            return document.activeElement === playBtn || (document.activeElement && document.activeElement.closest('.growth-stage-card'));
+          }), 'focus returns to card after close');
+        } finally {
+          await teardown(env);
+        }
       });
 
-      await browser.close();
+      // -----------------------------------------------------------------
+      // Group F — reduced motion: state preserved, no animateTransform.
+      // -----------------------------------------------------------------
+      await t.test('F1. reduced-motion preserves state and omits animateTransform', async () => {
+        const env = await newModalPage(browser, vp, baseUrl, { reducedMotion: 'reduce' });
+        try {
+          const { page } = env;
+          env.ctl.setMode('pending');
+          await openModal(page);
+          assert.ok(await page.locator('.hero-video-modal-loading').isVisible(), 'loading visible in reduced motion');
+          const animCount = await page.locator('.hero-video-modal-loading-spinner animateTransform').count();
+          assert.strictEqual(animCount, 0, 'no animateTransform in reduced motion');
+          await page.clock.fastForward(8000);
+          assert.ok(await page.locator('.hero-video-modal-loading.is-long-wait').isVisible(), 'long-wait visible in reduced motion');
+          assert.strictEqual(env.pageErrors.length, 0, `no page errors, got: ${env.pageErrors.join(', ')}`);
+        } finally {
+          await teardown(env);
+        }
+      });
+
+      // -----------------------------------------------------------------
+      // Group G — spotlight progression pauses during modal, resumes after.
+      // Uses a fresh page so the cycle phase is deterministic.
+      // -----------------------------------------------------------------
+      await t.test('G1. spotlight progression stops while modal open and resumes after close', async () => {
+        const env = await newModalPage(browser, vp, baseUrl, { ff: 2000 });
+        try {
+          const { page } = env;
+          const sample = () => page.evaluate(() => ({
+            state: document.querySelector('.home-v3-growth-stage').getAttribute('data-stage-state'),
+            spotlight: document.querySelectorAll('.growth-stage-card.is-spotlight').length,
+          }));
+
+          // Modal loads successfully so no modal timer fires during the window;
+          // opening it still pauses the hero cycle.
+          env.ctl.setMode('success');
+          await openModal(page);
+          await page.waitForSelector('.hero-video-modal-ready', { timeout: 2000 });
+          const baseline = await sample();
+
+          // While the modal is open the cycle is paused: advancing time must not
+          // change the stage state nor start/stop any spotlight.
+          let frozen = true;
+          for (let i = 0; i < 6; i++) {
+            await page.clock.fastForward(5000);
+            const s = await sample();
+            if (s.state !== baseline.state || s.spotlight !== baseline.spotlight) frozen = false;
+          }
+          assert.ok(frozen, 'cycle progression frozen while modal open (baseline=' + JSON.stringify(baseline) + ')');
+
+          await closeModalViaButton(page);
+
+          // Closing returns focus to the card (inside the collage), which arms
+          // the independent focus-pause. Move focus out of the collage so only
+          // the modal's playing pause/resume is under test.
+          await page.evaluate(() => {
+            const cta = document.querySelector('.home-v3-copy .btn-round');
+            if (cta) { cta.focus(); } else if (document.activeElement) { document.activeElement.blur(); }
+          });
+
+          // After close the cycle resumes: advancing time must produce real
+          // progression (stage state changes and/or a spotlight appears).
+          const seen = new Set();
+          let spotlightSeen = false;
+          for (let i = 0; i < 12; i++) {
+            await page.clock.fastForward(3000);
+            const s = await sample();
+            seen.add(s.state);
+            if (s.spotlight > 0) spotlightSeen = true;
+          }
+          assert.ok(seen.size > 1 || spotlightSeen,
+            'cycle progression resumes after close (states=' + Array.from(seen).join(',') + ', spotlight=' + spotlightSeen + ')');
+          assert.strictEqual(env.pageErrors.length, 0, `no page errors, got: ${env.pageErrors.join(', ')}`);
+        } finally {
+          await teardown(env);
+        }
+      });
+
+      // -----------------------------------------------------------------
+      // Group H — structural integrity: duplicates and overflow.
+      // -----------------------------------------------------------------
+      await t.test('H1. duplicate modal/iframe is zero', async () => {
+        const env = await newModalPage(browser, vp, baseUrl, {});
+        try {
+          const { page } = env;
+          env.ctl.setMode('pending');
+          await openModal(page);
+          // Second open attempt while a modal already exists.
+          await page.evaluate(() => { document.querySelector('.growth-stage-card-media').click(); });
+          await page.waitForTimeout(120);
+          assert.strictEqual(await page.locator('.hero-video-modal').count(), 1, 'exactly one modal');
+          assert.strictEqual(await page.locator('.hero-video-modal iframe').count(), 1, 'exactly one iframe');
+        } finally {
+          await teardown(env);
+        }
+      });
+
+      await t.test('H2. no horizontal overflow or clipping', async () => {
+        const env = await newModalPage(browser, vp, baseUrl, {});
+        try {
+          const { page } = env;
+          env.ctl.setMode('pending');
+          await openModal(page);
+          const overflow = await page.evaluate(() => ({
+            bodyScrollWidth: document.body.scrollWidth,
+            bodyClientWidth: document.body.clientWidth,
+            htmlScrollWidth: document.documentElement.scrollWidth,
+            htmlClientWidth: document.documentElement.clientWidth,
+          }));
+          assert.ok(overflow.bodyScrollWidth <= overflow.bodyClientWidth + 1, 'body has no horizontal overflow');
+          assert.ok(overflow.htmlScrollWidth <= overflow.htmlClientWidth + 1, 'html has no horizontal overflow');
+        } finally {
+          await teardown(env);
+        }
+      });
     });
   }
 });
