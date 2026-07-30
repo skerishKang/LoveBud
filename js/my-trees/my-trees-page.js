@@ -141,7 +141,7 @@
 
   function hideStateSection(el) {
     if (!el) return;
-    el.style.display = '';
+    el.hidden = true;
     el.classList.remove('state-visible', 'state-visible-block');
     el.classList.add('state-hidden');
     el.setAttribute('aria-hidden', 'true');
@@ -150,7 +150,7 @@
   function showStateSection(el, stateName) {
     var displayClass = STATE_DISPLAY_CLASS[stateName];
     if (!el || !displayClass) return;
-    el.style.display = '';
+    el.hidden = false;
     el.classList.remove('state-hidden', 'state-visible', 'state-visible-block');
     el.classList.add(displayClass);
     el.removeAttribute('aria-hidden');
@@ -219,11 +219,13 @@
     switch (stage) {
       case 'init':
         // 0-500ms: hidden
+        loadingEl.hidden = true;
         loadingEl.classList.add('state-hidden');
         loadingEl.classList.remove('state-visible', 'state-visible-block');
         break;
       case 'indicator':
         // 500-2000ms: visible with indicator but no explanatory copy
+        loadingEl.hidden = false;
         loadingEl.classList.remove('state-hidden');
         loadingEl.classList.add('state-visible');
         loadingEl.classList.remove('lt-long-wait', 'lt-error-shell');
@@ -240,19 +242,25 @@
         break;
       case 'error':
         // 15000ms+: visible error/retry state
-        loadingEl.classList.remove('lt-long-wait');
+        loadingEl.hidden = true;
         loadingEl.classList.add('state-hidden');
+        loadingEl.classList.remove('state-visible', 'state-visible-block');
         // Show the actual error section instead
         var errorSection = document.getElementById('state-error');
         if (errorSection) {
           showStateSection(errorSection, 'error');
           _applyErrorStateMessage('network');
         }
+        // Remove aria-busy from the state-region owner
+        var container = document.getElementById('treesContainer');
+        if (container) container.removeAttribute('aria-busy');
         break;
       case 'ready':
       case 'disposed':
         // Reset state
-        loadingEl.classList.remove('lt-long-wait', 'lt-error-shell');
+        loadingEl.hidden = true;
+        loadingEl.classList.add('state-hidden');
+        loadingEl.classList.remove('state-visible', 'state-visible-block', 'lt-long-wait', 'lt-error-shell');
         break;
     }
   }
@@ -286,6 +294,8 @@
 
     switch (newState) {
       case STATE.LOADING:
+        // Set aria-busy on the single state-region owner
+        container.setAttribute('aria-busy', 'true');
         // 0-500ms: start manager FIRST, then capture token, then explicitly hide
         // This avoids the race where onStateChange('init', gen) fires before
         // currentLoadingGeneration is assigned.
@@ -300,6 +310,8 @@
         }
         break;
       case STATE.ERROR:
+        // Remove aria-busy: terminal state reached
+        container.removeAttribute('aria-busy');
         if (sections.error) {
           showStateSection(sections.error, 'error');
           _applyErrorStateMessage(meta && meta.errorType);
@@ -311,6 +323,8 @@
         currentLoadingGeneration = null;
         break;
       case STATE.EMPTY:
+        // Remove aria-busy: terminal state reached
+        container.removeAttribute('aria-busy');
         showStateSection(sections.empty, 'empty');
         // Stop loading manager with persistent token
         if (_loadingManager && currentLoadingGeneration !== null) {
@@ -319,6 +333,8 @@
         currentLoadingGeneration = null;
         break;
       case STATE.LOADED:
+        // Remove aria-busy: terminal state reached
+        container.removeAttribute('aria-busy');
         showStateSection(sections.loaded, 'loaded');
         // Stop loading manager with persistent token
         if (_loadingManager && currentLoadingGeneration !== null) {
