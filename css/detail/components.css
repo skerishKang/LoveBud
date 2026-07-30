@@ -103,3 +103,10 @@
     text-transform: uppercase;
     letter-spacing: 0.08em;
 }
+
+@media (prefers-reduced-motion: reduce) {
+    .detail-media-loading .material-symbols-outlined {
+        animation: none;
+        transition: none;
+    }
+}
