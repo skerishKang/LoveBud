@@ -80,14 +80,14 @@ Dispositions: `SOURCE_CONFIRMED`, `PARTIAL_COVERAGE`, `MISSING_COVERAGE`, `PAGE_
 | `css/editor/editor-detail-content/detail-info.css:88-97` | `.memory-preview-overlay .play-btn:focus-visible` | Media play | `outline: 3px solid var(--primary, #904951)` (matches mobile) | `outline` authority (3px, variable+fallback) | No authored forced-colors override | Hover/active: background swap only | `var(--primary)` defined in `tokens.css`. `outline` renders in WHCM with UA automatic system-color adjustment. | `PARTIAL_COVERAGE` |
 | `css/editor/editor-detail-edit/form-fields.css:101-105` | `.editor-form-input:focus`, `.editor-form-textarea:focus` | Text entry | `outline: none` + `border-color` + `box-shadow` | `box-shadow` only | Zero | Error: not defined on these selectors | **High**: `outline: none` replaced with `box-shadow` only. In WHCM, `box-shadow` is `none` — visible focus indicator lost. Element remains focusable. | `MISSING_COVERAGE` |
 | `css/editor/editor-sidebar.css:52-54, 102-104` | `.editor-rail-collapse-btn:focus-visible`, `.editor-sidebar-back-link:focus-visible` | Rail collapse / back | `outline: 2px solid rgba(144, 73, 81, 0.4 / 0.35)` | `outline` authority (2px, literal rgba) | No authored forced-colors override | Disabled: not defined | `outline` renders in WHCM with UA automatic system-color adjustment. No authored forced-colors override. | `PARTIAL_COVERAGE` |
-| `css/editor/editor-memory-node.css:181-183` | `.memory-node:focus-visible .node-card` | Memory node card | `outline: 2px solid rgba(144, 73, 81, 0.36)` | `outline` authority (2px, literal rgba) | Zero | Selected: not defined | Focus targets card inside node, not the interactive node itself. `outline` renders in WHCM with system color override. | `PARTIAL_COVERAGE` |
+| `css/editor/editor-memory-node.css:181-183` | `.memory-node:focus-visible .node-card` | Memory node card | `outline: 2px solid rgba(144, 73, 81, 0.36)` | `outline` authority (2px, literal rgba) | Zero | Selected: not defined | Focus targets card inside node, not the interactive node itself. `outline` renders in WHCM with UA automatic system-color adjustment. | `PARTIAL_COVERAGE` |
 
 ### 5. Settings controls
 
 | Source file | Selector | Role | focus-visible | outline/box-shadow/border | forced-colors | selected/disabled/error | keyboard risk | Disposition |
 |---|---|---|---|---|---|---|---|---|
 | `css/settings/components.css:31-34` | `.settings-close-btn:focus-visible` | Close/modal dismiss | `outline: 2px solid var(--primary)` | `outline` authority (2px, variable) | No authored forced-colors override | Disabled: not defined | `var(--primary)` defined in `tokens.css`. `outline` renders in WHCM with UA automatic system-color adjustment. | `SOURCE_CONFIRMED` |
-| `css/settings/components.css:255-258` | `.logout-btn:focus-visible` | Logout | `outline: 2px solid var(--primary)` | `outline` authority (2px, variable) | Zero | Disabled: not defined for logout | `var(--primary)` defined in `tokens.css`. `outline` renders in WHCM with system color override. | `SOURCE_CONFIRMED` |
+| `css/settings/components.css:255-258` | `.logout-btn:focus-visible` | Logout | `outline: 2px solid var(--primary)` | `outline` authority (2px, variable) | Zero | Disabled: not defined for logout | `var(--primary)` defined in `tokens.css`. `outline` renders in WHCM with UA automatic system-color adjustment. | `SOURCE_CONFIRMED` |
 | `css/settings/components.css:321-324` | `.settings-profile-name-input:focus` | Profile name input | `outline: 2px solid var(--focus-color, #4a90d9)` | `outline` authority (2px, variable+fallback) | No authored forced-colors override | Error: `.settings-profile-edit-status--error` color change only | `var(--focus-color)` is not defined in tokens. `outline` renders in WHCM with UA automatic system-color adjustment. | `PARTIAL_COVERAGE` |
 | `css/settings/components.css:327-365` | `.settings-profile-edit-save`, `.settings-profile-edit-cancel` | Form action (save/cancel) | **No product-specific `:focus` or `:focus-visible` defined** | None — native outline not suppressed | Zero | Disabled: `:disabled` opacity 0.5 | No product-specific focus treatment. UA default focus styling remains available (native `outline` not removed). Source-only audit cannot prove missing visible focus. | `UNRESOLVED` |
 | `css/settings/base.css` | Settings page shell | Page structure | Native focus (not removed) | Native `outline` | Zero | N/A | Low — native focus preserved | `NOT_APPLICABLE` |
@@ -96,9 +96,9 @@ Dispositions: `SOURCE_CONFIRMED`, `PARTIAL_COVERAGE`, `MISSING_COVERAGE`, `PAGE_
 
 | Source file | Selector | Role | focus-visible | outline/box-shadow/border | forced-colors | selected/disabled/error | keyboard risk | Disposition |
 |---|---|---|---|---|---|---|---|---|
-| `css/my-trees/my-trees-create-modal.css:9` | `.create-tree-modal-close` | Modal dismiss (icon-only) | **No product-specific `:focus` or `:focus-visible` defined** | None — native outline not suppressed | Zero | Hover: background swap only | No product-specific focus treatment. UA default focus styling remains available (native `outline` not removed). Icon-only button lacks accessible name — separate a11y gap. | `UNRESOLVED` |
+| `css/my-trees/my-trees-create-modal.css:9` | `.create-tree-modal-close` | Modal dismiss (icon-only) | **No product-specific `:focus` or `:focus-visible` defined** | None — native outline not suppressed | Zero | Hover: background swap only | No product-specific focus treatment. UA default focus styling remains available (native `outline` not removed). `aria-label="닫기"` present in `pages/my-trees.html`. | `UNRESOLVED` |
 | `css/my-trees/my-trees-create-modal.css:28-31` | `.create-tree-modal-btn` (primary, secondary) | Modal action | **No product-specific `:focus` or `:focus-visible` defined** | None — native outline not suppressed | Zero | Disabled: `:disabled` opacity 0.65; selected: N/A | No product-specific focus treatment. UA default focus styling remains available (native `outline` not removed). Source-only audit cannot prove missing visible focus. | `UNRESOLVED` |
-| `css/my-trees/my-trees-create-modal.css:21-24` | `.create-tree-visibility-option input:checked + .create-tree-visibility-card` | Visibility radio card | Uses native radio focus via `input:focus-visible` (inherit, not styled) | Native UA `outline` (not removed) | Zero | Checked: border/background swap; error: not defined | Native radio remains keyboard-accessible; card visual does not signal focus | `PARTIAL_COVERAGE` |
+| `css/my-trees/my-trees-create-modal.css:21-24` | `.create-tree-visibility-option input:checked + .create-tree-visibility-card` | Visibility radio card | `opacity: 0` on input; no `:focus-visible + .create-tree-visibility-card` rule | Native UA `outline` (not removed) but hidden control focus not surfaced to card | Zero | Checked: border/background swap; error: not defined | **Hidden-control focus visibility gap**: input is `opacity: 0` and keyboard-focusable, but no sibling/card rule surfaces focus visibility. Native radio remains keyboard-accessible; card visual does not signal focus. Separate from the 10 verified outline:none/box-shadow families. | `PARTIAL_COVERAGE` |
 | `css/index/visual/growth-stage.css:781-787` | `.hero-video-modal-close:focus-visible` | Video modal dismiss | `outline: 2px solid rgba(255,255,255,0.85)` | `outline` authority (2px, literal rgba) | No authored forced-colors override | Hover: scale + background swap | `outline` renders in WHCM with UA automatic system-color adjustment. White author color not preserved — visibility depends on system color selection (dark overlay + dark system color may reduce contrast). | `PARTIAL_COVERAGE` |
 | `css/index/visual/growth-stage.css:903-907` | `.hero-video-modal-retry-btn:focus-visible` | Video modal retry | `outline: 2px solid rgba(255,255,255,0.3)` | `outline` authority (2px, low-opacity literal) | No authored forced-colors override | Disabled: not defined | Very low opacity (0.3) — low contrast even in normal mode. `outline` renders in WHCM with UA automatic system-color adjustment. | `PARTIAL_COVERAGE` |
 | `css/editor/editor-overrides.css:654-671` | `.editor-rename-modal-input:focus` | Rename input | `outline: none` + `box-shadow: 0 0 0 4px rgba(...)` | `box-shadow` only (4px) | Zero | Error: `.editor-rename-modal-error` text only | **High**: `outline: none` replaced with `box-shadow` only. In WHCM, `box-shadow` is `none` — visible focus indicator lost. Element remains focusable. | `MISSING_COVERAGE` |
@@ -108,12 +108,12 @@ Dispositions: `SOURCE_CONFIRMED`, `PARTIAL_COVERAGE`, `MISSING_COVERAGE`, `PAGE_
 
 | Source file | Selector | Role | focus-visible | outline/box-shadow/border | forced-colors | selected/disabled/error | keyboard risk | Disposition |
 |---|---|---|---|---|---|---|---|---|
-| `css/my-trees/my-trees-create-modal.css:9` | `.create-tree-modal-close` | Modal dismiss (icon-only) | **See modal section** | None | Zero | Hover: color/background swap | No accessible label or focus ring | `MISSING_COVERAGE` |
+| `css/my-trees/my-trees-create-modal.css:9` | `.create-tree-modal-close` | Modal dismiss (icon-only) | **See modal section** | None — native outline not suppressed | Zero | Hover: color/background swap | `aria-label="닫기"` present in `pages/my-trees.html`. Native outline not removed; UA default focus available. No product-specific focus treatment. | `UNRESOLVED` |
 | `css/settings/components.css:1-34` | `.settings-close-btn:focus-visible` | Settings close (icon+glyph) | `outline: 2px solid var(--primary)` | `outline` authority | Zero | Hover: border/color/background | Has glyph text fallback, has focus ring | `SOURCE_CONFIRMED` |
 | `css/editor/editor-canvas-toolbar/buttons.css:44-47` | `.editor-canvas-tool-btn:focus-visible` | Canvas toolbar (icon+label variants) | `outline: 2px solid var(--control-focus-ring)` | `outline` authority | Zero | Disabled: opacity; active: `.is-active` swap | Wide variant has label text; narrow is icon-only with tooltip | `PARTIAL_COVERAGE` |
 | `css/editor/editor-floating-toolbar/toolbar.css:74-77` | `.editor-floating-toolbar-btn:focus-visible` | Floating toolbar (icon+label) | `outline: 2px solid var(--control-focus-ring)` | `outline` authority | Zero | Disabled: opacity | Has label text — not truly icon-only | `PARTIAL_COVERAGE` |
 | `css/search/search-preview-social-bar.css:62-66` | `.preview-social-action:not([disabled]):focus-visible` | Social action (icon+optional text) | `outline: none` (line 66) after `background` swap via `:focus-visible` | `outline: none` | Zero | Disabled: `[disabled]` excluded; selected: not defined | Hover style copies to focus, then outline removed | `MISSING_COVERAGE` |
-| `css/index/visual/growth-stage.css:406-413` | `.growth-stage-card-play:focus-visible` | Home play button (icon-only overlay) | `outline: 2px solid rgba(255,255,255,0.85)` | `outline` authority | Zero | Hover: scale transform; disabled: not defined | `outline` renders in WHCM with system color override; white author color not preserved. May produce inadequate contrast on dark overlay depending on system color selection. | `PAGE_OWNED` |
+| `css/index/visual/growth-stage.css:406-413` | `.growth-stage-card-play:focus-visible` | Home play button (icon-only overlay) | `outline: 2px solid rgba(255,255,255,0.85)` | `outline` authority | Zero | Hover: scale transform; disabled: not defined | `outline` renders in WHCM with UA automatic system-color adjustment; white author color not preserved. May produce inadequate contrast on dark overlay depending on system color selection. | `PAGE_OWNED` |
 
 ### 8. Destructive controls
 
@@ -148,26 +148,26 @@ Dispositions: `SOURCE_CONFIRMED`, `PARTIAL_COVERAGE`, `MISSING_COVERAGE`, `PAGE_
 
 **Important WHCM distinction:** `box-shadow` is rendered as `none` in WHCM — box-shadow-only focus indicators are genuinely invisible. `outline` with an author color continues to render in WHCM, but the user agent applies UA automatic forced-color adjustment: `outline-color` is mapped to a system color (typically `Highlight` or `CanvasText`). The outline's structure (width, style, offset) is preserved; only the color is adjusted. Static source alone cannot prove that the resulting system-color outline provides adequate contrast — runtime verification is required.
 
-### 2. `outline: none` — raw declaration count vs. verified defect count
+### 2. `outline: none` — raw declaration count vs. verified control-family count
 
-**Raw declaration count:** 27 locations use `outline: none` in CSS files.
+**Raw declaration count:** 27 `outline: none` declarations exist in CSS files. This is a raw count, not a verified defect count.
 
-**Verified high-risk selectors** (meet all three conditions: native outline removed, replacement is `box-shadow`-only or absent, no surviving non-color focus cue):
+**Verified high-risk control families** (meet all three conditions: native outline removed, replacement is `box-shadow`-only or absent, no surviving non-color focus cue):
 
-| Selector | File | Replacement |
+| Control family | File(s) | Replacement |
 |---|---|---|
 | `.editor-retry-button:focus-visible` | `editor-overrides.css:516-520` | None (background swap only) |
 | `.editor-comment-toggle:focus-visible` | `editor-overrides.css:544-547` | None (background swap only) |
-| `.editor-like-button:focus-visible` | `editor-overrides.css:753-757` | None (background swap only) |
-| `.editor-like-button.is-pressed:focus-visible` | `editor-overrides.css:775-778` | None (no ring added) |
+| `.editor-like-button:focus-visible` / `.is-pressed:focus-visible` | `editor-overrides.css:753-757, 775-778` | None (background swap only; one control family) |
 | `.editor-moment-reaction:focus-visible` | `editor-detail-comments.css:57-62` | None (border/background swap) |
+| `.preview-social-action:focus-visible` | `search-preview-social-bar.css:62-66` | None (background swap only) |
 | `.search-input:focus` / `:focus-visible` | `search-controls.css` | `box-shadow` only |
 | `.browse-sort-select:focus-visible` | `search-controls.css` | `box-shadow` only |
+| `.create-tree-input:focus` | `my-trees-create-modal.css:15` | `box-shadow` only |
 | `.editor-form-input:focus` | `form-fields.css:101-105` | `box-shadow` only |
 | `.editor-rename-modal-input:focus` | `editor-overrides.css:668-671` | `box-shadow` only |
-| `.preview-social-action:focus-visible` | `search-preview-social-bar.css:62-66` | None (background swap only) |
 
-**10 verified high-risk selectors** (5 box-shadow-only, 5 outline suppression with no surviving replacement) where visible focus indicator is lost in WHCM. Remaining `outline: none` locations may have adequate alternative indicators (border-color, background, or adjacent element styling) but require per-selector verification.
+**10 verified high-risk control families** (5 box-shadow-only, 5 outline suppression with no surviving replacement) where visible focus indicator is lost in WHCM. Remaining `outline: none` locations may have adequate alternative indicators (border-color, background, or adjacent element styling) but require per-selector verification.
 
 The element remains focusable (keyboard reachable, `:focus-visible` fires) — but the user cannot see where focus is.
 
@@ -183,7 +183,7 @@ In WHCM, `box-shadow` is rendered as `none`. These locations use `box-shadow` as
 | `css/editor/editor-overrides.css:668-671` | `.editor-rename-modal-input:focus` | Visible focus indicator lost in WHCM |
 | `css/editor/editor-detail-edit/form-fields.css:101-105` | `.editor-form-input:focus` | Visible focus indicator lost in WHCM |
 
-### 4. `2px` is the universal custom-outline width
+### 4. `2px` is the dominant custom-outline width
 
 Every custom focus outline uses exactly `2px` (except one `3px` outlier for the play button). `2px` is not a universal WCAG success criterion — the required visible thickness depends on contrast ratio, WHCM `CanvasText` rendering, and `outline-offset`.
 
@@ -243,7 +243,7 @@ Secondary action and focus treatment decisions were aligned per design review. N
 2. **`outline` vs `box-shadow` must be distinguished for WHCM**:
    - `outline` structure (width, style, offset) is **preserved** in WHCM. Only `outline-color` is subject to system override. An element with `outline: 2px solid var(--x)` remains visibly outlined in WHCM — with a system color instead of the author color.
    - `box-shadow` is **rendered as `none`** in WHCM. Any focus indicator that relies solely on `box-shadow` (without `outline` fallback) loses its visible indicator.
-   - Therefore: `box-shadow`-only focus = high risk. Explicit `outline` with author color = partially covered (system color fallback is automatic, but author intent is lost).
+   - Therefore: `box-shadow`-only focus = high risk. Explicit `outline` with author color = partially covered (UA automatic system-color adjustment applies, but author intent is lost).
    - Static source cannot prove that the resulting system-color outline provides adequate contrast — that requires runtime verification.
 
 3. **`box-shadow` alone is not a valid forced-colors support claim**: Every `box-shadow`-only focus indicator loses visibility in WHCM (spec-confirmed: `box-shadow` renders as `none`). Default remediation: remove native outline suppression, add solid `outline`, add a non-color cue that survives WHCM, or use an authored system-color rule. `forced-color-adjust: none` is not a default remediation — it is reviewed only when a component provides a complete accessible alternative style and passes runtime WHCM verification.
@@ -252,7 +252,7 @@ Secondary action and focus treatment decisions were aligned per design review. N
 
 5. **`ICON_ONLY` is a presentation modifier, not a semantic class**: Icon-only controls (`.create-tree-modal-close`, `.editor-canvas-tool-btn` with no label) are not classified as a separate semantic role. Their focus treatment must match their interactive role (button, link, toggle). The accessibility deficiency is the missing label, not the icon nature.
 
-## Future child candidates (maximum 4)
+## Future child candidates (maximum 4; 3 defined)
 
 ### Child 1: `--control-focus-ring` token definition + global focus ring baseline
 
@@ -264,40 +264,29 @@ Secondary action and focus treatment decisions were aligned per design review. N
 | Stop condition | `tokens.css` contains `--control-focus-ring` definition, `global.css` uses it via `var(--control-focus-ring)`, all literal rgba focus-ring colors in `global.css` shared rules replaced. |
 | Risk | Low — token addition is non-breaking; consumer replacement is mechanical |
 | Dependencies | None |
-| Blocks | Children 2, 3 |
+| Blocks | Child 2, Child 3 |
 
-### Child 2: `outline: none` / `box-shadow`-only forced-colors remediation
-
-| Field | Value |
-|---|---|
-| Verified defect | 27 locations use `outline: none` on interactive elements. 5 locations use `box-shadow` as sole focus indicator. In WHCM, `box-shadow` is `none` — these elements lose visible focus indicator. Element remains focusable. |
-| Minimum expected file scope | `css/editor/editor-overrides.css`, `css/editor/editor-detail-comments.css`, `css/search/search-controls.css`, `css/search/search-preview-social-bar.css`, `css/editor/editor-detail-edit/form-fields.css`, `css/my-trees/my-trees-create-modal.css`, `css/editor/editor-canvas.css`, `css/editor/editor-detail-content/detail-info.css`, `css/editor/editor-memory-edit.css`, `css/components/lovebud-ai-panel.css`, `css/chat-first-workspace/*.css` |
-| Implementation prerequisite | Each `outline: none` must gain an `outline` fallback or be removed. `box-shadow`-only focus must add `outline` as primary indicator. |
-| Stop condition | Zero `outline: none` on interactive elements without WHCM-safe replacement. Zero `box-shadow`-only focus indicators. |
-| Risk | Medium — 27 locations require per-selector remediation (outline restoration, solid outline addition, or non-color cue). `forced-color-adjust: none` is not a default fix; it requires complete alternative styling and runtime WHCM verification. |
-| Dependencies | Child 1 (so remediation uses the token) |
-
-### Child 3: `@media (forced-colors)` baseline for verified failures
+### Child 2: Verified focus-indicator remediation (10 control families)
 
 | Field | Value |
 |---|---|
-| Verified defect | 10 verified high-risk selectors: 5 box-shadow-only (visible focus indicator lost in WHCM per spec), 5 outline suppression with no surviving replacement. Elements with `outline` preserve structure — author color override is UA adjustment, not a defect. |
-| Minimum expected file scope | `css/editor/editor-overrides.css` (retry/comment/like/reaction), `css/search/search-controls.css` (search-input, sort-select), `css/editor/editor-detail-edit/form-fields.css`, `css/search/search-preview-social-bar.css` |
-| Implementation prerequisite | None — remediation can use existing tokens or system-color keywords directly. |
-| Stop condition | Every verified high-risk selector has a WHCM-safe visible focus indicator. Must be confirmed by runtime WHCM test (browser-level verification). |
-| Risk | Low — additive `@media (forced-colors)` blocks for verified failures only |
-| Dependencies | None (can proceed independently of Child 1) |
+| Verified defect | 10 verified high-risk control families (5 box-shadow-only, 5 outline suppression with no surviving replacement). In WHCM, `box-shadow` is `none` and suppressed outlines have no replacement — visible focus indicator lost. Element remains focusable. Note: 27 is the raw CSS `outline: none` declaration count across all files; only the 10 verified families below are the bounded remediation scope. |
+| Minimum expected file scope | `css/editor/editor-overrides.css` (retry, comment, like, rename-input), `css/editor/editor-detail-comments.css` (reaction), `css/search/search-controls.css` (search-input, sort-select), `css/search/search-preview-social-bar.css` (social-action), `css/editor/editor-detail-edit/form-fields.css` (form-input), `css/my-trees/my-trees-create-modal.css` (create-tree-input) |
+| Implementation prerequisite | Remove native outline suppression or add solid `outline`; add non-color cue that survives WHCM; use authored system-color rule where needed. `forced-color-adjust: none` is not a default fix; it requires complete alternative styling and runtime WHCM verification. |
+| Stop condition | All 10 verified high-risk control families have a WHCM-safe visible focus indicator (solid outline or non-color cue). Confirmed by runtime WHCM test (browser-level verification). |
+| Risk | Medium — 10 families across 6 files; per-selector remediation required |
+| Dependencies | Child 1 (so remediation uses the token where applicable) |
 
-### Child 4: Selected/disabled/error state distinction for forced-colors
+### Child 3: Selected/disabled/error state distinction for forced-colors
 
 | Field | Value |
 |---|---|
 | Verified defect | Per-category source-confirmed classification: opacity-based disabled — opacity difference survives forced-colors in source terms (runtime adequacy unverified); font-weight-based pressed — font-weight difference survives; color/background/border-only selected — author color overridden by system color, state distinction may collapse (verified selectors: `.love-tree-card-selected`, `.tag-chip.active`, `.create-tree-visibility-card input:checked + card`); color-only error — state distinction may collapse (verified selectors: `.editor-rename-modal-error`, `.settings-profile-edit-status--error`); native form-control state — UA forced-colors handling exists, source-only audit cannot assert failure. |
 | Minimum expected file scope | `css/global/tokens.css` (if new state tokens needed), `css/shared/love-tree-card-composition.css`, `css/search/search-controls.css`, `css/editor/editor-overrides.css` |
-| Implementation prerequisite | Child 1 (tokens), Child 3 (forced-colors baseline) |
+| Implementation prerequisite | Child 1 (tokens), Child 2 (focus-indicator remediation) |
 | Stop condition | Verified selected/error selectors (`.love-tree-card-selected`, `.tag-chip.active`, `.create-tree-visibility-card input:checked + card`, `.editor-rename-modal-error`, `.settings-profile-edit-status--error`) gain a WHCM-safe secondary indicator (border style, underline, icon, or `text-decoration`) beyond color. Confirmed by runtime WHCM test. |
 | Risk | Medium — depends on design decisions per component family |
-| Dependencies | Child 1, Child 3 |
+| Dependencies | Child 1, Child 2 |
 
 ## Summary
 
@@ -306,7 +295,7 @@ Secondary action and focus treatment decisions were aligned per design review. N
 | Shared buttons | 4 primary selectors | Yes (shared rule) | None authored; UA automatic system-color adjustment applies | `--control-focus-ring` not in `tokens.css` (defined in `global.css`); `outline` renders in WHCM but author color overridden by UA adjustment |
 | Search/filter | 4 selectors | Yes (both input and sort have `:focus-visible`, but WHCM risk remains) | None authored; UA automatic adjustment applies | 2 `box-shadow`-only verified high-risk (`.search-input`, `.browse-sort-select`); `.tag-chip` has `outline` preserved |
 | Card links & actions | 6 selectors | Yes (card+link) | None authored; UA automatic adjustment applies | `outline` renders in WHCM with UA automatic system-color adjustment; 3 distinct literal rgba colors used |
-| Editor controls | 15+ selectors | Partial (7 verified high-risk outline:none) | None authored; UA automatic adjustment applies | 7 verified high-risk selectors (5 with no replacement, 2 box-shadow-only); 6 with explicit `outline` preserved |
+| Editor controls | 15+ selectors | Partial (6 verified high-risk control families) | None authored; UA automatic adjustment applies | 6 verified high-risk control families (4 no replacement, 2 box-shadow-only); 6 with explicit `outline` preserved |
 | Settings controls | 4 selectors | Partial (2 have explicit outline, 2 have no product-specific focus) | None authored; UA automatic adjustment applies | 2 confirmed patterns (outline with var(--primary)); 2 unresolved (no product-specific focus, UA default available) |
 | Modal/dialog | 8 selectors | 3 have explicit outline, 3 unresolved (UA default), 2 box-shadow-only | None authored; UA automatic adjustment applies | 3 with outline preserved in WHCM; 3 unresolved (no native outline suppression); 2 verified high-risk (rename input box-shadow, create-tree-input box-shadow) |
 | Icon-only | 6 selectors | 3 have explicit outline, 1 outline:none, 2 unresolved | None authored; UA automatic adjustment applies | `.create-tree-modal-close` unresolved (no native outline suppression); `.preview-social-action` verified high-risk (outline:none) |
