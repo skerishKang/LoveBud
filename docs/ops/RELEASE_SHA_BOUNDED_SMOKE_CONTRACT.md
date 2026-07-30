@@ -31,7 +31,7 @@ MATCH | MISMATCH | UNKNOWN | NOT_EXPOSED
 ```
 
 - `expected_release_sha` — the canonical source SHA from the merged `main` commit at the time of release. Required for every smoke artifact.
-- `observed_release_sha` — the SHA actually observed at the serving endpoint. `UNKNOWN` when no observation was made; `NOT_EXPOSED` when the serving endpoint does not expose a SHA (e.g. Cloudflare Pages does not currently expose it).
+- `observed_release_sha` — the SHA actually observed at the serving endpoint. `UNKNOWN` when no observation was made; `NOT_EXPOSED` when no serving-SHA exposure mechanism is defined in repository source.
 - `release_match_state` — the comparison result between expected and observed. `NOT_EXPOSED` when the observed SHA is not available for comparison.
 
 ### 1.2 Prohibited
@@ -50,7 +50,13 @@ MATCH | MISMATCH | UNKNOWN | NOT_EXPOSED
 3. If Production is stale, record observation and stop.
 4. No manual deployment or Cloudflare mutation without owner explicit request.
 
-`UNRESOLVED`: Cloudflare Pages does not expose the serving SHA through any documented response header or public endpoint accessible from repository evidence. A separately approved mechanism would be required to make the observed SHA observable.
+`UNRESOLVED`: No serving-SHA exposure mechanism is defined in current repository source, response contracts, or operating evidence.
+
+Provider-native behavior:
+UNRESOLVED
+
+Provider investigation:
+outside this source-only child
 
 ---
 
@@ -80,11 +86,11 @@ Routes are canonicalized by `_redirects` from `.html` and `.html/` to extensionl
 
 | Operation code | Asset | Source path |
 |---|---|---|
-| `STATIC_GLOBAL_CSS` | Global stylesheet | `css/global.css` or equivalent entry |
-| `STATIC_HOME_ENTRY` | Home page entry JS | `js/index.js` or equivalent |
-| `STATIC_BROWSE_ENTRY` | Browse page entry JS | `js/search/` or equivalent |
-| `STATIC_EDITOR_ENTRY` | Editor page entry JS | `js/editor/` or equivalent |
-| `STATIC_VIEWER_ENTRY` | Public viewer entry JS | `js/tree/` or equivalent |
+| `STATIC_GLOBAL_CSS` | Global stylesheet | `/css/global.css` |
+| `STATIC_HOME_ENTRY` | Home page entry JS | `/js/index.js` |
+| `STATIC_BROWSE_ENTRY` | Browse page entry JS | `/js/search/index.js` |
+| `STATIC_EDITOR_ENTRY` | Editor page entry JS | `/js/editor.js` |
+| `STATIC_VIEWER_ENTRY` | Public viewer entry JS | `/js/viewer/tree-viewer.js` |
 
 ### 2.3 Same-origin API surfaces
 
@@ -154,7 +160,23 @@ Expected policy rejections (e.g. `AUTH_GUARD_EXPECTED_REJECTION` returning HTTP 
 | `ROUTE_LOGIN` | Deployed URL supplied | `GET /login` | HTTP 200, `<body>` present | HTTP status, route template | Response HTML, user state, auth tokens, OAuth parameters | None (public page) | Same as `ROUTE_HOME` | Expected HTTP 2xx + body. |
 | `ROUTE_INTRO` | Deployed URL supplied | `GET /intro` | HTTP 200, `<body>` present | HTTP status, route template | Response HTML, user state | None (public page) | Same as `ROUTE_HOME` | Expected HTTP 2xx + body. |
 
-`OBSERVED_CURRENT_FACT`: Current supplied-URL smoke (`scripts/cloudflare-supplied-url-smoke.cjs`) covers only 3 routes (`ROUTE_HOME`, `ROUTE_INTRO`, `ROUTE_BROWSE`). The remaining 6 routes have no deployed-URL smoke (`docs/operations/RELEASE_SMOKE_RUNTIME_OBSERVABILITY_AUDIT.md` §4.3, §4.4 gap 9).
+`OBSERVED_CURRENT_FACT`: Current supplied-URL smoke (`scripts/cloudflare-supplied-url-smoke.cjs`) covers only 3 routes (`ROUTE_HOME`, `ROUTE_INTRO`, `ROUTE_BROWSE`). The script validates the following actual paths:
+
+```text
+/
+/pages/intro.html
+/pages/search.html
+```
+
+The proposed bounded contract canonical routes are:
+
+```text
+/
+/intro
+/search
+```
+
+The current script does not validate extensionless routes. The remaining 6 routes have no deployed-URL smoke (`docs/operations/RELEASE_SMOKE_RUNTIME_OBSERVABILITY_AUDIT.md` §4.3, §4.4 gap 9).
 
 ### 4.2 Static asset surfaces
 
@@ -162,21 +184,87 @@ Expected policy rejections (e.g. `AUTH_GUARD_EXPECTED_REJECTION` returning HTTP 
 |---|---|---|---|---|---|---|---|---|
 | `STATIC_GLOBAL_CSS` | Deployed URL supplied | `GET /css/global.css` | HTTP 200, `content-type: text/css` | HTTP status, asset path template, latency bucket | Asset content, CDN cache internals | None | `LB_STATIC_ASSET_MISSING_ASSET`, `LB_STATIC_ASSET_TIMEOUT` | Expected HTTP 2xx. |
 | `STATIC_HOME_ENTRY` | Deployed URL supplied | `GET /js/index.js` | HTTP 200, `content-type: application/javascript` | HTTP status, asset path template | Asset content, cache-busting hash value | None | Same as above | Expected HTTP 2xx. |
-| `STATIC_BROWSE_ENTRY` | Deployed URL supplied | `GET /js/search/search.js` | HTTP 200, `content-type: application/javascript` | HTTP status, asset path template | Asset content | None | Same as above | Expected HTTP 2xx. |
-| `STATIC_EDITOR_ENTRY` | Deployed URL supplied | `GET /js/editor/editor.js` | HTTP 200, `content-type: application/javascript` | HTTP status, asset path template | Asset content | None | Same as above | Expected HTTP 2xx. |
-| `STATIC_VIEWER_ENTRY` | Deployed URL supplied | `GET /js/tree/tree.js` | HTTP 200, `content-type: application/javascript` | HTTP status, asset path template | Asset content | None | Same as above | Expected HTTP 2xx. |
+| `STATIC_BROWSE_ENTRY` | Deployed URL supplied | `GET /js/search/index.js` | HTTP 200, `content-type: application/javascript` | HTTP status, asset path template | Asset content | None | Same as above | Expected HTTP 2xx. |
+| `STATIC_EDITOR_ENTRY` | Deployed URL supplied | `GET /js/editor.js` | HTTP 200, `content-type: application/javascript` | HTTP status, asset path template | Asset content | None | Same as above | Expected HTTP 2xx. |
+| `STATIC_VIEWER_ENTRY` | Deployed URL supplied | `GET /js/viewer/tree-viewer.js` | HTTP 200, `content-type: application/javascript` | HTTP status, asset path template | Asset content | None | Same as above | Expected HTTP 2xx. |
 
-`OBSERVED_CURRENT_FACT`: No HTTP-level static asset smoke currently exists. `tests/smoke/routes.test.cjs` asserts file existence only (`docs/operations/RELEASE_SMOKE_RUNTIME_OBSERVABILITY_AUDIT.md` §4.2). Asset path names above are representative — exact paths must be confirmed by a future child.
+`OBSERVED_CURRENT_FACT`: No HTTP-level static asset smoke currently exists. `tests/smoke/routes.test.cjs` asserts file existence only (`docs/operations/RELEASE_SMOKE_RUNTIME_OBSERVABILITY_AUDIT.md` §4.2). Static asset paths above are confirmed against repository source at the base SHA.
+
+`UNRESOLVED`: HTTP-level static asset smoke is not implemented. A future child may add bounded HTTP smoke against the confirmed paths.
 
 ### 4.3 Same-origin API surfaces
 
 | Operation code | Prerequisite | Method | Expected status/shape | Allowed evidence | Forbidden evidence | Auth requirement | Failure classification | Stop condition |
 |---|---|---|---|---|---|---|---|---|
-| `API_COMMUNITY_TREES_SUMMARY` | Deployed URL supplied; Modal backend reachable | `GET /api/community/trees?view=summary&sort=latest&limit=3` | HTTP 200, `content-type: application/json`, valid JSON array | HTTP status, `x-lovebud-upstream` header, `x-lovebud-request-id`, operation code, latency bucket | Response body, query parameter values, `treeId` values in response | None (public read) | `LB_SAME_ORIGIN_API_HTTP_5XX`, `LB_SAME_ORIGIN_API_TIMEOUT`, `LB_SAME_ORIGIN_API_UPSTREAM_UNAVAILABLE`, `LB_SAME_ORIGIN_API_MALFORMED_RESPONSE`, `LB_SAME_ORIGIN_API_CONTRACT_MISMATCH` | Expected HTTP 2xx + valid JSON. Malformed or non-JSON is `DEGRADED` or `FAILED`. |
-| `API_PUBLIC_TREE_READ` | Deployed URL supplied; Modal backend reachable; known public tree ID | `GET /api/trees/:id` (no auth header) | HTTP 200, `content-type: application/json`, valid JSON with `visibility: "public"` | HTTP status, `x-lovebud-upstream` header, `x-lovebud-public-tree-cache` header, operation code | Response body field values, `treeId`, `ownerId` | None (anonymous read path) | Same as above plus `LB_ROUTE_RESPONSE_HTTP_4XX` for unexpected 404 | Expected HTTP 2xx + public visibility. Identifier-bearing — requires a known public tree ID supplied through non-repository means. |
-| `AUTH_GUARD_EXPECTED_REJECTION` | Deployed URL supplied; Modal backend reachable | `GET /api/trees/` (no auth header) | HTTP 401, `x-lovebud-route-status: missing-authorization` | HTTP status, `x-lovebud-route-status` header, operation code | Authorization header, cookie, token, Firebase UID | None (intentionally unauthenticated) | `LB_ROUTE_RESPONSE_UNEXPECTED_FAILURE` if 2xx received; `HEALTHY` if 401 received | Expected 401 is `HEALTHY`. HTTP 2xx or 5xx is `UNEXPECTED_FAILURE`. |
+| `API_COMMUNITY_TREES_SUMMARY` | Deployed URL supplied; Modal backend reachable | `GET /api/community/trees?view=summary&sort=latest&limit=3` | HTTP 200, `content-type: application/json`, valid JSON array | HTTP status, `x-lovebud-upstream` header, operation code, latency bucket | Response body, query parameter values, `treeId` values in response, `x-lovebud-request-id` | None (public read) | `LB_SAME_ORIGIN_API_HTTP_5XX`, `LB_SAME_ORIGIN_API_TIMEOUT`, `LB_SAME_ORIGIN_API_UPSTREAM_UNAVAILABLE`, `LB_SAME_ORIGIN_API_MALFORMED_RESPONSE`, `LB_SAME_ORIGIN_API_CONTRACT_MISMATCH` | Expected HTTP 2xx + valid JSON. Malformed or non-JSON is `DEGRADED` or `FAILED`. |
+| `API_PUBLIC_TREE_READ` | Deployed URL supplied; Modal backend reachable | `GET /api/trees/:id` (no auth header) | HTTP 200, `content-type: application/json`, valid JSON with `visibility: "public"` | HTTP status, `x-lovebud-upstream` header, `x-lovebud-public-tree-cache` header, operation code | Response body, `treeId`, `ownerId`, `x-lovebud-request-id` | None (anonymous read path) | Same as above plus `LB_ROUTE_RESPONSE_HTTP_4XX` for unexpected 404 | Expected HTTP 2xx + public visibility. Identifier-bearing — see §4.3.1 Public-tree fixture gate. |
+| `AUTH_GUARD_EXPECTED_REJECTION` | Deployed URL supplied; Modal backend reachable | `GET /api/trees/` (no auth header) | HTTP 401, `x-lovebud-route-status: missing-authorization` | HTTP status, `x-lovebud-route-status` header, operation code | Authorization header, cookie, token, Firebase UID, `x-lovebud-request-id` | None (intentionally unauthenticated) | `LB_ROUTE_RESPONSE_UNEXPECTED_FAILURE` if 2xx received; `HEALTHY` if 401 received | Expected 401 is `HEALTHY`. HTTP 2xx or 5xx is `UNEXPECTED_FAILURE`. |
 
 `OBSERVED_CURRENT_FACT`: No CI job or post-deploy hook calls any `/api/*` endpoint (`docs/operations/RELEASE_SMOKE_RUNTIME_OBSERVABILITY_AUDIT.md` §3.3). `docs/ops/DEPLOY_CHECKLIST.md` documents manual `curl` for browse summary only. `scripts/cloudflare-supplied-url-smoke.cjs` checks deferred API health only via Playwright page console/network recording for `ROUTE_BROWSE`.
+
+### 4.3.1 Request-ID privacy boundary
+
+`x-lovebud-request-id` is transiently observable in HTTP responses but is not durable allowed evidence.
+
+```text
+transiently observable:
+yes
+
+durably recordable:
+no, by default
+
+allowed purpose:
+bounded troubleshooting only
+
+user/session linkage:
+forbidden
+
+cross-system persistence:
+separate approval required
+
+retention:
+separate bounded policy required
+```
+
+§7 sanitized artifact schema is request-ID-free.
+
+### 4.3.2 Public-tree fixture gate
+
+`API_PUBLIC_TREE_READ` is identifier-bearing. The default disposition is `BLOCKED_BY_AUTHORITY` or `NOT_EXECUTED`. Execution requires a separately approved fixture from one of:
+
+```text
+deterministic synthetic public fixture
+explicitly designated non-user fixture
+owner-approved bounded public test record
+```
+
+Each fixture requires:
+
+```text
+purpose
+retention
+deletion
+ownership
+non-user-data proof
+```
+
+Forbidden sources:
+
+```text
+임의 Production user tree ID
+복사한 공개 URL
+private log에서 얻은 ID
+operator-selected 실제 user record
+```
+
+tree ID must never be recorded in the artifact. When parsing a response to check `visibility: public`, only the following bounded schema result may be preserved:
+
+```text
+bounded schema result:
+PASS / FAIL / UNKNOWN
+```
+
+Response body and field values must not be stored.
 
 ### 4.4 Browser runtime surfaces
 
@@ -185,7 +273,30 @@ Expected policy rejections (e.g. `AUTH_GUARD_EXPECTED_REJECTION` returning HTTP 
 | `BROWSER_FATAL_ERROR` | Instrumented route page load | `window.onerror` observation (future) | Zero uncaught exceptions during page lifecycle | Route template, bounded error category, occurrence count | Stack trace, variable values, DOM content, user text, source file paths | Varies by route | `LB_BROWSER_RUNTIME_FATAL_CLIENT_ERROR` | Zero fatal exceptions. Any fatal exception is `FAILED`. |
 | `BROWSER_UNHANDLED_REJECTION` | Instrumented route page load | `unhandledrejection` observation (future) | Zero unhandled promise rejections during page lifecycle | Route template, occurrence count | Stack trace, rejection reason text, variable values | Varies by route | `LB_BROWSER_RUNTIME_UNHANDLED_REJECTION` | Zero unhandled rejections. Any is `DEGRADED` or `FAILED`. |
 
-`OBSERVED_CURRENT_FACT`: No `window.onerror` or `unhandledrejection` handler exists in the client codebase. The 12 `BROWSER_REAL_LOCAL` Playwright contracts in CI check console errors in a local server context only. Browser runtime smoke is entirely future instrumentation (`docs/operations/RELEASE_SMOKE_RUNTIME_OBSERVABILITY_AUDIT.md` §6.2, §8.2 gap 7).
+`OBSERVED_CURRENT_FACT`: No `window.onerror` or `unhandledrejection` handler exists in the client codebase. The 12 `BROWSER_REAL_LOCAL` Playwright contracts in CI check console errors in a local server context only. `scripts/cloudflare-supplied-url-smoke.cjs` observes `pageerror`, `console.error`, `requestfailed`, HTTP response blockers, and horizontal overflow against a supplied URL (`docs/operations/RELEASE_SMOKE_RUNTIME_OBSERVABILITY_AUDIT.md` §6.2, §8.2 gap 7).
+
+`PROPOSED_FUTURE_CONTRACT`: A sanitized durable artifact, operator report, and client telemetry transport with central aggregation.
+
+`NOT_AUTHORIZED`: Provider integration, automatic telemetry deployment, and central log collection.
+
+Client source has no `window.onerror` transport. Playwright can observe `pageerror` externally — these are separate facts.
+
+`OBSERVED_CURRENT_FACT` — current supplied-URL script output:
+
+```text
+baseUrl
+route path
+request/response URL
+console error text
+pageerror message
+failure stack
+```
+
+`current supplied-URL script`: manual diagnostic evidence.
+
+`current supplied-URL script`: NOT compliant with the proposed durable sanitized artifact.
+
+A future runner child must separate raw diagnostic information from a durable sanitized summary. The existing script is not modified in this child.
 
 ### 4.5 Owner-write operations
 
@@ -241,7 +352,15 @@ release_match_state: NOT_EXPOSED (cannot compare without a serving SHA)
 
 `DOCUMENTED_OPERATING_RULE`: The #3699 operating rule — check Production once after merge; if stale, record observation and stop; no manual deployment or Cloudflare mutation without owner explicit request.
 
-`UNRESOLVED`: The observed SHA is not currently exposed by any public response header or repository asset. `x-lovebud-request-id` is correlation metadata only and does not encode the serving SHA.
+`UNRESOLVED`: No serving-SHA exposure mechanism is defined in current repository source, response contracts, or operating evidence.
+
+Provider-native behavior:
+UNRESOLVED
+
+Provider investigation:
+outside this source-only child
+
+`x-lovebud-request-id` is correlation metadata only and does not encode the serving SHA.
 
 **Detection mechanism**: A future child may propose exposing the serving SHA through a separately approved public asset (e.g., a JSON endpoint or response header). That proposal must be reviewed and approved as a separate Issue. CI committing a SHA file back into the repository is `NOT_AUTHORIZED`.
 
