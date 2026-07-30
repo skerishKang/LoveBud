@@ -110,13 +110,14 @@
       "explicit_paths": [
         "tests/contracts/lovebud-loop-policy-loader-contract.test.cjs",
         "tests/contracts/lovebud-loop-triage-contract.test.cjs",
+        "tests/contracts/release-sha-manifest-contract.test.cjs",
         "tests/contracts/tree-layout-persistence-3582-editor-route-contract.test.cjs"
       ],
       "command_reference": "npm test (via node --test tests/{smoke,routes,contracts}/*.test.cjs glob)",
       "default_pr_execution_state": "ALWAYS",
       "runtime": "node",
       "platform": "ubuntu",
-      "capabilities": ["none"],
+      "capabilities": ["child_process", "filesystem"],
       "comparability": "branch/main: same node --test command, same globs, deterministic per-path membership",
       "artifact_expectation": "TAP test output",
       "risk_gate_eligibility": "full_regression",
