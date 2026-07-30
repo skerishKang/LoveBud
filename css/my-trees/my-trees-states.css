@@ -24,6 +24,40 @@
     width: 100%;
 }
 
+/* Skeleton node geometry: the canonical `.lt-skeleton*` primitives
+   (css/global/lovetree-loading-states.css) own the shimmer/animation; these
+   bounded rules only size the My Trees skeleton nodes to match the card
+   design. My Trees skeleton must not depend on Browse-named skeleton
+   classes. */
+.trees-skeleton-grid .lt-skeleton-media {
+    border-radius: 1.35rem;
+}
+
+.trees-skeleton-grid .lt-skeleton-title {
+    width: 72%;
+    height: 18px;
+}
+
+.trees-skeleton-grid .lt-skeleton-text {
+    width: 92%;
+    height: 13px;
+    opacity: 0.75;
+}
+
+.trees-skeleton-grid .tree-meta-chip.lt-skeleton {
+    display: block;
+    width: 96px;
+    height: 28px;
+    border-radius: 999px;
+}
+
+.trees-skeleton-grid .tree-meta-right .lt-skeleton {
+    display: block;
+    width: 82px;
+    height: 13px;
+    border-radius: 999px;
+}
+
 .empty-state {
     text-align: center;
     padding: 64px 32px;
@@ -148,15 +182,12 @@
   width: 100%;
 }
 
-/* Reduced-motion: disable skeleton and loading animations */
+/* Reduced-motion: disable loading spinner/transition motion. Skeleton
+   shimmer reduced-motion handling is owned by the canonical global
+   stylesheet (css/global/lovetree-loading-states.css) — My Trees must not
+   depend on Browse-named skeleton animation selectors. */
 @media (prefers-reduced-motion: reduce) {
   .trees-loading .lt-spinner {
-    animation: none;
-  }
-
-  .trees-skeleton-grid .search-skeleton-block,
-  .trees-skeleton-grid .search-skeleton-line,
-  .trees-skeleton-grid .search-skeleton-chip {
     animation: none;
   }
 
