@@ -15,21 +15,29 @@
     function create(SEL) {
         function qs(sel) { return document.querySelector(sel); }
 
+        function setBusy(sel, value) {
+            var el = qs(sel);
+            if (!el) return;
+            if (value) { el.setAttribute('aria-busy', 'true'); }
+            else { el.removeAttribute('aria-busy'); }
+        }
+
         function show() {
             for (var i = 0; i < arguments.length; i++) {
                 var el = qs(arguments[i]);
-                if (el) { el.style.display = ''; el.removeAttribute('hidden'); }
+                if (el) { el.removeAttribute('hidden'); el.style.removeProperty('display'); }
             }
+            setBusy(SEL.shell, false);
         }
 
         function hide() {
             for (var i = 0; i < arguments.length; i++) {
                 var el = qs(arguments[i]);
-                if (el) el.style.display = 'none';
+                if (el) { el.setAttribute('hidden', ''); el.style.removeProperty('display'); }
             }
         }
 
-        function showLoading() { hide(SEL.treeContainer, SEL.empty, SEL.error); show(SEL.loading); }
+        function showLoading() { hide(SEL.treeContainer, SEL.empty, SEL.error); show(SEL.loading); setBusy(SEL.shell, true); }
         function renderEmpty() { hide(SEL.treeContainer, SEL.loading, SEL.error); show(SEL.empty); }
         function renderError() { hide(SEL.treeContainer, SEL.loading, SEL.empty); show(SEL.error); }
 
