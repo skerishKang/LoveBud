@@ -1,19 +1,16 @@
 # Release SHA and Bounded Route/Static/API/Browser Smoke Contract
 
-> **Status:** proposed contract — no smoke runner, SHA exposure mechanism, or automatic detection is implemented.
-> **Authority labels:** `OBSERVED_CURRENT_FACT`, `DOCUMENTED_OPERATING_RULE`, `PROPOSED_FUTURE_CONTRACT`, `UNRESOLVED`, `NOT_AUTHORIZED`
+> **Status:** partially implemented — canonical release-SHA manifest is implemented and Production-verified (#3761 / PR #3762, #3764). The broader smoke runner, automatic post-deploy orchestration, durable sanitized artifact, route/static/API/browser coverage, provider mutation, and automatic deployment repair remain proposed or unimplemented.
+> **Authority labels:** `IMPLEMENTED_CURRENT_CONTRACT`, `OBSERVED_CURRENT_FACT`, `DOCUMENTED_OPERATING_RULE`, `PROPOSED_FUTURE_CONTRACT`, `UNRESOLVED`, `NOT_AUTHORIZED`
 > **Parent:** #3673 — Keep OPEN
-> **Completed groundwork:** #3714 / PR #3719 (audit), #3725 / PR #3726 (taxonomy)
+> **Completed groundwork:** #3714 / PR #3719 (audit), #3725 / PR #3726 (taxonomy), #3740 / PR #3744 (SHA exposure decision), #3761 / PR #3762 (release manifest implementation), #3764 (Production verification)
 > **Related:** #3699 (Keep OPEN), #3425 (Keep OPEN), #1882 (Keep OPEN)
-> **Base SHA:** `79d84e1741e6aa0d25878843d459a0d067ba6852`
 
 This document defines the bounded contract for correlating a LoveBud source release SHA with smoke evidence across route, static-asset, same-origin API, and browser-runtime surfaces. It does not authorize telemetry collection, Cloudflare Dashboard access, provider API calls, database operations, or automatic deployment mutation.
 
 ---
 
 ## 1. Release Correlation
-
-`PROPOSED_FUTURE_CONTRACT`
 
 ### 1.1 Fields
 
@@ -34,23 +31,43 @@ MATCH | MISMATCH | UNKNOWN | NOT_EXPOSED
 - `observed_release_sha` — the SHA actually observed at the serving endpoint. `UNKNOWN` when no observation was made; `NOT_EXPOSED` when no serving-SHA exposure mechanism is defined in repository source.
 - `release_match_state` — the comparison result between expected and observed. `NOT_EXPOSED` when the observed SHA is not available for comparison.
 
-### 1.2 Prohibited
+### 1.2 Current serving-SHA source
+
+The canonical public serving-SHA source is:
+
+| Property | Value |
+|---|---|
+| Endpoint | `/.well-known/release.json` |
+| Schema | `{"release_sha": "<40-char hex>", "contract_version": "1"}` |
+| `release_sha` | Exact 40-character lowercase Git SHA. Resolved at build time from `git rev-parse HEAD`, validated against `^[0-9a-f]{40}$`. |
+| `contract_version` | `"1"` |
+| Cache policy | `Cache-Control: no-store` |
+| Source file | `_headers` — path-specific entry for `/.well-known/release.json` |
+| Build integration | `scripts/build-static.js` — SHA resolution and manifest generation during `npm run build` |
+| Contract test | `tests/contracts/release-sha-manifest-contract.test.cjs` — valid JSON, exactly two keys, 40-char hex SHA, main SHA match, fail-closed, block-scoped cache policy assertion |
+| Production verification | #3764 — HTTP 200, `application/json`, `no-store`, exact main SHA parity, two-request consistency, no forbidden metadata |
+
+`IMPLEMENTED_CURRENT_CONTRACT`.
+
+### 1.3 Prohibited
 
 - Cloudflare deployment ID (`0c1054ee-...-...`) must never be used as a canonical source SHA.
 - No CI workflow may commit a SHA file back into the repository (`docs/operations/RELEASE_SMOKE_RUNTIME_OBSERVABILITY_AUDIT.md` §11 stop condition 2).
 - No Cloudflare Dashboard or API call is authorized to obtain the observed SHA.
 
-### 1.3 Current evidence
+### 1.4 Current evidence
 
-`OBSERVED_CURRENT_FACT`: No deployment SHA annotation file, deploy manifest, or SHA comparison mechanism exists in the repository (`docs/operations/RELEASE_SMOKE_RUNTIME_OBSERVABILITY_AUDIT.md` §2.3, §8.2 gap 3). The exact SHA serving as the Production alias cannot be confirmed from repository evidence alone.
+`IMPLEMENTED_CURRENT_CONTRACT`: The canonical release manifest at `/.well-known/release.json` is generated at build time and served with `Cache-Control: no-store`. The `release_sha` field exposes the exact 40-character lowercase Git SHA of the deployed source. Production verification (#3764) confirms HTTP 200, JSON content-type, no-store cache policy, exact main SHA match, and no forbidden metadata.
+
+`OBSERVED_CURRENT_FACT`: No deployment SHA annotation file beyond the canonical manifest exists. No deploy manifest or SHA comparison mechanism other than the `/.well-known/release.json` endpoint exists in the repository.
 
 `DOCUMENTED_OPERATING_RULE`: The current merge-first workflow is:
-1. Check Production once after merge.
-2. If current main is served, verify affected behavior.
-3. If Production is stale, record observation and stop.
+1. Check Production once after merge (including `/.well-known/release.json` parity).
+2. If current main is served and manifest matches, verify affected behavior.
+3. If Production is stale or manifest is absent/incorrect, record observation and stop.
 4. No manual deployment or Cloudflare mutation without owner explicit request.
 
-`UNRESOLVED`: No serving-SHA exposure mechanism is defined in current repository source, response contracts, or operating evidence.
+`UNRESOLVED`: No automatic stale-release detection, smoke runner orchestration, or durable sanitized artifact aggregation is implemented.
 
 Provider-native behavior:
 UNRESOLVED
@@ -188,7 +205,7 @@ The current script does not validate extensionless routes. The remaining 6 route
 | `STATIC_EDITOR_ENTRY` | Deployed URL supplied | `GET /js/editor.js` | HTTP 200, `content-type: application/javascript` | HTTP status, asset path template | Asset content | None | Same as above | Expected HTTP 2xx. |
 | `STATIC_VIEWER_ENTRY` | Deployed URL supplied | `GET /js/viewer/tree-viewer.js` | HTTP 200, `content-type: application/javascript` | HTTP status, asset path template | Asset content | None | Same as above | Expected HTTP 2xx. |
 
-`OBSERVED_CURRENT_FACT`: No HTTP-level static asset smoke currently exists. `tests/smoke/routes.test.cjs` asserts file existence only (`docs/operations/RELEASE_SMOKE_RUNTIME_OBSERVABILITY_AUDIT.md` §4.2). Static asset paths above are confirmed against repository source at the base SHA.
+`OBSERVED_CURRENT_FACT`: No HTTP-level static asset smoke currently exists. `tests/smoke/routes.test.cjs` asserts file existence only (`docs/operations/RELEASE_SMOKE_RUNTIME_OBSERVABILITY_AUDIT.md` §4.2). Static asset paths above are confirmed against repository source.
 
 `UNRESOLVED`: HTTP-level static asset smoke is not implemented. A future child may add bounded HTTP smoke against the confirmed paths.
 
@@ -313,17 +330,17 @@ Every smoke operation belongs to exactly one execution lane.
 | Lane | Description | Execution context | Example operations |
 |---|---|---|---|
 | `SOURCE_STATIC` | Source-only static contract tests. File existence, directory structure, string/regex assertions. No runtime or network. | CI via `npm test` (`node --test` glob). | `tests/smoke/routes.test.cjs` file existence checks. |
-| `LOCAL_DETERMINISTIC` | Local Playwright browser or process contract tests. Production module source in local HTTP server or `node:vm`. No deployed URL. | CI via `npm test` (12 `BROWSER_REAL_LOCAL` + 3 `PROCESS_REAL_LOCAL`). | DOM/geometry assertions, console error checks against local server. |
+| `LOCAL_DETERMINISTIC` | Local Playwright browser or process contract tests. Production module source in local HTTP server or `node:vm`. No deployed URL. | CI via `npm test` (12 `BROWSER_REAL_LOCAL` + 4 `PROCESS_REAL_LOCAL`). | DOM/geometry assertions, console error checks against local server. |
 | `SUPPLIED_URL_PUBLIC_SMOKE` | Bounded Playwright or fetch-based smoke against a supplied deployed URL. Checks HTTP status, `<body>` presence, console errors, network failures, API responses. No auth. | Manual or future post-merge hook. Not currently in CI. | `scripts/cloudflare-supplied-url-smoke.cjs` (3 routes). |
-| `POST_MERGE_PRODUCTION_OBSERVATION` | Manual Production confirmation after merge. Uses browser, DevTools, or curl against `https://lovebud.pages.dev/`. | Manual operator per `docs/ops/MERGE_FIRST_PRODUCTION_VERIFICATION_WORKFLOW.md`. | `docs/ops/DEPLOY_CHECKLIST.md` curl commands, manual browser verification. |
+| `POST_MERGE_PRODUCTION_OBSERVATION` | Manual Production confirmation after merge. Uses browser, DevTools, or curl against `https://lovebud.pages.dev/`. | Manual operator per `docs/ops/MERGE_FIRST_PRODUCTION_VERIFICATION_WORKFLOW.md`. | `docs/ops/DEPLOY_CHECKLIST.md` curl commands, manual browser verification, `/.well-known/release.json` parity check. |
 | `PROVIDER_MANUAL` | Checks that require Cloudflare Dashboard, Modal Dashboard, Firebase Console, or Neon Dashboard access. | Manual operator with provider access. | Deployment status check, Modal log review, Firebase Auth event inspection. |
 
 `PROVIDER_MANUAL` is `NOT_AUTHORIZED` for automation by this child.
 
-`OBSERVED_CURRENT_FACT`: As of the base SHA:
+`OBSERVED_CURRENT_FACT`:
 - `SOURCE_STATIC` and `LOCAL_DETERMINISTIC` execute in CI (all 5 layers from `tests/test-layer-classification.json`).
 - `SUPPLIED_URL_PUBLIC_SMOKE`: only `scripts/cloudflare-supplied-url-smoke.cjs` exists, covering 3 routes, not in CI (`docs/operations/RELEASE_SMOKE_RUNTIME_OBSERVABILITY_AUDIT.md` §3.2).
-- `POST_MERGE_PRODUCTION_OBSERVATION`: entirely manual per `docs/ops/MERGE_FIRST_PRODUCTION_VERIFICATION_WORKFLOW.md`.
+- `POST_MERGE_PRODUCTION_OBSERVATION`: entirely manual per `docs/ops/MERGE_FIRST_PRODUCTION_VERIFICATION_WORKFLOW.md`. The `/.well-known/release.json` manifest is now available as a bounded check target in this lane.
 - `PROVIDER_MANUAL`: not automated; no Cloudflare API token or deploy action in CI (`docs/operations/RELEASE_SMOKE_RUNTIME_OBSERVABILITY_AUDIT.md` §2.1).
 
 ---
@@ -340,19 +357,21 @@ not implemented
 OPEN
 
 current behavior:
-manual Production observation only
+manual Production observation only; manifest SHA comparison possible
 
 release_match_state for #3699:
 expected_release_sha (source main)
-observed_release_sha (UNKNOWN | NOT_EXPOSED)
-release_match_state: NOT_EXPOSED (cannot compare without a serving SHA)
+observed_release_sha (from manifest /.well-known/release.json)
+release_match_state: MATCH | MISMATCH | UNKNOWN (manual comparison)
 ```
 
-`OBSERVED_CURRENT_FACT`: No mechanism exists to automatically detect a stale Production alias. No cron job, webhook, or periodic comparison of source SHA vs Production serving SHA (`docs/operations/RELEASE_SMOKE_RUNTIME_OBSERVABILITY_AUDIT.md` §8.1).
+`IMPLEMENTED_CURRENT_CONTRACT`: The canonical manifest at `/.well-known/release.json` provides `release_sha` for comparison. An operator can manually compare the merged `main` SHA against the manifest value to determine `MATCH` or `MISMATCH`. Production verification (#3764) confirms the manifest serves the exact merged `main` SHA.
 
-`DOCUMENTED_OPERATING_RULE`: The #3699 operating rule — check Production once after merge; if stale, record observation and stop; no manual deployment or Cloudflare mutation without owner explicit request.
+`OBSERVED_CURRENT_FACT`: No automatic stale-release detection exists. No cron job, webhook, or periodic comparison of source SHA vs Production serving SHA (`docs/operations/RELEASE_SMOKE_RUNTIME_OBSERVABILITY_AUDIT.md` §8.1). The manifest provides the comparison value but does not automate detection.
 
-`UNRESOLVED`: No serving-SHA exposure mechanism is defined in current repository source, response contracts, or operating evidence.
+`DOCUMENTED_OPERATING_RULE`: The #3699 operating rule — check Production once after merge (including `/.well-known/release.json` parity); if stale or mismatched, record observation and stop; no manual deployment or Cloudflare mutation without owner explicit request.
+
+`UNRESOLVED`: No serving-SHA exposure mechanism other than the canonical manifest is defined.
 
 Provider-native behavior:
 UNRESOLVED
@@ -362,7 +381,7 @@ outside this source-only child
 
 `x-lovebud-request-id` is correlation metadata only and does not encode the serving SHA.
 
-**Detection mechanism**: A future child may propose exposing the serving SHA through a separately approved public asset (e.g., a JSON endpoint or response header). That proposal must be reviewed and approved as a separate Issue. CI committing a SHA file back into the repository is `NOT_AUTHORIZED`.
+**Detection mechanism**: The manifest at `/.well-known/release.json` is the sole canonical authority for the observed `release_sha`. A future child may implement automatic comparison between the expected merged SHA and the manifest value, or propose alternative exposure mechanisms. CI committing a SHA file back into the repository is `NOT_AUTHORIZED`.
 
 ---
 
@@ -374,19 +393,19 @@ Every smoke evidence artifact must use the following minimum schema. No field ma
 
 | Field | Type | Bounded vocabulary | Required / Optional | Privacy rule | Example |
 |---|---|---|---|---|---|
-| `expected_release_sha` | string (40-char hex) | Git SHA from `main` | Required | No provider deployment ID | `79d84e1741e6aa0d25878843d459a0d067ba6852` |
-| `observed_release_sha` | string (40-char hex or enum) | 40-char SHA, `UNKNOWN`, `NOT_EXPOSED` | Required | No provider deployment ID | `UNKNOWN` |
-| `release_match_state` | string (enum) | `MATCH`, `MISMATCH`, `UNKNOWN`, `NOT_EXPOSED` | Required | Bounded enum only | `UNKNOWN` |
+| `expected_release_sha` | string (40-char hex) | Git SHA from `main` | Required | No provider deployment ID | `<merged main SHA>` |
+| `observed_release_sha` | string (40-char hex or enum) | 40-char SHA, `UNKNOWN`, `NOT_EXPOSED` | Required | No provider deployment ID | `<manifest release_sha>` |
+| `release_match_state` | string (enum) | `MATCH`, `MISMATCH`, `UNKNOWN`, `NOT_EXPOSED` | Required | Bounded enum only | `MATCH` |
 | `observed_at_bucket` | string (ISO bucket key) | ISO hourly/daily/weekly key, `UNKNOWN` | Required | No exact user-event timestamp | `2026-07-30T14:00Z` |
 | `observation_granularity` | string (enum) | `HOURLY`, `DAILY`, `WEEKLY`, `UNKNOWN` | Required | Bounded enum only | `HOURLY` |
 | `surface_or_domain` | string (enum) | Taxonomy domain from `docs/ops/RUNTIME_HEALTH_ERROR_LATENCY_TAXONOMY.md` §2 | Required | Bounded enum only | `ROUTE_RESPONSE` |
-| `operation_code` | string (enum) | One of the bounded operation codes from §2 of this document | Required | No raw URL. No query string. No arbitrary path. | `ROUTE_HOME` |
+| `operation_code` | string (enum) | One of the bounded operation codes from §2 of this document | Required | No raw URL. No query string. No arbitrary path. | `RELEASE_MANIFEST_FETCH` |
 | `expectation_class` | string (enum) | `EXPECTED_SUCCESS`, `EXPECTED_POLICY_REJECTION`, `UNEXPECTED_FAILURE`, `UNKNOWN_EXPECTATION` | Required | Bounded enum only | `EXPECTED_SUCCESS` |
 | `status_class` | string (enum) | `HEALTHY`, `DEGRADED`, `FAILED`, `UNKNOWN`, `NOT_EXECUTED`, `NOT_APPLICABLE`, `BLOCKED_BY_AUTHORITY` | Required | Bounded enum only | `HEALTHY` |
 | `sanitized_error_code` | string (enum or `NONE`) | `LB_<DOMAIN>_<FAILURE_CLASS>` or `NONE` | Required | No embedded identifiers, URLs, or payload | `NONE` |
 | `severity` | string (enum) | `INFO`, `WARNING`, `ERROR`, `CRITICAL` | Required | Bounded enum only | `INFO` |
 | `latency_bucket` | string (enum) | `LT_250_MS`, `250_TO_999_MS`, `1_TO_2_999_S`, `3_TO_9_999_S`, `GE_10_S`, `TIMEOUT_OR_UNKNOWN`, `NOT_MEASURED` | Optional | No raw duration value. Use `NOT_MEASURED` when no measurement taken. | `NOT_MEASURED` |
-| `evidence_source` | string (enum) | `SOURCE_STATIC`, `LOCAL_DETERMINISTIC`, `SUPPLIED_URL_PUBLIC_SMOKE`, `POST_MERGE_PRODUCTION_OBSERVATION`, `PROVIDER_MANUAL`, `FUTURE_INSTRUMENTATION` | Required | Bounded enum only. No provider log content. | `SUPPLIED_URL_PUBLIC_SMOKE` |
+| `evidence_source` | string (enum) | `SOURCE_STATIC`, `LOCAL_DETERMINISTIC`, `SUPPLIED_URL_PUBLIC_SMOKE`, `POST_MERGE_PRODUCTION_OBSERVATION`, `PROVIDER_MANUAL`, `FUTURE_INSTRUMENTATION` | Required | Bounded enum only. No provider log content. | `POST_MERGE_PRODUCTION_OBSERVATION` |
 
 ---
 
@@ -427,20 +446,18 @@ A `TECHNICAL_PASS` means the bounded surface responded within the documented con
 
 `PROPOSED_FUTURE_CONTRACT`
 
-### Child 1 — Release-SHA public exposure decision
+### Child 1 — Release-SHA public exposure decision and implementation
 
-- **Scope:** Decide the mechanism for exposing the serving SHA at a public endpoint or response header. Document the decision, privacy implications, and approval path.
-- **Prerequisite:** This contract document merged.
-- **Exact candidate files:** `docs/ops/RELEASE_SHA_EXPOSURE_DECISION.md` (new file only).
-- **Evidence:** Decision document. No implementation.
-- **Rollback:** Not applicable (document only).
-- **Stop condition:** Decision document reviewed and merged. Owner approval recorded. `NOT_AUTHORIZED` boundaries documented.
-- **Not-authorized boundary:** No Cloudflare API call. No Wrangler deploy. No CI workflow change. No SHA commit to repository.
+- **Status:** Completed.
+- **Decision:** #3740 / PR #3744 — decided the canonical public serving-SHA exposure boundary. The public JSON manifest at `/.well-known/release.json` is the sole canonical authority.
+- **Implementation:** #3761 / PR #3762 — built the release manifest, contract test, headers policy, and classification registry.
+- **Production verification:** #3764 — confirmed HTTP 200, `application/json`, `Cache-Control: no-store`, exact main SHA parity, two-request consistency, no forbidden metadata.
+- **Stop condition:** Decision document merged, implementation merged, Production parity verified.
 
 ### Child 2 — Bounded local/supplied-URL smoke runner
 
 - **Scope:** Define and implement a bounded smoke runner script (or document-only runner design) that executes the surface matrix from §4 against a supplied deployed URL. Runner must accept a target URL, execute checks, and emit a sanitized artifact per §7 schema.
-- **Prerequisite:** Child 1 for any SHA-exposure integration.
+- **Prerequisite:** Child 1 completed (SHA exposure available for correlation).
 - **Exact candidate files:** `scripts/supplied-url-smoke-runner.cjs` or `docs/ops/SMOKE_RUNNER_DESIGN.md` (document-only alternative). No existing file changes.
 - **Evidence:** Runner output matching §7 schema, or design document with bounded contract.
 - **Rollback:** Remove new runner file. No existing file modified.
@@ -493,26 +510,32 @@ No child above overlaps with:
 
 ## 10. Current Evidence Inventory
 
-`OBSERVED_CURRENT_FACT` at base SHA `79d84e1741e6aa0d25878843d459a0d067ba6852`:
+`OBSERVED_CURRENT_FACT`:
 
 | Asset | Status | Source |
 |---|---|---|
+| Release-SHA endpoint | Implemented — `/.well-known/release.json` with `release_sha` + `contract_version` | `scripts/build-static.js`, `_headers` |
+| Release-SHA contract test | Implemented — 10 assertions including JSON schema, SHA format, fail-closed, cache policy, cleanup | `tests/contracts/release-sha-manifest-contract.test.cjs` |
+| Release-SHA Production verification | Verified — HTTP 200, JSON content-type, no-store, exact main SHA, no forbidden metadata | #3764 |
 | CI deploy job | Absent — no `wrangler` or Cloudflare deploy step | `.github/workflows/ci.yml` |
 | Post-deploy smoke in CI | Absent | `ci.yml` |
-| Deployment SHA annotation | Absent | repository |
+| Deployment SHA annotation beyond manifest | Absent | repository |
 | Supplied-URL smoke coverage | 3 of 9 routes | `scripts/cloudflare-supplied-url-smoke.cjs` |
 | Supplied-URL smoke in CI | Not executed | `tests/ci-test-group-registry.json` |
 | Static asset HTTP smoke | Absent (file existence only) | `tests/smoke/routes.test.cjs` |
 | API endpoint smoke in CI | Absent | `ci.yml` |
 | Browser error capture | Absent (no `window.onerror`/`unhandledrejection`) | client codebase |
-| Production alias stale detection | Absent (manual only) | #3699 |
+| Production alias stale detection | Absent (manual only; manifest provides comparison value) | #3699 |
 | Public API smoke (documented) | Manual `curl` in `docs/ops/DEPLOY_CHECKLIST.md` | `DEPLOY_CHECKLIST.md` |
 
 ---
 
-*Refs #3734*
+*Refs #3765*
+*Refs #3764 — completed*
+*Refs #3761 — completed*
+*Refs #3740 — completed*
+*Refs #3734 — completed*
 *Refs #3673 — Keep OPEN*
-*Refs #3725 — completed*
 *Refs #3699 — Keep OPEN*
 *Refs #3425 — Keep OPEN*
 *Refs #1882 — Keep OPEN*
