@@ -3,7 +3,7 @@
 - **Issue:** #3717 `[Product][Story] Audit My Trees Story parity readiness and stop conditions`
 - **Role:** Web Implementation Developer (컴5)
 - **Scope:** Source-only readiness audit. No code, CSS, HTML, JS, test, localStorage, default-mode, or preview-hub changes. No browser, screenshot, Preview, Production, Cloudflare, backend/API/DB/Auth work. No PR Ready, merge, or #3654 closure.
-- **Starting `origin/main`:** `235ec59b2a5a40e0cf0115ebe45b2c6e50abbcdc`
+- **Current `origin/main`:** `5db3f42e5e8c1e29c7cc294e29fd30155b89c6a7`
 - **Parent product issue:** #3654 — **Keep OPEN**
 - **Related completed:** #3655 / PR #3656 (Browse Story foundation), #3666 (transition correction), #3703 / PR #3708 (Browse refinement)
 - **Production acceptance blocker:** #3699 — **Keep OPEN**
@@ -183,15 +183,13 @@ The recommended path is: **resolve #3699 first, then make a product decision on 
 
 The following components can be reused without modification:
 
-1. **Tree view mode switcher** (`js/tree-view-mode-switcher.js`) — already designed with surface-specific capability via `modes` option. My Trees simply needs to pass `['large', 'compact', 'list', 'story']` instead of omitting `modes`.
+1. **Tree view mode switcher** (`js/tree-view-mode-switcher.js`) — already designed with surface-specific capability via `modes` option. My Trees simply needs to pass `['large', 'compact', 'list', 'story']` instead of omitting `modes`. **Switcher mechanism is reusable.**
 2. **Compact card geometry** (`css/tree-view-mode.css` compact rules) — canonical, shared by Browse and My Trees via parallel selectors.
 3. **Card composition** (`js/shared/tree-card-composition.js`) — shared boundary for Browse and My Trees.
 4. **Card metrics** (`js/shared/tree-card-metrics.js`) — shared.
-5. **i18n infrastructure** (`js/i18n/`) — extensible.
-6. **Security helpers** (`js/utils/security.js`) — shared.
-7. **Preview hub CSS classes** (`preview-sidebar`, `preview-hub`, `preview-focus-copy`, etc.) — already aligned between Browse and My Trees.
-8. **Loading/empty/error state patterns** — shared state section pattern.
-9. **Reduced motion CSS pattern** — `@media (prefers-reduced-motion: reduce)` already established.
+5. **i18n infrastructure** (`js/i18n/`) — extensible. **Switcher mechanism is reusable; My Trees Story label/assistive text is an owner-context i18n decision required.**
+
+> **Note:** `security helpers`, `loading/empty/error state patterns`, and `preview hub CSS classes` are **NOT** listed here. These are not Browse Story reuse items — they are My Trees preservation concerns (see §3.3).
 
 ### 3.2 REUSABLE_WITH_ADAPTER
 
@@ -219,6 +217,16 @@ The following are My Trees-only and cannot be shared:
 9. **Loading state complexity** — My Trees has full loading/empty/error/loaded sections + skeleton grid; Browse has inline loading.
 10. **Card click behavior** — My Trees: desktop selects (show hub), mobile opens editor. Browse: click selects (show hub), no mobile open.
 
+### 3.3a COEXISTENCE_CONSTRAINT
+
+The following are My Trees preservation authorities that Browse Story does not own and must not override:
+
+1. **Security helpers** (`js/utils/security.js`) — My Trees card composition and hub rely on `LoveBudSecurity.escapeHtml` / `sanitizeUrl` (fail-closed). Story adapter must not bypass or replace these.
+2. **Preview hub CSS classes** (`preview-sidebar`, `preview-hub`, `preview-focus-copy`, `preview-flow-stage`, etc.) — My Trees hub structure is aligned with Browse but is the **primary** My Trees interaction surface. Story adapter must not remove, rename, or restructure these classes.
+3. **Loading/empty/error state patterns** — My Trees manages `state-loading`, `state-error`, `state-empty`, `state-loaded` sections. Story adapter must not replace these with Browse-style inline loading.
+4. **Selection state authority** (`my-trees-state.js`, `my-trees-preview-state.js`) — My Trees owns `selectedTreeId` / `selectedTree`. Story adapter must read, not overwrite.
+5. **Card events authority** (`my-trees-card-events.js`) — My Trees owns card click/keydown (desktop select, mobile open). Story adapter must not patch or replace card event binding.
+
 ### 3.4 BLOCKED_BY_PRODUCTION_ACCEPTANCE
 
 - **#3699** — Production acceptance blocker, **Keep OPEN**. Browse Story mode has not yet received Production visual acceptance. Per `docs/ops/MERGE_FIRST_PRODUCTION_VERIFICATION_WORKFLOW.md`, no parallel surface implementation may begin until the foundation surface is Production-accepted.
@@ -234,6 +242,9 @@ The following are My Trees-only and cannot be shared:
 ### 3.6 NOT_RECOMMENDED
 
 - **Directly reusing `js/search/search-story-view.js` on My Trees without an adapter** — The controller is hard-coded to `#resultsList` and Browse card events. Direct reuse would break My Trees rendering.
+- **Copying the 745-line Browse controller** (`js/search/search-story-view.js`) into a My Trees file — Prohibited. The Browse controller must remain the single source of Story grouping/navigation logic.
+- **Reusing hard-coded `#resultsList` assumptions** — The Story controller's `collectCards()`, `MutationObserver`, and `aria-busy` targeting are all `#resultsList`-specific. An adapter must parameterize the target, not copy these assumptions.
+- **Forcing hard-coded `.browse-story-*` CSS assumptions onto My Trees** — The Story CSS is `#resultsList`-scoped. An adapter must add `.trees-grid` Story selectors, not rename or alias `.browse-story-*` classes.
 - **Adding `.trees-grid[data-tree-view-mode="story"]` CSS without the adapter JS** — CSS alone would hide cards but leave no navigation, keyboard support, or group management.
 - **Changing the My Trees default mode** — Must remain `compact`.
 - **Modifying `localStorage` storage keys** — Must remain `lovebud:myTrees:viewMode`.
@@ -256,12 +267,13 @@ The following are My Trees-only and cannot be shared:
 
 ### 4.1 What Browse Story and My Trees Can Genuinely Share
 
-- **Switcher infrastructure** — The shared switcher is already designed for surface-specific capability. My Trees would pass `modes: ['large', 'compact', 'list', 'story']` and the switcher handles the rest.
+- **Switcher mechanism** — The shared switcher is already designed for surface-specific capability. My Trees would pass `modes: ['large', 'compact', 'list', 'story']` and the switcher handles the rest. **Reusable.**
 - **Compact geometry** — Already canonical and shared.
 - **Card composition** — Already shared via `LoveBudTreeCardComposition`.
-- **Preview hub CSS classes** — Already aligned.
-- **i18n infrastructure** — Extensible.
+- **i18n infrastructure** — Extensible. **Switcher mechanism is reusable; My Trees Story label/assistive text is an owner-context i18n decision required.**
 - **Reduced motion pattern** — Already established.
+
+> **Not shared:** Security helpers, loading/empty/error state patterns, and preview hub CSS classes are My Trees preservation authorities (see §3.3a), not Browse Story reuse items.
 
 ### 4.2 What My Trees Owner Context Requires Separating
 
@@ -297,31 +309,49 @@ On **My Trees**, the coexistence is **unresolved**:
 
 ### 4.6 Production Approval Stop Conditions
 
+> **This section is a plan, not an implementation approval.** No code may be written until ALL conditions are met and a separate implementation child is approved.
+
 Implementation of My Trees Story mode is **prohibited** until ALL of the following are met:
 
 1. **#3699 resolved** — Production acceptance blocker must be cleared.
 2. **Browse Story mode Production-accepted** — Visual acceptance at `https://lovebud.pages.dev/` via the Merge-First Production Verification workflow.
 3. **Product decision on My Trees Story mode** — #3654 must decide whether My Trees should have Story mode.
 4. **Preview hub coexistence design approved** — The interaction between Story grouping and the preview hub must be designed and approved.
-5. **No code changes** — Until all above are met, no JS/CSS/HTML/test/localStorage changes may be made.
+5. **My Trees storage/default-mode decision** — Product must confirm that `lovebud:myTrees:viewMode` remains the storage key and `compact` remains the default.
+6. **Separate implementation child** — A new PR with its own contract tests must be created and approved.
 
 ### 4.7 First Implementation Child Proposal
+
+> **CANDIDATE_SCOPE_NOT_AUTHORIZED.** This is a recommended architecture, not an implementation approval. No files may be created or modified until all stop conditions in §4.6 are met and a separate implementation child is approved.
 
 If and only if all stop conditions are met, the first implementation child should be:
 
 **Title:** `[UX][My Trees] Add Story view adapter for My Trees`
 
-**Approach:** Create a thin adapter (`js/my-trees/my-trees-story-view.js`) that wraps the existing Story controller logic for the `.trees-grid` target, rather than modifying `js/search/search-story-view.js` directly. This preserves the Browse-only foundation contract.
+**Controller selection — three options compared:**
 
-**Exact proposed files (if approved):**
+| Option | Description | Verdict |
+|---|---|---|
+| **A. Current parameterized controller reuse** | Reuse `js/search/search-story-view.js` as-is, parameterizing the target selector (`#resultsList` → `#trees-grid`) via the `init({ results, navMount })` API. | **Recommended.** The controller already accepts a `results` selector. An adapter passes `#trees-grid` and `#myTreesStoryNavMount`. No copy, no hard-coded assumptions. |
+| **B. Surface-neutral shared controller extraction** | Extract the Story grouping/navigation logic into a new shared module (e.g. `js/shared/story-grouping.js`) that both Browse and My Trees import. | **Not recommended for first child.** Would modify the Browse foundation (#3655), violating the "no changes to Browse-only foundation" contract. Defer to a later refactor. |
+| **C. Page-owned My Trees controller** | Write a completely new My Trees-specific Story controller from scratch. | **Prohibited.** Would duplicate the 745-line Browse controller, re-implement grouping/navigation/keyboard/reduced-motion/transition logic, and create maintenance divergence. |
+
+**Prohibited approaches:**
+- Copying the 745-line Browse controller (`js/search/search-story-view.js`) into a My Trees file.
+- Reusing hard-coded `#resultsList` assumptions without parameterizing the target.
+- Forcing hard-coded `.browse-story-*` CSS assumptions onto My Trees (must add `.trees-grid` Story selectors instead).
+
+**Approach:** Create a thin adapter (`js/my-trees/my-trees-story-view.js`) that calls `LoveBudBrowseStoryView.init({ results: '#trees-grid', navMount: '#myTreesStoryNavMount' })` and coordinates with the My Trees preview hub (ensuring the selected tree is in the visible group). This preserves the Browse-only foundation contract.
+
+**Exact proposed files (CANDIDATE_SCOPE_NOT_AUTHORIZED — not yet approved):**
 
 | File | Action | Purpose |
 |---|---|---|
-| `js/my-trees/my-trees-story-view.js` | **New** | Adapter wrapping Story grouping/navigation for `.trees-grid` target, coordinating with preview hub selection. |
+| `js/my-trees/my-trees-story-view.js` | **New** | Adapter calling `LoveBudBrowseStoryView.init` with `.trees-grid` target, coordinating with preview hub selection. |
 | `css/tree-view-mode.css` | **Modify** | Add `.trees-grid[data-tree-view-mode="story"]` selectors (group-size columns, card geometry, hidden cards, reduced motion). |
 | `js/my-trees/my-trees-page-bootstrap.js` | **Modify** | Pass `modes: ['large', 'compact', 'list', 'story']` and wire Story adapter + nav mount. |
 | `pages/my-trees.html` | **Modify** | Add `#myTreesStoryNavMount`, load `my-trees-story-view.js`. |
-| `js/i18n/i18n-my-trees.js` | **Modify** | Add `myTrees.story.*` i18n keys (or reuse `search.story.*` via shared dictionary). |
+| `js/i18n/i18n-my-trees.js` | **Modify** | Add `myTrees.story.*` i18n keys (or reuse `search.story.*` via shared dictionary — **owner-context i18n decision required**). |
 | `tests/contracts/my-trees-story-view-foundation-contract.test.cjs` | **New** | Static contract: My Trees Story mode is opt-in, default compact preserved, no `.trees-grid` story selector without adapter, storage key isolation, preview hub coexistence. |
 
 **Do NOT touch:**
@@ -343,7 +373,8 @@ The audit is **complete**. No implementation may begin until:
 2. **Browse Story mode** receives Production visual acceptance at `https://lovebud.pages.dev/`.
 3. **Product decision** on My Trees Story mode is made (#3654).
 4. **Preview hub coexistence** design is approved.
-5. **First implementation child** is created as a separate PR with its own contract tests.
+5. **My Trees storage/default-mode decision** — Product confirms `lovebud:myTrees:viewMode` key and `compact` default.
+6. **First implementation child** is created as a separate PR with its own contract tests.
 
 Until then, the only allowed change is this audit document.
 
@@ -358,12 +389,10 @@ git diff --stat origin/main...HEAD
 git status --short
 ```
 
-**Expected output:**
+**Actual output (verified):**
 - `git diff --name-only origin/main...HEAD` → exactly 1 file: `docs/product/MY_TREES_STORY_PARITY_READINESS_DECISION.md`
-- `git status --short` → exactly 1 untracked file: `docs/product/MY_TREES_STORY_PARITY_READINESS_DECISION.md`
-- `git diff --check` → no errors (new file, no whitespace issues)
-
----
+- `git status --short` → empty (committed, merge-forward applied)
+- `git diff --check` → no errors
 
 ## 7. Final Report
 
@@ -373,24 +402,24 @@ git status --short
 | **issue** | #3717 |
 | **worktree** | `/mnt/g/Ddrive/BatangD/task/workdiary/LoveBud-3717-mytrees-story-readiness` |
 | **branch** | `docs/my-trees-story-parity-readiness-3717` |
-| **starting main** | `235ec59b2a5a40e0cf0115ebe45b2c6e50abbcdc` |
-| **actual base** | `235ec59b2a5a40e0cf0115ebe45b2c6e50abbcdc` |
-| **merge base** | `235ec59b2a5a40e0cf0115ebe45b2c6e50abbcdc` |
-| **exact head** | `235ec59b2a5a40e0cf0115ebe45b2c6e50abbcdc` |
-| **ahead / behind** | 0 ahead, 0 behind |
+| **current main** | `5db3f42e5e8c1e29c7cc294e29fd30155b89c6a7` |
+| **actual base** | `5db3f42e5e8c1e29c7cc294e29fd30155b89c6a7` |
+| **merge base** | `5db3f42e5e8c1e29c7cc294e29fd30155b89c6a7` |
+| **exact head** | `3246f7cf11d0360701a027d7b1fa56f65133b5eb` |
+| **ahead / behind** | 2 ahead (audit commit + merge-forward), 0 behind |
 | **exact changed files** | `docs/product/MY_TREES_STORY_PARITY_READINESS_DECISION.md` (new) |
 
 | Disposition | Verdict |
 |---|---|
-| **reusable as-is** | Switcher infra, compact geometry, card composition, card metrics, i18n, security, preview hub CSS, loading patterns, reduced motion |
+| **reusable as-is** | Switcher mechanism, compact geometry, card composition, card metrics, i18n infrastructure (switcher mechanism reusable; My Trees Story label/assistive text is owner-context i18n decision required) |
 | **reusable with adapter** | Story grouping, nav UI, transitions, keyboard, CSS, preview hub coordination |
 | **owner-specific boundaries** | Auth, owner actions, auto-select, create CTA, finder/filter/sort, mobile behavior, degraded state |
+| **coexistence constraints** | Security helpers, preview hub CSS, loading/empty/error state patterns, selection state authority, card events authority — all My Trees preservation authorities, not Browse Story reuse items |
 | **production blockers** | #3699 (OPEN), Browse Story not Production-accepted |
-| **product-decision blockers** | #3654 (OPEN), preview hub coexistence, Story preference boundary |
-| **recommended architecture** | Thin adapter (`my-trees-story-view.js`) wrapping Story logic for `.trees-grid`, NOT modifying `search-story-view.js` |
-| **first implementation child proposal** | `[UX][My Trees] Add Story view adapter for My Trees` — 6 files (1 new JS, 1 modify CSS, 1 modify bootstrap, 1 modify HTML, 1 modify i18n, 1 new test) |
-| **exact proposed files** | See §4.7 |
-| **stop conditions** | #3699 resolved, Browse Production-accepted, product decision made, hub coexistence approved, separate child PR |
+| **product-decision blockers** | #3654 (OPEN), preview hub coexistence, Story preference boundary, storage/default-mode decision |
+| **recommended architecture** | Thin adapter (`my-trees-story-view.js`) calling `LoveBudBrowseStoryView.init` with `.trees-grid` target — **plan, not implementation approval** |
+| **first implementation child proposal** | `[UX][My Trees] Add Story view adapter for My Trees` — CANDIDATE_SCOPE_NOT_AUTHORIZED, 6 files |
+| **stop conditions** | #3699 resolved, Browse Production-accepted, product decision made, hub coexistence approved, storage/default-mode decision, separate child PR |
 | **unresolved items** | Hub+Story coexistence, owner actions in Story, finder/sort interaction, mobile Story, loading/empty/error in Story, degraded in Story, cross-tab sync |
 
 **Refs #3717**
