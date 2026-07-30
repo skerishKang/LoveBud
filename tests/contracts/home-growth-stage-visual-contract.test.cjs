@@ -621,4 +621,214 @@ console.log('✓ 28: mobile is a 2-column vertical journey (24px rail + cards)')
 }
 console.log('✓ 29: artist + badge removed from HTML and CSS rules (data-artist-key kept)');
 
+// ============================================================
+// 30. Video modal loading overlay CSS exists (#3707)
+// ============================================================
+{
+  assert.ok(cssGrowthRules.includes('.hero-video-modal-loading'),
+    'growth-stage.css must define .hero-video-modal-loading');
+  assert.ok(cssGrowthRules.includes('.hero-video-modal-loading-spinner'),
+    'growth-stage.css must define a loading spinner');
+  assert.ok(cssGrowthRules.includes('.hero-video-modal-loading-text'),
+    'growth-stage.css must define loading text style');
+  assert.ok(cssGrowthRules.includes('.hero-video-modal-error'),
+    'growth-stage.css must define error overlay');
+  assert.ok(cssGrowthRules.includes('.hero-video-modal-retry-btn'),
+    'growth-stage.css must define retry button');
+  assert.ok(cssGrowthRules.includes('.hero-video-modal-ready'),
+    'growth-stage.css must define ready state selector');
+  assert.ok(cssGrowthRules.includes('is-long-wait'),
+    'growth-stage.css must define long-wait state variant');
+  assert.ok(cssGrowthRules.includes('hero-video-modal-loading-spinner'),
+    'growth-stage.css must define the spinner container size');
+  assert.ok(cssGrowthRules.includes('prefers-reduced-motion: reduce'),
+    'growth-stage.css must guard modal under reduced motion');
+}
+console.log('✓ 30: modal loading CSS classes present');
+
+// ============================================================
+// 31. Modal loading JS functions exist (#3707)
+// ============================================================
+{
+  const requiredFns = [
+    'handleModalIframeLoad',
+    'retryVideoModal',
+    'showModalError',
+    'cleanupModalTimers',
+    'createModalLoadingEl',
+    'handleModalLongWait',
+    'handleModalTimeout',
+  ];
+  for (const fn of requiredFns) {
+    assert.ok(js.includes('function ' + fn),
+      'index-inline-init.js must define function ' + fn);
+  }
+}
+console.log('✓ 31: modal loading JS functions defined');
+
+// ============================================================
+// 32. Modal uses shared i18n loading keys (#3707)
+// ============================================================
+{
+  const expectedKeys = [
+    'loading.media.load',
+    'loading.long.wait',
+    'loading.error.primary',
+    'loading.error.body',
+    'loading.retry.action',
+    'loading.retrying',
+    'home.v3.youtube.attribution',
+  ];
+  for (const key of expectedKeys) {
+    var pattern = "resolveI18n('" + key + "')";
+    assert.ok(js.includes(pattern) || js.includes('resolveI18n("' + key + '")'),
+      'index-inline-init.js must use resolveI18n for "' + key + '"');
+  }
+}
+console.log('✓ 32: modal uses shared i18n loading keys');
+
+// ============================================================
+// 33. No innerHTML in newly added modal code (#3707)
+// ============================================================
+{
+  const modalSection = js.slice(js.indexOf('var modalEl = null'), js.indexOf('// Card wiring'));
+  assert.ok(!modalSection.includes('innerHTML'),
+    'modal section must not use innerHTML (DOM XSS prevention)');
+  assert.ok(!modalSection.includes('insertAdjacentHTML'),
+    'modal section must not use insertAdjacentHTML');
+}
+console.log('✓ 33: no innerHTML in modal code');
+
+// ============================================================
+// 34. Focus trap includes error fallback links (#3707)
+// ============================================================
+{
+  assert.ok(js.includes('a[href]'),
+    'focus trap selector must include a[href] for error state YouTube link');
+  assert.ok(js.includes('iframe:not([tabindex="-1"])'),
+    'focus trap must exclude iframes with tabindex=-1 during loading');
+  assert.ok(js.includes('iframe.tabIndex = -1'),
+    'JS must set tabIndex=-1 on iframe during loading state');
+  assert.ok(js.includes('iframe.removeAttribute(\'tabindex\')') || js.includes('iframe.removeAttribute("tabindex")'),
+    'JS must remove tabindex on iframe when ready');
+}
+console.log('✓ 34: focus trap handles loading/error state');
+
+// ============================================================
+// 35. youtube-nocookie.com embed preserved (#3707)
+// ============================================================
+{
+  assert.ok(js.includes('youtube-nocookie.com'),
+    'embed URL must still use youtube-nocookie.com (privacy-enhanced)');
+}
+console.log('✓ 35: youtube-nocookie.com preserved');
+
+// ============================================================
+// 36. Timer cleanup on close (#3707)
+// ============================================================
+{
+  assert.ok(js.indexOf('cleanupModalTimers') < js.indexOf('closeVideoModal'),
+    'cleanupModalTimers must be defined before closeVideoModal');
+  var closeBody = js.slice(js.indexOf('function closeVideoModal'), js.indexOf('function openVideoModal'));
+  assert.ok(closeBody.includes('cleanupModalTimers'),
+    'closeVideoModal must call cleanupModalTimers');
+  assert.ok(closeBody.includes('modalCurrentVideo'),
+    'closeVideoModal must reset modalCurrentVideo');
+}
+console.log('✓ 36: timer cleanup on close');
+
+// ============================================================
+// 37. Error icon is error-circle, not check-circle (#3707 CTO rework)
+// ============================================================
+{
+  var errorIconPath = js.match(/iconPath\.setAttribute\('d',\s*'([^']+)'\)/);
+  assert.ok(errorIconPath, 'must find error icon path in showModalError');
+  var iconD = errorIconPath[1];
+  assert.ok(!iconD.includes('l-5-5'),
+    'error icon must not be a check-circle path (contains l-5-5)');
+  assert.ok(iconD.includes('h-2v-2h2v2'),
+    'error icon must be an error-circle path (contains exclamation mark: h-2v-2h2v2)');
+  assert.ok(iconD.includes('h-2V7h2v6z'),
+    'error icon must have the exclamation body (h-2V7h2v6z)');
+}
+console.log('✓ 37: error icon is error-circle (not check-circle)');
+
+// ============================================================
+// 38. Attempt-token mechanism blocks stale iframe events (#3707 CTO rework)
+// ============================================================
+{
+  assert.ok(js.includes('var modalAttemptId = 0'),
+    'must declare modalAttemptId counter');
+  assert.ok(js.includes('function handleModalIframeError'),
+    'must define handleModalIframeError function');
+  assert.ok(js.includes('thisAttempt !== modalAttemptId'),
+    'load/error handlers must check thisAttempt !== modalAttemptId');
+  assert.ok(js.includes('modalAttemptId++'),
+    'must increment modalAttemptId to consume/invalidate attempts');
+  var closeBody2 = js.slice(js.indexOf('function closeVideoModal'), js.indexOf('function openVideoModal'));
+  assert.ok(closeBody2.includes('modalAttemptId++'),
+    'closeVideoModal must increment modalAttemptId to invalidate stale events');
+  var openBody = js.slice(js.indexOf('function openVideoModal'));
+  assert.ok(openBody.includes('modalAttemptId++'),
+    'openVideoModal must increment modalAttemptId for new attempt');
+  var retryBody = js.slice(js.indexOf('function retryVideoModal'), js.indexOf('function onDocumentFocusIn'));
+  assert.ok(retryBody.includes('modalAttemptId++'),
+    'retryVideoModal must increment modalAttemptId for new attempt');
+  assert.ok(retryBody.includes('thisAttempt !== modalAttemptId'),
+    'retryVideoModal must use closure-based attempt check');
+  assert.ok(!retryBody.includes("removeEventListener('load', handleModalIframeLoad)"),
+    'retryVideoModal must not use stale removeEventListener with named function');
+}
+console.log('✓ 38: attempt-token mechanism blocks stale iframe events');
+
+// ============================================================
+// 39. iframe error event handled (#3707 CTO rework)
+// ============================================================
+{
+  assert.ok(js.includes("addEventListener('error'"),
+    'iframe must have an error event listener');
+  var errorFnBody = js.slice(js.indexOf('function handleModalIframeError'), js.indexOf('function createModalLoadingEl'));
+  assert.ok(errorFnBody.includes('modalAttemptId++'),
+    'handleModalIframeError must increment modalAttemptId');
+  assert.ok(errorFnBody.includes('showModalError'),
+    'handleModalIframeError must call showModalError');
+  assert.ok(errorFnBody.includes('cleanupModalTimers'),
+    'handleModalIframeError must call cleanupModalTimers');
+}
+console.log('✓ 39: iframe error event handled');
+
+// ============================================================
+// 40. Timer callbacks carry attempt identity (#3707 CTO rework)
+// ============================================================
+{
+  function countOccurrences(haystack, needle) {
+    var count = 0;
+    var idx = haystack.indexOf(needle);
+    while (idx !== -1) {
+      count++;
+      idx = haystack.indexOf(needle, idx + needle.length);
+    }
+    return count;
+  }
+  // The long-wait and timeout timers must NOT be registered as bare handler
+  // references; they must be wrapped in a closure that checks the attempt.
+  assert.ok(!js.includes('setTimeout(handleModalLongWait'),
+    'long-wait timer must not be a bare handler reference');
+  assert.ok(!js.includes('setTimeout(handleModalTimeout'),
+    'timeout timer must not be a bare handler reference');
+  var openBody40 = js.slice(js.indexOf('function openVideoModal'), js.indexOf('// Card wiring'));
+  var retryBody40 = js.slice(js.indexOf('function retryVideoModal'), js.indexOf('function onDocumentFocusIn'));
+  // Each of open/retry has four attempt-guarded callbacks: load, error,
+  // long-wait timer, timeout timer.
+  assert.ok(countOccurrences(openBody40, 'thisAttempt !== modalAttemptId') >= 4,
+    'openVideoModal must guard load, error, and both timers with thisAttempt');
+  assert.ok(countOccurrences(retryBody40, 'thisAttempt !== modalAttemptId') >= 4,
+    'retryVideoModal must guard load, error, and both timers with thisAttempt');
+  assert.ok(openBody40.includes('handleModalLongWait();') && openBody40.includes('handleModalTimeout();'),
+    'openVideoModal timers must invoke handlers inside the guarded closure');
+  assert.ok(retryBody40.includes('handleModalLongWait();') && retryBody40.includes('handleModalTimeout();'),
+    'retryVideoModal timers must invoke handlers inside the guarded closure');
+}
+console.log('✓ 40: timer callbacks carry attempt identity');
+
 console.log('\n✅ All contract tests passed.');
