@@ -4661,6 +4661,15 @@
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source (.html, .css, .js) and asserts on strings, regex, file existence, structure, order, or syntax markers for the #3625 center-spotlight showcase: fixed artist keys, spotlight CSS classes, spotlight JS state machine, FIXED_CARD_MAP, SPOTLIGHT_ORDER, no original flip functions, reduced-motion overrides, FADE phase, and protected Closes/Fixes restrictions. Does not execute the target runtime behavior.",
       "capabilities": []
+    },
+    {
+      "path": "tests/contracts/release-sha-manifest-contract.test.cjs",
+      "layer": "EXECUTED_REAL_LOCAL",
+      "rationale": "Executes npm run build / scripts/build-static.js and validates exact SHA resolution (git rev-parse HEAD) against regex ^[0-9a-f]{40}$, emitted JSON schema (exactly release_sha + contract_version), fail-closed behavior in invalid-Git context, Cache-Control: no-store in _headers, and cleanup of generated .well-known/release.json artifact. No network, provider, Production, database, or browser access.",
+      "capabilities": [
+        "child_process",
+        "filesystem"
+      ]
     }
   ],
   "supplemental": [
