@@ -6,7 +6,8 @@
 **Refs:** #3425 — Keep OPEN · #1882 — Keep OPEN
 **Status:** PROPOSED
 **Phase:** Source-only contract. No API, DB, schema, Auth, storage, queue, webhook, provider, or runtime implementation authorized.
-**Baseline:** `origin/main` `292b7ac5029da41ce29f1e659f7817959f497281`
+**Historical audit baseline:** `origin/main` `292b7ac5029da41ce29f1e659f7817959f497281`
+**Current merge-forward baseline:** `origin/main` `173bf3d2bd1a6fbc184d07a663e6e97722480854`
 
 ---
 
