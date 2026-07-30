@@ -8,15 +8,15 @@
 | Completed predecessors | #3671 / PR #3676, #3685 / PR #3686, #3710 / PR #3711 |
 | This child | #3715 |
 | Original inspected audit base | `235ec59b2a5a40e0cf0115ebe45b2c6e50abbcdc` |
-| Latest merge-forward main | `5db3f42e5e8c1e29c7cc294e29fd30155b89c6a7` |
-| Current merge base after merge-forward | `5db3f42e5e8c1e29c7cc294e29fd30155b89c6a7` |
+| Merge-forward baseline at audit completion | `0e9e817c0f83ee5c7ed765e9d353a2587f57ed7d` |
+| Merge base at audit completion | `0e9e817c0f83ee5c7ed765e9d353a2587f57ed7d` |
 | Drift at audit start | None — starting main matched expected `235ec59b2a5a40e0cf0115ebe45b2c6e50abbcdc` |
 | Work class | Generic Tier 2 repository-source audit |
 | UI class | NOT_APPLICABLE |
 | Source inspected | All default-CI test files, DB engine tests and harness, CI workflow, test registry/classification, 10+ representative contract tests |
 | NOT inspected | Remote/provider scripts (not default CI), Python supplemental tests (no discovered runner), manual E2E scripts |
 
-**Note:** All counts (773 default-CI, 12 BROWSER_REAL_LOCAL, 15 source-discovered browser-like files) are snapshots of the audited baseline at `235ec59b2a5a40e0cf0115ebe45b2c6e50abbcdc`. They are not asserted as permanent current values.
+**Note:** All counts (773 default-CI, 12 BROWSER_REAL_LOCAL, 15 source-discovered browser-like files) are snapshots of the audited baseline at `235ec59b2a5a40e0cf0115ebe45b2c6e50abbcdc`. They are not asserted as permanent values.
 
 **CONFIRMED:** This document audits repository source only. It does not execute or alter tests, browsers, providers, databases, containers, deployments, or Production.
 
