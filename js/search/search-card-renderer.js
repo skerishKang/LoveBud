@@ -197,7 +197,7 @@
         if (!html) return null;
         var t = document.createElement('div');
         t.innerHTML = String(html);
-        return t.firstChild || null;
+        return t.firstElementChild || null;
     }
 
     function renderTreeCard(tree, index) {
