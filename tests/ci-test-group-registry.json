@@ -83,6 +83,7 @@
         "tests/contracts/browse-my-trees-large-geometry-3608-browser-contract.test.cjs",
         "tests/contracts/browse-my-trees-list-geometry-3608-browser-contract.test.cjs",
         "tests/contracts/browse-story-view-foundation-3655-browser-contract.test.cjs",
+        "tests/contracts/home-thumbnail-loading-browser-contract.test.cjs",
         "tests/contracts/home-video-modal-loading-3707-browser-contract.test.cjs",
         "tests/contracts/legacy-tree-entity-repair-package-contract.test.cjs",
         "tests/contracts/settings-display-name-edit-3617-browser-contract.test.cjs",

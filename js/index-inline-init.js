@@ -371,41 +371,58 @@
       }
 
       if (media) {
-        media.classList.remove('has-thumbnail-error');
-        var existingImg = media.querySelector('img');
+        if (!media.hasAttribute('data-thumb-state')) {
+          media.setAttribute('data-thumb-state', 'FALLBACK_VISIBLE');
+        }
+        var assignId = (typeof media.__thumbAssignId === 'number' ? media.__thumbAssignId : 0) + 1;
+        media.__thumbAssignId = assignId;
+
+        var obsoleteImgs = media.querySelectorAll('img');
+        for (var oi = 0; oi < obsoleteImgs.length; oi++) {
+          obsoleteImgs[oi].remove();
+        }
+        media.classList.remove('has-thumbnail-error', 'is-thumb-degraded');
+
+        var setThumbState = function(nextState) {
+          media.setAttribute('data-thumb-state', nextState);
+        };
+
         var img = document.createElement('img');
         img.alt = '';
         img.loading = 'lazy';
         img.decoding = 'async';
         img.width = 640;
         img.height = 360;
+        img.className = 'growth-stage-card-thumb';
         img.setAttribute('data-video-id', video.id);
+
+        var candidate = 'primary';
+
         img.addEventListener('load', function() {
-          if (existingImg && media.contains(existingImg)) {
-            existingImg.remove();
-          }
+          if (assignId !== media.__thumbAssignId) return;
           img.classList.add('is-loaded');
+          setThumbState(candidate === 'primary' ? 'PRIMARY_READY' : 'SECONDARY_READY');
         });
         img.addEventListener('error', function() {
-          if (img.src.indexOf('maxresdefault') !== -1) {
+          if (assignId !== media.__thumbAssignId) return;
+          if (candidate === 'primary') {
+            candidate = 'secondary';
+            setThumbState('SECONDARY_PENDING');
             img.src = youtubeThumbUrl(video.id, false);
             return;
           }
           if (media.contains(img)) {
             img.remove();
           }
-          if (existingImg && media.contains(existingImg)) {
-            existingImg.remove();
-          }
-          if (!media.querySelector('img')) {
-            media.classList.add('has-thumbnail-error');
-          }
+          media.classList.add('has-thumbnail-error', 'is-thumb-degraded');
+          setThumbState('DEGRADED_FALLBACK');
         });
         if (fallback && media.contains(fallback)) {
           media.insertBefore(img, fallback);
         } else {
           media.appendChild(img);
         }
+        setThumbState('PRIMARY_PENDING');
         img.src = youtubeThumbUrl(video.id, true);
       }
     }
