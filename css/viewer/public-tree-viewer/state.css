@@ -30,3 +30,10 @@
 #viewerRetryBtn {
     margin-top: 24px;
 }
+
+@media (prefers-reduced-motion: reduce) {
+    .viewer-state .material-symbols-outlined {
+        animation: none;
+        transform: none;
+    }
+}

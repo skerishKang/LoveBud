@@ -242,3 +242,54 @@ test('public-tree-viewer.js iframe src uses escapeHtml around safeEmbedUrl', () 
     assert.ok(src.includes('escapeHtml(safeEmbedUrl)'),
         'iframe src value must pass through escapeHtml');
 });
+
+test('viewer state elements have correct ARIA roles and live regions', () => {
+    const html = fs.readFileSync('pages/tree.html', 'utf8');
+
+    const shellMatch = html.match(/<div id="viewerTreeShell"[^>]*>/);
+    assert.ok(shellMatch, 'viewerTreeShell must exist');
+    assert.ok(shellMatch[0].includes('aria-busy="true"'), 'viewerTreeShell must have initial aria-busy="true"');
+
+    const loadingMatch = html.match(/<div id="viewerLoadingState"[^>]*>/);
+    assert.ok(loadingMatch, 'viewerLoadingState must exist');
+    assert.ok(loadingMatch[0].includes('role="status"'), 'viewerLoadingState must have role="status"');
+    assert.ok(loadingMatch[0].includes('aria-live="polite"'), 'viewerLoadingState must have aria-live="polite"');
+
+    const emptyMatch = html.match(/<div id="viewerEmptyState"[^>]*>/);
+    assert.ok(emptyMatch, 'viewerEmptyState must exist');
+    assert.ok(emptyMatch[0].includes('role="status"'), 'viewerEmptyState must have role="status"');
+    assert.ok(emptyMatch[0].includes('aria-live="polite"'), 'viewerEmptyState must have aria-live="polite"');
+
+    const errorMatch = html.match(/<div id="viewerErrorState"[^>]*>/);
+    assert.ok(errorMatch, 'viewerErrorState must exist');
+    assert.ok(errorMatch[0].includes('role="alert"'), 'viewerErrorState must have role="alert"');
+});
+
+test('viewer render state uses hidden attribute as display authority', () => {
+    const src = fs.readFileSync('js/viewer/viewer-render-state.js', 'utf8');
+
+    assert.ok(src.includes("removeAttribute('hidden')"), 'show() must use removeAttribute(hidden)');
+    assert.ok(src.includes("setAttribute('hidden'"), 'hide() must use setAttribute(hidden)');
+    assert.doesNotMatch(src, /el\.style\.display\s*=\s*'none'/, 'hide() must not use inline display:none');
+});
+
+test('viewer render state manages aria-busy on shell', () => {
+    const src = fs.readFileSync('js/viewer/viewer-render-state.js', 'utf8');
+
+    assert.ok(src.includes('aria-busy'), 'viewer-render-state.js must manage aria-busy');
+    assert.ok(src.includes("setAttribute('aria-busy', 'true')"), 'showLoading must set aria-busy true');
+    assert.ok(src.includes("removeAttribute('aria-busy')"), 'show must clear aria-busy');
+});
+
+test('viewer state CSS includes reduced-motion rule for icons', () => {
+    const css = fs.readFileSync('css/viewer/public-tree-viewer/state.css', 'utf8');
+
+    assert.ok(css.includes('prefers-reduced-motion: reduce'), 'state.css must include prefers-reduced-motion media query');
+    assert.ok(css.includes('.viewer-state .material-symbols-outlined'), 'reduced-motion rule must target viewer state icons');
+    assert.ok(css.includes('animation: none'), 'reduced-motion must disable animation');
+});
+
+test('viewer error state includes retry button', () => {
+    const html = fs.readFileSync('pages/tree.html', 'utf8');
+    assert.ok(html.includes('id="viewerRetryBtn"'), 'tree.html must include #viewerRetryBtn');
+});

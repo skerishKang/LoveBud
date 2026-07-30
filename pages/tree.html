@@ -27,20 +27,20 @@
             </div>
         </div>
         <main class="viewer-layout">
-            <div id="viewerTreeShell" class="viewer-tree-shell">
-                <div id="viewerLoadingState" class="viewer-state" hidden>
+            <div id="viewerTreeShell" class="viewer-tree-shell" aria-busy="true">
+                <div id="viewerLoadingState" class="viewer-state" role="status" aria-live="polite" hidden>
                     <div class="viewer-state-content">
                         <span class="material-symbols-outlined refresh-symbol">progress_activity</span>
                         <p data-i18n="viewer.loading">러브트리를 불러오는 중이에요</p>
                     </div>
                 </div>
-                <div id="viewerEmptyState" class="viewer-state" hidden>
+                <div id="viewerEmptyState" class="viewer-state" role="status" aria-live="polite" hidden>
                     <div class="viewer-state-content">
                         <span class="material-symbols-outlined">sentiment_dissatisfied</span>
                         <p data-i18n="viewer.empty">아직 공개된 순간이 없어요</p>
                     </div>
                 </div>
-                <div id="viewerErrorState" class="viewer-state" hidden>
+                <div id="viewerErrorState" class="viewer-state" role="alert" hidden>
                     <div class="viewer-state-content">
                         <span class="material-symbols-outlined">error_outline</span>
                         <p data-i18n="viewer.error">러브트리를 불러오지 못했어요. 다시 시도해 주세요.</p>
