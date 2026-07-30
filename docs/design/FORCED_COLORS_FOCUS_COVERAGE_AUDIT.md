@@ -167,7 +167,7 @@ Dispositions: `SOURCE_CONFIRMED`, `PARTIAL_COVERAGE`, `MISSING_COVERAGE`, `PAGE_
 | `.editor-rename-modal-input:focus` | `editor-overrides.css:668-671` | `box-shadow` only |
 | `.preview-social-action:focus-visible` | `search-preview-social-bar.css:62-66` | None (background swap only) |
 
-**10 verified high-risk selectors** where visible focus indicator is lost in WHCM. Remaining `outline: none` locations may have adequate alternative indicators (border-color, background, or adjacent element styling) but require per-selector verification.
+**10 verified high-risk selectors** (5 box-shadow-only, 5 outline suppression with no surviving replacement) where visible focus indicator is lost in WHCM. Remaining `outline: none` locations may have adequate alternative indicators (border-color, background, or adjacent element styling) but require per-selector verification.
 
 The element remains focusable (keyboard reachable, `:focus-visible` fires) — but the user cannot see where focus is.
 
@@ -246,7 +246,7 @@ Secondary action and focus treatment decisions were aligned per design review. N
    - Therefore: `box-shadow`-only focus = high risk. Explicit `outline` with author color = partially covered (system color fallback is automatic, but author intent is lost).
    - Static source cannot prove that the resulting system-color outline provides adequate contrast — that requires runtime verification.
 
-3. **`box-shadow` alone is not a valid forced-colors support claim**: Every `box-shadow`-only focus indicator loses visibility in WHCM. These must gain an `outline` fallback or a `forced-color-adjust` reset.
+3. **`box-shadow` alone is not a valid forced-colors support claim**: Every `box-shadow`-only focus indicator loses visibility in WHCM (spec-confirmed: `box-shadow` renders as `none`). Default remediation: remove native outline suppression, add solid `outline`, add a non-color cue that survives WHCM, or use an authored system-color rule. `forced-color-adjust: none` is not a default remediation — it is reviewed only when a component provides a complete accessible alternative style and passes runtime WHCM verification.
 
 4. **Semantic action vs. visual similarity**: Selectors that are visually similar (e.g., `.btn-round`, `.btn-primary`, `.btn-outline`) but serve different semantic roles should be distinguished. The shared focus rule in `global.css` is acceptable for common styling, but each semantic variant may need separate forced-colors behavior (e.g., primary button on dark hero vs. secondary on white surface).
 
@@ -274,14 +274,14 @@ Secondary action and focus treatment decisions were aligned per design review. N
 | Minimum expected file scope | `css/editor/editor-overrides.css`, `css/editor/editor-detail-comments.css`, `css/search/search-controls.css`, `css/search/search-preview-social-bar.css`, `css/editor/editor-detail-edit/form-fields.css`, `css/my-trees/my-trees-create-modal.css`, `css/editor/editor-canvas.css`, `css/editor/editor-detail-content/detail-info.css`, `css/editor/editor-memory-edit.css`, `css/components/lovebud-ai-panel.css`, `css/chat-first-workspace/*.css` |
 | Implementation prerequisite | Each `outline: none` must gain an `outline` fallback or be removed. `box-shadow`-only focus must add `outline` as primary indicator. |
 | Stop condition | Zero `outline: none` on interactive elements without WHCM-safe replacement. Zero `box-shadow`-only focus indicators. |
-| Risk | Medium — 27 locations, some may require `forced-color-adjust: none` which has side effects |
+| Risk | Medium — 27 locations require per-selector remediation (outline restoration, solid outline addition, or non-color cue). `forced-color-adjust: none` is not a default fix; it requires complete alternative styling and runtime WHCM verification. |
 | Dependencies | Child 1 (so remediation uses the token) |
 
 ### Child 3: `@media (forced-colors)` baseline for verified failures
 
 | Field | Value |
 |---|---|
-| Verified defect | `box-shadow`-only focus (10 verified high-risk selectors). Elements with `outline` preserve structure — author color override is UA adjustment, not a defect. |
+| Verified defect | 10 verified high-risk selectors: 5 box-shadow-only (visible focus indicator lost in WHCM per spec), 5 outline suppression with no surviving replacement. Elements with `outline` preserve structure — author color override is UA adjustment, not a defect. |
 | Minimum expected file scope | `css/editor/editor-overrides.css` (retry/comment/like/reaction), `css/search/search-controls.css` (search-input, sort-select), `css/editor/editor-detail-edit/form-fields.css`, `css/search/search-preview-social-bar.css` |
 | Implementation prerequisite | None — remediation can use existing tokens or system-color keywords directly. |
 | Stop condition | Every verified high-risk selector has a WHCM-safe visible focus indicator. Must be confirmed by runtime WHCM test (browser-level verification). |
@@ -292,10 +292,10 @@ Secondary action and focus treatment decisions were aligned per design review. N
 
 | Field | Value |
 |---|---|
-| Verified defect | All disabled/selected/pressed/error states rely on color-only swaps (opacity, background-color, border-color, text color). In WHCM, these color changes are overridden — the state distinction is lost. |
+| Verified defect | Per-category source-confirmed classification: opacity-based disabled — opacity difference survives forced-colors in source terms (runtime adequacy unverified); font-weight-based pressed — font-weight difference survives; color/background/border-only selected — author color overridden by system color, state distinction may collapse (verified selectors: `.love-tree-card-selected`, `.tag-chip.active`, `.create-tree-visibility-card input:checked + card`); color-only error — state distinction may collapse (verified selectors: `.editor-rename-modal-error`, `.settings-profile-edit-status--error`); native form-control state — UA forced-colors handling exists, source-only audit cannot assert failure. |
 | Minimum expected file scope | `css/global/tokens.css` (if new state tokens needed), `css/shared/love-tree-card-composition.css`, `css/search/search-controls.css`, `css/editor/editor-overrides.css` |
 | Implementation prerequisite | Child 1 (tokens), Child 3 (forced-colors baseline) |
-| Stop condition | Every instance of `:disabled`, `.is-selected`, `.active`, `.is-pressed`, and `[aria-invalid]` has a WHCM-safe secondary indicator (border style, underline, icon, or `text-decoration`) beyond color. |
+| Stop condition | Verified selected/error selectors (`.love-tree-card-selected`, `.tag-chip.active`, `.create-tree-visibility-card input:checked + card`, `.editor-rename-modal-error`, `.settings-profile-edit-status--error`) gain a WHCM-safe secondary indicator (border style, underline, icon, or `text-decoration`) beyond color. Confirmed by runtime WHCM test. |
 | Risk | Medium — depends on design decisions per component family |
 | Dependencies | Child 1, Child 3 |
 
