@@ -17,7 +17,6 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const http = require('node:http');
-const net = require('node:net');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 
@@ -60,36 +59,39 @@ function contentType(filePath) {
 }
 
 function startStaticServer() {
-  const server = http.createServer((req, res) => {
-    try {
-      let urlPath = decodeURIComponent((req.url || '/').split('?')[0]);
-      if (urlPath === '/') urlPath = '/tests/fixtures/tree-card-composition-3578-browser-fixture.html';
-      if (urlPath.endsWith('/')) urlPath += 'index.html';
-      const abs = path.normalize(path.join(ROOT, urlPath.replace(/^\//, '')));
-      if (!abs.startsWith(ROOT)) {
-        res.writeHead(403); res.end('forbidden'); return;
+  return new Promise((resolve, reject) => {
+    const server = http.createServer((req, res) => {
+      try {
+        let urlPath = decodeURIComponent((req.url || '/').split('?')[0]);
+        if (urlPath === '/') urlPath = '/tests/fixtures/tree-card-composition-3578-browser-fixture.html';
+        if (urlPath.endsWith('/')) urlPath += 'index.html';
+        const abs = path.normalize(path.join(ROOT, urlPath.replace(/^\//, '')));
+        if (!abs.startsWith(ROOT)) {
+          res.writeHead(403); res.end('forbidden'); return;
+        }
+        if (!fs.existsSync(abs) || fs.statSync(abs).isDirectory()) {
+          res.writeHead(404); res.end('not found'); return;
+        }
+        const content = fs.readFileSync(abs);
+        res.writeHead(200, { 'Content-Type': contentType(abs) });
+        res.end(content);
+      } catch (e) {
+        res.writeHead(500); res.end(String(e));
       }
-      if (!fs.existsSync(abs) || fs.statSync(abs).isDirectory()) {
-        res.writeHead(404); res.end('not found'); return;
-      }
-      const content = fs.readFileSync(abs);
-      res.writeHead(200, { 'Content-Type': contentType(abs) });
-      res.end(content);
-    } catch (e) {
-      res.writeHead(500); res.end(String(e));
-    }
+    });
+    server.on('error', reject);
+    server.listen(0, '127.0.0.1', () => {
+      const port = server.address().port;
+      resolve({ server, port });
+    });
   });
-  return server;
 }
 
-function getFreePort() {
-  return new Promise((resolve, reject) => {
-    const srv = net.createServer();
-    srv.unref();
-    srv.on('error', reject);
-    srv.listen(0, '127.0.0.1', () => {
-      const port = srv.address().port;
-      srv.close(() => resolve(port));
+async function closeServer(server) {
+  await new Promise((resolve, reject) => {
+    server.close((error) => {
+      if (error) reject(error);
+      else resolve();
     });
   });
 }
@@ -97,9 +99,7 @@ function getFreePort() {
 const FIXTURE_PATH = '/tests/fixtures/tree-card-composition-3578-browser-fixture.html';
 
 async function withServerPage(t, fn) {
-  const port = await getFreePort();
-  const server = startStaticServer();
-  await new Promise(r => server.listen(port, '127.0.0.1', r));
+  const { server, port } = await startStaticServer();
   const base = `http://127.0.0.1:${port}`;
   const browser = await launchChromiumOrThrow();
   try {
@@ -115,7 +115,7 @@ async function withServerPage(t, fn) {
     return await fn(page, base);
   } finally {
     await browser.close();
-    server.close();
+    await closeServer(server);
   }
 }
 
@@ -504,9 +504,7 @@ async function buildCardAndInteract(page, tree, eventType, eventKey) {
 }
 
 test('#3578 browser: My Trees mobile whole-card click → single appreciation navigation', { timeout: 60000 }, async (t) => {
-  const port = await getFreePort();
-  const server = startStaticServer();
-  await new Promise(r => server.listen(port, '127.0.0.1', r));
+  const { server, port } = await startStaticServer();
   const base = `http://127.0.0.1:${port}`;
   const browser = await launchChromiumOrThrow();
   try {
@@ -535,14 +533,12 @@ test('#3578 browser: My Trees mobile whole-card click → single appreciation na
     assert.equal(result.cardTabindex, '0', 'Card must have tabindex=0');
   } finally {
     await browser.close();
-    server.close();
+    await closeServer(server);
   }
 });
 
 test('#3578 browser: My Trees keyboard Enter → single appreciation activation', { timeout: 60000 }, async (t) => {
-  const port = await getFreePort();
-  const server = startStaticServer();
-  await new Promise(r => server.listen(port, '127.0.0.1', r));
+  const { server, port } = await startStaticServer();
   const base = `http://127.0.0.1:${port}`;
   const browser = await launchChromiumOrThrow();
   try {
@@ -568,14 +564,12 @@ test('#3578 browser: My Trees keyboard Enter → single appreciation activation'
       'Enter navigation must not contain mode=edit');
   } finally {
     await browser.close();
-    server.close();
+    await closeServer(server);
   }
 });
 
 test('#3578 browser: My Trees keyboard Space → single appreciation activation', { timeout: 60000 }, async (t) => {
-  const port = await getFreePort();
-  const server = startStaticServer();
-  await new Promise(r => server.listen(port, '127.0.0.1', r));
+  const { server, port } = await startStaticServer();
   const base = `http://127.0.0.1:${port}`;
   const browser = await launchChromiumOrThrow();
   try {
@@ -601,14 +595,12 @@ test('#3578 browser: My Trees keyboard Space → single appreciation activation'
       'Space navigation must not contain mode=edit');
   } finally {
     await browser.close();
-    server.close();
+    await closeServer(server);
   }
 });
 
 test('#3578 browser: nested action click does not duplicate root activation', { timeout: 60000 }, async (t) => {
-  const port = await getFreePort();
-  const server = startStaticServer();
-  await new Promise(r => server.listen(port, '127.0.0.1', r));
+  const { server, port } = await startStaticServer();
   const base = `http://127.0.0.1:${port}`;
   const browser = await launchChromiumOrThrow();
   try {
@@ -670,14 +662,12 @@ test('#3578 browser: nested action click does not duplicate root activation', { 
     assert.equal(navCount, 1, `Non-interactive child click must trigger root navigation exactly once (got ${navCount})`);
   } finally {
     await browser.close();
-    server.close();
+    await closeServer(server);
   }
 });
 
 test('#3578 browser: desktop card click is selection-only (no immediate navigation)', { timeout: 60000 }, async (t) => {
-  const port = await getFreePort();
-  const server = startStaticServer();
-  await new Promise(r => server.listen(port, '127.0.0.1', r));
+  const { server, port } = await startStaticServer();
   const base = `http://127.0.0.1:${port}`;
   const browser = await launchChromiumOrThrow();
   try {
@@ -741,14 +731,12 @@ test('#3578 browser: desktop card click is selection-only (no immediate navigati
     assert.equal(result.hasTabindex, '0', 'Card must have tabindex=0');
   } finally {
     await browser.close();
-    server.close();
+    await closeServer(server);
   }
 });
 
 test('#3602 browser: desktop card CTA direct click → appreciation navigation', { timeout: 60000 }, async (t) => {
-  const port = await getFreePort();
-  const server = startStaticServer();
-  await new Promise(r => server.listen(port, '127.0.0.1', r));
+  const { server, port } = await startStaticServer();
   const base = `http://127.0.0.1:${port}`;
   const browser = await launchChromiumOrThrow();
   try {
@@ -804,7 +792,7 @@ test('#3602 browser: desktop card CTA direct click → appreciation navigation',
       'Desktop CTA navigation must not contain mode=edit');
   } finally {
     await browser.close();
-    server.close();
+    await closeServer(server);
   }
 });
 
@@ -1078,9 +1066,7 @@ test('#3578 browser: dependency fail-closed matrix — explicit errors for all m
 
   for (const c of cases) {
     await t.test(c.name, async () => {
-      const port = await getFreePort();
-      const server = startStaticServer();
-      await new Promise(r => server.listen(port, '127.0.0.1', r));
+      const { server, port } = await startStaticServer();
       const base = `http://127.0.0.1:${port}`;
       const browser = await launchChromiumOrThrow();
       try {
@@ -1126,7 +1112,7 @@ ${c.scripts.map(s => `<script>${s}</script>`).join('\n')}
         );
       } finally {
         await browser.close();
-        server.close();
+        await closeServer(server);
       }
     });
   }

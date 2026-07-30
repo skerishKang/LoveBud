@@ -516,6 +516,7 @@ describe('My Trees timed loading manager DOM stages (EXECUTED_FAKE)', () => {
     var page = ctx.context.window.LoveBudMyTreesPage;
     page.initLoadingManager();
     page.setState('loading');
+    assert.ok(ctx.loadingEl.hidden, 'hidden attribute is visibility authority');
     assert.ok(ctx.loadingEl.classList.contains('state-hidden'));
   });
 
@@ -527,6 +528,7 @@ describe('My Trees timed loading manager DOM stages (EXECUTED_FAKE)', () => {
     page.initLoadingManager();
     page.setState('loading');
     clock.advance(499);
+    assert.ok(ctx.loadingEl.hidden);
     assert.ok(ctx.loadingEl.classList.contains('state-hidden'));
     assert.strictEqual(ctx.loadingTextEl.textContent, '');
   });
@@ -539,6 +541,7 @@ describe('My Trees timed loading manager DOM stages (EXECUTED_FAKE)', () => {
     page.initLoadingManager();
     page.setState('loading');
     clock.advance(500);
+    assert.ok(!ctx.loadingEl.hidden);
     assert.ok(!ctx.loadingEl.classList.contains('state-hidden'));
     assert.ok(ctx.loadingEl.classList.contains('state-visible'));
     assert.strictEqual(ctx.loadingTextEl.textContent, '');
@@ -578,7 +581,7 @@ describe('My Trees timed loading manager DOM stages (EXECUTED_FAKE)', () => {
     assert.ok(ctx.loadingTextEl.textContent.length > 0);
   });
 
-  it('20. 15000ms: loading hidden, error visible', () => {
+  it('20. 15000ms: loading hidden, error visible, aria-busy removed', () => {
     var clock = createFakeClock();
     var ctx = createMyTreesFakeContext(clock);
     vm.runInNewContext(read(MY_TREES_PAGE), ctx.context);
@@ -586,8 +589,11 @@ describe('My Trees timed loading manager DOM stages (EXECUTED_FAKE)', () => {
     page.initLoadingManager();
     page.setState('loading');
     clock.advance(15000);
+    assert.ok(ctx.loadingEl.hidden);
     assert.ok(ctx.loadingEl.classList.contains('state-hidden'));
+    assert.ok(!ctx.errorEl.hidden);
     assert.ok(ctx.errorEl.classList.contains('state-visible'));
+    assert.strictEqual(ctx.containerEl.getAttribute('aria-busy'), null, 'aria-busy removed on error escalation');
   });
 
   it('21. READY: timers 0, loading hidden, loaded visible', () => {
@@ -600,7 +606,9 @@ describe('My Trees timed loading manager DOM stages (EXECUTED_FAKE)', () => {
     clock.advance(500);
     page.setState('loaded');
     assert.strictEqual(clock.pendingCount(), 0);
+    assert.ok(ctx.loadingEl.hidden);
     assert.ok(ctx.loadingEl.classList.contains('state-hidden'));
+    assert.ok(!ctx.loadedEl.hidden);
     assert.ok(ctx.loadedEl.classList.contains('state-visible-block'));
   });
 
@@ -614,8 +622,9 @@ describe('My Trees timed loading manager DOM stages (EXECUTED_FAKE)', () => {
     clock.advance(500);
     page.setState('empty');
     assert.strictEqual(clock.pendingCount(), 0);
+    assert.ok(!ctx.emptyEl.hidden);
     assert.ok(ctx.emptyEl.classList.contains('state-visible'));
-    assert.ok(ctx.errorEl.classList.contains('state-hidden'));
+    assert.ok(ctx.errorEl.hidden);
   });
 
   it('23. ERROR: error visible, not empty', () => {
@@ -628,8 +637,9 @@ describe('My Trees timed loading manager DOM stages (EXECUTED_FAKE)', () => {
     clock.advance(500);
     page.setState('error', { errorType: 'auth' });
     assert.strictEqual(clock.pendingCount(), 0);
+    assert.ok(!ctx.errorEl.hidden);
     assert.ok(ctx.errorEl.classList.contains('state-visible'));
-    assert.ok(ctx.emptyEl.classList.contains('state-hidden'));
+    assert.ok(ctx.emptyEl.hidden);
   });
 });
 
@@ -955,5 +965,178 @@ describe('Shared primitive adoption (SOURCE_STATIC)', () => {
     var motionBlock = css.substring(css.indexOf('prefers-reduced-motion'));
     assert.ok(motionBlock.includes('.lt-spinner'), 'reduced-motion targets .lt-spinner');
     assert.ok(motionBlock.includes('animation') && motionBlock.includes('none'), 'animation set to none');
+  });
+});
+
+// ── Issue #3741: owner-list loading/empty/error state semantics ─
+
+describe('My Trees state-region owner and hidden attribute (EXECUTED_FAKE)', () => {
+
+  it('51. aria-busy on container: true on loading, removed on terminal state', () => {
+    var clock = createFakeClock();
+    var ctx = createMyTreesFakeContext(clock);
+    vm.runInNewContext(read(MY_TREES_PAGE), ctx.context);
+    var page = ctx.context.window.LoveBudMyTreesPage;
+    page.initLoadingManager();
+
+    page.setState('loading');
+    clock.advance(500);
+    assert.strictEqual(ctx.containerEl.getAttribute('aria-busy'), 'true', 'aria-busy=true on loading');
+
+    page.setState('loaded');
+    assert.strictEqual(ctx.containerEl.getAttribute('aria-busy'), null, 'aria-busy removed on loaded');
+
+    page.setState('loading');
+    clock.advance(500);
+    assert.strictEqual(ctx.containerEl.getAttribute('aria-busy'), 'true', 'aria-busy=true on retry loading');
+
+    page.setState('empty');
+    assert.strictEqual(ctx.containerEl.getAttribute('aria-busy'), null, 'aria-busy removed on empty');
+
+    page.setState('loading');
+    clock.advance(500);
+    assert.strictEqual(ctx.containerEl.getAttribute('aria-busy'), 'true', 'aria-busy=true on loading again');
+
+    page.setState('error', { errorType: 'network' });
+    assert.strictEqual(ctx.containerEl.getAttribute('aria-busy'), null, 'aria-busy removed on error');
+  });
+
+  it('52. retry returns to loading state', () => {
+    var clock = createFakeClock();
+    var ctx = createMyTreesFakeContext(clock);
+    vm.runInNewContext(read(MY_TREES_PAGE), ctx.context);
+    var page = ctx.context.window.LoveBudMyTreesPage;
+    page.initLoadingManager();
+
+    page.setState('loading');
+    clock.advance(500);
+    page.setState('error', { errorType: 'network' });
+    assert.ok(!ctx.errorEl.hidden, 'error visible after failure');
+    assert.strictEqual(ctx.containerEl.getAttribute('aria-busy'), null, 'aria-busy removed on error');
+
+    page.setState('loading');
+    assert.ok(ctx.loadingEl.hidden, 'loading hidden at 0ms (init stage)');
+    clock.advance(500);
+    assert.ok(!ctx.loadingEl.hidden, 'loading visible at 500ms');
+    assert.ok(ctx.errorEl.hidden, 'error hidden on retry');
+    assert.strictEqual(ctx.containerEl.getAttribute('aria-busy'), 'true', 'aria-busy=true on retry loading');
+  });
+
+  it('53. exactly one visible surface per state', () => {
+    var clock = createFakeClock();
+    var ctx = createMyTreesFakeContext(clock);
+    vm.runInNewContext(read(MY_TREES_PAGE), ctx.context);
+    var page = ctx.context.window.LoveBudMyTreesPage;
+    page.initLoadingManager();
+
+    function countVisible() {
+      var count = 0;
+      if (!ctx.loadingEl.hidden) count++;
+      if (!ctx.errorEl.hidden) count++;
+      if (!ctx.emptyEl.hidden) count++;
+      if (!ctx.loadedEl.hidden) count++;
+      return count;
+    }
+
+    page.setState('loading');
+    clock.advance(500);
+    assert.strictEqual(countVisible(), 1, 'loading: exactly 1 visible surface');
+
+    page.setState('loaded');
+    assert.strictEqual(countVisible(), 1, 'loaded: exactly 1 visible surface');
+
+    page.setState('empty');
+    assert.strictEqual(countVisible(), 1, 'empty: exactly 1 visible surface');
+
+    page.setState('error', { errorType: 'network' });
+    assert.strictEqual(countVisible(), 1, 'error: exactly 1 visible surface');
+  });
+
+  it('54. hidden attribute is visibility authority (not CSS class alone)', () => {
+    var clock = createFakeClock();
+    var ctx = createMyTreesFakeContext(clock);
+    vm.runInNewContext(read(MY_TREES_PAGE), ctx.context);
+    var page = ctx.context.window.LoveBudMyTreesPage;
+    page.initLoadingManager();
+
+    page.setState('loading');
+    clock.advance(500);
+    assert.ok(!ctx.loadingEl.hidden, 'loading visible');
+    assert.ok(ctx.errorEl.hidden, 'error hidden via hidden attr');
+    assert.ok(ctx.emptyEl.hidden, 'empty hidden via hidden attr');
+    assert.ok(ctx.loadedEl.hidden, 'loaded hidden via hidden attr');
+
+    page.setState('loaded');
+    assert.ok(ctx.loadingEl.hidden, 'loading hidden via hidden attr');
+    assert.ok(ctx.errorEl.hidden, 'error hidden via hidden attr');
+    assert.ok(ctx.emptyEl.hidden, 'empty hidden via hidden attr');
+    assert.ok(!ctx.loadedEl.hidden, 'loaded visible');
+  });
+});
+
+describe('My Trees state-region HTML structure (SOURCE_STATIC)', () => {
+
+  it('55. single state-region owner: treesContainer has role=region, state-loaded does not', () => {
+    const html = read(MY_TREES_HTML);
+    assert.ok(html.includes('id="treesContainer"') && html.includes('role="region"'),
+      'treesContainer is the single state-region owner with role=region');
+    var loadedMatch = html.match(/id="state-loaded"[^>]*>/);
+    assert.ok(loadedMatch, 'state-loaded exists');
+    assert.ok(!loadedMatch[0].includes('role="region"'),
+      'state-loaded does NOT have role=region (container owns it)');
+  });
+
+  it('56. HTML: aria-busy on treesContainer, hidden on error/empty/loaded, loading visible', () => {
+    const html = read(MY_TREES_HTML);
+    assert.ok(html.includes('aria-busy="true"'), 'treesContainer has aria-busy="true"');
+    assert.ok(/id="state-error"[^>]*hidden/.test(html), 'state-error has hidden attribute');
+    assert.ok(/id="state-empty"[^>]*hidden/.test(html), 'state-empty has hidden attribute');
+    assert.ok(/id="state-loaded"[^>]*hidden/.test(html), 'state-loaded has hidden attribute');
+    var loadingMatch = html.match(/id="state-loading"[^>]*>/);
+    assert.ok(loadingMatch, 'state-loading exists');
+    assert.ok(!loadingMatch[0].includes('hidden'), 'state-loading is visible initially (no hidden)');
+  });
+
+  it('57. HTML: loading role=status + aria-live=polite, empty role=status, error role=alert', () => {
+    const html = read(MY_TREES_HTML);
+    var loadingMatch = html.match(/id="state-loading"[^>]*>/);
+    assert.ok(loadingMatch, 'state-loading exists');
+    assert.ok(loadingMatch[0].includes('role="status"'), 'loading has role=status');
+    assert.ok(loadingMatch[0].includes('aria-live="polite"'), 'loading has aria-live=polite');
+    var emptyMatch = html.match(/id="state-empty"[^>]*>/);
+    assert.ok(emptyMatch, 'state-empty exists');
+    assert.ok(emptyMatch[0].includes('role="status"'), 'empty has role=status');
+    var errorMatch = html.match(/id="state-error"[^>]*>/);
+    assert.ok(errorMatch, 'state-error exists');
+    assert.ok(errorMatch[0].includes('role="alert"'), 'error has role=alert');
+  });
+
+  it('58. HTML: retry button present in error state', () => {
+    const html = read(MY_TREES_HTML);
+    assert.ok(html.includes('id="retryLoadBtn"'), 'retry button exists');
+    assert.ok(/id="state-error"[^>]*hidden/.test(html), 'error section initially hidden (retry not visible until error)');
+  });
+});
+
+describe('My Trees reduced-motion (SOURCE_STATIC)', () => {
+
+  it('59. reduced-motion: my-trees-states.css disables skeleton/loading motion', () => {
+    const cssPath = path.join(REPO_ROOT, 'css', 'my-trees', 'my-trees-states.css');
+    const css = fs.readFileSync(cssPath, 'utf-8');
+    assert.ok(css.includes('prefers-reduced-motion'), 'my-trees-states.css has reduced-motion media query');
+    var motionBlock = css.substring(css.indexOf('prefers-reduced-motion'));
+    assert.ok(motionBlock.includes('animation') && motionBlock.includes('none'),
+      'animation set to none in reduced-motion');
+    assert.ok(motionBlock.includes('.lt-spinner'),
+      'reduced-motion targets .lt-spinner');
+    assert.ok(motionBlock.includes('transition') && motionBlock.includes('none'),
+      'transition set to none in reduced-motion');
+  });
+
+  it('60. hidden attribute CSS authority in my-trees-states.css', () => {
+    const cssPath = path.join(REPO_ROOT, 'css', 'my-trees', 'my-trees-states.css');
+    const css = fs.readFileSync(cssPath, 'utf-8');
+    assert.ok(css.includes('[hidden]'), 'CSS has [hidden] selector');
+    assert.ok(css.includes('display: none'), 'CSS enforces display:none for hidden');
   });
 });

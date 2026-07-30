@@ -91,7 +91,10 @@
         };
 
         const renderMemoryBase = (memory) => {
-            if (videoMain) videoMain.innerHTML = buildVideoMainMarkup(memory);
+            if (videoMain) {
+                videoMain.innerHTML = buildVideoMainMarkup(memory);
+                videoMain.removeAttribute('aria-busy');
+            }
 
         if (memoryTitle) memoryTitle.textContent = memory.title || tText('tree_context_moment', '순간 상세');
         setMetaPillVisibility(detailArtist, memory.artist || '');
