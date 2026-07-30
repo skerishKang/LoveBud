@@ -493,9 +493,11 @@ test('home video modal loading states (#3707)', async (t) => {
           await openModal(page);
           // First attempt reaches long-wait; its 30s timeout is still armed.
           await page.clock.fastForward(8000);
+          await page.clock.runFor(0);
           assert.ok((await page.locator('.hero-video-modal-loading').getAttribute('class')).includes('is-long-wait'), 'first attempt in long-wait');
           // First attempt then times out into ERROR (retry button now exists).
           await page.clock.fastForward(22000);
+          await page.clock.runFor(0);
           await page.waitForSelector('.hero-video-modal-retry-btn', { timeout: 2000 });
           // Retry into a NEW attempt that succeeds.
           ctl.setMode('success');
@@ -503,6 +505,7 @@ test('home video modal loading states (#3707)', async (t) => {
           await page.waitForSelector('.hero-video-modal-ready', { timeout: 2000 });
           // Advance far beyond any timer from the previous (errored) attempt.
           await page.clock.fastForward(90000);
+          await page.clock.runFor(0);
           const cls = await page.locator('.hero-video-modal').getAttribute('class');
           assert.ok(cls.includes('hero-video-modal-ready'), 'new attempt stays ready');
           assert.strictEqual(await page.locator('.hero-video-modal-error').count(), 0, 'stale timer never flips new attempt to error');
