@@ -26,12 +26,17 @@
     appearance: none;
     -webkit-appearance: none;
     outline: none;
-    transition: all 0.3s;
+    transition: border-color 0.3s, box-shadow 0.3s;
 }
 
 .search-input:focus {
     border-color: rgba(144,73,81,0.18);
     box-shadow: 0 12px 28px rgba(141, 71, 79, 0.06);
+}
+
+.search-input:focus-visible {
+    border-color: rgba(144, 73, 81, 0.32);
+    box-shadow: 0 0 0 3px rgba(144, 73, 81, 0.15);
 }
 
 .search-icon {
@@ -323,6 +328,13 @@
         min-height: 40px;
         font-size: 13px;
         width: 100%;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .search-input,
+    .search-icon {
+        transition: none;
     }
 }
 
