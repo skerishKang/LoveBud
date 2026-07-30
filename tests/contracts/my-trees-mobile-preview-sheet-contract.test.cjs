@@ -9,7 +9,6 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const http = require('http');
-const net = require('net');
 
 const ROOT = path.join(__dirname, '..', '..');
 const CACHE_V = '20260721-3604-2';
@@ -252,18 +251,6 @@ function contentType(filePath) {
   return 'application/octet-stream';
 }
 
-function getFreePort() {
-  return new Promise((resolve, reject) => {
-    const srv = net.createServer();
-    srv.unref();
-    srv.on('error', reject);
-    srv.listen(0, '127.0.0.1', () => {
-      const port = srv.address().port;
-      srv.close(() => resolve(port));
-    });
-  });
-}
-
 /**
  * Production-equivalent fixture ancestry:
  * sheet is a descendant of
@@ -344,7 +331,7 @@ function buildFixtureHtml(options = {}) {
 }
 
 function startFixtureServer(fixtureHtml) {
-  return getFreePort().then((port) => new Promise((resolve, reject) => {
+  return new Promise((resolve, reject) => {
     const server = http.createServer((req, res) => {
       try {
         let urlPath = decodeURIComponent((req.url || '/').split('?')[0]);
@@ -366,9 +353,12 @@ function startFixtureServer(fixtureHtml) {
         res.end(String(e));
       }
     });
-    server.listen(port, '127.0.0.1', () => resolve({ server, port }));
+    server.listen(0, '127.0.0.1', () => {
+      const port = server.address().port;
+      resolve({ server, port });
+    });
     server.on('error', reject);
-  }));
+  });
 }
 
 function isFullyVisible(rect, viewportH, viewportW) {
@@ -628,7 +618,7 @@ test('#3604 browser geometry: 375×812 open sheet shows CTA without scrolling', 
     await context.close();
   } finally {
     await browser.close();
-    server.close();
+    await new Promise((resolve) => server.close(resolve));
   }
 });
 
@@ -698,7 +688,7 @@ test('#3604 sheet close restores page-transition transform (not permanently remo
     await context.close();
   } finally {
     await browser.close();
-    server.close();
+    await new Promise((resolve) => server.close(resolve));
   }
 });
 
@@ -749,6 +739,6 @@ test('#3604 desktop viewport does not sticky-pin primary CTA or share', { timeou
     await context.close();
   } finally {
     await browser.close();
-    server.close();
+    await new Promise((resolve) => server.close(resolve));
   }
 });

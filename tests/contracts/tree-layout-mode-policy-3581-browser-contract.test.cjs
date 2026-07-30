@@ -12,7 +12,6 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const http = require('node:http');
-const net = require('node:net');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const EVIDENCE = path.resolve(ROOT, '..', 'local-backup', 'lovebud-3581-layout-policy');
@@ -35,14 +34,42 @@ function contentType(filePath) {
   return 'application/octet-stream';
 }
 
-function getFreePort() {
+function startServer() {
   return new Promise((resolve, reject) => {
-    const srv = net.createServer();
-    srv.unref();
-    srv.on('error', reject);
-    srv.listen(0, '127.0.0.1', () => {
-      const port = srv.address().port;
-      srv.close(() => resolve(port));
+    const server = http.createServer((req, res) => {
+      try {
+        let urlPath = decodeURIComponent((req.url || '/').split('?')[0]);
+        if (urlPath === '/' || urlPath === '/fixture.html') {
+          res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+          res.end(fixtureHtml());
+          return;
+        }
+        const abs = path.normalize(path.join(ROOT, urlPath.replace(/^\//, '')));
+        if (!abs.startsWith(ROOT) || !fs.existsSync(abs) || fs.statSync(abs).isDirectory()) {
+          res.writeHead(404);
+          res.end('not found');
+          return;
+        }
+        res.writeHead(200, { 'Content-Type': contentType(abs) });
+        res.end(fs.readFileSync(abs));
+      } catch (e) {
+        res.writeHead(500);
+        res.end(String(e));
+      }
+    });
+    server.on('error', reject);
+    server.listen(0, '127.0.0.1', () => {
+      const port = server.address().port;
+      resolve({ server, port });
+    });
+  });
+}
+
+async function closeServer(server) {
+  await new Promise((resolve, reject) => {
+    server.close((error) => {
+      if (error) reject(error);
+      else resolve();
     });
   });
 }
@@ -133,34 +160,34 @@ window.__LB3581_READY = new Promise(function(resolve) {
 }
 
 function startServer() {
-  return getFreePort().then(
-    (port) =>
-      new Promise((resolve, reject) => {
-        const server = http.createServer((req, res) => {
-          try {
-            let urlPath = decodeURIComponent((req.url || '/').split('?')[0]);
-            if (urlPath === '/' || urlPath === '/fixture.html') {
-              res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-              res.end(fixtureHtml());
-              return;
-            }
-            const abs = path.normalize(path.join(ROOT, urlPath.replace(/^\//, '')));
-            if (!abs.startsWith(ROOT) || !fs.existsSync(abs) || fs.statSync(abs).isDirectory()) {
-              res.writeHead(404);
-              res.end('not found: ' + urlPath);
-              return;
-            }
-            res.writeHead(200, { 'Content-Type': contentType(abs) });
-            res.end(fs.readFileSync(abs));
-          } catch (e) {
-            res.writeHead(500);
-            res.end(String(e));
-          }
-        });
-        server.listen(port, '127.0.0.1', () => resolve({ server, port }));
-        server.on('error', reject);
-      })
-  );
+  return new Promise((resolve, reject) => {
+    const server = http.createServer((req, res) => {
+      try {
+        let urlPath = decodeURIComponent((req.url || '/').split('?')[0]);
+        if (urlPath === '/' || urlPath === '/fixture.html') {
+          res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+          res.end(fixtureHtml());
+          return;
+        }
+        const abs = path.normalize(path.join(ROOT, urlPath.replace(/^\//, '')));
+        if (!abs.startsWith(ROOT) || !fs.existsSync(abs) || fs.statSync(abs).isDirectory()) {
+          res.writeHead(404);
+          res.end('not found: ' + urlPath);
+          return;
+        }
+        res.writeHead(200, { 'Content-Type': contentType(abs) });
+        res.end(fs.readFileSync(abs));
+      } catch (e) {
+        res.writeHead(500);
+        res.end(String(e));
+      }
+    });
+    server.on('error', reject);
+    server.listen(0, '127.0.0.1', () => {
+      const port = server.address().port;
+      resolve({ server, port });
+    });
+  });
 }
 
 async function launchBrowser() {
@@ -630,7 +657,7 @@ test('#3581 live canvas: owner appreciation ignores draft; edit restores; toggle
     await context.close();
   } finally {
     await browser.close();
-    server.close();
+    await closeServer(server);
   }
 });
 
@@ -666,7 +693,7 @@ test('#3581 live canvas: public appreciation isolation + structured first paint'
     await context.close();
   } finally {
     await browser.close();
-    server.close();
+    await closeServer(server);
   }
 });
 
@@ -746,6 +773,6 @@ test('#3581 live canvas: mobile appreciation structured + overflow', { timeout: 
     await context.close();
   } finally {
     await browser.close();
-    server.close();
+    await closeServer(server);
   }
 });

@@ -127,21 +127,45 @@
     border-radius: var(--radius-lg, 12px);
 }
 
-/* Display state classes */
+/* Display state classes (display type only; hidden attribute is visibility authority) */
 .state-visible { display: flex; }
 .state-visible-block { display: block; }
 .state-hidden { display: none; }
 
-/* Initial display states */
-#state-loading { display: flex; }
-#state-error { display: none; }
-#state-empty { display: none; }
-#state-loaded { display: none; }
+/* hidden attribute is the visibility authority — overrides any display class */
+#treesContainer [hidden] {
+  display: none !important;
+}
 
 /* Runtime display state classes - ID-scoped for override */
 #treesContainer .state-hidden { display: none; }
 #treesContainer .state-visible { display: flex; }
 #treesContainer .state-visible-block { display: block; }
+
+/* Loaded section default display */
+.trees-loaded {
+  display: block;
+  width: 100%;
+}
+
+/* Reduced-motion: disable skeleton and loading animations */
+@media (prefers-reduced-motion: reduce) {
+  .trees-loading .lt-spinner {
+    animation: none;
+  }
+
+  .trees-skeleton-grid .search-skeleton-block,
+  .trees-skeleton-grid .search-skeleton-line,
+  .trees-skeleton-grid .search-skeleton-chip {
+    animation: none;
+  }
+
+  .trees-loading-head,
+  .trees-loading,
+  .lt-long-wait {
+    transition: none;
+  }
+}
 
 /* Manage summary bar display state */
 .manage-summary-visible { display: flex; }
