@@ -95,7 +95,7 @@ Each rule is preceded by its claim type.
 |---|---|
 | **Canonical family** | Primary Button |
 | **Exact source owner** | `css/global.css` lines 112-161 (`.btn-round`, `.btn-primary`, `.btn-outline`), `css/index/components.css` (Home variants), `css/editor/editor-overrides.css` |
-| **Consumer pages** | `index.html`, `pages/search.html`, `pages/my-trees.html`, `pages/editor.html`, `pages/settings.html`, `pages/detail.html`, `pages/intro.html` |
+| **Consumer pages** | **Global definition authority:** loaded by all pages via `css/global.css`. **Direct DOM consumers:** `index.html` (`.btn-round.btn-primary`, `.btn-round.btn-outline`), `pages/my-trees.html` (`.btn-round.btn-primary`). **CSS consumers only:** `pages/editor.html` (editor CSS references `.btn-round` in descendant selectors, defines `.sidebar-btn-primary`, `.editor-action-btn-primary`). No direct HTML `.btn-round` usage: Browse, Settings, Detail, Intro. |
 | **Approved variants** | `btn-round.btn-primary`, `btn-round.btn-outline`, `btn-header-create`, `sidebar-btn-primary`, `editor-action-btn-primary` |
 
 **Structure:**
@@ -209,9 +209,30 @@ Each rule is preceded by its claim type.
 |---|---|
 | **Canonical family** | Loading Presentation |
 | **Exact source owner** | `css/global/lovetree-loading-states.css` (shared primitives), page-specific CSS (page-owned transitions) |
-| **Consumer pages (shared):** `index.html`, `pages/search.html`, `pages/my-trees.html`, `pages/editor.html`, `pages/settings.html`, `pages/detail.html` |
-| **Consumer pages (page-owned):** `index.html` (Home modal), `pages/editor.html` (staged loading), `pages/search.html` (search loading), `pages/my-trees.html` (hub loading) |
+| **Consumer pages (shared primitives — exact verified):** | `pages/search.html` (Browse: `.lt-loading-inline`, `.lt-spinner`), `pages/my-trees.html` (My Trees: `.lt-spinner`, `.lt-loading-compact`) |
+| **Consumer pages (page-owned loading):** | `index.html` (Home modal: `.hero-video-modal-loading*` LOADING / LONG_WAIT / READY / ERROR / RETRYING state machine), `pages/editor.html` (editor staged runtime: `.editor-loading-shell`), `pages/search.html` (Browse search runtime), `pages/my-trees.html` (My Trees hub runtime) |
 | **Approved variants** | `lt-loading-inline`, `lt-loading-compact`, `lt-long-wait`, `lt-degraded`, `lt-skeleton*`, page-owned variants |
+
+**Consumer structure:**
+
+```text
+Shared presentation primitives:
+  exact verified consumers: Browse (.lt-loading-inline, .lt-spinner),
+                           My Trees (.lt-spinner, .lt-loading-compact)
+  Unused in direct DOM: Home, Editor, Settings, Detail, Intro
+
+Home modal:
+  page-owned .hero-video-modal-loading* | LOADING / LONG_WAIT / READY / ERROR / RETRYING
+
+Editor:
+  page-owned .editor-loading-shell staged runtime + verified shared primitive availability
+
+Browse:
+  page-owned .search-loading search runtime + verified shared primitive use (.lt-loading-inline, .lt-spinner)
+
+My Trees:
+  page-owned hub runtime + verified shared spinner use (.lt-spinner, .lt-loading-compact)
+```
 
 **Shared primitives** (in `css/global/lovetree-loading-states.css`):
 - OBSERVED_SOURCE_FACT: `.lt-loading-inline` — inline spinner + text
@@ -235,8 +256,8 @@ Each rule is preceded by its claim type.
 | Field | Value |
 |---|---|
 | **Canonical family** | Empty State |
-| **Exact source owner** | `css/global/tokens.css` (empty-state tokens), page-specific CSS |
-| **Consumer pages** | `index.html`, `pages/search.html`, `pages/my-trees.html`, `pages/editor.html`, `pages/settings.html`, `pages/detail.html` |
+| **Exact source owner** | `css/global/tokens.css` (empty-state token authority), page-specific CSS |
+| **Consumer pages** | **Token authority:** globally defined. **Direct consumers:** `pages/search.html` (Browse: `css/search/`), `pages/my-trees.html` (My Trees: `css/my-trees/`). Unused in page-owned CSS: Home, Editor, Settings, Detail. |
 | **Approved variants** | Shared tokens, page-specific empty presentations |
 
 - OBSERVED_SOURCE_FACT: Shared `--lovetree-empty-state-*` tokens in `css/global/tokens.css` lines 83-97.
@@ -369,16 +390,16 @@ Each rule is preceded by its claim type.
 | Component family | `index.html` | `pages/search.html` | `pages/my-trees.html` | `pages/editor.html` | `pages/settings.html` | `pages/detail.html` | `pages/intro.html` |
 |---|---|---|---|---|---|---|---|
 | Hero | ✅ Home | ✅ Browse | ✅ My Trees | ❌ | ❌ | ✅ Detail | ✅ Intro |
-| Primary Button | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Primary Button | ✅ Home | ❌ | ✅ My Trees | ❌ (CSS override only) | ❌ | ❌ | ❌ |
 | Secondary Button | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ | ❌ |
 | Search Input | ❌ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 | Filter Chip | ❌ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 | Card Shell | ❌ | ✅ | ✅ | ❌ | ❌ | ✅ | ❌ |
 | Results Header | ❌ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 | Preview Hub | ❌ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Loading (shared) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Loading (shared primitives) | ❌ | ✅ Browse | ✅ My Trees | ❌ | ❌ | ❌ | ❌ |
 | Loading (page-owned) | ✅ (modal) | ✅ (search) | ✅ (hub) | ✅ (staged) | ❌ | ❌ | ❌ |
-| Empty State | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| Empty State | ❌ | ✅ Browse | ✅ My Trees | ❌ | ❌ | ❌ | ❌ |
 | Error State (shared) | ❌ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
 | Error State (page-owned) | ✅ (modal) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | Media Control | ✅ | ✅ | ❌ | ✅ | ❌ | ✅ | ❌ |
@@ -441,9 +462,9 @@ The following identifiers have established contract assertions and consumer bind
 
 | Identifier | Type | Location | Consumers |
 |---|---|---|---|
-| `.btn-round` | CSS class | `css/global.css` | All pages |
-| `.btn-primary` | CSS class | `css/global.css` | All pages |
-| `.btn-outline` | CSS class | `css/global.css` | All pages |
+| `.btn-round` | CSS class | `css/global.css` | global definition; direct DOM: Index, My Trees |
+| `.btn-primary` | CSS class | `css/global.css` | global definition; direct DOM: Index, My Trees |
+| `.btn-outline` | CSS class | `css/global.css` | global definition; direct DOM: Index |
 | `.tag-chip` | CSS class | `css/global.css` | Search, My Trees |
 | `.filter-row` | CSS class | `css/search/search-controls.css` | Search, My Trees |
 | `.search-input-wrapper` | CSS class | `css/search/search-controls.css` | Search, My Trees |
@@ -456,12 +477,12 @@ The following identifiers have established contract assertions and consumer bind
 | `.page-hero-eyebrow` | CSS class | `css/global.css` | Search, My Trees |
 | `.shared-mobile-hero-eyebrow` | CSS class | `css/global.css` | Index, Search, My Trees |
 | `.shared-mobile-hero-title` | CSS class | `css/global.css` | Index, Search, My Trees |
-| `.lt-loading-inline` | CSS class | `css/global/lovetree-loading-states.css` | All pages |
+| `.lt-loading-inline` | CSS class | `css/global/lovetree-loading-states.css` | Browse |
 | `.lt-error-shell` | CSS class | `css/global/lovetree-loading-states.css` | Editor, Browse, My Trees |
-| `.lt-spinner` | CSS class | `css/global/lovetree-loading-states.css` | All pages |
+| `.lt-spinner` | CSS class | `css/global/lovetree-loading-states.css` | Browse, My Trees |
 | `.empty-state` | CSS class | `css/my-trees/my-trees-states.css` | My Trees |
-| `--lovetree-card-*` | CSS custom properties | `css/global/tokens.css` | All pages |
-| `--lovetree-empty-state-*` | CSS custom properties | `css/global/tokens.css` | All pages |
+| `--lovetree-card-*` | CSS custom properties | `css/global/tokens.css` | token authority; direct CSS consumers: Browse, My Trees |
+| `--lovetree-empty-state-*` | CSS custom properties | `css/global/tokens.css` | token authority; direct CSS consumers: Browse, My Trees |
 | `.browse-story-navigation` | CSS class | `css/tree-view-mode.css` | Browse Story |
 | `.hero-video-modal` | CSS class | `css/index/visual/growth-stage.css` | Home |
 | `.hero-video-modal-panel` | CSS class | `css/index/visual/growth-stage.css` | Home |
