@@ -11,3 +11,9 @@
   Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
   Pragma: no-cache
   Expires: 0
+
+# Release manifest must never be cached (no-store) so that every fetch
+# returns the actual serving SHA and stale SHA is never served.
+# Refs #3740, #3761
+/.well-known/release.json
+  Cache-Control: no-store
