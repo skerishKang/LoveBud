@@ -379,6 +379,7 @@ async function waitForShellReady(page, kind, ms) {
         const title = tree.querySelector('.vv-title');
         return !!(title && title.textContent && title.textContent.length > 0);
       },
+      undefined,
       { timeout }
     );
     return;
@@ -392,6 +393,7 @@ async function waitForShellReady(page, kind, ms) {
         if (shell && shell.getAttribute('aria-busy') !== null) return false;
         return !!error.querySelector('#viewerRetryBtn');
       },
+      undefined,
       { timeout }
     );
     return;
@@ -405,6 +407,7 @@ async function waitForShellReady(page, kind, ms) {
         if (shell && shell.getAttribute('aria-busy') !== null) return false;
         return true;
       },
+      undefined,
       { timeout }
     );
     return;
@@ -418,6 +421,7 @@ async function waitForShellReady(page, kind, ms) {
         if (shell && shell.getAttribute('aria-busy') !== null) return false;
         return !!tree.querySelector('.vv-title');
       },
+      undefined,
       { timeout }
     );
     return;
@@ -431,6 +435,7 @@ async function waitForShellReady(page, kind, ms) {
         if (shell && shell.getAttribute('aria-busy') !== 'true') return false;
         return true;
       },
+      undefined,
       { timeout }
     );
     return;
