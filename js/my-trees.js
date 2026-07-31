@@ -113,11 +113,6 @@
 
     document.body.classList.remove('my-trees-auth-pending');
 
-    var tax = window.LoveBudJourneyOutcomeTaxonomy;
-    if (tax && window.LoveBudMyTreesData && window.LoveBudMyTreesData.JourneyTracker) {
-      window.LoveBudMyTreesData.JourneyTracker.recordStage(tax.STAGES.ACTION_STARTED);
-    }
-
     // Auth confirmed: init loading manager first, then controls, then load
     if (myTreesPage && typeof myTreesPage.initLoadingManager === 'function') {
       myTreesPage.initLoadingManager();

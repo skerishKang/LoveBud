@@ -23,43 +23,59 @@
   }
 
   var MyTreesJourneyTracker = (function() {
-    var tracker = {
-      startTime: 0,
-      recordStage: function(stage, meta) {
-        var tax = window.LoveBudJourneyOutcomeTaxonomy;
-        if (!tax) return;
-        var sink = window.__LoveBudJourneyOutcomeSink;
-        if (!sink || typeof sink.push !== 'function') return;
+    function createGenerationContext(generation) {
+      return {
+        generation: generation,
+        startedAt: Date.now(),
+        terminalEmitted: false,
+        cancelled: false,
+        resultCountBucket: 'unknown',
+        recordStage: function(stage, meta) {
+          var tax = window.LoveBudJourneyOutcomeTaxonomy;
+          if (!tax) return;
+          var sink = window.__LoveBudJourneyOutcomeSink;
+          if (!sink || typeof sink.push !== 'function') return;
 
-        meta = meta || {};
-        var failureCode = tax.normalizeFailureCode(meta.failureCode || tax.FAILURE_CODES.NONE);
-        var httpStatus = tax.classifyHttpStatus(meta.httpStatus);
-        var resultCountBucket = meta.resultCountBucket === 'positive' || meta.resultCountBucket === 'zero'
-          ? meta.resultCountBucket
-          : 'unknown';
+          meta = meta || {};
+          if (stage === tax.STAGES.CANCELLED) {
+            if (this.cancelled) return;
+            this.cancelled = true;
+          }
+          if (stage === tax.STAGES.TERMINAL_SUCCESS || stage === tax.STAGES.TERMINAL_FAILURE) {
+            if (this.terminalEmitted) return;
+            this.terminalEmitted = true;
+          }
 
-        var latencyMs = 0;
-        if (stage === tax.STAGES.ACTION_STARTED || stage === tax.STAGES.REQUEST_DISPATCHED) {
-          if (tracker.startTime === 0) tracker.startTime = Date.now();
+          if (meta.resultCountBucket === 'positive' || meta.resultCountBucket === 'zero') {
+            this.resultCountBucket = meta.resultCountBucket;
+          }
+
+          var latencyMs = Date.now() - this.startedAt;
+          var event = tax.buildBoundedEvent({
+            stage: stage,
+            statusClass: meta.statusClass,
+            expectationClass: meta.expectationClass,
+            severity: meta.severity,
+            failureCode: meta.failureCode,
+            httpStatus: meta.httpStatus,
+            latencyMs: latencyMs,
+            resultCountBucket: meta.resultCountBucket || this.resultCountBucket
+          });
+          sink.push(event);
         }
-        if (tracker.startTime > 0) {
-          latencyMs = Date.now() - tracker.startTime;
-        }
-        var latencyBucket = tax.classifyLatency(latencyMs);
+      };
+    }
 
-        var event = {
-          journey: tax.JOURNEYS.JOURNEY_AUTHENTICATED_MY_TREES_LOAD,
-          stage: stage,
-          failureCode: failureCode,
-          httpStatus: httpStatus,
-          latencyBucket: latencyBucket,
-          resultCountBucket: resultCountBucket
-        };
-        sink.push(event);
+    var activeContexts = {};
 
-        if (stage === tax.STAGES.TERMINAL_SUCCESS || stage === tax.STAGES.TERMINAL_FAILURE || stage === tax.STAGES.CANCELLED) {
-          tracker.startTime = 0;
-        }
+    return {
+      createContext: function(generation) {
+        var ctx = createGenerationContext(generation);
+        activeContexts[generation] = ctx;
+        return ctx;
+      },
+      getContext: function(generation) {
+        return activeContexts[generation] || null;
       },
       mapLoadError: function(errorType) {
         var tax = window.LoveBudJourneyOutcomeTaxonomy;
@@ -76,7 +92,6 @@
         }
       }
     };
-    return tracker;
   })();
 
   var TREES_CACHE_KEY = 'my_trees_list';
@@ -349,9 +364,12 @@
    * Returns 0 if no status is extractable.
    */
   function extractHttpStatus(error) {
-    if (!error) return 0;
-    var status = error.status || error.statusCode || (error.response && error.response.status) || 0;
-    return Number(status) || 0;
+    if (!error) return undefined;
+    var raw = error.status || error.statusCode || (error.response && error.response.status);
+    if (typeof raw === 'number' && Number.isInteger(raw) && raw > 0) {
+      return raw;
+    }
+    return undefined;
   }
 
   /**
@@ -386,12 +404,11 @@
     options = options || {};
     var supersedeStaleLoad = options.supersedeStaleLoad === true;
     var reason = options.reason || null;
+    var tax = window.LoveBudJourneyOutcomeTaxonomy;
 
     // Coalesce concurrent loads.
-    // - Normal: always share active promise.
-    // - History restore supersede: share only when the active load is already
-    //   the current history_recovery generation; otherwise start a new epoch.
     if (activeOwnerListLoad && activeOwnerListLoad.promise) {
+      var activeCtx = MyTreesJourneyTracker.getContext(activeOwnerListLoad.generation);
       if (supersedeStaleLoad) {
         if (
           activeOwnerListLoad.reason === 'history_recovery' &&
@@ -417,8 +434,7 @@
             statusClass: 'none',
             resultCountBucket: 'unknown'
           });
-          var tax = window.LoveBudJourneyOutcomeTaxonomy;
-          if (tax) MyTreesJourneyTracker.recordStage(tax.STAGES.DUPLICATE_SUPPRESSED);
+          if (activeCtx) activeCtx.recordStage(tax.STAGES.DUPLICATE_SUPPRESSED);
           return activeOwnerListLoad.promise;
         }
         emitLifecycleDiagnostic({
@@ -431,19 +447,21 @@
           statusClass: 'none',
           resultCountBucket: 'unknown'
         });
-        var tax2 = window.LoveBudJourneyOutcomeTaxonomy;
-        if (tax2) MyTreesJourneyTracker.recordStage(tax2.STAGES.CANCELLED);
+        if (activeCtx) activeCtx.recordStage(tax.STAGES.CANCELLED);
         // Fall through: start a new generation without awaiting the stale load.
       } else {
-        var tax3 = window.LoveBudJourneyOutcomeTaxonomy;
-        if (tax3) MyTreesJourneyTracker.recordStage(tax3.STAGES.DUPLICATE_SUPPRESSED);
+        if (activeCtx) activeCtx.recordStage(tax.STAGES.DUPLICATE_SUPPRESSED);
         return activeOwnerListLoad.promise;
       }
     }
 
     var generation = ++ownerListGeneration;
+    var ctx = MyTreesJourneyTracker.createContext(generation);
 
     var runPromise = (async function runOwnerListLoad() {
+      if (tax && stillCurrent()) {
+        ctx.recordStage(tax.STAGES.ACTION_STARTED);
+      }
       var cache = window.LoveBudCache;
       var i18n = getI18n(options);
       var setState = options.setState;
@@ -489,6 +507,7 @@
       // instead of blanking the page into LOADING.
       if (!stillCurrent()) {
         ignoreIfStale('stale_result_ignored');
+        ctx.recordStage(tax.STAGES.CANCELLED);
         return;
       }
       if (cachedTrees && Array.isArray(cachedTrees) && typeof renderTrees === 'function') {
@@ -503,11 +522,10 @@
       try {
         var trees;
 
-        var tax = window.LoveBudJourneyOutcomeTaxonomy;
         if (window.apiClient && window.apiClient.getTrees) {
-          if (tax && stillCurrent()) {
-            MyTreesJourneyTracker.recordStage(tax.STAGES.CLIENT_VALIDATION_PASSED);
-            MyTreesJourneyTracker.recordStage(tax.STAGES.REQUEST_DISPATCHED);
+          if (stillCurrent()) {
+            ctx.recordStage(tax.STAGES.CLIENT_VALIDATION_PASSED);
+            ctx.recordStage(tax.STAGES.REQUEST_DISPATCHED);
           }
           trees = await window.apiClient.getTrees({
             onLifecycle: function(meta) {
@@ -521,13 +539,13 @@
 
         // Await returned after possible supersede — refuse stale writes.
         if (ignoreIfStale('stale_result_ignored')) {
-          if (tax) MyTreesJourneyTracker.recordStage(tax.STAGES.CANCELLED);
+          ctx.recordStage(tax.STAGES.CANCELLED);
           return;
         }
 
         if (Array.isArray(trees)) {
-          if (tax && stillCurrent()) {
-            MyTreesJourneyTracker.recordStage(tax.STAGES.RESPONSE_ACCEPTED, {
+          if (stillCurrent()) {
+            ctx.recordStage(tax.STAGES.RESPONSE_ACCEPTED, {
               resultCountBucket: trees.length > 0 ? 'positive' : 'zero'
             });
           }
@@ -542,15 +560,20 @@
             renderTrees(trees);
           }
 
-          if (tax && stillCurrent()) {
-            MyTreesJourneyTracker.recordStage(tax.STAGES.CLIENT_STATE_UPDATED);
+          if (stillCurrent()) {
+            ctx.recordStage(tax.STAGES.CLIENT_STATE_UPDATED);
+            ctx.recordStage(tax.STAGES.NOT_MEASURABLE);
             var expectedState = trees.length > 0 ? 'loaded' : 'empty';
             var acknowledged = typeof options.acknowledgeUi === 'function'
               ? options.acknowledgeUi(expectedState)
               : false;
             if (acknowledged && stillCurrent()) {
-              MyTreesJourneyTracker.recordStage(tax.STAGES.UI_ACKNOWLEDGED);
-              MyTreesJourneyTracker.recordStage(tax.STAGES.TERMINAL_SUCCESS);
+              ctx.recordStage(tax.STAGES.UI_ACKNOWLEDGED);
+              ctx.recordStage(tax.STAGES.TERMINAL_SUCCESS);
+            } else if (stillCurrent()) {
+              ctx.recordStage(tax.STAGES.TERMINAL_FAILURE, {
+                failureCode: tax.FAILURE_CODES.LB_UNEXPECTED_FAILURE
+              });
             }
           }
 
@@ -587,21 +610,19 @@
       } catch (e) {
         // Stale generation: never surface ERROR/EMPTY/toast from pre-restore loads.
         if (ignoreIfStale('stale_result_ignored')) {
-          var taxFail = window.LoveBudJourneyOutcomeTaxonomy;
-          if (taxFail) MyTreesJourneyTracker.recordStage(taxFail.STAGES.CANCELLED);
+          ctx.recordStage(tax.STAGES.CANCELLED);
           return;
         }
 
         var errorType = classifyLoadError(e);
         console.error('[my-trees-data] loadTrees error (type=' + errorType + ')');
 
-        var taxFail2 = window.LoveBudJourneyOutcomeTaxonomy;
-        if (taxFail2) {
+        if (tax) {
           var failCode = MyTreesJourneyTracker.mapLoadError(errorType);
           if (errorType === 'generic' && !window.apiClient) {
-            failCode = taxFail2.FAILURE_CODES.LB_JOURNEY_API_UNAVAILABLE;
+            failCode = tax.FAILURE_CODES.LB_JOURNEY_API_UNAVAILABLE;
           }
-          MyTreesJourneyTracker.recordStage(taxFail2.STAGES.TERMINAL_FAILURE, {
+          ctx.recordStage(tax.STAGES.TERMINAL_FAILURE, {
             failureCode: failCode,
             httpStatus: extractHttpStatus(e)
           });
@@ -619,6 +640,7 @@
           cachePresent: !!cachedTrees,
           cacheUsed: !!(cachedTrees && Array.isArray(cachedTrees)),
           statusClass: (function() {
+            if (errorType === 'invalid_payload' || errorType === 'parse') return 'success';
             var s = extractHttpStatus(e);
             return s >= 500 ? 'server' : s >= 400 ? 'client' : s > 0 ? 'success' : requestLifecycle.statusClass;
           })(),
@@ -705,7 +727,7 @@
    * Targets h2[data-i18n] and p[data-i18n] inside the error container.
    */
   function _updateErrorStateMessage(errorEl, errorType) {
-    if (!errorEl) return;
+    if (!errorEl || typeof errorEl.querySelector !== 'function') return;
     var h2 = errorEl.querySelector('h2');
     var p = errorEl.querySelector('p');
     if (errorType === 'auth') {

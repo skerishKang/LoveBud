@@ -7,6 +7,7 @@ const vm = require('node:vm');
 const ROOT = path.resolve(__dirname, '..', '..');
 const AUTH_POLICY_PATH = path.join(ROOT, 'js', 'api', 'auth-policy.js');
 const BASE_API_FETCH_PATH = path.join(ROOT, 'js', 'api', 'base-api-fetch.js');
+const TAXONOMY_PATH = path.join(ROOT, 'js', 'observability', 'journey-outcome-taxonomy.js');
 const MY_TREES_DATA_PATH = path.join(ROOT, 'js', 'my-trees', 'my-trees-data.js');
 
 function createStorageMock(initialState = {}) {
@@ -65,6 +66,7 @@ function createSandbox(options = {}) {
   };
 
   vm.createContext(sandbox);
+  vm.runInContext(fs.readFileSync(TAXONOMY_PATH, 'utf8'), sandbox, { filename: TAXONOMY_PATH });
   vm.runInContext(fs.readFileSync(AUTH_POLICY_PATH, 'utf8'), sandbox, { filename: AUTH_POLICY_PATH });
   vm.runInContext(fs.readFileSync(BASE_API_FETCH_PATH, 'utf8'), sandbox, { filename: BASE_API_FETCH_PATH });
   vm.runInContext(fs.readFileSync(MY_TREES_DATA_PATH, 'utf8'), sandbox, { filename: MY_TREES_DATA_PATH });
